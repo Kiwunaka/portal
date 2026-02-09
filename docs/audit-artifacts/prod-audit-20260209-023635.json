@@ -1,0 +1,303 @@
+{
+  "generated_at_utc": "2026-02-09T02:36:19.664271+00:00",
+  "target": {
+    "domain": "kiwunaka.space",
+    "brain": "BRAINnode"
+  },
+  "services": {
+    "caddy": {
+      "active": "active",
+      "enabled": "enabled"
+    },
+    "portal-api": {
+      "active": "active",
+      "enabled": "enabled"
+    },
+    "portal-bot": {
+      "active": "active",
+      "enabled": "enabled"
+    },
+    "portal-helpbot": {
+      "active": "active",
+      "enabled": "enabled"
+    },
+    "portal-node-metrics.timer": {
+      "active": "inactive",
+      "enabled": ""
+    },
+    "portal-node-metrics.service": {
+      "active": "inactive",
+      "enabled": ""
+    },
+    "x-ui": {
+      "active": "active",
+      "enabled": "enabled"
+    }
+  },
+  "deploy_state": {
+    "file_mtimes": {
+      "/root/portal_bot/bot.py": "2026-02-09 02:07:10.912384461 +0000",
+      "/root/portal_bot/api.py": "2026-02-09 02:07:10.752383467 +0000",
+      "/root/portal_bot/helpbot.py": "2026-02-09 02:07:11.728389526 +0000",
+      "/var/www/portal/webapp/index.html": "2026-02-09 02:04:43.451470300 +0000",
+      "/var/www/portal/marketing/index.html": "2026-02-09 02:04:45.087480432 +0000"
+    },
+    "markers": {
+      "bot_mode_simple": true,
+      "bot_check_subscription": true,
+      "bot_manual_menu": true,
+      "api_dashboard": true,
+      "api_nodes_status": true,
+      "api_admin_manual": true,
+      "helpbot_menu_new": true
+    },
+    "brain_python_deps": {
+      "qrcode": true,
+      "pillow": true,
+      "qrcode_version": "installed",
+      "pillow_version": "12.1.0"
+    }
+  },
+  "env": {
+    "presence": {
+      "BOT_TOKEN": true,
+      "HELP_BOT_TOKEN": true,
+      "ADMIN_ID": true,
+      "NEWS_CHANNEL_ID": false,
+      "PAY_CHECKOUT_URL": false,
+      "SUPPORT_BOT_USERNAME": false,
+      "WEBAPP_ENABLE_HAPTIC": false,
+      "WEBAPP_ENABLE_LOTTIE": false,
+      "WEBAPP_URL": true,
+      "PUBLIC_API_BASE_URL": true,
+      "HOST_DOMAIN": true
+    },
+    "public_nonsecret": {
+      "HOST_DOMAIN": "<redacted-ip>",
+      "SUPPORT_BOT_USERNAME": "",
+      "NEWS_CHANNEL_ID": "",
+      "WEBAPP_ENABLE_HAPTIC": "",
+      "WEBAPP_ENABLE_LOTTIE": "",
+      "PAY_CHECKOUT_URL_set": false
+    }
+  },
+  "db": {
+    "schema_flags": {
+      "users_is_manual": true,
+      "users_created_by_admin": true,
+      "users_display_name": true,
+      "nodes_enabled_column": true,
+      "nodes_is_healthy_column": true
+    },
+    "counts": {
+      "users_total": 17,
+      "users_active": 17,
+      "users_manual": 3,
+      "users_paid": 6,
+      "users_free": 8,
+      "tickets_total": 3,
+      "nodes_total": 5,
+      "nodes_enabled": 5,
+      "nodes_free": 1
+    }
+  },
+  "api": {
+    "admin_summary": {
+      "status": 200,
+      "ok": true
+    },
+    "admin_users": {
+      "status": 200,
+      "ok": true
+    },
+    "sample_users_count": 3,
+    "nodes_status": {
+      "status": 200,
+      "ok": true,
+      "nodes": 1
+    },
+    "nodes_diagnostics": {
+      "status": 200,
+      "ok": true
+    },
+    "dashboard": {
+      "status": 200,
+      "ok": true
+    },
+    "subscription_smoke": {
+      "status": 200,
+      "lines": 4,
+      "hosts": 4
+    }
+  },
+  "http": {
+    "health": {
+      "status": 200,
+      "ok": true,
+      "body_prefix": "{\"status\":\"ok\",\"ts\":\"2026-02-09T02:36:22.049375\"}"
+    },
+    "webapp_8444": {
+      "status": 200,
+      "js_asset": "index-BDHwFqg6.js",
+      "css_asset": "index-gGyQLsqJ.css",
+      "has_asset_markers": true
+    },
+    "marketing_8444": {
+      "status": 200,
+      "title": "PORTAL | Network Security",
+      "has_next_chunks": true
+    }
+  },
+  "telegram": {
+    "main_bot": {
+      "status": 200,
+      "ok": true,
+      "username": "swazist_bot"
+    },
+    "help_bot": {
+      "status": 200,
+      "ok": true,
+      "username": "portal_privacy_helpbot"
+    }
+  },
+  "nodes": {
+    "inventory": [
+      {
+        "code": "brain",
+        "name": "Germany",
+        "enabled": true,
+        "is_healthy": true,
+        "is_free": false,
+        "weight": 100,
+        "host_masked": "kiwunaka.space",
+        "panel_host_masked": "<redacted-ip>"
+      },
+      {
+        "code": "free",
+        "name": "Free",
+        "enabled": true,
+        "is_healthy": true,
+        "is_free": true,
+        "weight": 90,
+        "host_masked": "free.kiwunaka.space",
+        "panel_host_masked": "<redacted-ip>"
+      },
+      {
+        "code": "it",
+        "name": "Italy",
+        "enabled": true,
+        "is_healthy": true,
+        "is_free": false,
+        "weight": 100,
+        "host_masked": "it.kiwunaka.space",
+        "panel_host_masked": "<redacted-ip>"
+      },
+      {
+        "code": "pl",
+        "name": "Poland",
+        "enabled": true,
+        "is_healthy": true,
+        "is_free": false,
+        "weight": 100,
+        "host_masked": "pl.kiwunaka.space",
+        "panel_host_masked": "<redacted-ip>"
+      },
+      {
+        "code": "us",
+        "name": "United States",
+        "enabled": true,
+        "is_healthy": true,
+        "is_free": false,
+        "weight": 100,
+        "host_masked": "us.kiwunaka.space",
+        "panel_host_masked": "<redacted-ip>"
+      }
+    ],
+    "capacity": [
+      {
+        "code": "brain",
+        "cpu_cores": 2,
+        "mem_mb": 3903,
+        "disk_root_mb": 39713,
+        "disk_root_free_mb": 31432,
+        "loadavg": [
+          "0.03",
+          "0.03",
+          "0.00"
+        ],
+        "os": "Ubuntu 22.04.5 LTS"
+      },
+      {
+        "code": "free",
+        "reachable": false,
+        "host_masked": "<redacted-ip>",
+        "error": "Error reading SSH protocol banner"
+      },
+      {
+        "code": "it",
+        "reachable": true,
+        "host_masked": "<redacted-ip>",
+        "error": "",
+        "ssh_port": 29374,
+        "cpu_cores": 1,
+        "mem_mb": 1894,
+        "disk_root_mb": 39713,
+        "disk_root_free_mb": 31714,
+        "loadavg": [
+          "0.00",
+          "0.00",
+          "0.00"
+        ],
+        "os": "Ubuntu 22.04.5 LTS"
+      },
+      {
+        "code": "pl",
+        "reachable": true,
+        "host_masked": "<redacted-ip>",
+        "error": "",
+        "ssh_port": 29374,
+        "cpu_cores": 1,
+        "mem_mb": 1894,
+        "disk_root_mb": 39713,
+        "disk_root_free_mb": 31705,
+        "loadavg": [
+          "0.00",
+          "0.01",
+          "0.00"
+        ],
+        "os": "Ubuntu 22.04.5 LTS"
+      },
+      {
+        "code": "us",
+        "reachable": true,
+        "host_masked": "<redacted-ip>",
+        "error": "",
+        "ssh_port": 29374,
+        "cpu_cores": 1,
+        "mem_mb": 1894,
+        "disk_root_mb": 39713,
+        "disk_root_free_mb": 31714,
+        "loadavg": [
+          "0.00",
+          "0.00",
+          "0.00"
+        ],
+        "os": "Ubuntu 22.04.5 LTS"
+      }
+    ]
+  },
+  "logs": {
+    "portal-api": {
+      "has_traceback_or_error": false,
+      "lines": 28
+    },
+    "portal-bot": {
+      "has_traceback_or_error": true,
+      "lines": 437
+    },
+    "portal-helpbot": {
+      "has_traceback_or_error": false,
+      "lines": 1
+    }
+  }
+}

@@ -1,0 +1,74 @@
+{
+  "generated_at_utc": "2026-02-08T02:26:08.923162+00:00",
+  "domain": "kiwunaka.space",
+  "inventory_path": "docs\\08-node-inventory.md",
+  "hosts": [
+    {
+      "code": "pl",
+      "host": "pl.kiwunaka.space",
+      "expected_ipv4": "82.40.38.84",
+      "a_records": [
+        "82.40.38.84"
+      ],
+      "aaaa_records": [
+        "2a03:6f00:1::5c35:60df"
+      ],
+      "warnings": [
+        "has_aaaa_records"
+      ],
+      "raw_nslookup": "Server:  UnKnown\nAddress:  172.19.0.2\n\nName:    pl.kiwunaka.space\nAddresses:  2a03:6f00:1::5c35:60df\n\t  82.40.38.84\n\n\nNon-authoritative answer:\n\n"
+    },
+    {
+      "code": "it",
+      "host": "it.kiwunaka.space",
+      "expected_ipv4": "151.241.215.84",
+      "a_records": [
+        "151.241.215.84"
+      ],
+      "aaaa_records": [
+        "2a03:6f00:1::5c35:60df"
+      ],
+      "warnings": [
+        "has_aaaa_records"
+      ],
+      "raw_nslookup": "Server:  UnKnown\nAddress:  172.19.0.2\n\nName:    it.kiwunaka.space\nAddresses:  2a03:6f00:1::5c35:60df\n\t  151.241.215.84\n\n\nNon-authoritative answer:\n\n"
+    },
+    {
+      "code": "us",
+      "host": "us.kiwunaka.space",
+      "expected_ipv4": "82.21.92.142",
+      "a_records": [
+        "82.21.92.142"
+      ],
+      "aaaa_records": [
+        "2a03:6f00:1::5c35:60df"
+      ],
+      "warnings": [
+        "has_aaaa_records"
+      ],
+      "raw_nslookup": "Server:  UnKnown\nAddress:  172.19.0.2\n\nName:    us.kiwunaka.space\nAddresses:  2a03:6f00:1::5c35:60df\n\t  82.21.92.142\n\n\nNon-authoritative answer:\n\n"
+    },
+    {
+      "code": "brain",
+      "host": "kiwunaka.space",
+      "expected_ipv4": "82.21.114.104",
+      "a_records": [
+        "82.21.114.104"
+      ],
+      "aaaa_records": [],
+      "warnings": [],
+      "raw_nslookup": "Server:  UnKnown\nAddress:  172.19.0.2\n\nName:    kiwunaka.space\nAddress:  82.21.114.104\n\n\nNon-authoritative answer:\n\n"
+    }
+  ],
+  "warnings": [
+    {
+      "type": "shared_aaaa_across_different_nodes",
+      "ip6": "2a03:6f00:1::5c35:60df",
+      "hosts": [
+        "pl.kiwunaka.space",
+        "it.kiwunaka.space",
+        "us.kiwunaka.space"
+      ]
+    }
+  ]
+}

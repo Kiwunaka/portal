@@ -1,0 +1,524 @@
+﻿# -*- coding: utf-8 -*-
+"""
+Dedicated support intake bot.
+
+Users create tickets here, while operator can continue responses
+from the main bot admin queue (shared DB tables).
+"""
+
+from __future__ import annotations
+
+import logging
+import os
+from datetime import datetime, timezone
+
+from aiogram import Bot, Dispatcher, F, Router
+from aiogram.filters import CommandStart
+from aiogram.types import CallbackQuery, InlineKeyboardButton, InlineKeyboardMarkup, Message
+from dotenv import load_dotenv
+
+from db import SessionLocal, init_db
+from tickets_repo import (
+    STATUS_CLOSED,
+    STATUS_IN_PROGRESS,
+    STATUS_OPEN,
+    add_ticket_message,
+    can_access_ticket,
+    create_ticket,
+    get_ticket_by_id,
+    get_user_active_ticket,
+    list_active_tickets,
+    list_ticket_messages,
+    list_user_tickets,
+    set_ticket_status,
+)
+
+
+load_dotenv()
+
+HELP_BOT_TOKEN = (os.getenv("HELP_BOT_TOKEN") or "").strip()
+ADMIN_ID = int(os.getenv("ADMIN_ID", "0"))
+MAIN_BOT_USERNAME = (os.getenv("BOT_USERNAME") or "").lstrip("@")
+
+if not HELP_BOT_TOKEN:
+    raise SystemExit("HELP_BOT_TOKEN is empty")
+
+logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
+logger = logging.getLogger(__name__)
+
+# ticket_id that expects next text message from tg_id
+pending_ticket_replies: dict[int, int] = {}
+
+router = Router()
+
+# Ensure schema/migrations are applied before polling.
+init_db()
+
+
+def _now_str(dt: datetime | None) -> str:
+    if dt is None:
+        return "-"
+    try:
+        if dt.tzinfo is not None:
+            dt = dt.astimezone(timezone.utc).replace(tzinfo=None)
+    except Exception:
+        pass
+    return dt.strftime("%d.%m %H:%M")
+
+
+def _ticket_status_title(status: str) -> str:
+    st = (status or "").lower().strip()
+    if st == STATUS_OPEN:
+        return "🟡 Open"
+    if st == STATUS_IN_PROGRESS:
+        return "🟡 Open • In Progress"
+    if st == STATUS_CLOSED:
+        return "⚪ Closed"
+    return st or "Неизвестно"
+
+
+def _ticket_message_preview(text: str, limit: int = 200) -> str:
+    t = (text or "").strip().replace("\n", " ")
+    return t if len(t) <= limit else t[: max(0, limit - 1)] + "…"
+
+
+def _main_menu(is_admin: bool) -> InlineKeyboardMarkup:
+    rows = [
+        [InlineKeyboardButton(text="➕ Новый запрос", callback_data="hb_ticket_new")],
+        [InlineKeyboardButton(text="📂 Мои запросы", callback_data="hb_ticket_my")],
+    ]
+    if is_admin:
+        rows.append([InlineKeyboardButton(text="🧑‍💼 Очередь оператора", callback_data="hb_admin_queue")])
+    return InlineKeyboardMarkup(inline_keyboard=rows)
+
+
+def _ticket_view_keyboard(ticket_id: int, status: str, *, is_admin: bool) -> InlineKeyboardMarkup:
+    rows = []
+    if status != STATUS_CLOSED:
+        rows.append([InlineKeyboardButton(text="✍️ Ответить", callback_data=f"hb_ticket_reply_{ticket_id}")])
+        rows.append([InlineKeyboardButton(text="✅ Закрыть", callback_data=f"hb_ticket_close_{ticket_id}")])
+    else:
+        rows.append([InlineKeyboardButton(text="♻️ Переоткрыть", callback_data=f"hb_ticket_reopen_{ticket_id}")])
+    if is_admin:
+        rows.append([InlineKeyboardButton(text="◀️ Назад к очереди", callback_data="hb_admin_queue")])
+    else:
+        rows.append([InlineKeyboardButton(text="📂 Мои запросы", callback_data="hb_ticket_my")])
+    return InlineKeyboardMarkup(inline_keyboard=rows)
+
+
+async def _safe_answer(callback: CallbackQuery, text: str | None = None, *, show_alert: bool = False) -> None:
+    try:
+        await callback.answer(text=text, show_alert=show_alert)
+    except Exception:
+        pass
+
+
+async def _notify_admin(bot: Bot, text: str) -> None:
+    if ADMIN_ID <= 0:
+        return
+    try:
+        await bot.send_message(ADMIN_ID, text)
+    except Exception as e:
+        logger.warning("helpbot admin notify failed: %s", e)
+
+
+def _main_bot_hint() -> str:
+    if not MAIN_BOT_USERNAME:
+        return "Ответить можно из очереди тикетов в основном боте."
+    return f"Ответ из админки: https://t.me/{MAIN_BOT_USERNAME}"
+
+
+def _get_or_create_user_ticket(session, tg_id: int):
+    ticket = get_user_active_ticket(session, tg_id)
+    created = False
+    if not ticket:
+        ticket = create_ticket(session, user_tg_id=tg_id)
+        session.commit()
+        session.refresh(ticket)
+        created = True
+    return ticket, created
+
+
+async def _render_ticket(callback: CallbackQuery, ticket_id: int) -> None:
+    tg_id = callback.from_user.id
+    is_admin = tg_id == ADMIN_ID
+    session = SessionLocal()
+    try:
+        ticket = get_ticket_by_id(session, ticket_id)
+        if not ticket:
+            await _safe_answer(callback, "Тикет не найден", show_alert=True)
+            return
+        if not can_access_ticket(ticket, tg_id, ADMIN_ID):
+            await _safe_answer(callback, "Нет доступа", show_alert=True)
+            return
+
+        msgs = list_ticket_messages(session, ticket_id=ticket.id, limit=8)
+        lines = []
+        for msg in msgs:
+            role = "Оператор" if (msg.sender_role or "").lower() == "admin" else "Пользователь"
+            lines.append(f"[{_now_str(msg.created_at)}] {role}: {_ticket_message_preview(msg.body)}")
+        history = "\n".join(lines) if lines else "Сообщений пока нет."
+
+        text = (
+            f"🎫 Тикет #{ticket.id}\n"
+            f"Статус: {_ticket_status_title(ticket.status)}\n"
+            f"Пользователь: {ticket.user_tg_id}\n"
+            f"Создан: {_now_str(ticket.created_at)}\n"
+            f"Обновлён: {_now_str(ticket.updated_at)}\n\n"
+            f"{history}"
+        )
+        await callback.message.edit_text(
+            text,
+            reply_markup=_ticket_view_keyboard(ticket.id, ticket.status, is_admin=is_admin),
+        )
+        await _safe_answer(callback)
+    finally:
+        session.close()
+
+
+@router.message(CommandStart())
+async def start(message: Message) -> None:
+    tg_id = message.from_user.id
+    is_admin = tg_id == ADMIN_ID
+    start_arg = ""
+    raw = (message.text or "").strip()
+    if " " in raw:
+        start_arg = raw.split(" ", 1)[1].strip().lower()
+
+    if start_arg in {"ticket_new", "new", "support"}:
+        session = SessionLocal()
+        try:
+            ticket, created = _get_or_create_user_ticket(session, tg_id)
+            pending_ticket_replies[tg_id] = ticket.id
+        finally:
+            session.close()
+        if created:
+            await _notify_admin(
+                message.bot,
+                f"🆕 Новый тикет #{ticket.id} от пользователя {tg_id} (helpbot).\n{_main_bot_hint()}",
+            )
+        await message.answer(
+            f"Тикет #{ticket.id} открыт.\nОпиши проблему одним сообщением.",
+            reply_markup=InlineKeyboardMarkup(
+                inline_keyboard=[
+                    [InlineKeyboardButton(text="🎫 Открыть тикет", callback_data=f"hb_ticket_view_{ticket.id}")],
+                    [InlineKeyboardButton(text="🏠 В меню", callback_data="hb_back_home")],
+                ]
+            ),
+        )
+        return
+
+    if start_arg in {"ticket_my", "my", "tickets"}:
+        session = SessionLocal()
+        try:
+            tickets = list_user_tickets(session, tg_id, limit=10)
+        finally:
+            session.close()
+        if not tickets:
+            await message.answer(
+                "Тикетов пока нет.",
+                reply_markup=InlineKeyboardMarkup(
+                    inline_keyboard=[
+                        [InlineKeyboardButton(text="➕ Новый запрос", callback_data="hb_ticket_new")],
+                        [InlineKeyboardButton(text="◀️ Назад", callback_data="hb_back_home")],
+                    ]
+                ),
+            )
+            return
+        rows = []
+        for t in tickets:
+            rows.append(
+                [
+                    InlineKeyboardButton(
+                        text=f"#{t.id} {_ticket_status_title(t.status)}",
+                        callback_data=f"hb_ticket_view_{t.id}",
+                    )
+                ]
+            )
+        rows.append([InlineKeyboardButton(text="➕ Новый запрос", callback_data="hb_ticket_new")])
+        rows.append([InlineKeyboardButton(text="◀️ Назад", callback_data="hb_back_home")])
+        await message.answer("Мои запросы:", reply_markup=InlineKeyboardMarkup(inline_keyboard=rows))
+        return
+
+    text = (
+        "👨‍💻 *Техническая поддержка PORTAL*\n\n"
+        "Опишите вашу проблему, и оператор подключится к диалогу.\n"
+        "Среднее время ответа: 15 минут.\n\n"
+        "👇 *Выберите действие:*"
+    )
+    if is_admin:
+        text += "\n\nРежим оператора: доступна очередь тикетов."
+    await message.answer(text, reply_markup=_main_menu(is_admin), parse_mode="Markdown")
+
+
+@router.callback_query(F.data == "hb_ticket_new")
+async def ticket_new(callback: CallbackQuery) -> None:
+    await _safe_answer(callback)
+    tg_id = callback.from_user.id
+    session = SessionLocal()
+    try:
+        ticket, created = _get_or_create_user_ticket(session, tg_id)
+        if created:
+            await _notify_admin(
+                callback.bot,
+                f"🆕 Новый тикет #{ticket.id} от пользователя {tg_id} (helpbot).\n{_main_bot_hint()}",
+            )
+        pending_ticket_replies[tg_id] = ticket.id
+        await callback.message.edit_text(
+            f"Тикет #{ticket.id} готов.\nОтправь одним сообщением описание проблемы.",
+            reply_markup=InlineKeyboardMarkup(
+                inline_keyboard=[
+                    [InlineKeyboardButton(text="🎫 Открыть тикет", callback_data=f"hb_ticket_view_{ticket.id}")],
+                    [InlineKeyboardButton(text="📂 Мои запросы", callback_data="hb_ticket_my")],
+                ]
+            ),
+        )
+    finally:
+        session.close()
+
+
+@router.callback_query(F.data == "hb_ticket_my")
+async def ticket_my(callback: CallbackQuery) -> None:
+    await _safe_answer(callback)
+    tg_id = callback.from_user.id
+    session = SessionLocal()
+    try:
+        tickets = list_user_tickets(session, tg_id, limit=10)
+    finally:
+        session.close()
+
+    if not tickets:
+        await callback.message.edit_text(
+            "Тикетов пока нет.",
+            reply_markup=InlineKeyboardMarkup(
+                inline_keyboard=[
+                    [InlineKeyboardButton(text="➕ Новый запрос", callback_data="hb_ticket_new")],
+                    [InlineKeyboardButton(text="◀️ Назад", callback_data="hb_back_home")],
+                ]
+            ),
+        )
+        return
+
+    rows = []
+    for t in tickets:
+        rows.append(
+            [
+                InlineKeyboardButton(
+                    text=f"#{t.id} {_ticket_status_title(t.status)}",
+                    callback_data=f"hb_ticket_view_{t.id}",
+                )
+            ]
+        )
+    rows.append([InlineKeyboardButton(text="➕ Новый запрос", callback_data="hb_ticket_new")])
+    rows.append([InlineKeyboardButton(text="◀️ Назад", callback_data="hb_back_home")])
+    await callback.message.edit_text("Мои запросы:", reply_markup=InlineKeyboardMarkup(inline_keyboard=rows))
+
+
+@router.callback_query(F.data.startswith("hb_ticket_view_"))
+async def ticket_view(callback: CallbackQuery) -> None:
+    ticket_id = int(callback.data.replace("hb_ticket_view_", ""))
+    await _render_ticket(callback, ticket_id)
+
+
+@router.callback_query(F.data.startswith("hb_ticket_reply_"))
+async def ticket_reply(callback: CallbackQuery) -> None:
+    await _safe_answer(callback)
+    ticket_id = int(callback.data.replace("hb_ticket_reply_", ""))
+    session = SessionLocal()
+    try:
+        ticket = get_ticket_by_id(session, ticket_id)
+        if not ticket:
+            await callback.message.edit_text("Тикет не найден.", reply_markup=_main_menu(callback.from_user.id == ADMIN_ID))
+            return
+        if not can_access_ticket(ticket, callback.from_user.id, ADMIN_ID):
+            await callback.message.edit_text("Нет доступа.", reply_markup=_main_menu(callback.from_user.id == ADMIN_ID))
+            return
+        if callback.from_user.id == ADMIN_ID:
+            set_ticket_status(session, ticket=ticket, status=STATUS_IN_PROGRESS, assigned_admin_tg_id=ADMIN_ID)
+        elif ticket.status == STATUS_CLOSED:
+            set_ticket_status(session, ticket=ticket, status=STATUS_OPEN)
+        session.commit()
+    finally:
+        session.close()
+
+    pending_ticket_replies[callback.from_user.id] = ticket_id
+    await callback.message.edit_text(
+        f"Ответ в тикет #{ticket_id}: отправь одно текстовое сообщение.",
+        reply_markup=InlineKeyboardMarkup(
+            inline_keyboard=[[InlineKeyboardButton(text="◀️ Назад", callback_data=f"hb_ticket_view_{ticket_id}")]]
+        ),
+    )
+
+
+@router.callback_query(F.data.startswith("hb_ticket_close_"))
+async def ticket_close(callback: CallbackQuery) -> None:
+    await _safe_answer(callback)
+    ticket_id = int(callback.data.replace("hb_ticket_close_", ""))
+    session = SessionLocal()
+    try:
+        ticket = get_ticket_by_id(session, ticket_id)
+        if not ticket:
+            await callback.message.edit_text("Тикет не найден.", reply_markup=_main_menu(callback.from_user.id == ADMIN_ID))
+            return
+        if not can_access_ticket(ticket, callback.from_user.id, ADMIN_ID):
+            await callback.message.edit_text("Нет доступа.", reply_markup=_main_menu(callback.from_user.id == ADMIN_ID))
+            return
+        set_ticket_status(session, ticket=ticket, status=STATUS_CLOSED)
+        session.commit()
+    finally:
+        session.close()
+
+    await _notify_admin(callback.bot, f"Тикет #{ticket_id} закрыт пользователем {callback.from_user.id}.")
+    await _render_ticket(callback, ticket_id)
+
+
+@router.callback_query(F.data.startswith("hb_ticket_reopen_"))
+async def ticket_reopen(callback: CallbackQuery) -> None:
+    await _safe_answer(callback)
+    ticket_id = int(callback.data.replace("hb_ticket_reopen_", ""))
+    session = SessionLocal()
+    try:
+        ticket = get_ticket_by_id(session, ticket_id)
+        if not ticket:
+            await callback.message.edit_text("Тикет не найден.", reply_markup=_main_menu(callback.from_user.id == ADMIN_ID))
+            return
+        if not can_access_ticket(ticket, callback.from_user.id, ADMIN_ID):
+            await callback.message.edit_text("Нет доступа.", reply_markup=_main_menu(callback.from_user.id == ADMIN_ID))
+            return
+        set_ticket_status(session, ticket=ticket, status=STATUS_OPEN)
+        session.commit()
+    finally:
+        session.close()
+
+    await _notify_admin(callback.bot, f"Тикет #{ticket_id} переоткрыт пользователем {callback.from_user.id}.")
+    await _render_ticket(callback, ticket_id)
+
+
+@router.callback_query(F.data == "hb_admin_queue")
+async def admin_queue(callback: CallbackQuery) -> None:
+    await _safe_answer(callback)
+    if callback.from_user.id != ADMIN_ID:
+        await callback.message.edit_text("Доступ запрещён.", reply_markup=_main_menu(False))
+        return
+
+    session = SessionLocal()
+    try:
+        tickets = list_active_tickets(session, limit=20)
+    finally:
+        session.close()
+
+    if not tickets:
+        await callback.message.edit_text(
+            "В очереди нет активных тикетов.",
+            reply_markup=InlineKeyboardMarkup(
+                inline_keyboard=[
+                    [InlineKeyboardButton(text="🔄 Обновить", callback_data="hb_admin_queue")],
+                    [InlineKeyboardButton(text="◀️ Назад", callback_data="hb_back_home")],
+                ]
+            ),
+        )
+        return
+
+    rows = []
+    for t in tickets:
+        rows.append(
+            [
+                InlineKeyboardButton(
+                    text=f"#{t.id} u:{t.user_tg_id} {_ticket_status_title(t.status)}",
+                    callback_data=f"hb_ticket_view_{t.id}",
+                )
+            ]
+        )
+    rows.append([InlineKeyboardButton(text="🔄 Обновить", callback_data="hb_admin_queue")])
+    rows.append([InlineKeyboardButton(text="◀️ Назад", callback_data="hb_back_home")])
+    await callback.message.edit_text("Активные тикеты:", reply_markup=InlineKeyboardMarkup(inline_keyboard=rows))
+
+
+@router.callback_query(F.data == "hb_back_home")
+async def back_home(callback: CallbackQuery) -> None:
+    await _safe_answer(callback)
+    await callback.message.edit_text(
+        "Меню поддержки.",
+        reply_markup=_main_menu(callback.from_user.id == ADMIN_ID),
+    )
+
+
+@router.message(F.text)
+async def capture_ticket_reply(message: Message) -> None:
+    tg_id = message.from_user.id
+    text = (message.text or "").strip()
+    if not text:
+        return
+    ticket_id = pending_ticket_replies.get(tg_id, 0)
+    session = SessionLocal()
+    try:
+        ticket = None
+        created = False
+        if ticket_id > 0:
+            ticket = get_ticket_by_id(session, ticket_id)
+        if not ticket and tg_id != ADMIN_ID:
+            ticket, created = _get_or_create_user_ticket(session, tg_id)
+            ticket_id = ticket.id
+        if not ticket and tg_id == ADMIN_ID:
+            await message.answer("Выбери тикет в очереди и нажми «Ответить».", reply_markup=_main_menu(True))
+            return
+        if not ticket:
+            await message.answer("Тикет не найден.", reply_markup=_main_menu(tg_id == ADMIN_ID))
+            return
+        if not can_access_ticket(ticket, tg_id, ADMIN_ID):
+            await message.answer("Нет доступа к тикету.", reply_markup=_main_menu(tg_id == ADMIN_ID))
+            return
+
+        role = "admin" if tg_id == ADMIN_ID else "user"
+        add_ticket_message(
+            session,
+            ticket_id=ticket.id,
+            sender_tg_id=tg_id,
+            sender_role=role,
+            body=text,
+        )
+        if tg_id == ADMIN_ID:
+            set_ticket_status(session, ticket=ticket, status=STATUS_IN_PROGRESS, assigned_admin_tg_id=ADMIN_ID)
+            try:
+                await message.bot.send_message(ticket.user_tg_id, f"💬 Новый ответ оператора в тикете #{ticket.id}:\n{text}")
+            except Exception as e:
+                logger.warning("helpbot reply to user failed ticket=%s err=%s", ticket.id, e)
+        else:
+            set_ticket_status(session, ticket=ticket, status=STATUS_OPEN)
+            await _notify_admin(
+                message.bot,
+                f"🆕 Новое сообщение в тикете #{ticket.id} от пользователя {tg_id} (helpbot).\n{text}\n\n{_main_bot_hint()}",
+            )
+            if created:
+                await _notify_admin(
+                    message.bot,
+                    f"🆕 Новый тикет #{ticket.id} от пользователя {tg_id} (helpbot).\n{_main_bot_hint()}",
+                )
+        session.commit()
+        pending_ticket_replies.pop(tg_id, None)
+    finally:
+        session.close()
+
+    await message.answer(
+        f"Ответ добавлен в тикет #{ticket_id}.",
+        reply_markup=InlineKeyboardMarkup(
+            inline_keyboard=[
+                [InlineKeyboardButton(text="🎫 Открыть тикет", callback_data=f"hb_ticket_view_{ticket_id}")],
+                [InlineKeyboardButton(text="🏠 В меню", callback_data="hb_back_home")],
+            ]
+        ),
+    )
+
+
+async def main() -> None:
+    dp = Dispatcher()
+    dp.include_router(router)
+    bot = Bot(token=HELP_BOT_TOKEN)
+    logger.info("Support helpbot starting...")
+    await dp.start_polling(bot, allowed_updates=dp.resolve_used_update_types())
+
+
+if __name__ == "__main__":
+    import asyncio
+
+    asyncio.run(main())

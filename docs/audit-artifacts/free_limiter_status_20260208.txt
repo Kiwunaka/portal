@@ -1,0 +1,36 @@
+=== systemctl is-enabled portal-free-per-ip-limiter.service || true rc=0 ===
+enabled
+=== systemctl is-active portal-free-per-ip-limiter.service || true rc=0 ===
+active
+=== systemctl --no-pager status portal-free-per-ip-limiter.service | sed -n '1,30p' || true rc=0 ===
+● portal-free-per-ip-limiter.service - Portal Free per-IP limiter (6250KB/s on port 8443)
+     Loaded: loaded (/etc/systemd/system/portal-free-per-ip-limiter.service; enabled; vendor preset: enabled)
+     Active: active (exited) since Sun 2026-02-08 01:07:33 UTC; 3min 45s ago
+    Process: 1567 ExecStart=/usr/local/sbin/portal-free-per-ip-limiter 8443 6250 512 (code=exited, status=0/SUCCESS)
+   Main PID: 1567 (code=exited, status=0/SUCCESS)
+        CPU: 26ms
+
+Feb 08 01:07:33 PLnode portal-free-per-ip-limiter[1576]:                 tcp dport 8443 meter free_in_v4 size 65535 { ip saddr limit rate over 6250 kbytes/second burst 512 kbytes } counter packets 0 bytes 0 drop
+Feb 08 01:07:33 PLnode portal-free-per-ip-limiter[1576]:                 tcp dport 8443 meter free_in_v6 size 65535 { ip6 saddr limit rate over 6250 kbytes/second burst 512 kbytes } counter packets 0 bytes 0 drop
+Feb 08 01:07:33 PLnode portal-free-per-ip-limiter[1576]:         }
+Feb 08 01:07:33 PLnode portal-free-per-ip-limiter[1576]:         chain output {
+Feb 08 01:07:33 PLnode portal-free-per-ip-limiter[1576]:                 type filter hook output priority filter; policy accept;
+Feb 08 01:07:33 PLnode portal-free-per-ip-limiter[1576]:                 tcp sport 8443 meter free_out_v4 size 65535 { ip daddr limit rate over 6250 kbytes/second burst 512 kbytes } counter packets 0 bytes 0 drop
+Feb 08 01:07:33 PLnode portal-free-per-ip-limiter[1576]:                 tcp sport 8443 meter free_out_v6 size 65535 { ip6 daddr limit rate over 6250 kbytes/second burst 512 kbytes } counter packets 0 bytes 0 drop
+Feb 08 01:07:33 PLnode portal-free-per-ip-limiter[1576]:         }
+Feb 08 01:07:33 PLnode portal-free-per-ip-limiter[1576]: }
+Feb 08 01:07:33 PLnode systemd[1]: Finished Portal Free per-IP limiter (6250KB/s on port 8443).
+=== nft list table inet portal_free_rate || true rc=0 ===
+table inet portal_free_rate {
+	chain input {
+		type filter hook input priority filter; policy accept;
+		tcp dport 8443 meter free_in_v4 size 65535 { ip saddr limit rate over 6250 kbytes/second burst 512 kbytes } counter packets 0 bytes 0 drop
+		tcp dport 8443 meter free_in_v6 size 65535 { ip6 saddr limit rate over 6250 kbytes/second burst 512 kbytes } counter packets 0 bytes 0 drop
+	}
+
+	chain output {
+		type filter hook output priority filter; policy accept;
+		tcp sport 8443 meter free_out_v4 size 65535 { ip daddr limit rate over 6250 kbytes/second burst 512 kbytes } counter packets 0 bytes 0 drop
+		tcp sport 8443 meter free_out_v6 size 65535 { ip6 daddr limit rate over 6250 kbytes/second burst 512 kbytes } counter packets 0 bytes 0 drop
+	}
+}

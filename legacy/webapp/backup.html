@@ -1,0 +1,1381 @@
+<!DOCTYPE html>
+<html lang="ru">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Swazist Portal</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-primary: #0a0a0a;
+            --bg-secondary: #141414;
+            --bg-card: rgba(255, 255, 255, 0.03);
+            --bg-glass: rgba(255, 255, 255, 0.05);
+            --border-subtle: rgba(255, 255, 255, 0.08);
+            --border-accent: rgba(255, 255, 255, 0.15);
+            --text-primary: #ffffff;
+            --text-secondary: rgba(255, 255, 255, 0.6);
+            --text-muted: rgba(255, 255, 255, 0.4);
+            --accent: #3b82f6;
+            --accent-glow: rgba(59, 130, 246, 0.3);
+            --success: #10b981;
+            --warning: #f59e0b;
+            --error: #ef4444;
+            --radius-sm: 8px;
+            --radius-md: 12px;
+            --radius-lg: 16px;
+            --radius-xl: 20px;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            min-height: 100vh;
+            line-height: 1.5;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        .container {
+            max-width: 480px;
+            margin: 0 auto;
+            padding: 16px;
+            padding-bottom: 80px;
+        }
+
+        /* Header */
+        .header {
+            text-align: center;
+            padding: 20px 0 24px;
+        }
+
+        .header-icon {
+            width: 56px;
+            height: 56px;
+            background: linear-gradient(135deg, var(--accent) 0%, #8b5cf6 100%);
+            border-radius: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 12px;
+            font-size: 28px;
+            box-shadow: 0 8px 32px var(--accent-glow);
+        }
+
+        .header h1 {
+            font-size: 22px;
+            font-weight: 700;
+            margin-bottom: 2px;
+        }
+
+        .header p {
+            color: var(--text-secondary);
+            font-size: 13px;
+        }
+
+        /* Bottom Navigation */
+        .bottom-nav {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: rgba(10, 10, 10, 0.95);
+            backdrop-filter: blur(20px);
+            border-top: 1px solid var(--border-subtle);
+            padding: 8px 16px;
+            display: flex;
+            justify-content: center;
+            gap: 4px;
+            z-index: 100;
+        }
+
+        .nav-btn {
+            flex: 1;
+            max-width: 80px;
+            padding: 8px 4px;
+            background: transparent;
+            border: none;
+            border-radius: var(--radius-md);
+            color: var(--text-muted);
+            font-size: 10px;
+            font-weight: 500;
+            cursor: pointer;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 4px;
+            transition: all 0.2s;
+        }
+
+        .nav-btn span {
+            font-size: 20px;
+        }
+
+        .nav-btn.active {
+            color: var(--accent);
+            background: rgba(59, 130, 246, 0.1);
+        }
+
+        /* Pages */
+        .page {
+            display: none;
+        }
+
+        .page.active {
+            display: block;
+        }
+
+        /* Cards */
+        .card {
+            background: var(--bg-glass);
+            backdrop-filter: blur(20px);
+            border: 1px solid var(--border-subtle);
+            border-radius: var(--radius-lg);
+            padding: 16px;
+            margin-bottom: 12px;
+        }
+
+        .card-title {
+            font-size: 15px;
+            font-weight: 600;
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .card-title span {
+            font-size: 18px;
+        }
+
+        /* Guide Steps */
+        .guide-step {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 16px;
+        }
+
+        .step-num {
+            width: 28px;
+            height: 28px;
+            background: linear-gradient(135deg, var(--accent) 0%, #8b5cf6 100%);
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 13px;
+            font-weight: 700;
+            flex-shrink: 0;
+            color: white;
+        }
+
+        .step-content h4 {
+            font-size: 14px;
+            font-weight: 600;
+            margin-bottom: 4px;
+        }
+
+        .step-content p {
+            font-size: 13px;
+            color: var(--text-secondary);
+        }
+
+        /* Screenshot placeholder */
+        .screenshot {
+            width: 100%;
+            height: 180px;
+            background: var(--bg-card);
+            border: 1px dashed var(--border-accent);
+            border-radius: var(--radius-md);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--text-muted);
+            font-size: 12px;
+            margin-top: 8px;
+            overflow: hidden;
+        }
+
+        .screenshot img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            border-radius: var(--radius-md);
+        }
+
+        /* Buttons */
+        .btn {
+            display: block;
+            width: 100%;
+            padding: 14px;
+            background: linear-gradient(135deg, var(--accent) 0%, #8b5cf6 100%);
+            border: none;
+            border-radius: var(--radius-md);
+            color: white;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            text-align: center;
+            text-decoration: none;
+            margin-top: 12px;
+        }
+
+        .btn-secondary {
+            background: var(--bg-card);
+            border: 1px solid var(--border-subtle);
+        }
+
+        /* Platform cards */
+        .platform-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 8px;
+            margin-top: 12px;
+        }
+
+        .platform-card {
+            padding: 16px;
+            background: var(--bg-card);
+            border: 1px solid var(--border-subtle);
+            border-radius: var(--radius-md);
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .platform-card:hover {
+            border-color: var(--border-accent);
+            background: rgba(255, 255, 255, 0.06);
+        }
+
+        .platform-card span {
+            font-size: 32px;
+            display: block;
+            margin-bottom: 8px;
+        }
+
+        .platform-card h4 {
+            font-size: 14px;
+            font-weight: 600;
+        }
+
+        /* Info boxes */
+        .info-box {
+            background: rgba(59, 130, 246, 0.1);
+            border: 1px solid rgba(59, 130, 246, 0.2);
+            border-radius: var(--radius-md);
+            padding: 12px;
+            margin-top: 12px;
+            font-size: 12px;
+            color: var(--text-secondary);
+        }
+
+        .warning-box {
+            background: rgba(245, 158, 11, 0.1);
+            border: 1px solid rgba(245, 158, 11, 0.2);
+            border-radius: var(--radius-md);
+            padding: 12px;
+            margin-top: 12px;
+            font-size: 12px;
+            color: var(--text-secondary);
+        }
+
+        /* ЛК specific */
+        .lk-card {
+            background: linear-gradient(135deg, rgba(59, 130, 246, 0.15) 0%, rgba(139, 92, 246, 0.15) 100%);
+            border-color: rgba(59, 130, 246, 0.3);
+        }
+
+        .lk-status {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 12px;
+        }
+
+        .status-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            animation: pulse 2s infinite;
+        }
+
+        .status-dot.active {
+            background: var(--success);
+            box-shadow: 0 0 10px var(--success);
+        }
+
+        .status-dot.inactive {
+            background: var(--error);
+        }
+
+        @keyframes pulse {
+
+            0%,
+            100% {
+                opacity: 1;
+            }
+
+            50% {
+                opacity: 0.5;
+            }
+        }
+
+        .lk-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 8px;
+            margin-bottom: 12px;
+        }
+
+        .lk-item {
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: var(--radius-sm);
+            padding: 10px;
+        }
+
+        .lk-item-label {
+            font-size: 10px;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            margin-bottom: 2px;
+        }
+
+        .lk-item-value {
+            font-size: 14px;
+            font-weight: 600;
+        }
+
+        .key-box {
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px solid var(--border-subtle);
+            border-radius: var(--radius-md);
+            padding: 10px;
+            margin-bottom: 12px;
+        }
+
+        .key-text {
+            font-size: 11px;
+            font-family: monospace;
+            color: var(--text-secondary);
+            word-break: break-all;
+        }
+
+        .copy-btn {
+            width: 100%;
+            padding: 10px;
+            background: var(--accent);
+            border: none;
+            border-radius: var(--radius-sm);
+            color: white;
+            font-size: 13px;
+            font-weight: 500;
+            cursor: pointer;
+            margin-top: 8px;
+        }
+
+        .copy-btn.copied {
+            background: var(--success);
+        }
+
+        /* App chips */
+        .app-chips {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin: 12px 0;
+        }
+
+        .app-chip {
+            padding: 8px 14px;
+            background: var(--bg-card);
+            border: 1px solid var(--border-subtle);
+            border-radius: 20px;
+            color: var(--text-secondary);
+            font-size: 12px;
+            cursor: pointer;
+        }
+
+        .app-chip.selected {
+            background: var(--accent);
+            border-color: var(--accent);
+            color: white;
+        }
+
+        /* FAQ */
+        .faq-item {
+            padding: 12px 0;
+            border-bottom: 1px solid var(--border-subtle);
+        }
+
+        .faq-q {
+            font-weight: 600;
+            font-size: 14px;
+            margin-bottom: 6px;
+            display: flex;
+            gap: 8px;
+        }
+
+        .faq-a {
+            font-size: 13px;
+            color: var(--text-secondary);
+            padding-left: 22px;
+        }
+
+        /* Loading */
+        .loading {
+            text-align: center;
+            padding: 30px;
+            color: var(--text-muted);
+        }
+
+        .loading-spinner {
+            width: 28px;
+            height: 28px;
+            border: 3px solid var(--border-subtle);
+            border-top-color: var(--accent);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 10px;
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        /* Page navigation */
+        .page {
+            display: none;
+        }
+
+        .page.active {
+            display: block;
+        }
+
+        /* Hide */
+        .hidden {
+            display: none !important;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <!-- HEADER -->
+        <header class="header">
+            <div class="header-icon">🌐</div>
+            <h1>Swazist</h1>
+            <p>Чистый интернет без границ</p>
+        </header>
+
+        <!-- PAGE: HOME -->
+        <div id="page-home" class="page active">
+            <div class="card">
+                <div class="card-title"><span>🚀</span> Быстрый старт</div>
+                <p style="font-size: 13px; color: var(--text-secondary); margin-bottom: 12px;">
+                    Выберите вашу платформу для инструкции по подключению:
+                </p>
+                <div class="platform-grid">
+                    <div class="platform-card" onclick="showPage('ios')">
+                        <span>🍎</span>
+                        <h4>iPhone</h4>
+                    </div>
+                    <div class="platform-card" onclick="showPage('android')">
+                        <span>🤖</span>
+                        <h4>Android</h4>
+                    </div>
+                    <div class="platform-card" onclick="showPage('windows')">
+                        <span>💻</span>
+                        <h4>Windows</h4>
+                    </div>
+                    <div class="platform-card" onclick="showPage('macos')">
+                        <span>🍏</span>
+                        <h4>macOS</h4>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-title"><span>📺</span> YouTube и Discord</div>
+                <p style="font-size: 13px; color: var(--text-secondary);">
+                    Не работает YouTube или Discord? Есть быстрое решение для Windows!
+                </p>
+                <a href="#" onclick="showPage('zapret'); return false;" class="btn btn-secondary"
+                    style="margin-top: 12px;">
+                    📥 Инструкция Zapret
+                </a>
+            </div>
+
+            <div class="card">
+                <div class="card-title"><span>🔗</span> Telegram прокси</div>
+                <p style="font-size: 13px; color: var(--text-secondary);">
+                    Бесплатный MTProto прокси для Telegram — подключается в 1 клик в боте.
+                </p>
+            </div>
+        </div>
+
+        <!-- PAGE: iOS -->
+        <div id="page-ios" class="page">
+            <div class="card">
+                <div class="card-title"><span>🍎</span> Подключение на iPhone</div>
+
+                <div class="guide-step">
+                    <div class="step-num">1</div>
+                    <div class="step-content">
+                        <h4>Скачайте Hiddify</h4>
+                        <p>Откройте App Store и установите бесплатное приложение Hiddify</p>
+                        <div class="screenshot">
+                            <img src="images/ios_appstore.png"
+                                onerror="this.parentElement.innerHTML='📸 ios_appstore.png'" alt="">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="guide-step">
+                    <div class="step-num">2</div>
+                    <div class="step-content">
+                        <h4>Скопируйте ключ</h4>
+                        <p>Перейдите в "Личный кабинет" внизу и нажмите "Копировать"</p>
+                    </div>
+                </div>
+
+                <div class="guide-step">
+                    <div class="step-num">3</div>
+                    <div class="step-content">
+                        <h4>Откройте Hiddify</h4>
+                        <p>Нажмите "+" → "Добавить из буфера обмена"</p>
+                        <div class="screenshot">
+                            <img src="images/ios_hiddify_add.png"
+                                onerror="this.parentElement.innerHTML='📸 ios_hiddify_add.png'" alt="">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="guide-step">
+                    <div class="step-num">4</div>
+                    <div class="step-content">
+                        <h4>Включите!</h4>
+                        <p>Нажмите большую кнопку подключения. Готово! 🎉</p>
+                        <div class="screenshot">
+                            <img src="images/ios_hiddify_connected.png"
+                                onerror="this.parentElement.innerHTML='📸 ios_hiddify_connected.png'" alt="">
+                        </div>
+                    </div>
+                </div>
+
+                <a href="https://apps.apple.com/app/id6596777532" target="_blank" class="btn">
+                    📲 Скачать Hiddify
+                </a>
+
+                <div class="info-box">
+                    💡 <strong>Альтернатива:</strong> <a href="https://apps.apple.com/app/streisand/id6450534064"
+                        target="_blank" style="color: var(--accent);">Streisand</a> — тоже хорошее приложение
+                </div>
+            </div>
+
+            <button onclick="showPage('home')" class="btn btn-secondary">◀️ Назад</button>
+        </div>
+
+        <!-- PAGE: Android -->
+        <div id="page-android" class="page">
+            <div class="card">
+                <div class="card-title"><span>🤖</span> Подключение на Android</div>
+
+                <div class="guide-step">
+                    <div class="step-num">1</div>
+                    <div class="step-content">
+                        <h4>Скачайте Hiddify</h4>
+                        <p>Откройте Google Play и установите Hiddify</p>
+                        <div class="screenshot">
+                            <img src="images/android_playmarket.png"
+                                onerror="this.parentElement.innerHTML='📸 android_playmarket.png'" alt="">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="guide-step">
+                    <div class="step-num">2</div>
+                    <div class="step-content">
+                        <h4>Скопируйте ключ</h4>
+                        <p>Перейдите в "Личный кабинет" и скопируйте ключ</p>
+                    </div>
+                </div>
+
+                <div class="guide-step">
+                    <div class="step-num">3</div>
+                    <div class="step-content">
+                        <h4>Добавьте в Hiddify</h4>
+                        <p>Откройте приложение → "+" → "Добавить из буфера"</p>
+                        <div class="screenshot">
+                            <img src="images/android_hiddify_add.png"
+                                onerror="this.parentElement.innerHTML='📸 android_hiddify_add.png'" alt="">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="guide-step">
+                    <div class="step-num">4</div>
+                    <div class="step-content">
+                        <h4>Подключитесь!</h4>
+                        <p>Включите переключатель — вы подключены! 🎉</p>
+                    </div>
+                </div>
+
+                <a href="https://play.google.com/store/apps/details?id=app.hiddify.com" target="_blank" class="btn">
+                    📲 Google Play
+                </a>
+
+                <div class="info-box">
+                    📥 <strong>Нет Google Play?</strong> Скачайте APK: <a
+                        href="https://github.com/hiddify/hiddify-next/releases" target="_blank"
+                        style="color: var(--accent);">GitHub Hiddify</a>
+                </div>
+            </div>
+
+            <button onclick="showPage('home')" class="btn btn-secondary">◀️ Назад</button>
+        </div>
+
+        <!-- PAGE: Windows -->
+        <div id="page-windows" class="page">
+            <div class="card">
+                <div class="card-title"><span>💻</span> Подключение на Windows</div>
+
+                <div class="guide-step">
+                    <div class="step-num">1</div>
+                    <div class="step-content">
+                        <h4>Скачайте Hiddify</h4>
+                        <p>Перейдите на GitHub и скачайте установщик</p>
+                    </div>
+                </div>
+
+                <div class="guide-step">
+                    <div class="step-num">2</div>
+                    <div class="step-content">
+                        <h4>Установите</h4>
+                        <p>Запустите скачанный файл и следуйте инструкциям</p>
+                        <div class="screenshot">
+                            <img src="images/win_install.png"
+                                onerror="this.parentElement.innerHTML='📸 win_install.png'" alt="">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="guide-step">
+                    <div class="step-num">3</div>
+                    <div class="step-content">
+                        <h4>Добавьте ключ</h4>
+                        <p>Скопируйте ключ из ЛК → В Hiddify нажмите "+" → "Добавить из буфера"</p>
+                    </div>
+                </div>
+
+                <div class="guide-step">
+                    <div class="step-num">4</div>
+                    <div class="step-content">
+                        <h4>Подключитесь!</h4>
+                        <p>Нажмите "Подключиться" — готово! 🎉</p>
+                    </div>
+                </div>
+
+                <a href="https://github.com/hiddify/hiddify-next/releases" target="_blank" class="btn">
+                    📥 Скачать для Windows
+                </a>
+            </div>
+
+            <button onclick="showPage('home')" class="btn btn-secondary">◀️ Назад</button>
+        </div>
+
+        <!-- PAGE: macOS -->
+        <div id="page-macos" class="page">
+            <div class="card">
+                <div class="card-title"><span>🍏</span> Подключение на macOS</div>
+
+                <div class="guide-step">
+                    <div class="step-num">1</div>
+                    <div class="step-content">
+                        <h4>Скачайте Hiddify</h4>
+                        <p>Перейдите на GitHub и скачайте версию для Mac</p>
+                    </div>
+                </div>
+
+                <div class="guide-step">
+                    <div class="step-num">2</div>
+                    <div class="step-content">
+                        <h4>Установите</h4>
+                        <p>Откройте .dmg файл и перетащите в Applications</p>
+                    </div>
+                </div>
+
+                <div class="guide-step">
+                    <div class="step-num">3</div>
+                    <div class="step-content">
+                        <h4>Разрешите запуск</h4>
+                        <p>Если macOS блокирует — откройте Настройки → Безопасность → "Всё равно открыть"</p>
+                    </div>
+                </div>
+
+                <div class="guide-step">
+                    <div class="step-num">4</div>
+                    <div class="step-content">
+                        <h4>Добавьте ключ и подключитесь</h4>
+                        <p>Скопируйте ключ из ЛК, добавьте в приложение, включите</p>
+                    </div>
+                </div>
+
+                <a href="https://github.com/hiddify/hiddify-next/releases" target="_blank" class="btn">
+                    📥 Скачать для macOS
+                </a>
+            </div>
+
+            <button onclick="showPage('home')" class="btn btn-secondary">◀️ Назад</button>
+        </div>
+
+        <!-- PAGE: Zapret -->
+        <div id="page-zapret" class="page">
+            <div class="card"
+                style="background: linear-gradient(135deg, rgba(245, 158, 11, 0.1) 0%, rgba(239, 68, 68, 0.1) 100%); border-color: rgba(245, 158, 11, 0.2);">
+                <div class="card-title"><span>📺</span> YouTube и Discord (Windows)</div>
+
+                <p style="font-size: 13px; color: var(--text-secondary); margin-bottom: 16px;">
+                    Zapret — простой инструмент для Windows, который позволяет смотреть YouTube и использовать Discord
+                    без подключения всего интернета.
+                </p>
+
+                <div class="guide-step">
+                    <div class="step-num">1</div>
+                    <div class="step-content">
+                        <h4>Скачайте Zapret</h4>
+                        <p>Нажмите кнопку ниже для скачивания</p>
+                    </div>
+                </div>
+
+                <div class="guide-step">
+                    <div class="step-num">2</div>
+                    <div class="step-content">
+                        <h4>Распакуйте архив</h4>
+                        <p>Извлеките файлы в любую папку (например, на Рабочий стол)</p>
+                        <div class="screenshot">
+                            <img src="images/zapret_extract.png"
+                                onerror="this.parentElement.innerHTML='📸 zapret_extract.png'" alt="">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="guide-step">
+                    <div class="step-num">3</div>
+                    <div class="step-content">
+                        <h4>Запустите general.bat</h4>
+                        <p>Двойной клик по файлу <strong>general.bat</strong> — откроется чёрное окно</p>
+                        <div class="screenshot">
+                            <img src="images/zapret_run.png" onerror="this.parentElement.innerHTML='📸 zapret_run.png'"
+                                alt="">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="guide-step">
+                    <div class="step-num">4</div>
+                    <div class="step-content">
+                        <h4>Готово!</h4>
+                        <p>YouTube и Discord теперь работают. Не закрывайте чёрное окно!</p>
+                    </div>
+                </div>
+
+                <a href="https://github.com/Flowseal/zapret-discord-youtube/releases/download/1.9.0b/zapret-discord-youtube-1.9.0b.zip"
+                    class="btn">
+                    📥 Скачать Zapret
+                </a>
+
+                <div class="warning-box">
+                    ⚠️ <strong>Важно:</strong> Zapret работает только на Windows. Для телефонов используйте основную
+                    инструкцию.
+                </div>
+            </div>
+
+            <button onclick="showPage('home')" class="btn btn-secondary">◀️ Назад</button>
+        </div>
+
+        <!-- PAGE: FAQ -->
+        <div id="page-faq" class="page">
+            <div class="card">
+                <div class="card-title"><span>❓</span> Частые вопросы</div>
+
+                <div class="faq-item">
+                    <div class="faq-q">❌ Не подключается</div>
+                    <div class="faq-a">Проверьте интернет-соединение. Попробуйте перезапустить приложение.</div>
+                </div>
+
+                <div class="faq-item">
+                    <div class="faq-q">⏰ Закончился трафик</div>
+                    <div class="faq-a">Докупите трафик в боте: кнопка "⚡ Зарядить" или "📦 Докупить ГБ".</div>
+                </div>
+
+                <div class="faq-item">
+                    <div class="faq-q">📋 Куда вставлять ключ?</div>
+                    <div class="faq-a">Скопируйте ключ в ЛК, затем в Hiddify: + → Добавить из буфера обмена.</div>
+                </div>
+
+                <div class="faq-item">
+                    <div class="faq-q">📱 Какое приложение лучше?</div>
+                    <div class="faq-a">Рекомендуем Hiddify — простое, бесплатное, работает на всех платформах.</div>
+                </div>
+
+                <div class="faq-item">
+                    <div class="faq-q">🔄 Ключ не обновляется</div>
+                    <div class="faq-a">В Hiddify: потяните вниз для обновления подписки, или удалите и добавьте заново.
+                    </div>
+                </div>
+
+                <div class="faq-item">
+                    <div class="faq-q">📺 YouTube не работает</div>
+                    <div class="faq-a">На Windows попробуйте Zapret (см. раздел YouTube/Discord).</div>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-title"><span>💬</span> Поддержка</div>
+                <p style="font-size: 13px; color: var(--text-secondary);">
+                    Остались вопросы? Напишите нам:
+                </p>
+                <a href="https://t.me/kiwunakas" target="_blank" class="btn" style="margin-top: 12px;">
+                    💬 Написать в поддержку
+                </a>
+            </div>
+
+            <div class="card" style="background: rgba(255,255,255,0.02);">
+                <div class="card-title"><span>📄</span> Юридическая информация</div>
+                <button onclick="showPage('tos')" class="btn btn-secondary" style="margin-top: 8px;">
+                    📜 Публичная оферта
+                </button>
+            </div>
+        </div>
+
+        <!-- PAGE: TOS (Terms of Service) -->
+        <div id="page-tos" class="page">
+            <div class="card">
+                <div class="card-title"><span>📜</span> Публичная оферта</div>
+
+                <div style="font-size: 12px; color: var(--text-secondary); line-height: 1.6;">
+                    <p style="margin-bottom: 12px;"><strong>1. ОБЩИЕ ПОЛОЖЕНИЯ</strong></p>
+                    <p style="margin-bottom: 12px;">Настоящий документ является публичной офертой на предоставление
+                        услуг по обеспечению доступа к Техническим средствам защищённой передачи данных (далее —
+                        «Сервис»).</p>
+
+                    <p style="margin-bottom: 12px;"><strong>2. ПРЕДМЕТ</strong></p>
+                    <p style="margin-bottom: 12px;">Сервис предоставляет техническую возможность организации защищённого
+                        канала передачи данных для обеспечения конфиденциальности.</p>
+
+                    <p style="margin-bottom: 12px;"><strong>3. ОПЛАТА</strong></p>
+                    <p style="margin-bottom: 12px;">Оплата осуществляется путём приобретения цифровой лицензии. Возврат
+                        средств при блокировках не гарантируется.</p>
+
+                    <p style="margin-bottom: 12px;"><strong>4. ОТВЕТСТВЕННОСТЬ ПОЛЬЗОВАТЕЛЯ</strong></p>
+                    <p style="margin-bottom: 12px;">Пользователь самостоятельно несёт ответственность за соблюдение
+                        законодательства страны пребывания. Запрещено использование для противоправных действий.</p>
+
+                    <p style="margin-bottom: 12px;"><strong>5. ОТКАЗ ОТ ОТВЕТСТВЕННОСТИ</strong></p>
+                    <p style="margin-bottom: 12px;">Сервис предоставляется «КАК ЕСТЬ» (AS IS). Исполнитель не
+                        гарантирует работоспособность при внешних блокировках и не несёт ответственности за действия
+                        пользователей.</p>
+
+                    <p style="margin-bottom: 12px;"><strong>6. ФОРС-МАЖОР</strong></p>
+                    <p>Действия государственных органов, блокировки и технические сбои являются обстоятельствами
+                        непреодолимой силы.</p>
+                </div>
+
+                <!-- Expandable full text -->
+                <button onclick="toggleFullTos()" id="tos-toggle-btn" class="btn btn-secondary"
+                    style="margin-top: 16px;">
+                    📄 Показать полный текст
+                </button>
+
+                <div id="tos-full" class="hidden"
+                    style="margin-top: 16px; font-size: 11px; color: var(--text-muted); line-height: 1.7; max-height: 500px; overflow-y: auto; padding: 12px; background: rgba(0,0,0,0.2); border-radius: var(--radius-md);">
+
+                    <p style="margin-bottom: 16px; font-weight: 600; color: var(--text-secondary); text-align: center;">
+                        ПУБЛИЧНАЯ ОФЕРТА<br><span style="font-weight: 400;">на оказание услуг по предоставлению доступа
+                            к техническим средствам защищённой передачи данных</span></p>
+                    <p style="margin-bottom: 16px; text-align: center;">Редакция от 25.12.2024</p>
+
+                    <p style="margin-bottom: 12px;"><strong>1. ОБЩИЕ ПОЛОЖЕНИЯ</strong></p>
+                    <p style="margin-bottom: 8px;">1.1. Настоящий документ является официальной публичной офертой (далее
+                        — «Оферта») и содержит все существенные условия предоставления услуг по обеспечению доступа к
+                        Программному обеспечению и Техническим средствам защищённой передачи данных (далее — «Сервис»).
+                    </p>
+                    <p style="margin-bottom: 8px;">1.2. В соответствии с пунктом 2 статьи 437 Гражданского кодекса
+                        Российской Федерации, настоящий документ является публичной офертой, адресованной
+                        неопределённому кругу лиц.</p>
+                    <p style="margin-bottom: 8px;">1.3. Акцептом настоящей Оферты является совершение любого из
+                        следующих действий: оплата услуг Сервиса; использование Технических средств; регистрация в
+                        системе Сервиса.</p>
+                    <p style="margin-bottom: 16px;">1.4. Совершая акцепт настоящей Оферты, Пользователь подтверждает
+                        своё полное и безоговорочное согласие со всеми её условиями.</p>
+
+                    <p style="margin-bottom: 12px;"><strong>2. ТЕРМИНЫ И ОПРЕДЕЛЕНИЯ</strong></p>
+                    <p style="margin-bottom: 8px;">2.1. <strong>Сервис</strong> — программно-аппаратный комплекс,
+                        обеспечивающий техническую возможность организации защищённого канала передачи данных между
+                        устройством Пользователя и сетью Интернет.</p>
+                    <p style="margin-bottom: 8px;">2.2. <strong>Программное обеспечение</strong> — клиентские приложения
+                        сторонних разработчиков, рекомендуемые для использования с Сервисом.</p>
+                    <p style="margin-bottom: 8px;">2.3. <strong>Защищённый канал</strong> — зашифрованное соединение
+                        между устройством Пользователя и серверами Сервиса, обеспечивающее конфиденциальность
+                        передаваемых данных.</p>
+                    <p style="margin-bottom: 8px;">2.4. <strong>Пользователь</strong> — физическое или юридическое лицо,
+                        акцептовавшее настоящую Оферту.</p>
+                    <p style="margin-bottom: 8px;">2.5. <strong>Исполнитель</strong> — лицо, предоставляющее доступ к
+                        Сервису.</p>
+                    <p style="margin-bottom: 16px;">2.6. <strong>Лицензионный ключ</strong> — уникальный идентификатор,
+                        предоставляющий Пользователю доступ к Техническим средствам Сервиса.</p>
+
+                    <p style="margin-bottom: 12px;"><strong>3. ПРЕДМЕТ ОФЕРТЫ</strong></p>
+                    <p style="margin-bottom: 8px;">3.1. Исполнитель предоставляет Пользователю неисключительную,
+                        непередаваемую лицензию на использование Технических средств Сервиса для организации защищённого
+                        канала передачи данных.</p>
+                    <p style="margin-bottom: 8px;">3.2. Сервис предназначен для: обеспечения конфиденциальности данных в
+                        публичных сетях; защиты сетевого трафика от перехвата третьими лицами; организации безопасного
+                        удалённого доступа к корпоративным ресурсам.</p>
+                    <p style="margin-bottom: 16px;">3.3. Сервис НЕ предназначен для нарушения законодательства
+                        какой-либо юрисдикции.</p>
+
+                    <p style="margin-bottom: 12px;"><strong>4. ОПЛАТА УСЛУГ</strong></p>
+                    <p style="margin-bottom: 8px;">4.1. Оплата услуг Сервиса осуществляется путём приобретения цифровой
+                        лицензии в форме добровольного пожертвования на развитие проекта.</p>
+                    <p style="margin-bottom: 8px;">4.2. Стоимость лицензии и доступные тарифы указываются в интерфейсе
+                        Сервиса на момент оплаты.</p>
+                    <p style="margin-bottom: 8px;">4.3. Оплата считается произведённой в момент поступления денежных
+                        средств на счёт Исполнителя.</p>
+                    <p style="margin-bottom: 8px;">4.4. <strong>Возврат средств:</strong> Возврат денежных средств
+                        возможен в течение 24 часов с момента оплаты при отсутствии потребления трафика. В случае
+                        невозможности использования Сервиса по причинам, не зависящим от Исполнителя (включая действия
+                        государственных органов, технические сбои у третьих лиц, форс-мажорные обстоятельства), возврат
+                        средств НЕ производится.</p>
+                    <p style="margin-bottom: 16px;">Приобретая лицензию, Пользователь принимает на себя риски, связанные
+                        с возможными ограничениями доступа к Сервису.</p>
+
+                    <p style="margin-bottom: 12px;"><strong>5. ПРАВА И ОБЯЗАННОСТИ СТОРОН</strong></p>
+                    <p style="margin-bottom: 8px;"><strong>5.1. Пользователь обязуется:</strong></p>
+                    <p style="margin-bottom: 8px;">5.1.1. Использовать Сервис исключительно в законных целях и в
+                        соответствии с законодательством страны своего пребывания.</p>
+                    <p style="margin-bottom: 8px;">5.1.2. <strong>НЕ использовать Сервис для:</strong> действий,
+                        нарушающих законодательство любой юрисдикции; распространения вредоносного программного
+                        обеспечения; рассылки нежелательной корреспонденции (спама); хакерской деятельности, попыток
+                        несанкционированного доступа к компьютерным системам; распространения материалов экстремистского
+                        характера; нарушения прав интеллектуальной собственности; иных противоправных действий.</p>
+                    <p style="margin-bottom: 8px;">5.1.3. Самостоятельно обеспечить соблюдение всех применимых законов и
+                        нормативных актов.</p>
+                    <p style="margin-bottom: 8px;">5.1.4. Не передавать Лицензионный ключ третьим лицам.</p>
+                    <p style="margin-bottom: 8px;"><strong>5.2. Исполнитель обязуется:</strong></p>
+                    <p style="margin-bottom: 8px;">5.2.1. Предоставить Пользователю доступ к Техническим средствам
+                        Сервиса в соответствии с оплаченным тарифом.</p>
+                    <p style="margin-bottom: 8px;">5.2.2. Обеспечивать техническую поддержку Сервиса в разумные сроки.
+                    </p>
+                    <p style="margin-bottom: 8px;"><strong>5.3. Исполнитель вправе:</strong></p>
+                    <p style="margin-bottom: 8px;">5.3.1. Приостановить или прекратить оказание услуг Пользователю при
+                        нарушении условий настоящей Оферты без возврата денежных средств.</p>
+                    <p style="margin-bottom: 16px;">5.3.2. Вносить изменения в настоящую Оферту с уведомлением
+                        Пользователей.</p>
+
+                    <p style="margin-bottom: 12px;"><strong>6. ОТКАЗ ОТ ОТВЕТСТВЕННОСТИ (DISCLAIMER)</strong></p>
+                    <p style="margin-bottom: 8px;">6.1. <strong>Сервис предоставляется «КАК ЕСТЬ» (AS IS)</strong> без
+                        каких-либо гарантий, явных или подразумеваемых.</p>
+                    <p style="margin-bottom: 8px;">6.2. Исполнитель <strong>НЕ ГАРАНТИРУЕТ:</strong> бесперебойную и
+                        безошибочную работу Сервиса; совместимость Сервиса с программным обеспечением или оборудованием
+                        Пользователя; достижение каких-либо конкретных результатов при использовании Сервиса;
+                        работоспособность Сервиса в условиях внешних технических ограничений.</p>
+                    <p style="margin-bottom: 8px;">6.3. Исполнитель <strong>НЕ НЕСЁТ ОТВЕТСТВЕННОСТИ:</strong> за
+                        действия Пользователя при использовании Сервиса; за содержание данных, передаваемых
+                        Пользователем через Сервис; за любые прямые или косвенные убытки, связанные с использованием или
+                        невозможностью использования Сервиса; за действия третьих лиц, включая государственные органы,
+                        операторов связи, интернет-провайдеров.</p>
+                    <p style="margin-bottom: 16px;">6.4. <strong>Пользователь самостоятельно несёт полную
+                            ответственность</strong> за соблюдение законодательства страны своего пребывания при
+                        использовании Сервиса.</p>
+
+                    <p style="margin-bottom: 12px;"><strong>7. ФОРС-МАЖОР</strong></p>
+                    <p style="margin-bottom: 8px;">7.1. Стороны освобождаются от ответственности за неисполнение или
+                        ненадлежащее исполнение обязательств по настоящей Оферте, если это вызвано обстоятельствами
+                        непреодолимой силы (форс-мажор).</p>
+                    <p style="margin-bottom: 8px;">7.2. К обстоятельствам непреодолимой силы относятся: стихийные
+                        бедствия; военные действия; действия государственных органов, делающие невозможным исполнение
+                        обязательств; технические сбои в работе сетей передачи данных; блокировки со стороны операторов
+                        связи или государственных органов; атаки на инфраструктуру Сервиса (DDoS и т.п.).</p>
+                    <p style="margin-bottom: 16px;">7.3. При наступлении форс-мажорных обстоятельств обязательства
+                        Сторон приостанавливаются на период их действия.</p>
+
+                    <p style="margin-bottom: 12px;"><strong>8. КОНФИДЕНЦИАЛЬНОСТЬ</strong></p>
+                    <p style="margin-bottom: 8px;">8.1. Исполнитель не ведёт журналов (логов) сетевой активности
+                        Пользователей.</p>
+                    <p style="margin-bottom: 8px;">8.2. Исполнитель не передаёт персональные данные Пользователей
+                        третьим лицам, за исключением случаев, прямо предусмотренных законодательством.</p>
+                    <p style="margin-bottom: 16px;">8.3. Пользователь соглашается на обработку минимально необходимых
+                        данных (идентификатор аккаунта, дата регистрации, объём использованного трафика) для обеспечения
+                        работы Сервиса.</p>
+
+                    <p style="margin-bottom: 12px;"><strong>9. ИЗМЕНЕНИЕ И РАСТОРЖЕНИЕ ОФЕРТЫ</strong></p>
+                    <p style="margin-bottom: 8px;">9.1. Исполнитель вправе в одностороннем порядке изменять условия
+                        настоящей Оферты, публикуя изменения в интерфейсе Сервиса не менее чем за 7 (семь) дней до
+                        вступления их в силу.</p>
+                    <p style="margin-bottom: 8px;">9.2. Продолжение использования Сервиса после вступления изменений в
+                        силу означает согласие Пользователя с новой редакцией Оферты.</p>
+                    <p style="margin-bottom: 16px;">9.3. Пользователь вправе в любой момент отказаться от использования
+                        Сервиса, что влечёт расторжение настоящей Оферты.</p>
+
+                    <p style="margin-bottom: 12px;"><strong>10. ЗАКЛЮЧИТЕЛЬНЫЕ ПОЛОЖЕНИЯ</strong></p>
+                    <p style="margin-bottom: 8px;">10.1. Настоящая Оферта регулируется и толкуется в соответствии с
+                        законодательством Российской Федерации.</p>
+                    <p style="margin-bottom: 8px;">10.2. Все споры, возникающие из настоящей Оферты, подлежат разрешению
+                        путём переговоров, а при недостижении согласия — в судебном порядке по месту нахождения
+                        Исполнителя.</p>
+                    <p style="margin-bottom: 8px;">10.3. Если какое-либо положение настоящей Оферты будет признано
+                        недействительным, это не влияет на действительность остальных положений.</p>
+                    <p style="margin-bottom: 16px;">10.4. Настоящая Оферта вступает в силу с момента её публикации и
+                        действует бессрочно.</p>
+
+                    <p style="margin-top: 16px; text-align: center; color: var(--text-secondary);"><strong>Дата
+                            публикации:</strong> 25 декабря 2024 года</p>
+                    <p style="margin-top: 12px; text-align: center; font-style: italic;">Используя Сервис, вы
+                        подтверждаете, что ознакомились с настоящей Офертой и полностью принимаете её условия.</p>
+
+                    <div class="info-box" style="margin-top: 16px;">
+                        📅 Редакция от 25.12.2024
+                    </div>
+                </div>
+
+                <button onclick="showPage('faq')" class="btn btn-secondary">◀️ Назад</button>
+            </div>
+        </div>
+
+        <!-- PAGE: ЛК (Личный кабинет) -->
+        <div id="page-lk" class="page">
+            <h2 style="color: white; margin-bottom: 20px;">👤 Личный кабинет</h2>
+            <div id="lk-loading" class="loading">
+                <div class="loading-spinner"></div>
+                <p>Загрузка данных...</p>
+            </div>
+
+            <div id="lk-not-found" class="card hidden">
+                <div style="text-align: center; padding: 20px;">
+                    <div style="font-size: 48px; margin-bottom: 12px;">🔒</div>
+                    <h3 style="margin-bottom: 8px;">Подписка не найдена</h3>
+                    <p style="color: var(--text-secondary); font-size: 13px; margin-bottom: 16px;">
+                        Активируйте в боте, чтобы получить ключ
+                    </p>
+                    <a href="https://t.me/swazist_bot" class="btn">⚡ Активировать</a>
+                </div>
+            </div>
+
+            <div id="lk-data" class="hidden">
+                <div class="card lk-card">
+                    <div class="card-title"><span>👤</span> Личный кабинет</div>
+
+                    <div class="lk-status">
+                        <div id="status-dot" class="status-dot active"></div>
+                        <span id="status-text" style="font-weight: 600; color: var(--success);">Активен</span>
+                    </div>
+
+                    <div class="lk-grid">
+                        <div class="lk-item">
+                            <div class="lk-item-label">Тариф</div>
+                            <div id="lk-tariff" class="lk-item-value">—</div>
+                        </div>
+                        <div class="lk-item">
+                            <div class="lk-item-label">До</div>
+                            <div id="lk-expiry" class="lk-item-value">—</div>
+                        </div>
+                        <div class="lk-item">
+                            <div class="lk-item-label">Использовано</div>
+                            <div id="lk-used" class="lk-item-value">— ГБ</div>
+                        </div>
+                        <div class="lk-item">
+                            <div class="lk-item-label">Осталось</div>
+                            <div id="lk-remaining" class="lk-item-value">— ГБ</div>
+                        </div>
+                    </div>
+
+                    <div class="key-box">
+                        <div
+                            style="font-size: 10px; color: var(--text-muted); text-transform: uppercase; margin-bottom: 6px;">
+                            🔑 Ссылка подписки</div>
+                        <div id="key-text" class="key-text">—</div>
+                        <button id="copy-btn" class="copy-btn" onclick="copyKey()">📋 Копировать</button>
+                    </div>
+
+                    <div style="font-size: 12px; color: var(--text-secondary); margin-bottom: 8px;">
+                        ⚡ Быстрое подключение:
+                    </div>
+                    <div class="app-chips">
+                        <div class="app-chip" data-app="hiddify" onclick="selectApp('hiddify')">📦 Hiddify</div>
+                        <div class="app-chip" data-app="v2rayng" onclick="selectApp('v2rayng')">🔷 v2rayNG</div>
+                        <div class="app-chip" data-app="streisand" onclick="selectApp('streisand')">🎯 Streisand
+                        </div>
+                    </div>
+
+                    <button id="connect-btn" class="btn" onclick="connectApp()" disabled style="opacity: 0.5;">
+                        Выберите приложение
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- BOTTOM NAV -->
+    <nav class="bottom-nav">
+        <button class="nav-btn active" onclick="showPage('home')" data-page="home">
+            <span>🏠</span>
+            Главная
+        </button>
+        <button class="nav-btn" onclick="showPage('lk')" data-page="lk">
+            <span>👤</span>
+            ЛК
+        </button>
+        <button class="nav-btn" onclick="showPage('faq')" data-page="faq">
+            <span>❓</span>
+            FAQ
+        </button>
+    </nav>
+
+    <script>
+        // State
+        let userData = null;
+        let subscriptionUrl = '';
+        let selectedApp = null;
+        let lkLoaded = false;
+
+        const appNames = {
+            hiddify: 'Hiddify',
+            v2rayng: 'v2rayNG',
+            streisand: 'Streisand'
+        };
+
+        // Init Telegram
+        if (window.Telegram && Telegram.WebApp) {
+            Telegram.WebApp.ready();
+            Telegram.WebApp.expand();
+            Telegram.WebApp.setHeaderColor('#0a0a0a');
+            Telegram.WebApp.setBackgroundColor('#0a0a0a');
+        }
+
+        // Page navigation
+        function showPage(pageId) {
+            // Hide all pages
+            document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+            // Show selected
+            const pageEl = document.getElementById('page-' + pageId);
+            if (pageEl) {
+                pageEl.classList.add('active');
+            } else {
+                alert('Page not found: page-' + pageId);
+            }
+
+            // Update nav
+            document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+            const navBtn = document.querySelector(`[data-page="${pageId}"]`);
+            if (navBtn) navBtn.classList.add('active');
+
+            // Load LK data if needed
+            if (pageId === 'lk' && !lkLoaded) {
+                loadLkData();
+            }
+        }
+
+        // Load LK data (модулярно)
+        async function loadLkData() {
+            const loadingEl = document.getElementById('lk-loading');
+            const notFoundEl = document.getElementById('lk-not-found');
+            const dataEl = document.getElementById('lk-data');
+
+            try {
+                let userId = null;
+                if (window.Telegram && Telegram.WebApp && Telegram.WebApp.initDataUnsafe && Telegram.WebApp.initDataUnsafe.user) {
+                    userId = Telegram.WebApp.initDataUnsafe.user.id;
+                }
+
+                // Debug: show what we got
+                console.log('Telegram:', !!window.Telegram, 'WebApp:', !!(window.Telegram && Telegram.WebApp), 'userId:', userId);
+
+                if (!userId) {
+                    loadingEl.classList.add('hidden');
+                    notFoundEl.classList.remove('hidden');
+                    return;
+                }
+
+                const response = await fetch(`https://example.com:2096/api/user/${userId}`);
+
+                if (response.status === 404) {
+                    loadingEl.classList.add('hidden');
+                    notFoundEl.classList.remove('hidden');
+                    return;
+                }
+
+                if (!response.ok) throw new Error('API error');
+
+                userData = await response.json();
+                subscriptionUrl = userData.subscription_url;
+                lkLoaded = true;
+
+                updateLkUI();
+
+                loadingEl.classList.add('hidden');
+                dataEl.classList.remove('hidden');
+
+            } catch (e) {
+                console.error(e);
+                loadingEl.classList.add('hidden');
+                notFoundEl.classList.remove('hidden');
+            }
+        }
+
+        function updateLkUI() {
+            const statusDot = document.getElementById('status-dot');
+            const statusText = document.getElementById('status-text');
+
+            if (userData.is_active) {
+                statusDot.classList.add('active');
+                statusDot.classList.remove('inactive');
+                statusText.textContent = 'Активен';
+                statusText.style.color = 'var(--success)';
+            } else {
+                statusDot.classList.remove('active');
+                statusDot.classList.add('inactive');
+                statusText.textContent = 'Неактивен';
+                statusText.style.color = 'var(--error)';
+            }
+
+            const tariffNames = {
+                'TRIAL': '🎁 Пробный',
+                'BASIC': '⚡ Стандарт',
+                'PRO': '🚀 Турбо',
+                'VIP': '👑 VIP',
+                'GIFT': '🎁 Подарок',
+                'LEGACY': '📦 Legacy'
+            };
+            document.getElementById('lk-tariff').textContent = tariffNames[userData.sub_type] || userData.sub_type;
+
+            if (userData.expiry_at) {
+                const expiry = new Date(userData.expiry_at);
+                document.getElementById('lk-expiry').textContent = expiry.toLocaleDateString('ru-RU');
+            }
+
+            if (userData.traffic) {
+                document.getElementById('lk-used').textContent = `${userData.traffic.used_gb} ГБ`;
+                document.getElementById('lk-remaining').textContent = userData.traffic.total_gb > 9000 ? '∞' : `${userData.traffic.remaining_gb} ГБ`;
+            }
+
+            document.getElementById('key-text').textContent = subscriptionUrl;
+        }
+
+        function copyKey() {
+            if (!subscriptionUrl) return;
+
+            navigator.clipboard.writeText(subscriptionUrl).then(() => {
+                const btn = document.getElementById('copy-btn');
+                btn.textContent = '✅ Скопировано';
+                btn.classList.add('copied');
+
+                setTimeout(() => {
+                    btn.textContent = '📋 Копировать';
+                    btn.classList.remove('copied');
+                }, 2000);
+
+                if (window.Telegram && Telegram.WebApp) {
+                    Telegram.WebApp.HapticFeedback.notificationOccurred('success');
+                }
+            });
+        }
+
+        function selectApp(appId) {
+            selectedApp = appId;
+
+            document.querySelectorAll('.app-chip').forEach(c => c.classList.remove('selected'));
+            document.querySelector(`[data-app="${appId}"]`).classList.add('selected');
+
+            const btn = document.getElementById('connect-btn');
+            btn.disabled = false;
+            btn.style.opacity = '1';
+            btn.textContent = `📲 Подключить в ${appNames[appId]}`;
+        }
+
+        function connectApp() {
+            if (!selectedApp || !subscriptionUrl) return;
+
+            navigator.clipboard.writeText(subscriptionUrl).then(() => {
+                // Try to open deep link
+                let deepLink = '';
+                const encodedUrl = encodeURIComponent(subscriptionUrl);
+                const subName = encodeURIComponent('Portal');
+
+                switch (selectedApp) {
+                    case 'hiddify':
+                        deepLink = `hiddify://install-sub?url=${encodedUrl}&name=${subName}`;
+                        break;
+                    case 'v2rayng':
+                        deepLink = `v2rayng://install-sub?url=${encodedUrl}&name=${subName}`;
+                        break;
+                    case 'streisand':
+                        deepLink = `streisand://import/${encodedUrl}#${subName}`;
+                        break;
+                }
+
+                if (deepLink) {
+                    // Try all methods
+                    if (window.Telegram && Telegram.WebApp && Telegram.WebApp.openLink) {
+                        Telegram.WebApp.openLink(deepLink, { try_instant_view: false });
+                    }
+
+                    // Fallback to window.open (needed for some Android versions)
+                    setTimeout(() => {
+                        window.open(deepLink, '_blank');
+                        window.location.href = deepLink;
+                    }, 500);
+
+                    if (window.Telegram && Telegram.WebApp) {
+                        Telegram.WebApp.HapticFeedback.notificationOccurred('success');
+                        // Show alert AFTER trying to open so we don't block
+                        setTimeout(() => {
+                            Telegram.WebApp.showAlert(`🚀 Открываю приложение...\n\nЕсли ничего не произошло:\n1. Убедитесь что приложение установлено\n2. Ссылка уже скопирована — откройте приложение и вставьте её вручную.`);
+                        }, 1000);
+                    }
+                }
+
+                if (window.Telegram && Telegram.WebApp) {
+                    Telegram.WebApp.HapticFeedback.notificationOccurred('success');
+                    // Removed alert to not block deep link opening
+                    // Telegram.WebApp.showAlert(...); 
+                } else {
+                    alert(`Ссылка скопирована! Откройте ${appNames[selectedApp]} и вставьте её.`);
+                }
+            });
+        }
+
+        // TOS toggle
+        function toggleFullTos() {
+            const fullTos = document.getElementById('tos-full');
+            const btn = document.getElementById('tos-toggle-btn');
+
+            if (fullTos.classList.contains('hidden')) {
+                fullTos.classList.remove('hidden');
+                btn.textContent = '📄 Скрыть полный текст';
+            } else {
+                fullTos.classList.add('hidden');
+                btn.textContent = '📄 Показать полный текст';
+            }
+        }
+
+        // Check hash on load for direct TOS access
+        if (window.location.hash === '#tos') {
+            showPage('tos');
+        }
+    </script>
+</body>
+
+</html>

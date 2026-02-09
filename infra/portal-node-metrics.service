@@ -1,0 +1,11 @@
+[Unit]
+Description=Portal node metrics collector
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+WorkingDirectory=/root/portal
+ExecStart=/usr/bin/python3 /root/portal/scripts/collect_node_metrics.py
+User=root
+

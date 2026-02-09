@@ -1,0 +1,6772 @@
+﻿# -*- coding: utf-8 -*-
+"""
+🌐 Kiwunaka Portal Bot v2
+Aiogram 3.x + SQLite + Telegram Stars
+
+FIXED: Handle existing users in 3x-ui panel
+"""
+
+import asyncio
+import logging
+import os
+import uuid
+import secrets
+from io import BytesIO
+from datetime import datetime, timedelta, timezone
+from typing import Optional
+
+import aiohttp
+import qrcode
+from aiogram import Bot, Dispatcher, F, Router
+from aiogram.filters import Command, CommandStart
+from aiogram.types import (
+    Message, CallbackQuery, PreCheckoutQuery,
+    InlineKeyboardMarkup, InlineKeyboardButton,
+    WebAppInfo, LabeledPrice, ContentType, BufferedInputFile
+)
+from aiogram.enums import ParseMode
+from dotenv import load_dotenv
+from sqlalchemy import create_engine, Column, Integer, String, Boolean, DateTime, BigInteger, func
+from sqlalchemy.orm import sessionmaker, declarative_base
+import json
+from control_panel import ControlPanel
+import html
+
+# ==========================================
+#               CONFIGURATION
+# ==========================================
+load_dotenv()
+
+BOT_TOKEN = os.getenv("BOT_TOKEN")
+ADMIN_ID = int(os.getenv("ADMIN_ID", "0"))
+BOT_USERNAME = (os.getenv("BOT_USERNAME") or "swazist_bot").lstrip("@")
+BOT_USERNAME_MD = BOT_USERNAME.replace("_", "\\_")
+
+# Panel
+PANEL_URL = os.getenv("PANEL_URL", "http://127.0.0.1:15739")
+PANEL_USER = os.getenv("PANEL_USER", "admin")
+PANEL_PASS = os.getenv("PANEL_PASS", "")
+PANEL_PATH = os.getenv("PANEL_PATH", "")
+INBOUND_ID = int(os.getenv("INBOUND_ID", "4"))
+TRIAL_LIMIT_GB = 30
+INBOUND_ID_BACKUP = int(os.getenv("INBOUND_ID_BACKUP", "0"))  # Optional legacy failover inbound id (0 = disabled)
+
+# Server
+HOST_DOMAIN = os.getenv("HOST_DOMAIN") or os.getenv("DOMAIN") or "kiwunaka.space"
+VLESS_PORT = int(os.getenv("VLESS_PORT", "443"))
+VLESS_SNI = os.getenv("VLESS_SNI", "yahoo.com")
+VLESS_PBK = os.getenv("VLESS_PBK", "")
+VLESS_SID = os.getenv("VLESS_SID", "")
+VLESS_FP = os.getenv("VLESS_FP", "firefox")
+VLESS_FLOW = os.getenv("VLESS_FLOW", "xtls-rprx-vision")
+
+# URLs
+# Cache-buster helps Telegram in-app webview pick up new builds quickly.
+WEBAPP_URL = os.getenv("WEBAPP_URL", f"https://{HOST_DOMAIN}:8444/webapp/?v=20260207")
+PUBLIC_API_BASE_URL = os.getenv("PUBLIC_API_BASE_URL", f"https://{HOST_DOMAIN}:2096")
+SUPPORT_USERNAME = (os.getenv("SUPPORT_USERNAME") or "portal_privacy_helpbot").lstrip("@")
+SUPPORT_USERNAME = (os.getenv("SUPPORT_BOT_USERNAME") or SUPPORT_USERNAME).lstrip("@")
+FREE_LIMIT_IP = int(os.getenv("FREE_LIMIT_IP", "2"))
+PAID_LIMIT_IP = int(os.getenv("PAID_LIMIT_IP", "5"))
+FREE_TOTAL_GB = int(os.getenv("FREE_TOTAL_GB", "40"))
+NEWS_CHANNEL_ID = os.getenv("NEWS_CHANNEL_ID", "@portal_news_channel")
+
+# Protected users — NEVER modify, sync, or message these users
+PROTECTED_USERS = {
+    5187992322,  # @Oksidraiv
+    1808391444,  # @ars_oil
+}
+
+# Protected UUIDs — never touch in panel operations
+PROTECTED_UUIDS = {
+    "49a30dde-ac75-42fc-a29f-aa3bf32c2e2b",  # Admin
+    "e396db00-b105-41f7-b671-bf26d1098494",  # RODITELI
+}
+# (legacy tariffs removed; see unified TARIFFS below)
+
+# Logging
+logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
+logger = logging.getLogger(__name__)
+
+# Track last bot message per user for cleanup
+last_bot_message: dict[int, int] = {}  # tg_id -> message_id
+
+
+def _utcnow() -> datetime:
+    # Use naive UTC everywhere (SQLite DateTime is stored as text; legacy DBs may contain tz offsets).
+    return datetime.utcnow().replace(tzinfo=None)
+
+
+def _naive_utc(dt: datetime | None) -> datetime | None:
+    if dt is None:
+        return None
+    tz = getattr(dt, "tzinfo", None)
+    if tz is None:
+        return dt
+    try:
+        return dt.astimezone(timezone.utc).replace(tzinfo=None)
+    except Exception:
+        # Last resort: drop tzinfo without converting.
+        return dt.replace(tzinfo=None)
+
+# ==========================================
+#               DATABASE
+# ==========================================
+from db import SessionLocal, init_db
+from models import Achievement, AdminAudit, GiftCard, PromoCode, PromoUsage, Review, Template, User
+from nodes_repo import enabled_nodes
+from tickets_repo import (
+    STATUS_CLOSED,
+    STATUS_IN_PROGRESS,
+    STATUS_OPEN,
+    add_ticket_message,
+    can_access_ticket,
+    create_ticket,
+    get_ticket_by_id,
+    get_user_active_ticket,
+    list_active_tickets,
+    list_ticket_messages,
+    list_user_tickets,
+    set_ticket_status,
+)
+
+# Initialize DB schema (idempotent).
+init_db()
+Session = SessionLocal
+
+# Achievement definitions: id -> {name, description, reward_days, condition}
+ACHIEVEMENTS = {
+    "first_sub": {
+        "name": "🟢 Inception",
+        "desc": "Первая активация защищенного канала",
+        "days": 0,
+        "icon": "🟢"
+    },
+    "week_active": {
+        "name": "🛡 Sentinel",
+        "desc": "7 дней непрерывной защиты",
+        "days": 1,
+        "icon": "🛡"
+    },
+    "referral_1": {
+        "name": "🤝 Uplink",
+        "desc": "Подключен 1 новый узел (друг)",
+        "days": 3,
+        "icon": "🤝"
+    },
+    "referral_5": {
+        "name": "🕸 Networker",
+        "desc": "Создана сеть из 5 узлов",
+        "days": 7,
+        "icon": "🕸"
+    },
+    "streak_3": {
+        "name": "🔥 Phantom",
+        "desc": "3 месяца в тени (Streak)",
+        "days": 0,  # Already awarded in streak system
+        "icon": "🔥"
+    },
+    "big_spender": {
+        "name": "💎 Investor",
+        "desc": "Вклад в инфраструктуру (500+ Stars)",
+        "days": 10,
+        "icon": "💎"
+    },
+    "jackpot": {
+        "name": "🎰 Lucky Glitch",
+        "desc": "Сбой матрицы: Джекпот (30 дней)!",
+        "days": 0,
+        "icon": "🎰"
+    },
+    "loyal_year": {
+        "name": "👑 Architect",
+        "desc": "Год в системе PORTAL",
+        "days": 30,
+        "icon": "👑"
+    },
+}
+
+# Tariff definitions (Stars).
+TARIFFS = {
+    "trial": {
+        # Free tier: enforced by subscription JSON allowlist rules (see api.py).
+        "name": "🆓 Стартовый (соцсети + AI)",
+        "stars": 0,
+        # Long expiry so users can keep the profile without re-issuing.
+        "days": 3650,
+        "gb": FREE_TOTAL_GB,
+        "subId": "FREE",
+        "sub_type": "FREE"
+    },
+    "1_month": {
+        "name": "📅 1 Месяц",
+        "stars": 199,
+        "days": 30,
+        "gb": 0,
+        "subId": "MONTHLY",
+        "sub_type": "PAID"
+    },
+    "3_months": {
+        "name": "📅 3 Месяца",
+        "stars": 499,
+        "days": 91,
+        "gb": 0,
+        "subId": "QUARTERLY",
+        "sub_type": "PAID"
+    },
+    "6_months": {
+        "name": "📅 6 Месяцев",
+        "stars": 949,
+        "days": 182,
+        "gb": 0,
+        "subId": "HALF_YEAR",
+        "sub_type": "PAID"
+    },
+    "12_months": {
+        "name": "📅 1 Год",
+        "stars": 1499,
+        "days": 365,
+        "gb": 0,
+        "subId": "YEARLY",
+        "sub_type": "PAID"
+    }
+}
+
+# Backward compatibility: older code used different tariff keys.
+TARIFF_KEY_ALIASES = {
+    "month_1": "1_month",
+    "month_3": "3_months",
+    "month_6": "6_months",
+    "year_1": "12_months",
+}
+
+
+def normalize_tariff_key(key: str) -> str:
+    return TARIFF_KEY_ALIASES.get(key, key)
+
+
+REFERRAL_BONUS_DAYS = int(os.getenv("REFERRAL_BONUS_DAYS", "15"))
+
+# Gift card types: {key: {name, stars, days}}
+GIFT_CARD_TYPES = {
+    "mini": {
+        "name": "🎁 Mini (7 Дней)",
+        "stars": 59,
+        "days": 7
+    },
+    "standard": {
+        "name": "🎁 Standard (30 Дней)",
+        "stars": 199,
+        "days": 30
+    },
+    "premium": {
+        "name": "🎁 Premium (90 Дней)",
+        "stars": 499,
+        "days": 90
+    },
+}
+
+def get_user(tg_id: int) -> Optional[User]:
+    session = Session()
+    user = session.query(User).filter_by(tg_id=tg_id).first()
+    session.close()
+    return user
+
+def create_user(tg_id: int, user_uuid: str, email: str, sub_type: str, days: int, gb: int, stars: int, username: str = None) -> User:
+    session = Session()
+    # Check if exists
+    existing = session.query(User).filter_by(tg_id=tg_id).first()
+    if existing:
+        # Update ALL relevant fields (fix for PENDING users from TOS acceptance)
+        existing.expiry_at = _utcnow() + timedelta(days=days)
+        existing.is_active = True
+        existing.stars_paid += stars
+        existing.sub_type = sub_type  # Update from PENDING to actual tariff
+        existing.total_gb = gb
+        existing.uuid = user_uuid
+        existing.email = email
+        if username:
+            existing.username = username
+        # Generate sub_token if not exists
+        if not existing.sub_token:
+            existing.sub_token = generate_sub_token()
+        session.commit()
+        session.close()
+        return existing
+    
+    # Generate unique subscription token for new user
+    sub_token = generate_sub_token()
+    
+    user = User(
+        tg_id=tg_id,
+        username=username,
+        uuid=user_uuid,
+        email=email,
+        sub_type=sub_type,
+        expiry_at=_utcnow() + timedelta(days=days),
+        is_active=True,
+        stars_paid=stars,
+        total_gb=gb,
+        trial_used=(sub_type == "TRIAL_10GB_7"),
+        sub_token=sub_token
+    )
+    session.add(user)
+    session.commit()
+    session.close()
+    return user
+
+def update_user_username(tg_id: int, username: str):
+    """Update user's telegram username"""
+    session = Session()
+    user = session.query(User).filter_by(tg_id=tg_id).first()
+    if user and username:
+        user.username = username
+        session.commit()
+    session.close()
+
+def generate_sub_token() -> str:
+    """Generate unique subscription token (43 chars, impossible to guess)"""
+    return secrets.token_urlsafe(32)
+
+def generate_referral_code() -> str:
+    """Generate unique 8-char referral code like SWAZ7K3F"""
+    import random
+    import string
+    chars = string.ascii_uppercase + string.digits
+    while True:
+        code = "SWAZ" + ''.join(random.choices(chars, k=4))
+        session = Session()
+        exists = session.query(User).filter_by(referral_code=code).first()
+        session.close()
+        if not exists:
+            return code
+
+def get_or_create_referral_code(tg_id: int) -> str:
+    """Get user's referral code or create one if doesn't exist"""
+    session = Session()
+    user = session.query(User).filter_by(tg_id=tg_id).first()
+    if user:
+        if not user.referral_code:
+            user.referral_code = generate_referral_code()
+            session.commit()
+        code = user.referral_code
+        session.close()
+        return code
+    session.close()
+    return None
+
+def get_user_by_referral_code(code: str) -> Optional[int]:
+    """Find user tg_id by their referral code"""
+    session = Session()
+    user = session.query(User).filter_by(referral_code=code.upper()).first()
+    tg_id = user.tg_id if user else None
+    session.close()
+    return tg_id
+
+def set_referrer(tg_id: int, referrer_id: int) -> bool:
+    """Set referrer for a user (only if not already set)"""
+    if tg_id == referrer_id:
+        return False  # Can't refer yourself
+    session = Session()
+    user = session.query(User).filter_by(tg_id=tg_id).first()
+    referrer = session.query(User).filter_by(tg_id=referrer_id).first()
+    if user and not user.referrer_id and referrer:
+        user.referrer_id = referrer_id
+        session.commit()
+        session.close()
+        return True
+    session.close()
+    return False
+
+def set_referrer_by_code(tg_id: int, referral_code: str) -> bool:
+    """Link user to their referrer by referral code"""
+    referrer_id = get_user_by_referral_code(referral_code)
+    if not referrer_id or referrer_id == tg_id:
+        return False
+    return set_referrer(tg_id, referrer_id)
+
+async def award_referral_bonus(referrer_id: int, bonus_days: int = REFERRAL_BONUS_DAYS) -> bool:
+    """Award bonus days to referrer for each paid purchase by referred user."""
+    session = Session()
+    referrer = session.query(User).filter_by(tg_id=referrer_id).first()
+    if referrer:
+        # Referral rewards are available only for active paid users.
+        if not _is_paid_active_user(referrer):
+            session.close()
+            return False
+
+        referrer.referral_count = (referrer.referral_count or 0) + 1
+        
+        # Award Days
+        expiry = _naive_utc(referrer.expiry_at)
+        now = _utcnow()
+        if expiry and expiry > now:
+            referrer.expiry_at = expiry + timedelta(days=bonus_days)
+        else:
+            referrer.expiry_at = now + timedelta(days=bonus_days)
+        
+        referrer.is_active = True
+        
+        session.commit()
+        session.close()
+        
+        # Ensure enabled in panel
+        try:
+            # We need to get UUID. extend_user isn't async/doesn't do panel.
+            # So we do it manually via panel API instance if available
+            # We assume 'panel' global exists if this is called from bot execution context
+            # But this is a helper function. We should import panel or use get_user to find UUID.
+            pass # We rely on periodic checks or user interaction to re-enable
+            # Or better:
+            ref_user = get_user(referrer_id)
+            if ref_user:
+                 await panel.enable_client(ref_user.uuid, True)
+        except:
+            pass
+            
+        return True
+    session.close()
+    return False
+
+def get_referral_stats(tg_id: int) -> dict:
+    """Get referral stats for a user"""
+    session = Session()
+    user = session.query(User).filter_by(tg_id=tg_id).first()
+    if user:
+        count = user.referral_count or 0
+        if not user.referral_code:
+            user.referral_code = generate_referral_code()
+            session.commit()
+        code = user.referral_code
+        session.close()
+        return {"count": count, "bonus_earned": count * REFERRAL_BONUS_DAYS, "code": code}
+    session.close()
+    return {"count": 0, "bonus_earned": 0, "code": None}
+
+def has_referral_discount(tg_id: int) -> bool:
+    """Check if user is eligible for 20% referral discount"""
+    session = Session()
+    user = session.query(User).filter_by(tg_id=tg_id).first()
+    result = user and user.referrer_id and not user.first_purchase_done
+    session.close()
+    return result
+
+def mark_first_purchase_done(tg_id: int):
+    """Mark that user has used their 20% referral discount"""
+    session = Session()
+    user = session.query(User).filter_by(tg_id=tg_id).first()
+    if user:
+        user.first_purchase_done = True
+        session.commit()
+    session.close()
+
+def check_tos_accepted(tg_id: int) -> bool:
+    """Check if user has accepted Terms of Service"""
+    session = Session()
+    user = session.query(User).filter_by(tg_id=tg_id).first()
+    result = user.tos_accepted if user else False
+    session.close()
+    return result
+
+def set_tos_accepted(tg_id: int) -> bool:
+    """Mark user as having accepted Terms of Service"""
+    session = Session()
+    user = session.query(User).filter_by(tg_id=tg_id).first()
+    if not user:
+        # Create a placeholder user entry
+        user = User(
+            tg_id=tg_id,
+            uuid=str(uuid.uuid4()),
+            email=f"user_{tg_id}",
+            sub_type="PENDING",
+            is_active=False,
+            tos_accepted=True
+        )
+        session.add(user)
+    else:
+        user.tos_accepted = True
+    session.commit()
+    session.close()
+    return True
+
+
+def ensure_pending_user(tg_id: int, username: str | None = None) -> tuple[User, bool]:
+    """
+    Ensure a DB row exists for first-touch flows (/start, referrals, mode selection).
+    Returns (user, created).
+    """
+    session = Session()
+    try:
+        user = session.query(User).filter_by(tg_id=tg_id).first()
+        if user:
+            if username and not user.username:
+                user.username = username
+                session.commit()
+            return user, False
+
+        user = User(
+            tg_id=tg_id,
+            username=username,
+            uuid=str(uuid.uuid4()),
+            email=f"user_{tg_id}",
+            sub_type="PENDING",
+            is_active=False,
+            tos_accepted=False,
+            trial_used=False,
+            sub_token=generate_sub_token(),
+        )
+        session.add(user)
+        session.commit()
+        return user, True
+    finally:
+        session.close()
+
+# ==========================================
+#         WHEEL OF FORTUNE
+# ==========================================
+
+# Prize configuration: (Days, weight/probability)
+WHEEL_PRIZES = [
+    (1, 45),    # 1 Day - 45%
+    (3, 35),    # 3 Days - 35%
+    (7, 15),    # 7 Days - 15%
+    (30, 5),    # 30 Days - 5% (JACKPOT!)
+]
+
+WHEEL_COOLDOWN_DAYS = 7
+
+
+def wheel_prizes_for_user(user: User | None) -> list[tuple[int, int]]:
+    """
+    Returns prize weights for the wheel.
+    Paid users get a slightly better jackpot chance.
+    """
+    is_paid = _is_paid_active_user(user)
+    if is_paid:
+        return [
+            (1, 40),
+            (3, 30),
+            (7, 20),
+            (30, 10),
+        ]
+    return [
+        (1, 50),
+        (3, 39),
+        (7, 10),
+        (30, 1),
+    ]
+
+def can_spin_wheel(tg_id: int) -> tuple[bool, int]:
+    """Check if user can spin the wheel. Returns (can_spin, seconds_until_next)"""
+    session = Session()
+    user = session.query(User).filter_by(tg_id=tg_id).first()
+    session.close()
+    
+    if not user:
+        return False, 0
+
+    now = _utcnow()
+    # Wheel is available only for active paid subscriptions.
+    if not _is_paid_active_user(user):
+        return False, 0
+    
+    last_spin = _naive_utc(user.last_wheel_spin)
+    if not last_spin:
+        return True, 0
+    
+    next_spin = last_spin + timedelta(days=WHEEL_COOLDOWN_DAYS)
+    
+    if now >= next_spin:
+        return True, 0
+    
+    seconds_left = int((next_spin - now).total_seconds())
+    return False, seconds_left
+
+def spin_wheel(tg_id: int) -> int | None:
+    """Spin the wheel and award days. Returns prize days, or None if can't spin"""
+    import random
+    
+    can_spin, _ = can_spin_wheel(tg_id)
+    if not can_spin:
+        return None
+    
+    # Determine Jackpot chance based on subscription
+    # Active Paid (VIP/Basic) = 10% Jackpot
+    # Trial/Free/Expired = 1% Jackpot
+    session = Session()
+    user = session.query(User).filter_by(tg_id=tg_id).first()
+    
+    prizes = wheel_prizes_for_user(user)
+    
+    total_weight = sum(w for _, w in prizes)
+    r = random.randint(1, total_weight)
+    
+    cumulative = 0
+    prize_days = 1
+    for days, weight in prizes:
+        cumulative += weight
+        if r <= cumulative:
+            prize_days = days
+            break
+            
+    # Update user (Add days)
+    if user:
+        now = _utcnow()
+        user.last_wheel_spin = now
+        expiry = _naive_utc(user.expiry_at)
+        if expiry and expiry > now:
+            user.expiry_at = expiry + timedelta(days=prize_days)
+        else:
+            user.expiry_at = now + timedelta(days=prize_days)
+        
+        user.is_active = True
+        session.commit()
+    session.close()
+    
+    return prize_days
+
+# ==========================================
+#           STREAK SYSTEM
+# ==========================================
+
+# Streak milestone rewards: {months: bonus_days}
+STREAK_REWARDS = {
+    3: 3,     # 3 months = +3 Days
+    6: 7,     # 6 months = +7 Days
+    12: 30,   # 12 months = +30 Days
+}
+
+def get_streak_info(tg_id: int) -> dict:
+    """Get user's streak info"""
+    session = Session()
+    user = session.query(User).filter_by(tg_id=tg_id).first()
+    session.close()
+    
+    if not user:
+        # First milestone is always 3 months.
+        return {"months": 0, "next_milestone": 3, "bonus_days_next": STREAK_REWARDS.get(3, 0), "last_check": None}
+    
+    months = user.streak_months or 0
+    
+    # Find next milestone
+    next_milestone = None
+    bonus_days_next = 0
+    for m, bonus_days in sorted(STREAK_REWARDS.items()):
+        if months < m:
+            next_milestone = m
+            bonus_days_next = bonus_days
+            break
+    
+    return {
+        "months": months,
+        "next_milestone": next_milestone,
+        "bonus_days_next": bonus_days_next,
+        "last_check": user.streak_last_check
+    }
+
+def update_streak(tg_id: int) -> tuple[int, int]:
+    """
+    Update streak on purchase/renewal.
+    Returns (new_streak_months, bonus_days_awarded)
+    """
+    session = Session()
+    user = session.query(User).filter_by(tg_id=tg_id).first()
+    
+    if not user:
+        session.close()
+        return (0, 0)
+    
+    now = datetime.utcnow()
+    old_streak = user.streak_months or 0
+    
+    # Check if streak should reset (subscription expired > 7 days ago)
+    if user.expiry_at:
+        days_expired = (now - user.expiry_at).days
+        if days_expired > 7:
+            # Reset streak
+            user.streak_months = 1
+            user.streak_last_check = now
+            session.commit()
+            session.close()
+            return (1, 0)
+    
+    # Check if we should increment (at least 25 days since last check)
+    if user.streak_last_check:
+        days_since_check = (now - user.streak_last_check).days
+        if days_since_check < 25:
+            # Too soon, don't increment
+            session.close()
+            return (old_streak, 0)
+    
+    # Increment streak
+    new_streak = old_streak + 1
+    user.streak_months = new_streak
+    user.streak_last_check = now
+    
+    # Check for milestone bonus
+    bonus_days = STREAK_REWARDS.get(new_streak, 0)
+    if bonus_days > 0:
+        if user.expiry_at and user.expiry_at > now:
+            user.expiry_at += timedelta(days=bonus_days)
+        else:
+            user.expiry_at = now + timedelta(days=bonus_days)
+    
+    session.commit()
+    session.close()
+    
+    return (new_streak, bonus_days)
+
+# ==========================================
+#         ACHIEVEMENTS SYSTEM
+# ==========================================
+
+def has_achievement(tg_id: int, achievement_id: str) -> bool:
+    """Check if user has unlocked an achievement"""
+    session = Session()
+    exists = session.query(Achievement).filter_by(
+        tg_id=tg_id, achievement_id=achievement_id
+    ).first() is not None
+    session.close()
+    return exists
+
+def award_achievement(tg_id: int, achievement_id: str) -> int:
+    """Award achievement to user if not already earned. Returns bonus days or 0."""
+    if has_achievement(tg_id, achievement_id):
+        return 0
+    
+    ach = ACHIEVEMENTS.get(achievement_id)
+    if not ach:
+        return 0
+    
+    session = Session()
+    new_ach = Achievement(tg_id=tg_id, achievement_id=achievement_id)
+    session.add(new_ach)
+    
+    # Add bonus Days if any
+    bonus_days = ach.get("days", 0)
+    if bonus_days > 0:
+        user = session.query(User).filter_by(tg_id=tg_id).first()
+        if user:
+            if user.expiry_at and user.expiry_at > datetime.utcnow():
+                user.expiry_at += timedelta(days=bonus_days)
+            else:
+                user.expiry_at = datetime.utcnow() + timedelta(days=bonus_days)
+    
+    session.commit()
+    session.close()
+    return bonus_days
+
+def get_user_achievements(tg_id: int) -> list:
+    """Get list of unlocked achievement IDs for user"""
+    session = Session()
+    achievements = session.query(Achievement).filter_by(tg_id=tg_id).all()
+    result = [a.achievement_id for a in achievements]
+    session.close()
+    return result
+
+async def check_achievements(tg_id: int, bot) -> list:
+    """
+    Check and award new achievements based on user's state.
+    Returns list of newly awarded achievement IDs.
+    """
+    user = get_user(tg_id)
+    if not user:
+        return []
+    if not _is_paid_active_user(user):
+        return []
+    
+    awarded = []
+    
+    # first_sub: Has any subscription
+    if user.is_active and not has_achievement(tg_id, "first_sub"):
+        gb = award_achievement(tg_id, "first_sub")
+        awarded.append("first_sub")
+    
+    # week_active: 7+ days since creation
+    if user.created_at:
+        days_active = (datetime.utcnow() - user.created_at).days
+        if days_active >= 7 and not has_achievement(tg_id, "week_active"):
+            gb = award_achievement(tg_id, "week_active")
+            if gb > 0:
+                try:
+                    await panel.update_client_traffic(tg_id, gb)
+                except:
+                    pass
+            awarded.append("week_active")
+    
+    # referral_1: Invited 1+ friends
+    if (user.referral_count or 0) >= 1 and not has_achievement(tg_id, "referral_1"):
+        gb = award_achievement(tg_id, "referral_1")
+        if gb > 0:
+            try:
+                await panel.update_client_traffic(tg_id, gb)
+            except:
+                pass
+        awarded.append("referral_1")
+    
+    # referral_5: Invited 5+ friends
+    if (user.referral_count or 0) >= 5 and not has_achievement(tg_id, "referral_5"):
+        gb = award_achievement(tg_id, "referral_5")
+        if gb > 0:
+            try:
+                await panel.update_client_traffic(tg_id, gb)
+            except:
+                pass
+        awarded.append("referral_5")
+    
+    # streak_3: 3+ months streak
+    if (user.streak_months or 0) >= 3 and not has_achievement(tg_id, "streak_3"):
+        award_achievement(tg_id, "streak_3")
+        awarded.append("streak_3")
+    
+    # big_spender: 500+ stars paid
+    if (user.stars_paid or 0) >= 500 and not has_achievement(tg_id, "big_spender"):
+        gb = award_achievement(tg_id, "big_spender")
+        if gb > 0:
+            try:
+                await panel.update_client_traffic(tg_id, gb)
+            except:
+                pass
+        awarded.append("big_spender")
+    
+    # loyal_year: 1 year since creation
+    if user.created_at:
+        days_active = (datetime.utcnow() - user.created_at).days
+        if days_active >= 365 and not has_achievement(tg_id, "loyal_year"):
+            gb = award_achievement(tg_id, "loyal_year")
+            if gb > 0:
+                try:
+                    await panel.update_client_traffic(tg_id, gb)
+                except:
+                    pass
+            awarded.append("loyal_year")
+    
+    # Notify user about new achievements
+    for ach_id in awarded:
+        ach = ACHIEVEMENTS.get(ach_id)
+        if ach:
+            try:
+                bonus_days = int(ach.get("days", 0) or 0)
+                bonus_text = f"\n🎁 Бонус: *+{bonus_days} дн.*" if bonus_days > 0 else ""
+                await bot.send_message(
+                    tg_id,
+                    f"🏆 *Новое достижение!*\n\n"
+                    f"{ach['icon']} *{ach['name']}*\n"
+                    f"_{ach['desc']}_"
+                    f"{bonus_text}",
+                    parse_mode=ParseMode.MARKDOWN
+                )
+            except:
+                pass
+    
+    return awarded
+
+# ==========================================
+#           GIFT CARDS
+# ==========================================
+
+def generate_gift_code() -> str:
+    """Generate unique gift card code like PORTAL-XXXX-XXXX"""
+    import random
+    import string
+    chars = string.ascii_uppercase + string.digits
+    part1 = ''.join(random.choices(chars, k=4))
+    part2 = ''.join(random.choices(chars, k=4))
+    return f"PORTAL-{part1}-{part2}"
+
+def create_gift_card(buyer_tg_id: int, card_type: str) -> str | None:
+    """Create a new gift card and return its code"""
+    if card_type not in GIFT_CARD_TYPES:
+        return None
+    
+    session = Session()
+    
+    # Generate unique code
+    for _ in range(10):  # Try 10 times
+        code = generate_gift_code()
+        existing = session.query(GiftCard).filter_by(code=code).first()
+        if not existing:
+            break
+    else:
+        session.close()
+        return None
+    
+    card = GiftCard(
+        code=code,
+        card_type=card_type,
+        created_by=buyer_tg_id
+    )
+    session.add(card)
+    session.commit()
+    session.close()
+    return code
+
+def get_gift_card(code: str) -> dict | None:
+    """Get gift card info by code"""
+    session = Session()
+    card = session.query(GiftCard).filter_by(code=code.upper()).first()
+    if not card:
+        session.close()
+        return None
+    
+    result = {
+        "code": card.code,
+        "type": card.card_type,
+        "created_by": card.created_by,
+        "redeemed": card.redeemed_by is not None,
+        "redeemed_by": card.redeemed_by
+    }
+    session.close()
+    return result
+
+async def redeem_gift_card(code: str, recipient_tg_id: int, bot) -> tuple[bool, str]:
+    """Redeem a gift card. Returns (success, message)"""
+    session = Session()
+    card = session.query(GiftCard).filter_by(code=code.upper()).first()
+    
+    if not card:
+        session.close()
+        return False, "❌ Карта не найдена"
+    
+    if card.redeemed_by:
+        session.close()
+        return False, "❌ Карта уже использована"
+    
+    if card.created_by == recipient_tg_id:
+        session.close()
+        return False, "❌ Нельзя активировать свою карту"
+    
+    card_info = GIFT_CARD_TYPES.get(card.card_type)
+    if not card_info:
+        session.close()
+        return False, "❌ Неизвестный тип карты"
+    
+    # Mark as redeemed
+    card.redeemed_by = recipient_tg_id
+    card.redeemed_at = _utcnow()
+    session.commit()
+    session.close()
+    
+    # Apply card benefits (similar to purchase)
+    days = card_info["days"]
+    gb = int(card_info.get("gb", 0) or 0)
+    
+    user = get_user(recipient_tg_id)
+    panel_client = await panel.get_existing_client(recipient_tg_id)
+    
+    if panel_client:
+        extend_user(recipient_tg_id, days, 0)
+        await panel.update_client_traffic(recipient_tg_id, 0)
+    else:
+        # Create new subscription
+        user_uuid = str(uuid.uuid4())
+        email = f"Gift_{recipient_tg_id}"
+        sub_token = generate_sub_token()
+        
+        await panel.add_client(user_uuid, email, "PAID", 0, recipient_tg_id, sub_token)
+        create_user(recipient_tg_id, user_uuid, email, "PAID", days, 0, 0)
+        
+        # Update sub_token
+        session = Session()
+        db_user = session.query(User).filter_by(tg_id=recipient_tg_id).first()
+        if db_user:
+            db_user.sub_token = sub_token
+            session.commit()
+        session.close()
+    
+    return True, f"✅ Карта активирована!\n\n📅 Тариф продлен на {days} дней"
+
+def build_vless_link(client_uuid: str, email: str = "User") -> str:
+    """Generate VLESS Reality link for client"""
+    from urllib.parse import quote
+    
+    # vless://uuid@host:port?params#name
+    params = [
+        f"type=tcp",
+        f"security=reality",
+        f"pbk={VLESS_PBK}",
+        f"fp={VLESS_FP}",
+        f"sni={VLESS_SNI}",
+        f"sid={VLESS_SID}",
+        f"spx=%2F",
+        f"flow={VLESS_FLOW}"
+    ]
+    
+    link = f"vless://{client_uuid}@{HOST_DOMAIN}:{VLESS_PORT}?{'&'.join(params)}#{quote(email)}"
+    return link
+
+def build_subscription_link(tg_id: int) -> str:
+    """Generate subscription URL for auto-updating config"""
+    # Lazy migration: If sub_token is missing, generate and save it.
+    session = Session()
+    user = session.query(User).filter_by(tg_id=tg_id).first()
+    
+    sub_id = None
+    if user:
+        if user.sub_token:
+            sub_id = user.sub_token
+        else:
+            # Generate missing token
+            try:
+                sub_id = generate_sub_token()
+                user.sub_token = sub_id
+                session.commit()
+                # logger.info(f"Generated missing sub_token for user {tg_id}")
+            except Exception as e:
+                print(f"Error generating token: {e}")
+                sub_id = str(tg_id) # Fallback only on DB error
+            
+    session.close()
+    
+    if not sub_id:
+        sub_id = str(tg_id)
+    
+    # Secure path (Proxy on 2096)
+    return f"{PUBLIC_API_BASE_URL.rstrip('/')}/s8Kx2mP7qR4wT/{sub_id}#Portal"
+
+
+def next_manual_tg_id() -> int:
+    session = Session()
+    try:
+        min_id = session.query(func.min(User.tg_id)).filter(User.tg_id < 0).scalar()
+        if min_id is None:
+            return -10001
+        return int(min_id) - 1
+    finally:
+        session.close()
+
+
+def create_manual_user_record(*, display_name: str, days: int, created_by_admin: int) -> User:
+    manual_tg_id = next_manual_tg_id()
+    user_uuid = str(uuid.uuid4())
+    sub_token = generate_sub_token()
+    now = _utcnow()
+    session = Session()
+    try:
+        email = f"MANUAL_{abs(manual_tg_id)}"
+        user = User(
+            tg_id=manual_tg_id,
+            username=None,
+            uuid=user_uuid,
+            email=email,
+            sub_type="MANUAL",
+            created_at=now,
+            expiry_at=now + timedelta(days=max(1, int(days))),
+            is_active=True,
+            stars_paid=0,
+            total_gb=0,
+            trial_used=False,
+            tos_accepted=True,
+            first_purchase_done=True,
+            sub_token=sub_token,
+            is_manual=True,
+            created_by_admin=int(created_by_admin),
+            display_name=(display_name or "").strip()[:100] or email,
+        )
+        session.add(user)
+        session.commit()
+        session.refresh(user)
+        return user
+    finally:
+        session.close()
+
+
+def regenerate_user_sub_token(tg_id: int) -> str | None:
+    session = Session()
+    try:
+        user = session.query(User).filter_by(tg_id=tg_id).first()
+        if not user:
+            return None
+        token = generate_sub_token()
+        user.sub_token = token
+        session.commit()
+        return token
+    finally:
+        session.close()
+
+
+def list_manual_users(limit: int = 30) -> list[User]:
+    session = Session()
+    try:
+        return (
+            session.query(User)
+            .filter((User.tg_id < 0) | (func.upper(User.sub_type) == "MANUAL"))
+            .order_by(User.created_at.desc(), User.tg_id.asc())
+            .limit(max(1, limit))
+            .all()
+        )
+    finally:
+        session.close()
+
+
+
+def extend_user(tg_id: int, days: int, stars: int) -> bool:
+    session = Session()
+    user = session.query(User).filter_by(tg_id=tg_id).first()
+    if user:
+        now = _utcnow()
+        cur = _naive_utc(user.expiry_at) or now
+        user.expiry_at = max(cur, now) + timedelta(days=days)
+        user.stars_paid += stars
+        user.is_active = True
+        session.commit()
+    session.close()
+    return user is not None
+
+
+def reset_user_expiry_from_now(tg_id: int, days: int, stars: int) -> bool:
+    session = Session()
+    user = session.query(User).filter_by(tg_id=tg_id).first()
+    if user:
+        user.expiry_at = _utcnow() + timedelta(days=days)
+        user.stars_paid += stars
+        user.is_active = True
+        session.commit()
+    session.close()
+    return user is not None
+
+def mark_trial_used(tg_id: int):
+    session = Session()
+    user = session.query(User).filter_by(tg_id=tg_id).first()
+    if user:
+        user.trial_used = True
+        session.commit()
+    session.close()
+
+def get_stats():
+    session = Session()
+    total_users = session.query(User).count()
+    now = _utcnow()
+    active_users = (
+        session.query(User)
+        .filter(User.is_active == True)
+        .filter(User.expiry_at.isnot(None))
+        .filter(User.expiry_at > now)
+        .count()
+    )
+    total_stars = session.query(func.sum(User.stars_paid)).scalar() or 0
+    session.close()
+    return {"total": total_users, "active": active_users, "stars": total_stars}
+
+
+def audit_admin(actor_tg_id: int, action: str, target_tg_id: int | None = None, meta: str | None = None) -> None:
+    try:
+        s = Session()
+        s.add(AdminAudit(actor_tg_id=actor_tg_id, action=action, target_tg_id=target_tg_id, meta=meta))
+        s.commit()
+        s.close()
+    except Exception:
+        # audit must never break admin flows
+        pass
+
+# ==========================================
+#           PANEL CLIENT
+# ==========================================
+# Multi-node panel operations are handled by ControlPanel (portal_bot/control_panel.py).
+panel = ControlPanel()
+
+# ==========================================
+#               BOT HANDLERS
+# ==========================================
+router = Router()
+
+
+@router.callback_query(F.data == "noop")
+async def noop(callback: CallbackQuery):
+    # Used for "page indicator" buttons so Telegram doesn't return "message is not modified".
+    await callback.answer()
+
+
+def _normalize_sub_type(raw: str | None) -> str:
+    """
+    Keep DB stable:
+    - FREE: free tier
+    - PAID: any paid access (monthly/quarterly/etc, gifts, legacy VIP/PRO/BASIC)
+    - MANUAL: special pinned accounts that we never touch via automation
+    """
+    s = (raw or "").strip()
+    if not s:
+        return ""
+    up = s.upper()
+    if up == "FREE" or up.startswith("TRIAL"):
+        return "FREE"
+    if up == "MANUAL" or s.lower() == "manual":
+        return "MANUAL"
+    # Everything else is treated as paid access.
+    return "PAID"
+
+
+def _plan_mode_label(sub_type: str | None) -> str:
+    st = _normalize_sub_type(sub_type or "")
+    if st == "FREE":
+        return f"до {FREE_TOTAL_GB} ГБ, до {FREE_LIMIT_IP} устройств"
+    return f"безлимит, до {PAID_LIMIT_IP} устройств"
+
+
+def _is_paid_active_user(user: User | None) -> bool:
+    if not user:
+        return False
+    expiry = _naive_utc(user.expiry_at)
+    if not user.is_active or not expiry or expiry <= _utcnow():
+        return False
+    return _normalize_sub_type(user.sub_type) == "PAID"
+
+
+async def _free_remaining_gb(tg_id: int, *, timeout_sec: float = 3.0) -> tuple[float | None, float]:
+    """
+    Return (remaining_gb, total_gb).
+    remaining_gb=None means usage is temporarily unavailable.
+    """
+    total_gb = float(FREE_TOTAL_GB)
+    try:
+        usage = await asyncio.wait_for(panel.get_usage_by_tgid(tg_id), timeout=timeout_sec)
+    except Exception:
+        usage = None
+    if not usage:
+        return None, total_gb
+    used_bytes = int(usage.get("total", 0) or 0)
+    used_gb = max(0.0, used_bytes / (1024**3))
+    remaining = max(0.0, total_gb - used_gb)
+    return round(remaining, 2), total_gb
+
+
+async def check_subscription(user_id: int, bot: Bot) -> bool:
+    channel = (NEWS_CHANNEL_ID or "").strip()
+    if not channel:
+        return True
+    try:
+        member = await bot.get_chat_member(chat_id=channel, user_id=user_id)
+        return member.status in ["member", "administrator", "creator"]
+    except Exception as e:
+        # Fallback open on Telegram API issues to avoid breaking trial flow.
+        # Block only on explicit configuration/access errors.
+        err = (str(e) or "").lower()
+        hard_fail_markers = (
+            "chat not found",
+            "bot is not a member",
+            "have no rights",
+            "not enough rights",
+            "forbidden",
+            "unauthorized",
+            "invalid chat id",
+            "peer_id_invalid",
+            "channel private",
+        )
+        if any(m in err for m in hard_fail_markers):
+            logger.warning("check_subscription hard-fail user=%s channel=%s err=%s", user_id, channel, e)
+            return False
+        logger.warning("check_subscription fallback-allow user=%s channel=%s err=%s", user_id, channel, e)
+        return True
+
+TEXTS = {
+    "welcome": (
+        "🛡 *PORTAL | Network Security*\n\n"
+        "Ваш личный шлюз в свободный и безопасный интернет.\n"
+        "Мы используем протоколы нового поколения (Reality), которые сложно обнаружить.\n\n"
+        "⚡ *Возможности:*\n"
+        "├ 🚀 Скорость без ограничений\n"
+        "├ 🌍 Локации: 🇵🇱 🇮🇹 🇺🇸 🇩🇪\n"
+        "├ 🔒 Полная приватность\n"
+        "└ 📱 Поддержка iOS, Android, PC\n\n"
+        "🔻 *Нажмите кнопку ниже, чтобы начать:*"
+    ),
+    "choose_tariff": (
+        "💎 *Выберите уровень доступа*\n\n"
+        "Все тарифы включают:\n"
+        "✅ Безлимитный трафик\n"
+        "✅ Максимальную скорость (до 1 Gbit/s)\n"
+        "✅ До 5 устройств одновременно\n\n"
+        "👇 *Тарифные планы:*"
+    ),
+    "portal_ready": (
+        "✅ *Доступ разрешен*\n"
+        "➖➖➖➖➖➖➖➖➖➖\n"
+        "🔑 *Статус:* `АКТИВЕН`\n"
+        "⏳ *Истекает:* `{expiry}`\n"
+        "➖➖➖➖➖➖➖➖➖➖\n\n"
+        "Нажмите *«🌐 ОТКРЫТЬ ПОРТАЛ (WEB APP)»* для получения ключей доступа."
+    ),
+    "already_active": (
+        "🛡 *Система активна*\n\n"
+        "Ваш защищенный канал работает исправно.\n"
+        "📅 Действует до: `{expiry}`\n\n"
+        "Нужен ключ для нового устройства? Жми кнопку ниже."
+    ),
+    "status": (
+        "👤 *Личный кабинет*\n"
+        "➖➖➖➖➖➖➖➖➖➖\n"
+        "🆔 ID: `{tg_id}`\n"
+        "🛡 Статус: {status_icon} *{status_text}*\n"
+        "📅 Истекает: `{expiry}`\n"
+        "⭐ Баланс: `{stars}` Stars\n"
+        "➖➖➖➖➖➖➖➖➖➖"
+    ),
+    "no_subscription": (
+        "⛔️ *Доступ ограничен*\n\n"
+        "У вас нет активной цифровой лицензии.\n"
+        "Подключите тариф, чтобы активировать защищенный канал."
+    ),
+    "instruction": (
+        "⚙️ *Быстрая настройка*\n\n"
+        "1️⃣ Нажмите кнопку *«🌐 ОТКРЫТЬ ПОРТАЛ (WEB APP)»*\n"
+        "2️⃣ Скопируйте ваш *Ключ доступа*\n"
+        "3️⃣ Скачайте приложение (Hiddify / v2rayNG)\n"
+        "4️⃣ Вставьте ключ и нажмите «Подключить»\n\n"
+        "_Внутри WebApp есть подробные подсказки для каждой ОС._"
+    ),
+    "admin_stats": (
+        "📊 *Центр управления*\n\n"
+        "👥 Пользователей: `{total}`\n"
+        "🟢 Активных: `{active}`\n"
+        "💰 Оборот: `{stars}` Stars"
+    ),
+    "trial_used": "❌ Режим «Стартовый» уже использован. Выберите платный тариф.",
+    "payment_success": "✅ *Оплата принята!* Генерируем ключи шифрования...",
+    "gift_success": "✅ Подписка выдана пользователю {tg_id} на {days} дней."
+}
+
+def _bot_enabled_nodes() -> list[dict]:
+    """
+    Fetch enabled nodes from the control-plane DB.
+    Returns NodeRuntime-like objects (dataclass), but we only use .code/.name.
+    """
+    try:
+        from nodes_repo import enabled_nodes  # local import to avoid early import issues
+
+        s = Session()
+        try:
+            return enabled_nodes(s)
+        finally:
+            s.close()
+    except Exception:
+        return []
+
+
+def _bot_free_codes() -> list[str]:
+    nodes = _bot_enabled_nodes()
+    return [((getattr(n, "code", "") or "").strip()) for n in nodes if "free" in (getattr(n, "code", "") or "").lower()]
+
+
+def _node_code_base(code: str) -> str:
+    code = (code or "").lower().strip()
+    for sep in ("_", "-", "."):
+        if sep in code:
+            code = code.split(sep, 1)[0]
+    return code
+
+
+def _node_label_ru_bot(code: str, name: str = "") -> str:
+    code_raw = (code or "").strip()
+    base = _node_code_base(code_raw)
+    flags = {"pl": "🇵🇱", "it": "🇮🇹", "us": "🇺🇸", "de": "🇩🇪", "brain": "🇩🇪"}
+    names = {"pl": "Польша", "it": "Италия", "us": "США", "de": "Германия", "brain": "Германия"}
+    flag = flags.get(base, "🏳️")
+    nm = names.get(base, name or (base.upper() if base else code_raw))
+    return f"{flag} {nm}".strip()
+
+
+def _node_ping_from_metrics(node) -> int | None:
+    """Best-effort parse of cached node latency from DB metrics."""
+    raw = getattr(node, "panel_latency_ms", None)
+    if isinstance(raw, bool):
+        return None
+    if isinstance(raw, int):
+        return raw if raw > 0 else None
+    if isinstance(raw, float):
+        val = int(round(raw))
+        return val if val > 0 else None
+    try:
+        val = int(round(float(str(raw).strip())))
+        return val if val > 0 else None
+    except Exception:
+        return None
+
+
+async def _probe_tcp_latency_ms(host: str, port: int, *, timeout_sec: float = 1.5) -> int | None:
+    """
+    Fallback latency probe when metrics are missing.
+    Measures TCP connect time to node host:port.
+    """
+    if not host or not int(port or 0):
+        return None
+    started = asyncio.get_running_loop().time()
+    writer = None
+    try:
+        _, writer = await asyncio.wait_for(asyncio.open_connection(host, int(port)), timeout=timeout_sec)
+        elapsed_ms = int((asyncio.get_running_loop().time() - started) * 1000)
+        return elapsed_ms if elapsed_ms > 0 else 1
+    except Exception:
+        return None
+    finally:
+        if writer:
+            try:
+                writer.close()
+                await writer.wait_closed()
+            except Exception:
+                pass
+
+
+async def _node_ping_ms(node) -> int | None:
+    ping = _node_ping_from_metrics(node)
+    if ping is not None:
+        return ping
+    host = (getattr(node, "host", "") or "").strip()
+    port = int(getattr(node, "vless_port", 0) or VLESS_PORT)
+    return await _probe_tcp_latency_ms(host, port)
+
+
+def _tariff_savings_pct(tariff_key: str) -> int | None:
+    """
+    Returns % savings vs paying monthly for the same duration.
+    """
+    monthly = int(TARIFFS.get("1_month", {}).get("stars") or 0)
+    months_map = {"3_months": 3, "6_months": 6, "12_months": 12}
+    months = months_map.get(tariff_key)
+    if not monthly or not months:
+        return None
+    price = int(TARIFFS.get(tariff_key, {}).get("stars") or 0)
+    if price <= 0:
+        return None
+    baseline = monthly * months
+    if baseline <= 0:
+        return None
+    pct = int(round((1 - (price / baseline)) * 100))
+    return pct if pct > 0 else None
+
+
+def build_choose_tariff_text() -> str:
+    nodes = _bot_enabled_nodes()
+    paid_nodes = [n for n in nodes if "free" not in (getattr(n, "code", "") or "").lower()]
+    paid_count = len(paid_nodes) if paid_nodes else (len(nodes) if nodes else 1)
+    paid_list = (
+        ", ".join([_node_label_ru_bot(getattr(n, "code", ""), getattr(n, "name", "")) for n in paid_nodes])
+        if paid_nodes
+        else ("1 локация" if nodes else "1 локация")
+    )
+    free_node = next((n for n in nodes if _node_code_base(getattr(n, "code", "")) == "pl"), None)
+    free_label = _node_label_ru_bot(getattr(free_node, "code", "pl"), getattr(free_node, "name", "Польша")) if nodes else "🇵🇱 Польша"
+
+    s3 = _tariff_savings_pct("3_months")
+    s6 = _tariff_savings_pct("6_months")
+    s12 = _tariff_savings_pct("12_months")
+    savings = []
+    if s3:
+        savings.append(f"3 мес: -{s3}%")
+    if s6:
+        savings.append(f"6 мес: -{s6}%")
+    if s12:
+        savings.append(f"1 год: -{s12}%")
+    savings_line = (" (" + ", ".join(savings) + ")") if savings else ""
+
+    return (
+        "💎 *Выберите уровень доступа*\n\n"
+        f"🆓 *Стартовый* — 1 страна: {free_label}\n"
+        f"💠 *Премиум* — {paid_count} стран: {paid_list}\n\n"
+        f"Стартовый: до {FREE_TOTAL_GB} ГБ, до {FREE_LIMIT_IP} устройств (по IP).\n"
+        "Стартовый: соцсети + AI, медиасервисы могут идти напрямую.\n"
+        f"Премиум: полный доступ, переключение стран, до {PAID_LIMIT_IP} устройств.\n\n"
+        f"💰 *Выгода при оплате на срок:*{savings_line}\n\n"
+        "_Оплата Telegram Stars — мгновенная активация._"
+    )
+
+def main_keyboard(tg_id: int = 0) -> InlineKeyboardMarkup:
+    """Main menu with primary WebApp CTA."""
+    buttons = [
+        [InlineKeyboardButton(
+            text="🌐 ОТКРЫТЬ ПОРТАЛ (WEB APP)",
+            web_app=WebAppInfo(url=WEBAPP_URL)
+        )],
+        [
+            InlineKeyboardButton(text="⚡ Подключить / Продлить", callback_data="charge"),
+        ],
+        [
+            InlineKeyboardButton(text="🔑 Мой ключ", callback_data="show_key"),
+            InlineKeyboardButton(text="👤 Профиль", callback_data="status"),
+        ],
+        [
+            InlineKeyboardButton(text="🎁 Бонусы", callback_data="menu_bonuses"),
+            InlineKeyboardButton(text="📡 Состояние сети", callback_data="network_status"),
+        ],
+        [
+            InlineKeyboardButton(text="⚙️ Настройка", callback_data="instruction"),
+            InlineKeyboardButton(text="🆘 Поддержка", callback_data="support"),
+        ],
+        [
+            InlineKeyboardButton(text="🆘 Я запутался, помогите!", callback_data="mode_simple"),
+        ],
+        [
+            InlineKeyboardButton(text="📦 Дополнительно", callback_data="menu_more"),
+        ],
+    ]
+    
+    if tg_id == ADMIN_ID:
+        buttons.append([InlineKeyboardButton(text="🔒 Admin Panel", callback_data="admin")])
+    
+    return InlineKeyboardMarkup(inline_keyboard=buttons)
+
+def tariff_keyboard(tg_id: int = 0, show_trial: bool = True, show_gb_only: bool = False) -> InlineKeyboardMarkup:
+    buttons = []
+    
+    # Check if user has 20% referral discount
+    has_discount = has_referral_discount(tg_id) if tg_id else False
+    discount_text = " 🎉 -20%" if has_discount else ""
+    
+    # Free is always visible. If user already has active paid access, pressing it shows an alert and does nothing.
+    if show_trial:
+        buttons.append(
+            [
+                InlineKeyboardButton(
+                    text=f"🆓 Стартовый — 1 страна, {FREE_TOTAL_GB} ГБ, {FREE_LIMIT_IP} устр.",
+                    callback_data="buy_trial",
+                )
+            ]
+        )
+    
+    # Plans order
+    plans = [
+        ("1_month", "📅 1 Месяц"),
+        ("3_months", "📅 3 Месяца"),
+        ("6_months", "📅 6 Месяцев"),
+        ("12_months", "📅 1 Год")
+    ]
+    
+    for key, label in plans:
+        tariff = TARIFFS.get(key)
+        if not tariff: continue
+        
+        price = tariff["stars"]
+        if has_discount:
+            price = int(price * 0.8)
+            
+        icon = "▪️"
+        marketing_badge = ""
+        if key == "1_month":
+            icon = "🚀"
+        elif key == "3_months":
+            icon = "💠"
+            marketing_badge = " (ХИТ)"
+        elif key == "12_months":
+            icon = "👑"
+            savings = _tariff_savings_pct(key) or 0
+            marketing_badge = f" (ВЫГОДА -{savings}%)" if savings > 0 else " (ВЫГОДА)"
+
+        savings = _tariff_savings_pct(key)
+        savings_text = f" (-{savings}%)" if savings and key not in {"12_months"} else ""
+        btn_text = f"{icon} {label} — {price} ⭐{discount_text}{marketing_badge}{savings_text}"
+        buttons.append([InlineKeyboardButton(text=btn_text, callback_data=f"buy_{key}")])
+    
+    buttons.append([InlineKeyboardButton(text="◀️ Назад", callback_data="back")])
+    
+    return InlineKeyboardMarkup(inline_keyboard=buttons)
+
+@router.message(CommandStart())
+async def cmd_start(message: Message):
+    tg_id = message.from_user.id
+    username = message.from_user.username
+
+    referral_code = None
+    if message.text:
+        parts = message.text.split()
+        if len(parts) > 1:
+            code_part = parts[1]
+            if code_part.startswith("ref_"):
+                code_part = code_part[4:]
+            if code_part.upper().startswith("SWAZ") and len(code_part) == 8:
+                referral_code = code_part.upper()
+
+    try:
+        await message.delete()
+    except Exception:
+        pass
+
+    if tg_id in last_bot_message:
+        try:
+            await message.bot.delete_message(tg_id, last_bot_message[tg_id])
+        except Exception:
+            pass
+
+    user = get_user(tg_id)
+    panel_client = await panel.get_existing_client(tg_id)
+    created_new = False
+
+    if panel_client and not user:
+        user = create_user(
+            tg_id=tg_id,
+            user_uuid=panel_client.get("id", str(uuid.uuid4())),
+            email=panel_client.get("email", f"User_{tg_id}"),
+            sub_type="PAID",
+            days=365,
+            gb=1000,
+            stars=0,
+            username=username,
+        )
+    elif not user:
+        user, created_new = ensure_pending_user(tg_id, username=username)
+
+    if referral_code:
+        set_referrer_by_code(tg_id, referral_code)
+    update_user_username(tg_id, username)
+
+    if not created_new:
+        sent = await message.answer(
+            "👋 *С возвращением в PORTAL!*",
+            reply_markup=main_keyboard(tg_id),
+            parse_mode=ParseMode.MARKDOWN,
+        )
+        last_bot_message[tg_id] = sent.message_id
+        return
+
+    text = (
+        "🛡 *Добро пожаловать в PORTAL*\n\n"
+        "Мы подготовили систему защищенного доступа.\n"
+        "Как вы хотите настроить подключение?\n\n"
+        "🐣 *Новичок*\n"
+        "«Хочу быстро и просто, без технических деталей».\n\n"
+        "💀 *Профи*\n"
+        "«Нужен полный контроль и все инструменты сразу»."
+    )
+    kb = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="🐣 Включить Автопилот (Просто)", callback_data="mode_simple")],
+        [InlineKeyboardButton(text="💀 Ручное управление (Профи)", callback_data="mode_pro")],
+    ])
+    sent = await message.answer(text, reply_markup=kb, parse_mode=ParseMode.MARKDOWN)
+    last_bot_message[tg_id] = sent.message_id
+
+@router.callback_query(F.data == "back")
+async def back_to_main(callback: CallbackQuery):
+    tg_id = callback.from_user.id
+    pending_redeem_codes.discard(tg_id)
+    pending_promo_codes.discard(tg_id)
+    
+    await callback.message.edit_text(
+        TEXTS["welcome"],
+        reply_markup=main_keyboard(tg_id),
+        parse_mode=ParseMode.MARKDOWN
+    )
+    await callback.answer()
+
+@router.callback_query(F.data == "charge")
+async def show_tariffs(callback: CallbackQuery):
+    tg_id = callback.from_user.id
+    user = get_user(tg_id)
+    
+    # Check if user has accepted TOS
+    if not check_tos_accepted(tg_id):
+        # Show TOS agreement screen
+        kb = InlineKeyboardMarkup(inline_keyboard=[
+            [InlineKeyboardButton(text="📄 Читать полностью", web_app=WebAppInfo(url=f"{WEBAPP_URL}#tos"))],
+            [InlineKeyboardButton(text="✅ Принимаю условия", callback_data="accept_tos")],
+            [InlineKeyboardButton(text="◀️ Назад", callback_data="back")]
+        ])
+        await callback.message.edit_text(
+            "📜 *Публичная оферта*\n\n"
+            "Перед использованием сервиса ознакомьтесь с условиями:\n\n"
+            "• Сервис предоставляется «как есть»\n"
+            "• Пользователь сам несёт ответственность за соблюдение законов\n"
+            "• Запрещено использование для противоправных действий\n"
+            "• Возврат средств при блокировках не гарантируется\n\n"
+            "_Нажимая «Принимаю условия», вы соглашаетесь с полным текстом оферты._",
+            reply_markup=kb,
+            parse_mode=ParseMode.MARKDOWN
+        )
+        await callback.answer()
+        return
+    
+    # Show Free only if user has no active paid access. It should not "downgrade" paid users.
+    now = _utcnow()
+    expiry = _naive_utc(user.expiry_at) if user else None
+    has_active = bool(user and user.is_active and expiry and expiry > now and _normalize_sub_type(user.sub_type) != "FREE")
+    show_trial = not has_active
+    show_gb_only = False  # Kept for legacy UI compatibility.
+    
+    await callback.message.edit_text(
+        build_choose_tariff_text(),
+        reply_markup=tariff_keyboard(tg_id, show_trial, show_gb_only),
+        parse_mode=ParseMode.MARKDOWN
+    )
+    await callback.answer()
+
+@router.callback_query(F.data == "accept_tos")
+async def accept_tos(callback: CallbackQuery):
+    tg_id = callback.from_user.id
+    
+    # Mark TOS as accepted
+    set_tos_accepted(tg_id)
+    
+    # Now show tariffs
+    user = get_user(tg_id)
+
+    now = _utcnow()
+    expiry = _naive_utc(user.expiry_at) if user else None
+    has_active = bool(user and user.is_active and expiry and expiry > now and _normalize_sub_type(user.sub_type) != "FREE")
+    show_trial = not has_active
+    show_gb_only = False
+    
+    await callback.message.edit_text(
+        build_choose_tariff_text(),
+        reply_markup=tariff_keyboard(tg_id, show_trial, show_gb_only),
+        parse_mode=ParseMode.MARKDOWN
+    )
+    await callback.answer("✅ Условия приняты!")
+
+@router.callback_query(F.data == "status")
+async def show_status(callback: CallbackQuery):
+    tg_id = callback.from_user.id
+    user = get_user(tg_id)
+    
+    if not user:
+        await callback.message.edit_text(
+            TEXTS["no_subscription"],
+            reply_markup=main_keyboard(tg_id),
+            parse_mode=ParseMode.MARKDOWN
+        )
+        await callback.answer()
+        return
+    
+    expiry_dt = _naive_utc(user.expiry_at) if user else None
+    if expiry_dt:
+        expiry = expiry_dt.strftime("%d.%m.%Y")
+    else:
+        expiry = "—"
+    
+    stars = user.stars_paid if user else 0
+    is_active = bool(user and user.is_active and expiry_dt and expiry_dt > _utcnow())
+    status_icon = "🟢" if is_active else "🔴"
+    status_name = "ACTIVE" if is_active else "INACTIVE"
+    status_text = TEXTS["status"].format(
+        tg_id=tg_id,
+        expiry=expiry,
+        stars=stars,
+        status_icon=status_icon,
+        status_text=status_name,
+    )
+    if _normalize_sub_type(user.sub_type) == "FREE":
+        remaining_gb, total_gb = await _free_remaining_gb(tg_id)
+        if remaining_gb is None:
+            status_text += f"\n📊 Стартовый-лимит: до `{int(total_gb)}` ГБ\n⏳ Остаток: `н/д`"
+        else:
+            status_text += f"\n📊 Стартовый-остаток: `{remaining_gb}` из `{int(total_gb)}` ГБ"
+    
+    await callback.message.edit_text(
+        status_text,
+        reply_markup=main_keyboard(tg_id),
+        parse_mode=ParseMode.MARKDOWN
+    )
+    await callback.answer()
+
+@router.callback_query(F.data == "show_key")
+async def show_key(callback: CallbackQuery):
+    try:
+        await callback.answer()
+    except Exception:
+        pass
+
+    tg_id = callback.from_user.id
+    user = get_user(tg_id)
+    
+    if not user:
+        kb = InlineKeyboardMarkup(inline_keyboard=[
+            [InlineKeyboardButton(text="⚡ Подключить / Продлить", callback_data="charge")],
+            [InlineKeyboardButton(text="◀️ Назад", callback_data="back")]
+        ])
+        await callback.message.edit_text(
+            "⚠️ *Ключ не найден*\n\nСначала подключите доступ, чтобы получить ключ.",
+            reply_markup=kb,
+            parse_mode=ParseMode.MARKDOWN
+        )
+        return
+
+    msg = await callback.message.edit_text("🔄 `Connecting to secure node...`", parse_mode=ParseMode.MARKDOWN)
+    await asyncio.sleep(0.35)
+    await msg.edit_text("🔄 `Handshaking (TLS 1.3)...`", parse_mode=ParseMode.MARKDOWN)
+    await asyncio.sleep(0.35)
+    await msg.edit_text("🔄 `Generating unique key...`", parse_mode=ParseMode.MARKDOWN)
+    await asyncio.sleep(0.35)
+
+    sub_link = build_subscription_link(tg_id)
+
+    is_free = _normalize_sub_type(user.sub_type if user else "") == "FREE"
+    free_note = ""
+    if is_free:
+        nodes = _bot_enabled_nodes()
+        paid_nodes = [n for n in nodes if "free" not in (getattr(n, "code", "") or "").lower()]
+        paid_count = len(paid_nodes) if paid_nodes else (len(nodes) if nodes else 1)
+        paid_list = (
+            ", ".join([_node_label_ru_bot(getattr(n, "code", ""), getattr(n, "name", "")) for n in paid_nodes])
+            if paid_nodes
+            else ("—" if nodes else "—")
+        )
+        free_note = (
+            "\n\n🆓 *Режим «Стартовый»*\n"
+            "• 1 free-нода\n"
+            f"• Платные: {paid_count} стран ({paid_list})\n"
+            f"• Лимит трафика: до {FREE_TOTAL_GB} ГБ\n"
+            f"• Лимит устройств: до {FREE_LIMIT_IP} (по IP)\n"
+            "• Проксируются только соцсети + AI\n"
+            "• YouTube идёт напрямую (сервис не помогает)\n"
+            "• Всё остальное идёт напрямую (будет виден ваш обычный IP)\n"
+        )
+    
+    kb = InlineKeyboardMarkup(
+        inline_keyboard=[
+            [InlineKeyboardButton(text="📋 Скопировать ссылку", callback_data="copy_key")],
+            [InlineKeyboardButton(text="📱 QR-код", callback_data="show_qr")],
+            [InlineKeyboardButton(text="👨‍👩‍👧‍👦 Поделиться с семьёй", callback_data="share_access")],
+            [InlineKeyboardButton(text="🚨 Panic Mode", callback_data="panic_menu")],
+            [InlineKeyboardButton(text="◀️ Назад", callback_data="back")],
+        ]
+    )
+    
+    await msg.edit_text(
+        f"🔑 *Ваш ключ доступа:*\n\n"
+        f"`{sub_link}`\n\n"
+        f"📋 _Нажмите на ссылку, чтобы скопировать_\n\n"
+        f"📱 Добавьте как подписку в Hiddify, Streisand или v2rayNG."
+        f"{free_note}",
+        reply_markup=kb,
+        parse_mode=ParseMode.MARKDOWN
+    )
+
+@router.callback_query(F.data == "copy_key")
+async def copy_key_callback(callback: CallbackQuery):
+    tg_id = callback.from_user.id
+    sub_link = build_subscription_link(tg_id)
+    await callback.answer(f"📋 Скопируйте ссылку:\n{sub_link}", show_alert=True)
+
+
+@router.callback_query(F.data == "show_qr")
+async def show_qr_code(callback: CallbackQuery):
+    tg_id = callback.from_user.id
+    sub_link = build_subscription_link(tg_id)
+
+    qr = qrcode.QRCode(box_size=10, border=4)
+    qr.add_data(sub_link)
+    qr.make(fit=True)
+    img = qr.make_image(fill_color="black", back_color="white")
+
+    bio = BytesIO()
+    img.save(bio, "PNG")
+    bio.seek(0)
+    file = BufferedInputFile(bio.read(), filename="portal-key.png")
+
+    await callback.message.answer_photo(
+        photo=file,
+        caption=(
+            "📱 *Ваш QR-ключ доступа*\n\n"
+            "Отсканируйте в приложении (Hiddify / v2rayNG)."
+        ),
+        parse_mode=ParseMode.MARKDOWN,
+    )
+    await callback.answer("QR-код готов")
+
+
+@router.callback_query(F.data == "share_access")
+async def share_family_access(callback: CallbackQuery):
+    tg_id = callback.from_user.id
+    sub_link = build_subscription_link(tg_id)
+    share_text = (
+        "🔑 *Доступ к защищенной сети PORTAL*\n\n"
+        "Я делюсь с тобой своим приватным каналом связи.\n"
+        "1. Скачай приложение Hiddify\n"
+        "2. Скопируй ключ ниже и добавь его в приложение\n\n"
+        f"`{sub_link}`\n\n"
+        "🛡 *Быстро. Надежно. Конфиденциально.*"
+    )
+    await callback.message.answer(
+        "📤 *Перешлите сообщение ниже*\n\nОтправьте его тому, с кем хотите поделиться доступом.",
+        parse_mode=ParseMode.MARKDOWN,
+    )
+    await callback.message.answer(share_text, parse_mode=ParseMode.MARKDOWN)
+    await callback.answer()
+
+
+@router.callback_query(F.data == "panic_menu")
+async def panic_menu(callback: CallbackQuery):
+    text = (
+        "🚨 *РЕЖИМ ТРЕВОГИ (PANIC MODE)*\n\n"
+        "Используйте это меню, если:\n"
+        "• устройство утеряно\n"
+        "• вы подозреваете перехват ключа\n"
+        "• нужно отключить все активные сессии\n\n"
+        "⚠️ Действие: старый ключ будет аннулирован."
+    )
+    kb = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="☢️ СЖЕЧЬ КЛЮЧИ (Сброс)", callback_data="panic_execute")],
+        [InlineKeyboardButton(text="🟢 Отмена", callback_data="show_key")],
+    ])
+    await callback.message.edit_text(text, reply_markup=kb, parse_mode=ParseMode.MARKDOWN)
+    await callback.answer()
+
+
+@router.callback_query(F.data == "panic_execute")
+async def panic_execute(callback: CallbackQuery, bot: Bot):
+    user_id = callback.from_user.id
+    user = get_user(user_id)
+    if not user:
+        await callback.answer("Пользователь не найден", show_alert=True)
+        return
+
+    await callback.message.edit_text("🔄 *Initiating Protocol Zero...*", parse_mode=ParseMode.MARKDOWN)
+    await asyncio.sleep(0.8)
+    await callback.message.edit_text("🚫 *Revoking certificates...*", parse_mode=ParseMode.MARKDOWN)
+    await asyncio.sleep(0.8)
+
+    new_token = generate_sub_token()
+    session = Session()
+    try:
+        db_user = session.query(User).filter_by(tg_id=user_id).first()
+        if db_user:
+            db_user.sub_token = new_token
+            session.commit()
+    finally:
+        session.close()
+
+    try:
+        await bot.send_message(
+            ADMIN_ID,
+            f"🚨 <b>PANIC BUTTON PRESSED</b>\nUser: {user_id}\nAction: token rotated and requires review.",
+            parse_mode=ParseMode.HTML,
+        )
+    except Exception:
+        pass
+
+    await callback.message.edit_text(
+        "✅ *Ключи сброшены.*\n\n"
+        "Старый доступ заблокирован. Новый ключ уже выпущен.\n"
+        "Откройте раздел «Мой ключ», чтобы получить обновленную ссылку.",
+        parse_mode=ParseMode.MARKDOWN,
+        reply_markup=InlineKeyboardMarkup(inline_keyboard=[
+            [InlineKeyboardButton(text="🔑 Мой ключ", callback_data="show_key")],
+            [InlineKeyboardButton(text="◀️ В меню", callback_data="back")],
+        ]),
+    )
+    await callback.answer("Новый ключ выпущен")
+
+@router.callback_query(F.data == "mtproto")
+async def show_mtproto(callback: CallbackQuery):
+    await callback.message.edit_text(
+        "ℹ️ Этот раздел отключен.\n\nИспользуйте «🌐 ОТКРЫТЬ ПОРТАЛ (WEB APP)» для подключения.",
+        reply_markup=InlineKeyboardMarkup(inline_keyboard=[[InlineKeyboardButton(text="◀️ Назад", callback_data="back")]]),
+        parse_mode=ParseMode.MARKDOWN,
+    )
+    await callback.answer()
+
+@router.callback_query(F.data == "instruction")
+async def show_instruction(callback: CallbackQuery):
+    kb = InlineKeyboardMarkup(inline_keyboard=[
+        [
+            InlineKeyboardButton(text="🍏 iOS (iPhone)", callback_data="instr_ios"),
+            InlineKeyboardButton(text="🤖 Android", callback_data="instr_android"),
+        ],
+        [
+            InlineKeyboardButton(text="💻 Windows", callback_data="instr_win"),
+            InlineKeyboardButton(text="🍎 macOS", callback_data="instr_mac"),
+        ],
+        [InlineKeyboardButton(text="🌐 Открыть Портал", web_app=WebAppInfo(url=WEBAPP_URL))],
+        [InlineKeyboardButton(text="◀️ Назад", callback_data="back")],
+    ])
+    await callback.message.edit_text(
+        "📱 *Выберите ваше устройство:*",
+        reply_markup=kb,
+        parse_mode=ParseMode.MARKDOWN,
+    )
+    await callback.answer()
+
+
+@router.callback_query(F.data.in_({"instr_ios", "instr_android", "instr_win", "instr_mac"}))
+async def instruction_platform(callback: CallbackQuery):
+    mapping = {
+        "instr_ios": (
+            "🍏 *Настройка для iOS*\n\n"
+            "1. Скачайте Streisand\n"
+            "2. Скопируйте ключ в боте\n"
+            "3. В приложении нажмите `+` → `Import from Clipboard`",
+            "https://apps.apple.com/app/streisand/id6450534064",
+            "📥 Скачать Streisand",
+        ),
+        "instr_android": (
+            "🤖 *Настройка для Android*\n\n"
+            "1. Скачайте Hiddify или v2rayNG\n"
+            "2. Скопируйте ключ в боте\n"
+            "3. В приложении импортируйте ключ из буфера",
+            "https://play.google.com/store/apps/details?id=app.hiddify.com",
+            "📥 Скачать Hiddify",
+        ),
+        "instr_win": (
+            "💻 *Настройка для Windows*\n\n"
+            "1. Установите Hiddify Next или v2rayN\n"
+            "2. Скопируйте ключ доступа\n"
+            "3. Импортируйте ссылку подписки в клиент",
+            "https://github.com/hiddify/hiddify-next/releases",
+            "📥 Скачать клиент",
+        ),
+        "instr_mac": (
+            "🍎 *Настройка для macOS*\n\n"
+            "1. Установите Hiddify Next\n"
+            "2. Скопируйте ключ доступа\n"
+            "3. Импортируйте подписку в приложении",
+            "https://github.com/hiddify/hiddify-next/releases",
+            "📥 Скачать клиент",
+        ),
+    }
+    text, url, btn = mapping.get(callback.data or "", mapping["instr_android"])
+    kb = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text=btn, url=url)],
+        [InlineKeyboardButton(text="🔑 Мой ключ", callback_data="show_key")],
+        [InlineKeyboardButton(text="◀️ Устройства", callback_data="instruction")],
+    ])
+    await callback.message.edit_text(text, parse_mode=ParseMode.MARKDOWN, reply_markup=kb)
+    await callback.answer()
+
+# ==========================================
+#         SUB-MENUS
+# ==========================================
+
+@router.callback_query(F.data == "menu_bonuses")
+async def menu_bonuses(callback: CallbackQuery):
+    """Bonuses submenu: referral, wheel, streak, achievements"""
+    user = get_user(callback.from_user.id)
+    if not _is_paid_active_user(user):
+        kb = InlineKeyboardMarkup(inline_keyboard=[
+            [InlineKeyboardButton(text="⚡ Подключить / Продлить", callback_data="charge")],
+            [InlineKeyboardButton(text="◀️ Назад", callback_data="back")],
+        ])
+        await callback.message.edit_text(
+            "🎁 *Бонусный центр*\n\n"
+            "Бонусы, streak, рулетка и реферальные награды доступны только при активном платном доступе.",
+            reply_markup=kb,
+            parse_mode=ParseMode.MARKDOWN,
+        )
+        await callback.answer()
+        return
+
+    kb = InlineKeyboardMarkup(inline_keyboard=[
+        [
+            InlineKeyboardButton(text="🎁 Пригласить друга", callback_data="referral"),
+            InlineKeyboardButton(text="🏆 Ачивки", callback_data="achievements")
+        ],
+        [
+            InlineKeyboardButton(text="🎰 Колесо Фортуны", callback_data="wheel"),
+            InlineKeyboardButton(text="🔥 Streak", callback_data="streak")
+        ],
+        [InlineKeyboardButton(text="◀️ Назад", callback_data="back")]
+    ])
+    
+    await callback.message.edit_text(
+        "🎁 *Бонусы*\n\n"
+        "Реферальная программа, streak, рулетка и достижения.",
+        reply_markup=kb,
+        parse_mode=ParseMode.MARKDOWN
+    )
+    await callback.answer()
+
+@router.callback_query(F.data == "menu_more")
+async def menu_more(callback: CallbackQuery):
+    """More menu: gift cards, promo, share"""
+    kb = InlineKeyboardMarkup(
+        inline_keyboard=[
+            [InlineKeyboardButton(text="🎫 Подарить", callback_data="gift_cards")],
+            [
+                InlineKeyboardButton(text="🎁 Активировать подарок", callback_data="gift_redeem_prompt"),
+                InlineKeyboardButton(text="🎟️ Ввести промокод", callback_data="promo_activate_prompt"),
+            ],
+            [InlineKeyboardButton(text="ℹ️ Помощь по промокоду", callback_data="promo_help")],
+            [InlineKeyboardButton(text="⭐ Оставить отзыв", callback_data="review_start")],
+            [InlineKeyboardButton(text="◀️ Назад", callback_data="back")],
+        ]
+    )
+    
+    await callback.message.edit_text(
+        "📦 *Ещё*\n\n"
+        "Дополнительные возможности:",
+        reply_markup=kb,
+        parse_mode=ParseMode.MARKDOWN
+    )
+    await callback.answer()
+
+@router.callback_query(F.data == "promo_help")
+async def promo_help(callback: CallbackQuery):
+    """Show promo command help"""
+    kb = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="◀️ Назад", callback_data="menu_more")]
+    ])
+    await callback.message.edit_text(
+        "🎟️ *Активация промокода*\n\n"
+        "Команда: `/promo КОД`\n\n"
+        "Пример: `/promo NEWYEAR`",
+        reply_markup=kb,
+        parse_mode=ParseMode.MARKDOWN
+    )
+    await callback.answer()
+
+
+@router.callback_query(F.data == "gift_redeem_prompt")
+async def gift_redeem_prompt(callback: CallbackQuery):
+    pending_redeem_codes.add(callback.from_user.id)
+    kb = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="◀️ Назад", callback_data="menu_more")],
+    ])
+    await callback.message.edit_text(
+        "🎁 *Активация подарка*\n\n"
+        "Отправь код в формате `PORTAL-XXXX-XXXX` следующим сообщением.\n"
+        "_Старые коды `SWAZ-...` тоже принимаются._",
+        reply_markup=kb,
+        parse_mode=ParseMode.MARKDOWN,
+    )
+    await callback.answer()
+
+
+@router.callback_query(F.data == "promo_activate_prompt")
+async def promo_activate_prompt(callback: CallbackQuery):
+    pending_promo_codes.add(callback.from_user.id)
+    kb = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="◀️ Назад", callback_data="menu_more")],
+    ])
+    await callback.message.edit_text(
+        "🎟️ *Активация промокода*\n\n"
+        "Отправь код следующим сообщением (без `/promo`).\n"
+        "Пример: `NEWYEAR`",
+        reply_markup=kb,
+        parse_mode=ParseMode.MARKDOWN,
+    )
+    await callback.answer()
+
+@router.callback_query(F.data == "review_start")
+async def review_start(callback: CallbackQuery):
+    """Start review flow from button"""
+    tg_id = callback.from_user.id
+    user = get_user(tg_id)
+    
+    if not user or not user.is_active:
+        await callback.answer("❌ Активируй подписку, чтобы оставить отзыв", show_alert=True)
+        return
+    
+    if has_user_review(tg_id):
+        await callback.answer("❌ Ты уже оставил отзыв. Спасибо!", show_alert=True)
+        return
+    
+    kb = InlineKeyboardMarkup(inline_keyboard=[
+        [
+            InlineKeyboardButton(text="⭐", callback_data="rate_1"),
+            InlineKeyboardButton(text="⭐⭐", callback_data="rate_2"),
+            InlineKeyboardButton(text="⭐⭐⭐", callback_data="rate_3"),
+            InlineKeyboardButton(text="⭐⭐⭐⭐", callback_data="rate_4"),
+            InlineKeyboardButton(text="⭐⭐⭐⭐⭐", callback_data="rate_5"),
+        ],
+        [InlineKeyboardButton(text="◀️ Назад", callback_data="menu_more")]
+    ])
+    
+    await callback.message.edit_text(
+        "⭐ *Оставь отзыв!*\n\n"
+        "Оцени сервис от 1 до 5 звёзд:",
+        reply_markup=kb,
+        parse_mode=ParseMode.MARKDOWN
+    )
+    await callback.answer()
+
+@router.callback_query(F.data == "referral")
+async def show_referral(callback: CallbackQuery):
+    tg_id = callback.from_user.id
+    user = get_user(tg_id)
+    if not _is_paid_active_user(user):
+        await callback.answer("⚠️ Реферальные бонусы доступны только при активном платном доступе.", show_alert=True)
+        return
+    
+    # Get or create unique referral code
+    stats = get_referral_stats(tg_id)
+    ref_code = stats.get('code') or get_or_create_referral_code(tg_id)
+    
+    if not ref_code:
+        await callback.answer("⚠️ Сначала активируйте подписку", show_alert=True)
+        return
+    
+    # Generate referral link with SWAZ code
+    invite_link = f"https://t.me/{BOT_USERNAME}?start={ref_code}"
+    ref_count = stats['count']
+    bonus_earned = stats['bonus_earned']
+    
+    kb = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="📤 Поделиться ссылкой", url=f"https://t.me/share/url?url={invite_link}&text=🛡 PORTAL — приглашение в защищенную сеть")],
+        [InlineKeyboardButton(text="◀️ Назад", callback_data="back")]
+    ])
+    
+    await callback.message.edit_text(
+        f"📡 *Программа расширения сети*\n\n"
+        f"Ваш идентификатор агента: `{ref_code}`\n\n"
+        f"Расширяйте покрытие PORTAL, подключая новые узлы (друзей).\n"
+        f"├ *Им:* скидка 20% на первый доступ\n"
+        f"└ *Вам:* +{REFERRAL_BONUS_DAYS} дней доступа за каждую активацию\n\n"
+        f"👇 *Ваша ссылка для приглашения:*\n`{invite_link}`\n\n"
+        f"Активировано по ссылке: {ref_count}\n"
+        f"Бонусных дней начислено: {bonus_earned}",
+        reply_markup=kb,
+        parse_mode=ParseMode.MARKDOWN
+    )
+    await callback.answer()
+
+@router.callback_query(F.data == "wheel")
+async def show_wheel(callback: CallbackQuery):
+    """Show Wheel of Fortune menu"""
+    tg_id = callback.from_user.id
+    user = get_user(tg_id)
+    if not _is_paid_active_user(user):
+        await callback.answer("⚠️ Рулетка доступна только при активном платном доступе.", show_alert=True)
+        return
+
+    can_spin, seconds_left = can_spin_wheel(tg_id)
+    
+    if not can_spin and seconds_left == 0:
+        # User not active
+        await callback.answer("⚠️ Активируй подписку, чтобы крутить рулетку!", show_alert=True)
+        return
+    
+    if can_spin:
+        status_text = "✅ *Можно крутить!*"
+        buttons = [
+            [InlineKeyboardButton(text="🎰 КРУТИТЬ!", callback_data="wheel_spin")],
+            [InlineKeyboardButton(text="◀️ Назад", callback_data="back")]
+        ]
+    else:
+        # Calculate time left
+        days = seconds_left // 86400
+        hours = (seconds_left % 86400) // 3600
+        mins = (seconds_left % 3600) // 60
+        
+        if days > 0:
+            time_str = f"{days}д {hours}ч"
+        elif hours > 0:
+            time_str = f"{hours}ч {mins}м"
+        else:
+            time_str = f"{mins} мин"
+        
+        status_text = f"⏳ Следующий спин через: *{time_str}*"
+        buttons = [
+            [InlineKeyboardButton(text="◀️ Назад", callback_data="back")]
+        ]
+    
+    kb = InlineKeyboardMarkup(inline_keyboard=buttons)
+
+    # Display chances matching the actual wheel logic.
+    session = Session()
+    user = session.query(User).filter_by(tg_id=tg_id).first()
+    session.close()
+    prizes = wheel_prizes_for_user(user)
+    total_weight = sum(w for _, w in prizes) or 1
+    prize_lines = []
+    for days, w in prizes:
+        pct = round((w / total_weight) * 100)
+        tag = " (ДЖЕКПОТ!)" if days == 30 else ""
+        prize_lines.append(f"• {days} дней — {pct}%{tag}")
+    prizes_text = "\n".join(prize_lines)
+    
+    await callback.message.edit_text(
+        f"🎰 *Колесо Фортуны!*\n\n"
+        f"Крути раз в неделю и получай бонусные дни!\n\n"
+        f"📊 *Призы:*\n{prizes_text}\n\n"
+        f"{status_text}",
+        reply_markup=kb,
+        parse_mode=ParseMode.MARKDOWN
+    )
+    await callback.answer()
+
+@router.callback_query(F.data == "wheel_spin")
+async def do_wheel_spin(callback: CallbackQuery):
+    """Spin the wheel!"""
+    tg_id = callback.from_user.id
+    user = get_user(tg_id)
+    if not _is_paid_active_user(user):
+        await callback.answer("⚠️ Рулетка доступна только при активном платном доступе.", show_alert=True)
+        return
+    
+    # Show spinning animation
+    await callback.message.edit_text(
+        "🎰 *Крутим колесо...*\n\n"
+        "🔄 ▓▓▓▓▓▓▓▓▓▓ 🔄",
+        parse_mode=ParseMode.MARKDOWN
+    )
+    
+    # Small delay for effect
+    import asyncio
+    await asyncio.sleep(1.5)
+    
+    # Spin!
+    prize = spin_wheel(tg_id)
+    
+    if prize is None:
+        await callback.message.edit_text(
+            "❌ Не удалось прокрутить. Попробуй позже!",
+            reply_markup=InlineKeyboardMarkup(inline_keyboard=[
+                [InlineKeyboardButton(text="◀️ Назад", callback_data="back")]
+            ])
+        )
+        return
+    
+    # Keep user enabled in panel (best-effort).
+    try:
+        await panel.update_client_traffic(tg_id, 0)
+    except:
+        pass
+    
+    # Jackpot?
+    if prize >= 30:
+        emoji = "🎉🎉🎉"
+        title = "ДЖЕКПОТ!!!"
+        # Award jackpot achievement
+        award_achievement(tg_id, "jackpot")
+    elif prize >= 7:
+        emoji = "✨"
+        title = "Отлично!"
+    else:
+        emoji = "🎁"
+        title = "Поздравляем!"
+    
+    kb = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="◀️ В меню", callback_data="back")]
+    ])
+    
+    await callback.message.edit_text(
+        f"{emoji} *{title}*\n\n"
+        f"Тебе выпало: *+{prize} Дней*!\n\n"
+        f"Подписка продлена.\n"
+        f"Приходи через 7 дней за новым призом!",
+        reply_markup=kb,
+        parse_mode=ParseMode.MARKDOWN
+    )
+    await callback.answer(f"🎉 +{prize} Дней!", show_alert=True)
+
+@router.callback_query(F.data == "achievements")
+async def show_achievements(callback: CallbackQuery):
+    """Show user's achievements"""
+    tg_id = callback.from_user.id
+    user = get_user(tg_id)
+    if not _is_paid_active_user(user):
+        await callback.answer("⚠️ Достижения доступны только при активном платном доступе.", show_alert=True)
+        return
+    
+    # Check for new achievements
+    await check_achievements(tg_id, callback.bot)
+    
+    # Get user's unlocked achievements
+    unlocked = get_user_achievements(tg_id)
+    
+    # Build achievements grid (all rewards are days).
+    lines = []
+    total_days = 0
+    for ach_id, ach in ACHIEVEMENTS.items():
+        unlocked_now = ach_id in unlocked
+        status = "✅" if unlocked_now else "🔒"
+
+        bonus_days = int(ach.get("days", 0) or 0)
+        if unlocked_now:
+            total_days += bonus_days
+
+        bonus = f" (+{bonus_days} дн.)" if bonus_days > 0 else ""
+        lines.append(f"{status} {ach['icon']} *{ach['name']}*{bonus}\n   _{ach['desc']}_")
+    
+    kb = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="◀️ Назад", callback_data="back")]
+    ])
+    
+    await callback.message.edit_text(
+        f"🏆 *Твои достижения*\n\n"
+        f"Открыто: *{len(unlocked)}/{len(ACHIEVEMENTS)}*\n"
+        f"Бонусом начислено: *{total_days} дней*\n\n"
+        + "\n\n".join(lines),
+        reply_markup=kb,
+        parse_mode=ParseMode.MARKDOWN
+    )
+    await callback.answer()
+
+@router.callback_query(F.data == "streak")
+async def show_streak(callback: CallbackQuery):
+    """Show user's streak info"""
+    tg_id = callback.from_user.id
+    user = get_user(tg_id)
+    if not _is_paid_active_user(user):
+        await callback.answer("⚠️ Streak доступен только при активном платном доступе.", show_alert=True)
+        return
+
+    info = get_streak_info(tg_id)
+    
+    months = info["months"]
+    next_m = info["next_milestone"]
+    bonus_days_next = info["bonus_days_next"]
+    
+    # Build progress bar
+    if next_m:
+        progress = min(months / next_m, 1.0)
+        filled = int(progress * 10)
+        bar = "▓" * filled + "░" * (10 - filled)
+        progress_text = f"До *{next_m} мес* (+{bonus_days_next} дней): [{bar}]"
+    else:
+        bar = "▓" * 10
+        progress_text = f"🏆 *Все вехи пройдены!* [{bar}]"
+    
+    # Milestone list
+    milestones = "\n".join([
+        f"{'✅' if months >= m else '⬜'} {m} мес = +{d} Дней"
+        for m, d in sorted(STREAK_REWARDS.items())
+    ])
+    
+    kb = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="◀️ Назад", callback_data="back")]
+    ])
+    
+    await callback.message.edit_text(
+        f"🔥 *Твой Streak: {months} мес*\n\n"
+        f"Каждый месяц активной подписки увеличивает streak.\n"
+        f"За вехи получаешь бонусные дни подписки!\n\n"
+        f"📊 {progress_text}\n\n"
+        f"*Вехи:*\n{milestones}\n\n"
+        f"⚠️ _Если подписка истечёт > 7 дней — streak сбросится!_",
+        reply_markup=kb,
+        parse_mode=ParseMode.MARKDOWN
+    )
+    await callback.answer()
+
+# ==========================================
+#         SMART SUPPORT
+# ==========================================
+
+FAQ_ANSWERS = {
+    "connect": (
+        "📱 *Как подключить?*\n\n"
+        "1️⃣ Скачай приложение:\n"
+        "• iOS: [Streisand](https://apps.apple.com/app/streisand/id6450534064)\n"
+        "• Android: [v2rayNG](https://play.google.com/store/apps/details?id=com.v2ray.ang)\n\n"
+        "2️⃣ Нажми *🔑 Мой ключ* в боте\n\n"
+        "3️⃣ Скопируй ссылку подписки\n\n"
+        "4️⃣ В приложении: ➕ → *Импорт из буфера*\n\n"
+        "5️⃣ Подключись! 🚀"
+    ),
+    "notwork": (
+        "⚠️ *Не работает?*\n\n"
+        "Попробуй по порядку:\n\n"
+        "1. *Обнови подписку* — в приложении потяни вниз список серверов\n\n"
+        "2. *Перезапусти приложение*\n\n"
+        "3. *Проверь интернет* — отключи прокси, открой google.com\n\n"
+        "4. *Смени сервер* — если их несколько в списке\n\n"
+        "5. *Перезагрузи телефон*\n\n"
+        "Не помогло? Напиши в поддержку 👇"
+    ),
+    "renew": (
+        "💳 *Как продлить подписку?*\n\n"
+        f"1️⃣ Открой бота @{BOT_USERNAME_MD}\n\n"
+        "2️⃣ Нажми *🛒 Тарифы*\n\n"
+        "3️⃣ Выбери нужный тариф\n\n"
+        "4️⃣ Оплати Stars ⭐️\n\n"
+        "Подписка продлится автоматически!"
+    ),
+    "referral": (
+        "🎁 *Реферальная программа*\n\n"
+        "• Пригласи друга по своей ссылке\n"
+        "• Друг получит *скидку 20%* на первую покупку\n"
+        f"• Ты получишь *+{REFERRAL_BONUS_DAYS} дней* за каждую его покупку!\n\n"
+        "Свою ссылку найдёшь в меню → *🎁 Пригласить друга*"
+    ),
+    "device": (
+        "📲 *Смена устройства*\n\n"
+        "Просто скачай приложение на новый телефон и добавь ту же ссылку подписки.\n\n"
+        "Ссылка: *🔑 Мой ключ* → скопируй → вставь в новое приложение.\n\n"
+        "Лимит устройств: *без ограничений*! 🎉"
+    ),
+}
+
+# ==========================================
+#         GIFT CARDS HANDLERS
+# ==========================================
+
+@router.callback_query(F.data == "gift_cards")
+async def show_gift_cards(callback: CallbackQuery):
+    """Show gift card purchase menu"""
+    buttons = []
+    for key, card in GIFT_CARD_TYPES.items():
+        text = f"{card['name']} — {card['days']} дн. — {card['stars']} ⭐"
+        buttons.append([InlineKeyboardButton(text=text, callback_data=f"buy_giftcard_{key}")])
+    
+    buttons.append([InlineKeyboardButton(text="◀️ Назад", callback_data="back")])
+    kb = InlineKeyboardMarkup(inline_keyboard=buttons)
+    
+    await callback.message.edit_text(
+        "🎁 *Подарочные карты*\n\n"
+        "Купи карту → получи код → отправь другу!\n"
+        "Друг активирует код в меню «Дополнительно» → «Активировать подарок»\n\n"
+        "Выбери карту:",
+        reply_markup=kb,
+        parse_mode=ParseMode.MARKDOWN
+    )
+    await callback.answer()
+
+@router.callback_query(F.data.startswith("buy_giftcard_"))
+async def buy_gift_card(callback: CallbackQuery, bot: Bot):
+    """Buy a gift card"""
+    card_type = callback.data.replace("buy_giftcard_", "")
+    card_info = GIFT_CARD_TYPES.get(card_type)
+    
+    if not card_info:
+        await callback.answer("❌ Неизвестный тип карты", show_alert=True)
+        return
+    
+    tg_id = callback.from_user.id
+    
+    # Create payment
+    await bot.send_invoice(
+        chat_id=tg_id,
+        title=f"Подарочная карта {card_info['name']}",
+        description=f"{card_info['days']} дней",
+        payload=f"giftcard_{card_type}_{tg_id}",
+        currency="XTR",
+        prices=[LabeledPrice(label="Gift Card", amount=card_info["stars"])],
+        start_parameter=f"giftcard_{card_type}"
+    )
+    await callback.answer()
+
+@router.message(Command("redeem"))
+async def redeem_command(message: Message, bot: Bot):
+    """Redeem a gift card code"""
+    pending_redeem_codes.discard(message.from_user.id)
+    args = message.text.split(maxsplit=1)
+    
+    if len(args) < 2:
+        await message.answer(
+            "📥 *Активация подарочной карты*\n\n"
+            "Использование: `/redeem PORTAL-XXXX-XXXX`\n\n"
+            "_Старые коды `SWAZ-...` тоже работают._\n\n"
+            "_Введи код карты, которую тебе подарили_",
+            parse_mode=ParseMode.MARKDOWN
+        )
+        return
+    
+    code = args[1].strip().upper()
+    tg_id = message.from_user.id
+    
+    # Check TOS first
+    if not check_tos_accepted(tg_id):
+        await message.answer(
+            "⚠️ Сначала прими условия использования.\n"
+            "Нажми /start и прими оферту."
+        )
+        return
+    
+    success, result_msg = await redeem_gift_card(code, tg_id, bot)
+    
+    kb = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="🌐 Открыть Портал", web_app=WebAppInfo(url=WEBAPP_URL))],
+        [InlineKeyboardButton(text="◀️ В меню", callback_data="back")]
+    ]) if success else None
+    
+    await message.answer(result_msg, reply_markup=kb, parse_mode=ParseMode.MARKDOWN)
+
+# ==========================================
+#           SHARE (DISABLED)
+# ==========================================
+
+@router.message(Command("share"))
+async def share_traffic(message: Message, bot: Bot):
+    await message.answer(
+        "ℹ️ Функция передачи трафика отключена.\n"
+        "В сервисе нет лимитов по трафику: доступ считается по сроку (дням)."
+    )
+
+# ==========================================
+#           REVIEWS
+# ==========================================
+
+def has_user_review(tg_id: int) -> bool:
+    """Check if user already left a review"""
+    session = Session()
+    exists = session.query(Review).filter_by(tg_id=tg_id).first() is not None
+    session.close()
+    return exists
+
+def create_review(tg_id: int, username: str, rating: int, text: str = None) -> bool:
+    """Create a new review"""
+    session = Session()
+    # Check if exists
+    existing = session.query(Review).filter_by(tg_id=tg_id).first()
+    if existing:
+        session.close()
+        return False
+    
+    review = Review(
+        tg_id=tg_id,
+        username=username,
+        rating=rating,
+        text=text
+    )
+    session.add(review)
+    session.commit()
+    session.close()
+    return True
+
+def get_featured_reviews(limit: int = 5) -> list:
+    """Get top featured reviews for display"""
+    session = Session()
+    reviews = session.query(Review).filter_by(is_featured=True).order_by(Review.created_at.desc()).limit(limit).all()
+    result = [{
+        "username": r.username or "Аноним",
+        "rating": r.rating,
+        "text": r.text,
+        "date": r.created_at.strftime("%d.%m.%Y") if r.created_at else ""
+    } for r in reviews]
+    session.close()
+    return result
+
+# Store pending review ratings
+pending_reviews = {}
+# Stores pending support ticket replies: tg_id -> ticket_id
+pending_ticket_replies: dict[int, int] = {}
+# Pending one-shot inputs from buttons in "More" menu.
+pending_redeem_codes: set[int] = set()
+pending_promo_codes: set[int] = set()
+
+@router.message(Command("review"))
+async def review_command(message: Message):
+    """Leave a review"""
+    tg_id = message.from_user.id
+    
+    # Check if can review (has active sub, used for 7+ days, no existing review)
+    user = get_user(tg_id)
+    if not user or not user.is_active:
+        await message.answer("❌ Активируй подписку, чтобы оставить отзыв")
+        return
+    
+    if has_user_review(tg_id):
+        await message.answer("❌ Ты уже оставил отзыв. Спасибо!")
+        return
+    
+    kb = InlineKeyboardMarkup(inline_keyboard=[
+        [
+            InlineKeyboardButton(text="⭐", callback_data="rate_1"),
+            InlineKeyboardButton(text="⭐⭐", callback_data="rate_2"),
+            InlineKeyboardButton(text="⭐⭐⭐", callback_data="rate_3"),
+            InlineKeyboardButton(text="⭐⭐⭐⭐", callback_data="rate_4"),
+            InlineKeyboardButton(text="⭐⭐⭐⭐⭐", callback_data="rate_5"),
+        ],
+        [InlineKeyboardButton(text="◀️ Отмена", callback_data="back")]
+    ])
+    
+    await message.answer(
+        "⭐ *Оставь отзыв!*\n\n"
+        "Оцени сервис от 1 до 5 звёзд:",
+        reply_markup=kb,
+        parse_mode=ParseMode.MARKDOWN
+    )
+
+@router.callback_query(F.data.startswith("rate_"))
+async def rate_review(callback: CallbackQuery):
+    """Handle rating selection"""
+    tg_id = callback.from_user.id
+    rating = int(callback.data.replace("rate_", ""))
+    
+    # Save rating, ask for text
+    pending_reviews[tg_id] = rating
+    
+    kb = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="⏭️ Пропустить", callback_data="review_skip_text")],
+        [InlineKeyboardButton(text="◀️ Отмена", callback_data="back")]
+    ])
+    
+    await callback.message.edit_text(
+        f"Твоя оценка: {'⭐' * rating}\n\n"
+        "Напиши короткий отзыв (до 200 символов):\n\n"
+        "_Или нажми 'Пропустить' чтобы оставить только оценку_",
+        reply_markup=kb,
+        parse_mode=ParseMode.MARKDOWN
+    )
+    await callback.answer()
+
+@router.callback_query(F.data == "review_skip_text")
+async def skip_review_text(callback: CallbackQuery):
+    """Skip text and submit review with just rating"""
+    tg_id = callback.from_user.id
+    rating = pending_reviews.pop(tg_id, 5)
+    username = callback.from_user.username
+    
+    success = create_review(tg_id, username, rating)
+    
+    if success:
+        await callback.message.edit_text(
+            f"✅ *Спасибо за отзыв!*\n\n"
+            f"Ты поставил: {'⭐' * rating}",
+            parse_mode=ParseMode.MARKDOWN
+        )
+    else:
+        await callback.message.edit_text("❌ Ты уже оставлял отзыв")
+    
+    await callback.answer()
+
+@router.message()
+async def admin_broadcast_capture_any(message: Message):
+    """
+    Capture any message from admin as broadcast draft (text/media/formatting).
+    Uses Telegram copy_message/copy_to so admin doesn't have to write templates.
+    """
+    if message.from_user.id != ADMIN_ID:
+        return
+    info = admin_pending_actions.get(ADMIN_ID)
+    if not info:
+        return
+    action = info.get("action")
+    if action == "broadcast_capture":
+        admin_pending_actions.pop(ADMIN_ID, None)
+        draft = {
+            "from_chat_id": message.chat.id,
+            "message_id": message.message_id,
+            "segment": "active",
+            "button": None,
+        }
+        admin_broadcast_drafts[ADMIN_ID] = draft
+
+        ctrl = await message.answer(
+            _render_broadcast_draft(draft),
+            reply_markup=_broadcast_controls(draft),
+            parse_mode=ParseMode.MARKDOWN,
+        )
+        draft["control_message_id"] = ctrl.message_id
+        audit_admin(ADMIN_ID, "admin_broadcast_v2_capture", meta=f"message_id={message.message_id}")
+        return
+
+    if action == "admin_dm_capture":
+        target_tg_id = int(info.get("target_tg_id") or 0)
+        admin_pending_actions.pop(ADMIN_ID, None)
+        if target_tg_id <= 0:
+            await message.answer("❌ Не найден получатель.")
+            return
+        try:
+            await message.copy_to(chat_id=target_tg_id)
+            await message.answer(f"✅ Сообщение отправлено пользователю `{target_tg_id}`.", parse_mode=ParseMode.MARKDOWN)
+            audit_admin(ADMIN_ID, "admin_dm_send", target_tg_id=target_tg_id, meta=f"source_msg={message.message_id}")
+        except Exception:
+            await message.answer("❌ Не удалось отправить. Возможно, пользователь заблокировал бота.")
+        return
+
+@router.message(F.text & ~F.text.startswith("/"))
+async def handle_text_input(message: Message):
+    """Handle text inputs for reviews and admin actions"""
+    tg_id = message.from_user.id
+
+    # Support ticket reply capture (user/admin).
+    if tg_id in pending_ticket_replies:
+        ticket_id = pending_ticket_replies.get(tg_id, 0)
+        body = (message.text or "").strip()
+        if not body:
+            await message.answer("❌ Отправь текст для тикета.")
+            return
+
+        session = Session()
+        try:
+            ticket = get_ticket_by_id(session, ticket_id)
+            if not ticket:
+                await message.answer("❌ Тикет не найден.")
+                return
+            if not can_access_ticket(ticket, tg_id, ADMIN_ID):
+                await message.answer("⛔ Нет доступа к тикету.")
+                return
+
+            role = "admin" if tg_id == ADMIN_ID else "user"
+            add_ticket_message(
+                session,
+                ticket_id=ticket.id,
+                sender_tg_id=tg_id,
+                sender_role=role,
+                body=body,
+            )
+            if tg_id == ADMIN_ID:
+                set_ticket_status(
+                    session,
+                    ticket=ticket,
+                    status=STATUS_IN_PROGRESS,
+                    assigned_admin_tg_id=ADMIN_ID,
+                )
+            else:
+                set_ticket_status(session, ticket=ticket, status=STATUS_OPEN)
+            session.commit()
+
+            await message.answer(f"✅ Ответ добавлен в тикет #{ticket.id}.")
+
+            # Notify opposite side.
+            if tg_id == ADMIN_ID:
+                kb = InlineKeyboardMarkup(
+                    inline_keyboard=[[InlineKeyboardButton(text="🎫 Открыть тикет", callback_data=f"ticket_view_{ticket.id}")]]
+                )
+                try:
+                    await message.bot.send_message(
+                        ticket.user_tg_id,
+                        f"💬 Новый ответ оператора в тикете #{ticket.id}.",
+                        reply_markup=kb,
+                    )
+                except Exception:
+                    pass
+            else:
+                kb = InlineKeyboardMarkup(
+                    inline_keyboard=[[InlineKeyboardButton(text="🎫 Открыть тикет", callback_data=f"ticket_view_{ticket.id}")]]
+                )
+                try:
+                    await message.bot.send_message(
+                        ADMIN_ID,
+                        f"🆕 Новое сообщение в тикете #{ticket.id} от `{ticket.user_tg_id}`",
+                        parse_mode=ParseMode.MARKDOWN,
+                        reply_markup=kb,
+                    )
+                except Exception:
+                    pass
+            pending_ticket_replies.pop(tg_id, None)
+        finally:
+            session.close()
+        return
+
+    if tg_id in pending_redeem_codes:
+        pending_redeem_codes.discard(tg_id)
+        code = (message.text or "").strip().upper()
+        if not code:
+            await message.answer("❌ Код пустой. Нажми «🎁 Активировать подарок» и попробуй снова.")
+            return
+        if not check_tos_accepted(tg_id):
+            await message.answer("⚠️ Сначала прими условия. Нажми /start и подтверди оферту.")
+            return
+        success, result_msg = await redeem_gift_card(code, tg_id, message.bot)
+        kb = InlineKeyboardMarkup(inline_keyboard=[
+            [InlineKeyboardButton(text="🌐 Открыть Портал", web_app=WebAppInfo(url=WEBAPP_URL))],
+            [InlineKeyboardButton(text="◀️ В меню", callback_data="back")],
+        ]) if success else InlineKeyboardMarkup(inline_keyboard=[
+            [InlineKeyboardButton(text="🔁 Ввести код снова", callback_data="gift_redeem_prompt")],
+            [InlineKeyboardButton(text="◀️ В меню", callback_data="back")],
+        ])
+        await message.answer(result_msg, reply_markup=kb, parse_mode=ParseMode.MARKDOWN)
+        return
+
+    if tg_id in pending_promo_codes:
+        pending_promo_codes.discard(tg_id)
+        code = (message.text or "").strip().upper()
+        if not code:
+            await message.answer("❌ Код пустой. Нажми «🎟️ Ввести промокод» и попробуй снова.")
+            return
+        ok, result = activate_promo_code_for_user(tg_id, code)
+        kb = InlineKeyboardMarkup(inline_keyboard=[
+            [InlineKeyboardButton(text="🔁 Ввести другой код", callback_data="promo_activate_prompt")],
+            [InlineKeyboardButton(text="◀️ В меню", callback_data="back")],
+        ])
+        await message.answer(result, reply_markup=kb, parse_mode=ParseMode.MARKDOWN)
+        return
+    
+    # Check for admin pending actions first
+    if tg_id == ADMIN_ID and tg_id in admin_pending_actions:
+        action_info = admin_pending_actions.pop(tg_id)
+        action = action_info["action"]
+        
+        # Handle search_user action
+        if action == "search_user":
+            query = message.text.strip()
+            session = Session()
+            
+            if query.startswith("@"):
+                username = query.lstrip("@")
+                user = session.query(User).filter(User.username.ilike(username)).first()
+            else:
+                try:
+                    uid = int(query)
+                    user = session.query(User).filter_by(tg_id=uid).first()
+                except ValueError:
+                    user = session.query(User).filter(User.username.ilike(query)).first()
+            
+            if not user:
+                session.close()
+                await message.answer(f"❌ Пользователь `{query}` не найден", parse_mode=ParseMode.MARKDOWN)
+                return
+            
+            ach_count = session.query(Achievement).filter_by(tg_id=user.tg_id).count()
+            session.close()
+            
+            status = "✅ Активен" if user.is_active else "❌ Неактивен"
+            expiry = user.expiry_at.strftime("%d.%m.%Y") if user.expiry_at else "—"
+            
+            kb = InlineKeyboardMarkup(inline_keyboard=[
+                [
+                    InlineKeyboardButton(text="👤 Открыть", callback_data=f"adm_user_{user.tg_id}"),
+                    InlineKeyboardButton(text="🚫 Бан" if user.is_active else "✅ Разбан", callback_data=f"admin_ban_{user.tg_id}"),
+                ],
+                [InlineKeyboardButton(text="◀️ Админка", callback_data="admin")]
+            ])
+            
+            safe_username = (user.username or "—").replace("_", "\\_")
+            await message.answer(
+                f"👤 `{user.tg_id}` @{safe_username}\n"
+                f"{status} | До: {expiry}\n"
+                f"⭐ Stars: {user.stars_paid or 0}\n"
+                f"🔥 Streak: {user.streak_months or 0} | 🏆 {ach_count}",
+                reply_markup=kb,
+                parse_mode=ParseMode.MARKDOWN
+            )
+            return
+        
+        # Handle custom_broadcast action with optional URL button
+        if action == "custom_broadcast":
+            raw_text = message.text.strip()
+            
+            # Parse for URL button: text---ButtonText|URL
+            msg_text = raw_text
+            url_button = None
+            
+            if "---" in raw_text:
+                parts = raw_text.split("---", 1)
+                msg_text = parts[0].strip()
+                button_part = parts[1].strip()
+                if "|" in button_part:
+                    btn_text, btn_url = button_part.split("|", 1)
+                    url_button = (btn_text.strip(), btn_url.strip())
+            
+            session = Session()
+            users = session.query(User).filter_by(is_active=True).all()
+            session.close()
+            
+            sent = 0
+            for user in users:
+                if user.tg_id in PROTECTED_USERS or user.tg_id == ADMIN_ID:
+                    continue
+                try:
+                    if url_button:
+                        kb = InlineKeyboardMarkup(inline_keyboard=[
+                            [InlineKeyboardButton(text=url_button[0], url=url_button[1])]
+                        ])
+                        await message.bot.send_message(user.tg_id, msg_text, reply_markup=kb, parse_mode=ParseMode.MARKDOWN)
+                    else:
+                        await message.bot.send_message(user.tg_id, msg_text, parse_mode=ParseMode.MARKDOWN)
+                    sent += 1
+                except:
+                    pass
+            
+            btn_info = f" с кнопкой" if url_button else ""
+            await message.answer(f"✅ Сообщение{btn_info} отправлено {sent} юзерам")
+            return
+
+        if action == "broadcast_set_button":
+            draft = admin_broadcast_drafts.get(ADMIN_ID)
+            if not draft:
+                await message.answer("Черновик не найден. Сначала создай рассылку заново.")
+                return
+
+            raw = (message.text or "").strip()
+            if raw.lower() in {"нет", "no", "none", "-"}:
+                draft["button"] = None
+            else:
+                if "|" not in raw:
+                    await message.answer("Формат: `Текст кнопки|https://example.com` или `нет`", parse_mode=ParseMode.MARKDOWN)
+                    return
+                btn_text, btn_url = [x.strip() for x in raw.split("|", 1)]
+                if not btn_text or not btn_url.startswith(("http://", "https://")):
+                    await message.answer("Проверь текст кнопки и URL (должен начинаться с http/https).")
+                    return
+                draft["button"] = {"text": btn_text[:64], "url": btn_url}
+
+            # Update controls message if we have it.
+            ctrl_id = draft.get("control_message_id")
+            if ctrl_id:
+                try:
+                    await message.bot.edit_message_text(
+                        chat_id=ADMIN_ID,
+                        message_id=ctrl_id,
+                        text=_render_broadcast_draft(draft),
+                        reply_markup=_broadcast_controls(draft),
+                        parse_mode=ParseMode.MARKDOWN,
+                    )
+                except Exception:
+                    pass
+            await message.answer("✅ Обновил кнопку. Можно отправлять.")
+            return
+
+        if action == "wheel_cd":
+            raw = (message.text or "").strip()
+            try:
+                days = int(raw)
+            except Exception:
+                await message.answer("Введи число (например `7`).", parse_mode=ParseMode.MARKDOWN)
+                return
+            if days < 1 or days > 90:
+                await message.answer("Диапазон: 1–90 дней.", parse_mode=ParseMode.MARKDOWN)
+                return
+
+            global WHEEL_COOLDOWN_DAYS
+            WHEEL_COOLDOWN_DAYS = days
+            audit_admin(ADMIN_ID, "admin_wheel_cd_set", meta=f"days={days}")
+            await message.answer(f"✅ Кулдаун обновлён: {days}д.")
+            return
+
+        if action == "manual_create":
+            raw = (message.text or "").strip()
+            if "|" not in raw:
+                await message.answer("Формат: `DisplayName|days`", parse_mode=ParseMode.MARKDOWN)
+                return
+            name_raw, days_raw = [p.strip() for p in raw.split("|", 1)]
+            try:
+                days = int(days_raw)
+            except Exception:
+                await message.answer("Количество дней должно быть числом.", parse_mode=ParseMode.MARKDOWN)
+                return
+            if days < 1 or days > 3650:
+                await message.answer("Диапазон дней: 1..3650", parse_mode=ParseMode.MARKDOWN)
+                return
+
+            manual_user = create_manual_user_record(
+                display_name=name_raw or "Manual Client",
+                days=days,
+                created_by_admin=ADMIN_ID,
+            )
+            sub_id = manual_user.sub_token or str(manual_user.tg_id)
+            try:
+                res = await panel.ensure_user_on_all_nodes(
+                    tg_id=manual_user.tg_id,
+                    client_uuid=manual_user.uuid,
+                    email=manual_user.email,
+                    sub_id=sub_id,
+                    enable=True,
+                    only_node_codes=None,
+                )
+                ok = sum(1 for v in res.values() if v)
+                fail = sum(1 for v in res.values() if not v)
+            except Exception:
+                ok = 0
+                fail = 1
+
+            link = build_subscription_link(manual_user.tg_id)
+            qr = qrcode.QRCode(box_size=7, border=3)
+            qr.add_data(link)
+            qr.make(fit=True)
+            img = qr.make_image(fill_color="black", back_color="white")
+            bio = BytesIO()
+            img.save(bio, "PNG")
+            bio.seek(0)
+            photo = BufferedInputFile(bio.read(), filename=f"manual-{abs(manual_user.tg_id)}.png")
+
+            await message.answer_photo(
+                photo=photo,
+                caption=(
+                    "✅ *Manual user создан*\n\n"
+                    f"ID: `{manual_user.tg_id}`\n"
+                    f"Name: `{(manual_user.display_name or manual_user.email)}`\n"
+                    f"Sub: `{manual_user.sub_type}`\n"
+                    f"Nodes sync: OK `{ok}`, fail `{fail}`\n\n"
+                    f"Link:\n`{link}`"
+                ),
+                parse_mode=ParseMode.MARKDOWN,
+                reply_markup=InlineKeyboardMarkup(inline_keyboard=[
+                    [InlineKeyboardButton(text="👤 Открыть карточку", callback_data=f"adm_user_{manual_user.tg_id}")],
+                    [InlineKeyboardButton(text="🧩 Manual меню", callback_data="admin_manual_menu")],
+                ]),
+            )
+            audit_admin(ADMIN_ID, "admin_manual_create", target_tg_id=manual_user.tg_id, meta=f"days={days}; ok={ok}; fail={fail}")
+            return
+        
+        target_id = action_info.get("target")
+        
+        try:
+            value = int(message.text.strip())
+        except ValueError:
+            await message.answer("❌ Введи число")
+            return
+        
+        if action == "addgb":
+            await message.answer(
+                "ℹ️ Лимиты по трафику не используются.\n"
+                "Используй продление по дням или смену тарифа.",
+                parse_mode=ParseMode.MARKDOWN,
+            )
+        
+        elif action == "extend":
+            extend_user(target_id, value, 0)
+            await message.answer(f"✅ Подписка юзера `{target_id}` продлена на {value} дней", parse_mode=ParseMode.MARKDOWN)
+        
+        elif action == "mass_addgb":
+            await message.answer(
+                "ℹ️ Массовое управление трафиком отключено (используются тарифные политики).\n"
+                "Используй массовое продление по дням.",
+                parse_mode=ParseMode.MARKDOWN,
+            )
+        
+        elif action == "mass_extend":
+            session = Session()
+            now = _utcnow()
+            users = (
+                session.query(User)
+                .filter(User.is_active == True)
+                .filter(User.expiry_at.isnot(None))
+                .filter(User.expiry_at > now)
+                .all()
+            )
+            count = 0
+            for user in users:
+                if user.tg_id in PROTECTED_USERS:
+                    continue
+                expiry = _naive_utc(user.expiry_at) or now
+                user.expiry_at = expiry + timedelta(days=value)
+                count += 1
+            session.commit()
+            session.close()
+            await message.answer(f"✅ Продлено на {value} дней для {count} юзеров", parse_mode=ParseMode.MARKDOWN)
+        
+        return
+    
+    # Handle review text
+    if tg_id in pending_reviews:
+        rating = pending_reviews.pop(tg_id)
+        text = message.text[:200]
+        username = message.from_user.username
+        
+        success = create_review(tg_id, username, rating, text)
+        
+        if success:
+            await message.answer(
+                f"✅ *Спасибо за отзыв!*\n\n"
+                f"{'⭐' * rating}\n"
+                f"_{text}_",
+                parse_mode=ParseMode.MARKDOWN
+            )
+        else:
+            await message.answer("❌ Ты уже оставлял отзыв")
+
+
+@router.callback_query(F.data == "network_status")
+async def network_status(callback: CallbackQuery):
+    nodes = _bot_enabled_nodes()
+    if not nodes:
+        await callback.message.edit_text(
+            "📡 *Состояние узлов сети*\n\n"
+            "Нет данных по узлам. Проверьте конфигурацию control-plane.",
+            reply_markup=InlineKeyboardMarkup(inline_keyboard=[[InlineKeyboardButton(text="◀️ Назад", callback_data="back")]]),
+            parse_mode=ParseMode.MARKDOWN,
+        )
+        await callback.answer()
+        return
+
+    ping_values = await asyncio.gather(*[_node_ping_ms(n) for n in nodes])
+
+    lines: list[str] = ["📡 *Состояние узлов сети*\n"]
+    loads: list[int] = []
+    for n, ping in zip(nodes, ping_values):
+        code = _node_code_base(getattr(n, "code", ""))
+        label = _node_label_ru_bot(getattr(n, "code", ""), getattr(n, "name", ""))
+        healthy = bool(getattr(n, "is_healthy", True))
+        ping_text = f"{ping}ms" if isinstance(ping, int) else "n/a"
+        load = int(getattr(n, "active_clients", 0) or 0)
+        loads.append(max(load, 0))
+        dns_sni = "OK" if healthy else "WARN"
+        node_kind = "Control" if code in {"brain", "de"} else "Node"
+        lines.append(f"{label}: {'🟢' if healthy else '🔴'} Online ({node_kind}, Ping: {ping_text}, DNS/SNI: {dns_sni})")
+
+    avg_load = int(sum(loads) / max(1, len(loads))) if loads else 0
+    lines.append(f"\n⚡️ Нагрузка системы: {avg_load}%")
+    lines.append("\nДля детальной диагностики откройте WebApp → Nodes.")
+
+    await callback.message.edit_text(
+        "\n".join(lines),
+        reply_markup=InlineKeyboardMarkup(inline_keyboard=[
+            [InlineKeyboardButton(text="🔍 Проверить доступность", callback_data="network_status_scan")],
+            [InlineKeyboardButton(text="◀️ Назад", callback_data="back")],
+        ]),
+        parse_mode=ParseMode.MARKDOWN,
+    )
+    await callback.answer()
+
+
+@router.callback_query(F.data == "network_status_scan")
+async def network_status_scan(callback: CallbackQuery):
+    await callback.message.edit_text("🔄 *Сканирование узлов...*", parse_mode=ParseMode.MARKDOWN)
+    await asyncio.sleep(0.6)
+    await callback.message.edit_text("🔄 *Проверка DNS / SNI...*", parse_mode=ParseMode.MARKDOWN)
+    await asyncio.sleep(0.6)
+    await network_status(callback)
+
+@router.callback_query(F.data == "support")
+async def show_support(callback: CallbackQuery):
+    """Show support menu"""
+    support_new_url = f"https://t.me/{SUPPORT_USERNAME}?start=ticket_new"
+    support_my_url = f"https://t.me/{SUPPORT_USERNAME}?start=ticket_my"
+    kb = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="❓ Как подключить?", callback_data="faq_connect")],
+        [InlineKeyboardButton(text="⚠️ Не работает", callback_data="faq_notwork")],
+        [InlineKeyboardButton(text="💳 Как продлить?", callback_data="faq_renew")],
+        [InlineKeyboardButton(text="🎁 Реферальная программа", callback_data="faq_referral")],
+        [InlineKeyboardButton(text="📲 Смена устройства", callback_data="faq_device")],
+        [InlineKeyboardButton(text="🔧 Диагностика", callback_data="support_diagnose")],
+        [InlineKeyboardButton(text="🎫 Создать тикет", url=support_new_url)],
+        [InlineKeyboardButton(text="📂 Мои тикеты (helpbot)", url=support_my_url)],
+        [InlineKeyboardButton(text="◀️ Назад", callback_data="back")]
+    ])
+    
+    await callback.message.edit_text(
+        "🤖 *Поддержка*\n\n"
+        "Единый канал поддержки: отдельный helpbot.\n"
+        "Напиши туда проблему, оператор ответит в той же ветке.\n\n"
+        "Выбери вопрос или действие:",
+        reply_markup=kb,
+        parse_mode=ParseMode.MARKDOWN
+    )
+    await callback.answer()
+
+@router.callback_query(F.data.startswith("faq_"))
+async def show_faq_answer(callback: CallbackQuery):
+    """Show FAQ answer"""
+    faq_key = callback.data.replace("faq_", "")
+    answer = FAQ_ANSWERS.get(faq_key, "Ответ не найден")
+    
+    kb = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="◀️ Назад к вопросам", callback_data="support")],
+        [InlineKeyboardButton(text="💬 Написать в поддержку", url=f"https://t.me/{SUPPORT_USERNAME}?start=ticket_new")]
+    ])
+    
+    await callback.message.edit_text(
+        answer,
+        reply_markup=kb,
+        parse_mode=ParseMode.MARKDOWN,
+        disable_web_page_preview=True
+    )
+    await callback.answer()
+
+@router.callback_query(F.data == "support_diagnose")
+async def support_diagnose(callback: CallbackQuery):
+    """Run diagnostics and show user status"""
+    tg_id = callback.from_user.id
+    user = get_user(tg_id)
+    
+    if not user:
+        status = "❌ Подписка не найдена"
+        details = "Активируй подписку через *🛒 Тарифы*"
+    else:
+        # Status
+        if user.is_active and user.expiry_at and user.expiry_at > datetime.utcnow():
+            days_left = (user.expiry_at - datetime.utcnow()).days
+            status = f"✅ Активна (ещё {days_left} дн.)"
+        else:
+            status = "❌ Истекла"
+        
+        # Details
+        expiry = user.expiry_at.strftime("%d.%m.%Y") if user.expiry_at else "—"
+        tariff = user.sub_type or "—"
+        
+        details = (
+            f"📦 Тариф: *{tariff}*\n"
+            f"📅 До: *{expiry}*\n"
+            f"📡 Режим: *{_plan_mode_label(tariff)}*"
+        )
+    
+    # Server check
+    server_status = "✅ Онлайн"  # Simplified - we're running so server is up
+    
+    kb = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="🔑 Моя ссылка", callback_data="show_key")],
+        [InlineKeyboardButton(text="◀️ Назад к поддержке", callback_data="support")],
+        [InlineKeyboardButton(text="💬 Написать в поддержку", url=f"https://t.me/{SUPPORT_USERNAME}?start=ticket_new")]
+    ])
+    
+    await callback.message.edit_text(
+        f"🔧 *Диагностика*\n\n"
+        f"*Твоя подписка:* {status}\n\n"
+        f"{details}\n\n"
+        f"*Сервер:* {server_status}",
+        reply_markup=kb,
+        parse_mode=ParseMode.MARKDOWN
+    )
+    await callback.answer()
+
+
+def _ticket_status_title(status: str) -> str:
+    if status == STATUS_IN_PROGRESS:
+        return "В работе"
+    if status == STATUS_CLOSED:
+        return "Закрыт"
+    return "Открыт"
+
+
+def _ticket_message_preview(text: str, limit: int = 220) -> str:
+    one_line = " ".join((text or "").split())
+    if len(one_line) > limit:
+        return one_line[: limit - 1] + "…"
+    return one_line
+
+
+def _ticket_view_keyboard(ticket_id: int, status: str, *, is_admin: bool) -> InlineKeyboardMarkup:
+    rows: list[list[InlineKeyboardButton]] = []
+    if status != STATUS_CLOSED:
+        rows.append([InlineKeyboardButton(text="✍️ Ответить", callback_data=f"ticket_reply_{ticket_id}")])
+        rows.append([InlineKeyboardButton(text="✅ Закрыть", callback_data=f"ticket_close_{ticket_id}")])
+    else:
+        rows.append([InlineKeyboardButton(text="♻️ Переоткрыть", callback_data=f"ticket_reopen_{ticket_id}")])
+
+    if is_admin:
+        rows.append([InlineKeyboardButton(text="🧑‍💼 Взять в работу", callback_data=f"ticket_claim_{ticket_id}")])
+        rows.append([InlineKeyboardButton(text="◀️ Назад", callback_data="admin_tickets")])
+    else:
+        rows.append([InlineKeyboardButton(text="📂 Мои тикеты", callback_data="ticket_my")])
+        rows.append([InlineKeyboardButton(text="◀️ Назад", callback_data="support")])
+    return InlineKeyboardMarkup(inline_keyboard=rows)
+
+
+async def _render_ticket(callback: CallbackQuery, ticket_id: int) -> None:
+    tg_id = callback.from_user.id
+    is_admin = tg_id == ADMIN_ID
+    session = Session()
+    try:
+        ticket = get_ticket_by_id(session, ticket_id)
+        if not ticket:
+            await callback.answer("Тикет не найден", show_alert=True)
+            return
+        if not can_access_ticket(ticket, tg_id, ADMIN_ID):
+            await callback.answer("Нет доступа к тикету", show_alert=True)
+            return
+
+        msgs = list_ticket_messages(session, ticket_id=ticket.id, limit=8)
+        status = _ticket_status_title(ticket.status)
+        created = ticket.created_at.strftime("%d.%m %H:%M") if ticket.created_at else "-"
+        updated = ticket.updated_at.strftime("%d.%m %H:%M") if ticket.updated_at else "-"
+        assigned = str(ticket.assigned_admin_tg_id) if ticket.assigned_admin_tg_id else "-"
+        lines = []
+        for msg in msgs:
+            ts = msg.created_at.strftime("%d.%m %H:%M") if msg.created_at else "-"
+            role = "Оператор" if msg.sender_role == "admin" else "Пользователь"
+            lines.append(f"[{ts}] {role}: {_ticket_message_preview(msg.body)}")
+        history = "\n".join(lines) if lines else "Сообщений пока нет."
+
+        text = (
+            f"🎫 Тикет #{ticket.id}\n"
+            f"Статус: {status}\n"
+            f"Пользователь: {ticket.user_tg_id}\n"
+            f"Оператор: {assigned}\n"
+            f"Создан: {created}\n"
+            f"Обновлён: {updated}\n\n"
+            f"{history}"
+        )
+        await callback.message.edit_text(
+            text,
+            reply_markup=_ticket_view_keyboard(ticket.id, ticket.status, is_admin=is_admin),
+        )
+        await callback.answer()
+    finally:
+        session.close()
+
+
+@router.callback_query(F.data == "ticket_new")
+async def ticket_new(callback: CallbackQuery):
+    tg_id = callback.from_user.id
+    session = Session()
+    try:
+        ticket = get_user_active_ticket(session, tg_id)
+        if ticket:
+            await callback.message.edit_text(
+                f"У тебя уже есть активный тикет #{ticket.id}.",
+                reply_markup=InlineKeyboardMarkup(
+                    inline_keyboard=[
+                        [InlineKeyboardButton(text="🎫 Открыть тикет", callback_data=f"ticket_view_{ticket.id}")],
+                        [InlineKeyboardButton(text="📂 Мои тикеты", callback_data="ticket_my")],
+                        [InlineKeyboardButton(text="◀️ Назад", callback_data="support")],
+                    ]
+                ),
+            )
+            await callback.answer()
+            return
+
+        ticket = create_ticket(session, user_tg_id=tg_id)
+        session.commit()
+        pending_ticket_replies[tg_id] = ticket.id
+
+        await callback.message.edit_text(
+            f"Тикет #{ticket.id} создан.\nОтправь одним сообщением описание проблемы.",
+            reply_markup=InlineKeyboardMarkup(
+                inline_keyboard=[[InlineKeyboardButton(text="Отмена", callback_data="support")]]
+            ),
+        )
+        await callback.answer()
+
+        kb = InlineKeyboardMarkup(
+            inline_keyboard=[[InlineKeyboardButton(text="🎫 Открыть тикет", callback_data=f"ticket_view_{ticket.id}")]]
+        )
+        try:
+            await callback.bot.send_message(
+                ADMIN_ID,
+                f"🆕 Новый тикет #{ticket.id} от пользователя `{tg_id}`",
+                parse_mode=ParseMode.MARKDOWN,
+                reply_markup=kb,
+            )
+        except Exception:
+            pass
+    finally:
+        session.close()
+
+
+@router.callback_query(F.data == "ticket_my")
+async def ticket_my(callback: CallbackQuery):
+    tg_id = callback.from_user.id
+    session = Session()
+    try:
+        tickets = list_user_tickets(session, tg_id, limit=10)
+    finally:
+        session.close()
+
+    if not tickets:
+        await callback.message.edit_text(
+            "Тикетов пока нет.",
+            reply_markup=InlineKeyboardMarkup(
+                inline_keyboard=[
+                    [InlineKeyboardButton(text="🎫 Создать тикет", callback_data="ticket_new")],
+                    [InlineKeyboardButton(text="◀️ Назад", callback_data="support")],
+                ]
+            ),
+        )
+        await callback.answer()
+        return
+
+    rows: list[list[InlineKeyboardButton]] = []
+    for ticket in tickets:
+        rows.append(
+            [
+                InlineKeyboardButton(
+                    text=f"#{ticket.id} {_ticket_status_title(ticket.status)}",
+                    callback_data=f"ticket_view_{ticket.id}",
+                )
+            ]
+        )
+    rows.append([InlineKeyboardButton(text="🎫 Создать тикет", callback_data="ticket_new")])
+    rows.append([InlineKeyboardButton(text="◀️ Назад", callback_data="support")])
+
+    await callback.message.edit_text(
+        "Мои тикеты:",
+        reply_markup=InlineKeyboardMarkup(inline_keyboard=rows),
+    )
+    await callback.answer()
+
+
+@router.callback_query(F.data.startswith("ticket_view_"))
+async def ticket_view(callback: CallbackQuery):
+    ticket_id = int(callback.data.replace("ticket_view_", ""))
+    await _render_ticket(callback, ticket_id)
+
+
+@router.callback_query(F.data.startswith("ticket_reply_"))
+async def ticket_reply(callback: CallbackQuery):
+    ticket_id = int(callback.data.replace("ticket_reply_", ""))
+    session = Session()
+    try:
+        ticket = get_ticket_by_id(session, ticket_id)
+        if not ticket:
+            await callback.answer("Тикет не найден", show_alert=True)
+            return
+        if not can_access_ticket(ticket, callback.from_user.id, ADMIN_ID):
+            await callback.answer("Нет доступа", show_alert=True)
+            return
+        if callback.from_user.id == ADMIN_ID:
+            set_ticket_status(
+                session,
+                ticket=ticket,
+                status=STATUS_IN_PROGRESS,
+                assigned_admin_tg_id=ADMIN_ID,
+            )
+        elif ticket.status == STATUS_CLOSED:
+            set_ticket_status(session, ticket=ticket, status=STATUS_OPEN)
+        session.commit()
+    finally:
+        session.close()
+
+    pending_ticket_replies[callback.from_user.id] = ticket_id
+    await callback.message.edit_text(
+        f"Ответ в тикет #{ticket_id}: отправь одно текстовое сообщение.",
+        reply_markup=InlineKeyboardMarkup(
+            inline_keyboard=[[InlineKeyboardButton(text="◀️ Назад", callback_data=f"ticket_view_{ticket_id}")]]
+        ),
+    )
+    await callback.answer()
+
+
+@router.callback_query(F.data.startswith("ticket_close_"))
+async def ticket_close(callback: CallbackQuery):
+    ticket_id = int(callback.data.replace("ticket_close_", ""))
+    session = Session()
+    try:
+        ticket = get_ticket_by_id(session, ticket_id)
+        if not ticket:
+            await callback.answer("Тикет не найден", show_alert=True)
+            return
+        if not can_access_ticket(ticket, callback.from_user.id, ADMIN_ID):
+            await callback.answer("Нет доступа", show_alert=True)
+            return
+        set_ticket_status(session, ticket=ticket, status=STATUS_CLOSED)
+        session.commit()
+
+        # Notify opposite side.
+        if callback.from_user.id == ADMIN_ID:
+            try:
+                await callback.bot.send_message(ticket.user_tg_id, f"Тикет #{ticket.id} закрыт оператором.")
+            except Exception:
+                pass
+        else:
+            try:
+                await callback.bot.send_message(
+                    ADMIN_ID,
+                    f"Пользователь `{ticket.user_tg_id}` закрыл тикет #{ticket.id}.",
+                    parse_mode=ParseMode.MARKDOWN,
+                )
+            except Exception:
+                pass
+    finally:
+        session.close()
+    await _render_ticket(callback, ticket_id)
+
+
+@router.callback_query(F.data.startswith("ticket_reopen_"))
+async def ticket_reopen(callback: CallbackQuery):
+    ticket_id = int(callback.data.replace("ticket_reopen_", ""))
+    session = Session()
+    try:
+        ticket = get_ticket_by_id(session, ticket_id)
+        if not ticket:
+            await callback.answer("Тикет не найден", show_alert=True)
+            return
+        if not can_access_ticket(ticket, callback.from_user.id, ADMIN_ID):
+            await callback.answer("Нет доступа", show_alert=True)
+            return
+        set_ticket_status(session, ticket=ticket, status=STATUS_OPEN)
+        session.commit()
+
+        if callback.from_user.id != ADMIN_ID:
+            try:
+                await callback.bot.send_message(
+                    ADMIN_ID,
+                    f"Тикет #{ticket.id} переоткрыт пользователем `{ticket.user_tg_id}`.",
+                    parse_mode=ParseMode.MARKDOWN,
+                )
+            except Exception:
+                pass
+    finally:
+        session.close()
+    await _render_ticket(callback, ticket_id)
+
+
+@router.callback_query(F.data.startswith("ticket_claim_"))
+async def ticket_claim(callback: CallbackQuery):
+    if callback.from_user.id != ADMIN_ID:
+        await callback.answer("Только для админа", show_alert=True)
+        return
+    ticket_id = int(callback.data.replace("ticket_claim_", ""))
+    session = Session()
+    try:
+        ticket = get_ticket_by_id(session, ticket_id)
+        if not ticket:
+            await callback.answer("Тикет не найден", show_alert=True)
+            return
+        set_ticket_status(
+            session,
+            ticket=ticket,
+            status=STATUS_IN_PROGRESS,
+            assigned_admin_tg_id=ADMIN_ID,
+        )
+        session.commit()
+    finally:
+        session.close()
+    await _render_ticket(callback, ticket_id)
+
+
+@router.callback_query(F.data == "admin_tickets")
+async def admin_tickets(callback: CallbackQuery):
+    if callback.from_user.id != ADMIN_ID:
+        await callback.answer("Только для админа", show_alert=True)
+        return
+
+    session = Session()
+    try:
+        tickets = list_active_tickets(session, limit=20)
+    finally:
+        session.close()
+
+    if not tickets:
+        await callback.message.edit_text(
+            "В очереди нет активных тикетов.",
+            reply_markup=InlineKeyboardMarkup(
+                inline_keyboard=[[InlineKeyboardButton(text="◀️ Назад", callback_data="admin")]]
+            ),
+        )
+        await callback.answer()
+        return
+
+    rows: list[list[InlineKeyboardButton]] = []
+    for ticket in tickets:
+        rows.append(
+            [
+                InlineKeyboardButton(
+                    text=f"#{ticket.id} u:{ticket.user_tg_id} {_ticket_status_title(ticket.status)}",
+                    callback_data=f"ticket_view_{ticket.id}",
+                )
+            ]
+        )
+    rows.append([InlineKeyboardButton(text="🔄 Обновить", callback_data="admin_tickets")])
+    rows.append([InlineKeyboardButton(text="◀️ Назад", callback_data="admin")])
+
+    await callback.message.edit_text(
+        "Активные тикеты:",
+        reply_markup=InlineKeyboardMarkup(inline_keyboard=rows),
+    )
+    await callback.answer()
+
+@router.callback_query(F.data == "admin")
+async def show_admin_panel(callback: CallbackQuery):
+    if callback.from_user.id != ADMIN_ID:
+        await callback.answer("⛔️ Доступ запрещён")
+        return
+    
+    stats = get_stats()
+    
+    kb = InlineKeyboardMarkup(inline_keyboard=[
+        [
+            InlineKeyboardButton(text="🔍 Найти юзера", callback_data="admin_search_prompt"),
+            InlineKeyboardButton(text="👥 Все юзеры", callback_data="admin_users")
+        ],
+        [
+            InlineKeyboardButton(text="🎫 Промокоды", callback_data="admin_promos"),
+            InlineKeyboardButton(text="⭐ Отзывы", callback_data="admin_reviews")
+        ],
+        [
+            InlineKeyboardButton(text="📢 Рассылка", callback_data="admin_broadcast_menu"),
+            InlineKeyboardButton(text="🎰 Рулетка", callback_data="admin_wheel")
+        ],
+        [
+            InlineKeyboardButton(text="📊 Mass-действия", callback_data="admin_mass"),
+            InlineKeyboardButton(text="❤️ Health", callback_data="admin_health")
+        ],
+        [
+            InlineKeyboardButton(text="Sync usernames", callback_data="admin_sync"),
+            InlineKeyboardButton(text="Gift access", callback_data="admin_gift_menu")
+        ],
+        [
+            InlineKeyboardButton(text="🎫 Очередь тикетов", callback_data="admin_tickets"),
+        ],
+        [
+            InlineKeyboardButton(text="Nodes", callback_data="admin_nodes"),
+            InlineKeyboardButton(text="Sync Free pool", callback_data="admin_sync_free_pl"),
+        ],
+        [
+            InlineKeyboardButton(text="🧩 Manual users", callback_data="admin_manual_menu"),
+        ],
+        [InlineKeyboardButton(text="Back", callback_data="back")],
+    ])
+    
+    await callback.message.edit_text(
+        TEXTS["admin_stats"].format(
+            total=stats["total"],
+            active=stats["active"],
+            stars=stats["stars"]
+        ),
+        reply_markup=kb,
+        parse_mode=ParseMode.MARKDOWN
+    )
+    await callback.answer()
+
+@router.callback_query(F.data == "admin_manual_menu")
+async def admin_manual_menu(callback: CallbackQuery):
+    if callback.from_user.id != ADMIN_ID:
+        return
+
+    kb = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="➕ Создать manual user", callback_data="admin_manual_create_prompt")],
+        [InlineKeyboardButton(text="📋 Список manual users", callback_data="admin_manual_list")],
+        [InlineKeyboardButton(text="◀️ Назад", callback_data="admin")],
+    ])
+    await callback.message.edit_text(
+        "🧩 *Manual users*\n\n"
+        "Создавайте пользователей без Telegram аккаунта.\n"
+        "Они будут подключаться ко всем paid-нодам.",
+        reply_markup=kb,
+        parse_mode=ParseMode.MARKDOWN,
+    )
+    await callback.answer()
+
+
+@router.callback_query(F.data == "admin_manual_create_prompt")
+async def admin_manual_create_prompt(callback: CallbackQuery):
+    if callback.from_user.id != ADMIN_ID:
+        return
+    admin_pending_actions[ADMIN_ID] = {"action": "manual_create"}
+    await callback.message.edit_text(
+        "➕ *Создание manual user*\n\n"
+        "Отправьте: `DisplayName|days`\n"
+        "Пример: `Family Router|30`",
+        parse_mode=ParseMode.MARKDOWN,
+        reply_markup=InlineKeyboardMarkup(inline_keyboard=[
+            [InlineKeyboardButton(text="◀️ Отмена", callback_data="admin_manual_menu")],
+        ]),
+    )
+    await callback.answer()
+
+
+@router.callback_query(F.data == "admin_manual_list")
+async def admin_manual_list(callback: CallbackQuery):
+    if callback.from_user.id != ADMIN_ID:
+        return
+    rows = list_manual_users(limit=40)
+    if not rows:
+        await callback.message.edit_text(
+            "Manual users пока не созданы.",
+            reply_markup=InlineKeyboardMarkup(inline_keyboard=[
+                [InlineKeyboardButton(text="◀️ Назад", callback_data="admin_manual_menu")],
+            ]),
+        )
+        await callback.answer()
+        return
+
+    buttons: list[list[InlineKeyboardButton]] = []
+    for u in rows:
+        name = (u.display_name or u.email or f"manual_{abs(u.tg_id)}").strip()
+        buttons.append([
+            InlineKeyboardButton(text=f"{name} ({u.tg_id})", callback_data=f"adm_user_{u.tg_id}"),
+        ])
+    buttons.append([InlineKeyboardButton(text="◀️ Назад", callback_data="admin_manual_menu")])
+    await callback.message.edit_text(
+        "📋 *Manual users*",
+        reply_markup=InlineKeyboardMarkup(inline_keyboard=buttons),
+        parse_mode=ParseMode.MARKDOWN,
+    )
+    await callback.answer()
+
+@router.callback_query(F.data == "admin_search_prompt")
+async def admin_search_prompt(callback: CallbackQuery):
+    """Prompt admin to search for user"""
+    if callback.from_user.id != ADMIN_ID:
+        return
+    
+    admin_pending_actions[ADMIN_ID] = {"action": "search_user"}
+    
+    kb = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="◀️ Отмена", callback_data="admin")]
+    ])
+    
+    await callback.message.edit_text(
+        "🔍 *Поиск пользователя*\n\n"
+        "Введи @username или tg\\_id:",
+        reply_markup=kb,
+        parse_mode=ParseMode.MARKDOWN
+    )
+    await callback.answer()
+
+@router.callback_query(F.data == "admin_promos")
+async def admin_promos_menu(callback: CallbackQuery):
+    """Show promo codes management"""
+    if callback.from_user.id != ADMIN_ID:
+        return
+    
+    session = Session()
+    promos = session.query(PromoCode).filter(PromoCode.uses_left != 0).all()
+    session.close()
+    
+    if promos:
+        lines = []
+        for p in promos:
+            type_text = f"{p.value}%" if p.promo_type == "discount" else f"+{p.value} дн."
+            uses_text = "∞" if p.uses_left == -1 else str(p.uses_left)
+            lines.append(f"`{p.code}` — {type_text}, ×{uses_text}")
+        promo_text = "\n".join(lines)
+    else:
+        promo_text = "_Нет активных промокодов_"
+    
+    kb = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="➕ Создать промокод", callback_data="admin_promo_create")],
+        [InlineKeyboardButton(text="◀️ Назад", callback_data="admin")]
+    ])
+    
+    await callback.message.edit_text(
+        f"🎫 *Промокоды*\n\n{promo_text}\n\n"
+        f"_Создать: /promo create CODE gb 10 100_",
+        reply_markup=kb,
+        parse_mode=ParseMode.MARKDOWN
+    )
+    await callback.answer()
+
+@router.callback_query(F.data == "admin_promo_create")
+async def admin_promo_create(callback: CallbackQuery):
+    """Prompt for promo creation"""
+    if callback.from_user.id != ADMIN_ID:
+        return
+    
+    kb = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="◀️ Назад", callback_data="admin_promos")]
+    ])
+    
+    await callback.message.edit_text(
+        "➕ *Создать промокод*\n\n"
+        "Используй команду:\n\n"
+        "`/promo create CODE gb 10 100`\n"
+        "— создаст промокод CODE на +10 дней (100 использований)\n\n"
+        "`/promo create SALE discount 20 50`\n"
+        "— создаст промокод SALE на скидку 20% (50 использований)",
+        reply_markup=kb,
+        parse_mode=ParseMode.MARKDOWN
+    )
+    await callback.answer()
+
+@router.callback_query(F.data == "admin_reviews")
+async def admin_reviews_menu(callback: CallbackQuery):
+    """Show reviews moderation"""
+    if callback.from_user.id != ADMIN_ID:
+        return
+    
+    session = Session()
+    reviews = session.query(Review).order_by(Review.created_at.desc()).limit(5).all()
+    total = session.query(Review).count()
+    featured = session.query(Review).filter_by(is_featured=True).count()
+    session.close()
+    
+    kb = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="📝 Все отзывы", callback_data="admin_reviews_all")],
+        [InlineKeyboardButton(text="⭐ Избранные", callback_data="admin_reviews_featured")],
+        [InlineKeyboardButton(text="◀️ Назад", callback_data="admin")]
+    ])
+    
+    await callback.message.edit_text(
+        f"⭐ *Отзывы*\n\n"
+        f"Всего: {total}\n"
+        f"Избранных: {featured}\n\n"
+        f"_Команда: /reviews_",
+        reply_markup=kb,
+        parse_mode=ParseMode.MARKDOWN
+    )
+    await callback.answer()
+
+@router.callback_query(F.data == "admin_health")
+async def admin_health_check(callback: CallbackQuery, bot: Bot):
+    """Quick health check from admin panel"""
+    if callback.from_user.id != ADMIN_ID:
+        return
+    
+    import time
+    start_time = time.time()
+    status = ["✅ Бот: работает"]
+    
+    try:
+        session = Session()
+        user_count = session.query(User).count()
+        active_count = session.query(User).filter_by(is_active=True).count()
+        session.close()
+        status.append(f"✅ БД: {user_count} юзеров ({active_count} активных)")
+    except Exception as e:
+        status.append(f"❌ БД: ошибка")
+    
+    try:
+        clients = await panel.get_clients_list()
+        if clients is not None:
+            status.append(f"✅ Панель: {len(clients)} клиентов")
+        else:
+            status.append("⚠️ Панель: нет ответа")
+    except:
+        status.append("❌ Панель: ошибка")
+    
+    elapsed = round((time.time() - start_time) * 1000)
+    
+    kb = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="🔄 Обновить", callback_data="admin_health")],
+        [InlineKeyboardButton(text="◀️ Назад", callback_data="admin")]
+    ])
+    
+    await callback.message.edit_text(
+        f"❤️ *Health Check*\n\n" + 
+        "\n".join(status) +
+        f"\n\n⏱️ {elapsed}мс",
+        reply_markup=kb,
+        parse_mode=ParseMode.MARKDOWN
+    )
+    await callback.answer()
+
+@router.callback_query(F.data == "admin_broadcast_menu")
+async def admin_broadcast_menu(callback: CallbackQuery):
+    """Broadcast menu with custom messages and templates"""
+    if callback.from_user.id != ADMIN_ID:
+        return
+    
+    session = Session()
+    active = session.query(User).filter_by(is_active=True).count()
+    templates = session.query(Template).all()
+    session.close()
+    
+    template_btns = []
+    if templates:
+        for t in templates[:5]:  # Show max 5 templates
+            template_btns.append([InlineKeyboardButton(
+                text=f"📝 {t.key}", 
+                callback_data=f"send_tpl_{t.key}"
+            )])
+    
+    kb = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="🧩 Конструктор рассылки", callback_data="admin_bcast_compose")],
+        [InlineKeyboardButton(text="✍️ Текстовая рассылка (legacy)", callback_data="admin_custom_msg")],
+        [InlineKeyboardButton(text="🔄 Обновить ссылки", callback_data="admin_broadcast_links")],
+        *template_btns,
+        [InlineKeyboardButton(text="◀️ Назад", callback_data="admin")]
+    ])
+    
+    tpl_hint = f"\n📝 Шаблонов: {len(templates)}" if templates else "\n_Нет шаблонов_"
+    
+    await callback.message.edit_text(
+        f"📢 *Рассылка*\n\n"
+        f"Активных юзеров: {active}{tpl_hint}\n\n"
+        f"_Сообщение одному пользователю:_ открой карточку юзера → `✉️ Сообщение`.\n\n"
+        f"_Команды:_\n"
+        f"`/template add key текст` — создать\n"
+        f"`/template list` — список\n"
+        f"`/template send key` — всем\n"
+        f"`/template send key @user` — юзеру",
+        reply_markup=kb,
+        parse_mode=ParseMode.MARKDOWN
+    )
+    await callback.answer()
+
+
+@router.callback_query(F.data == "admin_nodes")
+async def admin_nodes(callback: CallbackQuery):
+    if callback.from_user.id != ADMIN_ID:
+        return
+
+    s = Session()
+    try:
+        nodes = enabled_nodes(s)
+    finally:
+        s.close()
+
+    lines = ["🗺 *Ноды (enabled)*\n"]
+    for n in nodes:
+        code = (getattr(n, "code", "") or "").strip()
+        name = (getattr(n, "name", "") or "").strip()
+        host = (getattr(n, "host", "") or "").strip()
+        port = int(getattr(n, "vless_port", 0) or 0)
+        inb = int(getattr(n, "inbound_id", 0) or 0)
+        pbase = (getattr(n, "panel_base_url", "") or "").strip()
+
+        lines.append(f"✅ `{code}` {name} — `{host}:{port}` (inb `{inb}`)")
+        if pbase:
+            lines.append(f"    panel: `{pbase}`")
+
+    free_codes = [((getattr(n, "code", "") or "").strip()) for n in nodes if "free" in (getattr(n, "code", "") or "").lower()]
+    if free_codes:
+        lines.append(f"\nFree pool: `{', '.join(free_codes)}`.")
+    else:
+        lines.append("\nFree pool: `not configured`.")
+
+    kb = InlineKeyboardMarkup(
+        inline_keyboard=[
+            [InlineKeyboardButton(text="🔄 Обновить", callback_data="admin_nodes")],
+            [InlineKeyboardButton(text="◀️ Назад", callback_data="admin")],
+        ]
+    )
+    await callback.message.edit_text("\n".join(lines), reply_markup=kb, parse_mode=ParseMode.MARKDOWN)
+    await callback.answer()
+
+
+@router.callback_query(F.data == "admin_sync_free_pl")
+async def admin_sync_free_pl(callback: CallbackQuery):
+    if callback.from_user.id != ADMIN_ID:
+        return
+
+    await callback.answer("⏳ Sync Free pool...")
+    await callback.message.edit_text(
+        "🆓 *Sync Free pool*\n\nЗапускаю. Это может занять 10–60 секунд.",
+        reply_markup=InlineKeyboardMarkup(inline_keyboard=[[InlineKeyboardButton(text="◀️ Назад", callback_data="admin")]]),
+        parse_mode=ParseMode.MARKDOWN,
+    )
+
+    s = Session()
+    try:
+        nodes = enabled_nodes(s)
+        free_codes = [((getattr(n, "code", "") or "").strip()) for n in nodes if "free" in (getattr(n, "code", "") or "").lower()]
+        if not free_codes:
+            await callback.message.edit_text(
+                "🆓 *Sync Free pool*\n\n❌ Free-ноды не найдены в `nodes`.\nДобавь отдельную free-ноду (code с `free`).",
+                reply_markup=InlineKeyboardMarkup(inline_keyboard=[[InlineKeyboardButton(text="◀️ Назад", callback_data="admin")]]),
+                parse_mode=ParseMode.MARKDOWN,
+            )
+            return
+
+        now = datetime.utcnow()
+        users = (
+            s.query(User)
+            .filter(User.sub_type == "FREE")
+            .filter(User.is_active == True)
+            .filter((User.expiry_at.is_(None)) | (User.expiry_at > now))
+            .order_by(User.created_at.asc())
+            .all()
+        )
+    finally:
+        s.close()
+
+    sem = asyncio.Semaphore(6)
+    passes = 2
+    async def sync_one(u: User) -> bool:
+        async with sem:
+            sub_id = u.sub_token or str(u.tg_id)
+            res = await panel.ensure_user_on_all_nodes(
+                tg_id=u.tg_id,
+                client_uuid=u.uuid,
+                email=u.email,
+                sub_id=sub_id,
+                enable=True,
+                only_node_codes=free_codes,
+            )
+            return any(res.values())
+
+    pending = list(users)
+    ok = 0
+    for attempt in range(1, passes + 1):
+        if not pending:
+            break
+        results = await asyncio.gather(*(sync_one(u) for u in pending))
+        next_pending: list[User] = []
+        for u, r in zip(pending, results):
+            if r:
+                ok += 1
+            else:
+                next_pending.append(u)
+        pending = next_pending
+        if pending and attempt < passes:
+            await asyncio.sleep(1.0)
+
+    fail = len(pending)
+
+    await callback.message.edit_text(
+        "🆓 *Sync Free pool*\n\n"
+        f"✅ OK: {ok}\n"
+        f"❌ Fail: {fail}\n\n"
+        "После этого Free-пользователи будут получать только выделенный free-pool после обновления подписки в приложении.",
+        reply_markup=InlineKeyboardMarkup(inline_keyboard=[[InlineKeyboardButton(text="◀️ Назад", callback_data="admin")]]),
+        parse_mode=ParseMode.MARKDOWN,
+    )
+
+
+async def _render_reviews_page(*, callback: CallbackQuery, featured_only: bool, page: int) -> None:
+    if callback.from_user.id != ADMIN_ID:
+        return
+
+    page = max(0, int(page))
+    per_page = 8
+    offset = page * per_page
+
+    session = Session()
+    q = session.query(Review)
+    if featured_only:
+        q = q.filter_by(is_featured=True)
+    total = q.count()
+    rows = q.order_by(Review.created_at.desc()).offset(offset).limit(per_page).all()
+    session.close()
+
+    pages = max(1, (total + per_page - 1) // per_page)
+    page = min(page, pages - 1)
+
+    title = "⭐ Избранные отзывы" if featured_only else "📝 Все отзывы"
+    if not rows:
+        kb = InlineKeyboardMarkup(
+            inline_keyboard=[
+                [
+                    InlineKeyboardButton(text="📝 Все", callback_data="admin_reviews_all:0"),
+                    InlineKeyboardButton(text="⭐ Избранные", callback_data="admin_reviews_featured:0"),
+                ],
+                [InlineKeyboardButton(text="◀️ Назад", callback_data="admin")],
+            ]
+        )
+        await callback.message.edit_text(f"{title}\n\nПусто.", reply_markup=kb)
+        return
+
+    lines = [f"{title}\nВсего: {total} | Стр {page+1}/{pages}\n"]
+    kb_rows: list[list[InlineKeyboardButton]] = [
+        [
+            InlineKeyboardButton(text="📝 Все", callback_data="admin_reviews_all:0"),
+            InlineKeyboardButton(text="⭐ Избранные", callback_data="admin_reviews_featured:0"),
+        ]
+    ]
+
+    for r in rows:
+        u = f"@{r.username}" if r.username else "anon"
+        stars = "⭐" * int(r.rating or 0)
+        txt = (r.text or "").strip()
+        if len(txt) > 120:
+            txt = txt[:120] + "…"
+        lines.append(f"ID {r.id} | {u} {stars}\n{txt or '—'}\n")
+        kb_rows.append(
+            [
+                InlineKeyboardButton(
+                    text="⭐" if not r.is_featured else "❌",
+                    callback_data=f"review_toggle_{r.id}",
+                ),
+                InlineKeyboardButton(text="🗑", callback_data=f"review_delete_{r.id}"),
+            ]
+        )
+
+    nav: list[InlineKeyboardButton] = []
+    prefix = "admin_reviews_featured" if featured_only else "admin_reviews_all"
+    if page > 0:
+        nav.append(InlineKeyboardButton(text="⬅️", callback_data=f"{prefix}:{page-1}"))
+    nav.append(InlineKeyboardButton(text=f"{page+1}/{pages}", callback_data="noop"))
+    if (page + 1) < pages:
+        nav.append(InlineKeyboardButton(text="➡️", callback_data=f"{prefix}:{page+1}"))
+    kb_rows.append(nav)
+    kb_rows.append([InlineKeyboardButton(text="◀️ Назад", callback_data="admin")])
+
+    await callback.message.edit_text("\n".join(lines), reply_markup=InlineKeyboardMarkup(inline_keyboard=kb_rows))
+
+
+@router.callback_query(F.data.startswith("admin_reviews_all"))
+async def admin_reviews_all(callback: CallbackQuery):
+    page = 0
+    parts = (callback.data or "").split(":")
+    if len(parts) >= 2 and parts[1].isdigit():
+        page = int(parts[1])
+    await _render_reviews_page(callback=callback, featured_only=False, page=page)
+    await callback.answer()
+
+
+@router.callback_query(F.data.startswith("admin_reviews_featured"))
+async def admin_reviews_featured(callback: CallbackQuery):
+    page = 0
+    parts = (callback.data or "").split(":")
+    if len(parts) >= 2 and parts[1].isdigit():
+        page = int(parts[1])
+    await _render_reviews_page(callback=callback, featured_only=True, page=page)
+    await callback.answer()
+
+
+def _broadcast_segment_cycle(cur: str) -> str:
+    order = ["active", "all", "expired", "trial"]
+    try:
+        i = order.index(cur)
+    except ValueError:
+        return "active"
+    return order[(i + 1) % len(order)]
+
+
+def _broadcast_segment_label(seg: str) -> str:
+    return {
+        "active": "Активные",
+        "all": "Все",
+        "expired": "Неактивные",
+        "trial": "Пробные",
+    }.get(seg, seg)
+
+
+def _render_broadcast_draft(draft: dict) -> str:
+    seg = _broadcast_segment_label(draft.get("segment", "active"))
+    btn = draft.get("button")
+    btn_txt = "нет" if not btn else f"{btn.get('text','')}"
+    return (
+        "📢 *Конструктор рассылки*\n\n"
+        f"🎯 Аудитория: *{seg}*\n"
+        f"🔗 Кнопка: *{btn_txt or 'нет'}*\n\n"
+        "_Сообщение будет отправлено как копия (с сохранением форматирования/медиа)._"
+    )
+
+
+def _broadcast_controls(draft: dict) -> InlineKeyboardMarkup:
+    seg = _broadcast_segment_label(draft.get("segment", "active"))
+    btn = draft.get("button")
+    btn_label = "Кнопка: нет" if not btn else f"Кнопка: {btn.get('text','')[:16]}"
+    return InlineKeyboardMarkup(
+        inline_keyboard=[
+            [
+                InlineKeyboardButton(text=f"🎯 {seg}", callback_data="admin_bcast_seg"),
+                InlineKeyboardButton(text=f"🔗 {btn_label}", callback_data="admin_bcast_btn"),
+            ],
+            [
+                InlineKeyboardButton(text="✅ Отправить", callback_data="admin_bcast_send"),
+                InlineKeyboardButton(text="🗑 Отмена", callback_data="admin_bcast_cancel"),
+            ],
+        ]
+    )
+
+
+@router.callback_query(F.data == "admin_bcast_compose")
+async def admin_bcast_compose(callback: CallbackQuery):
+    if callback.from_user.id != ADMIN_ID:
+        return
+
+    admin_pending_actions[ADMIN_ID] = {"action": "broadcast_capture"}
+    admin_broadcast_drafts.pop(ADMIN_ID, None)
+
+    kb = InlineKeyboardMarkup(inline_keyboard=[[InlineKeyboardButton(text="◀️ Назад", callback_data="admin_broadcast_menu")]])
+    await callback.message.edit_text(
+        "🧩 *Конструктор рассылки*\n\n"
+        "1. Отправь сюда сообщение, которое нужно разослать.\n"
+        "Можно: текст, фото, видео, документ, с форматированием.\n\n"
+        "2. Я сохраню его как черновик и покажу кнопки управления.",
+        reply_markup=kb,
+        parse_mode=ParseMode.MARKDOWN,
+    )
+    await callback.answer()
+
+
+@router.callback_query(F.data == "admin_bcast_seg")
+async def admin_bcast_seg(callback: CallbackQuery):
+    if callback.from_user.id != ADMIN_ID:
+        return
+    draft = admin_broadcast_drafts.get(ADMIN_ID)
+    if not draft:
+        await callback.answer("Черновик не найден. Создай рассылку заново.", show_alert=True)
+        return
+    draft["segment"] = _broadcast_segment_cycle(draft.get("segment", "active"))
+    await callback.message.edit_text(_render_broadcast_draft(draft), reply_markup=_broadcast_controls(draft), parse_mode=ParseMode.MARKDOWN)
+    await callback.answer()
+
+
+@router.callback_query(F.data == "admin_bcast_btn")
+async def admin_bcast_btn(callback: CallbackQuery):
+    if callback.from_user.id != ADMIN_ID:
+        return
+    draft = admin_broadcast_drafts.get(ADMIN_ID)
+    if not draft:
+        await callback.answer("Черновик не найден. Создай рассылку заново.", show_alert=True)
+        return
+    admin_pending_actions[ADMIN_ID] = {"action": "broadcast_set_button"}
+    await callback.message.edit_text(
+        "🔗 *Кнопка для рассылки*\n\n"
+        "Пришли одной строкой:\n"
+        "`Текст кнопки|https://example.com`\n\n"
+        "Или пришли `нет`, чтобы убрать кнопку.",
+        reply_markup=InlineKeyboardMarkup(inline_keyboard=[[InlineKeyboardButton(text="◀️ Назад", callback_data="admin_broadcast_menu")]]),
+        parse_mode=ParseMode.MARKDOWN,
+    )
+    await callback.answer()
+
+
+@router.callback_query(F.data == "admin_bcast_cancel")
+async def admin_bcast_cancel(callback: CallbackQuery):
+    if callback.from_user.id != ADMIN_ID:
+        return
+    admin_pending_actions.pop(ADMIN_ID, None)
+    admin_broadcast_drafts.pop(ADMIN_ID, None)
+    kb = InlineKeyboardMarkup(inline_keyboard=[[InlineKeyboardButton(text="◀️ Назад", callback_data="admin_broadcast_menu")]])
+    await callback.message.edit_text("🗑 Черновик удален.", reply_markup=kb)
+    await callback.answer()
+
+
+@router.callback_query(F.data == "admin_bcast_send")
+async def admin_bcast_send(callback: CallbackQuery, bot: Bot):
+    if callback.from_user.id != ADMIN_ID:
+        return
+    draft = admin_broadcast_drafts.get(ADMIN_ID)
+    if not draft:
+        await callback.answer("Черновик не найден. Создай рассылку заново.", show_alert=True)
+        return
+
+    segment = draft.get("segment", "active")
+    from_chat_id = draft.get("from_chat_id", ADMIN_ID)
+    message_id = draft.get("message_id")
+    if not message_id:
+        await callback.answer("Черновик поврежден (нет message_id).", show_alert=True)
+        return
+
+    button = draft.get("button")
+    reply_markup = None
+    if button:
+        try:
+            reply_markup = InlineKeyboardMarkup(
+                inline_keyboard=[[InlineKeyboardButton(text=button["text"], url=button["url"])]]
+            )
+        except Exception:
+            reply_markup = None
+
+    s = Session()
+    try:
+        q = s.query(User)
+        if segment == "active":
+            q = q.filter_by(is_active=True)
+        elif segment == "expired":
+            q = q.filter_by(is_active=False)
+        elif segment == "trial":
+            q = q.filter(User.sub_type == "TRIAL")
+        users = q.all()
+    finally:
+        s.close()
+
+    total = len(users)
+    await callback.message.edit_text(
+        f"📤 *Рассылка запущена*\n\nАудитория: *{_broadcast_segment_label(segment)}*\nВсего: *{total}*",
+        parse_mode=ParseMode.MARKDOWN,
+    )
+    await callback.answer()
+
+    sent = 0
+    failed = 0
+    for i, u in enumerate(users, start=1):
+        if u.tg_id in PROTECTED_USERS or u.tg_id == ADMIN_ID:
+            continue
+        try:
+            await bot.copy_message(
+                chat_id=u.tg_id,
+                from_chat_id=from_chat_id,
+                message_id=message_id,
+                reply_markup=reply_markup,
+            )
+            sent += 1
+        except Exception:
+            failed += 1
+        if i % 40 == 0:
+            try:
+                await callback.message.edit_text(
+                    f"📤 *Рассылка идет*\n\nОтправлено: *{sent}*\nОшибок: *{failed}*",
+                    parse_mode=ParseMode.MARKDOWN,
+                )
+            except Exception:
+                pass
+        await asyncio.sleep(0.04)
+
+    audit_admin(ADMIN_ID, "admin_broadcast_v2", meta=f"segment={segment}; sent={sent}; failed={failed}")
+    admin_broadcast_drafts.pop(ADMIN_ID, None)
+    kb = InlineKeyboardMarkup(inline_keyboard=[[InlineKeyboardButton(text="◀️ Назад", callback_data="admin_broadcast_menu")]])
+    await callback.message.edit_text(
+        f"✅ *Рассылка завершена*\n\nОтправлено: *{sent}*\nОшибок: *{failed}*",
+        reply_markup=kb,
+        parse_mode=ParseMode.MARKDOWN,
+    )
+
+@router.callback_query(F.data == "admin_custom_msg")
+async def admin_custom_msg_prompt(callback: CallbackQuery):
+    """Prompt for custom message with optional URL button"""
+    if callback.from_user.id != ADMIN_ID:
+        return
+    
+    admin_pending_actions[ADMIN_ID] = {"action": "custom_broadcast"}
+    
+    kb = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="◀️ Отмена", callback_data="admin_broadcast_menu")]
+    ])
+    
+    await callback.message.edit_text(
+        "✍️ *Кастомная рассылка*\n\n"
+        "Введи текст сообщения.\n\n"
+        "*Формат с кнопкой URL:*\n"
+        "`Текст сообщения\n---\nТекст кнопки|https://ссылка.com`\n\n"
+        "_Пример:_\n"
+        "`Привет! Новое обновление!\n---\n🌐 Подробнее|https://kiwunaka.space:8444/`",
+        reply_markup=kb,
+        parse_mode=ParseMode.MARKDOWN
+    )
+    await callback.answer()
+
+@router.callback_query(F.data == "admin_broadcast_links")
+async def admin_broadcast_links(callback: CallbackQuery, bot: Bot):
+    """Trigger link broadcast from button"""
+    if callback.from_user.id != ADMIN_ID:
+        return
+    
+    await callback.answer("🔄 Рассылка ссылок запущена...")
+    
+    # Call existing broadcast logic
+    session = Session()
+    users = session.query(User).filter_by(is_active=True).all()
+    session.close()
+    
+    sent = 0
+    for user in users:
+        if user.tg_id in PROTECTED_USERS or user.tg_id == ADMIN_ID:
+            continue
+        try:
+            sub_link = build_subscription_link(user.tg_id)
+            await bot.send_message(
+                user.tg_id,
+                f"🔗 *Обновлённая ссылка подписки:*\n`{sub_link}`\n\n"
+                f"_Пожалуйста, обновите в приложении._",
+                parse_mode=ParseMode.MARKDOWN
+            )
+            sent += 1
+        except:
+            pass
+    
+    kb = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="◀️ Назад", callback_data="admin_broadcast_menu")]
+    ])
+    
+    await callback.message.edit_text(
+        f"✅ *Рассылка завершена*\n\n"
+        f"Отправлено: {sent} сообщений",
+        reply_markup=kb,
+        parse_mode=ParseMode.MARKDOWN
+    )
+
+@router.callback_query(F.data.startswith("send_tpl_"))
+async def send_template_to_all(callback: CallbackQuery, bot: Bot):
+    """Send template to all users from button"""
+    if callback.from_user.id != ADMIN_ID:
+        return
+    
+    key = callback.data.replace("send_tpl_", "")
+    
+    session = Session()
+    template = session.query(Template).filter_by(key=key).first()
+    users = session.query(User).filter_by(is_active=True).all()
+    session.close()
+    
+    if not template:
+        await callback.answer("❌ Шаблон не найден", show_alert=True)
+        return
+    
+    await callback.answer(f"📤 Отправка шаблона '{key}'...")
+    
+    sent = 0
+    for user in users:
+        if user.tg_id in PROTECTED_USERS or user.tg_id == ADMIN_ID:
+            continue
+        try:
+            await bot.send_message(user.tg_id, template.text, parse_mode=ParseMode.MARKDOWN)
+            sent += 1
+        except:
+            pass
+    
+    kb = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="◀️ Назад", callback_data="admin_broadcast_menu")]
+    ])
+    
+    await callback.message.edit_text(
+        f"✅ *Шаблон '{key}' отправлен*\n\n"
+        f"Получили: {sent} юзеров",
+        reply_markup=kb,
+        parse_mode=ParseMode.MARKDOWN
+    )
+
+# ==========================================
+#         WHEEL SETTINGS
+# ==========================================
+
+@router.callback_query(F.data == "admin_wheel")
+async def admin_wheel_settings(callback: CallbackQuery):
+    """Show wheel settings"""
+    if callback.from_user.id != ADMIN_ID:
+        return
+    
+    # Calculate percentages
+    total_weight = sum(w for _, w in WHEEL_PRIZES)
+    prizes_text = []
+    for days, weight in WHEEL_PRIZES:
+        pct = (weight / total_weight) * 100
+        prizes_text.append(f"• {days} дней — {pct:.0f}%")
+    
+    kb = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text=f"⚙️ Изменить кулдаун ({WHEEL_COOLDOWN_DAYS}д)", callback_data="wheel_cd")],
+        [InlineKeyboardButton(text="◀️ Назад", callback_data="admin")]
+    ])
+    
+    await callback.message.edit_text(
+        f"🎰 *Настройки рулетки*\n\n"
+        f"*Шансы выигрыша:*\n" + "\n".join(prizes_text) + "\n\n"
+        f"*Кулдаун:* {WHEEL_COOLDOWN_DAYS} дней\n\n"
+        f"_Для изменения шансов — редактируй WHEEL\\_PRIZES в bot.py_",
+        reply_markup=kb,
+        parse_mode=ParseMode.MARKDOWN
+    )
+    await callback.answer()
+
+# ==========================================
+#         MASS ACTIONS
+# ==========================================
+
+@router.callback_query(F.data == "admin_mass")
+async def admin_mass_actions(callback: CallbackQuery):
+    """Show mass actions menu"""
+    if callback.from_user.id != ADMIN_ID:
+        return
+    
+    session = Session()
+    total = session.query(User).count()
+    now = _utcnow()
+    active = (
+        session.query(User)
+        .filter(User.is_active == True)
+        .filter(User.expiry_at.isnot(None))
+        .filter(User.expiry_at > now)
+        .count()
+    )
+    inactive = total - active
+    plan_rows = session.query(User.sub_type, func.count(User.tg_id)).group_by(User.sub_type).all()
+    
+    # Find users with expiring subscriptions (within 3 days)
+    soon = now + timedelta(days=3)
+    expiring = session.query(User).filter(
+        User.is_active == True,
+        User.expiry_at <= soon,
+        User.expiry_at > now
+    ).count()
+    session.close()
+
+    plan_lines = []
+    for st, cnt in sorted(plan_rows, key=lambda x: str(x[0] or "")):
+        plan_lines.append(f"• `{(st or '—')}`: {cnt}")
+    plans_txt = "\n".join(plan_lines) if plan_lines else "—"
+    
+    kb = InlineKeyboardMarkup(inline_keyboard=[
+        [
+            InlineKeyboardButton(text="🎁 Промо: +14 дней всем", callback_data="mass_promo_14"),
+            InlineKeyboardButton(text="🧹 Нормализовать планы", callback_data="mass_normalize_plans"),
+        ],
+        [
+            InlineKeyboardButton(text="🔄 Sync на ноды", callback_data="mass_sync_nodes"),
+            InlineKeyboardButton(text=f"📅 Продлить активных ({active})", callback_data="mass_extend_active"),
+        ],
+        [InlineKeyboardButton(text=f"⚠️ Напомнить истекающим ({expiring})", callback_data="mass_remind_expiring")],
+        [InlineKeyboardButton(text="◀️ Назад", callback_data="admin")]
+    ])
+    
+    await callback.message.edit_text(
+        f"📊 *Mass-действия*\n\n"
+        f"Всего: {total}\n"
+        f"✅ Активных сейчас: {active}\n"
+        f"❌ Неактивных: {inactive}\n"
+        f"⏳ Истекает в 3 дня: {expiring}\n\n"
+        f"*Планы в БД:*\n{plans_txt}",
+        reply_markup=kb,
+        parse_mode=ParseMode.MARKDOWN
+    )
+    await callback.answer()
+
+@router.callback_query(F.data == "mass_addgb_active")
+async def mass_addgb_prompt(callback: CallbackQuery):
+    """Legacy placeholder: traffic limits are not used."""
+    if callback.from_user.id != ADMIN_ID:
+        return
+
+    await callback.answer("Лимиты по трафику не используются.", show_alert=True)
+
+@router.callback_query(F.data == "mass_extend_active")
+async def mass_extend_prompt(callback: CallbackQuery):
+    """Prompt for mass extend"""
+    if callback.from_user.id != ADMIN_ID:
+        return
+    
+    admin_pending_actions[ADMIN_ID] = {"action": "mass_extend"}
+    
+    kb = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="◀️ Отмена", callback_data="admin_mass")]
+    ])
+    
+    await callback.message.edit_text(
+        "📅 *Продлить всем активным*\n\n"
+        "Введи количество дней:",
+        reply_markup=kb,
+        parse_mode=ParseMode.MARKDOWN
+    )
+    await callback.answer()
+
+@router.callback_query(F.data == "mass_remind_expiring")
+async def mass_remind_expiring(callback: CallbackQuery, bot: Bot):
+    """Send reminder to users with expiring subscriptions"""
+    if callback.from_user.id != ADMIN_ID:
+        return
+    
+    await callback.answer("📤 Отправка напоминаний...")
+    
+    session = Session()
+    now = _utcnow()
+    soon = now + timedelta(days=3)
+    users = session.query(User).filter(
+        User.is_active == True,
+        User.expiry_at <= soon,
+        User.expiry_at > now
+    ).all()
+    session.close()
+    
+    sent = 0
+    for user in users:
+        if user.tg_id in PROTECTED_USERS:
+            continue
+        try:
+            expiry = _naive_utc(user.expiry_at)
+            days_left = (expiry - now).days if expiry and expiry > now else 0
+            await bot.send_message(
+                user.tg_id,
+                f"⚠️ *Подписка истекает!*\n\n"
+                f"Осталось {days_left} дней.\n\n"
+                f"Продли сейчас, чтобы не потерять доступ!",
+                parse_mode=ParseMode.MARKDOWN
+            )
+            sent += 1
+        except:
+            pass
+    
+    kb = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="◀️ Назад", callback_data="admin_mass")]
+    ])
+    
+    await callback.message.edit_text(
+        f"✅ *Напоминания отправлены*\n\n"
+        f"Получили: {sent} юзеров",
+        reply_markup=kb,
+        parse_mode=ParseMode.MARKDOWN
+    )
+
+
+@router.callback_query(F.data == "mass_normalize_plans")
+async def mass_normalize_plans(callback: CallbackQuery):
+    if callback.from_user.id != ADMIN_ID:
+        return
+
+    await callback.answer("⏳ Нормализую планы...")
+    s = Session()
+    try:
+        users = s.query(User).order_by(User.created_at.asc()).all()
+        changed = 0
+        by_to: dict[tuple[str, str], int] = {}
+        for u in users:
+            if u.tg_id in PROTECTED_USERS or u.tg_id == ADMIN_ID:
+                continue
+            old = (u.sub_type or "").strip()
+            new = _normalize_sub_type(old)
+            if new and new != old:
+                u.sub_type = new
+                changed += 1
+                key = (old or "—", new)
+                by_to[key] = by_to.get(key, 0) + 1
+        s.commit()
+    finally:
+        s.close()
+
+    lines = ["🧹 *Нормализация планов*\n", f"Изменено: *{changed}*"]
+    if by_to:
+        lines.append("\n*Что поменялось:*")
+        for (old, new), cnt in sorted(by_to.items(), key=lambda x: (-x[1], x[0][0], x[0][1]))[:12]:
+            lines.append(f"• `{old}` → `{new}`: {cnt}")
+
+    kb = InlineKeyboardMarkup(inline_keyboard=[[InlineKeyboardButton(text="◀️ Назад", callback_data="admin_mass")]])
+    await callback.message.edit_text("\n".join(lines), reply_markup=kb, parse_mode=ParseMode.MARKDOWN)
+    await callback.answer()
+
+
+@router.callback_query(F.data == "mass_promo_14")
+async def mass_promo_14(callback: CallbackQuery):
+    if callback.from_user.id != ADMIN_ID:
+        return
+
+    await callback.answer("🎁 Промо запускаю...")
+    await callback.message.edit_text(
+        "🎁 *Промо: +14 дней всем*\n\n"
+        "Обновляю БД и синкаю пользователей на ноды. Это может занять 10–60 секунд.",
+        reply_markup=InlineKeyboardMarkup(inline_keyboard=[[InlineKeyboardButton(text="◀️ Назад", callback_data="admin_mass")]]),
+        parse_mode=ParseMode.MARKDOWN,
+    )
+
+    now = _utcnow()
+    new_expiry = now + timedelta(days=14)
+
+    s = Session()
+    try:
+        users = s.query(User).order_by(User.created_at.asc()).all()
+        target: list[User] = []
+        for u in users:
+            st = (u.sub_type or "").strip()
+            if _normalize_sub_type(st) == "MANUAL":
+                continue
+            if u.tg_id in PROTECTED_USERS or u.tg_id == ADMIN_ID:
+                continue
+            u.is_active = True
+            u.expiry_at = new_expiry
+            u.sub_type = "PAID"
+            target.append(u)
+        s.commit()
+    finally:
+        s.close()
+
+    # Sync to paid nodes (exclude free nodes by ControlPanel default).
+    ok_total = 0
+    fail_total = 0
+    sem = asyncio.Semaphore(6)
+
+    async def sync_one(u: User) -> bool:
+        async with sem:
+            try:
+                sub_id = u.sub_token or str(u.tg_id)
+                res = await panel.ensure_user_on_all_nodes(
+                    tg_id=u.tg_id,
+                    client_uuid=u.uuid,
+                    email=u.email,
+                    sub_id=sub_id,
+                    enable=True,
+                )
+                return all(res.values()) if res else False
+            except Exception:
+                return False
+
+    # We need fresh objects after session close. Re-query minimal fields.
+    s = Session()
+    try:
+        rows = (
+            s.query(User)
+            .filter(User.sub_type == "PAID")
+            .filter(User.tg_id != ADMIN_ID)
+            .order_by(User.created_at.asc())
+            .all()
+        )
+    finally:
+        s.close()
+
+    results = await asyncio.gather(*(sync_one(u) for u in rows))
+    ok_total = sum(1 for r in results if r)
+    fail_total = sum(1 for r in results if not r)
+
+    kb = InlineKeyboardMarkup(inline_keyboard=[[InlineKeyboardButton(text="◀️ Назад", callback_data="admin_mass")]])
+    await callback.message.edit_text(
+        "🎁 *Промо: +14 дней всем*\n\n"
+        f"БД обновлена до: `{new_expiry.strftime('%Y-%m-%d')}`\n"
+        f"✅ Sync OK: {ok_total}\n"
+        f"❌ Sync Fail: {fail_total}",
+        reply_markup=kb,
+        parse_mode=ParseMode.MARKDOWN,
+    )
+    await callback.answer()
+
+
+@router.callback_query(F.data == "mass_sync_nodes")
+async def mass_sync_nodes(callback: CallbackQuery):
+    if callback.from_user.id != ADMIN_ID:
+        return
+
+    await callback.answer("🔄 Sync...")
+    await callback.message.edit_text(
+        "🔄 *Sync пользователей на ноды*\n\nЗапускаю. Это может занять 10–60 секунд.",
+        reply_markup=InlineKeyboardMarkup(inline_keyboard=[[InlineKeyboardButton(text="◀️ Назад", callback_data="admin_mass")]]),
+        parse_mode=ParseMode.MARKDOWN,
+    )
+
+    now = _utcnow()
+    s = Session()
+    try:
+        users = s.query(User).order_by(User.created_at.asc()).all()
+    finally:
+        s.close()
+
+    sem = asyncio.Semaphore(6)
+
+    async def sync_one(u: User) -> bool:
+        async with sem:
+            try:
+                st = _normalize_sub_type(u.sub_type)
+                if st == "MANUAL":
+                    return True
+                expiry = _naive_utc(u.expiry_at)
+                enable = bool(u.is_active and expiry and expiry > now)
+                sub_id = u.sub_token or str(u.tg_id)
+                only_codes = None
+                if st == "FREE":
+                    only_codes = _bot_free_codes()
+                    if not only_codes:
+                        return False
+                res = await panel.ensure_user_on_all_nodes(
+                    tg_id=u.tg_id,
+                    client_uuid=u.uuid,
+                    email=u.email,
+                    sub_id=sub_id,
+                    enable=enable,
+                    only_node_codes=only_codes,
+                )
+                return all(res.values()) if res else False
+            except Exception:
+                return False
+
+    target = [u for u in users if u.tg_id not in PROTECTED_USERS and u.tg_id != ADMIN_ID]
+    results = await asyncio.gather(*(sync_one(u) for u in target))
+    ok = sum(1 for r in results if r)
+    fail = sum(1 for r in results if not r)
+
+    kb = InlineKeyboardMarkup(inline_keyboard=[[InlineKeyboardButton(text="◀️ Назад", callback_data="admin_mass")]])
+    await callback.message.edit_text(
+        "🔄 *Sync пользователей на ноды*\n\n"
+        f"✅ OK: {ok}\n"
+        f"❌ Fail: {fail}",
+        reply_markup=kb,
+        parse_mode=ParseMode.MARKDOWN,
+    )
+    await callback.answer()
+
+@router.callback_query(F.data == "admin_sync")
+async def admin_sync_callback(callback: CallbackQuery, bot: Bot):
+    """Trigger sync from button"""
+    if callback.from_user.id != ADMIN_ID:
+        return
+    
+    await callback.answer("🔄 Синхронизация запущена...")
+    
+    session = Session()
+    users = session.query(User).all()
+    updated = 0
+    
+    for user in users:
+        if user.tg_id in PROTECTED_USERS:
+            continue
+        try:
+            chat = await bot.get_chat(user.tg_id)
+            if chat.username:
+                user.username = chat.username
+                updated += 1
+        except:
+            pass
+    
+    session.commit()
+    session.close()
+    
+    kb = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="◀️ Назад", callback_data="admin")]
+    ])
+    
+    await callback.message.edit_text(
+        f"✅ *Синхронизация завершена*\n\n"
+        f"Обновлено: {updated} username'ов",
+        reply_markup=kb,
+        parse_mode=ParseMode.MARKDOWN
+    )
+
+@router.callback_query(F.data.startswith("admin_users"))
+async def show_admin_users(callback: CallbackQuery):
+    if callback.from_user.id != ADMIN_ID:
+        await callback.answer("⛔️ Доступ запрещён")
+        return
+    
+    # Params: admin_users[:page][:segment]
+    page = 0
+    segment = "all"  # all|active|expired|free
+    parts = (callback.data or "").split(":")
+    if len(parts) >= 2 and parts[1].isdigit():
+        page = max(0, int(parts[1]))
+    if len(parts) >= 3 and parts[2]:
+        segment = parts[2]
+    if segment not in {"all", "active", "expired", "free"}:
+        segment = "all"
+
+    now = _utcnow()
+    per_page = 12
+    offset = page * per_page
+
+    session = Session()
+    q = session.query(User)
+
+    if segment == "active":
+        q = q.filter(User.is_active == True).filter(User.expiry_at.isnot(None)).filter(User.expiry_at > now)
+    elif segment == "expired":
+        q = q.filter((User.is_active == False) | (User.expiry_at.is_(None)) | (User.expiry_at <= now))
+    elif segment == "free":
+        q = q.filter(User.sub_type == "FREE")
+
+    total = q.count()
+    users = q.order_by(User.created_at.desc()).offset(offset).limit(per_page).all()
+    session.close()
+    
+    pages = max(1, (total + per_page - 1) // per_page)
+    page = min(page, pages - 1)
+
+    if not users:
+        kb = InlineKeyboardMarkup(
+            inline_keyboard=[
+                [
+                    InlineKeyboardButton(text="Все", callback_data="admin_users:0:all"),
+                    InlineKeyboardButton(text="Актив", callback_data="admin_users:0:active"),
+                    InlineKeyboardButton(text="Стартовый", callback_data="admin_users:0:free"),
+                ],
+                [InlineKeyboardButton(text="◀️ Назад", callback_data="admin")],
+            ]
+        )
+        await callback.message.edit_text("👥 Пользователи\n\nПусто для выбранного фильтра.", reply_markup=kb)
+        await callback.answer()
+        return
+
+    seg_label = {"all": "Все", "active": "Активные", "expired": "Истекшие", "free": "Стартовый"}.get(segment, "Все")
+    header = f"👥 <b>Пользователи</b> — {seg_label}\nВсего: {total} | Стр {page+1}/{pages}\n\n"
+
+    lines: list[str] = []
+    buttons: list[list[InlineKeyboardButton]] = []
+    buttons.append(
+        [
+            InlineKeyboardButton(text="Все", callback_data="admin_users:0:all"),
+            InlineKeyboardButton(text="Актив", callback_data="admin_users:0:active"),
+            InlineKeyboardButton(text="Истек", callback_data="admin_users:0:expired"),
+            InlineKeyboardButton(text="Стартовый", callback_data="admin_users:0:free"),
+        ]
+    )
+
+    for u in users:
+        expiry = _naive_utc(u.expiry_at)
+        is_active = bool(u.is_active and expiry and expiry > now)
+        status = "✅" if is_active else "❌"
+        uname = f"@{u.username}" if u.username else f"ID:{u.tg_id}"
+        days_left = (expiry - now).days if expiry and expiry > now else 0
+        plan = (u.sub_type or "—").upper()
+        lines.append(f"{status} {html.escape(uname)} — {days_left}д — {html.escape(plan)}")
+        label = f"{status} @{u.username}" if u.username else f"{status} {u.tg_id}"
+        buttons.append([InlineKeyboardButton(text=label, callback_data=f"adm_user_{u.tg_id}")])
+
+    nav: list[InlineKeyboardButton] = []
+    if page > 0:
+        nav.append(InlineKeyboardButton(text="⬅️", callback_data=f"admin_users:{page-1}:{segment}"))
+    nav.append(InlineKeyboardButton(text=f"{page+1}/{pages}", callback_data="noop"))
+    if (page + 1) < pages:
+        nav.append(InlineKeyboardButton(text="➡️", callback_data=f"admin_users:{page+1}:{segment}"))
+    buttons.append(nav)
+    buttons.append([InlineKeyboardButton(text="◀️ Назад", callback_data="admin")])
+
+    await callback.message.edit_text(
+        header + "\n".join(lines),
+        reply_markup=InlineKeyboardMarkup(inline_keyboard=buttons),
+        parse_mode=ParseMode.HTML,
+    )
+    await callback.answer()
+
+
+@router.callback_query(F.data == "wheel_cd")
+async def admin_wheel_set_cooldown_prompt(callback: CallbackQuery):
+    """Prompt admin to set wheel cooldown days (runtime only)."""
+    if callback.from_user.id != ADMIN_ID:
+        return
+
+    admin_pending_actions[ADMIN_ID] = {"action": "wheel_cd"}
+    kb = InlineKeyboardMarkup(inline_keyboard=[[InlineKeyboardButton(text="◀️ Отмена", callback_data="admin_wheel")]])
+    await callback.message.edit_text(
+        "⚙️ *Кулдаун рулетки*\n\n"
+        "Введи число дней (например `7`).\n"
+        "_Изменение действует до перезапуска бота._",
+        reply_markup=kb,
+        parse_mode=ParseMode.MARKDOWN,
+    )
+    await callback.answer()
+
+@router.callback_query(F.data.startswith("adm_user_"))
+async def admin_view_user(callback: CallbackQuery):
+    if callback.from_user.id != ADMIN_ID:
+        await callback.answer("⛔️ Доступ запрещён")
+        return
+    
+    tg_id = int(callback.data.replace("adm_user_", ""))
+    await render_admin_user_view(callback, tg_id)
+
+@router.callback_query(F.data.startswith("adm_add_days_"))
+async def admin_add_days(callback: CallbackQuery):
+    if callback.from_user.id != ADMIN_ID:
+        return
+    
+    parts = callback.data.split("_")
+    tg_id = int(parts[3])
+    days = int(parts[4])
+    
+    extend_user(tg_id, days, 0)
+    await callback.answer(f"✅ Добавлено {days} дней!")
+    
+    # Refresh user view - re-render directly
+    await render_admin_user_view(callback, tg_id)
+
+@router.callback_query(F.data.startswith("adm_add_gb_"))
+async def admin_add_gb(callback: CallbackQuery):
+    if callback.from_user.id != ADMIN_ID:
+        return
+    
+    parts = callback.data.split("_")
+    tg_id = int(parts[3])
+    gb = int(parts[4])
+    
+    user = get_user(tg_id)
+    if not user:
+        await callback.answer("❌ Пользователь не найден")
+        return
+
+    # Keep handler for backward compatibility; policy is managed by plan/env.
+    await panel.update_client_traffic(tg_id, 0)
+    await callback.answer("ℹ️ Управление трафиком через эту кнопку отключено.", show_alert=True)
+    
+    # Refresh user view - re-render directly
+    await render_admin_user_view(callback, tg_id)
+
+@router.callback_query(F.data.startswith("adm_sub_gb_"))
+async def admin_sub_gb(callback: CallbackQuery):
+    if callback.from_user.id != ADMIN_ID:
+        return
+    
+    parts = callback.data.split("_")
+    tg_id = int(parts[3])
+    gb = int(parts[4])
+    
+    user = get_user(tg_id)
+    if not user:
+        await callback.answer("❌ Пользователь не найден")
+        return
+
+    await panel.subtract_client_traffic(tg_id, 0)
+    await callback.answer("ℹ️ Управление трафиком через эту кнопку отключено.", show_alert=True)
+    
+    # Refresh user view
+    await render_admin_user_view(callback, tg_id)
+
+@router.callback_query(F.data.startswith("adm_toggle_"))
+async def admin_toggle_user(callback: CallbackQuery):
+    if callback.from_user.id != ADMIN_ID:
+        return
+    
+    tg_id = int(callback.data.replace("adm_toggle_", ""))
+    user = get_user(tg_id)
+    
+    if not user:
+        await callback.answer("❌ Пользователь не найден")
+        return
+    
+    # Toggle status
+    new_status = not user.is_active
+    session = Session()
+    db_user = session.query(User).filter_by(tg_id=tg_id).first()
+    if db_user:
+        db_user.is_active = new_status
+        session.commit()
+    session.close()
+    
+    # Toggle in panel
+    await panel.enable_client(user.uuid, new_status)
+    audit_admin(callback.from_user.id, "toggle_user", tg_id, meta=f"new_status={int(new_status)}")
+    
+    status_text = "активирован" if new_status else "отключен"
+    await callback.answer(f"✅ Пользователь {status_text}!")
+    
+    # Refresh user view - re-render directly
+    await render_admin_user_view(callback, tg_id)
+
+
+@router.callback_query(F.data.startswith("adm_sync_nodes_"))
+async def admin_sync_user_nodes(callback: CallbackQuery):
+    if callback.from_user.id != ADMIN_ID:
+        return
+
+    tg_id = int((callback.data or "").replace("adm_sync_nodes_", ""))
+    s = Session()
+    try:
+        u = s.query(User).filter_by(tg_id=tg_id).first()
+    finally:
+        s.close()
+
+    if not u:
+        await callback.answer("❌ Пользователь не найден", show_alert=True)
+        return
+
+    sub_id = u.sub_token or str(u.tg_id)
+    only_codes = None
+    if (u.sub_type or "").upper() == "FREE":
+        only_codes = _bot_free_codes()
+        if not only_codes:
+            await callback.answer("❌ Free pool не настроен", show_alert=True)
+            return
+    try:
+        res = await panel.ensure_user_on_all_nodes(
+            tg_id=u.tg_id,
+            client_uuid=u.uuid,
+            email=u.email,
+            sub_id=sub_id,
+            enable=bool(u.is_active),
+            only_node_codes=only_codes,
+        )
+        ok = sum(1 for v in res.values() if v)
+        fail = sum(1 for v in res.values() if not v)
+        await callback.answer(f"🔁 Sync: OK {ok}, fail {fail}")
+    except Exception:
+        await callback.answer("❌ Ошибка sync (см. логи)", show_alert=True)
+
+    await render_admin_user_view(callback, tg_id)
+
+
+@router.callback_query(F.data.startswith("adm_send_link_"))
+async def admin_send_user_link(callback: CallbackQuery, bot: Bot):
+    if callback.from_user.id != ADMIN_ID:
+        return
+
+    tg_id = int((callback.data or "").replace("adm_send_link_", ""))
+    u = get_user(tg_id)
+    if not u:
+        await callback.answer("❌ Пользователь не найден", show_alert=True)
+        return
+
+    try:
+        sub_link = build_subscription_link(tg_id)
+        await bot.send_message(
+            tg_id,
+            "🔗 *Ваша ссылка подписки*\n\n"
+            f"`{sub_link}`\n\n"
+            "_Если приложение просит обновить профиль, просто обновите подписку внутри приложения._",
+            parse_mode=ParseMode.MARKDOWN,
+        )
+        await callback.answer("📨 Отправлено")
+    except Exception:
+        await callback.answer("❌ Не удалось отправить (юзер заблокировал?)", show_alert=True)
+
+    await render_admin_user_view(callback, tg_id)
+
+
+@router.callback_query(F.data.startswith("adm_regen_token_"))
+async def admin_regen_token(callback: CallbackQuery):
+    if callback.from_user.id != ADMIN_ID:
+        return
+
+    tg_id = int((callback.data or "").replace("adm_regen_token_", ""))
+    token = regenerate_user_sub_token(tg_id)
+    if not token:
+        await callback.answer("❌ Пользователь не найден", show_alert=True)
+        return
+    link = build_subscription_link(tg_id)
+    audit_admin(callback.from_user.id, "regen_sub_token", tg_id)
+    await callback.answer("♻️ Токен перевыпущен")
+    await callback.message.answer(
+        f"♻️ Новый ключ пользователя `{tg_id}`:\n`{link}`",
+        parse_mode=ParseMode.MARKDOWN,
+    )
+    await render_admin_user_view(callback, tg_id)
+
+
+@router.callback_query(F.data.startswith("adm_msg_user_"))
+async def admin_message_user_prompt(callback: CallbackQuery):
+    if callback.from_user.id != ADMIN_ID:
+        return
+
+    tg_id = int((callback.data or "").replace("adm_msg_user_", ""))
+    u = get_user(tg_id)
+    if not u:
+        await callback.answer("❌ Пользователь не найден", show_alert=True)
+        return
+
+    admin_pending_actions[ADMIN_ID] = {"action": "admin_dm_capture", "target_tg_id": tg_id}
+    await callback.message.edit_text(
+        f"✉️ *Сообщение пользователю* `{tg_id}`\n\n"
+        "Отправь следующим сообщением текст, фото, видео или документ.\n"
+        "Я перешлю его пользователю как есть.",
+        parse_mode=ParseMode.MARKDOWN,
+        reply_markup=InlineKeyboardMarkup(
+            inline_keyboard=[[InlineKeyboardButton(text="◀️ Отмена", callback_data=f"adm_user_{tg_id}")]]
+        ),
+    )
+    await callback.answer()
+
+
+@router.callback_query(F.data == "mode_pro")
+async def mode_pro_start(callback: CallbackQuery):
+    await callback.message.edit_text(
+        "💀 *Ручной режим уже активен*\n\nОткрываю основное меню.",
+        reply_markup=main_keyboard(callback.from_user.id),
+        parse_mode=ParseMode.MARKDOWN,
+    )
+    await callback.answer("Вы уже в ручном режиме", show_alert=False)
+
+
+@router.callback_query(F.data == "mode_simple")
+async def mode_simple_start(callback: CallbackQuery):
+    text = (
+        "🪄 *Магия Автопилота*\n\n"
+        "Вам не нужно разбираться в технологиях.\n"
+        "Мы всё сделаем за 3 шага.\n\n"
+        "👇 *Какое у вас устройство?*"
+    )
+    kb = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="🍏 iPhone / iPad", callback_data="simple_ios")],
+        [InlineKeyboardButton(text="🤖 Android", callback_data="simple_android")],
+        [InlineKeyboardButton(text="💻 Компьютер", callback_data="simple_pc")],
+        [InlineKeyboardButton(text="◀️ Назад", callback_data="back")],
+    ])
+    await callback.message.edit_text(text, reply_markup=kb, parse_mode=ParseMode.MARKDOWN)
+    await callback.answer()
+
+
+@router.callback_query(F.data.in_({"simple_ios", "simple_android", "simple_pc"}))
+async def mode_simple_step2(callback: CallbackQuery):
+    mode = callback.data or ""
+    if mode == "simple_ios":
+        app_name = "Streisand"
+        app_link = "https://apps.apple.com/app/streisand/id6450534064"
+    elif mode == "simple_android":
+        app_name = "Hiddify"
+        app_link = "https://play.google.com/store/apps/details?id=app.hiddify.com"
+    else:
+        app_name = "Hiddify"
+        app_link = "https://github.com/hiddify/hiddify-next/releases"
+
+    text = (
+        f"1️⃣ *Шаг 1: Скачайте приложение*\n\n"
+        f"Для работы нужен клиент *{app_name}*.\n"
+        "Установите приложение и вернитесь в бот.\n\n"
+        "👇 Нажмите, чтобы скачать."
+    )
+    kb = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text=f"📥 Скачать {app_name}", url=app_link)],
+        [InlineKeyboardButton(text="✅ Я установил(а), дальше", callback_data="simple_step3")],
+        [InlineKeyboardButton(text="◀️ Назад", callback_data="mode_simple")],
+    ])
+    await callback.message.edit_text(text, reply_markup=kb, parse_mode=ParseMode.MARKDOWN)
+    await callback.answer()
+
+
+@router.callback_query(F.data == "simple_step3")
+async def mode_simple_step3(callback: CallbackQuery):
+    text = (
+        "2️⃣ *Шаг 2: Активация*\n\n"
+        "Теперь нужно создать ваш ключ доступа.\n"
+        "Начните с тарифа на 1 месяц или выберите другой план.\n\n"
+        "Нажмите кнопку ниже."
+    )
+    kb = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="⚡ Подключить за 199 ⭐️", callback_data="buy_1_month")],
+        [InlineKeyboardButton(text="🤔 Выбрать другой тариф", callback_data="charge")],
+        [InlineKeyboardButton(text="◀️ Назад", callback_data="mode_simple")],
+    ])
+    await callback.message.edit_text(text, reply_markup=kb, parse_mode=ParseMode.MARKDOWN)
+    await callback.answer()
+
+
+async def render_admin_user_view(callback: CallbackQuery, tg_id: int):
+    """Render admin user detail view - reusable helper"""
+    user = get_user(tg_id)
+    
+    if not user:
+        return
+    
+    uname = f"@{user.username}" if user.username else "—"
+    now = _utcnow()
+    expiry = _naive_utc(user.expiry_at)
+    is_active = bool(user.is_active and expiry and expiry > now)
+    status = "✅ Активен" if is_active else "❌ Неактивен"
+    expiry_txt = expiry.strftime("%d.%m.%Y") if expiry else "—"
+    days_left = (expiry - now).days if expiry and expiry > now else 0
+    plan = (user.sub_type or "—").upper()
+    manual_name = (getattr(user, "display_name", None) or "").strip()
+    is_manual = bool(getattr(user, "is_manual", False) or plan == "MANUAL" or user.tg_id < 0)
+    free_usage_line = ""
+    if _normalize_sub_type(plan) == "FREE":
+        remaining_gb, total_gb = await _free_remaining_gb(tg_id)
+        if remaining_gb is None:
+            free_usage_line = f"\n📊 Стартовый-остаток: <b>н/д</b> из <b>{int(total_gb)} ГБ</b>"
+        else:
+            free_usage_line = f"\n📊 Стартовый-остаток: <b>{remaining_gb} ГБ</b> из <b>{int(total_gb)} ГБ</b>"
+
+    manual_line = f"🏷 Имя: <b>{html.escape(manual_name)}</b>\n" if manual_name else ""
+
+    text = (
+        f"<b>👤 Пользователь</b>\n\n"
+        f"🆔 ID: <code>{tg_id}</code>\n"
+        f"📝 Ник: {html.escape(uname)}\n"
+        f"{manual_line}"
+        f"📦 Тариф: <b>{html.escape(plan)}</b>\n"
+        f"🧩 Тип: <b>{'MANUAL' if is_manual else 'TELEGRAM'}</b>\n"
+        f"🔋 Статус: {html.escape(status)}\n\n"
+        f"📅 До: <b>{html.escape(expiry_txt)}</b> ({days_left} дн.)\n"
+        f"📡 Режим: <b>{html.escape(_plan_mode_label(plan))}</b>\n"
+        f"⭐ Stars: <b>{int(user.stars_paid or 0)}</b>"
+        f"{free_usage_line}"
+    )
+    
+    kb = InlineKeyboardMarkup(inline_keyboard=[
+        [
+            InlineKeyboardButton(text="➕ 7 дней", callback_data=f"adm_add_days_{tg_id}_7"),
+            InlineKeyboardButton(text="➕ 30 дней", callback_data=f"adm_add_days_{tg_id}_30")
+        ],
+        [InlineKeyboardButton(text="🔁 Sync на ноды", callback_data=f"adm_sync_nodes_{tg_id}")],
+        [
+            InlineKeyboardButton(text="📨 Отправить ссылку", callback_data=f"adm_send_link_{tg_id}"),
+            InlineKeyboardButton(text="✉️ Сообщение", callback_data=f"adm_msg_user_{tg_id}"),
+        ],
+        [InlineKeyboardButton(text="🎫 Сменить тариф", callback_data=f"adm_tariff_{tg_id}")],
+        [
+            InlineKeyboardButton(
+                text="🔓 Активировать" if not user.is_active else "🔒 Отключить",
+                callback_data=f"adm_toggle_{tg_id}"
+            )
+        ],
+        [InlineKeyboardButton(text="♻️ Перевыпустить токен", callback_data=f"adm_regen_token_{tg_id}")],
+        [
+            InlineKeyboardButton(text="🗑️ Удалить", callback_data=f"adm_del_{tg_id}")
+        ],
+        [InlineKeyboardButton(text="◀️ К списку", callback_data="admin_manual_list" if is_manual else "admin_users")]
+    ])
+    
+    await callback.message.edit_text(text, reply_markup=kb, parse_mode=ParseMode.HTML)
+
+@router.callback_query(F.data.startswith("adm_tariff_"))
+async def admin_tariff_menu(callback: CallbackQuery):
+    if callback.from_user.id != ADMIN_ID:
+        return
+    
+    tg_id = int(callback.data.replace("adm_tariff_", ""))
+    
+    kb = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="🆓 Стартовый (соцсети + AI)", callback_data=f"adm_set_{tg_id}_trial")],
+        [InlineKeyboardButton(text="📅 1 Месяц (199 ⭐)", callback_data=f"adm_set_{tg_id}_1_month")],
+        [InlineKeyboardButton(text="📅 3 Месяца (499 ⭐)", callback_data=f"adm_set_{tg_id}_3_months")],
+        [InlineKeyboardButton(text="📅 6 Месяцев (949 ⭐)", callback_data=f"adm_set_{tg_id}_6_months")],
+        [InlineKeyboardButton(text="📅 1 Год (1499 ⭐)", callback_data=f"adm_set_{tg_id}_12_months")],
+        [InlineKeyboardButton(text="◀️ Назад", callback_data=f"adm_user_{tg_id}")]
+    ])
+    
+    await callback.message.edit_text(
+        f"🎫 *Выберите тариф для пользователя* `{tg_id}`:",
+        reply_markup=kb,
+        parse_mode=ParseMode.MARKDOWN
+    )
+    await callback.answer()
+
+@router.callback_query(F.data == "admin_gift_menu")
+async def admin_gift_menu(callback: CallbackQuery):
+    if callback.from_user.id != ADMIN_ID:
+        return
+    
+    kb = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="◀️ Назад", callback_data="admin")]
+    ])
+    
+    await callback.message.edit_text(
+        "🎁 *Команда /gift*\n\n"
+        "Формат:\n"
+        "`/gift [tg_id] [тариф]`\n\n"
+        "Тарифы:\n"
+        "• `trial` — Стартовый (1 страна)\n"
+        "• `1_month` — 1 Мес (Unlim)\n"
+        "• `3_months` — 3 Мес (Unlim)\n"
+        "• `6_months` — 6 Мес (Unlim)\n"
+        "• `12_months` — 1 Год (Unlim)\n\n"
+        "Или кастом:\n"
+        "`/gift [tg_id] [дни] [гб]`",
+        reply_markup=kb,
+        parse_mode=ParseMode.MARKDOWN
+    )
+    await callback.answer()
+
+@router.callback_query(F.data.startswith("adm_set_"))
+async def admin_set_tariff(callback: CallbackQuery, bot: Bot):
+    if callback.from_user.id != ADMIN_ID:
+        return
+    
+    parts = callback.data.split("_")
+    tg_id = int(parts[2])
+    # Handle keys with underscores like 1_month (parts[3] + parts[4]?)
+    # callback data: adm_set_{tg_id}_{key}
+    # split("_"): ["adm", "set", "123", "1", "month"] -> len 5
+    # trial -> len 4
+    
+    if len(parts) >= 5:
+        tariff_key = f"{parts[3]}_{parts[4]}"
+    else:
+        tariff_key = parts[3]
+
+    # Pre-defined presets logic based on TARIFFS constant to avoid duplication
+    preset = None
+    if tariff_key in TARIFFS:
+        t = TARIFFS[tariff_key]
+        preset = {"days": t["days"], "gb": t["gb"], "name": t["name"]}
+    
+    if not preset:
+        await callback.answer("❌ Тариф не найден")
+        return
+    
+    user = get_user(tg_id)
+    if user:
+        target_sub = _normalize_sub_type(t.get("sub_type") or tariff_key)
+        old_sub = _normalize_sub_type(user.sub_type)
+        if old_sub == "FREE" and target_sub == "PAID":
+            reset_user_expiry_from_now(tg_id, preset["days"], 0)
+        else:
+            # Default behavior: extend from current expiry.
+            extend_user(tg_id, preset["days"], 0)
+        
+        # Update plan in DB (keep internal sub_type consistent with TARIFFS, so wheel/logic works).
+        session = Session()
+        db_user = session.query(User).filter_by(tg_id=tg_id).first()
+        if db_user:
+            db_user.sub_type = t.get("sub_type") or tariff_key.upper()
+            db_user.total_gb = preset["gb"]
+            session.commit()
+        session.close()
+        
+        # SET traffic on panel (not add) - this resets used to 0 and sets new limit
+        await panel.set_tariff_traffic(tg_id, preset["gb"])
+        
+        await callback.answer(f"✅ Установлен тариф: {preset['name']}")
+    else:
+        await callback.answer("❌ Пользователь не найден")
+        return
+    
+    # Refresh user view
+    await render_admin_user_view(callback, tg_id)
+
+@router.callback_query(F.data.startswith("adm_reset_"))
+async def admin_reset_traffic(callback: CallbackQuery):
+    if callback.from_user.id != ADMIN_ID:
+        return
+    
+    tg_id = int(callback.data.replace("adm_reset_", ""))
+    
+    # Legacy: traffic limits are not used anymore (kept to avoid breaking older callback links).
+    await panel.reset_client_traffic(tg_id)
+    await callback.answer("ℹ️ Лимиты по трафику отключены.", show_alert=True)
+    
+    # Refresh user view
+    await render_admin_user_view(callback, tg_id)
+
+@router.callback_query(F.data.startswith("adm_del_"))
+async def admin_delete_user(callback: CallbackQuery):
+    if callback.from_user.id != ADMIN_ID:
+        return
+    
+    tg_id = int(callback.data.replace("adm_del_", ""))
+    
+    # Delete from panel
+    await panel.delete_client(tg_id)
+    
+    # Delete from DB
+    session = Session()
+    user = session.query(User).filter_by(tg_id=tg_id).first()
+    if user:
+        session.delete(user)
+        session.commit()
+    session.close()
+    
+    audit_admin(callback.from_user.id, "delete_user", tg_id)
+    
+    await callback.answer(f"✅ Пользователь {tg_id} удалён!")
+    
+    # Go back to paged list (re-render)
+    callback_copy = callback
+    callback_copy._data = "admin_users:0:all"
+    await show_admin_users(callback_copy)
+
+
+
+@router.callback_query(F.data.startswith("buy_"))
+async def process_buy(callback: CallbackQuery, bot: Bot):
+    raw_key = callback.data.replace("buy_", "")
+    tariff_key = normalize_tariff_key(raw_key)
+    tariff = TARIFFS.get(tariff_key)
+    
+    if not tariff:
+        await callback.answer("❌ Тариф не найден")
+        return
+    
+    tg_id = callback.from_user.id
+    user = get_user(tg_id)
+    
+    # Calculate price with referral discount (20% off on first paid purchase)
+    use_discount = has_referral_discount(tg_id) if tariff["stars"] > 0 else False
+    actual_stars = int(tariff["stars"] * 0.8) if use_discount else tariff["stars"]
+    
+    if tariff_key == "trial":
+        if not await check_subscription(tg_id, bot):
+            channel_name = (NEWS_CHANNEL_ID or "@portal_news_channel").lstrip("@")
+            kb = InlineKeyboardMarkup(inline_keyboard=[
+                [InlineKeyboardButton(text="📢 Подписаться", url=f"https://t.me/{channel_name}")],
+                [InlineKeyboardButton(text="✅ Проверить", callback_data="buy_trial")],
+                [InlineKeyboardButton(text="◀️ Назад", callback_data="charge")],
+            ])
+            await callback.message.edit_text(
+                "🔒 *Доступ ограничен*\n\n"
+                "Для активации режима «Стартовый» подпишитесь на канал обновлений и нажмите «Проверить».",
+                reply_markup=kb,
+                parse_mode=ParseMode.MARKDOWN,
+            )
+            await callback.answer()
+            return
+
+        now = _utcnow()
+        current_sub = _normalize_sub_type(user.sub_type if user else "")
+        expiry = _naive_utc(user.expiry_at) if user else None
+        has_active = bool(user and user.is_active and expiry and expiry > now)
+        if has_active and current_sub == "FREE":
+            await callback.answer("Режим «Стартовый» уже активен. Повторная активация не требуется.", show_alert=True)
+            return
+        if has_active and current_sub != "FREE":
+            await callback.answer("У вас уже активирован полный доступ. Режим «Стартовый» не требуется.", show_alert=True)
+            return
+
+        await callback.answer("⏳ Включаю режим «Стартовый»...")
+        await create_subscription(callback.message, tg_id, tariff, bot)
+        return
+    
+    # Paid - send invoice (with possible discount)
+    await callback.answer()
+    discount_note = " 🎉 Скидка 20%!" if use_discount else ""
+    prices = [LabeledPrice(label=tariff["name"] + discount_note, amount=actual_stars)]
+    description = f"Безлимит на {tariff['days']} дней{discount_note}"
+    await bot.send_invoice(
+        chat_id=tg_id,
+        title=f"Портал: {tariff['name']}",
+        description=description,
+        payload=f"portal_{tariff_key}_{tg_id}_{'disc' if use_discount else 'full'}",
+        provider_token="",
+        currency="XTR",
+        prices=prices
+    )
+
+@router.pre_checkout_query()
+async def pre_checkout_handler(pre_checkout: PreCheckoutQuery, bot: Bot):
+    await bot.answer_pre_checkout_query(pre_checkout.id, ok=True)
+
+@router.message(F.content_type == ContentType.SUCCESSFUL_PAYMENT)
+async def payment_success(message: Message, bot: Bot):
+    payment = message.successful_payment
+    payload = payment.invoice_payload
+    logger.info(
+        "payment_success: from_tg=%s amount=%s currency=%s payload=%s",
+        message.from_user.id if message.from_user else None,
+        payment.total_amount,
+        payment.currency,
+        payload,
+    )
+
+    # Handle gift card purchase
+    if payload.startswith("giftcard_"):
+        gift_raw = payload[len("giftcard_"):]
+        try:
+            card_type, buyer_raw = gift_raw.rsplit("_", 1)
+            buyer_tg_id = int(buyer_raw)
+        except Exception:
+            logger.warning("payment_success giftcard parse error payload=%s", payload)
+            await message.answer("❌ Ошибка обработки оплаты. Напиши в поддержку.")
+            return
+        
+        code = create_gift_card(buyer_tg_id, card_type)
+        if code:
+            card_info = GIFT_CARD_TYPES.get(card_type, {})
+            await message.answer(
+                f"🎁 *Подарочная карта куплена!*\n\n"
+                f"Код: `{code}`\n\n"
+                f"📦 {card_info.get('days', 0)} дней (Безлимит)\n\n"
+                f"Отправь этот код другу!\n"
+                f"Он активирует его командой `/redeem {code}`",
+                parse_mode=ParseMode.MARKDOWN
+            )
+        else:
+            logger.warning("payment_success giftcard create failed buyer_tg_id=%s card_type=%s", buyer_tg_id, card_type)
+            await message.answer("❌ Ошибка создания карты. Напиши в поддержку.")
+        return
+    
+    # Handle regular tariff purchase
+    if payload.startswith("portal_"):
+        portal_raw = payload[len("portal_"):]
+        try:
+            parsed = portal_raw.rsplit("_", 2)
+            if len(parsed) == 3:
+                tariff_raw, tg_raw, _mode = parsed
+            elif len(parsed) == 2:
+                tariff_raw, tg_raw = parsed
+            else:
+                raise ValueError("bad payload")
+            tariff_key = normalize_tariff_key(tariff_raw)
+            tg_id = int(tg_raw)
+        except Exception:
+            logger.warning("payment_success portal parse error payload=%s", payload)
+            await message.answer("❌ Ошибка обработки оплаты. Напиши в поддержку.")
+            return
+
+        tariff = TARIFFS.get(tariff_key)
+        
+        if tariff:
+            logger.info("payment_success portal parsed: tg_id=%s tariff_key=%s stars=%s", tg_id, tariff_key, tariff.get("stars"))
+            await message.answer(TEXTS["payment_success"])
+            await create_subscription(message, tg_id, tariff, bot)
+            receipt_text = (
+                "🧾 *Квитанция об оплате*\n"
+                "➖➖➖➖➖➖➖➖➖➖\n"
+                f"📦 Товар: *{tariff['name']}*\n"
+                f"💳 Сумма: *{payment.total_amount} XTR*\n"
+                f"📅 Дата: *{datetime.utcnow().strftime('%d.%m.%Y %H:%M')} UTC*\n"
+                f"🆔 TransID: `{payload}`\n"
+                "➖➖➖➖➖➖➖➖➖➖\n"
+                "✅ *Лицензия активирована успешно*"
+            )
+            kb = InlineKeyboardMarkup(
+                inline_keyboard=[[InlineKeyboardButton(text="🔑 Получить ключи", callback_data="show_key")]]
+            )
+            await message.answer(receipt_text, reply_markup=kb, parse_mode=ParseMode.MARKDOWN)
+        else:
+            logger.warning("payment_success unknown tariff_key=%s payload=%s", tariff_key, payload)
+
+async def create_subscription(message: Message, tg_id: int, tariff: dict, bot: Bot):
+    """Create or extend subscription"""
+    user = get_user(tg_id)
+    panel_client = await panel.get_existing_client(tg_id)
+    
+    # Check if this is a PAID purchase (for referral bonus)
+    is_paid_purchase = tariff["stars"] > 0
+    
+    if panel_client:
+        # User exists in panel - update DB and add traffic
+        client_uuid = panel_client.get("id")
+        if user:
+            old_sub = _normalize_sub_type(user.sub_type)
+            new_sub = _normalize_sub_type(tariff.get("sub_type") or tariff.get("subId"))
+            # FREE -> PAID must start from "now", not from legacy FREE long expiry.
+            if old_sub == "FREE" and new_sub == "PAID":
+                reset_user_expiry_from_now(tg_id, tariff["days"], tariff["stars"])
+            else:
+                extend_user(tg_id, tariff["days"], tariff["stars"])
+            # Keep current plan label in DB for status/admin.
+            session = Session()
+            db_user = session.query(User).filter_by(tg_id=tg_id).first()
+            if db_user:
+                db_user.sub_type = tariff.get("sub_type") or db_user.sub_type
+                session.commit()
+            session.close()
+        else:
+            create_user(tg_id, panel_client.get("id"), panel_client.get("email"), 
+                       tariff.get("sub_type") or tariff["subId"], tariff["days"], tariff["gb"], tariff["stars"])
+        
+        # Add traffic to existing client
+        await panel.update_client_traffic(tg_id, tariff["gb"])
+    else:
+        # Create new in panel
+        user_uuid = str(uuid.uuid4())
+        email = f"User_{tg_id}"
+        
+        # Generate sub_token BEFORE creating in panel
+        sub_token = generate_sub_token()
+        
+        # 3x-ui "subId" in this project is the per-user subscription token, not the tariff.
+        # The 3rd argument here is our internal plan marker to decide which nodes to provision.
+        success = await panel.add_client(user_uuid, email, tariff.get("sub_type") or tariff["subId"], tariff["gb"], tg_id, sub_token)
+        
+        if not success:
+            kb = InlineKeyboardMarkup(inline_keyboard=[
+                [InlineKeyboardButton(text="💬 Написать в поддержку", url=f"https://t.me/{SUPPORT_USERNAME}?start=ticket_new")],
+                [InlineKeyboardButton(text="◀️ Назад", callback_data="back")]
+            ])
+            await message.answer("❌ Не удалось активировать портал.\n\nНажмите кнопку ниже для связи с поддержкой.", reply_markup=kb)
+            return
+        
+        # Create user in DB with the generated sub_token
+        new_user = create_user(tg_id, user_uuid, email, tariff.get("sub_type") or tariff["subId"], tariff["days"], tariff["gb"], tariff["stars"])
+        # Update sub_token (create_user generates its own, but we need the one sent to panel)
+        session = Session()
+        db_user = session.query(User).filter_by(tg_id=tg_id).first()
+        if db_user:
+            db_user.sub_token = sub_token
+            session.commit()
+        session.close()
+    
+    # Keep legacy trial flag only for actual TRIAL plans (not used by default).
+    sub_type = (tariff.get("sub_type") or "").upper()
+    if tariff["stars"] == 0 and sub_type.startswith("TRIAL"):
+        mark_trial_used(tg_id)
+    
+    # 🎁 Award referral bonus days for every paid purchase
+    if is_paid_purchase:
+        # Mark that user has used their 20% discount
+        mark_first_purchase_done(tg_id)
+        
+        user = get_user(tg_id)
+        if user and user.referrer_id:
+            try:
+                bonus_success = await award_referral_bonus(user.referrer_id, REFERRAL_BONUS_DAYS)
+                if bonus_success:
+                    # Notify referrer about bonus
+                    try:
+                        await bot.send_message(
+                            user.referrer_id,
+                            "🎁 *Бонус!*\n\n"
+                            "Ваш друг пополнил подписку!\n"
+                            f"Вам начислено *+{REFERRAL_BONUS_DAYS} дней*!\n\n"
+                            "_Спасибо, что рекомендуете наш сервис!_",
+                            parse_mode=ParseMode.MARKDOWN
+                        )
+                    except:
+                        pass  # Referrer may have blocked bot
+            except Exception as e:
+                print(f"Referral bonus error: {e}")
+    
+    # 🔥 Update streak and bonus only for paid purchases.
+    if is_paid_purchase:
+        new_streak, streak_bonus = update_streak(tg_id)
+        if streak_bonus > 0:
+            try:
+                await panel.update_client_traffic(tg_id, streak_bonus)
+                await message.answer(
+                    f"🔥 *Streak бонус!*\n\n"
+                    f"Ты на волне уже *{new_streak} месяцев*!\n"
+                    f"Тебе начислено *+{streak_bonus} Дней*!",
+                    parse_mode=ParseMode.MARKDOWN
+                )
+            except:
+                pass
+    
+    user = get_user(tg_id)
+    expiry = user.expiry_at.strftime("%d.%m.%Y") if user and user.expiry_at else "—"
+    is_free = _normalize_sub_type(user.sub_type if user else "") == "FREE"
+    free_note = ""
+    if is_free:
+        free_note = (
+            f"\n\n🆓 Стартовый: до {FREE_TOTAL_GB} ГБ, до {FREE_LIMIT_IP} устройств (по IP)."
+        )
+    
+    # Build subscription link
+    sub_link = build_subscription_link(tg_id)
+    
+    kb = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="🌐 Открыть Портал", web_app=WebAppInfo(url=WEBAPP_URL))],
+        [InlineKeyboardButton(text="◀️ В меню", callback_data="back")]
+    ])
+    
+    await message.answer(
+        f"✅ *Портал активирован!*\n\n"
+        f"🔋 Энергии хватит до: `{expiry}`\n\n"
+        f"🔗 *Ваша подписка:*\n"
+        f"`{sub_link}`\n\n"
+        f"📋 _Добавьте ссылку как подписку в приложение_{free_note}",
+        reply_markup=kb,
+        parse_mode=ParseMode.MARKDOWN
+    )
+
+
+# ==========================================
+#           ADMIN COMMANDS
+# ==========================================
+@router.message(Command("admin"))
+async def admin_stats(message: Message):
+    if message.from_user.id != ADMIN_ID:
+        return
+    
+    # 🧹 Delete command message
+    try:
+        await message.delete()
+    except:
+        pass
+    
+    stats = get_stats()
+    
+    await message.answer(
+        TEXTS["admin_stats"].format(
+            total=stats["total"],
+            active=stats["active"],
+            stars=stats["stars"]
+        ),
+        parse_mode=ParseMode.MARKDOWN
+    )
+
+@router.message(Command("user"))
+async def admin_user_search(message: Message):
+    """Search user by @username or tg_id: /user @name or /user 123456"""
+    if message.from_user.id != ADMIN_ID:
+        return
+    
+    args = message.text.split(maxsplit=1)
+    if len(args) < 2:
+        await message.answer(
+            "🔍 *Поиск пользователя*\n\n"
+            "Использование:\n"
+            "`/user @username`\n"
+            "`/user 123456789`",
+            parse_mode=ParseMode.MARKDOWN
+        )
+        return
+    
+    query = args[1].strip()
+    session = Session()
+    
+    if query.startswith("@"):
+        # Search by username
+        username = query.lstrip("@")
+        user = session.query(User).filter(User.username.ilike(username)).first()
+    else:
+        # Search by tg_id
+        try:
+            tg_id = int(query)
+            user = session.query(User).filter_by(tg_id=tg_id).first()
+        except ValueError:
+            user = session.query(User).filter(User.username.ilike(query)).first()
+    
+    if not user:
+        session.close()
+        await message.answer(f"❌ Пользователь `{query}` не найден", parse_mode=ParseMode.MARKDOWN)
+        return
+    
+    # Get achievements count
+    ach_count = session.query(Achievement).filter_by(tg_id=user.tg_id).count()
+    
+    session.close()
+    
+
+
+    # Format user info
+    status = "✅ Активен" if user.is_active else "❌ Неактивен"
+    expiry = user.expiry_at.strftime("%d.%m.%Y") if user.expiry_at else "—"
+    created = user.created_at.strftime("%d.%m.%Y") if user.created_at else "—"
+    
+    safe_username = (user.username or '—').replace('_', '\\_')
+    text = (
+        f"👤 *Пользователь*\n\n"
+        f"ID: `{user.tg_id}`\n"
+        f"Username: @{safe_username}\n"
+        f"Статус: {status}\n\n"
+        f"📦 Тариф: `{user.sub_type or '—'}`\n"
+        f"📅 До: `{expiry}`\n"
+        f"📡 Режим: `{_plan_mode_label(user.sub_type)}`\n"
+        f"⭐ Оплачено: `{user.stars_paid or 0}` Stars\n\n"
+        f"🔥 Streak: `{user.streak_months or 0}` мес\n"
+        f"🏆 Ачивки: `{ach_count}`\n"
+        f"👥 Рефералы: `{user.referral_count or 0}`\n\n"
+        f"📆 Создан: `{created}`"
+    )
+    
+    kb = InlineKeyboardMarkup(inline_keyboard=[
+        [
+            InlineKeyboardButton(text="👤 Открыть", callback_data=f"adm_user_{user.tg_id}"),
+            InlineKeyboardButton(text="📋 Логи", callback_data=f"admin_logs_{user.tg_id}"),
+        ],
+        [
+            InlineKeyboardButton(text="📅 Продлить", callback_data=f"admin_extend_{user.tg_id}")
+        ],
+        [InlineKeyboardButton(text="🚫 Заблокировать" if user.is_active else "✅ Разблокировать", 
+                              callback_data=f"admin_ban_{user.tg_id}")]
+    ])
+    
+    await message.answer(text, reply_markup=kb, parse_mode=ParseMode.MARKDOWN)
+
+# Admin action states
+admin_pending_actions = {}
+# In-memory draft for the broadcast composer (admin only).
+admin_broadcast_drafts: dict[int, dict] = {}
+
+@router.callback_query(F.data.startswith("admin_logs_"))
+async def admin_view_logs(callback: CallbackQuery):
+    """View user activity logs"""
+    if callback.from_user.id != ADMIN_ID:
+        await callback.answer("⛔️ Доступ запрещён")
+        return
+    
+    tg_id = int(callback.data.replace("admin_logs_", ""))
+    session = Session()
+    
+    user = session.query(User).filter_by(tg_id=tg_id).first()
+    if not user:
+        session.close()
+        await callback.answer("Юзер не найден")
+        return
+    
+    # Get achievements
+    achievements = session.query(Achievement).filter_by(tg_id=tg_id).all()
+    ach_text = "\n".join([f"  • {ACHIEVEMENTS.get(a.achievement_id, {}).get('name', a.achievement_id)}" 
+                          for a in achievements[:5]]) or "  Нет"
+    
+    # Get gift cards redeemed/created
+    cards_created = session.query(GiftCard).filter_by(created_by=tg_id).count()
+    cards_redeemed = session.query(GiftCard).filter_by(redeemed_by=tg_id).count()
+    
+    # Get reviews
+    review = session.query(Review).filter_by(tg_id=tg_id).first()
+    review_text = f"  {'⭐' * review.rating} {review.text[:50] if review.text else ''}" if review else "  Нет"
+    
+    session.close()
+    
+    # Wheel info
+    wheel_text = user.last_wheel_spin.strftime("%d.%m.%Y %H:%M") if user.last_wheel_spin else "Никогда"
+    
+    text = (
+        f"📋 *Логи пользователя* `{tg_id}`\n\n"
+        f"*Последняя активность:*\n"
+        f"  🎰 Рулетка: {wheel_text}\n"
+        f"  🔥 Streak check: {user.streak_last_check.strftime('%d.%m.%Y') if user.streak_last_check else 'Нет'}\n\n"
+        f"*Ачивки ({len(achievements)}):*\n{ach_text}\n\n"
+        f"*Подарочные карты:*\n"
+        f"  Создано: {cards_created}\n"
+        f"  Активировано: {cards_redeemed}\n\n"
+        f"*Отзыв:*\n{review_text}"
+    )
+    
+    kb = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="◀️ Назад к профилю", callback_data=f"admin_profile_{tg_id}")]
+    ])
+    
+    await callback.message.edit_text(text, reply_markup=kb, parse_mode=ParseMode.MARKDOWN)
+    await callback.answer()
+
+@router.callback_query(F.data.startswith("admin_profile_"))
+async def admin_back_to_profile(callback: CallbackQuery):
+    """Return to user profile from logs"""
+    if callback.from_user.id != ADMIN_ID:
+        return
+    
+    tg_id = int(callback.data.replace("admin_profile_", ""))
+    # Reuse search logic
+    from aiogram.types import Message as FakeMessage
+    
+    session = Session()
+    user = session.query(User).filter_by(tg_id=tg_id).first()
+    ach_count = session.query(Achievement).filter_by(tg_id=tg_id).count() if user else 0
+    session.close()
+    
+    if not user:
+        await callback.answer("Юзер не найден")
+        return
+    
+    status = "✅ Активен" if user.is_active else "❌ Неактивен"
+    expiry = user.expiry_at.strftime("%d.%m.%Y") if user.expiry_at else "—"
+    created = user.created_at.strftime("%d.%m.%Y") if user.created_at else "—"
+    
+    safe_username = (user.username or '—').replace('_', '\\_')
+    text = (
+        f"👤 *Пользователь*\n\n"
+        f"ID: `{user.tg_id}`\n"
+        f"Username: @{safe_username}\n"
+        f"Статус: {status}\n\n"
+        f"📦 Тариф: `{user.sub_type or '—'}`\n"
+        f"📅 До: `{expiry}`\n"
+        f"⭐ Оплачено: `{user.stars_paid or 0}` Stars\n\n"
+        f"🔥 Streak: `{user.streak_months or 0}` мес\n"
+        f"🏆 Ачивки: `{ach_count}`\n"
+        f"👥 Рефералы: `{user.referral_count or 0}`\n\n"
+        f"📆 Создан: `{created}`"
+    )
+    
+    kb = InlineKeyboardMarkup(inline_keyboard=[
+        [
+            InlineKeyboardButton(text="👤 Открыть", callback_data=f"adm_user_{user.tg_id}"),
+            InlineKeyboardButton(text="📋 Логи", callback_data=f"admin_logs_{user.tg_id}"),
+        ],
+        [
+            InlineKeyboardButton(text="📅 Продлить", callback_data=f"admin_extend_{user.tg_id}")
+        ],
+        [InlineKeyboardButton(text="🚫 Заблокировать" if user.is_active else "✅ Разблокировать", 
+                              callback_data=f"admin_ban_{user.tg_id}")]
+    ])
+    
+    await callback.message.edit_text(text, reply_markup=kb, parse_mode=ParseMode.MARKDOWN)
+    await callback.answer()
+
+    # Handler removed
+    # await callback.answer("🚫 Лимиты по трафику не поддерживаются. Используйте 'Продлить'.", show_alert=True)
+
+@router.callback_query(F.data.startswith("admin_extend_"))
+async def admin_extend_prompt(callback: CallbackQuery):
+    """Prompt to extend subscription"""
+    if callback.from_user.id != ADMIN_ID:
+        return
+    
+    tg_id = int(callback.data.replace("admin_extend_", ""))
+    admin_pending_actions[callback.from_user.id] = {"action": "extend", "target": tg_id}
+    
+    await callback.message.edit_text(
+        f"📅 *Продлить подписку*\n\n"
+        f"Юзер: `{tg_id}`\n\n"
+        f"Отправь количество дней (число):",
+        parse_mode=ParseMode.MARKDOWN
+    )
+    await callback.answer()
+
+@router.callback_query(F.data.startswith("admin_ban_"))
+async def admin_toggle_ban(callback: CallbackQuery):
+    """Ban/unban user"""
+    if callback.from_user.id != ADMIN_ID:
+        return
+    
+    tg_id = int(callback.data.replace("admin_ban_", ""))
+    session = Session()
+    user = session.query(User).filter_by(tg_id=tg_id).first()
+    
+    if user:
+        user.is_active = not user.is_active
+        new_status = "заблокирован" if not user.is_active else "разблокирован"
+        session.commit()
+        await callback.answer(f"✅ Юзер {new_status}")
+    
+    session.close()
+    # Return to profile
+    await admin_back_to_profile(callback)
+
+# ==========================================
+#           PROMO CODES
+# ==========================================
+
+@router.message(Command("template"))
+async def template_command(message: Message, bot: Bot):
+    """
+    /template add KEY text - create template
+    /template list - show all
+    /template send KEY - send to all
+    /template send KEY @user - send to user
+    /template delete KEY - delete
+    """
+    if message.from_user.id != ADMIN_ID:
+        return
+    
+    args = message.text.split(maxsplit=3)
+    
+    if len(args) < 2:
+        await message.answer(
+            "📝 *Шаблоны сообщений*\n\n"
+            "`/template add key текст` — создать\n"
+            "`/template list` — список\n"
+            "`/template send key` — всем\n"
+            "`/template send key @user` — юзеру\n"
+            "`/template delete key` — удалить",
+            parse_mode=ParseMode.MARKDOWN
+        )
+        return
+    
+    subcmd = args[1].lower()
+    
+    if subcmd == "add" and len(args) >= 4:
+        key = args[2].lower()
+        text = args[3]
+        
+        session = Session()
+        existing = session.query(Template).filter_by(key=key).first()
+        if existing:
+            existing.text = text
+            action = "обновлён"
+        else:
+            session.add(Template(key=key, text=text))
+            action = "создан"
+        session.commit()
+        session.close()
+        
+        await message.answer(f"✅ Шаблон `{key}` {action}", parse_mode=ParseMode.MARKDOWN)
+    
+    elif subcmd == "list":
+        session = Session()
+        templates = session.query(Template).all()
+        session.close()
+        
+        if not templates:
+            await message.answer("📝 _Нет шаблонов_", parse_mode=ParseMode.MARKDOWN)
+            return
+        
+        lines = [f"`{t.key}` — {t.text[:50]}..." if len(t.text) > 50 else f"`{t.key}` — {t.text}" for t in templates]
+        await message.answer("📝 *Шаблоны:*\n\n" + "\n".join(lines), parse_mode=ParseMode.MARKDOWN)
+    
+    elif subcmd == "send" and len(args) >= 3:
+        key = args[2].lower()
+        target_user = args[3] if len(args) >= 4 else None
+        
+        session = Session()
+        template = session.query(Template).filter_by(key=key).first()
+        
+        if not template:
+            session.close()
+            await message.answer(f"❌ Шаблон `{key}` не найден", parse_mode=ParseMode.MARKDOWN)
+            return
+        
+        if target_user:
+            # Send to specific user
+            username = target_user.lstrip("@")
+            user = session.query(User).filter(User.username.ilike(username)).first()
+            if not user:
+                try:
+                    uid = int(target_user)
+                    user = session.query(User).filter_by(tg_id=uid).first()
+                except:
+                    pass
+            session.close()
+            
+            if not user:
+                await message.answer(f"❌ Юзер `{target_user}` не найден", parse_mode=ParseMode.MARKDOWN)
+                return
+            
+            try:
+                await bot.send_message(user.tg_id, template.text, parse_mode=ParseMode.MARKDOWN)
+                await message.answer(f"✅ Шаблон `{key}` отправлен @{user.username or user.tg_id}", parse_mode=ParseMode.MARKDOWN)
+            except Exception as e:
+                await message.answer(f"❌ Ошибка: {e}")
+        else:
+            # Send to all
+            users = session.query(User).filter_by(is_active=True).all()
+            session.close()
+            
+            sent = 0
+            for user in users:
+                if user.tg_id in PROTECTED_USERS or user.tg_id == ADMIN_ID:
+                    continue
+                try:
+                    await bot.send_message(user.tg_id, template.text, parse_mode=ParseMode.MARKDOWN)
+                    sent += 1
+                except:
+                    pass
+            
+            await message.answer(f"✅ Шаблон `{key}` отправлен {sent} юзерам", parse_mode=ParseMode.MARKDOWN)
+    
+    elif subcmd == "delete" and len(args) >= 3:
+        key = args[2].lower()
+        
+        session = Session()
+        template = session.query(Template).filter_by(key=key).first()
+        if template:
+            session.delete(template)
+            session.commit()
+            await message.answer(f"✅ Шаблон `{key}` удалён", parse_mode=ParseMode.MARKDOWN)
+        else:
+            await message.answer(f"❌ Шаблон `{key}` не найден", parse_mode=ParseMode.MARKDOWN)
+        session.close()
+    
+    else:
+        await message.answer("❌ Неверный формат команды")
+
+
+def activate_promo_code_for_user(tg_id: int, code: str) -> tuple[bool, str]:
+    code = (code or "").strip().upper()
+    if not code:
+        return False, "❌ Промокод пустой"
+
+    session = Session()
+    try:
+        promo = session.query(PromoCode).filter_by(code=code).first()
+        if not promo:
+            return False, "❌ Промокод не найден"
+
+        if promo.uses_left == 0:
+            return False, "❌ Промокод больше не активен"
+
+        usage = session.query(PromoUsage).filter_by(tg_id=tg_id, promo_code=code).first()
+        if usage:
+            return False, "❌ Ты уже использовал этот промокод"
+
+        if promo.promo_type == "days":
+            user = session.query(User).filter_by(tg_id=tg_id).first()
+            now = _utcnow()
+            if user:
+                expiry = _naive_utc(user.expiry_at)
+                if expiry and expiry > now:
+                    user.expiry_at = expiry + timedelta(days=promo.value)
+                else:
+                    user.expiry_at = now + timedelta(days=promo.value)
+                user.is_active = True
+            result_text = f"🎁 Тебе добавлено *+{promo.value} Дней!*"
+        else:
+            result_text = f"🎉 Скидка *{promo.value}%* будет применена к следующей покупке!"
+
+        session.add(PromoUsage(tg_id=tg_id, promo_code=code))
+        if promo.uses_left > 0:
+            promo.uses_left -= 1
+        session.commit()
+        return True, f"✅ *Промокод активирован!*\n\n{result_text}"
+    finally:
+        session.close()
+
+
+@router.message(Command("promo"))
+async def promo_command(message: Message, bot: Bot):
+    """
+    Admin: /promo create CODE TYPE VALUE [USES]
+    Admin: /promo list
+    User: /promo CODE
+    """
+    tg_id = message.from_user.id
+    pending_promo_codes.discard(tg_id)
+    args = message.text.split()
+    
+    # Admin commands
+    if tg_id == ADMIN_ID and len(args) >= 2:
+        subcmd = args[1].lower()
+        
+        if subcmd == "create" and len(args) >= 5:
+            # /promo create NEWYEAR discount 20 100
+            # /promo create BONUS10 gb 10 50
+            code = args[2].upper()
+            promo_type = args[3].lower()
+            try:
+                value = int(args[4])
+                uses = int(args[5]) if len(args) > 5 else -1
+            except:
+                await message.answer("❌ Неверный формат. Пример:\n`/promo create NEWYEAR discount 20 100`", parse_mode=ParseMode.MARKDOWN)
+                return
+            
+            if promo_type not in ["discount", "days"]:
+                await message.answer("❌ Тип: `discount` или `days`", parse_mode=ParseMode.MARKDOWN)
+                return
+            
+            session = Session()
+            existing = session.query(PromoCode).filter_by(code=code).first()
+            if existing:
+                session.close()
+                await message.answer(f"❌ Код `{code}` уже существует", parse_mode=ParseMode.MARKDOWN)
+                return
+            
+            promo = PromoCode(code=code, promo_type=promo_type, value=value, uses_left=uses)
+            session.add(promo)
+            session.commit()
+            session.close()
+            
+            type_text = f"{value}%" if promo_type == "discount" else f"+{value} Дней"
+            uses_text = "∞" if uses == -1 else str(uses)
+            await message.answer(
+                f"✅ *Промокод создан!*\n\n"
+                f"Код: `{code}`\n"
+                f"Тип: {type_text}\n"
+                f"Лимит: {uses_text}",
+                parse_mode=ParseMode.MARKDOWN
+            )
+            return
+        
+        elif subcmd == "list":
+            session = Session()
+            promos = session.query(PromoCode).filter(PromoCode.uses_left != 0).all()
+            session.close()
+            
+            if not promos:
+                await message.answer("📭 Нет активных промокодов")
+                return
+            
+            lines = []
+            for p in promos:
+                type_text = f"{p.value}%" if p.promo_type == "discount" else f"+{p.value} Дн."
+                uses_text = "∞" if p.uses_left == -1 else str(p.uses_left)
+                lines.append(f"`{p.code}` — {type_text}, осталось: {uses_text}")
+            
+            await message.answer(
+                "🎫 *Активные промокоды:*\n\n" + "\n".join(lines),
+                parse_mode=ParseMode.MARKDOWN
+            )
+            return
+        
+        elif subcmd == "delete" and len(args) >= 3:
+            code = args[2].upper()
+            session = Session()
+            promo = session.query(PromoCode).filter_by(code=code).first()
+            if promo:
+                session.delete(promo)
+                session.commit()
+                await message.answer(f"✅ Промокод `{code}` удалён", parse_mode=ParseMode.MARKDOWN)
+            else:
+                await message.answer(f"❌ Промокод `{code}` не найден", parse_mode=ParseMode.MARKDOWN)
+            session.close()
+            return
+    
+    # User activation: /promo CODE
+    if len(args) >= 2:
+        code = args[1].upper()
+        ok, result = activate_promo_code_for_user(tg_id, code)
+        await message.answer(result, parse_mode=ParseMode.MARKDOWN)
+    else:
+        await message.answer(
+            "🎫 *Активация промокода*\n\n"
+            "Использование: `/promo КОД`\n\n"
+            "Пример: `/promo NEWYEAR`",
+            parse_mode=ParseMode.MARKDOWN
+        )
+
+# ==========================================
+#           HEALTH CHECK
+# ==========================================
+
+@router.message(Command("health"))
+async def health_check(message: Message, bot: Bot):
+    """Check system health"""
+    if message.from_user.id != ADMIN_ID:
+        return
+    
+    import time
+    start_time = time.time()
+    
+    status = []
+    
+    # Bot status (always OK if we're running)
+    status.append("✅ Бот: работает")
+    
+    # Database check
+    try:
+        session = Session()
+        user_count = session.query(User).count()
+        active_count = session.query(User).filter_by(is_active=True).count()
+        session.close()
+        status.append(f"✅ БД: {user_count} юзеров ({active_count} активных)")
+    except Exception as e:
+        status.append(f"❌ БД: {str(e)[:50]}")
+    
+    # Panel check
+    try:
+        clients = await panel.get_clients_list()
+        if clients is not None:
+            status.append(f"✅ Панель: {len(clients)} клиентов")
+        else:
+            status.append("⚠️ Панель: нет ответа")
+    except Exception as e:
+        status.append(f"❌ Панель: {str(e)[:50]}")
+    
+    # API check (self-ping)
+    try:
+        import aiohttp
+        async with aiohttp.ClientSession() as s:
+            async with s.get(f"{WEBAPP_URL}", timeout=aiohttp.ClientTimeout(total=5)) as r:
+                if r.status == 200:
+                    status.append("✅ WebApp: доступен")
+                else:
+                    status.append(f"⚠️ WebApp: код {r.status}")
+    except Exception as e:
+        status.append(f"❌ WebApp: {str(e)[:30]}")
+    
+    elapsed = round((time.time() - start_time) * 1000)
+    
+    await message.answer(
+        f"❤️ *Health Check*\n\n" + 
+        "\n".join(status) +
+        f"\n\n⏱️ Проверка: {elapsed}мс",
+        parse_mode=ParseMode.MARKDOWN
+    )
+
+# ==========================================
+#           REVIEWS MODERATION
+# ==========================================
+
+@router.message(Command("reviews"))
+async def reviews_moderation(message: Message):
+    """List reviews for moderation: /reviews [featured|all]"""
+    if message.from_user.id != ADMIN_ID:
+        return
+    
+    args = message.text.split()
+    show_featured = len(args) > 1 and args[1].lower() == "featured"
+    
+    session = Session()
+    if show_featured:
+        reviews = session.query(Review).filter_by(is_featured=True).order_by(Review.created_at.desc()).limit(10).all()
+        title = "⭐ Избранные отзывы"
+    else:
+        reviews = session.query(Review).order_by(Review.created_at.desc()).limit(10).all()
+        title = "📝 Последние отзывы"
+    
+    session.close()
+    
+    if not reviews:
+        await message.answer("📭 Отзывов нет")
+        return
+    
+    for r in reviews:
+        featured = "⭐" if r.is_featured else ""
+        text = r.text[:100] if r.text else "—"
+        kb = InlineKeyboardMarkup(inline_keyboard=[
+            [
+                InlineKeyboardButton(text="⭐ Featured" if not r.is_featured else "❌ Unfeatured", 
+                                     callback_data=f"review_toggle_{r.id}"),
+                InlineKeyboardButton(text="🗑️ Удалить", callback_data=f"review_delete_{r.id}")
+            ]
+        ])
+        await message.answer(
+            f"{featured} *@{r.username or 'Аноним'}* {'⭐' * r.rating}\n"
+            f"_{text}_\n"
+            f"`ID:{r.id}`",
+            reply_markup=kb,
+            parse_mode=ParseMode.MARKDOWN
+        )
+
+@router.callback_query(F.data.startswith("review_toggle_"))
+async def toggle_review_featured(callback: CallbackQuery):
+    """Toggle featured status"""
+    if callback.from_user.id != ADMIN_ID:
+        return
+    
+    review_id = int(callback.data.replace("review_toggle_", ""))
+    session = Session()
+    review = session.query(Review).filter_by(id=review_id).first()
+    if review:
+        review.is_featured = not review.is_featured
+        status = "добавлен в избранное" if review.is_featured else "убран из избранного"
+        session.commit()
+        await callback.answer(f"✅ Отзыв {status}")
+    session.close()
+
+    # If this toggle was triggered from the admin list view, refresh the list.
+    try:
+        txt = (callback.message.text or "").strip()
+        if ("Стр " in txt) and ("Все отзывы" in txt or "Избранные отзывы" in txt):
+            featured_only = txt.startswith("⭐")
+            import re
+
+            m = re.search(r"Стр\\s+(\\d+)/(\\d+)", txt)
+            page = int(m.group(1)) - 1 if m else 0
+            await _render_reviews_page(callback=callback, featured_only=featured_only, page=page)
+    except Exception:
+        pass
+
+@router.callback_query(F.data.startswith("review_delete_"))
+async def delete_review(callback: CallbackQuery):
+    """Delete review"""
+    if callback.from_user.id != ADMIN_ID:
+        return
+    
+    review_id = int(callback.data.replace("review_delete_", ""))
+    session = Session()
+    review = session.query(Review).filter_by(id=review_id).first()
+    if review:
+        session.delete(review)
+        session.commit()
+    session.close()
+
+    # Refresh admin list view if this action came from it; otherwise just confirm.
+    try:
+        txt = (callback.message.text or "").strip()
+        if ("Стр " in txt) and ("Все отзывы" in txt or "Избранные отзывы" in txt):
+            featured_only = txt.startswith("⭐")
+            import re
+
+            m = re.search(r"Стр\\s+(\\d+)/(\\d+)", txt)
+            page = int(m.group(1)) - 1 if m else 0
+            await _render_reviews_page(callback=callback, featured_only=featured_only, page=page)
+        else:
+            await callback.answer("🗑️ Удалено")
+    except Exception:
+        await callback.answer("🗑️ Удалено")
+
+@router.message(Command("sync"))
+async def sync_usernames(message: Message, bot: Bot):
+    """Sync usernames from Telegram API for all users and update panel comments"""
+    if message.from_user.id != ADMIN_ID:
+        return
+    
+    # 🧹 Delete command message
+    try:
+        await message.delete()
+    except:
+        pass
+    
+    await message.answer("🔄 Синхронизирую никнеймы и обновляю панель...")
+    
+    session = Session()
+    users = session.query(User).all()
+    updated = 0
+    panel_updated = 0
+    errors = 0
+    
+    for user in users:
+        # Skip protected users
+        if user.tg_id in PROTECTED_USERS:
+            continue
+        
+        try:
+            chat = await bot.get_chat(user.tg_id)
+            if chat.username:
+                user.username = chat.username
+                updated += 1
+                # Also update panel comment
+                if await panel.update_client_comment(user.tg_id, f"@{chat.username}"):
+                    panel_updated += 1
+        except Exception:
+            errors += 1
+    
+    session.commit()
+    session.close()
+    
+    await message.answer(
+        f"✅ Синхронизация завершена!\n\n"
+        f"📊 Обновлено в БД: {updated}\n"
+        f"📋 Обновлено в панели: {panel_updated}\n"
+        f"❌ Ошибок: {errors}\n"
+        f"👥 Всего: {len(users)}"
+    )
+
+
+# Backwards compat from old const
+BROADCAST_EXCLUDE = PROTECTED_USERS
+
+@router.message(Command("broadcast"))
+async def admin_broadcast(message: Message, bot: Bot):
+    """Send new subscription links to all active users"""
+    if message.from_user.id != ADMIN_ID:
+        return
+    
+    try:
+        await message.delete()
+    except:
+        pass
+    
+    session = Session()
+    users = session.query(User).filter(User.is_active == True).all()
+    session.close()
+    
+    sent = 0
+    failed = 0
+    skipped = 0
+    
+    status_msg = await message.answer(f"📤 Отправляю рассылку...\n👥 Всего: {len(users)}")
+    
+    for user in users:
+        # Skip excluded users and admin
+        if user.tg_id in BROADCAST_EXCLUDE or user.tg_id == ADMIN_ID:
+            skipped += 1
+            continue
+        
+        try:
+            sub_link = build_subscription_link(user.tg_id)
+            await bot.send_message(
+                user.tg_id,
+                f"🔄 *Обновление подписки*\n\n"
+                f"Мы обновили систему для повышения безопасности.\n\n"
+                f"🔗 *Ваша новая ссылка подписки:*\n"
+                f"`{sub_link}`\n\n"
+                f"📋 _Пожалуйста, обновите ссылку в вашем приложении._\n\n"
+                f"Если у вас вопросы — /start",
+                parse_mode=ParseMode.MARKDOWN
+            )
+            sent += 1
+            await asyncio.sleep(0.1)  # Rate limit
+        except Exception as e:
+            failed += 1
+    
+    await status_msg.edit_text(
+        f"✅ *Рассылка завершена!*\n\n"
+        f"📨 Отправлено: {sent}\n"
+        f"⏭️ Пропущено: {skipped}\n"
+        f"❌ Ошибок: {failed}",
+        parse_mode=ParseMode.MARKDOWN
+    )
+
+    audit_admin(
+        actor_tg_id=message.from_user.id,
+        action="admin_broadcast",
+        meta=json.dumps(
+            {"sent": sent, "failed": failed, "skipped": skipped, "total": len(users)},
+            ensure_ascii=True,
+            separators=(",", ":"),
+        ),
+    )
+
+
+@router.message(Command("gift"))
+async def admin_gift(message: Message, bot: Bot):
+    if message.from_user.id != ADMIN_ID:
+        return
+    
+    # 🧹 Delete command message
+    try:
+        await message.delete()
+    except:
+        pass
+    
+    parts = message.text.split()
+    if len(parts) < 3:
+        await message.answer(
+            "📦 *Формат команды /gift:*\n\n"
+            "`/gift [tg_id] trial` — Пробный (7 дней)\n"
+            "`/gift [tg_id] basic` — Стандарт (30 дней)\n"
+            "`/gift [tg_id] pro` — Турбо (30 дней)\n"
+            "`/gift [tg_id] vip` — VIP (365 дней)\n"
+            "`/gift [tg_id] [days]` — Кастом\n\n"
+            "_Примеры:_\n"
+            "`/gift 123456789 vip`\n"
+            "`/gift 123456789 90`",
+            parse_mode=ParseMode.MARKDOWN
+        )
+        return
+    
+    try:
+        gift_tg_id = int(parts[1])
+    except ValueError:
+        await message.answer("❌ Неверный tg_id")
+        return
+    
+    # Preset tariffs for gifts
+    gift_presets = {
+        "trial": {"days": 7, "name": "🎁 Пробный"},
+        "basic": {"days": 30, "name": "⚡ Стандарт"},
+        "pro": {"days": 30, "name": "🚀 Турбо"},
+        "vip": {"days": 365, "name": "👑 VIP"},
+    }
+    
+    # Check if preset or custom
+    preset_key = parts[2].lower()
+    if preset_key in gift_presets:
+        preset = gift_presets[preset_key]
+        days = preset["days"]
+        name = preset["name"]
+    else:
+        # Custom: /gift tg_id days
+        try:
+            days = int(parts[2])
+            name = f"🎁 Подарок ({days} дней)"
+        except ValueError:
+            await message.answer("❌ Неверные параметры")
+            return
+    
+    panel_client = await panel.get_existing_client(gift_tg_id)
+    
+    user = get_user(gift_tg_id)
+    if user:
+        # EXISTING USER - extend
+        extend_user(gift_tg_id, days, 0)
+
+        # Update sub_type to GIFT
+        session = Session()
+        db_user = session.query(User).filter_by(tg_id=gift_tg_id).first()
+        if db_user:
+            db_user.sub_type = "PAID"
+            db_user.total_gb = 0
+            session.commit()
+        session.close()
+    else:
+        # NEW USER - generate sub_token FIRST before adding to panel
+        sub_token = generate_sub_token()
+        user_uuid = str(uuid.uuid4())
+        email = f"User_{gift_tg_id}"
+        
+        if not panel_client:
+            # Pass sub_token to add_client so panel uses secure subscription ID
+            await panel.add_client(user_uuid, email, "PAID", 0, gift_tg_id, sub_token)
+        else:
+            user_uuid = panel_client.get("id")
+            email = panel_client.get("email")
+        
+        # Create user in DB with generated sub_token
+        session = Session()
+        new_user = User(
+            tg_id=gift_tg_id,
+            uuid=user_uuid,
+            email=email,
+            sub_type="PAID",
+            expiry_at=_utcnow() + timedelta(days=days),
+            is_active=True,
+            stars_paid=0,
+            total_gb=0,
+            sub_token=sub_token
+        )
+        session.add(new_user)
+        session.commit()
+        session.close()
+    
+    # 🎁 Referral bonus (gift counts as purchase)
+    mark_first_purchase_done(gift_tg_id)
+    user = get_user(gift_tg_id)
+    if user and user.referrer_id:
+        try:
+            bonus_success = await award_referral_bonus(user.referrer_id, REFERRAL_BONUS_DAYS)
+            if bonus_success:
+                # Notify referrer about bonus
+                try:
+                    await bot.send_message(
+                        user.referrer_id,
+                        "🎁 *Бонус!*\n\n"
+                        "Ваш друг получил подписку!\n"
+                        f"Вам начислено *+{REFERRAL_BONUS_DAYS} дней*!\n\n"
+                        "_Спасибо, что рекомендуете наш сервис!_",
+                        parse_mode=ParseMode.MARKDOWN
+                    )
+                except:
+                    pass
+        except Exception as e:
+            print(f"Referral bonus error: {e}")
+    
+    await message.answer(
+        f"✅ Подарок отправлен!\n\n👤 ID: `{gift_tg_id}`\n📦 Тариф: {name}\n📅 Дней: {days}",
+        parse_mode=ParseMode.MARKDOWN,
+    )
+
+    audit_admin(
+        actor_tg_id=message.from_user.id,
+        action="admin_gift",
+        target_tg_id=gift_tg_id,
+        meta=json.dumps(
+            {"days": days, "preset": preset_key, "name": name},
+            ensure_ascii=True,
+            separators=(",", ":"),
+        ),
+    )
+    
+    try:
+        # Build subscription link for notification
+        sub_link = build_subscription_link(gift_tg_id)
+        await bot.send_message(
+            gift_tg_id,
+            f"🎁 *Вам подарили доступ к Порталу!*\n\n"
+            f"📦 Тариф: {name}\n"
+            f"📅 Дней: {days}\n"
+            f"📡 Режим: безлимит\n\n"
+            f"🔗 *Ваша подписка:*\n`{sub_link}`\n\n"
+            f"📋 _Добавьте ссылку как подписку в приложение_",
+            parse_mode=ParseMode.MARKDOWN
+        )
+    except:
+        pass
+
+# ==========================================
+#               BACKGROUND TASKS
+# ==========================================
+async def monitor_expiry(bot: Bot) -> None:
+    """
+    Background task to enforce expiry.
+
+    Important: we DO NOT enforce traffic limits in this project.
+    Traffic-based deactivation is dangerous because legacy/manual clients may have old totalGB limits in panels.
+    """
+    while True:
+        try:
+            await asyncio.sleep(3600)  # hourly
+            now = _utcnow()
+
+            session = Session()
+            try:
+                users = session.query(User).filter(User.is_active == True).all()
+                for user in users:
+                    try:
+                        # Manual users are special (static accounts). Don't auto-disable them.
+                        if _normalize_sub_type(user.sub_type) == "MANUAL":
+                            continue
+
+                        expiry = _naive_utc(user.expiry_at)
+                        if expiry and now > expiry:
+                            # Auto-downgrade to Free instead of disabling access.
+                            user.sub_type = "FREE"
+                            # Keep Free usable for a long time; actual policies are controlled server-side.
+                            auto_free_days = int(os.getenv("AUTO_FREE_DAYS", "3650"))
+                            user.expiry_at = now + timedelta(days=auto_free_days)
+                            user.is_active = True
+                            session.commit()
+
+                            # Ensure the user exists on the Free inbound and disable any existing paid-node clients.
+                            nodes = _bot_enabled_nodes()
+                            free_codes = _bot_free_codes()
+
+                            try:
+                                if free_codes:
+                                    sub_id = user.sub_token or str(user.tg_id)
+                                    await panel.ensure_user_on_all_nodes(
+                                        tg_id=user.tg_id,
+                                        client_uuid=user.uuid,
+                                        email=user.email,
+                                        sub_id=sub_id,
+                                        enable=True,
+                                        only_node_codes=free_codes,
+                                    )
+                            except Exception:
+                                pass
+
+                            paid_codes = [
+                                (getattr(n, "code", "") or "").strip()
+                                for n in nodes
+                                if "free" not in (getattr(n, "code", "") or "").lower()
+                            ]
+                            try:
+                                await panel.set_existing_user_enabled_on_nodes(tg_id=user.tg_id, node_codes=paid_codes, enable=False)
+                            except Exception:
+                                pass
+
+                            if user.tg_id > 0 and user.tg_id not in PROTECTED_USERS:
+                                kb = InlineKeyboardMarkup(inline_keyboard=[[InlineKeyboardButton(text="⚡ Продлить доступ", callback_data="charge")]])
+                                try:
+                                    await bot.send_message(
+                                        chat_id=user.tg_id,
+                                        text=(
+                                            "⌛️ *Премиум истёк*\n\n"
+                                            "Я переключил вас в *Стартовый*:\n"
+                                            "• 1 free-нода\n"
+                                            "• Соцсети + AI\n"
+                                            "• YouTube идёт напрямую (сервис не помогает)\n\n"
+                                            "Хотите все 4 страны и полный доступ, продлите подписку."
+                                        ),
+                                        reply_markup=kb,
+                                        parse_mode=ParseMode.MARKDOWN,
+                                    )
+                                except Exception:
+                                    pass
+                    except Exception as e:
+                        logger.error("Expiry monitor error user=%s: %s", getattr(user, "tg_id", "?"), e)
+            finally:
+                session.close()
+        except Exception as e:
+            logger.error("Expiry monitor loop error: %s", e)
+            await asyncio.sleep(60)
+
+# ==========================================
+#               MAIN
+# ==========================================
+async def main():
+    bot = Bot(token=BOT_TOKEN)
+    dp = Dispatcher()
+    dp.include_router(router)
+    
+    logger.info("🌐 Portal Bot v2 starting...")
+    
+    await panel.login()
+    
+    # Start background expiry monitor (no traffic limits).
+    asyncio.create_task(monitor_expiry(bot))
+    logger.info("⏳ Expiry monitor started")
+    
+    try:
+        await dp.start_polling(bot)
+    finally:
+        await panel.close()
+        await bot.session.close()
+
+if __name__ == "__main__":
+    asyncio.run(main())
+

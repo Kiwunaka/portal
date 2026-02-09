@@ -1,0 +1,136 @@
+{
+  "brain": [
+    {
+      "host": "www.telekom.de",
+      "ok": true,
+      "ip": "3.67.146.210",
+      "tls": "TLSv1.3",
+      "err": ""
+    },
+    {
+      "host": "www.spiegel.de",
+      "ok": true,
+      "ip": "128.65.210.180",
+      "tls": "TLSv1.3",
+      "err": ""
+    },
+    {
+      "host": "www.zdf.de",
+      "ok": true,
+      "ip": "23.37.39.239",
+      "tls": "TLSv1.3",
+      "err": ""
+    },
+    {
+      "host": "www.cloudflare.com",
+      "ok": true,
+      "ip": "104.16.124.96",
+      "tls": "TLSv1.3",
+      "err": ""
+    }
+  ],
+  "pl": [
+    {
+      "host": "www.orange.pl",
+      "ok": true,
+      "ip": "80.48.169.1",
+      "tls": "TLSv1.3",
+      "err": ""
+    },
+    {
+      "host": "www.wp.pl",
+      "ok": true,
+      "ip": "212.77.98.9",
+      "tls": "TLSv1.3",
+      "err": ""
+    },
+    {
+      "host": "www.onet.pl",
+      "ok": true,
+      "ip": "18.239.255.15",
+      "tls": "TLSv1.3",
+      "err": ""
+    },
+    {
+      "host": "www.allegro.pl",
+      "ok": false,
+      "ip": "5.134.210.65",
+      "tls": "",
+      "err": "timed out"
+    },
+    {
+      "host": "www.cloudflare.com",
+      "ok": true,
+      "ip": "104.16.124.96",
+      "tls": "TLSv1.3",
+      "err": ""
+    }
+  ],
+  "it": [
+    {
+      "host": "www.tim.it",
+      "ok": true,
+      "ip": "15.160.73.215",
+      "tls": "TLSv1.3",
+      "err": ""
+    },
+    {
+      "host": "www.repubblica.it",
+      "ok": true,
+      "ip": "143.204.55.103",
+      "tls": "TLSv1.3",
+      "err": ""
+    },
+    {
+      "host": "www.rai.it",
+      "ok": true,
+      "ip": "104.85.9.142",
+      "tls": "TLSv1.2",
+      "err": ""
+    },
+    {
+      "host": "www.enel.it",
+      "ok": true,
+      "ip": "192.230.83.63",
+      "tls": "TLSv1.3",
+      "err": ""
+    },
+    {
+      "host": "www.cloudflare.com",
+      "ok": true,
+      "ip": "104.16.123.96",
+      "tls": "TLSv1.3",
+      "err": ""
+    }
+  ],
+  "us": [
+    {
+      "host": "www.microsoft.com",
+      "ok": true,
+      "ip": "23.208.220.38",
+      "tls": "TLSv1.3",
+      "err": ""
+    },
+    {
+      "host": "www.amazon.com",
+      "ok": true,
+      "ip": "3.171.104.194",
+      "tls": "TLSv1.3",
+      "err": ""
+    },
+    {
+      "host": "www.apple.com",
+      "ok": true,
+      "ip": "23.59.144.237",
+      "tls": "TLSv1.3",
+      "err": ""
+    },
+    {
+      "host": "www.cloudflare.com",
+      "ok": true,
+      "ip": "104.16.123.96",
+      "tls": "TLSv1.3",
+      "err": ""
+    }
+  ]
+}

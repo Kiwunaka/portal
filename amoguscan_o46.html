@@ -1,0 +1,821 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SUSSY CAN™ — A Can of Amoguses</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=Inter:wght@300;400;500;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/ScrollTrigger.min.js"></script>
+<style>
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --bg:#050508;--text:#f0efe9;--red:#ff2d2d;--cyan:#2dffd8;--yellow:#ffd93d;
+  --purple:#a855f7;--muted:#666;--font-h:'Space Grotesk',sans-serif;
+  --font-b:'Inter',sans-serif;--font-m:'Space Mono',monospace;
+}
+html{scroll-behavior:auto;overflow-x:hidden}
+body{background:var(--bg);color:var(--text);font-family:var(--font-b);overflow-x:hidden;cursor:none}
+
+/* CURSOR */
+.cursor{position:fixed;top:0;left:0;width:20px;height:20px;border:2px solid var(--cyan);border-radius:50%;pointer-events:none;z-index:10000;transform:translate(-50%,-50%);transition:width .3s,height .3s,border-color .3s,background .3s}
+.cursor.hover{width:50px;height:50px;background:rgba(45,255,216,.1);border-color:var(--yellow)}
+.cursor-dot{position:fixed;top:0;left:0;width:5px;height:5px;background:var(--cyan);border-radius:50%;pointer-events:none;z-index:10001;transform:translate(-50%,-50%)}
+
+/* PRELOADER */
+.preloader{position:fixed;inset:0;background:var(--bg);z-index:9999;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:30px}
+.preloader-text{font-family:var(--font-m);font-size:clamp(14px,2vw,18px);letter-spacing:.3em;color:var(--muted);text-transform:uppercase}
+.preloader-text span{display:inline-block;opacity:0}
+.preloader-bar{width:200px;height:2px;background:#1a1a1a;border-radius:2px;overflow:hidden}
+.preloader-fill{width:0%;height:100%;background:var(--cyan);border-radius:2px}
+.preloader-amogus{font-size:40px;opacity:0}
+
+/* NAV */
+nav{position:fixed;top:0;left:0;right:0;z-index:1000;padding:20px 40px;display:flex;justify-content:space-between;align-items:center;mix-blend-mode:difference}
+nav .logo{font-family:var(--font-h);font-weight:700;font-size:18px;letter-spacing:.1em}
+nav .logo span{color:var(--red)}
+nav ul{display:flex;gap:30px;list-style:none}
+nav ul li a{color:var(--text);text-decoration:none;font-family:var(--font-m);font-size:12px;letter-spacing:.15em;text-transform:uppercase;position:relative;padding-bottom:4px}
+nav ul li a::after{content:'';position:absolute;bottom:0;left:0;width:0;height:1px;background:var(--cyan);transition:width .4s cubic-bezier(.16,1,.3,1)}
+nav ul li a:hover::after{width:100%}
+.nav-buy{background:var(--red)!important;color:var(--text)!important;padding:8px 20px!important;border-radius:20px;font-weight:700!important}
+.nav-buy::after{display:none!important}
+
+/* HERO */
+.hero{min-height:100vh;display:flex;flex-direction:column;justify-content:center;align-items:center;position:relative;padding:120px 40px 80px;overflow:hidden}
+.hero-badge{font-family:var(--font-m);font-size:clamp(10px,1.2vw,13px);letter-spacing:.4em;text-transform:uppercase;color:var(--cyan);border:1px solid rgba(45,255,216,.3);padding:8px 24px;border-radius:30px;margin-bottom:40px;opacity:0}
+.hero-title{text-align:center;line-height:.9;margin-bottom:30px}
+.hero-title .line{display:block;overflow:hidden}
+.hero-title .line-inner{display:block;transform:translateY(105%)}
+.hero-word-canned{font-family:var(--font-h);font-size:clamp(80px,15vw,220px);font-weight:700;letter-spacing:-.03em;text-transform:uppercase}
+.hero-word-canned .char{display:inline-block}
+.hero-word-amoguses{font-family:var(--font-h);font-size:clamp(50px,10vw,150px);font-weight:300;letter-spacing:.05em;text-transform:uppercase;color:var(--red)}
+.hero-word-amoguses .char{display:inline-block}
+.hero-sub{font-family:var(--font-m);font-size:clamp(12px,1.4vw,16px);color:var(--muted);letter-spacing:.2em;text-align:center;max-width:600px;line-height:1.8;margin-top:20px}
+.hero-sub .word{display:inline-block;opacity:0;transform:translateY(10px);margin-right:.35em}
+.hero-scroll{position:absolute;bottom:40px;left:50%;transform:translateX(-50%);display:flex;flex-direction:column;align-items:center;gap:8px;opacity:0}
+.hero-scroll span{font-family:var(--font-m);font-size:10px;letter-spacing:.3em;text-transform:uppercase;color:var(--muted)}
+.hero-scroll .arrow{width:1px;height:40px;background:linear-gradient(to bottom,var(--muted),transparent);position:relative}
+.hero-scroll .arrow::after{content:'';position:absolute;top:0;left:-3px;width:7px;height:7px;border-radius:50%;background:var(--cyan);animation:scrollBounce 2s ease-in-out infinite}
+@keyframes scrollBounce{0%,100%{transform:translateY(0);opacity:1}50%{transform:translateY(30px);opacity:0}}
+
+/* FLOATING AMOGI */
+.floating-amogi{position:absolute;inset:0;pointer-events:none;overflow:hidden}
+.floating-amogi span{position:absolute;font-size:clamp(20px,4vw,50px);opacity:0;animation:none}
+
+/* MARQUEE */
+.marquee-section{padding:10px 0;border-top:1px solid #1a1a1a;border-bottom:1px solid #1a1a1a;overflow:hidden;white-space:nowrap}
+.marquee-track{display:inline-flex;animation:marqueeScroll 20s linear infinite}
+.marquee-track span{font-family:var(--font-h);font-size:clamp(14px,2vw,22px);font-weight:600;letter-spacing:.15em;text-transform:uppercase;padding:0 30px;color:var(--muted);flex-shrink:0}
+.marquee-track span.highlight{color:var(--red)}
+.marquee-track span.icon{color:var(--yellow)}
+@keyframes marqueeScroll{0%{transform:translateX(0)}100%{transform:translateX(-50%)}}
+
+/* SCROLL SCALE SECTION */
+.scroll-scale{min-height:300vh;position:relative}
+.scroll-scale-pin{height:100vh;display:flex;flex-direction:column;justify-content:center;align-items:center;position:relative}
+.scroll-text{font-family:var(--font-h);font-weight:700;font-size:clamp(60px,12vw,180px);text-transform:uppercase;line-height:.95;text-align:center;opacity:0;position:absolute}
+.scroll-text.t1{color:var(--text)}
+.scroll-text.t2{color:var(--red)}
+.scroll-text.t3{color:var(--cyan)}
+.scroll-text .num{font-family:var(--font-m);font-size:.6em;vertical-align:super;color:var(--yellow)}
+
+/* FEATURES */
+.features{padding:150px 40px;position:relative}
+.features-header{text-align:center;margin-bottom:100px}
+.features-header h2{font-family:var(--font-h);font-size:clamp(40px,6vw,80px);font-weight:700;letter-spacing:-.02em;line-height:1}
+.features-header h2 .stroke{-webkit-text-stroke:2px var(--text);color:transparent}
+.features-header p{font-family:var(--font-m);font-size:clamp(11px,1.2vw,14px);color:var(--muted);letter-spacing:.2em;margin-top:20px;text-transform:uppercase}
+.features-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:2px;max-width:1200px;margin:0 auto}
+.feature-card{border:1px solid #1a1a1a;padding:clamp(30px,4vw,60px);position:relative;overflow:hidden;transition:border-color .4s}
+.feature-card:hover{border-color:var(--cyan)}
+.feature-card::before{content:'';position:absolute;inset:0;background:linear-gradient(135deg,rgba(45,255,216,.03),transparent);opacity:0;transition:opacity .4s}
+.feature-card:hover::before{opacity:1}
+.feature-num{font-family:var(--font-m);font-size:clamp(60px,8vw,100px);font-weight:700;color:#111;position:absolute;top:-10px;right:10px;transition:color .4s}
+.feature-card:hover .feature-num{color:rgba(45,255,216,.1)}
+.feature-icon{font-size:40px;margin-bottom:20px;display:block}
+.feature-card h3{font-family:var(--font-h);font-size:clamp(22px,3vw,32px);font-weight:600;margin-bottom:12px;position:relative}
+.feature-card h3 .letter{display:inline-block;transition:transform .3s,color .3s;transition-delay:calc(var(--i) * .02s)}
+.feature-card:hover h3 .letter{transform:translateY(-3px);color:var(--cyan)}
+.feature-card p{font-size:clamp(13px,1.3vw,15px);color:var(--muted);line-height:1.7;position:relative}
+
+/* CAN VISUALIZATION */
+.can-section{padding:100px 40px;min-height:100vh;display:flex;align-items:center;justify-content:center;position:relative;overflow:hidden}
+.can-vis{position:relative;display:flex;align-items:center;justify-content:center;gap:clamp(40px,8vw,120px);flex-wrap:wrap;max-width:1400px;width:100%}
+.can-art{position:relative;width:clamp(200px,30vw,320px);flex-shrink:0}
+.can-body{width:100%;aspect-ratio:3/5;background:linear-gradient(135deg,#1a1a1e,#111114,#1a1a1e);border-radius:15px 15px 25px 25px;position:relative;overflow:hidden;border:1px solid #2a2a2a;box-shadow:0 0 80px rgba(255,45,45,.08),-20px 0 60px rgba(45,255,216,.05),20px 0 60px rgba(255,217,61,.05)}
+.can-body::before{content:'';position:absolute;top:0;left:0;right:0;height:25px;background:linear-gradient(180deg,#333,#1a1a1e);border-radius:15px 15px 0 0;border-bottom:2px solid #444}
+.can-body::after{content:'SUSSY CAN™';position:absolute;bottom:15px;left:50%;transform:translateX(-50%);font-family:var(--font-m);font-size:8px;letter-spacing:.3em;color:#444;text-transform:uppercase}
+.can-label{position:absolute;top:40px;left:10px;right:10px;bottom:40px;display:flex;flex-direction:column;align-items:center;justify-content:center;border:1px solid #333;border-radius:8px;padding:15px}
+.can-label-title{font-family:var(--font-h);font-size:clamp(24px,4vw,36px);font-weight:700;text-align:center;line-height:1;color:var(--red);text-shadow:0 0 30px rgba(255,45,45,.4)}
+.can-label-sub{font-family:var(--font-m);font-size:8px;letter-spacing:.25em;color:var(--muted);margin-top:8px;text-transform:uppercase}
+.can-amogi-inside{display:grid;grid-template-columns:repeat(4,1fr);gap:4px;margin-top:15px}
+.can-amogi-inside span{font-size:clamp(16px,2.5vw,22px);text-align:center;animation:amogiWiggle 3s ease-in-out infinite;animation-delay:calc(var(--d) * .3s)}
+@keyframes amogiWiggle{0%,100%{transform:translateY(0) rotate(0deg)}25%{transform:translateY(-3px) rotate(-5deg)}75%{transform:translateY(2px) rotate(5deg)}}
+.can-label-net{font-family:var(--font-m);font-size:7px;color:#444;margin-top:10px;letter-spacing:.15em}
+.can-shine{position:absolute;top:0;left:-50%;width:50%;height:100%;background:linear-gradient(90deg,transparent,rgba(255,255,255,.03),transparent);animation:canShine 4s ease-in-out infinite}
+@keyframes canShine{0%,100%{left:-50%}50%{left:100%}}
+.can-info{flex:1;min-width:280px;max-width:500px}
+.can-info h2{font-family:var(--font-h);font-size:clamp(36px,5vw,64px);font-weight:700;line-height:1.05;margin-bottom:30px}
+.can-info h2 em{font-style:normal;color:var(--yellow);-webkit-text-stroke:0}
+.can-info h2 .thin{font-weight:300;color:var(--muted)}
+.can-stats{display:flex;gap:40px;margin-top:40px;flex-wrap:wrap}
+.can-stat{text-align:left}
+.can-stat .stat-num{font-family:var(--font-h);font-size:clamp(36px,5vw,56px);font-weight:700;color:var(--cyan);line-height:1}
+.can-stat .stat-label{font-family:var(--font-m);font-size:11px;letter-spacing:.2em;color:var(--muted);text-transform:uppercase;margin-top:5px}
+
+/* VARIANTS */
+.variants{padding:150px 40px;overflow:hidden}
+.variants-header{text-align:center;margin-bottom:80px}
+.variants-header h2{font-family:var(--font-h);font-size:clamp(36px,6vw,72px);font-weight:700}
+.variants-track{display:flex;gap:20px;max-width:1200px;margin:0 auto;justify-content:center;flex-wrap:wrap}
+.variant-card{flex:1;min-width:250px;max-width:350px;border:1px solid #1a1a1a;border-radius:16px;padding:40px 30px;text-align:center;position:relative;overflow:hidden;transition:border-color .4s,transform .4s;cursor:none}
+.variant-card:hover{border-color:var(--red);transform:translateY(-5px)}
+.variant-card .v-emoji{font-size:60px;margin-bottom:20px;display:block;transition:transform .4s}
+.variant-card:hover .v-emoji{transform:scale(1.2) rotate(10deg)}
+.variant-card h3{font-family:var(--font-h);font-size:24px;font-weight:600;margin-bottom:8px}
+.variant-card .v-desc{font-size:14px;color:var(--muted);line-height:1.6;margin-bottom:20px}
+.variant-card .v-price{font-family:var(--font-h);font-size:28px;font-weight:700;color:var(--cyan)}
+.variant-card .v-tag{position:absolute;top:15px;right:15px;font-family:var(--font-m);font-size:9px;letter-spacing:.2em;text-transform:uppercase;color:var(--bg);background:var(--yellow);padding:4px 10px;border-radius:20px;font-weight:700}
+
+/* TESTIMONIALS */
+.testimonials{padding:100px 0;border-top:1px solid #1a1a1a;overflow:hidden}
+.testimonials h2{font-family:var(--font-h);font-size:clamp(36px,5vw,60px);font-weight:700;text-align:center;margin-bottom:60px}
+.testimonials h2 .outline{-webkit-text-stroke:1.5px var(--text);color:transparent}
+.test-marquee{display:flex;gap:20px;animation:testScroll 30s linear infinite;width:max-content}
+.test-card{flex-shrink:0;width:350px;border:1px solid #1a1a1a;border-radius:12px;padding:30px;position:relative}
+.test-card .stars{color:var(--yellow);font-size:14px;letter-spacing:2px;margin-bottom:12px}
+.test-card p{font-size:15px;line-height:1.7;color:var(--text);font-style:italic;margin-bottom:15px}
+.test-card .author{font-family:var(--font-m);font-size:11px;color:var(--muted);letter-spacing:.15em;text-transform:uppercase}
+.test-card .author span{color:var(--red)}
+@keyframes testScroll{0%{transform:translateX(0)}100%{transform:translateX(-50%)}}
+
+/* BIG CTA */
+.cta-section{padding:150px 40px;text-align:center;position:relative;overflow:hidden}
+.cta-section::before{content:'ඞ';position:absolute;font-size:clamp(300px,50vw,600px);color:#0a0a0f;top:50%;left:50%;transform:translate(-50%,-50%);pointer-events:none;z-index:0}
+.cta-content{position:relative;z-index:1}
+.cta-price-label{font-family:var(--font-m);font-size:clamp(11px,1.2vw,14px);letter-spacing:.4em;color:var(--muted);text-transform:uppercase;margin-bottom:20px}
+.cta-price{font-family:var(--font-h);font-size:clamp(80px,18vw,250px);font-weight:700;line-height:1;margin-bottom:10px}
+.cta-price .dollar{color:var(--cyan);font-size:.6em;vertical-align:super}
+.cta-price .cents{font-size:.4em;color:var(--muted)}
+.cta-disclaimer{font-family:var(--font-m);font-size:11px;color:var(--muted);letter-spacing:.15em;margin-bottom:50px}
+.cta-btn{display:inline-flex;align-items:center;gap:15px;background:var(--red);color:var(--text);font-family:var(--font-h);font-size:clamp(16px,2vw,22px);font-weight:700;letter-spacing:.1em;text-transform:uppercase;padding:20px 50px;border:none;border-radius:60px;cursor:none;position:relative;overflow:hidden;text-decoration:none;transition:transform .3s,box-shadow .3s}
+.cta-btn:hover{transform:scale(1.05);box-shadow:0 0 60px rgba(255,45,45,.3)}
+.cta-btn::before{content:'';position:absolute;inset:0;background:linear-gradient(90deg,transparent,rgba(255,255,255,.1),transparent);transform:translateX(-100%);transition:transform .6s}
+.cta-btn:hover::before{transform:translateX(100%)}
+.cta-btn .btn-amogus{font-size:24px;animation:btnWiggle 1s ease-in-out infinite}
+@keyframes btnWiggle{0%,100%{transform:rotate(0deg)}25%{transform:rotate(-10deg)}75%{transform:rotate(10deg)}}
+.cta-features{display:flex;justify-content:center;gap:40px;margin-top:40px;flex-wrap:wrap}
+.cta-features span{font-family:var(--font-m);font-size:11px;color:var(--muted);letter-spacing:.15em;text-transform:uppercase}
+.cta-features span::before{content:'✓ ';color:var(--cyan)}
+
+/* FAQ */
+.faq{padding:100px 40px;max-width:800px;margin:0 auto}
+.faq h2{font-family:var(--font-h);font-size:clamp(36px,5vw,60px);font-weight:700;text-align:center;margin-bottom:60px}
+.faq-item{border-bottom:1px solid #1a1a1a;padding:25px 0;cursor:none}
+.faq-q{font-family:var(--font-h);font-size:clamp(16px,2vw,20px);font-weight:600;display:flex;justify-content:space-between;align-items:center}
+.faq-q .toggle{color:var(--cyan);font-size:24px;transition:transform .4s}
+.faq-q .toggle.open{transform:rotate(45deg)}
+.faq-a{font-size:14px;color:var(--muted);line-height:1.8;max-height:0;overflow:hidden;transition:max-height .5s cubic-bezier(.16,1,.3,1),padding .5s}
+.faq-a.open{max-height:200px;padding-top:15px}
+
+/* FOOTER */
+footer{border-top:1px solid #1a1a1a;padding:60px 40px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:20px}
+footer .footer-brand{font-family:var(--font-h);font-weight:700;font-size:20px}
+footer .footer-brand span{color:var(--red)}
+footer .footer-legal{font-family:var(--font-m);font-size:10px;color:var(--muted);letter-spacing:.15em;text-transform:uppercase;max-width:500px;text-align:right;line-height:1.8}
+
+/* ANIMATED REVEAL UTILITY */
+.reveal{opacity:0;transform:translateY(40px)}
+.reveal-left{opacity:0;transform:translateX(-40px)}
+.reveal-right{opacity:0;transform:translateX(40px)}
+
+/* RESPONSIVE */
+@media(max-width:768px){
+  nav{padding:15px 20px}
+  nav ul{gap:15px}
+  nav ul li a{font-size:10px;letter-spacing:.1em}
+  .hero{padding:100px 20px 60px}
+  .features{padding:80px 20px}
+  .can-vis{flex-direction:column;align-items:center;text-align:center}
+  .can-stats{justify-content:center}
+  .can-info{text-align:center}
+  .variants{padding:80px 20px}
+  .cta-section{padding:80px 20px}
+  .cta-features{gap:15px}
+  footer{flex-direction:column;text-align:center}
+  footer .footer-legal{text-align:center}
+  .cursor,.cursor-dot{display:none!important}
+  body{cursor:auto}
+}
+
+@media(max-width:480px){
+  .can-stats{flex-direction:column;align-items:center}
+  .features-grid{grid-template-columns:1fr}
+  .variant-card{min-width:100%}
+}
+</style>
+</head>
+<body>
+
+<!-- CURSOR -->
+<div class="cursor" id="cursor"></div>
+<div class="cursor-dot" id="cursorDot"></div>
+
+<!-- PRELOADER -->
+<div class="preloader" id="preloader">
+  <div class="preloader-amogus" id="preAmogus">ඞ</div>
+  <div class="preloader-text" id="preText"></div>
+  <div class="preloader-bar"><div class="preloader-fill" id="preFill"></div></div>
+</div>
+
+<!-- NAV -->
+<nav id="nav">
+  <div class="logo">SUSSY<span>CAN</span>™</div>
+  <ul>
+    <li><a href="#about">About</a></li>
+    <li><a href="#variants">Flavors</a></li>
+    <li><a href="#faq">FAQ</a></li>
+    <li><a href="#buy" class="nav-buy">Buy Now</a></li>
+  </ul>
+</nav>
+
+<!-- HERO -->
+<section class="hero" id="hero">
+  <div class="floating-amogi" id="floatingAmogi"></div>
+  <div class="hero-badge" id="heroBadge">🚨 Now Shipping Worldwide 🚨</div>
+  <div class="hero-title">
+    <span class="line"><span class="line-inner hero-word-canned" id="heroWord1"></span></span>
+    <span class="line"><span class="line-inner hero-word-amoguses" id="heroWord2"></span></span>
+  </div>
+  <div class="hero-sub" id="heroSub"></div>
+  <div class="hero-scroll" id="heroScroll">
+    <span>Scroll to explore</span>
+    <div class="arrow"></div>
+  </div>
+</section>
+
+<!-- MARQUEE -->
+<div class="marquee-section">
+  <div class="marquee-track" id="marquee1"></div>
+</div>
+
+<!-- SCROLL SCALE SECTION -->
+<section class="scroll-scale" id="scrollScale">
+  <div class="scroll-scale-pin" id="scrollPin">
+    <div class="scroll-text t1" id="st1">WHAT IF</div>
+    <div class="scroll-text t2" id="st2"><span class="num">7</span> AMOGUSES</div>
+    <div class="scroll-text t3" id="st3">ONE CAN</div>
+  </div>
+</section>
+
+<!-- FEATURES -->
+<section class="features" id="about">
+  <div class="features-header reveal">
+    <h2>WHAT'S <span class="stroke">INSIDE</span></h2>
+    <p>Every can is packed with premium-grade crewmates</p>
+  </div>
+  <div class="features-grid" id="featGrid"></div>
+</section>
+
+<!-- CAN VISUALIZATION -->
+<section class="can-section" id="canSection">
+  <div class="can-vis">
+    <div class="can-art reveal-left" id="canArt">
+      <div class="can-body">
+        <div class="can-shine"></div>
+        <div class="can-label">
+          <div class="can-label-title">SUSSY<br>CAN</div>
+          <div class="can-label-sub">Premium Amoguses</div>
+          <div class="can-amogi-inside" id="canAmogi"></div>
+          <div class="can-label-net">NET WT. 7 AMOGUSES (350SUS)</div>
+        </div>
+      </div>
+    </div>
+    <div class="can-info reveal-right">
+      <h2>Crafted for <em>maximum</em> <span class="thin">suspicion</span></h2>
+      <p style="color:var(--muted);line-height:1.8;font-size:clamp(14px,1.4vw,16px)">
+        Each amogus is hand-selected from the finest lobbies across the galaxy. 
+        Vacuum-sealed in a premium aluminum can to preserve peak sus levels. 
+        Open anywhere. Trust no one.
+      </p>
+      <div class="can-stats">
+        <div class="can-stat">
+          <div class="stat-num" data-count="7">0</div>
+          <div class="stat-label">Amoguses</div>
+        </div>
+        <div class="can-stat">
+          <div class="stat-num" data-count="100">0</div>
+          <div class="stat-label">% Sus</div>
+        </div>
+        <div class="can-stat">
+          <div class="stat-num" data-count="0">0</div>
+          <div class="stat-label">Impostors*</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- VARIANTS -->
+<section class="variants" id="variants">
+  <div class="variants-header reveal">
+    <h2>CHOOSE YOUR SUS</h2>
+  </div>
+  <div class="variants-track" id="variantsTrack"></div>
+</section>
+
+<!-- TESTIMONIALS -->
+<section class="testimonials" id="testimonials">
+  <h2 class="reveal">WHAT <span class="outline">CREWMATES</span> SAY</h2>
+  <div class="test-marquee" id="testMarquee"></div>
+</section>
+
+<!-- CTA -->
+<section class="cta-section" id="buy">
+  <div class="cta-content">
+    <div class="cta-price-label reveal">Starting at just</div>
+    <div class="cta-price reveal">
+      <span class="dollar">$</span>4<span class="cents">.99</span>
+    </div>
+    <div class="cta-disclaimer reveal">*Per can · No impostors guaranteed · Maybe</div>
+    <a href="#" class="cta-btn reveal" id="ctaBtn">
+      <span class="btn-amogus">ඞ</span>
+      ADD TO CART
+    </a>
+    <div class="cta-features reveal">
+      <span>Free Shipping</span>
+      <span>24hr Delivery</span>
+      <span>100% Sus</span>
+      <span>Emergency Refunds</span>
+    </div>
+  </div>
+</section>
+
+<!-- FAQ -->
+<section class="faq" id="faq">
+  <h2 class="reveal">FAQ</h2>
+  <div id="faqList"></div>
+</section>
+
+<!-- FOOTER -->
+<footer>
+  <div class="footer-brand">SUSSY<span>CAN</span>™</div>
+  <div class="footer-legal">
+    © 2025 SussyCan Inc. All rights reserved. Not affiliated with Innersloth. 
+    Among Us is a trademark of Innersloth LLC. This is a parody product. 
+    No actual crewmates were harmed in the making of this can. ඞ
+  </div>
+</footer>
+
+<script>
+gsap.registerPlugin(ScrollTrigger);
+
+// ======= DATA =======
+const FEATURES = [
+  { icon:'ඞ', title:'7 Crewmates', desc:'Each can contains exactly 7 premium amoguses in assorted colors. Collect them all or trade with friends.', num:'01' },
+  { icon:'🔪', title:'Zero Impostors', desc:'Every can is rigorously scanned in MedBay. We guarantee zero impostors. Probably. We think.', num:'02' },
+  { icon:'📦', title:'Vacuum Sealed', desc:'Nitrogen-flushed aluminum can preserves maximum sus freshness for up to 69 years on the shelf.', num:'03' },
+  { icon:'🗺️', title:'Map Included', desc:'Each can comes with a foldable Skeld map. Mark your kills— uh, we mean tasks. Mark your tasks.', num:'04' },
+  { icon:'🚨', title:'Emergency Button', desc:'Pull-tab doubles as a miniature emergency meeting button. Just pull and yell "EMERGENCY MEETING!"', num:'05' },
+  { icon:'⭐', title:'Task List', desc:'Includes a printable task list to prove you were definitely doing wires in Electrical. Definitely.', num:'06' }
+];
+
+const AMOGUS_COLORS = ['#c51111','#132ed1','#117f2d','#ed54ba','#ef7d0e','#f5f557','#3f474e','#d6e0f0','#6b2fbb','#71491e','#38fedc','#50ef39'];
+
+const VARIANTS = [
+  { emoji:'🔴', name:'Classic Red', desc:'The OG. The one everyone suspects first. A timeless choice.', price:'$4.99', tag:'' },
+  { emoji:'🌈', name:'Rainbow Pack', desc:'All 12 colors in one mega can. The ultimate collector\'s edition.', price:'$14.99', tag:'POPULAR' },
+  { emoji:'👻', name:'Ghost Edition', desc:'Transparent can filled with ghost amoguses. Spooky. Still sus.', price:'$6.99', tag:'NEW' }
+];
+
+const TESTIMONIALS = [
+  { stars:'★★★★★', text:'"I opened the can during a meeting and everyone voted me out. 10/10 would buy again."', author:'RedWasNotImp', color:'var(--red)' },
+  { stars:'★★★★★', text:'"My impostor detection rate went up 47% after purchasing. The amoguses give me power."', author:'CyanTaskRunner', color:'var(--cyan)' },
+  { stars:'★★★★☆', text:'"One star off because I swear one of them winked at me. Still, great product."', author:'ElectricalSurvivor', color:'var(--yellow)' },
+  { stars:'★★★★★', text:'"Bought 50 cans. My house is full of tiny crewmates. My wife left. Worth it."', author:'xX_SusLord_Xx', color:'var(--purple)' },
+  { stars:'★★★★★', text:'"Emergency meeting! This can changed my life. I see amoguses everywhere now."', author:'VentCrawler99', color:'var(--red)' },
+  { stars:'★★★★★', text:'"Gave one to my dog. He seems more suspicious now. Five stars."', author:'GoodBoySus', color:'var(--cyan)' },
+  { stars:'★★★★★', text:'"I was the impostor the whole time but this can made me feel like a crewmate."', author:'TotallyNotImp', color:'var(--yellow)' },
+  { stars:'★★★★★', text:'"The vacuum seal popped with such a satisfying sound. ASMR level packaging."', author:'SoundDesignFan', color:'var(--purple)' }
+];
+
+const FAQS = [
+  { q:'Are these real amoguses?', a:'As real as the sus in your heart. Each amogus is a premium collectible figurine made from space-grade polymer. Approximately 3cm tall.' },
+  { q:'Is there an impostor in my can?', a:'We run every can through a rigorous 3-step MedBay scanning process. However, we cannot guarantee with 100% certainty. Trust no one. Not even us.' },
+  { q:'Can I eat them?', a:'Technically nothing is stopping you, but we strongly advise against it. They are NOT food. They are friends. Suspicious friends.' },
+  { q:'What colors do I get?', a:'Classic cans contain a random assortment of 7 colors. No two cans are exactly alike. It\'s like a Kinder Surprise, but more sus.' },
+  { q:'Do you ship internationally?', a:'We ship to all continents, all space stations, and select lunar bases. Shipping to The Skeld, Mira HQ, and Polus included.' },
+  { q:'What is your return policy?', a:'If you find a confirmed impostor in your can, we\'ll send you a full refund and a new can. Just call an emergency meeting first.' }
+];
+
+const MARQUEE_ITEMS = [
+  '🚨','EMERGENCY MEETING','ඞ','SUS','ඞ','SUSSY BAKA','🔪','TRUST NO ONE','ඞ',
+  'WHO VENTED','ඞ','I SAW RED','🚨','VOTED OUT','ඞ','DOING TASKS','ඞ','ELECTRICAL',
+  '🔪','IMPOSTOR','ඞ','CREWMATE','ඞ','AMONG US','🚨','SUSSY CAN™','ඞ','BUY NOW'
+];
+
+// ======= CUSTOM CURSOR =======
+const cursor = document.getElementById('cursor');
+const cursorDot = document.getElementById('cursorDot');
+let cx = 0, cy = 0, dx = 0, dy = 0;
+document.addEventListener('mousemove', e => { cx = e.clientX; cy = e.clientY; });
+(function animateCursor() {
+  dx += (cx - dx) * .15; dy += (cy - dy) * .15;
+  cursor.style.left = dx + 'px'; cursor.style.top = dy + 'px';
+  cursorDot.style.left = cx + 'px'; cursorDot.style.top = cy + 'px';
+  requestAnimationFrame(animateCursor);
+})();
+document.querySelectorAll('a, button, .faq-item, .variant-card, .cta-btn').forEach(el => {
+  el.addEventListener('mouseenter', () => cursor.classList.add('hover'));
+  el.addEventListener('mouseleave', () => cursor.classList.remove('hover'));
+});
+// Re-apply after dynamic elements are created
+function applyCursorHover() {
+  document.querySelectorAll('a, button, .faq-item, .variant-card, .cta-btn, .feature-card').forEach(el => {
+    el.addEventListener('mouseenter', () => cursor.classList.add('hover'));
+    el.addEventListener('mouseleave', () => cursor.classList.remove('hover'));
+  });
+}
+
+// ======= PRELOADER =======
+function runPreloader() {
+  const text = 'OPENING THE CAN...';
+  const preText = document.getElementById('preText');
+  const preFill = document.getElementById('preFill');
+  const preAmogus = document.getElementById('preAmogus');
+
+  text.split('').forEach((ch, i) => {
+    const span = document.createElement('span');
+    span.textContent = ch === ' ' ? '\u00A0' : ch;
+    preText.appendChild(span);
+  });
+
+  const tl = gsap.timeline({
+    onComplete: () => {
+      gsap.to('#preloader', { yPercent: -100, duration: .8, ease:'power4.inOut', onComplete: () => {
+        document.getElementById('preloader').style.display = 'none';
+        animateHero();
+      }});
+    }
+  });
+
+  tl.to('#preAmogus', { opacity: 1, scale: 1, rotation: 360, duration: .6, ease:'back.out(1.7)' })
+    .to('#preText span', { opacity: 1, y: 0, stagger: .03, duration: .3, ease:'power2.out' }, .3)
+    .to('#preFill', { width: '100%', duration: 1.2, ease:'power2.inOut' }, .5)
+    .to('#preAmogus', { rotation: 720, scale: 1.3, duration: .4, ease:'power2.in' }, 1.5);
+}
+
+// ======= HERO ANIMATION =======
+function splitIntoChars(el, text) {
+  el.innerHTML = '';
+  text.split('').forEach((ch, i) => {
+    const span = document.createElement('span');
+    span.className = 'char';
+    span.textContent = ch;
+    span.style.setProperty('--i', i);
+    el.appendChild(span);
+  });
+}
+
+function splitIntoWords(el, text) {
+  el.innerHTML = '';
+  text.split(' ').forEach((w, i) => {
+    const span = document.createElement('span');
+    span.className = 'word';
+    span.textContent = w;
+    el.appendChild(span);
+  });
+}
+
+function animateHero() {
+  const w1 = document.getElementById('heroWord1');
+  const w2 = document.getElementById('heroWord2');
+  const sub = document.getElementById('heroSub');
+
+  splitIntoChars(w1, 'CANNED');
+  splitIntoChars(w2, 'AMOGUSES');
+  splitIntoWords(sub, 'Seven premium crewmates · Vacuum-sealed in one can · Zero impostors guaranteed · Probably');
+
+  const tl = gsap.timeline();
+
+  tl.to('.hero-title .line-inner', {
+    y: 0, duration: 1, ease: 'power4.out', stagger: .15
+  })
+  .from('#heroWord1 .char', {
+    y: 80, rotationZ: gsap.utils.wrap([-15, 15, -10, 20, -5, 10]),
+    opacity: 0, stagger: .06, duration: .8, ease: 'back.out(1.7)'
+  }, .2)
+  .from('#heroWord2 .char', {
+    x: 60, opacity: 0, stagger: .05, duration: .6, ease: 'power3.out'
+  }, .7)
+  .to('#heroBadge', { opacity: 1, y: 0, duration: .6, ease: 'power2.out' }, 1)
+  .to('.hero-sub .word', {
+    opacity: 1, y: 0, stagger: .04, duration: .5, ease: 'power2.out'
+  }, 1.2)
+  .to('#heroScroll', { opacity: 1, duration: .5 }, 1.8);
+
+  // Floating amoguses
+  createFloatingAmogi();
+
+  // Hero parallax on scroll
+  gsap.to('#heroWord1', { y: -100, scrollTrigger: { trigger:'.hero', start:'top top', end:'bottom top', scrub:1 }});
+  gsap.to('#heroWord2', { y: -60, scrollTrigger: { trigger:'.hero', start:'top top', end:'bottom top', scrub:1 }});
+  gsap.to('#heroBadge', { y: -30, opacity: 0, scrollTrigger: { trigger:'.hero', start:'top top', end:'40% top', scrub:1 }});
+}
+
+function createFloatingAmogi() {
+  const container = document.getElementById('floatingAmogi');
+  for (let i = 0; i < 15; i++) {
+    const span = document.createElement('span');
+    span.textContent = 'ඞ';
+    span.style.color = AMOGUS_COLORS[i % AMOGUS_COLORS.length];
+    span.style.left = Math.random() * 100 + '%';
+    span.style.top = Math.random() * 100 + '%';
+    span.style.fontSize = (15 + Math.random() * 35) + 'px';
+    container.appendChild(span);
+
+    gsap.to(span, {
+      opacity: gsap.utils.random(.08, .2),
+      duration: 0
+    });
+    gsap.to(span, {
+      y: gsap.utils.random(-60, 60),
+      x: gsap.utils.random(-40, 40),
+      rotation: gsap.utils.random(-30, 30),
+      duration: gsap.utils.random(3, 7),
+      repeat: -1,
+      yoyo: true,
+      ease: 'sine.inOut',
+      delay: Math.random() * 3
+    });
+  }
+}
+
+// ======= MARQUEE =======
+function buildMarquee() {
+  const track = document.getElementById('marquee1');
+  let html = '';
+  for (let r = 0; r < 4; r++) {
+    MARQUEE_ITEMS.forEach(item => {
+      const cls = item === '🚨' || item === '🔪' ? 'icon' : (item === 'SUS' || item === 'SUSSY BAKA' || item === 'IMPOSTOR' ? 'highlight' : '');
+      html += `<span class="${cls}">${item}</span>`;
+    });
+  }
+  track.innerHTML = html;
+}
+
+// ======= SCROLL SCALE SECTION =======
+function initScrollScale() {
+  const pin = document.getElementById('scrollPin');
+  const texts = ['#st1','#st2','#st3'];
+
+  ScrollTrigger.create({
+    trigger: '#scrollScale',
+    start: 'top top',
+    end: 'bottom bottom',
+    pin: '#scrollPin',
+    pinSpacing: false
+  });
+
+  texts.forEach((sel, i) => {
+    const start = i * 33.33;
+    const end = start + 33.33;
+
+    gsap.timeline({
+      scrollTrigger: {
+        trigger: '#scrollScale',
+        start: `${start}% top`,
+        end: `${end}% top`,
+        scrub: .5
+      }
+    })
+    .fromTo(sel, {
+      opacity: 0, scale: .3, y: 50
+    }, {
+      opacity: 1, scale: 1, y: 0, duration: .5, ease:'power2.out'
+    })
+    .to(sel, {
+      opacity: 0, scale: 1.5, y: -50, duration: .5, ease:'power2.in'
+    }, .5);
+  });
+}
+
+// ======= FEATURES =======
+function buildFeatures() {
+  const grid = document.getElementById('featGrid');
+  FEATURES.forEach((f, i) => {
+    const titleLetters = f.title.split('').map((ch, j) =>
+      `<span class="letter" style="--i:${j}">${ch === ' ' ? '&nbsp;' : ch}</span>`
+    ).join('');
+
+    grid.innerHTML += `
+      <div class="feature-card reveal" style="--delay:${i * .1}s">
+        <div class="feature-num">${f.num}</div>
+        <span class="feature-icon">${f.icon}</span>
+        <h3>${titleLetters}</h3>
+        <p>${f.desc}</p>
+      </div>`;
+  });
+}
+
+// ======= CAN AMOGI =======
+function buildCanAmogi() {
+  const container = document.getElementById('canAmogi');
+  const colors = ['#c51111','#132ed1','#117f2d','#ed54ba','#ef7d0e','#f5f557','#38fedc','#6b2fbb','#71491e','#50ef39','#d6e0f0','#3f474e'];
+  for (let i = 0; i < 12; i++) {
+    const span = document.createElement('span');
+    span.textContent = 'ඞ';
+    span.style.color = colors[i % colors.length];
+    span.style.setProperty('--d', i);
+    container.appendChild(span);
+  }
+}
+
+// ======= COUNTER =======
+function initCounters() {
+  document.querySelectorAll('.stat-num[data-count]').forEach(el => {
+    const target = parseInt(el.dataset.count);
+    ScrollTrigger.create({
+      trigger: el,
+      start: 'top 80%',
+      once: true,
+      onEnter: () => {
+        gsap.to({ val: 0 }, {
+          val: target,
+          duration: 2,
+          ease: 'power2.out',
+          onUpdate: function() {
+            el.textContent = Math.round(this.targets()[0].val);
+          }
+        });
+      }
+    });
+  });
+}
+
+// ======= VARIANTS =======
+function buildVariants() {
+  const track = document.getElementById('variantsTrack');
+  VARIANTS.forEach((v, i) => {
+    track.innerHTML += `
+      <div class="variant-card reveal" style="--delay:${i * .15}s">
+        ${v.tag ? `<span class="v-tag">${v.tag}</span>` : ''}
+        <span class="v-emoji">${v.emoji}</span>
+        <h3>${v.name}</h3>
+        <p class="v-desc">${v.desc}</p>
+        <div class="v-price">${v.price}</div>
+      </div>`;
+  });
+}
+
+// ======= TESTIMONIALS =======
+function buildTestimonials() {
+  const marquee = document.getElementById('testMarquee');
+  const cards = [...TESTIMONIALS, ...TESTIMONIALS];
+  cards.forEach(t => {
+    marquee.innerHTML += `
+      <div class="test-card">
+        <div class="stars">${t.stars}</div>
+        <p>${t.text}</p>
+        <div class="author">— <span style="color:${t.color}">@${t.author}</span></div>
+      </div>`;
+  });
+}
+
+// ======= FAQ =======
+function buildFAQ() {
+  const list = document.getElementById('faqList');
+  FAQS.forEach((f, i) => {
+    list.innerHTML += `
+      <div class="faq-item reveal" data-faq="${i}">
+        <div class="faq-q" onclick="toggleFaq(${i})">
+          ${f.q}
+          <span class="toggle" id="faqToggle${i}">+</span>
+        </div>
+        <div class="faq-a" id="faqA${i}">${f.a}</div>
+      </div>`;
+  });
+}
+
+function toggleFaq(i) {
+  const a = document.getElementById('faqA' + i);
+  const t = document.getElementById('faqToggle' + i);
+  const isOpen = a.classList.contains('open');
+  // Close all
+  document.querySelectorAll('.faq-a').forEach(el => el.classList.remove('open'));
+  document.querySelectorAll('.faq-q .toggle').forEach(el => el.classList.remove('open'));
+  if (!isOpen) {
+    a.classList.add('open');
+    t.classList.add('open');
+  }
+}
+
+// ======= SCROLL REVEALS =======
+function initReveals() {
+  gsap.utils.toArray('.reveal').forEach(el => {
+    gsap.to(el, {
+      opacity: 1, y: 0,
+      duration: .8,
+      ease: 'power3.out',
+      scrollTrigger: { trigger: el, start: 'top 85%', once: true },
+      delay: parseFloat(el.style.getPropertyValue('--delay') || 0)
+    });
+  });
+  gsap.utils.toArray('.reveal-left').forEach(el => {
+    gsap.to(el, {
+      opacity: 1, x: 0, duration: 1, ease: 'power3.out',
+      scrollTrigger: { trigger: el, start: 'top 80%', once: true }
+    });
+  });
+  gsap.utils.toArray('.reveal-right').forEach(el => {
+    gsap.to(el, {
+      opacity: 1, x: 0, duration: 1, ease: 'power3.out',
+      scrollTrigger: { trigger: el, start: 'top 80%', once: true }
+    });
+  });
+}
+
+// ======= LETTER HOVER EFFECT ON CTA BUTTON =======
+function initCtaHover() {
+  const btn = document.getElementById('ctaBtn');
+  btn.addEventListener('click', e => {
+    e.preventDefault();
+    // Fun effect on click
+    const rect = btn.getBoundingClientRect();
+    for (let i = 0; i < 12; i++) {
+      const amogus = document.createElement('span');
+      amogus.textContent = 'ඞ';
+      amogus.style.cssText = `position:fixed;left:${rect.left + rect.width/2}px;top:${rect.top + rect.height/2}px;font-size:${16+Math.random()*20}px;color:${AMOGUS_COLORS[i%AMOGUS_COLORS.length]};pointer-events:none;z-index:10000;`;
+      document.body.appendChild(amogus);
+      gsap.to(amogus, {
+        x: gsap.utils.random(-200, 200),
+        y: gsap.utils.random(-300, -100),
+        rotation: gsap.utils.random(-180, 180),
+        opacity: 0,
+        scale: gsap.utils.random(.5, 2),
+        duration: gsap.utils.random(.8, 1.5),
+        ease: 'power2.out',
+        onComplete: () => amogus.remove()
+      });
+    }
+  });
+}
+
+// ======= HEADING CHAR HOVER EFFECT =======
+function initCharHover() {
+  document.querySelectorAll('.hero-word-canned .char').forEach(ch => {
+    ch.addEventListener('mouseenter', () => {
+      gsap.to(ch, { y: -15, color: AMOGUS_COLORS[Math.floor(Math.random()*AMOGUS_COLORS.length)], rotation: gsap.utils.random(-15,15), duration: .3, ease:'back.out(1.7)' });
+    });
+    ch.addEventListener('mouseleave', () => {
+      gsap.to(ch, { y: 0, color: 'var(--text)', rotation: 0, duration: .5, ease:'elastic.out(1,.3)' });
+    });
+  });
+}
+
+// ======= NAV HIDE/SHOW =======
+function initNavScroll() {
+  let lastY = 0;
+  ScrollTrigger.create({
+    onUpdate: self => {
+      const y = self.scroll();
+      if (y > lastY && y > 100) {
+        gsap.to('nav', { y: -100, duration: .4, ease:'power2.in' });
+      } else {
+        gsap.to('nav', { y: 0, duration: .4, ease:'power2.out' });
+      }
+      lastY = y;
+    }
+  });
+}
+
+// ======= INIT =======
+function init() {
+  buildMarquee();
+  buildFeatures();
+  buildCanAmogi();
+  buildVariants();
+  buildTestimonials();
+  buildFAQ();
+
+  runPreloader();
+
+  // Wait a tick for DOM to settle
+  setTimeout(() => {
+    initScrollScale();
+    initReveals();
+    initCounters();
+    initCtaHover();
+    initNavScroll();
+    applyCursorHover();
+
+    // Defer char hover init until hero is animated
+    setTimeout(initCharHover, 3000);
+  }, 100);
+}
+
+document.addEventListener('DOMContentLoaded', init);
+</script>
+</body>
+</html>

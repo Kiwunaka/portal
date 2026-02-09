@@ -1,0 +1,23 @@
+{
+  "results": [
+    {
+      "code": "pl",
+      "ip": "82.40.38.84",
+      "xui_db": "HAS_DB",
+      "inbounds": [
+        {
+          "id": 1,
+          "port": 443,
+          "protocol": "vless",
+          "enable": 1
+        },
+        {
+          "id": 2,
+          "port": 8443,
+          "protocol": "vless",
+          "enable": 1
+        }
+      ]
+    }
+  ]
+}

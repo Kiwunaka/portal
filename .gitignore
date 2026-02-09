@@ -1,0 +1,55 @@
+# Secrets / local env
+.env
+**/.env
+**/.env.*
+!.env.example
+!**/.env.example
+
+# Local node access materials (must never be committed)
+VPN NODE SSH KEYS/
+*.ppk
+PASSWORDS*.txt
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.venv/
+venv/
+
+# Node / frontend
+node_modules/
+dist/
+.vite/
+.next/
+out/
+*.tsbuildinfo
+webapp/dist/
+marketing/out/
+
+# Local machine generated inventories / reports
+node_facts*.json
+node_reality*.json
+node_inbounds*.json
+node_reality-inspected.json
+
+# Local bench/ref clones and temporary DBs
+.tmp/bench/
+portal_api_test_*.db
+portal.db
+portal.db.*
+*.cluster.db
+*.from-old-*.db
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+
+# x-ui DB backups (may include private keys)
+x-ui*.db

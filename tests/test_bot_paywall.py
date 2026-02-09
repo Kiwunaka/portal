@@ -1,0 +1,117 @@
+import asyncio
+import importlib
+import os
+import sys
+import tempfile
+import types
+import unittest
+import uuid
+from pathlib import Path
+
+
+class _FakeMember:
+    def __init__(self, status: str):
+        self.status = status
+
+
+class _FakeBot:
+    def __init__(self, status: str | None = None, fail: bool = False):
+        self._status = status
+        self._fail = fail
+        self.calls: list[tuple[str, int]] = []
+
+    async def get_chat_member(self, chat_id: str, user_id: int):
+        self.calls.append((chat_id, user_id))
+        if self._fail:
+            raise RuntimeError("api unavailable")
+        return _FakeMember(self._status or "left")
+
+
+class BotPaywallTests(unittest.TestCase):
+    def setUp(self) -> None:
+        repo_root = Path(__file__).resolve().parents[1]
+        portal_dir = str(repo_root / "portal_bot")
+        if portal_dir not in sys.path:
+            sys.path.insert(0, portal_dir)
+
+        self._saved_env: dict[str, str | None] = {}
+        for k in ("DATABASE_URL", "BOT_TOKEN", "ADMIN_ID", "NEWS_CHANNEL_ID"):
+            self._saved_env[k] = os.environ.get(k)
+        self._saved_qrcode = sys.modules.get("qrcode")
+        if self._saved_qrcode is None:
+            class _DummyQR:
+                def __init__(self, *args, **kwargs):
+                    pass
+
+                def add_data(self, *args, **kwargs):
+                    return None
+
+                def make(self, *args, **kwargs):
+                    return None
+
+                def make_image(self, *args, **kwargs):
+                    class _Img:
+                        def save(self, *a, **k):
+                            return None
+
+                    return _Img()
+
+            sys.modules["qrcode"] = types.SimpleNamespace(QRCode=_DummyQR)
+
+        self._tmp = tempfile.TemporaryDirectory()
+        db_path = (repo_root / f"portal_api_test_{uuid.uuid4().hex}.db").as_posix()
+        os.environ["DATABASE_URL"] = f"sqlite:///{db_path}"
+        os.environ["BOT_TOKEN"] = "test_bot_token_123"
+        os.environ["ADMIN_ID"] = "9999"
+        os.environ["NEWS_CHANNEL_ID"] = "@portal_news_channel"
+
+        if "config" in sys.modules:
+            importlib.reload(sys.modules["config"])
+        if "db" in sys.modules:
+            importlib.reload(sys.modules["db"])
+        if "bot" in sys.modules:
+            importlib.reload(sys.modules["bot"])
+        self.bot_module = importlib.import_module("bot")
+        importlib.reload(self.bot_module)
+
+    def tearDown(self) -> None:
+        for k, v in self._saved_env.items():
+            if v is None:
+                os.environ.pop(k, None)
+            else:
+                os.environ[k] = v
+        if self._saved_qrcode is None:
+            sys.modules.pop("qrcode", None)
+        else:
+            sys.modules["qrcode"] = self._saved_qrcode
+        self._tmp.cleanup()
+
+    def test_check_subscription_allows_when_channel_not_configured(self) -> None:
+        self.bot_module.NEWS_CHANNEL_ID = ""
+        fake = _FakeBot(status="left")
+        ok = asyncio.run(self.bot_module.check_subscription(1001, fake))
+        self.assertTrue(ok)
+        self.assertEqual(fake.calls, [])
+
+    def test_check_subscription_true_for_member(self) -> None:
+        self.bot_module.NEWS_CHANNEL_ID = "@portal_news_channel"
+        fake = _FakeBot(status="member")
+        ok = asyncio.run(self.bot_module.check_subscription(1001, fake))
+        self.assertTrue(ok)
+        self.assertEqual(fake.calls, [("@portal_news_channel", 1001)])
+
+    def test_check_subscription_false_for_non_member(self) -> None:
+        self.bot_module.NEWS_CHANNEL_ID = "@portal_news_channel"
+        fake = _FakeBot(status="left")
+        ok = asyncio.run(self.bot_module.check_subscription(1001, fake))
+        self.assertFalse(ok)
+
+    def test_check_subscription_fallback_true_when_api_fails(self) -> None:
+        self.bot_module.NEWS_CHANNEL_ID = "@portal_news_channel"
+        fake = _FakeBot(fail=True)
+        ok = asyncio.run(self.bot_module.check_subscription(1001, fake))
+        self.assertTrue(ok)
+
+
+if __name__ == "__main__":
+    unittest.main()
