@@ -4,7 +4,8 @@ import { useEffect, useRef, useState } from "react";
 import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 
-const TG_BOT_URL = "https://t.me/swazist_bot";
+const TG_BOT_FALLBACK = process.env.NEXT_PUBLIC_TELEGRAM_BOT_URL || "https://t.me/swazist_bot";
+const CHECKOUT_URL = process.env.NEXT_PUBLIC_PAY_CHECKOUT_URL || TG_BOT_FALLBACK;
 
 // ======= DATA =======
 const FEATURES = [
@@ -28,13 +29,13 @@ const TESTIMONIALS = [
   { stars: '★★★★★', text: '"Сервис работает стабильно, переключение стран без ручной рутины. Впечатление премиум-уровня."', author: 'Алексей', role: 'Product Lead' },
   { stars: '★★★★★', text: '"Отдельно нравится диагностика и понятный личный кабинет внутри Telegram."', author: 'Ирина', role: 'Founder' },
   { stars: '★★★★★', text: '"Подключил семью за вечер: единый ключ, быстрые инструкции, прозрачная оплата."', author: 'Михаил', role: 'CTO' },
-  { stars: '★★★★★', text: '"Наконец-то нормальный сервис без VPN-лагов. Работает даже в Китае."', author: 'Дмитрий', role: 'Digital Nomad' },
+  { stars: '★★★★★', text: '"Наконец-то стабильный сервис без лагов. Работает даже в сложных сетях."', author: 'Дмитрий', role: 'Digital Nomad' },
   { stars: '★★★★★', text: '"Поддержка ответила за 5 минут и помогла настроить на всех устройствах."', author: 'Анна', role: 'Designer' },
   { stars: '★★★★☆', text: '"Использую полгода — ни одного разрыва соединения. Рекомендую."', author: 'Сергей', role: 'Developer' }
 ];
 
 const FAQS = [
-  { q: 'Как получить доступ?', a: 'Напишите нашему Telegram-боту @swazist_bot, выберите тариф и получите персональный ключ. Весь процесс занимает меньше минуты.' },
+  { q: 'Как получить доступ?', a: 'Откройте Telegram-бот PORTAL, выберите тариф и получите персональный ключ. Весь процесс занимает меньше минуты.' },
   { q: 'Какие устройства поддерживаются?', a: 'iOS, Android, Windows, macOS, Linux. Один ключ работает на всех ваших устройствах одновременно — до 5 штук.' },
   { q: 'Можно ли вернуть деньги?', a: 'Да, в течение 7 дней после оплаты вы можете запросить полный возврат через Telegram-бота без объяснения причин.' },
   { q: 'Сохраняются ли логи?', a: 'Мы не храним историю посещений и не ведём логи активности. Только минимум данных для работы сервиса.' },
@@ -469,7 +470,7 @@ function CTA() {
           <span className="currency">⭐</span>499<span className="period">/квартал</span>
         </div>
         <div className="cta-disclaimer reveal">Полный доступ · Все локации · До 5 устройств</div>
-        <a href={TG_BOT_URL} target="_blank" rel="noreferrer" className="cta-btn reveal">
+        <a href={CHECKOUT_URL} target="_blank" rel="noreferrer" className="cta-btn reveal">
           <span className="btn-icon">🚀</span>
           ПОДКЛЮЧИТЬ СЕЙЧАС
         </a>
@@ -560,7 +561,7 @@ function Navbar() {
         <a href="#features">Возможности</a>
         <a href="#plans">Тарифы</a>
         <a href="#faq">FAQ</a>
-        <a href={TG_BOT_URL} target="_blank" rel="noreferrer" className="nav-buy">Подключить</a>
+        <a href={CHECKOUT_URL} target="_blank" rel="noreferrer" className="nav-buy">Подключить</a>
       </nav>
     </header>
   );

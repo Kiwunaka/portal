@@ -34,6 +34,17 @@ body {
   cursor: none;
 }
 
+@media (hover: none), (pointer: coarse), (max-width: 1024px) {
+  body {
+    cursor: auto;
+  }
+
+  .cursor,
+  .cursor-dot {
+    display: none !important;
+  }
+}
+
 a {
   color: inherit;
   text-decoration: none;
