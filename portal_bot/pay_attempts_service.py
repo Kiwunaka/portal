@@ -135,6 +135,53 @@ def get_attempt_by_payload(*, invoice_payload: str) -> PayAttempt | None:
         s.close()
 
 
+def resolve_pending_attempt_for_payment(
+    *,
+    tg_id: int,
+    amount_stars: int,
+    currency: str = "XTR",
+    within_hours: int = 24,
+) -> PayAttempt | None:
+    """
+    Best-effort resolver for payments where invoice payload is not recognized.
+    Picks the newest pending attempt for the user with the same amount/currency.
+    """
+    cutoff = datetime.utcnow() - timedelta(hours=max(1, int(within_hours)))
+    s = SessionLocal()
+    try:
+        row = (
+            s.query(PayAttempt)
+            .filter(PayAttempt.tg_id == int(tg_id))
+            .filter(PayAttempt.amount_stars == max(0, int(amount_stars)))
+            .filter(PayAttempt.currency == (currency or "XTR")[:12])
+            .filter(PayAttempt.status.in_([STATUS_STARTED, STATUS_INVOICE_SENT]))
+            .filter(PayAttempt.started_at >= cutoff)
+            .order_by(PayAttempt.id.desc())
+            .first()
+        )
+        if not row:
+            return None
+        # Materialize immutable snapshot to avoid detached-session surprises.
+        out = PayAttempt(
+            id=row.id,
+            tg_id=row.tg_id,
+            source=row.source,
+            plan_code=row.plan_code,
+            amount_stars=row.amount_stars,
+            currency=row.currency,
+            status=row.status,
+            invoice_payload=row.invoice_payload,
+            offer_id=row.offer_id,
+            started_at=row.started_at,
+            updated_at=row.updated_at,
+            paid_at=row.paid_at,
+            abandoned_notified_at=row.abandoned_notified_at,
+        )
+        return out
+    finally:
+        s.close()
+
+
 def find_abandoned_candidates(*, older_than_minutes: int = 60, limit: int = 500) -> list[PayAttempt]:
     cutoff = datetime.utcnow() - timedelta(minutes=max(1, int(older_than_minutes)))
     s = SessionLocal()

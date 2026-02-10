@@ -22,8 +22,9 @@ def run_migrations(engine: Engine) -> None:
     create_all handles new tables, but won't add columns to existing ones.
     """
     dialect = (getattr(engine, "dialect", None) and engine.dialect.name or "").lower()
-    # Phase-2 groundwork: keep startup safe on non-SQLite engines.
-    # PostgreSQL-specific migrations will be introduced in the dedicated phase.
+    if dialect == "postgresql":
+        _run_postgres_migrations(engine)
+        return
     if dialect and dialect != "sqlite":
         return
 
@@ -44,6 +45,9 @@ def run_migrations(engine: Engine) -> None:
                 ("created_by_admin", "BIGINT"),
                 ("display_name", "VARCHAR(100)"),
                 ("device_reset_last_at", "DATETIME"),
+                ("channel_bonus_active", "BOOLEAN DEFAULT 0"),
+                ("channel_bonus_expires_at", "DATETIME"),
+                ("channel_bonus_revoked_at", "DATETIME"),
             ]
             for col, ddl in wanted_cols:
                 if not _sqlite_column_exists(conn, "users", col):
@@ -306,3 +310,35 @@ def run_migrations(engine: Engine) -> None:
             )
         )
         conn.execute(text("CREATE INDEX IF NOT EXISTS ix_family_slots_tg_id ON family_slots(tg_id);"))
+
+
+def _run_postgres_migrations(engine: Engine) -> None:
+    """
+    PostgreSQL-safe idempotent migrations.
+    `create_all()` already creates tables; here we only ensure additive columns/indexes.
+    """
+    with engine.begin() as conn:
+        conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS referral_code VARCHAR(10);"))
+        conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS first_purchase_done BOOLEAN DEFAULT FALSE;"))
+        conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS sub_token VARCHAR(64);"))
+        conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS streak_months INTEGER DEFAULT 0;"))
+        conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS streak_last_check TIMESTAMP;"))
+        conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS channel_bonus_claimed_at TIMESTAMP;"))
+        conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS tos_accepted BOOLEAN DEFAULT FALSE;"))
+        conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS trial_used BOOLEAN DEFAULT FALSE;"))
+        conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS last_wheel_spin TIMESTAMP;"))
+        conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS is_manual BOOLEAN DEFAULT FALSE;"))
+        conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS created_by_admin BIGINT;"))
+        conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS display_name VARCHAR(100);"))
+        conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS device_reset_last_at TIMESTAMP;"))
+        conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS channel_bonus_active BOOLEAN DEFAULT FALSE;"))
+        conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS channel_bonus_expires_at TIMESTAMP;"))
+        conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS channel_bonus_revoked_at TIMESTAMP;"))
+
+        # Multi-column indexes from P0.
+        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_events_event_created ON events(event_name, created_at);"))
+        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_events_tg_created ON events(tg_id, created_at);"))
+        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_pay_attempts_tg_status_started ON pay_attempts(tg_id, status, started_at);"))
+        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_offers_tg_status_exp ON offers(tg_id, status, expires_at);"))
+        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_points_ledger_tg_exp_created ON points_ledger(tg_id, expires_at, created_at);"))
+        conn.execute(text("CREATE UNIQUE INDEX IF NOT EXISTS uq_campaign_sends_tg_campaign ON campaign_sends(tg_id, campaign_key);"))

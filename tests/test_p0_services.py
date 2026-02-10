@@ -120,6 +120,34 @@ class P0ServicesTests(unittest.TestCase):
         ok = svc.mark_abandoned(attempt_id=row.id)
         self.assertTrue(ok)
 
+    def test_resolve_pending_attempt_for_payment(self) -> None:
+        svc = self.pay_attempts_service
+        first = svc.start_attempt(
+            tg_id=3001,
+            source="bot",
+            plan_code="1_month",
+            amount_stars=199,
+            currency="XTR",
+        )
+        second = svc.start_attempt(
+            tg_id=3001,
+            source="bot",
+            plan_code="3_months",
+            amount_stars=499,
+            currency="XTR",
+        )
+        self.assertIsNotNone(first)
+        self.assertIsNotNone(second)
+        resolved = svc.resolve_pending_attempt_for_payment(
+            tg_id=3001,
+            amount_stars=499,
+            currency="XTR",
+            within_hours=24,
+        )
+        self.assertIsNotNone(resolved)
+        self.assertEqual(int(resolved.id), int(second.id))
+        self.assertEqual(str(resolved.plan_code), "3_months")
+
     def test_points_monthly_cap_and_redeem_caps(self) -> None:
         pts = self.points_service
 
@@ -154,6 +182,27 @@ class P0ServicesTests(unittest.TestCase):
 
         total_after, _ = pts.available_points(tg_id=2001)
         self.assertEqual(total_after, 300 - used)
+
+    def test_points_referral_tier_progression(self) -> None:
+        pts = self.points_service
+
+        snap0 = pts.referral_tier_snapshot(tg_id=4001)
+        self.assertEqual(str(snap0["tier_key"]), "bronze")
+        self.assertEqual(int(float(snap0["percent"])), 10)
+
+        # Simulate paid referrals from 5 distinct users -> should move to silver (15% by default).
+        for ref_id in range(5001, 5006):
+            granted = pts.award_referral_points(
+                tg_id=4001,
+                paid_stars=200,
+                ref_tg_id=ref_id,
+                pay_attempt_id=ref_id,
+            )
+            self.assertGreater(granted, 0)
+
+        snap1 = pts.referral_tier_snapshot(tg_id=4001)
+        self.assertEqual(str(snap1["tier_key"]), "silver")
+        self.assertEqual(int(float(snap1["percent"])), 15)
 
 
 if __name__ == "__main__":

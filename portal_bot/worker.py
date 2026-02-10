@@ -14,6 +14,7 @@ load_dotenv(dotenv_path=Path(__file__).resolve().with_name(".env"))
 load_dotenv()
 
 from config import Settings
+from control_panel import ControlPanel
 from db import SessionLocal, init_db
 from events_service import track_event
 from models import CampaignSend, NodeHealthSample, User
@@ -21,9 +22,11 @@ from offers_service import create_offer, expire_stale_offers, get_active_offer
 from pay_attempts_service import find_abandoned_candidates, mark_abandoned, mark_abandoned_notified
 
 
-BOT_USERNAME = (os.getenv("BOT_USERNAME") or "swazist_bot").lstrip("@")
+BOT_USERNAME = (os.getenv("BOT_USERNAME") or "portal_service_bot").lstrip("@")
 SUPPORT_USERNAME = (os.getenv("SUPPORT_BOT_USERNAME") or os.getenv("SUPPORT_USERNAME") or "portal_privacy_helpbot").lstrip("@")
 FREE_TOTAL_GB = int(os.getenv("FREE_TOTAL_GB", "40"))
+PUBLIC_CHANNEL = (os.getenv("PUBLIC_CHANNEL") or "portal_privacy").lstrip("@")
+AUTO_FREE_DAYS = int(os.getenv("AUTO_FREE_DAYS", "3650"))
 
 
 def _bot_pay_url() -> str:
@@ -60,6 +63,76 @@ async def _telegram_send_message(
                 return bool((body or {}).get("ok"))
     except Exception:
         return False
+
+
+async def _telegram_get_chat_member(channel_username: str, user_id: int) -> tuple[bool, str]:
+    token = (Settings.BOT_TOKEN or "").strip()
+    if not token:
+        return False, "bot_token_empty"
+    endpoint = f"https://api.telegram.org/bot{token}/getChatMember"
+    payload = {"chat_id": f"@{channel_username.lstrip('@')}", "user_id": int(user_id)}
+    try:
+        async with aiohttp.ClientSession() as session:
+            async with session.post(endpoint, json=payload, timeout=aiohttp.ClientTimeout(total=15)) as resp:
+                body = await resp.json(content_type=None)
+                if resp.status != 200:
+                    return False, "telegram_http_error"
+                if not isinstance(body, dict) or not body.get("ok"):
+                    desc = str((body or {}).get("description") or "").lower()
+                    if "not a member" in desc or "user not found" in desc:
+                        return False, "not_member"
+                    return False, "telegram_api_error"
+                status = str((body.get("result") or {}).get("status") or "").lower()
+                return status in {"creator", "administrator", "member", "restricted"}, status
+    except Exception:
+        return False, "telegram_exception"
+
+
+async def _switch_user_to_free(*, tg_id: int) -> bool:
+    now = datetime.utcnow()
+    s = SessionLocal()
+    try:
+        user = s.query(User).filter(User.tg_id == int(tg_id)).first()
+        if not user:
+            return False
+        user.sub_type = "FREE"
+        user.is_active = True
+        user.expiry_at = now + timedelta(days=max(30, int(AUTO_FREE_DAYS)))
+        user.channel_bonus_active = False
+        user.channel_bonus_revoked_at = now
+        s.commit()
+        user_uuid = str(user.uuid or "")
+        user_email = str(user.email or f"User_{int(tg_id)}")
+        user_sub_id = str(user.sub_token or user.tg_id)
+    except Exception:
+        s.rollback()
+        return False
+    finally:
+        s.close()
+
+    try:
+        panel = ControlPanel()
+        try:
+            await panel.login()
+            nodes = await panel.refresh()
+            free_codes = [(getattr(n, "code", "") or "").strip() for n in nodes if "free" in (getattr(n, "code", "") or "").lower()]
+            paid_codes = [(getattr(n, "code", "") or "").strip() for n in nodes if "free" not in (getattr(n, "code", "") or "").lower()]
+            if free_codes:
+                await panel.ensure_user_on_all_nodes(
+                    tg_id=int(tg_id),
+                    client_uuid=user_uuid,
+                    email=user_email,
+                    sub_id=user_sub_id,
+                    enable=True,
+                    only_node_codes=free_codes,
+                )
+            if paid_codes:
+                await panel.set_existing_user_enabled_on_nodes(tg_id=int(tg_id), node_codes=paid_codes, enable=False)
+        finally:
+            await panel.close()
+    except Exception:
+        return False
+    return True
 
 
 def _mark_campaign_sent_once(*, tg_id: int, campaign_key: str) -> bool:
@@ -306,6 +379,48 @@ async def node_metrics_watchdog_job() -> None:
         await asyncio.sleep(3600)
 
 
+async def channel_bonus_guard_job() -> None:
+    while True:
+        channel = (PUBLIC_CHANNEL or "").lstrip("@").strip()
+        if not channel:
+            await asyncio.sleep(900)
+            continue
+
+        now = datetime.utcnow()
+        s = SessionLocal()
+        try:
+            rows = (
+                s.query(User)
+                .filter(User.tg_id > 0)
+                .filter(User.channel_bonus_active == True)
+                .filter(or_(User.channel_bonus_expires_at.is_(None), User.channel_bonus_expires_at > now))
+                .all()
+            )
+        finally:
+            s.close()
+
+        for u in rows:
+            is_member, reason = await _telegram_get_chat_member(channel, int(u.tg_id))
+            if is_member:
+                continue
+            switched = await _switch_user_to_free(tg_id=int(u.tg_id))
+            if switched:
+                await _telegram_send_message(
+                    chat_id=int(u.tg_id),
+                    text=(
+                        "ℹ️ Бонусный доступ отключён: подписка на канал не подтверждена.\n\n"
+                        "Подпишитесь на канал, чтобы участвовать в бонусах."
+                    ),
+                )
+                track_event(
+                    tg_id=int(u.tg_id),
+                    event_name="expired",
+                    source="worker",
+                    meta={"flow": "channel_bonus_guard", "reason": reason},
+                )
+        await asyncio.sleep(900)
+
+
 async def main() -> None:
     init_db()
     tasks = [
@@ -314,6 +429,7 @@ async def main() -> None:
         asyncio.create_task(oto_free_job()),
         asyncio.create_task(reactivation_job()),
         asyncio.create_task(node_metrics_watchdog_job()),
+        asyncio.create_task(channel_bonus_guard_job()),
     ]
     await asyncio.gather(*tasks)
 

@@ -8,7 +8,7 @@ from migrations import run_migrations
 from models import Base
 
 
-engine = create_engine(Settings.DATABASE_URL)
+engine = create_engine(Settings.DATABASE_URL, pool_pre_ping=True)
 SessionLocal = sessionmaker(bind=engine)
 
 

@@ -65,7 +65,13 @@ from control_panel import ControlPanel
 from events_service import track_event
 from offers_service import accept_offer, create_offer, get_active_offer
 from pay_attempts_service import start_attempt
-from points_service import available_points, preview_redeemable_points
+from points_service import (
+    EXPIRY_DAYS as POINTS_EXPIRY_DAYS,
+    MONTHLY_CAP as POINTS_MONTHLY_CAP,
+    available_points,
+    preview_redeemable_points,
+    referral_tier_snapshot,
+)
 
 
 init_db()
@@ -80,7 +86,7 @@ PAID_LIMIT_IP = env_int("PAID_LIMIT_IP", 5)
 SUPPORT_USERNAME = (os.getenv("SUPPORT_USERNAME") or "portal_privacy_helpbot").lstrip("@")
 SUPPORT_USERNAME = (os.getenv("SUPPORT_BOT_USERNAME") or SUPPORT_USERNAME).lstrip("@")
 PUBLIC_CHANNEL = (os.getenv("PUBLIC_CHANNEL") or "portal_privacy").lstrip("@")
-BOT_USERNAME = (os.getenv("BOT_USERNAME") or "").lstrip("@")
+BOT_USERNAME = (os.getenv("BOT_USERNAME") or "portal_service_bot").lstrip("@")
 REFERRAL_BONUS_DAYS = env_int("REFERRAL_BONUS_DAYS", 15)
 CHANNEL_PREMIUM_DAYS = env_int("CHANNEL_PREMIUM_DAYS", 10)
 MAX_BROADCAST_LIMIT = env_int("MAX_BROADCAST_LIMIT", 1000)
@@ -89,6 +95,7 @@ WEBAPP_ENABLE_HAPTIC = env_bool("WEBAPP_ENABLE_HAPTIC", default=True)
 WEBAPP_ENABLE_LOTTIE = env_bool("WEBAPP_ENABLE_LOTTIE", default=True)
 WEBAPP_DEV_AUTH = env_bool("WEBAPP_DEV_AUTH", default=False)
 WEBAPP_DEV_TG_ID = env_int("WEBAPP_DEV_TG_ID", 0)
+PROFILE_UPDATE_INTERVAL_HOURS = max(1, env_int("PROFILE_UPDATE_INTERVAL_HOURS", 6))
 API_LOCALHOST_DEV_HOSTS = {"localhost", "127.0.0.1", "::1"}
 WEBAPP_DEV_ALLOWED_ORIGINS = {
     x.strip().lower().rstrip("/")
@@ -814,13 +821,15 @@ async def api_points(request: Request, x_telegram_init_data: str = Header(defaul
     auth_user = _require_auth_user(x_telegram_init_data, request=request)
     tg_id = int(auth_user.get("id", 0))
     avail, expiring_soon = available_points(tg_id=tg_id)
+    tier = referral_tier_snapshot(tg_id=tg_id)
     max_preview = preview_redeemable_points(tg_id=tg_id, plan_price_stars=API_PLAN_PRICES["1_month"], first_purchase_discount_pct=0.20)
     return {
         "tg_id": tg_id,
         "available_points": int(avail),
         "expiring_soon_points": int(expiring_soon),
-        "monthly_cap": 300,
-        "points_expiry_days": 90,
+        "monthly_cap": int(POINTS_MONTHLY_CAP),
+        "points_expiry_days": int(POINTS_EXPIRY_DAYS),
+        "tier": tier,
         "preview": {
             "plan_price_stars": API_PLAN_PRICES["1_month"],
             "redeemable_points": int(max_preview.redeemable_points),
@@ -1087,6 +1096,7 @@ async def bonuses(request: Request, x_telegram_init_data: str = Header(default="
         user = s.query(User).filter_by(tg_id=tg_id).first()
         if not user:
             raise HTTPException(status_code=404, detail="User not found")
+        tier = referral_tier_snapshot(tg_id=tg_id)
         return {
             "tg_id": tg_id,
             "referral_count": int(user.referral_count or 0),
@@ -1097,6 +1107,7 @@ async def bonuses(request: Request, x_telegram_init_data: str = Header(default="
             "channel_bonus_premium_days": int(CHANNEL_PREMIUM_DAYS),
             "channel_bonus_claimed_at": _safe_iso(getattr(user, "channel_bonus_claimed_at", None)),
             "channel_username": PUBLIC_CHANNEL,
+            "points_tier": tier,
         }
     finally:
         s.close()
@@ -1126,6 +1137,8 @@ async def claim_channel_bonus(request: Request, x_telegram_init_data: str = Head
                 "sub_type": user.sub_type,
                 "channel": PUBLIC_CHANNEL,
             }
+        if (user.sub_type or "").upper() != "FREE":
+            raise HTTPException(status_code=400, detail="Бонус доступен только в стартовом режиме")
 
         is_member, reason = await _is_channel_member(PUBLIC_CHANNEL, tg_id)
         if not is_member:
@@ -1147,6 +1160,9 @@ async def claim_channel_bonus(request: Request, x_telegram_init_data: str = Head
         user.sub_type = "PAID"
         user.is_active = True
         user.channel_bonus_claimed_at = now
+        user.channel_bonus_active = True
+        user.channel_bonus_expires_at = user.expiry_at
+        user.channel_bonus_revoked_at = None
         s.commit()
         s.refresh(user)
         sync_ok = await _sync_user_after_paid_bonus(user)
@@ -2096,7 +2112,7 @@ async def subscription(token: str, request: Request):
     total_bytes = _gb_to_bytes(_plan_total_gb(user))
     headers = {
         "Subscription-Userinfo": f"upload=0; download=0; total={total_bytes}; expire={header_expire}",
-        "Profile-Update-Interval": "24",
+        "Profile-Update-Interval": str(int(PROFILE_UPDATE_INTERVAL_HOURS)),
         "Content-Disposition": 'attachment; filename="Portal_Subscription"',
     }
 

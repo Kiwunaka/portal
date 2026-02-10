@@ -161,7 +161,7 @@ load_dotenv()
 
 BOT_TOKEN = os.getenv("BOT_TOKEN")
 ADMIN_ID = int(os.getenv("ADMIN_ID", "0"))
-BOT_USERNAME = (os.getenv("BOT_USERNAME") or "swazist_bot").lstrip("@")
+BOT_USERNAME = (os.getenv("BOT_USERNAME") or "portal_service_bot").lstrip("@")
 BOT_USERNAME_MD = BOT_USERNAME.replace("_", "\\_")
 
 # Panel
@@ -434,7 +434,12 @@ from db import SessionLocal, init_db
 from models import Achievement, AdminAudit, FamilySlot, GiftCard, PromoCode, PromoUsage, Review, Template, User
 from nodes_repo import enabled_nodes
 from events_service import track_event
-from pay_attempts_service import mark_invoice_sent, mark_paid, start_attempt
+from pay_attempts_service import (
+    mark_invoice_sent,
+    mark_paid,
+    resolve_pending_attempt_for_payment,
+    start_attempt,
+)
 from points_service import award_referral_points, preview_redeemable_points, spend_points
 from tickets_repo import (
     STATUS_CLOSED,
@@ -6232,6 +6237,62 @@ async def payment_success(message: Message, bot: Bot):
                 await message.answer(receipt_text, reply_markup=kb, parse_mode=ParseMode.MARKDOWN)
         else:
             logger.warning("payment_success unknown tariff_key=%s payload=%s", tariff_key, payload)
+        return
+
+    # Fallback for legacy/non-standard payloads:
+    # resolve the newest pending pay attempt by user + amount.
+    payer_tg_id = message.from_user.id if message.from_user else 0
+    fallback_attempt = resolve_pending_attempt_for_payment(
+        tg_id=int(payer_tg_id),
+        amount_stars=int(payment.total_amount),
+        currency=str(payment.currency or "XTR"),
+        within_hours=24,
+    )
+    if fallback_attempt:
+        tariff_key = normalize_tariff_key(str(fallback_attempt.plan_code or ""))
+        tariff = TARIFFS.get(tariff_key)
+        if tariff:
+            logger.info(
+                "payment_success fallback resolved: tg_id=%s attempt_id=%s plan=%s payload=%s",
+                payer_tg_id,
+                fallback_attempt.id,
+                tariff_key,
+                payload,
+            )
+            # Persist real payload to the attempt for traceability, then mark as paid.
+            mark_invoice_sent(attempt_id=int(fallback_attempt.id), set_invoice_payload=payload)
+            mark_paid(attempt_id=int(fallback_attempt.id), invoice_payload=payload)
+            track_event(
+                tg_id=int(payer_tg_id),
+                event_name="paid",
+                source="bot",
+                meta={
+                    "attempt_id": int(fallback_attempt.id),
+                    "plan_code": tariff_key,
+                    "invoice_payload": payload,
+                    "amount_stars": int(payment.total_amount),
+                    "recovered_by_fallback": True,
+                },
+            )
+            await message.answer(TEXTS["payment_success"])
+            await create_subscription(
+                message,
+                int(payer_tg_id),
+                tariff,
+                bot,
+                paid_amount_stars=int(payment.total_amount),
+                pay_attempt_id=int(fallback_attempt.id),
+            )
+            return
+
+    logger.warning(
+        "payment_success unhandled payload=%s from_tg=%s amount=%s currency=%s",
+        payload,
+        payer_tg_id,
+        payment.total_amount,
+        payment.currency,
+    )
+    await message.answer("✅ Оплата получена. Проверяем активацию, если не активировалось — напишите в поддержку.")
 
 async def create_subscription(
     message: Message,

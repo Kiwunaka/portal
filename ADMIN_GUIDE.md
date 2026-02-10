@@ -302,3 +302,33 @@ Default probes:
 - `443`
 - `8443`
 - `29374`
+
+## PostgreSQL Cutover (Phase 2)
+
+Use environment-only credentials. Do not store DSN secrets in git.
+
+1. Prepare target DB URL:
+   - `POSTGRES_DATABASE_URL=postgresql+psycopg2://<user>:<pass>@<host>:5432/<db>`
+2. Keep SQLite source URL:
+   - `SQLITE_DATABASE_URL=sqlite:////root/portal_bot/portal.db`
+3. Run one-shot migration:
+   - `python scripts/migrate_sqlite_to_postgres.py --truncate-target`
+4. Switch runtime:
+   - set `DATABASE_URL=$POSTGRES_DATABASE_URL` in `/root/portal_bot/.env`
+5. Restart services:
+   - `systemctl restart portal-api portal-bot portal-helpbot portal-worker`
+6. Verify:
+   - `GET /api/health`
+   - paid flow / subscription endpoint / admin dashboard / tickets.
+
+## Legacy Bot Redirect
+
+To keep old bot online with a fixed migration notice:
+
+1. In `/root/portal_bot/.env` set:
+   - `LEGACY_BOT_TOKEN=<old_bot_token>`
+   - `BOT_MIGRATION_TARGET_URL=https://t.me/portal_service_bot`
+2. Run:
+   - `python /root/portal_bot/legacy_redirect_bot.py`
+
+This bot only sends migration text + button to the new bot and does not process payments.

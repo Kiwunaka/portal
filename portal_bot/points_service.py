@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import datetime, timedelta
+import os
 
 from sqlalchemy import func
 
@@ -9,11 +10,16 @@ from db import SessionLocal
 from models import PointsLedger
 
 
-MONTHLY_CAP = 300
-EXPIRY_DAYS = 90
-REFERRAL_PERCENT = 0.10
-POINTS_PLAN_CAP_RATIO = 0.50
-TOTAL_DISCOUNT_CAP_RATIO = 0.70
+MONTHLY_CAP = int(os.getenv("POINTS_MONTHLY_CAP", "300"))
+EXPIRY_DAYS = int(os.getenv("POINTS_EXPIRY_DAYS", "90"))
+POINTS_PLAN_CAP_RATIO = float(os.getenv("POINTS_PLAN_CAP_RATIO", "0.50"))
+TOTAL_DISCOUNT_CAP_RATIO = float(os.getenv("TOTAL_DISCOUNT_CAP_RATIO", "0.70"))
+
+# Format: "bronze:0:10,silver:5:15,gold:15:20,platinum:40:25"
+REFERRAL_TIERS_RAW = (
+    os.getenv("REFERRAL_TIERS", "bronze:0:10,silver:5:15,gold:15:20,platinum:40:25")
+    .strip()
+)
 
 
 @dataclass
@@ -24,6 +30,13 @@ class PointsPreview:
     redeemable_points: int
 
 
+@dataclass
+class ReferralTier:
+    key: str
+    min_paid_referrals: int
+    percent: float
+
+
 def _now() -> datetime:
     return datetime.utcnow()
 
@@ -31,6 +44,70 @@ def _now() -> datetime:
 def _month_start_utc(now: datetime | None = None) -> datetime:
     n = now or _now()
     return datetime(n.year, n.month, 1)
+
+
+def _parse_referral_tiers(raw: str) -> list[ReferralTier]:
+    tiers: list[ReferralTier] = []
+    for chunk in (raw or "").split(","):
+        item = chunk.strip()
+        if not item:
+            continue
+        parts = [p.strip() for p in item.split(":")]
+        if len(parts) != 3:
+            continue
+        key, min_count_raw, pct_raw = parts
+        try:
+            min_count = max(0, int(min_count_raw))
+            pct = max(0.0, min(100.0, float(pct_raw)))
+        except Exception:
+            continue
+        tiers.append(ReferralTier(key=(key or "tier").lower(), min_paid_referrals=min_count, percent=pct / 100.0))
+    if not tiers:
+        tiers = [ReferralTier(key="bronze", min_paid_referrals=0, percent=0.10)]
+    tiers.sort(key=lambda t: (t.min_paid_referrals, t.percent))
+    return tiers
+
+
+REFERRAL_TIERS = _parse_referral_tiers(REFERRAL_TIERS_RAW)
+
+
+def _paid_referrals_count(*, tg_id: int) -> int:
+    s = SessionLocal()
+    try:
+        # Distinct referred users that produced at least one positive referral-earn event.
+        rows = (
+            s.query(PointsLedger.ref_tg_id)
+            .filter(PointsLedger.tg_id == int(tg_id))
+            .filter(PointsLedger.delta_points > 0)
+            .filter(PointsLedger.reason.like("referral_earned%"))
+            .filter(PointsLedger.ref_tg_id.isnot(None))
+            .distinct()
+            .all()
+        )
+        return int(len(rows))
+    finally:
+        s.close()
+
+
+def _tier_for_referrals_count(count: int) -> ReferralTier:
+    current = REFERRAL_TIERS[0]
+    for tier in REFERRAL_TIERS:
+        if int(count) >= int(tier.min_paid_referrals):
+            current = tier
+    return current
+
+
+def referral_tier_snapshot(*, tg_id: int) -> dict[str, int | float | str | None]:
+    paid_referrals = _paid_referrals_count(tg_id=int(tg_id))
+    current = _tier_for_referrals_count(paid_referrals)
+    nxt = next((t for t in REFERRAL_TIERS if t.min_paid_referrals > paid_referrals), None)
+    return {
+        "tier_key": current.key,
+        "percent": round(float(current.percent) * 100, 2),
+        "paid_referrals": int(paid_referrals),
+        "next_tier_key": (nxt.key if nxt else None),
+        "next_tier_at": (int(nxt.min_paid_referrals) if nxt else None),
+    }
 
 
 def get_balance(*, tg_id: int, now: datetime | None = None) -> int:
@@ -85,7 +162,9 @@ def award_referral_points(
     stars = max(0, int(paid_stars))
     if stars <= 0:
         return 0
-    raw_points = int(stars * REFERRAL_PERCENT)
+    tier = referral_tier_snapshot(tg_id=int(tg_id))
+    pct = max(0.0, float(tier.get("percent") or 0.0) / 100.0)
+    raw_points = int(stars * pct)
     if raw_points <= 0:
         return 0
 
@@ -96,7 +175,7 @@ def award_referral_points(
         earned_month = (
             s.query(func.coalesce(func.sum(PointsLedger.delta_points), 0))
             .filter(PointsLedger.tg_id == int(tg_id))
-            .filter(PointsLedger.reason == "referral_earned")
+            .filter(PointsLedger.reason.like("referral_earned%"))
             .filter(PointsLedger.created_at >= month_start)
             .scalar()
             or 0
@@ -108,7 +187,7 @@ def award_referral_points(
         row = PointsLedger(
             tg_id=int(tg_id),
             delta_points=int(grant),
-            reason="referral_earned",
+            reason=f"referral_earned:{str(tier.get('tier_key') or 'tier')[:24]}",
             ref_tg_id=int(ref_tg_id) if ref_tg_id is not None else None,
             pay_attempt_id=int(pay_attempt_id) if pay_attempt_id is not None else None,
             expires_at=now + timedelta(days=EXPIRY_DAYS),
@@ -181,4 +260,3 @@ def preview_redeemable_points(
         max_points_by_total_cap=by_total_cap,
         redeemable_points=redeemable,
     )
-

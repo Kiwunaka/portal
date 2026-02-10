@@ -41,7 +41,7 @@ from tickets_repo import (
 
 HELP_BOT_TOKEN = (os.getenv("HELP_BOT_TOKEN") or "").strip()
 ADMIN_ID = int(os.getenv("ADMIN_ID", "0"))
-MAIN_BOT_USERNAME = (os.getenv("BOT_USERNAME") or "").lstrip("@")
+MAIN_BOT_USERNAME = (os.getenv("BOT_USERNAME") or "portal_service_bot").lstrip("@")
 
 if not HELP_BOT_TOKEN:
     raise SystemExit("HELP_BOT_TOKEN is empty")
