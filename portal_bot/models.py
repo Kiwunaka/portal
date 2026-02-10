@@ -53,6 +53,7 @@ class User(Base):
     is_manual = Column(Boolean, default=False)
     created_by_admin = Column(BigInteger, nullable=True)
     display_name = Column(String(100), nullable=True)
+    device_reset_last_at = Column(DateTime, nullable=True)
 
 
 class Achievement(Base):
@@ -213,3 +214,80 @@ class NodeHealthSample(Base):
     is_healthy = Column(Boolean, default=True)
     score = Column(Float, default=0.0)
     source = Column(String(64), default="collector")
+
+
+class Event(Base):
+    __tablename__ = "events"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    tg_id = Column(BigInteger, index=True, nullable=False)
+    event_name = Column(String(64), index=True, nullable=False)
+    source = Column(String(32), default="unknown", nullable=False)
+    session_id = Column(String(64), nullable=True)
+    meta_json = Column(String(4000), nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+
+
+class Offer(Base):
+    __tablename__ = "offers"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    tg_id = Column(BigInteger, index=True, nullable=False)
+    offer_type = Column(String(32), nullable=False)
+    plan_code = Column(String(32), nullable=False)
+    price_stars = Column(Integer, default=0, nullable=False)
+    status = Column(String(20), default="active", nullable=False)
+    trigger_reason = Column(String(64), nullable=True)
+    expires_at = Column(DateTime, nullable=True)
+    accepted_at = Column(DateTime, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+
+
+class PayAttempt(Base):
+    __tablename__ = "pay_attempts"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    tg_id = Column(BigInteger, index=True, nullable=False)
+    source = Column(String(32), default="bot", nullable=False)
+    plan_code = Column(String(32), nullable=False)
+    amount_stars = Column(Integer, default=0, nullable=False)
+    currency = Column(String(12), default="XTR", nullable=False)
+    status = Column(String(20), default="started", nullable=False)
+    invoice_payload = Column(String(255), unique=True, nullable=True)
+    offer_id = Column(Integer, nullable=True)
+    started_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    updated_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    paid_at = Column(DateTime, nullable=True)
+    abandoned_notified_at = Column(DateTime, nullable=True)
+
+
+class PointsLedger(Base):
+    __tablename__ = "points_ledger"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    tg_id = Column(BigInteger, index=True, nullable=False)
+    delta_points = Column(Integer, default=0, nullable=False)
+    reason = Column(String(64), nullable=False)
+    ref_tg_id = Column(BigInteger, nullable=True)
+    pay_attempt_id = Column(Integer, nullable=True)
+    expires_at = Column(DateTime, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+
+
+class CampaignSend(Base):
+    __tablename__ = "campaign_sends"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    tg_id = Column(BigInteger, index=True, nullable=False)
+    campaign_key = Column(String(64), nullable=False)
+    sent_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+
+
+class FamilySlot(Base):
+    __tablename__ = "family_slots"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    tg_id = Column(BigInteger, index=True, nullable=False)
+    slots = Column(Integer, default=1, nullable=False)
+    expires_at = Column(DateTime, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)

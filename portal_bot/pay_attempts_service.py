@@ -1,0 +1,186 @@
+from __future__ import annotations
+
+from datetime import datetime, timedelta
+
+from db import SessionLocal
+from models import PayAttempt
+
+
+STATUS_STARTED = "started"
+STATUS_INVOICE_SENT = "invoice_sent"
+STATUS_PAID = "paid"
+STATUS_ABANDONED = "abandoned"
+STATUS_FAILED = "failed"
+
+
+def start_attempt(
+    *,
+    tg_id: int,
+    source: str,
+    plan_code: str,
+    amount_stars: int,
+    currency: str = "XTR",
+    offer_id: int | None = None,
+    invoice_payload: str | None = None,
+) -> PayAttempt | None:
+    now = datetime.utcnow()
+    s = SessionLocal()
+    try:
+        row = PayAttempt(
+            tg_id=int(tg_id),
+            source=(source or "bot")[:32],
+            plan_code=(plan_code or "").strip()[:32],
+            amount_stars=max(0, int(amount_stars)),
+            currency=(currency or "XTR")[:12],
+            status=STATUS_STARTED,
+            invoice_payload=(invoice_payload[:255] if invoice_payload else None),
+            offer_id=offer_id,
+            started_at=now,
+            updated_at=now,
+        )
+        s.add(row)
+        s.commit()
+        s.refresh(row)
+        return row
+    except Exception:
+        s.rollback()
+        return None
+    finally:
+        s.close()
+
+
+def mark_invoice_sent(
+    *,
+    attempt_id: int | None = None,
+    invoice_payload: str | None = None,
+    set_invoice_payload: str | None = None,
+) -> bool:
+    return _set_status(
+        attempt_id=attempt_id,
+        invoice_payload=invoice_payload,
+        status=STATUS_INVOICE_SENT,
+        set_invoice_payload=set_invoice_payload,
+    )
+
+
+def mark_paid(*, attempt_id: int | None = None, invoice_payload: str | None = None) -> bool:
+    now = datetime.utcnow()
+    s = SessionLocal()
+    try:
+        q = s.query(PayAttempt)
+        if attempt_id:
+            q = q.filter(PayAttempt.id == int(attempt_id))
+        elif invoice_payload:
+            q = q.filter(PayAttempt.invoice_payload == str(invoice_payload))
+        else:
+            return False
+        row = q.order_by(PayAttempt.id.desc()).first()
+        if not row:
+            return False
+        row.status = STATUS_PAID
+        row.paid_at = now
+        row.updated_at = now
+        s.commit()
+        return True
+    except Exception:
+        s.rollback()
+        return False
+    finally:
+        s.close()
+
+
+def mark_abandoned(*, attempt_id: int) -> bool:
+    now = datetime.utcnow()
+    s = SessionLocal()
+    try:
+        row = s.query(PayAttempt).filter(PayAttempt.id == int(attempt_id)).first()
+        if not row:
+            return False
+        row.status = STATUS_ABANDONED
+        row.updated_at = now
+        if not row.abandoned_notified_at:
+            row.abandoned_notified_at = now
+        s.commit()
+        return True
+    except Exception:
+        s.rollback()
+        return False
+    finally:
+        s.close()
+
+
+def mark_abandoned_notified(*, attempt_id: int) -> bool:
+    now = datetime.utcnow()
+    s = SessionLocal()
+    try:
+        row = s.query(PayAttempt).filter(PayAttempt.id == int(attempt_id)).first()
+        if not row:
+            return False
+        row.abandoned_notified_at = now
+        row.updated_at = now
+        s.commit()
+        return True
+    except Exception:
+        s.rollback()
+        return False
+    finally:
+        s.close()
+
+
+def get_attempt_by_payload(*, invoice_payload: str) -> PayAttempt | None:
+    s = SessionLocal()
+    try:
+        return s.query(PayAttempt).filter(PayAttempt.invoice_payload == str(invoice_payload)).first()
+    finally:
+        s.close()
+
+
+def find_abandoned_candidates(*, older_than_minutes: int = 60, limit: int = 500) -> list[PayAttempt]:
+    cutoff = datetime.utcnow() - timedelta(minutes=max(1, int(older_than_minutes)))
+    s = SessionLocal()
+    try:
+        rows = (
+            s.query(PayAttempt)
+            .filter(PayAttempt.status.in_([STATUS_STARTED, STATUS_INVOICE_SENT]))
+            .filter(PayAttempt.started_at <= cutoff)
+            .filter(PayAttempt.abandoned_notified_at.is_(None))
+            .order_by(PayAttempt.started_at.asc())
+            .limit(max(1, int(limit)))
+            .all()
+        )
+        return rows
+    finally:
+        s.close()
+
+
+def _set_status(
+    *,
+    attempt_id: int | None,
+    invoice_payload: str | None,
+    status: str,
+    set_invoice_payload: str | None = None,
+) -> bool:
+    now = datetime.utcnow()
+    s = SessionLocal()
+    try:
+        q = s.query(PayAttempt)
+        if attempt_id:
+            q = q.filter(PayAttempt.id == int(attempt_id))
+        elif invoice_payload:
+            q = q.filter(PayAttempt.invoice_payload == str(invoice_payload))
+        else:
+            return False
+        row = q.order_by(PayAttempt.id.desc()).first()
+        if not row:
+            return False
+        row.status = status
+        if set_invoice_payload:
+            row.invoice_payload = str(set_invoice_payload)[:255]
+        row.updated_at = now
+        s.commit()
+        return True
+    except Exception:
+        s.rollback()
+        return False
+    finally:
+        s.close()

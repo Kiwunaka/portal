@@ -54,3 +54,5 @@ class Settings:
     PAY_CHECKOUT_URL: str = os.getenv("PAY_CHECKOUT_URL", "").strip()
     WEBAPP_ENABLE_HAPTIC: bool = env_bool("WEBAPP_ENABLE_HAPTIC", default=True)
     WEBAPP_ENABLE_LOTTIE: bool = env_bool("WEBAPP_ENABLE_LOTTIE", default=True)
+    WEBAPP_DEV_AUTH: bool = env_bool("WEBAPP_DEV_AUTH", default=False)
+    WEBAPP_DEV_TG_ID: int = env_int("WEBAPP_DEV_TG_ID", 0)

@@ -281,6 +281,14 @@ Quick health check after deploy:
 1. Open ticket as user and send first message.
 2. Verify admin receives notification and can open `Admin -> Ticket queue`.
 3. Reply from admin and verify user gets notification.
+4. Verify worker process is running (if standalone deploy): `systemctl status portal-worker --no-pager`.
+5. Verify node metrics timer:
+   - `systemctl status portal-node-metrics.timer --no-pager`
+   - `systemctl list-timers --all | grep portal-node-metrics`
+6. Verify metrics freshness in DB:
+   - `sqlite3 /root/portal_bot/portal.db "select max(sampled_at) from node_health_samples;"`
+7. Verify admin metrics endpoint returns fresh state:
+   - `GET /api/admin/metrics/status` from authenticated admin WebApp session.
 
 ## Brain Network Probe
 

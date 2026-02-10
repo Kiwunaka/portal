@@ -37,6 +37,7 @@ def run_migrations(engine: Engine) -> None:
                 ("is_manual", "BOOLEAN DEFAULT 0"),
                 ("created_by_admin", "BIGINT"),
                 ("display_name", "VARCHAR(100)"),
+                ("device_reset_last_at", "DATETIME"),
             ]
             for col, ddl in wanted_cols:
                 if not _sqlite_column_exists(conn, "users", col):
@@ -179,3 +180,123 @@ def run_migrations(engine: Engine) -> None:
         )
         conn.execute(text("CREATE INDEX IF NOT EXISTS ix_node_health_samples_node_code ON node_health_samples(node_code);"))
         conn.execute(text("CREATE INDEX IF NOT EXISTS ix_node_health_samples_sampled_at ON node_health_samples(sampled_at);"))
+
+        # events: minimal product analytics.
+        conn.execute(
+            text(
+                """
+                CREATE TABLE IF NOT EXISTS events (
+                  id INTEGER PRIMARY KEY AUTOINCREMENT,
+                  tg_id BIGINT NOT NULL,
+                  event_name VARCHAR(64) NOT NULL,
+                  source VARCHAR(32) DEFAULT 'unknown',
+                  session_id VARCHAR(64),
+                  meta_json VARCHAR(4000),
+                  created_at DATETIME NOT NULL
+                );
+                """
+            )
+        )
+        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_events_tg_id ON events(tg_id);"))
+        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_events_event_name ON events(event_name);"))
+        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_events_event_created ON events(event_name, created_at);"))
+        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_events_tg_created ON events(tg_id, created_at);"))
+
+        # offers: one-time offers and retention prompts.
+        conn.execute(
+            text(
+                """
+                CREATE TABLE IF NOT EXISTS offers (
+                  id INTEGER PRIMARY KEY AUTOINCREMENT,
+                  tg_id BIGINT NOT NULL,
+                  offer_type VARCHAR(32) NOT NULL,
+                  plan_code VARCHAR(32) NOT NULL,
+                  price_stars INTEGER DEFAULT 0,
+                  status VARCHAR(20) DEFAULT 'active',
+                  trigger_reason VARCHAR(64),
+                  expires_at DATETIME,
+                  accepted_at DATETIME,
+                  created_at DATETIME NOT NULL
+                );
+                """
+            )
+        )
+        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_offers_tg_id ON offers(tg_id);"))
+        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_offers_tg_status_exp ON offers(tg_id, status, expires_at);"))
+
+        # pay attempts: purchase funnels + abandoned cart.
+        conn.execute(
+            text(
+                """
+                CREATE TABLE IF NOT EXISTS pay_attempts (
+                  id INTEGER PRIMARY KEY AUTOINCREMENT,
+                  tg_id BIGINT NOT NULL,
+                  source VARCHAR(32) DEFAULT 'bot',
+                  plan_code VARCHAR(32) NOT NULL,
+                  amount_stars INTEGER DEFAULT 0,
+                  currency VARCHAR(12) DEFAULT 'XTR',
+                  status VARCHAR(20) DEFAULT 'started',
+                  invoice_payload VARCHAR(255),
+                  offer_id INTEGER,
+                  started_at DATETIME NOT NULL,
+                  updated_at DATETIME NOT NULL,
+                  paid_at DATETIME,
+                  abandoned_notified_at DATETIME
+                );
+                """
+            )
+        )
+        conn.execute(text("CREATE UNIQUE INDEX IF NOT EXISTS uq_pay_attempts_invoice_payload ON pay_attempts(invoice_payload);"))
+        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_pay_attempts_tg_status_started ON pay_attempts(tg_id, status, started_at);"))
+
+        # points ledger: referral points and spends.
+        conn.execute(
+            text(
+                """
+                CREATE TABLE IF NOT EXISTS points_ledger (
+                  id INTEGER PRIMARY KEY AUTOINCREMENT,
+                  tg_id BIGINT NOT NULL,
+                  delta_points INTEGER NOT NULL,
+                  reason VARCHAR(64) NOT NULL,
+                  ref_tg_id BIGINT,
+                  pay_attempt_id INTEGER,
+                  expires_at DATETIME,
+                  created_at DATETIME NOT NULL
+                );
+                """
+            )
+        )
+        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_points_ledger_tg_id ON points_ledger(tg_id);"))
+        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_points_ledger_tg_exp_created ON points_ledger(tg_id, expires_at, created_at);"))
+
+        # campaign sends: dedupe for periodic campaigns.
+        conn.execute(
+            text(
+                """
+                CREATE TABLE IF NOT EXISTS campaign_sends (
+                  id INTEGER PRIMARY KEY AUTOINCREMENT,
+                  tg_id BIGINT NOT NULL,
+                  campaign_key VARCHAR(64) NOT NULL,
+                  sent_at DATETIME NOT NULL
+                );
+                """
+            )
+        )
+        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_campaign_sends_tg_id ON campaign_sends(tg_id);"))
+        conn.execute(text("CREATE UNIQUE INDEX IF NOT EXISTS uq_campaign_sends_tg_campaign ON campaign_sends(tg_id, campaign_key);"))
+
+        # family slots: additive slot packs with expiry.
+        conn.execute(
+            text(
+                """
+                CREATE TABLE IF NOT EXISTS family_slots (
+                  id INTEGER PRIMARY KEY AUTOINCREMENT,
+                  tg_id BIGINT NOT NULL,
+                  slots INTEGER NOT NULL DEFAULT 1,
+                  expires_at DATETIME,
+                  created_at DATETIME NOT NULL
+                );
+                """
+            )
+        )
+        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_family_slots_tg_id ON family_slots(tg_id);"))

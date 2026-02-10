@@ -779,6 +779,15 @@ a {
   box-shadow: 0 0 60px rgba(29, 199, 164, .15);
 }
 
+.plan-card.recommended {
+  border-color: var(--cyan);
+  box-shadow: 0 0 50px rgba(29, 199, 164, .2);
+}
+
+.plan-card.decoy {
+  border-color: rgba(44, 136, 255, 0.45);
+}
+
 .plan-card .plan-emoji {
   font-size: 50px;
   margin-bottom: 20px;

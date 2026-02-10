@@ -336,6 +336,43 @@ body {
   margin-bottom: 14px;
 }
 
+.stories {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(180px, 1fr);
+  gap: 10px;
+  overflow-x: auto;
+  margin: 12px 0;
+  padding-bottom: 4px;
+}
+
+.story {
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 12px;
+  background: var(--card2);
+}
+
+.story__title {
+  font-family: var(--sans);
+  font-size: 12px;
+  font-weight: 700;
+  margin-bottom: 6px;
+}
+
+.story__text {
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.plans-mini {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 10px;
+}
+
 .metric {
   border: 1px solid var(--line);
   border-radius: 12px;
@@ -722,6 +759,26 @@ body {
 
 .step__body {
   flex: 1;
+}
+
+.nodes-map {
+  width: 100%;
+  height: auto;
+  border-radius: 12px;
+  border: 1px solid var(--line);
+  background: linear-gradient(140deg, rgba(45, 255, 216, 0.04), rgba(44, 136, 255, 0.04));
+  margin-bottom: 12px;
+}
+
+.nodes-map circle {
+  fill: var(--cyan);
+  cursor: pointer;
+}
+
+.nodes-map text {
+  fill: var(--text);
+  font-family: var(--mono);
+  font-size: 10px;
 }
 
 /* HERO */

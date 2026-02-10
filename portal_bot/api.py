@@ -12,6 +12,7 @@ from __future__ import annotations
 import base64
 import hashlib
 import hmac
+import ipaddress
 import json
 import os
 import secrets
@@ -23,14 +24,24 @@ from urllib.parse import parse_qsl
 
 import aiohttp
 from dotenv import load_dotenv
-from fastapi import FastAPI, Header, HTTPException, Request, Response
+from fastapi import FastAPI, Header, HTTPException, Query, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 from sqlalchemy import or_, func
 
 from config import Settings, env_bool, env_int
 from db import SessionLocal, init_db
-from models import AdminAudit, Node, PromoCode, PromoUsage, Review, SupportTicket, User
+from models import (
+    AdminAudit,
+    FamilySlot,
+    Node,
+    NodeHealthSample,
+    PromoCode,
+    PromoUsage,
+    Review,
+    SupportTicket,
+    User,
+)
 from tickets_repo import (
     STATUS_CLOSED,
     STATUS_IN_PROGRESS,
@@ -46,6 +57,10 @@ from tickets_repo import (
 )
 from nodes_repo import enabled_nodes
 from control_panel import ControlPanel
+from events_service import track_event
+from offers_service import accept_offer, create_offer, get_active_offer
+from pay_attempts_service import start_attempt
+from points_service import available_points, preview_redeemable_points
 
 
 load_dotenv()
@@ -68,6 +83,27 @@ MAX_BROADCAST_LIMIT = env_int("MAX_BROADCAST_LIMIT", 1000)
 PAY_CHECKOUT_URL = (os.getenv("PAY_CHECKOUT_URL") or "").strip()
 WEBAPP_ENABLE_HAPTIC = env_bool("WEBAPP_ENABLE_HAPTIC", default=True)
 WEBAPP_ENABLE_LOTTIE = env_bool("WEBAPP_ENABLE_LOTTIE", default=True)
+WEBAPP_DEV_AUTH = env_bool("WEBAPP_DEV_AUTH", default=False)
+WEBAPP_DEV_TG_ID = env_int("WEBAPP_DEV_TG_ID", 0)
+API_LOCALHOST_DEV_HOSTS = {"localhost", "127.0.0.1", "::1"}
+WEBAPP_DEV_ALLOWED_ORIGINS = {
+    x.strip().lower().rstrip("/")
+    for x in (
+        os.getenv(
+            "WEBAPP_DEV_ALLOWED_ORIGINS",
+            "http://localhost,http://127.0.0.1,http://localhost:3000,http://127.0.0.1:3000,https://localhost,https://127.0.0.1",
+        ) or ""
+    ).split(",")
+    if x.strip()
+}
+API_PLAN_PRICES = {
+    "trial": 0,
+    "1_month": 199,
+    "3_months": 499,
+    "6_months": 949,
+    "9_months": 1299,
+    "12_months": 1499,
+}
 
 
 class TicketMessageIn(BaseModel):
@@ -115,6 +151,19 @@ class AdminNodeSyncIn(BaseModel):
     limit: int = Field(default=100, ge=1, le=1000)
 
 
+class EventIn(BaseModel):
+    event_name: str = Field(min_length=2, max_length=64)
+    source: str = Field(default="webapp", max_length=32)
+    session_id: str | None = Field(default=None, max_length=64)
+    meta: dict[str, Any] | None = None
+
+
+class PayAttemptStartIn(BaseModel):
+    plan_code: str = Field(min_length=2, max_length=32)
+    source: str = Field(default="webapp", max_length=32)
+    offer_id: int | None = None
+
+
 class DashboardResponse(BaseModel):
     tg_id: int
     sub_type: str
@@ -125,7 +174,11 @@ class DashboardResponse(BaseModel):
     remaining_gb: float
     active_sessions: int
     device_limit: int
+    family_slots: int
     subscription_url: str
+    segment: str
+    active_offer: dict[str, Any] | None
+    points: dict[str, Any]
     features: dict[str, bool]
 
 
@@ -253,24 +306,127 @@ def _is_admin_tg(tg_id: int) -> bool:
     return int(Settings.ADMIN_ID or 0) > 0 and int(tg_id) == int(Settings.ADMIN_ID)
 
 
-def _require_auth_user(x_telegram_init_data: str) -> dict[str, Any]:
+def _normalize_origin(raw: str) -> str:
+    val = (raw or "").strip()
+    if not val:
+        return ""
+    try:
+        host = val.split("://", 1)
+        if len(host) == 2:
+            scheme = host[0].lower()
+            rest = host[1].split("/", 1)[0].strip().lower()
+            return f"{scheme}://{rest}".rstrip("/")
+    except Exception:
+        pass
+    return val.lower().rstrip("/")
+
+
+def _is_allowed_dev_origin(raw: str) -> bool:
+    norm = _normalize_origin(raw)
+    if not norm:
+        return True
+    return norm in WEBAPP_DEV_ALLOWED_ORIGINS
+
+
+def _is_local_request(request: Request | None) -> bool:
+    if request is None:
+        return False
+    host = (request.url.hostname or "").strip().lower()
+    is_loopback_host = False
+    if host in API_LOCALHOST_DEV_HOSTS:
+        is_loopback_host = True
+    else:
+        try:
+            ip = ipaddress.ip_address(host)
+            is_loopback_host = ip.is_loopback
+        except Exception:
+            is_loopback_host = False
+    if not is_loopback_host:
+        return False
+
+    origin = request.headers.get("origin", "")
+    referer = request.headers.get("referer", "")
+    if origin and not _is_allowed_dev_origin(origin):
+        return False
+    if referer and not _is_allowed_dev_origin(referer):
+        return False
+
+    return True
+
+
+def _dev_auth_user(request: Request | None) -> dict[str, Any] | None:
+    if not WEBAPP_DEV_AUTH:
+        return None
+    if WEBAPP_DEV_TG_ID <= 0:
+        return None
+    if not _is_local_request(request):
+        return None
+    return {"id": int(WEBAPP_DEV_TG_ID), "username": "dev_user"}
+
+
+def _plan_segment(user: User, now: datetime | None = None) -> str:
+    n = now or datetime.utcnow()
+    sub = (user.sub_type or "").upper().strip()
+    if sub == "MANUAL":
+        return "MANUAL"
+    if not user.is_active or not user.expiry_at or user.expiry_at <= n:
+        return "EXPIRED"
+    if sub == "FREE":
+        return "FREE"
+    return "PAID"
+
+
+def _family_slots_for_user(s, tg_id: int) -> int:
+    now = datetime.utcnow()
+    total = (
+        s.query(func.coalesce(func.sum(FamilySlot.slots), 0))
+        .filter(FamilySlot.tg_id == int(tg_id))
+        .filter((FamilySlot.expires_at.is_(None)) | (FamilySlot.expires_at > now))
+        .scalar()
+        or 0
+    )
+    return int(total)
+
+
+def _active_offer_payload(tg_id: int) -> dict[str, Any] | None:
+    offer = get_active_offer(tg_id=int(tg_id), offer_type="trial_oto")
+    if not offer:
+        return None
+    return {
+        "id": int(offer.id),
+        "offer_type": offer.offer_type,
+        "plan_code": offer.plan_code,
+        "price_stars": int(offer.price_stars or 0),
+        "trigger_reason": offer.trigger_reason,
+        "expires_at": _safe_iso(offer.expires_at),
+        "status": offer.status,
+    }
+
+
+def _require_auth_user(x_telegram_init_data: str, request: Request | None = None) -> dict[str, Any]:
     if not x_telegram_init_data:
+        dev = _dev_auth_user(request)
+        if dev:
+            return dev
         raise HTTPException(status_code=401, detail="Telegram auth required")
     user_data = _verify_telegram_data(x_telegram_init_data)
     if not user_data:
+        dev = _dev_auth_user(request)
+        if dev:
+            return dev
         raise HTTPException(status_code=401, detail="Invalid Telegram signature")
     return user_data
 
 
-def _require_user_access(*, target_tg_id: int, x_telegram_init_data: str) -> dict[str, Any]:
-    user_data = _require_auth_user(x_telegram_init_data)
+def _require_user_access(*, target_tg_id: int, x_telegram_init_data: str, request: Request | None = None) -> dict[str, Any]:
+    user_data = _require_auth_user(x_telegram_init_data, request=request)
     if int(user_data.get("id", 0)) != int(target_tg_id):
         raise HTTPException(status_code=403, detail="Access denied")
     return user_data
 
 
-def _require_admin(x_telegram_init_data: str) -> dict[str, Any]:
-    user_data = _require_auth_user(x_telegram_init_data)
+def _require_admin(x_telegram_init_data: str, request: Request | None = None) -> dict[str, Any]:
+    user_data = _require_auth_user(x_telegram_init_data, request=request)
     actor_id = int(user_data.get("id", 0))
     if not _is_admin_tg(actor_id):
         raise HTTPException(status_code=403, detail="Admin access required")
@@ -417,6 +573,18 @@ def _audit_admin(*, actor_tg_id: int, action: str, target_tg_id: int | None = No
 
 
 _diag_rate_limit: dict[int, float] = {}
+EVENT_WHITELIST = {
+    "opened_webapp",
+    "copied_key",
+    "clicked_connect",
+    "clicked_pay",
+    "paid",
+    "connected_ok",
+    "ticket_created",
+    "expired",
+    "deep_link_opened",
+    "copy_used",
+}
 
 
 def _node_country_name(code: str) -> str:
@@ -504,6 +672,25 @@ async def health() -> dict:
     return {"status": "ok", "ts": datetime.utcnow().isoformat()}
 
 
+@app.get("/api/admin/metrics/status")
+async def admin_metrics_status(request: Request, x_telegram_init_data: str = Header(default="")) -> dict:
+    _require_admin(x_telegram_init_data, request=request)
+    stale_after_seconds = max(60, int(os.getenv("NODE_METRICS_STALE_AFTER_SECONDS", "180")))
+    now = datetime.utcnow()
+    s = SessionLocal()
+    try:
+        last_sample = s.query(func.max(NodeHealthSample.sampled_at)).scalar()
+        age_seconds = int((now - last_sample).total_seconds()) if last_sample else None
+        return {
+            "status": "fresh" if (age_seconds is not None and age_seconds <= stale_after_seconds) else "stale",
+            "last_sample_at": _safe_iso(last_sample),
+            "age_seconds": age_seconds,
+            "stale_after_seconds": stale_after_seconds,
+        }
+    finally:
+        s.close()
+
+
 @app.get("/api/reviews")
 async def featured_reviews() -> dict:
     s = SessionLocal()
@@ -524,9 +711,115 @@ async def featured_reviews() -> dict:
         s.close()
 
 
+@app.post("/api/events")
+async def api_track_event(payload: EventIn, request: Request, x_telegram_init_data: str = Header(default="")) -> dict:
+    auth_user = _require_auth_user(x_telegram_init_data, request=request)
+    tg_id = int(auth_user.get("id", 0))
+    event_name = (payload.event_name or "").strip()
+    if event_name not in EVENT_WHITELIST:
+        raise HTTPException(status_code=400, detail="Unsupported event name")
+    event_id = track_event(
+        tg_id=tg_id,
+        event_name=event_name,
+        source=(payload.source or "webapp"),
+        session_id=payload.session_id,
+        meta=payload.meta or {},
+    )
+    return {"ok": bool(event_id), "event_id": event_id}
+
+
+@app.post("/api/connect/confirm")
+async def api_connect_confirm(request: Request, x_telegram_init_data: str = Header(default="")) -> dict:
+    auth_user = _require_auth_user(x_telegram_init_data, request=request)
+    tg_id = int(auth_user.get("id", 0))
+    event_id = track_event(tg_id=tg_id, event_name="connected_ok", source="webapp")
+    return {"ok": bool(event_id), "event_id": event_id}
+
+
+@app.post("/api/pay/attempts/start")
+async def api_pay_attempt_start(payload: PayAttemptStartIn, request: Request, x_telegram_init_data: str = Header(default="")) -> dict:
+    auth_user = _require_auth_user(x_telegram_init_data, request=request)
+    tg_id = int(auth_user.get("id", 0))
+    plan_code = (payload.plan_code or "").strip().lower()
+    if plan_code not in API_PLAN_PRICES:
+        raise HTTPException(status_code=400, detail="Unknown plan")
+    price = int(API_PLAN_PRICES[plan_code])
+    row = start_attempt(
+        tg_id=tg_id,
+        source=(payload.source or "webapp"),
+        plan_code=plan_code,
+        amount_stars=price,
+        offer_id=payload.offer_id,
+        currency="XTR",
+    )
+    if not row:
+        raise HTTPException(status_code=500, detail="Unable to create pay attempt")
+    bot_link = f"https://t.me/{BOT_USERNAME}?start=pay" if BOT_USERNAME else ""
+    track_event(
+        tg_id=tg_id,
+        event_name="clicked_pay",
+        source=(payload.source or "webapp"),
+        meta={"attempt_id": int(row.id), "plan_code": plan_code, "price_stars": price, "offer_id": payload.offer_id},
+    )
+    return {"ok": True, "attempt_id": int(row.id), "plan_code": plan_code, "amount_stars": price, "pay_url": bot_link}
+
+
+@app.get("/api/offers/active")
+async def api_active_offer(request: Request, x_telegram_init_data: str = Header(default="")) -> dict:
+    auth_user = _require_auth_user(x_telegram_init_data, request=request)
+    tg_id = int(auth_user.get("id", 0))
+    return {"offer": _active_offer_payload(tg_id)}
+
+
+@app.post("/api/offers/{offer_id}/accept")
+async def api_accept_offer(offer_id: int, request: Request, x_telegram_init_data: str = Header(default="")) -> dict:
+    auth_user = _require_auth_user(x_telegram_init_data, request=request)
+    tg_id = int(auth_user.get("id", 0))
+    ok = accept_offer(offer_id=int(offer_id), tg_id=tg_id)
+    if ok:
+        track_event(tg_id=tg_id, event_name="clicked_pay", source="offer", meta={"offer_id": int(offer_id)})
+    return {"ok": bool(ok)}
+
+
+@app.get("/api/points")
+async def api_points(request: Request, x_telegram_init_data: str = Header(default="")) -> dict:
+    auth_user = _require_auth_user(x_telegram_init_data, request=request)
+    tg_id = int(auth_user.get("id", 0))
+    avail, expiring_soon = available_points(tg_id=tg_id)
+    max_preview = preview_redeemable_points(tg_id=tg_id, plan_price_stars=API_PLAN_PRICES["1_month"], first_purchase_discount_pct=0.20)
+    return {
+        "tg_id": tg_id,
+        "available_points": int(avail),
+        "expiring_soon_points": int(expiring_soon),
+        "monthly_cap": 300,
+        "points_expiry_days": 90,
+        "preview": {
+            "plan_price_stars": API_PLAN_PRICES["1_month"],
+            "redeemable_points": int(max_preview.redeemable_points),
+            "max_points_by_plan_cap": int(max_preview.max_points_by_plan_cap),
+            "max_points_by_total_cap": int(max_preview.max_points_by_total_cap),
+        },
+    }
+
+
+@app.get("/api/network/probe")
+async def api_network_probe(size_mb: int = Query(default=2, ge=1, le=3)) -> Response:
+    size = int(size_mb) * 1024 * 1024
+    payload = b"0" * size
+    return Response(
+        content=payload,
+        media_type="application/octet-stream",
+        headers={
+            "Cache-Control": "no-store",
+            "Content-Length": str(size),
+            "X-Probe-Size-MB": str(int(size_mb)),
+        },
+    )
+
+
 @app.get("/api/user/{tg_id}")
-async def user_data(tg_id: int, x_telegram_init_data: str = Header(default="")) -> dict:
-    auth_user = _require_user_access(target_tg_id=tg_id, x_telegram_init_data=x_telegram_init_data)
+async def user_data(tg_id: int, request: Request, x_telegram_init_data: str = Header(default="")) -> dict:
+    auth_user = _require_user_access(target_tg_id=tg_id, x_telegram_init_data=x_telegram_init_data, request=request)
 
     s = SessionLocal()
     try:
@@ -552,6 +845,9 @@ async def user_data(tg_id: int, x_telegram_init_data: str = Header(default="")) 
         if usage and not usage.get("enable", True):
             is_active = False
 
+        segment = _plan_segment(user)
+        family_slots = _family_slots_for_user(s, tg_id)
+        points_available, points_expiring_soon = available_points(tg_id=tg_id)
         total_gb = _plan_total_gb(user)
         used_gb = round((usage["used_bytes"] / (1024**3)), 3) if usage else 0
         remaining_gb = max(round(total_gb - used_gb, 3), 0) if total_gb > 0 else 0
@@ -573,11 +869,13 @@ async def user_data(tg_id: int, x_telegram_init_data: str = Header(default="")) 
             "is_active": is_active,
             "is_admin": role_admin,
             "sub_type": user.sub_type,
+            "segment": segment,
             "expiry_at": user.expiry_at.isoformat() if user.expiry_at else None,
             "limits": {
-                "device_limit": _plan_device_limit(user),
+                "device_limit": _plan_device_limit(user) + family_slots,
                 "total_gb": total_gb,
             },
+            "family_slots": int(family_slots),
             "nodes": [
                 {"code": n.code, "name": n.name, "host": n.host, "port": n.vless_port, "enabled": True}
                 for n in nodes_for_user
@@ -604,6 +902,12 @@ async def user_data(tg_id: int, x_telegram_init_data: str = Header(default="")) 
                     "can_claim": can_claim_channel_bonus,
                 },
             },
+            "points": {
+                "available": int(points_available),
+                "expiring_soon": int(points_expiring_soon),
+                "monthly_cap": 300,
+                "expires_days": 90,
+            },
             "referral": {
                 "code": referral_code,
                 "link": (
@@ -626,6 +930,7 @@ async def user_data(tg_id: int, x_telegram_init_data: str = Header(default="")) 
                     else (f"https://t.me/{BOT_USERNAME}?start=pay" if BOT_USERNAME else "")
                 ),
             },
+            "active_offer": _active_offer_payload(tg_id),
             "features": {
                 "haptic": bool(WEBAPP_ENABLE_HAPTIC),
                 "lottie": bool(WEBAPP_ENABLE_LOTTIE),
@@ -636,8 +941,8 @@ async def user_data(tg_id: int, x_telegram_init_data: str = Header(default="")) 
 
 
 @app.get("/api/dashboard")
-async def dashboard_snapshot(x_telegram_init_data: str = Header(default="")) -> DashboardResponse:
-    auth_user = _require_auth_user(x_telegram_init_data)
+async def dashboard_snapshot(request: Request, x_telegram_init_data: str = Header(default="")) -> DashboardResponse:
+    auth_user = _require_auth_user(x_telegram_init_data, request=request)
     tg_id = int(auth_user.get("id", 0))
     s = SessionLocal()
     try:
@@ -652,6 +957,9 @@ async def dashboard_snapshot(x_telegram_init_data: str = Header(default="")) -> 
         remaining = max(round(total_gb - used_gb, 3), 0.0) if total_gb > 0 else 0.0
         expiry = user.expiry_at
         active = bool(user.is_active and expiry and expiry > datetime.utcnow())
+        segment = _plan_segment(user)
+        family_slots = _family_slots_for_user(s, tg_id)
+        points_available, points_expiring_soon = available_points(tg_id=tg_id)
         sub_url = ""
         if user.sub_token:
             sub_url = f"{Settings.PUBLIC_API_BASE_URL.rstrip('/')}/s8Kx2mP7qR4wT/{user.sub_token}"
@@ -665,8 +973,17 @@ async def dashboard_snapshot(x_telegram_init_data: str = Header(default="")) -> 
             total_gb=float(total_gb),
             remaining_gb=float(remaining),
             active_sessions=int(getattr(user, "active_sessions", 0) or 0),
-            device_limit=int(_plan_device_limit(user)),
+            device_limit=int(_plan_device_limit(user) + family_slots),
+            family_slots=int(family_slots),
             subscription_url=sub_url,
+            segment=segment,
+            active_offer=_active_offer_payload(tg_id),
+            points={
+                "available": int(points_available),
+                "expiring_soon": int(points_expiring_soon),
+                "monthly_cap": 300,
+                "expires_days": 90,
+            },
             features={"haptic": bool(WEBAPP_ENABLE_HAPTIC), "lottie": bool(WEBAPP_ENABLE_LOTTIE)},
         )
     finally:
@@ -674,8 +991,8 @@ async def dashboard_snapshot(x_telegram_init_data: str = Header(default="")) -> 
 
 
 @app.get("/api/nodes/status")
-async def nodes_status(x_telegram_init_data: str = Header(default="")) -> dict:
-    auth_user = _require_auth_user(x_telegram_init_data)
+async def nodes_status(request: Request, x_telegram_init_data: str = Header(default="")) -> dict:
+    auth_user = _require_auth_user(x_telegram_init_data, request=request)
     tg_id = int(auth_user.get("id", 0))
     s = SessionLocal()
     try:
@@ -704,8 +1021,8 @@ async def nodes_status(x_telegram_init_data: str = Header(default="")) -> dict:
 
 
 @app.post("/api/nodes/diagnostics/run")
-async def nodes_run_diagnostics(x_telegram_init_data: str = Header(default="")) -> NodeDiagnosticsResponse:
-    auth_user = _require_auth_user(x_telegram_init_data)
+async def nodes_run_diagnostics(request: Request, x_telegram_init_data: str = Header(default="")) -> NodeDiagnosticsResponse:
+    auth_user = _require_auth_user(x_telegram_init_data, request=request)
     tg_id = int(auth_user.get("id", 0))
     now_ts = time.time()
     last_ts = _diag_rate_limit.get(tg_id, 0.0)
@@ -734,8 +1051,8 @@ async def nodes_run_diagnostics(x_telegram_init_data: str = Header(default="")) 
 
 
 @app.get("/api/bonuses")
-async def bonuses(x_telegram_init_data: str = Header(default="")) -> dict:
-    auth_user = _require_auth_user(x_telegram_init_data)
+async def bonuses(request: Request, x_telegram_init_data: str = Header(default="")) -> dict:
+    auth_user = _require_auth_user(x_telegram_init_data, request=request)
     tg_id = int(auth_user.get("id", 0))
     s = SessionLocal()
     try:
@@ -758,8 +1075,8 @@ async def bonuses(x_telegram_init_data: str = Header(default="")) -> dict:
 
 
 @app.post("/api/bonuses/channel/claim")
-async def claim_channel_bonus(x_telegram_init_data: str = Header(default="")) -> dict:
-    auth_user = _require_auth_user(x_telegram_init_data)
+async def claim_channel_bonus(request: Request, x_telegram_init_data: str = Header(default="")) -> dict:
+    auth_user = _require_auth_user(x_telegram_init_data, request=request)
     tg_id = int(auth_user.get("id", 0))
     if not PUBLIC_CHANNEL:
         raise HTTPException(status_code=400, detail="Public channel is not configured")
@@ -821,8 +1138,8 @@ async def claim_channel_bonus(x_telegram_init_data: str = Header(default="")) ->
 
 
 @app.post("/api/promo/redeem")
-async def promo_redeem(payload: PromoRedeemIn, x_telegram_init_data: str = Header(default="")) -> dict:
-    auth_user = _require_auth_user(x_telegram_init_data)
+async def promo_redeem(payload: PromoRedeemIn, request: Request, x_telegram_init_data: str = Header(default="")) -> dict:
+    auth_user = _require_auth_user(x_telegram_init_data, request=request)
     tg_id = int(auth_user.get("id", 0))
     code = (payload.code or "").strip().upper()
     if not code:
@@ -872,8 +1189,8 @@ async def promo_redeem(payload: PromoRedeemIn, x_telegram_init_data: str = Heade
 
 
 @app.post("/api/reviews")
-async def create_review(payload: ReviewCreateIn, x_telegram_init_data: str = Header(default="")) -> dict:
-    auth_user = _require_auth_user(x_telegram_init_data)
+async def create_review(payload: ReviewCreateIn, request: Request, x_telegram_init_data: str = Header(default="")) -> dict:
+    auth_user = _require_auth_user(x_telegram_init_data, request=request)
     tg_id = int(auth_user.get("id", 0))
     s = SessionLocal()
     try:
@@ -895,8 +1212,8 @@ async def create_review(payload: ReviewCreateIn, x_telegram_init_data: str = Hea
 
 
 @app.get("/api/tickets")
-async def get_tickets(x_telegram_init_data: str = Header(default=""), limit: int = 20) -> dict:
-    auth_user = _require_auth_user(x_telegram_init_data)
+async def get_tickets(request: Request, x_telegram_init_data: str = Header(default=""), limit: int = 20) -> dict:
+    auth_user = _require_auth_user(x_telegram_init_data, request=request)
     tg_id = int(auth_user.get("id", 0))
     s = SessionLocal()
     try:
@@ -911,8 +1228,8 @@ async def get_tickets(x_telegram_init_data: str = Header(default=""), limit: int
 
 
 @app.post("/api/tickets")
-async def create_user_ticket(payload: TicketCreateIn, x_telegram_init_data: str = Header(default="")) -> dict:
-    auth_user = _require_auth_user(x_telegram_init_data)
+async def create_user_ticket(payload: TicketCreateIn, request: Request, x_telegram_init_data: str = Header(default="")) -> dict:
+    auth_user = _require_auth_user(x_telegram_init_data, request=request)
     tg_id = int(auth_user.get("id", 0))
     s = SessionLocal()
     try:
@@ -937,12 +1254,13 @@ async def create_user_ticket(payload: TicketCreateIn, x_telegram_init_data: str 
 
     if Settings.ADMIN_ID:
         await _telegram_send_message(int(Settings.ADMIN_ID), f"🆕 Новый тикет #{ticket.id} от пользователя {tg_id}.")
+    track_event(tg_id=tg_id, event_name="ticket_created", source="webapp", meta={"ticket_id": int(ticket.id)})
     return {"ticket": _ticket_row(ticket, msgs)}
 
 
 @app.get("/api/tickets/{ticket_id}")
-async def get_ticket(ticket_id: int, x_telegram_init_data: str = Header(default="")) -> dict:
-    auth_user = _require_auth_user(x_telegram_init_data)
+async def get_ticket(ticket_id: int, request: Request, x_telegram_init_data: str = Header(default="")) -> dict:
+    auth_user = _require_auth_user(x_telegram_init_data, request=request)
     actor = int(auth_user.get("id", 0))
     s = SessionLocal()
     try:
@@ -958,8 +1276,8 @@ async def get_ticket(ticket_id: int, x_telegram_init_data: str = Header(default=
 
 
 @app.post("/api/tickets/{ticket_id}/messages")
-async def add_ticket_user_message(ticket_id: int, payload: TicketMessageIn, x_telegram_init_data: str = Header(default="")) -> dict:
-    auth_user = _require_auth_user(x_telegram_init_data)
+async def add_ticket_user_message(ticket_id: int, payload: TicketMessageIn, request: Request, x_telegram_init_data: str = Header(default="")) -> dict:
+    auth_user = _require_auth_user(x_telegram_init_data, request=request)
     actor = int(auth_user.get("id", 0))
     s = SessionLocal()
     try:

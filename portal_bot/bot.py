@@ -9,6 +9,7 @@ FIXED: Handle existing users in 3x-ui panel
 import asyncio
 import logging
 import os
+import re
 import uuid
 import secrets
 from io import BytesIO
@@ -17,14 +18,133 @@ from typing import Optional
 
 import aiohttp
 import qrcode
-from aiogram import Bot, Dispatcher, F, Router
-from aiogram.filters import Command, CommandStart
-from aiogram.types import (
-    Message, CallbackQuery, PreCheckoutQuery,
-    InlineKeyboardMarkup, InlineKeyboardButton,
-    WebAppInfo, LabeledPrice, ContentType, BufferedInputFile
-)
-from aiogram.enums import ParseMode
+try:
+    from aiogram import Bot, Dispatcher, F, Router
+    from aiogram.filters import Command, CommandStart
+    from aiogram.types import (
+        Message, CallbackQuery, PreCheckoutQuery,
+        InlineKeyboardMarkup, InlineKeyboardButton,
+        WebAppInfo, LabeledPrice, ContentType, BufferedInputFile
+    )
+    from aiogram.enums import ParseMode
+    AIROGRAM_AVAILABLE = True
+except ModuleNotFoundError:
+    AIROGRAM_AVAILABLE = False
+
+    class _FilterExpr:
+        def __getattr__(self, _name):
+            return self
+
+        def __call__(self, *args, **kwargs):
+            return self
+
+        def __eq__(self, _other):
+            return self
+
+        def __and__(self, _other):
+            return self
+
+        def __rand__(self, _other):
+            return self
+
+        def __or__(self, _other):
+            return self
+
+        def __ror__(self, _other):
+            return self
+
+        def __invert__(self):
+            return self
+
+        def in_(self, _values):
+            return self
+
+        def startswith(self, _prefix):
+            return self
+
+    class _DecoratorRouter:
+        def message(self, *args, **kwargs):
+            def _decorator(func):
+                return func
+            return _decorator
+
+        def callback_query(self, *args, **kwargs):
+            def _decorator(func):
+                return func
+            return _decorator
+
+        def pre_checkout_query(self, *args, **kwargs):
+            def _decorator(func):
+                return func
+            return _decorator
+
+    class Bot:
+        def __init__(self, *args, **kwargs):
+            class _Session:
+                async def close(self):
+                    return None
+
+            self.session = _Session()
+
+        async def get_chat_member(self, *args, **kwargs):
+            raise RuntimeError("aiogram is not installed")
+
+    class Dispatcher:
+        def include_router(self, *_args, **_kwargs):
+            return None
+
+        async def start_polling(self, *_args, **_kwargs):
+            raise RuntimeError("aiogram is not installed")
+
+    class Router(_DecoratorRouter):
+        pass
+
+    class Command:
+        def __init__(self, *_args, **_kwargs):
+            pass
+
+    class CommandStart:
+        def __init__(self, *_args, **_kwargs):
+            pass
+
+    class _BaseType:
+        def __init__(self, *args, **kwargs):
+            self.args = args
+            for k, v in kwargs.items():
+                setattr(self, k, v)
+
+    class Message(_BaseType):
+        pass
+
+    class CallbackQuery(_BaseType):
+        pass
+
+    class PreCheckoutQuery(_BaseType):
+        pass
+
+    class InlineKeyboardMarkup(_BaseType):
+        pass
+
+    class InlineKeyboardButton(_BaseType):
+        pass
+
+    class WebAppInfo(_BaseType):
+        pass
+
+    class LabeledPrice(_BaseType):
+        pass
+
+    class BufferedInputFile(_BaseType):
+        pass
+
+    class ContentType:
+        SUCCESSFUL_PAYMENT = "successful_payment"
+
+    class ParseMode:
+        MARKDOWN = "Markdown"
+        HTML = "HTML"
+
+    F = _FilterExpr()
 from dotenv import load_dotenv
 from sqlalchemy import create_engine, Column, Integer, String, Boolean, DateTime, BigInteger, func
 from sqlalchemy.orm import sessionmaker, declarative_base
@@ -70,6 +190,10 @@ FREE_LIMIT_IP = int(os.getenv("FREE_LIMIT_IP", "2"))
 PAID_LIMIT_IP = int(os.getenv("PAID_LIMIT_IP", "5"))
 FREE_TOTAL_GB = int(os.getenv("FREE_TOTAL_GB", "40"))
 NEWS_CHANNEL_ID = os.getenv("NEWS_CHANNEL_ID", "@portal_news_channel")
+STACK_TOTAL_DISCOUNT_CAP = float(os.getenv("STACK_TOTAL_DISCOUNT_CAP", "0.70"))
+FAMILY_SLOT_STARS = int(os.getenv("FAMILY_SLOT_STARS", "59"))
+FAMILY_SLOT_DAYS = int(os.getenv("FAMILY_SLOT_DAYS", "30"))
+FAMILY_SLOT_MAX = int(os.getenv("FAMILY_SLOT_MAX", "3"))
 
 # Protected users — NEVER modify, sync, or message these users
 PROTECTED_USERS = {
@@ -90,6 +214,198 @@ logger = logging.getLogger(__name__)
 
 # Track last bot message per user for cleanup
 last_bot_message: dict[int, int] = {}  # tg_id -> message_id
+
+BTN_STYLE_PRIMARY = "primary"
+BTN_STYLE_SUCCESS = "success"
+BTN_STYLE_DANGER = "danger"
+BTN_EMOJI_PRIMARY_ID = (os.getenv("TG_BTN_EMOJI_PRIMARY_ID") or "").strip()
+BTN_EMOJI_SUCCESS_ID = (os.getenv("TG_BTN_EMOJI_SUCCESS_ID") or "").strip()
+BTN_EMOJI_DANGER_ID = (os.getenv("TG_BTN_EMOJI_DANGER_ID") or "").strip()
+
+
+def _inline_button_supported_fields() -> set[str]:
+    fields = getattr(InlineKeyboardButton, "model_fields", None)
+    if isinstance(fields, dict):
+        return set(fields.keys())
+    fields = getattr(InlineKeyboardButton, "__fields__", None)
+    if isinstance(fields, dict):
+        return set(fields.keys())
+    return {"text", "callback_data", "url", "web_app"}
+
+
+INLINE_BUTTON_FIELDS = _inline_button_supported_fields()
+SUPPORTS_BTN_STYLE = "style" in INLINE_BUTTON_FIELDS
+SUPPORTS_BTN_ICON = "icon_custom_emoji_id" in INLINE_BUTTON_FIELDS
+
+
+def _parse_mode_to_bot_api(parse_mode: str | object | None) -> str | None:
+    if parse_mode is None:
+        return None
+    raw = str(getattr(parse_mode, "value", parse_mode)).strip()
+    up = raw.upper()
+    if "MARKDOWN" in up:
+        return "Markdown"
+    if "HTML" in up:
+        return "HTML"
+    return raw or None
+
+
+def _btn_spec(
+    text: str,
+    *,
+    callback_data: str | None = None,
+    url: str | None = None,
+    web_app_url: str | None = None,
+    style: str | None = None,
+    icon_custom_emoji_id: str | None = None,
+) -> dict[str, str]:
+    spec: dict[str, str] = {"text": text}
+    if callback_data:
+        spec["callback_data"] = callback_data
+    if url:
+        spec["url"] = url
+    if web_app_url:
+        spec["web_app_url"] = web_app_url
+    if style:
+        spec["style"] = style
+    if icon_custom_emoji_id:
+        spec["icon_custom_emoji_id"] = icon_custom_emoji_id
+    return spec
+
+
+def _button_from_spec(spec: dict[str, str]) -> InlineKeyboardButton:
+    kwargs: dict[str, object] = {"text": spec.get("text", "")}
+    if spec.get("callback_data"):
+        kwargs["callback_data"] = spec["callback_data"]
+    if spec.get("url"):
+        kwargs["url"] = spec["url"]
+    if spec.get("web_app_url"):
+        kwargs["web_app"] = WebAppInfo(url=spec["web_app_url"])
+    if spec.get("style") and SUPPORTS_BTN_STYLE:
+        kwargs["style"] = spec["style"]
+    if spec.get("icon_custom_emoji_id") and SUPPORTS_BTN_ICON:
+        kwargs["icon_custom_emoji_id"] = spec["icon_custom_emoji_id"]
+    return InlineKeyboardButton(**kwargs)
+
+
+def _keyboard_from_specs(rows: list[list[dict[str, str]]]) -> InlineKeyboardMarkup:
+    return InlineKeyboardMarkup(
+        inline_keyboard=[[ _button_from_spec(spec) for spec in row ] for row in rows]
+    )
+
+
+def _keyboard_payload(rows: list[list[dict[str, str]]]) -> dict[str, object]:
+    payload_rows: list[list[dict[str, object]]] = []
+    for row in rows:
+        p_row: list[dict[str, object]] = []
+        for spec in row:
+            b: dict[str, object] = {"text": spec.get("text", "")}
+            if spec.get("callback_data"):
+                b["callback_data"] = spec["callback_data"]
+            if spec.get("url"):
+                b["url"] = spec["url"]
+            if spec.get("web_app_url"):
+                b["web_app"] = {"url": spec["web_app_url"]}
+            if spec.get("style"):
+                b["style"] = spec["style"]
+            if spec.get("icon_custom_emoji_id"):
+                b["icon_custom_emoji_id"] = spec["icon_custom_emoji_id"]
+            p_row.append(b)
+        payload_rows.append(p_row)
+    return {"inline_keyboard": payload_rows}
+
+
+def _needs_raw_markup(rows: list[list[dict[str, str]]]) -> bool:
+    for row in rows:
+        for spec in row:
+            if spec.get("style") and not SUPPORTS_BTN_STYLE:
+                return True
+            if spec.get("icon_custom_emoji_id") and not SUPPORTS_BTN_ICON:
+                return True
+    return False
+
+
+async def _bot_api_call(method: str, payload: dict[str, object]) -> bool:
+    token = (BOT_TOKEN or "").strip()
+    if not token:
+        return False
+    endpoint = f"https://api.telegram.org/bot{token}/{method}"
+    try:
+        async with aiohttp.ClientSession() as session:
+            async with session.post(endpoint, json=payload, timeout=aiohttp.ClientTimeout(total=15)) as resp:
+                if resp.status != 200:
+                    return False
+                body = await resp.json(content_type=None)
+                return bool((body or {}).get("ok"))
+    except Exception:
+        return False
+
+
+async def _send_text_with_specs(
+    *,
+    bot: Bot,
+    chat_id: int,
+    text: str,
+    rows: list[list[dict[str, str]]],
+    parse_mode: str | object | None = None,
+) -> bool:
+    pm = _parse_mode_to_bot_api(parse_mode)
+    if _needs_raw_markup(rows):
+        payload: dict[str, object] = {
+            "chat_id": int(chat_id),
+            "text": text,
+            "disable_web_page_preview": True,
+            "reply_markup": _keyboard_payload(rows),
+        }
+        if pm:
+            payload["parse_mode"] = pm
+        return await _bot_api_call("sendMessage", payload)
+    try:
+        await bot.send_message(
+            chat_id=int(chat_id),
+            text=text,
+            parse_mode=parse_mode,
+            disable_web_page_preview=True,
+            reply_markup=_keyboard_from_specs(rows),
+        )
+        return True
+    except Exception:
+        return False
+
+
+async def _edit_text_with_specs(
+    *,
+    bot: Bot,
+    chat_id: int,
+    message_id: int,
+    text: str,
+    rows: list[list[dict[str, str]]],
+    parse_mode: str | object | None = None,
+) -> bool:
+    pm = _parse_mode_to_bot_api(parse_mode)
+    if _needs_raw_markup(rows):
+        payload: dict[str, object] = {
+            "chat_id": int(chat_id),
+            "message_id": int(message_id),
+            "text": text,
+            "disable_web_page_preview": True,
+            "reply_markup": _keyboard_payload(rows),
+        }
+        if pm:
+            payload["parse_mode"] = pm
+        return await _bot_api_call("editMessageText", payload)
+    try:
+        await bot.edit_message_text(
+            chat_id=int(chat_id),
+            message_id=int(message_id),
+            text=text,
+            parse_mode=parse_mode,
+            disable_web_page_preview=True,
+            reply_markup=_keyboard_from_specs(rows),
+        )
+        return True
+    except Exception:
+        return False
 
 
 def _utcnow() -> datetime:
@@ -113,8 +429,11 @@ def _naive_utc(dt: datetime | None) -> datetime | None:
 #               DATABASE
 # ==========================================
 from db import SessionLocal, init_db
-from models import Achievement, AdminAudit, GiftCard, PromoCode, PromoUsage, Review, Template, User
+from models import Achievement, AdminAudit, FamilySlot, GiftCard, PromoCode, PromoUsage, Review, Template, User
 from nodes_repo import enabled_nodes
+from events_service import track_event
+from pay_attempts_service import mark_invoice_sent, mark_paid, start_attempt
+from points_service import award_referral_points, preview_redeemable_points, spend_points
 from tickets_repo import (
     STATUS_CLOSED,
     STATUS_IN_PROGRESS,
@@ -222,6 +541,14 @@ TARIFFS = {
         "subId": "HALF_YEAR",
         "sub_type": "PAID"
     },
+    "9_months": {
+        "name": "📅 9 Месяцев",
+        "stars": 1299,
+        "days": 273,
+        "gb": 0,
+        "subId": "NINE_MONTHS",
+        "sub_type": "PAID"
+    },
     "12_months": {
         "name": "📅 1 Год",
         "stars": 1499,
@@ -237,6 +564,7 @@ TARIFF_KEY_ALIASES = {
     "month_1": "1_month",
     "month_3": "3_months",
     "month_6": "6_months",
+    "month_9": "9_months",
     "year_1": "12_months",
 }
 
@@ -271,6 +599,88 @@ def get_user(tg_id: int) -> Optional[User]:
     user = session.query(User).filter_by(tg_id=tg_id).first()
     session.close()
     return user
+
+
+def active_family_slots(tg_id: int) -> int:
+    session = Session()
+    try:
+        now = _utcnow()
+        total = (
+            session.query(func.coalesce(func.sum(FamilySlot.slots), 0))
+            .filter(FamilySlot.tg_id == int(tg_id))
+            .filter((FamilySlot.expires_at.is_(None)) | (FamilySlot.expires_at > now))
+            .scalar()
+            or 0
+        )
+        return int(total)
+    finally:
+        session.close()
+
+
+def add_family_slot_pack(tg_id: int, *, slots: int = 1, days: int = FAMILY_SLOT_DAYS) -> tuple[bool, int]:
+    session = Session()
+    try:
+        now = _utcnow()
+        current = (
+            session.query(func.coalesce(func.sum(FamilySlot.slots), 0))
+            .filter(FamilySlot.tg_id == int(tg_id))
+            .filter((FamilySlot.expires_at.is_(None)) | (FamilySlot.expires_at > now))
+            .scalar()
+            or 0
+        )
+        if int(current) >= int(FAMILY_SLOT_MAX):
+            return False, int(current)
+        add_slots = min(int(slots), int(FAMILY_SLOT_MAX) - int(current))
+        row = FamilySlot(
+            tg_id=int(tg_id),
+            slots=max(1, int(add_slots)),
+            expires_at=now + timedelta(days=max(1, int(days))),
+            created_at=now,
+        )
+        session.add(row)
+        session.commit()
+        return True, int(current) + int(add_slots)
+    except Exception:
+        session.rollback()
+        return False, 0
+    finally:
+        session.close()
+
+
+def can_reset_devices(tg_id: int, *, cooldown_hours: int = 24) -> tuple[bool, int]:
+    session = Session()
+    try:
+        user = session.query(User).filter_by(tg_id=int(tg_id)).first()
+        if not user:
+            return False, 0
+        now = _utcnow()
+        last_reset = _naive_utc(getattr(user, "device_reset_last_at", None))
+        if not last_reset:
+            return True, 0
+        next_allowed = last_reset + timedelta(hours=max(1, int(cooldown_hours)))
+        if now >= next_allowed:
+            return True, 0
+        remain = int((next_allowed - now).total_seconds())
+        return False, max(0, remain)
+    finally:
+        session.close()
+
+
+def mark_devices_reset(tg_id: int) -> bool:
+    session = Session()
+    try:
+        user = session.query(User).filter_by(tg_id=int(tg_id)).first()
+        if not user:
+            return False
+        user.device_reset_last_at = _utcnow()
+        session.commit()
+        return True
+    except Exception:
+        session.rollback()
+        return False
+    finally:
+        session.close()
+
 
 def create_user(tg_id: int, user_uuid: str, email: str, sub_type: str, days: int, gb: int, stars: int, username: str = None) -> User:
     session = Session()
@@ -1420,7 +1830,7 @@ def _tariff_savings_pct(tariff_key: str) -> int | None:
     Returns % savings vs paying monthly for the same duration.
     """
     monthly = int(TARIFFS.get("1_month", {}).get("stars") or 0)
-    months_map = {"3_months": 3, "6_months": 6, "12_months": 12}
+    months_map = {"3_months": 3, "6_months": 6, "9_months": 9, "12_months": 12}
     months = months_map.get(tariff_key)
     if not monthly or not months:
         return None
@@ -1448,12 +1858,15 @@ def build_choose_tariff_text() -> str:
 
     s3 = _tariff_savings_pct("3_months")
     s6 = _tariff_savings_pct("6_months")
+    s9 = _tariff_savings_pct("9_months")
     s12 = _tariff_savings_pct("12_months")
     savings = []
     if s3:
         savings.append(f"3 мес: -{s3}%")
     if s6:
         savings.append(f"6 мес: -{s6}%")
+    if s9:
+        savings.append(f"9 мес: -{s9}%")
     if s12:
         savings.append(f"1 год: -{s12}%")
     savings_line = (" (" + ", ".join(savings) + ")") if savings else ""
@@ -1469,40 +1882,34 @@ def build_choose_tariff_text() -> str:
         "_Оплата Telegram Stars — мгновенная активация._"
     )
 
-def main_keyboard(tg_id: int = 0) -> InlineKeyboardMarkup:
-    """Main menu with primary WebApp CTA."""
-    buttons = [
-        [InlineKeyboardButton(
-            text="🌐 ОТКРЫТЬ ПОРТАЛ (WEB APP)",
-            web_app=WebAppInfo(url=WEBAPP_URL)
-        )],
+def main_keyboard_specs(tg_id: int = 0) -> list[list[dict[str, str]]]:
+    rows = [
+        [_btn_spec(text="🌐 ОТКРЫТЬ ПОРТАЛ (WEB APP)", web_app_url=WEBAPP_URL)],
         [
-            InlineKeyboardButton(text="⚡ Подключить / Продлить", callback_data="charge"),
+            _btn_spec(
+                text="🟦 Connect / Продлить",
+                callback_data="charge",
+                style=BTN_STYLE_PRIMARY,
+                icon_custom_emoji_id=BTN_EMOJI_PRIMARY_ID or None,
+            ),
         ],
         [
-            InlineKeyboardButton(text="🔑 Мой ключ", callback_data="show_key"),
-            InlineKeyboardButton(text="👤 Профиль", callback_data="status"),
+            _btn_spec(text="📊 Status", callback_data="status"),
+            _btn_spec(text="🛰 Nodes", callback_data="network_status"),
         ],
         [
-            InlineKeyboardButton(text="🎁 Бонусы", callback_data="menu_bonuses"),
-            InlineKeyboardButton(text="📡 Состояние сети", callback_data="network_status"),
-        ],
-        [
-            InlineKeyboardButton(text="⚙️ Настройка", callback_data="instruction"),
-            InlineKeyboardButton(text="🆘 Поддержка", callback_data="support"),
-        ],
-        [
-            InlineKeyboardButton(text="🆘 Я запутался, помогите!", callback_data="mode_simple"),
-        ],
-        [
-            InlineKeyboardButton(text="📦 Дополнительно", callback_data="menu_more"),
+            _btn_spec(text="🆘 Support", callback_data="support"),
+            _btn_spec(text="⚙️ Settings", callback_data="settings"),
         ],
     ]
-    
     if tg_id == ADMIN_ID:
-        buttons.append([InlineKeyboardButton(text="🔒 Admin Panel", callback_data="admin")])
-    
-    return InlineKeyboardMarkup(inline_keyboard=buttons)
+        rows.append([_btn_spec(text="🔒 Admin Panel", callback_data="admin")])
+    return rows
+
+
+def main_keyboard(tg_id: int = 0) -> InlineKeyboardMarkup:
+    """Main menu aligned to the single primary user path."""
+    return _keyboard_from_specs(main_keyboard_specs(tg_id))
 
 def tariff_keyboard(tg_id: int = 0, show_trial: bool = True, show_gb_only: bool = False) -> InlineKeyboardMarkup:
     buttons = []
@@ -1527,6 +1934,7 @@ def tariff_keyboard(tg_id: int = 0, show_trial: bool = True, show_gb_only: bool 
         ("1_month", "📅 1 Месяц"),
         ("3_months", "📅 3 Месяца"),
         ("6_months", "📅 6 Месяцев"),
+        ("9_months", "📅 9 Месяцев"),
         ("12_months", "📅 1 Год")
     ]
     
@@ -1545,6 +1953,9 @@ def tariff_keyboard(tg_id: int = 0, show_trial: bool = True, show_gb_only: bool 
         elif key == "3_months":
             icon = "💠"
             marketing_badge = " (ХИТ)"
+        elif key == "9_months":
+            icon = "🎯"
+            marketing_badge = " (DECoy)"
         elif key == "12_months":
             icon = "👑"
             savings = _tariff_savings_pct(key) or 0
@@ -1608,12 +2019,19 @@ async def cmd_start(message: Message):
     update_user_username(tg_id, username)
 
     if not created_new:
-        sent = await message.answer(
-            "👋 *С возвращением в PORTAL!*",
-            reply_markup=main_keyboard(tg_id),
+        ok = await _send_text_with_specs(
+            bot=message.bot,
+            chat_id=tg_id,
+            text="👋 *С возвращением в PORTAL!*",
+            rows=main_keyboard_specs(tg_id),
             parse_mode=ParseMode.MARKDOWN,
         )
-        last_bot_message[tg_id] = sent.message_id
+        if not ok:
+            await message.answer(
+                "👋 *С возвращением в PORTAL!*",
+                reply_markup=main_keyboard(tg_id),
+                parse_mode=ParseMode.MARKDOWN,
+            )
         return
 
     text = (
@@ -1638,11 +2056,20 @@ async def back_to_main(callback: CallbackQuery):
     pending_redeem_codes.discard(tg_id)
     pending_promo_codes.discard(tg_id)
     
-    await callback.message.edit_text(
-        TEXTS["welcome"],
-        reply_markup=main_keyboard(tg_id),
-        parse_mode=ParseMode.MARKDOWN
+    ok = await _edit_text_with_specs(
+        bot=callback.message.bot,
+        chat_id=callback.message.chat.id,
+        message_id=callback.message.message_id,
+        text=TEXTS["welcome"],
+        rows=main_keyboard_specs(tg_id),
+        parse_mode=ParseMode.MARKDOWN,
     )
+    if not ok:
+        await callback.message.edit_text(
+            TEXTS["welcome"],
+            reply_markup=main_keyboard(tg_id),
+            parse_mode=ParseMode.MARKDOWN,
+        )
     await callback.answer()
 
 @router.callback_query(F.data == "charge")
@@ -1715,11 +2142,20 @@ async def show_status(callback: CallbackQuery):
     user = get_user(tg_id)
     
     if not user:
-        await callback.message.edit_text(
-            TEXTS["no_subscription"],
-            reply_markup=main_keyboard(tg_id),
-            parse_mode=ParseMode.MARKDOWN
+        ok = await _edit_text_with_specs(
+            bot=callback.message.bot,
+            chat_id=callback.message.chat.id,
+            message_id=callback.message.message_id,
+            text=TEXTS["no_subscription"],
+            rows=main_keyboard_specs(tg_id),
+            parse_mode=ParseMode.MARKDOWN,
         )
+        if not ok:
+            await callback.message.edit_text(
+                TEXTS["no_subscription"],
+                reply_markup=main_keyboard(tg_id),
+                parse_mode=ParseMode.MARKDOWN,
+            )
         await callback.answer()
         return
     
@@ -1740,6 +2176,9 @@ async def show_status(callback: CallbackQuery):
         status_icon=status_icon,
         status_text=status_name,
     )
+    base_limit = FREE_LIMIT_IP if _normalize_sub_type(user.sub_type) == "FREE" else PAID_LIMIT_IP
+    extra_slots = active_family_slots(tg_id)
+    status_text += f"\n📱 Устройства: `{base_limit + extra_slots}` (база {base_limit} + family {extra_slots})"
     if _normalize_sub_type(user.sub_type) == "FREE":
         remaining_gb, total_gb = await _free_remaining_gb(tg_id)
         if remaining_gb is None:
@@ -1747,11 +2186,20 @@ async def show_status(callback: CallbackQuery):
         else:
             status_text += f"\n📊 Стартовый-остаток: `{remaining_gb}` из `{int(total_gb)}` ГБ"
     
-    await callback.message.edit_text(
-        status_text,
-        reply_markup=main_keyboard(tg_id),
-        parse_mode=ParseMode.MARKDOWN
+    ok = await _edit_text_with_specs(
+        bot=callback.message.bot,
+        chat_id=callback.message.chat.id,
+        message_id=callback.message.message_id,
+        text=status_text,
+        rows=main_keyboard_specs(tg_id),
+        parse_mode=ParseMode.MARKDOWN,
     )
+    if not ok:
+        await callback.message.edit_text(
+            status_text,
+            reply_markup=main_keyboard(tg_id),
+            parse_mode=ParseMode.MARKDOWN,
+        )
     await callback.answer()
 
 @router.callback_query(F.data == "show_key")
@@ -1762,18 +2210,46 @@ async def show_key(callback: CallbackQuery):
         pass
 
     tg_id = callback.from_user.id
+    track_event(tg_id=tg_id, event_name="clicked_connect", source="bot")
     user = get_user(tg_id)
     
     if not user:
-        kb = InlineKeyboardMarkup(inline_keyboard=[
-            [InlineKeyboardButton(text="⚡ Подключить / Продлить", callback_data="charge")],
-            [InlineKeyboardButton(text="◀️ Назад", callback_data="back")]
-        ])
-        await callback.message.edit_text(
-            "⚠️ *Ключ не найден*\n\nСначала подключите доступ, чтобы получить ключ.",
-            reply_markup=kb,
-            parse_mode=ParseMode.MARKDOWN
+        rows = [
+            [
+                _btn_spec(
+                    text="🟦 Подключить / Продлить",
+                    callback_data="charge",
+                    style=BTN_STYLE_PRIMARY,
+                    icon_custom_emoji_id=BTN_EMOJI_PRIMARY_ID or None,
+                )
+            ],
+            [
+                _btn_spec(
+                    text="⛔ Отмена",
+                    callback_data="back",
+                    style=BTN_STYLE_DANGER,
+                    icon_custom_emoji_id=BTN_EMOJI_DANGER_ID or None,
+                )
+            ],
+        ]
+        ok = await _edit_text_with_specs(
+            bot=callback.message.bot,
+            chat_id=callback.message.chat.id,
+            message_id=callback.message.message_id,
+            text="⚠️ *Ключ не найден*\n\nСначала подключите доступ, чтобы получить ключ.",
+            rows=rows,
+            parse_mode=ParseMode.MARKDOWN,
         )
+        if not ok:
+            kb = InlineKeyboardMarkup(inline_keyboard=[
+                [InlineKeyboardButton(text="⚡ Подключить / Продлить", callback_data="charge")],
+                [InlineKeyboardButton(text="◀️ Назад", callback_data="back")]
+            ])
+            await callback.message.edit_text(
+                "⚠️ *Ключ не найден*\n\nСначала подключите доступ, чтобы получить ключ.",
+                reply_markup=kb,
+                parse_mode=ParseMode.MARKDOWN
+            )
         return
 
     msg = await callback.message.edit_text("🔄 `Connecting to secure node...`", parse_mode=ParseMode.MARKDOWN)
@@ -1831,6 +2307,7 @@ async def show_key(callback: CallbackQuery):
 async def copy_key_callback(callback: CallbackQuery):
     tg_id = callback.from_user.id
     sub_link = build_subscription_link(tg_id)
+    track_event(tg_id=tg_id, event_name="copied_key", source="bot")
     await callback.answer(f"📋 Скопируйте ссылку:\n{sub_link}", show_alert=True)
 
 
@@ -1890,11 +2367,38 @@ async def panic_menu(callback: CallbackQuery):
         "• нужно отключить все активные сессии\n\n"
         "⚠️ Действие: старый ключ будет аннулирован."
     )
-    kb = InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text="☢️ СЖЕЧЬ КЛЮЧИ (Сброс)", callback_data="panic_execute")],
-        [InlineKeyboardButton(text="🟢 Отмена", callback_data="show_key")],
-    ])
-    await callback.message.edit_text(text, reply_markup=kb, parse_mode=ParseMode.MARKDOWN)
+    rows = [
+        [
+            _btn_spec(
+                text="☢️ СЖЕЧЬ КЛЮЧИ (Сброс)",
+                callback_data="panic_execute",
+                style=BTN_STYLE_DANGER,
+                icon_custom_emoji_id=BTN_EMOJI_DANGER_ID or None,
+            )
+        ],
+        [
+            _btn_spec(
+                text="⛔ Отмена",
+                callback_data="show_key",
+                style=BTN_STYLE_DANGER,
+                icon_custom_emoji_id=BTN_EMOJI_DANGER_ID or None,
+            )
+        ],
+    ]
+    ok = await _edit_text_with_specs(
+        bot=callback.message.bot,
+        chat_id=callback.message.chat.id,
+        message_id=callback.message.message_id,
+        text=text,
+        rows=rows,
+        parse_mode=ParseMode.MARKDOWN,
+    )
+    if not ok:
+        kb = InlineKeyboardMarkup(inline_keyboard=[
+            [InlineKeyboardButton(text="☢️ СЖЕЧЬ КЛЮЧИ (Сброс)", callback_data="panic_execute")],
+            [InlineKeyboardButton(text="🟢 Отмена", callback_data="show_key")],
+        ])
+        await callback.message.edit_text(text, reply_markup=kb, parse_mode=ParseMode.MARKDOWN)
     await callback.answer()
 
 
@@ -1967,6 +2471,24 @@ async def show_instruction(callback: CallbackQuery):
     ])
     await callback.message.edit_text(
         "📱 *Выберите ваше устройство:*",
+        reply_markup=kb,
+        parse_mode=ParseMode.MARKDOWN,
+    )
+    await callback.answer()
+
+
+@router.callback_query(F.data == "settings")
+async def show_settings(callback: CallbackQuery):
+    kb = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="🔑 Мой ключ", callback_data="show_key")],
+        [InlineKeyboardButton(text="⚙️ Инструкции", callback_data="instruction")],
+        [InlineKeyboardButton(text="🎁 Бонусы", callback_data="menu_bonuses")],
+        [InlineKeyboardButton(text="📦 Дополнительно", callback_data="menu_more")],
+        [InlineKeyboardButton(text="🆘 Нужна помощь", callback_data="mode_simple")],
+        [InlineKeyboardButton(text="◀️ Назад", callback_data="back")],
+    ])
+    await callback.message.edit_text(
+        "⚙️ *Settings*\n\nВыберите нужный раздел.",
         reply_markup=kb,
         parse_mode=ParseMode.MARKDOWN,
     )
@@ -2066,6 +2588,7 @@ async def menu_more(callback: CallbackQuery):
     kb = InlineKeyboardMarkup(
         inline_keyboard=[
             [InlineKeyboardButton(text="🎫 Подарить", callback_data="gift_cards")],
+            [InlineKeyboardButton(text=f"👨‍👩‍👧‍👦 Family +1 слот ({FAMILY_SLOT_STARS}⭐)", callback_data="buy_family_slot")],
             [
                 InlineKeyboardButton(text="🎁 Активировать подарок", callback_data="gift_redeem_prompt"),
                 InlineKeyboardButton(text="🎟️ Ввести промокод", callback_data="promo_activate_prompt"),
@@ -2423,6 +2946,30 @@ async def show_streak(callback: CallbackQuery):
         parse_mode=ParseMode.MARKDOWN
     )
     await callback.answer()
+
+
+@router.callback_query(F.data == "buy_family_slot")
+async def buy_family_slot(callback: CallbackQuery, bot: Bot):
+    tg_id = callback.from_user.id
+    current = active_family_slots(tg_id)
+    if current >= FAMILY_SLOT_MAX:
+        await callback.answer(f"Лимит family-слотов: +{FAMILY_SLOT_MAX}", show_alert=True)
+        return
+    try:
+        await callback.answer()
+        await bot.send_invoice(
+            chat_id=tg_id,
+            title="Family slot +1",
+            description=f"+1 устройство на {FAMILY_SLOT_DAYS} дней (макс +{FAMILY_SLOT_MAX})",
+            payload=f"familyslot_{tg_id}",
+            provider_token="",
+            currency="XTR",
+            prices=[LabeledPrice(label="Family slot", amount=FAMILY_SLOT_STARS)],
+        )
+        track_event(tg_id=tg_id, event_name="clicked_pay", source="bot", meta={"plan_code": "family_slot"})
+    except Exception:
+        await callback.message.answer("❌ Не удалось выставить счёт на family-слот.")
+
 
 # ==========================================
 #         SMART SUPPORT
@@ -5178,8 +5725,18 @@ async def mode_simple_step2(callback: CallbackQuery):
     )
     kb = InlineKeyboardMarkup(inline_keyboard=[
         [InlineKeyboardButton(text=f"📥 Скачать {app_name}", url=app_link)],
-        [InlineKeyboardButton(text="✅ Я установил(а), дальше", callback_data="simple_step3")],
-        [InlineKeyboardButton(text="◀️ Назад", callback_data="mode_simple")],
+        [_button_from_spec(_btn_spec(
+            text="✅ Я установил(а), дальше",
+            callback_data="simple_step3",
+            style=BTN_STYLE_SUCCESS,
+            icon_custom_emoji_id=BTN_EMOJI_SUCCESS_ID or None,
+        ))],
+        [_button_from_spec(_btn_spec(
+            text="⛔ Отмена",
+            callback_data="mode_simple",
+            style=BTN_STYLE_DANGER,
+            icon_custom_emoji_id=BTN_EMOJI_DANGER_ID or None,
+        ))],
     ])
     await callback.message.edit_text(text, reply_markup=kb, parse_mode=ParseMode.MARKDOWN)
     await callback.answer()
@@ -5281,6 +5838,7 @@ async def admin_tariff_menu(callback: CallbackQuery):
         [InlineKeyboardButton(text="📅 1 Месяц (199 ⭐)", callback_data=f"adm_set_{tg_id}_1_month")],
         [InlineKeyboardButton(text="📅 3 Месяца (499 ⭐)", callback_data=f"adm_set_{tg_id}_3_months")],
         [InlineKeyboardButton(text="📅 6 Месяцев (949 ⭐)", callback_data=f"adm_set_{tg_id}_6_months")],
+        [InlineKeyboardButton(text="📅 9 Месяцев (1299 ⭐)", callback_data=f"adm_set_{tg_id}_9_months")],
         [InlineKeyboardButton(text="📅 1 Год (1499 ⭐)", callback_data=f"adm_set_{tg_id}_12_months")],
         [InlineKeyboardButton(text="◀️ Назад", callback_data=f"adm_user_{tg_id}")]
     ])
@@ -5310,6 +5868,7 @@ async def admin_gift_menu(callback: CallbackQuery):
         "• `1_month` — 1 Мес (Unlim)\n"
         "• `3_months` — 3 Мес (Unlim)\n"
         "• `6_months` — 6 Мес (Unlim)\n"
+        "• `9_months` — 9 Мес (Unlim)\n"
         "• `12_months` — 1 Год (Unlim)\n\n"
         "Или кастом:\n"
         "`/gift [tg_id] [дни] [гб]`",
@@ -5467,16 +6026,58 @@ async def process_buy(callback: CallbackQuery, bot: Bot):
         await create_subscription(callback.message, tg_id, tariff, bot)
         return
     
-    # Paid - send invoice (with possible discount)
+    # Paid - send invoice (stack first-purchase + points, capped to 70% total discount).
     await callback.answer()
-    discount_note = " 🎉 Скидка 20%!" if use_discount else ""
-    prices = [LabeledPrice(label=tariff["name"] + discount_note, amount=actual_stars)]
-    description = f"Безлимит на {tariff['days']} дней{discount_note}"
+    first_discount_pct = 0.20 if use_discount else 0.0
+    points_preview = preview_redeemable_points(
+        tg_id=tg_id,
+        plan_price_stars=int(tariff["stars"]),
+        first_purchase_discount_pct=first_discount_pct,
+    )
+    points_to_use = int(points_preview.redeemable_points)
+    final_stars = max(1, int(actual_stars) - points_to_use)
+    max_total_discount = int(int(tariff["stars"]) * STACK_TOTAL_DISCOUNT_CAP)
+    if int(tariff["stars"]) - final_stars > max_total_discount:
+        final_stars = max(1, int(tariff["stars"]) - max_total_discount)
+        points_to_use = max(0, int(actual_stars) - final_stars)
+
+    mode_label = "disc" if use_discount else "full"
+    attempt = start_attempt(
+        tg_id=tg_id,
+        source="bot",
+        plan_code=tariff_key,
+        amount_stars=final_stars,
+        currency="XTR",
+    )
+    if not attempt:
+        await callback.message.answer("❌ Не удалось создать попытку оплаты. Попробуйте позже.")
+        return
+
+    invoice_payload = f"portal_{tariff_key}_{tg_id}_{mode_label}_a{int(attempt.id)}_p{int(points_to_use)}"
+    mark_invoice_sent(attempt_id=int(attempt.id), set_invoice_payload=invoice_payload)
+
+    discount_note = " 🎉 -20%" if use_discount else ""
+    points_note = f" + points -{points_to_use}⭐" if points_to_use > 0 else ""
+    prices = [LabeledPrice(label=tariff["name"] + discount_note + points_note, amount=int(final_stars))]
+    description = f"Безлимит на {tariff['days']} дней{discount_note}{points_note}"
+    track_event(
+        tg_id=tg_id,
+        event_name="clicked_pay",
+        source="bot",
+        meta={
+            "attempt_id": int(attempt.id),
+            "plan_code": tariff_key,
+            "base_price": int(tariff["stars"]),
+            "discounted_price": int(actual_stars),
+            "points_used": int(points_to_use),
+            "final_price": int(final_stars),
+        },
+    )
     await bot.send_invoice(
         chat_id=tg_id,
         title=f"Портал: {tariff['name']}",
         description=description,
-        payload=f"portal_{tariff_key}_{tg_id}_{'disc' if use_discount else 'full'}",
+        payload=invoice_payload,
         provider_token="",
         currency="XTR",
         prices=prices
@@ -5524,20 +6125,48 @@ async def payment_success(message: Message, bot: Bot):
             logger.warning("payment_success giftcard create failed buyer_tg_id=%s card_type=%s", buyer_tg_id, card_type)
             await message.answer("❌ Ошибка создания карты. Напиши в поддержку.")
         return
+
+    # Handle family-slot purchase
+    if payload.startswith("familyslot_"):
+        try:
+            buyer_tg_id = int(payload.replace("familyslot_", "", 1))
+        except Exception:
+            await message.answer("❌ Ошибка обработки family-слота.")
+            return
+        ok, total = add_family_slot_pack(buyer_tg_id, slots=1, days=FAMILY_SLOT_DAYS)
+        if not ok:
+            await message.answer(f"⚠️ Лимит family-слотов достигнут (+{FAMILY_SLOT_MAX}).")
+            return
+        await message.answer(
+            f"✅ Family-слот активирован.\n\n"
+            f"Добавлено: +1 устройство на {FAMILY_SLOT_DAYS} дней\n"
+            f"Текущий доп.лимит: +{total}",
+        )
+        track_event(
+            tg_id=buyer_tg_id,
+            event_name="paid",
+            source="bot",
+            meta={"plan_code": "family_slot", "amount_stars": int(payment.total_amount), "family_slots": int(total)},
+        )
+        return
     
     # Handle regular tariff purchase
     if payload.startswith("portal_"):
         portal_raw = payload[len("portal_"):]
         try:
-            parsed = portal_raw.rsplit("_", 2)
-            if len(parsed) == 3:
-                tariff_raw, tg_raw, _mode = parsed
-            elif len(parsed) == 2:
-                tariff_raw, tg_raw = parsed
-            else:
+            # Backward-compatible payload parser:
+            # portal_{tariff}_{tg_id}_{mode}
+            # portal_{tariff}_{tg_id}_{mode}_a{attempt_id}_p{points_used}
+            match = re.match(
+                r"^(?P<tariff>.+)_(?P<tg_id>\d+)_(?P<mode>[a-z]+)(?:_a(?P<attempt_id>\d+))?(?:_p(?P<points>\d+))?$",
+                portal_raw,
+            )
+            if not match:
                 raise ValueError("bad payload")
-            tariff_key = normalize_tariff_key(tariff_raw)
-            tg_id = int(tg_raw)
+            tariff_key = normalize_tariff_key(str(match.group("tariff") or ""))
+            tg_id = int(match.group("tg_id"))
+            attempt_id = int(match.group("attempt_id")) if match.group("attempt_id") else None
+            points_used = max(0, int(match.group("points"))) if match.group("points") else 0
         except Exception:
             logger.warning("payment_success portal parse error payload=%s", payload)
             await message.answer("❌ Ошибка обработки оплаты. Напиши в поддержку.")
@@ -5547,8 +6176,23 @@ async def payment_success(message: Message, bot: Bot):
         
         if tariff:
             logger.info("payment_success portal parsed: tg_id=%s tariff_key=%s stars=%s", tg_id, tariff_key, tariff.get("stars"))
+            mark_paid(attempt_id=attempt_id, invoice_payload=payload)
+            if points_used > 0:
+                spend_points(tg_id=tg_id, amount=int(points_used), pay_attempt_id=attempt_id, reason="payment_redeem")
+            track_event(
+                tg_id=tg_id,
+                event_name="paid",
+                source="bot",
+                meta={
+                    "attempt_id": attempt_id,
+                    "plan_code": tariff_key,
+                    "invoice_payload": payload,
+                    "amount_stars": int(payment.total_amount),
+                    "points_used": int(points_used),
+                },
+            )
             await message.answer(TEXTS["payment_success"])
-            await create_subscription(message, tg_id, tariff, bot)
+            await create_subscription(message, tg_id, tariff, bot, paid_amount_stars=int(payment.total_amount), pay_attempt_id=attempt_id)
             receipt_text = (
                 "🧾 *Квитанция об оплате*\n"
                 "➖➖➖➖➖➖➖➖➖➖\n"
@@ -5559,14 +6203,37 @@ async def payment_success(message: Message, bot: Bot):
                 "➖➖➖➖➖➖➖➖➖➖\n"
                 "✅ *Лицензия активирована успешно*"
             )
-            kb = InlineKeyboardMarkup(
-                inline_keyboard=[[InlineKeyboardButton(text="🔑 Получить ключи", callback_data="show_key")]]
+            receipt_rows = [[
+                _btn_spec(
+                    text="✅ Готово",
+                    callback_data="show_key",
+                    style=BTN_STYLE_SUCCESS,
+                    icon_custom_emoji_id=BTN_EMOJI_SUCCESS_ID or None,
+                )
+            ]]
+            ok = await _send_text_with_specs(
+                bot=bot,
+                chat_id=tg_id,
+                text=receipt_text,
+                rows=receipt_rows,
+                parse_mode=ParseMode.MARKDOWN,
             )
-            await message.answer(receipt_text, reply_markup=kb, parse_mode=ParseMode.MARKDOWN)
+            if not ok:
+                kb = InlineKeyboardMarkup(
+                    inline_keyboard=[[InlineKeyboardButton(text="🔑 Получить ключи", callback_data="show_key")]]
+                )
+                await message.answer(receipt_text, reply_markup=kb, parse_mode=ParseMode.MARKDOWN)
         else:
             logger.warning("payment_success unknown tariff_key=%s payload=%s", tariff_key, payload)
 
-async def create_subscription(message: Message, tg_id: int, tariff: dict, bot: Bot):
+async def create_subscription(
+    message: Message,
+    tg_id: int,
+    tariff: dict,
+    bot: Bot,
+    paid_amount_stars: int | None = None,
+    pay_attempt_id: int | None = None,
+):
     """Create or extend subscription"""
     user = get_user(tg_id)
     panel_client = await panel.get_existing_client(tg_id)
@@ -5643,6 +6310,13 @@ async def create_subscription(message: Message, tg_id: int, tariff: dict, bot: B
             try:
                 bonus_success = await award_referral_bonus(user.referrer_id, REFERRAL_BONUS_DAYS)
                 if bonus_success:
+                    if paid_amount_stars and int(paid_amount_stars) > 0:
+                        award_referral_points(
+                            tg_id=int(user.referrer_id),
+                            paid_stars=int(paid_amount_stars),
+                            ref_tg_id=int(tg_id),
+                            pay_attempt_id=pay_attempt_id,
+                        )
                     # Notify referrer about bonus
                     try:
                         await bot.send_message(
@@ -6735,6 +7409,12 @@ async def monitor_expiry(bot: Bot) -> None:
                                         reply_markup=kb,
                                         parse_mode=ParseMode.MARKDOWN,
                                     )
+                                    track_event(
+                                        tg_id=int(user.tg_id),
+                                        event_name="expired",
+                                        source="bot",
+                                        meta={"flow": "monitor_expiry"},
+                                    )
                                 except Exception:
                                     pass
                     except Exception as e:
@@ -6760,6 +7440,14 @@ async def main():
     # Start background expiry monitor (no traffic limits).
     asyncio.create_task(monitor_expiry(bot))
     logger.info("⏳ Expiry monitor started")
+    if os.getenv("WORKER_EMBEDDED", "false").strip().lower() in {"1", "true", "yes", "on"}:
+        try:
+            from worker import main as worker_main
+
+            asyncio.create_task(worker_main())
+            logger.info("🧰 Embedded worker started")
+        except Exception as e:
+            logger.error("Failed to start embedded worker: %s", e)
     
     try:
         await dp.start_polling(bot)

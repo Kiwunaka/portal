@@ -22,6 +22,7 @@ export type NodeStatus = {
 export type DashboardSnapshot = {
   tg_id: number;
   sub_type: string;
+  segment?: string;
   is_active: boolean;
   expiry_at?: string | null;
   used_gb: number;
@@ -29,7 +30,23 @@ export type DashboardSnapshot = {
   remaining_gb: number;
   active_sessions: number;
   device_limit: number;
+  family_slots?: number;
   subscription_url: string;
+  active_offer?: {
+    id: number;
+    offer_type: string;
+    plan_code: string;
+    price_stars: number;
+    trigger_reason?: string | null;
+    expires_at?: string | null;
+    status: string;
+  } | null;
+  points?: {
+    available: number;
+    expiring_soon?: number;
+    monthly_cap?: number;
+    expires_days?: number;
+  };
   features: {
     haptic: boolean;
     lottie: boolean;
@@ -69,7 +86,9 @@ export type UserPayload = {
   is_active: boolean;
   is_admin: boolean;
   sub_type: string;
+  segment?: string;
   expiry_at: string | null;
+  family_slots?: number;
   nodes: NodeInfo[];
   limits: {
     device_limit: number;
@@ -111,10 +130,47 @@ export type UserPayload = {
     open_channel: string;
     pay_via_bot: string;
   };
+  points?: {
+    available: number;
+    expiring_soon?: number;
+    monthly_cap?: number;
+    expires_days?: number;
+  };
+  active_offer?: {
+    id: number;
+    offer_type: string;
+    plan_code: string;
+    price_stars: number;
+    trigger_reason?: string | null;
+    expires_at?: string | null;
+    status: string;
+  } | null;
   features?: {
     haptic: boolean;
     lottie: boolean;
   };
+};
+
+export type PointsSnapshot = {
+  tg_id: number;
+  available_points: number;
+  expiring_soon_points: number;
+  monthly_cap: number;
+  points_expiry_days: number;
+  preview: {
+    plan_price_stars: number;
+    redeemable_points: number;
+    max_points_by_plan_cap: number;
+    max_points_by_total_cap: number;
+  };
+};
+
+export type PayAttemptStartResult = {
+  ok: boolean;
+  attempt_id: number;
+  plan_code: string;
+  amount_stars: number;
+  pay_url: string;
 };
 
 export type BonusPayload = {
@@ -332,6 +388,66 @@ export async function addTicketMessage(ticketId: number, body: string): Promise<
     body: JSON.stringify({ body }),
   });
   return data.ticket;
+}
+
+export function trackEvent(event_name: string, source = "webapp", meta?: Record<string, unknown>, session_id?: string): Promise<{ ok: boolean; event_id?: number | null }> {
+  return apiFetch("/api/events", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ event_name, source, meta: meta || {}, session_id: session_id || null }),
+  });
+}
+
+export function startPayAttempt(plan_code: string, source = "webapp", offer_id?: number): Promise<PayAttemptStartResult> {
+  return apiFetch("/api/pay/attempts/start", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ plan_code, source, offer_id: offer_id ?? null }),
+  });
+}
+
+export function confirmConnect(): Promise<{ ok: boolean; event_id?: number | null }> {
+  return apiFetch("/api/connect/confirm", { method: "POST" });
+}
+
+export function getActiveOffer(): Promise<{ offer: DashboardSnapshot["active_offer"] }> {
+  return apiFetch("/api/offers/active");
+}
+
+export function acceptOffer(offer_id: number): Promise<{ ok: boolean }> {
+  return apiFetch(`/api/offers/${offer_id}/accept`, { method: "POST" });
+}
+
+export function getPoints(): Promise<PointsSnapshot> {
+  return apiFetch<PointsSnapshot>("/api/points");
+}
+
+export async function runNetworkProbe(size_mb = 2): Promise<{ latencyMs: number; downloadMs: number; quality: "good" | "fair" | "poor" }> {
+  const start = performance.now();
+  await apiFetch<any>("/api/health");
+  const latencyMs = Math.max(1, Math.round(performance.now() - start));
+
+  const dlStart = performance.now();
+  const bases = candidateApiBases();
+  let ok = false;
+  for (const base of bases) {
+    try {
+      const headers = new Headers();
+      headers.set("X-Telegram-Init-Data", getInitData());
+      const resp = await fetch(`${base}/api/network/probe?size_mb=${Math.max(1, Math.min(3, size_mb))}`, { headers, cache: "no-store" });
+      if (!resp.ok) throw new Error(`probe failed: ${resp.status}`);
+      await resp.arrayBuffer();
+      ok = true;
+      break;
+    } catch {
+      // try next base
+    }
+  }
+  if (!ok) throw new Error("Network probe failed");
+  const downloadMs = Math.max(1, Math.round(performance.now() - dlStart));
+  const quality: "good" | "fair" | "poor" =
+    latencyMs < 180 && downloadMs < 1500 ? "good" : (latencyMs < 350 && downloadMs < 3000 ? "fair" : "poor");
+  return { latencyMs, downloadMs, quality };
 }
 
 export function adminSummary(): Promise<AdminSummaryPayload> {

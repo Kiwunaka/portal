@@ -39,6 +39,36 @@ Install/update timer on brain:
 python scripts/remote_install_node_metrics_timer.py --brain-ip 82.21.114.104 --ssh-port 29374
 ```
 
+Enable and verify on control-plane:
+
+```bash
+systemctl daemon-reload
+systemctl enable --now portal-node-metrics.timer
+systemctl status portal-node-metrics.timer --no-pager
+systemctl list-timers --all | grep portal-node-metrics
+```
+
+Freshness sanity checks:
+
+```bash
+journalctl -u portal-node-metrics.service -n 50 --no-pager
+sqlite3 /root/portal_bot/portal.db "select max(sampled_at) from node_health_samples;"
+```
+
+Admin API freshness (requires admin auth header):
+- endpoint: `GET /api/admin/metrics/status`
+- expected: `{"status":"fresh", ...}`
+- if `stale`: restart timer + service and re-check logs.
+
+Recovery procedure if stale:
+
+```bash
+systemctl restart portal-node-metrics.service
+systemctl restart portal-node-metrics.timer
+sleep 5
+journalctl -u portal-node-metrics.service -n 50 --no-pager
+```
+
 ## Brain Node: x-ui Subscription Port Conflict
 
 On the brain node we keep the portal subscription endpoint on `:2096` (for URLs like `https://<domain>:2096/s8Kx2mP7qR4wT/<token>`).
