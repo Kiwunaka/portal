@@ -675,7 +675,7 @@ async def health() -> dict:
 @app.get("/api/admin/metrics/status")
 async def admin_metrics_status(request: Request, x_telegram_init_data: str = Header(default="")) -> dict:
     _require_admin(x_telegram_init_data, request=request)
-    stale_after_seconds = max(60, int(os.getenv("NODE_METRICS_STALE_AFTER_SECONDS", "180")))
+    stale_after_seconds = max(300, int(os.getenv("NODE_METRICS_STALE_AFTER_SECONDS", "900")))
     now = datetime.utcnow()
     s = SessionLocal()
     try:
@@ -2101,6 +2101,7 @@ if __name__ == "__main__":
     import uvicorn
 
     uvicorn.run(app, host="0.0.0.0", port=int(os.getenv("PORT", "2096")))
+
 
 
 

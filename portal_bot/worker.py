@@ -1,4 +1,4 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
 import asyncio
 import os
@@ -146,7 +146,7 @@ async def expiry_chain_job() -> None:
                 continue
             if not _mark_campaign_sent_once(tg_id=int(u.tg_id), campaign_key=campaign_key):
                 continue
-            text = "⌛ Чтобы защита не прервалась, продлите доступ."
+            text = "⌛ Чтобы защита не прерывалась, продлите доступ."
             buttons = [[{"text": "🟦 Продлить", "url": _bot_pay_url()}]]
             await _telegram_send_message(chat_id=int(u.tg_id), text=text, buttons=buttons)
             track_event(
@@ -277,8 +277,9 @@ async def reactivation_job() -> None:
 
 
 async def node_metrics_watchdog_job() -> None:
+    started_at = datetime.utcnow()
     while True:
-        stale_after = max(180, int(os.getenv("NODE_METRICS_STALE_AFTER_SECONDS", "180")))
+        stale_after = max(300, int(os.getenv("NODE_METRICS_STALE_AFTER_SECONDS", "900")))
         s = SessionLocal()
         try:
             last_sample = s.query(func.max(NodeHealthSample.sampled_at)).scalar()
@@ -286,11 +287,15 @@ async def node_metrics_watchdog_job() -> None:
             s.close()
 
         now = datetime.utcnow()
+        # Suppress false positives right after worker start while collector is warming up.
+        if not last_sample and (now - started_at).total_seconds() < stale_after:
+            await asyncio.sleep(3600)
+            continue
         stale = bool((not last_sample) or ((now - last_sample).total_seconds() > stale_after))
         if stale and int(Settings.ADMIN_ID or 0) > 0:
             key = f"metrics_stale:{now.strftime('%Y%m%d%H')}"
             if _mark_campaign_sent_once(tg_id=int(Settings.ADMIN_ID), campaign_key=key):
-                text = "⚠️ Node metrics stale: collector timer appears inactive."
+                text = "⚠️ Метрики нод устарели: проверьте `portal-node-metrics.timer`."
                 await _telegram_send_message(chat_id=int(Settings.ADMIN_ID), text=text)
         await asyncio.sleep(3600)
 
@@ -309,3 +314,4 @@ async def main() -> None:
 
 if __name__ == "__main__":
     asyncio.run(main())
+

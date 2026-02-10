@@ -509,7 +509,7 @@ ACHIEVEMENTS = {
 TARIFFS = {
     "trial": {
         # Free tier: enforced by subscription JSON allowlist rules (see api.py).
-        "name": "🆓 Стартовый (соцсети + AI)",
+        "name": "🆓 Бесплатный (соцсети + AI)",
         "stars": 0,
         # Long expiry so users can keep the profile without re-issuing.
         "days": 3650,
@@ -1730,7 +1730,7 @@ TEXTS = {
         "🟢 Активных: `{active}`\n"
         "💰 Оборот: `{stars}` Stars"
     ),
-    "trial_used": "❌ Режим «Стартовый» уже использован. Выберите платный тариф.",
+    "trial_used": "❌ Бесплатный режим уже использован. Выберите платный тариф.",
     "payment_success": "✅ *Оплата принята!* Генерируем ключи шифрования...",
     "gift_success": "✅ Подписка выдана пользователю {tg_id} на {days} дней."
 }
@@ -1873,10 +1873,10 @@ def build_choose_tariff_text() -> str:
 
     return (
         "💎 *Выберите уровень доступа*\n\n"
-        f"🆓 *Стартовый* — 1 страна: {free_label}\n"
+        f"🆓 *Бесплатный* — 1 страна: {free_label}\n"
         f"💠 *Премиум* — {paid_count} стран: {paid_list}\n\n"
-        f"Стартовый: до {FREE_TOTAL_GB} ГБ, до {FREE_LIMIT_IP} устройств (по IP).\n"
-        "Стартовый: соцсети + AI, медиасервисы могут идти напрямую.\n"
+        f"Бесплатный: до {FREE_TOTAL_GB} ГБ, до {FREE_LIMIT_IP} устройств (по IP).\n"
+        "Бесплатный: соцсети + AI, медиасервисы могут идти напрямую.\n"
         f"Премиум: полный доступ, переключение стран, до {PAID_LIMIT_IP} устройств.\n\n"
         f"💰 *Выгода при оплате на срок:*{savings_line}\n\n"
         "_Оплата Telegram Stars — мгновенная активация._"
@@ -1887,23 +1887,26 @@ def main_keyboard_specs(tg_id: int = 0) -> list[list[dict[str, str]]]:
         [_btn_spec(text="🌐 ОТКРЫТЬ ПОРТАЛ (WEB APP)", web_app_url=WEBAPP_URL)],
         [
             _btn_spec(
-                text="🟦 Connect / Продлить",
+                text="🟦 Подключить / Продлить",
                 callback_data="charge",
                 style=BTN_STYLE_PRIMARY,
                 icon_custom_emoji_id=BTN_EMOJI_PRIMARY_ID or None,
             ),
         ],
         [
-            _btn_spec(text="📊 Status", callback_data="status"),
-            _btn_spec(text="🛰 Nodes", callback_data="network_status"),
+            _btn_spec(text="📊 Статус", callback_data="status"),
+            _btn_spec(text="🔑 Мой ключ", callback_data="show_key"),
         ],
         [
-            _btn_spec(text="🆘 Support", callback_data="support"),
-            _btn_spec(text="⚙️ Settings", callback_data="settings"),
+            _btn_spec(text="🛰 Ноды", callback_data="network_status"),
+            _btn_spec(text="🆘 Поддержка", callback_data="support"),
+        ],
+        [
+            _btn_spec(text="⚙️ Настройки", callback_data="settings"),
         ],
     ]
     if tg_id == ADMIN_ID:
-        rows.append([_btn_spec(text="🔒 Admin Panel", callback_data="admin")])
+        rows.append([_btn_spec(text="🔒 Админ-панель", callback_data="admin")])
     return rows
 
 
@@ -1923,7 +1926,7 @@ def tariff_keyboard(tg_id: int = 0, show_trial: bool = True, show_gb_only: bool 
         buttons.append(
             [
                 InlineKeyboardButton(
-                    text=f"🆓 Стартовый — 1 страна, {FREE_TOTAL_GB} ГБ, {FREE_LIMIT_IP} устр.",
+                    text=f"🆓 Бесплатный — 1 страна, {FREE_TOTAL_GB} ГБ, {FREE_LIMIT_IP} устр.",
                     callback_data="buy_trial",
                 )
             ]
@@ -2168,7 +2171,7 @@ async def show_status(callback: CallbackQuery):
     stars = user.stars_paid if user else 0
     is_active = bool(user and user.is_active and expiry_dt and expiry_dt > _utcnow())
     status_icon = "🟢" if is_active else "🔴"
-    status_name = "ACTIVE" if is_active else "INACTIVE"
+    status_name = "АКТИВЕН" if is_active else "НЕАКТИВЕН"
     status_text = TEXTS["status"].format(
         tg_id=tg_id,
         expiry=expiry,
@@ -2182,9 +2185,9 @@ async def show_status(callback: CallbackQuery):
     if _normalize_sub_type(user.sub_type) == "FREE":
         remaining_gb, total_gb = await _free_remaining_gb(tg_id)
         if remaining_gb is None:
-            status_text += f"\n📊 Стартовый-лимит: до `{int(total_gb)}` ГБ\n⏳ Остаток: `н/д`"
+            status_text += f"\n📊 Бесплатный лимит: до `{int(total_gb)}` ГБ\n⏳ Остаток: `н/д`"
         else:
-            status_text += f"\n📊 Стартовый-остаток: `{remaining_gb}` из `{int(total_gb)}` ГБ"
+            status_text += f"\n📊 Бесплатный остаток: `{remaining_gb}` из `{int(total_gb)}` ГБ"
     
     ok = await _edit_text_with_specs(
         bot=callback.message.bot,
@@ -2252,11 +2255,11 @@ async def show_key(callback: CallbackQuery):
             )
         return
 
-    msg = await callback.message.edit_text("🔄 `Connecting to secure node...`", parse_mode=ParseMode.MARKDOWN)
+    msg = await callback.message.edit_text("🔄 `Подключаю защищённый узел...`", parse_mode=ParseMode.MARKDOWN)
     await asyncio.sleep(0.35)
-    await msg.edit_text("🔄 `Handshaking (TLS 1.3)...`", parse_mode=ParseMode.MARKDOWN)
+    await msg.edit_text("🔄 `Проверяю соединение (TLS 1.3)...`", parse_mode=ParseMode.MARKDOWN)
     await asyncio.sleep(0.35)
-    await msg.edit_text("🔄 `Generating unique key...`", parse_mode=ParseMode.MARKDOWN)
+    await msg.edit_text("🔄 `Готовлю ключ доступа...`", parse_mode=ParseMode.MARKDOWN)
     await asyncio.sleep(0.35)
 
     sub_link = build_subscription_link(tg_id)
@@ -2273,8 +2276,8 @@ async def show_key(callback: CallbackQuery):
             else ("—" if nodes else "—")
         )
         free_note = (
-            "\n\n🆓 *Режим «Стартовый»*\n"
-            "• 1 free-нода\n"
+            "\n\n🆓 *Тариф FREE*\n"
+            "• 1 бесплатная нода\n"
             f"• Платные: {paid_count} стран ({paid_list})\n"
             f"• Лимит трафика: до {FREE_TOTAL_GB} ГБ\n"
             f"• Лимит устройств: до {FREE_LIMIT_IP} (по IP)\n"
@@ -2488,7 +2491,7 @@ async def show_settings(callback: CallbackQuery):
         [InlineKeyboardButton(text="◀️ Назад", callback_data="back")],
     ])
     await callback.message.edit_text(
-        "⚙️ *Settings*\n\nВыберите нужный раздел.",
+        "⚙️ *Настройки*\n\nВыберите нужный раздел.",
         reply_markup=kb,
         parse_mode=ParseMode.MARKDOWN,
     )
@@ -4184,7 +4187,7 @@ async def show_admin_panel(callback: CallbackQuery):
             InlineKeyboardButton(text="🎫 Очередь тикетов", callback_data="admin_tickets"),
         ],
         [
-            InlineKeyboardButton(text="Nodes", callback_data="admin_nodes"),
+            InlineKeyboardButton(text="Ноды", callback_data="admin_nodes"),
             InlineKeyboardButton(text="Sync Free pool", callback_data="admin_sync_free_pl"),
         ],
         [
@@ -5399,7 +5402,7 @@ async def show_admin_users(callback: CallbackQuery):
                 [
                     InlineKeyboardButton(text="Все", callback_data="admin_users:0:all"),
                     InlineKeyboardButton(text="Актив", callback_data="admin_users:0:active"),
-                    InlineKeyboardButton(text="Стартовый", callback_data="admin_users:0:free"),
+                    InlineKeyboardButton(text="Бесплатный", callback_data="admin_users:0:free"),
                 ],
                 [InlineKeyboardButton(text="◀️ Назад", callback_data="admin")],
             ]
@@ -5408,7 +5411,7 @@ async def show_admin_users(callback: CallbackQuery):
         await callback.answer()
         return
 
-    seg_label = {"all": "Все", "active": "Активные", "expired": "Истекшие", "free": "Стартовый"}.get(segment, "Все")
+    seg_label = {"all": "Все", "active": "Активные", "expired": "Истекшие", "free": "Бесплатный"}.get(segment, "Все")
     header = f"👥 <b>Пользователи</b> — {seg_label}\nВсего: {total} | Стр {page+1}/{pages}\n\n"
 
     lines: list[str] = []
@@ -5418,7 +5421,7 @@ async def show_admin_users(callback: CallbackQuery):
             InlineKeyboardButton(text="Все", callback_data="admin_users:0:all"),
             InlineKeyboardButton(text="Актив", callback_data="admin_users:0:active"),
             InlineKeyboardButton(text="Истек", callback_data="admin_users:0:expired"),
-            InlineKeyboardButton(text="Стартовый", callback_data="admin_users:0:free"),
+            InlineKeyboardButton(text="Бесплатный", callback_data="admin_users:0:free"),
         ]
     )
 
@@ -5780,9 +5783,9 @@ async def render_admin_user_view(callback: CallbackQuery, tg_id: int):
     if _normalize_sub_type(plan) == "FREE":
         remaining_gb, total_gb = await _free_remaining_gb(tg_id)
         if remaining_gb is None:
-            free_usage_line = f"\n📊 Стартовый-остаток: <b>н/д</b> из <b>{int(total_gb)} ГБ</b>"
+            free_usage_line = f"\n📊 Бесплатный остаток: <b>н/д</b> из <b>{int(total_gb)} ГБ</b>"
         else:
-            free_usage_line = f"\n📊 Стартовый-остаток: <b>{remaining_gb} ГБ</b> из <b>{int(total_gb)} ГБ</b>"
+            free_usage_line = f"\n📊 Бесплатный остаток: <b>{remaining_gb} ГБ</b> из <b>{int(total_gb)} ГБ</b>"
 
     manual_line = f"🏷 Имя: <b>{html.escape(manual_name)}</b>\n" if manual_name else ""
 
@@ -5834,7 +5837,7 @@ async def admin_tariff_menu(callback: CallbackQuery):
     tg_id = int(callback.data.replace("adm_tariff_", ""))
     
     kb = InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text="🆓 Стартовый (соцсети + AI)", callback_data=f"adm_set_{tg_id}_trial")],
+        [InlineKeyboardButton(text="🆓 Бесплатный (соцсети + AI)", callback_data=f"adm_set_{tg_id}_trial")],
         [InlineKeyboardButton(text="📅 1 Месяц (199 ⭐)", callback_data=f"adm_set_{tg_id}_1_month")],
         [InlineKeyboardButton(text="📅 3 Месяца (499 ⭐)", callback_data=f"adm_set_{tg_id}_3_months")],
         [InlineKeyboardButton(text="📅 6 Месяцев (949 ⭐)", callback_data=f"adm_set_{tg_id}_6_months")],
@@ -5864,7 +5867,7 @@ async def admin_gift_menu(callback: CallbackQuery):
         "Формат:\n"
         "`/gift [tg_id] [тариф]`\n\n"
         "Тарифы:\n"
-        "• `trial` — Стартовый (1 страна)\n"
+        "• `trial` — Бесплатный (1 страна)\n"
         "• `1_month` — 1 Мес (Unlim)\n"
         "• `3_months` — 3 Мес (Unlim)\n"
         "• `6_months` — 6 Мес (Unlim)\n"
@@ -6004,7 +6007,7 @@ async def process_buy(callback: CallbackQuery, bot: Bot):
             ])
             await callback.message.edit_text(
                 "🔒 *Доступ ограничен*\n\n"
-                "Для активации режима «Стартовый» подпишитесь на канал обновлений и нажмите «Проверить».",
+                "Для активации бесплатного режима подпишитесь на канал обновлений и нажмите «Проверить».",
                 reply_markup=kb,
                 parse_mode=ParseMode.MARKDOWN,
             )
@@ -6016,13 +6019,13 @@ async def process_buy(callback: CallbackQuery, bot: Bot):
         expiry = _naive_utc(user.expiry_at) if user else None
         has_active = bool(user and user.is_active and expiry and expiry > now)
         if has_active and current_sub == "FREE":
-            await callback.answer("Режим «Стартовый» уже активен. Повторная активация не требуется.", show_alert=True)
+            await callback.answer("Бесплатный режим уже активен. Повторная активация не требуется.", show_alert=True)
             return
         if has_active and current_sub != "FREE":
-            await callback.answer("У вас уже активирован полный доступ. Режим «Стартовый» не требуется.", show_alert=True)
+            await callback.answer("У вас уже активирован полный доступ. Бесплатный режим не требуется.", show_alert=True)
             return
 
-        await callback.answer("⏳ Включаю режим «Стартовый»...")
+        await callback.answer("⏳ Включаю бесплатный режим...")
         await create_subscription(callback.message, tg_id, tariff, bot)
         return
     
@@ -6353,7 +6356,7 @@ async def create_subscription(
     free_note = ""
     if is_free:
         free_note = (
-            f"\n\n🆓 Стартовый: до {FREE_TOTAL_GB} ГБ, до {FREE_LIMIT_IP} устройств (по IP)."
+            f"\n\n🆓 Бесплатный: до {FREE_TOTAL_GB} ГБ, до {FREE_LIMIT_IP} устройств (по IP)."
         )
     
     # Build subscription link
@@ -7400,8 +7403,8 @@ async def monitor_expiry(bot: Bot) -> None:
                                         chat_id=user.tg_id,
                                         text=(
                                             "⌛️ *Премиум истёк*\n\n"
-                                            "Я переключил вас в *Стартовый*:\n"
-                                            "• 1 free-нода\n"
+                                            "Я переключил вас в *Бесплатный*:\n"
+                                            "• 1 бесплатная нода\n"
                                             "• Соцсети + AI\n"
                                             "• YouTube идёт напрямую (сервис не помогает)\n\n"
                                             "Хотите все 4 страны и полный доступ, продлите подписку."
@@ -7457,4 +7460,6 @@ async def main():
 
 if __name__ == "__main__":
     asyncio.run(main())
+
+
 

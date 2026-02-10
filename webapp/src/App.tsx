@@ -35,25 +35,25 @@ type PlanChoice = { key: string; label: string; stars: number; badge?: string };
 type SegmentInfo = { title: string; text: string; ctaPlan: string };
 
 const USER_TABS: Array<{ id: UserTab; label: string; icon: string }> = [
-  { id: "status", label: "Status", icon: "S" },
-  { id: "connect", label: "Connect", icon: "C" },
-  { id: "nodes", label: "Nodes", icon: "N" },
-  { id: "support", label: "Support", icon: "?" },
+  { id: "status", label: "Статус", icon: "S" },
+  { id: "connect", label: "Подключение", icon: "C" },
+  { id: "nodes", label: "Ноды", icon: "N" },
+  { id: "support", label: "Поддержка", icon: "?" },
 ];
 
 const STORY_SLIDES: StorySlide[] = [
-  { title: "Encryption", text: "Encrypted channel between your device and node." },
-  { title: "4 Countries", text: "Paid plans include access to all available countries." },
-  { title: "Anti-tracking", text: "Traffic hygiene and tracker-resistant routing presets." },
-  { title: "1-2 Minutes", text: "Import key and finish setup in a short flow." },
+  { title: "Шифрование", text: "Зашифрованный канал между устройством и узлом." },
+  { title: "4 страны", text: "Платные тарифы включают доступ ко всем доступным странам." },
+  { title: "Антитрекинг", text: "Маршрутизация снижает трекинг и лишний шум." },
+  { title: "1-2 минуты", text: "Импорт ключа и подключение за пару шагов." },
 ];
 
 const PLAN_CHOICES: PlanChoice[] = [
-  { key: "1_month", label: "1 month", stars: 199 },
-  { key: "3_months", label: "3 months", stars: 499 },
-  { key: "6_months", label: "6 months", stars: 949, badge: "Decoy" },
-  { key: "9_months", label: "9 months", stars: 1299 },
-  { key: "12_months", label: "12 months", stars: 1499, badge: "Recommended" },
+  { key: "1_month", label: "1 месяц", stars: 199 },
+  { key: "3_months", label: "3 месяца", stars: 499 },
+  { key: "6_months", label: "6 месяцев", stars: 949, badge: "Выбор" },
+  { key: "9_months", label: "9 месяцев", stars: 1299 },
+  { key: "12_months", label: "12 месяцев", stars: 1499, badge: "Рекомендуем" },
 ];
 
 const MAP_POINTS: Array<{ code: string; x: number; y: number }> = [
@@ -71,10 +71,10 @@ function fmtDate(iso?: string | null): string {
 function fmtLeft(iso?: string | null): string {
   if (!iso) return "-";
   const ms = new Date(iso).getTime() - Date.now();
-  if (ms <= 0) return "expired";
+  if (ms <= 0) return "истёк";
   const d = Math.floor(ms / 86400000);
   const h = Math.floor((ms % 86400000) / 3600000);
-  return `${d}d ${h}h`;
+  return `${d}д ${h}ч`;
 }
 
 function detectPlatform(): "ios" | "android" | "desktop" {
@@ -88,36 +88,36 @@ function segmentInfo(segmentRaw: string): SegmentInfo {
   const segment = (segmentRaw || "").toUpperCase();
   if (segment === "FREE") {
     return {
-      title: "Free profile",
-      text: "Base access is active. Upgrade for all countries and higher limits.",
+      title: "Бесплатный профиль",
+      text: "Базовый доступ активен. Апгрейд откроет все страны и повышенные лимиты.",
       ctaPlan: "1_month",
     };
   }
   if (segment === "EXPIRED") {
     return {
-      title: "Access expired",
-      text: "Renew now to keep your channel uninterrupted.",
+      title: "Доступ истёк",
+      text: "Продлите доступ, чтобы защита не прерывалась.",
       ctaPlan: "1_month",
     };
   }
   if (segment === "MANUAL") {
     return {
-      title: "Manual profile",
-      text: "Your access is managed manually. Use support for operational requests.",
+      title: "Ручной профиль",
+      text: "Ваш доступ управляется вручную. Для изменений используйте поддержку.",
       ctaPlan: "3_months",
     };
   }
   return {
-    title: "Paid profile",
-    text: "All countries and priority quality route are available.",
+    title: "Платный профиль",
+    text: "Доступны все страны и приоритетный маршрут.",
     ctaPlan: "12_months",
   };
 }
 
 function qualityLabel(q: "good" | "fair" | "poor"): string {
-  if (q === "good") return "Good";
-  if (q === "fair") return "Fair";
-  return "Poor";
+  if (q === "good") return "Хорошо";
+  if (q === "fair") return "Средне";
+  return "Слабо";
 }
 
 async function copyText(text: string): Promise<boolean> {
@@ -174,7 +174,7 @@ export default function App() {
 
   async function loadAll() {
     if (!tgUser) {
-      setError("Open WebApp from Telegram bot.");
+      setError("Откройте WebApp из Telegram-бота.");
       setLoading(false);
       return;
     }
@@ -221,11 +221,11 @@ export default function App() {
     if (!dash?.subscription_url) return;
     const ok = await copyText(dash.subscription_url);
     if (ok) {
-      setBanner("Key copied");
+      setBanner("Ключ скопирован");
       pulse("success");
       void trackEvent(eventName, "webapp");
     } else {
-      setBanner("Copy failed");
+      setBanner("Не удалось скопировать");
       pulse("error");
     }
   }
@@ -265,7 +265,7 @@ export default function App() {
     void trackEvent("clicked_connect", "webapp", { platform });
     const deep = `hiddify://import/${encodeURIComponent(dash.subscription_url)}`;
     openLink(deep);
-    setBanner("Trying to open client...");
+    setBanner("Открываю клиент...");
     pulse("success");
     setConnectStep(2);
     void trackEvent("deep_link_opened", "webapp", { platform });
@@ -275,16 +275,16 @@ export default function App() {
     try {
       await confirmConnect();
       setConnectStep(3);
-      setBanner("Connection confirmed");
+      setBanner("Подключение подтверждено");
       pulse("success");
     } catch {
-      setBanner("Confirm failed");
+      setBanner("Проверка не удалась");
       pulse("error");
     }
   }
 
   async function runDiagnostics() {
-    setDiagText("Checking node path...");
+    setDiagText("Проверяю маршрут до ноды...");
     try {
       const res = await runNodeDiagnostics();
       setDiagText(`${res.summary} | DNS=${res.dns_status} | SNI=${res.sni_status}`);
@@ -297,22 +297,22 @@ export default function App() {
 
   async function runSpeedCheck() {
     setProbeBusy(true);
-    setSpeedText("Measuring quality...");
+    setSpeedText("Измеряю качество...");
     try {
       const res = await runNetworkProbe(2);
       setSpeedText(`Latency ${res.latencyMs}ms | Probe ${res.downloadMs}ms | ${qualityLabel(res.quality)}`);
     } catch {
-      setSpeedText("Probe failed");
+      setSpeedText("Проверка не удалась");
     } finally {
       setProbeBusy(false);
     }
   }
 
   if (loading) {
-    return <div className="app"><section className="card"><div className="card__title">Loading...</div></section></div>;
+    return <div className="app"><section className="card"><div className="card__title">Загрузка...</div></section></div>;
   }
   if (error || !user || !dash) {
-    return <div className="app"><section className="card card--danger"><div className="card__title">Error</div><div className="muted">{error || "No data"}</div></section></div>;
+    return <div className="app"><section className="card card--danger"><div className="card__title">Ошибка</div><div className="muted">{error || "Нет данных"}</div></section></div>;
   }
 
   return (
@@ -325,17 +325,17 @@ export default function App() {
             <div className="brand__sub">{user.username ? `@${user.username}` : `ID ${user.tg_id}`}</div>
           </div>
         </div>
-        <button className="chip" onClick={() => setShowSettings((v) => !v)} type="button">Settings</button>
+        <button className="chip" onClick={() => setShowSettings((v) => !v)} type="button">Настройки</button>
       </header>
 
       {banner ? <section className="card card--notice"><div className="muted">{banner}</div></section> : null}
 
       {showSettings ? (
         <section className="card">
-          <div className="card__title">Settings</div>
+          <div className="card__title">Настройки</div>
           <div className="list">
-            <div className="row"><div><div className="row__title">Account</div><div className="row__sub">{`${dash.sub_type} | ${fmtDate(dash.expiry_at)}`}</div></div></div>
-            <div className="row"><div><div className="row__title">Offer</div><div className="row__sub">{`Updated: ${OFFER_UPDATED_AT}`}</div></div></div>
+            <div className="row"><div><div className="row__title">Аккаунт</div><div className="row__sub">{`${dash.sub_type} | ${fmtDate(dash.expiry_at)}`}</div></div></div>
+            <div className="row"><div><div className="row__title">Оферта</div><div className="row__sub">{`Обновлено: ${OFFER_UPDATED_AT}`}</div></div></div>
           </div>
           <pre className="mono legal">{OFFER_FULL}</pre>
         </section>
@@ -348,15 +348,15 @@ export default function App() {
               <button key={k} className={aTab === k ? "chip chip--active" : "chip"} type="button" onClick={() => setATab(k)}>{k}</button>
             ))}
           </div>
-          {aTab === "summary" && admSummary ? <div className="muted">{`Users ${admSummary.users.total} | Nodes ${admSummary.nodes.healthy}/${admSummary.nodes.total}`}</div> : null}
-          {aTab === "tickets" ? <div className="muted">{`Tickets: ${admTickets.length}`}</div> : null}
-          {aTab === "nodes" ? <div className="muted">{`Nodes: ${admNodes.length}`}</div> : null}
+          {aTab === "summary" && admSummary ? <div className="muted">{`Пользователи ${admSummary.users.total} | Ноды ${admSummary.nodes.healthy}/${admSummary.nodes.total}`}</div> : null}
+          {aTab === "tickets" ? <div className="muted">{`Тикеты: ${admTickets.length}`}</div> : null}
+          {aTab === "nodes" ? <div className="muted">{`Ноды: ${admNodes.length}`}</div> : null}
         </section>
       ) : null}
 
       {uTab === "status" ? (
         <section className="card">
-          <div className={dash.is_active ? "status status--ok" : "status status--bad"}>{dash.is_active ? "Active" : "Expired"}</div>
+          <div className={dash.is_active ? "status status--ok" : "status status--bad"}>{dash.is_active ? "Активен" : "Истёк"}</div>
           <div className="pill">{segment.title}</div>
           <div className="muted">{segment.text}</div>
           <div className="stories">
@@ -368,13 +368,13 @@ export default function App() {
             ))}
           </div>
           <div className="grid2">
-            <div className="metric"><div className="metric__k">Time left</div><div className="metric__v">{fmtLeft(dash.expiry_at)}</div></div>
-            <div className="metric"><div className="metric__k">Devices</div><div className="metric__v">{dash.device_limit}</div></div>
-            <div className="metric"><div className="metric__k">Traffic</div><div className="metric__v">{dash.total_gb > 0 ? `${dash.used_gb}/${dash.total_gb} GB` : "Unlimited"}</div></div>
-            <div className="metric"><div className="metric__k">Segment</div><div className="metric__v">{dash.segment || dash.sub_type}</div></div>
+            <div className="metric"><div className="metric__k">До конца</div><div className="metric__v">{fmtLeft(dash.expiry_at)}</div></div>
+            <div className="metric"><div className="metric__k">Устройства</div><div className="metric__v">{dash.device_limit}</div></div>
+            <div className="metric"><div className="metric__k">Трафик</div><div className="metric__v">{dash.total_gb > 0 ? `${dash.used_gb}/${dash.total_gb} GB` : "Безлимит"}</div></div>
+            <div className="metric"><div className="metric__k">Сегмент</div><div className="metric__v">{dash.segment || dash.sub_type}</div></div>
           </div>
-          <div className="muted">{`Points: ${points?.available_points ?? 0} | Expiring soon: ${points?.expiring_soon_points ?? 0}`}</div>
-          {dash.active_offer ? <div className="pill pill--ok">{`Offer: ${dash.active_offer.price_stars}⭐ until ${fmtDate(dash.active_offer.expires_at)}`}</div> : null}
+          <div className="muted">{`Баллы: ${points?.available_points ?? 0} | Скоро сгорят: ${points?.expiring_soon_points ?? 0}`}</div>
+          {dash.active_offer ? <div className="pill pill--ok">{`Офер: ${dash.active_offer.price_stars}⭐ до ${fmtDate(dash.active_offer.expires_at)}`}</div> : null}
           <div className="plans-mini">
             {PLAN_CHOICES.map((p) => (
               <button
@@ -391,44 +391,44 @@ export default function App() {
             ))}
           </div>
           <div className="actions">
-            <button className="btn" type="button" onClick={() => onPay(dash.active_offer?.plan_code || selectedPlan || segment.ctaPlan)}>Connect / Renew</button>
-            <button className="btn btn--ghost" type="button" onClick={() => onCopyKey("copied_key")}>Copy key</button>
+            <button className="btn" type="button" onClick={() => onPay(dash.active_offer?.plan_code || selectedPlan || segment.ctaPlan)}>Подключить / Продлить</button>
+            <button className="btn btn--ghost" type="button" onClick={() => onCopyKey("copied_key")}>Скопировать ключ</button>
           </div>
         </section>
       ) : null}
 
       {uTab === "connect" ? (
         <section className="card">
-          <div className="card__title">Connect Wizard</div>
-          <div className="step"><div className="step__n">{connectStep === 1 ? "o" : "1"}</div><div className="step__body">Import key to client</div></div>
-          <div className="step"><div className="step__n">{connectStep === 2 ? "o" : "2"}</div><div className="step__body">Run connection check</div></div>
-          <div className="step"><div className="step__n">{connectStep === 3 ? "o" : "3"}</div><div className="step__body">Done</div></div>
+          <div className="card__title">Мастер подключения</div>
+          <div className="step"><div className="step__n">{connectStep === 1 ? "o" : "1"}</div><div className="step__body">Импорт ключа в клиент</div></div>
+          <div className="step"><div className="step__n">{connectStep === 2 ? "o" : "2"}</div><div className="step__body">Проверка подключения</div></div>
+          <div className="step"><div className="step__n">{connectStep === 3 ? "o" : "3"}</div><div className="step__body">Готово</div></div>
           <div className="list">
             {clientOptionsForPlatform().map((c) => (
               <div key={c.title} className="row row--btn" role="button" tabIndex={0} onClick={() => openLink(c.url)} onKeyDown={() => openLink(c.url)}>
                 <div>
                   <div className="row__title">{c.title}</div>
-                  <div className="row__sub">Recommended client</div>
+                  <div className="row__sub">Рекомендуемый клиент</div>
                 </div>
               </div>
             ))}
           </div>
           <div className="actions">
-            <button className="btn" type="button" onClick={runConnectImport}>Import</button>
-            <button className="btn btn--ghost" type="button" onClick={finishConnect}>Check and Finish</button>
+            <button className="btn" type="button" onClick={runConnectImport}>Импорт</button>
+            <button className="btn btn--ghost" type="button" onClick={finishConnect}>Проверить и завершить</button>
           </div>
           <div className="actions">
-            <button className="btn btn--ghost" type="button" onClick={() => onCopyKey("copy_used")}>Fallback: Copy</button>
-            <button className="btn btn--ghost" type="button" onClick={() => openLink("https://t.me/" + (user.support?.username || "portal_privacy_helpbot"))}>Open instruction</button>
+            <button className="btn btn--ghost" type="button" onClick={() => onCopyKey("copy_used")}>Если не открылось: копировать</button>
+            <button className="btn btn--ghost" type="button" onClick={() => openLink("https://t.me/" + (user.support?.username || "portal_privacy_helpbot"))}>Открыть инструкцию</button>
           </div>
-          <div className="muted">{`Platform: ${platform}`}</div>
+          <div className="muted">{`Платформа: ${platform}`}</div>
         </section>
       ) : null}
 
       {uTab === "nodes" ? (
         <section className="card">
-          <div className="card__title">Nodes</div>
-          <svg viewBox="0 0 320 160" className="nodes-map" aria-label="nodes map">
+          <div className="card__title">Ноды</div>
+          <svg viewBox="0 0 320 160" className="nodes-map" aria-label="карта нод">
             <rect x="0" y="0" width="320" height="160" rx="12" />
             {MAP_POINTS.map((p) => (
               <g key={p.code} onClick={() => setSelectedNodeCode(p.code)} role="button">
@@ -447,13 +447,13 @@ export default function App() {
                   <div className="row__title">{`${n.country} • ${n.code.toUpperCase()}`}</div>
                   <div className="row__sub">{`${n.host} • ping ${n.ping_ms ?? "n/a"}ms`}</div>
                 </div>
-                <div className={n.is_healthy ? "pill pill--ok" : "pill pill--bad"}>{n.is_healthy ? "Online" : "Degraded"}</div>
+                <div className={n.is_healthy ? "pill pill--ok" : "pill pill--bad"}>{n.is_healthy ? "Онлайн" : "Проблема"}</div>
               </button>
             ))}
           </div>
           <div className="actions">
-            <button className="btn btn--ghost" onClick={runDiagnostics} type="button">Run diagnostics</button>
-            <button className="btn btn--ghost" onClick={runSpeedCheck} disabled={probeBusy} type="button">Speed check</button>
+            <button className="btn btn--ghost" onClick={runDiagnostics} type="button">Диагностика</button>
+            <button className="btn btn--ghost" onClick={runSpeedCheck} disabled={probeBusy} type="button">Проверка скорости</button>
           </div>
           <div className="muted">{diagText || speedText}</div>
         </section>
@@ -461,11 +461,11 @@ export default function App() {
 
       {uTab === "support" ? (
         <section className="card">
-          <div className="card__title">Support</div>
+          <div className="card__title">Поддержка</div>
           <div className="actions">
-            <button className="btn btn--ghost" type="button" onClick={() => openLink(user.support.new_ticket_link)}>Open helpbot</button>
+            <button className="btn btn--ghost" type="button" onClick={() => openLink(user.support.new_ticket_link)}>Открыть бот поддержки</button>
           </div>
-          <textarea className="field field--area" value={ticketBody} onChange={(e) => setTicketBody(e.target.value)} placeholder="Describe issue" />
+          <textarea className="field field--area" value={ticketBody} onChange={(e) => setTicketBody(e.target.value)} placeholder="Опишите проблему" />
           <div className="actions">
             <button
               className="btn"
@@ -479,7 +479,7 @@ export default function App() {
                 pulse("success");
               }}
             >
-              Create ticket
+              Создать тикет
             </button>
           </div>
           <div className="list">
@@ -498,12 +498,12 @@ export default function App() {
               <div className="list">
                 {ticket.messages.map((m) => (
                   <div key={m.id} className={m.sender_role === "admin" ? "msg msg--op" : "msg msg--mine"}>
-                    <div className="row__sub">{m.sender_role === "admin" ? "Operator" : "You"}</div>
+                    <div className="row__sub">{m.sender_role === "admin" ? "Оператор" : "Вы"}</div>
                     <div>{m.body}</div>
                   </div>
                 ))}
               </div>
-              <textarea className="field field--area" value={replyBody} onChange={(e) => setReplyBody(e.target.value)} placeholder="Reply" />
+              <textarea className="field field--area" value={replyBody} onChange={(e) => setReplyBody(e.target.value)} placeholder="Ответ" />
               <button
                 className="btn"
                 type="button"
@@ -515,7 +515,7 @@ export default function App() {
                   setTickets(await fetchTickets(20));
                 }}
               >
-                Send reply
+                Отправить ответ
               </button>
             </>
           ) : null}
