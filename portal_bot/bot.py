@@ -12,6 +12,7 @@ import os
 import re
 import uuid
 import secrets
+from pathlib import Path
 from io import BytesIO
 from datetime import datetime, timedelta, timezone
 from typing import Optional
@@ -155,6 +156,7 @@ import html
 # ==========================================
 #               CONFIGURATION
 # ==========================================
+load_dotenv(dotenv_path=Path(__file__).resolve().with_name(".env"))
 load_dotenv()
 
 BOT_TOKEN = os.getenv("BOT_TOKEN")
@@ -3829,6 +3831,8 @@ def _ticket_status_title(status: str) -> str:
 
 def _ticket_message_preview(text: str, limit: int = 220) -> str:
     one_line = " ".join((text or "").split())
+    if not one_line:
+        return "(без текста)"
     if len(one_line) > limit:
         return one_line[: limit - 1] + "…"
     return one_line
@@ -3864,7 +3868,7 @@ async def _render_ticket(callback: CallbackQuery, ticket_id: int) -> None:
             await callback.answer("Нет доступа к тикету", show_alert=True)
             return
 
-        msgs = list_ticket_messages(session, ticket_id=ticket.id, limit=8)
+        msgs = list_ticket_messages(session, ticket_id=ticket.id, limit=20)
         status = _ticket_status_title(ticket.status)
         created = ticket.created_at.strftime("%d.%m %H:%M") if ticket.created_at else "-"
         updated = ticket.updated_at.strftime("%d.%m %H:%M") if ticket.updated_at else "-"

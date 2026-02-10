@@ -2,10 +2,16 @@
 
 import asyncio
 import os
+from pathlib import Path
 from datetime import datetime, timedelta
 
 import aiohttp
+from dotenv import load_dotenv
 from sqlalchemy import and_, func, or_
+
+# Load env from repo-local file first to avoid cwd-dependent startup behavior.
+load_dotenv(dotenv_path=Path(__file__).resolve().with_name(".env"))
+load_dotenv()
 
 from config import Settings
 from db import SessionLocal, init_db

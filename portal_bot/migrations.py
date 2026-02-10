@@ -21,6 +21,12 @@ def run_migrations(engine: Engine) -> None:
     Idempotent SQLite migrations for legacy DBs.
     create_all handles new tables, but won't add columns to existing ones.
     """
+    dialect = (getattr(engine, "dialect", None) and engine.dialect.name or "").lower()
+    # Phase-2 groundwork: keep startup safe on non-SQLite engines.
+    # PostgreSQL-specific migrations will be introduced in the dedicated phase.
+    if dialect and dialect != "sqlite":
+        return
+
     with engine.begin() as conn:
         # users table: add columns if missing
         if conn.execute(text("SELECT name FROM sqlite_master WHERE type='table' AND name='users';")).fetchone():

@@ -19,6 +19,7 @@ import secrets
 import time
 import uuid
 from datetime import datetime, timedelta
+from pathlib import Path
 from typing import Any
 from urllib.parse import parse_qsl
 
@@ -28,6 +29,10 @@ from fastapi import FastAPI, Header, HTTPException, Query, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 from sqlalchemy import or_, func
+
+# Load env from repo-local file first to avoid cwd-dependent startup behavior.
+load_dotenv(dotenv_path=Path(__file__).resolve().with_name(".env"))
+load_dotenv()
 
 from config import Settings, env_bool, env_int
 from db import SessionLocal, init_db
@@ -63,7 +68,6 @@ from pay_attempts_service import start_attempt
 from points_service import available_points, preview_redeemable_points
 
 
-load_dotenv()
 init_db()
 
 

@@ -10,12 +10,17 @@ from __future__ import annotations
 
 import logging
 import os
+from pathlib import Path
 from datetime import datetime, timezone
 
 from aiogram import Bot, Dispatcher, F, Router
 from aiogram.filters import CommandStart
 from aiogram.types import CallbackQuery, InlineKeyboardButton, InlineKeyboardMarkup, Message
 from dotenv import load_dotenv
+
+# Load env from repo-local file first to avoid cwd-dependent startup behavior.
+load_dotenv(dotenv_path=Path(__file__).resolve().with_name(".env"))
+load_dotenv()
 
 from db import SessionLocal, init_db
 from tickets_repo import (
@@ -33,8 +38,6 @@ from tickets_repo import (
     set_ticket_status,
 )
 
-
-load_dotenv()
 
 HELP_BOT_TOKEN = (os.getenv("HELP_BOT_TOKEN") or "").strip()
 ADMIN_ID = int(os.getenv("ADMIN_ID", "0"))
@@ -69,16 +72,18 @@ def _now_str(dt: datetime | None) -> str:
 def _ticket_status_title(status: str) -> str:
     st = (status or "").lower().strip()
     if st == STATUS_OPEN:
-        return "🟡 Open"
+        return "🟡 Открыт"
     if st == STATUS_IN_PROGRESS:
-        return "🟡 Open • In Progress"
+        return "🟡 В работе"
     if st == STATUS_CLOSED:
-        return "⚪ Closed"
+        return "⚪ Закрыт"
     return st or "Неизвестно"
 
 
 def _ticket_message_preview(text: str, limit: int = 200) -> str:
     t = (text or "").strip().replace("\n", " ")
+    if not t:
+        return "(без текста)"
     return t if len(t) <= limit else t[: max(0, limit - 1)] + "…"
 
 
@@ -152,7 +157,7 @@ async def _render_ticket(callback: CallbackQuery, ticket_id: int) -> None:
             await _safe_answer(callback, "Нет доступа", show_alert=True)
             return
 
-        msgs = list_ticket_messages(session, ticket_id=ticket.id, limit=8)
+        msgs = list_ticket_messages(session, ticket_id=ticket.id, limit=20)
         lines = []
         for msg in msgs:
             role = "Оператор" if (msg.sender_role or "").lower() == "admin" else "Пользователь"
