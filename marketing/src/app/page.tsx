@@ -38,12 +38,18 @@ const FAQS = [
   { q: "Можно ли поменять тариф?", a: "Да, апгрейд работает мгновенно. Оставшиеся дни пересчитываются и сохраняются." },
 ];
 
-const TESTIMONIALS = [
-  { text: "Подключился за минуту через бот. Работает стабильно уже 3 месяца без единого сбоя.", author: "Дмитрий", tag: "PRO 6 мес" },
-  { text: "Наконец-то сервис, который просто работает. Без дурацких приложений с рекламой.", author: "Анна", tag: "PRO 12 мес" },
-  { text: "Пинг до Германии 38ms — играю без лагов. Поддержка ответила за 2 минуты.", author: "Максим", tag: "PRO 3 мес" },
-  { text: "Перешёл с другого сервиса. Здесь быстрее, дешевле и нет навязчивого маркетинга.", author: "Алексей", tag: "PRO 9 мес" },
-];
+type Testimonial = {
+  text: string;
+  author: string;
+  tag: string;
+};
+
+type ApiReview = {
+  username?: string;
+  rating?: number;
+  text?: string;
+  date?: string;
+};
 
 const MARQUEE_ITEMS = [
   "ENCRYPTED", "●", "FAST", "●", "STABLE", "●", "GLOBAL", "●",
@@ -325,15 +331,47 @@ function Features() {
 /* ── Testimonials ── */
 function Testimonials() {
   const [activeIdx, setActiveIdx] = useState(0);
+  const [testimonials, setTestimonials] = useState<Testimonial[]>([]);
   const ref = useRef<HTMLElement>(null);
 
   useEffect(() => {
+    let aborted = false;
+    const load = async () => {
+      try {
+        const r = await fetch("/api/reviews", { cache: "no-store" });
+        if (!r.ok) return;
+        const data = await r.json() as { reviews?: ApiReview[] };
+        const rows = Array.isArray(data.reviews) ? data.reviews : [];
+        const next = rows
+          .filter((row) => typeof row.text === "string" && row.text.trim().length > 0)
+          .slice(0, 10)
+          .map((row) => ({
+            text: (row.text || "").trim(),
+            author: ((row.username || "Пользователь").trim() || "Пользователь"),
+            tag: `${Math.max(1, Math.min(5, Number(row.rating) || 5))}★`,
+          }));
+        if (!aborted && next.length > 0) {
+          setTestimonials(next);
+          setActiveIdx(0);
+        }
+      } catch {
+        // Keep empty state when API is unavailable.
+      }
+    };
+    void load();
+    return () => {
+      aborted = true;
+    };
+  }, []);
+
+  useEffect(() => {
     if (prefersReducedMotion()) return;
+    if (testimonials.length < 2) return;
     const interval = setInterval(() => {
-      setActiveIdx((prev) => (prev + 1) % TESTIMONIALS.length);
+      setActiveIdx((prev) => (prev + 1) % testimonials.length);
     }, 4500);
     return () => clearInterval(interval);
-  }, []);
+  }, [testimonials.length]);
 
   useEffect(() => {
     if (prefersReducedMotion()) return;
@@ -358,7 +396,10 @@ function Testimonials() {
     }
   }, [activeIdx]);
 
-  const t = TESTIMONIALS[activeIdx];
+  const visibleTestimonials = testimonials.length > 0
+    ? testimonials
+    : [{ text: "Отзывы скоро появятся после модерации.", author: "PORTAL", tag: "" }];
+  const t = visibleTestimonials[activeIdx] || visibleTestimonials[0];
 
   return (
     <section className="testimonials" ref={ref}>
@@ -372,7 +413,7 @@ function Testimonials() {
         </div>
       </div>
       <div className="testimonial-dots">
-        {TESTIMONIALS.map((_, i) => (
+        {testimonials.map((_, i) => (
           <button
             key={i}
             type="button"
