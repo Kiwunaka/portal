@@ -214,6 +214,15 @@ class ApiP0ExtensionsTests(unittest.TestCase):
         self.assertEqual(r.headers.get("x-probe-size-mb"), "2")
         self.assertEqual(len(r.content), 2 * 1024 * 1024)
 
+    def test_public_social_proof_returns_aggregate(self) -> None:
+        client = TestClient(self.api.app)
+        r = client.get("/api/public/social-proof")
+        self.assertEqual(r.status_code, 200, r.text)
+        body = r.json()
+        self.assertGreaterEqual(int(body.get("connected_users", 0)), 1)
+        self.assertIn("updated_at", body)
+        self.assertEqual(r.headers.get("cache-control"), "public, max-age=60")
+
     def test_admin_metrics_status_endpoint(self) -> None:
         client = TestClient(self.api.app)
         hdrs = {"X-Telegram-Init-Data": self._init_data(9999, "admin")}

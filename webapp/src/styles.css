@@ -908,6 +908,23 @@ body {
   filter: drop-shadow(0 0 6px rgba(255, 71, 87, 0.5));
 }
 
+.nodes-map .node-hit:focus-visible {
+  outline: none;
+}
+
+.nodes-map .node-hit:focus-visible .node-point {
+  filter: drop-shadow(0 0 14px rgba(255, 71, 87, 0.95));
+}
+
+.nodes-map .node-hit:focus-visible .node-label {
+  fill: var(--red);
+}
+
+.nodes-map .node-hit:focus-visible .node-ring {
+  opacity: 0.65;
+  stroke-width: 2;
+}
+
 .nodes-map .node-point.selected {
   fill: var(--red);
   filter: drop-shadow(0 0 12px rgba(255, 71, 87, 0.8));
@@ -1209,6 +1226,16 @@ body {
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
+  }
+}
+
+@media (max-width: 900px), (pointer: coarse) {
+  .card,
+  .glass-card,
+  .nav,
+  .banner {
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
   }
 }
 

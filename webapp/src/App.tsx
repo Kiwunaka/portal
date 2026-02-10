@@ -275,7 +275,21 @@ function NodesMap({
       ))}
       {/* Node points */}
       {MAP_POINTS.map((p) => (
-        <g key={p.code} onClick={() => onSelect(p.code)} role="button" style={{ cursor: "pointer" }}>
+        <g
+          key={p.code}
+          className="node-hit"
+          role="button"
+          tabIndex={0}
+          aria-label={`Выбрать узел ${p.label}`}
+          style={{ cursor: "pointer" }}
+          onClick={() => onSelect(p.code)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" || e.key === " ") {
+              e.preventDefault();
+              onSelect(p.code);
+            }
+          }}
+        >
           <circle
             className={`node-ring ${selectedCode === p.code ? "active" : ""}`}
             cx={p.x}
@@ -718,7 +732,19 @@ export default function App() {
 
             <div className="list">
               {clientOptionsForPlatform().map((c) => (
-                <div key={c.title} className="row row--btn" role="button" tabIndex={0} onClick={() => openLink(c.url)} onKeyDown={() => openLink(c.url)}>
+                <div
+                  key={c.title}
+                  className="row row--btn"
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => openLink(c.url)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault();
+                      openLink(c.url);
+                    }
+                  }}
+                >
                   <div>
                     <div className="row__title">{c.title}</div>
                     <div className="row__sub">Рекомендуемый клиент</div>

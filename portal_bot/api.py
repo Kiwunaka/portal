@@ -715,6 +715,30 @@ async def featured_reviews() -> dict:
         s.close()
 
 
+@app.get("/api/public/social-proof")
+async def public_social_proof(response: Response) -> dict:
+    """
+    Public aggregate counter for marketing surfaces.
+    No personal data is exposed.
+    """
+    s = SessionLocal()
+    try:
+        total_users = int(s.query(func.count(User.tg_id)).scalar() or 0)
+        active_users = int(s.query(func.count(User.tg_id)).filter(User.is_active == True).scalar() or 0)
+        paid_users = int(s.query(func.count(User.tg_id)).filter(func.upper(User.sub_type) == "PAID").scalar() or 0)
+        connected_users = max(total_users, active_users)
+        response.headers["Cache-Control"] = "public, max-age=60"
+        return {
+            "connected_users": int(connected_users),
+            "total_users": int(total_users),
+            "active_users": int(active_users),
+            "paid_users": int(paid_users),
+            "updated_at": datetime.utcnow().isoformat(),
+        }
+    finally:
+        s.close()
+
+
 @app.post("/api/events")
 async def api_track_event(payload: EventIn, request: Request, x_telegram_init_data: str = Header(default="")) -> dict:
     auth_user = _require_auth_user(x_telegram_init_data, request=request)

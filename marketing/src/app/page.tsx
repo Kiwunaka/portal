@@ -10,6 +10,7 @@ if (typeof window !== "undefined") {
 
 const TG_BOT_FALLBACK = process.env.NEXT_PUBLIC_TELEGRAM_BOT_URL || "https://t.me/swazist_bot";
 const CHECKOUT_URL = process.env.NEXT_PUBLIC_PAY_CHECKOUT_URL || TG_BOT_FALLBACK;
+const SOCIAL_PROOF_URL = (process.env.NEXT_PUBLIC_SOCIAL_PROOF_URL || "").trim();
 
 const FEATURES = [
   { type: "01×", title: "Мгновенное подключение", desc: "Ключ выдаётся через Telegram и импортируется в 1-2 шага. Без регистрации, без паролей.", num: "01" },
@@ -67,6 +68,12 @@ function parseSegmentFromQuery(search: string): SegmentKey {
 
 function prefersReducedMotion(): boolean {
   return typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+}
+
+function normalizePositiveInt(value: unknown): number {
+  const n = Number(value);
+  if (!Number.isFinite(n) || n <= 0) return 0;
+  return Math.round(n);
 }
 
 /* ── Theme Toggle Hook ── */
@@ -426,11 +433,47 @@ function Plans() {
 /* ── CTA ── */
 function CTA() {
   const [segment, setSegment] = useState<SegmentKey>("FREE");
+  const [soldCountTarget, setSoldCountTarget] = useState(2847);
   const current = useMemo(() => SEGMENT_CTA[segment], [segment]);
   const ref = useRef<HTMLElement>(null);
 
   useEffect(() => {
     setSegment(parseSegmentFromQuery(window.location.search));
+  }, []);
+
+  useEffect(() => {
+    let aborted = false;
+    const sources = [SOCIAL_PROOF_URL, "/api/public/social-proof"].map((x) => x.trim()).filter(Boolean);
+    if (!sources.length) return;
+
+    const load = async () => {
+      for (const url of sources) {
+        try {
+          const r = await fetch(url, { cache: "no-store" });
+          if (!r.ok) continue;
+          const data = await r.json() as {
+            connected_users?: number;
+            total_users?: number;
+            paid_users?: number;
+          };
+          const next =
+            normalizePositiveInt(data.connected_users) ||
+            normalizePositiveInt(data.total_users) ||
+            normalizePositiveInt(data.paid_users);
+          if (next > 0) {
+            if (!aborted) setSoldCountTarget(next);
+            return;
+          }
+        } catch {
+          // Try next source.
+        }
+      }
+    };
+
+    void load();
+    return () => {
+      aborted = true;
+    };
   }, []);
 
   useEffect(() => {
@@ -452,7 +495,7 @@ function CTA() {
         once: true,
         onEnter: () => {
           gsap.to({ val: 0 }, {
-            val: 2847,
+            val: soldCountTarget,
             duration: 2,
             ease: "power2.out",
             onUpdate: function () {
@@ -464,7 +507,7 @@ function CTA() {
       });
     }, ref);
     return () => ctx.revert();
-  }, []);
+  }, [soldCountTarget]);
 
   return (
     <section className="cta-section" id="cta" ref={ref}>
@@ -485,7 +528,7 @@ function CTA() {
         </div>
         <div className="sold-counter">
           <div className="label">ПОЛЬЗОВАТЕЛЕЙ ПОДКЛЮЧЕНО</div>
-          <div className="value" id="soldCount">0</div>
+          <div className="value" id="soldCount">{soldCountTarget.toLocaleString()}</div>
         </div>
       </div>
     </section>
@@ -549,6 +592,25 @@ function BackToTop() {
   );
 }
 
+function MobileCommandBar() {
+  const [visible, setVisible] = useState(false);
+  useEffect(() => {
+    const onScroll = () => setVisible(window.scrollY > 260);
+    onScroll();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
+
+  return (
+    <div className={`mobile-command ${visible ? "mobile-command--show" : ""}`} aria-hidden={!visible}>
+      <a href={CHECKOUT_URL} target="_blank" rel="noreferrer" className="mobile-command__cta">
+        <span className="mobile-command__lead">Открыть Telegram</span>
+        <span className="mobile-command__tail">→ Подключить / Продлить</span>
+      </a>
+    </div>
+  );
+}
+
 /* ── Footer ── */
 function Footer() {
   return (
@@ -588,6 +650,7 @@ export default function HomePage() {
         <FAQ />
         <Footer />
       </main>
+      <MobileCommandBar />
       <BackToTop />
     </>
   );
