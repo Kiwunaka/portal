@@ -68,7 +68,7 @@ class P0ServicesTests(unittest.TestCase):
             tg_id=1001,
             source="webapp",
             plan_code="9_months",
-            amount_stars=1299,
+            amount_stars=1399,
             currency="XTR",
         )
         self.assertIsNotNone(row)
@@ -99,7 +99,7 @@ class P0ServicesTests(unittest.TestCase):
             tg_id=1002,
             source="bot",
             plan_code="1_month",
-            amount_stars=199,
+            amount_stars=249,
             currency="XTR",
         )
         self.assertIsNotNone(row)
@@ -126,21 +126,21 @@ class P0ServicesTests(unittest.TestCase):
             tg_id=3001,
             source="bot",
             plan_code="1_month",
-            amount_stars=199,
+            amount_stars=249,
             currency="XTR",
         )
         second = svc.start_attempt(
             tg_id=3001,
             source="bot",
             plan_code="3_months",
-            amount_stars=499,
+            amount_stars=699,
             currency="XTR",
         )
         self.assertIsNotNone(first)
         self.assertIsNotNone(second)
         resolved = svc.resolve_pending_attempt_for_payment(
             tg_id=3001,
-            amount_stars=499,
+            amount_stars=699,
             currency="XTR",
             within_hours=24,
         )
@@ -164,18 +164,17 @@ class P0ServicesTests(unittest.TestCase):
         self.assertEqual(total, 300)
         self.assertGreaterEqual(expiring, 0)
 
-        # For 1_month=199 with first purchase 20%:
-        # plan cap after first-discount ~= 79, total cap limit leaves 100 max by total,
-        # so redeemable should be <= 79.
+        # For 1_month=249 with first purchase 20%:
+        # plan cap after first-discount ~= 99, so redeemable should be <= 99.
         preview = pts.preview_redeemable_points(
             tg_id=2001,
-            plan_price_stars=199,
+            plan_price_stars=249,
             first_purchase_discount_pct=0.20,
         )
         self.assertEqual(preview.available_points, 300)
         self.assertLessEqual(preview.redeemable_points, preview.max_points_by_plan_cap)
         self.assertLessEqual(preview.redeemable_points, preview.max_points_by_total_cap)
-        self.assertLessEqual(preview.redeemable_points, 79)
+        self.assertLessEqual(preview.redeemable_points, 99)
 
         used = pts.spend_points(tg_id=2001, amount=preview.redeemable_points, pay_attempt_id=78)
         self.assertEqual(used, preview.redeemable_points)

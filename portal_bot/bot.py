@@ -204,7 +204,7 @@ PAID_LIMIT_IP = int(os.getenv("PAID_LIMIT_IP", "5"))
 FREE_TOTAL_GB = int(os.getenv("FREE_TOTAL_GB", "40"))
 NEWS_CHANNEL_ID = os.getenv("NEWS_CHANNEL_ID", "@portal_privacy")
 STACK_TOTAL_DISCOUNT_CAP = float(os.getenv("STACK_TOTAL_DISCOUNT_CAP", "0.70"))
-FAMILY_SLOT_STARS = int(os.getenv("FAMILY_SLOT_STARS", "59"))
+FAMILY_SLOT_STARS = int(os.getenv("FAMILY_SLOT_STARS", "99"))
 FAMILY_SLOT_DAYS = int(os.getenv("FAMILY_SLOT_DAYS", "30"))
 FAMILY_SLOT_MAX = int(os.getenv("FAMILY_SLOT_MAX", "3"))
 
@@ -695,7 +695,7 @@ TARIFFS = {
     },
     "1_month": {
         "name": "📅 1 Месяц",
-        "stars": 199,
+        "stars": 249,
         "days": 30,
         "gb": 0,
         "subId": "MONTHLY",
@@ -703,7 +703,7 @@ TARIFFS = {
     },
     "3_months": {
         "name": "📅 3 Месяца",
-        "stars": 499,
+        "stars": 699,
         "days": 91,
         "gb": 0,
         "subId": "QUARTERLY",
@@ -711,7 +711,7 @@ TARIFFS = {
     },
     "6_months": {
         "name": "📅 6 Месяцев",
-        "stars": 949,
+        "stars": 1199,
         "days": 182,
         "gb": 0,
         "subId": "HALF_YEAR",
@@ -719,7 +719,7 @@ TARIFFS = {
     },
     "9_months": {
         "name": "📅 9 Месяцев",
-        "stars": 1299,
+        "stars": 1399,
         "days": 273,
         "gb": 0,
         "subId": "NINE_MONTHS",
@@ -760,12 +760,12 @@ GIFT_CARD_TYPES = {
     },
     "standard": {
         "name": "🎁 Standard (30 Дней)",
-        "stars": 199,
+        "stars": 249,
         "days": 30
     },
     "premium": {
         "name": "🎁 Premium (90 Дней)",
-        "stars": 499,
+        "stars": 699,
         "days": 90
     },
 }
@@ -1266,9 +1266,10 @@ def _channel_bonus_keyboard(next_action: str) -> InlineKeyboardMarkup:
 
 def _channel_bonus_offer_text() -> str:
     channel_name = _channel_name_for_url()
+    channel_url = f"https://t.me/{channel_name}"
     return (
         "🎁 *Бонус за подписку на канал*\n\n"
-        f"Подпишитесь на `@{channel_name}` и получите *{CHANNEL_PREMIUM_DAYS} дней премиум-доступа*.\n"
+        f"Подпишитесь на [КАНАЛ]({channel_url}) и получите *{CHANNEL_PREMIUM_DAYS} дней премиум-доступа*.\n"
         "После подписки нажмите «Проверить и получить».\n\n"
         "Если бонус не нужен, можно продолжить в бесплатном режиме."
     )
@@ -2091,10 +2092,9 @@ async def check_subscription(user_id: int, bot: Bot) -> bool:
         return True
     try:
         member = await bot.get_chat_member(chat_id=channel, user_id=user_id)
-        return member.status in ["member", "administrator", "creator"]
+        return member.status in ["member", "administrator", "creator", "restricted"]
     except Exception as e:
-        # Fallback open on Telegram API issues to avoid breaking trial flow.
-        # Block only on explicit configuration/access errors.
+        # Fail closed: if Telegram membership cannot be verified, do not grant gated bonuses.
         err = (str(e) or "").lower()
         hard_fail_markers = (
             "chat not found",
@@ -2106,12 +2106,13 @@ async def check_subscription(user_id: int, bot: Bot) -> bool:
             "invalid chat id",
             "peer_id_invalid",
             "channel private",
+            "member list is inaccessible",
         )
         if any(m in err for m in hard_fail_markers):
             logger.warning("check_subscription hard-fail user=%s channel=%s err=%s", user_id, channel, e)
             return False
-        logger.warning("check_subscription fallback-allow user=%s channel=%s err=%s", user_id, channel, e)
-        return True
+        logger.warning("check_subscription verify-fail user=%s channel=%s err=%s", user_id, channel, e)
+        return False
 
 TEXTS = {
     "welcome": (
@@ -2405,17 +2406,17 @@ def tariff_keyboard(tg_id: int = 0, show_trial: bool = True, show_gb_only: bool 
             icon = "🚀"
         elif key == "3_months":
             icon = "💠"
-            marketing_badge = " (ПОПУЛЯРНЫЙ)"
+            marketing_badge = " (СТАРТ)"
         elif key == "6_months":
             icon = "🎯"
-            marketing_badge = " (DECOY)"
+            marketing_badge = " (РЕКОМЕНДУЕМ)"
         elif key == "9_months":
             icon = "⭐"
-            marketing_badge = " (ОПТИМУМ)"
+            marketing_badge = " (РАСШИРЕННЫЙ)"
         elif key == "12_months":
             icon = "👑"
             savings = _tariff_savings_pct(key) or 0
-            marketing_badge = f" (РЕКОМЕНДУЕМ, -{savings}%)" if savings > 0 else " (РЕКОМЕНДУЕМ)"
+            marketing_badge = f" (МАКС ВЫГОДА, -{savings}%)" if savings > 0 else " (МАКС ВЫГОДА)"
 
         savings = _tariff_savings_pct(key)
         savings_text = f" (-{savings}%)" if savings and key not in {"12_months"} else ""
@@ -6253,14 +6254,17 @@ async def mode_simple_step3(callback: CallbackQuery):
 
 
 async def _render_mode_simple_step3(callback: CallbackQuery) -> None:
+    starter_price = int(TARIFFS["1_month"]["stars"])
+    recommended_price = int(TARIFFS["6_months"]["stars"])
     text = (
         "2️⃣ *Шаг 2: Активация*\n\n"
         "Теперь нужно создать ваш ключ доступа.\n"
-        "Начните с тарифа на 1 месяц или выберите другой план.\n\n"
+        "Рекомендуем тариф на 6 месяцев: лучший баланс цены и срока.\n\n"
         "Нажмите кнопку ниже."
     )
     kb = InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text="⚡ Подключить за 199 ⭐️", callback_data="buy_1_month")],
+        [InlineKeyboardButton(text=f"⚡ Рекомендуем: 6 месяцев за {recommended_price} ⭐", callback_data="buy_6_months")],
+        [InlineKeyboardButton(text=f"🚀 Начать с 1 месяца за {starter_price} ⭐", callback_data="buy_1_month")],
         [InlineKeyboardButton(text="🤔 Выбрать другой тариф", callback_data="charge")],
         [InlineKeyboardButton(text=f"🎁 {CHANNEL_PREMIUM_DAYS} дней премиум за канал", callback_data="bonus_offer_trial")],
         [InlineKeyboardButton(text="◀️ Назад", callback_data="mode_simple")],
@@ -6485,13 +6489,18 @@ async def admin_tariff_menu(callback: CallbackQuery):
     
     tg_id = int(callback.data.replace("adm_tariff_", ""))
     
+    p1 = int(TARIFFS["1_month"]["stars"])
+    p3 = int(TARIFFS["3_months"]["stars"])
+    p6 = int(TARIFFS["6_months"]["stars"])
+    p9 = int(TARIFFS["9_months"]["stars"])
+    p12 = int(TARIFFS["12_months"]["stars"])
     kb = InlineKeyboardMarkup(inline_keyboard=[
         [InlineKeyboardButton(text="🆓 Бесплатный (соцсети + AI)", callback_data=f"adm_set_{tg_id}_trial")],
-        [InlineKeyboardButton(text="📅 1 Месяц (199 ⭐)", callback_data=f"adm_set_{tg_id}_1_month")],
-        [InlineKeyboardButton(text="📅 3 Месяца (499 ⭐)", callback_data=f"adm_set_{tg_id}_3_months")],
-        [InlineKeyboardButton(text="📅 6 Месяцев (949 ⭐)", callback_data=f"adm_set_{tg_id}_6_months")],
-        [InlineKeyboardButton(text="📅 9 Месяцев (1299 ⭐)", callback_data=f"adm_set_{tg_id}_9_months")],
-        [InlineKeyboardButton(text="📅 1 Год (1499 ⭐)", callback_data=f"adm_set_{tg_id}_12_months")],
+        [InlineKeyboardButton(text=f"📅 1 Месяц ({p1} ⭐)", callback_data=f"adm_set_{tg_id}_1_month")],
+        [InlineKeyboardButton(text=f"📅 3 Месяца ({p3} ⭐)", callback_data=f"adm_set_{tg_id}_3_months")],
+        [InlineKeyboardButton(text=f"📅 6 Месяцев ({p6} ⭐)", callback_data=f"adm_set_{tg_id}_6_months")],
+        [InlineKeyboardButton(text=f"📅 9 Месяцев ({p9} ⭐)", callback_data=f"adm_set_{tg_id}_9_months")],
+        [InlineKeyboardButton(text=f"📅 1 Год ({p12} ⭐)", callback_data=f"adm_set_{tg_id}_12_months")],
         [InlineKeyboardButton(text="◀️ Назад", callback_data=f"adm_user_{tg_id}")]
     ])
     
@@ -6507,10 +6516,13 @@ async def admin_gift_menu(callback: CallbackQuery):
     if callback.from_user.id != ADMIN_ID:
         return
     
+    mini_price = int(GIFT_CARD_TYPES["mini"]["stars"])
+    standard_price = int(GIFT_CARD_TYPES["standard"]["stars"])
+    premium_price = int(GIFT_CARD_TYPES["premium"]["stars"])
     kb = InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text="🎫 Создать Mini (7д / 59⭐)", callback_data="admin_giftcode_mini")],
-        [InlineKeyboardButton(text="🎫 Создать Standard (30д / 199⭐)", callback_data="admin_giftcode_standard")],
-        [InlineKeyboardButton(text="🎫 Создать Premium (90д / 499⭐)", callback_data="admin_giftcode_premium")],
+        [InlineKeyboardButton(text=f"🎫 Создать Mini (7д / {mini_price}⭐)", callback_data="admin_giftcode_mini")],
+        [InlineKeyboardButton(text=f"🎫 Создать Standard (30д / {standard_price}⭐)", callback_data="admin_giftcode_standard")],
+        [InlineKeyboardButton(text=f"🎫 Создать Premium (90д / {premium_price}⭐)", callback_data="admin_giftcode_premium")],
         [InlineKeyboardButton(text="◀️ Назад", callback_data="admin")]
     ])
     

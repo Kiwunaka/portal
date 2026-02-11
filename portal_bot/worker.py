@@ -349,7 +349,7 @@ async def reactivation_job() -> None:
                 continue
             if not _mark_campaign_sent_once(tg_id=int(u.tg_id), campaign_key=campaign_base):
                 continue
-            text = "🌍 Добавили новый узел. Доступен 24-часовой тест, проверьте качество."
+            text = "🌍 Доступен 24-часовой тест полного режима. Проверьте качество подключения."
             buttons = [[{"text": "🟦 Проверить и подключить", "url": _bot_pay_url()}]]
             await _telegram_send_message(chat_id=int(u.tg_id), text=text, buttons=buttons)
         await asyncio.sleep(3600)
@@ -357,6 +357,7 @@ async def reactivation_job() -> None:
 
 async def node_metrics_watchdog_job() -> None:
     started_at = datetime.utcnow()
+    stale_cycles = 0
     while True:
         stale_after = max(300, int(os.getenv("NODE_METRICS_STALE_AFTER_SECONDS", "900")))
         s = SessionLocal()
@@ -371,8 +372,10 @@ async def node_metrics_watchdog_job() -> None:
             await asyncio.sleep(3600)
             continue
         stale = bool((not last_sample) or ((now - last_sample).total_seconds() > stale_after))
-        if stale and int(Settings.ADMIN_ID or 0) > 0:
-            key = f"metrics_stale:{now.strftime('%Y%m%d%H')}"
+        stale_cycles = stale_cycles + 1 if stale else 0
+        # Alert only after two consecutive stale checks and no more than once per day.
+        if stale and stale_cycles >= 2 and int(Settings.ADMIN_ID or 0) > 0:
+            key = f"metrics_stale:{now.strftime('%Y%m%d')}"
             if _mark_campaign_sent_once(tg_id=int(Settings.ADMIN_ID), campaign_key=key):
                 text = "⚠️ Метрики нод устарели: проверьте `portal-node-metrics.timer`."
                 await _telegram_send_message(chat_id=int(Settings.ADMIN_ID), text=text)
@@ -380,6 +383,7 @@ async def node_metrics_watchdog_job() -> None:
 
 
 async def channel_bonus_guard_job() -> None:
+    last_verify_error_alert_at: datetime | None = None
     while True:
         channel = (PUBLIC_CHANNEL or "").lstrip("@").strip()
         if not channel:
@@ -402,6 +406,23 @@ async def channel_bonus_guard_job() -> None:
         for u in rows:
             is_member, reason = await _telegram_get_chat_member(channel, int(u.tg_id))
             if is_member:
+                continue
+            if reason != "not_member":
+                # Do not revoke on transient Telegram/API errors to avoid accidental mass downgrades.
+                now_alert = datetime.utcnow()
+                if (
+                    int(Settings.ADMIN_ID or 0) > 0
+                    and (last_verify_error_alert_at is None or (now_alert - last_verify_error_alert_at).total_seconds() >= 3600)
+                ):
+                    await _telegram_send_message(
+                        chat_id=int(Settings.ADMIN_ID),
+                        text=(
+                            "⚠️ Проверка подписки на канал работает нестабильно.\n"
+                            f"Причина: `{reason}`.\n"
+                            "Откат бонусов временно пропущен."
+                        ),
+                    )
+                    last_verify_error_alert_at = now_alert
                 continue
             switched = await _switch_user_to_free(tg_id=int(u.tg_id))
             if switched:

@@ -199,7 +199,7 @@ class ApiP0ExtensionsTests(unittest.TestCase):
         self.assertEqual(start.status_code, 200, start.text)
         body = start.json()
         self.assertTrue(body["ok"])
-        self.assertEqual(body["amount_stars"], 1299)
+        self.assertEqual(body["amount_stars"], 1399)
         self.assertIn("t.me/portal_service_bot", body["pay_url"])
 
         points = client.get("/api/points", headers=hdrs)

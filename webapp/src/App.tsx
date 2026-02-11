@@ -79,10 +79,10 @@ const STORY_SLIDES: StorySlide[] = [
 ];
 
 const PLAN_CHOICES: PlanChoice[] = [
-  { key: "1_month", label: "1 мес", stars: 199 },
-  { key: "3_months", label: "3 мес", stars: 499 },
-  { key: "6_months", label: "6 мес", stars: 949, badge: "Выбор" },
-  { key: "9_months", label: "9 мес", stars: 1299 },
+  { key: "1_month", label: "1 мес", stars: 249 },
+  { key: "3_months", label: "3 мес", stars: 699 },
+  { key: "6_months", label: "6 мес", stars: 1199, badge: "Выбор" },
+  { key: "9_months", label: "9 мес", stars: 1399 },
   { key: "12_months", label: "12 мес", stars: 1499, badge: "Рек." },
 ];
 
@@ -106,8 +106,8 @@ const ADMIN_TABS: Array<{ id: AdminTab; label: string }> = [
 
 const GIFT_CODE_CHOICES: Array<{ key: "mini" | "standard" | "premium"; label: string; days: number; stars: number }> = [
   { key: "mini", label: "Mini", days: 7, stars: 59 },
-  { key: "standard", label: "Standard", days: 30, stars: 199 },
-  { key: "premium", label: "Premium", days: 90, stars: 499 },
+  { key: "standard", label: "Standard", days: 30, stars: 249 },
+  { key: "premium", label: "Premium", days: 90, stars: 699 },
 ];
 
 /* ── Dev Mode: mock data for local preview ── */

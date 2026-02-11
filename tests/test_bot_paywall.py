@@ -106,11 +106,11 @@ class BotPaywallTests(unittest.TestCase):
         ok = asyncio.run(self.bot_module.check_subscription(1001, fake))
         self.assertFalse(ok)
 
-    def test_check_subscription_fallback_true_when_api_fails(self) -> None:
+    def test_check_subscription_false_when_api_fails(self) -> None:
         self.bot_module.NEWS_CHANNEL_ID = "@portal_news_channel"
         fake = _FakeBot(fail=True)
         ok = asyncio.run(self.bot_module.check_subscription(1001, fake))
-        self.assertTrue(ok)
+        self.assertFalse(ok)
 
     def test_opening_bonus_activation_is_one_time(self) -> None:
         self.bot_module.OPENING_PREMIUM_ENABLED = True

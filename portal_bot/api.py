@@ -117,16 +117,16 @@ WEBAPP_DEV_ALLOWED_ORIGINS = {
 }
 API_PLAN_PRICES = {
     "trial": 0,
-    "1_month": 199,
-    "3_months": 499,
-    "6_months": 949,
-    "9_months": 1299,
+    "1_month": 249,
+    "3_months": 699,
+    "6_months": 1199,
+    "9_months": 1399,
     "12_months": 1499,
 }
 GIFT_CARD_TYPES = {
     "mini": {"days": 7, "stars": 59, "name": "Mini"},
-    "standard": {"days": 30, "stars": 199, "name": "Standard"},
-    "premium": {"days": 90, "stars": 499, "name": "Premium"},
+    "standard": {"days": 30, "stars": 249, "name": "Standard"},
+    "premium": {"days": 90, "stars": 699, "name": "Premium"},
 }
 
 
