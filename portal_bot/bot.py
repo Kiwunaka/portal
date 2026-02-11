@@ -20,7 +20,7 @@ from typing import Optional
 import aiohttp
 import qrcode
 try:
-    from aiogram import Bot, Dispatcher, F, Router
+    from aiogram import Bot, Dispatcher, F, Router, BaseMiddleware
     from aiogram.filters import Command, CommandStart
     from aiogram.types import (
         Message, CallbackQuery, PreCheckoutQuery,
@@ -99,6 +99,10 @@ except ModuleNotFoundError:
 
     class Router(_DecoratorRouter):
         pass
+
+    class BaseMiddleware:
+        async def __call__(self, handler, event, data):
+            return await handler(event, data)
 
     class Command:
         def __init__(self, *_args, **_kwargs):
@@ -191,7 +195,7 @@ SUPPORT_USERNAME = (os.getenv("SUPPORT_BOT_USERNAME") or SUPPORT_USERNAME).lstri
 FREE_LIMIT_IP = int(os.getenv("FREE_LIMIT_IP", "2"))
 PAID_LIMIT_IP = int(os.getenv("PAID_LIMIT_IP", "5"))
 FREE_TOTAL_GB = int(os.getenv("FREE_TOTAL_GB", "40"))
-NEWS_CHANNEL_ID = os.getenv("NEWS_CHANNEL_ID", "@portal_news_channel")
+NEWS_CHANNEL_ID = os.getenv("NEWS_CHANNEL_ID", "@portal_privacy")
 STACK_TOTAL_DISCOUNT_CAP = float(os.getenv("STACK_TOTAL_DISCOUNT_CAP", "0.70"))
 FAMILY_SLOT_STARS = int(os.getenv("FAMILY_SLOT_STARS", "59"))
 FAMILY_SLOT_DAYS = int(os.getenv("FAMILY_SLOT_DAYS", "30"))
@@ -216,6 +220,9 @@ logger = logging.getLogger(__name__)
 
 # Track last bot message per user for cleanup
 last_bot_message: dict[int, int] = {}  # tg_id -> message_id
+AUTO_DELETE_SECONDS = max(0, int(os.getenv("BOT_AUTO_DELETE_SECONDS", "86400")))
+_auto_delete_scheduled: set[tuple[int, int]] = set()
+_user_context_mode: dict[int, str] = {}  # tg_id -> "main" | "support"
 
 BTN_STYLE_PRIMARY = "primary"
 BTN_STYLE_SUCCESS = "success"
@@ -223,6 +230,22 @@ BTN_STYLE_DANGER = "danger"
 BTN_EMOJI_PRIMARY_ID = (os.getenv("TG_BTN_EMOJI_PRIMARY_ID") or "").strip()
 BTN_EMOJI_SUCCESS_ID = (os.getenv("TG_BTN_EMOJI_SUCCESS_ID") or "").strip()
 BTN_EMOJI_DANGER_ID = (os.getenv("TG_BTN_EMOJI_DANGER_ID") or "").strip()
+
+
+def _env_bool(name: str, default: bool = False) -> bool:
+    raw = os.getenv(name)
+    if raw is None:
+        return default
+    return raw.strip().lower() in {"1", "true", "yes", "on", "y"}
+
+
+OPENING_PREMIUM_ENABLED = _env_bool("OPENING_PREMIUM_ENABLED", default=True)
+OPENING_PREMIUM_START_CODE = (os.getenv("OPENING_PREMIUM_START_CODE") or "launch14").strip().lower()
+OPENING_PREMIUM_DAYS = max(1, int(os.getenv("OPENING_PREMIUM_DAYS", "14")))
+OPENING_PREMIUM_CAMPAIGN_KEY = (
+    (os.getenv("OPENING_PREMIUM_CAMPAIGN_KEY") or f"opening_premium_{OPENING_PREMIUM_DAYS}d").strip()[:64]
+)
+CHANNEL_PREMIUM_DAYS = max(1, int(os.getenv("CHANNEL_PREMIUM_DAYS", "10")))
 
 
 def _inline_button_supported_fields() -> set[str]:
@@ -238,6 +261,107 @@ def _inline_button_supported_fields() -> set[str]:
 INLINE_BUTTON_FIELDS = _inline_button_supported_fields()
 SUPPORTS_BTN_STYLE = "style" in INLINE_BUTTON_FIELDS
 SUPPORTS_BTN_ICON = "icon_custom_emoji_id" in INLINE_BUTTON_FIELDS
+
+
+def _is_private_user_chat(chat_id: int, tg_id: int) -> bool:
+    return int(chat_id) > 0 and int(tg_id) > 0 and int(chat_id) == int(tg_id)
+
+
+def _set_support_context(tg_id: int, *, enabled: bool) -> None:
+    if int(tg_id) <= 0:
+        return
+    _user_context_mode[int(tg_id)] = "support" if enabled else "main"
+
+
+def _is_support_context(tg_id: int) -> bool:
+    return _user_context_mode.get(int(tg_id), "main") == "support"
+
+
+def _is_support_callback_data(callback_data: str | None) -> bool:
+    data = (callback_data or "").strip().lower()
+    return data.startswith("support") or data.startswith("faq_") or data.startswith("ticket_")
+
+
+async def _schedule_auto_delete(bot: Bot, chat_id: int, message_id: int) -> None:
+    if AUTO_DELETE_SECONDS <= 0:
+        return
+    key = (int(chat_id), int(message_id))
+    if key in _auto_delete_scheduled:
+        return
+    _auto_delete_scheduled.add(key)
+
+    async def _delete_later() -> None:
+        try:
+            await asyncio.sleep(AUTO_DELETE_SECONDS)
+            await bot.delete_message(chat_id=int(chat_id), message_id=int(message_id))
+        except Exception:
+            pass
+        finally:
+            _auto_delete_scheduled.discard(key)
+
+    asyncio.create_task(_delete_later())
+
+
+async def _track_context_message(
+    *,
+    bot: Bot,
+    chat_id: int,
+    tg_id: int,
+    message_id: int,
+) -> None:
+    chat_id = int(chat_id)
+    tg_id = int(tg_id)
+    message_id = int(message_id)
+
+    if not _is_private_user_chat(chat_id, tg_id) or tg_id == ADMIN_ID:
+        return
+
+    support_mode = _is_support_context(tg_id)
+    previous_id = last_bot_message.get(tg_id)
+    if not support_mode:
+        if previous_id and previous_id != message_id:
+            try:
+                await bot.delete_message(chat_id=tg_id, message_id=previous_id)
+            except Exception:
+                pass
+        last_bot_message[tg_id] = message_id
+
+    await _schedule_auto_delete(bot, chat_id=tg_id, message_id=message_id)
+
+
+def _extract_chat_id(*, args: tuple[object, ...], kwargs: dict[str, object]) -> int | None:
+    chat_id = kwargs.get("chat_id")
+    if chat_id is None and args:
+        chat_id = args[0]
+    try:
+        return int(chat_id) if chat_id is not None else None
+    except Exception:
+        return None
+
+
+def _patch_outgoing_message_methods(bot: Bot) -> None:
+    for method_name in ("send_message", "send_photo"):
+        original = getattr(bot, method_name, None)
+        if not callable(original):
+            continue
+
+        async def _wrapped(*args, _orig=original, **kwargs):
+            result = await _orig(*args, **kwargs)
+            try:
+                chat_id = _extract_chat_id(args=args, kwargs=kwargs)
+                message_id = int(getattr(result, "message_id", 0) or 0)
+                if chat_id and message_id:
+                    await _track_context_message(
+                        bot=bot,
+                        chat_id=int(chat_id),
+                        tg_id=int(chat_id),
+                        message_id=message_id,
+                    )
+            except Exception:
+                pass
+            return result
+
+        setattr(bot, method_name, _wrapped)
 
 
 def _parse_mode_to_bot_api(parse_mode: str | object | None) -> str | None:
@@ -327,20 +451,22 @@ def _needs_raw_markup(rows: list[list[dict[str, str]]]) -> bool:
     return False
 
 
-async def _bot_api_call(method: str, payload: dict[str, object]) -> bool:
+async def _bot_api_call(method: str, payload: dict[str, object]) -> dict[str, object] | None:
     token = (BOT_TOKEN or "").strip()
     if not token:
-        return False
+        return None
     endpoint = f"https://api.telegram.org/bot{token}/{method}"
     try:
         async with aiohttp.ClientSession() as session:
             async with session.post(endpoint, json=payload, timeout=aiohttp.ClientTimeout(total=15)) as resp:
                 if resp.status != 200:
-                    return False
+                    return None
                 body = await resp.json(content_type=None)
-                return bool((body or {}).get("ok"))
+                if not bool((body or {}).get("ok")):
+                    return None
+                return body or None
     except Exception:
-        return False
+        return None
 
 
 async def _send_text_with_specs(
@@ -361,15 +487,36 @@ async def _send_text_with_specs(
         }
         if pm:
             payload["parse_mode"] = pm
-        return await _bot_api_call("sendMessage", payload)
+        body = await _bot_api_call("sendMessage", payload)
+        if not body:
+            return False
+        result = (body or {}).get("result")
+        if isinstance(result, dict):
+            message_id = int(result.get("message_id") or 0)
+            if message_id:
+                await _track_context_message(
+                    bot=bot,
+                    chat_id=int(chat_id),
+                    tg_id=int(chat_id),
+                    message_id=int(message_id),
+                )
+        return True
     try:
-        await bot.send_message(
+        sent = await bot.send_message(
             chat_id=int(chat_id),
             text=text,
             parse_mode=parse_mode,
             disable_web_page_preview=True,
             reply_markup=_keyboard_from_specs(rows),
         )
+        message_id = int(getattr(sent, "message_id", 0) or 0)
+        if message_id:
+            await _track_context_message(
+                bot=bot,
+                chat_id=int(chat_id),
+                tg_id=int(chat_id),
+                message_id=message_id,
+            )
         return True
     except Exception:
         return False
@@ -395,7 +542,16 @@ async def _edit_text_with_specs(
         }
         if pm:
             payload["parse_mode"] = pm
-        return await _bot_api_call("editMessageText", payload)
+        body = await _bot_api_call("editMessageText", payload)
+        if not body:
+            return False
+        await _track_context_message(
+            bot=bot,
+            chat_id=int(chat_id),
+            tg_id=int(chat_id),
+            message_id=int(message_id),
+        )
+        return True
     try:
         await bot.edit_message_text(
             chat_id=int(chat_id),
@@ -404,6 +560,12 @@ async def _edit_text_with_specs(
             parse_mode=parse_mode,
             disable_web_page_preview=True,
             reply_markup=_keyboard_from_specs(rows),
+        )
+        await _track_context_message(
+            bot=bot,
+            chat_id=int(chat_id),
+            tg_id=int(chat_id),
+            message_id=int(message_id),
         )
         return True
     except Exception:
@@ -431,7 +593,7 @@ def _naive_utc(dt: datetime | None) -> datetime | None:
 #               DATABASE
 # ==========================================
 from db import SessionLocal, init_db
-from models import Achievement, AdminAudit, FamilySlot, GiftCard, PromoCode, PromoUsage, Review, Template, User
+from models import Achievement, AdminAudit, CampaignSend, FamilySlot, GiftCard, PromoCode, PromoUsage, Review, Template, User
 from nodes_repo import enabled_nodes
 from events_service import track_event
 from pay_attempts_service import (
@@ -937,6 +1099,213 @@ def ensure_pending_user(tg_id: int, username: str | None = None) -> tuple[User, 
         return user, True
     finally:
         session.close()
+
+
+def _campaign_claimed(*, tg_id: int, campaign_key: str) -> bool:
+    session = Session()
+    try:
+        row = (
+            session.query(CampaignSend.id)
+            .filter(CampaignSend.tg_id == int(tg_id), CampaignSend.campaign_key == str(campaign_key))
+            .first()
+        )
+        return bool(row)
+    finally:
+        session.close()
+
+
+def _mark_campaign_claim_once(*, tg_id: int, campaign_key: str) -> bool:
+    session = Session()
+    try:
+        exists = (
+            session.query(CampaignSend.id)
+            .filter(CampaignSend.tg_id == int(tg_id), CampaignSend.campaign_key == str(campaign_key))
+            .first()
+        )
+        if exists:
+            return False
+        session.add(CampaignSend(tg_id=int(tg_id), campaign_key=str(campaign_key), sent_at=_utcnow()))
+        session.commit()
+        return True
+    except Exception:
+        session.rollback()
+        return False
+    finally:
+        session.close()
+
+
+async def _try_activate_opening_premium_bonus(
+    *,
+    message: Message,
+    bot: Bot,
+    tg_id: int,
+    username: str | None,
+) -> tuple[bool, str]:
+    if not OPENING_PREMIUM_ENABLED or not OPENING_PREMIUM_START_CODE:
+        return False, "disabled"
+
+    user = get_user(tg_id)
+    if not user:
+        ensure_pending_user(tg_id, username=username)
+        user = get_user(tg_id)
+    if username:
+        update_user_username(tg_id, username)
+
+    plan = _normalize_sub_type(user.sub_type if user else "")
+    now = _utcnow()
+    expiry = _naive_utc(user.expiry_at) if user else None
+    is_active_paid = bool(user and user.is_active and plan == "PAID" and expiry and expiry > now)
+    if is_active_paid:
+        return False, "already_paid_active"
+
+    if _campaign_claimed(tg_id=tg_id, campaign_key=OPENING_PREMIUM_CAMPAIGN_KEY):
+        return False, "already_claimed"
+
+    if not _mark_campaign_claim_once(tg_id=tg_id, campaign_key=OPENING_PREMIUM_CAMPAIGN_KEY):
+        return False, "already_claimed"
+
+    promo_tariff = {
+        "name": f"🎁 Бонус запуска ({OPENING_PREMIUM_DAYS} дней)",
+        "stars": 0,
+        "days": int(OPENING_PREMIUM_DAYS),
+        "gb": 0,
+        "subId": "LAUNCH_BONUS",
+        "sub_type": "PAID",
+    }
+    await create_subscription(message, tg_id, promo_tariff, bot)
+
+    session = Session()
+    try:
+        db_user = session.query(User).filter_by(tg_id=int(tg_id)).first()
+        if db_user:
+            db_user.channel_bonus_claimed_at = db_user.channel_bonus_claimed_at or now
+            db_user.channel_bonus_active = False
+            db_user.channel_bonus_expires_at = None
+            db_user.channel_bonus_revoked_at = now
+            session.commit()
+    except Exception:
+        session.rollback()
+    finally:
+        session.close()
+
+    track_event(
+        tg_id=int(tg_id),
+        event_name="promo_opening_activated",
+        source="bot",
+        meta={
+            "campaign_key": OPENING_PREMIUM_CAMPAIGN_KEY,
+            "days": int(OPENING_PREMIUM_DAYS),
+        },
+    )
+    return True, "activated"
+
+
+def _channel_name_for_url() -> str:
+    channel = (NEWS_CHANNEL_ID or "@portal_privacy").strip().lstrip("@")
+    return channel or "portal_privacy"
+
+
+def _channel_bonus_ineligible_reason(*, tg_id: int, user: User | None) -> str | None:
+    if user and _normalize_sub_type(user.sub_type) == "MANUAL":
+        return "Для ручных аккаунтов бонус за канал отключён."
+    if user and getattr(user, "channel_bonus_claimed_at", None):
+        return "Бонус за канал уже был активирован для этого аккаунта."
+    if _campaign_claimed(tg_id=tg_id, campaign_key=OPENING_PREMIUM_CAMPAIGN_KEY):
+        return "Для этого аккаунта уже активирован промо-бонус по ссылке."
+    if _is_paid_active_user(user):
+        return "У вас уже активен премиум-доступ."
+    return None
+
+
+def _channel_bonus_eligible(*, tg_id: int, user: User | None) -> bool:
+    return _channel_bonus_ineligible_reason(tg_id=tg_id, user=user) is None
+
+
+def _channel_bonus_keyboard(next_action: str) -> InlineKeyboardMarkup:
+    channel_name = _channel_name_for_url()
+    return InlineKeyboardMarkup(
+        inline_keyboard=[
+            [InlineKeyboardButton(text="📢 Подписаться на канал", url=f"https://t.me/{channel_name}")],
+            [InlineKeyboardButton(text=f"✅ Проверить и получить {CHANNEL_PREMIUM_DAYS} дней", callback_data=f"bonus_claim_{next_action}")],
+            [InlineKeyboardButton(text="➡️ Продолжить без бонуса", callback_data=f"bonus_skip_{next_action}")],
+            [InlineKeyboardButton(text="◀️ Назад", callback_data="back")],
+        ]
+    )
+
+
+def _channel_bonus_offer_text() -> str:
+    channel_name = _channel_name_for_url()
+    return (
+        "🎁 *Бонус за подписку на канал*\n\n"
+        f"Подпишитесь на `@{channel_name}` и получите *{CHANNEL_PREMIUM_DAYS} дней премиум-доступа*.\n"
+        "После подписки нажмите «Проверить и получить».\n\n"
+        "Если бонус не нужен, можно продолжить в бесплатном режиме."
+    )
+
+
+async def _show_channel_bonus_offer(callback: CallbackQuery, *, next_action: str) -> None:
+    track_event(
+        tg_id=int(callback.from_user.id),
+        event_name="offer_channel_bonus_shown",
+        source="bot",
+        meta={"next_action": next_action, "days": int(CHANNEL_PREMIUM_DAYS)},
+    )
+    await callback.message.edit_text(
+        _channel_bonus_offer_text(),
+        reply_markup=_channel_bonus_keyboard(next_action),
+        parse_mode=ParseMode.MARKDOWN,
+    )
+    await callback.answer()
+
+
+async def _activate_channel_bonus(
+    *,
+    message: Message,
+    bot: Bot,
+    tg_id: int,
+) -> tuple[bool, str]:
+    user = get_user(tg_id)
+    if not _channel_bonus_eligible(tg_id=tg_id, user=user):
+        return False, "not_eligible"
+
+    if not await check_subscription(tg_id, bot):
+        return False, "not_subscribed"
+
+    bonus_tariff = {
+        "name": f"🎁 Бонус за канал ({CHANNEL_PREMIUM_DAYS} дней)",
+        "stars": 0,
+        "days": int(CHANNEL_PREMIUM_DAYS),
+        "gb": 0,
+        "subId": "CHANNEL_BONUS",
+        "sub_type": "PAID",
+    }
+    await create_subscription(message, tg_id, bonus_tariff, bot)
+
+    now = _utcnow()
+    session = Session()
+    try:
+        db_user = session.query(User).filter_by(tg_id=int(tg_id)).first()
+        if not db_user:
+            return False, "user_not_found"
+        db_user.channel_bonus_claimed_at = db_user.channel_bonus_claimed_at or now
+        db_user.channel_bonus_active = True
+        db_user.channel_bonus_expires_at = db_user.expiry_at
+        db_user.channel_bonus_revoked_at = None
+        session.commit()
+    except Exception:
+        session.rollback()
+        return False, "db_error"
+    finally:
+        session.close()
+
+    track_event(
+        tg_id=int(tg_id),
+        event_name="promo_channel_activated",
+        source="bot",
+        meta={"days": int(CHANNEL_PREMIUM_DAYS), "channel": f"@{_channel_name_for_url()}"},
+    )
+    return True, "activated"
+
 
 # ==========================================
 #         WHEEL OF FORTUNE
@@ -1588,6 +1957,26 @@ panel = ControlPanel()
 router = Router()
 
 
+class CallbackContextMiddleware(BaseMiddleware):
+    async def __call__(self, handler, event, data):
+        try:
+            if isinstance(event, CallbackQuery) and event.message and event.from_user:
+                tg_id = int(event.from_user.id)
+                chat_id = int(getattr(getattr(event.message, "chat", None), "id", 0) or 0)
+                if _is_private_user_chat(chat_id, tg_id):
+                    callback_data = (event.data or "").strip()
+                    _set_support_context(tg_id, enabled=_is_support_callback_data(callback_data))
+                    await _track_context_message(
+                        bot=event.bot,
+                        chat_id=chat_id,
+                        tg_id=tg_id,
+                        message_id=int(event.message.message_id),
+                    )
+        except Exception:
+            pass
+        return await handler(event, data)
+
+
 @router.callback_query(F.data == "noop")
 async def noop(callback: CallbackQuery):
     # Used for "page indicator" buttons so Telegram doesn't return "message is not modified".
@@ -1905,6 +2294,10 @@ def main_keyboard_specs(tg_id: int = 0) -> list[list[dict[str, str]]]:
             _btn_spec(text="🔑 Мой ключ", callback_data="show_key"),
         ],
         [
+            _btn_spec(text="🎁 Бонусы", callback_data="menu_bonuses"),
+            _btn_spec(text=f"👨‍👩‍👧‍👦 Family +1 ({FAMILY_SLOT_STARS}⭐)", callback_data="buy_family_slot"),
+        ],
+        [
             _btn_spec(text="🛰 Ноды", callback_data="network_status"),
             _btn_spec(text="🆘 Поддержка", callback_data="support"),
         ],
@@ -1962,14 +2355,17 @@ def tariff_keyboard(tg_id: int = 0, show_trial: bool = True, show_gb_only: bool 
             icon = "🚀"
         elif key == "3_months":
             icon = "💠"
-            marketing_badge = " (ХИТ)"
-        elif key == "9_months":
+            marketing_badge = " (ПОПУЛЯРНЫЙ)"
+        elif key == "6_months":
             icon = "🎯"
-            marketing_badge = " (DECoy)"
+            marketing_badge = " (DECOY)"
+        elif key == "9_months":
+            icon = "⭐"
+            marketing_badge = " (ОПТИМУМ)"
         elif key == "12_months":
             icon = "👑"
             savings = _tariff_savings_pct(key) or 0
-            marketing_badge = f" (ВЫГОДА -{savings}%)" if savings > 0 else " (ВЫГОДА)"
+            marketing_badge = f" (РЕКОМЕНДУЕМ, -{savings}%)" if savings > 0 else " (РЕКОМЕНДУЕМ)"
 
         savings = _tariff_savings_pct(key)
         savings_text = f" (-{savings}%)" if savings and key not in {"12_months"} else ""
@@ -1984,12 +2380,15 @@ def tariff_keyboard(tg_id: int = 0, show_trial: bool = True, show_gb_only: bool 
 async def cmd_start(message: Message):
     tg_id = message.from_user.id
     username = message.from_user.username
+    _set_support_context(tg_id, enabled=False)
 
+    start_arg = ""
     referral_code = None
     if message.text:
         parts = message.text.split()
         if len(parts) > 1:
-            code_part = parts[1]
+            code_part = parts[1].strip()
+            start_arg = code_part
             if code_part.startswith("ref_"):
                 code_part = code_part[4:]
             if code_part.upper().startswith("SWAZ") and len(code_part) == 8:
@@ -2027,6 +2426,36 @@ async def cmd_start(message: Message):
     if referral_code:
         set_referrer_by_code(tg_id, referral_code)
     update_user_username(tg_id, username)
+
+    promo_requested = bool(
+        OPENING_PREMIUM_ENABLED
+        and OPENING_PREMIUM_START_CODE
+        and start_arg
+        and start_arg.strip().lower() == OPENING_PREMIUM_START_CODE
+    )
+    if promo_requested:
+        activated, reason = await _try_activate_opening_premium_bonus(
+            message=message,
+            bot=message.bot,
+            tg_id=tg_id,
+            username=username,
+        )
+        if activated:
+            return
+        if reason == "already_claimed":
+            await message.answer(
+                "🎁 Бонус по ссылке уже активирован для вашего аккаунта.\n\n"
+                "Открываю меню управления доступом.",
+                reply_markup=main_keyboard(tg_id),
+            )
+            return
+        if reason == "already_paid_active":
+            await message.answer(
+                "✅ У вас уже активен PREMIUM-доступ.\n\n"
+                "Открываю меню управления доступом.",
+                reply_markup=main_keyboard(tg_id),
+            )
+            return
 
     if not created_new:
         ok = await _send_text_with_specs(
@@ -2492,8 +2921,8 @@ async def show_settings(callback: CallbackQuery):
     kb = InlineKeyboardMarkup(inline_keyboard=[
         [InlineKeyboardButton(text="🔑 Мой ключ", callback_data="show_key")],
         [InlineKeyboardButton(text="⚙️ Инструкции", callback_data="instruction")],
-        [InlineKeyboardButton(text="🎁 Бонусы", callback_data="menu_bonuses")],
-        [InlineKeyboardButton(text="📦 Дополнительно", callback_data="menu_more")],
+        [InlineKeyboardButton(text="🎫 Подарки и промокоды", callback_data="menu_more")],
+        [InlineKeyboardButton(text=f"👨‍👩‍👧‍👦 Family +1 слот ({FAMILY_SLOT_STARS}⭐)", callback_data="buy_family_slot")],
         [InlineKeyboardButton(text="🆘 Нужна помощь", callback_data="mode_simple")],
         [InlineKeyboardButton(text="◀️ Назад", callback_data="back")],
     ])
@@ -2560,12 +2989,13 @@ async def menu_bonuses(callback: CallbackQuery):
     user = get_user(callback.from_user.id)
     if not _is_paid_active_user(user):
         kb = InlineKeyboardMarkup(inline_keyboard=[
+            [InlineKeyboardButton(text=f"🎁 {CHANNEL_PREMIUM_DAYS} дней премиум за канал", callback_data="bonus_offer_main")],
             [InlineKeyboardButton(text="⚡ Подключить / Продлить", callback_data="charge")],
             [InlineKeyboardButton(text="◀️ Назад", callback_data="back")],
         ])
         await callback.message.edit_text(
             "🎁 *Бонусный центр*\n\n"
-            "Бонусы, streak, рулетка и реферальные награды доступны только при активном платном доступе.",
+            "Можно забрать стартовый бонус за подписку на канал или перейти к тарифам.",
             reply_markup=kb,
             parse_mode=ParseMode.MARKDOWN,
         )
@@ -3305,6 +3735,7 @@ async def handle_text_input(message: Message):
 
     # Support ticket reply capture (user/admin).
     if tg_id in pending_ticket_replies:
+        _set_support_context(tg_id, enabled=True)
         ticket_id = pending_ticket_replies.get(tg_id, 0)
         body = (message.text or "").strip()
         if not body:
@@ -3736,6 +4167,7 @@ async def network_status_scan(callback: CallbackQuery):
 @router.callback_query(F.data == "support")
 async def show_support(callback: CallbackQuery):
     """Show support menu"""
+    _set_support_context(callback.from_user.id, enabled=True)
     support_new_url = f"https://t.me/{SUPPORT_USERNAME}?start=ticket_new"
     support_my_url = f"https://t.me/{SUPPORT_USERNAME}?start=ticket_my"
     kb = InlineKeyboardMarkup(inline_keyboard=[
@@ -3782,6 +4214,7 @@ async def show_faq_answer(callback: CallbackQuery):
 @router.callback_query(F.data == "support_diagnose")
 async def support_diagnose(callback: CallbackQuery):
     """Run diagnostics and show user status"""
+    _set_support_context(callback.from_user.id, enabled=True)
     tg_id = callback.from_user.id
     user = get_user(tg_id)
     
@@ -4190,7 +4623,7 @@ async def show_admin_panel(callback: CallbackQuery):
         ],
         [
             InlineKeyboardButton(text="Sync usernames", callback_data="admin_sync"),
-            InlineKeyboardButton(text="Gift access", callback_data="admin_gift_menu")
+            InlineKeyboardButton(text="🎁 Подарки", callback_data="admin_gift_menu")
         ],
         [
             InlineKeyboardButton(text="🎫 Очередь тикетов", callback_data="admin_tickets"),
@@ -5690,9 +6123,15 @@ async def admin_message_user_prompt(callback: CallbackQuery):
 
 @router.callback_query(F.data == "mode_pro")
 async def mode_pro_start(callback: CallbackQuery):
+    tg_id = callback.from_user.id
+    user = get_user(tg_id)
+    if _channel_bonus_eligible(tg_id=tg_id, user=user):
+        await _show_channel_bonus_offer(callback, next_action="main")
+        return
+
     await callback.message.edit_text(
         "💀 *Ручной режим уже активен*\n\nОткрываю основное меню.",
-        reply_markup=main_keyboard(callback.from_user.id),
+        reply_markup=main_keyboard(tg_id),
         parse_mode=ParseMode.MARKDOWN,
     )
     await callback.answer("Вы уже в ручном режиме", show_alert=False)
@@ -5756,6 +6195,15 @@ async def mode_simple_step2(callback: CallbackQuery):
 
 @router.callback_query(F.data == "simple_step3")
 async def mode_simple_step3(callback: CallbackQuery):
+    tg_id = callback.from_user.id
+    user = get_user(tg_id)
+    if _channel_bonus_eligible(tg_id=tg_id, user=user):
+        await _show_channel_bonus_offer(callback, next_action="simple")
+        return
+    await _render_mode_simple_step3(callback)
+
+
+async def _render_mode_simple_step3(callback: CallbackQuery) -> None:
     text = (
         "2️⃣ *Шаг 2: Активация*\n\n"
         "Теперь нужно создать ваш ключ доступа.\n"
@@ -5765,10 +6213,145 @@ async def mode_simple_step3(callback: CallbackQuery):
     kb = InlineKeyboardMarkup(inline_keyboard=[
         [InlineKeyboardButton(text="⚡ Подключить за 199 ⭐️", callback_data="buy_1_month")],
         [InlineKeyboardButton(text="🤔 Выбрать другой тариф", callback_data="charge")],
+        [InlineKeyboardButton(text=f"🎁 {CHANNEL_PREMIUM_DAYS} дней премиум за канал", callback_data="bonus_offer_trial")],
         [InlineKeyboardButton(text="◀️ Назад", callback_data="mode_simple")],
     ])
     await callback.message.edit_text(text, reply_markup=kb, parse_mode=ParseMode.MARKDOWN)
     await callback.answer()
+
+
+async def _activate_trial_tariff(
+    callback: CallbackQuery,
+    bot: Bot,
+    *,
+    retry_callback_data: str = "buy_trial",
+) -> None:
+    tg_id = callback.from_user.id
+    user = get_user(tg_id)
+    tariff = TARIFFS["trial"]
+
+    if not await check_subscription(tg_id, bot):
+        channel_name = _channel_name_for_url()
+        kb = InlineKeyboardMarkup(
+            inline_keyboard=[
+                [InlineKeyboardButton(text="📢 Подписаться", url=f"https://t.me/{channel_name}")],
+                [InlineKeyboardButton(text="✅ Проверить", callback_data=retry_callback_data)],
+                [InlineKeyboardButton(text="◀️ Назад", callback_data="charge")],
+            ]
+        )
+        await callback.message.edit_text(
+            "🔒 *Доступ ограничен*\n\n"
+            "Для активации бесплатного режима подпишитесь на канал обновлений и нажмите «Проверить».",
+            reply_markup=kb,
+            parse_mode=ParseMode.MARKDOWN,
+        )
+        await callback.answer()
+        return
+
+    now = _utcnow()
+    current_sub = _normalize_sub_type(user.sub_type if user else "")
+    expiry = _naive_utc(user.expiry_at) if user else None
+    has_active = bool(user and user.is_active and expiry and expiry > now)
+    if has_active and current_sub == "FREE":
+        await callback.answer("Бесплатный режим уже активен. Повторная активация не требуется.", show_alert=True)
+        return
+    if has_active and current_sub != "FREE":
+        await callback.answer("У вас уже активирован полный доступ. Бесплатный режим не требуется.", show_alert=True)
+        return
+
+    await callback.answer("⏳ Включаю бесплатный режим...")
+    await create_subscription(callback.message, tg_id, tariff, bot)
+
+
+def _parse_bonus_next_action(data: str, prefix: str) -> str | None:
+    raw = (data or "").replace(prefix, "", 1).strip().lower()
+    if raw in {"main", "simple", "trial"}:
+        return raw
+    return None
+
+
+async def _resume_after_bonus_prompt(callback: CallbackQuery, bot: Bot, *, next_action: str) -> None:
+    tg_id = callback.from_user.id
+    if next_action == "trial":
+        await _activate_trial_tariff(callback, bot, retry_callback_data="trial_direct")
+        return
+    if next_action == "simple":
+        await _render_mode_simple_step3(callback)
+        return
+
+    await callback.message.edit_text(
+        "✅ Продолжаем без бонуса.\n\nОткрываю основное меню.",
+        reply_markup=main_keyboard(tg_id),
+        parse_mode=ParseMode.MARKDOWN,
+    )
+    await callback.answer()
+
+
+@router.callback_query(F.data.startswith("bonus_offer_"))
+async def channel_bonus_offer(callback: CallbackQuery):
+    next_action = _parse_bonus_next_action(callback.data or "", "bonus_offer_")
+    if not next_action:
+        await callback.answer("Некорректный шаг", show_alert=True)
+        return
+    await _show_channel_bonus_offer(callback, next_action=next_action)
+
+
+@router.callback_query(F.data.startswith("bonus_claim_"))
+async def channel_bonus_claim(callback: CallbackQuery, bot: Bot):
+    next_action = _parse_bonus_next_action(callback.data or "", "bonus_claim_")
+    if not next_action:
+        await callback.answer("Некорректный шаг", show_alert=True)
+        return
+
+    tg_id = callback.from_user.id
+    user = get_user(tg_id)
+    ineligible_reason = _channel_bonus_ineligible_reason(tg_id=tg_id, user=user)
+    if ineligible_reason:
+        await callback.answer(ineligible_reason, show_alert=True)
+        await _resume_after_bonus_prompt(callback, bot, next_action=next_action)
+        return
+
+    activated, reason = await _activate_channel_bonus(message=callback.message, bot=bot, tg_id=tg_id)
+    if activated:
+        kb = InlineKeyboardMarkup(
+            inline_keyboard=[
+                [InlineKeyboardButton(text="🔑 Мой ключ", callback_data="show_key")],
+                [InlineKeyboardButton(text="🏠 Главное меню", callback_data="back")],
+            ]
+        )
+        await callback.message.edit_text(
+            f"✅ *Бонус активирован*\n\nПремиум-доступ выдан на *{CHANNEL_PREMIUM_DAYS} дней*.",
+            reply_markup=kb,
+            parse_mode=ParseMode.MARKDOWN,
+        )
+        await callback.answer("Готово")
+        return
+
+    if reason == "not_subscribed":
+        await callback.message.edit_text(
+            "⚠️ Сначала подпишитесь на канал, затем нажмите «Проверить и получить».",
+            reply_markup=_channel_bonus_keyboard(next_action),
+            parse_mode=ParseMode.MARKDOWN,
+        )
+        await callback.answer()
+        return
+
+    await callback.answer("Не удалось активировать бонус, продолжаем без него.", show_alert=True)
+    await _resume_after_bonus_prompt(callback, bot, next_action=next_action)
+
+
+@router.callback_query(F.data.startswith("bonus_skip_"))
+async def channel_bonus_skip(callback: CallbackQuery, bot: Bot):
+    next_action = _parse_bonus_next_action(callback.data or "", "bonus_skip_")
+    if not next_action:
+        await callback.answer("Некорректный шаг", show_alert=True)
+        return
+    await _resume_after_bonus_prompt(callback, bot, next_action=next_action)
+
+
+@router.callback_query(F.data == "trial_direct")
+async def trial_direct(callback: CallbackQuery, bot: Bot):
+    await _activate_trial_tariff(callback, bot, retry_callback_data="trial_direct")
 
 
 async def render_admin_user_view(callback: CallbackQuery, tg_id: int):
@@ -5868,26 +6451,50 @@ async def admin_gift_menu(callback: CallbackQuery):
         return
     
     kb = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="🎫 Создать Mini (7д / 59⭐)", callback_data="admin_giftcode_mini")],
+        [InlineKeyboardButton(text="🎫 Создать Standard (30д / 199⭐)", callback_data="admin_giftcode_standard")],
+        [InlineKeyboardButton(text="🎫 Создать Premium (90д / 499⭐)", callback_data="admin_giftcode_premium")],
         [InlineKeyboardButton(text="◀️ Назад", callback_data="admin")]
     ])
     
     await callback.message.edit_text(
-        "🎁 *Команда /gift*\n\n"
-        "Формат:\n"
-        "`/gift [tg_id] [тариф]`\n\n"
-        "Тарифы:\n"
-        "• `trial` — Бесплатный (1 страна)\n"
-        "• `1_month` — 1 Мес (Unlim)\n"
-        "• `3_months` — 3 Мес (Unlim)\n"
-        "• `6_months` — 6 Мес (Unlim)\n"
-        "• `9_months` — 9 Мес (Unlim)\n"
-        "• `12_months` — 1 Год (Unlim)\n\n"
-        "Или кастом:\n"
-        "`/gift [tg_id] [дни] [гб]`",
+        "🎁 *Подарки для пользователей*\n\n"
+        "Основной поток: *gift-коды* (удобно и безопасно).\n"
+        "Создайте код кнопками выше или командой:\n"
+        "`/giftcode mini`\n"
+        "`/giftcode standard`\n"
+        "`/giftcode premium`\n"
+        "`/giftcode standard 5` _(пакет 5 кодов)_\n\n"
+        "Прямая выдача `/gift` остаётся как резервный ручной инструмент.",
         reply_markup=kb,
         parse_mode=ParseMode.MARKDOWN
     )
     await callback.answer()
+
+
+@router.callback_query(F.data.startswith("admin_giftcode_"))
+async def admin_giftcode_create_from_menu(callback: CallbackQuery):
+    if callback.from_user.id != ADMIN_ID:
+        return
+    card_type = (callback.data or "").replace("admin_giftcode_", "", 1).strip().lower()
+    if card_type not in GIFT_CARD_TYPES:
+        await callback.answer("Неизвестный тип gift-кода", show_alert=True)
+        return
+    code = create_gift_card(ADMIN_ID, card_type)
+    if not code:
+        await callback.answer("Не удалось создать код", show_alert=True)
+        return
+    card = GIFT_CARD_TYPES.get(card_type, {})
+    await callback.message.answer(
+        f"🎫 *Новый gift-код*\n\n"
+        f"Код: `{code}`\n"
+        f"Тип: {card.get('name', card_type)}\n"
+        f"Срок: {int(card.get('days', 0))} дн.\n\n"
+        f"Для активации: `/redeem {code}`",
+        parse_mode=ParseMode.MARKDOWN,
+    )
+    audit_admin(ADMIN_ID, "admin_gift_code_create", meta=f"card_type={card_type}; code={code}")
+    await callback.answer("Gift-код создан")
 
 @router.callback_query(F.data.startswith("adm_set_"))
 async def admin_set_tariff(callback: CallbackQuery, bot: Bot):
@@ -6007,35 +6614,10 @@ async def process_buy(callback: CallbackQuery, bot: Bot):
     actual_stars = int(tariff["stars"] * 0.8) if use_discount else tariff["stars"]
     
     if tariff_key == "trial":
-        if not await check_subscription(tg_id, bot):
-            channel_name = (NEWS_CHANNEL_ID or "@portal_news_channel").lstrip("@")
-            kb = InlineKeyboardMarkup(inline_keyboard=[
-                [InlineKeyboardButton(text="📢 Подписаться", url=f"https://t.me/{channel_name}")],
-                [InlineKeyboardButton(text="✅ Проверить", callback_data="buy_trial")],
-                [InlineKeyboardButton(text="◀️ Назад", callback_data="charge")],
-            ])
-            await callback.message.edit_text(
-                "🔒 *Доступ ограничен*\n\n"
-                "Для активации бесплатного режима подпишитесь на канал обновлений и нажмите «Проверить».",
-                reply_markup=kb,
-                parse_mode=ParseMode.MARKDOWN,
-            )
-            await callback.answer()
+        if _channel_bonus_eligible(tg_id=tg_id, user=user):
+            await _show_channel_bonus_offer(callback, next_action="trial")
             return
-
-        now = _utcnow()
-        current_sub = _normalize_sub_type(user.sub_type if user else "")
-        expiry = _naive_utc(user.expiry_at) if user else None
-        has_active = bool(user and user.is_active and expiry and expiry > now)
-        if has_active and current_sub == "FREE":
-            await callback.answer("Бесплатный режим уже активен. Повторная активация не требуется.", show_alert=True)
-            return
-        if has_active and current_sub != "FREE":
-            await callback.answer("У вас уже активирован полный доступ. Бесплатный режим не требуется.", show_alert=True)
-            return
-
-        await callback.answer("⏳ Включаю бесплатный режим...")
-        await create_subscription(callback.message, tg_id, tariff, bot)
+        await _activate_trial_tariff(callback, bot, retry_callback_data="buy_trial")
         return
     
     # Paid - send invoice (stack first-purchase + points, capped to 70% total discount).
@@ -6093,6 +6675,17 @@ async def process_buy(callback: CallbackQuery, bot: Bot):
         provider_token="",
         currency="XTR",
         prices=prices
+    )
+    await callback.message.answer(
+        "💳 Счёт открыт. После оплаты я автоматически выдам доступ.\n\n"
+        "Если закрыли окно оплаты, нажмите «Проверить оплату».",
+        reply_markup=InlineKeyboardMarkup(
+            inline_keyboard=[
+                [InlineKeyboardButton(text="✅ Проверить оплату", callback_data="status")],
+                [InlineKeyboardButton(text="◀️ К тарифам", callback_data="charge")],
+                [InlineKeyboardButton(text="🏠 Главное меню", callback_data="back")],
+            ]
+        ),
     )
 
 @router.pre_checkout_query()
@@ -7244,6 +7837,61 @@ async def admin_broadcast(message: Message, bot: Bot):
     )
 
 
+@router.message(Command("giftcode"))
+async def admin_giftcode(message: Message):
+    if message.from_user.id != ADMIN_ID:
+        return
+
+    parts = (message.text or "").split()
+    if len(parts) < 2:
+        await message.answer(
+            "🎫 *Формат /giftcode*\n\n"
+            "`/giftcode mini`\n"
+            "`/giftcode standard`\n"
+            "`/giftcode premium`\n"
+            "`/giftcode standard 5` _(создать сразу 5 кодов)_",
+            parse_mode=ParseMode.MARKDOWN,
+        )
+        return
+
+    card_type = (parts[1] or "").strip().lower()
+    if card_type not in GIFT_CARD_TYPES:
+        await message.answer("❌ Неизвестный тип. Используйте: mini / standard / premium")
+        return
+
+    try:
+        count = int(parts[2]) if len(parts) > 2 else 1
+    except Exception:
+        await message.answer("❌ Количество должно быть числом.")
+        return
+    count = max(1, min(20, count))
+
+    created: list[str] = []
+    for _ in range(count):
+        code = create_gift_card(ADMIN_ID, card_type)
+        if code:
+            created.append(code)
+
+    if not created:
+        await message.answer("❌ Не удалось создать gift-коды.")
+        return
+
+    card = GIFT_CARD_TYPES.get(card_type, {})
+    lines = "\n".join(f"`{c}`" for c in created[:20])
+    await message.answer(
+        f"✅ Создано кодов: *{len(created)}*\n"
+        f"Тип: *{card.get('name', card_type)}*\n"
+        f"Срок: *{int(card.get('days', 0))} дн.*\n\n"
+        f"{lines}",
+        parse_mode=ParseMode.MARKDOWN,
+    )
+    audit_admin(
+        ADMIN_ID,
+        "admin_gift_code_batch",
+        meta=f"card_type={card_type}; requested={count}; created={len(created)}",
+    )
+
+
 @router.message(Command("gift"))
 async def admin_gift(message: Message, bot: Bot):
     if message.from_user.id != ADMIN_ID:
@@ -7498,7 +8146,12 @@ async def monitor_expiry(bot: Bot) -> None:
 # ==========================================
 async def main():
     bot = Bot(token=BOT_TOKEN)
+    _patch_outgoing_message_methods(bot)
     dp = Dispatcher()
+    try:
+        dp.callback_query.middleware(CallbackContextMiddleware())
+    except Exception:
+        pass
     dp.include_router(router)
     
     logger.info("🌐 Portal Bot v2 starting...")

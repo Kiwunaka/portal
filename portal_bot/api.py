@@ -15,6 +15,7 @@ import hmac
 import ipaddress
 import json
 import os
+import re
 import secrets
 import time
 import uuid
@@ -38,13 +39,16 @@ from config import Settings, env_bool, env_int
 from db import SessionLocal, init_db
 from models import (
     AdminAudit,
+    CampaignSend,
     FamilySlot,
+    GiftCard,
     Node,
     NodeHealthSample,
     PromoCode,
     PromoUsage,
     Review,
     SupportTicket,
+    Template,
     User,
 )
 from tickets_repo import (
@@ -89,6 +93,10 @@ PUBLIC_CHANNEL = (os.getenv("PUBLIC_CHANNEL") or "portal_privacy").lstrip("@")
 BOT_USERNAME = (os.getenv("BOT_USERNAME") or "portal_service_bot").lstrip("@")
 REFERRAL_BONUS_DAYS = env_int("REFERRAL_BONUS_DAYS", 15)
 CHANNEL_PREMIUM_DAYS = env_int("CHANNEL_PREMIUM_DAYS", 10)
+OPENING_PREMIUM_DAYS = max(1, env_int("OPENING_PREMIUM_DAYS", 14))
+OPENING_PREMIUM_CAMPAIGN_KEY = (
+    os.getenv("OPENING_PREMIUM_CAMPAIGN_KEY") or f"opening_premium_{OPENING_PREMIUM_DAYS}d"
+).strip()[:64]
 MAX_BROADCAST_LIMIT = env_int("MAX_BROADCAST_LIMIT", 1000)
 PAY_CHECKOUT_URL = (os.getenv("PAY_CHECKOUT_URL") or "").strip()
 WEBAPP_ENABLE_HAPTIC = env_bool("WEBAPP_ENABLE_HAPTIC", default=True)
@@ -114,6 +122,11 @@ API_PLAN_PRICES = {
     "6_months": 949,
     "9_months": 1299,
     "12_months": 1499,
+}
+GIFT_CARD_TYPES = {
+    "mini": {"days": 7, "stars": 59, "name": "Mini"},
+    "standard": {"days": 30, "stars": 199, "name": "Standard"},
+    "premium": {"days": 90, "stars": 499, "name": "Premium"},
 }
 
 
@@ -160,6 +173,36 @@ class AdminNodeSyncIn(BaseModel):
     tg_id: int | None = None
     segment: str = Field(default="active")
     limit: int = Field(default=100, ge=1, le=1000)
+
+
+class AdminPromoCreateIn(BaseModel):
+    code: str = Field(min_length=3, max_length=20)
+    promo_type: str = Field(min_length=3, max_length=16)
+    value: int = Field(ge=1, le=100000)
+    uses_left: int = Field(default=-1, ge=-1, le=1_000_000)
+    expires_at: str | None = None
+
+
+class AdminPromoUpdateIn(BaseModel):
+    new_code: str | None = Field(default=None, min_length=3, max_length=20)
+    promo_type: str | None = Field(default=None, min_length=3, max_length=16)
+    value: int | None = Field(default=None, ge=1, le=100000)
+    uses_left: int | None = Field(default=None, ge=-1, le=1_000_000)
+    expires_at: str | None = None
+
+
+class AdminTemplateCreateIn(BaseModel):
+    key: str = Field(min_length=2, max_length=50)
+    text: str = Field(min_length=1, max_length=2000)
+
+
+class AdminTemplateUpdateIn(BaseModel):
+    new_key: str | None = Field(default=None, min_length=2, max_length=50)
+    text: str | None = Field(default=None, min_length=1, max_length=2000)
+
+
+class AdminGiftCodeCreateIn(BaseModel):
+    card_type: str = Field(min_length=3, max_length=20)
 
 
 class EventIn(BaseModel):
@@ -313,6 +356,53 @@ def _safe_iso(dt: datetime | None) -> str | None:
     return dt.isoformat() if dt else None
 
 
+def _parse_optional_datetime(raw: str | None) -> datetime | None:
+    value = (raw or "").strip()
+    if not value:
+        return None
+    val = value.replace("Z", "+00:00")
+    try:
+        parsed = datetime.fromisoformat(val)
+    except Exception:
+        raise HTTPException(status_code=400, detail="Invalid datetime format")
+    if parsed.tzinfo:
+        parsed = parsed.astimezone(tz=None).replace(tzinfo=None)
+    return parsed
+
+
+def _generate_gift_code_for_admin(s) -> str:
+    alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+    for _ in range(30):
+        token = "".join(secrets.choice(alphabet) for _ in range(8))
+        code = f"PORTAL-{token[:4]}-{token[4:]}"
+        exists = s.query(GiftCard.id).filter(GiftCard.code == code).first()
+        if not exists:
+            return code
+    raise HTTPException(status_code=500, detail="Failed to generate unique gift code")
+
+
+_CYRILLIC_RE = re.compile(r"[А-Яа-яЁё]")
+_MOJIBAKE_RE = re.compile(r"(?:Ð.|Ñ.|Р.|С.)")
+
+
+def _normalize_mojibake(text: str | None) -> str:
+    raw = (text or "").strip()
+    if not raw:
+        return ""
+    if _CYRILLIC_RE.search(raw):
+        return raw
+    if not _MOJIBAKE_RE.search(raw):
+        return raw
+    for enc in ("latin1", "cp1252"):
+        try:
+            fixed = raw.encode(enc, errors="strict").decode("utf-8", errors="strict")
+        except Exception:
+            continue
+        if _CYRILLIC_RE.search(fixed):
+            return fixed
+    return raw
+
+
 def _is_admin_tg(tg_id: int) -> bool:
     return int(Settings.ADMIN_ID or 0) > 0 and int(tg_id) == int(Settings.ADMIN_ID)
 
@@ -397,6 +487,16 @@ def _family_slots_for_user(s, tg_id: int) -> int:
         or 0
     )
     return int(total)
+
+
+def _has_campaign_mark(s, *, tg_id: int, campaign_key: str) -> bool:
+    row = (
+        s.query(CampaignSend.id)
+        .filter(CampaignSend.tg_id == int(tg_id))
+        .filter(CampaignSend.campaign_key == str(campaign_key))
+        .first()
+    )
+    return bool(row)
 
 
 def _active_offer_payload(tg_id: int) -> dict[str, Any] | None:
@@ -710,9 +810,9 @@ async def featured_reviews() -> dict:
         return {
             "reviews": [
                 {
-                    "username": r.username or "user",
+                    "username": _normalize_mojibake(r.username or "user"),
                     "rating": r.rating,
-                    "text": r.text or "",
+                    "text": _normalize_mojibake(r.text or ""),
                     "date": r.created_at.strftime("%d.%m.%Y") if r.created_at else "",
                 }
                 for r in rows
@@ -893,9 +993,15 @@ async def user_data(tg_id: int, request: Request, x_telegram_init_data: str = He
         support_link = f"https://t.me/{SUPPORT_USERNAME}" if SUPPORT_USERNAME else ""
         role_admin = _is_admin_tg(tg_id)
         channel_claimed_at = _safe_iso(getattr(user, "channel_bonus_claimed_at", None))
+        opening_bonus_claimed = _has_campaign_mark(
+            s,
+            tg_id=tg_id,
+            campaign_key=OPENING_PREMIUM_CAMPAIGN_KEY,
+        )
         can_claim_channel_bonus = bool(
             PUBLIC_CHANNEL
             and not channel_claimed_at
+            and not opening_bonus_claimed
             and (user.sub_type or "").upper() != "MANUAL"
         )
 
@@ -937,6 +1043,10 @@ async def user_data(tg_id: int, request: Request, x_telegram_init_data: str = He
                     "premium_days": int(CHANNEL_PREMIUM_DAYS),
                     "claimed_at": channel_claimed_at,
                     "can_claim": can_claim_channel_bonus,
+                },
+                "opening_bonus": {
+                    "premium_days": int(OPENING_PREMIUM_DAYS),
+                    "claimed": bool(opening_bonus_claimed),
                 },
             },
             "points": {
@@ -1106,6 +1216,8 @@ async def bonuses(request: Request, x_telegram_init_data: str = Header(default="
             "last_wheel_spin": _safe_iso(user.last_wheel_spin),
             "channel_bonus_premium_days": int(CHANNEL_PREMIUM_DAYS),
             "channel_bonus_claimed_at": _safe_iso(getattr(user, "channel_bonus_claimed_at", None)),
+            "opening_bonus_premium_days": int(OPENING_PREMIUM_DAYS),
+            "opening_bonus_claimed": _has_campaign_mark(s, tg_id=tg_id, campaign_key=OPENING_PREMIUM_CAMPAIGN_KEY),
             "channel_username": PUBLIC_CHANNEL,
             "points_tier": tier,
         }
@@ -1127,6 +1239,11 @@ async def claim_channel_bonus(request: Request, x_telegram_init_data: str = Head
             raise HTTPException(status_code=404, detail="User not found")
         if (user.sub_type or "").upper() == "MANUAL":
             raise HTTPException(status_code=400, detail="Bonus is disabled for manual accounts")
+        if _has_campaign_mark(s, tg_id=tg_id, campaign_key=OPENING_PREMIUM_CAMPAIGN_KEY):
+            raise HTTPException(
+                status_code=400,
+                detail="Для этого аккаунта уже активирован промо-бонус по ссылке. Бонус за канал недоступен.",
+            )
         if getattr(user, "channel_bonus_claimed_at", None):
             return {
                 "ok": True,
@@ -1685,6 +1802,253 @@ async def admin_broadcast(payload: AdminBroadcastIn, x_telegram_init_data: str =
         meta={"segment": segment, "sent": sent, "failed": failed, "attempted": min(len(target_ids), limit)},
     )
     return {"ok": True, "segment": segment, "attempted": min(len(target_ids), limit), "sent": sent, "failed": failed, "failed_ids": errors}
+
+
+@app.get("/api/admin/promos")
+async def admin_promos(x_telegram_init_data: str = Header(default=""), limit: int = 200) -> dict:
+    _require_admin(x_telegram_init_data)
+    lim = max(1, min(int(limit), 500))
+    s = SessionLocal()
+    try:
+        rows = s.query(PromoCode).order_by(PromoCode.created_at.desc(), PromoCode.id.desc()).limit(lim).all()
+        usage_rows = (
+            s.query(PromoUsage.promo_code, func.count(PromoUsage.id))
+            .group_by(PromoUsage.promo_code)
+            .all()
+        )
+        usage_map = {str(code or "").upper(): int(cnt or 0) for code, cnt in usage_rows}
+        return {
+            "promos": [
+                {
+                    "code": p.code,
+                    "promo_type": p.promo_type,
+                    "value": int(p.value or 0),
+                    "uses_left": int(p.uses_left or 0),
+                    "used_count": int(usage_map.get(str(p.code or "").upper(), 0)),
+                    "expires_at": _safe_iso(p.expires_at),
+                    "created_at": _safe_iso(p.created_at),
+                }
+                for p in rows
+            ]
+        }
+    finally:
+        s.close()
+
+
+@app.post("/api/admin/promos")
+async def admin_promos_create(payload: AdminPromoCreateIn, x_telegram_init_data: str = Header(default="")) -> dict:
+    actor = int(_require_admin(x_telegram_init_data).get("id", 0))
+    code = (payload.code or "").strip().upper()
+    promo_type = (payload.promo_type or "").strip().lower()
+    if promo_type not in {"discount", "days"}:
+        raise HTTPException(status_code=400, detail="promo_type must be discount or days")
+    s = SessionLocal()
+    try:
+        exists = s.query(PromoCode.id).filter(func.upper(PromoCode.code) == code).first()
+        if exists:
+            raise HTTPException(status_code=409, detail="Promo code already exists")
+        row = PromoCode(
+            code=code,
+            promo_type=promo_type,
+            value=int(payload.value),
+            uses_left=int(payload.uses_left),
+            expires_at=_parse_optional_datetime(payload.expires_at),
+        )
+        s.add(row)
+        s.commit()
+    finally:
+        s.close()
+
+    _audit_admin(actor_tg_id=actor, action="admin_promo_create", meta={"code": code, "promo_type": promo_type})
+    return {"ok": True, "code": code}
+
+
+@app.patch("/api/admin/promos/{code}")
+async def admin_promos_update(code: str, payload: AdminPromoUpdateIn, x_telegram_init_data: str = Header(default="")) -> dict:
+    actor = int(_require_admin(x_telegram_init_data).get("id", 0))
+    src_code = (code or "").strip().upper()
+    s = SessionLocal()
+    try:
+        row = s.query(PromoCode).filter(func.upper(PromoCode.code) == src_code).first()
+        if not row:
+            raise HTTPException(status_code=404, detail="Promo not found")
+
+        if payload.new_code is not None and payload.new_code.strip():
+            next_code = payload.new_code.strip().upper()
+            if next_code != src_code:
+                dup = s.query(PromoCode.id).filter(func.upper(PromoCode.code) == next_code).first()
+                if dup:
+                    raise HTTPException(status_code=409, detail="Promo code already exists")
+                row.code = next_code
+
+        if payload.promo_type is not None:
+            ptype = (payload.promo_type or "").strip().lower()
+            if ptype not in {"discount", "days"}:
+                raise HTTPException(status_code=400, detail="promo_type must be discount or days")
+            row.promo_type = ptype
+        if payload.value is not None:
+            row.value = int(payload.value)
+        if payload.uses_left is not None:
+            row.uses_left = int(payload.uses_left)
+        if "expires_at" in payload.model_fields_set:
+            row.expires_at = _parse_optional_datetime(payload.expires_at)
+
+        s.commit()
+        out_code = row.code
+    finally:
+        s.close()
+
+    _audit_admin(actor_tg_id=actor, action="admin_promo_update", meta={"from": src_code, "to": out_code})
+    return {"ok": True, "code": out_code}
+
+
+@app.delete("/api/admin/promos/{code}")
+async def admin_promos_delete(code: str, x_telegram_init_data: str = Header(default="")) -> dict:
+    actor = int(_require_admin(x_telegram_init_data).get("id", 0))
+    src_code = (code or "").strip().upper()
+    s = SessionLocal()
+    try:
+        row = s.query(PromoCode).filter(func.upper(PromoCode.code) == src_code).first()
+        if not row:
+            raise HTTPException(status_code=404, detail="Promo not found")
+        s.delete(row)
+        s.commit()
+    finally:
+        s.close()
+    _audit_admin(actor_tg_id=actor, action="admin_promo_delete", meta={"code": src_code})
+    return {"ok": True}
+
+
+@app.get("/api/admin/templates")
+async def admin_templates(x_telegram_init_data: str = Header(default=""), limit: int = 200) -> dict:
+    _require_admin(x_telegram_init_data)
+    lim = max(1, min(int(limit), 500))
+    s = SessionLocal()
+    try:
+        rows = s.query(Template).order_by(Template.created_at.desc(), Template.id.desc()).limit(lim).all()
+        return {
+            "templates": [
+                {"key": t.key, "text": t.text, "created_at": _safe_iso(t.created_at)}
+                for t in rows
+            ]
+        }
+    finally:
+        s.close()
+
+
+@app.post("/api/admin/templates")
+async def admin_templates_create(payload: AdminTemplateCreateIn, x_telegram_init_data: str = Header(default="")) -> dict:
+    actor = int(_require_admin(x_telegram_init_data).get("id", 0))
+    key = (payload.key or "").strip().lower()
+    text_val = (payload.text or "").strip()
+    s = SessionLocal()
+    try:
+        exists = s.query(Template.id).filter(func.lower(Template.key) == key).first()
+        if exists:
+            raise HTTPException(status_code=409, detail="Template already exists")
+        row = Template(key=key, text=text_val)
+        s.add(row)
+        s.commit()
+    finally:
+        s.close()
+    _audit_admin(actor_tg_id=actor, action="admin_template_create", meta={"key": key})
+    return {"ok": True, "key": key}
+
+
+@app.patch("/api/admin/templates/{key}")
+async def admin_templates_update(key: str, payload: AdminTemplateUpdateIn, x_telegram_init_data: str = Header(default="")) -> dict:
+    actor = int(_require_admin(x_telegram_init_data).get("id", 0))
+    src_key = (key or "").strip().lower()
+    s = SessionLocal()
+    try:
+        row = s.query(Template).filter(func.lower(Template.key) == src_key).first()
+        if not row:
+            raise HTTPException(status_code=404, detail="Template not found")
+        if payload.new_key is not None and payload.new_key.strip():
+            new_key = payload.new_key.strip().lower()
+            if new_key != src_key:
+                exists = s.query(Template.id).filter(func.lower(Template.key) == new_key).first()
+                if exists:
+                    raise HTTPException(status_code=409, detail="Template key already exists")
+                row.key = new_key
+        if payload.text is not None:
+            row.text = payload.text.strip()
+        s.commit()
+        out_key = row.key
+    finally:
+        s.close()
+    _audit_admin(actor_tg_id=actor, action="admin_template_update", meta={"from": src_key, "to": out_key})
+    return {"ok": True, "key": out_key}
+
+
+@app.delete("/api/admin/templates/{key}")
+async def admin_templates_delete(key: str, x_telegram_init_data: str = Header(default="")) -> dict:
+    actor = int(_require_admin(x_telegram_init_data).get("id", 0))
+    src_key = (key or "").strip().lower()
+    s = SessionLocal()
+    try:
+        row = s.query(Template).filter(func.lower(Template.key) == src_key).first()
+        if not row:
+            raise HTTPException(status_code=404, detail="Template not found")
+        s.delete(row)
+        s.commit()
+    finally:
+        s.close()
+    _audit_admin(actor_tg_id=actor, action="admin_template_delete", meta={"key": src_key})
+    return {"ok": True}
+
+
+@app.get("/api/admin/gift-codes")
+async def admin_gift_codes(x_telegram_init_data: str = Header(default=""), limit: int = 100) -> dict:
+    _require_admin(x_telegram_init_data)
+    lim = max(1, min(int(limit), 500))
+    s = SessionLocal()
+    try:
+        rows = s.query(GiftCard).order_by(GiftCard.created_at.desc(), GiftCard.id.desc()).limit(lim).all()
+        return {
+            "gift_codes": [
+                {
+                    "code": g.code,
+                    "card_type": g.card_type,
+                    "days": int((GIFT_CARD_TYPES.get(g.card_type or "", {}) or {}).get("days", 0)),
+                    "stars": int((GIFT_CARD_TYPES.get(g.card_type or "", {}) or {}).get("stars", 0)),
+                    "created_by": int(g.created_by or 0),
+                    "created_at": _safe_iso(g.created_at),
+                    "redeemed_by": int(g.redeemed_by) if g.redeemed_by is not None else None,
+                    "redeemed_at": _safe_iso(g.redeemed_at),
+                }
+                for g in rows
+            ]
+        }
+    finally:
+        s.close()
+
+
+@app.post("/api/admin/gift-codes")
+async def admin_gift_codes_create(payload: AdminGiftCodeCreateIn, x_telegram_init_data: str = Header(default="")) -> dict:
+    actor = int(_require_admin(x_telegram_init_data).get("id", 0))
+    card_type = (payload.card_type or "").strip().lower()
+    card = GIFT_CARD_TYPES.get(card_type)
+    if not card:
+        raise HTTPException(status_code=400, detail="Unsupported card_type")
+    s = SessionLocal()
+    try:
+        code = _generate_gift_code_for_admin(s)
+        row = GiftCard(code=code, card_type=card_type, created_by=actor)
+        s.add(row)
+        s.commit()
+    finally:
+        s.close()
+    _audit_admin(actor_tg_id=actor, action="admin_gift_code_create", meta={"code": code, "card_type": card_type})
+    return {
+        "ok": True,
+        "gift_code": {
+            "code": code,
+            "card_type": card_type,
+            "days": int(card.get("days", 0)),
+            "stars": int(card.get("stars", 0)),
+        },
+    }
 
 
 @app.get("/api/admin/tickets")

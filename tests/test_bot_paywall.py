@@ -112,6 +112,50 @@ class BotPaywallTests(unittest.TestCase):
         ok = asyncio.run(self.bot_module.check_subscription(1001, fake))
         self.assertTrue(ok)
 
+    def test_opening_bonus_activation_is_one_time(self) -> None:
+        self.bot_module.OPENING_PREMIUM_ENABLED = True
+        self.bot_module.OPENING_PREMIUM_DAYS = 14
+        self.bot_module.OPENING_PREMIUM_CAMPAIGN_KEY = "opening_premium_14d"
+
+        class _Msg:
+            def __init__(self, bot):
+                self.bot = bot
+
+        calls: list[int] = []
+
+        async def _fake_create_subscription(message, tg_id, tariff, bot, **_kwargs):
+            calls.append(int(tg_id))
+            return None
+
+        old_create_subscription = self.bot_module.create_subscription
+        self.bot_module.create_subscription = _fake_create_subscription
+        try:
+            msg = _Msg(bot=_FakeBot(status="member"))
+            ok1, reason1 = asyncio.run(
+                self.bot_module._try_activate_opening_premium_bonus(
+                    message=msg,
+                    bot=msg.bot,
+                    tg_id=1001,
+                    username="alice",
+                )
+            )
+            ok2, reason2 = asyncio.run(
+                self.bot_module._try_activate_opening_premium_bonus(
+                    message=msg,
+                    bot=msg.bot,
+                    tg_id=1001,
+                    username="alice",
+                )
+            )
+        finally:
+            self.bot_module.create_subscription = old_create_subscription
+
+        self.assertTrue(ok1)
+        self.assertEqual(reason1, "activated")
+        self.assertFalse(ok2)
+        self.assertEqual(reason2, "already_claimed")
+        self.assertEqual(calls, [1001])
+
 
 if __name__ == "__main__":
     unittest.main()

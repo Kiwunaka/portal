@@ -2,9 +2,31 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import gsap from "gsap";
 import {
   addTicketMessage,
+  adminBroadcast,
+  adminGiftCodeCreate,
+  adminGiftCodes,
+  adminManualBlock,
+  adminManualCreate,
+  adminManualExtend,
+  adminManualRegenerateToken,
+  adminMetricsStatus,
   adminNodesHealth,
+  adminNodesSync,
+  adminPromoCreate,
+  adminPromoDelete,
+  adminPromoUpdate,
+  adminPromos,
   adminSummary,
+  adminTemplateCreate,
+  adminTemplateDelete,
+  adminTemplateUpdate,
+  adminTemplates,
+  adminTicketReply,
+  adminTicketStatus,
   adminTickets,
+  adminUserCard,
+  adminUserMessage,
+  adminUsers,
   confirmConnect,
   createTicket,
   fetchDashboard,
@@ -17,9 +39,16 @@ import {
   runNodeDiagnostics,
   startPayAttempt,
   trackEvent,
+  type AdminGiftCodeRow,
+  type AdminMetricsStatus,
+  type AdminPromoRow,
+  type AdminTemplateRow,
+  type AdminUserCard,
+  type AdminUserRow,
   type AdminNodeHealthRow,
   type AdminSummaryPayload,
   type DashboardSnapshot,
+  type ManualCreateIn,
   type NodeStatus,
   type PointsSnapshot,
   type TicketInfo,
@@ -29,7 +58,7 @@ import { OFFER_FULL, OFFER_UPDATED_AT } from "./legal";
 import { getTgUser, haptic, openLink, tgReady } from "./telegram";
 
 type UserTab = "status" | "connect" | "nodes" | "support";
-type AdminTab = "summary" | "tickets" | "nodes";
+type AdminTab = "summary" | "users" | "tickets" | "nodes" | "broadcast" | "promos" | "templates" | "giftcodes";
 
 type StorySlide = { title: string; text: string };
 type PlanChoice = { key: string; label: string; stars: number; badge?: string };
@@ -62,6 +91,23 @@ const MAP_POINTS: Array<{ code: string; x: number; y: number; label: string }> =
   { code: "de", x: 155, y: 62, label: "DE" },
   { code: "pl", x: 170, y: 56, label: "PL" },
   { code: "it", x: 162, y: 78, label: "IT" },
+];
+
+const ADMIN_TABS: Array<{ id: AdminTab; label: string }> = [
+  { id: "summary", label: "Сводка" },
+  { id: "users", label: "Пользователи" },
+  { id: "tickets", label: "Тикеты" },
+  { id: "nodes", label: "Ноды" },
+  { id: "broadcast", label: "Рассылка" },
+  { id: "promos", label: "Промокоды" },
+  { id: "templates", label: "Шаблоны" },
+  { id: "giftcodes", label: "Gift-коды" },
+];
+
+const GIFT_CODE_CHOICES: Array<{ key: "mini" | "standard" | "premium"; label: string; days: number; stars: number }> = [
+  { key: "mini", label: "Mini", days: 7, stars: 59 },
+  { key: "standard", label: "Standard", days: 30, stars: 199 },
+  { key: "premium", label: "Premium", days: 90, stars: 499 },
 ];
 
 /* ── Dev Mode: mock data for local preview ── */
@@ -341,9 +387,43 @@ export default function App() {
   const [selectedNodeCode, setSelectedNodeCode] = useState<string>("de");
 
   const [aTab, setATab] = useState<AdminTab>("summary");
+  const [admBusy, setAdmBusy] = useState(false);
+  const [admError, setAdmError] = useState("");
   const [admSummary, setAdmSummary] = useState<AdminSummaryPayload | null>(null);
+  const [admMetrics, setAdmMetrics] = useState<AdminMetricsStatus | null>(null);
   const [admTickets, setAdmTickets] = useState<TicketInfo[]>([]);
+  const [admTicketFilter, setAdmTicketFilter] = useState<string>("");
+  const [admTicket, setAdmTicket] = useState<TicketInfo | null>(null);
+  const [admReplyBody, setAdmReplyBody] = useState("");
   const [admNodes, setAdmNodes] = useState<AdminNodeHealthRow[]>([]);
+  const [admUsersRows, setAdmUsersRows] = useState<AdminUserRow[]>([]);
+  const [admUsersQuery, setAdmUsersQuery] = useState("");
+  const [admSelectedUserId, setAdmSelectedUserId] = useState<number | null>(null);
+  const [admUserCardData, setAdmUserCardData] = useState<AdminUserCard | null>(null);
+  const [admUserMessageBody, setAdmUserMessageBody] = useState("");
+  const [admManualForm, setAdmManualForm] = useState<ManualCreateIn>({ display_name: "", days: 30 });
+  const [admManualLastLink, setAdmManualLastLink] = useState("");
+  const [admBroadcastText, setAdmBroadcastText] = useState("");
+  const [admBroadcastSegment, setAdmBroadcastSegment] = useState("all_active");
+  const [admBroadcastLimit, setAdmBroadcastLimit] = useState(120);
+  const [admBroadcastResult, setAdmBroadcastResult] = useState("");
+  const [admNodeSyncSegment, setAdmNodeSyncSegment] = useState("active");
+  const [admNodeSyncLimit, setAdmNodeSyncLimit] = useState(100);
+  const [admNodeSyncTgId, setAdmNodeSyncTgId] = useState("");
+  const [admPromosRows, setAdmPromosRows] = useState<AdminPromoRow[]>([]);
+  const [admPromoForm, setAdmPromoForm] = useState({
+    code: "",
+    promo_type: "days" as "days" | "discount",
+    value: 14,
+    uses_left: 100,
+    expires_at: "",
+  });
+  const [admTemplatesRows, setAdmTemplatesRows] = useState<AdminTemplateRow[]>([]);
+  const [admTemplateForm, setAdmTemplateForm] = useState({ key: "", text: "" });
+  const [admTemplateEdit, setAdmTemplateEdit] = useState<{ key: string; text: string }>({ key: "", text: "" });
+  const [admGiftCodesRows, setAdmGiftCodesRows] = useState<AdminGiftCodeRow[]>([]);
+  const [admGiftType, setAdmGiftType] = useState<"mini" | "standard" | "premium">("standard");
+  const [admGiftLastCode, setAdmGiftLastCode] = useState("");
 
   const tabContentRef = useRef<HTMLElement>(null);
   const prevTab = useRef<UserTab>("status");
@@ -429,16 +509,112 @@ export default function App() {
       setPoints(p);
       if (n.length > 0) setSelectedNodeCode(n[0].code);
       if (u.is_admin) {
-        const [s, at, an] = await Promise.all([adminSummary(), adminTickets("", 30), adminNodesHealth()]);
+        const [s, at, an, m, au, promos, templates, giftCodes] = await Promise.all([
+          adminSummary(),
+          adminTickets("", 30),
+          adminNodesHealth(),
+          adminMetricsStatus(),
+          adminUsers("", 40, 0),
+          adminPromos(250),
+          adminTemplates(250),
+          adminGiftCodes(100),
+        ]);
         setAdmSummary(s);
         setAdmTickets(at);
         setAdmNodes(an);
+        setAdmMetrics(m);
+        setAdmUsersRows(au);
+        setAdmPromosRows(promos);
+        setAdmTemplatesRows(templates);
+        setAdmGiftCodesRows(giftCodes);
+        if (templates.length > 0) {
+          setAdmTemplateEdit({ key: templates[0].key, text: templates[0].text });
+        }
+        if (au.length > 0) {
+          const first = au[0].tg_id;
+          setAdmSelectedUserId(first);
+          setAdmUserCardData(await adminUserCard(first));
+        } else {
+          setAdmSelectedUserId(null);
+          setAdmUserCardData(null);
+        }
       }
       void trackEvent("opened_webapp", "webapp", { tab: "status" });
     } catch (e: unknown) {
       setError(String((e as { message?: string })?.message || e));
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function reloadAdminCore() {
+    const [s, an, m] = await Promise.all([adminSummary(), adminNodesHealth(), adminMetricsStatus()]);
+    setAdmSummary(s);
+    setAdmNodes(an);
+    setAdmMetrics(m);
+  }
+
+  async function reloadAdminUsers(query = admUsersQuery) {
+    const rows = await adminUsers(query, 60, 0);
+    setAdmUsersRows(rows);
+    if (!rows.length) {
+      setAdmSelectedUserId(null);
+      setAdmUserCardData(null);
+      return;
+    }
+    if (!admSelectedUserId || !rows.some((u) => u.tg_id === admSelectedUserId)) {
+      setAdmSelectedUserId(rows[0].tg_id);
+      setAdmUserCardData(await adminUserCard(rows[0].tg_id));
+    }
+  }
+
+  async function openAdminUser(tgId: number) {
+    setAdmSelectedUserId(tgId);
+    setAdmUserCardData(await adminUserCard(tgId));
+  }
+
+  async function reloadAdminTickets(status = admTicketFilter) {
+    const rows = await adminTickets(status, 40);
+    setAdmTickets(rows);
+    if (admTicket && !rows.some((t) => t.id === admTicket.id)) {
+      setAdmTicket(null);
+    }
+  }
+
+  async function reloadAdminPromos() {
+    setAdmPromosRows(await adminPromos(250));
+  }
+
+  async function reloadAdminTemplates() {
+    const rows = await adminTemplates(250);
+    setAdmTemplatesRows(rows);
+    if (!rows.length) {
+      setAdmTemplateEdit({ key: "", text: "" });
+      return;
+    }
+    if (!admTemplateEdit.key || !rows.some((t) => t.key === admTemplateEdit.key)) {
+      setAdmTemplateEdit({ key: rows[0].key, text: rows[0].text });
+    }
+  }
+
+  async function reloadAdminGiftCodes() {
+    setAdmGiftCodesRows(await adminGiftCodes(100));
+  }
+
+  async function runAdminAction(action: () => Promise<void>, successText: string) {
+    try {
+      setAdmBusy(true);
+      setAdmError("");
+      await action();
+      setBanner(successText);
+      pulse("success");
+    } catch (e: unknown) {
+      const msg = String((e as { message?: string })?.message || e);
+      setAdmError(msg);
+      setBanner("Ошибка действия администратора");
+      pulse("error");
+    } finally {
+      setAdmBusy(false);
     }
   }
 
@@ -473,6 +649,219 @@ export default function App() {
     } catch {
       openLink(user?.actions.pay_via_bot || "");
     }
+  }
+
+  async function onAdminSearchUsers() {
+    await runAdminAction(async () => {
+      await reloadAdminUsers(admUsersQuery.trim());
+    }, "Список пользователей обновлён");
+  }
+
+  async function onAdminCreateManual() {
+    const name = admManualForm.display_name.trim();
+    const days = Math.max(1, Number(admManualForm.days || 0));
+    if (!name) {
+      setAdmError("Укажите имя ручного профиля");
+      return;
+    }
+    await runAdminAction(async () => {
+      const res = await adminManualCreate({ display_name: name, days });
+      setAdmManualLastLink(res.user.subscription_url || "");
+      setAdmManualForm({ display_name: "", days: 30 });
+      await reloadAdminUsers("");
+      await reloadAdminCore();
+      if (res.user?.tg_id) {
+        await openAdminUser(Number(res.user.tg_id));
+      }
+    }, "Ручной профиль создан");
+  }
+
+  async function onAdminSendUserMessage() {
+    if (!admSelectedUserId) return;
+    const text = admUserMessageBody.trim();
+    if (!text) {
+      setAdmError("Текст сообщения пустой");
+      return;
+    }
+    await runAdminAction(async () => {
+      await adminUserMessage(admSelectedUserId, text);
+      setAdmUserMessageBody("");
+    }, "Сообщение отправлено пользователю");
+  }
+
+  async function onAdminManualExtend(days: number) {
+    if (!admSelectedUserId) return;
+    await runAdminAction(async () => {
+      await adminManualExtend(admSelectedUserId, Math.max(1, days));
+      await openAdminUser(admSelectedUserId);
+      await reloadAdminUsers(admUsersQuery.trim());
+      await reloadAdminCore();
+    }, `Продлено на ${days} дней`);
+  }
+
+  async function onAdminManualBlock(blocked: boolean) {
+    if (!admSelectedUserId) return;
+    await runAdminAction(async () => {
+      await adminManualBlock(admSelectedUserId, blocked);
+      await openAdminUser(admSelectedUserId);
+      await reloadAdminUsers(admUsersQuery.trim());
+      await reloadAdminCore();
+    }, blocked ? "Профиль заблокирован" : "Профиль разблокирован");
+  }
+
+  async function onAdminManualRegenerate() {
+    if (!admSelectedUserId) return;
+    await runAdminAction(async () => {
+      const res = await adminManualRegenerateToken(admSelectedUserId);
+      setAdmManualLastLink(res.subscription_url || "");
+    }, "Токен пересоздан");
+  }
+
+  async function onAdminTicketReply() {
+    if (!admTicket) return;
+    const body = admReplyBody.trim();
+    if (!body) {
+      setAdmError("Ответ пустой");
+      return;
+    }
+    await runAdminAction(async () => {
+      const updated = await adminTicketReply(admTicket.id, body);
+      setAdmTicket(updated);
+      setAdmReplyBody("");
+      await reloadAdminTickets(admTicketFilter);
+      await reloadAdminCore();
+    }, "Ответ отправлен");
+  }
+
+  async function onAdminTicketSetStatus(status: "open" | "in_progress" | "closed") {
+    if (!admTicket) return;
+    await runAdminAction(async () => {
+      const updated = await adminTicketStatus(admTicket.id, status);
+      setAdmTicket(updated);
+      await reloadAdminTickets(admTicketFilter);
+      await reloadAdminCore();
+    }, `Статус тикета: ${status}`);
+  }
+
+  async function onAdminNodesSync() {
+    const maybeTgId = Number(admNodeSyncTgId.trim() || 0);
+    await runAdminAction(async () => {
+      if (maybeTgId > 0) {
+        await adminNodesSync({ tg_id: maybeTgId });
+      } else {
+        await adminNodesSync({
+          segment: admNodeSyncSegment,
+          limit: Math.max(1, Math.min(1000, Number(admNodeSyncLimit || 0) || 100)),
+        });
+      }
+      await reloadAdminCore();
+      await reloadAdminTickets(admTicketFilter);
+      await reloadAdminUsers(admUsersQuery.trim());
+    }, "Синхронизация нод завершена");
+  }
+
+  async function onAdminBroadcast() {
+    const text = admBroadcastText.trim();
+    if (!text) {
+      setAdmError("Введите текст рассылки");
+      return;
+    }
+    await runAdminAction(async () => {
+      const res = await adminBroadcast({
+        text,
+        segment: admBroadcastSegment,
+        limit: Math.max(1, Math.min(1000, Number(admBroadcastLimit || 0) || 100)),
+      });
+      setAdmBroadcastResult(`Отправлено: ${res.sent}, ошибок: ${res.failed}, попыток: ${res.attempted}`);
+      await reloadAdminCore();
+    }, "Рассылка запущена");
+  }
+
+  async function onAdminCreatePromo() {
+    const code = admPromoForm.code.trim().toUpperCase();
+    if (!code) {
+      setAdmError("Укажите код промокода");
+      return;
+    }
+    await runAdminAction(async () => {
+      await adminPromoCreate({
+        code,
+        promo_type: admPromoForm.promo_type,
+        value: Math.max(1, Number(admPromoForm.value || 0)),
+        uses_left: Number(admPromoForm.uses_left || 0),
+        expires_at: admPromoForm.expires_at?.trim() ? admPromoForm.expires_at.trim() : null,
+      });
+      setAdmPromoForm({ code: "", promo_type: admPromoForm.promo_type, value: 14, uses_left: 100, expires_at: "" });
+      await reloadAdminPromos();
+    }, `Промокод ${code} создан`);
+  }
+
+  async function onAdminPatchPromo(row: AdminPromoRow) {
+    await runAdminAction(async () => {
+      await adminPromoUpdate(row.code, {
+        promo_type: row.promo_type === "discount" ? "discount" : "days",
+        value: Math.max(1, Number(row.value || 0)),
+        uses_left: Number(row.uses_left || 0),
+        expires_at: row.expires_at ? row.expires_at : "",
+      });
+      await reloadAdminPromos();
+    }, `Промокод ${row.code} обновлён`);
+  }
+
+  async function onAdminDeletePromo(code: string) {
+    await runAdminAction(async () => {
+      await adminPromoDelete(code);
+      await reloadAdminPromos();
+    }, `Промокод ${code} удалён`);
+  }
+
+  async function onAdminCreateTemplate() {
+    const key = admTemplateForm.key.trim().toLowerCase();
+    const text = admTemplateForm.text.trim();
+    if (!key || !text) {
+      setAdmError("Укажите ключ и текст шаблона");
+      return;
+    }
+    await runAdminAction(async () => {
+      await adminTemplateCreate({ key, text });
+      setAdmTemplateForm({ key: "", text: "" });
+      await reloadAdminTemplates();
+    }, `Шаблон ${key} создан`);
+  }
+
+  async function onAdminPatchTemplate() {
+    const key = admTemplateEdit.key.trim().toLowerCase();
+    const text = admTemplateEdit.text.trim();
+    if (!key || !text) {
+      setAdmError("Выберите шаблон и введите текст");
+      return;
+    }
+    await runAdminAction(async () => {
+      await adminTemplateUpdate(key, { text });
+      await reloadAdminTemplates();
+    }, `Шаблон ${key} обновлён`);
+  }
+
+  async function onAdminDeleteTemplate(key: string) {
+    await runAdminAction(async () => {
+      await adminTemplateDelete(key);
+      if (admTemplateEdit.key === key) {
+        setAdmTemplateEdit({ key: "", text: "" });
+      }
+      await reloadAdminTemplates();
+    }, `Шаблон ${key} удалён`);
+  }
+
+  async function onAdminCreateGiftCode() {
+    await runAdminAction(async () => {
+      const res = await adminGiftCodeCreate(admGiftType);
+      const code = res?.gift_code?.code || "";
+      setAdmGiftLastCode(code);
+      if (code) {
+        await copyText(code);
+      }
+      await reloadAdminGiftCodes();
+    }, "Gift-код создан и скопирован");
   }
 
   function clientOptionsForPlatform(): Array<{ title: string; url: string }> {
@@ -617,15 +1006,567 @@ export default function App() {
 
       {user.is_admin ? (
         <section className="card card-enter">
-          <div className="section-tag">[АДМИН]</div>
+          <div className="section-tag">[ADMIN]</div>
+          <div className="card__title">Панель оператора</div>
           <div className="chips">
-            {(["summary", "tickets", "nodes"] as AdminTab[]).map((k) => (
-              <button key={k} className={aTab === k ? "chip chip--active" : "chip"} type="button" onClick={() => setATab(k)}>{k.toUpperCase()}</button>
+            {ADMIN_TABS.map((tab) => (
+              <button
+                key={tab.id}
+                className={aTab === tab.id ? "chip chip--active" : "chip"}
+                type="button"
+                onClick={() => setATab(tab.id)}
+              >
+                {tab.label}
+              </button>
             ))}
           </div>
-          {aTab === "summary" && admSummary ? <div className="muted" style={{ marginTop: 12 }}>{`Пользователи ${admSummary.users.total} | Узлы ${admSummary.nodes.healthy}/${admSummary.nodes.total}`}</div> : null}
-          {aTab === "tickets" ? <div className="muted" style={{ marginTop: 12 }}>{`Тикеты: ${admTickets.length}`}</div> : null}
-          {aTab === "nodes" ? <div className="muted" style={{ marginTop: 12 }}>{`Узлы: ${admNodes.length}`}</div> : null}
+          {admError ? (
+            <div className="pill pill--bad" style={{ marginTop: 12 }}>
+              {admError}
+            </div>
+          ) : null}
+
+          {aTab === "summary" && admSummary ? (
+            <>
+              <div className="grid2" style={{ marginTop: 12 }}>
+                <div className="metric">
+                  <div className="metric__k">Всего пользователей</div>
+                  <div className="metric__v">{admSummary.users.total}</div>
+                </div>
+                <div className="metric">
+                  <div className="metric__k">Активные</div>
+                  <div className="metric__v">{admSummary.users.active}</div>
+                </div>
+                <div className="metric">
+                  <div className="metric__k">Тикеты open</div>
+                  <div className="metric__v">{admSummary.tickets.open}</div>
+                </div>
+                <div className="metric">
+                  <div className="metric__k">Ноды healthy</div>
+                  <div className="metric__v">{`${admSummary.nodes.healthy}/${admSummary.nodes.total}`}</div>
+                </div>
+              </div>
+              <div className="pill" style={{ marginBottom: 12 }}>
+                {admMetrics
+                  ? `Метрики: ${admMetrics.status.toUpperCase()} | age=${admMetrics.age_seconds ?? "-"}s | stale>${admMetrics.stale_after_seconds}s`
+                  : "Метрики: loading..."}
+              </div>
+              <div className="list">
+                {admSummary.top_nodes.map((n) => (
+                  <div key={n.code} className="row">
+                    <div>
+                      <div className="row__title">{`[${n.code.toUpperCase()}] score ${n.health_score.toFixed(2)}`}</div>
+                      <div className="row__sub">{`lat=${n.panel_latency_ms ?? "-"}ms | clients=${n.active_clients}`}</div>
+                    </div>
+                    <div className="pill">{n.last_health_at ? fmtDate(n.last_health_at) : "-"}</div>
+                  </div>
+                ))}
+              </div>
+            </>
+          ) : null}
+
+          {aTab === "users" ? (
+            <>
+              <div className="actions" style={{ marginTop: 12 }}>
+                <input
+                  className="field"
+                  value={admUsersQuery}
+                  onChange={(e) => setAdmUsersQuery(e.target.value)}
+                  placeholder="Поиск: @username или tg_id"
+                />
+                <button className="btn btn--inline" type="button" disabled={admBusy} onClick={() => void onAdminSearchUsers()}>
+                  Найти
+                </button>
+              </div>
+
+              <div className="list">
+                {admUsersRows.map((u) => (
+                  <button
+                    key={u.tg_id}
+                    className="row row--btn"
+                    type="button"
+                    onClick={() =>
+                      void runAdminAction(async () => {
+                        await openAdminUser(u.tg_id);
+                      }, `Открыт профиль ${u.tg_id}`)
+                    }
+                  >
+                    <div>
+                      <div className="row__title">
+                        {u.username ? `@${u.username}` : `ID ${u.tg_id}`} {u.is_manual ? "[MANUAL]" : ""}
+                      </div>
+                      <div className="row__sub">{`${u.sub_type} | active=${u.is_active ? "yes" : "no"} | exp=${fmtDate(u.expiry_at)}`}</div>
+                    </div>
+                    <div className="pill">{u.stars_paid}⭐</div>
+                  </button>
+                ))}
+              </div>
+
+              {admUserCardData ? (
+                <>
+                  <div className="divider" />
+                  <div className="card__title">Карточка пользователя</div>
+                  <div className="list">
+                    <div className="row">
+                      <div>
+                        <div className="row__title">
+                          {admUserCardData.user.username
+                            ? `@${admUserCardData.user.username}`
+                            : admUserCardData.user.display_name || `ID ${admUserCardData.user.tg_id}`}
+                        </div>
+                        <div className="row__sub">{`ID=${admUserCardData.user.tg_id} | ${admUserCardData.user.sub_type} | active=${admUserCardData.user.is_active ? "yes" : "no"}`}</div>
+                      </div>
+                    </div>
+                    <div className="row">
+                      <div className="row__sub">{`Expires: ${fmtDate(admUserCardData.user.expiry_at)} | stars=${admUserCardData.user.stars_paid} | referral=${admUserCardData.user.referral_count}`}</div>
+                    </div>
+                  </div>
+
+                  {admUserCardData.user.is_manual ? (
+                    <div className="actions" style={{ marginTop: 10 }}>
+                      <button className="btn btn--ghost btn--inline" type="button" disabled={admBusy} onClick={() => void onAdminManualExtend(7)}>
+                        +7 дней
+                      </button>
+                      <button className="btn btn--ghost btn--inline" type="button" disabled={admBusy} onClick={() => void onAdminManualExtend(30)}>
+                        +30 дней
+                      </button>
+                      <button
+                        className="btn btn--ghost btn--inline"
+                        type="button"
+                        disabled={admBusy}
+                        onClick={() => void onAdminManualBlock(admUserCardData.user.is_active)}
+                      >
+                        {admUserCardData.user.is_active ? "Блок" : "Разблок"}
+                      </button>
+                      <button className="btn btn--ghost btn--inline" type="button" disabled={admBusy} onClick={() => void onAdminManualRegenerate()}>
+                        Новый токен
+                      </button>
+                    </div>
+                  ) : null}
+
+                  <textarea
+                    className="field field--area"
+                    value={admUserMessageBody}
+                    onChange={(e) => setAdmUserMessageBody(e.target.value)}
+                    placeholder="Сообщение пользователю"
+                  />
+                  <div className="actions" style={{ marginTop: 8 }}>
+                    <button className="btn" type="button" disabled={admBusy} onClick={() => void onAdminSendUserMessage()}>
+                      <span style={{ position: "relative", zIndex: 1 }}>Отправить сообщение</span>
+                    </button>
+                  </div>
+                </>
+              ) : null}
+
+              <div className="divider" />
+              <div className="card__title">Создание manual-профиля</div>
+              <input
+                className="field"
+                value={admManualForm.display_name}
+                onChange={(e) => setAdmManualForm((v) => ({ ...v, display_name: e.target.value }))}
+                placeholder="Имя профиля"
+              />
+              <div className="actions" style={{ marginTop: 8 }}>
+                <input
+                  className="field field--compact"
+                  value={String(admManualForm.days)}
+                  onChange={(e) =>
+                    setAdmManualForm((v) => ({ ...v, days: Math.max(1, Number(e.target.value || 0) || 1) }))
+                  }
+                  placeholder="Дней"
+                />
+                <button className="btn" type="button" disabled={admBusy} onClick={() => void onAdminCreateManual()}>
+                  <span style={{ position: "relative", zIndex: 1 }}>Создать</span>
+                </button>
+              </div>
+              {admManualLastLink ? (
+                <div className="actions" style={{ marginTop: 8 }}>
+                  <button className="btn btn--ghost" type="button" onClick={() => void copyText(admManualLastLink)}>
+                    <span style={{ position: "relative", zIndex: 1 }}>Скопировать ключ manual</span>
+                  </button>
+                </div>
+              ) : null}
+            </>
+          ) : null}
+
+          {aTab === "tickets" ? (
+            <>
+              <div className="chips" style={{ marginTop: 12 }}>
+                {[
+                  { key: "", label: "Все" },
+                  { key: "open", label: "Open" },
+                  { key: "in_progress", label: "InProgress" },
+                  { key: "closed", label: "Closed" },
+                ].map((f) => (
+                  <button
+                    key={f.key || "all"}
+                    className={admTicketFilter === f.key ? "chip chip--active" : "chip"}
+                    type="button"
+                    onClick={() =>
+                      void runAdminAction(async () => {
+                        setAdmTicketFilter(f.key);
+                        const rows = await adminTickets(f.key, 40);
+                        setAdmTickets(rows);
+                        setAdmTicket(null);
+                      }, "Список тикетов обновлён")
+                    }
+                  >
+                    {f.label}
+                  </button>
+                ))}
+              </div>
+              <div className="list">
+                {admTickets.map((t) => (
+                  <button
+                    key={t.id}
+                    className="row row--btn"
+                    type="button"
+                    onClick={() =>
+                      void runAdminAction(async () => {
+                        setAdmTicket(await getTicket(t.id));
+                      }, `Открыт тикет #${t.id}`)
+                    }
+                  >
+                    <div>
+                      <div className="row__title">{`#${t.id} ${t.status_title}`}</div>
+                      <div className="row__sub">{`${t.user_tg_id} | ${t.last_message_preview || "-"}`}</div>
+                    </div>
+                  </button>
+                ))}
+              </div>
+
+              {admTicket ? (
+                <>
+                  <div className="divider" />
+                  <div className="chips">
+                    <button className="chip" type="button" disabled={admBusy} onClick={() => void onAdminTicketSetStatus("open")}>
+                      open
+                    </button>
+                    <button className="chip" type="button" disabled={admBusy} onClick={() => void onAdminTicketSetStatus("in_progress")}>
+                      in_progress
+                    </button>
+                    <button className="chip" type="button" disabled={admBusy} onClick={() => void onAdminTicketSetStatus("closed")}>
+                      closed
+                    </button>
+                  </div>
+                  <div className="list">
+                    {admTicket.messages.map((m) => (
+                      <div key={m.id} className={m.sender_role === "admin" ? "msg msg--op" : "msg msg--mine"}>
+                        <div className="row__sub">{`${m.sender_role} | ${fmtDate(m.created_at)}`}</div>
+                        <div>{m.body}</div>
+                      </div>
+                    ))}
+                  </div>
+                  <textarea
+                    className="field field--area"
+                    value={admReplyBody}
+                    onChange={(e) => setAdmReplyBody(e.target.value)}
+                    placeholder="Ответ оператора"
+                  />
+                  <div className="actions" style={{ marginTop: 8 }}>
+                    <button className="btn" type="button" disabled={admBusy} onClick={() => void onAdminTicketReply()}>
+                      <span style={{ position: "relative", zIndex: 1 }}>Отправить ответ</span>
+                    </button>
+                  </div>
+                </>
+              ) : null}
+            </>
+          ) : null}
+
+          {aTab === "nodes" ? (
+            <>
+              <div className="actions" style={{ marginTop: 12 }}>
+                <input
+                  className="field field--compact"
+                  value={admNodeSyncLimit}
+                  onChange={(e) => setAdmNodeSyncLimit(Math.max(1, Number(e.target.value || 0) || 1))}
+                  placeholder="limit"
+                />
+                <input
+                  className="field field--compact"
+                  value={admNodeSyncTgId}
+                  onChange={(e) => setAdmNodeSyncTgId(e.target.value)}
+                  placeholder="tg_id (optional)"
+                />
+              </div>
+              <div className="chips" style={{ marginTop: 8 }}>
+                {["active", "free", "paid"].map((seg) => (
+                  <button
+                    key={seg}
+                    className={admNodeSyncSegment === seg ? "chip chip--active" : "chip"}
+                    type="button"
+                    onClick={() => setAdmNodeSyncSegment(seg)}
+                  >
+                    {seg}
+                  </button>
+                ))}
+              </div>
+              <div className="actions" style={{ marginTop: 8 }}>
+                <button className="btn" type="button" disabled={admBusy} onClick={() => void onAdminNodesSync()}>
+                  <span style={{ position: "relative", zIndex: 1 }}>Sync нод</span>
+                </button>
+              </div>
+
+              <div className="list">
+                {admNodes.map((n) => (
+                  <div key={n.code} className="row">
+                    <div>
+                      <div className="row__title">{`[${n.code.toUpperCase()}] ${n.name}`}</div>
+                      <div className="row__sub">{`score=${n.health_score.toFixed(2)} | lat=${n.panel_latency_ms ?? "-"}ms | err=${(n.panel_error_rate * 100).toFixed(1)}% | clients=${n.active_clients}`}</div>
+                    </div>
+                    <div className={n.is_healthy ? "pill pill--ok" : "pill pill--bad"}>{n.is_healthy ? "OK" : "STALE"}</div>
+                  </div>
+                ))}
+              </div>
+            </>
+          ) : null}
+
+          {aTab === "broadcast" ? (
+            <>
+              <div className="chips" style={{ marginTop: 12 }}>
+                {["all_active", "free", "paid", "expired"].map((seg) => (
+                  <button
+                    key={seg}
+                    className={admBroadcastSegment === seg ? "chip chip--active" : "chip"}
+                    type="button"
+                    onClick={() => setAdmBroadcastSegment(seg)}
+                  >
+                    {seg}
+                  </button>
+                ))}
+              </div>
+              <div className="actions" style={{ marginTop: 8 }}>
+                <input
+                  className="field field--compact"
+                  value={admBroadcastLimit}
+                  onChange={(e) => setAdmBroadcastLimit(Math.max(1, Number(e.target.value || 0) || 1))}
+                  placeholder="limit"
+                />
+              </div>
+              <textarea
+                className="field field--area"
+                value={admBroadcastText}
+                onChange={(e) => setAdmBroadcastText(e.target.value)}
+                placeholder="Текст рассылки"
+              />
+              <div className="actions" style={{ marginTop: 8 }}>
+                <button className="btn" type="button" disabled={admBusy} onClick={() => void onAdminBroadcast()}>
+                  <span style={{ position: "relative", zIndex: 1 }}>Запустить рассылку</span>
+                </button>
+              </div>
+              {admBroadcastResult ? <div className="muted" style={{ marginTop: 8 }}>{admBroadcastResult}</div> : null}
+            </>
+          ) : null}
+
+          {aTab === "promos" ? (
+            <>
+              <div className="card__title" style={{ marginTop: 12 }}>Создать промокод</div>
+              <div className="actions">
+                <input
+                  className="field field--compact"
+                  value={admPromoForm.code}
+                  onChange={(e) => setAdmPromoForm((v) => ({ ...v, code: e.target.value.toUpperCase() }))}
+                  placeholder="CODE"
+                />
+                <input
+                  className="field field--compact"
+                  value={String(admPromoForm.value)}
+                  onChange={(e) => setAdmPromoForm((v) => ({ ...v, value: Math.max(1, Number(e.target.value || 0) || 1) }))}
+                  placeholder="value"
+                />
+                <input
+                  className="field field--compact"
+                  value={String(admPromoForm.uses_left)}
+                  onChange={(e) => setAdmPromoForm((v) => ({ ...v, uses_left: Number(e.target.value || 0) || 0 }))}
+                  placeholder="uses (-1∞)"
+                />
+              </div>
+              <div className="chips" style={{ marginTop: 8 }}>
+                {(["days", "discount"] as const).map((type) => (
+                  <button
+                    key={type}
+                    className={admPromoForm.promo_type === type ? "chip chip--active" : "chip"}
+                    type="button"
+                    onClick={() => setAdmPromoForm((v) => ({ ...v, promo_type: type }))}
+                  >
+                    {type}
+                  </button>
+                ))}
+              </div>
+              <div className="actions" style={{ marginTop: 8 }}>
+                <input
+                  className="field"
+                  value={admPromoForm.expires_at}
+                  onChange={(e) => setAdmPromoForm((v) => ({ ...v, expires_at: e.target.value }))}
+                  placeholder="expires_at ISO (опционально)"
+                />
+                <button className="btn btn--inline" type="button" disabled={admBusy} onClick={() => void onAdminCreatePromo()}>
+                  Создать
+                </button>
+              </div>
+
+              <div className="divider" />
+              <div className="card__title">Список промокодов</div>
+              <div className="list">
+                {admPromosRows.map((p) => (
+                  <div key={p.code} className="row" style={{ alignItems: "flex-start", flexDirection: "column", gap: 8 }}>
+                    <div className="row__title">{`${p.code} | ${p.promo_type}`}</div>
+                    <div className="row__sub">{`used=${p.used_count} | left=${p.uses_left} | exp=${fmtDate(p.expires_at)}`}</div>
+                    <div className="actions">
+                      <button
+                        className="chip"
+                        type="button"
+                        onClick={() =>
+                          setAdmPromosRows((rows) =>
+                            rows.map((x) =>
+                              x.code === p.code
+                                ? { ...x, promo_type: x.promo_type === "discount" ? "days" : "discount" }
+                                : x,
+                            ),
+                          )
+                        }
+                      >
+                        {p.promo_type}
+                      </button>
+                      <input
+                        className="field field--compact"
+                        value={String(p.value)}
+                        onChange={(e) =>
+                          setAdmPromosRows((rows) =>
+                            rows.map((x) => (x.code === p.code ? { ...x, value: Math.max(1, Number(e.target.value || 0) || 1) } : x)),
+                          )
+                        }
+                        placeholder="value"
+                      />
+                      <input
+                        className="field field--compact"
+                        value={String(p.uses_left)}
+                        onChange={(e) =>
+                          setAdmPromosRows((rows) =>
+                            rows.map((x) => (x.code === p.code ? { ...x, uses_left: Number(e.target.value || 0) || 0 } : x)),
+                          )
+                        }
+                        placeholder="uses"
+                      />
+                      <input
+                        className="field"
+                        value={p.expires_at || ""}
+                        onChange={(e) =>
+                          setAdmPromosRows((rows) =>
+                            rows.map((x) => (x.code === p.code ? { ...x, expires_at: e.target.value } : x)),
+                          )
+                        }
+                        placeholder="expires_at ISO"
+                      />
+                      <button className="chip" type="button" disabled={admBusy} onClick={() => void onAdminPatchPromo(p)}>
+                        Сохранить
+                      </button>
+                      <button className="chip" type="button" disabled={admBusy} onClick={() => void onAdminDeletePromo(p.code)}>
+                        Удалить
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </>
+          ) : null}
+
+          {aTab === "templates" ? (
+            <>
+              <div className="card__title" style={{ marginTop: 12 }}>Создать шаблон рассылки</div>
+              <div className="actions">
+                <input
+                  className="field field--compact"
+                  value={admTemplateForm.key}
+                  onChange={(e) => setAdmTemplateForm((v) => ({ ...v, key: e.target.value.toLowerCase() }))}
+                  placeholder="key"
+                />
+              </div>
+              <textarea
+                className="field field--area"
+                value={admTemplateForm.text}
+                onChange={(e) => setAdmTemplateForm((v) => ({ ...v, text: e.target.value }))}
+                placeholder="Текст шаблона"
+              />
+              <div className="actions" style={{ marginTop: 8 }}>
+                <button className="btn btn--inline" type="button" disabled={admBusy} onClick={() => void onAdminCreateTemplate()}>
+                  Создать
+                </button>
+              </div>
+
+              <div className="divider" />
+              <div className="card__title">Редактирование шаблона</div>
+              <div className="chips" style={{ marginTop: 8 }}>
+                {admTemplatesRows.map((t) => (
+                  <button
+                    key={t.key}
+                    className={admTemplateEdit.key === t.key ? "chip chip--active" : "chip"}
+                    type="button"
+                    onClick={() => setAdmTemplateEdit({ key: t.key, text: t.text })}
+                  >
+                    {t.key}
+                  </button>
+                ))}
+              </div>
+              <textarea
+                className="field field--area"
+                value={admTemplateEdit.text}
+                onChange={(e) => setAdmTemplateEdit((v) => ({ ...v, text: e.target.value }))}
+                placeholder="Выберите шаблон для редактирования"
+              />
+              <div className="actions" style={{ marginTop: 8 }}>
+                <button className="btn btn--inline" type="button" disabled={admBusy || !admTemplateEdit.key} onClick={() => void onAdminPatchTemplate()}>
+                  Сохранить
+                </button>
+                <button
+                  className="btn btn--inline"
+                  type="button"
+                  disabled={admBusy || !admTemplateEdit.key}
+                  onClick={() => void onAdminDeleteTemplate(admTemplateEdit.key)}
+                >
+                  Удалить
+                </button>
+              </div>
+            </>
+          ) : null}
+
+          {aTab === "giftcodes" ? (
+            <>
+              <div className="card__title" style={{ marginTop: 12 }}>Генерация gift-кодов</div>
+              <div className="chips">
+                {GIFT_CODE_CHOICES.map((g) => (
+                  <button
+                    key={g.key}
+                    className={admGiftType === g.key ? "chip chip--active" : "chip"}
+                    type="button"
+                    onClick={() => setAdmGiftType(g.key)}
+                  >
+                    {`${g.label} ${g.days}д / ${g.stars}⭐`}
+                  </button>
+                ))}
+              </div>
+              <div className="actions" style={{ marginTop: 8 }}>
+                <button className="btn" type="button" disabled={admBusy} onClick={() => void onAdminCreateGiftCode()}>
+                  <span style={{ position: "relative", zIndex: 1 }}>Создать gift-код</span>
+                </button>
+                <button className="btn btn--ghost" type="button" disabled={!admGiftLastCode} onClick={() => void copyText(admGiftLastCode)}>
+                  <span style={{ position: "relative", zIndex: 1 }}>Скопировать последний</span>
+                </button>
+              </div>
+              {admGiftLastCode ? <div className="pill" style={{ marginTop: 8 }}>{admGiftLastCode}</div> : null}
+              <div className="list" style={{ marginTop: 10 }}>
+                {admGiftCodesRows.map((g) => (
+                  <div key={g.code} className="row">
+                    <div>
+                      <div className="row__title">{`${g.code} | ${g.card_type}`}</div>
+                      <div className="row__sub">{`${g.days} дней | ${g.stars}⭐ | ${fmtDate(g.created_at)}`}</div>
+                    </div>
+                    <div className={g.redeemed_by ? "pill pill--ok" : "pill"}>{g.redeemed_by ? "Погашен" : "Новый"}</div>
+                  </div>
+                ))}
+              </div>
+            </>
+          ) : null}
         </section>
       ) : null}
 

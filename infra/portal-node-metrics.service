@@ -6,6 +6,6 @@ Wants=network-online.target
 [Service]
 Type=oneshot
 WorkingDirectory=/root/portal
+EnvironmentFile=-/root/portal_bot/.env
 ExecStart=/usr/bin/python3 /root/portal/scripts/collect_node_metrics.py
 User=root
-

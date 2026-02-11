@@ -36,7 +36,17 @@ class ApiAuthAndTicketsTests(unittest.TestCase):
         db_uri_path = Path(self.db_path).as_posix()
         self.bot_token = "test_bot_token_123"
         self._saved_env: dict[str, str | None] = {}
-        for k in ("DATABASE_URL", "BOT_TOKEN", "ADMIN_ID", "BOT_USERNAME", "SUPPORT_USERNAME", "PUBLIC_CHANNEL", "CHANNEL_PREMIUM_DAYS"):
+        for k in (
+            "DATABASE_URL",
+            "BOT_TOKEN",
+            "ADMIN_ID",
+            "BOT_USERNAME",
+            "SUPPORT_USERNAME",
+            "PUBLIC_CHANNEL",
+            "CHANNEL_PREMIUM_DAYS",
+            "OPENING_PREMIUM_DAYS",
+            "OPENING_PREMIUM_CAMPAIGN_KEY",
+        ):
             self._saved_env[k] = os.environ.get(k)
 
         os.environ["DATABASE_URL"] = f"sqlite:///{db_uri_path}"
@@ -46,6 +56,8 @@ class ApiAuthAndTicketsTests(unittest.TestCase):
         os.environ["SUPPORT_USERNAME"] = "portal_privacy_helpbot"
         os.environ["PUBLIC_CHANNEL"] = "portal_privacy"
         os.environ["CHANNEL_PREMIUM_DAYS"] = "10"
+        os.environ["OPENING_PREMIUM_DAYS"] = "14"
+        os.environ["OPENING_PREMIUM_CAMPAIGN_KEY"] = "opening_premium_14d"
 
         if "config" in sys.modules:
             importlib.reload(sys.modules["config"])
@@ -174,6 +186,22 @@ class ApiAuthAndTicketsTests(unittest.TestCase):
         r = self.client.post("/api/bonuses/channel/claim", headers=user_hdrs)
         self.assertEqual(r.status_code, 400, r.text)
 
+    def test_channel_bonus_claim_blocked_by_opening_promo_claim(self) -> None:
+        user_hdrs = {"X-Telegram-Init-Data": self._init_data(1001, "alice")}
+        from db import SessionLocal
+        from models import CampaignSend
+
+        s = SessionLocal()
+        try:
+            s.add(CampaignSend(tg_id=1001, campaign_key="opening_premium_14d"))
+            s.commit()
+        finally:
+            s.close()
+
+        r = self.client.post("/api/bonuses/channel/claim", headers=user_hdrs)
+        self.assertEqual(r.status_code, 400, r.text)
+        self.assertIn("промо-бонус", r.text.lower())
+
     def test_nodes_diagnostics_rate_limit(self) -> None:
         user_hdrs = {"X-Telegram-Init-Data": self._init_data(1001, "alice")}
         r1 = self.client.post("/api/nodes/diagnostics/run", headers=user_hdrs)
@@ -238,6 +266,64 @@ class ApiAuthAndTicketsTests(unittest.TestCase):
         self.assertEqual(regen.status_code, 200, regen.text)
         self.assertTrue(regen.json()["ok"])
         self.assertIn("/s8Kx2mP7qR4wT/", regen.json()["subscription_url"])
+
+    def test_admin_promos_templates_and_gift_codes_crud(self) -> None:
+        admin_hdrs = {"X-Telegram-Init-Data": self._init_data(9999, "admin")}
+
+        created_promo = self.client.post(
+            "/api/admin/promos",
+            headers=admin_hdrs,
+            json={"code": "WELCOME14", "promo_type": "days", "value": 14, "uses_left": 100},
+        )
+        self.assertEqual(created_promo.status_code, 200, created_promo.text)
+
+        promo_list = self.client.get("/api/admin/promos?limit=20", headers=admin_hdrs)
+        self.assertEqual(promo_list.status_code, 200, promo_list.text)
+        self.assertTrue(any((p.get("code") or "") == "WELCOME14" for p in promo_list.json().get("promos", [])))
+
+        updated_promo = self.client.patch(
+            "/api/admin/promos/WELCOME14",
+            headers=admin_hdrs,
+            json={"value": 21, "uses_left": 50},
+        )
+        self.assertEqual(updated_promo.status_code, 200, updated_promo.text)
+
+        deleted_promo = self.client.delete("/api/admin/promos/WELCOME14", headers=admin_hdrs)
+        self.assertEqual(deleted_promo.status_code, 200, deleted_promo.text)
+
+        created_tpl = self.client.post(
+            "/api/admin/templates",
+            headers=admin_hdrs,
+            json={"key": "retention_t3", "text": "Подписка скоро завершится. Продлите доступ."},
+        )
+        self.assertEqual(created_tpl.status_code, 200, created_tpl.text)
+
+        tpl_list = self.client.get("/api/admin/templates?limit=20", headers=admin_hdrs)
+        self.assertEqual(tpl_list.status_code, 200, tpl_list.text)
+        self.assertTrue(any((t.get("key") or "") == "retention_t3" for t in tpl_list.json().get("templates", [])))
+
+        updated_tpl = self.client.patch(
+            "/api/admin/templates/retention_t3",
+            headers=admin_hdrs,
+            json={"text": "Напоминаем: продлите доступ, чтобы не было паузы."},
+        )
+        self.assertEqual(updated_tpl.status_code, 200, updated_tpl.text)
+
+        deleted_tpl = self.client.delete("/api/admin/templates/retention_t3", headers=admin_hdrs)
+        self.assertEqual(deleted_tpl.status_code, 200, deleted_tpl.text)
+
+        gift_created = self.client.post(
+            "/api/admin/gift-codes",
+            headers=admin_hdrs,
+            json={"card_type": "standard"},
+        )
+        self.assertEqual(gift_created.status_code, 200, gift_created.text)
+        code = gift_created.json().get("gift_code", {}).get("code")
+        self.assertTrue(code)
+
+        gift_list = self.client.get("/api/admin/gift-codes?limit=20", headers=admin_hdrs)
+        self.assertEqual(gift_list.status_code, 200, gift_list.text)
+        self.assertTrue(any((g.get("code") or "") == code for g in gift_list.json().get("gift_codes", [])))
 
 
 if __name__ == "__main__":

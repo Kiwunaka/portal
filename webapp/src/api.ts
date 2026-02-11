@@ -251,6 +251,40 @@ export type AdminNodeHealthRow = {
   weight: number;
 };
 
+export type AdminMetricsStatus = {
+  status: "fresh" | "stale";
+  last_sample_at?: string | null;
+  age_seconds?: number | null;
+  stale_after_seconds: number;
+};
+
+export type AdminPromoRow = {
+  code: string;
+  promo_type: "discount" | "days" | string;
+  value: number;
+  uses_left: number;
+  used_count: number;
+  expires_at?: string | null;
+  created_at?: string | null;
+};
+
+export type AdminTemplateRow = {
+  key: string;
+  text: string;
+  created_at?: string | null;
+};
+
+export type AdminGiftCodeRow = {
+  code: string;
+  card_type: string;
+  days: number;
+  stars: number;
+  created_by: number;
+  created_at?: string | null;
+  redeemed_by?: number | null;
+  redeemed_at?: string | null;
+};
+
 export type ManualCreateIn = {
   display_name: string;
   days: number;
@@ -546,10 +580,94 @@ export async function adminNodesHealth(): Promise<AdminNodeHealthRow[]> {
   return data.nodes || [];
 }
 
+export function adminMetricsStatus(): Promise<AdminMetricsStatus> {
+  return apiFetch<AdminMetricsStatus>("/api/admin/metrics/status");
+}
+
 export function adminNodesSync(payload: { tg_id?: number; segment?: string; limit?: number }): Promise<any> {
   return apiFetch<any>("/api/admin/nodes/sync", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
+  });
+}
+
+export async function adminPromos(limit = 200): Promise<AdminPromoRow[]> {
+  const data = await apiFetch<{ promos: AdminPromoRow[] }>(`/api/admin/promos?limit=${Math.max(1, Math.min(500, limit))}`);
+  return data.promos || [];
+}
+
+export function adminPromoCreate(payload: {
+  code: string;
+  promo_type: "discount" | "days";
+  value: number;
+  uses_left: number;
+  expires_at?: string | null;
+}): Promise<{ ok: boolean; code: string }> {
+  return apiFetch("/api/admin/promos", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+}
+
+export function adminPromoUpdate(
+  code: string,
+  payload: { new_code?: string; promo_type?: "discount" | "days"; value?: number; uses_left?: number; expires_at?: string | null },
+): Promise<{ ok: boolean; code: string }> {
+  return apiFetch(`/api/admin/promos/${encodeURIComponent(code)}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+}
+
+export function adminPromoDelete(code: string): Promise<{ ok: boolean }> {
+  return apiFetch(`/api/admin/promos/${encodeURIComponent(code)}`, { method: "DELETE" });
+}
+
+export async function adminTemplates(limit = 200): Promise<AdminTemplateRow[]> {
+  const data = await apiFetch<{ templates: AdminTemplateRow[] }>(`/api/admin/templates?limit=${Math.max(1, Math.min(500, limit))}`);
+  return data.templates || [];
+}
+
+export function adminTemplateCreate(payload: { key: string; text: string }): Promise<{ ok: boolean; key: string }> {
+  return apiFetch("/api/admin/templates", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+}
+
+export function adminTemplateUpdate(
+  key: string,
+  payload: { new_key?: string; text?: string },
+): Promise<{ ok: boolean; key: string }> {
+  return apiFetch(`/api/admin/templates/${encodeURIComponent(key)}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+}
+
+export function adminTemplateDelete(key: string): Promise<{ ok: boolean }> {
+  return apiFetch(`/api/admin/templates/${encodeURIComponent(key)}`, { method: "DELETE" });
+}
+
+export async function adminGiftCodes(limit = 100): Promise<AdminGiftCodeRow[]> {
+  const data = await apiFetch<{ gift_codes: AdminGiftCodeRow[] }>(
+    `/api/admin/gift-codes?limit=${Math.max(1, Math.min(500, limit))}`,
+  );
+  return data.gift_codes || [];
+}
+
+export function adminGiftCodeCreate(card_type: "mini" | "standard" | "premium"): Promise<{
+  ok: boolean;
+  gift_code: { code: string; card_type: string; days: number; stars: number };
+}> {
+  return apiFetch("/api/admin/gift-codes", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ card_type }),
   });
 }
