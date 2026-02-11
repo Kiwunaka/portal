@@ -25,7 +25,8 @@ try:
     from aiogram.types import (
         Message, CallbackQuery, PreCheckoutQuery,
         InlineKeyboardMarkup, InlineKeyboardButton,
-        WebAppInfo, LabeledPrice, ContentType, BufferedInputFile
+        WebAppInfo, LabeledPrice, ContentType, BufferedInputFile,
+        BotCommand, MenuButtonCommands
     )
     from aiogram.enums import ParseMode
     AIROGRAM_AVAILABLE = True
@@ -137,6 +138,12 @@ except ModuleNotFoundError:
         pass
 
     class LabeledPrice(_BaseType):
+        pass
+
+    class BotCommand(_BaseType):
+        pass
+
+    class MenuButtonCommands(_BaseType):
         pass
 
     class BufferedInputFile(_BaseType):
@@ -2009,6 +2016,18 @@ def _plan_mode_label(sub_type: str | None) -> str:
     return f"безлимит, до {PAID_LIMIT_IP} устройств"
 
 
+def _plan_label_ru(sub_type: str | None) -> str:
+    st = _normalize_sub_type(sub_type or "")
+    if st == "FREE":
+        return "Бесплатный"
+    if st == "PAID":
+        return "Премиум"
+    if st == "MANUAL":
+        return "Ручной"
+    raw = (sub_type or "").strip()
+    return raw or "Не определена"
+
+
 def _is_paid_active_user(user: User | None) -> bool:
     if not user:
         return False
@@ -2103,8 +2122,9 @@ TEXTS = {
         "➖➖➖➖➖➖➖➖➖➖\n"
         "🆔 ID: `{tg_id}`\n"
         "🛡 Статус: {status_icon} *{status_text}*\n"
+        "📦 Подписка: `{plan_label}`\n"
         "📅 Истекает: `{expiry}`\n"
-        "⭐ Баланс: `{stars}` Stars\n"
+        "⭐ Оплачено: `{stars}` Stars\n"
         "➖➖➖➖➖➖➖➖➖➖"
     ),
     "no_subscription": (
@@ -2376,6 +2396,48 @@ def tariff_keyboard(tg_id: int = 0, show_trial: bool = True, show_gb_only: bool 
     
     return InlineKeyboardMarkup(inline_keyboard=buttons)
 
+
+async def _open_main_menu_message(message: Message, *, text: str = "👋 *Главное меню PORTAL*") -> None:
+    tg_id = message.from_user.id
+    ok = await _send_text_with_specs(
+        bot=message.bot,
+        chat_id=tg_id,
+        text=text,
+        rows=main_keyboard_specs(tg_id),
+        parse_mode=ParseMode.MARKDOWN,
+    )
+    if not ok:
+        await message.answer(
+            text,
+            reply_markup=main_keyboard(tg_id),
+            parse_mode=ParseMode.MARKDOWN,
+        )
+
+
+@router.message(Command("menu"))
+async def cmd_menu(message: Message):
+    tg_id = message.from_user.id
+    username = message.from_user.username
+    _set_support_context(tg_id, enabled=False)
+
+    try:
+        await message.delete()
+    except Exception:
+        pass
+
+    if tg_id in last_bot_message:
+        try:
+            await message.bot.delete_message(tg_id, last_bot_message[tg_id])
+        except Exception:
+            pass
+
+    user = get_user(tg_id)
+    if not user:
+        ensure_pending_user(tg_id, username=username)
+    update_user_username(tg_id, username)
+    await _open_main_menu_message(message, text="👋 *Меню открыто*")
+
+
 @router.message(CommandStart())
 async def cmd_start(message: Message):
     tg_id = message.from_user.id
@@ -2614,6 +2676,7 @@ async def show_status(callback: CallbackQuery):
         stars=stars,
         status_icon=status_icon,
         status_text=status_name,
+        plan_label=_plan_label_ru(user.sub_type if user else ""),
     )
     base_limit = FREE_LIMIT_IP if _normalize_sub_type(user.sub_type) == "FREE" else PAID_LIMIT_IP
     extra_slots = active_family_slots(tg_id)
@@ -5435,12 +5498,14 @@ async def admin_wheel_settings(callback: CallbackQuery):
     ])
     
     await callback.message.edit_text(
-        f"🎰 *Настройки рулетки*\n\n"
-        f"*Шансы выигрыша:*\n" + "\n".join(prizes_text) + "\n\n"
-        f"*Кулдаун:* {WHEEL_COOLDOWN_DAYS} дней\n\n"
-        f"_Для изменения шансов — редактируй WHEEL\\_PRIZES в bot.py_",
+        "🎰 <b>Настройки рулетки</b>\n\n"
+        "<b>Шансы выигрыша:</b>\n"
+        + "\n".join(prizes_text)
+        + "\n\n"
+        + f"<b>Кулдаун:</b> {WHEEL_COOLDOWN_DAYS} дней\n\n"
+        + "<i>Для изменения шансов редактируйте <code>WHEEL_PRIZES</code> в bot.py</i>",
         reply_markup=kb,
-        parse_mode=ParseMode.MARKDOWN
+        parse_mode=ParseMode.HTML,
     )
     await callback.answer()
 
@@ -8141,6 +8206,25 @@ async def monitor_expiry(bot: Bot) -> None:
             logger.error("Expiry monitor loop error: %s", e)
             await asyncio.sleep(60)
 
+
+async def _configure_public_bot_menu(bot: Bot) -> None:
+    try:
+        await bot.set_my_commands(
+            [
+                BotCommand(command="start", description="Открыть главное меню"),
+                BotCommand(command="menu", description="Открыть меню"),
+                BotCommand(command="promo", description="Активировать промокод"),
+                BotCommand(command="redeem", description="Активировать gift-код"),
+            ]
+        )
+    except Exception as e:
+        logger.warning("set_my_commands failed: %s", e)
+
+    try:
+        await bot.set_chat_menu_button(menu_button=MenuButtonCommands())
+    except Exception as e:
+        logger.warning("set_chat_menu_button failed: %s", e)
+
 # ==========================================
 #               MAIN
 # ==========================================
@@ -8157,6 +8241,7 @@ async def main():
     logger.info("🌐 Portal Bot v2 starting...")
     
     await panel.login()
+    await _configure_public_bot_menu(bot)
     
     # Start background expiry monitor (no traffic limits).
     asyncio.create_task(monitor_expiry(bot))
