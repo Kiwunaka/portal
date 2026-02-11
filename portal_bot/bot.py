@@ -1076,6 +1076,28 @@ def set_tos_accepted(tg_id: int) -> bool:
     return True
 
 
+def _tos_offer_text() -> str:
+    return (
+        "📜 *Публичная оферта*\n\n"
+        "Перед использованием сервиса ознакомьтесь с условиями:\n\n"
+        "• Сервис предоставляется «как есть»\n"
+        "• Пользователь сам несёт ответственность за соблюдение законов\n"
+        "• Запрещено использование для противоправных действий\n"
+        "• Возврат средств при блокировках не гарантируется\n\n"
+        "_Нажимая «Принимаю условия», вы соглашаетесь с полным текстом оферты._"
+    )
+
+
+def _tos_offer_keyboard(*, back_callback: str = "back") -> InlineKeyboardMarkup:
+    return InlineKeyboardMarkup(
+        inline_keyboard=[
+            [InlineKeyboardButton(text="📄 Читать полностью", web_app=WebAppInfo(url=f"{WEBAPP_URL}#tos"))],
+            [InlineKeyboardButton(text="✅ Принимаю условия", callback_data="accept_tos")],
+            [InlineKeyboardButton(text="◀️ Назад", callback_data=back_callback)],
+        ]
+    )
+
+
 def ensure_pending_user(tg_id: int, username: str | None = None) -> tuple[User, bool]:
     """
     Ensure a DB row exists for first-touch flows (/start, referrals, mode selection).
@@ -1150,6 +1172,8 @@ async def _try_activate_opening_premium_bonus(
 ) -> tuple[bool, str]:
     if not OPENING_PREMIUM_ENABLED or not OPENING_PREMIUM_START_CODE:
         return False, "disabled"
+    if not check_tos_accepted(tg_id):
+        return False, "tos_required"
 
     user = get_user(tg_id)
     if not user:
@@ -1271,6 +1295,9 @@ async def _activate_channel_bonus(
     bot: Bot,
     tg_id: int,
 ) -> tuple[bool, str]:
+    if not check_tos_accepted(tg_id):
+        return False, "tos_required"
+
     user = get_user(tg_id)
     if not _channel_bonus_eligible(tg_id=tg_id, user=user):
         return False, "not_eligible"
@@ -1714,6 +1741,9 @@ def get_gift_card(code: str) -> dict | None:
 
 async def redeem_gift_card(code: str, recipient_tg_id: int, bot) -> tuple[bool, str]:
     """Redeem a gift card. Returns (success, message)"""
+    if not check_tos_accepted(int(recipient_tg_id)):
+        return False, "⚠️ Сначала примите оферту через /start."
+
     session = Session()
     card = session.query(GiftCard).filter_by(code=code.upper()).first()
     
@@ -2397,47 +2427,6 @@ def tariff_keyboard(tg_id: int = 0, show_trial: bool = True, show_gb_only: bool 
     return InlineKeyboardMarkup(inline_keyboard=buttons)
 
 
-async def _open_main_menu_message(message: Message, *, text: str = "👋 *Главное меню PORTAL*") -> None:
-    tg_id = message.from_user.id
-    ok = await _send_text_with_specs(
-        bot=message.bot,
-        chat_id=tg_id,
-        text=text,
-        rows=main_keyboard_specs(tg_id),
-        parse_mode=ParseMode.MARKDOWN,
-    )
-    if not ok:
-        await message.answer(
-            text,
-            reply_markup=main_keyboard(tg_id),
-            parse_mode=ParseMode.MARKDOWN,
-        )
-
-
-@router.message(Command("menu"))
-async def cmd_menu(message: Message):
-    tg_id = message.from_user.id
-    username = message.from_user.username
-    _set_support_context(tg_id, enabled=False)
-
-    try:
-        await message.delete()
-    except Exception:
-        pass
-
-    if tg_id in last_bot_message:
-        try:
-            await message.bot.delete_message(tg_id, last_bot_message[tg_id])
-        except Exception:
-            pass
-
-    user = get_user(tg_id)
-    if not user:
-        ensure_pending_user(tg_id, username=username)
-    update_user_username(tg_id, username)
-    await _open_main_menu_message(message, text="👋 *Меню открыто*")
-
-
 @router.message(CommandStart())
 async def cmd_start(message: Message):
     tg_id = message.from_user.id
@@ -2518,6 +2507,13 @@ async def cmd_start(message: Message):
                 reply_markup=main_keyboard(tg_id),
             )
             return
+        if reason == "tos_required":
+            await message.answer(
+                "⚠️ Перед активацией бонуса примите условия оферты.",
+                reply_markup=_tos_offer_keyboard(back_callback="back"),
+                parse_mode=ParseMode.MARKDOWN,
+            )
+            return
 
     if not created_new:
         ok = await _send_text_with_specs(
@@ -2580,22 +2576,10 @@ async def show_tariffs(callback: CallbackQuery):
     
     # Check if user has accepted TOS
     if not check_tos_accepted(tg_id):
-        # Show TOS agreement screen
-        kb = InlineKeyboardMarkup(inline_keyboard=[
-            [InlineKeyboardButton(text="📄 Читать полностью", web_app=WebAppInfo(url=f"{WEBAPP_URL}#tos"))],
-            [InlineKeyboardButton(text="✅ Принимаю условия", callback_data="accept_tos")],
-            [InlineKeyboardButton(text="◀️ Назад", callback_data="back")]
-        ])
         await callback.message.edit_text(
-            "📜 *Публичная оферта*\n\n"
-            "Перед использованием сервиса ознакомьтесь с условиями:\n\n"
-            "• Сервис предоставляется «как есть»\n"
-            "• Пользователь сам несёт ответственность за соблюдение законов\n"
-            "• Запрещено использование для противоправных действий\n"
-            "• Возврат средств при блокировках не гарантируется\n\n"
-            "_Нажимая «Принимаю условия», вы соглашаетесь с полным текстом оферты._",
-            reply_markup=kb,
-            parse_mode=ParseMode.MARKDOWN
+            _tos_offer_text(),
+            reply_markup=_tos_offer_keyboard(back_callback="back"),
+            parse_mode=ParseMode.MARKDOWN,
         )
         await callback.answer()
         return
@@ -6400,6 +6384,14 @@ async def channel_bonus_claim(callback: CallbackQuery, bot: Bot):
         )
         await callback.answer()
         return
+    if reason == "tos_required":
+        await callback.message.edit_text(
+            "⚠️ Сначала примите условия оферты, затем активируйте бонус.",
+            reply_markup=_tos_offer_keyboard(back_callback=f"bonus_offer_{next_action}"),
+            parse_mode=ParseMode.MARKDOWN,
+        )
+        await callback.answer()
+        return
 
     await callback.answer("Не удалось активировать бонус, продолжаем без него.", show_alert=True)
     await _resume_after_bonus_prompt(callback, bot, next_action=next_action)
@@ -7488,6 +7480,8 @@ def activate_promo_code_for_user(tg_id: int, code: str) -> tuple[bool, str]:
     code = (code or "").strip().upper()
     if not code:
         return False, "❌ Промокод пустой"
+    if not check_tos_accepted(int(tg_id)):
+        return False, "⚠️ Сначала примите оферту через /start."
 
     session = Session()
     try:
@@ -7989,6 +7983,12 @@ async def admin_gift(message: Message, bot: Bot):
     except ValueError:
         await message.answer("❌ Неверный tg_id")
         return
+    if gift_tg_id > 0 and not check_tos_accepted(gift_tg_id):
+        await message.answer(
+            "⚠️ Этот пользователь ещё не принял оферту.\n"
+            "Сначала пусть нажмёт /start и подтвердит условия, затем выдавайте подарок."
+        )
+        return
     
     # Preset tariffs for gifts
     gift_presets = {
@@ -8212,7 +8212,6 @@ async def _configure_public_bot_menu(bot: Bot) -> None:
         await bot.set_my_commands(
             [
                 BotCommand(command="start", description="Открыть главное меню"),
-                BotCommand(command="menu", description="Открыть меню"),
                 BotCommand(command="promo", description="Активировать промокод"),
                 BotCommand(command="redeem", description="Активировать gift-код"),
             ]

@@ -116,6 +116,7 @@ class BotPaywallTests(unittest.TestCase):
         self.bot_module.OPENING_PREMIUM_ENABLED = True
         self.bot_module.OPENING_PREMIUM_DAYS = 14
         self.bot_module.OPENING_PREMIUM_CAMPAIGN_KEY = "opening_premium_14d"
+        self.bot_module.set_tos_accepted(1001)
 
         class _Msg:
             def __init__(self, bot):

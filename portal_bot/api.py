@@ -1237,6 +1237,8 @@ async def claim_channel_bonus(request: Request, x_telegram_init_data: str = Head
         user = s.query(User).filter_by(tg_id=tg_id).first()
         if not user:
             raise HTTPException(status_code=404, detail="User not found")
+        if not bool(getattr(user, "tos_accepted", False)):
+            raise HTTPException(status_code=400, detail="Сначала примите оферту в боте (/start)")
         if (user.sub_type or "").upper() == "MANUAL":
             raise HTTPException(status_code=400, detail="Bonus is disabled for manual accounts")
         if _has_campaign_mark(s, tg_id=tg_id, campaign_key=OPENING_PREMIUM_CAMPAIGN_KEY):
@@ -1311,6 +1313,8 @@ async def promo_redeem(payload: PromoRedeemIn, request: Request, x_telegram_init
         user = s.query(User).filter_by(tg_id=tg_id).first()
         if not user:
             raise HTTPException(status_code=404, detail="User not found")
+        if not bool(getattr(user, "tos_accepted", False)):
+            raise HTTPException(status_code=400, detail="Сначала примите оферту в боте (/start)")
         promo = s.query(PromoCode).filter(func.upper(PromoCode.code) == code).first()
         if not promo:
             raise HTTPException(status_code=404, detail="Promo not found")

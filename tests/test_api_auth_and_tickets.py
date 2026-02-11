@@ -82,6 +82,7 @@ class ApiAuthAndTicketsTests(unittest.TestCase):
                     email="user_1001",
                     sub_type="FREE",
                     is_active=True,
+                    tos_accepted=True,
                 )
             )
             s.commit()
@@ -185,6 +186,24 @@ class ApiAuthAndTicketsTests(unittest.TestCase):
 
         r = self.client.post("/api/bonuses/channel/claim", headers=user_hdrs)
         self.assertEqual(r.status_code, 400, r.text)
+
+    def test_channel_bonus_claim_requires_tos(self) -> None:
+        user_hdrs = {"X-Telegram-Init-Data": self._init_data(1001, "alice")}
+        from db import SessionLocal
+        from models import User
+
+        s = SessionLocal()
+        try:
+            u = s.query(User).filter_by(tg_id=1001).first()
+            assert u is not None
+            u.tos_accepted = False
+            s.commit()
+        finally:
+            s.close()
+
+        r = self.client.post("/api/bonuses/channel/claim", headers=user_hdrs)
+        self.assertEqual(r.status_code, 400, r.text)
+        self.assertIn("оферту", r.text.lower())
 
     def test_channel_bonus_claim_blocked_by_opening_promo_claim(self) -> None:
         user_hdrs = {"X-Telegram-Init-Data": self._init_data(1001, "alice")}
