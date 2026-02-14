@@ -4,6 +4,7 @@ import sys
 import tempfile
 import unittest
 import uuid
+import time
 from datetime import datetime
 from pathlib import Path
 from urllib.parse import urlencode
@@ -40,6 +41,7 @@ class ApiAuthAndTicketsTests(unittest.TestCase):
             "DATABASE_URL",
             "BOT_TOKEN",
             "ADMIN_ID",
+            "WEBAPP_SESSION_SECRET",
             "BOT_USERNAME",
             "SUPPORT_USERNAME",
             "PUBLIC_CHANNEL",
@@ -52,6 +54,7 @@ class ApiAuthAndTicketsTests(unittest.TestCase):
         os.environ["DATABASE_URL"] = f"sqlite:///{db_uri_path}"
         os.environ["BOT_TOKEN"] = self.bot_token
         os.environ["ADMIN_ID"] = "9999"
+        os.environ["WEBAPP_SESSION_SECRET"] = "test_webapp_secret_123"
         os.environ["BOT_USERNAME"] = "portal_service_bot"
         os.environ["SUPPORT_USERNAME"] = "portal_privacy_helpbot"
         os.environ["PUBLIC_CHANNEL"] = "portal_privacy"
@@ -117,10 +120,51 @@ class ApiAuthAndTicketsTests(unittest.TestCase):
             },
         )
 
+    def _telegram_login_payload(self, tg_id: int, username: str) -> dict:
+        import hashlib
+        import hmac
+
+        payload = {
+            "id": int(tg_id),
+            "first_name": "Test",
+            "username": username,
+            "auth_date": int(time.time()),
+        }
+        data_check = "\n".join([f"{k}={payload[k]}" for k in sorted(payload.keys())])
+        secret_key = hashlib.sha256(self.bot_token.encode("utf-8")).digest()
+        payload["hash"] = hmac.new(secret_key, data_check.encode("utf-8"), hashlib.sha256).hexdigest()
+        return payload
+
     def test_admin_endpoint_requires_admin_guard(self) -> None:
         hdrs = {"X-Telegram-Init-Data": self._init_data(1001, "alice")}
         r = self.client.get("/api/admin/summary", headers=hdrs)
         self.assertEqual(r.status_code, 403)
+
+    def test_web_login_session_flow(self) -> None:
+        payload = self._telegram_login_payload(1001, "alice")
+        login = self.client.post("/api/auth/telegram/web-login", json=payload)
+        self.assertEqual(login.status_code, 200, login.text)
+        token = str(login.json().get("token") or "")
+        self.assertTrue(token)
+
+        hdrs = {"Authorization": f"Bearer {token}"}
+        session = self.client.get("/api/auth/session", headers=hdrs)
+        self.assertEqual(session.status_code, 200, session.text)
+        self.assertEqual(int(session.json().get("user", {}).get("id", 0)), 1001)
+
+        dash = self.client.get("/api/dashboard", headers=hdrs)
+        self.assertEqual(dash.status_code, 200, dash.text)
+
+    def test_web_login_rejects_invalid_signature(self) -> None:
+        bad = {
+            "id": 1001,
+            "first_name": "Test",
+            "username": "alice",
+            "auth_date": int(time.time()),
+            "hash": "bad_signature",
+        }
+        r = self.client.post("/api/auth/telegram/web-login", json=bad)
+        self.assertEqual(r.status_code, 401, r.text)
 
     def test_ticket_lifecycle_with_media_metadata(self) -> None:
         user_hdrs = {"X-Telegram-Init-Data": self._init_data(1001, "alice")}
@@ -288,6 +332,7 @@ class ApiAuthAndTicketsTests(unittest.TestCase):
 
     def test_admin_promos_templates_and_gift_codes_crud(self) -> None:
         admin_hdrs = {"X-Telegram-Init-Data": self._init_data(9999, "admin")}
+        user_hdrs = {"X-Telegram-Init-Data": self._init_data(1001, "alice")}
 
         created_promo = self.client.post(
             "/api/admin/promos",
@@ -343,6 +388,14 @@ class ApiAuthAndTicketsTests(unittest.TestCase):
         gift_list = self.client.get("/api/admin/gift-codes?limit=20", headers=admin_hdrs)
         self.assertEqual(gift_list.status_code, 200, gift_list.text)
         self.assertTrue(any((g.get("code") or "") == code for g in gift_list.json().get("gift_codes", [])))
+
+        redeemed = self.client.post("/api/gift/redeem", headers=user_hdrs, json={"code": code})
+        self.assertEqual(redeemed.status_code, 200, redeemed.text)
+        self.assertTrue(redeemed.json().get("ok"))
+        self.assertEqual(str(redeemed.json().get("card_type") or ""), "standard")
+
+        redeemed_twice = self.client.post("/api/gift/redeem", headers=user_hdrs, json={"code": code})
+        self.assertEqual(redeemed_twice.status_code, 400, redeemed_twice.text)
 
 
 if __name__ == "__main__":

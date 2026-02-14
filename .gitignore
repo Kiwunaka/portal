@@ -53,3 +53,12 @@ Thumbs.db
 
 # x-ui DB backups (may include private keys)
 x-ui*.db
+
+# External client fork workspace (separate repository lives here)
+external/client-fork/app/
+external/client-fork/upstream/
+external/client-fork/.cache/
+external/client-fork/release-links.env
+external/client-fork/release-manifests/
+external/client-fork/branding/assets/
+external/client-fork/branding/brand.env

@@ -1,5 +1,7 @@
 import { getInitData } from "./telegram";
 
+const WEB_SESSION_TOKEN_KEY = "portal_web_session_token";
+
 export type NodeInfo = {
   code: string;
   name: string;
@@ -19,6 +21,24 @@ export type NodeStatus = {
   updated_at?: string | null;
 };
 
+export type ClientPlatformAndroidApps = {
+  play_url: string;
+  apk_url: string;
+  mirror_url: string;
+};
+
+export type ClientPlatformWindowsApps = {
+  exe_url: string;
+  mirror_url: string;
+};
+
+export type ClientAppsPayload = {
+  android: ClientPlatformAndroidApps;
+  windows: ClientPlatformWindowsApps;
+  docs_url: string;
+  updated_at: string;
+};
+
 export type DashboardSnapshot = {
   tg_id: number;
   sub_type: string;
@@ -30,6 +50,8 @@ export type DashboardSnapshot = {
   remaining_gb: number;
   active_sessions: number;
   device_limit: number;
+  speed_limit_mbps?: number | null;
+  free_next_reset_at?: string | null;
   family_slots?: number;
   subscription_url: string;
   active_offer?: {
@@ -93,6 +115,7 @@ export type UserPayload = {
   limits: {
     device_limit: number;
     total_gb: number;
+    speed_mbps?: number | null;
   };
   traffic: {
     used_gb: number;
@@ -145,6 +168,9 @@ export type UserPayload = {
     expires_at?: string | null;
     status: string;
   } | null;
+  free_cycle?: {
+    next_reset_at?: string | null;
+  };
   features?: {
     haptic: boolean;
     lottie: boolean;
@@ -290,11 +316,62 @@ export type ManualCreateIn = {
   days: number;
 };
 
+export type TelegramWebLoginPayload = {
+  id: number;
+  first_name?: string;
+  last_name?: string;
+  username?: string;
+  photo_url?: string;
+  auth_date: number;
+  hash: string;
+};
+
+export type WebLoginResult = {
+  ok: boolean;
+  token: string;
+  user: { id: number; username?: string | null };
+  expires_in: number;
+};
+
+function getWebSessionToken(): string {
+  if (typeof window === "undefined") return "";
+  return String(window.localStorage.getItem(WEB_SESSION_TOKEN_KEY) || "").trim();
+}
+
+function applyAuthHeaders(headers: Headers): void {
+  const initData = getInitData();
+  if (initData) {
+    headers.set("X-Telegram-Init-Data", initData);
+    return;
+  }
+  const token = getWebSessionToken();
+  if (token) {
+    headers.set("Authorization", `Bearer ${token}`);
+    headers.set("X-Web-Auth-Token", token);
+  }
+}
+
+export function hasWebSessionToken(): boolean {
+  return getWebSessionToken().length > 0;
+}
+
+export function setWebSessionToken(token: string): void {
+  if (typeof window === "undefined") return;
+  const value = String(token || "").trim();
+  if (!value) return;
+  window.localStorage.setItem(WEB_SESSION_TOKEN_KEY, value);
+}
+
+export function clearWebSessionToken(): void {
+  if (typeof window === "undefined") return;
+  window.localStorage.removeItem(WEB_SESSION_TOKEN_KEY);
+}
+
 function defaultApiBase(): string {
   if (typeof window !== "undefined") {
     return window.location.origin;
   }
-  return "https://localhost:2096";
+  return "https://localhost";
 }
 
 function candidateApiBases(): string[] {
@@ -305,8 +382,13 @@ function candidateApiBases(): string[] {
   const proto = window.location.protocol;
   const host = window.location.hostname;
   const origin = window.location.origin;
+  const lowerHost = host.toLowerCase();
+  if (lowerHost === "portal-privacy.online" || lowerHost.endsWith(".portal-privacy.online")) {
+    return ["https://kiwunaka.space"];
+  }
   const legacy = `${proto}//${host}:2096`;
-  return [origin, legacy];
+  const useLegacyFallback = String((import.meta as any).env?.VITE_ENABLE_LEGACY_PORT_FALLBACK || "").toLowerCase() === "true";
+  return useLegacyFallback ? [origin, legacy] : [origin];
 }
 
 async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
@@ -315,7 +397,7 @@ async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
   for (const base of bases) {
     try {
       const headers = new Headers(init?.headers || {});
-      headers.set("X-Telegram-Init-Data", getInitData());
+      applyAuthHeaders(headers);
       const r = await fetch(`${base}${path}`, { ...init, headers });
       if (!r.ok) {
         const text = await r.text();
@@ -346,6 +428,10 @@ export function fetchDashboard(): Promise<DashboardSnapshot> {
 export async function fetchNodeStatus(): Promise<NodeStatus[]> {
   const data = await apiFetch<{ nodes: NodeStatus[] }>("/api/nodes/status");
   return data.nodes || [];
+}
+
+export function fetchClientApps(): Promise<ClientAppsPayload> {
+  return apiFetch<ClientAppsPayload>("/api/client/apps");
 }
 
 export function runNodeDiagnostics(): Promise<{
@@ -394,6 +480,36 @@ export function redeemPromo(code: string): Promise<any> {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ code }),
   });
+}
+
+export function redeemGiftCode(code: string): Promise<any> {
+  return apiFetch<any>("/api/gift/redeem", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ code }),
+  });
+}
+
+export async function authByTelegramWebLogin(payload: TelegramWebLoginPayload): Promise<WebLoginResult> {
+  const bases = candidateApiBases();
+  let lastErr: any = null;
+  for (const base of bases) {
+    try {
+      const r = await fetch(`${base}/api/auth/telegram/web-login`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      if (!r.ok) {
+        const text = await r.text();
+        throw new Error(text || `API error: ${r.status}`);
+      }
+      return (await r.json()) as WebLoginResult;
+    } catch (e: any) {
+      lastErr = e;
+    }
+  }
+  throw lastErr || new Error("API error");
 }
 
 export async function fetchTickets(limit = 20): Promise<TicketInfo[]> {
@@ -467,7 +583,7 @@ export async function runNetworkProbe(size_mb = 2): Promise<{ latencyMs: number;
   for (const base of bases) {
     try {
       const headers = new Headers();
-      headers.set("X-Telegram-Init-Data", getInitData());
+      applyAuthHeaders(headers);
       const resp = await fetch(`${base}/api/network/probe?size_mb=${Math.max(1, Math.min(3, size_mb))}`, { headers, cache: "no-store" });
       if (!resp.ok) throw new Error(`probe failed: ${resp.status}`);
       await resp.arrayBuffer();

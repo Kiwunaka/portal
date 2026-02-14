@@ -26,6 +26,8 @@ import paramiko
 from cryptography.hazmat.primitives.asymmetric import x25519
 from cryptography.hazmat.primitives import serialization
 
+from node_passwords import parse_passwords
+
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_INVENTORY = REPO_ROOT / "docs" / "08-node-inventory.md"
@@ -60,28 +62,6 @@ def _parse_inventory(path: Path) -> list[Node]:
     if not nodes:
         raise SystemExit(f"Failed to parse inventory: {path}")
     return nodes
-
-
-def _parse_passwords(path: Path) -> dict[str, str]:
-    raw = path.read_text(encoding="utf-8", errors="replace")
-    lines = [ln.strip() for ln in raw.splitlines()]
-    out: dict[str, str] = {}
-    markers = {"brain": "BRAINnode", "us": "USnode", "pl": "PLnode", "it": "ITnode", "free": "Free Node"}
-    for code, marker in markers.items():
-        try:
-            idx = next(i for i, ln in enumerate(lines) if marker in ln)
-        except StopIteration:
-            continue
-        pw = ""
-        for j in range(idx + 1, min(idx + 12, len(lines))):
-            ln = lines[j]
-            if not ln or ln.startswith("ssh-ed25519 "):
-                continue
-            pw = ln
-            break
-        if pw:
-            out[code] = pw
-    return out
 
 
 def _ssh_connect(ip: str, *, user: str, port: int, password: str) -> paramiko.SSHClient:
@@ -128,14 +108,15 @@ def main() -> int:
     ap.add_argument("--passwords", default=str(DEFAULT_PASSWORDS))
     ap.add_argument("--ssh-user", default="root")
     ap.add_argument("--ssh-port", type=int, default=29374)
-    ap.add_argument("--only", default="pl,it,us", help="comma-separated node codes")
+    ap.add_argument("--only", default="", help="comma-separated node codes")
     ap.add_argument("--inbound-id", type=int, default=1, help="inbound id to inspect (default: 1)")
     args = ap.parse_args()
 
     nodes = _parse_inventory(Path(args.inventory))
     only = {c.strip() for c in args.only.split(",") if c.strip()}
-    nodes = [n for n in nodes if n.code in only]
-    pw_map = _parse_passwords(Path(args.passwords))
+    if only:
+        nodes = [n for n in nodes if n.code in only]
+    pw_map = parse_passwords(Path(args.passwords), requested_codes=[n.code for n in nodes])
 
     results: list[dict] = []
     for n in nodes:

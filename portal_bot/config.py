@@ -23,10 +23,20 @@ class Settings:
     ADMIN_ID: int = env_int("ADMIN_ID", 0)
     DATABASE_URL: str = os.getenv("DATABASE_URL", "sqlite:///portal.db")
 
-    # Public URL used in subscription links.
-    # Keep defaults deploy-safe (prod works even if env is partially missing).
-    HOST_DOMAIN: str = os.getenv("HOST_DOMAIN") or os.getenv("DOMAIN") or "kiwunaka.space"
-    PUBLIC_API_BASE_URL: str = os.getenv("PUBLIC_API_BASE_URL", f"https://{HOST_DOMAIN}:2096")
+    # Public domains:
+    # - API/callbacks/subscription live on PUBLIC_API_DOMAIN.
+    # - Marketing + WebApp live on PUBLIC_WEB_DOMAIN.
+    PUBLIC_API_DOMAIN: str = (
+        os.getenv("PUBLIC_API_DOMAIN")
+        or os.getenv("HOST_DOMAIN")
+        or os.getenv("DOMAIN")
+        or "kiwunaka.space"
+    )
+    PUBLIC_WEB_DOMAIN: str = (os.getenv("PUBLIC_WEB_DOMAIN") or "portal-privacy.online").strip()
+
+    # Backward-compatible alias used by older scripts.
+    HOST_DOMAIN: str = PUBLIC_API_DOMAIN
+    PUBLIC_API_BASE_URL: str = os.getenv("PUBLIC_API_BASE_URL", f"https://{PUBLIC_API_DOMAIN}")
 
     # Legacy single-node fallback (when `nodes` table is empty)
     LEGACY_NODE_CODE: str = os.getenv("LEGACY_NODE_CODE", "default")
@@ -48,10 +58,25 @@ class Settings:
     INBOUND_ID: int = env_int("INBOUND_ID", 4)
 
     # WebApp (Telegram Mini App)
-    WEBAPP_URL: str = os.getenv("WEBAPP_URL", f"https://{HOST_DOMAIN}:8444/webapp/?v=20260207")
+    WEBAPP_URL: str = os.getenv("WEBAPP_URL", f"https://{PUBLIC_WEB_DOMAIN}/webapp/?v=20260214")
+    WEBAPP_SESSION_SECRET: str = os.getenv("WEBAPP_SESSION_SECRET", "").strip()
     SUPPORT_BOT_USERNAME: str = (os.getenv("SUPPORT_BOT_USERNAME") or os.getenv("SUPPORT_USERNAME") or "portal_privacy_helpbot").lstrip("@")
     NEWS_CHANNEL_ID: str = os.getenv("NEWS_CHANNEL_ID", "@portal_news_channel")
     PAY_CHECKOUT_URL: str = os.getenv("PAY_CHECKOUT_URL", "").strip()
+    PAY_SUCCESS_URL: str = os.getenv("PAY_SUCCESS_URL", f"https://{PUBLIC_API_DOMAIN}/pay/success").strip()
+    PAY_FAIL_URL: str = os.getenv("PAY_FAIL_URL", f"https://{PUBLIC_API_DOMAIN}/pay/fail").strip()
+    PAY_RESULT_BASE_PATH: str = os.getenv("PAY_RESULT_BASE_PATH", "/api/payments/result").strip()
+    PAY_REFUND_BASE_PATH: str = os.getenv("PAY_REFUND_BASE_PATH", "/api/payments/refund").strip()
+    PAY_CHARGEBACK_BASE_PATH: str = os.getenv("PAY_CHARGEBACK_BASE_PATH", "/api/payments/chargeback").strip()
+    CARDLINK_SIGNING_SECRET: str = os.getenv("CARDLINK_SIGNING_SECRET", "").strip()
+    FREEKASSA_SIGNING_SECRET: str = os.getenv("FREEKASSA_SIGNING_SECRET", "").strip()
+    AAIO_SIGNING_SECRET: str = os.getenv("AAIO_SIGNING_SECRET", "").strip()
+    APP_ANDROID_PLAY_URL: str = os.getenv("APP_ANDROID_PLAY_URL", "").strip()
+    APP_ANDROID_APK_URL: str = os.getenv("APP_ANDROID_APK_URL", "").strip()
+    APP_ANDROID_MIRROR_URL: str = os.getenv("APP_ANDROID_MIRROR_URL", "").strip()
+    APP_WINDOWS_EXE_URL: str = os.getenv("APP_WINDOWS_EXE_URL", "").strip()
+    APP_WINDOWS_MIRROR_URL: str = os.getenv("APP_WINDOWS_MIRROR_URL", "").strip()
+    APP_DOCS_URL: str = os.getenv("APP_DOCS_URL", "").strip()
     WEBAPP_ENABLE_HAPTIC: bool = env_bool("WEBAPP_ENABLE_HAPTIC", default=True)
     WEBAPP_ENABLE_LOTTIE: bool = env_bool("WEBAPP_ENABLE_LOTTIE", default=True)
     WEBAPP_DEV_AUTH: bool = env_bool("WEBAPP_DEV_AUTH", default=False)

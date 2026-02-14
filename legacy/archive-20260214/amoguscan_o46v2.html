@@ -1,0 +1,1770 @@
+<html lang="en" style="scroll-behavior: smooth;">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CAN OF AMOGUSES — Open the Sus</title>
+  <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+  <style>
+    /*! tailwindcss v4.1.18 | MIT License | https://tailwindcss.com */
+    @layer theme, base, components, utilities;
+
+    @layer theme {
+
+      :root,
+      :host {
+        --font-sans: ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol',
+          'Noto Color Emoji';
+        --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New',
+          monospace;
+        --default-font-family: var(--font-sans);
+        --default-mono-font-family: var(--font-mono);
+      }
+    }
+
+    @layer base {
+
+      *,
+      ::after,
+      ::before,
+      ::backdrop,
+      ::file-selector-button {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+        border: 0 solid;
+      }
+
+      html,
+      :host {
+        line-height: 1.5;
+        -webkit-text-size-adjust: 100%;
+        tab-size: 4;
+        font-family: var(--default-font-family, ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji');
+        font-feature-settings: var(--default-font-feature-settings, normal);
+        font-variation-settings: var(--default-font-variation-settings, normal);
+        -webkit-tap-highlight-color: transparent;
+      }
+
+      hr {
+        height: 0;
+        color: inherit;
+        border-top-width: 1px;
+      }
+
+      abbr:where([title]) {
+        -webkit-text-decoration: underline dotted;
+        text-decoration: underline dotted;
+      }
+
+      h1,
+      h2,
+      h3,
+      h4,
+      h5,
+      h6 {
+        font-size: inherit;
+        font-weight: inherit;
+      }
+
+      a {
+        color: inherit;
+        -webkit-text-decoration: inherit;
+        text-decoration: inherit;
+      }
+
+      b,
+      strong {
+        font-weight: bolder;
+      }
+
+      code,
+      kbd,
+      samp,
+      pre {
+        font-family: var(--default-mono-font-family, ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace);
+        font-feature-settings: var(--default-mono-font-feature-settings, normal);
+        font-variation-settings: var(--default-mono-font-variation-settings, normal);
+        font-size: 1em;
+      }
+
+      small {
+        font-size: 80%;
+      }
+
+      sub,
+      sup {
+        font-size: 75%;
+        line-height: 0;
+        position: relative;
+        vertical-align: baseline;
+      }
+
+      sub {
+        bottom: -0.25em;
+      }
+
+      sup {
+        top: -0.5em;
+      }
+
+      table {
+        text-indent: 0;
+        border-color: inherit;
+        border-collapse: collapse;
+      }
+
+      :-moz-focusring {
+        outline: auto;
+      }
+
+      progress {
+        vertical-align: baseline;
+      }
+
+      summary {
+        display: list-item;
+      }
+
+      ol,
+      ul,
+      menu {
+        list-style: none;
+      }
+
+      img,
+      svg,
+      video,
+      canvas,
+      audio,
+      iframe,
+      embed,
+      object {
+        display: block;
+        vertical-align: middle;
+      }
+
+      img,
+      video {
+        max-width: 100%;
+        height: auto;
+      }
+
+      button,
+      input,
+      select,
+      optgroup,
+      textarea,
+      ::file-selector-button {
+        font: inherit;
+        font-feature-settings: inherit;
+        font-variation-settings: inherit;
+        letter-spacing: inherit;
+        color: inherit;
+        border-radius: 0;
+        background-color: transparent;
+        opacity: 1;
+      }
+
+      :where(select:is([multiple], [size])) optgroup {
+        font-weight: bolder;
+      }
+
+      :where(select:is([multiple], [size])) optgroup option {
+        padding-inline-start: 20px;
+      }
+
+      ::file-selector-button {
+        margin-inline-end: 4px;
+      }
+
+      ::placeholder {
+        opacity: 1;
+      }
+
+      @supports (not (-webkit-appearance: -apple-pay-button)) or (contain-intrinsic-size: 1px) {
+        ::placeholder {
+          color: currentcolor;
+
+          @supports (color: color-mix(in lab, red, red)) {
+            color: color-mix(in oklab, currentcolor 50%, transparent);
+          }
+        }
+      }
+
+      textarea {
+        resize: vertical;
+      }
+
+      ::-webkit-search-decoration {
+        -webkit-appearance: none;
+      }
+
+      ::-webkit-date-and-time-value {
+        min-height: 1lh;
+        text-align: inherit;
+      }
+
+      ::-webkit-datetime-edit {
+        display: inline-flex;
+      }
+
+      ::-webkit-datetime-edit-fields-wrapper {
+        padding: 0;
+      }
+
+      ::-webkit-datetime-edit,
+      ::-webkit-datetime-edit-year-field,
+      ::-webkit-datetime-edit-month-field,
+      ::-webkit-datetime-edit-day-field,
+      ::-webkit-datetime-edit-hour-field,
+      ::-webkit-datetime-edit-minute-field,
+      ::-webkit-datetime-edit-second-field,
+      ::-webkit-datetime-edit-millisecond-field,
+      ::-webkit-datetime-edit-meridiem-field {
+        padding-block: 0;
+      }
+
+      ::-webkit-calendar-picker-indicator {
+        line-height: 1;
+      }
+
+      :-moz-ui-invalid {
+        box-shadow: none;
+      }
+
+      button,
+      input:where([type='button'], [type='reset'], [type='submit']),
+      ::file-selector-button {
+        appearance: button;
+      }
+
+      ::-webkit-inner-spin-button,
+      ::-webkit-outer-spin-button {
+        height: auto;
+      }
+
+      [hidden]:where(:not([hidden='until-found'])) {
+        display: none !important;
+      }
+    }
+
+    @layer utilities {
+      .font-mono {
+        font-family: var(--font-mono);
+      }
+    }
+  </style>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/ScrollTrigger.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/TextPlugin.min.js"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link
+    href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&amp;family=Syne:wght@400;500;600;700;800&amp;family=JetBrains+Mono:wght@400;700&amp;display=swap"
+    rel="stylesheet">
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=Syne:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;700&display=swap');
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    html {
+      scroll-behavior: smooth;
+    }
+
+    body {
+      font-family: 'Space Grotesk', sans-serif;
+      background: #0a0a0a;
+      color: #f0f0f0;
+      overflow-x: hidden;
+      cursor: default;
+    }
+
+    ::selection {
+      background: #ff4757;
+      color: #fff;
+    }
+
+    ::-webkit-scrollbar {
+      width: 6px;
+    }
+
+    ::-webkit-scrollbar-track {
+      background: #0a0a0a;
+    }
+
+    ::-webkit-scrollbar-thumb {
+      background: #ff4757;
+      border-radius: 3px;
+    }
+
+    .font-syne {
+      font-family: 'Syne', sans-serif;
+    }
+
+    .font-mono {
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    /* Kinetic type utilities */
+    .char {
+      display: inline-block;
+      will-change: transform, opacity;
+    }
+
+    .word {
+      display: inline-block;
+      overflow: hidden;
+      vertical-align: top;
+    }
+
+    .word .char {
+      display: inline-block;
+    }
+
+    /* Hero Section */
+    .hero {
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .hero-title {
+      font-family: 'Syne', sans-serif;
+      font-size: clamp(4rem, 15vw, 14rem);
+      font-weight: 800;
+      line-height: 0.85;
+      text-transform: uppercase;
+      letter-spacing: -0.04em;
+      text-align: center;
+      position: relative;
+      z-index: 2;
+    }
+
+    .hero-title .line {
+      display: block;
+      overflow: hidden;
+    }
+
+    .stroke-text {
+      -webkit-text-stroke: 2px #f0f0f0;
+      color: transparent;
+      transition: color 0.3s, -webkit-text-stroke-color 0.3s;
+    }
+
+    .stroke-text:hover {
+      color: #ff4757;
+      -webkit-text-stroke-color: #ff4757;
+    }
+
+    .hero-subtitle {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: clamp(0.7rem, 1.5vw, 1rem);
+      letter-spacing: 0.3em;
+      text-transform: uppercase;
+      color: #666;
+      margin-top: 2rem;
+    }
+
+    /* Floating sus indicators */
+    .sus-float {
+      position: fixed;
+      pointer-events: none;
+      z-index: 9999;
+      font-size: 1.5rem;
+      opacity: 0;
+      font-family: 'Syne', sans-serif;
+      font-weight: 800;
+      color: #ff4757;
+    }
+
+    /* Marquee */
+    .marquee-track {
+      display: flex;
+      animation: marquee 20s linear infinite;
+      width: max-content;
+    }
+
+    @keyframes marquee {
+      from {
+        transform: translateX(0);
+      }
+
+      to {
+        transform: translateX(-50%);
+      }
+    }
+
+    .marquee-track-reverse {
+      animation-direction: reverse;
+    }
+
+    /* Reveal sections */
+    .reveal-section {
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+    }
+
+    /* Big scrolling text */
+    .scroll-text {
+      font-family: 'Syne', sans-serif;
+      font-size: clamp(2rem, 8vw, 8rem);
+      font-weight: 800;
+      text-transform: uppercase;
+      line-height: 1.1;
+    }
+
+    /* Product Can CSS Art */
+    .can-container {
+      position: relative;
+      width: 220px;
+      height: 320px;
+      margin: 0 auto;
+    }
+
+    .can-body {
+      width: 180px;
+      height: 260px;
+      background: linear-gradient(135deg, #c0392b 0%, #e74c3c 30%, #ff6b6b 50%, #e74c3c 70%, #c0392b 100%);
+      border-radius: 12px 12px 20px 20px;
+      position: absolute;
+      bottom: 0;
+      left: 50%;
+      transform: translateX(-50%);
+      box-shadow: inset -15px 0 30px rgba(0, 0, 0, 0.3), inset 15px 0 30px rgba(255, 255, 255, 0.1), 0 20px 60px rgba(255, 71, 87, 0.3);
+      overflow: hidden;
+    }
+
+    .can-body::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 8px;
+      background: linear-gradient(90deg, #a0a0a0, #d0d0d0, #a0a0a0);
+      border-radius: 12px 12px 0 0;
+    }
+
+    .can-body::after {
+      content: '';
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      height: 8px;
+      background: linear-gradient(90deg, #a0a0a0, #d0d0d0, #a0a0a0);
+      border-radius: 0 0 20px 20px;
+    }
+
+    .can-label {
+      position: absolute;
+      top: 30px;
+      left: 10px;
+      right: 10px;
+      bottom: 30px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+    }
+
+    .can-label-title {
+      font-family: 'Syne', sans-serif;
+      font-weight: 800;
+      font-size: 1.1rem;
+      color: #fff;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
+      line-height: 1.1;
+    }
+
+    .can-label-sub {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.55rem;
+      color: rgba(255, 255, 255, 0.7);
+      margin-top: 6px;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+    }
+
+    /* Amogus mini SVG characters on can */
+    .can-amogus {
+      font-size: 2rem;
+      margin-top: 8px;
+      filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.5));
+    }
+
+    .can-lid {
+      width: 140px;
+      height: 20px;
+      background: linear-gradient(90deg, #888, #ccc, #888);
+      border-radius: 50%;
+      position: absolute;
+      top: 38px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 2;
+    }
+
+    .can-tab {
+      width: 40px;
+      height: 25px;
+      border: 3px solid #aaa;
+      border-radius: 50% 50% 30% 30%;
+      position: absolute;
+      top: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 3;
+      background: linear-gradient(180deg, #d0d0d0, #999);
+    }
+
+    /* Feature cards with type */
+    .feature-type {
+      font-family: 'Syne', sans-serif;
+      font-weight: 800;
+      font-size: clamp(1.5rem, 4vw, 3.5rem);
+      text-transform: uppercase;
+      line-height: 1;
+    }
+
+    /* Horizontal scroll section */
+    .horizontal-scroll {
+      display: flex;
+      flex-wrap: nowrap;
+      width: max-content;
+    }
+
+    .h-panel {
+      width: 100vw;
+      height: 100vh;
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-direction: column;
+      padding: 2rem;
+    }
+
+    /* Price tag */
+    .price-tag {
+      font-family: 'Syne', sans-serif;
+      font-size: clamp(5rem, 20vw, 16rem);
+      font-weight: 800;
+      color: #ff4757;
+      line-height: 1;
+    }
+
+    /* CTA Button */
+    .cta-btn {
+      display: inline-block;
+      padding: 1.2rem 3rem;
+      border: 2px solid #ff4757;
+      color: #ff4757;
+      font-family: 'Syne', sans-serif;
+      font-weight: 700;
+      font-size: 1.1rem;
+      text-transform: uppercase;
+      letter-spacing: 0.15em;
+      text-decoration: none;
+      position: relative;
+      overflow: hidden;
+      transition: color 0.4s;
+      cursor: pointer;
+      background: none;
+    }
+
+    .cta-btn::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: -100%;
+      width: 100%;
+      height: 100%;
+      background: #ff4757;
+      transition: left 0.4s cubic-bezier(0.65, 0, 0.35, 1);
+      z-index: -1;
+    }
+
+    .cta-btn:hover {
+      color: #fff;
+    }
+
+    .cta-btn:hover::before {
+      left: 0;
+    }
+
+    /* Grain overlay */
+    .grain {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      z-index: 10000;
+      opacity: 0.03;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
+      background-repeat: repeat;
+      background-size: 128px 128px;
+    }
+
+    /* Cursor follower */
+    .cursor-follower {
+      position: fixed;
+      width: 20px;
+      height: 20px;
+      border: 1px solid rgba(255, 71, 87, 0.5);
+      border-radius: 50%;
+      pointer-events: none;
+      z-index: 99999;
+      transition: width 0.3s, height 0.3s, border-color 0.3s;
+      transform: translate(-50%, -50%);
+      mix-blend-mode: difference;
+    }
+
+    /* Typewriter cursor */
+    .type-cursor {
+      display: inline-block;
+      width: 3px;
+      height: 1em;
+      background: #ff4757;
+      margin-left: 4px;
+      animation: blink 0.8s step-end infinite;
+      vertical-align: text-bottom;
+    }
+
+    @keyframes blink {
+      50% {
+        opacity: 0;
+      }
+    }
+
+    /* Stagger grid */
+    .type-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 2px;
+    }
+
+    .type-grid-item {
+      border: 1px solid #1a1a1a;
+      padding: 2.5rem;
+      transition: background 0.3s, border-color 0.3s;
+    }
+
+    .type-grid-item:hover {
+      background: #111;
+      border-color: #ff4757;
+    }
+
+    /* Amogus characters built from text */
+    .text-amogus {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.6rem;
+      line-height: 1.2;
+      color: #ff4757;
+      white-space: pre;
+      opacity: 0.3;
+    }
+
+    /* Notification toast */
+    .toast {
+      position: fixed;
+      bottom: 2rem;
+      right: 2rem;
+      background: #111;
+      border: 1px solid #ff4757;
+      padding: 1rem 1.5rem;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.8rem;
+      color: #ff4757;
+      z-index: 100000;
+      transform: translateY(150%);
+      opacity: 0;
+    }
+
+    /* Ticker tape */
+    .ticker {
+      overflow: hidden;
+      white-space: nowrap;
+      border-top: 1px solid #1a1a1a;
+      border-bottom: 1px solid #1a1a1a;
+      padding: 1rem 0;
+    }
+
+    /* Count animation */
+    .count-up {
+      font-variant-numeric: tabular-nums;
+    }
+
+    /* Section divider made of text */
+    .text-divider {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.6rem;
+      color: #333;
+      letter-spacing: 0.5em;
+      overflow: hidden;
+      white-space: nowrap;
+    }
+
+    /* Mobile */
+    @media (max-width: 768px) {
+      .hero-title {
+        font-size: clamp(3rem, 18vw, 8rem);
+      }
+
+      .can-container {
+        transform: scale(0.8);
+      }
+
+      .h-panel {
+        padding: 1rem;
+      }
+
+      .type-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    /* Amogus shapes via CSS */
+    .amogus-shape {
+      width: 60px;
+      height: 80px;
+      background: #ff4757;
+      border-radius: 30px 30px 8px 8px;
+      position: relative;
+      display: inline-block;
+      margin: 0 8px;
+    }
+
+    .amogus-shape .visor {
+      position: absolute;
+      width: 30px;
+      height: 20px;
+      background: #a8d8ea;
+      border-radius: 4px 15px 15px 4px;
+      top: 15px;
+      right: 5px;
+      box-shadow: inset 0 -3px 6px rgba(0, 0, 0, 0.2);
+    }
+
+    .amogus-shape .backpack {
+      position: absolute;
+      width: 16px;
+      height: 35px;
+      background: #c0392b;
+      border-radius: 6px 0 0 6px;
+      top: 25px;
+      left: -12px;
+    }
+
+    .amogus-shape .leg-left {
+      position: absolute;
+      width: 22px;
+      height: 20px;
+      background: #ff4757;
+      border-radius: 0 0 10px 10px;
+      bottom: -15px;
+      left: 5px;
+    }
+
+    .amogus-shape .leg-right {
+      position: absolute;
+      width: 22px;
+      height: 20px;
+      background: #ff4757;
+      border-radius: 0 0 10px 10px;
+      bottom: -15px;
+      right: 5px;
+    }
+  </style>
+</head>
+
+<body style="">
+
+  <!-- Grain Overlay -->
+  <div class="grain"></div>
+
+  <!-- Custom Cursor -->
+  <div class="cursor-follower" id="cursor"
+    style="left: 1631px; top: 500px; width: 20px; height: 20px; border-color: rgba(255, 71, 87, 0.5);"></div>
+
+  <!-- Notification Toast -->
+  <div class="toast" id="toast"
+    style="translate: none; rotate: none; scale: none; opacity: 0; transform: translate(0px, 150%);">SUS_DETECTED —
+    someone is watching</div>
+
+  <!-- ========== PRELOADER ========== -->
+
+
+  <!-- ========== SECTION 1: HERO ========== -->
+  <div id="preloader"
+    style="position: fixed; inset: 0px; background: rgb(10, 10, 10); z-index: 999999; display: none; align-items: center; justify-content: center; flex-direction: column; translate: none; rotate: none; scale: none; transform: translate(0%, -100%);">
+    <div class="font-syne"
+      style="font-size:clamp(2rem,8vw,5rem);font-weight:800;text-transform:uppercase;overflow:hidden;">
+      <span id="preloader-text"
+        style="display: inline-block; transform: translate(0px, 0px); translate: none; rotate: none; scale: none;">LOADING
+        SUS...</span>
+    </div>
+    <div class="font-mono" style="font-size:0.8rem;color:#666;margin-top:1rem;">
+      <span id="preloader-pct">100</span>%
+    </div>
+  </div>
+  <section class="hero" id="hero">
+    <!-- Background floating characters -->
+    <div id="bg-type" style="position:absolute;inset:0;overflow:hidden;z-index:0;opacity:0.04;">
+      <div
+        style="font-family: Syne, sans-serif; font-size: 20vw; font-weight: 800; color: rgb(255, 255, 255); position: absolute; top: 10%; left: -5%; white-space: nowrap; translate: none; rotate: none; scale: none; transform: translate(0px, 0px);"
+        id="bg-sus-1">SUS SUS SUS SUS SUS SUS SUS</div>
+      <div
+        style="font-family: Syne, sans-serif; font-size: 15vw; font-weight: 800; color: rgb(255, 255, 255); position: absolute; top: 45%; right: -5%; white-space: nowrap; translate: none; rotate: none; scale: none; transform: translate(0px, 0px);"
+        id="bg-sus-2">AMOGUS AMOGUS AMOGUS AMOGUS</div>
+      <div
+        style="font-family:'Syne',sans-serif;font-size:12vw;font-weight:800;color:#fff;position:absolute;bottom:5%;left:10%;white-space:nowrap;"
+        id="bg-sus-3">IMPOSTER IMPOSTER IMPOSTER</div>
+    </div>
+
+    <!-- Nav -->
+    <nav
+      style="position: absolute; top: 0px; left: 0px; right: 0px; padding: 1.5rem 2rem; display: flex; justify-content: space-between; align-items: center; z-index: 10; backdrop-filter: none; background: transparent;">
+      <div class="font-syne" style="font-weight:800;font-size:1rem;letter-spacing:0.05em;" id="nav-logo">
+        <span style="color:#ff4757;">●</span> AMOGUS.CAN
+      </div>
+      <div class="font-mono" style="font-size:0.7rem;color:#666;letter-spacing:0.2em;" id="nav-status">
+        STATUS: <span style="color:#2ed573;">■</span> IN STOCK
+      </div>
+    </nav>
+
+    <!-- Hero Content -->
+    <div style="text-align:center;z-index:2;padding:0 1rem;">
+      <div class="hero-subtitle" id="hero-sub">
+        <span class="char-wrap"
+          style="translate: none; rotate: none; scale: none; opacity: 1; transform: translate(0px, 0px);">LIMITED
+          EDITION — CREW PACK — 2024</span>
+      </div>
+
+      <h1 class="hero-title" id="hero-title">
+        <span class="line"><span class="line-inner"
+            style="display: inline-block; translate: none; rotate: none; scale: none; transform: translate(0px, 0%);">A
+            CAN</span></span>
+        <span class="line"><span class="line-inner stroke-text"
+            style="display: inline-block; translate: none; rotate: none; scale: none; transform: translate(0px, 0%);">OF</span></span>
+        <span class="line"><span class="line-inner"
+            style="display: inline-block; color: rgb(255, 71, 87); translate: none; rotate: none; scale: none; transform: translate(0px, 0%);">AMOGUSES</span></span>
+      </h1>
+
+      <div style="margin-top:3rem;display:flex;gap:3rem;justify-content:center;flex-wrap:wrap;" id="hero-stats">
+        <div class="font-mono"
+          style="font-size: 0.75rem; color: rgb(102, 102, 102); translate: none; rotate: none; scale: none; opacity: 1; transform: translate(0px, 0px);">
+          <div style="font-size:2rem;font-weight:700;color:#f0f0f0;font-family:'Syne',sans-serif;" class="count-up"
+            data-target="12">12</div>
+          CREWMATES
+        </div>
+        <div class="font-mono"
+          style="font-size: 0.75rem; color: rgb(102, 102, 102); translate: none; rotate: none; scale: none; opacity: 1; transform: translate(0px, 0px);">
+          <div style="font-size:2rem;font-weight:700;color:#ff4757;font-family:'Syne',sans-serif;" class="count-up"
+            data-target="1">1</div>
+          IMPOSTOR
+        </div>
+        <div class="font-mono"
+          style="font-size: 0.75rem; color: rgb(102, 102, 102); translate: none; rotate: none; scale: none; opacity: 1; transform: translate(0px, 0px);">
+          <div style="font-size:2rem;font-weight:700;color:#f0f0f0;font-family:'Syne',sans-serif;" class="count-up"
+            data-target="100">100</div>
+          % SUS
+        </div>
+      </div>
+    </div>
+
+    <!-- Scroll indicator -->
+    <div
+      style="position: absolute; bottom: 2rem; left: 50%; transform: translate(-50%, 0%) translate(0.2px, 0px); z-index: 10; translate: none; rotate: none; scale: none; opacity: 0;"
+      id="scroll-hint">
+      <div class="font-mono"
+        style="font-size:0.65rem;color:#444;letter-spacing:0.3em;text-transform:uppercase;writing-mode:vertical-rl;text-orientation:mixed;">
+        SCROLL ↓
+      </div>
+    </div>
+  </section>
+
+  <!-- ========== TICKER 1 ========== -->
+  <div class="ticker" id="ticker1">
+    <div class="marquee-track">
+      <span class="font-syne" style="font-size:1.2rem;font-weight:700;padding:0 2rem;color:#333;">SUS ● SUSSY ● AMOGUS ●
+        IMPOSTER ● EJECTED ● EMERGENCY MEETING ● VENT ● REPORT ● SUSSY BAKA ● SUSSY ● AMOGUS ● IMPOSTER ● EJECTED ●
+        EMERGENCY MEETING ● VENT ● REPORT ● SUSSY BAKA ● </span>
+      <span class="font-syne" style="font-size:1.2rem;font-weight:700;padding:0 2rem;color:#333;">SUS ● SUSSY ● AMOGUS ●
+        IMPOSTER ● EJECTED ● EMERGENCY MEETING ● VENT ● REPORT ● SUSSY BAKA ● SUSSY ● AMOGUS ● IMPOSTER ● EJECTED ●
+        EMERGENCY MEETING ● VENT ● REPORT ● SUSSY BAKA ● </span>
+    </div>
+  </div>
+
+  <!-- ========== SECTION 2: THE PRODUCT ========== -->
+  <section class="reveal-section" style="flex-direction:column;gap:4rem;padding:4rem 2rem;" id="product-section">
+    <div style="max-width:1200px;width:100%;display:grid;grid-template-columns:1fr 1fr;gap:4rem;align-items:center;"
+      class="product-grid">
+      <!-- Left: Typography Description -->
+      <div>
+        <div class="font-mono"
+          style="font-size: 0.7rem; color: rgb(255, 71, 87); letter-spacing: 0.3em; margin-bottom: 1.5rem; translate: none; rotate: none; scale: none; opacity: 1; transform: translate(0px, 0px);"
+          id="prod-label">
+          [PRODUCT_001]
+        </div>
+        <h2 class="scroll-text" style="font-size:clamp(2rem,5vw,4rem);" id="prod-title">
+          <span class="word"><span class="char-slide"
+              style="translate: none; rotate: none; scale: none; transform: translate(0px, 0%);">OPEN</span></span>
+          <span class="word"><span class="char-slide"
+              style="color: rgb(255, 71, 87); translate: none; rotate: none; scale: none; transform: translate(0px, 0%);">THE</span></span><br>
+          <span class="word"><span class="char-slide"
+              style="translate: none; rotate: none; scale: none; transform: translate(0px, 0%);">SUS</span></span>
+        </h2>
+        <p class="font-mono"
+          style="font-size: 0.85rem; color: rgb(119, 119, 119); line-height: 1.8; margin-top: 2rem; max-width: 400px; translate: none; rotate: none; scale: none; opacity: 1; transform: translate(0px, 0px);"
+          id="prod-desc">
+          Each can contains 12 premium crewmates and exactly 1 impostor. Vacuum-sealed for maximum suspicion. Warning:
+          opening may trigger emergency meetings.
+        </p>
+        <div style="margin-top:2rem;display:flex;gap:1rem;flex-wrap:wrap;" id="prod-tags">
+          <span class="font-mono"
+            style="font-size: 0.65rem; border: 1px solid rgb(51, 51, 51); padding: 0.4rem 0.8rem; color: rgb(102, 102, 102); translate: none; rotate: none; scale: none; opacity: 1; transform: translate(0px, 0px);">VACUUM_SEALED</span>
+          <span class="font-mono"
+            style="font-size: 0.65rem; border: 1px solid rgb(51, 51, 51); padding: 0.4rem 0.8rem; color: rgb(102, 102, 102); translate: none; rotate: none; scale: none; opacity: 1; transform: translate(0px, 0px);">SUS_CERTIFIED</span>
+          <span class="font-mono"
+            style="font-size: 0.65rem; border: 1px solid rgb(51, 51, 51); padding: 0.4rem 0.8rem; color: rgb(102, 102, 102); translate: none; rotate: none; scale: none; opacity: 1; transform: translate(0px, 0px);">VENT_READY</span>
+        </div>
+      </div>
+
+      <!-- Right: Can Visual -->
+      <div style="display:flex;justify-content:center;" id="can-visual">
+        <div class="can-container" id="the-can"
+          style="translate: none; rotate: none; scale: none; opacity: 1; transform: translate3d(0px, 99.5578px, 0px) rotate(-10deg);">
+          <div class="can-tab"></div>
+          <div class="can-lid"></div>
+          <div class="can-body">
+            <div class="can-label">
+              <div class="can-label-title">PREMIUM<br>AMOGUSES</div>
+              <div class="can-label-sub">13 PACK • SUS EDITION</div>
+              <div class="can-amogus">
+                ඞ ඞ ඞ
+              </div>
+              <div class="can-label-sub" style="margin-top:10px;font-size:0.45rem;opacity:0.5;">NET WT. ∞ SUS</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ========== TEXT DIVIDER ========== -->
+  <div class="text-divider" style="text-align:center;padding:3rem 0;" id="divider1">
+    ═══════════════════════════════════════════════════════════════════════════════════════════════════════════
+  </div>
+
+  <!-- ========== SECTION 3: WHAT'S INSIDE — Kinetic Feature Reveal ========== -->
+  <section style="padding:6rem 2rem;max-width:1200px;margin:0 auto;" id="features-section">
+    <div class="font-mono" style="font-size:0.7rem;color:#ff4757;letter-spacing:0.3em;margin-bottom:1rem;">[CONTENTS]
+    </div>
+
+    <h2 class="font-syne"
+      style="font-size: clamp(2rem, 6vw, 5rem); font-weight: 800; text-transform: uppercase; margin-bottom: 4rem; translate: none; rotate: none; scale: none; opacity: 1; transform: translate(0px, 0px);"
+      id="features-title">
+      WHAT'S<br><span class="stroke-text">INSIDE</span>
+    </h2>
+
+    <div class="type-grid" id="features-grid">
+      <div class="type-grid-item" data-feature=""
+        style="translate: none; rotate: none; scale: none; opacity: 1; transform: translate(0px, 0px);">
+        <div class="feature-type" style="color:#ff4757;">12×</div>
+        <div class="font-syne" style="font-size:1.5rem;font-weight:700;text-transform:uppercase;margin:1rem 0 0.5rem;">
+          Crewmates</div>
+        <p class="font-mono" style="font-size:0.75rem;color:#555;line-height:1.7;">Premium hand-crafted crewmates in
+          assorted colors. Red, Blue, Green, Pink, Orange, Yellow, Black, White, Purple, Cyan, Lime, Brown.</p>
+        <div style="margin-top:1.5rem;font-size:2rem;letter-spacing:0.3em;">ඞඞඞ</div>
+      </div>
+
+      <div class="type-grid-item" data-feature=""
+        style="translate: none; rotate: none; scale: none; opacity: 1; transform: translate(0px, 0px);">
+        <div class="feature-type" style="color:#ff4757;">01×</div>
+        <div class="font-syne" style="font-size:1.5rem;font-weight:700;text-transform:uppercase;margin:1rem 0 0.5rem;">
+          Impostor</div>
+        <p class="font-mono" style="font-size:0.75rem;color:#555;line-height:1.7;">You'll never know which one. It looks
+          like a crewmate. It acts like a crewmate. But it is not a crewmate. Trust no one.</p>
+        <div style="margin-top:1.5rem;font-size:2rem;color:#ff4757;">ඞ<span
+            style="font-size:0.7rem;vertical-align:super;">SUS</span></div>
+      </div>
+
+      <div class="type-grid-item" data-feature=""
+        style="translate: none; rotate: none; scale: none; opacity: 1; transform: translate(0px, 0px);">
+        <div class="feature-type" style="color:#ff4757;">∞×</div>
+        <div class="font-syne" style="font-size:1.5rem;font-weight:700;text-transform:uppercase;margin:1rem 0 0.5rem;">
+          Suspicion</div>
+        <p class="font-mono" style="font-size:0.75rem;color:#555;line-height:1.7;">Unlimited sus energy radiates from
+          every can. Certified by the International Bureau of Suspicious Activities. Handle with paranoia.</p>
+        <div style="margin-top:1.5rem;" class="font-mono">
+          <span style="color:#ff4757;">▓▓▓▓▓▓▓▓▓▓</span> 100% SUS
+        </div>
+      </div>
+
+      <div class="type-grid-item" data-feature=""
+        style="translate: none; rotate: none; scale: none; opacity: 1; transform: translate(0px, 0px);">
+        <div class="feature-type" style="color:#ff4757;">01×</div>
+        <div class="font-syne" style="font-size:1.5rem;font-weight:700;text-transform:uppercase;margin:1rem 0 0.5rem;">
+          Emergency Button</div>
+        <p class="font-mono" style="font-size:0.75rem;color:#555;line-height:1.7;">Built into the can lid. Press when
+          you feel sus.召s an immediate meeting with whoever is in the room. Dramatic effect guaranteed.</p>
+        <div style="margin-top:1.5rem;">
+          <span
+            style="display:inline-block;width:40px;height:40px;background:#ff4757;border-radius:50%;border:3px solid #c0392b;cursor:pointer;"
+            class="emergency-btn"></span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ========== TICKER 2 ========== -->
+  <div class="ticker">
+    <div class="marquee-track marquee-track-reverse">
+      <span class="font-syne"
+        style="font-size:3rem;font-weight:800;padding:0 1rem;color:#1a1a1a;-webkit-text-stroke:1px #333;">AMONG US ●
+        AMONG US ● AMONG US ● AMONG US ● AMONG US ● AMONG US ● AMONG US ● AMONG US ● </span>
+      <span class="font-syne"
+        style="font-size:3rem;font-weight:800;padding:0 1rem;color:#1a1a1a;-webkit-text-stroke:1px #333;">AMONG US ●
+        AMONG US ● AMONG US ● AMONG US ● AMONG US ● AMONG US ● AMONG US ● AMONG US ● </span>
+    </div>
+  </div>
+
+  <!-- ========== SECTION 4: TESTIMONIALS via Kinetic Type ========== -->
+  <section style="padding:8rem 2rem;position:relative;overflow:hidden;" id="testimonials">
+    <div style="max-width:1000px;margin:0 auto;">
+      <div class="font-mono" style="font-size:0.7rem;color:#ff4757;letter-spacing:0.3em;margin-bottom:3rem;">
+        [TRANSMISSIONS]</div>
+
+      <div id="testimonial-rotator" style="min-height:300px;position:relative;">
+        <!-- Testimonial 1 -->
+        <div class="testimonial active"
+          style="position: absolute; inset: 0px; translate: none; rotate: none; scale: none; opacity: 1; transform: translate(0px, 0px);">
+          <div class="font-syne" style="font-size:clamp(1.5rem,4vw,3.5rem);font-weight:700;line-height:1.2;">
+            "I OPENED THE CAN AND NOW <span style="color:#ff4757;">I DON'T TRUST</span> ANYONE IN MY HOUSE"
+          </div>
+          <div class="font-mono" style="font-size:0.75rem;color:#555;margin-top:2rem;">
+            — @susmaster69 <span style="color:#333;">|</span> <span style="color:#ff4757;">VERIFIED PURCHASE</span>
+          </div>
+        </div>
+
+        <!-- Testimonial 2 -->
+        <div class="testimonial"
+          style="position: absolute; inset: 0px; opacity: 1; translate: none; rotate: none; scale: none; transform: translate(0px, 0px);">
+          <div class="font-syne" style="font-size:clamp(1.5rem,4vw,3.5rem);font-weight:700;line-height:1.2;">
+            "RED WAS <span style="color:#ff4757;">DEFINITELY THE IMPOSTOR.</span> I COULD FEEL IT THROUGH THE CAN."
+          </div>
+          <div class="font-mono" style="font-size:0.75rem;color:#555;margin-top:2rem;">
+            — @crewmate_karen <span style="color:#333;">|</span> <span style="color:#ff4757;">VERIFIED PURCHASE</span>
+          </div>
+        </div>
+
+        <!-- Testimonial 3 -->
+        <div class="testimonial"
+          style="position: absolute; inset: 0px; opacity: 0; translate: none; rotate: none; scale: none; transform: translate(-40px, 0px);">
+          <div class="font-syne" style="font-size:clamp(1.5rem,4vw,3.5rem);font-weight:700;line-height:1.2;">
+            "MY CAT KNOCKED THE CAN OFF THE TABLE. <span style="color:#ff4757;">EMERGENCY MEETING.</span>"
+          </div>
+          <div class="font-mono" style="font-size:0.75rem;color:#555;margin-top:2rem;">
+            — @venting_enthusiast <span style="color:#333;">|</span> <span style="color:#ff4757;">VERIFIED
+              PURCHASE</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Testimonial nav -->
+      <div style="display:flex;gap:0.5rem;margin-top:2rem;" id="test-nav">
+        <button class="font-mono"
+          style="background: none; border: 1px solid rgb(255, 71, 87); color: rgb(255, 71, 87); padding: 0.3rem 0.8rem; font-size: 0.7rem; cursor: pointer;"
+          data-test="0">01</button>
+        <button class="font-mono"
+          style="background: none; border: 1px solid rgb(51, 51, 51); color: rgb(51, 51, 51); padding: 0.3rem 0.8rem; font-size: 0.7rem; cursor: pointer;"
+          data-test="1">02</button>
+        <button class="font-mono"
+          style="background: none; border: 1px solid rgb(51, 51, 51); color: rgb(51, 51, 51); padding: 0.3rem 0.8rem; font-size: 0.7rem; cursor: pointer;"
+          data-test="2">03</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ========== SECTION 5: BIG SCROLLING AMOGUS PARADE (kinetic) ========== -->
+  <section style="padding:4rem 0;overflow:hidden;" id="parade-section">
+    <div
+      style="display: flex; gap: 4rem; align-items: center; white-space: nowrap; padding: 2rem 0px; translate: none; rotate: none; scale: none; transform: translate(0px, 0px);"
+      id="amogus-parade">
+      <span
+        style="font-size: 8rem; display: inline-block; translate: none; rotate: none; scale: none; transform: translate3d(0px, 0px, 0px) rotate(172.89deg);"
+        class="parade-char">ඞ</span>
+      <span class="font-syne"
+        style="font-size:clamp(3rem,10vw,8rem);font-weight:800;color:#1a1a1a;-webkit-text-stroke:1px #333;display:inline-block;">WHO
+        IS</span>
+      <span
+        style="font-size: 8rem; display: inline-block; color: rgb(255, 71, 87); translate: none; rotate: none; scale: none; transform: translate3d(0px, 0px, 0px) rotate(127.89deg);"
+        class="parade-char">ඞ</span>
+      <span class="font-syne" style="font-size:clamp(3rem,10vw,8rem);font-weight:800;display:inline-block;">THE</span>
+      <span
+        style="font-size: 8rem; display: inline-block; translate: none; rotate: none; scale: none; transform: translate3d(0px, 0px, 0px) rotate(82.89deg);"
+        class="parade-char">ඞ</span>
+      <span class="font-syne"
+        style="font-size:clamp(3rem,10vw,8rem);font-weight:800;color:#ff4757;display:inline-block;">IMPOSTOR</span>
+      <span
+        style="font-size: 8rem; display: inline-block; translate: none; rotate: none; scale: none; transform: translate3d(0px, 0px, 0px) rotate(37.89deg);"
+        class="parade-char">ඞ</span>
+      <span class="font-syne"
+        style="font-size:clamp(3rem,10vw,8rem);font-weight:800;color:#1a1a1a;-webkit-text-stroke:1px #333;display:inline-block;">AMONG</span>
+      <span
+        style="font-size: 8rem; display: inline-block; color: rgb(255, 71, 87); translate: none; rotate: none; scale: none; transform: translate(0px, 0px);"
+        class="parade-char">ඞ</span>
+      <span class="font-syne" style="font-size:clamp(3rem,10vw,8rem);font-weight:800;display:inline-block;">US?</span>
+      <span
+        style="font-size: 8rem; display: inline-block; translate: none; rotate: none; scale: none; transform: translate(0px, 0px);"
+        class="parade-char">ඞ</span>
+    </div>
+  </section>
+
+  <!-- ========== SECTION 6: PRICING / CTA ========== -->
+  <section class="reveal-section" style="flex-direction:column;padding:6rem 2rem;text-align:center;"
+    id="pricing-section">
+    <div class="font-mono" style="font-size:0.7rem;color:#ff4757;letter-spacing:0.3em;margin-bottom:2rem;">[ACQUIRE_SUS]
+    </div>
+
+    <div id="price-reveal"
+      style="translate: none; rotate: none; scale: none; opacity: 1; transform: translate(0px, 0px);">
+      <div class="font-syne"
+        style="font-size:clamp(1rem,2vw,1.5rem);font-weight:400;color:#666;text-transform:uppercase;letter-spacing:0.2em;">
+        Only</div>
+      <div class="price-tag" id="price-value">
+        $<span class="count-up" data-target="9" style="display:inline;">9</span>.99
+      </div>
+      <div class="font-mono" style="font-size:0.8rem;color:#444;margin-top:0.5rem;">
+        <s style="color:#333;">$49.99</s> — <span style="color:#2ed573;">SUS DISCOUNT APPLIED</span>
+      </div>
+    </div>
+
+    <div style="margin-top:3rem;display:flex;flex-direction:column;align-items:center;gap:1rem;">
+      <button class="cta-btn" id="buy-btn" onclick="buyAmogus()">
+        ADD TO CARGO — ඞ
+      </button>
+      <div class="font-mono" style="font-size:0.65rem;color:#333;">
+        FREE SHIPPING TO SKELD, MIRA HQ &amp; POLUS
+      </div>
+    </div>
+
+    <!-- Quantity sold counter -->
+    <div
+      style="margin-top: 4rem; padding: 2rem; border: 1px solid rgb(26, 26, 26); display: inline-block; translate: none; rotate: none; scale: none; opacity: 1; transform: translate(0px, 0px);"
+      id="sold-counter">
+      <div class="font-mono" style="font-size:0.65rem;color:#666;letter-spacing:0.2em;margin-bottom:0.5rem;">CANS
+        EJECTED INTO THE VOID</div>
+      <div class="font-syne" style="font-size:3rem;font-weight:800;color:#ff4757;">
+        <span class="count-up" data-target="48291">48291</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- ========== TICKER 3 ========== -->
+  <div class="ticker">
+    <div class="marquee-track" style="animation-duration:15s;">
+      <span class="font-syne" style="font-size:1rem;font-weight:700;padding:0 3rem;color:#ff4757;">BUY NOW ● OPEN SUS ●
+        TRUST NO ONE ● REPORT BODY ● VENT ● BUY NOW ● OPEN SUS ● TRUST NO ONE ● REPORT BODY ● VENT ● </span>
+      <span class="font-syne" style="font-size:1rem;font-weight:700;padding:0 3rem;color:#ff4757;">BUY NOW ● OPEN SUS ●
+        TRUST NO ONE ● REPORT BODY ● VENT ● BUY NOW ● OPEN SUS ● TRUST NO ONE ● REPORT BODY ● VENT ● </span>
+    </div>
+  </div>
+
+  <!-- ========== SECTION 7: ASCII AMOGUS FOOTER ========== -->
+  <footer style="padding:6rem 2rem 3rem;border-top:1px solid #1a1a1a;" id="footer">
+    <div
+      style="max-width:1200px;margin:0 auto;display:grid;grid-template-columns:repeat(auto-fit, minmax(200px, 1fr));gap:3rem;">
+      <div>
+        <div class="font-syne" style="font-weight:800;font-size:1.5rem;margin-bottom:1rem;">
+          <span style="color:#ff4757;">ඞ</span> AMOGUS.CAN
+        </div>
+        <p class="font-mono" style="font-size:0.7rem;color:#444;line-height:1.8;">
+          Official distributor of canned amoguses since 2018. Not affiliated with Innersloth (but we wish we were). All
+          amoguses are free-range and ethically suspicious.
+        </p>
+      </div>
+      <div>
+        <div class="font-mono" style="font-size:0.7rem;color:#ff4757;letter-spacing:0.2em;margin-bottom:1rem;">LINKS
+        </div>
+        <div class="font-mono" style="font-size:0.75rem;color:#555;line-height:2.5;">
+          <div style="cursor:pointer;transition:color 0.2s;" onmouseover="this.style.color='#ff4757'"
+            onmouseout="this.style.color='#555'">→ Emergency Meeting FAQ</div>
+          <div style="cursor:pointer;transition:color 0.2s;" onmouseover="this.style.color='#ff4757'"
+            onmouseout="this.style.color='#555'">→ Impostor Guarantee</div>
+          <div style="cursor:pointer;transition:color 0.2s;" onmouseover="this.style.color='#ff4757'"
+            onmouseout="this.style.color='#555'">→ Vent Shipping Policy</div>
+          <div style="cursor:pointer;transition:color 0.2s;" onmouseover="this.style.color='#ff4757'"
+            onmouseout="this.style.color='#555'">→ Return to Lobby</div>
+        </div>
+      </div>
+      <div>
+        <div class="font-mono" style="font-size:0.7rem;color:#ff4757;letter-spacing:0.2em;margin-bottom:1rem;">ASCII SUS
+        </div>
+        <pre class="text-amogus" style="opacity:0.6;">  ⠀⠀⠀⠀⠀⠀⣠⣤⣤⣤⣤⣤⣶⣦⣤⣄⡀
+  ⠀⠀⠀⠀⠀⢀⣴⣿⡿⠛⠉⠙⠛⠛⠛⠛⠻⢿⣿⣷⣤⡀
+  ⠀⠀⠀⠀⠀⣼⣿⠋⠀⠀⠀⠀⠀⠀⠀⢀⣀⣀⠈⢻⣿⣿⡄
+  ⠀⠀⠀⠀⣸⣿⡏⠀⠀⠀⣠⣶⣾⣿⣿⣿⠿⠿⠿⢿⣿⣿⣿⣄
+  ⠀⠀⠀⠀⣿⣿⠁⠀⠀⢰⣿⣿⣯⠁⠀⠀⠀⠀⠀⠀⠀⠈⠙⢿⣷⡄
+  ⠀⠀⣀⣤⣿⣿⣿⣿⣿⣿⣿⣿⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⢹⣿⣿
+  ⠀⣾⣿⣿⣿⣿⣿⣿⣿⣿⣿⠏⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⣿⣿
+  ⠀⣿⣿⣿⡟⠛⢿⣿⣿⣿⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⣿⣿
+  ⠀⣿⣿⣿⠀⠀⠀⠈⠛⢿⣿⡄⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⢠⣿⣿⠃
+  ⠀⢸⣿⡇⠀⠀⠀⠀⠀⠀⠘⣿⡆⠀⠀⠀⠀⠀⠀⠀⠀⠀⣰⣿⡿⠃
+  ⠀⢸⣿⡇⠀⠀⠀⠀⠀⠀⠀⢹⣿⡀⠀⠀⠀⠀⠀⠀⢀⣿⣿⠟
+  ⠀⣸⣿⡇⠀⠀⠀⠀⠀⠀⠀⠀⣿⡇⠀⠀⠀⠀⠀⠀⣿⣿⠃
+  ⠀⣿⣿⠁⠀⠀⠀⠀⠀⠀⠀⠀⣿⡇⠀⠀⠀⠀⠀⢸⣿⠇
+  ⠀⣿⣿⠀⠀⠀⠀⠀⠀⠀⠀⠀⣿⠃⠀⠀⠀⠀⠀⣼⣿
+  ⠀⢹⣿⡄⠀⠀⠀⠀⠀⠀⠀⣸⡟⠀⠀⠀⠀⠀⠀⣿⡇
+  ⠀⠀⣿⡇⠀⠀⠀⠀⠀⠀⢀⣿⠇⠀⠀⠀⠀⠀⢠⣿⡇
+  ⠀⠀⣿⣧⠀⠀⠀⠀⠀⠀⣸⣿⠀⠀⠀⠀⠀⠀⢸⣿⡄
+      </pre>
+      </div>
+    </div>
+
+    <div
+      style="margin-top:4rem;padding-top:2rem;border-top:1px solid #1a1a1a;display:flex;justify-content:space-between;flex-wrap:wrap;gap:1rem;">
+      <div class="font-mono" style="font-size:0.65rem;color:#333;">
+        © 2024 AMOGUS.CAN — ALL RIGHTS SUSPICIOUS
+      </div>
+      <div class="font-mono" style="font-size:0.65rem;color:#333;">
+        MADE WITH ❤️ AND PARANOIA
+      </div>
+    </div>
+  </footer>
+
+  <!-- ========== CART MODAL ========== -->
+  <div id="cart-modal"
+    style="position:fixed;inset:0;z-index:100001;display:none;align-items:center;justify-content:center;">
+    <div style="position:absolute;inset:0;background:rgba(0,0,0,0.8);backdrop-filter:blur(10px);" onclick="closeCart()">
+    </div>
+    <div
+      style="position:relative;background:#111;border:1px solid #ff4757;padding:3rem;max-width:500px;width:90%;text-align:center;"
+      id="cart-content">
+      <button onclick="closeCart()"
+        style="position:absolute;top:1rem;right:1rem;background:none;border:none;color:#666;font-size:1.5rem;cursor:pointer;font-family:'Syne',sans-serif;">✕</button>
+      <div style="font-size:5rem;margin-bottom:1rem;">ඞ</div>
+      <div class="font-syne" style="font-size:2rem;font-weight:800;text-transform:uppercase;">
+        <span style="color:#ff4757;">SUS</span> ADDED
+      </div>
+      <div class="font-mono" style="font-size:0.8rem;color:#666;margin-top:1rem;">
+        1× CAN OF AMOGUSES has been added to your cargo bay.
+      </div>
+      <div style="margin-top:1.5rem;padding:1rem;border:1px solid #1a1a1a;">
+        <div style="display:flex;justify-content:space-between;" class="font-mono">
+          <span style="color:#666;font-family:'JetBrains Mono',monospace;font-size:0.8rem;">CAN_OF_AMOGUSES ×1</span>
+          <span style="color:#ff4757;font-family:'JetBrains Mono',monospace;font-size:0.8rem;">$9.99</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;margin-top:0.5rem;">
+          <span style="color:#666;font-family:'JetBrains Mono',monospace;font-size:0.8rem;">SUS_TAX</span>
+          <span style="color:#ff4757;font-family:'JetBrains Mono',monospace;font-size:0.8rem;">$0.00</span>
+        </div>
+        <div
+          style="border-top:1px solid #1a1a1a;margin-top:0.5rem;padding-top:0.5rem;display:flex;justify-content:space-between;">
+          <span style="color:#fff;font-family:'Syne',sans-serif;font-weight:700;">TOTAL</span>
+          <span style="color:#ff4757;font-family:'Syne',sans-serif;font-weight:700;font-size:1.2rem;">$9.99</span>
+        </div>
+      </div>
+      <button class="cta-btn" style="margin-top:1.5rem;width:100%;" onclick="checkout()">EJECT TO CHECKOUT</button>
+      <div class="font-mono" style="font-size:0.6rem;color:#333;margin-top:1rem;" id="checkout-msg"></div>
+    </div>
+  </div>
+
+  <script>
+    // ==================== PRELOADER ====================
+    gsap.registerPlugin(ScrollTrigger, TextPlugin);
+
+    const preloaderTl = gsap.timeline({
+      onComplete: () => {
+        initPage();
+        gsap.to('#preloader', {
+          yPercent: -100, duration: 0.8, ease: 'power4.inOut', onComplete: () => {
+            document.getElementById('preloader').style.display = 'none';
+          }
+        });
+      }
+    });
+
+    // Animate preloader text up
+    preloaderTl.to('#preloader-text', { y: 0, duration: 0.6, ease: 'power3.out' });
+
+    // Count up percentage
+    let pct = { val: 0 };
+    preloaderTl.to(pct, {
+      val: 100,
+      duration: 1.5,
+      ease: 'power2.inOut',
+      onUpdate: () => {
+        document.getElementById('preloader-pct').textContent = Math.round(pct.val);
+      }
+    }, '-=0.3');
+
+    // ==================== CURSOR ====================
+    const cursor = document.getElementById('cursor');
+    let mouseX = 0, mouseY = 0, cursorX = 0, cursorY = 0;
+
+    document.addEventListener('mousemove', (e) => {
+      mouseX = e.clientX;
+      mouseY = e.clientY;
+    });
+
+    function updateCursor() {
+      cursorX += (mouseX - cursorX) * 0.15;
+      cursorY += (mouseY - cursorY) * 0.15;
+      cursor.style.left = cursorX + 'px';
+      cursor.style.top = cursorY + 'px';
+      requestAnimationFrame(updateCursor);
+    }
+    updateCursor();
+
+    // Hover effects on interactive elements
+    document.querySelectorAll('button, .cta-btn, .type-grid-item, .emergency-btn').forEach(el => {
+      el.addEventListener('mouseenter', () => {
+        cursor.style.width = '50px';
+        cursor.style.height = '50px';
+        cursor.style.borderColor = '#ff4757';
+      });
+      el.addEventListener('mouseleave', () => {
+        cursor.style.width = '20px';
+        cursor.style.height = '20px';
+        cursor.style.borderColor = 'rgba(255,71,87,0.5)';
+      });
+    });
+
+    // ==================== MAIN PAGE INIT ====================
+    function initPage() {
+      // Hero animations
+      const heroTl = gsap.timeline();
+
+      heroTl
+        .from('#hero-sub .char-wrap', {
+          y: 30,
+          opacity: 0,
+          duration: 0.6,
+          ease: 'power3.out'
+        })
+        .from('#hero-title .line-inner', {
+          y: '110%',
+          duration: 1,
+          ease: 'power4.out',
+          stagger: 0.12
+        }, '-=0.3')
+        .from('#hero-stats > div', {
+          y: 40,
+          opacity: 0,
+          duration: 0.6,
+          stagger: 0.1,
+          ease: 'power3.out'
+        }, '-=0.4')
+        .from('#scroll-hint', {
+          opacity: 0,
+          y: 20,
+          duration: 0.5
+        }, '-=0.2');
+
+      // Count up animations
+      document.querySelectorAll('.count-up').forEach(el => {
+        const target = parseInt(el.dataset.target);
+        ScrollTrigger.create({
+          trigger: el,
+          start: 'top 85%',
+          once: true,
+          onEnter: () => {
+            gsap.to(el, {
+              innerText: target,
+              duration: target > 100 ? 2 : 1,
+              snap: { innerText: 1 },
+              ease: 'power2.out'
+            });
+          }
+        });
+      });
+
+      // Background text parallax
+      gsap.to('#bg-sus-1', {
+        x: -300,
+        scrollTrigger: {
+          trigger: '#hero',
+          start: 'top top',
+          end: 'bottom top',
+          scrub: 1
+        }
+      });
+      gsap.to('#bg-sus-2', {
+        x: 200,
+        scrollTrigger: {
+          trigger: '#hero',
+          start: 'top top',
+          end: 'bottom top',
+          scrub: 1
+        }
+      });
+
+      // Product Section
+      gsap.from('#prod-label', {
+        x: -50,
+        opacity: 0,
+        duration: 0.6,
+        scrollTrigger: {
+          trigger: '#product-section',
+          start: 'top 70%',
+          once: true
+        }
+      });
+
+      gsap.from('.char-slide', {
+        y: '100%',
+        duration: 0.8,
+        stagger: 0.1,
+        ease: 'power4.out',
+        scrollTrigger: {
+          trigger: '#prod-title',
+          start: 'top 75%',
+          once: true
+        }
+      });
+
+      gsap.from('#prod-desc', {
+        y: 30,
+        opacity: 0,
+        duration: 0.8,
+        scrollTrigger: {
+          trigger: '#prod-desc',
+          start: 'top 80%',
+          once: true
+        }
+      });
+
+      gsap.from('#prod-tags span', {
+        scale: 0,
+        opacity: 0,
+        duration: 0.4,
+        stagger: 0.1,
+        ease: 'back.out(2)',
+        scrollTrigger: {
+          trigger: '#prod-tags',
+          start: 'top 85%',
+          once: true
+        }
+      });
+
+      // Can animation
+      gsap.from('#the-can', {
+        y: 100,
+        opacity: 0,
+        rotation: -10,
+        duration: 1,
+        ease: 'power3.out',
+        scrollTrigger: {
+          trigger: '#can-visual',
+          start: 'top 75%',
+          once: true
+        }
+      });
+
+      // Can floating effect
+      gsap.to('#the-can', {
+        y: -15,
+        duration: 2,
+        ease: 'sine.inOut',
+        yoyo: true,
+        repeat: -1
+      });
+
+      // Can rotation on scroll
+      gsap.to('#the-can', {
+        rotation: 5,
+        scrollTrigger: {
+          trigger: '#product-section',
+          start: 'top bottom',
+          end: 'bottom top',
+          scrub: 2
+        }
+      });
+
+      // Features grid
+      gsap.from('[data-feature]', {
+        y: 60,
+        opacity: 0,
+        duration: 0.7,
+        stagger: 0.15,
+        ease: 'power3.out',
+        scrollTrigger: {
+          trigger: '#features-grid',
+          start: 'top 75%',
+          once: true
+        }
+      });
+
+      // Features title
+      gsap.from('#features-title', {
+        x: -80,
+        opacity: 0,
+        duration: 0.8,
+        ease: 'power3.out',
+        scrollTrigger: {
+          trigger: '#features-section',
+          start: 'top 70%',
+          once: true
+        }
+      });
+
+      // Amogus parade - horizontal scroll on vertical scroll
+      const parade = document.getElementById('amogus-parade');
+      gsap.to(parade, {
+        x: () => -(parade.scrollWidth - window.innerWidth),
+        ease: 'none',
+        scrollTrigger: {
+          trigger: '#parade-section',
+          start: 'top 60%',
+          end: 'bottom 40%',
+          scrub: 1,
+        }
+      });
+
+      // Rotate parade characters
+      gsap.to('.parade-char', {
+        rotation: 360,
+        duration: 4,
+        repeat: -1,
+        ease: 'linear',
+        stagger: 0.5
+      });
+
+      // Pricing section
+      gsap.from('#price-reveal', {
+        scale: 0.5,
+        opacity: 0,
+        duration: 1,
+        ease: 'power3.out',
+        scrollTrigger: {
+          trigger: '#pricing-section',
+          start: 'top 60%',
+          once: true
+        }
+      });
+
+      gsap.from('#sold-counter', {
+        y: 40,
+        opacity: 0,
+        duration: 0.8,
+        scrollTrigger: {
+          trigger: '#sold-counter',
+          start: 'top 85%',
+          once: true
+        }
+      });
+
+      // Testimonials
+      gsap.from('#testimonials .testimonial.active', {
+        x: -60,
+        opacity: 0,
+        duration: 0.8,
+        scrollTrigger: {
+          trigger: '#testimonials',
+          start: 'top 65%',
+          once: true
+        }
+      });
+
+      // Random sus toast
+      setTimeout(() => {
+        showToast('SUS_DETECTED — someone is watching');
+      }, 5000);
+
+      // Scroll hint fade out
+      gsap.to('#scroll-hint', {
+        opacity: 0,
+        scrollTrigger: {
+          trigger: '#hero',
+          start: '10% top',
+          end: '20% top',
+          scrub: true
+        }
+      });
+
+      // Nav bg on scroll
+      ScrollTrigger.create({
+        start: 100,
+        onEnter: () => {
+          gsap.to('nav', { background: 'rgba(10,10,10,0.9)', backdropFilter: 'blur(10px)', duration: 0.3 });
+        },
+        onLeaveBack: () => {
+          gsap.to('nav', { background: 'transparent', backdropFilter: 'none', duration: 0.3 });
+        }
+      });
+    }
+
+    // ==================== TESTIMONIAL ROTATOR ====================
+    let currentTest = 0;
+    const testimonials = document.querySelectorAll('.testimonial');
+    const testBtns = document.querySelectorAll('[data-test]');
+
+    testBtns.forEach(btn => {
+      btn.addEventListener('click', () => {
+        const idx = parseInt(btn.dataset.test);
+        if (idx === currentTest) return;
+        switchTestimonial(idx);
+      });
+    });
+
+    function switchTestimonial(idx) {
+      gsap.to(testimonials[currentTest], { opacity: 0, x: -40, duration: 0.4, ease: 'power2.in' });
+
+      testBtns[currentTest].style.borderColor = '#333';
+      testBtns[currentTest].style.color = '#333';
+
+      currentTest = idx;
+
+      gsap.fromTo(testimonials[currentTest],
+        { opacity: 0, x: 40 },
+        { opacity: 1, x: 0, duration: 0.5, ease: 'power2.out', delay: 0.2 }
+      );
+
+      testBtns[currentTest].style.borderColor = '#ff4757';
+      testBtns[currentTest].style.color = '#ff4757';
+    }
+
+    // Auto-rotate testimonials
+    setInterval(() => {
+      switchTestimonial((currentTest + 1) % testimonials.length);
+    }, 5000);
+
+    // ==================== EMERGENCY BUTTON ====================
+    document.querySelectorAll('.emergency-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        showToast('🚨 EMERGENCY MEETING CALLED 🚨');
+        gsap.to(btn, { scale: 0.8, duration: 0.1, yoyo: true, repeat: 1 });
+
+        // Flash screen red briefly
+        const flash = document.createElement('div');
+        flash.style.cssText = 'position:fixed;inset:0;background:#ff4757;z-index:99998;pointer-events:none;';
+        document.body.appendChild(flash);
+        gsap.to(flash, { opacity: 0, duration: 0.5, onComplete: () => flash.remove() });
+      });
+    });
+
+    // ==================== BUY FUNCTION ====================
+    function buyAmogus() {
+      const modal = document.getElementById('cart-modal');
+      modal.style.display = 'flex';
+      gsap.from('#cart-content', {
+        scale: 0.8,
+        opacity: 0,
+        duration: 0.4,
+        ease: 'back.out(2)'
+      });
+    }
+
+    function closeCart() {
+      gsap.to('#cart-content', {
+        scale: 0.8,
+        opacity: 0,
+        duration: 0.3,
+        ease: 'power2.in',
+        onComplete: () => {
+          document.getElementById('cart-modal').style.display = 'none';
+          gsap.set('#cart-content', { scale: 1, opacity: 1 });
+        }
+      });
+    }
+
+    function checkout() {
+      const msg = document.getElementById('checkout-msg');
+      const messages = [
+        'ඞ was ejected. ඞ was the package.',
+        'Redirecting to electrical... just kidding.',
+        'ERROR: Too sus to process.',
+        'Your card has been reported as impostor.',
+        'Shipping via vent system. ETA: unknown.',
+      ];
+      msg.textContent = messages[Math.floor(Math.random() * messages.length)];
+      msg.style.color = '#ff4757';
+      gsap.from(msg, { y: 10, opacity: 0, duration: 0.3 });
+    }
+
+    // ==================== TOAST ====================
+    function showToast(message) {
+      const toast = document.getElementById('toast');
+      toast.textContent = message;
+      gsap.to(toast, { y: 0, opacity: 1, duration: 0.4, ease: 'power3.out' });
+      gsap.to(toast, { y: '150%', opacity: 0, duration: 0.4, ease: 'power3.in', delay: 3 });
+    }
+
+    // ==================== SUS CLICK EFFECT ====================
+    document.addEventListener('click', (e) => {
+      const sus = document.createElement('div');
+      sus.className = 'sus-float';
+      sus.textContent = 'ඞ';
+      sus.style.left = e.clientX + 'px';
+      sus.style.top = e.clientY + 'px';
+      document.body.appendChild(sus);
+
+      gsap.to(sus, {
+        y: -80,
+        x: (Math.random() - 0.5) * 60,
+        opacity: 1,
+        duration: 0.3,
+        ease: 'power2.out'
+      });
+      gsap.to(sus, {
+        y: -150,
+        opacity: 0,
+        duration: 0.5,
+        delay: 0.3,
+        ease: 'power2.in',
+        onComplete: () => sus.remove()
+      });
+    });
+
+    // ==================== RESPONSIVE GRID ====================
+    // Fix product grid on mobile
+    const mediaQuery = window.matchMedia('(max-width: 768px)');
+    function handleMobile(e) {
+      const grid = document.querySelector('.product-grid');
+      if (grid) {
+        grid.style.gridTemplateColumns = e.matches ? '1fr' : '1fr 1fr';
+      }
+    }
+    mediaQuery.addListener(handleMobile);
+    handleMobile(mediaQuery);
+
+    // ==================== KEYBOARD EASTER EGG ====================
+    let susCode = '';
+    document.addEventListener('keydown', (e) => {
+      susCode += e.key.toLowerCase();
+      if (susCode.includes('sus')) {
+        susCode = '';
+        showToast('ඞ SUS CODE ACTIVATED ඞ');
+        document.body.style.transition = 'filter 0.3s';
+        document.body.style.filter = 'hue-rotate(180deg)';
+        setTimeout(() => {
+          document.body.style.filter = 'none';
+        }, 2000);
+      }
+      if (susCode.length > 10) susCode = susCode.slice(-5);
+    });
+  </script>
+
+
+
+</body>
+
+</html>

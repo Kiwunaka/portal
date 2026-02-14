@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import gsap from "gsap";
@@ -9,12 +9,24 @@ if (typeof window !== "undefined") {
 }
 
 const TG_BOT_FALLBACK = process.env.NEXT_PUBLIC_TELEGRAM_BOT_URL || "https://t.me/portal_service_bot";
-const CHECKOUT_URL = process.env.NEXT_PUBLIC_PAY_CHECKOUT_URL || TG_BOT_FALLBACK;
+const CHECKOUT_URL = process.env.NEXT_PUBLIC_CHECKOUT_PAGE_URL || "/checkout";
+const BOT_FAST_URL = process.env.NEXT_PUBLIC_PAY_CHECKOUT_URL || TG_BOT_FALLBACK;
+const WEBAPP_URL = (process.env.NEXT_PUBLIC_WEBAPP_URL || "https://portal-privacy.online/webapp/").trim();
+const TG_NEWS_CHANNEL = (process.env.NEXT_PUBLIC_NEWS_CHANNEL || "portal_privacy").replace("@", "").trim();
 const SOCIAL_PROOF_URL = (process.env.NEXT_PUBLIC_SOCIAL_PROOF_URL || "").trim();
+const APP_ANDROID_PLAY_URL = (process.env.NEXT_PUBLIC_APP_ANDROID_PLAY_URL || "").trim();
+const APP_ANDROID_APK_URL = (process.env.NEXT_PUBLIC_APP_ANDROID_APK_URL || "").trim();
+const APP_ANDROID_MIRROR_URL = (process.env.NEXT_PUBLIC_APP_ANDROID_MIRROR_URL || "").trim();
+const APP_WINDOWS_EXE_URL = (process.env.NEXT_PUBLIC_APP_WINDOWS_EXE_URL || "").trim();
+const APP_WINDOWS_MIRROR_URL = (process.env.NEXT_PUBLIC_APP_WINDOWS_MIRROR_URL || "").trim();
+const APP_DOCS_URL = (process.env.NEXT_PUBLIC_APP_DOCS_URL || "").trim();
+const CONTACT_EMAIL = (process.env.NEXT_PUBLIC_CONTACT_EMAIL || "support@kiwunaka.space").trim();
+const CONTACT_TG_URL = (process.env.NEXT_PUBLIC_CONTACT_TG_URL || "https://t.me/portal_privacy_helpbot").trim();
+const CONTACT_FORM_URL = (process.env.NEXT_PUBLIC_CONTACT_FORM_URL || "https://t.me/portal_privacy_helpbot").trim();
 
 const FEATURES = [
   { type: "01×", title: "Мгновенное подключение", desc: "Ключ выдаётся через Telegram и импортируется в 1-2 шага. Без регистрации, без паролей.", num: "01" },
-  { type: "04×", title: "4 страны в PRO", desc: "Польша, Германия, США и Италия. Полный доступ ко всем узлам в платных планах.", num: "02" },
+  { type: "04×", title: "4 страны в PRO", desc: "Польша, Нидерланды, США и Италия. Полный доступ ко всем узлам в платных планах.", num: "02" },
   { type: "∞×", title: "Шифрованный канал", desc: "Весь трафик защищён между вашим устройством и выбранным узлом. Никаких логов.", num: "03" },
   { type: "05×", title: "До 5 устройств", desc: "Один профиль для телефона, планшета и компьютера. Одновременно и без ограничений.", num: "04" },
   { type: "02×", title: "Гибкие режимы", desc: "Базовый и полный режим с ясным апгрейдом. Без миграций, без потери данных.", num: "05" },
@@ -200,6 +212,7 @@ function Navbar({ theme, onToggleTheme }: { theme: string; onToggleTheme: () => 
       <nav className="topnav">
         <a href="#features">Возможности</a>
         <a href="#plans">Тарифы</a>
+        <a href="#download">Download</a>
         <a href="#faq">FAQ</a>
         <button className="theme-toggle" onClick={onToggleTheme} type="button" aria-label="Toggle theme">
           {theme === "dark" ? "☀" : "☾"}
@@ -471,6 +484,58 @@ function Plans() {
   );
 }
 
+function Downloads() {
+  const androidLinks = [
+    { key: "play", label: "Google Play", url: APP_ANDROID_PLAY_URL },
+    { key: "apk", label: "APK", url: APP_ANDROID_APK_URL },
+    { key: "mirror", label: "Mirror", url: APP_ANDROID_MIRROR_URL },
+  ].filter((item) => item.url);
+
+  const windowsLinks = [
+    { key: "exe", label: "EXE", url: APP_WINDOWS_EXE_URL },
+    { key: "mirror", label: "Mirror", url: APP_WINDOWS_MIRROR_URL },
+  ].filter((item) => item.url);
+
+  return (
+    <section className="downloads" id="download">
+      <div className="section-tag">[DOWNLOAD]</div>
+      <div className="downloads-head">
+        <h2>СКАЧАТЬ ПРИЛОЖЕНИЕ</h2>
+        <p>Официальные сборки для Android и Windows. Ссылки обновляются после релиза.</p>
+      </div>
+      <div className="downloads-grid">
+        <article className="download-card">
+          <h3>Android</h3>
+          <p>Установка из магазина или прямой пакет.</p>
+          <div className="download-actions">
+            {androidLinks.length ? androidLinks.map((item) => (
+              <a key={item.key} href={item.url} target="_blank" rel="noreferrer" className="download-link">
+                {item.label}
+              </a>
+            )) : <span className="download-empty">Сборка появится после публикации</span>}
+          </div>
+        </article>
+        <article className="download-card">
+          <h3>Windows</h3>
+          <p>Установщик для ПК и резервный канал загрузки.</p>
+          <div className="download-actions">
+            {windowsLinks.length ? windowsLinks.map((item) => (
+              <a key={item.key} href={item.url} target="_blank" rel="noreferrer" className="download-link">
+                {item.label}
+              </a>
+            )) : <span className="download-empty">Сборка появится после публикации</span>}
+          </div>
+        </article>
+      </div>
+      {APP_DOCS_URL ? (
+        <a href={APP_DOCS_URL} target="_blank" rel="noreferrer" className="download-docs">
+          Инструкция по установке →
+        </a>
+      ) : null}
+    </section>
+  );
+}
+
 /* в"Ђв"Ђ CTA в"Ђв"Ђ */
 function CTA() {
   const [segment, setSegment] = useState<SegmentKey>("FREE");
@@ -559,7 +624,7 @@ function CTA() {
         <div className="cta-disclaimer">{current.note}</div>
         <a href={CHECKOUT_URL} target="_blank" rel="noreferrer" className="cta-btn">
           <span className="btn-icon">→</span>
-          Открыть Telegram
+          Открыть оплату
         </a>
         <div className="cta-features">
           <span>Без лишних экранов</span>
@@ -602,9 +667,18 @@ function FAQ() {
       <h2>ВОПРОСЫ</h2>
       <div>
         {FAQS.map((f, i) => (
-          <div key={f.q} className="faq-item" onClick={() => setOpenIndex(openIndex === i ? null : i)}>
-            <div className="faq-q">{f.q}<span className={`toggle ${openIndex === i ? "open" : ""}`}>+</span></div>
-            <div className={`faq-a ${openIndex === i ? "open" : ""}`}>{f.a}</div>
+          <div key={f.q} className="faq-item">
+            <button
+              type="button"
+              className="faq-q"
+              onClick={() => setOpenIndex(openIndex === i ? null : i)}
+              aria-expanded={openIndex === i}
+              aria-controls={`faq-answer-${i}`}
+            >
+              {f.q}
+              <span className={`toggle ${openIndex === i ? "open" : ""}`}>+</span>
+            </button>
+            <div id={`faq-answer-${i}`} className={`faq-a ${openIndex === i ? "open" : ""}`}>{f.a}</div>
           </div>
         ))}
       </div>
@@ -645,7 +719,7 @@ function MobileCommandBar() {
   return (
     <div className={`mobile-command ${visible ? "mobile-command--show" : ""}`} aria-hidden={!visible}>
       <a href={CHECKOUT_URL} target="_blank" rel="noreferrer" className="mobile-command__cta">
-        <span className="mobile-command__lead">Открыть Telegram</span>
+        <span className="mobile-command__lead">Открыть оплату</span>
         <span className="mobile-command__tail">→ Подключить / Продлить</span>
       </a>
     </div>
@@ -653,17 +727,78 @@ function MobileCommandBar() {
 }
 
 /* в"Ђв"Ђ Footer в"Ђв"Ђ */
+function AccessPaths() {
+  return (
+    <section className="downloads" id="access-paths">
+      <div className="section-tag">[ACCESS]</div>
+      <div className="downloads-head">
+        <h2>САЙТ ИЛИ TELEGRAM</h2>
+        <p>Можно управлять доступом в личном кабинете на сайте или через бота. Бот быстрее для большинства сценариев.</p>
+      </div>
+      <div className="downloads-grid">
+        <article className="download-card">
+          <h3>Личный кабинет</h3>
+          <p>Статус подписки, остаток лимита, активация подарочного кода, выбор способа оплаты.</p>
+          <div className="download-actions">
+            <a href={WEBAPP_URL} className="download-link" target="_blank" rel="noreferrer">Открыть ЛК</a>
+            <a href={CHECKOUT_URL} className="download-link" target="_blank" rel="noreferrer">Оплата</a>
+          </div>
+        </article>
+        <article className="download-card">
+          <h3>Telegram-бот</h3>
+          <p>Самый быстрый путь: продлить доступ, получить ключ, открыть поддержку в одном интерфейсе.</p>
+          <div className="download-actions">
+            <a href={BOT_FAST_URL} className="download-link" target="_blank" rel="noreferrer">Открыть бота</a>
+          </div>
+        </article>
+      </div>
+    </section>
+  );
+}
+
+function TelegramNews() {
+  if (!TG_NEWS_CHANNEL) return null;
+  return (
+    <section className="downloads" id="news">
+      <div className="section-tag">[NEWS]</div>
+      <div className="downloads-head">
+        <h2>НОВОСТИ</h2>
+        <p>Официальные обновления проекта из Telegram-канала.</p>
+      </div>
+      <div style={{ border: "1px solid var(--line)", minHeight: 420, overflow: "hidden" }}>
+        <iframe
+          src={`https://t.me/s/${TG_NEWS_CHANNEL}`}
+          title="Project news"
+          style={{ width: "100%", height: 420, border: "0" }}
+          loading="lazy"
+        />
+      </div>
+    </section>
+  );
+}
 function Footer() {
   return (
     <footer className="footer">
       <div className="footer-inner">
         <div className="footer-brand"><span>●</span> PORTAL</div>
+        <div className="footer-meta">
+          <p className="footer-description">
+            PORTAL предоставляет цифровую услугу защищенного интернет-доступа с маршрутами по странам,
+            личным кабинетом и поддержкой через Telegram. Оплата взимается за выбранный срок доступа.
+          </p>
+          <div className="footer-contacts">
+            <span>Контакты:</span>
+            <a href={`mailto:${CONTACT_EMAIL}`}>{CONTACT_EMAIL}</a>
+            <a href={CONTACT_TG_URL} target="_blank" rel="noreferrer">Telegram</a>
+            <a href={CONTACT_FORM_URL} target="_blank" rel="noreferrer">Форма связи</a>
+          </div>
+        </div>
         <div className="footer-links">
           <a href="/offer">Оферта</a>
           <a href="/privacy">Конфиденциальность</a>
         </div>
         <div className="footer-legal">
-          © {new Date().getFullYear()} PORTAL — ЗАЩИЩЁННЫЙ КАНАЛ СВЯЗИ ДЛЯ ЛИЧНОГО ИСПОЛЬЗОВАНИЯ
+          © {new Date().getFullYear()} PORTAL — SECURE ACCESS SERVICE
         </div>
       </div>
     </footer>
@@ -681,13 +816,16 @@ export default function HomePage() {
       <div className="grain" />
       <CursorFollower />
       <Navbar theme={theme} onToggleTheme={toggleTheme} />
-      <main style={{ visibility: preloaded ? "visible" : "hidden" }}>
+      <main id="main-content" style={{ visibility: preloaded ? "visible" : "hidden" }}>
         <Hero />
         <Marquee />
         <Features />
         <Testimonials />
         <Plans />
+        <Downloads />
+        <AccessPaths />
         <CTA />
+        <TelegramNews />
         <FAQ />
         <Footer />
       </main>
@@ -696,3 +834,6 @@ export default function HomePage() {
     </>
   );
 }
+
+
+

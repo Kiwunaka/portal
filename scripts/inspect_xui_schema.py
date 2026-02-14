@@ -7,31 +7,11 @@ from pathlib import Path
 
 import paramiko
 
+from node_passwords import parse_passwords
+
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_PASSWORDS = REPO_ROOT / "VPN NODE SSH KEYS" / "PASSWORDS.txt"
-
-
-def _parse_passwords(path: Path) -> dict[str, str]:
-    raw = path.read_text(encoding="utf-8", errors="replace")
-    lines = [ln.strip() for ln in raw.splitlines()]
-    out: dict[str, str] = {}
-    markers = {"brain": "BRAINnode", "us": "USnode", "pl": "PLnode", "it": "ITnode", "free": "Free Node"}
-    for code, marker in markers.items():
-        try:
-            idx = next(i for i, ln in enumerate(lines) if marker in ln)
-        except StopIteration:
-            continue
-        pw = ""
-        for j in range(idx + 1, min(idx + 12, len(lines))):
-            ln = lines[j]
-            if not ln or ln.startswith("ssh-ed25519 "):
-                continue
-            pw = ln
-            break
-        if pw:
-            out[code] = pw
-    return out
 
 
 def _run(ssh: paramiko.SSHClient, cmd: str, *, timeout: int = 60) -> tuple[int, str, str]:
@@ -55,7 +35,8 @@ def main() -> int:
     if args.code:
         pw = os.getenv(f"NODE_PASS_{args.code.upper()}", "").strip()
     if not pw:
-        pw_map = _parse_passwords(Path(args.passwords))
+        wanted = [args.code] if args.code else []
+        pw_map = parse_passwords(Path(args.passwords), requested_codes=wanted)
         pw = pw_map.get(args.code, "") if args.code else ""
     if not pw:
         raise SystemExit("Password not found. Set NODE_PASS_<CODE> env var.")

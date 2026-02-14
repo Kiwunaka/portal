@@ -89,6 +89,7 @@ def _parse_passwords(path: Path) -> dict[str, str]:
         "us": "USnode",
         "pl": "PLnode",
         "it": "ITnode",
+        "nl": "NLnode",
         "free": "Free Node",
     }
 
@@ -438,6 +439,7 @@ def main() -> int:
             "us": "USnode_public",
             "pl": "PLnode_public",
             "it": "ITnode_public",
+            "nl": "NLnode_public",
             "free": "FREEnode_public",
         }.items():
             pth = key_dir / fname

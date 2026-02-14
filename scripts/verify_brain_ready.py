@@ -29,7 +29,7 @@ def _parse_passwords(path: Path) -> dict[str, str]:
     raw = path.read_text(encoding="utf-8", errors="replace")
     lines = [ln.strip() for ln in raw.splitlines()]
     out: dict[str, str] = {}
-    markers = {"brain": "BRAINnode", "us": "USnode", "pl": "PLnode", "it": "ITnode", "free": "Free Node"}
+    markers = {"brain": "BRAINnode", "us": "USnode", "pl": "PLnode", "it": "ITnode", "nl": "NLnode", "free": "Free Node"}
     for code, marker in markers.items():
         try:
             idx = next(i for i, ln in enumerate(lines) if marker in ln)

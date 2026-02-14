@@ -361,6 +361,99 @@ class ControlPanel:
                 continue
         return None
 
+    async def get_connection_status_by_tgid(self, tg_id: int, *, per_node_timeout_sec: float = 4.0) -> dict:
+        """
+        Best-effort online snapshot from panel runtimes across enabled nodes.
+
+        Returns:
+        {
+          "known": bool,                # client exists on at least one node
+          "state": "online|offline|unknown",
+          "mapped_nodes": [code...],    # nodes where client record exists
+          "online_nodes": [code...],    # subset where panel reports online=True
+          "enabled_nodes": [code...],   # subset where client enable=True
+          "last_online_at": iso|None,   # max known last-online among mapped nodes
+          "last_online_age_seconds": int|None,
+        }
+        """
+        nodes = await self.refresh()
+        if not nodes:
+            return {
+                "known": False,
+                "state": "unknown",
+                "mapped_nodes": [],
+                "online_nodes": [],
+                "enabled_nodes": [],
+                "last_online_at": None,
+                "last_online_age_seconds": None,
+            }
+
+        async def _probe(node):
+            try:
+                snap = await asyncio.wait_for(
+                    self._clients[node.code].get_client_runtime_by_tgid(tg_id),
+                    timeout=max(0.5, float(per_node_timeout_sec)),
+                )
+            except Exception:
+                return None
+            if not snap:
+                return None
+            out = dict(snap)
+            out["node_code"] = node.code
+            return out
+
+        rows = await asyncio.gather(*[_probe(n) for n in nodes], return_exceptions=False)
+        found = [r for r in rows if r]
+        if not found:
+            return {
+                "known": False,
+                "state": "unknown",
+                "mapped_nodes": [],
+                "online_nodes": [],
+                "enabled_nodes": [],
+                "last_online_at": None,
+                "last_online_age_seconds": None,
+            }
+
+        mapped_nodes = [str(r.get("node_code", "")) for r in found if r.get("node_code")]
+        online_nodes = [str(r.get("node_code", "")) for r in found if r.get("online") is True and r.get("node_code")]
+        enabled_nodes = [str(r.get("node_code", "")) for r in found if bool(r.get("enable", True)) and r.get("node_code")]
+        last_online_age_values = [int(r.get("last_online_age_seconds")) for r in found if r.get("last_online_age_seconds") is not None]
+        last_online_at_values = [str(r.get("last_online_at")) for r in found if r.get("last_online_at")]
+        min_age = min(last_online_age_values) if last_online_age_values else None
+        latest_iso = None
+        if last_online_age_values and last_online_at_values:
+            try:
+                # Pick row with smallest age (most recent online activity).
+                best = min(
+                    (
+                        (int(r.get("last_online_age_seconds")), str(r.get("last_online_at")))
+                        for r in found
+                        if r.get("last_online_age_seconds") is not None and r.get("last_online_at")
+                    ),
+                    key=lambda x: x[0],
+                )
+                latest_iso = best[1]
+            except Exception:
+                latest_iso = last_online_at_values[0]
+
+        if online_nodes:
+            state = "online"
+        elif any(r.get("online") is False for r in found):
+            state = "offline"
+        else:
+            state = "unknown"
+
+        return {
+            "known": True,
+            "state": state,
+            "mapped_nodes": mapped_nodes,
+            "online_nodes": online_nodes,
+            "enabled_nodes": enabled_nodes,
+            "last_online_at": latest_iso,
+            "last_online_age_seconds": min_age,
+        }
+
     async def get_clients_list(self) -> list[dict] | None:
         """
         Compatibility: return clients list from the first node inbound.
@@ -381,9 +474,30 @@ class ControlPanel:
                     return []
         return []
 
-    async def reset_client_traffic(self, tg_id: int) -> bool:
-        # Not supported in MVP; no-op success to avoid breaking admin UI.
-        return True
+    async def reset_client_traffic(self, tg_id: int, *, only_free: bool = False) -> bool:
+        """
+        Reset user traffic counters on panel side.
+        - `only_free=True` targets free pool when available.
+        - Backward-compatible fallback: if free pool is absent, probe all enabled nodes.
+        """
+        nodes = await self.refresh()
+        if not nodes:
+            return False
+
+        target_nodes = list(nodes)
+        if only_free:
+            free_codes = set(self._free_node_codes(nodes))
+            if free_codes:
+                target_nodes = [n for n in nodes if (n.code or "") in free_codes]
+
+        ok_any = False
+        for n in target_nodes:
+            try:
+                ok = await self._clients[n.code].reset_client_traffic_by_tgid(int(tg_id))
+                ok_any = ok_any or bool(ok)
+            except Exception:
+                continue
+        return ok_any
 
     async def set_tariff_traffic(self, tg_id: int, new_total_gb: int) -> bool:
         # Legacy compatibility: policy is node/env-driven, not ad-hoc per call.

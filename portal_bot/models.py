@@ -10,6 +10,7 @@ from sqlalchemy import (
     Float,
     Integer,
     String,
+    Text,
     UniqueConstraint,
 )
 from sqlalchemy.orm import declarative_base
@@ -57,6 +58,9 @@ class User(Base):
     created_by_admin = Column(BigInteger, nullable=True)
     display_name = Column(String(100), nullable=True)
     device_reset_last_at = Column(DateTime, nullable=True)
+    free_cycle_anchor_at = Column(DateTime, nullable=True)
+    free_cycle_last_reset_at = Column(DateTime, nullable=True)
+    free_cycle_next_reset_at = Column(DateTime, nullable=True)
 
 
 class Achievement(Base):
@@ -262,6 +266,46 @@ class PayAttempt(Base):
     updated_at = Column(DateTime, default=datetime.utcnow, nullable=False)
     paid_at = Column(DateTime, nullable=True)
     abandoned_notified_at = Column(DateTime, nullable=True)
+
+
+class ExternalOrder(Base):
+    __tablename__ = "external_orders"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    order_id = Column(String(128), nullable=False, index=True)
+    tg_id = Column(BigInteger, nullable=True, index=True)
+    provider = Column(String(32), nullable=False, index=True)
+    plan_code = Column(String(32), nullable=True)
+    amount = Column(Float, default=0.0, nullable=False)
+    currency = Column(String(16), default="RUB", nullable=False)
+    status = Column(String(24), default="created", nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    paid_at = Column(DateTime, nullable=True)
+
+    __table_args__ = (UniqueConstraint("provider", "order_id", name="uq_external_orders_provider_order"),)
+
+
+class ExternalPaymentEvent(Base):
+    __tablename__ = "external_payment_events"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    provider = Column(String(32), nullable=False, index=True)
+    event_type = Column(String(24), nullable=False, index=True)
+    external_id = Column(String(128), nullable=False, index=True)
+    order_id = Column(String(128), nullable=True, index=True)
+    payload_json = Column(Text, nullable=False)
+    signature_ok = Column(Boolean, default=False, nullable=False)
+    processed_ok = Column(Boolean, default=False, nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+
+    __table_args__ = (
+        UniqueConstraint(
+            "provider",
+            "event_type",
+            "external_id",
+            name="uq_external_payment_events_provider_type_extid",
+        ),
+    )
 
 
 class PointsLedger(Base):

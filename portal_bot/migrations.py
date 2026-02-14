@@ -48,6 +48,9 @@ def run_migrations(engine: Engine) -> None:
                 ("channel_bonus_active", "BOOLEAN DEFAULT 0"),
                 ("channel_bonus_expires_at", "DATETIME"),
                 ("channel_bonus_revoked_at", "DATETIME"),
+                ("free_cycle_anchor_at", "DATETIME"),
+                ("free_cycle_last_reset_at", "DATETIME"),
+                ("free_cycle_next_reset_at", "DATETIME"),
             ]
             for col, ddl in wanted_cols:
                 if not _sqlite_column_exists(conn, "users", col):
@@ -259,6 +262,63 @@ def run_migrations(engine: Engine) -> None:
         conn.execute(text("CREATE UNIQUE INDEX IF NOT EXISTS uq_pay_attempts_invoice_payload ON pay_attempts(invoice_payload);"))
         conn.execute(text("CREATE INDEX IF NOT EXISTS ix_pay_attempts_tg_status_started ON pay_attempts(tg_id, status, started_at);"))
 
+        # external provider orders/events: callback idempotency and audit trail.
+        conn.execute(
+            text(
+                """
+                CREATE TABLE IF NOT EXISTS external_orders (
+                  id INTEGER PRIMARY KEY AUTOINCREMENT,
+                  order_id VARCHAR(128) NOT NULL,
+                  tg_id BIGINT,
+                  provider VARCHAR(32) NOT NULL,
+                  plan_code VARCHAR(32),
+                  amount FLOAT DEFAULT 0,
+                  currency VARCHAR(16) DEFAULT 'RUB',
+                  status VARCHAR(24) DEFAULT 'created',
+                  created_at DATETIME NOT NULL,
+                  paid_at DATETIME
+                );
+                """
+            )
+        )
+        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_external_orders_order_id ON external_orders(order_id);"))
+        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_external_orders_tg_id ON external_orders(tg_id);"))
+        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_external_orders_provider ON external_orders(provider);"))
+        conn.execute(
+            text(
+                "CREATE UNIQUE INDEX IF NOT EXISTS uq_external_orders_provider_order "
+                "ON external_orders(provider, order_id);"
+            )
+        )
+
+        conn.execute(
+            text(
+                """
+                CREATE TABLE IF NOT EXISTS external_payment_events (
+                  id INTEGER PRIMARY KEY AUTOINCREMENT,
+                  provider VARCHAR(32) NOT NULL,
+                  event_type VARCHAR(24) NOT NULL,
+                  external_id VARCHAR(128) NOT NULL,
+                  order_id VARCHAR(128),
+                  payload_json TEXT NOT NULL,
+                  signature_ok BOOLEAN DEFAULT 0,
+                  processed_ok BOOLEAN DEFAULT 0,
+                  created_at DATETIME NOT NULL
+                );
+                """
+            )
+        )
+        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_external_payment_events_provider ON external_payment_events(provider);"))
+        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_external_payment_events_event_type ON external_payment_events(event_type);"))
+        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_external_payment_events_external_id ON external_payment_events(external_id);"))
+        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_external_payment_events_order_id ON external_payment_events(order_id);"))
+        conn.execute(
+            text(
+                "CREATE UNIQUE INDEX IF NOT EXISTS uq_external_payment_events_provider_type_extid "
+                "ON external_payment_events(provider, event_type, external_id);"
+            )
+        )
+
         # points ledger: referral points and spends.
         conn.execute(
             text(
@@ -334,6 +394,65 @@ def _run_postgres_migrations(engine: Engine) -> None:
         conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS channel_bonus_active BOOLEAN DEFAULT FALSE;"))
         conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS channel_bonus_expires_at TIMESTAMP;"))
         conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS channel_bonus_revoked_at TIMESTAMP;"))
+        conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS free_cycle_anchor_at TIMESTAMP;"))
+        conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS free_cycle_last_reset_at TIMESTAMP;"))
+        conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS free_cycle_next_reset_at TIMESTAMP;"))
+
+        conn.execute(
+            text(
+                """
+                CREATE TABLE IF NOT EXISTS external_orders (
+                  id SERIAL PRIMARY KEY,
+                  order_id VARCHAR(128) NOT NULL,
+                  tg_id BIGINT,
+                  provider VARCHAR(32) NOT NULL,
+                  plan_code VARCHAR(32),
+                  amount DOUBLE PRECISION DEFAULT 0,
+                  currency VARCHAR(16) DEFAULT 'RUB',
+                  status VARCHAR(24) DEFAULT 'created',
+                  created_at TIMESTAMP NOT NULL,
+                  paid_at TIMESTAMP
+                );
+                """
+            )
+        )
+        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_external_orders_order_id ON external_orders(order_id);"))
+        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_external_orders_tg_id ON external_orders(tg_id);"))
+        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_external_orders_provider ON external_orders(provider);"))
+        conn.execute(
+            text(
+                "CREATE UNIQUE INDEX IF NOT EXISTS uq_external_orders_provider_order "
+                "ON external_orders(provider, order_id);"
+            )
+        )
+
+        conn.execute(
+            text(
+                """
+                CREATE TABLE IF NOT EXISTS external_payment_events (
+                  id SERIAL PRIMARY KEY,
+                  provider VARCHAR(32) NOT NULL,
+                  event_type VARCHAR(24) NOT NULL,
+                  external_id VARCHAR(128) NOT NULL,
+                  order_id VARCHAR(128),
+                  payload_json TEXT NOT NULL,
+                  signature_ok BOOLEAN DEFAULT FALSE,
+                  processed_ok BOOLEAN DEFAULT FALSE,
+                  created_at TIMESTAMP NOT NULL
+                );
+                """
+            )
+        )
+        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_external_payment_events_provider ON external_payment_events(provider);"))
+        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_external_payment_events_event_type ON external_payment_events(event_type);"))
+        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_external_payment_events_external_id ON external_payment_events(external_id);"))
+        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_external_payment_events_order_id ON external_payment_events(order_id);"))
+        conn.execute(
+            text(
+                "CREATE UNIQUE INDEX IF NOT EXISTS uq_external_payment_events_provider_type_extid "
+                "ON external_payment_events(provider, event_type, external_id);"
+            )
+        )
 
         # Multi-column indexes from P0.
         conn.execute(text("CREATE INDEX IF NOT EXISTS ix_events_event_created ON events(event_name, created_at);"))

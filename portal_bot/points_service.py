@@ -5,8 +5,9 @@ from datetime import datetime, timedelta
 import os
 
 from sqlalchemy import func
+from sqlalchemy.exc import SQLAlchemyError
 
-from db import SessionLocal
+import db
 from models import PointsLedger
 
 
@@ -71,8 +72,13 @@ def _parse_referral_tiers(raw: str) -> list[ReferralTier]:
 REFERRAL_TIERS = _parse_referral_tiers(REFERRAL_TIERS_RAW)
 
 
+def _session():
+    # Resolve SessionLocal dynamically to avoid stale DB bindings after module reloads.
+    return db.SessionLocal()
+
+
 def _paid_referrals_count(*, tg_id: int) -> int:
-    s = SessionLocal()
+    s = _session()
     try:
         # Distinct referred users that produced at least one positive referral-earn event.
         rows = (
@@ -85,6 +91,9 @@ def _paid_referrals_count(*, tg_id: int) -> int:
             .all()
         )
         return int(len(rows))
+    except SQLAlchemyError:
+        # Backward compatibility for DBs/tests where points tables are not present yet.
+        return 0
     finally:
         s.close()
 
@@ -112,7 +121,7 @@ def referral_tier_snapshot(*, tg_id: int) -> dict[str, int | float | str | None]
 
 def get_balance(*, tg_id: int, now: datetime | None = None) -> int:
     n = now or _now()
-    s = SessionLocal()
+    s = _session()
     try:
         bal = (
             s.query(func.coalesce(func.sum(PointsLedger.delta_points), 0))
@@ -122,13 +131,16 @@ def get_balance(*, tg_id: int, now: datetime | None = None) -> int:
             or 0
         )
         return int(bal)
+    except SQLAlchemyError:
+        # Graceful fallback for partially migrated/test databases.
+        return 0
     finally:
         s.close()
 
 
 def available_points(*, tg_id: int, now: datetime | None = None) -> tuple[int, int]:
     n = now or _now()
-    s = SessionLocal()
+    s = _session()
     try:
         total = (
             s.query(func.coalesce(func.sum(PointsLedger.delta_points), 0))
@@ -148,6 +160,9 @@ def available_points(*, tg_id: int, now: datetime | None = None) -> tuple[int, i
             or 0
         )
         return int(total), int(expiring_soon)
+    except SQLAlchemyError:
+        # Graceful fallback for partially migrated/test databases.
+        return 0, 0
     finally:
         s.close()
 
@@ -170,7 +185,7 @@ def award_referral_points(
 
     now = _now()
     month_start = _month_start_utc(now)
-    s = SessionLocal()
+    s = _session()
     try:
         earned_month = (
             s.query(func.coalesce(func.sum(PointsLedger.delta_points), 0))
@@ -212,7 +227,7 @@ def spend_points(*, tg_id: int, amount: int, pay_attempt_id: int | None = None, 
     used = min(want, cur)
     if used <= 0:
         return 0
-    s = SessionLocal()
+    s = _session()
     try:
         row = PointsLedger(
             tg_id=int(tg_id),

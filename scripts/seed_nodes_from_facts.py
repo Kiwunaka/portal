@@ -16,6 +16,7 @@ DEFAULT_NAMES = {
     "pl": "Poland",
     "it": "Italy",
     "us": "United States",
+    "nl": "Netherlands",
     "brain": "Germany",
 }
 
@@ -34,7 +35,7 @@ def main() -> int:
     ap = argparse.ArgumentParser(description="Seed nodes table from node_facts + node_reality files")
     ap.add_argument("--node-facts", default=str(DEFAULT_NODE_FACTS) if DEFAULT_NODE_FACTS else "", required=DEFAULT_NODE_FACTS is None)
     ap.add_argument("--node-reality", default=str(DEFAULT_NODE_REALITY) if DEFAULT_NODE_REALITY else "", required=DEFAULT_NODE_REALITY is None)
-    ap.add_argument("--only", default="pl,it,us", help="comma-separated node codes")
+    ap.add_argument("--only", default="", help="comma-separated node codes")
     ap.add_argument("--host-mode", choices=["ip", "dns"], default="ip", help="host value to store in DB")
     ap.add_argument("--host-suffix", default="", help="if host-mode=dns: suffix like '.example.com' (host becomes code+suffix)")
     ap.add_argument(
@@ -51,6 +52,8 @@ def main() -> int:
     reality_map = {str(r.get("code")): r for r in reality.get("results", []) or []}
 
     want = [c.strip() for c in args.only.split(",") if c.strip()]
+    if not want:
+        want = sorted(set(facts_map.keys()) & set(reality_map.keys()))
 
     init_db()
     s = SessionLocal()

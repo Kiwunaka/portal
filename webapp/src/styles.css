@@ -432,17 +432,26 @@ body {
   margin-top: 10px;
   font-family: var(--body);
   font-size: 14px;
-  transition: border-color 0.3s;
+  transition: border-color 0.3s, box-shadow 0.3s;
 }
 
 .field:focus {
-  outline: none;
   border-color: var(--red);
+}
+
+.field:focus-visible {
+  outline: 2px solid var(--red);
+  outline-offset: 2px;
+  box-shadow: 0 0 0 3px rgba(255, 71, 87, 0.2);
 }
 
 @media (prefers-color-scheme: light) {
   .field:focus {
     border-color: var(--red);
+  }
+
+  .field:focus-visible {
+    box-shadow: 0 0 0 3px rgba(230, 57, 70, 0.2);
   }
 }
 
@@ -909,7 +918,8 @@ body {
 }
 
 .nodes-map .node-hit:focus-visible {
-  outline: none;
+  outline: 2px solid var(--red);
+  outline-offset: 2px;
 }
 
 .nodes-map .node-hit:focus-visible .node-point {

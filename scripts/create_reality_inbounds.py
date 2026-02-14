@@ -30,6 +30,8 @@ import paramiko
 from cryptography.hazmat.primitives.asymmetric import x25519
 from cryptography.hazmat.primitives import serialization
 
+from node_passwords import parse_passwords
+
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_INVENTORY = REPO_ROOT / "docs" / "08-node-inventory.md"
@@ -173,28 +175,6 @@ def _parse_inventory(path: Path) -> list[Node]:
     return nodes
 
 
-def _parse_passwords(path: Path) -> dict[str, str]:
-    raw = path.read_text(encoding="utf-8", errors="replace")
-    lines = [ln.strip() for ln in raw.splitlines()]
-    out: dict[str, str] = {}
-    markers = {"brain": "BRAINnode", "us": "USnode", "pl": "PLnode", "it": "ITnode", "free": "Free Node"}
-    for code, marker in markers.items():
-        try:
-            idx = next(i for i, ln in enumerate(lines) if marker in ln)
-        except StopIteration:
-            continue
-        pw = ""
-        for j in range(idx + 1, min(idx + 12, len(lines))):
-            ln = lines[j]
-            if not ln or ln.startswith("ssh-ed25519 "):
-                continue
-            pw = ln
-            break
-        if pw:
-            out[code] = pw
-    return out
-
-
 def _load_node_facts(path: Path) -> dict[str, dict]:
     data = json.loads(path.read_text(encoding="utf-8", errors="replace"))
     results = data.get("results", [])
@@ -298,7 +278,7 @@ def main() -> int:
         if not args.include_brain:
             nodes = [n for n in nodes if n.code != "brain"]
 
-    pw_map = _parse_passwords(Path(args.passwords))
+    pw_map = parse_passwords(Path(args.passwords), requested_codes=[n.code for n in nodes])
 
     # node facts are required because panel port/path/user/pass are randomized
     nf_path = Path(args.node_facts) if args.node_facts else None

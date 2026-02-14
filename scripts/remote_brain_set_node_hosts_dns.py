@@ -87,12 +87,13 @@ def main() -> int:
                 f"update nodes set host='free.{domain}' where code='free';",
                 f"update nodes set host='it.{domain}' where code='it';",
                 f"update nodes set host='us.{domain}' where code='us';",
+                f"update nodes set host='nl.{domain}' where code='nl';",
             ]
             if args.include_brain:
                 sql.append(f"update nodes set host='{domain}' where code='brain';")
         else:
             inv = _parse_inventory_ips(Path(args.inventory))
-            for code in ("pl", "it", "us", "free"):
+            for code in ("pl", "it", "us", "free", "nl"):
                 ip = (inv.get(code) or "").strip()
                 if not ip:
                     raise SystemExit(f"Missing IPv4 for '{code}' in inventory: {args.inventory}")

@@ -1,0 +1,40 @@
+﻿# Safe cleanup manifest (2026-02-14)
+
+Archived files:
+- ADMIN_GUIDE.md.resolved
+- amoguscan_o46.html
+- amoguscan_o46v2.html
+- check.json
+- implementation_plan.md
+- portal_api_test_0460afa28127436e89e165acf45a072a.db
+- portal_api_test_05887b7ab5d1464598687c2c00b1ed54.db
+- portal_api_test_09de9e0b2dad4b5386e7cac9fb9d18f5.db
+- portal_api_test_14d68b48d360417bb3dd583fb4312724.db
+- portal_api_test_1503401413aa40689e06d3fe8e245528.db
+- portal_api_test_1a666265abcd469baa7b845f08af6fd1.db
+- portal_api_test_3724a42d46c44e53b5732d5e730a7829.db
+- portal_api_test_453ed34857ff40be9c04e966ce302695.db
+- portal_api_test_4546d2e2ee8f4fb6abb521d01894a364.db
+- portal_api_test_5e56fd994d8d4766a0f99e065c1acbf4.db
+- portal_api_test_5f1ea159ac0f4b878a4237dfc93cd706.db
+- portal_api_test_635b6379b54f4fb48efc876959d40c69.db
+- portal_api_test_63cedd4be3134ea0bdaa12546cdaf49d.db
+- portal_api_test_66328a83bd6a498898d885ea3de731cf.db
+- portal_api_test_7ce919a9c3724e379991927fe3d19b87.db
+- portal_api_test_9445c1e59bf4455ea34f67e8f987b643.db
+- portal_api_test_9ac27e4aebc44addae5e570fa4cc4fd4.db
+- portal_api_test_a45f8e0280fc4171a6fda390a7f798e1.db
+- portal_api_test_a4e01cae0cbb4738a984a94c2a2f1457.db
+- portal_api_test_abb77b58e4564dd881babd299bcc91b4.db
+- portal_api_test_adc86eba14ed4c1798b0efeca19e0227.db
+- portal_api_test_b5694589a2cc49628621700c543ba5a1.db
+- portal_api_test_bed669f97ab24017bc574b810301433d.db
+- portal_api_test_d86e7e099ba94845bd88bbb6ee27c55a.db
+- portal_api_test_e807bb2d6a5846a1a7f3beacec34f066.db
+- portal_api_test_f65f5309314a4ace976c41e1df81bf7e.db
+- portal_api_test_fb774e178b8a41c4b891fe49b98dcc07.db
+- xui_backup_inspected.json
+
+Policy:
+- Runtime DB files and active ops docs were left untouched.
+- Ambiguous historical files were archived instead of deleted.

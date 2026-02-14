@@ -195,18 +195,40 @@ VLESS_FLOW = os.getenv("VLESS_FLOW", "xtls-rprx-vision")
 
 # URLs
 # Cache-buster helps Telegram in-app webview pick up new builds quickly.
-WEBAPP_URL = os.getenv("WEBAPP_URL", f"https://{HOST_DOMAIN}:8444/webapp/?v=20260207")
-PUBLIC_API_BASE_URL = os.getenv("PUBLIC_API_BASE_URL", f"https://{HOST_DOMAIN}:2096")
+WEBAPP_URL = os.getenv("WEBAPP_URL", f"https://{HOST_DOMAIN}/webapp/?v=20260214")
+PUBLIC_API_BASE_URL = os.getenv("PUBLIC_API_BASE_URL", f"https://{HOST_DOMAIN}")
 SUPPORT_USERNAME = (os.getenv("SUPPORT_USERNAME") or "portal_privacy_helpbot").lstrip("@")
 SUPPORT_USERNAME = (os.getenv("SUPPORT_BOT_USERNAME") or SUPPORT_USERNAME).lstrip("@")
-FREE_LIMIT_IP = int(os.getenv("FREE_LIMIT_IP", "2"))
+APP_ANDROID_PLAY_URL = (os.getenv("APP_ANDROID_PLAY_URL") or "https://play.google.com/store/apps/details?id=app.hiddify.com").strip()
+APP_ANDROID_APK_URL = (os.getenv("APP_ANDROID_APK_URL") or "").strip()
+APP_ANDROID_MIRROR_URL = (os.getenv("APP_ANDROID_MIRROR_URL") or "").strip()
+APP_WINDOWS_EXE_URL = (os.getenv("APP_WINDOWS_EXE_URL") or "https://github.com/hiddify/hiddify-next/releases").strip()
+APP_WINDOWS_MIRROR_URL = (os.getenv("APP_WINDOWS_MIRROR_URL") or "").strip()
+APP_DOCS_URL = (os.getenv("APP_DOCS_URL") or "").strip()
+FREE_LIMIT_IP = int(os.getenv("FREE_LIMIT_IP", "1"))
 PAID_LIMIT_IP = int(os.getenv("PAID_LIMIT_IP", "5"))
-FREE_TOTAL_GB = int(os.getenv("FREE_TOTAL_GB", "40"))
+FREE_TOTAL_GB = int(os.getenv("FREE_TOTAL_GB", "30"))
+FREE_SPEED_LIMIT_KBPS = int(os.getenv("FREE_SPEED_LIMIT_KBPS", "6250"))
+FREE_SPEED_MBIT = max(1, int(round((FREE_SPEED_LIMIT_KBPS * 8) / 1000)))
 NEWS_CHANNEL_ID = os.getenv("NEWS_CHANNEL_ID", "@portal_privacy")
 STACK_TOTAL_DISCOUNT_CAP = float(os.getenv("STACK_TOTAL_DISCOUNT_CAP", "0.70"))
 FAMILY_SLOT_STARS = int(os.getenv("FAMILY_SLOT_STARS", "99"))
 FAMILY_SLOT_DAYS = int(os.getenv("FAMILY_SLOT_DAYS", "30"))
 FAMILY_SLOT_MAX = int(os.getenv("FAMILY_SLOT_MAX", "3"))
+
+
+def _first_non_empty(*values: str) -> str:
+    for value in values:
+        value = str(value or "").strip()
+        if value:
+            return value
+    return ""
+
+
+IOS_APP_LINK = "https://apps.apple.com/app/streisand/id6450534064"
+ANDROID_APP_LINK = _first_non_empty(APP_ANDROID_PLAY_URL, APP_ANDROID_APK_URL, APP_ANDROID_MIRROR_URL)
+WINDOWS_APP_LINK = _first_non_empty(APP_WINDOWS_EXE_URL, APP_WINDOWS_MIRROR_URL)
+MAC_APP_LINK = WINDOWS_APP_LINK or "https://github.com/hiddify/hiddify-next/releases"
 
 # Protected users — NEVER modify, sync, or message these users
 PROTECTED_USERS = {
@@ -603,6 +625,12 @@ from db import SessionLocal, init_db
 from models import Achievement, AdminAudit, CampaignSend, FamilySlot, GiftCard, PromoCode, PromoUsage, Review, Template, User
 from nodes_repo import enabled_nodes
 from events_service import track_event
+from free_cycle_service import mark_user_became_free
+from gift_cards_service import (
+    create_gift_card as create_gift_card_service,
+    get_gift_card as get_gift_card_service,
+    redeem_gift_card as redeem_gift_card_service,
+)
 from pay_attempts_service import (
     mark_invoice_sent,
     mark_paid,
@@ -873,6 +901,8 @@ def create_user(tg_id: int, user_uuid: str, email: str, sub_type: str, days: int
         existing.email = email
         if username:
             existing.username = username
+        if _normalize_sub_type(sub_type) == "FREE":
+            mark_user_became_free(existing)
         # Generate sub_token if not exists
         if not existing.sub_token:
             existing.sub_token = generate_sub_token()
@@ -896,6 +926,8 @@ def create_user(tg_id: int, user_uuid: str, email: str, sub_type: str, days: int
         trial_used=(sub_type == "TRIAL_10GB_7"),
         sub_token=sub_token
     )
+    if _normalize_sub_type(sub_type) == "FREE":
+        mark_user_became_free(user)
     session.add(user)
     session.commit()
     session.close()
@@ -1686,118 +1718,24 @@ async def check_achievements(tg_id: int, bot) -> list:
 #           GIFT CARDS
 # ==========================================
 
-def generate_gift_code() -> str:
-    """Generate unique gift card code like PORTAL-XXXX-XXXX"""
-    import random
-    import string
-    chars = string.ascii_uppercase + string.digits
-    part1 = ''.join(random.choices(chars, k=4))
-    part2 = ''.join(random.choices(chars, k=4))
-    return f"PORTAL-{part1}-{part2}"
-
 def create_gift_card(buyer_tg_id: int, card_type: str) -> str | None:
-    """Create a new gift card and return its code"""
-    if card_type not in GIFT_CARD_TYPES:
-        return None
-    
-    session = Session()
-    
-    # Generate unique code
-    for _ in range(10):  # Try 10 times
-        code = generate_gift_code()
-        existing = session.query(GiftCard).filter_by(code=code).first()
-        if not existing:
-            break
-    else:
-        session.close()
-        return None
-    
-    card = GiftCard(
-        code=code,
-        card_type=card_type,
-        created_by=buyer_tg_id
-    )
-    session.add(card)
-    session.commit()
-    session.close()
-    return code
+    """Create a new gift card and return its code."""
+    return create_gift_card_service(buyer_tg_id=int(buyer_tg_id), card_type=str(card_type or ""))
 
 def get_gift_card(code: str) -> dict | None:
-    """Get gift card info by code"""
-    session = Session()
-    card = session.query(GiftCard).filter_by(code=code.upper()).first()
-    if not card:
-        session.close()
-        return None
-    
-    result = {
-        "code": card.code,
-        "type": card.card_type,
-        "created_by": card.created_by,
-        "redeemed": card.redeemed_by is not None,
-        "redeemed_by": card.redeemed_by
-    }
-    session.close()
-    return result
+    """Get gift card info by code."""
+    return get_gift_card_service(code)
 
 async def redeem_gift_card(code: str, recipient_tg_id: int, bot) -> tuple[bool, str]:
-    """Redeem a gift card. Returns (success, message)"""
-    if not check_tos_accepted(int(recipient_tg_id)):
-        return False, "⚠️ Сначала примите оферту через /start."
-
-    session = Session()
-    card = session.query(GiftCard).filter_by(code=code.upper()).first()
-    
-    if not card:
-        session.close()
-        return False, "❌ Карта не найдена"
-    
-    if card.redeemed_by:
-        session.close()
-        return False, "❌ Карта уже использована"
-    
-    if card.created_by == recipient_tg_id:
-        session.close()
-        return False, "❌ Нельзя активировать свою карту"
-    
-    card_info = GIFT_CARD_TYPES.get(card.card_type)
-    if not card_info:
-        session.close()
-        return False, "❌ Неизвестный тип карты"
-    
-    # Mark as redeemed
-    card.redeemed_by = recipient_tg_id
-    card.redeemed_at = _utcnow()
-    session.commit()
-    session.close()
-    
-    # Apply card benefits (similar to purchase)
-    days = card_info["days"]
-    gb = int(card_info.get("gb", 0) or 0)
-    
-    user = get_user(recipient_tg_id)
-    panel_client = await panel.get_existing_client(recipient_tg_id)
-    
-    if panel_client:
-        extend_user(recipient_tg_id, days, 0)
-        await panel.update_client_traffic(recipient_tg_id, 0)
-    else:
-        # Create new subscription
-        user_uuid = str(uuid.uuid4())
-        email = f"Gift_{recipient_tg_id}"
-        sub_token = generate_sub_token()
-        
-        await panel.add_client(user_uuid, email, "PAID", 0, recipient_tg_id, sub_token)
-        create_user(recipient_tg_id, user_uuid, email, "PAID", days, 0, 0)
-        
-        # Update sub_token
-        session = Session()
-        db_user = session.query(User).filter_by(tg_id=recipient_tg_id).first()
-        if db_user:
-            db_user.sub_token = sub_token
-            session.commit()
-        session.close()
-    
+    """Redeem a gift card. Returns (success, message)."""
+    result = await redeem_gift_card_service(
+        code=code,
+        recipient_tg_id=int(recipient_tg_id),
+        require_tos=True,
+    )
+    if not result.get("ok"):
+        return False, str(result.get("message") or "❌ Не удалось активировать карту")
+    days = int(result.get("days") or 0)
     return True, f"✅ Карта активирована!\n\n📅 Тариф продлен на {days} дней"
 
 def build_vless_link(client_uuid: str, email: str = "User") -> str:
@@ -2043,7 +1981,7 @@ def _normalize_sub_type(raw: str | None) -> str:
 def _plan_mode_label(sub_type: str | None) -> str:
     st = _normalize_sub_type(sub_type or "")
     if st == "FREE":
-        return f"до {FREE_TOTAL_GB} ГБ, до {FREE_LIMIT_IP} устройств"
+        return f"до {FREE_TOTAL_GB} ГБ, до {FREE_LIMIT_IP} устройств, до {FREE_SPEED_MBIT} Мбит/с"
     return f"безлимит, до {PAID_LIMIT_IP} устройств"
 
 
@@ -2084,6 +2022,69 @@ async def _free_remaining_gb(tg_id: int, *, timeout_sec: float = 3.0) -> tuple[f
     used_gb = max(0.0, used_bytes / (1024**3))
     remaining = max(0.0, total_gb - used_gb)
     return round(remaining, 2), total_gb
+
+
+def _short_node_codes(codes: list[str], *, limit: int = 3) -> str:
+    vals = [str(c or "").strip().upper() for c in (codes or []) if str(c or "").strip()]
+    if not vals:
+        return "—"
+    shown = vals[:limit]
+    suffix = f" +{len(vals) - limit}" if len(vals) > limit else ""
+    return ", ".join(shown) + suffix
+
+
+def _panel_online_text(snapshot: dict | None) -> str:
+    if not snapshot or not bool(snapshot.get("known")):
+        return "клиент не найден"
+    state = str(snapshot.get("state") or "").lower().strip()
+    online_nodes = snapshot.get("online_nodes") or []
+    mapped_nodes = snapshot.get("mapped_nodes") or []
+    if state == "online":
+        return f"онлайн ({_short_node_codes(online_nodes)})"
+    if state == "offline":
+        return "не в сети"
+    return f"статус н/д ({_short_node_codes(mapped_nodes)})"
+
+
+def _panel_last_online_text(snapshot: dict | None) -> str:
+    if not snapshot or not bool(snapshot.get("known")):
+        return "н/д"
+    age = snapshot.get("last_online_age_seconds")
+    if age is None:
+        return "н/д"
+    try:
+        sec = max(0, int(age))
+    except Exception:
+        return "н/д"
+    if sec < 60:
+        return "только что"
+    if sec < 3600:
+        return f"{sec // 60} мин назад"
+    if sec < 86400:
+        return f"{sec // 3600} ч назад"
+    return f"{sec // 86400} дн назад"
+
+
+async def _panel_online_snapshot(tg_id: int, *, timeout_sec: float = 8.0) -> dict:
+    fallback = {
+        "known": False,
+        "state": "unknown",
+        "mapped_nodes": [],
+        "online_nodes": [],
+        "enabled_nodes": [],
+        "last_online_at": None,
+        "last_online_age_seconds": None,
+    }
+    try:
+        snap = await asyncio.wait_for(
+            panel.get_connection_status_by_tgid(tg_id, per_node_timeout_sec=3.0),
+            timeout=max(1.0, float(timeout_sec)),
+        )
+        if isinstance(snap, dict):
+            return snap
+    except Exception:
+        pass
+    return fallback
 
 
 async def check_subscription(user_id: int, bot: Bot) -> bool:
@@ -2215,8 +2216,17 @@ def _node_code_base(code: str) -> str:
 def _node_label_ru_bot(code: str, name: str = "") -> str:
     code_raw = (code or "").strip()
     base = _node_code_base(code_raw)
-    flags = {"pl": "🇵🇱", "it": "🇮🇹", "us": "🇺🇸", "de": "🇩🇪", "brain": "🇩🇪"}
-    names = {"pl": "Польша", "it": "Италия", "us": "США", "de": "Германия", "brain": "Германия"}
+    if "free" in code_raw.lower():
+        return "🇳🇱 NL Free"
+    flags = {"pl": "🇵🇱", "it": "🇮🇹", "us": "🇺🇸", "nl": "🇳🇱", "de": "🇩🇪", "brain": "🇩🇪"}
+    names = {
+        "pl": "Польша",
+        "it": "Италия",
+        "us": "США",
+        "nl": "Нидерланды",
+        "de": "Германия",
+        "brain": "Германия",
+    }
     flag = flags.get(base, "🏳️")
     nm = names.get(base, name or (base.upper() if base else code_raw))
     return f"{flag} {nm}".strip()
@@ -2322,7 +2332,7 @@ def build_choose_tariff_text() -> str:
         "💎 *Выберите уровень доступа*\n\n"
         f"🆓 *Бесплатный* — 1 страна: {free_label}\n"
         f"💠 *Премиум* — {paid_count} стран: {paid_list}\n\n"
-        f"Бесплатный: до {FREE_TOTAL_GB} ГБ, до {FREE_LIMIT_IP} устройств (по IP).\n"
+        f"Бесплатный: до {FREE_TOTAL_GB} ГБ, до {FREE_LIMIT_IP} устройств (по IP), до {FREE_SPEED_MBIT} Мбит/с.\n"
         "Бесплатный: соцсети + AI, медиасервисы могут идти напрямую.\n"
         f"Премиум: полный доступ, переключение стран, до {PAID_LIMIT_IP} устройств.\n\n"
         f"💰 *Выгода при оплате на срок:*{savings_line}\n\n"
@@ -2346,7 +2356,6 @@ def main_keyboard_specs(tg_id: int = 0) -> list[list[dict[str, str]]]:
         ],
         [
             _btn_spec(text="🎁 Бонусы", callback_data="menu_bonuses"),
-            _btn_spec(text=f"👨‍👩‍👧‍👦 Family +1 ({FAMILY_SLOT_STARS}⭐)", callback_data="buy_family_slot"),
         ],
         [
             _btn_spec(text="🛰 Ноды", callback_data="network_status"),
@@ -2365,7 +2374,12 @@ def main_keyboard(tg_id: int = 0) -> InlineKeyboardMarkup:
     """Main menu aligned to the single primary user path."""
     return _keyboard_from_specs(main_keyboard_specs(tg_id))
 
-def tariff_keyboard(tg_id: int = 0, show_trial: bool = True, show_gb_only: bool = False) -> InlineKeyboardMarkup:
+def tariff_keyboard(
+    tg_id: int = 0,
+    show_trial: bool = True,
+    show_gb_only: bool = False,
+    include_long_plans: bool = False,
+) -> InlineKeyboardMarkup:
     buttons = []
     
     # Check if user has 20% referral discount
@@ -2377,20 +2391,26 @@ def tariff_keyboard(tg_id: int = 0, show_trial: bool = True, show_gb_only: bool 
         buttons.append(
             [
                 InlineKeyboardButton(
-                    text=f"🆓 Бесплатный — 1 страна, {FREE_TOTAL_GB} ГБ, {FREE_LIMIT_IP} устр.",
+                    text=f"🆓 Бесплатный — 1 страна, {FREE_TOTAL_GB} ГБ, {FREE_LIMIT_IP} устр., {FREE_SPEED_MBIT} Мбит/с",
                     callback_data="buy_trial",
                 )
             ]
         )
     
-    # Plans order
-    plans = [
-        ("1_month", "📅 1 Месяц"),
-        ("3_months", "📅 3 Месяца"),
-        ("6_months", "📅 6 Месяцев"),
-        ("9_months", "📅 9 Месяцев"),
-        ("12_months", "📅 1 Год")
-    ]
+    # Plans order:
+    # - main screen: short horizons
+    # - long screen: 6/9/12 months only
+    if include_long_plans:
+        plans = [
+            ("6_months", "📅 6 Месяцев"),
+            ("9_months", "📅 9 Месяцев"),
+            ("12_months", "📅 1 Год"),
+        ]
+    else:
+        plans = [
+            ("1_month", "📅 1 Месяц"),
+            ("3_months", "📅 3 Месяца"),
+        ]
     
     for key, label in plans:
         tariff = TARIFFS.get(key)
@@ -2423,6 +2443,11 @@ def tariff_keyboard(tg_id: int = 0, show_trial: bool = True, show_gb_only: bool 
         btn_text = f"{icon} {label} — {price} ⭐{discount_text}{marketing_badge}{savings_text}"
         buttons.append([InlineKeyboardButton(text=btn_text, callback_data=f"buy_{key}")])
     
+    if include_long_plans:
+        buttons.append([InlineKeyboardButton(text="◀️ К основным тарифам", callback_data="charge")])
+    else:
+        buttons.append([InlineKeyboardButton(text="📚 Долгие тарифы", callback_data="charge_long")])
+
     buttons.append([InlineKeyboardButton(text="◀️ Назад", callback_data="back")])
     
     return InlineKeyboardMarkup(inline_keyboard=buttons)
@@ -2594,8 +2619,29 @@ async def show_tariffs(callback: CallbackQuery):
     
     await callback.message.edit_text(
         build_choose_tariff_text(),
-        reply_markup=tariff_keyboard(tg_id, show_trial, show_gb_only),
+        reply_markup=tariff_keyboard(tg_id, show_trial, show_gb_only, include_long_plans=False),
         parse_mode=ParseMode.MARKDOWN
+    )
+    await callback.answer()
+
+
+@router.callback_query(F.data == "charge_long")
+async def show_long_tariffs(callback: CallbackQuery):
+    tg_id = callback.from_user.id
+    if not check_tos_accepted(tg_id):
+        await callback.message.edit_text(
+            _tos_offer_text(),
+            reply_markup=_tos_offer_keyboard(back_callback="back"),
+            parse_mode=ParseMode.MARKDOWN,
+        )
+        await callback.answer()
+        return
+
+    await callback.message.edit_text(
+        "💎 *Долгие тарифы*\n\n"
+        "Для тех, кто хочет зафиксировать доступ на длительный срок с лучшей средней ценой в месяц.",
+        reply_markup=tariff_keyboard(tg_id, show_trial=False, show_gb_only=False, include_long_plans=True),
+        parse_mode=ParseMode.MARKDOWN,
     )
     await callback.answer()
 
@@ -2617,7 +2663,7 @@ async def accept_tos(callback: CallbackQuery):
     
     await callback.message.edit_text(
         build_choose_tariff_text(),
-        reply_markup=tariff_keyboard(tg_id, show_trial, show_gb_only),
+        reply_markup=tariff_keyboard(tg_id, show_trial, show_gb_only, include_long_plans=False),
         parse_mode=ParseMode.MARKDOWN
     )
     await callback.answer("✅ Условия приняты!")
@@ -2672,6 +2718,9 @@ async def show_status(callback: CallbackQuery):
             status_text += f"\n📊 Бесплатный лимит: до `{int(total_gb)}` ГБ\n⏳ Остаток: `н/д`"
         else:
             status_text += f"\n📊 Бесплатный остаток: `{remaining_gb}` из `{int(total_gb)}` ГБ"
+    panel_snapshot = await _panel_online_snapshot(tg_id)
+    status_text += f"\n🌐 Онлайн: `{_panel_online_text(panel_snapshot)}`"
+    status_text += f"\n🕓 Последний онлайн: `{_panel_last_online_text(panel_snapshot)}`"
     
     ok = await _edit_text_with_specs(
         bot=callback.message.bot,
@@ -2765,6 +2814,7 @@ async def show_key(callback: CallbackQuery):
             f"• Платные: {paid_count} стран ({paid_list})\n"
             f"• Лимит трафика: до {FREE_TOTAL_GB} ГБ\n"
             f"• Лимит устройств: до {FREE_LIMIT_IP} (по IP)\n"
+            f"• Лимит скорости: до {FREE_SPEED_MBIT} Мбит/с\n"
             "• Проксируются только соцсети + AI\n"
             "• YouTube идёт напрямую (сервис не помогает)\n"
             "• Всё остальное идёт напрямую (будет виден ваш обычный IP)\n"
@@ -2990,7 +3040,7 @@ async def instruction_platform(callback: CallbackQuery):
             "1. Скачайте Streisand\n"
             "2. Скопируйте ключ в боте\n"
             "3. В приложении нажмите `+` → `Import from Clipboard`",
-            "https://apps.apple.com/app/streisand/id6450534064",
+            IOS_APP_LINK,
             "📥 Скачать Streisand",
         ),
         "instr_android": (
@@ -2998,7 +3048,7 @@ async def instruction_platform(callback: CallbackQuery):
             "1. Скачайте Hiddify или v2rayNG\n"
             "2. Скопируйте ключ в боте\n"
             "3. В приложении импортируйте ключ из буфера",
-            "https://play.google.com/store/apps/details?id=app.hiddify.com",
+            ANDROID_APP_LINK,
             "📥 Скачать Hiddify",
         ),
         "instr_win": (
@@ -3006,7 +3056,7 @@ async def instruction_platform(callback: CallbackQuery):
             "1. Установите Hiddify Next или v2rayN\n"
             "2. Скопируйте ключ доступа\n"
             "3. Импортируйте ссылку подписки в клиент",
-            "https://github.com/hiddify/hiddify-next/releases",
+            WINDOWS_APP_LINK,
             "📥 Скачать клиент",
         ),
         "instr_mac": (
@@ -3014,7 +3064,7 @@ async def instruction_platform(callback: CallbackQuery):
             "1. Установите Hiddify Next\n"
             "2. Скопируйте ключ доступа\n"
             "3. Импортируйте подписку в приложении",
-            "https://github.com/hiddify/hiddify-next/releases",
+            MAC_APP_LINK,
             "📥 Скачать клиент",
         ),
     }
@@ -3467,8 +3517,9 @@ FAQ_ANSWERS = {
     "connect": (
         "📱 *Как подключить?*\n\n"
         "1️⃣ Скачай приложение:\n"
-        "• iOS: [Streisand](https://apps.apple.com/app/streisand/id6450534064)\n"
-        "• Android: [v2rayNG](https://play.google.com/store/apps/details?id=com.v2ray.ang)\n\n"
+        f"• iOS: [Streisand]({IOS_APP_LINK})\n"
+        f"• Android: [Клиент]({ANDROID_APP_LINK})\n"
+        f"• Windows: [Клиент]({WINDOWS_APP_LINK})\n\n"
         "2️⃣ Нажми *🔑 Мой ключ* в боте\n\n"
         "3️⃣ Скопируй ссылку подписки\n\n"
         "4️⃣ В приложении: ➕ → *Импорт из буфера*\n\n"
@@ -5374,7 +5425,7 @@ async def admin_custom_msg_prompt(callback: CallbackQuery):
         "*Формат с кнопкой URL:*\n"
         "`Текст сообщения\n---\nТекст кнопки|https://ссылка.com`\n\n"
         "_Пример:_\n"
-        "`Привет! Новое обновление!\n---\n🌐 Подробнее|https://kiwunaka.space:8444/`",
+        "`Привет! Новое обновление!\n---\n🌐 Подробнее|https://kiwunaka.space/`",
         reply_markup=kb,
         parse_mode=ParseMode.MARKDOWN
     )
@@ -6210,13 +6261,13 @@ async def mode_simple_step2(callback: CallbackQuery):
     mode = callback.data or ""
     if mode == "simple_ios":
         app_name = "Streisand"
-        app_link = "https://apps.apple.com/app/streisand/id6450534064"
+        app_link = IOS_APP_LINK
     elif mode == "simple_android":
         app_name = "Hiddify"
-        app_link = "https://play.google.com/store/apps/details?id=app.hiddify.com"
+        app_link = ANDROID_APP_LINK
     else:
         app_name = "Hiddify"
-        app_link = "https://github.com/hiddify/hiddify-next/releases"
+        app_link = WINDOWS_APP_LINK
 
     text = (
         f"1️⃣ *Шаг 1: Скачайте приложение*\n\n"
@@ -6439,6 +6490,9 @@ async def render_admin_user_view(callback: CallbackQuery, tg_id: int):
             free_usage_line = f"\n📊 Бесплатный остаток: <b>н/д</b> из <b>{int(total_gb)} ГБ</b>"
         else:
             free_usage_line = f"\n📊 Бесплатный остаток: <b>{remaining_gb} ГБ</b> из <b>{int(total_gb)} ГБ</b>"
+    panel_snapshot = await _panel_online_snapshot(tg_id)
+    panel_online_line = html.escape(_panel_online_text(panel_snapshot))
+    panel_last_online_line = html.escape(_panel_last_online_text(panel_snapshot))
 
     manual_line = f"🏷 Имя: <b>{html.escape(manual_name)}</b>\n" if manual_name else ""
 
@@ -6452,6 +6506,8 @@ async def render_admin_user_view(callback: CallbackQuery, tg_id: int):
         f"🔋 Статус: {html.escape(status)}\n\n"
         f"📅 До: <b>{html.escape(expiry_txt)}</b> ({days_left} дн.)\n"
         f"📡 Режим: <b>{html.escape(_plan_mode_label(plan))}</b>\n"
+        f"🌐 Онлайн: <b>{panel_online_line}</b>\n"
+        f"🕓 Последний онлайн: <b>{panel_last_online_line}</b>\n"
         f"⭐ Stars: <b>{int(user.stars_paid or 0)}</b>"
         f"{free_usage_line}"
     )
@@ -6608,6 +6664,8 @@ async def admin_set_tariff(callback: CallbackQuery, bot: Bot):
         if db_user:
             db_user.sub_type = t.get("sub_type") or tariff_key.upper()
             db_user.total_gb = preset["gb"]
+            if _normalize_sub_type(db_user.sub_type) == "FREE":
+                mark_user_became_free(db_user)
             session.commit()
         session.close()
         
@@ -6987,6 +7045,8 @@ async def create_subscription(
             db_user = session.query(User).filter_by(tg_id=tg_id).first()
             if db_user:
                 db_user.sub_type = tariff.get("sub_type") or db_user.sub_type
+                if _normalize_sub_type(db_user.sub_type) == "FREE":
+                    mark_user_became_free(db_user)
                 session.commit()
             session.close()
         else:
@@ -7083,7 +7143,7 @@ async def create_subscription(
     free_note = ""
     if is_free:
         free_note = (
-            f"\n\n🆓 Бесплатный: до {FREE_TOTAL_GB} ГБ, до {FREE_LIMIT_IP} устройств (по IP)."
+            f"\n\n🆓 Бесплатный: до {FREE_TOTAL_GB} ГБ, до {FREE_LIMIT_IP} устройств (по IP), до {FREE_SPEED_MBIT} Мбит/с."
         )
     
     # Build subscription link
@@ -8156,6 +8216,7 @@ async def monitor_expiry(bot: Bot) -> None:
                             auto_free_days = int(os.getenv("AUTO_FREE_DAYS", "3650"))
                             user.expiry_at = now + timedelta(days=auto_free_days)
                             user.is_active = True
+                            mark_user_became_free(user, now=now)
                             session.commit()
 
                             # Ensure the user exists on the Free inbound and disable any existing paid-node clients.

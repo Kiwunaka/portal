@@ -157,6 +157,61 @@ class NodesRepoLoadAwareTests(unittest.TestCase):
         finally:
             s.close()
 
+    def test_enabled_nodes_includes_nl_premium_and_nl_free_codes(self) -> None:
+        from models import Node
+        from nodes_repo import enabled_nodes
+
+        s = self.Session()
+        try:
+            s.add_all(
+                [
+                    Node(
+                        code="nl",
+                        name="Netherlands Premium",
+                        host="nl.test",
+                        vless_port=443,
+                        reality_sni="nl.test",
+                        reality_pbk="pbk",
+                        reality_sid="sid",
+                        panel_base_url="http://nl",
+                        panel_path="xui",
+                        panel_user="u",
+                        panel_pass="p",
+                        inbound_id=1,
+                        enabled=True,
+                        weight=100,
+                        health_score=75.0,
+                        is_healthy=True,
+                    ),
+                    Node(
+                        code="pl_free",
+                        name="NL Free",
+                        host="free.test",
+                        vless_port=443,
+                        reality_sni="free.test",
+                        reality_pbk="pbk",
+                        reality_sid="sid",
+                        panel_base_url="http://free",
+                        panel_path="xui",
+                        panel_user="u",
+                        panel_pass="p",
+                        inbound_id=1,
+                        enabled=True,
+                        weight=90,
+                        health_score=55.0,
+                        is_healthy=True,
+                    ),
+                ]
+            )
+            s.commit()
+            rows = enabled_nodes(s)
+            codes = [n.code for n in rows]
+            self.assertIn("nl", codes)
+            self.assertIn("pl_free", codes)
+            self.assertEqual(codes[0], "nl")
+        finally:
+            s.close()
+
 
 if __name__ == "__main__":
     unittest.main()

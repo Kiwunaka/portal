@@ -17,6 +17,7 @@ from config import Settings
 from control_panel import ControlPanel
 from db import SessionLocal, init_db
 from events_service import track_event
+from free_cycle_service import mark_user_became_free, process_due_free_cycle_resets
 from models import CampaignSend, NodeHealthSample, User
 from offers_service import create_offer, expire_stale_offers, get_active_offer
 from pay_attempts_service import find_abandoned_candidates, mark_abandoned, mark_abandoned_notified
@@ -24,7 +25,7 @@ from pay_attempts_service import find_abandoned_candidates, mark_abandoned, mark
 
 BOT_USERNAME = (os.getenv("BOT_USERNAME") or "portal_service_bot").lstrip("@")
 SUPPORT_USERNAME = (os.getenv("SUPPORT_BOT_USERNAME") or os.getenv("SUPPORT_USERNAME") or "portal_privacy_helpbot").lstrip("@")
-FREE_TOTAL_GB = int(os.getenv("FREE_TOTAL_GB", "40"))
+FREE_TOTAL_GB = int(os.getenv("FREE_TOTAL_GB", "30"))
 PUBLIC_CHANNEL = (os.getenv("PUBLIC_CHANNEL") or "portal_privacy").lstrip("@")
 AUTO_FREE_DAYS = int(os.getenv("AUTO_FREE_DAYS", "3650"))
 
@@ -100,6 +101,7 @@ async def _switch_user_to_free(*, tg_id: int) -> bool:
         user.expiry_at = now + timedelta(days=max(30, int(AUTO_FREE_DAYS)))
         user.channel_bonus_active = False
         user.channel_bonus_revoked_at = now
+        mark_user_became_free(user, now=now)
         s.commit()
         user_uuid = str(user.uuid or "")
         user_email = str(user.email or f"User_{int(tg_id)}")
@@ -442,6 +444,15 @@ async def channel_bonus_guard_job() -> None:
         await asyncio.sleep(900)
 
 
+async def free_cycle_reset_job() -> None:
+    while True:
+        try:
+            await process_due_free_cycle_resets(max_users=500)
+        except Exception:
+            pass
+        await asyncio.sleep(600)
+
+
 async def main() -> None:
     init_db()
     tasks = [
@@ -451,6 +462,7 @@ async def main() -> None:
         asyncio.create_task(reactivation_job()),
         asyncio.create_task(node_metrics_watchdog_job()),
         asyncio.create_task(channel_bonus_guard_job()),
+        asyncio.create_task(free_cycle_reset_job()),
     ]
     await asyncio.gather(*tasks)
 

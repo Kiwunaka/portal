@@ -1,0 +1,54 @@
+﻿# Internal Caddy listener behind HAProxy TCP passthrough.
+# External :443 is terminated/passed by L4 on brain.
+
+:4443 {
+  tls internal
+  encode zstd gzip
+
+  @portal_hosts host portal-privacy.online www.portal-privacy.online
+  handle @portal_hosts {
+    @portal_redirect_api path /api/* /pay/* /s8Kx2mP7qR4wT/*
+    redir @portal_redirect_api https://kiwunaka.space{uri} 308
+
+    handle /webapp/* {
+      root * /var/www/portal/webapp
+      try_files {path} /webapp/index.html
+      file_server
+    }
+
+    handle {
+      root * /var/www/portal/marketing
+      try_files {path} /index.html
+      file_server
+    }
+  }
+
+  @api_hosts host kiwunaka.space www.kiwunaka.space
+  handle @api_hosts {
+    @subscription path /s8Kx2mP7qR4wT/*
+    handle @subscription {
+      reverse_proxy 127.0.0.1:2096
+    }
+
+    @api path /api/*
+    handle @api {
+      reverse_proxy 127.0.0.1:2096
+    }
+
+    @pay path /pay/*
+    handle @pay {
+      reverse_proxy 127.0.0.1:2096
+    }
+
+    # Internal-only mode for API domain:
+    # do not serve marketing/site content from kiwunaka.space.
+    respond "Not Found" 404
+  }
+
+  # Unknown hosts default to marketing site.
+  handle {
+    root * /var/www/portal/marketing
+    try_files {path} /index.html
+    file_server
+  }
+}

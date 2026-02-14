@@ -129,6 +129,41 @@ class PortalApiTests(unittest.TestCase):
         self.assertTrue(any(r.get("domain") == ["steamcdn-a.akamaihd.net"] and r.get("outbound") == "direct" for r in rules))
         self.assertTrue(any(r.get("domain_suffix") and "youtube.com" in r.get("domain_suffix") and r.get("outbound") == "direct" for r in rules))
 
+    def test_nodes_for_user_excludes_brain_from_paid_pool(self) -> None:
+        import importlib
+
+        api = importlib.import_module("api")
+        importlib.reload(api)
+
+        user = SimpleNamespace(sub_type="PAID")
+        nodes = [
+            SimpleNamespace(code="brain"),
+            SimpleNamespace(code="de"),
+            SimpleNamespace(code="pl"),
+            SimpleNamespace(code="it"),
+            SimpleNamespace(code="nl"),
+            SimpleNamespace(code="pl_free"),
+        ]
+        out = api._nodes_for_user(user, nodes)
+        codes = [n.code for n in out]
+        self.assertIn("pl", codes)
+        self.assertIn("it", codes)
+        self.assertIn("nl", codes)
+        self.assertNotIn("brain", codes)
+        self.assertNotIn("de", codes)
+        self.assertNotIn("pl_free", codes)
+
+    def test_node_labels_include_nl_and_nl_free(self) -> None:
+        import importlib
+
+        api = importlib.import_module("api")
+        importlib.reload(api)
+
+        self.assertEqual(api._node_country_name("nl"), "Netherlands")
+        self.assertEqual(api._node_country_name("pl_free"), "NL Free")
+        self.assertIn("Нидерланды", api._node_label_ru("nl"))
+        self.assertIn("NL Free", api._node_label_ru("pl_free"))
+
 
 if __name__ == "__main__":
     unittest.main()

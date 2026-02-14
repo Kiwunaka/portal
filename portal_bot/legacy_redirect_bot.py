@@ -1,4 +1,4 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
 import asyncio
 import logging
@@ -31,15 +31,15 @@ router = Router()
 
 def _redirect_text() -> str:
     return (
-        "ℹ️ Этот бот переехал.\n\n"
-        "Пожалуйста, используйте новый бот:\n"
+        "\u2139\ufe0f \u042d\u0442\u043e\u0442 \u0431\u043e\u0442 \u043f\u0435\u0440\u0435\u0435\u0445\u0430\u043b.\n\n"
+        "\u041f\u043e\u0436\u0430\u043b\u0443\u0439\u0441\u0442\u0430, \u0438\u0441\u043f\u043e\u043b\u044c\u0437\u0443\u0439\u0442\u0435 \u043d\u043e\u0432\u044b\u0439 \u0431\u043e\u0442:\n"
         f"{TARGET_URL}"
     )
 
 
 def _redirect_kb() -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(
-        inline_keyboard=[[InlineKeyboardButton(text="Открыть новый бот", url=TARGET_URL)]]
+        inline_keyboard=[[InlineKeyboardButton(text="\u041e\u0442\u043a\u0440\u044b\u0442\u044c \u043d\u043e\u0432\u044b\u0439 \u0431\u043e\u0442", url=TARGET_URL)]]
     )
 
 
@@ -50,7 +50,7 @@ async def start(message: Message) -> None:
 
 @router.callback_query()
 async def any_callback(callback: CallbackQuery) -> None:
-    await callback.answer("Бот переехал", show_alert=False)
+    await callback.answer("\u0411\u043e\u0442 \u043f\u0435\u0440\u0435\u0435\u0445\u0430\u043b", show_alert=False)
     await callback.message.answer(_redirect_text(), reply_markup=_redirect_kb(), disable_web_page_preview=True)
 
 

@@ -1,0 +1,72 @@
+from __future__ import annotations
+
+import re
+from pathlib import Path
+
+
+def parse_inventory_codes(path: Path) -> list[str]:
+    text = path.read_text(encoding="utf-8", errors="replace")
+    codes: list[str] = []
+    for line in text.splitlines():
+        line = line.strip()
+        if not line.startswith("|") or "`" not in line:
+            continue
+        parts = [p.strip() for p in line.strip("|").split("|")]
+        if len(parts) < 4:
+            continue
+        code = parts[0].strip("`").strip().lower()
+        if not code or code == "code":
+            continue
+        if not re.fullmatch(r"[a-z0-9_-]+", code):
+            continue
+        codes.append(code)
+    return codes
+
+
+def _find_marker_index(lines: list[str], code: str) -> int | None:
+    code = str(code or "").strip().lower()
+    if not code:
+        return None
+    patterns = [
+        re.compile(rf"\b{re.escape(code)}node\b", flags=re.IGNORECASE),
+        re.compile(rf"\b{re.escape(code)}\s*node\b", flags=re.IGNORECASE),
+        re.compile(rf"\b{re.escape(code)}\b", flags=re.IGNORECASE),
+    ]
+    if code == "free":
+        patterns.insert(0, re.compile(r"\bfree\s*node\b", flags=re.IGNORECASE))
+    for idx, line in enumerate(lines):
+        if any(p.search(line) for p in patterns):
+            return idx
+    return None
+
+
+def _extract_password_near(lines: list[str], marker_idx: int) -> str:
+    for j in range(marker_idx + 1, min(marker_idx + 15, len(lines))):
+        raw = lines[j].strip()
+        if not raw:
+            continue
+        if raw.startswith("ssh-ed25519 ") or raw.startswith("ssh-rsa "):
+            continue
+        if "http://" in raw or "https://" in raw:
+            continue
+        if ":" in raw and len(raw.split()) > 1:
+            continue
+        return raw
+    return ""
+
+
+def parse_passwords(path: Path, *, requested_codes: list[str] | None = None) -> dict[str, str]:
+    lines = [ln.rstrip("\n") for ln in path.read_text(encoding="utf-8", errors="replace").splitlines()]
+    out: dict[str, str] = {}
+    codes = [str(c).lower().strip() for c in (requested_codes or []) if str(c).strip()]
+    if not codes:
+        # Fallback for legacy behavior when no inventory is provided.
+        codes = ["brain", "us", "pl", "it", "free"]
+    for code in codes:
+        idx = _find_marker_index(lines, code)
+        if idx is None:
+            continue
+        pw = _extract_password_near(lines, idx)
+        if pw:
+            out[code] = pw
+    return out

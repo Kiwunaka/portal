@@ -74,9 +74,9 @@ class PlanPolicyTests(unittest.TestCase):
         free_client = PanelClient(self._node("pl_free"))
         paid_client = PanelClient(self._node("pl"))
 
-        self.assertEqual(free_client._limit_ip_policy(), 2)
-        self.assertEqual(free_client._total_gb_policy(), 40)
-        self.assertEqual(free_client._total_bytes_policy(), 40 * 1024 * 1024 * 1024)
+        self.assertEqual(free_client._limit_ip_policy(), 1)
+        self.assertEqual(free_client._total_gb_policy(), 30)
+        self.assertEqual(free_client._total_bytes_policy(), 30 * 1024 * 1024 * 1024)
 
         self.assertEqual(paid_client._limit_ip_policy(), 5)
         self.assertEqual(paid_client._total_gb_policy(), 0)
@@ -85,10 +85,10 @@ class PlanPolicyTests(unittest.TestCase):
     def test_panel_policy_node_overrides(self) -> None:
         from panel_client import PanelClient
 
-        os.environ["FREE_LIMIT_IP"] = "2"
+        os.environ["FREE_LIMIT_IP"] = "1"
         os.environ["NODE_PL_FREE_LIMIT_IP"] = "3"
-        os.environ["FREE_TOTAL_GB"] = "40"
-        os.environ["NODE_PL_FREE_TOTAL_GB"] = "55"
+        os.environ["FREE_TOTAL_GB"] = "30"
+        os.environ["NODE_PL_FREE_TOTAL_GB"] = "45"
         os.environ["PAID_LIMIT_IP"] = "5"
         os.environ["NODE_PL_LIMIT_IP"] = "7"
 
@@ -96,12 +96,12 @@ class PlanPolicyTests(unittest.TestCase):
         paid_client = PanelClient(self._node("pl"))
 
         self.assertEqual(free_client._limit_ip_policy(), 3)
-        self.assertEqual(free_client._total_gb_policy(), 55)
+        self.assertEqual(free_client._total_gb_policy(), 45)
         self.assertEqual(paid_client._limit_ip_policy(), 7)
 
     def test_api_plan_total_gb_policy(self) -> None:
-        os.environ["FREE_TOTAL_GB"] = "40"
-        os.environ["FREE_LIMIT_IP"] = "2"
+        os.environ["FREE_TOTAL_GB"] = "30"
+        os.environ["FREE_LIMIT_IP"] = "1"
         os.environ["PAID_LIMIT_IP"] = "5"
 
         api = importlib.import_module("api")
@@ -110,9 +110,9 @@ class PlanPolicyTests(unittest.TestCase):
         free_user = SimpleNamespace(sub_type="FREE")
         paid_user = SimpleNamespace(sub_type="PAID")
 
-        self.assertEqual(api._plan_total_gb(free_user), 40)
+        self.assertEqual(api._plan_total_gb(free_user), 30)
         self.assertEqual(api._plan_total_gb(paid_user), 0)
-        self.assertEqual(api._plan_device_limit(free_user), 2)
+        self.assertEqual(api._plan_device_limit(free_user), 1)
         self.assertEqual(api._plan_device_limit(paid_user), 5)
 
 

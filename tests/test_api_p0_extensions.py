@@ -45,6 +45,12 @@ class ApiP0ExtensionsTests(unittest.TestCase):
             "PUBLIC_CHANNEL",
             "WEBAPP_DEV_AUTH",
             "WEBAPP_DEV_TG_ID",
+            "APP_ANDROID_PLAY_URL",
+            "APP_ANDROID_APK_URL",
+            "APP_ANDROID_MIRROR_URL",
+            "APP_WINDOWS_EXE_URL",
+            "APP_WINDOWS_MIRROR_URL",
+            "APP_DOCS_URL",
         ):
             self._saved_env[k] = os.environ.get(k)
 
@@ -56,6 +62,12 @@ class ApiP0ExtensionsTests(unittest.TestCase):
         os.environ["PUBLIC_CHANNEL"] = "portal_privacy"
         os.environ["WEBAPP_DEV_AUTH"] = "true"
         os.environ["WEBAPP_DEV_TG_ID"] = "1001"
+        os.environ["APP_ANDROID_PLAY_URL"] = ""
+        os.environ["APP_ANDROID_APK_URL"] = ""
+        os.environ["APP_ANDROID_MIRROR_URL"] = ""
+        os.environ["APP_WINDOWS_EXE_URL"] = ""
+        os.environ["APP_WINDOWS_MIRROR_URL"] = ""
+        os.environ["APP_DOCS_URL"] = ""
 
         for module_name in (
             "api",
@@ -231,6 +243,41 @@ class ApiP0ExtensionsTests(unittest.TestCase):
         body = r.json()
         self.assertIn(body["status"], {"fresh", "stale"})
         self.assertIn("stale_after_seconds", body)
+
+    def test_client_apps_endpoint_returns_empty_defaults(self) -> None:
+        client = TestClient(self.api.app)
+        hdrs = {"X-Telegram-Init-Data": self._init_data(1001, "alice")}
+        r = client.get("/api/client/apps", headers=hdrs)
+        self.assertEqual(r.status_code, 200, r.text)
+        body = r.json()
+        self.assertEqual(body["android"]["play_url"], "")
+        self.assertEqual(body["android"]["apk_url"], "")
+        self.assertEqual(body["android"]["mirror_url"], "")
+        self.assertEqual(body["windows"]["exe_url"], "")
+        self.assertEqual(body["windows"]["mirror_url"], "")
+        self.assertEqual(body["docs_url"], "")
+        self.assertRegex(body["updated_at"], r"^\d{4}-\d{2}-\d{2}T")
+        self.assertTrue(body["updated_at"].endswith("Z"))
+
+    def test_client_apps_endpoint_returns_configured_urls(self) -> None:
+        self.api.Settings.APP_ANDROID_PLAY_URL = "https://play.google.com/store/apps/details?id=example.portal"
+        self.api.Settings.APP_ANDROID_APK_URL = "https://github.com/example/portal/releases/latest/download/portal.apk"
+        self.api.Settings.APP_ANDROID_MIRROR_URL = "https://downloads.example.com/mobile/portal.apk"
+        self.api.Settings.APP_WINDOWS_EXE_URL = "https://github.com/example/portal/releases/latest/download/portal.exe"
+        self.api.Settings.APP_WINDOWS_MIRROR_URL = "https://downloads.example.com/desktop/portal.exe"
+        self.api.Settings.APP_DOCS_URL = "https://portal.example.com/install/"
+
+        client = TestClient(self.api.app)
+        hdrs = {"X-Telegram-Init-Data": self._init_data(1001, "alice")}
+        r = client.get("/api/client/apps", headers=hdrs)
+        self.assertEqual(r.status_code, 200, r.text)
+        body = r.json()
+        self.assertEqual(body["android"]["play_url"], self.api.Settings.APP_ANDROID_PLAY_URL)
+        self.assertEqual(body["android"]["apk_url"], self.api.Settings.APP_ANDROID_APK_URL)
+        self.assertEqual(body["android"]["mirror_url"], self.api.Settings.APP_ANDROID_MIRROR_URL)
+        self.assertEqual(body["windows"]["exe_url"], self.api.Settings.APP_WINDOWS_EXE_URL)
+        self.assertEqual(body["windows"]["mirror_url"], self.api.Settings.APP_WINDOWS_MIRROR_URL)
+        self.assertEqual(body["docs_url"], self.api.Settings.APP_DOCS_URL)
 
 
 if __name__ == "__main__":

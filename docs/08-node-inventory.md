@@ -1,6 +1,6 @@
 # Node Inventory
 
-> Updated: 2026-02-07
+> Updated: 2026-02-14
 
 This file tracks the current node list and their roles. Do not put secrets here (passwords, private keys, panel paths).
 
@@ -12,6 +12,7 @@ This file tracks the current node list and their roles. Do not put secrets here 
 | `pl` | Worker | `v2-pico1` (1 vCPU, 1 GB RAM) | `82.40.38.84` |
 | `it` | Worker | `v2-pico1` (1 vCPU, 1 GB RAM) | `151.241.215.84` |
 | `us` | Worker | `v2-pico1` (1 vCPU, 1 GB RAM) | `82.21.92.142` |
+| `nl` | Worker (premium pool) | `v3-pico` (1 vCPU, 1 GB RAM) | `82.24.195.93` |
 | `free` | Worker (dedicated FREE pool) | `v2-pico` (1 vCPU, 1 GB RAM) | `151.245.217.23` |
 
 ## Ops Notes
@@ -26,6 +27,7 @@ This file tracks the current node list and their roles. Do not put secrets here 
    - `pl.kiwunaka.space -> 82.40.38.84`
    - `it.kiwunaka.space -> 151.241.215.84`
    - `us.kiwunaka.space -> 82.21.92.142`
+   - `nl.kiwunaka.space -> 82.24.195.93`
    - `free.kiwunaka.space -> 151.245.217.23`
    - Cutover root domain to brain when ready: `kiwunaka.space -> 82.21.114.104`
    - (Optional) `de.kiwunaka.space -> 82.21.114.104` (alias for Germany)

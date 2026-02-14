@@ -32,11 +32,21 @@ def _run(ssh: paramiko.SSHClient, cmd: str, *, timeout: int = 120) -> tuple[int,
     return code, out, err
 
 
-def _rewrite_env(text: str, *, public_api_base: str, webapp_url: str) -> str:
+def _rewrite_env(
+    text: str,
+    *,
+    public_api_base: str,
+    webapp_url: str,
+    public_api_domain: str,
+    public_web_domain: str,
+) -> str:
     lines = text.splitlines()
     out: list[str] = []
     seen_api = False
     seen_web = False
+    seen_api_domain = False
+    seen_web_domain = False
+    seen_host_domain = False
     for ln in lines:
         if ln.strip().startswith("PUBLIC_API_BASE_URL="):
             out.append(f"PUBLIC_API_BASE_URL={public_api_base}")
@@ -46,20 +56,39 @@ def _rewrite_env(text: str, *, public_api_base: str, webapp_url: str) -> str:
             out.append(f"WEBAPP_URL={webapp_url}")
             seen_web = True
             continue
+        if ln.strip().startswith("PUBLIC_API_DOMAIN="):
+            out.append(f"PUBLIC_API_DOMAIN={public_api_domain}")
+            seen_api_domain = True
+            continue
+        if ln.strip().startswith("PUBLIC_WEB_DOMAIN="):
+            out.append(f"PUBLIC_WEB_DOMAIN={public_web_domain}")
+            seen_web_domain = True
+            continue
+        if ln.strip().startswith("HOST_DOMAIN="):
+            out.append(f"HOST_DOMAIN={public_api_domain}")
+            seen_host_domain = True
+            continue
         out.append(ln)
     if not seen_api:
         out.append(f"PUBLIC_API_BASE_URL={public_api_base}")
     if not seen_web:
         out.append(f"WEBAPP_URL={webapp_url}")
+    if not seen_api_domain:
+        out.append(f"PUBLIC_API_DOMAIN={public_api_domain}")
+    if not seen_web_domain:
+        out.append(f"PUBLIC_WEB_DOMAIN={public_web_domain}")
+    if not seen_host_domain:
+        out.append(f"HOST_DOMAIN={public_api_domain}")
     return "\n".join(out).rstrip() + "\n"
 
 
 def main() -> int:
     ap = argparse.ArgumentParser(description="Update /root/portal_bot/.env URLs on brain without printing secrets.")
     ap.add_argument("--brain-ip", required=True)
-    ap.add_argument("--domain", required=True)
-    ap.add_argument("--public-api-port", type=int, default=2096)
-    ap.add_argument("--webapp-port", type=int, default=8444)
+    ap.add_argument("--api-domain", default="kiwunaka.space")
+    ap.add_argument("--web-domain", default="portal-privacy.online")
+    ap.add_argument("--public-api-port", type=int, default=443)
+    ap.add_argument("--webapp-port", type=int, default=443)
     ap.add_argument("--ssh-user", default="root")
     ap.add_argument("--ssh-port", type=int, default=29374)
     ap.add_argument("--passwords", default=str(DEFAULT_PASSWORDS))
@@ -69,8 +98,12 @@ def main() -> int:
     if not pw:
         raise SystemExit("Missing brain password.")
 
-    public_api_base = f"https://{args.domain}:{int(args.public_api_port)}"
-    webapp_url = f"https://{args.domain}:{int(args.webapp_port)}/webapp/"
+    api_domain = str(args.api_domain).strip()
+    web_domain = str(args.web_domain).strip()
+    api_port = int(args.public_api_port)
+    web_port = int(args.webapp_port)
+    public_api_base = f"https://{api_domain}" if api_port == 443 else f"https://{api_domain}:{api_port}"
+    webapp_url = f"https://{web_domain}/webapp/" if web_port == 443 else f"https://{web_domain}:{web_port}/webapp/"
 
     ssh = paramiko.SSHClient()
     ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
@@ -84,7 +117,13 @@ def main() -> int:
                     raw = f.read().decode("utf-8", errors="replace")
             except IOError:
                 raw = ""
-            updated = _rewrite_env(raw, public_api_base=public_api_base, webapp_url=webapp_url)
+            updated = _rewrite_env(
+                raw,
+                public_api_base=public_api_base,
+                webapp_url=webapp_url,
+                public_api_domain=api_domain,
+                public_web_domain=web_domain,
+            )
             with sftp.file(rp, "w") as f:
                 f.write(updated.encode("utf-8"))
         finally:
@@ -99,4 +138,3 @@ def main() -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
-

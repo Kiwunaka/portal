@@ -19,7 +19,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
       </head>
-      <body>{children}</body>
+      <body>
+        <a href="#main-content" className="skip-link">Skip to content</a>
+        {children}
+      </body>
     </html>
   );
 }

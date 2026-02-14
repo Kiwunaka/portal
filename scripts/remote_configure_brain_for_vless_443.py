@@ -94,6 +94,9 @@ def main() -> int:
   handle /s8Kx2mP7qR4wT/* {{
     reverse_proxy 127.0.0.1:8080
   }}
+  handle /pay/* {{
+    reverse_proxy 127.0.0.1:8080
+  }}
 
   handle_path /webapp/* {{
     root * /var/www/portal/webapp

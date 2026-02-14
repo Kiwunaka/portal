@@ -14,6 +14,7 @@ import hashlib
 import hmac
 import ipaddress
 import json
+import logging
 import os
 import re
 import secrets
@@ -28,6 +29,7 @@ import aiohttp
 from dotenv import load_dotenv
 from fastapi import FastAPI, Header, HTTPException, Query, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import HTMLResponse
 from pydantic import BaseModel, Field
 from sqlalchemy import or_, func
 
@@ -40,6 +42,8 @@ from db import SessionLocal, init_db
 from models import (
     AdminAudit,
     CampaignSend,
+    ExternalOrder,
+    ExternalPaymentEvent,
     FamilySlot,
     GiftCard,
     Node,
@@ -76,17 +80,27 @@ from points_service import (
     preview_redeemable_points,
     referral_tier_snapshot,
 )
+from free_cycle_service import ensure_user_free_cycle_state, mark_user_became_free
+from gift_cards_service import redeem_gift_card as redeem_gift_card_service
+from web_auth_service import (
+    SESSION_TTL_SECONDS,
+    create_web_session_token,
+    verify_telegram_login_payload,
+    verify_web_session_token,
+)
 
 
 init_db()
+logger = logging.getLogger(__name__)
 
 
 API_ENABLE_USAGE = env_bool("API_ENABLE_USAGE", default=False)
 AUTO_DOWNGRADE_TO_FREE = env_bool("AUTO_DOWNGRADE_TO_FREE", default=True)
 AUTO_FREE_DAYS = int(os.getenv("AUTO_FREE_DAYS", "3650"))
-FREE_TOTAL_GB = env_int("FREE_TOTAL_GB", 40)
-FREE_LIMIT_IP = env_int("FREE_LIMIT_IP", 2)
+FREE_TOTAL_GB = env_int("FREE_TOTAL_GB", 30)
+FREE_LIMIT_IP = env_int("FREE_LIMIT_IP", 1)
 PAID_LIMIT_IP = env_int("PAID_LIMIT_IP", 5)
+FREE_SPEED_LIMIT_KBPS = env_int("FREE_SPEED_LIMIT_KBPS", 6250)
 SUPPORT_USERNAME = (os.getenv("SUPPORT_USERNAME") or "portal_privacy_helpbot").lstrip("@")
 SUPPORT_USERNAME = (os.getenv("SUPPORT_BOT_USERNAME") or SUPPORT_USERNAME).lstrip("@")
 PUBLIC_CHANNEL = (os.getenv("PUBLIC_CHANNEL") or "portal_privacy").lstrip("@")
@@ -104,6 +118,8 @@ WEBAPP_ENABLE_LOTTIE = env_bool("WEBAPP_ENABLE_LOTTIE", default=True)
 WEBAPP_DEV_AUTH = env_bool("WEBAPP_DEV_AUTH", default=False)
 WEBAPP_DEV_TG_ID = env_int("WEBAPP_DEV_TG_ID", 0)
 PROFILE_UPDATE_INTERVAL_HOURS = max(1, env_int("PROFILE_UPDATE_INTERVAL_HOURS", 6))
+PAYMENT_CALLBACK_TOLERANT_MODE = env_bool("PAYMENT_CALLBACK_TOLERANT_MODE", default=True)
+TELEGRAM_WEB_LOGIN_MAX_AGE_SECONDS = max(60, env_int("TELEGRAM_WEB_LOGIN_MAX_AGE_SECONDS", 86400))
 API_LOCALHOST_DEV_HOSTS = {"localhost", "127.0.0.1", "::1"}
 WEBAPP_DEV_ALLOWED_ORIGINS = {
     x.strip().lower().rstrip("/")
@@ -128,6 +144,7 @@ GIFT_CARD_TYPES = {
     "standard": {"days": 30, "stars": 249, "name": "Standard"},
     "premium": {"days": 90, "stars": 699, "name": "Premium"},
 }
+PAYMENT_PROVIDER_WHITELIST = {"aaio", "cardlink", "freekassa"}
 
 
 class TicketMessageIn(BaseModel):
@@ -143,6 +160,20 @@ class TicketCreateIn(TicketMessageIn):
 
 class PromoRedeemIn(BaseModel):
     code: str = Field(min_length=3, max_length=20)
+
+
+class GiftRedeemIn(BaseModel):
+    code: str = Field(min_length=3, max_length=32)
+
+
+class TelegramWebLoginIn(BaseModel):
+    id: int
+    auth_date: int
+    hash: str = Field(min_length=1, max_length=128)
+    first_name: str | None = None
+    last_name: str | None = None
+    username: str | None = None
+    photo_url: str | None = None
 
 
 class ReviewCreateIn(BaseModel):
@@ -228,6 +259,8 @@ class DashboardResponse(BaseModel):
     remaining_gb: float
     active_sessions: int
     device_limit: int
+    speed_limit_mbps: int | None = None
+    free_next_reset_at: str | None = None
     family_slots: int
     subscription_url: str
     segment: str
@@ -253,6 +286,24 @@ class NodeDiagnosticsResponse(BaseModel):
     dns_status: str
     sni_status: str
     summary: str
+
+
+class ClientAndroidApps(BaseModel):
+    play_url: str = ""
+    apk_url: str = ""
+    mirror_url: str = ""
+
+
+class ClientWindowsApps(BaseModel):
+    exe_url: str = ""
+    mirror_url: str = ""
+
+
+class ClientAppsResponse(BaseModel):
+    android: ClientAndroidApps
+    windows: ClientWindowsApps
+    docs_url: str = ""
+    updated_at: str
 
 
 class ManualUserCreateRequest(BaseModel):
@@ -309,12 +360,14 @@ def _maybe_downgrade_expired_to_free(s, user: User) -> bool:
         if (user.sub_type or "").upper() == "FREE":
             # Already free but expired; extend so the free profile stays usable.
             user.expiry_at = datetime.utcnow() + timedelta(days=int(AUTO_FREE_DAYS))
+            ensure_user_free_cycle_state(user)
             s.commit()
             return True
 
         user.sub_type = "FREE"
         user.expiry_at = datetime.utcnow() + timedelta(days=int(AUTO_FREE_DAYS))
         user.is_active = True
+        mark_user_became_free(user)
         s.commit()
         return True
     except Exception:
@@ -465,6 +518,51 @@ def _dev_auth_user(request: Request | None) -> dict[str, Any] | None:
     return {"id": int(WEBAPP_DEV_TG_ID), "username": "dev_user"}
 
 
+def _extract_web_session_token(request: Request | None) -> str:
+    if request is None:
+        return ""
+    auth_header = str(request.headers.get("authorization") or "").strip()
+    if auth_header.lower().startswith("bearer "):
+        return auth_header[7:].strip()
+    return str(request.headers.get("x-web-auth-token") or "").strip()
+
+
+def _ensure_user_row_for_login(*, tg_id: int, username: str | None = None) -> None:
+    s = SessionLocal()
+    try:
+        user = s.query(User).filter(User.tg_id == int(tg_id)).first()
+        if user:
+            if username and (not user.username):
+                user.username = str(username).strip()[:100]
+                s.commit()
+            return
+
+        now = datetime.utcnow()
+        sub_token = secrets.token_urlsafe(32)
+        row = User(
+            tg_id=int(tg_id),
+            username=(str(username).strip()[:100] if username else None),
+            uuid=str(uuid.uuid4()),
+            email=f"User_{int(tg_id)}",
+            sub_type="FREE",
+            created_at=now,
+            expiry_at=now + timedelta(days=max(3650, int(AUTO_FREE_DAYS))),
+            is_active=True,
+            stars_paid=0,
+            total_gb=0,
+            trial_used=False,
+            tos_accepted=False,
+            sub_token=sub_token,
+        )
+        mark_user_became_free(row, now=now)
+        s.add(row)
+        s.commit()
+    except Exception:
+        s.rollback()
+    finally:
+        s.close()
+
+
 def _plan_segment(user: User, now: datetime | None = None) -> str:
     n = now or datetime.utcnow()
     sub = (user.sub_type or "").upper().strip()
@@ -475,6 +573,17 @@ def _plan_segment(user: User, now: datetime | None = None) -> str:
     if sub == "FREE":
         return "FREE"
     return "PAID"
+
+
+def _ensure_free_cycle_state_persisted(s, user: User) -> None:
+    if (user.sub_type or "").upper().strip() != "FREE":
+        return
+    if ensure_user_free_cycle_state(user):
+        s.commit()
+        try:
+            s.refresh(user)
+        except Exception:
+            pass
 
 
 def _family_slots_for_user(s, tg_id: int) -> int:
@@ -515,18 +624,25 @@ def _active_offer_payload(tg_id: int) -> dict[str, Any] | None:
 
 
 def _require_auth_user(x_telegram_init_data: str, request: Request | None = None) -> dict[str, Any]:
-    if not x_telegram_init_data:
-        dev = _dev_auth_user(request)
-        if dev:
-            return dev
-        raise HTTPException(status_code=401, detail="Telegram auth required")
-    user_data = _verify_telegram_data(x_telegram_init_data)
-    if not user_data:
-        dev = _dev_auth_user(request)
-        if dev:
-            return dev
+    init_data = (x_telegram_init_data or "").strip()
+    if init_data:
+        user_data = _verify_telegram_data(init_data)
+        if user_data:
+            return user_data
+
+    web_token = _extract_web_session_token(request)
+    if web_token:
+        payload = verify_web_session_token(web_token)
+        if payload:
+            return {"id": int(payload.get("id") or 0), "username": payload.get("username")}
+
+    dev = _dev_auth_user(request)
+    if dev:
+        return dev
+
+    if init_data:
         raise HTTPException(status_code=401, detail="Invalid Telegram signature")
-    return user_data
+    raise HTTPException(status_code=401, detail="Telegram auth required")
 
 
 def _require_user_access(*, target_tg_id: int, x_telegram_init_data: str, request: Request | None = None) -> dict[str, Any]:
@@ -542,6 +658,308 @@ def _require_admin(x_telegram_init_data: str, request: Request | None = None) ->
     if not _is_admin_tg(actor_id):
         raise HTTPException(status_code=403, detail="Admin access required")
     return user_data
+
+
+def _safe_public_url(value: str) -> str:
+    return str(value or "").strip()
+
+
+def _normalize_provider(provider: str) -> str:
+    return re.sub(r"[^a-z0-9_-]", "", str(provider or "").strip().lower())
+
+
+def _provider_secret(provider: str) -> str:
+    p = _normalize_provider(provider)
+    key = p.upper()
+    return (
+        os.getenv(f"{key}_SIGNING_SECRET")
+        or os.getenv(f"{key}_SECRET")
+        or ""
+    ).strip()
+
+
+def _payload_value(payload: dict[str, Any], *keys: str) -> str:
+    for k in keys:
+        if k in payload:
+            v = str(payload.get(k) or "").strip()
+            if v:
+                return v
+    return ""
+
+
+def _hmac_sha256_hex(secret: str, data: bytes) -> str:
+    return hmac.new(secret.encode("utf-8"), data, hashlib.sha256).hexdigest()
+
+
+async def _read_callback_payload(request: Request) -> tuple[dict[str, Any], bytes]:
+    raw = await request.body()
+    payload: dict[str, Any] = {}
+    content_type = (request.headers.get("content-type") or "").lower()
+    if "application/json" in content_type:
+        try:
+            payload = json.loads(raw.decode("utf-8", errors="replace"))
+            if not isinstance(payload, dict):
+                payload = {}
+        except Exception:
+            payload = {}
+    elif "application/x-www-form-urlencoded" in content_type or "multipart/form-data" in content_type:
+        try:
+            form = await request.form()
+            payload = {str(k): str(v) for k, v in form.items()}
+        except Exception:
+            payload = {}
+    else:
+        if raw:
+            try:
+                data = json.loads(raw.decode("utf-8", errors="replace"))
+                if isinstance(data, dict):
+                    payload = data
+            except Exception:
+                payload = {}
+
+    for k, v in request.query_params.items():
+        payload.setdefault(str(k), str(v))
+    return payload, raw
+
+
+def _verify_callback_signature(*, provider: str, payload: dict[str, Any], raw: bytes, request: Request) -> tuple[bool, str]:
+    secret = _provider_secret(provider)
+    if not secret:
+        return False, "missing_secret"
+
+    provided = (
+        _payload_value(
+            {**payload, **{k.lower(): v for k, v in payload.items()}},
+            "signature",
+            "sign",
+            "x-signature",
+            "x-sign",
+            "hash",
+        )
+        or _payload_value(
+            {k.lower(): v for k, v in request.headers.items()},
+            "x-signature",
+            "x-sign",
+            "signature",
+            "x-signature-sha256",
+        )
+    )
+    if not provided:
+        return False, "missing_signature"
+
+    expected_raw = _hmac_sha256_hex(secret, raw)
+    if hmac.compare_digest(provided.lower(), expected_raw.lower()):
+        return True, "ok"
+
+    # Fallback for form/query providers that sign key=value pairs.
+    canonical_parts = []
+    skip_keys = {"signature", "sign", "hash", "sig"}
+    for k in sorted(payload.keys()):
+        if k.lower() in skip_keys:
+            continue
+        canonical_parts.append(f"{k}={payload.get(k)}")
+    canonical = "&".join(canonical_parts).encode("utf-8", errors="replace")
+    expected_canonical = _hmac_sha256_hex(secret, canonical)
+    if hmac.compare_digest(provided.lower(), expected_canonical.lower()):
+        return True, "ok"
+    return False, "invalid_signature"
+
+
+def _callback_ids(payload: dict[str, Any], raw: bytes) -> tuple[str, str]:
+    order_id = _payload_value(
+        payload,
+        "order_id",
+        "merchant_order_id",
+        "MERCHANT_ORDER_ID",
+        "invoice_id",
+        "inv",
+        "order",
+    )
+    external_id = _payload_value(
+        payload,
+        "external_tx_id",
+        "transaction_id",
+        "txn_id",
+        "payment_id",
+        "id",
+        "intid",
+        "inv_id",
+        "operation_id",
+    )
+    if not external_id:
+        external_id = order_id or hashlib.sha256(raw or b"").hexdigest()[:40]
+    return order_id, external_id
+
+
+def _safe_int(value: Any) -> int | None:
+    try:
+        if value is None or str(value).strip() == "":
+            return None
+        return int(str(value).strip())
+    except Exception:
+        return None
+
+
+def _safe_float(value: Any) -> float:
+    try:
+        if value is None or str(value).strip() == "":
+            return 0.0
+        return float(str(value).strip().replace(",", "."))
+    except Exception:
+        return 0.0
+
+
+def _status_from_event(event_type: str, payload: dict[str, Any], signature_ok: bool) -> str:
+    event = (event_type or "").strip().lower()
+    if event == "refund":
+        return "refunded"
+    if event == "chargeback":
+        return "chargeback"
+    status_raw = _payload_value(payload, "status", "payment_status", "state").lower()
+    if status_raw in {"paid", "success", "succeeded", "approved"} and signature_ok:
+        return "paid"
+    return "pending_verification" if not signature_ok else "processing"
+
+
+def _upsert_external_order(
+    s,
+    *,
+    provider: str,
+    order_id: str,
+    payload: dict[str, Any],
+    status: str,
+    mark_paid: bool,
+) -> None:
+    if not order_id:
+        return
+    row = (
+        s.query(ExternalOrder)
+        .filter(ExternalOrder.provider == provider, ExternalOrder.order_id == order_id)
+        .first()
+    )
+    if not row:
+        row = ExternalOrder(provider=provider, order_id=order_id, created_at=datetime.utcnow())
+        s.add(row)
+    row.tg_id = _safe_int(_payload_value(payload, "tg_id", "telegram_id", "user_id"))
+    row.plan_code = _payload_value(payload, "plan_code", "tariff", "plan")
+    row.amount = _safe_float(_payload_value(payload, "amount", "sum", "amount_paid"))
+    row.currency = _payload_value(payload, "currency", "cur", "ccy") or "RUB"
+    row.status = status
+    if mark_paid and not row.paid_at:
+        row.paid_at = datetime.utcnow()
+
+
+def _record_external_payment_event(
+    *,
+    provider: str,
+    event_type: str,
+    external_id: str,
+    order_id: str,
+    payload: dict[str, Any],
+    signature_ok: bool,
+    processed_ok: bool,
+) -> tuple[bool, bool]:
+    s = SessionLocal()
+    try:
+        exists = (
+            s.query(ExternalPaymentEvent.id)
+            .filter(
+                ExternalPaymentEvent.provider == provider,
+                ExternalPaymentEvent.event_type == event_type,
+                ExternalPaymentEvent.external_id == external_id,
+            )
+            .first()
+        )
+        if exists:
+            return True, True
+
+        event = ExternalPaymentEvent(
+            provider=provider,
+            event_type=event_type,
+            external_id=external_id,
+            order_id=order_id or None,
+            payload_json=json.dumps(payload, ensure_ascii=False, separators=(",", ":"))[:16000],
+            signature_ok=bool(signature_ok),
+            processed_ok=bool(processed_ok),
+            created_at=datetime.utcnow(),
+        )
+        s.add(event)
+
+        status = _status_from_event(event_type, payload, signature_ok=signature_ok)
+        _upsert_external_order(
+            s,
+            provider=provider,
+            order_id=order_id,
+            payload=payload,
+            status=status,
+            mark_paid=status == "paid",
+        )
+        s.commit()
+        return False, True
+    except Exception as exc:
+        s.rollback()
+        logger.exception("payment callback persistence failed: provider=%s event=%s err=%s", provider, event_type, exc)
+        return False, False
+    finally:
+        s.close()
+
+
+def _payment_page_html(*, title: str, message: str, action_url: str, action_label: str) -> str:
+    return (
+        "<!doctype html><html lang='ru'><head><meta charset='utf-8'>"
+        "<meta name='viewport' content='width=device-width, initial-scale=1'>"
+        f"<title>{title}</title>"
+        "<style>body{font-family:system-ui,sans-serif;background:#0f1115;color:#f5f7fa;padding:32px}"
+        ".card{max-width:640px;margin:0 auto;background:#171a21;border:1px solid #2a3342;border-radius:14px;padding:24px}"
+        "a{display:inline-block;margin-top:14px;color:#0f1115;background:#7dd3fc;padding:10px 14px;border-radius:10px;text-decoration:none;font-weight:600}"
+        "p{line-height:1.5;color:#d6dbe4}</style></head><body>"
+        f"<div class='card'><h1>{title}</h1><p>{message}</p><a href='{action_url}'>{action_label}</a></div></body></html>"
+    )
+
+
+async def _handle_payment_callback(*, provider: str, event_type: str, request: Request) -> dict[str, Any]:
+    p = _normalize_provider(provider)
+    et = _normalize_provider(event_type)
+    if p not in PAYMENT_PROVIDER_WHITELIST:
+        raise HTTPException(status_code=404, detail="Unsupported provider")
+    if et not in {"result", "refund", "chargeback"}:
+        raise HTTPException(status_code=400, detail="Unsupported event type")
+
+    payload, raw = await _read_callback_payload(request)
+    order_id, external_id = _callback_ids(payload, raw)
+    signature_ok, signature_reason = _verify_callback_signature(provider=p, payload=payload, raw=raw, request=request)
+    processed_ok = bool(signature_ok)
+    duplicate, persist_ok = _record_external_payment_event(
+        provider=p,
+        event_type=et,
+        external_id=external_id,
+        order_id=order_id,
+        payload=payload,
+        signature_ok=signature_ok,
+        processed_ok=processed_ok,
+    )
+
+    if not signature_ok:
+        logger.warning(
+            "payment callback signature invalid: provider=%s event=%s reason=%s order_id=%s external_id=%s",
+            p,
+            et,
+            signature_reason,
+            order_id,
+            external_id,
+        )
+        if not PAYMENT_CALLBACK_TOLERANT_MODE:
+            raise HTTPException(status_code=400, detail=f"Invalid signature: {signature_reason}")
+
+    return {
+        "ok": bool(signature_ok and persist_ok),
+        "provider": p,
+        "event_type": et,
+        "order_id": order_id or None,
+        "external_id": external_id,
+        "signature_ok": bool(signature_ok),
+        "duplicate": bool(duplicate),
+    }
 
 
 async def _telegram_send_message(chat_id: int, text: str) -> bool:
@@ -699,8 +1117,18 @@ EVENT_WHITELIST = {
 
 
 def _node_country_name(code: str) -> str:
+    raw = (code or "").strip().lower()
+    if "free" in raw:
+        return "NL Free"
     base = _node_code_base(code)
-    names = {"pl": "Poland", "it": "Italy", "us": "USA", "de": "Germany", "brain": "Germany"}
+    names = {
+        "pl": "Poland",
+        "it": "Italy",
+        "us": "USA",
+        "nl": "Netherlands",
+        "de": "Germany",
+        "brain": "Germany",
+    }
     return names.get(base, base.upper() if base else "Node")
 
 
@@ -781,6 +1209,94 @@ async def _get_panel_usage_legacy(tg_id: int) -> dict | None:
 @app.get("/api/health")
 async def health() -> dict:
     return {"status": "ok", "ts": datetime.utcnow().isoformat()}
+
+
+@app.post("/api/auth/telegram/web-login")
+async def auth_telegram_web_login(payload: TelegramWebLoginIn) -> dict:
+    verified = verify_telegram_login_payload(
+        payload=payload.model_dump(),
+        bot_token=Settings.BOT_TOKEN,
+        max_age_seconds=TELEGRAM_WEB_LOGIN_MAX_AGE_SECONDS,
+    )
+    if not verified:
+        raise HTTPException(status_code=401, detail="Invalid Telegram login payload")
+
+    tg_id = int(verified.get("id") or 0)
+    if tg_id <= 0:
+        raise HTTPException(status_code=401, detail="Invalid Telegram user")
+    username = (verified.get("username") or "").strip() or None
+    _ensure_user_row_for_login(tg_id=tg_id, username=username)
+    token = create_web_session_token(tg_id=tg_id, username=username)
+    if not token:
+        raise HTTPException(status_code=500, detail="Web session is not configured")
+    return {
+        "ok": True,
+        "token": token,
+        "user": {"id": tg_id, "username": username},
+        "expires_in": int(SESSION_TTL_SECONDS),
+    }
+
+
+@app.get("/api/auth/session")
+async def auth_session(request: Request, x_telegram_init_data: str = Header(default="")) -> dict:
+    auth_user = _require_auth_user(x_telegram_init_data, request=request)
+    return {
+        "ok": True,
+        "user": {
+            "id": int(auth_user.get("id", 0)),
+            "username": auth_user.get("username"),
+        },
+    }
+
+
+@app.api_route("/pay/success", methods=["GET", "POST"])
+async def pay_success(request: Request):
+    if request.method == "POST":
+        return {"ok": True, "status": "success"}
+    action = _safe_public_url(Settings.WEBAPP_URL) or "/webapp/"
+    return HTMLResponse(
+        content=_payment_page_html(
+            title="Оплата подтверждена",
+            message="Платеж получен. Доступ обновится автоматически, а статус появится в личном кабинете.",
+            action_url=action,
+            action_label="Открыть кабинет",
+        )
+    )
+
+
+@app.api_route("/pay/fail", methods=["GET", "POST"])
+async def pay_fail(request: Request):
+    if request.method == "POST":
+        return {"ok": False, "status": "failed"}
+    action = _safe_public_url(Settings.PAY_CHECKOUT_URL) or (f"https://t.me/{BOT_USERNAME}" if BOT_USERNAME else "/")
+    return HTMLResponse(
+        content=_payment_page_html(
+            title="Платеж не завершен",
+            message="Платеж не прошел. Можно повторить попытку или обратиться в поддержку через Telegram.",
+            action_url=action,
+            action_label="Повторить оплату",
+        )
+    )
+
+
+@app.api_route("/api/payments/result/{provider}", methods=["POST", "GET"])
+async def payment_result(provider: str, request: Request) -> dict:
+    return await _handle_payment_callback(provider=provider, event_type="result", request=request)
+
+
+@app.api_route("/api/payments/refund/{provider}", methods=["POST", "GET"])
+async def payment_refund(provider: str, request: Request) -> dict:
+    return await _handle_payment_callback(provider=provider, event_type="refund", request=request)
+
+
+@app.api_route("/api/payments/chargeback/{provider}", methods=["POST", "GET"])
+async def payment_chargeback(provider: str, request: Request) -> dict:
+    return await _handle_payment_callback(provider=provider, event_type="chargeback", request=request)
+
+
+@app.api_route("/api/payments/freekassa/notify", methods=["POST", "GET"])
+async def payment_freekassa_notify(request: Request) -> dict:
+    return await _handle_payment_callback(provider="freekassa", event_type="result", request=request)
 
 
 @app.get("/api/admin/metrics/status")
@@ -964,7 +1480,14 @@ async def user_data(tg_id: int, request: Request, x_telegram_init_data: str = He
         if not user:
             raise HTTPException(status_code=404, detail="User not found")
 
-        _maybe_downgrade_expired_to_free(s, user)
+        downgraded = _maybe_downgrade_expired_to_free(s, user)
+        if downgraded:
+            try:
+                s.refresh(user)
+            except Exception:
+                pass
+        _ensure_free_cycle_state_persisted(s, user)
+        _ensure_free_cycle_state_persisted(s, user)
 
         nodes = enabled_nodes(s)
         nodes_for_user = _nodes_for_user(user, nodes)
@@ -1017,6 +1540,7 @@ async def user_data(tg_id: int, request: Request, x_telegram_init_data: str = He
             "limits": {
                 "device_limit": _plan_device_limit(user) + family_slots,
                 "total_gb": total_gb,
+                "speed_mbps": int(round((FREE_SPEED_LIMIT_KBPS * 8) / 1000)) if (user.sub_type or "").upper() == "FREE" else None,
             },
             "family_slots": int(family_slots),
             "nodes": [
@@ -1078,6 +1602,11 @@ async def user_data(tg_id: int, request: Request, x_telegram_init_data: str = He
                 ),
             },
             "active_offer": _active_offer_payload(tg_id),
+            "free_cycle": {
+                "next_reset_at": _safe_iso(getattr(user, "free_cycle_next_reset_at", None))
+                if (user.sub_type or "").upper() == "FREE"
+                else None,
+            },
             "features": {
                 "haptic": bool(WEBAPP_ENABLE_HAPTIC),
                 "lottie": bool(WEBAPP_ENABLE_LOTTIE),
@@ -1098,6 +1627,7 @@ async def dashboard_snapshot(request: Request, x_telegram_init_data: str = Heade
             raise HTTPException(status_code=404, detail="User not found")
 
         _maybe_downgrade_expired_to_free(s, user)
+        _ensure_free_cycle_state_persisted(s, user)
         usage = await _get_panel_usage_legacy(tg_id)
         total_gb = float(_plan_total_gb(user))
         used_gb = round((usage["used_bytes"] / (1024**3)), 3) if usage else 0.0
@@ -1121,6 +1651,16 @@ async def dashboard_snapshot(request: Request, x_telegram_init_data: str = Heade
             remaining_gb=float(remaining),
             active_sessions=int(getattr(user, "active_sessions", 0) or 0),
             device_limit=int(_plan_device_limit(user) + family_slots),
+            speed_limit_mbps=(
+                int(round((FREE_SPEED_LIMIT_KBPS * 8) / 1000))
+                if (user.sub_type or "").upper() == "FREE"
+                else None
+            ),
+            free_next_reset_at=(
+                _safe_iso(getattr(user, "free_cycle_next_reset_at", None))
+                if (user.sub_type or "").upper() == "FREE"
+                else None
+            ),
             family_slots=int(family_slots),
             subscription_url=sub_url,
             segment=segment,
@@ -1135,6 +1675,24 @@ async def dashboard_snapshot(request: Request, x_telegram_init_data: str = Heade
         )
     finally:
         s.close()
+
+
+@app.get("/api/client/apps")
+async def client_apps(request: Request, x_telegram_init_data: str = Header(default="")) -> ClientAppsResponse:
+    _require_auth_user(x_telegram_init_data, request=request)
+    return ClientAppsResponse(
+        android=ClientAndroidApps(
+            play_url=_safe_public_url(Settings.APP_ANDROID_PLAY_URL),
+            apk_url=_safe_public_url(Settings.APP_ANDROID_APK_URL),
+            mirror_url=_safe_public_url(Settings.APP_ANDROID_MIRROR_URL),
+        ),
+        windows=ClientWindowsApps(
+            exe_url=_safe_public_url(Settings.APP_WINDOWS_EXE_URL),
+            mirror_url=_safe_public_url(Settings.APP_WINDOWS_MIRROR_URL),
+        ),
+        docs_url=_safe_public_url(Settings.APP_DOCS_URL),
+        updated_at=f"{datetime.utcnow().replace(microsecond=0).isoformat()}Z",
+    )
 
 
 @app.get("/api/nodes/status")
@@ -1351,6 +1909,32 @@ async def promo_redeem(payload: PromoRedeemIn, request: Request, x_telegram_init
         }
     finally:
         s.close()
+
+
+@app.post("/api/gift/redeem")
+async def gift_redeem(payload: GiftRedeemIn, request: Request, x_telegram_init_data: str = Header(default="")) -> dict:
+    auth_user = _require_auth_user(x_telegram_init_data, request=request)
+    tg_id = int(auth_user.get("id", 0))
+    result = await redeem_gift_card_service(code=payload.code, recipient_tg_id=tg_id, require_tos=False)
+    if result.get("ok"):
+        track_event(
+            tg_id=tg_id,
+            event_name="gift_redeemed",
+            source="webapp",
+            meta={"card_type": result.get("card_type"), "days": result.get("days"), "sync_ok": result.get("sync_ok")},
+        )
+        return result
+
+    error = str(result.get("error") or "redeem_failed")
+    message = str(result.get("message") or "Не удалось активировать код")
+    status_map = {
+        "invalid_code": 400,
+        "not_found": 404,
+        "already_redeemed": 400,
+        "self_redeem": 400,
+        "tos_required": 400,
+    }
+    raise HTTPException(status_code=status_map.get(error, 400), detail=message)
 
 
 @app.post("/api/reviews")
@@ -2233,9 +2817,18 @@ def _node_label_ru(code: str, fallback_name: str = "") -> str:
     Tags/fragments are often shown directly in apps, so we prefer short Russian names + flags.
     """
     code_raw = (code or "").strip()
+    if "free" in code_raw.lower():
+        return "🇳🇱 NL Free"
     base = _node_code_base(code_raw)
-    flags = {"pl": "🇵🇱", "it": "🇮🇹", "us": "🇺🇸", "brain": "🇩🇪", "de": "🇩🇪"}
-    names = {"pl": "Польша", "it": "Италия", "us": "США", "brain": "Германия", "de": "Германия"}
+    flags = {"pl": "🇵🇱", "it": "🇮🇹", "us": "🇺🇸", "nl": "🇳🇱", "brain": "🇩🇪", "de": "🇩🇪"}
+    names = {
+        "pl": "Польша",
+        "it": "Италия",
+        "us": "США",
+        "nl": "Нидерланды",
+        "brain": "Германия",
+        "de": "Германия",
+    }
     flag = flags.get(base, "🏳️")
     nm = names.get(base, fallback_name or (base.upper() if base else (code_raw or "Node")))
     return f"{flag} {nm}".strip()
@@ -2442,8 +3035,15 @@ def _nodes_for_user(user: User, nodes: list) -> list:
     is_free = (user.sub_type or "").upper() == "FREE"
 
     if not is_free:
-        paid = [n for n in nodes if "free" not in (getattr(n, "code", "") or "").lower()]
-        return paid or nodes
+        paid = []
+        for n in nodes:
+            code = (getattr(n, "code", "") or "").lower()
+            if "free" in code:
+                continue
+            if _node_code_base(code) in {"brain", "de"}:
+                continue
+            paid.append(n)
+        return paid
 
     free_nodes = [n for n in nodes if "free" in (getattr(n, "code", "") or "").lower()]
     return free_nodes

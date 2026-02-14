@@ -2,8 +2,11 @@ from __future__ import annotations
 
 import json
 import logging
+import time
 from dataclasses import dataclass
 import os
+from datetime import datetime, timezone
+from urllib.parse import quote
 
 import aiohttp
 
@@ -58,7 +61,7 @@ class PanelClient:
     def _limit_ip_policy(self) -> int:
         """
         Per-node device policy.
-        Free default: 2 devices.
+        Free default: 1 device.
         Paid default: 5 devices.
         """
         if self._is_free_node():
@@ -67,7 +70,7 @@ class PanelClient:
                 self._node_or_global_int(
                     node_suffix="LIMIT_IP",
                     global_name="FREE_LIMIT_IP",
-                    default=2,
+                    default=1,
                 ),
             )
         return max(
@@ -82,7 +85,7 @@ class PanelClient:
     def _total_gb_policy(self) -> int:
         """
         Per-node traffic cap in GB.
-        Free default: 40 GB.
+        Free default: 30 GB.
         Paid: always unlimited (0).
         """
         if self._is_free_node():
@@ -91,7 +94,7 @@ class PanelClient:
                 self._node_or_global_int(
                     node_suffix="TOTAL_GB",
                     global_name="FREE_TOTAL_GB",
-                    default=40,
+                    default=30,
                 ),
             )
         return 0
@@ -106,6 +109,36 @@ class PanelClient:
         base = self._env("PANEL_BASE_URL") or self.node.panel_base_url
         path = self._env("PANEL_PATH") or self.node.panel_path
         return f"{base.rstrip('/')}/{path.strip('/')}"
+
+    @staticmethod
+    def _as_bool(value) -> bool | None:
+        if isinstance(value, bool):
+            return value
+        if value is None:
+            return None
+        if isinstance(value, (int, float)):
+            return bool(value)
+        text = str(value).strip().lower()
+        if text in {"1", "true", "yes", "y", "on"}:
+            return True
+        if text in {"0", "false", "no", "n", "off"}:
+            return False
+        return None
+
+    @staticmethod
+    def _as_epoch_seconds(value) -> int | None:
+        if value is None:
+            return None
+        try:
+            iv = int(value)
+        except Exception:
+            return None
+        if iv <= 0:
+            return None
+        # x-ui can return ms timestamps.
+        if iv > 10_000_000_000:
+            iv //= 1000
+        return iv
 
     async def ensure_session(self) -> None:
         if self.session is None:
@@ -157,6 +190,41 @@ class PanelClient:
                 return []
             return data.get("obj", []) or []
 
+    async def _get_online_emails(self) -> tuple[bool, set[str]]:
+        """
+        Query online clients list from panel API.
+        Returns (fetched, emails_set):
+        - fetched=False means the endpoint is unavailable/error.
+        - fetched=True means response parsed; empty set is valid (nobody online).
+        """
+        if not self.cookies:
+            ok = await self.login()
+            if not ok:
+                return False, set()
+        await self.ensure_session()
+        try:
+            async with self.session.get(
+                f"{self._base()}/panel/api/inbounds/onlines",
+                cookies=self.cookies,
+                timeout=aiohttp.ClientTimeout(total=20),
+            ) as resp:
+                if resp.status != 200:
+                    return False, set()
+                data = await resp.json(content_type=None)
+                if not isinstance(data, dict) or not bool(data.get("success")):
+                    return False, set()
+                obj = data.get("obj")
+                if isinstance(obj, list):
+                    return True, {str(x or "").strip() for x in obj if str(x or "").strip()}
+                if isinstance(obj, dict):
+                    vals = obj.get("emails")
+                    if isinstance(vals, list):
+                        return True, {str(x or "").strip() for x in vals if str(x or "").strip()}
+                    return True, set()
+                return True, set()
+        except Exception:
+            return False, set()
+
     async def get_usage_by_email(self, email: str) -> dict | None:
         """
         Returns traffic stats from panel clientStats for this node inbound.
@@ -179,6 +247,82 @@ class PanelClient:
             for c in settings.get("clients", []):
                 if str(c.get("tgId", "")).strip() == str(tg_id).strip():
                     return c
+        return None
+
+    async def get_client_runtime_by_tgid(self, tg_id: int) -> dict | None:
+        """
+        Return best-effort runtime snapshot for a client on this node:
+        - enable flag from panel client settings
+        - traffic counters from clientStats
+        - online status when the panel exposes it (field names vary by x-ui versions)
+        """
+        inbounds = await self._get_inbounds()
+        for inb in inbounds:
+            if inb.get("id") != self.node.inbound_id:
+                continue
+
+            settings = json.loads(inb.get("settings", "{}"))
+            clients = settings.get("clients", []) or []
+            target = None
+            for c in clients:
+                if str(c.get("tgId", "")).strip() == str(tg_id).strip():
+                    target = c
+                    break
+            if not target:
+                continue
+
+            email = str(target.get("email", "") or "")
+            stat = None
+            for cs in inb.get("clientStats", []) or []:
+                if str(cs.get("email", "") or "") == email:
+                    stat = cs
+                    break
+
+            online = None
+            last_online_epoch = None
+            if isinstance(stat, dict):
+                for key in ("online", "isOnline", "is_online"):
+                    if key in stat:
+                        online = self._as_bool(stat.get(key))
+                        break
+                if online is None:
+                    ip_count = stat.get("ipCount", stat.get("ip_count"))
+                    if ip_count is not None:
+                        try:
+                            online = int(ip_count) > 0
+                        except Exception:
+                            online = None
+                for key in ("lastOnlineTime", "lastOnline", "last_online", "lastSeen", "last_seen"):
+                    if key in stat:
+                        last_online_epoch = self._as_epoch_seconds(stat.get(key))
+                        if last_online_epoch is not None:
+                            break
+            if online is None and email:
+                fetched, online_emails = await self._get_online_emails()
+                if fetched:
+                    online = email in online_emails
+            if online is None and last_online_epoch is not None:
+                recent_sec = max(15, self._to_int(os.getenv("PANEL_ONLINE_RECENT_SECONDS"), 90))
+                online = (int(datetime.now(timezone.utc).timestamp()) - int(last_online_epoch)) <= recent_sec
+
+            up = int((stat or {}).get("up", 0) or 0)
+            down = int((stat or {}).get("down", 0) or 0)
+            last_online_at = None
+            last_online_age_seconds = None
+            if last_online_epoch is not None:
+                dt = datetime.fromtimestamp(last_online_epoch, tz=timezone.utc)
+                last_online_at = dt.isoformat().replace("+00:00", "Z")
+                last_online_age_seconds = max(0, int(datetime.now(timezone.utc).timestamp()) - int(last_online_epoch))
+            return {
+                "email": email,
+                "enable": bool(target.get("enable", True)),
+                "online": online,
+                "up": up,
+                "down": down,
+                "total": up + down,
+                "last_online_at": last_online_at,
+                "last_online_age_seconds": last_online_age_seconds,
+            }
         return None
 
     async def add_client(
@@ -256,6 +400,8 @@ class PanelClient:
             "limitIp": limit_ip,
             "reset": client.get("reset", 0),
         }
+        if not updated.get("id"):
+            return False
         if client.get("comment"):
             updated["comment"] = client["comment"]
 
@@ -274,6 +420,90 @@ class PanelClient:
         except Exception as e:
             logger.exception("update_client_enable error node=%s: %s", self.node.code, e)
             return False
+
+    async def _reset_client_traffic_by_email(self, *, email: str) -> bool:
+        """
+        Try known 3x-ui API paths for traffic reset.
+        Different panel builds expose different routes.
+        """
+        if not email:
+            return False
+        if not self.cookies:
+            ok = await self.login()
+            if not ok:
+                return False
+        await self.ensure_session()
+        encoded_email = quote(str(email), safe="")
+        paths = [
+            f"/panel/api/inbounds/{int(self.node.inbound_id)}/resetClientTraffic/{encoded_email}",
+            f"/panel/api/inbounds/resetClientTraffic/{encoded_email}",
+        ]
+        for path in paths:
+            try:
+                async with self.session.post(
+                    f"{self._base()}{path}",
+                    cookies=self.cookies,
+                    timeout=aiohttp.ClientTimeout(total=20),
+                ) as resp:
+                    if resp.status != 200:
+                        continue
+                    data = await resp.json(content_type=None)
+                    if isinstance(data, dict) and bool(data.get("success")):
+                        return True
+            except Exception:
+                continue
+        return False
+
+    async def _update_client_with_reset_flag(self, client: dict) -> bool:
+        """
+        Fallback path when explicit reset endpoint is unavailable.
+        """
+        if not self.cookies:
+            ok = await self.login()
+            if not ok:
+                return False
+        await self.ensure_session()
+
+        limit_ip = self._limit_ip_policy()
+        total_gb_bytes = self._total_bytes_policy()
+        updated = {
+            "id": client.get("id"),
+            "email": client.get("email"),
+            "flow": client.get("flow", self.node.flow),
+            "totalGB": total_gb_bytes,
+            "expiryTime": 0,
+            "subId": client.get("subId", ""),
+            "tgId": client.get("tgId", ""),
+            "enable": bool(client.get("enable", True)),
+            "limitIp": limit_ip,
+            # Some x-ui builds reset counters when this marker changes.
+            "reset": int(time.time() * 1000),
+        }
+        if client.get("comment"):
+            updated["comment"] = client["comment"]
+        payload = {"id": self.node.inbound_id, "settings": json.dumps({"clients": [updated]})}
+        try:
+            async with self.session.post(
+                f"{self._base()}/panel/api/inbounds/updateClient/{updated['id']}",
+                json=payload,
+                cookies=self.cookies,
+                timeout=aiohttp.ClientTimeout(total=20),
+            ) as resp:
+                if resp.status != 200:
+                    return False
+                data = await resp.json(content_type=None)
+                return bool((data or {}).get("success"))
+        except Exception:
+            return False
+
+    async def reset_client_traffic_by_tgid(self, tg_id: int) -> bool:
+        client = await self.find_client_by_tgid(int(tg_id))
+        if not client:
+            return False
+        email = str(client.get("email") or "").strip()
+        if await self._reset_client_traffic_by_email(email=email):
+            return True
+        return await self._update_client_with_reset_flag(client)
 
     async def _delete_client_from_inbound(self, *, inbound_id: int, client_uuid: str) -> bool:
         if not self.cookies:

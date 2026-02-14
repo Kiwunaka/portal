@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+﻿import { useEffect, useMemo, useRef, useState } from "react";
 import gsap from "gsap";
 import {
   addTicketMessage,
@@ -27,16 +27,22 @@ import {
   adminUserCard,
   adminUserMessage,
   adminUsers,
+  authByTelegramWebLogin,
+  clearWebSessionToken,
   confirmConnect,
   createTicket,
+  fetchClientApps,
   fetchDashboard,
   fetchNodeStatus,
   fetchTickets,
   fetchUser,
   getPoints,
+  hasWebSessionToken,
   getTicket,
+  redeemGiftCode,
   runNetworkProbe,
   runNodeDiagnostics,
+  setWebSessionToken,
   startPayAttempt,
   trackEvent,
   type AdminGiftCodeRow,
@@ -47,6 +53,7 @@ import {
   type AdminUserRow,
   type AdminNodeHealthRow,
   type AdminSummaryPayload,
+  type ClientAppsPayload,
   type DashboardSnapshot,
   type ManualCreateIn,
   type NodeStatus,
@@ -63,6 +70,12 @@ type AdminTab = "summary" | "users" | "tickets" | "nodes" | "broadcast" | "promo
 type StorySlide = { title: string; text: string };
 type PlanChoice = { key: string; label: string; stars: number; badge?: string };
 type SegmentInfo = { title: string; text: string; ctaPlan: string };
+
+declare global {
+  interface Window {
+    onTelegramAuth?: (user: any) => void;
+  }
+}
 
 const USER_TABS: Array<{ id: UserTab; label: string; icon: string }> = [
   { id: "status", label: "Статус", icon: "S" },
@@ -88,7 +101,7 @@ const PLAN_CHOICES: PlanChoice[] = [
 
 const MAP_POINTS: Array<{ code: string; x: number; y: number; label: string }> = [
   { code: "us", x: 55, y: 70, label: "US" },
-  { code: "de", x: 155, y: 62, label: "DE" },
+  { code: "nl", x: 145, y: 60, label: "NL" },
   { code: "pl", x: 170, y: 56, label: "PL" },
   { code: "it", x: 162, y: 78, label: "IT" },
 ];
@@ -136,7 +149,8 @@ const MOCK_DASH: DashboardSnapshot = {
 } as DashboardSnapshot;
 
 const MOCK_NODES: NodeStatus[] = [
-  { code: "de", country: "Germany", host: "de-1.portal.net", ping_ms: 42, is_healthy: true },
+  { code: "nl", country: "Netherlands", host: "nl-1.portal.net", ping_ms: 44, is_healthy: true },
+  { code: "pl_free", country: "NL Free", host: "free-1.portal.net", ping_ms: 39, is_healthy: true },
   { code: "us", country: "United States", host: "us-1.portal.net", ping_ms: 128, is_healthy: true },
   { code: "pl", country: "Poland", host: "pl-1.portal.net", ping_ms: 38, is_healthy: true },
   { code: "it", country: "Italy", host: "it-1.portal.net", ping_ms: 55, is_healthy: false },
@@ -215,6 +229,14 @@ async function copyText(text: string): Promise<boolean> {
   } catch {
     return false;
   }
+}
+
+function firstNonEmpty(...values: Array<string | null | undefined>): string {
+  for (const value of values) {
+    const trimmed = String(value || "").trim();
+    if (trimmed) return trimmed;
+  }
+  return "";
 }
 
 /* ── Animated Counter Hook ── */
@@ -382,9 +404,15 @@ export default function App() {
   const [diagText, setDiagText] = useState("");
   const [speedText, setSpeedText] = useState("");
   const [banner, setBanner] = useState("");
+  const [clientApps, setClientApps] = useState<ClientAppsPayload | null>(null);
   const [probeBusy, setProbeBusy] = useState(false);
   const [selectedPlan, setSelectedPlan] = useState<string>("1_month");
-  const [selectedNodeCode, setSelectedNodeCode] = useState<string>("de");
+  const [selectedNodeCode, setSelectedNodeCode] = useState<string>("nl");
+  const [giftCode, setGiftCode] = useState("");
+  const [giftRedeemResult, setGiftRedeemResult] = useState("");
+  const [webLoginRequired, setWebLoginRequired] = useState(false);
+  const [webLoginError, setWebLoginError] = useState("");
+  const [webLoginBusy, setWebLoginBusy] = useState(false);
 
   const [aTab, setATab] = useState<AdminTab>("summary");
   const [admBusy, setAdmBusy] = useState(false);
@@ -475,38 +503,64 @@ export default function App() {
     }
   }, [loading, error]);
 
-  async function loadAll() {
-    if (!tgUser && !IS_DEV) {
-      setError("Откройте WebApp из Telegram-бота.");
+    async function loadAll() {
+    const hasWebSession = hasWebSessionToken();
+    if (!tgUser && !IS_DEV && !hasWebSession) {
+      setWebLoginRequired(true);
+      setError("");
       setLoading(false);
       return;
     }
-    if (!tgUser && IS_DEV) {
+    if (!tgUser && IS_DEV && !hasWebSession) {
       // Dev mode: use mock data for design preview
       setUser(MOCK_USER);
       setDash(MOCK_DASH);
       setNodes(MOCK_NODES);
       setPoints(MOCK_POINTS);
+      setClientApps(null);
       setTickets([]);
-      setSelectedNodeCode("de");
+      setSelectedNodeCode("nl");
       setLoading(false);
       return;
     }
     try {
       setLoading(true);
       setError("");
-      const [u, d, n, t, p] = await Promise.all([
-        fetchUser(tgUser!.id),
-        fetchDashboard(),
-        fetchNodeStatus(),
-        fetchTickets(20),
-        getPoints().catch(() => null),
-      ]);
+      setWebLoginRequired(false);
+
+      let u: UserPayload;
+      let d: DashboardSnapshot;
+      let n: NodeStatus[];
+      let t: TicketInfo[];
+      let p: PointsSnapshot | null;
+      let apps: ClientAppsPayload | null;
+
+      if (tgUser) {
+        [u, d, n, t, p, apps] = await Promise.all([
+          fetchUser(tgUser.id),
+          fetchDashboard(),
+          fetchNodeStatus(),
+          fetchTickets(20),
+          getPoints().catch(() => null),
+          fetchClientApps().catch(() => null),
+        ]);
+      } else {
+        d = await fetchDashboard();
+        [u, n, t, p, apps] = await Promise.all([
+          fetchUser(d.tg_id),
+          fetchNodeStatus(),
+          fetchTickets(20),
+          getPoints().catch(() => null),
+          fetchClientApps().catch(() => null),
+        ]);
+      }
+
       setUser(u);
       setDash(d);
       setNodes(n);
       setTickets(t);
       setPoints(p);
+      setClientApps(apps);
       if (n.length > 0) setSelectedNodeCode(n[0].code);
       if (u.is_admin) {
         const [s, at, an, m, au, promos, templates, giftCodes] = await Promise.all([
@@ -541,7 +595,12 @@ export default function App() {
       }
       void trackEvent("opened_webapp", "webapp", { tab: "status" });
     } catch (e: unknown) {
-      setError(String((e as { message?: string })?.message || e));
+      const msg = String((e as { message?: string })?.message || e);
+      if (!tgUser && msg.includes("Telegram auth required")) {
+        setWebLoginRequired(true);
+      } else {
+        setError(msg);
+      }
     } finally {
       setLoading(false);
     }
@@ -623,8 +682,59 @@ export default function App() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  useEffect(() => {
+    if (!webLoginRequired || tgUser || IS_DEV) return;
+    const host = document.getElementById("tg-login-widget");
+    if (!host) return;
+    host.innerHTML = "";
+    const botName = ((import.meta as any).env?.VITE_TELEGRAM_LOGIN_BOT || "portal_service_bot").trim();
+
+    window.onTelegramAuth = async (loginUser: any) => {
+      setWebLoginBusy(true);
+      setWebLoginError("");
+      try {
+        const res = await authByTelegramWebLogin(loginUser);
+        if (!res?.token) throw new Error("Missing web session token");
+        setWebSessionToken(res.token);
+        setWebLoginRequired(false);
+        await loadAll();
+      } catch (e: unknown) {
+        setWebLoginError(String((e as { message?: string })?.message || e));
+      } finally {
+        setWebLoginBusy(false);
+      }
+    };
+
+    const script = document.createElement("script");
+    script.async = true;
+    script.src = "https://telegram.org/js/telegram-widget.js?22";
+    script.setAttribute("data-telegram-login", botName);
+    script.setAttribute("data-size", "large");
+    script.setAttribute("data-userpic", "false");
+    script.setAttribute("data-request-access", "write");
+    script.setAttribute("data-radius", "12");
+    script.setAttribute("data-onauth", "onTelegramAuth(user)");
+    host.appendChild(script);
+
+    return () => {
+      host.innerHTML = "";
+      delete window.onTelegramAuth;
+    };
+  }, [webLoginRequired, tgUser]);
+
   function pulse(kind: "success" | "error") {
     if (user?.features?.haptic ?? true) haptic(kind);
+  }
+
+  function onLogoutWebSession() {
+    clearWebSessionToken();
+    setUser(null);
+    setDash(null);
+    setNodes([]);
+    setTickets([]);
+    setPoints(null);
+    setWebLoginRequired(true);
+    setError("");
   }
 
   async function onCopyKey(eventName: "copied_key" | "copy_used" = "copied_key") {
@@ -648,6 +758,21 @@ export default function App() {
       pulse("success");
     } catch {
       openLink(user?.actions.pay_via_bot || "");
+    }
+  }
+
+  async function onRedeemGift() {
+    const code = giftCode.trim();
+    if (!code) return;
+    try {
+      const res = await redeemGiftCode(code);
+      setGiftRedeemResult(`Код активирован: +${res?.days ?? 0} дней`);
+      setGiftCode("");
+      await loadAll();
+      pulse("success");
+    } catch (e: unknown) {
+      setGiftRedeemResult(String((e as { message?: string })?.message || e));
+      pulse("error");
     }
   }
 
@@ -872,15 +997,30 @@ export default function App() {
       ];
     }
     if (platform === "android") {
+      const fromApi = [
+        { title: "Google Play", url: clientApps?.android?.play_url || "" },
+        { title: "APK", url: clientApps?.android?.apk_url || "" },
+        { title: "Mirror", url: clientApps?.android?.mirror_url || "" },
+      ].filter((x) => x.url.trim().length > 0);
+      if (fromApi.length) return fromApi;
       return [
         { title: "Hiddify", url: "https://play.google.com/store/apps/details?id=app.hiddify.com" },
         { title: "v2rayNG", url: "https://github.com/2dust/v2rayNG/releases" },
       ];
     }
+    const desktopFromApi = [
+      { title: "Windows EXE", url: clientApps?.windows?.exe_url || "" },
+      { title: "Windows Mirror", url: clientApps?.windows?.mirror_url || "" },
+    ].filter((x) => x.url.trim().length > 0);
+    if (desktopFromApi.length) return desktopFromApi;
     return [
       { title: "Hiddify Next", url: "https://github.com/hiddify/hiddify-next/releases" },
       { title: "Nekoray", url: "https://github.com/MatsuriDayo/nekoray/releases" },
     ];
+  }
+
+  function docsLinkForConnect(): string {
+    return firstNonEmpty(clientApps?.docs_url, user?.support?.new_ticket_link, "https://t.me/" + (user?.support?.username || "portal_privacy_helpbot"));
   }
 
   async function runConnectImport() {
@@ -950,6 +1090,34 @@ export default function App() {
     );
   }
 
+  if (webLoginRequired) {
+    return (
+      <div className="app">
+        <div className="grain" />
+        <section className="card">
+          <div className="section-tag">[WEB LOGIN]</div>
+          <div className="card__title">Вход через Telegram</div>
+          <div className="muted" style={{ marginBottom: 12 }}>
+            Авторизуйтесь через Telegram Login, чтобы открыть личный кабинет в браузере.
+          </div>
+          <div id="tg-login-widget" style={{ minHeight: 56 }} />
+          {webLoginBusy ? <div className="muted" style={{ marginTop: 10 }}>Проверяю аккаунт...</div> : null}
+          {webLoginError ? <div className="muted" style={{ marginTop: 10, color: "#ff5a5f" }}>{webLoginError}</div> : null}
+          <div className="actions" style={{ marginTop: 12 }}>
+            <button className="btn btn--ghost" type="button" onClick={() => openLink("https://t.me/portal_service_bot")}>
+              <span style={{ position: "relative", zIndex: 1 }}>Открыть бота</span>
+            </button>
+            {hasWebSessionToken() ? (
+              <button className="btn btn--ghost" type="button" onClick={onLogoutWebSession}>
+                <span style={{ position: "relative", zIndex: 1 }}>Сбросить web-сессию</span>
+              </button>
+            ) : null}
+          </div>
+        </section>
+      </div>
+    );
+  }
+
   if (error || !user || !dash) {
     return (
       <div className="app">
@@ -967,7 +1135,7 @@ export default function App() {
     <div className="app">
       <div className="grain" />
 
-      {banner ? <div className="banner">{banner}</div> : null}
+      {banner ? <div className="banner" aria-live="polite">{banner}</div> : null}
 
       <header className="top">
         <div className="brand">
@@ -1000,6 +1168,13 @@ export default function App() {
               </div>
             </div>
           </div>
+          {!tgUser && hasWebSessionToken() ? (
+            <div className="actions" style={{ marginTop: 8 }}>
+              <button className="btn btn--ghost" type="button" onClick={onLogoutWebSession}>
+                <span style={{ position: "relative", zIndex: 1 }}>Выйти из web-сессии</span>
+              </button>
+            </div>
+          ) : null}
           <pre className="mono legal">{OFFER_FULL}</pre>
         </section>
       ) : null}
@@ -1070,6 +1245,7 @@ export default function App() {
               <div className="actions" style={{ marginTop: 12 }}>
                 <input
                   className="field"
+                  aria-label="User search"
                   value={admUsersQuery}
                   onChange={(e) => setAdmUsersQuery(e.target.value)}
                   placeholder="Поиск: @username или tg_id"
@@ -1146,6 +1322,7 @@ export default function App() {
 
                   <textarea
                     className="field field--area"
+                    aria-label="Message to user"
                     value={admUserMessageBody}
                     onChange={(e) => setAdmUserMessageBody(e.target.value)}
                     placeholder="Сообщение пользователю"
@@ -1162,6 +1339,7 @@ export default function App() {
               <div className="card__title">Создание manual-профиля</div>
               <input
                 className="field"
+                aria-label="Manual profile name"
                 value={admManualForm.display_name}
                 onChange={(e) => setAdmManualForm((v) => ({ ...v, display_name: e.target.value }))}
                 placeholder="Имя профиля"
@@ -1169,6 +1347,7 @@ export default function App() {
               <div className="actions" style={{ marginTop: 8 }}>
                 <input
                   className="field field--compact"
+                  aria-label="Manual profile days"
                   value={String(admManualForm.days)}
                   onChange={(e) =>
                     setAdmManualForm((v) => ({ ...v, days: Math.max(1, Number(e.target.value || 0) || 1) }))
@@ -1259,6 +1438,7 @@ export default function App() {
                   </div>
                   <textarea
                     className="field field--area"
+                    aria-label="Operator reply"
                     value={admReplyBody}
                     onChange={(e) => setAdmReplyBody(e.target.value)}
                     placeholder="Ответ оператора"
@@ -1278,12 +1458,14 @@ export default function App() {
               <div className="actions" style={{ marginTop: 12 }}>
                 <input
                   className="field field--compact"
+                  aria-label="Node sync limit"
                   value={admNodeSyncLimit}
                   onChange={(e) => setAdmNodeSyncLimit(Math.max(1, Number(e.target.value || 0) || 1))}
                   placeholder="limit"
                 />
                 <input
                   className="field field--compact"
+                  aria-label="Node sync user id"
                   value={admNodeSyncTgId}
                   onChange={(e) => setAdmNodeSyncTgId(e.target.value)}
                   placeholder="tg_id (optional)"
@@ -1338,6 +1520,7 @@ export default function App() {
               <div className="actions" style={{ marginTop: 8 }}>
                 <input
                   className="field field--compact"
+                  aria-label="Broadcast limit"
                   value={admBroadcastLimit}
                   onChange={(e) => setAdmBroadcastLimit(Math.max(1, Number(e.target.value || 0) || 1))}
                   placeholder="limit"
@@ -1345,6 +1528,7 @@ export default function App() {
               </div>
               <textarea
                 className="field field--area"
+                aria-label="Broadcast text"
                 value={admBroadcastText}
                 onChange={(e) => setAdmBroadcastText(e.target.value)}
                 placeholder="Текст рассылки"
@@ -1364,18 +1548,21 @@ export default function App() {
               <div className="actions">
                 <input
                   className="field field--compact"
+                  aria-label="Promo code"
                   value={admPromoForm.code}
                   onChange={(e) => setAdmPromoForm((v) => ({ ...v, code: e.target.value.toUpperCase() }))}
                   placeholder="CODE"
                 />
                 <input
                   className="field field--compact"
+                  aria-label="Promo value"
                   value={String(admPromoForm.value)}
                   onChange={(e) => setAdmPromoForm((v) => ({ ...v, value: Math.max(1, Number(e.target.value || 0) || 1) }))}
                   placeholder="value"
                 />
                 <input
                   className="field field--compact"
+                  aria-label="Promo uses"
                   value={String(admPromoForm.uses_left)}
                   onChange={(e) => setAdmPromoForm((v) => ({ ...v, uses_left: Number(e.target.value || 0) || 0 }))}
                   placeholder="uses (-1∞)"
@@ -1396,6 +1583,7 @@ export default function App() {
               <div className="actions" style={{ marginTop: 8 }}>
                 <input
                   className="field"
+                  aria-label="Promo expires at"
                   value={admPromoForm.expires_at}
                   onChange={(e) => setAdmPromoForm((v) => ({ ...v, expires_at: e.target.value }))}
                   placeholder="expires_at ISO (опционально)"
@@ -1430,6 +1618,7 @@ export default function App() {
                       </button>
                       <input
                         className="field field--compact"
+                        aria-label={`Promo ${p.code} value`}
                         value={String(p.value)}
                         onChange={(e) =>
                           setAdmPromosRows((rows) =>
@@ -1440,6 +1629,7 @@ export default function App() {
                       />
                       <input
                         className="field field--compact"
+                        aria-label={`Promo ${p.code} uses`}
                         value={String(p.uses_left)}
                         onChange={(e) =>
                           setAdmPromosRows((rows) =>
@@ -1450,6 +1640,7 @@ export default function App() {
                       />
                       <input
                         className="field"
+                        aria-label={`Promo ${p.code} expires at`}
                         value={p.expires_at || ""}
                         onChange={(e) =>
                           setAdmPromosRows((rows) =>
@@ -1477,6 +1668,7 @@ export default function App() {
               <div className="actions">
                 <input
                   className="field field--compact"
+                  aria-label="Template key"
                   value={admTemplateForm.key}
                   onChange={(e) => setAdmTemplateForm((v) => ({ ...v, key: e.target.value.toLowerCase() }))}
                   placeholder="key"
@@ -1484,6 +1676,7 @@ export default function App() {
               </div>
               <textarea
                 className="field field--area"
+                aria-label="Template text"
                 value={admTemplateForm.text}
                 onChange={(e) => setAdmTemplateForm((v) => ({ ...v, text: e.target.value }))}
                 placeholder="Текст шаблона"
@@ -1510,6 +1703,7 @@ export default function App() {
               </div>
               <textarea
                 className="field field--area"
+                aria-label="Template edit text"
                 value={admTemplateEdit.text}
                 onChange={(e) => setAdmTemplateEdit((v) => ({ ...v, text: e.target.value }))}
                 placeholder="Выберите шаблон для редактирования"
@@ -1613,6 +1807,11 @@ export default function App() {
             <div className="muted" style={{ marginBottom: 8 }}>
               {`Баллы: ${points?.available_points ?? 0} | Сгорают скоро: ${points?.expiring_soon_points ?? 0}`}
             </div>
+            {dash.free_next_reset_at ? (
+              <div className="muted" style={{ marginBottom: 8 }}>
+                {`Следующий reset FREE: ${fmtDate(dash.free_next_reset_at)}`}
+              </div>
+            ) : null}
 
             {dash.active_offer ? (
               <div className="pill pill--ok" style={{ marginBottom: 12 }}>
@@ -1644,6 +1843,20 @@ export default function App() {
                 <span style={{ position: "relative", zIndex: 1 }}>Скопировать ключ</span>
               </button>
             </div>
+            <div className="card__title" style={{ marginTop: 14 }}>Подарочный код</div>
+            <div className="actions">
+              <input
+                className="field field--compact"
+                aria-label="Gift code"
+                placeholder="PORTAL-XXXX-XXXX"
+                value={giftCode}
+                onChange={(e) => setGiftCode(e.target.value)}
+              />
+              <button className="btn btn--ghost" type="button" onClick={() => void onRedeemGift()}>
+                <span style={{ position: "relative", zIndex: 1 }}>Активировать</span>
+              </button>
+            </div>
+            {giftRedeemResult ? <div className="muted" style={{ marginTop: 8 }}>{giftRedeemResult}</div> : null}
           </div>
         ) : null}
 
@@ -1673,25 +1886,20 @@ export default function App() {
 
             <div className="list">
               {clientOptionsForPlatform().map((c) => (
-                <div
+                <a
                   key={c.title}
                   className="row row--btn"
-                  role="button"
-                  tabIndex={0}
-                  onClick={() => openLink(c.url)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter" || e.key === " ") {
-                      e.preventDefault();
-                      openLink(c.url);
-                    }
-                  }}
+                  href={c.url}
+                  target="_blank"
+                  rel="noreferrer"
+                  onClick={() => void trackEvent("open_client_store", "webapp", { platform, title: c.title })}
                 >
                   <div>
                     <div className="row__title">{c.title}</div>
                     <div className="row__sub">Рекомендуемый клиент</div>
                   </div>
                   <span style={{ color: "var(--red)", fontFamily: "var(--mono)", fontSize: 12 }}>→</span>
-                </div>
+                </a>
               ))}
             </div>
 
@@ -1708,7 +1916,7 @@ export default function App() {
               <button className="btn btn--ghost" type="button" onClick={() => onCopyKey("copy_used")}>
                 <span style={{ position: "relative", zIndex: 1 }}>Если не сработало: копировать</span>
               </button>
-              <button className="btn btn--ghost" type="button" onClick={() => openLink("https://t.me/" + (user.support?.username || "portal_privacy_helpbot"))}>
+              <button className="btn btn--ghost" type="button" onClick={() => openLink(docsLinkForConnect())}>
                 <span style={{ position: "relative", zIndex: 1 }}>Инструкция</span>
               </button>
             </div>
@@ -1767,7 +1975,7 @@ export default function App() {
                 <span style={{ position: "relative", zIndex: 1 }}>Открыть бот поддержки</span>
               </button>
             </div>
-            <textarea className="field field--area" value={ticketBody} onChange={(e) => setTicketBody(e.target.value)} placeholder="Опишите проблему..." />
+            <textarea className="field field--area" aria-label="Ticket description" value={ticketBody} onChange={(e) => setTicketBody(e.target.value)} placeholder="Опишите проблему..." />
             <div className="actions" style={{ marginTop: 8 }}>
               <button
                 className="btn"
@@ -1805,7 +2013,7 @@ export default function App() {
                     </div>
                   ))}
                 </div>
-                <textarea className="field field--area" value={replyBody} onChange={(e) => setReplyBody(e.target.value)} placeholder="Ответ..." />
+                <textarea className="field field--area" aria-label="Ticket reply" value={replyBody} onChange={(e) => setReplyBody(e.target.value)} placeholder="Ответ..." />
                 <button
                   className="btn"
                   type="button"
@@ -1842,3 +2050,4 @@ export default function App() {
     </div>
   );
 }
+

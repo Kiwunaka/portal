@@ -332,3 +332,133 @@ To keep old bot online with a fixed migration notice:
    - `python /root/portal_bot/legacy_redirect_bot.py`
 
 This bot only sends migration text + button to the new bot and does not process payments.
+
+## Client App Links Via Env
+
+The API endpoint `GET /api/client/apps` returns links for Android/Windows clients.
+
+Set these environment variables in `/root/portal_bot/.env`:
+
+- `APP_ANDROID_PLAY_URL`
+- `APP_ANDROID_APK_URL`
+- `APP_ANDROID_MIRROR_URL`
+- `APP_WINDOWS_EXE_URL`
+- `APP_WINDOWS_MIRROR_URL`
+- `APP_DOCS_URL`
+
+Apply and restart:
+
+```bash
+systemctl restart portal-api portal-bot
+```
+
+## Release Checklist (Android/Windows Artifacts)
+
+1. Publish APK/EXE to GitHub Releases in the client fork.
+2. Mirror artifacts to your download host.
+3. Update env URLs listed above.
+4. Restart backend services.
+5. Deploy static apps (`webapp`, `marketing`).
+6. Run smoke:
+   - `python scripts/smoke_client_apps.py --base-url https://<domain>:2096 --init-data '<telegram_init_data>' --insecure`
+7. Verify endpoints:
+   - `GET /api/health`
+   - `GET /api/client/apps`
+8. Verify download links return `200/302` and installation docs open correctly.
+
+## Legal Gate Record
+
+Commercial fork permission for the selected client core is treated as approved for this project release cycle. Keep the written approval in your private operator archive and reference release date + approver in release notes.
+
+## 2026-02 L4 Rollout (Brain as Router)
+
+Goal:
+- keep `brain` as control-plane/site/bot host
+- route user traffic by geo through L4 on `:443`
+- keep Italy risk low with phased cutover
+
+Phase A:
+1. Configure HAProxy TCP routing on brain (`infra/brain-haproxy-l4.cfg`).
+2. Move Caddy to internal `:4443` (`infra/Caddyfile.internal`).
+3. Point DNS `pl.<domain>`, `nl.<domain>`, `free.<domain>` to brain.
+4. Keep `it.<domain>` on direct worker IP.
+5. Observe 24-48h (latency/error/active sessions).
+
+Phase B:
+1. Point `it.<domain>` to brain.
+2. Re-check latency/error against baseline before/after switch.
+
+Safety:
+- Do not disable direct worker DNS until cutover SLO gate passes.
+- Keep rollback DNS records ready.
+
+## 2026-02 Public URLs Without Custom Ports
+
+Runtime defaults now assume:
+- `PUBLIC_API_BASE_URL=https://<domain>`
+- `WEBAPP_URL=https://<domain>/webapp/`
+
+Quick checks:
+- `GET https://<domain>/api/health`
+- `GET https://<domain>/webapp/`
+- `GET https://<domain>/s8Kx2mP7qR4wT/<token>`
+
+After stabilization:
+- close public `:8444`
+- keep `:2096` only as temporary rollback path for one release window
+
+## 2026-02 External Payment Callbacks
+
+Implemented routes:
+- `GET/POST /pay/success`
+- `GET/POST /pay/fail`
+- `POST/GET /api/payments/result/{provider}`
+- `POST/GET /api/payments/refund/{provider}`
+- `POST/GET /api/payments/chargeback/{provider}`
+- `POST/GET /api/payments/freekassa/notify`
+
+DB tables:
+- `external_orders`
+- `external_payment_events`
+
+Runbook:
+- `docs/16-payments-callback-runbook.md`
+
+## 2026-02 Release: FREE policy + domains + payment URLs
+
+### FREE defaults
+
+- `FREE_LIMIT_IP=1`
+- `FREE_TOTAL_GB=30`
+- `FREE_SPEED_LIMIT_KBPS=6250` (50 Mbps)
+- `FREE_CYCLE_DAYS=30`
+
+### FREE monthly reset
+
+- New DB fields in `users`: `free_cycle_anchor_at`, `free_cycle_last_reset_at`, `free_cycle_next_reset_at`.
+- Worker job resets due FREE users every 30 days from anchor and applies panel-side traffic reset.
+
+### Domains
+
+- Site + web cabinet: `portal-privacy.online` (`/webapp/`)
+- API + callbacks + subscription: `kiwunaka.space`
+
+### Payment URLs for validation
+
+Freekassa:
+- Notify: `https://kiwunaka.space/api/payments/freekassa/notify` (`POST`)
+- Success: `https://kiwunaka.space/pay/success` (`GET`)
+- Fail: `https://kiwunaka.space/pay/fail` (`GET`)
+
+Cardlink:
+- Store: `https://portal-privacy.online/`
+- Success: `https://kiwunaka.space/pay/success`
+- Fail: `https://kiwunaka.space/pay/fail`
+- Result: `https://kiwunaka.space/api/payments/result/cardlink`
+- Refund: `https://kiwunaka.space/api/payments/refund/cardlink`
+- Chargeback: `https://kiwunaka.space/api/payments/chargeback/cardlink`
+
+### Fee math (RUB)
+
+- `net = ((P * 0.935) - 2) * 0.965 = 0.902275 * P - 1.93`
+- `fee = P - net = 0.097725 * P + 1.93`
