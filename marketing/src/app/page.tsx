@@ -13,6 +13,7 @@ const CHECKOUT_URL = process.env.NEXT_PUBLIC_CHECKOUT_PAGE_URL || "/checkout";
 const BOT_FAST_URL = process.env.NEXT_PUBLIC_PAY_CHECKOUT_URL || TG_BOT_FALLBACK;
 const WEBAPP_URL = (process.env.NEXT_PUBLIC_WEBAPP_URL || "https://portal-privacy.online/webapp/").trim();
 const TG_NEWS_CHANNEL = (process.env.NEXT_PUBLIC_NEWS_CHANNEL || "portal_privacy").replace("@", "").trim();
+const TG_NEWS_POST_ID = (process.env.NEXT_PUBLIC_NEWS_POST_ID || "").trim();
 const SOCIAL_PROOF_URL = (process.env.NEXT_PUBLIC_SOCIAL_PROOF_URL || "").trim();
 const APP_ANDROID_PLAY_URL = (process.env.NEXT_PUBLIC_APP_ANDROID_PLAY_URL || "").trim();
 const APP_ANDROID_APK_URL = (process.env.NEXT_PUBLIC_APP_ANDROID_APK_URL || "").trim();
@@ -758,6 +759,28 @@ function AccessPaths() {
 
 function TelegramNews() {
   if (!TG_NEWS_CHANNEL) return null;
+
+  const widgetRef = useRef<HTMLDivElement | null>(null);
+  const hasWidgetPost = /^[0-9]+$/.test(TG_NEWS_POST_ID);
+
+  useEffect(() => {
+    if (!hasWidgetPost || !widgetRef.current) return;
+    const host = widgetRef.current;
+    host.innerHTML = "";
+
+    const script = document.createElement("script");
+    script.async = true;
+    script.src = "https://telegram.org/js/telegram-widget.js?22";
+    script.setAttribute("data-telegram-post", `${TG_NEWS_CHANNEL}/${TG_NEWS_POST_ID}`);
+    script.setAttribute("data-width", "100%");
+    script.setAttribute("data-dark", "1");
+    host.appendChild(script);
+
+    return () => {
+      host.innerHTML = "";
+    };
+  }, [hasWidgetPost]);
+
   return (
     <section className="downloads" id="news">
       <div className="section-tag">[NEWS]</div>
@@ -766,12 +789,18 @@ function TelegramNews() {
         <p>Официальные обновления проекта из Telegram-канала.</p>
       </div>
       <div style={{ border: "1px solid var(--line)", minHeight: 420, overflow: "hidden" }}>
-        <iframe
-          src={`https://t.me/s/${TG_NEWS_CHANNEL}`}
-          title="Project news"
-          style={{ width: "100%", height: 420, border: "0" }}
-          loading="lazy"
-        />
+        {hasWidgetPost ? (
+          <div ref={widgetRef} style={{ minHeight: 420 }} />
+        ) : (
+          <div style={{ padding: 20 }}>
+            <p style={{ margin: 0 }}>Встроенная лента недоступна в вашем браузере.</p>
+            <p style={{ marginTop: 8 }}>
+              <a href={`https://t.me/${TG_NEWS_CHANNEL}`} className="download-link" target="_blank" rel="noreferrer">
+                Открыть канал в Telegram
+              </a>
+            </p>
+          </div>
+        )}
       </div>
     </section>
   );

@@ -23,7 +23,7 @@ import uuid
 from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any
-from urllib.parse import parse_qsl
+from urllib.parse import parse_qsl, urlparse
 
 import aiohttp
 from dotenv import load_dotenv
@@ -664,6 +664,30 @@ def _safe_public_url(value: str) -> str:
     return str(value or "").strip()
 
 
+def _public_webapp_url() -> str:
+    host = str(getattr(Settings, "PUBLIC_WEB_DOMAIN", "") or "").strip().strip("/")
+    if host:
+        return f"https://{host}/webapp/"
+    return _safe_public_url(getattr(Settings, "WEBAPP_URL", "")) or "/webapp/"
+
+
+def _public_checkout_url() -> str:
+    configured = _safe_public_url(getattr(Settings, "PAY_CHECKOUT_URL", ""))
+    if configured:
+        try:
+            parsed = urlparse(configured)
+            cfg_host = (parsed.hostname or "").lower().strip()
+            if cfg_host and not cfg_host.endswith("kiwunaka.space"):
+                return configured
+        except Exception:
+            return configured
+
+    host = str(getattr(Settings, "PUBLIC_WEB_DOMAIN", "") or "").strip().strip("/")
+    if host:
+        return f"https://{host}/checkout"
+    return configured
+
+
 def _normalize_provider(provider: str) -> str:
     return re.sub(r"[^a-z0-9_-]", "", str(provider or "").strip().lower())
 
@@ -1253,7 +1277,7 @@ async def auth_session(request: Request, x_telegram_init_data: str = Header(defa
 async def pay_success(request: Request):
     if request.method == "POST":
         return {"ok": True, "status": "success"}
-    action = _safe_public_url(Settings.WEBAPP_URL) or "/webapp/"
+    action = _public_webapp_url()
     return HTMLResponse(
         content=_payment_page_html(
             title="Оплата подтверждена",
@@ -1268,7 +1292,7 @@ async def pay_success(request: Request):
 async def pay_fail(request: Request):
     if request.method == "POST":
         return {"ok": False, "status": "failed"}
-    action = _safe_public_url(Settings.PAY_CHECKOUT_URL) or (f"https://t.me/{BOT_USERNAME}" if BOT_USERNAME else "/")
+    action = _public_checkout_url() or (f"https://t.me/{BOT_USERNAME}" if BOT_USERNAME else "/")
     return HTMLResponse(
         content=_payment_page_html(
             title="Платеж не завершен",

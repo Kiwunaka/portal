@@ -597,6 +597,7 @@ export default function App() {
     } catch (e: unknown) {
       const msg = String((e as { message?: string })?.message || e);
       if (!tgUser && msg.includes("Telegram auth required")) {
+        clearWebSessionToken();
         setWebLoginRequired(true);
       } else {
         setError(msg);

@@ -401,6 +401,9 @@ async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
       const r = await fetch(`${base}${path}`, { ...init, headers });
       if (!r.ok) {
         const text = await r.text();
+        if (r.status === 401 && !getInitData() && getWebSessionToken()) {
+          clearWebSessionToken();
+        }
         throw new Error(text || `API error: ${r.status}`);
       }
       if (r.status === 204) return {} as T;
