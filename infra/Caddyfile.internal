@@ -10,9 +10,12 @@
     @portal_redirect_api path /api/* /pay/* /s8Kx2mP7qR4wT/*
     redir @portal_redirect_api https://kiwunaka.space{uri} 308
 
-    handle /webapp/* {
+    @webapp_noslash path /webapp
+    redir @webapp_noslash /webapp/ 308
+
+    handle_path /webapp/* {
       root * /var/www/portal/webapp
-      try_files {path} /webapp/index.html
+      try_files {path} /index.html
       file_server
     }
 
