@@ -2310,8 +2310,12 @@ def build_choose_tariff_text() -> str:
         if paid_nodes
         else ("1 локация" if nodes else "1 локация")
     )
-    free_node = next((n for n in nodes if _node_code_base(getattr(n, "code", "")) == "pl"), None)
-    free_label = _node_label_ru_bot(getattr(free_node, "code", "pl"), getattr(free_node, "name", "Польша")) if nodes else "🇵🇱 Польша"
+    free_node = next((n for n in nodes if "free" in (getattr(n, "code", "") or "").lower()), None)
+    free_label = (
+        _node_label_ru_bot(getattr(free_node, "code", "free"), getattr(free_node, "name", "NL Free"))
+        if free_node
+        else "🇳🇱 NL Free"
+    )
 
     s3 = _tariff_savings_pct("3_months")
     s6 = _tariff_savings_pct("6_months")

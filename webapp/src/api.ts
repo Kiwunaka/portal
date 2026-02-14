@@ -340,14 +340,13 @@ function getWebSessionToken(): string {
 
 function applyAuthHeaders(headers: Headers): void {
   const initData = getInitData();
-  if (initData) {
-    headers.set("X-Telegram-Init-Data", initData);
-    return;
-  }
   const token = getWebSessionToken();
   if (token) {
     headers.set("Authorization", `Bearer ${token}`);
     headers.set("X-Web-Auth-Token", token);
+  }
+  if (initData) {
+    headers.set("X-Telegram-Init-Data", initData);
   }
 }
 

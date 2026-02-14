@@ -1331,6 +1331,10 @@ async def admin_metrics_status(request: Request, x_telegram_init_data: str = Hea
     s = SessionLocal()
     try:
         last_sample = s.query(func.max(NodeHealthSample.sampled_at)).scalar()
+        if not last_sample:
+            # Fallback for environments where sample table may be temporarily empty
+            # but per-node health timestamps are present.
+            last_sample = s.query(func.max(Node.last_health_at)).scalar()
         age_seconds = int((now - last_sample).total_seconds()) if last_sample else None
         return {
             "status": "fresh" if (age_seconds is not None and age_seconds <= stale_after_seconds) else "stale",
