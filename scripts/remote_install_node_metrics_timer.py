@@ -36,7 +36,7 @@ def main() -> int:
     ap.add_argument("--ssh-user", default="root")
     ap.add_argument("--ssh-port", type=int, default=29374)
     ap.add_argument("--passwords", default=str(DEFAULT_PASSWORDS))
-    ap.add_argument("--workdir", default="/root/portal")
+    ap.add_argument("--workdir", default="/root/portal_bot")
     ap.add_argument("--collector-cmd", default="")
     args = ap.parse_args()
 
@@ -44,9 +44,9 @@ def main() -> int:
     if not password:
         raise SystemExit("Missing brain password")
 
-    collector_cmd = args.collector_cmd.strip() or f"/usr/bin/python3 {args.workdir.rstrip('/')}/scripts/collect_node_metrics.py"
-    service_body = SERVICE_TEMPLATE.replace("WorkingDirectory=/root/portal", f"WorkingDirectory={args.workdir.rstrip('/')}").replace(
-        "ExecStart=/usr/bin/python3 /root/portal/scripts/collect_node_metrics.py", f"ExecStart={collector_cmd}"
+    collector_cmd = args.collector_cmd.strip() or f"{args.workdir.rstrip('/')}/venv/bin/python {args.workdir.rstrip('/')}/collect_node_metrics.py"
+    service_body = SERVICE_TEMPLATE.replace("WorkingDirectory=/root/portal_bot", f"WorkingDirectory={args.workdir.rstrip('/')}").replace(
+        "ExecStart=/root/portal_bot/venv/bin/python /root/portal_bot/collect_node_metrics.py", f"ExecStart={collector_cmd}"
     )
     timer_body = TIMER_TEMPLATE
 
