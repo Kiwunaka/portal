@@ -186,6 +186,7 @@ INBOUND_ID_BACKUP = int(os.getenv("INBOUND_ID_BACKUP", "0"))  # Optional legacy 
 
 # Server
 HOST_DOMAIN = os.getenv("HOST_DOMAIN") or os.getenv("DOMAIN") or "kiwunaka.space"
+PUBLIC_WEB_DOMAIN = (os.getenv("PUBLIC_WEB_DOMAIN") or "").strip()
 VLESS_PORT = int(os.getenv("VLESS_PORT", "443"))
 VLESS_SNI = os.getenv("VLESS_SNI", "yahoo.com")
 VLESS_PBK = os.getenv("VLESS_PBK", "")
@@ -195,7 +196,8 @@ VLESS_FLOW = os.getenv("VLESS_FLOW", "xtls-rprx-vision")
 
 # URLs
 # Cache-buster helps Telegram in-app webview pick up new builds quickly.
-WEBAPP_URL = os.getenv("WEBAPP_URL", f"https://{HOST_DOMAIN}/webapp/?v=20260214")
+_WEBAPP_DEFAULT_HOST = PUBLIC_WEB_DOMAIN or HOST_DOMAIN
+WEBAPP_URL = os.getenv("WEBAPP_URL", f"https://{_WEBAPP_DEFAULT_HOST}/webapp/?v=20260214")
 PUBLIC_API_BASE_URL = os.getenv("PUBLIC_API_BASE_URL", f"https://{HOST_DOMAIN}")
 SUPPORT_USERNAME = (os.getenv("SUPPORT_USERNAME") or "portal_privacy_helpbot").lstrip("@")
 SUPPORT_USERNAME = (os.getenv("SUPPORT_BOT_USERNAME") or SUPPORT_USERNAME).lstrip("@")

@@ -45,6 +45,26 @@
     respond "Not Found" 404
   }
 
+  @pay_host host pay.kiwunaka.space
+  handle @pay_host {
+    @subscription path /s8Kx2mP7qR4wT/*
+    handle @subscription {
+      reverse_proxy 127.0.0.1:2096
+    }
+
+    @api path /api/*
+    handle @api {
+      reverse_proxy 127.0.0.1:2096
+    }
+
+    @pay path /pay/*
+    handle @pay {
+      reverse_proxy 127.0.0.1:2096
+    }
+
+    respond "Not Found" 404
+  }
+
   # Unknown hosts default to marketing site.
   handle {
     root * /var/www/portal/marketing
