@@ -42,6 +42,7 @@ export type ClientAppsPayload = {
 export type DashboardSnapshot = {
   tg_id: number;
   sub_type: string;
+  current_plan_code?: string | null;
   segment?: string;
   is_active: boolean;
   expiry_at?: string | null;
@@ -147,6 +148,8 @@ export type UserPayload = {
   channel: {
     username: string;
     link: string;
+    subscriber?: boolean;
+    speed_bump_active?: boolean;
   };
   actions: {
     open_helpbot: string;
@@ -197,6 +200,15 @@ export type PayAttemptStartResult = {
   plan_code: string;
   amount_stars: number;
   pay_url: string;
+};
+
+export type RubCheckoutStartResult = {
+  ok: boolean;
+  order_id: string;
+  payment_url?: string | null;
+  amount_rub: number;
+  currency: string;
+  status: string;
 };
 
 export type BonusPayload = {
@@ -556,6 +568,31 @@ export function startPayAttempt(plan_code: string, source = "webapp", offer_id?:
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ plan_code, source, offer_id: offer_id ?? null }),
   });
+}
+
+export function createRubCheckoutOrder(payload: {
+  plan_code: string;
+  source?: "site" | "bot";
+  tg_id?: number;
+  campaign?: string;
+  promo_code?: string;
+  currency?: string;
+}): Promise<RubCheckoutStartResult> {
+  return apiFetch("/api/payments/freekassa/orders/create", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+}
+
+export function checkChannelSubscriberStatus(): Promise<{
+  ok: boolean;
+  subscriber: boolean;
+  reason?: string;
+  points_granted?: number;
+  campaign_marked?: boolean;
+}> {
+  return apiFetch("/api/channel/subscriber/check", { method: "POST" });
 }
 
 export function confirmConnect(): Promise<{ ok: boolean; event_id?: number | null }> {

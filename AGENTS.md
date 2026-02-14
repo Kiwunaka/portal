@@ -35,6 +35,20 @@ Responsibilities:
 - Implement kinetic typography on marketing site (primary visual language)
 - Keep copy compliant: do not mention "VPN"
 
+### marketing-copywriter
+Scope:
+- `marketing/`
+- `webapp/`
+- `portal_bot/`
+- `docs/` (copy packs and campaign playbooks)
+
+Responsibilities:
+- Write conversion-focused copy for landing, checkout, bot, and WebApp
+- Build soft-sell user journeys (welcome, T-3 renewal, retention/reactivation)
+- Prepare promo/campaign text packs for deep links and channel posts
+- Keep tone premium-friendly and claims realistic
+- Keep public copy compliant: do not mention "VPN"
+
 ### docs
 Scope:
 - `docs/`

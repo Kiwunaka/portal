@@ -16,6 +16,7 @@ from pathlib import Path
 from io import BytesIO
 from datetime import datetime, timedelta, timezone
 from typing import Optional
+from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
 
 import aiohttp
 import qrcode
@@ -199,6 +200,11 @@ VLESS_FLOW = os.getenv("VLESS_FLOW", "xtls-rprx-vision")
 _WEBAPP_DEFAULT_HOST = PUBLIC_WEB_DOMAIN or HOST_DOMAIN
 WEBAPP_URL = os.getenv("WEBAPP_URL", f"https://{_WEBAPP_DEFAULT_HOST}/webapp/?v=20260214")
 PUBLIC_API_BASE_URL = os.getenv("PUBLIC_API_BASE_URL", f"https://{HOST_DOMAIN}")
+PAY_CHECKOUT_URL = (
+    os.getenv("PAY_CHECKOUT_URL")
+    or os.getenv("CHECKOUT_URL")
+    or f"https://{(PUBLIC_WEB_DOMAIN or HOST_DOMAIN)}/checkout"
+).strip()
 SUPPORT_USERNAME = (os.getenv("SUPPORT_USERNAME") or "portal_privacy_helpbot").lstrip("@")
 SUPPORT_USERNAME = (os.getenv("SUPPORT_BOT_USERNAME") or SUPPORT_USERNAME).lstrip("@")
 APP_ANDROID_PLAY_URL = (os.getenv("APP_ANDROID_PLAY_URL") or "https://play.google.com/store/apps/details?id=app.hiddify.com").strip()
@@ -277,6 +283,7 @@ OPENING_PREMIUM_CAMPAIGN_KEY = (
     (os.getenv("OPENING_PREMIUM_CAMPAIGN_KEY") or f"opening_premium_{OPENING_PREMIUM_DAYS}d").strip()[:64]
 )
 CHANNEL_PREMIUM_DAYS = max(1, int(os.getenv("CHANNEL_PREMIUM_DAYS", "10")))
+BOT_RUB_BUTTON_ENABLED = _env_bool("BOT_RUB_BUTTON_ENABLED", default=False)
 
 
 def _inline_button_supported_fields() -> set[str]:
@@ -1268,6 +1275,53 @@ async def _try_activate_opening_premium_bonus(
 def _channel_name_for_url() -> str:
     channel = (NEWS_CHANNEL_ID or "@portal_privacy").strip().lstrip("@")
     return channel or "portal_privacy"
+
+
+def _bot_checkout_url(
+    tg_id: int,
+    *,
+    plan_code: str | None = None,
+    promo_code: str | None = None,
+    campaign_key: str | None = None,
+) -> str:
+    base = (PAY_CHECKOUT_URL or "").strip() or f"https://{(PUBLIC_WEB_DOMAIN or HOST_DOMAIN)}/checkout"
+    parsed = urlsplit(base)
+    query = dict(parse_qsl(parsed.query, keep_blank_values=True))
+    query["source"] = "bot"
+    query["tg_id"] = str(int(tg_id))
+    if plan_code:
+        query["plan"] = str(plan_code).strip().lower()
+    if promo_code:
+        query["promo"] = str(promo_code).strip().upper()
+    if campaign_key:
+        query["campaign"] = str(campaign_key).strip()[:64]
+    built_query = urlencode(query)
+    # Keep relative path if PAY_CHECKOUT_URL is relative.
+    if parsed.scheme and parsed.netloc:
+        return urlunsplit((parsed.scheme, parsed.netloc, parsed.path or "/checkout", built_query, parsed.fragment))
+    return urlunsplit(("", "", parsed.path or "/checkout", built_query, parsed.fragment))
+
+
+def _parse_start_deeplink_context(start_arg: str) -> tuple[str, str]:
+    raw = (start_arg or "").strip()
+    if not raw:
+        return "", ""
+    lowered = raw.lower()
+    promo_code = ""
+    campaign_key = ""
+
+    if lowered.startswith("promo_") and len(raw) > len("promo_"):
+        promo_code = raw[len("promo_"):].strip().upper()[:20]
+    elif lowered.startswith("campaign_") and len(raw) > len("campaign_"):
+        campaign_key = raw[len("campaign_"):].strip()[:64]
+        # Supported format: campaign_<KEY>__promo_<CODE>
+        marker = "__promo_"
+        if marker in campaign_key.lower():
+            idx = campaign_key.lower().find(marker)
+            promo_code = campaign_key[idx + len(marker):].strip().upper()[:20]
+            campaign_key = campaign_key[:idx].strip()[:64]
+
+    return promo_code, campaign_key
 
 
 def _channel_bonus_ineligible_reason(*, tg_id: int, user: User | None) -> str | None:
@@ -2334,6 +2388,10 @@ def build_choose_tariff_text() -> str:
         savings.append(f"1 год: -{s12}%")
     savings_line = (" (" + ", ".join(savings) + ")") if savings else ""
 
+    payment_hint = "_Оплата Telegram Stars — мгновенная активация._"
+    if BOT_RUB_BUTTON_ENABLED:
+        payment_hint = "_Оплата ₽ на сайте — основной путь. Telegram Stars доступны как резервный._"
+
     return (
         "💎 *Выберите уровень доступа*\n\n"
         f"🆓 *Бесплатный* — 1 страна: {free_label}\n"
@@ -2342,8 +2400,35 @@ def build_choose_tariff_text() -> str:
         "Бесплатный: соцсети + AI, медиасервисы могут идти напрямую.\n"
         f"Премиум: полный доступ, переключение стран, до {PAID_LIMIT_IP} устройств.\n\n"
         f"💰 *Выгода при оплате на срок:*{savings_line}\n\n"
-        "_Оплата Telegram Stars — мгновенная активация._"
+        f"{payment_hint}"
     )
+
+
+def _dual_pay_text() -> str:
+    return (
+        "💳 *Оплата в рублях + Stars*\n\n"
+        "Рекомендуем путь через сайт: карта/СБП и быстрый checkout.\n"
+        "Telegram Stars остаются как резервный способ.\n\n"
+        "Выберите, как продолжить:"
+    )
+
+
+def _dual_pay_keyboard(*, tg_id: int, show_trial: bool) -> InlineKeyboardMarkup:
+    ctx = checkout_context_by_user.get(int(tg_id), {}) if checkout_context_by_user else {}
+    checkout_url = _bot_checkout_url(
+        tg_id=int(tg_id),
+        plan_code=str(ctx.get("plan_code") or ""),
+        promo_code=str(ctx.get("promo_code") or ""),
+        campaign_key=str(ctx.get("campaign_key") or ""),
+    )
+    rows: list[list[InlineKeyboardButton]] = [
+        [InlineKeyboardButton(text="💳 Оплатить ₽ (карта/СБП)", url=checkout_url)],
+        [InlineKeyboardButton(text="⭐ Оплатить Stars", callback_data="charge_stars")],
+    ]
+    if show_trial:
+        rows.append([InlineKeyboardButton(text="🆓 Бесплатный режим", callback_data="buy_trial")])
+    rows.append([InlineKeyboardButton(text="◀️ Назад", callback_data="back")])
+    return InlineKeyboardMarkup(inline_keyboard=rows)
 
 def main_keyboard_specs(tg_id: int = 0) -> list[list[dict[str, str]]]:
     rows = [
@@ -2467,6 +2552,8 @@ async def cmd_start(message: Message):
 
     start_arg = ""
     referral_code = None
+    deeplink_promo_code = ""
+    deeplink_campaign_key = ""
     if message.text:
         parts = message.text.split()
         if len(parts) > 1:
@@ -2476,6 +2563,7 @@ async def cmd_start(message: Message):
                 code_part = code_part[4:]
             if code_part.upper().startswith("SWAZ") and len(code_part) == 8:
                 referral_code = code_part.upper()
+            deeplink_promo_code, deeplink_campaign_key = _parse_start_deeplink_context(start_arg)
 
     try:
         await message.delete()
@@ -2509,6 +2597,13 @@ async def cmd_start(message: Message):
     if referral_code:
         set_referrer_by_code(tg_id, referral_code)
     update_user_username(tg_id, username)
+    if deeplink_campaign_key:
+        _mark_campaign_claim_once(tg_id=int(tg_id), campaign_key=deeplink_campaign_key[:64])
+    if deeplink_promo_code or deeplink_campaign_key:
+        checkout_context_by_user[int(tg_id)] = {
+            "promo_code": str(deeplink_promo_code or "").upper()[:20],
+            "campaign_key": str(deeplink_campaign_key or "")[:64],
+        }
 
     promo_requested = bool(
         OPENING_PREMIUM_ENABLED
@@ -2547,6 +2642,29 @@ async def cmd_start(message: Message):
             )
             return
 
+    if deeplink_promo_code:
+        if check_tos_accepted(tg_id):
+            ok, result = activate_promo_code_for_user(tg_id, deeplink_promo_code)
+            await message.answer(result, parse_mode=ParseMode.MARKDOWN)
+            track_event(
+                tg_id=int(tg_id),
+                event_name="deep_link_opened",
+                source="bot",
+                meta={
+                    "kind": "promo",
+                    "promo_code": str(deeplink_promo_code).upper()[:20],
+                    "campaign_key": str(deeplink_campaign_key or "")[:64] or None,
+                    "applied": bool(ok),
+                },
+            )
+        else:
+            pending_auto_promo_codes[int(tg_id)] = str(deeplink_promo_code).upper()[:20]
+            await message.answer(
+                "🎟️ Промокод из ссылки сохранён.\n"
+                "Сначала примите условия оферты, затем промокод применится автоматически.",
+                parse_mode=ParseMode.MARKDOWN,
+            )
+
     if not created_new:
         ok = await _send_text_with_specs(
             bot=message.bot,
@@ -2584,6 +2702,7 @@ async def back_to_main(callback: CallbackQuery):
     tg_id = callback.from_user.id
     pending_redeem_codes.discard(tg_id)
     pending_promo_codes.discard(tg_id)
+    pending_auto_promo_codes.pop(int(tg_id), None)
     
     ok = await _edit_text_with_specs(
         bot=callback.message.bot,
@@ -2621,12 +2740,37 @@ async def show_tariffs(callback: CallbackQuery):
     expiry = _naive_utc(user.expiry_at) if user else None
     has_active = bool(user and user.is_active and expiry and expiry > now and _normalize_sub_type(user.sub_type) != "FREE")
     show_trial = not has_active
+
+    if BOT_RUB_BUTTON_ENABLED:
+        await callback.message.edit_text(
+            _dual_pay_text(),
+            reply_markup=_dual_pay_keyboard(tg_id=tg_id, show_trial=show_trial),
+            parse_mode=ParseMode.MARKDOWN,
+        )
+        await callback.answer()
+        return
+
     show_gb_only = False  # Kept for legacy UI compatibility.
-    
     await callback.message.edit_text(
         build_choose_tariff_text(),
         reply_markup=tariff_keyboard(tg_id, show_trial, show_gb_only, include_long_plans=False),
-        parse_mode=ParseMode.MARKDOWN
+        parse_mode=ParseMode.MARKDOWN,
+    )
+    await callback.answer()
+
+
+@router.callback_query(F.data == "charge_stars")
+async def show_tariffs_stars(callback: CallbackQuery):
+    tg_id = callback.from_user.id
+    user = get_user(tg_id)
+    now = _utcnow()
+    expiry = _naive_utc(user.expiry_at) if user else None
+    has_active = bool(user and user.is_active and expiry and expiry > now and _normalize_sub_type(user.sub_type) != "FREE")
+    show_trial = not has_active
+    await callback.message.edit_text(
+        build_choose_tariff_text(),
+        reply_markup=tariff_keyboard(tg_id, show_trial, show_gb_only=False, include_long_plans=False),
+        parse_mode=ParseMode.MARKDOWN,
     )
     await callback.answer()
 
@@ -2657,6 +2801,17 @@ async def accept_tos(callback: CallbackQuery):
     
     # Mark TOS as accepted
     set_tos_accepted(tg_id)
+
+    auto_promo = (pending_auto_promo_codes.pop(int(tg_id), "") or "").strip().upper()
+    if auto_promo:
+        ok, result = activate_promo_code_for_user(tg_id, auto_promo)
+        await callback.message.answer(result, parse_mode=ParseMode.MARKDOWN)
+        track_event(
+            tg_id=int(tg_id),
+            event_name="deep_link_opened",
+            source="bot",
+            meta={"kind": "promo_after_tos", "promo_code": auto_promo, "applied": bool(ok)},
+        )
     
     # Now show tariffs
     user = get_user(tg_id)
@@ -2665,13 +2820,19 @@ async def accept_tos(callback: CallbackQuery):
     expiry = _naive_utc(user.expiry_at) if user else None
     has_active = bool(user and user.is_active and expiry and expiry > now and _normalize_sub_type(user.sub_type) != "FREE")
     show_trial = not has_active
-    show_gb_only = False
-    
-    await callback.message.edit_text(
-        build_choose_tariff_text(),
-        reply_markup=tariff_keyboard(tg_id, show_trial, show_gb_only, include_long_plans=False),
-        parse_mode=ParseMode.MARKDOWN
-    )
+    if BOT_RUB_BUTTON_ENABLED:
+        await callback.message.edit_text(
+            _dual_pay_text(),
+            reply_markup=_dual_pay_keyboard(tg_id=tg_id, show_trial=show_trial),
+            parse_mode=ParseMode.MARKDOWN,
+        )
+    else:
+        show_gb_only = False
+        await callback.message.edit_text(
+            build_choose_tariff_text(),
+            reply_markup=tariff_keyboard(tg_id, show_trial, show_gb_only, include_long_plans=False),
+            parse_mode=ParseMode.MARKDOWN,
+        )
     await callback.answer("✅ Условия приняты!")
 
 @router.callback_query(F.data == "status")
@@ -2724,6 +2885,11 @@ async def show_status(callback: CallbackQuery):
             status_text += f"\n📊 Бесплатный лимит: до `{int(total_gb)}` ГБ\n⏳ Остаток: `н/д`"
         else:
             status_text += f"\n📊 Бесплатный остаток: `{remaining_gb}` из `{int(total_gb)}` ГБ"
+        is_subscriber = await check_subscription(tg_id, callback.message.bot)
+        if is_subscriber:
+            status_text += "\n📢 Канал: `подписка подтверждена` — профиль ускорен."
+        else:
+            status_text += "\n📢 Канал: `не подтверждена` — работает базовый профиль FREE."
     panel_snapshot = await _panel_online_snapshot(tg_id)
     status_text += f"\n🌐 Онлайн: `{_panel_online_text(panel_snapshot)}`"
     status_text += f"\n🕓 Последний онлайн: `{_panel_last_online_text(panel_snapshot)}`"
@@ -3711,6 +3877,8 @@ pending_ticket_replies: dict[int, int] = {}
 # Pending one-shot inputs from buttons in "More" menu.
 pending_redeem_codes: set[int] = set()
 pending_promo_codes: set[int] = set()
+pending_auto_promo_codes: dict[int, str] = {}
+checkout_context_by_user: dict[int, dict[str, str]] = {}
 
 @router.message(Command("review"))
 async def review_command(message: Message):
@@ -6340,23 +6508,15 @@ async def _activate_trial_tariff(
     user = get_user(tg_id)
     tariff = TARIFFS["trial"]
 
-    if not await check_subscription(tg_id, bot):
+    is_subscribed = await check_subscription(tg_id, bot)
+    if not is_subscribed:
         channel_name = _channel_name_for_url()
-        kb = InlineKeyboardMarkup(
-            inline_keyboard=[
-                [InlineKeyboardButton(text="📢 Подписаться", url=f"https://t.me/{channel_name}")],
-                [InlineKeyboardButton(text="✅ Проверить", callback_data=retry_callback_data)],
-                [InlineKeyboardButton(text="◀️ Назад", callback_data="charge")],
-            ]
-        )
-        await callback.message.edit_text(
-            "🔒 *Доступ ограничен*\n\n"
-            "Для активации бесплатного режима подпишитесь на канал обновлений и нажмите «Проверить».",
-            reply_markup=kb,
+        await callback.message.answer(
+            "⚡ *Базовый профиль FREE активируется без блокировки.*\n\n"
+            "Если подпишетесь на канал, получите приоритетный профиль и бонусы.\n"
+            f"Канал: https://t.me/{channel_name}",
             parse_mode=ParseMode.MARKDOWN,
         )
-        await callback.answer()
-        return
 
     now = _utcnow()
     current_sub = _normalize_sub_type(user.sub_type if user else "")

@@ -35,6 +35,7 @@ def run_migrations(engine: Engine) -> None:
                 ("referral_code", "VARCHAR(10)"),
                 ("first_purchase_done", "BOOLEAN DEFAULT 0"),
                 ("sub_token", "VARCHAR(64)"),
+                ("current_plan_code", "VARCHAR(32)"),
                 ("streak_months", "INTEGER DEFAULT 0"),
                 ("streak_last_check", "DATETIME"),
                 ("channel_bonus_claimed_at", "DATETIME"),
@@ -272,6 +273,10 @@ def run_migrations(engine: Engine) -> None:
                   tg_id BIGINT,
                   provider VARCHAR(32) NOT NULL,
                   plan_code VARCHAR(32),
+                  source VARCHAR(32),
+                  campaign VARCHAR(64),
+                  promo_code VARCHAR(32),
+                  meta_json TEXT,
                   amount FLOAT DEFAULT 0,
                   currency VARCHAR(16) DEFAULT 'RUB',
                   status VARCHAR(24) DEFAULT 'created',
@@ -290,6 +295,16 @@ def run_migrations(engine: Engine) -> None:
                 "ON external_orders(provider, order_id);"
             )
         )
+        if conn.execute(text("SELECT name FROM sqlite_master WHERE type='table' AND name='external_orders';")).fetchone():
+            wanted_external_cols = [
+                ("source", "VARCHAR(32)"),
+                ("campaign", "VARCHAR(64)"),
+                ("promo_code", "VARCHAR(32)"),
+                ("meta_json", "TEXT"),
+            ]
+            for col, ddl in wanted_external_cols:
+                if not _sqlite_column_exists(conn, "external_orders", col):
+                    conn.execute(text(f"ALTER TABLE external_orders ADD COLUMN {col} {ddl};"))
 
         conn.execute(
             text(
@@ -397,6 +412,7 @@ def _run_postgres_migrations(engine: Engine) -> None:
         conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS free_cycle_anchor_at TIMESTAMP;"))
         conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS free_cycle_last_reset_at TIMESTAMP;"))
         conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS free_cycle_next_reset_at TIMESTAMP;"))
+        conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS current_plan_code VARCHAR(32);"))
 
         conn.execute(
             text(
@@ -407,6 +423,10 @@ def _run_postgres_migrations(engine: Engine) -> None:
                   tg_id BIGINT,
                   provider VARCHAR(32) NOT NULL,
                   plan_code VARCHAR(32),
+                  source VARCHAR(32),
+                  campaign VARCHAR(64),
+                  promo_code VARCHAR(32),
+                  meta_json TEXT,
                   amount DOUBLE PRECISION DEFAULT 0,
                   currency VARCHAR(16) DEFAULT 'RUB',
                   status VARCHAR(24) DEFAULT 'created',
@@ -416,6 +436,10 @@ def _run_postgres_migrations(engine: Engine) -> None:
                 """
             )
         )
+        conn.execute(text("ALTER TABLE external_orders ADD COLUMN IF NOT EXISTS source VARCHAR(32);"))
+        conn.execute(text("ALTER TABLE external_orders ADD COLUMN IF NOT EXISTS campaign VARCHAR(64);"))
+        conn.execute(text("ALTER TABLE external_orders ADD COLUMN IF NOT EXISTS promo_code VARCHAR(32);"))
+        conn.execute(text("ALTER TABLE external_orders ADD COLUMN IF NOT EXISTS meta_json TEXT;"))
         conn.execute(text("CREATE INDEX IF NOT EXISTS ix_external_orders_order_id ON external_orders(order_id);"))
         conn.execute(text("CREATE INDEX IF NOT EXISTS ix_external_orders_tg_id ON external_orders(tg_id);"))
         conn.execute(text("CREATE INDEX IF NOT EXISTS ix_external_orders_provider ON external_orders(provider);"))

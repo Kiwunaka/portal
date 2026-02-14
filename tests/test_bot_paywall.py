@@ -157,6 +157,29 @@ class BotPaywallTests(unittest.TestCase):
         self.assertEqual(reason2, "already_claimed")
         self.assertEqual(calls, [1001])
 
+    def test_parse_start_deeplink_context_supports_promo_and_campaign(self) -> None:
+        promo, campaign = self.bot_module._parse_start_deeplink_context("promo_newyear")
+        self.assertEqual(promo, "NEWYEAR")
+        self.assertEqual(campaign, "")
+
+        promo2, campaign2 = self.bot_module._parse_start_deeplink_context("campaign_launch__promo_welcome14")
+        self.assertEqual(promo2, "WELCOME14")
+        self.assertEqual(campaign2, "launch")
+
+    def test_bot_checkout_url_includes_tracking_context(self) -> None:
+        self.bot_module.PAY_CHECKOUT_URL = "https://portal-privacy.online/checkout?from=bot"
+        url = self.bot_module._bot_checkout_url(
+            1001,
+            plan_code="start_99",
+            promo_code="WELCOME14",
+            campaign_key="launch_week_1",
+        )
+        self.assertIn("source=bot", url)
+        self.assertIn("tg_id=1001", url)
+        self.assertIn("plan=start_99", url)
+        self.assertIn("promo=WELCOME14", url)
+        self.assertIn("campaign=launch_week_1", url)
+
 
 if __name__ == "__main__":
     unittest.main()

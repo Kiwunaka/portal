@@ -247,6 +247,44 @@ def spend_points(*, tg_id: int, amount: int, pay_attempt_id: int | None = None, 
         s.close()
 
 
+def award_points(
+    *,
+    tg_id: int,
+    amount: int,
+    reason: str,
+    expires_days: int | None = None,
+    ref_tg_id: int | None = None,
+    pay_attempt_id: int | None = None,
+) -> int:
+    grant = max(0, int(amount))
+    if grant <= 0:
+        return 0
+    now = _now()
+    exp = None
+    if expires_days is not None:
+        exp_days = max(1, int(expires_days))
+        exp = now + timedelta(days=exp_days)
+    s = _session()
+    try:
+        row = PointsLedger(
+            tg_id=int(tg_id),
+            delta_points=int(grant),
+            reason=(reason or "manual_award")[:64],
+            ref_tg_id=int(ref_tg_id) if ref_tg_id is not None else None,
+            pay_attempt_id=int(pay_attempt_id) if pay_attempt_id is not None else None,
+            expires_at=exp,
+            created_at=now,
+        )
+        s.add(row)
+        s.commit()
+        return int(grant)
+    except Exception:
+        s.rollback()
+        return 0
+    finally:
+        s.close()
+
+
 def preview_redeemable_points(
     *,
     tg_id: int,

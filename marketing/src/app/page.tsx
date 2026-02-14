@@ -13,8 +13,8 @@ const CHECKOUT_URL = process.env.NEXT_PUBLIC_CHECKOUT_PAGE_URL || "/checkout";
 const BOT_FAST_URL = process.env.NEXT_PUBLIC_PAY_CHECKOUT_URL || TG_BOT_FALLBACK;
 const WEBAPP_URL = (process.env.NEXT_PUBLIC_WEBAPP_URL || "https://portal-privacy.online/webapp/").trim();
 const TG_NEWS_CHANNEL = (process.env.NEXT_PUBLIC_NEWS_CHANNEL || "portal_privacy").replace("@", "").trim();
-const TG_NEWS_POST_ID = (process.env.NEXT_PUBLIC_NEWS_POST_ID || "").trim();
 const SOCIAL_PROOF_URL = (process.env.NEXT_PUBLIC_SOCIAL_PROOF_URL || "").trim();
+const LIVE_UPDATES_JSON = (process.env.NEXT_PUBLIC_LIVE_UPDATES_JSON || "").trim();
 const APP_ANDROID_PLAY_URL = (process.env.NEXT_PUBLIC_APP_ANDROID_PLAY_URL || "").trim();
 const APP_ANDROID_APK_URL = (process.env.NEXT_PUBLIC_APP_ANDROID_APK_URL || "").trim();
 const APP_ANDROID_MIRROR_URL = (process.env.NEXT_PUBLIC_APP_ANDROID_MIRROR_URL || "").trim();
@@ -24,6 +24,13 @@ const APP_DOCS_URL = (process.env.NEXT_PUBLIC_APP_DOCS_URL || "").trim();
 const CONTACT_EMAIL = (process.env.NEXT_PUBLIC_CONTACT_EMAIL || "support@kiwunaka.space").trim();
 const CONTACT_TG_URL = (process.env.NEXT_PUBLIC_CONTACT_TG_URL || "https://t.me/portal_privacy_helpbot").trim();
 const CONTACT_FORM_URL = (process.env.NEXT_PUBLIC_CONTACT_FORM_URL || "https://t.me/portal_privacy_helpbot").trim();
+
+type LiveUpdate = {
+  title: string;
+  summary: string;
+  date: string;
+  link: string;
+};
 
 const FEATURES = [
   { type: "01×", title: "Мгновенное подключение", desc: "Ключ выдаётся через Telegram и импортируется в 1-2 шага. Без регистрации, без паролей.", num: "01" },
@@ -35,12 +42,52 @@ const FEATURES = [
 ];
 
 const PLANS = [
-  { code: "1m", name: "1 месяц", desc: "5 устройств • 4 страны • поддержка", price: "249 ⭐", note: "Якорь цены", tag: "Старт", tone: "anchor" },
-  { code: "3m", name: "3 месяца", desc: "5 устройств • 4 страны • полный доступ", price: "699 ⭐", note: "~233 ⭐/мес • экономия 6%", tag: "" },
-  { code: "6m", name: "6 месяцев", desc: "5 устройств • 4 страны • decoy для сравнения", price: "1199 ⭐", note: "~200 ⭐/мес • экономия 20%", tag: "Decoy", tone: "decoy" },
-  { code: "9m", name: "9 месяцев", desc: "5 устройств • 4 страны • оптимальный горизонт", price: "1399 ⭐", note: "~155 ⭐/мес • экономия 38%", tag: "Оптимум" },
-  { code: "12m", name: "12 месяцев", desc: "5 устройств • 4 страны • максимум выгоды", price: "1499 ⭐", note: "~125 ⭐/мес • экономия 50%", tag: "Рекомендуем", tone: "recommended" },
+  { code: "start_99", name: "Start", desc: "30 дней • 1 устройство • NL", price: "99 ₽", note: "Мягкий вход и проверка качества в реальном трафике", tag: "Вход", tone: "anchor" },
+  { code: "pro_249", name: "Pro", desc: "1 месяц • до 5 устройств • все страны", price: "249 ₽", note: "Основной тариф для работы, видео и ежедневного использования", tag: "Популярный", tone: "recommended" },
+  { code: "ultra_1499", name: "Ultra / Family", desc: "12 месяцев • до 5 устройств • приоритетные узлы", price: "1499 ₽", note: "Лучшая цена за месяц и стабильный запас по сроку", tag: "Выгода" },
 ];
+
+const DEFAULT_LIVE_UPDATES: LiveUpdate[] = [
+  {
+    title: "Новые узлы NL/PL",
+    summary: "Добавлены свежие маршруты, обновлены рекомендации по клиентам для мобильных устройств.",
+    date: "2026-02-14",
+    link: `https://t.me/${TG_NEWS_CHANNEL}/1`,
+  },
+  {
+    title: "Промо-неделя для новых пользователей",
+    summary: "Стартовые предложения по подписке и бонусы за переход в канал проекта.",
+    date: "2026-02-13",
+    link: `https://t.me/${TG_NEWS_CHANNEL}/2`,
+  },
+  {
+    title: "Гайд по быстрому подключению",
+    summary: "Обновили пошаговые инструкции и deep links для популярных клиентов.",
+    date: "2026-02-12",
+    link: `https://t.me/${TG_NEWS_CHANNEL}/3`,
+  },
+];
+
+function parseLiveUpdates(raw: string): LiveUpdate[] {
+  if (!raw) return DEFAULT_LIVE_UPDATES;
+  try {
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return DEFAULT_LIVE_UPDATES;
+    const rows = parsed
+      .map((item) => ({
+        title: String(item?.title || "").trim(),
+        summary: String(item?.summary || "").trim(),
+        date: String(item?.date || "").trim(),
+        link: String(item?.link || "").trim(),
+      }))
+      .filter((item) => item.title && item.link);
+    return rows.slice(0, 3).length ? rows.slice(0, 3) : DEFAULT_LIVE_UPDATES;
+  } catch {
+    return DEFAULT_LIVE_UPDATES;
+  }
+}
+
+const LIVE_UPDATES = parseLiveUpdates(LIVE_UPDATES_JSON);
 
 const FAQS = [
   { q: "Как получить доступ?", a: "Откройте Telegram-бот, выберите тариф и получите персональный ключ. Без регистрации." },
@@ -70,10 +117,10 @@ const MARQUEE_ITEMS = [
 ];
 
 const SEGMENT_CTA = {
-  FREE: { label: "Мягкий апгрейд", price: "149⭐", period: "за первый месяц", note: "Все страны и полный режим без резкой смены сценария." },
-  PAID: { label: "Продление без паузы", price: "1399⭐", period: "за 9 месяцев", note: "Сохраните текущий уровень и выгодную среднюю стоимость месяца." },
-  EXPIRED: { label: "Возврат доступа", price: "249⭐", period: "за 1 месяц", note: "Чтобы защита не прерывалась и ключ оставался актуальным." },
-  MANUAL: { label: "План для ручного профиля", price: "699⭐", period: "за 3 месяца", note: "Удобное стандартное продление для ручной выдачи." },
+  FREE: { label: "Мягкий апгрейд", price: "99₽", period: "за Start-план", note: "Проверка сервиса с минимальным порогом входа." },
+  PAID: { label: "Продление без паузы", price: "1399₽", period: "за 9 месяцев", note: "Фиксируйте выгодный горизонт и стабильный доступ." },
+  EXPIRED: { label: "Возврат доступа", price: "249₽", period: "за 1 месяц", note: "Быстрый возврат в рабочий режим без ожиданий." },
+  MANUAL: { label: "План для ручного профиля", price: "699₽", period: "за 3 месяца", note: "Удобное продление с прозрачной стоимостью." },
 } as const;
 
 type SegmentKey = keyof typeof SEGMENT_CTA;
@@ -757,50 +804,59 @@ function AccessPaths() {
   );
 }
 
-function TelegramNews() {
+function ProjectChannel() {
   if (!TG_NEWS_CHANNEL) return null;
 
-  const widgetRef = useRef<HTMLDivElement | null>(null);
-  const hasWidgetPost = /^[0-9]+$/.test(TG_NEWS_POST_ID);
+  return (
+    <section className="downloads" id="project-channel">
+      <div className="section-tag">[CHANNEL]</div>
+      <div className="downloads-head">
+        <h2>КАНАЛ ПРОЕКТА</h2>
+        <p>Подпишитесь, чтобы получать обновления узлов, офферы продления и быстрые инструкции при изменениях маршрутов.</p>
+      </div>
+      <div className="downloads-grid">
+        <article className="download-card">
+          <h3>Зачем подписываться</h3>
+          <p>Релизы новых узлов, рекомендации по клиентам и акции по продлению появляются сначала в канале.</p>
+          <div className="download-actions">
+            <a href={`https://t.me/${TG_NEWS_CHANNEL}`} className="download-link" target="_blank" rel="noreferrer">
+              Подписаться в Telegram
+            </a>
+          </div>
+        </article>
+        <article className="download-card">
+          <h3>Бонус подписчика</h3>
+          <p>В кабинете можно подтвердить подписку и получить welcome-бонус баллами для скидки.</p>
+          <div className="download-actions">
+            <a href={WEBAPP_URL} className="download-link" target="_blank" rel="noreferrer">Открыть кабинет</a>
+          </div>
+        </article>
+      </div>
+    </section>
+  );
+}
 
-  useEffect(() => {
-    if (!hasWidgetPost || !widgetRef.current) return;
-    const host = widgetRef.current;
-    host.innerHTML = "";
-
-    const script = document.createElement("script");
-    script.async = true;
-    script.src = "https://telegram.org/js/telegram-widget.js?22";
-    script.setAttribute("data-telegram-post", `${TG_NEWS_CHANNEL}/${TG_NEWS_POST_ID}`);
-    script.setAttribute("data-width", "100%");
-    script.setAttribute("data-dark", "1");
-    host.appendChild(script);
-
-    return () => {
-      host.innerHTML = "";
-    };
-  }, [hasWidgetPost]);
-
+function LiveUpdates() {
   return (
     <section className="downloads" id="news">
-      <div className="section-tag">[NEWS]</div>
+      <div className="section-tag">[LIVE UPDATES]</div>
       <div className="downloads-head">
-        <h2>НОВОСТИ</h2>
-        <p>Официальные обновления проекта из Telegram-канала.</p>
+        <h2>ПОСЛЕДНИЕ ОБНОВЛЕНИЯ</h2>
+        <p>Три свежих апдейта с прямыми переходами в Telegram-посты.</p>
       </div>
-      <div style={{ border: "1px solid var(--line)", minHeight: 420, overflow: "hidden" }}>
-        {hasWidgetPost ? (
-          <div ref={widgetRef} style={{ minHeight: 420 }} />
-        ) : (
-          <div style={{ padding: 20 }}>
-            <p style={{ margin: 0 }}>Встроенная лента недоступна в вашем браузере.</p>
-            <p style={{ marginTop: 8 }}>
-              <a href={`https://t.me/${TG_NEWS_CHANNEL}`} className="download-link" target="_blank" rel="noreferrer">
-                Открыть канал в Telegram
+      <div className="downloads-grid">
+        {LIVE_UPDATES.map((item) => (
+          <article className="download-card" key={`${item.date}-${item.title}`}>
+            <h3>{item.title}</h3>
+            <p>{item.summary}</p>
+            <div className="download-actions">
+              <a href={item.link} className="download-link" target="_blank" rel="noreferrer">
+                Открыть пост
               </a>
-            </p>
-          </div>
-        )}
+              <span className="download-empty">{item.date}</span>
+            </div>
+          </article>
+        ))}
       </div>
     </section>
   );
@@ -854,7 +910,8 @@ export default function HomePage() {
         <Downloads />
         <AccessPaths />
         <CTA />
-        <TelegramNews />
+        <ProjectChannel />
+        <LiveUpdates />
         <FAQ />
         <Footer />
       </main>

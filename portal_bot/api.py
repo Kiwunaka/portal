@@ -29,7 +29,7 @@ import aiohttp
 from dotenv import load_dotenv
 from fastapi import FastAPI, Header, HTTPException, Query, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, PlainTextResponse
 from pydantic import BaseModel, Field
 from sqlalchemy import or_, func
 
@@ -76,6 +76,7 @@ from pay_attempts_service import start_attempt
 from points_service import (
     EXPIRY_DAYS as POINTS_EXPIRY_DAYS,
     MONTHLY_CAP as POINTS_MONTHLY_CAP,
+    award_points,
     available_points,
     preview_redeemable_points,
     referral_tier_snapshot,
@@ -111,8 +112,16 @@ OPENING_PREMIUM_DAYS = max(1, env_int("OPENING_PREMIUM_DAYS", 14))
 OPENING_PREMIUM_CAMPAIGN_KEY = (
     os.getenv("OPENING_PREMIUM_CAMPAIGN_KEY") or f"opening_premium_{OPENING_PREMIUM_DAYS}d"
 ).strip()[:64]
+CHANNEL_SUBSCRIBER_CAMPAIGN_KEY = (
+    os.getenv("CHANNEL_SUBSCRIBER_CAMPAIGN_KEY")
+    or getattr(Settings, "CHANNEL_SUBSCRIBER_CAMPAIGN_KEY", "")
+    or "channel_subscriber_v1"
+).strip()[:64]
 MAX_BROADCAST_LIMIT = env_int("MAX_BROADCAST_LIMIT", 1000)
 PAY_CHECKOUT_URL = (os.getenv("PAY_CHECKOUT_URL") or "").strip()
+RUB_CHECKOUT_ENABLED = env_bool("RUB_CHECKOUT_ENABLED", default=False)
+CHANNEL_SPEED_BUMP_ENABLED = env_bool("CHANNEL_SPEED_BUMP_ENABLED", default=False)
+FREE_SPEED_BUMP_UNSUB_KBPS = max(1, env_int("FREE_SPEED_BUMP_UNSUB_KBPS", 1250))
 WEBAPP_ENABLE_HAPTIC = env_bool("WEBAPP_ENABLE_HAPTIC", default=True)
 WEBAPP_ENABLE_LOTTIE = env_bool("WEBAPP_ENABLE_LOTTIE", default=True)
 WEBAPP_DEV_AUTH = env_bool("WEBAPP_DEV_AUTH", default=False)
@@ -139,12 +148,134 @@ API_PLAN_PRICES = {
     "9_months": 1399,
     "12_months": 1499,
 }
+RUB_PLAN_PRICES = {
+    "start_99": {"amount_rub": 99, "days": 30},
+    "1_month": {"amount_rub": 249, "days": 30},
+    "3_months": {"amount_rub": 699, "days": 91},
+    "6_months": {"amount_rub": 1199, "days": 182},
+    "9_months": {"amount_rub": 1399, "days": 273},
+    "12_months": {"amount_rub": 1499, "days": 365},
+}
 GIFT_CARD_TYPES = {
     "mini": {"days": 7, "stars": 59, "name": "Mini"},
     "standard": {"days": 30, "stars": 249, "name": "Standard"},
     "premium": {"days": 90, "stars": 699, "name": "Premium"},
 }
 PAYMENT_PROVIDER_WHITELIST = {"aaio", "cardlink", "freekassa"}
+FK_NOTIFY_IP_ALLOWLIST = [
+    x.strip()
+    for x in (os.getenv("FK_NOTIFY_IP_ALLOWLIST") or "").split(",")
+    if x.strip()
+]
+
+
+def _fk_shop_configs() -> dict[str, dict[str, str]]:
+    out: dict[str, dict[str, str]] = {}
+    pairs = {
+        "site": {
+            "shop_id": (os.getenv("FK_SITE_SHOP_ID") or "").strip(),
+            "api_key": (os.getenv("FK_SITE_API_KEY") or "").strip(),
+            "secret_word_1": (os.getenv("FK_SITE_SECRET_WORD_1") or "").strip(),
+            "secret_word_2": (os.getenv("FK_SITE_SECRET_WORD_2") or "").strip(),
+        },
+        "bot": {
+            "shop_id": (os.getenv("FK_BOT_SHOP_ID") or "").strip(),
+            "api_key": (os.getenv("FK_BOT_API_KEY") or "").strip(),
+            "secret_word_1": (os.getenv("FK_BOT_SECRET_WORD_1") or "").strip(),
+            "secret_word_2": (os.getenv("FK_BOT_SECRET_WORD_2") or "").strip(),
+        },
+    }
+    for key, cfg in pairs.items():
+        if cfg["shop_id"]:
+            out[key] = cfg
+    return out
+
+
+def _fk_shop_by_source(source: str) -> dict[str, str]:
+    shops = _fk_shop_configs()
+    src = (source or "site").strip().lower()
+    if src in shops:
+        return shops[src]
+    if "site" in shops:
+        return shops["site"]
+    if "bot" in shops:
+        return shops["bot"]
+    return {}
+
+
+def _fk_shop_by_merchant_id(merchant_id: str) -> dict[str, str]:
+    mid = str(merchant_id or "").strip()
+    if not mid:
+        return {}
+    for cfg in _fk_shop_configs().values():
+        if str(cfg.get("shop_id") or "").strip() == mid:
+            return cfg
+    return {}
+
+
+def _fk_flatten_values(value: Any) -> list[str]:
+    if isinstance(value, dict):
+        parts: list[str] = []
+        for k in sorted(value.keys(), key=lambda x: str(x)):
+            parts.extend(_fk_flatten_values(value.get(k)))
+        return parts
+    if isinstance(value, list):
+        out: list[str] = []
+        for item in value:
+            out.extend(_fk_flatten_values(item))
+        return out
+    if isinstance(value, bool):
+        return ["1" if value else "0"]
+    if value is None:
+        return [""]
+    return [str(value)]
+
+
+def _fk_api_signature(*, api_key: str, payload: dict[str, Any]) -> str:
+    top = {
+        "data": payload.get("data"),
+        "iat": payload.get("iat"),
+        "nonce": payload.get("nonce"),
+        "shopId": payload.get("shopId"),
+    }
+    values = _fk_flatten_values(top)
+    base = "|".join(values)
+    return hmac.new(api_key.encode("utf-8"), base.encode("utf-8"), hashlib.sha256).hexdigest()
+
+
+def _fk_sci_signature(*, merchant_id: str, amount: str, order_id: str, secret_word_2: str) -> str:
+    base = f"{merchant_id}:{amount}:{secret_word_2}:{order_id}"
+    return hashlib.md5(base.encode("utf-8")).hexdigest()
+
+
+def _fk_client_ip(request: Request) -> str:
+    forwarded = (request.headers.get("x-forwarded-for") or "").strip()
+    if forwarded:
+        return forwarded.split(",")[0].strip()
+    return str(getattr(getattr(request, "client", None), "host", "") or "")
+
+
+def _is_ip_allowed(ip: str, allowlist: list[str]) -> bool:
+    if not allowlist:
+        return True
+    try:
+        ip_obj = ipaddress.ip_address(ip)
+    except Exception:
+        return False
+    for raw in allowlist:
+        token = str(raw or "").strip()
+        if not token:
+            continue
+        try:
+            if "/" in token:
+                if ip_obj in ipaddress.ip_network(token, strict=False):
+                    return True
+            else:
+                if ip_obj == ipaddress.ip_address(token):
+                    return True
+        except Exception:
+            continue
+    return False
 
 
 class TicketMessageIn(BaseModel):
@@ -249,9 +380,29 @@ class PayAttemptStartIn(BaseModel):
     offer_id: int | None = None
 
 
+class FreekassaOrderCreateIn(BaseModel):
+    plan_code: str = Field(min_length=2, max_length=32)
+    source: str = Field(default="site", max_length=16)
+    tg_id: int | None = None
+    campaign: str | None = Field(default=None, max_length=64)
+    promo_code: str | None = Field(default=None, max_length=32)
+    currency: str = Field(default="RUB", max_length=8)
+
+
+class FreekassaOrderActionOut(BaseModel):
+    ok: bool
+    provider: str = "freekassa"
+    order_id: str
+    payment_url: str | None = None
+    amount_rub: float
+    currency: str = "RUB"
+    status: str
+
+
 class DashboardResponse(BaseModel):
     tg_id: int
     sub_type: str
+    current_plan_code: str | None = None
     is_active: bool
     expiry_at: str | None
     used_gb: float
@@ -327,10 +478,25 @@ def _plan_total_gb(user: User) -> int:
 
 
 def _plan_device_limit(user: User) -> int:
+    plan_code = str(getattr(user, "current_plan_code", "") or "").strip().lower()
+    if plan_code == "start_99":
+        return 1
     st = (user.sub_type or "").upper()
     if st == "FREE":
         return max(0, int(FREE_LIMIT_IP))
     return max(0, int(PAID_LIMIT_IP))
+
+
+def _effective_free_speed_kbps(user: User) -> int:
+    base = max(1, int(FREE_SPEED_LIMIT_KBPS))
+    if (user.sub_type or "").upper() != "FREE":
+        return base
+    if not CHANNEL_SPEED_BUMP_ENABLED:
+        return base
+    # If channel subscription is not confirmed, keep conservative speed profile.
+    if not _user_has_channel_subscriber_mark(user):
+        return max(1, int(FREE_SPEED_BUMP_UNSUB_KBPS))
+    return base
 
 
 def _gb_to_bytes(gb: int) -> int:
@@ -360,11 +526,13 @@ def _maybe_downgrade_expired_to_free(s, user: User) -> bool:
         if (user.sub_type or "").upper() == "FREE":
             # Already free but expired; extend so the free profile stays usable.
             user.expiry_at = datetime.utcnow() + timedelta(days=int(AUTO_FREE_DAYS))
+            user.current_plan_code = "trial"
             ensure_user_free_cycle_state(user)
             s.commit()
             return True
 
         user.sub_type = "FREE"
+        user.current_plan_code = "trial"
         user.expiry_at = datetime.utcnow() + timedelta(days=int(AUTO_FREE_DAYS))
         user.is_active = True
         mark_user_became_free(user)
@@ -545,6 +713,7 @@ def _ensure_user_row_for_login(*, tg_id: int, username: str | None = None) -> No
             uuid=str(uuid.uuid4()),
             email=f"User_{int(tg_id)}",
             sub_type="FREE",
+            current_plan_code="trial",
             created_at=now,
             expiry_at=now + timedelta(days=max(3650, int(AUTO_FREE_DAYS))),
             is_active=True,
@@ -606,6 +775,35 @@ def _has_campaign_mark(s, *, tg_id: int, campaign_key: str) -> bool:
         .first()
     )
     return bool(row)
+
+
+def _mark_campaign_once(s, *, tg_id: int, campaign_key: str) -> bool:
+    exists = (
+        s.query(CampaignSend.id)
+        .filter(CampaignSend.tg_id == int(tg_id))
+        .filter(CampaignSend.campaign_key == str(campaign_key))
+        .first()
+    )
+    if exists:
+        return False
+    s.add(CampaignSend(tg_id=int(tg_id), campaign_key=str(campaign_key), sent_at=datetime.utcnow()))
+    return True
+
+
+def _user_has_channel_subscriber_mark(user: User | None) -> bool:
+    if not user:
+        return False
+    if getattr(user, "channel_bonus_claimed_at", None):
+        return True
+    s = SessionLocal()
+    try:
+        return _has_campaign_mark(
+            s,
+            tg_id=int(getattr(user, "tg_id", 0) or 0),
+            campaign_key=CHANNEL_SUBSCRIBER_CAMPAIGN_KEY,
+        )
+    finally:
+        s.close()
 
 
 def _active_offer_payload(tg_id: int) -> dict[str, Any] | None:
@@ -747,6 +945,29 @@ async def _read_callback_payload(request: Request) -> tuple[dict[str, Any], byte
 
 
 def _verify_callback_signature(*, provider: str, payload: dict[str, Any], raw: bytes, request: Request) -> tuple[bool, str]:
+    p = _normalize_provider(provider)
+    # Freekassa SCI notify signature:
+    # md5(MERCHANT_ID:AMOUNT:SECRET_WORD_2:MERCHANT_ORDER_ID)
+    if p == "freekassa":
+        merchant_id = _payload_value(payload, "MERCHANT_ID", "merchant_id", "shopId")
+        amount = _payload_value(payload, "AMOUNT", "amount")
+        order_id = _payload_value(payload, "MERCHANT_ORDER_ID", "merchant_order_id", "order_id")
+        provided = _payload_value(payload, "SIGN", "sign", "signature")
+        if merchant_id and amount and order_id and provided:
+            shop = _fk_shop_by_merchant_id(merchant_id)
+            secret2 = (shop.get("secret_word_2") or "").strip()
+            if not secret2:
+                return False, "missing_secret_word_2"
+            expected = _fk_sci_signature(
+                merchant_id=merchant_id,
+                amount=amount,
+                order_id=order_id,
+                secret_word_2=secret2,
+            )
+            if hmac.compare_digest(str(provided).lower(), expected.lower()):
+                return True, "ok"
+            return False, "invalid_signature"
+
     secret = _provider_secret(provider)
     if not secret:
         return False, "missing_secret"
@@ -775,7 +996,6 @@ def _verify_callback_signature(*, provider: str, payload: dict[str, Any], raw: b
     if hmac.compare_digest(provided.lower(), expected_raw.lower()):
         return True, "ok"
 
-    # Fallback for form/query providers that sign key=value pairs.
     canonical_parts = []
     skip_keys = {"signature", "sign", "hash", "sig"}
     for k in sorted(payload.keys()):
@@ -833,12 +1053,14 @@ def _safe_float(value: Any) -> float:
         return 0.0
 
 
-def _status_from_event(event_type: str, payload: dict[str, Any], signature_ok: bool) -> str:
+def _status_from_event(event_type: str, payload: dict[str, Any], signature_ok: bool, provider: str = "") -> str:
     event = (event_type or "").strip().lower()
     if event == "refund":
         return "refunded"
     if event == "chargeback":
         return "chargeback"
+    if _normalize_provider(provider) == "freekassa" and event == "result" and signature_ok:
+        return "paid"
     status_raw = _payload_value(payload, "status", "payment_status", "state").lower()
     if status_raw in {"paid", "success", "succeeded", "approved"} and signature_ok:
         return "paid"
@@ -866,6 +1088,10 @@ def _upsert_external_order(
         s.add(row)
     row.tg_id = _safe_int(_payload_value(payload, "tg_id", "telegram_id", "user_id"))
     row.plan_code = _payload_value(payload, "plan_code", "tariff", "plan")
+    row.source = _payload_value(payload, "source", "checkout_source")
+    row.campaign = _payload_value(payload, "campaign", "utm_campaign")
+    row.promo_code = _payload_value(payload, "promo_code", "coupon")
+    row.meta_json = json.dumps(payload, ensure_ascii=False, separators=(",", ":"))[:4000]
     row.amount = _safe_float(_payload_value(payload, "amount", "sum", "amount_paid"))
     row.currency = _payload_value(payload, "currency", "cur", "ccy") or "RUB"
     row.status = status
@@ -909,7 +1135,7 @@ def _record_external_payment_event(
         )
         s.add(event)
 
-        status = _status_from_event(event_type, payload, signature_ok=signature_ok)
+        status = _status_from_event(event_type, payload, signature_ok=signature_ok, provider=provider)
         _upsert_external_order(
             s,
             provider=provider,
@@ -941,6 +1167,73 @@ def _payment_page_html(*, title: str, message: str, action_url: str, action_labe
     )
 
 
+def _rub_plan_days(plan_code: str) -> int:
+    row = RUB_PLAN_PRICES.get((plan_code or "").strip().lower())
+    if not row:
+        return 30
+    return max(1, int(row.get("days") or 30))
+
+
+def _apply_external_paid_order(*, order_id: str, payload: dict[str, Any]) -> tuple[bool, str]:
+    s = SessionLocal()
+    try:
+        ext_order = None
+        if order_id:
+            ext_order = (
+                s.query(ExternalOrder)
+                .filter(ExternalOrder.provider == "freekassa", ExternalOrder.order_id == str(order_id))
+                .first()
+            )
+        tg_id = _safe_int(_payload_value(payload, "tg_id", "telegram_id", "user_id"))
+        if tg_id is None and ext_order and ext_order.tg_id is not None:
+            tg_id = int(ext_order.tg_id)
+        if tg_id is None:
+            return False, "missing_tg_id"
+
+        plan_code = _payload_value(payload, "plan_code", "tariff", "plan")
+        if not plan_code and ext_order and ext_order.plan_code:
+            plan_code = str(ext_order.plan_code)
+        plan_code = (plan_code or "1_month").strip().lower()
+        if plan_code not in RUB_PLAN_PRICES:
+            plan_code = "1_month"
+        days = _rub_plan_days(plan_code)
+
+        user = s.query(User).filter(User.tg_id == int(tg_id)).first()
+        if not user:
+            s.rollback()
+            _ensure_user_row_for_login(tg_id=int(tg_id), username=None)
+            user = s.query(User).filter(User.tg_id == int(tg_id)).first()
+            if not user:
+                return False, "user_create_failed"
+
+        now = datetime.utcnow()
+        old_sub = (user.sub_type or "").upper().strip()
+        if old_sub == "FREE":
+            start_from = now
+        else:
+            start_from = user.expiry_at if user.expiry_at and user.expiry_at > now else now
+        user.expiry_at = start_from + timedelta(days=days)
+        user.sub_type = "PAID"
+        user.current_plan_code = plan_code
+        user.is_active = True
+        user.first_purchase_done = True
+        if ext_order:
+            ext_order.status = "paid"
+            ext_order.paid_at = ext_order.paid_at or now
+            ext_order.tg_id = ext_order.tg_id or int(tg_id)
+            ext_order.plan_code = plan_code
+        s.commit()
+        s.refresh(user)
+    except Exception as exc:
+        s.rollback()
+        logger.exception("external order activation failed: order_id=%s err=%s", order_id, exc)
+        return False, "db_error"
+    finally:
+        s.close()
+
+    return True, "ok"
+
+
 async def _handle_payment_callback(*, provider: str, event_type: str, request: Request) -> dict[str, Any]:
     p = _normalize_provider(provider)
     et = _normalize_provider(event_type)
@@ -950,6 +1243,11 @@ async def _handle_payment_callback(*, provider: str, event_type: str, request: R
         raise HTTPException(status_code=400, detail="Unsupported event type")
 
     payload, raw = await _read_callback_payload(request)
+    if p == "freekassa":
+        client_ip = _fk_client_ip(request)
+        if not _is_ip_allowed(client_ip, FK_NOTIFY_IP_ALLOWLIST):
+            logger.warning("freekassa callback blocked by ip allowlist: ip=%s", client_ip)
+            raise HTTPException(status_code=403, detail="Callback IP is not allowed")
     order_id, external_id = _callback_ids(payload, raw)
     signature_ok, signature_reason = _verify_callback_signature(provider=p, payload=payload, raw=raw, request=request)
     processed_ok = bool(signature_ok)
@@ -975,6 +1273,19 @@ async def _handle_payment_callback(*, provider: str, event_type: str, request: R
         if not PAYMENT_CALLBACK_TOLERANT_MODE:
             raise HTTPException(status_code=400, detail=f"Invalid signature: {signature_reason}")
 
+    activated = False
+    activation_reason = ""
+    sync_ok = None
+    if (not duplicate) and signature_ok and et == "result":
+        activated, activation_reason = _apply_external_paid_order(order_id=order_id, payload=payload)
+        if activated:
+            tg_id = _safe_int(_payload_value(payload, "tg_id", "telegram_id", "user_id"))
+            if tg_id is not None:
+                try:
+                    sync_ok = bool(await _sync_user_after_paid_purchase(int(tg_id)))
+                except Exception:
+                    sync_ok = False
+
     return {
         "ok": bool(signature_ok and persist_ok),
         "provider": p,
@@ -983,7 +1294,71 @@ async def _handle_payment_callback(*, provider: str, event_type: str, request: R
         "external_id": external_id,
         "signature_ok": bool(signature_ok),
         "duplicate": bool(duplicate),
+        "activated": bool(activated),
+        "activation_reason": activation_reason or None,
+        "sync_ok": sync_ok,
     }
+
+
+def _parse_freekassa_payment_url(body: dict[str, Any], fallback_order_id: str) -> str:
+    if not isinstance(body, dict):
+        return ""
+    for key in ("location", "paymentUrl", "url", "redirect_url"):
+        val = body.get(key)
+        if isinstance(val, str) and val.strip():
+            return val.strip()
+    data = body.get("data")
+    if isinstance(data, dict):
+        for key in ("location", "paymentUrl", "url", "redirect_url"):
+            val = data.get(key)
+            if isinstance(val, str) and val.strip():
+                return val.strip()
+    shop = _fk_shop_by_source("site")
+    shop_id = str(shop.get("shop_id") or "")
+    if shop_id and fallback_order_id:
+        return f"https://pay.freekassa.ru/?m={shop_id}&oa=0&o={fallback_order_id}"
+    return ""
+
+
+async def _freekassa_api_request(*, source: str, method: str, data: dict[str, Any]) -> dict[str, Any]:
+    shop = _fk_shop_by_source(source)
+    shop_id = str(shop.get("shop_id") or "").strip()
+    api_key = str(shop.get("api_key") or "").strip()
+    if not shop_id or not api_key:
+        raise HTTPException(status_code=500, detail="Freekassa shop is not configured")
+
+    nonce = int(time.time() * 1000)
+    payload = {
+        "shopId": shop_id,
+        "nonce": nonce,
+        "iat": int(time.time()),
+        "data": data,
+    }
+    signature = _fk_api_signature(api_key=api_key, payload=payload)
+    payload["signature"] = signature
+    fk_base = (getattr(Settings, "FK_API_BASE_URL", "") or os.getenv("FK_API_BASE_URL") or "https://api.fk.life/v1").strip().rstrip("/")
+    url = f"{fk_base}/{method.strip('/')}"
+    headers = {
+        "Content-Type": "application/json",
+        "Accept": "application/json",
+        "Sign": signature,
+        "Signature": signature,
+    }
+    async with aiohttp.ClientSession() as session:
+        async with session.post(
+            url,
+            headers=headers,
+            data=json.dumps(payload, ensure_ascii=False, separators=(",", ":")),
+            timeout=aiohttp.ClientTimeout(total=25),
+        ) as resp:
+            txt = await resp.text()
+            try:
+                body = json.loads(txt) if txt else {}
+            except Exception:
+                body = {"raw": txt}
+            if resp.status >= 400:
+                raise HTTPException(status_code=502, detail=f"Freekassa API error: {resp.status}")
+            return body if isinstance(body, dict) else {"data": body}
 
 
 async def _telegram_send_message(chat_id: int, text: str) -> bool:
@@ -1063,6 +1438,17 @@ async def _sync_user_after_paid_bonus(user: User) -> bool:
             await panel.close()
     except Exception:
         return False
+
+
+async def _sync_user_after_paid_purchase(tg_id: int) -> bool:
+    s = SessionLocal()
+    try:
+        user = s.query(User).filter(User.tg_id == int(tg_id)).first()
+        if not user:
+            return False
+        return await _sync_user_after_paid_bonus(user)
+    finally:
+        s.close()
 
 
 def _ticket_status_title(status: str) -> str:
@@ -1319,8 +1705,189 @@ async def payment_chargeback(provider: str, request: Request) -> dict:
 
 
 @app.api_route("/api/payments/freekassa/notify", methods=["POST", "GET"])
-async def payment_freekassa_notify(request: Request) -> dict:
-    return await _handle_payment_callback(provider="freekassa", event_type="result", request=request)
+async def payment_freekassa_notify(request: Request):
+    result = await _handle_payment_callback(provider="freekassa", event_type="result", request=request)
+    if request.method == "POST" and bool(result.get("ok")):
+        # Freekassa SCI expects a plain "YES" acknowledgment.
+        return PlainTextResponse("YES")
+    return result
+
+
+@app.post("/api/payments/freekassa/orders/create", response_model=FreekassaOrderActionOut)
+async def freekassa_order_create(
+    payload: FreekassaOrderCreateIn,
+    request: Request,
+    x_telegram_init_data: str = Header(default=""),
+) -> FreekassaOrderActionOut:
+    if not RUB_CHECKOUT_ENABLED:
+        raise HTTPException(status_code=403, detail="RUB checkout is disabled")
+    auth_user = _require_auth_user(x_telegram_init_data, request=request)
+    actor_tg_id = int(auth_user.get("id", 0))
+    source = (payload.source or "site").strip().lower()
+    if source not in {"site", "bot"}:
+        source = "site"
+
+    tg_id = int(payload.tg_id or actor_tg_id)
+    if tg_id != actor_tg_id and not _is_admin_tg(actor_tg_id):
+        raise HTTPException(status_code=403, detail="Access denied")
+
+    plan_code = (payload.plan_code or "").strip().lower()
+    if plan_code not in RUB_PLAN_PRICES:
+        raise HTTPException(status_code=400, detail="Unknown plan for RUB checkout")
+    amount_rub = float(RUB_PLAN_PRICES[plan_code]["amount_rub"])
+    order_id = f"fk_{source}_{tg_id}_{int(time.time())}_{secrets.token_hex(4)}"
+
+    s = SessionLocal()
+    try:
+        ext = ExternalOrder(
+            order_id=order_id,
+            tg_id=tg_id,
+            provider="freekassa",
+            plan_code=plan_code,
+            source=source,
+            campaign=(payload.campaign or "").strip()[:64] or None,
+            promo_code=(payload.promo_code or "").strip()[:32] or None,
+            amount=float(amount_rub),
+            currency=(payload.currency or "RUB").strip().upper()[:16] or "RUB",
+            status="created",
+            meta_json=json.dumps(
+                {
+                    "source": source,
+                    "campaign": payload.campaign,
+                    "promo_code": payload.promo_code,
+                    "tg_id": tg_id,
+                    "plan_code": plan_code,
+                },
+                ensure_ascii=False,
+                separators=(",", ":"),
+            )[:4000],
+            created_at=datetime.utcnow(),
+        )
+        s.add(ext)
+        s.commit()
+    except Exception:
+        s.rollback()
+        raise
+    finally:
+        s.close()
+
+    notify_url = f"{Settings.PUBLIC_API_BASE_URL.rstrip('/')}/api/payments/freekassa/notify"
+    req_data = {
+        "orderId": order_id,
+        "amount": amount_rub,
+        "currency": "RUB",
+        "email": "",
+        "ip": _fk_client_ip(request),
+        "urlSuccess": _safe_public_url(Settings.PAY_SUCCESS_URL) or f"{Settings.PUBLIC_API_BASE_URL.rstrip('/')}/pay/success",
+        "urlFailure": _safe_public_url(Settings.PAY_FAIL_URL) or f"{Settings.PUBLIC_API_BASE_URL.rstrip('/')}/pay/fail",
+        "urlNotification": notify_url,
+        "metadata": {
+            "tg_id": tg_id,
+            "plan_code": plan_code,
+            "campaign": payload.campaign or "",
+            "promo_code": payload.promo_code or "",
+            "source": source,
+        },
+    }
+    remote = await _freekassa_api_request(source=source, method="orders/create", data=req_data)
+    payment_url = _parse_freekassa_payment_url(remote, order_id)
+
+    s = SessionLocal()
+    try:
+        row = s.query(ExternalOrder).filter(ExternalOrder.provider == "freekassa", ExternalOrder.order_id == order_id).first()
+        if row:
+            row.status = "pending"
+            row.meta_json = json.dumps({"request": req_data, "response": remote}, ensure_ascii=False, separators=(",", ":"))[:4000]
+            s.commit()
+    finally:
+        s.close()
+
+    return FreekassaOrderActionOut(
+        ok=True,
+        order_id=order_id,
+        payment_url=payment_url or None,
+        amount_rub=float(amount_rub),
+        currency="RUB",
+        status="pending",
+    )
+
+
+@app.get("/api/payments/freekassa/orders/{order_id}")
+async def freekassa_order_get(
+    order_id: str,
+    request: Request,
+    source: str = "site",
+    x_telegram_init_data: str = Header(default=""),
+) -> dict[str, Any]:
+    auth_user = _require_auth_user(x_telegram_init_data, request=request)
+    actor_tg_id = int(auth_user.get("id", 0))
+    local_status = ""
+    request_source = (source or "").strip().lower() or "site"
+    s = SessionLocal()
+    try:
+        row = s.query(ExternalOrder).filter(ExternalOrder.provider == "freekassa", ExternalOrder.order_id == str(order_id)).first()
+        if not row:
+            raise HTTPException(status_code=404, detail="Order not found")
+        if int(row.tg_id or 0) != actor_tg_id and not _is_admin_tg(actor_tg_id):
+            raise HTTPException(status_code=403, detail="Access denied")
+        local_status = str(row.status or "")
+        if str(row.source or "").strip():
+            request_source = str(row.source).strip().lower()
+    finally:
+        s.close()
+    remote = await _freekassa_api_request(source=request_source, method="orders", data={"orderId": order_id})
+    return {"ok": True, "provider": "freekassa", "order_id": order_id, "status_local": local_status, "remote": remote}
+
+
+@app.post("/api/payments/freekassa/orders/{order_id}/refund")
+async def freekassa_order_refund(
+    order_id: str,
+    request: Request,
+    x_telegram_init_data: str = Header(default=""),
+) -> dict[str, Any]:
+    _require_admin(x_telegram_init_data, request=request)
+    s = SessionLocal()
+    try:
+        row = s.query(ExternalOrder).filter(ExternalOrder.provider == "freekassa", ExternalOrder.order_id == str(order_id)).first()
+        if not row:
+            raise HTTPException(status_code=404, detail="Order not found")
+        amount = float(row.amount or 0.0)
+        source = str(row.source or "site")
+    finally:
+        s.close()
+    remote = await _freekassa_api_request(
+        source=source,
+        method="orders/refund",
+        data={"orderId": order_id, "amount": amount},
+    )
+    return {"ok": True, "provider": "freekassa", "order_id": order_id, "remote": remote}
+
+
+@app.get("/api/payments/freekassa/currencies")
+async def freekassa_currencies(
+    request: Request,
+    source: str = "site",
+    x_telegram_init_data: str = Header(default=""),
+) -> dict[str, Any]:
+    _require_auth_user(x_telegram_init_data, request=request)
+    remote = await _freekassa_api_request(source=source, method="currencies", data={})
+    return {"ok": True, "provider": "freekassa", "remote": remote}
+
+
+@app.get("/api/payments/freekassa/currencies/{currency}/status")
+async def freekassa_currency_status(
+    currency: str,
+    request: Request,
+    source: str = "site",
+    x_telegram_init_data: str = Header(default=""),
+) -> dict[str, Any]:
+    _require_auth_user(x_telegram_init_data, request=request)
+    remote = await _freekassa_api_request(
+        source=source,
+        method="currencies/status",
+        data={"currency": str(currency or "").strip().upper()},
+    )
+    return {"ok": True, "provider": "freekassa", "currency": str(currency or "").upper(), "remote": remote}
 
 
 @app.get("/api/admin/metrics/status")
@@ -1555,6 +2122,14 @@ async def user_data(tg_id: int, request: Request, x_telegram_init_data: str = He
             and not opening_bonus_claimed
             and (user.sub_type or "").upper() != "MANUAL"
         )
+        free_speed_kbps = _effective_free_speed_kbps(user)
+        free_speed_mbps = int(round((free_speed_kbps * 8) / 1000)) if (user.sub_type or "").upper() == "FREE" else None
+        is_channel_subscriber = _user_has_channel_subscriber_mark(user)
+        speed_bump_active = bool(
+            CHANNEL_SPEED_BUMP_ENABLED
+            and (user.sub_type or "").upper() == "FREE"
+            and free_speed_kbps < int(FREE_SPEED_LIMIT_KBPS)
+        )
 
         return {
             "tg_id": tg_id,
@@ -1563,12 +2138,13 @@ async def user_data(tg_id: int, request: Request, x_telegram_init_data: str = He
             "is_active": is_active,
             "is_admin": role_admin,
             "sub_type": user.sub_type,
+            "current_plan_code": str(getattr(user, "current_plan_code", "") or ""),
             "segment": segment,
             "expiry_at": user.expiry_at.isoformat() if user.expiry_at else None,
             "limits": {
                 "device_limit": _plan_device_limit(user) + family_slots,
                 "total_gb": total_gb,
-                "speed_mbps": int(round((FREE_SPEED_LIMIT_KBPS * 8) / 1000)) if (user.sub_type or "").upper() == "FREE" else None,
+                "speed_mbps": free_speed_mbps,
             },
             "family_slots": int(family_slots),
             "nodes": [
@@ -1619,6 +2195,8 @@ async def user_data(tg_id: int, request: Request, x_telegram_init_data: str = He
             "channel": {
                 "username": PUBLIC_CHANNEL,
                 "link": channel_link,
+                "subscriber": bool(is_channel_subscriber),
+                "speed_bump_active": speed_bump_active,
             },
             "actions": {
                 "open_helpbot": support_link,
@@ -1672,6 +2250,7 @@ async def dashboard_snapshot(request: Request, x_telegram_init_data: str = Heade
         return DashboardResponse(
             tg_id=tg_id,
             sub_type=str(user.sub_type or ""),
+            current_plan_code=str(getattr(user, "current_plan_code", "") or ""),
             is_active=active,
             expiry_at=_safe_iso(expiry),
             used_gb=float(used_gb),
@@ -1680,7 +2259,7 @@ async def dashboard_snapshot(request: Request, x_telegram_init_data: str = Heade
             active_sessions=int(getattr(user, "active_sessions", 0) or 0),
             device_limit=int(_plan_device_limit(user) + family_slots),
             speed_limit_mbps=(
-                int(round((FREE_SPEED_LIMIT_KBPS * 8) / 1000))
+                int(round((_effective_free_speed_kbps(user) * 8) / 1000))
                 if (user.sub_type or "").upper() == "FREE"
                 else None
             ),
@@ -1811,6 +2390,64 @@ async def bonuses(request: Request, x_telegram_init_data: str = Header(default="
         s.close()
 
 
+@app.post("/api/channel/subscriber/check")
+async def channel_subscriber_check(request: Request, x_telegram_init_data: str = Header(default="")) -> dict:
+    auth_user = _require_auth_user(x_telegram_init_data, request=request)
+    tg_id = int(auth_user.get("id", 0))
+    if not PUBLIC_CHANNEL:
+        raise HTTPException(status_code=400, detail="Public channel is not configured")
+
+    is_member, reason = await _is_channel_member(PUBLIC_CHANNEL, tg_id)
+    if not is_member:
+        return {
+            "ok": True,
+            "subscriber": False,
+            "reason": reason,
+            "points_granted": 0,
+            "campaign_marked": False,
+        }
+
+    points_granted = 0
+    campaign_marked = False
+    s = SessionLocal()
+    try:
+        user = s.query(User).filter_by(tg_id=tg_id).first()
+        if not user:
+            raise HTTPException(status_code=404, detail="User not found")
+
+        campaign_marked = _mark_campaign_once(
+            s,
+            tg_id=tg_id,
+            campaign_key=CHANNEL_SUBSCRIBER_CAMPAIGN_KEY,
+        )
+        if campaign_marked:
+            points_granted = int(
+                award_points(
+                    tg_id=tg_id,
+                    amount=100,
+                    reason="channel_subscribe_bonus",
+                    expires_days=POINTS_EXPIRY_DAYS,
+                )
+            )
+        s.commit()
+    except HTTPException:
+        s.rollback()
+        raise
+    except Exception:
+        s.rollback()
+        raise
+    finally:
+        s.close()
+
+    return {
+        "ok": True,
+        "subscriber": True,
+        "reason": "member",
+        "points_granted": int(points_granted),
+        "campaign_marked": bool(campaign_marked),
+    }
+
+
 @app.post("/api/bonuses/channel/claim")
 async def claim_channel_bonus(request: Request, x_telegram_init_data: str = Header(default="")) -> dict:
     auth_user = _require_auth_user(x_telegram_init_data, request=request)
@@ -1863,11 +2500,25 @@ async def claim_channel_bonus(request: Request, x_telegram_init_data: str = Head
             user.expiry_at = cur + timedelta(days=days)
 
         user.sub_type = "PAID"
+        user.current_plan_code = "channel_bonus"
         user.is_active = True
         user.channel_bonus_claimed_at = now
         user.channel_bonus_active = True
         user.channel_bonus_expires_at = user.expiry_at
         user.channel_bonus_revoked_at = None
+        first_channel_mark = _mark_campaign_once(
+            s,
+            tg_id=tg_id,
+            campaign_key=CHANNEL_SUBSCRIBER_CAMPAIGN_KEY,
+        )
+        points_granted = 0
+        if first_channel_mark:
+            points_granted = award_points(
+                tg_id=tg_id,
+                amount=100,
+                reason="channel_subscribe_bonus",
+                expires_days=POINTS_EXPIRY_DAYS,
+            )
         s.commit()
         s.refresh(user)
         sync_ok = await _sync_user_after_paid_bonus(user)
@@ -1881,6 +2532,7 @@ async def claim_channel_bonus(request: Request, x_telegram_init_data: str = Head
             "sub_type": user.sub_type,
             "channel": PUBLIC_CHANNEL,
             "sync_ok": bool(sync_ok),
+            "points_granted": int(points_granted),
         }
     finally:
         s.close()
@@ -2223,6 +2875,7 @@ async def admin_create_manual_user(payload: ManualUserCreateRequest, x_telegram_
             uuid=str(uuid.uuid4()),
             email=f"MANUAL_{abs(tg_id)}",
             sub_type="MANUAL",
+            current_plan_code="manual",
             created_at=now,
             expiry_at=now + timedelta(days=int(payload.days)),
             is_active=True,
@@ -3061,8 +3714,19 @@ def _nodes_for_user(user: User, nodes: list) -> list:
     if not nodes:
         return nodes
     is_free = (user.sub_type or "").upper() == "FREE"
+    plan_code = str(getattr(user, "current_plan_code", "") or "").strip().lower()
 
     if not is_free:
+        if plan_code == "start_99":
+            start_nodes = []
+            for n in nodes:
+                code = (getattr(n, "code", "") or "").lower()
+                if "free" in code:
+                    continue
+                if _node_code_base(code) == "nl":
+                    start_nodes.append(n)
+            if start_nodes:
+                return start_nodes
         paid = []
         for n in nodes:
             code = (getattr(n, "code", "") or "").lower()

@@ -66,6 +66,12 @@ class ApiAuthAndTicketsTests(unittest.TestCase):
             importlib.reload(sys.modules["config"])
         if "db" in sys.modules:
             importlib.reload(sys.modules["db"])
+        if "offers_service" in sys.modules:
+            importlib.reload(sys.modules["offers_service"])
+        if "points_service" in sys.modules:
+            importlib.reload(sys.modules["points_service"])
+        if "gift_cards_service" in sys.modules:
+            importlib.reload(sys.modules["gift_cards_service"])
         if "api" in sys.modules:
             importlib.reload(sys.modules["api"])
         self.api = importlib.import_module("api")

@@ -1,82 +1,101 @@
-# Payments Research (SBP/Card + Automation)
+# Payments Architecture (Chosen, 2026-02)
 
-> Обновлено: 2026-02-06
+Updated: `2026-02-14`
+Status: `Chosen architecture` (not research draft).
 
-Цель: дать реалистичные варианты "юзер платит СБП/картой, система автоматически активирует доступ" без постоянного ручного саппорта.
+## 1. Product Decision
 
-## Важное ограничение Telegram
+We use a hybrid model:
 
-Если вы продаете **цифровые товары/услуги внутри Telegram** (бот, Mini App / WebApp), Telegram требует использовать **Telegram Stars (XTR)**. Иначе есть риск проблем с отображением/дистрибуцией (в особенности на iOS/Android), так как это связано с правилами App Store/Google Play.
+- Primary checkout in RUB via Freekassa (site + bot-origin links).
+- Secondary payment method inside Telegram via Stars.
 
-Практический вывод:
-- Внутри Telegram: Stars (как сейчас).
-- Для оплат СБП/картой: **вынести оплату на внешний сайт** (открывается как обычный браузерный checkout), а в Telegram только "привязка аккаунта" и выдача доступа.
+This keeps Telegram-native flow available while providing card/SBP checkout in browser.
 
-## Самый простой легальный путь "без ИП"
+## 2. Channel and Surface Split
 
-В 99% случаев "без ИП" в РФ означает: оформить **самозанятость (НПД)**.
-- Робокасса и ЮKassa прямо продвигают сценарии приема онлайн-платежей для самозанятых, включая платежные ссылки/QR, СБП и карты.
+- Marketing + checkout UI: `portal-privacy.online`.
+- API + callback processing + success/fail redirects: `kiwunaka.space`.
 
-Что это дает:
-- Нормальная приемка СБП/карт, меньше блокировок банка.
-- Понятная интеграция и отчеты.
+## 3. Freekassa Integration Model
 
-## Варианты интеграции (в порядке реалистичности)
+Two independent shops are configured:
 
-### Вариант A (рекомендованный): внешний checkout + webhook -> активация в Portal
+- `FK_SITE_*` for website checkout.
+- `FK_BOT_*` for bot-started checkout.
 
-Схема:
-1. На продающем сайте создаем заказ (order_id) и просим пользователя подтвердить Telegram (deep link в бота с `order_id`).
-2. Платежная система шлет webhook "оплачено" на наш backend.
-3. Backend активирует доступ по tg_id / user_id и пишет пользователю в Telegram.
+Order payload metadata links payment to account and funnel context:
 
-Кандидаты:
-- ЮKassa для самозанятых (платежные ссылки, СБП/карты и т.п.).
-- Robokassa для самозанятых (платежные ссылки/QR).
+- `tg_id`
+- `plan_code`
+- `campaign`
+- `promo_code`
+- `source`
 
-Риски/вопросы до выбора:
-- Доступность webhooks/метаданных заказа.
-- Требования по KYC/документам, ограничения по тематикам.
-- Фискализация: для самозанятого обычно чек формируется через "Мой налог"; агрегатор может помогать, но детали зависят от схемы.
+## 4. Implemented API Endpoints
 
-### Вариант B: донаты с комментом (только если есть стабильный API)
+- `POST /api/payments/freekassa/orders/create`
+- `GET /api/payments/freekassa/orders/{order_id}`
+- `POST /api/payments/freekassa/orders/{order_id}/refund`
+- `GET /api/payments/freekassa/currencies`
+- `GET /api/payments/freekassa/currencies/{currency}/status`
+- `POST|GET /api/payments/freekassa/notify`
 
-Плюсы: быстрый запуск, меньше "магазинной" логики.
-Минусы: сложнее надежно связать платеж с пользователем, больше кейсов "не нашлось/ошибка комментария".
+## 5. Security Constraints
 
-Кандидат:
-- DonationAlerts: есть публичный API и real-time события через WebSocket (Centrifugo), что потенциально позволяет автоматизировать проверку доната и выдачу доступа.
+- Secrets are environment-only, never stored in repository.
+- Callback protection:
+  - SCI signature validation;
+  - IP allowlist via `FK_NOTIFY_IP_ALLOWLIST`;
+  - idempotent event storage to prevent double activation.
+- Notify acknowledge for successful signed `POST`: plain `YES`.
 
-Что нужно проверить до внедрения:
-- Можно ли гарантированно получать "комментарий" / "сообщение" доната и использовать его как идентификатор.
-- Лимиты API/реалтайма, надежность доставки событий, обработка дублей.
+## 6. Tariff and Activation Rules
 
-### Вариант C: CloudPayments
+RUB plan map:
 
-CloudPayments — сильный вариант для эквайринга (карты + СБП/платежные ссылки), но по опыту чаще заточен под договорные отношения для бизнеса. Ссылки/QR у них есть.
+- `start_99`: `99`, 30 days.
+- `1_month`: `249`, 30 days.
+- `3_months`: `699`, 91 days.
+- `6_months`: `1199`, 182 days.
+- `9_months`: `1399`, 273 days.
+- `12_months`: `1499`, 365 days.
 
-## Про "мне отдают крипту, юзеры платят СБП/картой"
+Special restrictions for `start_99`:
 
-Самый "чистый" способ получить крипту на выходе без серых посредников сейчас — это **Telegram Stars -> вывод в TON** (через экосистему Telegram).
+- 1 device limit.
+- Paid profile with NL-only node visibility.
 
-Если нужен именно SBP/card -> crypto автоматически, это обычно приводит к:
-- KYC/ограничениям и серой зоне (высокий риск блокировок/чарджбеков),
-- либо к необходимости юрлица/ИП и сложной схеме.
+## 7. Funnel Layer
 
-Рекомендация для MVP:
-1. Оставить Stars (внутри Telegram).
-2. Параллельно сделать внешний checkout (SBP/card) для тех, кто не хочет Stars.
-3. Крипту получать либо через Stars->TON, либо конвертировать поступления самозанятого через легальные площадки вручную/полуавтоматически.
+- Bot shows dual CTA:
+  - `Оплатить ₽` (primary),
+  - `Оплатить Stars` (secondary).
+- Deep-link promo support:
+  - `promo_<CODE>`
+  - `campaign_<KEY>__promo_<CODE>`
+- WebApp supports:
+  - channel subscriber check,
+  - one-time `+100 points`,
+  - speed-bump status explanation.
 
-## Источники (первичные страницы)
+## 8. Feature Flags
 
-```text
-Telegram Stars (overview): https://core.telegram.org/bots/payments-stars
-Telegram Stars (blog announcement): https://telegram.org/blog/telegram-stars
+- `RUB_CHECKOUT_ENABLED`
+- `BOT_RUB_BUTTON_ENABLED`
+- `CHECKOUT_WIDGET_ENABLED`
+- `CHANNEL_SPEED_BUMP_ENABLED`
 
-YooKassa for self-employed: https://yookassa.ru/support/payments/selfemployed/start
-Robokassa for self-employed: https://robokassa.com/blog/samozanyatym
+Flags allow staged rollout and fast rollback to Stars-first behavior without DB rollback.
 
-DonationAlerts API docs: https://www.donationalerts.com/apidoc
-CloudPayments docs (payment links / SBP): https://developers.cloudpayments.ru/
-```
+## 9. Known Constraints
+
+- In Telegram environments, Stars remains required for native in-app payment scenarios.
+- Browser checkout is used for card/SBP payments and linked back to Telegram account by metadata.
+- Public copy must not use the forbidden legacy wording in landing/bot/WebApp marketing text.
+
+## 10. Next Work
+
+1. Admin UI for campaign-link templates and welcome discount management.
+2. Conversion analytics for `start_99 -> paid parity`.
+3. Expanded post-deploy smoke automation for both Freekassa shops.

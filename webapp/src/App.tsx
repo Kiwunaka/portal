@@ -29,7 +29,9 @@ import {
   adminUsers,
   authByTelegramWebLogin,
   clearWebSessionToken,
+  checkChannelSubscriberStatus,
   confirmConnect,
+  createRubCheckoutOrder,
   createTicket,
   fetchClientApps,
   fetchDashboard,
@@ -40,6 +42,7 @@ import {
   hasWebSessionToken,
   getTicket,
   redeemGiftCode,
+  redeemPromo,
   runNetworkProbe,
   runNodeDiagnostics,
   setWebSessionToken,
@@ -97,6 +100,15 @@ const PLAN_CHOICES: PlanChoice[] = [
   { key: "6_months", label: "6 мес", stars: 1199, badge: "Выбор" },
   { key: "9_months", label: "9 мес", stars: 1399 },
   { key: "12_months", label: "12 мес", stars: 1499, badge: "Рек." },
+];
+
+const RUB_PLAN_CHOICES: Array<{ key: string; label: string; rub: number; badge?: string }> = [
+  { key: "start_99", label: "Start 30д", rub: 99, badge: "New" },
+  { key: "1_month", label: "1 мес", rub: 249 },
+  { key: "3_months", label: "3 мес", rub: 699 },
+  { key: "6_months", label: "6 мес", rub: 1199, badge: "Популярный" },
+  { key: "9_months", label: "9 мес", rub: 1399 },
+  { key: "12_months", label: "12 мес", rub: 1499 },
 ];
 
 const MAP_POINTS: Array<{ code: string; x: number; y: number; label: string }> = [
@@ -407,9 +419,13 @@ export default function App() {
   const [clientApps, setClientApps] = useState<ClientAppsPayload | null>(null);
   const [probeBusy, setProbeBusy] = useState(false);
   const [selectedPlan, setSelectedPlan] = useState<string>("1_month");
+  const [selectedRubPlan, setSelectedRubPlan] = useState<string>("start_99");
   const [selectedNodeCode, setSelectedNodeCode] = useState<string>("nl");
   const [giftCode, setGiftCode] = useState("");
   const [giftRedeemResult, setGiftRedeemResult] = useState("");
+  const [rubPayBusy, setRubPayBusy] = useState(false);
+  const [channelCheckBusy, setChannelCheckBusy] = useState(false);
+  const [promoAutoHandled, setPromoAutoHandled] = useState(false);
   const [webLoginRequired, setWebLoginRequired] = useState(false);
   const [webLoginError, setWebLoginError] = useState("");
   const [webLoginBusy, setWebLoginBusy] = useState(false);
@@ -459,6 +475,9 @@ export default function App() {
   const platform = detectPlatform();
   const segment = segmentInfo((dash?.segment || user?.segment || dash?.sub_type || "").toUpperCase());
   const selectedNode = useMemo(() => nodes.find((n) => n.code === selectedNodeCode) || nodes[0] || null, [nodes, selectedNodeCode]);
+  const queryParams = useMemo(() => new URLSearchParams(window.location.search), []);
+  const queryCampaign = (queryParams.get("campaign") || "").trim();
+  const queryPromo = (queryParams.get("promo") || "").trim().toUpperCase();
 
   // Animated metric values
   const deviceCount = useCountUp(dash?.device_limit ?? 0);
@@ -684,6 +703,24 @@ export default function App() {
   }, []);
 
   useEffect(() => {
+    if (!queryPromo || promoAutoHandled || !user) return;
+    const apply = async () => {
+      try {
+        await redeemPromo(queryPromo);
+        setBanner(`Промокод ${queryPromo} применен`);
+        pulse("success");
+        await loadAll();
+      } catch {
+        // Keep flow silent if promo cannot be auto-applied.
+      } finally {
+        setPromoAutoHandled(true);
+      }
+    };
+    void apply();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [queryPromo, promoAutoHandled, user?.tg_id]);
+
+  useEffect(() => {
     if (!webLoginRequired || tgUser || IS_DEV) return;
     const host = document.getElementById("tg-login-widget");
     if (!host) return;
@@ -759,6 +796,49 @@ export default function App() {
       pulse("success");
     } catch {
       openLink(user?.actions.pay_via_bot || "");
+    }
+  }
+
+  async function onRubPay(plan = selectedRubPlan) {
+    if (!user) return;
+    try {
+      setRubPayBusy(true);
+      const res = await createRubCheckoutOrder({
+        plan_code: plan,
+        source: "site",
+        tg_id: user.tg_id,
+        campaign: queryCampaign || undefined,
+        promo_code: queryPromo || undefined,
+      });
+      const fallback = user?.actions.pay_via_bot || "";
+      openLink(res.payment_url || fallback);
+      pulse("success");
+    } catch {
+      openLink(user?.actions.pay_via_bot || "");
+      pulse("error");
+    } finally {
+      setRubPayBusy(false);
+    }
+  }
+
+  async function onCheckChannelStatus() {
+    try {
+      setChannelCheckBusy(true);
+      const res = await checkChannelSubscriberStatus();
+      if (res.subscriber) {
+        const points = Number(res.points_granted || 0);
+        setBanner(points > 0 ? `Подписка подтверждена: +${points} points` : "Подписка на канал подтверждена");
+        pulse("success");
+      } else {
+        setBanner("Подписка на канал не подтверждена");
+        pulse("error");
+      }
+      await loadAll();
+    } catch {
+      setBanner("Не удалось проверить подписку канала");
+      pulse("error");
+    } finally {
+      setChannelCheckBusy(false);
     }
   }
 
@@ -1820,6 +1900,51 @@ export default function App() {
               </div>
             ) : null}
 
+            <div className={user?.channel?.speed_bump_active ? "pill pill--bad" : "pill pill--ok"} style={{ marginBottom: 10 }}>
+              {user?.channel?.speed_bump_active
+                ? "FREE профиль: активен базовый speed-bump (подпишитесь на канал для буста)"
+                : "FREE профиль: speed-bump не активен"}
+            </div>
+
+            <div className="muted" style={{ marginBottom: 8 }}>
+              {`Канал: ${user?.channel?.subscriber ? "подписка подтверждена" : "не подтверждена"}`}
+            </div>
+            <div className="actions" style={{ marginBottom: 12 }}>
+              <button className="btn btn--ghost" type="button" disabled={channelCheckBusy} onClick={() => void onCheckChannelStatus()}>
+                <span style={{ position: "relative", zIndex: 1 }}>
+                  {channelCheckBusy ? "Проверяем..." : "💎 Статус подписчика — Проверить"}
+                </span>
+              </button>
+              {user?.channel?.link ? (
+                <a className="btn btn--ghost" href={user.channel.link} target="_blank" rel="noreferrer">
+                  <span style={{ position: "relative", zIndex: 1 }}>Канал проекта</span>
+                </a>
+              ) : null}
+            </div>
+
+            <div className="card__title">RUB checkout</div>
+            {queryCampaign || queryPromo ? (
+              <div className="muted" style={{ marginBottom: 8 }}>
+                {`Контекст: ${queryCampaign ? `campaign=${queryCampaign}` : ""}${queryCampaign && queryPromo ? " • " : ""}${queryPromo ? `promo=${queryPromo}` : ""}`}
+              </div>
+            ) : null}
+            <div className="plans-mini">
+              {RUB_PLAN_CHOICES.map((p) => (
+                <button
+                  key={p.key}
+                  type="button"
+                  className={selectedRubPlan === p.key ? "chip chip--active" : "chip"}
+                  onClick={() => {
+                    setSelectedRubPlan(p.key);
+                    pulse("success");
+                  }}
+                >
+                  {`${p.label} ${p.rub}₽${p.badge ? ` • ${p.badge}` : ""}`}
+                </button>
+              ))}
+            </div>
+
+            <div className="card__title" style={{ marginTop: 12 }}>Stars checkout</div>
             <div className="plans-mini">
               {PLAN_CHOICES.map((p) => (
                 <button
@@ -1837,9 +1962,14 @@ export default function App() {
             </div>
 
             <div className="actions" style={{ marginTop: 12 }}>
-              <button className="btn" type="button" onClick={() => onPay(dash.active_offer?.plan_code || selectedPlan || segment.ctaPlan)}>
-                <span style={{ position: "relative", zIndex: 1 }}>→ Подключить / Продлить</span>
+              <button className="btn" type="button" disabled={rubPayBusy} onClick={() => void onRubPay(selectedRubPlan)}>
+                <span style={{ position: "relative", zIndex: 1 }}>{rubPayBusy ? "Готовим оплату..." : "→ Оплатить ₽"}</span>
               </button>
+              <button className="btn btn--ghost" type="button" onClick={() => onPay(dash.active_offer?.plan_code || selectedPlan || segment.ctaPlan)}>
+                <span style={{ position: "relative", zIndex: 1 }}>Оплатить Stars</span>
+              </button>
+            </div>
+            <div className="actions" style={{ marginTop: 2 }}>
               <button className="btn btn--ghost" type="button" onClick={() => onCopyKey("copied_key")}>
                 <span style={{ position: "relative", zIndex: 1 }}>Скопировать ключ</span>
               </button>
