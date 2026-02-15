@@ -70,7 +70,12 @@ class WorkerRetentionTests(unittest.TestCase):
 
         s = self.db.SessionLocal()
         try:
-            s.add(Template(key="retention_t1_a", text="Custom T-1 message until {expiry_date}"))
+            row = s.query(Template).filter(Template.key == "retention_t1_a").first()
+            if row is None:
+                row = Template(key="retention_t1_a", text="Custom T-1 message until {expiry_date}")
+                s.add(row)
+            else:
+                row.text = "Custom T-1 message until {expiry_date}"
             s.commit()
         finally:
             s.close()

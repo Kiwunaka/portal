@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from datetime import datetime
+
 from sqlalchemy import Engine, text
 
 
@@ -14,6 +16,84 @@ def _sqlite_index_exists(conn, index_name: str) -> bool:
         {"name": index_name},
     ).fetchall()
     return bool(rows)
+
+
+RETENTION_TEMPLATE_PRESETS: dict[str, str] = {
+    "retention_welcome_a": (
+        "✨ Добро пожаловать в Portal.\n\n"
+        "Быстрый старт за 1-2 минуты:\n"
+        "1) Откройте раздел подключения.\n"
+        "2) Импортируйте ключ в клиент.\n"
+        "3) Проверьте статус узлов.\n\n"
+        "Актуальные апдейты публикуются в {channel}."
+    ),
+    "retention_welcome_b": (
+        "🛡 Профиль готов к работе.\n\n"
+        "Перед первым запуском:\n"
+        "• выберите приложение для своей платформы;\n"
+        "• импортируйте ключ одним действием;\n"
+        "• сохраните канал {channel} для обновлений."
+    ),
+    "retention_t3_a": (
+        "⌛ До окончания доступа около 3 дней.\n\n"
+        "Продлите заранее, чтобы сохранить текущий маршрут без паузы."
+    ),
+    "retention_t3_b": (
+        "📅 Напоминание T-3.\n\n"
+        "Если продлить сейчас, подключение останется непрерывным."
+    ),
+    "retention_t1_a": (
+        "⏱ До завершения подписки примерно 1 день.\n\n"
+        "Продлите доступ сейчас, чтобы не терять рабочий ритм."
+    ),
+    "retention_t1_b": (
+        "⚡ T-1: срок доступа заканчивается в ближайшие сутки.\n\n"
+        "Продление займёт пару минут и сохранит стабильный режим."
+    ),
+    "retention_t0_a": (
+        "🚨 Срок подписки подходит к финалу.\n\n"
+        "Продлите сейчас, чтобы доступ не прервался."
+    ),
+    "retention_t0_b": (
+        "🔔 Подписка почти завершена.\n\n"
+        "Если нужен непрерывный доступ, продлите в один шаг."
+    ),
+    "retention_reactivation_a": (
+        "🌍 Для вас доступны обновлённые маршруты.\n\n"
+        "Вернитесь в Portal и проверьте качество подключения."
+    ),
+    "retention_reactivation_b": (
+        "🧭 Мы обновили узлы и маршруты.\n\n"
+        "Можно вернуться и проверить текущее качество в один клик."
+    ),
+}
+
+
+def _seed_retention_templates(conn, *, dialect: str) -> None:
+    if dialect == "sqlite":
+        exists = conn.execute(
+            text("SELECT name FROM sqlite_master WHERE type='table' AND name='templates';")
+        ).fetchone()
+        if not exists:
+            return
+    elif dialect == "postgresql":
+        exists = conn.execute(text("SELECT to_regclass('public.templates');")).scalar()
+        if not exists:
+            return
+    else:
+        return
+
+    for key, value in RETENTION_TEMPLATE_PRESETS.items():
+        existing = conn.execute(
+            text('SELECT 1 FROM templates WHERE lower("key") = :key LIMIT 1;'),
+            {"key": str(key).lower()},
+        ).fetchone()
+        if existing:
+            continue
+        conn.execute(
+            text('INSERT INTO templates ("key", "text", "created_at") VALUES (:key, :text, :created_at);'),
+            {"key": key, "text": value, "created_at": datetime.utcnow()},
+        )
 
 
 def run_migrations(engine: Engine) -> None:
@@ -434,6 +514,9 @@ def run_migrations(engine: Engine) -> None:
         )
         conn.execute(text("CREATE INDEX IF NOT EXISTS ix_live_updates_active_sort ON live_updates(is_active, sort_order);"))
 
+        # Seed default retention templates for admin editing (idempotent).
+        _seed_retention_templates(conn, dialect="sqlite")
+
 
 def _run_postgres_migrations(engine: Engine) -> None:
     """
@@ -579,3 +662,6 @@ def _run_postgres_migrations(engine: Engine) -> None:
             )
         )
         conn.execute(text("CREATE INDEX IF NOT EXISTS ix_live_updates_active_sort ON live_updates(is_active, sort_order);"))
+
+        # Seed default retention templates for admin editing (idempotent).
+        _seed_retention_templates(conn, dialect="postgresql")
