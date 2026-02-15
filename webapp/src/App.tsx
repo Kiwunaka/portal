@@ -44,6 +44,7 @@ import {
   createTicket,
   fetchClientApps,
   fetchDashboard,
+  fetchFeaturedReviews,
   fetchNodeStatus,
   fetchTickets,
   fetchUser,
@@ -73,6 +74,7 @@ import {
   type ManualCreateIn,
   type NodeStatus,
   type PointsSnapshot,
+  type ReviewPayload,
   type TicketInfo,
   type UserPayload,
 } from "./api";
@@ -183,6 +185,17 @@ const MOCK_NODES: NodeStatus[] = [
 ] as NodeStatus[];
 
 const MOCK_POINTS: PointsSnapshot = { available_points: 320, expiring_soon_points: 50 } as PointsSnapshot;
+const MOCK_REVIEWS: ReviewPayload[] = [
+  { username: "anna", rating: 5, text: "Подключение заняло меньше минуты, стабильно в поездках.", date: new Date().toISOString() },
+  { username: "mike", rating: 5, text: "Нравится, что всё управление в одном кабинете без лишних шагов.", date: new Date().toISOString() },
+  { username: "leo", rating: 4, text: "Хорошая скорость и понятный путь продления.", date: new Date().toISOString() },
+];
+
+const ONBOARDING_STEPS: Array<{ title: string; text: string }> = [
+  { title: "Шаг 1", text: "Откройте вкладку «Подключение» и выберите приложение под вашу платформу." },
+  { title: "Шаг 2", text: "Импортируйте ключ в один клик или через fallback-инструкцию." },
+  { title: "Шаг 3", text: "Проверьте статус узлов и закрепите канал для апдейтов и офферов." },
+];
 
 function fmtDate(iso?: string | null): string {
   if (!iso) return "-";
@@ -417,6 +430,7 @@ export default function App() {
   const [user, setUser] = useState<UserPayload | null>(null);
   const [dash, setDash] = useState<DashboardSnapshot | null>(null);
   const [nodes, setNodes] = useState<NodeStatus[]>([]);
+  const [reviews, setReviews] = useState<ReviewPayload[]>([]);
   const [points, setPoints] = useState<PointsSnapshot | null>(null);
   const [tickets, setTickets] = useState<TicketInfo[]>([]);
   const [ticket, setTicket] = useState<TicketInfo | null>(null);
@@ -522,6 +536,20 @@ export default function App() {
   const platform = detectPlatform();
   const segment = segmentInfo((dash?.segment || user?.segment || dash?.sub_type || "").toUpperCase());
   const selectedNode = useMemo(() => nodes.find((n) => n.code === selectedNodeCode) || nodes[0] || null, [nodes, selectedNodeCode]);
+  const socialProof = useMemo(() => {
+    const reviewsCount = reviews.length;
+    const avgRating = reviewsCount > 0
+      ? Number((reviews.reduce((sum, r) => sum + Number(r.rating || 0), 0) / reviewsCount).toFixed(1))
+      : 0;
+    const healthyNodes = nodes.filter((n) => n.is_healthy).length;
+    return {
+      reviewsCount,
+      avgRating,
+      healthyNodes,
+      nodesTotal: nodes.length,
+      sample: reviews.slice(0, 2),
+    };
+  }, [reviews, nodes]);
   const queryParams = useMemo(() => new URLSearchParams(window.location.search), []);
   const queryCampaign = (queryParams.get("campaign") || "").trim();
   const queryPromo = (queryParams.get("promo") || "").trim().toUpperCase();
@@ -600,6 +628,7 @@ export default function App() {
       setUser(MOCK_USER);
       setDash(MOCK_DASH);
       setNodes(MOCK_NODES);
+      setReviews(MOCK_REVIEWS);
       setPoints(MOCK_POINTS);
       setClientApps(null);
       setTickets([]);
@@ -615,24 +644,27 @@ export default function App() {
       let u: UserPayload;
       let d: DashboardSnapshot;
       let n: NodeStatus[];
+      let rv: ReviewPayload[];
       let t: TicketInfo[];
       let p: PointsSnapshot | null;
       let apps: ClientAppsPayload | null;
 
       if (tgUser) {
-        [u, d, n, t, p, apps] = await Promise.all([
+        [u, d, n, rv, t, p, apps] = await Promise.all([
           fetchUser(tgUser.id),
           fetchDashboard(),
           fetchNodeStatus(),
+          fetchFeaturedReviews().catch(() => []),
           fetchTickets(20),
           getPoints().catch(() => null),
           fetchClientApps().catch(() => null),
         ]);
       } else {
         d = await fetchDashboard();
-        [u, n, t, p, apps] = await Promise.all([
+        [u, n, rv, t, p, apps] = await Promise.all([
           fetchUser(d.tg_id),
           fetchNodeStatus(),
+          fetchFeaturedReviews().catch(() => []),
           fetchTickets(20),
           getPoints().catch(() => null),
           fetchClientApps().catch(() => null),
@@ -642,6 +674,7 @@ export default function App() {
       setUser(u);
       setDash(d);
       setNodes(n);
+      setReviews(rv);
       setTickets(t);
       setPoints(p);
       setClientApps(apps);
@@ -2361,6 +2394,47 @@ export default function App() {
             </div>
             <div className="muted" style={{ marginBottom: 14 }}>{segment.text}</div>
 
+            <div className="onboarding-box">
+              <div className="onboarding-box__title">Старт за 90 секунд</div>
+              <div className="onboarding-steps">
+                {ONBOARDING_STEPS.map((step) => (
+                  <div key={step.title} className="onboarding-step">
+                    <div className="onboarding-step__k">{step.title}</div>
+                    <div className="onboarding-step__v">{step.text}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="proof-grid">
+              <article className="proof-card">
+                <div className="proof-card__k">Отзывы</div>
+                <div className="proof-card__v">{socialProof.reviewsCount || "-"}</div>
+                <div className="proof-card__s">Публичные оценки пользователей</div>
+              </article>
+              <article className="proof-card">
+                <div className="proof-card__k">Средний рейтинг</div>
+                <div className="proof-card__v">{socialProof.avgRating > 0 ? `${socialProof.avgRating}/5` : "-"}</div>
+                <div className="proof-card__s">Оцениваем по карточкам в кабинете</div>
+              </article>
+              <article className="proof-card">
+                <div className="proof-card__k">Узлы онлайн</div>
+                <div className="proof-card__v">{socialProof.nodesTotal > 0 ? `${socialProof.healthyNodes}/${socialProof.nodesTotal}` : "-"}</div>
+                <div className="proof-card__s">Актуально на момент загрузки</div>
+              </article>
+            </div>
+
+            {socialProof.sample.length ? (
+              <div className="proof-quotes">
+                {socialProof.sample.map((r, idx) => (
+                  <article key={`${r.username}-${idx}`} className="proof-quote">
+                    <div className="proof-quote__text">“{r.text}”</div>
+                    <div className="proof-quote__meta">{`@${r.username || "user"} • ${Number(r.rating || 0)}/5`}</div>
+                  </article>
+                ))}
+              </div>
+            ) : null}
+
             <div className="stories">
               {STORY_SLIDES.map((s, i) => (
                 <article className={`story slide-in stagger-${i + 1}`} key={s.title}>
@@ -2505,6 +2579,16 @@ export default function App() {
           <div className="card tab-content">
             <div className="section-tag">[ПОДКЛЮЧЕНИЕ]</div>
             <div className="card__title">Мастер подключения</div>
+            <div className="muted" style={{ marginBottom: 10 }}>
+              Первый запуск: импортируйте ключ, затем нажмите «Проверить и завершить» для фиксации статуса.
+            </div>
+            <div className="pill" style={{ marginBottom: 10 }}>
+              {platform === "android"
+                ? "Android: deep-link в v2rayNG + fallback на Hiddify."
+                : platform === "ios"
+                  ? "iOS: Streisand/Happ с ручным импортом, если схема недоступна."
+                  : "Desktop: копирование ключа + быстрый путь через инструкцию."}
+            </div>
 
             <div className="step">
               <div className={`step__n ${connectStep === 1 ? "step__n--active" : connectStep > 1 ? "step__n--done" : ""}`}>

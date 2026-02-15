@@ -1,6 +1,7 @@
 ﻿from __future__ import annotations
 
 import asyncio
+import hashlib
 import os
 from pathlib import Path
 from datetime import datetime, timedelta
@@ -18,7 +19,7 @@ from control_panel import ControlPanel
 from db import SessionLocal, init_db
 from events_service import track_event
 from free_cycle_service import mark_user_became_free, process_due_free_cycle_resets
-from models import CampaignSend, NodeHealthSample, User
+from models import CampaignSend, NodeHealthSample, Template, User
 from offers_service import create_offer, expire_stale_offers, get_active_offer
 from pay_attempts_service import find_abandoned_candidates, mark_abandoned, mark_abandoned_notified
 
@@ -29,6 +30,78 @@ FREE_TOTAL_GB = int(os.getenv("FREE_TOTAL_GB", "30"))
 PUBLIC_CHANNEL = (os.getenv("PUBLIC_CHANNEL") or "portal_privacy").lstrip("@")
 AUTO_FREE_DAYS = int(os.getenv("AUTO_FREE_DAYS", "3650"))
 
+_TEMPLATE_CACHE_TTL_SECONDS = max(30, int(os.getenv("RETENTION_TEMPLATE_CACHE_TTL_SECONDS", "180")))
+_TEMPLATE_CACHE: dict[str, tuple[datetime, str]] = {}
+
+RETENTION_DEFAULT_COPY: dict[str, dict[str, str]] = {
+    "welcome": {
+        "a": (
+            "✨ Добро пожаловать в Portal.\n\n"
+            "Старт занимает 1-2 минуты:\n"
+            "1) Откройте раздел Подключение.\n"
+            "2) Импортируйте ключ в клиент.\n"
+            "3) Проверьте статус соединения.\n\n"
+            "Если что-то не сработает, внизу всегда есть быстрый вход в поддержку."
+        ),
+        "b": (
+            "🛡 Профиль готов к работе.\n\n"
+            "Короткий чек-лист перед первым запуском:\n"
+            "• Выберите приложение для своей платформы.\n"
+            "• Импортируйте ключ одним нажатием.\n"
+            "• Сверьте статус узлов в кабинете.\n\n"
+            "Нужна помощь с настройкой? Мы на связи в поддержке."
+        ),
+    },
+    "t3": {
+        "a": (
+            "⌛ До окончания доступа осталось около 3 дней.\n\n"
+            "Продлите заранее, чтобы не терять стабильный маршрут и текущие настройки."
+        ),
+        "b": (
+            "📅 Напоминание: доступ скоро закончится (T-3).\n\n"
+            "Лучше продлить заранее, чтобы соединение оставалось непрерывным."
+        ),
+    },
+    "t1": {
+        "a": (
+            "⏱ До завершения подписки примерно 1 день.\n\n"
+            "Продлите сейчас, чтобы избежать паузы в подключении."
+        ),
+        "b": (
+            "⚡ T-1: срок доступа заканчивается в ближайшие сутки.\n\n"
+            "Продление сейчас сохранит ваш привычный режим без перерыва."
+        ),
+    },
+    "t0": {
+        "a": (
+            "🚨 Срок подписки подходит к финалу (T0).\n\n"
+            "Если нужен непрерывный доступ, продлите прямо сейчас."
+        ),
+        "b": (
+            "🔔 Подписка почти завершена.\n\n"
+            "Пара минут на продление — и соединение останется активным."
+        ),
+    },
+    "reactivation": {
+        "a": (
+            "🌍 Для вас снова доступны актуальные узлы и обновлённые маршруты.\n\n"
+            "Можно вернуться в один клик и проверить текущую скорость."
+        ),
+        "b": (
+            "🧭 Мы обновили инфраструктуру и добавили свежие маршруты.\n\n"
+            "Если хотите вернуться, начните с быстрого теста подключения."
+        ),
+    },
+}
+
+RETENTION_BUTTONS: dict[str, dict[str, str]] = {
+    "welcome": {"a": "🟦 Открыть кабинет", "b": "🟦 Перейти к подключению"},
+    "t3": {"a": "🟦 Продлить заранее", "b": "🟦 Сохранить доступ"},
+    "t1": {"a": "🟦 Продлить сейчас", "b": "🟦 Избежать паузы"},
+    "t0": {"a": "🟦 Продлить срочно", "b": "🟦 Оставить доступ активным"},
+    "reactivation": {"a": "🟦 Вернуться в Portal", "b": "🟦 Проверить подключение"},
+}
+
 
 def _bot_pay_url() -> str:
     return f"https://t.me/{BOT_USERNAME}?start=pay"
@@ -36,6 +109,82 @@ def _bot_pay_url() -> str:
 
 def _support_url() -> str:
     return f"https://t.me/{SUPPORT_USERNAME}?start=ticket_new"
+
+
+def _ab_variant_for_user(*, tg_id: int, flow_key: str) -> str:
+    seed = f"{flow_key}:{int(tg_id)}".encode("utf-8")
+    digest = hashlib.sha256(seed).digest()
+    return "b" if (digest[0] % 2) else "a"
+
+
+def _expiry_stage(delta: timedelta) -> str:
+    if timedelta(days=2) < delta <= timedelta(days=3):
+        return "t3"
+    if timedelta(hours=20) < delta <= timedelta(hours=28):
+        return "t1"
+    if timedelta(hours=-1) <= delta <= timedelta(hours=1):
+        return "t0"
+    return ""
+
+
+def _retention_template_key(*, flow: str, variant: str) -> str:
+    return f"retention_{str(flow).strip().lower()}_{str(variant).strip().lower()}"
+
+
+def _load_admin_template_value(*, key: str) -> str | None:
+    now = datetime.utcnow()
+    cache_key = str(key or "").strip().lower()
+    if not cache_key:
+        return None
+    cached = _TEMPLATE_CACHE.get(cache_key)
+    if cached:
+        cached_at, cached_value = cached
+        if (now - cached_at).total_seconds() <= _TEMPLATE_CACHE_TTL_SECONDS:
+            return cached_value
+    s = SessionLocal()
+    try:
+        row = s.query(Template).filter(func.lower(Template.key) == cache_key).first()
+        if not row:
+            return None
+        value = str(row.text or "").strip()
+        if not value:
+            return None
+        _TEMPLATE_CACHE[cache_key] = (now, value)
+        return value
+    finally:
+        s.close()
+
+
+def _retention_text(*, flow: str, variant: str, context: dict[str, str] | None = None) -> str:
+    flow_key = str(flow).strip().lower()
+    variant_key = str(variant).strip().lower()
+    fallback = (
+        RETENTION_DEFAULT_COPY.get(flow_key, {}).get(variant_key)
+        or RETENTION_DEFAULT_COPY.get(flow_key, {}).get("a")
+        or "Обновление статуса доступа."
+    )
+    template_key = _retention_template_key(flow=flow_key, variant=variant_key)
+    value = _load_admin_template_value(key=template_key) or fallback
+    if context:
+        try:
+            return value.format(**context)
+        except Exception:
+            return value
+    return value
+
+
+def _retention_buttons(*, flow: str, variant: str) -> list[list[dict[str, str]]]:
+    flow_key = str(flow).strip().lower()
+    variant_key = str(variant).strip().lower()
+    label = (
+        RETENTION_BUTTONS.get(flow_key, {}).get(variant_key)
+        or RETENTION_BUTTONS.get(flow_key, {}).get("a")
+        or "🟦 Продолжить"
+    )
+    rows = [[{"text": label, "url": _bot_pay_url()}]]
+    if flow_key in {"welcome", "reactivation"} and PUBLIC_CHANNEL:
+        rows.append([{"text": "📣 Канал с обновлениями", "url": f"https://t.me/{PUBLIC_CHANNEL}"}])
+    return rows
 
 
 async def _telegram_send_message(
@@ -196,6 +345,48 @@ async def abandoned_cart_job() -> None:
         await asyncio.sleep(300)
 
 
+async def welcome_chain_job() -> None:
+    while True:
+        now = datetime.utcnow()
+        s = SessionLocal()
+        try:
+            users = (
+                s.query(User)
+                .filter(User.tg_id > 0)
+                .filter(func.upper(User.sub_type) != "MANUAL")
+                .filter(User.created_at.isnot(None))
+                .filter(User.created_at >= now - timedelta(hours=36))
+                .filter(User.created_at <= now - timedelta(minutes=10))
+                .all()
+            )
+        finally:
+            s.close()
+
+        for u in users:
+            campaign_key = "welcome_chain_v1"
+            if not _mark_campaign_sent_once(tg_id=int(u.tg_id), campaign_key=campaign_key):
+                continue
+            variant = _ab_variant_for_user(tg_id=int(u.tg_id), flow_key="welcome")
+            text = _retention_text(
+                flow="welcome",
+                variant=variant,
+                context={"channel": f"@{PUBLIC_CHANNEL}" if PUBLIC_CHANNEL else ""},
+            )
+            ok = await _telegram_send_message(
+                chat_id=int(u.tg_id),
+                text=text,
+                buttons=_retention_buttons(flow="welcome", variant=variant),
+            )
+            if ok:
+                track_event(
+                    tg_id=int(u.tg_id),
+                    event_name="retention_ping",
+                    source="worker",
+                    meta={"flow": "welcome_chain", "variant": variant, "campaign_key": campaign_key},
+                )
+        await asyncio.sleep(3600)
+
+
 async def expiry_chain_job() -> None:
     while True:
         now = datetime.utcnow()
@@ -216,26 +407,26 @@ async def expiry_chain_job() -> None:
             if not expiry:
                 continue
             delta = expiry - now
-            campaign_key = ""
-            if timedelta(days=2) < delta <= timedelta(days=3):
-                campaign_key = f"expiry_t3:{expiry.date().isoformat()}"
-            elif timedelta(hours=23) < delta <= timedelta(hours=24):
-                campaign_key = f"expiry_t24:{expiry.date().isoformat()}"
-            elif timedelta(hours=-1) <= delta <= timedelta(hours=1):
-                campaign_key = f"expiry_t0:{expiry.date().isoformat()}"
-            if not campaign_key:
+            stage = _expiry_stage(delta)
+            if not stage:
                 continue
+            campaign_key = f"expiry_{stage}:{expiry.date().isoformat()}"
             if not _mark_campaign_sent_once(tg_id=int(u.tg_id), campaign_key=campaign_key):
                 continue
-            text = "⌛ Чтобы защита не прерывалась, продлите доступ."
-            buttons = [[{"text": "🟦 Продлить", "url": _bot_pay_url()}]]
-            await _telegram_send_message(chat_id=int(u.tg_id), text=text, buttons=buttons)
-            track_event(
-                tg_id=int(u.tg_id),
-                event_name="expired",
-                source="worker",
-                meta={"flow": "expiry_chain", "campaign_key": campaign_key},
+            variant = _ab_variant_for_user(tg_id=int(u.tg_id), flow_key=f"expiry_{stage}")
+            text = _retention_text(flow=stage, variant=variant, context={"expiry_date": expiry.date().isoformat()})
+            ok = await _telegram_send_message(
+                chat_id=int(u.tg_id),
+                text=text,
+                buttons=_retention_buttons(flow=stage, variant=variant),
             )
+            if ok:
+                track_event(
+                    tg_id=int(u.tg_id),
+                    event_name="retention_ping",
+                    source="worker",
+                    meta={"flow": "expiry_chain", "stage": stage, "variant": variant, "campaign_key": campaign_key},
+                )
         await asyncio.sleep(3600)
 
 
@@ -351,9 +542,24 @@ async def reactivation_job() -> None:
                 continue
             if not _mark_campaign_sent_once(tg_id=int(u.tg_id), campaign_key=campaign_base):
                 continue
-            text = "🌍 Доступен 24-часовой тест полного режима. Проверьте качество подключения."
-            buttons = [[{"text": "🟦 Проверить и подключить", "url": _bot_pay_url()}]]
-            await _telegram_send_message(chat_id=int(u.tg_id), text=text, buttons=buttons)
+            variant = _ab_variant_for_user(tg_id=int(u.tg_id), flow_key="reactivation")
+            text = _retention_text(
+                flow="reactivation",
+                variant=variant,
+                context={"channel": f"@{PUBLIC_CHANNEL}" if PUBLIC_CHANNEL else ""},
+            )
+            ok = await _telegram_send_message(
+                chat_id=int(u.tg_id),
+                text=text,
+                buttons=_retention_buttons(flow="reactivation", variant=variant),
+            )
+            if ok:
+                track_event(
+                    tg_id=int(u.tg_id),
+                    event_name="retention_ping",
+                    source="worker",
+                    meta={"flow": "reactivation", "variant": variant, "campaign_key": campaign_base},
+                )
         await asyncio.sleep(3600)
 
 
@@ -456,6 +662,7 @@ async def free_cycle_reset_job() -> None:
 async def main() -> None:
     init_db()
     tasks = [
+        asyncio.create_task(welcome_chain_job()),
         asyncio.create_task(abandoned_cart_job()),
         asyncio.create_task(expiry_chain_job()),
         asyncio.create_task(oto_free_job()),
