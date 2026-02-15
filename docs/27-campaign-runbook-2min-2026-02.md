@@ -25,6 +25,9 @@
    - `bot_start_link`
    - `checkout_link`
    - `webapp_link`
+4. Для soft-referral используйте отдельный deeplink вида:
+   - `https://t.me/<bot_username>?start=gift3_<REFCODE>`
+   - его удобно публиковать как дополнительный CTA в warm-постах.
 
 ## Шаг 3: Публикация
 

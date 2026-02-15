@@ -40,6 +40,13 @@ type CreatePublicOrderResponse = {
   widget_enabled?: boolean;
 };
 
+type SocialProofResponse = {
+  connected_users?: number;
+  active_users?: number;
+  paid_users?: number;
+  updated_at?: string;
+};
+
 const API_BASE = (process.env.NEXT_PUBLIC_API_BASE_URL || "").trim();
 const TG_BOT_URL = (process.env.NEXT_PUBLIC_TELEGRAM_BOT_URL || "https://t.me/portal_service_bot").trim();
 const TG_CHANNEL_LINK = (process.env.NEXT_PUBLIC_TG_CHANNEL_LINK || "https://t.me/portal_privacy").trim();
@@ -73,7 +80,11 @@ function firstPlanCode(plans: PlanOption[]): string {
 function planNote(plan: PlanOption): string {
   const devices = `${Math.max(1, Number(plan.device_limit || 1))} устройство${Number(plan.device_limit) === 1 ? "" : "(й)"}`;
   const pool = String(plan.node_policy || "").toLowerCase() === "nl_only" ? "NL" : "все страны";
-  return `${plan.days} дней • ${devices} • ${pool}`;
+  const perPerson =
+    Number(plan.days || 0) >= 365 && Number(plan.device_limit || 0) >= 5
+      ? ` • ≈${Math.round(Number(plan.amount_rub || 0) / Math.max(1, Number(plan.device_limit || 1)))} ₽/чел`
+      : "";
+  return `${plan.days} дней • ${devices} • ${pool}${perPerson}`;
 }
 
 export default function CheckoutPage() {
@@ -89,6 +100,12 @@ export default function CheckoutPage() {
   const [isBusy, setIsBusy] = useState(false);
   const [statusText, setStatusText] = useState("");
   const [breakdown, setBreakdown] = useState<{ base: number; pct: number; final: number; applied: boolean } | null>(null);
+  const [socialProof, setSocialProof] = useState<{ connected: number; active: number; paid: number; updatedAt: string }>({
+    connected: 0,
+    active: 0,
+    paid: 0,
+    updatedAt: "",
+  });
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search || "");
@@ -161,6 +178,37 @@ export default function CheckoutPage() {
       gsap.to(".orb-b", { y: -26, x: 18, duration: 7, repeat: -1, yoyo: true, ease: "sine.inOut" });
     }, sceneRef);
     return () => ctx.revert();
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    const loadSocialProof = async () => {
+      for (const base of candidateApiBases()) {
+        try {
+          const r = await fetch(`${base}/api/public/social-proof`, { cache: "no-store" });
+          if (!r.ok) continue;
+          const data = (await r.json()) as SocialProofResponse;
+          const connected = Number(data.connected_users || 0);
+          const active = Number(data.active_users || 0);
+          const paid = Number(data.paid_users || 0);
+          if (!cancelled) {
+            setSocialProof({
+              connected: Math.max(0, Math.round(connected)),
+              active: Math.max(0, Math.round(active)),
+              paid: Math.max(0, Math.round(paid)),
+              updatedAt: String(data.updated_at || ""),
+            });
+          }
+          return;
+        } catch {
+          // Try next base.
+        }
+      }
+    };
+    void loadSocialProof();
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   const activePlan = useMemo(
@@ -300,6 +348,26 @@ export default function CheckoutPage() {
             </div>
           ) : null}
           {statusText ? <div className="notice">{statusText}</div> : null}
+          <div className="checkout-proof">
+            <div className="checkout-proof__title">Социальное подтверждение</div>
+            <div className="checkout-proof__grid">
+              <div className="checkout-proof__item">
+                <span>Подключено</span>
+                <strong>{socialProof.connected > 0 ? socialProof.connected.toLocaleString("ru-RU") : "—"}</strong>
+              </div>
+              <div className="checkout-proof__item">
+                <span>Активно сейчас</span>
+                <strong>{socialProof.active > 0 ? socialProof.active.toLocaleString("ru-RU") : "—"}</strong>
+              </div>
+              <div className="checkout-proof__item">
+                <span>Платные профили</span>
+                <strong>{socialProof.paid > 0 ? socialProof.paid.toLocaleString("ru-RU") : "—"}</strong>
+              </div>
+            </div>
+            {socialProof.updatedAt ? (
+              <div className="meta-line">{`Обновлено: ${new Date(socialProof.updatedAt).toLocaleString("ru-RU")}`}</div>
+            ) : null}
+          </div>
 
           <div className="checkout-actions" style={{ marginTop: 10 }}>
             {checkoutTicket ? (
@@ -500,6 +568,50 @@ export default function CheckoutPage() {
           color: #ffb2b9;
         }
 
+        .checkout-proof {
+          margin-top: 12px;
+          border: 1px dashed var(--line);
+          padding: 10px 12px;
+          background: rgba(0, 0, 0, 0.16);
+        }
+
+        .checkout-proof__title {
+          font-family: var(--font-m);
+          font-size: 0.68rem;
+          letter-spacing: 0.1em;
+          text-transform: uppercase;
+          color: var(--muted);
+          margin-bottom: 8px;
+        }
+
+        .checkout-proof__grid {
+          display: grid;
+          gap: 8px;
+          grid-template-columns: repeat(3, minmax(0, 1fr));
+        }
+
+        .checkout-proof__item {
+          border: 1px solid var(--line);
+          padding: 8px;
+          display: grid;
+          gap: 4px;
+          background: rgba(255, 255, 255, 0.02);
+        }
+
+        .checkout-proof__item span {
+          font-family: var(--font-m);
+          font-size: 0.64rem;
+          letter-spacing: 0.08em;
+          text-transform: uppercase;
+          color: var(--muted);
+        }
+
+        .checkout-proof__item strong {
+          font-family: var(--font-h);
+          font-size: 1.05rem;
+          line-height: 1;
+        }
+
         .breakdown {
           margin-top: 12px;
           border: 1px dashed var(--line);
@@ -538,6 +650,7 @@ export default function CheckoutPage() {
 
         @media (max-width: 900px) {
           .checkout-grid { grid-template-columns: 1fr; }
+          .checkout-proof__grid { grid-template-columns: 1fr; }
         }
       `}</style>
     </main>

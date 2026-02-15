@@ -290,8 +290,17 @@ OPENING_PREMIUM_DAYS = max(1, int(os.getenv("OPENING_PREMIUM_DAYS", "14")))
 OPENING_PREMIUM_CAMPAIGN_KEY = (
     (os.getenv("OPENING_PREMIUM_CAMPAIGN_KEY") or f"opening_premium_{OPENING_PREMIUM_DAYS}d").strip()[:64]
 )
+FRIEND_GIFT_ENABLED = _env_bool("FRIEND_GIFT_ENABLED", default=True)
+FRIEND_GIFT_DAYS = max(1, int(os.getenv("FRIEND_GIFT_DAYS", "3")))
+FRIEND_GIFT_CAMPAIGN_KEY = (
+    (os.getenv("FRIEND_GIFT_CAMPAIGN_KEY") or f"friend_gift_{FRIEND_GIFT_DAYS}d").strip()[:64]
+)
 CHANNEL_PREMIUM_DAYS = max(1, int(os.getenv("CHANNEL_PREMIUM_DAYS", "10")))
 BOT_RUB_BUTTON_ENABLED = _env_bool("BOT_RUB_BUTTON_ENABLED", default=False)
+MAIN_CONNECT_CTA_LABELS = {
+    "a": "🟦 Подключить / Продлить",
+    "b": "🟦 Продлить без паузы",
+}
 
 
 def _inline_button_supported_fields() -> set[str]:
@@ -326,6 +335,17 @@ def _is_support_context(tg_id: int) -> bool:
 def _is_support_callback_data(callback_data: str | None) -> bool:
     data = (callback_data or "").strip().lower()
     return data.startswith("support") or data.startswith("faq_") or data.startswith("ticket_")
+
+
+def _ab_variant_for_user(*, tg_id: int, flow_key: str) -> str:
+    seed = f"{str(flow_key).strip().lower()}:{int(tg_id)}".encode("utf-8")
+    digest = hashlib.sha256(seed).digest()
+    return "b" if (digest[0] % 2) else "a"
+
+
+def _main_connect_cta_text(tg_id: int) -> str:
+    variant = _ab_variant_for_user(tg_id=int(tg_id), flow_key="bot_main_cta")
+    return str(MAIN_CONNECT_CTA_LABELS.get(variant) or MAIN_CONNECT_CTA_LABELS["a"])
 
 
 async def _schedule_auto_delete(bot: Bot, chat_id: int, message_id: int) -> None:
@@ -1305,6 +1325,63 @@ async def _try_activate_opening_premium_bonus(
     return True, "activated"
 
 
+async def _try_activate_friend_gift_bonus(
+    *,
+    message: Message,
+    bot: Bot,
+    tg_id: int,
+    username: str | None,
+    referral_code: str,
+) -> tuple[bool, str]:
+    if not FRIEND_GIFT_ENABLED:
+        return False, "disabled"
+    if not check_tos_accepted(tg_id):
+        return False, "tos_required"
+
+    ref_code = (referral_code or "").strip().upper()[:10]
+    inviter_tg_id = get_user_by_referral_code(ref_code) if ref_code else None
+    if not inviter_tg_id or int(inviter_tg_id) == int(tg_id):
+        return False, "invalid_ref"
+
+    user = get_user(tg_id)
+    if not user:
+        ensure_pending_user(tg_id, username=username)
+        user = get_user(tg_id)
+    if username:
+        update_user_username(tg_id, username)
+
+    if _is_paid_active_user(user):
+        return False, "already_paid_active"
+    if _campaign_claimed(tg_id=tg_id, campaign_key=FRIEND_GIFT_CAMPAIGN_KEY):
+        return False, "already_claimed"
+    if not _mark_campaign_claim_once(tg_id=tg_id, campaign_key=FRIEND_GIFT_CAMPAIGN_KEY):
+        return False, "already_claimed"
+
+    set_referrer_by_code(tg_id, ref_code)
+
+    promo_tariff = {
+        "name": f"🎁 Подарок от друга ({FRIEND_GIFT_DAYS} дня)",
+        "stars": 0,
+        "days": int(FRIEND_GIFT_DAYS),
+        "gb": 0,
+        "subId": "FRIEND_GIFT",
+        "sub_type": "PAID",
+    }
+    await create_subscription(message, tg_id, promo_tariff, bot)
+
+    track_event(
+        tg_id=int(tg_id),
+        event_name="promo_friend_gift_activated",
+        source="bot",
+        meta={
+            "campaign_key": FRIEND_GIFT_CAMPAIGN_KEY,
+            "referral_code": ref_code,
+            "days": int(FRIEND_GIFT_DAYS),
+        },
+    )
+    return True, "activated"
+
+
 def _channel_name_for_url() -> str:
     channel = (NEWS_CHANNEL_ID or "@portal_privacy").strip().lstrip("@")
     return channel or "portal_privacy"
@@ -1390,6 +1467,20 @@ def _parse_start_deeplink_context(start_arg: str) -> tuple[str, str]:
             campaign_key = campaign_key[:idx].strip()[:64]
 
     return promo_code, campaign_key
+
+
+def _parse_friend_gift_ref_code(start_arg: str) -> str:
+    raw = (start_arg or "").strip()
+    if not raw:
+        return ""
+    lowered = raw.lower()
+    marker = "gift3_"
+    if not lowered.startswith(marker):
+        return ""
+    code = raw[len(marker):].strip().upper()
+    if not re.fullmatch(r"[A-Z0-9]{6,10}", code):
+        return ""
+    return code[:10]
 
 
 def _channel_bonus_ineligible_reason(*, tg_id: int, user: User | None) -> str | None:
@@ -2503,7 +2594,7 @@ def main_keyboard_specs(tg_id: int = 0) -> list[list[dict[str, str]]]:
         [_btn_spec(text="🌐 ОТКРЫТЬ ПОРТАЛ (WEB APP)", web_app_url=WEBAPP_URL)],
         [
             _btn_spec(
-                text="🟦 Подключить / Продлить",
+                text=_main_connect_cta_text(tg_id),
                 callback_data="charge",
                 style=BTN_STYLE_PRIMARY,
                 icon_custom_emoji_id=BTN_EMOJI_PRIMARY_ID or None,
@@ -2622,6 +2713,7 @@ async def cmd_start(message: Message):
     referral_code = None
     deeplink_promo_code = ""
     deeplink_campaign_key = ""
+    friend_gift_referral_code = ""
     if message.text:
         parts = message.text.split()
         if len(parts) > 1:
@@ -2632,6 +2724,7 @@ async def cmd_start(message: Message):
             if code_part.upper().startswith("SWAZ") and len(code_part) == 8:
                 referral_code = code_part.upper()
             deeplink_promo_code, deeplink_campaign_key = _parse_start_deeplink_context(start_arg)
+            friend_gift_referral_code = _parse_friend_gift_ref_code(start_arg)
 
     try:
         await message.delete()
@@ -2664,6 +2757,8 @@ async def cmd_start(message: Message):
 
     if referral_code:
         set_referrer_by_code(tg_id, referral_code)
+    if friend_gift_referral_code:
+        set_referrer_by_code(tg_id, friend_gift_referral_code)
     update_user_username(tg_id, username)
     if deeplink_campaign_key:
         _mark_campaign_claim_once(tg_id=int(tg_id), campaign_key=deeplink_campaign_key[:64])
@@ -2709,6 +2804,45 @@ async def cmd_start(message: Message):
                 parse_mode=ParseMode.MARKDOWN,
             )
             return
+
+    if friend_gift_referral_code:
+        if check_tos_accepted(tg_id):
+            activated, reason = await _try_activate_friend_gift_bonus(
+                message=message,
+                bot=message.bot,
+                tg_id=tg_id,
+                username=username,
+                referral_code=friend_gift_referral_code,
+            )
+            if activated:
+                await message.answer(
+                    f"🎁 Подарок из ссылки активирован: +{FRIEND_GIFT_DAYS} дня доступа.",
+                    parse_mode=ParseMode.MARKDOWN,
+                )
+                return
+            if reason == "already_claimed":
+                await message.answer(
+                    "🎁 Подарок по ссылке уже активирован для вашего аккаунта.\n\n"
+                    "Открываю меню управления доступом.",
+                    reply_markup=main_keyboard(tg_id),
+                )
+                return
+            if reason == "already_paid_active":
+                await message.answer(
+                    "✅ У вас уже активен платный доступ.\n\n"
+                    "Открываю меню управления доступом.",
+                    reply_markup=main_keyboard(tg_id),
+                )
+                return
+            if reason == "invalid_ref":
+                await message.answer("⚠️ Подарочная ссылка недействительна или устарела.")
+        else:
+            pending_auto_friend_gift_referrals[int(tg_id)] = str(friend_gift_referral_code).upper()[:10]
+            await message.answer(
+                "🎁 Подарок из ссылки сохранён.\n"
+                "Сначала примите условия оферты, затем подарок активируется автоматически.",
+                parse_mode=ParseMode.MARKDOWN,
+            )
 
     if deeplink_promo_code:
         if check_tos_accepted(tg_id):
@@ -2771,6 +2905,7 @@ async def back_to_main(callback: CallbackQuery):
     pending_redeem_codes.discard(tg_id)
     pending_promo_codes.discard(tg_id)
     pending_auto_promo_codes.pop(int(tg_id), None)
+    pending_auto_friend_gift_referrals.pop(int(tg_id), None)
     
     ok = await _edit_text_with_specs(
         bot=callback.message.bot,
@@ -2880,6 +3015,29 @@ async def accept_tos(callback: CallbackQuery):
             source="bot",
             meta={"kind": "promo_after_tos", "promo_code": auto_promo, "applied": bool(ok)},
         )
+
+    auto_friend_ref = (pending_auto_friend_gift_referrals.pop(int(tg_id), "") or "").strip().upper()
+    if auto_friend_ref:
+        activated, reason = await _try_activate_friend_gift_bonus(
+            message=callback.message,
+            bot=callback.message.bot,
+            tg_id=tg_id,
+            username=callback.from_user.username,
+            referral_code=auto_friend_ref,
+        )
+        if activated:
+            await callback.answer("✅ Условия приняты. Подарок активирован!", show_alert=True)
+            return
+        if reason == "already_claimed":
+            await callback.message.answer(
+                "🎁 Подарок по ссылке уже был активирован ранее.",
+                parse_mode=ParseMode.MARKDOWN,
+            )
+        elif reason == "invalid_ref":
+            await callback.message.answer(
+                "⚠️ Подарочная ссылка недействительна.",
+                parse_mode=ParseMode.MARKDOWN,
+            )
     
     # Now show tariffs
     user = get_user(tg_id)
@@ -2993,7 +3151,7 @@ async def show_key(callback: CallbackQuery):
         rows = [
             [
                 _btn_spec(
-                    text="🟦 Подключить / Продлить",
+                    text=_main_connect_cta_text(tg_id),
                     callback_data="charge",
                     style=BTN_STYLE_PRIMARY,
                     icon_custom_emoji_id=BTN_EMOJI_PRIMARY_ID or None,
@@ -3018,7 +3176,7 @@ async def show_key(callback: CallbackQuery):
         )
         if not ok:
             kb = InlineKeyboardMarkup(inline_keyboard=[
-                [InlineKeyboardButton(text="⚡ Подключить / Продлить", callback_data="charge")],
+                [InlineKeyboardButton(text=_main_connect_cta_text(tg_id), callback_data="charge")],
                 [InlineKeyboardButton(text="◀️ Назад", callback_data="back")]
             ])
             await callback.message.edit_text(
@@ -3324,11 +3482,12 @@ async def instruction_platform(callback: CallbackQuery):
 @router.callback_query(F.data == "menu_bonuses")
 async def menu_bonuses(callback: CallbackQuery):
     """Bonuses submenu: referral, wheel, streak, achievements"""
-    user = get_user(callback.from_user.id)
+    tg_id = int(callback.from_user.id)
+    user = get_user(tg_id)
     if not _is_paid_active_user(user):
         kb = InlineKeyboardMarkup(inline_keyboard=[
             [InlineKeyboardButton(text=f"🎁 {CHANNEL_PREMIUM_DAYS} дней премиум за канал", callback_data="bonus_offer_main")],
-            [InlineKeyboardButton(text="⚡ Подключить / Продлить", callback_data="charge")],
+            [InlineKeyboardButton(text=_main_connect_cta_text(tg_id), callback_data="charge")],
             [InlineKeyboardButton(text="◀️ Назад", callback_data="back")],
         ])
         await callback.message.edit_text(
@@ -3483,11 +3642,13 @@ async def show_referral(callback: CallbackQuery):
     
     # Generate referral link with SWAZ code
     invite_link = f"https://t.me/{BOT_USERNAME}?start={ref_code}"
+    gift_link = f"https://t.me/{BOT_USERNAME}?start=gift3_{ref_code}"
     ref_count = stats['count']
     bonus_earned = stats['bonus_earned']
     
     kb = InlineKeyboardMarkup(inline_keyboard=[
         [InlineKeyboardButton(text="📤 Поделиться ссылкой", url=f"https://t.me/share/url?url={invite_link}&text=🛡 PORTAL — приглашение в защищенную сеть")],
+        [InlineKeyboardButton(text=f"🎁 Подарить {FRIEND_GIFT_DAYS} дня другу", url=f"https://t.me/share/url?url={gift_link}&text=🎁 Дарю вам стартовый доступ в PORTAL. Активируйте по ссылке и проверьте подключение.")],
         [InlineKeyboardButton(text="◀️ Назад", callback_data="back")]
     ])
     
@@ -3497,6 +3658,8 @@ async def show_referral(callback: CallbackQuery):
         f"Расширяйте покрытие PORTAL, подключая новые узлы (друзей).\n"
         f"├ *Им:* скидка 20% на первый доступ\n"
         f"└ *Вам:* +{REFERRAL_BONUS_DAYS} дней доступа за каждую активацию\n\n"
+        f"🎁 *Быстрый прогрев:* отправьте gift-ссылку на *{FRIEND_GIFT_DAYS} дня*.\n"
+        "Если пользователь оплатит после теста, реферальный бонус начислится автоматически.\n\n"
         f"👇 *Ваша ссылка для приглашения:*\n`{invite_link}`\n\n"
         f"Активировано по ссылке: {ref_count}\n"
         f"Бонусных дней начислено: {bonus_earned}",
@@ -3946,6 +4109,7 @@ pending_ticket_replies: dict[int, int] = {}
 pending_redeem_codes: set[int] = set()
 pending_promo_codes: set[int] = set()
 pending_auto_promo_codes: dict[int, str] = {}
+pending_auto_friend_gift_referrals: dict[int, str] = {}
 checkout_context_by_user: dict[int, dict[str, str]] = {}
 
 @router.message(Command("review"))

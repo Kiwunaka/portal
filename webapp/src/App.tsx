@@ -2558,6 +2558,9 @@ export default function App() {
                 {`Разбивка: база ${rubBreakdown.base.toFixed(0)}₽ • скидка ${rubBreakdown.discountPct}% • итог ${rubBreakdown.final.toFixed(0)}₽`}
               </div>
             ) : null}
+            <div className="muted" style={{ marginTop: 6 }}>
+              {`Сейчас онлайн: ${socialProof.nodesTotal > 0 ? `${socialProof.healthyNodes}/${socialProof.nodesTotal} узлов` : "н/д"} • отзывов: ${socialProof.reviewsCount || 0}`}
+            </div>
             <div className="card__title" style={{ marginTop: 14 }}>Подарочный код</div>
             <div className="actions">
               <input

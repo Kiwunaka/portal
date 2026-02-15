@@ -1010,6 +1010,41 @@ a {
   border-bottom-color: var(--red);
 }
 
+.roadmap-public {
+  padding-top: 4rem;
+}
+
+.roadmap-card {
+  display: grid;
+  gap: 10px;
+}
+
+.roadmap-status {
+  display: inline-flex;
+  width: fit-content;
+  border: 1px solid var(--red);
+  color: var(--red);
+  font-family: var(--font-m);
+  font-size: 0.62rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  padding: 4px 8px;
+}
+
+.roadmap-list {
+  display: grid;
+  gap: 6px;
+}
+
+.roadmap-list p {
+  margin: 0;
+  font-family: var(--font-m);
+  color: var(--muted);
+  font-size: 0.68rem;
+  letter-spacing: 0.04em;
+  line-height: 1.45;
+}
+
 .plans-header {
   margin-bottom: 4rem;
 }
@@ -1100,6 +1135,17 @@ a {
   color: var(--muted);
   margin-top: 0.5rem;
   letter-spacing: 0.1em;
+}
+
+.plan-card .plan-micro {
+  margin-top: 0.65rem;
+  font-family: var(--font-m);
+  font-size: 0.62rem;
+  color: var(--text);
+  letter-spacing: 0.05em;
+  border: 1px dashed rgba(255, 71, 87, 0.4);
+  padding: 6px 8px;
+  background: rgba(255, 71, 87, 0.06);
 }
 
 .plan-card .plan-tag {

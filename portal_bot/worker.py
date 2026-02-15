@@ -19,7 +19,7 @@ from control_panel import ControlPanel
 from db import SessionLocal, init_db
 from events_service import track_event
 from free_cycle_service import mark_user_became_free, process_due_free_cycle_resets
-from models import CampaignSend, NodeHealthSample, Template, User
+from models import CampaignSend, ExternalOrder, NodeHealthSample, Template, User
 from offers_service import create_offer, expire_stale_offers, get_active_offer
 from pay_attempts_service import find_abandoned_candidates, mark_abandoned, mark_abandoned_notified
 
@@ -29,6 +29,11 @@ SUPPORT_USERNAME = (os.getenv("SUPPORT_BOT_USERNAME") or os.getenv("SUPPORT_USER
 FREE_TOTAL_GB = int(os.getenv("FREE_TOTAL_GB", "30"))
 PUBLIC_CHANNEL = (os.getenv("PUBLIC_CHANNEL") or "portal_privacy").lstrip("@")
 AUTO_FREE_DAYS = int(os.getenv("AUTO_FREE_DAYS", "3650"))
+START99_WELCOME_ENABLED = os.getenv("START99_WELCOME_ENABLED", "1").strip().lower() in {"1", "true", "yes", "on", "y"}
+START99_WELCOME_MIN_HOURS = max(1, int(os.getenv("START99_WELCOME_MIN_HOURS", "24")))
+START99_WELCOME_MAX_HOURS = max(START99_WELCOME_MIN_HOURS + 1, int(os.getenv("START99_WELCOME_MAX_HOURS", "48")))
+START99_WELCOME_DISCOUNT_PCT = max(1, min(95, int(os.getenv("START99_WELCOME_DISCOUNT_PCT", "15"))))
+START99_WELCOME_DISCOUNT_CODE = (os.getenv("START99_WELCOME_DISCOUNT_CODE") or "STARTBOOST").strip().upper()[:20]
 
 _TEMPLATE_CACHE_TTL_SECONDS = max(30, int(os.getenv("RETENTION_TEMPLATE_CACHE_TTL_SECONDS", "180")))
 _TEMPLATE_CACHE: dict[str, tuple[datetime, str]] = {}
@@ -92,6 +97,16 @@ RETENTION_DEFAULT_COPY: dict[str, dict[str, str]] = {
             "Если хотите вернуться, начните с быстрого теста подключения."
         ),
     },
+    "start99_offer": {
+        "a": (
+            "🎁 Вы уже проверили Start в реальном трафике.\n\n"
+            "Мы закрепили персональную скидку {discount_pct}% на следующий платёж."
+        ),
+        "b": (
+            "⚡ Start активирован, можно переходить на полный режим.\n\n"
+            "Скидка {discount_pct}% уже ждёт в следующем checkout."
+        ),
+    },
 }
 
 RETENTION_BUTTONS: dict[str, dict[str, str]] = {
@@ -100,6 +115,7 @@ RETENTION_BUTTONS: dict[str, dict[str, str]] = {
     "t1": {"a": "🟦 Продлить сейчас", "b": "🟦 Избежать паузы"},
     "t0": {"a": "🟦 Продлить срочно", "b": "🟦 Оставить доступ активным"},
     "reactivation": {"a": "🟦 Вернуться в Portal", "b": "🟦 Проверить подключение"},
+    "start99_offer": {"a": "🟦 Продлить со скидкой", "b": "🟦 Зафиксировать доступ"},
 }
 
 
@@ -182,9 +198,31 @@ def _retention_buttons(*, flow: str, variant: str) -> list[list[dict[str, str]]]
         or "🟦 Продолжить"
     )
     rows = [[{"text": label, "url": _bot_pay_url()}]]
-    if flow_key in {"welcome", "reactivation"} and PUBLIC_CHANNEL:
+    if flow_key in {"welcome", "reactivation", "start99_offer"} and PUBLIC_CHANNEL:
         rows.append([{"text": "📣 Канал с обновлениями", "url": f"https://t.me/{PUBLIC_CHANNEL}"}])
     return rows
+
+
+def _ensure_pending_discount(*, tg_id: int, pct: int, code: str) -> tuple[int, bool]:
+    s = SessionLocal()
+    try:
+        user = s.query(User).filter(User.tg_id == int(tg_id)).first()
+        if not user:
+            return 0, False
+        current = int(getattr(user, "pending_discount_pct", 0) or 0)
+        target = max(1, min(95, int(pct)))
+        if current >= target and current > 0:
+            return current, False
+        user.pending_discount_pct = int(target)
+        user.pending_discount_code = str(code or START99_WELCOME_DISCOUNT_CODE).strip().upper()[:20]
+        user.pending_discount_set_at = datetime.utcnow()
+        s.commit()
+        return int(target), True
+    except Exception:
+        s.rollback()
+        return 0, False
+    finally:
+        s.close()
 
 
 async def _telegram_send_message(
@@ -430,6 +468,74 @@ async def expiry_chain_job() -> None:
         await asyncio.sleep(3600)
 
 
+async def start99_welcome_offer_job() -> None:
+    while True:
+        if not START99_WELCOME_ENABLED:
+            await asyncio.sleep(900)
+            continue
+
+        now = datetime.utcnow()
+        newer_than = now - timedelta(hours=int(START99_WELCOME_MAX_HOURS))
+        older_than = now - timedelta(hours=int(START99_WELCOME_MIN_HOURS))
+        s = SessionLocal()
+        try:
+            rows = (
+                s.query(ExternalOrder)
+                .filter(ExternalOrder.tg_id.isnot(None))
+                .filter(ExternalOrder.paid_at.isnot(None))
+                .filter(ExternalOrder.paid_at >= newer_than)
+                .filter(ExternalOrder.paid_at <= older_than)
+                .filter(func.lower(func.coalesce(ExternalOrder.provider, "")) == "freekassa")
+                .filter(func.lower(func.coalesce(ExternalOrder.status, "")) == "paid")
+                .filter(func.lower(func.coalesce(ExternalOrder.plan_code, "")) == "start_99")
+                .order_by(ExternalOrder.paid_at.desc())
+                .limit(300)
+                .all()
+            )
+        finally:
+            s.close()
+
+        for row in rows:
+            tg_id = int(getattr(row, "tg_id", 0) or 0)
+            if tg_id <= 0:
+                continue
+            campaign_key = f"start99_welcome_offer:{str(getattr(row, 'order_id', '') or '')[:32]}"
+            if not _mark_campaign_sent_once(tg_id=tg_id, campaign_key=campaign_key):
+                continue
+            variant = _ab_variant_for_user(tg_id=tg_id, flow_key="start99_offer")
+            discount_pct, applied_now = _ensure_pending_discount(
+                tg_id=tg_id,
+                pct=int(START99_WELCOME_DISCOUNT_PCT),
+                code=START99_WELCOME_DISCOUNT_CODE,
+            )
+            text = _retention_text(
+                flow="start99_offer",
+                variant=variant,
+                context={"discount_pct": str(max(1, int(discount_pct or START99_WELCOME_DISCOUNT_PCT)))},
+            )
+            if not applied_now and int(discount_pct) > 0:
+                text += f"\n\nТекущая сохранённая скидка: {int(discount_pct)}%."
+            ok = await _telegram_send_message(
+                chat_id=tg_id,
+                text=text,
+                buttons=_retention_buttons(flow="start99_offer", variant=variant),
+            )
+            if ok:
+                track_event(
+                    tg_id=tg_id,
+                    event_name="retention_ping",
+                    source="worker",
+                    meta={
+                        "flow": "start99_welcome_offer",
+                        "variant": variant,
+                        "campaign_key": campaign_key,
+                        "discount_pct": int(discount_pct or 0),
+                        "applied_now": bool(applied_now),
+                    },
+                )
+        await asyncio.sleep(900)
+
+
 async def _legacy_usage_bytes(*, tg_id: int) -> int:
     if not Settings.PANEL_PATH:
         return 0
@@ -665,6 +771,7 @@ async def main() -> None:
         asyncio.create_task(welcome_chain_job()),
         asyncio.create_task(abandoned_cart_job()),
         asyncio.create_task(expiry_chain_job()),
+        asyncio.create_task(start99_welcome_offer_job()),
         asyncio.create_task(oto_free_job()),
         asyncio.create_task(reactivation_job()),
         asyncio.create_task(node_metrics_watchdog_job()),

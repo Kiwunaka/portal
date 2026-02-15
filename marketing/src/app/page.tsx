@@ -44,7 +44,7 @@ const FEATURES = [
 const PLANS = [
   { code: "start_99", name: "Start", desc: "30 дней • 1 устройство • NL", price: "99 ₽", note: "Мягкий вход и проверка качества в реальном трафике", tag: "Вход", tone: "anchor" },
   { code: "pro_249", name: "Pro", desc: "1 месяц • до 5 устройств • все страны", price: "249 ₽", note: "Основной тариф для работы, видео и ежедневного использования", tag: "Популярный", tone: "recommended" },
-  { code: "ultra_1499", name: "Ultra / Family", desc: "12 месяцев • до 5 устройств • приоритетные узлы", price: "1499 ₽", note: "Лучшая цена за месяц и стабильный запас по сроку", tag: "Выгода" },
+  { code: "ultra_1499", name: "Ultra / Family", desc: "12 месяцев • до 5 устройств • приоритетные узлы", price: "1499 ₽", note: "Лучшая цена за месяц и стабильный запас по сроку", micro: "≈300 ₽/чел при использовании 5 устройств", tag: "Выгода" },
 ];
 
 const DEFAULT_LIVE_UPDATES: LiveUpdate[] = [
@@ -65,6 +65,33 @@ const DEFAULT_LIVE_UPDATES: LiveUpdate[] = [
     summary: "Обновили пошаговые инструкции и deep links для популярных клиентов.",
     date: "2026-02-12",
     link: `https://t.me/${TG_NEWS_CHANNEL}/3`,
+  },
+];
+
+const ROADMAP_PUBLIC: Array<{ title: string; status: string; points: string[] }> = [
+  {
+    title: "Retention",
+    status: "В работе",
+    points: [
+      "Welcome / T-3 / T-1 / reactivation цепочки с A/B CTA.",
+      "Start99 welcome-offer через отложенную скидку на следующий checkout.",
+    ],
+  },
+  {
+    title: "UI-Polish",
+    status: "В работе",
+    points: [
+      "Социальное подтверждение в checkout и WebApp.",
+      "Улучшенный onboarding-microcopy для подключения на разных платформах.",
+    ],
+  },
+  {
+    title: "Ops",
+    status: "Запланировано",
+    points: [
+      "Расширение мониторинга кампаний и повторных продлений.",
+      "Runbook развёртывания и поэтапный enable feature-flags.",
+    ],
   },
 ];
 
@@ -249,6 +276,7 @@ function Navbar({ theme, onToggleTheme }: { theme: string; onToggleTheme: () => 
       <nav className="topnav">
         <a href="#features">Возможности</a>
         <a href="#plans">Тарифы</a>
+        <a href="#roadmap">Roadmap</a>
         <a href="#download">Download</a>
         <a href="#faq">FAQ</a>
         <button className="theme-toggle" onClick={onToggleTheme} type="button" aria-label="Toggle theme">
@@ -514,6 +542,7 @@ function Plans() {
             <p className="plan-desc">{p.desc}</p>
             <div className="plan-price">{p.price}</div>
             <div className="plan-note">{p.note}</div>
+            {p.micro ? <div className="plan-micro">{p.micro}</div> : null}
           </div>
         ))}
       </div>
@@ -850,6 +879,31 @@ function LiveUpdates({ items }: { items: LiveUpdate[] }) {
     </section>
   );
 }
+
+function RoadmapPublic() {
+  return (
+    <section className="downloads roadmap-public" id="roadmap">
+      <div className="section-tag">[ROADMAP]</div>
+      <div className="downloads-head">
+        <h2>ROADMAP НА БЛИЖАЙШИЕ СПРИНТЫ</h2>
+        <p>Показываем только подтверждённые треки и текущий статус выполнения.</p>
+      </div>
+      <div className="downloads-grid">
+        {ROADMAP_PUBLIC.map((item) => (
+          <article className="download-card roadmap-card" key={item.title}>
+            <h3>{item.title}</h3>
+            <div className="roadmap-status">{item.status}</div>
+            <div className="roadmap-list">
+              {item.points.map((point) => (
+                <p key={point}>{point}</p>
+              ))}
+            </div>
+          </article>
+        ))}
+      </div>
+    </section>
+  );
+}
 function Footer() {
   return (
     <footer className="footer">
@@ -935,6 +989,7 @@ export default function HomePage() {
         <CTA />
         <ProjectChannel />
         <LiveUpdates items={liveUpdates} />
+        <RoadmapPublic />
         <FAQ />
         <Footer />
       </main>
