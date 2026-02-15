@@ -23,7 +23,7 @@ import uuid
 from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any
-from urllib.parse import parse_qsl, urlparse
+from urllib.parse import parse_qsl, urlencode, urlparse
 
 import aiohttp
 from dotenv import load_dotenv
@@ -46,8 +46,10 @@ from models import (
     ExternalPaymentEvent,
     FamilySlot,
     GiftCard,
+    LiveUpdate,
     Node,
     NodeHealthSample,
+    PlanCatalog,
     PromoCode,
     PromoUsage,
     Review,
@@ -120,8 +122,14 @@ CHANNEL_SUBSCRIBER_CAMPAIGN_KEY = (
 MAX_BROADCAST_LIMIT = env_int("MAX_BROADCAST_LIMIT", 1000)
 PAY_CHECKOUT_URL = (os.getenv("PAY_CHECKOUT_URL") or "").strip()
 RUB_CHECKOUT_ENABLED = env_bool("RUB_CHECKOUT_ENABLED", default=False)
+CHECKOUT_WIDGET_ENABLED = env_bool("CHECKOUT_WIDGET_ENABLED", default=False)
 CHANNEL_SPEED_BUMP_ENABLED = env_bool("CHANNEL_SPEED_BUMP_ENABLED", default=False)
 FREE_SPEED_BUMP_UNSUB_KBPS = max(1, env_int("FREE_SPEED_BUMP_UNSUB_KBPS", 1250))
+CHECKOUT_TICKET_SECRET = (
+    (os.getenv("CHECKOUT_TICKET_SECRET") or "").strip()
+    or (os.getenv("WEBAPP_SESSION_SECRET") or "").strip()
+)
+CHECKOUT_TICKET_TTL_SECONDS = max(60, env_int("CHECKOUT_TICKET_TTL_SECONDS", 900))
 WEBAPP_ENABLE_HAPTIC = env_bool("WEBAPP_ENABLE_HAPTIC", default=True)
 WEBAPP_ENABLE_LOTTIE = env_bool("WEBAPP_ENABLE_LOTTIE", default=True)
 WEBAPP_DEV_AUTH = env_bool("WEBAPP_DEV_AUTH", default=False)
@@ -156,6 +164,14 @@ RUB_PLAN_PRICES = {
     "9_months": {"amount_rub": 1399, "days": 273},
     "12_months": {"amount_rub": 1499, "days": 365},
 }
+RUB_PLAN_LABELS = {
+    "start_99": "Start 30 дней",
+    "1_month": "Pro 1 месяц",
+    "3_months": "Pro 3 месяца",
+    "6_months": "Ultra 6 месяцев",
+    "9_months": "Ultra 9 месяцев",
+    "12_months": "Ultra 12 месяцев",
+}
 GIFT_CARD_TYPES = {
     "mini": {"days": 7, "stars": 59, "name": "Mini"},
     "standard": {"days": 30, "stars": 249, "name": "Standard"},
@@ -167,6 +183,51 @@ FK_NOTIFY_IP_ALLOWLIST = [
     for x in (os.getenv("FK_NOTIFY_IP_ALLOWLIST") or "").split(",")
     if x.strip()
 ]
+
+
+def _default_plan_catalog() -> list[dict[str, Any]]:
+    return [
+        {
+            "code": code,
+            "label": RUB_PLAN_LABELS.get(code, code),
+            "amount_rub": int(RUB_PLAN_PRICES.get(code, {}).get("amount_rub") or 0),
+            "amount_stars": int(API_PLAN_PRICES.get(code) or 0),
+            "days": int(RUB_PLAN_PRICES.get(code, {}).get("days") or 30),
+            "device_limit": 1 if code == "start_99" else max(1, int(PAID_LIMIT_IP)),
+            "node_policy": "nl_only" if code == "start_99" else "paid_pool",
+            "badge": "New" if code == "start_99" else "",
+            "is_active": True,
+            "sort_order": idx + 1,
+        }
+        for idx, code in enumerate(["start_99", "1_month", "3_months", "6_months", "9_months", "12_months"])
+    ]
+
+
+def _default_live_updates() -> list[dict[str, Any]]:
+    channel = (PUBLIC_CHANNEL or "portal_privacy").lstrip("@")
+    return [
+        {
+            "id": 0,
+            "title": "Новые узлы NL/PL",
+            "summary": "Добавлены свежие маршруты и обновлены рекомендации по клиентам.",
+            "date": "2026-02-14",
+            "link": f"https://t.me/{channel}/1",
+        },
+        {
+            "id": 0,
+            "title": "Промо-неделя для новых пользователей",
+            "summary": "Стартовые предложения и бонусы для участников канала проекта.",
+            "date": "2026-02-13",
+            "link": f"https://t.me/{channel}/2",
+        },
+        {
+            "id": 0,
+            "title": "Гайд по быстрому подключению",
+            "summary": "Обновили инструкции и deep links для популярных клиентов.",
+            "date": "2026-02-12",
+            "link": f"https://t.me/{channel}/3",
+        },
+    ]
 
 
 def _fk_shop_configs() -> dict[str, dict[str, str]]:
@@ -389,6 +450,12 @@ class FreekassaOrderCreateIn(BaseModel):
     currency: str = Field(default="RUB", max_length=8)
 
 
+class FreekassaPublicOrderCreateIn(BaseModel):
+    plan_code: str = Field(min_length=2, max_length=32)
+    checkout_ticket: str = Field(min_length=16, max_length=1200)
+    currency: str = Field(default="RUB", max_length=8)
+
+
 class FreekassaOrderActionOut(BaseModel):
     ok: bool
     provider: str = "freekassa"
@@ -397,6 +464,61 @@ class FreekassaOrderActionOut(BaseModel):
     amount_rub: float
     currency: str = "RUB"
     status: str
+    widget_enabled: bool = False
+    discount_applied: bool = False
+    base_amount_rub: float | None = None
+    discount_pct: int = 0
+
+
+class AdminPlanCreateIn(BaseModel):
+    code: str = Field(min_length=2, max_length=32)
+    label: str = Field(min_length=2, max_length=120)
+    amount_rub: int = Field(ge=0, le=1_000_000)
+    amount_stars: int = Field(default=0, ge=0, le=1_000_000)
+    days: int = Field(default=30, ge=1, le=3650)
+    device_limit: int = Field(default=1, ge=1, le=64)
+    node_policy: str | None = Field(default=None, max_length=32)
+    badge: str | None = Field(default=None, max_length=32)
+    is_active: bool = True
+    sort_order: int = Field(default=100, ge=0, le=10000)
+
+
+class AdminPlanUpdateIn(BaseModel):
+    label: str | None = Field(default=None, min_length=2, max_length=120)
+    amount_rub: int | None = Field(default=None, ge=0, le=1_000_000)
+    amount_stars: int | None = Field(default=None, ge=0, le=1_000_000)
+    days: int | None = Field(default=None, ge=1, le=3650)
+    device_limit: int | None = Field(default=None, ge=1, le=64)
+    node_policy: str | None = Field(default=None, max_length=32)
+    badge: str | None = Field(default=None, max_length=32)
+    is_active: bool | None = None
+    sort_order: int | None = Field(default=None, ge=0, le=10000)
+
+
+class AdminLiveUpdateCreateIn(BaseModel):
+    title: str = Field(min_length=2, max_length=160)
+    summary: str = Field(min_length=2, max_length=600)
+    link: str = Field(min_length=8, max_length=600)
+    published_at: str | None = None
+    is_active: bool = True
+    sort_order: int = Field(default=100, ge=0, le=10000)
+
+
+class AdminLiveUpdateUpdateIn(BaseModel):
+    title: str | None = Field(default=None, min_length=2, max_length=160)
+    summary: str | None = Field(default=None, min_length=2, max_length=600)
+    link: str | None = Field(default=None, min_length=8, max_length=600)
+    published_at: str | None = None
+    is_active: bool | None = None
+    sort_order: int | None = Field(default=None, ge=0, le=10000)
+
+
+class AdminCampaignLinksBuildIn(BaseModel):
+    promo_code: str | None = Field(default=None, max_length=20)
+    campaign_key: str | None = Field(default=None, max_length=64)
+    plan_code: str | None = Field(default=None, max_length=32)
+    source: str = Field(default="bot", max_length=16)
+
 
 
 class DashboardResponse(BaseModel):
@@ -479,6 +601,14 @@ def _plan_total_gb(user: User) -> int:
 
 def _plan_device_limit(user: User) -> int:
     plan_code = str(getattr(user, "current_plan_code", "") or "").strip().lower()
+    if plan_code:
+        s = SessionLocal()
+        try:
+            row = _resolve_plan_config(s=s, code=plan_code)
+            if row:
+                return max(1, int(row.get("device_limit") or 1))
+        finally:
+            s.close()
     if plan_code == "start_99":
         return 1
     st = (user.sub_type or "").upper()
@@ -589,6 +719,110 @@ def _parse_optional_datetime(raw: str | None) -> datetime | None:
     if parsed.tzinfo:
         parsed = parsed.astimezone(tz=None).replace(tzinfo=None)
     return parsed
+
+
+def _checkout_secret() -> str:
+    return (CHECKOUT_TICKET_SECRET or "").strip()
+
+
+def _checkout_ticket_sign(raw: bytes) -> str:
+    return hmac.new(_checkout_secret().encode("utf-8"), raw, hashlib.sha256).hexdigest()
+
+
+def _create_checkout_ticket(*, tg_id: int, plan_code: str = "", promo_code: str = "", campaign_key: str = "", source: str = "bot") -> str:
+    payload = {
+        "tg_id": int(tg_id),
+        "plan_code": (plan_code or "").strip().lower()[:32],
+        "promo_code": (promo_code or "").strip().upper()[:20],
+        "campaign_key": (campaign_key or "").strip()[:64],
+        "source": (source or "bot").strip().lower()[:16],
+        "iat": int(time.time()),
+        "exp": int(time.time()) + int(CHECKOUT_TICKET_TTL_SECONDS),
+    }
+    raw = json.dumps(payload, ensure_ascii=False, separators=(",", ":"), sort_keys=True).encode("utf-8")
+    sig = _checkout_ticket_sign(raw)
+    token = base64.urlsafe_b64encode(raw).decode("ascii").rstrip("=")
+    return f"{token}.{sig}"
+
+
+def _parse_checkout_ticket(token: str) -> dict[str, Any] | None:
+    raw_token = (token or "").strip()
+    if not raw_token or "." not in raw_token or not _checkout_secret():
+        return None
+    b64, sig = raw_token.rsplit(".", 1)
+    if not b64 or not sig:
+        return None
+    padded = b64 + "=" * (-len(b64) % 4)
+    try:
+        raw = base64.urlsafe_b64decode(padded.encode("ascii"))
+        expected = _checkout_ticket_sign(raw)
+        if not hmac.compare_digest(expected, sig):
+            return None
+        payload = json.loads(raw.decode("utf-8", errors="strict"))
+        if not isinstance(payload, dict):
+            return None
+    except Exception:
+        return None
+    now_ts = int(time.time())
+    exp = int(payload.get("exp") or 0)
+    iat = int(payload.get("iat") or 0)
+    if exp <= 0 or iat <= 0 or exp < now_ts:
+        return None
+    if iat > now_ts + 60:
+        return None
+    return payload
+
+
+def _plan_rows_db(s, *, only_active: bool = True) -> list[PlanCatalog]:
+    q = s.query(PlanCatalog)
+    if only_active:
+        q = q.filter(PlanCatalog.is_active == True)
+    return q.order_by(PlanCatalog.sort_order.asc(), PlanCatalog.id.asc()).all()
+
+
+def _plan_catalog_payload(*, s, only_active: bool = True) -> list[dict[str, Any]]:
+    rows = _plan_rows_db(s, only_active=only_active)
+    if not rows:
+        fallback = _default_plan_catalog()
+        return [x for x in fallback if (x.get("is_active") if only_active else True)]
+    out: list[dict[str, Any]] = []
+    for row in rows:
+        out.append(
+            {
+                "code": str(row.code or "").strip().lower(),
+                "label": str(row.label or "").strip(),
+                "amount_rub": int(row.amount_rub or 0),
+                "amount_stars": int(row.amount_stars or 0),
+                "days": max(1, int(row.days or 30)),
+                "device_limit": max(1, int(row.device_limit or 1)),
+                "node_policy": str(row.node_policy or "").strip() or None,
+                "badge": str(row.badge or "").strip() or None,
+                "is_active": bool(row.is_active),
+                "sort_order": int(row.sort_order or 0),
+                "created_at": _safe_iso(getattr(row, "created_at", None)),
+                "updated_at": _safe_iso(getattr(row, "updated_at", None)),
+            }
+        )
+    return out
+
+
+def _resolve_plan_config(*, s, code: str) -> dict[str, Any] | None:
+    target = (code or "").strip().lower()
+    if not target:
+        return None
+    for row in _plan_catalog_payload(s=s, only_active=False):
+        if str(row.get("code") or "").strip().lower() == target:
+            return row
+    return None
+
+
+def _price_with_pending_discount(*, amount_rub: int, pending_pct: int | None) -> tuple[int, int]:
+    base = max(0, int(amount_rub))
+    pct = max(0, min(95, int(pending_pct or 0)))
+    if base <= 0 or pct <= 0:
+        return base, 0
+    discounted = int(round(base * (1.0 - (pct / 100.0))))
+    return max(1, discounted), pct
 
 
 def _generate_gift_code_for_admin(s) -> str:
@@ -886,6 +1120,34 @@ def _public_checkout_url() -> str:
     return configured
 
 
+def _checkout_url_for_user(*, tg_id: int, plan_code: str = "", promo_code: str = "", campaign_key: str = "", source: str = "bot") -> str:
+    base = _public_checkout_url() or f"https://{(Settings.PUBLIC_WEB_DOMAIN or 'portal-privacy.online').strip().strip('/')}/checkout"
+    parsed = urlparse(base)
+    q = dict(parse_qsl(parsed.query, keep_blank_values=True))
+    q["source"] = (source or "bot").strip().lower()
+    q["tg_id"] = str(int(tg_id))
+    if plan_code:
+        q["plan"] = str(plan_code).strip().lower()[:32]
+    if promo_code:
+        q["promo"] = str(promo_code).strip().upper()[:20]
+    if campaign_key:
+        q["campaign"] = str(campaign_key).strip()[:64]
+    if _checkout_secret():
+        ticket = _create_checkout_ticket(
+            tg_id=int(tg_id),
+            plan_code=str(plan_code or ""),
+            promo_code=str(promo_code or ""),
+            campaign_key=str(campaign_key or ""),
+            source=q["source"],
+        )
+        if ticket:
+            q["checkout_ticket"] = ticket
+    built_query = urlencode(q)
+    if parsed.scheme and parsed.netloc:
+        return f"{parsed.scheme}://{parsed.netloc}{parsed.path or '/checkout'}?{built_query}"
+    return f"/checkout?{built_query}"
+
+
 def _normalize_provider(provider: str) -> str:
     return re.sub(r"[^a-z0-9_-]", "", str(provider or "").strip().lower())
 
@@ -1168,10 +1430,17 @@ def _payment_page_html(*, title: str, message: str, action_url: str, action_labe
 
 
 def _rub_plan_days(plan_code: str) -> int:
-    row = RUB_PLAN_PRICES.get((plan_code or "").strip().lower())
-    if not row:
+    s = SessionLocal()
+    try:
+        row = _resolve_plan_config(s=s, code=(plan_code or "").strip().lower())
+        if row:
+            return max(1, int(row.get("days") or 30))
+    finally:
+        s.close()
+    fallback = RUB_PLAN_PRICES.get((plan_code or "").strip().lower())
+    if not fallback:
         return 30
-    return max(1, int(row.get("days") or 30))
+    return max(1, int(fallback.get("days") or 30))
 
 
 def _apply_external_paid_order(*, order_id: str, payload: dict[str, Any]) -> tuple[bool, str]:
@@ -1194,7 +1463,8 @@ def _apply_external_paid_order(*, order_id: str, payload: dict[str, Any]) -> tup
         if not plan_code and ext_order and ext_order.plan_code:
             plan_code = str(ext_order.plan_code)
         plan_code = (plan_code or "1_month").strip().lower()
-        if plan_code not in RUB_PLAN_PRICES:
+        plan_cfg = _resolve_plan_config(s=s, code=plan_code)
+        if not plan_cfg:
             plan_code = "1_month"
         days = _rub_plan_days(plan_code)
 
@@ -1217,6 +1487,9 @@ def _apply_external_paid_order(*, order_id: str, payload: dict[str, Any]) -> tup
         user.current_plan_code = plan_code
         user.is_active = True
         user.first_purchase_done = True
+        user.pending_discount_pct = None
+        user.pending_discount_code = None
+        user.pending_discount_set_at = None
         if ext_order:
             ext_order.status = "paid"
             ext_order.paid_at = ext_order.paid_at or now
@@ -1621,6 +1894,50 @@ async def health() -> dict:
     return {"status": "ok", "ts": datetime.utcnow().isoformat()}
 
 
+@app.get("/api/public/plans")
+async def public_plans(response: Response) -> dict:
+    s = SessionLocal()
+    try:
+        plans = _plan_catalog_payload(s=s, only_active=True)
+        response.headers["Cache-Control"] = "public, max-age=120"
+        return {"plans": plans, "widget_enabled": bool(CHECKOUT_WIDGET_ENABLED)}
+    finally:
+        s.close()
+
+
+@app.get("/api/public/live-updates")
+async def public_live_updates(response: Response, limit: int = Query(default=3, ge=1, le=10)) -> dict:
+    s = SessionLocal()
+    try:
+        rows = (
+            s.query(LiveUpdate)
+            .filter(LiveUpdate.is_active == True)
+            .order_by(LiveUpdate.sort_order.asc(), LiveUpdate.id.desc())
+            .limit(int(limit))
+            .all()
+        )
+        if not rows:
+            response.headers["Cache-Control"] = "public, max-age=120"
+            return {"updates": _default_live_updates()[: int(limit)]}
+        out = []
+        for row in rows:
+            out.append(
+                {
+                    "id": int(row.id),
+                    "title": str(row.title or "").strip(),
+                    "summary": str(row.summary or "").strip(),
+                    "date": (row.published_at or row.created_at or datetime.utcnow()).date().isoformat(),
+                    "link": str(row.link or "").strip(),
+                    "is_active": bool(row.is_active),
+                    "sort_order": int(row.sort_order or 0),
+                }
+            )
+        response.headers["Cache-Control"] = "public, max-age=120"
+        return {"updates": out}
+    finally:
+        s.close()
+
+
 @app.post("/api/auth/telegram/web-login")
 async def auth_telegram_web_login(payload: TelegramWebLoginIn) -> dict:
     verified = verify_telegram_login_payload(
@@ -1713,50 +2030,64 @@ async def payment_freekassa_notify(request: Request):
     return result
 
 
-@app.post("/api/payments/freekassa/orders/create", response_model=FreekassaOrderActionOut)
-async def freekassa_order_create(
-    payload: FreekassaOrderCreateIn,
+async def _freekassa_create_order_internal(
+    *,
     request: Request,
-    x_telegram_init_data: str = Header(default=""),
+    tg_id: int,
+    source: str,
+    plan_code: str,
+    campaign: str = "",
+    promo_code: str = "",
+    currency: str = "RUB",
+    consume_pending_discount: bool = True,
 ) -> FreekassaOrderActionOut:
-    if not RUB_CHECKOUT_ENABLED:
-        raise HTTPException(status_code=403, detail="RUB checkout is disabled")
-    auth_user = _require_auth_user(x_telegram_init_data, request=request)
-    actor_tg_id = int(auth_user.get("id", 0))
-    source = (payload.source or "site").strip().lower()
-    if source not in {"site", "bot"}:
-        source = "site"
-
-    tg_id = int(payload.tg_id or actor_tg_id)
-    if tg_id != actor_tg_id and not _is_admin_tg(actor_tg_id):
-        raise HTTPException(status_code=403, detail="Access denied")
-
-    plan_code = (payload.plan_code or "").strip().lower()
-    if plan_code not in RUB_PLAN_PRICES:
-        raise HTTPException(status_code=400, detail="Unknown plan for RUB checkout")
-    amount_rub = float(RUB_PLAN_PRICES[plan_code]["amount_rub"])
-    order_id = f"fk_{source}_{tg_id}_{int(time.time())}_{secrets.token_hex(4)}"
-
     s = SessionLocal()
     try:
+        plan = _resolve_plan_config(s=s, code=plan_code)
+        if not plan:
+            raise HTTPException(status_code=400, detail="Unknown plan for RUB checkout")
+        user = s.query(User).filter(User.tg_id == int(tg_id)).first()
+        if not user:
+            raise HTTPException(status_code=404, detail="User not found")
+        base_amount = max(0, int(plan.get("amount_rub") or 0))
+        final_amount = base_amount
+        discount_pct = 0
+        discount_applied = False
+        effective_promo = (promo_code or "").strip().upper()[:32]
+        pending_code = (getattr(user, "pending_discount_code", "") or "").strip().upper()[:20]
+        pending_pct = int(getattr(user, "pending_discount_pct", 0) or 0)
+        if pending_pct > 0:
+            final_amount, discount_pct = _price_with_pending_discount(amount_rub=base_amount, pending_pct=pending_pct)
+            discount_applied = discount_pct > 0 and final_amount < base_amount
+            if not effective_promo and pending_code:
+                effective_promo = pending_code[:32]
+        amount_rub = float(final_amount)
+        order_id = f"fk_{source}_{tg_id}_{int(time.time())}_{secrets.token_hex(4)}"
         ext = ExternalOrder(
             order_id=order_id,
-            tg_id=tg_id,
+            tg_id=int(tg_id),
             provider="freekassa",
-            plan_code=plan_code,
+            plan_code=str(plan.get("code") or plan_code).strip().lower(),
             source=source,
-            campaign=(payload.campaign or "").strip()[:64] or None,
-            promo_code=(payload.promo_code or "").strip()[:32] or None,
+            campaign=(campaign or "").strip()[:64] or None,
+            promo_code=effective_promo or None,
             amount=float(amount_rub),
-            currency=(payload.currency or "RUB").strip().upper()[:16] or "RUB",
+            currency=(currency or "RUB").strip().upper()[:16] or "RUB",
             status="created",
             meta_json=json.dumps(
                 {
                     "source": source,
-                    "campaign": payload.campaign,
-                    "promo_code": payload.promo_code,
-                    "tg_id": tg_id,
-                    "plan_code": plan_code,
+                    "campaign": campaign,
+                    "promo_code": effective_promo,
+                    "tg_id": int(tg_id),
+                    "plan_code": str(plan.get("code") or plan_code).strip().lower(),
+                    "pricing": {
+                        "base_amount_rub": int(base_amount),
+                        "final_amount_rub": int(final_amount),
+                        "discount_pct": int(discount_pct),
+                        "discount_applied": bool(discount_applied),
+                        "pending_discount_code": pending_code or None,
+                    },
                 },
                 ensure_ascii=False,
                 separators=(",", ":"),
@@ -1764,6 +2095,10 @@ async def freekassa_order_create(
             created_at=datetime.utcnow(),
         )
         s.add(ext)
+        if consume_pending_discount and discount_applied:
+            user.pending_discount_pct = None
+            user.pending_discount_code = None
+            user.pending_discount_set_at = None
         s.commit()
     except Exception:
         s.rollback()
@@ -1782,11 +2117,14 @@ async def freekassa_order_create(
         "urlFailure": _safe_public_url(Settings.PAY_FAIL_URL) or f"{Settings.PUBLIC_API_BASE_URL.rstrip('/')}/pay/fail",
         "urlNotification": notify_url,
         "metadata": {
-            "tg_id": tg_id,
-            "plan_code": plan_code,
-            "campaign": payload.campaign or "",
-            "promo_code": payload.promo_code or "",
+            "tg_id": int(tg_id),
+            "plan_code": str(plan.get("code") or plan_code).strip().lower(),
+            "campaign": campaign or "",
+            "promo_code": effective_promo or "",
             "source": source,
+            "discount_pct": int(discount_pct),
+            "base_amount_rub": int(base_amount),
+            "final_amount_rub": int(final_amount),
         },
     }
     remote = await _freekassa_api_request(source=source, method="orders/create", data=req_data)
@@ -1797,7 +2135,20 @@ async def freekassa_order_create(
         row = s.query(ExternalOrder).filter(ExternalOrder.provider == "freekassa", ExternalOrder.order_id == order_id).first()
         if row:
             row.status = "pending"
-            row.meta_json = json.dumps({"request": req_data, "response": remote}, ensure_ascii=False, separators=(",", ":"))[:4000]
+            row.meta_json = json.dumps(
+                {
+                    "request": req_data,
+                    "response": remote,
+                    "pricing": {
+                        "base_amount_rub": int(base_amount),
+                        "final_amount_rub": int(final_amount),
+                        "discount_pct": int(discount_pct),
+                        "discount_applied": bool(discount_applied),
+                    },
+                },
+                ensure_ascii=False,
+                separators=(",", ":"),
+            )[:4000]
             s.commit()
     finally:
         s.close()
@@ -1809,6 +2160,70 @@ async def freekassa_order_create(
         amount_rub=float(amount_rub),
         currency="RUB",
         status="pending",
+        widget_enabled=bool(CHECKOUT_WIDGET_ENABLED),
+        discount_applied=bool(discount_applied),
+        base_amount_rub=float(base_amount),
+        discount_pct=int(discount_pct),
+    )
+
+
+@app.post("/api/payments/freekassa/orders/create", response_model=FreekassaOrderActionOut)
+async def freekassa_order_create(
+    payload: FreekassaOrderCreateIn,
+    request: Request,
+    x_telegram_init_data: str = Header(default=""),
+) -> FreekassaOrderActionOut:
+    if not RUB_CHECKOUT_ENABLED:
+        raise HTTPException(status_code=403, detail="RUB checkout is disabled")
+    auth_user = _require_auth_user(x_telegram_init_data, request=request)
+    actor_tg_id = int(auth_user.get("id", 0))
+    source = (payload.source or "site").strip().lower()
+    if source not in {"site", "bot"}:
+        source = "site"
+
+    tg_id = int(payload.tg_id or actor_tg_id)
+    if tg_id != actor_tg_id and not _is_admin_tg(actor_tg_id):
+        raise HTTPException(status_code=403, detail="Access denied")
+    return await _freekassa_create_order_internal(
+        request=request,
+        tg_id=int(tg_id),
+        source=source,
+        plan_code=(payload.plan_code or "").strip().lower(),
+        campaign=(payload.campaign or "").strip(),
+        promo_code=(payload.promo_code or "").strip().upper(),
+        currency=(payload.currency or "RUB").strip().upper(),
+        consume_pending_discount=True,
+    )
+
+
+@app.post("/api/payments/freekassa/orders/create-public", response_model=FreekassaOrderActionOut)
+async def freekassa_order_create_public(
+    payload: FreekassaPublicOrderCreateIn,
+    request: Request,
+) -> FreekassaOrderActionOut:
+    if not RUB_CHECKOUT_ENABLED:
+        raise HTTPException(status_code=403, detail="RUB checkout is disabled")
+    ticket_payload = _parse_checkout_ticket(payload.checkout_ticket)
+    if not ticket_payload:
+        raise HTTPException(status_code=401, detail="Invalid or expired checkout ticket")
+    tg_id = int(ticket_payload.get("tg_id") or 0)
+    if tg_id <= 0:
+        raise HTTPException(status_code=400, detail="Checkout ticket has no user binding")
+    source = str(ticket_payload.get("source") or "bot").strip().lower()
+    if source not in {"site", "bot"}:
+        source = "bot"
+    plan_code = (payload.plan_code or ticket_payload.get("plan_code") or "").strip().lower()
+    campaign = str(ticket_payload.get("campaign_key") or "").strip()[:64]
+    promo_code = str(ticket_payload.get("promo_code") or "").strip().upper()[:20]
+    return await _freekassa_create_order_internal(
+        request=request,
+        tg_id=tg_id,
+        source=source,
+        plan_code=plan_code,
+        campaign=campaign,
+        promo_code=promo_code,
+        currency=(payload.currency or "RUB").strip().upper(),
+        consume_pending_discount=True,
     )
 
 
@@ -2201,10 +2616,10 @@ async def user_data(tg_id: int, request: Request, x_telegram_init_data: str = He
             "actions": {
                 "open_helpbot": support_link,
                 "open_channel": channel_link,
-                "pay_via_bot": (
-                    PAY_CHECKOUT_URL
-                    if PAY_CHECKOUT_URL
-                    else (f"https://t.me/{BOT_USERNAME}?start=pay" if BOT_USERNAME else "")
+                "pay_via_bot": _checkout_url_for_user(
+                    tg_id=tg_id,
+                    plan_code=str(getattr(user, "current_plan_code", "") or ""),
+                    source="bot",
                 ),
             },
             "active_offer": _active_offer_payload(tg_id),
@@ -2567,6 +2982,7 @@ async def promo_redeem(payload: PromoRedeemIn, request: Request, x_telegram_init
         promo_type = (promo.promo_type or "").strip().lower()
         value = int(promo.value or 0)
         applied_days = 0
+        pending_discount_pct = 0
         if promo_type == "days" and value > 0:
             now = datetime.utcnow()
             if user.expiry_at and user.expiry_at > now:
@@ -2575,6 +2991,11 @@ async def promo_redeem(payload: PromoRedeemIn, request: Request, x_telegram_init
                 user.expiry_at = now + timedelta(days=value)
             user.is_active = True
             applied_days = value
+        elif promo_type == "discount" and value > 0:
+            user.pending_discount_pct = max(1, min(95, int(value)))
+            user.pending_discount_code = str(promo.code or "").strip().upper()[:20]
+            user.pending_discount_set_at = datetime.utcnow()
+            pending_discount_pct = int(user.pending_discount_pct or 0)
 
         promo.uses_left = max(0, int(promo.uses_left or 0) - 1)
         s.add(PromoUsage(tg_id=tg_id, promo_code=promo.code))
@@ -2585,6 +3006,7 @@ async def promo_redeem(payload: PromoRedeemIn, request: Request, x_telegram_init
             "promo_type": promo_type,
             "value": value,
             "applied_days": applied_days,
+            "pending_discount_pct": int(pending_discount_pct),
             "uses_left": int(promo.uses_left or 0),
         }
     finally:
@@ -3186,6 +3608,242 @@ async def admin_promos_delete(code: str, x_telegram_init_data: str = Header(defa
         s.close()
     _audit_admin(actor_tg_id=actor, action="admin_promo_delete", meta={"code": src_code})
     return {"ok": True}
+
+
+@app.get("/api/admin/plans")
+async def admin_plans(x_telegram_init_data: str = Header(default=""), include_inactive: bool = True) -> dict:
+    _require_admin(x_telegram_init_data)
+    s = SessionLocal()
+    try:
+        rows = _plan_catalog_payload(s=s, only_active=not bool(include_inactive))
+        return {"plans": rows}
+    finally:
+        s.close()
+
+
+@app.post("/api/admin/plans")
+async def admin_plans_create(payload: AdminPlanCreateIn, x_telegram_init_data: str = Header(default="")) -> dict:
+    actor = int(_require_admin(x_telegram_init_data).get("id", 0))
+    code = (payload.code or "").strip().lower()
+    s = SessionLocal()
+    try:
+        exists = s.query(PlanCatalog.id).filter(func.lower(PlanCatalog.code) == code).first()
+        if exists:
+            raise HTTPException(status_code=409, detail="Plan already exists")
+        now = datetime.utcnow()
+        row = PlanCatalog(
+            code=code,
+            label=payload.label.strip(),
+            amount_rub=int(payload.amount_rub),
+            amount_stars=int(payload.amount_stars),
+            days=int(payload.days),
+            device_limit=int(payload.device_limit),
+            node_policy=(payload.node_policy or "").strip()[:32] or None,
+            badge=(payload.badge or "").strip()[:32] or None,
+            is_active=bool(payload.is_active),
+            sort_order=int(payload.sort_order),
+            created_at=now,
+            updated_at=now,
+        )
+        s.add(row)
+        s.commit()
+    finally:
+        s.close()
+    _audit_admin(actor_tg_id=actor, action="admin_plan_create", meta={"code": code})
+    return {"ok": True, "code": code}
+
+
+@app.patch("/api/admin/plans/{code}")
+async def admin_plans_update(code: str, payload: AdminPlanUpdateIn, x_telegram_init_data: str = Header(default="")) -> dict:
+    actor = int(_require_admin(x_telegram_init_data).get("id", 0))
+    target = (code or "").strip().lower()
+    s = SessionLocal()
+    try:
+        row = s.query(PlanCatalog).filter(func.lower(PlanCatalog.code) == target).first()
+        if not row:
+            raise HTTPException(status_code=404, detail="Plan not found")
+        if payload.label is not None:
+            row.label = payload.label.strip()
+        if payload.amount_rub is not None:
+            row.amount_rub = int(payload.amount_rub)
+        if payload.amount_stars is not None:
+            row.amount_stars = int(payload.amount_stars)
+        if payload.days is not None:
+            row.days = int(payload.days)
+        if payload.device_limit is not None:
+            row.device_limit = int(payload.device_limit)
+        if payload.node_policy is not None:
+            row.node_policy = (payload.node_policy or "").strip()[:32] or None
+        if payload.badge is not None:
+            row.badge = (payload.badge or "").strip()[:32] or None
+        if payload.is_active is not None:
+            row.is_active = bool(payload.is_active)
+        if payload.sort_order is not None:
+            row.sort_order = int(payload.sort_order)
+        row.updated_at = datetime.utcnow()
+        s.commit()
+    finally:
+        s.close()
+    _audit_admin(actor_tg_id=actor, action="admin_plan_update", meta={"code": target})
+    return {"ok": True, "code": target}
+
+
+@app.delete("/api/admin/plans/{code}")
+async def admin_plans_delete(code: str, x_telegram_init_data: str = Header(default="")) -> dict:
+    actor = int(_require_admin(x_telegram_init_data).get("id", 0))
+    target = (code or "").strip().lower()
+    s = SessionLocal()
+    try:
+        row = s.query(PlanCatalog).filter(func.lower(PlanCatalog.code) == target).first()
+        if not row:
+            raise HTTPException(status_code=404, detail="Plan not found")
+        s.delete(row)
+        s.commit()
+    finally:
+        s.close()
+    _audit_admin(actor_tg_id=actor, action="admin_plan_delete", meta={"code": target})
+    return {"ok": True}
+
+
+@app.get("/api/admin/live-updates")
+async def admin_live_updates(x_telegram_init_data: str = Header(default=""), include_inactive: bool = True) -> dict:
+    _require_admin(x_telegram_init_data)
+    s = SessionLocal()
+    try:
+        q = s.query(LiveUpdate)
+        if not include_inactive:
+            q = q.filter(LiveUpdate.is_active == True)
+        rows = q.order_by(LiveUpdate.sort_order.asc(), LiveUpdate.id.desc()).limit(300).all()
+        return {
+            "updates": [
+                {
+                    "id": int(r.id),
+                    "title": r.title,
+                    "summary": r.summary,
+                    "link": r.link,
+                    "published_at": _safe_iso(r.published_at),
+                    "is_active": bool(r.is_active),
+                    "sort_order": int(r.sort_order or 0),
+                    "created_at": _safe_iso(r.created_at),
+                    "updated_at": _safe_iso(r.updated_at),
+                }
+                for r in rows
+            ]
+        }
+    finally:
+        s.close()
+
+
+@app.post("/api/admin/live-updates")
+async def admin_live_updates_create(payload: AdminLiveUpdateCreateIn, x_telegram_init_data: str = Header(default="")) -> dict:
+    actor = int(_require_admin(x_telegram_init_data).get("id", 0))
+    s = SessionLocal()
+    try:
+        now = datetime.utcnow()
+        row = LiveUpdate(
+            title=payload.title.strip(),
+            summary=payload.summary.strip(),
+            link=payload.link.strip(),
+            published_at=_parse_optional_datetime(payload.published_at),
+            is_active=bool(payload.is_active),
+            sort_order=int(payload.sort_order),
+            created_at=now,
+            updated_at=now,
+        )
+        s.add(row)
+        s.commit()
+        s.refresh(row)
+        update_id = int(row.id)
+    finally:
+        s.close()
+    _audit_admin(actor_tg_id=actor, action="admin_live_update_create", meta={"id": update_id})
+    return {"ok": True, "id": update_id}
+
+
+@app.patch("/api/admin/live-updates/{update_id}")
+async def admin_live_updates_update(update_id: int, payload: AdminLiveUpdateUpdateIn, x_telegram_init_data: str = Header(default="")) -> dict:
+    actor = int(_require_admin(x_telegram_init_data).get("id", 0))
+    s = SessionLocal()
+    try:
+        row = s.query(LiveUpdate).filter(LiveUpdate.id == int(update_id)).first()
+        if not row:
+            raise HTTPException(status_code=404, detail="Live update not found")
+        if payload.title is not None:
+            row.title = payload.title.strip()
+        if payload.summary is not None:
+            row.summary = payload.summary.strip()
+        if payload.link is not None:
+            row.link = payload.link.strip()
+        if "published_at" in payload.model_fields_set:
+            row.published_at = _parse_optional_datetime(payload.published_at)
+        if payload.is_active is not None:
+            row.is_active = bool(payload.is_active)
+        if payload.sort_order is not None:
+            row.sort_order = int(payload.sort_order)
+        row.updated_at = datetime.utcnow()
+        s.commit()
+    finally:
+        s.close()
+    _audit_admin(actor_tg_id=actor, action="admin_live_update_update", meta={"id": int(update_id)})
+    return {"ok": True, "id": int(update_id)}
+
+
+@app.delete("/api/admin/live-updates/{update_id}")
+async def admin_live_updates_delete(update_id: int, x_telegram_init_data: str = Header(default="")) -> dict:
+    actor = int(_require_admin(x_telegram_init_data).get("id", 0))
+    s = SessionLocal()
+    try:
+        row = s.query(LiveUpdate).filter(LiveUpdate.id == int(update_id)).first()
+        if not row:
+            raise HTTPException(status_code=404, detail="Live update not found")
+        s.delete(row)
+        s.commit()
+    finally:
+        s.close()
+    _audit_admin(actor_tg_id=actor, action="admin_live_update_delete", meta={"id": int(update_id)})
+    return {"ok": True}
+
+
+@app.post("/api/admin/campaign-links/build")
+async def admin_campaign_links_build(payload: AdminCampaignLinksBuildIn, x_telegram_init_data: str = Header(default="")) -> dict:
+    _require_admin(x_telegram_init_data)
+    promo = (payload.promo_code or "").strip().upper()[:20]
+    campaign = (payload.campaign_key or "").strip()[:64]
+    plan = (payload.plan_code or "").strip().lower()[:32]
+    source = (payload.source or "bot").strip().lower()[:16]
+    start_payload = ""
+    if campaign and promo:
+        start_payload = f"campaign_{campaign}__promo_{promo}"
+    elif promo:
+        start_payload = f"promo_{promo}"
+    elif campaign:
+        start_payload = f"campaign_{campaign}"
+    bot_username = (BOT_USERNAME or "portal_service_bot").lstrip("@")
+    bot_start_link = f"https://t.me/{bot_username}" + (f"?start={start_payload}" if start_payload else "")
+
+    base_checkout = _public_checkout_url() or f"https://{(Settings.PUBLIC_WEB_DOMAIN or 'portal-privacy.online').strip().strip('/')}/checkout"
+    parsed = urlparse(base_checkout)
+    q = dict(parse_qsl(parsed.query, keep_blank_values=True))
+    q["source"] = source or "bot"
+    if plan:
+        q["plan"] = plan
+    if promo:
+        q["promo"] = promo
+    if campaign:
+        q["campaign"] = campaign
+    checkout_link = f"{parsed.scheme}://{parsed.netloc}{parsed.path or '/checkout'}?{urlencode(q)}" if parsed.scheme and parsed.netloc else f"/checkout?{urlencode(q)}"
+
+    webapp_base = _safe_public_url(Settings.WEBAPP_URL) or f"https://{(Settings.PUBLIC_WEB_DOMAIN or 'portal-privacy.online').strip().strip('/')}/webapp/"
+    wp = urlparse(webapp_base)
+    wq = dict(parse_qsl(wp.query, keep_blank_values=True))
+    if promo:
+        wq["promo"] = promo
+    if campaign:
+        wq["campaign"] = campaign
+    if plan:
+        wq["plan"] = plan
+    webapp_link = f"{wp.scheme}://{wp.netloc}{wp.path or '/webapp/'}?{urlencode(wq)}" if wp.scheme and wp.netloc else f"/webapp/?{urlencode(wq)}"
+    return {"ok": True, "bot_start_link": bot_start_link, "checkout_link": checkout_link, "webapp_link": webapp_link}
 
 
 @app.get("/api/admin/templates")

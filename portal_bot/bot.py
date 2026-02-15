@@ -7,6 +7,9 @@ FIXED: Handle existing users in 3x-ui panel
 """
 
 import asyncio
+import base64
+import hashlib
+import hmac
 import logging
 import os
 import re
@@ -205,6 +208,11 @@ PAY_CHECKOUT_URL = (
     or os.getenv("CHECKOUT_URL")
     or f"https://{(PUBLIC_WEB_DOMAIN or HOST_DOMAIN)}/checkout"
 ).strip()
+CHECKOUT_TICKET_SECRET = (
+    (os.getenv("CHECKOUT_TICKET_SECRET") or "").strip()
+    or (os.getenv("WEBAPP_SESSION_SECRET") or "").strip()
+)
+CHECKOUT_TICKET_TTL_SECONDS = max(60, int(os.getenv("CHECKOUT_TICKET_TTL_SECONDS", "900")))
 SUPPORT_USERNAME = (os.getenv("SUPPORT_USERNAME") or "portal_privacy_helpbot").lstrip("@")
 SUPPORT_USERNAME = (os.getenv("SUPPORT_BOT_USERNAME") or SUPPORT_USERNAME).lstrip("@")
 APP_ANDROID_PLAY_URL = (os.getenv("APP_ANDROID_PLAY_URL") or "https://play.google.com/store/apps/details?id=app.hiddify.com").strip()
@@ -1087,6 +1095,31 @@ def mark_first_purchase_done(tg_id: int):
         session.commit()
     session.close()
 
+
+def get_pending_discount_pct(tg_id: int) -> int:
+    session = Session()
+    try:
+        user = session.query(User).filter_by(tg_id=tg_id).first()
+        if not user:
+            return 0
+        return max(0, min(95, int(getattr(user, "pending_discount_pct", 0) or 0)))
+    finally:
+        session.close()
+
+
+def clear_pending_discount(tg_id: int) -> None:
+    session = Session()
+    try:
+        user = session.query(User).filter_by(tg_id=tg_id).first()
+        if not user:
+            return
+        user.pending_discount_pct = None
+        user.pending_discount_code = None
+        user.pending_discount_set_at = None
+        session.commit()
+    finally:
+        session.close()
+
 def check_tos_accepted(tg_id: int) -> bool:
     """Check if user has accepted Terms of Service"""
     session = Session()
@@ -1277,6 +1310,32 @@ def _channel_name_for_url() -> str:
     return channel or "portal_privacy"
 
 
+def _checkout_ticket_for_user(
+    *,
+    tg_id: int,
+    plan_code: str | None = None,
+    promo_code: str | None = None,
+    campaign_key: str | None = None,
+    source: str = "bot",
+) -> str:
+    if not CHECKOUT_TICKET_SECRET:
+        return ""
+    now_ts = int(datetime.utcnow().timestamp())
+    payload = {
+        "tg_id": int(tg_id),
+        "plan_code": (plan_code or "").strip().lower()[:32],
+        "promo_code": (promo_code or "").strip().upper()[:20],
+        "campaign_key": (campaign_key or "").strip()[:64],
+        "source": (source or "bot").strip().lower()[:16],
+        "iat": now_ts,
+        "exp": now_ts + int(CHECKOUT_TICKET_TTL_SECONDS),
+    }
+    raw = json.dumps(payload, ensure_ascii=False, separators=(",", ":"), sort_keys=True).encode("utf-8")
+    sig = hmac.new(CHECKOUT_TICKET_SECRET.encode("utf-8"), raw, hashlib.sha256).hexdigest()
+    token = base64.urlsafe_b64encode(raw).decode("ascii").rstrip("=")
+    return f"{token}.{sig}"
+
+
 def _bot_checkout_url(
     tg_id: int,
     *,
@@ -1295,6 +1354,15 @@ def _bot_checkout_url(
         query["promo"] = str(promo_code).strip().upper()
     if campaign_key:
         query["campaign"] = str(campaign_key).strip()[:64]
+    ticket = _checkout_ticket_for_user(
+        tg_id=int(tg_id),
+        plan_code=plan_code,
+        promo_code=promo_code,
+        campaign_key=campaign_key,
+        source="bot",
+    )
+    if ticket:
+        query["checkout_ticket"] = ticket
     built_query = urlencode(query)
     # Keep relative path if PAY_CHECKOUT_URL is relative.
     if parsed.scheme and parsed.netloc:
@@ -6904,7 +6972,14 @@ async def process_buy(callback: CallbackQuery, bot: Bot):
     
     # Calculate price with referral discount (20% off on first paid purchase)
     use_discount = has_referral_discount(tg_id) if tariff["stars"] > 0 else False
-    actual_stars = int(tariff["stars"] * 0.8) if use_discount else tariff["stars"]
+    pending_discount_pct = get_pending_discount_pct(tg_id) if tariff["stars"] > 0 else 0
+    base_price = int(tariff["stars"])
+    actual_stars = int(base_price)
+    if use_discount:
+        actual_stars = int(round(actual_stars * 0.8))
+    if pending_discount_pct > 0:
+        actual_stars = int(round(actual_stars * (1.0 - (pending_discount_pct / 100.0))))
+    actual_stars = max(1, int(actual_stars))
     
     if tariff_key == "trial":
         if _channel_bonus_eligible(tg_id=tg_id, user=user):
@@ -6915,7 +6990,9 @@ async def process_buy(callback: CallbackQuery, bot: Bot):
     
     # Paid - send invoice (stack first-purchase + points, capped to 70% total discount).
     await callback.answer()
-    first_discount_pct = 0.20 if use_discount else 0.0
+    first_discount_pct = 0.0
+    if base_price > 0:
+        first_discount_pct = max(0.0, min(0.95, 1.0 - (float(actual_stars) / float(base_price))))
     points_preview = preview_redeemable_points(
         tg_id=tg_id,
         plan_price_stars=int(tariff["stars"]),
@@ -6943,7 +7020,12 @@ async def process_buy(callback: CallbackQuery, bot: Bot):
     invoice_payload = f"portal_{tariff_key}_{tg_id}_{mode_label}_a{int(attempt.id)}_p{int(points_to_use)}"
     mark_invoice_sent(attempt_id=int(attempt.id), set_invoice_payload=invoice_payload)
 
-    discount_note = " 🎉 -20%" if use_discount else ""
+    discount_chunks = []
+    if use_discount:
+        discount_chunks.append("-20% реф")
+    if pending_discount_pct > 0:
+        discount_chunks.append(f"-{pending_discount_pct}% промо")
+    discount_note = f" ({', '.join(discount_chunks)})" if discount_chunks else ""
     points_note = f" + points -{points_to_use}⭐" if points_to_use > 0 else ""
     prices = [LabeledPrice(label=tariff["name"] + discount_note + points_note, amount=int(final_stars))]
     description = f"Безлимит на {tariff['days']} дней{discount_note}{points_note}"
@@ -6954,8 +7036,9 @@ async def process_buy(callback: CallbackQuery, bot: Bot):
         meta={
             "attempt_id": int(attempt.id),
             "plan_code": tariff_key,
-            "base_price": int(tariff["stars"]),
+            "base_price": int(base_price),
             "discounted_price": int(actual_stars),
+            "promo_discount_pct": int(pending_discount_pct),
             "points_used": int(points_to_use),
             "final_price": int(final_stars),
         },
@@ -7260,6 +7343,7 @@ async def create_subscription(
     if is_paid_purchase:
         # Mark that user has used their 20% discount
         mark_first_purchase_done(tg_id)
+        clear_pending_discount(tg_id)
         
         user = get_user(tg_id)
         if user and user.referrer_id:
@@ -7745,6 +7829,16 @@ def activate_promo_code_for_user(tg_id: int, code: str) -> tuple[bool, str]:
                     user.expiry_at = now + timedelta(days=promo.value)
                 user.is_active = True
             result_text = f"🎁 Тебе добавлено *+{promo.value} Дней!*"
+        elif promo.promo_type == "discount":
+            user = session.query(User).filter_by(tg_id=tg_id).first()
+            if user:
+                user.pending_discount_pct = max(1, min(95, int(promo.value or 0)))
+                user.pending_discount_code = str(code).upper()[:20]
+                user.pending_discount_set_at = _utcnow()
+            result_text = (
+                f"🎉 Скидка *{promo.value}%* активирована.\n"
+                "Она применится к следующей оплате в ₽ или Stars."
+            )
         else:
             result_text = f"🎉 Скидка *{promo.value}%* будет применена к следующей покупке!"
 

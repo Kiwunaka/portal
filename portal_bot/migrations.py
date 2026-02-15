@@ -49,6 +49,9 @@ def run_migrations(engine: Engine) -> None:
                 ("channel_bonus_active", "BOOLEAN DEFAULT 0"),
                 ("channel_bonus_expires_at", "DATETIME"),
                 ("channel_bonus_revoked_at", "DATETIME"),
+                ("pending_discount_pct", "INTEGER"),
+                ("pending_discount_code", "VARCHAR(20)"),
+                ("pending_discount_set_at", "DATETIME"),
                 ("free_cycle_anchor_at", "DATETIME"),
                 ("free_cycle_last_reset_at", "DATETIME"),
                 ("free_cycle_next_reset_at", "DATETIME"),
@@ -386,6 +389,51 @@ def run_migrations(engine: Engine) -> None:
         )
         conn.execute(text("CREATE INDEX IF NOT EXISTS ix_family_slots_tg_id ON family_slots(tg_id);"))
 
+        # plan catalog: DB-backed pricing and limits with code fallback.
+        conn.execute(
+            text(
+                """
+                CREATE TABLE IF NOT EXISTS plan_catalog (
+                  id INTEGER PRIMARY KEY AUTOINCREMENT,
+                  code VARCHAR(32) NOT NULL,
+                  label VARCHAR(120) NOT NULL,
+                  amount_rub INTEGER DEFAULT 0,
+                  amount_stars INTEGER DEFAULT 0,
+                  days INTEGER DEFAULT 30,
+                  device_limit INTEGER DEFAULT 1,
+                  node_policy VARCHAR(32),
+                  badge VARCHAR(32),
+                  is_active BOOLEAN DEFAULT 1,
+                  sort_order INTEGER DEFAULT 100,
+                  created_at DATETIME NOT NULL,
+                  updated_at DATETIME NOT NULL
+                );
+                """
+            )
+        )
+        conn.execute(text("CREATE UNIQUE INDEX IF NOT EXISTS uq_plan_catalog_code ON plan_catalog(code);"))
+        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_plan_catalog_active_sort ON plan_catalog(is_active, sort_order);"))
+
+        # live updates: admin-managed cards for landing page.
+        conn.execute(
+            text(
+                """
+                CREATE TABLE IF NOT EXISTS live_updates (
+                  id INTEGER PRIMARY KEY AUTOINCREMENT,
+                  title VARCHAR(160) NOT NULL,
+                  summary VARCHAR(600) NOT NULL,
+                  link VARCHAR(600) NOT NULL,
+                  published_at DATETIME,
+                  is_active BOOLEAN DEFAULT 1,
+                  sort_order INTEGER DEFAULT 100,
+                  created_at DATETIME NOT NULL,
+                  updated_at DATETIME NOT NULL
+                );
+                """
+            )
+        )
+        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_live_updates_active_sort ON live_updates(is_active, sort_order);"))
+
 
 def _run_postgres_migrations(engine: Engine) -> None:
     """
@@ -409,6 +457,9 @@ def _run_postgres_migrations(engine: Engine) -> None:
         conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS channel_bonus_active BOOLEAN DEFAULT FALSE;"))
         conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS channel_bonus_expires_at TIMESTAMP;"))
         conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS channel_bonus_revoked_at TIMESTAMP;"))
+        conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS pending_discount_pct INTEGER;"))
+        conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS pending_discount_code VARCHAR(20);"))
+        conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS pending_discount_set_at TIMESTAMP;"))
         conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS free_cycle_anchor_at TIMESTAMP;"))
         conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS free_cycle_last_reset_at TIMESTAMP;"))
         conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS free_cycle_next_reset_at TIMESTAMP;"))
@@ -485,3 +536,46 @@ def _run_postgres_migrations(engine: Engine) -> None:
         conn.execute(text("CREATE INDEX IF NOT EXISTS ix_offers_tg_status_exp ON offers(tg_id, status, expires_at);"))
         conn.execute(text("CREATE INDEX IF NOT EXISTS ix_points_ledger_tg_exp_created ON points_ledger(tg_id, expires_at, created_at);"))
         conn.execute(text("CREATE UNIQUE INDEX IF NOT EXISTS uq_campaign_sends_tg_campaign ON campaign_sends(tg_id, campaign_key);"))
+
+        conn.execute(
+            text(
+                """
+                CREATE TABLE IF NOT EXISTS plan_catalog (
+                  id SERIAL PRIMARY KEY,
+                  code VARCHAR(32) NOT NULL,
+                  label VARCHAR(120) NOT NULL,
+                  amount_rub INTEGER DEFAULT 0,
+                  amount_stars INTEGER DEFAULT 0,
+                  days INTEGER DEFAULT 30,
+                  device_limit INTEGER DEFAULT 1,
+                  node_policy VARCHAR(32),
+                  badge VARCHAR(32),
+                  is_active BOOLEAN DEFAULT TRUE,
+                  sort_order INTEGER DEFAULT 100,
+                  created_at TIMESTAMP NOT NULL,
+                  updated_at TIMESTAMP NOT NULL
+                );
+                """
+            )
+        )
+        conn.execute(text("CREATE UNIQUE INDEX IF NOT EXISTS uq_plan_catalog_code ON plan_catalog(code);"))
+        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_plan_catalog_active_sort ON plan_catalog(is_active, sort_order);"))
+
+        conn.execute(
+            text(
+                """
+                CREATE TABLE IF NOT EXISTS live_updates (
+                  id SERIAL PRIMARY KEY,
+                  title VARCHAR(160) NOT NULL,
+                  summary VARCHAR(600) NOT NULL,
+                  link VARCHAR(600) NOT NULL,
+                  published_at TIMESTAMP,
+                  is_active BOOLEAN DEFAULT TRUE,
+                  sort_order INTEGER DEFAULT 100,
+                  created_at TIMESTAMP NOT NULL,
+                  updated_at TIMESTAMP NOT NULL
+                );
+                """
+            )
+        )
+        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_live_updates_active_sort ON live_updates(is_active, sort_order);"))

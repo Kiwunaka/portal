@@ -35,7 +35,7 @@ class BotPaywallTests(unittest.TestCase):
             sys.path.insert(0, portal_dir)
 
         self._saved_env: dict[str, str | None] = {}
-        for k in ("DATABASE_URL", "BOT_TOKEN", "ADMIN_ID", "NEWS_CHANNEL_ID"):
+        for k in ("DATABASE_URL", "BOT_TOKEN", "ADMIN_ID", "NEWS_CHANNEL_ID", "CHECKOUT_TICKET_SECRET", "CHECKOUT_TICKET_TTL_SECONDS"):
             self._saved_env[k] = os.environ.get(k)
         self._saved_qrcode = sys.modules.get("qrcode")
         if self._saved_qrcode is None:
@@ -64,6 +64,8 @@ class BotPaywallTests(unittest.TestCase):
         os.environ["BOT_TOKEN"] = "test_bot_token_123"
         os.environ["ADMIN_ID"] = "9999"
         os.environ["NEWS_CHANNEL_ID"] = "@portal_news_channel"
+        os.environ["CHECKOUT_TICKET_SECRET"] = "checkout_secret_test_123"
+        os.environ["CHECKOUT_TICKET_TTL_SECONDS"] = "900"
 
         if "config" in sys.modules:
             importlib.reload(sys.modules["config"])
@@ -179,6 +181,7 @@ class BotPaywallTests(unittest.TestCase):
         self.assertIn("plan=start_99", url)
         self.assertIn("promo=WELCOME14", url)
         self.assertIn("campaign=launch_week_1", url)
+        self.assertIn("checkout_ticket=", url)
 
 
 if __name__ == "__main__":

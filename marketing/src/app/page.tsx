@@ -14,7 +14,7 @@ const BOT_FAST_URL = process.env.NEXT_PUBLIC_PAY_CHECKOUT_URL || TG_BOT_FALLBACK
 const WEBAPP_URL = (process.env.NEXT_PUBLIC_WEBAPP_URL || "https://portal-privacy.online/webapp/").trim();
 const TG_NEWS_CHANNEL = (process.env.NEXT_PUBLIC_NEWS_CHANNEL || "portal_privacy").replace("@", "").trim();
 const SOCIAL_PROOF_URL = (process.env.NEXT_PUBLIC_SOCIAL_PROOF_URL || "").trim();
-const LIVE_UPDATES_JSON = (process.env.NEXT_PUBLIC_LIVE_UPDATES_JSON || "").trim();
+const PUBLIC_API_BASE_URL = (process.env.NEXT_PUBLIC_API_BASE_URL || "").trim();
 const APP_ANDROID_PLAY_URL = (process.env.NEXT_PUBLIC_APP_ANDROID_PLAY_URL || "").trim();
 const APP_ANDROID_APK_URL = (process.env.NEXT_PUBLIC_APP_ANDROID_APK_URL || "").trim();
 const APP_ANDROID_MIRROR_URL = (process.env.NEXT_PUBLIC_APP_ANDROID_MIRROR_URL || "").trim();
@@ -35,7 +35,7 @@ type LiveUpdate = {
 const FEATURES = [
   { type: "01×", title: "Мгновенное подключение", desc: "Ключ выдаётся через Telegram и импортируется в 1-2 шага. Без регистрации, без паролей.", num: "01" },
   { type: "04×", title: "4 страны в PRO", desc: "Польша, Нидерланды, США и Италия. Полный доступ ко всем узлам в платных планах.", num: "02" },
-  { type: "∞×", title: "Шифрованный канал", desc: "Весь трафик защищён между вашим устройством и выбранным узлом. Никаких логов.", num: "03" },
+  { type: "∞×", title: "Шифрованный канал", desc: "Трафик между устройством и узлом проходит в защищённом виде. Политика хранения данных опубликована в документах сервиса.", num: "03" },
   { type: "05×", title: "До 5 устройств", desc: "Один профиль для телефона, планшета и компьютера. Одновременно и без ограничений.", num: "04" },
   { type: "02×", title: "Гибкие режимы", desc: "Базовый и полный режим с ясным апгрейдом. Без миграций, без потери данных.", num: "05" },
   { type: "24×", title: "Поддержка 24/7", desc: "Операторы помогают с диагностикой и подключением в Telegram. Мгновенная реакция.", num: "06" },
@@ -68,33 +68,22 @@ const DEFAULT_LIVE_UPDATES: LiveUpdate[] = [
   },
 ];
 
-function parseLiveUpdates(raw: string): LiveUpdate[] {
-  if (!raw) return DEFAULT_LIVE_UPDATES;
-  try {
-    const parsed = JSON.parse(raw);
-    if (!Array.isArray(parsed)) return DEFAULT_LIVE_UPDATES;
-    const rows = parsed
-      .map((item) => ({
-        title: String(item?.title || "").trim(),
-        summary: String(item?.summary || "").trim(),
-        date: String(item?.date || "").trim(),
-        link: String(item?.link || "").trim(),
-      }))
-      .filter((item) => item.title && item.link);
-    return rows.slice(0, 3).length ? rows.slice(0, 3) : DEFAULT_LIVE_UPDATES;
-  } catch {
-    return DEFAULT_LIVE_UPDATES;
+function candidateApiBases(): string[] {
+  const out: string[] = [];
+  if (PUBLIC_API_BASE_URL) out.push(PUBLIC_API_BASE_URL.replace(/\/+$/, ""));
+  if (typeof window !== "undefined") {
+    out.push(window.location.origin.replace(/\/+$/, ""));
   }
+  out.push("https://kiwunaka.space");
+  return Array.from(new Set(out.filter(Boolean)));
 }
-
-const LIVE_UPDATES = parseLiveUpdates(LIVE_UPDATES_JSON);
 
 const FAQS = [
   { q: "Как получить доступ?", a: "Откройте Telegram-бот, выберите тариф и получите персональный ключ. Без регистрации." },
   { q: "Какие устройства поддерживаются?", a: "iOS, Android, Windows, macOS, Linux. Один профиль работает на нескольких устройствах одновременно." },
   { q: "Есть бесплатный режим?", a: "Да, стартовый режим доступен без оплаты. Перейти на полный доступ можно в любой момент." },
   { q: "Что если узел недоступен?", a: "В личном кабинете можно быстро переключиться на другую страну и проверить качество соединения." },
-  { q: "Сохраняются ли логи?", a: "Нет. Мы не ведём логов трафика и соединений. Политика no-logs — основа сервиса." },
+  { q: "Как работает политика хранения данных?", a: "Мы стремимся к минимизации технических данных и публикуем актуальные условия в юридических документах сервиса." },
   { q: "Можно ли поменять тариф?", a: "Да, апгрейд работает мгновенно. Оставшиеся дни пересчитываются и сохраняются." },
 ];
 
@@ -836,7 +825,7 @@ function ProjectChannel() {
   );
 }
 
-function LiveUpdates() {
+function LiveUpdates({ items }: { items: LiveUpdate[] }) {
   return (
     <section className="downloads" id="news">
       <div className="section-tag">[LIVE UPDATES]</div>
@@ -845,7 +834,7 @@ function LiveUpdates() {
         <p>Три свежих апдейта с прямыми переходами в Telegram-посты.</p>
       </div>
       <div className="downloads-grid">
-        {LIVE_UPDATES.map((item) => (
+        {items.map((item) => (
           <article className="download-card" key={`${item.date}-${item.title}`}>
             <h3>{item.title}</h3>
             <p>{item.summary}</p>
@@ -894,6 +883,40 @@ function Footer() {
 export default function HomePage() {
   const { theme, toggle: toggleTheme } = useTheme();
   const [preloaded, setPreloaded] = useState(false);
+  const [liveUpdates, setLiveUpdates] = useState<LiveUpdate[]>(DEFAULT_LIVE_UPDATES);
+
+  useEffect(() => {
+    let cancelled = false;
+    const load = async () => {
+      for (const base of candidateApiBases()) {
+        try {
+          const resp = await fetch(`${base}/api/public/live-updates?limit=3`, { cache: "no-store" });
+          if (!resp.ok) continue;
+          const data = await resp.json() as { updates?: LiveUpdate[] };
+          const rows = Array.isArray(data.updates) ? data.updates : [];
+          const normalized = rows
+            .map((item) => ({
+              title: String(item?.title || "").trim(),
+              summary: String(item?.summary || "").trim(),
+              date: String(item?.date || "").trim(),
+              link: String(item?.link || "").trim(),
+            }))
+            .filter((item) => item.title && item.link)
+            .slice(0, 3);
+          if (normalized.length) {
+            if (!cancelled) setLiveUpdates(normalized);
+            return;
+          }
+        } catch {
+          // Try next API base.
+        }
+      }
+    };
+    void load();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   return (
     <>
@@ -911,7 +934,7 @@ export default function HomePage() {
         <AccessPaths />
         <CTA />
         <ProjectChannel />
-        <LiveUpdates />
+        <LiveUpdates items={liveUpdates} />
         <FAQ />
         <Footer />
       </main>

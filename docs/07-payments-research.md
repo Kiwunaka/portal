@@ -1,101 +1,86 @@
-# Payments Architecture (Chosen, 2026-02)
+﻿# Payments Architecture Note (Finalized 2026-02)
 
-Updated: `2026-02-14`
-Status: `Chosen architecture` (not research draft).
+Обновлено: `2026-02-15`
+Статус: `Finalized architecture note`.
 
-## 1. Product Decision
+## 1) Product Decision
 
-We use a hybrid model:
+Модель оплаты:
+- Primary: RUB checkout (Freekassa, site/bot dual-shop).
+- Secondary: Telegram Stars.
 
-- Primary checkout in RUB via Freekassa (site + bot-origin links).
-- Secondary payment method inside Telegram via Stars.
+Причина: сохранить нативный путь в Telegram и дать отдельный web-поток для карты/СБП.
 
-This keeps Telegram-native flow available while providing card/SBP checkout in browser.
+## 2) Checkout Architecture
 
-## 2. Channel and Surface Split
+- Основной сценарий сайта: `backend order first`.
+- Order создаётся только на backend.
+- Вход в public checkout защищён `checkout_ticket`.
+- Guest без Telegram binding не поддерживается в первом релизе.
 
-- Marketing + checkout UI: `portal-privacy.online`.
-- API + callback processing + success/fail redirects: `kiwunaka.space`.
+## 3) Data Contract
 
-## 3. Freekassa Integration Model
-
-Two independent shops are configured:
-
-- `FK_SITE_*` for website checkout.
-- `FK_BOT_*` for bot-started checkout.
-
-Order payload metadata links payment to account and funnel context:
-
+Order metadata:
 - `tg_id`
 - `plan_code`
 - `campaign`
 - `promo_code`
 - `source`
+- `pricing` breakdown (`base_amount_rub`, `discount_pct`, `final_amount_rub`)
 
-## 4. Implemented API Endpoints
+Promo contract:
+- `days` -> немедленное продление;
+- `discount` -> pending скидка на следующую оплату (RUB/Stars).
 
-- `POST /api/payments/freekassa/orders/create`
-- `GET /api/payments/freekassa/orders/{order_id}`
-- `POST /api/payments/freekassa/orders/{order_id}/refund`
-- `GET /api/payments/freekassa/currencies`
-- `GET /api/payments/freekassa/currencies/{currency}/status`
-- `POST|GET /api/payments/freekassa/notify`
+## 4) Plan Catalog Model
 
-## 5. Security Constraints
+Источник витрины: `plan_catalog`.
 
-- Secrets are environment-only, never stored in repository.
-- Callback protection:
-  - SCI signature validation;
-  - IP allowlist via `FK_NOTIFY_IP_ALLOWLIST`;
-  - idempotent event storage to prevent double activation.
-- Notify acknowledge for successful signed `POST`: plain `YES`.
+Fallback:
+- если таблица пуста, используются legacy `RUB_PLAN_PRICES` и `API_PLAN_PRICES`.
 
-## 6. Tariff and Activation Rules
+Это позволяет безопасно выкатывать схему без жёсткой зависимости от наполнения БД.
 
-RUB plan map:
+## 5) Live Updates Model
 
-- `start_99`: `99`, 30 days.
-- `1_month`: `249`, 30 days.
-- `3_months`: `699`, 91 days.
-- `6_months`: `1199`, 182 days.
-- `9_months`: `1399`, 273 days.
-- `12_months`: `1499`, 365 days.
+Источник карточек сайта: `live_updates`.
 
-Special restrictions for `start_99`:
+Public endpoint:
+- `GET /api/public/live-updates?limit=3`
 
-- 1 device limit.
-- Paid profile with NL-only node visibility.
+Fallback:
+- если таблица пуста, API отдаёт дефолтный набор карточек.
 
-## 7. Funnel Layer
+## 6) Freekassa Security
 
-- Bot shows dual CTA:
-  - `Оплатить ₽` (primary),
-  - `Оплатить Stars` (secondary).
-- Deep-link promo support:
-  - `promo_<CODE>`
-  - `campaign_<KEY>__promo_<CODE>`
-- WebApp supports:
-  - channel subscriber check,
-  - one-time `+100 points`,
-  - speed-bump status explanation.
+- SCI callback verify:
+  - `md5(MERCHANT_ID:AMOUNT:SECRET_WORD_2:MERCHANT_ORDER_ID)`
+- notify endpoint защищён IP allowlist (`FK_NOTIFY_IP_ALLOWLIST`).
+- callback event storage идемпотентен.
+- валидный POST notify подтверждается `YES`.
 
-## 8. Feature Flags
+## 7) Panel Config Matrix
 
-- `RUB_CHECKOUT_ENABLED`
-- `BOT_RUB_BUTTON_ENABLED`
-- `CHECKOUT_WIDGET_ENABLED`
-- `CHANNEL_SPEED_BUMP_ENABLED`
+Для обеих касс (`site` + `bot`):
+- notify URL: `https://kiwunaka.space/api/payments/freekassa/notify`, method `POST`;
+- success URL: `https://kiwunaka.space/pay/success`, method `GET`;
+- fail URL: `https://kiwunaka.space/pay/fail`, method `GET`.
 
-Flags allow staged rollout and fast rollback to Stars-first behavior without DB rollback.
+## 8) Pricing Strategy
 
-## 9. Known Constraints
+- `start_99` остаётся entry offer (`99 RUB`, `30 days`, `NL-only`, `1 device`).
+- Все цены редактируются из админки через `plan_catalog`.
+- Изменение цен делается по формуле contribution margin (см. pricing ops doc).
 
-- In Telegram environments, Stars remains required for native in-app payment scenarios.
-- Browser checkout is used for card/SBP payments and linked back to Telegram account by metadata.
-- Public copy must not use the forbidden legacy wording in landing/bot/WebApp marketing text.
+## 9) Risk Register (accepted)
 
-## 10. Next Work
+1. Секреты кассы не ротируются в этом цикле.
+2. Guest checkout без Telegram binding не поддерживается.
+3. Виджет кассы оставлен как вспомогательный UI, а не источник истины по заказу.
 
-1. Admin UI for campaign-link templates and welcome discount management.
-2. Conversion analytics for `start_99 -> paid parity`.
-3. Expanded post-deploy smoke automation for both Freekassa shops.
+## 10) Next Phase
+
+Параллельный запуск треков:
+1. Retention funnel automation.
+2. UI polish и conversion microcopy.
+3. Ops automation и post-deploy smoke.

@@ -62,7 +62,21 @@ def _run(ssh: paramiko.SSHClient, cmd: str, *, timeout: int = 300) -> tuple[int,
 def main() -> int:
     ap = argparse.ArgumentParser(description="Deploy marketing/out + webapp/dist to brain and reload Caddy.")
     ap.add_argument("--brain-ip", required=True)
-    ap.add_argument("--domain", default="kiwunaka.space")
+    ap.add_argument(
+        "--web-domain",
+        default="portal-privacy.online",
+        help="Public web domain for marketing + /webapp checks",
+    )
+    ap.add_argument(
+        "--api-domain",
+        default="kiwunaka.space",
+        help="Public API domain for /api/health checks",
+    )
+    ap.add_argument(
+        "--domain",
+        default="",
+        help="Deprecated alias for --web-domain (kept for backward compatibility)",
+    )
     ap.add_argument("--ssh-user", default="root")
     ap.add_argument("--ssh-port", type=int, default=29374)
     ap.add_argument("--passwords", default=str(DEFAULT_PASSWORDS))
@@ -78,6 +92,12 @@ def main() -> int:
         raise SystemExit(f"Missing webapp dist: {local_webapp}")
     if not local_mkt.exists():
         raise SystemExit(f"Missing marketing out: {local_mkt}")
+    web_domain = (args.domain or "").strip() or (args.web_domain or "").strip()
+    api_domain = (args.api_domain or "").strip()
+    if not web_domain:
+        raise SystemExit("Missing --web-domain")
+    if not api_domain:
+        raise SystemExit("Missing --api-domain")
 
     ssh = paramiko.SSHClient()
     ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
@@ -96,11 +116,11 @@ def main() -> int:
 
         _run(ssh, "systemctl reload caddy >/dev/null 2>&1 || systemctl restart caddy >/dev/null 2>&1 || true", timeout=60)
 
-        # Quick smoke checks (through localhost resolve).
+        # Quick smoke checks (through localhost resolve on standard HTTPS port).
         chk = [
-            f"curl -fsS --insecure --resolve {args.domain}:2096:127.0.0.1 https://{args.domain}:2096/api/health | head -c 200 || true",
-            f"curl -fsS --insecure --resolve {args.domain}:8444:127.0.0.1 https://{args.domain}:8444/ | head -c 80 || true",
-            f"curl -fsS --insecure --resolve {args.domain}:8444:127.0.0.1 https://{args.domain}:8444/webapp/ | head -c 80 || true",
+            f"curl -fsS --insecure --resolve {api_domain}:443:127.0.0.1 https://{api_domain}/api/health | head -c 200 || true",
+            f"curl -fsS --insecure --resolve {web_domain}:443:127.0.0.1 https://{web_domain}/ | head -c 80 || true",
+            f"curl -fsS --insecure --resolve {web_domain}:443:127.0.0.1 https://{web_domain}/webapp/ | head -c 80 || true",
         ]
         for c in chk:
             _run(ssh, "DEBIAN_FRONTEND=noninteractive apt-get install -y curl >/dev/null 2>&1 || true", timeout=600)
@@ -113,4 +133,3 @@ def main() -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
-

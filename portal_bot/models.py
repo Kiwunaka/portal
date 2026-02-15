@@ -55,6 +55,9 @@ class User(Base):
     channel_bonus_active = Column(Boolean, default=False)
     channel_bonus_expires_at = Column(DateTime, nullable=True)
     channel_bonus_revoked_at = Column(DateTime, nullable=True)
+    pending_discount_pct = Column(Integer, nullable=True)
+    pending_discount_code = Column(String(20), nullable=True)
+    pending_discount_set_at = Column(DateTime, nullable=True)
     is_manual = Column(Boolean, default=False)
     created_by_admin = Column(BigInteger, nullable=True)
     display_name = Column(String(100), nullable=True)
@@ -343,3 +346,35 @@ class FamilySlot(Base):
     slots = Column(Integer, default=1, nullable=False)
     expires_at = Column(DateTime, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+
+
+class PlanCatalog(Base):
+    __tablename__ = "plan_catalog"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    code = Column(String(32), unique=True, index=True, nullable=False)
+    label = Column(String(120), nullable=False)
+    amount_rub = Column(Integer, default=0, nullable=False)
+    amount_stars = Column(Integer, default=0, nullable=False)
+    days = Column(Integer, default=30, nullable=False)
+    device_limit = Column(Integer, default=1, nullable=False)
+    node_policy = Column(String(32), nullable=True)
+    badge = Column(String(32), nullable=True)
+    is_active = Column(Boolean, default=True, nullable=False)
+    sort_order = Column(Integer, default=100, nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    updated_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+
+
+class LiveUpdate(Base):
+    __tablename__ = "live_updates"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    title = Column(String(160), nullable=False)
+    summary = Column(String(600), nullable=False)
+    link = Column(String(600), nullable=False)
+    published_at = Column(DateTime, nullable=True)
+    is_active = Column(Boolean, default=True, nullable=False)
+    sort_order = Column(Integer, default=100, nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    updated_at = Column(DateTime, default=datetime.utcnow, nullable=False)

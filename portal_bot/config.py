@@ -75,6 +75,8 @@ class Settings:
     BOT_RUB_BUTTON_ENABLED: bool = env_bool("BOT_RUB_BUTTON_ENABLED", default=False)
     CHANNEL_SPEED_BUMP_ENABLED: bool = env_bool("CHANNEL_SPEED_BUMP_ENABLED", default=False)
     CHECKOUT_WIDGET_ENABLED: bool = env_bool("CHECKOUT_WIDGET_ENABLED", default=False)
+    CHECKOUT_TICKET_SECRET: str = os.getenv("CHECKOUT_TICKET_SECRET", "").strip()
+    CHECKOUT_TICKET_TTL_SECONDS: int = env_int("CHECKOUT_TICKET_TTL_SECONDS", 900)
     FREE_SPEED_BUMP_UNSUB_KBPS: int = env_int("FREE_SPEED_BUMP_UNSUB_KBPS", 1250)
     CHANNEL_SUBSCRIBER_CAMPAIGN_KEY: str = os.getenv("CHANNEL_SUBSCRIBER_CAMPAIGN_KEY", "channel_subscriber_v1").strip()
 

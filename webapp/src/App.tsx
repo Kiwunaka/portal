@@ -5,6 +5,11 @@ import {
   adminBroadcast,
   adminGiftCodeCreate,
   adminGiftCodes,
+  adminBuildCampaignLinks,
+  adminLiveUpdateCreate,
+  adminLiveUpdateDelete,
+  adminLiveUpdateUpdate,
+  adminLiveUpdates,
   adminManualBlock,
   adminManualCreate,
   adminManualExtend,
@@ -12,6 +17,10 @@ import {
   adminMetricsStatus,
   adminNodesHealth,
   adminNodesSync,
+  adminPlanCreate,
+  adminPlanDelete,
+  adminPlans,
+  adminPlanUpdate,
   adminPromoCreate,
   adminPromoDelete,
   adminPromoUpdate,
@@ -49,7 +58,10 @@ import {
   startPayAttempt,
   trackEvent,
   type AdminGiftCodeRow,
+  type CampaignLinksBuildResult,
+  type LiveUpdateRow,
   type AdminMetricsStatus,
+  type PlanCatalogRow,
   type AdminPromoRow,
   type AdminTemplateRow,
   type AdminUserCard,
@@ -68,7 +80,7 @@ import { OFFER_FULL, OFFER_UPDATED_AT } from "./legal";
 import { getTgUser, haptic, openLink, tgReady } from "./telegram";
 
 type UserTab = "status" | "connect" | "nodes" | "support";
-type AdminTab = "summary" | "users" | "tickets" | "nodes" | "broadcast" | "promos" | "templates" | "giftcodes";
+type AdminTab = "summary" | "users" | "tickets" | "nodes" | "broadcast" | "promos" | "plans" | "updates" | "templates" | "giftcodes";
 
 type StorySlide = { title: string; text: string };
 type PlanChoice = { key: string; label: string; stars: number; badge?: string };
@@ -125,6 +137,8 @@ const ADMIN_TABS: Array<{ id: AdminTab; label: string }> = [
   { id: "nodes", label: "Ноды" },
   { id: "broadcast", label: "Рассылка" },
   { id: "promos", label: "Промокоды" },
+  { id: "plans", label: "Планы" },
+  { id: "updates", label: "Live Updates" },
   { id: "templates", label: "Шаблоны" },
   { id: "giftcodes", label: "Gift-коды" },
 ];
@@ -424,6 +438,12 @@ export default function App() {
   const [giftCode, setGiftCode] = useState("");
   const [giftRedeemResult, setGiftRedeemResult] = useState("");
   const [rubPayBusy, setRubPayBusy] = useState(false);
+  const [rubBreakdown, setRubBreakdown] = useState<{
+    base: number;
+    discountPct: number;
+    final: number;
+    discountApplied: boolean;
+  } | null>(null);
   const [channelCheckBusy, setChannelCheckBusy] = useState(false);
   const [promoAutoHandled, setPromoAutoHandled] = useState(false);
   const [webLoginRequired, setWebLoginRequired] = useState(false);
@@ -465,6 +485,33 @@ export default function App() {
   const [admTemplatesRows, setAdmTemplatesRows] = useState<AdminTemplateRow[]>([]);
   const [admTemplateForm, setAdmTemplateForm] = useState({ key: "", text: "" });
   const [admTemplateEdit, setAdmTemplateEdit] = useState<{ key: string; text: string }>({ key: "", text: "" });
+  const [admPlansRows, setAdmPlansRows] = useState<PlanCatalogRow[]>([]);
+  const [admPlanForm, setAdmPlanForm] = useState({
+    code: "",
+    label: "",
+    amount_rub: 99,
+    amount_stars: 99,
+    days: 30,
+    device_limit: 1,
+    node_policy: "paid_pool",
+    badge: "",
+    sort_order: 100,
+  });
+  const [admUpdatesRows, setAdmUpdatesRows] = useState<LiveUpdateRow[]>([]);
+  const [admUpdateForm, setAdmUpdateForm] = useState({
+    title: "",
+    summary: "",
+    link: "",
+    published_at: "",
+    sort_order: 100,
+  });
+  const [admCampaignForm, setAdmCampaignForm] = useState({
+    promo_code: "",
+    campaign_key: "",
+    plan_code: "start_99",
+    source: "bot" as "bot" | "site",
+  });
+  const [admCampaignLinks, setAdmCampaignLinks] = useState<CampaignLinksBuildResult | null>(null);
   const [admGiftCodesRows, setAdmGiftCodesRows] = useState<AdminGiftCodeRow[]>([]);
   const [admGiftType, setAdmGiftType] = useState<"mini" | "standard" | "premium">("standard");
   const [admGiftLastCode, setAdmGiftLastCode] = useState("");
@@ -478,10 +525,28 @@ export default function App() {
   const queryParams = useMemo(() => new URLSearchParams(window.location.search), []);
   const queryCampaign = (queryParams.get("campaign") || "").trim();
   const queryPromo = (queryParams.get("promo") || "").trim().toUpperCase();
+  const rubPlanChoices = useMemo(() => {
+    const rows = admPlansRows.filter((p) => p.is_active && Number(p.amount_rub || 0) > 0);
+    if (!rows.length) return RUB_PLAN_CHOICES;
+    return rows
+      .sort((a, b) => Number(a.sort_order || 0) - Number(b.sort_order || 0))
+      .map((p) => ({
+        key: p.code,
+        label: p.label || p.code,
+        rub: Number(p.amount_rub || 0),
+        badge: p.badge || undefined,
+      }));
+  }, [admPlansRows]);
 
   // Animated metric values
   const deviceCount = useCountUp(dash?.device_limit ?? 0);
   const trafficUsed = useCountUp(dash?.used_gb ?? 0, 0.8);
+
+  useEffect(() => {
+    if (!rubPlanChoices.length) return;
+    if (rubPlanChoices.some((p) => p.key === selectedRubPlan)) return;
+    setSelectedRubPlan(rubPlanChoices[0].key);
+  }, [rubPlanChoices, selectedRubPlan]);
 
   useEffect(() => {
     tgReady();
@@ -582,7 +647,7 @@ export default function App() {
       setClientApps(apps);
       if (n.length > 0) setSelectedNodeCode(n[0].code);
       if (u.is_admin) {
-        const [s, at, an, m, au, promos, templates, giftCodes] = await Promise.all([
+        const [s, at, an, m, au, promos, templates, plans, updates, giftCodes] = await Promise.all([
           adminSummary(),
           adminTickets("", 30),
           adminNodesHealth(),
@@ -590,6 +655,8 @@ export default function App() {
           adminUsers("", 40, 0),
           adminPromos(250),
           adminTemplates(250),
+          adminPlans(true),
+          adminLiveUpdates(true),
           adminGiftCodes(100),
         ]);
         setAdmSummary(s);
@@ -599,6 +666,8 @@ export default function App() {
         setAdmUsersRows(au);
         setAdmPromosRows(promos);
         setAdmTemplatesRows(templates);
+        setAdmPlansRows(plans);
+        setAdmUpdatesRows(updates);
         setAdmGiftCodesRows(giftCodes);
         if (templates.length > 0) {
           setAdmTemplateEdit({ key: templates[0].key, text: templates[0].text });
@@ -674,6 +743,14 @@ export default function App() {
     if (!admTemplateEdit.key || !rows.some((t) => t.key === admTemplateEdit.key)) {
       setAdmTemplateEdit({ key: rows[0].key, text: rows[0].text });
     }
+  }
+
+  async function reloadAdminPlans() {
+    setAdmPlansRows(await adminPlans(true));
+  }
+
+  async function reloadAdminUpdates() {
+    setAdmUpdatesRows(await adminLiveUpdates(true));
   }
 
   async function reloadAdminGiftCodes() {
@@ -803,12 +880,19 @@ export default function App() {
     if (!user) return;
     try {
       setRubPayBusy(true);
+      setRubBreakdown(null);
       const res = await createRubCheckoutOrder({
         plan_code: plan,
         source: "site",
         tg_id: user.tg_id,
         campaign: queryCampaign || undefined,
         promo_code: queryPromo || undefined,
+      });
+      setRubBreakdown({
+        base: Number(res.base_amount_rub ?? res.amount_rub ?? 0),
+        discountPct: Number(res.discount_pct ?? 0),
+        final: Number(res.amount_rub ?? 0),
+        discountApplied: Boolean(res.discount_applied),
       });
       const fallback = user?.actions.pay_via_bot || "";
       openLink(res.payment_url || fallback);
@@ -1021,6 +1105,120 @@ export default function App() {
     }, `Промокод ${code} удалён`);
   }
 
+  async function onAdminCreatePlan() {
+    const code = admPlanForm.code.trim().toLowerCase();
+    const label = admPlanForm.label.trim();
+    if (!code || !label) {
+      setAdmError("Укажите code и label плана");
+      return;
+    }
+    await runAdminAction(async () => {
+      await adminPlanCreate({
+        code,
+        label,
+        amount_rub: Math.max(0, Number(admPlanForm.amount_rub || 0)),
+        amount_stars: Math.max(0, Number(admPlanForm.amount_stars || 0)),
+        days: Math.max(1, Number(admPlanForm.days || 1)),
+        device_limit: Math.max(1, Number(admPlanForm.device_limit || 1)),
+        node_policy: admPlanForm.node_policy.trim() || null,
+        badge: admPlanForm.badge.trim() || null,
+        is_active: true,
+        sort_order: Math.max(0, Number(admPlanForm.sort_order || 0)),
+      });
+      setAdmPlanForm({
+        code: "",
+        label: "",
+        amount_rub: 99,
+        amount_stars: 99,
+        days: 30,
+        device_limit: 1,
+        node_policy: "paid_pool",
+        badge: "",
+        sort_order: 100,
+      });
+      await reloadAdminPlans();
+    }, `План ${code} создан`);
+  }
+
+  async function onAdminPatchPlan(row: PlanCatalogRow) {
+    await runAdminAction(async () => {
+      await adminPlanUpdate(row.code, {
+        label: row.label,
+        amount_rub: Math.max(0, Number(row.amount_rub || 0)),
+        amount_stars: Math.max(0, Number(row.amount_stars || 0)),
+        days: Math.max(1, Number(row.days || 1)),
+        device_limit: Math.max(1, Number(row.device_limit || 1)),
+        node_policy: (row.node_policy || "").trim() || null,
+        badge: (row.badge || "").trim() || null,
+        is_active: Boolean(row.is_active),
+        sort_order: Math.max(0, Number(row.sort_order || 0)),
+      });
+      await reloadAdminPlans();
+    }, `План ${row.code} обновлён`);
+  }
+
+  async function onAdminDeletePlan(code: string) {
+    await runAdminAction(async () => {
+      await adminPlanDelete(code);
+      await reloadAdminPlans();
+    }, `План ${code} удалён`);
+  }
+
+  async function onAdminCreateLiveUpdate() {
+    const title = admUpdateForm.title.trim();
+    const summary = admUpdateForm.summary.trim();
+    const link = admUpdateForm.link.trim();
+    if (!title || !summary || !link) {
+      setAdmError("Заполните title, summary и link");
+      return;
+    }
+    await runAdminAction(async () => {
+      await adminLiveUpdateCreate({
+        title,
+        summary,
+        link,
+        published_at: admUpdateForm.published_at.trim() || null,
+        is_active: true,
+        sort_order: Math.max(0, Number(admUpdateForm.sort_order || 0)),
+      });
+      setAdmUpdateForm({ title: "", summary: "", link: "", published_at: "", sort_order: 100 });
+      await reloadAdminUpdates();
+    }, "Карточка Live Update создана");
+  }
+
+  async function onAdminPatchLiveUpdate(row: LiveUpdateRow) {
+    await runAdminAction(async () => {
+      await adminLiveUpdateUpdate(Number(row.id), {
+        title: String(row.title || "").trim(),
+        summary: String(row.summary || "").trim(),
+        link: String(row.link || "").trim(),
+        published_at: String(row.published_at || "").trim() || null,
+        is_active: Boolean(row.is_active ?? true),
+        sort_order: Math.max(0, Number(row.sort_order || 0)),
+      });
+      await reloadAdminUpdates();
+    }, `Live Update #${row.id} обновлён`);
+  }
+
+  async function onAdminDeleteLiveUpdate(id: number) {
+    await runAdminAction(async () => {
+      await adminLiveUpdateDelete(id);
+      await reloadAdminUpdates();
+    }, `Live Update #${id} удалён`);
+  }
+
+  async function onAdminBuildCampaign() {
+    await runAdminAction(async () => {
+      const res = await adminBuildCampaignLinks({
+        promo_code: admCampaignForm.promo_code.trim() || undefined,
+        campaign_key: admCampaignForm.campaign_key.trim() || undefined,
+        plan_code: admCampaignForm.plan_code.trim() || undefined,
+        source: admCampaignForm.source,
+      });
+      setAdmCampaignLinks(res);
+    }, "Ссылки кампании собраны");
+  }
+
   async function onAdminCreateTemplate() {
     const key = admTemplateForm.key.trim().toLowerCase();
     const text = admTemplateForm.text.trim();
@@ -1107,9 +1305,19 @@ export default function App() {
   async function runConnectImport() {
     if (!dash?.subscription_url) return;
     void trackEvent("clicked_connect", "webapp", { platform });
-    const deep = `hiddify://import/${encodeURIComponent(dash.subscription_url)}`;
-    openLink(deep);
-    setBanner("Открываю клиент...");
+    const url = encodeURIComponent(dash.subscription_url);
+    if (platform === "android") {
+      openLink(`v2rayng://install-config?url=${url}`);
+      window.setTimeout(() => openLink(`hiddify://import/${url}`), 550);
+      setBanner("Открываю v2rayNG, затем fallback в Hiddify");
+    } else if (platform === "ios") {
+      setBanner("На iOS импорт откройте через Streisand/Happ по инструкции");
+      openLink(docsLinkForConnect());
+    } else {
+      const copied = await copyText(dash.subscription_url);
+      setBanner(copied ? "Ключ скопирован. Откройте клиент и вставьте вручную" : "Откройте инструкцию и импортируйте ключ");
+      openLink(docsLinkForConnect());
+    }
     pulse("success");
     setConnectStep(2);
     void trackEvent("deep_link_opened", "webapp", { platform });
@@ -1743,6 +1951,302 @@ export default function App() {
             </>
           ) : null}
 
+          {aTab === "plans" ? (
+            <>
+              <div className="card__title" style={{ marginTop: 12 }}>Создать план</div>
+              <div className="actions">
+                <input
+                  className="field field--compact"
+                  aria-label="Plan code"
+                  value={admPlanForm.code}
+                  onChange={(e) => setAdmPlanForm((v) => ({ ...v, code: e.target.value.toLowerCase() }))}
+                  placeholder="code (start_99)"
+                />
+                <input
+                  className="field"
+                  aria-label="Plan label"
+                  value={admPlanForm.label}
+                  onChange={(e) => setAdmPlanForm((v) => ({ ...v, label: e.target.value }))}
+                  placeholder="Label"
+                />
+              </div>
+              <div className="actions" style={{ marginTop: 8 }}>
+                <input
+                  className="field field--compact"
+                  aria-label="Plan RUB"
+                  value={String(admPlanForm.amount_rub)}
+                  onChange={(e) => setAdmPlanForm((v) => ({ ...v, amount_rub: Math.max(0, Number(e.target.value || 0) || 0) }))}
+                  placeholder="RUB"
+                />
+                <input
+                  className="field field--compact"
+                  aria-label="Plan Stars"
+                  value={String(admPlanForm.amount_stars)}
+                  onChange={(e) => setAdmPlanForm((v) => ({ ...v, amount_stars: Math.max(0, Number(e.target.value || 0) || 0) }))}
+                  placeholder="Stars"
+                />
+                <input
+                  className="field field--compact"
+                  aria-label="Plan days"
+                  value={String(admPlanForm.days)}
+                  onChange={(e) => setAdmPlanForm((v) => ({ ...v, days: Math.max(1, Number(e.target.value || 0) || 1) }))}
+                  placeholder="days"
+                />
+                <input
+                  className="field field--compact"
+                  aria-label="Plan device limit"
+                  value={String(admPlanForm.device_limit)}
+                  onChange={(e) => setAdmPlanForm((v) => ({ ...v, device_limit: Math.max(1, Number(e.target.value || 0) || 1) }))}
+                  placeholder="devices"
+                />
+              </div>
+              <div className="actions" style={{ marginTop: 8 }}>
+                <input
+                  className="field field--compact"
+                  aria-label="Plan node policy"
+                  value={admPlanForm.node_policy}
+                  onChange={(e) => setAdmPlanForm((v) => ({ ...v, node_policy: e.target.value }))}
+                  placeholder="node_policy"
+                />
+                <input
+                  className="field field--compact"
+                  aria-label="Plan badge"
+                  value={admPlanForm.badge}
+                  onChange={(e) => setAdmPlanForm((v) => ({ ...v, badge: e.target.value }))}
+                  placeholder="badge"
+                />
+                <input
+                  className="field field--compact"
+                  aria-label="Plan sort order"
+                  value={String(admPlanForm.sort_order)}
+                  onChange={(e) => setAdmPlanForm((v) => ({ ...v, sort_order: Math.max(0, Number(e.target.value || 0) || 0) }))}
+                  placeholder="sort"
+                />
+                <button className="btn btn--inline" type="button" disabled={admBusy} onClick={() => void onAdminCreatePlan()}>
+                  Создать
+                </button>
+              </div>
+
+              <div className="divider" />
+              <div className="card__title">Текущие планы</div>
+              <div className="list">
+                {admPlansRows.map((p) => (
+                  <div key={p.code} className="row" style={{ alignItems: "flex-start", flexDirection: "column", gap: 8 }}>
+                    <div className="row__title">{`${p.code} • ${p.label}`}</div>
+                    <div className="row__sub">{`${p.amount_rub}₽ | ${p.amount_stars}⭐ | ${p.days}д | dev=${p.device_limit}`}</div>
+                    <div className="actions">
+                      <input
+                        className="field field--compact"
+                        value={String(p.amount_rub)}
+                        onChange={(e) =>
+                          setAdmPlansRows((rows) =>
+                            rows.map((x) => (x.code === p.code ? { ...x, amount_rub: Math.max(0, Number(e.target.value || 0) || 0) } : x)),
+                          )
+                        }
+                      />
+                      <input
+                        className="field field--compact"
+                        value={String(p.amount_stars)}
+                        onChange={(e) =>
+                          setAdmPlansRows((rows) =>
+                            rows.map((x) => (x.code === p.code ? { ...x, amount_stars: Math.max(0, Number(e.target.value || 0) || 0) } : x)),
+                          )
+                        }
+                      />
+                      <input
+                        className="field field--compact"
+                        value={String(p.days)}
+                        onChange={(e) =>
+                          setAdmPlansRows((rows) =>
+                            rows.map((x) => (x.code === p.code ? { ...x, days: Math.max(1, Number(e.target.value || 0) || 1) } : x)),
+                          )
+                        }
+                      />
+                      <button
+                        className={p.is_active ? "chip chip--active" : "chip"}
+                        type="button"
+                        onClick={() =>
+                          setAdmPlansRows((rows) =>
+                            rows.map((x) => (x.code === p.code ? { ...x, is_active: !x.is_active } : x)),
+                          )
+                        }
+                      >
+                        {p.is_active ? "active" : "inactive"}
+                      </button>
+                      <button className="chip" type="button" disabled={admBusy} onClick={() => void onAdminPatchPlan(p)}>
+                        Сохранить
+                      </button>
+                      <button className="chip" type="button" disabled={admBusy} onClick={() => void onAdminDeletePlan(p.code)}>
+                        Удалить
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              <div className="divider" />
+              <div className="card__title">Campaign/deeplink builder</div>
+              <div className="actions">
+                <input
+                  className="field field--compact"
+                  value={admCampaignForm.promo_code}
+                  onChange={(e) => setAdmCampaignForm((v) => ({ ...v, promo_code: e.target.value.toUpperCase() }))}
+                  placeholder="PROMO (optional)"
+                />
+                <input
+                  className="field field--compact"
+                  value={admCampaignForm.campaign_key}
+                  onChange={(e) => setAdmCampaignForm((v) => ({ ...v, campaign_key: e.target.value }))}
+                  placeholder="campaign_key"
+                />
+                <input
+                  className="field field--compact"
+                  value={admCampaignForm.plan_code}
+                  onChange={(e) => setAdmCampaignForm((v) => ({ ...v, plan_code: e.target.value.toLowerCase() }))}
+                  placeholder="plan_code"
+                />
+                <button className="chip" type="button" disabled={admBusy} onClick={() => void onAdminBuildCampaign()}>
+                  Сгенерировать
+                </button>
+              </div>
+              <div className="chips" style={{ marginTop: 8 }}>
+                {(["bot", "site"] as const).map((src) => (
+                  <button
+                    key={src}
+                    className={admCampaignForm.source === src ? "chip chip--active" : "chip"}
+                    type="button"
+                    onClick={() => setAdmCampaignForm((v) => ({ ...v, source: src }))}
+                  >
+                    {src}
+                  </button>
+                ))}
+              </div>
+              {admCampaignLinks ? (
+                <div className="list" style={{ marginTop: 8 }}>
+                  {[
+                    { label: "Bot start", value: admCampaignLinks.bot_start_link },
+                    { label: "Checkout", value: admCampaignLinks.checkout_link },
+                    { label: "WebApp", value: admCampaignLinks.webapp_link },
+                  ].map((row) => (
+                    <div key={row.label} className="row">
+                      <div>
+                        <div className="row__title">{row.label}</div>
+                        <div className="row__sub">{row.value}</div>
+                      </div>
+                      <button className="chip" type="button" onClick={() => void copyText(row.value)}>
+                        Copy
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              ) : null}
+            </>
+          ) : null}
+
+          {aTab === "updates" ? (
+            <>
+              <div className="card__title" style={{ marginTop: 12 }}>Создать Live Update</div>
+              <input
+                className="field"
+                aria-label="Update title"
+                value={admUpdateForm.title}
+                onChange={(e) => setAdmUpdateForm((v) => ({ ...v, title: e.target.value }))}
+                placeholder="Заголовок"
+              />
+              <textarea
+                className="field field--area"
+                aria-label="Update summary"
+                value={admUpdateForm.summary}
+                onChange={(e) => setAdmUpdateForm((v) => ({ ...v, summary: e.target.value }))}
+                placeholder="Короткое описание"
+              />
+              <div className="actions" style={{ marginTop: 8 }}>
+                <input
+                  className="field"
+                  aria-label="Update link"
+                  value={admUpdateForm.link}
+                  onChange={(e) => setAdmUpdateForm((v) => ({ ...v, link: e.target.value }))}
+                  placeholder="https://t.me/..."
+                />
+              </div>
+              <div className="actions" style={{ marginTop: 8 }}>
+                <input
+                  className="field field--compact"
+                  aria-label="Update published at"
+                  value={admUpdateForm.published_at}
+                  onChange={(e) => setAdmUpdateForm((v) => ({ ...v, published_at: e.target.value }))}
+                  placeholder="published_at ISO (optional)"
+                />
+                <input
+                  className="field field--compact"
+                  aria-label="Update sort"
+                  value={String(admUpdateForm.sort_order)}
+                  onChange={(e) => setAdmUpdateForm((v) => ({ ...v, sort_order: Math.max(0, Number(e.target.value || 0) || 0) }))}
+                  placeholder="sort"
+                />
+                <button className="btn btn--inline" type="button" disabled={admBusy} onClick={() => void onAdminCreateLiveUpdate()}>
+                  Создать
+                </button>
+              </div>
+
+              <div className="divider" />
+              <div className="card__title">Карточки Live Updates</div>
+              <div className="list">
+                {admUpdatesRows.map((u) => (
+                  <div key={u.id} className="row" style={{ alignItems: "flex-start", flexDirection: "column", gap: 8 }}>
+                    <input
+                      className="field"
+                      value={u.title}
+                      onChange={(e) =>
+                        setAdmUpdatesRows((rows) =>
+                          rows.map((x) => (x.id === u.id ? { ...x, title: e.target.value } : x)),
+                        )
+                      }
+                    />
+                    <textarea
+                      className="field field--area"
+                      value={u.summary}
+                      onChange={(e) =>
+                        setAdmUpdatesRows((rows) =>
+                          rows.map((x) => (x.id === u.id ? { ...x, summary: e.target.value } : x)),
+                        )
+                      }
+                    />
+                    <div className="actions">
+                      <input
+                        className="field"
+                        value={u.link}
+                        onChange={(e) =>
+                          setAdmUpdatesRows((rows) =>
+                            rows.map((x) => (x.id === u.id ? { ...x, link: e.target.value } : x)),
+                          )
+                        }
+                      />
+                      <button
+                        className={u.is_active ? "chip chip--active" : "chip"}
+                        type="button"
+                        onClick={() =>
+                          setAdmUpdatesRows((rows) =>
+                            rows.map((x) => (x.id === u.id ? { ...x, is_active: !Boolean(x.is_active) } : x)),
+                          )
+                        }
+                      >
+                        {u.is_active ? "active" : "inactive"}
+                      </button>
+                      <button className="chip" type="button" disabled={admBusy} onClick={() => void onAdminPatchLiveUpdate(u)}>
+                        Сохранить
+                      </button>
+                      <button className="chip" type="button" disabled={admBusy} onClick={() => void onAdminDeleteLiveUpdate(u.id)}>
+                        Удалить
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+            </>
+          ) : null}
+
           {aTab === "templates" ? (
             <>
               <div className="card__title" style={{ marginTop: 12 }}>Создать шаблон рассылки</div>
@@ -1929,13 +2433,14 @@ export default function App() {
               </div>
             ) : null}
             <div className="plans-mini">
-              {RUB_PLAN_CHOICES.map((p) => (
+              {rubPlanChoices.map((p) => (
                 <button
                   key={p.key}
                   type="button"
                   className={selectedRubPlan === p.key ? "chip chip--active" : "chip"}
                   onClick={() => {
                     setSelectedRubPlan(p.key);
+                    setRubBreakdown(null);
                     pulse("success");
                   }}
                 >
@@ -1974,6 +2479,11 @@ export default function App() {
                 <span style={{ position: "relative", zIndex: 1 }}>Скопировать ключ</span>
               </button>
             </div>
+            {rubBreakdown ? (
+              <div className="muted" style={{ marginTop: 8 }}>
+                {`Разбивка: база ${rubBreakdown.base.toFixed(0)}₽ • скидка ${rubBreakdown.discountPct}% • итог ${rubBreakdown.final.toFixed(0)}₽`}
+              </div>
+            ) : null}
             <div className="card__title" style={{ marginTop: 14 }}>Подарочный код</div>
             <div className="actions">
               <input
@@ -2036,7 +2546,9 @@ export default function App() {
 
             <div className="actions" style={{ marginTop: 12 }}>
               <button className="btn" type="button" onClick={runConnectImport}>
-                <span style={{ position: "relative", zIndex: 1 }}>Импорт</span>
+                <span style={{ position: "relative", zIndex: 1 }}>
+                  {platform === "android" ? "Импорт в v2rayNG / Hiddify" : platform === "ios" ? "Открыть путь для iOS" : "Скопировать ключ + инструкция"}
+                </span>
               </button>
               <button className="btn btn--ghost" type="button" onClick={finishConnect}>
                 <span style={{ position: "relative", zIndex: 1 }}>Проверить и завершить</span>
@@ -2053,6 +2565,13 @@ export default function App() {
             </div>
 
             <div className="muted" style={{ marginTop: 12 }}>{`Платформа: ${platform}`}</div>
+            <div className="muted" style={{ marginTop: 6 }}>
+              {platform === "android"
+                ? "Android: сначала v2rayNG deep-link, затем fallback на Hiddify."
+                : platform === "ios"
+                  ? "iOS: используйте Streisand/Happ и импорт по инструкции, если схема недоступна."
+                  : "Desktop: копирование ключа + ручной импорт по документации."}
+            </div>
           </div>
         ) : null}
 

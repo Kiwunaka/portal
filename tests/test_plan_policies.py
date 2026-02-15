@@ -115,6 +115,28 @@ class PlanPolicyTests(unittest.TestCase):
         self.assertEqual(api._plan_device_limit(free_user), 1)
         self.assertEqual(api._plan_device_limit(paid_user), 5)
 
+    def test_api_plan_catalog_fallback_defaults(self) -> None:
+        api = importlib.import_module("api")
+        importlib.reload(api)
+
+        s = api.SessionLocal()
+        try:
+            rows = api._plan_catalog_payload(s=s, only_active=True)
+            codes = [str(r.get("code") or "") for r in rows]
+            self.assertIn("start_99", codes)
+            self.assertIn("1_month", codes)
+            self.assertGreaterEqual(len(rows), 6)
+        finally:
+            s.close()
+
+    def test_api_price_with_pending_discount(self) -> None:
+        api = importlib.import_module("api")
+        importlib.reload(api)
+
+        final_price, pct = api._price_with_pending_discount(amount_rub=249, pending_pct=20)
+        self.assertEqual(final_price, 199)
+        self.assertEqual(pct, 20)
+
 
 if __name__ == "__main__":
     unittest.main()

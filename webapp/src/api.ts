@@ -209,6 +209,50 @@ export type RubCheckoutStartResult = {
   amount_rub: number;
   currency: string;
   status: string;
+  widget_enabled?: boolean;
+  discount_applied?: boolean;
+  base_amount_rub?: number | null;
+  discount_pct?: number;
+};
+
+export type PlanCatalogRow = {
+  code: string;
+  label: string;
+  amount_rub: number;
+  amount_stars: number;
+  days: number;
+  device_limit: number;
+  node_policy?: string | null;
+  badge?: string | null;
+  is_active: boolean;
+  sort_order: number;
+  created_at?: string | null;
+  updated_at?: string | null;
+};
+
+export type LiveUpdateRow = {
+  id: number;
+  title: string;
+  summary: string;
+  link: string;
+  date?: string;
+  published_at?: string | null;
+  is_active?: boolean;
+  sort_order?: number;
+  created_at?: string | null;
+  updated_at?: string | null;
+};
+
+export type CampaignLinksBuildResult = {
+  ok: boolean;
+  bot_start_link: string;
+  checkout_link: string;
+  webapp_link: string;
+};
+
+export type PublicPlansPayload = {
+  plans: PlanCatalogRow[];
+  widget_enabled: boolean;
 };
 
 export type BonusPayload = {
@@ -435,6 +479,15 @@ export function fetchUser(tgId: number): Promise<UserPayload> {
   return apiFetch<UserPayload>(`/api/user/${tgId}`);
 }
 
+export function fetchPublicPlans(): Promise<PublicPlansPayload> {
+  return apiFetch<PublicPlansPayload>("/api/public/plans");
+}
+
+export async function fetchPublicLiveUpdates(limit = 3): Promise<LiveUpdateRow[]> {
+  const data = await apiFetch<{ updates: LiveUpdateRow[] }>(`/api/public/live-updates?limit=${Math.max(1, Math.min(10, limit))}`);
+  return data.updates || [];
+}
+
 export function fetchDashboard(): Promise<DashboardSnapshot> {
   return apiFetch<DashboardSnapshot>("/api/dashboard");
 }
@@ -579,6 +632,18 @@ export function createRubCheckoutOrder(payload: {
   currency?: string;
 }): Promise<RubCheckoutStartResult> {
   return apiFetch("/api/payments/freekassa/orders/create", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+}
+
+export function createPublicRubCheckoutOrder(payload: {
+  plan_code: string;
+  checkout_ticket: string;
+  currency?: string;
+}): Promise<RubCheckoutStartResult> {
+  return apiFetch("/api/payments/freekassa/orders/create-public", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
@@ -824,5 +889,109 @@ export function adminGiftCodeCreate(card_type: "mini" | "standard" | "premium"):
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ card_type }),
+  });
+}
+
+export async function adminPlans(include_inactive = true): Promise<PlanCatalogRow[]> {
+  const data = await apiFetch<{ plans: PlanCatalogRow[] }>(`/api/admin/plans?include_inactive=${include_inactive ? "true" : "false"}`);
+  return data.plans || [];
+}
+
+export function adminPlanCreate(payload: {
+  code: string;
+  label: string;
+  amount_rub: number;
+  amount_stars: number;
+  days: number;
+  device_limit: number;
+  node_policy?: string | null;
+  badge?: string | null;
+  is_active?: boolean;
+  sort_order?: number;
+}): Promise<{ ok: boolean; code: string }> {
+  return apiFetch("/api/admin/plans", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+}
+
+export function adminPlanUpdate(
+  code: string,
+  payload: {
+    label?: string;
+    amount_rub?: number;
+    amount_stars?: number;
+    days?: number;
+    device_limit?: number;
+    node_policy?: string | null;
+    badge?: string | null;
+    is_active?: boolean;
+    sort_order?: number;
+  },
+): Promise<{ ok: boolean; code: string }> {
+  return apiFetch(`/api/admin/plans/${encodeURIComponent(code)}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+}
+
+export function adminPlanDelete(code: string): Promise<{ ok: boolean }> {
+  return apiFetch(`/api/admin/plans/${encodeURIComponent(code)}`, { method: "DELETE" });
+}
+
+export async function adminLiveUpdates(include_inactive = true): Promise<LiveUpdateRow[]> {
+  const data = await apiFetch<{ updates: LiveUpdateRow[] }>(`/api/admin/live-updates?include_inactive=${include_inactive ? "true" : "false"}`);
+  return data.updates || [];
+}
+
+export function adminLiveUpdateCreate(payload: {
+  title: string;
+  summary: string;
+  link: string;
+  published_at?: string | null;
+  is_active?: boolean;
+  sort_order?: number;
+}): Promise<{ ok: boolean; id: number }> {
+  return apiFetch("/api/admin/live-updates", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+}
+
+export function adminLiveUpdateUpdate(
+  id: number,
+  payload: {
+    title?: string;
+    summary?: string;
+    link?: string;
+    published_at?: string | null;
+    is_active?: boolean;
+    sort_order?: number;
+  },
+): Promise<{ ok: boolean; id: number }> {
+  return apiFetch(`/api/admin/live-updates/${id}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+}
+
+export function adminLiveUpdateDelete(id: number): Promise<{ ok: boolean }> {
+  return apiFetch(`/api/admin/live-updates/${id}`, { method: "DELETE" });
+}
+
+export function adminBuildCampaignLinks(payload: {
+  promo_code?: string;
+  campaign_key?: string;
+  plan_code?: string;
+  source?: "site" | "bot";
+}): Promise<CampaignLinksBuildResult> {
+  return apiFetch("/api/admin/campaign-links/build", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
   });
 }

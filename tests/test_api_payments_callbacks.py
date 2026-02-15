@@ -29,6 +29,8 @@ class ApiPaymentCallbacksTests(unittest.TestCase):
             "BOT_TOKEN",
             "FREEKASSA_SIGNING_SECRET",
             "PAYMENT_CALLBACK_TOLERANT_MODE",
+            "CHECKOUT_TICKET_SECRET",
+            "CHECKOUT_TICKET_TTL_SECONDS",
             "FK_SITE_SHOP_ID",
             "FK_SITE_API_KEY",
             "FK_SITE_SECRET_WORD_1",
@@ -45,6 +47,8 @@ class ApiPaymentCallbacksTests(unittest.TestCase):
         os.environ["BOT_TOKEN"] = "test_bot_token_123"
         os.environ["FREEKASSA_SIGNING_SECRET"] = "test_fk_secret"
         os.environ["PAYMENT_CALLBACK_TOLERANT_MODE"] = "false"
+        os.environ["CHECKOUT_TICKET_SECRET"] = "checkout_secret_test_123"
+        os.environ["CHECKOUT_TICKET_TTL_SECONDS"] = "900"
         os.environ["FK_SITE_SHOP_ID"] = "69962"
         os.environ["FK_SITE_API_KEY"] = "fk_api_key_test"
         os.environ["FK_SITE_SECRET_WORD_1"] = "fk_sw1_test"
@@ -292,6 +296,155 @@ class ApiPaymentCallbacksTests(unittest.TestCase):
             self.assertIn("currencies/status", called_methods)
         finally:
             self.api._freekassa_api_request = old_fk_request
+
+    def test_create_public_order_uses_checkout_ticket_and_applies_discount(self) -> None:
+        client = TestClient(self.api.app)
+
+        from db import SessionLocal
+        from models import ExternalOrder, User
+
+        s = SessionLocal()
+        try:
+            s.add(
+                User(
+                    tg_id=1001,
+                    username="alice",
+                    uuid=str(uuid.uuid4()),
+                    email="user_1001",
+                    sub_type="FREE",
+                    is_active=True,
+                    tos_accepted=True,
+                    pending_discount_pct=20,
+                    pending_discount_code="WELCOME20",
+                )
+            )
+            s.commit()
+        finally:
+            s.close()
+
+        calls: list[tuple[str, str, dict]] = []
+
+        async def fake_fk_request(*, source: str, method: str, data: dict):
+            calls.append((source, method, dict(data)))
+            if method == "orders/create":
+                return {"location": "https://pay.example/fk/public-order-1"}
+            return {"ok": True}
+
+        old_fk_request = self.api._freekassa_api_request
+        self.api._freekassa_api_request = fake_fk_request
+        try:
+            ticket = self.api._create_checkout_ticket(
+                tg_id=1001,
+                plan_code="1_month",
+                promo_code="WELCOME20",
+                campaign_key="launch_w1",
+                source="site",
+            )
+            r = client.post(
+                "/api/payments/freekassa/orders/create-public",
+                json={"plan_code": "1_month", "checkout_ticket": ticket, "currency": "RUB"},
+            )
+            self.assertEqual(r.status_code, 200, r.text)
+            body = r.json()
+            self.assertTrue(body.get("ok"))
+            self.assertTrue(body.get("discount_applied"))
+            self.assertEqual(int(body.get("discount_pct") or 0), 20)
+            self.assertEqual(int(body.get("base_amount_rub") or 0), 249)
+            self.assertEqual(int(body.get("amount_rub") or 0), 199)
+            self.assertTrue(str(body.get("payment_url") or "").startswith("https://pay.example/"))
+        finally:
+            self.api._freekassa_api_request = old_fk_request
+
+        s = SessionLocal()
+        try:
+            user = s.query(User).filter(User.tg_id == 1001).first()
+            self.assertIsNotNone(user)
+            self.assertIsNone(user.pending_discount_pct)
+            self.assertIsNone(user.pending_discount_code)
+            row = s.query(ExternalOrder).filter(ExternalOrder.tg_id == 1001, ExternalOrder.provider == "freekassa").first()
+            self.assertIsNotNone(row)
+            self.assertIn("\"discount_pct\":20", str(row.meta_json or ""))
+            self.assertEqual([m for _, m, _ in calls].count("orders/create"), 1)
+        finally:
+            s.close()
+
+    def test_public_plans_and_admin_plans_crud(self) -> None:
+        client = TestClient(self.api.app)
+        admin_hdrs = self._auth_headers(9999, "admin")
+
+        pub_before = client.get("/api/public/plans")
+        self.assertEqual(pub_before.status_code, 200, pub_before.text)
+        self.assertTrue(any((p.get("code") == "start_99") for p in pub_before.json().get("plans", [])))
+
+        create = client.post(
+            "/api/admin/plans",
+            headers=admin_hdrs,
+            json={
+                "code": "special_45",
+                "label": "Special 45",
+                "amount_rub": 459,
+                "amount_stars": 459,
+                "days": 45,
+                "device_limit": 2,
+                "node_policy": "paid_pool",
+                "badge": "Test",
+                "is_active": True,
+                "sort_order": 5,
+            },
+        )
+        self.assertEqual(create.status_code, 200, create.text)
+
+        rows = client.get("/api/admin/plans", headers=admin_hdrs)
+        self.assertEqual(rows.status_code, 200, rows.text)
+        self.assertTrue(any((p.get("code") == "special_45") for p in rows.json().get("plans", [])))
+
+        patch = client.patch(
+            "/api/admin/plans/special_45",
+            headers=admin_hdrs,
+            json={"amount_rub": 499, "is_active": False, "sort_order": 55},
+        )
+        self.assertEqual(patch.status_code, 200, patch.text)
+
+        remove = client.delete("/api/admin/plans/special_45", headers=admin_hdrs)
+        self.assertEqual(remove.status_code, 200, remove.text)
+
+    def test_public_live_updates_and_admin_live_updates_crud(self) -> None:
+        client = TestClient(self.api.app)
+        admin_hdrs = self._auth_headers(9999, "admin")
+
+        public_rows = client.get("/api/public/live-updates")
+        self.assertEqual(public_rows.status_code, 200, public_rows.text)
+        self.assertGreaterEqual(len(public_rows.json().get("updates", [])), 1)
+
+        create = client.post(
+            "/api/admin/live-updates",
+            headers=admin_hdrs,
+            json={
+                "title": "Node maintenance completed",
+                "summary": "New route profile is online.",
+                "link": "https://t.me/portal_privacy/999",
+                "published_at": "2026-02-15T10:00:00",
+                "is_active": True,
+                "sort_order": 1,
+            },
+        )
+        self.assertEqual(create.status_code, 200, create.text)
+        update_id = int(create.json().get("id") or 0)
+        self.assertGreater(update_id, 0)
+
+        patch = client.patch(
+            f"/api/admin/live-updates/{update_id}",
+            headers=admin_hdrs,
+            json={"title": "Node maintenance done", "summary": "Fresh route profile online.", "sort_order": 2},
+        )
+        self.assertEqual(patch.status_code, 200, patch.text)
+
+        rows = client.get("/api/admin/live-updates", headers=admin_hdrs)
+        self.assertEqual(rows.status_code, 200, rows.text)
+        self.assertTrue(any((int(r.get("id") or 0) == update_id) for r in rows.json().get("updates", [])))
+
+        remove = client.delete(f"/api/admin/live-updates/{update_id}", headers=admin_hdrs)
+        self.assertEqual(remove.status_code, 200, remove.text)
 
 
 if __name__ == "__main__":
