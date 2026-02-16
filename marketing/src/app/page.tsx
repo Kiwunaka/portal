@@ -21,7 +21,8 @@ const APP_ANDROID_MIRROR_URL = (process.env.NEXT_PUBLIC_APP_ANDROID_MIRROR_URL |
 const APP_WINDOWS_EXE_URL = (process.env.NEXT_PUBLIC_APP_WINDOWS_EXE_URL || "").trim();
 const APP_WINDOWS_MIRROR_URL = (process.env.NEXT_PUBLIC_APP_WINDOWS_MIRROR_URL || "").trim();
 const APP_DOCS_URL = (process.env.NEXT_PUBLIC_APP_DOCS_URL || "").trim();
-const CONTACT_EMAIL = (process.env.NEXT_PUBLIC_CONTACT_EMAIL || "support@kiwunaka.space").trim();
+const CONTACT_EMAIL = (process.env.NEXT_PUBLIC_CONTACT_EMAIL || "support@portal-privacy.online").trim();
+const ENTERPRISE_EMAIL = (process.env.NEXT_PUBLIC_ENTERPRISE_EMAIL || "enterprise@portal-privacy.online").trim();
 const CONTACT_TG_URL = (process.env.NEXT_PUBLIC_CONTACT_TG_URL || "https://t.me/portal_privacy_helpbot").trim();
 const CONTACT_FORM_URL = (process.env.NEXT_PUBLIC_CONTACT_FORM_URL || "https://t.me/portal_privacy_helpbot").trim();
 
@@ -33,18 +34,18 @@ type LiveUpdate = {
 };
 
 const FEATURES = [
-  { type: "01×", title: "Мгновенное подключение", desc: "Ключ выдаётся через Telegram и импортируется в 1-2 шага. Без регистрации, без паролей.", num: "01" },
-  { type: "04×", title: "4 страны в PRO", desc: "Польша, Нидерланды, США и Италия. Полный доступ ко всем узлам в платных планах.", num: "02" },
-  { type: "∞×", title: "Шифрованный канал", desc: "Трафик между устройством и узлом проходит в защищённом виде. Политика хранения данных опубликована в документах сервиса.", num: "03" },
-  { type: "05×", title: "До 5 устройств", desc: "Один профиль для телефона, планшета и компьютера. Одновременно и без ограничений.", num: "04" },
-  { type: "02×", title: "Гибкие режимы", desc: "Базовый и полный режим с ясным апгрейдом. Без миграций, без потери данных.", num: "05" },
-  { type: "24×", title: "Поддержка 24/7", desc: "Операторы помогают с диагностикой и подключением в Telegram. Мгновенная реакция.", num: "06" },
+  { type: "01×", title: "Запуск за 1-2 минуты", desc: "Вход через Telegram, понятные шаги и быстрый импорт ключа под вашу платформу.", num: "01" },
+  { type: "04×", title: "4 страны в платных планах", desc: "Польша, Нидерланды, США и Италия с возможностью переключения в кабинете.", num: "02" },
+  { type: "∞×", title: "Защищённая передача трафика", desc: "Канал между устройством и узлом работает в зашифрованном режиме. Политика данных доступна в документах сервиса.", num: "03" },
+  { type: "05×", title: "До 5 устройств", desc: "Один профиль можно использовать на телефоне, планшете и компьютере одновременно.", num: "04" },
+  { type: "02×", title: "Start и полный режим", desc: "Можно начать с мягкого порога и перейти на более длинный горизонт без переезда.", num: "05" },
+  { type: "24×", title: "Поддержка в Telegram", desc: "Поможем с подключением и диагностикой, если что-то не сработало с первого шага.", num: "06" },
 ];
 
 const PLANS = [
-  { code: "start_99", name: "Start", desc: "30 дней • 1 устройство • NL", price: "99 ₽", note: "Мягкий вход и проверка качества в реальном трафике", tag: "Вход", tone: "anchor" },
-  { code: "pro_249", name: "Pro", desc: "1 месяц • до 5 устройств • все страны", price: "249 ₽", note: "Основной тариф для работы, видео и ежедневного использования", tag: "Популярный", tone: "recommended" },
-  { code: "ultra_1499", name: "Ultra / Family", desc: "12 месяцев • до 5 устройств • приоритетные узлы", price: "1499 ₽", note: "Лучшая цена за месяц и стабильный запас по сроку", micro: "≈300 ₽/чел при использовании 5 устройств", tag: "Выгода" },
+  { code: "start_99", name: "Start", desc: "30 дней • 1 устройство • NL", price: "99 ₽", note: "Мягкий вход для проверки сервиса в реальных задачах", tag: "Вход", tone: "anchor" },
+  { code: "pro_249", name: "Pro", desc: "1 месяц • до 5 устройств • все страны", price: "249 ₽", note: "Сбалансированный вариант для ежедневного использования", tag: "Популярный", tone: "recommended" },
+  { code: "ultra_1499", name: "Ultra / Family", desc: "12 месяцев • до 5 устройств • полный пул стран", price: "1499 ₽", note: "Долгий горизонт и предсказуемая цена на месяц", micro: "≈300 ₽/чел при использовании 5 устройств", tag: "Выгода" },
 ];
 
 const DEFAULT_LIVE_UPDATES: LiveUpdate[] = [
@@ -71,26 +72,26 @@ const DEFAULT_LIVE_UPDATES: LiveUpdate[] = [
 const ROADMAP_PUBLIC: Array<{ title: string; status: string; points: string[] }> = [
   {
     title: "Retention",
-    status: "В работе",
+    status: "Реализовано",
     points: [
-      "Welcome / T-3 / T-1 / reactivation цепочки с A/B CTA.",
-      "Start99 welcome-offer через отложенную скидку на следующий checkout.",
+      "Welcome / T-3 / T-1 / T0 / reactivation цепочки с A/B CTA.",
+      "Start99 welcome-offer с отложенной скидкой на следующий checkout.",
     ],
   },
   {
     title: "UI-Polish",
-    status: "В работе",
+    status: "Реализовано",
     points: [
       "Социальное подтверждение в checkout и WebApp.",
-      "Улучшенный onboarding-microcopy для подключения на разных платформах.",
+      "Улучшенный onboarding-microcopy для Android / iOS / Desktop.",
     ],
   },
   {
     title: "Ops",
-    status: "Запланировано",
+    status: "В работе",
     points: [
-      "Расширение мониторинга кампаний и повторных продлений.",
-      "Runbook развёртывания и поэтапный enable feature-flags.",
+      "Автоматизация post-deploy smoke по ключевому платежному пути.",
+      "Runbook rollout/rollback и контроль campaign-потока.",
     ],
   },
 ];
@@ -101,16 +102,16 @@ function candidateApiBases(): string[] {
   if (typeof window !== "undefined") {
     out.push(window.location.origin.replace(/\/+$/, ""));
   }
-  out.push("https://kiwunaka.space");
+  out.push("https://portal-privacy.online");
   return Array.from(new Set(out.filter(Boolean)));
 }
 
 const FAQS = [
-  { q: "Как получить доступ?", a: "Откройте Telegram-бот, выберите тариф и получите персональный ключ. Без регистрации." },
+  { q: "Как получить доступ?", a: "Откройте Telegram-бот, выберите план и получите персональный ключ для подключения." },
   { q: "Какие устройства поддерживаются?", a: "iOS, Android, Windows, macOS, Linux. Один профиль работает на нескольких устройствах одновременно." },
   { q: "Есть бесплатный режим?", a: "Да, стартовый режим доступен без оплаты. Перейти на полный доступ можно в любой момент." },
-  { q: "Что если узел недоступен?", a: "В личном кабинете можно быстро переключиться на другую страну и проверить качество соединения." },
-  { q: "Как работает политика хранения данных?", a: "Мы стремимся к минимизации технических данных и публикуем актуальные условия в юридических документах сервиса." },
+  { q: "Что если узел временно недоступен?", a: "В кабинете можно переключиться на другую страну и свериться с актуальными апдейтами в канале проекта." },
+  { q: "Есть ли гарантии абсолютной скорости?", a: "Нет. Мы работаем по best-effort модели и регулярно обновляем узлы и рекомендации по подключению." },
   { q: "Можно ли поменять тариф?", a: "Да, апгрейд работает мгновенно. Оставшиеся дни пересчитываются и сохраняются." },
 ];
 
@@ -134,7 +135,7 @@ const MARQUEE_ITEMS = [
 
 const SEGMENT_CTA = {
   FREE: { label: "Мягкий апгрейд", price: "99₽", period: "за Start-план", note: "Проверка сервиса с минимальным порогом входа." },
-  PAID: { label: "Продление без паузы", price: "1399₽", period: "за 9 месяцев", note: "Фиксируйте выгодный горизонт и стабильный доступ." },
+  PAID: { label: "Продление без паузы", price: "1399₽", period: "за 9 месяцев", note: "Удобно зафиксировать выгодный горизонт и не возвращаться к продлению каждый месяц." },
   EXPIRED: { label: "Возврат доступа", price: "249₽", period: "за 1 месяц", note: "Быстрый возврат в рабочий режим без ожиданий." },
   MANUAL: { label: "План для ручного профиля", price: "699₽", period: "за 3 месяца", note: "Удобное продление с прозрачной стоимостью." },
 } as const;
@@ -156,6 +157,12 @@ function normalizePositiveInt(value: unknown): number {
   const n = Number(value);
   if (!Number.isFinite(n) || n <= 0) return 0;
   return Math.round(n);
+}
+
+function maskReviewUsername(username?: string): string {
+  const raw = (username || "").trim().replace(/^@+/, "").trim();
+  if (!raw) return "Пользователь";
+  return `${raw.slice(0, 2)}***`;
 }
 
 /* в"Ђв"Ђ Theme Toggle Hook в"Ђв"Ђ */
@@ -329,14 +336,14 @@ function Hero() {
         </div>
       </div>
 
-      <div className="hero-badge">[NETWORK_SECURITY] — PRIVATE ROUTING — 2025</div>
+      <div className="hero-badge">[SECURE DIGITAL ACCESS] — TRANSPARENT CHECKOUT — 2026</div>
       <div className="hero-title">
         <span className="hero-word-1">SECURE</span>
         <span className="hero-word-2">ROUTING</span>
         <span className="hero-word-3">PORTAL</span>
       </div>
       <div className="hero-sub">
-        Шифрование • 4 страны в PRO • Подключение за 1-2 минуты
+        Понятный запуск • Прозрачная цена • Поддержка в Telegram
       </div>
       <div className="hero-scroll">
         <span>SCROLL ↓</span>
@@ -425,7 +432,7 @@ function Testimonials() {
           .slice(0, 10)
           .map((row) => ({
             text: (row.text || "").trim(),
-            author: ((row.username || "Пользователь").trim() || "Пользователь"),
+            author: maskReviewUsername(row.username),
             tag: `${Math.max(1, Math.min(5, Number(row.rating) || 5))}★`,
           }));
         if (!aborted && next.length > 0) {
@@ -482,7 +489,7 @@ function Testimonials() {
   return (
     <section className="testimonials" ref={ref}>
       <div className="section-tag">[FEEDBACK]</div>
-      <h2>ОТЗЫВЫ</h2>
+      <h2>ОТЗЫВЫ ПОЛЬЗОВАТЕЛЕЙ</h2>
       <div className="testimonial-card" ref={cardRef} key={activeIdx}>
         <div className="testimonial-quote">"{t.text}"</div>
         <div className="testimonial-author">
@@ -693,10 +700,10 @@ function CTA() {
           Открыть оплату
         </a>
         <div className="cta-features">
-          <span>Без лишних экранов</span>
-          <span>Подключение за минуты</span>
+          <span>Прозрачная сумма до оплаты</span>
+          <span>Запуск в несколько шагов</span>
           <span>Поддержка 24/7</span>
-          <span>Понятные тарифы</span>
+          <span>Понятные планы</span>
         </div>
         <div className="sold-counter">
           <div className="label">ПОЛЬЗОВАТЕЛЕЙ ПОДКЛЮЧЕНО</div>
@@ -798,21 +805,21 @@ function AccessPaths() {
     <section className="downloads" id="access-paths">
       <div className="section-tag">[ACCESS]</div>
       <div className="downloads-head">
-        <h2>САЙТ ИЛИ TELEGRAM</h2>
-        <p>Можно управлять доступом в личном кабинете на сайте или через бота. Бот быстрее для большинства сценариев.</p>
+        <h2>САЙТ И TELEGRAM</h2>
+        <p>Можно управлять доступом в личном кабинете или через бота. Для быстрого продления чаще выбирают Telegram.</p>
       </div>
       <div className="downloads-grid">
         <article className="download-card">
           <h3>Личный кабинет</h3>
-          <p>Статус подписки, остаток лимита, активация подарочного кода, выбор способа оплаты.</p>
+          <p>Статус подписки, остаток лимита, активация подарочного кода и переход к оплате.</p>
           <div className="download-actions">
-            <a href={WEBAPP_URL} className="download-link" target="_blank" rel="noreferrer">Открыть ЛК</a>
-            <a href={CHECKOUT_URL} className="download-link" target="_blank" rel="noreferrer">Оплата</a>
+            <a href={WEBAPP_URL} className="download-link" target="_blank" rel="noreferrer">Открыть кабинет</a>
+            <a href={CHECKOUT_URL} className="download-link" target="_blank" rel="noreferrer">Открыть оплату</a>
           </div>
         </article>
         <article className="download-card">
           <h3>Telegram-бот</h3>
-          <p>Самый быстрый путь: продлить доступ, получить ключ, открыть поддержку в одном интерфейсе.</p>
+          <p>Быстрый путь: продлить доступ, получить ключ и перейти в поддержку в одном интерфейсе.</p>
           <div className="download-actions">
             <a href={BOT_FAST_URL} className="download-link" target="_blank" rel="noreferrer">Открыть бота</a>
           </div>
@@ -830,7 +837,7 @@ function ProjectChannel() {
       <div className="section-tag">[CHANNEL]</div>
       <div className="downloads-head">
         <h2>КАНАЛ ПРОЕКТА</h2>
-        <p>Подпишитесь, чтобы получать обновления узлов, офферы продления и быстрые инструкции при изменениях маршрутов.</p>
+        <p>Подпишитесь, чтобы не пропускать обновления узлов, сервисные инструкции и предложения по продлению.</p>
       </div>
       <div className="downloads-grid">
         <article className="download-card">
@@ -860,7 +867,7 @@ function LiveUpdates({ items }: { items: LiveUpdate[] }) {
       <div className="section-tag">[LIVE UPDATES]</div>
       <div className="downloads-head">
         <h2>ПОСЛЕДНИЕ ОБНОВЛЕНИЯ</h2>
-        <p>Три свежих апдейта с прямыми переходами в Telegram-посты.</p>
+        <p>Три свежих апдейта с прямыми переходами в посты канала.</p>
       </div>
       <div className="downloads-grid">
         {items.map((item) => (
@@ -886,7 +893,7 @@ function RoadmapPublic() {
       <div className="section-tag">[ROADMAP]</div>
       <div className="downloads-head">
         <h2>ROADMAP НА БЛИЖАЙШИЕ СПРИНТЫ</h2>
-        <p>Показываем только подтверждённые треки и текущий статус выполнения.</p>
+        <p>Показываем подтверждённые треки и текущий статус исполнения.</p>
       </div>
       <div className="downloads-grid">
         {ROADMAP_PUBLIC.map((item) => (
@@ -911,12 +918,13 @@ function Footer() {
         <div className="footer-brand"><span>●</span> PORTAL</div>
         <div className="footer-meta">
           <p className="footer-description">
-            PORTAL предоставляет цифровую услугу защищенного интернет-доступа с маршрутами по странам,
-            личным кабинетом и поддержкой через Telegram. Оплата взимается за выбранный срок доступа.
+            PORTAL предоставляет цифровой сервис защищённого доступа с маршрутами по странам, личным кабинетом
+            и поддержкой через Telegram. Оплата взимается за выбранный период доступа.
           </p>
           <div className="footer-contacts">
             <span>Контакты:</span>
             <a href={`mailto:${CONTACT_EMAIL}`}>{CONTACT_EMAIL}</a>
+            <a href={`mailto:${ENTERPRISE_EMAIL}`}>{ENTERPRISE_EMAIL}</a>
             <a href={CONTACT_TG_URL} target="_blank" rel="noreferrer">Telegram</a>
             <a href={CONTACT_FORM_URL} target="_blank" rel="noreferrer">Форма связи</a>
           </div>

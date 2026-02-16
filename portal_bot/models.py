@@ -80,7 +80,7 @@ class GiftCard(Base):
     __tablename__ = "gift_cards"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
-    code = Column(String(14), unique=True, index=True)
+    code = Column(String(32), unique=True, index=True)
     card_type = Column(String(20))
     created_by = Column(BigInteger)
     created_at = Column(DateTime, default=datetime.utcnow)
@@ -373,8 +373,30 @@ class LiveUpdate(Base):
     title = Column(String(160), nullable=False)
     summary = Column(String(600), nullable=False)
     link = Column(String(600), nullable=False)
+    channel_username = Column(String(64), nullable=True)
+    post_id = Column(Integer, nullable=True)
     published_at = Column(DateTime, nullable=True)
     is_active = Column(Boolean, default=True, nullable=False)
     sort_order = Column(Integer, default=100, nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    updated_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+
+
+class StartLink(Base):
+    __tablename__ = "start_links"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    code = Column(String(64), unique=True, index=True, nullable=False)
+    description = Column(String(240), nullable=True)
+    target_action = Column(String(64), nullable=True)
+    is_active = Column(Boolean, default=True, nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    updated_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+
+
+class AppSetting(Base):
+    __tablename__ = "app_settings"
+
+    key = Column(String(64), primary_key=True)
+    value_json = Column(Text, nullable=True)
     updated_at = Column(DateTime, default=datetime.utcnow, nullable=False)

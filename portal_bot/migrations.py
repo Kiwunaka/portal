@@ -1,4 +1,4 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
 from datetime import datetime
 
@@ -21,8 +21,8 @@ def _sqlite_index_exists(conn, index_name: str) -> bool:
 RETENTION_TEMPLATE_PRESETS: dict[str, str] = {
     "retention_welcome_a": (
         "✨ Добро пожаловать в Portal.\n\n"
-        "Быстрый старт за 1-2 минуты:\n"
-        "1) Откройте раздел подключения.\n"
+        "Запуск занимает 1-2 минуты:\n"
+        "1) Откройте раздел Подключение.\n"
         "2) Импортируйте ключ в клиент.\n"
         "3) Проверьте статус узлов.\n\n"
         "Актуальные апдейты публикуются в {channel}."
@@ -35,39 +35,38 @@ RETENTION_TEMPLATE_PRESETS: dict[str, str] = {
         "• сохраните канал {channel} для обновлений."
     ),
     "retention_t3_a": (
-        "⌛ До окончания доступа около 3 дней.\n\n"
-        "Продлите заранее, чтобы сохранить текущий маршрут без паузы."
+        "⌛ До окончания доступа осталось около 3 дней.\n\n"
+        "Продлите заранее, чтобы сохранить текущий режим без паузы."
     ),
     "retention_t3_b": (
         "📅 Напоминание T-3.\n\n"
-        "Если продлить сейчас, подключение останется непрерывным."
+        "Продление заранее помогает избежать перерыва в подключении."
     ),
     "retention_t1_a": (
         "⏱ До завершения подписки примерно 1 день.\n\n"
-        "Продлите доступ сейчас, чтобы не терять рабочий ритм."
+        "Продлите сейчас, чтобы избежать паузы в доступе."
     ),
     "retention_t1_b": (
         "⚡ T-1: срок доступа заканчивается в ближайшие сутки.\n\n"
-        "Продление займёт пару минут и сохранит стабильный режим."
+        "Продление сейчас сохранит привычный режим без перерыва."
     ),
     "retention_t0_a": (
         "🚨 Срок подписки подходит к финалу.\n\n"
-        "Продлите сейчас, чтобы доступ не прервался."
+        "Если доступ нужен без пауз, продлите прямо сейчас."
     ),
     "retention_t0_b": (
         "🔔 Подписка почти завершена.\n\n"
-        "Если нужен непрерывный доступ, продлите в один шаг."
+        "Пара минут на продление — и режим останется активным."
     ),
     "retention_reactivation_a": (
-        "🌍 Для вас доступны обновлённые маршруты.\n\n"
-        "Вернитесь в Portal и проверьте качество подключения."
+        "🌍 Профиль и история сохранены.\n\n"
+        "Вернитесь в один клик и продолжайте без повторной настройки."
     ),
     "retention_reactivation_b": (
-        "🧭 Мы обновили узлы и маршруты.\n\n"
-        "Можно вернуться и проверить текущее качество в один клик."
+        "🧭 Доступ завершился, но его можно восстановить за минуту.\n\n"
+        "Откройте оплату и вернитесь в рабочий режим."
     ),
 }
-
 
 def _seed_retention_templates(conn, *, dialect: str) -> None:
     if dialect == "sqlite":
@@ -83,18 +82,18 @@ def _seed_retention_templates(conn, *, dialect: str) -> None:
     else:
         return
 
+    # Force-upsert presets so active environments receive refreshed retention copy.
     for key, value in RETENTION_TEMPLATE_PRESETS.items():
-        existing = conn.execute(
-            text('SELECT 1 FROM templates WHERE lower("key") = :key LIMIT 1;'),
-            {"key": str(key).lower()},
-        ).fetchone()
-        if existing:
+        updated = conn.execute(
+            text('UPDATE templates SET "text" = :text WHERE lower("key") = :key;'),
+            {"key": str(key).lower(), "text": value},
+        )
+        if int(getattr(updated, "rowcount", 0) or 0) > 0:
             continue
         conn.execute(
             text('INSERT INTO templates ("key", "text", "created_at") VALUES (:key, :text, :created_at);'),
             {"key": key, "text": value, "created_at": datetime.utcnow()},
         )
-
 
 def run_migrations(engine: Engine) -> None:
     """
@@ -512,7 +511,51 @@ def run_migrations(engine: Engine) -> None:
                 """
             )
         )
+        if conn.execute(text("SELECT name FROM sqlite_master WHERE type='table' AND name='live_updates';")).fetchone():
+            live_updates_cols = [
+                ("channel_username", "VARCHAR(64)"),
+                ("post_id", "INTEGER"),
+            ]
+            for col, ddl in live_updates_cols:
+                if not _sqlite_column_exists(conn, "live_updates", col):
+                    conn.execute(text(f"ALTER TABLE live_updates ADD COLUMN {col} {ddl};"))
         conn.execute(text("CREATE INDEX IF NOT EXISTS ix_live_updates_active_sort ON live_updates(is_active, sort_order);"))
+        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_live_updates_channel_post ON live_updates(channel_username, post_id);"))
+
+        # deep links: admin-managed start payloads.
+        conn.execute(
+            text(
+                """
+                CREATE TABLE IF NOT EXISTS start_links (
+                  id INTEGER PRIMARY KEY AUTOINCREMENT,
+                  code VARCHAR(64) NOT NULL,
+                  description VARCHAR(240),
+                  target_action VARCHAR(64),
+                  is_active BOOLEAN DEFAULT 1,
+                  created_at DATETIME NOT NULL,
+                  updated_at DATETIME NOT NULL
+                );
+                """
+            )
+        )
+        conn.execute(text("CREATE UNIQUE INDEX IF NOT EXISTS uq_start_links_code ON start_links(code);"))
+        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_start_links_is_active ON start_links(is_active);"))
+
+        # Generic app settings storage (JSON payload as text).
+        conn.execute(
+            text(
+                """
+                CREATE TABLE IF NOT EXISTS app_settings (
+                  "key" VARCHAR(64) PRIMARY KEY,
+                  value_json TEXT,
+                  updated_at DATETIME NOT NULL
+                );
+                """
+            )
+        )
+
+        # SQLite does not enforce VARCHAR length, so legacy gift card code storage
+        # already accepts the newer PORTAL-XXXX-XXXX format without table rebuild.
 
         # Seed default retention templates for admin editing (idempotent).
         _seed_retention_templates(conn, dialect="sqlite")
@@ -524,6 +567,7 @@ def _run_postgres_migrations(engine: Engine) -> None:
     `create_all()` already creates tables; here we only ensure additive columns/indexes.
     """
     with engine.begin() as conn:
+        conn.execute(text("ALTER TABLE gift_cards ALTER COLUMN code TYPE VARCHAR(32);"))
         conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS referral_code VARCHAR(10);"))
         conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS first_purchase_done BOOLEAN DEFAULT FALSE;"))
         conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS sub_token VARCHAR(64);"))
@@ -652,6 +696,8 @@ def _run_postgres_migrations(engine: Engine) -> None:
                   title VARCHAR(160) NOT NULL,
                   summary VARCHAR(600) NOT NULL,
                   link VARCHAR(600) NOT NULL,
+                  channel_username VARCHAR(64),
+                  post_id INTEGER,
                   published_at TIMESTAMP,
                   is_active BOOLEAN DEFAULT TRUE,
                   sort_order INTEGER DEFAULT 100,
@@ -661,7 +707,40 @@ def _run_postgres_migrations(engine: Engine) -> None:
                 """
             )
         )
+        conn.execute(text("ALTER TABLE live_updates ADD COLUMN IF NOT EXISTS channel_username VARCHAR(64);"))
+        conn.execute(text("ALTER TABLE live_updates ADD COLUMN IF NOT EXISTS post_id INTEGER;"))
         conn.execute(text("CREATE INDEX IF NOT EXISTS ix_live_updates_active_sort ON live_updates(is_active, sort_order);"))
+        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_live_updates_channel_post ON live_updates(channel_username, post_id);"))
+
+        conn.execute(
+            text(
+                """
+                CREATE TABLE IF NOT EXISTS start_links (
+                  id SERIAL PRIMARY KEY,
+                  code VARCHAR(64) NOT NULL,
+                  description VARCHAR(240),
+                  target_action VARCHAR(64),
+                  is_active BOOLEAN DEFAULT TRUE,
+                  created_at TIMESTAMP NOT NULL,
+                  updated_at TIMESTAMP NOT NULL
+                );
+                """
+            )
+        )
+        conn.execute(text("CREATE UNIQUE INDEX IF NOT EXISTS uq_start_links_code ON start_links(code);"))
+        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_start_links_is_active ON start_links(is_active);"))
+
+        conn.execute(
+            text(
+                """
+                CREATE TABLE IF NOT EXISTS app_settings (
+                  "key" VARCHAR(64) PRIMARY KEY,
+                  value_json TEXT,
+                  updated_at TIMESTAMP NOT NULL
+                );
+                """
+            )
+        )
 
         # Seed default retention templates for admin editing (idempotent).
         _seed_retention_templates(conn, dialect="postgresql")

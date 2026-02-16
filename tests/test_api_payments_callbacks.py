@@ -422,7 +422,8 @@ class ApiPaymentCallbacksTests(unittest.TestCase):
             json={
                 "title": "Node maintenance completed",
                 "summary": "New route profile is online.",
-                "link": "https://t.me/portal_privacy/999",
+                "channel_username": "portal_privacy",
+                "post_id": 999,
                 "published_at": "2026-02-15T10:00:00",
                 "is_active": True,
                 "sort_order": 1,
@@ -435,13 +436,17 @@ class ApiPaymentCallbacksTests(unittest.TestCase):
         patch = client.patch(
             f"/api/admin/live-updates/{update_id}",
             headers=admin_hdrs,
-            json={"title": "Node maintenance done", "summary": "Fresh route profile online.", "sort_order": 2},
+            json={"title": "Node maintenance done", "summary": "Fresh route profile online.", "post_id": 1001, "sort_order": 2},
         )
         self.assertEqual(patch.status_code, 200, patch.text)
 
         rows = client.get("/api/admin/live-updates", headers=admin_hdrs)
         self.assertEqual(rows.status_code, 200, rows.text)
-        self.assertTrue(any((int(r.get("id") or 0) == update_id) for r in rows.json().get("updates", [])))
+        found = next((r for r in rows.json().get("updates", []) if int(r.get("id") or 0) == update_id), None)
+        self.assertIsNotNone(found)
+        self.assertEqual(str(found.get("channel_username") or ""), "portal_privacy")
+        self.assertEqual(int(found.get("post_id") or 0), 1001)
+        self.assertEqual(str(found.get("tg_link") or ""), "https://t.me/portal_privacy/1001")
 
         remove = client.delete(f"/api/admin/live-updates/{update_id}", headers=admin_hdrs)
         self.assertEqual(remove.status_code, 200, remove.text)

@@ -431,19 +431,15 @@ function defaultApiBase(): string {
 
 function candidateApiBases(): string[] {
   const envBase = (import.meta as any).env?.VITE_PUBLIC_API_BASE_URL as string | undefined;
-  if (envBase) return [envBase];
-  if (typeof window === "undefined") return [defaultApiBase()];
+  if (envBase) return [envBase.replace(/\/+$/, "")];
+  if (typeof window === "undefined") return [defaultApiBase().replace(/\/+$/, "")];
 
+  const origin = window.location.origin.replace(/\/+$/, "");
   const proto = window.location.protocol;
   const host = window.location.hostname;
-  const origin = window.location.origin;
-  const lowerHost = host.toLowerCase();
-  if (lowerHost === "portal-privacy.online" || lowerHost.endsWith(".portal-privacy.online")) {
-    return ["https://kiwunaka.space"];
-  }
   const legacy = `${proto}//${host}:2096`;
   const useLegacyFallback = String((import.meta as any).env?.VITE_ENABLE_LEGACY_PORT_FALLBACK || "").toLowerCase() === "true";
-  return useLegacyFallback ? [origin, legacy] : [origin];
+  return useLegacyFallback ? [origin, legacy.replace(/\/+$/, "")] : [origin];
 }
 
 async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {

@@ -41,6 +41,7 @@ from config import Settings, env_bool, env_int
 from db import SessionLocal, init_db
 from models import (
     AdminAudit,
+    AppSetting,
     CampaignSend,
     ExternalOrder,
     ExternalPaymentEvent,
@@ -53,6 +54,7 @@ from models import (
     PromoCode,
     PromoUsage,
     Review,
+    StartLink,
     SupportTicket,
     Template,
     User,
@@ -229,6 +231,96 @@ def _default_live_updates() -> list[dict[str, Any]]:
         },
     ]
 
+
+DEFAULT_WHEEL_CONFIG: dict[str, Any] = {
+    "preset": "balanced",
+    "weights": [
+        {"days": 1, "weight": 45},
+        {"days": 3, "weight": 35},
+        {"days": 7, "weight": 15},
+        {"days": 30, "weight": 5},
+    ],
+    "cooldown_hours": 168,
+}
+
+
+def _normalize_channel_username(raw: str | None) -> str | None:
+    val = str(raw or "").strip().lstrip("@")
+    if not val:
+        return None
+    if not re.fullmatch(r"[A-Za-z0-9_]{4,64}", val):
+        raise HTTPException(status_code=400, detail="Invalid channel_username")
+    return val
+
+
+def _build_tg_post_link(*, channel_username: str | None, post_id: int | None, fallback_link: str | None = None) -> str:
+    channel = _normalize_channel_username(channel_username) if channel_username else None
+    pid = int(post_id or 0)
+    if channel and pid > 0:
+        return f"https://t.me/{channel}/{pid}"
+    return str(fallback_link or "").strip()
+
+
+def _safe_json_loads(raw: str | None, default: Any) -> Any:
+    text_val = str(raw or "").strip()
+    if not text_val:
+        return default
+    try:
+        return json.loads(text_val)
+    except Exception:
+        return default
+
+
+def _get_app_setting_json(*, s, key: str, default: Any) -> Any:
+    row = s.query(AppSetting).filter(AppSetting.key == str(key)).first()
+    if not row:
+        return default
+    return _safe_json_loads(getattr(row, "value_json", None), default)
+
+
+def _set_app_setting_json(*, s, key: str, value: Any) -> None:
+    now = datetime.utcnow()
+    row = s.query(AppSetting).filter(AppSetting.key == str(key)).first()
+    encoded = json.dumps(value, ensure_ascii=False, separators=(",", ":"), sort_keys=True)
+    if not row:
+        row = AppSetting(key=str(key), value_json=encoded, updated_at=now)
+        s.add(row)
+    else:
+        row.value_json = encoded
+        row.updated_at = now
+
+
+def _validate_wheel_weights(weights: list[dict[str, Any]]) -> list[dict[str, int]]:
+    out: list[dict[str, int]] = []
+    seen_days: set[int] = set()
+    total = 0
+    for row in weights:
+        days = int(row.get("days") or 0)
+        weight = int(row.get("weight") or 0)
+        if days <= 0 or days > 365:
+            raise HTTPException(status_code=400, detail="Wheel weight days must be in 1..365")
+        if weight <= 0 or weight > 10000:
+            raise HTTPException(status_code=400, detail="Wheel weight must be in 1..10000")
+        if days in seen_days:
+            raise HTTPException(status_code=400, detail="Wheel days must be unique")
+        seen_days.add(days)
+        total += weight
+        out.append({"days": days, "weight": weight})
+    if total <= 0:
+        raise HTTPException(status_code=400, detail="Wheel weights sum must be > 0")
+    return out
+
+
+def _normalized_wheel_config(payload: dict[str, Any] | None) -> dict[str, Any]:
+    src = dict(payload or {})
+    preset = str(src.get("preset") or DEFAULT_WHEEL_CONFIG["preset"]).strip()[:32] or "balanced"
+    cooldown_hours = int(src.get("cooldown_hours") or DEFAULT_WHEEL_CONFIG["cooldown_hours"])
+    cooldown_hours = max(1, min(24 * 90, cooldown_hours))
+    weights_raw = src.get("weights")
+    if not isinstance(weights_raw, list) or not weights_raw:
+        weights_raw = list(DEFAULT_WHEEL_CONFIG["weights"])
+    weights = _validate_wheel_weights([dict(x or {}) for x in weights_raw])
+    return {"preset": preset, "weights": weights, "cooldown_hours": cooldown_hours}
 
 def _fk_shop_configs() -> dict[str, dict[str, str]]:
     out: dict[str, dict[str, str]] = {}
@@ -498,7 +590,9 @@ class AdminPlanUpdateIn(BaseModel):
 class AdminLiveUpdateCreateIn(BaseModel):
     title: str = Field(min_length=2, max_length=160)
     summary: str = Field(min_length=2, max_length=600)
-    link: str = Field(min_length=8, max_length=600)
+    link: str | None = Field(default=None, min_length=8, max_length=600)
+    channel_username: str | None = Field(default=None, min_length=4, max_length=64)
+    post_id: int | None = Field(default=None, ge=1, le=2_000_000_000)
     published_at: str | None = None
     is_active: bool = True
     sort_order: int = Field(default=100, ge=0, le=10000)
@@ -508,9 +602,36 @@ class AdminLiveUpdateUpdateIn(BaseModel):
     title: str | None = Field(default=None, min_length=2, max_length=160)
     summary: str | None = Field(default=None, min_length=2, max_length=600)
     link: str | None = Field(default=None, min_length=8, max_length=600)
+    channel_username: str | None = Field(default=None, min_length=4, max_length=64)
+    post_id: int | None = Field(default=None, ge=1, le=2_000_000_000)
     published_at: str | None = None
     is_active: bool | None = None
     sort_order: int | None = Field(default=None, ge=0, le=10000)
+
+
+class AdminStartLinkCreateIn(BaseModel):
+    code: str = Field(min_length=2, max_length=64)
+    description: str | None = Field(default=None, max_length=240)
+    target_action: str = Field(min_length=2, max_length=64)
+    is_active: bool = True
+
+
+class AdminStartLinkUpdateIn(BaseModel):
+    code: str | None = Field(default=None, min_length=2, max_length=64)
+    description: str | None = Field(default=None, max_length=240)
+    target_action: str | None = Field(default=None, min_length=2, max_length=64)
+    is_active: bool | None = None
+
+
+class AdminWheelWeightIn(BaseModel):
+    days: int = Field(ge=1, le=365)
+    weight: int = Field(ge=1, le=10000)
+
+
+class AdminWheelConfigIn(BaseModel):
+    preset: str = Field(default="balanced", min_length=2, max_length=32)
+    weights: list[AdminWheelWeightIn] = Field(default_factory=list, min_length=1, max_length=20)
+    cooldown_hours: int = Field(default=168, ge=1, le=2160)
 
 
 class AdminCampaignLinksBuildIn(BaseModel):
@@ -585,7 +706,9 @@ class ManualUserCreateRequest(BaseModel):
 
 
 class ManualUserExtendRequest(BaseModel):
-    days: int = Field(default=30, ge=1, le=3650)
+    days: int | None = Field(default=30, ge=1, le=3650)
+    delta_days: int | None = Field(default=None, ge=-3650, le=3650)
+    allow_deactivate: bool = False
 
 
 class ManualUserBlockRequest(BaseModel):
@@ -856,6 +979,15 @@ def _normalize_mojibake(text: str | None) -> str:
         if _CYRILLIC_RE.search(fixed):
             return fixed
     return raw
+
+
+def _mask_public_username(username: str | None) -> str:
+    raw = _normalize_mojibake(username).strip()
+    if raw.startswith("@"):
+        raw = raw[1:].strip()
+    if not raw:
+        return "Пользователь"
+    return f"{raw[:2]}***"
 
 
 def _is_admin_tg(tg_id: int) -> bool:
@@ -1921,13 +2053,22 @@ async def public_live_updates(response: Response, limit: int = Query(default=3, 
             return {"updates": _default_live_updates()[: int(limit)]}
         out = []
         for row in rows:
+            tg_link = _build_tg_post_link(
+                channel_username=getattr(row, "channel_username", None),
+                post_id=getattr(row, "post_id", None),
+                fallback_link=str(row.link or "").strip(),
+            )
+            channel_raw = str(getattr(row, "channel_username", "") or "").strip().lstrip("@")
             out.append(
                 {
                     "id": int(row.id),
                     "title": str(row.title or "").strip(),
                     "summary": str(row.summary or "").strip(),
                     "date": (row.published_at or row.created_at or datetime.utcnow()).date().isoformat(),
-                    "link": str(row.link or "").strip(),
+                    "link": tg_link,
+                    "tg_link": tg_link,
+                    "channel_username": channel_raw or None,
+                    "post_id": int(getattr(row, "post_id", 0) or 0) or None,
                     "is_active": bool(row.is_active),
                     "sort_order": int(row.sort_order or 0),
                 }
@@ -2336,7 +2477,7 @@ async def featured_reviews() -> dict:
         return {
             "reviews": [
                 {
-                    "username": _normalize_mojibake(r.username or "user"),
+                    "username": _mask_public_username(r.username),
                     "rating": r.rating,
                     "text": _normalize_mojibake(r.text or ""),
                     "date": r.created_at.strftime("%d.%m.%Y") if r.created_at else "",
@@ -2894,7 +3035,7 @@ async def claim_channel_bonus(request: Request, x_telegram_init_data: str = Head
                 "sub_type": user.sub_type,
                 "channel": PUBLIC_CHANNEL,
             }
-        if (user.sub_type or "").upper() != "FREE":
+        if (user.sub_type or "").upper() not in {"FREE", "BONUS", "TRIAL"}:
             raise HTTPException(status_code=400, detail="Бонус доступен только в стартовом режиме")
 
         is_member, reason = await _is_channel_member(PUBLIC_CHANNEL, tg_id)
@@ -2907,14 +3048,14 @@ async def claim_channel_bonus(request: Request, x_telegram_init_data: str = Head
         days = max(1, int(CHANNEL_PREMIUM_DAYS))
         old_sub = (user.sub_type or "").upper()
 
-        if old_sub == "FREE":
-            # FREE has long synthetic expiry; premium bonus should start from now.
+        if old_sub in {"FREE", "BONUS", "TRIAL"}:
+            # Freemium bonus windows are anchored from now.
             user.expiry_at = now + timedelta(days=days)
         else:
             cur = user.expiry_at if user.expiry_at and user.expiry_at > now else now
             user.expiry_at = cur + timedelta(days=days)
 
-        user.sub_type = "PAID"
+        user.sub_type = "BONUS"
         user.current_plan_code = "channel_bonus"
         user.is_active = True
         user.channel_bonus_claimed_at = now
@@ -2936,7 +3077,7 @@ async def claim_channel_bonus(request: Request, x_telegram_init_data: str = Head
             )
         s.commit()
         s.refresh(user)
-        sync_ok = await _sync_user_after_paid_bonus(user)
+        sync_ok = False
 
         return {
             "ok": True,
@@ -3364,8 +3505,12 @@ async def admin_create_manual_user(payload: ManualUserCreateRequest, x_telegram_
 
 
 @app.post("/api/admin/users/{tg_id}/manual/extend")
+@app.post("/api/admin/users/{tg_id}/manual-extend")
 async def admin_extend_manual_user(tg_id: int, payload: ManualUserExtendRequest, x_telegram_init_data: str = Header(default="")) -> dict:
     actor = int(_require_admin(x_telegram_init_data).get("id", 0))
+    delta_days = int(payload.delta_days if payload.delta_days is not None else (payload.days or 0))
+    if delta_days == 0:
+        raise HTTPException(status_code=400, detail="delta_days must be non-zero")
     s = SessionLocal()
     try:
         user = s.query(User).filter_by(tg_id=tg_id).first()
@@ -3373,15 +3518,31 @@ async def admin_extend_manual_user(tg_id: int, payload: ManualUserExtendRequest,
             raise HTTPException(status_code=404, detail="User not found")
         now = datetime.utcnow()
         cur = user.expiry_at if user.expiry_at and user.expiry_at > now else now
-        user.expiry_at = cur + timedelta(days=int(payload.days))
-        user.is_active = True
+        candidate_expiry = cur + timedelta(days=delta_days)
+        if candidate_expiry <= now:
+            if not bool(payload.allow_deactivate):
+                raise HTTPException(
+                    status_code=400,
+                    detail="Operation would deactivate user; pass allow_deactivate=true to confirm",
+                )
+            user.expiry_at = now
+            user.is_active = False
+        else:
+            user.expiry_at = candidate_expiry
+            user.is_active = True
         s.commit()
         s.refresh(user)
         expiry_iso = _safe_iso(user.expiry_at)
+        is_active = bool(user.is_active)
     finally:
         s.close()
-    _audit_admin(actor_tg_id=actor, action="admin_manual_extend", target_tg_id=tg_id, meta={"days": payload.days})
-    return {"ok": True, "expiry_at": expiry_iso}
+    _audit_admin(
+        actor_tg_id=actor,
+        action="admin_manual_extend",
+        target_tg_id=tg_id,
+        meta={"delta_days": int(delta_days), "allow_deactivate": bool(payload.allow_deactivate)},
+    )
+    return {"ok": True, "expiry_at": expiry_iso, "is_active": is_active, "delta_days": int(delta_days)}
 
 
 @app.post("/api/admin/users/{tg_id}/manual/block")
@@ -3720,7 +3881,14 @@ async def admin_live_updates(x_telegram_init_data: str = Header(default=""), inc
                     "id": int(r.id),
                     "title": r.title,
                     "summary": r.summary,
-                    "link": r.link,
+                    "link": str(r.link or "").strip(),
+                    "tg_link": _build_tg_post_link(
+                        channel_username=getattr(r, "channel_username", None),
+                        post_id=getattr(r, "post_id", None),
+                        fallback_link=str(r.link or "").strip(),
+                    ),
+                    "channel_username": str(getattr(r, "channel_username", "") or "").strip().lstrip("@") or None,
+                    "post_id": int(getattr(r, "post_id", 0) or 0) or None,
                     "published_at": _safe_iso(r.published_at),
                     "is_active": bool(r.is_active),
                     "sort_order": int(r.sort_order or 0),
@@ -3737,13 +3905,26 @@ async def admin_live_updates(x_telegram_init_data: str = Header(default=""), inc
 @app.post("/api/admin/live-updates")
 async def admin_live_updates_create(payload: AdminLiveUpdateCreateIn, x_telegram_init_data: str = Header(default="")) -> dict:
     actor = int(_require_admin(x_telegram_init_data).get("id", 0))
+    channel_username = _normalize_channel_username(payload.channel_username) if payload.channel_username else None
+    post_id = int(payload.post_id or 0) if payload.post_id is not None else None
+    if post_id is not None and not channel_username:
+        raise HTTPException(status_code=400, detail="channel_username is required when post_id is provided")
+    final_link = _build_tg_post_link(
+        channel_username=channel_username,
+        post_id=post_id,
+        fallback_link=payload.link,
+    )
+    if not final_link:
+        raise HTTPException(status_code=400, detail="Provide either link or channel_username+post_id")
     s = SessionLocal()
     try:
         now = datetime.utcnow()
         row = LiveUpdate(
             title=payload.title.strip(),
             summary=payload.summary.strip(),
-            link=payload.link.strip(),
+            link=final_link,
+            channel_username=channel_username,
+            post_id=post_id,
             published_at=_parse_optional_datetime(payload.published_at),
             is_active=bool(payload.is_active),
             sort_order=int(payload.sort_order),
@@ -3774,12 +3955,23 @@ async def admin_live_updates_update(update_id: int, payload: AdminLiveUpdateUpda
             row.summary = payload.summary.strip()
         if payload.link is not None:
             row.link = payload.link.strip()
+        if "channel_username" in payload.model_fields_set:
+            row.channel_username = _normalize_channel_username(payload.channel_username) if payload.channel_username else None
+        if "post_id" in payload.model_fields_set:
+            row.post_id = int(payload.post_id or 0) or None
         if "published_at" in payload.model_fields_set:
             row.published_at = _parse_optional_datetime(payload.published_at)
         if payload.is_active is not None:
             row.is_active = bool(payload.is_active)
         if payload.sort_order is not None:
             row.sort_order = int(payload.sort_order)
+        row.link = _build_tg_post_link(
+            channel_username=getattr(row, "channel_username", None),
+            post_id=getattr(row, "post_id", None),
+            fallback_link=str(row.link or "").strip(),
+        )
+        if not str(row.link or "").strip():
+            raise HTTPException(status_code=400, detail="Provide either link or channel_username+post_id")
         row.updated_at = datetime.utcnow()
         s.commit()
     finally:
@@ -3802,6 +3994,143 @@ async def admin_live_updates_delete(update_id: int, x_telegram_init_data: str = 
         s.close()
     _audit_admin(actor_tg_id=actor, action="admin_live_update_delete", meta={"id": int(update_id)})
     return {"ok": True}
+
+
+@app.get("/api/admin/start-links")
+async def admin_start_links(x_telegram_init_data: str = Header(default=""), include_inactive: bool = True) -> dict:
+    _require_admin(x_telegram_init_data)
+    s = SessionLocal()
+    try:
+        q = s.query(StartLink)
+        if not include_inactive:
+            q = q.filter(StartLink.is_active == True)
+        rows = q.order_by(StartLink.updated_at.desc(), StartLink.id.desc()).limit(500).all()
+        bot_username = (BOT_USERNAME or "portal_service_bot").lstrip("@")
+        return {
+            "start_links": [
+                {
+                    "id": int(r.id),
+                    "code": str(r.code or "").strip().lower(),
+                    "description": str(r.description or "").strip() or None,
+                    "target_action": str(r.target_action or "").strip() or None,
+                    "is_active": bool(r.is_active),
+                    "bot_start_link": f"https://t.me/{bot_username}?start={str(r.code or '').strip()}",
+                    "created_at": _safe_iso(getattr(r, "created_at", None)),
+                    "updated_at": _safe_iso(getattr(r, "updated_at", None)),
+                }
+                for r in rows
+            ]
+        }
+    finally:
+        s.close()
+
+
+@app.post("/api/admin/start-links")
+async def admin_start_links_create(payload: AdminStartLinkCreateIn, x_telegram_init_data: str = Header(default="")) -> dict:
+    actor = int(_require_admin(x_telegram_init_data).get("id", 0))
+    code = re.sub(r"[^a-z0-9_-]+", "", str(payload.code or "").strip().lower())[:64]
+    if len(code) < 2:
+        raise HTTPException(status_code=400, detail="Invalid code")
+    s = SessionLocal()
+    try:
+        exists = s.query(StartLink.id).filter(func.lower(StartLink.code) == code).first()
+        if exists:
+            raise HTTPException(status_code=409, detail="Start link already exists")
+        now = datetime.utcnow()
+        row = StartLink(
+            code=code,
+            description=str(payload.description or "").strip()[:240] or None,
+            target_action=str(payload.target_action or "").strip()[:64] or None,
+            is_active=bool(payload.is_active),
+            created_at=now,
+            updated_at=now,
+        )
+        s.add(row)
+        s.commit()
+        s.refresh(row)
+        row_id = int(row.id)
+    finally:
+        s.close()
+    _audit_admin(actor_tg_id=actor, action="admin_start_link_create", meta={"id": row_id, "code": code})
+    return {"ok": True, "id": row_id, "code": code}
+
+
+@app.patch("/api/admin/start-links/{link_id}")
+async def admin_start_links_update(link_id: int, payload: AdminStartLinkUpdateIn, x_telegram_init_data: str = Header(default="")) -> dict:
+    actor = int(_require_admin(x_telegram_init_data).get("id", 0))
+    s = SessionLocal()
+    try:
+        row = s.query(StartLink).filter(StartLink.id == int(link_id)).first()
+        if not row:
+            raise HTTPException(status_code=404, detail="Start link not found")
+        if payload.code is not None:
+            code = re.sub(r"[^a-z0-9_-]+", "", str(payload.code or "").strip().lower())[:64]
+            if len(code) < 2:
+                raise HTTPException(status_code=400, detail="Invalid code")
+            if code != str(row.code or "").strip().lower():
+                dup = s.query(StartLink.id).filter(func.lower(StartLink.code) == code, StartLink.id != row.id).first()
+                if dup:
+                    raise HTTPException(status_code=409, detail="Start link already exists")
+                row.code = code
+        if "description" in payload.model_fields_set:
+            row.description = str(payload.description or "").strip()[:240] or None
+        if "target_action" in payload.model_fields_set:
+            row.target_action = str(payload.target_action or "").strip()[:64] or None
+        if payload.is_active is not None:
+            row.is_active = bool(payload.is_active)
+        row.updated_at = datetime.utcnow()
+        s.commit()
+        out_code = str(row.code or "").strip().lower()
+    finally:
+        s.close()
+    _audit_admin(actor_tg_id=actor, action="admin_start_link_update", meta={"id": int(link_id), "code": out_code})
+    return {"ok": True, "id": int(link_id), "code": out_code}
+
+
+@app.delete("/api/admin/start-links/{link_id}")
+async def admin_start_links_delete(link_id: int, x_telegram_init_data: str = Header(default="")) -> dict:
+    actor = int(_require_admin(x_telegram_init_data).get("id", 0))
+    s = SessionLocal()
+    try:
+        row = s.query(StartLink).filter(StartLink.id == int(link_id)).first()
+        if not row:
+            raise HTTPException(status_code=404, detail="Start link not found")
+        row.is_active = False
+        row.updated_at = datetime.utcnow()
+        s.commit()
+    finally:
+        s.close()
+    _audit_admin(actor_tg_id=actor, action="admin_start_link_deactivate", meta={"id": int(link_id)})
+    return {"ok": True, "id": int(link_id)}
+
+
+@app.get("/api/admin/wheel-config")
+async def admin_wheel_config_get(x_telegram_init_data: str = Header(default="")) -> dict:
+    _require_admin(x_telegram_init_data)
+    s = SessionLocal()
+    try:
+        cfg = _normalized_wheel_config(_get_app_setting_json(s=s, key="wheel_config", default=DEFAULT_WHEEL_CONFIG))
+        return {"wheel_config": cfg}
+    finally:
+        s.close()
+
+
+@app.put("/api/admin/wheel-config")
+async def admin_wheel_config_put(payload: AdminWheelConfigIn, x_telegram_init_data: str = Header(default="")) -> dict:
+    actor = int(_require_admin(x_telegram_init_data).get("id", 0))
+    normalized = _normalized_wheel_config(payload.model_dump())
+    s = SessionLocal()
+    try:
+        _set_app_setting_json(s=s, key="wheel_config", value=normalized)
+        s.commit()
+    finally:
+        s.close()
+    _audit_admin(
+        actor_tg_id=actor,
+        action="admin_wheel_config_update",
+        meta={"preset": normalized.get("preset"), "cooldown_hours": normalized.get("cooldown_hours")},
+    )
+    return {"ok": True, "wheel_config": normalized}
 
 
 @app.post("/api/admin/campaign-links/build")

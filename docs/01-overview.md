@@ -20,7 +20,7 @@ This project is a Telegram-first "Portal" service:
 - `docs/04-migration.md`
 - `docs/05-bot-admin.md`
 - `docs/06-user-guide.md`
-- `docs/07-payments-research.md`
+- `docs/07-payments-research.md` (production decision note for FreeKassa)
 - `docs/08-node-inventory.md`
 
 ## High-Level Flow

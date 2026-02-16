@@ -69,7 +69,7 @@ function candidateApiBases(): string[] {
   const out: string[] = [];
   if (API_BASE) out.push(API_BASE.replace(/\/+$/, ""));
   if (typeof window !== "undefined") out.push(window.location.origin.replace(/\/+$/, ""));
-  out.push("https://kiwunaka.space");
+  out.push("https://portal-privacy.online");
   return Array.from(new Set(out.filter(Boolean)));
 }
 
@@ -271,12 +271,12 @@ export default function CheckoutPage() {
             final: finalAmount,
             applied: Boolean(data.discount_applied),
           });
-          setStatusText("Заказ создан, открываю страницу оплаты...");
+          setStatusText("Заказ создан. Переводим на страницу оплаты провайдера...");
           if (data.payment_url) {
             window.location.href = data.payment_url;
             return;
           }
-          throw new Error("Платёжная ссылка не получена");
+          throw new Error("Платёжная ссылка не получена. Попробуйте ещё раз или откройте поддержку.");
         } catch (err) {
           const msg = String((err as { message?: string })?.message || err);
           setStatusText(msg);
@@ -292,14 +292,15 @@ export default function CheckoutPage() {
       <section className="checkout-hero">
         <div className="orb orb-a" />
         <div className="orb orb-b" />
-        <div className="checkout-kicker">[BACKEND ORDER-FIRST CHECKOUT]</div>
+        <div className="checkout-kicker">[SAFE CHECKOUT FLOW]</div>
         <h1 className="checkout-title">
           <span>PORTAL</span>
           <span>RUB</span>
           <span>CHECKOUT</span>
         </h1>
         <p className="checkout-sub">
-          Оплата в рублях создаётся на сервере, затем мы открываем защищённую ссылку провайдера. Для покупки требуется привязка к Telegram-аккаунту через checkout ticket.
+          Заказ в рублях создаётся на сервере, затем открывается защищённая ссылка провайдера. Для оплаты нужен checkout ticket,
+          который выдаётся после привязки Telegram-аккаунта.
         </p>
       </section>
 
@@ -329,7 +330,7 @@ export default function CheckoutPage() {
           )}
           {queryTgId ? <p className="meta-line">Профиль: tg_id={queryTgId}</p> : null}
           <p className={checkoutTicket ? "meta-line" : "meta-line meta-line--bad"}>
-            {checkoutTicket ? "Checkout ticket: OK" : "Checkout ticket отсутствует"}
+            {checkoutTicket ? "Checkout ticket: получен" : "Checkout ticket: не найден"}
           </p>
           {breakdown ? (
             <div className="breakdown">
@@ -344,12 +345,12 @@ export default function CheckoutPage() {
           <h2>Оплата</h2>
           {!checkoutTicket ? (
             <div className="notice notice--warn">
-              Для оплаты нужен checkout ticket, который выдаётся после входа через бота.
+              Для оплаты нужен checkout ticket. Откройте бота, завершите привязку и вернитесь в checkout.
             </div>
           ) : null}
           {statusText ? <div className="notice">{statusText}</div> : null}
           <div className="checkout-proof">
-            <div className="checkout-proof__title">Социальное подтверждение</div>
+            <div className="checkout-proof__title">Данные по активности сервиса</div>
             <div className="checkout-proof__grid">
               <div className="checkout-proof__item">
                 <span>Подключено</span>
@@ -372,11 +373,11 @@ export default function CheckoutPage() {
           <div className="checkout-actions" style={{ marginTop: 10 }}>
             {checkoutTicket ? (
               <button className="checkout-btn" disabled={isBusy} onClick={() => void createOrder()}>
-                {isBusy ? "Создаю заказ..." : "Оплатить сейчас"}
+                {isBusy ? "Создаём заказ..." : "Открыть оплату"}
               </button>
             ) : (
               <a href={botHref} className="checkout-btn" target="_blank" rel="noreferrer">
-                Открыть бота для привязки
+                Перейти в бот для привязки
               </a>
             )}
             <a href={TG_CHANNEL_LINK} className="checkout-btn checkout-btn--ghost" target="_blank" rel="noreferrer">
@@ -386,7 +387,7 @@ export default function CheckoutPage() {
 
           {widgetSrc ? (
             <>
-              <div className="meta-line" style={{ marginTop: 14 }}>Виджет доступен как вспомогательный блок</div>
+              <div className="meta-line" style={{ marginTop: 14 }}>Виджет доступен как вспомогательный вариант оплаты</div>
               <iframe
                 src={widgetSrc}
                 width="100%"
@@ -400,8 +401,8 @@ export default function CheckoutPage() {
       </section>
 
       <section className="checkout-foot glass-card">
-        <h3>Что дальше после оплаты</h3>
-        <p>После успешного платежа статус продления подтянется автоматически. Если платеж прервался, можно вернуться в checkout или в бота без потери контекста кампании.</p>
+        <h3>Что будет после оплаты</h3>
+        <p>После успешного платежа статус продления обновится автоматически. Если процесс прервался, можно вернуться в checkout или в бота — контекст кампании сохранится.</p>
       </section>
 
       <style jsx global>{`

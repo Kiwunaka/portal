@@ -8,6 +8,9 @@ This file documents the intended "agents" (roles) and the rules they must follow
 - All credentials must be provided via environment variables and/or secret managers on the target server.
 - Any public-facing copy must not mention the word "VPN" unless explicitly required.
 - Prefer backward-compatible changes where possible (fallback to legacy single-node behavior if `nodes` table is empty).
+- Payment provider decision is finalized: `FreeKassa` is the active RUB provider (with Stars as secondary path).
+- Do not run payment-provider research tracks unless explicitly requested by the owner.
+- For release work, default completion includes `push + deploy`; if this is blocked, document the blocker and rollback-safe state in docs.
 
 ## Agents
 
@@ -59,14 +62,16 @@ Responsibilities:
 - Node bootstrap + migration playbook
 - Incident/runbook docs
 
-### payments-research (optional)
+### payments-integration
 Scope:
+- `portal_bot/`
 - `docs/`
-- root planning notes (no code changes)
+- `scripts/`
 
 Responsibilities:
-- Research payment flows where users pay via SBP/card and you receive crypto
-- Record integration constraints: webhooks, metadata, anti-fraud/limits, KYC/legal requirements
+- Maintain FreeKassa integration contracts (site/bot flows, callbacks, idempotency, allowlist).
+- Keep payment env matrix, callback URLs, and runbooks consistent with production.
+- Ensure checkout ticket flow and metadata contracts stay backward-compatible.
 
 ### qa-regression
 Scope:

@@ -235,6 +235,33 @@ class ApiP0ExtensionsTests(unittest.TestCase):
         self.assertIn("updated_at", body)
         self.assertEqual(r.headers.get("cache-control"), "public, max-age=60")
 
+    def test_featured_reviews_mask_username_in_api_response(self) -> None:
+        from db import SessionLocal
+        from models import Review
+
+        s = SessionLocal()
+        try:
+            s.add(
+                Review(
+                    tg_id=1001,
+                    username="alexey",
+                    rating=5,
+                    text="Отличный сервис",
+                    is_featured=True,
+                )
+            )
+            s.commit()
+        finally:
+            s.close()
+
+        client = TestClient(self.api.app)
+        r = client.get("/api/reviews")
+        self.assertEqual(r.status_code, 200, r.text)
+        body = r.json()
+        self.assertEqual(len(body.get("reviews", [])), 1)
+        self.assertEqual(body["reviews"][0]["username"], "al***")
+        self.assertNotIn("alexey", str(body))
+
     def test_admin_metrics_status_endpoint(self) -> None:
         client = TestClient(self.api.app)
         hdrs = {"X-Telegram-Init-Data": self._init_data(9999, "admin")}

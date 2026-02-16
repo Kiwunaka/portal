@@ -1,9 +1,9 @@
-import type { Metadata } from "next";
+﻿import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "PORTAL — Secure Network Access",
-  description: "Шифрованный канал связи. 4 страны, до 5 устройств, подключение за минуту через Telegram.",
+  title: "PORTAL — защищенный цифровой доступ",
+  description: "Понятный запуск через Telegram, прозрачные тарифы Start/Pro/Ultra и управление доступом в личном кабинете.",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

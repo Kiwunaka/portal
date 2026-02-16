@@ -1,24 +1,26 @@
-﻿# Payments Architecture Note (Finalized 2026-02)
+﻿# Payments Decision Note (FreeKassa)
 
-Обновлено: `2026-02-15`
-Статус: `Finalized architecture note`.
+Обновлено: `2026-02-16`
+Статус: `Production decision finalized`.
 
-## 1) Product Decision
+## 1) Принятое решение
+
+С `2026-02-16` платёжный провайдер для RUB-потока зафиксирован: `FreeKassa`.
 
 Модель оплаты:
-- Primary: RUB checkout (Freekassa, site/bot dual-shop).
+- Primary: RUB checkout (FreeKassa).
 - Secondary: Telegram Stars.
 
-Причина: сохранить нативный путь в Telegram и дать отдельный web-поток для карты/СБП.
+Отдельный research-трек по выбору провайдера закрыт.
 
-## 2) Checkout Architecture
+## 2) Архитектура checkout
 
-- Основной сценарий сайта: `backend order first`.
-- Order создаётся только на backend.
-- Вход в public checkout защищён `checkout_ticket`.
-- Guest без Telegram binding не поддерживается в первом релизе.
+- Сценарий сайта: `backend-order-first`.
+- Заказ создаётся только на backend.
+- Public checkout защищён `checkout_ticket`.
+- Guest checkout без Telegram binding не входит в текущий релизный контур.
 
-## 3) Data Contract
+## 3) Контракт данных
 
 Order metadata:
 - `tg_id`
@@ -26,61 +28,46 @@ Order metadata:
 - `campaign`
 - `promo_code`
 - `source`
-- `pricing` breakdown (`base_amount_rub`, `discount_pct`, `final_amount_rub`)
+- pricing breakdown: `base_amount_rub`, `discount_pct`, `final_amount_rub`
 
 Promo contract:
-- `days` -> немедленное продление;
-- `discount` -> pending скидка на следующую оплату (RUB/Stars).
+- `days`: немедленное продление;
+- `discount`: pending скидка на следующую оплату.
 
-## 4) Plan Catalog Model
+## 4) Каталог планов и новости
 
-Источник витрины: `plan_catalog`.
+Источник витрины:
+- `plan_catalog`
+- `live_updates`
 
-Fallback:
-- если таблица пуста, используются legacy `RUB_PLAN_PRICES` и `API_PLAN_PRICES`.
+Fallback сохраняется для обратной совместимости, если таблицы пусты.
 
-Это позволяет безопасно выкатывать схему без жёсткой зависимости от наполнения БД.
+## 5) Безопасность FreeKassa
 
-## 5) Live Updates Model
+- SCI verify: `md5(MERCHANT_ID:AMOUNT:SECRET_WORD_2:MERCHANT_ORDER_ID)`.
+- notify endpoint проверяет `FK_NOTIFY_IP_ALLOWLIST`.
+- callback storage идемпотентен.
+- валидный notify подтверждается `YES`.
 
-Источник карточек сайта: `live_updates`.
+## 6) Панель FreeKassa (prod)
 
-Public endpoint:
-- `GET /api/public/live-updates?limit=3`
+Рекомендованные URL (через текущий public domain):
+- notify: `https://portal-privacy.online/api/payments/freekassa/notify` (`POST`)
+- success: `https://portal-privacy.online/pay/success` (`GET`)
+- fail: `https://portal-privacy.online/pay/fail` (`GET`)
 
-Fallback:
-- если таблица пуста, API отдаёт дефолтный набор карточек.
+Если в окружении другой домен, используется домен из env-конфига (`PUBLIC_API_BASE_URL`, `PAY_SUCCESS_URL`, `PAY_FAIL_URL`).
 
-## 6) Freekassa Security
+## 7) Операционное правило релиза
 
-- SCI callback verify:
-  - `md5(MERCHANT_ID:AMOUNT:SECRET_WORD_2:MERCHANT_ORDER_ID)`
-- notify endpoint защищён IP allowlist (`FK_NOTIFY_IP_ALLOWLIST`).
-- callback event storage идемпотентен.
-- валидный POST notify подтверждается `YES`.
+Для payment-изменений completion-правило:
+1. тесты + smoke;
+2. `push`;
+3. deploy;
+4. post-deploy sanity (`health`, `create-public`, `notify`, активация доступа).
 
-## 7) Panel Config Matrix
+## 8) Что не делаем без отдельного решения
 
-Для обеих касс (`site` + `bot`):
-- notify URL: `https://kiwunaka.space/api/payments/freekassa/notify`, method `POST`;
-- success URL: `https://kiwunaka.space/pay/success`, method `GET`;
-- fail URL: `https://kiwunaka.space/pay/fail`, method `GET`.
-
-## 8) Pricing Strategy
-
-- `start_99` остаётся entry offer (`99 RUB`, `30 days`, `NL-only`, `1 device`).
-- Все цены редактируются из админки через `plan_catalog`.
-- Изменение цен делается по формуле contribution margin (см. pricing ops doc).
-
-## 9) Risk Register (accepted)
-
-1. Секреты кассы не ротируются в этом цикле.
-2. Guest checkout без Telegram binding не поддерживается.
-3. Виджет кассы оставлен как вспомогательный UI, а не источник истины по заказу.
-
-## 10) Next Phase
-
-Параллельный запуск треков:
-1. Retention funnel automation.
-2. UI polish и conversion microcopy.
-3. Ops automation и post-deploy smoke.
+- Не переключаем провайдера RUB-платежей.
+- Не запускаем новый provider research.
+- Не меняем callback/security контракт без обновления runbook и smoke-сценариев.

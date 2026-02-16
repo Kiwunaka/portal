@@ -15,7 +15,7 @@ from datetime import datetime, timezone
 
 from aiogram import Bot, Dispatcher, F, Router
 from aiogram.filters import CommandStart
-from aiogram.types import CallbackQuery, InlineKeyboardButton, InlineKeyboardMarkup, Message
+from aiogram.types import CallbackQuery, FSInputFile, InlineKeyboardButton, InlineKeyboardMarkup, Message
 from dotenv import load_dotenv
 
 # Load env from repo-local file first to avoid cwd-dependent startup behavior.
@@ -42,6 +42,8 @@ from tickets_repo import (
 HELP_BOT_TOKEN = (os.getenv("HELP_BOT_TOKEN") or "").strip()
 ADMIN_ID = int(os.getenv("ADMIN_ID", "0"))
 MAIN_BOT_USERNAME = (os.getenv("BOT_USERNAME") or "portal_service_bot").lstrip("@")
+HELPBOT_START_MEDIA_PATH = (os.getenv("HELPBOT_START_MEDIA_PATH") or "").strip()
+HELPBOT_START_MEDIA_TYPE = (os.getenv("HELPBOT_START_MEDIA_TYPE") or "photo").strip().lower()
 
 if not HELP_BOT_TOKEN:
     raise SystemExit("HELP_BOT_TOKEN is empty")
@@ -89,12 +91,49 @@ def _ticket_message_preview(text: str, limit: int = 200) -> str:
 
 def _main_menu(is_admin: bool) -> InlineKeyboardMarkup:
     rows = [
-        [InlineKeyboardButton(text="➕ Новый запрос", callback_data="hb_ticket_new")],
+        [InlineKeyboardButton(text="🚀 Начать", callback_data="hb_ticket_new")],
         [InlineKeyboardButton(text="📂 Мои запросы", callback_data="hb_ticket_my")],
     ]
     if is_admin:
         rows.append([InlineKeyboardButton(text="🧑‍💼 Очередь оператора", callback_data="hb_admin_queue")])
     return InlineKeyboardMarkup(inline_keyboard=rows)
+
+
+def _welcome_text(is_admin: bool) -> str:
+    text = (
+        "👨‍💻 *Техническая поддержка PORTAL*\n\n"
+        "Нажмите «Начать», чтобы быстро открыть новый запрос.\n"
+        "Среднее время ответа: 15 минут.\n\n"
+        "👇 *Выберите действие:*"
+    )
+    if is_admin:
+        text += "\n\nРежим оператора: доступна очередь тикетов."
+    return text
+
+
+async def _send_welcome(message: Message, *, is_admin: bool) -> None:
+    text = _welcome_text(is_admin)
+    kb = _main_menu(is_admin)
+
+    media_path = HELPBOT_START_MEDIA_PATH
+    if media_path:
+        try:
+            p = Path(media_path)
+            if p.exists() and p.is_file():
+                media = FSInputFile(str(p))
+                mtype = HELPBOT_START_MEDIA_TYPE
+                if mtype == "animation":
+                    await message.answer_animation(animation=media, caption=text, reply_markup=kb, parse_mode="Markdown")
+                    return
+                if mtype == "video":
+                    await message.answer_video(video=media, caption=text, reply_markup=kb, parse_mode="Markdown")
+                    return
+                await message.answer_photo(photo=media, caption=text, reply_markup=kb, parse_mode="Markdown")
+                return
+        except Exception as e:
+            logger.warning("helpbot start media failed, fallback to text: %s", e)
+
+    await message.answer(text, reply_markup=kb, parse_mode="Markdown")
 
 
 def _ticket_view_keyboard(ticket_id: int, status: str, *, is_admin: bool) -> InlineKeyboardMarkup:
@@ -245,15 +284,7 @@ async def start(message: Message) -> None:
         await message.answer("Мои запросы:", reply_markup=InlineKeyboardMarkup(inline_keyboard=rows))
         return
 
-    text = (
-        "👨‍💻 *Техническая поддержка PORTAL*\n\n"
-        "Опишите вашу проблему, и оператор подключится к диалогу.\n"
-        "Среднее время ответа: 15 минут.\n\n"
-        "👇 *Выберите действие:*"
-    )
-    if is_admin:
-        text += "\n\nРежим оператора: доступна очередь тикетов."
-    await message.answer(text, reply_markup=_main_menu(is_admin), parse_mode="Markdown")
+    await _send_welcome(message, is_admin=is_admin)
 
 
 @router.callback_query(F.data == "hb_ticket_new")

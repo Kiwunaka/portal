@@ -63,6 +63,48 @@ class RetentionTemplateSeedTests(unittest.TestCase):
         finally:
             s.close()
 
+    def test_run_migrations_refreshes_existing_retention_template_text(self) -> None:
+        from models import Template
+
+        self.db.init_db()
+        s = self.db.SessionLocal()
+        try:
+            row = s.query(Template).filter(Template.key == "retention_t1_a").first()
+            self.assertIsNotNone(row)
+            row.text = "stale copy"
+            s.commit()
+        finally:
+            s.close()
+
+        self.migrations.run_migrations(self.db.engine)
+
+        s = self.db.SessionLocal()
+        try:
+            row = s.query(Template).filter(Template.key == "retention_t1_a").first()
+            self.assertIsNotNone(row)
+            self.assertEqual(str(row.text), str(self.migrations.RETENTION_TEMPLATE_PRESETS["retention_t1_a"]))
+        finally:
+            s.close()
+
+    def test_run_migrations_adds_live_updates_and_start_links_schema(self) -> None:
+        self.db.init_db()
+        self.migrations.run_migrations(self.db.engine)
+
+        with self.db.engine.begin() as conn:
+            live_cols = conn.execute(self.migrations.text("PRAGMA table_info(live_updates);")).fetchall()
+            names = {str(r[1]) for r in live_cols}
+            self.assertIn("channel_username", names)
+            self.assertIn("post_id", names)
+
+            start_link_table = conn.execute(
+                self.migrations.text("SELECT name FROM sqlite_master WHERE type='table' AND name='start_links';")
+            ).fetchone()
+            app_settings_table = conn.execute(
+                self.migrations.text("SELECT name FROM sqlite_master WHERE type='table' AND name='app_settings';")
+            ).fetchone()
+            self.assertIsNotNone(start_link_table)
+            self.assertIsNotNone(app_settings_table)
+
 
 if __name__ == "__main__":
     unittest.main()

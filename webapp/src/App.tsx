@@ -102,10 +102,10 @@ const USER_TABS: Array<{ id: UserTab; label: string; icon: string }> = [
 ];
 
 const STORY_SLIDES: StorySlide[] = [
-  { title: "Шифрование", text: "Зашифрованный канал между устройством и узлом." },
-  { title: "4 страны", text: "Платные тарифы включают доступ ко всем доступным странам." },
-  { title: "Антитрекинг", text: "Маршрутизация снижает трекинг и лишний шум." },
-  { title: "1-2 минуты", text: "Импорт ключа и подключение за пару шагов." },
+  { title: "Запуск за минуты", text: "Понятный путь подключения без лишних шагов и экранов." },
+  { title: "Пул стран", text: "В платных планах доступно переключение между всеми странами." },
+  { title: "Защищённый канал", text: "Передача данных между устройством и узлом работает в зашифрованном режиме." },
+  { title: "Поддержка рядом", text: "Если что-то не сработало, поддержку можно открыть прямо из кабинета." },
 ];
 
 const PLAN_CHOICES: PlanChoice[] = [
@@ -117,7 +117,7 @@ const PLAN_CHOICES: PlanChoice[] = [
 ];
 
 const RUB_PLAN_CHOICES: Array<{ key: string; label: string; rub: number; badge?: string }> = [
-  { key: "start_99", label: "Start 30д", rub: 99, badge: "New" },
+  { key: "start_99", label: "Start 30д", rub: 99, badge: "Вход" },
   { key: "1_month", label: "1 мес", rub: 249 },
   { key: "3_months", label: "3 мес", rub: 699 },
   { key: "6_months", label: "6 мес", rub: 1199, badge: "Популярный" },
@@ -169,6 +169,7 @@ const MOCK_DASH: DashboardSnapshot = {
   segment: "PAID",
   sub_type: "PRO",
   expiry_at: new Date(Date.now() + 45 * 86400000).toISOString(),
+  active_sessions: 2,
   device_limit: 5,
   total_gb: 0,
   used_gb: 0,
@@ -194,7 +195,7 @@ const MOCK_REVIEWS: ReviewPayload[] = [
 const ONBOARDING_STEPS: Array<{ title: string; text: string }> = [
   { title: "Шаг 1", text: "Откройте вкладку «Подключение» и выберите приложение под вашу платформу." },
   { title: "Шаг 2", text: "Импортируйте ключ в один клик или через fallback-инструкцию." },
-  { title: "Шаг 3", text: "Проверьте статус узлов и закрепите канал для апдейтов и офферов." },
+  { title: "Шаг 3", text: "Проверьте статус узлов и сохраните канал проекта для актуальных обновлений." },
 ];
 
 function fmtDate(iso?: string | null): string {
@@ -276,6 +277,12 @@ function firstNonEmpty(...values: Array<string | null | undefined>): string {
     if (trimmed) return trimmed;
   }
   return "";
+}
+
+function maskReviewUsername(username?: string | null): string {
+  const raw = String(username || "").trim().replace(/^@+/, "").trim();
+  if (!raw) return "Пользователь";
+  return `${raw.slice(0, 2)}***`;
 }
 
 /* ── Animated Counter Hook ── */
@@ -463,6 +470,7 @@ export default function App() {
   const [webLoginRequired, setWebLoginRequired] = useState(false);
   const [webLoginError, setWebLoginError] = useState("");
   const [webLoginBusy, setWebLoginBusy] = useState(false);
+  const [adminInBotHint, setAdminInBotHint] = useState(false);
 
   const [aTab, setATab] = useState<AdminTab>("summary");
   const [admBusy, setAdmBusy] = useState(false);
@@ -619,6 +627,7 @@ export default function App() {
     const hasWebSession = hasWebSessionToken();
     if (!tgUser && !IS_DEV && !hasWebSession) {
       setWebLoginRequired(true);
+      setAdminInBotHint(false);
       setError("");
       setLoading(false);
       return;
@@ -633,6 +642,7 @@ export default function App() {
       setClientApps(null);
       setTickets([]);
       setSelectedNodeCode("nl");
+      setAdminInBotHint(false);
       setLoading(false);
       return;
     }
@@ -671,7 +681,11 @@ export default function App() {
         ]);
       }
 
-      setUser(u);
+      const hasAdminRole = Boolean(u.is_admin);
+      setAdminInBotHint(hasAdminRole);
+      const webappUser: UserPayload = hasAdminRole ? { ...u, is_admin: false } : u;
+
+      setUser(webappUser);
       setDash(d);
       setNodes(n);
       setReviews(rv);
@@ -679,41 +693,6 @@ export default function App() {
       setPoints(p);
       setClientApps(apps);
       if (n.length > 0) setSelectedNodeCode(n[0].code);
-      if (u.is_admin) {
-        const [s, at, an, m, au, promos, templates, plans, updates, giftCodes] = await Promise.all([
-          adminSummary(),
-          adminTickets("", 30),
-          adminNodesHealth(),
-          adminMetricsStatus(),
-          adminUsers("", 40, 0),
-          adminPromos(250),
-          adminTemplates(250),
-          adminPlans(true),
-          adminLiveUpdates(true),
-          adminGiftCodes(100),
-        ]);
-        setAdmSummary(s);
-        setAdmTickets(at);
-        setAdmNodes(an);
-        setAdmMetrics(m);
-        setAdmUsersRows(au);
-        setAdmPromosRows(promos);
-        setAdmTemplatesRows(templates);
-        setAdmPlansRows(plans);
-        setAdmUpdatesRows(updates);
-        setAdmGiftCodesRows(giftCodes);
-        if (templates.length > 0) {
-          setAdmTemplateEdit({ key: templates[0].key, text: templates[0].text });
-        }
-        if (au.length > 0) {
-          const first = au[0].tg_id;
-          setAdmSelectedUserId(first);
-          setAdmUserCardData(await adminUserCard(first));
-        } else {
-          setAdmSelectedUserId(null);
-          setAdmUserCardData(null);
-        }
-      }
       void trackEvent("opened_webapp", "webapp", { tab: "status" });
     } catch (e: unknown) {
       const msg = String((e as { message?: string })?.message || e);
@@ -1472,6 +1451,16 @@ export default function App() {
         </button>
       </header>
 
+      {adminInBotHint ? (
+        <section className="card card-enter">
+          <div className="section-tag">[ADMIN]</div>
+          <div className="card__title">Админ-функции перенесены в бота</div>
+          <div className="muted">
+            Управление пользователями, промокодами, рассылкой и конфигом доступно только в основном Telegram-боте.
+          </div>
+        </section>
+      ) : null}
+
       {showSettings ? (
         <section className="card card-enter">
           <div className="section-tag">[НАСТРОЙКИ]</div>
@@ -2118,7 +2107,7 @@ export default function App() {
               </div>
 
               <div className="divider" />
-              <div className="card__title">Campaign/deeplink builder</div>
+              <div className="card__title">Campaign/deeplink-конструктор</div>
               <div className="actions">
                 <input
                   className="field field--compact"
@@ -2178,7 +2167,7 @@ export default function App() {
 
           {aTab === "updates" ? (
             <>
-              <div className="card__title" style={{ marginTop: 12 }}>Создать Live Update</div>
+              <div className="card__title" style={{ marginTop: 12 }}>Создать карточку Live Update</div>
               <input
                 className="field"
                 aria-label="Update title"
@@ -2223,7 +2212,7 @@ export default function App() {
               </div>
 
               <div className="divider" />
-              <div className="card__title">Карточки Live Updates</div>
+              <div className="card__title">Список карточек Live Updates</div>
               <div className="list">
                 {admUpdatesRows.map((u) => (
                   <div key={u.id} className="row" style={{ alignItems: "flex-start", flexDirection: "column", gap: 8 }}>
@@ -2426,12 +2415,16 @@ export default function App() {
 
             {socialProof.sample.length ? (
               <div className="proof-quotes">
-                {socialProof.sample.map((r, idx) => (
-                  <article key={`${r.username}-${idx}`} className="proof-quote">
-                    <div className="proof-quote__text">“{r.text}”</div>
-                    <div className="proof-quote__meta">{`@${r.username || "user"} • ${Number(r.rating || 0)}/5`}</div>
-                  </article>
-                ))}
+                {socialProof.sample.map((r, idx) => {
+                  const masked = maskReviewUsername(r.username);
+                  const author = masked === "Пользователь" ? masked : `@${masked}`;
+                  return (
+                    <article key={`${r.username}-${idx}`} className="proof-quote">
+                      <div className="proof-quote__text">“{r.text}”</div>
+                      <div className="proof-quote__meta">{`${author} • ${Number(r.rating || 0)}/5`}</div>
+                    </article>
+                  );
+                })}
               </div>
             ) : null}
 
@@ -2451,7 +2444,11 @@ export default function App() {
               </div>
               <div className="metric">
                 <div className="metric__k">Устройства</div>
-                <div className="metric__v">{deviceCount}</div>
+                <div className="metric__v">
+                  {Number.isFinite(Number(dash.active_sessions))
+                    ? `${Math.max(0, Number(dash.active_sessions || 0))} из ${Math.max(0, Number(deviceCount || 0))}`
+                    : "данные недоступны"}
+                </div>
               </div>
               <div className="metric">
                 <div className="metric__k">Трафик</div>
@@ -2480,8 +2477,8 @@ export default function App() {
 
             <div className={user?.channel?.speed_bump_active ? "pill pill--bad" : "pill pill--ok"} style={{ marginBottom: 10 }}>
               {user?.channel?.speed_bump_active
-                ? "FREE профиль: активен базовый speed-bump (подпишитесь на канал для буста)"
-                : "FREE профиль: speed-bump не активен"}
+                ? "FREE профиль: действует базовый скоростной профиль (подписка на канал может повысить лимит)"
+                : "FREE профиль: базовый скоростной профиль не ограничен"}
             </div>
 
             <div className="muted" style={{ marginBottom: 8 }}>
@@ -2490,7 +2487,7 @@ export default function App() {
             <div className="actions" style={{ marginBottom: 12 }}>
               <button className="btn btn--ghost" type="button" disabled={channelCheckBusy} onClick={() => void onCheckChannelStatus()}>
                 <span style={{ position: "relative", zIndex: 1 }}>
-                  {channelCheckBusy ? "Проверяем..." : "💎 Статус подписчика — Проверить"}
+                  {channelCheckBusy ? "Проверяем..." : "💎 Проверить статус подписчика"}
                 </span>
               </button>
               {user?.channel?.link ? (
@@ -2523,7 +2520,7 @@ export default function App() {
               ))}
             </div>
 
-            <div className="card__title" style={{ marginTop: 12 }}>Stars checkout</div>
+            <div className="card__title" style={{ marginTop: 12 }}>Дополнительно: Stars</div>
             <div className="plans-mini">
               {PLAN_CHOICES.map((p) => (
                 <button
@@ -2555,7 +2552,7 @@ export default function App() {
             </div>
             {rubBreakdown ? (
               <div className="muted" style={{ marginTop: 8 }}>
-                {`Разбивка: база ${rubBreakdown.base.toFixed(0)}₽ • скидка ${rubBreakdown.discountPct}% • итог ${rubBreakdown.final.toFixed(0)}₽`}
+                {`Прозрачная разбивка: база ${rubBreakdown.base.toFixed(0)}₽ • скидка ${rubBreakdown.discountPct}% • итог ${rubBreakdown.final.toFixed(0)}₽`}
               </div>
             ) : null}
             <div className="muted" style={{ marginTop: 6 }}>
@@ -2583,14 +2580,14 @@ export default function App() {
             <div className="section-tag">[ПОДКЛЮЧЕНИЕ]</div>
             <div className="card__title">Мастер подключения</div>
             <div className="muted" style={{ marginBottom: 10 }}>
-              Первый запуск: импортируйте ключ, затем нажмите «Проверить и завершить» для фиксации статуса.
+              Для первого запуска: импортируйте ключ и нажмите «Проверить и завершить», чтобы зафиксировать статус.
             </div>
             <div className="pill" style={{ marginBottom: 10 }}>
               {platform === "android"
-                ? "Android: deep-link в v2rayNG + fallback на Hiddify."
+                ? "Android: сначала deep-link в v2rayNG, затем fallback на Hiddify."
                 : platform === "ios"
-                  ? "iOS: Streisand/Happ с ручным импортом, если схема недоступна."
-                  : "Desktop: копирование ключа + быстрый путь через инструкцию."}
+                  ? "iOS: Streisand/Happ, а при необходимости — ручной импорт по инструкции."
+                  : "Desktop: копирование ключа и импорт через инструкцию."}
             </div>
 
             <div className="step">
@@ -2644,7 +2641,7 @@ export default function App() {
 
             <div className="actions" style={{ marginTop: 2 }}>
               <button className="btn btn--ghost" type="button" onClick={() => onCopyKey("copy_used")}>
-                <span style={{ position: "relative", zIndex: 1 }}>Если не сработало: копировать</span>
+                <span style={{ position: "relative", zIndex: 1 }}>Если не сработало: скопировать ключ</span>
               </button>
               <button className="btn btn--ghost" type="button" onClick={() => openLink(docsLinkForConnect())}>
                 <span style={{ position: "relative", zIndex: 1 }}>Инструкция</span>
@@ -2657,7 +2654,7 @@ export default function App() {
                 ? "Android: сначала v2rayNG deep-link, затем fallback на Hiddify."
                 : platform === "ios"
                   ? "iOS: используйте Streisand/Happ и импорт по инструкции, если схема недоступна."
-                  : "Desktop: копирование ключа + ручной импорт по документации."}
+                  : "Desktop: копирование ключа и ручной импорт по документации."}
             </div>
           </div>
         ) : null}

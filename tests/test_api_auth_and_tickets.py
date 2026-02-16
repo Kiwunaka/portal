@@ -219,7 +219,7 @@ class ApiAuthAndTicketsTests(unittest.TestCase):
         self.assertTrue(body["ok"])
         self.assertFalse(body["already_claimed"])
         self.assertEqual(body["premium_days"], 10)
-        self.assertEqual(body["sub_type"], "PAID")
+        self.assertEqual(body["sub_type"], "BONUS")
 
         # Second claim should be idempotent.
         r2 = self.client.post("/api/bonuses/channel/claim", headers=user_hdrs)
@@ -312,11 +312,43 @@ class ApiAuthAndTicketsTests(unittest.TestCase):
         extend = self.client.post(
             f"/api/admin/users/{manual_tg_id}/manual/extend",
             headers=admin_hdrs,
-            json={"days": 7},
+            json={"delta_days": 7},
         )
         self.assertEqual(extend.status_code, 200, extend.text)
         self.assertTrue(extend.json()["ok"])
+        self.assertEqual(int(extend.json().get("delta_days") or 0), 7)
         self.assertIsInstance(datetime.fromisoformat(extend.json()["expiry_at"]), datetime)
+
+        alias_extend = self.client.post(
+            f"/api/admin/users/{manual_tg_id}/manual-extend",
+            headers=admin_hdrs,
+            json={"delta_days": 1},
+        )
+        self.assertEqual(alias_extend.status_code, 200, alias_extend.text)
+        self.assertEqual(int(alias_extend.json().get("delta_days") or 0), 1)
+
+        backwards_compat = self.client.post(
+            f"/api/admin/users/{manual_tg_id}/manual/extend",
+            headers=admin_hdrs,
+            json={"days": 3},
+        )
+        self.assertEqual(backwards_compat.status_code, 200, backwards_compat.text)
+        self.assertEqual(int(backwards_compat.json().get("delta_days") or 0), 3)
+
+        reject_negative = self.client.post(
+            f"/api/admin/users/{manual_tg_id}/manual/extend",
+            headers=admin_hdrs,
+            json={"delta_days": -3650},
+        )
+        self.assertEqual(reject_negative.status_code, 400, reject_negative.text)
+
+        allow_negative = self.client.post(
+            f"/api/admin/users/{manual_tg_id}/manual/extend",
+            headers=admin_hdrs,
+            json={"delta_days": -3650, "allow_deactivate": True},
+        )
+        self.assertEqual(allow_negative.status_code, 200, allow_negative.text)
+        self.assertFalse(bool(allow_negative.json().get("is_active")))
 
         block = self.client.post(
             f"/api/admin/users/{manual_tg_id}/manual/block",
@@ -402,6 +434,59 @@ class ApiAuthAndTicketsTests(unittest.TestCase):
 
         redeemed_twice = self.client.post("/api/gift/redeem", headers=user_hdrs, json={"code": code})
         self.assertEqual(redeemed_twice.status_code, 400, redeemed_twice.text)
+
+    def test_admin_start_links_and_wheel_config(self) -> None:
+        admin_hdrs = {"X-Telegram-Init-Data": self._init_data(9999, "admin")}
+
+        created = self.client.post(
+            "/api/admin/start-links",
+            headers=admin_hdrs,
+            json={
+                "code": "launch14",
+                "description": "Campaign launch link",
+                "target_action": "opening_bonus",
+                "is_active": True,
+            },
+        )
+        self.assertEqual(created.status_code, 200, created.text)
+        link_id = int(created.json().get("id") or 0)
+        self.assertGreater(link_id, 0)
+
+        rows = self.client.get("/api/admin/start-links", headers=admin_hdrs)
+        self.assertEqual(rows.status_code, 200, rows.text)
+        self.assertTrue(any((r.get("code") or "") == "launch14" for r in rows.json().get("start_links", [])))
+
+        patched = self.client.patch(
+            f"/api/admin/start-links/{link_id}",
+            headers=admin_hdrs,
+            json={"description": "Updated", "is_active": False},
+        )
+        self.assertEqual(patched.status_code, 200, patched.text)
+
+        removed = self.client.delete(f"/api/admin/start-links/{link_id}", headers=admin_hdrs)
+        self.assertEqual(removed.status_code, 200, removed.text)
+
+        cfg_get = self.client.get("/api/admin/wheel-config", headers=admin_hdrs)
+        self.assertEqual(cfg_get.status_code, 200, cfg_get.text)
+        self.assertIn("wheel_config", cfg_get.json())
+
+        cfg_put = self.client.put(
+            "/api/admin/wheel-config",
+            headers=admin_hdrs,
+            json={
+                "preset": "manual",
+                "weights": [
+                    {"days": 1, "weight": 50},
+                    {"days": 3, "weight": 30},
+                    {"days": 7, "weight": 15},
+                    {"days": 30, "weight": 5},
+                ],
+                "cooldown_hours": 96,
+            },
+        )
+        self.assertEqual(cfg_put.status_code, 200, cfg_put.text)
+        body = cfg_put.json().get("wheel_config") or {}
+        self.assertEqual(int(body.get("cooldown_hours") or 0), 96)
 
 
 if __name__ == "__main__":

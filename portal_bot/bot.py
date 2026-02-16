@@ -299,7 +299,7 @@ CHANNEL_PREMIUM_DAYS = max(1, int(os.getenv("CHANNEL_PREMIUM_DAYS", "10")))
 BOT_RUB_BUTTON_ENABLED = _env_bool("BOT_RUB_BUTTON_ENABLED", default=False)
 MAIN_CONNECT_CTA_LABELS = {
     "a": "🟦 Подключить / Продлить",
-    "b": "🟦 Продлить без паузы",
+    "b": "🟦 Выбрать тариф",
 }
 
 
@@ -659,7 +659,21 @@ def _naive_utc(dt: datetime | None) -> datetime | None:
 #               DATABASE
 # ==========================================
 from db import SessionLocal, init_db
-from models import Achievement, AdminAudit, CampaignSend, FamilySlot, GiftCard, PromoCode, PromoUsage, Review, Template, User
+from models import (
+    Achievement,
+    AdminAudit,
+    AppSetting,
+    CampaignSend,
+    FamilySlot,
+    GiftCard,
+    LiveUpdate,
+    PromoCode,
+    PromoUsage,
+    Review,
+    StartLink,
+    Template,
+    User,
+)
 from nodes_repo import enabled_nodes
 from events_service import track_event
 from free_cycle_service import mark_user_became_free
@@ -938,7 +952,7 @@ def create_user(tg_id: int, user_uuid: str, email: str, sub_type: str, days: int
         existing.email = email
         if username:
             existing.username = username
-        if _normalize_sub_type(sub_type) == "FREE":
+        if _is_freemium_sub_type(sub_type):
             mark_user_became_free(existing)
         # Generate sub_token if not exists
         if not existing.sub_token:
@@ -963,7 +977,7 @@ def create_user(tg_id: int, user_uuid: str, email: str, sub_type: str, days: int
         trial_used=(sub_type == "TRIAL_10GB_7"),
         sub_token=sub_token
     )
-    if _normalize_sub_type(sub_type) == "FREE":
+    if _is_freemium_sub_type(sub_type):
         mark_user_became_free(user)
     session.add(user)
     session.commit()
@@ -1183,9 +1197,10 @@ def _tos_offer_text() -> str:
 
 
 def _tos_offer_keyboard(*, back_callback: str = "back") -> InlineKeyboardMarkup:
+    offer_url = f"https://{(PUBLIC_WEB_DOMAIN or HOST_DOMAIN).strip().strip('/')}/offer"
     return InlineKeyboardMarkup(
         inline_keyboard=[
-            [InlineKeyboardButton(text="📄 Читать полностью", web_app=WebAppInfo(url=f"{WEBAPP_URL}#tos"))],
+            [InlineKeyboardButton(text="📄 Читать полностью", url=offer_url)],
             [InlineKeyboardButton(text="✅ Принимаю условия", callback_data="accept_tos")],
             [InlineKeyboardButton(text="◀️ Назад", callback_data=back_callback)],
         ]
@@ -1295,7 +1310,7 @@ async def _try_activate_opening_premium_bonus(
         "days": int(OPENING_PREMIUM_DAYS),
         "gb": 0,
         "subId": "LAUNCH_BONUS",
-        "sub_type": "PAID",
+        "sub_type": "BONUS",
     }
     await create_subscription(message, tg_id, promo_tariff, bot)
 
@@ -1365,7 +1380,7 @@ async def _try_activate_friend_gift_bonus(
         "days": int(FRIEND_GIFT_DAYS),
         "gb": 0,
         "subId": "FRIEND_GIFT",
-        "sub_type": "PAID",
+        "sub_type": "BONUS",
     }
     await create_subscription(message, tg_id, promo_tariff, bot)
 
@@ -1469,6 +1484,42 @@ def _parse_start_deeplink_context(start_arg: str) -> tuple[str, str]:
     return promo_code, campaign_key
 
 
+def _resolve_start_link_action(start_arg: str) -> dict[str, str | bool]:
+    raw = (start_arg or "").strip().lower()
+    if not raw:
+        return {"promo_code": "", "campaign_key": "", "opening_bonus": False}
+    session = Session()
+    try:
+        row = (
+            session.query(StartLink)
+            .filter(func.lower(StartLink.code) == raw)
+            .filter(StartLink.is_active == True)
+            .first()
+        )
+    finally:
+        session.close()
+    if not row:
+        return {"promo_code": "", "campaign_key": "", "opening_bonus": False}
+
+    action = str(getattr(row, "target_action", "") or "").strip()
+    lowered = action.lower()
+    if lowered == "opening_bonus":
+        return {"promo_code": "", "campaign_key": "", "opening_bonus": True}
+    if lowered.startswith("promo:"):
+        promo = action.split(":", 1)[1].strip().upper()[:20]
+        return {"promo_code": promo, "campaign_key": "", "opening_bonus": False}
+    if lowered.startswith("campaign:"):
+        campaign = action.split(":", 1)[1].strip()[:64]
+        return {"promo_code": "", "campaign_key": campaign, "opening_bonus": False}
+    if lowered.startswith("campaign_promo:"):
+        rest = action.split(":", 1)[1].strip()
+        parts = rest.split(":", 1)
+        campaign = parts[0].strip()[:64] if parts else ""
+        promo = parts[1].strip().upper()[:20] if len(parts) > 1 else ""
+        return {"promo_code": promo, "campaign_key": campaign, "opening_bonus": False}
+    return {"promo_code": "", "campaign_key": "", "opening_bonus": False}
+
+
 def _parse_friend_gift_ref_code(start_arg: str) -> str:
     raw = (start_arg or "").strip()
     if not raw:
@@ -1559,7 +1610,7 @@ async def _activate_channel_bonus(
         "days": int(CHANNEL_PREMIUM_DAYS),
         "gb": 0,
         "subId": "CHANNEL_BONUS",
-        "sub_type": "PAID",
+        "sub_type": "BONUS",
     }
     await create_subscription(message, tg_id, bonus_tariff, bot)
 
@@ -1593,36 +1644,114 @@ async def _activate_channel_bonus(
 #         WHEEL OF FORTUNE
 # ==========================================
 
-# Prize configuration: (Days, weight/probability)
-WHEEL_PRIZES = [
-    (1, 45),    # 1 Day - 45%
-    (3, 35),    # 3 Days - 35%
-    (7, 15),    # 7 Days - 15%
-    (30, 5),    # 30 Days - 5% (JACKPOT!)
+WHEEL_DEFAULT_PRIZES: list[tuple[int, int]] = [
+    (1, 45),
+    (3, 35),
+    (7, 15),
+    (30, 5),
 ]
+WHEEL_PRESETS: dict[str, list[tuple[int, int]]] = {
+    "balanced": WHEEL_DEFAULT_PRIZES,
+    "steady": [(1, 55), (3, 30), (7, 12), (30, 3)],
+    "generous": [(1, 35), (3, 35), (7, 20), (30, 10)],
+}
+WHEEL_DEFAULT_COOLDOWN_DAYS = 7
 
-WHEEL_COOLDOWN_DAYS = 7
+
+def _normalize_wheel_weights(rows: list[tuple[int, int]] | None) -> list[tuple[int, int]]:
+    out: list[tuple[int, int]] = []
+    seen: set[int] = set()
+    for days, weight in (rows or []):
+        d = int(days or 0)
+        w = int(weight or 0)
+        if d <= 0 or w <= 0:
+            continue
+        if d in seen:
+            continue
+        seen.add(d)
+        out.append((d, w))
+    return out or list(WHEEL_DEFAULT_PRIZES)
+
+
+def _load_wheel_config() -> dict:
+    s = Session()
+    try:
+        row = s.query(AppSetting).filter(AppSetting.key == "wheel_config").first()
+    finally:
+        s.close()
+    if not row or not str(getattr(row, "value_json", "") or "").strip():
+        return {
+            "preset": "balanced",
+            "weights": list(WHEEL_DEFAULT_PRIZES),
+            "cooldown_days": int(WHEEL_DEFAULT_COOLDOWN_DAYS),
+        }
+    try:
+        payload = json.loads(str(row.value_json))
+    except Exception:
+        payload = {}
+    preset = str(payload.get("preset") or "balanced").strip().lower()
+    weights_raw = payload.get("weights") or []
+    if isinstance(weights_raw, list):
+        weights = _normalize_wheel_weights(
+            [
+                (int((x or {}).get("days") or 0), int((x or {}).get("weight") or 0))
+                for x in weights_raw
+            ]
+        )
+    else:
+        weights = list(WHEEL_DEFAULT_PRIZES)
+    cooldown_hours = int(payload.get("cooldown_hours") or (WHEEL_DEFAULT_COOLDOWN_DAYS * 24))
+    cooldown_days = max(1, min(90, int(round(cooldown_hours / 24))))
+    return {"preset": preset or "manual", "weights": weights, "cooldown_days": cooldown_days}
+
+
+def _save_wheel_config(
+    *,
+    weights: list[tuple[int, int]] | None = None,
+    cooldown_days: int | None = None,
+    preset: str | None = None,
+) -> dict:
+    current = _load_wheel_config()
+    next_weights = _normalize_wheel_weights(weights if weights is not None else current.get("weights"))
+    next_preset = str(preset or current.get("preset") or "manual").strip().lower()[:32] or "manual"
+    next_cooldown_days = int(cooldown_days if cooldown_days is not None else current.get("cooldown_days") or WHEEL_DEFAULT_COOLDOWN_DAYS)
+    next_cooldown_days = max(1, min(90, next_cooldown_days))
+    payload = {
+        "preset": next_preset,
+        "weights": [{"days": int(d), "weight": int(w)} for d, w in next_weights],
+        "cooldown_hours": int(next_cooldown_days * 24),
+    }
+    s = Session()
+    try:
+        row = s.query(AppSetting).filter(AppSetting.key == "wheel_config").first()
+        now = _utcnow()
+        if not row:
+            row = AppSetting(
+                key="wheel_config",
+                value_json=json.dumps(payload, ensure_ascii=False, separators=(",", ":"), sort_keys=True),
+                updated_at=now,
+            )
+            s.add(row)
+        else:
+            row.value_json = json.dumps(payload, ensure_ascii=False, separators=(",", ":"), sort_keys=True)
+            row.updated_at = now
+        s.commit()
+    finally:
+        s.close()
+    return _load_wheel_config()
+
+
+def _wheel_prizes() -> list[tuple[int, int]]:
+    return list(_load_wheel_config().get("weights") or WHEEL_DEFAULT_PRIZES)
+
+
+def _wheel_cooldown_days() -> int:
+    return int(_load_wheel_config().get("cooldown_days") or WHEEL_DEFAULT_COOLDOWN_DAYS)
 
 
 def wheel_prizes_for_user(user: User | None) -> list[tuple[int, int]]:
-    """
-    Returns prize weights for the wheel.
-    Paid users get a slightly better jackpot chance.
-    """
-    is_paid = _is_paid_active_user(user)
-    if is_paid:
-        return [
-            (1, 40),
-            (3, 30),
-            (7, 20),
-            (30, 10),
-        ]
-    return [
-        (1, 50),
-        (3, 39),
-        (7, 10),
-        (30, 1),
-    ]
+    # Weights are managed from admin panel.
+    return _wheel_prizes()
 
 def can_spin_wheel(tg_id: int) -> tuple[bool, int]:
     """Check if user can spin the wheel. Returns (can_spin, seconds_until_next)"""
@@ -1642,7 +1771,7 @@ def can_spin_wheel(tg_id: int) -> tuple[bool, int]:
     if not last_spin:
         return True, 0
     
-    next_spin = last_spin + timedelta(days=WHEEL_COOLDOWN_DAYS)
+    next_spin = last_spin + timedelta(days=_wheel_cooldown_days())
     
     if now >= next_spin:
         return True, 0
@@ -1658,9 +1787,6 @@ def spin_wheel(tg_id: int) -> int | None:
     if not can_spin:
         return None
     
-    # Determine Jackpot chance based on subscription
-    # Active Paid (VIP/Basic) = 10% Jackpot
-    # Trial/Free/Expired = 1% Jackpot
     session = Session()
     user = session.query(User).filter_by(tg_id=tg_id).first()
     
@@ -2083,9 +2209,14 @@ def extend_user(tg_id: int, days: int, stars: int) -> bool:
     if user:
         now = _utcnow()
         cur = _naive_utc(user.expiry_at) or now
-        user.expiry_at = max(cur, now) + timedelta(days=days)
+        candidate = max(cur, now) + timedelta(days=days)
+        if candidate <= now:
+            user.expiry_at = now
+            user.is_active = False
+        else:
+            user.expiry_at = candidate
+            user.is_active = True
         user.stars_paid += stars
-        user.is_active = True
         session.commit()
     session.close()
     return user is not None
@@ -2177,33 +2308,65 @@ async def noop(callback: CallbackQuery):
 def _normalize_sub_type(raw: str | None) -> str:
     """
     Keep DB stable:
-    - FREE: free tier
+    - FREE/TRIAL/BONUS: freemium access (non-paid)
     - PAID: any paid access (monthly/quarterly/etc, gifts, legacy VIP/PRO/BASIC)
     - MANUAL: special pinned accounts that we never touch via automation
     """
     s = (raw or "").strip()
     if not s:
-        return ""
-    up = s.upper()
-    if up == "FREE" or up.startswith("TRIAL"):
         return "FREE"
+    up = s.upper()
+    if up == "FREE":
+        return "FREE"
+    if up.startswith("TRIAL"):
+        return "TRIAL"
+    if up.startswith("BONUS") or up in {"CHANNEL_BONUS", "OPENING_BONUS", "FRIEND_GIFT"}:
+        return "BONUS"
     if up == "MANUAL" or s.lower() == "manual":
         return "MANUAL"
-    # Everything else is treated as paid access.
-    return "PAID"
+    if up in {"VIP", "PRO", "BASIC", "PAID", "MONTHLY", "QUARTERLY", "HALF_YEAR", "YEARLY"}:
+        return "PAID"
+    # Unknown values are treated as freemium to avoid accidental paid privileges.
+    if up in {"", "PENDING"}:
+        return "FREE"
+    # Legacy fallback for known paid-like values.
+    if up.startswith("PAID_") or up.startswith("PREMIUM"):
+        return "PAID"
+    return "FREE"
+
+
+def _is_freemium_sub_type(sub_type: str | None) -> bool:
+    return _normalize_sub_type(sub_type) in {"FREE", "TRIAL", "BONUS"}
+
+
+def _has_payment_signal(user: User | None) -> bool:
+    if not user:
+        return False
+    if int(getattr(user, "stars_paid", 0) or 0) > 0:
+        return True
+    if bool(getattr(user, "first_purchase_done", False)):
+        return True
+    code = str(getattr(user, "current_plan_code", "") or "").strip().lower()
+    if code in {"1_month", "3_months", "6_months", "9_months", "12_months", "start_99"}:
+        return True
+    return False
 
 
 def _plan_mode_label(sub_type: str | None) -> str:
     st = _normalize_sub_type(sub_type or "")
-    if st == "FREE":
+    if st in {"FREE", "TRIAL", "BONUS"}:
         return f"до {FREE_TOTAL_GB} ГБ, до {FREE_LIMIT_IP} устройств, до {FREE_SPEED_MBIT} Мбит/с"
-    return f"безлимит, до {PAID_LIMIT_IP} устройств"
+    return f"полный доступ, до {PAID_LIMIT_IP} устройств"
 
 
 def _plan_label_ru(sub_type: str | None) -> str:
     st = _normalize_sub_type(sub_type or "")
     if st == "FREE":
         return "Бесплатный"
+    if st == "TRIAL":
+        return "Пробный"
+    if st == "BONUS":
+        return "Бонусный"
     if st == "PAID":
         return "Премиум"
     if st == "MANUAL":
@@ -2218,7 +2381,7 @@ def _is_paid_active_user(user: User | None) -> bool:
     expiry = _naive_utc(user.expiry_at)
     if not user.is_active or not expiry or expiry <= _utcnow():
         return False
-    return _normalize_sub_type(user.sub_type) == "PAID"
+    return _normalize_sub_type(user.sub_type) == "PAID" and _has_payment_signal(user)
 
 
 async def _free_remaining_gb(tg_id: int, *, timeout_sec: float = 3.0) -> tuple[float | None, float]:
@@ -2332,22 +2495,21 @@ async def check_subscription(user_id: int, bot: Bot) -> bool:
 
 TEXTS = {
     "welcome": (
-        "🛡 *PORTAL | Network Security*\n\n"
-        "Ваш личный шлюз в свободный и безопасный интернет.\n"
-        "Мы используем протоколы нового поколения (Reality), которые сложно обнаружить.\n\n"
-        "⚡ *Возможности:*\n"
-        "├ 🚀 Скорость без ограничений\n"
-        "├ 🌍 Локации: 🇵🇱 🇮🇹 🇺🇸 🇩🇪\n"
-        "├ 🔒 Полная приватность\n"
-        "└ 📱 Поддержка iOS, Android, PC\n\n"
-        "🔻 *Нажмите кнопку ниже, чтобы начать:*"
+        "🛡 *PORTAL | Защищённый цифровой доступ*\n\n"
+        "Понятный запуск через Telegram, выбор плана под ваш сценарий и быстрый путь к подключению.\n\n"
+        "⚡ *Что внутри:*\n"
+        "├ 🚀 Запуск за 1-2 минуты\n"
+        "├ 🌍 Выбор стран по тарифу\n"
+        "├ 🔒 Защищённая передача данных\n"
+        "└ 📱 Поддержка iOS, Android и Desktop\n\n"
+        "🔻 *Нажмите кнопку ниже, чтобы продолжить:*"
     ),
     "choose_tariff": (
         "💎 *Выберите уровень доступа*\n\n"
-        "Все тарифы включают:\n"
-        "✅ Безлимитный трафик\n"
-        "✅ Максимальную скорость (до 1 Gbit/s)\n"
-        "✅ До 5 устройств одновременно\n\n"
+        "Каждый план включает:\n"
+        "✅ Понятный срок доступа\n"
+        "✅ Выбор стран по политике тарифа\n"
+        "✅ До 5 устройств в платных планах\n\n"
         "👇 *Тарифные планы:*"
     ),
     "portal_ready": (
@@ -2360,7 +2522,7 @@ TEXTS = {
     ),
     "already_active": (
         "🛡 *Система активна*\n\n"
-        "Ваш защищенный канал работает исправно.\n"
+        "Доступ уже активен и готов к работе.\n"
         "📅 Действует до: `{expiry}`\n\n"
         "Нужен ключ для нового устройства? Жми кнопку ниже."
     ),
@@ -2376,15 +2538,15 @@ TEXTS = {
     ),
     "no_subscription": (
         "⛔️ *Доступ ограничен*\n\n"
-        "У вас нет активной цифровой лицензии.\n"
-        "Подключите тариф, чтобы активировать защищенный канал."
+        "У вас нет активного периода доступа.\n"
+        "Подключите подходящий план, чтобы продолжить."
     ),
     "instruction": (
         "⚙️ *Быстрая настройка*\n\n"
         "1️⃣ Нажмите кнопку *«🌐 ОТКРЫТЬ ПОРТАЛ (WEB APP)»*\n"
         "2️⃣ Скопируйте ваш *Ключ доступа*\n"
-        "3️⃣ Скачайте приложение (Hiddify / v2rayNG)\n"
-        "4️⃣ Вставьте ключ и нажмите «Подключить»\n\n"
+        "3️⃣ Выберите приложение под вашу платформу\n"
+        "4️⃣ Импортируйте ключ и нажмите «Подключить»\n\n"
         "_Внутри WebApp есть подробные подсказки для каждой ОС._"
     ),
     "admin_stats": (
@@ -2393,8 +2555,8 @@ TEXTS = {
         "🟢 Активных: `{active}`\n"
         "💰 Оборот: `{stars}` Stars"
     ),
-    "trial_used": "❌ Бесплатный режим уже использован. Выберите платный тариф.",
-    "payment_success": "✅ *Оплата принята!* Генерируем ключи шифрования...",
+    "trial_used": "❌ Бесплатный режим уже использован. Выберите платный план.",
+    "payment_success": "✅ *Оплата принята!* Обновляем статус доступа...",
     "gift_success": "✅ Подписка выдана пользователю {tg_id} на {days} дней."
 }
 
@@ -2547,16 +2709,16 @@ def build_choose_tariff_text() -> str:
         savings.append(f"1 год: -{s12}%")
     savings_line = (" (" + ", ".join(savings) + ")") if savings else ""
 
-    payment_hint = "_Оплата Telegram Stars — мгновенная активация._"
+    payment_hint = "_Оплата Telegram Stars доступна как быстрый резервный путь._"
     if BOT_RUB_BUTTON_ENABLED:
-        payment_hint = "_Оплата ₽ на сайте — основной путь. Telegram Stars доступны как резервный._"
+        payment_hint = "_Оплата ₽ на сайте — основной путь. Telegram Stars доступны как резервный вариант._"
 
     return (
         "💎 *Выберите уровень доступа*\n\n"
         f"🆓 *Бесплатный* — 1 страна: {free_label}\n"
         f"💠 *Премиум* — {paid_count} стран: {paid_list}\n\n"
         f"Бесплатный: до {FREE_TOTAL_GB} ГБ, до {FREE_LIMIT_IP} устройств (по IP), до {FREE_SPEED_MBIT} Мбит/с.\n"
-        "Бесплатный: соцсети + AI, медиасервисы могут идти напрямую.\n"
+        "Бесплатный: приоритет для соцсетей и AI-сервисов; часть медиасервисов может идти напрямую.\n"
         f"Премиум: полный доступ, переключение стран, до {PAID_LIMIT_IP} устройств.\n\n"
         f"💰 *Выгода при оплате на срок:*{savings_line}\n\n"
         f"{payment_hint}"
@@ -2566,8 +2728,8 @@ def build_choose_tariff_text() -> str:
 def _dual_pay_text() -> str:
     return (
         "💳 *Оплата в рублях + Stars*\n\n"
-        "Рекомендуем путь через сайт: карта/СБП и быстрый checkout.\n"
-        "Telegram Stars остаются как резервный способ.\n\n"
+        "Рекомендуем путь через сайт: карта/СБП и прозрачный checkout.\n"
+        "Telegram Stars остаются как дополнительный способ.\n\n"
         "Выберите, как продолжить:"
     )
 
@@ -2581,7 +2743,7 @@ def _dual_pay_keyboard(*, tg_id: int, show_trial: bool) -> InlineKeyboardMarkup:
         campaign_key=str(ctx.get("campaign_key") or ""),
     )
     rows: list[list[InlineKeyboardButton]] = [
-        [InlineKeyboardButton(text="💳 Оплатить ₽ (карта/СБП)", url=checkout_url)],
+        [InlineKeyboardButton(text="💳 Открыть оплату ₽ (карта/СБП)", url=checkout_url)],
         [InlineKeyboardButton(text="⭐ Оплатить Stars", callback_data="charge_stars")],
     ]
     if show_trial:
@@ -2601,14 +2763,11 @@ def main_keyboard_specs(tg_id: int = 0) -> list[list[dict[str, str]]]:
             ),
         ],
         [
-            _btn_spec(text="📊 Статус", callback_data="status"),
-            _btn_spec(text="🔑 Мой ключ", callback_data="show_key"),
+            _btn_spec(text="📦 Подписка", callback_data="status"),
+            _btn_spec(text="🔌 Подключение", callback_data="instruction"),
         ],
         [
             _btn_spec(text="🎁 Бонусы", callback_data="menu_bonuses"),
-        ],
-        [
-            _btn_spec(text="🛰 Ноды", callback_data="network_status"),
             _btn_spec(text="🆘 Поддержка", callback_data="support"),
         ],
         [
@@ -2714,6 +2873,7 @@ async def cmd_start(message: Message):
     deeplink_promo_code = ""
     deeplink_campaign_key = ""
     friend_gift_referral_code = ""
+    opening_bonus_requested = False
     if message.text:
         parts = message.text.split()
         if len(parts) > 1:
@@ -2725,6 +2885,12 @@ async def cmd_start(message: Message):
                 referral_code = code_part.upper()
             deeplink_promo_code, deeplink_campaign_key = _parse_start_deeplink_context(start_arg)
             friend_gift_referral_code = _parse_friend_gift_ref_code(start_arg)
+            start_link_action = _resolve_start_link_action(start_arg)
+            if str(start_link_action.get("promo_code") or "").strip():
+                deeplink_promo_code = str(start_link_action.get("promo_code") or "").strip().upper()[:20]
+            if str(start_link_action.get("campaign_key") or "").strip():
+                deeplink_campaign_key = str(start_link_action.get("campaign_key") or "").strip()[:64]
+            opening_bonus_requested = bool(start_link_action.get("opening_bonus"))
 
     try:
         await message.delete()
@@ -2774,6 +2940,7 @@ async def cmd_start(message: Message):
         and start_arg
         and start_arg.strip().lower() == OPENING_PREMIUM_START_CODE
     )
+    promo_requested = bool(promo_requested or opening_bonus_requested)
     if promo_requested:
         activated, reason = await _try_activate_opening_premium_bonus(
             message=message,
@@ -2885,7 +3052,7 @@ async def cmd_start(message: Message):
 
     text = (
         "🛡 *Добро пожаловать в PORTAL*\n\n"
-        "Мы подготовили систему защищенного доступа.\n"
+        "Мы подготовили понятный путь запуска и подключения.\n"
         "Как вы хотите настроить подключение?\n\n"
         "🐣 *Новичок*\n"
         "«Хочу быстро и просто, без технических деталей».\n\n"
@@ -2941,7 +3108,7 @@ async def show_tariffs(callback: CallbackQuery):
     # Show Free only if user has no active paid access. It should not "downgrade" paid users.
     now = _utcnow()
     expiry = _naive_utc(user.expiry_at) if user else None
-    has_active = bool(user and user.is_active and expiry and expiry > now and _normalize_sub_type(user.sub_type) != "FREE")
+    has_active = bool(user and user.is_active and expiry and expiry > now and not _is_freemium_sub_type(user.sub_type))
     show_trial = not has_active
 
     if BOT_RUB_BUTTON_ENABLED:
@@ -2968,7 +3135,7 @@ async def show_tariffs_stars(callback: CallbackQuery):
     user = get_user(tg_id)
     now = _utcnow()
     expiry = _naive_utc(user.expiry_at) if user else None
-    has_active = bool(user and user.is_active and expiry and expiry > now and _normalize_sub_type(user.sub_type) != "FREE")
+    has_active = bool(user and user.is_active and expiry and expiry > now and not _is_freemium_sub_type(user.sub_type))
     show_trial = not has_active
     await callback.message.edit_text(
         build_choose_tariff_text(),
@@ -3044,7 +3211,7 @@ async def accept_tos(callback: CallbackQuery):
 
     now = _utcnow()
     expiry = _naive_utc(user.expiry_at) if user else None
-    has_active = bool(user and user.is_active and expiry and expiry > now and _normalize_sub_type(user.sub_type) != "FREE")
+    has_active = bool(user and user.is_active and expiry and expiry > now and not _is_freemium_sub_type(user.sub_type))
     show_trial = not has_active
     if BOT_RUB_BUTTON_ENABLED:
         await callback.message.edit_text(
@@ -3102,10 +3269,10 @@ async def show_status(callback: CallbackQuery):
         status_text=status_name,
         plan_label=_plan_label_ru(user.sub_type if user else ""),
     )
-    base_limit = FREE_LIMIT_IP if _normalize_sub_type(user.sub_type) == "FREE" else PAID_LIMIT_IP
+    base_limit = FREE_LIMIT_IP if _is_freemium_sub_type(user.sub_type) else PAID_LIMIT_IP
     extra_slots = active_family_slots(tg_id)
     status_text += f"\n📱 Устройства: `{base_limit + extra_slots}` (база {base_limit} + family {extra_slots})"
-    if _normalize_sub_type(user.sub_type) == "FREE":
+    if _is_freemium_sub_type(user.sub_type):
         remaining_gb, total_gb = await _free_remaining_gb(tg_id)
         if remaining_gb is None:
             status_text += f"\n📊 Бесплатный лимит: до `{int(total_gb)}` ГБ\n⏳ Остаток: `н/д`"
@@ -3146,6 +3313,14 @@ async def show_key(callback: CallbackQuery):
     tg_id = callback.from_user.id
     track_event(tg_id=tg_id, event_name="clicked_connect", source="bot")
     user = get_user(tg_id)
+
+    if not check_tos_accepted(tg_id):
+        await callback.message.edit_text(
+            _tos_offer_text(),
+            reply_markup=_tos_offer_keyboard(back_callback="back"),
+            parse_mode=ParseMode.MARKDOWN,
+        )
+        return
     
     if not user:
         rows = [
@@ -3186,6 +3361,29 @@ async def show_key(callback: CallbackQuery):
             )
         return
 
+    expiry = _naive_utc(user.expiry_at)
+    if not bool(user.is_active and expiry and expiry > _utcnow()):
+        rows = [
+            [
+                _btn_spec(
+                    text=_main_connect_cta_text(tg_id),
+                    callback_data="charge",
+                    style=BTN_STYLE_PRIMARY,
+                    icon_custom_emoji_id=BTN_EMOJI_PRIMARY_ID or None,
+                )
+            ],
+            [_btn_spec(text="◀️ Назад", callback_data="back")],
+        ]
+        await _edit_text_with_specs(
+            bot=callback.message.bot,
+            chat_id=callback.message.chat.id,
+            message_id=callback.message.message_id,
+            text="⚠️ *Активного доступа пока нет.*\n\nВыберите тариф, чтобы получить новый ключ.",
+            rows=rows,
+            parse_mode=ParseMode.MARKDOWN,
+        )
+        return
+
     msg = await callback.message.edit_text("🔄 `Подключаю защищённый узел...`", parse_mode=ParseMode.MARKDOWN)
     await asyncio.sleep(0.35)
     await msg.edit_text("🔄 `Проверяю соединение (TLS 1.3)...`", parse_mode=ParseMode.MARKDOWN)
@@ -3195,7 +3393,7 @@ async def show_key(callback: CallbackQuery):
 
     sub_link = build_subscription_link(tg_id)
 
-    is_free = _normalize_sub_type(user.sub_type if user else "") == "FREE"
+    is_free = _is_freemium_sub_type(user.sub_type if user else "")
     free_note = ""
     if is_free:
         nodes = _bot_enabled_nodes()
@@ -3642,13 +3840,11 @@ async def show_referral(callback: CallbackQuery):
     
     # Generate referral link with SWAZ code
     invite_link = f"https://t.me/{BOT_USERNAME}?start={ref_code}"
-    gift_link = f"https://t.me/{BOT_USERNAME}?start=gift3_{ref_code}"
     ref_count = stats['count']
     bonus_earned = stats['bonus_earned']
     
     kb = InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text="📤 Поделиться ссылкой", url=f"https://t.me/share/url?url={invite_link}&text=🛡 PORTAL — приглашение в защищенную сеть")],
-        [InlineKeyboardButton(text=f"🎁 Подарить {FRIEND_GIFT_DAYS} дня другу", url=f"https://t.me/share/url?url={gift_link}&text=🎁 Дарю вам стартовый доступ в PORTAL. Активируйте по ссылке и проверьте подключение.")],
+        [InlineKeyboardButton(text="📤 Поделиться реферальной ссылкой", url=f"https://t.me/share/url?url={invite_link}&text=🛡 PORTAL — приглашение в защищенную сеть")],
         [InlineKeyboardButton(text="◀️ Назад", callback_data="back")]
     ])
     
@@ -3658,7 +3854,6 @@ async def show_referral(callback: CallbackQuery):
         f"Расширяйте покрытие PORTAL, подключая новые узлы (друзей).\n"
         f"├ *Им:* скидка 20% на первый доступ\n"
         f"└ *Вам:* +{REFERRAL_BONUS_DAYS} дней доступа за каждую активацию\n\n"
-        f"🎁 *Быстрый прогрев:* отправьте gift-ссылку на *{FRIEND_GIFT_DAYS} дня*.\n"
         "Если пользователь оплатит после теста, реферальный бонус начислится автоматически.\n\n"
         f"👇 *Ваша ссылка для приглашения:*\n`{invite_link}`\n\n"
         f"Активировано по ссылке: {ref_count}\n"
@@ -3939,12 +4134,12 @@ FAQ_ANSWERS = {
         "Не помогло? Напиши в поддержку 👇"
     ),
     "renew": (
-        "💳 *Как продлить подписку?*\n\n"
+        "💳 *Как продлить доступ?*\n\n"
         f"1️⃣ Открой бота @{BOT_USERNAME_MD}\n\n"
         "2️⃣ Нажми *🛒 Тарифы*\n\n"
-        "3️⃣ Выбери нужный тариф\n\n"
-        "4️⃣ Оплати Stars ⭐️\n\n"
-        "Подписка продлится автоматически!"
+        "3️⃣ Выбери нужный план\n\n"
+        "4️⃣ Открой оплату ₽ (карта/СБП) или Stars ⭐️\n\n"
+        "После успешной оплаты статус обновится автоматически."
     ),
     "referral": (
         "🎁 *Реферальная программа*\n\n"
@@ -3957,7 +4152,7 @@ FAQ_ANSWERS = {
         "📲 *Смена устройства*\n\n"
         "Просто скачай приложение на новый телефон и добавь ту же ссылку подписки.\n\n"
         "Ссылка: *🔑 Мой ключ* → скопируй → вставь в новое приложение.\n\n"
-        "Лимит устройств: *без ограничений*! 🎉"
+        f"Лимит устройств зависит от плана: до *{PAID_LIMIT_IP}* в платных режимах."
     ),
 }
 
@@ -4061,6 +4256,15 @@ async def share_traffic(message: Message, bot: Bot):
 #           REVIEWS
 # ==========================================
 
+def _mask_review_username(username: str | None) -> str:
+    raw = (username or "").strip()
+    if raw.startswith("@"):
+        raw = raw[1:].strip()
+    if not raw:
+        return "Пользователь"
+    return f"{raw[:2]}***"
+
+
 def has_user_review(tg_id: int) -> bool:
     """Check if user already left a review"""
     session = Session()
@@ -4093,7 +4297,7 @@ def get_featured_reviews(limit: int = 5) -> list:
     session = Session()
     reviews = session.query(Review).filter_by(is_featured=True).order_by(Review.created_at.desc()).limit(limit).all()
     result = [{
-        "username": r.username or "Аноним",
+        "username": _mask_review_username(r.username),
         "rating": r.rating,
         "text": r.text,
         "date": r.created_at.strftime("%d.%m.%Y") if r.created_at else ""
@@ -4433,6 +4637,188 @@ async def handle_text_input(message: Message):
             await message.answer(f"✅ Сообщение{btn_info} отправлено {sent} юзерам")
             return
 
+        if action == "admin_promo_create_form":
+            raw = (message.text or "").strip()
+            parts = [p.strip() for p in raw.split("|")]
+            if len(parts) < 4:
+                await message.answer(
+                    "Формат: `CODE|days|14|100` или `CODE|discount|20|50|2026-03-01T00:00:00`",
+                    parse_mode=ParseMode.MARKDOWN,
+                )
+                return
+            code = re.sub(r"[^A-Z0-9_]+", "", parts[0].upper())[:20]
+            promo_type = parts[1].lower()
+            if promo_type not in {"days", "discount"}:
+                await message.answer("Тип должен быть `days` или `discount`.", parse_mode=ParseMode.MARKDOWN)
+                return
+            try:
+                value = int(parts[2])
+                uses = int(parts[3])
+            except Exception:
+                await message.answer("value и uses должны быть числами.", parse_mode=ParseMode.MARKDOWN)
+                return
+            expires_at = None
+            if len(parts) >= 5 and parts[4]:
+                try:
+                    expires_at = datetime.fromisoformat(parts[4])
+                except Exception:
+                    await message.answer("Неверный expires_at. Используйте ISO формат.", parse_mode=ParseMode.MARKDOWN)
+                    return
+
+            s = Session()
+            try:
+                exists = s.query(PromoCode.id).filter(func.upper(PromoCode.code) == code).first()
+                if exists:
+                    await message.answer("Промокод уже существует.")
+                    return
+                row = PromoCode(code=code, promo_type=promo_type, value=value, uses_left=uses, expires_at=expires_at)
+                s.add(row)
+                s.commit()
+            finally:
+                s.close()
+            await message.answer(f"✅ Промокод `{code}` создан.", parse_mode=ParseMode.MARKDOWN)
+            return
+
+        if action == "admin_live_create":
+            raw = (message.text or "").strip()
+            parts = [p.strip() for p in raw.split("|")]
+            if len(parts) < 3:
+                await message.answer(
+                    "Формат: `Заголовок|Кратко|@channel|123` или `Заголовок|Кратко|https://...`",
+                    parse_mode=ParseMode.MARKDOWN,
+                )
+                return
+            title = parts[0][:160]
+            summary = parts[1][:600]
+            channel_username = None
+            post_id = None
+            link = ""
+            if len(parts) >= 4 and parts[2].startswith("@"):
+                channel_username = parts[2].lstrip("@")[:64]
+                try:
+                    post_id = int(parts[3])
+                except Exception:
+                    await message.answer("post_id должен быть числом.", parse_mode=ParseMode.MARKDOWN)
+                    return
+                link = f"https://t.me/{channel_username}/{post_id}"
+            else:
+                link = parts[2][:600]
+            if not link:
+                await message.answer("Ссылка не заполнена.")
+                return
+
+            s = Session()
+            try:
+                now = _utcnow()
+                row = LiveUpdate(
+                    title=title,
+                    summary=summary,
+                    link=link,
+                    channel_username=channel_username,
+                    post_id=post_id,
+                    is_active=True,
+                    sort_order=100,
+                    created_at=now,
+                    updated_at=now,
+                )
+                s.add(row)
+                s.commit()
+            finally:
+                s.close()
+            await message.answer("✅ Обновление сохранено.")
+            return
+
+        if action == "admin_start_create":
+            raw = (message.text or "").strip()
+            parts = [p.strip() for p in raw.split("|")]
+            if len(parts) < 3:
+                await message.answer(
+                    "Формат: `code|Описание|target_action`",
+                    parse_mode=ParseMode.MARKDOWN,
+                )
+                return
+            code = re.sub(r"[^a-z0-9_-]+", "", parts[0].lower())[:64]
+            if len(code) < 2:
+                await message.answer("Некорректный code.")
+                return
+            description = parts[1][:240]
+            target_action = parts[2][:64]
+
+            s = Session()
+            try:
+                exists = s.query(StartLink.id).filter(func.lower(StartLink.code) == code).first()
+                if exists:
+                    await message.answer("Такой code уже существует.")
+                    return
+                now = _utcnow()
+                row = StartLink(
+                    code=code,
+                    description=description or None,
+                    target_action=target_action or None,
+                    is_active=True,
+                    created_at=now,
+                    updated_at=now,
+                )
+                s.add(row)
+                s.commit()
+            finally:
+                s.close()
+            await message.answer(
+                f"✅ Ссылка создана:\n`https://t.me/{BOT_USERNAME}?start={code}`",
+                parse_mode=ParseMode.MARKDOWN,
+            )
+            return
+
+        if action == "admin_start_edit":
+            link_id = int(action_info.get("link_id") or 0)
+            if link_id <= 0:
+                await message.answer("Некорректный link_id.")
+                return
+            raw = (message.text or "").strip()
+            parts = [p.strip() for p in raw.split("|")]
+            if len(parts) < 3:
+                await message.answer(
+                    "Формат: `code|Описание|target_action`",
+                    parse_mode=ParseMode.MARKDOWN,
+                )
+                return
+
+            code = re.sub(r"[^a-z0-9_-]+", "", parts[0].lower())[:64]
+            if len(code) < 2:
+                await message.answer("Некорректный code.")
+                return
+            description = parts[1][:240]
+            target_action = parts[2][:64]
+
+            s = Session()
+            try:
+                row = s.query(StartLink).filter(StartLink.id == link_id).first()
+                if not row:
+                    await message.answer("Ссылка не найдена.")
+                    return
+                exists = (
+                    s.query(StartLink.id)
+                    .filter(func.lower(StartLink.code) == code)
+                    .filter(StartLink.id != link_id)
+                    .first()
+                )
+                if exists:
+                    await message.answer("Такой code уже занят.")
+                    return
+                row.code = code
+                row.description = description or None
+                row.target_action = target_action or None
+                row.updated_at = _utcnow()
+                s.commit()
+            finally:
+                s.close()
+
+            await message.answer(
+                f"✅ Ссылка обновлена:\n`https://t.me/{BOT_USERNAME}?start={code}`",
+                parse_mode=ParseMode.MARKDOWN,
+            )
+            return
+
         if action == "broadcast_set_button":
             draft = admin_broadcast_drafts.get(ADMIN_ID)
             if not draft:
@@ -4479,10 +4865,35 @@ async def handle_text_input(message: Message):
                 await message.answer("Диапазон: 1–90 дней.", parse_mode=ParseMode.MARKDOWN)
                 return
 
-            global WHEEL_COOLDOWN_DAYS
-            WHEEL_COOLDOWN_DAYS = days
+            _save_wheel_config(cooldown_days=days)
             audit_admin(ADMIN_ID, "admin_wheel_cd_set", meta=f"days={days}")
             await message.answer(f"✅ Кулдаун обновлён: {days}д.")
+            return
+
+        if action == "wheel_weights":
+            raw = (message.text or "").strip()
+            pairs = [p.strip() for p in raw.split(",") if p.strip()]
+            parsed: list[tuple[int, int]] = []
+            for pair in pairs:
+                if ":" not in pair:
+                    await message.answer("Формат весов: `1:45,3:35,7:15,30:5`", parse_mode=ParseMode.MARKDOWN)
+                    return
+                d_raw, w_raw = [x.strip() for x in pair.split(":", 1)]
+                try:
+                    d_val = int(d_raw)
+                    w_val = int(w_raw)
+                except Exception:
+                    await message.answer("Значения должны быть числами.", parse_mode=ParseMode.MARKDOWN)
+                    return
+                if d_val <= 0 or w_val <= 0:
+                    await message.answer("days/weight должны быть > 0.", parse_mode=ParseMode.MARKDOWN)
+                    return
+                parsed.append((d_val, w_val))
+            if not parsed:
+                await message.answer("Добавьте минимум один приз.")
+                return
+            _save_wheel_config(weights=parsed, preset="manual")
+            await message.answer("✅ Веса рулетки обновлены.")
             return
 
         if action == "manual_create":
@@ -4579,23 +4990,25 @@ async def handle_text_input(message: Message):
         elif action == "mass_extend":
             session = Session()
             now = _utcnow()
-            users = (
-                session.query(User)
-                .filter(User.is_active == True)
-                .filter(User.expiry_at.isnot(None))
-                .filter(User.expiry_at > now)
-                .all()
+            try:
+                count = (
+                    session.query(User)
+                    .filter(User.is_active == True)
+                    .filter(User.expiry_at.isnot(None))
+                    .filter(User.expiry_at > now)
+                    .filter(User.tg_id != ADMIN_ID)
+                    .count()
+                )
+            finally:
+                session.close()
+
+            await message.answer(
+                f"⚠️ *Подтверждение действия*\n\n"
+                f"Добавить *{value}* дней активному сегменту.\n"
+                f"Будет затронуто: *{count}* пользователей.",
+                parse_mode=ParseMode.MARKDOWN,
+                reply_markup=_bulk_confirm_kb(f"mass_extend_run_{value}"),
             )
-            count = 0
-            for user in users:
-                if user.tg_id in PROTECTED_USERS:
-                    continue
-                expiry = _naive_utc(user.expiry_at) or now
-                user.expiry_at = expiry + timedelta(days=value)
-                count += 1
-            session.commit()
-            session.close()
-            await message.answer(f"✅ Продлено на {value} дней для {count} юзеров", parse_mode=ParseMode.MARKDOWN)
         
         return
     
@@ -5123,12 +5536,16 @@ async def show_admin_panel(callback: CallbackQuery):
             InlineKeyboardButton(text="🎰 Рулетка", callback_data="admin_wheel")
         ],
         [
-            InlineKeyboardButton(text="📊 Mass-действия", callback_data="admin_mass"),
+            InlineKeyboardButton(text="📊 Групповые действия", callback_data="admin_mass"),
             InlineKeyboardButton(text="❤️ Health", callback_data="admin_health")
         ],
         [
             InlineKeyboardButton(text="Sync usernames", callback_data="admin_sync"),
             InlineKeyboardButton(text="🎁 Подарки", callback_data="admin_gift_menu")
+        ],
+        [
+            InlineKeyboardButton(text="📰 Последние обновления", callback_data="admin_live_updates"),
+            InlineKeyboardButton(text="🔗 Launch ссылки", callback_data="admin_start_links"),
         ],
         [
             InlineKeyboardButton(text="🎫 Очередь тикетов", callback_data="admin_tickets"),
@@ -5242,12 +5659,11 @@ async def admin_search_prompt(callback: CallbackQuery):
 
 @router.callback_query(F.data == "admin_promos")
 async def admin_promos_menu(callback: CallbackQuery):
-    """Show promo codes management"""
     if callback.from_user.id != ADMIN_ID:
         return
     
     session = Session()
-    promos = session.query(PromoCode).filter(PromoCode.uses_left != 0).all()
+    promos = session.query(PromoCode).order_by(PromoCode.created_at.desc()).limit(20).all()
     session.close()
     
     if promos:
@@ -5260,40 +5676,62 @@ async def admin_promos_menu(callback: CallbackQuery):
     else:
         promo_text = "_Нет активных промокодов_"
     
-    kb = InlineKeyboardMarkup(inline_keyboard=[
+    kb_rows: list[list[InlineKeyboardButton]] = [
         [InlineKeyboardButton(text="➕ Создать промокод", callback_data="admin_promo_create")],
-        [InlineKeyboardButton(text="◀️ Назад", callback_data="admin")]
-    ])
+    ]
+    for p in promos[:8]:
+        kb_rows.append(
+            [InlineKeyboardButton(text=f"🗑 Удалить {p.code}", callback_data=f"admin_promo_delete_{p.code}")]
+        )
+    kb_rows.append([InlineKeyboardButton(text="◀️ Назад", callback_data="admin")])
     
     await callback.message.edit_text(
-        f"🎫 *Промокоды*\n\n{promo_text}\n\n"
-        f"_Создать: /promo create CODE gb 10 100_",
-        reply_markup=kb,
+        f"🎫 *Промокоды*\n\n{promo_text}",
+        reply_markup=InlineKeyboardMarkup(inline_keyboard=kb_rows),
         parse_mode=ParseMode.MARKDOWN
     )
     await callback.answer()
 
 @router.callback_query(F.data == "admin_promo_create")
 async def admin_promo_create(callback: CallbackQuery):
-    """Prompt for promo creation"""
     if callback.from_user.id != ADMIN_ID:
         return
-    
-    kb = InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text="◀️ Назад", callback_data="admin_promos")]
-    ])
-    
+
+    admin_pending_actions[ADMIN_ID] = {"action": "admin_promo_create_form"}
     await callback.message.edit_text(
         "➕ *Создать промокод*\n\n"
-        "Используй команду:\n\n"
-        "`/promo create CODE gb 10 100`\n"
-        "— создаст промокод CODE на +10 дней (100 использований)\n\n"
-        "`/promo create SALE discount 20 50`\n"
-        "— создаст промокод SALE на скидку 20% (50 использований)",
-        reply_markup=kb,
+        "Формат:\n"
+        "`CODE|days|14|100`\n"
+        "или\n"
+        "`CODE|discount|20|50|2026-03-01T00:00:00`\n\n"
+        "Последнее поле `expires_at` необязательное.",
+        reply_markup=InlineKeyboardMarkup(inline_keyboard=[[InlineKeyboardButton(text="◀️ Назад", callback_data="admin_promos")]]),
         parse_mode=ParseMode.MARKDOWN
     )
     await callback.answer()
+
+
+@router.callback_query(F.data.startswith("admin_promo_delete_"))
+async def admin_promo_delete(callback: CallbackQuery):
+    if callback.from_user.id != ADMIN_ID:
+        return
+    code = str(callback.data or "").replace("admin_promo_delete_", "", 1).strip().upper()[:20]
+    if not code:
+        await callback.answer("Некорректный код", show_alert=True)
+        return
+
+    s = Session()
+    try:
+        row = s.query(PromoCode).filter(func.upper(PromoCode.code) == code).first()
+        if not row:
+            await callback.answer("Промокод не найден", show_alert=True)
+            return
+        s.delete(row)
+        s.commit()
+    finally:
+        s.close()
+    audit_admin(ADMIN_ID, "admin_promo_delete", meta=f"code={code}")
+    await admin_promos_menu(callback)
 
 @router.callback_query(F.data == "admin_reviews")
 async def admin_reviews_menu(callback: CallbackQuery):
@@ -5388,7 +5826,6 @@ async def admin_broadcast_menu(callback: CallbackQuery):
     
     kb = InlineKeyboardMarkup(inline_keyboard=[
         [InlineKeyboardButton(text="🧩 Конструктор рассылки", callback_data="admin_bcast_compose")],
-        [InlineKeyboardButton(text="✍️ Текстовая рассылка (legacy)", callback_data="admin_custom_msg")],
         [InlineKeyboardButton(text="🔄 Обновить ссылки", callback_data="admin_broadcast_links")],
         *template_btns,
         [InlineKeyboardButton(text="◀️ Назад", callback_data="admin")]
@@ -5400,7 +5837,7 @@ async def admin_broadcast_menu(callback: CallbackQuery):
         f"📢 *Рассылка*\n\n"
         f"Активных юзеров: {active}{tpl_hint}\n\n"
         f"_Сообщение одному пользователю:_ открой карточку юзера → `✉️ Сообщение`.\n\n"
-        f"_Команды:_\n"
+        f"_Шаблоны и команды:_\n"
         f"`/template add key текст` — создать\n"
         f"`/template list` — список\n"
         f"`/template send key` — всем\n"
@@ -5478,7 +5915,7 @@ async def admin_sync_free_pl(callback: CallbackQuery):
         now = datetime.utcnow()
         users = (
             s.query(User)
-            .filter(User.sub_type == "FREE")
+            .filter(func.upper(User.sub_type).in_(["FREE", "TRIAL", "BONUS"]))
             .filter(User.is_active == True)
             .filter((User.expiry_at.is_(None)) | (User.expiry_at > now))
             .order_by(User.created_at.asc())
@@ -5572,7 +6009,8 @@ async def _render_reviews_page(*, callback: CallbackQuery, featured_only: bool, 
     ]
 
     for r in rows:
-        u = f"@{r.username}" if r.username else "anon"
+        masked = _mask_review_username(r.username)
+        u = f"@{masked}" if masked != "Пользователь" else masked
         stars = "⭐" * int(r.rating or 0)
         txt = (r.text or "").strip()
         if len(txt) > 120:
@@ -5831,7 +6269,7 @@ async def admin_custom_msg_prompt(callback: CallbackQuery):
         "*Формат с кнопкой URL:*\n"
         "`Текст сообщения\n---\nТекст кнопки|https://ссылка.com`\n\n"
         "_Пример:_\n"
-        "`Привет! Новое обновление!\n---\n🌐 Подробнее|https://kiwunaka.space/`",
+        "`Привет! Новое обновление!\n---\n🌐 Подробнее|https://portal-privacy.online/`",
         reply_markup=kb,
         parse_mode=ParseMode.MARKDOWN
     )
@@ -5923,33 +6361,274 @@ async def send_template_to_all(callback: CallbackQuery, bot: Bot):
 
 @router.callback_query(F.data == "admin_wheel")
 async def admin_wheel_settings(callback: CallbackQuery):
-    """Show wheel settings"""
     if callback.from_user.id != ADMIN_ID:
         return
-    
-    # Calculate percentages
-    total_weight = sum(w for _, w in WHEEL_PRIZES)
+
+    cfg = _load_wheel_config()
+    weights = list(cfg.get("weights") or WHEEL_DEFAULT_PRIZES)
+    cooldown_days = int(cfg.get("cooldown_days") or WHEEL_DEFAULT_COOLDOWN_DAYS)
+    preset = str(cfg.get("preset") or "manual")
+    total_weight = sum(w for _, w in weights)
     prizes_text = []
-    for days, weight in WHEEL_PRIZES:
+    for days, weight in weights:
         pct = (weight / total_weight) * 100
         prizes_text.append(f"• {days} дней — {pct:.0f}%")
-    
-    kb = InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text=f"⚙️ Изменить кулдаун ({WHEEL_COOLDOWN_DAYS}д)", callback_data="wheel_cd")],
-        [InlineKeyboardButton(text="◀️ Назад", callback_data="admin")]
-    ])
-    
+
+    kb = InlineKeyboardMarkup(
+        inline_keyboard=[
+            [
+                InlineKeyboardButton(text="Preset: Balanced", callback_data="wheel_preset_balanced"),
+                InlineKeyboardButton(text="Preset: Steady", callback_data="wheel_preset_steady"),
+            ],
+            [
+                InlineKeyboardButton(text="Preset: Generous", callback_data="wheel_preset_generous"),
+                InlineKeyboardButton(text="✍️ Ручные веса", callback_data="wheel_weights"),
+            ],
+            [InlineKeyboardButton(text=f"⚙️ Кулдаун ({cooldown_days}д)", callback_data="wheel_cd")],
+            [InlineKeyboardButton(text="◀️ Назад", callback_data="admin")],
+        ]
+    )
+
     await callback.message.edit_text(
         "🎰 <b>Настройки рулетки</b>\n\n"
+        + f"<b>Preset:</b> {html.escape(preset)}\n\n"
         "<b>Шансы выигрыша:</b>\n"
         + "\n".join(prizes_text)
         + "\n\n"
-        + f"<b>Кулдаун:</b> {WHEEL_COOLDOWN_DAYS} дней\n\n"
-        + "<i>Для изменения шансов редактируйте <code>WHEEL_PRIZES</code> в bot.py</i>",
+        + f"<b>Кулдаун:</b> {cooldown_days} дней",
         reply_markup=kb,
         parse_mode=ParseMode.HTML,
     )
     await callback.answer()
+
+
+def _live_update_public_link(row: LiveUpdate) -> str:
+    channel = str(getattr(row, "channel_username", "") or "").strip().lstrip("@")
+    post_id = int(getattr(row, "post_id", 0) or 0)
+    if channel and post_id > 0:
+        return f"https://t.me/{channel}/{post_id}"
+    return str(getattr(row, "link", "") or "").strip()
+
+
+@router.callback_query(F.data == "admin_live_updates")
+async def admin_live_updates_menu(callback: CallbackQuery):
+    if callback.from_user.id != ADMIN_ID:
+        return
+
+    s = Session()
+    try:
+        rows = (
+            s.query(LiveUpdate)
+            .order_by(LiveUpdate.sort_order.asc(), LiveUpdate.id.desc())
+            .limit(15)
+            .all()
+        )
+    finally:
+        s.close()
+
+    lines = ["📰 *Последние обновления*\n"]
+    kb_rows: list[list[InlineKeyboardButton]] = []
+    if not rows:
+        lines.append("_Пока пусто_")
+    for row in rows:
+        status = "🟢" if bool(getattr(row, "is_active", False)) else "⚪"
+        lines.append(
+            f"{status} `{int(row.id)}` {row.title}\n"
+            f"↳ {(_live_update_public_link(row) or '—')}"
+        )
+        kb_rows.append(
+            [
+                InlineKeyboardButton(
+                    text=f"{'Выключить' if bool(row.is_active) else 'Включить'} #{int(row.id)}",
+                    callback_data=f"admin_live_toggle_{int(row.id)}",
+                )
+            ]
+        )
+
+    kb_rows.extend(
+        [
+            [InlineKeyboardButton(text="➕ Добавить обновление", callback_data="admin_live_create")],
+            [InlineKeyboardButton(text="◀️ Назад", callback_data="admin")],
+        ]
+    )
+    await callback.message.edit_text(
+        "\n".join(lines),
+        reply_markup=InlineKeyboardMarkup(inline_keyboard=kb_rows),
+        parse_mode=ParseMode.MARKDOWN,
+    )
+    await callback.answer()
+
+
+@router.callback_query(F.data == "admin_live_create")
+async def admin_live_create_prompt(callback: CallbackQuery):
+    if callback.from_user.id != ADMIN_ID:
+        return
+    admin_pending_actions[ADMIN_ID] = {"action": "admin_live_create"}
+    await callback.message.edit_text(
+        "➕ *Новое обновление*\n\n"
+        "Формат:\n"
+        "`Заголовок|Краткое описание|@channel|123`\n\n"
+        "Либо legacy-формат:\n"
+        "`Заголовок|Краткое описание|https://t.me/...`",
+        parse_mode=ParseMode.MARKDOWN,
+        reply_markup=InlineKeyboardMarkup(inline_keyboard=[[InlineKeyboardButton(text="◀️ Назад", callback_data="admin_live_updates")]]),
+    )
+    await callback.answer()
+
+
+@router.callback_query(F.data.startswith("admin_live_toggle_"))
+async def admin_live_toggle(callback: CallbackQuery):
+    if callback.from_user.id != ADMIN_ID:
+        return
+    raw_id = str(callback.data or "").replace("admin_live_toggle_", "", 1)
+    try:
+        update_id = int(raw_id)
+    except Exception:
+        await callback.answer("Некорректный id", show_alert=True)
+        return
+
+    s = Session()
+    try:
+        row = s.query(LiveUpdate).filter(LiveUpdate.id == update_id).first()
+        if not row:
+            await callback.answer("Обновление не найдено", show_alert=True)
+            return
+        row.is_active = not bool(row.is_active)
+        row.updated_at = _utcnow()
+        s.commit()
+    finally:
+        s.close()
+    await admin_live_updates_menu(callback)
+
+
+@router.callback_query(F.data == "admin_start_links")
+async def admin_start_links_menu(callback: CallbackQuery):
+    if callback.from_user.id != ADMIN_ID:
+        return
+    s = Session()
+    try:
+        rows = s.query(StartLink).order_by(StartLink.updated_at.desc(), StartLink.id.desc()).limit(20).all()
+    finally:
+        s.close()
+
+    bot_username = (BOT_USERNAME or "portal_service_bot").lstrip("@")
+    lines = ["🔗 *Launch ссылки*\n"]
+    kb_rows: list[list[InlineKeyboardButton]] = []
+    if not rows:
+        lines.append("_Пока пусто_")
+    for row in rows:
+        code = str(getattr(row, "code", "") or "").strip()
+        state = "🟢" if bool(getattr(row, "is_active", False)) else "⚪"
+        target = str(getattr(row, "target_action", "") or "").strip() or "—"
+        lines.append(
+            f"{state} `{int(row.id)}` `{code}` → `{target}`\n"
+            f"↳ https://t.me/{bot_username}?start={code}"
+        )
+        kb_rows.append(
+            [
+                InlineKeyboardButton(
+                    text=f"{'Деактивировать' if bool(row.is_active) else 'Активировать'} {code}",
+                    callback_data=f"admin_start_toggle_{int(row.id)}",
+                ),
+                InlineKeyboardButton(
+                    text=f"✏️ Изменить {code}",
+                    callback_data=f"admin_start_edit_{int(row.id)}",
+                ),
+            ]
+        )
+
+    kb_rows.extend(
+        [
+            [InlineKeyboardButton(text="➕ Создать launch-ссылку", callback_data="admin_start_create")],
+            [InlineKeyboardButton(text="◀️ Назад", callback_data="admin")],
+        ]
+    )
+    await callback.message.edit_text(
+        "\n".join(lines),
+        reply_markup=InlineKeyboardMarkup(inline_keyboard=kb_rows),
+        parse_mode=ParseMode.MARKDOWN,
+    )
+    await callback.answer()
+
+
+@router.callback_query(F.data == "admin_start_create")
+async def admin_start_create_prompt(callback: CallbackQuery):
+    if callback.from_user.id != ADMIN_ID:
+        return
+    admin_pending_actions[ADMIN_ID] = {"action": "admin_start_create"}
+    await callback.message.edit_text(
+        "➕ *Создать launch-ссылку*\n\n"
+        "Формат:\n"
+        "`code|Описание|target_action`\n\n"
+        "Примеры `target_action`:\n"
+        "• `opening_bonus`\n"
+        "• `promo:WELCOME14`\n"
+        "• `campaign:launch_week_1`\n"
+        "• `campaign_promo:launch_week_1:WELCOME14`",
+        parse_mode=ParseMode.MARKDOWN,
+        reply_markup=InlineKeyboardMarkup(inline_keyboard=[[InlineKeyboardButton(text="◀️ Назад", callback_data="admin_start_links")]]),
+    )
+    await callback.answer()
+
+
+@router.callback_query(F.data.startswith("admin_start_edit_"))
+async def admin_start_edit_prompt(callback: CallbackQuery):
+    if callback.from_user.id != ADMIN_ID:
+        return
+    raw_id = str(callback.data or "").replace("admin_start_edit_", "", 1)
+    try:
+        link_id = int(raw_id)
+    except Exception:
+        await callback.answer("Некорректный id", show_alert=True)
+        return
+
+    s = Session()
+    try:
+        row = s.query(StartLink).filter(StartLink.id == link_id).first()
+        if not row:
+            await callback.answer("Ссылка не найдена", show_alert=True)
+            return
+        code = str(getattr(row, "code", "") or "").strip()
+        description = str(getattr(row, "description", "") or "").strip()
+        target_action = str(getattr(row, "target_action", "") or "").strip()
+    finally:
+        s.close()
+
+    admin_pending_actions[ADMIN_ID] = {"action": "admin_start_edit", "link_id": link_id}
+    await callback.message.edit_text(
+        "✏️ *Редактировать launch-ссылку*\n\n"
+        f"Текущие значения:\n`{code}|{description}|{target_action}`\n\n"
+        "Новый формат:\n"
+        "`code|Описание|target_action`",
+        parse_mode=ParseMode.MARKDOWN,
+        reply_markup=InlineKeyboardMarkup(inline_keyboard=[[InlineKeyboardButton(text="◀️ Назад", callback_data="admin_start_links")]]),
+    )
+    await callback.answer()
+
+
+@router.callback_query(F.data.startswith("admin_start_toggle_"))
+async def admin_start_toggle(callback: CallbackQuery):
+    if callback.from_user.id != ADMIN_ID:
+        return
+    raw_id = str(callback.data or "").replace("admin_start_toggle_", "", 1)
+    try:
+        link_id = int(raw_id)
+    except Exception:
+        await callback.answer("Некорректный id", show_alert=True)
+        return
+
+    s = Session()
+    try:
+        row = s.query(StartLink).filter(StartLink.id == link_id).first()
+        if not row:
+            await callback.answer("Ссылка не найдена", show_alert=True)
+            return
+        row.is_active = not bool(row.is_active)
+        row.updated_at = _utcnow()
+        s.commit()
+    finally:
+        s.close()
+    await admin_start_links_menu(callback)
 
 # ==========================================
 #         MASS ACTIONS
@@ -5957,7 +6636,7 @@ async def admin_wheel_settings(callback: CallbackQuery):
 
 @router.callback_query(F.data == "admin_mass")
 async def admin_mass_actions(callback: CallbackQuery):
-    """Show mass actions menu"""
+    """Show grouped bulk actions menu with explicit target counts."""
     if callback.from_user.id != ADMIN_ID:
         return
     
@@ -5990,19 +6669,19 @@ async def admin_mass_actions(callback: CallbackQuery):
     
     kb = InlineKeyboardMarkup(inline_keyboard=[
         [
-            InlineKeyboardButton(text="🎁 Промо: +14 дней всем", callback_data="mass_promo_14"),
-            InlineKeyboardButton(text="🧹 Нормализовать планы", callback_data="mass_normalize_plans"),
+            InlineKeyboardButton(text="➕ Добавить дни активным", callback_data="mass_extend_active"),
+            InlineKeyboardButton(text=f"📨 Отправить напоминание ({expiring})", callback_data="mass_remind_expiring"),
         ],
         [
-            InlineKeyboardButton(text="🔄 Sync на ноды", callback_data="mass_sync_nodes"),
-            InlineKeyboardButton(text=f"📅 Продлить активных ({active})", callback_data="mass_extend_active"),
+            InlineKeyboardButton(text="🎁 +14 дней сегменту", callback_data="mass_promo_14"),
+            InlineKeyboardButton(text="🔄 Синхронизировать с нодами", callback_data="mass_sync_nodes"),
         ],
-        [InlineKeyboardButton(text=f"⚠️ Напомнить истекающим ({expiring})", callback_data="mass_remind_expiring")],
+        [InlineKeyboardButton(text="🧹 Нормализовать сегменты", callback_data="mass_normalize_plans")],
         [InlineKeyboardButton(text="◀️ Назад", callback_data="admin")]
     ])
     
     await callback.message.edit_text(
-        f"📊 *Mass-действия*\n\n"
+        f"📊 *Групповые действия*\n\n"
         f"Всего: {total}\n"
         f"✅ Активных сейчас: {active}\n"
         f"❌ Неактивных: {inactive}\n"
@@ -6043,25 +6722,54 @@ async def mass_extend_prompt(callback: CallbackQuery):
 
 @router.callback_query(F.data == "mass_remind_expiring")
 async def mass_remind_expiring(callback: CallbackQuery, bot: Bot):
-    """Send reminder to users with expiring subscriptions"""
     if callback.from_user.id != ADMIN_ID:
         return
-    
-    await callback.answer("📤 Отправка напоминаний...")
-    
+
     session = Session()
     now = _utcnow()
     soon = now + timedelta(days=3)
-    users = session.query(User).filter(
-        User.is_active == True,
-        User.expiry_at <= soon,
-        User.expiry_at > now
-    ).all()
-    session.close()
-    
+    try:
+        users = session.query(User).filter(
+            User.is_active == True,
+            User.expiry_at <= soon,
+            User.expiry_at > now
+        ).all()
+    finally:
+        session.close()
+
+    target = [u for u in users if u.tg_id not in PROTECTED_USERS and u.tg_id != ADMIN_ID]
+    await callback.message.edit_text(
+        f"⚠️ *Подтверждение действия*\n\n"
+        f"Отправить напоминание об истечении.\n"
+        f"Будет затронуто: *{len(target)}* пользователей.",
+        parse_mode=ParseMode.MARKDOWN,
+        reply_markup=_bulk_confirm_kb("mass_remind_expiring_run"),
+    )
+    await callback.answer()
+
+
+@router.callback_query(F.data == "mass_remind_expiring_run")
+async def mass_remind_expiring_run(callback: CallbackQuery, bot: Bot):
+    if callback.from_user.id != ADMIN_ID:
+        return
+
+    await callback.answer("📤 Отправка...")
+
+    session = Session()
+    now = _utcnow()
+    soon = now + timedelta(days=3)
+    try:
+        users = session.query(User).filter(
+            User.is_active == True,
+            User.expiry_at <= soon,
+            User.expiry_at > now
+        ).all()
+    finally:
+        session.close()
+
     sent = 0
     for user in users:
-        if user.tg_id in PROTECTED_USERS:
+        if user.tg_id in PROTECTED_USERS or user.tg_id == ADMIN_ID:
             continue
         try:
             expiry = _naive_utc(user.expiry_at)
@@ -6076,14 +6784,14 @@ async def mass_remind_expiring(callback: CallbackQuery, bot: Bot):
             sent += 1
         except:
             pass
-    
+
     kb = InlineKeyboardMarkup(inline_keyboard=[
         [InlineKeyboardButton(text="◀️ Назад", callback_data="admin_mass")]
     ])
-    
+
     await callback.message.edit_text(
-        f"✅ *Напоминания отправлены*\n\n"
-        f"Получили: {sent} юзеров",
+        f"✅ *Готово*\n\n"
+        f"Напоминание отправлено: *{sent}* пользователей.",
         reply_markup=kb,
         parse_mode=ParseMode.MARKDOWN
     )
@@ -6094,7 +6802,43 @@ async def mass_normalize_plans(callback: CallbackQuery):
     if callback.from_user.id != ADMIN_ID:
         return
 
-    await callback.answer("⏳ Нормализую планы...")
+    s = Session()
+    try:
+        users = s.query(User).order_by(User.created_at.asc()).all()
+        preview_count = sum(
+            1
+            for u in users
+            if u.tg_id not in PROTECTED_USERS
+            and u.tg_id != ADMIN_ID
+            and _normalize_sub_type((u.sub_type or "").strip()) != (u.sub_type or "").strip()
+        )
+    finally:
+        s.close()
+
+    if preview_count > 0:
+        await callback.message.edit_text(
+            f"⚠️ *Подтверждение действия*\n\n"
+            f"Нормализовать сегменты (`sub_type`) по правилам.\n"
+            f"Будет затронуто: *{preview_count}* пользователей.",
+            parse_mode=ParseMode.MARKDOWN,
+            reply_markup=_bulk_confirm_kb("mass_normalize_plans_run"),
+        )
+        await callback.answer()
+        return
+
+    await callback.message.edit_text(
+        "ℹ️ Нечего нормализовать: все сегменты уже в консистентном формате.",
+        reply_markup=InlineKeyboardMarkup(inline_keyboard=[[InlineKeyboardButton(text="◀️ Назад", callback_data="admin_mass")]]),
+    )
+    await callback.answer()
+
+
+@router.callback_query(F.data == "mass_normalize_plans_run")
+async def mass_normalize_plans_run(callback: CallbackQuery):
+    if callback.from_user.id != ADMIN_ID:
+        return
+
+    await callback.answer("⏳ Выполняю...")
     s = Session()
     try:
         users = s.query(User).order_by(User.created_at.asc()).all()
@@ -6114,7 +6858,7 @@ async def mass_normalize_plans(callback: CallbackQuery):
     finally:
         s.close()
 
-    lines = ["🧹 *Нормализация планов*\n", f"Изменено: *{changed}*"]
+    lines = ["🧹 *Нормализация сегментов*\n", f"Изменено: *{changed}*"]
     if by_to:
         lines.append("\n*Что поменялось:*")
         for (old, new), cnt in sorted(by_to.items(), key=lambda x: (-x[1], x[0][0], x[0][1]))[:12]:
@@ -6130,10 +6874,38 @@ async def mass_promo_14(callback: CallbackQuery):
     if callback.from_user.id != ADMIN_ID:
         return
 
-    await callback.answer("🎁 Промо запускаю...")
+    s = Session()
+    try:
+        users = s.query(User).order_by(User.created_at.asc()).all()
+        target_count = sum(
+            1
+            for u in users
+            if u.tg_id not in PROTECTED_USERS
+            and u.tg_id != ADMIN_ID
+            and _normalize_sub_type((u.sub_type or "").strip()) != "MANUAL"
+        )
+    finally:
+        s.close()
+
     await callback.message.edit_text(
-        "🎁 *Промо: +14 дней всем*\n\n"
-        "Обновляю БД и синкаю пользователей на ноды. Это может занять 10–60 секунд.",
+        f"⚠️ *Подтверждение действия*\n\n"
+        f"Добавить +14 дней сегменту (кроме MANUAL).\n"
+        f"Будет затронуто: *{target_count}* пользователей.",
+        parse_mode=ParseMode.MARKDOWN,
+        reply_markup=_bulk_confirm_kb("mass_promo_14_run"),
+    )
+    await callback.answer()
+
+
+@router.callback_query(F.data == "mass_promo_14_run")
+async def mass_promo_14_run(callback: CallbackQuery):
+    if callback.from_user.id != ADMIN_ID:
+        return
+
+    await callback.answer("🎁 Выполняю...")
+    await callback.message.edit_text(
+        "🎁 *Промо: +14 дней сегменту*\n\n"
+        "Обновляю БД и синхронизирую пользователей на ноды. Это может занять 10–60 секунд.",
         reply_markup=InlineKeyboardMarkup(inline_keyboard=[[InlineKeyboardButton(text="◀️ Назад", callback_data="admin_mass")]]),
         parse_mode=ParseMode.MARKDOWN,
     )
@@ -6153,7 +6925,7 @@ async def mass_promo_14(callback: CallbackQuery):
                 continue
             u.is_active = True
             u.expiry_at = new_expiry
-            u.sub_type = "PAID"
+            u.sub_type = "BONUS"
             target.append(u)
         s.commit()
     finally:
@@ -6184,7 +6956,7 @@ async def mass_promo_14(callback: CallbackQuery):
     try:
         rows = (
             s.query(User)
-            .filter(User.sub_type == "PAID")
+            .filter(func.upper(User.sub_type).in_(["PAID", "BONUS", "TRIAL", "FREE"]))
             .filter(User.tg_id != ADMIN_ID)
             .order_by(User.created_at.asc())
             .all()
@@ -6198,14 +6970,14 @@ async def mass_promo_14(callback: CallbackQuery):
 
     kb = InlineKeyboardMarkup(inline_keyboard=[[InlineKeyboardButton(text="◀️ Назад", callback_data="admin_mass")]])
     await callback.message.edit_text(
-        "🎁 *Промо: +14 дней всем*\n\n"
+        "🎁 *Промо: +14 дней сегменту*\n\n"
         f"БД обновлена до: `{new_expiry.strftime('%Y-%m-%d')}`\n"
         f"✅ Sync OK: {ok_total}\n"
-        f"❌ Sync Fail: {fail_total}",
+        f"❌ Sync Fail: {fail_total}\n"
+        f"Сегмент после операции: `BONUS`",
         reply_markup=kb,
         parse_mode=ParseMode.MARKDOWN,
     )
-    await callback.answer()
 
 
 @router.callback_query(F.data == "mass_sync_nodes")
@@ -6213,9 +6985,31 @@ async def mass_sync_nodes(callback: CallbackQuery):
     if callback.from_user.id != ADMIN_ID:
         return
 
+    s = Session()
+    try:
+        users = s.query(User).order_by(User.created_at.asc()).all()
+    finally:
+        s.close()
+    target_count = sum(1 for u in users if u.tg_id not in PROTECTED_USERS and u.tg_id != ADMIN_ID)
+
+    await callback.message.edit_text(
+        f"⚠️ *Подтверждение действия*\n\n"
+        f"Синхронизировать сегмент с нодами.\n"
+        f"Будет затронуто: *{target_count}* пользователей.",
+        parse_mode=ParseMode.MARKDOWN,
+        reply_markup=_bulk_confirm_kb("mass_sync_nodes_run"),
+    )
+    await callback.answer()
+
+
+@router.callback_query(F.data == "mass_sync_nodes_run")
+async def mass_sync_nodes_run(callback: CallbackQuery):
+    if callback.from_user.id != ADMIN_ID:
+        return
+
     await callback.answer("🔄 Sync...")
     await callback.message.edit_text(
-        "🔄 *Sync пользователей на ноды*\n\nЗапускаю. Это может занять 10–60 секунд.",
+        "🔄 *Синхронизация пользователей с нодами*\n\nЗапускаю. Это может занять 10–60 секунд.",
         reply_markup=InlineKeyboardMarkup(inline_keyboard=[[InlineKeyboardButton(text="◀️ Назад", callback_data="admin_mass")]]),
         parse_mode=ParseMode.MARKDOWN,
     )
@@ -6239,7 +7033,7 @@ async def mass_sync_nodes(callback: CallbackQuery):
                 enable = bool(u.is_active and expiry and expiry > now)
                 sub_id = u.sub_token or str(u.tg_id)
                 only_codes = None
-                if st == "FREE":
+                if _is_freemium_sub_type(st):
                     only_codes = _bot_free_codes()
                     if not only_codes:
                         return False
@@ -6262,13 +7056,12 @@ async def mass_sync_nodes(callback: CallbackQuery):
 
     kb = InlineKeyboardMarkup(inline_keyboard=[[InlineKeyboardButton(text="◀️ Назад", callback_data="admin_mass")]])
     await callback.message.edit_text(
-        "🔄 *Sync пользователей на ноды*\n\n"
+        "🔄 *Синхронизация пользователей с нодами*\n\n"
         f"✅ OK: {ok}\n"
         f"❌ Fail: {fail}",
         reply_markup=kb,
         parse_mode=ParseMode.MARKDOWN,
     )
-    await callback.answer()
 
 @router.callback_query(F.data == "admin_sync")
 async def admin_sync_callback(callback: CallbackQuery, bot: Bot):
@@ -6336,7 +7129,7 @@ async def show_admin_users(callback: CallbackQuery):
     elif segment == "expired":
         q = q.filter((User.is_active == False) | (User.expiry_at.is_(None)) | (User.expiry_at <= now))
     elif segment == "free":
-        q = q.filter(User.sub_type == "FREE")
+        q = q.filter(func.upper(User.sub_type).in_(["FREE", "TRIAL", "BONUS"]))
 
     total = q.count()
     users = q.order_by(User.created_at.desc()).offset(offset).limit(per_page).all()
@@ -6402,9 +7195,93 @@ async def show_admin_users(callback: CallbackQuery):
     await callback.answer()
 
 
+@router.callback_query(F.data.startswith("wheel_preset_"))
+async def admin_wheel_set_preset(callback: CallbackQuery):
+    if callback.from_user.id != ADMIN_ID:
+        return
+    preset = str(callback.data or "").replace("wheel_preset_", "", 1).strip().lower()
+    weights = WHEEL_PRESETS.get(preset)
+    if not weights:
+        await callback.answer("Неизвестный preset", show_alert=True)
+        return
+    _save_wheel_config(weights=list(weights), preset=preset)
+    audit_admin(ADMIN_ID, "admin_wheel_preset_set", meta=f"preset={preset}")
+    await admin_wheel_settings(callback)
+
+
+@router.callback_query(F.data == "wheel_weights")
+async def admin_wheel_set_weights_prompt(callback: CallbackQuery):
+    if callback.from_user.id != ADMIN_ID:
+        return
+    admin_pending_actions[ADMIN_ID] = {"action": "wheel_weights"}
+    await callback.message.edit_text(
+        "✍️ *Ручные веса рулетки*\n\n"
+        "Формат:\n"
+        "`1:45,3:35,7:15,30:5`\n\n"
+        "Где `дни:вес` через запятую.",
+        reply_markup=InlineKeyboardMarkup(inline_keyboard=[[InlineKeyboardButton(text="◀️ Отмена", callback_data="admin_wheel")]]),
+        parse_mode=ParseMode.MARKDOWN,
+    )
+    await callback.answer()
+
+
+@router.callback_query(F.data.startswith("mass_extend_run_"))
+async def mass_extend_run(callback: CallbackQuery):
+    if callback.from_user.id != ADMIN_ID:
+        return
+
+    raw_days = str(callback.data or "").replace("mass_extend_run_", "", 1).strip()
+    try:
+        days = int(raw_days)
+    except Exception:
+        await callback.answer("Некорректное число дней", show_alert=True)
+        return
+    if days < 1 or days > 3650:
+        await callback.answer("Диапазон 1..3650", show_alert=True)
+        return
+
+    await callback.answer("⏳ Выполняю...")
+    session = Session()
+    now = _utcnow()
+    try:
+        users = (
+            session.query(User)
+            .filter(User.is_active == True)
+            .filter(User.expiry_at.isnot(None))
+            .filter(User.expiry_at > now)
+            .all()
+        )
+        count = 0
+        for user in users:
+            if user.tg_id in PROTECTED_USERS or user.tg_id == ADMIN_ID:
+                continue
+            expiry = _naive_utc(user.expiry_at) or now
+            user.expiry_at = expiry + timedelta(days=days)
+            count += 1
+        session.commit()
+    finally:
+        session.close()
+
+    await callback.message.edit_text(
+        f"✅ *Готово*\n\n"
+        f"Добавлено по *{days}* дней.\n"
+        f"Затронуто пользователей: *{count}*.",
+        parse_mode=ParseMode.MARKDOWN,
+        reply_markup=InlineKeyboardMarkup(inline_keyboard=[[InlineKeyboardButton(text="◀️ Назад", callback_data="admin_mass")]]),
+    )
+
+
+def _bulk_confirm_kb(confirm_cb: str) -> InlineKeyboardMarkup:
+    return InlineKeyboardMarkup(
+        inline_keyboard=[
+            [InlineKeyboardButton(text="✅ Подтвердить", callback_data=confirm_cb)],
+            [InlineKeyboardButton(text="◀️ Отмена", callback_data="admin_mass")],
+        ]
+    )
+
+
 @router.callback_query(F.data == "wheel_cd")
 async def admin_wheel_set_cooldown_prompt(callback: CallbackQuery):
-    """Prompt admin to set wheel cooldown days (runtime only)."""
     if callback.from_user.id != ADMIN_ID:
         return
 
@@ -6412,8 +7289,7 @@ async def admin_wheel_set_cooldown_prompt(callback: CallbackQuery):
     kb = InlineKeyboardMarkup(inline_keyboard=[[InlineKeyboardButton(text="◀️ Отмена", callback_data="admin_wheel")]])
     await callback.message.edit_text(
         "⚙️ *Кулдаун рулетки*\n\n"
-        "Введи число дней (например `7`).\n"
-        "_Изменение действует до перезапуска бота._",
+        "Введи число дней (например `7`).",
         reply_markup=kb,
         parse_mode=ParseMode.MARKDOWN,
     )
@@ -6438,7 +7314,10 @@ async def admin_add_days(callback: CallbackQuery):
     days = int(parts[4])
     
     extend_user(tg_id, days, 0)
-    await callback.answer(f"✅ Добавлено {days} дней!")
+    if days >= 0:
+        await callback.answer(f"✅ Добавлено {days} дней!")
+    else:
+        await callback.answer(f"✅ Списано {abs(days)} дней.")
     
     # Refresh user view - re-render directly
     await render_admin_user_view(callback, tg_id)
@@ -6534,7 +7413,7 @@ async def admin_sync_user_nodes(callback: CallbackQuery):
 
     sub_id = u.sub_token or str(u.tg_id)
     only_codes = None
-    if (u.sub_type or "").upper() == "FREE":
+    if _is_freemium_sub_type(u.sub_type):
         only_codes = _bot_free_codes()
         if not only_codes:
             await callback.answer("❌ Free pool не настроен", show_alert=True)
@@ -6754,10 +7633,10 @@ async def _activate_trial_tariff(
     current_sub = _normalize_sub_type(user.sub_type if user else "")
     expiry = _naive_utc(user.expiry_at) if user else None
     has_active = bool(user and user.is_active and expiry and expiry > now)
-    if has_active and current_sub == "FREE":
+    if has_active and _is_freemium_sub_type(current_sub):
         await callback.answer("Бесплатный режим уже активен. Повторная активация не требуется.", show_alert=True)
         return
-    if has_active and current_sub != "FREE":
+    if has_active and not _is_freemium_sub_type(current_sub):
         await callback.answer("У вас уже активирован полный доступ. Бесплатный режим не требуется.", show_alert=True)
         return
 
@@ -6882,7 +7761,7 @@ async def render_admin_user_view(callback: CallbackQuery, tg_id: int):
     manual_name = (getattr(user, "display_name", None) or "").strip()
     is_manual = bool(getattr(user, "is_manual", False) or plan == "MANUAL" or user.tg_id < 0)
     free_usage_line = ""
-    if _normalize_sub_type(plan) == "FREE":
+    if _is_freemium_sub_type(plan):
         remaining_gb, total_gb = await _free_remaining_gb(tg_id)
         if remaining_gb is None:
             free_usage_line = f"\n📊 Бесплатный остаток: <b>н/д</b> из <b>{int(total_gb)} ГБ</b>"
@@ -6914,6 +7793,10 @@ async def render_admin_user_view(callback: CallbackQuery, tg_id: int):
         [
             InlineKeyboardButton(text="➕ 7 дней", callback_data=f"adm_add_days_{tg_id}_7"),
             InlineKeyboardButton(text="➕ 30 дней", callback_data=f"adm_add_days_{tg_id}_30")
+        ],
+        [
+            InlineKeyboardButton(text="➖ 7 дней", callback_data=f"adm_add_days_{tg_id}_-7"),
+            InlineKeyboardButton(text="➖ 30 дней", callback_data=f"adm_add_days_{tg_id}_-30"),
         ],
         [InlineKeyboardButton(text="🔁 Sync на ноды", callback_data=f"adm_sync_nodes_{tg_id}")],
         [
@@ -7050,7 +7933,7 @@ async def admin_set_tariff(callback: CallbackQuery, bot: Bot):
     if user:
         target_sub = _normalize_sub_type(t.get("sub_type") or tariff_key)
         old_sub = _normalize_sub_type(user.sub_type)
-        if old_sub == "FREE" and target_sub == "PAID":
+        if _is_freemium_sub_type(old_sub) and target_sub == "PAID":
             reset_user_expiry_from_now(tg_id, preset["days"], 0)
         else:
             # Default behavior: extend from current expiry.
@@ -7062,7 +7945,7 @@ async def admin_set_tariff(callback: CallbackQuery, bot: Bot):
         if db_user:
             db_user.sub_type = t.get("sub_type") or tariff_key.upper()
             db_user.total_gb = preset["gb"]
-            if _normalize_sub_type(db_user.sub_type) == "FREE":
+            if _is_freemium_sub_type(db_user.sub_type):
                 mark_user_became_free(db_user)
             session.commit()
         session.close()
@@ -7448,8 +8331,8 @@ async def create_subscription(
         if user:
             old_sub = _normalize_sub_type(user.sub_type)
             new_sub = _normalize_sub_type(tariff.get("sub_type") or tariff.get("subId"))
-            # FREE -> PAID must start from "now", not from legacy FREE long expiry.
-            if old_sub == "FREE" and new_sub == "PAID":
+            # Freemium -> PAID must start from "now", not from legacy long expiry.
+            if _is_freemium_sub_type(old_sub) and new_sub == "PAID":
                 reset_user_expiry_from_now(tg_id, tariff["days"], tariff["stars"])
             else:
                 extend_user(tg_id, tariff["days"], tariff["stars"])
@@ -7458,7 +8341,7 @@ async def create_subscription(
             db_user = session.query(User).filter_by(tg_id=tg_id).first()
             if db_user:
                 db_user.sub_type = tariff.get("sub_type") or db_user.sub_type
-                if _normalize_sub_type(db_user.sub_type) == "FREE":
+                if _is_freemium_sub_type(db_user.sub_type):
                     mark_user_became_free(db_user)
                 session.commit()
             session.close()
@@ -7553,7 +8436,7 @@ async def create_subscription(
     
     user = get_user(tg_id)
     expiry = user.expiry_at.strftime("%d.%m.%Y") if user and user.expiry_at else "—"
-    is_free = _normalize_sub_type(user.sub_type if user else "") == "FREE"
+    is_free = _is_freemium_sub_type(user.sub_type if user else "")
     free_note = ""
     if is_free:
         free_note = (
@@ -8204,6 +9087,8 @@ async def reviews_moderation(message: Message):
     
     for r in reviews:
         featured = "⭐" if r.is_featured else ""
+        masked = _mask_review_username(r.username)
+        label = f"@{masked}" if masked != "Пользователь" else masked
         text = r.text[:100] if r.text else "—"
         kb = InlineKeyboardMarkup(inline_keyboard=[
             [
@@ -8213,7 +9098,7 @@ async def reviews_moderation(message: Message):
             ]
         ])
         await message.answer(
-            f"{featured} *@{r.username or 'Аноним'}* {'⭐' * r.rating}\n"
+            f"{featured} *{label}* {'⭐' * r.rating}\n"
             f"_{text}_\n"
             f"`ID:{r.id}`",
             reply_markup=kb,
@@ -8600,7 +9485,7 @@ async def admin_gift(message: Message, bot: Bot):
             f"🎁 *Вам подарили доступ к Порталу!*\n\n"
             f"📦 Тариф: {name}\n"
             f"📅 Дней: {days}\n"
-            f"📡 Режим: безлимит\n\n"
+            f"📡 Режим: полный доступ\n\n"
             f"🔗 *Ваша подписка:*\n`{sub_link}`\n\n"
             f"📋 _Добавьте ссылку как подписку в приложение_",
             parse_mode=ParseMode.MARKDOWN
