@@ -1,19 +1,12 @@
-﻿"use client";
+"use client";
 
-import { useEffect, useMemo, useRef, useState, useCallback } from "react";
-import gsap from "gsap";
-import { ScrollTrigger } from "gsap/ScrollTrigger";
-
-if (typeof window !== "undefined") {
-  gsap.registerPlugin(ScrollTrigger);
-}
+import { useEffect, useMemo, useState } from "react";
 
 const TG_BOT_FALLBACK = process.env.NEXT_PUBLIC_TELEGRAM_BOT_URL || "https://t.me/portal_service_bot";
 const CHECKOUT_URL = process.env.NEXT_PUBLIC_CHECKOUT_PAGE_URL || "/checkout/";
 const BOT_FAST_URL = process.env.NEXT_PUBLIC_PAY_CHECKOUT_URL || TG_BOT_FALLBACK;
 const WEBAPP_URL = (process.env.NEXT_PUBLIC_WEBAPP_URL || "https://portal-privacy.online/webapp/").trim();
 const TG_NEWS_CHANNEL = (process.env.NEXT_PUBLIC_NEWS_CHANNEL || "portal_privacy").replace("@", "").trim();
-const SOCIAL_PROOF_URL = (process.env.NEXT_PUBLIC_SOCIAL_PROOF_URL || "").trim();
 const PUBLIC_API_BASE_URL = (process.env.NEXT_PUBLIC_API_BASE_URL || "").trim();
 const APP_ANDROID_PLAY_URL = (process.env.NEXT_PUBLIC_APP_ANDROID_PLAY_URL || "").trim();
 const APP_ANDROID_APK_URL = (process.env.NEXT_PUBLIC_APP_ANDROID_APK_URL || "").trim();
@@ -33,157 +26,79 @@ type LiveUpdate = {
   link: string;
 };
 
+type SocialProof = {
+  connected_users?: number;
+  total_users?: number;
+  paid_users?: number;
+};
+
+type Review = {
+  username?: string;
+  rating?: number;
+  text?: string;
+};
+
 const FEATURES = [
-  { type: "01×", title: "Запуск за 1-2 минуты", desc: "Вход через Telegram, понятные шаги и быстрый импорт ключа под вашу платформу.", num: "01" },
-  { type: "04×", title: "4 страны в платных планах", desc: "Польша, Нидерланды, США и Италия с возможностью переключения в кабинете.", num: "02" },
-  { type: "∞×", title: "Защищённая передача трафика", desc: "Канал между устройством и узлом работает в зашифрованном режиме. Политика данных доступна в документах сервиса.", num: "03" },
-  { type: "05×", title: "До 5 устройств", desc: "Один профиль можно использовать на телефоне, планшете и компьютере одновременно.", num: "04" },
-  { type: "02×", title: "Start и полный режим", desc: "Можно начать с мягкого порога и перейти на более длинный горизонт без переезда.", num: "05" },
-  { type: "24×", title: "Поддержка в Telegram", desc: "Поможем с подключением и диагностикой, если что-то не сработало с первого шага.", num: "06" },
+  { type: "01×", title: "Запуск за 1-2 минуты", desc: "Вход через Telegram, быстрый импорт ключа и понятные шаги без ручной рутины.", num: "01" },
+  { type: "04×", title: "4 страны в платных планах", desc: "Польша, Нидерланды, США и Италия с быстрым переключением в кабинете.", num: "02" },
+  { type: "∞×", title: "Шифрование трафика", desc: "VPN-канал работает в зашифрованном режиме для повседневных и рабочих задач.", num: "03" },
+  { type: "05×", title: "До 5 устройств", desc: "Один профиль для телефона, ноутбука и настольного ПК одновременно.", num: "04" },
+  { type: "02×", title: "Start и полный режим", desc: "Мягкий вход с Start и быстрый переход на полный режим без переезда.", num: "05" },
+  { type: "24×", title: "Поддержка в Telegram", desc: "Отвечаем по тикетам и помогаем с диагностикой по реальному сценарию.", num: "06" },
 ];
 
 const PLANS = [
-  { code: "start_99", name: "Start", desc: "30 дней • 1 устройство • NL", price: "99 ₽", note: "Мягкий вход для проверки сервиса в реальных задачах", tag: "Вход", tone: "anchor" },
-  { code: "pro_249", name: "Pro", desc: "1 месяц • до 5 устройств • все страны", price: "249 ₽", note: "Сбалансированный вариант для ежедневного использования", tag: "Популярный", tone: "recommended" },
-  { code: "ultra_1499", name: "Ultra / Family", desc: "12 месяцев • до 5 устройств • полный пул стран", price: "1499 ₽", note: "Долгий горизонт и предсказуемая цена на месяц", micro: "≈300 ₽/чел при использовании 5 устройств", tag: "Выгода" },
+  { code: "start_99", name: "Start", desc: "30 дней • 1 устройство • NL", price: "99 ₽", note: "Мягкий вход для проверки сервиса", tag: "Вход" },
+  { code: "pro_249", name: "Pro", desc: "1 месяц • до 5 устройств • все страны", price: "249 ₽", note: "Сбалансированный вариант на каждый день", tag: "Популярный", recommended: true },
+  { code: "ultra_1499", name: "Ultra / Family", desc: "12 месяцев • до 5 устройств • полный пул", price: "1499 ₽", note: "Долгий горизонт с лучшей ценой в месяц", tag: "Выгода", micro: "≈300 ₽/чел при 5 устройствах" },
 ];
 
 const PLAN_COMPARISON_ROWS = [
-  {
-    metric: "Устройства",
-    start: "1",
-    pro: "До 5",
-    ultra: "До 5",
-  },
-  {
-    metric: "Страны",
-    start: "NL",
-    pro: "Польша, Нидерланды, США, Италия",
-    ultra: "Полный пул стран + приоритет",
-  },
-  {
-    metric: "Маршрутизация",
-    start: "VPN для основных задач",
-    pro: "Полный VPN-маршрут для ежедневного трафика",
-    ultra: "VPN-маршрут + приоритет обработки",
-  },
-  {
-    metric: "Скоростной профиль",
-    start: "Базовый",
-    pro: "Высокий",
-    ultra: "Максимальный",
-  },
-  {
-    metric: "Поддержка",
-    start: "Стандартная",
-    pro: "Быстрый Telegram-ответ",
-    ultra: "Приоритет 24/7",
-  },
+  { metric: "Устройства", start: "1", pro: "До 5", ultra: "До 5" },
+  { metric: "Страны", start: "NL", pro: "Польша, Нидерланды, США, Италия", ultra: "Полный пул стран + приоритет" },
+  { metric: "Маршрутизация", start: "VPN для базовых задач", pro: "Полный VPN-маршрут для ежедневного трафика", ultra: "VPN-маршрут + приоритет обработки" },
+  { metric: "Скоростной профиль", start: "Базовый", pro: "Высокий", ultra: "Максимальный" },
+  { metric: "Поддержка", start: "Стандартная", pro: "Быстрый Telegram-ответ", ultra: "Приоритет 24/7" },
 ];
 
-const DEFAULT_LIVE_UPDATES: LiveUpdate[] = [
-  {
-    title: "Новые узлы NL/PL",
-    summary: "Добавлены свежие маршруты, обновлены рекомендации по клиентам для мобильных устройств.",
-    date: "2026-02-14",
-    link: `https://t.me/${TG_NEWS_CHANNEL}/1`,
-  },
-  {
-    title: "Промо-неделя для новых пользователей",
-    summary: "Стартовые предложения по подписке и бонусы за переход в канал проекта.",
-    date: "2026-02-13",
-    link: `https://t.me/${TG_NEWS_CHANNEL}/2`,
-  },
-  {
-    title: "Гайд по быстрому подключению",
-    summary: "Обновили пошаговые инструкции и deep links для популярных клиентов.",
-    date: "2026-02-12",
-    link: `https://t.me/${TG_NEWS_CHANNEL}/3`,
-  },
+const FAQS = [
+  { q: "Как получить доступ?", a: "Откройте Telegram-бот, выберите план и получите персональный ключ для подключения." },
+  { q: "Какие устройства поддерживаются?", a: "iOS, Android, Windows, macOS и Linux. В Pro/Ultra можно подключить до 5 устройств." },
+  { q: "Есть бесплатный режим?", a: "Да, стартовый режим доступен без оплаты. На полный VPN-доступ можно перейти в любой момент." },
+  { q: "Что делать при низкой скорости?", a: "Проверьте статус узлов, переключите страну и при необходимости создайте тикет в поддержке." },
+  { q: "Есть гарантия абсолютной скорости?", a: "Нет. Мы работаем в best-effort режиме и регулярно обновляем узлы и рекомендации." },
 ];
 
-const ROADMAP_PUBLIC: Array<{ title: string; status: string; points: string[] }> = [
+const ROADMAP = [
   {
     title: "Retention",
     status: "Реализовано",
-    points: [
-      "Welcome / T-3 / T-1 / T0 / reactivation цепочки с A/B CTA.",
-      "Start99 welcome-offer с отложенной скидкой на следующий checkout.",
-    ],
+    points: ["Welcome / T-3 / T-1 / T0 / reactivation цепочки.", "Start99 offer и мягкие сценарии продления."],
   },
   {
     title: "UI-Polish",
     status: "Реализовано",
-    points: [
-      "Социальное подтверждение в checkout и WebApp.",
-      "Улучшенный onboarding-microcopy для Android / iOS / Desktop.",
-    ],
+    points: ["Обновленный checkout и WebApp UX.", "Более понятный onboarding для Android / iOS / Desktop."],
   },
   {
     title: "Ops",
     status: "В работе",
-    points: [
-      "Автоматизация post-deploy smoke по ключевому платежному пути.",
-      "Runbook rollout/rollback и контроль campaign-потока.",
-    ],
+    points: ["Автоматизация post-deploy smoke.", "Дальнейшее усиление rollout/rollback runbook."],
   },
+];
+
+const DEFAULT_LIVE_UPDATES: LiveUpdate[] = [
+  { title: "Обновлены узлы NL/PL", summary: "Актуализированы маршруты и рекомендации по клиентам для мобильных устройств.", date: "2026-02-14", link: `https://t.me/${TG_NEWS_CHANNEL}/1` },
+  { title: "Новые предложения для новых пользователей", summary: "Добавлены стартовые сценарии и бонусы за подписку на канал.", date: "2026-02-13", link: `https://t.me/${TG_NEWS_CHANNEL}/2` },
+  { title: "Обновлен гайд по подключению", summary: "Упростили старт для Android, iOS и Windows.", date: "2026-02-12", link: `https://t.me/${TG_NEWS_CHANNEL}/3` },
 ];
 
 function candidateApiBases(): string[] {
   const out: string[] = [];
   if (PUBLIC_API_BASE_URL) out.push(PUBLIC_API_BASE_URL.replace(/\/+$/, ""));
-  if (typeof window !== "undefined") {
-    out.push(window.location.origin.replace(/\/+$/, ""));
-  }
+  if (typeof window !== "undefined") out.push(window.location.origin.replace(/\/+$/, ""));
   out.push("https://portal-privacy.online");
   return Array.from(new Set(out.filter(Boolean)));
-}
-
-const FAQS = [
-  { q: "Как получить доступ?", a: "Откройте Telegram-бот, выберите план и получите персональный ключ для подключения." },
-  { q: "Какие устройства поддерживаются?", a: "iOS, Android, Windows, macOS, Linux. Один профиль работает на нескольких устройствах одновременно." },
-  { q: "Есть бесплатный режим?", a: "Да, стартовый режим доступен без оплаты. Перейти на полный VPN-доступ можно в любой момент." },
-  { q: "Что если узел временно недоступен?", a: "В кабинете можно переключиться на другую страну и свериться с актуальными апдейтами в канале проекта." },
-  { q: "Есть ли гарантии абсолютной скорости?", a: "Нет. Мы работаем по best-effort модели и регулярно обновляем узлы и рекомендации по подключению." },
-  { q: "Можно ли поменять тариф?", a: "Да, апгрейд работает мгновенно. Оставшиеся дни пересчитываются и сохраняются." },
-];
-
-type Testimonial = {
-  text: string;
-  author: string;
-  tag: string;
-};
-
-type ApiReview = {
-  username?: string;
-  rating?: number;
-  text?: string;
-  date?: string;
-};
-
-const MARQUEE_ITEMS = [
-  "ENCRYPTED", "●", "FAST", "●", "STABLE", "●", "GLOBAL", "●",
-  "PRIVATE", "●", "TELEGRAM", "●", "SUPPORT 24/7", "●", "NO LOGS", "●",
-];
-
-const SEGMENT_CTA = {
-  FREE: { label: "Мягкий апгрейд", price: "99₽", period: "за Start-план", note: "Проверка сервиса с минимальным порогом входа." },
-  PAID: { label: "Продление без паузы", price: "1399₽", period: "за 9 месяцев", note: "Удобно зафиксировать выгодный горизонт и не возвращаться к продлению каждый месяц." },
-  EXPIRED: { label: "Возврат доступа", price: "249₽", period: "за 1 месяц", note: "Быстрый возврат в рабочий режим без ожиданий." },
-  MANUAL: { label: "План для ручного профиля", price: "699₽", period: "за 3 месяца", note: "Удобное продление с прозрачной стоимостью." },
-} as const;
-
-type SegmentKey = keyof typeof SEGMENT_CTA;
-
-function parseSegmentFromQuery(search: string): SegmentKey {
-  const q = new URLSearchParams(search);
-  const raw = (q.get("segment") || q.get("variant") || "FREE").toUpperCase().trim();
-  if (raw === "PAID" || raw === "EXPIRED" || raw === "MANUAL") return raw;
-  return "FREE";
-}
-
-function prefersReducedMotion(): boolean {
-  return typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 }
 
 function normalizePositiveInt(value: unknown): number {
@@ -193,852 +108,64 @@ function normalizePositiveInt(value: unknown): number {
 }
 
 function maskReviewUsername(username?: string): string {
-  const raw = (username || "").trim().replace(/^@+/, "").trim();
+  const raw = (username || "").trim().replace(/^@+/, "");
   if (!raw) return "Пользователь";
   return `${raw.slice(0, 2)}***`;
 }
 
-/* в"Ђв"Ђ Theme Toggle Hook в"Ђв"Ђ */
-function useTheme() {
+export default function HomePage() {
   const [theme, setTheme] = useState<"dark" | "light">("dark");
+  const [scrolled, setScrolled] = useState(false);
+  const [openedFaq, setOpenedFaq] = useState<number | null>(0);
+  const [liveUpdates, setLiveUpdates] = useState<LiveUpdate[]>(DEFAULT_LIVE_UPDATES);
+  const [socialCount, setSocialCount] = useState(2847);
+  const [reviews, setReviews] = useState<Array<{ text: string; author: string; tag: string }>>([]);
+
+  const review = reviews[0];
+
+  const androidLinks = useMemo(
+    () =>
+      [
+        { key: "play", label: "Google Play", url: APP_ANDROID_PLAY_URL },
+        { key: "apk", label: "APK", url: APP_ANDROID_APK_URL },
+        { key: "mirror", label: "Mirror", url: APP_ANDROID_MIRROR_URL },
+      ].filter((item) => item.url),
+    [],
+  );
+
+  const windowsLinks = useMemo(
+    () =>
+      [
+        { key: "exe", label: "EXE", url: APP_WINDOWS_EXE_URL },
+        { key: "mirror", label: "Mirror", url: APP_WINDOWS_MIRROR_URL },
+      ].filter((item) => item.url),
+    [],
+  );
 
   useEffect(() => {
     const saved = localStorage.getItem("portal-theme");
-    if (saved === "light" || saved === "dark") setTheme(saved);
+    const next = saved === "light" ? "light" : "dark";
+    setTheme(next);
+    document.documentElement.setAttribute("data-theme", next);
   }, []);
-
-  const toggle = useCallback(() => {
-    setTheme((prev) => {
-      const next = prev === "dark" ? "light" : "dark";
-      localStorage.setItem("portal-theme", next);
-      document.documentElement.setAttribute("data-theme", next);
-      return next;
-    });
-  }, []);
-
-  useEffect(() => {
-    document.documentElement.setAttribute("data-theme", theme);
-  }, [theme]);
-
-  return { theme, toggle };
-}
-
-/* в"Ђв"Ђ Cursor Follower в"Ђв"Ђ */
-function CursorFollower() {
-  const ref = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    const el = ref.current;
-    if (!el) return;
-    const isTouchDevice = "ontouchstart" in window || navigator.maxTouchPoints > 0;
-    if (isTouchDevice) { el.style.display = "none"; return; }
-    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
-      el.style.display = "none";
-      return;
-    }
-
-    let mx = 0, my = 0, cx = 0, cy = 0;
-    let raf: number;
-    const onMove = (e: MouseEvent) => { mx = e.clientX; my = e.clientY; };
-    const tick = () => {
-      cx += (mx - cx) * 0.12;
-      cy += (my - cy) * 0.12;
-      el.style.left = cx + "px";
-      el.style.top = cy + "px";
-      raf = requestAnimationFrame(tick);
-    };
-
-    const onEnterInteractive = () => el.classList.add("hover");
-    const onLeaveInteractive = () => el.classList.remove("hover");
-
-    window.addEventListener("mousemove", onMove);
-    const interactive = Array.from(document.querySelectorAll("a, button, .plan-card, .faq-item"));
-    interactive.forEach((node) => {
-      node.addEventListener("mouseenter", onEnterInteractive);
-      node.addEventListener("mouseleave", onLeaveInteractive);
-    });
-    raf = requestAnimationFrame(tick);
-
-    return () => {
-      window.removeEventListener("mousemove", onMove);
-      interactive.forEach((node) => {
-        node.removeEventListener("mouseenter", onEnterInteractive);
-        node.removeEventListener("mouseleave", onLeaveInteractive);
-      });
-      cancelAnimationFrame(raf);
-    };
-  }, []);
-  return <div className="cursor-follower" ref={ref} />;
-}
-
-/* в"Ђв"Ђ Preloader в"Ђв"Ђ */
-function Preloader({ onDone }: { onDone: () => void }) {
-  const ref = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    if (prefersReducedMotion()) {
-      onDone();
-      return;
-    }
-    const tl = gsap.timeline({
-      onComplete: () => {
-        gsap.to(ref.current, {
-          opacity: 0,
-          duration: 0.4,
-          onComplete: onDone,
-        });
-      },
-    });
-    tl.to(".preloader-fill", { width: "100%", duration: 1.2, ease: "power2.inOut" })
-      .to(".preloader-text", { opacity: 1, y: 0, duration: 0.3 }, 0);
-  }, [onDone]);
-
-  return (
-    <div className="preloader" ref={ref}>
-      <div className="preloader-icon">●</div>
-      <div className="preloader-text">PORTAL — LOADING</div>
-      <div className="preloader-bar"><div className="preloader-fill" /></div>
-    </div>
-  );
-}
-
-/* в"Ђв"Ђ Navbar в"Ђв"Ђ */
-function Navbar({ theme, onToggleTheme }: { theme: string; onToggleTheme: () => void }) {
-  const [scrolled, setScrolled] = useState(false);
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 80);
-    window.addEventListener("scroll", onScroll, { passive: true });
-    return () => window.removeEventListener("scroll", onScroll);
-  }, []);
-
-  return (
-    <header className={`topbar ${scrolled ? "topbar--scrolled" : ""}`}>
-      <div className="brand"><span>●</span> PORTAL</div>
-      <nav className="topnav">
-        <a href="#features">Возможности</a>
-        <a href="#plans">Тарифы</a>
-        <a href="#roadmap">Roadmap</a>
-        <a href="#download">Download</a>
-        <a href="#faq">FAQ</a>
-        <button className="theme-toggle" onClick={onToggleTheme} type="button" aria-label="Toggle theme">
-          {theme === "dark" ? "☀" : "☾"}
-        </button>
-        <a href={CHECKOUT_URL} target="_blank" rel="noreferrer" className="nav-buy">Подключить</a>
-      </nav>
-    </header>
-  );
-}
-
-/* в"Ђв"Ђ Hero в"Ђв"Ђ */
-function Hero() {
-  const heroRef = useRef<HTMLElement>(null);
-
-  useEffect(() => {
-    if (prefersReducedMotion()) return;
-    const ctx = gsap.context(() => {
-      const tl = gsap.timeline({ defaults: { ease: "power4.out" } });
-
-      tl.from(".hero-word-1", { y: 80, opacity: 0, duration: 0.8 })
-        .from(".hero-word-2", { y: 60, opacity: 0, duration: 0.7 }, 0.15)
-        .from(".hero-word-3", { y: 60, opacity: 0, duration: 0.7 }, 0.25)
-        .from(".hero-badge", { opacity: 0, y: 20, duration: 0.5 }, 0.4)
-        .from(".hero-sub", { opacity: 0, y: 15, duration: 0.5 }, 0.55)
-        .from(".hero-scroll", { opacity: 0, duration: 0.4 }, 0.8);
-
-      // Parallax on scroll
-      gsap.to("#bgLine1", {
-        x: -200,
-        scrollTrigger: { trigger: ".hero", start: "top top", end: "bottom top", scrub: 1 },
-      });
-      gsap.to("#bgLine2", {
-        x: 150,
-        scrollTrigger: { trigger: ".hero", start: "top top", end: "bottom top", scrub: 1 },
-      });
-    }, heroRef);
-
-    return () => ctx.revert();
-  }, []);
-
-  return (
-    <section className="hero" ref={heroRef}>
-      <div className="bg-type">
-        <div className="bg-type-line" id="bgLine1" style={{ fontSize: "20vw", top: "10%", left: "-5%" }}>
-          SECURE SECURE SECURE SECURE
-        </div>
-        <div className="bg-type-line" id="bgLine2" style={{ fontSize: "15vw", top: "50%", right: "-5%" }}>
-          PORTAL PORTAL PORTAL PORTAL
-        </div>
-      </div>
-
-      <div className="hero-badge">[SECURE DIGITAL ACCESS] — TRANSPARENT CHECKOUT — 2026</div>
-      <div className="hero-title">
-        <span className="hero-word-1">SECURE</span>
-        <span className="hero-word-2">ROUTING</span>
-        <span className="hero-word-3">PORTAL</span>
-      </div>
-      <div className="hero-sub">
-        Понятный VPN-запуск • Прозрачная цена • Поддержка в Telegram
-      </div>
-      <div className="hero-scroll">
-        <span>SCROLL ↓</span>
-      </div>
-    </section>
-  );
-}
-
-/* в"Ђв"Ђ Marquee в"Ђв"Ђ */
-function Marquee() {
-  const items = [...MARQUEE_ITEMS, ...MARQUEE_ITEMS, ...MARQUEE_ITEMS];
-  return (
-    <div className="marquee-section">
-      <div className="marquee-track">
-        {items.map((item, i) => (
-          <span key={`${item}-${i}`} className={item === "●" ? "" : "highlight"}>{item}</span>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-/* в"Ђв"Ђ Features в"Ђв"Ђ */
-function Features() {
-  const ref = useRef<HTMLElement>(null);
-
-  useEffect(() => {
-    if (prefersReducedMotion()) return;
-    const ctx = gsap.context(() => {
-      gsap.from(".feature-card", {
-        y: 50,
-        opacity: 0,
-        duration: 0.6,
-        stagger: 0.1,
-        ease: "power3.out",
-        scrollTrigger: { trigger: ".features-grid", start: "top 80%", once: true },
-      });
-      gsap.from(".features-header", {
-        y: 30,
-        opacity: 0,
-        duration: 0.6,
-        ease: "power3.out",
-        scrollTrigger: { trigger: ".features", start: "top 85%", once: true },
-      });
-    }, ref);
-    return () => ctx.revert();
-  }, []);
-
-  return (
-    <section className="features" id="features" ref={ref}>
-      <div className="section-tag">[CONTENTS]</div>
-      <div className="features-header">
-        <h2>ЧТО<br /><span className="stroke">ВНУТРИ</span></h2>
-        <p>Понятный путь: VPN-подключение, контроль узлов, поддержка, продление.</p>
-      </div>
-      <div className="features-grid">
-        {FEATURES.map((f) => (
-          <div key={f.num} className="feature-card">
-            <div className="feature-num">{f.num}</div>
-            <div className="feature-type">{f.type}</div>
-            <h3>{f.title}</h3>
-            <p>{f.desc}</p>
-          </div>
-        ))}
-      </div>
-    </section>
-  );
-}
-
-function PlanComparison() {
-  return (
-    <section className="downloads" id="plan-comparison">
-      <div className="section-tag">[COMPARISON]</div>
-      <div className="downloads-head">
-        <h2>НАГЛЯДНОЕ СРАВНЕНИЕ ТАРИФОВ VPN</h2>
-        <p>Сразу видно, где лимиты, где полный режим и какой профиль скорости подходит под ваш сценарий.</p>
-      </div>
-      <div className="downloads-grid">
-        <article className="download-card">
-          <h3>Start</h3>
-          <p>Тест и мягкий вход.</p>
-          <div className="download-actions">
-            <span className="download-empty">99 ₽ / 30 дней</span>
-          </div>
-        </article>
-        <article className="download-card">
-          <h3>Pro</h3>
-          <p>Ежедневный рабочий режим.</p>
-          <div className="download-actions">
-            <span className="download-empty">249 ₽ / месяц</span>
-          </div>
-        </article>
-        <article className="download-card">
-          <h3>Ultra / Family</h3>
-          <p>Длинный горизонт и лучшая цена в месяц.</p>
-          <div className="download-actions">
-            <span className="download-empty">1499 ₽ / 12 месяцев</span>
-          </div>
-        </article>
-      </div>
-      <div className="roadmap-list" style={{ marginTop: 14 }}>
-        {PLAN_COMPARISON_ROWS.map((row) => (
-          <p key={row.metric}>
-            <strong>{row.metric}:</strong> Start — {row.start}; Pro — {row.pro}; Ultra — {row.ultra}
-          </p>
-        ))}
-      </div>
-      <div className="download-card" style={{ marginTop: 14 }}>
-        <h3>Почему часть медиасервисов может идти напрямую</h3>
-        <p>
-          Для части сценариев прямой маршрут снижает задержку и стабилизирует воспроизведение, а VPN-канал остаётся для
-          основного защищённого трафика. В карточке тарифа всегда видно, какой режим действует.
-        </p>
-      </div>
-    </section>
-  );
-}
-
-/* в"Ђв"Ђ Testimonials в"Ђв"Ђ */
-function Testimonials() {
-  const [activeIdx, setActiveIdx] = useState(0);
-  const [testimonials, setTestimonials] = useState<Testimonial[]>([]);
-  const ref = useRef<HTMLElement>(null);
-
-  useEffect(() => {
-    let aborted = false;
-    const load = async () => {
-      try {
-        const r = await fetch("/api/reviews", { cache: "no-store" });
-        if (!r.ok) return;
-        const data = await r.json() as { reviews?: ApiReview[] };
-        const rows = Array.isArray(data.reviews) ? data.reviews : [];
-        const next = rows
-          .filter((row) => typeof row.text === "string" && row.text.trim().length > 0)
-          .slice(0, 10)
-          .map((row) => ({
-            text: (row.text || "").trim(),
-            author: maskReviewUsername(row.username),
-            tag: `${Math.max(1, Math.min(5, Number(row.rating) || 5))}★`,
-          }));
-        if (!aborted && next.length > 0) {
-          setTestimonials(next);
-          setActiveIdx(0);
-        }
-      } catch {
-        // Keep empty state when API is unavailable.
-      }
-    };
-    void load();
-    return () => {
-      aborted = true;
-    };
-  }, []);
-
-  useEffect(() => {
-    if (prefersReducedMotion()) return;
-    if (testimonials.length < 2) return;
-    const interval = setInterval(() => {
-      setActiveIdx((prev) => (prev + 1) % testimonials.length);
-    }, 4500);
-    return () => clearInterval(interval);
-  }, [testimonials.length]);
-
-  useEffect(() => {
-    if (prefersReducedMotion()) return;
-    const ctx = gsap.context(() => {
-      gsap.from(".testimonial-card", {
-        opacity: 0, y: 20, duration: 0.5, ease: "power2.out",
-        scrollTrigger: { trigger: ".testimonials", start: "top 80%", once: true },
-      });
-    }, ref);
-    return () => ctx.revert();
-  }, []);
-
-  // Animate card change
-  const cardRef = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    if (prefersReducedMotion()) return;
-    if (cardRef.current) {
-      gsap.fromTo(cardRef.current,
-        { opacity: 0, x: 20 },
-        { opacity: 1, x: 0, duration: 0.4, ease: "power2.out" },
-      );
-    }
-  }, [activeIdx]);
-
-  const visibleTestimonials = testimonials.length > 0
-    ? testimonials
-    : [{ text: "Отзывы скоро появятся после модерации.", author: "PORTAL", tag: "" }];
-  const t = visibleTestimonials[activeIdx] || visibleTestimonials[0];
-
-  return (
-    <section className="testimonials" ref={ref}>
-      <div className="section-tag">[FEEDBACK]</div>
-      <h2>ОТЗЫВЫ ПОЛЬЗОВАТЕЛЕЙ</h2>
-      <div className="testimonial-card" ref={cardRef} key={activeIdx}>
-        <div className="testimonial-quote">"{t.text}"</div>
-        <div className="testimonial-author">
-          <span className="testimonial-name">{t.author}</span>
-          <span className="testimonial-tag">{t.tag}</span>
-        </div>
-      </div>
-      <div className="testimonial-dots">
-        {testimonials.map((_, i) => (
-          <button
-            key={i}
-            type="button"
-            className={`testimonial-dot ${i === activeIdx ? "active" : ""}`}
-            onClick={() => setActiveIdx(i)}
-            aria-label={`Testimonial ${i + 1}`}
-          />
-        ))}
-      </div>
-    </section>
-  );
-}
-
-/* в"Ђв"Ђ Plans в"Ђв"Ђ */
-function Plans() {
-  const ref = useRef<HTMLElement>(null);
-
-  useEffect(() => {
-    if (prefersReducedMotion()) return;
-    const ctx = gsap.context(() => {
-      gsap.from(".plan-card", {
-        y: 40,
-        opacity: 0,
-        duration: 0.6,
-        stagger: 0.08,
-        ease: "power3.out",
-        scrollTrigger: { trigger: ".plans-track", start: "top 80%", once: true },
-      });
-    }, ref);
-    return () => ctx.revert();
-  }, []);
-
-  return (
-    <section className="plans" id="plans" ref={ref}>
-      <div className="section-tag">[TARIFFS]</div>
-      <div className="plans-header">
-        <h2>ТАРИФЫ</h2>
-      </div>
-      <div className="plans-track">
-        {PLANS.map((p) => (
-          <div
-            key={p.code}
-            className={`plan-card ${p.tone === "recommended" ? "recommended" : ""} ${p.tone === "decoy" ? "decoy" : ""}`}
-          >
-            {p.tag ? <span className="plan-tag">{p.tag}</span> : null}
-            <span className="plan-emoji">{p.code.toUpperCase()}</span>
-            <h3>{p.name}</h3>
-            <p className="plan-desc">{p.desc}</p>
-            <div className="plan-price">{p.price}</div>
-            <div className="plan-note">{p.note}</div>
-            {p.micro ? <div className="plan-micro">{p.micro}</div> : null}
-          </div>
-        ))}
-      </div>
-    </section>
-  );
-}
-
-function Downloads() {
-  const androidLinks = [
-    { key: "play", label: "Google Play", url: APP_ANDROID_PLAY_URL },
-    { key: "apk", label: "APK", url: APP_ANDROID_APK_URL },
-    { key: "mirror", label: "Mirror", url: APP_ANDROID_MIRROR_URL },
-  ].filter((item) => item.url);
-
-  const windowsLinks = [
-    { key: "exe", label: "EXE", url: APP_WINDOWS_EXE_URL },
-    { key: "mirror", label: "Mirror", url: APP_WINDOWS_MIRROR_URL },
-  ].filter((item) => item.url);
-
-  return (
-    <section className="downloads" id="download">
-      <div className="section-tag">[DOWNLOAD]</div>
-      <div className="downloads-head">
-        <h2>СКАЧАТЬ ПРИЛОЖЕНИЕ</h2>
-        <p>Официальные сборки для Android и Windows. Ссылки обновляются после релиза.</p>
-      </div>
-      <div className="downloads-grid">
-        <article className="download-card">
-          <h3>Android</h3>
-          <p>Установка из магазина или прямой пакет.</p>
-          <div className="download-actions">
-            {androidLinks.length ? androidLinks.map((item) => (
-              <a key={item.key} href={item.url} target="_blank" rel="noreferrer" className="download-link">
-                {item.label}
-              </a>
-            )) : <span className="download-empty">Сборка появится после публикации</span>}
-          </div>
-        </article>
-        <article className="download-card">
-          <h3>Windows</h3>
-          <p>Установщик для ПК и резервный канал загрузки.</p>
-          <div className="download-actions">
-            {windowsLinks.length ? windowsLinks.map((item) => (
-              <a key={item.key} href={item.url} target="_blank" rel="noreferrer" className="download-link">
-                {item.label}
-              </a>
-            )) : <span className="download-empty">Сборка появится после публикации</span>}
-          </div>
-        </article>
-      </div>
-      {APP_DOCS_URL ? (
-        <a href={APP_DOCS_URL} target="_blank" rel="noreferrer" className="download-docs">
-          Инструкция по установке →
-        </a>
-      ) : null}
-    </section>
-  );
-}
-
-/* в"Ђв"Ђ CTA в"Ђв"Ђ */
-function CTA() {
-  const [segment, setSegment] = useState<SegmentKey>("FREE");
-  const [soldCountTarget, setSoldCountTarget] = useState(2847);
-  const current = useMemo(() => SEGMENT_CTA[segment], [segment]);
-  const ref = useRef<HTMLElement>(null);
-
-  useEffect(() => {
-    setSegment(parseSegmentFromQuery(window.location.search));
-  }, []);
-
-  useEffect(() => {
-    let aborted = false;
-    const sources = [SOCIAL_PROOF_URL, "/api/public/social-proof"].map((x) => x.trim()).filter(Boolean);
-    if (!sources.length) return;
-
-    const load = async () => {
-      for (const url of sources) {
-        try {
-          const r = await fetch(url, { cache: "no-store" });
-          if (!r.ok) continue;
-          const data = await r.json() as {
-            connected_users?: number;
-            total_users?: number;
-            paid_users?: number;
-          };
-          const next =
-            normalizePositiveInt(data.connected_users) ||
-            normalizePositiveInt(data.total_users) ||
-            normalizePositiveInt(data.paid_users);
-          if (next > 0) {
-            if (!aborted) setSoldCountTarget(next);
-            return;
-          }
-        } catch {
-          // Try next source.
-        }
-      }
-    };
-
-    void load();
-    return () => {
-      aborted = true;
-    };
-  }, []);
-
-  useEffect(() => {
-    if (prefersReducedMotion()) return;
-    const ctx = gsap.context(() => {
-      gsap.from(".cta-content > *", {
-        y: 30,
-        opacity: 0,
-        duration: 0.6,
-        stagger: 0.1,
-        ease: "power3.out",
-        scrollTrigger: { trigger: ".cta-section", start: "top 75%", once: true },
-      });
-
-      // Sold counter
-      ScrollTrigger.create({
-        trigger: "#soldCount",
-        start: "top 85%",
-        once: true,
-        onEnter: () => {
-          gsap.to({ val: 0 }, {
-            val: soldCountTarget,
-            duration: 2,
-            ease: "power2.out",
-            onUpdate: function () {
-              const el = document.getElementById("soldCount");
-              if (el) el.textContent = Math.round(this.targets()[0].val).toLocaleString();
-            },
-          });
-        },
-      });
-    }, ref);
-    return () => ctx.revert();
-  }, [soldCountTarget]);
-
-  return (
-    <section className="cta-section" id="cta" ref={ref}>
-      <div className="section-tag">[ACQUIRE_ACCESS]</div>
-      <div className="cta-content">
-        <div className="cta-price-label">{current.label}</div>
-        <div className="cta-price">{current.price}<span className="period">{current.period}</span></div>
-        <div className="cta-disclaimer">{current.note}</div>
-        <a href={CHECKOUT_URL} target="_blank" rel="noreferrer" className="cta-btn">
-          <span className="btn-icon">→</span>
-          Открыть оплату
-        </a>
-        <div className="cta-features">
-          <span>Прозрачная сумма до оплаты</span>
-          <span>Запуск в несколько шагов</span>
-          <span>Поддержка 24/7</span>
-          <span>Понятные планы</span>
-        </div>
-        <div className="sold-counter">
-          <div className="label">ПОЛЬЗОВАТЕЛЕЙ ПОДКЛЮЧЕНО</div>
-          <div className="value" id="soldCount">{soldCountTarget.toLocaleString()}</div>
-        </div>
-      </div>
-    </section>
-  );
-}
-
-/* в"Ђв"Ђ FAQ в"Ђв"Ђ */
-function FAQ() {
-  const [openIndex, setOpenIndex] = useState<number | null>(null);
-  const ref = useRef<HTMLElement>(null);
-
-  useEffect(() => {
-    if (prefersReducedMotion()) return;
-    const ctx = gsap.context(() => {
-      gsap.from(".faq-item", {
-        y: 20,
-        opacity: 0,
-        duration: 0.5,
-        stagger: 0.06,
-        ease: "power3.out",
-        scrollTrigger: { trigger: ".faq", start: "top 80%", once: true },
-      });
-    }, ref);
-    return () => ctx.revert();
-  }, []);
-
-  return (
-    <section className="faq" id="faq" ref={ref}>
-      <div className="section-tag">[FAQ]</div>
-      <h2>ВОПРОСЫ</h2>
-      <div>
-        {FAQS.map((f, i) => (
-          <div key={f.q} className="faq-item">
-            <button
-              type="button"
-              className="faq-q"
-              onClick={() => setOpenIndex(openIndex === i ? null : i)}
-              aria-expanded={openIndex === i}
-              aria-controls={`faq-answer-${i}`}
-            >
-              {f.q}
-              <span className={`toggle ${openIndex === i ? "open" : ""}`}>+</span>
-            </button>
-            <div id={`faq-answer-${i}`} className={`faq-a ${openIndex === i ? "open" : ""}`}>{f.a}</div>
-          </div>
-        ))}
-      </div>
-    </section>
-  );
-}
-
-/* в"Ђв"Ђ Back to Top в"Ђв"Ђ */
-function BackToTop() {
-  const [show, setShow] = useState(false);
-  useEffect(() => {
-    const onScroll = () => setShow(window.scrollY > 600);
-    window.addEventListener("scroll", onScroll, { passive: true });
-    return () => window.removeEventListener("scroll", onScroll);
-  }, []);
-  if (!show) return null;
-  return (
-    <button
-      className="back-to-top"
-      type="button"
-      onClick={() => window.scrollTo({ top: 0, behavior: prefersReducedMotion() ? "auto" : "smooth" })}
-      aria-label="Back to top"
-    >
-      ↑
-    </button>
-  );
-}
-
-function MobileCommandBar() {
-  const [visible, setVisible] = useState(false);
-  useEffect(() => {
-    const onScroll = () => setVisible(window.scrollY > 260);
     onScroll();
     window.addEventListener("scroll", onScroll, { passive: true });
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
 
-  return (
-    <div className={`mobile-command ${visible ? "mobile-command--show" : ""}`} aria-hidden={!visible}>
-      <a href={CHECKOUT_URL} target="_blank" rel="noreferrer" className="mobile-command__cta">
-        <span className="mobile-command__lead">Открыть оплату</span>
-        <span className="mobile-command__tail">→ Подключить / Продлить</span>
-      </a>
-    </div>
-  );
-}
-
-/* в"Ђв"Ђ Footer в"Ђв"Ђ */
-function AccessPaths() {
-  return (
-    <section className="downloads" id="access-paths">
-      <div className="section-tag">[ACCESS]</div>
-      <div className="downloads-head">
-        <h2>САЙТ И TELEGRAM</h2>
-        <p>Можно управлять доступом в личном кабинете или через бота. Для быстрого продления чаще выбирают Telegram.</p>
-      </div>
-      <div className="downloads-grid">
-        <article className="download-card">
-          <h3>Личный кабинет</h3>
-          <p>Статус подписки, остаток лимита, активация подарочного кода и переход к оплате.</p>
-          <div className="download-actions">
-            <a href={WEBAPP_URL} className="download-link" target="_blank" rel="noreferrer">Открыть кабинет</a>
-            <a href={CHECKOUT_URL} className="download-link" target="_blank" rel="noreferrer">Открыть оплату</a>
-          </div>
-        </article>
-        <article className="download-card">
-          <h3>Telegram-бот</h3>
-          <p>Быстрый путь: продлить доступ, получить ключ и перейти в поддержку в одном интерфейсе.</p>
-          <div className="download-actions">
-            <a href={BOT_FAST_URL} className="download-link" target="_blank" rel="noreferrer">Открыть бота</a>
-          </div>
-        </article>
-      </div>
-    </section>
-  );
-}
-
-function ProjectChannel() {
-  if (!TG_NEWS_CHANNEL) return null;
-
-  return (
-    <section className="downloads" id="project-channel">
-      <div className="section-tag">[CHANNEL]</div>
-      <div className="downloads-head">
-        <h2>КАНАЛ ПРОЕКТА</h2>
-        <p>Подпишитесь, чтобы не пропускать обновления узлов, сервисные инструкции и предложения по продлению.</p>
-      </div>
-      <div className="downloads-grid">
-        <article className="download-card">
-          <h3>Зачем подписываться</h3>
-          <p>Релизы новых узлов, рекомендации по клиентам и акции по продлению появляются сначала в канале.</p>
-          <div className="download-actions">
-            <a href={`https://t.me/${TG_NEWS_CHANNEL}`} className="download-link" target="_blank" rel="noreferrer">
-              Подписаться в Telegram
-            </a>
-          </div>
-        </article>
-        <article className="download-card">
-          <h3>Бонус подписчика</h3>
-          <p>В кабинете можно подтвердить подписку и получить welcome-бонус баллами для скидки.</p>
-          <div className="download-actions">
-            <a href={WEBAPP_URL} className="download-link" target="_blank" rel="noreferrer">Открыть кабинет</a>
-          </div>
-        </article>
-      </div>
-    </section>
-  );
-}
-
-function LiveUpdates({ items }: { items: LiveUpdate[] }) {
-  return (
-    <section className="downloads" id="news">
-      <div className="section-tag">[LIVE UPDATES]</div>
-      <div className="downloads-head">
-        <h2>ПОСЛЕДНИЕ ОБНОВЛЕНИЯ</h2>
-        <p>Три свежих апдейта с прямыми переходами в посты канала.</p>
-      </div>
-      <div className="downloads-grid">
-        {items.map((item) => (
-          <article className="download-card" key={`${item.date}-${item.title}`}>
-            <h3>{item.title}</h3>
-            <p>{item.summary}</p>
-            <div className="download-actions">
-              <a href={item.link} className="download-link" target="_blank" rel="noreferrer">
-                Открыть пост
-              </a>
-              <span className="download-empty">{item.date}</span>
-            </div>
-          </article>
-        ))}
-      </div>
-    </section>
-  );
-}
-
-function RoadmapPublic() {
-  return (
-    <section className="downloads roadmap-public" id="roadmap">
-      <div className="section-tag">[ROADMAP]</div>
-      <div className="downloads-head">
-        <h2>ROADMAP НА БЛИЖАЙШИЕ СПРИНТЫ</h2>
-        <p>Показываем подтверждённые треки и текущий статус исполнения.</p>
-      </div>
-      <div className="downloads-grid">
-        {ROADMAP_PUBLIC.map((item) => (
-          <article className="download-card roadmap-card" key={item.title}>
-            <h3>{item.title}</h3>
-            <div className="roadmap-status">{item.status}</div>
-            <div className="roadmap-list">
-              {item.points.map((point) => (
-                <p key={point}>{point}</p>
-              ))}
-            </div>
-          </article>
-        ))}
-      </div>
-    </section>
-  );
-}
-function Footer() {
-  return (
-    <footer className="footer">
-      <div className="footer-inner">
-        <div className="footer-brand"><span>●</span> PORTAL</div>
-        <div className="footer-meta">
-          <p className="footer-description">
-            PORTAL предоставляет цифровой сервис VPN-доступа с маршрутами по странам, личным кабинетом
-            и поддержкой через Telegram. Оплата взимается за выбранный период доступа.
-          </p>
-          <div className="footer-contacts">
-            <span>Контакты:</span>
-            <a href={`mailto:${CONTACT_EMAIL}`}>{CONTACT_EMAIL}</a>
-            <a href={`mailto:${ENTERPRISE_EMAIL}`}>{ENTERPRISE_EMAIL}</a>
-            <a href={CONTACT_TG_URL} target="_blank" rel="noreferrer">Telegram</a>
-            <a href={CONTACT_FORM_URL} target="_blank" rel="noreferrer">Форма связи</a>
-          </div>
-        </div>
-        <div className="footer-links">
-          <a href="/offer">Оферта</a>
-          <a href="/privacy">Конфиденциальность</a>
-        </div>
-        <div className="footer-legal">
-          © {new Date().getFullYear()} PORTAL — SECURE ACCESS SERVICE
-        </div>
-      </div>
-    </footer>
-  );
-}
-
-/* в"Ђв"Ђ Page в"Ђв"Ђ */
-export default function HomePage() {
-  const { theme, toggle: toggleTheme } = useTheme();
-  const [preloaded, setPreloaded] = useState(false);
-  const [liveUpdates, setLiveUpdates] = useState<LiveUpdate[]>(DEFAULT_LIVE_UPDATES);
-
   useEffect(() => {
     let cancelled = false;
-    const load = async () => {
+
+    const loadLiveUpdates = async () => {
       for (const base of candidateApiBases()) {
         try {
           const resp = await fetch(`${base}/api/public/live-updates?limit=3`, { cache: "no-store" });
           if (!resp.ok) continue;
-          const data = await resp.json() as { updates?: LiveUpdate[] };
-          const rows = Array.isArray(data.updates) ? data.updates : [];
-          const normalized = rows
+          const data = (await resp.json()) as { updates?: LiveUpdate[] };
+          const normalized = (Array.isArray(data.updates) ? data.updates : [])
             .map((item) => ({
               title: String(item?.title || "").trim(),
               summary: String(item?.summary || "").trim(),
@@ -1052,43 +179,399 @@ export default function HomePage() {
             return;
           }
         } catch {
-          // Try next API base.
+          // try next base
         }
       }
     };
-    void load();
+
+    const loadSocialProof = async () => {
+      for (const base of candidateApiBases()) {
+        try {
+          const resp = await fetch(`${base}/api/public/social-proof`, { cache: "no-store" });
+          if (!resp.ok) continue;
+          const data = (await resp.json()) as SocialProof;
+          const next =
+            normalizePositiveInt(data.connected_users) ||
+            normalizePositiveInt(data.total_users) ||
+            normalizePositiveInt(data.paid_users);
+          if (next > 0) {
+            if (!cancelled) setSocialCount(next);
+            return;
+          }
+        } catch {
+          // try next base
+        }
+      }
+    };
+
+    const loadReviews = async () => {
+      try {
+        const resp = await fetch("/api/reviews", { cache: "no-store" });
+        if (!resp.ok) return;
+        const data = (await resp.json()) as { reviews?: Review[] };
+        const mapped = (Array.isArray(data.reviews) ? data.reviews : [])
+          .filter((item) => typeof item.text === "string" && item.text.trim().length > 0)
+          .slice(0, 3)
+          .map((item) => ({
+            text: (item.text || "").trim(),
+            author: maskReviewUsername(item.username),
+            tag: `${Math.max(1, Math.min(5, Number(item.rating) || 5))}★`,
+          }));
+        if (!cancelled && mapped.length) setReviews(mapped);
+      } catch {
+        // fallback to default review state
+      }
+    };
+
+    void loadLiveUpdates();
+    void loadSocialProof();
+    void loadReviews();
+
     return () => {
       cancelled = true;
     };
   }, []);
 
+  const toggleTheme = () => {
+    setTheme((prev) => {
+      const next = prev === "dark" ? "light" : "dark";
+      localStorage.setItem("portal-theme", next);
+      document.documentElement.setAttribute("data-theme", next);
+      return next;
+    });
+  };
+
   return (
     <>
-      {!preloaded && <Preloader onDone={() => setPreloaded(true)} />}
-      <div className="grain" />
-      <CursorFollower />
-      <Navbar theme={theme} onToggleTheme={toggleTheme} />
-      <main id="main-content" style={{ visibility: preloaded ? "visible" : "hidden" }}>
-        <Hero />
-        <Marquee />
-        <Features />
-        <Testimonials />
-        <Plans />
-        <PlanComparison />
-        <Downloads />
-        <AccessPaths />
-        <CTA />
-        <ProjectChannel />
-        <LiveUpdates items={liveUpdates} />
-        <RoadmapPublic />
-        <FAQ />
-        <Footer />
+      <div className="grain" aria-hidden="true" />
+
+      <header className={`topbar ${scrolled ? "topbar--scrolled" : ""}`}>
+        <div className="brand">
+          <span>●</span> PORTAL
+        </div>
+        <nav className="topnav">
+          <a href="#features">Преимущества</a>
+          <a href="#plans">Тарифы</a>
+          <a href="#download">Скачать</a>
+          <a href="#roadmap">Roadmap</a>
+          <a href="#faq">FAQ</a>
+          <button className="theme-toggle" onClick={toggleTheme} type="button" aria-label="Переключить тему">
+            {theme === "dark" ? "☀" : "☾"}
+          </button>
+          <a href={CHECKOUT_URL} target="_blank" rel="noreferrer" className="nav-buy">
+            Подключить
+          </a>
+        </nav>
+      </header>
+
+      <main id="main-content">
+        <section className="hero">
+          <div className="bg-type">
+            <div className="bg-type-line" style={{ fontSize: "20vw", top: "10%", left: "-5%" }}>
+              SECURE SECURE SECURE SECURE
+            </div>
+            <div className="bg-type-line" style={{ fontSize: "15vw", top: "54%", right: "-5%" }}>
+              PORTAL PORTAL PORTAL PORTAL
+            </div>
+          </div>
+          <div className="hero-badge">[SECURE DIGITAL ACCESS] — TRANSPARENT CHECKOUT — 2026</div>
+          <div className="hero-title">
+            <span className="hero-word-1">SECURE</span>
+            <span className="hero-word-2">ROUTING</span>
+            <span className="hero-word-3">PORTAL</span>
+          </div>
+          <div className="hero-sub">Понятный VPN-запуск • Прозрачная цена • Поддержка в Telegram</div>
+          <div className="hero-scroll">
+            <span>SCROLL ↓</span>
+          </div>
+        </section>
+
+        <div className="marquee-section">
+          <div className="marquee-track">
+            {["ENCRYPTED", "●", "FAST", "●", "STABLE", "●", "GLOBAL", "●", "PRIVATE", "●", "SUPPORT 24/7", "●", "NO LOGS", "●"].map((item, idx) => (
+              <span key={`${item}-${idx}`} className={item === "●" ? "" : "highlight"}>
+                {item}
+              </span>
+            ))}
+          </div>
+        </div>
+
+        <section className="features" id="features">
+          <div className="section-tag">[CONTENTS]</div>
+          <div className="features-header">
+            <h2>
+              ЧТО
+              <br />
+              <span className="stroke">ВНУТРИ</span>
+            </h2>
+            <p>Понятный путь: подключение, выбор плана, оплата и поддержка.</p>
+          </div>
+          <div className="features-grid">
+            {FEATURES.map((item) => (
+              <article key={item.num} className="feature-card">
+                <div className="feature-num">{item.num}</div>
+                <div className="feature-type">{item.type}</div>
+                <h3>{item.title}</h3>
+                <p>{item.desc}</p>
+              </article>
+            ))}
+          </div>
+        </section>
+
+        <section className="testimonials">
+          <div className="section-tag">[FEEDBACK]</div>
+          <h2>ОТЗЫВЫ ПОЛЬЗОВАТЕЛЕЙ</h2>
+          <div className="testimonial-card">
+            <div className="testimonial-quote">"{review?.text || "Отзывы загружаются. После модерации покажем свежие кейсы пользователей."}"</div>
+            <div className="testimonial-author">
+              <span className="testimonial-name">{review?.author || "PORTAL"}</span>
+              <span className="testimonial-tag">{review?.tag || ""}</span>
+            </div>
+          </div>
+        </section>
+
+        <section className="plans" id="plans">
+          <div className="section-tag">[TARIFFS]</div>
+          <div className="plans-header">
+            <h2>ТАРИФЫ</h2>
+          </div>
+          <div className="plans-track">
+            {PLANS.map((plan) => (
+              <article key={plan.code} className={`plan-card ${plan.recommended ? "recommended" : ""}`}>
+                {plan.tag ? <span className="plan-tag">{plan.tag}</span> : null}
+                <span className="plan-emoji">{plan.code.toUpperCase()}</span>
+                <h3>{plan.name}</h3>
+                <p className="plan-desc">{plan.desc}</p>
+                <div className="plan-price">{plan.price}</div>
+                <div className="plan-note">{plan.note}</div>
+                {plan.micro ? <div className="plan-micro">{plan.micro}</div> : null}
+              </article>
+            ))}
+          </div>
+        </section>
+
+        <section className="downloads" id="plan-comparison">
+          <div className="section-tag">[COMPARISON]</div>
+          <div className="downloads-head">
+            <h2>НАГЛЯДНОЕ СРАВНЕНИЕ ТАРИФОВ VPN</h2>
+            <p>Сразу видно, где лимиты, где полный режим и какой профиль подходит под ваш сценарий.</p>
+          </div>
+          <div className="roadmap-list" style={{ marginTop: 18 }}>
+            {PLAN_COMPARISON_ROWS.map((row) => (
+              <p key={row.metric}>
+                <strong>{row.metric}:</strong> Start — {row.start}; Pro — {row.pro}; Ultra — {row.ultra}
+              </p>
+            ))}
+          </div>
+          <div className="download-card" style={{ marginTop: 14 }}>
+            <h3>Как работает маршрутизация по тарифам</h3>
+            <p>
+              Для части медиасценариев может использоваться прямой маршрут для меньшей задержки, а VPN-канал остается для основного защищенного трафика.
+              В карточке тарифа всегда явно указано, какой режим применяется.
+            </p>
+          </div>
+        </section>
+
+        <section className="downloads" id="download">
+          <div className="section-tag">[DOWNLOAD]</div>
+          <div className="downloads-head">
+            <h2>СКАЧАТЬ ПРИЛОЖЕНИЕ</h2>
+            <p>Официальные сборки для Android и Windows. Ссылки обновляются после релизов.</p>
+          </div>
+          <div className="downloads-grid">
+            <article className="download-card">
+              <h3>Android</h3>
+              <p>Установка из магазина или прямым APK.</p>
+              <div className="download-actions">
+                {androidLinks.length ? (
+                  androidLinks.map((item) => (
+                    <a key={item.key} href={item.url} target="_blank" rel="noreferrer" className="download-link">
+                      {item.label}
+                    </a>
+                  ))
+                ) : (
+                  <span className="download-empty">Сборка появится после публикации</span>
+                )}
+              </div>
+            </article>
+            <article className="download-card">
+              <h3>Windows</h3>
+              <p>Установщик для ПК и резервный канал загрузки.</p>
+              <div className="download-actions">
+                {windowsLinks.length ? (
+                  windowsLinks.map((item) => (
+                    <a key={item.key} href={item.url} target="_blank" rel="noreferrer" className="download-link">
+                      {item.label}
+                    </a>
+                  ))
+                ) : (
+                  <span className="download-empty">Сборка появится после публикации</span>
+                )}
+              </div>
+            </article>
+          </div>
+          {APP_DOCS_URL ? (
+            <a href={APP_DOCS_URL} target="_blank" rel="noreferrer" className="download-docs">
+              Инструкция по установке →
+            </a>
+          ) : null}
+        </section>
+
+        <section className="downloads" id="access-paths">
+          <div className="section-tag">[ACCESS]</div>
+          <div className="downloads-head">
+            <h2>САЙТ И TELEGRAM</h2>
+            <p>Управляйте доступом через личный кабинет или через бота — как удобнее в моменте.</p>
+          </div>
+          <div className="downloads-grid">
+            <article className="download-card">
+              <h3>Личный кабинет</h3>
+              <p>Статус подписки, ключ подключения, платежи и история поддержки.</p>
+              <div className="download-actions">
+                <a href={WEBAPP_URL} target="_blank" rel="noreferrer" className="download-link">
+                  Открыть кабинет
+                </a>
+                <a href={CHECKOUT_URL} target="_blank" rel="noreferrer" className="download-link">
+                  Открыть оплату
+                </a>
+              </div>
+            </article>
+            <article className="download-card">
+              <h3>Telegram-бот</h3>
+              <p>Быстрый путь: продлить доступ, получить ключ и перейти в поддержку.</p>
+              <div className="download-actions">
+                <a href={BOT_FAST_URL} target="_blank" rel="noreferrer" className="download-link">
+                  Открыть бота
+                </a>
+              </div>
+            </article>
+          </div>
+        </section>
+
+        <section className="cta-section" id="cta">
+          <div className="section-tag">[ACQUIRE_ACCESS]</div>
+          <div className="cta-content">
+            <div className="cta-price-label">Прозрачный старт</div>
+            <div className="cta-price">
+              99 ₽<span className="period">за Start-план</span>
+            </div>
+            <div className="cta-disclaimer">Подключение за несколько шагов с понятной суммой до оплаты.</div>
+            <a href={CHECKOUT_URL} target="_blank" rel="noreferrer" className="cta-btn">
+              <span className="btn-icon">→</span>
+              Открыть оплату
+            </a>
+            <div className="cta-features">
+              <span>Прозрачная сумма до оплаты</span>
+              <span>Мгновенная активация</span>
+              <span>Поддержка 24/7</span>
+            </div>
+            <div className="sold-counter">
+              <div className="label">Пользователей подключено</div>
+              <div className="value">{socialCount.toLocaleString()}</div>
+            </div>
+          </div>
+        </section>
+
+        <section className="downloads" id="news">
+          <div className="section-tag">[LIVE UPDATES]</div>
+          <div className="downloads-head">
+            <h2>ПОСЛЕДНИЕ ОБНОВЛЕНИЯ</h2>
+            <p>Свежие апдейты по узлам и сервису с прямым переходом в канал.</p>
+          </div>
+          <div className="downloads-grid">
+            {liveUpdates.map((item) => (
+              <article key={`${item.date}-${item.title}`} className="download-card">
+                <h3>{item.title}</h3>
+                <p>{item.summary}</p>
+                <div className="download-actions">
+                  <a href={item.link} target="_blank" rel="noreferrer" className="download-link">
+                    Открыть пост
+                  </a>
+                  <span className="download-empty">{item.date}</span>
+                </div>
+              </article>
+            ))}
+          </div>
+        </section>
+
+        <section className="downloads roadmap-public" id="roadmap">
+          <div className="section-tag">[ROADMAP]</div>
+          <div className="downloads-head">
+            <h2>ROADMAP НА БЛИЖАЙШИЕ СПРИНТЫ</h2>
+            <p>Показываем подтвержденные треки и текущий статус.</p>
+          </div>
+          <div className="downloads-grid">
+            {ROADMAP.map((item) => (
+              <article key={item.title} className="download-card roadmap-card">
+                <h3>{item.title}</h3>
+                <div className="roadmap-status">{item.status}</div>
+                <div className="roadmap-list">
+                  {item.points.map((point) => (
+                    <p key={point}>{point}</p>
+                  ))}
+                </div>
+              </article>
+            ))}
+          </div>
+        </section>
+
+        <section className="faq" id="faq">
+          <div className="section-tag">[FAQ]</div>
+          <h2>ВОПРОСЫ</h2>
+          <div>
+            {FAQS.map((item, idx) => {
+              const open = openedFaq === idx;
+              return (
+                <div key={item.q} className="faq-item">
+                  <button
+                    type="button"
+                    className="faq-q"
+                    onClick={() => setOpenedFaq(open ? null : idx)}
+                    aria-expanded={open}
+                    aria-controls={`faq-answer-${idx}`}
+                  >
+                    {item.q}
+                    <span className={`toggle ${open ? "open" : ""}`}>+</span>
+                  </button>
+                  <div id={`faq-answer-${idx}`} className={`faq-a ${open ? "open" : ""}`}>
+                    {item.a}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </section>
       </main>
-      <MobileCommandBar />
-      <BackToTop />
+
+      <footer className="footer">
+        <div className="footer-inner">
+          <div className="footer-brand">
+            <span>●</span> PORTAL
+          </div>
+          <div className="footer-meta">
+            <p className="footer-description">
+              PORTAL предоставляет цифровой сервис VPN-доступа с маршрутами по странам, личным кабинетом и поддержкой через Telegram.
+              Оплата взимается за выбранный период доступа.
+            </p>
+            <div className="footer-contacts">
+              <span>Контакты:</span>
+              <a href={`mailto:${CONTACT_EMAIL}`}>{CONTACT_EMAIL}</a>
+              <a href={`mailto:${ENTERPRISE_EMAIL}`}>{ENTERPRISE_EMAIL}</a>
+              <a href={CONTACT_TG_URL} target="_blank" rel="noreferrer">
+                Telegram
+              </a>
+              <a href={CONTACT_FORM_URL} target="_blank" rel="noreferrer">
+                Форма связи
+              </a>
+            </div>
+          </div>
+          <div className="footer-links">
+            <a href="/offer">Оферта</a>
+            <a href="/privacy">Конфиденциальность</a>
+          </div>
+          <div className="footer-legal">© {new Date().getFullYear()} PORTAL — SECURE ACCESS SERVICE</div>
+        </div>
+      </footer>
     </>
   );
 }
-
-
-

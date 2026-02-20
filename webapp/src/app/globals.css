@@ -1,5 +1,6 @@
 ﻿@import "tailwindcss";
 
+
 :root {
   --bg: #f7f2ff;
   --bg-dark: #0e1018;
@@ -137,6 +138,31 @@ body.qa-hitbox :is(a, button, [role="button"]) {
 
 .font-mono {
   font-family: var(--font-mono), monospace;
+}
+
+.material-symbols-outlined,
+.material-symbols-rounded {
+  display: inline-block;
+  font-style: normal;
+  font-weight: normal;
+  letter-spacing: normal;
+  line-height: 1;
+  text-transform: none;
+  white-space: nowrap;
+  direction: ltr;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  -moz-osx-font-smoothing: grayscale;
+  font-feature-settings: "liga";
+  font-variation-settings: "FILL" 1, "wght" 400, "GRAD" 0, "opsz" 24;
+}
+
+.material-symbols-outlined {
+  font-family: "Material Symbols Outlined";
+}
+
+.material-symbols-rounded {
+  font-family: "Material Symbols Rounded";
 }
 
 .glass-card {
@@ -339,3 +365,5 @@ body.tg-keyboard-open .tg-bottom-nav {
     scroll-behavior: auto !important;
   }
 }
+
+

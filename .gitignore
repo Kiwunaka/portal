@@ -62,3 +62,9 @@ external/client-fork/release-links.env
 external/client-fork/release-manifests/
 external/client-fork/branding/assets/
 external/client-fork/branding/brand.env
+
+# Local design/reference sources (not part of production repo)
+external/client-fork/
+mockup/
+mockupv2/
+mockupv5/
