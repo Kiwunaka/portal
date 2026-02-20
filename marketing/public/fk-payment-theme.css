@@ -1,0 +1,83 @@
+﻿/*
+  FreeKassa hosted checkout theme for PORTAL.
+  URL: https://portal-privacy.online/fk-payment-theme.css
+*/
+
+:root {
+  --portal-bg: #0a0a0a;
+  --portal-bg-soft: #111111;
+  --portal-line: #1a1a1a;
+  --portal-red: #ff4757;
+  --portal-text: #f0f0f0;
+  --portal-muted: #9a9a9a;
+}
+
+.payment-page-global__wrap {
+  background:
+    radial-gradient(1000px 520px at 8% -8%, rgba(255, 71, 87, 0.16), transparent 62%),
+    radial-gradient(780px 420px at 92% 6%, rgba(46, 213, 115, 0.08), transparent 65%),
+    var(--portal-bg) !important;
+  color: var(--portal-text) !important;
+  font-family: "Space Grotesk", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif !important;
+}
+
+.payment-page__list-header {
+  color: var(--portal-text) !important;
+  font-weight: 600 !important;
+  letter-spacing: 0.06em !important;
+  text-transform: uppercase !important;
+}
+
+.payment-page__form,
+.payment-page__currency-list-desktop,
+.payment-page__currency-list-mobile {
+  background: linear-gradient(145deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.02)) !important;
+  border: 1px solid var(--portal-line) !important;
+  border-radius: 16px !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08), 0 18px 40px rgba(0, 0, 0, 0.3) !important;
+}
+
+.payment-page__list-item .active,
+.payment-page__list-item.active {
+  border-radius: 12px !important;
+  border: 1px solid rgba(255, 71, 87, 0.45) !important;
+  box-shadow: 0 0 0 1px rgba(255, 71, 87, 0.25) inset !important;
+}
+
+.payment-page__list-sub-wrap:before {
+  border-right-color: var(--portal-red) !important;
+}
+
+.payment-page__form-fields .text-field-wrap {
+  border-radius: 12px !important;
+  border: 1px solid var(--portal-line) !important;
+  background: rgba(0, 0, 0, 0.25) !important;
+}
+
+.payment-page__form-fields input,
+.payment-page__form-fields textarea {
+  color: var(--portal-text) !important;
+}
+
+.payment-page__form-fields input::placeholder,
+.payment-page__form-fields textarea::placeholder {
+  color: var(--portal-muted) !important;
+}
+
+.payment-page__submit button,
+.payment-page__submit .btn,
+button[type="submit"] {
+  background: var(--portal-red) !important;
+  border: 1px solid var(--portal-red) !important;
+  color: #ffffff !important;
+  border-radius: 12px !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.08em !important;
+  font-weight: 700 !important;
+}
+
+.payment-page__submit button:hover,
+.payment-page__submit .btn:hover,
+button[type="submit"]:hover {
+  filter: brightness(1.05) !important;
+}

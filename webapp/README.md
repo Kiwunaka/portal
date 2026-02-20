@@ -1,28 +1,37 @@
-# WebApp (Telegram LK)
+﻿# Portal WebApp (Next App Router)
 
-This is a Vite + React app meant to be served as static files.
+Личный кабинет PORTAL собран как Next static app.
 
-## Dev
+## Локальный запуск
 
 ```bash
-cd webapp
 npm install
 npm run dev
 ```
 
-## Build
+## Прод-сборка
 
 ```bash
-cd webapp
-npm install
 npm run build
 ```
 
-Build output is in `webapp/dist/`.
+`next.config.ts` настроен на:
+- `output: "export"`
+- `trailingSlash: true`
+- `basePath: "/webapp"`
+- `assetPrefix: "/webapp"`
 
-## Environment
+Готовые статик-файлы появляются в `webapp/out`.
 
-Optionally set:
-- `VITE_PUBLIC_API_BASE_URL` (default: tries same-origin first, then falls back to `https://<host>:2096`)
-- `VITE_WEBAPP_ENABLE_HAPTIC` (`true|false`, fallback from backend feature flags)
-- `VITE_WEBAPP_ENABLE_LOTTIE` (`true|false`, fallback from backend feature flags)
+## Ключевые ENV (frontend)
+
+- `NEXT_PUBLIC_API_BASE_URL`
+- `NEXT_PUBLIC_TELEGRAM_LOGIN_BOT`
+- `NEXT_PUBLIC_TELEGRAM_BOT_URL`
+
+Для плавного перехода поддерживаются fallback-переменные `VITE_*`.
+
+## Auth flows
+
+- Внутри Telegram: авторизация через `initData`.
+- В браузере: Telegram Login Widget -> `POST /api/auth/telegram/web-login`.

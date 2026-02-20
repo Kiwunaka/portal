@@ -206,7 +206,7 @@ PUBLIC_API_BASE_URL = os.getenv("PUBLIC_API_BASE_URL", f"https://{HOST_DOMAIN}")
 PAY_CHECKOUT_URL = (
     os.getenv("PAY_CHECKOUT_URL")
     or os.getenv("CHECKOUT_URL")
-    or f"https://{(PUBLIC_WEB_DOMAIN or HOST_DOMAIN)}/checkout"
+    or f"https://{(PUBLIC_WEB_DOMAIN or HOST_DOMAIN)}/checkout/"
 ).strip()
 CHECKOUT_TICKET_SECRET = (
     (os.getenv("CHECKOUT_TICKET_SECRET") or "").strip()
@@ -1435,7 +1435,7 @@ def _bot_checkout_url(
     promo_code: str | None = None,
     campaign_key: str | None = None,
 ) -> str:
-    base = (PAY_CHECKOUT_URL or "").strip() or f"https://{(PUBLIC_WEB_DOMAIN or HOST_DOMAIN)}/checkout"
+    base = (PAY_CHECKOUT_URL or "").strip() or f"https://{(PUBLIC_WEB_DOMAIN or HOST_DOMAIN)}/checkout/"
     parsed = urlsplit(base)
     query = dict(parse_qsl(parsed.query, keep_blank_values=True))
     query["source"] = "bot"
@@ -1458,8 +1458,8 @@ def _bot_checkout_url(
     built_query = urlencode(query)
     # Keep relative path if PAY_CHECKOUT_URL is relative.
     if parsed.scheme and parsed.netloc:
-        return urlunsplit((parsed.scheme, parsed.netloc, parsed.path or "/checkout", built_query, parsed.fragment))
-    return urlunsplit(("", "", parsed.path or "/checkout", built_query, parsed.fragment))
+        return urlunsplit((parsed.scheme, parsed.netloc, parsed.path or "/checkout/", built_query, parsed.fragment))
+    return urlunsplit(("", "", parsed.path or "/checkout/", built_query, parsed.fragment))
 
 
 def _parse_start_deeplink_context(start_arg: str) -> tuple[str, str]:
@@ -2718,8 +2718,9 @@ def build_choose_tariff_text() -> str:
         f"🆓 *Бесплатный* — 1 страна: {free_label}\n"
         f"💠 *Премиум* — {paid_count} стран: {paid_list}\n\n"
         f"Бесплатный: до {FREE_TOTAL_GB} ГБ, до {FREE_LIMIT_IP} устройств (по IP), до {FREE_SPEED_MBIT} Мбит/с.\n"
-        "Бесплатный: приоритет для соцсетей и AI-сервисов; часть медиасервисов может идти напрямую.\n"
-        f"Премиум: полный доступ, переключение стран, до {PAID_LIMIT_IP} устройств.\n\n"
+        "Бесплатный: VPN для основных задач; часть медиасервисов может идти напрямую для снижения задержки.\n"
+        f"Премиум: полный VPN-маршрут, переключение стран, до {PAID_LIMIT_IP} устройств и высокий профиль скорости.\n"
+        "Использовать VPN официально можно — выбирайте режим по сценарию.\n\n"
         f"💰 *Выгода при оплате на срок:*{savings_line}\n\n"
         f"{payment_hint}"
     )
@@ -2728,8 +2729,9 @@ def build_choose_tariff_text() -> str:
 def _dual_pay_text() -> str:
     return (
         "💳 *Оплата в рублях + Stars*\n\n"
-        "Рекомендуем путь через сайт: карта/СБП и прозрачный checkout.\n"
-        "Telegram Stars остаются как дополнительный способ.\n\n"
+        "Основной путь: ₽ на сайте (карта/СБП) с прозрачной разбивкой суммы.\n"
+        "Telegram Stars остаются как резервный вариант.\n"
+        "Использование VPN официально разрешено.\n\n"
         "Выберите, как продолжить:"
     )
 

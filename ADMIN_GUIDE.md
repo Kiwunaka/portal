@@ -6,7 +6,7 @@
 
 - `portal_bot/bot.py`: основной Telegram-бот (пользовательские и админ-сценарии).
 - `portal_bot/api.py`: backend API, checkout, callbacks.
-- `webapp/`: пользовательский личный кабинет (без админ-функций).
+- `webapp/`: пользовательский личный кабинет на Next (static export в `webapp/out`, без админ-функций).
 - `marketing/`: лендинг и checkout UI.
 - `portal_bot/helpbot.py`: поддержка/тикеты.
 
@@ -26,7 +26,9 @@ Core:
 
 Checkout/flags:
 - `RUB_CHECKOUT_ENABLED`
+- `BOT_RUB_BUTTON_ENABLED`
 - `CHECKOUT_WIDGET_ENABLED`
+- `PAYMENT_CALLBACK_TOLERANT_MODE` (`true` только на staging)
 - `CHECKOUT_TICKET_SECRET`
 - `CHECKOUT_TICKET_TTL_SECONDS`
 
@@ -62,6 +64,10 @@ Funnel/support:
 - `POST /api/payments/freekassa/orders/create-public`
 - `POST|GET /api/payments/freekassa/notify`
 
+Статик-файлы кассы:
+- `https://portal-privacy.online/fk-verify.html`
+- `https://portal-privacy.online/fk-payment-theme.css`
+
 Checkout ticket:
 - создаётся в bot/backend;
 - проверяется в `create-public`;
@@ -83,13 +89,15 @@ Checkout ticket:
 
 1. Деплой backend с безопасными флагами.
 2. Включить `RUB_CHECKOUT_ENABLED=true`.
-3. Проверить `create-public` по валидному ticket.
-4. Проверить notify -> `YES`.
-5. Включить `CHECKOUT_WIDGET_ENABLED=true` при необходимости.
+3. Включить `BOT_RUB_BUTTON_ENABLED=true` (RUB кнопка как primary в боте).
+4. Проверить `create-public` по валидному ticket.
+5. Проверить notify -> `YES`.
+6. Включить `CHECKOUT_WIDGET_ENABLED=true` при необходимости.
+7. Проверить `GET /fk-verify.html` и `GET /fk-payment-theme.css` -> `200`.
 
 ## 8) Rollback
 
-1. Выключить `RUB_CHECKOUT_ENABLED` и `CHECKOUT_WIDGET_ENABLED`.
+1. Выключить `RUB_CHECKOUT_ENABLED`, `BOT_RUB_BUTTON_ENABLED` и `CHECKOUT_WIDGET_ENABLED`.
 2. Перезапустить сервисы.
 3. Сохранить схему БД (обратная совместимость через fallback/legacy поля).
 

@@ -208,7 +208,7 @@
 
 - скрипт: `scripts/remote_deploy_brain_static_sites.py`
 - шаги:
-  - upload `webapp/dist` -> `/var/www/portal/webapp`
+  - upload `webapp/out` -> `/var/www/portal/webapp`
   - upload `marketing/out` -> `/var/www/portal/marketing`
   - reload/restart Caddy
 

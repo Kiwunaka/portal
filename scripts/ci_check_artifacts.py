@@ -15,6 +15,7 @@ def _collect_artifact_violations(repo_root: Path) -> list[str]:
         ".pytest_cache",
         ".mypy_cache",
         "webapp/dist",
+        "webapp/out",
         "marketing/out",
         ".tmp/bench",
     }
@@ -50,7 +51,7 @@ def _public_copy_files(repo_root: Path) -> list[Path]:
     for base in (repo_root / "webapp" / "src", repo_root / "marketing" / "src"):
         if not base.exists():
             continue
-        for ext in ("*.ts", "*.tsx", "*.js", "*.jsx", "*.css", "*.html", "*.mdx"):
+        for ext in ("*.ts", "*.tsx", "*.js", "*.jsx", "*.html", "*.mdx"):
             files.extend(base.rglob(ext))
     # Deduplicate while preserving stable order
     return sorted(set(files))
@@ -58,24 +59,29 @@ def _public_copy_files(repo_root: Path) -> list[Path]:
 
 def _collect_copy_violations(repo_root: Path) -> list[str]:
     violations: list[str] = []
-    pattern = re.compile(r"\bVPN\b", flags=re.IGNORECASE)
+    patterns = [
+        re.compile(r"\b100%\b", flags=re.IGNORECASE),
+        re.compile(r"гарантирован\w*", flags=re.IGNORECASE),
+        re.compile(r"без\s+ограничений", flags=re.IGNORECASE),
+    ]
     for path in _public_copy_files(repo_root):
         text = path.read_text(encoding="utf-8", errors="replace")
         for idx, line in enumerate(text.splitlines(), start=1):
-            if pattern.search(line):
-                rel = path.resolve().relative_to(repo_root.resolve()).as_posix()
-                violations.append(f"Forbidden public word found: {rel}:{idx}")
+            for pattern in patterns:
+                if pattern.search(line):
+                    rel = path.resolve().relative_to(repo_root.resolve()).as_posix()
+                    violations.append(f"Forbidden absolute claim found: {rel}:{idx}")
     return sorted(set(violations))
 
 
 def main() -> int:
     parser = argparse.ArgumentParser(
-        description="Fail CI if generated artifacts or forbidden public wording are present."
+        description="Fail CI if generated artifacts or forbidden absolute public claims are present."
     )
     parser.add_argument(
         "--check-copy",
         action="store_true",
-        help="Also check public-facing copy for the forbidden word VPN.",
+        help="Also check public-facing copy for absolute promises (100%, гарантировано, без ограничений).",
     )
     args = parser.parse_args()
 

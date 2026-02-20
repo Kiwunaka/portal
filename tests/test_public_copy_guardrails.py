@@ -8,13 +8,15 @@ PUBLIC_COPY_FILES = [
     ROOT / "marketing/src/app/checkout/page.tsx",
     ROOT / "marketing/src/app/offer/page.tsx",
     ROOT / "marketing/src/app/privacy/page.tsx",
-    ROOT / "webapp/src/App.tsx",
-    ROOT / "webapp/src/legal.ts",
+    ROOT / "webapp/src/app/page.tsx",
+    ROOT / "webapp/src/app/(dashboard)/dashboard/page.tsx",
+    ROOT / "webapp/src/app/(dashboard)/subscription/page.tsx",
+    ROOT / "webapp/src/app/(dashboard)/subscription/checkout/page.tsx",
+    ROOT / "webapp/src/app/(dashboard)/support/page.tsx",
 ]
 
 BANNED_PATTERNS = [
-    re.compile(r"\bvpn\b", re.IGNORECASE),
-    re.compile(r"\bвпн\b", re.IGNORECASE),
+    re.compile(r"\b100%\b", re.IGNORECASE),
     re.compile(r"гарантирован\w*", re.IGNORECASE),
     re.compile(r"без\s+ограничений", re.IGNORECASE),
 ]

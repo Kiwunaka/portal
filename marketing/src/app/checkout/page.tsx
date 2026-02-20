@@ -13,6 +13,13 @@ type PlanOption = {
   node_policy?: string | null;
 };
 
+type PlanComparisonRow = {
+  metric: string;
+  start: string;
+  pro: string;
+  ultra: string;
+};
+
 type PublicPlansResponse = {
   plans?: Array<{
     code: string;
@@ -64,6 +71,21 @@ const FALLBACK_PLANS: PlanOption[] = [
   { code: "9_months", label: "Ultra 9 месяцев", amount_rub: 1399, days: 273, device_limit: 5, node_policy: "paid_pool" },
   { code: "12_months", label: "Ultra 12 месяцев", amount_rub: 1499, days: 365, device_limit: 5, node_policy: "paid_pool", badge: "Выгода" },
 ];
+
+const PLAN_COMPARISON_ROWS: PlanComparisonRow[] = [
+  { metric: "Устройства", start: "1", pro: "До 5", ultra: "До 5" },
+  { metric: "Страны", start: "NL", pro: "Польша, Нидерланды, США, Италия", ultra: "Полный пул + приоритет" },
+  { metric: "Маршрутизация", start: "VPN для базовых задач", pro: "Полный VPN-маршрут ежедневно", ultra: "VPN + приоритет" },
+  { metric: "Скоростной профиль", start: "Базовый", pro: "Высокий", ultra: "Максимальный" },
+  { metric: "Поддержка", start: "Стандартная", pro: "Быстрый Telegram-ответ", ultra: "Приоритет 24/7" },
+];
+
+function mapPlanToColumn(code: string): "start" | "pro" | "ultra" {
+  const normalized = String(code || "").trim().toLowerCase();
+  if (normalized === "start_99") return "start";
+  if (normalized === "1_month" || normalized === "3_months") return "pro";
+  return "ultra";
+}
 
 function candidateApiBases(): string[] {
   const out: string[] = [];
@@ -215,6 +237,7 @@ export default function CheckoutPage() {
     () => plans.find((p) => p.code === selectedPlan) || plans[0] || FALLBACK_PLANS[0],
     [plans, selectedPlan],
   );
+  const activeColumn = useMemo(() => mapPlanToColumn(activePlan?.code || ""), [activePlan?.code]);
 
   const widgetSrc = useMemo(() => {
     if (!widgetEnabled || !FK_WIDGET_API_KEY || !FK_WIDGET_SHOP_ID) return "";
@@ -329,6 +352,9 @@ export default function CheckoutPage() {
             </p>
           )}
           {queryTgId ? <p className="meta-line">Профиль: tg_id={queryTgId}</p> : null}
+          {!queryCampaign && !queryPromo && !queryTgId ? (
+            <p className="meta-line">Контекст: campaign/promo/tg_id не передан</p>
+          ) : null}
           <p className={checkoutTicket ? "meta-line" : "meta-line meta-line--bad"}>
             {checkoutTicket ? "Checkout ticket: получен" : "Checkout ticket: не найден"}
           </p>
@@ -339,6 +365,28 @@ export default function CheckoutPage() {
               <div>{`Итог: ${breakdown.final.toFixed(0)} ₽`}</div>
             </div>
           ) : null}
+
+          <div className="plan-compare">
+            <div className="plan-compare__title">Сравнение тарифов</div>
+            <div className="plan-compare__head">
+              <span>Параметр</span>
+              <span className={activeColumn === "start" ? "plan-compare__active" : ""}>Start</span>
+              <span className={activeColumn === "pro" ? "plan-compare__active" : ""}>Pro</span>
+              <span className={activeColumn === "ultra" ? "plan-compare__active" : ""}>Ultra</span>
+            </div>
+            {PLAN_COMPARISON_ROWS.map((row) => (
+              <div className="plan-compare__row" key={row.metric}>
+                <span>{row.metric}</span>
+                <span className={activeColumn === "start" ? "plan-compare__active" : ""}>{row.start}</span>
+                <span className={activeColumn === "pro" ? "plan-compare__active" : ""}>{row.pro}</span>
+                <span className={activeColumn === "ultra" ? "plan-compare__active" : ""}>{row.ultra}</span>
+              </div>
+            ))}
+            <p className="plan-compare__note">
+              Почему часть медиасервисов может идти напрямую: в отдельных сценариях это уменьшает задержку и стабилизирует
+              воспроизведение. VPN-канал для основного трафика сохраняется по тарифной политике.
+            </p>
+          </div>
         </article>
 
         <article className="glass-card">
@@ -523,6 +571,63 @@ export default function CheckoutPage() {
 
         .meta-line--bad { color: #ff7a7a; }
 
+        .plan-compare {
+          margin-top: 12px;
+          border: 1px solid var(--line);
+          padding: 10px;
+          background: rgba(0, 0, 0, 0.2);
+        }
+
+        .plan-compare__title {
+          font-family: var(--font-m);
+          font-size: 0.68rem;
+          letter-spacing: 0.1em;
+          text-transform: uppercase;
+          color: var(--muted);
+          margin-bottom: 8px;
+        }
+
+        .plan-compare__head,
+        .plan-compare__row {
+          display: grid;
+          grid-template-columns: 1.3fr 1fr 1fr 1fr;
+          gap: 6px;
+          align-items: start;
+          font-size: 0.75rem;
+          line-height: 1.4;
+        }
+
+        .plan-compare__head {
+          font-family: var(--font-m);
+          letter-spacing: 0.06em;
+          text-transform: uppercase;
+          color: var(--muted);
+          border-bottom: 1px solid var(--line);
+          padding-bottom: 6px;
+          margin-bottom: 6px;
+        }
+
+        .plan-compare__row {
+          padding: 5px 0;
+          border-bottom: 1px dashed rgba(255, 255, 255, 0.08);
+        }
+
+        .plan-compare__row:last-of-type {
+          border-bottom: 0;
+        }
+
+        .plan-compare__active {
+          color: var(--red);
+          font-weight: 700;
+        }
+
+        .plan-compare__note {
+          margin-top: 8px;
+          font-size: 0.74rem;
+          line-height: 1.5;
+          color: var(--muted);
+        }
+
         .checkout-actions {
           display: flex;
           flex-wrap: wrap;
@@ -652,6 +757,18 @@ export default function CheckoutPage() {
         @media (max-width: 900px) {
           .checkout-grid { grid-template-columns: 1fr; }
           .checkout-proof__grid { grid-template-columns: 1fr; }
+        }
+
+        @media (max-width: 620px) {
+          .plan-compare__head,
+          .plan-compare__row {
+            grid-template-columns: 1fr;
+            gap: 3px;
+          }
+
+          .plan-compare__head span:first-child {
+            display: none;
+          }
         }
       `}</style>
     </main>

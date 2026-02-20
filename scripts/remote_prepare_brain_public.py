@@ -260,10 +260,10 @@ def main() -> int:
             _sftp_put_text(sftp, "/etc/caddy/certs/fullchain.pem", fullchain)
             # Upload static sites
             _run(brain, "mkdir -p /var/www/portal/webapp /var/www/portal/marketing", timeout=60)
-            # Upload webapp/dist
-            local_webapp = REPO_ROOT / "webapp" / "dist"
+            # Upload webapp/out (Next static export)
+            local_webapp = REPO_ROOT / "webapp" / "out"
             if not (local_webapp / "index.html").exists():
-                raise SystemExit("webapp/dist missing; build it locally first.")
+                raise SystemExit("webapp/out missing; build it locally first.")
             _upload_dir_recursive(sftp, local_webapp, "/var/www/portal/webapp")
 
             # Upload marketing/out (static export)

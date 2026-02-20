@@ -9,7 +9,7 @@ if (typeof window !== "undefined") {
 }
 
 const TG_BOT_FALLBACK = process.env.NEXT_PUBLIC_TELEGRAM_BOT_URL || "https://t.me/portal_service_bot";
-const CHECKOUT_URL = process.env.NEXT_PUBLIC_CHECKOUT_PAGE_URL || "/checkout";
+const CHECKOUT_URL = process.env.NEXT_PUBLIC_CHECKOUT_PAGE_URL || "/checkout/";
 const BOT_FAST_URL = process.env.NEXT_PUBLIC_PAY_CHECKOUT_URL || TG_BOT_FALLBACK;
 const WEBAPP_URL = (process.env.NEXT_PUBLIC_WEBAPP_URL || "https://portal-privacy.online/webapp/").trim();
 const TG_NEWS_CHANNEL = (process.env.NEXT_PUBLIC_NEWS_CHANNEL || "portal_privacy").replace("@", "").trim();
@@ -46,6 +46,39 @@ const PLANS = [
   { code: "start_99", name: "Start", desc: "30 дней • 1 устройство • NL", price: "99 ₽", note: "Мягкий вход для проверки сервиса в реальных задачах", tag: "Вход", tone: "anchor" },
   { code: "pro_249", name: "Pro", desc: "1 месяц • до 5 устройств • все страны", price: "249 ₽", note: "Сбалансированный вариант для ежедневного использования", tag: "Популярный", tone: "recommended" },
   { code: "ultra_1499", name: "Ultra / Family", desc: "12 месяцев • до 5 устройств • полный пул стран", price: "1499 ₽", note: "Долгий горизонт и предсказуемая цена на месяц", micro: "≈300 ₽/чел при использовании 5 устройств", tag: "Выгода" },
+];
+
+const PLAN_COMPARISON_ROWS = [
+  {
+    metric: "Устройства",
+    start: "1",
+    pro: "До 5",
+    ultra: "До 5",
+  },
+  {
+    metric: "Страны",
+    start: "NL",
+    pro: "Польша, Нидерланды, США, Италия",
+    ultra: "Полный пул стран + приоритет",
+  },
+  {
+    metric: "Маршрутизация",
+    start: "VPN для основных задач",
+    pro: "Полный VPN-маршрут для ежедневного трафика",
+    ultra: "VPN-маршрут + приоритет обработки",
+  },
+  {
+    metric: "Скоростной профиль",
+    start: "Базовый",
+    pro: "Высокий",
+    ultra: "Максимальный",
+  },
+  {
+    metric: "Поддержка",
+    start: "Стандартная",
+    pro: "Быстрый Telegram-ответ",
+    ultra: "Приоритет 24/7",
+  },
 ];
 
 const DEFAULT_LIVE_UPDATES: LiveUpdate[] = [
@@ -109,7 +142,7 @@ function candidateApiBases(): string[] {
 const FAQS = [
   { q: "Как получить доступ?", a: "Откройте Telegram-бот, выберите план и получите персональный ключ для подключения." },
   { q: "Какие устройства поддерживаются?", a: "iOS, Android, Windows, macOS, Linux. Один профиль работает на нескольких устройствах одновременно." },
-  { q: "Есть бесплатный режим?", a: "Да, стартовый режим доступен без оплаты. Перейти на полный доступ можно в любой момент." },
+  { q: "Есть бесплатный режим?", a: "Да, стартовый режим доступен без оплаты. Перейти на полный VPN-доступ можно в любой момент." },
   { q: "Что если узел временно недоступен?", a: "В кабинете можно переключиться на другую страну и свериться с актуальными апдейтами в канале проекта." },
   { q: "Есть ли гарантии абсолютной скорости?", a: "Нет. Мы работаем по best-effort модели и регулярно обновляем узлы и рекомендации по подключению." },
   { q: "Можно ли поменять тариф?", a: "Да, апгрейд работает мгновенно. Оставшиеся дни пересчитываются и сохраняются." },
@@ -343,7 +376,7 @@ function Hero() {
         <span className="hero-word-3">PORTAL</span>
       </div>
       <div className="hero-sub">
-        Понятный запуск • Прозрачная цена • Поддержка в Telegram
+        Понятный VPN-запуск • Прозрачная цена • Поддержка в Telegram
       </div>
       <div className="hero-scroll">
         <span>SCROLL ↓</span>
@@ -397,7 +430,7 @@ function Features() {
       <div className="section-tag">[CONTENTS]</div>
       <div className="features-header">
         <h2>ЧТО<br /><span className="stroke">ВНУТРИ</span></h2>
-        <p>Понятный путь: подключение, контроль узлов, поддержка, продление.</p>
+        <p>Понятный путь: VPN-подключение, контроль узлов, поддержка, продление.</p>
       </div>
       <div className="features-grid">
         {FEATURES.map((f) => (
@@ -408,6 +441,55 @@ function Features() {
             <p>{f.desc}</p>
           </div>
         ))}
+      </div>
+    </section>
+  );
+}
+
+function PlanComparison() {
+  return (
+    <section className="downloads" id="plan-comparison">
+      <div className="section-tag">[COMPARISON]</div>
+      <div className="downloads-head">
+        <h2>НАГЛЯДНОЕ СРАВНЕНИЕ ТАРИФОВ VPN</h2>
+        <p>Сразу видно, где лимиты, где полный режим и какой профиль скорости подходит под ваш сценарий.</p>
+      </div>
+      <div className="downloads-grid">
+        <article className="download-card">
+          <h3>Start</h3>
+          <p>Тест и мягкий вход.</p>
+          <div className="download-actions">
+            <span className="download-empty">99 ₽ / 30 дней</span>
+          </div>
+        </article>
+        <article className="download-card">
+          <h3>Pro</h3>
+          <p>Ежедневный рабочий режим.</p>
+          <div className="download-actions">
+            <span className="download-empty">249 ₽ / месяц</span>
+          </div>
+        </article>
+        <article className="download-card">
+          <h3>Ultra / Family</h3>
+          <p>Длинный горизонт и лучшая цена в месяц.</p>
+          <div className="download-actions">
+            <span className="download-empty">1499 ₽ / 12 месяцев</span>
+          </div>
+        </article>
+      </div>
+      <div className="roadmap-list" style={{ marginTop: 14 }}>
+        {PLAN_COMPARISON_ROWS.map((row) => (
+          <p key={row.metric}>
+            <strong>{row.metric}:</strong> Start — {row.start}; Pro — {row.pro}; Ultra — {row.ultra}
+          </p>
+        ))}
+      </div>
+      <div className="download-card" style={{ marginTop: 14 }}>
+        <h3>Почему часть медиасервисов может идти напрямую</h3>
+        <p>
+          Для части сценариев прямой маршрут снижает задержку и стабилизирует воспроизведение, а VPN-канал остаётся для
+          основного защищённого трафика. В карточке тарифа всегда видно, какой режим действует.
+        </p>
       </div>
     </section>
   );
@@ -918,7 +1000,7 @@ function Footer() {
         <div className="footer-brand"><span>●</span> PORTAL</div>
         <div className="footer-meta">
           <p className="footer-description">
-            PORTAL предоставляет цифровой сервис защищённого доступа с маршрутами по странам, личным кабинетом
+            PORTAL предоставляет цифровой сервис VPN-доступа с маршрутами по странам, личным кабинетом
             и поддержкой через Telegram. Оплата взимается за выбранный период доступа.
           </p>
           <div className="footer-contacts">
@@ -992,6 +1074,7 @@ export default function HomePage() {
         <Features />
         <Testimonials />
         <Plans />
+        <PlanComparison />
         <Downloads />
         <AccessPaths />
         <CTA />

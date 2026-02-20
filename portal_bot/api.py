@@ -137,7 +137,7 @@ WEBAPP_ENABLE_LOTTIE = env_bool("WEBAPP_ENABLE_LOTTIE", default=True)
 WEBAPP_DEV_AUTH = env_bool("WEBAPP_DEV_AUTH", default=False)
 WEBAPP_DEV_TG_ID = env_int("WEBAPP_DEV_TG_ID", 0)
 PROFILE_UPDATE_INTERVAL_HOURS = max(1, env_int("PROFILE_UPDATE_INTERVAL_HOURS", 6))
-PAYMENT_CALLBACK_TOLERANT_MODE = env_bool("PAYMENT_CALLBACK_TOLERANT_MODE", default=True)
+PAYMENT_CALLBACK_TOLERANT_MODE = env_bool("PAYMENT_CALLBACK_TOLERANT_MODE", default=False)
 TELEGRAM_WEB_LOGIN_MAX_AGE_SECONDS = max(60, env_int("TELEGRAM_WEB_LOGIN_MAX_AGE_SECONDS", 86400))
 API_LOCALHOST_DEV_HOSTS = {"localhost", "127.0.0.1", "::1"}
 WEBAPP_DEV_ALLOWED_ORIGINS = {
@@ -1248,12 +1248,12 @@ def _public_checkout_url() -> str:
 
     host = str(getattr(Settings, "PUBLIC_WEB_DOMAIN", "") or "").strip().strip("/")
     if host:
-        return f"https://{host}/checkout"
+        return f"https://{host}/checkout/"
     return configured
 
 
 def _checkout_url_for_user(*, tg_id: int, plan_code: str = "", promo_code: str = "", campaign_key: str = "", source: str = "bot") -> str:
-    base = _public_checkout_url() or f"https://{(Settings.PUBLIC_WEB_DOMAIN or 'portal-privacy.online').strip().strip('/')}/checkout"
+    base = _public_checkout_url() or f"https://{(Settings.PUBLIC_WEB_DOMAIN or 'portal-privacy.online').strip().strip('/')}/checkout/"
     parsed = urlparse(base)
     q = dict(parse_qsl(parsed.query, keep_blank_values=True))
     q["source"] = (source or "bot").strip().lower()
@@ -1276,8 +1276,8 @@ def _checkout_url_for_user(*, tg_id: int, plan_code: str = "", promo_code: str =
             q["checkout_ticket"] = ticket
     built_query = urlencode(q)
     if parsed.scheme and parsed.netloc:
-        return f"{parsed.scheme}://{parsed.netloc}{parsed.path or '/checkout'}?{built_query}"
-    return f"/checkout?{built_query}"
+        return f"{parsed.scheme}://{parsed.netloc}{parsed.path or '/checkout/'}?{built_query}"
+    return f"/checkout/?{built_query}"
 
 
 def _normalize_provider(provider: str) -> str:
@@ -4150,7 +4150,7 @@ async def admin_campaign_links_build(payload: AdminCampaignLinksBuildIn, x_teleg
     bot_username = (BOT_USERNAME or "portal_service_bot").lstrip("@")
     bot_start_link = f"https://t.me/{bot_username}" + (f"?start={start_payload}" if start_payload else "")
 
-    base_checkout = _public_checkout_url() or f"https://{(Settings.PUBLIC_WEB_DOMAIN or 'portal-privacy.online').strip().strip('/')}/checkout"
+    base_checkout = _public_checkout_url() or f"https://{(Settings.PUBLIC_WEB_DOMAIN or 'portal-privacy.online').strip().strip('/')}/checkout/"
     parsed = urlparse(base_checkout)
     q = dict(parse_qsl(parsed.query, keep_blank_values=True))
     q["source"] = source or "bot"
@@ -4160,7 +4160,7 @@ async def admin_campaign_links_build(payload: AdminCampaignLinksBuildIn, x_teleg
         q["promo"] = promo
     if campaign:
         q["campaign"] = campaign
-    checkout_link = f"{parsed.scheme}://{parsed.netloc}{parsed.path or '/checkout'}?{urlencode(q)}" if parsed.scheme and parsed.netloc else f"/checkout?{urlencode(q)}"
+    checkout_link = f"{parsed.scheme}://{parsed.netloc}{parsed.path or '/checkout/'}?{urlencode(q)}" if parsed.scheme and parsed.netloc else f"/checkout/?{urlencode(q)}"
 
     webapp_base = _safe_public_url(Settings.WEBAPP_URL) or f"https://{(Settings.PUBLIC_WEB_DOMAIN or 'portal-privacy.online').strip().strip('/')}/webapp/"
     wp = urlparse(webapp_base)

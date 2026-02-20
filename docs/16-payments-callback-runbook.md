@@ -21,6 +21,10 @@
 5. URL неуспеха: `https://kiwunaka.space/pay/fail`
 6. Метод неуспеха: `GET`
 
+Дополнительные публичные файлы кассы:
+- Verify URL: `https://portal-privacy.online/fk-verify.html`
+- CSS URL: `https://portal-privacy.online/fk-payment-theme.css`
+
 ## 3) Подпись callback
 
 Формула проверки SCI callback:
@@ -55,6 +59,11 @@ Backend проверяет поля:
 
 - `POST|GET /api/payments/freekassa/notify`
 
+### Public static (checkout provider)
+
+- `GET /fk-verify.html`
+- `GET /fk-payment-theme.css`
+
 ## 5) Checkout Model
 
 - Сайт использует `backend order first`:
@@ -86,6 +95,7 @@ Backend проверяет поля:
 
 - `RUB_CHECKOUT_ENABLED`
 - `CHECKOUT_WIDGET_ENABLED`
+- `PAYMENT_CALLBACK_TOLERANT_MODE` (для staging допускается `true`, для prod — `false`)
 - `CHECKOUT_TICKET_SECRET`
 - `CHECKOUT_TICKET_TTL_SECONDS`
 - `PUBLIC_API_BASE_URL`
@@ -105,6 +115,8 @@ Backend проверяет поля:
    - `sub_type=PAID`;
    - `expiry_at` продлён;
    - pending discount очищен.
+6. `GET https://portal-privacy.online/fk-verify.html` -> `200`.
+7. `GET https://portal-privacy.online/fk-payment-theme.css` -> `200`.
 
 ## 10) Rollback
 

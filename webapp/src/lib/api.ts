@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { getInitData } from "./telegram";
 
 const WEB_SESSION_TOKEN_KEY = "portal_web_session_token";
@@ -426,20 +427,29 @@ function defaultApiBase(): string {
   if (typeof window !== "undefined") {
     return window.location.origin;
   }
-  return "https://localhost";
+  return "https://portal-privacy.online";
 }
 
 function candidateApiBases(): string[] {
-  const envBase = (import.meta as any).env?.VITE_PUBLIC_API_BASE_URL as string | undefined;
-  if (envBase) return [envBase.replace(/\/+$/, "")];
-  if (typeof window === "undefined") return [defaultApiBase().replace(/\/+$/, "")];
+  const envBaseRaw = (
+    process.env.NEXT_PUBLIC_API_BASE_URL ||
+    process.env.NEXT_PUBLIC_PUBLIC_API_BASE_URL ||
+    process.env.VITE_PUBLIC_API_BASE_URL ||
+    ""
+  ).trim();
+  if (envBaseRaw) return [envBaseRaw.replace(/\/+$/, "")];
+  if (typeof window === "undefined") return [defaultApiBase().replace(/\/+$/, ""), "https://kiwunaka.space"];
 
   const origin = window.location.origin.replace(/\/+$/, "");
   const proto = window.location.protocol;
   const host = window.location.hostname;
   const legacy = `${proto}//${host}:2096`;
-  const useLegacyFallback = String((import.meta as any).env?.VITE_ENABLE_LEGACY_PORT_FALLBACK || "").toLowerCase() === "true";
-  return useLegacyFallback ? [origin, legacy.replace(/\/+$/, "")] : [origin];
+  const useLegacyFallback =
+    String(process.env.NEXT_PUBLIC_ENABLE_LEGACY_PORT_FALLBACK || process.env.VITE_ENABLE_LEGACY_PORT_FALLBACK || "")
+      .toLowerCase() === "true";
+  const defaults = [origin, "https://kiwunaka.space"];
+  if (useLegacyFallback) defaults.push(legacy.replace(/\/+$/, ""));
+  return Array.from(new Set(defaults));
 }
 
 async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {

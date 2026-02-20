@@ -60,7 +60,7 @@ def _run(ssh: paramiko.SSHClient, cmd: str, *, timeout: int = 300) -> tuple[int,
 
 
 def main() -> int:
-    ap = argparse.ArgumentParser(description="Deploy marketing/out + webapp/dist to brain and reload Caddy.")
+    ap = argparse.ArgumentParser(description="Deploy marketing/out + webapp/out to brain and reload Caddy.")
     ap.add_argument("--brain-ip", required=True)
     ap.add_argument(
         "--web-domain",
@@ -86,10 +86,10 @@ def main() -> int:
     if not pw:
         raise SystemExit("Missing brain password.")
 
-    local_webapp = REPO_ROOT / "webapp" / "dist"
+    local_webapp = REPO_ROOT / "webapp" / "out"
     local_mkt = REPO_ROOT / "marketing" / "out"
     if not local_webapp.exists():
-        raise SystemExit(f"Missing webapp dist: {local_webapp}")
+        raise SystemExit(f"Missing webapp out: {local_webapp}")
     if not local_mkt.exists():
         raise SystemExit(f"Missing marketing out: {local_mkt}")
     web_domain = (args.domain or "").strip() or (args.web_domain or "").strip()
@@ -121,6 +121,8 @@ def main() -> int:
             f"curl -fsS --insecure --resolve {api_domain}:443:127.0.0.1 https://{api_domain}/api/health | head -c 200 || true",
             f"curl -fsS --insecure --resolve {web_domain}:443:127.0.0.1 https://{web_domain}/ | head -c 80 || true",
             f"curl -fsS --insecure --resolve {web_domain}:443:127.0.0.1 https://{web_domain}/webapp/ | head -c 80 || true",
+            f"curl -fsS --insecure --resolve {web_domain}:443:127.0.0.1 https://{web_domain}/fk-verify.html | head -c 80 || true",
+            f"curl -fsS --insecure --resolve {web_domain}:443:127.0.0.1 https://{web_domain}/fk-payment-theme.css | head -c 120 || true",
         ]
         for c in chk:
             _run(ssh, "DEBIAN_FRONTEND=noninteractive apt-get install -y curl >/dev/null 2>&1 || true", timeout=600)
