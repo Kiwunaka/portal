@@ -2,8 +2,8 @@
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "PORTAL — защищенный цифровой доступ",
-  description: "Понятный запуск через Telegram, прозрачные тарифы Start/Pro/Ultra и управление доступом в личном кабинете.",
+  title: "PORTAL — VPN для семьи и работы",
+  description: "Быстрый запуск VPN через Telegram, оплата в рублях и наглядное сравнение тарифов Start/Pro/Ultra.",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

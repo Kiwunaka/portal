@@ -1,6 +1,6 @@
 ﻿# Portal Admin Guide
 
-Обновлено: `2026-02-16`
+Обновлено: `2026-02-20`
 
 ## 1) Компоненты
 
@@ -35,6 +35,7 @@ Checkout/flags:
 FreeKassa:
 - `FK_SITE_SHOP_ID`, `FK_SITE_API_KEY`, `FK_SITE_SECRET_WORD_1`, `FK_SITE_SECRET_WORD_2`
 - `FK_BOT_SHOP_ID`, `FK_BOT_API_KEY`, `FK_BOT_SECRET_WORD_1`, `FK_BOT_SECRET_WORD_2`
+- `FK_API_BASE_URL` (для test/prod контура)
 - `FK_NOTIFY_IP_ALLOWLIST`
 
 Funnel/support:
@@ -92,8 +93,9 @@ Checkout ticket:
 3. Включить `BOT_RUB_BUTTON_ENABLED=true` (RUB кнопка как primary в боте).
 4. Проверить `create-public` по валидному ticket.
 5. Проверить notify -> `YES`.
-6. Включить `CHECKOUT_WIDGET_ENABLED=true` при необходимости.
-7. Проверить `GET /fk-verify.html` и `GET /fk-payment-theme.css` -> `200`.
+6. Для тестового режима использовать test credentials FreeKassa в `FK_*` (без коммита в репозиторий).
+7. Включить `CHECKOUT_WIDGET_ENABLED=true` при необходимости.
+8. Проверить `GET /fk-verify.html` и `GET /fk-payment-theme.css` -> `200`.
 
 ## 8) Rollback
 
