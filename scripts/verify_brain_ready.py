@@ -121,14 +121,47 @@ def main() -> int:
         sub_check = f"""#!/usr/bin/env bash
 set -euo pipefail
 
-read -r TG TOK <<< "$(python3 -c "import sqlite3;db='/root/portal_bot/portal.db';con=sqlite3.connect(db);cur=con.cursor();row=cur.execute(\\"select tg_id,sub_token from users where is_active=1 and sub_token is not null and sub_token<>'' order by created_at asc limit 1\\").fetchone();print(f'{{row[0]}} {{row[1]}}' if row else '')")"
-if [ -z "${{TOK:-}}" ]; then
-  echo "no_active_token"
+CANDIDATES="$(python3 -c "import sqlite3;db='/root/portal_bot/portal.db';con=sqlite3.connect(db);cur=con.cursor();rows=cur.execute(\\"select tg_id,sub_token from users where is_active=1 and sub_token is not null and sub_token<>'' order by created_at asc limit 25\\").fetchall();print('\\\\n'.join(f'{{r[0]}}|{{r[1]}}' for r in rows))")"
+if [ -z "${{CANDIDATES:-}}" ]; then
+  echo "no_active_tokens"
+  exit 2
+fi
+
+SEL_TG=""
+SEL_TOK=""
+while IFS='|' read -r TRY_TG TRY_TOK; do
+  [ -z "${{TRY_TG:-}}" ] && continue
+  [ -z "${{TRY_TOK:-}}" ] && continue
+  RAW="$(curl -fsS --insecure --resolve {api_domain}:443:127.0.0.1 https://{api_domain}/s8Kx2mP7qR4wT/$TRY_TOK 2>/dev/null || true)"
+  if [ -n "$RAW" ]; then
+    SEL_TG="$TRY_TG"
+    SEL_TOK="$TRY_TOK"
+    break
+  fi
+  RAW="$(curl -fsS --insecure --resolve {api_domain}:443:127.0.0.1 https://{api_domain}/s8Kx2mP7qR4wT/$TRY_TG 2>/dev/null || true)"
+  if [ -n "$RAW" ]; then
+    SEL_TG="$TRY_TG"
+    SEL_TOK="$TRY_TOK"
+    break
+  fi
+done <<< "$CANDIDATES"
+
+if [ -z "${{SEL_TG:-}}" ]; then
+  echo "no_resolvable_subscription_user"
   exit 2
 fi
 
 for i in $(seq 1 {int(args.repeat)}); do
-  RAW="$(curl -fsS --insecure --resolve {api_domain}:443:127.0.0.1 https://{api_domain}/s8Kx2mP7qR4wT/$TOK)"
+  MODE="token"
+  RAW="$(curl -fsS --insecure --resolve {api_domain}:443:127.0.0.1 https://{api_domain}/s8Kx2mP7qR4wT/$SEL_TOK 2>/dev/null || true)"
+  if [ -z "$RAW" ]; then
+    MODE="tg_id_fallback"
+    RAW="$(curl -fsS --insecure --resolve {api_domain}:443:127.0.0.1 https://{api_domain}/s8Kx2mP7qR4wT/$SEL_TG 2>/dev/null || true)"
+  fi
+  if [ -z "$RAW" ]; then
+    echo "sub_fetch_$i tg_id=$SEL_TG mode=failed"
+    exit 2
+  fi
   METRICS="$(python3 - <<'PY'
 import base64
 import re
@@ -155,7 +188,7 @@ for ln in lines:
 print(f"fmt={{fmt}} lines={{len(lines)}} hosts={{len(hosts)}}")
 PY
 <<< "$RAW")"
-  echo "sub_fetch_$i tg_id=$TG $METRICS"
+  echo "sub_fetch_$i tg_id=$SEL_TG mode=$MODE $METRICS"
   sleep 0.4
 done
 """
