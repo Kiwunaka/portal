@@ -55,7 +55,7 @@ class ApiAuthAndTicketsTests(unittest.TestCase):
         os.environ["BOT_TOKEN"] = self.bot_token
         os.environ["ADMIN_ID"] = "9999"
         os.environ["WEBAPP_SESSION_SECRET"] = "test_webapp_secret_123"
-        os.environ["BOT_USERNAME"] = "portal_service_bot"
+        os.environ["BOT_USERNAME"] = "net4ebur_bot"
         os.environ["SUPPORT_USERNAME"] = "portal_privacy_helpbot"
         os.environ["PUBLIC_CHANNEL"] = "portal_privacy"
         os.environ["CHANNEL_PREMIUM_DAYS"] = "10"

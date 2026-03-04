@@ -1,21 +1,17 @@
 from __future__ import annotations
 
 """
-Verify brain node is ready to take over the public domain (pre-DNS switch).
+Verify brain node is ready to serve production traffic.
 
 Checks:
-- systemd: caddy + portal-api active, portal-bot disabled/stopped
-- HTTP(S): /api/health on :2096, WebApp on /webapp/, marketing on /
-- Subscription endpoint returns multiple locations and is stable across repeated requests
-
-No secrets printed:
-- does not print subscription tokens, UUIDs, or raw subscription content
+- systemd status and listeners
+- HTTPS endpoints via localhost resolve on 443 (no DNS switch required)
+- subscription endpoint stability across repeated requests (token not printed)
 """
 
 import argparse
 import os
 import re
-import time
 from pathlib import Path
 
 import paramiko
@@ -65,62 +61,101 @@ def _run(ssh: paramiko.SSHClient, cmd: str, *, timeout: int = 120) -> tuple[int,
     return code, out, err
 
 
+def _print_result(name: str, out: str, err: str) -> None:
+    val = (out.strip() or err.strip()).strip().replace("\ufeff", "")
+    print(f"[{name}] {val}")
+
+
 def main() -> int:
     ap = argparse.ArgumentParser()
-    ap.add_argument("--domain", required=True)
+    ap.add_argument("--web-domain", default="portal-privacy.online", help="Public web domain for / and /webapp checks")
+    ap.add_argument("--api-domain", default="kiwunaka.space", help="Public API domain for /api/health and subscription checks")
+    ap.add_argument("--domain", default="", help="Deprecated alias for --web-domain")
     ap.add_argument("--brain-ip", required=True)
     ap.add_argument("--ssh-user", default="root")
     ap.add_argument("--ssh-port", type=int, default=29374)
     ap.add_argument("--passwords", default=str(DEFAULT_PASSWORDS))
     ap.add_argument("--repeat", type=int, default=5, help="repeat subscription fetch N times")
+    ap.add_argument("--check-legacy-2096", action="store_true", help="also verify legacy :2096 endpoint (optional)")
     args = ap.parse_args()
 
     pw = os.getenv("NODE_PASS_BRAIN", "").strip() or _parse_passwords(Path(args.passwords)).get("brain", "")
     if not pw:
         raise SystemExit("Missing brain password (set NODE_PASS_BRAIN or add to PASSWORDS.txt).")
 
+    web_domain = (args.domain or "").strip() or (args.web_domain or "").strip()
+    api_domain = (args.api_domain or "").strip()
+    if not web_domain:
+        raise SystemExit("Missing --web-domain")
+    if not api_domain:
+        raise SystemExit("Missing --api-domain")
+
     ssh = _ssh_connect(args.brain_ip, user=args.ssh_user, port=args.ssh_port, password=pw)
     try:
         checks = [
             ("caddy", "systemctl is-active caddy || true"),
             ("portal-api", "systemctl is-active portal-api || true"),
-            ("portal-bot enabled?", "systemctl is-enabled portal-bot 2>/dev/null || echo disabled"),
-            ("listen", "ss -tlnp | grep -E ':(443|8444|2096)\\b' || true"),
+            ("portal-bot", "systemctl is-active portal-bot || true"),
+            ("portal-helpbot", "systemctl is-active portal-helpbot || true"),
+            ("listen", "ss -tlnp | grep -E ':(443|2096|8444)\\b' || true"),
         ]
         for name, cmd in checks:
             code, out, err = _run(ssh, cmd, timeout=60)
-            val = (out.strip() or err.strip()).strip()
-            print(f"[{name}] {val}")
+            _print_result(name, out, err)
 
-        # HTTP checks via resolve to loopback so DNS isn't needed.
         curl_checks = [
-            ("health2096", f"curl -fsS --insecure --resolve {args.domain}:2096:127.0.0.1 https://{args.domain}:2096/api/health"),
-            ("webapp443", f"curl -fsS --insecure --resolve {args.domain}:443:127.0.0.1 https://{args.domain}/webapp/ >/dev/null && echo ok"),
-            ("mkt443", f"curl -fsS --insecure --resolve {args.domain}:443:127.0.0.1 https://{args.domain}/ >/dev/null && echo ok"),
-            ("webapp8444", f"curl -fsS --insecure --resolve {args.domain}:8444:127.0.0.1 https://{args.domain}:8444/webapp/ >/dev/null && echo ok"),
+            ("health443", f"curl -fsS --insecure --resolve {api_domain}:443:127.0.0.1 https://{api_domain}/api/health"),
+            ("webapp443", f"curl -fsS --insecure --resolve {web_domain}:443:127.0.0.1 https://{web_domain}/webapp/ >/dev/null && echo ok"),
+            ("mkt443", f"curl -fsS --insecure --resolve {web_domain}:443:127.0.0.1 https://{web_domain}/ >/dev/null && echo ok"),
+            ("fkverify443", f"curl -fsS --insecure --resolve {web_domain}:443:127.0.0.1 https://{web_domain}/fk-verify.html >/dev/null && echo ok"),
         ]
+        if args.check_legacy_2096:
+            curl_checks.append(
+                ("health2096", f"curl -fsS --insecure --resolve {api_domain}:2096:127.0.0.1 https://{api_domain}:2096/api/health"),
+            )
+
         for name, cmd in curl_checks:
             code, out, err = _run(ssh, cmd, timeout=30)
-            val = (out.strip() or err.strip()).strip()
-            print(f"[{name}] {val}")
+            _print_result(name, out, err)
 
-        # Subscription stability: pick one active user token from DB on brain (do not print).
-        # We decode base64 and only print line count + unique host count.
         sub_check = f"""#!/usr/bin/env bash
 set -euo pipefail
 
-TOK="$(python3 -c "import sqlite3;db='/root/portal_bot/portal.db';con=sqlite3.connect(db);cur=con.cursor();row=cur.execute(\\"select sub_token from users where is_active=1 and sub_token is not null order by created_at asc limit 1\\").fetchone();print(row[0] if row else '')")"
-if [ -z "$TOK" ]; then
+read -r TG TOK <<< "$(python3 -c "import sqlite3;db='/root/portal_bot/portal.db';con=sqlite3.connect(db);cur=con.cursor();row=cur.execute(\\"select tg_id,sub_token from users where is_active=1 and sub_token is not null and sub_token<>'' order by created_at asc limit 1\\").fetchone();print(f'{{row[0]}} {{row[1]}}' if row else '')")"
+if [ -z "${{TOK:-}}" ]; then
   echo "no_active_token"
   exit 2
 fi
 
 for i in $(seq 1 {int(args.repeat)}); do
-  RAW="$(curl -fsS --insecure --resolve {args.domain}:2096:127.0.0.1 https://{args.domain}:2096/s8Kx2mP7qR4wT/$TOK)"
-  DECODED="$(python3 -c "import base64,sys;print(base64.b64decode(sys.stdin.read().strip()).decode('utf-8','replace'))" <<< "$RAW")"
-  LINES="$(python3 -c "import sys;print(len([l for l in sys.stdin.read().splitlines() if l.strip()]))" <<< "$DECODED")"
-  HOSTS="$(python3 -c "import re,sys;hosts=set();\nfor l in sys.stdin.read().splitlines():\n m=re.search(r'@([^:]+):',l);\n if m: hosts.add(m.group(1));\nprint(len(hosts))" <<< "$DECODED")"
-  echo "sub_fetch_$i lines=$LINES hosts=$HOSTS"
+  RAW="$(curl -fsS --insecure --resolve {api_domain}:443:127.0.0.1 https://{api_domain}/s8Kx2mP7qR4wT/$TOK)"
+  METRICS="$(python3 - <<'PY'
+import base64
+import re
+import sys
+
+raw = sys.stdin.read().strip()
+text = raw
+fmt = "plain"
+if raw:
+    try:
+        cand = base64.b64decode(raw + ("=" * (-len(raw) % 4)), validate=False).decode("utf-8", "replace")
+        if "vless://" in cand or "\n" in cand:
+            text = cand
+            fmt = "base64"
+    except Exception:
+        pass
+
+lines = [ln for ln in text.splitlines() if ln.strip()]
+hosts = set()
+for ln in lines:
+    m = re.search(r'@([^:]+):', ln)
+    if m:
+        hosts.add(m.group(1))
+print(f"fmt={{fmt}} lines={{len(lines)}} hosts={{len(hosts)}}")
+PY
+<<< "$RAW")"
+  echo "sub_fetch_$i tg_id=$TG $METRICS"
   sleep 0.4
 done
 """

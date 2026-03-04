@@ -57,7 +57,7 @@ class ApiP0ExtensionsTests(unittest.TestCase):
         os.environ["DATABASE_URL"] = f"sqlite:///{db_uri_path}"
         os.environ["BOT_TOKEN"] = self.bot_token
         os.environ["ADMIN_ID"] = "9999"
-        os.environ["BOT_USERNAME"] = "portal_service_bot"
+        os.environ["BOT_USERNAME"] = "net4ebur_bot"
         os.environ["SUPPORT_USERNAME"] = "portal_privacy_helpbot"
         os.environ["PUBLIC_CHANNEL"] = "portal_privacy"
         os.environ["WEBAPP_DEV_AUTH"] = "true"
@@ -212,7 +212,7 @@ class ApiP0ExtensionsTests(unittest.TestCase):
         body = start.json()
         self.assertTrue(body["ok"])
         self.assertEqual(body["amount_stars"], 1399)
-        self.assertIn("t.me/portal_service_bot", body["pay_url"])
+        self.assertIn("t.me/net4ebur_bot", body["pay_url"])
 
         points = client.get("/api/points", headers=hdrs)
         self.assertEqual(points.status_code, 200, points.text)

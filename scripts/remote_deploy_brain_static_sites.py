@@ -3,6 +3,7 @@ from __future__ import annotations
 import argparse
 import os
 import posixpath
+import sys
 from pathlib import Path
 
 import paramiko
@@ -57,6 +58,21 @@ def _run(ssh: paramiko.SSHClient, cmd: str, *, timeout: int = 300) -> tuple[int,
     out = stdout.read().decode(errors="replace")
     err = stderr.read().decode(errors="replace")
     return code, out, err
+
+
+def _safe_print(text: str) -> None:
+    """
+    Print remote output without crashing on terminal encoding mismatches
+    (e.g. BOM or UTF-8 symbols on legacy cp1251 console).
+    """
+    line = str(text or "").replace("\ufeff", "").strip()
+    if not line:
+        return
+    encoding = getattr(sys.stdout, "encoding", None) or "utf-8"
+    try:
+        sys.stdout.buffer.write((line + "\n").encode(encoding, errors="replace"))
+    except Exception:
+        print(line.encode("utf-8", errors="replace").decode("utf-8", errors="replace"))
 
 
 def main() -> int:
@@ -115,6 +131,7 @@ def main() -> int:
             sftp.close()
 
         _run(ssh, "systemctl reload caddy >/dev/null 2>&1 || systemctl restart caddy >/dev/null 2>&1 || true", timeout=60)
+        _run(ssh, "DEBIAN_FRONTEND=noninteractive apt-get install -y curl >/dev/null 2>&1 || true", timeout=600)
 
         # Quick smoke checks (through localhost resolve on standard HTTPS port).
         chk = [
@@ -125,9 +142,8 @@ def main() -> int:
             f"curl -fsS --insecure --resolve {web_domain}:443:127.0.0.1 https://{web_domain}/fk-payment-theme.css | head -c 120 || true",
         ]
         for c in chk:
-            _run(ssh, "DEBIAN_FRONTEND=noninteractive apt-get install -y curl >/dev/null 2>&1 || true", timeout=600)
             _, out, err = _run(ssh, c, timeout=30)
-            print((out.strip() or err.strip()).strip())
+            _safe_print(out.strip() or err.strip())
         return 0
     finally:
         ssh.close()

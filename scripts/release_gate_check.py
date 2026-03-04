@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import os
 import subprocess
 import sys
 import time
@@ -10,6 +11,10 @@ from pathlib import Path
 
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
+
+
+def _npm_exec() -> str:
+    return "npm.cmd" if os.name == "nt" else "npm"
 
 
 @dataclass
@@ -92,12 +97,14 @@ def main() -> int:
     gates: list[tuple[str, list[str], Path]] = [
         ("Backend unit tests", [sys.executable, "-m", "unittest", "discover", "tests"], REPO_ROOT),
         ("Admin/auth regressions", [sys.executable, "-m", "unittest", "tests.test_api_auth_and_tickets"], REPO_ROOT),
-        ("WebApp production build", ["npm.cmd", "run", "build"], REPO_ROOT / "webapp"),
+        ("Admin webapp smoke", [sys.executable, "scripts/admin_webapp_smoke.py"], REPO_ROOT),
+        ("WebApp production build", [_npm_exec(), "run", "build"], REPO_ROOT / "webapp"),
     ]
     if args.quick:
         gates = [
             ("Critical worker regression", [sys.executable, "-m", "unittest", "tests.test_worker_retention"], REPO_ROOT),
-            ("WebApp production build", ["npm.cmd", "run", "build"], REPO_ROOT / "webapp"),
+            ("Admin webapp smoke", [sys.executable, "scripts/admin_webapp_smoke.py"], REPO_ROOT),
+            ("WebApp production build", [_npm_exec(), "run", "build"], REPO_ROOT / "webapp"),
         ]
 
     results: list[GateResult] = []
@@ -118,4 +125,3 @@ def main() -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
-

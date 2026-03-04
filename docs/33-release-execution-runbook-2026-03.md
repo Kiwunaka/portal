@@ -1,4 +1,4 @@
-﻿# Единый релиз 4ebur: Stage 2 Runbook (Execution)
+# Единый релиз 4ebur: Stage 2 Runbook (Execution)
 
 Обновлено: 5 марта 2026
 
@@ -12,7 +12,10 @@
 ## 2. Локальные гейты (обязательно)
 
 ### Вариант A: одним запуском
-- `python scripts/release_gate_check.py`
+- Только quality gates:
+  - `python scripts/release_orchestrator.py --gates-only`
+- Полный релизный проход (gates -> deploy -> verify):
+  - `python scripts/release_orchestrator.py --brain-ip <BRAIN_IP> --web-domain <WEB_DOMAIN> --api-domain <API_DOMAIN>`
 
 Ожидаемо:
 - Exit code `0`.
@@ -22,6 +25,7 @@
 1. `python -m unittest discover tests`
 2. `python -m unittest tests.test_api_auth_and_tickets`
 3. `cd webapp && npm.cmd run build`
+4. `python scripts/admin_webapp_smoke.py`
 
 ## 3. Release-артефакты перед выкладкой
 1. Сохранить локальный отчёт gate-check в `docs/audit-artifacts/`.

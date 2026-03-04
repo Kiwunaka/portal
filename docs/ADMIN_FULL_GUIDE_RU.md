@@ -1,4 +1,4 @@
-﻿# ADMIN FULL GUIDE (RU)
+# ADMIN FULL GUIDE (RU)
 
 Обновлено: 4 марта 2026
 
@@ -283,7 +283,7 @@
 ## 8. Деплой и обновление
 
 ### 8.1 Общий порядок (без remote-exec)
-1. Локально: тесты backend + `webapp` build.
+1. Локально: `python scripts/release_orchestrator.py --gates-only`.
 2. Upload/release кодовой части на brain.
 3. Рестарт сервисов: `portal-api`, `portal-bot`, `portal-helpbot`.
 4. Деплой static (`webapp/out`, `marketing/out`).
@@ -327,6 +327,10 @@
 3. Checkout create + notify callback завершают активацию.
 4. Ticket flow (create/reply/status) работает E2E.
 5. `/admin/*` маршруты WebApp доступны только при `is_admin=true`.
+6. `python scripts/admin_webapp_smoke.py` проходит без ошибок.
+
+### 9.5 SLO/SLA и alert policy
+- Операционные SLI/SLO и правила эскалации: `docs/34-monitoring-slo-sla-2026-03.md`.
 
 ## 10. Troubleshooting
 

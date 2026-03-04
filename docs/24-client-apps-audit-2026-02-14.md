@@ -1,4 +1,4 @@
-﻿# Android/Windows client audit (2026-02-14)
+# Android/Windows client audit (2026-02-14)
 
 ## Current status
 
@@ -13,7 +13,7 @@
 
 - Bootstrap scripts for fork sync and branding workspace.
 - Release handoff script for generating URLs.
-- URL smoke checker (`scripts/check_release_urls.py`).
+- URL smoke checker (`scripts/smoke_client_apps.py`).
 - Backend endpoint `GET /api/client/apps` already serves env-based links.
 
 ## Next steps to reach release-ready
