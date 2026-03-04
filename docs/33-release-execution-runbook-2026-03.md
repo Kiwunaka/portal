@@ -16,6 +16,10 @@
   - `python scripts/release_orchestrator.py --gates-only`
 - Полный релизный проход (gates -> deploy -> verify):
   - `python scripts/release_orchestrator.py --brain-ip <BRAIN_IP> --web-domain <WEB_DOMAIN> --api-domain <API_DOMAIN>`
+- Dry-run (показать все команды без выполнения):
+  - `python scripts/release_orchestrator.py --brain-ip <BRAIN_IP> --web-domain <WEB_DOMAIN> --api-domain <API_DOMAIN> --dry-run`
+- Verify-only (только пост-релизная проверка):
+  - `python scripts/release_orchestrator.py --brain-ip <BRAIN_IP> --web-domain <WEB_DOMAIN> --api-domain <API_DOMAIN> --verify-only`
 
 Ожидаемо:
 - Exit code `0`.
@@ -105,3 +109,8 @@ Rollback:
 4. Checkout + callback + subscription flow зелёные.
 5. `/api/admin/metrics/status` свежий.
 6. Результаты sanity и время проверки зафиксированы в `docs/audit-artifacts/`.
+
+## 9. GitHub автоматизация
+- Manual запуск оркестратора: `.github/workflows/release-orchestrator-manual.yml` (`workflow_dispatch`, режимы `dry-run` / `verify-only` / `full`).
+- Weekly snapshot quick-gate отчёта: `.github/workflows/weekly-release-gate-snapshot.yml`.
+- Weekly-отчеты коммитятся в отдельную ветку: `reports/release-gates-weekly`.

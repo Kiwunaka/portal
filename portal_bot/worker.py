@@ -1,11 +1,11 @@
-﻿from __future__ import annotations
+from __future__ import annotations
 
 import asyncio
 import hashlib
 import logging
 import os
 from pathlib import Path
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 import aiohttp
 from dotenv import load_dotenv
@@ -122,6 +122,10 @@ RETENTION_BUTTONS: dict[str, dict[str, str]] = {
 }
 
 
+def _utcnow() -> datetime:
+    return datetime.now(timezone.utc).replace(tzinfo=None)
+
+
 def _bot_pay_url() -> str:
     return f"https://t.me/{BOT_USERNAME}?start=pay"
 
@@ -151,7 +155,7 @@ def _retention_template_key(*, flow: str, variant: str) -> str:
 
 
 def _load_admin_template_value(*, key: str) -> str | None:
-    now = datetime.utcnow()
+    now = _utcnow()
     cache_key = str(key or "").strip().lower()
     if not cache_key:
         return None
@@ -218,7 +222,7 @@ def _ensure_pending_discount(*, tg_id: int, pct: int, code: str) -> tuple[int, b
             return current, False
         user.pending_discount_pct = int(target)
         user.pending_discount_code = str(code or START99_WELCOME_DISCOUNT_CODE).strip().upper()[:20]
-        user.pending_discount_set_at = datetime.utcnow()
+        user.pending_discount_set_at = _utcnow()
         s.commit()
         return int(target), True
     except Exception:
@@ -287,7 +291,7 @@ def _normalize_channel_membership_reason(reason: str) -> str:
 
 
 async def _switch_user_to_free(*, tg_id: int) -> bool:
-    now = datetime.utcnow()
+    now = _utcnow()
     s = SessionLocal()
     try:
         user = s.query(User).filter(User.tg_id == int(tg_id)).first()
@@ -344,7 +348,7 @@ def _mark_campaign_sent_once(*, tg_id: int, campaign_key: str) -> bool:
         )
         if exists:
             return False
-        row = CampaignSend(tg_id=int(tg_id), campaign_key=str(campaign_key), sent_at=datetime.utcnow())
+        row = CampaignSend(tg_id=int(tg_id), campaign_key=str(campaign_key), sent_at=_utcnow())
         s.add(row)
         s.commit()
         return True
@@ -358,7 +362,7 @@ def _mark_campaign_sent_once(*, tg_id: int, campaign_key: str) -> bool:
 def _sent_recently(*, tg_id: int, campaign_prefix: str, within_days: int) -> bool:
     s = SessionLocal()
     try:
-        cutoff = datetime.utcnow() - timedelta(days=max(1, int(within_days)))
+        cutoff = _utcnow() - timedelta(days=max(1, int(within_days)))
         row = (
             s.query(CampaignSend.id)
             .filter(CampaignSend.tg_id == int(tg_id))
@@ -395,7 +399,7 @@ async def abandoned_cart_job() -> None:
 
 async def welcome_chain_job() -> None:
     while True:
-        now = datetime.utcnow()
+        now = _utcnow()
         s = SessionLocal()
         try:
             users = (
@@ -437,7 +441,7 @@ async def welcome_chain_job() -> None:
 
 async def expiry_chain_job() -> None:
     while True:
-        now = datetime.utcnow()
+        now = _utcnow()
         s = SessionLocal()
         try:
             users = (
@@ -484,7 +488,7 @@ async def start99_welcome_offer_job() -> None:
             await asyncio.sleep(900)
             continue
 
-        now = datetime.utcnow()
+        now = _utcnow()
         newer_than = now - timedelta(hours=int(START99_WELCOME_MAX_HOURS))
         older_than = now - timedelta(hours=int(START99_WELCOME_MIN_HOURS))
         s = SessionLocal()
@@ -586,7 +590,7 @@ async def _legacy_usage_bytes(*, tg_id: int) -> int:
 async def oto_free_job() -> None:
     while True:
         expire_stale_offers()
-        now = datetime.utcnow()
+        now = _utcnow()
         s = SessionLocal()
         try:
             users = (
@@ -634,7 +638,7 @@ async def oto_free_job() -> None:
 
 async def reactivation_job() -> None:
     while True:
-        now = datetime.utcnow()
+        now = _utcnow()
         campaign_base = f"reactivation_new_node:{now.strftime('%Y%m%d')}"
         s = SessionLocal()
         try:
@@ -680,7 +684,7 @@ async def reactivation_job() -> None:
 
 
 async def node_metrics_watchdog_job() -> None:
-    started_at = datetime.utcnow()
+    started_at = _utcnow()
     stale_cycles = 0
     while True:
         stale_after = max(300, int(os.getenv("NODE_METRICS_STALE_AFTER_SECONDS", "900")))
@@ -690,7 +694,7 @@ async def node_metrics_watchdog_job() -> None:
         finally:
             s.close()
 
-        now = datetime.utcnow()
+        now = _utcnow()
         # Suppress false positives right after worker start while collector is warming up.
         if not last_sample and (now - started_at).total_seconds() < stale_after:
             await asyncio.sleep(3600)
@@ -714,7 +718,7 @@ async def channel_bonus_guard_job() -> None:
             await asyncio.sleep(900)
             continue
 
-        now = datetime.utcnow()
+        now = _utcnow()
         s = SessionLocal()
         try:
             rows = (
@@ -748,7 +752,7 @@ async def channel_bonus_guard_job() -> None:
                     normalized_reason,
                     "skip_transient",
                 )
-                now_alert = datetime.utcnow()
+                now_alert = _utcnow()
                 if (
                     int(Settings.ADMIN_ID or 0) > 0
                     and (last_verify_error_alert_at is None or (now_alert - last_verify_error_alert_at).total_seconds() >= 3600)

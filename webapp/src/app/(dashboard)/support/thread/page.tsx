@@ -3,7 +3,7 @@
 import { addTicketMessage, getTicket, type TicketInfo } from "@/lib/api";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 function statusTitle(status: string): string {
   const normalized = String(status || "").trim().toLowerCase();
@@ -32,7 +32,7 @@ export default function SupportTicketThreadPage() {
 
   const canReply = useMemo(() => ticket && String(ticket.status || "").toLowerCase() !== "closed", [ticket]);
 
-  const loadTicket = async (): Promise<void> => {
+  const loadTicket = useCallback(async (): Promise<void> => {
     if (!ticketId) {
       setLoading(false);
       setError("Не передан ticket id");
@@ -48,11 +48,11 @@ export default function SupportTicketThreadPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [ticketId]);
 
   useEffect(() => {
     void loadTicket();
-  }, [ticketId]);
+  }, [loadTicket]);
 
   useEffect(() => {
     listEndRef.current?.scrollIntoView({ behavior: "smooth" });

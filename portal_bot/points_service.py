@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 import os
 
 from sqlalchemy import func
@@ -39,7 +39,7 @@ class ReferralTier:
 
 
 def _now() -> datetime:
-    return datetime.utcnow()
+    return datetime.now(timezone.utc).replace(tzinfo=None)
 
 
 def _month_start_utc(now: datetime | None = None) -> datetime:

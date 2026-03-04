@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import json
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any
 
 from db import SessionLocal
@@ -9,6 +9,10 @@ from models import Event
 
 
 MAX_META_JSON = 3800
+
+
+def _utcnow() -> datetime:
+    return datetime.now(timezone.utc).replace(tzinfo=None)
 
 
 def _meta_to_json(meta: dict[str, Any] | None) -> str | None:
@@ -41,7 +45,7 @@ def track_event(
             source=str(source or "unknown").strip()[:32],
             session_id=(str(session_id).strip()[:64] if session_id else None),
             meta_json=_meta_to_json(meta),
-            created_at=datetime.utcnow(),
+            created_at=_utcnow(),
         )
         s.add(row)
         s.commit()
@@ -52,4 +56,3 @@ def track_event(
         return None
     finally:
         s.close()
-

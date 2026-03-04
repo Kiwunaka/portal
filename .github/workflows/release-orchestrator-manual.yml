@@ -1,0 +1,107 @@
+﻿name: Release Orchestrator (Manual)
+
+on:
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: "Execution mode"
+        required: true
+        default: "dry-run"
+        type: choice
+        options:
+          - dry-run
+          - verify-only
+          - full
+      brain_ip:
+        description: "Brain public IP"
+        required: true
+        default: "82.21.114.104"
+        type: string
+      web_domain:
+        description: "Web domain"
+        required: true
+        default: "portal-privacy.online"
+        type: string
+      api_domain:
+        description: "API domain"
+        required: true
+        default: "kiwunaka.space"
+        type: string
+      quick_gate:
+        description: "Use quick gate set"
+        required: true
+        default: true
+        type: boolean
+      ensure_metrics_timer:
+        description: "Ensure portal-node-metrics.timer before deploy"
+        required: true
+        default: true
+        type: boolean
+
+jobs:
+  orchestrate:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    env:
+      NODE_PASS_BRAIN: ${{ secrets.NODE_PASS_BRAIN }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "npm"
+          cache-dependency-path: webapp/package-lock.json
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements-ops.txt
+          pip install -r portal_bot/requirements.txt
+          cd webapp
+          npm ci
+
+      - name: Run orchestrator
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          MODE="${{ github.event.inputs.mode }}"
+          BRAIN_IP="${{ github.event.inputs.brain_ip }}"
+          WEB_DOMAIN="${{ github.event.inputs.web_domain }}"
+          API_DOMAIN="${{ github.event.inputs.api_domain }}"
+
+          CMD=(python scripts/release_orchestrator.py --brain-ip "$BRAIN_IP" --web-domain "$WEB_DOMAIN" --api-domain "$API_DOMAIN")
+
+          if [[ "${{ github.event.inputs.quick_gate }}" == "true" ]]; then
+            CMD+=(--quick-gate)
+          fi
+          if [[ "${{ github.event.inputs.ensure_metrics_timer }}" == "true" ]]; then
+            CMD+=(--ensure-metrics-timer)
+          fi
+
+          case "$MODE" in
+            dry-run)
+              CMD+=(--dry-run)
+              ;;
+            verify-only)
+              CMD+=(--verify-only)
+              ;;
+            full)
+              ;;
+            *)
+              echo "Unsupported mode: $MODE"
+              exit 2
+              ;;
+          esac
+
+          echo "Running: ${CMD[*]}"
+          "${CMD[@]}"

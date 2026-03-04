@@ -11,7 +11,7 @@ import {
   type AdminUserCard,
   type AdminUserRow,
 } from "@/lib/api";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { fmtRuDate } from "../nav";
 
 export default function AdminUsersPage() {
@@ -22,7 +22,7 @@ export default function AdminUsersPage() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
 
-  const loadUsers = async (): Promise<void> => {
+  const loadUsers = useCallback(async (): Promise<void> => {
     setLoading(true);
     setError("");
     try {
@@ -42,11 +42,11 @@ export default function AdminUsersPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [query]);
 
   useEffect(() => {
     void loadUsers();
-  }, []);
+  }, [loadUsers]);
 
   const pickUser = async (tgId: number): Promise<void> => {
     setBusy(true);

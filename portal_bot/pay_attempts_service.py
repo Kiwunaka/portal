@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 from db import SessionLocal
 from models import PayAttempt
@@ -13,6 +13,10 @@ STATUS_ABANDONED = "abandoned"
 STATUS_FAILED = "failed"
 
 
+def _utcnow() -> datetime:
+    return datetime.now(timezone.utc).replace(tzinfo=None)
+
+
 def start_attempt(
     *,
     tg_id: int,
@@ -23,7 +27,7 @@ def start_attempt(
     offer_id: int | None = None,
     invoice_payload: str | None = None,
 ) -> PayAttempt | None:
-    now = datetime.utcnow()
+    now = _utcnow()
     s = SessionLocal()
     try:
         row = PayAttempt(
@@ -64,7 +68,7 @@ def mark_invoice_sent(
 
 
 def mark_paid(*, attempt_id: int | None = None, invoice_payload: str | None = None) -> bool:
-    now = datetime.utcnow()
+    now = _utcnow()
     s = SessionLocal()
     try:
         q = s.query(PayAttempt)
@@ -90,7 +94,7 @@ def mark_paid(*, attempt_id: int | None = None, invoice_payload: str | None = No
 
 
 def mark_abandoned(*, attempt_id: int) -> bool:
-    now = datetime.utcnow()
+    now = _utcnow()
     s = SessionLocal()
     try:
         row = s.query(PayAttempt).filter(PayAttempt.id == int(attempt_id)).first()
@@ -110,7 +114,7 @@ def mark_abandoned(*, attempt_id: int) -> bool:
 
 
 def mark_abandoned_notified(*, attempt_id: int) -> bool:
-    now = datetime.utcnow()
+    now = _utcnow()
     s = SessionLocal()
     try:
         row = s.query(PayAttempt).filter(PayAttempt.id == int(attempt_id)).first()
@@ -146,7 +150,7 @@ def resolve_pending_attempt_for_payment(
     Best-effort resolver for payments where invoice payload is not recognized.
     Picks the newest pending attempt for the user with the same amount/currency.
     """
-    cutoff = datetime.utcnow() - timedelta(hours=max(1, int(within_hours)))
+    cutoff = _utcnow() - timedelta(hours=max(1, int(within_hours)))
     s = SessionLocal()
     try:
         row = (
@@ -183,7 +187,7 @@ def resolve_pending_attempt_for_payment(
 
 
 def find_abandoned_candidates(*, older_than_minutes: int = 60, limit: int = 500) -> list[PayAttempt]:
-    cutoff = datetime.utcnow() - timedelta(minutes=max(1, int(older_than_minutes)))
+    cutoff = _utcnow() - timedelta(minutes=max(1, int(older_than_minutes)))
     s = SessionLocal()
     try:
         rows = (
@@ -207,7 +211,7 @@ def _set_status(
     status: str,
     set_invoice_payload: str | None = None,
 ) -> bool:
-    now = datetime.utcnow()
+    now = _utcnow()
     s = SessionLocal()
     try:
         q = s.query(PayAttempt)

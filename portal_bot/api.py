@@ -1,4 +1,4 @@
-﻿# -*- coding: utf-8 -*-
+# -*- coding: utf-8 -*-
 """
 Portal API for Telegram WebApp and Subscription endpoint.
 
@@ -20,7 +20,7 @@ import re
 import secrets
 import time
 import uuid
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any
 from urllib.parse import parse_qsl, urlencode, urlparse
@@ -100,6 +100,14 @@ from web_auth_service import (
 
 init_db()
 logger = logging.getLogger(__name__)
+
+
+def _utcnow() -> datetime:
+    """
+    Return naive UTC datetime backed by timezone-aware source.
+    This avoids deprecated _utcnow() usage while keeping DB compatibility.
+    """
+    return datetime.now(timezone.utc).replace(tzinfo=None)
 
 
 API_ENABLE_USAGE = env_bool("API_ENABLE_USAGE", default=False)
@@ -298,7 +306,7 @@ def _get_app_setting_json(*, s, key: str, default: Any) -> Any:
 
 
 def _set_app_setting_json(*, s, key: str, value: Any) -> None:
-    now = datetime.utcnow()
+    now = _utcnow()
     row = s.query(AppSetting).filter(AppSetting.key == str(key)).first()
     encoded = json.dumps(value, ensure_ascii=False, separators=(",", ":"), sort_keys=True)
     if not row:
@@ -793,11 +801,11 @@ def _maybe_downgrade_expired_to_free(s, user: User) -> bool:
             return False
         if not user.expiry_at:
             return False
-        if user.expiry_at >= datetime.utcnow():
+        if user.expiry_at >= _utcnow():
             return False
         if (user.sub_type or "").upper() == "FREE":
             # Already free but expired; extend so the free profile stays usable.
-            user.expiry_at = datetime.utcnow() + timedelta(days=int(AUTO_FREE_DAYS))
+            user.expiry_at = _utcnow() + timedelta(days=int(AUTO_FREE_DAYS))
             user.current_plan_code = "trial"
             ensure_user_free_cycle_state(user)
             s.commit()
@@ -805,7 +813,7 @@ def _maybe_downgrade_expired_to_free(s, user: User) -> bool:
 
         user.sub_type = "FREE"
         user.current_plan_code = "trial"
-        user.expiry_at = datetime.utcnow() + timedelta(days=int(AUTO_FREE_DAYS))
+        user.expiry_at = _utcnow() + timedelta(days=int(AUTO_FREE_DAYS))
         user.is_active = True
         mark_user_became_free(user)
         s.commit()
@@ -1092,7 +1100,7 @@ def _ensure_user_row_for_login(*, tg_id: int, username: str | None = None) -> No
                 s.commit()
             return
 
-        now = datetime.utcnow()
+        now = _utcnow()
         sub_token = secrets.token_urlsafe(32)
         row = User(
             tg_id=int(tg_id),
@@ -1120,7 +1128,7 @@ def _ensure_user_row_for_login(*, tg_id: int, username: str | None = None) -> No
 
 
 def _plan_segment(user: User, now: datetime | None = None) -> str:
-    n = now or datetime.utcnow()
+    n = now or _utcnow()
     sub = (user.sub_type or "").upper().strip()
     if sub == "MANUAL":
         return "MANUAL"
@@ -1143,7 +1151,7 @@ def _ensure_free_cycle_state_persisted(s, user: User) -> None:
 
 
 def _family_slots_for_user(s, tg_id: int) -> int:
-    now = datetime.utcnow()
+    now = _utcnow()
     total = (
         s.query(func.coalesce(func.sum(FamilySlot.slots), 0))
         .filter(FamilySlot.tg_id == int(tg_id))
@@ -1173,7 +1181,7 @@ def _mark_campaign_once(s, *, tg_id: int, campaign_key: str) -> bool:
     )
     if exists:
         return False
-    s.add(CampaignSend(tg_id=int(tg_id), campaign_key=str(campaign_key), sent_at=datetime.utcnow()))
+    s.add(CampaignSend(tg_id=int(tg_id), campaign_key=str(campaign_key), sent_at=_utcnow()))
     return True
 
 
@@ -1501,7 +1509,7 @@ def _upsert_external_order(
         .first()
     )
     if not row:
-        row = ExternalOrder(provider=provider, order_id=order_id, created_at=datetime.utcnow())
+        row = ExternalOrder(provider=provider, order_id=order_id, created_at=_utcnow())
         s.add(row)
     row.tg_id = _safe_int(_payload_value(payload, "tg_id", "telegram_id", "user_id"))
     row.plan_code = _payload_value(payload, "plan_code", "tariff", "plan")
@@ -1513,7 +1521,7 @@ def _upsert_external_order(
     row.currency = _payload_value(payload, "currency", "cur", "ccy") or "RUB"
     row.status = status
     if mark_paid and not row.paid_at:
-        row.paid_at = datetime.utcnow()
+        row.paid_at = _utcnow()
 
 
 def _record_external_payment_event(
@@ -1548,7 +1556,7 @@ def _record_external_payment_event(
             payload_json=json.dumps(payload, ensure_ascii=False, separators=(",", ":"))[:16000],
             signature_ok=bool(signature_ok),
             processed_ok=bool(processed_ok),
-            created_at=datetime.utcnow(),
+            created_at=_utcnow(),
         )
         s.add(event)
 
@@ -1631,7 +1639,7 @@ def _apply_external_paid_order(*, order_id: str, payload: dict[str, Any]) -> tup
             if not user:
                 return False, "user_create_failed"
 
-        now = datetime.utcnow()
+        now = _utcnow()
         old_sub = (user.sub_type or "").upper().strip()
         first_paid_purchase = not bool(getattr(user, "first_purchase_done", False))
         referrer_id = int(getattr(user, "referrer_id", 0) or 0)
@@ -2063,7 +2071,7 @@ async def _get_panel_usage_legacy(tg_id: int) -> dict | None:
 
 @app.get("/api/health")
 async def health() -> dict:
-    return {"status": "ok", "ts": datetime.utcnow().isoformat()}
+    return {"status": "ok", "ts": _utcnow().isoformat()}
 
 
 @app.get("/api/public/plans")
@@ -2104,7 +2112,7 @@ async def public_live_updates(response: Response, limit: int = Query(default=3, 
                     "id": int(row.id),
                     "title": str(row.title or "").strip(),
                     "summary": str(row.summary or "").strip(),
-                    "date": (row.published_at or row.created_at or datetime.utcnow()).date().isoformat(),
+                    "date": (row.published_at or row.created_at or _utcnow()).date().isoformat(),
                     "link": tg_link,
                     "tg_link": tg_link,
                     "channel_username": channel_raw or None,
@@ -2280,7 +2288,7 @@ async def _freekassa_create_order_internal(
                 ensure_ascii=False,
                 separators=(",", ":"),
             )[:4000],
-            created_at=datetime.utcnow(),
+            created_at=_utcnow(),
         )
         s.add(ext)
         if consume_pending_discount and discount_applied:
@@ -2498,7 +2506,7 @@ async def freekassa_currency_status(
 async def admin_metrics_status(request: Request, x_telegram_init_data: str = Header(default="")) -> dict:
     _require_admin(x_telegram_init_data, request=request)
     stale_after_seconds = max(300, int(os.getenv("NODE_METRICS_STALE_AFTER_SECONDS", "900")))
-    now = datetime.utcnow()
+    now = _utcnow()
     s = SessionLocal()
     try:
         last_sample = s.query(func.max(NodeHealthSample.sampled_at)).scalar()
@@ -2528,7 +2536,7 @@ def _parse_admin_datetime(value: str | None) -> datetime | None:
 
 
 def _admin_metrics_range(from_value: str | None, to_value: str | None, *, max_days: int = 120) -> tuple[datetime, datetime]:
-    now = datetime.utcnow()
+    now = _utcnow()
     to_dt = _parse_admin_datetime(to_value) or now
     from_dt = _parse_admin_datetime(from_value) or (to_dt - timedelta(days=13))
     if from_dt > to_dt:
@@ -2739,7 +2747,7 @@ async def public_social_proof(response: Response) -> dict:
             "total_users": int(total_users),
             "active_users": int(active_users),
             "paid_users": int(paid_users),
-            "updated_at": datetime.utcnow().isoformat(),
+            "updated_at": _utcnow().isoformat(),
         }
     finally:
         s.close()
@@ -2880,7 +2888,7 @@ async def user_data(tg_id: int, request: Request, x_telegram_init_data: str = He
 
         # active check (DB-first)
         is_active = bool(user.is_active)
-        if user.expiry_at and user.expiry_at < datetime.utcnow():
+        if user.expiry_at and user.expiry_at < _utcnow():
             is_active = False
 
         # optional legacy usage
@@ -3027,7 +3035,7 @@ async def dashboard_snapshot(request: Request, x_telegram_init_data: str = Heade
         used_gb = round((usage["used_bytes"] / (1024**3)), 3) if usage else 0.0
         remaining = max(round(total_gb - used_gb, 3), 0.0) if total_gb > 0 else 0.0
         expiry = user.expiry_at
-        active = bool(user.is_active and expiry and expiry > datetime.utcnow())
+        active = bool(user.is_active and expiry and expiry > _utcnow())
         segment = _plan_segment(user)
         family_slots = _family_slots_for_user(s, tg_id)
         points_available, points_expiring_soon = available_points(tg_id=tg_id)
@@ -3086,7 +3094,7 @@ async def client_apps(request: Request, x_telegram_init_data: str = Header(defau
             mirror_url=_safe_public_url(Settings.APP_WINDOWS_MIRROR_URL),
         ),
         docs_url=_safe_public_url(Settings.APP_DOCS_URL),
-        updated_at=f"{datetime.utcnow().replace(microsecond=0).isoformat()}Z",
+        updated_at=f"{_utcnow().replace(microsecond=0).isoformat()}Z",
     )
 
 
@@ -3143,7 +3151,7 @@ async def nodes_run_diagnostics(request: Request, x_telegram_init_data: str = He
     ok = bool(healthy) if nodes else False
     return NodeDiagnosticsResponse(
         ok=ok,
-        checked_at=datetime.utcnow().isoformat(),
+        checked_at=_utcnow().isoformat(),
         dns_status="ok" if ok else "degraded",
         sni_status="ok" if ok else "degraded",
         summary="All checks passed" if ok else "Some nodes are degraded",
@@ -3279,7 +3287,7 @@ async def claim_channel_bonus(request: Request, x_telegram_init_data: str = Head
                 raise HTTPException(status_code=400, detail="Сначала подпишитесь на канал и повторите проверку")
             raise HTTPException(status_code=502, detail=f"Не удалось проверить подписку: {reason}")
 
-        now = datetime.utcnow()
+        now = _utcnow()
         days = max(1, int(CHANNEL_PREMIUM_DAYS))
         old_sub = (user.sub_type or "").upper()
 
@@ -3350,7 +3358,7 @@ async def promo_redeem(payload: PromoRedeemIn, request: Request, x_telegram_init
         uses_left = int(promo.uses_left or 0)
         if uses_left == 0:
             raise HTTPException(status_code=400, detail="Promo exhausted")
-        if promo.expires_at and promo.expires_at < datetime.utcnow():
+        if promo.expires_at and promo.expires_at < _utcnow():
             raise HTTPException(status_code=400, detail="Promo expired")
         used = s.query(PromoUsage).filter_by(tg_id=tg_id, promo_code=promo.code).first()
         if used:
@@ -3361,7 +3369,7 @@ async def promo_redeem(payload: PromoRedeemIn, request: Request, x_telegram_init
         applied_days = 0
         pending_discount_pct = 0
         if promo_type == "days" and value > 0:
-            now = datetime.utcnow()
+            now = _utcnow()
             if user.expiry_at and user.expiry_at > now:
                 user.expiry_at = user.expiry_at + timedelta(days=value)
             else:
@@ -3371,7 +3379,7 @@ async def promo_redeem(payload: PromoRedeemIn, request: Request, x_telegram_init
         elif promo_type == "discount" and value > 0:
             user.pending_discount_pct = max(1, min(95, int(value)))
             user.pending_discount_code = str(promo.code or "").strip().upper()[:20]
-            user.pending_discount_set_at = datetime.utcnow()
+            user.pending_discount_set_at = _utcnow()
             pending_discount_pct = int(user.pending_discount_pct or 0)
 
         if uses_left > 0:
@@ -3682,7 +3690,7 @@ async def admin_create_manual_user(payload: ManualUserCreateRequest, x_telegram_
     s = SessionLocal()
     try:
         tg_id = _next_manual_tg_id(s)
-        now = datetime.utcnow()
+        now = _utcnow()
         user = User(
             tg_id=tg_id,
             username=None,
@@ -3767,7 +3775,7 @@ async def admin_extend_manual_user(tg_id: int, payload: ManualUserExtendRequest,
         user = s.query(User).filter_by(tg_id=tg_id).first()
         if not user:
             raise HTTPException(status_code=404, detail="User not found")
-        now = datetime.utcnow()
+        now = _utcnow()
         cur = user.expiry_at if user.expiry_at and user.expiry_at > now else now
         candidate_expiry = cur + timedelta(days=delta_days)
         if candidate_expiry <= now:
@@ -3890,7 +3898,7 @@ async def admin_broadcast(payload: AdminBroadcastIn, x_telegram_init_data: str =
             elif segment == "paid":
                 query = query.filter(func.upper(User.sub_type) == "PAID")
             elif segment == "expired":
-                query = query.filter(User.expiry_at.isnot(None), User.expiry_at < datetime.utcnow())
+                query = query.filter(User.expiry_at.isnot(None), User.expiry_at < _utcnow())
             else:
                 raise HTTPException(status_code=400, detail="Unsupported segment")
             target_ids = [int(r[0]) for r in query.order_by(User.tg_id.asc()).limit(limit).all()]
@@ -4054,7 +4062,7 @@ async def admin_plans_create(payload: AdminPlanCreateIn, x_telegram_init_data: s
         exists = s.query(PlanCatalog.id).filter(func.lower(PlanCatalog.code) == code).first()
         if exists:
             raise HTTPException(status_code=409, detail="Plan already exists")
-        now = datetime.utcnow()
+        now = _utcnow()
         row = PlanCatalog(
             code=code,
             label=payload.label.strip(),
@@ -4104,7 +4112,7 @@ async def admin_plans_update(code: str, payload: AdminPlanUpdateIn, x_telegram_i
             row.is_active = bool(payload.is_active)
         if payload.sort_order is not None:
             row.sort_order = int(payload.sort_order)
-        row.updated_at = datetime.utcnow()
+        row.updated_at = _utcnow()
         s.commit()
     finally:
         s.close()
@@ -4181,7 +4189,7 @@ async def admin_live_updates_create(payload: AdminLiveUpdateCreateIn, x_telegram
         raise HTTPException(status_code=400, detail="Provide either link or channel_username+post_id")
     s = SessionLocal()
     try:
-        now = datetime.utcnow()
+        now = _utcnow()
         row = LiveUpdate(
             title=payload.title.strip(),
             summary=payload.summary.strip(),
@@ -4235,7 +4243,7 @@ async def admin_live_updates_update(update_id: int, payload: AdminLiveUpdateUpda
         )
         if not str(row.link or "").strip():
             raise HTTPException(status_code=400, detail="Provide either link or channel_username+post_id")
-        row.updated_at = datetime.utcnow()
+        row.updated_at = _utcnow()
         s.commit()
     finally:
         s.close()
@@ -4299,7 +4307,7 @@ async def admin_start_links_create(payload: AdminStartLinkCreateIn, x_telegram_i
         exists = s.query(StartLink.id).filter(func.lower(StartLink.code) == code).first()
         if exists:
             raise HTTPException(status_code=409, detail="Start link already exists")
-        now = datetime.utcnow()
+        now = _utcnow()
         row = StartLink(
             code=code,
             description=str(payload.description or "").strip()[:240] or None,
@@ -4341,7 +4349,7 @@ async def admin_start_links_update(link_id: int, payload: AdminStartLinkUpdateIn
             row.target_action = str(payload.target_action or "").strip()[:64] or None
         if payload.is_active is not None:
             row.is_active = bool(payload.is_active)
-        row.updated_at = datetime.utcnow()
+        row.updated_at = _utcnow()
         s.commit()
         out_code = str(row.code or "").strip().lower()
     finally:
@@ -4359,7 +4367,7 @@ async def admin_start_links_delete(link_id: int, x_telegram_init_data: str = Hea
         if not row:
             raise HTTPException(status_code=404, detail="Start link not found")
         row.is_active = False
-        row.updated_at = datetime.utcnow()
+        row.updated_at = _utcnow()
         s.commit()
     finally:
         s.close()
@@ -5000,6 +5008,33 @@ def _token_fingerprint(token: str) -> str:
     return hashlib.sha256(text.encode("utf-8")).hexdigest()[:12]
 
 
+async def _notify_admin_on_subscription_fallback(*, user_tg_id: int, token_fp: str) -> None:
+    admin_id = int(Settings.ADMIN_ID or 0)
+    if admin_id <= 0:
+        return
+    day_key = _utcnow().strftime("%Y%m%d")
+    campaign_key = f"sub_token_fallback:{int(user_tg_id)}:{day_key}"
+
+    s = SessionLocal()
+    try:
+        if not _mark_campaign_once(s, tg_id=admin_id, campaign_key=campaign_key):
+            return
+        s.commit()
+    except Exception:
+        s.rollback()
+        return
+    finally:
+        s.close()
+
+    text = (
+        "⚠️ Обнаружен fallback подписки по `tg_id`.\n"
+        f"user_id: `{int(user_tg_id)}`\n"
+        f"token_fp: `{token_fp}`\n\n"
+        "Рекомендуется регенерация sub_token и проверка синка subId в панели."
+    )
+    await _telegram_send_message(chat_id=admin_id, text=text)
+
+
 @app.get("/s8Kx2mP7qR4wT/{token}")
 async def subscription(token: str, request: Request):
     """
@@ -5045,6 +5080,14 @@ async def subscription(token: str, request: Request):
         lookup_mode,
         bool(is_smart),
     )
+    if lookup_mode == "tg_id_fallback":
+        logger.warning(
+            "subscription fallback detected token_fp=%s tg_id=%s action=%s",
+            token_fp,
+            int(user.tg_id),
+            "notify_admin_once_per_day",
+        )
+        await _notify_admin_on_subscription_fallback(user_tg_id=int(user.tg_id), token_fp=token_fp)
 
     header_expire = int(user.expiry_at.timestamp()) if user.expiry_at else 0
     total_bytes = _gb_to_bytes(_plan_total_gb(user))

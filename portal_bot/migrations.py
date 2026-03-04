@@ -1,6 +1,6 @@
 ﻿from __future__ import annotations
 
-from datetime import datetime
+from datetime import datetime, timezone
 
 from sqlalchemy import Engine, text
 
@@ -68,6 +68,10 @@ RETENTION_TEMPLATE_PRESETS: dict[str, str] = {
     ),
 }
 
+
+def _utcnow() -> datetime:
+    return datetime.now(timezone.utc).replace(tzinfo=None)
+
 def _seed_retention_templates(conn, *, dialect: str) -> None:
     if dialect == "sqlite":
         exists = conn.execute(
@@ -92,7 +96,7 @@ def _seed_retention_templates(conn, *, dialect: str) -> None:
             continue
         conn.execute(
             text('INSERT INTO templates ("key", "text", "created_at") VALUES (:key, :text, :created_at);'),
-            {"key": key, "text": value, "created_at": datetime.utcnow()},
+            {"key": key, "text": value, "created_at": _utcnow()},
         )
 
 def run_migrations(engine: Engine) -> None:

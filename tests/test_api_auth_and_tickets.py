@@ -7,6 +7,7 @@ import uuid
 import time
 from datetime import datetime, timedelta
 from pathlib import Path
+from unittest.mock import AsyncMock, patch
 from urllib.parse import urlencode
 
 from fastapi.testclient import TestClient
@@ -492,8 +493,13 @@ class ApiAuthAndTicketsTests(unittest.TestCase):
         by_token = self.client.get("/s8Kx2mP7qR4wT/token_1001_secure")
         self.assertEqual(by_token.status_code, 200, by_token.text)
 
-        by_tg_id = self.client.get("/s8Kx2mP7qR4wT/1001")
+        with patch.object(self.api, "_telegram_send_message", new=AsyncMock(return_value=True)) as mocked_send:
+            by_tg_id = self.client.get("/s8Kx2mP7qR4wT/1001")
         self.assertEqual(by_tg_id.status_code, 200, by_tg_id.text)
+        self.assertEqual(mocked_send.await_count, 1)
+        kwargs = mocked_send.await_args.kwargs
+        self.assertEqual(int(kwargs.get("chat_id") or 0), 9999)
+        self.assertIn("fallback подписки", str(kwargs.get("text") or ""))
 
     def test_admin_metrics_timeseries_and_nodes_traffic_endpoints(self) -> None:
         from db import SessionLocal

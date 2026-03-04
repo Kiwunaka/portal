@@ -1,7 +1,7 @@
 "use client";
 
 import { adminTicketReply, adminTicketStatus, adminTickets, type TicketInfo } from "@/lib/api";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { fmtRuDate } from "../nav";
 
 export default function AdminTicketsPage() {
@@ -14,22 +14,22 @@ export default function AdminTicketsPage() {
 
   const selected = useMemo(() => tickets.find((t) => t.id === selectedId) || null, [selectedId, tickets]);
 
-  const load = async (): Promise<void> => {
+  const load = useCallback(async (): Promise<void> => {
     setError("");
     try {
       const rows = await adminTickets(statusFilter, 80);
       setTickets(rows);
-      if (!selectedId && rows[0]?.id) {
-        setSelectedId(rows[0].id);
+      if (rows[0]?.id) {
+        setSelectedId((prev) => prev || rows[0].id);
       }
     } catch (err) {
       setError(String((err as { message?: string })?.message || err || "Ошибка загрузки тикетов"));
     }
-  };
+  }, [statusFilter]);
 
   useEffect(() => {
     void load();
-  }, [statusFilter]);
+  }, [load]);
 
   const sendReply = async (): Promise<void> => {
     if (!selected || !reply.trim()) return;

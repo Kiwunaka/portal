@@ -1,4 +1,4 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
 import argparse
 import subprocess
@@ -19,6 +19,10 @@ def _run(name: str, cmd: list[str], cwd: Path = REPO_ROOT) -> int:
     return 0
 
 
+def _dry_run(name: str, cmd: list[str], cwd: Path = REPO_ROOT) -> None:
+    print(f"[dry-run] {name}: {' '.join(cmd)} (cwd={cwd})")
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description="One-command release orchestrator: gates -> deploy -> verify.")
     parser.add_argument("--brain-ip", default="", help="Brain node public IP (required for deploy/verify steps)")
@@ -34,19 +38,39 @@ def main() -> int:
     parser.add_argument("--skip-verify", action="store_true")
     parser.add_argument("--ensure-metrics-timer", action="store_true", help="Install/repair portal-node-metrics.timer before verify")
     parser.add_argument("--gates-only", action="store_true", help="Run gates only (no remote deploy/verify)")
+    parser.add_argument("--verify-only", action="store_true", help="Run only post-deploy verify")
+    parser.add_argument("--dry-run", action="store_true", help="Print planned commands without executing them")
     args = parser.parse_args()
 
+    if args.gates_only and args.verify_only:
+        raise SystemExit("--gates-only and --verify-only are mutually exclusive")
+
+    if args.verify_only:
+        args.skip_gates = True
+        args.skip_backend = True
+        args.skip_static = True
+        args.skip_verify = False
+        args.ensure_metrics_timer = False
+
     python = sys.executable
+    steps: list[tuple[str, list[str], Path]] = []
 
     if not args.skip_gates:
         gate_cmd = [python, "scripts/release_gate_check.py"]
         if args.quick_gate:
             gate_cmd.append("--quick")
-        rc = _run("release gates", gate_cmd)
-        if rc != 0:
-            return rc
+        steps.append(("release gates", gate_cmd, REPO_ROOT))
 
     if args.gates_only:
+        if args.dry_run:
+            for name, cmd, cwd in steps:
+                _dry_run(name, cmd, cwd)
+            print("[done] gates-only dry-run finished")
+            return 0
+        for name, cmd, cwd in steps:
+            rc = _run(name, cmd, cwd)
+            if rc != 0:
+                return rc
         print("[done] gates-only mode finished")
         return 0
 
@@ -55,90 +79,105 @@ def main() -> int:
         raise SystemExit("--brain-ip is required for deploy/verify steps")
 
     if args.ensure_metrics_timer:
-        rc = _run(
-            "metrics timer ensure",
-            [
-                python,
-                "scripts/remote_install_node_metrics_timer.py",
-                "--brain-ip",
-                args.brain_ip,
-                "--ssh-user",
-                args.ssh_user,
-                "--ssh-port",
-                str(args.ssh_port),
-                "--passwords",
-                args.passwords,
-            ],
+        steps.append(
+            (
+                "metrics timer ensure",
+                [
+                    python,
+                    "scripts/remote_install_node_metrics_timer.py",
+                    "--brain-ip",
+                    args.brain_ip,
+                    "--ssh-user",
+                    args.ssh_user,
+                    "--ssh-port",
+                    str(args.ssh_port),
+                    "--passwords",
+                    args.passwords,
+                ],
+                REPO_ROOT,
+            )
         )
-        if rc != 0:
-            return rc
 
     if not args.skip_backend:
-        rc = _run(
-            "backend deploy",
-            [
-                python,
-                "scripts/remote_deploy_brain_portal_code.py",
-                "--brain-ip",
-                args.brain_ip,
-                "--ssh-user",
-                args.ssh_user,
-                "--ssh-port",
-                str(args.ssh_port),
-                "--passwords",
-                args.passwords,
-                "--restart",
-                "portal-api,portal-bot,portal-helpbot",
-            ],
+        steps.append(
+            (
+                "backend deploy",
+                [
+                    python,
+                    "scripts/remote_deploy_brain_portal_code.py",
+                    "--brain-ip",
+                    args.brain_ip,
+                    "--ssh-user",
+                    args.ssh_user,
+                    "--ssh-port",
+                    str(args.ssh_port),
+                    "--passwords",
+                    args.passwords,
+                    "--restart",
+                    "portal-api,portal-bot,portal-helpbot",
+                ],
+                REPO_ROOT,
+            )
         )
-        if rc != 0:
-            return rc
 
     if not args.skip_static:
-        rc = _run(
-            "static deploy",
-            [
-                python,
-                "scripts/remote_deploy_brain_static_sites.py",
-                "--brain-ip",
-                args.brain_ip,
-                "--ssh-user",
-                args.ssh_user,
-                "--ssh-port",
-                str(args.ssh_port),
-                "--passwords",
-                args.passwords,
-                "--web-domain",
-                args.web_domain,
-                "--api-domain",
-                args.api_domain,
-            ],
+        steps.append(
+            (
+                "static deploy",
+                [
+                    python,
+                    "scripts/remote_deploy_brain_static_sites.py",
+                    "--brain-ip",
+                    args.brain_ip,
+                    "--ssh-user",
+                    args.ssh_user,
+                    "--ssh-port",
+                    str(args.ssh_port),
+                    "--passwords",
+                    args.passwords,
+                    "--web-domain",
+                    args.web_domain,
+                    "--api-domain",
+                    args.api_domain,
+                ],
+                REPO_ROOT,
+            )
         )
-        if rc != 0:
-            return rc
 
     if not args.skip_verify:
-        rc = _run(
-            "post-deploy verify",
-            [
-                python,
-                "scripts/verify_brain_ready.py",
-                "--brain-ip",
-                args.brain_ip,
-                "--ssh-user",
-                args.ssh_user,
-                "--ssh-port",
-                str(args.ssh_port),
-                "--passwords",
-                args.passwords,
-                "--web-domain",
-                args.web_domain,
-                "--api-domain",
-                args.api_domain,
-                "--repeat",
-                "5",
-            ],
+        steps.append(
+            (
+                "post-deploy verify",
+                [
+                    python,
+                    "scripts/verify_brain_ready.py",
+                    "--brain-ip",
+                    args.brain_ip,
+                    "--ssh-user",
+                    args.ssh_user,
+                    "--ssh-port",
+                    str(args.ssh_port),
+                    "--passwords",
+                    args.passwords,
+                    "--web-domain",
+                    args.web_domain,
+                    "--api-domain",
+                    args.api_domain,
+                    "--repeat",
+                    "5",
+                ],
+                REPO_ROOT,
+            )
         )
+
+    if args.dry_run:
+        for name, cmd, cwd in steps:
+            _dry_run(name, cmd, cwd)
+        print("[done] dry-run finished")
+        return 0
+
+    for name, cmd, cwd in steps:
+        rc = _run(name, cmd, cwd)
         if rc != 0:
             return rc
 

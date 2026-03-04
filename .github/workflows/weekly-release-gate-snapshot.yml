@@ -1,0 +1,62 @@
+﻿name: Weekly Release Gate Snapshot
+
+on:
+  schedule:
+    - cron: "15 4 * * 1"
+  workflow_dispatch:
+
+jobs:
+  weekly-gate:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "npm"
+          cache-dependency-path: webapp/package-lock.json
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r portal_bot/requirements.txt
+          cd webapp
+          npm ci
+
+      - name: Run quick gate
+        run: python scripts/release_gate_check.py --quick
+
+      - name: Export weekly snapshot
+        run: python scripts/export_release_gate_snapshot.py
+
+      - name: Commit snapshot to reports branch
+        shell: bash
+        run: |
+          set -euo pipefail
+          BRANCH="reports/release-gates-weekly"
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          git checkout -B "$BRANCH"
+          git add docs/audit-artifacts/release_gate_report.md docs/audit-artifacts/history/release_gate_report_*.md
+
+          if git diff --cached --quiet; then
+            echo "No changes to commit"
+            exit 0
+          fi
+
+          git commit -m "chore: weekly release gate snapshot"
+          git push origin "$BRANCH" --force-with-lease

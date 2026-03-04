@@ -2,6 +2,7 @@
 
 import { fetchNodeStatus, type NodeStatus } from "@/lib/api";
 import { usePortalSession } from "@/lib/session";
+import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 
@@ -167,7 +168,14 @@ export default function DashboardPage() {
           <article className="rounded-2xl border border-white/45 bg-white/65 p-4 dark:border-white/10 dark:bg-white/5">
             <p className="text-xs uppercase tracking-[0.14em] text-slate-500">QR-код</p>
             {qrUrl ? (
-              <img src={qrUrl} alt="QR key" className="mt-3 h-[220px] w-[220px] max-w-full rounded-xl border border-white/45 bg-white p-2" />
+              <Image
+                src={qrUrl}
+                alt="QR key"
+                width={220}
+                height={220}
+                unoptimized
+                className="mt-3 h-[220px] w-[220px] max-w-full rounded-xl border border-white/45 bg-white p-2"
+              />
             ) : (
               <p className="mt-3 text-sm text-slate-500">Ключ недоступен</p>
             )}

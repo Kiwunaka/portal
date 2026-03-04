@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import os
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Any
 
 from control_panel import ControlPanel
@@ -13,7 +13,7 @@ FREE_CYCLE_DAYS = max(1, int(os.getenv("FREE_CYCLE_DAYS", "30")))
 
 
 def _utcnow() -> datetime:
-    return datetime.utcnow()
+    return datetime.now(timezone.utc).replace(tzinfo=None)
 
 
 def _is_free(user: User) -> bool:

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import datetime, timezone
 
 import db
 from models import Offer
@@ -14,6 +14,10 @@ STATUS_EXPIRED = "expired"
 def _session():
     # Resolve SessionLocal dynamically to stay aligned with reloaded db module in tests/workers.
     return db.SessionLocal()
+
+
+def _utcnow() -> datetime:
+    return datetime.now(timezone.utc).replace(tzinfo=None)
 
 
 def create_offer(
@@ -35,7 +39,7 @@ def create_offer(
             status=STATUS_ACTIVE,
             trigger_reason=(trigger_reason or "")[:64],
             expires_at=expires_at,
-            created_at=datetime.utcnow(),
+            created_at=_utcnow(),
         )
         s.add(row)
         s.commit()
@@ -49,7 +53,7 @@ def create_offer(
 
 
 def get_active_offer(*, tg_id: int, offer_type: str | None = None) -> Offer | None:
-    now = datetime.utcnow()
+    now = _utcnow()
     s = _session()
     try:
         q = s.query(Offer).filter(Offer.tg_id == int(tg_id), Offer.status == STATUS_ACTIVE)
@@ -62,7 +66,7 @@ def get_active_offer(*, tg_id: int, offer_type: str | None = None) -> Offer | No
 
 
 def accept_offer(*, offer_id: int, tg_id: int) -> bool:
-    now = datetime.utcnow()
+    now = _utcnow()
     s = _session()
     try:
         row = s.query(Offer).filter(Offer.id == int(offer_id), Offer.tg_id == int(tg_id)).first()
@@ -80,7 +84,7 @@ def accept_offer(*, offer_id: int, tg_id: int) -> bool:
 
 
 def expire_stale_offers() -> int:
-    now = datetime.utcnow()
+    now = _utcnow()
     s = _session()
     try:
         rows = (

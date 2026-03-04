@@ -76,3 +76,5 @@
 - Release runbook: `docs/33-release-execution-runbook-2026-03.md`
 - Capacity + free node runbook: `docs/31-capacity-and-infra-runbook-2026-03.md`
 - Protocol blocking R&D: `docs/32-protocols-rf-blocking-rd-2026-03.md`
+- Manual release workflow: `.github/workflows/release-orchestrator-manual.yml`
+- Weekly gate snapshot workflow: `.github/workflows/weekly-release-gate-snapshot.yml`
