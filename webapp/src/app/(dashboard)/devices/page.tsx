@@ -61,7 +61,7 @@ export default function DevicesPage() {
   const onGetKey = (): void => {
     addFromPool();
     setShowAddModal(false);
-    window.open("https://t.me/portal_vpn", "_blank", "noopener,noreferrer");
+    window.open("https://t.me/net4ebur_bot", "_blank", "noopener,noreferrer");
   };
 
   return (
@@ -165,7 +165,7 @@ export default function DevicesPage() {
                 </div>
                 <div className="rounded-xl bg-white/70 p-3 text-sm dark:bg-white/10">
                   <strong className="mr-2">2</strong>
-                  Перейдите в бота @portal_vpn в Telegram
+                  Перейдите в бота @net4ebur_bot в Telegram
                 </div>
                 <div className="rounded-xl bg-white/70 p-3 text-sm dark:bg-white/10">
                   <strong className="mr-2">3</strong>

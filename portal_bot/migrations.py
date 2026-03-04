@@ -186,6 +186,7 @@ def run_migrations(engine: Engine) -> None:
         conn.execute(text("CREATE INDEX IF NOT EXISTS ix_achievements_tg_id ON achievements(tg_id);"))
         conn.execute(text("CREATE INDEX IF NOT EXISTS ix_user_nodes_tg_id ON user_nodes(tg_id);"))
         conn.execute(text("CREATE INDEX IF NOT EXISTS ix_user_nodes_node_id ON user_nodes(node_id);"))
+        conn.execute(text("CREATE UNIQUE INDEX IF NOT EXISTS uq_promo_usage_tg_code ON promo_usage(tg_id, promo_code);"))
 
         # support_tickets table: backfill columns for legacy DBs if table already exists
         if conn.execute(text("SELECT name FROM sqlite_master WHERE type='table' AND name='support_tickets';")).fetchone():
@@ -267,6 +268,9 @@ def run_migrations(engine: Engine) -> None:
                   panel_latency_ms INTEGER,
                   panel_error_rate FLOAT DEFAULT 0,
                   active_clients INTEGER DEFAULT 0,
+                  total_up_bytes BIGINT DEFAULT 0,
+                  total_down_bytes BIGINT DEFAULT 0,
+                  total_traffic_bytes BIGINT DEFAULT 0,
                   is_healthy BOOLEAN DEFAULT 1,
                   score FLOAT DEFAULT 0,
                   source VARCHAR(64) DEFAULT 'collector'
@@ -274,6 +278,15 @@ def run_migrations(engine: Engine) -> None:
                 """
             )
         )
+        if conn.execute(text("SELECT name FROM sqlite_master WHERE type='table' AND name='node_health_samples';")).fetchone():
+            node_sample_cols = [
+                ("total_up_bytes", "BIGINT DEFAULT 0"),
+                ("total_down_bytes", "BIGINT DEFAULT 0"),
+                ("total_traffic_bytes", "BIGINT DEFAULT 0"),
+            ]
+            for col, ddl in node_sample_cols:
+                if not _sqlite_column_exists(conn, "node_health_samples", col):
+                    conn.execute(text(f"ALTER TABLE node_health_samples ADD COLUMN {col} {ddl};"))
         conn.execute(text("CREATE INDEX IF NOT EXISTS ix_node_health_samples_node_code ON node_health_samples(node_code);"))
         conn.execute(text("CREATE INDEX IF NOT EXISTS ix_node_health_samples_sampled_at ON node_health_samples(sampled_at);"))
 
@@ -591,6 +604,9 @@ def _run_postgres_migrations(engine: Engine) -> None:
         conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS free_cycle_last_reset_at TIMESTAMP;"))
         conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS free_cycle_next_reset_at TIMESTAMP;"))
         conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS current_plan_code VARCHAR(32);"))
+        conn.execute(text("ALTER TABLE node_health_samples ADD COLUMN IF NOT EXISTS total_up_bytes BIGINT DEFAULT 0;"))
+        conn.execute(text("ALTER TABLE node_health_samples ADD COLUMN IF NOT EXISTS total_down_bytes BIGINT DEFAULT 0;"))
+        conn.execute(text("ALTER TABLE node_health_samples ADD COLUMN IF NOT EXISTS total_traffic_bytes BIGINT DEFAULT 0;"))
 
         conn.execute(
             text(
@@ -663,6 +679,7 @@ def _run_postgres_migrations(engine: Engine) -> None:
         conn.execute(text("CREATE INDEX IF NOT EXISTS ix_offers_tg_status_exp ON offers(tg_id, status, expires_at);"))
         conn.execute(text("CREATE INDEX IF NOT EXISTS ix_points_ledger_tg_exp_created ON points_ledger(tg_id, expires_at, created_at);"))
         conn.execute(text("CREATE UNIQUE INDEX IF NOT EXISTS uq_campaign_sends_tg_campaign ON campaign_sends(tg_id, campaign_key);"))
+        conn.execute(text("CREATE UNIQUE INDEX IF NOT EXISTS uq_promo_usage_tg_code ON promo_usage(tg_id, promo_code);"))
 
         conn.execute(
             text(

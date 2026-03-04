@@ -51,7 +51,7 @@ function EntryBody() {
             <button className="btn-primary rounded-xl px-5 py-2.5 text-sm font-semibold uppercase tracking-[0.12em]" onClick={() => void refresh()} type="button">
               Повторить
             </button>
-            <Link href="https://t.me/portal_service_bot" target="_blank" className="outline-btn rounded-xl px-5 py-2.5 text-sm font-semibold uppercase tracking-[0.12em]">
+            <Link href="https://t.me/net4ebur_bot" target="_blank" className="outline-btn rounded-xl px-5 py-2.5 text-sm font-semibold uppercase tracking-[0.12em]">
               Открыть бота
             </Link>
           </div>
@@ -80,7 +80,7 @@ function EntryBody() {
         )}
 
         <div className="mt-6 flex flex-wrap gap-3">
-          <Link href="https://t.me/portal_service_bot" target="_blank" className="outline-btn rounded-xl px-5 py-2.5 text-sm font-semibold uppercase tracking-[0.12em]">
+          <Link href="https://t.me/net4ebur_bot" target="_blank" className="outline-btn rounded-xl px-5 py-2.5 text-sm font-semibold uppercase tracking-[0.12em]">
             Открыть бота
           </Link>
           <Link href="/dashboard/" className="btn-primary rounded-xl px-5 py-2.5 text-sm font-semibold uppercase tracking-[0.12em]">

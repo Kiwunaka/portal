@@ -377,7 +377,7 @@ class PanelClient:
             logger.exception("add_client error node=%s: %s", self.node.code, e)
             return False
 
-    async def update_client_enable(self, client: dict, enable: bool) -> bool:
+    async def update_client_enable(self, client: dict, enable: bool, sub_id: str | None = None) -> bool:
         if not self.cookies:
             ok = await self.login()
             if not ok:
@@ -394,7 +394,7 @@ class PanelClient:
             "flow": client.get("flow", self.node.flow),
             "totalGB": total_gb_bytes,
             "expiryTime": 0,
-            "subId": client.get("subId", ""),
+            "subId": str(sub_id or client.get("subId", "") or ""),
             "tgId": client.get("tgId", ""),
             "enable": enable,
             "limitIp": limit_ip,
@@ -596,7 +596,7 @@ class PanelClient:
         existing = await self.find_client_by_tgid(tg_id)
         if existing:
             # Always normalize client fields according to current node policy.
-            return await self.update_client_enable(existing, enable)
+            return await self.update_client_enable(existing, enable, sub_id=sub_id)
         # Handle stale records on other inbounds before add (e.g. free->paid transitions).
         await self._cleanup_cross_inbound_conflicts(tg_id=tg_id, email=email)
         ok = await self.add_client(

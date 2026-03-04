@@ -16,7 +16,7 @@ const COMPARISON_ROWS: ComparisonRow[] = [
   { metric: "Устройства", start: "1", pro: "До 5", ultra: "До 5" },
   { metric: "Страны", start: "NL", pro: "Польша, Нидерланды, США, Италия", ultra: "Полный пул + приоритет" },
   { metric: "Трафик", start: "Безлимит*", pro: "Безлимит*", ultra: "Безлимит*" },
-  { metric: "Маршрутизация", start: "VPN для базовых задач", pro: "Полный VPN-маршрут ежедневно", ultra: "VPN + приоритетная обработка" },
+  { metric: "Маршрутизация", start: "Базовый защищенный маршрут", pro: "Полный маршрут ежедневно", ultra: "Маршрут + приоритетная обработка" },
   { metric: "Скоростной профиль", start: "Базовый", pro: "Высокий (типично 90-95%)", ultra: "Максимальный на близком узле" },
   { metric: "Поддержка", start: "Стандартная", pro: "Быстрый Telegram-ответ", ultra: "Приоритет 24/7" },
 ];
@@ -98,7 +98,7 @@ export default function DashboardPage() {
               <h1 className="mt-2 font-display text-4xl font-bold text-emerald-600">{dash?.is_active ? "АКТИВЕН" : "ТРЕБУЕТ ПРОДЛЕНИЯ"}</h1>
               <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">
                 {dash?.is_active
-                  ? "VPN-доступ активен. Профиль и ключ подключения готовы к работе."
+                  ? "Доступ активен. Профиль и ключ подключения готовы к работе."
                   : "Доступ требует продления. После оплаты статус обновится автоматически."}
               </p>
             </div>
@@ -177,7 +177,7 @@ export default function DashboardPage() {
 
       <section className="glass-card p-7">
         <div className="mb-4">
-          <p className="font-mono text-xs uppercase tracking-[0.16em] text-slate-500">Наглядное сравнение тарифов VPN</p>
+          <p className="font-mono text-xs uppercase tracking-[0.16em] text-slate-500">Наглядное сравнение тарифов</p>
           <h2 className="mt-2 font-display text-3xl font-bold">Что выбрать и почему</h2>
         </div>
 
@@ -206,7 +206,7 @@ export default function DashboardPage() {
 
         <p className="mt-4 text-sm text-slate-600 dark:text-slate-300">
           Почему часть медиасервисов может идти напрямую: в отдельных сценариях это снижает задержку и помогает стабильнее
-          воспроизводить видео. VPN-канал для основного трафика сохраняется по правилам тарифа.
+          воспроизводить видео. Защищенный канал для основного трафика сохраняется по правилам тарифа.
           Безлимит* относится к объёму трафика, а фактическая скорость зависит от вашей сети и текущей нагрузки.
         </p>
       </section>

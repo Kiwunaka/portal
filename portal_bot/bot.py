@@ -176,7 +176,7 @@ load_dotenv()
 
 BOT_TOKEN = os.getenv("BOT_TOKEN")
 ADMIN_ID = int(os.getenv("ADMIN_ID", "0"))
-BOT_USERNAME = (os.getenv("BOT_USERNAME") or "portal_service_bot").lstrip("@")
+BOT_USERNAME = (os.getenv("BOT_USERNAME") or "net4ebur_bot").lstrip("@")
 BOT_USERNAME_MD = BOT_USERNAME.replace("_", "\\_")
 
 # Panel
@@ -1462,6 +1462,22 @@ def _bot_checkout_url(
     return urlunsplit(("", "", parsed.path or "/checkout/", built_query, parsed.fragment))
 
 
+_START_TOKEN_RE = re.compile(r"^[A-Za-z0-9_-]{1,64}$")
+
+
+def _sanitize_start_token(raw: str | None, *, max_len: int, uppercase: bool = False) -> str:
+    value = str(raw or "").strip()
+    if not value:
+        return ""
+    clean = re.sub(r"[^A-Za-z0-9_-]+", "", value)[: max(1, int(max_len))]
+    if not clean:
+        return ""
+    clean = clean.upper() if uppercase else clean
+    if not _START_TOKEN_RE.fullmatch(clean):
+        return ""
+    return clean
+
+
 def _parse_start_deeplink_context(start_arg: str) -> tuple[str, str]:
     raw = (start_arg or "").strip()
     if not raw:
@@ -1471,15 +1487,17 @@ def _parse_start_deeplink_context(start_arg: str) -> tuple[str, str]:
     campaign_key = ""
 
     if lowered.startswith("promo_") and len(raw) > len("promo_"):
-        promo_code = raw[len("promo_"):].strip().upper()[:20]
+        promo_code = _sanitize_start_token(raw[len("promo_"):], max_len=20, uppercase=True)
     elif lowered.startswith("campaign_") and len(raw) > len("campaign_"):
-        campaign_key = raw[len("campaign_"):].strip()[:64]
+        campaign_raw = raw[len("campaign_"):].strip()
         # Supported format: campaign_<KEY>__promo_<CODE>
         marker = "__promo_"
-        if marker in campaign_key.lower():
-            idx = campaign_key.lower().find(marker)
-            promo_code = campaign_key[idx + len(marker):].strip().upper()[:20]
-            campaign_key = campaign_key[:idx].strip()[:64]
+        if marker in campaign_raw.lower():
+            idx = campaign_raw.lower().find(marker)
+            promo_code = _sanitize_start_token(campaign_raw[idx + len(marker):], max_len=20, uppercase=True)
+            campaign_key = _sanitize_start_token(campaign_raw[:idx], max_len=64, uppercase=False)
+        else:
+            campaign_key = _sanitize_start_token(campaign_raw, max_len=64, uppercase=False)
 
     return promo_code, campaign_key
 
@@ -1506,16 +1524,16 @@ def _resolve_start_link_action(start_arg: str) -> dict[str, str | bool]:
     if lowered == "opening_bonus":
         return {"promo_code": "", "campaign_key": "", "opening_bonus": True}
     if lowered.startswith("promo:"):
-        promo = action.split(":", 1)[1].strip().upper()[:20]
+        promo = _sanitize_start_token(action.split(":", 1)[1], max_len=20, uppercase=True)
         return {"promo_code": promo, "campaign_key": "", "opening_bonus": False}
     if lowered.startswith("campaign:"):
-        campaign = action.split(":", 1)[1].strip()[:64]
+        campaign = _sanitize_start_token(action.split(":", 1)[1], max_len=64, uppercase=False)
         return {"promo_code": "", "campaign_key": campaign, "opening_bonus": False}
     if lowered.startswith("campaign_promo:"):
         rest = action.split(":", 1)[1].strip()
         parts = rest.split(":", 1)
-        campaign = parts[0].strip()[:64] if parts else ""
-        promo = parts[1].strip().upper()[:20] if len(parts) > 1 else ""
+        campaign = _sanitize_start_token(parts[0] if parts else "", max_len=64, uppercase=False)
+        promo = _sanitize_start_token(parts[1] if len(parts) > 1 else "", max_len=20, uppercase=True)
         return {"promo_code": promo, "campaign_key": campaign, "opening_bonus": False}
     return {"promo_code": "", "campaign_key": "", "opening_bonus": False}
 
@@ -1655,7 +1673,7 @@ WHEEL_PRESETS: dict[str, list[tuple[int, int]]] = {
     "steady": [(1, 55), (3, 30), (7, 12), (30, 3)],
     "generous": [(1, 35), (3, 35), (7, 20), (30, 10)],
 }
-WHEEL_DEFAULT_COOLDOWN_DAYS = 7
+WHEEL_DEFAULT_COOLDOWN_HOURS = 168
 
 
 def _normalize_wheel_weights(rows: list[tuple[int, int]] | None) -> list[tuple[int, int]]:
@@ -1673,6 +1691,11 @@ def _normalize_wheel_weights(rows: list[tuple[int, int]] | None) -> list[tuple[i
     return out or list(WHEEL_DEFAULT_PRIZES)
 
 
+def _cooldown_days_from_hours(hours: int) -> int:
+    val = max(1, int(hours))
+    return max(1, min(90, int((val + 23) // 24)))
+
+
 def _load_wheel_config() -> dict:
     s = Session()
     try:
@@ -1683,7 +1706,8 @@ def _load_wheel_config() -> dict:
         return {
             "preset": "balanced",
             "weights": list(WHEEL_DEFAULT_PRIZES),
-            "cooldown_days": int(WHEEL_DEFAULT_COOLDOWN_DAYS),
+            "cooldown_hours": int(WHEEL_DEFAULT_COOLDOWN_HOURS),
+            "cooldown_days": int(_cooldown_days_from_hours(WHEEL_DEFAULT_COOLDOWN_HOURS)),
         }
     try:
         payload = json.loads(str(row.value_json))
@@ -1700,26 +1724,38 @@ def _load_wheel_config() -> dict:
         )
     else:
         weights = list(WHEEL_DEFAULT_PRIZES)
-    cooldown_hours = int(payload.get("cooldown_hours") or (WHEEL_DEFAULT_COOLDOWN_DAYS * 24))
-    cooldown_days = max(1, min(90, int(round(cooldown_hours / 24))))
-    return {"preset": preset or "manual", "weights": weights, "cooldown_days": cooldown_days}
+    cooldown_hours = int(payload.get("cooldown_hours") or WHEEL_DEFAULT_COOLDOWN_HOURS)
+    cooldown_hours = max(1, min(24 * 90, cooldown_hours))
+    cooldown_days = _cooldown_days_from_hours(cooldown_hours)
+    return {
+        "preset": preset or "manual",
+        "weights": weights,
+        "cooldown_hours": cooldown_hours,
+        "cooldown_days": cooldown_days,
+    }
 
 
 def _save_wheel_config(
     *,
     weights: list[tuple[int, int]] | None = None,
     cooldown_days: int | None = None,
+    cooldown_hours: int | None = None,
     preset: str | None = None,
 ) -> dict:
     current = _load_wheel_config()
     next_weights = _normalize_wheel_weights(weights if weights is not None else current.get("weights"))
     next_preset = str(preset or current.get("preset") or "manual").strip().lower()[:32] or "manual"
-    next_cooldown_days = int(cooldown_days if cooldown_days is not None else current.get("cooldown_days") or WHEEL_DEFAULT_COOLDOWN_DAYS)
-    next_cooldown_days = max(1, min(90, next_cooldown_days))
+    if cooldown_hours is not None:
+        next_cooldown_hours = int(cooldown_hours)
+    elif cooldown_days is not None:
+        next_cooldown_hours = int(cooldown_days) * 24
+    else:
+        next_cooldown_hours = int(current.get("cooldown_hours") or WHEEL_DEFAULT_COOLDOWN_HOURS)
+    next_cooldown_hours = max(1, min(24 * 90, next_cooldown_hours))
     payload = {
         "preset": next_preset,
         "weights": [{"days": int(d), "weight": int(w)} for d, w in next_weights],
-        "cooldown_hours": int(next_cooldown_days * 24),
+        "cooldown_hours": int(next_cooldown_hours),
     }
     s = Session()
     try:
@@ -1745,8 +1781,14 @@ def _wheel_prizes() -> list[tuple[int, int]]:
     return list(_load_wheel_config().get("weights") or WHEEL_DEFAULT_PRIZES)
 
 
+def _wheel_cooldown_hours() -> int:
+    return int(_load_wheel_config().get("cooldown_hours") or WHEEL_DEFAULT_COOLDOWN_HOURS)
+
+
 def _wheel_cooldown_days() -> int:
-    return int(_load_wheel_config().get("cooldown_days") or WHEEL_DEFAULT_COOLDOWN_DAYS)
+    cfg = _load_wheel_config()
+    hours = int(cfg.get("cooldown_hours") or WHEEL_DEFAULT_COOLDOWN_HOURS)
+    return _cooldown_days_from_hours(hours)
 
 
 def wheel_prizes_for_user(user: User | None) -> list[tuple[int, int]]:
@@ -1771,7 +1813,7 @@ def can_spin_wheel(tg_id: int) -> tuple[bool, int]:
     if not last_spin:
         return True, 0
     
-    next_spin = last_spin + timedelta(days=_wheel_cooldown_days())
+    next_spin = last_spin + timedelta(hours=_wheel_cooldown_hours())
     
     if now >= next_spin:
         return True, 0
@@ -1782,42 +1824,60 @@ def can_spin_wheel(tg_id: int) -> tuple[bool, int]:
 def spin_wheel(tg_id: int) -> int | None:
     """Spin the wheel and award days. Returns prize days, or None if can't spin"""
     import random
-    
-    can_spin, _ = can_spin_wheel(tg_id)
-    if not can_spin:
-        return None
-    
+
     session = Session()
-    user = session.query(User).filter_by(tg_id=tg_id).first()
-    
-    prizes = wheel_prizes_for_user(user)
-    
-    total_weight = sum(w for _, w in prizes)
-    r = random.randint(1, total_weight)
-    
-    cumulative = 0
-    prize_days = 1
-    for days, weight in prizes:
-        cumulative += weight
-        if r <= cumulative:
-            prize_days = days
-            break
-            
-    # Update user (Add days)
-    if user:
+    try:
+        user = session.query(User).filter_by(tg_id=tg_id).first()
+        if not user or not _is_paid_active_user(user):
+            return None
+
         now = _utcnow()
-        user.last_wheel_spin = now
+        last_spin = _naive_utc(user.last_wheel_spin)
+        if last_spin:
+            next_spin = last_spin + timedelta(hours=_wheel_cooldown_hours())
+            if now < next_spin:
+                return None
+
+        prizes = wheel_prizes_for_user(user)
+        total_weight = sum(w for _, w in prizes)
+        r = random.randint(1, total_weight)
+
+        cumulative = 0
+        prize_days = 1
+        for days, weight in prizes:
+            cumulative += weight
+            if r <= cumulative:
+                prize_days = days
+                break
+
         expiry = _naive_utc(user.expiry_at)
         if expiry and expiry > now:
-            user.expiry_at = expiry + timedelta(days=prize_days)
+            next_expiry = expiry + timedelta(days=prize_days)
         else:
-            user.expiry_at = now + timedelta(days=prize_days)
-        
-        user.is_active = True
+            next_expiry = now + timedelta(days=prize_days)
+
+        guard = session.query(User).filter(User.tg_id == int(tg_id))
+        if last_spin is None:
+            guard = guard.filter(User.last_wheel_spin.is_(None))
+        else:
+            guard = guard.filter(User.last_wheel_spin == last_spin)
+
+        updated = guard.update(
+            {
+                User.last_wheel_spin: now,
+                User.expiry_at: next_expiry,
+                User.is_active: True,
+            },
+            synchronize_session=False,
+        )
+        if int(updated or 0) != 1:
+            session.rollback()
+            return None
+
         session.commit()
-    session.close()
-    
-    return prize_days
+        return prize_days
+    finally:
+        session.close()
 
 # ==========================================
 #           STREAK SYSTEM
@@ -2100,32 +2160,21 @@ def build_vless_link(client_uuid: str, email: str = "User") -> str:
 
 def build_subscription_link(tg_id: int) -> str:
     """Generate subscription URL for auto-updating config"""
-    # Lazy migration: If sub_token is missing, generate and save it.
+    # Backward compatibility:
+    # - prefer per-user secure token when present
+    # - fallback to numeric tg_id route for legacy users without token
     session = Session()
     user = session.query(User).filter_by(tg_id=tg_id).first()
-    
-    sub_id = None
+    sub_id = ""
     if user:
-        if user.sub_token:
-            sub_id = user.sub_token
-        else:
-            # Generate missing token
-            try:
-                sub_id = generate_sub_token()
-                user.sub_token = sub_id
-                session.commit()
-                # logger.info(f"Generated missing sub_token for user {tg_id}")
-            except Exception as e:
-                print(f"Error generating token: {e}")
-                sub_id = str(tg_id) # Fallback only on DB error
-            
+        sub_id = str(user.sub_token or "").strip()
     session.close()
-    
+
     if not sub_id:
         sub_id = str(tg_id)
-    
+
     # Secure path (Proxy on 2096)
-    return f"{PUBLIC_API_BASE_URL.rstrip('/')}/s8Kx2mP7qR4wT/{sub_id}#Portal"
+    return f"{PUBLIC_API_BASE_URL.rstrip('/')}/s8Kx2mP7qR4wT/{sub_id}"
 
 
 def next_manual_tg_id() -> int:
@@ -2186,6 +2235,29 @@ def regenerate_user_sub_token(tg_id: int) -> str | None:
         return token
     finally:
         session.close()
+
+
+async def sync_user_panel_sub_token(tg_id: int) -> bool:
+    """
+    Best-effort panel sync after token rotation.
+    Ensures existing panel clients receive updated subId from DB token.
+    """
+    session = Session()
+    try:
+        user = session.query(User).filter_by(tg_id=int(tg_id)).first()
+        if not user:
+            return False
+        user_uuid = str(user.uuid or "")
+        is_active = bool(user.is_active)
+    finally:
+        session.close()
+    if not user_uuid:
+        return False
+    try:
+        return bool(await panel.enable_client(user_uuid, enable=is_active))
+    except Exception as exc:
+        logger.warning("sub_token panel sync failed for tg_id=%s: %s", int(tg_id), exc)
+        return False
 
 
 def list_manual_users(limit: int = 30) -> list[User]:
@@ -2928,8 +3000,6 @@ async def cmd_start(message: Message):
     if friend_gift_referral_code:
         set_referrer_by_code(tg_id, friend_gift_referral_code)
     update_user_username(tg_id, username)
-    if deeplink_campaign_key:
-        _mark_campaign_claim_once(tg_id=int(tg_id), campaign_key=deeplink_campaign_key[:64])
     if deeplink_promo_code or deeplink_campaign_key:
         checkout_context_by_user[int(tg_id)] = {
             "promo_code": str(deeplink_promo_code or "").upper()[:20],
@@ -3552,18 +3622,29 @@ async def panic_execute(callback: CallbackQuery, bot: Bot):
 
     new_token = generate_sub_token()
     session = Session()
+    user_uuid = ""
+    is_active = True
     try:
         db_user = session.query(User).filter_by(tg_id=user_id).first()
         if db_user:
             db_user.sub_token = new_token
+            user_uuid = str(db_user.uuid or "")
+            is_active = bool(db_user.is_active)
             session.commit()
     finally:
         session.close()
 
+    panel_sync_ok = False
+    if user_uuid:
+        try:
+            panel_sync_ok = bool(await panel.enable_client(user_uuid, enable=is_active))
+        except Exception:
+            panel_sync_ok = False
+
     try:
         await bot.send_message(
             ADMIN_ID,
-            f"🚨 <b>PANIC BUTTON PRESSED</b>\nUser: {user_id}\nAction: token rotated and requires review.",
+            f"🚨 <b>PANIC BUTTON PRESSED</b>\nUser: {user_id}\nAction: token rotated and requires review.\nPanel sync: {'ok' if panel_sync_ok else 'failed'}",
             parse_mode=ParseMode.HTML,
         )
     except Exception:
@@ -6368,7 +6449,8 @@ async def admin_wheel_settings(callback: CallbackQuery):
 
     cfg = _load_wheel_config()
     weights = list(cfg.get("weights") or WHEEL_DEFAULT_PRIZES)
-    cooldown_days = int(cfg.get("cooldown_days") or WHEEL_DEFAULT_COOLDOWN_DAYS)
+    cooldown_hours = int(cfg.get("cooldown_hours") or WHEEL_DEFAULT_COOLDOWN_HOURS)
+    cooldown_days = _cooldown_days_from_hours(cooldown_hours)
     preset = str(cfg.get("preset") or "manual")
     total_weight = sum(w for _, w in weights)
     prizes_text = []
@@ -6397,7 +6479,7 @@ async def admin_wheel_settings(callback: CallbackQuery):
         "<b>Шансы выигрыша:</b>\n"
         + "\n".join(prizes_text)
         + "\n\n"
-        + f"<b>Кулдаун:</b> {cooldown_days} дней",
+        + f"<b>Кулдаун:</b> {cooldown_days} дней ({cooldown_hours}ч)",
         reply_markup=kb,
         parse_mode=ParseMode.HTML,
     )
@@ -6513,7 +6595,7 @@ async def admin_start_links_menu(callback: CallbackQuery):
     finally:
         s.close()
 
-    bot_username = (BOT_USERNAME or "portal_service_bot").lstrip("@")
+    bot_username = (BOT_USERNAME or "net4ebur_bot").lstrip("@")
     lines = ["🔗 *Launch ссылки*\n"]
     kb_rows: list[list[InlineKeyboardButton]] = []
     if not rows:
@@ -7475,11 +7557,13 @@ async def admin_regen_token(callback: CallbackQuery):
     if not token:
         await callback.answer("❌ Пользователь не найден", show_alert=True)
         return
+    panel_sync_ok = await sync_user_panel_sub_token(tg_id)
     link = build_subscription_link(tg_id)
     audit_admin(callback.from_user.id, "regen_sub_token", tg_id)
     await callback.answer("♻️ Токен перевыпущен")
     await callback.message.answer(
-        f"♻️ Новый ключ пользователя `{tg_id}`:\n`{link}`",
+        f"♻️ Новый ключ пользователя `{tg_id}`:\n`{link}`\n\n"
+        f"Sync с нодами: {'OK' if panel_sync_ok else 'WARN (проверьте adm_sync_nodes)'}",
         parse_mode=ParseMode.MARKDOWN,
     )
     await render_admin_user_view(callback, tg_id)
@@ -8343,6 +8427,9 @@ async def create_subscription(
             db_user = session.query(User).filter_by(tg_id=tg_id).first()
             if db_user:
                 db_user.sub_type = tariff.get("sub_type") or db_user.sub_type
+                if not str(db_user.sub_token or "").strip():
+                    db_user.sub_token = generate_sub_token()
+                    logger.info("generated missing sub_token for existing user tg_id=%s", int(tg_id))
                 if _is_freemium_sub_type(db_user.sub_type):
                     mark_user_became_free(db_user)
                 session.commit()

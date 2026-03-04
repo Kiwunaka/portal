@@ -2,6 +2,7 @@
 
 import asyncio
 import hashlib
+import logging
 import os
 from pathlib import Path
 from datetime import datetime, timedelta
@@ -23,8 +24,10 @@ from models import CampaignSend, ExternalOrder, NodeHealthSample, Template, User
 from offers_service import create_offer, expire_stale_offers, get_active_offer
 from pay_attempts_service import find_abandoned_candidates, mark_abandoned, mark_abandoned_notified
 
+logger = logging.getLogger(__name__)
 
-BOT_USERNAME = (os.getenv("BOT_USERNAME") or "portal_service_bot").lstrip("@")
+
+BOT_USERNAME = (os.getenv("BOT_USERNAME") or "net4ebur_bot").lstrip("@")
 SUPPORT_USERNAME = (os.getenv("SUPPORT_BOT_USERNAME") or os.getenv("SUPPORT_USERNAME") or "portal_privacy_helpbot").lstrip("@")
 FREE_TOTAL_GB = int(os.getenv("FREE_TOTAL_GB", "30"))
 PUBLIC_CHANNEL = (os.getenv("PUBLIC_CHANNEL") or "portal_privacy").lstrip("@")
@@ -274,6 +277,13 @@ async def _telegram_get_chat_member(channel_username: str, user_id: int) -> tupl
                 return status in {"creator", "administrator", "member", "restricted"}, status
     except Exception:
         return False, "telegram_exception"
+
+
+def _normalize_channel_membership_reason(reason: str) -> str:
+    raw = str(reason or "").strip().lower()
+    if raw in {"not_member", "left", "kicked"}:
+        return "not_member"
+    return raw or "unknown"
 
 
 async def _switch_user_to_free(*, tg_id: int) -> bool:
@@ -719,10 +729,25 @@ async def channel_bonus_guard_job() -> None:
 
         for u in rows:
             is_member, reason = await _telegram_get_chat_member(channel, int(u.tg_id))
+            normalized_reason = _normalize_channel_membership_reason(reason)
+            logger.info(
+                "channel_bonus_guard user_id=%s raw_status=%s normalized_reason=%s action=%s",
+                int(u.tg_id),
+                reason,
+                normalized_reason,
+                "skip_member" if is_member else "verify",
+            )
             if is_member:
                 continue
-            if reason != "not_member":
+            if normalized_reason != "not_member":
                 # Do not revoke on transient Telegram/API errors to avoid accidental mass downgrades.
+                logger.warning(
+                    "channel_bonus_guard user_id=%s raw_status=%s normalized_reason=%s action=%s",
+                    int(u.tg_id),
+                    reason,
+                    normalized_reason,
+                    "skip_transient",
+                )
                 now_alert = datetime.utcnow()
                 if (
                     int(Settings.ADMIN_ID or 0) > 0
@@ -740,6 +765,13 @@ async def channel_bonus_guard_job() -> None:
                 continue
             switched = await _switch_user_to_free(tg_id=int(u.tg_id))
             if switched:
+                logger.info(
+                    "channel_bonus_guard user_id=%s raw_status=%s normalized_reason=%s action=%s",
+                    int(u.tg_id),
+                    reason,
+                    normalized_reason,
+                    "revoke_bonus",
+                )
                 await _telegram_send_message(
                     chat_id=int(u.tg_id),
                     text=(
@@ -751,7 +783,7 @@ async def channel_bonus_guard_job() -> None:
                     tg_id=int(u.tg_id),
                     event_name="expired",
                     source="worker",
-                    meta={"flow": "channel_bonus_guard", "reason": reason},
+                    meta={"flow": "channel_bonus_guard", "reason": normalized_reason, "raw_reason": reason},
                 )
         await asyncio.sleep(900)
 

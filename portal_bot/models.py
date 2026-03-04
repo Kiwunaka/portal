@@ -114,6 +114,7 @@ class PromoCode(Base):
 
 class PromoUsage(Base):
     __tablename__ = "promo_usage"
+    __table_args__ = (UniqueConstraint("tg_id", "promo_code", name="uq_promo_usage_tg_code"),)
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     tg_id = Column(BigInteger, index=True)
@@ -222,6 +223,9 @@ class NodeHealthSample(Base):
     panel_latency_ms = Column(Integer, nullable=True)
     panel_error_rate = Column(Float, default=0.0)
     active_clients = Column(Integer, default=0)
+    total_up_bytes = Column(BigInteger, default=0)
+    total_down_bytes = Column(BigInteger, default=0)
+    total_traffic_bytes = Column(BigInteger, default=0)
     is_healthy = Column(Boolean, default=True)
     score = Column(Float, default=0.0)
     source = Column(String(64), default="collector")

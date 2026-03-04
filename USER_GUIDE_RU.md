@@ -4,7 +4,7 @@
 
 ## 1) Быстрый старт
 
-1. Откройте бота `@portal_service_bot`.
+1. Откройте бота `@net4ebur_bot`.
 2. Нажмите кнопку продления/подключения.
 3. Выберите способ оплаты:
    - `Оплатить ₽` (основной);
@@ -41,8 +41,8 @@
 
 Поддерживаются форматы deep link:
 
-- `https://t.me/portal_service_bot?start=promo_CODE`
-- `https://t.me/portal_service_bot?start=campaign_NAME__promo_CODE`
+- `https://t.me/net4ebur_bot?start=promo_CODE`
+- `https://t.me/net4ebur_bot?start=campaign_NAME__promo_CODE`
 
 Типы промо:
 - `days`: дни добавляются сразу.
@@ -75,3 +75,4 @@
 
 - Не передавайте персональную ссылку подключения третьим лицам.
 - Используйте только официальные ссылки из бота, сайта и канала проекта.
+

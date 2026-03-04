@@ -15,7 +15,7 @@ type ComparisonRow = {
 const COMPARISON_ROWS: ComparisonRow[] = [
   { metric: "Устройства", start: "1", pro: "До 5", ultra: "До 5" },
   { metric: "Страны", start: "NL", pro: "Польша, Нидерланды, США, Италия", ultra: "Полный пул + приоритет" },
-  { metric: "Маршрутизация", start: "VPN для базовых задач", pro: "Полный VPN-маршрут ежедневно", ultra: "VPN + приоритет" },
+  { metric: "Маршрутизация", start: "Базовый защищенный маршрут", pro: "Полный маршрут ежедневно", ultra: "Маршрут + приоритет" },
   { metric: "Скоростной профиль", start: "Базовый", pro: "Высокий", ultra: "Максимальный" },
   { metric: "Поддержка", start: "Стандартная", pro: "Быстрый Telegram-ответ", ultra: "Приоритет 24/7" },
 ];
@@ -79,7 +79,7 @@ export default function SubscriptionPage() {
           <Link href="/subscription/checkout/" className="btn-primary rounded-xl px-6 py-3 text-sm font-semibold uppercase tracking-[0.12em]">
             Открыть оплату
           </Link>
-          <Link href="https://t.me/portal_service_bot" target="_blank" className="outline-btn rounded-xl px-6 py-3 text-sm font-semibold uppercase tracking-[0.12em]">
+          <Link href="https://t.me/net4ebur_bot" target="_blank" className="outline-btn rounded-xl px-6 py-3 text-sm font-semibold uppercase tracking-[0.12em]">
             Оплатить через бота
           </Link>
         </div>
@@ -102,7 +102,7 @@ export default function SubscriptionPage() {
 
       <section className="glass-card p-7">
         <div className="mb-4">
-          <p className="font-mono text-xs uppercase tracking-[0.16em] text-slate-500">Сравнение тарифов VPN</p>
+          <p className="font-mono text-xs uppercase tracking-[0.16em] text-slate-500">Сравнение тарифов</p>
           <h2 className="mt-2 font-display text-3xl font-bold">Прозрачные параметры</h2>
         </div>
 
@@ -131,7 +131,7 @@ export default function SubscriptionPage() {
 
         <p className="mt-4 text-sm text-slate-600 dark:text-slate-300">
           Почему часть медиасервисов может идти напрямую: в некоторых сценариях это снижает задержку и делает воспроизведение
-          стабильнее. VPN-маршрут для основного трафика сохраняется по тарифной политике.
+          стабильнее. Защищенный маршрут для основного трафика сохраняется по тарифной политике.
         </p>
         {error ? <p className="mt-3 text-xs text-rose-500">{error}</p> : null}
       </section>

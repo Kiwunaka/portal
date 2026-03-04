@@ -5,7 +5,7 @@ import tempfile
 import unittest
 import uuid
 import time
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path
 from urllib.parse import urlencode
 
@@ -237,6 +237,18 @@ class ApiAuthAndTicketsTests(unittest.TestCase):
         r = self.client.post("/api/bonuses/channel/claim", headers=user_hdrs)
         self.assertEqual(r.status_code, 400, r.text)
 
+    def test_channel_bonus_claim_treats_left_as_not_member(self) -> None:
+        user_hdrs = {"X-Telegram-Init-Data": self._init_data(1001, "alice")}
+
+        async def fake_left(channel_username: str, tg_id: int):
+            return False, "left"
+
+        self.api._is_channel_member = fake_left
+
+        r = self.client.post("/api/bonuses/channel/claim", headers=user_hdrs)
+        self.assertEqual(r.status_code, 400, r.text)
+        self.assertIn("подпишитесь", r.text.lower())
+
     def test_channel_bonus_claim_requires_tos(self) -> None:
         user_hdrs = {"X-Telegram-Init-Data": self._init_data(1001, "alice")}
         from db import SessionLocal
@@ -366,6 +378,7 @@ class ApiAuthAndTicketsTests(unittest.TestCase):
         )
         self.assertEqual(regen.status_code, 200, regen.text)
         self.assertTrue(regen.json()["ok"])
+        self.assertTrue(bool(regen.json().get("sync_ok")))
         self.assertIn("/s8Kx2mP7qR4wT/", regen.json()["subscription_url"])
 
     def test_admin_promos_templates_and_gift_codes_crud(self) -> None:
@@ -435,6 +448,138 @@ class ApiAuthAndTicketsTests(unittest.TestCase):
         redeemed_twice = self.client.post("/api/gift/redeem", headers=user_hdrs, json={"code": code})
         self.assertEqual(redeemed_twice.status_code, 400, redeemed_twice.text)
 
+    def test_promo_redeem_supports_unlimited_uses_flag(self) -> None:
+        admin_hdrs = {"X-Telegram-Init-Data": self._init_data(9999, "admin")}
+        user_hdrs = {"X-Telegram-Init-Data": self._init_data(1001, "alice")}
+
+        created = self.client.post(
+            "/api/admin/promos",
+            headers=admin_hdrs,
+            json={"code": "FOREVER20", "promo_type": "discount", "value": 20, "uses_left": -1},
+        )
+        self.assertEqual(created.status_code, 200, created.text)
+
+        redeemed = self.client.post("/api/promo/redeem", headers=user_hdrs, json={"code": "FOREVER20"})
+        self.assertEqual(redeemed.status_code, 200, redeemed.text)
+
+        from db import SessionLocal
+        from models import PromoCode
+
+        s = SessionLocal()
+        try:
+            row = s.query(PromoCode).filter_by(code="FOREVER20").first()
+            self.assertIsNotNone(row)
+            self.assertEqual(int(row.uses_left or 0), -1)
+        finally:
+            s.close()
+
+    def test_subscription_endpoint_accepts_sub_token_and_tg_id_fallback(self) -> None:
+        from db import SessionLocal
+        from models import User
+
+        s = SessionLocal()
+        try:
+            user = s.query(User).filter_by(tg_id=1001).first()
+            assert user is not None
+            user.sub_type = "PAID"
+            user.sub_token = "token_1001_secure"
+            user.is_active = True
+            user.expiry_at = datetime.utcnow() + timedelta(days=10)
+            s.commit()
+        finally:
+            s.close()
+
+        by_token = self.client.get("/s8Kx2mP7qR4wT/token_1001_secure")
+        self.assertEqual(by_token.status_code, 200, by_token.text)
+
+        by_tg_id = self.client.get("/s8Kx2mP7qR4wT/1001")
+        self.assertEqual(by_tg_id.status_code, 200, by_tg_id.text)
+
+    def test_admin_metrics_timeseries_and_nodes_traffic_endpoints(self) -> None:
+        from db import SessionLocal
+        from models import Event, ExternalOrder, NodeHealthSample, PayAttempt
+
+        now = datetime.utcnow().replace(microsecond=0)
+        day_start = now.replace(hour=0, minute=0, second=0)
+        admin_hdrs = {"X-Telegram-Init-Data": self._init_data(9999, "admin")}
+
+        s = SessionLocal()
+        try:
+            s.add(Event(tg_id=1001, event_name="expired", source="test", created_at=now))
+            s.add(
+                PayAttempt(
+                    tg_id=1001,
+                    source="test",
+                    plan_code="1_month",
+                    amount_stars=299,
+                    currency="XTR",
+                    status="paid",
+                    started_at=now,
+                    updated_at=now,
+                    paid_at=now,
+                )
+            )
+            s.add(
+                ExternalOrder(
+                    order_id="fk_test_1",
+                    tg_id=1001,
+                    provider="freekassa",
+                    amount=299.0,
+                    currency="RUB",
+                    status="paid",
+                    created_at=now,
+                    paid_at=now,
+                )
+            )
+            s.add(
+                NodeHealthSample(
+                    node_code="pl",
+                    sampled_at=day_start + timedelta(hours=1),
+                    panel_latency_ms=50,
+                    panel_error_rate=0.0,
+                    active_clients=3,
+                    total_up_bytes=1024,
+                    total_down_bytes=2048,
+                    total_traffic_bytes=3072,
+                    is_healthy=True,
+                    score=95.0,
+                    source="test",
+                )
+            )
+            s.add(
+                NodeHealthSample(
+                    node_code="pl",
+                    sampled_at=day_start + timedelta(hours=20),
+                    panel_latency_ms=40,
+                    panel_error_rate=0.0,
+                    active_clients=5,
+                    total_up_bytes=4096,
+                    total_down_bytes=8192,
+                    total_traffic_bytes=12288,
+                    is_healthy=True,
+                    score=96.0,
+                    source="test",
+                )
+            )
+            s.commit()
+        finally:
+            s.close()
+
+        qs = f"from={day_start.date().isoformat()}&to={day_start.date().isoformat()}"
+        ts_resp = self.client.get(f"/api/admin/metrics/timeseries?{qs}", headers=admin_hdrs)
+        self.assertEqual(ts_resp.status_code, 200, ts_resp.text)
+        points = ts_resp.json().get("points", [])
+        self.assertGreaterEqual(len(points), 1)
+        today = points[0]
+        self.assertGreaterEqual(int(today.get("revenue_stars") or 0), 299)
+        self.assertGreaterEqual(float(today.get("revenue_rub") or 0), 299.0)
+        self.assertIn("pl", (today.get("nodes") or {}))
+
+        traffic_resp = self.client.get(f"/api/admin/nodes/traffic?{qs}", headers=admin_hdrs)
+        self.assertEqual(traffic_resp.status_code, 200, traffic_resp.text)
+        rows = traffic_resp.json().get("rows", [])
+        self.assertTrue(any((r.get("node_code") == "pl" and float(r.get("traffic_gb") or 0) >= 0) for r in rows))
+
     def test_admin_start_links_and_wheel_config(self) -> None:
         admin_hdrs = {"X-Telegram-Init-Data": self._init_data(9999, "admin")}
 
@@ -487,6 +632,38 @@ class ApiAuthAndTicketsTests(unittest.TestCase):
         self.assertEqual(cfg_put.status_code, 200, cfg_put.text)
         body = cfg_put.json().get("wheel_config") or {}
         self.assertEqual(int(body.get("cooldown_hours") or 0), 96)
+
+    def test_admin_campaign_links_respect_telegram_start_payload_limit(self) -> None:
+        admin_hdrs = {"X-Telegram-Init-Data": self._init_data(9999, "admin")}
+
+        ok = self.client.post(
+            "/api/admin/campaign-links/build",
+            headers=admin_hdrs,
+            json={
+                "promo_code": "WELCOME14",
+                "campaign_key": "launch_week_1",
+                "plan_code": "1_month",
+                "source": "bot",
+            },
+        )
+        self.assertEqual(ok.status_code, 200, ok.text)
+        body = ok.json()
+        self.assertTrue(body.get("ok"))
+        self.assertIn("start=campaign_launch_week_1__promo_WELCOME14", body.get("bot_start_link") or "")
+
+        too_long_campaign = "a" * 64
+        bad = self.client.post(
+            "/api/admin/campaign-links/build",
+            headers=admin_hdrs,
+            json={
+                "promo_code": "WELCOME14",
+                "campaign_key": too_long_campaign,
+                "plan_code": "1_month",
+                "source": "bot",
+            },
+        )
+        self.assertEqual(bad.status_code, 400, bad.text)
+        self.assertIn("64", bad.text)
 
 
 if __name__ == "__main__":

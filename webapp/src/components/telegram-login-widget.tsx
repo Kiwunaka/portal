@@ -19,7 +19,7 @@ export default function TelegramLoginWidget() {
     if (!host) return;
     host.innerHTML = "";
 
-    const botName = (process.env.NEXT_PUBLIC_TELEGRAM_LOGIN_BOT || process.env.VITE_TELEGRAM_LOGIN_BOT || "portal_service_bot").trim();
+    const botName = (process.env.NEXT_PUBLIC_TELEGRAM_LOGIN_BOT || process.env.VITE_TELEGRAM_LOGIN_BOT || "net4ebur_bot").trim();
 
     window.onTelegramAuth = (user: TelegramWebLoginPayload) => {
       void loginByWidget(user);

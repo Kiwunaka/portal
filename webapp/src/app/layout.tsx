@@ -1,7 +1,7 @@
 ﻿import type { Metadata } from "next";
 import { Inter, Chakra_Petch, JetBrains_Mono } from "next/font/google";
 import Script from "next/script";
-import QaOverlay from "./qa-overlay";
+import QaOverlayHost from "./qa-overlay-host";
 import TelegramWebAppInit from "./telegram-webapp-init";
 import "./globals.css";
 
@@ -14,10 +14,11 @@ const chakra = Chakra_Petch({
 const mono = JetBrains_Mono({ subsets: ["latin", "cyrillic"], variable: "--font-mono" });
 
 export const metadata: Metadata = {
-  title: "PORTAL — VPN кабинет",
-  description:
-    "Управление VPN-доступом в одном кабинете: статус, ключ подключения, поддержка и оплата в рублях.",
+  title: "PORTAL - Личный кабинет",
+  description: "Управление доступом в одном кабинете: статус, ключ подключения, поддержка и оплата в рублях.",
 };
+
+const QA_OVERLAY_ENABLED = String(process.env.NEXT_PUBLIC_ENABLE_QA_OVERLAY || "").toLowerCase() === "true";
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -32,7 +33,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           }}
         />
         <TelegramWebAppInit />
-        <QaOverlay />
+        <QaOverlayHost enabled={QA_OVERLAY_ENABLED} />
         <div className="grain" aria-hidden="true" />
         {children}
       </body>

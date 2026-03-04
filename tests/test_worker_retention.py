@@ -90,6 +90,12 @@ class WorkerRetentionTests(unittest.TestCase):
         self.assertGreaterEqual(len(buttons), 2)
         self.assertIn("t.me/portal_privacy", str(buttons[1][0].get("url") or ""))
 
+    def test_channel_membership_reason_normalization(self) -> None:
+        self.assertEqual(self.worker._normalize_channel_membership_reason("left"), "not_member")
+        self.assertEqual(self.worker._normalize_channel_membership_reason("kicked"), "not_member")
+        self.assertEqual(self.worker._normalize_channel_membership_reason("not_member"), "not_member")
+        self.assertEqual(self.worker._normalize_channel_membership_reason("telegram_http_error"), "telegram_http_error")
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -341,6 +341,56 @@ export type AdminMetricsStatus = {
   stale_after_seconds: number;
 };
 
+export type AdminMetricsPoint = {
+  date: string;
+  registrations: number;
+  churn: number;
+  revenue_stars: number;
+  revenue_rub: number;
+  nodes: Record<
+    string,
+    {
+      devices: number;
+      traffic_bytes: number;
+      traffic_gb: number;
+    }
+  >;
+};
+
+export type AdminMetricsTimeseries = {
+  from: string;
+  to: string;
+  points: AdminMetricsPoint[];
+};
+
+export type AdminNodeTrafficRow = {
+  date: string;
+  node_code: string;
+  devices: number;
+  traffic_bytes: number;
+  traffic_gb: number;
+};
+
+export type AdminStartLinkRow = {
+  id: number;
+  code: string;
+  description?: string | null;
+  target_action?: string | null;
+  is_active: boolean;
+  bot_start_link: string;
+  created_at?: string | null;
+  updated_at?: string | null;
+};
+
+export type AdminWheelConfig = {
+  preset: string;
+  cooldown_hours: number;
+  weights: Array<{
+    days: number;
+    weight: number;
+  }>;
+};
+
 export type AdminPromoRow = {
   code: string;
   promo_type: "discount" | "days" | string;
@@ -760,7 +810,7 @@ export function adminManualBlock(tgId: number, blocked: boolean): Promise<{ ok: 
   });
 }
 
-export function adminManualRegenerateToken(tgId: number): Promise<{ ok: boolean; subscription_url: string }> {
+export function adminManualRegenerateToken(tgId: number): Promise<{ ok: boolean; subscription_url: string; sync_ok?: boolean }> {
   return apiFetch(`/api/admin/users/${tgId}/manual/regenerate-token`, { method: "POST" });
 }
 
@@ -997,6 +1047,71 @@ export function adminBuildCampaignLinks(payload: {
 }): Promise<CampaignLinksBuildResult> {
   return apiFetch("/api/admin/campaign-links/build", {
     method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+}
+
+export function adminMetricsTimeseries(params?: { from?: string; to?: string }): Promise<AdminMetricsTimeseries> {
+  const qs = new URLSearchParams();
+  if (params?.from) qs.set("from", params.from);
+  if (params?.to) qs.set("to", params.to);
+  const suffix = qs.toString() ? `?${qs.toString()}` : "";
+  return apiFetch<AdminMetricsTimeseries>(`/api/admin/metrics/timeseries${suffix}`);
+}
+
+export async function adminNodesTraffic(params?: { from?: string; to?: string }): Promise<AdminNodeTrafficRow[]> {
+  const qs = new URLSearchParams();
+  if (params?.from) qs.set("from", params.from);
+  if (params?.to) qs.set("to", params.to);
+  const suffix = qs.toString() ? `?${qs.toString()}` : "";
+  const data = await apiFetch<{ rows: AdminNodeTrafficRow[] }>(`/api/admin/nodes/traffic${suffix}`);
+  return data.rows || [];
+}
+
+export async function adminStartLinks(include_inactive = true): Promise<AdminStartLinkRow[]> {
+  const data = await apiFetch<{ start_links: AdminStartLinkRow[] }>(
+    `/api/admin/start-links?include_inactive=${include_inactive ? "true" : "false"}`,
+  );
+  return data.start_links || [];
+}
+
+export function adminStartLinkCreate(payload: {
+  code: string;
+  description?: string | null;
+  target_action?: string | null;
+  is_active?: boolean;
+}): Promise<{ ok: boolean; id: number; code: string }> {
+  return apiFetch("/api/admin/start-links", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+}
+
+export function adminStartLinkUpdate(
+  id: number,
+  payload: { code?: string; description?: string | null; target_action?: string | null; is_active?: boolean },
+): Promise<{ ok: boolean; id: number; code: string }> {
+  return apiFetch(`/api/admin/start-links/${id}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+}
+
+export function adminStartLinkDelete(id: number): Promise<{ ok: boolean; id: number }> {
+  return apiFetch(`/api/admin/start-links/${id}`, { method: "DELETE" });
+}
+
+export async function adminWheelConfig(): Promise<AdminWheelConfig> {
+  const data = await apiFetch<{ wheel_config: AdminWheelConfig }>("/api/admin/wheel-config");
+  return data.wheel_config;
+}
+
+export function adminWheelConfigUpdate(payload: AdminWheelConfig): Promise<{ ok: boolean; wheel_config: AdminWheelConfig }> {
+  return apiFetch("/api/admin/wheel-config", {
+    method: "PUT",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
   });

@@ -30,3 +30,25 @@ If DNS has shared `AAAA` and users report country instability, apply temporary I
 5. Save artifacts and document:
 - Write/update docs under `docs/` and `docs/audit-artifacts/`.
 - Include concrete command outputs and date.
+
+6. Validate channel bonus guard integrity:
+- Confirm worker normalizes Telegram membership statuses (`left`, `kicked`) to `not_member`.
+- Run targeted checks:
+  - `python -m unittest tests/test_worker_retention.py`
+  - verify logs contain `user_id`, `raw_status`, `normalized_reason`, `action`.
+
+7. Validate admin webapp smoke:
+- Build webapp: `cd webapp && npm.cmd run build`
+- Verify `/admin/*` routes render and are gated by `is_admin`.
+- Execute smoke flow for Users/Tickets/Promos/Broadcast/Referrals/Bonuses and capture screenshots/logs.
+
+8. Validate metrics timer health:
+- Install/repair timer when needed:
+  - `python scripts/remote_install_node_metrics_timer.py --brain-ip <brain_ip>`
+- Runtime checks on brain:
+  - `systemctl is-enabled portal-node-metrics.timer`
+  - `systemctl is-active portal-node-metrics.timer`
+  - `systemctl list-timers portal-node-metrics.timer --all`
+  - `journalctl -u portal-node-metrics.service -n 50 --no-pager`
+- API freshness check:
+  - `GET /api/admin/metrics/status` should be `fresh` within stale window.

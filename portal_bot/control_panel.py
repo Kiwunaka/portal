@@ -182,7 +182,14 @@ class ControlPanel:
 
         return results
 
-    async def set_existing_user_enabled_on_nodes(self, *, tg_id: int, node_codes: list[str], enable: bool) -> dict[str, bool]:
+    async def set_existing_user_enabled_on_nodes(
+        self,
+        *,
+        tg_id: int,
+        node_codes: list[str],
+        enable: bool,
+        sub_id: str | None = None,
+    ) -> dict[str, bool]:
         """
         Toggle user on specific nodes WITHOUT provisioning new clients.
         This is important for plan transitions (e.g. PAID -> FREE) where we must disable paid nodes
@@ -198,7 +205,7 @@ class ControlPanel:
                     c = await self._clients[n.code].find_client_by_tgid(tg_id)
                     if not c:
                         continue
-                    results[n.code] = await self._clients[n.code].update_client_enable(c, enable)
+                    results[n.code] = await self._clients[n.code].update_client_enable(c, enable, sub_id=sub_id)
                     toggled = True
                     break
                 except Exception:

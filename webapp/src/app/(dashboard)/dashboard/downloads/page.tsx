@@ -146,7 +146,7 @@ export default function DownloadsPage() {
             <p className="mt-1 text-xs text-slate-500">Если что-то не сработало с первого раза, поддержка поможет в чате за 10-15 минут.</p>
           </div>
           <a
-            href="https://t.me/portal_vpn"
+            href="https://t.me/net4ebur_bot"
             target="_blank"
             rel="noreferrer"
             className="btn-primary rounded-xl px-6 py-3 text-sm font-semibold uppercase tracking-[0.12em]"

@@ -1,4 +1,4 @@
-# Repository Agents
+﻿# Repository Agents
 
 This file documents the intended "agents" (roles) and the rules they must follow when changing anything under this directory.
 
@@ -11,6 +11,10 @@ This file documents the intended "agents" (roles) and the rules they must follow
 - Payment provider decision is finalized: `FreeKassa` is the active RUB provider (with Stars as secondary path).
 - Do not run payment-provider research tracks unless explicitly requested by the owner.
 - For release work, default completion includes `push + deploy`; if this is blocked, document the blocker and rollback-safe state in docs.
+- After backend/frontend/infrastructure changes, a scope-appropriate smoke check is mandatory:
+  - backend: health + subscription + checkout + ticket endpoints;
+  - webapp/marketing: build + key routes + current Telegram links;
+  - ops: systemd service/timer status + metrics freshness.
 
 ## Agents
 
@@ -125,3 +129,16 @@ Responsibilities:
 - Node-level network checks (DNS leak, TLS/SNI consistency, country-fit defaults)
 - Safe rollout scripts for routing/security hardening on worker nodes
 - Maintain reproducible diagnostics and rollback instructions for network changes
+
+### metrics-analytics
+Scope:
+- `portal_bot/`
+- `scripts/`
+- `webapp/`
+- `docs/`
+
+Responsibilities:
+- Maintain daily aggregates for registrations, churn, revenue (RUB + Stars), node traffic and device counts.
+- Keep `portal-node-metrics.timer` runbook current and ensure freshness checks are documented.
+- Verify admin metrics DTO/API compatibility (`summary`, `metrics/status`, `metrics/timeseries`, `nodes/traffic`).
+- Maintain smoke scenarios for admin analytics screens and post-deploy metric sanity.

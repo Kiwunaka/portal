@@ -32,6 +32,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse, PlainTextResponse
 from pydantic import BaseModel, Field
 from sqlalchemy import or_, func
+from sqlalchemy.exc import IntegrityError
 
 # Load env from repo-local file first to avoid cwd-dependent startup behavior.
 load_dotenv(dotenv_path=Path(__file__).resolve().with_name(".env"))
@@ -43,6 +44,7 @@ from models import (
     AdminAudit,
     AppSetting,
     CampaignSend,
+    Event,
     ExternalOrder,
     ExternalPaymentEvent,
     FamilySlot,
@@ -53,6 +55,7 @@ from models import (
     PlanCatalog,
     PromoCode,
     PromoUsage,
+    PayAttempt,
     Review,
     StartLink,
     SupportTicket,
@@ -109,7 +112,7 @@ FREE_SPEED_LIMIT_KBPS = env_int("FREE_SPEED_LIMIT_KBPS", 6250)
 SUPPORT_USERNAME = (os.getenv("SUPPORT_USERNAME") or "portal_privacy_helpbot").lstrip("@")
 SUPPORT_USERNAME = (os.getenv("SUPPORT_BOT_USERNAME") or SUPPORT_USERNAME).lstrip("@")
 PUBLIC_CHANNEL = (os.getenv("PUBLIC_CHANNEL") or "portal_privacy").lstrip("@")
-BOT_USERNAME = (os.getenv("BOT_USERNAME") or "portal_service_bot").lstrip("@")
+BOT_USERNAME = (os.getenv("BOT_USERNAME") or "net4ebur_bot").lstrip("@")
 REFERRAL_BONUS_DAYS = env_int("REFERRAL_BONUS_DAYS", 15)
 CHANNEL_PREMIUM_DAYS = env_int("CHANNEL_PREMIUM_DAYS", 10)
 OPENING_PREMIUM_DAYS = max(1, env_int("OPENING_PREMIUM_DAYS", 14))
@@ -259,6 +262,22 @@ def _build_tg_post_link(*, channel_username: str | None, post_id: int | None, fa
     if channel and pid > 0:
         return f"https://t.me/{channel}/{pid}"
     return str(fallback_link or "").strip()
+
+
+_DEEPLINK_TOKEN_RE = re.compile(r"^[A-Za-z0-9_-]{1,64}$")
+
+
+def _sanitize_deeplink_token(value: str | None, *, max_len: int, uppercase: bool = False) -> str:
+    raw = str(value or "").strip()
+    if not raw:
+        return ""
+    clean = re.sub(r"[^A-Za-z0-9_-]+", "", raw)[: max(1, int(max_len))]
+    if not clean:
+        return ""
+    clean = clean.upper() if uppercase else clean
+    if not _DEEPLINK_TOKEN_RE.fullmatch(clean):
+        return ""
+    return clean
 
 
 def _safe_json_loads(raw: str | None, default: Any) -> Any:
@@ -853,11 +872,13 @@ def _checkout_ticket_sign(raw: bytes) -> str:
 
 
 def _create_checkout_ticket(*, tg_id: int, plan_code: str = "", promo_code: str = "", campaign_key: str = "", source: str = "bot") -> str:
+    promo = _sanitize_deeplink_token(promo_code, max_len=20, uppercase=True)
+    campaign = _sanitize_deeplink_token(campaign_key, max_len=64, uppercase=False)
     payload = {
         "tg_id": int(tg_id),
         "plan_code": (plan_code or "").strip().lower()[:32],
-        "promo_code": (promo_code or "").strip().upper()[:20],
-        "campaign_key": (campaign_key or "").strip()[:64],
+        "promo_code": promo,
+        "campaign_key": campaign,
         "source": (source or "bot").strip().lower()[:16],
         "iat": int(time.time()),
         "exp": int(time.time()) + int(CHECKOUT_TICKET_TTL_SECONDS),
@@ -1260,16 +1281,18 @@ def _checkout_url_for_user(*, tg_id: int, plan_code: str = "", promo_code: str =
     q["tg_id"] = str(int(tg_id))
     if plan_code:
         q["plan"] = str(plan_code).strip().lower()[:32]
-    if promo_code:
-        q["promo"] = str(promo_code).strip().upper()[:20]
-    if campaign_key:
-        q["campaign"] = str(campaign_key).strip()[:64]
+    promo = _sanitize_deeplink_token(promo_code, max_len=20, uppercase=True)
+    campaign = _sanitize_deeplink_token(campaign_key, max_len=64, uppercase=False)
+    if promo:
+        q["promo"] = promo
+    if campaign:
+        q["campaign"] = campaign
     if _checkout_secret():
         ticket = _create_checkout_ticket(
             tg_id=int(tg_id),
             plan_code=str(plan_code or ""),
-            promo_code=str(promo_code or ""),
-            campaign_key=str(campaign_key or ""),
+            promo_code=promo,
+            campaign_key=campaign,
             source=q["source"],
         )
         if ticket:
@@ -1585,13 +1608,13 @@ def _apply_external_paid_order(*, order_id: str, payload: dict[str, Any]) -> tup
                 .filter(ExternalOrder.provider == "freekassa", ExternalOrder.order_id == str(order_id))
                 .first()
             )
-        tg_id = _safe_int(_payload_value(payload, "tg_id", "telegram_id", "user_id"))
+        tg_id = _safe_int(_payload_value(payload, "tg_id", "telegram_id", "user_id", "us_tg_id"))
         if tg_id is None and ext_order and ext_order.tg_id is not None:
             tg_id = int(ext_order.tg_id)
         if tg_id is None:
             return False, "missing_tg_id"
 
-        plan_code = _payload_value(payload, "plan_code", "tariff", "plan")
+        plan_code = _payload_value(payload, "plan_code", "tariff", "plan", "us_plan_code")
         if not plan_code and ext_order and ext_order.plan_code:
             plan_code = str(ext_order.plan_code)
         plan_code = (plan_code or "1_month").strip().lower()
@@ -1610,6 +1633,8 @@ def _apply_external_paid_order(*, order_id: str, payload: dict[str, Any]) -> tup
 
         now = datetime.utcnow()
         old_sub = (user.sub_type or "").upper().strip()
+        first_paid_purchase = not bool(getattr(user, "first_purchase_done", False))
+        referrer_id = int(getattr(user, "referrer_id", 0) or 0)
         if old_sub == "FREE":
             start_from = now
         else:
@@ -1622,6 +1647,19 @@ def _apply_external_paid_order(*, order_id: str, payload: dict[str, Any]) -> tup
         user.pending_discount_pct = None
         user.pending_discount_code = None
         user.pending_discount_set_at = None
+
+        # Keep RUB callback behavior aligned with bot flow:
+        # first successful paid purchase triggers inviter reward (+days) when inviter is active paid.
+        if first_paid_purchase and referrer_id > 0:
+            referrer = s.query(User).filter(User.tg_id == referrer_id).first()
+            if referrer:
+                ref_sub = (referrer.sub_type or "").upper().strip()
+                ref_expiry = referrer.expiry_at if referrer.expiry_at and referrer.expiry_at > now else None
+                if bool(referrer.is_active) and ref_expiry and ref_sub == "PAID":
+                    referrer.referral_count = int(referrer.referral_count or 0) + 1
+                    referrer.expiry_at = ref_expiry + timedelta(days=max(1, int(REFERRAL_BONUS_DAYS)))
+                    referrer.is_active = True
+
         if ext_order:
             ext_order.status = "paid"
             ext_order.paid_at = ext_order.paid_at or now
@@ -1817,6 +1855,8 @@ async def _is_channel_member(channel_username: str, tg_id: int) -> tuple[bool, s
             return False, "bot_not_in_channel"
         return False, "telegram_api_error"
     status = str((body.get("result") or {}).get("status") or "").lower()
+    if status in {"left", "kicked", "not_member"}:
+        return False, "not_member"
     return status in {"creator", "administrator", "member", "restricted"}, status or "unknown"
 
 
@@ -2180,7 +2220,7 @@ async def _freekassa_create_order_internal(
     campaign: str = "",
     promo_code: str = "",
     currency: str = "RUB",
-    consume_pending_discount: bool = True,
+    consume_pending_discount: bool = False,
 ) -> FreekassaOrderActionOut:
     s = SessionLocal()
     try:
@@ -2197,11 +2237,17 @@ async def _freekassa_create_order_internal(
         effective_promo = (promo_code or "").strip().upper()[:32]
         pending_code = (getattr(user, "pending_discount_code", "") or "").strip().upper()[:20]
         pending_pct = int(getattr(user, "pending_discount_pct", 0) or 0)
+        referral_discount_eligible = bool(getattr(user, "referrer_id", None) and not bool(getattr(user, "first_purchase_done", False)))
+        working_amount = int(base_amount)
+        if referral_discount_eligible and working_amount > 0:
+            working_amount = max(1, int(round(working_amount * 0.8)))
         if pending_pct > 0:
-            final_amount, discount_pct = _price_with_pending_discount(amount_rub=base_amount, pending_pct=pending_pct)
-            discount_applied = discount_pct > 0 and final_amount < base_amount
+            working_amount, _ = _price_with_pending_discount(amount_rub=working_amount, pending_pct=pending_pct)
             if not effective_promo and pending_code:
                 effective_promo = pending_code[:32]
+        final_amount = max(1, int(working_amount)) if base_amount > 0 else 0
+        discount_applied = bool(base_amount > 0 and final_amount < base_amount)
+        discount_pct = int(round((1.0 - (float(final_amount) / float(base_amount))) * 100)) if discount_applied else 0
         amount_rub = float(final_amount)
         order_id = f"fk_{source}_{tg_id}_{int(time.time())}_{secrets.token_hex(4)}"
         ext = ExternalOrder(
@@ -2228,6 +2274,7 @@ async def _freekassa_create_order_internal(
                         "discount_pct": int(discount_pct),
                         "discount_applied": bool(discount_applied),
                         "pending_discount_code": pending_code or None,
+                        "referral_discount_eligible": bool(referral_discount_eligible),
                     },
                 },
                 ensure_ascii=False,
@@ -2266,6 +2313,7 @@ async def _freekassa_create_order_internal(
             "discount_pct": int(discount_pct),
             "base_amount_rub": int(base_amount),
             "final_amount_rub": int(final_amount),
+            "referral_discount_eligible": bool(referral_discount_eligible),
         },
     }
     remote = await _freekassa_api_request(source=source, method="orders/create", data=req_data)
@@ -2330,10 +2378,10 @@ async def freekassa_order_create(
         tg_id=int(tg_id),
         source=source,
         plan_code=(payload.plan_code or "").strip().lower(),
-        campaign=(payload.campaign or "").strip(),
-        promo_code=(payload.promo_code or "").strip().upper(),
+        campaign=_sanitize_deeplink_token(payload.campaign, max_len=64, uppercase=False),
+        promo_code=_sanitize_deeplink_token(payload.promo_code, max_len=20, uppercase=True),
         currency=(payload.currency or "RUB").strip().upper(),
-        consume_pending_discount=True,
+        consume_pending_discount=False,
     )
 
 
@@ -2354,8 +2402,8 @@ async def freekassa_order_create_public(
     if source not in {"site", "bot"}:
         source = "bot"
     plan_code = (payload.plan_code or ticket_payload.get("plan_code") or "").strip().lower()
-    campaign = str(ticket_payload.get("campaign_key") or "").strip()[:64]
-    promo_code = str(ticket_payload.get("promo_code") or "").strip().upper()[:20]
+    campaign = _sanitize_deeplink_token(str(ticket_payload.get("campaign_key") or ""), max_len=64, uppercase=False)
+    promo_code = _sanitize_deeplink_token(str(ticket_payload.get("promo_code") or ""), max_len=20, uppercase=True)
     return await _freekassa_create_order_internal(
         request=request,
         tg_id=tg_id,
@@ -2364,7 +2412,7 @@ async def freekassa_order_create_public(
         campaign=campaign,
         promo_code=promo_code,
         currency=(payload.currency or "RUB").strip().upper(),
-        consume_pending_discount=True,
+        consume_pending_discount=False,
     )
 
 
@@ -2464,6 +2512,190 @@ async def admin_metrics_status(request: Request, x_telegram_init_data: str = Hea
             "last_sample_at": _safe_iso(last_sample),
             "age_seconds": age_seconds,
             "stale_after_seconds": stale_after_seconds,
+        }
+    finally:
+        s.close()
+
+
+def _parse_admin_datetime(value: str | None) -> datetime | None:
+    raw = str(value or "").strip()
+    if not raw:
+        return None
+    try:
+        return datetime.fromisoformat(raw.replace("Z", "+00:00")).replace(tzinfo=None)
+    except Exception:
+        return None
+
+
+def _admin_metrics_range(from_value: str | None, to_value: str | None, *, max_days: int = 120) -> tuple[datetime, datetime]:
+    now = datetime.utcnow()
+    to_dt = _parse_admin_datetime(to_value) or now
+    from_dt = _parse_admin_datetime(from_value) or (to_dt - timedelta(days=13))
+    if from_dt > to_dt:
+        from_dt, to_dt = to_dt, from_dt
+    if (to_dt - from_dt).days > max_days:
+        from_dt = to_dt - timedelta(days=max_days)
+    from_dt = from_dt.replace(hour=0, minute=0, second=0, microsecond=0)
+    to_dt = to_dt.replace(hour=23, minute=59, second=59, microsecond=999999)
+    return from_dt, to_dt
+
+
+def _date_key(value: Any) -> str:
+    if value is None:
+        return ""
+    text = str(value)
+    return text[:10]
+
+
+@app.get("/api/admin/nodes/traffic")
+async def admin_nodes_traffic(
+    x_telegram_init_data: str = Header(default=""),
+    from_: str = Query(default="", alias="from"),
+    to: str = Query(default="", alias="to"),
+) -> dict:
+    _require_admin(x_telegram_init_data)
+    from_dt, to_dt = _admin_metrics_range(from_, to)
+    s = SessionLocal()
+    try:
+        rows = (
+            s.query(
+                func.date(NodeHealthSample.sampled_at).label("day"),
+                NodeHealthSample.node_code.label("node_code"),
+                func.max(NodeHealthSample.active_clients).label("devices"),
+                (
+                    func.max(func.coalesce(NodeHealthSample.total_traffic_bytes, 0))
+                    - func.min(func.coalesce(NodeHealthSample.total_traffic_bytes, 0))
+                ).label("traffic_bytes"),
+            )
+            .filter(NodeHealthSample.sampled_at >= from_dt, NodeHealthSample.sampled_at <= to_dt)
+            .group_by(func.date(NodeHealthSample.sampled_at), NodeHealthSample.node_code)
+            .order_by(func.date(NodeHealthSample.sampled_at).asc(), NodeHealthSample.node_code.asc())
+            .all()
+        )
+        payload_rows = []
+        for row in rows:
+            day_key = _date_key(getattr(row, "day", None))
+            if not day_key:
+                continue
+            traffic_bytes = int(getattr(row, "traffic_bytes", 0) or 0)
+            payload_rows.append(
+                {
+                    "date": day_key,
+                    "node_code": str(getattr(row, "node_code", "") or ""),
+                    "devices": int(getattr(row, "devices", 0) or 0),
+                    "traffic_bytes": max(0, traffic_bytes),
+                    "traffic_gb": round(max(0, traffic_bytes) / float(1024**3), 3),
+                }
+            )
+        return {
+            "from": from_dt.date().isoformat(),
+            "to": to_dt.date().isoformat(),
+            "rows": payload_rows,
+        }
+    finally:
+        s.close()
+
+
+@app.get("/api/admin/metrics/timeseries")
+async def admin_metrics_timeseries(
+    x_telegram_init_data: str = Header(default=""),
+    from_: str = Query(default="", alias="from"),
+    to: str = Query(default="", alias="to"),
+) -> dict:
+    _require_admin(x_telegram_init_data)
+    from_dt, to_dt = _admin_metrics_range(from_, to)
+
+    days: list[str] = []
+    cursor = from_dt.date()
+    to_day = to_dt.date()
+    while cursor <= to_day:
+        days.append(cursor.isoformat())
+        cursor = cursor + timedelta(days=1)
+
+    s = SessionLocal()
+    try:
+        registration_rows = (
+            s.query(func.date(User.created_at).label("day"), func.count(User.tg_id).label("value"))
+            .filter(User.created_at.isnot(None), User.created_at >= from_dt, User.created_at <= to_dt)
+            .group_by(func.date(User.created_at))
+            .all()
+        )
+        registrations_map = {_date_key(getattr(row, "day", None)): int(getattr(row, "value", 0) or 0) for row in registration_rows}
+
+        churn_rows = (
+            s.query(func.date(Event.created_at).label("day"), func.count(func.distinct(Event.tg_id)).label("value"))
+            .filter(Event.created_at >= from_dt, Event.created_at <= to_dt)
+            .filter(Event.event_name == "expired")
+            .group_by(func.date(Event.created_at))
+            .all()
+        )
+        churn_map = {_date_key(getattr(row, "day", None)): int(getattr(row, "value", 0) or 0) for row in churn_rows}
+
+        stars_rows = (
+            s.query(func.date(PayAttempt.paid_at).label("day"), func.sum(PayAttempt.amount_stars).label("value"))
+            .filter(PayAttempt.paid_at.isnot(None), PayAttempt.paid_at >= from_dt, PayAttempt.paid_at <= to_dt)
+            .filter(func.lower(func.coalesce(PayAttempt.status, "")) == "paid")
+            .group_by(func.date(PayAttempt.paid_at))
+            .all()
+        )
+        stars_map = {_date_key(getattr(row, "day", None)): int(getattr(row, "value", 0) or 0) for row in stars_rows}
+
+        rub_rows = (
+            s.query(func.date(ExternalOrder.paid_at).label("day"), func.sum(ExternalOrder.amount).label("value"))
+            .filter(ExternalOrder.paid_at.isnot(None), ExternalOrder.paid_at >= from_dt, ExternalOrder.paid_at <= to_dt)
+            .filter(func.lower(func.coalesce(ExternalOrder.status, "")) == "paid")
+            .filter(func.lower(func.coalesce(ExternalOrder.provider, "")) == "freekassa")
+            .group_by(func.date(ExternalOrder.paid_at))
+            .all()
+        )
+        rub_map = {_date_key(getattr(row, "day", None)): round(float(getattr(row, "value", 0.0) or 0.0), 2) for row in rub_rows}
+
+        node_rows = (
+            s.query(
+                func.date(NodeHealthSample.sampled_at).label("day"),
+                NodeHealthSample.node_code.label("node_code"),
+                func.max(NodeHealthSample.active_clients).label("devices"),
+                (
+                    func.max(func.coalesce(NodeHealthSample.total_traffic_bytes, 0))
+                    - func.min(func.coalesce(NodeHealthSample.total_traffic_bytes, 0))
+                ).label("traffic_bytes"),
+            )
+            .filter(NodeHealthSample.sampled_at >= from_dt, NodeHealthSample.sampled_at <= to_dt)
+            .group_by(func.date(NodeHealthSample.sampled_at), NodeHealthSample.node_code)
+            .all()
+        )
+        nodes_by_day: dict[str, dict[str, dict[str, Any]]] = {}
+        for row in node_rows:
+            day_key = _date_key(getattr(row, "day", None))
+            if not day_key:
+                continue
+            node_code = str(getattr(row, "node_code", "") or "")
+            if not node_code:
+                continue
+            day_bucket = nodes_by_day.setdefault(day_key, {})
+            traffic_bytes = int(getattr(row, "traffic_bytes", 0) or 0)
+            day_bucket[node_code] = {
+                "devices": int(getattr(row, "devices", 0) or 0),
+                "traffic_bytes": max(0, traffic_bytes),
+                "traffic_gb": round(max(0, traffic_bytes) / float(1024**3), 3),
+            }
+
+        points = [
+            {
+                "date": day,
+                "registrations": int(registrations_map.get(day, 0)),
+                "churn": int(churn_map.get(day, 0)),
+                "revenue_stars": int(stars_map.get(day, 0)),
+                "revenue_rub": float(rub_map.get(day, 0.0)),
+                "nodes": nodes_by_day.get(day, {}),
+            }
+            for day in days
+        ]
+
+        return {
+            "from": from_dt.date().isoformat(),
+            "to": to_dt.date().isoformat(),
+            "points": points,
         }
     finally:
         s.close()
@@ -3040,7 +3272,10 @@ async def claim_channel_bonus(request: Request, x_telegram_init_data: str = Head
 
         is_member, reason = await _is_channel_member(PUBLIC_CHANNEL, tg_id)
         if not is_member:
-            if reason == "not_member":
+            normalized_reason = str(reason or "").strip().lower()
+            if normalized_reason in {"left", "kicked", "not_member"}:
+                normalized_reason = "not_member"
+            if normalized_reason == "not_member":
                 raise HTTPException(status_code=400, detail="Сначала подпишитесь на канал и повторите проверку")
             raise HTTPException(status_code=502, detail=f"Не удалось проверить подписку: {reason}")
 
@@ -3112,7 +3347,8 @@ async def promo_redeem(payload: PromoRedeemIn, request: Request, x_telegram_init
         promo = s.query(PromoCode).filter(func.upper(PromoCode.code) == code).first()
         if not promo:
             raise HTTPException(status_code=404, detail="Promo not found")
-        if int(promo.uses_left or 0) <= 0:
+        uses_left = int(promo.uses_left or 0)
+        if uses_left == 0:
             raise HTTPException(status_code=400, detail="Promo exhausted")
         if promo.expires_at and promo.expires_at < datetime.utcnow():
             raise HTTPException(status_code=400, detail="Promo expired")
@@ -3138,9 +3374,24 @@ async def promo_redeem(payload: PromoRedeemIn, request: Request, x_telegram_init
             user.pending_discount_set_at = datetime.utcnow()
             pending_discount_pct = int(user.pending_discount_pct or 0)
 
-        promo.uses_left = max(0, int(promo.uses_left or 0) - 1)
+        if uses_left > 0:
+            updated = (
+                s.query(PromoCode)
+                .filter(PromoCode.id == promo.id, PromoCode.uses_left > 0)
+                .update({PromoCode.uses_left: PromoCode.uses_left - 1}, synchronize_session=False)
+            )
+            if int(updated or 0) != 1:
+                s.rollback()
+                raise HTTPException(status_code=400, detail="Promo exhausted")
+            s.flush()
+            s.refresh(promo)
+
         s.add(PromoUsage(tg_id=tg_id, promo_code=promo.code))
-        s.commit()
+        try:
+            s.commit()
+        except IntegrityError:
+            s.rollback()
+            raise HTTPException(status_code=400, detail="Promo already redeemed")
         return {
             "ok": True,
             "code": promo.code,
@@ -3158,7 +3409,7 @@ async def promo_redeem(payload: PromoRedeemIn, request: Request, x_telegram_init
 async def gift_redeem(payload: GiftRedeemIn, request: Request, x_telegram_init_data: str = Header(default="")) -> dict:
     auth_user = _require_auth_user(x_telegram_init_data, request=request)
     tg_id = int(auth_user.get("id", 0))
-    result = await redeem_gift_card_service(code=payload.code, recipient_tg_id=tg_id, require_tos=False)
+    result = await redeem_gift_card_service(code=payload.code, recipient_tg_id=tg_id, require_tos=True)
     if result.get("ok"):
         track_event(
             tg_id=tg_id,
@@ -3583,12 +3834,24 @@ async def admin_regenerate_manual_token(tg_id: int, x_telegram_init_data: str = 
         s.commit()
         s.refresh(user)
         sub_token = str(user.sub_token or "")
+        user_uuid = str(user.uuid or "")
+        is_active = bool(user.is_active)
     finally:
         s.close()
+
+    sync_ok = False
+    if user_uuid:
+        panel = ControlPanel()
+        try:
+            await panel.login()
+            sync_ok = bool(await panel.enable_client(user_uuid, enable=is_active))
+        finally:
+            await panel.close()
     _audit_admin(actor_tg_id=actor, action="admin_manual_regen_token", target_tg_id=tg_id)
     return {
         "ok": True,
         "subscription_url": f"{Settings.PUBLIC_API_BASE_URL.rstrip('/')}/s8Kx2mP7qR4wT/{sub_token}",
+        "sync_ok": bool(sync_ok),
     }
 
 
@@ -4005,7 +4268,7 @@ async def admin_start_links(x_telegram_init_data: str = Header(default=""), incl
         if not include_inactive:
             q = q.filter(StartLink.is_active == True)
         rows = q.order_by(StartLink.updated_at.desc(), StartLink.id.desc()).limit(500).all()
-        bot_username = (BOT_USERNAME or "portal_service_bot").lstrip("@")
+        bot_username = (BOT_USERNAME or "net4ebur_bot").lstrip("@")
         return {
             "start_links": [
                 {
@@ -4136,8 +4399,8 @@ async def admin_wheel_config_put(payload: AdminWheelConfigIn, x_telegram_init_da
 @app.post("/api/admin/campaign-links/build")
 async def admin_campaign_links_build(payload: AdminCampaignLinksBuildIn, x_telegram_init_data: str = Header(default="")) -> dict:
     _require_admin(x_telegram_init_data)
-    promo = (payload.promo_code or "").strip().upper()[:20]
-    campaign = (payload.campaign_key or "").strip()[:64]
+    promo = _sanitize_deeplink_token(payload.promo_code, max_len=20, uppercase=True)
+    campaign = _sanitize_deeplink_token(payload.campaign_key, max_len=64, uppercase=False)
     plan = (payload.plan_code or "").strip().lower()[:32]
     source = (payload.source or "bot").strip().lower()[:16]
     start_payload = ""
@@ -4147,7 +4410,9 @@ async def admin_campaign_links_build(payload: AdminCampaignLinksBuildIn, x_teleg
         start_payload = f"promo_{promo}"
     elif campaign:
         start_payload = f"campaign_{campaign}"
-    bot_username = (BOT_USERNAME or "portal_service_bot").lstrip("@")
+    if start_payload and len(start_payload) > 64:
+        raise HTTPException(status_code=400, detail="Telegram start payload exceeds 64 chars")
+    bot_username = (BOT_USERNAME or "net4ebur_bot").lstrip("@")
     bot_start_link = f"https://t.me/{bot_username}" + (f"?start={start_payload}" if start_payload else "")
 
     base_checkout = _public_checkout_url() or f"https://{(Settings.PUBLIC_WEB_DOMAIN or 'portal-privacy.online').strip().strip('/')}/checkout/"
@@ -4728,6 +4993,13 @@ def _nodes_for_user(user: User, nodes: list) -> list:
     return free_nodes
 
 
+def _token_fingerprint(token: str) -> str:
+    text = str(token or "").strip()
+    if not text:
+        return "empty"
+    return hashlib.sha256(text.encode("utf-8")).hexdigest()[:12]
+
+
 @app.get("/s8Kx2mP7qR4wT/{token}")
 async def subscription(token: str, request: Request):
     """
@@ -4735,17 +5007,29 @@ async def subscription(token: str, request: Request):
     - token is usually `sub_token`
     - legacy fallback: if token is numeric, treat it as `tg_id`
     """
+    token_text = str(token or "").strip()
+    token_fp = _token_fingerprint(token_text)
     s = SessionLocal()
     try:
-        user = s.query(User).filter_by(sub_token=token).first()
-        if not user and token.isdigit():
-            user = s.query(User).filter_by(tg_id=int(token)).first()
+        user = s.query(User).filter_by(sub_token=token_text).first()
+        lookup_mode = "sub_token"
+        if not user and token_text.isdigit():
+            user = s.query(User).filter_by(tg_id=int(token_text)).first()
+            if user:
+                lookup_mode = "tg_id_fallback"
         if not user:
+            logger.warning("subscription lookup failed token_fp=%s token_len=%s", token_fp, len(token_text))
             raise HTTPException(status_code=404, detail="User not found")
 
         _maybe_downgrade_expired_to_free(s, user)
 
         if not user.is_active:
+            logger.info(
+                "subscription inactive response token_fp=%s tg_id=%s lookup_mode=%s",
+                token_fp,
+                int(user.tg_id),
+                lookup_mode,
+            )
             return Response(content="", media_type="text/plain")
 
         nodes = enabled_nodes(s)
@@ -4754,6 +5038,13 @@ async def subscription(token: str, request: Request):
 
     user_agent = request.headers.get("user-agent", "").lower()
     is_smart = any(x in user_agent for x in ["hiddify", "dart", "sing-box", "nekobox"])
+    logger.info(
+        "subscription resolved token_fp=%s tg_id=%s lookup_mode=%s smart=%s",
+        token_fp,
+        int(user.tg_id),
+        lookup_mode,
+        bool(is_smart),
+    )
 
     header_expire = int(user.expiry_at.timestamp()) if user.expiry_at else 0
     total_bytes = _gb_to_bytes(_plan_total_gb(user))

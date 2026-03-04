@@ -145,8 +145,20 @@ async def redeem_gift_card(*, code: str, recipient_tg_id: int, require_tos: bool
         if not user.sub_token:
             user.sub_token = _generate_sub_token()
 
-        card.redeemed_by = int(recipient_tg_id)
-        card.redeemed_at = now
+        updated = (
+            s.query(GiftCard)
+            .filter(GiftCard.id == card.id, GiftCard.redeemed_by.is_(None))
+            .update(
+                {
+                    GiftCard.redeemed_by: int(recipient_tg_id),
+                    GiftCard.redeemed_at: now,
+                },
+                synchronize_session=False,
+            )
+        )
+        if int(updated or 0) != 1:
+            s.rollback()
+            return {"ok": False, "error": "already_redeemed", "message": "Код уже активирован"}
         redeemed_card_type = str(card.card_type or "")
         s.commit()
 

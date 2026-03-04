@@ -220,6 +220,80 @@ class ApiPaymentCallbacksTests(unittest.TestCase):
         r = client.post("/api/payments/freekassa/notify", params=payload)
         self.assertEqual(r.status_code, 400, r.text)
 
+    def test_freekassa_notify_awards_referrer_bonus_on_first_paid_purchase(self) -> None:
+        client = TestClient(self.api.app)
+
+        from datetime import datetime, timedelta
+        from db import SessionLocal
+        from models import User
+
+        s = SessionLocal()
+        try:
+            ref_expiry = datetime.utcnow() + timedelta(days=20)
+            s.add(
+                User(
+                    tg_id=2002,
+                    username="ref",
+                    uuid=str(uuid.uuid4()),
+                    email="user_2002",
+                    sub_type="PAID",
+                    is_active=True,
+                    tos_accepted=True,
+                    expiry_at=ref_expiry,
+                    referral_count=0,
+                )
+            )
+            s.add(
+                User(
+                    tg_id=2003,
+                    username="invited",
+                    uuid=str(uuid.uuid4()),
+                    email="user_2003",
+                    sub_type="FREE",
+                    is_active=True,
+                    tos_accepted=True,
+                    referrer_id=2002,
+                    first_purchase_done=False,
+                )
+            )
+            s.commit()
+        finally:
+            s.close()
+
+        merchant_id = "69962"
+        amount = "249.00"
+        order_id = "order-ref-first-1"
+        sig = self._fk_sci_signature(
+            merchant_id=merchant_id,
+            amount=amount,
+            order_id=order_id,
+            secret_word_2="fk_sw2_test",
+        )
+        payload = {
+            "MERCHANT_ID": merchant_id,
+            "AMOUNT": amount,
+            "MERCHANT_ORDER_ID": order_id,
+            "SIGN": sig,
+            "us_tg_id": "2003",
+            "us_plan_code": "1_month",
+            "intid": "tx-fk-ref-1",
+        }
+        r = client.post("/api/payments/freekassa/notify", params=payload)
+        self.assertEqual(r.status_code, 200, r.text)
+        self.assertEqual(r.text.strip(), "YES")
+
+        s = SessionLocal()
+        try:
+            invited = s.query(User).filter(User.tg_id == 2003).first()
+            referrer = s.query(User).filter(User.tg_id == 2002).first()
+            self.assertIsNotNone(invited)
+            self.assertIsNotNone(referrer)
+            self.assertTrue(bool(invited.first_purchase_done))
+            self.assertEqual(int(referrer.referral_count or 0), 1)
+            self.assertTrue(bool(referrer.expiry_at and referrer.expiry_at > datetime.utcnow() + timedelta(days=30)))
+        finally:
+            s.close()
+
     def test_freekassa_order_endpoints_use_remote_api_wrapper(self) -> None:
         client = TestClient(self.api.app)
         hdrs = self._auth_headers(1001, "alice")
@@ -359,14 +433,81 @@ class ApiPaymentCallbacksTests(unittest.TestCase):
         try:
             user = s.query(User).filter(User.tg_id == 1001).first()
             self.assertIsNotNone(user)
-            self.assertIsNone(user.pending_discount_pct)
-            self.assertIsNone(user.pending_discount_code)
+            self.assertEqual(int(user.pending_discount_pct or 0), 20)
+            self.assertEqual(str(user.pending_discount_code or ""), "WELCOME20")
             row = s.query(ExternalOrder).filter(ExternalOrder.tg_id == 1001, ExternalOrder.provider == "freekassa").first()
             self.assertIsNotNone(row)
             self.assertIn("\"discount_pct\":20", str(row.meta_json or ""))
             self.assertEqual([m for _, m, _ in calls].count("orders/create"), 1)
         finally:
             s.close()
+
+    def test_create_public_order_applies_referral_first_purchase_discount(self) -> None:
+        client = TestClient(self.api.app)
+
+        from datetime import datetime, timedelta
+        from db import SessionLocal
+        from models import User
+
+        s = SessionLocal()
+        try:
+            s.add(
+                User(
+                    tg_id=2002,
+                    username="ref",
+                    uuid=str(uuid.uuid4()),
+                    email="user_2002",
+                    sub_type="PAID",
+                    is_active=True,
+                    tos_accepted=True,
+                    expiry_at=datetime.utcnow() + timedelta(days=30),
+                )
+            )
+            s.add(
+                User(
+                    tg_id=2003,
+                    username="invited",
+                    uuid=str(uuid.uuid4()),
+                    email="user_2003",
+                    sub_type="FREE",
+                    is_active=True,
+                    tos_accepted=True,
+                    referrer_id=2002,
+                    first_purchase_done=False,
+                )
+            )
+            s.commit()
+        finally:
+            s.close()
+
+        async def fake_fk_request(*, source: str, method: str, data: dict):
+            if method == "orders/create":
+                return {"location": "https://pay.example/fk/ref-order-1"}
+            return {"ok": True}
+
+        old_fk_request = self.api._freekassa_api_request
+        self.api._freekassa_api_request = fake_fk_request
+        try:
+            ticket = self.api._create_checkout_ticket(
+                tg_id=2003,
+                plan_code="1_month",
+                promo_code="",
+                campaign_key="ref_test",
+                source="site",
+            )
+            r = client.post(
+                "/api/payments/freekassa/orders/create-public",
+                json={"plan_code": "1_month", "checkout_ticket": ticket, "currency": "RUB"},
+            )
+            self.assertEqual(r.status_code, 200, r.text)
+            body = r.json()
+            self.assertTrue(body.get("ok"))
+            self.assertTrue(body.get("discount_applied"))
+            self.assertEqual(int(body.get("discount_pct") or 0), 20)
+            self.assertEqual(int(body.get("base_amount_rub") or 0), 249)
+            self.assertEqual(int(body.get("amount_rub") or 0), 199)
+        finally:
+            self.api._freekassa_api_request = old_fk_request
 
     def test_public_plans_and_admin_plans_crud(self) -> None:
         client = TestClient(self.api.app)

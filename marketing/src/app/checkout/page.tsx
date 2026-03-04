@@ -55,7 +55,7 @@ type SocialProofResponse = {
 };
 
 const API_BASE = (process.env.NEXT_PUBLIC_API_BASE_URL || "").trim();
-const TG_BOT_URL = (process.env.NEXT_PUBLIC_TELEGRAM_BOT_URL || "https://t.me/portal_service_bot").trim();
+const TG_BOT_URL = (process.env.NEXT_PUBLIC_TELEGRAM_BOT_URL || "https://t.me/net4ebur_bot").trim();
 const TG_CHANNEL_LINK = (process.env.NEXT_PUBLIC_TG_CHANNEL_LINK || "https://t.me/portal_privacy").trim();
 
 const FK_WIDGET_API_KEY = (process.env.NEXT_PUBLIC_FK_WIDGET_API_KEY || "").trim();
@@ -774,3 +774,4 @@ export default function CheckoutPage() {
     </main>
   );
 }
+

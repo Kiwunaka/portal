@@ -2,7 +2,6 @@
 
 import TelegramLoginWidget from "@/components/telegram-login-widget";
 import { PortalSessionProvider, usePortalSession } from "@/lib/session";
-import { AnimatePresence, motion } from "framer-motion";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
@@ -14,7 +13,7 @@ type NavItem = {
   match: (path: string) => boolean;
 };
 
-const NAV_ITEMS: NavItem[] = [
+const BASE_NAV_ITEMS: NavItem[] = [
   { href: "/dashboard", icon: "dashboard", label: "Главная", match: (path) => path === "/dashboard" || path.startsWith("/dashboard/") },
   { href: "/subscription", icon: "account_balance_wallet", label: "Подписка", match: (path) => path.startsWith("/subscription") },
   { href: "/devices", icon: "devices", label: "Устройства", match: (path) => path.startsWith("/devices") },
@@ -53,9 +52,17 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
     return () => document.body.classList.remove("modal-open");
   }, [mobileMenuOpen]);
 
+  const navItems = useMemo(() => {
+    const list = [...BASE_NAV_ITEMS];
+    if (user?.is_admin) {
+      list.push({ href: "/admin/dashboard", icon: "admin_panel_settings", label: "Админ", match: (path) => path.startsWith("/admin") });
+    }
+    return list;
+  }, [user?.is_admin]);
+
   const active = useMemo(
-    () => NAV_ITEMS.find((item) => item.match(pathname))?.href || "/dashboard",
-    [pathname],
+    () => navItems.find((item) => item.match(pathname))?.href || "/dashboard",
+    [navItems, pathname],
   );
 
   if (loading) {
@@ -85,7 +92,7 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
             {webLoginError ? <p className="text-xs text-rose-500">{webLoginError}</p> : null}
           </div>
           <div className="mt-6 flex flex-wrap gap-3">
-            <Link href="https://t.me/portal_service_bot" target="_blank" className="outline-btn rounded-xl px-5 py-2.5 text-sm font-semibold uppercase tracking-[0.12em]">
+            <Link href="https://t.me/net4ebur_bot" target="_blank" className="outline-btn rounded-xl px-5 py-2.5 text-sm font-semibold uppercase tracking-[0.12em]">
               Открыть бота
             </Link>
             <button className="outline-btn rounded-xl px-5 py-2.5 text-sm font-semibold uppercase tracking-[0.12em]" type="button" onClick={logoutWebSession}>
@@ -131,7 +138,7 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
             </div>
 
             <nav className="space-y-1.5">
-              {NAV_ITEMS.map((item) => {
+              {navItems.map((item) => {
                 const selected = active === item.href;
                 return (
                   <Link
@@ -195,7 +202,7 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
       </div>
 
       <nav className="tg-bottom-nav glass-card fixed left-1/2 z-40 flex w-[min(96vw,540px)] -translate-x-1/2 justify-between rounded-2xl px-4 py-3 lg:hidden">
-        {NAV_ITEMS.map((item) => {
+        {navItems.map((item) => {
           const selected = active === item.href;
           return (
             <Link
@@ -211,66 +218,57 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
         })}
       </nav>
 
-      <AnimatePresence>
-        {mobileMenuOpen ? (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 bg-slate-950/45 p-3 lg:hidden"
-            onClick={() => setMobileMenuOpen(false)}
+      {mobileMenuOpen ? (
+        <div
+          className="fixed inset-0 z-50 bg-slate-950/45 p-3 opacity-100 transition-opacity duration-200 lg:hidden"
+          onClick={() => setMobileMenuOpen(false)}
+        >
+          <aside
+            className="glass-card h-full w-[min(82vw,320px)] p-5 transition-transform duration-200"
+            onClick={(event) => event.stopPropagation()}
           >
-            <motion.aside
-              initial={{ x: -24, opacity: 0 }}
-              animate={{ x: 0, opacity: 1 }}
-              exit={{ x: -24, opacity: 0 }}
-              transition={{ duration: 0.22 }}
-              className="glass-card h-full w-[min(82vw,320px)] p-5"
-              onClick={(event) => event.stopPropagation()}
-            >
-              <div className="mb-6 flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <span className="material-symbols-rounded rounded-xl bg-violet-500/20 p-2 text-violet-600 dark:text-violet-300">grid_view</span>
-                  <div>
-                    <p className="font-display text-lg font-bold tracking-[0.12em]">PORTAL</p>
-                    <p className="font-mono text-[10px] uppercase tracking-[0.14em] text-slate-500">menu</p>
-                  </div>
+            <div className="mb-6 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <span className="material-symbols-rounded rounded-xl bg-violet-500/20 p-2 text-violet-600 dark:text-violet-300">grid_view</span>
+                <div>
+                  <p className="font-display text-lg font-bold tracking-[0.12em]">PORTAL</p>
+                  <p className="font-mono text-[10px] uppercase tracking-[0.14em] text-slate-500">menu</p>
                 </div>
-                <button type="button" onClick={() => setMobileMenuOpen(false)} className="haptic-tap rounded-lg bg-white/75 p-2 dark:bg-white/10" aria-label="Закрыть меню">
-                  <span className="material-symbols-rounded">close</span>
-                </button>
               </div>
-
-              <nav className="space-y-2">
-                {NAV_ITEMS.map((item) => {
-                  const selected = active === item.href;
-                  return (
-                    <Link
-                      key={item.href}
-                      href={item.href}
-                      onClick={() => setMobileMenuOpen(false)}
-                      className={`haptic-tap flex items-center gap-3 rounded-xl px-3 py-3 text-sm ${selected ? "bg-violet-600 text-white" : "bg-white/60 text-slate-700 dark:bg-white/10 dark:text-slate-200"}`}
-                      aria-current={selected ? "page" : undefined}
-                    >
-                      <span className="material-symbols-rounded text-[20px]">{item.icon}</span>
-                      {item.label}
-                    </Link>
-                  );
-                })}
-              </nav>
-
-              <button
-                type="button"
-                onClick={logoutWebSession}
-                className="haptic-tap mt-6 flex w-full items-center gap-2 rounded-xl bg-white/60 px-3 py-3 text-sm text-rose-600 dark:bg-white/10 dark:text-rose-300"
-              >
-                <span className="material-symbols-rounded text-[20px]">logout</span>
-                Выйти из web-сессии
+              <button type="button" onClick={() => setMobileMenuOpen(false)} className="haptic-tap rounded-lg bg-white/75 p-2 dark:bg-white/10" aria-label="Закрыть меню">
+                <span className="material-symbols-rounded">close</span>
               </button>
-            </motion.aside>
-          </motion.div>
-        ) : null}
-      </AnimatePresence>
+            </div>
+
+            <nav className="space-y-2">
+              {navItems.map((item) => {
+                const selected = active === item.href;
+                return (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    onClick={() => setMobileMenuOpen(false)}
+                    className={`haptic-tap flex items-center gap-3 rounded-xl px-3 py-3 text-sm ${selected ? "bg-violet-600 text-white" : "bg-white/60 text-slate-700 dark:bg-white/10 dark:text-slate-200"}`}
+                    aria-current={selected ? "page" : undefined}
+                  >
+                    <span className="material-symbols-rounded text-[20px]">{item.icon}</span>
+                    {item.label}
+                  </Link>
+                );
+              })}
+            </nav>
+
+            <button
+              type="button"
+              onClick={logoutWebSession}
+              className="haptic-tap mt-6 flex w-full items-center gap-2 rounded-xl bg-white/60 px-3 py-3 text-sm text-rose-600 dark:bg-white/10 dark:text-rose-300"
+            >
+              <span className="material-symbols-rounded text-[20px]">logout</span>
+              Выйти из web-сессии
+            </button>
+          </aside>
+        </div>
+      ) : null}
     </div>
   );
 }

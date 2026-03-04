@@ -22,7 +22,7 @@ type ComparisonRow = {
 const COMPARISON_ROWS: ComparisonRow[] = [
   { metric: "Устройства", start: "1", pro: "До 5", ultra: "До 5" },
   { metric: "Страны", start: "NL", pro: "Польша, Нидерланды, США, Италия", ultra: "Полный пул + приоритет" },
-  { metric: "Маршрутизация", start: "VPN для базовых задач", pro: "Полный VPN-маршрут ежедневно", ultra: "VPN + приоритет" },
+  { metric: "Маршрутизация", start: "Базовый защищенный маршрут", pro: "Полный маршрут ежедневно", ultra: "Маршрут + приоритет" },
   { metric: "Скоростной профиль", start: "Базовый", pro: "Высокий", ultra: "Максимальный" },
   { metric: "Поддержка", start: "Стандартная", pro: "Быстрый Telegram-ответ", ultra: "Приоритет 24/7" },
 ];
@@ -94,7 +94,7 @@ export default function CheckoutPage() {
   const activeColumn = planColumn(activePlan?.code || "");
 
   const botFallback = useMemo(() => {
-    const bot = process.env.NEXT_PUBLIC_TELEGRAM_BOT_URL || "https://t.me/portal_service_bot";
+    const bot = process.env.NEXT_PUBLIC_TELEGRAM_BOT_URL || "https://t.me/net4ebur_bot";
     return bot;
   }, []);
 
@@ -199,8 +199,8 @@ export default function CheckoutPage() {
           </div>
 
           <p className="mt-3 text-xs text-slate-500">
-            Почему часть медиасервисов может идти напрямую: это может снижать задержку в отдельных сценариях. VPN-канал для
-            основного трафика сохраняется по вашей тарифной политике.
+            Почему часть медиасервисов может идти напрямую: это может снижать задержку в отдельных сценариях. Защищенный
+            канал для основного трафика сохраняется по вашей тарифной политике.
           </p>
         </article>
 

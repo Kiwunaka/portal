@@ -168,6 +168,15 @@ class BotPaywallTests(unittest.TestCase):
         self.assertEqual(promo2, "WELCOME14")
         self.assertEqual(campaign2, "launch")
 
+    def test_parse_start_deeplink_context_sanitizes_payload(self) -> None:
+        promo, campaign = self.bot_module._parse_start_deeplink_context("promo_new-year!!!")
+        self.assertEqual(promo, "NEW-YEAR")
+        self.assertEqual(campaign, "")
+
+        promo2, campaign2 = self.bot_module._parse_start_deeplink_context("campaign_bad key!!__promo_20%OFF")
+        self.assertEqual(promo2, "20OFF")
+        self.assertEqual(campaign2, "badkey")
+
     def test_parse_friend_gift_ref_code(self) -> None:
         code = self.bot_module._parse_friend_gift_ref_code("gift3_SWAZ7K3F")
         self.assertEqual(code, "SWAZ7K3F")

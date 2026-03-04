@@ -118,6 +118,36 @@ class PanelClientConflictTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(cleanup_calls, 2)
         self.assertEqual(add_calls, 2)
 
+    async def test_ensure_client_updates_sub_id_for_existing_client(self) -> None:
+        from panel_client import PanelClient
+
+        client = PanelClient(self._node("pl"))
+        existing = {"id": "uuid-42", "email": "User_42", "tgId": "42", "subId": "legacy", "enable": True}
+
+        async def fake_find_client_by_tgid(_tg_id: int):
+            return existing
+
+        captured: dict[str, object] = {}
+
+        async def fake_update_client_enable(client_payload: dict, enable: bool, sub_id: str | None = None) -> bool:
+            captured["client"] = client_payload
+            captured["enable"] = enable
+            captured["sub_id"] = sub_id
+            return True
+
+        client.find_client_by_tgid = fake_find_client_by_tgid
+        client.update_client_enable = fake_update_client_enable
+
+        ok = await client.ensure_client(
+            tg_id=42,
+            client_uuid="uuid-42",
+            email="User_42",
+            sub_id="secure-42",
+            enable=True,
+        )
+        self.assertTrue(ok)
+        self.assertEqual(captured.get("sub_id"), "secure-42")
+
 
 if __name__ == "__main__":
     unittest.main()

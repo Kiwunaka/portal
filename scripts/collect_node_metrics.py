@@ -79,6 +79,8 @@ async def _collect_one(*, node: Node, error_window: int, source: str) -> dict:
     healthy = False
     latency_ms: int | None = None
     active_clients = 0
+    total_up_bytes = 0
+    total_down_bytes = 0
 
     try:
         ok = await client.login()
@@ -95,6 +97,13 @@ async def _collect_one(*, node: Node, error_window: int, source: str) -> dict:
                     active_clients = len(clients)
                 except Exception:
                     active_clients = 0
+                try:
+                    for stat in inb.get("clientStats", []) or []:
+                        total_up_bytes += int(stat.get("up", 0) or 0)
+                        total_down_bytes += int(stat.get("down", 0) or 0)
+                except Exception:
+                    total_up_bytes = 0
+                    total_down_bytes = 0
                 healthy = True
                 break
         latency_ms = int((time.perf_counter() - started) * 1000)
@@ -121,6 +130,9 @@ async def _collect_one(*, node: Node, error_window: int, source: str) -> dict:
             panel_latency_ms=latency_ms,
             panel_error_rate=error_rate,
             active_clients=active_clients,
+            total_up_bytes=max(0, int(total_up_bytes)),
+            total_down_bytes=max(0, int(total_down_bytes)),
+            total_traffic_bytes=max(0, int(total_up_bytes) + int(total_down_bytes)),
             is_healthy=healthy,
             score=score,
             source=source,
@@ -144,6 +156,8 @@ async def _collect_one(*, node: Node, error_window: int, source: str) -> dict:
             "score": score,
             "latency_ms": latency_ms,
             "active_clients": active_clients,
+            "total_up_bytes": max(0, int(total_up_bytes)),
+            "total_down_bytes": max(0, int(total_down_bytes)),
             "error_rate": round(error_rate, 4),
         }
     finally:
@@ -170,6 +184,7 @@ async def run(*, error_window: int, source: str) -> int:
         print(
             f"{row['code']}: healthy={row['healthy']} score={row['score']} "
             f"latency_ms={row['latency_ms']} active_clients={row['active_clients']} "
+            f"up_bytes={row['total_up_bytes']} down_bytes={row['total_down_bytes']} "
             f"error_rate={row['error_rate']}"
         )
     return 0
