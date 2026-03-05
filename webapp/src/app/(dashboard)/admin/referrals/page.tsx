@@ -16,6 +16,23 @@ import { Copy, ExternalLink, Link2, Loader2, PencilLine, Plus, RefreshCw, Search
 import { useCallback, useEffect, useState } from "react";
 import { fmtRuDate } from "../nav";
 
+function parsePromptBool(raw: string, fallback: boolean): boolean {
+  const value = String(raw || "").trim().toLowerCase();
+  if (!value) return fallback;
+  if (["no", "n", "нет", "не", "0", "false", "off"].includes(value)) return false;
+  if (["yes", "y", "да", "1", "true", "on"].includes(value)) return true;
+  return fallback;
+}
+
+function queueStatusLabel(value: string): string {
+  const normalized = String(value || "").toLowerCase();
+  if (normalized === "pending") return "в ожидании";
+  if (normalized === "rewarded") return "начислено";
+  if (normalized === "rejected") return "отклонено";
+  if (normalized === "waiting_activity") return "ждём активность";
+  return value || "—";
+}
+
 export default function AdminReferralsPage() {
   const [links, setLinks] = useState<AdminStartLinkRow[]>([]);
   const [queueRows, setQueueRows] = useState<AdminReferralQueueRow[]>([]);
@@ -47,7 +64,7 @@ export default function AdminReferralsPage() {
   const createLink = async (): Promise<void> => {
     const code = window.prompt("Код start-ссылки:", "launch14");
     if (!code?.trim()) return;
-    const description = window.prompt("Описание:", "Campaign link") || "";
+    const description = window.prompt("Описание:", "Кампанейская ссылка") || "";
     const targetAction = window.prompt("target_action:", "campaign") || "campaign";
     setBusy(true);
     try {
@@ -63,10 +80,10 @@ export default function AdminReferralsPage() {
     if (!code?.trim()) return;
     const description = window.prompt("Описание:", row.description || "") || "";
     const targetAction = window.prompt("target_action:", row.target_action || "campaign") || "campaign";
-    const activeRaw = window.prompt("Активна? (yes/no)", row.is_active ? "yes" : "no") || "yes";
+    const activeRaw = window.prompt("Активна? (да/нет)", row.is_active ? "да" : "нет") || "";
     setBusy(true);
     try {
-      await adminStartLinkUpdate(row.id, { code: code.trim(), description: description.trim(), target_action: targetAction.trim(), is_active: activeRaw.trim().toLowerCase() !== "no" });
+      await adminStartLinkUpdate(row.id, { code: code.trim(), description: description.trim(), target_action: targetAction.trim(), is_active: parsePromptBool(activeRaw, Boolean(row.is_active)) });
       await load();
     } catch (err) {
       setError(String((err as { message?: string })?.message || err || "Не удалось обновить ссылку"));
@@ -106,10 +123,10 @@ export default function AdminReferralsPage() {
     setResult("");
     try {
       const out = await adminReferralProcess({ limit: 120, force_without_activity: forceWithoutActivity });
-      setResult(`Processed: ${out.processed}, rewarded: ${out.rewarded}, waiting: ${out.waiting}, rejected: ${out.rejected}`);
+      setResult(`Обработано: ${out.processed}, начислено: ${out.rewarded}, в ожидании: ${out.waiting}, отклонено: ${out.rejected}`);
       await load();
     } catch (err) {
-      setError(String((err as { message?: string })?.message || err || "Не удалось обработать anti-fraud очередь"));
+      setError(String((err as { message?: string })?.message || err || "Не удалось обработать антифрод-очередь"));
     } finally {
       setBusy(false);
     }
@@ -123,13 +140,13 @@ export default function AdminReferralsPage() {
           <div className="flex items-center gap-3">
             <div className="stat-icon stat-icon-violet"><Link2 size={20} /></div>
             <div>
-              <h2 className="font-display text-xl font-bold">Start links</h2>
+              <h2 className="font-display text-xl font-bold">Стартовые ссылки</h2>
               <p className="text-xs text-slate-500">Welcome / campaign ссылки для бота</p>
             </div>
           </div>
           <div className="flex gap-2">
             <button className="btn-primary rounded-xl px-4 py-2 text-sm font-semibold inline-flex items-center gap-1.5" type="button" onClick={() => void createLink()} disabled={busy}>
-              <Plus size={14} /> Start link
+              <Plus size={14} /> Добавить ссылку
             </button>
             <button className="outline-btn rounded-xl px-3 py-2 text-sm font-semibold inline-flex items-center gap-1" type="button" onClick={() => void load()}>
               <RefreshCw size={13} />
@@ -156,7 +173,7 @@ export default function AdminReferralsPage() {
               </div>
               <div className="flex items-center gap-2 flex-shrink-0">
                 <a href={link.bot_start_link} target="_blank" className="outline-btn rounded-lg px-2 py-1 text-[10px] font-semibold inline-flex items-center gap-1">
-                  <ExternalLink size={10} /> Open
+                  <ExternalLink size={10} /> Открыть
                 </a>
                 <button className="outline-btn rounded-lg px-2 py-1 text-[10px] font-semibold inline-flex items-center gap-1" type="button" onClick={() => void editLink(link)} disabled={busy}>
                   <PencilLine size={10} />
@@ -166,7 +183,7 @@ export default function AdminReferralsPage() {
                     <X size={10} />
                   </button>
                 ) : (
-                  <span className="badge badge-danger">off</span>
+                  <span className="badge badge-danger">выкл</span>
                 )}
               </div>
             </div>
@@ -179,21 +196,21 @@ export default function AdminReferralsPage() {
         <div className="flex items-center gap-3">
           <div className="stat-icon stat-icon-emerald"><Sparkles size={20} /></div>
           <div>
-            <h2 className="font-display text-xl font-bold">Campaign / Welcome links builder</h2>
+            <h2 className="font-display text-xl font-bold">Генератор welcome/campaign ссылок</h2>
             <p className="text-xs text-slate-500">Генерация ссылок для маркетинговых кампаний</p>
           </div>
         </div>
         <div className="grid gap-3 md:grid-cols-3">
           <div>
-            <label className="block text-[10px] uppercase tracking-[0.1em] text-slate-500 mb-1">Promo code</label>
+            <label className="block text-[10px] uppercase tracking-[0.1em] text-slate-500 mb-1">Промокод</label>
             <input value={promoCode} onChange={(event) => setPromoCode(event.target.value)} placeholder="WELCOME14" className="w-full rounded-xl border border-violet-200/50 bg-white/80 px-3 py-2 text-sm outline-none dark:border-violet-500/30 dark:bg-slate-900/70" />
           </div>
           <div>
-            <label className="block text-[10px] uppercase tracking-[0.1em] text-slate-500 mb-1">Campaign key</label>
+            <label className="block text-[10px] uppercase tracking-[0.1em] text-slate-500 mb-1">Ключ кампании</label>
             <input value={campaignKey} onChange={(event) => setCampaignKey(event.target.value)} placeholder="launch14" className="w-full rounded-xl border border-violet-200/50 bg-white/80 px-3 py-2 text-sm outline-none dark:border-violet-500/30 dark:bg-slate-900/70" />
           </div>
           <div>
-            <label className="block text-[10px] uppercase tracking-[0.1em] text-slate-500 mb-1">Plan code</label>
+            <label className="block text-[10px] uppercase tracking-[0.1em] text-slate-500 mb-1">Код тарифа</label>
             <input value={planCode} onChange={(event) => setPlanCode(event.target.value)} placeholder="1_month" className="w-full rounded-xl border border-violet-200/50 bg-white/80 px-3 py-2 text-sm outline-none dark:border-violet-500/30 dark:bg-slate-900/70" />
           </div>
         </div>
@@ -204,9 +221,9 @@ export default function AdminReferralsPage() {
         {built ? (
           <div className="grid gap-2 text-sm">
             {[
-              { label: "Bot", value: built.bot_start_link },
-              { label: "Checkout", value: built.checkout_link },
-              { label: "WebApp", value: built.webapp_link },
+              { label: "Бот", value: built.bot_start_link },
+              { label: "Оплата", value: built.checkout_link },
+              { label: "Веб-приложение", value: built.webapp_link },
             ].map((item) => (
               <div key={item.label} className="node-card flex items-center justify-between gap-3">
                 <div className="min-w-0 flex-1">
@@ -214,7 +231,7 @@ export default function AdminReferralsPage() {
                   <p className="text-xs font-mono truncate">{item.value}</p>
                 </div>
                 <button className="outline-btn rounded-lg px-2.5 py-1.5 inline-flex items-center gap-1 text-xs font-semibold flex-shrink-0" type="button" onClick={() => void copyText(item.value)}>
-                  <Copy size={11} /> Copy
+                  <Copy size={11} /> Копировать
                 </button>
               </div>
             ))}
@@ -228,7 +245,7 @@ export default function AdminReferralsPage() {
           <div className="flex items-center gap-3">
             <div className="stat-icon stat-icon-amber"><Search size={20} /></div>
             <div>
-              <h2 className="font-display text-xl font-bold">Referral anti-fraud queue</h2>
+              <h2 className="font-display text-xl font-bold">Антифрод очередь рефералов</h2>
               <p className="text-xs text-slate-500">Подтверждение бонуса после окна активного использования</p>
             </div>
           </div>
@@ -238,17 +255,17 @@ export default function AdminReferralsPage() {
               onChange={(event) => setQueueStatus(event.target.value)}
               className="rounded-xl border border-violet-200/50 bg-white/90 px-3 py-2 text-xs outline-none dark:border-violet-500/30 dark:bg-slate-900/70"
             >
-              <option value="">all statuses</option>
-              <option value="pending">pending</option>
-              <option value="rewarded">rewarded</option>
-              <option value="rejected">rejected</option>
-              <option value="waiting_activity">waiting_activity</option>
+              <option value="">все статусы</option>
+              <option value="pending">в ожидании</option>
+              <option value="rewarded">начислено</option>
+              <option value="rejected">отклонено</option>
+              <option value="waiting_activity">ждём активность</option>
             </select>
             <button className="outline-btn rounded-xl px-3 py-2 text-xs font-semibold" type="button" onClick={() => void processQueue(false)} disabled={busy}>
-              Process
+              Обработать
             </button>
             <button className="outline-btn rounded-xl px-3 py-2 text-xs font-semibold" type="button" onClick={() => void processQueue(true)} disabled={busy}>
-              Force
+              Форс
             </button>
           </div>
         </div>
@@ -258,11 +275,11 @@ export default function AdminReferralsPage() {
           <table className="min-w-full text-xs">
             <thead>
               <tr className="text-left text-slate-500">
-                <th className="px-2 py-2">Order</th>
-                <th className="px-2 py-2">Referrer</th>
-                <th className="px-2 py-2">Referred</th>
-                <th className="px-2 py-2">Ready at</th>
-                <th className="px-2 py-2">Status</th>
+                <th className="px-2 py-2">Заказ</th>
+                <th className="px-2 py-2">Реферер</th>
+                <th className="px-2 py-2">Приглашённый</th>
+                <th className="px-2 py-2">Готово в</th>
+                <th className="px-2 py-2">Статус</th>
               </tr>
             </thead>
             <tbody>
@@ -272,7 +289,7 @@ export default function AdminReferralsPage() {
                   <td className="px-2 py-2">{row.referrer_tg_id}</td>
                   <td className="px-2 py-2">{row.referred_tg_id}</td>
                   <td className="px-2 py-2">{fmtRuDate(row.ready_at)}</td>
-                  <td className="px-2 py-2"><span className="badge badge-violet">{row.status}</span></td>
+                  <td className="px-2 py-2"><span className="badge badge-violet">{queueStatusLabel(row.status)}</span></td>
                 </tr>
               ))}
             </tbody>

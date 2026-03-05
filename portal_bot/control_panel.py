@@ -31,11 +31,15 @@ class ControlPanel:
         return raw
 
     def _paid_node_groups(self, nodes: list) -> list[tuple[str, list]]:
+        # Keep control-plane/alias nodes out of paid traffic pools.
+        excluded_bases = {"brain", "de"}
         grouped: dict[str, list] = {}
         for n in nodes:
             if "free" in (n.code or "").lower():
                 continue
             base = self._node_base(n.code)
+            if base in excluded_bases:
+                continue
             grouped.setdefault(base, []).append(n)
         return [(k, v) for k, v in grouped.items()]
 

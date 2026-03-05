@@ -48,7 +48,7 @@ export default function AdminBonusesPage() {
       setLoyaltyConfig(loyalty.loyalty_config);
       setLoyaltyText((loyalty.loyalty_config.tiers || []).map((row) => `${row.days}:${row.bonus_days}:${row.perk}`).join("\n"));
     } catch (err) {
-      setError(String((err as { message?: string })?.message || err || "Ошибка загрузки wheel config"));
+      setError(String((err as { message?: string })?.message || err || "Ошибка загрузки конфигурации рулетки"));
     }
   };
 
@@ -94,7 +94,7 @@ export default function AdminBonusesPage() {
           const bonusDays = Number(bonusRaw || 0);
           const perk = perkRaw.join(":").trim();
           if (!Number.isFinite(days) || !Number.isFinite(bonusDays) || days <= 0 || bonusDays < 0 || !perk) {
-            throw new Error(`Некорректная строка loyalty tiers: ${line}`);
+            throw new Error(`Некорректная строка уровней лояльности: ${line}`);
           }
           return { days: Math.floor(days), bonus_days: Math.floor(bonusDays), perk };
         });
@@ -105,9 +105,9 @@ export default function AdminBonusesPage() {
       const out = await adminLoyaltyConfigUpdate(payload);
       setLoyaltyConfig(out.loyalty_config);
       setLoyaltyText((out.loyalty_config.tiers || []).map((row) => `${row.days}:${row.bonus_days}:${row.perk}`).join("\n"));
-      setResult("Loyalty-конфигурация сохранена.");
+      setResult("Конфигурация лояльности сохранена.");
     } catch (err) {
-      setError(String((err as { message?: string })?.message || err || "Ошибка сохранения loyalty-конфига"));
+      setError(String((err as { message?: string })?.message || err || "Ошибка сохранения конфигурации лояльности"));
     } finally {
       setBusy(false);
     }
@@ -117,7 +117,7 @@ export default function AdminBonusesPage() {
     const tgId = Number(loyaltyGrantUser || 0);
     const tierDays = Number(loyaltyGrantTier || 0);
     if (!Number.isFinite(tgId) || tgId <= 0 || !Number.isFinite(tierDays) || tierDays <= 0) {
-      setError("Укажите корректные tg_id и tier days");
+      setError("Укажите корректные tg_id и дни уровня");
       return;
     }
     setBusy(true);
@@ -125,9 +125,9 @@ export default function AdminBonusesPage() {
     setResult("");
     try {
       const out = await adminUserLoyaltyGrant(tgId, tierDays);
-      setResult(`Loyalty-награда выдана: ${out.tier_days} дней для ${tgId}`);
+      setResult(`Награда лояльности выдана: ${out.tier_days} дней для ${tgId}`);
     } catch (err) {
-      setError(String((err as { message?: string })?.message || err || "Не удалось выдать loyalty-награду"));
+      setError(String((err as { message?: string })?.message || err || "Не удалось выдать награду лояльности"));
     } finally {
       setBusy(false);
     }
@@ -144,7 +144,12 @@ export default function AdminBonusesPage() {
     }
   }, [weightsText]);
 
-  const PRESET_OPTIONS = ["balanced", "generous", "conservative", "jackpot"];
+  const PRESET_OPTIONS = [
+    { value: "balanced", label: "сбалансированный" },
+    { value: "generous", label: "щедрый" },
+    { value: "conservative", label: "консервативный" },
+    { value: "jackpot", label: "джекпот" },
+  ];
 
   return (
     <section className="space-y-5">
@@ -152,7 +157,7 @@ export default function AdminBonusesPage() {
         <div className="flex items-center gap-3 mb-1">
           <div className="stat-icon stat-icon-amber"><Dices size={22} /></div>
           <div>
-            <h2 className="font-display text-xl font-bold">Bonuses / Рулетка</h2>
+            <h2 className="font-display text-xl font-bold">Бонусы и рулетка</h2>
             <p className="text-xs text-slate-500">Настройка cooldown и весов выдачи дней бонуса</p>
           </div>
         </div>
@@ -167,19 +172,19 @@ export default function AdminBonusesPage() {
             <>
               <div className="grid gap-4 md:grid-cols-2">
                 <div>
-                  <label className="block text-[10px] uppercase tracking-[0.1em] text-slate-500 mb-1.5">Preset</label>
+                  <label className="block text-[10px] uppercase tracking-[0.1em] text-slate-500 mb-1.5">Профиль</label>
                   <div className="flex flex-wrap gap-1.5">
-                    {PRESET_OPTIONS.map((p) => (
+                    {PRESET_OPTIONS.map((preset) => (
                       <button
-                        key={p}
+                        key={preset.value}
                         type="button"
-                        className={`haptic-tap rounded-xl px-3 py-1.5 text-xs font-semibold transition-all ${config.preset === p
+                        className={`haptic-tap rounded-xl px-3 py-1.5 text-xs font-semibold transition-all ${config.preset === preset.value
                             ? "bg-violet-600 text-white shadow-md shadow-violet-600/20"
                             : "outline-btn"
                           }`}
-                        onClick={() => setConfig((prev) => (prev ? { ...prev, preset: p } : prev))}
+                        onClick={() => setConfig((prev) => (prev ? { ...prev, preset: preset.value } : prev))}
                       >
-                        {p}
+                        {preset.label}
                       </button>
                     ))}
                   </div>
@@ -203,7 +208,7 @@ export default function AdminBonusesPage() {
               </div>
 
               <div>
-                <label className="block text-[10px] uppercase tracking-[0.1em] text-slate-500 mb-1.5">Weights (days:weight, по строкам)</label>
+                <label className="block text-[10px] uppercase tracking-[0.1em] text-slate-500 mb-1.5">Веса (days:weight, по строкам)</label>
                 <textarea
                   rows={7}
                   value={weightsText}
@@ -275,14 +280,14 @@ export default function AdminBonusesPage() {
       <div className="grid gap-5 xl:grid-cols-[1fr,0.8fr]">
         <article className="glass-card p-5 space-y-4">
           <div className="flex items-center justify-between gap-2">
-            <h3 className="font-display text-lg font-bold">Loyalty без оттока</h3>
+            <h3 className="font-display text-lg font-bold">Лояльность без оттока</h3>
             <label className="inline-flex items-center gap-2 text-xs">
               <input
                 type="checkbox"
                 checked={Boolean(loyaltyConfig?.enabled)}
                 onChange={(event) => setLoyaltyConfig((prev) => (prev ? { ...prev, enabled: event.target.checked } : prev))}
               />
-              enabled
+              включено
             </label>
           </div>
           <p className="text-xs text-slate-500">Формат строк: `days:bonus_days:perk`</p>
@@ -293,13 +298,13 @@ export default function AdminBonusesPage() {
             className="w-full rounded-xl border border-violet-200/50 bg-white/80 px-3 py-2 font-mono text-xs outline-none dark:border-violet-500/30 dark:bg-slate-900/70 resize-none"
             placeholder={"30:1:priority_support\n90:3:fast_resync\n180:7:vip_queue"}
           />
-          <button className="outline-btn rounded-xl px-4 py-2 text-sm font-semibold" type="button" onClick={() => void saveLoyalty()} disabled={busy}>
-            Сохранить loyalty
+            <button className="outline-btn rounded-xl px-4 py-2 text-sm font-semibold" type="button" onClick={() => void saveLoyalty()} disabled={busy}>
+            Сохранить лояльность
           </button>
         </article>
 
         <article className="glass-card p-5 space-y-3">
-          <h3 className="font-display text-lg font-bold">Ручной grant tier</h3>
+          <h3 className="font-display text-lg font-bold">Ручная выдача tier</h3>
           <input
             value={loyaltyGrantUser}
             onChange={(event) => setLoyaltyGrantUser(event.target.value)}
@@ -309,11 +314,11 @@ export default function AdminBonusesPage() {
           <input
             value={loyaltyGrantTier}
             onChange={(event) => setLoyaltyGrantTier(event.target.value)}
-            placeholder="tier days (30/90/180)"
+            placeholder="дни уровня (30/90/180)"
             className="w-full rounded-xl border border-violet-200/50 bg-white/80 px-3 py-2 text-sm outline-none dark:border-violet-500/30 dark:bg-slate-900/70"
           />
           <button className="outline-btn rounded-xl px-4 py-2 text-sm font-semibold" type="button" onClick={() => void grantLoyalty()} disabled={busy}>
-            Выдать tier
+            Выдать уровень
           </button>
         </article>
       </div>

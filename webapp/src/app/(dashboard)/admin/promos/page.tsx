@@ -24,6 +24,26 @@ import { CreditCard, Gift, Package, PencilLine, Plus, RefreshCw, Tag, Trash2 } f
 import { useEffect, useState } from "react";
 import { fmtRuDate } from "../nav";
 
+function parsePromptBool(raw: string, fallback: boolean): boolean {
+  const value = String(raw || "").trim().toLowerCase();
+  if (!value) return fallback;
+  if (["no", "n", "нет", "не", "0", "false", "off"].includes(value)) return false;
+  if (["yes", "y", "да", "1", "true", "on"].includes(value)) return true;
+  return fallback;
+}
+
+function promoTypeLabel(value: string): string {
+  if (String(value).toLowerCase() === "discount") return "скидка";
+  if (String(value).toLowerCase() === "days") return "дни";
+  return value;
+}
+
+function campaignTypeLabel(value: string): string {
+  if (String(value).toLowerCase() === "promo") return "промо";
+  if (String(value).toLowerCase() === "gift") return "подарок";
+  return value;
+}
+
 export default function AdminPromosPage() {
   const [promos, setPromos] = useState<AdminPromoRow[]>([]);
   const [giftCodes, setGiftCodes] = useState<AdminGiftCodeRow[]>([]);
@@ -99,13 +119,13 @@ export default function AdminPromosPage() {
   };
 
   const createPlan = async (): Promise<void> => {
-    const code = window.prompt("Plan code:", "new_plan");
+    const code = window.prompt("Код тарифа:", "new_plan");
     if (!code?.trim()) return;
-    const label = window.prompt("Label:", "Новый тариф") || "Новый тариф";
-    const amountRub = Number(window.prompt("RUB:", "299") || 299);
-    const amountStars = Number(window.prompt("Stars:", "299") || 299);
-    const days = Number(window.prompt("Days:", "30") || 30);
-    const deviceLimit = Number(window.prompt("Device limit:", "5") || 5);
+    const label = window.prompt("Название тарифа:", "Новый тариф") || "Новый тариф";
+    const amountRub = Number(window.prompt("Цена (RUB):", "299") || 299);
+    const amountStars = Number(window.prompt("Цена (Stars):", "299") || 299);
+    const days = Number(window.prompt("Дней доступа:", "30") || 30);
+    const deviceLimit = Number(window.prompt("Лимит устройств:", "5") || 5);
     setBusy(true);
     try {
       await adminPlanCreate({ code: code.trim(), label: label.trim(), amount_rub: Math.max(1, Math.floor(amountRub || 1)), amount_stars: Math.max(0, Math.floor(amountStars || 0)), days: Math.max(1, Math.floor(days || 1)), device_limit: Math.max(1, Math.floor(deviceLimit || 1)), is_active: true });
@@ -116,15 +136,15 @@ export default function AdminPromosPage() {
   };
 
   const createCampaign = async (): Promise<void> => {
-    const name = window.prompt("Название кампании:", "Spring promo");
+    const name = window.prompt("Название кампании:", "Весеннее промо");
     if (!name?.trim()) return;
     const campaignType = window.prompt("Тип (promo/gift):", "promo") || "promo";
     const targetValue = window.prompt("Target value (код promo или card_type gift):", "WELCOME14");
     if (!targetValue?.trim()) return;
-    const segment = window.prompt("Segment (all/free/paid/manual/active/inactive):", "all") || "all";
+    const segment = window.prompt("Сегмент (all/free/paid/manual/active/inactive):", "all") || "all";
     const startsAt = window.prompt("starts_at (ISO, optional):", "") || null;
     const endsAt = window.prompt("ends_at (ISO, optional):", "") || null;
-    const maxActivations = Number(window.prompt("max activations (0 = unlimited):", "0") || 0);
+    const maxActivations = Number(window.prompt("Лимит активаций (0 = без лимита):", "0") || 0);
     setBusy(true);
     try {
       await adminCampaignCreate({
@@ -147,11 +167,11 @@ export default function AdminPromosPage() {
   const editCampaign = async (row: AdminIncentiveCampaign): Promise<void> => {
     const name = window.prompt("Название:", row.name || "");
     if (!name?.trim()) return;
-    const segment = window.prompt("Segment:", row.segment || "all") || "all";
+    const segment = window.prompt("Сегмент:", row.segment || "all") || "all";
     const startsAt = window.prompt("starts_at (ISO|empty):", row.starts_at || "") || null;
     const endsAt = window.prompt("ends_at (ISO|empty):", row.ends_at || "") || null;
     const maxActivations = Number(window.prompt("max activations:", String(row.max_activations || 0)) || row.max_activations || 0);
-    const activeRaw = window.prompt("is_active (yes/no):", row.is_active ? "yes" : "no") || "yes";
+    const activeRaw = window.prompt("Активна? (да/нет):", row.is_active ? "да" : "нет") || "";
     setBusy(true);
     try {
       await adminCampaignUpdate(row.id, {
@@ -160,7 +180,7 @@ export default function AdminPromosPage() {
         starts_at: startsAt || null,
         ends_at: endsAt || null,
         max_activations: Math.max(0, Math.floor(maxActivations || 0)),
-        is_active: activeRaw.trim().toLowerCase() !== "no",
+        is_active: parsePromptBool(activeRaw, Boolean(row.is_active)),
       });
       await load();
     } catch (err) {
@@ -200,16 +220,16 @@ export default function AdminPromosPage() {
       {/* ── Actions bar ────────────────────────────────── */}
       <div className="glass-card p-4 flex flex-wrap items-center gap-3">
         <button className="btn-primary rounded-xl px-4 py-2 text-sm font-semibold inline-flex items-center gap-1.5" type="button" onClick={() => void createPromo()} disabled={busy}>
-          <Plus size={14} /> Promo
+          <Plus size={14} /> Промокод
         </button>
         <button className="outline-btn rounded-xl px-4 py-2 text-sm font-semibold inline-flex items-center gap-1.5" type="button" onClick={() => void createGiftCode()} disabled={busy}>
-          <Gift size={14} /> Gift code
+          <Gift size={14} /> Gift-код
         </button>
         <button className="outline-btn rounded-xl px-4 py-2 text-sm font-semibold inline-flex items-center gap-1.5" type="button" onClick={() => void createPlan()} disabled={busy}>
-          <CreditCard size={14} /> Plan
+          <CreditCard size={14} /> Тариф
         </button>
         <button className="outline-btn rounded-xl px-4 py-2 text-sm font-semibold inline-flex items-center gap-1.5" type="button" onClick={() => void createCampaign()} disabled={busy}>
-          <Package size={14} /> Campaign
+          <Package size={14} /> Кампания
         </button>
         <button className="outline-btn rounded-xl px-4 py-2 text-sm font-semibold inline-flex items-center gap-1.5 ml-auto" type="button" onClick={() => void load()}>
           <RefreshCw size={14} /> Обновить
@@ -222,7 +242,7 @@ export default function AdminPromosPage() {
         <article className="glass-card p-5">
           <div className="flex items-center gap-3 mb-4">
             <div className="stat-icon stat-icon-violet"><Tag size={20} /></div>
-            <h2 className="font-display text-xl font-bold">Promo codes</h2>
+          <h2 className="font-display text-xl font-bold">Промокоды</h2>
           </div>
           <div className="space-y-2">
             {promos.length === 0 ? (
@@ -231,12 +251,12 @@ export default function AdminPromosPage() {
             {promos.map((promo) => (
               <div key={promo.code} className="node-card flex items-center justify-between gap-3">
                 <div className="flex items-center gap-3 min-w-0">
-                  <button type="button" className="haptic-tap" onClick={() => void copyText(promo.code)} title="Copy">
+                  <button type="button" className="haptic-tap" onClick={() => void copyText(promo.code)} title="Копировать">
                     <span className="badge badge-violet font-mono">{promo.code}</span>
                   </button>
                   <div>
-                    <span className={`badge ${promo.promo_type === "discount" ? "badge-warning" : "badge-info"}`}>{promo.promo_type}</span>
-                    <span className="ml-2 text-xs text-slate-500">val: <strong>{promo.value}</strong> • uses: <strong>{promo.uses_left}</strong></span>
+                    <span className={`badge ${promo.promo_type === "discount" ? "badge-warning" : "badge-info"}`}>{promoTypeLabel(promo.promo_type)}</span>
+                    <span className="ml-2 text-xs text-slate-500">значение: <strong>{promo.value}</strong> • использований: <strong>{promo.uses_left}</strong></span>
                   </div>
                 </div>
                 <div className="flex gap-1.5 flex-shrink-0">
@@ -252,7 +272,7 @@ export default function AdminPromosPage() {
         <article className="glass-card p-5">
           <div className="flex items-center gap-3 mb-4">
             <div className="stat-icon stat-icon-amber"><Gift size={20} /></div>
-            <h2 className="font-display text-xl font-bold">Gift codes</h2>
+          <h2 className="font-display text-xl font-bold">Gift-коды</h2>
           </div>
           <div className="space-y-2">
             {giftCodes.length === 0 ? (
@@ -261,7 +281,7 @@ export default function AdminPromosPage() {
             {giftCodes.map((gift) => (
               <div key={gift.code} className="node-card flex items-center justify-between gap-3">
                 <div className="flex items-center gap-3 min-w-0">
-                  <button type="button" className="haptic-tap" onClick={() => void copyText(gift.code)} title="Copy">
+                  <button type="button" className="haptic-tap" onClick={() => void copyText(gift.code)} title="Копировать">
                     <span className="badge badge-violet font-mono">{gift.code}</span>
                   </button>
                   <div className="text-xs text-slate-500">
@@ -270,7 +290,7 @@ export default function AdminPromosPage() {
                   </div>
                 </div>
                 <span className={`badge ${gift.redeemed_at ? "badge-success" : "badge-danger"}`}>
-                  {gift.redeemed_at ? fmtRuDate(gift.redeemed_at) : "not used"}
+                  {gift.redeemed_at ? fmtRuDate(gift.redeemed_at) : "не использован"}
                 </span>
               </div>
             ))}
@@ -282,7 +302,7 @@ export default function AdminPromosPage() {
       <article className="glass-card p-5">
         <div className="flex items-center gap-3 mb-4">
           <div className="stat-icon stat-icon-blue"><Package size={20} /></div>
-          <h2 className="font-display text-xl font-bold">Campaigns</h2>
+          <h2 className="font-display text-xl font-bold">Кампании</h2>
         </div>
         <div className="space-y-2">
           {campaigns.length === 0 ? (
@@ -294,13 +314,13 @@ export default function AdminPromosPage() {
                 <div className="flex flex-wrap items-center gap-2">
                   <span className="badge badge-violet">#{row.id}</span>
                   <strong className="text-sm">{row.name}</strong>
-                  <span className={`badge ${row.is_active ? "badge-success" : "badge-danger"}`}>{row.is_active ? "active" : "off"}</span>
-                  <span className="badge badge-info">{row.campaign_type}</span>
+                  <span className={`badge ${row.is_active ? "badge-success" : "badge-danger"}`}>{row.is_active ? "активна" : "выкл"}</span>
+                  <span className="badge badge-info">{campaignTypeLabel(row.campaign_type)}</span>
                 </div>
                 <p className="mt-1 text-xs text-slate-500">
-                  target: <strong>{row.target_value}</strong> • segment: <strong>{row.segment}</strong> • activations: <strong>{row.activations_count}/{row.max_activations || "∞"}</strong>
+                  цель: <strong>{row.target_value}</strong> • сегмент: <strong>{row.segment}</strong> • активации: <strong>{row.activations_count}/{row.max_activations || "∞"}</strong>
                 </p>
-                <p className="text-[10px] text-slate-400">window: {fmtRuDate(row.starts_at)} → {fmtRuDate(row.ends_at)}</p>
+                <p className="text-[10px] text-slate-400">период: {fmtRuDate(row.starts_at)} → {fmtRuDate(row.ends_at)}</p>
               </div>
               <div className="flex gap-1.5 flex-shrink-0">
                 <button className="outline-btn rounded-lg px-2 py-1 text-[10px] font-semibold inline-flex items-center gap-1" type="button" onClick={() => void editCampaign(row)} disabled={busy}><PencilLine size={10} /></button>
@@ -315,7 +335,7 @@ export default function AdminPromosPage() {
       <article className="glass-card p-5">
         <div className="flex items-center gap-3 mb-4">
           <div className="stat-icon stat-icon-emerald"><Package size={20} /></div>
-          <h2 className="font-display text-xl font-bold">Plans</h2>
+          <h2 className="font-display text-xl font-bold">Тарифы</h2>
         </div>
         <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
           {plans.map((plan) => (
@@ -323,7 +343,7 @@ export default function AdminPromosPage() {
               <div className="flex items-center justify-between gap-2 mb-3">
                 <span className="badge badge-violet font-mono">{plan.code}</span>
                 <button type="button" className={`badge haptic-tap ${plan.is_active ? "badge-success" : "badge-danger"}`} onClick={() => void togglePlan(plan.code, plan.is_active)} disabled={busy}>
-                  {plan.is_active ? "active" : "disabled"}
+                  {plan.is_active ? "активен" : "выключен"}
                 </button>
               </div>
               <p className="text-lg font-bold">{plan.label}</p>
@@ -337,7 +357,7 @@ export default function AdminPromosPage() {
                   <p className="font-bold">{plan.amount_stars}</p>
                 </div>
                 <div className="rounded-lg bg-white/50 p-1.5 dark:bg-white/5">
-                  <p className="text-slate-400">Days</p>
+                  <p className="text-slate-400">Дней</p>
                   <p className="font-bold">{plan.days}</p>
                 </div>
               </div>

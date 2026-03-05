@@ -59,8 +59,16 @@ def main() -> int:
         _run(ssh, "DEBIAN_FRONTEND=noninteractive apt-get install -y sqlite3 >/dev/null 2>&1 || true", timeout=900)
         sql = (
             "select code,"
+            " enabled,"
+            " host,"
             " vless_port,"
             " inbound_id,"
+            " round(coalesce(health_score,0),2) as health_score,"
+            " coalesce(is_healthy,0) as is_healthy,"
+            " coalesce(panel_latency_ms,0) as panel_latency_ms,"
+            " round(coalesce(panel_error_rate,0),3) as panel_error_rate,"
+            " coalesce(active_clients,0) as active_clients,"
+            " coalesce(last_health_at,'') as last_health_at,"
             " length(coalesce(panel_base_url,'')) as base_len,"
             " length(coalesce(panel_path,'')) as path_len,"
             " length(coalesce(panel_user,'')) as user_len,"

@@ -21,10 +21,18 @@ function parseTgIds(input: string): number[] {
 
 const SEGMENT_OPTIONS = [
   { value: "all_active", label: "Все активные", icon: "🌐" },
-  { value: "free", label: "Free", icon: "🆓" },
-  { value: "paid", label: "Paid", icon: "💎" },
-  { value: "expired", label: "Expired", icon: "⏰" },
+  { value: "free", label: "Фри", icon: "🆓" },
+  { value: "paid", label: "Платные", icon: "💎" },
+  { value: "expired", label: "Истёкшие", icon: "⏰" },
 ];
+
+function parsePromptBool(raw: string, fallback: boolean): boolean {
+  const value = String(raw || "").trim().toLowerCase();
+  if (!value) return fallback;
+  if (["no", "n", "нет", "не", "0", "false", "off"].includes(value)) return false;
+  if (["yes", "y", "да", "1", "true", "on"].includes(value)) return true;
+  return fallback;
+}
 
 export default function AdminBroadcastPage() {
   const [segment, setSegment] = useState("all_active");
@@ -41,7 +49,7 @@ export default function AdminBroadcastPage() {
       const rows = await adminLiveUpdates(true);
       setLiveUpdates(rows);
     } catch (err) {
-      setError(String((err as { message?: string })?.message || err || "Ошибка загрузки live-updates"));
+      setError(String((err as { message?: string })?.message || err || "Ошибка загрузки новостей"));
     }
   };
 
@@ -87,9 +95,9 @@ export default function AdminBroadcastPage() {
         sort_order: Number.isFinite(sortOrder) ? Math.max(0, Math.floor(sortOrder)) : 100,
       });
       await loadLiveUpdates();
-      setResult("Live-update добавлен.");
+      setResult("Новость добавлена.");
     } catch (err) {
-      setError(String((err as { message?: string })?.message || err || "Не удалось создать live-update"));
+      setError(String((err as { message?: string })?.message || err || "Не удалось создать новость"));
     } finally {
       setBusy(false);
     }
@@ -100,7 +108,7 @@ export default function AdminBroadcastPage() {
     if (!title?.trim()) return;
     const summary = window.prompt("Описание:", row.summary || "") || "";
     const link = window.prompt("Ссылка:", row.link || "") || "";
-    const activeRaw = window.prompt("Активно? (yes/no)", row.is_active ? "yes" : "no") || "yes";
+    const activeRaw = window.prompt("Активно? (да/нет)", row.is_active ? "да" : "нет") || "";
     setBusy(true);
     setError("");
     try {
@@ -108,27 +116,27 @@ export default function AdminBroadcastPage() {
         title: title.trim(),
         summary: summary.trim(),
         link: link.trim(),
-        is_active: activeRaw.trim().toLowerCase() !== "no",
+        is_active: parsePromptBool(activeRaw, Boolean(row.is_active)),
       });
       await loadLiveUpdates();
-      setResult(`Live-update #${row.id} обновлен.`);
+      setResult(`Новость #${row.id} обновлена.`);
     } catch (err) {
-      setError(String((err as { message?: string })?.message || err || "Не удалось обновить live-update"));
+      setError(String((err as { message?: string })?.message || err || "Не удалось обновить новость"));
     } finally {
       setBusy(false);
     }
   };
 
   const removeLiveUpdate = async (id: number): Promise<void> => {
-    if (!window.confirm(`Удалить live-update #${id}?`)) return;
+    if (!window.confirm(`Удалить новость #${id}?`)) return;
     setBusy(true);
     setError("");
     try {
       await adminLiveUpdateDelete(id);
       await loadLiveUpdates();
-      setResult(`Live-update #${id} удален.`);
+      setResult(`Новость #${id} удалена.`);
     } catch (err) {
-      setError(String((err as { message?: string })?.message || err || "Не удалось удалить live-update"));
+      setError(String((err as { message?: string })?.message || err || "Не удалось удалить новость"));
     } finally {
       setBusy(false);
     }
@@ -143,7 +151,7 @@ export default function AdminBroadcastPage() {
             <Megaphone size={20} />
           </div>
           <div>
-            <h2 className="font-display text-xl font-bold">Broadcast</h2>
+            <h2 className="font-display text-xl font-bold">Рассылка</h2>
             <p className="text-xs text-slate-500">Массовая рассылка пользователям</p>
           </div>
         </div>
@@ -220,7 +228,7 @@ export default function AdminBroadcastPage() {
               <Newspaper size={20} />
             </div>
             <div>
-              <h3 className="font-display text-xl font-bold">Live updates</h3>
+              <h3 className="font-display text-xl font-bold">Новости в приложении</h3>
               <p className="text-xs text-slate-500">Новости в личном кабинете пользователей</p>
             </div>
           </div>
@@ -241,7 +249,7 @@ export default function AdminBroadcastPage() {
                   <p className="mt-1 text-xs text-slate-500 line-clamp-2">{row.summary || "—"}</p>
                 </div>
                 <span className={`badge ${row.is_active ? "badge-success" : "badge-danger"}`}>
-                  {row.is_active ? "active" : "off"}
+                  {row.is_active ? "активно" : "выкл"}
                 </span>
               </div>
               <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
@@ -252,10 +260,10 @@ export default function AdminBroadcastPage() {
                 ) : <span />}
                 <div className="flex gap-1.5">
                   <button className="outline-btn rounded-lg px-2.5 py-1 text-[10px] font-semibold inline-flex items-center gap-1" type="button" onClick={() => void editLiveUpdate(row)} disabled={busy}>
-                    <PencilLine size={10} /> edit
+                    <PencilLine size={10} /> изменить
                   </button>
                   <button className="outline-btn rounded-lg px-2.5 py-1 text-[10px] font-semibold inline-flex items-center gap-1 text-rose-500" type="button" onClick={() => void removeLiveUpdate(row.id)} disabled={busy}>
-                    <Trash2 size={10} /> del
+                    <Trash2 size={10} /> удалить
                   </button>
                 </div>
               </div>
@@ -264,7 +272,7 @@ export default function AdminBroadcastPage() {
           {liveUpdates.length === 0 ? (
             <div className="empty-state col-span-full">
               <Newspaper size={28} />
-              <p className="text-xs">Нет live-updates</p>
+              <p className="text-xs">Новостей пока нет</p>
             </div>
           ) : null}
         </div>

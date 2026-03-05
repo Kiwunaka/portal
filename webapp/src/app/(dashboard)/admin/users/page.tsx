@@ -54,6 +54,46 @@ function historyBadgeClass(action: string): string {
   return "badge-violet";
 }
 
+function actionLabel(action: string): string {
+  const value = String(action || "").toLowerCase();
+  if (!value) return "—";
+  if (value.includes("regen") || value.includes("rotate")) return "ротация ключа";
+  if (value.includes("reset")) return "сброс трафика";
+  if (value.includes("resync")) return "синхронизация subId";
+  if (value.includes("move") || value.includes("node")) return "перенос между нодами";
+  if (value.includes("disable") || value.includes("block")) return "отключение/блокировка";
+  if (value.includes("enable") || value.includes("unblock")) return "включение/разблокировка";
+  if (value.includes("create")) return "создание";
+  if (value.includes("delete") || value.includes("remove")) return "удаление";
+  if (value.includes("extend")) return "продление";
+  return action;
+}
+
+function riskLevelLabel(level: string): string {
+  const value = String(level || "").toLowerCase();
+  if (["low", "низкий"].includes(value)) return "низкий";
+  if (["medium", "med", "средний"].includes(value)) return "средний";
+  if (["high", "высокий"].includes(value)) return "высокий";
+  if (["critical", "crit", "критический"].includes(value)) return "критический";
+  return value || "низкий";
+}
+
+function panelStateLabel(state: string): string {
+  const value = String(state || "").toLowerCase();
+  if (["ok", "healthy", "fresh"].includes(value)) return "норма";
+  if (["degraded", "stale", "warn", "warning"].includes(value)) return "предупреждение";
+  if (["error", "down", "offline", "fail"].includes(value)) return "ошибка";
+  return value || "неизвестно";
+}
+
+function ticketStatusLabel(status: string): string {
+  const value = String(status || "").toLowerCase().replace(/\s+/g, "_");
+  if (value === "open") return "открыт";
+  if (value === "in_progress") return "в работе";
+  if (value === "closed") return "закрыт";
+  return status || "—";
+}
+
 type DetailTab = "overview" | "keys" | "history" | "audit";
 
 type KeyPolicyDraft = {
@@ -582,7 +622,7 @@ export default function AdminUsersPage() {
               <div className="rounded-xl bg-white/70 p-3 text-sm dark:bg-white/10">
                 <div className="mb-1 flex items-center gap-2">
                   <span className={`badge ${riskClass}`}>риск {Math.round(risk?.score || 0)}</span>
-                  <span className="text-xs text-slate-500">{risk?.level || "низкий"}</span>
+                  <span className="text-xs text-slate-500">{riskLevelLabel(String(risk?.level || ""))}</span>
                 </div>
                 <p className="text-xs">Регенераций: <strong>{risk?.signals?.regen_count ?? 0}</strong></p>
                 <p className="text-xs">Админ-операций с ключами: <strong>{risk?.signals?.admin_key_ops ?? 0}</strong></p>
@@ -654,7 +694,7 @@ export default function AdminUsersPage() {
                       <p>Включённых нод: <strong>{summary.nodes_enabled}</strong></p>
                       <p>Несовпадений subId: <strong>{summary.subid_mismatch_count}</strong></p>
                       <p>Трафик всего: <strong>{fmtTraffic(summary.traffic_total_bytes)}</strong></p>
-                      <p>Состояние панели: <strong>{summary.panel_state || "неизвестно"}</strong></p>
+                      <p>Состояние панели: <strong>{panelStateLabel(String(summary.panel_state || ""))}</strong></p>
                     </div>
                   ) : (
                     <p className="text-xs text-slate-500">Сводка недоступна.</p>
@@ -664,7 +704,7 @@ export default function AdminUsersPage() {
                 <div className="mt-2 space-y-2">
                   {(selected.tickets || []).map((ticket) => (
                     <div key={ticket.id} className="rounded-xl bg-white/70 p-3 text-sm dark:bg-white/10">
-                      <p className="font-medium">#{ticket.id} • {ticket.status_title}</p>
+                      <p className="font-medium">#{ticket.id} • {ticketStatusLabel(ticket.status_title)}</p>
                       <p className="text-xs text-slate-500">{ticket.last_message_preview || "Без сообщений"}</p>
                     </div>
                   ))}
@@ -794,7 +834,7 @@ export default function AdminUsersPage() {
                       {keyHistoryRows.map((row) => (
                         <tr key={row.id} className="border-t border-white/30 dark:border-white/10">
                           <td className="px-2 py-2 whitespace-nowrap">{fmtRuDate(row.created_at)}</td>
-                          <td className="px-2 py-2"><span className={`badge ${historyBadgeClass(row.action)}`}>{row.action}</span></td>
+                          <td className="px-2 py-2"><span className={`badge ${historyBadgeClass(row.action)}`}>{actionLabel(row.action)}</span></td>
                           <td className="px-2 py-2">{row.node_code || "—"}</td>
                           <td className="px-2 py-2">{row.actor_tg_id || "—"}</td>
                           <td className="px-2 py-2 max-w-[260px] truncate">{row.meta ? JSON.stringify(row.meta) : "—"}</td>
@@ -830,7 +870,7 @@ export default function AdminUsersPage() {
                         <tr key={row.id} className="border-t border-white/30 dark:border-white/10">
                           <td className="px-2 py-2 whitespace-nowrap">{fmtRuDate(row.created_at)}</td>
                           <td className="px-2 py-2">{row.actor_tg_id}</td>
-                          <td className="px-2 py-2"><span className="badge badge-violet">{row.action}</span></td>
+                          <td className="px-2 py-2"><span className="badge badge-violet">{actionLabel(row.action)}</span></td>
                           <td className="px-2 py-2 max-w-[280px] truncate">{row.meta ? JSON.stringify(row.meta) : "—"}</td>
                         </tr>
                       ))}

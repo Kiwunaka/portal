@@ -59,6 +59,21 @@ export default function AdminNodesPage() {
     }
   };
 
+  const segmentLabel = (segment: string): string => {
+    if (segment === "active") return "активные";
+    if (segment === "free") return "фри";
+    if (segment === "paid") return "платные";
+    return segment;
+  };
+
+  const metricsStatusLabel = (value?: string | null): string => {
+    const normalized = String(value || "").toLowerCase();
+    if (normalized === "fresh") return "актуально";
+    if (normalized === "stale") return "устарело";
+    if (normalized === "missing") return "нет данных";
+    return normalized || "—";
+  };
+
   return (
     <section className="space-y-5">
       {/* ── Header ───────────────────────────────────── */}
@@ -69,11 +84,11 @@ export default function AdminNodesPage() {
               <Server size={20} />
             </div>
             <div>
-              <h2 className="font-display text-xl font-bold">Node Health & Metrics</h2>
+              <h2 className="font-display text-xl font-bold">Состояние нод и метрики</h2>
               <div className="mt-0.5 flex items-center gap-2">
                 <span className={`status-dot ${status?.status === "fresh" ? "status-dot-online" : "status-dot-warning"}`} />
                 <p className="text-xs text-slate-500">
-                  Timer: <strong>{status?.status || "—"}</strong> • Last sample: {status?.last_sample_at || "—"}
+                  Таймер: <strong>{metricsStatusLabel(status?.status)}</strong> • Последний срез: {status?.last_sample_at || "—"}
                 </p>
               </div>
             </div>
@@ -88,7 +103,7 @@ export default function AdminNodesPage() {
                 disabled={busy}
               >
                 {busy && syncTarget === seg ? <Loader2 size={12} className="animate-spin" /> : <RefreshCw size={12} />}
-                Sync {seg}
+                Синхр. {segmentLabel(seg)}
               </button>
             ))}
             <button className="btn-primary rounded-xl px-4 py-2 text-xs font-semibold inline-flex items-center gap-1.5" type="button" onClick={() => void load()}>
@@ -118,20 +133,20 @@ export default function AdminNodesPage() {
                     <div className="flex items-center gap-1.5 mt-0.5">
                       <span className={`status-dot ${node.is_healthy ? "status-dot-online" : "status-dot-offline"}`} />
                       <span className={`badge ${node.is_healthy ? "badge-success" : "badge-danger"}`}>
-                        {node.is_healthy ? "healthy" : "unhealthy"}
+                        {node.is_healthy ? "здорова" : "сбой"}
                       </span>
                     </div>
                   </div>
                 </div>
                 <div className="text-right">
                   <p className="text-2xl font-bold gradient-text">{score.toFixed(1)}</p>
-                  <p className="text-[10px] uppercase tracking-[0.1em] text-slate-500">score</p>
+                  <p className="text-[10px] uppercase tracking-[0.1em] text-slate-500">оценка</p>
                 </div>
               </div>
 
               <div className="mt-4">
                 <div className="flex items-center justify-between text-xs text-slate-500 mb-1.5">
-                  <span>Health</span>
+                  <span>Состояние</span>
                   <span>{Math.round(healthPct)}%</span>
                 </div>
                 <div className="progress-track">
@@ -141,21 +156,21 @@ export default function AdminNodesPage() {
 
               <div className="mt-4 grid grid-cols-3 gap-2 text-center">
                 <div className="rounded-lg bg-white/50 p-2 dark:bg-white/5">
-                  <p className="text-xs text-slate-500">Latency</p>
+                  <p className="text-xs text-slate-500">Задержка</p>
                   <p className="text-sm font-bold">{node.panel_latency_ms ?? "—"}<span className="text-[10px] text-slate-400"> ms</span></p>
                 </div>
                 <div className="rounded-lg bg-white/50 p-2 dark:bg-white/5">
-                  <p className="text-xs text-slate-500">Error</p>
+                  <p className="text-xs text-slate-500">Ошибки</p>
                   <p className="text-sm font-bold">{(node.panel_error_rate * 100).toFixed(1)}<span className="text-[10px] text-slate-400">%</span></p>
                 </div>
                 <div className="rounded-lg bg-white/50 p-2 dark:bg-white/5">
-                  <p className="text-xs text-slate-500">Clients</p>
+                  <p className="text-xs text-slate-500">Клиенты</p>
                   <p className="text-sm font-bold">{node.active_clients}</p>
                 </div>
               </div>
 
               {node.last_health_at ? (
-                <p className="mt-3 text-[10px] text-slate-400 text-right">Last check: {node.last_health_at}</p>
+                <p className="mt-3 text-[10px] text-slate-400 text-right">Проверка: {node.last_health_at}</p>
               ) : null}
             </article>
           );
@@ -175,7 +190,7 @@ export default function AdminNodesPage() {
             <Wifi size={20} />
           </div>
           <div>
-            <h3 className="font-display text-xl font-bold">Traffic GB/day</h3>
+            <h3 className="font-display text-xl font-bold">Трафик (GB/день)</h3>
             <p className="text-xs text-slate-500">Детализация за последние 7 дней</p>
           </div>
         </div>

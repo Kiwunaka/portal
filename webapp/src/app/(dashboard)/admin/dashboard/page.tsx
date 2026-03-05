@@ -239,8 +239,8 @@ export default function AdminDashboardPage() {
                   </div>
                 </div>
                 <div className="mt-2 flex items-center justify-between text-xs text-slate-500">
-                  <span>Latency: {node.panel_latency_ms ?? "—"} ms</span>
-                  <span className="font-medium">{node.active_clients} clients</span>
+                  <span>Задержка: {node.panel_latency_ms ?? "—"} ms</span>
+                  <span className="font-medium">{node.active_clients} клиентов</span>
                 </div>
               </article>
             );

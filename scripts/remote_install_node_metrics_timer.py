@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import os
+import sys
 from pathlib import Path
 
 import paramiko
@@ -31,6 +32,10 @@ def _run(ssh: paramiko.SSHClient, cmd: str, timeout: int = 120) -> tuple[int, st
 
 
 def main() -> int:
+    try:
+        sys.stdout.reconfigure(encoding="utf-8")
+    except Exception:
+        pass
     ap = argparse.ArgumentParser(description="Install and enable portal-node-metrics systemd timer on brain.")
     ap.add_argument("--brain-ip", required=True)
     ap.add_argument("--ssh-user", default="root")
@@ -38,6 +43,7 @@ def main() -> int:
     ap.add_argument("--passwords", default=str(DEFAULT_PASSWORDS))
     ap.add_argument("--workdir", default="/root/portal_bot")
     ap.add_argument("--collector-cmd", default="")
+    ap.add_argument("--run-now", action="store_true", help="Trigger one immediate collection run after timer install.")
     args = ap.parse_args()
 
     password = os.getenv("NODE_PASS_BRAIN", "").strip() or _parse_password(Path(args.passwords))
@@ -66,8 +72,33 @@ def main() -> int:
         _run(ssh, "systemctl daemon-reload", timeout=30)
         _run(ssh, "systemctl enable portal-node-metrics.timer", timeout=30)
         _run(ssh, "systemctl restart portal-node-metrics.timer", timeout=30)
+        if args.run_now:
+            _run(ssh, "systemctl start portal-node-metrics.service", timeout=300)
         code, out, err = _run(ssh, "systemctl is-active portal-node-metrics.timer", timeout=30)
-        print((out.strip() or err.strip()).strip())
+        print(f"timer={((out.strip() or err.strip()).strip() or 'unknown')}")
+        if args.run_now:
+            _, out_last_sqlite, err_last_sqlite = _run(
+                ssh,
+                "sqlite3 /root/portal_bot/portal.db \"select coalesce(max(sampled_at),'') from node_health_samples;\"",
+                timeout=60,
+            )
+            _, out_last_pg, err_last_pg = _run(
+                ssh,
+                "runuser -u postgres -- psql -d portal -tAc \"select coalesce(to_char(max(sampled_at),'YYYY-MM-DD HH24:MI:SS.US'),'') from node_health_samples;\" 2>/dev/null || true",
+                timeout=60,
+            )
+            sqlite_last = (out_last_sqlite.strip() or err_last_sqlite.strip()).strip()
+            pg_last = (out_last_pg.strip() or err_last_pg.strip()).strip()
+            print(f"last_sample_at_postgres={(pg_last or '-')}")
+            print(f"last_sample_at_sqlite={(sqlite_last or '-')}")
+            _, out_svc, err_svc = _run(
+                ssh,
+                "systemctl status portal-node-metrics.service --no-pager -l | head -n 25 || true",
+                timeout=60,
+            )
+            status_text = (out_svc.strip() or err_svc.strip()).strip()
+            if status_text:
+                print(status_text)
         return 0 if code == 0 else 2
     finally:
         ssh.close()

@@ -27,7 +27,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     return (
       <main className="space-y-4">
         <section className="glass-card p-6">
-          <p className="font-mono text-xs uppercase tracking-[0.15em] text-slate-500">admin</p>
+          <p className="font-mono text-xs uppercase tracking-[0.15em] text-slate-500">админ</p>
           <h1 className="mt-2 font-display text-3xl font-bold">Загрузка админ-панели...</h1>
           <div className="mt-4 h-1.5 overflow-hidden rounded-full bg-slate-200/60 dark:bg-slate-800">
             <div className="h-full w-1/3 animate-pulse rounded-full bg-violet-600" />
@@ -41,7 +41,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     return (
       <main className="space-y-4">
         <section className="glass-card p-6">
-          <p className="font-mono text-xs uppercase tracking-[0.15em] text-rose-500">access denied</p>
+          <p className="font-mono text-xs uppercase tracking-[0.15em] text-rose-500">доступ закрыт</p>
           <h1 className="mt-2 font-display text-3xl font-bold">Доступ только для администраторов</h1>
           <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">Перенаправляем в пользовательский раздел.</p>
           <div className="mt-4">
@@ -63,7 +63,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             <Shield size={22} />
           </div>
           <div className="flex-1">
-            <p className="font-mono text-xs uppercase tracking-[0.15em] text-violet-500 dark:text-violet-300">admin / portal</p>
+            <p className="font-mono text-xs uppercase tracking-[0.15em] text-violet-500 dark:text-violet-300">админ / портал</p>
             <h1 className="mt-1 font-display text-3xl font-bold">Панель управления</h1>
             <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">Операции, модерация и настройка конфигурации.</p>
           </div>

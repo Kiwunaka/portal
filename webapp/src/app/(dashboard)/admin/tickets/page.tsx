@@ -6,9 +6,9 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { fmtRuDate } from "../nav";
 
 const STATUS_META: Record<string, { color: string; badge: string; icon: typeof Clock }> = {
-  open: { color: "badge-info", badge: "Open", icon: Inbox },
-  in_progress: { color: "badge-warning", badge: "In progress", icon: Clock },
-  closed: { color: "badge-success", badge: "Closed", icon: CheckCircle },
+  open: { color: "badge-info", badge: "Открыт", icon: Inbox },
+  in_progress: { color: "badge-warning", badge: "В работе", icon: Clock },
+  closed: { color: "badge-success", badge: "Закрыт", icon: CheckCircle },
 };
 
 export default function AdminTicketsPage() {
@@ -86,9 +86,9 @@ export default function AdminTicketsPage() {
             className="flex-1 rounded-xl border border-violet-200/50 bg-white/80 px-3 py-2 text-sm outline-none dark:border-violet-500/30 dark:bg-slate-900/70"
           >
             <option value="">Активные</option>
-            <option value="open">Open</option>
-            <option value="in_progress">In progress</option>
-            <option value="closed">Closed</option>
+            <option value="open">Открыт</option>
+            <option value="in_progress">В работе</option>
+            <option value="closed">Закрыт</option>
           </select>
           <button className="outline-btn rounded-xl px-3 py-2 text-sm font-semibold inline-flex items-center gap-1.5" type="button" onClick={() => void load()}>
             <RefreshCw size={13} />
@@ -177,7 +177,7 @@ export default function AdminTicketsPage() {
                 return (
                   <div key={msg.id} className={`flex ${isAdmin ? "justify-end" : "justify-start"}`}>
                     <div className={`chat-bubble ${isAdmin ? "chat-bubble-admin" : "chat-bubble-user"} text-sm`}>
-                      <p className="text-[10px] uppercase tracking-[0.12em] text-slate-500 mb-1">{msg.sender_role}</p>
+                      <p className="text-[10px] uppercase tracking-[0.12em] text-slate-500 mb-1">{isAdmin ? "оператор" : "пользователь"}</p>
                       <p className="whitespace-pre-line">{msg.body}</p>
                       <p className="mt-1.5 text-[10px] text-slate-400 text-right">{fmtRuDate(msg.created_at)}</p>
                     </div>
