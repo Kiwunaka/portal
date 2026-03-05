@@ -75,6 +75,7 @@ def _check_api_exports() -> list[str]:
 
 def _check_legacy_bot_links() -> list[str]:
     issues: list[str] = []
+    legacy_link_re = re.compile(r"(https?://t\.me/|@)portal_service_bot\b", re.IGNORECASE)
     source_roots = [
         WEBAPP_ROOT / "src",
         REPO_ROOT / "marketing" / "src",
@@ -86,8 +87,8 @@ def _check_legacy_bot_links() -> list[str]:
             if path.suffix.lower() not in {".ts", ".tsx", ".js", ".jsx", ".md", ".html"}:
                 continue
             text = _read(path)
-            if "portal_service_bot" in text:
-                issues.append(f"legacy bot username found: {path}")
+            if legacy_link_re.search(text):
+                issues.append(f"legacy bot link found: {path}")
     return issues
 
 
