@@ -94,7 +94,7 @@ export default function CheckoutPage() {
   const activeColumn = planColumn(activePlan?.code || "");
 
   const botFallback = useMemo(() => {
-    const bot = process.env.NEXT_PUBLIC_TELEGRAM_BOT_URL || "https://t.me/net4ebur_bot";
+    const bot = process.env.NEXT_PUBLIC_TELEGRAM_BOT_URL || "https://t.me/portal_privacy_bot";
     return bot;
   }, []);
 
@@ -237,3 +237,4 @@ export default function CheckoutPage() {
     </main>
   );
 }
+

@@ -15,7 +15,7 @@ load_dotenv(dotenv_path=Path(__file__).resolve().with_name(".env"))
 load_dotenv()
 
 LEGACY_BOT_TOKEN = (os.getenv("LEGACY_BOT_TOKEN") or "").strip()
-TARGET_URL = (os.getenv("BOT_MIGRATION_TARGET_URL") or "https://t.me/net4ebur_bot").strip()
+TARGET_URL = (os.getenv("BOT_MIGRATION_TARGET_URL") or "https://t.me/portal_privacy_bot").strip()
 
 if not LEGACY_BOT_TOKEN:
     raise SystemExit("LEGACY_BOT_TOKEN is empty")

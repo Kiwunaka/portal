@@ -21,13 +21,14 @@ export default function TelegramLoginWidget() {
     if (!host) return;
     host.innerHTML = "";
 
-    const rawBot = String(
-      process.env.NEXT_PUBLIC_TELEGRAM_LOGIN_BOT || process.env.VITE_TELEGRAM_LOGIN_BOT || "net4ebur_bot",
-    )
+    const rawBot = String(process.env.NEXT_PUBLIC_TELEGRAM_LOGIN_BOT || process.env.VITE_TELEGRAM_LOGIN_BOT || "")
       .trim()
       .replace(/^@+/, "")
       .toLowerCase();
-    const botName = rawBot === "portal_service_bot" ? "net4ebur_bot" : rawBot || "net4ebur_bot";
+    const botName = rawBot === "portal_service_bot" ? "portal_privacy_bot" : rawBot;
+    if (!botName) {
+      return;
+    }
     authDoneRef.current = false;
 
     window.onTelegramAuth = (user: TelegramWebLoginPayload) => {

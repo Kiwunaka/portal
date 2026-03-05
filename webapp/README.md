@@ -30,6 +30,7 @@ npm run build
 - `NEXT_PUBLIC_TELEGRAM_BOT_URL`
 
 Для плавного перехода поддерживаются fallback-переменные `VITE_*`.
+Если `NEXT_PUBLIC_TELEGRAM_LOGIN_BOT` не задан, Telegram Login Widget не рендерится, и остаётся вход через deep-link бота.
 
 ## Auth flows
 

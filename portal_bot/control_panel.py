@@ -215,6 +215,114 @@ class ControlPanel:
                 results[candidates[0].code] = True
         return results
 
+    async def get_user_key_snapshots(
+        self,
+        *,
+        tg_id: int,
+        node_codes: list[str] | None = None,
+    ) -> list[dict]:
+        nodes = await self.refresh()
+        selected_nodes: list = []
+        seen: set[str] = set()
+        if node_codes:
+            groups = self._requested_node_groups(nodes, node_codes)
+            for _group_key, candidates in groups:
+                for n in candidates:
+                    code = str(getattr(n, "code", "") or "").strip()
+                    if not code or code in seen:
+                        continue
+                    seen.add(code)
+                    selected_nodes.append(n)
+        else:
+            selected_nodes = list(nodes)
+
+        rows: list[dict] = []
+        for n in selected_nodes:
+            code = str(getattr(n, "code", "") or "").strip()
+            client = None
+            runtime = None
+            error = ""
+            try:
+                client = await self._clients[code].find_client_by_tgid(int(tg_id))
+                if client:
+                    runtime = await self._clients[code].get_client_runtime_by_tgid(int(tg_id))
+            except Exception as exc:
+                error = str(exc)[:200]
+            rows.append(
+                {
+                    "node_code": code,
+                    "node_name": str(getattr(n, "name", "") or ""),
+                    "node_host": str(getattr(n, "host", "") or ""),
+                    "node_enabled": bool(getattr(n, "enabled", True)),
+                    "node_healthy": bool(getattr(n, "is_healthy", False)),
+                    "client": client,
+                    "runtime": runtime,
+                    "error": error,
+                }
+            )
+        return rows
+
+    async def _resolve_target_node(self, node_code: str):
+        wanted = str(node_code or "").strip().lower()
+        if not wanted:
+            return None
+        nodes = await self.refresh()
+        for n in nodes:
+            if str(getattr(n, "code", "") or "").strip().lower() == wanted:
+                return n
+        wanted_base = self._node_base(wanted)
+        for n in nodes:
+            if self._node_base(getattr(n, "code", "")) == wanted_base:
+                return n
+        return None
+
+    async def set_user_key_enabled_on_node(
+        self,
+        *,
+        tg_id: int,
+        node_code: str,
+        enable: bool,
+        sub_id: str | None = None,
+    ) -> bool | None:
+        n = await self._resolve_target_node(node_code)
+        if not n:
+            return None
+        code = str(getattr(n, "code", "") or "").strip()
+        try:
+            client = await self._clients[code].find_client_by_tgid(int(tg_id))
+            if not client:
+                return None
+            return bool(await self._clients[code].update_client_enable(client, bool(enable), sub_id=sub_id))
+        except Exception:
+            return False
+
+    async def reset_user_key_traffic_on_node(self, *, tg_id: int, node_code: str) -> bool | None:
+        n = await self._resolve_target_node(node_code)
+        if not n:
+            return None
+        code = str(getattr(n, "code", "") or "").strip()
+        try:
+            client = await self._clients[code].find_client_by_tgid(int(tg_id))
+            if not client:
+                return None
+            return bool(await self._clients[code].reset_client_traffic_by_tgid(int(tg_id)))
+        except Exception:
+            return False
+
+    async def resync_user_key_subid_on_node(self, *, tg_id: int, node_code: str, sub_id: str) -> bool | None:
+        n = await self._resolve_target_node(node_code)
+        if not n:
+            return None
+        code = str(getattr(n, "code", "") or "").strip()
+        try:
+            client = await self._clients[code].find_client_by_tgid(int(tg_id))
+            if not client:
+                return None
+            enable = bool(client.get("enable", True))
+            return bool(await self._clients[code].update_client_enable(client, enable, sub_id=str(sub_id or "")))
+        except Exception:
+            return False
+
     async def add_client(self, user_uuid: str, email: str, sub_type: str, total_gb: int, tg_id: int, sub_token: str | None = None) -> bool:
         """
         Backward compatible signature used by bot.py.

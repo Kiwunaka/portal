@@ -1,4 +1,4 @@
-﻿const TG_FALLBACK = "https://t.me/net4ebur_bot";
+﻿const TG_FALLBACK = "https://t.me/portal_privacy_bot";
 
 const TARGET_URL =
   process.env.NEXT_PUBLIC_PAY_CHECKOUT_URL ||
@@ -53,4 +53,5 @@ export default function OfferPage() {
     </main>
   );
 }
+
 

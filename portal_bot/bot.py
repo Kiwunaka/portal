@@ -176,7 +176,7 @@ load_dotenv()
 
 BOT_TOKEN = os.getenv("BOT_TOKEN")
 ADMIN_ID = int(os.getenv("ADMIN_ID", "0"))
-BOT_USERNAME = (os.getenv("BOT_USERNAME") or "net4ebur_bot").lstrip("@")
+BOT_USERNAME = (os.getenv("BOT_USERNAME") or "portal_privacy_bot").lstrip("@")
 BOT_USERNAME_MD = BOT_USERNAME.replace("_", "\\_")
 
 # Panel
@@ -6633,7 +6633,7 @@ async def admin_start_links_menu(callback: CallbackQuery):
     finally:
         s.close()
 
-    bot_username = (BOT_USERNAME or "net4ebur_bot").lstrip("@")
+    bot_username = (BOT_USERNAME or "portal_privacy_bot").lstrip("@")
     lines = ["🔗 *Launch ссылки*\n"]
     kb_rows: list[list[InlineKeyboardButton]] = []
     if not rows:

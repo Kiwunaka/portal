@@ -28,12 +28,12 @@ function mockUser(isAdmin: boolean) {
       referral_count: 0,
       channel_bonus: { premium_days: 0, claimed_at: null, can_claim: false },
     },
-    referral: { code: "mock", link: "https://t.me/net4ebur_bot?start=ref_mock", bonus_days: 0 },
+    referral: { code: "mock", link: "https://t.me/portal_privacy_bot?start=ref_mock", bonus_days: 0 },
     channel: { username: "portal_privacy", link: "https://t.me/portal_privacy", subscriber: true, speed_bump_active: false },
     actions: {
       open_helpbot: "https://t.me/portal_privacy_helpbot",
       open_channel: "https://t.me/portal_privacy",
-      pay_via_bot: "https://t.me/net4ebur_bot?start=pay",
+      pay_via_bot: "https://t.me/portal_privacy_bot?start=pay",
     },
     points: { available: 0, expiring_soon: 0, monthly_cap: 300, expires_days: 90 },
     features: { haptic: true, lottie: true },
@@ -111,7 +111,7 @@ async function registerApiMocks(page: Page, opts: MockOptions): Promise<void> {
       return json({ wheel_config: { preset: "balanced", cooldown_hours: 168, weights: [{ days: 1, weight: 100 }] } });
     }
     if (path === "/api/admin/campaign-links/build") {
-      return json({ ok: true, bot_start_link: "https://t.me/net4ebur_bot?start=x", checkout_link: "https://portal-privacy.online/webapp/subscription/checkout/", webapp_link: "https://portal-privacy.online/webapp/" });
+      return json({ ok: true, bot_start_link: "https://t.me/portal_privacy_bot?start=x", checkout_link: "https://portal-privacy.online/webapp/subscription/checkout/", webapp_link: "https://portal-privacy.online/webapp/" });
     }
 
     return json({ ok: true });
@@ -146,3 +146,4 @@ test.describe("Admin gate", () => {
     }
   });
 });
+

@@ -21,6 +21,16 @@ const BASE_NAV_ITEMS: NavItem[] = [
   { href: "/support", icon: "support_agent", label: "Поддержка", match: (path) => path.startsWith("/support") },
 ];
 
+const BOT_BASE_URL = String(process.env.NEXT_PUBLIC_TELEGRAM_BOT_URL || "https://t.me/portal_privacy_bot")
+  .trim()
+  .replace(/\/+$/, "");
+const BOT_WEBLOGIN_URL = `${BOT_BASE_URL}${BOT_BASE_URL.includes("?") ? "&" : "?"}start=weblogin`;
+const WEB_WIDGET_BOT = String(process.env.NEXT_PUBLIC_TELEGRAM_LOGIN_BOT || process.env.VITE_TELEGRAM_LOGIN_BOT || "")
+  .trim()
+  .replace(/^@+/, "")
+  .toLowerCase();
+const TELEGRAM_WIDGET_ENABLED = Boolean(WEB_WIDGET_BOT);
+
 function DashboardShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const {
@@ -87,12 +97,16 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
           <h1 className="mt-2 font-display text-4xl font-bold">Вход через Telegram</h1>
           <p className="mt-3 text-sm text-slate-600 dark:text-slate-300">Авторизуйтесь через Telegram Login Widget, чтобы открыть личный кабинет в браузере.</p>
           <div className="mt-5 space-y-3">
-            <TelegramLoginWidget />
+            {TELEGRAM_WIDGET_ENABLED ? (
+              <TelegramLoginWidget />
+            ) : (
+              <p className="text-xs text-slate-500">Telegram Login Widget отключён в конфиге этого окружения.</p>
+            )}
             {webLoginBusy ? <p className="text-xs text-slate-500">Проверяем аккаунт...</p> : null}
             {webLoginError ? <p className="text-xs text-rose-500">{webLoginError}</p> : null}
           </div>
           <div className="mt-6 flex flex-wrap gap-3">
-            <Link href="https://t.me/net4ebur_bot" target="_blank" className="outline-btn rounded-xl px-5 py-2.5 text-sm font-semibold uppercase tracking-[0.12em]">
+            <Link href={BOT_WEBLOGIN_URL} target="_blank" className="outline-btn rounded-xl px-5 py-2.5 text-sm font-semibold uppercase tracking-[0.12em]">
               Открыть бота
             </Link>
             <button className="outline-btn rounded-xl px-5 py-2.5 text-sm font-semibold uppercase tracking-[0.12em]" type="button" onClick={logoutWebSession}>
@@ -280,3 +294,4 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     </PortalSessionProvider>
   );
 }
+

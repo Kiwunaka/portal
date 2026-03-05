@@ -66,7 +66,7 @@ export default function AdminBroadcastPage() {
     const title = window.prompt("Заголовок новости:", "Обновление сервиса");
     if (!title?.trim()) return;
     const summary = window.prompt("Краткое описание:", "Новые улучшения стабильности и скорости") || "";
-    const link = window.prompt("Ссылка:", "https://t.me/net4ebur_bot") || "";
+    const link = window.prompt("Ссылка:", "https://t.me/portal_privacy_bot") || "";
     const sortOrder = Number(window.prompt("Порядок (sort_order):", "100") || 100);
     setBusy(true);
     setError("");
@@ -218,3 +218,4 @@ export default function AdminBroadcastPage() {
     </section>
   );
 }
+

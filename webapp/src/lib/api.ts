@@ -316,8 +316,46 @@ export type AdminUserCard = {
     referral_count: number;
     streak_months: number;
     created_at?: string | null;
+    subscription_url?: string;
+    subscription_token?: string;
   };
   tickets: TicketInfo[];
+  keys?: AdminUserKey[];
+  summary?: {
+    nodes_total: number;
+    nodes_with_client: number;
+    nodes_online: number;
+    nodes_enabled: number;
+    subid_mismatch_count: number;
+    traffic_up_bytes: number;
+    traffic_down_bytes: number;
+    traffic_total_bytes: number;
+    traffic_total_gb: number;
+    panel_state?: "ok" | "error" | string;
+    panel_error?: string | null;
+  };
+};
+
+export type AdminUserKey = {
+  node_code: string;
+  node_name?: string;
+  node_host?: string;
+  exists: boolean;
+  client_uuid?: string;
+  panel_email?: string;
+  enabled: boolean;
+  online?: boolean | null;
+  sub_id?: string;
+  expected_sub_id?: string;
+  sub_id_match?: boolean;
+  up_bytes: number;
+  down_bytes: number;
+  total_bytes: number;
+  total_gb: number;
+  last_online_at?: string | null;
+  last_online_age_seconds?: number | null;
+  vless_link?: string;
+  panel_error?: string | null;
 };
 
 export type AdminNodeHealthRow = {
@@ -792,6 +830,29 @@ export async function adminUsers(q: string, limit = 50, offset = 0): Promise<Adm
 
 export function adminUserCard(tgId: number): Promise<AdminUserCard> {
   return apiFetch<AdminUserCard>(`/api/admin/users/${tgId}`);
+}
+
+export function adminUserKeyToggle(tgId: number, nodeCode: string, enable: boolean): Promise<{ ok: boolean; enabled: boolean }> {
+  return apiFetch(`/api/admin/users/${tgId}/keys/${encodeURIComponent(nodeCode)}/toggle`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ enable }),
+  });
+}
+
+export function adminUserKeyResetTraffic(tgId: number, nodeCode: string): Promise<{ ok: boolean }> {
+  return apiFetch(`/api/admin/users/${tgId}/keys/${encodeURIComponent(nodeCode)}/reset-traffic`, {
+    method: "POST",
+  });
+}
+
+export function adminUserKeyResyncSubId(
+  tgId: number,
+  nodeCode: string,
+): Promise<{ ok: boolean; expected_sub_id?: string }> {
+  return apiFetch(`/api/admin/users/${tgId}/keys/${encodeURIComponent(nodeCode)}/resync-subid`, {
+    method: "POST",
+  });
 }
 
 export function adminUserMessage(tgId: number, text: string): Promise<{ ok: boolean }> {

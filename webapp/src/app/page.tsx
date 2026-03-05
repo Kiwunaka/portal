@@ -6,6 +6,16 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 
+const BOT_BASE_URL = String(process.env.NEXT_PUBLIC_TELEGRAM_BOT_URL || "https://t.me/portal_privacy_bot")
+  .trim()
+  .replace(/\/+$/, "");
+const BOT_WEBLOGIN_URL = `${BOT_BASE_URL}${BOT_BASE_URL.includes("?") ? "&" : "?"}start=weblogin`;
+const WEB_WIDGET_BOT = String(process.env.NEXT_PUBLIC_TELEGRAM_LOGIN_BOT || process.env.VITE_TELEGRAM_LOGIN_BOT || "")
+  .trim()
+  .replace(/^@+/, "")
+  .toLowerCase();
+const TELEGRAM_WIDGET_ENABLED = Boolean(WEB_WIDGET_BOT);
+
 function EntryBody() {
   const router = useRouter();
   const {
@@ -51,7 +61,7 @@ function EntryBody() {
             <button className="btn-primary rounded-xl px-5 py-2.5 text-sm font-semibold uppercase tracking-[0.12em]" onClick={() => void refresh()} type="button">
               Повторить
             </button>
-            <Link href="https://t.me/net4ebur_bot?start=weblogin" target="_blank" className="outline-btn rounded-xl px-5 py-2.5 text-sm font-semibold uppercase tracking-[0.12em]">
+            <Link href={BOT_WEBLOGIN_URL} target="_blank" className="outline-btn rounded-xl px-5 py-2.5 text-sm font-semibold uppercase tracking-[0.12em]">
               Войти через бота
             </Link>
           </div>
@@ -66,16 +76,20 @@ function EntryBody() {
         <p className="font-mono text-xs uppercase tracking-[0.16em] text-violet-600 dark:text-violet-300">[web login]</p>
         <h1 className="mt-2 font-display text-4xl font-bold">Вход в личный кабинет PORTAL</h1>
         <p className="mt-3 text-sm text-slate-600 dark:text-slate-300">
-          В Telegram вход произойдёт автоматически по initData. В браузере авторизуйтесь через Telegram Login Widget.
+          В Telegram вход произойдёт автоматически по initData. В браузере используйте вход через бота, либо Login Widget если он включён в конфиге.
         </p>
 
         {webLoginRequired ? (
           <div className="mt-5 space-y-3">
-            <TelegramLoginWidget />
+            {TELEGRAM_WIDGET_ENABLED ? (
+              <TelegramLoginWidget />
+            ) : (
+              <p className="text-xs text-slate-500">Telegram Login Widget отключён в конфиге этого окружения.</p>
+            )}
             {webLoginBusy ? <p className="text-xs text-slate-500">Проверяем аккаунт...</p> : null}
             {webLoginError ? <p className="text-xs text-rose-500">{webLoginError}</p> : null}
             <Link
-              href="https://t.me/net4ebur_bot?start=weblogin"
+              href={BOT_WEBLOGIN_URL}
               target="_blank"
               className="outline-btn inline-flex rounded-xl px-4 py-2 text-xs font-semibold uppercase tracking-[0.12em]"
             >
@@ -87,7 +101,7 @@ function EntryBody() {
         )}
 
         <div className="mt-6 flex flex-wrap gap-3">
-          <Link href="https://t.me/net4ebur_bot?start=weblogin" target="_blank" className="outline-btn rounded-xl px-5 py-2.5 text-sm font-semibold uppercase tracking-[0.12em]">
+          <Link href={BOT_WEBLOGIN_URL} target="_blank" className="outline-btn rounded-xl px-5 py-2.5 text-sm font-semibold uppercase tracking-[0.12em]">
             Войти через бота
           </Link>
           <Link href="/dashboard/" className="btn-primary rounded-xl px-5 py-2.5 text-sm font-semibold uppercase tracking-[0.12em]">

@@ -41,7 +41,7 @@ from tickets_repo import (
 
 HELP_BOT_TOKEN = (os.getenv("HELP_BOT_TOKEN") or "").strip()
 ADMIN_ID = int(os.getenv("ADMIN_ID", "0"))
-MAIN_BOT_USERNAME = (os.getenv("BOT_USERNAME") or "net4ebur_bot").lstrip("@")
+MAIN_BOT_USERNAME = (os.getenv("BOT_USERNAME") or "portal_privacy_bot").lstrip("@")
 HELPBOT_START_MEDIA_PATH = (os.getenv("HELPBOT_START_MEDIA_PATH") or "").strip()
 HELPBOT_START_MEDIA_TYPE = (os.getenv("HELPBOT_START_MEDIA_TYPE") or "photo").strip().lower()
 

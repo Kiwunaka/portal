@@ -79,7 +79,7 @@ export default function SubscriptionPage() {
           <Link href="/subscription/checkout/" className="btn-primary rounded-xl px-6 py-3 text-sm font-semibold uppercase tracking-[0.12em]">
             Открыть оплату
           </Link>
-          <Link href="https://t.me/net4ebur_bot" target="_blank" className="outline-btn rounded-xl px-6 py-3 text-sm font-semibold uppercase tracking-[0.12em]">
+          <Link href="https://t.me/portal_privacy_bot" target="_blank" className="outline-btn rounded-xl px-6 py-3 text-sm font-semibold uppercase tracking-[0.12em]">
             Оплатить через бота
           </Link>
         </div>
@@ -138,3 +138,4 @@ export default function SubscriptionPage() {
     </main>
   );
 }
+

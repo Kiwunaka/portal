@@ -120,7 +120,7 @@ FREE_SPEED_LIMIT_KBPS = env_int("FREE_SPEED_LIMIT_KBPS", 6250)
 SUPPORT_USERNAME = (os.getenv("SUPPORT_USERNAME") or "portal_privacy_helpbot").lstrip("@")
 SUPPORT_USERNAME = (os.getenv("SUPPORT_BOT_USERNAME") or SUPPORT_USERNAME).lstrip("@")
 PUBLIC_CHANNEL = (os.getenv("PUBLIC_CHANNEL") or "portal_privacy").lstrip("@")
-BOT_USERNAME = (os.getenv("BOT_USERNAME") or "net4ebur_bot").lstrip("@")
+BOT_USERNAME = (os.getenv("BOT_USERNAME") or "portal_privacy_bot").lstrip("@")
 REFERRAL_BONUS_DAYS = env_int("REFERRAL_BONUS_DAYS", 15)
 CHANNEL_PREMIUM_DAYS = env_int("CHANNEL_PREMIUM_DAYS", 10)
 OPENING_PREMIUM_DAYS = max(1, env_int("OPENING_PREMIUM_DAYS", 14))
@@ -740,6 +740,10 @@ class ManualUserExtendRequest(BaseModel):
 
 class ManualUserBlockRequest(BaseModel):
     blocked: bool = True
+
+
+class AdminUserKeyToggleIn(BaseModel):
+    enable: bool
 
 
 def _plan_total_gb(user: User) -> int:
@@ -3653,6 +3657,114 @@ async def admin_users(
         s.close()
 
 
+def _admin_subscription_url(user: User) -> str:
+    token = str(getattr(user, "sub_token", "") or "").strip()
+    token_or_id = token or str(int(user.tg_id))
+    return f"{Settings.PUBLIC_API_BASE_URL.rstrip('/')}/s8Kx2mP7qR4wT/{token_or_id}"
+
+
+def _bytes_to_gb(value: int) -> float:
+    return round(float(max(0, int(value or 0))) / float(1024**3), 3)
+
+
+async def _admin_user_keys_state(user: User, *, nodes: list) -> dict[str, Any]:
+    allowed_nodes = _nodes_for_user(user, nodes)
+    allowed_by_code = {str(getattr(n, "code", "") or ""): n for n in allowed_nodes}
+    expected_sub_id = str(getattr(user, "sub_token", "") or user.tg_id)
+    panel_rows: list[dict] = []
+    panel_error = ""
+
+    panel = ControlPanel()
+    try:
+        await panel.login()
+        panel_rows = await panel.get_user_key_snapshots(
+            tg_id=int(user.tg_id),
+            node_codes=[str(code) for code in allowed_by_code.keys() if str(code).strip()],
+        )
+    except Exception as exc:
+        panel_error = str(exc)[:200]
+    finally:
+        await panel.close()
+
+    keys: list[dict[str, Any]] = []
+    online_count = 0
+    enabled_count = 0
+    total_up = 0
+    total_down = 0
+    mismatch_count = 0
+
+    for row in panel_rows:
+        code = str(row.get("node_code") or "").strip()
+        node = allowed_by_code.get(code)
+        client = row.get("client") or {}
+        runtime = row.get("runtime") or {}
+        exists = bool(client)
+        current_sub_id = str(client.get("subId", "") or "")
+        sub_id_match = bool(exists and current_sub_id == expected_sub_id)
+        enabled = bool(runtime.get("enable", client.get("enable", False))) if exists else False
+        online_raw = runtime.get("online") if isinstance(runtime, dict) else None
+        online = bool(online_raw) if online_raw is not None else None
+        up = int((runtime or {}).get("up", 0) or 0)
+        down = int((runtime or {}).get("down", 0) or 0)
+        total = int((runtime or {}).get("total", up + down) or (up + down))
+        last_online_at = str((runtime or {}).get("last_online_at") or "") or None
+        last_online_age_seconds = (runtime or {}).get("last_online_age_seconds")
+        link = (
+            _generate_vless_link(user_uuid=str(user.uuid or ""), node=node, name=_node_label_ru(node.code, node.name))
+            if node and str(user.uuid or "").strip()
+            else ""
+        )
+        if online is True:
+            online_count += 1
+        if enabled:
+            enabled_count += 1
+        if exists and not sub_id_match:
+            mismatch_count += 1
+        total_up += up
+        total_down += down
+        keys.append(
+            {
+                "node_code": code,
+                "node_name": str(getattr(node, "name", row.get("node_name", "")) or ""),
+                "node_host": str(getattr(node, "host", row.get("node_host", "")) or ""),
+                "exists": exists,
+                "client_uuid": str(client.get("id", "") or ""),
+                "panel_email": str(client.get("email", "") or ""),
+                "enabled": enabled,
+                "online": online,
+                "sub_id": current_sub_id,
+                "expected_sub_id": expected_sub_id,
+                "sub_id_match": sub_id_match,
+                "up_bytes": up,
+                "down_bytes": down,
+                "total_bytes": total,
+                "total_gb": _bytes_to_gb(total),
+                "last_online_at": last_online_at,
+                "last_online_age_seconds": int(last_online_age_seconds) if last_online_age_seconds is not None else None,
+                "vless_link": link,
+                "panel_error": str(row.get("error", "") or "")[:200] or None,
+            }
+        )
+
+    keys.sort(key=lambda item: str(item.get("node_code") or ""))
+    return {
+        "keys": keys,
+        "summary": {
+            "nodes_total": int(len(keys)),
+            "nodes_with_client": int(sum(1 for k in keys if bool(k.get("exists")))),
+            "nodes_online": int(online_count),
+            "nodes_enabled": int(enabled_count),
+            "subid_mismatch_count": int(mismatch_count),
+            "traffic_up_bytes": int(total_up),
+            "traffic_down_bytes": int(total_down),
+            "traffic_total_bytes": int(total_up + total_down),
+            "traffic_total_gb": _bytes_to_gb(total_up + total_down),
+            "panel_state": "error" if panel_error else "ok",
+            "panel_error": panel_error or None,
+        },
+    }
+
+
 @app.get("/api/admin/users/{tg_id}")
 async def admin_user_card(tg_id: int, x_telegram_init_data: str = Header(default="")) -> dict:
     _require_admin(x_telegram_init_data)
@@ -3662,26 +3774,35 @@ async def admin_user_card(tg_id: int, x_telegram_init_data: str = Header(default
         if not user:
             raise HTTPException(status_code=404, detail="User not found")
         tickets = list_user_tickets(s, tg_id, limit=20)
-        return {
-            "user": {
-                "tg_id": int(user.tg_id),
-                "username": user.username,
-                "display_name": getattr(user, "display_name", None),
-                "sub_type": user.sub_type,
-                "is_active": bool(user.is_active),
-                "is_manual": bool(getattr(user, "is_manual", False) or int(user.tg_id) < 0 or (user.sub_type or "").upper() == "MANUAL"),
-                "expiry_at": _safe_iso(user.expiry_at),
-                "stars_paid": int(user.stars_paid or 0),
-                "total_gb": int(user.total_gb or 0),
-                "trial_used": bool(user.trial_used),
-                "referral_count": int(user.referral_count or 0),
-                "streak_months": int(user.streak_months or 0),
-                "created_at": _safe_iso(user.created_at),
-            },
-            "tickets": [_ticket_row(t, list_ticket_messages(s, t.id, limit=1)) for t in tickets],
+        nodes = enabled_nodes(s)
+        sub_token = str(getattr(user, "sub_token", "") or "").strip()
+        user_payload = {
+            "tg_id": int(user.tg_id),
+            "username": user.username,
+            "display_name": getattr(user, "display_name", None),
+            "sub_type": user.sub_type,
+            "is_active": bool(user.is_active),
+            "is_manual": bool(getattr(user, "is_manual", False) or int(user.tg_id) < 0 or (user.sub_type or "").upper() == "MANUAL"),
+            "expiry_at": _safe_iso(user.expiry_at),
+            "stars_paid": int(user.stars_paid or 0),
+            "total_gb": int(user.total_gb or 0),
+            "trial_used": bool(user.trial_used),
+            "referral_count": int(user.referral_count or 0),
+            "streak_months": int(user.streak_months or 0),
+            "created_at": _safe_iso(user.created_at),
+            "subscription_url": _admin_subscription_url(user),
+            "subscription_token": sub_token,
         }
+        ticket_payload = [_ticket_row(t, list_ticket_messages(s, t.id, limit=1)) for t in tickets]
     finally:
         s.close()
+
+    keys_state = await _admin_user_keys_state(user, nodes=nodes)
+    return {
+        "user": user_payload,
+        "tickets": ticket_payload,
+        **keys_state,
+    }
 
 
 @app.post("/api/admin/users/manual")
@@ -3860,6 +3981,131 @@ async def admin_regenerate_manual_token(tg_id: int, x_telegram_init_data: str = 
         "ok": True,
         "subscription_url": f"{Settings.PUBLIC_API_BASE_URL.rstrip('/')}/s8Kx2mP7qR4wT/{sub_token}",
         "sync_ok": bool(sync_ok),
+    }
+
+
+@app.post("/api/admin/users/{tg_id}/keys/{node_code}/toggle")
+async def admin_user_key_toggle(
+    tg_id: int,
+    node_code: str,
+    payload: AdminUserKeyToggleIn,
+    x_telegram_init_data: str = Header(default=""),
+) -> dict:
+    actor = int(_require_admin(x_telegram_init_data).get("id", 0))
+    s = SessionLocal()
+    try:
+        user = s.query(User).filter(User.tg_id == int(tg_id)).first()
+        if not user:
+            raise HTTPException(status_code=404, detail="User not found")
+        expected_sub_id = str(getattr(user, "sub_token", "") or user.tg_id)
+    finally:
+        s.close()
+
+    panel = ControlPanel()
+    try:
+        await panel.login()
+        changed = await panel.set_user_key_enabled_on_node(
+            tg_id=int(tg_id),
+            node_code=str(node_code or ""),
+            enable=bool(payload.enable),
+            sub_id=expected_sub_id,
+        )
+    finally:
+        await panel.close()
+
+    if changed is None:
+        raise HTTPException(status_code=404, detail="Key not found on target node")
+    if not changed:
+        raise HTTPException(status_code=502, detail="Panel update failed")
+
+    _audit_admin(
+        actor_tg_id=actor,
+        action="admin_user_key_toggle",
+        target_tg_id=int(tg_id),
+        meta={"node_code": str(node_code or ""), "enable": bool(payload.enable)},
+    )
+    return {"ok": True, "tg_id": int(tg_id), "node_code": str(node_code or ""), "enabled": bool(payload.enable)}
+
+
+@app.post("/api/admin/users/{tg_id}/keys/{node_code}/reset-traffic")
+async def admin_user_key_reset_traffic(
+    tg_id: int,
+    node_code: str,
+    x_telegram_init_data: str = Header(default=""),
+) -> dict:
+    actor = int(_require_admin(x_telegram_init_data).get("id", 0))
+    s = SessionLocal()
+    try:
+        user = s.query(User).filter(User.tg_id == int(tg_id)).first()
+        if not user:
+            raise HTTPException(status_code=404, detail="User not found")
+    finally:
+        s.close()
+
+    panel = ControlPanel()
+    try:
+        await panel.login()
+        changed = await panel.reset_user_key_traffic_on_node(tg_id=int(tg_id), node_code=str(node_code or ""))
+    finally:
+        await panel.close()
+
+    if changed is None:
+        raise HTTPException(status_code=404, detail="Key not found on target node")
+    if not changed:
+        raise HTTPException(status_code=502, detail="Panel reset failed")
+
+    _audit_admin(
+        actor_tg_id=actor,
+        action="admin_user_key_reset_traffic",
+        target_tg_id=int(tg_id),
+        meta={"node_code": str(node_code or "")},
+    )
+    return {"ok": True, "tg_id": int(tg_id), "node_code": str(node_code or "")}
+
+
+@app.post("/api/admin/users/{tg_id}/keys/{node_code}/resync-subid")
+async def admin_user_key_resync_subid(
+    tg_id: int,
+    node_code: str,
+    x_telegram_init_data: str = Header(default=""),
+) -> dict:
+    actor = int(_require_admin(x_telegram_init_data).get("id", 0))
+    s = SessionLocal()
+    try:
+        user = s.query(User).filter(User.tg_id == int(tg_id)).first()
+        if not user:
+            raise HTTPException(status_code=404, detail="User not found")
+        expected_sub_id = str(getattr(user, "sub_token", "") or user.tg_id)
+    finally:
+        s.close()
+
+    panel = ControlPanel()
+    try:
+        await panel.login()
+        changed = await panel.resync_user_key_subid_on_node(
+            tg_id=int(tg_id),
+            node_code=str(node_code or ""),
+            sub_id=expected_sub_id,
+        )
+    finally:
+        await panel.close()
+
+    if changed is None:
+        raise HTTPException(status_code=404, detail="Key not found on target node")
+    if not changed:
+        raise HTTPException(status_code=502, detail="Panel subId sync failed")
+
+    _audit_admin(
+        actor_tg_id=actor,
+        action="admin_user_key_resync_subid",
+        target_tg_id=int(tg_id),
+        meta={"node_code": str(node_code or "")},
+    )
+    return {
+        "ok": True,
+        "tg_id": int(tg_id),
+        "node_code": str(node_code or ""),
+        "expected_sub_id": expected_sub_id,
     }
 
 
@@ -4276,7 +4522,7 @@ async def admin_start_links(x_telegram_init_data: str = Header(default=""), incl
         if not include_inactive:
             q = q.filter(StartLink.is_active == True)
         rows = q.order_by(StartLink.updated_at.desc(), StartLink.id.desc()).limit(500).all()
-        bot_username = (BOT_USERNAME or "net4ebur_bot").lstrip("@")
+        bot_username = (BOT_USERNAME or "portal_privacy_bot").lstrip("@")
         return {
             "start_links": [
                 {
@@ -4420,7 +4666,7 @@ async def admin_campaign_links_build(payload: AdminCampaignLinksBuildIn, x_teleg
         start_payload = f"campaign_{campaign}"
     if start_payload and len(start_payload) > 64:
         raise HTTPException(status_code=400, detail="Telegram start payload exceeds 64 chars")
-    bot_username = (BOT_USERNAME or "net4ebur_bot").lstrip("@")
+    bot_username = (BOT_USERNAME or "portal_privacy_bot").lstrip("@")
     bot_start_link = f"https://t.me/{bot_username}" + (f"?start={start_payload}" if start_payload else "")
 
     base_checkout = _public_checkout_url() or f"https://{(Settings.PUBLIC_WEB_DOMAIN or 'portal-privacy.online').strip().strip('/')}/checkout/"

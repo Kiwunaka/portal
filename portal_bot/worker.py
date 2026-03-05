@@ -27,7 +27,7 @@ from pay_attempts_service import find_abandoned_candidates, mark_abandoned, mark
 logger = logging.getLogger(__name__)
 
 
-BOT_USERNAME = (os.getenv("BOT_USERNAME") or "net4ebur_bot").lstrip("@")
+BOT_USERNAME = (os.getenv("BOT_USERNAME") or "portal_privacy_bot").lstrip("@")
 SUPPORT_USERNAME = (os.getenv("SUPPORT_BOT_USERNAME") or os.getenv("SUPPORT_USERNAME") or "portal_privacy_helpbot").lstrip("@")
 FREE_TOTAL_GB = int(os.getenv("FREE_TOTAL_GB", "30"))
 PUBLIC_CHANNEL = (os.getenv("PUBLIC_CHANNEL") or "portal_privacy").lstrip("@")
