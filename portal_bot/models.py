@@ -187,6 +187,89 @@ class AdminAudit(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
 
 
+class KeyActionHistory(Base):
+    __tablename__ = "key_action_history"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    tg_id = Column(BigInteger, index=True, nullable=False)
+    node_code = Column(String(32), index=True, nullable=True)
+    action = Column(String(64), nullable=False)
+    actor_tg_id = Column(BigInteger, nullable=True)
+    source = Column(String(32), default="admin", nullable=False)
+    meta = Column(Text, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+
+
+class UserKeyPolicy(Base):
+    __tablename__ = "user_key_policy"
+    __table_args__ = (UniqueConstraint("tg_id", "node_code", name="uq_user_key_policy_tg_node"),)
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    tg_id = Column(BigInteger, index=True, nullable=False)
+    node_code = Column(String(32), index=True, nullable=False)
+    burst_mbps = Column(Integer, nullable=True)
+    soft_cap_gb = Column(Integer, nullable=True)
+    hard_cap_gb = Column(Integer, nullable=True)
+    notify_soft = Column(Boolean, default=True, nullable=False)
+    notify_hard = Column(Boolean, default=True, nullable=False)
+    auto_disable_on_hard = Column(Boolean, default=True, nullable=False)
+    updated_by = Column(BigInteger, nullable=True)
+    updated_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+
+
+class ReferralBonusQueue(Base):
+    __tablename__ = "referral_bonus_queue"
+    __table_args__ = (
+        UniqueConstraint(
+            "order_id",
+            "referrer_tg_id",
+            "referred_tg_id",
+            name="uq_referral_bonus_queue_order_pair",
+        ),
+    )
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    referrer_tg_id = Column(BigInteger, index=True, nullable=False)
+    referred_tg_id = Column(BigInteger, index=True, nullable=False)
+    order_id = Column(String(128), index=True, nullable=False)
+    queued_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    ready_at = Column(DateTime, nullable=False)
+    status = Column(String(24), default="pending", nullable=False)
+    processed_at = Column(DateTime, nullable=True)
+    meta = Column(Text, nullable=True)
+
+
+class IncentiveCampaign(Base):
+    __tablename__ = "incentive_campaigns"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    name = Column(String(120), nullable=False)
+    campaign_type = Column(String(16), nullable=False)  # promo | gift
+    target_value = Column(String(64), nullable=False)   # promo code or gift card type
+    segment = Column(String(32), default="all_active", nullable=False)
+    starts_at = Column(DateTime, nullable=True)
+    ends_at = Column(DateTime, nullable=True)
+    max_activations = Column(Integer, default=-1, nullable=False)
+    activations_count = Column(Integer, default=0, nullable=False)
+    auto_disable = Column(Boolean, default=True, nullable=False)
+    is_active = Column(Boolean, default=True, nullable=False)
+    created_by = Column(BigInteger, nullable=True)
+    metadata_json = Column(Text, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    updated_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+
+
+class RewardClaim(Base):
+    __tablename__ = "reward_claims"
+    __table_args__ = (UniqueConstraint("tg_id", "reward_key", name="uq_reward_claim_tg_key"),)
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    tg_id = Column(BigInteger, index=True, nullable=False)
+    reward_key = Column(String(64), nullable=False)
+    meta = Column(Text, nullable=True)
+    claimed_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+
+
 class SupportTicket(Base):
     __tablename__ = "support_tickets"
 

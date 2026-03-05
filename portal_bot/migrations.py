@@ -571,6 +571,118 @@ def run_migrations(engine: Engine) -> None:
             )
         )
 
+        conn.execute(
+            text(
+                """
+                CREATE TABLE IF NOT EXISTS key_action_history (
+                  id INTEGER PRIMARY KEY AUTOINCREMENT,
+                  tg_id BIGINT NOT NULL,
+                  node_code VARCHAR(32),
+                  action VARCHAR(64) NOT NULL,
+                  actor_tg_id BIGINT,
+                  source VARCHAR(32) DEFAULT 'admin',
+                  meta TEXT,
+                  created_at DATETIME NOT NULL
+                );
+                """
+            )
+        )
+        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_key_action_history_tg_id ON key_action_history(tg_id);"))
+        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_key_action_history_node_code ON key_action_history(node_code);"))
+        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_key_action_history_created_at ON key_action_history(created_at);"))
+
+        conn.execute(
+            text(
+                """
+                CREATE TABLE IF NOT EXISTS user_key_policy (
+                  id INTEGER PRIMARY KEY AUTOINCREMENT,
+                  tg_id BIGINT NOT NULL,
+                  node_code VARCHAR(32) NOT NULL,
+                  burst_mbps INTEGER,
+                  soft_cap_gb INTEGER,
+                  hard_cap_gb INTEGER,
+                  notify_soft BOOLEAN DEFAULT 1,
+                  notify_hard BOOLEAN DEFAULT 1,
+                  auto_disable_on_hard BOOLEAN DEFAULT 1,
+                  updated_by BIGINT,
+                  updated_at DATETIME NOT NULL
+                );
+                """
+            )
+        )
+        conn.execute(text("CREATE UNIQUE INDEX IF NOT EXISTS uq_user_key_policy_tg_node ON user_key_policy(tg_id, node_code);"))
+        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_user_key_policy_tg_id ON user_key_policy(tg_id);"))
+        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_user_key_policy_node_code ON user_key_policy(node_code);"))
+
+        conn.execute(
+            text(
+                """
+                CREATE TABLE IF NOT EXISTS referral_bonus_queue (
+                  id INTEGER PRIMARY KEY AUTOINCREMENT,
+                  referrer_tg_id BIGINT NOT NULL,
+                  referred_tg_id BIGINT NOT NULL,
+                  order_id VARCHAR(128) NOT NULL,
+                  queued_at DATETIME NOT NULL,
+                  ready_at DATETIME NOT NULL,
+                  status VARCHAR(24) DEFAULT 'pending',
+                  processed_at DATETIME,
+                  meta TEXT
+                );
+                """
+            )
+        )
+        conn.execute(
+            text(
+                "CREATE UNIQUE INDEX IF NOT EXISTS uq_referral_bonus_queue_order_pair "
+                "ON referral_bonus_queue(order_id, referrer_tg_id, referred_tg_id);"
+            )
+        )
+        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_referral_bonus_queue_ready_at ON referral_bonus_queue(ready_at);"))
+        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_referral_bonus_queue_status ON referral_bonus_queue(status);"))
+
+        conn.execute(
+            text(
+                """
+                CREATE TABLE IF NOT EXISTS incentive_campaigns (
+                  id INTEGER PRIMARY KEY AUTOINCREMENT,
+                  name VARCHAR(120) NOT NULL,
+                  campaign_type VARCHAR(16) NOT NULL,
+                  target_value VARCHAR(64) NOT NULL,
+                  segment VARCHAR(32) DEFAULT 'all_active',
+                  starts_at DATETIME,
+                  ends_at DATETIME,
+                  max_activations INTEGER DEFAULT -1,
+                  activations_count INTEGER DEFAULT 0,
+                  auto_disable BOOLEAN DEFAULT 1,
+                  is_active BOOLEAN DEFAULT 1,
+                  created_by BIGINT,
+                  metadata_json TEXT,
+                  created_at DATETIME NOT NULL,
+                  updated_at DATETIME NOT NULL
+                );
+                """
+            )
+        )
+        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_incentive_campaigns_type_target ON incentive_campaigns(campaign_type, target_value);"))
+        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_incentive_campaigns_is_active ON incentive_campaigns(is_active);"))
+        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_incentive_campaigns_ends_at ON incentive_campaigns(ends_at);"))
+
+        conn.execute(
+            text(
+                """
+                CREATE TABLE IF NOT EXISTS reward_claims (
+                  id INTEGER PRIMARY KEY AUTOINCREMENT,
+                  tg_id BIGINT NOT NULL,
+                  reward_key VARCHAR(64) NOT NULL,
+                  meta TEXT,
+                  claimed_at DATETIME NOT NULL
+                );
+                """
+            )
+        )
+        conn.execute(text("CREATE UNIQUE INDEX IF NOT EXISTS uq_reward_claim_tg_key ON reward_claims(tg_id, reward_key);"))
+        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_reward_claims_tg_id ON reward_claims(tg_id);"))
+
         # SQLite does not enforce VARCHAR length, so legacy gift card code storage
         # already accepts the newer PORTAL-XXXX-XXXX format without table rebuild.
 
@@ -762,6 +874,123 @@ def _run_postgres_migrations(engine: Engine) -> None:
                 """
             )
         )
+
+        conn.execute(
+            text(
+                """
+                CREATE TABLE IF NOT EXISTS key_action_history (
+                  id SERIAL PRIMARY KEY,
+                  tg_id BIGINT NOT NULL,
+                  node_code VARCHAR(32),
+                  action VARCHAR(64) NOT NULL,
+                  actor_tg_id BIGINT,
+                  source VARCHAR(32) DEFAULT 'admin',
+                  meta TEXT,
+                  created_at TIMESTAMP NOT NULL
+                );
+                """
+            )
+        )
+        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_key_action_history_tg_id ON key_action_history(tg_id);"))
+        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_key_action_history_node_code ON key_action_history(node_code);"))
+        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_key_action_history_created_at ON key_action_history(created_at);"))
+
+        conn.execute(
+            text(
+                """
+                CREATE TABLE IF NOT EXISTS user_key_policy (
+                  id SERIAL PRIMARY KEY,
+                  tg_id BIGINT NOT NULL,
+                  node_code VARCHAR(32) NOT NULL,
+                  burst_mbps INTEGER,
+                  soft_cap_gb INTEGER,
+                  hard_cap_gb INTEGER,
+                  notify_soft BOOLEAN DEFAULT TRUE,
+                  notify_hard BOOLEAN DEFAULT TRUE,
+                  auto_disable_on_hard BOOLEAN DEFAULT TRUE,
+                  updated_by BIGINT,
+                  updated_at TIMESTAMP NOT NULL
+                );
+                """
+            )
+        )
+        conn.execute(
+            text(
+                "CREATE UNIQUE INDEX IF NOT EXISTS uq_user_key_policy_tg_node "
+                "ON user_key_policy(tg_id, node_code);"
+            )
+        )
+        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_user_key_policy_tg_id ON user_key_policy(tg_id);"))
+        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_user_key_policy_node_code ON user_key_policy(node_code);"))
+
+        conn.execute(
+            text(
+                """
+                CREATE TABLE IF NOT EXISTS referral_bonus_queue (
+                  id SERIAL PRIMARY KEY,
+                  referrer_tg_id BIGINT NOT NULL,
+                  referred_tg_id BIGINT NOT NULL,
+                  order_id VARCHAR(128) NOT NULL,
+                  queued_at TIMESTAMP NOT NULL,
+                  ready_at TIMESTAMP NOT NULL,
+                  status VARCHAR(24) DEFAULT 'pending',
+                  processed_at TIMESTAMP,
+                  meta TEXT
+                );
+                """
+            )
+        )
+        conn.execute(
+            text(
+                "CREATE UNIQUE INDEX IF NOT EXISTS uq_referral_bonus_queue_order_pair "
+                "ON referral_bonus_queue(order_id, referrer_tg_id, referred_tg_id);"
+            )
+        )
+        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_referral_bonus_queue_ready_at ON referral_bonus_queue(ready_at);"))
+        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_referral_bonus_queue_status ON referral_bonus_queue(status);"))
+
+        conn.execute(
+            text(
+                """
+                CREATE TABLE IF NOT EXISTS incentive_campaigns (
+                  id SERIAL PRIMARY KEY,
+                  name VARCHAR(120) NOT NULL,
+                  campaign_type VARCHAR(16) NOT NULL,
+                  target_value VARCHAR(64) NOT NULL,
+                  segment VARCHAR(32) DEFAULT 'all_active',
+                  starts_at TIMESTAMP,
+                  ends_at TIMESTAMP,
+                  max_activations INTEGER DEFAULT -1,
+                  activations_count INTEGER DEFAULT 0,
+                  auto_disable BOOLEAN DEFAULT TRUE,
+                  is_active BOOLEAN DEFAULT TRUE,
+                  created_by BIGINT,
+                  metadata_json TEXT,
+                  created_at TIMESTAMP NOT NULL,
+                  updated_at TIMESTAMP NOT NULL
+                );
+                """
+            )
+        )
+        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_incentive_campaigns_type_target ON incentive_campaigns(campaign_type, target_value);"))
+        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_incentive_campaigns_is_active ON incentive_campaigns(is_active);"))
+        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_incentive_campaigns_ends_at ON incentive_campaigns(ends_at);"))
+
+        conn.execute(
+            text(
+                """
+                CREATE TABLE IF NOT EXISTS reward_claims (
+                  id SERIAL PRIMARY KEY,
+                  tg_id BIGINT NOT NULL,
+                  reward_key VARCHAR(64) NOT NULL,
+                  meta TEXT,
+                  claimed_at TIMESTAMP NOT NULL
+                );
+                """
+            )
+        )
+        conn.execute(text("CREATE UNIQUE INDEX IF NOT EXISTS uq_reward_claim_tg_key ON reward_claims(tg_id, reward_key);"))
+        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_reward_claims_tg_id ON reward_claims(tg_id);"))
 
         # Seed default retention templates for admin editing (idempotent).
         _seed_retention_templates(conn, dialect="postgresql")

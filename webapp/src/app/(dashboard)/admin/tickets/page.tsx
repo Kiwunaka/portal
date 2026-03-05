@@ -1,8 +1,15 @@
 "use client";
 
 import { adminTicketReply, adminTicketStatus, adminTickets, type TicketInfo } from "@/lib/api";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { CheckCircle, Clock, Inbox, Loader2, MessageCircle, RefreshCw, Send } from "lucide-react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { fmtRuDate } from "../nav";
+
+const STATUS_META: Record<string, { color: string; badge: string; icon: typeof Clock }> = {
+  open: { color: "badge-info", badge: "Open", icon: Inbox },
+  in_progress: { color: "badge-warning", badge: "In progress", icon: Clock },
+  closed: { color: "badge-success", badge: "Closed", icon: CheckCircle },
+};
 
 export default function AdminTicketsPage() {
   const [statusFilter, setStatusFilter] = useState("");
@@ -11,6 +18,7 @@ export default function AdminTicketsPage() {
   const [reply, setReply] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const messagesEnd = useRef<HTMLDivElement>(null);
 
   const selected = useMemo(() => tickets.find((t) => t.id === selectedId) || null, [selectedId, tickets]);
 
@@ -30,6 +38,10 @@ export default function AdminTicketsPage() {
   useEffect(() => {
     void load();
   }, [load]);
+
+  useEffect(() => {
+    messagesEnd.current?.scrollIntoView({ behavior: "smooth" });
+  }, [selected?.messages]);
 
   const sendReply = async (): Promise<void> => {
     if (!selected || !reply.trim()) return;
@@ -58,88 +70,149 @@ export default function AdminTicketsPage() {
     }
   };
 
+  const selectedStatus = selected?.status_title?.toLowerCase().replace(/\s+/g, "_") || "open";
+
   return (
-    <section className="grid gap-4 xl:grid-cols-[0.95fr,1.05fr]">
+    <section className="grid gap-4 xl:grid-cols-[0.9fr,1.1fr]">
+      {/* ── Ticket list ────────────────────────────────── */}
       <article className="glass-card p-4">
         <div className="mb-3 flex flex-wrap items-center gap-2">
+          <div className="stat-icon stat-icon-amber">
+            <MessageCircle size={18} />
+          </div>
           <select
             value={statusFilter}
             onChange={(event) => setStatusFilter(event.target.value)}
-            className="rounded-xl border border-violet-200/50 bg-white/80 px-3 py-2 text-sm outline-none dark:border-violet-500/30 dark:bg-slate-900/70"
+            className="flex-1 rounded-xl border border-violet-200/50 bg-white/80 px-3 py-2 text-sm outline-none dark:border-violet-500/30 dark:bg-slate-900/70"
           >
             <option value="">Активные</option>
             <option value="open">Open</option>
             <option value="in_progress">In progress</option>
             <option value="closed">Closed</option>
           </select>
-          <button className="outline-btn rounded-xl px-4 py-2 text-sm font-semibold" type="button" onClick={() => void load()}>
-            Обновить
+          <button className="outline-btn rounded-xl px-3 py-2 text-sm font-semibold inline-flex items-center gap-1.5" type="button" onClick={() => void load()}>
+            <RefreshCw size={13} />
           </button>
         </div>
         {error ? <p className="mb-2 text-sm text-rose-500">{error}</p> : null}
-        <div className="max-h-[64vh] space-y-2 overflow-auto">
-          {tickets.map((ticket) => (
-            <button
-              key={ticket.id}
-              type="button"
-              onClick={() => setSelectedId(ticket.id)}
-              className={`w-full rounded-xl px-3 py-3 text-left ${selectedId === ticket.id ? "bg-violet-500/15" : "bg-white/70 dark:bg-white/10"}`}
-            >
-              <div className="flex items-center justify-between gap-2">
-                <strong>#{ticket.id}</strong>
-                <span className="text-xs text-slate-500">{ticket.status_title}</span>
-              </div>
-              <p className="mt-1 text-sm">{ticket.subject || "Без темы"}</p>
-              <p className="mt-1 text-xs text-slate-500">{ticket.last_message_preview || "Нет сообщений"}</p>
-            </button>
-          ))}
+        <div className="max-h-[64vh] space-y-1.5 overflow-auto">
+          {tickets.length === 0 ? (
+            <div className="empty-state">
+              <Inbox size={32} />
+              <p className="text-sm">Нет тикетов</p>
+            </div>
+          ) : null}
+          {tickets.map((ticket) => {
+            const tStatus = ticket.status_title?.toLowerCase().replace(/\s+/g, "_") || "open";
+            const meta = STATUS_META[tStatus] || STATUS_META.open;
+            return (
+              <button
+                key={ticket.id}
+                type="button"
+                onClick={() => setSelectedId(ticket.id)}
+                className={`haptic-tap w-full rounded-xl px-4 py-3 text-left transition-all ${selectedId === ticket.id ? "stat-card" : "bg-white/60 hover:bg-white/80 dark:bg-white/5 dark:hover:bg-white/10"}`}
+              >
+                <div className="flex items-center justify-between gap-2">
+                  <span className="flex items-center gap-2">
+                    <span className="text-sm font-bold">#{ticket.id}</span>
+                  </span>
+                  <span className={`badge ${meta.color}`}>{meta.badge}</span>
+                </div>
+                <p className="mt-1.5 text-sm font-medium">{ticket.subject || "Без темы"}</p>
+                <p className="mt-1 text-xs text-slate-500 line-clamp-1">{ticket.last_message_preview || "Нет сообщений"}</p>
+              </button>
+            );
+          })}
         </div>
       </article>
 
+      {/* ── Ticket detail ──────────────────────────────── */}
       <article className="glass-card p-4">
         {!selected ? (
-          <p className="text-sm text-slate-500">Выберите тикет в левом списке.</p>
+          <div className="empty-state min-h-[300px]">
+            <MessageCircle size={36} />
+            <p className="text-sm">Выберите тикет в левом списке</p>
+          </div>
         ) : (
           <>
-            <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+            {/* Header */}
+            <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
               <div>
-                <h2 className="font-display text-2xl font-semibold">Тикет #{selected.id}</h2>
-                <p className="text-xs text-slate-500">Обновлен: {fmtRuDate(selected.updated_at)}</p>
+                <h2 className="font-display text-2xl font-bold">Тикет #{selected.id}</h2>
+                <p className="mt-0.5 text-xs text-slate-500">Обновлен: {fmtRuDate(selected.updated_at)}</p>
               </div>
-              <div className="flex gap-2">
-                <button className="outline-btn rounded-xl px-3 py-1.5 text-xs font-semibold" type="button" onClick={() => void updateStatus("open")} disabled={busy}>
-                  Open
-                </button>
-                <button className="outline-btn rounded-xl px-3 py-1.5 text-xs font-semibold" type="button" onClick={() => void updateStatus("in_progress")} disabled={busy}>
-                  In progress
-                </button>
-                <button className="outline-btn rounded-xl px-3 py-1.5 text-xs font-semibold" type="button" onClick={() => void updateStatus("closed")} disabled={busy}>
-                  Close
-                </button>
+              <div className="flex flex-wrap gap-1.5">
+                {Object.entries(STATUS_META).map(([key, meta]) => {
+                  const Icon = meta.icon;
+                  const isActive = selectedStatus === key;
+                  return (
+                    <button
+                      key={key}
+                      className={`haptic-tap rounded-xl px-3 py-1.5 text-xs font-semibold inline-flex items-center gap-1.5 transition-all ${isActive
+                          ? "bg-violet-600 text-white shadow-md shadow-violet-600/20"
+                          : "outline-btn"
+                        }`}
+                      type="button"
+                      onClick={() => void updateStatus(key)}
+                      disabled={busy}
+                    >
+                      <Icon size={12} />
+                      {meta.badge}
+                    </button>
+                  );
+                })}
               </div>
             </div>
 
-            <div className="max-h-[44vh] space-y-2 overflow-auto rounded-xl bg-white/60 p-3 dark:bg-white/5">
-              {(selected.messages || []).map((msg) => (
-                <div key={msg.id} className={`rounded-xl px-3 py-2 text-sm ${msg.sender_role === "admin" ? "bg-violet-500/15" : "bg-white/70 dark:bg-white/10"}`}>
-                  <p className="text-xs uppercase tracking-[0.12em] text-slate-500">{msg.sender_role}</p>
-                  <p className="mt-1 whitespace-pre-line">{msg.body}</p>
-                  <p className="mt-1 text-[10px] text-slate-500">{fmtRuDate(msg.created_at)}</p>
+            {/* ── Chat messages ──────────────────────────── */}
+            <div className="max-h-[42vh] overflow-auto rounded-xl bg-white/40 p-3 dark:bg-white/[0.03] flex flex-col gap-2">
+              {(selected.messages || []).length === 0 ? (
+                <div className="empty-state py-8">
+                  <MessageCircle size={24} />
+                  <p className="text-xs">Нет сообщений</p>
                 </div>
-              ))}
+              ) : null}
+              {(selected.messages || []).map((msg) => {
+                const isAdmin = msg.sender_role === "admin";
+                return (
+                  <div key={msg.id} className={`flex ${isAdmin ? "justify-end" : "justify-start"}`}>
+                    <div className={`chat-bubble ${isAdmin ? "chat-bubble-admin" : "chat-bubble-user"} text-sm`}>
+                      <p className="text-[10px] uppercase tracking-[0.12em] text-slate-500 mb-1">{msg.sender_role}</p>
+                      <p className="whitespace-pre-line">{msg.body}</p>
+                      <p className="mt-1.5 text-[10px] text-slate-400 text-right">{fmtRuDate(msg.created_at)}</p>
+                    </div>
+                  </div>
+                );
+              })}
+              <div ref={messagesEnd} />
             </div>
 
+            {/* ── Reply box ─────────────────────────────── */}
             <div className="mt-3 space-y-2">
               <textarea
                 value={reply}
                 onChange={(event) => setReply(event.target.value)}
-                rows={4}
+                rows={3}
                 placeholder="Ответ оператором..."
-                className="w-full rounded-xl border border-violet-200/50 bg-white/80 px-3 py-2 text-sm outline-none dark:border-violet-500/30 dark:bg-slate-900/70"
+                className="w-full rounded-xl border border-violet-200/50 bg-white/80 px-3 py-2 text-sm outline-none dark:border-violet-500/30 dark:bg-slate-900/70 resize-none"
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && (e.metaKey || e.ctrlKey) && reply.trim()) {
+                    void sendReply();
+                  }
+                }}
               />
-              <button className="btn-primary rounded-xl px-4 py-2 text-sm font-semibold uppercase tracking-[0.12em]" type="button" onClick={() => void sendReply()} disabled={busy || !reply.trim()}>
-                {busy ? "Отправка..." : "Отправить ответ"}
-              </button>
+              <div className="flex items-center justify-between">
+                <p className="text-[10px] text-slate-400">⌘ + Enter для отправки</p>
+                <button
+                  className="btn-primary rounded-xl px-4 py-2 text-sm font-semibold uppercase tracking-[0.12em] inline-flex items-center gap-2"
+                  type="button"
+                  onClick={() => void sendReply()}
+                  disabled={busy || !reply.trim()}
+                >
+                  {busy ? <Loader2 size={14} className="animate-spin" /> : <Send size={14} />}
+                  {busy ? "Отправка..." : "Отправить"}
+                </button>
+              </div>
             </div>
           </>
         )}

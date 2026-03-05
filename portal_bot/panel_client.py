@@ -377,7 +377,13 @@ class PanelClient:
             logger.exception("add_client error node=%s: %s", self.node.code, e)
             return False
 
-    async def update_client_enable(self, client: dict, enable: bool, sub_id: str | None = None) -> bool:
+    async def update_client_enable(
+        self,
+        client: dict,
+        enable: bool,
+        sub_id: str | None = None,
+        hard_cap_gb_override: int | None = None,
+    ) -> bool:
         if not self.cookies:
             ok = await self.login()
             if not ok:
@@ -385,7 +391,11 @@ class PanelClient:
         await self.ensure_session()
 
         limit_ip = self._limit_ip_policy()
-        total_gb_bytes = self._total_bytes_policy()
+        if hard_cap_gb_override is None:
+            total_gb_bytes = self._total_bytes_policy()
+        else:
+            hard_cap_gb = max(0, int(hard_cap_gb_override or 0))
+            total_gb_bytes = int(hard_cap_gb) * 1024 * 1024 * 1024 if hard_cap_gb > 0 else 0
 
         # Keep expiry controlled by control-plane DB; keep traffic/device policies in panel.
         updated = {

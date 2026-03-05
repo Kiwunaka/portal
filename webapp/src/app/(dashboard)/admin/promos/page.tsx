@@ -1,6 +1,10 @@
 ﻿"use client";
 
 import {
+  adminCampaignCreate,
+  adminCampaignDelete,
+  adminCampaignUpdate,
+  adminCampaigns,
   adminGiftCodeCreate,
   adminGiftCodes,
   adminPlanCreate,
@@ -11,10 +15,12 @@ import {
   adminPromoDelete,
   adminPromoUpdate,
   adminPromos,
+  type AdminIncentiveCampaign,
   type AdminGiftCodeRow,
   type AdminPromoRow,
   type PlanCatalogRow,
 } from "@/lib/api";
+import { CreditCard, Gift, Package, PencilLine, Plus, RefreshCw, Tag, Trash2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { fmtRuDate } from "../nav";
 
@@ -22,16 +28,18 @@ export default function AdminPromosPage() {
   const [promos, setPromos] = useState<AdminPromoRow[]>([]);
   const [giftCodes, setGiftCodes] = useState<AdminGiftCodeRow[]>([]);
   const [plans, setPlans] = useState<PlanCatalogRow[]>([]);
+  const [campaigns, setCampaigns] = useState<AdminIncentiveCampaign[]>([]);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
 
   const load = async (): Promise<void> => {
     setError("");
     try {
-      const [promoRows, giftRows, planRows] = await Promise.all([adminPromos(120), adminGiftCodes(80), adminPlans(true)]);
+      const [promoRows, giftRows, planRows, campaignRows] = await Promise.all([adminPromos(120), adminGiftCodes(80), adminPlans(true), adminCampaigns(120)]);
       setPromos(promoRows);
       setGiftCodes(giftRows);
       setPlans(planRows);
+      setCampaigns(campaignRows);
     } catch (err) {
       setError(String((err as { message?: string })?.message || err || "Ошибка загрузки"));
     }
@@ -50,18 +58,11 @@ export default function AdminPromosPage() {
     if (!promoType || !Number.isFinite(value) || !Number.isFinite(uses)) return;
     setBusy(true);
     try {
-      await adminPromoCreate({
-        code: code.trim().toUpperCase(),
-        promo_type: promoType.trim().toLowerCase() === "discount" ? "discount" : "days",
-        value: Math.max(1, Math.floor(value)),
-        uses_left: Math.max(1, Math.floor(uses)),
-      });
+      await adminPromoCreate({ code: code.trim().toUpperCase(), promo_type: promoType.trim().toLowerCase() === "discount" ? "discount" : "days", value: Math.max(1, Math.floor(value)), uses_left: Math.max(1, Math.floor(uses)) });
       await load();
     } catch (err) {
       setError(String((err as { message?: string })?.message || err || "Не удалось создать промо"));
-    } finally {
-      setBusy(false);
-    }
+    } finally { setBusy(false); }
   };
 
   const editPromo = async (row: AdminPromoRow): Promise<void> => {
@@ -74,22 +75,15 @@ export default function AdminPromosPage() {
       await load();
     } catch (err) {
       setError(String((err as { message?: string })?.message || err || "Не удалось обновить промо"));
-    } finally {
-      setBusy(false);
-    }
+    } finally { setBusy(false); }
   };
 
   const deletePromo = async (code: string): Promise<void> => {
     if (!window.confirm(`Удалить промокод ${code}?`)) return;
     setBusy(true);
-    try {
-      await adminPromoDelete(code);
-      await load();
-    } catch (err) {
+    try { await adminPromoDelete(code); await load(); } catch (err) {
       setError(String((err as { message?: string })?.message || err || "Не удалось удалить промо"));
-    } finally {
-      setBusy(false);
-    }
+    } finally { setBusy(false); }
   };
 
   const createGiftCode = async (): Promise<void> => {
@@ -101,9 +95,7 @@ export default function AdminPromosPage() {
       await load();
     } catch (err) {
       setError(String((err as { message?: string })?.message || err || "Не удалось создать gift-код"));
-    } finally {
-      setBusy(false);
-    }
+    } finally { setBusy(false); }
   };
 
   const createPlan = async (): Promise<void> => {
@@ -116,170 +108,250 @@ export default function AdminPromosPage() {
     const deviceLimit = Number(window.prompt("Device limit:", "5") || 5);
     setBusy(true);
     try {
-      await adminPlanCreate({
-        code: code.trim(),
-        label: label.trim(),
-        amount_rub: Math.max(1, Math.floor(amountRub || 1)),
-        amount_stars: Math.max(0, Math.floor(amountStars || 0)),
-        days: Math.max(1, Math.floor(days || 1)),
-        device_limit: Math.max(1, Math.floor(deviceLimit || 1)),
+      await adminPlanCreate({ code: code.trim(), label: label.trim(), amount_rub: Math.max(1, Math.floor(amountRub || 1)), amount_stars: Math.max(0, Math.floor(amountStars || 0)), days: Math.max(1, Math.floor(days || 1)), device_limit: Math.max(1, Math.floor(deviceLimit || 1)), is_active: true });
+      await load();
+    } catch (err) {
+      setError(String((err as { message?: string })?.message || err || "Не удалось создать план"));
+    } finally { setBusy(false); }
+  };
+
+  const createCampaign = async (): Promise<void> => {
+    const name = window.prompt("Название кампании:", "Spring promo");
+    if (!name?.trim()) return;
+    const campaignType = window.prompt("Тип (promo/gift):", "promo") || "promo";
+    const targetValue = window.prompt("Target value (код promo или card_type gift):", "WELCOME14");
+    if (!targetValue?.trim()) return;
+    const segment = window.prompt("Segment (all/free/paid/manual/active/inactive):", "all") || "all";
+    const startsAt = window.prompt("starts_at (ISO, optional):", "") || null;
+    const endsAt = window.prompt("ends_at (ISO, optional):", "") || null;
+    const maxActivations = Number(window.prompt("max activations (0 = unlimited):", "0") || 0);
+    setBusy(true);
+    try {
+      await adminCampaignCreate({
+        name: name.trim(),
+        campaign_type: campaignType.trim().toLowerCase() === "gift" ? "gift" : "promo",
+        target_value: targetValue.trim(),
+        segment: segment.trim() || "all",
+        starts_at: startsAt || null,
+        ends_at: endsAt || null,
+        max_activations: Math.max(0, Math.floor(maxActivations || 0)),
+        auto_disable: true,
         is_active: true,
       });
       await load();
     } catch (err) {
-      setError(String((err as { message?: string })?.message || err || "Не удалось создать план"));
-    } finally {
-      setBusy(false);
-    }
+      setError(String((err as { message?: string })?.message || err || "Не удалось создать кампанию"));
+    } finally { setBusy(false); }
+  };
+
+  const editCampaign = async (row: AdminIncentiveCampaign): Promise<void> => {
+    const name = window.prompt("Название:", row.name || "");
+    if (!name?.trim()) return;
+    const segment = window.prompt("Segment:", row.segment || "all") || "all";
+    const startsAt = window.prompt("starts_at (ISO|empty):", row.starts_at || "") || null;
+    const endsAt = window.prompt("ends_at (ISO|empty):", row.ends_at || "") || null;
+    const maxActivations = Number(window.prompt("max activations:", String(row.max_activations || 0)) || row.max_activations || 0);
+    const activeRaw = window.prompt("is_active (yes/no):", row.is_active ? "yes" : "no") || "yes";
+    setBusy(true);
+    try {
+      await adminCampaignUpdate(row.id, {
+        name: name.trim(),
+        segment: segment.trim() || "all",
+        starts_at: startsAt || null,
+        ends_at: endsAt || null,
+        max_activations: Math.max(0, Math.floor(maxActivations || 0)),
+        is_active: activeRaw.trim().toLowerCase() !== "no",
+      });
+      await load();
+    } catch (err) {
+      setError(String((err as { message?: string })?.message || err || "Не удалось обновить кампанию"));
+    } finally { setBusy(false); }
+  };
+
+  const deleteCampaign = async (row: AdminIncentiveCampaign): Promise<void> => {
+    if (!window.confirm(`Удалить кампанию ${row.name}?`)) return;
+    setBusy(true);
+    try { await adminCampaignDelete(row.id); await load(); } catch (err) {
+      setError(String((err as { message?: string })?.message || err || "Не удалось удалить кампанию"));
+    } finally { setBusy(false); }
   };
 
   const togglePlan = async (code: string, current: boolean): Promise<void> => {
     setBusy(true);
-    try {
-      await adminPlanUpdate(code, { is_active: !current });
-      await load();
-    } catch (err) {
+    try { await adminPlanUpdate(code, { is_active: !current }); await load(); } catch (err) {
       setError(String((err as { message?: string })?.message || err || "Не удалось обновить план"));
-    } finally {
-      setBusy(false);
-    }
+    } finally { setBusy(false); }
   };
 
   const deletePlan = async (code: string): Promise<void> => {
     if (!window.confirm(`Удалить план ${code}?`)) return;
     setBusy(true);
-    try {
-      await adminPlanDelete(code);
-      await load();
-    } catch (err) {
+    try { await adminPlanDelete(code); await load(); } catch (err) {
       setError(String((err as { message?: string })?.message || err || "Не удалось удалить план"));
-    } finally {
-      setBusy(false);
-    }
+    } finally { setBusy(false); }
+  };
+
+  const copyText = async (text: string): Promise<void> => {
+    try { await navigator.clipboard.writeText(text); } catch { /* noop */ }
   };
 
   return (
-    <section className="space-y-4">
-      <div className="glass-card p-4">
-        <div className="flex flex-wrap gap-2">
-          <button className="btn-primary rounded-xl px-4 py-2 text-sm font-semibold" type="button" onClick={() => void createPromo()} disabled={busy}>
-            + Promo
-          </button>
-          <button className="outline-btn rounded-xl px-4 py-2 text-sm font-semibold" type="button" onClick={() => void createGiftCode()} disabled={busy}>
-            + Gift code
-          </button>
-          <button className="outline-btn rounded-xl px-4 py-2 text-sm font-semibold" type="button" onClick={() => void createPlan()} disabled={busy}>
-            + Plan
-          </button>
-          <button className="outline-btn rounded-xl px-4 py-2 text-sm font-semibold" type="button" onClick={() => void load()}>
-            Обновить
-          </button>
-        </div>
-        {error ? <p className="mt-2 text-sm text-rose-500">{error}</p> : null}
+    <section className="space-y-5">
+      {/* ── Actions bar ────────────────────────────────── */}
+      <div className="glass-card p-4 flex flex-wrap items-center gap-3">
+        <button className="btn-primary rounded-xl px-4 py-2 text-sm font-semibold inline-flex items-center gap-1.5" type="button" onClick={() => void createPromo()} disabled={busy}>
+          <Plus size={14} /> Promo
+        </button>
+        <button className="outline-btn rounded-xl px-4 py-2 text-sm font-semibold inline-flex items-center gap-1.5" type="button" onClick={() => void createGiftCode()} disabled={busy}>
+          <Gift size={14} /> Gift code
+        </button>
+        <button className="outline-btn rounded-xl px-4 py-2 text-sm font-semibold inline-flex items-center gap-1.5" type="button" onClick={() => void createPlan()} disabled={busy}>
+          <CreditCard size={14} /> Plan
+        </button>
+        <button className="outline-btn rounded-xl px-4 py-2 text-sm font-semibold inline-flex items-center gap-1.5" type="button" onClick={() => void createCampaign()} disabled={busy}>
+          <Package size={14} /> Campaign
+        </button>
+        <button className="outline-btn rounded-xl px-4 py-2 text-sm font-semibold inline-flex items-center gap-1.5 ml-auto" type="button" onClick={() => void load()}>
+          <RefreshCw size={14} /> Обновить
+        </button>
+        {error ? <p className="w-full text-sm text-rose-500">{error}</p> : null}
       </div>
 
-      <div className="grid gap-4 xl:grid-cols-2">
-        <article className="glass-card p-4 overflow-x-auto">
-          <h2 className="mb-2 font-display text-2xl font-semibold">Promo codes</h2>
-          <table className="min-w-full text-sm">
-            <thead>
-              <tr className="text-left text-slate-500">
-                <th className="px-2 py-2">Code</th>
-                <th className="px-2 py-2">Type</th>
-                <th className="px-2 py-2">Value</th>
-                <th className="px-2 py-2">Uses</th>
-                <th className="px-2 py-2">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {promos.map((promo) => (
-                <tr key={promo.code} className="border-t border-white/30 dark:border-white/10">
-                  <td className="px-2 py-2 font-mono text-xs">{promo.code}</td>
-                  <td className="px-2 py-2">{promo.promo_type}</td>
-                  <td className="px-2 py-2">{promo.value}</td>
-                  <td className="px-2 py-2">{promo.uses_left}</td>
-                  <td className="px-2 py-2">
-                    <div className="flex gap-2">
-                      <button className="outline-btn rounded-xl px-2 py-1 text-xs font-semibold" type="button" onClick={() => void editPromo(promo)} disabled={busy}>
-                        edit
-                      </button>
-                      <button className="outline-btn rounded-xl px-2 py-1 text-xs font-semibold" type="button" onClick={() => void deletePromo(promo.code)} disabled={busy}>
-                        delete
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </article>
-
-        <article className="glass-card p-4 overflow-x-auto">
-          <h2 className="mb-2 font-display text-2xl font-semibold">Gift codes</h2>
-          <table className="min-w-full text-sm">
-            <thead>
-              <tr className="text-left text-slate-500">
-                <th className="px-2 py-2">Code</th>
-                <th className="px-2 py-2">Type</th>
-                <th className="px-2 py-2">Days</th>
-                <th className="px-2 py-2">Redeemed</th>
-              </tr>
-            </thead>
-            <tbody>
-              {giftCodes.map((gift) => (
-                <tr key={gift.code} className="border-t border-white/30 dark:border-white/10">
-                  <td className="px-2 py-2 font-mono text-xs">{gift.code}</td>
-                  <td className="px-2 py-2">{gift.card_type}</td>
-                  <td className="px-2 py-2">{gift.days}</td>
-                  <td className="px-2 py-2">{gift.redeemed_at ? fmtRuDate(gift.redeemed_at) : "—"}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </article>
-      </div>
-
-      <article className="glass-card p-4 overflow-x-auto">
-        <h2 className="mb-2 font-display text-2xl font-semibold">Plans</h2>
-        <table className="min-w-full text-sm">
-          <thead>
-            <tr className="text-left text-slate-500">
-              <th className="px-2 py-2">Code</th>
-              <th className="px-2 py-2">Label</th>
-              <th className="px-2 py-2">RUB</th>
-              <th className="px-2 py-2">Stars</th>
-              <th className="px-2 py-2">Days</th>
-              <th className="px-2 py-2">State</th>
-              <th className="px-2 py-2">Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {plans.map((plan) => (
-              <tr key={plan.code} className="border-t border-white/30 dark:border-white/10">
-                <td className="px-2 py-2 font-mono text-xs">{plan.code}</td>
-                <td className="px-2 py-2">{plan.label}</td>
-                <td className="px-2 py-2">{plan.amount_rub}</td>
-                <td className="px-2 py-2">{plan.amount_stars}</td>
-                <td className="px-2 py-2">{plan.days}</td>
-                <td className="px-2 py-2">
-                  <button
-                    className={`rounded-full px-2 py-1 text-xs ${plan.is_active ? "bg-emerald-500/20 text-emerald-600" : "bg-slate-500/20 text-slate-500"}`}
-                    type="button"
-                    onClick={() => void togglePlan(plan.code, plan.is_active)}
-                    disabled={busy}
-                  >
-                    {plan.is_active ? "active" : "disabled"}
+      <div className="grid gap-5 xl:grid-cols-2">
+        {/* ── Promo codes ──────────────────────────────── */}
+        <article className="glass-card p-5">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="stat-icon stat-icon-violet"><Tag size={20} /></div>
+            <h2 className="font-display text-xl font-bold">Promo codes</h2>
+          </div>
+          <div className="space-y-2">
+            {promos.length === 0 ? (
+              <div className="empty-state"><Tag size={24} /><p className="text-xs">Нет промокодов</p></div>
+            ) : null}
+            {promos.map((promo) => (
+              <div key={promo.code} className="node-card flex items-center justify-between gap-3">
+                <div className="flex items-center gap-3 min-w-0">
+                  <button type="button" className="haptic-tap" onClick={() => void copyText(promo.code)} title="Copy">
+                    <span className="badge badge-violet font-mono">{promo.code}</span>
                   </button>
-                </td>
-                <td className="px-2 py-2">
-                  <button className="outline-btn rounded-xl px-2 py-1 text-xs font-semibold" type="button" onClick={() => void deletePlan(plan.code)} disabled={busy}>
-                    delete
-                  </button>
-                </td>
-              </tr>
+                  <div>
+                    <span className={`badge ${promo.promo_type === "discount" ? "badge-warning" : "badge-info"}`}>{promo.promo_type}</span>
+                    <span className="ml-2 text-xs text-slate-500">val: <strong>{promo.value}</strong> • uses: <strong>{promo.uses_left}</strong></span>
+                  </div>
+                </div>
+                <div className="flex gap-1.5 flex-shrink-0">
+                  <button className="outline-btn rounded-lg px-2 py-1 text-[10px] font-semibold inline-flex items-center gap-1" type="button" onClick={() => void editPromo(promo)} disabled={busy}><PencilLine size={10} /></button>
+                  <button className="outline-btn rounded-lg px-2 py-1 text-[10px] font-semibold inline-flex items-center gap-1 text-rose-500" type="button" onClick={() => void deletePromo(promo.code)} disabled={busy}><Trash2 size={10} /></button>
+                </div>
+              </div>
             ))}
-          </tbody>
-        </table>
+          </div>
+        </article>
+
+        {/* ── Gift codes ───────────────────────────────── */}
+        <article className="glass-card p-5">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="stat-icon stat-icon-amber"><Gift size={20} /></div>
+            <h2 className="font-display text-xl font-bold">Gift codes</h2>
+          </div>
+          <div className="space-y-2">
+            {giftCodes.length === 0 ? (
+              <div className="empty-state"><Gift size={24} /><p className="text-xs">Нет gift-кодов</p></div>
+            ) : null}
+            {giftCodes.map((gift) => (
+              <div key={gift.code} className="node-card flex items-center justify-between gap-3">
+                <div className="flex items-center gap-3 min-w-0">
+                  <button type="button" className="haptic-tap" onClick={() => void copyText(gift.code)} title="Copy">
+                    <span className="badge badge-violet font-mono">{gift.code}</span>
+                  </button>
+                  <div className="text-xs text-slate-500">
+                    <span className={`badge ${gift.card_type === "premium" ? "badge-warning" : gift.card_type === "standard" ? "badge-info" : "badge-success"}`}>{gift.card_type}</span>
+                    <span className="ml-2">{gift.days}d</span>
+                  </div>
+                </div>
+                <span className={`badge ${gift.redeemed_at ? "badge-success" : "badge-danger"}`}>
+                  {gift.redeemed_at ? fmtRuDate(gift.redeemed_at) : "not used"}
+                </span>
+              </div>
+            ))}
+          </div>
+        </article>
+      </div>
+
+      {/* ── Campaigns ─────────────────────────────────── */}
+      <article className="glass-card p-5">
+        <div className="flex items-center gap-3 mb-4">
+          <div className="stat-icon stat-icon-blue"><Package size={20} /></div>
+          <h2 className="font-display text-xl font-bold">Campaigns</h2>
+        </div>
+        <div className="space-y-2">
+          {campaigns.length === 0 ? (
+            <div className="empty-state"><Package size={24} /><p className="text-xs">Нет кампаний</p></div>
+          ) : null}
+          {campaigns.map((row) => (
+            <div key={row.id} className="node-card flex items-center justify-between gap-3">
+              <div className="min-w-0 flex-1">
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="badge badge-violet">#{row.id}</span>
+                  <strong className="text-sm">{row.name}</strong>
+                  <span className={`badge ${row.is_active ? "badge-success" : "badge-danger"}`}>{row.is_active ? "active" : "off"}</span>
+                  <span className="badge badge-info">{row.campaign_type}</span>
+                </div>
+                <p className="mt-1 text-xs text-slate-500">
+                  target: <strong>{row.target_value}</strong> • segment: <strong>{row.segment}</strong> • activations: <strong>{row.activations_count}/{row.max_activations || "∞"}</strong>
+                </p>
+                <p className="text-[10px] text-slate-400">window: {fmtRuDate(row.starts_at)} → {fmtRuDate(row.ends_at)}</p>
+              </div>
+              <div className="flex gap-1.5 flex-shrink-0">
+                <button className="outline-btn rounded-lg px-2 py-1 text-[10px] font-semibold inline-flex items-center gap-1" type="button" onClick={() => void editCampaign(row)} disabled={busy}><PencilLine size={10} /></button>
+                <button className="outline-btn rounded-lg px-2 py-1 text-[10px] font-semibold inline-flex items-center gap-1 text-rose-500" type="button" onClick={() => void deleteCampaign(row)} disabled={busy}><Trash2 size={10} /></button>
+              </div>
+            </div>
+          ))}
+        </div>
+      </article>
+
+      {/* ── Plans ──────────────────────────────────────── */}
+      <article className="glass-card p-5">
+        <div className="flex items-center gap-3 mb-4">
+          <div className="stat-icon stat-icon-emerald"><Package size={20} /></div>
+          <h2 className="font-display text-xl font-bold">Plans</h2>
+        </div>
+        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+          {plans.map((plan) => (
+            <div key={plan.code} className="stat-card p-4">
+              <div className="flex items-center justify-between gap-2 mb-3">
+                <span className="badge badge-violet font-mono">{plan.code}</span>
+                <button type="button" className={`badge haptic-tap ${plan.is_active ? "badge-success" : "badge-danger"}`} onClick={() => void togglePlan(plan.code, plan.is_active)} disabled={busy}>
+                  {plan.is_active ? "active" : "disabled"}
+                </button>
+              </div>
+              <p className="text-lg font-bold">{plan.label}</p>
+              <div className="mt-2 grid grid-cols-3 gap-2 text-center text-xs">
+                <div className="rounded-lg bg-white/50 p-1.5 dark:bg-white/5">
+                  <p className="text-slate-400">RUB</p>
+                  <p className="font-bold">{plan.amount_rub}</p>
+                </div>
+                <div className="rounded-lg bg-white/50 p-1.5 dark:bg-white/5">
+                  <p className="text-slate-400">Stars</p>
+                  <p className="font-bold">{plan.amount_stars}</p>
+                </div>
+                <div className="rounded-lg bg-white/50 p-1.5 dark:bg-white/5">
+                  <p className="text-slate-400">Days</p>
+                  <p className="font-bold">{plan.days}</p>
+                </div>
+              </div>
+              <div className="mt-3 flex justify-end">
+                <button className="outline-btn rounded-lg px-2.5 py-1 text-[10px] font-semibold inline-flex items-center gap-1 text-rose-500" type="button" onClick={() => void deletePlan(plan.code)} disabled={busy}>
+                  <Trash2 size={10} /> Удалить
+                </button>
+              </div>
+            </div>
+          ))}
+          {plans.length === 0 ? (
+            <div className="empty-state col-span-full"><Package size={28} /><p className="text-xs">Нет планов</p></div>
+          ) : null}
+        </div>
       </article>
     </section>
   );

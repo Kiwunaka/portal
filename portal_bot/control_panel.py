@@ -283,6 +283,7 @@ class ControlPanel:
         node_code: str,
         enable: bool,
         sub_id: str | None = None,
+        hard_cap_gb: int | None = None,
     ) -> bool | None:
         n = await self._resolve_target_node(node_code)
         if not n:
@@ -292,7 +293,14 @@ class ControlPanel:
             client = await self._clients[code].find_client_by_tgid(int(tg_id))
             if not client:
                 return None
-            return bool(await self._clients[code].update_client_enable(client, bool(enable), sub_id=sub_id))
+            return bool(
+                await self._clients[code].update_client_enable(
+                    client,
+                    bool(enable),
+                    sub_id=sub_id,
+                    hard_cap_gb_override=hard_cap_gb,
+                )
+            )
         except Exception:
             return False
 
@@ -309,7 +317,14 @@ class ControlPanel:
         except Exception:
             return False
 
-    async def resync_user_key_subid_on_node(self, *, tg_id: int, node_code: str, sub_id: str) -> bool | None:
+    async def resync_user_key_subid_on_node(
+        self,
+        *,
+        tg_id: int,
+        node_code: str,
+        sub_id: str,
+        hard_cap_gb: int | None = None,
+    ) -> bool | None:
         n = await self._resolve_target_node(node_code)
         if not n:
             return None
@@ -319,7 +334,42 @@ class ControlPanel:
             if not client:
                 return None
             enable = bool(client.get("enable", True))
-            return bool(await self._clients[code].update_client_enable(client, enable, sub_id=str(sub_id or "")))
+            return bool(
+                await self._clients[code].update_client_enable(
+                    client,
+                    enable,
+                    sub_id=str(sub_id or ""),
+                    hard_cap_gb_override=hard_cap_gb,
+                )
+            )
+        except Exception:
+            return False
+
+    async def apply_user_key_limits_on_node(
+        self,
+        *,
+        tg_id: int,
+        node_code: str,
+        hard_cap_gb: int | None = None,
+        sub_id: str | None = None,
+    ) -> bool | None:
+        n = await self._resolve_target_node(node_code)
+        if not n:
+            return None
+        code = str(getattr(n, "code", "") or "").strip()
+        try:
+            client = await self._clients[code].find_client_by_tgid(int(tg_id))
+            if not client:
+                return None
+            enable = bool(client.get("enable", True))
+            return bool(
+                await self._clients[code].update_client_enable(
+                    client,
+                    enable,
+                    sub_id=sub_id,
+                    hard_cap_gb_override=hard_cap_gb,
+                )
+            )
         except Exception:
             return False
 

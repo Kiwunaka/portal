@@ -321,6 +321,11 @@ export type AdminUserCard = {
   };
   tickets: TicketInfo[];
   keys?: AdminUserKey[];
+  key_history?: AdminUserKeyHistoryRow[];
+  key_policies?: AdminUserKeyPolicy[];
+  admin_actions?: AdminAuditRow[];
+  risk?: AdminUserRisk;
+  loyalty?: AdminUserLoyalty;
   summary?: {
     nodes_total: number;
     nodes_with_client: number;
@@ -356,6 +361,102 @@ export type AdminUserKey = {
   last_online_age_seconds?: number | null;
   vless_link?: string;
   panel_error?: string | null;
+  policy?: AdminUserKeyPolicy | null;
+};
+
+export type AdminUserKeyHistoryRow = {
+  id: number;
+  tg_id?: number;
+  node_code?: string | null;
+  action: string;
+  actor_tg_id?: number | null;
+  source?: string;
+  meta?: Record<string, unknown>;
+  created_at?: string | null;
+};
+
+export type AdminUserKeyPolicy = {
+  node_code: string;
+  burst_mbps?: number | null;
+  soft_cap_gb?: number | null;
+  hard_cap_gb?: number | null;
+  notify_soft: boolean;
+  notify_hard: boolean;
+  auto_disable_on_hard: boolean;
+  updated_by?: number | null;
+  updated_at?: string | null;
+};
+
+export type AdminUserRisk = {
+  score: number;
+  level: "low" | "medium" | "high" | "critical" | string;
+  window_days: number;
+  signals: {
+    regen_count: number;
+    admin_key_ops: number;
+    unique_ips: number;
+    traffic_gb: number;
+    subid_mismatch_count: number;
+  };
+  factors: Array<{ key: string; weight: number; value: number | string }>;
+  updated_at?: string | null;
+};
+
+export type AdminUserLoyalty = {
+  enabled: boolean;
+  streak_days: number;
+  tiers: Array<{
+    days: number;
+    bonus_days: number;
+    perk: string;
+    unlocked: boolean;
+    claimed: boolean;
+    reward_key: string;
+  }>;
+};
+
+export type AdminAuditRow = {
+  id: number;
+  actor_tg_id: number;
+  action: string;
+  target_tg_id?: number | null;
+  meta?: Record<string, unknown>;
+  created_at?: string | null;
+};
+
+export type AdminReferralQueueRow = {
+  id: number;
+  order_id: string;
+  referrer_tg_id: number;
+  referred_tg_id: number;
+  queued_at?: string | null;
+  ready_at?: string | null;
+  status: string;
+  processed_at?: string | null;
+  meta?: Record<string, unknown>;
+};
+
+export type AdminIncentiveCampaign = {
+  id: number;
+  name: string;
+  campaign_type: "promo" | "gift" | string;
+  target_value: string;
+  segment: string;
+  starts_at?: string | null;
+  ends_at?: string | null;
+  max_activations: number;
+  activations_count: number;
+  auto_disable: boolean;
+  is_active: boolean;
+  created_by?: number | null;
+  metadata?: Record<string, unknown>;
+  created_at?: string | null;
+  updated_at?: string | null;
+};
+
+export type AdminLoyaltyConfig = {
+  enabled: boolean;
+  tiers: Array<{ days: number; bonus_days: number; perk: string }>;
 };
 
 export type AdminNodeHealthRow = {
@@ -830,6 +931,164 @@ export async function adminUsers(q: string, limit = 50, offset = 0): Promise<Adm
 
 export function adminUserCard(tgId: number): Promise<AdminUserCard> {
   return apiFetch<AdminUserCard>(`/api/admin/users/${tgId}`);
+}
+
+export async function adminUserKeyHistory(tgId: number, limit = 100): Promise<AdminUserKeyHistoryRow[]> {
+  const data = await apiFetch<{ rows: AdminUserKeyHistoryRow[] }>(`/api/admin/users/${tgId}/key-history?limit=${Math.max(1, Math.min(500, limit))}`);
+  return data.rows || [];
+}
+
+export async function adminUserKeyLimits(tgId: number): Promise<AdminUserKeyPolicy[]> {
+  const data = await apiFetch<{ limits: AdminUserKeyPolicy[] }>(`/api/admin/users/${tgId}/key-limits`);
+  return data.limits || [];
+}
+
+export function adminUserKeyLimitUpdate(
+  tgId: number,
+  nodeCode: string,
+  payload: {
+    burst_mbps?: number | null;
+    soft_cap_gb?: number | null;
+    hard_cap_gb?: number | null;
+    notify_soft?: boolean;
+    notify_hard?: boolean;
+    auto_disable_on_hard?: boolean;
+    apply_now?: boolean;
+  },
+): Promise<{ ok: boolean; policy?: AdminUserKeyPolicy; applied?: boolean | null }> {
+  return apiFetch(`/api/admin/users/${tgId}/key-limits/${encodeURIComponent(nodeCode)}`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+}
+
+export function adminBulkKeyAction(payload: {
+  action: "disable" | "enable" | "reset" | "resync";
+  segment: string;
+  node_codes?: string[];
+  tg_ids?: number[];
+  q?: string;
+  limit?: number;
+  dry_run?: boolean;
+  force?: boolean;
+}): Promise<any> {
+  return apiFetch("/api/admin/users/keys/bulk-action", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+}
+
+export function adminUserRisk(tgId: number): Promise<{ risk: AdminUserRisk }> {
+  return apiFetch(`/api/admin/users/${tgId}/risk`);
+}
+
+export function adminUserLoyalty(tgId: number): Promise<{ loyalty: AdminUserLoyalty }> {
+  return apiFetch(`/api/admin/users/${tgId}/loyalty`);
+}
+
+export function adminUserLoyaltyGrant(tgId: number, tierDays: number): Promise<{ ok: boolean; tier_days: number; expiry_at?: string | null }> {
+  return apiFetch(`/api/admin/users/${tgId}/loyalty/grant`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ tier_days: tierDays }),
+  });
+}
+
+export function adminUserPresetRun(
+  tgId: number,
+  preset: "reset_key" | "rotate_link" | "extend_1d" | "send_guide",
+): Promise<{ ok: boolean; preset: string; changed?: number; failed?: number; subscription_url?: string }> {
+  return apiFetch(`/api/admin/users/${tgId}/presets/run`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ preset }),
+  });
+}
+
+export async function adminAuditLog(params?: { limit?: number; offset?: number; action?: string; target_tg_id?: number }): Promise<AdminAuditRow[]> {
+  const q = new URLSearchParams();
+  if (params?.limit != null) q.set("limit", String(params.limit));
+  if (params?.offset != null) q.set("offset", String(params.offset));
+  if (params?.action) q.set("action", params.action);
+  if (params?.target_tg_id != null) q.set("target_tg_id", String(params.target_tg_id));
+  const data = await apiFetch<{ rows: AdminAuditRow[] }>(`/api/admin/audit${q.toString() ? `?${q.toString()}` : ""}`);
+  return data.rows || [];
+}
+
+export async function adminReferralQueue(limit = 200, status = ""): Promise<AdminReferralQueueRow[]> {
+  const qs = `limit=${Math.max(1, Math.min(1000, limit))}&status=${encodeURIComponent(status || "")}`;
+  const data = await apiFetch<{ rows: AdminReferralQueueRow[] }>(`/api/admin/referrals/pending?${qs}`);
+  return data.rows || [];
+}
+
+export function adminReferralProcess(payload: { limit?: number; force_without_activity?: boolean }): Promise<{ ok: boolean; processed: number; rewarded: number; waiting: number; rejected: number }> {
+  return apiFetch("/api/admin/referrals/process", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+}
+
+export function adminLoyaltyConfig(): Promise<{ loyalty_config: AdminLoyaltyConfig }> {
+  return apiFetch("/api/admin/loyalty-config");
+}
+
+export function adminLoyaltyConfigUpdate(payload: AdminLoyaltyConfig): Promise<{ ok: boolean; loyalty_config: AdminLoyaltyConfig }> {
+  return apiFetch("/api/admin/loyalty-config", {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function adminCampaigns(limit = 200): Promise<AdminIncentiveCampaign[]> {
+  const data = await apiFetch<{ campaigns: AdminIncentiveCampaign[] }>(`/api/admin/campaigns?limit=${Math.max(1, Math.min(1000, limit))}`);
+  return data.campaigns || [];
+}
+
+export function adminCampaignCreate(payload: {
+  name: string;
+  campaign_type: "promo" | "gift";
+  target_value: string;
+  segment?: string;
+  starts_at?: string | null;
+  ends_at?: string | null;
+  max_activations?: number;
+  auto_disable?: boolean;
+  is_active?: boolean;
+  metadata?: Record<string, unknown>;
+}): Promise<{ ok: boolean; id: number }> {
+  return apiFetch("/api/admin/campaigns", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+}
+
+export function adminCampaignUpdate(
+  campaignId: number,
+  payload: {
+    name?: string;
+    segment?: string;
+    starts_at?: string | null;
+    ends_at?: string | null;
+    max_activations?: number;
+    auto_disable?: boolean;
+    is_active?: boolean;
+    metadata?: Record<string, unknown>;
+  },
+): Promise<{ ok: boolean; id: number }> {
+  return apiFetch(`/api/admin/campaigns/${campaignId}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+}
+
+export function adminCampaignDelete(campaignId: number): Promise<{ ok: boolean }> {
+  return apiFetch(`/api/admin/campaigns/${campaignId}`, { method: "DELETE" });
 }
 
 export function adminUserKeyToggle(tgId: number, nodeCode: string, enable: boolean): Promise<{ ok: boolean; enabled: boolean }> {

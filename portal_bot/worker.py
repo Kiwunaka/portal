@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import hashlib
+import json
 import logging
 import os
 from pathlib import Path
@@ -20,7 +21,7 @@ from control_panel import ControlPanel
 from db import SessionLocal, init_db
 from events_service import track_event
 from free_cycle_service import mark_user_became_free, process_due_free_cycle_resets
-from models import CampaignSend, ExternalOrder, NodeHealthSample, Template, User
+from models import CampaignSend, Event, ExternalOrder, KeyActionHistory, NodeHealthSample, ReferralBonusQueue, Template, User, UserKeyPolicy
 from offers_service import create_offer, expire_stale_offers, get_active_offer
 from pay_attempts_service import find_abandoned_candidates, mark_abandoned, mark_abandoned_notified
 
@@ -37,6 +38,8 @@ START99_WELCOME_MIN_HOURS = max(1, int(os.getenv("START99_WELCOME_MIN_HOURS", "2
 START99_WELCOME_MAX_HOURS = max(START99_WELCOME_MIN_HOURS + 1, int(os.getenv("START99_WELCOME_MAX_HOURS", "48")))
 START99_WELCOME_DISCOUNT_PCT = max(1, min(95, int(os.getenv("START99_WELCOME_DISCOUNT_PCT", "15"))))
 START99_WELCOME_DISCOUNT_CODE = (os.getenv("START99_WELCOME_DISCOUNT_CODE") or "STARTBOOST").strip().upper()[:20]
+REFERRAL_BONUS_DAYS = max(1, int(os.getenv("REFERRAL_BONUS_DAYS", "15")))
+REFERRAL_ANTIFRAUD_MAX_WAIT_HOURS = max(1, int(os.getenv("REFERRAL_ANTIFRAUD_MAX_WAIT_HOURS", "168")))
 
 _TEMPLATE_CACHE_TTL_SECONDS = max(30, int(os.getenv("RETENTION_TEMPLATE_CACHE_TTL_SECONDS", "180")))
 _TEMPLATE_CACHE: dict[str, tuple[datetime, str]] = {}
@@ -373,6 +376,179 @@ def _sent_recently(*, tg_id: int, campaign_prefix: str, within_days: int) -> boo
         return bool(row)
     finally:
         s.close()
+
+
+def _key_history_log(
+    *,
+    tg_id: int,
+    action: str,
+    node_code: str | None = None,
+    actor_tg_id: int | None = None,
+    source: str = "worker",
+    meta: dict | None = None,
+) -> None:
+    s = SessionLocal()
+    try:
+        row = KeyActionHistory(
+            tg_id=int(tg_id),
+            node_code=(str(node_code or "").strip().lower() or None),
+            action=str(action or "").strip()[:64],
+            actor_tg_id=(int(actor_tg_id) if actor_tg_id is not None else None),
+            source=str(source or "worker").strip()[:32] or "worker",
+            meta=json.dumps(meta or {}, ensure_ascii=False, separators=(",", ":")),
+            created_at=_utcnow(),
+        )
+        s.add(row)
+        s.commit()
+    except Exception:
+        s.rollback()
+    finally:
+        s.close()
+
+
+def _process_referral_bonus_queue(*, limit: int = 100) -> dict[str, int]:
+    now = _utcnow()
+    s = SessionLocal()
+    processed = 0
+    rewarded = 0
+    waiting = 0
+    rejected = 0
+    try:
+        rows = (
+            s.query(ReferralBonusQueue)
+            .filter(ReferralBonusQueue.status == "pending", ReferralBonusQueue.ready_at <= now)
+            .order_by(ReferralBonusQueue.id.asc())
+            .limit(max(1, min(int(limit), 1000)))
+            .all()
+        )
+        for row in rows:
+            processed += 1
+            referred = s.query(User).filter(User.tg_id == int(row.referred_tg_id)).first()
+            referrer = s.query(User).filter(User.tg_id == int(row.referrer_tg_id)).first()
+            if not referred or not referrer:
+                row.status = "rejected_missing_user"
+                row.processed_at = now
+                rejected += 1
+                continue
+            has_activity = (
+                s.query(Event.id)
+                .filter(
+                    Event.tg_id == int(referred.tg_id),
+                    Event.created_at >= (row.queued_at or (now - timedelta(days=1))),
+                    Event.event_name.in_(["connected_ok", "clicked_connect"]),
+                )
+                .first()
+                is not None
+            )
+            age_hours = max(0, int((now - (row.queued_at or now)).total_seconds() // 3600))
+            if not has_activity:
+                if age_hours >= int(REFERRAL_ANTIFRAUD_MAX_WAIT_HOURS):
+                    row.status = "rejected_no_activity"
+                    row.processed_at = now
+                    rejected += 1
+                else:
+                    row.ready_at = now + timedelta(hours=6)
+                    waiting += 1
+                continue
+            ref_sub = str(referrer.sub_type or "").upper().strip()
+            ref_expiry = referrer.expiry_at if referrer.expiry_at and referrer.expiry_at > now else None
+            if not (bool(referrer.is_active) and ref_sub == "PAID" and ref_expiry):
+                row.status = "rejected_referrer_inactive"
+                row.processed_at = now
+                rejected += 1
+                continue
+            referrer.referral_count = int(referrer.referral_count or 0) + 1
+            referrer.expiry_at = ref_expiry + timedelta(days=max(1, int(REFERRAL_BONUS_DAYS)))
+            referrer.is_active = True
+            row.status = "rewarded"
+            row.processed_at = now
+            rewarded += 1
+        s.commit()
+    except Exception:
+        s.rollback()
+    finally:
+        s.close()
+    return {"processed": processed, "rewarded": rewarded, "waiting": waiting, "rejected": rejected}
+
+
+async def referral_bonus_queue_job() -> None:
+    while True:
+        out = _process_referral_bonus_queue(limit=200)
+        if int(out.get("rewarded", 0)) > 0:
+            logger.info("referral_bonus_queue rewarded=%s waiting=%s rejected=%s", out.get("rewarded"), out.get("waiting"), out.get("rejected"))
+        await asyncio.sleep(900)
+
+
+async def key_limits_watchdog_job() -> None:
+    while True:
+        s = SessionLocal()
+        try:
+            policies = (
+                s.query(UserKeyPolicy)
+                .filter(or_(UserKeyPolicy.soft_cap_gb.isnot(None), UserKeyPolicy.hard_cap_gb.isnot(None)))
+                .all()
+            )
+        finally:
+            s.close()
+
+        if not policies:
+            await asyncio.sleep(900)
+            continue
+
+        panel = ControlPanel()
+        try:
+            await panel.login()
+            now = _utcnow()
+            day_key = now.strftime("%Y%m%d")
+            for policy in policies:
+                tg_id = int(policy.tg_id)
+                node_code = str(policy.node_code or "").strip().lower()
+                if not node_code:
+                    continue
+                snapshots = await panel.get_user_key_snapshots(tg_id=tg_id, node_codes=[node_code])
+                if not snapshots:
+                    continue
+                row = snapshots[0]
+                runtime = row.get("runtime") or {}
+                total_bytes = int(runtime.get("total", int(runtime.get("up", 0) or 0) + int(runtime.get("down", 0) or 0)) or 0)
+                total_gb = float(total_bytes) / float(1024**3)
+                soft_cap = int(policy.soft_cap_gb) if policy.soft_cap_gb is not None else None
+                hard_cap = int(policy.hard_cap_gb) if policy.hard_cap_gb is not None else None
+                if soft_cap and bool(policy.notify_soft) and total_gb >= float(soft_cap):
+                    campaign_key = f"key_soft:{tg_id}:{node_code}:{day_key}"
+                    if _mark_campaign_sent_once(tg_id=tg_id, campaign_key=campaign_key):
+                        await _telegram_send_message(
+                            chat_id=tg_id,
+                            text=f"ℹ️ Лимит {soft_cap} GB на ключе {node_code.upper()} превышен ({total_gb:.2f} GB).",
+                        )
+                if hard_cap and bool(policy.notify_hard) and total_gb >= float(hard_cap):
+                    campaign_key = f"key_hard:{tg_id}:{node_code}:{day_key}"
+                    first_alert = _mark_campaign_sent_once(tg_id=tg_id, campaign_key=campaign_key)
+                    if first_alert:
+                        await _telegram_send_message(
+                            chat_id=tg_id,
+                            text=f"⚠️ Жесткий лимит {hard_cap} GB на ключе {node_code.upper()} достигнут ({total_gb:.2f} GB).",
+                        )
+                    if bool(policy.auto_disable_on_hard):
+                        disabled = await panel.set_user_key_enabled_on_node(tg_id=tg_id, node_code=node_code, enable=False)
+                        if disabled:
+                            _key_history_log(
+                                tg_id=tg_id,
+                                action="key_disable_hard_cap",
+                                node_code=node_code,
+                                actor_tg_id=0,
+                                source="worker",
+                                meta={"hard_cap_gb": hard_cap, "usage_gb": round(total_gb, 3)},
+                            )
+                            track_event(
+                                tg_id=tg_id,
+                                event_name="expired",
+                                source="worker",
+                                meta={"flow": "key_limits_watchdog", "node_code": node_code, "hard_cap_gb": hard_cap},
+                            )
+        finally:
+            await panel.close()
+        await asyncio.sleep(900)
 
 
 async def abandoned_cart_job() -> None:
@@ -813,6 +989,8 @@ async def main() -> None:
         asyncio.create_task(node_metrics_watchdog_job()),
         asyncio.create_task(channel_bonus_guard_job()),
         asyncio.create_task(free_cycle_reset_job()),
+        asyncio.create_task(referral_bonus_queue_job()),
+        asyncio.create_task(key_limits_watchdog_job()),
     ]
     await asyncio.gather(*tasks)
 

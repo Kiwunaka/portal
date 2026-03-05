@@ -225,7 +225,7 @@ class ApiPaymentCallbacksTests(unittest.TestCase):
 
         from datetime import datetime, timedelta
         from db import SessionLocal
-        from models import User
+        from models import ReferralBonusQueue, User
 
         s = SessionLocal()
         try:
@@ -286,11 +286,21 @@ class ApiPaymentCallbacksTests(unittest.TestCase):
         try:
             invited = s.query(User).filter(User.tg_id == 2003).first()
             referrer = s.query(User).filter(User.tg_id == 2002).first()
+            queued = (
+                s.query(ReferralBonusQueue)
+                .filter(
+                    ReferralBonusQueue.order_id == order_id,
+                    ReferralBonusQueue.referrer_tg_id == 2002,
+                    ReferralBonusQueue.referred_tg_id == 2003,
+                )
+                .first()
+            )
             self.assertIsNotNone(invited)
             self.assertIsNotNone(referrer)
+            self.assertIsNotNone(queued)
             self.assertTrue(bool(invited.first_purchase_done))
             self.assertEqual(int(referrer.referral_count or 0), 1)
-            self.assertTrue(bool(referrer.expiry_at and referrer.expiry_at > datetime.utcnow() + timedelta(days=30)))
+            self.assertTrue(bool(referrer.expiry_at and referrer.expiry_at < datetime.utcnow() + timedelta(days=30)))
         finally:
             s.close()
 
