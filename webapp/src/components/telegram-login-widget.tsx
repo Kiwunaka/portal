@@ -2,7 +2,7 @@
 
 import type { TelegramWebLoginPayload } from "@/lib/api";
 import { usePortalSession } from "@/lib/session";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 
 declare global {
   interface Window {
@@ -12,6 +12,8 @@ declare global {
 
 export default function TelegramLoginWidget() {
   const hostRef = useRef<HTMLDivElement | null>(null);
+  const authDoneRef = useRef(false);
+  const [widgetHint, setWidgetHint] = useState("");
   const { loginByWidget } = usePortalSession();
 
   useEffect(() => {
@@ -19,9 +21,18 @@ export default function TelegramLoginWidget() {
     if (!host) return;
     host.innerHTML = "";
 
-    const botName = (process.env.NEXT_PUBLIC_TELEGRAM_LOGIN_BOT || process.env.VITE_TELEGRAM_LOGIN_BOT || "net4ebur_bot").trim();
+    const rawBot = String(
+      process.env.NEXT_PUBLIC_TELEGRAM_LOGIN_BOT || process.env.VITE_TELEGRAM_LOGIN_BOT || "net4ebur_bot",
+    )
+      .trim()
+      .replace(/^@+/, "")
+      .toLowerCase();
+    const botName = rawBot === "portal_service_bot" ? "net4ebur_bot" : rawBot || "net4ebur_bot";
+    authDoneRef.current = false;
 
     window.onTelegramAuth = (user: TelegramWebLoginPayload) => {
+      authDoneRef.current = true;
+      setWidgetHint("");
       void loginByWidget(user);
     };
 
@@ -34,13 +45,27 @@ export default function TelegramLoginWidget() {
     script.setAttribute("data-request-access", "write");
     script.setAttribute("data-radius", "12");
     script.setAttribute("data-onauth", "onTelegramAuth(user)");
+    script.onerror = () => {
+      setWidgetHint("Не удалось загрузить Telegram Login Widget. Попробуйте кнопку входа через бота ниже.");
+    };
     host.appendChild(script);
 
+    const warnTimer = window.setTimeout(() => {
+      if (authDoneRef.current) return;
+      setWidgetHint("Если Telegram показывает 'Bot domain invalid', используйте вход через бота ниже.");
+    }, 4500);
+
     return () => {
+      window.clearTimeout(warnTimer);
       host.innerHTML = "";
       delete window.onTelegramAuth;
     };
   }, [loginByWidget]);
 
-  return <div ref={hostRef} className="min-h-[56px]" id="tg-login-widget" />;
+  return (
+    <div className="space-y-2">
+      <div ref={hostRef} className="min-h-[56px]" id="tg-login-widget" />
+      {widgetHint ? <p className="text-xs text-amber-500">{widgetHint}</p> : null}
+    </div>
+  );
 }

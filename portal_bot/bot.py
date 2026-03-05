@@ -689,6 +689,7 @@ from pay_attempts_service import (
     start_attempt,
 )
 from points_service import award_referral_points, preview_redeemable_points, spend_points
+from web_auth_service import create_web_session_token
 from tickets_repo import (
     STATUS_CLOSED,
     STATUS_IN_PROGRESS,
@@ -1460,6 +1461,17 @@ def _bot_checkout_url(
     if parsed.scheme and parsed.netloc:
         return urlunsplit((parsed.scheme, parsed.netloc, parsed.path or "/checkout/", built_query, parsed.fragment))
     return urlunsplit(("", "", parsed.path or "/checkout/", built_query, parsed.fragment))
+
+
+def _web_login_url_with_token(token: str) -> str:
+    base = (WEBAPP_URL or "").strip() or f"https://{(PUBLIC_WEB_DOMAIN or HOST_DOMAIN)}/webapp/"
+    parsed = urlsplit(base)
+    query = dict(parse_qsl(parsed.query, keep_blank_values=True))
+    query["web_session_token"] = str(token or "").strip()
+    built_query = urlencode(query)
+    if parsed.scheme and parsed.netloc:
+        return urlunsplit((parsed.scheme, parsed.netloc, parsed.path or "/webapp/", built_query, parsed.fragment))
+    return urlunsplit(("", "", parsed.path or "/webapp/", built_query, parsed.fragment))
 
 
 _START_TOKEN_RE = re.compile(r"^[A-Za-z0-9_-]{1,64}$")
@@ -3005,6 +3017,32 @@ async def cmd_start(message: Message):
             "promo_code": str(deeplink_promo_code or "").upper()[:20],
             "campaign_key": str(deeplink_campaign_key or "")[:64],
         }
+
+    if str(start_arg or "").strip().lower() in {"weblogin", "web_login", "login_web"}:
+        token = create_web_session_token(tg_id=int(tg_id), username=username)
+        if not token:
+            await message.answer(
+                "⚠️ Не удалось создать web-сессию. Попробуйте снова через минуту или откройте кабинет из меню бота.",
+                reply_markup=main_keyboard(tg_id),
+            )
+            return
+        login_url = _web_login_url_with_token(token)
+        await message.answer(
+            "✅ Вход подтверждён.\n\nОткройте кабинет по кнопке ниже:",
+            reply_markup=InlineKeyboardMarkup(
+                inline_keyboard=[
+                    [InlineKeyboardButton(text="🌐 Открыть кабинет", url=login_url)],
+                    [InlineKeyboardButton(text="◀️ В меню", callback_data="back")],
+                ]
+            ),
+        )
+        track_event(
+            tg_id=int(tg_id),
+            event_name="web_login_ticket_issued",
+            source="bot",
+            meta={"start_arg": str(start_arg or "").lower()},
+        )
+        return
 
     promo_requested = bool(
         OPENING_PREMIUM_ENABLED

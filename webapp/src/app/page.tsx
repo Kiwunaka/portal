@@ -51,8 +51,8 @@ function EntryBody() {
             <button className="btn-primary rounded-xl px-5 py-2.5 text-sm font-semibold uppercase tracking-[0.12em]" onClick={() => void refresh()} type="button">
               Повторить
             </button>
-            <Link href="https://t.me/net4ebur_bot" target="_blank" className="outline-btn rounded-xl px-5 py-2.5 text-sm font-semibold uppercase tracking-[0.12em]">
-              Открыть бота
+            <Link href="https://t.me/net4ebur_bot?start=weblogin" target="_blank" className="outline-btn rounded-xl px-5 py-2.5 text-sm font-semibold uppercase tracking-[0.12em]">
+              Войти через бота
             </Link>
           </div>
         </section>
@@ -74,14 +74,21 @@ function EntryBody() {
             <TelegramLoginWidget />
             {webLoginBusy ? <p className="text-xs text-slate-500">Проверяем аккаунт...</p> : null}
             {webLoginError ? <p className="text-xs text-rose-500">{webLoginError}</p> : null}
+            <Link
+              href="https://t.me/net4ebur_bot?start=weblogin"
+              target="_blank"
+              className="outline-btn inline-flex rounded-xl px-4 py-2 text-xs font-semibold uppercase tracking-[0.12em]"
+            >
+              Войти через бота
+            </Link>
           </div>
         ) : (
           <p className="mt-5 text-sm text-emerald-600 dark:text-emerald-300">Сессия найдена, открываем кабинет...</p>
         )}
 
         <div className="mt-6 flex flex-wrap gap-3">
-          <Link href="https://t.me/net4ebur_bot" target="_blank" className="outline-btn rounded-xl px-5 py-2.5 text-sm font-semibold uppercase tracking-[0.12em]">
-            Открыть бота
+          <Link href="https://t.me/net4ebur_bot?start=weblogin" target="_blank" className="outline-btn rounded-xl px-5 py-2.5 text-sm font-semibold uppercase tracking-[0.12em]">
+            Войти через бота
           </Link>
           <Link href="/dashboard/" className="btn-primary rounded-xl px-5 py-2.5 text-sm font-semibold uppercase tracking-[0.12em]">
             Открыть кабинет

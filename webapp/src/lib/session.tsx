@@ -3,6 +3,7 @@
 import {
   authByTelegramWebLogin,
   clearWebSessionToken,
+  consumeWebSessionTokenFromUrl,
   fetchDashboard,
   fetchUser,
   hasWebSessionToken,
@@ -45,7 +46,8 @@ export function PortalSessionProvider({ children }: { children: React.ReactNode 
   const [dash, setDash] = useState<DashboardSnapshot | null>(null);
 
   const refresh = useCallback(async () => {
-    const hasSession = hasWebSessionToken();
+    const consumedFromUrl = consumeWebSessionTokenFromUrl();
+    const hasSession = hasWebSessionToken() || consumedFromUrl;
     if (!tgUser && !hasSession) {
       setLoading(false);
       setError("");

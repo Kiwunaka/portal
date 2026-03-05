@@ -359,6 +359,12 @@
 2. Допустимые символы: `[A-Za-z0-9_-]`.
 3. Реальные значения `promo/campaign` в checkout context.
 
+### 10.5 Симптом: `Bot domain invalid` при входе через Telegram Login Widget
+Проверить:
+1. В `@BotFather` для `@net4ebur_bot` выполнен `/setdomain` на актуальный домен (`portal-privacy.online`).
+2. Веб-вход через deep-link работает: `https://t.me/net4ebur_bot?start=weblogin`.
+3. Ссылка из бота открывает WebApp с `web_session_token` и автоматически логинит пользователя в браузере.
+
 ---
 
 ## Приложение A: Admin WebApp MVP (`/admin/*`)

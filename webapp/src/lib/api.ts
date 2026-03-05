@@ -468,6 +468,26 @@ export function setWebSessionToken(token: string): void {
   window.localStorage.setItem(WEB_SESSION_TOKEN_KEY, value);
 }
 
+export function consumeWebSessionTokenFromUrl(): boolean {
+  if (typeof window === "undefined") return false;
+  try {
+    const current = new URL(window.location.href);
+    const token = String(
+      current.searchParams.get("web_session_token") || current.searchParams.get("web_session") || "",
+    ).trim();
+    if (!token) return false;
+
+    setWebSessionToken(token);
+    current.searchParams.delete("web_session_token");
+    current.searchParams.delete("web_session");
+    const next = `${current.pathname}${current.search}${current.hash}`;
+    window.history.replaceState({}, "", next || "/");
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 export function clearWebSessionToken(): void {
   if (typeof window === "undefined") return;
   window.localStorage.removeItem(WEB_SESSION_TOKEN_KEY);
