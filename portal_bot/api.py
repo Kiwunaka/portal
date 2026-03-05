@@ -6534,6 +6534,34 @@ def _nodes_for_user(user: User, nodes: list) -> list:
     """
     if not nodes:
         return nodes
+
+    excluded_codes = {
+        token.strip().lower()
+        for token in str(os.getenv("SUBSCRIPTION_EXCLUDE_NODE_CODES", "") or "").split(",")
+        if token.strip()
+    }
+
+    def _apply_node_filters(pool: list) -> list:
+        # 1) Drop explicitly excluded nodes/country-bases from subscription output.
+        filtered = list(pool)
+        if excluded_codes:
+            filtered = []
+            for node in pool:
+                code = str(getattr(node, "code", "") or "").strip().lower()
+                if not code:
+                    continue
+                base = _node_code_base(code)
+                if code in excluded_codes or base in excluded_codes:
+                    continue
+                filtered.append(node)
+            # Backward-compatible fallback: keep original pool if filter removes everything.
+            if not filtered:
+                filtered = list(pool)
+
+        # 2) Prefer healthy nodes when health data is available; fallback to full pool.
+        healthy = [node for node in filtered if bool(getattr(node, "is_healthy", True))]
+        return healthy or filtered
+
     is_free = (user.sub_type or "").upper() == "FREE"
     plan_code = str(getattr(user, "current_plan_code", "") or "").strip().lower()
 
@@ -6547,7 +6575,7 @@ def _nodes_for_user(user: User, nodes: list) -> list:
                 if _node_code_base(code) == "nl":
                     start_nodes.append(n)
             if start_nodes:
-                return start_nodes
+                return _apply_node_filters(start_nodes)
         paid = []
         for n in nodes:
             code = (getattr(n, "code", "") or "").lower()
@@ -6556,10 +6584,10 @@ def _nodes_for_user(user: User, nodes: list) -> list:
             if _node_code_base(code) in {"brain", "de"}:
                 continue
             paid.append(n)
-        return paid
+        return _apply_node_filters(paid)
 
     free_nodes = [n for n in nodes if "free" in (getattr(n, "code", "") or "").lower()]
-    return free_nodes
+    return _apply_node_filters(free_nodes)
 
 
 def _token_fingerprint(token: str) -> str:
