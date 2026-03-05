@@ -121,7 +121,10 @@ def main() -> int:
         sub_check = f"""#!/usr/bin/env bash
 set -euo pipefail
 
-CANDIDATES="$(python3 -c "import sqlite3;db='/root/portal_bot/portal.db';con=sqlite3.connect(db);cur=con.cursor();rows=cur.execute(\\"select tg_id,sub_token from users where is_active=1 and sub_token is not null and sub_token<>'' order by created_at asc limit 25\\").fetchall();print('\\\\n'.join(f'{{r[0]}}|{{r[1]}}' for r in rows))")"
+CANDIDATES="$(runuser -u postgres -- psql -d portal -tAc \"select tg_id||'|'||sub_token from users where is_active=true and sub_token is not null and sub_token<>'' order by created_at asc limit 25\" 2>/dev/null | sed '/^\\s*$/d' || true)"
+if [ -z "${{CANDIDATES:-}}" ]; then
+  CANDIDATES="$(python3 -c "import sqlite3;db='/root/portal_bot/portal.db';con=sqlite3.connect(db);cur=con.cursor();rows=cur.execute(\\"select tg_id,sub_token from users where is_active=1 and sub_token is not null and sub_token<>'' order by created_at asc limit 25\\").fetchall();print('\\\\n'.join(f'{{r[0]}}|{{r[1]}}' for r in rows))" 2>/dev/null || true)"
+fi
 if [ -z "${{CANDIDATES:-}}" ]; then
   echo "no_active_tokens"
   exit 2
