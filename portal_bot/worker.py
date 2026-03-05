@@ -280,15 +280,23 @@ async def _telegram_get_chat_member(channel_username: str, user_id: int) -> tupl
                     if "not a member" in desc or "user not found" in desc:
                         return False, "not_member"
                     return False, "telegram_api_error"
-                status = str((body.get("result") or {}).get("status") or "").lower()
-                return status in {"creator", "administrator", "member", "restricted"}, status
+                status_raw = str((body.get("result") or {}).get("status") or "").strip().lower()
+                if _normalize_channel_membership_reason(status_raw) == "not_member":
+                    return False, status_raw or "not_member"
+                return status_raw in {"creator", "administrator", "member", "restricted"}, status_raw
     except Exception:
         return False, "telegram_exception"
 
 
 def _normalize_channel_membership_reason(reason: str) -> str:
     raw = str(reason or "").strip().lower()
+    raw = raw.strip("`'\"")
+    raw = " ".join(raw.split())
     if raw in {"not_member", "left", "kicked"}:
+        return "not_member"
+    if "not a member" in raw or "user not found" in raw:
+        return "not_member"
+    if raw.startswith("left") or raw.startswith("kicked"):
         return "not_member"
     return raw or "unknown"
 
@@ -915,7 +923,7 @@ async def channel_bonus_guard_job() -> None:
                 int(u.tg_id),
                 reason,
                 normalized_reason,
-                "skip_member" if is_member else "verify",
+                "skip_member" if is_member else "evaluate_non_member",
             )
             if is_member:
                 continue
@@ -937,7 +945,7 @@ async def channel_bonus_guard_job() -> None:
                         chat_id=int(Settings.ADMIN_ID),
                         text=(
                             "⚠️ Проверка подписки на канал работает нестабильно.\n"
-                            f"Причина: `{reason}`.\n"
+                            f"Причина: `{normalized_reason}` (raw: `{reason}`).\n"
                             "Откат бонусов временно пропущен."
                         ),
                     )
@@ -964,6 +972,14 @@ async def channel_bonus_guard_job() -> None:
                     event_name="expired",
                     source="worker",
                     meta={"flow": "channel_bonus_guard", "reason": normalized_reason, "raw_reason": reason},
+                )
+            else:
+                logger.warning(
+                    "channel_bonus_guard user_id=%s raw_status=%s normalized_reason=%s action=%s",
+                    int(u.tg_id),
+                    reason,
+                    normalized_reason,
+                    "revoke_failed",
                 )
         await asyncio.sleep(900)
 

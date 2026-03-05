@@ -50,7 +50,9 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
     const saved = localStorage.getItem("portal-theme");
     return saved ? saved === "dark" : window.matchMedia("(prefers-color-scheme: dark)").matches;
   });
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [mobileMenuPath, setMobileMenuPath] = useState<string | null>(null);
+  const isAdminRoute = pathname.startsWith("/admin");
+  const mobileMenuOpen = !isAdminRoute && mobileMenuPath === pathname;
 
   useEffect(() => {
     document.documentElement.classList.toggle("dark", dark);
@@ -141,7 +143,8 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
   return (
     <div className="relative min-h-screen" style={{ minHeight: "var(--tg-viewport-height, 100dvh)" }}>
       <div className="mx-auto flex min-h-screen max-w-[1500px]">
-        <aside className="hidden w-72 flex-col justify-between px-5 py-7 lg:flex">
+        {!isAdminRoute ? (
+          <aside className="hidden w-72 flex-col justify-between px-5 py-7 lg:flex">
           <div>
             <div className="mb-9 flex items-center gap-3 px-3">
               <span className="material-symbols-rounded rounded-xl bg-violet-500/20 p-2 text-2xl text-violet-600 dark:text-violet-300">grid_view</span>
@@ -179,19 +182,28 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
             <span className="material-symbols-rounded text-[20px]">logout</span>
             Выйти из web-сессии
           </button>
-        </aside>
+          </aside>
+        ) : null}
 
-        <div className="flex-1 px-3 pb-28 pt-4 md:px-6 lg:pt-7" style={{ paddingTop: "max(1rem, var(--tg-safe-area-top, 0px))", paddingBottom: "calc(7rem + var(--tg-safe-area-bottom, 0px))" }}>
+        <div
+          className={`flex-1 px-3 pt-4 md:px-6 lg:pt-7 ${isAdminRoute ? "pb-6" : "pb-28"}`}
+          style={{
+            paddingTop: "max(1rem, var(--tg-safe-area-top, 0px))",
+            paddingBottom: isAdminRoute ? "calc(1.25rem + var(--tg-safe-area-bottom, 0px))" : "calc(7rem + var(--tg-safe-area-bottom, 0px))",
+          }}
+        >
           <header className="glass-card mb-5 flex items-center justify-between px-4 py-3">
             <div className="flex items-center gap-3">
-              <button
-                type="button"
-                onClick={() => setMobileMenuOpen(true)}
-                className="haptic-tap rounded-xl bg-white/70 p-2 text-slate-600 lg:hidden dark:bg-white/10 dark:text-slate-300"
-                aria-label="Открыть меню"
-              >
-                <span className="material-symbols-rounded">menu</span>
-              </button>
+              {!isAdminRoute ? (
+                <button
+                  type="button"
+                  onClick={() => setMobileMenuPath(pathname)}
+                  className="haptic-tap rounded-xl bg-white/70 p-2 text-slate-600 lg:hidden dark:bg-white/10 dark:text-slate-300"
+                  aria-label="Открыть меню"
+                >
+                  <span className="material-symbols-rounded">menu</span>
+                </button>
+              ) : null}
               <p className="font-mono text-[11px] uppercase tracking-[0.15em] text-slate-500 md:text-xs">secure control center</p>
             </div>
 
@@ -215,7 +227,8 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
         </div>
       </div>
 
-      <nav className="tg-bottom-nav glass-card fixed left-1/2 z-40 flex w-[min(96vw,540px)] -translate-x-1/2 justify-between rounded-2xl px-4 py-3 lg:hidden">
+      {!isAdminRoute ? (
+        <nav className={`tg-bottom-nav glass-card fixed left-1/2 z-40 flex w-[min(96vw,540px)] -translate-x-1/2 justify-between rounded-2xl px-4 py-3 lg:hidden ${mobileMenuOpen ? "pointer-events-none opacity-0" : ""}`}>
         {navItems.map((item) => {
           const selected = active === item.href;
           return (
@@ -230,12 +243,13 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
             </Link>
           );
         })}
-      </nav>
+        </nav>
+      ) : null}
 
-      {mobileMenuOpen ? (
+      {!isAdminRoute && mobileMenuOpen ? (
         <div
           className="fixed inset-0 z-50 bg-slate-950/45 p-3 opacity-100 transition-opacity duration-200 lg:hidden"
-          onClick={() => setMobileMenuOpen(false)}
+          onClick={() => setMobileMenuPath(null)}
         >
           <aside
             className="glass-card h-full w-[min(82vw,320px)] p-5 transition-transform duration-200"
@@ -249,7 +263,7 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
                   <p className="font-mono text-[10px] uppercase tracking-[0.14em] text-slate-500">menu</p>
                 </div>
               </div>
-              <button type="button" onClick={() => setMobileMenuOpen(false)} className="haptic-tap rounded-lg bg-white/75 p-2 dark:bg-white/10" aria-label="Закрыть меню">
+              <button type="button" onClick={() => setMobileMenuPath(null)} className="haptic-tap rounded-lg bg-white/75 p-2 dark:bg-white/10" aria-label="Закрыть меню">
                 <span className="material-symbols-rounded">close</span>
               </button>
             </div>
@@ -261,7 +275,7 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
                   <Link
                     key={item.href}
                     href={item.href}
-                    onClick={() => setMobileMenuOpen(false)}
+                    onClick={() => setMobileMenuPath(null)}
                     className={`haptic-tap flex items-center gap-3 rounded-xl px-3 py-3 text-sm ${selected ? "bg-violet-600 text-white" : "bg-white/60 text-slate-700 dark:bg-white/10 dark:text-slate-200"}`}
                     aria-current={selected ? "page" : undefined}
                   >
