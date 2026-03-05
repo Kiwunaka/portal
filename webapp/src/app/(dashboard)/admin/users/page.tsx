@@ -32,9 +32,9 @@ function fmtTraffic(bytes: number): string {
 }
 
 function fmtOnline(value: boolean | null | undefined): string {
-  if (value === true) return "online";
-  if (value === false) return "offline";
-  return "unknown";
+  if (value === true) return "онлайн";
+  if (value === false) return "офлайн";
+  return "неизвестно";
 }
 
 function parseNullableNumber(input: string): number | null {
@@ -248,8 +248,8 @@ export default function AdminUsersPage() {
     setBusy(true);
     try {
       const out = await adminManualRegenerateToken(selectedTgId);
-      setOkMessage(`Новый токен создан (sync: ${out.sync_ok ? "ok" : "warn"}).`);
-      window.alert(`Новая ссылка:\n${out.subscription_url}\n\nSync: ${out.sync_ok ? "OK" : "WARN"}`);
+      setOkMessage(`Новый токен создан (синхронизация: ${out.sync_ok ? "ok" : "предупреждение"}).`);
+      window.alert(`Новая ссылка:\n${out.subscription_url}\n\nСинхронизация: ${out.sync_ok ? "OK" : "WARN"}`);
       await reloadSelected();
     } catch (err) {
       setError(String((err as { message?: string })?.message || err || "Ошибка ротации токена"));
@@ -259,14 +259,14 @@ export default function AdminUsersPage() {
   };
 
   const actionCreateManual = async (): Promise<void> => {
-    const displayName = window.prompt("Имя для manual пользователя:", "Offline user");
+    const displayName = window.prompt("Имя для ручного пользователя:", "Оффлайн пользователь");
     const daysRaw = window.prompt("Срок доступа (дни):", "30");
     const days = Number(daysRaw || 0);
     if (!displayName?.trim() || !Number.isFinite(days) || days <= 0) return;
     setBusy(true);
     try {
       await adminManualCreate({ display_name: displayName.trim(), days });
-      setOkMessage("Manual пользователь создан.");
+      setOkMessage("Ручной пользователь создан.");
       await loadUsers();
     } catch (err) {
       setError(String((err as { message?: string })?.message || err || "Ошибка создания manual пользователя"));
@@ -305,10 +305,10 @@ export default function AdminUsersPage() {
     setOkMessage("");
     try {
       const result = await adminUserPresetRun(selectedTgId, preset);
-      setOkMessage(`Preset ${result.preset} выполнен.`);
+      setOkMessage(`Сценарий ${result.preset} выполнен.`);
       await reloadSelected();
     } catch (err) {
-      setError(String((err as { message?: string })?.message || err || "Не удалось выполнить preset"));
+      setError(String((err as { message?: string })?.message || err || "Не удалось выполнить сценарий"));
     } finally {
       setBusy(false);
     }
@@ -346,8 +346,8 @@ export default function AdminUsersPage() {
     setOkMessage("");
     try {
       if (!bulkAction.dryRun) {
-        const confirmText = window.prompt("Для подтверждения массовой операции введите APPLY");
-        if ((confirmText || "").trim().toUpperCase() !== "APPLY") {
+        const confirmText = window.prompt("Для подтверждения массовой операции введите ПРИМЕНИТЬ");
+        if ((confirmText || "").trim().toUpperCase() !== "ПРИМЕНИТЬ") {
           setBusy(false);
           return;
         }
@@ -364,8 +364,8 @@ export default function AdminUsersPage() {
       });
       const affected = Number(out?.affected || 0);
       const failed = Number(out?.failed || 0);
-      const mode = out?.dry_run ? "dry-run" : "apply";
-      setBulkResult(`Bulk ${mode}: affected ${affected}, failed ${failed}`);
+      const mode = out?.dry_run ? "предпросмотр" : "применено";
+      setBulkResult(`Массовая операция (${mode}): обработано ${affected}, ошибок ${failed}`);
       if (!bulkAction.dryRun) {
         await loadUsers();
       }
@@ -383,7 +383,7 @@ export default function AdminUsersPage() {
     setOkMessage("");
     try {
       const out = await adminUserLoyaltyGrant(selectedTgId, tierDays);
-      setOkMessage(`Loyalty-награда ${out.tier_days} дней выдана.`);
+      setOkMessage(`Награда лояльности ${out.tier_days} дней выдана.`);
       await reloadSelected();
     } catch (err) {
       setError(String((err as { message?: string })?.message || err || "Не удалось выдать loyalty-награду"));
@@ -424,7 +424,7 @@ export default function AdminUsersPage() {
             Найти
           </button>
           <button className="btn-primary rounded-xl px-4 py-2 text-sm font-semibold" type="button" onClick={() => void actionCreateManual()} disabled={busy}>
-            + Manual
+            + Ручной пользователь
           </button>
         </div>
 
@@ -436,22 +436,22 @@ export default function AdminUsersPage() {
               onChange={(event) => setBulkAction((prev) => ({ ...prev, action: event.target.value as "disable" | "enable" | "reset" | "resync" }))}
               className="rounded-xl border border-violet-200/50 bg-white/90 px-3 py-2 text-xs outline-none dark:border-violet-500/30 dark:bg-slate-900/70"
             >
-              <option value="disable">disable keys</option>
-              <option value="enable">enable keys</option>
-              <option value="reset">reset traffic</option>
-              <option value="resync">resync subId</option>
+              <option value="disable">Отключить ключи</option>
+              <option value="enable">Включить ключи</option>
+              <option value="reset">Сбросить трафик</option>
+              <option value="resync">Пересинхронизировать subId</option>
             </select>
             <select
               value={bulkAction.segment}
               onChange={(event) => setBulkAction((prev) => ({ ...prev, segment: event.target.value }))}
               className="rounded-xl border border-violet-200/50 bg-white/90 px-3 py-2 text-xs outline-none dark:border-violet-500/30 dark:bg-slate-900/70"
             >
-              <option value="all">segment: all</option>
-              <option value="paid">segment: paid</option>
-              <option value="free">segment: free</option>
-              <option value="manual">segment: manual</option>
-              <option value="active">segment: active</option>
-              <option value="inactive">segment: inactive</option>
+              <option value="all">Сегмент: все</option>
+              <option value="paid">Сегмент: платные</option>
+              <option value="free">Сегмент: free</option>
+              <option value="manual">Сегмент: ручные</option>
+              <option value="active">Сегмент: активные</option>
+              <option value="inactive">Сегмент: неактивные</option>
             </select>
             <input
               value={bulkAction.q}
@@ -468,7 +468,7 @@ export default function AdminUsersPage() {
           </div>
           <div className="mt-2 flex flex-wrap items-center gap-3">
             <label className="text-xs text-slate-600 dark:text-slate-300">
-              limit:
+              лимит:
               <input
                 type="number"
                 min={1}
@@ -480,15 +480,15 @@ export default function AdminUsersPage() {
             </label>
             <label className="inline-flex items-center gap-1 text-xs text-slate-600 dark:text-slate-300">
               <input type="checkbox" checked={bulkAction.dryRun} onChange={(event) => setBulkAction((prev) => ({ ...prev, dryRun: event.target.checked }))} />
-              dry-run
+              предпросмотр
             </label>
             <label className="inline-flex items-center gap-1 text-xs text-slate-600 dark:text-slate-300">
               <input type="checkbox" checked={bulkAction.force} onChange={(event) => setBulkAction((prev) => ({ ...prev, force: event.target.checked }))} />
-              force
+              принудительно
             </label>
-            <button className="outline-btn rounded-xl px-3 py-1.5 text-xs font-semibold" type="button" onClick={() => void runBulkAction()} disabled={busy}>
-              Выполнить
-            </button>
+              <button className="outline-btn rounded-xl px-3 py-1.5 text-xs font-semibold" type="button" onClick={() => void runBulkAction()} disabled={busy}>
+                Запустить
+              </button>
           </div>
           {bulkResult ? <p className="mt-2 text-xs text-emerald-500">{bulkResult}</p> : null}
         </div>
@@ -521,7 +521,7 @@ export default function AdminUsersPage() {
                   <td className="px-2 py-2">{row.sub_type || "—"}</td>
                   <td className="px-2 py-2">
                     <span className={`rounded-full px-2 py-1 text-xs ${row.is_active ? "bg-emerald-500/20 text-emerald-600" : "bg-rose-500/20 text-rose-500"}`}>
-                      {row.is_active ? "active" : "blocked"}
+                      {row.is_active ? "активен" : "заблокирован"}
                     </span>
                   </td>
                 </tr>
@@ -559,35 +559,35 @@ export default function AdminUsersPage() {
 
             <div className="mb-3 grid gap-2 sm:grid-cols-2">
               <button className="outline-btn rounded-xl px-3 py-2 text-xs font-semibold" type="button" onClick={() => void runPreset("reset_key")} disabled={busy}>
-                Preset: reset key
+                Сценарий: сброс ключа
               </button>
               <button className="outline-btn rounded-xl px-3 py-2 text-xs font-semibold" type="button" onClick={() => void runPreset("rotate_link")} disabled={busy}>
-                Preset: rotate link
+                Сценарий: ротация ссылки
               </button>
               <button className="outline-btn rounded-xl px-3 py-2 text-xs font-semibold" type="button" onClick={() => void runPreset("extend_1d")} disabled={busy}>
-                Preset: extend 1 day
+                Сценарий: +1 день
               </button>
               <button className="outline-btn rounded-xl px-3 py-2 text-xs font-semibold" type="button" onClick={() => void runPreset("send_guide")} disabled={busy}>
-                Preset: send guide
+                Сценарий: отправить инструкцию
               </button>
             </div>
 
             <div className="mb-3 grid gap-3 sm:grid-cols-2">
               <div className="rounded-xl bg-white/70 p-3 text-sm dark:bg-white/10">
                 <p>План: <strong>{selected.user.sub_type}</strong></p>
-                <p>Stars paid: <strong>{selected.user.stars_paid}</strong></p>
-                <p>Referrals: <strong>{selected.user.referral_count}</strong></p>
-                <p>Loyalty streak: <strong>{loyalty?.streak_days ?? 0} дн.</strong></p>
+                <p>Оплачено Stars: <strong>{selected.user.stars_paid}</strong></p>
+                <p>Рефералов: <strong>{selected.user.referral_count}</strong></p>
+                <p>Серия лояльности: <strong>{loyalty?.streak_days ?? 0} дн.</strong></p>
               </div>
               <div className="rounded-xl bg-white/70 p-3 text-sm dark:bg-white/10">
                 <div className="mb-1 flex items-center gap-2">
-                  <span className={`badge ${riskClass}`}>risk {Math.round(risk?.score || 0)}</span>
-                  <span className="text-xs text-slate-500">{risk?.level || "low"}</span>
+                  <span className={`badge ${riskClass}`}>риск {Math.round(risk?.score || 0)}</span>
+                  <span className="text-xs text-slate-500">{risk?.level || "низкий"}</span>
                 </div>
-                <p className="text-xs">Regen: <strong>{risk?.signals?.regen_count ?? 0}</strong></p>
-                <p className="text-xs">Admin key ops: <strong>{risk?.signals?.admin_key_ops ?? 0}</strong></p>
-                <p className="text-xs">Unique IP: <strong>{risk?.signals?.unique_ips ?? 0}</strong></p>
-                <p className="text-xs">Traffic: <strong>{Number(risk?.signals?.traffic_gb || 0).toFixed(2)} GB</strong></p>
+                <p className="text-xs">Регенераций: <strong>{risk?.signals?.regen_count ?? 0}</strong></p>
+                <p className="text-xs">Админ-операций с ключами: <strong>{risk?.signals?.admin_key_ops ?? 0}</strong></p>
+                <p className="text-xs">Уникальных IP: <strong>{risk?.signals?.unique_ips ?? 0}</strong></p>
+                <p className="text-xs">Трафик: <strong>{Number(risk?.signals?.traffic_gb || 0).toFixed(2)} GB</strong></p>
               </div>
             </div>
 
@@ -600,7 +600,7 @@ export default function AdminUsersPage() {
                   className="w-full rounded-xl border border-violet-200/50 bg-white/80 px-3 py-2 text-xs outline-none dark:border-violet-500/30 dark:bg-slate-900/70"
                 />
                 <button className="outline-btn rounded-xl px-3 py-2 text-xs font-semibold" type="button" onClick={() => void copyText(String(selected.user.subscription_url || ""))}>
-                  Copy URL
+                  Копировать URL
                 </button>
               </div>
               <div className="mt-2 flex items-start gap-2">
@@ -610,24 +610,24 @@ export default function AdminUsersPage() {
                   className="w-full rounded-xl border border-violet-200/50 bg-white/80 px-3 py-2 text-xs outline-none dark:border-violet-500/30 dark:bg-slate-900/70"
                 />
                 <button className="outline-btn rounded-xl px-3 py-2 text-xs font-semibold" type="button" onClick={() => void copyText(String(selected.user.subscription_token || ""))}>
-                  Copy token
+                  Копировать токен
                 </button>
               </div>
             </div>
 
             {loyalty?.tiers?.length ? (
               <div className="mb-3 rounded-xl bg-white/70 p-3 text-sm dark:bg-white/10">
-                <p className="mb-2 font-semibold">Loyalty tiers (30/90/180)</p>
+                <p className="mb-2 font-semibold">Уровни лояльности (30/90/180)</p>
                 <div className="grid gap-2 sm:grid-cols-3">
                   {loyalty.tiers.map((tier) => (
                     <div key={tier.reward_key} className="rounded-xl border border-white/30 bg-white/70 p-2 text-xs dark:border-white/10 dark:bg-white/5">
                       <p className="font-semibold">{tier.days} дн.</p>
                       <p>Бонус: {tier.bonus_days} дн.</p>
-                      <p>Perk: {tier.perk}</p>
-                      <p className="mt-1">Статус: {tier.claimed ? "claimed" : tier.unlocked ? "unlocked" : "locked"}</p>
+                      <p>Привилегия: {tier.perk}</p>
+                      <p className="mt-1">Статус: {tier.claimed ? "получен" : tier.unlocked ? "доступен" : "заблокирован"}</p>
                       {!tier.claimed && tier.unlocked ? (
                         <button className="mt-2 outline-btn rounded-lg px-2 py-1 text-[11px] font-semibold" type="button" disabled={busy} onClick={() => void grantLoyaltyTier(tier.days)}>
-                          Выдать tier
+                          Выдать уровень
                         </button>
                       ) : null}
                     </div>
@@ -637,8 +637,8 @@ export default function AdminUsersPage() {
             ) : null}
 
             <div className="mb-3 flex flex-wrap gap-2">
-              <button className={tabButtonClass("overview")} type="button" onClick={() => setDetailTab("overview")}>overview</button>
-              <button className={tabButtonClass("keys")} type="button" onClick={() => setDetailTab("keys")}>keys</button>
+              <button className={tabButtonClass("overview")} type="button" onClick={() => setDetailTab("overview")}>обзор</button>
+              <button className={tabButtonClass("keys")} type="button" onClick={() => setDetailTab("keys")}>ключи</button>
               <button className={tabButtonClass("history")} type="button" onClick={() => setDetailTab("history")}>история ключей</button>
               <button className={tabButtonClass("audit")} type="button" onClick={() => setDetailTab("audit")}>журнал админа</button>
             </div>
@@ -650,11 +650,11 @@ export default function AdminUsersPage() {
                   {summary ? (
                     <div className="grid gap-2 text-xs sm:grid-cols-2">
                       <p>Нод с ключом: <strong>{summary.nodes_with_client}/{summary.nodes_total}</strong></p>
-                      <p>Online нод: <strong>{summary.nodes_online}</strong></p>
-                      <p>Enabled нод: <strong>{summary.nodes_enabled}</strong></p>
-                      <p>SubId mismatch: <strong>{summary.subid_mismatch_count}</strong></p>
+                      <p>Онлайн нод: <strong>{summary.nodes_online}</strong></p>
+                      <p>Включённых нод: <strong>{summary.nodes_enabled}</strong></p>
+                      <p>Несовпадений subId: <strong>{summary.subid_mismatch_count}</strong></p>
                       <p>Трафик всего: <strong>{fmtTraffic(summary.traffic_total_bytes)}</strong></p>
-                      <p>Panel state: <strong>{summary.panel_state || "unknown"}</strong></p>
+                      <p>Состояние панели: <strong>{summary.panel_state || "неизвестно"}</strong></p>
                     </div>
                   ) : (
                     <p className="text-xs text-slate-500">Сводка недоступна.</p>
@@ -694,73 +694,73 @@ export default function AdminUsersPage() {
                     return (
                       <div key={key.node_code} className="rounded-xl border border-white/35 bg-white/70 p-3 text-xs dark:border-white/10 dark:bg-white/5">
                         <div className="flex flex-wrap items-center justify-between gap-2">
-                          <p className="font-semibold">{key.node_code} • {key.node_name || "Node"}</p>
+                          <p className="font-semibold">{key.node_code} • {key.node_name || "Нода"}</p>
                           <span className={`rounded-full px-2 py-0.5 ${key.exists ? "bg-emerald-500/20 text-emerald-600" : "bg-slate-300/40 text-slate-500"}`}>
-                            {key.exists ? "key exists" : "no key"}
+                            {key.exists ? "ключ найден" : "ключа нет"}
                           </span>
                         </div>
-                        <p className="mt-1">Online: <strong>{fmtOnline(key.online)}</strong> • Enabled: <strong>{key.enabled ? "yes" : "no"}</strong></p>
+                        <p className="mt-1">Онлайн: <strong>{fmtOnline(key.online)}</strong> • Включен: <strong>{key.enabled ? "да" : "нет"}</strong></p>
                         <p>SubId: <strong>{key.sub_id || "—"}</strong></p>
-                        <p>Expected: <strong>{key.expected_sub_id || "—"}</strong> • Match: <strong>{key.sub_id_match ? "yes" : "no"}</strong></p>
-                        <p>Traffic: <strong>{fmtTraffic(key.total_bytes)}</strong> ({key.up_bytes}↑ / {key.down_bytes}↓)</p>
-                        <p>Last online: <strong>{fmtRuDate(key.last_online_at)}</strong></p>
+                        <p>Ожидаемый: <strong>{key.expected_sub_id || "—"}</strong> • Совпадает: <strong>{key.sub_id_match ? "да" : "нет"}</strong></p>
+                        <p>Трафик: <strong>{fmtTraffic(key.total_bytes)}</strong> ({key.up_bytes}↑ / {key.down_bytes}↓)</p>
+                        <p>Последний онлайн: <strong>{fmtRuDate(key.last_online_at)}</strong></p>
 
                         <div className="mt-2 flex flex-wrap gap-2">
                           <button className="outline-btn rounded-xl px-2.5 py-1 text-[11px] font-semibold" type="button" disabled={busy || !key.exists || !!keyBusy} onClick={() => void runKeyAction(key, "toggle")}>
-                            {busyToggle ? "..." : key.enabled ? "Disable" : "Enable"}
+                            {busyToggle ? "..." : key.enabled ? "Отключить" : "Включить"}
                           </button>
                           <button className="outline-btn rounded-xl px-2.5 py-1 text-[11px] font-semibold" type="button" disabled={busy || !key.exists || !!keyBusy} onClick={() => void runKeyAction(key, "reset")}>
-                            {busyReset ? "..." : "Reset traffic"}
+                            {busyReset ? "..." : "Сбросить трафик"}
                           </button>
                           <button className="outline-btn rounded-xl px-2.5 py-1 text-[11px] font-semibold" type="button" disabled={busy || !key.exists || !!keyBusy} onClick={() => void runKeyAction(key, "resync")}>
-                            {busyResync ? "..." : "Resync subId"}
+                            {busyResync ? "..." : "Синхронизировать subId"}
                           </button>
                           <button className="outline-btn rounded-xl px-2.5 py-1 text-[11px] font-semibold" type="button" disabled={!String(key.vless_link || "").trim()} onClick={() => void copyText(String(key.vless_link || ""))}>
-                            Copy key
+                            Копировать ключ
                           </button>
                         </div>
 
                         <div className="mt-3 rounded-xl border border-violet-200/40 bg-white/80 p-2 dark:border-violet-500/20 dark:bg-slate-900/60">
-                          <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-500">Per-key лимиты и автонотификации</p>
+                          <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-500">Лимиты на ключ и автоуведомления</p>
                           <div className="grid gap-2 sm:grid-cols-3">
                             <input
                               value={draft.burst_mbps}
                               onChange={(event) => setPolicyDrafts((prev) => ({ ...prev, [key.node_code]: { ...draft, burst_mbps: event.target.value } }))}
-                              placeholder="burst Mbps"
+                              placeholder="пиковая скорость (Mbps)"
                               className="rounded-lg border border-violet-200/50 bg-white px-2 py-1 text-xs outline-none dark:border-violet-500/30 dark:bg-slate-900/70"
                             />
                             <input
                               value={draft.soft_cap_gb}
                               onChange={(event) => setPolicyDrafts((prev) => ({ ...prev, [key.node_code]: { ...draft, soft_cap_gb: event.target.value } }))}
-                              placeholder="soft cap GB"
+                              placeholder="soft-лимит (GB)"
                               className="rounded-lg border border-violet-200/50 bg-white px-2 py-1 text-xs outline-none dark:border-violet-500/30 dark:bg-slate-900/70"
                             />
                             <input
                               value={draft.hard_cap_gb}
                               onChange={(event) => setPolicyDrafts((prev) => ({ ...prev, [key.node_code]: { ...draft, hard_cap_gb: event.target.value } }))}
-                              placeholder="hard cap GB"
+                              placeholder="hard-лимит (GB)"
                               className="rounded-lg border border-violet-200/50 bg-white px-2 py-1 text-xs outline-none dark:border-violet-500/30 dark:bg-slate-900/70"
                             />
                           </div>
                           <div className="mt-2 flex flex-wrap items-center gap-3">
                             <label className="inline-flex items-center gap-1 text-[11px]">
                               <input type="checkbox" checked={draft.notify_soft} onChange={(event) => setPolicyDrafts((prev) => ({ ...prev, [key.node_code]: { ...draft, notify_soft: event.target.checked } }))} />
-                              notify soft
+                              уведомлять о soft-лимите
                             </label>
                             <label className="inline-flex items-center gap-1 text-[11px]">
                               <input type="checkbox" checked={draft.notify_hard} onChange={(event) => setPolicyDrafts((prev) => ({ ...prev, [key.node_code]: { ...draft, notify_hard: event.target.checked } }))} />
-                              notify hard
+                              уведомлять о hard-лимите
                             </label>
                             <label className="inline-flex items-center gap-1 text-[11px]">
                               <input type="checkbox" checked={draft.auto_disable_on_hard} onChange={(event) => setPolicyDrafts((prev) => ({ ...prev, [key.node_code]: { ...draft, auto_disable_on_hard: event.target.checked } }))} />
-                              auto disable
+                              автоотключение при hard-лимите
                             </label>
                             <label className="inline-flex items-center gap-1 text-[11px]">
                               <input type="checkbox" checked={draft.apply_now} onChange={(event) => setPolicyDrafts((prev) => ({ ...prev, [key.node_code]: { ...draft, apply_now: event.target.checked } }))} />
-                              apply now
+                              применить сразу
                             </label>
                             <button className="outline-btn rounded-lg px-2 py-1 text-[11px] font-semibold" type="button" onClick={() => void savePolicy(key.node_code)} disabled={policyBusy === key.node_code}>
-                              {policyBusy === key.node_code ? "Saving..." : "Сохранить лимиты"}
+                              {policyBusy === key.node_code ? "Сохраняем..." : "Сохранить лимиты"}
                             </button>
                           </div>
                         </div>
@@ -784,10 +784,10 @@ export default function AdminUsersPage() {
                     <thead>
                       <tr className="text-left text-slate-500">
                         <th className="px-2 py-2">Дата</th>
-                        <th className="px-2 py-2">Action</th>
-                        <th className="px-2 py-2">Node</th>
-                        <th className="px-2 py-2">Actor</th>
-                        <th className="px-2 py-2">Meta</th>
+                        <th className="px-2 py-2">Действие</th>
+                        <th className="px-2 py-2">Нода</th>
+                        <th className="px-2 py-2">Оператор</th>
+                        <th className="px-2 py-2">Метаданные</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -820,9 +820,9 @@ export default function AdminUsersPage() {
                     <thead>
                       <tr className="text-left text-slate-500">
                         <th className="px-2 py-2">Дата</th>
-                        <th className="px-2 py-2">Actor</th>
-                        <th className="px-2 py-2">Action</th>
-                        <th className="px-2 py-2">Meta</th>
+                        <th className="px-2 py-2">Оператор</th>
+                        <th className="px-2 py-2">Действие</th>
+                        <th className="px-2 py-2">Метаданные</th>
                       </tr>
                     </thead>
                     <tbody>
