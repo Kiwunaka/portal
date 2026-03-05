@@ -74,10 +74,10 @@ const FALLBACK_PLANS: PlanOption[] = [
 
 const PLAN_COMPARISON_ROWS: PlanComparisonRow[] = [
   { metric: "Устройства", start: "1", pro: "До 5", ultra: "До 5" },
-  { metric: "Страны", start: "NL", pro: "Польша, Нидерланды, США, Италия", ultra: "Полный пул + приоритет" },
-  { metric: "Маршрутизация", start: "VPN для базовых задач", pro: "Полный VPN-маршрут ежедневно", ultra: "VPN + приоритет" },
-  { metric: "Скоростной профиль", start: "Базовый", pro: "Высокий", ultra: "Максимальный" },
-  { metric: "Поддержка", start: "Стандартная", pro: "Быстрый Telegram-ответ", ultra: "Приоритет 24/7" },
+  { metric: "Страны", start: "Нидерланды", pro: "Польша, Нидерланды, США, Италия", ultra: "Все страны + приоритет" },
+  { metric: "Для чего", start: "Веб и видео", pro: "Всё на каждый день", ultra: "Семья + максимум" },
+  { metric: "Скорость", start: "Комфортная", pro: "Высокая", ultra: "Максимальная" },
+  { metric: "Поддержка", start: "Стандартная", pro: "Быстрая в Telegram", ultra: "Приоритет 24/7" },
 ];
 
 function mapPlanToColumn(code: string): "start" | "pro" | "ultra" {
@@ -315,15 +315,15 @@ export default function CheckoutPage() {
       <section className="checkout-hero">
         <div className="orb orb-a" />
         <div className="orb orb-b" />
-        <div className="checkout-kicker">[SAFE CHECKOUT FLOW]</div>
+        <div className="checkout-kicker">[ОПЛАТА PORTAL VPN]</div>
         <h1 className="checkout-title">
           <span>PORTAL</span>
-          <span>RUB</span>
-          <span>CHECKOUT</span>
+          <span>ОПЛАТА</span>
+          <span>В РУБЛЯХ</span>
         </h1>
         <p className="checkout-sub">
-          Заказ в рублях создаётся на сервере, затем открывается защищённая ссылка провайдера. Для оплаты нужен checkout ticket,
-          который выдаётся после привязки Telegram-аккаунта.
+          Выберите тариф, оплатите удобным способом — и VPN заработает сразу.
+          Если вы пришли из бота, всё подтянется автоматически.
         </p>
       </section>
 
@@ -383,8 +383,7 @@ export default function CheckoutPage() {
               </div>
             ))}
             <p className="plan-compare__note">
-              Почему часть медиасервисов может идти напрямую: в отдельных сценариях это уменьшает задержку и стабилизирует
-              воспроизведение. VPN-канал для основного трафика сохраняется по тарифной политике.
+              Для лучшего качества видео и звонков часть трафика может идти напрямую. Весь остальной трафик защищён через VPN.
             </p>
           </div>
         </article>
@@ -393,23 +392,23 @@ export default function CheckoutPage() {
           <h2>Оплата</h2>
           {!checkoutTicket ? (
             <div className="notice notice--warn">
-              Для оплаты нужен checkout ticket. Откройте бота, завершите привязку и вернитесь в checkout.
+              Для оплаты нужно авторизоваться через бота. Откройте бота, нажмите «Старт» и вернитесь сюда.
             </div>
           ) : null}
           {statusText ? <div className="notice">{statusText}</div> : null}
           <div className="checkout-proof">
-            <div className="checkout-proof__title">Данные по активности сервиса</div>
+            <div className="checkout-proof__title">Нам доверяют</div>
             <div className="checkout-proof__grid">
               <div className="checkout-proof__item">
-                <span>Подключено</span>
+                <span>Пользователей</span>
                 <strong>{socialProof.connected > 0 ? socialProof.connected.toLocaleString("ru-RU") : "—"}</strong>
               </div>
               <div className="checkout-proof__item">
-                <span>Активно сейчас</span>
+                <span>Онлайн сейчас</span>
                 <strong>{socialProof.active > 0 ? socialProof.active.toLocaleString("ru-RU") : "—"}</strong>
               </div>
               <div className="checkout-proof__item">
-                <span>Платные профили</span>
+                <span>Premium</span>
                 <strong>{socialProof.paid > 0 ? socialProof.paid.toLocaleString("ru-RU") : "—"}</strong>
               </div>
             </div>
@@ -421,7 +420,7 @@ export default function CheckoutPage() {
           <div className="checkout-actions" style={{ marginTop: 10 }}>
             {checkoutTicket ? (
               <button className="checkout-btn" disabled={isBusy} onClick={() => void createOrder()}>
-                {isBusy ? "Создаём заказ..." : "Открыть оплату"}
+                {isBusy ? "Создаём заказ..." : `Оплатить ${activePlan.amount_rub} ₽`}
               </button>
             ) : (
               <a href={botHref} className="checkout-btn" target="_blank" rel="noreferrer">
@@ -435,7 +434,7 @@ export default function CheckoutPage() {
 
           {widgetSrc ? (
             <>
-              <div className="meta-line" style={{ marginTop: 14 }}>Виджет доступен как вспомогательный вариант оплаты</div>
+              <div className="meta-line" style={{ marginTop: 14 }}>Дополнительный вариант оплаты</div>
               <iframe
                 src={widgetSrc}
                 width="100%"
@@ -449,8 +448,8 @@ export default function CheckoutPage() {
       </section>
 
       <section className="checkout-foot glass-card">
-        <h3>Что будет после оплаты</h3>
-        <p>После успешного платежа статус продления обновится автоматически. Если процесс прервался, можно вернуться в checkout или в бота — контекст кампании сохранится.</p>
+        <h3>Что будет дальше?</h3>
+        <p>После оплаты ваша подписка активируется автоматически. Если что-то пошло не так — просто вернитесь сюда или напишите в бота, мы поможем.</p>
       </section>
 
       <style jsx global>{`
