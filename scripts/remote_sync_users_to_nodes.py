@@ -41,6 +41,20 @@ async def main() -> int:
     s = SessionLocal()
     try:
         nodes = enabled_nodes(s)
+        skip_bases = {"brain", "de"}
+        filtered = []
+        for n in nodes:
+            code = str(getattr(n, "code", "") or "").strip().lower()
+            if not code:
+                continue
+            base = code
+            for sep in ("_", "-", "."):
+                if sep in base:
+                    base = base.split(sep, 1)[0]
+            if "free" not in code and base in skip_bases:
+                continue
+            filtered.append(n)
+        nodes = filtered
         users = s.query(User).order_by(User.created_at.asc()).all()
     finally:
         s.close()
