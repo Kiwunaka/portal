@@ -4251,25 +4251,45 @@ async def do_wheel_spin(callback: CallbackQuery):
             ])
         )
         return
-    
-    # Keep user enabled in panel (best-effort).
-    try:
-        await panel.update_client_traffic(tg_id, 0)
-    except:
-        pass
-    
+
+    achievement_bonus_days = 0
+    achievement_id = ""
     # Jackpot?
     if prize >= 30:
         emoji = "🎉🎉🎉"
         title = "ДЖЕКПОТ!!!"
         # Award jackpot achievement
-        award_achievement(tg_id, "jackpot")
+        achievement_id = "jackpot"
+        achievement_bonus_days = int(award_achievement(tg_id, "jackpot") or 0)
     elif prize >= 7:
         emoji = "✨"
         title = "Отлично!"
     else:
         emoji = "🎁"
         title = "Поздравляем!"
+
+    # Keep user enabled in panel after all DB-side bonus changes (best-effort).
+    sync_ok = False
+    try:
+        sync_ok = bool(await panel.update_client_traffic(tg_id, 0))
+    except Exception:
+        sync_ok = False
+
+    cooldown_days = int(_wheel_cooldown_days())
+    total_bonus_days = int(prize) + int(achievement_bonus_days or 0)
+    track_event(
+        tg_id=int(tg_id),
+        event_name="wheel_spin",
+        source="bot",
+        meta={
+            "prize_days": int(prize),
+            "achievement_id": achievement_id or None,
+            "achievement_bonus_days": int(achievement_bonus_days or 0),
+            "total_bonus_days": int(total_bonus_days),
+            "cooldown_days": int(cooldown_days),
+            "sync_ok": bool(sync_ok),
+        },
+    )
     
     kb = InlineKeyboardMarkup(inline_keyboard=[
         [InlineKeyboardButton(text="◀️ В меню", callback_data="back")]
@@ -4279,7 +4299,7 @@ async def do_wheel_spin(callback: CallbackQuery):
         f"{emoji} *{title}*\n\n"
         f"Тебе выпало: *+{prize} Дней*!\n\n"
         f"Подписка продлена.\n"
-        f"Приходи через 7 дней за новым призом!",
+        f"Приходи через {cooldown_days} дней за новым призом!",
         reply_markup=kb,
         parse_mode=ParseMode.MARKDOWN
     )

@@ -8,6 +8,7 @@ import unittest
 import uuid
 from datetime import timedelta
 from pathlib import Path
+from unittest.mock import patch
 
 
 class _FakeMember:
@@ -26,6 +27,31 @@ class _FakeBot:
         if self._fail:
             raise RuntimeError("api unavailable")
         return _FakeMember(self._status or "left")
+
+
+class _FakeMessage:
+    def __init__(self):
+        self.edits: list[str] = []
+
+    async def edit_text(self, text, **_kwargs):
+        self.edits.append(str(text))
+        return None
+
+
+class _FakeUser:
+    def __init__(self, tg_id: int):
+        self.id = int(tg_id)
+
+
+class _FakeCallback:
+    def __init__(self, tg_id: int):
+        self.from_user = _FakeUser(tg_id)
+        self.message = _FakeMessage()
+        self.answers: list[tuple[str, bool]] = []
+
+    async def answer(self, text, show_alert=False):
+        self.answers.append((str(text), bool(show_alert)))
+        return None
 
 
 class BotPaywallTests(unittest.TestCase):
@@ -501,6 +527,65 @@ class BotPaywallTests(unittest.TestCase):
         ok, result = asyncio.run(self.bot_module.redeem_gift_card(code, 1001, _FakeBot(status="member")))
         self.assertFalse(ok)
         self.assertIn("недоступ", result.lower())
+
+
+    def test_wheel_spin_uses_configured_cooldown_and_tracks_result(self) -> None:
+        self.bot_module.ensure_pending_user(1001, username="alice")
+
+        session = self.bot_module.Session()
+        try:
+            user = session.query(self.bot_module.User).filter_by(tg_id=1001).first()
+            self.assertIsNotNone(user)
+            user.sub_type = "PAID"
+            user.is_active = True
+            user.first_purchase_done = True
+            user.expiry_at = self.bot_module._utcnow() + timedelta(days=30)
+            session.commit()
+        finally:
+            session.close()
+
+        callback = _FakeCallback(1001)
+        tracked: list[dict] = []
+        panel_calls: list[tuple[int, int]] = []
+
+        async def _fake_sleep(_seconds):
+            return None
+
+        async def _fake_update_client_traffic(tg_id, add_gb):
+            panel_calls.append((int(tg_id), int(add_gb)))
+            return True
+
+        def _fake_track_event(**kwargs):
+            tracked.append(kwargs)
+            return 1
+
+        old_spin = self.bot_module.spin_wheel
+        old_award = self.bot_module.award_achievement
+        old_panel_update = self.bot_module.panel.update_client_traffic
+        old_track_event = self.bot_module.track_event
+        try:
+            self.bot_module.spin_wheel = lambda _tg_id: 30
+            self.bot_module.award_achievement = lambda tg_id, achievement_id: 0
+            self.bot_module.panel.update_client_traffic = _fake_update_client_traffic
+            self.bot_module.track_event = _fake_track_event
+            with patch("asyncio.sleep", new=_fake_sleep):
+                with patch.object(self.bot_module, "_wheel_cooldown_days", return_value=5):
+                    asyncio.run(self.bot_module.do_wheel_spin(callback))
+        finally:
+            self.bot_module.spin_wheel = old_spin
+            self.bot_module.award_achievement = old_award
+            self.bot_module.panel.update_client_traffic = old_panel_update
+            self.bot_module.track_event = old_track_event
+
+        self.assertEqual(panel_calls, [(1001, 0)])
+        self.assertGreaterEqual(len(callback.message.edits), 2)
+        self.assertIn("Приходи через 5 дней", callback.message.edits[-1])
+        self.assertEqual(callback.answers[-1], ("🎉 +30 Дней!", True))
+        self.assertEqual(len(tracked), 1)
+        self.assertEqual(tracked[0]["event_name"], "wheel_spin")
+        self.assertEqual(int(tracked[0]["meta"]["prize_days"]), 30)
+        self.assertEqual(int(tracked[0]["meta"]["cooldown_days"]), 5)
+        self.assertTrue(bool(tracked[0]["meta"]["sync_ok"]))
 
 
 if __name__ == "__main__":
