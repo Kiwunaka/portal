@@ -526,6 +526,45 @@ class ApiAuthAndTicketsTests(unittest.TestCase):
         redeemed_twice = self.client.post("/api/gift/redeem", headers=user_hdrs, json={"code": code})
         self.assertEqual(redeemed_twice.status_code, 400, redeemed_twice.text)
 
+    def test_admin_loyalty_grant_syncs_panel_and_returns_sync_flag(self) -> None:
+        admin_hdrs = {"X-Telegram-Init-Data": self._init_data(9999, "admin")}
+        from db import SessionLocal
+        from models import User
+
+        s = SessionLocal()
+        try:
+            user = s.query(User).filter_by(tg_id=1001).first()
+            self.assertIsNotNone(user)
+            user.created_at = datetime.utcnow() - timedelta(days=45)
+            s.commit()
+        finally:
+            s.close()
+
+        cfg = self.client.put(
+            "/api/admin/loyalty-config",
+            headers=admin_hdrs,
+            json={"enabled": True, "tiers": [{"days": 30, "bonus_days": 5, "perk": "loyal_30"}]},
+        )
+        self.assertEqual(cfg.status_code, 200, cfg.text)
+
+        seen: list[int] = []
+
+        async def fake_sync(user):
+            seen.append(int(getattr(user, "tg_id", 0) or 0))
+            return True
+
+        self.api._sync_user_after_paid_bonus = fake_sync
+
+        granted = self.client.post(
+            "/api/admin/users/1001/loyalty/grant",
+            headers=admin_hdrs,
+            json={"tier_days": 30},
+        )
+        self.assertEqual(granted.status_code, 200, granted.text)
+        self.assertTrue(granted.json().get("ok"))
+        self.assertTrue(bool(granted.json().get("sync_ok")))
+        self.assertEqual(seen, [1001])
+
     def test_promo_redeem_supports_unlimited_uses_flag(self) -> None:
         admin_hdrs = {"X-Telegram-Init-Data": self._init_data(9999, "admin")}
         user_hdrs = {"X-Telegram-Init-Data": self._init_data(1001, "alice")}

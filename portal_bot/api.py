@@ -5224,14 +5224,24 @@ async def admin_user_loyalty_grant(
         user.is_active = True
         s.add(RewardClaim(tg_id=int(tg_id), reward_key=reward_key, meta=json.dumps({"tier": int(payload.tier_days)}, ensure_ascii=False)))
         s.commit()
+        try:
+            sync_ok = bool(await _sync_user_after_paid_bonus(user))
+        except Exception as exc:
+            logger.warning("loyalty grant sync failed tg_id=%s err=%s", int(tg_id), exc)
+            sync_ok = False
         expiry_at = _safe_iso(user.expiry_at)
     except IntegrityError:
         s.rollback()
         raise HTTPException(status_code=400, detail="Tier already claimed")
     finally:
         s.close()
-    _audit_admin(actor_tg_id=actor, action="admin_user_loyalty_grant", target_tg_id=int(tg_id), meta={"tier_days": int(payload.tier_days)})
-    return {"ok": True, "tier_days": int(payload.tier_days), "expiry_at": expiry_at}
+    _audit_admin(
+        actor_tg_id=actor,
+        action="admin_user_loyalty_grant",
+        target_tg_id=int(tg_id),
+        meta={"tier_days": int(payload.tier_days), "sync_ok": bool(sync_ok)},
+    )
+    return {"ok": True, "tier_days": int(payload.tier_days), "expiry_at": expiry_at, "sync_ok": bool(sync_ok)}
 
 
 @app.post("/api/admin/users/{tg_id}/presets/run")
