@@ -28,6 +28,8 @@
 - Первый paid purchase реферала:
   - ставит queue на бонус инвайтеру
   - в Stars-flow дополнительно начисляет referral points
+- `referral_count` не должен увеличиваться дважды:
+  - если queue row уже помечен `meta.counted=true`, worker не инкрементирует счётчик повторно
 - Нужна отдельная волна для полной parity с FreeKassa по points.
 
 ## 4. Gift codes
@@ -37,6 +39,7 @@
   - продлить доступ,
   - синхронизировать panel,
   - вернуть `sync_ok`.
+- Gift campaign restrictions должны одинаково соблюдаться в API и в bot-flow.
 
 ## 5. Wheel
 
@@ -48,9 +51,12 @@
 
 - Могут давать скидку или дни.
 - Для каждой механики нужен лимит использований и понятный учёт в БД.
+- Promo expiry и campaign restrictions должны одинаково соблюдаться в WebApp/API и в bot-flow.
 
 ## 7. Истина проекта после этой волны
 
 - Opening bonus и channel bonus считаются разными состояниями.
 - Channel revoke больше не зависит от “left как транзиентной ошибки”.
 - Post-bonus sync обязателен хотя бы для channel bonus.
+- Bot-flow больше не обходит expiry/campaign restrictions для promo и gift.
+- Worker referral queue уважает уже учтённые (`counted=true`) реферальные события и не раздувает `referral_count`.
