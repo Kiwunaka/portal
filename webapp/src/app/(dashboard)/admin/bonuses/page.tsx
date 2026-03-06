@@ -125,7 +125,7 @@ export default function AdminBonusesPage() {
     setResult("");
     try {
       const out = await adminUserLoyaltyGrant(tgId, tierDays);
-      setResult(`Награда лояльности выдана: ${out.tier_days} дней для ${tgId}`);
+      setResult(`Награда лояльности выдана: ${out.tier_days} дней для ${tgId} (синхронизация: ${out.sync_ok ? "ok" : "предупреждение"})`);
     } catch (err) {
       setError(String((err as { message?: string })?.message || err || "Не удалось выдать награду лояльности"));
     } finally {
