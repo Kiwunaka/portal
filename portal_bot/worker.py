@@ -11,6 +11,7 @@ from datetime import datetime, timedelta, timezone
 import aiohttp
 from dotenv import load_dotenv
 from sqlalchemy import and_, func, or_
+from sqlalchemy.exc import IntegrityError
 
 # Load env from repo-local file first to avoid cwd-dependent startup behavior.
 load_dotenv(dotenv_path=Path(__file__).resolve().with_name(".env"))
@@ -362,17 +363,13 @@ async def _switch_user_to_free(*, tg_id: int) -> bool:
 def _mark_campaign_sent_once(*, tg_id: int, campaign_key: str) -> bool:
     s = SessionLocal()
     try:
-        exists = (
-            s.query(CampaignSend.id)
-            .filter(CampaignSend.tg_id == int(tg_id), CampaignSend.campaign_key == str(campaign_key))
-            .first()
-        )
-        if exists:
-            return False
         row = CampaignSend(tg_id=int(tg_id), campaign_key=str(campaign_key), sent_at=_utcnow())
         s.add(row)
         s.commit()
         return True
+    except IntegrityError:
+        s.rollback()
+        return False
     except Exception:
         s.rollback()
         return False

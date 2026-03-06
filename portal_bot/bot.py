@@ -23,6 +23,7 @@ from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
 
 import aiohttp
 import qrcode
+from sqlalchemy.exc import IntegrityError
 from copy_catalog import get_copy_text
 try:
     from aiogram import Bot, Dispatcher, F, Router, BaseMiddleware
@@ -1327,16 +1328,12 @@ def _campaign_claimed(*, tg_id: int, campaign_key: str) -> bool:
 def _mark_campaign_claim_once(*, tg_id: int, campaign_key: str) -> bool:
     session = Session()
     try:
-        exists = (
-            session.query(CampaignSend.id)
-            .filter(CampaignSend.tg_id == int(tg_id), CampaignSend.campaign_key == str(campaign_key))
-            .first()
-        )
-        if exists:
-            return False
         session.add(CampaignSend(tg_id=int(tg_id), campaign_key=str(campaign_key), sent_at=_utcnow()))
         session.commit()
         return True
+    except IntegrityError:
+        session.rollback()
+        return False
     except Exception:
         session.rollback()
         return False

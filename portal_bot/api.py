@@ -1297,16 +1297,13 @@ def _has_campaign_mark(s, *, tg_id: int, campaign_key: str) -> bool:
 
 
 def _mark_campaign_once(s, *, tg_id: int, campaign_key: str) -> bool:
-    exists = (
-        s.query(CampaignSend.id)
-        .filter(CampaignSend.tg_id == int(tg_id))
-        .filter(CampaignSend.campaign_key == str(campaign_key))
-        .first()
-    )
-    if exists:
+    try:
+        with s.begin_nested():
+            s.add(CampaignSend(tg_id=int(tg_id), campaign_key=str(campaign_key), sent_at=_utcnow()))
+            s.flush()
+        return True
+    except IntegrityError:
         return False
-    s.add(CampaignSend(tg_id=int(tg_id), campaign_key=str(campaign_key), sent_at=_utcnow()))
-    return True
 
 
 def _user_has_channel_subscriber_mark(user: User | None) -> bool:

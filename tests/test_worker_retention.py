@@ -7,6 +7,8 @@ import uuid
 from datetime import timedelta
 from pathlib import Path
 
+from sqlalchemy.exc import IntegrityError
+
 
 class WorkerRetentionTests(unittest.TestCase):
     def setUp(self) -> None:
@@ -153,6 +155,36 @@ class WorkerRetentionTests(unittest.TestCase):
             self.assertEqual(int(referrer.referral_count or 0), 1)
         finally:
             s.close()
+
+    def test_mark_campaign_sent_once_returns_false_on_duplicate_insert_race(self) -> None:
+        class _FakeSession:
+            def __init__(self) -> None:
+                self.rollback_called = False
+                self.closed = False
+
+            def add(self, _row) -> None:
+                return None
+
+            def commit(self) -> None:
+                raise IntegrityError("insert", {}, Exception("duplicate"))
+
+            def rollback(self) -> None:
+                self.rollback_called = True
+
+            def close(self) -> None:
+                self.closed = True
+
+        fake = _FakeSession()
+        old_session_factory = self.worker.SessionLocal
+        self.worker.SessionLocal = lambda: fake
+        try:
+            out = self.worker._mark_campaign_sent_once(tg_id=1001, campaign_key="welcome_chain_v1")
+        finally:
+            self.worker.SessionLocal = old_session_factory
+
+        self.assertFalse(out)
+        self.assertTrue(fake.rollback_called)
+        self.assertTrue(fake.closed)
 
 
 if __name__ == "__main__":

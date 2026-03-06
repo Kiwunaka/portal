@@ -418,6 +418,7 @@ class PointsLedger(Base):
 
 class CampaignSend(Base):
     __tablename__ = "campaign_sends"
+    __table_args__ = (UniqueConstraint("tg_id", "campaign_key", name="uq_campaign_sends_tg_campaign"),)
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     tg_id = Column(BigInteger, index=True, nullable=False)

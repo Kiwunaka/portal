@@ -10,6 +10,8 @@ from datetime import timedelta
 from pathlib import Path
 from unittest.mock import patch
 
+from sqlalchemy.exc import IntegrityError
+
 
 class _FakeMember:
     def __init__(self, status: str):
@@ -528,6 +530,36 @@ class BotPaywallTests(unittest.TestCase):
         self.assertFalse(ok)
         self.assertIn("недоступ", result.lower())
 
+
+    def test_mark_campaign_claim_once_returns_false_on_duplicate_insert_race(self) -> None:
+        class _FakeSession:
+            def __init__(self) -> None:
+                self.rollback_called = False
+                self.closed = False
+
+            def add(self, _row) -> None:
+                return None
+
+            def commit(self) -> None:
+                raise IntegrityError("insert", {}, Exception("duplicate"))
+
+            def rollback(self) -> None:
+                self.rollback_called = True
+
+            def close(self) -> None:
+                self.closed = True
+
+        fake = _FakeSession()
+        old_session_factory = self.bot_module.Session
+        self.bot_module.Session = lambda: fake
+        try:
+            out = self.bot_module._mark_campaign_claim_once(tg_id=1001, campaign_key="opening_premium_14d")
+        finally:
+            self.bot_module.Session = old_session_factory
+
+        self.assertFalse(out)
+        self.assertTrue(fake.rollback_called)
+        self.assertTrue(fake.closed)
 
     def test_wheel_spin_uses_configured_cooldown_and_tracks_result(self) -> None:
         self.bot_module.ensure_pending_user(1001, username="alice")

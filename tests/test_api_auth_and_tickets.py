@@ -11,6 +11,7 @@ from unittest.mock import AsyncMock, patch
 from urllib.parse import urlencode
 
 from fastapi.testclient import TestClient
+from sqlalchemy.exc import IntegrityError
 
 
 def _sign_telegram_init_data(*, bot_token: str, params: dict) -> str:
@@ -855,6 +856,26 @@ class ApiAuthAndTicketsTests(unittest.TestCase):
         )
         self.assertEqual(bad.status_code, 400, bad.text)
         self.assertIn("64", bad.text)
+
+    def test_mark_campaign_once_returns_false_on_duplicate_insert_race(self) -> None:
+        class _Nested:
+            def __enter__(self):
+                return self
+
+            def __exit__(self, exc_type, exc, _tb):
+                return False
+
+        class _FakeSession:
+            def begin_nested(self):
+                return _Nested()
+
+            def add(self, _row) -> None:
+                return None
+
+            def flush(self) -> None:
+                raise IntegrityError("insert", {}, Exception("duplicate"))
+
+        self.assertFalse(self.api._mark_campaign_once(_FakeSession(), tg_id=1001, campaign_key="channel_subscriber_10d"))
 
 
 if __name__ == "__main__":
