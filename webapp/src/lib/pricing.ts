@@ -1,8 +1,10 @@
-export type PlanKey = "start" | "pro" | "ultra";
+import { PLAN_ALIAS_TO_CODE, type PlanAlias, type PlanCode } from "./portal";
+
 export type BillingPeriod = "monthly" | "annual";
 
 export type PlanConfig = {
-  key: PlanKey;
+  alias: PlanAlias;
+  defaultCode: PlanCode;
   name: string;
   subtitle: string;
   shortPrice: number;
@@ -17,50 +19,53 @@ export type PlanConfig = {
 
 export const PLAN_CONFIG: PlanConfig[] = [
   {
-    key: "start",
+    alias: "start",
+    defaultCode: PLAN_ALIAS_TO_CODE.start,
     name: "Start",
-    subtitle: "Мягкий вход без лишних затрат",
+    subtitle: "Спокойный вход без лишних затрат",
     shortPrice: 99,
     longPrice: 99,
     shortLabel: "30 дней",
     longLabel: "30 дней",
     devices: "1 устройство",
-    promise: "Проверяете сервис в реальных задачах с минимальным порогом входа.",
-    objection: "Когда захотите больше устройств и стран, легко перейти на Pro.",
-    perks: ["30 дней", "1 устройство", "NL-маршрут"],
+    promise: "Подходит, чтобы спокойно проверить сервис в реальном ежедневном сценарии.",
+    objection: "Если позже понадобится больше устройств и стран, можно перейти на Pro.",
+    perks: ["30 дней доступа", "1 устройство", "Базовый набор стран"]
   },
   {
-    key: "pro",
+    alias: "pro",
+    defaultCode: PLAN_ALIAS_TO_CODE.pro,
     name: "Pro",
-    subtitle: "Оптимум на каждый день",
+    subtitle: "Оптимальный ритм на каждый день",
     shortPrice: 249,
     longPrice: 699,
     shortLabel: "1 месяц",
     longLabel: "3 месяца",
-    devices: "до 5 устройств",
-    promise: "Сбалансированный выбор для стабильного ежедневного использования.",
-    objection: "Если хотите меньше рутины с продлением, подойдет Ultra.",
-    perks: ["1 или 3 месяца", "До 5 устройств", "Все страны"],
+    devices: "До 5 устройств",
+    promise: "Хороший баланс по сроку, цене и количеству устройств для повседневного использования.",
+    objection: "Если не хотите часто возвращаться к продлению, удобнее взять Ultra на долгий срок.",
+    perks: ["1 или 3 месяца", "До 5 устройств", "Полный набор стран"]
   },
   {
-    key: "ultra",
+    alias: "ultra",
+    defaultCode: PLAN_ALIAS_TO_CODE.ultra,
     name: "Ultra",
-    subtitle: "Длинный горизонт и спокойный ритм",
+    subtitle: "Длинный горизонт и меньше рутины",
     shortPrice: 1199,
     longPrice: 1499,
     shortLabel: "6 месяцев",
     longLabel: "12 месяцев",
-    devices: "до 5 устройств",
-    promise: "Ниже цена за месяц и меньше возвратов к оплате.",
-    objection: "В линейке есть 6, 9 и 12 месяцев: 1199 / 1399 / 1499 ₽.",
-    perks: ["6, 9 или 12 месяцев", "До 5 устройств", "Максимальный приоритет"],
-  },
+    devices: "До 5 устройств",
+    promise: "Самая спокойная модель для тех, кто не хочет постоянно возвращаться к оплате.",
+    objection: "В линейке есть 6, 9 и 12 месяцев, так что можно выбрать удобный запас по сроку.",
+    perks: ["6, 9 или 12 месяцев", "До 5 устройств", "Приоритетная поддержка"]
+  }
 ];
 
 const PROMO_RULES: Record<string, number> = {
   PORTAL10: 10,
   WELCOME15: 15,
-  FAST20: 20,
+  STARTBOOST: 15
 };
 
 export function normalizePromo(raw: string): string {
@@ -68,11 +73,10 @@ export function normalizePromo(raw: string): string {
 }
 
 export function promoDiscountPercent(raw: string): number {
-  const key = normalizePromo(raw);
-  return PROMO_RULES[key] || 0;
+  return PROMO_RULES[normalizePromo(raw)] || 0;
 }
 
-export function parsePlan(raw: string | null | undefined): PlanKey {
+export function parsePlanAlias(raw: string | null | undefined): PlanAlias {
   if (raw === "start" || raw === "pro" || raw === "ultra") return raw;
   return "pro";
 }
@@ -82,12 +86,12 @@ export function parseBillingPeriod(raw: string | null | undefined): BillingPerio
   return "monthly";
 }
 
-export function getPlan(plan: PlanKey): PlanConfig {
-  return PLAN_CONFIG.find((item) => item.key === plan) || PLAN_CONFIG[1];
+export function getPlan(alias: PlanAlias): PlanConfig {
+  return PLAN_CONFIG.find((item) => item.alias === alias) || PLAN_CONFIG[1];
 }
 
-export function computePrice(plan: PlanKey, period: BillingPeriod, promo: string) {
-  const config = getPlan(plan);
+export function computePrice(alias: PlanAlias, period: BillingPeriod, promo: string) {
+  const config = getPlan(alias);
   const base = period === "annual" ? config.longPrice : config.shortPrice;
   const periodLabel = period === "annual" ? config.longLabel : config.shortLabel;
   const discountPercent = promoDiscountPercent(promo);
@@ -100,5 +104,6 @@ export function computePrice(plan: PlanKey, period: BillingPeriod, promo: string
     discountPercent,
     discountAmount,
     total,
+    planCode: config.defaultCode
   };
 }

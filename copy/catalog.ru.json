@@ -1,0 +1,366 @@
+{
+  "catalog_version": "2026-03-06",
+  "locale": "ru",
+  "items": {
+    "marketing.meta.title": {
+      "surface": "marketing.meta",
+      "ru": "PORTAL - цифровой доступ без лишних шагов",
+      "variables": [],
+      "tone": "premium-friendly",
+      "allowed_public": true,
+      "compliance_notes": "Do not mention the banned public term.",
+      "ab_variant": "control"
+    },
+    "marketing.meta.description": {
+      "surface": "marketing.meta",
+      "ru": "Быстрый запуск через Telegram, оплата в рублях и спокойный личный кабинет без перегруза деталями.",
+      "variables": [],
+      "tone": "friendly",
+      "allowed_public": true,
+      "compliance_notes": "Keep it short and non-technical.",
+      "ab_variant": "control"
+    },
+    "marketing.hero.kicker": {
+      "surface": "marketing.home.hero",
+      "ru": "PORTAL • запуск через Telegram • оплата в рублях",
+      "variables": [],
+      "tone": "friendly",
+      "allowed_public": true,
+      "compliance_notes": "Keep it short.",
+      "ab_variant": "control"
+    },
+    "marketing.hero.title": {
+      "surface": "marketing.home.hero",
+      "ru": "Подключайтесь быстро и без лишней настройки",
+      "variables": [],
+      "tone": "premium-friendly",
+      "allowed_public": true,
+      "compliance_notes": "No technical jargon.",
+      "ab_variant": "control"
+    },
+    "marketing.hero.subtitle": {
+      "surface": "marketing.home.hero",
+      "ru": "Откройте Telegram, выберите удобный план и продолжайте свои дела без длинного онбординга.",
+      "variables": [],
+      "tone": "friendly",
+      "allowed_public": true,
+      "compliance_notes": "No unsupported claims.",
+      "ab_variant": "control"
+    },
+    "marketing.hero.primary_cta": {
+      "surface": "marketing.home.hero",
+      "ru": "Открыть оплату",
+      "variables": [],
+      "tone": "direct",
+      "allowed_public": true,
+      "compliance_notes": "CTA only.",
+      "ab_variant": "control"
+    },
+    "marketing.hero.secondary_cta": {
+      "surface": "marketing.home.hero",
+      "ru": "Открыть Telegram",
+      "variables": [],
+      "tone": "direct",
+      "allowed_public": true,
+      "compliance_notes": "CTA only.",
+      "ab_variant": "control"
+    },
+    "marketing.support.title": {
+      "surface": "marketing.home.support",
+      "ru": "Если нужен человек, мы рядом",
+      "variables": [],
+      "tone": "friendly",
+      "allowed_public": true,
+      "compliance_notes": "Human support emphasis.",
+      "ab_variant": "control"
+    },
+    "marketing.support.subtitle": {
+      "surface": "marketing.home.support",
+      "ru": "Поддержка в Telegram, понятные ответы и быстрый переход к обращению из любого экрана.",
+      "variables": [],
+      "tone": "friendly",
+      "allowed_public": true,
+      "compliance_notes": "No technical slang.",
+      "ab_variant": "control"
+    },
+    "marketing.checkout.title": {
+      "surface": "marketing.checkout",
+      "ru": "Оплата в пару шагов",
+      "variables": [],
+      "tone": "direct",
+      "allowed_public": true,
+      "compliance_notes": "No provider jargon.",
+      "ab_variant": "control"
+    },
+    "marketing.checkout.subtitle": {
+      "surface": "marketing.checkout",
+      "ru": "Выберите срок, проверьте итоговую сумму и перейдите на страницу оплаты без лишних экранов.",
+      "variables": [],
+      "tone": "friendly",
+      "allowed_public": true,
+      "compliance_notes": "No internal ids or jargon.",
+      "ab_variant": "control"
+    },
+    "marketing.checkout.primary_cta": {
+      "surface": "marketing.checkout",
+      "ru": "Перейти к оплате",
+      "variables": [],
+      "tone": "direct",
+      "allowed_public": true,
+      "compliance_notes": "CTA only.",
+      "ab_variant": "control"
+    },
+    "marketing.legal.offer.intro": {
+      "surface": "marketing.legal.offer",
+      "ru": "Этот документ описывает условия доступа к цифровым услугам PORTAL и порядок оплаты выбранного периода.",
+      "variables": [],
+      "tone": "neutral",
+      "allowed_public": true,
+      "compliance_notes": "Plain-language legal wording.",
+      "ab_variant": "control"
+    },
+    "marketing.legal.privacy.intro": {
+      "surface": "marketing.legal.privacy",
+      "ru": "PORTAL хранит только те данные, которые действительно нужны для работы аккаунта, поддержки и безопасности сервиса.",
+      "variables": [],
+      "tone": "neutral",
+      "allowed_public": true,
+      "compliance_notes": "Plain-language legal wording.",
+      "ab_variant": "control"
+    },
+    "webapp.entry.title": {
+      "surface": "webapp.entry",
+      "ru": "Вход в кабинет PORTAL",
+      "variables": [],
+      "tone": "direct",
+      "allowed_public": true,
+      "compliance_notes": "No technical wording in title.",
+      "ab_variant": "control"
+    },
+    "webapp.entry.subtitle": {
+      "surface": "webapp.entry",
+      "ru": "В Telegram вход происходит автоматически. В браузере можно быстро продолжить через Telegram без ручной настройки.",
+      "variables": [],
+      "tone": "friendly",
+      "allowed_public": true,
+      "compliance_notes": "No widget jargon.",
+      "ab_variant": "control"
+    },
+    "webapp.dashboard.primary_cta": {
+      "surface": "webapp.dashboard",
+      "ru": "Открыть оплату",
+      "variables": [],
+      "tone": "direct",
+      "allowed_public": true,
+      "compliance_notes": "CTA only.",
+      "ab_variant": "control"
+    },
+    "webapp.dashboard.support_cta": {
+      "surface": "webapp.dashboard",
+      "ru": "Поддержка",
+      "variables": [],
+      "tone": "direct",
+      "allowed_public": true,
+      "compliance_notes": "CTA only.",
+      "ab_variant": "control"
+    },
+    "webapp.subscription.title": {
+      "surface": "webapp.subscription",
+      "ru": "Управление доступом",
+      "variables": [],
+      "tone": "direct",
+      "allowed_public": true,
+      "compliance_notes": "No checkout jargon.",
+      "ab_variant": "control"
+    },
+    "webapp.subscription.subtitle": {
+      "surface": "webapp.subscription",
+      "ru": "Сравните планы, проверьте лимиты и продлите доступ без лишних шагов.",
+      "variables": [],
+      "tone": "friendly",
+      "allowed_public": true,
+      "compliance_notes": "Short-first.",
+      "ab_variant": "control"
+    },
+    "webapp.checkout.title": {
+      "surface": "webapp.checkout",
+      "ru": "Оплата и продление",
+      "variables": [],
+      "tone": "direct",
+      "allowed_public": true,
+      "compliance_notes": "No internal jargon.",
+      "ab_variant": "control"
+    },
+    "webapp.checkout.subtitle": {
+      "surface": "webapp.checkout",
+      "ru": "Сумма и скидка видны до перехода на страницу оплаты. Если вход не привязан, можно быстро продолжить через Telegram.",
+      "variables": [],
+      "tone": "friendly",
+      "allowed_public": true,
+      "compliance_notes": "No internal jargon.",
+      "ab_variant": "control"
+    },
+    "webapp.support.title": {
+      "surface": "webapp.support",
+      "ru": "Поддержка PORTAL",
+      "variables": [],
+      "tone": "friendly",
+      "allowed_public": true,
+      "compliance_notes": "No banned public term.",
+      "ab_variant": "control"
+    },
+    "webapp.support.subtitle": {
+      "surface": "webapp.support",
+      "ru": "Быстрые ответы, обращения в один шаг и вся история общения в одном разделе.",
+      "variables": [],
+      "tone": "friendly",
+      "allowed_public": true,
+      "compliance_notes": "Short-first support message.",
+      "ab_variant": "control"
+    },
+    "webapp.support.empty_tickets": {
+      "surface": "webapp.support",
+      "ru": "Обращений пока нет. Создайте первое сообщение, если нужна помощь.",
+      "variables": [],
+      "tone": "friendly",
+      "allowed_public": true,
+      "compliance_notes": "Calm empty state.",
+      "ab_variant": "control"
+    },
+    "webapp.devices.title": {
+      "surface": "webapp.devices",
+      "ru": "Сессии и точки подключения",
+      "variables": [],
+      "tone": "direct",
+      "allowed_public": true,
+      "compliance_notes": "Truthful MVP wording.",
+      "ab_variant": "control"
+    },
+    "webapp.devices.subtitle": {
+      "surface": "webapp.devices",
+      "ru": "Здесь видны текущие лимиты, активные сессии и доступные точки подключения по вашему плану.",
+      "variables": [],
+      "tone": "friendly",
+      "allowed_public": true,
+      "compliance_notes": "Must match current API reality.",
+      "ab_variant": "control"
+    },
+    "webapp.statistics.title": {
+      "surface": "webapp.statistics",
+      "ru": "Сводка по использованию",
+      "variables": [],
+      "tone": "direct",
+      "allowed_public": true,
+      "compliance_notes": "No fake analytics framing.",
+      "ab_variant": "control"
+    },
+    "webapp.statistics.subtitle": {
+      "surface": "webapp.statistics",
+      "ru": "Показываем только те данные, которые уже есть в системе: срок доступа, лимиты, трафик и состояние точек подключения.",
+      "variables": [],
+      "tone": "friendly",
+      "allowed_public": true,
+      "compliance_notes": "Truthful MVP wording.",
+      "ab_variant": "control"
+    },
+    "webapp.downloads.title": {
+      "surface": "webapp.downloads",
+      "ru": "Приложения и быстрый запуск",
+      "variables": [],
+      "tone": "direct",
+      "allowed_public": true,
+      "compliance_notes": "No fake download wording.",
+      "ab_variant": "control"
+    },
+    "webapp.downloads.subtitle": {
+      "surface": "webapp.downloads",
+      "ru": "Показываем только актуальные ссылки, которые уже настроены в системе для Android, Windows и справки.",
+      "variables": [],
+      "tone": "friendly",
+      "allowed_public": true,
+      "compliance_notes": "Truthful wording.",
+      "ab_variant": "control"
+    },
+    "bot.welcome": {
+      "surface": "bot.main",
+      "ru": "PORTAL помогает быстро начать работу через Telegram: понятный выбор плана, короткий путь к оплате и живая поддержка рядом.",
+      "variables": [],
+      "tone": "premium-friendly",
+      "allowed_public": false,
+      "compliance_notes": "Keep it soft-sell and short.",
+      "ab_variant": "control"
+    },
+    "bot.choose_tariff": {
+      "surface": "bot.main",
+      "ru": "Выберите удобный план. В каждом уже видны срок доступа, лимит устройств и доступные страны.",
+      "variables": [],
+      "tone": "friendly",
+      "allowed_public": false,
+      "compliance_notes": "No hard-sell tone.",
+      "ab_variant": "control"
+    },
+    "bot.support.welcome": {
+      "surface": "bot.support",
+      "ru": "Поддержка PORTAL рядом. Откройте новое обращение или продолжите уже начатый диалог.",
+      "variables": [],
+      "tone": "friendly",
+      "allowed_public": false,
+      "compliance_notes": "Short-first support message.",
+      "ab_variant": "control"
+    },
+    "retention.welcome": {
+      "surface": "bot.retention",
+      "ru": "Профиль готов. Откройте кабинет, добавьте ключ в приложение и, если понадобится, напишите в поддержку одним сообщением.",
+      "variables": [],
+      "tone": "friendly",
+      "allowed_public": false,
+      "compliance_notes": "Short onboarding message.",
+      "ab_variant": "control"
+    },
+    "retention.t3": {
+      "surface": "bot.retention",
+      "ru": "До окончания доступа осталось около трёх дней. Можно продлить заранее и сохранить привычный режим без паузы.",
+      "variables": [],
+      "tone": "soft-sell",
+      "allowed_public": false,
+      "compliance_notes": "No urgency overload.",
+      "ab_variant": "control"
+    },
+    "retention.t1": {
+      "surface": "bot.retention",
+      "ru": "Срок доступа подходит к концу. Пара минут на продление сейчас поможет не возвращаться к этому позже.",
+      "variables": [],
+      "tone": "soft-sell",
+      "allowed_public": false,
+      "compliance_notes": "Friendly renewal prompt.",
+      "ab_variant": "control"
+    },
+    "retention.t0": {
+      "surface": "bot.retention",
+      "ru": "Доступ заканчивается сегодня. Если хотите продолжить без паузы, оплату можно открыть прямо сейчас.",
+      "variables": [],
+      "tone": "soft-sell",
+      "allowed_public": false,
+      "compliance_notes": "Friendly renewal prompt.",
+      "ab_variant": "control"
+    },
+    "retention.reactivation": {
+      "surface": "bot.retention",
+      "ru": "Профиль и история уже сохранены. Вернуться можно в один клик и без повторной настройки.",
+      "variables": [],
+      "tone": "soft-sell",
+      "allowed_public": false,
+      "compliance_notes": "Friendly reactivation prompt.",
+      "ab_variant": "control"
+    },
+    "retention.start99_offer": {
+      "surface": "bot.retention",
+      "ru": "Вы уже проверили стартовый план в реальном использовании. Мы сохранили персональную скидку {discount_pct}% на следующий платеж.",
+      "variables": ["discount_pct"],
+      "tone": "soft-sell",
+      "allowed_public": false,
+      "compliance_notes": "Soft upgrade prompt.",
+      "ab_variant": "control"
+    }
+  }
+}

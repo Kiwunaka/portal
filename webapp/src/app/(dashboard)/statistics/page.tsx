@@ -1,134 +1,115 @@
 "use client";
 
-import { motion } from "framer-motion";
-import { useMemo, useState } from "react";
+import { fetchNodeStatus } from "@/lib/api";
+import { getCopyText } from "@/lib/portal";
+import { usePortalSession } from "@/lib/session";
+import { useEffect, useMemo, useState } from "react";
 
-const WEEK = {
-  points: [16, 28, 22, 31, 42, 39, 34],
-  labels: ["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"],
-  table: [
-    ["Сегодня 14:30", "Нидерланды", "2ч 15м", "1.2 ГБ"],
-    ["Вчера 18:45", "Италия", "45м", "450 МБ"],
-    ["12 окт 09:10", "США", "5ч 30м", "4.8 ГБ"],
-  ],
-  traffic: "42.8 ГБ",
-  trend: "+12% к прошлой неделе",
-};
+function formatDate(value?: string | null): string {
+  if (!value) return "—";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  return date.toLocaleString("ru-RU");
+}
 
-const MONTH = {
-  points: [34, 48, 40, 56, 62, 55, 44],
-  labels: ["1", "5", "10", "15", "20", "25", "30"],
-  table: [
-    ["15 окт 21:40", "Польша", "3ч 12м", "2.4 ГБ"],
-    ["13 окт 11:12", "Нидерланды", "1ч 05м", "630 МБ"],
-    ["10 окт 08:22", "США", "6ч 10м", "5.6 ГБ"],
-  ],
-  traffic: "168.4 ГБ",
-  trend: "+24% к прошлому месяцу",
-};
+function formatGb(value?: number | null): string {
+  if (!Number.isFinite(Number(value))) return "0 ГБ";
+  return `${Number(value || 0).toLocaleString("ru-RU", { maximumFractionDigits: 1 })} ГБ`;
+}
 
 export default function StatisticsPage() {
-  const [mode, setMode] = useState<"week" | "month">("week");
-  const current = useMemo(() => (mode === "week" ? WEEK : MONTH), [mode]);
+  const { user, dash } = usePortalSession();
+  const [nodeHealth, setNodeHealth] = useState<{ total: number; healthy: number; updatedAt: string }>({
+    total: 0,
+    healthy: 0,
+    updatedAt: ""
+  });
+  const [nodesError, setNodesError] = useState("");
+
+  useEffect(() => {
+    let cancelled = false;
+    const load = async () => {
+      try {
+        const rows = await fetchNodeStatus();
+        if (!cancelled) {
+          const healthy = rows.filter((row) => row.is_healthy).length;
+          const updatedAt = rows.find((row) => row.updated_at)?.updated_at || "";
+          setNodeHealth({ total: rows.length, healthy, updatedAt });
+          setNodesError("");
+        }
+      } catch (error) {
+        if (!cancelled) {
+          setNodesError(String((error as { message?: string })?.message || error || ""));
+        }
+      }
+    };
+    void load();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const usageCards = useMemo(
+    () => [
+      { label: "Статус", value: dash?.is_active ? "Активен" : "Требует продления", hint: dash?.expiry_at ? `До ${formatDate(dash.expiry_at)}` : "Срок не указан" },
+      { label: "Использовано", value: formatGb(dash?.used_gb), hint: `Осталось ${formatGb(dash?.remaining_gb)}` },
+      { label: "Сессии", value: String(dash?.active_sessions ?? 0), hint: `Лимит устройств ${dash?.device_limit ?? user?.limits?.device_limit ?? 1}` },
+      {
+        label: "Точки подключения",
+        value: nodeHealth.total ? `${nodeHealth.healthy}/${nodeHealth.total}` : String((user?.nodes || []).length || 0),
+        hint: nodeHealth.updatedAt ? `Обновлено ${formatDate(nodeHealth.updatedAt)}` : "Показываем текущее состояние профиля"
+      }
+    ],
+    [dash, nodeHealth, user?.limits?.device_limit, user?.nodes]
+  );
 
   return (
     <main className="space-y-6">
       <section className="glass-card p-7">
-        <p className="font-mono text-xs uppercase tracking-[0.18em] text-slate-500">statistics</p>
-        <h1 className="mt-2 font-display text-4xl font-bold">Статистика использования доступа</h1>
+        <p className="font-mono text-xs uppercase tracking-[0.18em] text-slate-500">usage snapshot</p>
+        <h1 className="mt-2 font-display text-4xl font-bold">{getCopyText("webapp.statistics.title", "Сводка по использованию")}</h1>
         <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">
-          Визуальная картина по трафику и сессиям. В один взгляд понятно, как используется ваш профиль.
+          {getCopyText(
+            "webapp.statistics.subtitle",
+            "Показываем только те данные, которые уже есть в системе: срок доступа, лимиты, трафик и состояние точек подключения.",
+          )}
         </p>
       </section>
 
       <section className="grid gap-5 md:grid-cols-2 xl:grid-cols-4">
-        <article className="glass-card p-5">
-          <p className="font-mono text-xs uppercase tracking-[0.16em] text-slate-500">Всего трафика</p>
-          <p className="mt-3 font-display text-4xl font-bold">{current.traffic}</p>
-          <p className="mt-2 text-xs text-emerald-600 dark:text-emerald-400">{current.trend}</p>
-        </article>
-        <article className="glass-card p-5">
-          <p className="font-mono text-xs uppercase tracking-[0.16em] text-slate-500">Средняя скорость</p>
-          <p className="mt-3 font-display text-4xl font-bold">{mode === "week" ? "84 Мбит/с" : "91 Мбит/с"}</p>
-          <p className="mt-2 text-xs text-slate-500">Пиковая: {mode === "week" ? "120" : "132"} Мбит/с</p>
-        </article>
-        <article className="glass-card p-5">
-          <p className="font-mono text-xs uppercase tracking-[0.16em] text-slate-500">Основная локация</p>
-          <p className="mt-3 font-display text-4xl font-bold">{mode === "week" ? "NL" : "PL"}</p>
-          <p className="mt-2 text-xs text-slate-500">{mode === "week" ? "Amsterdam-1 • 23ms" : "Warsaw-2 • 19ms"}</p>
-        </article>
-        <article className="glass-card p-5">
-          <p className="font-mono text-xs uppercase tracking-[0.16em] text-slate-500">Сессии</p>
-          <p className="mt-3 font-display text-4xl font-bold">{mode === "week" ? "17" : "68"}</p>
-          <p className="mt-2 text-xs text-slate-500">{mode === "week" ? "за последние 7 дней" : "за последние 30 дней"}</p>
-        </article>
+        {usageCards.map((card) => (
+          <article key={card.label} className="glass-card p-5">
+            <p className="font-mono text-xs uppercase tracking-[0.16em] text-slate-500">{card.label}</p>
+            <p className="mt-3 font-display text-4xl font-bold">{card.value}</p>
+            <p className="mt-2 text-xs text-slate-500">{card.hint}</p>
+          </article>
+        ))}
       </section>
 
-      <section className="glass-card p-7">
-        <div className="mb-6 flex items-center justify-between">
-          <h2 className="font-display text-2xl font-semibold">Потребление по дням</h2>
-          <div className="flex gap-2 text-xs uppercase tracking-[0.14em]">
-            <button
-              type="button"
-              onClick={() => setMode("week")}
-              className={`rounded-lg px-3 py-1.5 ${mode === "week" ? "bg-violet-600 text-white" : "bg-white/70 text-slate-600 dark:bg-white/10 dark:text-slate-300"}`}
-            >
-              Неделя
-            </button>
-            <button
-              type="button"
-              onClick={() => setMode("month")}
-              className={`rounded-lg px-3 py-1.5 ${mode === "month" ? "bg-violet-600 text-white" : "bg-white/70 text-slate-600 dark:bg-white/10 dark:text-slate-300"}`}
-            >
-              Месяц
-            </button>
+      <section className="grid gap-5 lg:grid-cols-[1.1fr,0.9fr]">
+        <article className="glass-card p-6">
+          <h2 className="font-display text-2xl font-semibold">Что доступно сейчас</h2>
+          <div className="mt-4 space-y-3 text-sm text-slate-600 dark:text-slate-300">
+            <p>Тариф: <span className="font-semibold text-slate-900 dark:text-white">{dash?.current_plan_code || dash?.sub_type || "—"}</span></p>
+            <p>Ссылка доступа: {user?.subscription_url ? "готова" : "пока недоступна"}</p>
+            <p>Объём по профилю: {formatGb(dash?.total_gb)}</p>
+            <p>Скорость: {dash?.speed_limit_mbps ? `${dash.speed_limit_mbps} Мбит/с` : "по текущей политике профиля"}</p>
+            <p>Семейные слоты: {dash?.family_slots ?? user?.family_slots ?? 0}</p>
           </div>
-        </div>
-        <div className="grid h-56 grid-cols-7 items-end gap-3">
-          {current.points.map((point, idx) => (
-            <motion.div
-              key={`${mode}-${point}-${idx}`}
-              initial={{ height: 0 }}
-              animate={{ height: `${point * 3.2}px` }}
-              transition={{ duration: 0.45, delay: idx * 0.05 }}
-              className="rounded-t-xl bg-gradient-to-t from-violet-700 to-violet-400"
-            />
-          ))}
-        </div>
-        <div className="mt-3 grid grid-cols-7 gap-3 text-center text-xs text-slate-500">
-          {current.labels.map((day) => (
-            <span key={day}>{day}</span>
-          ))}
-        </div>
-      </section>
+        </article>
 
-      <section className="glass-card overflow-hidden p-0">
-        <div className="border-b border-white/50 px-7 py-5 dark:border-white/10">
-          <h2 className="font-display text-2xl font-semibold">История подключений</h2>
-        </div>
-        <div className="overflow-x-auto">
-          <table className="w-full min-w-[560px] text-left text-sm">
-            <thead className="bg-white/55 dark:bg-white/5">
-              <tr>
-                <th className="px-7 py-3 font-medium">Дата</th>
-                <th className="px-7 py-3 font-medium">Локация</th>
-                <th className="px-7 py-3 font-medium">Длительность</th>
-                <th className="px-7 py-3 font-medium">Трафик</th>
-              </tr>
-            </thead>
-            <tbody>
-              {current.table.map((row) => (
-                <tr key={row[0]} className="border-t border-white/40 hover:bg-white/45 dark:border-white/10 dark:hover:bg-white/5">
-                  {row.map((cell) => (
-                    <td key={cell} className="px-7 py-3">
-                      {cell}
-                    </td>
-                  ))}
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        <article className="glass-card p-6">
+          <h2 className="font-display text-2xl font-semibold">Что пока не показываем</h2>
+          <ul className="mt-4 space-y-2 text-sm text-slate-600 dark:text-slate-300">
+            <li>Историю сессий по дням и часам</li>
+            <li>Подробную аналитику по странам и приложениям</li>
+            <li>Финансовые графики и прогнозы</li>
+          </ul>
+          <p className="mt-4 text-xs text-slate-500">
+            Этот раздел оставлен честным MVP: показываем только реальные данные из текущего API, без декоративной аналитики.
+          </p>
+          {nodesError ? <p className="mt-3 text-xs text-amber-600 dark:text-amber-300">Не удалось обновить статус точек подключения: {nodesError}</p> : null}
+        </article>
       </section>
     </main>
   );

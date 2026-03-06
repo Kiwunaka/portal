@@ -1,327 +1,86 @@
-﻿"use client";
+import { getCopyText, getPortalPublicConfig } from "../lib/portal";
+import Link from "next/link";
 
-import { useEffect, useMemo, useState } from "react";
-
-const TG_BOT_FALLBACK = process.env.NEXT_PUBLIC_TELEGRAM_BOT_URL || "https://t.me/portal_privacy_bot";
-const CHECKOUT_URL = process.env.NEXT_PUBLIC_CHECKOUT_PAGE_URL || "/checkout/";
-const WEBAPP_URL = (process.env.NEXT_PUBLIC_WEBAPP_URL || "https://portal-privacy.online/webapp/").trim();
-const TG_NEWS_CHANNEL = (process.env.NEXT_PUBLIC_NEWS_CHANNEL || "portal_privacy").replace("@", "").trim();
-const PUBLIC_API_BASE_URL = (process.env.NEXT_PUBLIC_API_BASE_URL || "").trim();
-const APP_ANDROID_PLAY_URL = (process.env.NEXT_PUBLIC_APP_ANDROID_PLAY_URL || "").trim();
-const APP_ANDROID_APK_URL = (process.env.NEXT_PUBLIC_APP_ANDROID_APK_URL || "").trim();
-const APP_ANDROID_MIRROR_URL = (process.env.NEXT_PUBLIC_APP_ANDROID_MIRROR_URL || "").trim();
-const APP_WINDOWS_EXE_URL = (process.env.NEXT_PUBLIC_APP_WINDOWS_EXE_URL || "").trim();
-const APP_WINDOWS_MIRROR_URL = (process.env.NEXT_PUBLIC_APP_WINDOWS_MIRROR_URL || "").trim();
-const APP_DOCS_URL = (process.env.NEXT_PUBLIC_APP_DOCS_URL || "").trim();
-const CONTACT_EMAIL = (process.env.NEXT_PUBLIC_CONTACT_EMAIL || "support@portal-privacy.online").trim();
-const ENTERPRISE_EMAIL = (process.env.NEXT_PUBLIC_ENTERPRISE_EMAIL || "enterprise@portal-privacy.online").trim();
-const CONTACT_TG_URL = (process.env.NEXT_PUBLIC_CONTACT_TG_URL || "https://t.me/portal_privacy_helpbot").trim();
-const CONTACT_FORM_URL = (process.env.NEXT_PUBLIC_CONTACT_FORM_URL || "https://t.me/portal_privacy_helpbot").trim();
-
-type LiveUpdate = {
-  title: string;
-  summary: string;
-  date: string;
-  link: string;
-};
-
-type SocialProof = {
-  connected_users?: number;
-  total_users?: number;
-  paid_users?: number;
-};
-
-type PlanCard = {
-  code: string;
-  name: string;
-  price: string;
-  period: string;
-  badge?: string;
-  traffic: string;
-  devices: string;
-  countries: string;
-  speed: string;
-  support: string;
-  highlight?: boolean;
-};
+const config = getPortalPublicConfig(process.env as Record<string, string | undefined>);
 
 const FEATURES = [
   {
-    title: "Подключение за пару минут",
-    desc: "Никаких сложных настроек — открыл Telegram, нажал кнопку, и VPN уже работает. Всё просто, как отправить сообщение.",
+    title: "Запуск через Telegram",
+    desc: "Вход, оплата и переход к кабинету собраны в один понятный сценарий без долгой ручной настройки.",
   },
   {
-    title: "Прозрачные цены, без сюрпризов",
-    desc: "Вы сразу видите, что получаете за свои деньги: сколько устройств, какие страны и какой уровень скорости. Никаких скрытых платежей.",
+    title: "Прозрачные планы",
+    desc: "Срок, лимит устройств и формат поддержки видны сразу, без скрытых условий и технарщины.",
   },
   {
-    title: "Стабильное соединение всегда",
-    desc: "Несколько серверов в разных странах — если один загружен, просто переключитесь на другой в один клик прямо из кабинета.",
-  },
-  {
-    title: "Живая поддержка 24/7",
-    desc: "Помощь реальных людей прямо в Telegram. Задайте любой вопрос — ответим быстро и по-человечески.",
+    title: "Спокойный кабинет",
+    desc: "Внутри только нужные разделы: доступ, загрузки, поддержка и сводка по текущему состоянию.",
   },
 ];
 
-const PLANS: PlanCard[] = [
-  {
-    code: "start_99",
-    name: "Start",
-    price: "99 ₽",
-    period: "30 дней",
-    badge: "Попробовать",
-    traffic: "Безлимитный трафик",
-    devices: "1 устройство",
-    countries: "Нидерланды",
-    speed: "Комфортная скорость для веба и видео",
-    support: "Поддержка в Telegram",
-  },
-  {
-    code: "pro_249",
-    name: "Pro",
-    price: "249 ₽",
-    period: "1 месяц",
-    badge: "Выбор большинства",
-    traffic: "Безлимитный трафик",
-    devices: "До 5 устройств",
-    countries: "Польша • Нидерланды • США • Италия",
-    speed: "Высокая скорость на всех серверах",
-    support: "Быстрые ответы в Telegram",
-    highlight: true,
-  },
-  {
-    code: "ultra_1499",
-    name: "Ultra / Семейный",
-    price: "1499 ₽",
-    period: "12 месяцев",
-    badge: "Лучшая цена",
-    traffic: "Безлимитный трафик",
-    devices: "До 5 устройств",
-    countries: "Все страны + приоритет",
-    speed: "Максимальная скорость",
-    support: "Приоритетная поддержка 24/7",
-  },
+const PLANS = [
+  { code: "start_99", name: "Start", price: "99 ₽", period: "30 дней", note: "1 устройство • быстрый вход без лишних шагов" },
+  { code: "1_month", name: "Pro", price: "249 ₽", period: "1 месяц", note: "До 5 устройств • оптимально на каждый день", highlight: true },
+  { code: "12_months", name: "Ultra", price: "1499 ₽", period: "12 месяцев", note: "До 5 устройств • длинный срок и меньше рутины" },
 ];
-
-const PLAN_COMPARISON = [
-  { metric: "Цена", start: "99 ₽", pro: "249 ₽", ultra: "1499 ₽" },
-  { metric: "Устройства", start: "1", pro: "до 5", ultra: "до 5" },
-  { metric: "Трафик", start: "безлимит", pro: "безлимит", ultra: "безлимит" },
-  { metric: "Страны", start: "Нидерланды", pro: "4 страны", ultra: "все страны" },
-  { metric: "Скорость", start: "комфортная", pro: "высокая", ultra: "максимум" },
-  { metric: "Поддержка", start: "стандартная", pro: "быстрая", ultra: "приоритетная" },
-];
-
-const FAQS = [
-  {
-    q: "Как быстро я смогу начать?",
-    a: "Буквально за пару минут. Откройте бота в Telegram → выберите тариф → оплатите → скачайте ключ. Никаких инструкций на 10 страниц — всё интуитивно.",
-  },
-  {
-    q: "Какой тариф мне подходит?",
-    a: "Start — если хотите просто попробовать VPN на одном устройстве. Pro — если пользуетесь с телефона и ноутбука и важна скорость. Ultra — для всей семьи на год, самая выгодная цена за месяц.",
-  },
-  {
-    q: "Есть ограничения по трафику?",
-    a: "Нет, трафик безлимитный на всех тарифах. Скорость зависит от вашего интернет-провайдера и загруженности сервера, но мы постоянно следим, чтобы всё работало быстро.",
-  },
-  {
-    q: "А если что-то не работает?",
-    a: "Напишите нам в Telegram — живые люди помогут в любое время суток. Обычно отвечаем в течение нескольких минут.",
-  },
-  {
-    q: "Мои данные в безопасности?",
-    a: "Мы храним только минимум, необходимый для работы аккаунта. Никакой рекламы, никаких продаж ваших данных третьим лицам. Подробнее — в политике конфиденциальности.",
-  },
-];
-
-const DEFAULT_LIVE_UPDATES: LiveUpdate[] = [
-  {
-    title: "Обновлены маршруты NL/PL",
-    summary: "Снижена задержка для веба и видео, добавлены новые рекомендации по клиентам.",
-    date: "2026-02-14",
-    link: `https://t.me/${TG_NEWS_CHANNEL}/1`,
-  },
-  {
-    title: "Улучшен личный кабинет",
-    summary: "Обновили блок поддержки и сделали сравнение тарифов более наглядным.",
-    date: "2026-02-13",
-    link: `https://t.me/${TG_NEWS_CHANNEL}/2`,
-  },
-  {
-    title: "Расширен checkout",
-    summary: "Добавили более понятные состояния оплаты и отображение выгодных предложений.",
-    date: "2026-02-12",
-    link: `https://t.me/${TG_NEWS_CHANNEL}/3`,
-  },
-];
-
-function candidateApiBases(): string[] {
-  const out: string[] = [];
-  if (PUBLIC_API_BASE_URL) out.push(PUBLIC_API_BASE_URL.replace(/\/+$/, ""));
-  if (typeof window !== "undefined") out.push(window.location.origin.replace(/\/+$/, ""));
-  out.push("https://portal-privacy.online");
-  return Array.from(new Set(out.filter(Boolean)));
-}
-
-function normalizePositiveInt(value: unknown): number {
-  const n = Number(value);
-  if (!Number.isFinite(n) || n <= 0) return 0;
-  return Math.round(n);
-}
 
 export default function HomePage() {
-  const [scrolled, setScrolled] = useState(false);
-  const [openedFaq, setOpenedFaq] = useState<number | null>(0);
-  const [liveUpdates, setLiveUpdates] = useState<LiveUpdate[]>(DEFAULT_LIVE_UPDATES);
-  const [socialCount, setSocialCount] = useState(2800);
-
-  const androidLinks = useMemo(
-    () =>
-      [
-        { key: "play", label: "Google Play", url: APP_ANDROID_PLAY_URL },
-        { key: "apk", label: "APK", url: APP_ANDROID_APK_URL },
-        { key: "mirror", label: "Mirror", url: APP_ANDROID_MIRROR_URL },
-      ].filter((item) => item.url),
-    [],
-  );
-
-  const windowsLinks = useMemo(
-    () =>
-      [
-        { key: "exe", label: "EXE", url: APP_WINDOWS_EXE_URL },
-        { key: "mirror", label: "Mirror", url: APP_WINDOWS_MIRROR_URL },
-      ].filter((item) => item.url),
-    [],
-  );
-
-  useEffect(() => {
-    const onScroll = () => setScrolled(window.scrollY > 30);
-    onScroll();
-    window.addEventListener("scroll", onScroll, { passive: true });
-    return () => window.removeEventListener("scroll", onScroll);
-  }, []);
-
-  useEffect(() => {
-    let cancelled = false;
-
-    const loadLiveUpdates = async () => {
-      for (const base of candidateApiBases()) {
-        try {
-          const resp = await fetch(`${base}/api/public/live-updates?limit=3`, { cache: "no-store" });
-          if (!resp.ok) continue;
-          const data = (await resp.json()) as { updates?: LiveUpdate[] };
-          const normalized = (Array.isArray(data.updates) ? data.updates : [])
-            .map((item) => ({
-              title: String(item?.title || "").trim(),
-              summary: String(item?.summary || "").trim(),
-              date: String(item?.date || "").trim(),
-              link: String(item?.link || "").trim(),
-            }))
-            .filter((item) => item.title && item.link)
-            .slice(0, 3);
-          if (normalized.length) {
-            if (!cancelled) setLiveUpdates(normalized);
-            return;
-          }
-        } catch {
-          // try next base
-        }
-      }
-    };
-
-    const loadSocialProof = async () => {
-      for (const base of candidateApiBases()) {
-        try {
-          const resp = await fetch(`${base}/api/public/social-proof`, { cache: "no-store" });
-          if (!resp.ok) continue;
-          const data = (await resp.json()) as SocialProof;
-          const next =
-            normalizePositiveInt(data.connected_users) ||
-            normalizePositiveInt(data.total_users) ||
-            normalizePositiveInt(data.paid_users);
-          if (next > 0) {
-            if (!cancelled) setSocialCount(next);
-            return;
-          }
-        } catch {
-          // try next base
-        }
-      }
-    };
-
-    void loadLiveUpdates();
-    void loadSocialProof();
-
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
   return (
     <>
       <div className="lp-bg-blobs" aria-hidden="true" />
 
-      <header className={`lp-nav ${scrolled ? "lp-nav--scrolled" : ""}`}>
+      <header className="lp-nav">
         <a href="#main-content" className="lp-brand">
-          <span>◍</span>
-          PORTAL VPN
+          <span>◌</span>
+          PORTAL
         </a>
         <nav className="lp-menu">
-          <a href="#features">Преимущества</a>
-          <a href="#pricing">Тарифы</a>
+          <a href="#features">Возможности</a>
+          <a href="#pricing">Планы</a>
           <a href="#support">Поддержка</a>
           <a href="#faq">FAQ</a>
-          <a href={WEBAPP_URL} target="_blank" rel="noreferrer" className="lp-chip">
-            Войти через Telegram
+          <a href={config.webappUrl} target="_blank" rel="noreferrer" className="lp-chip">
+            Личный кабинет
           </a>
-          <a href={CHECKOUT_URL} target="_blank" rel="noreferrer" className="lp-chip lp-chip--primary">
-            Оплатить
+          <a href={config.botUrl} target="_blank" rel="noreferrer" className="lp-chip lp-chip--primary">
+            {getCopyText("marketing.hero.primary_cta", "Подключиться в Telegram")}
           </a>
         </nav>
       </header>
 
       <main id="main-content" className="lp-main">
         <section className="lp-hero">
-          <div className="lp-kicker">PORTAL VPN • ОПЛАТА В РУБЛЯХ • ЛИЧНЫЙ КАБИНЕТ</div>
-          <h1>
-            Интернет без границ —
-            <br />
-            <span>просто и безопасно</span>
-          </h1>
-          <p>
-            Подключи VPN за 2 минуты прямо из Telegram. Оплата в рублях,
-            понятные тарифы без подводных камней и живая поддержка 24/7.
-          </p>
+          <div className="lp-kicker">{getCopyText("marketing.hero.kicker", "PORTAL • запуск через Telegram • оплата в рублях")}</div>
+          <h1>{getCopyText("marketing.hero.title", "Подключайтесь быстро и без лишней настройки")}</h1>
+          <p>{getCopyText("marketing.hero.subtitle", "Откройте Telegram, выберите удобный план и продолжайте свои дела без длинного онбординга.")}</p>
           <div className="lp-hero-actions">
-            <a href={CHECKOUT_URL} target="_blank" rel="noreferrer" className="lp-btn lp-btn--primary">
-              Перейти к оплате
+            <a href={config.botUrl} target="_blank" rel="noreferrer" className="lp-btn lp-btn--primary">
+              {getCopyText("marketing.hero.primary_cta", "Подключиться в Telegram")}
             </a>
-            <a href={TG_BOT_FALLBACK} target="_blank" rel="noreferrer" className="lp-btn lp-btn--ghost">
-              Открыть Telegram-бота
+            <a href={config.webappUrl} target="_blank" rel="noreferrer" className="lp-btn lp-btn--ghost">
+              {getCopyText("marketing.hero.secondary_cta", "Открыть кабинет")}
             </a>
           </div>
           <div className="lp-proof">
             <div>
-              <strong>{socialCount.toLocaleString("ru-RU")}</strong>
-              <span>подключенных профилей</span>
-            </div>
-            <div>
               <strong>1-2 мин</strong>
-              <span>средний запуск VPN</span>
+              <span>средний путь до кабинета</span>
             </div>
             <div>
-              <strong>24/7</strong>
-              <span>поддержка в Telegram</span>
+              <strong>3 плана</strong>
+              <span>без перегруза выбором</span>
+            </div>
+            <div>
+              <strong>Telegram</strong>
+              <span>поддержка и продление в одном месте</span>
             </div>
           </div>
         </section>
 
         <section id="features" className="lp-section">
           <div className="lp-section-head">
-            <span>[Почему мы]</span>
-            <h2>Всё продумано до мелочей</h2>
+            <span>[Почему PORTAL]</span>
+            <h2>Меньше визуального шума, больше понятных действий</h2>
           </div>
           <div className="lp-feature-grid">
             {FEATURES.map((item, idx) => (
@@ -336,211 +95,87 @@ export default function HomePage() {
 
         <section id="pricing" className="lp-section">
           <div className="lp-section-head">
-            <span>[Тарифы]</span>
-            <h2>Выберите свой тариф</h2>
-            <p>Три простых варианта — от пробного до семейного. Никаких скрытых условий.</p>
+            <span>[Планы]</span>
+            <h2>Только актуальные суммы и реальные сроки</h2>
+            <p>Холодный трафик идёт через Telegram. Персональные ссылки оплаты открываются только из бота или кабинета.</p>
           </div>
 
           <div className="lp-plan-grid">
             {PLANS.map((plan) => (
               <article key={plan.code} className={`lp-card lp-plan ${plan.highlight ? "lp-plan--highlight" : ""}`}>
-                {plan.badge ? <div className="lp-badge">{plan.badge}</div> : null}
                 <h3>{plan.name}</h3>
                 <div className="lp-price">{plan.price}</div>
                 <p className="lp-period">{plan.period}</p>
-                <ul>
-                  <li>{plan.traffic}</li>
-                  <li>{plan.devices}</li>
-                  <li>{plan.countries}</li>
-                  <li>{plan.speed}</li>
-                  <li>{plan.support}</li>
-                </ul>
+                <p>{plan.note}</p>
+                <a href={config.botUrl} target="_blank" rel="noreferrer" className="lp-btn lp-btn--primary" style={{ marginTop: 20 }}>
+                  Открыть в Telegram
+                </a>
               </article>
             ))}
-          </div>
-
-          <div className="lp-compare-wrap">
-            <table className="lp-compare-table">
-              <thead>
-                <tr>
-                  <th>Параметр</th>
-                  <th>Start</th>
-                  <th>Pro</th>
-                  <th>Ultra</th>
-                </tr>
-              </thead>
-              <tbody>
-                {PLAN_COMPARISON.map((row) => (
-                  <tr key={row.metric}>
-                    <td>{row.metric}</td>
-                    <td>{row.start}</td>
-                    <td>{row.pro}</td>
-                    <td>{row.ultra}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-
-          <div className="lp-clarify">
-            <h3>Как это работает?</h3>
-            <p>
-              Для максимального качества видеозвонков и стриминга часть трафика может идти напрямую — так картинка
-              будет плавнее, а задержка меньше. Весь остальной трафик надёжно защищён через VPN.
-              Вы всегда видите настройки в своём личном кабинете.
-            </p>
-            <p className="lp-disclaimer">
-              Трафик безлимитный на всех тарифах. Скорость зависит от вашего интернет-подключения и загрузки сервера.
-            </p>
           </div>
         </section>
 
         <section id="support" className="lp-section">
           <div className="lp-section-head">
             <span>[Поддержка]</span>
-            <h2>Мы всегда на связи</h2>
-            <p>Живой Telegram, тикеты и база знаний — помощь в любое время.</p>
+            <h2>{getCopyText("marketing.support.title", "Если нужен человек, мы рядом")}</h2>
+            <p>{getCopyText("marketing.support.subtitle", "Поддержка в Telegram, понятные ответы и быстрый переход к обращению из любого экрана.")}</p>
           </div>
-
-          <div className="lp-support-grid">
+          <div className="lp-feature-grid">
             <article className="lp-card">
-              <h3>Быстрые каналы</h3>
-              <div className="lp-support-links">
-                <a href={CONTACT_TG_URL} target="_blank" rel="noreferrer">
-                  Telegram-поддержка
-                </a>
-                <a href={`mailto:${CONTACT_EMAIL}`}>Email support</a>
-                <a href={`mailto:${ENTERPRISE_EMAIL}`}>Enterprise запрос</a>
-                <a href={CONTACT_FORM_URL} target="_blank" rel="noreferrer">
-                  Форма связи
-                </a>
-              </div>
+              <h3>Telegram</h3>
+              <p>Самый быстрый путь, если нужно продолжить оплату, проверить доступ или задать вопрос по устройству.</p>
+              <a href={config.supportTelegramUrl} target="_blank" rel="noreferrer" className="lp-btn lp-btn--primary">
+                Открыть поддержку
+              </a>
             </article>
-
             <article className="lp-card">
-              <h3>Личный кабинет</h3>
-              <p>
-                Всё в одном месте: ваша подписка, ключ для подключения, управление устройствами и оплата.
-              </p>
-              <div className="lp-hero-actions">
-                <a href={WEBAPP_URL} target="_blank" rel="noreferrer" className="lp-btn lp-btn--ghost">
-                  Открыть кабинет
-                </a>
-                <a href={CHECKOUT_URL} target="_blank" rel="noreferrer" className="lp-btn lp-btn--primary">
-                  Открыть оплату
-                </a>
-              </div>
+              <h3>Кабинет</h3>
+              <p>Внутри уже есть история обращений, раздел загрузок и честная сводка по текущему состоянию доступа.</p>
+              <a href={config.webappUrl} target="_blank" rel="noreferrer" className="lp-btn lp-btn--ghost">
+                Открыть кабинет
+              </a>
             </article>
           </div>
         </section>
 
-        <section id="download" className="lp-section">
-          <div className="lp-section-head">
-            <span>[Скачать]</span>
-            <h2>Клиенты для Android и Windows</h2>
-          </div>
-          <div className="lp-download-grid">
-            <article className="lp-card">
-              <h3>Android</h3>
-              <p>Google Play и APK-канал для ручной установки.</p>
-              <div className="lp-download-links">
-                {androidLinks.length ? (
-                  androidLinks.map((item) => (
-                    <a key={item.key} href={item.url} target="_blank" rel="noreferrer">
-                      {item.label}
-                    </a>
-                  ))
-                ) : (
-                  <span>Ссылки появятся после публикации сборки</span>
-                )}
-              </div>
-            </article>
-
-            <article className="lp-card">
-              <h3>Windows</h3>
-              <p>Основной установщик и резервный канал загрузки.</p>
-              <div className="lp-download-links">
-                {windowsLinks.length ? (
-                  windowsLinks.map((item) => (
-                    <a key={item.key} href={item.url} target="_blank" rel="noreferrer">
-                      {item.label}
-                    </a>
-                  ))
-                ) : (
-                  <span>Ссылки появятся после публикации сборки</span>
-                )}
-              </div>
-            </article>
-          </div>
-          {APP_DOCS_URL ? (
-            <a href={APP_DOCS_URL} target="_blank" rel="noreferrer" className="lp-docs-link">
-              Инструкция по установке
-            </a>
-          ) : null}
-        </section>
-
-        <section className="lp-section" id="news">
-          <div className="lp-section-head">
-            <span>[Обновления]</span>
-            <h2>Свежие новости сервиса</h2>
-          </div>
-          <div className="lp-news-grid">
-            {liveUpdates.map((item) => (
-              <article key={`${item.date}-${item.title}`} className="lp-card">
-                <h3>{item.title}</h3>
-                <p>{item.summary}</p>
-                <a href={item.link} target="_blank" rel="noreferrer">
-                  Открыть пост ({item.date})
-                </a>
-              </article>
-            ))}
-          </div>
-        </section>
-
-        <section className="lp-section" id="faq">
+        <section id="faq" className="lp-section">
           <div className="lp-section-head">
             <span>[FAQ]</span>
-            <h2>Вопросы и ответы</h2>
+            <h2>Коротко о главном</h2>
           </div>
-          <div className="lp-faq-list">
-            {FAQS.map((item, idx) => {
-              const opened = openedFaq === idx;
-              return (
-                <article key={item.q} className="lp-faq-item">
-                  <button
-                    type="button"
-                    onClick={() => setOpenedFaq(opened ? null : idx)}
-                    aria-expanded={opened}
-                    className="lp-faq-q"
-                  >
-                    <span>{item.q}</span>
-                    <span>{opened ? "−" : "+"}</span>
-                  </button>
-                  {opened ? <p className="lp-faq-a">{item.a}</p> : null}
-                </article>
-              );
-            })}
+          <div className="lp-feature-grid">
+            <article className="lp-card">
+              <h3>Как начать?</h3>
+              <p>Откройте Telegram, выберите план и переходите в кабинет. Если есть персональная ссылка, оплата продолжится сразу.</p>
+            </article>
+            <article className="lp-card">
+              <h3>Можно ли оплатить в рублях?</h3>
+              <p>Да. Основной путь настроен на оплату в рублях, а Telegram остаётся быстрым способом продолжения сценария.</p>
+            </article>
+            <article className="lp-card">
+              <h3>Что видно в кабинете?</h3>
+              <p>Статус доступа, срок, лимиты, точки подключения, ссылки на приложения и обращения в поддержку.</p>
+            </article>
           </div>
         </section>
-      </main>
 
-      <footer className="lp-footer">
-        <div>
-          <h3>PORTAL VPN</h3>
-          <p>
-            Простой и надёжный VPN. Управление через Telegram, оплата в рублях, поддержка 24/7.
-          </p>
-        </div>
-        <div>
-          <a href="/offer">Оферта</a>
-          <a href="/privacy">Политика конфиденциальности</a>
-          <a href={TG_BOT_FALLBACK} target="_blank" rel="noreferrer">
-            Telegram-бот
-          </a>
-        </div>
-      </footer>
+        <footer className="lp-section" style={{ paddingTop: 0 }}>
+          <div className="lp-card" style={{ display: "flex", justifyContent: "space-between", gap: 24, flexWrap: "wrap" }}>
+            <div>
+              <h3 style={{ marginBottom: 8 }}>PORTAL</h3>
+              <p>Спокойный цифровой доступ без лишних шагов и перегруженных экранов.</p>
+            </div>
+            <div style={{ display: "flex", gap: 12, flexWrap: "wrap", alignItems: "center" }}>
+              <a href={config.botUrl} target="_blank" rel="noreferrer" className="lp-btn lp-btn--primary">
+                Подключиться
+              </a>
+              <Link href="/offer/" className="lp-btn lp-btn--ghost">Оферта</Link>
+              <Link href="/privacy/" className="lp-btn lp-btn--ghost">Политика</Link>
+            </div>
+          </div>
+        </footer>
+      </main>
     </>
   );
 }
-
-
