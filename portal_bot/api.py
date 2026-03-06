@@ -981,6 +981,15 @@ def _safe_iso(dt: datetime | None) -> str | None:
     return dt.isoformat() if dt else None
 
 
+def _track_bonus_event(*, tg_id: int, event_name: str, meta: dict[str, Any] | None = None) -> None:
+    track_event(
+        tg_id=int(tg_id),
+        event_name=str(event_name or "").strip()[:64],
+        source="webapp",
+        meta=meta or None,
+    )
+
+
 def _parse_optional_datetime(raw: str | None) -> datetime | None:
     value = (raw or "").strip()
     if not value:
@@ -3902,23 +3911,37 @@ async def claim_channel_bonus(request: Request, x_telegram_init_data: str = Head
     auth_user = _require_auth_user(x_telegram_init_data, request=request)
     tg_id = int(auth_user.get("id", 0))
     if not PUBLIC_CHANNEL:
+        _track_bonus_event(tg_id=tg_id, event_name="promo_channel_denied", meta={"reason": "channel_not_configured"})
         raise HTTPException(status_code=400, detail="Public channel is not configured")
 
     s = SessionLocal()
     try:
         user = s.query(User).filter_by(tg_id=tg_id).first()
         if not user:
+            _track_bonus_event(tg_id=tg_id, event_name="promo_channel_denied", meta={"reason": "user_not_found"})
             raise HTTPException(status_code=404, detail="User not found")
         if not bool(getattr(user, "tos_accepted", False)):
+            _track_bonus_event(tg_id=tg_id, event_name="promo_channel_denied", meta={"reason": "tos_required"})
             raise HTTPException(status_code=400, detail="Сначала примите оферту в боте (/start)")
         if (user.sub_type or "").upper() == "MANUAL":
+            _track_bonus_event(tg_id=tg_id, event_name="promo_channel_denied", meta={"reason": "manual_account"})
             raise HTTPException(status_code=400, detail="Bonus is disabled for manual accounts")
         if _has_campaign_mark(s, tg_id=tg_id, campaign_key=OPENING_PREMIUM_CAMPAIGN_KEY):
+            _track_bonus_event(
+                tg_id=tg_id,
+                event_name="promo_channel_denied",
+                meta={"reason": "opening_bonus_conflict", "campaign_key": OPENING_PREMIUM_CAMPAIGN_KEY},
+            )
             raise HTTPException(
                 status_code=400,
                 detail="Для этого аккаунта уже активирован промо-бонус по ссылке. Бонус за канал недоступен.",
             )
         if getattr(user, "channel_bonus_claimed_at", None):
+            _track_bonus_event(
+                tg_id=tg_id,
+                event_name="promo_channel_already_claimed",
+                meta={"days": int(CHANNEL_PREMIUM_DAYS), "claimed_at": _safe_iso(user.channel_bonus_claimed_at)},
+            )
             return {
                 "ok": True,
                 "already_claimed": True,
@@ -3929,6 +3952,11 @@ async def claim_channel_bonus(request: Request, x_telegram_init_data: str = Head
                 "channel": PUBLIC_CHANNEL,
             }
         if (user.sub_type or "").upper() not in {"FREE", "BONUS", "TRIAL"}:
+            _track_bonus_event(
+                tg_id=tg_id,
+                event_name="promo_channel_denied",
+                meta={"reason": "not_start_mode", "sub_type": str(user.sub_type or "")},
+            )
             raise HTTPException(status_code=400, detail="Бонус доступен только в стартовом режиме")
 
         is_member, reason = await _is_channel_member(PUBLIC_CHANNEL, tg_id)
@@ -3937,7 +3965,13 @@ async def claim_channel_bonus(request: Request, x_telegram_init_data: str = Head
             if normalized_reason in {"left", "kicked", "not_member"}:
                 normalized_reason = "not_member"
             if normalized_reason == "not_member":
+                _track_bonus_event(tg_id=tg_id, event_name="promo_channel_denied", meta={"reason": "not_member"})
                 raise HTTPException(status_code=400, detail="Сначала подпишитесь на канал и повторите проверку")
+            _track_bonus_event(
+                tg_id=tg_id,
+                event_name="promo_channel_denied",
+                meta={"reason": "membership_check_failed", "raw_reason": str(reason or "")[:120]},
+            )
             raise HTTPException(status_code=502, detail=f"Не удалось проверить подписку: {reason}")
 
         now = _utcnow()
@@ -3991,6 +4025,17 @@ async def claim_channel_bonus(request: Request, x_telegram_init_data: str = Head
             "points_granted": int(points_granted),
         }
     finally:
+        if 'sync_ok' in locals():
+            _track_bonus_event(
+                tg_id=tg_id,
+                event_name="promo_channel_activated",
+                meta={
+                    "days": int(CHANNEL_PREMIUM_DAYS),
+                    "channel": PUBLIC_CHANNEL,
+                    "sync_ok": bool(sync_ok),
+                    "points_granted": int(points_granted),
+                },
+            )
         s.close()
 
 
@@ -4000,17 +4045,21 @@ async def promo_redeem(payload: PromoRedeemIn, request: Request, x_telegram_init
     tg_id = int(auth_user.get("id", 0))
     code = (payload.code or "").strip().upper()
     if not code:
+        _track_bonus_event(tg_id=tg_id, event_name="promo_redeem_denied", meta={"reason": "empty_code"})
         raise HTTPException(status_code=400, detail="Promo code is required")
 
     s = SessionLocal()
     try:
         user = s.query(User).filter_by(tg_id=tg_id).first()
         if not user:
+            _track_bonus_event(tg_id=tg_id, event_name="promo_redeem_denied", meta={"code": code, "reason": "user_not_found"})
             raise HTTPException(status_code=404, detail="User not found")
         if not bool(getattr(user, "tos_accepted", False)):
+            _track_bonus_event(tg_id=tg_id, event_name="promo_redeem_denied", meta={"code": code, "reason": "tos_required"})
             raise HTTPException(status_code=400, detail="Сначала примите оферту в боте (/start)")
         promo = s.query(PromoCode).filter(func.upper(PromoCode.code) == code).first()
         if not promo:
+            _track_bonus_event(tg_id=tg_id, event_name="promo_redeem_denied", meta={"code": code, "reason": "not_found"})
             raise HTTPException(status_code=404, detail="Promo not found")
         active_campaigns_for_code = (
             s.query(func.count(IncentiveCampaign.id))
@@ -4028,19 +4077,28 @@ async def promo_redeem(payload: PromoRedeemIn, request: Request, x_telegram_init
             now=_utcnow(),
         )
         if int(active_campaigns_for_code) > 0 and campaign is None:
+            _track_bonus_event(
+                tg_id=tg_id,
+                event_name="promo_redeem_denied",
+                meta={"code": code, "reason": "campaign_restriction_mismatch"},
+            )
             raise HTTPException(status_code=403, detail="Promo campaign restrictions mismatch for this user")
         uses_left = int(promo.uses_left or 0)
         if uses_left == 0:
+            _track_bonus_event(tg_id=tg_id, event_name="promo_redeem_denied", meta={"code": code, "reason": "exhausted"})
             raise HTTPException(status_code=400, detail="Promo exhausted")
         if promo.expires_at and promo.expires_at < _utcnow():
+            _track_bonus_event(tg_id=tg_id, event_name="promo_redeem_denied", meta={"code": code, "reason": "expired"})
             raise HTTPException(status_code=400, detail="Promo expired")
         used = s.query(PromoUsage).filter_by(tg_id=tg_id, promo_code=promo.code).first()
         if used:
+            _track_bonus_event(tg_id=tg_id, event_name="promo_redeem_denied", meta={"code": code, "reason": "already_redeemed"})
             raise HTTPException(status_code=400, detail="Promo already redeemed")
 
         promo_type = (promo.promo_type or "").strip().lower()
         value = int(promo.value or 0)
         if promo_type not in {"days", "discount"} or value <= 0:
+            _track_bonus_event(tg_id=tg_id, event_name="promo_redeem_denied", meta={"code": code, "reason": "invalid_value"})
             raise HTTPException(status_code=400, detail="Promo has invalid value")
         applied_days = 0
         pending_discount_pct = 0
@@ -4076,7 +4134,19 @@ async def promo_redeem(payload: PromoRedeemIn, request: Request, x_telegram_init
             s.commit()
         except IntegrityError:
             s.rollback()
+            _track_bonus_event(tg_id=tg_id, event_name="promo_redeem_denied", meta={"code": code, "reason": "already_redeemed"})
             raise HTTPException(status_code=400, detail="Promo already redeemed")
+        _track_bonus_event(
+            tg_id=tg_id,
+            event_name="promo_redeemed",
+            meta={
+                "code": str(promo.code or ""),
+                "promo_type": promo_type,
+                "value": int(value),
+                "applied_days": int(applied_days),
+                "pending_discount_pct": int(pending_discount_pct),
+            },
+        )
         return {
             "ok": True,
             "code": promo.code,
@@ -4095,6 +4165,8 @@ async def gift_redeem(payload: GiftRedeemIn, request: Request, x_telegram_init_d
     auth_user = _require_auth_user(x_telegram_init_data, request=request)
     tg_id = int(auth_user.get("id", 0))
     code = str(payload.code or "").strip().upper()
+    if not code:
+        _track_bonus_event(tg_id=tg_id, event_name="gift_redeem_denied", meta={"reason": "invalid_code"})
     if code:
         s = SessionLocal()
         try:
@@ -4118,6 +4190,11 @@ async def gift_redeem(payload: GiftRedeemIn, request: Request, x_telegram_init_d
                     now=_utcnow(),
                 )
                 if int(active_campaigns_for_type) > 0 and campaign is None:
+                    _track_bonus_event(
+                        tg_id=tg_id,
+                        event_name="gift_redeem_denied",
+                        meta={"code": code, "card_type": card_type, "reason": "campaign_restriction_mismatch"},
+                    )
                     raise HTTPException(status_code=403, detail="Gift campaign restrictions mismatch for this user")
         finally:
             s.close()
@@ -4140,12 +4217,13 @@ async def gift_redeem(payload: GiftRedeemIn, request: Request, x_telegram_init_d
             tg_id=tg_id,
             event_name="gift_redeemed",
             source="webapp",
-            meta={"card_type": result.get("card_type"), "days": result.get("days"), "sync_ok": result.get("sync_ok")},
+            meta={"code": code, "card_type": result.get("card_type"), "days": result.get("days"), "sync_ok": result.get("sync_ok")},
         )
         return result
 
     error = str(result.get("error") or "redeem_failed")
     message = str(result.get("message") or "Не удалось активировать код")
+    _track_bonus_event(tg_id=tg_id, event_name="gift_redeem_denied", meta={"code": code, "reason": error})
     status_map = {
         "invalid_code": 400,
         "not_found": 404,

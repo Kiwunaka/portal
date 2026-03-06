@@ -4,7 +4,7 @@ import json
 from datetime import datetime, timezone
 from typing import Any
 
-from db import SessionLocal
+import db
 from models import Event
 
 
@@ -37,7 +37,7 @@ def track_event(
 ) -> int | None:
     if not event_name:
         return None
-    s = SessionLocal()
+    s = db.SessionLocal()
     try:
         row = Event(
             tg_id=int(tg_id),

@@ -645,6 +645,15 @@ def _utcnow() -> datetime:
     return datetime.utcnow().replace(tzinfo=None)
 
 
+def _track_bonus_event(*, tg_id: int, event_name: str, meta: dict | None = None) -> None:
+    track_event(
+        tg_id=int(tg_id),
+        event_name=str(event_name or "").strip()[:64],
+        source="bot",
+        meta=meta or None,
+    )
+
+
 def _naive_utc(dt: datetime | None) -> datetime | None:
     if dt is None:
         return None
@@ -2270,6 +2279,8 @@ def get_gift_card(code: str) -> dict | None:
 async def redeem_gift_card(code: str, recipient_tg_id: int, bot) -> tuple[bool, str]:
     """Redeem a gift card. Returns (success, message)."""
     norm_code = str(code or "").strip().upper()
+    if not norm_code:
+        _track_bonus_event(tg_id=int(recipient_tg_id), event_name="gift_redeem_denied", meta={"reason": "invalid_code"})
     if norm_code:
         session = Session()
         try:
@@ -2293,6 +2304,11 @@ async def redeem_gift_card(code: str, recipient_tg_id: int, bot) -> tuple[bool, 
                     now=_utcnow(),
                 )
                 if int(active_campaigns_for_type) > 0 and campaign is None:
+                    _track_bonus_event(
+                        tg_id=int(recipient_tg_id),
+                        event_name="gift_redeem_denied",
+                        meta={"code": norm_code, "card_type": card_type, "reason": "campaign_restriction_mismatch"},
+                    )
                     session.flush()
                     return False, "❌ Подарочный код недоступен для этого аккаунта"
         finally:
@@ -2304,6 +2320,11 @@ async def redeem_gift_card(code: str, recipient_tg_id: int, bot) -> tuple[bool, 
         require_tos=True,
     )
     if not result.get("ok"):
+        _track_bonus_event(
+            tg_id=int(recipient_tg_id),
+            event_name="gift_redeem_denied",
+            meta={"code": norm_code, "reason": str(result.get("error") or "redeem_failed")},
+        )
         return False, str(result.get("message") or "❌ Не удалось активировать карту")
     card_type = str(result.get("card_type") or "").strip().upper()
     if card_type:
@@ -2325,6 +2346,11 @@ async def redeem_gift_card(code: str, recipient_tg_id: int, bot) -> tuple[bool, 
         finally:
             session.close()
     days = int(result.get("days") or 0)
+    _track_bonus_event(
+        tg_id=int(recipient_tg_id),
+        event_name="gift_redeemed",
+        meta={"code": norm_code, "card_type": result.get("card_type"), "days": days, "sync_ok": result.get("sync_ok")},
+    )
     return True, f"✅ Карта активирована!\n\n📅 Тариф продлен на {days} дней"
 
 def build_vless_link(client_uuid: str, email: str = "User") -> str:
@@ -9196,27 +9222,34 @@ async def template_command(message: Message, bot: Bot):
 def activate_promo_code_for_user(tg_id: int, code: str) -> tuple[bool, str]:
     code = (code or "").strip().upper()
     if not code:
+        _track_bonus_event(tg_id=int(tg_id), event_name="promo_redeem_denied", meta={"reason": "empty_code"})
         return False, "❌ Промокод пустой"
     if not check_tos_accepted(int(tg_id)):
+        _track_bonus_event(tg_id=int(tg_id), event_name="promo_redeem_denied", meta={"code": code, "reason": "tos_required"})
         return False, "⚠️ Сначала примите оферту через /start."
 
     session = Session()
     try:
         promo = session.query(PromoCode).filter_by(code=code).first()
         if not promo:
+            _track_bonus_event(tg_id=int(tg_id), event_name="promo_redeem_denied", meta={"code": code, "reason": "not_found"})
             return False, "❌ Промокод не найден"
         if promo.expires_at and promo.expires_at < _utcnow():
+            _track_bonus_event(tg_id=int(tg_id), event_name="promo_redeem_denied", meta={"code": code, "reason": "expired"})
             return False, "❌ Срок действия промокода истёк"
 
         if promo.uses_left == 0:
+            _track_bonus_event(tg_id=int(tg_id), event_name="promo_redeem_denied", meta={"code": code, "reason": "exhausted"})
             return False, "❌ Промокод больше не активен"
 
         usage = session.query(PromoUsage).filter_by(tg_id=tg_id, promo_code=code).first()
         if usage:
+            _track_bonus_event(tg_id=int(tg_id), event_name="promo_redeem_denied", meta={"code": code, "reason": "already_redeemed"})
             return False, "❌ Ты уже использовал этот промокод"
 
         user = session.query(User).filter_by(tg_id=tg_id).first()
         if not user:
+            _track_bonus_event(tg_id=int(tg_id), event_name="promo_redeem_denied", meta={"code": code, "reason": "user_not_found"})
             return False, "❌ Пользователь не найден"
 
         active_campaigns_for_code = (
@@ -9235,12 +9268,18 @@ def activate_promo_code_for_user(tg_id: int, code: str) -> tuple[bool, str]:
             now=_utcnow(),
         )
         if int(active_campaigns_for_code) > 0 and campaign is None:
+            _track_bonus_event(
+                tg_id=int(tg_id),
+                event_name="promo_redeem_denied",
+                meta={"code": code, "reason": "campaign_restriction_mismatch"},
+            )
             session.flush()
             return False, "❌ Промокод недоступен для этого аккаунта"
 
         promo_type = str(promo.promo_type or "").strip().lower()
         promo_value = int(promo.value or 0)
         if promo_type not in {"days", "discount"} or promo_value <= 0:
+            _track_bonus_event(tg_id=int(tg_id), event_name="promo_redeem_denied", meta={"code": code, "reason": "invalid_value"})
             return False, "❌ Промокод некорректен"
 
         if promo_type == "days":
@@ -9271,6 +9310,17 @@ def activate_promo_code_for_user(tg_id: int, code: str) -> tuple[bool, str]:
         if promo.uses_left > 0:
             promo.uses_left -= 1
         session.commit()
+        _track_bonus_event(
+            tg_id=int(tg_id),
+            event_name="promo_redeemed",
+            meta={
+                "code": code,
+                "promo_type": promo_type,
+                "value": int(promo_value),
+                "applied_days": int(promo_value if promo_type == "days" else 0),
+                "pending_discount_pct": int(user.pending_discount_pct or 0) if promo_type == "discount" and user else 0,
+            },
+        )
         return True, f"✅ *Промокод активирован!*\n\n{result_text}"
     finally:
         session.close()
