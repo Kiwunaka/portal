@@ -26,6 +26,8 @@ def _collect_findings() -> list[Finding]:
 
     marketing_home = REPO_ROOT / "marketing" / "src" / "app" / "page.tsx"
     marketing_checkout = REPO_ROOT / "marketing" / "src" / "app" / "checkout" / "page.tsx"
+    marketing_offer = REPO_ROOT / "marketing" / "src" / "app" / "offer" / "page.tsx"
+    marketing_privacy = REPO_ROOT / "marketing" / "src" / "app" / "privacy" / "page.tsx"
     webapp_legal = REPO_ROOT / "webapp" / "src" / "app" / "(dashboard)" / "support" / "legal" / "page.tsx"
     api_file = REPO_ROOT / "portal_bot" / "api.py"
 
@@ -42,6 +44,13 @@ def _collect_findings() -> list[Finding]:
         findings.append(Finding("FAIL", str(marketing_home.relative_to(REPO_ROOT)), "Cold CTA всё ещё ведёт на /checkout вместо bot-first сценария"))
     else:
         findings.append(Finding("PASS", str(marketing_home.relative_to(REPO_ROOT)), "Cold CTA переведены на bot-first сценарий"))
+
+    for legal_file in (marketing_offer, marketing_privacy):
+        legal_text = _read(legal_file)
+        if 'href="/checkout/' in legal_text or 'children":"Открыть оплату"' in legal_text:
+            findings.append(Finding("FAIL", str(legal_file.relative_to(REPO_ROOT)), "Legal CTA всё ещё ведёт в ticket-only checkout"))
+        else:
+            findings.append(Finding("PASS", str(legal_file.relative_to(REPO_ROOT)), "Legal CTA переведён в безопасный Telegram flow"))
 
     webapp_legal_text = _read(webapp_legal)
     for bad_href in ('href="/offer"', 'href="/privacy"', 'href="/offer/"', 'href="/privacy/"'):
@@ -61,6 +70,12 @@ def _collect_findings() -> list[Finding]:
     else:
         findings.append(Finding("PASS", str(api_file.relative_to(REPO_ROOT)), "Compat env-flag для numeric subscription fallback подключён"))
 
+    checkout_text = _read(marketing_checkout)
+    if "PORTALcheckout" in checkout_text:
+        findings.append(Finding("FAIL", str(marketing_checkout.relative_to(REPO_ROOT)), "Checkout heading всё ещё склеивается без визуального разделения"))
+    else:
+        findings.append(Finding("PASS", str(marketing_checkout.relative_to(REPO_ROOT)), "Checkout heading визуально разделён корректно"))
+
     return findings
 
 
@@ -68,7 +83,7 @@ def _write_report(findings: list[Finding], report_path: Path) -> None:
     lines = [
         "# Link Check Report",
         "",
-        f"- Проверено файлов: 4",
+        f"- Проверено файлов: 6",
         f"- FAIL: {sum(1 for item in findings if item.level == 'FAIL')}",
         f"- PASS: {sum(1 for item in findings if item.level == 'PASS')}",
         "",

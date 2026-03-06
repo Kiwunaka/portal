@@ -1,15 +1,18 @@
 # Release Gate Report
 
-- Generated at: `2026-03-06 12:12:08`
+- Generated at: `2026-03-07 01:28:28`
 - Status: `PASS`
 
 ## Summary
 
 | Gate | Exit code | Duration (s) |
 |---|---:|---:|
-| Critical worker regression | 0 | 3.70 |
+| Critical worker regression | 0 | 3.36 |
+| Public link checks | 0 | 0.11 |
+| Marketing production build | 0 | 39.90 |
 | Admin webapp smoke | 0 | 0.12 |
-| WebApp production build | 0 | 35.09 |
+| WebApp production build | 0 | 35.34 |
+| UI visual smoke | 0 | 0.14 |
 
 ## Command Tails
 
@@ -25,9 +28,64 @@ C:\Users\kiwun\AppData\Local\Programs\Python\Python312\Lib\site-packages\sqlalch
   return util.wrap_callable(lambda ctx: fn(), fn)  # type: ignore
 ...
 ----------------------------------------------------------------------
-Ran 7 tests in 3.021s
+Ran 7 tests in 2.857s
 
 OK
+```
+
+### Public link checks
+
+- Command: `C:\Users\kiwun\AppData\Local\Programs\Python\Python312\python.exe scripts/check-links.py`
+- Exit: `0`
+
+```text
+[PASS] marketing\src\app\page.tsx: Cold CTA ���������� �� bot-first ��������
+[PASS] marketing\src\app\offer\page.tsx: Legal CTA �������� � ���������� Telegram flow
+[PASS] marketing\src\app\privacy\page.tsx: Legal CTA �������� � ���������� Telegram flow
+[PASS] webapp\src\app\(dashboard)\support\legal\page.tsx: ����������� ������ webapp ��������� �� marketing absolute URL
+[PASS] portal_bot\api.py: Admin campaign link builder ��������� public checkout � safe fallback
+[PASS] portal_bot\api.py: Compat env-flag ��� numeric subscription fallback ���������
+[PASS] marketing\src\app\checkout\page.tsx: Checkout heading ��������� ������� ���������
+
+Link check passed.
+```
+
+### Marketing production build
+
+- Command: `npm.cmd run build`
+- Exit: `0`
+
+```text
+> portal-marketing@0.1.0 build
+> next build
+
+  ▲ Next.js 14.2.35
+
+   Creating an optimized production build ...
+ ✓ Compiled successfully
+   Linting and checking validity of types ...
+   Collecting page data ...
+   Generating static pages (0/7) ...
+   Generating static pages (1/7) 
+   Generating static pages (3/7) 
+   Generating static pages (5/7) 
+ ✓ Generating static pages (7/7)
+   Finalizing page optimization ...
+   Collecting build traces ...
+
+Route (app)                              Size     First Load JS
+┌ ○ /                                    8.88 kB        96.3 kB
+├ ○ /_not-found                          873 B          88.3 kB
+├ ○ /checkout                            4.79 kB        92.2 kB
+├ ○ /offer                               142 B          87.6 kB
+└ ○ /privacy                             142 B          87.6 kB
++ First Load JS shared by all            87.4 kB
+  ├ chunks/117-885da3afc9dd5396.js       31.9 kB
+  ├ chunks/fd9d1056-5d0c434f4506d830.js  53.6 kB
+  └ other shared chunks (total)          1.92 kB
+
+
+○  (Static)  prerendered as static content
 ```
 
 ### Admin webapp smoke
@@ -50,14 +108,14 @@ Admin WebApp smoke passed.
 ▲ Next.js 16.1.6 (Turbopack)
 
   Creating an optimized production build ...
-✓ Compiled successfully in 2.9s
+✓ Compiled successfully in 3.5s
   Running TypeScript ...
   Collecting page data using 19 workers ...
   Generating static pages using 19 workers (0/23) ...
   Generating static pages using 19 workers (5/23) 
   Generating static pages using 19 workers (11/23) 
   Generating static pages using 19 workers (17/23) 
-✓ Generating static pages using 19 workers (23/23) in 578.0ms
+✓ Generating static pages using 19 workers (23/23) in 613.2ms
   Finalizing page optimization ...
 
 Route (app)
@@ -85,4 +143,13 @@ Route (app)
 
 
 ○  (Static)  prerendered as static content
+```
+
+### UI visual smoke
+
+- Command: `C:\Users\kiwun\AppData\Local\Programs\Python\Python312\python.exe scripts/ui_visual_smoke.py`
+- Exit: `0`
+
+```text
+UI visual smoke passed.
 ```

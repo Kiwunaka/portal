@@ -97,14 +97,20 @@ def main() -> int:
     gates: list[tuple[str, list[str], Path]] = [
         ("Backend unit tests", [sys.executable, "-m", "unittest", "discover", "tests"], REPO_ROOT),
         ("Admin/auth regressions", [sys.executable, "-m", "unittest", "tests.test_api_auth_and_tickets"], REPO_ROOT),
+        ("Public link checks", [sys.executable, "scripts/check-links.py"], REPO_ROOT),
+        ("Marketing production build", [_npm_exec(), "run", "build"], REPO_ROOT / "marketing"),
         ("Admin webapp smoke", [sys.executable, "scripts/admin_webapp_smoke.py"], REPO_ROOT),
         ("WebApp production build", [_npm_exec(), "run", "build"], REPO_ROOT / "webapp"),
+        ("UI visual smoke", [sys.executable, "scripts/ui_visual_smoke.py"], REPO_ROOT),
     ]
     if args.quick:
         gates = [
             ("Critical worker regression", [sys.executable, "-m", "unittest", "tests.test_worker_retention"], REPO_ROOT),
+            ("Public link checks", [sys.executable, "scripts/check-links.py"], REPO_ROOT),
+            ("Marketing production build", [_npm_exec(), "run", "build"], REPO_ROOT / "marketing"),
             ("Admin webapp smoke", [sys.executable, "scripts/admin_webapp_smoke.py"], REPO_ROOT),
             ("WebApp production build", [_npm_exec(), "run", "build"], REPO_ROOT / "webapp"),
+            ("UI visual smoke", [sys.executable, "scripts/ui_visual_smoke.py"], REPO_ROOT),
         ]
 
     results: list[GateResult] = []
