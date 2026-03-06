@@ -36,10 +36,12 @@
 - локальная генерация QR без внешней зависимости
 - дополнительный audit trail для части старых бонусных путей, которые всё ещё опираются на best-effort логирование
 
-## Рекомендация по релизу
+## Статус релиза
 
-- Состояние этой волны: `ready to deploy`
-- Перед prod rollout:
-  - выполнить build/static deploy для `marketing` и `webapp`
-  - убедиться, что `portal-node-metrics.timer` active/fresh
-  - проверить public domain URLs и env-флаг `SUBSCRIPTION_NUMERIC_FALLBACK_ENABLED`
+- 6 марта 2026 выполнен production rollout из чистого snapshot `HEAD`.
+- Подтверждено после выкладки:
+  - `portal-api`, `portal-bot`, `portal-helpbot` и `portal-node-metrics.timer` активны
+  - `https://kiwunaka.space/api/health` отвечает `200`
+  - `https://portal-privacy.online/` и `https://portal-privacy.online/webapp/` отвечают `200`
+  - post-deploy verify прошёл зелёно
+- В `origin/master` допушены последние коммиты Wave 4, включая защиту `CampaignSend` от duplicate race.

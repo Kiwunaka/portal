@@ -48,11 +48,16 @@
 - `CHANNEL_PREMIUM_DAYS`
 - `OPENING_PREMIUM_DAYS`
 - `OPENING_PREMIUM_CAMPAIGN_KEY`
+ - `FRIEND_GIFT_DAYS`
+ - `FRIEND_GIFT_CAMPAIGN_KEY`
 
 ### Metrics / ops
 - `PANEL_URL`, `PANEL_USER`, `PANEL_PASS`
 - `PANEL_PATH`
 - `SUPPORT_USERNAME`
+ - `SUPPORT_UPLOAD_DIR`
+ - `SUPPORT_UPLOAD_URL_PREFIX`
+ - `SUPPORT_UPLOAD_MAX_BYTES`
 
 ## 3. Управление пользователями
 
@@ -121,7 +126,8 @@ Source of truth:
 ## 7. Поддержка
 
 - Пользовательские тикеты идут через `support_tickets` и `support_ticket_messages`.
-- WebApp показывает history, thread и legal links.
+- WebApp показывает history, thread, legal links и binary upload вложений через `/api/tickets/uploads`.
+- Вложения сохраняются в файловое хранилище backend и возвращаются в существующий `media_*` контракт без отдельной миграции БД.
 - Legal документы открываются с marketing domain, а не из внутренних webapp route-заглушек.
 
 ## 8. Деплой и обновление
@@ -129,6 +135,11 @@ Source of truth:
 ### Код
 - backend deploy: `scripts/remote_deploy_brain_portal_code.py`
 - static deploy: отдельный deploy для `marketing` и `webapp`
+- orchestrator: `scripts/release_orchestrator.py`
+
+### Текущее состояние
+- Последний подтверждённый production rollout выполнен 6 марта 2026.
+- Выкладка шла из чистого snapshot `HEAD`, чтобы не смешивать релизный слой с dirty worktree.
 
 ### Что обязательно проверить после деплоя
 - API health
@@ -164,6 +175,11 @@ Source of truth:
 ### Симптом: public checkout открывается, но не платит
 - Проверьте наличие `checkout_ticket`
 - Если ссылки собраны в admin builder, сейчас safe path идёт через bot fallback
+
+### Симптом: вложение в support не прикрепляется
+- Проверьте `SUPPORT_UPLOAD_DIR` и права записи в каталог
+- Проверьте `SUPPORT_UPLOAD_MAX_BYTES` и `content-type`
+- Убедитесь, что `/uploads/support/*` смонтирован FastAPI через `StaticFiles`
 
 ### Симптом: metrics stale
 - Проверьте, что deploy script доставил `collect_node_metrics.py`

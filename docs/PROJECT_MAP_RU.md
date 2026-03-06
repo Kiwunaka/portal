@@ -77,13 +77,13 @@
 - Public campaign checkout переведён в safe fallback: builder не выдаёт битую `/checkout` ссылку без ticket.
 - WebApp legal links теперь ведут на absolute marketing URLs.
 - Marketing home переведён в `bot-first` и убран избыточный client runtime.
+- `CampaignSend` теперь защищён DB-level unique и единым `IntegrityError` guard в bot/API/worker helper'ах.
+- Support в WebApp использует полноценный binary upload flow через `/api/tickets/uploads`.
 
 ## 6. Точки риска
 
-- Полная parity логики referral points между Stars и FreeKassa ещё требует отдельного выравнивания.
 - В web-admin есть server-side защита на API-уровне, но static-export природа WebApp ограничивает полноценный SSR guard.
-- Support media upload в UI ещё требует полноценного файлового backend flow, если нужен именно бинарный upload, а не metadata-driven сценарий.
 # P2 addendum (2026-03-06)
 
 - `portal_bot/api.py -> /api/admin/summary` now returns an `errors` block used by `/admin/dashboard` to surface stale metrics, unhealthy nodes, callback failures, and numeric subscription fallback counts.
-- Support tickets use the existing `media_type/media_payload` contract for metadata-driven attachments; current WebApp UI exposes this as an optional `http/https` link field for screenshot/video context.
+- Support tickets use the existing `media_type/media_payload` contract, but WebApp now feeds it through binary upload to `/api/tickets/uploads` instead of a link-only flow.

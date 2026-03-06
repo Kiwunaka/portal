@@ -1,5 +1,7 @@
 # PORTAL: Глобальная архитектура и production-состояние (полный срез)
 
+> Исторический снимок на 9 февраля 2026. Актуальное операционное состояние, релизный статус и метрики смотреть в `docs/ADMIN_FULL_GUIDE_RU.md`, `docs/METRICS_RU.md`, `docs/INFRA_PLAN_RU.md` и `docs/FINAL_REPORT_RU.md`.
+
 > Обновлено: 2026-02-09  
 > Источник live-проверки: `docs/audit-artifacts/prod-audit-20260209-023635.json`
 
@@ -21,8 +23,8 @@
 - `portal-bot`: `active`, `enabled`
 - `portal-helpbot`: `active`, `enabled`
 - `x-ui`: `active`, `enabled`
-- `portal-node-metrics.timer`: `inactive` (не включен в текущем состоянии)
-- `portal-node-metrics.service`: `inactive`
+- `portal-node-metrics.timer`: на момент этого снимка был `inactive`; в актуальном состоянии включён и участвует в release-gate
+- `portal-node-metrics.service`: on-demand unit для timer/collector пути
 
 ### 2.2 Деплой-метки файлов
 
@@ -259,7 +261,7 @@
 ## 12. Риски и next actions
 
 1. Явно задать отсутствующие env-флаги (`NEWS_CHANNEL_ID`, `PAY_CHECKOUT_URL`, `SUPPORT_BOT_USERNAME`, `WEBAPP_ENABLE_*`).
-2. Включить и проверить `portal-node-metrics.timer` (сейчас `inactive`).
+2. Поддерживать `portal-node-metrics.timer` в состоянии `active` и контролировать freshness через `/api/admin/metrics/status`.
 3. Восстановить стабильный ops-SSH доступ к `free` ноде.
 4. Добавить регулярный post-deploy check в релизный сценарий:
    - services status
