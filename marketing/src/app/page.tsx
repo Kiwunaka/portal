@@ -57,8 +57,8 @@ export default function HomePage() {
             <a href={config.botUrl} target="_blank" rel="noreferrer" className="lp-btn lp-btn--primary">
               {getCopyText("marketing.hero.primary_cta", "Подключиться в Telegram")}
             </a>
-            <a href={config.webappUrl} target="_blank" rel="noreferrer" className="lp-btn lp-btn--ghost">
-              {getCopyText("marketing.hero.secondary_cta", "Открыть кабинет")}
+            <a href="#pricing" className="lp-btn lp-btn--ghost">
+              {getCopyText("marketing.hero.secondary_cta", "Посмотреть планы")}
             </a>
           </div>
           <div className="lp-proof">
@@ -133,7 +133,7 @@ export default function HomePage() {
               <h3>Кабинет</h3>
               <p>Внутри уже есть история обращений, раздел загрузок и честная сводка по текущему состоянию доступа.</p>
               <a href={config.webappUrl} target="_blank" rel="noreferrer" className="lp-btn lp-btn--ghost">
-                Открыть кабинет
+                Открыть кабинет, если доступ уже активирован
               </a>
             </article>
           </div>

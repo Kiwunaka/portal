@@ -49,7 +49,7 @@
     },
     "marketing.hero.primary_cta": {
       "surface": "marketing.home.hero",
-      "ru": "Открыть оплату",
+      "ru": "Подключиться в Telegram",
       "variables": [],
       "tone": "direct",
       "allowed_public": true,
@@ -58,7 +58,7 @@
     },
     "marketing.hero.secondary_cta": {
       "surface": "marketing.home.hero",
-      "ru": "Открыть Telegram",
+      "ru": "Посмотреть планы",
       "variables": [],
       "tone": "direct",
       "allowed_public": true,

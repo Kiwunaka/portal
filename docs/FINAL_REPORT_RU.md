@@ -22,6 +22,10 @@
 - Admin campaign link builder возвращает safe fallback вместо broken checkout.
 - WebApp legal links переведены на absolute marketing URLs.
 - Admin layout получил понятные состояния доступа.
+- Маркетинговые CTA и legal-экраны приведены к одному bot-first сценарию без тупикового checkout.
+- Public checkout без `checkout_ticket` теперь работает как управляемый gateway, а не как сломанный disabled-flow.
+- WebApp entry больше не показывает misleading кнопку открытия кабинета до браузерной авторизации.
+- QR-код в кабинете теперь генерируется локально, без внешнего `qrserver`.
 - Deploy script копирует `collect_node_metrics.py` в brain runtime path.
 - Opening bonus больше не резервирует `channel_bonus_claimed_at`.
 
@@ -33,8 +37,8 @@
 
 ## Что осталось в backlog
 
-- локальная генерация QR без внешней зависимости
 - дополнительный audit trail для части старых бонусных путей, которые всё ещё опираются на best-effort логирование
+- более тонкая типографическая и copy-полировка marketing/webapp после закрытия функциональных UX-разрывов
 
 ## Статус релиза
 

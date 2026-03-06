@@ -107,6 +107,7 @@ export default function CheckoutPage() {
     () => plans.find((item) => item.code === selectedPlan) || plans[0] || FALLBACK_PLANS[0],
     [plans, selectedPlan],
   );
+  const hasCheckoutTicket = Boolean(checkoutTicket);
 
   async function createOrder(): Promise<void> {
     if (!activePlan?.code || !checkoutTicket) {
@@ -159,7 +160,7 @@ export default function CheckoutPage() {
         <div className="checkout-kicker">{getCopyText("marketing.checkout.title", "Оплата в пару шагов")}</div>
         <h1 className="checkout-title">
           <span>PORTAL</span>
-          <span>checkout</span>
+          <span>{hasCheckoutTicket ? "Оплата" : "Продолжение через Telegram"}</span>
         </h1>
         <p className="checkout-sub">
           {getCopyText(
@@ -210,19 +211,29 @@ export default function CheckoutPage() {
 
           <button
             type="button"
-            onClick={() => void createOrder()}
-            disabled={busy || !checkoutTicket}
+            onClick={() => {
+              if (!hasCheckoutTicket) {
+                window.location.href = config.botUrl;
+                return;
+              }
+              void createOrder();
+            }}
+            disabled={busy}
             className="checkout-submit"
           >
-            {busy ? "Создаём заказ..." : getCopyText("marketing.checkout.primary_cta", "Перейти к оплате")}
+            {busy
+              ? "Создаём заказ..."
+              : hasCheckoutTicket
+                ? getCopyText("marketing.checkout.primary_cta", "Перейти к оплате")
+                : "Открыть Telegram"}
           </button>
 
-          {!checkoutTicket ? (
+          {!hasCheckoutTicket ? (
             <div className="checkout-empty">
-              <p>Эта страница готова к оплате, но без персонального `checkout_ticket` продолжение недоступно.</p>
+              <p>Для прямой оплаты нужна персональная ссылка. Если вы открыли страницу вручную, продолжите через Telegram или кабинет.</p>
               <div className="checkout-actions">
-                <a href={config.botUrl} target="_blank" rel="noreferrer" className="checkout-secondary">Открыть Telegram</a>
-                <a href={config.webappUrl} target="_blank" rel="noreferrer" className="checkout-secondary">Открыть кабинет</a>
+                <a href={config.botUrl} target="_blank" rel="noreferrer" className="checkout-secondary">Продолжить в Telegram</a>
+                <a href={config.webappUrl} target="_blank" rel="noreferrer" className="checkout-secondary">Уже есть доступ? Открыть кабинет</a>
               </div>
             </div>
           ) : null}

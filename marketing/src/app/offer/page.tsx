@@ -23,7 +23,7 @@ export default function OfferPage() {
       </ul>
       <div className="legal-actions">
         <a className="btn btn-ghost" href="/">На главную</a>
-        <a className="btn btn-primary" href="/checkout/">Открыть оплату</a>
+        <a className="btn btn-primary" href={config.botUrl} target="_blank" rel="noreferrer">Продолжить в Telegram</a>
       </div>
     </main>
   );
