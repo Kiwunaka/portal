@@ -16,13 +16,11 @@ import { Copy, ExternalLink, Link2, Loader2, PencilLine, Plus, RefreshCw, Search
 import { useCallback, useEffect, useState } from "react";
 import { fmtRuDate } from "../nav";
 
-function parsePromptBool(raw: string, fallback: boolean): boolean {
-  const value = String(raw || "").trim().toLowerCase();
-  if (!value) return fallback;
-  if (["no", "n", "нет", "не", "0", "false", "off"].includes(value)) return false;
-  if (["yes", "y", "да", "1", "true", "on"].includes(value)) return true;
-  return fallback;
-}
+type StartLinkDialog =
+  | { kind: "create"; code: string; description: string; targetAction: string }
+  | { kind: "edit"; id: number; code: string; description: string; targetAction: string; isActive: boolean }
+  | { kind: "delete"; id: number }
+  | null;
 
 function queueStatusLabel(value: string): string {
   const normalized = String(value || "").toLowerCase();
@@ -44,6 +42,7 @@ export default function AdminReferralsPage() {
   const [campaignKey, setCampaignKey] = useState("");
   const [planCode, setPlanCode] = useState("");
   const [queueStatus, setQueueStatus] = useState("");
+  const [linkDialog, setLinkDialog] = useState<StartLinkDialog>(null);
 
   const load = useCallback(async (): Promise<void> => {
     setError("");
@@ -62,39 +61,68 @@ export default function AdminReferralsPage() {
   }, [load]);
 
   const createLink = async (): Promise<void> => {
-    const code = window.prompt("Код start-ссылки:", "launch14");
-    if (!code?.trim()) return;
-    const description = window.prompt("Описание:", "Кампанейская ссылка") || "";
-    const targetAction = window.prompt("target_action:", "campaign") || "campaign";
-    setBusy(true);
-    try {
-      await adminStartLinkCreate({ code: code.trim(), description, target_action: targetAction.trim(), is_active: true });
-      await load();
-    } catch (err) {
-      setError(String((err as { message?: string })?.message || err || "Не удалось создать ссылку"));
-    } finally { setBusy(false); }
+    setLinkDialog({
+      kind: "create",
+      code: "launch14",
+      description: "Кампанейская ссылка",
+      targetAction: "campaign",
+    });
   };
 
   const editLink = async (row: AdminStartLinkRow): Promise<void> => {
-    const code = window.prompt("Код:", row.code || "");
-    if (!code?.trim()) return;
-    const description = window.prompt("Описание:", row.description || "") || "";
-    const targetAction = window.prompt("target_action:", row.target_action || "campaign") || "campaign";
-    const activeRaw = window.prompt("Активна? (да/нет)", row.is_active ? "да" : "нет") || "";
-    setBusy(true);
-    try {
-      await adminStartLinkUpdate(row.id, { code: code.trim(), description: description.trim(), target_action: targetAction.trim(), is_active: parsePromptBool(activeRaw, Boolean(row.is_active)) });
-      await load();
-    } catch (err) {
-      setError(String((err as { message?: string })?.message || err || "Не удалось обновить ссылку"));
-    } finally { setBusy(false); }
+    setLinkDialog({
+      kind: "edit",
+      id: row.id,
+      code: row.code || "",
+      description: row.description || "",
+      targetAction: row.target_action || "campaign",
+      isActive: Boolean(row.is_active),
+    });
   };
 
   const deactivateLink = async (id: number): Promise<void> => {
+    setLinkDialog({ kind: "delete", id });
+  };
+
+  const submitLinkDialog = async (): Promise<void> => {
+    if (!linkDialog) return;
     setBusy(true);
-    try { await adminStartLinkDelete(id); await load(); } catch (err) {
-      setError(String((err as { message?: string })?.message || err || "Не удалось деактивировать ссылку"));
-    } finally { setBusy(false); }
+    setError("");
+    try {
+      if (linkDialog.kind === "create") {
+        if (!linkDialog.code.trim()) {
+          setError("Укажите код start-ссылки.");
+          setBusy(false);
+          return;
+        }
+        await adminStartLinkCreate({
+          code: linkDialog.code.trim(),
+          description: linkDialog.description.trim(),
+          target_action: linkDialog.targetAction.trim(),
+          is_active: true,
+        });
+      } else if (linkDialog.kind === "edit") {
+        if (!linkDialog.code.trim()) {
+          setError("Укажите код start-ссылки.");
+          setBusy(false);
+          return;
+        }
+        await adminStartLinkUpdate(linkDialog.id, {
+          code: linkDialog.code.trim(),
+          description: linkDialog.description.trim(),
+          target_action: linkDialog.targetAction.trim(),
+          is_active: linkDialog.isActive,
+        });
+      } else if (linkDialog.kind === "delete") {
+        await adminStartLinkDelete(linkDialog.id);
+      }
+      setLinkDialog(null);
+      await load();
+    } catch (err) {
+      setError(String((err as { message?: string })?.message || err || "Не удалось сохранить start-ссылку"));
+    } finally {
+      setBusy(false);
+    }
   };
 
   const buildLinks = async (): Promise<void> => {
@@ -220,6 +248,11 @@ export default function AdminReferralsPage() {
         </button>
         {built ? (
           <div className="grid gap-2 text-sm">
+            {built.checkout_mode === "bot_fallback" ? (
+              <div className="rounded-xl border border-amber-400/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-300">
+                Публичный checkout для этой ссылки недоступен без привязанного пользователя. Используйте вход через бота или WebApp.
+              </div>
+            ) : null}
             {[
               { label: "Бот", value: built.bot_start_link },
               { label: "Оплата", value: built.checkout_link },
@@ -297,6 +330,87 @@ export default function AdminReferralsPage() {
           {queueRows.length === 0 ? <p className="py-3 text-xs text-slate-500">Очередь пуста.</p> : null}
         </div>
       </article>
+
+      {linkDialog ? (
+        <div className="fixed inset-0 z-[260] flex items-center justify-center bg-slate-950/65 p-4">
+          <div className="glass-card w-full max-w-xl p-5">
+            {linkDialog.kind === "create" || linkDialog.kind === "edit" ? (
+              <>
+                <h3 className="font-display text-xl font-semibold">
+                  {linkDialog.kind === "create" ? "Новая стартовая ссылка" : `Редактирование ссылки #${linkDialog.id}`}
+                </h3>
+                <div className="mt-4 space-y-3">
+                  <input
+                    value={linkDialog.code}
+                    onChange={(event) =>
+                      setLinkDialog((prev) =>
+                        prev && (prev.kind === "create" || prev.kind === "edit") ? { ...prev, code: event.target.value } : prev,
+                      )
+                    }
+                    className="w-full rounded-xl border border-violet-200/50 bg-white/80 px-3 py-2 text-sm outline-none dark:border-violet-500/30 dark:bg-slate-900/70"
+                    placeholder="Код ссылки"
+                  />
+                  <input
+                    value={linkDialog.description}
+                    onChange={(event) =>
+                      setLinkDialog((prev) =>
+                        prev && (prev.kind === "create" || prev.kind === "edit") ? { ...prev, description: event.target.value } : prev,
+                      )
+                    }
+                    className="w-full rounded-xl border border-violet-200/50 bg-white/80 px-3 py-2 text-sm outline-none dark:border-violet-500/30 dark:bg-slate-900/70"
+                    placeholder="Описание"
+                  />
+                  <input
+                    value={linkDialog.targetAction}
+                    onChange={(event) =>
+                      setLinkDialog((prev) =>
+                        prev && (prev.kind === "create" || prev.kind === "edit") ? { ...prev, targetAction: event.target.value } : prev,
+                      )
+                    }
+                    className="w-full rounded-xl border border-violet-200/50 bg-white/80 px-3 py-2 text-sm outline-none dark:border-violet-500/30 dark:bg-slate-900/70"
+                    placeholder="target_action"
+                  />
+                  {linkDialog.kind === "edit" ? (
+                    <label className="inline-flex items-center gap-2 text-sm text-slate-500">
+                      <input
+                        type="checkbox"
+                        checked={linkDialog.isActive}
+                        onChange={(event) =>
+                          setLinkDialog((prev) => (prev && prev.kind === "edit" ? { ...prev, isActive: event.target.checked } : prev))
+                        }
+                      />
+                      Активна
+                    </label>
+                  ) : null}
+                </div>
+                <div className="mt-4 flex justify-end gap-2">
+                  <button className="outline-btn rounded-xl px-4 py-2 text-sm font-semibold" type="button" onClick={() => setLinkDialog(null)}>
+                    Отмена
+                  </button>
+                  <button className="btn-primary rounded-xl px-4 py-2 text-sm font-semibold" type="button" disabled={busy} onClick={() => void submitLinkDialog()}>
+                    Сохранить
+                  </button>
+                </div>
+              </>
+            ) : null}
+
+            {linkDialog.kind === "delete" ? (
+              <>
+                <h3 className="font-display text-xl font-semibold">Отключить start-ссылку #{linkDialog.id}?</h3>
+                <p className="mt-2 text-sm text-slate-500">Ссылка перестанет использоваться в новых welcome/campaign сценариях.</p>
+                <div className="mt-4 flex justify-end gap-2">
+                  <button className="outline-btn rounded-xl px-4 py-2 text-sm font-semibold" type="button" onClick={() => setLinkDialog(null)}>
+                    Отмена
+                  </button>
+                  <button className="btn-primary rounded-xl px-4 py-2 text-sm font-semibold" type="button" disabled={busy} onClick={() => void submitLinkDialog()}>
+                    Отключить
+                  </button>
+                </div>
+              </>
+            ) : null}
+          </div>
+        </div>
+      ) : null}
     </section>
   );
 }

@@ -1,6 +1,6 @@
 ﻿"use client";
 
-import { addTicketMessage, getTicket, type TicketInfo } from "@/lib/api";
+import { addTicketMessage, getTicket, type TicketInfo, type TicketMessage } from "@/lib/api";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -18,12 +18,48 @@ function fmtDate(value?: string | null): string {
   return new Date(value).toLocaleString("ru-RU");
 }
 
+function ticketAttachmentUrl(message: TicketMessage): string {
+  if (String(message.media_type || "").toLowerCase() !== "link") {
+    return "";
+  }
+  try {
+    const payload = JSON.parse(String(message.media_payload || "{}"));
+    const raw = String(payload?.url || "").trim();
+    if (!raw) return "";
+    const parsed = new URL(raw);
+    if (!["http:", "https:"].includes(parsed.protocol)) {
+      return "";
+    }
+    return parsed.toString();
+  } catch {
+    return "";
+  }
+}
+
+function buildReplyAttachment(url: string): { media_type: string; media_payload: string } | null {
+  const normalized = String(url || "").trim();
+  if (!normalized) return null;
+  try {
+    const parsed = new URL(normalized);
+    if (!["http:", "https:"].includes(parsed.protocol)) {
+      return null;
+    }
+    return {
+      media_type: "link",
+      media_payload: JSON.stringify({ url: parsed.toString() }),
+    };
+  } catch {
+    return null;
+  }
+}
+
 export default function SupportTicketThreadPage() {
   const searchParams = useSearchParams();
   const ticketId = Number(searchParams.get("id") || 0);
 
   const [ticket, setTicket] = useState<TicketInfo | null>(null);
   const [message, setMessage] = useState("");
+  const [attachmentUrl, setAttachmentUrl] = useState("");
   const [busy, setBusy] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -60,12 +96,18 @@ export default function SupportTicketThreadPage() {
 
   const onSendReply = async (): Promise<void> => {
     if (!ticket || !message.trim() || !canReply) return;
+    const attachment = buildReplyAttachment(attachmentUrl);
+    if (attachmentUrl.trim() && !attachment) {
+      setReplyError("Ссылка на вложение должна начинаться с http:// или https://.");
+      return;
+    }
     setBusy(true);
     setReplyError("");
     try {
-      const updated = await addTicketMessage(ticket.id, message.trim());
+      const updated = await addTicketMessage(ticket.id, message.trim(), attachment || undefined);
       setTicket(updated);
       setMessage("");
+      setAttachmentUrl("");
     } catch (error) {
       setReplyError(String((error as { message?: string })?.message || error));
     } finally {
@@ -125,11 +167,22 @@ export default function SupportTicketThreadPage() {
           ) : (
             ticket.messages.map((msg) => {
               const isAdmin = msg.sender_role === "admin";
+              const attachment = ticketAttachmentUrl(msg);
               return (
                 <div key={msg.id} className={`flex ${isAdmin ? "justify-start" : "justify-end"}`}>
                   <div className={`max-w-[86%] rounded-2xl px-4 py-3 text-sm leading-6 ${isAdmin ? "bg-white/75 dark:bg-white/10" : "bg-violet-500/15 dark:bg-violet-500/25"}`}>
                     <p className="text-xs uppercase tracking-[0.12em] text-slate-500">{isAdmin ? "Оператор" : "Вы"}</p>
                     <p className="mt-1 whitespace-pre-line">{msg.body}</p>
+                    {attachment ? (
+                      <a
+                        href={attachment}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="mt-2 inline-flex text-xs font-medium text-violet-600 hover:underline dark:text-violet-300"
+                      >
+                        Открыть вложение
+                      </a>
+                    ) : null}
                     <p className="mt-2 text-[10px] text-slate-500">{fmtDate(msg.created_at)}</p>
                   </div>
                 </div>
@@ -151,6 +204,12 @@ export default function SupportTicketThreadPage() {
                 placeholder="Напишите ответ..."
                 className="w-full rounded-xl border border-violet-200/50 bg-white/80 px-4 py-3 text-sm outline-none dark:border-violet-500/30 dark:bg-slate-900/70"
               />
+              <input
+                value={attachmentUrl}
+                onChange={(event) => setAttachmentUrl(event.target.value)}
+                placeholder="Ссылка на скриншот или видео (опционально)"
+                className="mt-3 w-full rounded-xl border border-violet-200/50 bg-white/80 px-4 py-3 text-sm outline-none dark:border-violet-500/30 dark:bg-slate-900/70"
+              />
               <div className="mt-3 flex flex-wrap gap-3">
                 <button
                   type="button"
@@ -164,6 +223,7 @@ export default function SupportTicketThreadPage() {
                   type="button"
                   onClick={() => {
                     setMessage("");
+                    setAttachmentUrl("");
                     setReplyError("");
                   }}
                   className="outline-btn rounded-xl px-5 py-2.5 text-sm font-semibold uppercase tracking-[0.12em]"

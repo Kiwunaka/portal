@@ -1,7 +1,7 @@
 "use client";
 
 import { adminMetricsStatus, adminMetricsTimeseries, adminSummary, type AdminMetricsPoint, type AdminMetricsStatus, type AdminSummaryPayload } from "@/lib/api";
-import { Activity, RefreshCw, Server, Star, TrendingUp, Users, Ticket, ArrowUp, ArrowDown } from "lucide-react";
+import { Activity, RefreshCw, Server, Star, TrendingUp, Users, Ticket, ArrowUp, ArrowDown, AlertTriangle } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { fmtRuDate } from "../nav";
 
@@ -75,6 +75,38 @@ export default function AdminDashboardPage() {
 
   const registrationValues = useMemo(() => series.map((p) => Number(p.registrations || 0)), [series]);
   const revenueValues = useMemo(() => series.map((p) => Number(p.revenue_rub || 0)), [series]);
+  const errorCards = [
+    {
+      label: "Метрики",
+      value: summary?.errors.stale_metrics ? "stale" : "ok",
+      tone: summary?.errors.stale_metrics ? "badge-warning" : "badge-success",
+      detail: summary?.errors.stale_metrics ? "нужна проверка timer/collector" : "сэмплы свежие",
+    },
+    {
+      label: "Ноды с риском",
+      value: summary?.errors.unhealthy_nodes ?? "—",
+      tone: Number(summary?.errors.unhealthy_nodes || 0) > 0 ? "badge-danger" : "badge-success",
+      detail: "health score и panel latency",
+    },
+    {
+      label: "Callback ошибки 24ч",
+      value: summary?.errors.payment_callback_failures_24h ?? "—",
+      tone: Number(summary?.errors.payment_callback_failures_24h || 0) > 0 ? "badge-warning" : "badge-success",
+      detail: "invalid signature / processed_ok=false",
+    },
+    {
+      label: "Fallback подписки 24ч",
+      value: summary?.errors.subscription_numeric_fallbacks_24h ?? "—",
+      tone: Number(summary?.errors.subscription_numeric_fallbacks_24h || 0) > 0 ? "badge-warning" : "badge-success",
+      detail: "случаи lookup по tg_id",
+    },
+    {
+      label: "Открытые тикеты",
+      value: summary?.errors.open_tickets ?? "—",
+      tone: Number(summary?.errors.open_tickets || 0) > 0 ? "badge-info" : "badge-success",
+      detail: "очередь поддержки",
+    },
+  ];
 
   const statCards = [
     {
@@ -254,6 +286,29 @@ export default function AdminDashboardPage() {
         </div>
       </div>
 
+      <div className="glass-card p-5">
+        <div className="mb-4 flex items-center gap-3">
+          <div className="stat-icon stat-icon-amber">
+            <AlertTriangle size={20} />
+          </div>
+          <div>
+            <h2 className="font-display text-xl font-bold">Сводка ошибок и рисков</h2>
+            <p className="text-xs text-slate-500">То, что сейчас требует внимания оператора</p>
+          </div>
+        </div>
+        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-5">
+          {errorCards.map((card) => (
+            <article key={card.label} className="node-card">
+              <p className="text-[10px] uppercase tracking-[0.1em] text-slate-500">{card.label}</p>
+              <div className="mt-2 flex items-center gap-2">
+                <span className={`badge ${card.tone}`}>{card.value}</span>
+              </div>
+              <p className="mt-2 text-xs text-slate-500">{card.detail}</p>
+            </article>
+          ))}
+        </div>
+      </div>
+
       {/* ── Summary footer ─────────────────────────────── */}
       <div className="stat-card p-4">
         <div className="flex items-center gap-3">
@@ -265,6 +320,11 @@ export default function AdminDashboardPage() {
           </p>
         </div>
       </div>
+      {summary?.errors.stale_metrics || Number(summary?.errors.unhealthy_nodes || 0) > 0 ? (
+        <p className="text-xs text-amber-500">
+          Проверьте `portal-node-metrics.timer`, свежесть сэмплов и проблемные ноды до релиза.
+        </p>
+      ) : null}
     </section>
   );
 }

@@ -1,8 +1,28 @@
-﻿"use client";
-
+import { getPortalPublicConfig } from "@/lib/portal";
 import Link from "next/link";
 
+const config = getPortalPublicConfig(process.env as Record<string, string | undefined>);
+
+function marketingDocumentUrl(pathname: "/offer/" | "/privacy/"): string {
+  const checkoutUrl = String(config.checkoutUrl || "").trim();
+  if (checkoutUrl) {
+    try {
+      const url = new URL(checkoutUrl);
+      url.pathname = pathname;
+      url.search = "";
+      url.hash = "";
+      return url.toString();
+    } catch {
+      // Fall through to domain fallback below.
+    }
+  }
+  return `https://portal-privacy.online${pathname}`;
+}
+
 export default function SupportLegalPage() {
+  const offerUrl = marketingDocumentUrl("/offer/");
+  const privacyUrl = marketingDocumentUrl("/privacy/");
+
   return (
     <main className="space-y-6">
       <section className="glass-card p-7">
@@ -12,7 +32,7 @@ export default function SupportLegalPage() {
         </Link>
         <h1 className="mt-3 font-display text-4xl font-bold">Юридическая информация</h1>
         <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">
-          Ниже находятся актуальные публичные документы PORTAL VPN: оферта и политика конфиденциальности.
+          Ниже находятся актуальные публичные документы PORTAL: оферта и политика конфиденциальности.
         </p>
       </section>
 
@@ -20,29 +40,31 @@ export default function SupportLegalPage() {
         <article className="glass-card p-6">
           <h2 className="font-display text-2xl font-semibold">Публичная оферта</h2>
           <p className="mt-3 text-sm leading-6 text-slate-600 dark:text-slate-300">
-            Документ описывает условия предоставления VPN-сервиса, оплаты, продления и ответственности сторон.
+            Документ описывает условия предоставления доступа, оплаты, продления и ответственности сторон.
           </p>
-          <Link
-            href="/offer"
+          <a
+            href={offerUrl}
             target="_blank"
+            rel="noreferrer"
             className="btn-primary mt-5 inline-flex rounded-xl px-5 py-2.5 text-sm font-semibold uppercase tracking-[0.12em]"
           >
             Открыть оферту
-          </Link>
+          </a>
         </article>
 
         <article className="glass-card p-6">
           <h2 className="font-display text-2xl font-semibold">Политика конфиденциальности</h2>
           <p className="mt-3 text-sm leading-6 text-slate-600 dark:text-slate-300">
-            Документ описывает какие данные обрабатываются для работы аккаунта, VPN-подключения и поддержки.
+            Документ описывает, какие данные используются для работы аккаунта, оплаты и поддержки.
           </p>
-          <Link
-            href="/privacy"
+          <a
+            href={privacyUrl}
             target="_blank"
+            rel="noreferrer"
             className="outline-btn mt-5 inline-flex rounded-xl px-5 py-2.5 text-sm font-semibold uppercase tracking-[0.12em]"
           >
             Открыть политику
-          </Link>
+          </a>
         </article>
       </section>
 
@@ -50,7 +72,7 @@ export default function SupportLegalPage() {
         <p className="font-mono text-xs uppercase tracking-[0.16em] text-slate-500">Важно</p>
         <p className="mt-2 text-sm leading-6 text-slate-600 dark:text-slate-300">
           Если у вас есть юридический или финансовый вопрос по оплате, создайте тикет в поддержке и укажите тему обращения.
-          Это ускоряет ответ и помогает сразу передать вопрос нужному специалисту.
+          Так запрос быстрее попадёт к нужному специалисту.
         </p>
       </section>
     </main>

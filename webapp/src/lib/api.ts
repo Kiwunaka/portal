@@ -249,6 +249,8 @@ export type CampaignLinksBuildResult = {
   bot_start_link: string;
   checkout_link: string;
   webapp_link: string;
+  checkout_mode?: string;
+  checkout_reason?: string;
 };
 
 export type PublicPlansPayload = {
@@ -280,6 +282,13 @@ export type AdminSummaryPayload = {
   users: { total: number; active: number; free: number; paid: number };
   tickets: { open: number };
   nodes: { total: number; healthy: number };
+  errors: {
+    stale_metrics: boolean;
+    unhealthy_nodes: number;
+    open_tickets: number;
+    payment_callback_failures_24h: number;
+    subscription_numeric_fallbacks_24h: number;
+  };
   top_nodes: Array<{
     code: string;
     health_score: number;
@@ -562,6 +571,12 @@ export type ManualCreateIn = {
   days: number;
 };
 
+export type TicketAttachmentInput = {
+  media_type?: string | null;
+  media_file_id?: string | null;
+  media_payload?: string | null;
+};
+
 export type TelegramWebLoginPayload = {
   id: number;
   first_name?: string;
@@ -799,11 +814,17 @@ export async function fetchTickets(limit = 20): Promise<TicketInfo[]> {
   return data.tickets || [];
 }
 
-export async function createTicket(subject: string, body: string): Promise<TicketInfo> {
+export async function createTicket(subject: string, body: string, attachment?: TicketAttachmentInput): Promise<TicketInfo> {
   const data = await apiFetch<{ ticket: TicketInfo }>("/api/tickets", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ subject, body }),
+    body: JSON.stringify({
+      subject,
+      body,
+      media_type: attachment?.media_type ?? null,
+      media_file_id: attachment?.media_file_id ?? null,
+      media_payload: attachment?.media_payload ?? null,
+    }),
   });
   return data.ticket;
 }
@@ -813,11 +834,16 @@ export async function getTicket(ticketId: number): Promise<TicketInfo> {
   return data.ticket;
 }
 
-export async function addTicketMessage(ticketId: number, body: string): Promise<TicketInfo> {
+export async function addTicketMessage(ticketId: number, body: string, attachment?: TicketAttachmentInput): Promise<TicketInfo> {
   const data = await apiFetch<{ ticket: TicketInfo }>(`/api/tickets/${ticketId}/messages`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ body }),
+    body: JSON.stringify({
+      body,
+      media_type: attachment?.media_type ?? null,
+      media_file_id: attachment?.media_file_id ?? null,
+      media_payload: attachment?.media_payload ?? null,
+    }),
   });
   return data.ticket;
 }

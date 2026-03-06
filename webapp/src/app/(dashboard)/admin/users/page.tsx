@@ -118,6 +118,14 @@ function emptyPolicyDraft(): KeyPolicyDraft {
   };
 }
 
+type AdminActionDialog =
+  | { kind: "message"; text: string }
+  | { kind: "extend"; days: string }
+  | { kind: "create"; displayName: string; days: string }
+  | { kind: "bulkConfirm" }
+  | { kind: "token"; subscriptionUrl: string; syncOk: boolean }
+  | null;
+
 export default function AdminUsersPage() {
   const [query, setQuery] = useState("");
   const [rows, setRows] = useState<AdminUserRow[]>([]);
@@ -133,6 +141,7 @@ export default function AdminUsersPage() {
   const [error, setError] = useState("");
   const [okMessage, setOkMessage] = useState("");
   const [bulkResult, setBulkResult] = useState("");
+  const [dialog, setDialog] = useState<AdminActionDialog>(null);
   const [bulkAction, setBulkAction] = useState({
     action: "disable" as "disable" | "enable" | "reset" | "resync",
     segment: "all",
@@ -229,18 +238,22 @@ export default function AdminUsersPage() {
       await navigator.clipboard.writeText(text.trim());
       setOkMessage("Скопировано в буфер.");
     } catch {
-      window.alert("Не удалось скопировать");
+      setError("Не удалось скопировать в буфер.");
     }
   };
 
   const actionMessage = async (): Promise<void> => {
     if (!selectedTgId) return;
-    const text = window.prompt("Текст сообщения пользователю:");
-    if (!text?.trim()) return;
+    setDialog({ kind: "message", text: "" });
+  };
+
+  const submitMessageDialog = async (): Promise<void> => {
+    if (!selectedTgId || !dialog || dialog.kind !== "message" || !dialog.text.trim()) return;
     setBusy(true);
     try {
-      await adminUserMessage(selectedTgId, text.trim());
+      await adminUserMessage(selectedTgId, dialog.text.trim());
       setOkMessage("Сообщение отправлено.");
+      setDialog(null);
       await reloadSelected();
     } catch (err) {
       setError(String((err as { message?: string })?.message || err || "Ошибка отправки"));
@@ -251,13 +264,21 @@ export default function AdminUsersPage() {
 
   const actionExtend = async (): Promise<void> => {
     if (!selectedTgId) return;
-    const raw = window.prompt("Продлить на сколько дней?", "30");
-    const days = Number(raw || 0);
-    if (!Number.isFinite(days) || days === 0) return;
+    setDialog({ kind: "extend", days: "30" });
+  };
+
+  const submitExtendDialog = async (): Promise<void> => {
+    if (!selectedTgId || !dialog || dialog.kind !== "extend") return;
+    const days = Number(dialog.days || 0);
+    if (!Number.isFinite(days) || days === 0) {
+      setError("Укажите корректное количество дней.");
+      return;
+    }
     setBusy(true);
     try {
       await adminManualExtend(selectedTgId, days);
       setOkMessage(`Подписка продлена на ${days} дн.`);
+      setDialog(null);
       await reloadSelected();
       await loadUsers();
     } catch (err) {
@@ -289,7 +310,7 @@ export default function AdminUsersPage() {
     try {
       const out = await adminManualRegenerateToken(selectedTgId);
       setOkMessage(`Новый токен создан (синхронизация: ${out.sync_ok ? "ok" : "предупреждение"}).`);
-      window.alert(`Новая ссылка:\n${out.subscription_url}\n\nСинхронизация: ${out.sync_ok ? "OK" : "WARN"}`);
+      setDialog({ kind: "token", subscriptionUrl: out.subscription_url, syncOk: Boolean(out.sync_ok) });
       await reloadSelected();
     } catch (err) {
       setError(String((err as { message?: string })?.message || err || "Ошибка ротации токена"));
@@ -299,14 +320,22 @@ export default function AdminUsersPage() {
   };
 
   const actionCreateManual = async (): Promise<void> => {
-    const displayName = window.prompt("Имя для ручного пользователя:", "Оффлайн пользователь");
-    const daysRaw = window.prompt("Срок доступа (дни):", "30");
-    const days = Number(daysRaw || 0);
-    if (!displayName?.trim() || !Number.isFinite(days) || days <= 0) return;
+    setDialog({ kind: "create", displayName: "Оффлайн пользователь", days: "30" });
+  };
+
+  const submitCreateManualDialog = async (): Promise<void> => {
+    if (!dialog || dialog.kind !== "create") return;
+    const displayName = dialog.displayName.trim();
+    const days = Number(dialog.days || 0);
+    if (!displayName || !Number.isFinite(days) || days <= 0) {
+      setError("Проверьте имя и срок доступа для ручного пользователя.");
+      return;
+    }
     setBusy(true);
     try {
-      await adminManualCreate({ display_name: displayName.trim(), days });
+      await adminManualCreate({ display_name: displayName, days });
       setOkMessage("Ручной пользователь создан.");
+      setDialog(null);
       await loadUsers();
     } catch (err) {
       setError(String((err as { message?: string })?.message || err || "Ошибка создания manual пользователя"));
@@ -379,18 +408,16 @@ export default function AdminUsersPage() {
     }
   };
 
-  const runBulkAction = async (): Promise<void> => {
+  const runBulkAction = async (confirmed = false): Promise<void> => {
     setBusy(true);
     setError("");
     setBulkResult("");
     setOkMessage("");
     try {
-      if (!bulkAction.dryRun) {
-        const confirmText = window.prompt("Для подтверждения массовой операции введите ПРИМЕНИТЬ");
-        if ((confirmText || "").trim().toUpperCase() !== "ПРИМЕНИТЬ") {
-          setBusy(false);
-          return;
-        }
+      if (!bulkAction.dryRun && !confirmed) {
+        setBusy(false);
+        setDialog({ kind: "bulkConfirm" });
+        return;
       }
       const nodeCodes = bulkAction.nodeCodes.split(",").map((item) => item.trim()).filter(Boolean);
       const out = await adminBulkKeyAction({
@@ -406,6 +433,9 @@ export default function AdminUsersPage() {
       const failed = Number(out?.failed || 0);
       const mode = out?.dry_run ? "предпросмотр" : "применено";
       setBulkResult(`Массовая операция (${mode}): обработано ${affected}, ошибок ${failed}`);
+      if (!out?.dry_run) {
+        setDialog(null);
+      }
       if (!bulkAction.dryRun) {
         await loadUsers();
       }
@@ -883,6 +913,128 @@ export default function AdminUsersPage() {
           </>
         )}
       </article>
+
+      {dialog ? (
+        <div className="fixed inset-0 z-[260] flex items-center justify-center bg-slate-950/65 p-4">
+          <div className="glass-card w-full max-w-lg p-5">
+            {dialog.kind === "message" ? (
+              <>
+                <h3 className="font-display text-xl font-semibold">Сообщение пользователю</h3>
+                <p className="mt-1 text-xs text-slate-500">Сообщение уйдёт прямо в Telegram.</p>
+                <textarea
+                  value={dialog.text}
+                  onChange={(event) => setDialog({ kind: "message", text: event.target.value })}
+                  rows={5}
+                  className="mt-4 w-full rounded-xl border border-violet-200/50 bg-white/80 px-3 py-3 text-sm outline-none dark:border-violet-500/30 dark:bg-slate-900/70"
+                  placeholder="Текст сообщения"
+                />
+                <div className="mt-4 flex justify-end gap-2">
+                  <button className="outline-btn rounded-xl px-4 py-2 text-sm font-semibold" type="button" onClick={() => setDialog(null)}>
+                    Отмена
+                  </button>
+                  <button className="btn-primary rounded-xl px-4 py-2 text-sm font-semibold" type="button" disabled={busy || !dialog.text.trim()} onClick={() => void submitMessageDialog()}>
+                    Отправить
+                  </button>
+                </div>
+              </>
+            ) : null}
+
+            {dialog.kind === "extend" ? (
+              <>
+                <h3 className="font-display text-xl font-semibold">Продлить доступ</h3>
+                <p className="mt-1 text-xs text-slate-500">Изменение сразу уйдёт в профиль и ключи пользователя.</p>
+                <input
+                  value={dialog.days}
+                  onChange={(event) => setDialog({ kind: "extend", days: event.target.value })}
+                  type="number"
+                  min={1}
+                  className="mt-4 w-full rounded-xl border border-violet-200/50 bg-white/80 px-3 py-3 text-sm outline-none dark:border-violet-500/30 dark:bg-slate-900/70"
+                  placeholder="Дней"
+                />
+                <div className="mt-4 flex justify-end gap-2">
+                  <button className="outline-btn rounded-xl px-4 py-2 text-sm font-semibold" type="button" onClick={() => setDialog(null)}>
+                    Отмена
+                  </button>
+                  <button className="btn-primary rounded-xl px-4 py-2 text-sm font-semibold" type="button" disabled={busy} onClick={() => void submitExtendDialog()}>
+                    Применить
+                  </button>
+                </div>
+              </>
+            ) : null}
+
+            {dialog.kind === "create" ? (
+              <>
+                <h3 className="font-display text-xl font-semibold">Ручной пользователь</h3>
+                <p className="mt-1 text-xs text-slate-500">Для офлайн-выдачи и нестандартных кейсов.</p>
+                <input
+                  value={dialog.displayName}
+                  onChange={(event) => setDialog({ kind: "create", displayName: event.target.value, days: dialog.days })}
+                  className="mt-4 w-full rounded-xl border border-violet-200/50 bg-white/80 px-3 py-3 text-sm outline-none dark:border-violet-500/30 dark:bg-slate-900/70"
+                  placeholder="Имя пользователя"
+                />
+                <input
+                  value={dialog.days}
+                  onChange={(event) => setDialog({ kind: "create", displayName: dialog.displayName, days: event.target.value })}
+                  type="number"
+                  min={1}
+                  className="mt-3 w-full rounded-xl border border-violet-200/50 bg-white/80 px-3 py-3 text-sm outline-none dark:border-violet-500/30 dark:bg-slate-900/70"
+                  placeholder="Срок доступа в днях"
+                />
+                <div className="mt-4 flex justify-end gap-2">
+                  <button className="outline-btn rounded-xl px-4 py-2 text-sm font-semibold" type="button" onClick={() => setDialog(null)}>
+                    Отмена
+                  </button>
+                  <button className="btn-primary rounded-xl px-4 py-2 text-sm font-semibold" type="button" disabled={busy} onClick={() => void submitCreateManualDialog()}>
+                    Создать
+                  </button>
+                </div>
+              </>
+            ) : null}
+
+            {dialog.kind === "bulkConfirm" ? (
+              <>
+                <h3 className="font-display text-xl font-semibold">Подтвердить массовую операцию</h3>
+                <p className="mt-2 text-sm text-slate-500">
+                  Будет выполнено действие <strong>{bulkAction.action}</strong> для сегмента <strong>{bulkAction.segment}</strong>.
+                </p>
+                <p className="mt-2 text-xs text-slate-500">
+                  Фильтр: {bulkAction.q.trim() || "без фильтра"} • лимит: {bulkAction.limit} • ноды: {bulkAction.nodeCodes.trim() || "все"}
+                </p>
+                <div className="mt-4 flex justify-end gap-2">
+                  <button className="outline-btn rounded-xl px-4 py-2 text-sm font-semibold" type="button" onClick={() => setDialog(null)}>
+                    Отмена
+                  </button>
+                  <button className="btn-primary rounded-xl px-4 py-2 text-sm font-semibold" type="button" disabled={busy} onClick={() => void runBulkAction(true)}>
+                    Применить
+                  </button>
+                </div>
+              </>
+            ) : null}
+
+            {dialog.kind === "token" ? (
+              <>
+                <h3 className="font-display text-xl font-semibold">Новая ссылка готова</h3>
+                <p className="mt-1 text-xs text-slate-500">
+                  Синхронизация панели: {dialog.syncOk ? "ok" : "warning"}.
+                </p>
+                <input
+                  value={dialog.subscriptionUrl}
+                  readOnly
+                  className="mt-4 w-full rounded-xl border border-violet-200/50 bg-white/80 px-3 py-3 text-xs outline-none dark:border-violet-500/30 dark:bg-slate-900/70"
+                />
+                <div className="mt-4 flex justify-end gap-2">
+                  <button className="outline-btn rounded-xl px-4 py-2 text-sm font-semibold" type="button" onClick={() => void copyText(dialog.subscriptionUrl)}>
+                    Копировать
+                  </button>
+                  <button className="btn-primary rounded-xl px-4 py-2 text-sm font-semibold" type="button" onClick={() => setDialog(null)}>
+                    Закрыть
+                  </button>
+                </div>
+              </>
+            ) : null}
+          </div>
+        </div>
+      ) : null}
     </section>
   );
 }

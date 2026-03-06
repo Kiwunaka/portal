@@ -26,13 +26,11 @@ const SEGMENT_OPTIONS = [
   { value: "expired", label: "Истёкшие", icon: "⏰" },
 ];
 
-function parsePromptBool(raw: string, fallback: boolean): boolean {
-  const value = String(raw || "").trim().toLowerCase();
-  if (!value) return fallback;
-  if (["no", "n", "нет", "не", "0", "false", "off"].includes(value)) return false;
-  if (["yes", "y", "да", "1", "true", "on"].includes(value)) return true;
-  return fallback;
-}
+type LiveUpdateDialog =
+  | { kind: "create"; title: string; summary: string; link: string; sortOrder: string }
+  | { kind: "edit"; id: number; title: string; summary: string; link: string; isActive: boolean }
+  | { kind: "delete"; id: number }
+  | null;
 
 export default function AdminBroadcastPage() {
   const [segment, setSegment] = useState("all_active");
@@ -43,6 +41,7 @@ export default function AdminBroadcastPage() {
   const [result, setResult] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const [liveDialog, setLiveDialog] = useState<LiveUpdateDialog>(null);
 
   const loadLiveUpdates = async (): Promise<void> => {
     try {
@@ -79,64 +78,71 @@ export default function AdminBroadcastPage() {
   };
 
   const createLiveUpdate = async (): Promise<void> => {
-    const title = window.prompt("Заголовок новости:", "Обновление сервиса");
-    if (!title?.trim()) return;
-    const summary = window.prompt("Краткое описание:", "Новые улучшения стабильности и скорости") || "";
-    const link = window.prompt("Ссылка:", "https://t.me/portal_privacy_bot") || "";
-    const sortOrder = Number(window.prompt("Порядок (sort_order):", "100") || 100);
-    setBusy(true);
-    setError("");
-    try {
-      await adminLiveUpdateCreate({
-        title: title.trim(),
-        summary: summary.trim(),
-        link: link.trim(),
-        is_active: true,
-        sort_order: Number.isFinite(sortOrder) ? Math.max(0, Math.floor(sortOrder)) : 100,
-      });
-      await loadLiveUpdates();
-      setResult("Новость добавлена.");
-    } catch (err) {
-      setError(String((err as { message?: string })?.message || err || "Не удалось создать новость"));
-    } finally {
-      setBusy(false);
-    }
+    setLiveDialog({
+      kind: "create",
+      title: "Обновление сервиса",
+      summary: "Новые улучшения стабильности и скорости",
+      link: "https://t.me/portal_privacy_bot",
+      sortOrder: "100",
+    });
   };
 
   const editLiveUpdate = async (row: LiveUpdateRow): Promise<void> => {
-    const title = window.prompt("Заголовок:", row.title || "");
-    if (!title?.trim()) return;
-    const summary = window.prompt("Описание:", row.summary || "") || "";
-    const link = window.prompt("Ссылка:", row.link || "") || "";
-    const activeRaw = window.prompt("Активно? (да/нет)", row.is_active ? "да" : "нет") || "";
-    setBusy(true);
-    setError("");
-    try {
-      await adminLiveUpdateUpdate(row.id, {
-        title: title.trim(),
-        summary: summary.trim(),
-        link: link.trim(),
-        is_active: parsePromptBool(activeRaw, Boolean(row.is_active)),
-      });
-      await loadLiveUpdates();
-      setResult(`Новость #${row.id} обновлена.`);
-    } catch (err) {
-      setError(String((err as { message?: string })?.message || err || "Не удалось обновить новость"));
-    } finally {
-      setBusy(false);
-    }
+    setLiveDialog({
+      kind: "edit",
+      id: row.id,
+      title: row.title || "",
+      summary: row.summary || "",
+      link: row.link || "",
+      isActive: Boolean(row.is_active),
+    });
   };
 
   const removeLiveUpdate = async (id: number): Promise<void> => {
-    if (!window.confirm(`Удалить новость #${id}?`)) return;
+    setLiveDialog({ kind: "delete", id });
+  };
+
+  const submitLiveDialog = async (): Promise<void> => {
+    if (!liveDialog) return;
     setBusy(true);
     setError("");
     try {
-      await adminLiveUpdateDelete(id);
+      if (liveDialog.kind === "create") {
+        if (!liveDialog.title.trim()) {
+          setError("Укажите заголовок новости.");
+          setBusy(false);
+          return;
+        }
+        const sortOrder = Number(liveDialog.sortOrder || 100);
+        await adminLiveUpdateCreate({
+          title: liveDialog.title.trim(),
+          summary: liveDialog.summary.trim(),
+          link: liveDialog.link.trim(),
+          is_active: true,
+          sort_order: Number.isFinite(sortOrder) ? Math.max(0, Math.floor(sortOrder)) : 100,
+        });
+        setResult("Новость добавлена.");
+      } else if (liveDialog.kind === "edit") {
+        if (!liveDialog.title.trim()) {
+          setError("Укажите заголовок новости.");
+          setBusy(false);
+          return;
+        }
+        await adminLiveUpdateUpdate(liveDialog.id, {
+          title: liveDialog.title.trim(),
+          summary: liveDialog.summary.trim(),
+          link: liveDialog.link.trim(),
+          is_active: liveDialog.isActive,
+        });
+        setResult(`Новость #${liveDialog.id} обновлена.`);
+      } else if (liveDialog.kind === "delete") {
+        await adminLiveUpdateDelete(liveDialog.id);
+        setResult(`Новость #${liveDialog.id} удалена.`);
+      }
       await loadLiveUpdates();
-      setResult(`Новость #${id} удалена.`);
+      setLiveDialog(null);
     } catch (err) {
-      setError(String((err as { message?: string })?.message || err || "Не удалось удалить новость"));
+      setError(String((err as { message?: string })?.message || err || "Не удалось сохранить новость"));
     } finally {
       setBusy(false);
     }
@@ -289,6 +295,99 @@ export default function AdminBroadcastPage() {
         <div className="stat-card p-4 flex items-center gap-3">
           <div className="stat-icon stat-icon-rose"><X size={18} /></div>
           <p className="text-sm text-rose-500 font-medium">{error}</p>
+        </div>
+      ) : null}
+
+      {liveDialog ? (
+        <div className="fixed inset-0 z-[260] flex items-center justify-center bg-slate-950/65 p-4">
+          <div className="glass-card w-full max-w-xl p-5">
+            {liveDialog.kind === "create" || liveDialog.kind === "edit" ? (
+              <>
+                <h3 className="font-display text-xl font-semibold">
+                  {liveDialog.kind === "create" ? "Новая новость" : `Редактирование новости #${liveDialog.id}`}
+                </h3>
+                <div className="mt-4 space-y-3">
+                  <input
+                    value={liveDialog.title}
+                    onChange={(event) =>
+                      setLiveDialog((prev) =>
+                        prev && (prev.kind === "create" || prev.kind === "edit") ? { ...prev, title: event.target.value } : prev,
+                      )
+                    }
+                    className="w-full rounded-xl border border-violet-200/50 bg-white/80 px-3 py-2 text-sm outline-none dark:border-violet-500/30 dark:bg-slate-900/70"
+                    placeholder="Заголовок"
+                  />
+                  <textarea
+                    value={liveDialog.summary}
+                    onChange={(event) =>
+                      setLiveDialog((prev) =>
+                        prev && (prev.kind === "create" || prev.kind === "edit") ? { ...prev, summary: event.target.value } : prev,
+                      )
+                    }
+                    rows={4}
+                    className="w-full rounded-xl border border-violet-200/50 bg-white/80 px-3 py-2 text-sm outline-none dark:border-violet-500/30 dark:bg-slate-900/70"
+                    placeholder="Краткое описание"
+                  />
+                  <input
+                    value={liveDialog.link}
+                    onChange={(event) =>
+                      setLiveDialog((prev) =>
+                        prev && (prev.kind === "create" || prev.kind === "edit") ? { ...prev, link: event.target.value } : prev,
+                      )
+                    }
+                    className="w-full rounded-xl border border-violet-200/50 bg-white/80 px-3 py-2 text-sm outline-none dark:border-violet-500/30 dark:bg-slate-900/70"
+                    placeholder="Ссылка"
+                  />
+                  {liveDialog.kind === "create" ? (
+                    <input
+                      value={liveDialog.sortOrder}
+                      onChange={(event) =>
+                        setLiveDialog((prev) => (prev && prev.kind === "create" ? { ...prev, sortOrder: event.target.value } : prev))
+                      }
+                      type="number"
+                      min={0}
+                      className="w-full rounded-xl border border-violet-200/50 bg-white/80 px-3 py-2 text-sm outline-none dark:border-violet-500/30 dark:bg-slate-900/70"
+                      placeholder="sort_order"
+                    />
+                  ) : (
+                    <label className="inline-flex items-center gap-2 text-sm text-slate-500">
+                      <input
+                        type="checkbox"
+                        checked={liveDialog.isActive}
+                        onChange={(event) =>
+                          setLiveDialog((prev) => (prev && prev.kind === "edit" ? { ...prev, isActive: event.target.checked } : prev))
+                        }
+                      />
+                      Активна
+                    </label>
+                  )}
+                </div>
+                <div className="mt-4 flex justify-end gap-2">
+                  <button className="outline-btn rounded-xl px-4 py-2 text-sm font-semibold" type="button" onClick={() => setLiveDialog(null)}>
+                    Отмена
+                  </button>
+                  <button className="btn-primary rounded-xl px-4 py-2 text-sm font-semibold" type="button" disabled={busy} onClick={() => void submitLiveDialog()}>
+                    Сохранить
+                  </button>
+                </div>
+              </>
+            ) : null}
+
+            {liveDialog.kind === "delete" ? (
+              <>
+                <h3 className="font-display text-xl font-semibold">Удалить новость #{liveDialog.id}?</h3>
+                <p className="mt-2 text-sm text-slate-500">Операция удалит карточку из ленты приложения.</p>
+                <div className="mt-4 flex justify-end gap-2">
+                  <button className="outline-btn rounded-xl px-4 py-2 text-sm font-semibold" type="button" onClick={() => setLiveDialog(null)}>
+                    Отмена
+                  </button>
+                  <button className="btn-primary rounded-xl px-4 py-2 text-sm font-semibold" type="button" disabled={busy} onClick={() => void submitLiveDialog()}>
+                    Удалить
+                  </button>
+                </div>
+              </>
+            ) : null}
+          </div>
         </div>
       ) : null}
     </section>

@@ -1,38 +1,34 @@
-﻿"use client";
+"use client";
 
 import { createTicket, fetchTickets, type TicketInfo } from "@/lib/api";
+import { getCopyText, getPortalPublicConfig } from "@/lib/portal";
 import { usePortalSession } from "@/lib/session";
 import { AnimatePresence, motion } from "framer-motion";
 import Link from "next/link";
-import { useMemo, useState } from "react";
-import { useEffect } from "react";
+import { useEffect, useMemo, useState } from "react";
 
-type TicketCategory = "Техническая проблема" | "Оплата и подписка" | "Скорость / медиасервисы" | "Общий вопрос";
+type TicketCategory = "Подключение" | "Оплата" | "Скорость" | "Общий вопрос";
 
-const CATEGORIES: TicketCategory[] = [
-  "Техническая проблема",
-  "Оплата и подписка",
-  "Скорость / медиасервисы",
-  "Общий вопрос",
-];
+const config = getPortalPublicConfig(process.env as Record<string, string | undefined>);
+const CATEGORIES: TicketCategory[] = ["Подключение", "Оплата", "Скорость", "Общий вопрос"];
 
 const FAQ = [
   {
-    q: "Что значит: медиасервисы могут идти напрямую?",
-    a: "В некоторых сценариях это снижает задержку для видео. Основной VPN-трафик при этом остается защищенным по выбранному тарифу.",
+    q: "Где открыть оплату?",
+    a: "На странице доступа можно сразу перейти к оплате, а если удобнее продолжить в Telegram, там тоже есть тот же сценарий."
   },
   {
-    q: "Premium действительно безлимитный?",
-    a: "По трафику — да, формат безлимитный (best-effort). Итоговая скорость зависит от вашего канала, выбранной страны и текущей нагрузки.",
+    q: "Как понять, что профиль активен?",
+    a: "В кабинете статус, срок доступа и доступные точки подключения видны на главном экране и в сводке."
   },
   {
-    q: "Какой тариф лучше для семьи?",
-    a: "Ultra подходит для длительного периода и нескольких устройств. В сравнении тарифов в кабинете видны лимиты, скорость и уровень поддержки.",
+    q: "Что делать, если приложение не запускается?",
+    a: "Проверьте раздел загрузок и, если нужно, напишите в поддержку. Мы подскажем по конкретному устройству и сценарию."
   },
   {
-    q: "Как быстро отвечаете в поддержке?",
-    a: "Обычно первый ответ приходит в течение 10-15 минут. Для Premium обращений очередь приоритетная.",
-  },
+    q: "Как быстро отвечаете?",
+    a: "Обычно первый ответ приходит в течение 10-15 минут."
+  }
 ];
 
 function statusLabel(status: string): string {
@@ -51,23 +47,38 @@ function statusClass(status: string): string {
   return "bg-slate-200 text-slate-700 dark:bg-slate-700 dark:text-slate-200";
 }
 
+function buildSupportLinkAttachment(url: string): { media_type: string; media_payload: string } | null {
+  const normalized = String(url || "").trim();
+  if (!normalized) return null;
+  try {
+    const parsed = new URL(normalized);
+    if (!["http:", "https:"].includes(parsed.protocol)) {
+      return null;
+    }
+    return {
+      media_type: "link",
+      media_payload: JSON.stringify({ url: parsed.toString() }),
+    };
+  } catch {
+    return null;
+  }
+}
+
 export default function SupportPage() {
   const { user } = usePortalSession();
-
   const [tickets, setTickets] = useState<TicketInfo[]>([]);
   const [loadingTickets, setLoadingTickets] = useState(true);
   const [openedFaq, setOpenedFaq] = useState<number | null>(0);
-
   const [createOpen, setCreateOpen] = useState(false);
   const [category, setCategory] = useState<TicketCategory>(CATEGORIES[0]);
   const [subject, setSubject] = useState("");
   const [body, setBody] = useState("");
+  const [attachmentUrl, setAttachmentUrl] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [toast, setToast] = useState("");
 
-  const supportUsername = String(user?.support?.username || "portal_privacy_helpbot").replace(/^@+/, "");
-  const supportLink = `https://t.me/${supportUsername}?start=ticket_new`;
+  const supportLink = user?.support?.link || config.supportTelegramUrl;
 
   const contactCards = useMemo(
     () => [
@@ -75,16 +86,16 @@ export default function SupportPage() {
         label: "Telegram",
         href: supportLink,
         icon: "send",
-        hint: "Самый быстрый канал ответа",
+        hint: "Самый быстрый канал ответа"
       },
       {
         label: "Email",
-        href: "mailto:support@portal-privacy.online",
+        href: `mailto:${config.contactEmail}`,
         icon: "mail",
-        hint: "Для подробных кейсов и файлов",
-      },
+        hint: "Для длинных кейсов и файлов"
+      }
     ],
-    [supportLink],
+    [supportLink]
   );
 
   const loadTickets = async (): Promise<void> => {
@@ -112,24 +123,28 @@ export default function SupportPage() {
   const onCreateTicket = async (): Promise<void> => {
     const normalizedBody = body.trim();
     const normalizedSubject = subject.trim();
+    const attachment = buildSupportLinkAttachment(attachmentUrl);
     if (!normalizedBody) {
-      notify("Добавьте описание проблемы перед отправкой.");
+      notify("Добавьте описание перед отправкой.");
+      return;
+    }
+    if (attachmentUrl.trim() && !attachment) {
+      notify("Ссылка на вложение должна начинаться с http:// или https://.");
       return;
     }
 
     setBusy(true);
     setError("");
     try {
-      const prefixedSubject = normalizedSubject
-        ? `[${category}] ${normalizedSubject}`
-        : `[${category}] Обращение из поддержки`;
-      const created = await createTicket(prefixedSubject, normalizedBody);
+      const prefixedSubject = normalizedSubject ? `[${category}] ${normalizedSubject}` : `[${category}] Обращение из кабинета`;
+      const created = await createTicket(prefixedSubject, normalizedBody, attachment || undefined);
       setCreateOpen(false);
       setCategory(CATEGORIES[0]);
       setSubject("");
       setBody("");
+      setAttachmentUrl("");
       await loadTickets();
-      notify(`Тикет #${created.id} создан. Мы уже в работе.`);
+      notify(`Обращение #${created.id} создано.`);
     } catch (err) {
       setError(String((err as { message?: string })?.message || err || ""));
     } finally {
@@ -140,9 +155,9 @@ export default function SupportPage() {
   return (
     <main className="space-y-6">
       <section className="glass-card p-7">
-        <h1 className="font-display text-4xl font-bold">Центр поддержки PORTAL VPN</h1>
+        <h1 className="font-display text-4xl font-bold">{getCopyText("webapp.support.title", "Поддержка PORTAL")}</h1>
         <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">
-          Быстрые ответы, наглядные FAQ, история тикетов и удобное создание обращения в один шаг.
+          {getCopyText("webapp.support.subtitle", "Быстрые ответы, обращения в один шаг и вся история общения в одном разделе.")}
         </p>
       </section>
 
@@ -151,18 +166,12 @@ export default function SupportPage() {
           <div className="glass-card p-5">
             <p className="font-mono text-xs uppercase tracking-[0.15em] text-slate-500">документы</p>
             <h2 className="mt-2 font-display text-2xl font-semibold">Оферта и политика</h2>
-            <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">
-              Актуальные юридические документы доступны в отдельном разделе, чтобы всё было прозрачно.
-            </p>
+            <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">Юридические документы доступны отдельно, чтобы всё нужное было под рукой.</p>
             <div className="mt-4 flex flex-wrap gap-3">
               <Link href="/support/legal" className="outline-btn rounded-xl px-4 py-2 text-sm font-semibold">
                 Открыть документы
               </Link>
-              <button
-                type="button"
-                onClick={() => setCreateOpen(true)}
-                className="btn-primary rounded-xl px-4 py-2 text-sm font-semibold uppercase tracking-[0.12em]"
-              >
+              <button type="button" onClick={() => setCreateOpen(true)} className="btn-primary rounded-xl px-4 py-2 text-sm font-semibold uppercase tracking-[0.12em]">
                 Создать обращение
               </button>
             </div>
@@ -171,12 +180,7 @@ export default function SupportPage() {
           {FAQ.map((item, idx) => {
             const opened = openedFaq === idx;
             return (
-              <button
-                key={item.q}
-                type="button"
-                onClick={() => setOpenedFaq(opened ? null : idx)}
-                className="glass-card w-full px-5 py-4 text-left"
-              >
+              <button key={item.q} type="button" onClick={() => setOpenedFaq(opened ? null : idx)} className="glass-card w-full px-5 py-4 text-left">
                 <div className="flex items-center justify-between gap-3">
                   <span className="font-semibold">{item.q}</span>
                   <span className="material-symbols-rounded text-violet-500">{opened ? "expand_less" : "expand_more"}</span>
@@ -196,12 +200,7 @@ export default function SupportPage() {
             <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">Среднее время ответа 10-15 минут.</p>
             <div className="mt-5 grid gap-3 sm:grid-cols-2">
               {contactCards.map((card) => (
-                <Link
-                  key={card.label}
-                  href={card.href}
-                  target="_blank"
-                  className="outline-btn rounded-xl px-3 py-3 text-center text-sm font-semibold"
-                >
+                <Link key={card.label} href={card.href} target="_blank" className="outline-btn rounded-xl px-3 py-3 text-center text-sm font-semibold">
                   <div className="flex items-center justify-center gap-2">
                     <span className="material-symbols-rounded text-base">{card.icon}</span>
                     {card.label}
@@ -215,9 +214,11 @@ export default function SupportPage() {
           <div className="space-y-3">
             <h3 className="px-1 font-display text-xl font-semibold">Мои обращения</h3>
             {loadingTickets ? (
-              <div className="glass-card p-4 text-sm text-slate-500">Загружаем тикеты...</div>
+              <div className="glass-card p-4 text-sm text-slate-500">Загружаем обращения...</div>
             ) : tickets.length === 0 ? (
-              <div className="glass-card p-4 text-sm text-slate-500">Тикетов пока нет. Создайте первое обращение.</div>
+              <div className="glass-card p-4 text-sm text-slate-500">
+                {getCopyText("webapp.support.empty_tickets", "Обращений пока нет. Создайте первое сообщение, если нужна помощь.")}
+              </div>
             ) : (
               tickets.map((ticket) => (
                 <Link key={ticket.id} href={`/support/thread/?id=${ticket.id}`} className="glass-card block px-4 py-3 transition hover:scale-[1.01]">
@@ -252,45 +253,31 @@ export default function SupportPage() {
               onClick={(event) => event.stopPropagation()}
             >
               <div className="mb-4 flex items-center justify-between">
-                <h3 className="font-display text-2xl font-semibold">Создать новое обращение</h3>
+                <h3 className="font-display text-2xl font-semibold">Создать обращение</h3>
                 <button type="button" onClick={() => setCreateOpen(false)} className="rounded-lg bg-white/70 p-2 dark:bg-white/10">
                   <span className="material-symbols-rounded">close</span>
                 </button>
               </div>
 
               <div className="space-y-4">
-                <select
-                  value={category}
-                  onChange={(event) => setCategory(event.target.value as TicketCategory)}
-                  className="w-full rounded-xl border border-violet-200/50 bg-white/80 px-4 py-3 text-sm outline-none dark:border-violet-500/30 dark:bg-slate-900/70"
-                >
+                <select value={category} onChange={(event) => setCategory(event.target.value as TicketCategory)} className="w-full rounded-xl border border-violet-200/50 bg-white/80 px-4 py-3 text-sm outline-none dark:border-violet-500/30 dark:bg-slate-900/70">
                   {CATEGORIES.map((item) => (
                     <option key={item} value={item}>
                       {item}
                     </option>
                   ))}
                 </select>
+                <input value={subject} onChange={(event) => setSubject(event.target.value)} className="w-full rounded-xl border border-violet-200/50 bg-white/80 px-4 py-3 text-sm outline-none dark:border-violet-500/30 dark:bg-slate-900/70" placeholder="Тема" />
+                <textarea value={body} onChange={(event) => setBody(event.target.value)} className="w-full rounded-xl border border-violet-200/50 bg-white/80 px-4 py-3 text-sm outline-none dark:border-violet-500/30 dark:bg-slate-900/70" rows={5} placeholder="Опишите, что происходит и на каком устройстве это заметили" />
                 <input
-                  value={subject}
-                  onChange={(event) => setSubject(event.target.value)}
+                  value={attachmentUrl}
+                  onChange={(event) => setAttachmentUrl(event.target.value)}
                   className="w-full rounded-xl border border-violet-200/50 bg-white/80 px-4 py-3 text-sm outline-none dark:border-violet-500/30 dark:bg-slate-900/70"
-                  placeholder="Тема (например: не запускается на Windows)"
-                />
-                <textarea
-                  value={body}
-                  onChange={(event) => setBody(event.target.value)}
-                  className="w-full rounded-xl border border-violet-200/50 bg-white/80 px-4 py-3 text-sm outline-none dark:border-violet-500/30 dark:bg-slate-900/70"
-                  rows={5}
-                  placeholder="Опишите проблему: устройство, страна/узел, что ожидали и что получили"
+                  placeholder="Ссылка на скриншот или видео (опционально)"
                 />
                 <div className="flex items-center justify-between gap-3">
-                  <span className="text-xs text-slate-500">После отправки тикет появится в списке справа.</span>
-                  <button
-                    type="button"
-                    onClick={() => void onCreateTicket()}
-                    disabled={busy || !body.trim()}
-                    className="btn-primary rounded-xl px-5 py-2.5 text-sm font-semibold uppercase tracking-[0.12em] disabled:opacity-60"
-                  >
+                  <span className="text-xs text-slate-500">После отправки обращение появится в списке справа.</span>
+                  <button type="button" onClick={() => void onCreateTicket()} disabled={busy || !body.trim()} className="btn-primary rounded-xl px-5 py-2.5 text-sm font-semibold uppercase tracking-[0.12em] disabled:opacity-60">
                     {busy ? "Отправляем..." : "Отправить"}
                   </button>
                 </div>
