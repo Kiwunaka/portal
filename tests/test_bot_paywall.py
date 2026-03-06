@@ -390,6 +390,64 @@ class BotPaywallTests(unittest.TestCase):
         self.assertTrue(ok)
         self.assertEqual(reason, "activated")
 
+    def test_activate_promo_code_tracks_success_and_denial(self) -> None:
+        self.bot_module.ensure_pending_user(1001, username="alice")
+        self.bot_module.set_tos_accepted(1001)
+
+        session = self.bot_module.Session()
+        try:
+            session.add(self.bot_module.PromoCode(code="WELCOME14", promo_type="days", value=14, uses_left=2))
+            session.commit()
+        finally:
+            session.close()
+
+        tracked: list[dict] = []
+
+        def _fake_track_event(**kwargs):
+            tracked.append(kwargs)
+            return 1
+
+        old_track_event = self.bot_module.track_event
+        try:
+            self.bot_module.track_event = _fake_track_event
+            ok, _msg = self.bot_module.activate_promo_code_for_user(1001, "WELCOME14")
+            self.assertTrue(ok)
+            denied, _msg2 = self.bot_module.activate_promo_code_for_user(1001, "WELCOME14")
+            self.assertFalse(denied)
+        finally:
+            self.bot_module.track_event = old_track_event
+
+        self.assertEqual([item["event_name"] for item in tracked], ["promo_redeemed", "promo_redeem_denied"])
+        self.assertEqual(str(tracked[0]["meta"].get("code") or ""), "WELCOME14")
+        self.assertEqual(str(tracked[1]["meta"].get("reason") or ""), "already_redeemed")
+
+    def test_redeem_gift_card_tracks_success_and_denial(self) -> None:
+        self.bot_module.ensure_pending_user(1001, username="alice")
+        self.bot_module.set_tos_accepted(1001)
+
+        gift_code = self.bot_module.create_gift_card(2002, "standard")
+        self.assertTrue(gift_code)
+
+        tracked: list[dict] = []
+
+        def _fake_track_event(**kwargs):
+            tracked.append(kwargs)
+            return 1
+
+        old_track_event = self.bot_module.track_event
+        try:
+            self.bot_module.track_event = _fake_track_event
+            ok, _msg = asyncio.run(self.bot_module.redeem_gift_card(gift_code, 1001, _FakeBot(status="member")))
+            self.assertTrue(ok)
+            denied, _msg2 = asyncio.run(self.bot_module.redeem_gift_card(gift_code, 1001, _FakeBot(status="member")))
+            self.assertFalse(denied)
+        finally:
+            self.bot_module.track_event = old_track_event
+
+        self.assertEqual([item["event_name"] for item in tracked], ["gift_redeemed", "gift_redeem_denied"])
+        self.assertEqual(str(tracked[0]["meta"].get("card_type") or "").lower(), "standard")
+        self.assertEqual(str(tracked[1]["meta"].get("reason") or ""), "already_redeemed")
+
     def test_bot_checkout_url_includes_tracking_context(self) -> None:
         self.bot_module.PAY_CHECKOUT_URL = "https://portal-privacy.online/checkout?from=bot"
         url = self.bot_module._bot_checkout_url(

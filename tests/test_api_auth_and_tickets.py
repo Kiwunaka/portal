@@ -1,4 +1,5 @@
 import importlib
+import json
 import os
 import sys
 import tempfile
@@ -147,6 +148,23 @@ class ApiAuthAndTicketsTests(unittest.TestCase):
         payload["hash"] = hmac.new(secret_key, data_check.encode("utf-8"), hashlib.sha256).hexdigest()
         return payload
 
+    def _event_rows(self, event_name: str) -> list[dict]:
+        from db import SessionLocal
+        from models import Event
+
+        s = SessionLocal()
+        try:
+            rows = s.query(Event).filter(Event.event_name == event_name).order_by(Event.id.asc()).all()
+            out: list[dict] = []
+            for row in rows:
+                meta = {}
+                if getattr(row, "meta_json", None):
+                    meta = json.loads(str(row.meta_json))
+                out.append({"tg_id": int(row.tg_id or 0), "source": str(row.source or ""), "meta": meta})
+            return out
+        finally:
+            s.close()
+
     def test_admin_endpoint_requires_admin_guard(self) -> None:
         hdrs = {"X-Telegram-Init-Data": self._init_data(1001, "alice")}
         r = self.client.get("/api/admin/summary", headers=hdrs)
@@ -255,11 +273,19 @@ class ApiAuthAndTicketsTests(unittest.TestCase):
         self.assertEqual(body["premium_days"], 10)
         self.assertEqual(body["sub_type"], "BONUS")
         self.assertTrue(body["sync_ok"])
+        activated_events = self._event_rows("promo_channel_activated")
+        self.assertEqual(len(activated_events), 1)
+        self.assertEqual(activated_events[0]["source"], "webapp")
+        self.assertEqual(int(activated_events[0]["meta"].get("days") or 0), 10)
+        self.assertTrue(bool(activated_events[0]["meta"].get("sync_ok")))
 
         # Second claim should be idempotent.
         r2 = self.client.post("/api/bonuses/channel/claim", headers=user_hdrs)
         self.assertEqual(r2.status_code, 200, r2.text)
         self.assertTrue(r2.json()["already_claimed"])
+        repeat_events = self._event_rows("promo_channel_already_claimed")
+        self.assertEqual(len(repeat_events), 1)
+        self.assertEqual(repeat_events[0]["source"], "webapp")
 
     def test_channel_bonus_claim_does_not_persist_points_when_outer_commit_fails(self) -> None:
         user_hdrs = {"X-Telegram-Init-Data": self._init_data(1001, "alice")}
@@ -327,6 +353,9 @@ class ApiAuthAndTicketsTests(unittest.TestCase):
         r = self.client.post("/api/bonuses/channel/claim", headers=user_hdrs)
         self.assertEqual(r.status_code, 400, r.text)
         self.assertIn("подпишитесь", r.text.lower())
+        denied = self._event_rows("promo_channel_denied")
+        self.assertEqual(len(denied), 1)
+        self.assertEqual(str(denied[0]["meta"].get("reason") or ""), "not_member")
 
     def test_channel_bonus_claim_requires_tos(self) -> None:
         user_hdrs = {"X-Telegram-Init-Data": self._init_data(1001, "alice")}
@@ -566,6 +595,30 @@ class ApiAuthAndTicketsTests(unittest.TestCase):
         self.assertTrue(bool(granted.json().get("sync_ok")))
         self.assertEqual(seen, [1001])
 
+    def test_gift_redeem_tracks_denied_attempt(self) -> None:
+        admin_hdrs = {"X-Telegram-Init-Data": self._init_data(9999, "admin")}
+        user_hdrs = {"X-Telegram-Init-Data": self._init_data(1001, "alice")}
+
+        created = self.client.post(
+            "/api/admin/gift-codes",
+            headers=admin_hdrs,
+            json={"card_type": "standard"},
+        )
+        self.assertEqual(created.status_code, 200, created.text)
+        code = str(created.json().get("gift_code", {}).get("code") or "")
+        self.assertTrue(code)
+
+        ok = self.client.post("/api/gift/redeem", headers=user_hdrs, json={"code": code})
+        self.assertEqual(ok.status_code, 200, ok.text)
+
+        denied_resp = self.client.post("/api/gift/redeem", headers=user_hdrs, json={"code": code})
+        self.assertEqual(denied_resp.status_code, 400, denied_resp.text)
+
+        denied = self._event_rows("gift_redeem_denied")
+        self.assertEqual(len(denied), 1)
+        self.assertEqual(str(denied[0]["meta"].get("code") or ""), code)
+        self.assertEqual(str(denied[0]["meta"].get("reason") or ""), "already_redeemed")
+
     def test_promo_redeem_supports_unlimited_uses_flag(self) -> None:
         admin_hdrs = {"X-Telegram-Init-Data": self._init_data(9999, "admin")}
         user_hdrs = {"X-Telegram-Init-Data": self._init_data(1001, "alice")}
@@ -579,6 +632,10 @@ class ApiAuthAndTicketsTests(unittest.TestCase):
 
         redeemed = self.client.post("/api/promo/redeem", headers=user_hdrs, json={"code": "FOREVER20"})
         self.assertEqual(redeemed.status_code, 200, redeemed.text)
+        events = self._event_rows("promo_redeemed")
+        self.assertEqual(len(events), 1)
+        self.assertEqual(str(events[0]["meta"].get("code") or ""), "FOREVER20")
+        self.assertEqual(str(events[0]["meta"].get("promo_type") or ""), "discount")
 
         from db import SessionLocal
         from models import PromoCode
@@ -605,6 +662,10 @@ class ApiAuthAndTicketsTests(unittest.TestCase):
 
         redeemed = self.client.post("/api/promo/redeem", headers=user_hdrs, json={"code": "ZERODAYS"})
         self.assertEqual(redeemed.status_code, 400, redeemed.text)
+        denied = self._event_rows("promo_redeem_denied")
+        self.assertEqual(len(denied), 1)
+        self.assertEqual(str(denied[0]["meta"].get("code") or ""), "ZERODAYS")
+        self.assertEqual(str(denied[0]["meta"].get("reason") or ""), "invalid_value")
 
         s = SessionLocal()
         try:
