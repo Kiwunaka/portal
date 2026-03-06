@@ -19,6 +19,7 @@
   - opening bonus не пишет ложный `channel_bonus_revoked_at`
   - opening bonus не сжигает campaign claim при падении `create_subscription()`
   - friend gift не сжигает campaign claim при падении `create_subscription()`
+  - zero-value promo не должен сжигать usage и `uses_left` в bot-flow
   - expired promo отклоняется в bot-flow
   - promo campaign restrictions соблюдаются в bot-flow
   - gift campaign restrictions соблюдаются в bot-flow
