@@ -21,16 +21,17 @@
 | Marketing CTA | PASS | cold flow переведён в bot-first |
 | WebApp legal links | PASS | ссылки больше не ведут в несуществующие маршруты webapp |
 | Admin unauthorized/session states | PASS | явные состояния вместо silent redirect |
+| Support binary attachments | PASS | upload endpoint сохраняет файл, а webapp создаёт и отображает вложение без внешней ссылки |
 
 ## Остаточные риски
 
-- Нужна отдельная волна для полного binary media upload в support UI.
 - Нужна отдельная волна для parity реферальных points в FreeKassa vs Stars.
 - Нужна ещё одна UI-итерация для metrics/error-summary внутри `/admin`.
+- Upload storage сейчас отдаётся по случайному публичному URL; для более строгой приватности можно позже перевести это на signed URL или auth-gated file proxy.
 # P2 follow-up (2026-03-06)
 
 - PASS: `/api/admin/summary` includes an `errors` block for stale metrics, unhealthy nodes, callback failures, and numeric subscription fallback counts.
 - PASS: `admin/users` replaces browser prompts with in-app action dialogs for message, extend, manual create, bulk confirm, and token preview.
-- PASS: `/support` and `/support/thread` accept and render attachment links (`http/https`) for screenshot/video context.
+- PASS: `/support` and `/support/thread` now upload and render binary attachments (`image/video/pdf/txt`) directly through `/api/tickets/uploads`.
 - Remaining UI debt in `admin/*` prompt/confirm flows is closed for this wave.
-- Residual support debt: attachment handling works via `http/https` links, while full binary upload still needs a dedicated backend/upload flow.
+- Generated artifacts from `webapp/test-results/` are now explicitly ignored at repo level and do not belong in release commits.

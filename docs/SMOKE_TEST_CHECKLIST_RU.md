@@ -29,6 +29,10 @@
 - Primary CTA marketing -> Telegram bot
 - `support/legal` в webapp -> absolute legal pages marketing
 - Public `/checkout` без ticket показывает понятный fallback
+- Support ticket upload:
+  - создание обращения с бинарным вложением (`image/video/pdf/txt`) проходит успешно
+  - ответ в треде с бинарным вложением проходит успешно
+  - вложение открывается из истории переписки
 
 ## Admin
 
@@ -45,5 +49,5 @@
 
 - `/api/admin/summary` now returns an `errors` block with stale metrics, unhealthy nodes, payment callback failures, and numeric subscription fallback counts.
 - `admin/*` no longer relies on browser `prompt/alert/confirm`; critical admin actions use in-app dialogs and forms.
-- `/support` supports an optional `http/https` attachment link for screenshots or video references.
-- `/support/thread` renders attachment links and allows replies with the same attachment-link format.
+- `/support` supports binary attachments for screenshots, videos, PDFs, and text files without an external link workaround.
+- `/support/thread` renders uploaded attachments and allows binary file replies in the same flow.
