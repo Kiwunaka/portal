@@ -20,6 +20,7 @@
   - opening bonus не пишет ложный `channel_bonus_revoked_at`
   - opening bonus не сжигает campaign claim при падении `create_subscription()`
   - friend gift не сжигает campaign claim при падении `create_subscription()`
+  - duplicate insert race для campaign claim не должен падать и не должен создавать дубль
   - zero-value promo не должен сжигать usage и `uses_left` в bot-flow
   - wheel spin использует фактический cooldown из конфига и пишет `wheel_spin` event с `sync_ok`
   - expired promo отклоняется в bot-flow
@@ -31,8 +32,9 @@
 - Подписаться на канал -> claim -> проверить `sync_ok`
 - Отписаться -> прогнать worker guard -> проверить revoke
 - Активировать opening bonus -> убедиться, что channel bonus ещё доступен
-- Уронить выдачу opening/friend gift бонуса на тестовом окружении -> повторная попытка должна оставаться доступной
-- Redeem gift code -> проверить `sync_ok`
+  - Уронить выдачу opening/friend gift бонуса на тестовом окружении -> повторная попытка должна оставаться доступной
+  - Параллельно дёрнуть один и тот же welcome/start-link flow -> должен сохраниться только один `CampaignSend`
+  - Redeem gift code -> проверить `sync_ok`
 - Promo code -> проверить лимит и повторное использование
 - Referral paid purchase -> убедиться, что `referral_count` не удваивается после worker queue processing
 - FreeKassa paid purchase по рефералу -> проверить, что points начислены так же, как в Stars-flow

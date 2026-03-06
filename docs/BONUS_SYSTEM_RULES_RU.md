@@ -25,6 +25,7 @@
 - Использует отдельный campaign mark.
 - Campaign mark должен фиксироваться только после успешной выдачи доступа.
 - Если `create_subscription()` упал, opening/welcome claim не считается израсходованным и повторная попытка должна быть доступна.
+- `CampaignSend` для opening/welcome/start-link механик должен быть уникален по `(tg_id, campaign_key)` не только логически, но и на уровне БД/commit-path.
 
 ## 3. Referrals
 
@@ -72,3 +73,4 @@
 - Loyalty grant из admin-flow после начисления бонусных дней должен делать best-effort panel sync и возвращать `sync_ok`.
 - Bot-flow больше не обходит expiry/campaign restrictions для promo и gift.
 - Worker referral queue уважает уже учтённые (`counted=true`) реферальные события и не раздувает `referral_count`.
+- Campaign/welcome marks теперь защищены от duplicate insert race через DB-level unique и обработку `IntegrityError` в bot/API/worker helper'ах.
