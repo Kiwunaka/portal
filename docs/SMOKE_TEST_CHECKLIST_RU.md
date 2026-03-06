@@ -1,6 +1,6 @@
 # Smoke Checklist PORTAL
 
-Обновлено: 6 марта 2026
+Обновлено: 7 марта 2026
 
 ## Backend
 
@@ -24,11 +24,19 @@
 ## Marketing / WebApp
 
 - `python scripts/check-links.py`
+- `python scripts/ui_visual_smoke.py`
 - `npm.cmd run build` в `marketing/`
 - `npm.cmd run build` в `webapp/`
 - Primary CTA marketing -> Telegram bot
 - `support/legal` в webapp -> absolute legal pages marketing
 - Public `/checkout` без ticket показывает понятный fallback
+- Home marketing:
+  - primary CTA показывает `Подключиться в Telegram`
+  - secondary CTA показывает `Посмотреть планы`
+- `offer`/`privacy` не ведут в ticket-only checkout без персональной ссылки
+- `checkout`:
+  - заголовок не склеивается в `PORTALcheckout`
+  - без `checkout_ticket` показывает управляемый Telegram fallback
 - Support ticket upload:
   - создание обращения с бинарным вложением (`image/video/pdf/txt`) проходит успешно
   - ответ в треде с бинарным вложением проходит успешно
@@ -43,8 +51,14 @@
 ## Ops
 
 - deploy script копирует `collect_node_metrics.py` в `/root/portal_bot/collect_node_metrics.py`
+- static deploy публикует `marketing` и `webapp` через versioned releases и атомарное переключение symlink
 - `portal-node-metrics.timer` активен
 - `/api/admin/metrics/status` показывает свежий collector status
+- post-deploy verify проверяет не только `200`, но и ключевые UI-маркеры:
+  - home marketing -> `Подключиться в Telegram`
+  - home marketing -> `Посмотреть планы`
+  - offer -> `Продолжить в Telegram`
+  - checkout -> `Продолжение через Telegram`
 # P2 additions
 
 - `/api/admin/summary` now returns an `errors` block with stale metrics, unhealthy nodes, payment callback failures, and numeric subscription fallback counts.

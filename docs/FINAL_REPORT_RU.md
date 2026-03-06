@@ -1,6 +1,6 @@
 # Итоговый отчёт PORTAL
 
-Обновлено: 6 марта 2026
+Обновлено: 7 марта 2026
 
 ## Что было сломано
 
@@ -28,11 +28,15 @@
 - QR-код в кабинете теперь генерируется локально, без внешнего `qrserver`.
 - Deploy script копирует `collect_node_metrics.py` в brain runtime path.
 - Opening bonus больше не резервирует `channel_bonus_claimed_at`.
+- Static deploy для `marketing` и `webapp` переведён на атомарную схему через versioned releases и переключение symlink, чтобы убрать короткие окна `404`.
+- Post-deploy verify теперь проверяет не только доступность доменов, но и ключевые UI-маркеры bot-first сценария.
+- Добавлен отдельный `ui_visual_smoke` для контроля CTA, checkout fallback и локальной генерации QR без внешнего сервиса.
 
 ## Что подтверждено проверками
 
 - `python -m pytest tests/test_api_payments_callbacks.py tests/test_api_auth_and_tickets.py tests/test_bot_paywall.py tests/test_worker_retention.py -q`
 - `python scripts/check-links.py`
+- `python scripts/ui_visual_smoke.py`
 - дополнительно: build/smoke зафиксированы в release artifacts этой волны
 
 ## Что осталось в backlog
@@ -47,5 +51,5 @@
   - `portal-api`, `portal-bot`, `portal-helpbot` и `portal-node-metrics.timer` активны
   - `https://kiwunaka.space/api/health` отвечает `200`
   - `https://portal-privacy.online/` и `https://portal-privacy.online/webapp/` отвечают `200`
-  - post-deploy verify прошёл зелёно
+  - post-deploy verify прошёл зелёно и подтвердил bot-first UI-маркеры marketing/checkout
 - В `origin/master` допушены последние коммиты Wave 4, включая защиту `CampaignSend` от duplicate race.

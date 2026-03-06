@@ -1,6 +1,6 @@
 # ADMIN FULL GUIDE (RU)
 
-Обновлено: 6 марта 2026
+Обновлено: 7 марта 2026
 
 ## 1. Архитектура
 
@@ -137,6 +137,12 @@ Source of truth:
 - static deploy: отдельный deploy для `marketing` и `webapp`
 - orchestrator: `scripts/release_orchestrator.py`
 
+### Как сейчас выкладывается статика
+- `scripts/remote_deploy_brain_static_sites.py` сначала загружает сборку в versioned release-каталог `/var/www/portal/releases/<release_id>/...`
+- после проверки ключевых файлов выполняется атомарное переключение symlink для `/var/www/portal/marketing` и `/var/www/portal/webapp`
+- предыдущие release-каталоги не трогаются до завершения переключения; хранится короткая история последних релизов
+- это нужно, чтобы не создавать кратких окон `404` во время обновления frontend-статики
+
 ### Текущее состояние
 - Последний подтверждённый production rollout выполнен 6 марта 2026.
 - Выкладка шла из чистого snapshot `HEAD`, чтобы не смешивать релизный слой с dirty worktree.
@@ -148,6 +154,16 @@ Source of truth:
 - subscription endpoint
 - admin unauthorized state
 - `portal-node-metrics.timer`
+- `python scripts/check-links.py`
+- `python scripts/ui_visual_smoke.py`
+- `python scripts/verify_brain_ready.py --brain-ip <ip> --web-domain <domain> --api-domain <domain>`
+
+### Что именно проверяет post-deploy verify
+- `health` backend
+- доступность home/offer/checkout/webapp
+- наличие на marketing home CTA `Подключиться в Telegram` и `Посмотреть планы`
+- наличие на `offer` CTA `Продолжить в Telegram`
+- наличие на `checkout` текста `Продолжение через Telegram`
 
 ## 9. Мониторинг и диагностика
 
