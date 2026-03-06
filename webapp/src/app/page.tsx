@@ -99,16 +99,18 @@ function EntryBody() {
           <Link
             href={BOT_WEBLOGIN_URL}
             target="_blank"
-            className="outline-btn rounded-xl px-5 py-2.5 text-sm font-semibold uppercase tracking-[0.12em]"
+            className="btn-primary rounded-xl px-5 py-2.5 text-sm font-semibold uppercase tracking-[0.12em]"
           >
             Продолжить через Telegram
           </Link>
-          <Link
-            href="/dashboard/"
-            className="btn-primary rounded-xl px-5 py-2.5 text-sm font-semibold uppercase tracking-[0.12em]"
-          >
-            Открыть кабинет
-          </Link>
+          {!webLoginRequired ? (
+            <Link
+              href="/dashboard/"
+              className="outline-btn rounded-xl px-5 py-2.5 text-sm font-semibold uppercase tracking-[0.12em]"
+            >
+              Открыть кабинет
+            </Link>
+          ) : null}
           <button
             className="outline-btn rounded-xl px-5 py-2.5 text-sm font-semibold uppercase tracking-[0.12em]"
             onClick={logoutWebSession}
