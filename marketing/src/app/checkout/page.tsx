@@ -160,6 +160,7 @@ export default function CheckoutPage() {
         <div className="checkout-kicker">{getCopyText("marketing.checkout.title", "Оплата в пару шагов")}</div>
         <h1 className="checkout-title">
           <span>PORTAL</span>
+          {" "}
           <span>{hasCheckoutTicket ? "Оплата" : "Продолжение через Telegram"}</span>
         </h1>
         <p className="checkout-sub">
