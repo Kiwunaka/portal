@@ -4043,9 +4043,11 @@ async def promo_redeem(payload: PromoRedeemIn, request: Request, x_telegram_init
 
         promo_type = (promo.promo_type or "").strip().lower()
         value = int(promo.value or 0)
+        if promo_type not in {"days", "discount"} or value <= 0:
+            raise HTTPException(status_code=400, detail="Promo has invalid value")
         applied_days = 0
         pending_discount_pct = 0
-        if promo_type == "days" and value > 0:
+        if promo_type == "days":
             now = _utcnow()
             if user.expiry_at and user.expiry_at > now:
                 user.expiry_at = user.expiry_at + timedelta(days=value)
@@ -4053,7 +4055,7 @@ async def promo_redeem(payload: PromoRedeemIn, request: Request, x_telegram_init
                 user.expiry_at = now + timedelta(days=value)
             user.is_active = True
             applied_days = value
-        elif promo_type == "discount" and value > 0:
+        elif promo_type == "discount":
             user.pending_discount_pct = max(1, min(95, int(value)))
             user.pending_discount_code = str(promo.code or "").strip().upper()[:20]
             user.pending_discount_set_at = _utcnow()

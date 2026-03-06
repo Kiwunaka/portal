@@ -260,6 +260,50 @@ class ApiAuthAndTicketsTests(unittest.TestCase):
         self.assertEqual(r2.status_code, 200, r2.text)
         self.assertTrue(r2.json()["already_claimed"])
 
+    def test_channel_bonus_claim_does_not_persist_points_when_outer_commit_fails(self) -> None:
+        user_hdrs = {"X-Telegram-Init-Data": self._init_data(1001, "alice")}
+        from db import SessionLocal
+        from models import PointsLedger, User
+
+        async def fake_is_member(channel_username: str, tg_id: int):
+            return True, "member"
+
+        self.api._is_channel_member = fake_is_member
+
+        class _FailingCommitSession:
+            def __init__(self, inner):
+                self._inner = inner
+
+            def commit(self):
+                raise RuntimeError("forced outer commit failure")
+
+            def __getattr__(self, name):
+                return getattr(self._inner, name)
+
+        def _failing_session_factory():
+            return _FailingCommitSession(SessionLocal())
+
+        with patch.object(self.api, "SessionLocal", new=_failing_session_factory):
+            with self.assertRaises(RuntimeError):
+                self.client.post("/api/bonuses/channel/claim", headers=user_hdrs)
+
+        s = SessionLocal()
+        try:
+            user = s.query(User).filter_by(tg_id=1001).first()
+            self.assertIsNotNone(user)
+            self.assertEqual((user.sub_type or "").upper(), "FREE")
+            self.assertIsNone(getattr(user, "channel_bonus_claimed_at", None))
+
+            rows = (
+                s.query(PointsLedger)
+                .filter(PointsLedger.tg_id == 1001)
+                .filter(PointsLedger.reason == "channel_subscribe_bonus")
+                .all()
+            )
+            self.assertEqual(rows, [])
+        finally:
+            s.close()
+
     def test_channel_bonus_claim_requires_membership(self) -> None:
         user_hdrs = {"X-Telegram-Init-Data": self._init_data(1001, "alice")}
 
@@ -504,6 +548,32 @@ class ApiAuthAndTicketsTests(unittest.TestCase):
             row = s.query(PromoCode).filter_by(code="FOREVER20").first()
             self.assertIsNotNone(row)
             self.assertEqual(int(row.uses_left or 0), -1)
+        finally:
+            s.close()
+
+    def test_promo_redeem_rejects_zero_value_without_burning_usage(self) -> None:
+        user_hdrs = {"X-Telegram-Init-Data": self._init_data(1001, "alice")}
+        from db import SessionLocal
+        from models import PromoCode, PromoUsage
+
+        s = SessionLocal()
+        try:
+            s.add(PromoCode(code="ZERODAYS", promo_type="days", value=0, uses_left=2))
+            s.commit()
+        finally:
+            s.close()
+
+        redeemed = self.client.post("/api/promo/redeem", headers=user_hdrs, json={"code": "ZERODAYS"})
+        self.assertEqual(redeemed.status_code, 400, redeemed.text)
+
+        s = SessionLocal()
+        try:
+            promo = s.query(PromoCode).filter_by(code="ZERODAYS").first()
+            self.assertIsNotNone(promo)
+            self.assertEqual(int(promo.uses_left or 0), 2)
+
+            usage = s.query(PromoUsage).filter_by(tg_id=1001, promo_code="ZERODAYS").all()
+            self.assertEqual(usage, [])
         finally:
             s.close()
 
