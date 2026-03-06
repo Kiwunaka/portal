@@ -67,5 +67,6 @@
 - Opening bonus и channel bonus считаются разными состояниями.
 - Channel revoke больше не зависит от “left как транзиентной ошибки”.
 - Post-bonus sync обязателен хотя бы для channel bonus.
+- Loyalty grant из admin-flow после начисления бонусных дней должен делать best-effort panel sync и возвращать `sync_ok`.
 - Bot-flow больше не обходит expiry/campaign restrictions для promo и gift.
 - Worker referral queue уважает уже учтённые (`counted=true`) реферальные события и не раздувает `referral_count`.

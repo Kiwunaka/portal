@@ -9,6 +9,7 @@
   - `left -> not_member`
   - opening promo conflict
   - zero-value promo не должен сжигать usage и `uses_left`
+  - admin loyalty grant должен возвращать `sync_ok` и вызывать panel sync
 - `tests/test_api_payments_callbacks.py`
   - FreeKassa first paid purchase создаёт referral queue и referral points
 - `tests/test_worker_retention.py`
