@@ -4427,6 +4427,25 @@ async def admin_summary(x_telegram_init_data: str = Header(default="")) -> dict:
             .scalar()
             or 0
         )
+        bonus_event_rows = (
+            s.query(Event.event_name, func.count(Event.id))
+            .filter(Event.created_at >= since_24h)
+            .filter(
+                Event.event_name.in_(
+                    [
+                        "promo_channel_activated",
+                        "promo_channel_denied",
+                        "promo_redeemed",
+                        "promo_redeem_denied",
+                        "gift_redeemed",
+                        "gift_redeem_denied",
+                    ]
+                )
+            )
+            .group_by(Event.event_name)
+            .all()
+        )
+        bonus_event_map = {str(name or ""): int(count or 0) for name, count in bonus_event_rows}
         last_samples = (
             s.query(Node.code, Node.health_score, Node.panel_latency_ms, Node.active_clients, Node.last_health_at)
             .filter(Node.enabled == True)
@@ -4452,6 +4471,14 @@ async def admin_summary(x_telegram_init_data: str = Header(default="")) -> dict:
                 "open_tickets": int(open_tickets),
                 "payment_callback_failures_24h": int(payment_callback_failures_24h),
                 "subscription_numeric_fallbacks_24h": int(subscription_numeric_fallbacks_24h),
+            },
+            "bonus_events_24h": {
+                "channel_activated": int(bonus_event_map.get("promo_channel_activated", 0)),
+                "channel_denied": int(bonus_event_map.get("promo_channel_denied", 0)),
+                "promo_redeemed": int(bonus_event_map.get("promo_redeemed", 0)),
+                "promo_denied": int(bonus_event_map.get("promo_redeem_denied", 0)),
+                "gift_redeemed": int(bonus_event_map.get("gift_redeemed", 0)),
+                "gift_denied": int(bonus_event_map.get("gift_redeem_denied", 0)),
             },
             "top_nodes": [
                 {

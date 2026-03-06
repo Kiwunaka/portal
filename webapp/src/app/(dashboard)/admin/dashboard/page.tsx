@@ -127,6 +127,15 @@ export default function AdminDashboardPage() {
     Number(summary?.errors.open_tickets || 0) > 0
       ? `Открытых тикетов: ${summary?.errors.open_tickets}. Убедитесь, что очередь поддержки не копится перед релизом.`
       : "",
+    Number(summary?.bonus_events_24h.channel_denied || 0) > Number(summary?.bonus_events_24h.channel_activated || 0)
+      ? `Отказов по бонусу за канал больше, чем успешных активаций: ${summary?.bonus_events_24h.channel_denied} vs ${summary?.bonus_events_24h.channel_activated}. Проверьте публичный канал, bot-flow и guard.`
+      : "",
+    Number(summary?.bonus_events_24h.promo_denied || 0) > Number(summary?.bonus_events_24h.promo_redeemed || 0)
+      ? `Отказов по промокодам больше, чем успешных активаций: ${summary?.bonus_events_24h.promo_denied} vs ${summary?.bonus_events_24h.promo_redeemed}. Проверьте актуальность кодов и ограничения кампаний.`
+      : "",
+    Number(summary?.bonus_events_24h.gift_denied || 0) > Number(summary?.bonus_events_24h.gift_redeemed || 0)
+      ? `Отказов по подарочным кодам больше, чем успешных активаций: ${summary?.bonus_events_24h.gift_denied} vs ${summary?.bonus_events_24h.gift_redeemed}. Проверьте gift flow и restrictions.`
+      : "",
   ].filter(Boolean);
 
   const errorCards = [
@@ -198,6 +207,45 @@ export default function AdminDashboardPage() {
       iconClass: "stat-icon-emerald",
       sparkline: revenueValues,
       sparkColor: "emerald" as const,
+    },
+  ];
+
+  const bonusCards = [
+    {
+      label: "Канал: успех",
+      value: summary?.bonus_events_24h.channel_activated ?? "—",
+      tone: Number(summary?.bonus_events_24h.channel_activated || 0) > 0 ? "badge-success" : "badge-info",
+      detail: "Успешные выдачи бонуса за канал за 24ч",
+    },
+    {
+      label: "Канал: отказ",
+      value: summary?.bonus_events_24h.channel_denied ?? "—",
+      tone: Number(summary?.bonus_events_24h.channel_denied || 0) > 0 ? "badge-warning" : "badge-success",
+      detail: "not_member, tos_required и другие denied reason-коды",
+    },
+    {
+      label: "Промо: успех",
+      value: summary?.bonus_events_24h.promo_redeemed ?? "—",
+      tone: Number(summary?.bonus_events_24h.promo_redeemed || 0) > 0 ? "badge-success" : "badge-info",
+      detail: "Успешные активации промокодов за 24ч",
+    },
+    {
+      label: "Промо: отказ",
+      value: summary?.bonus_events_24h.promo_denied ?? "—",
+      tone: Number(summary?.bonus_events_24h.promo_denied || 0) > 0 ? "badge-warning" : "badge-success",
+      detail: "expired, invalid_value, already_redeemed и campaign mismatch",
+    },
+    {
+      label: "Подарки: успех",
+      value: summary?.bonus_events_24h.gift_redeemed ?? "—",
+      tone: Number(summary?.bonus_events_24h.gift_redeemed || 0) > 0 ? "badge-success" : "badge-info",
+      detail: "Успешные активации gift code за 24ч",
+    },
+    {
+      label: "Подарки: отказ",
+      value: summary?.bonus_events_24h.gift_denied ?? "—",
+      tone: Number(summary?.bonus_events_24h.gift_denied || 0) > 0 ? "badge-warning" : "badge-success",
+      detail: "already_redeemed, invalid_code и campaign restrictions",
     },
   ];
 
@@ -367,6 +415,29 @@ export default function AdminDashboardPage() {
             Критичных сигналов сейчас нет: метрики свежие, callback-ошибки и fallback-хиты под контролем.
           </div>
         )}
+      </div>
+
+      <div className="glass-card p-5">
+        <div className="mb-4 flex items-center gap-3">
+          <div className="stat-icon stat-icon-violet">
+            <Star size={20} />
+          </div>
+          <div>
+            <h2 className="font-display text-xl font-bold">Бонусы и промо за 24 часа</h2>
+            <p className="text-xs text-slate-500">Success/denied event trail для channel, promo и gift flow</p>
+          </div>
+        </div>
+        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+          {bonusCards.map((card) => (
+            <article key={card.label} className="node-card">
+              <p className="text-[10px] uppercase tracking-[0.1em] text-slate-500">{card.label}</p>
+              <div className="mt-2 flex items-center gap-2">
+                <span className={`badge ${card.tone}`}>{card.value}</span>
+              </div>
+              <p className="mt-2 text-xs text-slate-500">{card.detail}</p>
+            </article>
+          ))}
+        </div>
       </div>
 
       <div className="stat-card p-4">

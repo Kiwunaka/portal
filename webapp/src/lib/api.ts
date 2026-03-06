@@ -289,6 +289,14 @@ export type AdminSummaryPayload = {
     payment_callback_failures_24h: number;
     subscription_numeric_fallbacks_24h: number;
   };
+  bonus_events_24h: {
+    channel_activated: number;
+    channel_denied: number;
+    promo_redeemed: number;
+    promo_denied: number;
+    gift_redeemed: number;
+    gift_denied: number;
+  };
   top_nodes: Array<{
     code: string;
     health_score: number;
