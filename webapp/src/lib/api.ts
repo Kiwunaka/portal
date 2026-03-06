@@ -577,6 +577,19 @@ export type TicketAttachmentInput = {
   media_payload?: string | null;
 };
 
+export type TicketAttachmentPayload = {
+  url: string;
+  name: string;
+  content_type: string;
+  size: number;
+};
+
+export type TicketAttachmentUploadResult = {
+  ok: boolean;
+  attachment: TicketAttachmentInput;
+  attachment_payload: TicketAttachmentPayload;
+};
+
 export type TelegramWebLoginPayload = {
   id: number;
   first_name?: string;
@@ -674,6 +687,15 @@ function candidateApiBases(): string[] {
   const defaults = [origin, "https://kiwunaka.space"];
   if (useLegacyFallback) defaults.push(legacy.replace(/\/+$/, ""));
   return Array.from(new Set(defaults));
+}
+
+export function resolveApiUrl(path: string): string {
+  const raw = String(path || "").trim();
+  if (!raw) return "";
+  if (/^https?:\/\//i.test(raw)) return raw;
+  const normalizedPath = raw.startsWith("/") ? raw : `/${raw}`;
+  const [base] = candidateApiBases();
+  return `${base}${normalizedPath}`;
 }
 
 async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
@@ -827,6 +849,17 @@ export async function createTicket(subject: string, body: string, attachment?: T
     }),
   });
   return data.ticket;
+}
+
+export async function uploadTicketAttachment(file: File): Promise<TicketAttachmentUploadResult> {
+  return apiFetch<TicketAttachmentUploadResult>("/api/tickets/uploads", {
+    method: "POST",
+    headers: {
+      "Content-Type": file.type || "application/octet-stream",
+      "X-Upload-Filename": file.name || "attachment.bin",
+    },
+    body: file,
+  });
 }
 
 export async function getTicket(ticketId: number): Promise<TicketInfo> {

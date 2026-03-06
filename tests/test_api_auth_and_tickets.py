@@ -50,6 +50,7 @@ class ApiAuthAndTicketsTests(unittest.TestCase):
             "OPENING_PREMIUM_DAYS",
             "OPENING_PREMIUM_CAMPAIGN_KEY",
             "SUBSCRIPTION_NUMERIC_FALLBACK_ENABLED",
+            "SUPPORT_UPLOAD_DIR",
         ):
             self._saved_env[k] = os.environ.get(k)
 
@@ -64,6 +65,7 @@ class ApiAuthAndTicketsTests(unittest.TestCase):
         os.environ["OPENING_PREMIUM_DAYS"] = "14"
         os.environ["OPENING_PREMIUM_CAMPAIGN_KEY"] = "opening_premium_14d"
         os.environ["SUBSCRIPTION_NUMERIC_FALLBACK_ENABLED"] = "true"
+        os.environ["SUPPORT_UPLOAD_DIR"] = str((Path(self._tmp.name) / "support_uploads").resolve())
 
         if "config" in sys.modules:
             importlib.reload(sys.modules["config"])
@@ -203,6 +205,34 @@ class ApiAuthAndTicketsTests(unittest.TestCase):
         )
         self.assertEqual(reply.status_code, 200, reply.text)
         self.assertEqual(reply.json()["ticket"]["status"], "in_progress")
+
+    def test_ticket_upload_returns_attachment_metadata_and_serves_file(self) -> None:
+        user_hdrs = {"X-Telegram-Init-Data": self._init_data(1001, "alice")}
+
+        uploaded = self.client.post(
+            "/api/tickets/uploads",
+            headers={**user_hdrs, "Content-Type": "image/png", "X-Upload-Filename": "screen.png"},
+            content=b"\x89PNG\r\n\x1a\nbinary-test",
+        )
+        self.assertEqual(uploaded.status_code, 200, uploaded.text)
+        body = uploaded.json()
+        self.assertTrue(body["ok"])
+        self.assertEqual(body["attachment"]["media_type"], "image")
+        media_file_id = str(body["attachment"]["media_file_id"] or "")
+        self.assertIn("/", media_file_id)
+
+        payload = body["attachment_payload"]
+        self.assertEqual(payload["name"], "screen.png")
+        self.assertEqual(payload["content_type"], "image/png")
+        self.assertGreaterEqual(int(payload["size"] or 0), 8)
+
+        file_url = str(payload["url"] or "")
+        self.assertTrue(file_url.startswith("/uploads/support/"))
+
+        fetched = self.client.get(file_url)
+        self.assertEqual(fetched.status_code, 200, fetched.text)
+        self.assertEqual(fetched.headers.get("content-type"), "image/png")
+        self.assertEqual(fetched.content, b"\x89PNG\r\n\x1a\nbinary-test")
 
     def test_channel_bonus_claim_upgrades_free_to_paid(self) -> None:
         user_hdrs = {"X-Telegram-Init-Data": self._init_data(1001, "alice")}

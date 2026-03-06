@@ -15,6 +15,7 @@ import hmac
 import ipaddress
 import json
 import logging
+import mimetypes
 import os
 import re
 import secrets
@@ -30,6 +31,7 @@ from dotenv import load_dotenv
 from fastapi import FastAPI, Header, HTTPException, Query, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse, PlainTextResponse
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 from sqlalchemy import or_, func
 from sqlalchemy.exc import IntegrityError
@@ -158,6 +160,11 @@ PROFILE_UPDATE_INTERVAL_HOURS = max(1, env_int("PROFILE_UPDATE_INTERVAL_HOURS", 
 PAYMENT_CALLBACK_TOLERANT_MODE = env_bool("PAYMENT_CALLBACK_TOLERANT_MODE", default=False)
 SUBSCRIPTION_NUMERIC_FALLBACK_ENABLED = env_bool("SUBSCRIPTION_NUMERIC_FALLBACK_ENABLED", default=True)
 TELEGRAM_WEB_LOGIN_MAX_AGE_SECONDS = max(60, env_int("TELEGRAM_WEB_LOGIN_MAX_AGE_SECONDS", 86400))
+SUPPORT_UPLOAD_DIR = Path(
+    os.getenv("SUPPORT_UPLOAD_DIR") or (Path(__file__).resolve().parent / "uploads" / "support")
+).resolve()
+SUPPORT_UPLOAD_URL_PREFIX = f"/{(os.getenv('SUPPORT_UPLOAD_URL_PREFIX') or 'uploads/support').strip().strip('/')}"
+SUPPORT_UPLOAD_MAX_BYTES = max(1, env_int("SUPPORT_UPLOAD_MAX_BYTES", 20 * 1024 * 1024))
 API_LOCALHOST_DEV_HOSTS = {"localhost", "127.0.0.1", "::1"}
 WEBAPP_DEV_ALLOWED_ORIGINS = {
     x.strip().lower().rstrip("/")
@@ -943,6 +950,8 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+SUPPORT_UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
+app.mount(SUPPORT_UPLOAD_URL_PREFIX, StaticFiles(directory=str(SUPPORT_UPLOAD_DIR)), name="support_uploads")
 
 
 def _verify_telegram_data(init_data: str) -> dict[str, Any] | None:
@@ -2145,6 +2154,68 @@ def _audit_admin(*, actor_tg_id: int, action: str, target_tg_id: int | None = No
         s.rollback()
     finally:
         s.close()
+
+
+def _sanitize_ticket_upload_name(filename: str | None) -> str:
+    raw = Path(str(filename or "").strip()).name
+    cleaned = re.sub(r"[^A-Za-z0-9._ -]+", "_", raw).strip(" ._")
+    return cleaned[:120] or "attachment"
+
+
+def _ticket_upload_kind(content_type: str) -> str:
+    normalized = str(content_type or "").split(";", 1)[0].strip().lower()
+    if normalized.startswith("image/"):
+        return "image"
+    if normalized.startswith("video/"):
+        return "video"
+    if normalized in {"application/pdf", "text/plain", "application/octet-stream"}:
+        return "file"
+    raise HTTPException(status_code=400, detail="Unsupported attachment type")
+
+
+def _ticket_upload_suffix(filename: str, content_type: str) -> str:
+    suffix = Path(filename).suffix.lower().strip()
+    if suffix and re.fullmatch(r"\.[a-z0-9]{1,10}", suffix):
+        return suffix
+    guessed = mimetypes.guess_extension(content_type or "") or ""
+    if guessed and re.fullmatch(r"\.[a-z0-9]{1,10}", guessed.lower()):
+        return guessed.lower()
+    return ".bin"
+
+
+def _store_support_upload(*, filename: str | None, content_type: str | None, raw_bytes: bytes) -> dict[str, Any]:
+    original_name = _sanitize_ticket_upload_name(filename)
+    content_type = str(content_type or "application/octet-stream").split(";", 1)[0].strip().lower()
+    media_type = _ticket_upload_kind(content_type)
+    suffix = _ticket_upload_suffix(original_name, content_type)
+    stored_name = f"{_utcnow().strftime('%Y%m%d')}-{secrets.token_urlsafe(12).replace('-', '').replace('_', '')}{suffix}"
+    stored_path = SUPPORT_UPLOAD_DIR / stored_name
+
+    total_size = len(raw_bytes or b"")
+    if total_size <= 0:
+        raise HTTPException(status_code=400, detail="Attachment is empty")
+    if total_size > SUPPORT_UPLOAD_MAX_BYTES:
+        raise HTTPException(status_code=413, detail="Attachment is too large")
+
+    try:
+        stored_path.write_bytes(raw_bytes)
+    except Exception:
+        stored_path.unlink(missing_ok=True)
+        raise
+
+    file_url = f"{SUPPORT_UPLOAD_URL_PREFIX.rstrip('/')}/{stored_name}"
+    payload = {
+        "url": file_url,
+        "name": original_name,
+        "content_type": content_type,
+        "size": int(total_size),
+    }
+    attachment = {
+        "media_type": media_type,
+        "media_file_id": f"support/{stored_name}",
+        "media_payload": json.dumps(payload, ensure_ascii=False, separators=(",", ":")),
+    }
+    return {"attachment": attachment, "attachment_payload": payload}
 
 
 def _json_obj(raw: str | None) -> dict[str, Any]:
@@ -4101,6 +4172,32 @@ async def get_tickets(request: Request, x_telegram_init_data: str = Header(defau
         return {"tickets": data}
     finally:
         s.close()
+
+
+@app.post("/api/tickets/uploads")
+async def upload_ticket_attachment(
+    request: Request,
+    x_telegram_init_data: str = Header(default=""),
+    x_upload_filename: str = Header(default=""),
+) -> dict:
+    auth_user = _require_auth_user(x_telegram_init_data, request=request)
+    tg_id = int(auth_user.get("id", 0))
+    raw_bytes = await request.body()
+    uploaded = _store_support_upload(
+        filename=x_upload_filename,
+        content_type=request.headers.get("content-type"),
+        raw_bytes=raw_bytes,
+    )
+    logger.info(
+        "ticket_attachment_uploaded",
+        extra={
+            "user_id": tg_id,
+            "media_type": uploaded["attachment"].get("media_type"),
+            "media_file_id": uploaded["attachment"].get("media_file_id"),
+            "size": uploaded["attachment_payload"].get("size"),
+        },
+    )
+    return {"ok": True, **uploaded}
 
 
 @app.post("/api/tickets")

@@ -1,6 +1,6 @@
 "use client";
 
-import { createTicket, fetchTickets, type TicketInfo } from "@/lib/api";
+import { createTicket, fetchTickets, uploadTicketAttachment, type TicketAttachmentInput, type TicketInfo } from "@/lib/api";
 import { getCopyText, getPortalPublicConfig } from "@/lib/portal";
 import { usePortalSession } from "@/lib/session";
 import { AnimatePresence, motion } from "framer-motion";
@@ -47,21 +47,11 @@ function statusClass(status: string): string {
   return "bg-slate-200 text-slate-700 dark:bg-slate-700 dark:text-slate-200";
 }
 
-function buildSupportLinkAttachment(url: string): { media_type: string; media_payload: string } | null {
-  const normalized = String(url || "").trim();
-  if (!normalized) return null;
-  try {
-    const parsed = new URL(normalized);
-    if (!["http:", "https:"].includes(parsed.protocol)) {
-      return null;
-    }
-    return {
-      media_type: "link",
-      media_payload: JSON.stringify({ url: parsed.toString() }),
-    };
-  } catch {
-    return null;
-  }
+function formatFileSize(bytes: number): string {
+  if (!Number.isFinite(bytes) || bytes <= 0) return "0 Б";
+  if (bytes < 1024) return `${bytes} Б`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} КБ`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} МБ`;
 }
 
 export default function SupportPage() {
@@ -73,7 +63,7 @@ export default function SupportPage() {
   const [category, setCategory] = useState<TicketCategory>(CATEGORIES[0]);
   const [subject, setSubject] = useState("");
   const [body, setBody] = useState("");
-  const [attachmentUrl, setAttachmentUrl] = useState("");
+  const [attachmentFile, setAttachmentFile] = useState<File | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [toast, setToast] = useState("");
@@ -123,26 +113,26 @@ export default function SupportPage() {
   const onCreateTicket = async (): Promise<void> => {
     const normalizedBody = body.trim();
     const normalizedSubject = subject.trim();
-    const attachment = buildSupportLinkAttachment(attachmentUrl);
     if (!normalizedBody) {
       notify("Добавьте описание перед отправкой.");
-      return;
-    }
-    if (attachmentUrl.trim() && !attachment) {
-      notify("Ссылка на вложение должна начинаться с http:// или https://.");
       return;
     }
 
     setBusy(true);
     setError("");
     try {
+      let attachment: TicketAttachmentInput | undefined;
+      if (attachmentFile) {
+        const uploaded = await uploadTicketAttachment(attachmentFile);
+        attachment = uploaded.attachment;
+      }
       const prefixedSubject = normalizedSubject ? `[${category}] ${normalizedSubject}` : `[${category}] Обращение из кабинета`;
       const created = await createTicket(prefixedSubject, normalizedBody, attachment || undefined);
       setCreateOpen(false);
       setCategory(CATEGORIES[0]);
       setSubject("");
       setBody("");
-      setAttachmentUrl("");
+      setAttachmentFile(null);
       await loadTickets();
       notify(`Обращение #${created.id} создано.`);
     } catch (err) {
@@ -269,14 +259,27 @@ export default function SupportPage() {
                 </select>
                 <input value={subject} onChange={(event) => setSubject(event.target.value)} className="w-full rounded-xl border border-violet-200/50 bg-white/80 px-4 py-3 text-sm outline-none dark:border-violet-500/30 dark:bg-slate-900/70" placeholder="Тема" />
                 <textarea value={body} onChange={(event) => setBody(event.target.value)} className="w-full rounded-xl border border-violet-200/50 bg-white/80 px-4 py-3 text-sm outline-none dark:border-violet-500/30 dark:bg-slate-900/70" rows={5} placeholder="Опишите, что происходит и на каком устройстве это заметили" />
-                <input
-                  value={attachmentUrl}
-                  onChange={(event) => setAttachmentUrl(event.target.value)}
-                  className="w-full rounded-xl border border-violet-200/50 bg-white/80 px-4 py-3 text-sm outline-none dark:border-violet-500/30 dark:bg-slate-900/70"
-                  placeholder="Ссылка на скриншот или видео (опционально)"
-                />
+                <label className="block rounded-2xl border border-dashed border-violet-300/60 bg-white/70 px-4 py-4 text-sm dark:border-violet-500/35 dark:bg-slate-900/55">
+                  <span className="mb-2 block font-medium">Скриншот, видео или файл логов</span>
+                  <span className="block text-xs text-slate-500">Поддерживаются изображения, видео, PDF и текстовые файлы до 20 МБ.</span>
+                  <input
+                    type="file"
+                    accept="image/*,video/*,.pdf,.txt,.log,application/pdf,text/plain"
+                    className="mt-3 block w-full cursor-pointer text-sm text-slate-600 file:mr-3 file:rounded-xl file:border-0 file:bg-violet-500/15 file:px-4 file:py-2 file:font-medium file:text-violet-700 dark:text-slate-300 dark:file:bg-violet-500/20 dark:file:text-violet-200"
+                    onChange={(event) => setAttachmentFile(event.target.files?.[0] ?? null)}
+                  />
+                  {attachmentFile ? (
+                    <div className="mt-3 flex items-center justify-between gap-3 rounded-xl bg-white/75 px-3 py-2 text-xs dark:bg-white/10">
+                      <span className="truncate">{attachmentFile.name}</span>
+                      <button type="button" onClick={() => setAttachmentFile(null)} className="text-rose-500">
+                        Убрать
+                      </button>
+                    </div>
+                  ) : null}
+                  {attachmentFile ? <p className="mt-2 text-[11px] uppercase tracking-[0.12em] text-slate-500">{formatFileSize(attachmentFile.size)}</p> : null}
+                </label>
                 <div className="flex items-center justify-between gap-3">
-                  <span className="text-xs text-slate-500">После отправки обращение появится в списке справа.</span>
+                  <span className="text-xs text-slate-500">После отправки обращение появится в списке справа, а вложение сохранится в истории переписки.</span>
                   <button type="button" onClick={() => void onCreateTicket()} disabled={busy || !body.trim()} className="btn-primary rounded-xl px-5 py-2.5 text-sm font-semibold uppercase tracking-[0.12em] disabled:opacity-60">
                     {busy ? "Отправляем..." : "Отправить"}
                   </button>
