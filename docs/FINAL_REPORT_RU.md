@@ -31,12 +31,15 @@
 - Static deploy для `marketing` и `webapp` переведён на атомарную схему через versioned releases и переключение symlink, чтобы убрать короткие окна `404`.
 - Post-deploy verify теперь проверяет не только доступность доменов, но и ключевые UI-маркеры bot-first сценария.
 - Добавлен отдельный `ui_visual_smoke` для контроля CTA, checkout fallback и локальной генерации QR без внешнего сервиса.
+- Bonus audit trail выровнен для `channel bonus`, `promo redeem` и `gift redeem` в API/WebApp и bot-flow.
+- `events_service` переведён на динамический `SessionLocal`, чтобы события и аналитика не терялись при reload/test bootstraps.
 
 ## Что подтверждено проверками
 
 - `python -m pytest tests/test_api_payments_callbacks.py tests/test_api_auth_and_tickets.py tests/test_bot_paywall.py tests/test_worker_retention.py -q`
 - `python scripts/check-links.py`
 - `python scripts/ui_visual_smoke.py`
+- точечные проверки bonus event trail для API/WebApp и bot-flow добавлены в `tests/test_api_auth_and_tickets.py` и `tests/test_bot_paywall.py`
 - дополнительно: build/smoke зафиксированы в release artifacts этой волны
 
 ## Что осталось в backlog

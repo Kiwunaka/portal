@@ -1,6 +1,6 @@
 # Реестр проблем PORTAL
 
-Обновлено: 6 марта 2026
+Обновлено: 7 марта 2026
 
 | ID | Компонент | Симптом | Шаги воспроизведения | Ожидаемое | Фактическое | Приоритет | Владелец | Статус |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
@@ -25,3 +25,4 @@
 | P2-008 | `portal_bot/bot.py` | wheel flow не оставлял структурированный audit и показывал неверный cooldown | Прокрутить колесо при изменённом `wheel_config.cooldown_hours` | bot-flow пишет `wheel_spin` event c `sync_ok`, а текст показывает фактический cooldown | follow-up был захардкожен на 7 дней, результат spin не имел нормального event-следа | P2 | Backend | Исправлено |
 | P2-003 | Metrics | freshness и error-summary были слишком плоско показаны в `/admin` | Открыть admin dashboard | оператор видит возраст метрик, последний сэмпл и приоритетный список действий по stale/unhealthy/payment errors | API уже отдавал данные, но UI не собирал их в операционную сводку | P2 | DevOps/Frontend | Исправлено |
 | P2-009 | `CampaignSend` / bot+api+worker | start-link и campaign bonus опирались на `SELECT -> INSERT`, что оставляло окно для duplicate insert race | Одновременно пометить один и тот же `campaign_key` в bot/API/worker flow | один `CampaignSend` на `(tg_id, campaign_key)`, duplicate race возвращает `False` без падения | уникальность была только в миграции, а helper'ы не опирались на `IntegrityError` и не выравнивали модель | P2 | Backend | Исправлено |
+| P2-010 | `events_service` / bonus flows | bonus analytics и audit trail были неполными и местами писались нестабильно после reload/test bootstrap | Активировать/отклонить channel bonus, promo или gift через API и bot-flow; проверить таблицу `events` | success/denied события видны единообразно во всех входных точках, `events_service` пишет в актуальный DB bind | часть сценариев писала только success, часть не писала denied, а `SessionLocal` в `events_service` был статически захвачен | P2 | Backend | Исправлено |
