@@ -4,6 +4,7 @@ import argparse
 import os
 import posixpath
 import sys
+from datetime import datetime, timezone
 from pathlib import Path
 
 import paramiko
@@ -75,6 +76,10 @@ def _safe_print(text: str) -> None:
         print(line.encode("utf-8", errors="replace").decode("utf-8", errors="replace"))
 
 
+def _release_id() -> str:
+    return datetime.now(timezone.utc).strftime("%Y%m%d%H%M%S")
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description="Deploy marketing/out + webapp/out to brain and reload Caddy.")
     ap.add_argument("--brain-ip", required=True)
@@ -119,16 +124,57 @@ def main() -> int:
     ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
     ssh.connect(args.brain_ip, port=args.ssh_port, username=args.ssh_user, password=pw, timeout=30, banner_timeout=30, auth_timeout=30)
     try:
-        # Ensure dirs and clean old content.
-        _run(ssh, "mkdir -p /var/www/portal/webapp /var/www/portal/marketing", timeout=60)
-        _run(ssh, "rm -rf /var/www/portal/webapp/* /var/www/portal/marketing/*", timeout=120)
+        release_id = _release_id()
+        remote_root = "/var/www/portal"
+        releases_root = f"{remote_root}/releases"
+        remote_release = f"{releases_root}/{release_id}"
+        remote_webapp = f"{remote_release}/webapp"
+        remote_marketing = f"{remote_release}/marketing"
+
+        # Upload into a versioned release directory first, then switch symlinks.
+        _run(ssh, f"mkdir -p {remote_webapp} {remote_marketing}", timeout=60)
 
         sftp = ssh.open_sftp()
         try:
-            _upload_dir_recursive(sftp, local_webapp, "/var/www/portal/webapp")
-            _upload_dir_recursive(sftp, local_mkt, "/var/www/portal/marketing")
+            _upload_dir_recursive(sftp, local_webapp, remote_webapp)
+            _upload_dir_recursive(sftp, local_mkt, remote_marketing)
         finally:
             sftp.close()
+
+        # Validate release payload before switching public paths.
+        checks = [
+            f"test -f {remote_webapp}/index.html",
+            f"test -f {remote_marketing}/index.html",
+            f"test -f {remote_marketing}/checkout/index.html",
+            f"test -f {remote_marketing}/fk-verify.html",
+        ]
+        for check in checks:
+            code, _out, _err = _run(ssh, check, timeout=30)
+            if code != 0:
+                raise SystemExit(f"Release payload validation failed: {check}")
+
+        switch_cmd = f"""
+set -euo pipefail
+mkdir -p {releases_root}
+mkdir -p {remote_root}/legacy_backups
+
+if [ -e {remote_root}/webapp ] && [ ! -L {remote_root}/webapp ]; then
+  mv {remote_root}/webapp {remote_root}/legacy_backups/webapp-$(date +%s)
+fi
+if [ -e {remote_root}/marketing ] && [ ! -L {remote_root}/marketing ]; then
+  mv {remote_root}/marketing {remote_root}/legacy_backups/marketing-$(date +%s)
+fi
+
+ln -sfn {remote_webapp} {remote_root}/webapp.next
+mv -T {remote_root}/webapp.next {remote_root}/webapp
+ln -sfn {remote_marketing} {remote_root}/marketing.next
+mv -T {remote_root}/marketing.next {remote_root}/marketing
+
+find {releases_root} -mindepth 1 -maxdepth 1 -type d | sort | head -n -5 | xargs -r rm -rf
+"""
+        code, out, err = _run(ssh, switch_cmd, timeout=120)
+        if code != 0:
+            raise SystemExit(f"Failed to switch static release:\n{out}\n{err}")
 
         _run(ssh, "systemctl reload caddy >/dev/null 2>&1 || systemctl restart caddy >/dev/null 2>&1 || true", timeout=60)
         _run(ssh, "DEBIAN_FRONTEND=noninteractive apt-get install -y curl >/dev/null 2>&1 || true", timeout=600)

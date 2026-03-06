@@ -66,6 +66,26 @@ def _print_result(name: str, out: str, err: str) -> None:
     print(f"[{name}] {val}")
 
 
+def _curl_retry(url: str, *, host: str, contains: str | None = None, attempts: int = 12, pause_sec: float = 1.0) -> str:
+    base = f"curl -fsS --insecure --resolve {host}:443:127.0.0.1 https://{url}"
+    pipe = ""
+    if contains:
+        needle = contains.replace("'", "'\"'\"'")
+        pipe = f" | tee /tmp/portal_verify_body.txt | grep -F '{needle}' >/dev/null"
+    return (
+        "bash -lc '"
+        f"for i in $(seq 1 {int(attempts)}); do "
+        f"if {base}{pipe}; then "
+        "if [ -f /tmp/portal_verify_body.txt ]; then head -c 200 /tmp/portal_verify_body.txt; rm -f /tmp/portal_verify_body.txt; fi; "
+        "exit 0; "
+        f"fi; sleep {pause_sec}; "
+        "done; "
+        f"{base} 2>/dev/null | head -c 200; "
+        "exit 22"
+        "'"
+    )
+
+
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--web-domain", default="portal-privacy.online", help="Public web domain for / and /webapp checks")
@@ -104,10 +124,13 @@ def main() -> int:
             _print_result(name, out, err)
 
         curl_checks = [
-            ("health443", f"curl -fsS --insecure --resolve {api_domain}:443:127.0.0.1 https://{api_domain}/api/health"),
-            ("webapp443", f"curl -fsS --insecure --resolve {web_domain}:443:127.0.0.1 https://{web_domain}/webapp/ >/dev/null && echo ok"),
-            ("mkt443", f"curl -fsS --insecure --resolve {web_domain}:443:127.0.0.1 https://{web_domain}/ >/dev/null && echo ok"),
-            ("fkverify443", f"curl -fsS --insecure --resolve {web_domain}:443:127.0.0.1 https://{web_domain}/fk-verify.html >/dev/null && echo ok"),
+            ("health443", _curl_retry(f"{api_domain}/api/health", host=api_domain)),
+            ("webapp443", _curl_retry(f"{web_domain}/webapp/", host=web_domain)),
+            ("mkt443", _curl_retry(f"{web_domain}/", host=web_domain, contains="Подключиться в Telegram")),
+            ("mktHeroSecondary443", _curl_retry(f"{web_domain}/", host=web_domain, contains="Посмотреть планы")),
+            ("offer443", _curl_retry(f"{web_domain}/offer/", host=web_domain, contains="Продолжить в Telegram")),
+            ("checkout443", _curl_retry(f"{web_domain}/checkout/", host=web_domain, contains="Продолжение через Telegram")),
+            ("fkverify443", _curl_retry(f"{web_domain}/fk-verify.html", host=web_domain)),
         ]
         if args.check_legacy_2096:
             curl_checks.append(
