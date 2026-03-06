@@ -15,6 +15,9 @@
   - referral queue не удваивает `referral_count` для already-counted событий
 - `tests/test_bot_paywall.py`
   - opening bonus не резервирует channel-bonus state
+  - opening bonus не пишет ложный `channel_bonus_revoked_at`
+  - opening bonus не сжигает campaign claim при падении `create_subscription()`
+  - friend gift не сжигает campaign claim при падении `create_subscription()`
   - expired promo отклоняется в bot-flow
   - promo campaign restrictions соблюдаются в bot-flow
   - gift campaign restrictions соблюдаются в bot-flow
@@ -24,6 +27,7 @@
 - Подписаться на канал -> claim -> проверить `sync_ok`
 - Отписаться -> прогнать worker guard -> проверить revoke
 - Активировать opening bonus -> убедиться, что channel bonus ещё доступен
+- Уронить выдачу opening/friend gift бонуса на тестовом окружении -> повторная попытка должна оставаться доступной
 - Redeem gift code -> проверить `sync_ok`
 - Promo code -> проверить лимит и повторное использование
 - Referral paid purchase -> убедиться, что `referral_count` не удваивается после worker queue processing

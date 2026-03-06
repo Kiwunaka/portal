@@ -21,7 +21,10 @@
 
 - Выдаётся через start/campaign flow.
 - Не должен занимать флаг `channel_bonus_claimed_at`.
+- Не должен ставить `channel_bonus_revoked_at`, потому что это не отзыв бонуса за канал, а отдельная welcome-механика.
 - Использует отдельный campaign mark.
+- Campaign mark должен фиксироваться только после успешной выдачи доступа.
+- Если `create_subscription()` упал, opening/welcome claim не считается израсходованным и повторная попытка должна быть доступна.
 
 ## 3. Referrals
 
@@ -43,6 +46,7 @@
   - синхронизировать panel,
   - вернуть `sync_ok`.
 - Gift campaign restrictions должны одинаково соблюдаться в API и в bot-flow.
+- Friend gift через bot-flow не должен сжигать campaign mark до успешной выдачи доступа.
 
 ## 5. Wheel
 
