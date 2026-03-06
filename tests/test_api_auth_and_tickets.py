@@ -831,6 +831,39 @@ class ApiAuthAndTicketsTests(unittest.TestCase):
         self.assertGreaterEqual(int(payload["errors"].get("subscription_numeric_fallbacks_24h") or 0), 1)
         self.assertIn("stale_metrics", payload["errors"])
 
+    def test_admin_summary_includes_bonus_event_breakdown(self) -> None:
+        from db import SessionLocal
+        from models import Event
+
+        now = datetime.utcnow().replace(microsecond=0)
+        admin_hdrs = {"X-Telegram-Init-Data": self._init_data(9999, "admin")}
+
+        s = SessionLocal()
+        try:
+            for event_name in (
+                "promo_channel_activated",
+                "promo_channel_denied",
+                "promo_redeemed",
+                "promo_redeem_denied",
+                "gift_redeemed",
+                "gift_redeem_denied",
+            ):
+                s.add(Event(tg_id=1001, event_name=event_name, source="test", created_at=now))
+            s.commit()
+        finally:
+            s.close()
+
+        summary_resp = self.client.get("/api/admin/summary", headers=admin_hdrs)
+        self.assertEqual(summary_resp.status_code, 200, summary_resp.text)
+        payload = summary_resp.json()
+        bonus_events = payload.get("bonus_events_24h") or {}
+        self.assertEqual(int(bonus_events.get("channel_activated") or 0), 1)
+        self.assertEqual(int(bonus_events.get("channel_denied") or 0), 1)
+        self.assertEqual(int(bonus_events.get("promo_redeemed") or 0), 1)
+        self.assertEqual(int(bonus_events.get("promo_denied") or 0), 1)
+        self.assertEqual(int(bonus_events.get("gift_redeemed") or 0), 1)
+        self.assertEqual(int(bonus_events.get("gift_denied") or 0), 1)
+
     def test_admin_start_links_and_wheel_config(self) -> None:
         admin_hdrs = {"X-Telegram-Init-Data": self._init_data(9999, "admin")}
 
