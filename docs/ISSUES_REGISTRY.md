@@ -1,0 +1,18 @@
+# Реестр проблем PORTAL
+
+Обновлено: 6 марта 2026
+
+| ID | Компонент | Симптом | Шаги воспроизведения | Ожидаемое | Фактическое | Приоритет | Владелец | Статус |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| P0-001 | `portal_bot/worker.py` | revoke бонуса за канал пропускается при `left`/`kicked` | Запустить guard на пользователе, который отписался | `left/kicked -> not_member -> revoke` | `left` считался транзиентной ошибкой | P0 | Backend | Исправлено |
+| P0-002 | `portal_bot/api.py` | ошибка обновления подписки по ссылке | Сгенерировать новый `sub_token`, открыть старую/числовую ссылку | работает новый token, legacy fallback контролируется явно | поведение было неочевидным, fallback не контролировался env-флагом | P0 | Backend | Исправлено частично |
+| P0-003 | `portal_bot/api.py` | invalid callback poison для FreeKassa | Отправить invalid callback, затем valid callback с тем же `external_id` | valid callback активирует заказ | valid callback упирался в duplicate | P0 | Backend | Исправлено |
+| P0-004 | `portal_bot/api.py` | `claim_channel_bonus` не синкает user в panel | Получить бонус за канал | `sync_ok=true`, ключ активен на нодах | `sync_ok=false` без попытки sync | P0 | Backend | Исправлено |
+| P1-001 | `marketing/src/app/page.tsx` | cold CTA ведут на public `/checkout` | Открыть лендинг и нажать primary CTA | холодный пользователь идёт в bot-first flow | CTA вели на ticket-only checkout | P1 | Frontend | Исправлено |
+| P1-002 | `portal_bot/api.py` | admin campaign link builder выдаёт broken checkout link | Собрать campaign link из admin | безопасный ticketed flow или fallback | возвращался `/checkout` без `checkout_ticket` | P1 | Backend/Frontend | Исправлено |
+| P1-003 | `webapp/src/app/(dashboard)/support/legal/page.tsx` | legal links ведут в никуда внутри webapp | Открыть `support/legal` | абсолютные ссылки на marketing legal pages | ссылки были `/offer` и `/privacy` внутри webapp | P1 | Frontend | Исправлено |
+| P1-004 | `webapp/src/app/(dashboard)/admin/layout.tsx` | доступ в admin объясняется плохо | Зайти неадмином или с истекшей сессией | понятные `403/session expired` состояния | только client redirect или пустой фейл | P1 | Frontend | Исправлено |
+| P1-005 | `scripts/remote_deploy_brain_portal_code.py` | collector path может не доехать в brain deploy | Развернуть код и включить timer | `collect_node_metrics.py` доступен по пути systemd unit | сервис ждёт файл, который deploy script не копировал | P1 | DevOps | Исправлено |
+| P2-001 | `portal_bot/bot.py` / referrals | неполная parity реферальных points между Stars и FreeKassa | Сравнить paid flow для Stars и FreeKassa | одинаковые бизнес-правила | points начисляются несимметрично | P2 | Backend | В backlog |
+| P2-002 | Support UI | нет полноценного binary media upload | Создать тикет со скриншотом из webapp | файл прикрепляется и доступен оператору | в UI нет отдельного upload flow | P2 | Frontend/Backend | В backlog |
+| P2-003 | Metrics | freshness и error-summary ещё нужно сильнее вывести в `/admin` | Открыть admin dashboard | одна сводка по stale/unhealthy/payment errors | данные есть в API, но UI ещё можно усилить | P2 | DevOps/Frontend | В работе |

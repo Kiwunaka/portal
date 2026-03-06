@@ -142,3 +142,23 @@ Responsibilities:
 - Keep `portal-node-metrics.timer` runbook current and ensure freshness checks are documented.
 - Verify admin metrics DTO/API compatibility (`summary`, `metrics/status`, `metrics/timeseries`, `nodes/traffic`).
 - Maintain smoke scenarios for admin analytics screens and post-deploy metric sanity.
+
+## Reporting Format
+
+For any substantial task, leave a short mini-log in docs or the handoff:
+- `Что проверил`
+- `Что нашёл`
+- `Что изменил`
+- `Как проверил`
+- `Что осталось / риск`
+
+## Cross References
+
+- `docs/PROJECT_MAP_RU.md`
+- `docs/ISSUES_REGISTRY.md`
+- `docs/SMOKE_TEST_CHECKLIST_RU.md`
+- `docs/PAYMENTS_FLOW_RU.md`
+- `docs/BONUS_SYSTEM_RULES_RU.md`
+- `docs/METRICS_RU.md`
+- `docs/INFRA_PLAN_RU.md`
+- `docs/FINAL_REPORT_RU.md`
