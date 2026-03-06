@@ -49,6 +49,7 @@ class ApiAuthAndTicketsTests(unittest.TestCase):
             "CHANNEL_PREMIUM_DAYS",
             "OPENING_PREMIUM_DAYS",
             "OPENING_PREMIUM_CAMPAIGN_KEY",
+            "SUBSCRIPTION_NUMERIC_FALLBACK_ENABLED",
         ):
             self._saved_env[k] = os.environ.get(k)
 
@@ -62,6 +63,7 @@ class ApiAuthAndTicketsTests(unittest.TestCase):
         os.environ["CHANNEL_PREMIUM_DAYS"] = "10"
         os.environ["OPENING_PREMIUM_DAYS"] = "14"
         os.environ["OPENING_PREMIUM_CAMPAIGN_KEY"] = "opening_premium_14d"
+        os.environ["SUBSCRIPTION_NUMERIC_FALLBACK_ENABLED"] = "true"
 
         if "config" in sys.modules:
             importlib.reload(sys.modules["config"])
@@ -221,6 +223,7 @@ class ApiAuthAndTicketsTests(unittest.TestCase):
         self.assertFalse(body["already_claimed"])
         self.assertEqual(body["premium_days"], 10)
         self.assertEqual(body["sub_type"], "BONUS")
+        self.assertTrue(body["sync_ok"])
 
         # Second claim should be idempotent.
         r2 = self.client.post("/api/bonuses/channel/claim", headers=user_hdrs)
@@ -501,9 +504,29 @@ class ApiAuthAndTicketsTests(unittest.TestCase):
         self.assertEqual(int(kwargs.get("chat_id") or 0), 9999)
         self.assertIn("fallback подписки", str(kwargs.get("text") or ""))
 
+    def test_subscription_endpoint_blocks_numeric_fallback_when_flag_disabled(self) -> None:
+        from db import SessionLocal
+        from models import User
+
+        s = SessionLocal()
+        try:
+            user = s.query(User).filter_by(tg_id=1001).first()
+            assert user is not None
+            user.sub_type = "PAID"
+            user.sub_token = "token_1001_secure"
+            user.is_active = True
+            user.expiry_at = datetime.utcnow() + timedelta(days=10)
+            s.commit()
+        finally:
+            s.close()
+
+        self.api.SUBSCRIPTION_NUMERIC_FALLBACK_ENABLED = False
+        by_tg_id = self.client.get("/s8Kx2mP7qR4wT/1001")
+        self.assertEqual(by_tg_id.status_code, 404, by_tg_id.text)
+
     def test_admin_metrics_timeseries_and_nodes_traffic_endpoints(self) -> None:
         from db import SessionLocal
-        from models import Event, ExternalOrder, NodeHealthSample, PayAttempt
+        from models import Event, ExternalOrder, ExternalPaymentEvent, NodeHealthSample, PayAttempt
 
         now = datetime.utcnow().replace(microsecond=0)
         day_start = now.replace(hour=0, minute=0, second=0)
@@ -537,6 +560,19 @@ class ApiAuthAndTicketsTests(unittest.TestCase):
                     paid_at=now,
                 )
             )
+            s.add(
+                ExternalPaymentEvent(
+                    provider="freekassa",
+                    event_type="result",
+                    external_id="bad_callback_1",
+                    order_id="fk_test_1",
+                    payload_json="{}",
+                    signature_ok=False,
+                    processed_ok=False,
+                    created_at=now,
+                )
+            )
+            s.add(Event(tg_id=1001, event_name="subscription_numeric_fallback", source="subscription", created_at=now))
             s.add(
                 NodeHealthSample(
                     node_code="pl",
@@ -585,6 +621,14 @@ class ApiAuthAndTicketsTests(unittest.TestCase):
         self.assertEqual(traffic_resp.status_code, 200, traffic_resp.text)
         rows = traffic_resp.json().get("rows", [])
         self.assertTrue(any((r.get("node_code") == "pl" and float(r.get("traffic_gb") or 0) >= 0) for r in rows))
+
+        summary_resp = self.client.get("/api/admin/summary", headers=admin_hdrs)
+        self.assertEqual(summary_resp.status_code, 200, summary_resp.text)
+        payload = summary_resp.json()
+        self.assertIn("errors", payload)
+        self.assertGreaterEqual(int(payload["errors"].get("payment_callback_failures_24h") or 0), 1)
+        self.assertGreaterEqual(int(payload["errors"].get("subscription_numeric_fallbacks_24h") or 0), 1)
+        self.assertIn("stale_metrics", payload["errors"])
 
     def test_admin_start_links_and_wheel_config(self) -> None:
         admin_hdrs = {"X-Telegram-Init-Data": self._init_data(9999, "admin")}
@@ -656,6 +700,8 @@ class ApiAuthAndTicketsTests(unittest.TestCase):
         body = ok.json()
         self.assertTrue(body.get("ok"))
         self.assertIn("start=campaign_launch_week_1__promo_WELCOME14", body.get("bot_start_link") or "")
+        self.assertEqual(body.get("checkout_link"), body.get("bot_start_link"))
+        self.assertEqual(body.get("checkout_mode"), "bot_fallback")
 
         too_long_campaign = "a" * 64
         bad = self.client.post(

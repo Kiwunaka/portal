@@ -53,6 +53,9 @@ def main() -> int:
         try:
             for p in sorted((REPO_ROOT / "portal_bot").glob("*.py")):
                 sftp.put(str(p), f"/root/portal_bot/{p.name}")
+            collector = REPO_ROOT / "scripts" / "collect_node_metrics.py"
+            if collector.exists():
+                sftp.put(str(collector), "/root/portal_bot/collect_node_metrics.py")
         finally:
             sftp.close()
 
@@ -67,4 +70,3 @@ def main() -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
-

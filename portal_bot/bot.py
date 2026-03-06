@@ -23,6 +23,7 @@ from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
 
 import aiohttp
 import qrcode
+from copy_catalog import get_copy_text
 try:
     from aiogram import Bot, Dispatcher, F, Router, BaseMiddleware
     from aiogram.filters import Command, CommandStart
@@ -683,6 +684,7 @@ from gift_cards_service import (
     redeem_gift_card as redeem_gift_card_service,
 )
 from pay_attempts_service import (
+    get_attempt_by_payload,
     mark_invoice_sent,
     mark_paid,
     resolve_pending_attempt_for_payment,
@@ -708,6 +710,74 @@ from tickets_repo import (
 # Initialize DB schema (idempotent).
 init_db()
 Session = SessionLocal
+
+
+def _telegram_payment_fingerprint(payment: object | None) -> str:
+    if not payment:
+        return ""
+    for value in (
+        getattr(payment, "telegram_payment_charge_id", None),
+        getattr(payment, "provider_payment_charge_id", None),
+        getattr(payment, "invoice_payload", None),
+    ):
+        text = str(value or "").strip()
+        if text:
+            return text[:255]
+    return ""
+
+
+def _stars_payment_key(payment_fingerprint: str) -> str:
+    fp = str(payment_fingerprint or "").strip()
+    if not fp:
+        return ""
+    digest = hashlib.sha256(fp.encode("utf-8")).hexdigest()[:40]
+    return f"stars_payment:{digest}"
+
+
+def _stars_payment_already_processed(payment_fingerprint: str) -> bool:
+    key = _stars_payment_key(payment_fingerprint)
+    if not key:
+        return False
+    s = Session()
+    try:
+        row = s.query(AppSetting).filter(AppSetting.key == key).first()
+        if not row or not str(row.value_json or "").strip():
+            return False
+        payload = json.loads(row.value_json)
+        return str((payload or {}).get("status") or "").strip().lower() == "done"
+    except Exception:
+        return False
+    finally:
+        s.close()
+
+
+def _mark_stars_payment_processed(*, payment_fingerprint: str, invoice_payload: str, tg_id: int) -> None:
+    key = _stars_payment_key(payment_fingerprint)
+    if not key:
+        return
+    s = Session()
+    try:
+        now = _utcnow()
+        payload = {
+            "status": "done",
+            "invoice_payload": str(invoice_payload or "")[:255],
+            "tg_id": int(tg_id),
+            "updated_at": now.isoformat(),
+        }
+        row = s.query(AppSetting).filter(AppSetting.key == key).first()
+        encoded = json.dumps(payload, ensure_ascii=False, separators=(",", ":"), sort_keys=True)
+        if not row:
+            row = AppSetting(key=key, value_json=encoded, updated_at=now)
+            s.add(row)
+        else:
+            row.value_json = encoded
+            row.updated_at = now
+        s.commit()
+    except Exception:
+        s.rollback()
+        logger.warning("stars payment dedupe marker failed key=%s tg_id=%s", key, tg_id)
+    finally:
+        s.close()
 
 # Achievement definitions: id -> {name, description, reward_days, condition}
 ACHIEVEMENTS = {
@@ -1319,7 +1389,7 @@ async def _try_activate_opening_premium_bonus(
     try:
         db_user = session.query(User).filter_by(tg_id=int(tg_id)).first()
         if db_user:
-            db_user.channel_bonus_claimed_at = db_user.channel_bonus_claimed_at or now
+            # Opening bonus must not reserve the channel-bonus claim flag.
             db_user.channel_bonus_active = False
             db_user.channel_bonus_expires_at = None
             db_user.channel_bonus_revoked_at = now
@@ -2579,21 +2649,13 @@ async def check_subscription(user_id: int, bot: Bot) -> bool:
 
 TEXTS = {
     "welcome": (
-        "🛡 *PORTAL | Защищённый цифровой доступ*\n\n"
-        "Понятный запуск через Telegram, выбор плана под ваш сценарий и быстрый путь к подключению.\n\n"
-        "⚡ *Что внутри:*\n"
-        "├ 🚀 Запуск за 1-2 минуты\n"
-        "├ 🌍 Выбор стран по тарифу\n"
-        "├ 🔒 Защищённая передача данных\n"
-        "└ 📱 Поддержка iOS, Android и Desktop\n\n"
+        "🛡 *PORTAL*\n\n"
+        f"{get_copy_text('bot.welcome', 'PORTAL помогает быстро начать работу через Telegram: понятный выбор плана, короткий путь к оплате и живая поддержка рядом.')}\n\n"
         "🔻 *Нажмите кнопку ниже, чтобы продолжить:*"
     ),
     "choose_tariff": (
         "💎 *Выберите уровень доступа*\n\n"
-        "Каждый план включает:\n"
-        "✅ Понятный срок доступа\n"
-        "✅ Выбор стран по политике тарифа\n"
-        "✅ До 5 устройств в платных планах\n\n"
+        f"{get_copy_text('bot.choose_tariff', 'Выберите удобный план. В каждом уже видны срок доступа, лимит устройств и доступные страны.')}\n\n"
         "👇 *Тарифные планы:*"
     ),
     "portal_ready": (
@@ -8243,6 +8305,7 @@ async def pre_checkout_handler(pre_checkout: PreCheckoutQuery, bot: Bot):
 async def payment_success(message: Message, bot: Bot):
     payment = message.successful_payment
     payload = payment.invoice_payload
+    payment_fingerprint = _telegram_payment_fingerprint(payment)
     logger.info(
         "payment_success: from_tg=%s amount=%s currency=%s payload=%s",
         message.from_user.id if message.from_user else None,
@@ -8250,6 +8313,9 @@ async def payment_success(message: Message, bot: Bot):
         payment.currency,
         payload,
     )
+    if payment_fingerprint and _stars_payment_already_processed(payment_fingerprint):
+        logger.info("payment_success duplicate ignored payload=%s fp=%s", payload, payment_fingerprint)
+        return
 
     # Handle gift card purchase
     if payload.startswith("giftcard_"):
@@ -8265,6 +8331,11 @@ async def payment_success(message: Message, bot: Bot):
         code = create_gift_card(buyer_tg_id, card_type)
         if code:
             card_info = GIFT_CARD_TYPES.get(card_type, {})
+            _mark_stars_payment_processed(
+                payment_fingerprint=payment_fingerprint,
+                invoice_payload=payload,
+                tg_id=buyer_tg_id,
+            )
             await message.answer(
                 f"🎁 *Подарочная карта куплена!*\n\n"
                 f"Код: `{code}`\n\n"
@@ -8289,6 +8360,11 @@ async def payment_success(message: Message, bot: Bot):
         if not ok:
             await message.answer(f"⚠️ Лимит family-слотов достигнут (+{FAMILY_SLOT_MAX}).")
             return
+        _mark_stars_payment_processed(
+            payment_fingerprint=payment_fingerprint,
+            invoice_payload=payload,
+            tg_id=buyer_tg_id,
+        )
         await message.answer(
             f"✅ Family-слот активирован.\n\n"
             f"Добавлено: +1 устройство на {FAMILY_SLOT_DAYS} дней\n"
@@ -8327,6 +8403,15 @@ async def payment_success(message: Message, bot: Bot):
         tariff = TARIFFS.get(tariff_key)
         
         if tariff:
+            attempt = get_attempt_by_payload(invoice_payload=payload)
+            if attempt and str(getattr(attempt, "status", "") or "").strip().lower() == "paid":
+                logger.info("payment_success duplicate portal payload=%s attempt_id=%s", payload, getattr(attempt, "id", None))
+                _mark_stars_payment_processed(
+                    payment_fingerprint=payment_fingerprint,
+                    invoice_payload=payload,
+                    tg_id=tg_id,
+                )
+                return
             logger.info("payment_success portal parsed: tg_id=%s tariff_key=%s stars=%s", tg_id, tariff_key, tariff.get("stars"))
             mark_paid(attempt_id=attempt_id, invoice_payload=payload)
             if points_used > 0:
@@ -8345,6 +8430,11 @@ async def payment_success(message: Message, bot: Bot):
             )
             await message.answer(TEXTS["payment_success"])
             await create_subscription(message, tg_id, tariff, bot, paid_amount_stars=int(payment.total_amount), pay_attempt_id=attempt_id)
+            _mark_stars_payment_processed(
+                payment_fingerprint=payment_fingerprint,
+                invoice_payload=payload,
+                tg_id=tg_id,
+            )
             receipt_text = (
                 "🧾 *Квитанция об оплате*\n"
                 "➖➖➖➖➖➖➖➖➖➖\n"
@@ -8422,6 +8512,11 @@ async def payment_success(message: Message, bot: Bot):
                 bot,
                 paid_amount_stars=int(payment.total_amount),
                 pay_attempt_id=int(fallback_attempt.id),
+            )
+            _mark_stars_payment_processed(
+                payment_fingerprint=payment_fingerprint,
+                invoice_payload=payload,
+                tg_id=int(payer_tg_id),
             )
             return
 

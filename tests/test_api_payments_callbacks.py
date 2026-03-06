@@ -181,6 +181,45 @@ class ApiPaymentCallbacksTests(unittest.TestCase):
         )
         self.assertEqual(r.status_code, 400, r.text)
 
+    def test_invalid_signature_does_not_poison_later_valid_callback(self) -> None:
+        client = TestClient(self.api.app)
+        payload = {"order_id": "order-2002", "external_tx_id": "tx-abc-2b", "status": "paid"}
+        raw = json.dumps(payload, separators=(",", ":"), ensure_ascii=True).encode("utf-8")
+        valid_sig = self._hmac_sha256("test_fk_secret", raw)
+
+        bad = client.post(
+            "/api/payments/result/freekassa",
+            data=raw,
+            headers={"Content-Type": "application/json", "X-Signature": "invalid"},
+        )
+        self.assertEqual(bad.status_code, 400, bad.text)
+
+        good = client.post(
+            "/api/payments/result/freekassa",
+            data=raw,
+            headers={"Content-Type": "application/json", "X-Signature": valid_sig},
+        )
+        self.assertEqual(good.status_code, 200, good.text)
+        self.assertTrue(good.json().get("ok"))
+        self.assertFalse(good.json().get("duplicate"))
+
+        from db import SessionLocal
+        from models import ExternalPaymentEvent
+
+        s = SessionLocal()
+        try:
+            events = (
+                s.query(ExternalPaymentEvent)
+                .filter(ExternalPaymentEvent.external_id == "tx-abc-2b")
+                .order_by(ExternalPaymentEvent.id.asc())
+                .all()
+            )
+            self.assertEqual(len(events), 1)
+            self.assertTrue(bool(events[0].signature_ok))
+            self.assertTrue(bool(events[0].processed_ok))
+        finally:
+            s.close()
+
     def test_freekassa_notify_alias_returns_yes_for_valid_sci(self) -> None:
         client = TestClient(self.api.app)
         merchant_id = "69962"
@@ -518,6 +557,48 @@ class ApiPaymentCallbacksTests(unittest.TestCase):
             self.assertEqual(int(body.get("amount_rub") or 0), 199)
         finally:
             self.api._freekassa_api_request = old_fk_request
+
+    def test_create_public_order_rejects_plan_mismatch_with_ticket(self) -> None:
+        client = TestClient(self.api.app)
+
+        from db import SessionLocal
+        from models import User
+
+        s = SessionLocal()
+        try:
+            s.add(
+                User(
+                    tg_id=3001,
+                    username="mismatch",
+                    uuid=str(uuid.uuid4()),
+                    email="user_3001",
+                    sub_type="FREE",
+                    is_active=True,
+                    tos_accepted=True,
+                )
+            )
+            s.commit()
+        finally:
+            s.close()
+
+        ticket = self.api._create_checkout_ticket(
+            tg_id=3001,
+            plan_code="1_month",
+            promo_code="",
+            campaign_key="mismatch_test",
+            source="site",
+        )
+        response = client.post(
+            "/api/payments/freekassa/orders/create-public",
+            json={"plan_code": "12_months", "checkout_ticket": ticket, "currency": "RUB"},
+        )
+        self.assertEqual(response.status_code, 400, response.text)
+        self.assertIn("Plan code does not match checkout ticket", response.text)
+
+    def test_parse_freekassa_payment_url_uses_source_shop_fallback(self) -> None:
+        url = self.api._parse_freekassa_payment_url({}, "fk_site_order_1", source="bot")
+        self.assertIn("69963", url)
+        self.assertIn("fk_site_order_1", url)
 
     def test_public_plans_and_admin_plans_crud(self) -> None:
         client = TestClient(self.api.app)

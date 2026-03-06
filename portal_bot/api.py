@@ -156,6 +156,7 @@ WEBAPP_DEV_AUTH = env_bool("WEBAPP_DEV_AUTH", default=False)
 WEBAPP_DEV_TG_ID = env_int("WEBAPP_DEV_TG_ID", 0)
 PROFILE_UPDATE_INTERVAL_HOURS = max(1, env_int("PROFILE_UPDATE_INTERVAL_HOURS", 6))
 PAYMENT_CALLBACK_TOLERANT_MODE = env_bool("PAYMENT_CALLBACK_TOLERANT_MODE", default=False)
+SUBSCRIPTION_NUMERIC_FALLBACK_ENABLED = env_bool("SUBSCRIPTION_NUMERIC_FALLBACK_ENABLED", default=True)
 TELEGRAM_WEB_LOGIN_MAX_AGE_SECONDS = max(60, env_int("TELEGRAM_WEB_LOGIN_MAX_AGE_SECONDS", 86400))
 API_LOCALHOST_DEV_HOSTS = {"localhost", "127.0.0.1", "::1"}
 WEBAPP_DEV_ALLOWED_ORIGINS = {
@@ -198,6 +199,15 @@ GIFT_CARD_TYPES = {
     "premium": {"days": 90, "stars": 699, "name": "Premium"},
 }
 PAYMENT_PROVIDER_WHITELIST = {"aaio", "cardlink", "freekassa"}
+RUB_PLAN_LABELS = {
+    "start_99": "Start 30 дней",
+    "1_month": "Pro 1 месяц",
+    "3_months": "Pro 3 месяца",
+    "6_months": "Ultra 6 месяцев",
+    "9_months": "Ultra 9 месяцев",
+    "12_months": "Ultra 12 месяцев",
+}
+PAYMENT_PROVIDER_WHITELIST = {"freekassa"}
 FK_NOTIFY_IP_ALLOWLIST = [
     x.strip()
     for x in (os.getenv("FK_NOTIFY_IP_ALLOWLIST") or "").split(",")
@@ -252,6 +262,33 @@ def _default_live_updates() -> list[dict[str, Any]]:
             "id": 0,
             "title": "Гайд по быстрому подключению",
             "summary": "Обновили инструкции и deep links для популярных клиентов.",
+            "date": "2026-02-12",
+            "link": f"https://t.me/{channel}/3",
+        },
+    ]
+
+
+def _default_live_updates() -> list[dict[str, Any]]:
+    channel = (PUBLIC_CHANNEL or "portal_privacy").lstrip("@")
+    return [
+        {
+            "id": 0,
+            "title": "Новые точки подключения NL/PL",
+            "summary": "Обновили маршруты и короткие рекомендации по старту для актуальных клиентов.",
+            "date": "2026-02-14",
+            "link": f"https://t.me/{channel}/1",
+        },
+        {
+            "id": 0,
+            "title": "Обновлён кабинет PORTAL",
+            "summary": "Сделали поддержку, загрузки и checkout более понятными и без лишнего шума.",
+            "date": "2026-02-13",
+            "link": f"https://t.me/{channel}/2",
+        },
+        {
+            "id": 0,
+            "title": "Короткий путь к запуску",
+            "summary": "Проверили быстрый сценарий через Telegram и обновили открывающие ссылки для новых пользователей.",
             "date": "2026-02-12",
             "link": f"https://t.me/{channel}/3",
         },
@@ -1358,6 +1395,38 @@ def _public_checkout_url() -> str:
     return configured
 
 
+def _checkout_runtime_errors() -> list[str]:
+    errors: list[str] = []
+    if not RUB_CHECKOUT_ENABLED:
+        errors.append("RUB_CHECKOUT_ENABLED is false")
+    if not _checkout_secret():
+        errors.append("CHECKOUT_TICKET_SECRET is empty")
+    checkout_url = _public_checkout_url()
+    if not checkout_url:
+        errors.append("PAY_CHECKOUT_URL or PUBLIC_WEB_DOMAIN is not configured")
+    if not _safe_public_url(Settings.PUBLIC_API_BASE_URL):
+        errors.append("PUBLIC_API_BASE_URL is empty")
+    if not (_safe_public_url(Settings.PAY_SUCCESS_URL) or _safe_public_url(Settings.PUBLIC_API_BASE_URL)):
+        errors.append("PAY_SUCCESS_URL is not configured")
+    if not (_safe_public_url(Settings.PAY_FAIL_URL) or _safe_public_url(Settings.PUBLIC_API_BASE_URL)):
+        errors.append("PAY_FAIL_URL is not configured")
+    for source in ("site", "bot"):
+        shop = _fk_shop_by_source(source)
+        if not shop:
+            errors.append(f"FreeKassa shop config is missing for source={source}")
+            continue
+        for field in ("shop_id", "api_key", "secret_word_1", "secret_word_2"):
+            if not str(shop.get(field) or "").strip():
+                errors.append(f"FreeKassa {field} is empty for source={source}")
+    return errors
+
+
+def _ensure_checkout_runtime_ready() -> None:
+    errors = _checkout_runtime_errors()
+    if errors:
+        raise HTTPException(status_code=503, detail="; ".join(errors))
+
+
 def _checkout_url_for_user(*, tg_id: int, plan_code: str = "", promo_code: str = "", campaign_key: str = "", source: str = "bot") -> str:
     base = _public_checkout_url() or f"https://{(Settings.PUBLIC_WEB_DOMAIN or 'portal-privacy.online').strip().strip('/')}/checkout/"
     parsed = urlparse(base)
@@ -1614,7 +1683,7 @@ def _record_external_payment_event(
     s = SessionLocal()
     try:
         exists = (
-            s.query(ExternalPaymentEvent.id)
+            s.query(ExternalPaymentEvent)
             .filter(
                 ExternalPaymentEvent.provider == provider,
                 ExternalPaymentEvent.event_type == event_type,
@@ -1623,7 +1692,25 @@ def _record_external_payment_event(
             .first()
         )
         if exists:
-            return True, True
+            if bool(getattr(exists, "signature_ok", False)):
+                return True, True
+            if not signature_ok:
+                return True, True
+            exists.order_id = order_id or None
+            exists.payload_json = json.dumps(payload, ensure_ascii=False, separators=(",", ":"))[:16000]
+            exists.signature_ok = True
+            exists.processed_ok = bool(processed_ok)
+            status = _status_from_event(event_type, payload, signature_ok=True, provider=provider)
+            _upsert_external_order(
+                s,
+                provider=provider,
+                order_id=order_id,
+                payload=payload,
+                status=status,
+                mark_paid=status == "paid",
+            )
+            s.commit()
+            return False, True
 
         event = ExternalPaymentEvent(
             provider=provider,
@@ -1841,6 +1928,26 @@ def _parse_freekassa_payment_url(body: dict[str, Any], fallback_order_id: str) -
             if isinstance(val, str) and val.strip():
                 return val.strip()
     shop = _fk_shop_by_source("site")
+    shop_id = str(shop.get("shop_id") or "")
+    if shop_id and fallback_order_id:
+        return f"https://pay.freekassa.ru/?m={shop_id}&oa=0&o={fallback_order_id}"
+    return ""
+
+
+def _parse_freekassa_payment_url(body: dict[str, Any], fallback_order_id: str, source: str = "site") -> str:
+    if not isinstance(body, dict):
+        return ""
+    for key in ("location", "paymentUrl", "url", "redirect_url"):
+        val = body.get(key)
+        if isinstance(val, str) and val.strip():
+            return val.strip()
+    data = body.get("data")
+    if isinstance(data, dict):
+        for key in ("location", "paymentUrl", "url", "redirect_url"):
+            val = data.get(key)
+            if isinstance(val, str) and val.strip():
+                return val.strip()
+    shop = _fk_shop_by_source(source or "site")
     shop_id = str(shop.get("shop_id") or "")
     if shop_id and fallback_order_id:
         return f"https://pay.freekassa.ru/?m={shop_id}&oa=0&o={fallback_order_id}"
@@ -2683,6 +2790,7 @@ async def _freekassa_create_order_internal(
     currency: str = "RUB",
     consume_pending_discount: bool = False,
 ) -> FreekassaOrderActionOut:
+    _ensure_checkout_runtime_ready()
     s = SessionLocal()
     try:
         plan = _resolve_plan_config(s=s, code=plan_code)
@@ -2778,7 +2886,7 @@ async def _freekassa_create_order_internal(
         },
     }
     remote = await _freekassa_api_request(source=source, method="orders/create", data=req_data)
-    payment_url = _parse_freekassa_payment_url(remote, order_id)
+    payment_url = _parse_freekassa_payment_url(remote, order_id, source=source)
 
     s = SessionLocal()
     try:
@@ -2823,8 +2931,7 @@ async def freekassa_order_create(
     request: Request,
     x_telegram_init_data: str = Header(default=""),
 ) -> FreekassaOrderActionOut:
-    if not RUB_CHECKOUT_ENABLED:
-        raise HTTPException(status_code=403, detail="RUB checkout is disabled")
+    _ensure_checkout_runtime_ready()
     auth_user = _require_auth_user(x_telegram_init_data, request=request)
     actor_tg_id = int(auth_user.get("id", 0))
     source = (payload.source or "site").strip().lower()
@@ -2851,8 +2958,7 @@ async def freekassa_order_create_public(
     payload: FreekassaPublicOrderCreateIn,
     request: Request,
 ) -> FreekassaOrderActionOut:
-    if not RUB_CHECKOUT_ENABLED:
-        raise HTTPException(status_code=403, detail="RUB checkout is disabled")
+    _ensure_checkout_runtime_ready()
     ticket_payload = _parse_checkout_ticket(payload.checkout_ticket)
     if not ticket_payload:
         raise HTTPException(status_code=401, detail="Invalid or expired checkout ticket")
@@ -2862,7 +2968,11 @@ async def freekassa_order_create_public(
     source = str(ticket_payload.get("source") or "bot").strip().lower()
     if source not in {"site", "bot"}:
         source = "bot"
-    plan_code = (payload.plan_code or ticket_payload.get("plan_code") or "").strip().lower()
+    ticket_plan_code = str(ticket_payload.get("plan_code") or "").strip().lower()
+    request_plan_code = (payload.plan_code or "").strip().lower()
+    if ticket_plan_code and request_plan_code and request_plan_code != ticket_plan_code:
+        raise HTTPException(status_code=400, detail="Plan code does not match checkout ticket")
+    plan_code = (ticket_plan_code or request_plan_code or "").strip().lower()
     campaign = _sanitize_deeplink_token(str(ticket_payload.get("campaign_key") or ""), max_len=64, uppercase=False)
     promo_code = _sanitize_deeplink_token(str(ticket_payload.get("promo_code") or ""), max_len=20, uppercase=True)
     return await _freekassa_create_order_internal(
@@ -3773,7 +3883,11 @@ async def claim_channel_bonus(request: Request, x_telegram_init_data: str = Head
             )
         s.commit()
         s.refresh(user)
-        sync_ok = False
+        try:
+            sync_ok = bool(await _sync_user_after_paid_bonus(user))
+        except Exception as exc:
+            logger.warning("channel bonus sync failed tg_id=%s err=%s", tg_id, exc)
+            sync_ok = False
 
         return {
             "ok": True,
@@ -4080,6 +4194,9 @@ async def add_ticket_user_message(ticket_id: int, payload: TicketMessageIn, requ
 @app.get("/api/admin/summary")
 async def admin_summary(x_telegram_init_data: str = Header(default="")) -> dict:
     actor = int(_require_admin(x_telegram_init_data).get("id", 0))
+    stale_after_seconds = max(300, int(os.getenv("NODE_METRICS_STALE_AFTER_SECONDS", "900")))
+    now = _utcnow()
+    since_24h = now - timedelta(hours=24)
     s = SessionLocal()
     try:
         total_users = s.query(func.count(User.tg_id)).scalar() or 0
@@ -4089,6 +4206,31 @@ async def admin_summary(x_telegram_init_data: str = Header(default="")) -> dict:
         open_tickets = s.query(func.count(SupportTicket.id)).filter(SupportTicket.status != STATUS_CLOSED).scalar() or 0
         total_nodes = s.query(func.count(Node.id)).filter(Node.enabled == True).scalar() or 0
         healthy_nodes = s.query(func.count(Node.id)).filter(Node.enabled == True, Node.is_healthy == True).scalar() or 0
+        last_metric_sample = s.query(func.max(NodeHealthSample.sampled_at)).scalar()
+        if not last_metric_sample:
+            last_metric_sample = s.query(func.max(Node.last_health_at)).scalar()
+        metrics_age_seconds = int((now - last_metric_sample).total_seconds()) if last_metric_sample else None
+        payment_callback_failures_24h = (
+            s.query(func.count(ExternalPaymentEvent.id))
+            .filter(
+                ExternalPaymentEvent.created_at >= since_24h,
+                or_(
+                    ExternalPaymentEvent.signature_ok == False,
+                    ExternalPaymentEvent.processed_ok == False,
+                ),
+            )
+            .scalar()
+            or 0
+        )
+        subscription_numeric_fallbacks_24h = (
+            s.query(func.count(Event.id))
+            .filter(
+                Event.created_at >= since_24h,
+                Event.event_name == "subscription_numeric_fallback",
+            )
+            .scalar()
+            or 0
+        )
         last_samples = (
             s.query(Node.code, Node.health_score, Node.panel_latency_ms, Node.active_clients, Node.last_health_at)
             .filter(Node.enabled == True)
@@ -4106,6 +4248,15 @@ async def admin_summary(x_telegram_init_data: str = Header(default="")) -> dict:
             },
             "tickets": {"open": int(open_tickets)},
             "nodes": {"total": int(total_nodes), "healthy": int(healthy_nodes)},
+            "errors": {
+                "stale_metrics": bool(
+                    metrics_age_seconds is None or metrics_age_seconds > stale_after_seconds
+                ),
+                "unhealthy_nodes": max(0, int(total_nodes) - int(healthy_nodes)),
+                "open_tickets": int(open_tickets),
+                "payment_callback_failures_24h": int(payment_callback_failures_24h),
+                "subscription_numeric_fallbacks_24h": int(subscription_numeric_fallbacks_24h),
+            },
             "top_nodes": [
                 {
                     "code": n.code,
@@ -5793,7 +5944,9 @@ async def admin_campaign_links_build(payload: AdminCampaignLinksBuildIn, x_teleg
         q["promo"] = promo
     if campaign:
         q["campaign"] = campaign
-    checkout_link = f"{parsed.scheme}://{parsed.netloc}{parsed.path or '/checkout/'}?{urlencode(q)}" if parsed.scheme and parsed.netloc else f"/checkout/?{urlencode(q)}"
+    # Public campaign links cannot mint a valid checkout ticket without a bound user,
+    # so the "checkout" action must stay in a safe bot-first flow.
+    checkout_link = bot_start_link
 
     webapp_base = _safe_public_url(Settings.WEBAPP_URL) or f"https://{(Settings.PUBLIC_WEB_DOMAIN or 'portal-privacy.online').strip().strip('/')}/webapp/"
     wp = urlparse(webapp_base)
@@ -5805,7 +5958,14 @@ async def admin_campaign_links_build(payload: AdminCampaignLinksBuildIn, x_teleg
     if plan:
         wq["plan"] = plan
     webapp_link = f"{wp.scheme}://{wp.netloc}{wp.path or '/webapp/'}?{urlencode(wq)}" if wp.scheme and wp.netloc else f"/webapp/?{urlencode(wq)}"
-    return {"ok": True, "bot_start_link": bot_start_link, "checkout_link": checkout_link, "webapp_link": webapp_link}
+    return {
+        "ok": True,
+        "bot_start_link": bot_start_link,
+        "checkout_link": checkout_link,
+        "checkout_mode": "bot_fallback",
+        "checkout_reason": "checkout_ticket_requires_bound_user",
+        "webapp_link": webapp_link,
+    }
 
 
 @app.get("/api/admin/referrals/pending")
@@ -6615,6 +6775,16 @@ async def _notify_admin_on_subscription_fallback(*, user_tg_id: int, token_fp: s
     finally:
         s.close()
 
+    try:
+        track_event(
+            tg_id=int(user_tg_id),
+            event_name="subscription_numeric_fallback",
+            source="subscription",
+            meta={"token_fp": token_fp},
+        )
+    except Exception:
+        logger.exception("failed to track subscription numeric fallback tg_id=%s", int(user_tg_id))
+
     text = (
         "⚠️ Обнаружен fallback подписки по `tg_id`.\n"
         f"user_id: `{int(user_tg_id)}`\n"
@@ -6638,9 +6808,16 @@ async def subscription(token: str, request: Request):
         user = s.query(User).filter_by(sub_token=token_text).first()
         lookup_mode = "sub_token"
         if not user and token_text.isdigit():
-            user = s.query(User).filter_by(tg_id=int(token_text)).first()
-            if user:
-                lookup_mode = "tg_id_fallback"
+            if SUBSCRIPTION_NUMERIC_FALLBACK_ENABLED:
+                user = s.query(User).filter_by(tg_id=int(token_text)).first()
+                if user:
+                    lookup_mode = "tg_id_fallback"
+            else:
+                logger.warning(
+                    "subscription numeric fallback disabled token_fp=%s token_len=%s",
+                    token_fp,
+                    len(token_text),
+                )
         if not user:
             logger.warning("subscription lookup failed token_fp=%s token_len=%s", token_fp, len(token_text))
             raise HTTPException(status_code=404, detail="User not found")

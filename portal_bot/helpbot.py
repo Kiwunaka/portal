@@ -23,6 +23,7 @@ load_dotenv(dotenv_path=Path(__file__).resolve().with_name(".env"))
 load_dotenv()
 
 from db import SessionLocal, init_db
+from copy_catalog import get_copy_text
 from tickets_repo import (
     STATUS_CLOSED,
     STATUS_IN_PROGRESS,
@@ -100,12 +101,11 @@ def _main_menu(is_admin: bool) -> InlineKeyboardMarkup:
 
 
 def _welcome_text(is_admin: bool) -> str:
-    text = (
-        "👨‍💻 *Техническая поддержка PORTAL*\n\n"
-        "Нажмите «Начать», чтобы быстро открыть новый запрос.\n"
-        "Среднее время ответа: 15 минут.\n\n"
-        "👇 *Выберите действие:*"
+    headline = get_copy_text(
+        "bot.support.welcome",
+        "Поддержка PORTAL рядом. Откройте новое обращение или продолжите уже начатый диалог.",
     )
+    text = f"👨‍💻 *{headline}*\n\nНажмите «Начать», чтобы быстро открыть новый запрос.\nСреднее время ответа: 15 минут.\n\n👇 *Выберите действие:*"
     if is_admin:
         text += "\n\nРежим оператора: доступна очередь тикетов."
     return text

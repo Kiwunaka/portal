@@ -18,6 +18,7 @@ load_dotenv()
 
 from config import Settings
 from control_panel import ControlPanel
+from copy_catalog import get_copy_text
 from db import SessionLocal, init_db
 from events_service import track_event
 from free_cycle_service import mark_user_became_free, process_due_free_cycle_resets
@@ -184,8 +185,17 @@ def _load_admin_template_value(*, key: str) -> str | None:
 def _retention_text(*, flow: str, variant: str, context: dict[str, str] | None = None) -> str:
     flow_key = str(flow).strip().lower()
     variant_key = str(variant).strip().lower()
+    catalog_key = {
+        "welcome": "retention.welcome",
+        "t3": "retention.t3",
+        "t1": "retention.t1",
+        "t0": "retention.t0",
+        "reactivation": "retention.reactivation",
+        "start99_offer": "retention.start99_offer",
+    }.get(flow_key, "")
     fallback = (
-        RETENTION_DEFAULT_COPY.get(flow_key, {}).get(variant_key)
+        get_copy_text(catalog_key, "") if catalog_key else ""
+        or RETENTION_DEFAULT_COPY.get(flow_key, {}).get(variant_key)
         or RETENTION_DEFAULT_COPY.get(flow_key, {}).get("a")
         or "Обновление статуса доступа."
     )

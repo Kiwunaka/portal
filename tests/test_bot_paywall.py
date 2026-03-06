@@ -159,6 +159,15 @@ class BotPaywallTests(unittest.TestCase):
         self.assertEqual(reason2, "already_claimed")
         self.assertEqual(calls, [1001])
 
+        s = self.bot_module.Session()
+        try:
+            user = s.query(self.bot_module.User).filter_by(tg_id=1001).first()
+            self.assertIsNotNone(user)
+            self.assertIsNone(getattr(user, "channel_bonus_claimed_at", None))
+            self.assertFalse(bool(getattr(user, "channel_bonus_active", False)))
+        finally:
+            s.close()
+
     def test_parse_start_deeplink_context_supports_promo_and_campaign(self) -> None:
         promo, campaign = self.bot_module._parse_start_deeplink_context("promo_newyear")
         self.assertEqual(promo, "NEWYEAR")
