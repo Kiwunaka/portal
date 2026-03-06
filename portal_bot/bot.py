@@ -9221,28 +9221,33 @@ def activate_promo_code_for_user(tg_id: int, code: str) -> tuple[bool, str]:
             session.flush()
             return False, "❌ Промокод недоступен для этого аккаунта"
 
-        if promo.promo_type == "days":
+        promo_type = str(promo.promo_type or "").strip().lower()
+        promo_value = int(promo.value or 0)
+        if promo_type not in {"days", "discount"} or promo_value <= 0:
+            return False, "❌ Промокод некорректен"
+
+        if promo_type == "days":
             now = _utcnow()
             if user:
                 expiry = _naive_utc(user.expiry_at)
                 if expiry and expiry > now:
-                    user.expiry_at = expiry + timedelta(days=promo.value)
+                    user.expiry_at = expiry + timedelta(days=promo_value)
                 else:
-                    user.expiry_at = now + timedelta(days=promo.value)
+                    user.expiry_at = now + timedelta(days=promo_value)
                 user.is_active = True
-            result_text = f"🎁 Тебе добавлено *+{promo.value} Дней!*"
-        elif promo.promo_type == "discount":
+            result_text = f"🎁 Тебе добавлено *+{promo_value} Дней!*"
+        elif promo_type == "discount":
             user = session.query(User).filter_by(tg_id=tg_id).first()
             if user:
-                user.pending_discount_pct = max(1, min(95, int(promo.value or 0)))
+                user.pending_discount_pct = max(1, min(95, int(promo_value or 0)))
                 user.pending_discount_code = str(code).upper()[:20]
                 user.pending_discount_set_at = _utcnow()
             result_text = (
-                f"🎉 Скидка *{promo.value}%* активирована.\n"
+                f"🎉 Скидка *{promo_value}%* активирована.\n"
                 "Она применится к следующей оплате в ₽ или Stars."
             )
         else:
-            result_text = f"🎉 Скидка *{promo.value}%* будет применена к следующей покупке!"
+            result_text = f"🎉 Скидка *{promo_value}%* будет применена к следующей покупке!"
 
         session.add(PromoUsage(tg_id=tg_id, promo_code=code))
         _campaign_consume(row=campaign)

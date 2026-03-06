@@ -438,6 +438,38 @@ class BotPaywallTests(unittest.TestCase):
         self.assertFalse(ok)
         self.assertIn("недоступ", result.lower())
 
+    def test_activate_promo_code_rejects_zero_value_without_burning_usage(self) -> None:
+        self.bot_module.ensure_pending_user(1001, username="alice")
+        self.bot_module.set_tos_accepted(1001)
+
+        session = self.bot_module.Session()
+        try:
+            session.add(
+                self.bot_module.PromoCode(
+                    code="ZERODAYS",
+                    promo_type="days",
+                    value=0,
+                    uses_left=2,
+                )
+            )
+            session.commit()
+        finally:
+            session.close()
+
+        ok, _result = self.bot_module.activate_promo_code_for_user(1001, "ZERODAYS")
+        self.assertFalse(ok)
+
+        session = self.bot_module.Session()
+        try:
+            promo = session.query(self.bot_module.PromoCode).filter_by(code="ZERODAYS").first()
+            self.assertIsNotNone(promo)
+            self.assertEqual(int(promo.uses_left or 0), 2)
+
+            usage = session.query(self.bot_module.PromoUsage).filter_by(tg_id=1001, promo_code="ZERODAYS").all()
+            self.assertEqual(usage, [])
+        finally:
+            session.close()
+
     def test_redeem_gift_card_respects_campaign_segment_restrictions(self) -> None:
         self.bot_module.ensure_pending_user(1001, username="alice")
         self.bot_module.set_tos_accepted(1001)
