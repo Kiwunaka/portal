@@ -33,10 +33,9 @@
 
 ## Что осталось в backlog
 
-- полноценный binary media upload в support UI
-- parity referral points между Stars и FreeKassa
-- усиление admin metrics/error-summary UI
 - локальная генерация QR без внешней зависимости
+- DB-level unique/idempotency для `CampaignSend`, чтобы start-link/campaign-бонусы были защищены не только логикой приложения
+- дополнительный audit trail для части старых бонусных путей, которые всё ещё опираются на best-effort логирование
 
 ## Рекомендация по релизу
 

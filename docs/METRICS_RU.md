@@ -37,8 +37,12 @@
   - subscription numeric fallback hits
   - open tickets
 
-## Что ещё добавить в `/admin`
+## Что добавлено в `/admin` в этой волне
 
-- отдельный error-summary блок
-- счётчик `numeric_fallback_hits` за день
+- отдельный error-summary блок на dashboard
+- статус freshness c возрастом метрик и временем последнего сэмпла
+- явный список приоритетных действий для оператора по stale metrics, unhealthy nodes, callback failures, numeric fallback hits и open tickets
+
+## Что ещё можно добавить позже
+
 - breakdown revenue по каналу оплаты
