@@ -96,6 +96,64 @@ class WorkerRetentionTests(unittest.TestCase):
         self.assertEqual(self.worker._normalize_channel_membership_reason("not_member"), "not_member")
         self.assertEqual(self.worker._normalize_channel_membership_reason("telegram_http_error"), "telegram_http_error")
 
+    def test_referral_queue_does_not_double_increment_already_counted_referral(self) -> None:
+        from models import Event, ReferralBonusQueue, User
+
+        now = self.worker._utcnow()
+        s = self.db.SessionLocal()
+        try:
+            s.add(
+                User(
+                    tg_id=2001,
+                    username="referrer",
+                    uuid=str(uuid.uuid4()),
+                    email="ref_2001",
+                    sub_type="PAID",
+                    is_active=True,
+                    referral_count=1,
+                    expiry_at=now + timedelta(days=30),
+                    tos_accepted=True,
+                )
+            )
+            s.add(
+                User(
+                    tg_id=2002,
+                    username="referred",
+                    uuid=str(uuid.uuid4()),
+                    email="ref_2002",
+                    sub_type="PAID",
+                    is_active=True,
+                    expiry_at=now + timedelta(days=30),
+                    tos_accepted=True,
+                )
+            )
+            s.add(Event(tg_id=2002, event_name="connected_ok", source="test", created_at=now))
+            s.add(
+                ReferralBonusQueue(
+                    order_id="order-2002",
+                    referrer_tg_id=2001,
+                    referred_tg_id=2002,
+                    queued_at=now - timedelta(hours=30),
+                    ready_at=now - timedelta(hours=1),
+                    status="pending",
+                    meta='{"source":"payment_callback","counted":true}',
+                )
+            )
+            s.commit()
+        finally:
+            s.close()
+
+        out = self.worker._process_referral_bonus_queue(limit=10)
+        self.assertEqual(int(out.get("rewarded") or 0), 1)
+
+        s = self.db.SessionLocal()
+        try:
+            referrer = s.query(User).filter_by(tg_id=2001).first()
+            self.assertIsNotNone(referrer)
+            self.assertEqual(int(referrer.referral_count or 0), 1)
+        finally:
+            s.close()
+
 
 if __name__ == "__main__":
     unittest.main()

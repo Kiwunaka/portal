@@ -475,7 +475,15 @@ def _process_referral_bonus_queue(*, limit: int = 100) -> dict[str, int]:
                 row.processed_at = now
                 rejected += 1
                 continue
-            referrer.referral_count = int(referrer.referral_count or 0) + 1
+            row_meta = {}
+            try:
+                parsed_meta = json.loads(getattr(row, "meta", None) or "{}")
+                if isinstance(parsed_meta, dict):
+                    row_meta = parsed_meta
+            except Exception:
+                row_meta = {}
+            if not bool(row_meta.get("counted")):
+                referrer.referral_count = int(referrer.referral_count or 0) + 1
             referrer.expiry_at = ref_expiry + timedelta(days=max(1, int(REFERRAL_BONUS_DAYS)))
             referrer.is_active = True
             row.status = "rewarded"

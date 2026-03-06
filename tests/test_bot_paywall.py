@@ -6,6 +6,7 @@ import tempfile
 import types
 import unittest
 import uuid
+from datetime import timedelta
 from pathlib import Path
 
 
@@ -264,6 +265,99 @@ class BotPaywallTests(unittest.TestCase):
         self.assertIn("promo=WELCOME14", url)
         self.assertIn("campaign=launch_week_1", url)
         self.assertIn("checkout_ticket=", url)
+
+    def test_activate_promo_code_rejects_expired_promo(self) -> None:
+        self.bot_module.ensure_pending_user(1001, username="alice")
+        self.bot_module.set_tos_accepted(1001)
+
+        session = self.bot_module.Session()
+        try:
+            session.add(
+                self.bot_module.PromoCode(
+                    code="EXPIRED14",
+                    promo_type="days",
+                    value=14,
+                    uses_left=10,
+                    expires_at=self.bot_module._utcnow() - timedelta(days=1),
+                )
+            )
+            session.commit()
+        finally:
+            session.close()
+
+        ok, result = self.bot_module.activate_promo_code_for_user(1001, "EXPIRED14")
+        self.assertFalse(ok)
+        self.assertIn("ист", result.lower())
+
+    def test_activate_promo_code_respects_campaign_segment_restrictions(self) -> None:
+        self.bot_module.ensure_pending_user(1001, username="alice")
+        self.bot_module.set_tos_accepted(1001)
+
+        session = self.bot_module.Session()
+        try:
+            user = session.query(self.bot_module.User).filter_by(tg_id=1001).first()
+            self.assertIsNotNone(user)
+            user.sub_type = "FREE"
+            user.is_active = True
+            session.add(
+                self.bot_module.PromoCode(
+                    code="PAIDONLY20",
+                    promo_type="discount",
+                    value=20,
+                    uses_left=10,
+                )
+            )
+            session.add(
+                self.bot_module.IncentiveCampaign(
+                    name="Paid only promo",
+                    campaign_type="promo",
+                    target_value="PAIDONLY20",
+                    segment="paid",
+                    max_activations=-1,
+                    activations_count=0,
+                    auto_disable=True,
+                    is_active=True,
+                )
+            )
+            session.commit()
+        finally:
+            session.close()
+
+        ok, result = self.bot_module.activate_promo_code_for_user(1001, "PAIDONLY20")
+        self.assertFalse(ok)
+        self.assertIn("недоступ", result.lower())
+
+    def test_redeem_gift_card_respects_campaign_segment_restrictions(self) -> None:
+        self.bot_module.ensure_pending_user(1001, username="alice")
+        self.bot_module.set_tos_accepted(1001)
+        code = self.bot_module.create_gift_card(2002, "standard")
+        self.assertTrue(code)
+
+        session = self.bot_module.Session()
+        try:
+            user = session.query(self.bot_module.User).filter_by(tg_id=1001).first()
+            self.assertIsNotNone(user)
+            user.sub_type = "FREE"
+            user.is_active = True
+            session.add(
+                self.bot_module.IncentiveCampaign(
+                    name="Paid only gift",
+                    campaign_type="gift",
+                    target_value="STANDARD",
+                    segment="paid",
+                    max_activations=-1,
+                    activations_count=0,
+                    auto_disable=True,
+                    is_active=True,
+                )
+            )
+            session.commit()
+        finally:
+            session.close()
+
+        ok, result = asyncio.run(self.bot_module.redeem_gift_card(code, 1001, _FakeBot(status="member")))
+        self.assertFalse(ok)
+        self.assertIn("недоступ", result.lower())
 
 
 if __name__ == "__main__":

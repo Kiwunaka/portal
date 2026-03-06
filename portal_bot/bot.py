@@ -667,6 +667,7 @@ from models import (
     CampaignSend,
     FamilySlot,
     GiftCard,
+    IncentiveCampaign,
     LiveUpdate,
     PromoCode,
     PromoUsage,
@@ -1341,6 +1342,59 @@ def _mark_campaign_claim_once(*, tg_id: int, campaign_key: str) -> bool:
         return False
     finally:
         session.close()
+
+
+def _campaign_segment_match(*, user: User, segment: str) -> bool:
+    seg = str(segment or "all_active").strip().lower()
+    if seg in {"all", "all_active"}:
+        return bool(user.is_active)
+    if seg == "paid":
+        return str(user.sub_type or "").upper() == "PAID"
+    if seg == "free":
+        return str(user.sub_type or "").upper() == "FREE"
+    if seg == "manual":
+        return bool(getattr(user, "is_manual", False) or int(user.tg_id) < 0 or str(user.sub_type or "").upper() == "MANUAL")
+    return True
+
+
+def _campaign_lookup(*, session, campaign_type: str, target_value: str, user: User, now: datetime | None = None) -> IncentiveCampaign | None:
+    now_dt = now or _utcnow()
+    ctype = str(campaign_type or "").strip().lower()
+    target = str(target_value or "").strip().upper()
+    if ctype not in {"promo", "gift"} or not target:
+        return None
+    rows = (
+        session.query(IncentiveCampaign)
+        .filter(func.lower(IncentiveCampaign.campaign_type) == ctype)
+        .filter(func.upper(IncentiveCampaign.target_value) == target)
+        .filter(IncentiveCampaign.is_active == True)
+        .order_by(IncentiveCampaign.id.desc())
+        .all()
+    )
+    for row in rows:
+        if row.starts_at and row.starts_at > now_dt:
+            continue
+        if row.ends_at and row.ends_at < now_dt:
+            if bool(row.auto_disable):
+                row.is_active = False
+            continue
+        if int(row.max_activations or -1) >= 0 and int(row.activations_count or 0) >= int(row.max_activations or -1):
+            if bool(row.auto_disable):
+                row.is_active = False
+            continue
+        if not _campaign_segment_match(user=user, segment=str(row.segment or "all_active")):
+            continue
+        return row
+    return None
+
+
+def _campaign_consume(*, row: IncentiveCampaign | None) -> None:
+    if not row:
+        return
+    row.activations_count = int(row.activations_count or 0) + 1
+    if bool(row.auto_disable) and int(row.max_activations or -1) >= 0 and int(row.activations_count or 0) >= int(row.max_activations or -1):
+        row.is_active = False
+    row.updated_at = _utcnow()
 
 
 async def _try_activate_opening_premium_bonus(
@@ -2211,6 +2265,35 @@ def get_gift_card(code: str) -> dict | None:
 
 async def redeem_gift_card(code: str, recipient_tg_id: int, bot) -> tuple[bool, str]:
     """Redeem a gift card. Returns (success, message)."""
+    norm_code = str(code or "").strip().upper()
+    if norm_code:
+        session = Session()
+        try:
+            user = session.query(User).filter(User.tg_id == int(recipient_tg_id)).first()
+            card = session.query(GiftCard).filter(func.upper(GiftCard.code) == norm_code).first()
+            if user and card:
+                card_type = str(card.card_type or "").strip().upper()
+                active_campaigns_for_type = (
+                    session.query(func.count(IncentiveCampaign.id))
+                    .filter(func.lower(IncentiveCampaign.campaign_type) == "gift")
+                    .filter(func.upper(IncentiveCampaign.target_value) == card_type)
+                    .filter(IncentiveCampaign.is_active == True)
+                    .scalar()
+                    or 0
+                )
+                campaign = _campaign_lookup(
+                    session=session,
+                    campaign_type="gift",
+                    target_value=card_type,
+                    user=user,
+                    now=_utcnow(),
+                )
+                if int(active_campaigns_for_type) > 0 and campaign is None:
+                    session.flush()
+                    return False, "❌ Подарочный код недоступен для этого аккаунта"
+        finally:
+            session.close()
+
     result = await redeem_gift_card_service(
         code=code,
         recipient_tg_id=int(recipient_tg_id),
@@ -2218,6 +2301,25 @@ async def redeem_gift_card(code: str, recipient_tg_id: int, bot) -> tuple[bool, 
     )
     if not result.get("ok"):
         return False, str(result.get("message") or "❌ Не удалось активировать карту")
+    card_type = str(result.get("card_type") or "").strip().upper()
+    if card_type:
+        session = Session()
+        try:
+            user = session.query(User).filter(User.tg_id == int(recipient_tg_id)).first()
+            if user:
+                campaign = _campaign_lookup(
+                    session=session,
+                    campaign_type="gift",
+                    target_value=card_type,
+                    user=user,
+                    now=_utcnow(),
+                )
+                _campaign_consume(row=campaign)
+                session.commit()
+        except Exception:
+            session.rollback()
+        finally:
+            session.close()
     days = int(result.get("days") or 0)
     return True, f"✅ Карта активирована!\n\n📅 Тариф продлен на {days} дней"
 
@@ -9079,6 +9181,8 @@ def activate_promo_code_for_user(tg_id: int, code: str) -> tuple[bool, str]:
         promo = session.query(PromoCode).filter_by(code=code).first()
         if not promo:
             return False, "❌ Промокод не найден"
+        if promo.expires_at and promo.expires_at < _utcnow():
+            return False, "❌ Срок действия промокода истёк"
 
         if promo.uses_left == 0:
             return False, "❌ Промокод больше не активен"
@@ -9087,8 +9191,30 @@ def activate_promo_code_for_user(tg_id: int, code: str) -> tuple[bool, str]:
         if usage:
             return False, "❌ Ты уже использовал этот промокод"
 
+        user = session.query(User).filter_by(tg_id=tg_id).first()
+        if not user:
+            return False, "❌ Пользователь не найден"
+
+        active_campaigns_for_code = (
+            session.query(func.count(IncentiveCampaign.id))
+            .filter(func.lower(IncentiveCampaign.campaign_type) == "promo")
+            .filter(func.upper(IncentiveCampaign.target_value) == code)
+            .filter(IncentiveCampaign.is_active == True)
+            .scalar()
+            or 0
+        )
+        campaign = _campaign_lookup(
+            session=session,
+            campaign_type="promo",
+            target_value=code,
+            user=user,
+            now=_utcnow(),
+        )
+        if int(active_campaigns_for_code) > 0 and campaign is None:
+            session.flush()
+            return False, "❌ Промокод недоступен для этого аккаунта"
+
         if promo.promo_type == "days":
-            user = session.query(User).filter_by(tg_id=tg_id).first()
             now = _utcnow()
             if user:
                 expiry = _naive_utc(user.expiry_at)
@@ -9112,6 +9238,7 @@ def activate_promo_code_for_user(tg_id: int, code: str) -> tuple[bool, str]:
             result_text = f"🎉 Скидка *{promo.value}%* будет применена к следующей покупке!"
 
         session.add(PromoUsage(tg_id=tg_id, promo_code=code))
+        _campaign_consume(row=campaign)
         if promo.uses_left > 0:
             promo.uses_left -= 1
         session.commit()
