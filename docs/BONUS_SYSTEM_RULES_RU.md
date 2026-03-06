@@ -53,6 +53,8 @@
 - Рулетка ограничена cooldown.
 - Конфиг хранится в `wheel_config`.
 - Изменения веса/паузы должны проходить через admin и сохраняться в `app_settings`.
+- После spin должен писаться audit/event след с `prize_days`, `cooldown_days` и `sync_ok`.
+- Текст в bot-flow должен показывать фактический cooldown из конфигурации, а не захардкоженное значение.
 
 ## 6. Promo codes
 

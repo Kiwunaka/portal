@@ -21,6 +21,7 @@
   - opening bonus не сжигает campaign claim при падении `create_subscription()`
   - friend gift не сжигает campaign claim при падении `create_subscription()`
   - zero-value promo не должен сжигать usage и `uses_left` в bot-flow
+  - wheel spin использует фактический cooldown из конфига и пишет `wheel_spin` event с `sync_ok`
   - expired promo отклоняется в bot-flow
   - promo campaign restrictions соблюдаются в bot-flow
   - gift campaign restrictions соблюдаются в bot-flow
