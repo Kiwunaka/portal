@@ -28,9 +28,12 @@
 - Первый paid purchase реферала:
   - ставит queue на бонус инвайтеру
   - в Stars-flow дополнительно начисляет referral points
+- Первый paid purchase через FreeKassa теперь тоже начисляет referral points:
+  - база расчёта берётся из `plan.amount_stars`
+  - начисление защищено от повторов через stable `pay_attempt_id`/external-order id
 - `referral_count` не должен увеличиваться дважды:
   - если queue row уже помечен `meta.counted=true`, worker не инкрементирует счётчик повторно
-- Нужна отдельная волна для полной parity с FreeKassa по points.
+- Referral days и referral points больше не расходятся между Stars и FreeKassa на первом paid purchase.
 
 ## 4. Gift codes
 
