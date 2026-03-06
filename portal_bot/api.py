@@ -91,6 +91,7 @@ from points_service import (
     EXPIRY_DAYS as POINTS_EXPIRY_DAYS,
     MONTHLY_CAP as POINTS_MONTHLY_CAP,
     award_points,
+    award_referral_points,
     available_points,
     preview_redeemable_points,
     referral_tier_snapshot,
@@ -1816,6 +1817,7 @@ def _apply_external_paid_order(*, order_id: str, payload: dict[str, Any]) -> tup
         old_sub = (user.sub_type or "").upper().strip()
         first_paid_purchase = not bool(getattr(user, "first_purchase_done", False))
         referrer_id = int(getattr(user, "referrer_id", 0) or 0)
+        plan_amount_stars = int(plan_cfg.get("amount_stars") or API_PLAN_PRICES.get(plan_code) or 0)
         if old_sub == "FREE":
             start_from = now
         else:
@@ -1845,6 +1847,9 @@ def _apply_external_paid_order(*, order_id: str, payload: dict[str, Any]) -> tup
             ext_order.paid_at = ext_order.paid_at or now
             ext_order.tg_id = ext_order.tg_id or int(tg_id)
             ext_order.plan_code = plan_code
+            ext_order_id = int(ext_order.id) if getattr(ext_order, "id", None) is not None else None
+        else:
+            ext_order_id = None
         s.commit()
         s.refresh(user)
     except Exception as exc:
@@ -1853,6 +1858,23 @@ def _apply_external_paid_order(*, order_id: str, payload: dict[str, Any]) -> tup
         return False, "db_error"
     finally:
         s.close()
+
+    if first_paid_purchase and referrer_id > 0 and plan_amount_stars > 0:
+        try:
+            award_referral_points(
+                tg_id=int(referrer_id),
+                paid_stars=int(plan_amount_stars),
+                ref_tg_id=int(tg_id),
+                pay_attempt_id=ext_order_id,
+            )
+        except Exception as exc:
+            logger.warning(
+                "referral points award failed for freekassa order_id=%s referrer=%s referred=%s err=%s",
+                order_id,
+                referrer_id,
+                tg_id,
+                exc,
+            )
 
     return True, "ok"
 

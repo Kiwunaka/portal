@@ -187,6 +187,17 @@ def award_referral_points(
     month_start = _month_start_utc(now)
     s = _session()
     try:
+        if pay_attempt_id is not None:
+            existing = (
+                s.query(PointsLedger.id)
+                .filter(PointsLedger.tg_id == int(tg_id))
+                .filter(PointsLedger.pay_attempt_id == int(pay_attempt_id))
+                .filter(PointsLedger.reason.like("referral_earned%"))
+                .filter(PointsLedger.ref_tg_id == (int(ref_tg_id) if ref_tg_id is not None else None))
+                .first()
+            )
+            if existing:
+                return 0
         earned_month = (
             s.query(func.coalesce(func.sum(PointsLedger.delta_points), 0))
             .filter(PointsLedger.tg_id == int(tg_id))
