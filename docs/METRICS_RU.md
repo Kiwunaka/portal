@@ -1,6 +1,6 @@
 # Метрики и наблюдаемость PORTAL
 
-Обновлено: 6 марта 2026
+Обновлено: 7 марта 2026
 
 ## Что уже есть
 
@@ -36,12 +36,17 @@
   - payment callback failures
   - subscription numeric fallback hits
   - open tickets
+- бонусы:
+  - channel bonus success / denied
+  - promo redeem success / denied
+  - gift redeem success / denied
 
 ## Что добавлено в `/admin` в этой волне
 
 - отдельный error-summary блок на dashboard
 - статус freshness c возрастом метрик и временем последнего сэмпла
 - явный список приоритетных действий для оператора по stale metrics, unhealthy nodes, callback failures, numeric fallback hits и open tickets
+- отдельный bonus analytics блок за 24 часа для channel/promo/gift flow с success/denied breakdown
 
 ## Что ещё можно добавить позже
 

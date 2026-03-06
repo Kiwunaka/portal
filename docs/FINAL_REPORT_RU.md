@@ -33,6 +33,7 @@
 - Добавлен отдельный `ui_visual_smoke` для контроля CTA, checkout fallback и локальной генерации QR без внешнего сервиса.
 - Bonus audit trail выровнен для `channel bonus`, `promo redeem` и `gift redeem` в API/WebApp и bot-flow.
 - `events_service` переведён на динамический `SessionLocal`, чтобы события и аналитика не терялись при reload/test bootstraps.
+- `/admin/dashboard` теперь показывает bonus success/denied breakdown за 24 часа для channel/promo/gift flow.
 
 ## Что подтверждено проверками
 
