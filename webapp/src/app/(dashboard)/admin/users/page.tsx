@@ -453,7 +453,7 @@ export default function AdminUsersPage() {
     setOkMessage("");
     try {
       const out = await adminUserLoyaltyGrant(selectedTgId, tierDays);
-      setOkMessage(`Награда лояльности ${out.tier_days} дней выдана.`);
+      setOkMessage(`Награда лояльности ${out.tier_days} дней выдана (синхронизация: ${out.sync_ok ? "ok" : "предупреждение"}).`);
       await reloadSelected();
     } catch (err) {
       setError(String((err as { message?: string })?.message || err || "Не удалось выдать loyalty-награду"));

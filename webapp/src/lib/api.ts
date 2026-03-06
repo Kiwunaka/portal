@@ -1047,7 +1047,7 @@ export function adminUserLoyalty(tgId: number): Promise<{ loyalty: AdminUserLoya
   return apiFetch(`/api/admin/users/${tgId}/loyalty`);
 }
 
-export function adminUserLoyaltyGrant(tgId: number, tierDays: number): Promise<{ ok: boolean; tier_days: number; expiry_at?: string | null }> {
+export function adminUserLoyaltyGrant(tgId: number, tierDays: number): Promise<{ ok: boolean; tier_days: number; expiry_at?: string | null; sync_ok?: boolean }> {
   return apiFetch(`/api/admin/users/${tgId}/loyalty/grant`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },

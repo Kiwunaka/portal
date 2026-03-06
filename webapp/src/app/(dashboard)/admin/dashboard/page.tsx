@@ -17,7 +17,7 @@ function MiniBar({ values, color = "violet" }: { values: number[]; color?: strin
   const max = Math.max(...values, 1);
   const colorClass = color === "emerald" ? "bg-emerald-500" : color === "rose" ? "bg-rose-500" : "bg-violet-500";
   return (
-    <div className="flex items-end gap-[3px] h-8">
+    <div className="flex h-8 items-end gap-[3px]">
       {values.map((value, index) => (
         <div
           key={index}
@@ -27,6 +27,40 @@ function MiniBar({ values, color = "violet" }: { values: number[]; color?: strin
       ))}
     </div>
   );
+}
+
+function formatSecondsToShortAge(seconds?: number | null): string {
+  if (seconds == null || Number.isNaN(Number(seconds))) return "нет данных";
+  const total = Math.max(0, Math.round(Number(seconds)));
+  if (total < 60) return `${total}с`;
+  if (total < 3600) return `${Math.round(total / 60)}м`;
+  if (total < 86400) return `${Math.round(total / 3600)}ч`;
+  return `${Math.round(total / 86400)}д`;
+}
+
+function buildMetricsHealthSummary(metrics: AdminMetricsStatus | null): { value: string; detail: string } {
+  if (!metrics) {
+    return {
+      value: "unknown",
+      detail: "Статус collector ещё не загружен",
+    };
+  }
+
+  const age = formatSecondsToShortAge(metrics.age_seconds);
+  const threshold = formatSecondsToShortAge(metrics.stale_after_seconds);
+  const sample = metrics.last_sample_at ? fmtRuDate(metrics.last_sample_at) : "нет сэмпла";
+
+  if (metrics.status === "stale") {
+    return {
+      value: `stale / ${age}`,
+      detail: `Последний сэмпл: ${sample}. Порог freshness: ${threshold}.`,
+    };
+  }
+
+  return {
+    value: `fresh / ${age}`,
+    detail: `Последний сэмпл: ${sample}. Порог stale: ${threshold}.`,
+  };
 }
 
 export default function AdminDashboardPage() {
@@ -75,18 +109,38 @@ export default function AdminDashboardPage() {
 
   const registrationValues = useMemo(() => series.map((p) => Number(p.registrations || 0)), [series]);
   const revenueValues = useMemo(() => series.map((p) => Number(p.revenue_rub || 0)), [series]);
+  const metricsHealth = useMemo(() => buildMetricsHealthSummary(metrics), [metrics]);
+
+  const attentionItems = [
+    summary?.errors.stale_metrics
+      ? `Метрики устарели: последний сэмпл ${metrics?.last_sample_at ? fmtRuDate(metrics.last_sample_at) : "неизвестен"}, возраст ${formatSecondsToShortAge(metrics?.age_seconds)}.`
+      : "",
+    Number(summary?.errors.unhealthy_nodes || 0) > 0
+      ? `Проблемных нод: ${summary?.errors.unhealthy_nodes}. Проверьте latency, health score и panel sync до релиза.`
+      : "",
+    Number(summary?.errors.payment_callback_failures_24h || 0) > 0
+      ? `Ошибок callback за 24ч: ${summary?.errors.payment_callback_failures_24h}. Нужна проверка подписей, allowlist и processed_ok=false событий.`
+      : "",
+    Number(summary?.errors.subscription_numeric_fallbacks_24h || 0) > 0
+      ? `Numeric fallback сработал ${summary?.errors.subscription_numeric_fallbacks_24h} раз за 24ч. Это сигнал на cleanup старых подписочных токенов.`
+      : "",
+    Number(summary?.errors.open_tickets || 0) > 0
+      ? `Открытых тикетов: ${summary?.errors.open_tickets}. Убедитесь, что очередь поддержки не копится перед релизом.`
+      : "",
+  ].filter(Boolean);
+
   const errorCards = [
     {
       label: "Метрики",
-      value: summary?.errors.stale_metrics ? "stale" : "ok",
+      value: metricsHealth.value,
       tone: summary?.errors.stale_metrics ? "badge-warning" : "badge-success",
-      detail: summary?.errors.stale_metrics ? "нужна проверка timer/collector" : "сэмплы свежие",
+      detail: metricsHealth.detail,
     },
     {
       label: "Ноды с риском",
       value: summary?.errors.unhealthy_nodes ?? "—",
       tone: Number(summary?.errors.unhealthy_nodes || 0) > 0 ? "badge-danger" : "badge-success",
-      detail: "health score и panel latency",
+      detail: "health score, panel latency и просадки collector",
     },
     {
       label: "Callback ошибки 24ч",
@@ -98,13 +152,13 @@ export default function AdminDashboardPage() {
       label: "Fallback подписки 24ч",
       value: summary?.errors.subscription_numeric_fallbacks_24h ?? "—",
       tone: Number(summary?.errors.subscription_numeric_fallbacks_24h || 0) > 0 ? "badge-warning" : "badge-success",
-      detail: "случаи lookup по tg_id",
+      detail: "случаи lookup по tg_id вместо sub_token",
     },
     {
       label: "Открытые тикеты",
       value: summary?.errors.open_tickets ?? "—",
       tone: Number(summary?.errors.open_tickets || 0) > 0 ? "badge-info" : "badge-success",
-      detail: "очередь поддержки",
+      detail: "очередь поддержки и риск задержки ответа",
     },
   ];
 
@@ -121,7 +175,7 @@ export default function AdminDashboardPage() {
     {
       label: "Тикеты",
       value: summary?.tickets.open ?? "—",
-      sub: "Открытых обращений",
+      sub: "Открытые обращения",
       icon: Ticket,
       iconClass: "stat-icon-amber",
       sparkline: [] as number[],
@@ -130,7 +184,7 @@ export default function AdminDashboardPage() {
     {
       label: "Ноды",
       value: `${summary?.nodes.healthy ?? "—"} / ${summary?.nodes.total ?? "—"}`,
-      sub: metrics?.status === "fresh" ? "Метрики актуальны" : "Метрики устарели",
+      sub: metrics?.status === "fresh" ? `Метрики свежие (${formatSecondsToShortAge(metrics?.age_seconds)})` : `Метрики устарели (${formatSecondsToShortAge(metrics?.age_seconds)})`,
       icon: Server,
       iconClass: metrics?.status === "fresh" ? "stat-icon-emerald" : "stat-icon-amber",
       sparkline: [] as number[],
@@ -149,7 +203,6 @@ export default function AdminDashboardPage() {
 
   return (
     <section className="space-y-5">
-      {/* ── Stat cards ─────────────────────────────────── */}
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         {statCards.map((card) => {
           const Icon = card.icon;
@@ -169,7 +222,6 @@ export default function AdminDashboardPage() {
         })}
       </div>
 
-      {/* ── Metrics table ──────────────────────────────── */}
       <div className="glass-card p-5">
         <div className="mb-4 flex items-center justify-between gap-3">
           <div className="flex items-center gap-3">
@@ -182,7 +234,7 @@ export default function AdminDashboardPage() {
             </div>
           </div>
           <button
-            className="outline-btn rounded-xl px-4 py-2 text-sm font-semibold inline-flex items-center gap-2"
+            className="outline-btn inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold"
             type="button"
             onClick={() => void refresh()}
           >
@@ -215,18 +267,10 @@ export default function AdminDashboardPage() {
                   <tr key={point.date} className={`border-t border-white/20 dark:border-white/5 ${idx % 2 === 0 ? "bg-white/30 dark:bg-white/[0.02]" : ""}`}>
                     <td className="px-3 py-2.5 font-medium">{fmtRuDate(point.date)}</td>
                     <td className="px-3 py-2.5">
-                      {Number(point.registrations) > 0 ? (
-                        <span className="badge badge-success">{point.registrations}</span>
-                      ) : (
-                        <span className="text-slate-400">0</span>
-                      )}
+                      {Number(point.registrations) > 0 ? <span className="badge badge-success">{point.registrations}</span> : <span className="text-slate-400">0</span>}
                     </td>
                     <td className="px-3 py-2.5">
-                      {Number(point.churn) > 0 ? (
-                        <span className="badge badge-danger">{point.churn}</span>
-                      ) : (
-                        <span className="text-slate-400">0</span>
-                      )}
+                      {Number(point.churn) > 0 ? <span className="badge badge-danger">{point.churn}</span> : <span className="text-slate-400">0</span>}
                     </td>
                     <td className="px-3 py-2.5 font-medium">{Math.round(point.revenue_rub || 0)} ₽</td>
                     <td className="px-3 py-2.5">{point.revenue_stars}</td>
@@ -238,7 +282,6 @@ export default function AdminDashboardPage() {
         ) : null}
       </div>
 
-      {/* ── Top nodes ──────────────────────────────────── */}
       <div className="glass-card p-5">
         <div className="mb-4 flex items-center gap-3">
           <div className="stat-icon stat-icon-emerald">
@@ -307,9 +350,25 @@ export default function AdminDashboardPage() {
             </article>
           ))}
         </div>
+        {attentionItems.length ? (
+          <div className="mt-4 rounded-2xl border border-amber-500/20 bg-amber-500/10 p-4">
+            <p className="text-xs font-semibold uppercase tracking-[0.12em] text-amber-300">Что проверить сейчас</p>
+            <ul className="mt-2 space-y-2 text-sm text-slate-200">
+              {attentionItems.map((item) => (
+                <li key={item} className="flex items-start gap-2">
+                  <span className="mt-1 h-1.5 w-1.5 rounded-full bg-amber-300" />
+                  <span>{item}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        ) : (
+          <div className="mt-4 rounded-2xl border border-emerald-500/20 bg-emerald-500/10 p-4 text-sm text-emerald-200">
+            Критичных сигналов сейчас нет: метрики свежие, callback-ошибки и fallback-хиты под контролем.
+          </div>
+        )}
       </div>
 
-      {/* ── Summary footer ─────────────────────────────── */}
       <div className="stat-card p-4">
         <div className="flex items-center gap-3">
           <div className="stat-icon stat-icon-violet">
