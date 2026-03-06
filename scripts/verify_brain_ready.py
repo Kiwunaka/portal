@@ -12,6 +12,7 @@ Checks:
 import argparse
 import os
 import re
+import shlex
 from pathlib import Path
 
 import paramiko
@@ -67,23 +68,31 @@ def _print_result(name: str, out: str, err: str) -> None:
 
 
 def _curl_retry(url: str, *, host: str, contains: str | None = None, attempts: int = 12, pause_sec: float = 1.0) -> str:
-    base = f"curl -fsS --insecure --resolve {host}:443:127.0.0.1 https://{url}"
+    base = " ".join(
+        [
+            "curl",
+            "-fsS",
+            "--insecure",
+            "--resolve",
+            shlex.quote(f"{host}:443:127.0.0.1"),
+            shlex.quote(f"https://{url}"),
+        ]
+    )
+    body_file = "/tmp/portal_verify_body.txt"
     pipe = ""
     if contains:
-        needle = contains.replace("'", "'\"'\"'")
-        pipe = f" | tee /tmp/portal_verify_body.txt | grep -F '{needle}' >/dev/null"
-    return (
-        "bash -lc '"
+        pipe = f" | tee {shlex.quote(body_file)} | grep -F -- {shlex.quote(contains)} >/dev/null"
+    script = (
         f"for i in $(seq 1 {int(attempts)}); do "
         f"if {base}{pipe}; then "
-        "if [ -f /tmp/portal_verify_body.txt ]; then head -c 200 /tmp/portal_verify_body.txt; rm -f /tmp/portal_verify_body.txt; fi; "
+        f"if [ -f {shlex.quote(body_file)} ]; then head -c 200 {shlex.quote(body_file)}; rm -f {shlex.quote(body_file)}; fi; "
         "exit 0; "
         f"fi; sleep {pause_sec}; "
         "done; "
         f"{base} 2>/dev/null | head -c 200; "
         "exit 22"
-        "'"
     )
+    return "bash -lc " + shlex.quote(script)
 
 
 def main() -> int:
