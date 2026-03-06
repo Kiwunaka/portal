@@ -1426,9 +1426,6 @@ async def _try_activate_opening_premium_bonus(
     if _campaign_claimed(tg_id=tg_id, campaign_key=OPENING_PREMIUM_CAMPAIGN_KEY):
         return False, "already_claimed"
 
-    if not _mark_campaign_claim_once(tg_id=tg_id, campaign_key=OPENING_PREMIUM_CAMPAIGN_KEY):
-        return False, "already_claimed"
-
     promo_tariff = {
         "name": f"🎁 Бонус запуска ({OPENING_PREMIUM_DAYS} дней)",
         "stars": 0,
@@ -1446,12 +1443,19 @@ async def _try_activate_opening_premium_bonus(
             # Opening bonus must not reserve the channel-bonus claim flag.
             db_user.channel_bonus_active = False
             db_user.channel_bonus_expires_at = None
-            db_user.channel_bonus_revoked_at = now
+            db_user.channel_bonus_revoked_at = None
             session.commit()
     except Exception:
         session.rollback()
     finally:
         session.close()
+
+    if not _mark_campaign_claim_once(tg_id=tg_id, campaign_key=OPENING_PREMIUM_CAMPAIGN_KEY):
+        logger.warning(
+            "opening bonus activated without campaign mark tg_id=%s campaign_key=%s",
+            int(tg_id),
+            OPENING_PREMIUM_CAMPAIGN_KEY,
+        )
 
     track_event(
         tg_id=int(tg_id),
@@ -1494,10 +1498,6 @@ async def _try_activate_friend_gift_bonus(
         return False, "already_paid_active"
     if _campaign_claimed(tg_id=tg_id, campaign_key=FRIEND_GIFT_CAMPAIGN_KEY):
         return False, "already_claimed"
-    if not _mark_campaign_claim_once(tg_id=tg_id, campaign_key=FRIEND_GIFT_CAMPAIGN_KEY):
-        return False, "already_claimed"
-
-    set_referrer_by_code(tg_id, ref_code)
 
     promo_tariff = {
         "name": f"🎁 Подарок от друга ({FRIEND_GIFT_DAYS} дня)",
@@ -1508,6 +1508,13 @@ async def _try_activate_friend_gift_bonus(
         "sub_type": "BONUS",
     }
     await create_subscription(message, tg_id, promo_tariff, bot)
+    set_referrer_by_code(tg_id, ref_code)
+    if not _mark_campaign_claim_once(tg_id=tg_id, campaign_key=FRIEND_GIFT_CAMPAIGN_KEY):
+        logger.warning(
+            "friend gift activated without campaign mark tg_id=%s campaign_key=%s",
+            int(tg_id),
+            FRIEND_GIFT_CAMPAIGN_KEY,
+        )
 
     track_event(
         tg_id=int(tg_id),

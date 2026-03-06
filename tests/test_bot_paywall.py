@@ -166,8 +166,61 @@ class BotPaywallTests(unittest.TestCase):
             self.assertIsNotNone(user)
             self.assertIsNone(getattr(user, "channel_bonus_claimed_at", None))
             self.assertFalse(bool(getattr(user, "channel_bonus_active", False)))
+            self.assertIsNone(getattr(user, "channel_bonus_revoked_at", None))
         finally:
             s.close()
+
+    def test_opening_bonus_does_not_burn_campaign_claim_on_subscription_failure(self) -> None:
+        self.bot_module.OPENING_PREMIUM_ENABLED = True
+        self.bot_module.OPENING_PREMIUM_DAYS = 14
+        self.bot_module.OPENING_PREMIUM_CAMPAIGN_KEY = "opening_premium_14d"
+        self.bot_module.set_tos_accepted(1001)
+
+        class _Msg:
+            def __init__(self, bot):
+                self.bot = bot
+
+        async def _failing_create_subscription(message, tg_id, tariff, bot, **_kwargs):
+            raise RuntimeError("subscription failed")
+
+        async def _ok_create_subscription(message, tg_id, tariff, bot, **_kwargs):
+            return None
+
+        old_create_subscription = self.bot_module.create_subscription
+        try:
+            msg = _Msg(bot=_FakeBot(status="member"))
+            self.bot_module.create_subscription = _failing_create_subscription
+            with self.assertRaises(RuntimeError):
+                asyncio.run(
+                    self.bot_module._try_activate_opening_premium_bonus(
+                        message=msg,
+                        bot=msg.bot,
+                        tg_id=1001,
+                        username="alice",
+                    )
+                )
+
+            self.assertFalse(
+                self.bot_module._campaign_claimed(
+                    tg_id=1001,
+                    campaign_key=self.bot_module.OPENING_PREMIUM_CAMPAIGN_KEY,
+                )
+            )
+
+            self.bot_module.create_subscription = _ok_create_subscription
+            ok, reason = asyncio.run(
+                self.bot_module._try_activate_opening_premium_bonus(
+                    message=msg,
+                    bot=msg.bot,
+                    tg_id=1001,
+                    username="alice",
+                )
+            )
+        finally:
+            self.bot_module.create_subscription = old_create_subscription
+
+        self.assertTrue(ok)
+        self.assertEqual(reason, "activated")
 
     def test_parse_start_deeplink_context_supports_promo_and_campaign(self) -> None:
         promo, campaign = self.bot_module._parse_start_deeplink_context("promo_newyear")
@@ -250,6 +303,64 @@ class BotPaywallTests(unittest.TestCase):
         self.assertFalse(ok2)
         self.assertEqual(reason2, "already_claimed")
         self.assertEqual(calls, [1001])
+
+    def test_friend_gift_does_not_burn_campaign_claim_on_subscription_failure(self) -> None:
+        self.bot_module.FRIEND_GIFT_ENABLED = True
+        self.bot_module.FRIEND_GIFT_DAYS = 3
+        self.bot_module.FRIEND_GIFT_CAMPAIGN_KEY = "friend_gift_3d"
+        self.bot_module.set_tos_accepted(1001)
+
+        self.bot_module.ensure_pending_user(2002, username="referrer")
+        ref_code = self.bot_module.get_or_create_referral_code(2002)
+        self.assertTrue(ref_code)
+
+        class _Msg:
+            def __init__(self, bot):
+                self.bot = bot
+
+        async def _failing_create_subscription(message, tg_id, tariff, bot, **_kwargs):
+            raise RuntimeError("subscription failed")
+
+        async def _ok_create_subscription(message, tg_id, tariff, bot, **_kwargs):
+            return None
+
+        old_create_subscription = self.bot_module.create_subscription
+        try:
+            msg = _Msg(bot=_FakeBot(status="member"))
+            self.bot_module.create_subscription = _failing_create_subscription
+            with self.assertRaises(RuntimeError):
+                asyncio.run(
+                    self.bot_module._try_activate_friend_gift_bonus(
+                        message=msg,
+                        bot=msg.bot,
+                        tg_id=1001,
+                        username="alice",
+                        referral_code=ref_code,
+                    )
+                )
+
+            self.assertFalse(
+                self.bot_module._campaign_claimed(
+                    tg_id=1001,
+                    campaign_key=self.bot_module.FRIEND_GIFT_CAMPAIGN_KEY,
+                )
+            )
+
+            self.bot_module.create_subscription = _ok_create_subscription
+            ok, reason = asyncio.run(
+                self.bot_module._try_activate_friend_gift_bonus(
+                    message=msg,
+                    bot=msg.bot,
+                    tg_id=1001,
+                    username="alice",
+                    referral_code=ref_code,
+                )
+            )
+        finally:
+            self.bot_module.create_subscription = old_create_subscription
+
+        self.assertTrue(ok)
+        self.assertEqual(reason, "activated")
 
     def test_bot_checkout_url_includes_tracking_context(self) -> None:
         self.bot_module.PAY_CHECKOUT_URL = "https://portal-privacy.online/checkout?from=bot"
