@@ -1,5 +1,7 @@
 # PL DNS Mitigation (2026-02-08)
 
+> Historical snapshot: this document describes the February DNS incident and references `pl_free` as it existed then. For current production node roles and runtime truth, use `docs/36-node-source-of-truth-2026-03-07.md`.
+
 ## Incident
 
 Users reported unstable Poland connectivity.

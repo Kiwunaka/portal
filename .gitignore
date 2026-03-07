@@ -70,3 +70,6 @@ mockup/
 mockupv2/
 mockupv3/
 mockupv5/
+
+# Local operational snapshots / backups (must never be committed)
+ops-local/

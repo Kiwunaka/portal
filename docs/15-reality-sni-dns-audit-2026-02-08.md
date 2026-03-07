@@ -1,5 +1,7 @@
 # Reality/SNI + DNS Audit (2026-02-08)
 
+> Historical snapshot: this audit reflects the February 2026 state, including the then-relevant free inbound on `pl:8443`. For current production node roles and runtime truth, use `docs/36-node-source-of-truth-2026-03-07.md`.
+
 Scope:
 - Nodes: `brain`, `pl`, `it`, `us`
 - Inbounds checked: `id=1` on all nodes (`:443`), plus `id=2` on `pl` (`:8443`, free inbound)

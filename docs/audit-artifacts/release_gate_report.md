@@ -1,6 +1,6 @@
 # Release Gate Report
 
-- Generated at: `2026-03-07 03:20:21`
+- Generated at: `2026-03-07 04:14:48`
 - Status: `PASS`
 
 ## Summary
@@ -9,10 +9,10 @@
 |---|---:|---:|
 | Critical worker regression | 0 | 3.28 |
 | Public link checks | 0 | 0.09 |
-| Marketing production build | 0 | 45.55 |
+| Marketing production build | 0 | 34.40 |
 | Admin webapp smoke | 0 | 0.10 |
-| WebApp production build | 0 | 34.95 |
-| UI visual smoke | 0 | 0.10 |
+| WebApp production build | 0 | 34.85 |
+| UI visual smoke | 0 | 0.09 |
 
 ## Command Tails
 
@@ -28,7 +28,7 @@ C:\Users\kiwun\AppData\Local\Programs\Python\Python312\Lib\site-packages\sqlalch
   return util.wrap_callable(lambda ctx: fn(), fn)  # type: ignore
 ...
 ----------------------------------------------------------------------
-Ran 7 tests in 2.755s
+Ran 7 tests in 2.811s
 
 OK
 ```
@@ -108,14 +108,14 @@ Admin WebApp smoke passed.
 ▲ Next.js 16.1.6 (Turbopack)
 
   Creating an optimized production build ...
-✓ Compiled successfully in 3.2s
+✓ Compiled successfully in 3.1s
   Running TypeScript ...
   Collecting page data using 19 workers ...
   Generating static pages using 19 workers (0/23) ...
   Generating static pages using 19 workers (5/23) 
   Generating static pages using 19 workers (11/23) 
   Generating static pages using 19 workers (17/23) 
-✓ Generating static pages using 19 workers (23/23) in 562.6ms
+✓ Generating static pages using 19 workers (23/23) in 503.3ms
   Finalizing page optimization ...
 
 Route (app)

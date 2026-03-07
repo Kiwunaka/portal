@@ -1,4 +1,6 @@
-﻿# Free Tier policy and speed cap
+# Free Tier policy and speed cap
+
+> Historical note (2026-03-07): examples below reference the old `pl_free` contour. Current runtime truth for production is `free` as a dedicated free-node code plus a separate legacy `pl:8443` inbound. See `docs/36-node-source-of-truth-2026-03-07.md`.
 
 ## Target defaults
 

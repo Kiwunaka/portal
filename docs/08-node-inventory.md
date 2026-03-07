@@ -22,6 +22,7 @@ This file tracks the current node list and their roles. Do not put secrets here 
 - 3x-ui panel port/path is randomized per node and restricted by UFW to brain IP only.
 - Brain x-ui built-in subscription server must stay disabled (`subEnable=false`, `subPort=2097`) because portal owns `:2096`.
 - Current standard delivery profile is `VLESS + TCP + Reality`.
+- Current runtime free contour is the dedicated node code `free`. If the host is physically located in NL, treat that as an infra-placement fact, not as a return to `pl_free`.
 - `pl` currently also has a legacy extra inbound `8443` (`PL Free Reality`); treat it as manual/legacy until it is reflected in runtime DB and sync docs.
 
 ## Checklist

@@ -1,5 +1,7 @@
 # Agent Orchestration Log (2026-02-08)
 
+> Historical snapshot: this log mentions the then-active `pl_free` runtime contour. For current production node roles and current runtime truth, use `docs/36-node-source-of-truth-2026-03-07.md`.
+
 Использованы роли из `AGENTS.md` как рабочие потоки оркестрации:
 
 ## backend-infra
