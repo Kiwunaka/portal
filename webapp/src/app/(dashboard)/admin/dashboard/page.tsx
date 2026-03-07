@@ -249,6 +249,57 @@ export default function AdminDashboardPage() {
     },
   ];
 
+  const retentionCards = [
+    {
+      label: "Истекают за 3 дня",
+      value: summary?.retention.expiring_3d ?? "—",
+      tone: Number(summary?.retention.expiring_3d || 0) > 0 ? "badge-warning" : "badge-success",
+      detail: "Кого важно догреть на T-3 / T-1 / T0",
+    },
+    {
+      label: "Истекли за 7 дней",
+      value: summary?.retention.expired_7d ?? "—",
+      tone: Number(summary?.retention.expired_7d || 0) > 0 ? "badge-info" : "badge-success",
+      detail: "Кого уже можно возвращать в reactivation flow",
+    },
+    {
+      label: "Кандидаты на reactivate",
+      value: summary?.retention.reactivation_candidates ?? "—",
+      tone: Number(summary?.retention.reactivation_candidates || 0) > 0 ? "badge-info" : "badge-success",
+      detail: "Истёкшие и неактивные free users",
+    },
+    {
+      label: "Retention ping 24ч",
+      value:
+        Number(summary?.retention.pings_24h.t3 || 0) +
+        Number(summary?.retention.pings_24h.t1 || 0) +
+        Number(summary?.retention.pings_24h.t0 || 0),
+      tone:
+        Number(summary?.retention.pings_24h.t3 || 0) +
+          Number(summary?.retention.pings_24h.t1 || 0) +
+          Number(summary?.retention.pings_24h.t0 || 0) >
+        0
+          ? "badge-success"
+          : "badge-warning",
+      detail: `T-3: ${summary?.retention.pings_24h.t3 ?? 0}, T-1: ${summary?.retention.pings_24h.t1 ?? 0}, T0: ${summary?.retention.pings_24h.t0 ?? 0}`,
+    },
+    {
+      label: "Welcome ping 24ч",
+      value: summary?.retention.pings_24h.welcome ?? "—",
+      tone: Number(summary?.retention.pings_24h.welcome || 0) > 0 ? "badge-success" : "badge-info",
+      detail: "Первое касание новых пользователей",
+    },
+    {
+      label: "Reactivate / Start99 24ч",
+      value: `${summary?.retention.pings_24h.reactivation ?? 0} / ${summary?.retention.pings_24h.start99_offer ?? 0}`,
+      tone:
+        Number(summary?.retention.pings_24h.reactivation || 0) > 0 || Number(summary?.retention.pings_24h.start99_offer || 0) > 0
+          ? "badge-success"
+          : "badge-info",
+      detail: "Реактивация и upsell-поток для недавних оплат",
+    },
+  ];
+
   return (
     <section className="space-y-5">
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
@@ -440,6 +491,29 @@ export default function AdminDashboardPage() {
         </div>
       </div>
 
+      <div className="glass-card p-5">
+        <div className="mb-4 flex items-center gap-3">
+          <div className="stat-icon stat-icon-blue">
+            <TrendingUp size={20} />
+          </div>
+          <div>
+            <h2 className="font-display text-xl font-bold">Удержание и реактивация</h2>
+            <p className="text-xs text-slate-500">Кого нужно догревать, кого возвращать и как отработал retention worker</p>
+          </div>
+        </div>
+        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+          {retentionCards.map((card) => (
+            <article key={card.label} className="node-card">
+              <p className="text-[10px] uppercase tracking-[0.1em] text-slate-500">{card.label}</p>
+              <div className="mt-2 flex items-center gap-2">
+                <span className={`badge ${card.tone}`}>{card.value}</span>
+              </div>
+              <p className="mt-2 text-xs text-slate-500">{card.detail}</p>
+            </article>
+          ))}
+        </div>
+      </div>
+
       <div className="stat-card p-4">
         <div className="flex items-center gap-3">
           <div className="stat-icon stat-icon-violet">
@@ -450,7 +524,7 @@ export default function AdminDashboardPage() {
           </p>
         </div>
       </div>
-      {summary?.errors.stale_metrics || Number(summary?.errors.unhealthy_nodes || 0) > 0 ? (
+      {summary?.errors.stale_metrics || Number(summary?.errors.unhealthy_nodes || 0) > 0 || summary?.resilience.single_point_risk ? (
         <p className="text-xs text-amber-500">
           Проверьте `portal-node-metrics.timer`, свежесть сэмплов и проблемные ноды до релиза.
         </p>

@@ -280,6 +280,19 @@ export type ReviewPayload = {
 export type AdminSummaryPayload = {
   actor_tg_id: number;
   users: { total: number; active: number; free: number; paid: number };
+  retention: {
+    expiring_3d: number;
+    expired_7d: number;
+    reactivation_candidates: number;
+    pings_24h: {
+      welcome: number;
+      t3: number;
+      t1: number;
+      t0: number;
+      reactivation: number;
+      start99_offer: number;
+    };
+  };
   tickets: { open: number };
   nodes: { total: number; healthy: number };
   errors: {
@@ -288,6 +301,10 @@ export type AdminSummaryPayload = {
     open_tickets: number;
     payment_callback_failures_24h: number;
     subscription_numeric_fallbacks_24h: number;
+  };
+  resilience: {
+    single_point_risk: boolean;
+    free_node_enabled: boolean;
   };
   bonus_events_24h: {
     channel_activated: number;

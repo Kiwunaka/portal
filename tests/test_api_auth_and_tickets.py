@@ -864,6 +864,78 @@ class ApiAuthAndTicketsTests(unittest.TestCase):
         self.assertEqual(int(bonus_events.get("gift_redeemed") or 0), 1)
         self.assertEqual(int(bonus_events.get("gift_denied") or 0), 1)
 
+    def test_admin_summary_includes_retention_cohorts_and_pings(self) -> None:
+        from db import SessionLocal
+        from models import Event, User
+
+        now = datetime.utcnow().replace(microsecond=0)
+        admin_hdrs = {"X-Telegram-Init-Data": self._init_data(9999, "admin")}
+
+        s = SessionLocal()
+        try:
+            s.add(
+                User(
+                    tg_id=3101,
+                    username="expiring_soon",
+                    uuid="00000000-0000-0000-0000-000000003101",
+                    email="expiring_soon_3101",
+                    sub_type="PAID",
+                    is_active=True,
+                    expiry_at=now + timedelta(days=2),
+                    tos_accepted=True,
+                )
+            )
+            s.add(
+                User(
+                    tg_id=3102,
+                    username="reactivation_candidate",
+                    uuid="00000000-0000-0000-0000-000000003102",
+                    email="reactivation_candidate_3102",
+                    sub_type="FREE",
+                    is_active=False,
+                    expiry_at=now - timedelta(days=2),
+                    tos_accepted=True,
+                )
+            )
+            s.add(Event(tg_id=3101, event_name="expired", source="test", created_at=now - timedelta(days=1)))
+            s.add(Event(tg_id=3102, event_name="expired", source="test", created_at=now - timedelta(days=2)))
+            retention_flows = {
+                "welcome_chain": "welcome",
+                "expiry_chain:t3": "t3",
+                "expiry_chain:t1": "t1",
+                "expiry_chain:t0": "t0",
+                "reactivation": "reactivation",
+                "start99_welcome_offer": "start99_offer",
+            }
+            for flow_label, expected_flow in retention_flows.items():
+                s.add(
+                    Event(
+                        tg_id=3101,
+                        event_name="retention_ping",
+                        source="worker",
+                        meta_json=json.dumps({"flow": flow_label, "variant": "a"}),
+                        created_at=now,
+                    )
+                )
+            s.commit()
+        finally:
+            s.close()
+
+        summary_resp = self.client.get("/api/admin/summary", headers=admin_hdrs)
+        self.assertEqual(summary_resp.status_code, 200, summary_resp.text)
+        payload = summary_resp.json()
+        retention = payload.get("retention") or {}
+        self.assertEqual(int(retention.get("expiring_3d") or 0), 1)
+        self.assertEqual(int(retention.get("expired_7d") or 0), 2)
+        self.assertEqual(int(retention.get("reactivation_candidates") or 0), 1)
+        pings = retention.get("pings_24h") or {}
+        self.assertEqual(int(pings.get("welcome") or 0), 1)
+        self.assertEqual(int(pings.get("t3") or 0), 1)
+        self.assertEqual(int(pings.get("t1") or 0), 1)
+        self.assertEqual(int(pings.get("t0") or 0), 1)
+        self.assertEqual(int(pings.get("reactivation") or 0), 1)
+        self.assertEqual(int(pings.get("start99_offer") or 0), 1)
+
     def test_admin_start_links_and_wheel_config(self) -> None:
         admin_hdrs = {"X-Telegram-Init-Data": self._init_data(9999, "admin")}
 

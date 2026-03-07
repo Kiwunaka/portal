@@ -33,7 +33,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse, PlainTextResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
-from sqlalchemy import or_, func
+from sqlalchemy import and_, or_, func
 from sqlalchemy.exc import IntegrityError
 
 # Load env from repo-local file first to avoid cwd-dependent startup behavior.
@@ -2251,6 +2251,25 @@ def _json_obj(raw: str | None) -> dict[str, Any]:
     return obj if isinstance(obj, dict) else {}
 
 
+def _normalize_retention_flow(raw_flow: str | None) -> str:
+    flow = str(raw_flow or "").strip().lower()
+    if not flow:
+        return ""
+    if flow.startswith("welcome"):
+        return "welcome"
+    if flow in {"t3", "t1", "t0"}:
+        return flow
+    if flow.startswith("expiry_chain:"):
+        tail = flow.split(":", 1)[1].strip().lower()
+        if tail in {"t3", "t1", "t0"}:
+            return tail
+    if flow.startswith("reactivation"):
+        return "reactivation"
+    if flow.startswith("start99"):
+        return "start99_offer"
+    return ""
+
+
 def _key_history_log(
     *,
     tg_id: int,
@@ -4393,6 +4412,7 @@ async def admin_summary(x_telegram_init_data: str = Header(default="")) -> dict:
     stale_after_seconds = max(300, int(os.getenv("NODE_METRICS_STALE_AFTER_SECONDS", "900")))
     now = _utcnow()
     since_24h = now - timedelta(hours=24)
+    since_7d = now - timedelta(days=7)
     s = SessionLocal()
     try:
         total_users = s.query(func.count(User.tg_id)).scalar() or 0
@@ -4402,6 +4422,9 @@ async def admin_summary(x_telegram_init_data: str = Header(default="")) -> dict:
         open_tickets = s.query(func.count(SupportTicket.id)).filter(SupportTicket.status != STATUS_CLOSED).scalar() or 0
         total_nodes = s.query(func.count(Node.id)).filter(Node.enabled == True).scalar() or 0
         healthy_nodes = s.query(func.count(Node.id)).filter(Node.enabled == True, Node.is_healthy == True).scalar() or 0
+        free_node_enabled = bool(
+            s.query(Node.id).filter(Node.enabled == True, func.lower(func.coalesce(Node.code, "")) == "free").first()
+        )
         last_metric_sample = s.query(func.max(NodeHealthSample.sampled_at)).scalar()
         if not last_metric_sample:
             last_metric_sample = s.query(func.max(Node.last_health_at)).scalar()
@@ -4427,6 +4450,35 @@ async def admin_summary(x_telegram_init_data: str = Header(default="")) -> dict:
             .scalar()
             or 0
         )
+        expiring_3d = (
+            s.query(func.count(User.tg_id))
+            .filter(User.tg_id > 0)
+            .filter(func.upper(func.coalesce(User.sub_type, "")) != "MANUAL")
+            .filter(User.is_active == True)
+            .filter(User.expiry_at.isnot(None))
+            .filter(User.expiry_at >= now, User.expiry_at <= now + timedelta(days=3))
+            .scalar()
+            or 0
+        )
+        expired_7d = (
+            s.query(func.count(func.distinct(Event.tg_id)))
+            .filter(Event.created_at >= since_7d, Event.event_name == "expired")
+            .scalar()
+            or 0
+        )
+        reactivation_candidates = (
+            s.query(func.count(User.tg_id))
+            .filter(User.tg_id > 0)
+            .filter(func.upper(func.coalesce(User.sub_type, "")) != "MANUAL")
+            .filter(
+                or_(
+                    User.expiry_at <= now,
+                    and_(func.upper(func.coalesce(User.sub_type, "")) == "FREE", User.is_active == False),
+                )
+            )
+            .scalar()
+            or 0
+        )
         bonus_event_rows = (
             s.query(Event.event_name, func.count(Event.id))
             .filter(Event.created_at >= since_24h)
@@ -4446,6 +4498,24 @@ async def admin_summary(x_telegram_init_data: str = Header(default="")) -> dict:
             .all()
         )
         bonus_event_map = {str(name or ""): int(count or 0) for name, count in bonus_event_rows}
+        retention_ping_rows = (
+            s.query(Event.meta_json)
+            .filter(Event.created_at >= since_24h, Event.event_name == "retention_ping")
+            .all()
+        )
+        retention_ping_map = {
+            "welcome": 0,
+            "t3": 0,
+            "t1": 0,
+            "t0": 0,
+            "reactivation": 0,
+            "start99_offer": 0,
+        }
+        for row in retention_ping_rows:
+            meta = _json_obj(getattr(row, "meta_json", None))
+            flow_key = _normalize_retention_flow(meta.get("flow"))
+            if flow_key:
+                retention_ping_map[flow_key] = int(retention_ping_map.get(flow_key, 0)) + 1
         last_samples = (
             s.query(Node.code, Node.health_score, Node.panel_latency_ms, Node.active_clients, Node.last_health_at)
             .filter(Node.enabled == True)
@@ -4461,6 +4531,19 @@ async def admin_summary(x_telegram_init_data: str = Header(default="")) -> dict:
                 "free": int(free_users),
                 "paid": int(paid_users),
             },
+            "retention": {
+                "expiring_3d": int(expiring_3d),
+                "expired_7d": int(expired_7d),
+                "reactivation_candidates": int(reactivation_candidates),
+                "pings_24h": {
+                    "welcome": int(retention_ping_map.get("welcome", 0)),
+                    "t3": int(retention_ping_map.get("t3", 0)),
+                    "t1": int(retention_ping_map.get("t1", 0)),
+                    "t0": int(retention_ping_map.get("t0", 0)),
+                    "reactivation": int(retention_ping_map.get("reactivation", 0)),
+                    "start99_offer": int(retention_ping_map.get("start99_offer", 0)),
+                },
+            },
             "tickets": {"open": int(open_tickets)},
             "nodes": {"total": int(total_nodes), "healthy": int(healthy_nodes)},
             "errors": {
@@ -4471,6 +4554,10 @@ async def admin_summary(x_telegram_init_data: str = Header(default="")) -> dict:
                 "open_tickets": int(open_tickets),
                 "payment_callback_failures_24h": int(payment_callback_failures_24h),
                 "subscription_numeric_fallbacks_24h": int(subscription_numeric_fallbacks_24h),
+            },
+            "resilience": {
+                "single_point_risk": bool(int(healthy_nodes) < 2),
+                "free_node_enabled": bool(free_node_enabled),
             },
             "bonus_events_24h": {
                 "channel_activated": int(bonus_event_map.get("promo_channel_activated", 0)),
