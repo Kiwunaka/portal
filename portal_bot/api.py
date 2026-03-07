@@ -474,13 +474,8 @@ def _fk_flatten_values(value: Any) -> list[str]:
 
 
 def _fk_api_signature(*, api_key: str, payload: dict[str, Any]) -> str:
-    top = {
-        "data": payload.get("data"),
-        "iat": payload.get("iat"),
-        "nonce": payload.get("nonce"),
-        "shopId": payload.get("shopId"),
-    }
-    values = _fk_flatten_values(top)
+    top = {str(k): v for k, v in dict(payload or {}).items() if str(k) != "signature"}
+    values = _fk_flatten_values({k: top[k] for k in sorted(top)})
     base = "|".join(values)
     return hmac.new(api_key.encode("utf-8"), base.encode("utf-8"), hashlib.sha256).hexdigest()
 
@@ -488,6 +483,58 @@ def _fk_api_signature(*, api_key: str, payload: dict[str, Any]) -> str:
 def _fk_sci_signature(*, merchant_id: str, amount: str, order_id: str, secret_word_2: str) -> str:
     base = f"{merchant_id}:{amount}:{secret_word_2}:{order_id}"
     return hashlib.md5(base.encode("utf-8")).hexdigest()
+
+
+def _fk_sci_payment_signature(*, merchant_id: str, amount: str, order_id: str, secret_word_1: str, currency: str) -> str:
+    base = f"{merchant_id}:{amount}:{secret_word_1}:{currency}:{order_id}"
+    return hashlib.md5(base.encode("utf-8")).hexdigest()
+
+
+def _format_freekassa_amount(amount: float | int) -> str:
+    return f"{float(amount or 0):.2f}"
+
+
+def _build_freekassa_payment_url(
+    *,
+    source: str,
+    order_id: str,
+    amount_rub: float | int,
+    currency: str,
+    tg_id: int,
+    plan_code: str,
+    campaign: str,
+    promo_code: str,
+) -> str:
+    shop = _fk_shop_by_source(source)
+    merchant_id = str(shop.get("shop_id") or "").strip()
+    secret_word_1 = str(shop.get("secret_word_1") or "").strip()
+    if not merchant_id or not secret_word_1:
+        raise HTTPException(status_code=500, detail=f"Freekassa shop is not configured for source={source}")
+    amount_str = _format_freekassa_amount(amount_rub)
+    currency_code = str(currency or "RUB").strip().upper() or "RUB"
+    signature = _fk_sci_payment_signature(
+        merchant_id=merchant_id,
+        amount=amount_str,
+        order_id=str(order_id),
+        secret_word_1=secret_word_1,
+        currency=currency_code,
+    )
+    params: dict[str, str] = {
+        "m": merchant_id,
+        "oa": amount_str,
+        "o": str(order_id),
+        "currency": currency_code,
+        "s": signature,
+        "lang": "ru",
+        "us_tg_id": str(int(tg_id)),
+        "us_plan_code": str(plan_code or "").strip().lower()[:32],
+        "us_source": str(source or "site").strip().lower()[:16],
+    }
+    if campaign:
+        params["us_campaign"] = _sanitize_deeplink_token(campaign, max_len=64, uppercase=False)
+    if promo_code:
+        params["us_promo_code"] = _sanitize_deeplink_token(promo_code, max_len=20, uppercase=True)
+    return f"https://pay.freekassa.ru/?{urlencode(params)}"
 
 
 def _fk_client_ip(request: Request) -> str:
@@ -2010,12 +2057,9 @@ async def _freekassa_api_request(*, source: str, method: str, data: dict[str, An
         raise HTTPException(status_code=500, detail="Freekassa shop is not configured")
 
     nonce = int(time.time() * 1000)
-    payload = {
-        "shopId": shop_id,
-        "nonce": nonce,
-        "iat": int(time.time()),
-        "data": data,
-    }
+    payload = {"shopId": shop_id, "nonce": nonce}
+    for key, value in dict(data or {}).items():
+        payload[str(key)] = value
     signature = _fk_api_signature(api_key=api_key, payload=payload)
     payload["signature"] = signature
     fk_base = (getattr(Settings, "FK_API_BASE_URL", "") or os.getenv("FK_API_BASE_URL") or "https://api.fk.life/v1").strip().rstrip("/")
@@ -2039,6 +2083,13 @@ async def _freekassa_api_request(*, source: str, method: str, data: dict[str, An
             except Exception:
                 body = {"raw": txt}
             if resp.status >= 400:
+                logger.error(
+                    "freekassa api error source=%s method=%s status=%s body=%s",
+                    source,
+                    method,
+                    resp.status,
+                    str(txt or "")[:600],
+                )
                 raise HTTPException(status_code=502, detail=f"Freekassa API error: {resp.status}")
             return body if isinstance(body, dict) else {"data": body}
 
@@ -2992,30 +3043,30 @@ async def _freekassa_create_order_internal(
     finally:
         s.close()
 
-    notify_url = f"{Settings.PUBLIC_API_BASE_URL.rstrip('/')}/api/payments/freekassa/notify"
     req_data = {
-        "orderId": order_id,
-        "amount": amount_rub,
+        "amount": float(amount_rub),
         "currency": "RUB",
-        "email": "",
-        "ip": _fk_client_ip(request),
-        "urlSuccess": _safe_public_url(Settings.PAY_SUCCESS_URL) or f"{Settings.PUBLIC_API_BASE_URL.rstrip('/')}/pay/success",
-        "urlFailure": _safe_public_url(Settings.PAY_FAIL_URL) or f"{Settings.PUBLIC_API_BASE_URL.rstrip('/')}/pay/fail",
-        "urlNotification": notify_url,
-        "metadata": {
-            "tg_id": int(tg_id),
-            "plan_code": str(plan.get("code") or plan_code).strip().lower(),
-            "campaign": campaign or "",
-            "promo_code": effective_promo or "",
-            "source": source,
-            "discount_pct": int(discount_pct),
-            "base_amount_rub": int(base_amount),
-            "final_amount_rub": int(final_amount),
-            "referral_discount_eligible": bool(referral_discount_eligible),
-        },
+        "tg_id": int(tg_id),
+        "plan_code": str(plan.get("code") or plan_code).strip().lower(),
+        "campaign": campaign or "",
+        "promo_code": effective_promo or "",
+        "source": source,
+        "discount_pct": int(discount_pct),
+        "base_amount_rub": int(base_amount),
+        "final_amount_rub": int(final_amount),
+        "referral_discount_eligible": bool(referral_discount_eligible),
+        "client_ip": _fk_client_ip(request),
     }
-    remote = await _freekassa_api_request(source=source, method="orders/create", data=req_data)
-    payment_url = _parse_freekassa_payment_url(remote, order_id, source=source)
+    payment_url = _build_freekassa_payment_url(
+        source=source,
+        order_id=order_id,
+        amount_rub=amount_rub,
+        currency="RUB",
+        tg_id=int(tg_id),
+        plan_code=str(plan.get("code") or plan_code).strip().lower(),
+        campaign=campaign or "",
+        promo_code=effective_promo or "",
+    )
 
     s = SessionLocal()
     try:
@@ -3025,7 +3076,7 @@ async def _freekassa_create_order_internal(
             row.meta_json = json.dumps(
                 {
                     "request": req_data,
-                    "response": remote,
+                    "response": {"payment_url": payment_url},
                     "pricing": {
                         "base_amount_rub": int(base_amount),
                         "final_amount_rub": int(final_amount),

@@ -61,7 +61,7 @@ def main() -> int:
         Check(
             name="marketing-checkout-gateway",
             path=REPO_ROOT / "marketing" / "src" / "app" / "checkout" / "page.tsx",
-            must_contain=("Продолжение через Telegram", "Получить персональную ссылку в Telegram"),
+            must_contain=("Продолжение через Telegram", "Продолжить в Telegram", "Перейти к оплате"),
             must_not_contain=("PORTALcheckout",),
         ),
         Check(

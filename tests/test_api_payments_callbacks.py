@@ -8,7 +8,7 @@ import tempfile
 import unittest
 import uuid
 from pathlib import Path
-from urllib.parse import urlencode
+from urllib.parse import parse_qs, urlencode, urlparse
 
 from fastapi.testclient import TestClient
 
@@ -419,7 +419,6 @@ class ApiPaymentCallbacksTests(unittest.TestCase):
             self.assertEqual(currency_status.status_code, 200, currency_status.text)
 
             called_methods = [m for _, m, _ in calls]
-            self.assertIn("orders/create", called_methods)
             self.assertIn("orders", called_methods)
             self.assertIn("orders/refund", called_methods)
             self.assertIn("currencies", called_methods)
@@ -452,38 +451,33 @@ class ApiPaymentCallbacksTests(unittest.TestCase):
         finally:
             s.close()
 
-        calls: list[tuple[str, str, dict]] = []
-
-        async def fake_fk_request(*, source: str, method: str, data: dict):
-            calls.append((source, method, dict(data)))
-            if method == "orders/create":
-                return {"location": "https://pay.example/fk/public-order-1"}
-            return {"ok": True}
-
-        old_fk_request = self.api._freekassa_api_request
-        self.api._freekassa_api_request = fake_fk_request
-        try:
-            ticket = self.api._create_checkout_ticket(
-                tg_id=1001,
-                plan_code="1_month",
-                promo_code="WELCOME20",
-                campaign_key="launch_w1",
-                source="site",
-            )
-            r = client.post(
-                "/api/payments/freekassa/orders/create-public",
-                json={"plan_code": "1_month", "checkout_ticket": ticket, "currency": "RUB"},
-            )
-            self.assertEqual(r.status_code, 200, r.text)
-            body = r.json()
-            self.assertTrue(body.get("ok"))
-            self.assertTrue(body.get("discount_applied"))
-            self.assertEqual(int(body.get("discount_pct") or 0), 20)
-            self.assertEqual(int(body.get("base_amount_rub") or 0), 249)
-            self.assertEqual(int(body.get("amount_rub") or 0), 199)
-            self.assertTrue(str(body.get("payment_url") or "").startswith("https://pay.example/"))
-        finally:
-            self.api._freekassa_api_request = old_fk_request
+        ticket = self.api._create_checkout_ticket(
+            tg_id=1001,
+            plan_code="1_month",
+            promo_code="WELCOME20",
+            campaign_key="launch_w1",
+            source="site",
+        )
+        r = client.post(
+            "/api/payments/freekassa/orders/create-public",
+            json={"plan_code": "1_month", "checkout_ticket": ticket, "currency": "RUB"},
+        )
+        self.assertEqual(r.status_code, 200, r.text)
+        body = r.json()
+        self.assertTrue(body.get("ok"))
+        self.assertTrue(body.get("discount_applied"))
+        self.assertEqual(int(body.get("discount_pct") or 0), 20)
+        self.assertEqual(int(body.get("base_amount_rub") or 0), 249)
+        self.assertEqual(int(body.get("amount_rub") or 0), 199)
+        payment_url = str(body.get("payment_url") or "")
+        self.assertTrue(payment_url.startswith("https://pay.freekassa.ru/?"))
+        parsed = urlparse(payment_url)
+        query = parse_qs(parsed.query)
+        self.assertEqual(query.get("currency"), ["RUB"])
+        self.assertEqual(query.get("us_tg_id"), ["1001"])
+        self.assertEqual(query.get("us_plan_code"), ["1_month"])
+        self.assertEqual(query.get("us_campaign"), ["launch_w1"])
+        self.assertEqual(query.get("us_promo_code"), ["WELCOME20"])
 
         s = SessionLocal()
         try:
@@ -494,7 +488,7 @@ class ApiPaymentCallbacksTests(unittest.TestCase):
             row = s.query(ExternalOrder).filter(ExternalOrder.tg_id == 1001, ExternalOrder.provider == "freekassa").first()
             self.assertIsNotNone(row)
             self.assertIn("\"discount_pct\":20", str(row.meta_json or ""))
-            self.assertEqual([m for _, m, _ in calls].count("orders/create"), 1)
+            self.assertIn("\"payment_url\":\"https://pay.freekassa.ru/", str(row.meta_json or ""))
         finally:
             s.close()
 
@@ -536,34 +530,25 @@ class ApiPaymentCallbacksTests(unittest.TestCase):
         finally:
             s.close()
 
-        async def fake_fk_request(*, source: str, method: str, data: dict):
-            if method == "orders/create":
-                return {"location": "https://pay.example/fk/ref-order-1"}
-            return {"ok": True}
-
-        old_fk_request = self.api._freekassa_api_request
-        self.api._freekassa_api_request = fake_fk_request
-        try:
-            ticket = self.api._create_checkout_ticket(
-                tg_id=2003,
-                plan_code="1_month",
-                promo_code="",
-                campaign_key="ref_test",
-                source="site",
-            )
-            r = client.post(
-                "/api/payments/freekassa/orders/create-public",
-                json={"plan_code": "1_month", "checkout_ticket": ticket, "currency": "RUB"},
-            )
-            self.assertEqual(r.status_code, 200, r.text)
-            body = r.json()
-            self.assertTrue(body.get("ok"))
-            self.assertTrue(body.get("discount_applied"))
-            self.assertEqual(int(body.get("discount_pct") or 0), 20)
-            self.assertEqual(int(body.get("base_amount_rub") or 0), 249)
-            self.assertEqual(int(body.get("amount_rub") or 0), 199)
-        finally:
-            self.api._freekassa_api_request = old_fk_request
+        ticket = self.api._create_checkout_ticket(
+            tg_id=2003,
+            plan_code="1_month",
+            promo_code="",
+            campaign_key="ref_test",
+            source="site",
+        )
+        r = client.post(
+            "/api/payments/freekassa/orders/create-public",
+            json={"plan_code": "1_month", "checkout_ticket": ticket, "currency": "RUB"},
+        )
+        self.assertEqual(r.status_code, 200, r.text)
+        body = r.json()
+        self.assertTrue(body.get("ok"))
+        self.assertTrue(body.get("discount_applied"))
+        self.assertEqual(int(body.get("discount_pct") or 0), 20)
+        self.assertEqual(int(body.get("base_amount_rub") or 0), 249)
+        self.assertEqual(int(body.get("amount_rub") or 0), 199)
+        self.assertTrue(str(body.get("payment_url") or "").startswith("https://pay.freekassa.ru/?"))
 
     def test_create_public_order_rejects_plan_mismatch_with_ticket(self) -> None:
         client = TestClient(self.api.app)
