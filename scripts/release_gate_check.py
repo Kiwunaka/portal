@@ -2,8 +2,10 @@ from __future__ import annotations
 
 import argparse
 import os
+import shutil
 import subprocess
 import sys
+import tempfile
 import time
 from dataclasses import dataclass
 from datetime import datetime
@@ -26,17 +28,69 @@ class GateResult:
     output_tail: str
 
 
-def _run_cmd(*, name: str, command: list[str], cwd: Path) -> GateResult:
-    started = time.perf_counter()
-    proc = subprocess.run(
-        command,
-        cwd=str(cwd),
-        stdout=subprocess.PIPE,
-        stderr=subprocess.STDOUT,
-        text=True,
-        encoding="utf-8",
-        errors="replace",
+def _is_frontend_build(command: list[str], cwd: Path) -> bool:
+    return len(command) >= 3 and command[0] == _npm_exec() and command[1:3] == ["run", "build"] and (cwd / "package.json").exists()
+
+
+def _prepare_frontend_build_copy(cwd: Path) -> Path:
+    temp_root = Path(tempfile.mkdtemp(prefix=f"{cwd.name}-gate-"))
+    target = temp_root / cwd.name
+    shutil.copytree(
+        cwd,
+        target,
+        ignore=shutil.ignore_patterns("out", ".next", "node_modules"),
     )
+    source_node_modules = cwd / "node_modules"
+    target_node_modules = target / "node_modules"
+    if cwd.name.lower() == "webapp":
+        proc = subprocess.run(
+            [_npm_exec(), "ci", "--no-audit", "--no-fund"],
+            cwd=str(target),
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+        )
+        if proc.returncode != 0:
+            raise RuntimeError(f"Failed to install dependencies for {cwd}: {(proc.stdout or '').strip()}")
+        return target
+    if os.name == "nt":
+        proc = subprocess.run(
+            ["cmd", "/c", "mklink", "/J", str(target_node_modules), str(source_node_modules)],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+        )
+        if proc.returncode != 0:
+            raise RuntimeError(f"Failed to create node_modules junction for {cwd}: {(proc.stdout or '').strip()}")
+    else:
+        target_node_modules.symlink_to(source_node_modules, target_is_directory=True)
+    return target
+
+
+def _run_cmd(*, name: str, command: list[str], cwd: Path) -> GateResult:
+    run_cwd = cwd
+    cleanup_dir: Path | None = None
+    if _is_frontend_build(command, cwd):
+        run_cwd = _prepare_frontend_build_copy(cwd)
+        cleanup_dir = run_cwd.parent
+    started = time.perf_counter()
+    try:
+        proc = subprocess.run(
+            command,
+            cwd=str(run_cwd),
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+        )
+    finally:
+        if cleanup_dir:
+            shutil.rmtree(cleanup_dir, ignore_errors=True)
     duration = time.perf_counter() - started
     out = (proc.stdout or "").strip()
     tail = "\n".join(out.splitlines()[-40:]) if out else ""

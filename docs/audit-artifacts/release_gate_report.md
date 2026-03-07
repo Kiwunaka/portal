@@ -1,17 +1,17 @@
 # Release Gate Report
 
-- Generated at: `2026-03-07 06:35:52`
+- Generated at: `2026-03-07 07:09:01`
 - Status: `PASS`
 
 ## Summary
 
 | Gate | Exit code | Duration (s) |
 |---|---:|---:|
-| Critical worker regression | 0 | 3.48 |
+| Critical worker regression | 0 | 3.24 |
 | Public link checks | 0 | 0.09 |
-| Marketing production build | 0 | 45.54 |
-| Admin webapp smoke | 0 | 0.11 |
-| WebApp production build | 0 | 34.91 |
+| Marketing production build | 0 | 34.48 |
+| Admin webapp smoke | 0 | 0.10 |
+| WebApp production build | 0 | 42.62 |
 | UI visual smoke | 0 | 0.09 |
 
 ## Command Tails
@@ -28,7 +28,7 @@ C:\Users\kiwun\AppData\Local\Programs\Python\Python312\Lib\site-packages\sqlalch
   return util.wrap_callable(lambda ctx: fn(), fn)  # type: ignore
 ...
 ----------------------------------------------------------------------
-Ran 7 tests in 3.000s
+Ran 7 tests in 2.782s
 
 OK
 ```
@@ -74,14 +74,14 @@ Link check passed.
    Collecting build traces ...
 
 Route (app)                              Size     First Load JS
-┌ ○ /                                    8.88 kB        96.3 kB
+┌ ○ /                                    8.87 kB        96.3 kB
 ├ ○ /_not-found                          873 B          88.3 kB
-├ ○ /checkout                            4.79 kB        92.2 kB
+├ ○ /checkout                            4.81 kB        92.2 kB
 ├ ○ /offer                               142 B          87.6 kB
 └ ○ /privacy                             142 B          87.6 kB
 + First Load JS shared by all            87.4 kB
-  ├ chunks/117-885da3afc9dd5396.js       31.9 kB
-  ├ chunks/fd9d1056-5d0c434f4506d830.js  53.6 kB
+  ├ chunks/004092b4-fb7a74995ea98db8.js  53.6 kB
+  ├ chunks/645-292c8134570c70af.js       31.9 kB
   └ other shared chunks (total)          1.92 kB
 
 
@@ -108,14 +108,14 @@ Admin WebApp smoke passed.
 ▲ Next.js 16.1.6 (Turbopack)
 
   Creating an optimized production build ...
-✓ Compiled successfully in 3.4s
+✓ Compiled successfully in 3.3s
   Running TypeScript ...
   Collecting page data using 19 workers ...
   Generating static pages using 19 workers (0/23) ...
   Generating static pages using 19 workers (5/23) 
   Generating static pages using 19 workers (11/23) 
   Generating static pages using 19 workers (17/23) 
-✓ Generating static pages using 19 workers (23/23) in 543.5ms
+✓ Generating static pages using 19 workers (23/23) in 518.7ms
   Finalizing page optimization ...
 
 Route (app)
