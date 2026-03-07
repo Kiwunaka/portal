@@ -39,14 +39,14 @@
 
 ## Физическая карта серверов
 
-| Физическое имя | Логический код | Страна | Назначение |
-|---|---|---|---|
-| `BRAINnode` | `brain` | DE | control-plane |
-| `PLnode` | `pl` | PL | premium delivery |
-| `ITnode` | `it` | IT | premium delivery |
-| `NLnode` | `nl` | NL | premium delivery |
-| `USnode` | `us` | US | premium delivery |
-| `FREENLnode` | `free` | NL | free delivery |
+| Физическое имя | Логический код | Страна | Назначение | План |
+|---|---|---|---|---|
+| `BRAINnode` | `brain` | DE | control-plane | `2 vCPU / 4 GB RAM / 60 GB NVMe` |
+| `PLnode` | `pl` | PL | premium delivery | `1 vCPU / 2 GB RAM / 40 GB NVMe` |
+| `ITnode` | `it` | IT | premium delivery | `1 vCPU / 2 GB RAM / 40 GB NVMe` |
+| `NLnode` | `nl` | NL | premium delivery | `1 vCPU / 2 GB RAM / 40 GB NVMe` |
+| `USnode` | `us` | US | premium delivery | `1 vCPU / 2 GB RAM / 40 GB NVMe` |
+| `FREENLnode` | `free` | NL | free delivery | `1 vCPU / 1 GB RAM / 40 GB NVMe` |
 
 ## Операторский доступ
 

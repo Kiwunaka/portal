@@ -79,10 +79,10 @@
 - endpoint требует Telegram admin auth;
 - старые инструкции с plain `X-Admin-Id` больше не соответствуют текущему runtime-контракту.
 
-### 7. Доступ к `free`-ноде с локального password inventory не подтвердился
+### 7. Доступ к `free`-ноде через старый password inventory не подтвердился
 
 - Collector на brain успешно собирает метрики `free`, то есть runtime path жив.
-- Но локальная SSH-проверка через имеющийся inventory не прошла.
+- Локальная SSH-проверка через старый password-only inventory не прошла.
 
 Практический вывод:
 - это не обязательно значит, что нода сломана;
@@ -143,3 +143,10 @@
   - stale password in local inventory is no longer treated as the primary access path.
 - Remaining follow-up:
   - direct local SSH path to `nl` should be rechecked separately if manual root operations on that node are needed.
+- Current physical server map is:
+  - `BRAINnode` -> `brain`
+  - `PLnode` -> `pl`
+  - `ITnode` -> `it`
+  - `NLnode` -> `nl`
+  - `USnode` -> `us`
+  - `FREENLnode` -> `free`
