@@ -1,18 +1,18 @@
 # Release Gate Report
 
-- Generated at: `2026-03-07 07:11:41`
+- Generated at: `2026-03-07 19:03:38`
 - Status: `PASS`
 
 ## Summary
 
 | Gate | Exit code | Duration (s) |
 |---|---:|---:|
-| Critical worker regression | 0 | 3.25 |
-| Public link checks | 0 | 0.10 |
-| Marketing production build | 0 | 34.51 |
-| Admin webapp smoke | 0 | 0.10 |
-| WebApp production build | 0 | 44.03 |
-| UI visual smoke | 0 | 0.08 |
+| Critical worker regression | 0 | 4.05 |
+| Public link checks | 0 | 0.09 |
+| Marketing production build | 0 | 45.66 |
+| Admin webapp smoke | 0 | 0.11 |
+| WebApp production build | 0 | 44.74 |
+| UI visual smoke | 0 | 0.10 |
 
 ## Command Tails
 
@@ -28,7 +28,7 @@ C:\Users\kiwun\AppData\Local\Programs\Python\Python312\Lib\site-packages\sqlalch
   return util.wrap_callable(lambda ctx: fn(), fn)  # type: ignore
 ...
 ----------------------------------------------------------------------
-Ran 7 tests in 2.747s
+Ran 7 tests in 3.425s
 
 OK
 ```
@@ -76,7 +76,7 @@ Link check passed.
 Route (app)                              Size     First Load JS
 ┌ ○ /                                    8.87 kB        96.3 kB
 ├ ○ /_not-found                          873 B          88.3 kB
-├ ○ /checkout                            4.81 kB        92.2 kB
+├ ○ /checkout                            4.82 kB        92.2 kB
 ├ ○ /offer                               142 B          87.6 kB
 └ ○ /privacy                             142 B          87.6 kB
 + First Load JS shared by all            87.4 kB
@@ -108,14 +108,14 @@ Admin WebApp smoke passed.
 ▲ Next.js 16.1.6 (Turbopack)
 
   Creating an optimized production build ...
-✓ Compiled successfully in 3.7s
+✓ Compiled successfully in 2.6s
   Running TypeScript ...
   Collecting page data using 19 workers ...
   Generating static pages using 19 workers (0/23) ...
   Generating static pages using 19 workers (5/23) 
   Generating static pages using 19 workers (11/23) 
   Generating static pages using 19 workers (17/23) 
-✓ Generating static pages using 19 workers (23/23) in 505.7ms
+✓ Generating static pages using 19 workers (23/23) in 543.6ms
   Finalizing page optimization ...
 
 Route (app)
