@@ -157,6 +157,17 @@
 - автоматический onboarding новой ноды;
 - canary rollout для любых рискованных сетевых изменений;
 - панели закрыты firewall и используются как служебный слой, а не как главный UI для жизни проекта.
+- добавить регулярный dry-run drift report между `PORTAL` и live-нодами, чтобы drift ловился до инцидента.
+
+Текущий read-only инструмент для этого: `scripts/control_plane_drift_report.py`.
+
+Пример безопасного запуска:
+
+```bash
+python scripts/control_plane_drift_report.py --only brain,pl,it,us,free
+```
+
+Скрипт только читает `nodes` из `PORTAL` и текущий inbound на ноде. Он не меняет panel/xray-конфиг.
 
 ### На 100-500 пользователей
 

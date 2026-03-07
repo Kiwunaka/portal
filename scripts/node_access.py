@@ -19,6 +19,7 @@ KEY_STEMS: dict[str, list[str]] = {
     "us": ["USnode"],
     "pl": ["PLnode"],
     "it": ["ITnode"],
+    "nl": ["NLnode", "Low ping v2", "LowPingV2"],
     "free": ["FREEnode", "FreeNode", "FREE"],
 }
 
@@ -102,30 +103,36 @@ def connect_node(
     if not attempts:
         raise RuntimeError(f"No SSH auth material found for node {code}")
 
+    ports: list[int] = []
+    for candidate in (int(port), 22):
+        if candidate not in ports:
+            ports.append(candidate)
+
     last_error: Exception | None = None
-    for method, auth in attempts:
-        cli = paramiko.SSHClient()
-        cli.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-        try:
-            cli.connect(
-                host,
-                port=port,
-                username=user,
-                timeout=30,
-                banner_timeout=30,
-                auth_timeout=30,
-                allow_agent=False,
-                look_for_keys=False,
-                **auth,
-            )
-            t = cli.get_transport()
-            if t:
-                t.set_keepalive(30)
-            return cli, method
-        except Exception as exc:
-            last_error = exc
+    for target_port in ports:
+        for method, auth in attempts:
+            cli = paramiko.SSHClient()
+            cli.set_missing_host_key_policy(paramiko.AutoAddPolicy())
             try:
-                cli.close()
-            except Exception:
-                pass
+                cli.connect(
+                    host,
+                    port=target_port,
+                    username=user,
+                    timeout=30,
+                    banner_timeout=30,
+                    auth_timeout=30,
+                    allow_agent=False,
+                    look_for_keys=False,
+                    **auth,
+                )
+                t = cli.get_transport()
+                if t:
+                    t.set_keepalive(30)
+                return cli, method
+            except Exception as exc:
+                last_error = exc
+                try:
+                    cli.close()
+                except Exception:
+                    pass
     raise RuntimeError(f"SSH auth failed for node {code}: {last_error}")
