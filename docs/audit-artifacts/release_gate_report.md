@@ -1,18 +1,18 @@
 # Release Gate Report
 
-- Generated at: `2026-03-07 19:03:38`
+- Generated at: `2026-03-07 21:00:25`
 - Status: `PASS`
 
 ## Summary
 
 | Gate | Exit code | Duration (s) |
 |---|---:|---:|
-| Critical worker regression | 0 | 4.05 |
-| Public link checks | 0 | 0.09 |
-| Marketing production build | 0 | 45.66 |
+| Critical worker regression | 0 | 3.63 |
+| Public link checks | 0 | 0.10 |
+| Marketing production build | 0 | 45.73 |
 | Admin webapp smoke | 0 | 0.11 |
-| WebApp production build | 0 | 44.74 |
-| UI visual smoke | 0 | 0.10 |
+| WebApp production build | 0 | 52.66 |
+| UI visual smoke | 0 | 0.09 |
 
 ## Command Tails
 
@@ -28,7 +28,7 @@ C:\Users\kiwun\AppData\Local\Programs\Python\Python312\Lib\site-packages\sqlalch
   return util.wrap_callable(lambda ctx: fn(), fn)  # type: ignore
 ...
 ----------------------------------------------------------------------
-Ran 7 tests in 3.425s
+Ran 7 tests in 3.078s
 
 OK
 ```
@@ -76,12 +76,12 @@ Link check passed.
 Route (app)                              Size     First Load JS
 ┌ ○ /                                    8.87 kB        96.3 kB
 ├ ○ /_not-found                          873 B          88.3 kB
-├ ○ /checkout                            4.82 kB        92.2 kB
+├ ○ /checkout                            5.29 kB        92.7 kB
 ├ ○ /offer                               142 B          87.6 kB
 └ ○ /privacy                             142 B          87.6 kB
 + First Load JS shared by all            87.4 kB
   ├ chunks/004092b4-fb7a74995ea98db8.js  53.6 kB
-  ├ chunks/645-292c8134570c70af.js       31.9 kB
+  ├ chunks/645-9f6b6af1d0e5a2b8.js       31.9 kB
   └ other shared chunks (total)          1.92 kB
 
 
@@ -115,7 +115,7 @@ Admin WebApp smoke passed.
   Generating static pages using 19 workers (5/23) 
   Generating static pages using 19 workers (11/23) 
   Generating static pages using 19 workers (17/23) 
-✓ Generating static pages using 19 workers (23/23) in 543.6ms
+✓ Generating static pages using 19 workers (23/23) in 546.5ms
   Finalizing page optimization ...
 
 Route (app)

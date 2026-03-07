@@ -3003,10 +3003,18 @@ def build_choose_tariff_text() -> str:
     )
 
 
-def _dual_pay_text() -> str:
+def _dual_pay_text(*, show_trial: bool) -> str:
+    if show_trial:
+        return (
+            "🚀 *Как хотите продолжить?*\n\n"
+            "🆓 Бесплатный режим уже доступен для базовых задач и быстрого старта.\n"
+            "Если нужен полный доступ, все страны и больше устройств — откройте оплату в ₽ или используйте Stars.\n"
+            "После оплаты доступ обновится автоматически.\n\n"
+            "Выберите удобный вариант:"
+        )
     return (
         "💳 *Оплата в рублях + Stars*\n\n"
-        "Основной путь: ₽ на сайте (карта/СБП) с прозрачной разбивкой суммы.\n"
+        "Основной путь: ₽ на сайте (карта/СБП) с прозрачной суммой и быстрым подтверждением.\n"
         "Telegram Stars остаются как резервный вариант.\n"
         "После оплаты доступ обновится автоматически.\n\n"
         "Выберите удобный способ:"
@@ -3021,12 +3029,15 @@ def _dual_pay_keyboard(*, tg_id: int, show_trial: bool) -> InlineKeyboardMarkup:
         promo_code=str(ctx.get("promo_code") or ""),
         campaign_key=str(ctx.get("campaign_key") or ""),
     )
-    rows: list[list[InlineKeyboardButton]] = [
-        [InlineKeyboardButton(text="💳 Открыть оплату ₽ (карта/СБП)", url=checkout_url)],
-        [InlineKeyboardButton(text="⭐ Оплатить Stars", callback_data="charge_stars")],
-    ]
+    rows: list[list[InlineKeyboardButton]] = []
     if show_trial:
-        rows.append([InlineKeyboardButton(text="🆓 Бесплатный режим", callback_data="buy_trial")])
+        rows.append([InlineKeyboardButton(text="🆓 Начать с бесплатного режима", callback_data="buy_trial")])
+    rows.extend(
+        [
+            [InlineKeyboardButton(text="💳 Открыть оплату ₽ (карта/СБП)", url=checkout_url)],
+            [InlineKeyboardButton(text="⭐ Оплатить Stars", callback_data="charge_stars")],
+        ]
+    )
     rows.append([InlineKeyboardButton(text="◀️ Назад", callback_data="back")])
     return InlineKeyboardMarkup(inline_keyboard=rows)
 
@@ -3042,15 +3053,16 @@ def main_keyboard_specs(tg_id: int = 0) -> list[list[dict[str, str]]]:
             ),
         ],
         [
-            _btn_spec(text="📦 Подписка", callback_data="status"),
-            _btn_spec(text="🔌 Подключение", callback_data="instruction"),
+            _btn_spec(text="📦 Статус доступа", callback_data="status"),
+            _btn_spec(text="📲 Как подключить", callback_data="instruction"),
         ],
         [
-            _btn_spec(text="🎁 Бонусы", callback_data="menu_bonuses"),
+            _btn_spec(text="🔑 Мой ключ", callback_data="show_key"),
             _btn_spec(text="🆘 Поддержка", callback_data="support"),
         ],
         [
-            _btn_spec(text="⚙️ Настройки", callback_data="settings"),
+            _btn_spec(text="🎁 Бонусы", callback_data="menu_bonuses"),
+            _btn_spec(text="⚙️ Ещё", callback_data="settings"),
         ],
     ]
     if tg_id == ADMIN_ID:
@@ -3416,7 +3428,7 @@ async def show_tariffs(callback: CallbackQuery):
 
     if BOT_RUB_BUTTON_ENABLED:
         await callback.message.edit_text(
-            _dual_pay_text(),
+            _dual_pay_text(show_trial=show_trial),
             reply_markup=_dual_pay_keyboard(tg_id=tg_id, show_trial=show_trial),
             parse_mode=ParseMode.MARKDOWN,
         )
@@ -3518,7 +3530,7 @@ async def accept_tos(callback: CallbackQuery):
     show_trial = not has_active
     if BOT_RUB_BUTTON_ENABLED:
         await callback.message.edit_text(
-            _dual_pay_text(),
+            _dual_pay_text(show_trial=show_trial),
             reply_markup=_dual_pay_keyboard(tg_id=tg_id, show_trial=show_trial),
             parse_mode=ParseMode.MARKDOWN,
         )
@@ -3935,7 +3947,8 @@ async def show_settings(callback: CallbackQuery):
         [InlineKeyboardButton(text="◀️ Назад", callback_data="back")],
     ])
     await callback.message.edit_text(
-        "⚙️ *Настройки*\n\nВыберите нужный раздел.",
+        "⚙️ *Ещё*\n\n"
+        "Здесь собраны дополнительные действия: ключ для приложения, подарки, семейные слоты и быстрый доступ к помощи.",
         reply_markup=kb,
         parse_mode=ParseMode.MARKDOWN,
     )

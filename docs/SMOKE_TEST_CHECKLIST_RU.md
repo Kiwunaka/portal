@@ -37,6 +37,12 @@
 - `checkout`:
   - заголовок не склеивается в `PORTALcheckout`
   - без `checkout_ticket` показывает управляемый Telegram fallback
+  - с `checkout_ticket` открывает styled checkout и hosted payment URL FreeKassa
+  - `Перейти к оплате` не возвращает `Freekassa API error: 500`
+- Bot menu/paywall:
+  - при доступном free-режиме он виден как первый безопасный сценарий
+  - `Мой ключ` доступен из главного меню
+  - `Статус доступа` и `Как подключить` читаются без захода в глубину `Ещё`
 - Support ticket upload:
   - создание обращения с бинарным вложением (`image/video/pdf/txt`) проходит успешно
   - ответ в треде с бинарным вложением проходит успешно
