@@ -56,7 +56,8 @@
 - deploy script копирует `collect_node_metrics.py` в `/root/portal_bot/collect_node_metrics.py`
 - static deploy публикует `marketing` и `webapp` через versioned releases и атомарное переключение symlink
 - `portal-node-metrics.timer` активен
-- `/api/admin/metrics/status` показывает свежий collector status
+- `/api/admin/metrics/status` показывает свежий collector status при реальной admin-auth
+- server-side sanity берётся из production `DATABASE_URL`, а не из локального `portal.db`
 - post-deploy verify проверяет не только `200`, но и ключевые UI-маркеры:
   - home marketing -> `Подключиться в Telegram`
   - home marketing -> `Посмотреть планы`

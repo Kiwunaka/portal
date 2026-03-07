@@ -1,6 +1,8 @@
 # PORTAL: Глобальная архитектура и production-состояние (полный срез)
 
 > Исторический снимок на 9 февраля 2026. Актуальное операционное состояние, релизный статус и метрики смотреть в `docs/ADMIN_FULL_GUIDE_RU.md`, `docs/METRICS_RU.md`, `docs/INFRA_PLAN_RU.md` и `docs/FINAL_REPORT_RU.md`.
+>
+> Дополнение на 7 марта 2026: production runtime уже использует `Postgres`, delivery pool включает `free/it/nl/pl/us`, а `brain` отключён из текущей delivery-выдачи. Этот документ оставляем как исторический снимок, а не как текущий source of truth.
 
 > Обновлено: 2026-02-09  
 > Источник live-проверки: `docs/audit-artifacts/prod-audit-20260209-023635.json`

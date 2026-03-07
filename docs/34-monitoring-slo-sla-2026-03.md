@@ -1,80 +1,81 @@
 # Monitoring Alerts + SLO/SLA (2026-03)
 
-Обновлено: 5 марта 2026
+Обновлено: 7 марта 2026
 
 ## 1. Цель
+
 Единая операционная матрица для контроля качества сервиса: что измеряем, где пороги, когда и кому эскалируем.
 
 ## 2. SLI / SLO
 
 ### 2.1 API доступность
-- SLI: доля успешных ответов `GET /api/health` (2xx) за 30 дней.
-- SLO: >= 99.5%.
-- Error budget: 0.5%.
+
+- SLI: доля успешных ответов `GET /api/health` (2xx) за 30 дней
+- SLO: >= `99.5%`
 
 ### 2.2 Подписочный endpoint
-- SLI: доля успешных ответов `/s8Kx2mP7qR4wT/{token}` (не 5xx) за 30 дней.
-- SLO: >= 99.0%.
-- Доп. условие качества: `hosts >= 1` для платных пользователей, стабильность выдачи при повторных запросах.
+
+- SLI: доля успешных ответов `/s8Kx2mP7qR4wT/{token}` (не 5xx) за 30 дней
+- SLO: >= `99.0%`
 
 ### 2.3 Checkout и активация
-- SLI: доля заказов, где оплата дошла до активации без ручного вмешательства (15 минут).
-- SLO: >= 98.5%.
+
+- SLI: доля заказов, где оплата дошла до активации без ручного вмешательства (15 минут)
+- SLO: >= `98.5%`
 
 ### 2.4 Freshness метрик нод
-- SLI: доля проверок `/api/admin/metrics/status`, где `status=fresh`.
-- SLO: >= 99.0% за 30 дней.
-- Техническое условие: `portal-node-metrics.timer` enabled + active.
+
+- SLI: доля проверок `/api/admin/metrics/status`, где `status=fresh`
+- SLO: >= `99.0%` за 30 дней
+- Техническое условие: `portal-node-metrics.timer` enabled + active
+- Практическая оговорка: endpoint требует Telegram admin auth; server-side sanity без admin session надо дублировать SQL-проверкой production `DATABASE_URL`
 
 ### 2.5 Support first response
-- SLI: доля тикетов с первым ответом оператора <= 30 минут.
-- SLO: >= 95.0%.
+
+- SLI: доля тикетов с первым ответом оператора <= 30 минут
+- SLO: >= `95.0%`
 
 ## 3. Alert policy
 
-### 3.1 P1 (немедленно)
-- `api/health` недоступен >= 5 минут.
-- Subscription endpoint 5xx >= 20% за 10 минут.
-- Массовая ошибка активации после оплаты (>= 5 кейсов за 15 минут).
+### 3.1 P1
 
-Действия:
-1. Сообщение в админ-канал.
-2. Открыть инцидентный тикет.
-3. Откат на последнюю rollback-safe точку из release runbook.
+- `api/health` недоступен >= 5 минут
+- subscription endpoint 5xx >= 20% за 10 минут
+- массовая ошибка активации после оплаты (>= 5 кейсов за 15 минут)
 
-### 3.2 P2 (в течение часа)
-- `metrics/status=stale` два цикла подряд.
-- `portal-node-metrics.timer` inactive/failed.
-- Рост ticket backlog > 20 открытых тикетов.
+### 3.2 P2
 
-### 3.3 P3 (плановые)
-- SLO тренд ниже target в недельном окне.
-- Падение конверсии checkout без явной аварии.
+- `metrics/status=stale` два цикла подряд
+- `portal-node-metrics.timer` inactive/failed
+- рост ticket backlog > 20 открытых тикетов
 
-## 4. SLA (внутренний операционный)
-- P1: triage <= 10 минут, mitigation <= 30 минут.
-- P2: triage <= 30 минут, mitigation <= 4 часа.
-- P3: triage <= 1 рабочий день, fix в плановом релизе.
+### 3.3 P3
 
-## 5. Источники сигналов
-- API health checks.
-- `portal-node-metrics.timer` + `portal-node-metrics.service` journal.
-- admin endpoints: `summary`, `metrics/status`, `metrics/timeseries`, `nodes/traffic`.
-- payment callbacks + activation audit.
-- support ticket queue.
+- SLO тренд ниже target в недельном окне
+- падение конверсии checkout без явной аварии
 
-## 6. Мини-runbook проверки перед релизом
+## 4. Источники сигналов
+
+- API health checks
+- `portal-node-metrics.timer` + `portal-node-metrics.service` journal
+- admin endpoints: `summary`, `metrics/status`, `metrics/timeseries`, `nodes/traffic`
+- production DB query по `node_health_samples`
+- payment callbacks + activation audit
+- support ticket queue
+
+## 5. Мини-runbook проверки перед релизом
+
 1. `python scripts/release_orchestrator.py --gates-only`
 2. `python scripts/admin_webapp_smoke.py`
 3. На brain:
    - `systemctl is-enabled portal-node-metrics.timer`
    - `systemctl is-active portal-node-metrics.timer`
    - `journalctl -u portal-node-metrics.service -n 50 --no-pager`
+   - `psql "$DATABASE_URL" -At -c "select max(sampled_at) from node_health_samples;"`
 4. `python scripts/verify_brain_ready.py --brain-ip <BRAIN_IP> --web-domain <WEB_DOMAIN> --api-domain <API_DOMAIN>`
 
-## 7. Ссылки
+## 6. Ссылки
+
 - Release runbook: `docs/33-release-execution-runbook-2026-03.md`
-- Capacity + free node runbook: `docs/31-capacity-and-infra-runbook-2026-03.md`
-- Protocol blocking R&D: `docs/32-protocols-rf-blocking-rd-2026-03.md`
-- Manual release workflow: `.github/workflows/release-orchestrator-manual.yml`
-- Weekly gate snapshot workflow: `.github/workflows/weekly-release-gate-snapshot.yml`
+- Capacity + infra runbook: `docs/31-capacity-and-infra-runbook-2026-03.md`
+- Runtime audit: `docs/35-node-runtime-and-panel-audit-2026-03-07.md`

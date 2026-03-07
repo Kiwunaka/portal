@@ -10,6 +10,7 @@
 - `webapp/` — кабинет пользователя и web-admin `/admin/*`.
 - `marketing/` — лендинг, legal pages, ticketed checkout.
 - `portal_bot/control_panel.py` — sync пользователей и ключей с 3x-ui.
+- production DB — `Postgres` на brain; локальные SQLite-файлы не считать источником истины прода.
 
 Быстрые ссылки:
 - `docs/PROJECT_MAP_RU.md`
@@ -89,6 +90,10 @@
 ## 4. Ноды и panel sync
 
 - Для paid/free delivery используются nodes и 3x-ui panel integration.
+- Текущий runtime delivery pool: `free`, `it`, `nl`, `pl`, `us`.
+- `brain` остаётся control-plane хостом и не участвует в текущей выдаче как delivery node.
+- Текущий стандартный профиль на нодах: `VLESS + TCP + Reality` на `443/tcp`.
+- На `pl` есть legacy inbound `8443` (`PL Free Reality`), но current production DB не использует его как основной source of truth.
 - При любом reset/regenerate/resync важно проверить:
   - новый `sub_token`
   - `subscription_url`
@@ -172,6 +177,7 @@ Source of truth:
 - systemd:
   - `infra/portal-node-metrics.service`
   - `infra/portal-node-metrics.timer`
+- Важно: `/api/admin/metrics/status` требует Telegram admin auth; для server-side проверки без WebApp-сессии используем SQL-проверку по `DATABASE_URL`.
 
 См.:
 - `docs/METRICS_RU.md`
@@ -200,6 +206,8 @@ Source of truth:
 ### Симптом: metrics stale
 - Проверьте, что deploy script доставил `collect_node_metrics.py`
 - Проверьте `systemctl status portal-node-metrics.timer`
+- Проверьте `journalctl -u portal-node-metrics.service -n 50 --no-pager`
+- Проверьте свежесть `node_health_samples` в production DB, а не в локальном `portal.db`
 
 ## 11. Операционный контур марта 2026
 

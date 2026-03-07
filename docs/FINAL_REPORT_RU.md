@@ -73,3 +73,12 @@
   - `https://portal-privacy.online/` и `https://portal-privacy.online/webapp/` отвечают `200`
   - post-deploy verify прошёл зелёно и подтвердил bot-first UI-маркеры marketing/checkout
 - В `origin/master` допушены последние коммиты Wave 4, включая защиту `CampaignSend` от duplicate race.
+
+## Дополнение: runtime-аудит 7 марта 2026
+
+- Production runtime использует `Postgres`, а не локальный SQLite как primary storage.
+- Enabled delivery nodes в production DB: `free`, `it`, `nl`, `pl`, `us`.
+- `brain` остаётся control-plane host и x-ui compatibility host, но выключен из текущего delivery pool.
+- На `brain` built-in sub server `x-ui` отключён и перенесён с `2096` на `2097`; portal-owned subscription endpoint остаётся хозяином `:2096`.
+- На `pl` присутствует дополнительный inbound `8443` (`PL Free Reality`), но он не является текущим primary source of truth для production DB.
+- `/api/admin/metrics/status` требует реальную Telegram admin auth; старые инструкции с plain `X-Admin-Id` устарели.

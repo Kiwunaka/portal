@@ -1,6 +1,6 @@
 # Карта проекта PORTAL
 
-Обновлено: 6 марта 2026
+Обновлено: 7 марта 2026
 
 ## 1. Компоненты
 
@@ -14,7 +14,7 @@
 | Marketing | `marketing/src/app/*`, `marketing/src/lib/portal.ts` | Лендинг, legal pages, ticketed public checkout |
 | Скрипты | `scripts/*.py` | smoke, deploy, collector, release gate, infra-операции |
 | Инфраструктура | `infra/portal-node-metrics.service`, `infra/portal-node-metrics.timer` | systemd unit/timer для метрик нод |
-| База данных | `portal.db`, `portal_bot/models.py`, `portal_bot/migrations.py` | SQLite со state пользователей, бонусов, оплат, тикетов и метрик |
+| База данных | `portal_bot/models.py`, `portal_bot/migrations.py` | Production: Postgres на brain. SQLite-файлы могут существовать локально или как исторические артефакты, но не являются текущим source of truth прода |
 
 ## 2. Потоки данных
 
@@ -39,6 +39,13 @@
 2. Opening / welcome / campaign: выдача через start links и campaign marks.
 3. Referrals: первый paid purchase ставит очередь бонуса инвайтеру.
 4. Gift / wheel / promo: state хранится в БД, UI читает через bot/API/admin.
+
+### 2.4 Текущий runtime-контур нод
+1. `brain` держит API/bot/helpbot/Postgres и x-ui для panel integration.
+2. В runtime delivery pool включены `free`, `it`, `nl`, `pl`, `us`.
+3. `brain` в текущей production БД отключён из delivery pool.
+4. Стандартный delivery-профиль сейчас один: `VLESS + TCP + Reality`.
+5. На `pl` существует extra inbound `8443` (`PL Free Reality`), но он не является основным отражением current runtime DB.
 
 ## 3. Где настраивается
 
@@ -83,6 +90,7 @@
 ## 6. Точки риска
 
 - В web-admin есть server-side защита на API-уровне, но static-export природа WebApp ограничивает полноценный SSR guard.
+- Часть старых markdown и ручных runbook всё ещё может ссылаться на SQLite или ранние node-снимки; для текущего прода ориентируемся на `DATABASE_URL`, `docs/08-node-inventory.md` и `docs/35-node-runtime-and-panel-audit-2026-03-07.md`.
 # P2 addendum (2026-03-06)
 
 - `portal_bot/api.py -> /api/admin/summary` now returns an `errors` block used by `/admin/dashboard` to surface stale metrics, unhealthy nodes, callback failures, and numeric subscription fallback counts.
