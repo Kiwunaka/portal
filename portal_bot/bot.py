@@ -205,6 +205,7 @@ VLESS_FLOW = os.getenv("VLESS_FLOW", "xtls-rprx-vision")
 _WEBAPP_DEFAULT_HOST = PUBLIC_WEB_DOMAIN or HOST_DOMAIN
 WEBAPP_URL = os.getenv("WEBAPP_URL", f"https://{_WEBAPP_DEFAULT_HOST}/webapp/?v=20260214")
 PUBLIC_API_BASE_URL = os.getenv("PUBLIC_API_BASE_URL", f"https://{HOST_DOMAIN}")
+BOT_INTERNAL_API_BASE_URL = (os.getenv("BOT_INTERNAL_API_BASE_URL") or os.getenv("INTERNAL_API_BASE_URL") or "").strip()
 PAY_CHECKOUT_URL = (
     os.getenv("PAY_CHECKOUT_URL")
     or os.getenv("CHECKOUT_URL")
@@ -3097,7 +3098,77 @@ def _build_tariff_payment_choice_text(*, tariff_key: str, tg_id: int) -> str:
 
 
 def _build_tariff_payment_choice_keyboard(*, tg_id: int, tariff_key: str) -> InlineKeyboardMarkup:
-    tariff = TARIFFS.get(tariff_key) or {}
+    pricing = _tariff_pricing_for_user(tg_id, tariff_key)
+    rows = [
+        [InlineKeyboardButton(text=f"💳 Оплатить в ₽ · {int(pricing['base_price'])} ₽", callback_data=f"pay_rub_{tariff_key}")],
+        [InlineKeyboardButton(text=f"⭐ Оплатить Stars · {int(pricing['final_stars'])}⭐", callback_data=f"pay_stars_{tariff_key}")],
+    ]
+    if tariff_key not in {"6_months", "9_months", "12_months"}:
+        rows.append([InlineKeyboardButton(text="📚 Посмотреть долгие тарифы", callback_data="charge_long")])
+    rows.append([InlineKeyboardButton(text="◀️ К тарифам", callback_data="charge")])
+    rows.append([InlineKeyboardButton(text="🏠 Главное меню", callback_data="back")])
+    return InlineKeyboardMarkup(inline_keyboard=rows)
+
+
+def _bot_api_base_candidates() -> list[str]:
+    out: list[str] = []
+    for value in (
+        BOT_INTERNAL_API_BASE_URL,
+        PUBLIC_API_BASE_URL,
+        f"https://{HOST_DOMAIN}" if HOST_DOMAIN else "",
+    ):
+        base = str(value or "").strip().rstrip("/")
+        if base and base not in out:
+            out.append(base)
+    return out
+
+
+async def _create_freekassa_payment_link_for_bot(*, tg_id: int, tariff_key: str) -> dict[str, object]:
+    ctx = checkout_context_by_user.get(int(tg_id), {}) if checkout_context_by_user else {}
+    promo_code = str(ctx.get("promo_code") or "")
+    campaign_key = str(ctx.get("campaign_key") or "")
+    checkout_ticket = _checkout_ticket_for_user(
+        tg_id=int(tg_id),
+        plan_code=tariff_key,
+        promo_code=promo_code,
+        campaign_key=campaign_key,
+        source="bot",
+    )
+    if not checkout_ticket:
+        raise RuntimeError("Не удалось подготовить персональную ссылку оплаты.")
+
+    payload = {
+        "plan_code": str(tariff_key or "").strip().lower(),
+        "checkout_ticket": checkout_ticket,
+        "currency": "RUB",
+    }
+    timeout = aiohttp.ClientTimeout(total=25)
+    last_error = "Не удалось открыть оплату."
+    for base in _bot_api_base_candidates():
+        url = f"{base}/api/payments/freekassa/orders/create-public"
+        try:
+            async with aiohttp.ClientSession(timeout=timeout) as session:
+                async with session.post(url, json=payload) as resp:
+                    raw_text = await resp.text()
+                    if resp.status >= 400:
+                        last_error = raw_text or f"HTTP {resp.status}"
+                        continue
+                    try:
+                        data = json.loads(raw_text)
+                    except Exception:
+                        last_error = raw_text or "Платёжный сервис вернул непонятный ответ."
+                        continue
+                    payment_url = str(data.get("payment_url") or "").strip()
+                    if payment_url:
+                        data["checkout_ticket"] = checkout_ticket
+                        return data
+                    last_error = "Платёжная ссылка не получена."
+        except Exception as exc:
+            last_error = str(exc or last_error)
+    raise RuntimeError(last_error)
+
+
+def _build_direct_rub_payment_keyboard(*, tg_id: int, tariff_key: str, payment_url: str) -> InlineKeyboardMarkup:
     pricing = _tariff_pricing_for_user(tg_id, tariff_key)
     ctx = checkout_context_by_user.get(int(tg_id), {}) if checkout_context_by_user else {}
     checkout_url = _bot_checkout_url(
@@ -3107,13 +3178,12 @@ def _build_tariff_payment_choice_keyboard(*, tg_id: int, tariff_key: str) -> Inl
         campaign_key=str(ctx.get("campaign_key") or ""),
     )
     rows = [
-        [InlineKeyboardButton(text=f"💳 Оплатить в ₽ · {int(pricing['base_price'])} ₽", url=checkout_url)],
+        [InlineKeyboardButton(text=f"💳 Открыть оплату · {int(pricing['base_price'])} ₽", url=str(payment_url or "").strip())],
+        [InlineKeyboardButton(text="🌐 Открыть через сайт, если окно не открылось", url=checkout_url)],
         [InlineKeyboardButton(text=f"⭐ Оплатить Stars · {int(pricing['final_stars'])}⭐", callback_data=f"pay_stars_{tariff_key}")],
+        [InlineKeyboardButton(text="◀️ К тарифам", callback_data="charge")],
+        [InlineKeyboardButton(text="🏠 Главное меню", callback_data="back")],
     ]
-    if tariff_key not in {"6_months", "9_months", "12_months"}:
-        rows.append([InlineKeyboardButton(text="📚 Посмотреть долгие тарифы", callback_data="charge_long")])
-    rows.append([InlineKeyboardButton(text="◀️ К тарифам", callback_data="charge")])
-    rows.append([InlineKeyboardButton(text="🏠 Главное меню", callback_data="back")])
     return InlineKeyboardMarkup(inline_keyboard=rows)
 
 
@@ -8559,6 +8629,62 @@ async def process_buy_stars(callback: CallbackQuery, bot: Bot):
             ]
         ),
     )
+
+
+@router.callback_query(F.data.startswith("pay_rub_"))
+async def process_buy_rub(callback: CallbackQuery, bot: Bot):
+    raw_key = callback.data.replace("pay_rub_", "")
+    tariff_key = normalize_tariff_key(raw_key)
+    tariff = TARIFFS.get(tariff_key)
+    if not tariff:
+        await callback.answer("❌ Тариф не найден")
+        return
+
+    tg_id = callback.from_user.id
+    pricing = _tariff_pricing_for_user(tg_id, tariff_key)
+
+    try:
+        data = await _create_freekassa_payment_link_for_bot(tg_id=tg_id, tariff_key=tariff_key)
+    except Exception as exc:
+        logger.warning("direct freekassa checkout failed tg_id=%s plan=%s err=%s", tg_id, tariff_key, exc)
+        await callback.message.edit_text(
+            "⚠️ Не удалось сразу открыть платёжную страницу.\n\n"
+            "Попробуйте ещё раз через минуту или откройте путь через сайт из тарифа.",
+            reply_markup=_build_tariff_payment_choice_keyboard(tg_id=tg_id, tariff_key=tariff_key),
+        )
+        await callback.answer("Не удалось подготовить оплату", show_alert=True)
+        return
+
+    payment_url = str(data.get("payment_url") or "").strip()
+    order_id = str(data.get("order_id") or "").strip()
+    rub_price = int(pricing["base_price"])
+    track_event(
+        tg_id=tg_id,
+        event_name="clicked_pay",
+        source="bot",
+        meta={
+            "provider": "freekassa",
+            "plan_code": tariff_key,
+            "amount_rub": rub_price,
+            "order_id": order_id,
+            "flow": "direct_bot_rub",
+        },
+    )
+    await callback.message.edit_text(
+        f"💳 *{tariff['name']}*\n\n"
+        f"Сумма: *{rub_price} ₽*\n"
+        f"Ссылка на оплату уже готова.\n\n"
+        "Если окно банка не откроется внутри Telegram, используйте кнопку «Открыть через сайт» "
+        "или попробуйте открыть оплату в обычном браузере.\n\n"
+        "Ссылка на этот шаг действует около *15 минут*.",
+        reply_markup=_build_direct_rub_payment_keyboard(
+            tg_id=tg_id,
+            tariff_key=tariff_key,
+            payment_url=payment_url,
+        ),
+        parse_mode=ParseMode.MARKDOWN,
+    )
+    await callback.answer("Платёжная ссылка готова")
 
 @router.pre_checkout_query()
 async def pre_checkout_handler(pre_checkout: PreCheckoutQuery, bot: Bot):

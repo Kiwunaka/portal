@@ -34,9 +34,16 @@ class _FakeBot:
 class _FakeMessage:
     def __init__(self):
         self.edits: list[str] = []
+        self.edit_kwargs: list[dict] = []
+        self.answers: list[tuple[str, dict]] = []
 
     async def edit_text(self, text, **_kwargs):
         self.edits.append(str(text))
+        self.edit_kwargs.append(dict(_kwargs))
+        return None
+
+    async def answer(self, text, **kwargs):
+        self.answers.append((str(text), dict(kwargs)))
         return None
 
 
@@ -46,10 +53,11 @@ class _FakeUser:
 
 
 class _FakeCallback:
-    def __init__(self, tg_id: int):
+    def __init__(self, tg_id: int, data: str = ""):
         self.from_user = _FakeUser(tg_id)
         self.message = _FakeMessage()
         self.answers: list[tuple[str, bool]] = []
+        self.data = data
 
     async def answer(self, text, show_alert=False):
         self.answers.append((str(text), bool(show_alert)))
@@ -478,10 +486,48 @@ class BotPaywallTests(unittest.TestCase):
         }
         keyboard = self.bot_module._build_tariff_payment_choice_keyboard(tg_id=1001, tariff_key="3_months")
         self.assertEqual(keyboard.inline_keyboard[0][0].text, "💳 Оплатить в ₽ · 699 ₽")
-        self.assertIn("plan=3_months", keyboard.inline_keyboard[0][0].url)
-        self.assertIn("promo=WELCOME14", keyboard.inline_keyboard[0][0].url)
-        self.assertIn("campaign=launch_week_1", keyboard.inline_keyboard[0][0].url)
+        self.assertEqual(keyboard.inline_keyboard[0][0].callback_data, "pay_rub_3_months")
         self.assertEqual(keyboard.inline_keyboard[1][0].callback_data, "pay_stars_3_months")
+
+    def test_direct_rub_payment_keyboard_keeps_site_fallback(self) -> None:
+        self.bot_module.PAY_CHECKOUT_URL = "https://portal-privacy.online/checkout?from=bot"
+        self.bot_module.checkout_context_by_user[1001] = {
+            "promo_code": "WELCOME14",
+            "campaign_key": "launch_week_1",
+        }
+        keyboard = self.bot_module._build_direct_rub_payment_keyboard(
+            tg_id=1001,
+            tariff_key="3_months",
+            payment_url="https://pay.freekassa.ru/?order=abc",
+        )
+        self.assertEqual(keyboard.inline_keyboard[0][0].url, "https://pay.freekassa.ru/?order=abc")
+        self.assertIn("plan=3_months", keyboard.inline_keyboard[1][0].url)
+        self.assertIn("promo=WELCOME14", keyboard.inline_keyboard[1][0].url)
+        self.assertIn("campaign=launch_week_1", keyboard.inline_keyboard[1][0].url)
+
+    def test_process_buy_rub_opens_direct_payment_link(self) -> None:
+        callback = _FakeCallback(1001, data="pay_rub_1_month")
+
+        async def _fake_create_payment_link(*, tg_id, tariff_key):
+            self.assertEqual(int(tg_id), 1001)
+            self.assertEqual(str(tariff_key), "1_month")
+            return {
+                "order_id": "fk_bot_1001_test",
+                "payment_url": "https://pay.freekassa.ru/?m=69962&o=test",
+            }
+
+        old_create = self.bot_module._create_freekassa_payment_link_for_bot
+        try:
+            self.bot_module._create_freekassa_payment_link_for_bot = _fake_create_payment_link
+            asyncio.run(self.bot_module.process_buy_rub(callback, _FakeBot(status="member")))
+        finally:
+            self.bot_module._create_freekassa_payment_link_for_bot = old_create
+
+        self.assertTrue(callback.message.edits)
+        self.assertIn("Ссылка на оплату уже готова", callback.message.edits[-1])
+        reply_markup = callback.message.edit_kwargs[-1]["reply_markup"]
+        self.assertEqual(reply_markup.inline_keyboard[0][0].url, "https://pay.freekassa.ru/?m=69962&o=test")
+        self.assertEqual(callback.answers[-1], ("Платёжная ссылка готова", False))
 
     def test_tariff_keyboard_shows_rubles_before_stars(self) -> None:
         keyboard = self.bot_module.tariff_keyboard(tg_id=1001, show_trial=True, include_long_plans=False)
