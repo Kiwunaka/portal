@@ -35,6 +35,10 @@ class ControlPanel:
         excluded_bases = {"brain", "de"}
         grouped: dict[str, list] = {}
         for n in nodes:
+            if not bool(getattr(n, "accepting_new_clients", True)):
+                continue
+            if bool(getattr(n, "is_draining", False)):
+                continue
             if "free" in (n.code or "").lower():
                 continue
             base = self._node_base(n.code)
@@ -47,6 +51,10 @@ class ControlPanel:
     def _free_node_codes(nodes: list) -> list[str]:
         out: list[str] = []
         for n in nodes:
+            if not bool(getattr(n, "accepting_new_clients", True)):
+                continue
+            if bool(getattr(n, "is_draining", False)):
+                continue
             code = (n.code or "").strip()
             if not code:
                 continue

@@ -69,6 +69,7 @@ from models import (
     Template,
     User,
     UserKeyPolicy,
+    UserNode,
 )
 from tickets_repo import (
     STATUS_CLOSED,
@@ -576,6 +577,15 @@ class AdminNodeSyncIn(BaseModel):
     tg_id: int | None = None
     segment: str = Field(default="active")
     limit: int = Field(default=100, ge=1, le=1000)
+
+
+class AdminNodeLifecycleIn(BaseModel):
+    force: bool = False
+
+
+class AdminNodeResyncIn(BaseModel):
+    limit: int = Field(default=100, ge=1, le=1000)
+    dry_run: bool = False
 
 
 class AdminPromoCreateIn(BaseModel):
@@ -3563,7 +3573,7 @@ async def user_data(tg_id: int, request: Request, x_telegram_init_data: str = He
         _ensure_free_cycle_state_persisted(s, user)
 
         nodes = enabled_nodes(s)
-        nodes_for_user = _nodes_for_user(user, nodes)
+        nodes_for_user = _nodes_for_user(user, nodes, session=s)
         subscription_url = ""
         if user.sub_token:
             subscription_url = f"{Settings.PUBLIC_API_BASE_URL.rstrip('/')}/s8Kx2mP7qR4wT/{user.sub_token}"
@@ -3789,7 +3799,7 @@ async def nodes_status(request: Request, x_telegram_init_data: str = Header(defa
         user = s.query(User).filter_by(tg_id=tg_id).first()
         if not user:
             raise HTTPException(status_code=404, detail="User not found")
-        rows = _nodes_for_user(user, enabled_nodes(s))
+        rows = _nodes_for_user(user, enabled_nodes(s), session=s)
         payload: list[dict[str, Any]] = []
         for n in rows:
             ping = _safe_ping(n)
@@ -3825,7 +3835,7 @@ async def nodes_run_diagnostics(request: Request, x_telegram_init_data: str = He
         user = s.query(User).filter_by(tg_id=tg_id).first()
         if not user:
             raise HTTPException(status_code=404, detail="User not found")
-        nodes = _nodes_for_user(user, enabled_nodes(s))
+        nodes = _nodes_for_user(user, enabled_nodes(s), session=s)
         healthy = [n for n in nodes if bool(getattr(n, "is_healthy", True))]
     finally:
         s.close()
@@ -6701,25 +6711,16 @@ async def admin_nodes_health(x_telegram_init_data: str = Header(default="")) -> 
     _require_admin(x_telegram_init_data)
     s = SessionLocal()
     try:
-        rows = s.query(Node).filter(Node.enabled == True).order_by(Node.health_score.desc(), Node.weight.desc()).all()
-        return {
-            "nodes": [
-                {
-                    "code": n.code,
-                    "name": n.name,
-                    "enabled": bool(n.enabled),
-                    "is_healthy": bool(getattr(n, "is_healthy", True)),
-                    "health_score": float(getattr(n, "health_score", 0.0) or 0.0),
-                    "panel_latency_ms": getattr(n, "panel_latency_ms", None),
-                    "panel_error_rate": float(getattr(n, "panel_error_rate", 0.0) or 0.0),
-                    "active_clients": int(getattr(n, "active_clients", 0) or 0),
-                    "last_ok_at": _safe_iso(getattr(n, "last_ok_at", None)),
-                    "last_health_at": _safe_iso(getattr(n, "last_health_at", None)),
-                    "weight": int(getattr(n, "weight", 0) or 0),
-                }
-                for n in rows
-            ]
+        rows = s.query(Node).order_by(Node.enabled.desc(), Node.health_score.desc(), Node.weight.desc(), Node.code.asc()).all()
+        mapped_counts = {
+            int(node_id): int(count or 0)
+            for node_id, count in (
+                s.query(UserNode.node_id, func.count(func.distinct(UserNode.tg_id)))
+                .group_by(UserNode.node_id)
+                .all()
+            )
         }
+        return {"nodes": [_serialize_admin_node(n, mapped_users=mapped_counts.get(int(n.id), 0)) for n in rows]}
     finally:
         s.close()
 
@@ -6788,6 +6789,244 @@ async def admin_nodes_sync(payload: AdminNodeSyncIn, x_telegram_init_data: str =
         meta={"synced": synced, "failed": failed, "count": len(users), "segment": payload.segment, "tg_id": payload.tg_id},
     )
     return {"ok": True, "synced": synced, "failed": failed, "count": len(users)}
+
+
+@app.post("/api/admin/nodes/{node_code}/drain")
+async def admin_node_drain(node_code: str, payload: AdminNodeLifecycleIn, x_telegram_init_data: str = Header(default="")) -> dict:
+    actor = int(_require_admin(x_telegram_init_data).get("id", 0))
+    wanted = str(node_code or "").strip().lower()
+    s = SessionLocal()
+    try:
+        node = s.query(Node).filter(func.lower(Node.code) == wanted).first()
+        if not node:
+            raise HTTPException(status_code=404, detail="Node not found")
+        node.enabled = True
+        node.accepting_new_clients = False
+        node.is_draining = True
+        mapped_users = (
+            s.query(func.count(func.distinct(UserNode.tg_id)))
+            .filter(UserNode.node_id == int(node.id))
+            .scalar()
+            or 0
+        )
+        s.commit()
+        s.refresh(node)
+        payload_node = _serialize_admin_node(node, mapped_users=int(mapped_users))
+    finally:
+        s.close()
+
+    _audit_admin(actor_tg_id=actor, action="admin_node_drain", meta={"node_code": wanted, "mapped_users": int(mapped_users)})
+    return {"ok": True, "node": payload_node}
+
+
+@app.post("/api/admin/nodes/{node_code}/enable")
+async def admin_node_enable(node_code: str, payload: AdminNodeLifecycleIn, x_telegram_init_data: str = Header(default="")) -> dict:
+    actor = int(_require_admin(x_telegram_init_data).get("id", 0))
+    wanted = str(node_code or "").strip().lower()
+    s = SessionLocal()
+    try:
+        node = s.query(Node).filter(func.lower(Node.code) == wanted).first()
+        if not node:
+            raise HTTPException(status_code=404, detail="Node not found")
+        node.enabled = True
+        node.accepting_new_clients = True
+        node.is_draining = False
+        mapped_users = (
+            s.query(func.count(func.distinct(UserNode.tg_id)))
+            .filter(UserNode.node_id == int(node.id))
+            .scalar()
+            or 0
+        )
+        s.commit()
+        s.refresh(node)
+        payload_node = _serialize_admin_node(node, mapped_users=int(mapped_users))
+    finally:
+        s.close()
+
+    _audit_admin(actor_tg_id=actor, action="admin_node_enable", meta={"node_code": wanted, "mapped_users": int(mapped_users)})
+    return {"ok": True, "node": payload_node}
+
+
+@app.post("/api/admin/nodes/{node_code}/disable")
+async def admin_node_disable(node_code: str, payload: AdminNodeLifecycleIn, x_telegram_init_data: str = Header(default="")) -> dict:
+    actor = int(_require_admin(x_telegram_init_data).get("id", 0))
+    wanted = str(node_code or "").strip().lower()
+    s = SessionLocal()
+    try:
+        node = s.query(Node).filter(func.lower(Node.code) == wanted).first()
+        if not node:
+            raise HTTPException(status_code=404, detail="Node not found")
+        mapped_users = (
+            s.query(func.count(func.distinct(UserNode.tg_id)))
+            .filter(UserNode.node_id == int(node.id))
+            .scalar()
+            or 0
+        )
+        if int(mapped_users) > 0 and not bool(payload.force):
+            raise HTTPException(status_code=409, detail="Node still has mapped users. Run resync first or use force.")
+        node.enabled = False
+        node.accepting_new_clients = False
+        node.is_draining = False
+        s.commit()
+        s.refresh(node)
+        payload_node = _serialize_admin_node(node, mapped_users=int(mapped_users))
+    finally:
+        s.close()
+
+    _audit_admin(
+        actor_tg_id=actor,
+        action="admin_node_disable",
+        meta={"node_code": wanted, "mapped_users": int(mapped_users), "forced": bool(payload.force)},
+    )
+    return {"ok": True, "node": payload_node}
+
+
+@app.post("/api/admin/nodes/{node_code}/resync")
+async def admin_node_resync(node_code: str, payload: AdminNodeResyncIn, x_telegram_init_data: str = Header(default="")) -> dict:
+    actor = int(_require_admin(x_telegram_init_data).get("id", 0))
+    wanted = str(node_code or "").strip().lower()
+    s = SessionLocal()
+    try:
+        source = s.query(Node).filter(func.lower(Node.code) == wanted).first()
+        if not source:
+            raise HTTPException(status_code=404, detail="Node not found")
+        rows = (
+            s.query(UserNode, User)
+            .join(User, User.tg_id == UserNode.tg_id)
+            .filter(UserNode.node_id == int(source.id))
+            .order_by(UserNode.created_at.asc(), UserNode.id.asc())
+            .limit(max(1, min(int(payload.limit), 1000)))
+            .all()
+        )
+    finally:
+        s.close()
+
+    panel = ControlPanel()
+    migrated = 0
+    failed = 0
+    skipped = 0
+    details: list[dict[str, Any]] = []
+    try:
+        if not payload.dry_run:
+            await panel.login()
+        for _user_node, user in rows:
+            s = SessionLocal()
+            try:
+                target_codes = _target_node_codes_for_resync(s, user, wanted, enabled_nodes(s))
+            finally:
+                s.close()
+            if not target_codes:
+                skipped += 1
+                details.append({"tg_id": int(user.tg_id), "status": "no_target", "target_codes": []})
+                continue
+            if payload.dry_run:
+                details.append({"tg_id": int(user.tg_id), "status": "planned", "target_codes": target_codes})
+                continue
+
+            sub_id = str(getattr(user, "sub_token", "") or user.tg_id)
+            ensure_results = await panel.ensure_user_on_all_nodes(
+                tg_id=int(user.tg_id),
+                client_uuid=str(user.uuid),
+                email=str(user.email),
+                sub_id=sub_id,
+                enable=True,
+                only_node_codes=target_codes,
+            )
+            if not any(bool(v) for v in ensure_results.values()):
+                failed += 1
+                details.append(
+                    {
+                        "tg_id": int(user.tg_id),
+                        "status": "ensure_failed",
+                        "target_codes": target_codes,
+                        "ensure_results": ensure_results,
+                    }
+                )
+                continue
+
+            disable_results = await panel.set_existing_user_enabled_on_nodes(
+                tg_id=int(user.tg_id),
+                node_codes=[wanted],
+                enable=False,
+                sub_id=sub_id,
+            )
+            if not any(bool(v) for v in disable_results.values()):
+                failed += 1
+                details.append(
+                    {
+                        "tg_id": int(user.tg_id),
+                        "status": "disable_failed",
+                        "target_codes": target_codes,
+                        "ensure_results": ensure_results,
+                        "disable_results": disable_results,
+                    }
+                )
+                continue
+
+            s = SessionLocal()
+            try:
+                source = s.query(Node).filter(func.lower(Node.code) == wanted).first()
+                target_nodes = (
+                    s.query(Node)
+                    .filter(func.lower(Node.code).in_([code.lower() for code in target_codes]))
+                    .all()
+                )
+                existing_node_ids = {
+                    int(row.node_id)
+                    for row in s.query(UserNode).filter(UserNode.tg_id == int(user.tg_id)).all()
+                }
+                for target_node in target_nodes:
+                    if int(target_node.id) in existing_node_ids:
+                        continue
+                    s.add(
+                        UserNode(
+                            tg_id=int(user.tg_id),
+                            node_id=int(target_node.id),
+                            client_uuid=str(user.uuid),
+                            panel_email=str(user.email),
+                        )
+                    )
+                if source:
+                    s.query(UserNode).filter(UserNode.tg_id == int(user.tg_id), UserNode.node_id == int(source.id)).delete()
+                s.commit()
+            finally:
+                s.close()
+            migrated += 1
+            details.append(
+                {
+                    "tg_id": int(user.tg_id),
+                    "status": "migrated",
+                    "target_codes": target_codes,
+                    "ensure_results": ensure_results,
+                    "disable_results": disable_results,
+                }
+            )
+    finally:
+        if not payload.dry_run:
+            await panel.close()
+
+    _audit_admin(
+        actor_tg_id=actor,
+        action="admin_node_resync",
+        meta={
+            "node_code": wanted,
+            "count": len(rows),
+            "migrated": migrated,
+            "failed": failed,
+            "skipped": skipped,
+            "dry_run": bool(payload.dry_run),
+        },
+    )
+    return {
+        "ok": True,
+        "node_code": wanted,
+        "count": len(rows),
+        "migrated": migrated,
+        "failed": failed,
+        "skipped": skipped,
+        "dry_run": bool(payload.dry_run),
+        "details": details,
+    }
 
 
 def _generate_vless_link(*, user_uuid: str, node, name: str) -> str:
@@ -7029,7 +7268,35 @@ def _singbox_free_allowlist_config(*, user_uuid: str, nodes: list, title: str) -
     }
 
 
-def _nodes_for_user(user: User, nodes: list) -> list:
+def _node_accepts_new_clients(node: Any) -> bool:
+    return bool(getattr(node, "enabled", True)) and bool(getattr(node, "accepting_new_clients", True)) and not bool(
+        getattr(node, "is_draining", False)
+    )
+
+
+def _mapped_nodes_for_user(session, tg_id: int, nodes: list) -> list:
+    node_by_id = {int(getattr(node, "id", 0) or 0): node for node in nodes if getattr(node, "id", None) is not None}
+    rows = (
+        session.query(UserNode)
+        .filter(UserNode.tg_id == int(tg_id))
+        .order_by(UserNode.created_at.asc(), UserNode.id.asc())
+        .all()
+    )
+    out: list[Any] = []
+    seen: set[str] = set()
+    for row in rows:
+        node = node_by_id.get(int(getattr(row, "node_id", 0) or 0))
+        if not node:
+            continue
+        code = str(getattr(node, "code", "") or "").strip().lower()
+        if not code or code in seen:
+            continue
+        seen.add(code)
+        out.append(node)
+    return out
+
+
+def _fallback_nodes_for_user(user: User, nodes: list) -> list:
     """
     Per-plan node visibility.
     - FREE: dedicated free pool only.
@@ -7065,13 +7332,17 @@ def _nodes_for_user(user: User, nodes: list) -> list:
         healthy = [node for node in filtered if bool(getattr(node, "is_healthy", True))]
         return healthy or filtered
 
+    candidate_nodes = [node for node in nodes if _node_accepts_new_clients(node)]
+    if not candidate_nodes:
+        candidate_nodes = list(nodes)
+
     is_free = (user.sub_type or "").upper() == "FREE"
     plan_code = str(getattr(user, "current_plan_code", "") or "").strip().lower()
 
     if not is_free:
         if plan_code == "start_99":
             start_nodes = []
-            for n in nodes:
+            for n in candidate_nodes:
                 code = (getattr(n, "code", "") or "").lower()
                 if "free" in code:
                     continue
@@ -7080,7 +7351,7 @@ def _nodes_for_user(user: User, nodes: list) -> list:
             if start_nodes:
                 return _apply_node_filters(start_nodes)
         paid = []
-        for n in nodes:
+        for n in candidate_nodes:
             code = (getattr(n, "code", "") or "").lower()
             if "free" in code:
                 continue
@@ -7089,8 +7360,62 @@ def _nodes_for_user(user: User, nodes: list) -> list:
             paid.append(n)
         return _apply_node_filters(paid)
 
-    free_nodes = [n for n in nodes if "free" in (getattr(n, "code", "") or "").lower()]
+    free_nodes = [n for n in candidate_nodes if "free" in (getattr(n, "code", "") or "").lower()]
     return _apply_node_filters(free_nodes)
+
+
+def _nodes_for_user(user: User, nodes: list, session=None) -> list:
+    own_session = session is None
+    s = session or SessionLocal()
+    try:
+        mapped = _mapped_nodes_for_user(s, int(user.tg_id), nodes)
+        if mapped:
+            return mapped
+        return _fallback_nodes_for_user(user, nodes)
+    finally:
+        if own_session:
+            s.close()
+
+
+def _serialize_admin_node(n: Node, *, mapped_users: int = 0) -> dict[str, Any]:
+    return {
+        "code": n.code,
+        "name": n.name,
+        "enabled": bool(n.enabled),
+        "accepting_new_clients": bool(getattr(n, "accepting_new_clients", True)),
+        "is_draining": bool(getattr(n, "is_draining", False)),
+        "mapped_users": int(mapped_users),
+        "is_healthy": bool(getattr(n, "is_healthy", True)),
+        "health_score": float(getattr(n, "health_score", 0.0) or 0.0),
+        "panel_latency_ms": getattr(n, "panel_latency_ms", None),
+        "panel_error_rate": float(getattr(n, "panel_error_rate", 0.0) or 0.0),
+        "active_clients": int(getattr(n, "active_clients", 0) or 0),
+        "last_ok_at": _safe_iso(getattr(n, "last_ok_at", None)),
+        "last_health_at": _safe_iso(getattr(n, "last_health_at", None)),
+        "weight": int(getattr(n, "weight", 0) or 0),
+    }
+
+
+def _target_node_codes_for_resync(session, user: User, source_code: str, nodes: list) -> list[str]:
+    source_code = str(source_code or "").strip().lower()
+    out: list[str] = []
+    seen: set[str] = set()
+
+    for node in _mapped_nodes_for_user(session, int(user.tg_id), nodes):
+        code = str(getattr(node, "code", "") or "").strip().lower()
+        if not code or code == source_code or code in seen:
+            continue
+        seen.add(code)
+        out.append(code)
+
+    for node in _fallback_nodes_for_user(user, nodes):
+        code = str(getattr(node, "code", "") or "").strip().lower()
+        if not code or code == source_code or code in seen:
+            continue
+        seen.add(code)
+        out.append(code)
+
+    return out
 
 
 def _token_fingerprint(token: str) -> str:
@@ -7206,7 +7531,7 @@ async def subscription(token: str, request: Request):
         "Content-Disposition": 'attachment; filename="Portal_Subscription"',
     }
 
-    nodes_for_user = _nodes_for_user(user, nodes)
+    nodes_for_user = _nodes_for_user(user, nodes, session=s)
 
     # FREE and smart clients receive sing-box JSON profiles.
     if (user.sub_type or "").upper() == "FREE" or is_smart:

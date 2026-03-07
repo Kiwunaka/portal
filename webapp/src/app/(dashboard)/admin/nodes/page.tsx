@@ -1,6 +1,20 @@
 "use client";
 
-import { adminMetricsStatus, adminNodesDrift, adminNodesHealth, adminNodesSync, adminNodesTraffic, type AdminMetricsStatus, type AdminNodeDriftReport, type AdminNodeHealthRow, type AdminNodeTrafficRow } from "@/lib/api";
+import {
+  adminMetricsStatus,
+  adminNodeDisable,
+  adminNodeDrain,
+  adminNodeEnable,
+  adminNodeResync,
+  adminNodesDrift,
+  adminNodesHealth,
+  adminNodesSync,
+  adminNodesTraffic,
+  type AdminMetricsStatus,
+  type AdminNodeDriftReport,
+  type AdminNodeHealthRow,
+  type AdminNodeTrafficRow,
+} from "@/lib/api";
 import { Activity, Globe, Loader2, RefreshCw, Server, Wifi } from "lucide-react";
 import { useEffect, useState } from "react";
 
@@ -23,6 +37,8 @@ export default function AdminNodesPage() {
   const [busy, setBusy] = useState(false);
   const [syncTarget, setSyncTarget] = useState("");
   const [driftBusy, setDriftBusy] = useState(false);
+  const [nodeActionBusy, setNodeActionBusy] = useState("");
+  const [nodeActionNote, setNodeActionNote] = useState("");
   const [error, setError] = useState("");
 
   const load = async (): Promise<void> => {
@@ -56,6 +72,35 @@ export default function AdminNodesPage() {
       setError(String((err as { message?: string })?.message || err || "Ошибка drift-check"));
     } finally {
       setDriftBusy(false);
+    }
+  };
+
+  const runNodeAction = async (node: AdminNodeHealthRow, action: "drain" | "enable" | "disable" | "resync"): Promise<void> => {
+    setNodeActionBusy(`${action}:${node.code}`);
+    setNodeActionNote("");
+    setError("");
+    try {
+      if (action === "drain") {
+        await adminNodeDrain(node.code);
+        setNodeActionNote(`Нода ${node.code.toUpperCase()} переведена в drain: новые назначения остановлены.`);
+      } else if (action === "enable") {
+        await adminNodeEnable(node.code);
+        setNodeActionNote(`Нода ${node.code.toUpperCase()} снова принимает новых пользователей.`);
+      } else if (action === "disable") {
+        await adminNodeDisable(node.code, {});
+        setNodeActionNote(`Нода ${node.code.toUpperCase()} отключена от runtime.`);
+      } else {
+        const result = await adminNodeResync(node.code, { limit: 200 });
+        setNodeActionNote(
+          `Resync ${node.code.toUpperCase()}: migrated ${result.migrated}, failed ${result.failed}, skipped ${result.skipped}.`,
+        );
+      }
+      await load();
+      if (drift) await loadDrift();
+    } catch (err) {
+      setError(String((err as { message?: string })?.message || err || "Ошибка действия с нодой"));
+    } finally {
+      setNodeActionBusy("");
     }
   };
 
@@ -132,6 +177,7 @@ export default function AdminNodesPage() {
           </div>
         </div>
         {error ? <p className="mt-3 text-sm text-rose-500">{error}</p> : null}
+        {nodeActionNote ? <p className="mt-2 text-sm text-emerald-400">{nodeActionNote}</p> : null}
       </div>
 
       {drift ? (
@@ -226,6 +272,53 @@ export default function AdminNodesPage() {
                   <p className="text-xs text-slate-500">Клиенты</p>
                   <p className="text-sm font-bold">{node.active_clients}</p>
                 </div>
+              </div>
+
+              <div className="mt-4 flex flex-wrap gap-2">
+                <span className={`badge ${node.enabled ? "badge-success" : "badge-danger"}`}>{node.enabled ? "enabled" : "disabled"}</span>
+                <span className={`badge ${node.accepting_new_clients ? "badge-info" : "badge-warning"}`}>
+                  {node.accepting_new_clients ? "принимает новых" : "новые остановлены"}
+                </span>
+                {node.is_draining ? <span className="badge badge-warning">drain</span> : null}
+                <span className="badge badge-info">mapped: {node.mapped_users}</span>
+              </div>
+
+              <div className="mt-4 grid grid-cols-2 gap-2">
+                {node.enabled && !node.is_draining ? (
+                  <button
+                    type="button"
+                    className="outline-btn rounded-xl px-3 py-2 text-xs font-semibold"
+                    disabled={!!nodeActionBusy}
+                    onClick={() => void runNodeAction(node, "drain")}
+                  >
+                    {nodeActionBusy === `drain:${node.code}` ? "..." : "Drain"}
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    className="outline-btn rounded-xl px-3 py-2 text-xs font-semibold"
+                    disabled={!!nodeActionBusy}
+                    onClick={() => void runNodeAction(node, "enable")}
+                  >
+                    {nodeActionBusy === `enable:${node.code}` ? "..." : "Enable"}
+                  </button>
+                )}
+                <button
+                  type="button"
+                  className="outline-btn rounded-xl px-3 py-2 text-xs font-semibold"
+                  disabled={!!nodeActionBusy || !node.enabled}
+                  onClick={() => void runNodeAction(node, "resync")}
+                >
+                  {nodeActionBusy === `resync:${node.code}` ? "..." : "Resync users"}
+                </button>
+                <button
+                  type="button"
+                  className="outline-btn rounded-xl px-3 py-2 text-xs font-semibold col-span-2"
+                  disabled={!!nodeActionBusy || !node.enabled}
+                  onClick={() => void runNodeAction(node, "disable")}
+                >
+                  {nodeActionBusy === `disable:${node.code}` ? "..." : "Disable"}
+                </button>
               </div>
 
               {node.last_health_at ? (

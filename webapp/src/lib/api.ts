@@ -497,6 +497,9 @@ export type AdminNodeHealthRow = {
   code: string;
   name: string;
   enabled: boolean;
+  accepting_new_clients: boolean;
+  is_draining: boolean;
+  mapped_users: number;
   is_healthy: boolean;
   health_score: number;
   panel_latency_ms?: number | null;
@@ -1336,6 +1339,41 @@ export function adminNodesDrift(only?: string[]): Promise<AdminNodeDriftReport> 
   if (only?.length) qs.set("only", only.join(","));
   const suffix = qs.toString() ? `?${qs.toString()}` : "";
   return apiFetch<AdminNodeDriftReport>(`/api/admin/nodes/drift${suffix}`);
+}
+
+export function adminNodeDrain(code: string): Promise<{ ok: boolean; node: AdminNodeHealthRow }> {
+  return apiFetch(`/api/admin/nodes/${encodeURIComponent(code)}/drain`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({}),
+  });
+}
+
+export function adminNodeEnable(code: string): Promise<{ ok: boolean; node: AdminNodeHealthRow }> {
+  return apiFetch(`/api/admin/nodes/${encodeURIComponent(code)}/enable`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({}),
+  });
+}
+
+export function adminNodeDisable(code: string, payload?: { force?: boolean }): Promise<{ ok: boolean; node: AdminNodeHealthRow }> {
+  return apiFetch(`/api/admin/nodes/${encodeURIComponent(code)}/disable`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload || {}),
+  });
+}
+
+export function adminNodeResync(
+  code: string,
+  payload?: { limit?: number; dry_run?: boolean },
+): Promise<{ ok: boolean; node_code: string; count: number; migrated: number; failed: number; skipped: number; dry_run: boolean; details: Array<Record<string, unknown>> }> {
+  return apiFetch(`/api/admin/nodes/${encodeURIComponent(code)}/resync`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload || {}),
+  });
 }
 
 export async function adminPromos(limit = 200): Promise<AdminPromoRow[]> {

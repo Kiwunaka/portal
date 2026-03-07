@@ -201,6 +201,179 @@ class ApiAuthAndTicketsTests(unittest.TestCase):
         self.assertEqual(body["summary"]["drift"], 1)
         self.assertEqual(body["results"][1]["node_code"], "nl")
 
+    def test_user_data_prefers_mapped_nodes_for_paid_user(self) -> None:
+        from db import SessionLocal
+        from models import Node, User, UserNode
+
+        s = SessionLocal()
+        try:
+            user = s.query(User).filter_by(tg_id=1001).first()
+            assert user is not None
+            user.sub_type = "PAID"
+            user.current_plan_code = "1_month"
+            user.sub_token = "subtoken-paid-1001"
+            pl = Node(
+                code="pl",
+                name="Poland",
+                host="pl.example.test",
+                vless_port=443,
+                reality_sni="www.orange.pl",
+                reality_pbk="pbk-pl",
+                reality_sid="sid-pl",
+                panel_base_url="https://pl.example.test:8444",
+                panel_path="/panel",
+                panel_user="admin",
+                panel_pass="pass",
+                inbound_id=1,
+                enabled=True,
+            )
+            it = Node(
+                code="it",
+                name="Italy",
+                host="it.example.test",
+                vless_port=443,
+                reality_sni="www.tim.it",
+                reality_pbk="pbk-it",
+                reality_sid="sid-it",
+                panel_base_url="https://it.example.test:8444",
+                panel_path="/panel",
+                panel_user="admin",
+                panel_pass="pass",
+                inbound_id=1,
+                enabled=True,
+            )
+            s.add_all([pl, it])
+            s.flush()
+            s.add(UserNode(tg_id=1001, node_id=it.id, client_uuid=str(user.uuid), panel_email=str(user.email)))
+            s.commit()
+        finally:
+            s.close()
+
+        user_hdrs = {"X-Telegram-Init-Data": self._init_data(1001, "alice")}
+        r = self.client.get("/api/user/1001", headers=user_hdrs)
+        self.assertEqual(r.status_code, 200, r.text)
+        nodes = r.json()["nodes"]
+        self.assertEqual([row["code"] for row in nodes], ["it"])
+
+    def test_admin_node_disable_requires_resync_when_mapped_users_exist(self) -> None:
+        from db import SessionLocal
+        from models import Node, UserNode
+
+        s = SessionLocal()
+        try:
+            node = Node(
+                code="pl",
+                name="Poland",
+                host="pl.example.test",
+                vless_port=443,
+                reality_sni="www.orange.pl",
+                reality_pbk="pbk-pl",
+                reality_sid="sid-pl",
+                panel_base_url="https://pl.example.test:8444",
+                panel_path="/panel",
+                panel_user="admin",
+                panel_pass="pass",
+                inbound_id=1,
+                enabled=True,
+            )
+            s.add(node)
+            s.flush()
+            s.add(UserNode(tg_id=1001, node_id=node.id, client_uuid="uuid-1001", panel_email="user_1001"))
+            s.commit()
+        finally:
+            s.close()
+
+        admin_hdrs = {"X-Telegram-Init-Data": self._init_data(9999, "admin")}
+        r = self.client.post("/api/admin/nodes/pl/disable", headers=admin_hdrs, json={})
+        self.assertEqual(r.status_code, 409, r.text)
+        self.assertIn("resync", r.text.lower())
+
+    def test_admin_node_resync_moves_mapping_off_draining_node(self) -> None:
+        from db import SessionLocal
+        from models import Node, User, UserNode
+
+        s = SessionLocal()
+        try:
+            user = s.query(User).filter_by(tg_id=1001).first()
+            assert user is not None
+            user.sub_type = "PAID"
+            user.current_plan_code = "1_month"
+            user.sub_token = "subtoken-paid-1001"
+            source = Node(
+                code="pl",
+                name="Poland",
+                host="pl.example.test",
+                vless_port=443,
+                reality_sni="www.orange.pl",
+                reality_pbk="pbk-pl",
+                reality_sid="sid-pl",
+                panel_base_url="https://pl.example.test:8444",
+                panel_path="/panel",
+                panel_user="admin",
+                panel_pass="pass",
+                inbound_id=1,
+                enabled=True,
+            )
+            target = Node(
+                code="it",
+                name="Italy",
+                host="it.example.test",
+                vless_port=443,
+                reality_sni="www.tim.it",
+                reality_pbk="pbk-it",
+                reality_sid="sid-it",
+                panel_base_url="https://it.example.test:8444",
+                panel_path="/panel",
+                panel_user="admin",
+                panel_pass="pass",
+                inbound_id=1,
+                enabled=True,
+            )
+            s.add_all([source, target])
+            s.flush()
+            s.add(UserNode(tg_id=1001, node_id=source.id, client_uuid=str(user.uuid), panel_email=str(user.email)))
+            s.commit()
+        finally:
+            s.close()
+
+        class FakePanel:
+            async def login(self):
+                return True
+
+            async def close(self):
+                return True
+
+            async def ensure_user_on_all_nodes(self, **kwargs):
+                self.ensure_kwargs = kwargs
+                return {"it": True}
+
+            async def set_existing_user_enabled_on_nodes(self, **kwargs):
+                self.disable_kwargs = kwargs
+                return {"pl": True}
+
+        original_panel = self.api.ControlPanel
+        self.api.ControlPanel = FakePanel
+        try:
+            admin_hdrs = {"X-Telegram-Init-Data": self._init_data(9999, "admin")}
+            drained = self.client.post("/api/admin/nodes/pl/drain", headers=admin_hdrs, json={})
+            self.assertEqual(drained.status_code, 200, drained.text)
+            resync = self.client.post("/api/admin/nodes/pl/resync", headers=admin_hdrs, json={"limit": 50})
+            self.assertEqual(resync.status_code, 200, resync.text)
+            self.assertEqual(int(resync.json().get("migrated") or 0), 1)
+        finally:
+            self.api.ControlPanel = original_panel
+
+        from db import SessionLocal
+        from models import UserNode
+
+        s = SessionLocal()
+        try:
+            rows = s.query(UserNode).filter(UserNode.tg_id == 1001).all()
+            node_ids = sorted(int(row.node_id) for row in rows)
+            self.assertEqual(len(node_ids), 1)
+        finally:
+            s.close()
+
     def test_web_login_session_flow(self) -> None:
         payload = self._telegram_login_payload(1001, "alice")
         login = self.client.post("/api/auth/telegram/web-login", json=payload)

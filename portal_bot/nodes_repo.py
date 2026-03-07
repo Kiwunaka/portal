@@ -25,6 +25,8 @@ class NodeRuntime:
     panel_user: str
     panel_pass: str
     inbound_id: int
+    accepting_new_clients: bool
+    is_draining: bool
     weight: int
     health_score: float
     last_health_at: datetime | None
@@ -71,6 +73,8 @@ def legacy_node() -> NodeRuntime:
         panel_user=Settings.PANEL_USER,
         panel_pass=Settings.PANEL_PASS,
         inbound_id=Settings.INBOUND_ID,
+        accepting_new_clients=True,
+        is_draining=False,
         weight=100,
         health_score=0.0,
         last_health_at=None,
@@ -107,6 +111,8 @@ def enabled_nodes(session) -> list[NodeRuntime]:
                 panel_user=n.panel_user,
                 panel_pass=n.panel_pass,
                 inbound_id=n.inbound_id,
+                accepting_new_clients=bool(getattr(n, "accepting_new_clients", True)),
+                is_draining=bool(getattr(n, "is_draining", False)),
                 weight=int(getattr(n, "weight", 0) or 0),
                 health_score=float(getattr(n, "health_score", 0.0) or 0.0),
                 last_health_at=getattr(n, "last_health_at", None),

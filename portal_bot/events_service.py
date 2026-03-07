@@ -1,12 +1,9 @@
 from __future__ import annotations
 
+import importlib
 import json
 from datetime import datetime, timezone
 from typing import Any
-
-import db
-from models import Event
-
 
 MAX_META_JSON = 3800
 
@@ -37,9 +34,11 @@ def track_event(
 ) -> int | None:
     if not event_name:
         return None
-    s = db.SessionLocal()
+    db_module = importlib.import_module("db")
+    event_model = importlib.import_module("models").Event
+    s = db_module.SessionLocal()
     try:
-        row = Event(
+        row = event_model(
             tg_id=int(tg_id),
             event_name=str(event_name).strip()[:64],
             source=str(source or "unknown").strip()[:32],

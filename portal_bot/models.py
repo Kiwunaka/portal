@@ -153,6 +153,8 @@ class Node(Base):
     inbound_id = Column(Integer)
 
     enabled = Column(Boolean, default=True)
+    accepting_new_clients = Column(Boolean, default=True)
+    is_draining = Column(Boolean, default=False)
     weight = Column(Integer, default=100)
     health_score = Column(Float, default=0.0)
     last_health_at = Column(DateTime, nullable=True)
