@@ -854,6 +854,14 @@ TARIFFS = {
         "subId": "FREE",
         "sub_type": "FREE"
     },
+    "start_99": {
+        "name": "⚡ Start 30 дней",
+        "stars": 99,
+        "days": 30,
+        "gb": 0,
+        "subId": "START_99",
+        "sub_type": "PAID"
+    },
     "1_month": {
         "name": "📅 1 Месяц",
         "stars": 249,
@@ -3074,8 +3082,9 @@ def _build_tariff_payment_choice_text(*, tariff_key: str, tg_id: int) -> str:
         discount_chunks.append("-20% за реферала")
     if int(pricing["pending_discount_pct"]) > 0:
         discount_chunks.append(f"-{int(pricing['pending_discount_pct'])}% по промокоду")
+    points_note = ""
     if int(pricing["points_to_use"]) > 0:
-        discount_chunks.append(f"-{int(pricing['points_to_use'])}⭐ по points")
+        points_note = f"\nЦена в Stars уже уменьшена на *{int(pricing['points_to_use'])}⭐* за счёт ваших бонусов."
 
     discount_line = ""
     if discount_chunks:
@@ -3088,7 +3097,7 @@ def _build_tariff_payment_choice_text(*, tariff_key: str, tg_id: int) -> str:
         f"Устройств: *до {PAID_LIMIT_IP}*\n"
         f"Страны: *все премиум-локации*\n\n"
         f"Цена в ₽: *{rub_price} ₽*\n"
-        f"Цена в Stars: *{int(pricing['final_stars'])}⭐*\n\n"
+        f"Цена в Stars: *{int(pricing['final_stars'])}⭐*{points_note}\n\n"
         f"{discount_line}"
         "Сначала выберите удобный способ оплаты. "
         "После оплаты доступ обновится автоматически."
@@ -3217,6 +3226,7 @@ def tariff_keyboard(
         ]
     else:
         plans = [
+            ("start_99", "⚡ Start 30 дней"),
             ("1_month", "📅 1 Месяц"),
             ("3_months", "📅 3 Месяца"),
         ]
@@ -3229,6 +3239,9 @@ def tariff_keyboard(
         marketing_badge = ""
         if key == "1_month":
             icon = "🚀"
+        elif key == "start_99":
+            icon = "⚡"
+            marketing_badge = " (БЫСТРЫЙ СТАРТ)"
         elif key == "3_months":
             icon = "💠"
             marketing_badge = " (СТАРТ)"

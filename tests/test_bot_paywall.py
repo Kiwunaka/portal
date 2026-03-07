@@ -486,8 +486,17 @@ class BotPaywallTests(unittest.TestCase):
     def test_tariff_keyboard_shows_rubles_before_stars(self) -> None:
         keyboard = self.bot_module.tariff_keyboard(tg_id=1001, show_trial=True, include_long_plans=False)
         labels = [row[0].text for row in keyboard.inline_keyboard]
+        self.assertTrue(any("99 ₽ / 99⭐" in text for text in labels))
         self.assertTrue(any("249 ₽ / 249⭐" in text for text in labels))
         self.assertTrue(any("699 ₽ / 699⭐" in text for text in labels))
+
+    def test_tariff_payment_choice_text_calls_points_bonuses(self) -> None:
+        self.bot_module.ensure_pending_user(1001, username="alice")
+        with patch.object(self.bot_module, "preview_redeemable_points") as preview:
+            preview.return_value = types.SimpleNamespace(redeemable_points=100)
+            text = self.bot_module._build_tariff_payment_choice_text(tariff_key="1_month", tg_id=1001)
+        self.assertIn("Цена в Stars уже уменьшена на *100⭐* за счёт ваших бонусов.", text)
+        self.assertNotIn("по points", text)
 
     def test_activate_promo_code_rejects_expired_promo(self) -> None:
         self.bot_module.ensure_pending_user(1001, username="alice")
