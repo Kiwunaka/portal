@@ -6,6 +6,10 @@ import {
   adminLiveUpdateDelete,
   adminLiveUpdateUpdate,
   adminLiveUpdates,
+  adminTemplateCreate,
+  adminTemplates,
+  adminTemplateUpdate,
+  type AdminTemplateRow,
   type LiveUpdateRow,
 } from "@/lib/api";
 import { Check, ExternalLink, Eye, Loader2, Megaphone, Newspaper, PencilLine, Plus, Send, Trash2, X } from "lucide-react";
@@ -26,10 +30,27 @@ const SEGMENT_OPTIONS = [
   { value: "expired", label: "Истёкшие", icon: "⏰" },
 ];
 
+const RETENTION_TEMPLATE_GROUPS = [
+  { key: "retention_welcome_a", label: "Welcome A", flow: "Welcome", hint: "Первое касание после регистрации" },
+  { key: "retention_welcome_b", label: "Welcome B", flow: "Welcome", hint: "Альтернативный welcome-вариант" },
+  { key: "retention_t3_a", label: "T-3 A", flow: "Продление", hint: "За 3 дня до окончания доступа" },
+  { key: "retention_t3_b", label: "T-3 B", flow: "Продление", hint: "Второй вариант для T-3" },
+  { key: "retention_t1_a", label: "T-1 A", flow: "Продление", hint: "За сутки до окончания доступа" },
+  { key: "retention_t1_b", label: "T-1 B", flow: "Продление", hint: "Второй вариант для T-1" },
+  { key: "retention_t0_a", label: "T0 A", flow: "Продление", hint: "Финальное касание в день окончания" },
+  { key: "retention_t0_b", label: "T0 B", flow: "Продление", hint: "Второй вариант для T0" },
+  { key: "retention_reactivation_a", label: "Reactivation A", flow: "Возврат", hint: "Возврат после оттока" },
+  { key: "retention_reactivation_b", label: "Reactivation B", flow: "Возврат", hint: "Альтернативный reactivation-вариант" },
+];
+
 type LiveUpdateDialog =
   | { kind: "create"; title: string; summary: string; link: string; sortOrder: string }
   | { kind: "edit"; id: number; title: string; summary: string; link: string; isActive: boolean }
   | { kind: "delete"; id: number }
+  | null;
+
+type TemplateDialog =
+  | { key: string; text: string; mode: "create" | "edit"; title: string; hint: string }
   | null;
 
 export default function AdminBroadcastPage() {
@@ -38,10 +59,12 @@ export default function AdminBroadcastPage() {
   const [tgIdsRaw, setTgIdsRaw] = useState("");
   const [text, setText] = useState("");
   const [liveUpdates, setLiveUpdates] = useState<LiveUpdateRow[]>([]);
+  const [templates, setTemplates] = useState<AdminTemplateRow[]>([]);
   const [result, setResult] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [liveDialog, setLiveDialog] = useState<LiveUpdateDialog>(null);
+  const [templateDialog, setTemplateDialog] = useState<TemplateDialog>(null);
 
   const loadLiveUpdates = async (): Promise<void> => {
     try {
@@ -52,8 +75,18 @@ export default function AdminBroadcastPage() {
     }
   };
 
+  const loadTemplates = async (): Promise<void> => {
+    try {
+      const rows = await adminTemplates(200);
+      setTemplates(rows);
+    } catch (err) {
+      setError(String((err as { message?: string })?.message || err || "Ошибка загрузки retention-шаблонов"));
+    }
+  };
+
   useEffect(() => {
     void loadLiveUpdates();
+    void loadTemplates();
   }, []);
 
   const submit = async (): Promise<void> => {
@@ -102,6 +135,19 @@ export default function AdminBroadcastPage() {
     setLiveDialog({ kind: "delete", id });
   };
 
+  const openTemplateDialog = (templateKey: string): void => {
+    const meta = RETENTION_TEMPLATE_GROUPS.find((row) => row.key === templateKey);
+    if (!meta) return;
+    const existing = templates.find((row) => row.key === templateKey);
+    setTemplateDialog({
+      key: templateKey,
+      text: existing?.text || "",
+      mode: existing ? "edit" : "create",
+      title: meta.label,
+      hint: meta.hint,
+    });
+  };
+
   const submitLiveDialog = async (): Promise<void> => {
     if (!liveDialog) return;
     setBusy(true);
@@ -147,6 +193,34 @@ export default function AdminBroadcastPage() {
       setBusy(false);
     }
   };
+
+  const submitTemplateDialog = async (): Promise<void> => {
+    if (!templateDialog) return;
+    const textValue = templateDialog.text.trim();
+    if (!textValue) {
+      setError("Текст шаблона не может быть пустым.");
+      return;
+    }
+    setBusy(true);
+    setError("");
+    try {
+      if (templateDialog.mode === "create") {
+        await adminTemplateCreate({ key: templateDialog.key, text: textValue });
+        setResult(`Шаблон ${templateDialog.title} создан.`);
+      } else {
+        await adminTemplateUpdate(templateDialog.key, { text: textValue });
+        setResult(`Шаблон ${templateDialog.title} обновлён.`);
+      }
+      await loadTemplates();
+      setTemplateDialog(null);
+    } catch (err) {
+      setError(String((err as { message?: string })?.message || err || "Не удалось сохранить retention-шаблон"));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const templatesByKey = new Map(templates.map((row) => [row.key, row]));
 
   return (
     <section className="space-y-5">
@@ -224,6 +298,55 @@ export default function AdminBroadcastPage() {
           {busy ? <Loader2 size={14} className="animate-spin" /> : <Send size={14} />}
           {busy ? "Отправка..." : "Отправить"}
         </button>
+      </article>
+
+      <article className="glass-card p-5">
+        <div className="mb-4 flex items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <div className="stat-icon stat-icon-violet">
+              <PencilLine size={20} />
+            </div>
+            <div>
+              <h3 className="font-display text-xl font-bold">Retention-шаблоны</h3>
+              <p className="text-xs text-slate-500">Welcome, T-3, T-1, T0 и reactivation без захода в бот</p>
+            </div>
+          </div>
+          <span className="badge badge-info">{templates.length} шаблонов</span>
+        </div>
+        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+          {RETENTION_TEMPLATE_GROUPS.map((item) => {
+            const existing = templatesByKey.get(item.key);
+            return (
+              <article key={item.key} className="node-card">
+                <div className="flex items-start justify-between gap-2">
+                  <div>
+                    <p className="text-[10px] uppercase tracking-[0.1em] text-slate-500">{item.flow}</p>
+                    <h4 className="mt-1 text-sm font-bold">{item.label}</h4>
+                  </div>
+                  <span className={`badge ${existing ? "badge-success" : "badge-warning"}`}>
+                    {existing ? "готов" : "создать"}
+                  </span>
+                </div>
+                <p className="mt-2 text-xs text-slate-500">{item.hint}</p>
+                <div className="mt-3 rounded-xl bg-white/50 p-3 text-xs leading-relaxed text-slate-600 dark:bg-white/5 dark:text-slate-300">
+                  {(existing?.text || "Шаблон ещё не создан. Откройте карточку и заполните текст.").slice(0, 240)}
+                  {existing?.text && existing.text.length > 240 ? "…" : ""}
+                </div>
+                <div className="mt-3 flex justify-end">
+                  <button
+                    className="outline-btn rounded-xl px-3 py-2 text-xs font-semibold inline-flex items-center gap-1.5"
+                    type="button"
+                    onClick={() => openTemplateDialog(item.key)}
+                    disabled={busy}
+                  >
+                    <PencilLine size={12} />
+                    {existing ? "Редактировать" : "Создать"}
+                  </button>
+                </div>
+              </article>
+            );
+          })}
+        </div>
       </article>
 
       {/* ── Live updates ───────────────────────────────── */}
@@ -387,6 +510,33 @@ export default function AdminBroadcastPage() {
                 </div>
               </>
             ) : null}
+          </div>
+        </div>
+      ) : null}
+
+      {templateDialog ? (
+        <div className="fixed inset-0 z-[260] flex items-center justify-center bg-slate-950/65 p-4">
+          <div className="glass-card w-full max-w-2xl p-5">
+            <h3 className="font-display text-xl font-semibold">{templateDialog.title}</h3>
+            <p className="mt-2 text-sm text-slate-500">{templateDialog.hint}</p>
+            <p className="mt-1 text-xs uppercase tracking-[0.1em] text-slate-500">{templateDialog.key}</p>
+            <textarea
+              value={templateDialog.text}
+              onChange={(event) =>
+                setTemplateDialog((prev) => (prev ? { ...prev, text: event.target.value } : prev))
+              }
+              rows={12}
+              className="mt-4 w-full rounded-2xl border border-violet-200/50 bg-white/80 px-3 py-3 text-sm outline-none dark:border-violet-500/30 dark:bg-slate-900/70"
+              placeholder="Текст шаблона. Можно использовать переменные вроде {expiry_date}, {channel}, {discount_pct}."
+            />
+            <div className="mt-4 flex justify-end gap-2">
+              <button className="outline-btn rounded-xl px-4 py-2 text-sm font-semibold" type="button" onClick={() => setTemplateDialog(null)}>
+                Отмена
+              </button>
+              <button className="btn-primary rounded-xl px-4 py-2 text-sm font-semibold" type="button" disabled={busy} onClick={() => void submitTemplateDialog()}>
+                {templateDialog.mode === "create" ? "Создать" : "Сохранить"}
+              </button>
+            </div>
           </div>
         </div>
       ) : null}
