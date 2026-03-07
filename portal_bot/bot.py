@@ -2998,6 +2998,7 @@ def build_choose_tariff_text() -> str:
         f"Бесплатный: до {FREE_TOTAL_GB} ГБ, до {FREE_LIMIT_IP} устройств (по IP), до {FREE_SPEED_MBIT} Мбит/с.\n"
         "Бесплатный: спокойный старт для повседневных задач и одного основного подключения.\n"
         f"Премиум: все доступные страны, до {PAID_LIMIT_IP} устройств и комфортный запас по скорости.\n\n"
+        "На кнопках ниже сначала показана цена в ₽, затем цена в Stars.\n\n"
         f"💰 *Выгода при оплате на срок:*{savings_line}\n\n"
         f"{payment_hint}"
     )
@@ -3048,6 +3049,21 @@ def _tariff_pricing_for_user(tg_id: int, tariff_key: str) -> dict[str, int | boo
         "pending_discount_pct": int(pending_discount_pct),
         "use_discount": bool(use_discount),
     }
+
+
+def _tariff_button_label(*, tg_id: int, tariff_key: str, label: str, marketing_badge: str = "", savings_text: str = "") -> str:
+    pricing = _tariff_pricing_for_user(tg_id, tariff_key)
+    rub_price = int(pricing["base_price"])
+    stars_price = int(pricing["final_stars"])
+    discount_badges: list[str] = []
+    if pricing["use_discount"]:
+        discount_badges.append("реф")
+    if int(pricing["pending_discount_pct"]) > 0:
+        discount_badges.append("промо")
+    if int(pricing["points_to_use"]) > 0:
+        discount_badges.append("points")
+    discount_suffix = f" · {' + '.join(discount_badges)}" if discount_badges else ""
+    return f"{label} — {rub_price} ₽ / {stars_price}⭐{marketing_badge}{savings_text}{discount_suffix}"
 
 
 def _build_tariff_payment_choice_text(*, tariff_key: str, tg_id: int) -> str:
@@ -3178,11 +3194,7 @@ def tariff_keyboard(
     include_long_plans: bool = False,
 ) -> InlineKeyboardMarkup:
     buttons = []
-    
-    # Check if user has 20% referral discount
-    has_discount = has_referral_discount(tg_id) if tg_id else False
-    discount_text = " 🎉 -20%" if has_discount else ""
-    
+
     # Free is always visible. If user already has active paid access, pressing it shows an alert and does nothing.
     if show_trial:
         buttons.append(
@@ -3212,11 +3224,7 @@ def tariff_keyboard(
     for key, label in plans:
         tariff = TARIFFS.get(key)
         if not tariff: continue
-        
-        price = tariff["stars"]
-        if has_discount:
-            price = int(price * 0.8)
-            
+
         icon = "▪️"
         marketing_badge = ""
         if key == "1_month":
@@ -3237,7 +3245,13 @@ def tariff_keyboard(
 
         savings = _tariff_savings_pct(key)
         savings_text = f" (-{savings}%)" if savings and key not in {"12_months"} else ""
-        btn_text = f"{icon} {label} — {price} ⭐{discount_text}{marketing_badge}{savings_text}"
+        btn_text = _tariff_button_label(
+            tg_id=tg_id,
+            tariff_key=key,
+            label=f"{icon} {label}",
+            marketing_badge=marketing_badge,
+            savings_text=savings_text,
+        )
         buttons.append([InlineKeyboardButton(text=btn_text, callback_data=f"buy_{key}")])
     
     if include_long_plans:

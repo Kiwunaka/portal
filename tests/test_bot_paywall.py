@@ -483,6 +483,12 @@ class BotPaywallTests(unittest.TestCase):
         self.assertIn("campaign=launch_week_1", keyboard.inline_keyboard[0][0].url)
         self.assertEqual(keyboard.inline_keyboard[1][0].callback_data, "pay_stars_3_months")
 
+    def test_tariff_keyboard_shows_rubles_before_stars(self) -> None:
+        keyboard = self.bot_module.tariff_keyboard(tg_id=1001, show_trial=True, include_long_plans=False)
+        labels = [row[0].text for row in keyboard.inline_keyboard]
+        self.assertTrue(any("249 ₽ / 249⭐" in text for text in labels))
+        self.assertTrue(any("699 ₽ / 699⭐" in text for text in labels))
+
     def test_activate_promo_code_rejects_expired_promo(self) -> None:
         self.bot_module.ensure_pending_user(1001, username="alice")
         self.bot_module.set_tos_accepted(1001)
