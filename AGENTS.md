@@ -9,8 +9,8 @@ This file documents the intended "agents" (roles) and the rules they must follow
 - Any public-facing copy must not mention the word "VPN" unless explicitly required.
 - Prefer backward-compatible changes where possible (fallback to legacy single-node behavior if `nodes` table is empty).
 - For node operations, `PORTAL` DB is the source of truth; `3x-ui` must be treated as a node-local execution layer, not the authoritative inventory.
-- Payment provider decision is finalized: `FreeKassa` is the active RUB provider (with Stars as secondary path).
-- Do not run payment-provider research tracks unless explicitly requested by the owner.
+- RUB payments are now provider-agnostic: `PORTAL` chooses from enabled providers via env-driven catalog, with `Stars` as the built-in Telegram path.
+- Payment-provider research or onboarding is allowed when explicitly requested by the owner or when replacing a failing active cashier.
 - For release work, default completion includes `push + deploy`; if this is blocked, document the blocker and rollback-safe state in docs.
 - After backend/frontend/infrastructure changes, a scope-appropriate smoke check is mandatory:
   - backend: health + subscription + checkout + ticket endpoints;
@@ -75,8 +75,8 @@ Scope:
 - `scripts/`
 
 Responsibilities:
-- Maintain FreeKassa integration contracts (site/bot flows, callbacks, idempotency, allowlist).
-- Keep payment env matrix, callback URLs, and runbooks consistent with production.
+- Maintain provider-agnostic RUB integration contracts (site/bot flows, callbacks, idempotency, allowlist / signature rules).
+- Keep payment env matrix, callback URLs, provider priority/fallback order, and runbooks consistent with production.
 - Ensure checkout ticket flow and metadata contracts stay backward-compatible.
 
 ### qa-regression

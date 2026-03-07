@@ -71,6 +71,17 @@ from models import (
     UserKeyPolicy,
     UserNode,
 )
+from payment_providers import (
+    PROVIDER_META,
+    callback_ids as payment_callback_ids,
+    callback_status as payment_callback_status,
+    create_rub_payment,
+    enabled_provider_catalog,
+    enabled_rub_provider_codes,
+    normalize_provider as _normalize_checkout_provider,
+    provider_is_configured,
+    verify_callback_signature as verify_provider_callback_signature,
+)
 from tickets_repo import (
     STATUS_CLOSED,
     STATUS_IN_PROGRESS,
@@ -208,7 +219,7 @@ GIFT_CARD_TYPES = {
     "standard": {"days": 30, "stars": 249, "name": "Standard"},
     "premium": {"days": 90, "stars": 699, "name": "Premium"},
 }
-PAYMENT_PROVIDER_WHITELIST = {"aaio", "cardlink", "freekassa"}
+PAYMENT_PROVIDER_WHITELIST = {"cardlink", "freekassa", "pally", "platima"}
 RUB_PLAN_LABELS = {
     "start_99": "Start 30 дней",
     "1_month": "Pro 1 месяц",
@@ -217,7 +228,6 @@ RUB_PLAN_LABELS = {
     "9_months": "Ultra 9 месяцев",
     "12_months": "Ultra 12 месяцев",
 }
-PAYMENT_PROVIDER_WHITELIST = {"freekassa"}
 FK_NOTIFY_IP_ALLOWLIST = [
     x.strip()
     for x in (os.getenv("FK_NOTIFY_IP_ALLOWLIST") or "").split(",")
@@ -712,6 +722,42 @@ class FreekassaOrderActionOut(BaseModel):
     discount_applied: bool = False
     base_amount_rub: float | None = None
     discount_pct: int = 0
+
+
+class RubProviderChoiceOut(BaseModel):
+    code: str
+    label: str
+    accent: str = ""
+    checkout_hint: str = ""
+    supports_bot: bool = True
+    supports_webapp: bool = True
+    supports_public: bool = True
+
+
+class RubProvidersOut(BaseModel):
+    ok: bool = True
+    providers: list[RubProviderChoiceOut] = Field(default_factory=list)
+
+
+class RubOrderCreateIn(BaseModel):
+    provider: str = Field(min_length=2, max_length=32)
+    plan_code: str = Field(min_length=2, max_length=32)
+    source: str = Field(default="site", max_length=16)
+    tg_id: int | None = None
+    campaign: str | None = Field(default=None, max_length=64)
+    promo_code: str | None = Field(default=None, max_length=32)
+    currency: str = Field(default="RUB", max_length=8)
+
+
+class RubPublicOrderCreateIn(BaseModel):
+    provider: str = Field(min_length=2, max_length=32)
+    plan_code: str = Field(min_length=2, max_length=32)
+    checkout_ticket: str = Field(min_length=16, max_length=1200)
+    currency: str = Field(default="RUB", max_length=8)
+
+
+class RubOrderActionOut(FreekassaOrderActionOut):
+    provider_label: str | None = None
 
 
 class AdminPlanCreateIn(BaseModel):
@@ -1491,14 +1537,9 @@ def _checkout_runtime_errors() -> list[str]:
         errors.append("PAY_SUCCESS_URL is not configured")
     if not (_safe_public_url(Settings.PAY_FAIL_URL) or _safe_public_url(Settings.PUBLIC_API_BASE_URL)):
         errors.append("PAY_FAIL_URL is not configured")
-    for source in ("site", "bot"):
-        shop = _fk_shop_by_source(source)
-        if not shop:
-            errors.append(f"FreeKassa shop config is missing for source={source}")
-            continue
-        for field in ("shop_id", "api_key", "secret_word_1", "secret_word_2"):
-            if not str(shop.get(field) or "").strip():
-                errors.append(f"FreeKassa {field} is empty for source={source}")
+    enabled = enabled_rub_provider_codes()
+    if not enabled:
+        errors.append("No RUB payment providers are configured")
     return errors
 
 
@@ -1506,6 +1547,44 @@ def _ensure_checkout_runtime_ready() -> None:
     errors = _checkout_runtime_errors()
     if errors:
         raise HTTPException(status_code=503, detail="; ".join(errors))
+
+
+def _payment_callback_base_url() -> str:
+    return _safe_public_url(Settings.PUBLIC_API_BASE_URL) or f"https://{(Settings.PUBLIC_API_DOMAIN or Settings.HOST_DOMAIN or 'kiwunaka.space').strip().strip('/')}"
+
+
+def _pay_success_url(provider: str = "") -> str:
+    base = _safe_public_url(Settings.PAY_SUCCESS_URL) or f"{_payment_callback_base_url().rstrip('/')}/pay/success"
+    provider_code = _normalize_provider(provider)
+    if not provider_code:
+        return base
+    parsed = urlparse(base)
+    q = dict(parse_qsl(parsed.query, keep_blank_values=True))
+    q["provider"] = provider_code
+    return parsed._replace(query=urlencode(q)).geturl()
+
+
+def _pay_fail_url(provider: str = "") -> str:
+    base = _safe_public_url(Settings.PAY_FAIL_URL) or f"{_payment_callback_base_url().rstrip('/')}/pay/fail"
+    provider_code = _normalize_provider(provider)
+    if not provider_code:
+        return base
+    parsed = urlparse(base)
+    q = dict(parse_qsl(parsed.query, keep_blank_values=True))
+    q["provider"] = provider_code
+    return parsed._replace(query=urlencode(q)).geturl()
+
+
+def _provider_result_url(provider: str) -> str:
+    return f"{_payment_callback_base_url().rstrip('/')}/api/payments/result/{_normalize_provider(provider)}"
+
+
+def _provider_refund_url(provider: str) -> str:
+    return f"{_payment_callback_base_url().rstrip('/')}/api/payments/refund/{_normalize_provider(provider)}"
+
+
+def _provider_chargeback_url(provider: str) -> str:
+    return f"{_payment_callback_base_url().rstrip('/')}/api/payments/chargeback/{_normalize_provider(provider)}"
 
 
 def _checkout_url_for_user(*, tg_id: int, plan_code: str = "", promo_code: str = "", campaign_key: str = "", source: str = "bot") -> str:
@@ -1539,6 +1618,9 @@ def _checkout_url_for_user(*, tg_id: int, plan_code: str = "", promo_code: str =
 
 
 def _normalize_provider(provider: str) -> str:
+    normalized = _normalize_checkout_provider(provider)
+    if normalized:
+        return normalized
     return re.sub(r"[^a-z0-9_-]", "", str(provider or "").strip().lower())
 
 
@@ -1581,7 +1663,13 @@ async def _read_callback_payload(request: Request) -> tuple[dict[str, Any], byte
             form = await request.form()
             payload = {str(k): str(v) for k, v in form.items()}
         except Exception:
-            payload = {}
+            if "application/x-www-form-urlencoded" in content_type and raw:
+                try:
+                    payload = {str(k): str(v) for k, v in parse_qsl(raw.decode("utf-8", errors="replace"), keep_blank_values=True)}
+                except Exception:
+                    payload = {}
+            else:
+                payload = {}
     else:
         if raw:
             try:
@@ -1619,6 +1707,8 @@ def _verify_callback_signature(*, provider: str, payload: dict[str, Any], raw: b
             if hmac.compare_digest(str(provided).lower(), expected.lower()):
                 return True, "ok"
             return False, "invalid_signature"
+    if p in {"cardlink", "pally", "platima"}:
+        return (True, "ok") if verify_provider_callback_signature(p, payload) else (False, "invalid_signature")
 
     secret = _provider_secret(provider)
     if not secret:
@@ -1661,7 +1751,12 @@ def _verify_callback_signature(*, provider: str, payload: dict[str, Any], raw: b
     return False, "invalid_signature"
 
 
-def _callback_ids(payload: dict[str, Any], raw: bytes) -> tuple[str, str]:
+def _callback_ids(provider: str, payload: dict[str, Any], raw: bytes) -> tuple[str, str]:
+    p = _normalize_provider(provider)
+    if p in {"cardlink", "pally", "platima"}:
+        order_id, external_id = payment_callback_ids(p, payload)
+        if order_id or external_id:
+            return order_id, external_id or order_id or hashlib.sha256(raw or b"").hexdigest()[:40]
     order_id = _payload_value(
         payload,
         "order_id",
@@ -1713,6 +1808,11 @@ def _status_from_event(event_type: str, payload: dict[str, Any], signature_ok: b
         return "chargeback"
     if _normalize_provider(provider) == "freekassa" and event == "result" and signature_ok:
         return "paid"
+    provider_state = payment_callback_status(provider, payload)
+    if provider_state in {"paid", "success", "succeeded", "approved", "completed"} and signature_ok:
+        return "paid"
+    if provider_state in {"failed", "fail", "cancelled", "canceled", "rejected", "declined"}:
+        return "failed"
     status_raw = _payload_value(payload, "status", "payment_status", "state").lower()
     if status_raw in {"paid", "success", "succeeded", "approved"} and signature_ok:
         return "paid"
@@ -1738,13 +1838,13 @@ def _upsert_external_order(
     if not row:
         row = ExternalOrder(provider=provider, order_id=order_id, created_at=_utcnow())
         s.add(row)
-    row.tg_id = _safe_int(_payload_value(payload, "tg_id", "telegram_id", "user_id"))
-    row.plan_code = _payload_value(payload, "plan_code", "tariff", "plan")
-    row.source = _payload_value(payload, "source", "checkout_source")
+    row.tg_id = _safe_int(_payload_value(payload, "tg_id", "telegram_id", "user_id", "us_tg_id")) or row.tg_id
+    row.plan_code = _payload_value(payload, "plan_code", "tariff", "plan", "us_plan_code")
+    row.source = _payload_value(payload, "source", "checkout_source", "us_source")
     row.campaign = _payload_value(payload, "campaign", "utm_campaign")
     row.promo_code = _payload_value(payload, "promo_code", "coupon")
     row.meta_json = json.dumps(payload, ensure_ascii=False, separators=(",", ":"))[:4000]
-    row.amount = _safe_float(_payload_value(payload, "amount", "sum", "amount_paid"))
+    row.amount = _safe_float(_payload_value(payload, "amount", "sum", "amount_paid", "OutSum"))
     row.currency = _payload_value(payload, "currency", "cur", "ccy") or "RUB"
     row.status = status
     if mark_paid and not row.paid_at:
@@ -1851,14 +1951,14 @@ def _rub_plan_days(plan_code: str) -> int:
     return max(1, int(fallback.get("days") or 30))
 
 
-def _apply_external_paid_order(*, order_id: str, payload: dict[str, Any]) -> tuple[bool, str]:
+def _apply_external_paid_order(*, provider: str, order_id: str, payload: dict[str, Any]) -> tuple[bool, str]:
     s = SessionLocal()
     try:
         ext_order = None
         if order_id:
             ext_order = (
                 s.query(ExternalOrder)
-                .filter(ExternalOrder.provider == "freekassa", ExternalOrder.order_id == str(order_id))
+                .filter(ExternalOrder.provider == str(provider), ExternalOrder.order_id == str(order_id))
                 .first()
             )
         tg_id = _safe_int(_payload_value(payload, "tg_id", "telegram_id", "user_id", "us_tg_id"))
@@ -1907,7 +2007,7 @@ def _apply_external_paid_order(*, order_id: str, payload: dict[str, Any]) -> tup
         if first_paid_purchase and referrer_id > 0:
             _queue_referral_bonus(
                 s=s,
-                order_id=str(order_id or f"fk:{int(tg_id)}:{int(now.timestamp())}"),
+                order_id=str(order_id or f"{provider}:{int(tg_id)}:{int(now.timestamp())}"),
                 referrer_tg_id=int(referrer_id),
                 referred_tg_id=int(tg_id),
                 now=now,
@@ -1940,7 +2040,8 @@ def _apply_external_paid_order(*, order_id: str, payload: dict[str, Any]) -> tup
             )
         except Exception as exc:
             logger.warning(
-                "referral points award failed for freekassa order_id=%s referrer=%s referred=%s err=%s",
+                "referral points award failed for provider=%s order_id=%s referrer=%s referred=%s err=%s",
+                provider,
                 order_id,
                 referrer_id,
                 tg_id,
@@ -1952,7 +2053,7 @@ def _apply_external_paid_order(*, order_id: str, payload: dict[str, Any]) -> tup
 
 async def _handle_payment_callback(*, provider: str, event_type: str, request: Request) -> dict[str, Any]:
     p = _normalize_provider(provider)
-    et = _normalize_provider(event_type)
+    et = re.sub(r"[^a-z_]", "", str(event_type or "").strip().lower())
     if p not in PAYMENT_PROVIDER_WHITELIST:
         raise HTTPException(status_code=404, detail="Unsupported provider")
     if et not in {"result", "refund", "chargeback"}:
@@ -1964,7 +2065,7 @@ async def _handle_payment_callback(*, provider: str, event_type: str, request: R
         if not _is_ip_allowed(client_ip, FK_NOTIFY_IP_ALLOWLIST):
             logger.warning("freekassa callback blocked by ip allowlist: ip=%s", client_ip)
             raise HTTPException(status_code=403, detail="Callback IP is not allowed")
-    order_id, external_id = _callback_ids(payload, raw)
+    order_id, external_id = _callback_ids(p, payload, raw)
     signature_ok, signature_reason = _verify_callback_signature(provider=p, payload=payload, raw=raw, request=request)
     processed_ok = bool(signature_ok)
     duplicate, persist_ok = _record_external_payment_event(
@@ -1993,7 +2094,7 @@ async def _handle_payment_callback(*, provider: str, event_type: str, request: R
     activation_reason = ""
     sync_ok = None
     if (not duplicate) and signature_ok and et == "result":
-        activated, activation_reason = _apply_external_paid_order(order_id=order_id, payload=payload)
+        activated, activation_reason = _apply_external_paid_order(provider=p, order_id=order_id, payload=payload)
         if activated:
             tg_id = _safe_int(_payload_value(payload, "tg_id", "telegram_id", "user_id"))
             if tg_id is not None:
@@ -2966,9 +3067,10 @@ async def payment_freekassa_notify(request: Request):
     return result
 
 
-async def _freekassa_create_order_internal(
+async def _rub_create_order_internal(
     *,
     request: Request,
+    provider: str,
     tg_id: int,
     source: str,
     plan_code: str,
@@ -2976,8 +3078,13 @@ async def _freekassa_create_order_internal(
     promo_code: str = "",
     currency: str = "RUB",
     consume_pending_discount: bool = False,
-) -> FreekassaOrderActionOut:
+) -> RubOrderActionOut:
     _ensure_checkout_runtime_ready()
+    provider = _normalize_provider(provider) or "freekassa"
+    if provider not in PAYMENT_PROVIDER_WHITELIST:
+        raise HTTPException(status_code=400, detail="Unsupported payment provider")
+    if provider != "freekassa" and not provider_is_configured(provider):
+        raise HTTPException(status_code=503, detail=f"{provider} is not configured")
     s = SessionLocal()
     try:
         plan = _resolve_plan_config(s=s, code=plan_code)
@@ -3005,11 +3112,13 @@ async def _freekassa_create_order_internal(
         discount_applied = bool(base_amount > 0 and final_amount < base_amount)
         discount_pct = int(round((1.0 - (float(final_amount) / float(base_amount))) * 100)) if discount_applied else 0
         amount_rub = float(final_amount)
-        order_id = f"fk_{source}_{tg_id}_{int(time.time())}_{secrets.token_hex(4)}"
+        order_prefix = "fk" if provider == "freekassa" else provider[:12]
+        order_id = f"{order_prefix}_{source}_{tg_id}_{int(time.time())}_{secrets.token_hex(4)}"
+        plan_label = str(plan.get("label") or RUB_PLAN_LABELS.get(plan_code) or plan_code).strip()
         ext = ExternalOrder(
             order_id=order_id,
             tg_id=int(tg_id),
-            provider="freekassa",
+            provider=provider,
             plan_code=str(plan.get("code") or plan_code).strip().lower(),
             source=source,
             campaign=(campaign or "").strip()[:64] or None,
@@ -3024,6 +3133,8 @@ async def _freekassa_create_order_internal(
                     "promo_code": effective_promo,
                     "tg_id": int(tg_id),
                     "plan_code": str(plan.get("code") or plan_code).strip().lower(),
+                    "provider": provider,
+                    "plan_label": plan_label,
                     "pricing": {
                         "base_amount_rub": int(base_amount),
                         "final_amount_rub": int(final_amount),
@@ -3051,10 +3162,12 @@ async def _freekassa_create_order_internal(
         s.close()
 
     req_data = {
+        "provider": provider,
         "amount": float(amount_rub),
         "currency": "RUB",
         "tg_id": int(tg_id),
         "plan_code": str(plan.get("code") or plan_code).strip().lower(),
+        "plan_label": plan_label,
         "campaign": campaign or "",
         "promo_code": effective_promo or "",
         "source": source,
@@ -3064,26 +3177,52 @@ async def _freekassa_create_order_internal(
         "referral_discount_eligible": bool(referral_discount_eligible),
         "client_ip": _fk_client_ip(request),
     }
-    payment_url = _build_freekassa_payment_url(
-        source=source,
-        order_id=order_id,
-        amount_rub=amount_rub,
-        currency="RUB",
-        tg_id=int(tg_id),
-        plan_code=str(plan.get("code") or plan_code).strip().lower(),
-        campaign=campaign or "",
-        promo_code=effective_promo or "",
-    )
+    if provider == "freekassa":
+        payment_url = _build_freekassa_payment_url(
+            source=source,
+            order_id=order_id,
+            amount_rub=amount_rub,
+            currency="RUB",
+            tg_id=int(tg_id),
+            plan_code=str(plan.get("code") or plan_code).strip().lower(),
+            campaign=campaign or "",
+            promo_code=effective_promo or "",
+        )
+        remote_response: dict[str, Any] = {"payment_url": payment_url}
+    else:
+        payment = await create_rub_payment(
+            provider=provider,
+            order_id=order_id,
+            amount_rub=amount_rub,
+            currency="RUB",
+            description=f"PORTAL {plan_label}",
+            success_url=_pay_success_url(provider),
+            fail_url=_pay_fail_url(provider),
+            result_url=_provider_result_url(provider),
+            refund_url=_provider_refund_url(provider),
+            chargeback_url=_provider_chargeback_url(provider),
+            logo_url=(os.getenv("PAYMENT_LOGO_URL") or "").strip(),
+            custom={
+                "tg_id": int(tg_id),
+                "plan_code": str(plan.get("code") or plan_code).strip().lower(),
+                "provider": provider,
+                "source": source,
+                "campaign": campaign or "",
+                "promo_code": effective_promo or "",
+            },
+        )
+        payment_url = str(payment.get("payment_url") or "").strip()
+        remote_response = dict(payment.get("remote") or {})
 
     s = SessionLocal()
     try:
-        row = s.query(ExternalOrder).filter(ExternalOrder.provider == "freekassa", ExternalOrder.order_id == order_id).first()
+        row = s.query(ExternalOrder).filter(ExternalOrder.provider == provider, ExternalOrder.order_id == order_id).first()
         if row:
             row.status = "pending"
             row.meta_json = json.dumps(
                 {
                     "request": req_data,
-                    "response": {"payment_url": payment_url},
+                    "response": {"payment_url": payment_url, "remote": remote_response},
                     "pricing": {
                         "base_amount_rub": int(base_amount),
                         "final_amount_rub": int(final_amount),
@@ -3098,8 +3237,10 @@ async def _freekassa_create_order_internal(
     finally:
         s.close()
 
-    return FreekassaOrderActionOut(
+    return RubOrderActionOut(
         ok=True,
+        provider=provider,
+        provider_label=(PROVIDER_META.get(provider).label if provider in PROVIDER_META else provider.title()),
         order_id=order_id,
         payment_url=payment_url or None,
         amount_rub=float(amount_rub),
@@ -3112,12 +3253,17 @@ async def _freekassa_create_order_internal(
     )
 
 
-@app.post("/api/payments/freekassa/orders/create", response_model=FreekassaOrderActionOut)
-async def freekassa_order_create(
-    payload: FreekassaOrderCreateIn,
+@app.get("/api/payments/providers", response_model=RubProvidersOut)
+async def rub_payment_providers() -> RubProvidersOut:
+    return RubProvidersOut(providers=[RubProviderChoiceOut(**row) for row in enabled_provider_catalog()])
+
+
+@app.post("/api/payments/orders/create", response_model=RubOrderActionOut)
+async def rub_order_create(
+    payload: RubOrderCreateIn,
     request: Request,
     x_telegram_init_data: str = Header(default=""),
-) -> FreekassaOrderActionOut:
+) -> RubOrderActionOut:
     _ensure_checkout_runtime_ready()
     auth_user = _require_auth_user(x_telegram_init_data, request=request)
     actor_tg_id = int(auth_user.get("id", 0))
@@ -3128,8 +3274,9 @@ async def freekassa_order_create(
     tg_id = int(payload.tg_id or actor_tg_id)
     if tg_id != actor_tg_id and not _is_admin_tg(actor_tg_id):
         raise HTTPException(status_code=403, detail="Access denied")
-    return await _freekassa_create_order_internal(
+    return await _rub_create_order_internal(
         request=request,
+        provider=_normalize_provider(payload.provider),
         tg_id=int(tg_id),
         source=source,
         plan_code=(payload.plan_code or "").strip().lower(),
@@ -3140,11 +3287,11 @@ async def freekassa_order_create(
     )
 
 
-@app.post("/api/payments/freekassa/orders/create-public", response_model=FreekassaOrderActionOut)
-async def freekassa_order_create_public(
-    payload: FreekassaPublicOrderCreateIn,
+@app.post("/api/payments/orders/create-public", response_model=RubOrderActionOut)
+async def rub_order_create_public(
+    payload: RubPublicOrderCreateIn,
     request: Request,
-) -> FreekassaOrderActionOut:
+) -> RubOrderActionOut:
     _ensure_checkout_runtime_ready()
     ticket_payload = _parse_checkout_ticket(payload.checkout_ticket)
     if not ticket_payload:
@@ -3162,8 +3309,9 @@ async def freekassa_order_create_public(
     plan_code = (ticket_plan_code or request_plan_code or "").strip().lower()
     campaign = _sanitize_deeplink_token(str(ticket_payload.get("campaign_key") or ""), max_len=64, uppercase=False)
     promo_code = _sanitize_deeplink_token(str(ticket_payload.get("promo_code") or ""), max_len=20, uppercase=True)
-    return await _freekassa_create_order_internal(
+    return await _rub_create_order_internal(
         request=request,
+        provider=_normalize_provider(payload.provider),
         tg_id=tg_id,
         source=source,
         plan_code=plan_code,
@@ -3172,6 +3320,38 @@ async def freekassa_order_create_public(
         currency=(payload.currency or "RUB").strip().upper(),
         consume_pending_discount=False,
     )
+
+
+@app.post("/api/payments/freekassa/orders/create", response_model=RubOrderActionOut)
+async def freekassa_order_create(
+    payload: FreekassaOrderCreateIn,
+    request: Request,
+    x_telegram_init_data: str = Header(default=""),
+) -> RubOrderActionOut:
+    generic = RubOrderCreateIn(
+        provider="freekassa",
+        plan_code=payload.plan_code,
+        source=payload.source,
+        tg_id=payload.tg_id,
+        campaign=payload.campaign,
+        promo_code=payload.promo_code,
+        currency=payload.currency,
+    )
+    return await rub_order_create(generic, request=request, x_telegram_init_data=x_telegram_init_data)
+
+
+@app.post("/api/payments/freekassa/orders/create-public", response_model=RubOrderActionOut)
+async def freekassa_order_create_public(
+    payload: FreekassaPublicOrderCreateIn,
+    request: Request,
+) -> RubOrderActionOut:
+    generic = RubPublicOrderCreateIn(
+        provider="freekassa",
+        plan_code=payload.plan_code,
+        checkout_ticket=payload.checkout_ticket,
+        currency=payload.currency,
+    )
+    return await rub_order_create_public(generic, request=request)
 
 
 @app.get("/api/payments/freekassa/orders/{order_id}")

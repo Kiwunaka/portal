@@ -22,7 +22,7 @@
 1. Пользователь приходит в Telegram-бот или WebApp.
 2. Bot/API проверяют Telegram identity через initData или web-session token.
 3. Пользователь выбирает план, бонус или промо.
-4. Оплата идёт через Telegram Stars или FreeKassa.
+4. Оплата идёт через Telegram Stars или внешний RUB provider из env-driven catalog.
 5. `portal_bot/api.py` и `portal_bot/bot.py` обновляют БД.
 6. `ControlPanel` синхронизирует пользователя и `subId` с 3x-ui.
 7. Клиент получает конфиг через `/s8Kx2mP7qR4wT/{token}`.
@@ -30,7 +30,7 @@
 ### 2.2 Оплата / checkout
 1. Cold marketing traffic идёт `bot-first`.
 2. Public `/checkout` работает только по персональной ссылке с `checkout_ticket`.
-3. FreeKassa callback приходит в `portal_bot/api.py`.
+3. Callback провайдера приходит в `portal_bot/api.py` через generic provider routes.
 4. Callback валидируется, пишется в `external_payment_events`, затем активирует заказ.
 5. После paid-активации выполняется post-payment sync в panel.
 
@@ -61,7 +61,9 @@
 - `DATABASE_URL`
 - `PUBLIC_API_BASE_URL`, `WEBAPP_URL`, `PAY_CHECKOUT_URL`
 - `CHECKOUT_TICKET_SECRET`, `CHECKOUT_TICKET_TTL_SECONDS`
-- `FREEKASSA_*`, `FK_*`
+- `RUB_PAYMENT_PROVIDER_ENABLED`, `RUB_PAYMENT_PROVIDER_ORDER`
+- `CARDLINK_*`, `PALLY_*`, `PLATIMA_*`
+- `FK_*` как legacy fallback
 - `SUBSCRIPTION_NUMERIC_FALLBACK_ENABLED`
 - `PUBLIC_CHANNEL`, `CHANNEL_PREMIUM_DAYS`
 
@@ -80,7 +82,7 @@
 
 - `left/kicked` для channel membership приводятся к `not_member`, а revoke теперь стабилен.
 - Numeric fallback для subscription endpoint поставлен под `SUBSCRIPTION_NUMERIC_FALLBACK_ENABLED`.
-- FreeKassa invalid callback больше не блокирует следующий valid callback по тому же `external_id`.
+- Invalid callback провайдера больше не блокирует следующий valid callback по тому же `external_id`.
 - Public campaign checkout переведён в safe fallback: builder не выдаёт битую `/checkout` ссылку без ticket.
 - WebApp legal links теперь ведут на absolute marketing URLs.
 - Marketing home переведён в `bot-first` и убран избыточный client runtime.

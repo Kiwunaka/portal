@@ -2,50 +2,113 @@
 
 Обновлено: 7 марта 2026
 
-## 1. Основные ветки
+## 1. Текущая модель
 
-### Telegram Stars
+Сейчас в проекте две рублёвые ветки:
+- `Telegram Stars` как встроенный платёж внутри Telegram;
+- `RUB providers` как внешний checkout-контур с выбором кассы.
+
+Ключевая идея:
+- `PORTAL` создаёт заказ и хранит бизнес-логику;
+- провайдер только даёт платёжную ссылку и присылает callback;
+- bot, marketing checkout и backend используют единый catalog `/api/payments/providers`.
+
+## 2. Поток оплаты в рублях
+
+1. Пользователь выбирает тариф в боте, WebApp или checkout.
+2. Клиент получает список доступных касс из `/api/payments/providers`.
+3. При выборе кассы API создаёт `ExternalOrder`.
+4. Для провайдера строится hosted payment URL.
+5. Пользователь уходит на страницу платёжного партнёра.
+6. Провайдер присылает callback в `/api/payments/result/{provider}` или provider-specific alias.
+7. Backend:
+   - проверяет подпись;
+   - пишет `ExternalPaymentEvent`;
+   - обновляет `ExternalOrder`;
+   - активирует доступ;
+   - запускает post-payment sync в panel.
+
+## 3. Текущие endpoint'ы
+
+Catalog:
+- `GET /api/payments/providers`
+
+Создание заказа:
+- `POST /api/payments/orders/create`
+- `POST /api/payments/orders/create-public`
+
+Callback:
+- `POST/GET /api/payments/result/{provider}`
+- `POST/GET /api/payments/refund/{provider}`
+- `POST/GET /api/payments/chargeback/{provider}`
+
+Legacy alias для FreeKassa:
+- `POST/GET /api/payments/freekassa/notify`
+
+Success/fail landing:
+- `GET /pay/success`
+- `GET /pay/fail`
+
+## 4. Поддерживаемые провайдеры
+
+- `cardlink`
+- `pally`
+- `platima`
+- `freekassa` как legacy fallback
+
+Детальная настройка URL и env:
+- [docs/PAYMENT_PROVIDER_SETUP_RU.md](C:\Users\kiwun\Documents\ai\VPN\docs\PAYMENT_PROVIDER_SETUP_RU.md)
+
+## 5. Telegram Stars
+
 1. Пользователь выбирает тариф в боте.
 2. Создаётся `PayAttempt`.
-3. Бот отправляет invoice с `invoice_payload`.
-4. `successful_payment` в `portal_bot/bot.py`:
-   - проверяет duplicate marker,
-   - помечает attempt как paid,
-   - активирует подписку,
-   - отправляет квитанцию.
+3. Бот отправляет invoice.
+4. `successful_payment`:
+   - проверяет duplicate marker;
+   - помечает attempt как paid;
+   - активирует доступ;
+   - пишет audit/event trail.
 
-### FreeKassa
-1. Пользователь открывает checkout из кабинета или персональной ссылки.
-2. API создаёт `ExternalOrder`.
-3. FreeKassa отправляет callback в `/api/payments/freekassa/notify`.
-4. Callback:
-    - валидируется по подписи,
-    - пишет/обновляет `ExternalPaymentEvent`,
-    - активирует заказ,
-    - запускает post-payment sync в panel.
-5. Для обратной совместимости legacy alias `/api/payments/result/freekassa` всё ещё принят кодом, но актуальный notify URL для панели и runbook'ов — `/api/payments/freekassa/notify`.
+## 6. Текущие контракты
 
-## Актуальные внешние ссылки
+- public checkout требует `checkout_ticket`;
+- bot и site используют один и тот же order-creation backend;
+- провайдер выбирается явно и хранится в `ExternalOrder.provider`;
+- callback idempotency держится на `ExternalPaymentEvent`;
+- повторный valid callback не должен ломаться из-за ранее пришедшего invalid callback.
 
-- FreeKassa API Orders Create: `https://docs.freekassa.com/`
-- FreeKassa API Orders Retrieve: `https://docs.freekassa.com/`
-- FreeKassa SCI notify / callback: `https://docs.freekassa.com/`
+## 7. Точки отказа
 
-## 2. Ключевые точки отказа
-
-| Точка | Риск | Что сделано |
+| Точка | Что может пойти не так | Что делаем |
 | --- | --- | --- |
-| Callback signature | invalid callback может засорить поток | valid callback теперь апгрейдит ранее сохранённый invalid event |
-| Public checkout | broken link без `checkout_ticket` | cold flow переведён в bot-first, admin builder отдаёт safe fallback |
-| Subscription link rotation | старый numeric fallback живёт слишком долго | добавлен `SUBSCRIPTION_NUMERIC_FALLBACK_ENABLED` и логирование fallback |
-| Bonus sync | бонус выдан в БД, но не доехал в panel | channel bonus теперь вызывает `_sync_user_after_paid_bonus()` |
+| provider create link | касса не отвечает или сломан auth | checkout показывает понятную ошибку, оператор выключает провайдера через env |
+| callback signature | неверная подпись | событие не активирует заказ |
+| expired checkout ticket | пользователь открыл старую ссылку | checkout просит вернуться в Telegram и открыть оплату заново |
+| provider policy change | касса изменила домены/маршруты | добавляем новый adapter, не ломая весь checkout |
 
-## 3. Контракты этой волны
+## 8. Что проверил
 
-- `SUBSCRIPTION_NUMERIC_FALLBACK_ENABLED=true` по умолчанию, но каждый fallback логируется.
-- Public payment path требует `checkout_ticket`.
-- Если ticket нельзя выпустить, пользователь переводится в bot/webapp fallback, а не в broken checkout.
-- Повторный valid callback с тем же `external_id` не блокируется ранее пришедшим invalid callback.
-- Public checkout создаёт hosted payment URL FreeKassa сразу на нашей стороне и больше не зависит от FreeKassa Orders API в точке `create-public`.
-- Hosted payment URL по умолчанию ведёт на `https://pay.fk.money/` и может быть переопределён через `FREEKASSA_PAY_HOST`.
-- Для пользователя это означает: кнопка `Перейти к оплате` открывает готовую hosted payment page, а не падает с `Freekassa API error: 500`.
+- backend generic create routes;
+- provider catalog;
+- callback normalization;
+- совместимость FreeKassa alias;
+- bot и checkout на предмет FreeKassa-only хвостов.
+
+## 9. Что нашёл
+
+- проекту нужен provider-agnostic flow;
+- жёсткая привязка к одной кассе больше не подходит;
+- логика выбора кассы должна жить в `PORTAL`, а не в UI конкретного провайдера.
+
+## 10. Что изменил
+
+- добавил multi-provider abstraction в backend;
+- вынес catalog провайдеров;
+- перевёл bot и marketing checkout на generic order creation;
+- обновил env matrix и setup runbook.
+
+## 11. Что осталось / риск
+
+- до включения новых касс в production нужны реальные токены и ручной smoke по callback;
+- FreeKassa пока остаётся fallback-путём, но не должна считаться основной кассой.

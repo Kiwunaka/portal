@@ -506,28 +506,50 @@ class BotPaywallTests(unittest.TestCase):
         self.assertIn("campaign=launch_week_1", keyboard.inline_keyboard[1][0].url)
 
     def test_process_buy_rub_opens_direct_payment_link(self) -> None:
-        callback = _FakeCallback(1001, data="pay_rub_1_month")
+        callback = _FakeCallback(1001, data="pay_rub:cardlink:1_month")
 
-        async def _fake_create_payment_link(*, tg_id, tariff_key):
+        old_catalog = self.bot_module.enabled_provider_catalog
+
+        async def _fake_create_payment_link(*, provider, tg_id, tariff_key):
+            self.assertEqual(str(provider), "cardlink")
             self.assertEqual(int(tg_id), 1001)
             self.assertEqual(str(tariff_key), "1_month")
             return {
-                "order_id": "fk_bot_1001_test",
-                "payment_url": "https://pay.freekassa.ru/?m=69962&o=test",
+                "order_id": "cardlink_bot_1001_test",
+                "payment_url": "https://checkout.cardlink.link/pay/test",
             }
 
-        old_create = self.bot_module._create_freekassa_payment_link_for_bot
+        old_create = self.bot_module._create_rub_payment_link_for_bot
         try:
-            self.bot_module._create_freekassa_payment_link_for_bot = _fake_create_payment_link
+            self.bot_module.enabled_provider_catalog = lambda: [
+                {"code": "cardlink", "label": "Cardlink", "supports_bot": True},
+            ]
+            self.bot_module._create_rub_payment_link_for_bot = _fake_create_payment_link
             asyncio.run(self.bot_module.process_buy_rub(callback, _FakeBot(status="member")))
         finally:
-            self.bot_module._create_freekassa_payment_link_for_bot = old_create
+            self.bot_module._create_rub_payment_link_for_bot = old_create
+            self.bot_module.enabled_provider_catalog = old_catalog
 
         self.assertTrue(callback.message.edits)
         self.assertIn("Ссылка на оплату уже готова", callback.message.edits[-1])
         reply_markup = callback.message.edit_kwargs[-1]["reply_markup"]
-        self.assertEqual(reply_markup.inline_keyboard[0][0].url, "https://pay.freekassa.ru/?m=69962&o=test")
+        self.assertEqual(reply_markup.inline_keyboard[0][0].url, "https://checkout.cardlink.link/pay/test")
         self.assertEqual(callback.answers[-1], ("Платёжная ссылка готова", False))
+
+    def test_tariff_payment_choice_keyboard_lists_enabled_rub_providers(self) -> None:
+        old_catalog = self.bot_module.enabled_provider_catalog
+        try:
+            self.bot_module.enabled_provider_catalog = lambda: [
+                {"code": "cardlink", "label": "Cardlink", "supports_bot": True},
+                {"code": "pally", "label": "Paypalich", "supports_bot": True},
+            ]
+            keyboard = self.bot_module._build_tariff_payment_choice_keyboard(tg_id=1001, tariff_key="1_month")
+        finally:
+            self.bot_module.enabled_provider_catalog = old_catalog
+
+        self.assertEqual(keyboard.inline_keyboard[0][0].callback_data, "pay_rub:cardlink:1_month")
+        self.assertEqual(keyboard.inline_keyboard[1][0].callback_data, "pay_rub:pally:1_month")
+        self.assertEqual(keyboard.inline_keyboard[2][0].callback_data, "pay_stars_1_month")
 
     def test_tariff_keyboard_shows_rubles_before_stars(self) -> None:
         keyboard = self.bot_module.tariff_keyboard(tg_id=1001, show_trial=True, include_long_plans=False)

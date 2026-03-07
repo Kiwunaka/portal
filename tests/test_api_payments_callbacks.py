@@ -39,6 +39,14 @@ class ApiPaymentCallbacksTests(unittest.TestCase):
             "FK_BOT_API_KEY",
             "FK_BOT_SECRET_WORD_1",
             "FK_BOT_SECRET_WORD_2",
+            "RUB_PAYMENT_PROVIDER_ENABLED",
+            "RUB_PAYMENT_PROVIDER_ORDER",
+            "CARDLINK_API_TOKEN",
+            "CARDLINK_SHOP_ID",
+            "PALLY_API_TOKEN",
+            "PALLY_SHOP_ID",
+            "PLATIMA_PROJECT_ID",
+            "PLATIMA_API_KEY_PROJECT",
             "RUB_CHECKOUT_ENABLED",
             "ADMIN_ID",
         ):
@@ -57,6 +65,14 @@ class ApiPaymentCallbacksTests(unittest.TestCase):
         os.environ["FK_BOT_API_KEY"] = "fk_api_key_bot_test"
         os.environ["FK_BOT_SECRET_WORD_1"] = "fk_sw1_bot_test"
         os.environ["FK_BOT_SECRET_WORD_2"] = "fk_sw2_bot_test"
+        os.environ["RUB_PAYMENT_PROVIDER_ENABLED"] = "cardlink,pally,platima,freekassa"
+        os.environ["RUB_PAYMENT_PROVIDER_ORDER"] = "cardlink,pally,platima,freekassa"
+        os.environ["CARDLINK_API_TOKEN"] = "cardlink_token_test"
+        os.environ["CARDLINK_SHOP_ID"] = "cardlink_shop_test"
+        os.environ["PALLY_API_TOKEN"] = "pally_token_test"
+        os.environ["PALLY_SHOP_ID"] = "pally_shop_test"
+        os.environ["PLATIMA_PROJECT_ID"] = "platima_project_test"
+        os.environ["PLATIMA_API_KEY_PROJECT"] = "platima_key_project_test"
         os.environ["RUB_CHECKOUT_ENABLED"] = "true"
         os.environ["ADMIN_ID"] = "9999"
 
@@ -586,6 +602,129 @@ class ApiPaymentCallbacksTests(unittest.TestCase):
         )
         self.assertEqual(response.status_code, 400, response.text)
         self.assertIn("Plan code does not match checkout ticket", response.text)
+
+    def test_rub_provider_catalog_lists_enabled_providers(self) -> None:
+        client = TestClient(self.api.app)
+        response = client.get("/api/payments/providers")
+        self.assertEqual(response.status_code, 200, response.text)
+        rows = response.json().get("providers", [])
+        self.assertTrue(any((row.get("code") == "cardlink") for row in rows))
+        self.assertTrue(any((row.get("code") == "pally") for row in rows))
+        self.assertTrue(any((row.get("code") == "platima") for row in rows))
+        self.assertTrue(any((row.get("code") == "freekassa") for row in rows))
+
+    def test_generic_create_public_order_uses_selected_provider(self) -> None:
+        client = TestClient(self.api.app)
+
+        from db import SessionLocal
+        from models import ExternalOrder, User
+
+        s = SessionLocal()
+        try:
+            s.add(
+                User(
+                    tg_id=4444,
+                    username="multi",
+                    uuid=str(uuid.uuid4()),
+                    email="user_4444",
+                    sub_type="FREE",
+                    is_active=True,
+                    tos_accepted=True,
+                )
+            )
+            s.commit()
+        finally:
+            s.close()
+
+        ticket = self.api._create_checkout_ticket(
+            tg_id=4444,
+            plan_code="start_99",
+            promo_code="",
+            campaign_key="",
+            source="bot",
+        )
+
+        async def _fake_create_rub_payment(**kwargs):
+            self.assertEqual(kwargs["provider"], "cardlink")
+            self.assertEqual(kwargs["description"], "PORTAL Start 30 дней")
+            return {
+                "payment_url": "https://checkout.cardlink.link/pay/test-order",
+                "remote": {"payment_url": "https://checkout.cardlink.link/pay/test-order"},
+            }
+
+        old_create = self.api.create_rub_payment
+        try:
+            self.api.create_rub_payment = _fake_create_rub_payment
+            response = client.post(
+                "/api/payments/orders/create-public",
+                json={"provider": "cardlink", "plan_code": "start_99", "checkout_ticket": ticket, "currency": "RUB"},
+            )
+        finally:
+            self.api.create_rub_payment = old_create
+
+        self.assertEqual(response.status_code, 200, response.text)
+        body = response.json()
+        self.assertEqual(body.get("provider"), "cardlink")
+        self.assertEqual(body.get("provider_label"), "Cardlink")
+        self.assertEqual(body.get("payment_url"), "https://checkout.cardlink.link/pay/test-order")
+
+        s = SessionLocal()
+        try:
+            row = s.query(ExternalOrder).filter(ExternalOrder.tg_id == 4444, ExternalOrder.provider == "cardlink").first()
+            self.assertIsNotNone(row)
+            self.assertEqual(str(row.plan_code or ""), "start_99")
+        finally:
+            s.close()
+
+    def test_pally_callback_marks_order_paid(self) -> None:
+        client = TestClient(self.api.app)
+
+        from db import SessionLocal
+        from models import ExternalOrder
+
+        s = SessionLocal()
+        try:
+            s.add(
+                ExternalOrder(
+                    order_id="pally_bot_5555_test",
+                    provider="pally",
+                    tg_id=5555,
+                    plan_code="start_99",
+                    source="bot",
+                    amount=99.0,
+                    currency="RUB",
+                    status="pending",
+                    created_at=self.api._utcnow(),
+                )
+            )
+            s.commit()
+        finally:
+            s.close()
+
+        amount = "99.00"
+        order_id = "pally_bot_5555_test"
+        sign = hashlib.md5(f"{amount}:{order_id}:pally_token_test".encode("utf-8")).hexdigest().upper()
+        payload = {
+            "InvId": order_id,
+            "OutSum": amount,
+            "Status": "paid",
+            "SignatureValue": sign,
+            "TrsId": "pally_tx_5555",
+            "us_tg_id": "5555",
+            "us_plan_code": "start_99",
+            "us_source": "bot",
+        }
+        response = client.post("/api/payments/result/pally", data=payload)
+        self.assertEqual(response.status_code, 200, response.text)
+        self.assertTrue(response.json().get("ok"))
+
+        s = SessionLocal()
+        try:
+            row = s.query(ExternalOrder).filter(ExternalOrder.provider == "pally", ExternalOrder.order_id == order_id).first()
+            self.assertIsNotNone(row)
+            self.assertEqual(str(row.status or ""), "paid")
+        finally:
+            s.close()
 
     def test_parse_freekassa_payment_url_uses_source_shop_fallback(self) -> None:
         url = self.api._parse_freekassa_payment_url({}, "fk_site_order_1", source="bot")

@@ -1,6 +1,6 @@
 # Итоговый отчёт PORTAL
 
-Обновлено: 7 марта 2026
+Обновлено: 8 марта 2026
 
 ## Что было сломано
 
@@ -93,3 +93,19 @@
 - Public checkout в точке `create-public` переведён на hosted FreeKassa URL, поэтому пользовательская кнопка оплаты больше не упирается в `Freekassa API error: 500` на старте.
 - Checkout с `checkout_ticket` приведён к текущему визуальному языку marketing-сайта: glass-карточки, явный статус сценария, sticky summary и честный fallback в Telegram.
 - Главное меню бота упрощено для первого входа: бесплатный старт показывается до платных способов, `Мой ключ` вынесен в главное меню, а названия `Статус доступа` и `Как подключить` лучше соответствуют ожиданиям пользователя.
+
+## Дополнение: provider-agnostic RUB payments (8 марта 2026)
+
+- Рублёвый checkout перестраивается на provider-agnostic модель:
+  - `PORTAL` хранит бизнес-логику и `ExternalOrder`;
+  - касса только создаёт payment URL и присылает callback;
+  - bot, WebApp и marketing checkout используют единый catalog `/api/payments/providers`.
+- Добавлены adapters для:
+  - `cardlink`
+  - `pally`
+  - `platima`
+  - `freekassa` как legacy fallback.
+- В marketing checkout и WebApp checkout теперь есть явный выбор кассы.
+- В repo добавлен отдельный setup-runbook:
+  - `docs/PAYMENT_PROVIDER_SETUP_RU.md`
+- AGENTS и ключевые ops/docs обновлены так, чтобы следующая волна работ не считала FreeKassa единственной основной кассой по умолчанию.

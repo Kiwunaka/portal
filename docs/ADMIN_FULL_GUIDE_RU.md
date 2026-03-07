@@ -33,14 +33,18 @@
 - `PUBLIC_WEB_DOMAIN`
 
 ### Payments
-- `FREEKASSA_SIGNING_SECRET`
+- `RUB_PAYMENT_PROVIDER_ENABLED`
+- `RUB_PAYMENT_PROVIDER_ORDER`
+- `CARDLINK_*`
+- `PALLY_*`
+- `PLATIMA_*`
 - `FREEKASSA_PAY_HOST`
-- `FK_SITE_*`
-- `FK_BOT_*`
+- `FK_SITE_*`, `FK_BOT_*` as legacy fallback only
 - `RUB_CHECKOUT_ENABLED`
 - `CHECKOUT_TICKET_SECRET`
 - `CHECKOUT_TICKET_TTL_SECONDS`
 - `PAYMENT_CALLBACK_TOLERANT_MODE`
+- `PAYMENT_LOGO_URL`
 
 ### Subscription / compatibility
 - `SUBSCRIPTION_NUMERIC_FALLBACK_ENABLED`
@@ -113,13 +117,16 @@
 - После `successful_payment` attempt помечается paid.
 - Дубликаты suppress-ятся по fingerprint + payload/attempt state.
 
-### FreeKassa
+### RUB providers
+- Рублёвая оплата теперь идёт через catalog касс, который строится из env и доступен по `/api/payments/providers`.
 - Public payment path допускается только с `checkout_ticket`.
-- Callback должен пройти signature verification.
+- Callback каждого провайдера должен пройти signature verification.
 - Invalid callback больше не блокирует valid callback с тем же `external_id`.
+- FreeKassa оставлена как legacy fallback, а не как единственная основная касса.
 
 Подробнее:
 - `docs/PAYMENTS_FLOW_RU.md`
+- `docs/PAYMENT_PROVIDER_SETUP_RU.md`
 
 ## 6. Бонусы
 

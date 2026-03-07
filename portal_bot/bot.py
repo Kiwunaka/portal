@@ -18,13 +18,14 @@ import secrets
 from pathlib import Path
 from io import BytesIO
 from datetime import datetime, timedelta, timezone
-from typing import Optional
+from typing import Any, Optional
 from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
 
 import aiohttp
 import qrcode
 from sqlalchemy.exc import IntegrityError
 from copy_catalog import get_copy_text
+from payment_providers import enabled_provider_catalog, normalize_provider as normalize_payment_provider
 try:
     from aiogram import Bot, Dispatcher, F, Router, BaseMiddleware
     from aiogram.filters import Command, CommandStart
@@ -3084,6 +3085,12 @@ def _build_tariff_payment_choice_text(*, tariff_key: str, tg_id: int) -> str:
         discount_line = "💡 Сработают скидки: " + ", ".join(discount_chunks) + ".\n\n"
 
     rub_price = int(pricing["base_price"])
+    provider_names = ", ".join(
+        str(row.get("label") or "").strip()
+        for row in _enabled_bot_rub_providers()
+        if str(row.get("label") or "").strip()
+    )
+    provider_line = f"Оплата в ₽: *{provider_names}*\n" if provider_names else ""
     return (
         f"💳 *{tariff.get('name', 'Тариф')}*\n\n"
         f"Срок: *{int(tariff.get('days', 0))} дней*\n"
@@ -3092,6 +3099,7 @@ def _build_tariff_payment_choice_text(*, tariff_key: str, tg_id: int) -> str:
         f"Цена в ₽: *{rub_price} ₽*\n"
         f"Цена в Stars: *{int(pricing['final_stars'])}⭐*{points_note}\n\n"
         f"{discount_line}"
+        f"{provider_line}"
         "Сначала выберите удобный способ оплаты. "
         "После оплаты доступ обновится автоматически."
     )
@@ -3099,10 +3107,21 @@ def _build_tariff_payment_choice_text(*, tariff_key: str, tg_id: int) -> str:
 
 def _build_tariff_payment_choice_keyboard(*, tg_id: int, tariff_key: str) -> InlineKeyboardMarkup:
     pricing = _tariff_pricing_for_user(tg_id, tariff_key)
-    rows = [
-        [InlineKeyboardButton(text=f"💳 Оплатить в ₽ · {int(pricing['base_price'])} ₽", callback_data=f"pay_rub_{tariff_key}")],
-        [InlineKeyboardButton(text=f"⭐ Оплатить Stars · {int(pricing['final_stars'])}⭐", callback_data=f"pay_stars_{tariff_key}")],
-    ]
+    rows: list[list[InlineKeyboardButton]] = []
+    rub_providers = _enabled_bot_rub_providers()
+    if rub_providers:
+        for provider in rub_providers:
+            rows.append(
+                [
+                    InlineKeyboardButton(
+                        text=f"💳 {provider['label']} · {int(pricing['base_price'])} ₽",
+                        callback_data=f"pay_rub:{provider['code']}:{tariff_key}",
+                    )
+                ]
+            )
+    elif BOT_RUB_BUTTON_ENABLED:
+        rows.append([InlineKeyboardButton(text=f"💳 Оплатить в ₽ · {int(pricing['base_price'])} ₽", callback_data=f"pay_rub_{tariff_key}")])
+    rows.append([InlineKeyboardButton(text=f"⭐ Оплатить Stars · {int(pricing['final_stars'])}⭐", callback_data=f"pay_stars_{tariff_key}")])
     if tariff_key not in {"6_months", "9_months", "12_months"}:
         rows.append([InlineKeyboardButton(text="📚 Посмотреть долгие тарифы", callback_data="charge_long")])
     rows.append([InlineKeyboardButton(text="◀️ К тарифам", callback_data="charge")])
@@ -3124,6 +3143,41 @@ def _bot_api_base_candidates() -> list[str]:
 
 
 async def _create_freekassa_payment_link_for_bot(*, tg_id: int, tariff_key: str) -> dict[str, object]:
+    return await _create_rub_payment_link_for_bot(provider="freekassa", tg_id=tg_id, tariff_key=tariff_key)
+
+
+def _enabled_bot_rub_providers() -> list[dict[str, Any]]:
+    rows: list[dict[str, Any]] = []
+    for row in enabled_provider_catalog():
+        if bool(row.get("supports_bot")):
+            rows.append(row)
+    return rows
+
+
+def _rub_provider_by_code(provider_code: str) -> dict[str, Any] | None:
+    code = normalize_payment_provider(provider_code)
+    if not code:
+        return None
+    for row in _enabled_bot_rub_providers():
+        if str(row.get("code") or "") == code:
+            return row
+    return None
+
+
+def _parse_pay_rub_callback(data: str) -> tuple[str, str]:
+    raw = str(data or "").strip()
+    if raw.startswith("pay_rub:"):
+        _, provider_code, tariff_key = (raw.split(":", 2) + ["", ""])[:3]
+        return normalize_payment_provider(provider_code), normalize_tariff_key(tariff_key)
+    if raw.startswith("pay_rub_"):
+        tariff_key = normalize_tariff_key(raw.replace("pay_rub_", "", 1))
+        first_provider = _enabled_bot_rub_providers()[:1]
+        provider_code = str(first_provider[0].get("code") or "freekassa") if first_provider else "freekassa"
+        return normalize_payment_provider(provider_code), tariff_key
+    return "", ""
+
+
+async def _create_rub_payment_link_for_bot(*, provider: str, tg_id: int, tariff_key: str) -> dict[str, object]:
     ctx = checkout_context_by_user.get(int(tg_id), {}) if checkout_context_by_user else {}
     promo_code = str(ctx.get("promo_code") or "")
     campaign_key = str(ctx.get("campaign_key") or "")
@@ -3138,6 +3192,7 @@ async def _create_freekassa_payment_link_for_bot(*, tg_id: int, tariff_key: str)
         raise RuntimeError("Не удалось подготовить персональную ссылку оплаты.")
 
     payload = {
+        "provider": normalize_payment_provider(provider) or "freekassa",
         "plan_code": str(tariff_key or "").strip().lower(),
         "checkout_ticket": checkout_ticket,
         "currency": "RUB",
@@ -3145,7 +3200,7 @@ async def _create_freekassa_payment_link_for_bot(*, tg_id: int, tariff_key: str)
     timeout = aiohttp.ClientTimeout(total=25)
     last_error = "Не удалось открыть оплату."
     for base in _bot_api_base_candidates():
-        url = f"{base}/api/payments/freekassa/orders/create-public"
+        url = f"{base}/api/payments/orders/create-public"
         try:
             async with aiohttp.ClientSession(timeout=timeout) as session:
                 async with session.post(url, json=payload) as resp:
@@ -3168,7 +3223,7 @@ async def _create_freekassa_payment_link_for_bot(*, tg_id: int, tariff_key: str)
     raise RuntimeError(last_error)
 
 
-def _build_direct_rub_payment_keyboard(*, tg_id: int, tariff_key: str, payment_url: str) -> InlineKeyboardMarkup:
+def _build_direct_rub_payment_keyboard(*, tg_id: int, tariff_key: str, payment_url: str, provider_label: str = "кассу") -> InlineKeyboardMarkup:
     pricing = _tariff_pricing_for_user(tg_id, tariff_key)
     ctx = checkout_context_by_user.get(int(tg_id), {}) if checkout_context_by_user else {}
     checkout_url = _bot_checkout_url(
@@ -3178,7 +3233,7 @@ def _build_direct_rub_payment_keyboard(*, tg_id: int, tariff_key: str, payment_u
         campaign_key=str(ctx.get("campaign_key") or ""),
     )
     rows = [
-        [InlineKeyboardButton(text=f"💳 Открыть оплату · {int(pricing['base_price'])} ₽", url=str(payment_url or "").strip())],
+        [InlineKeyboardButton(text=f"💳 Открыть оплату · {provider_label} · {int(pricing['base_price'])} ₽", url=str(payment_url or "").strip())],
         [InlineKeyboardButton(text="🌐 Открыть через сайт, если окно не открылось", url=checkout_url)],
         [InlineKeyboardButton(text=f"⭐ Оплатить Stars · {int(pricing['final_stars'])}⭐", callback_data=f"pay_stars_{tariff_key}")],
         [InlineKeyboardButton(text="◀️ К тарифам", callback_data="charge")],
@@ -3188,17 +3243,24 @@ def _build_direct_rub_payment_keyboard(*, tg_id: int, tariff_key: str, payment_u
 
 
 def _dual_pay_text(*, show_trial: bool) -> str:
+    provider_names = ", ".join(
+        str(row.get("label") or "").strip()
+        for row in _enabled_bot_rub_providers()
+        if str(row.get("label") or "").strip()
+    )
+    rub_hint = f"В рублях доступны: {provider_names}." if provider_names else "В рублях доступны карта и СБП."
     if show_trial:
         return (
             "🚀 *Как хотите продолжить?*\n\n"
             "🆓 Бесплатный режим уже доступен для базовых задач и быстрого старта.\n"
-            "Если нужен полный доступ, все страны и больше устройств — откройте оплату в ₽ или используйте Stars.\n"
+            "Если нужен полный доступ, все страны и больше устройств — выберите тариф и способ оплаты.\n"
+            f"{rub_hint}\n"
             "После оплаты доступ обновится автоматически.\n\n"
             "Выберите удобный вариант:"
         )
     return (
         "💳 *Оплата в рублях + Stars*\n\n"
-        "Основной путь: ₽ на сайте (карта/СБП) с прозрачной суммой и быстрым подтверждением.\n"
+        f"{rub_hint}\n"
         "Telegram Stars остаются как резервный вариант.\n"
         "После оплаты доступ обновится автоматически.\n\n"
         "Выберите удобный способ:"
@@ -3206,19 +3268,12 @@ def _dual_pay_text(*, show_trial: bool) -> str:
 
 
 def _dual_pay_keyboard(*, tg_id: int, show_trial: bool) -> InlineKeyboardMarkup:
-    ctx = checkout_context_by_user.get(int(tg_id), {}) if checkout_context_by_user else {}
-    checkout_url = _bot_checkout_url(
-        tg_id=int(tg_id),
-        plan_code=str(ctx.get("plan_code") or ""),
-        promo_code=str(ctx.get("promo_code") or ""),
-        campaign_key=str(ctx.get("campaign_key") or ""),
-    )
     rows: list[list[InlineKeyboardButton]] = []
     if show_trial:
         rows.append([InlineKeyboardButton(text="🆓 Начать с бесплатного режима", callback_data="buy_trial")])
     rows.extend(
         [
-            [InlineKeyboardButton(text="💳 Открыть оплату ₽ (карта/СБП)", url=checkout_url)],
+            [InlineKeyboardButton(text="💳 Выбрать тариф и оплату в ₽", callback_data="charge")],
             [InlineKeyboardButton(text="⭐ Оплатить Stars", callback_data="charge_stars")],
         ]
     )
@@ -8632,21 +8687,27 @@ async def process_buy_stars(callback: CallbackQuery, bot: Bot):
 
 
 @router.callback_query(F.data.startswith("pay_rub_"))
+@router.callback_query(F.data.startswith("pay_rub:"))
 async def process_buy_rub(callback: CallbackQuery, bot: Bot):
-    raw_key = callback.data.replace("pay_rub_", "")
-    tariff_key = normalize_tariff_key(raw_key)
+    provider_code, tariff_key = _parse_pay_rub_callback(callback.data)
     tariff = TARIFFS.get(tariff_key)
     if not tariff:
         await callback.answer("❌ Тариф не найден")
         return
+    provider_row = _rub_provider_by_code(provider_code)
+    provider_label = str((provider_row or {}).get("label") or "кассу").strip()
 
     tg_id = callback.from_user.id
     pricing = _tariff_pricing_for_user(tg_id, tariff_key)
 
     try:
-        data = await _create_freekassa_payment_link_for_bot(tg_id=tg_id, tariff_key=tariff_key)
+        data = await _create_rub_payment_link_for_bot(
+            provider=provider_code or "freekassa",
+            tg_id=tg_id,
+            tariff_key=tariff_key,
+        )
     except Exception as exc:
-        logger.warning("direct freekassa checkout failed tg_id=%s plan=%s err=%s", tg_id, tariff_key, exc)
+        logger.warning("direct rub checkout failed provider=%s tg_id=%s plan=%s err=%s", provider_code, tg_id, tariff_key, exc)
         await callback.message.edit_text(
             "⚠️ Не удалось сразу открыть платёжную страницу.\n\n"
             "Попробуйте ещё раз через минуту или откройте путь через сайт из тарифа.",
@@ -8663,7 +8724,7 @@ async def process_buy_rub(callback: CallbackQuery, bot: Bot):
         event_name="clicked_pay",
         source="bot",
         meta={
-            "provider": "freekassa",
+            "provider": provider_code or "freekassa",
             "plan_code": tariff_key,
             "amount_rub": rub_price,
             "order_id": order_id,
@@ -8673,7 +8734,8 @@ async def process_buy_rub(callback: CallbackQuery, bot: Bot):
     await callback.message.edit_text(
         f"💳 *{tariff['name']}*\n\n"
         f"Сумма: *{rub_price} ₽*\n"
-        f"Ссылка на оплату уже готова.\n\n"
+        "Ссылка на оплату уже готова.\n"
+        f"Касса: *{provider_label}*.\n\n"
         "Если окно банка не откроется внутри Telegram, используйте кнопку «Открыть через сайт» "
         "или попробуйте открыть оплату в обычном браузере.\n\n"
         "Ссылка на этот шаг действует около *15 минут*.",
@@ -8681,6 +8743,7 @@ async def process_buy_rub(callback: CallbackQuery, bot: Bot):
             tg_id=tg_id,
             tariff_key=tariff_key,
             payment_url=payment_url,
+            provider_label=provider_label,
         ),
         parse_mode=ParseMode.MARKDOWN,
     )
