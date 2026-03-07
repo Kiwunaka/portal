@@ -494,6 +494,13 @@ def _format_freekassa_amount(amount: float | int) -> str:
     return f"{float(amount or 0):.2f}"
 
 
+def _freekassa_payment_base_url() -> str:
+    host = str(os.getenv("FREEKASSA_PAY_HOST") or "pay.fk.money").strip().strip("/")
+    if host.startswith("http://") or host.startswith("https://"):
+        return host
+    return f"https://{host}"
+
+
 def _build_freekassa_payment_url(
     *,
     source: str,
@@ -534,7 +541,7 @@ def _build_freekassa_payment_url(
         params["us_campaign"] = _sanitize_deeplink_token(campaign, max_len=64, uppercase=False)
     if promo_code:
         params["us_promo_code"] = _sanitize_deeplink_token(promo_code, max_len=20, uppercase=True)
-    return f"https://pay.freekassa.ru/?{urlencode(params)}"
+    return f"{_freekassa_payment_base_url()}/?{urlencode(params)}"
 
 
 def _fk_client_ip(request: Request) -> str:
@@ -2025,7 +2032,7 @@ def _parse_freekassa_payment_url(body: dict[str, Any], fallback_order_id: str) -
     shop = _fk_shop_by_source("site")
     shop_id = str(shop.get("shop_id") or "")
     if shop_id and fallback_order_id:
-        return f"https://pay.freekassa.ru/?m={shop_id}&oa=0&o={fallback_order_id}"
+        return f"{_freekassa_payment_base_url()}/?m={shop_id}&oa=0&o={fallback_order_id}"
     return ""
 
 
@@ -2045,7 +2052,7 @@ def _parse_freekassa_payment_url(body: dict[str, Any], fallback_order_id: str, s
     shop = _fk_shop_by_source(source or "site")
     shop_id = str(shop.get("shop_id") or "")
     if shop_id and fallback_order_id:
-        return f"https://pay.freekassa.ru/?m={shop_id}&oa=0&o={fallback_order_id}"
+        return f"{_freekassa_payment_base_url()}/?m={shop_id}&oa=0&o={fallback_order_id}"
     return ""
 
 

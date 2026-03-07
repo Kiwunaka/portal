@@ -70,6 +70,8 @@ Backend проверяет поля:
   1. получает `checkout_ticket` из bot flow;
   2. вызывает `create-public`;
   3. редиректит на `payment_url`.
+- Hosted payment URL по умолчанию собирается на домен `https://pay.fk.money/` через `FREEKASSA_PAY_HOST`.
+- Если FreeKassa API возвращает свой `location`, backend должен использовать его как есть, без переписывания домена.
 - Guest без ticket не оплачивает напрямую: UI ведёт в бота.
 
 ## 6) Idempotency и активация

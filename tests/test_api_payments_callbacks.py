@@ -470,7 +470,7 @@ class ApiPaymentCallbacksTests(unittest.TestCase):
         self.assertEqual(int(body.get("base_amount_rub") or 0), 249)
         self.assertEqual(int(body.get("amount_rub") or 0), 199)
         payment_url = str(body.get("payment_url") or "")
-        self.assertTrue(payment_url.startswith("https://pay.freekassa.ru/?"))
+        self.assertTrue(payment_url.startswith("https://pay.fk.money/?"))
         parsed = urlparse(payment_url)
         query = parse_qs(parsed.query)
         self.assertEqual(query.get("currency"), ["RUB"])
@@ -488,7 +488,7 @@ class ApiPaymentCallbacksTests(unittest.TestCase):
             row = s.query(ExternalOrder).filter(ExternalOrder.tg_id == 1001, ExternalOrder.provider == "freekassa").first()
             self.assertIsNotNone(row)
             self.assertIn("\"discount_pct\":20", str(row.meta_json or ""))
-            self.assertIn("\"payment_url\":\"https://pay.freekassa.ru/", str(row.meta_json or ""))
+            self.assertIn("\"payment_url\":\"https://pay.fk.money/", str(row.meta_json or ""))
         finally:
             s.close()
 
@@ -548,7 +548,7 @@ class ApiPaymentCallbacksTests(unittest.TestCase):
         self.assertEqual(int(body.get("discount_pct") or 0), 20)
         self.assertEqual(int(body.get("base_amount_rub") or 0), 249)
         self.assertEqual(int(body.get("amount_rub") or 0), 199)
-        self.assertTrue(str(body.get("payment_url") or "").startswith("https://pay.freekassa.ru/?"))
+        self.assertTrue(str(body.get("payment_url") or "").startswith("https://pay.fk.money/?"))
 
     def test_create_public_order_rejects_plan_mismatch_with_ticket(self) -> None:
         client = TestClient(self.api.app)

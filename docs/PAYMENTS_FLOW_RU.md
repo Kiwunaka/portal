@@ -47,4 +47,5 @@
 - Если ticket нельзя выпустить, пользователь переводится в bot/webapp fallback, а не в broken checkout.
 - Повторный valid callback с тем же `external_id` не блокируется ранее пришедшим invalid callback.
 - Public checkout создаёт hosted payment URL FreeKassa сразу на нашей стороне и больше не зависит от FreeKassa Orders API в точке `create-public`.
+- Hosted payment URL по умолчанию ведёт на `https://pay.fk.money/` и может быть переопределён через `FREEKASSA_PAY_HOST`.
 - Для пользователя это означает: кнопка `Перейти к оплате` открывает готовую hosted payment page, а не падает с `Freekassa API error: 500`.
