@@ -1,6 +1,6 @@
 # Платёжный поток PORTAL
 
-Обновлено: 6 марта 2026
+Обновлено: 7 марта 2026
 
 ## 1. Основные ветки
 
@@ -17,12 +17,19 @@
 ### FreeKassa
 1. Пользователь открывает checkout из кабинета или персональной ссылки.
 2. API создаёт `ExternalOrder`.
-3. FreeKassa отправляет callback в `/api/payments/result/freekassa`.
+3. FreeKassa отправляет callback в `/api/payments/freekassa/notify`.
 4. Callback:
-   - валидируется по подписи,
-   - пишет/обновляет `ExternalPaymentEvent`,
-   - активирует заказ,
-   - запускает post-payment sync в panel.
+    - валидируется по подписи,
+    - пишет/обновляет `ExternalPaymentEvent`,
+    - активирует заказ,
+    - запускает post-payment sync в panel.
+5. Для обратной совместимости legacy alias `/api/payments/result/freekassa` всё ещё принят кодом, но актуальный notify URL для панели и runbook'ов — `/api/payments/freekassa/notify`.
+
+## Актуальные внешние ссылки
+
+- FreeKassa API Orders Create: `https://docs.freekassa.com/`
+- FreeKassa API Orders Retrieve: `https://docs.freekassa.com/`
+- FreeKassa SCI notify / callback: `https://docs.freekassa.com/`
 
 ## 2. Ключевые точки отказа
 
