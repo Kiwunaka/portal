@@ -27,6 +27,8 @@ export default function DashboardPage() {
   const [copyState, setCopyState] = useState<"idle" | "ok" | "fail">("idle");
 
   const connectionKey = String(dash?.subscription_url || "").trim();
+  const primaryHref = dash?.is_active ? "/dashboard/downloads/" : "/subscription/checkout/";
+  const primaryLabel = dash?.is_active ? "Скачать приложения" : getCopyText("webapp.dashboard.primary_cta", "Продлить доступ");
 
   useEffect(() => {
     let cancelled = false;
@@ -70,7 +72,9 @@ export default function DashboardPage() {
               <p className="font-mono text-xs uppercase tracking-[0.16em] text-slate-500">текущий статус</p>
               <h1 className="mt-2 font-display text-4xl font-bold text-emerald-600">{dash?.is_active ? "АКТИВЕН" : "ТРЕБУЕТ ПРОДЛЕНИЯ"}</h1>
               <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">
-                {dash?.is_active ? "Доступ активен, ссылка подключения готова к работе." : "После оплаты статус обновится автоматически."}
+                {dash?.is_active
+                  ? "Доступ уже работает. Ниже можно скопировать ссылку, открыть QR и выбрать приложение для подключения."
+                  : "После оплаты статус обновится автоматически, а ссылка для приложения появится здесь без ручных шагов."}
               </p>
             </div>
             <span className={`rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.14em] ${dash?.is_active ? "bg-emerald-500 text-white" : "bg-amber-400 text-slate-900"}`}>
@@ -79,15 +83,22 @@ export default function DashboardPage() {
           </div>
 
           <div className="mt-6 flex flex-wrap gap-3">
-            <Link href="/subscription/checkout/" className="btn-primary rounded-xl px-5 py-2.5 text-sm font-semibold uppercase tracking-[0.12em]">
-              {getCopyText("webapp.dashboard.primary_cta", "Открыть оплату")}
+            <Link href={primaryHref} className="btn-primary rounded-xl px-5 py-2.5 text-sm font-semibold uppercase tracking-[0.12em]">
+              {primaryLabel}
             </Link>
+            {dash?.is_active ? (
+              <Link href="/subscription/checkout/" className="outline-btn rounded-xl px-5 py-2.5 text-sm font-semibold uppercase tracking-[0.12em]">
+                {getCopyText("webapp.dashboard.primary_cta", "Продлить доступ")}
+              </Link>
+            ) : null}
             <Link href="/support/" className="outline-btn rounded-xl px-5 py-2.5 text-sm font-semibold uppercase tracking-[0.12em]">
               {getCopyText("webapp.dashboard.support_cta", "Поддержка")}
             </Link>
-            <Link href="/dashboard/downloads/" className="outline-btn rounded-xl px-5 py-2.5 text-sm font-semibold uppercase tracking-[0.12em]">
-              Скачать приложения
-            </Link>
+            {!dash?.is_active ? (
+              <Link href="/dashboard/downloads/" className="outline-btn rounded-xl px-5 py-2.5 text-sm font-semibold uppercase tracking-[0.12em]">
+                Скачать приложения
+              </Link>
+            ) : null}
           </div>
         </article>
 
@@ -123,9 +134,9 @@ export default function DashboardPage() {
 
         <div className="grid gap-5 lg:grid-cols-[1.4fr,0.9fr]">
           <article className="rounded-2xl border border-white/45 bg-white/65 p-4 dark:border-white/10 dark:bg-white/5">
-            <p className="text-xs uppercase tracking-[0.14em] text-slate-500">URL подключения</p>
+            <p className="text-xs uppercase tracking-[0.14em] text-slate-500">Ссылка для приложения</p>
             <p className="mt-3 break-all font-mono text-xs leading-6 text-slate-700 dark:text-slate-200">{maskKey(connectionKey, keyVisible)}</p>
-            <p className="mt-3 text-xs text-slate-500">Передавайте эту ссылку только своим устройствам.</p>
+            <p className="mt-3 text-xs text-slate-500">Используйте эту ссылку только на своих устройствах.</p>
             {copyState === "ok" ? <p className="mt-2 text-xs text-emerald-600 dark:text-emerald-300">Ссылка скопирована.</p> : null}
             {copyState === "fail" ? <p className="mt-2 text-xs text-rose-500">Не удалось скопировать ссылку.</p> : null}
           </article>

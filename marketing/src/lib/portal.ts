@@ -32,19 +32,19 @@ type CatalogItem = {
 
 const COPY: Record<string, CatalogItem> = {
   "marketing.meta.title": { ru: "PORTAL - цифровой доступ без лишних шагов" },
-  "marketing.meta.description": { ru: "Быстрый запуск через Telegram, оплата в рублях и спокойный личный кабинет без перегруза деталями." },
-  "marketing.hero.kicker": { ru: "PORTAL • запуск через Telegram • оплата в рублях" },
-  "marketing.hero.title": { ru: "Подключайтесь быстро и без лишней настройки" },
-  "marketing.hero.subtitle": { ru: "Откройте Telegram, выберите удобный план и продолжайте свои дела без длинного онбординга." },
+  "marketing.meta.description": { ru: "Быстрый старт через Telegram, оплата в рублях и понятный кабинет с поддержкой без долгого ожидания." },
+  "marketing.hero.kicker": { ru: "PORTAL • Telegram-first • оплата в рублях" },
+  "marketing.hero.title": { ru: "Цифровой доступ без сложной настройки" },
+  "marketing.hero.subtitle": { ru: "Откройте Telegram, выберите план и получите готовый доступ за пару минут — с понятным кабинетом и живой поддержкой." },
   "marketing.hero.primary_cta": { ru: "Подключиться в Telegram" },
-  "marketing.hero.secondary_cta": { ru: "Посмотреть планы" },
-  "marketing.support.title": { ru: "Если нужен человек, мы рядом" },
-  "marketing.support.subtitle": { ru: "Поддержка в Telegram, понятные ответы и быстрый переход к обращению из любого экрана." },
-  "marketing.checkout.title": { ru: "Оплата в пару шагов" },
-  "marketing.checkout.subtitle": { ru: "Выберите срок, проверьте итоговую сумму и перейдите на страницу оплаты без лишних экранов." },
+  "marketing.hero.secondary_cta": { ru: "Сравнить планы" },
+  "marketing.support.title": { ru: "Если нужна помощь, не придётся разбираться в одиночку" },
+  "marketing.support.subtitle": { ru: "Поддержка отвечает в Telegram и помогает с оплатой, приложениями и подключением без долгих переписок." },
+  "marketing.checkout.title": { ru: "Оплата без лишних экранов" },
+  "marketing.checkout.subtitle": { ru: "Срок и итоговая сумма видны сразу. После оплаты доступ обновится автоматически, а если что-то пойдёт не так — сценарий можно продолжить через Telegram." },
   "marketing.checkout.primary_cta": { ru: "Перейти к оплате" },
-  "marketing.legal.offer.intro": { ru: "Этот документ описывает условия доступа к цифровым услугам PORTAL и порядок оплаты выбранного периода." },
-  "marketing.legal.privacy.intro": { ru: "PORTAL хранит только те данные, которые действительно нужны для работы аккаунта, поддержки и безопасности сервиса." },
+  "marketing.legal.offer.intro": { ru: "Здесь собраны основные условия доступа к сервису PORTAL, порядок оплаты и правила использования выбранного периода." },
+  "marketing.legal.privacy.intro": { ru: "PORTAL хранит только данные, которые действительно нужны для работы аккаунта, поддержки и стабильности сервиса." },
 };
 
 function trim(value: string | undefined, fallback = ""): string {

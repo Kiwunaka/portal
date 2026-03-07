@@ -204,7 +204,7 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
                   <span className="material-symbols-rounded">menu</span>
                 </button>
               ) : null}
-              <p className="font-mono text-[11px] uppercase tracking-[0.15em] text-slate-500 md:text-xs">secure control center</p>
+              <p className="font-mono text-[11px] uppercase tracking-[0.15em] text-slate-500 md:text-xs">личный кабинет</p>
             </div>
 
             <div className="flex items-center gap-3">

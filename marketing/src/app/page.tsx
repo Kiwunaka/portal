@@ -6,7 +6,7 @@ const config = getPortalPublicConfig(process.env as Record<string, string | unde
 const FEATURES = [
   {
     title: "Запуск через Telegram",
-    desc: "Вход, оплата и переход к кабинету собраны в один понятный сценарий без долгой ручной настройки.",
+    desc: "Вход, оплата и переход к кабинету собраны в один понятный путь без лишних экранов.",
   },
   {
     title: "Прозрачные планы",
@@ -14,7 +14,7 @@ const FEATURES = [
   },
   {
     title: "Спокойный кабинет",
-    desc: "Внутри только нужные разделы: доступ, загрузки, поддержка и сводка по текущему состоянию.",
+    desc: "Срок, точки подключения, приложения и поддержка собраны в одном аккуратном кабинете.",
   },
 ];
 
@@ -40,7 +40,7 @@ export default function HomePage() {
           <a href="#support">Поддержка</a>
           <a href="#faq">FAQ</a>
           <a href={config.webappUrl} target="_blank" rel="noreferrer" className="lp-chip">
-            Личный кабинет
+            Уже подключены?
           </a>
           <a href={config.botUrl} target="_blank" rel="noreferrer" className="lp-chip lp-chip--primary">
             {getCopyText("marketing.hero.primary_cta", "Подключиться в Telegram")}
@@ -52,13 +52,13 @@ export default function HomePage() {
         <section className="lp-hero">
           <div className="lp-kicker">{getCopyText("marketing.hero.kicker", "PORTAL • запуск через Telegram • оплата в рублях")}</div>
           <h1>{getCopyText("marketing.hero.title", "Подключайтесь быстро и без лишней настройки")}</h1>
-          <p>{getCopyText("marketing.hero.subtitle", "Откройте Telegram, выберите удобный план и продолжайте свои дела без длинного онбординга.")}</p>
+          <p>{getCopyText("marketing.hero.subtitle", "Откройте Telegram, выберите план и получите готовый доступ за пару минут — с понятным кабинетом и живой поддержкой.")}</p>
           <div className="lp-hero-actions">
             <a href={config.botUrl} target="_blank" rel="noreferrer" className="lp-btn lp-btn--primary">
               {getCopyText("marketing.hero.primary_cta", "Подключиться в Telegram")}
             </a>
             <a href="#pricing" className="lp-btn lp-btn--ghost">
-              {getCopyText("marketing.hero.secondary_cta", "Посмотреть планы")}
+              {getCopyText("marketing.hero.secondary_cta", "Сравнить планы")}
             </a>
           </div>
           <div className="lp-proof">
@@ -97,7 +97,7 @@ export default function HomePage() {
           <div className="lp-section-head">
             <span>[Планы]</span>
             <h2>Только актуальные суммы и реальные сроки</h2>
-            <p>Холодный трафик идёт через Telegram. Персональные ссылки оплаты открываются только из бота или кабинета.</p>
+            <p>Если вы только начинаете, удобнее всего продолжить через Telegram. Персональная ссылка оплаты появляется уже внутри бота или кабинета.</p>
           </div>
 
           <div className="lp-plan-grid">
@@ -108,7 +108,7 @@ export default function HomePage() {
                 <p className="lp-period">{plan.period}</p>
                 <p>{plan.note}</p>
                 <a href={config.botUrl} target="_blank" rel="noreferrer" className="lp-btn lp-btn--primary" style={{ marginTop: 20 }}>
-                  Открыть в Telegram
+                  Выбрать в Telegram
                 </a>
               </article>
             ))}
@@ -124,16 +124,16 @@ export default function HomePage() {
           <div className="lp-feature-grid">
             <article className="lp-card">
               <h3>Telegram</h3>
-              <p>Самый быстрый путь, если нужно продолжить оплату, проверить доступ или задать вопрос по устройству.</p>
+              <p>Самый быстрый путь, если нужно продолжить оплату, проверить доступ или быстро задать вопрос.</p>
               <a href={config.supportTelegramUrl} target="_blank" rel="noreferrer" className="lp-btn lp-btn--primary">
-                Открыть поддержку
+                Написать в Telegram
               </a>
             </article>
             <article className="lp-card">
               <h3>Кабинет</h3>
               <p>Внутри уже есть история обращений, раздел загрузок и честная сводка по текущему состоянию доступа.</p>
               <a href={config.webappUrl} target="_blank" rel="noreferrer" className="lp-btn lp-btn--ghost">
-                Открыть кабинет, если доступ уже активирован
+                Открыть кабинет
               </a>
             </article>
           </div>
@@ -151,7 +151,7 @@ export default function HomePage() {
             </article>
             <article className="lp-card">
               <h3>Можно ли оплатить в рублях?</h3>
-              <p>Да. Основной путь настроен на оплату в рублях, а Telegram остаётся быстрым способом продолжения сценария.</p>
+              <p>Да. Основной путь настроен на оплату в рублях, а Telegram остаётся быстрым способом продолжить дальше.</p>
             </article>
             <article className="lp-card">
               <h3>Что видно в кабинете?</h3>

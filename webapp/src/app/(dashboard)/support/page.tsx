@@ -15,7 +15,7 @@ const CATEGORIES: TicketCategory[] = ["Подключение", "Оплата", 
 const FAQ = [
   {
     q: "Где открыть оплату?",
-    a: "На странице доступа можно сразу перейти к оплате, а если удобнее продолжить в Telegram, там тоже есть тот же сценарий."
+    a: "Оплата открывается в разделе доступа. Если удобнее продолжить в Telegram, тот же шаг можно сделать там."
   },
   {
     q: "Как понять, что профиль активен?",
@@ -23,7 +23,7 @@ const FAQ = [
   },
   {
     q: "Что делать, если приложение не запускается?",
-    a: "Проверьте раздел загрузок и, если нужно, напишите в поддержку. Мы подскажем по конкретному устройству и сценарию."
+    a: "Проверьте раздел загрузок и, если нужно, напишите в поддержку. Подскажем по конкретному устройству и приложению."
   },
   {
     q: "Как быстро отвечаете?",
@@ -78,12 +78,12 @@ export default function SupportPage() {
         icon: "send",
         hint: "Самый быстрый канал ответа"
       },
-      {
-        label: "Email",
-        href: `mailto:${config.contactEmail}`,
-        icon: "mail",
-        hint: "Для длинных кейсов и файлов"
-      }
+        {
+          label: "Email",
+          href: `mailto:${config.contactEmail}`,
+          icon: "mail",
+          hint: "Если удобнее написать письмом"
+        }
     ],
     [supportLink]
   );
@@ -187,7 +187,7 @@ export default function SupportPage() {
               headset_mic
             </span>
             <h2 className="mt-3 font-display text-2xl font-semibold">Нужна помощь прямо сейчас?</h2>
-            <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">Среднее время ответа 10-15 минут.</p>
+            <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">Обычно отвечаем в течение 10-15 минут.</p>
             <div className="mt-5 grid gap-3 sm:grid-cols-2">
               {contactCards.map((card) => (
                 <Link key={card.label} href={card.href} target="_blank" className="outline-btn rounded-xl px-3 py-3 text-center text-sm font-semibold">
@@ -257,7 +257,7 @@ export default function SupportPage() {
                     </option>
                   ))}
                 </select>
-                <input value={subject} onChange={(event) => setSubject(event.target.value)} className="w-full rounded-xl border border-violet-200/50 bg-white/80 px-4 py-3 text-sm outline-none dark:border-violet-500/30 dark:bg-slate-900/70" placeholder="Тема" />
+                <input value={subject} onChange={(event) => setSubject(event.target.value)} className="w-full rounded-xl border border-violet-200/50 bg-white/80 px-4 py-3 text-sm outline-none dark:border-violet-500/30 dark:bg-slate-900/70" placeholder="Коротко: что случилось" />
                 <textarea value={body} onChange={(event) => setBody(event.target.value)} className="w-full rounded-xl border border-violet-200/50 bg-white/80 px-4 py-3 text-sm outline-none dark:border-violet-500/30 dark:bg-slate-900/70" rows={5} placeholder="Опишите, что происходит и на каком устройстве это заметили" />
                 <label className="block rounded-2xl border border-dashed border-violet-300/60 bg-white/70 px-4 py-4 text-sm dark:border-violet-500/35 dark:bg-slate-900/55">
                   <span className="mb-2 block font-medium">Скриншот, видео или файл логов</span>

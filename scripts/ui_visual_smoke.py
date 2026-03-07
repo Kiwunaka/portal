@@ -49,7 +49,7 @@ def main() -> int:
         Check(
             name="marketing-home-cta",
             path=REPO_ROOT / "marketing" / "src" / "app" / "page.tsx",
-            must_contain=("Подключиться в Telegram", "Посмотреть планы"),
+            must_contain=("Подключиться в Telegram", "Сравнить планы", "Уже подключены?"),
             must_not_contain=("Открыть Telegram",),
         ),
         Check(
@@ -61,13 +61,13 @@ def main() -> int:
         Check(
             name="marketing-checkout-gateway",
             path=REPO_ROOT / "marketing" / "src" / "app" / "checkout" / "page.tsx",
-            must_contain=("Продолжение через Telegram", "Продолжить в Telegram"),
+            must_contain=("Продолжение через Telegram", "Получить персональную ссылку в Telegram"),
             must_not_contain=("PORTALcheckout",),
         ),
         Check(
             name="webapp-entry",
             path=REPO_ROOT / "webapp" / "src" / "app" / "page.tsx",
-            must_contain=("portal entry", "Вход в кабинет PORTAL"),
+            must_contain=("portal entry", "Продолжить вход в PORTAL", "Очистить веб-вход"),
         ),
         Check(
             name="webapp-local-qr",

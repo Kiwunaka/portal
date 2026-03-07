@@ -13,7 +13,7 @@
     },
     "marketing.meta.description": {
       "surface": "marketing.meta",
-      "ru": "Быстрый запуск через Telegram, оплата в рублях и спокойный личный кабинет без перегруза деталями.",
+      "ru": "Быстрый старт через Telegram, оплата в рублях и понятный кабинет с поддержкой без долгого ожидания.",
       "variables": [],
       "tone": "friendly",
       "allowed_public": true,
@@ -22,7 +22,7 @@
     },
     "marketing.hero.kicker": {
       "surface": "marketing.home.hero",
-      "ru": "PORTAL • запуск через Telegram • оплата в рублях",
+      "ru": "PORTAL • Telegram-first • оплата в рублях",
       "variables": [],
       "tone": "friendly",
       "allowed_public": true,
@@ -31,7 +31,7 @@
     },
     "marketing.hero.title": {
       "surface": "marketing.home.hero",
-      "ru": "Подключайтесь быстро и без лишней настройки",
+      "ru": "Цифровой доступ без сложной настройки",
       "variables": [],
       "tone": "premium-friendly",
       "allowed_public": true,
@@ -40,7 +40,7 @@
     },
     "marketing.hero.subtitle": {
       "surface": "marketing.home.hero",
-      "ru": "Откройте Telegram, выберите удобный план и продолжайте свои дела без длинного онбординга.",
+      "ru": "Откройте Telegram, выберите план и получите готовый доступ за пару минут — с понятным кабинетом и живой поддержкой.",
       "variables": [],
       "tone": "friendly",
       "allowed_public": true,
@@ -58,7 +58,7 @@
     },
     "marketing.hero.secondary_cta": {
       "surface": "marketing.home.hero",
-      "ru": "Посмотреть планы",
+      "ru": "Сравнить планы",
       "variables": [],
       "tone": "direct",
       "allowed_public": true,
@@ -67,7 +67,7 @@
     },
     "marketing.support.title": {
       "surface": "marketing.home.support",
-      "ru": "Если нужен человек, мы рядом",
+      "ru": "Если нужна помощь, не придётся разбираться в одиночку",
       "variables": [],
       "tone": "friendly",
       "allowed_public": true,
@@ -76,7 +76,7 @@
     },
     "marketing.support.subtitle": {
       "surface": "marketing.home.support",
-      "ru": "Поддержка в Telegram, понятные ответы и быстрый переход к обращению из любого экрана.",
+      "ru": "Поддержка отвечает в Telegram и помогает с оплатой, приложениями и подключением без долгих переписок.",
       "variables": [],
       "tone": "friendly",
       "allowed_public": true,
@@ -85,7 +85,7 @@
     },
     "marketing.checkout.title": {
       "surface": "marketing.checkout",
-      "ru": "Оплата в пару шагов",
+      "ru": "Оплата без лишних экранов",
       "variables": [],
       "tone": "direct",
       "allowed_public": true,
@@ -94,7 +94,7 @@
     },
     "marketing.checkout.subtitle": {
       "surface": "marketing.checkout",
-      "ru": "Выберите срок, проверьте итоговую сумму и перейдите на страницу оплаты без лишних экранов.",
+      "ru": "Срок и итоговая сумма видны сразу. После оплаты доступ обновится автоматически, а если что-то пойдёт не так — сценарий можно продолжить через Telegram.",
       "variables": [],
       "tone": "friendly",
       "allowed_public": true,
@@ -112,7 +112,7 @@
     },
     "marketing.legal.offer.intro": {
       "surface": "marketing.legal.offer",
-      "ru": "Этот документ описывает условия доступа к цифровым услугам PORTAL и порядок оплаты выбранного периода.",
+      "ru": "Здесь собраны основные условия доступа к сервису PORTAL, порядок оплаты и правила использования выбранного периода.",
       "variables": [],
       "tone": "neutral",
       "allowed_public": true,
@@ -121,7 +121,7 @@
     },
     "marketing.legal.privacy.intro": {
       "surface": "marketing.legal.privacy",
-      "ru": "PORTAL хранит только те данные, которые действительно нужны для работы аккаунта, поддержки и безопасности сервиса.",
+      "ru": "PORTAL хранит только данные, которые действительно нужны для работы аккаунта, поддержки и стабильности сервиса.",
       "variables": [],
       "tone": "neutral",
       "allowed_public": true,
@@ -130,7 +130,7 @@
     },
     "webapp.entry.title": {
       "surface": "webapp.entry",
-      "ru": "Вход в кабинет PORTAL",
+      "ru": "Продолжить вход в PORTAL",
       "variables": [],
       "tone": "direct",
       "allowed_public": true,
@@ -139,7 +139,7 @@
     },
     "webapp.entry.subtitle": {
       "surface": "webapp.entry",
-      "ru": "В Telegram вход происходит автоматически. В браузере можно быстро продолжить через Telegram без ручной настройки.",
+      "ru": "В Telegram вход подтверждается автоматически. Если вы открыли кабинет в браузере, просто вернитесь в бот и нажмите кнопку входа.",
       "variables": [],
       "tone": "friendly",
       "allowed_public": true,
@@ -148,7 +148,7 @@
     },
     "webapp.dashboard.primary_cta": {
       "surface": "webapp.dashboard",
-      "ru": "Открыть оплату",
+      "ru": "Продлить доступ",
       "variables": [],
       "tone": "direct",
       "allowed_public": true,
@@ -157,7 +157,7 @@
     },
     "webapp.dashboard.support_cta": {
       "surface": "webapp.dashboard",
-      "ru": "Поддержка",
+      "ru": "Связаться с поддержкой",
       "variables": [],
       "tone": "direct",
       "allowed_public": true,
@@ -166,7 +166,7 @@
     },
     "webapp.subscription.title": {
       "surface": "webapp.subscription",
-      "ru": "Управление доступом",
+      "ru": "План и срок доступа",
       "variables": [],
       "tone": "direct",
       "allowed_public": true,
@@ -175,7 +175,7 @@
     },
     "webapp.subscription.subtitle": {
       "surface": "webapp.subscription",
-      "ru": "Сравните планы, проверьте лимиты и продлите доступ без лишних шагов.",
+      "ru": "Сравните варианты, проверьте лимиты и продлите доступ без лишних действий.",
       "variables": [],
       "tone": "friendly",
       "allowed_public": true,
@@ -184,7 +184,7 @@
     },
     "webapp.checkout.title": {
       "surface": "webapp.checkout",
-      "ru": "Оплата и продление",
+      "ru": "Продление и оплата",
       "variables": [],
       "tone": "direct",
       "allowed_public": true,
@@ -193,7 +193,7 @@
     },
     "webapp.checkout.subtitle": {
       "surface": "webapp.checkout",
-      "ru": "Сумма и скидка видны до перехода на страницу оплаты. Если вход не привязан, можно быстро продолжить через Telegram.",
+      "ru": "Проверяйте сумму до перехода на оплату. После подтверждения доступ обновится автоматически.",
       "variables": [],
       "tone": "friendly",
       "allowed_public": true,
@@ -202,7 +202,7 @@
     },
     "webapp.support.title": {
       "surface": "webapp.support",
-      "ru": "Поддержка PORTAL",
+      "ru": "Помощь и обращения",
       "variables": [],
       "tone": "friendly",
       "allowed_public": true,
@@ -211,7 +211,7 @@
     },
     "webapp.support.subtitle": {
       "surface": "webapp.support",
-      "ru": "Быстрые ответы, обращения в один шаг и вся история общения в одном разделе.",
+      "ru": "Быстрый вопрос, новый тикет или продолжение диалога — всё в одном разделе.",
       "variables": [],
       "tone": "friendly",
       "allowed_public": true,
@@ -220,7 +220,7 @@
     },
     "webapp.support.empty_tickets": {
       "surface": "webapp.support",
-      "ru": "Обращений пока нет. Создайте первое сообщение, если нужна помощь.",
+      "ru": "Пока пусто. Если нужна помощь, создайте обращение в пару строк.",
       "variables": [],
       "tone": "friendly",
       "allowed_public": true,
@@ -229,7 +229,7 @@
     },
     "webapp.devices.title": {
       "surface": "webapp.devices",
-      "ru": "Сессии и точки подключения",
+      "ru": "Устройства и точки подключения",
       "variables": [],
       "tone": "direct",
       "allowed_public": true,
@@ -238,7 +238,7 @@
     },
     "webapp.devices.subtitle": {
       "surface": "webapp.devices",
-      "ru": "Здесь видны текущие лимиты, активные сессии и доступные точки подключения по вашему плану.",
+      "ru": "Здесь видны лимит устройств, текущие сессии и доступные страны по вашему плану.",
       "variables": [],
       "tone": "friendly",
       "allowed_public": true,
@@ -247,7 +247,7 @@
     },
     "webapp.statistics.title": {
       "surface": "webapp.statistics",
-      "ru": "Сводка по использованию",
+      "ru": "Состояние доступа",
       "variables": [],
       "tone": "direct",
       "allowed_public": true,
@@ -256,7 +256,7 @@
     },
     "webapp.statistics.subtitle": {
       "surface": "webapp.statistics",
-      "ru": "Показываем только те данные, которые уже есть в системе: срок доступа, лимиты, трафик и состояние точек подключения.",
+      "ru": "Показываем только реальные данные: срок, лимиты, трафик и здоровье точек подключения.",
       "variables": [],
       "tone": "friendly",
       "allowed_public": true,
@@ -265,7 +265,7 @@
     },
     "webapp.downloads.title": {
       "surface": "webapp.downloads",
-      "ru": "Приложения и быстрый запуск",
+      "ru": "Приложения и установка",
       "variables": [],
       "tone": "direct",
       "allowed_public": true,
@@ -274,7 +274,7 @@
     },
     "webapp.downloads.subtitle": {
       "surface": "webapp.downloads",
-      "ru": "Показываем только актуальные ссылки, которые уже настроены в системе для Android, Windows и справки.",
+      "ru": "Здесь только актуальные ссылки на приложения и короткий путь к инструкции.",
       "variables": [],
       "tone": "friendly",
       "allowed_public": true,
@@ -283,7 +283,7 @@
     },
     "bot.welcome": {
       "surface": "bot.main",
-      "ru": "PORTAL помогает быстро начать работу через Telegram: понятный выбор плана, короткий путь к оплате и живая поддержка рядом.",
+      "ru": "PORTAL помогает быстро подключиться через Telegram: понятный выбор плана, короткий путь к оплате и поддержка рядом.",
       "variables": [],
       "tone": "premium-friendly",
       "allowed_public": false,
@@ -292,7 +292,7 @@
     },
     "bot.choose_tariff": {
       "surface": "bot.main",
-      "ru": "Выберите удобный план. В каждом уже видны срок доступа, лимит устройств и доступные страны.",
+      "ru": "Выберите удобный план. Сразу видно срок, лимит устройств и какие страны будут доступны.",
       "variables": [],
       "tone": "friendly",
       "allowed_public": false,
@@ -301,7 +301,7 @@
     },
     "bot.support.welcome": {
       "surface": "bot.support",
-      "ru": "Поддержка PORTAL рядом. Откройте новое обращение или продолжите уже начатый диалог.",
+      "ru": "Поддержка PORTAL рядом. Откройте новое обращение или продолжите уже начатый диалог без лишних шагов.",
       "variables": [],
       "tone": "friendly",
       "allowed_public": false,

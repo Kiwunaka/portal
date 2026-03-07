@@ -166,7 +166,7 @@ export default function CheckoutPage() {
         <p className="checkout-sub">
           {getCopyText(
             "marketing.checkout.subtitle",
-            "Здесь продолжается персональный сценарий оплаты: сумма видна заранее, а после оплаты доступ выдаётся автоматически.",
+            "Здесь продолжается персональная оплата: сумма видна заранее, а после оплаты доступ обновится автоматически.",
           )}
         </p>
       </section>
@@ -195,7 +195,7 @@ export default function CheckoutPage() {
         <article className="glass-card">
           <h2>Что будет дальше</h2>
           <p className="checkout-note">
-            После подтверждения оплаты страница банка закроется, а доступ обновится автоматически. Если что-то пошло не так, продолжить можно через Telegram или кабинет.
+              После подтверждения оплаты страница банка закроется, а доступ обновится автоматически. Если что-то пойдёт не так, продолжить можно через Telegram или кабинет.
           </p>
           <div className="checkout-summary">
             <p>План: <strong>{activePlan.label}</strong></p>
@@ -226,14 +226,14 @@ export default function CheckoutPage() {
               ? "Создаём заказ..."
               : hasCheckoutTicket
                 ? getCopyText("marketing.checkout.primary_cta", "Перейти к оплате")
-                : "Открыть Telegram"}
+                : "Получить ссылку в Telegram"}
           </button>
 
           {!hasCheckoutTicket ? (
             <div className="checkout-empty">
               <p>Для прямой оплаты нужна персональная ссылка. Если вы открыли страницу вручную, продолжите через Telegram или кабинет.</p>
               <div className="checkout-actions">
-                <a href={config.botUrl} target="_blank" rel="noreferrer" className="checkout-secondary">Продолжить в Telegram</a>
+                <a href={config.botUrl} target="_blank" rel="noreferrer" className="checkout-secondary">Получить персональную ссылку в Telegram</a>
                 <a href={config.webappUrl} target="_blank" rel="noreferrer" className="checkout-secondary">Уже есть доступ? Открыть кабинет</a>
               </div>
             </div>

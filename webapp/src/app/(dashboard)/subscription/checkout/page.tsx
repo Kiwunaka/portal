@@ -23,6 +23,13 @@ function fallbackPlans(): PlanCatalogRow[] {
   ];
 }
 
+function nodePolicyLabel(value: string | null | undefined): string {
+  const normalized = String(value || "").trim().toLowerCase();
+  if (normalized === "nl_only") return "NL";
+  if (normalized === "paid_pool") return "IT, NL, PL, US";
+  return "Актуальный пул";
+}
+
 export default function CheckoutPage() {
   const searchParams = useSearchParams();
   const { user } = usePortalSession();
@@ -112,7 +119,7 @@ export default function CheckoutPage() {
         <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">
           {getCopyText(
             "webapp.checkout.subtitle",
-            "Сумма и скидка видны до перехода на страницу оплаты. Если вход не привязан, можно быстро продолжить через Telegram.",
+            "Сумма и скидка видны до перехода на страницу оплаты. После подтверждения доступ обновится автоматически.",
           )}
         </p>
       </section>
@@ -149,6 +156,7 @@ export default function CheckoutPage() {
               <p>План: <span className="font-semibold text-slate-900 dark:text-white">{activePlan.label}</span></p>
               <p>Срок: {activePlan.days} дней</p>
               <p>Лимит устройств: до {activePlan.device_limit}</p>
+              <p>Точки подключения: {nodePolicyLabel(activePlan.node_policy)}</p>
               {queryPromo ? <p>Промокод: {queryPromo}</p> : null}
               {breakdown ? (
                 <div className="rounded-xl border border-white/45 bg-white/65 p-4 text-xs dark:border-white/10 dark:bg-white/5">
@@ -168,7 +176,7 @@ export default function CheckoutPage() {
             disabled={!activePlan || busy || !user}
             className="btn-primary mt-5 w-full rounded-xl py-3 text-sm font-semibold uppercase tracking-[0.12em] disabled:opacity-60"
           >
-            {busy ? "Создаём заказ..." : "Открыть оплату"}
+            {busy ? "Создаём заказ..." : "Перейти к оплате"}
           </button>
 
           <div className="mt-3 grid gap-3">
@@ -177,7 +185,7 @@ export default function CheckoutPage() {
               target="_blank"
               className="outline-btn block rounded-xl py-3 text-center text-sm font-semibold uppercase tracking-[0.12em]"
             >
-              Открыть Telegram
+              Продолжить в Telegram
             </Link>
             <Link
               href={config.supportTelegramUrl}

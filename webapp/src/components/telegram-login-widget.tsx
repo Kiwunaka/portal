@@ -47,13 +47,13 @@ export default function TelegramLoginWidget() {
     script.setAttribute("data-radius", "12");
     script.setAttribute("data-onauth", "onTelegramAuth(user)");
     script.onerror = () => {
-      setWidgetHint("Не удалось загрузить Telegram Login Widget. Попробуйте кнопку входа через бота ниже.");
+      setWidgetHint("Не удалось открыть Telegram-виджет. Используйте кнопку входа через Telegram ниже.");
     };
     host.appendChild(script);
 
     const warnTimer = window.setTimeout(() => {
       if (authDoneRef.current) return;
-      setWidgetHint("Если Telegram показывает 'Bot domain invalid', используйте вход через бота ниже.");
+      setWidgetHint("Если виджет не подтверждает вход, продолжите через Telegram кнопкой ниже.");
     }, 4500);
 
     return () => {

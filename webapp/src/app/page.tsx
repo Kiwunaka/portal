@@ -74,26 +74,26 @@ function EntryBody() {
         <p className="font-mono text-xs uppercase tracking-[0.16em] text-violet-600 dark:text-violet-300">
           portal entry
         </p>
-        <h1 className="mt-2 font-display text-4xl font-bold">{getCopyText("webapp.entry.title", "Вход в кабинет PORTAL")}</h1>
+          <h1 className="mt-2 font-display text-4xl font-bold">{getCopyText("webapp.entry.title", "Продолжить вход в PORTAL")}</h1>
         <p className="mt-3 text-sm text-slate-600 dark:text-slate-300">
           {getCopyText(
             "webapp.entry.subtitle",
-            "В Telegram вход происходит автоматически. В браузере можно быстро продолжить через Telegram без ручной настройки.",
-          )}
-        </p>
+              "В Telegram вход подтверждается автоматически. Если вы открыли кабинет в браузере, просто вернитесь в бот и нажмите кнопку входа.",
+            )}
+          </p>
 
         {webLoginRequired ? (
           <div className="mt-5 space-y-3">
             {TELEGRAM_WIDGET_ENABLED ? <TelegramLoginWidget /> : null}
             {!TELEGRAM_WIDGET_ENABLED ? (
-              <p className="text-xs text-slate-500">Продолжить можно через Telegram-бота.</p>
-            ) : null}
+                <p className="text-xs text-slate-500">Если виджет не открылся, кнопка ниже сделает тот же вход через Telegram.</p>
+              ) : null}
             {webLoginBusy ? <p className="text-xs text-slate-500">Проверяем аккаунт...</p> : null}
             {webLoginError ? <p className="text-xs text-rose-500">{webLoginError}</p> : null}
           </div>
         ) : (
-          <p className="mt-5 text-sm text-emerald-600 dark:text-emerald-300">Сессия найдена, открываем кабинет...</p>
-        )}
+            <p className="mt-5 text-sm text-emerald-600 dark:text-emerald-300">Вход подтверждён, открываем кабинет...</p>
+          )}
 
         <div className="mt-6 flex flex-wrap gap-3">
           <Link
@@ -101,14 +101,14 @@ function EntryBody() {
             target="_blank"
             className="btn-primary rounded-xl px-5 py-2.5 text-sm font-semibold uppercase tracking-[0.12em]"
           >
-            Продолжить через Telegram
+            Открыть Telegram
           </Link>
           {!webLoginRequired ? (
             <Link
               href="/dashboard/"
               className="outline-btn rounded-xl px-5 py-2.5 text-sm font-semibold uppercase tracking-[0.12em]"
             >
-              Открыть кабинет
+              Перейти в кабинет
             </Link>
           ) : null}
           <button
@@ -116,7 +116,7 @@ function EntryBody() {
             onClick={logoutWebSession}
             type="button"
           >
-            Сбросить сессию
+            Очистить веб-вход
           </button>
         </div>
       </section>

@@ -19,7 +19,7 @@ export default function PricingPage() {
   const [promoStatus, setPromoStatus] = useState<PromoStatus>(null);
 
   const backHref = fromLK ? "/subscription/" : "/";
-  const backLabel = fromLK ? "назад в кабинет" : "назад на сайт";
+  const backLabel = fromLK ? "назад в кабинет" : "назад ко входу";
 
   const cards = useMemo(() => {
     return PLAN_CONFIG.map((plan) => ({
@@ -65,8 +65,8 @@ export default function PricingPage() {
         </Link>
         <h1 className="mt-4 font-display text-5xl font-bold">Выберите план и удобный срок</h1>
         <p className="mt-4 max-w-3xl text-sm leading-6 text-slate-600 dark:text-slate-300">
-          На этой странице только актуальные суммы и реальные коды планов. После выбора вы сразу переходите к оплате
-          без промежуточных экранов.
+          Здесь всегда показаны актуальные суммы и сроки. Если вы уже вошли, после выбора сразу откроется оплата.
+          Если вход ещё не подтверждён, сначала откроется быстрый шаг через Telegram, а выбранный план сохранится.
         </p>
 
         <div className="mt-7 inline-flex rounded-xl bg-white/70 p-1 dark:bg-slate-900/70">
@@ -132,7 +132,7 @@ export default function PricingPage() {
                 type="button"
                 onClick={() => pickPlan(plan.alias)}
               >
-                Открыть оплату
+                Выбрать план
               </button>
             </article>
           );

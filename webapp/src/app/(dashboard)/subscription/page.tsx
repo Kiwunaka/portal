@@ -10,7 +10,7 @@ const config = getPortalPublicConfig(process.env as Record<string, string | unde
 
 const COMPARISON_ROWS = [
   { metric: "Устройства", start: "1", pro: "До 5", ultra: "До 5" },
-  { metric: "Страны", start: "Базовый набор", pro: "Расширенный набор", ultra: "Полный набор" },
+  { metric: "Точки подключения", start: "NL", pro: "IT, NL, PL, US", ultra: "IT, NL, PL, US" },
   { metric: "Срок", start: "30 дней", pro: "1 или 3 месяца", ultra: "6, 9 или 12 месяцев" },
   { metric: "Поддержка", start: "Стандартная", pro: "Быстрый ответ", ultra: "Приоритетная" }
 ] as const;
@@ -28,6 +28,13 @@ function fallbackPlans(): PlanCatalogRow[] {
     { code: "1_month", label: "Pro 1 месяц", amount_rub: 249, amount_stars: 249, days: 30, device_limit: 5, node_policy: "paid_pool", badge: "Популярный", is_active: true, sort_order: 2 },
     { code: "12_months", label: "Ultra 12 месяцев", amount_rub: 1499, amount_stars: 1499, days: 365, device_limit: 5, node_policy: "paid_pool", badge: "Выгода", is_active: true, sort_order: 3 }
   ];
+}
+
+function nodePolicyLabel(value: string | null | undefined): string {
+  const normalized = String(value || "").trim().toLowerCase();
+  if (normalized === "nl_only") return "NL";
+  if (normalized === "paid_pool") return "IT, NL, PL, US";
+  return "Актуальный пул";
 }
 
 export default function SubscriptionPage() {
@@ -78,7 +85,7 @@ export default function SubscriptionPage() {
             {getCopyText("webapp.dashboard.primary_cta", "Открыть оплату")}
           </Link>
           <Link href={config.botUrl} target="_blank" className="outline-btn rounded-xl px-6 py-3 text-sm font-semibold uppercase tracking-[0.12em]">
-            Открыть Telegram
+            Продолжить в Telegram
           </Link>
         </div>
         <p className="mt-4 text-xs text-slate-500">
@@ -92,7 +99,7 @@ export default function SubscriptionPage() {
             <p className="font-mono text-xs uppercase tracking-[0.14em] text-slate-500">{plan.badge || "План"}</p>
             <h2 className="mt-2 font-display text-3xl font-bold">{plan.label}</h2>
             <p className="mt-3 text-2xl font-semibold">{Number(plan.amount_rub || 0)} ₽</p>
-            <p className="mt-1 text-xs text-slate-500">{plan.days} дней • до {plan.device_limit} устройств</p>
+            <p className="mt-1 text-xs text-slate-500">{plan.days} дней • до {plan.device_limit} устройств • {nodePolicyLabel(plan.node_policy)}</p>
             <Link
               href={`/subscription/checkout/?plan=${encodeURIComponent(plan.code)}`}
               className="btn-primary mt-5 inline-flex rounded-xl px-5 py-2.5 text-xs font-semibold uppercase tracking-[0.12em]"
