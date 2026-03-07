@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import os
+import sys
 from pathlib import Path
 
 import paramiko
@@ -9,6 +10,10 @@ import paramiko
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_PASSWORDS = REPO_ROOT / "VPN NODE SSH KEYS" / "PASSWORDS.txt"
+if str(REPO_ROOT / "scripts") not in sys.path:
+    sys.path.insert(0, str(REPO_ROOT / "scripts"))
+
+from node_access import connect_node
 
 
 def _parse_passwords(path: Path) -> str:
@@ -40,14 +45,15 @@ def main() -> int:
     ap.add_argument("--restart", default="portal-api,portal-bot", help="comma-separated systemd units to restart")
     args = ap.parse_args()
 
-    pw = os.getenv("NODE_PASS_BRAIN", "").strip() or _parse_passwords(Path(args.passwords))
-    if not pw:
-        raise SystemExit("Missing brain password.")
-
-    ssh = paramiko.SSHClient()
-    ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-    ssh.connect(args.brain_ip, port=args.ssh_port, username=args.ssh_user, password=pw, timeout=30, banner_timeout=30, auth_timeout=30)
+    ssh, auth_method = connect_node(
+        code="brain",
+        host=args.brain_ip,
+        user=args.ssh_user,
+        port=args.ssh_port,
+        passwords_path=Path(args.passwords),
+    )
     try:
+        print(f"brain auth: {auth_method}")
         _run(ssh, "mkdir -p /root/portal_bot", timeout=60)
         sftp = ssh.open_sftp()
         try:
