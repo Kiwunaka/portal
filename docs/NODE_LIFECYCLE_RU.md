@@ -112,8 +112,10 @@
 - admin `/admin/nodes` показывает lifecycle flags и даёт действия без захода в panel.
 - для production-аудита premium coverage теперь есть отдельный операторский сценарий:
   - `python scripts/remote_audit_paid_node_coverage.py --brain-ip <IP>`
-  - для безопаского ремонта только недостающих premium-маппингов:
+- для безопаского ремонта только недостающих premium-маппингов:
   - `python scripts/remote_audit_paid_node_coverage.py --brain-ip <IP> --repair`
+- для очистки legacy premium-маппингов на `brain/free`:
+  - `python scripts/remote_audit_paid_node_coverage.py --brain-ip <IP> --cleanup-disallowed`
 
 ## Что осталось / риск
 

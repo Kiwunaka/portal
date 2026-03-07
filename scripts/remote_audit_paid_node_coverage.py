@@ -138,12 +138,23 @@ def load_report(session, *, only_tg_id=None):
         mapped.setdefault(int(tg_id), set()).add((code or "").strip().lower())
 
     result_rows = []
+    disallowed_rows = []
     missing_users = 0
     for user in users:
         user_codes = mapped.get(int(user.tg_id), set())
         missing = [code for code in target_codes if code not in user_codes]
+        disallowed = [code for code in sorted(user_codes) if ("free" in code) or (node_base(code) in {"brain", "de"})]
         if missing:
             missing_users += 1
+        if disallowed:
+            disallowed_rows.append(
+                {
+                    "tg_id": int(user.tg_id),
+                    "username": user.username,
+                    "mapped": sorted(user_codes),
+                    "disallowed": disallowed,
+                }
+            )
         result_rows.append(
             {
                 "tg_id": int(user.tg_id),
@@ -173,6 +184,8 @@ def load_report(session, *, only_tg_id=None):
         "active_paid_codes": target_codes,
         "paid_users": len(users),
         "missing_users": missing_users,
+        "paid_users_with_disallowed_mappings": len(disallowed_rows),
+        "disallowed_rows": disallowed_rows,
         "active_user_sub_type_counts": sub_type_counts,
         "sample_active_users": sample_active_users,
         "rows": result_rows,
@@ -244,6 +257,89 @@ async def repair_missing(*, only_tg_id=None, limit=0):
     return {"planned": len(rows), "repaired": repaired, "failed": failed, "details": details}
 
 
+async def cleanup_disallowed(*, only_tg_id=None, limit=0):
+    ControlPanel = import_control_panel()
+
+    session = SessionLocal()
+    try:
+        report = load_report(session, only_tg_id=only_tg_id)
+        rows = list(report["disallowed_rows"])
+        if limit and limit > 0:
+            rows = rows[:limit]
+        if not rows:
+            return {"planned": 0, "cleaned": 0, "failed": 0, "details": []}
+
+        user_index = {
+            int(user.tg_id): user
+            for user in session.query(User).filter(User.tg_id.in_([int(row["tg_id"]) for row in rows])).all()
+        }
+        node_index = {
+            str(node.code or "").strip().lower(): int(node.id)
+            for node in session.query(Node).all()
+            if getattr(node, "id", None) is not None
+        }
+    finally:
+        session.close()
+
+    panel = ControlPanel()
+    details = []
+    cleaned = 0
+    failed = 0
+    try:
+        await panel.login()
+        for row in rows:
+            user = user_index.get(int(row["tg_id"]))
+            if not user:
+                failed += 1
+                details.append(
+                    {
+                        "tg_id": int(row["tg_id"]),
+                        "disallowed": row["disallowed"],
+                        "ok": False,
+                        "reason": "user_not_found",
+                    }
+                )
+                continue
+
+            results = await panel.set_existing_user_enabled_on_nodes(
+                tg_id=int(user.tg_id),
+                node_codes=list(row["disallowed"]),
+                enable=False,
+                sub_id=user.sub_token or str(user.tg_id),
+            )
+
+            session = SessionLocal()
+            try:
+                for code in row["disallowed"]:
+                    node_id = node_index.get(str(code).lower())
+                    if not node_id:
+                        continue
+                    session.query(UserNode).filter(
+                        UserNode.tg_id == int(user.tg_id),
+                        UserNode.node_id == int(node_id),
+                    ).delete(synchronize_session=False)
+                session.commit()
+            finally:
+                session.close()
+
+            ok = all(bool(results.get(code)) for code in row["disallowed"])
+            if ok:
+                cleaned += 1
+            else:
+                failed += 1
+            details.append(
+                {
+                    "tg_id": int(user.tg_id),
+                    "disallowed": row["disallowed"],
+                    "results": results,
+                    "ok": ok,
+                }
+            )
+    finally:
+        await panel.close()
+    return {"planned": len(rows), "cleaned": cleaned, "failed": failed, "details": details}
+
+
 def main():
     raw_payload = sys.argv[1] if len(sys.argv) > 1 else globals().get("PAYLOAD", "{}")
     payload = json.loads(raw_payload)
@@ -268,6 +364,20 @@ def main():
             session.close()
         result["repair"] = repair_result
         result["after"] = after
+    if payload.get("cleanup_disallowed"):
+        cleanup_result = asyncio.run(
+            cleanup_disallowed(
+                only_tg_id=payload.get("only_tg_id"),
+                limit=int(payload.get("limit") or 0),
+            )
+        )
+        session = SessionLocal()
+        try:
+            after_cleanup = load_report(session, only_tg_id=payload.get("only_tg_id"))
+        finally:
+            session.close()
+        result["cleanup_disallowed"] = cleanup_result
+        result["after_cleanup"] = after_cleanup
     print(json.dumps(result, ensure_ascii=False))
 
 
@@ -283,6 +393,7 @@ def main() -> int:
     ap.add_argument("--ssh-port", type=int, default=29374)
     ap.add_argument("--passwords", default=str(DEFAULT_PASSWORDS))
     ap.add_argument("--repair", action="store_true")
+    ap.add_argument("--cleanup-disallowed", action="store_true")
     ap.add_argument("--limit", type=int, default=0)
     ap.add_argument("--tg-id", type=int, default=0)
     ap.add_argument("--out", default="")
@@ -294,6 +405,7 @@ def main() -> int:
 
     payload = {
         "repair": bool(args.repair),
+        "cleanup_disallowed": bool(args.cleanup_disallowed),
         "limit": int(args.limit or 0),
         "only_tg_id": int(args.tg_id) if args.tg_id else None,
     }
@@ -322,7 +434,7 @@ def main() -> int:
         auth_timeout=30,
     )
     try:
-        code, out, err = _run(ssh, remote, timeout=1800 if args.repair else 300)
+        code, out, err = _run(ssh, remote, timeout=1800 if (args.repair or args.cleanup_disallowed) else 300)
     finally:
         ssh.close()
 
