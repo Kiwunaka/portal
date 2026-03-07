@@ -42,7 +42,7 @@ Callback:
 - `POST/GET /api/payments/refund/{provider}`
 - `POST/GET /api/payments/chargeback/{provider}`
 
-Legacy alias для FreeKassa:
+Исторический alias для старых FreeKassa callback:
 - `POST/GET /api/payments/freekassa/notify`
 
 Success/fail landing:
@@ -54,7 +54,6 @@ Success/fail landing:
 - `cardlink`
 - `pally`
 - `platima`
-- `freekassa` как legacy fallback
 
 Детальная настройка URL и env:
 - [docs/PAYMENT_PROVIDER_SETUP_RU.md](C:\Users\kiwun\Documents\ai\VPN\docs\PAYMENT_PROVIDER_SETUP_RU.md)
@@ -111,4 +110,4 @@ Success/fail landing:
 ## 11. Что осталось / риск
 
 - до включения новых касс в production нужны реальные токены и ручной smoke по callback;
-- FreeKassa пока остаётся fallback-путём, но не должна считаться основной кассой.
+- исторические FreeKassa callback всё ещё принимаются ради совместимости со старыми заказами, но новая активная RUB-ветка на неё больше не опирается.

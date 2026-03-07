@@ -3080,7 +3080,12 @@ async def _rub_create_order_internal(
     consume_pending_discount: bool = False,
 ) -> RubOrderActionOut:
     _ensure_checkout_runtime_ready()
-    provider = _normalize_provider(provider) or "freekassa"
+    provider = _normalize_provider(provider)
+    if not provider:
+        enabled_codes = enabled_rub_provider_codes()
+        provider = str(enabled_codes[0] if enabled_codes else "").strip().lower()
+    if not provider:
+        raise HTTPException(status_code=503, detail="No RUB payment providers are enabled")
     if provider not in PAYMENT_PROVIDER_WHITELIST:
         raise HTTPException(status_code=400, detail="Unsupported payment provider")
     if provider != "freekassa" and not provider_is_configured(provider):

@@ -78,7 +78,7 @@ def provider_is_configured(code: str) -> bool:
 
 
 def enabled_rub_provider_codes() -> list[str]:
-    preferred = _csv_env("RUB_PAYMENT_PROVIDER_ORDER", "cardlink,pally,platima,freekassa")
+    preferred = _csv_env("RUB_PAYMENT_PROVIDER_ORDER", "cardlink,pally,platima")
     allowed = set(_csv_env("RUB_PAYMENT_PROVIDER_ENABLED", ",".join(preferred)))
     out: list[str] = []
     for code in preferred:

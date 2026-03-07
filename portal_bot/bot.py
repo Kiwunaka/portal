@@ -3119,8 +3119,6 @@ def _build_tariff_payment_choice_keyboard(*, tg_id: int, tariff_key: str) -> Inl
                     )
                 ]
             )
-    elif BOT_RUB_BUTTON_ENABLED:
-        rows.append([InlineKeyboardButton(text=f"💳 Оплатить в ₽ · {int(pricing['base_price'])} ₽", callback_data=f"pay_rub_{tariff_key}")])
     rows.append([InlineKeyboardButton(text=f"⭐ Оплатить Stars · {int(pricing['final_stars'])}⭐", callback_data=f"pay_stars_{tariff_key}")])
     if tariff_key not in {"6_months", "9_months", "12_months"}:
         rows.append([InlineKeyboardButton(text="📚 Посмотреть долгие тарифы", callback_data="charge_long")])
@@ -3172,7 +3170,7 @@ def _parse_pay_rub_callback(data: str) -> tuple[str, str]:
     if raw.startswith("pay_rub_"):
         tariff_key = normalize_tariff_key(raw.replace("pay_rub_", "", 1))
         first_provider = _enabled_bot_rub_providers()[:1]
-        provider_code = str(first_provider[0].get("code") or "freekassa") if first_provider else "freekassa"
+        provider_code = str(first_provider[0].get("code") or "") if first_provider else ""
         return normalize_payment_provider(provider_code), tariff_key
     return "", ""
 
@@ -8695,6 +8693,9 @@ async def process_buy_rub(callback: CallbackQuery, bot: Bot):
         await callback.answer("❌ Тариф не найден")
         return
     provider_row = _rub_provider_by_code(provider_code)
+    if not provider_row:
+        await callback.answer("⚠️ Рублёвая оплата сейчас временно недоступна", show_alert=True)
+        return
     provider_label = str((provider_row or {}).get("label") or "кассу").strip()
 
     tg_id = callback.from_user.id
@@ -8702,7 +8703,7 @@ async def process_buy_rub(callback: CallbackQuery, bot: Bot):
 
     try:
         data = await _create_rub_payment_link_for_bot(
-            provider=provider_code or "freekassa",
+            provider=provider_code,
             tg_id=tg_id,
             tariff_key=tariff_key,
         )
@@ -8724,7 +8725,7 @@ async def process_buy_rub(callback: CallbackQuery, bot: Bot):
         event_name="clicked_pay",
         source="bot",
         meta={
-            "provider": provider_code or "freekassa",
+            "provider": provider_code,
             "plan_code": tariff_key,
             "amount_rub": rub_price,
             "order_id": order_id,

@@ -15,8 +15,8 @@
 - `PORTAL` создаёт `ExternalOrder` и решает, через какого провайдера вести платёж.
 - Checkout и бот получают список доступных касс из `/api/payments/providers`.
 - Callback, refund и chargeback идут в единый контур `portal_bot/api.py`.
-- FreeKassa оставлена только как legacy fallback.
-- Основной путь на будущее: несколько провайдеров с переключением через env.
+- FreeKassa выведена из активного контура и больше не должна быть в `RUB_PAYMENT_PROVIDER_ENABLED`.
+- Основной путь: несколько провайдеров с переключением через env.
 
 ## Общие URL
 
@@ -87,41 +87,28 @@ Env:
 - `CARDLINK_API_TOKEN=...`
 - `CARDLINK_SHOP_ID=...`
 
-## FreeKassa
-
-Статус:
-- legacy fallback;
-- использовать только как резервную совместимость, пока новые кассы не включены полностью.
-
-Документация:
-- [docs.freekassa.com](https://docs.freekassa.com/)
-
-Notify:
-- `https://kiwunaka.space/api/payments/freekassa/notify`
-
-Env:
-- `FK_SITE_SHOP_ID=...`
-- `FK_SITE_API_KEY=...`
-- `FK_SITE_SECRET_WORD_1=...`
-- `FK_SITE_SECRET_WORD_2=...`
-- `FK_BOT_SHOP_ID=...`
-- `FK_BOT_API_KEY=...`
-- `FK_BOT_SECRET_WORD_1=...`
-- `FK_BOT_SECRET_WORD_2=...`
-- `FREEKASSA_PAY_HOST=pay.fk.money`
-
 ## Включение и выключение провайдеров
 
 Порядок показа:
-- `RUB_PAYMENT_PROVIDER_ORDER=cardlink,pally,platima,freekassa`
+- `RUB_PAYMENT_PROVIDER_ORDER=cardlink,pally,platima`
 
 Разрешённые провайдеры:
-- `RUB_PAYMENT_PROVIDER_ENABLED=cardlink,pally,platima,freekassa`
+- `RUB_PAYMENT_PROVIDER_ENABLED=cardlink,pally,platima`
 
 Как это работает:
 - если провайдер есть в `ORDER`, но для него нет секретов, он не показывается;
 - если провайдер настроен, но убран из `ENABLED`, он тоже не показывается;
 - bot, marketing checkout и backend используют один и тот же catalog.
+
+## Верификация домена
+
+Pally:
+- файл: `https://portal-privacy.online/shop-verification-rP2Bk48B7E.txt`
+- содержимое: `shop-verification-rP2Bk48B7E`
+
+Cardlink:
+- файл: `https://portal-privacy.online/shop-verification-GPmp00MNmY.txt`
+- содержимое: `shop-verification-GPmp00MNmY`
 
 ## Как добавить новую кассу дальше
 
@@ -157,4 +144,5 @@ Env:
 ## Что осталось / риск
 
 - без реальных токенов новых касс нельзя сделать финальный боевой smoke по живой оплате;
-- перед включением каждого нового провайдера нужен отдельный ручной callback smoke.
+- перед включением каждого нового провайдера нужен отдельный ручной callback smoke;
+- FreeKassa не должна возвращаться в `ENABLED/ORDER` без отдельного решения владельца.

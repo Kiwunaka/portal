@@ -73,3 +73,4 @@ mockupv5/
 
 # Local operational snapshots / backups (must never be committed)
 ops-local/
+secrets for merchant/

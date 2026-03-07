@@ -484,9 +484,16 @@ class BotPaywallTests(unittest.TestCase):
             "promo_code": "WELCOME14",
             "campaign_key": "launch_week_1",
         }
-        keyboard = self.bot_module._build_tariff_payment_choice_keyboard(tg_id=1001, tariff_key="3_months")
-        self.assertEqual(keyboard.inline_keyboard[0][0].text, "💳 Оплатить в ₽ · 699 ₽")
-        self.assertEqual(keyboard.inline_keyboard[0][0].callback_data, "pay_rub_3_months")
+        old_catalog = self.bot_module.enabled_provider_catalog
+        try:
+            self.bot_module.enabled_provider_catalog = lambda: [
+                {"code": "cardlink", "label": "Cardlink", "supports_bot": True},
+            ]
+            keyboard = self.bot_module._build_tariff_payment_choice_keyboard(tg_id=1001, tariff_key="3_months")
+        finally:
+            self.bot_module.enabled_provider_catalog = old_catalog
+        self.assertEqual(keyboard.inline_keyboard[0][0].text, "💳 Cardlink · 699 ₽")
+        self.assertEqual(keyboard.inline_keyboard[0][0].callback_data, "pay_rub:cardlink:3_months")
         self.assertEqual(keyboard.inline_keyboard[1][0].callback_data, "pay_stars_3_months")
 
     def test_direct_rub_payment_keyboard_keeps_site_fallback(self) -> None:
