@@ -93,12 +93,17 @@
 - Текущий runtime delivery pool: `free`, `it`, `nl`, `pl`, `us`.
 - `brain` остаётся control-plane хостом и не участвует в текущей выдаче как delivery node.
 - Текущий стандартный профиль на нодах: `VLESS + TCP + Reality` на `443/tcp`.
-- На `pl` есть legacy inbound `8443` (`PL Free Reality`), но current production DB не использует его как основной source of truth.
+- Старый `pl:8443` (`PL Free Reality`) выведен из эксплуатации и не должен использоваться как активный delivery-контур.
 - При любом reset/regenerate/resync важно проверить:
   - новый `sub_token`
   - `subscription_url`
   - `resync_user_key_subid_on_node`
 - Если subscription URL обновился, numeric fallback должен рассматриваться только как compat-мост.
+- Lifecycle ноды теперь управляется через `PORTAL`, а не руками в panel:
+  - `drain` = остановить новые назначения, не роняя текущих пользователей;
+  - `resync` = перевести `user_nodes` на живые target-ноды;
+  - `disable` = выключить ноду из runtime только после resync.
+- Полный порядок действий описан в `docs/NODE_LIFECYCLE_RU.md`.
 
 ## 5. Платежи
 

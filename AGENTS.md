@@ -8,6 +8,7 @@ This file documents the intended "agents" (roles) and the rules they must follow
 - All credentials must be provided via environment variables and/or secret managers on the target server.
 - Any public-facing copy must not mention the word "VPN" unless explicitly required.
 - Prefer backward-compatible changes where possible (fallback to legacy single-node behavior if `nodes` table is empty).
+- For node operations, `PORTAL` DB is the source of truth; `3x-ui` must be treated as a node-local execution layer, not the authoritative inventory.
 - Payment provider decision is finalized: `FreeKassa` is the active RUB provider (with Stars as secondary path).
 - Do not run payment-provider research tracks unless explicitly requested by the owner.
 - For release work, default completion includes `push + deploy`; if this is blocked, document the blocker and rollback-safe state in docs.
@@ -29,6 +30,7 @@ Responsibilities:
 - Multi-node data model (`nodes`, `user_nodes`) and idempotent migrations
 - 3x-ui panel integration per node
 - Subscription endpoint returns all countries
+- Node lifecycle via `PORTAL`: `drain -> resync -> disable`
 - Security hardening: remove hardcoded secrets, least-privilege access patterns
 
 ### frontend-ui
@@ -161,4 +163,5 @@ For any substantial task, leave a short mini-log in docs or the handoff:
 - `docs/BONUS_SYSTEM_RULES_RU.md`
 - `docs/METRICS_RU.md`
 - `docs/INFRA_PLAN_RU.md`
+- `docs/NODE_LIFECYCLE_RU.md`
 - `docs/FINAL_REPORT_RU.md`

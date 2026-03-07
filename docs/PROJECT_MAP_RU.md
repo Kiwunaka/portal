@@ -45,7 +45,7 @@
 2. В runtime delivery pool включены `free`, `it`, `nl`, `pl`, `us`.
 3. `brain` в текущей production БД отключён из delivery pool.
 4. Стандартный delivery-профиль сейчас один: `VLESS + TCP + Reality`.
-5. На `pl` существует extra inbound `8443` (`PL Free Reality`), но он не является основным отражением current runtime DB.
+5. Старый `pl:8443` (`PL Free Reality`) выведен из эксплуатации и больше не считается рабочим runtime-контуром.
 
 ## 3. Где настраивается
 
@@ -91,6 +91,20 @@
 
 - В web-admin есть server-side защита на API-уровне, но static-export природа WebApp ограничивает полноценный SSR guard.
 - Часть старых markdown и ручных runbook всё ещё может ссылаться на SQLite или ранние node-снимки; для текущего прода ориентируемся на `DATABASE_URL`, `docs/08-node-inventory.md` и `docs/35-node-runtime-and-panel-audit-2026-03-07.md`.
+
+## 7. Жизненный цикл нод
+
+- `PORTAL` хранит lifecycle-флаги ноды:
+  - `enabled`
+  - `accepting_new_clients`
+  - `is_draining`
+- Источник истины по реальным назначениям пользователей на ноды — `user_nodes`.
+- Правильный вывод ноды из эксплуатации:
+  1. `drain`
+  2. `resync`
+  3. `disable`
+- Полный runbook:
+  - `docs/NODE_LIFECYCLE_RU.md`
 # P2 addendum (2026-03-06)
 
 - `portal_bot/api.py -> /api/admin/summary` now returns an `errors` block used by `/admin/dashboard` to surface stale metrics, unhealthy nodes, callback failures, and numeric subscription fallback counts.

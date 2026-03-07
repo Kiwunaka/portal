@@ -176,6 +176,17 @@ python scripts/control_plane_drift_report.py --only brain,pl,it,us,free
 
 Этот путь тоже read-only и подходит для живой проверки без риска для текущих подключений.
 
+Следующий слой после drift-check уже реализован в `PORTAL`:
+
+- `drain node`
+- `controlled resync users`
+- `disable node`
+
+То есть panel больше не должна быть местом, где оператор вручную решает судьбу ноды. Правильный порядок теперь задаётся через `PORTAL`, а panel выступает исполнительным слоем.
+
+Runbook:
+- `docs/NODE_LIFECYCLE_RU.md`
+
 ### На 100-500 пользователей
 
 Можно ещё жить на текущей модели, если:

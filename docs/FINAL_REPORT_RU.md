@@ -34,6 +34,11 @@
 - Bonus audit trail выровнен для `channel bonus`, `promo redeem` и `gift redeem` в API/WebApp и bot-flow.
 - `events_service` переведён на динамический `SessionLocal`, чтобы события и аналитика не терялись при reload/test bootstraps.
 - `/admin/dashboard` теперь показывает bonus success/denied breakdown за 24 часа для channel/promo/gift flow.
+- `PORTAL` получил взрослое управление нодами:
+  - `drain node`
+  - `controlled resync users`
+  - `disable node`
+- Источником истины по фактическим назначениям пользователей на ноды теперь явно считается `user_nodes`, а не legacy-логика "все enabled ноды".
 
 ## Что подтверждено проверками
 
@@ -80,5 +85,5 @@
 - Enabled delivery nodes в production DB: `free`, `it`, `nl`, `pl`, `us`.
 - `brain` остаётся control-plane host и x-ui compatibility host, но выключен из текущего delivery pool.
 - На `brain` built-in sub server `x-ui` отключён и перенесён с `2096` на `2097`; portal-owned subscription endpoint остаётся хозяином `:2096`.
-- На `pl` присутствует дополнительный inbound `8443` (`PL Free Reality`), но он не является текущим primary source of truth для production DB.
+- Старый `pl:8443` (`PL Free Reality`) выведен из эксплуатации и больше не считается рабочим runtime-контуром.
 - `/api/admin/metrics/status` требует реальную Telegram admin auth; старые инструкции с plain `X-Admin-Id` устарели.

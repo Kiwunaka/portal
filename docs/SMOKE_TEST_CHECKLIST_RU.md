@@ -50,6 +50,14 @@
 - `/admin/dashboard` показывает блок `Удержание и реактивация`
 - `/admin/dashboard` не падает при наличии `retention` и `resilience` полей в summary
 - `/admin/broadcast` показывает карточки retention-шаблонов и открывает модалку редактирования
+- `/admin/nodes` показывает lifecycle flags:
+  - `enabled`
+  - `accepting_new_clients`
+  - `is_draining`
+  - `mapped_users`
+- `drain` останавливает новые назначения, но не роняет уже назначенных пользователей
+- `disable` без resync блокируется, если у ноды ещё есть `mapped_users`
+- `resync` переносит `user_nodes` со source-ноды на target-ноды через `PORTAL`
 
 ## Ops
 
