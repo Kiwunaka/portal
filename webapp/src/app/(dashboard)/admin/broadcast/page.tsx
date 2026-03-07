@@ -115,7 +115,7 @@ export default function AdminBroadcastPage() {
       kind: "create",
       title: "Обновление сервиса",
       summary: "Новые улучшения стабильности и скорости",
-      link: "https://t.me/portal_privacy_bot",
+      link: "https://t.me/portal_service_bot",
       sortOrder: "100",
     });
   };

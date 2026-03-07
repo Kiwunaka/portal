@@ -91,7 +91,7 @@ export function getPortalPublicConfig(env: Record<string, string | undefined>): 
       "https://portal-privacy.online",
   );
   const webappUrl = cleanUrl(env.NEXT_PUBLIC_WEBAPP_URL || "https://portal-privacy.online/webapp");
-  const botUrl = normalizeTelegramUrl(env.NEXT_PUBLIC_TELEGRAM_BOT_URL || "", "https://t.me/portal_privacy_bot");
+  const botUrl = normalizeTelegramUrl(env.NEXT_PUBLIC_TELEGRAM_BOT_URL || "", "https://t.me/portal_service_bot");
   const helpbotUrl = normalizeTelegramUrl(
     env.NEXT_PUBLIC_CONTACT_TG_URL || env.NEXT_PUBLIC_SUPPORT_TG_URL || "",
     "https://t.me/portal_privacy_helpbot",

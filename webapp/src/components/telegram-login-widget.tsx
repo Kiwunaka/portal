@@ -25,7 +25,7 @@ export default function TelegramLoginWidget() {
       .trim()
       .replace(/^@+/, "")
       .toLowerCase();
-    const botName = rawBot === "portal_service_bot" ? "portal_privacy_bot" : rawBot;
+    const botName = rawBot;
     if (!botName) {
       return;
     }

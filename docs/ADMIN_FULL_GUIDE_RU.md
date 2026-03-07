@@ -257,3 +257,14 @@ Source of truth:
   - запускаем мягкую кампанию на возврат через `/admin/broadcast` и смотрим конверсию по оплатам и open tickets.
 - Если `single_point_risk=true`:
   - не включаем массово новые transport/network изменения; сначала canary на небольшой группе.
+
+## 12. Telegram registry (актуально на 7 марта 2026)
+
+- Главный канал и новости: `https://t.me/portal_privacy`
+- Основной бот: `https://t.me/portal_service_bot`
+- Бот поддержки: `https://t.me/portal_privacy_helpbot`
+- Feedback-бот / зачаток обратной связи: `https://t.me/portalfeedbackbot`
+
+Правило для операторов и других агентов:
+- `portal_service_bot` — единственный канонический username основного бота.
+- `portal_privacy_bot` — legacy-значение; если оно встречается в коде, docs, smoke-скриптах или env defaults, его нужно заменить при ближайшем изменении файла.

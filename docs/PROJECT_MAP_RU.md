@@ -109,3 +109,12 @@
 
 - `portal_bot/api.py -> /api/admin/summary` now returns an `errors` block used by `/admin/dashboard` to surface stale metrics, unhealthy nodes, callback failures, and numeric subscription fallback counts.
 - Support tickets use the existing `media_type/media_payload` contract, but WebApp now feeds it through binary upload to `/api/tickets/uploads` instead of a link-only flow.
+
+## Telegram registry (2026-03-07)
+
+- Главный канал и новости: `https://t.me/portal_privacy`
+- Основной бот: `https://t.me/portal_service_bot`
+- Бот поддержки: `https://t.me/portal_privacy_helpbot`
+- Feedback-бот / зачаток обратной связи: `https://t.me/portalfeedbackbot`
+
+Для env defaults, public copy, smoke-проверок и новых правок canonical username основного бота — `portal_service_bot`. Упоминания `portal_privacy_bot` считаются legacy-следом и должны удаляться при ближайшем касании файла.

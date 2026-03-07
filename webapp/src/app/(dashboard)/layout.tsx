@@ -21,7 +21,7 @@ const BASE_NAV_ITEMS: NavItem[] = [
   { href: "/support", icon: "support_agent", label: "Поддержка", match: (path) => path.startsWith("/support") },
 ];
 
-const BOT_BASE_URL = String(process.env.NEXT_PUBLIC_TELEGRAM_BOT_URL || "https://t.me/portal_privacy_bot")
+const BOT_BASE_URL = String(process.env.NEXT_PUBLIC_TELEGRAM_BOT_URL || "https://t.me/portal_service_bot")
   .trim()
   .replace(/\/+$/, "");
 const BOT_WEBLOGIN_URL = `${BOT_BASE_URL}${BOT_BASE_URL.includes("?") ? "&" : "?"}start=weblogin`;

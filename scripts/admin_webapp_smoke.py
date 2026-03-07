@@ -75,7 +75,7 @@ def _check_api_exports() -> list[str]:
 
 def _check_legacy_bot_links() -> list[str]:
     issues: list[str] = []
-    legacy_link_re = re.compile(r"(https?://t\.me/|@)portal_service_bot\b", re.IGNORECASE)
+    legacy_link_re = re.compile(r"(https?://t\.me/|@)portal_privacy_bot\b", re.IGNORECASE)
     source_roots = [
         WEBAPP_ROOT / "src",
         REPO_ROOT / "marketing" / "src",

@@ -31,7 +31,7 @@ def _collect_findings() -> list[Finding]:
     webapp_legal = REPO_ROOT / "webapp" / "src" / "app" / "(dashboard)" / "support" / "legal" / "page.tsx"
     api_file = REPO_ROOT / "portal_bot" / "api.py"
 
-    hardcoded_forbidden = ("portal_service_bot", "net4ebur_bot")
+    hardcoded_forbidden = ("portal_privacy_bot", "net4ebur_bot")
     public_files = [marketing_home, marketing_checkout, webapp_legal]
     for path in public_files:
         text = _read(path)

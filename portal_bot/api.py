@@ -130,7 +130,7 @@ FREE_SPEED_LIMIT_KBPS = env_int("FREE_SPEED_LIMIT_KBPS", 6250)
 SUPPORT_USERNAME = (os.getenv("SUPPORT_USERNAME") or "portal_privacy_helpbot").lstrip("@")
 SUPPORT_USERNAME = (os.getenv("SUPPORT_BOT_USERNAME") or SUPPORT_USERNAME).lstrip("@")
 PUBLIC_CHANNEL = (os.getenv("PUBLIC_CHANNEL") or "portal_privacy").lstrip("@")
-BOT_USERNAME = (os.getenv("BOT_USERNAME") or "portal_privacy_bot").lstrip("@")
+BOT_USERNAME = (os.getenv("BOT_USERNAME") or "portal_service_bot").lstrip("@")
 REFERRAL_BONUS_DAYS = env_int("REFERRAL_BONUS_DAYS", 15)
 REFERRAL_ANTIFRAUD_HOURS = max(0, env_int("REFERRAL_ANTIFRAUD_HOURS", 24))
 REFERRAL_ANTIFRAUD_MAX_WAIT_HOURS = max(1, env_int("REFERRAL_ANTIFRAUD_MAX_WAIT_HOURS", 168))
@@ -6118,7 +6118,7 @@ async def admin_start_links(x_telegram_init_data: str = Header(default=""), incl
         if not include_inactive:
             q = q.filter(StartLink.is_active == True)
         rows = q.order_by(StartLink.updated_at.desc(), StartLink.id.desc()).limit(500).all()
-        bot_username = (BOT_USERNAME or "portal_privacy_bot").lstrip("@")
+        bot_username = (BOT_USERNAME or "portal_service_bot").lstrip("@")
         return {
             "start_links": [
                 {
@@ -6262,7 +6262,7 @@ async def admin_campaign_links_build(payload: AdminCampaignLinksBuildIn, x_teleg
         start_payload = f"campaign_{campaign}"
     if start_payload and len(start_payload) > 64:
         raise HTTPException(status_code=400, detail="Telegram start payload exceeds 64 chars")
-    bot_username = (BOT_USERNAME or "portal_privacy_bot").lstrip("@")
+    bot_username = (BOT_USERNAME or "portal_service_bot").lstrip("@")
     bot_start_link = f"https://t.me/{bot_username}" + (f"?start={start_payload}" if start_payload else "")
 
     base_checkout = _public_checkout_url() or f"https://{(Settings.PUBLIC_WEB_DOMAIN or 'portal-privacy.online').strip().strip('/')}/checkout/"
