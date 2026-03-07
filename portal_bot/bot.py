@@ -2989,7 +2989,7 @@ def build_choose_tariff_text() -> str:
 
     payment_hint = "_Оплата Telegram Stars доступна как быстрый резервный путь._"
     if BOT_RUB_BUTTON_ENABLED:
-        payment_hint = "_Оплата ₽ на сайте — основной путь. Telegram Stars доступны как резервный вариант._"
+        payment_hint = "_Сначала выберите тариф здесь, в Telegram. Затем мы предложим ₽ на сайте или Telegram Stars._"
 
     return (
         "💎 *Выберите уровень доступа*\n\n"
@@ -3001,6 +3001,103 @@ def build_choose_tariff_text() -> str:
         f"💰 *Выгода при оплате на срок:*{savings_line}\n\n"
         f"{payment_hint}"
     )
+
+
+def _tariff_pricing_for_user(tg_id: int, tariff_key: str) -> dict[str, int | bool]:
+    tariff = TARIFFS.get(tariff_key)
+    if not tariff:
+        return {
+            "base_price": 0,
+            "actual_stars": 0,
+            "final_stars": 0,
+            "points_to_use": 0,
+            "pending_discount_pct": 0,
+            "use_discount": False,
+        }
+
+    use_discount = has_referral_discount(tg_id) if tariff["stars"] > 0 else False
+    pending_discount_pct = get_pending_discount_pct(tg_id) if tariff["stars"] > 0 else 0
+    base_price = int(tariff["stars"])
+    actual_stars = int(base_price)
+    if use_discount:
+        actual_stars = int(round(actual_stars * 0.8))
+    if pending_discount_pct > 0:
+        actual_stars = int(round(actual_stars * (1.0 - (pending_discount_pct / 100.0))))
+    actual_stars = max(1, int(actual_stars)) if base_price > 0 else 0
+
+    first_discount_pct = 0.0
+    if base_price > 0:
+        first_discount_pct = max(0.0, min(0.95, 1.0 - (float(actual_stars) / float(base_price))))
+    points_preview = preview_redeemable_points(
+        tg_id=tg_id,
+        plan_price_stars=base_price,
+        first_purchase_discount_pct=first_discount_pct,
+    )
+    points_to_use = int(points_preview.redeemable_points) if base_price > 0 else 0
+    final_stars = max(1, int(actual_stars) - points_to_use) if base_price > 0 else 0
+    max_total_discount = int(base_price * STACK_TOTAL_DISCOUNT_CAP)
+    if base_price > 0 and base_price - final_stars > max_total_discount:
+        final_stars = max(1, int(base_price) - max_total_discount)
+        points_to_use = max(0, int(actual_stars) - final_stars)
+
+    return {
+        "base_price": int(base_price),
+        "actual_stars": int(actual_stars),
+        "final_stars": int(final_stars),
+        "points_to_use": int(points_to_use),
+        "pending_discount_pct": int(pending_discount_pct),
+        "use_discount": bool(use_discount),
+    }
+
+
+def _build_tariff_payment_choice_text(*, tariff_key: str, tg_id: int) -> str:
+    tariff = TARIFFS.get(tariff_key) or {}
+    pricing = _tariff_pricing_for_user(tg_id, tariff_key)
+    discount_chunks: list[str] = []
+    if pricing["use_discount"]:
+        discount_chunks.append("-20% за реферала")
+    if int(pricing["pending_discount_pct"]) > 0:
+        discount_chunks.append(f"-{int(pricing['pending_discount_pct'])}% по промокоду")
+    if int(pricing["points_to_use"]) > 0:
+        discount_chunks.append(f"-{int(pricing['points_to_use'])}⭐ по points")
+
+    discount_line = ""
+    if discount_chunks:
+        discount_line = "💡 Сработают скидки: " + ", ".join(discount_chunks) + ".\n\n"
+
+    rub_price = int(pricing["base_price"])
+    return (
+        f"💳 *{tariff.get('name', 'Тариф')}*\n\n"
+        f"Срок: *{int(tariff.get('days', 0))} дней*\n"
+        f"Устройств: *до {PAID_LIMIT_IP}*\n"
+        f"Страны: *все премиум-локации*\n\n"
+        f"Цена в ₽: *{rub_price} ₽*\n"
+        f"Цена в Stars: *{int(pricing['final_stars'])}⭐*\n\n"
+        f"{discount_line}"
+        "Сначала выберите удобный способ оплаты. "
+        "После оплаты доступ обновится автоматически."
+    )
+
+
+def _build_tariff_payment_choice_keyboard(*, tg_id: int, tariff_key: str) -> InlineKeyboardMarkup:
+    tariff = TARIFFS.get(tariff_key) or {}
+    pricing = _tariff_pricing_for_user(tg_id, tariff_key)
+    ctx = checkout_context_by_user.get(int(tg_id), {}) if checkout_context_by_user else {}
+    checkout_url = _bot_checkout_url(
+        tg_id=int(tg_id),
+        plan_code=tariff_key,
+        promo_code=str(ctx.get("promo_code") or ""),
+        campaign_key=str(ctx.get("campaign_key") or ""),
+    )
+    rows = [
+        [InlineKeyboardButton(text=f"💳 Оплатить в ₽ · {int(pricing['base_price'])} ₽", url=checkout_url)],
+        [InlineKeyboardButton(text=f"⭐ Оплатить Stars · {int(pricing['final_stars'])}⭐", callback_data=f"pay_stars_{tariff_key}")],
+    ]
+    if tariff_key not in {"6_months", "9_months", "12_months"}:
+        rows.append([InlineKeyboardButton(text="📚 Посмотреть долгие тарифы", callback_data="charge_long")])
+    rows.append([InlineKeyboardButton(text="◀️ К тарифам", callback_data="charge")])
+    rows.append([InlineKeyboardButton(text="🏠 Главное меню", callback_data="back")])
+    return InlineKeyboardMarkup(inline_keyboard=rows)
 
 
 def _dual_pay_text(*, show_trial: bool) -> str:
@@ -3426,15 +3523,6 @@ async def show_tariffs(callback: CallbackQuery):
     has_active = bool(user and user.is_active and expiry and expiry > now and not _is_freemium_sub_type(user.sub_type))
     show_trial = not has_active
 
-    if BOT_RUB_BUTTON_ENABLED:
-        await callback.message.edit_text(
-            _dual_pay_text(show_trial=show_trial),
-            reply_markup=_dual_pay_keyboard(tg_id=tg_id, show_trial=show_trial),
-            parse_mode=ParseMode.MARKDOWN,
-        )
-        await callback.answer()
-        return
-
     show_gb_only = False  # Kept for legacy UI compatibility.
     await callback.message.edit_text(
         build_choose_tariff_text(),
@@ -3528,19 +3616,12 @@ async def accept_tos(callback: CallbackQuery):
     expiry = _naive_utc(user.expiry_at) if user else None
     has_active = bool(user and user.is_active and expiry and expiry > now and not _is_freemium_sub_type(user.sub_type))
     show_trial = not has_active
-    if BOT_RUB_BUTTON_ENABLED:
-        await callback.message.edit_text(
-            _dual_pay_text(show_trial=show_trial),
-            reply_markup=_dual_pay_keyboard(tg_id=tg_id, show_trial=show_trial),
-            parse_mode=ParseMode.MARKDOWN,
-        )
-    else:
-        show_gb_only = False
-        await callback.message.edit_text(
-            build_choose_tariff_text(),
-            reply_markup=tariff_keyboard(tg_id, show_trial, show_gb_only, include_long_plans=False),
-            parse_mode=ParseMode.MARKDOWN,
-        )
+    show_gb_only = False
+    await callback.message.edit_text(
+        build_choose_tariff_text(),
+        reply_markup=tariff_keyboard(tg_id, show_trial, show_gb_only, include_long_plans=False),
+        parse_mode=ParseMode.MARKDOWN,
+    )
     await callback.answer("✅ Условия приняты!")
 
 @router.callback_query(F.data == "status")
@@ -8367,40 +8448,39 @@ async def process_buy(callback: CallbackQuery, bot: Bot):
     tg_id = callback.from_user.id
     user = get_user(tg_id)
     
-    # Calculate price with referral discount (20% off on first paid purchase)
-    use_discount = has_referral_discount(tg_id) if tariff["stars"] > 0 else False
-    pending_discount_pct = get_pending_discount_pct(tg_id) if tariff["stars"] > 0 else 0
-    base_price = int(tariff["stars"])
-    actual_stars = int(base_price)
-    if use_discount:
-        actual_stars = int(round(actual_stars * 0.8))
-    if pending_discount_pct > 0:
-        actual_stars = int(round(actual_stars * (1.0 - (pending_discount_pct / 100.0))))
-    actual_stars = max(1, int(actual_stars))
-    
     if tariff_key == "trial":
         if _channel_bonus_eligible(tg_id=tg_id, user=user):
             await _show_channel_bonus_offer(callback, next_action="trial")
             return
         await _activate_trial_tariff(callback, bot, retry_callback_data="buy_trial")
         return
-    
-    # Paid - send invoice (stack first-purchase + points, capped to 70% total discount).
-    await callback.answer()
-    first_discount_pct = 0.0
-    if base_price > 0:
-        first_discount_pct = max(0.0, min(0.95, 1.0 - (float(actual_stars) / float(base_price))))
-    points_preview = preview_redeemable_points(
-        tg_id=tg_id,
-        plan_price_stars=int(tariff["stars"]),
-        first_purchase_discount_pct=first_discount_pct,
+
+    await callback.message.edit_text(
+        _build_tariff_payment_choice_text(tariff_key=tariff_key, tg_id=tg_id),
+        reply_markup=_build_tariff_payment_choice_keyboard(tg_id=tg_id, tariff_key=tariff_key),
+        parse_mode=ParseMode.MARKDOWN,
     )
-    points_to_use = int(points_preview.redeemable_points)
-    final_stars = max(1, int(actual_stars) - points_to_use)
-    max_total_discount = int(int(tariff["stars"]) * STACK_TOTAL_DISCOUNT_CAP)
-    if int(tariff["stars"]) - final_stars > max_total_discount:
-        final_stars = max(1, int(tariff["stars"]) - max_total_discount)
-        points_to_use = max(0, int(actual_stars) - final_stars)
+    await callback.answer()
+    return
+
+
+@router.callback_query(F.data.startswith("pay_stars_"))
+async def process_buy_stars(callback: CallbackQuery, bot: Bot):
+    raw_key = callback.data.replace("pay_stars_", "")
+    tariff_key = normalize_tariff_key(raw_key)
+    tariff = TARIFFS.get(tariff_key)
+    if not tariff:
+        await callback.answer("❌ Тариф не найден")
+        return
+
+    tg_id = callback.from_user.id
+    pricing = _tariff_pricing_for_user(tg_id, tariff_key)
+    use_discount = bool(pricing["use_discount"])
+    pending_discount_pct = int(pricing["pending_discount_pct"])
+    base_price = int(pricing["base_price"])
+    actual_stars = int(pricing["actual_stars"])
+    points_to_use = int(pricing["points_to_use"])
+    final_stars = int(pricing["final_stars"])
 
     mode_label = "disc" if use_discount else "full"
     attempt = start_attempt(

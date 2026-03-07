@@ -463,6 +463,26 @@ class BotPaywallTests(unittest.TestCase):
         self.assertIn("campaign=launch_week_1", url)
         self.assertIn("checkout_ticket=", url)
 
+    def test_tariff_payment_choice_text_separates_tariff_and_payment_method(self) -> None:
+        self.bot_module.ensure_pending_user(1001, username="alice")
+        text = self.bot_module._build_tariff_payment_choice_text(tariff_key="1_month", tg_id=1001)
+        self.assertIn("Цена в ₽: *249 ₽*", text)
+        self.assertIn("Цена в Stars: *249⭐*", text)
+        self.assertIn("Сначала выберите удобный способ оплаты", text)
+
+    def test_tariff_payment_choice_keyboard_keeps_plan_in_checkout_url(self) -> None:
+        self.bot_module.PAY_CHECKOUT_URL = "https://portal-privacy.online/checkout?from=bot"
+        self.bot_module.checkout_context_by_user[1001] = {
+            "promo_code": "WELCOME14",
+            "campaign_key": "launch_week_1",
+        }
+        keyboard = self.bot_module._build_tariff_payment_choice_keyboard(tg_id=1001, tariff_key="3_months")
+        self.assertEqual(keyboard.inline_keyboard[0][0].text, "💳 Оплатить в ₽ · 699 ₽")
+        self.assertIn("plan=3_months", keyboard.inline_keyboard[0][0].url)
+        self.assertIn("promo=WELCOME14", keyboard.inline_keyboard[0][0].url)
+        self.assertIn("campaign=launch_week_1", keyboard.inline_keyboard[0][0].url)
+        self.assertEqual(keyboard.inline_keyboard[1][0].callback_data, "pay_stars_3_months")
+
     def test_activate_promo_code_rejects_expired_promo(self) -> None:
         self.bot_module.ensure_pending_user(1001, username="alice")
         self.bot_module.set_tos_accepted(1001)
