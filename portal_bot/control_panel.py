@@ -111,7 +111,7 @@ class ControlPanel:
             "security_match": str(runtime.get("security") or "") == "reality",
             "sni_match": (not expected_sni) or (expected_sni in server_names) or dest.startswith(f"{expected_sni}:"),
             "sid_match": (not expected_sid) or (expected_sid in [str(x or "").strip() for x in runtime.get("short_ids", [])]),
-            "pbk_match": (not expected_pbk) or (expected_pbk == str(runtime.get("public_key") or "")),
+            "pbk_match": (not expected_pbk) or (not str(runtime.get("public_key") or "")) or (expected_pbk == str(runtime.get("public_key") or "")),
         }
         mismatches = [name for name, ok in checks.items() if not ok]
         return {

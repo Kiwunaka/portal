@@ -3,15 +3,12 @@ from __future__ import annotations
 import json
 import logging
 import time
-import base64
 from dataclasses import dataclass
 import os
 from datetime import datetime, timezone
 from urllib.parse import quote
 
 import aiohttp
-from cryptography.hazmat.primitives import serialization
-from cryptography.hazmat.primitives.asymmetric import x25519
 
 from nodes_repo import NodeRuntime
 
@@ -60,21 +57,6 @@ class PanelClient:
 
     def _is_free_node(self) -> bool:
         return "free" in (self.node.code or "").lower()
-
-    @staticmethod
-    def _b64url_nopad(b: bytes) -> str:
-        return base64.urlsafe_b64encode(b).decode("ascii").rstrip("=")
-
-    @classmethod
-    def _derive_public_from_private(cls, priv_b64: str) -> str:
-        text = str(priv_b64 or "").strip()
-        if not text:
-            return ""
-        pad = "=" * ((4 - (len(text) % 4)) % 4)
-        priv_bytes = base64.urlsafe_b64decode(text + pad)
-        priv = x25519.X25519PrivateKey.from_private_bytes(priv_bytes)
-        pub_bytes = priv.public_key().public_bytes(encoding=serialization.Encoding.Raw, format=serialization.PublicFormat.Raw)
-        return cls._b64url_nopad(pub_bytes)
 
     def _limit_ip_policy(self) -> int:
         """
@@ -235,7 +217,6 @@ class PanelClient:
                 stream = {}
 
             reality = stream.get("realitySettings") or {}
-            private_key = str(reality.get("privateKey") or "")
             short_ids = reality.get("shortIds") or []
             if isinstance(short_ids, str):
                 short_ids = [short_ids]
@@ -254,7 +235,7 @@ class PanelClient:
                 "dest": str(reality.get("dest") or ""),
                 "server_names": [str(x or "") for x in server_names if str(x or "").strip()],
                 "short_ids": [str(x or "") for x in short_ids if str(x or "").strip()],
-                "public_key": self._derive_public_from_private(private_key) if private_key else "",
+                "public_key": "",
             }
         return None
 

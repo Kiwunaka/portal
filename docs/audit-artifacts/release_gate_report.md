@@ -1,17 +1,17 @@
 # Release Gate Report
 
-- Generated at: `2026-03-07 04:14:48`
+- Generated at: `2026-03-07 05:36:55`
 - Status: `PASS`
 
 ## Summary
 
 | Gate | Exit code | Duration (s) |
 |---|---:|---:|
-| Critical worker regression | 0 | 3.28 |
+| Critical worker regression | 0 | 3.36 |
 | Public link checks | 0 | 0.09 |
-| Marketing production build | 0 | 34.40 |
+| Marketing production build | 0 | 45.63 |
 | Admin webapp smoke | 0 | 0.10 |
-| WebApp production build | 0 | 34.85 |
+| WebApp production build | 0 | 34.91 |
 | UI visual smoke | 0 | 0.09 |
 
 ## Command Tails
@@ -28,7 +28,7 @@ C:\Users\kiwun\AppData\Local\Programs\Python\Python312\Lib\site-packages\sqlalch
   return util.wrap_callable(lambda ctx: fn(), fn)  # type: ignore
 ...
 ----------------------------------------------------------------------
-Ran 7 tests in 2.811s
+Ran 7 tests in 2.856s
 
 OK
 ```
@@ -115,7 +115,7 @@ Admin WebApp smoke passed.
   Generating static pages using 19 workers (5/23) 
   Generating static pages using 19 workers (11/23) 
   Generating static pages using 19 workers (17/23) 
-✓ Generating static pages using 19 workers (23/23) in 503.3ms
+✓ Generating static pages using 19 workers (23/23) in 535.9ms
   Finalizing page optimization ...
 
 Route (app)
