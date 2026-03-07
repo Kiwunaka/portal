@@ -12,6 +12,7 @@ from __future__ import annotations
 import base64
 import hashlib
 import hmac
+import inspect
 import ipaddress
 import json
 import logging
@@ -6721,6 +6722,28 @@ async def admin_nodes_health(x_telegram_init_data: str = Header(default="")) -> 
         }
     finally:
         s.close()
+
+
+async def _build_admin_node_drift_report(*, only_codes: list[str] | None = None) -> dict:
+    panel = ControlPanel()
+    try:
+        await panel.login()
+        return await panel.get_node_drift_report(node_codes=only_codes or [])
+    finally:
+        await panel.close()
+
+
+@app.get("/api/admin/nodes/drift")
+async def admin_nodes_drift(
+    x_telegram_init_data: str = Header(default=""),
+    only: str = Query(default=""),
+) -> dict:
+    _require_admin(x_telegram_init_data)
+    only_codes = [part.strip().lower() for part in str(only or "").split(",") if part.strip()]
+    result = _build_admin_node_drift_report(only_codes=only_codes)
+    if inspect.isawaitable(result):
+        return await result
+    return result
 
 
 @app.post("/api/admin/nodes/sync")

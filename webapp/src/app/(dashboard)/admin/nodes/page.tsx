@@ -1,6 +1,6 @@
 "use client";
 
-import { adminMetricsStatus, adminNodesHealth, adminNodesSync, adminNodesTraffic, type AdminMetricsStatus, type AdminNodeHealthRow, type AdminNodeTrafficRow } from "@/lib/api";
+import { adminMetricsStatus, adminNodesDrift, adminNodesHealth, adminNodesSync, adminNodesTraffic, type AdminMetricsStatus, type AdminNodeDriftReport, type AdminNodeHealthRow, type AdminNodeTrafficRow } from "@/lib/api";
 import { Activity, Globe, Loader2, RefreshCw, Server, Wifi } from "lucide-react";
 import { useEffect, useState } from "react";
 
@@ -19,8 +19,10 @@ export default function AdminNodesPage() {
   const [nodes, setNodes] = useState<AdminNodeHealthRow[]>([]);
   const [traffic, setTraffic] = useState<AdminNodeTrafficRow[]>([]);
   const [status, setStatus] = useState<AdminMetricsStatus | null>(null);
+  const [drift, setDrift] = useState<AdminNodeDriftReport | null>(null);
   const [busy, setBusy] = useState(false);
   const [syncTarget, setSyncTarget] = useState("");
+  const [driftBusy, setDriftBusy] = useState(false);
   const [error, setError] = useState("");
 
   const load = async (): Promise<void> => {
@@ -43,6 +45,19 @@ export default function AdminNodesPage() {
   useEffect(() => {
     void load();
   }, []);
+
+  const loadDrift = async (): Promise<void> => {
+    setDriftBusy(true);
+    setError("");
+    try {
+      const report = await adminNodesDrift();
+      setDrift(report);
+    } catch (err) {
+      setError(String((err as { message?: string })?.message || err || "Ошибка drift-check"));
+    } finally {
+      setDriftBusy(false);
+    }
+  };
 
   const runSync = async (segment: string): Promise<void> => {
     setBusy(true);
@@ -110,10 +125,54 @@ export default function AdminNodesPage() {
               <Activity size={14} />
               Обновить
             </button>
+            <button className="outline-btn rounded-xl px-4 py-2 text-xs font-semibold inline-flex items-center gap-1.5" type="button" onClick={() => void loadDrift()} disabled={driftBusy}>
+              {driftBusy ? <Loader2 size={14} className="animate-spin" /> : <Server size={14} />}
+              Drift-check
+            </button>
           </div>
         </div>
         {error ? <p className="mt-3 text-sm text-rose-500">{error}</p> : null}
       </div>
+
+      {drift ? (
+        <div className="glass-card p-5">
+          <div className="mb-4 flex items-center justify-between gap-3">
+            <div>
+              <h3 className="font-display text-xl font-bold">Drift между PORTAL и нодами</h3>
+              <p className="text-xs text-slate-500">Read-only сверка source of truth и текущего inbound в панели</p>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="badge badge-info">ok: {drift.summary.ok}</span>
+              <span className={`badge ${drift.summary.drift > 0 ? "badge-danger" : "badge-success"}`}>drift: {drift.summary.drift}</span>
+            </div>
+          </div>
+          <div className="space-y-3">
+            {drift.results.map((row) => (
+              <div key={row.node_code} className="rounded-2xl border border-white/15 bg-white/30 p-4 dark:border-white/10 dark:bg-white/[0.03]">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <strong className="text-base">{row.node_code.toUpperCase()}</strong>
+                      <span className={`badge ${row.status === "ok" ? "badge-success" : "badge-danger"}`}>{row.status === "ok" ? "ok" : "drift"}</span>
+                    </div>
+                    <p className="mt-1 text-xs text-slate-500">{row.node_host || "—"}</p>
+                  </div>
+                  <div className="text-right text-xs text-slate-500">
+                    <div>порт: <strong>{row.runtime?.port ?? "—"}</strong></div>
+                    <div>security: <strong>{row.runtime?.security || "—"}</strong></div>
+                  </div>
+                </div>
+                {row.mismatches.length > 0 ? (
+                  <p className="mt-3 text-sm text-rose-400">Не совпадает: {row.mismatches.join(", ")}</p>
+                ) : (
+                  <p className="mt-3 text-sm text-emerald-400">Source of truth совпадает с live inbound.</p>
+                )}
+                {row.error ? <p className="mt-2 text-xs text-amber-400">Ошибка проверки: {row.error}</p> : null}
+              </div>
+            ))}
+          </div>
+        </div>
+      ) : null}
 
       {/* ── Node cards ────────────────────────────────── */}
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">

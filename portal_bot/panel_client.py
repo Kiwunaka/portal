@@ -3,12 +3,15 @@ from __future__ import annotations
 import json
 import logging
 import time
+import base64
 from dataclasses import dataclass
 import os
 from datetime import datetime, timezone
 from urllib.parse import quote
 
 import aiohttp
+from cryptography.hazmat.primitives import serialization
+from cryptography.hazmat.primitives.asymmetric import x25519
 
 from nodes_repo import NodeRuntime
 
@@ -57,6 +60,21 @@ class PanelClient:
 
     def _is_free_node(self) -> bool:
         return "free" in (self.node.code or "").lower()
+
+    @staticmethod
+    def _b64url_nopad(b: bytes) -> str:
+        return base64.urlsafe_b64encode(b).decode("ascii").rstrip("=")
+
+    @classmethod
+    def _derive_public_from_private(cls, priv_b64: str) -> str:
+        text = str(priv_b64 or "").strip()
+        if not text:
+            return ""
+        pad = "=" * ((4 - (len(text) % 4)) % 4)
+        priv_bytes = base64.urlsafe_b64decode(text + pad)
+        priv = x25519.X25519PrivateKey.from_private_bytes(priv_bytes)
+        pub_bytes = priv.public_key().public_bytes(encoding=serialization.Encoding.Raw, format=serialization.PublicFormat.Raw)
+        return cls._b64url_nopad(pub_bytes)
 
     def _limit_ip_policy(self) -> int:
         """
@@ -189,6 +207,56 @@ class PanelClient:
             if not data.get("success"):
                 return []
             return data.get("obj", []) or []
+
+    async def get_inbound_snapshot(self, inbound_id: int | None = None) -> dict | None:
+        target_id = int(inbound_id or self.node.inbound_id or 0)
+        if target_id <= 0:
+            return None
+        inbounds = await self._get_inbounds()
+        for inb in inbounds:
+            try:
+                current_id = int(inb.get("id") or 0)
+            except Exception:
+                current_id = 0
+            if current_id != target_id:
+                continue
+
+            stream_raw = inb.get("streamSettings")
+            if stream_raw is None:
+                stream_raw = inb.get("stream_settings")
+            if isinstance(stream_raw, str):
+                try:
+                    stream = json.loads(stream_raw)
+                except Exception:
+                    stream = {}
+            elif isinstance(stream_raw, dict):
+                stream = dict(stream_raw)
+            else:
+                stream = {}
+
+            reality = stream.get("realitySettings") or {}
+            private_key = str(reality.get("privateKey") or "")
+            short_ids = reality.get("shortIds") or []
+            if isinstance(short_ids, str):
+                short_ids = [short_ids]
+            server_names = reality.get("serverNames") or []
+            if isinstance(server_names, str):
+                server_names = [server_names]
+
+            return {
+                "inbound_id": current_id,
+                "remark": str(inb.get("remark") or ""),
+                "enable": bool(inb.get("enable", True)),
+                "port": int(inb.get("port") or 0),
+                "protocol": str(inb.get("protocol") or ""),
+                "network": str(stream.get("network") or ""),
+                "security": str(stream.get("security") or ""),
+                "dest": str(reality.get("dest") or ""),
+                "server_names": [str(x or "") for x in server_names if str(x or "").strip()],
+                "short_ids": [str(x or "") for x in short_ids if str(x or "").strip()],
+                "public_key": self._derive_public_from_private(private_key) if private_key else "",
+            }
+        return None
 
     async def _get_online_emails(self) -> tuple[bool, set[str]]:
         """

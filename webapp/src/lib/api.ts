@@ -507,6 +507,45 @@ export type AdminNodeHealthRow = {
   weight: number;
 };
 
+export type AdminNodeDriftRow = {
+  node_code: string;
+  node_name: string;
+  node_host: string;
+  status: "ok" | "drift";
+  mismatches: string[];
+  error?: string;
+  expected: {
+    inbound_id: number;
+    port: number;
+    sni: string;
+    sid: string;
+    pbk: string;
+  };
+  runtime: {
+    inbound_id?: number;
+    remark?: string;
+    enable?: boolean;
+    port?: number;
+    protocol?: string;
+    network?: string;
+    security?: string;
+    dest?: string;
+    server_names?: string[];
+    short_ids?: string[];
+    public_key?: string;
+  };
+  checks: Record<string, boolean>;
+};
+
+export type AdminNodeDriftReport = {
+  summary: {
+    total: number;
+    ok: number;
+    drift: number;
+  };
+  results: AdminNodeDriftRow[];
+};
+
 export type AdminMetricsStatus = {
   status: "fresh" | "stale";
   last_sample_at?: string | null;
@@ -1290,6 +1329,13 @@ export function adminNodesSync(payload: { tg_id?: number; segment?: string; limi
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
   });
+}
+
+export function adminNodesDrift(only?: string[]): Promise<AdminNodeDriftReport> {
+  const qs = new URLSearchParams();
+  if (only?.length) qs.set("only", only.join(","));
+  const suffix = qs.toString() ? `?${qs.toString()}` : "";
+  return apiFetch<AdminNodeDriftReport>(`/api/admin/nodes/drift${suffix}`);
 }
 
 export async function adminPromos(limit = 200): Promise<AdminPromoRow[]> {

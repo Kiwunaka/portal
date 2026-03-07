@@ -94,6 +94,44 @@ class ControlPanel:
         finally:
             s.close()
 
+    @staticmethod
+    def _compare_node_inbound(node, runtime: dict | None, *, error: str = "") -> dict:
+        runtime = runtime or {}
+        expected_sni = str(getattr(node, "reality_sni", "") or "").strip()
+        expected_sid = str(getattr(node, "reality_sid", "") or "").strip()
+        expected_pbk = str(getattr(node, "reality_pbk", "") or "").strip()
+        server_names = [str(x or "").strip() for x in runtime.get("server_names", [])]
+        dest = str(runtime.get("dest", "") or "").strip()
+        checks = {
+            "inbound_present": bool(runtime) and not error,
+            "enabled_match": bool(runtime.get("enable")) is True if runtime else False,
+            "port_match": int(runtime.get("port") or 0) == int(getattr(node, "vless_port", 443) or 443),
+            "protocol_match": str(runtime.get("protocol") or "") == "vless",
+            "network_match": str(runtime.get("network") or "") == "tcp",
+            "security_match": str(runtime.get("security") or "") == "reality",
+            "sni_match": (not expected_sni) or (expected_sni in server_names) or dest.startswith(f"{expected_sni}:"),
+            "sid_match": (not expected_sid) or (expected_sid in [str(x or "").strip() for x in runtime.get("short_ids", [])]),
+            "pbk_match": (not expected_pbk) or (expected_pbk == str(runtime.get("public_key") or "")),
+        }
+        mismatches = [name for name, ok in checks.items() if not ok]
+        return {
+            "node_code": str(getattr(node, "code", "") or ""),
+            "node_name": str(getattr(node, "name", "") or ""),
+            "node_host": str(getattr(node, "host", "") or ""),
+            "status": "ok" if not mismatches else "drift",
+            "mismatches": mismatches,
+            "error": error,
+            "expected": {
+                "inbound_id": int(getattr(node, "inbound_id", 0) or 0),
+                "port": int(getattr(node, "vless_port", 443) or 443),
+                "sni": expected_sni,
+                "sid": expected_sid,
+                "pbk": expected_pbk,
+            },
+            "runtime": runtime,
+            "checks": checks,
+        }
+
     async def login(self) -> bool:
         nodes = await self.refresh()
         ok_any = False
@@ -101,6 +139,33 @@ class ControlPanel:
             ok = await self._clients[n.code].login()
             ok_any = ok_any or ok
         return ok_any
+
+    async def get_node_drift_report(self, *, node_codes: list[str] | None = None) -> dict:
+        nodes = await self.refresh()
+        if node_codes:
+            allowed = {str(code or "").strip().lower() for code in node_codes if str(code or "").strip()}
+            nodes = [n for n in nodes if str(getattr(n, "code", "") or "").strip().lower() in allowed]
+
+        results: list[dict] = []
+        for n in nodes:
+            error = ""
+            runtime = None
+            try:
+                runtime = await self._clients[n.code].get_inbound_snapshot(getattr(n, "inbound_id", None))
+                if not runtime:
+                    error = "inbound_not_found"
+            except Exception as exc:
+                error = str(exc)[:200]
+            results.append(self._compare_node_inbound(n, runtime, error=error))
+
+        return {
+            "summary": {
+                "total": len(results),
+                "ok": sum(1 for row in results if row["status"] == "ok"),
+                "drift": sum(1 for row in results if row["status"] != "ok"),
+            },
+            "results": results,
+        }
 
     async def close(self) -> None:
         for c in list(self._clients.values()):

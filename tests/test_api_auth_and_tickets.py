@@ -170,6 +170,37 @@ class ApiAuthAndTicketsTests(unittest.TestCase):
         r = self.client.get("/api/admin/summary", headers=hdrs)
         self.assertEqual(r.status_code, 403)
 
+    def test_admin_nodes_drift_returns_summary(self) -> None:
+        admin_hdrs = {"X-Telegram-Init-Data": self._init_data(9999, "admin")}
+
+        fake_payload = {
+            "summary": {"total": 2, "ok": 1, "drift": 1},
+            "results": [
+                {
+                    "node_code": "it",
+                    "status": "ok",
+                    "mismatches": [],
+                    "runtime": {"auth_method": "key"},
+                    "checks": {"inbound_present": True},
+                },
+                {
+                    "node_code": "nl",
+                    "status": "drift",
+                    "mismatches": ["port_match"],
+                    "runtime": {"inspect_error": ""},
+                    "checks": {"port_match": False},
+                },
+            ],
+        }
+
+        self.api._build_admin_node_drift_report = lambda **_kwargs: fake_payload
+        r = self.client.get("/api/admin/nodes/drift", headers=admin_hdrs)
+        self.assertEqual(r.status_code, 200, r.text)
+        body = r.json()
+        self.assertEqual(body["summary"]["total"], 2)
+        self.assertEqual(body["summary"]["drift"], 1)
+        self.assertEqual(body["results"][1]["node_code"], "nl")
+
     def test_web_login_session_flow(self) -> None:
         payload = self._telegram_login_payload(1001, "alice")
         login = self.client.post("/api/auth/telegram/web-login", json=payload)

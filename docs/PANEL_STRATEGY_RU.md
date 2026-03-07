@@ -169,6 +169,13 @@ python scripts/control_plane_drift_report.py --only brain,pl,it,us,free
 
 Скрипт только читает `nodes` из `PORTAL` и текущий inbound на ноде. Он не меняет panel/xray-конфиг.
 
+То же самое теперь доступно в web-admin:
+
+- backend endpoint: `GET /api/admin/nodes/drift`
+- экран: `/admin/nodes` -> кнопка `Drift-check`
+
+Этот путь тоже read-only и подходит для живой проверки без риска для текущих подключений.
+
 ### На 100-500 пользователей
 
 Можно ещё жить на текущей модели, если:
