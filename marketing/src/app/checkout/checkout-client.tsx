@@ -13,6 +13,14 @@ export type PlanOption = {
   device_limit: number;
 };
 
+type RubProviderOption = {
+  code: string;
+  label: string;
+  accent?: string;
+  checkout_hint?: string;
+  supports_public?: boolean;
+};
+
 type PublicPlansResponse = {
   plans?: Array<{
     code: string;
@@ -24,8 +32,15 @@ type PublicPlansResponse = {
   }>;
 };
 
+type RubProvidersResponse = {
+  ok?: boolean;
+  providers?: RubProviderOption[];
+};
+
 type CreatePublicOrderResponse = {
   ok: boolean;
+  provider: string;
+  provider_label?: string | null;
   order_id: string;
   payment_url?: string | null;
   amount_rub: number;
@@ -40,12 +55,14 @@ type CachedCheckoutPayment = {
   order_id: string;
   payment_url: string;
   plan_code: string;
+  provider: string;
+  provider_label: string;
   ticket_exp: number;
   saved_at: number;
 };
 
 const config = getPortalPublicConfig(process.env as Record<string, string | undefined>);
-const CHECKOUT_CACHE_PREFIX = "portal_checkout_payment_v1";
+const CHECKOUT_CACHE_PREFIX = "portal_checkout_payment_v2";
 
 const FALLBACK_PLANS: PlanOption[] = [
   { code: "start_99", label: "Start 30 дней", amount_rub: 99, days: 30, device_limit: 1 },
@@ -106,7 +123,7 @@ export function CheckoutLoadingFallback() {
         <h1 className="checkout-title">
           <span>PORTAL</span> <span>Оплата</span>
         </h1>
-        <p className="checkout-sub">Проверяем параметры ссылки и готовим экран оплаты.</p>
+        <p className="checkout-sub">Проверяем параметры ссылки, тарифы и доступные способы оплаты.</p>
       </section>
       <section className="checkout-grid">
         <article className="glass-card">
@@ -127,7 +144,9 @@ export default function CheckoutClient() {
   const promo = (searchParams.get("promo") || "").trim().toUpperCase();
   const entrySource = (searchParams.get("source") || "site").trim().toLowerCase() || "site";
   const [plans, setPlans] = useState<PlanOption[]>(FALLBACK_PLANS);
+  const [providers, setProviders] = useState<RubProviderOption[]>([]);
   const [selectedPlan, setSelectedPlan] = useState<string>(queryPlan);
+  const [selectedProvider, setSelectedProvider] = useState<string>((searchParams.get("provider") || "").trim().toLowerCase());
   const [busy, setBusy] = useState(false);
   const [statusText, setStatusText] = useState("");
   const [breakdown, setBreakdown] = useState<{ base: number; pct: number; final: number } | null>(null);
@@ -161,9 +180,7 @@ export default function CheckoutClient() {
       for (const base of candidateApiBases()) {
         try {
           const response = await fetch(`${base}/api/public/plans`, { cache: "no-store" });
-          if (!response.ok) {
-            continue;
-          }
+          if (!response.ok) continue;
           const data = (await response.json()) as PublicPlansResponse;
           const mapped = (Array.isArray(data.plans) ? data.plans : [])
             .filter((item) => Boolean(item?.code) && Number(item?.amount_rub || 0) > 0 && item?.is_active !== false)
@@ -192,15 +209,52 @@ export default function CheckoutClient() {
     };
   }, [selectedPlan]);
 
+  useEffect(() => {
+    let cancelled = false;
+    const loadProviders = async () => {
+      for (const base of candidateApiBases()) {
+        try {
+          const response = await fetch(`${base}/api/payments/providers`, { cache: "no-store" });
+          if (!response.ok) continue;
+          const data = (await response.json()) as RubProvidersResponse;
+          const mapped = (Array.isArray(data.providers) ? data.providers : []).filter((item) => item?.supports_public !== false && item?.code);
+          if (!cancelled) {
+            setProviders(mapped);
+            const normalizedCurrent = String(selectedProvider || "").trim().toLowerCase();
+            if (!mapped.some((item) => String(item.code || "").trim().toLowerCase() === normalizedCurrent)) {
+              setSelectedProvider(String(mapped[0]?.code || ""));
+            }
+            return;
+          }
+        } catch {
+          // Try next base.
+        }
+      }
+      if (!cancelled) {
+        setProviders([]);
+        setSelectedProvider("");
+      }
+    };
+    void loadProviders();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   const activePlan = useMemo(
     () => plans.find((item) => item.code === selectedPlan) || plans[0] || FALLBACK_PLANS[0],
     [plans, selectedPlan],
   );
 
+  const activeProvider = useMemo(
+    () => providers.find((item) => String(item.code || "").trim().toLowerCase() === String(selectedProvider || "").trim().toLowerCase()) || providers[0] || null,
+    [providers, selectedProvider],
+  );
+
   const hasCheckoutTicket = Boolean(checkoutTicket);
   const fromBot = entrySource === "bot";
   const ticketExpired = hasCheckoutTicket && ticketExp > 0 && secondsLeft <= 0;
-  const cacheKey = `${CHECKOUT_CACHE_PREFIX}:${checkoutTicket}:${selectedPlan}`;
+  const cacheKey = `${CHECKOUT_CACHE_PREFIX}:${checkoutTicket}:${selectedPlan}:${activeProvider?.code || "none"}`;
 
   useEffect(() => {
     if (typeof window === "undefined" || !checkoutTicket) {
@@ -231,6 +285,10 @@ export default function CheckoutClient() {
       setStatusText("Прямая оплата открывается только по персональной ссылке из Telegram или кабинета.");
       return;
     }
+    if (!activeProvider?.code) {
+      setStatusText("Сейчас нет доступных касс. Вернитесь позже или откройте оплату из Telegram.");
+      return;
+    }
     if (ticketExpired) {
       setStatusText("Ссылка на оплату уже истекла. Вернитесь в Telegram и откройте оплату заново.");
       return;
@@ -241,10 +299,11 @@ export default function CheckoutClient() {
 
     for (const base of candidateApiBases()) {
       try {
-        const response = await fetch(`${base}/api/payments/freekassa/orders/create-public`, {
+        const response = await fetch(`${base}/api/payments/orders/create-public`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
+            provider: activeProvider.code,
             plan_code: activePlan.code,
             checkout_ticket: checkoutTicket,
             currency: "RUB",
@@ -267,6 +326,8 @@ export default function CheckoutClient() {
           order_id: String(data.order_id || ""),
           payment_url: String(data.payment_url || ""),
           plan_code: String(activePlan.code || ""),
+          provider: String(data.provider || activeProvider.code || ""),
+          provider_label: String(data.provider_label || activeProvider.label || activeProvider.code || ""),
           ticket_exp: Number(ticketExp || 0),
           saved_at: Math.floor(Date.now() / 1000),
         };
@@ -274,7 +335,7 @@ export default function CheckoutClient() {
           window.localStorage.setItem(cacheKey, JSON.stringify(cacheEntry));
         }
         setCachedPayment(cacheEntry);
-        setStatusText("Ссылка готова. Переводим на страницу оплаты…");
+        setStatusText(`Ссылка готова. Переводим на страницу оплаты через ${cacheEntry.provider_label}…`);
         window.location.href = data.payment_url;
         return;
       } catch (error) {
@@ -288,8 +349,8 @@ export default function CheckoutClient() {
   const heroStatus = hasCheckoutTicket ? "Персональная ссылка активна" : "Нужен переход через Telegram";
   const heroText = hasCheckoutTicket
     ? fromBot
-      ? "Вы открыли персональную ссылку из Telegram. Выберите срок, проверьте сумму и переходите к оплате без лишних экранов."
-      : "Выберите срок, проверьте итоговую сумму и переходите к оплате. После подтверждения доступ обновится автоматически."
+      ? "Вы открыли персональную ссылку из Telegram. Выберите срок и кассу, проверьте сумму и переходите к оплате без лишних экранов."
+      : "Выберите срок и кассу, проверьте итоговую сумму и переходите к оплате. После подтверждения доступ обновится автоматически."
     : "Эта страница работает как витрина. Для прямой оплаты нужна персональная ссылка из Telegram или кабинета.";
 
   return (
@@ -326,12 +387,40 @@ export default function CheckoutClient() {
               </button>
             ))}
           </div>
+
+          {providers.length > 0 ? (
+            <div className="checkout-provider-section">
+              <strong>Выберите кассу</strong>
+              <div className="checkout-provider-list">
+                {providers.map((provider) => (
+                  <button
+                    key={provider.code}
+                    type="button"
+                    onClick={() => setSelectedProvider(provider.code)}
+                    className={`checkout-provider ${provider.code === activeProvider?.code ? "checkout-provider--active" : ""}`}
+                  >
+                    <div>
+                      <strong>{provider.label}</strong>
+                      {provider.accent ? <p>{provider.accent}</p> : null}
+                    </div>
+                    {provider.checkout_hint ? <span>{provider.checkout_hint}</span> : null}
+                  </button>
+                ))}
+              </div>
+            </div>
+          ) : (
+            <div className="checkout-provider-empty">
+              <strong>Кассы временно недоступны</strong>
+              <p>Как только оператор включит новый платёжный шлюз, он появится здесь автоматически.</p>
+            </div>
+          )}
+
           <div className="checkout-trust">
             <strong>Что будет дальше</strong>
             <ul className="checkout-trust-list">
-              <li>Оплата откроется на стороне банка или платёжной страницы.</li>
+              <li>Откроется защищённая страница платёжного партнёра.</li>
               <li>После подтверждения доступ обновится автоматически.</li>
-              <li>Если окно закрылось, можно вернуться сюда и продолжить оплату, пока ссылка ещё активна.</li>
+              <li>Если окно закрылось, можно вернуться сюда и продолжить, пока ссылка ещё активна.</li>
             </ul>
           </div>
         </article>
@@ -354,6 +443,9 @@ export default function CheckoutClient() {
             <p>
               Устройства: <strong>до {activePlan.device_limit}</strong>
             </p>
+            <p>
+              Касса: <strong>{activeProvider?.label || "—"}</strong>
+            </p>
             {promo ? (
               <p>
                 Промокод: <strong>{promo}</strong>
@@ -364,7 +456,7 @@ export default function CheckoutClient() {
                 <p>База: {breakdown.base.toFixed(0)} ₽</p>
                 <p>Скидка: {breakdown.pct}%</p>
                 <p>
-                  Итог: <strong>{breakdown.final.toFixed(0)} ₽</strong>
+                  Итого: <strong>{breakdown.final.toFixed(0)} ₽</strong>
                 </p>
               </div>
             ) : (
@@ -388,7 +480,7 @@ export default function CheckoutClient() {
               }
               void createOrder();
             }}
-            disabled={busy || ticketExpired}
+            disabled={busy || ticketExpired || (hasCheckoutTicket && providers.length === 0)}
             className="checkout-submit"
           >
             {busy
@@ -396,7 +488,7 @@ export default function CheckoutClient() {
               : ticketExpired
                 ? "Ссылка истекла"
                 : hasCheckoutTicket
-                  ? getCopyText("marketing.checkout.primary_cta", "Перейти к оплате")
+                  ? `Перейти к оплате через ${activeProvider?.label || "кассу"}`
                   : "Продолжить в Telegram"}
           </button>
 
@@ -408,7 +500,7 @@ export default function CheckoutClient() {
               }}
               className="checkout-secondary checkout-secondary-button"
             >
-              Вернуться к оплате
+              Вернуться к оплате через {cachedPayment.provider_label}
             </button>
           ) : null}
 
@@ -416,7 +508,7 @@ export default function CheckoutClient() {
             <p className="checkout-helper">
               {ticketExpired
                 ? "Время этой ссылки закончилось. Вернитесь в Telegram и откройте оплату заново."
-                : "Откроем безопасную страницу оплаты с уже выбранным тарифом."}
+                : "Откроем защищённую страницу оплаты с уже выбранными тарифом и кассой."}
             </p>
           ) : (
             <div className="checkout-empty">

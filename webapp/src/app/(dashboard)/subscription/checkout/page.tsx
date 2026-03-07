@@ -1,6 +1,12 @@
 "use client";
 
-import { createRubCheckoutOrder, fetchPublicPlans, type PlanCatalogRow } from "@/lib/api";
+import {
+  createRubCheckoutOrder,
+  fetchPublicPlans,
+  getRubPaymentProviders,
+  type PlanCatalogRow,
+  type RubPaymentProvider,
+} from "@/lib/api";
 import { getCopyText, getPortalPublicConfig, normalizePlanCode } from "@/lib/portal";
 import { usePortalSession } from "@/lib/session";
 import Link from "next/link";
@@ -34,7 +40,9 @@ export default function CheckoutPage() {
   const searchParams = useSearchParams();
   const { user } = usePortalSession();
   const [plans, setPlans] = useState<PlanCatalogRow[]>([]);
+  const [providers, setProviders] = useState<RubPaymentProvider[]>([]);
   const [selectedCode, setSelectedCode] = useState("1_month");
+  const [selectedProvider, setSelectedProvider] = useState("");
   const [busy, setBusy] = useState(false);
   const [statusText, setStatusText] = useState("");
   const [breakdown, setBreakdown] = useState<{ base: number; discountPct: number; final: number } | null>(null);
@@ -76,17 +84,55 @@ export default function CheckoutPage() {
     };
   }, [selectedCode]);
 
+  useEffect(() => {
+    let cancelled = false;
+    const load = async () => {
+      try {
+        const payload = await getRubPaymentProviders();
+        const rows = Array.isArray(payload.providers)
+          ? payload.providers.filter((row) => Boolean(row.code) && row.supports_webapp !== false)
+          : [];
+        if (!cancelled) {
+          setProviders(rows);
+          const current = String(selectedProvider || "").trim().toLowerCase();
+          if (!rows.some((row) => String(row.code || "").trim().toLowerCase() === current)) {
+            setSelectedProvider(String(rows[0]?.code || ""));
+          }
+        }
+      } catch {
+        if (!cancelled) {
+          setProviders([]);
+          setSelectedProvider("");
+        }
+      }
+    };
+    void load();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   const activePlan = useMemo(() => {
     return plans.find((plan) => plan.code === selectedCode) || plans[0] || null;
   }, [plans, selectedCode]);
 
+  const activeProvider = useMemo(() => {
+    const current = String(selectedProvider || "").trim().toLowerCase();
+    return providers.find((provider) => String(provider.code || "").trim().toLowerCase() === current) || providers[0] || null;
+  }, [providers, selectedProvider]);
+
   const onCreateOrder = async (): Promise<void> => {
     if (!activePlan || !user) return;
+    if (!activeProvider?.code) {
+      setStatusText("Сейчас нет доступных касс. Попробуйте позже или откройте поддержку.");
+      return;
+    }
     setBusy(true);
     setStatusText("");
     setBreakdown(null);
     try {
       const order = await createRubCheckoutOrder({
+        provider: activeProvider.code,
         plan_code: activePlan.code,
         source: "site",
         tg_id: user.tg_id,
@@ -99,7 +145,7 @@ export default function CheckoutPage() {
       const discountPct = Number(order.discount_pct ?? 0);
       setBreakdown({ base, final, discountPct });
       if (order.payment_url) {
-        setStatusText("Ссылка готова. Переводим на страницу оплаты...");
+        setStatusText(`Ссылка готова. Открываем оплату через ${order.provider_label || activeProvider.label || activeProvider.code}...`);
         window.location.href = order.payment_url;
         return;
       }
@@ -147,6 +193,41 @@ export default function CheckoutPage() {
               </button>
             ))}
           </div>
+
+          <div className="mt-6">
+            <h3 className="font-display text-xl font-semibold">Выберите кассу</h3>
+            {providers.length ? (
+              <div className="mt-3 space-y-2">
+                {providers.map((provider) => {
+                  const selected = provider.code === activeProvider?.code;
+                  return (
+                    <button
+                      key={provider.code}
+                      type="button"
+                      onClick={() => setSelectedProvider(provider.code)}
+                      className={`w-full rounded-xl border px-4 py-3 text-left transition ${
+                        selected
+                          ? "border-violet-500 bg-violet-500/10"
+                          : "border-white/45 bg-white/55 hover:border-violet-300 dark:border-white/10 dark:bg-white/5"
+                      }`}
+                    >
+                      <div className="flex items-center justify-between gap-3">
+                        <span className="font-semibold">{provider.label}</span>
+                        <span className="text-xs text-slate-500">{provider.accent || "Карты и СБП"}</span>
+                      </div>
+                      {provider.checkout_hint ? (
+                        <p className="mt-1 text-xs text-slate-500">{provider.checkout_hint}</p>
+                      ) : null}
+                    </button>
+                  );
+                })}
+              </div>
+            ) : (
+              <div className="mt-3 rounded-xl border border-amber-300/40 bg-amber-500/10 px-4 py-3 text-sm text-amber-900 dark:text-amber-200">
+                Сейчас нет подключённых касс. Как только их добавим на сервере, они появятся здесь автоматически.
+              </div>
+            )}
+          </div>
         </article>
 
         <article className="glass-card p-6">
@@ -157,6 +238,7 @@ export default function CheckoutPage() {
               <p>Срок: {activePlan.days} дней</p>
               <p>Лимит устройств: до {activePlan.device_limit}</p>
               <p>Точки подключения: {nodePolicyLabel(activePlan.node_policy)}</p>
+              <p>Касса: <span className="font-semibold text-slate-900 dark:text-white">{activeProvider?.label || "Будет выбрана автоматически"}</span></p>
               {queryPromo ? <p>Промокод: {queryPromo}</p> : null}
               {breakdown ? (
                 <div className="rounded-xl border border-white/45 bg-white/65 p-4 text-xs dark:border-white/10 dark:bg-white/5">
@@ -173,10 +255,10 @@ export default function CheckoutPage() {
           <button
             type="button"
             onClick={() => void onCreateOrder()}
-            disabled={!activePlan || busy || !user}
+            disabled={!activePlan || !activeProvider || busy || !user}
             className="btn-primary mt-5 w-full rounded-xl py-3 text-sm font-semibold uppercase tracking-[0.12em] disabled:opacity-60"
           >
-            {busy ? "Создаём заказ..." : "Перейти к оплате"}
+            {busy ? "Создаём заказ..." : `Перейти к оплате${activeProvider?.label ? ` через ${activeProvider.label}` : ""}`}
           </button>
 
           <div className="mt-3 grid gap-3">

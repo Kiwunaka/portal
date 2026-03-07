@@ -205,6 +205,8 @@ export type PayAttemptStartResult = {
 
 export type RubCheckoutStartResult = {
   ok: boolean;
+  provider?: string;
+  provider_label?: string | null;
   order_id: string;
   payment_url?: string | null;
   amount_rub: number;
@@ -214,6 +216,16 @@ export type RubCheckoutStartResult = {
   discount_applied?: boolean;
   base_amount_rub?: number | null;
   discount_pct?: number;
+};
+
+export type RubPaymentProvider = {
+  code: string;
+  label: string;
+  accent?: string;
+  checkout_hint?: string;
+  supports_bot?: boolean;
+  supports_webapp?: boolean;
+  supports_public?: boolean;
 };
 
 export type PlanCatalogRow = {
@@ -965,6 +977,7 @@ export function startPayAttempt(plan_code: string, source = "webapp", offer_id?:
 }
 
 export function createRubCheckoutOrder(payload: {
+  provider: string;
   plan_code: string;
   source?: "site" | "bot";
   tg_id?: number;
@@ -972,7 +985,7 @@ export function createRubCheckoutOrder(payload: {
   promo_code?: string;
   currency?: string;
 }): Promise<RubCheckoutStartResult> {
-  return apiFetch("/api/payments/freekassa/orders/create", {
+  return apiFetch("/api/payments/orders/create", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
@@ -980,15 +993,20 @@ export function createRubCheckoutOrder(payload: {
 }
 
 export function createPublicRubCheckoutOrder(payload: {
+  provider: string;
   plan_code: string;
   checkout_ticket: string;
   currency?: string;
 }): Promise<RubCheckoutStartResult> {
-  return apiFetch("/api/payments/freekassa/orders/create-public", {
+  return apiFetch("/api/payments/orders/create-public", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
   });
+}
+
+export function getRubPaymentProviders(): Promise<{ ok: boolean; providers: RubPaymentProvider[] }> {
+  return apiFetch("/api/payments/providers");
 }
 
 export function checkChannelSubscriberStatus(): Promise<{
