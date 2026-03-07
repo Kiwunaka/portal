@@ -200,3 +200,40 @@ Source of truth:
 ### Симптом: metrics stale
 - Проверьте, что deploy script доставил `collect_node_metrics.py`
 - Проверьте `systemctl status portal-node-metrics.timer`
+
+## 11. Операционный контур марта 2026
+
+### Что смотреть на `/admin/dashboard`
+
+- `Сводка ошибок и рисков`
+  - stale metrics
+  - unhealthy nodes
+  - callback failures
+  - numeric fallback hits
+  - open tickets
+- `Бонусы и промо за 24 часа`
+  - success/denied по channel/promo/gift
+- `Удержание и реактивация`
+  - кто истекает в ближайшие 3 дня;
+  - сколько пользователей уже истекло за 7 дней;
+  - сколько retention ping реально ушло за 24 часа.
+
+### Где править retention без бота
+
+- Откройте `/admin/broadcast`.
+- Блок `Retention-шаблоны` теперь позволяет редактировать:
+  - `retention_welcome_a/b`
+  - `retention_t3_a/b`
+  - `retention_t1_a/b`
+  - `retention_t0_a/b`
+  - `retention_reactivation_a/b`
+- Это безопаснее, чем править шаблоны вручную в БД или через бот-меню.
+
+### Как действовать оператору
+
+- Если истекающих много, а `Retention ping 24ч` низкий:
+  - сначала проверяем worker и шаблоны, потом вручную догреваем рассылкой по `expired/paid/free` сегментам.
+- Если `reactivation_candidates` растёт:
+  - запускаем мягкую кампанию на возврат через `/admin/broadcast` и смотрим конверсию по оплатам и open tickets.
+- Если `single_point_risk=true`:
+  - не включаем массово новые transport/network изменения; сначала canary на небольшой группе.

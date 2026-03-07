@@ -129,3 +129,24 @@
 - Xray issue `Active probing weakness found in the Xray implementation of Shadowsocks` (#625, Jun 29 2021): https://github.com/XTLS/Xray-core/issues/625
 - Хабр / Amnezia + XRay Reality (30 июля 2024): https://habr.com/ru/companies/amnezia/articles/832610/
 - Хабр / разбор блокировок XRay и VLESS (декабрь 2025): https://habr.com/ru/articles/969618/
+
+## Обновление на 7 марта 2026 простыми словами
+
+- По свежим публичным материалам нет признаков, что существует один “волшебный” transport, который можно включить и забыть.
+- Актуальная инженерная тактика выглядит так:
+  - основной стек держим стабильным;
+  - запасной transport готовим заранее;
+  - rollout делаем через canary;
+  - маркетинг-домены, delivery-домены и runtime-риски не смешиваем в одну точку отказа.
+- Для PORTAL это сейчас означает:
+  - `REALITY` остаётся основным путём;
+  - `XHTTP` — самый реалистичный кандидат на controlled pilot;
+  - `Hysteria2` — selective fallback там, где жив QUIC;
+  - резкие массовые переключения без canary считаются плохой идеей.
+
+Источники, перепроверенные 7 марта 2026:
+- Project X XHTTP docs: https://xtls.github.io/en/config/transports/xhttp.html
+- Project X Browser Dialer docs: https://xtls.github.io/en/config/features/browser_dialer.html
+- Xray issue #5332 (Nov 23, 2025): https://github.com/XTLS/Xray-core/issues/5332
+- Carnegie, Dec 2025: https://carnegieendowment.org/russia-eurasia/politika/2025/12/russia-internet-restrictions
+- TechRadar, Jan 2026: https://www.techradar.com/vpn/vpn-services/russias-battle-against-vpns-is-entering-a-new-phase-heres-what-to-expect-in-2026

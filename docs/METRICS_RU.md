@@ -51,3 +51,28 @@
 ## Что ещё можно добавить позже
 
 - breakdown revenue по каналу оплаты
+
+## Что добавлено в завершающей волне
+
+- `/api/admin/summary` теперь возвращает не только `users/errors/bonus_events_24h`, но и:
+  - `retention.expiring_3d`
+  - `retention.expired_7d`
+  - `retention.reactivation_candidates`
+  - `retention.pings_24h` по `welcome`, `t3`, `t1`, `t0`, `reactivation`, `start99_offer`
+  - `resilience.single_point_risk`
+  - `resilience.free_node_enabled`
+- `/admin/dashboard` показывает отдельный блок `Удержание и реактивация`:
+  - кого нужно догревать на продление;
+  - сколько людей уже отвалилось за 7 дней;
+  - сколько retention-касаний реально отправил worker за последние 24 часа.
+
+## Как смотреть это по-простому
+
+- Если `expiring_3d > 0`, а `t3/t1/t0` почти пустые:
+  - проверяем worker retention jobs и шаблоны.
+- Если `expired_7d` растёт, а `reactivation` пустой:
+  - проверяем reactivation job и сегмент `expired` в рассылках.
+- Если `single_point_risk=true`:
+  - не катим рискованные сетевые изменения без canary-группы.
+- Если `free_node_enabled=true`:
+  - помним, что это fallback-слой, а не опора для массовой выдачи.

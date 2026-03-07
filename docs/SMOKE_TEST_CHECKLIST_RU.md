@@ -47,6 +47,9 @@
 - `python scripts/admin_webapp_smoke.py`
 - Неадмин видит понятный `403`
 - Истёкшая сессия даёт состояние `session expired`
+- `/admin/dashboard` показывает блок `Удержание и реактивация`
+- `/admin/dashboard` не падает при наличии `retention` и `resilience` полей в summary
+- `/admin/broadcast` показывает карточки retention-шаблонов и открывает модалку редактирования
 
 ## Ops
 
@@ -59,6 +62,7 @@
   - home marketing -> `Посмотреть планы`
   - offer -> `Продолжить в Telegram`
   - checkout -> `Продолжение через Telegram`
+- если `/admin/dashboard` показывает `single_point_risk=true`, rollout transport/network изменений идёт только через canary
 # P2 additions
 
 - `/api/admin/summary` now returns an `errors` block with stale metrics, unhealthy nodes, payment callback failures, and numeric subscription fallback counts.
