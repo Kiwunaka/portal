@@ -725,6 +725,39 @@ class ApiAuthAndTicketsTests(unittest.TestCase):
         by_tg_id = self.client.get("/s8Kx2mP7qR4wT/1001")
         self.assertEqual(by_tg_id.status_code, 404, by_tg_id.text)
 
+    def test_subscription_endpoint_supports_head_for_plain_and_hiddify_clients(self) -> None:
+        from db import SessionLocal
+        from models import User
+
+        s = SessionLocal()
+        try:
+            user = s.query(User).filter_by(tg_id=1001).first()
+            assert user is not None
+            user.sub_type = "PAID"
+            user.sub_token = "token_1001_secure"
+            user.is_active = True
+            user.expiry_at = datetime.utcnow() + timedelta(days=10)
+            s.commit()
+        finally:
+            s.close()
+
+        plain = self.client.head("/s8Kx2mP7qR4wT/token_1001_secure")
+        self.assertEqual(plain.status_code, 200, plain.text)
+        self.assertEqual(plain.text, "")
+        self.assertEqual(plain.headers.get("content-type"), "text/plain; charset=utf-8")
+        self.assertEqual(plain.headers.get("profile-update-interval"), "6")
+        self.assertIn("Portal_Subscription", plain.headers.get("content-disposition", ""))
+
+        hiddify = self.client.head(
+            "/s8Kx2mP7qR4wT/token_1001_secure",
+            headers={"User-Agent": "HiddifyNext/2.0"},
+        )
+        self.assertEqual(hiddify.status_code, 200, hiddify.text)
+        self.assertEqual(hiddify.text, "")
+        self.assertEqual(hiddify.headers.get("content-type"), "application/json")
+        self.assertEqual(hiddify.headers.get("profile-title"), "Portal")
+        self.assertIn("Portal.json", hiddify.headers.get("content-disposition", ""))
+
     def test_admin_metrics_timeseries_and_nodes_traffic_endpoints(self) -> None:
         from db import SessionLocal
         from models import Event, ExternalOrder, ExternalPaymentEvent, NodeHealthSample, PayAttempt

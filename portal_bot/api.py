@@ -7114,7 +7114,7 @@ async def _notify_admin_on_subscription_fallback(*, user_tg_id: int, token_fp: s
     await _telegram_send_message(chat_id=admin_id, text=text)
 
 
-@app.get("/s8Kx2mP7qR4wT/{token}")
+@app.api_route("/s8Kx2mP7qR4wT/{token}", methods=["GET", "HEAD"])
 async def subscription(token: str, request: Request):
     """
     Multi-node subscription endpoint.
@@ -7198,6 +7198,8 @@ async def subscription(token: str, request: Request):
         )
         headers["Content-Disposition"] = 'attachment; filename="Portal.json"'
         headers["Profile-Title"] = "Portal"
+        if request.method == "HEAD":
+            return Response(content="", media_type="application/json", headers=headers)
         return Response(content=json.dumps(cfg, indent=2), media_type="application/json", headers=headers)
 
     links = []
@@ -7205,6 +7207,8 @@ async def subscription(token: str, request: Request):
         links.append(_generate_vless_link(user_uuid=user.uuid, node=n, name=_node_label_ru(n.code, n.name)))
     raw = "\n".join(links)
     encoded = base64.b64encode(raw.encode("utf-8")).decode("ascii")
+    if request.method == "HEAD":
+        return Response(content="", media_type="text/plain", headers=headers)
     return Response(content=encoded, media_type="text/plain", headers=headers)
 
 

@@ -185,6 +185,13 @@ Source of truth:
 
 ## 10. Troubleshooting
 
+### Обновление подписки падает, но само подключение продолжает работать
+
+- Проверьте не только `GET`, но и `HEAD` на `/s8Kx2mP7qR4wT/{token}`.
+- Нормальное поведение production: и `GET`, и `HEAD` должны отвечать `200`.
+- Если `GET` работает, а `HEAD` отвечает `405`, клиент может продолжать использовать старый уже загруженный профиль, но показывать ошибку на кнопке обновления.
+- Для `Hiddify`, `sing-box` и `nekobox` endpoint должен отдавать `application/json` и заголовки `Profile-Title` + `Profile-Update-Interval`.
+
 ### Симптом: по ключу открывается ошибка обновления
 - Проверьте новый `sub_token`
 - Проверьте `SUBSCRIPTION_NUMERIC_FALLBACK_ENABLED`
