@@ -131,3 +131,15 @@
 - `pl:8443` (`PL Free Reality`) остаётся legacy-контуром: он жив на сервере, но не описан как primary runtime path в production DB.
 - Локальный операторский доступ к `free`-ноде надо отдельно привести в порядок и перепроверить актуальность inventory/credentials.
 - Если в будущем будет рост числа нод или усилится требование к GitOps, стоит вернуться к вопросу direct `Xray-core`. На текущем масштабе `3x-ui` остаётся приемлемым компромиссом.
+
+## Update after cleanup (2026-03-07, later pass)
+
+- `pl:8443` retired:
+  - inbound `id=2` disabled in `x-ui.db`;
+  - `8443/tcp` removed from UFW on `pl`;
+  - no clients and no traffic were present on that inbound before retirement.
+- `free` operator access restored through existing `.ppk` key path:
+  - local ops scripts now support key-fallback;
+  - stale password in local inventory is no longer treated as the primary access path.
+- Remaining follow-up:
+  - direct local SSH path to `nl` should be rechecked separately if manual root operations on that node are needed.

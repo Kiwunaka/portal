@@ -1,42 +1,22 @@
 from __future__ import annotations
 
 """
-Start/stop/status x-ui (3x-ui) on a node via SSH.
+Start/stop/status x-ui (3x-ui) on a node via SSH with password/key fallback.
 
 Default target: brain node.
 """
 
 import argparse
 import os
+import sys
 from pathlib import Path
 
 import paramiko
 
+from node_access import connect_node
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_PASSWORDS = REPO_ROOT / "VPN NODE SSH KEYS" / "PASSWORDS.txt"
-
-
-def _parse_passwords(path: Path) -> dict[str, str]:
-    raw = path.read_text(encoding="utf-8", errors="replace")
-    lines = [ln.strip() for ln in raw.splitlines()]
-    out: dict[str, str] = {}
-    markers = {"brain": "BRAINnode", "us": "USnode", "pl": "PLnode", "it": "ITnode", "free": "Free Node"}
-    for code, marker in markers.items():
-        try:
-            idx = next(i for i, ln in enumerate(lines) if marker in ln)
-        except StopIteration:
-            continue
-        pw = ""
-        for j in range(idx + 1, min(idx + 12, len(lines))):
-            ln = lines[j]
-            if not ln or ln.startswith("ssh-ed25519 "):
-                continue
-            pw = ln
-            break
-        if pw:
-            out[code] = pw
-    return out
 
 
 def _run(ssh: paramiko.SSHClient, cmd: str, *, timeout: int = 60) -> str:
@@ -45,6 +25,12 @@ def _run(ssh: paramiko.SSHClient, cmd: str, *, timeout: int = 60) -> str:
     out = stdout.read().decode(errors="replace").strip()
     err = stderr.read().decode(errors="replace").strip()
     return out or err
+
+
+def _print_safe(text: str) -> None:
+    enc = sys.stdout.encoding or "utf-8"
+    safe = str(text or "").encode(enc, errors="replace").decode(enc, errors="replace")
+    print(safe)
 
 
 def main() -> int:
@@ -57,20 +43,21 @@ def main() -> int:
     ap.add_argument("--passwords", default=str(DEFAULT_PASSWORDS))
     args = ap.parse_args()
 
-    pw = os.getenv(f"NODE_PASS_{args.code.upper()}", "").strip() or _parse_passwords(Path(args.passwords)).get(args.code, "")
-    if not pw:
-        raise SystemExit(f"Missing password for {args.code}")
-
-    ssh = paramiko.SSHClient()
-    ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-    ssh.connect(args.host, port=args.ssh_port, username=args.ssh_user, password=pw, timeout=30, banner_timeout=30, auth_timeout=30)
+    ssh, auth_method = connect_node(
+        code=args.code,
+        host=args.host,
+        user=args.ssh_user,
+        port=args.ssh_port,
+        passwords_path=Path(args.passwords),
+    )
     try:
+        _print_safe(f"auth_method={auth_method}")
         if args.action in {"start", "restart"}:
-            print(_run(ssh, "systemctl enable x-ui >/dev/null 2>&1 || true", timeout=60))
-        print(_run(ssh, f"systemctl {args.action} x-ui || true", timeout=60))
-        print(_run(ssh, "systemctl is-active x-ui || true", timeout=30))
+            _print_safe(_run(ssh, "systemctl enable x-ui >/dev/null 2>&1 || true", timeout=60))
+        _print_safe(_run(ssh, f"systemctl {args.action} x-ui || true", timeout=60))
+        _print_safe(_run(ssh, "systemctl is-active x-ui || true", timeout=30))
         if args.action in {"start", "restart"}:
-            print(_run(ssh, "ss -tlnp | grep -E ':(\\d+)' | grep x-ui || true", timeout=30))
+            _print_safe(_run(ssh, "ss -tlnp | grep -E ':(\\d+)' | grep x-ui || true", timeout=30))
         return 0
     finally:
         ssh.close()

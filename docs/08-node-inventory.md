@@ -8,12 +8,12 @@ This file tracks the current node list and their roles. Do not put secrets here 
 
 | Code | Role | Runtime status | Plan | IP |
 |---|---|---|---|---|
-| `brain` | Brain / control-plane | x-ui installed, but node disabled in current delivery DB | `v3-pico` (1 vCPU, 2 GB RAM) | `82.21.114.104` |
-| `pl` | Worker | enabled for delivery | `v2-pico1` (1 vCPU, 1 GB RAM) | `82.40.38.84` |
-| `it` | Worker | enabled for delivery | `v2-pico1` (1 vCPU, 1 GB RAM) | `151.241.215.84` |
-| `us` | Worker | enabled for delivery | `v2-pico1` (1 vCPU, 1 GB RAM) | `82.21.92.142` |
-| `nl` | Worker | enabled for delivery | `v3-pico` (1 vCPU, 1 GB RAM) | `82.24.195.93` |
-| `free` | Worker (dedicated FREE pool) | enabled for delivery | `v2-pico` (1 vCPU, 1 GB RAM) | `151.245.217.23` |
+| `brain` | Brain / control-plane | x-ui installed, but node disabled in current delivery DB | `2 vCPU / 4 GB RAM / 60 GB NVMe` | `82.21.114.104` |
+| `pl` | Worker | enabled for delivery | `1 vCPU / 2 GB RAM / 40 GB NVMe` | `82.40.38.84` |
+| `it` | Worker | enabled for delivery | `1 vCPU / 2 GB RAM / 40 GB NVMe` | `151.241.215.84` |
+| `us` | Worker | enabled for delivery | `1 vCPU / 2 GB RAM / 40 GB NVMe` | `82.21.92.142` |
+| `nl` | Worker | enabled for delivery | `1 vCPU / 2 GB RAM / 40 GB NVMe` | `82.24.195.93` |
+| `free` | Worker (dedicated FREE pool, physically NLfree) | enabled for delivery | `1 vCPU / 1 GB RAM / 40 GB NVMe` | `151.245.217.23` |
 
 ## Ops Notes
 
@@ -22,8 +22,8 @@ This file tracks the current node list and their roles. Do not put secrets here 
 - 3x-ui panel port/path is randomized per node and restricted by UFW to brain IP only.
 - Brain x-ui built-in subscription server must stay disabled (`subEnable=false`, `subPort=2097`) because portal owns `:2096`.
 - Current standard delivery profile is `VLESS + TCP + Reality`.
-- Current runtime free contour is the dedicated node code `free`. If the host is physically located in NL, treat that as an infra-placement fact, not as a return to `pl_free`.
-- `pl` currently also has a legacy extra inbound `8443` (`PL Free Reality`); treat it as manual/legacy until it is reflected in runtime DB and sync docs.
+- Current runtime free contour is the dedicated node code `free`. Physically this is the separate NL-based server `NLfree`, but in runtime and subscription logic it remains a standalone free pool.
+- `pl:8443` (`PL Free Reality`) was retired on 2026-03-07: inbound `id=2` is disabled and UFW exposure for `8443/tcp` was removed. Keep it only as a disabled legacy row until final deletion.
 
 ## Checklist
 

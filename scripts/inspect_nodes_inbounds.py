@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 """
-Inspect 3x-ui/x-ui inbounds on each node via SSH (password auth).
+Inspect 3x-ui/x-ui inbounds on each node via SSH (password or key auth).
 
 This script is read-only. It helps confirm whether nodes are "empty"
 and what inbound IDs/ports exist before configuring multi-node.
@@ -17,7 +17,7 @@ from pathlib import Path
 
 import paramiko
 
-from node_passwords import parse_passwords
+from node_access import connect_node
 
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
@@ -39,10 +39,10 @@ def _parse_inventory(path: Path) -> list[Node]:
         if not line.startswith("|") or "`" not in line:
             continue
         parts = [p.strip() for p in line.strip("|").split("|")]
-        if len(parts) < 4:
+        if len(parts) < 5:
             continue
         code = parts[0].strip("`").strip()
-        ip = parts[3].strip("`").strip()
+        ip = parts[-1].strip("`").strip()
         if not code or code.lower() == "code":
             continue
         if not re.fullmatch(r"[a-z0-9_-]+", code):
@@ -53,16 +53,6 @@ def _parse_inventory(path: Path) -> list[Node]:
     if not nodes:
         raise SystemExit(f"Failed to parse inventory: {path}")
     return nodes
-
-
-def _ssh_connect(ip: str, *, user: str, port: int, password: str) -> paramiko.SSHClient:
-    cli = paramiko.SSHClient()
-    cli.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-    cli.connect(ip, port=port, username=user, password=password, timeout=30, banner_timeout=30, auth_timeout=30)
-    t = cli.get_transport()
-    if t:
-        t.set_keepalive(30)
-    return cli
 
 
 def _run(ssh: paramiko.SSHClient, cmd: str, *, timeout: int = 60) -> tuple[int, str, str]:
@@ -88,18 +78,19 @@ def main() -> int:
     if only:
         nodes = [n for n in nodes if n.code in only]
 
-    pw_map = parse_passwords(Path(args.passwords), requested_codes=[n.code for n in nodes])
-
     results: list[dict] = []
     for n in nodes:
-        pw = os.getenv(f"NODE_PASS_{n.code.upper()}", "").strip() or pw_map.get(n.code, "")
-        if not pw:
-            raise SystemExit(f"Missing password for node {n.code}")
         print(f"[{n.code}] inspect {n.ip} ...")
-        ssh = _ssh_connect(n.ip, user=args.ssh_user, port=args.ssh_port, password=pw)
+        ssh, auth_method = connect_node(
+            code=n.code,
+            host=n.ip,
+            user=args.ssh_user,
+            port=args.ssh_port,
+            passwords_path=Path(args.passwords),
+        )
         try:
             # Check DB presence and list inbounds.
-            facts: dict[str, object] = {"code": n.code, "ip": n.ip}
+            facts: dict[str, object] = {"code": n.code, "ip": n.ip, "auth_method": auth_method}
             code, out, err = _run(
                 ssh,
                 "test -f /etc/x-ui/x-ui.db && echo HAS_DB || echo NO_DB",

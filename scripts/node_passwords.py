@@ -27,11 +27,22 @@ def _find_marker_index(lines: list[str], code: str) -> int | None:
     code = str(code or "").strip().lower()
     if not code:
         return None
-    patterns = [
-        re.compile(rf"\b{re.escape(code)}node\b", flags=re.IGNORECASE),
-        re.compile(rf"\b{re.escape(code)}\s*node\b", flags=re.IGNORECASE),
-        re.compile(rf"\b{re.escape(code)}\b", flags=re.IGNORECASE),
-    ]
+    marker_aliases = {
+        "brain": ["brainnode"],
+        "us": ["usnode"],
+        "pl": ["plnode"],
+        "it": ["itnode"],
+        "nl": ["nlnode", "low ping v2"],
+        "free": ["free node", "freenode"],
+    }
+    patterns = [re.compile(rf"\b{re.escape(alias)}\b", flags=re.IGNORECASE) for alias in marker_aliases.get(code, [])]
+    patterns.extend(
+        [
+            re.compile(rf"\b{re.escape(code)}node\b", flags=re.IGNORECASE),
+            re.compile(rf"\b{re.escape(code)}\s*node\b", flags=re.IGNORECASE),
+            re.compile(rf"\b{re.escape(code)}\b", flags=re.IGNORECASE),
+        ]
+    )
     if code == "free":
         patterns.insert(0, re.compile(r"\bfree\s*node\b", flags=re.IGNORECASE))
     for idx, line in enumerate(lines):

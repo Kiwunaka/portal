@@ -41,10 +41,10 @@ def _parse_inventory(path: Path) -> list[Node]:
         if not line.startswith("|") or "`" not in line:
             continue
         parts = [p.strip() for p in line.strip("|").split("|")]
-        if len(parts) < 4:
+        if len(parts) < 5:
             continue
         code = parts[0].strip("`").strip()
-        ip = parts[3].strip("`").strip()
+        ip = parts[-1].strip("`").strip()
         if not code or code.lower() == "code":
             continue
         if not re.fullmatch(r"[a-z0-9_-]+", code):
