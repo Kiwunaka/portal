@@ -863,6 +863,12 @@ a {
   color: var(--lp-text);
 }
 
+.checkout-secondary-button {
+  width: 100%;
+  margin-top: 10px;
+  cursor: pointer;
+}
+
 .checkout-status {
   margin-top: 14px;
 }

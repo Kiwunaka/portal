@@ -36,7 +36,16 @@ type CreatePublicOrderResponse = {
   discount_pct?: number;
 };
 
+type CachedCheckoutPayment = {
+  order_id: string;
+  payment_url: string;
+  plan_code: string;
+  ticket_exp: number;
+  saved_at: number;
+};
+
 const config = getPortalPublicConfig(process.env as Record<string, string | undefined>);
+const CHECKOUT_CACHE_PREFIX = "portal_checkout_payment_v1";
 
 const FALLBACK_PLANS: PlanOption[] = [
   { code: "start_99", label: "Start 30 дней", amount_rub: 99, days: 30, device_limit: 1 },
@@ -57,6 +66,35 @@ function candidateApiBases(): string[] {
   }
   out.push("https://portal-privacy.online");
   return Array.from(new Set(out.filter(Boolean)));
+}
+
+function decodeTicketPayload(token: string): { exp?: number; tg_id?: number; plan_code?: string; source?: string } | null {
+  const raw = String(token || "").trim();
+  if (!raw || !raw.includes(".")) {
+    return null;
+  }
+  const encoded = raw.split(".", 1)[0] || "";
+  if (!encoded) {
+    return null;
+  }
+  try {
+    const padding = "=".repeat((4 - (encoded.length % 4)) % 4);
+    const normalized = (encoded + padding).replace(/-/g, "+").replace(/_/g, "/");
+    const decoded = typeof window !== "undefined" ? window.atob(normalized) : "";
+    const bytes = Uint8Array.from(decoded, (char) => char.charCodeAt(0));
+    const payloadText = new TextDecoder().decode(bytes);
+    const parsed = JSON.parse(payloadText) as { exp?: number; tg_id?: number; plan_code?: string; source?: string };
+    return parsed && typeof parsed === "object" ? parsed : null;
+  } catch {
+    return null;
+  }
+}
+
+function formatCountdown(secondsLeft: number): string {
+  const safe = Math.max(0, Math.floor(secondsLeft));
+  const minutes = Math.floor(safe / 60);
+  const seconds = safe % 60;
+  return `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
 }
 
 export function CheckoutLoadingFallback() {
@@ -93,10 +131,29 @@ export default function CheckoutClient() {
   const [busy, setBusy] = useState(false);
   const [statusText, setStatusText] = useState("");
   const [breakdown, setBreakdown] = useState<{ base: number; pct: number; final: number } | null>(null);
+  const [secondsLeft, setSecondsLeft] = useState(0);
+  const [cachedPayment, setCachedPayment] = useState<CachedCheckoutPayment | null>(null);
+
+  const ticketPayload = useMemo(() => decodeTicketPayload(checkoutTicket), [checkoutTicket]);
+  const ticketExp = Number(ticketPayload?.exp || 0);
+  const ticketCountdownLabel = ticketExp > 0 ? formatCountdown(secondsLeft) : "";
 
   useEffect(() => {
     setSelectedPlan(queryPlan);
   }, [queryPlan]);
+
+  useEffect(() => {
+    if (!ticketExp) {
+      setSecondsLeft(0);
+      return;
+    }
+    const sync = () => {
+      setSecondsLeft(Math.max(0, ticketExp - Math.floor(Date.now() / 1000)));
+    };
+    sync();
+    const timer = window.setInterval(sync, 1000);
+    return () => window.clearInterval(timer);
+  }, [ticketExp]);
 
   useEffect(() => {
     let cancelled = false;
@@ -125,7 +182,7 @@ export default function CheckoutClient() {
             return;
           }
         } catch {
-          // Try the next base.
+          // Try next base.
         }
       }
     };
@@ -139,17 +196,49 @@ export default function CheckoutClient() {
     () => plans.find((item) => item.code === selectedPlan) || plans[0] || FALLBACK_PLANS[0],
     [plans, selectedPlan],
   );
+
   const hasCheckoutTicket = Boolean(checkoutTicket);
   const fromBot = entrySource === "bot";
+  const ticketExpired = hasCheckoutTicket && ticketExp > 0 && secondsLeft <= 0;
+  const cacheKey = `${CHECKOUT_CACHE_PREFIX}:${checkoutTicket}:${selectedPlan}`;
+
+  useEffect(() => {
+    if (typeof window === "undefined" || !checkoutTicket) {
+      setCachedPayment(null);
+      return;
+    }
+    try {
+      const raw = window.localStorage.getItem(cacheKey);
+      if (!raw) {
+        setCachedPayment(null);
+        return;
+      }
+      const parsed = JSON.parse(raw) as CachedCheckoutPayment;
+      const now = Math.floor(Date.now() / 1000);
+      if (!parsed?.payment_url || !parsed?.order_id || Number(parsed.ticket_exp || 0) <= now) {
+        window.localStorage.removeItem(cacheKey);
+        setCachedPayment(null);
+        return;
+      }
+      setCachedPayment(parsed);
+    } catch {
+      setCachedPayment(null);
+    }
+  }, [cacheKey, checkoutTicket]);
 
   async function createOrder(): Promise<void> {
     if (!activePlan?.code || !checkoutTicket) {
       setStatusText("Прямая оплата открывается только по персональной ссылке из Telegram или кабинета.");
       return;
     }
+    if (ticketExpired) {
+      setStatusText("Ссылка на оплату уже истекла. Вернитесь в Telegram и откройте оплату заново.");
+      return;
+    }
     setBusy(true);
     setStatusText("");
     setBreakdown(null);
+
     for (const base of candidateApiBases()) {
       try {
         const response = await fetch(`${base}/api/payments/freekassa/orders/create-public`, {
@@ -174,6 +263,17 @@ export default function CheckoutClient() {
         if (!data.payment_url) {
           throw new Error("Платёжная ссылка не получена.");
         }
+        const cacheEntry: CachedCheckoutPayment = {
+          order_id: String(data.order_id || ""),
+          payment_url: String(data.payment_url || ""),
+          plan_code: String(activePlan.code || ""),
+          ticket_exp: Number(ticketExp || 0),
+          saved_at: Math.floor(Date.now() / 1000),
+        };
+        if (typeof window !== "undefined") {
+          window.localStorage.setItem(cacheKey, JSON.stringify(cacheEntry));
+        }
+        setCachedPayment(cacheEntry);
         setStatusText("Ссылка готова. Переводим на страницу оплаты…");
         window.location.href = data.payment_url;
         return;
@@ -181,6 +281,7 @@ export default function CheckoutClient() {
         setStatusText(String((error as { message?: string })?.message || error || "Не удалось открыть оплату."));
       }
     }
+
     setBusy(false);
   }
 
@@ -230,7 +331,7 @@ export default function CheckoutClient() {
             <ul className="checkout-trust-list">
               <li>Оплата откроется на стороне банка или платёжной страницы.</li>
               <li>После подтверждения доступ обновится автоматически.</li>
-              <li>Если окно закрылось, можно вернуться в Telegram и проверить статус.</li>
+              <li>Если окно закрылось, можно вернуться сюда и продолжить оплату, пока ссылка ещё активна.</li>
             </ul>
           </div>
         </article>
@@ -242,6 +343,7 @@ export default function CheckoutClient() {
               ? "План уже привязан к вашему профилю. После оплаты ничего заново настраивать не придётся."
               : "Прямую оплату мы открываем только по персональной ссылке, чтобы доступ сразу ушёл в нужный профиль."}
           </p>
+
           <div className="checkout-summary">
             <p>
               План: <strong>{activePlan.label}</strong>
@@ -270,6 +372,11 @@ export default function CheckoutClient() {
                 Сумма: <strong>{activePlan.amount_rub} ₽</strong>
               </p>
             )}
+            {hasCheckoutTicket && ticketExp > 0 ? (
+              <p className="checkout-summary-total">
+                Ссылка активна ещё: <strong>{ticketCountdownLabel}</strong>
+              </p>
+            ) : null}
           </div>
 
           <button
@@ -281,14 +388,36 @@ export default function CheckoutClient() {
               }
               void createOrder();
             }}
-            disabled={busy}
+            disabled={busy || ticketExpired}
             className="checkout-submit"
           >
-            {busy ? "Готовим ссылку…" : hasCheckoutTicket ? getCopyText("marketing.checkout.primary_cta", "Перейти к оплате") : "Продолжить в Telegram"}
+            {busy
+              ? "Готовим ссылку…"
+              : ticketExpired
+                ? "Ссылка истекла"
+                : hasCheckoutTicket
+                  ? getCopyText("marketing.checkout.primary_cta", "Перейти к оплате")
+                  : "Продолжить в Telegram"}
           </button>
 
+          {hasCheckoutTicket && cachedPayment?.payment_url && !ticketExpired ? (
+            <button
+              type="button"
+              onClick={() => {
+                window.location.href = cachedPayment.payment_url;
+              }}
+              className="checkout-secondary checkout-secondary-button"
+            >
+              Вернуться к оплате
+            </button>
+          ) : null}
+
           {hasCheckoutTicket ? (
-            <p className="checkout-helper">Откроем безопасную страницу оплаты с уже выбранным тарифом.</p>
+            <p className="checkout-helper">
+              {ticketExpired
+                ? "Время этой ссылки закончилось. Вернитесь в Telegram и откройте оплату заново."
+                : "Откроем безопасную страницу оплаты с уже выбранным тарифом."}
+            </p>
           ) : (
             <div className="checkout-empty">
               <p>Чтобы открыть оплату без ошибок, продолжите путь из Telegram или кабинета. Там для вас создаётся персональная ссылка.</p>
