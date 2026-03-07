@@ -489,6 +489,7 @@ class BotPaywallTests(unittest.TestCase):
         self.assertTrue(any("99 ₽ / 99⭐" in text for text in labels))
         self.assertTrue(any("249 ₽ / 249⭐" in text for text in labels))
         self.assertTrue(any("699 ₽ / 699⭐" in text for text in labels))
+        self.assertFalse(any("points" in text.lower() for text in labels))
 
     def test_tariff_payment_choice_text_calls_points_bonuses(self) -> None:
         self.bot_module.ensure_pending_user(1001, username="alice")

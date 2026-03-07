@@ -3063,15 +3063,7 @@ def _tariff_button_label(*, tg_id: int, tariff_key: str, label: str, marketing_b
     pricing = _tariff_pricing_for_user(tg_id, tariff_key)
     rub_price = int(pricing["base_price"])
     stars_price = int(pricing["final_stars"])
-    discount_badges: list[str] = []
-    if pricing["use_discount"]:
-        discount_badges.append("реф")
-    if int(pricing["pending_discount_pct"]) > 0:
-        discount_badges.append("промо")
-    if int(pricing["points_to_use"]) > 0:
-        discount_badges.append("points")
-    discount_suffix = f" · {' + '.join(discount_badges)}" if discount_badges else ""
-    return f"{label} — {rub_price} ₽ / {stars_price}⭐{marketing_badge}{savings_text}{discount_suffix}"
+    return f"{label} — {rub_price} ₽ / {stars_price}⭐{marketing_badge}{savings_text}"
 
 
 def _build_tariff_payment_choice_text(*, tariff_key: str, tg_id: int) -> str:
