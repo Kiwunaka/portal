@@ -39,6 +39,10 @@
 - `3x-ui` — node-local исполнительный слой.
 - `user_nodes` — авторитетный список реальных назначений пользователя на ноды.
 - Если `user_nodes` для пользователя не пустой, подписка и user-facing API должны опираться на эти маппинги.
+- При этом user-facing выдача обязана дополнительно фильтровать маппинги по текущему плану:
+  - premium не должен видеть `free`/`brain`;
+  - free не должен видеть premium-ноды;
+  - legacy-мусор в `user_nodes` не должен ломать UI и подписку.
 - Fallback "все доступные ноды по плану" допустим только для legacy-пользователей без маппингов.
 
 ## Состояния ноды
@@ -106,6 +110,10 @@
   - disable блокируется без resync;
   - resync переносит пользователя и чистит source mapping.
 - admin `/admin/nodes` показывает lifecycle flags и даёт действия без захода в panel.
+- для production-аудита premium coverage теперь есть отдельный операторский сценарий:
+  - `python scripts/remote_audit_paid_node_coverage.py --brain-ip <IP>`
+  - для безопаского ремонта только недостающих premium-маппингов:
+  - `python scripts/remote_audit_paid_node_coverage.py --brain-ip <IP> --repair`
 
 ## Что осталось / риск
 

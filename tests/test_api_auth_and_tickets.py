@@ -255,6 +255,81 @@ class ApiAuthAndTicketsTests(unittest.TestCase):
         nodes = r.json()["nodes"]
         self.assertEqual([row["code"] for row in nodes], ["it"])
 
+    def test_user_data_filters_legacy_free_and_brain_mappings_for_paid_user(self) -> None:
+        from db import SessionLocal
+        from models import Node, User, UserNode
+
+        s = SessionLocal()
+        try:
+            user = s.query(User).filter_by(tg_id=1001).first()
+            assert user is not None
+            user.sub_type = "PAID"
+            user.current_plan_code = "1_month"
+            user.sub_token = "subtoken-paid-1001"
+            brain = Node(
+                code="brain",
+                name="Brain",
+                host="brain.example.test",
+                vless_port=443,
+                reality_sni="www.google.com",
+                reality_pbk="pbk-brain",
+                reality_sid="sid-brain",
+                panel_base_url="https://brain.example.test:8444",
+                panel_path="/panel",
+                panel_user="admin",
+                panel_pass="pass",
+                inbound_id=1,
+                enabled=True,
+            )
+            free = Node(
+                code="free",
+                name="Free",
+                host="free.example.test",
+                vless_port=443,
+                reality_sni="www.google.com",
+                reality_pbk="pbk-free",
+                reality_sid="sid-free",
+                panel_base_url="https://free.example.test:8444",
+                panel_path="/panel",
+                panel_user="admin",
+                panel_pass="pass",
+                inbound_id=1,
+                enabled=True,
+            )
+            it = Node(
+                code="it",
+                name="Italy",
+                host="it.example.test",
+                vless_port=443,
+                reality_sni="www.tim.it",
+                reality_pbk="pbk-it",
+                reality_sid="sid-it",
+                panel_base_url="https://it.example.test:8444",
+                panel_path="/panel",
+                panel_user="admin",
+                panel_pass="pass",
+                inbound_id=1,
+                enabled=True,
+            )
+            s.add_all([brain, free, it])
+            s.flush()
+            s.add_all(
+                [
+                    UserNode(tg_id=1001, node_id=brain.id, client_uuid=str(user.uuid), panel_email=str(user.email)),
+                    UserNode(tg_id=1001, node_id=free.id, client_uuid=str(user.uuid), panel_email=str(user.email)),
+                    UserNode(tg_id=1001, node_id=it.id, client_uuid=str(user.uuid), panel_email=str(user.email)),
+                ]
+            )
+            s.commit()
+        finally:
+            s.close()
+
+        user_hdrs = {"X-Telegram-Init-Data": self._init_data(1001, "alice")}
+        r = self.client.get("/api/user/1001", headers=user_hdrs)
+        self.assertEqual(r.status_code, 200, r.text)
+        nodes = r.json()["nodes"]
+        self.assertEqual([row["code"] for row in nodes], ["it"])
+
     def test_admin_node_disable_requires_resync_when_mapped_users_exist(self) -> None:
         from db import SessionLocal
         from models import Node, UserNode

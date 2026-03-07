@@ -7274,22 +7274,54 @@ def _node_accepts_new_clients(node: Any) -> bool:
     )
 
 
-def _mapped_nodes_for_user(session, tg_id: int, nodes: list) -> list:
+def _subscription_excluded_codes() -> set[str]:
+    return {
+        token.strip().lower()
+        for token in str(os.getenv("SUBSCRIPTION_EXCLUDE_NODE_CODES", "") or "").split(",")
+        if token.strip()
+    }
+
+
+def _node_allowed_for_plan(user: User, node: Any, *, excluded_codes: set[str] | None = None) -> bool:
+    code = str(getattr(node, "code", "") or "").strip().lower()
+    if not code:
+        return False
+    base = _node_code_base(code)
+    excluded = excluded_codes or set()
+    if code in excluded or base in excluded:
+        return False
+
+    is_free = (user.sub_type or "").upper() == "FREE"
+    plan_code = str(getattr(user, "current_plan_code", "") or "").strip().lower()
+
+    if is_free:
+        return "free" in code
+
+    if plan_code == "start_99":
+        return "free" not in code and base == "nl"
+
+    return "free" not in code and base not in {"brain", "de"}
+
+
+def _mapped_nodes_for_user(session, user: User, nodes: list) -> list:
     node_by_id = {int(getattr(node, "id", 0) or 0): node for node in nodes if getattr(node, "id", None) is not None}
     rows = (
         session.query(UserNode)
-        .filter(UserNode.tg_id == int(tg_id))
+        .filter(UserNode.tg_id == int(user.tg_id))
         .order_by(UserNode.created_at.asc(), UserNode.id.asc())
         .all()
     )
     out: list[Any] = []
     seen: set[str] = set()
+    excluded_codes = _subscription_excluded_codes()
     for row in rows:
         node = node_by_id.get(int(getattr(row, "node_id", 0) or 0))
         if not node:
             continue
         code = str(getattr(node, "code", "") or "").strip().lower()
         if not code or code in seen:
+            continue
+        if not _node_allowed_for_plan(user, node, excluded_codes=excluded_codes):
             continue
         seen.add(code)
         out.append(node)
@@ -7305,11 +7337,7 @@ def _fallback_nodes_for_user(user: User, nodes: list) -> list:
     if not nodes:
         return nodes
 
-    excluded_codes = {
-        token.strip().lower()
-        for token in str(os.getenv("SUBSCRIPTION_EXCLUDE_NODE_CODES", "") or "").split(",")
-        if token.strip()
-    }
+    excluded_codes = _subscription_excluded_codes()
 
     def _apply_node_filters(pool: list) -> list:
         # 1) Drop explicitly excluded nodes/country-bases from subscription output.
@@ -7368,7 +7396,7 @@ def _nodes_for_user(user: User, nodes: list, session=None) -> list:
     own_session = session is None
     s = session or SessionLocal()
     try:
-        mapped = _mapped_nodes_for_user(s, int(user.tg_id), nodes)
+        mapped = _mapped_nodes_for_user(s, user, nodes)
         if mapped:
             return mapped
         return _fallback_nodes_for_user(user, nodes)
@@ -7401,7 +7429,7 @@ def _target_node_codes_for_resync(session, user: User, source_code: str, nodes: 
     out: list[str] = []
     seen: set[str] = set()
 
-    for node in _mapped_nodes_for_user(session, int(user.tg_id), nodes):
+    for node in _mapped_nodes_for_user(session, user, nodes):
         code = str(getattr(node, "code", "") or "").strip().lower()
         if not code or code == source_code or code in seen:
             continue
