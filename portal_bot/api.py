@@ -10,6 +10,7 @@ Portal API for Telegram WebApp and Subscription endpoint.
 from __future__ import annotations
 
 import base64
+import contextvars
 import hashlib
 import hmac
 import inspect
@@ -121,6 +122,10 @@ from web_auth_service import (
 
 init_db()
 logger = logging.getLogger(__name__)
+_current_request_ctx: contextvars.ContextVar[Request | None] = contextvars.ContextVar(
+    "portal_current_request",
+    default=None,
+)
 
 
 def _utcnow() -> datetime:
@@ -1055,6 +1060,17 @@ def _maybe_downgrade_expired_to_free(s, user: User) -> bool:
         return False
 
 app = FastAPI(title="Portal API", version="2.0.0")
+
+
+@app.middleware("http")
+async def bind_current_request(request: Request, call_next):
+    token = _current_request_ctx.set(request)
+    try:
+        return await call_next(request)
+    finally:
+        _current_request_ctx.reset(token)
+
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -1326,6 +1342,8 @@ def _dev_auth_user(request: Request | None) -> dict[str, Any] | None:
 
 
 def _extract_web_session_token(request: Request | None) -> str:
+    if request is None:
+        request = _current_request_ctx.get()
     if request is None:
         return ""
     auth_header = str(request.headers.get("authorization") or "").strip()
