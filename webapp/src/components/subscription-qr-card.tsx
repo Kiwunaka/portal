@@ -5,9 +5,10 @@ import { useEffect, useState } from "react";
 
 type Props = {
   value: string;
+  active?: boolean;
 };
 
-export default function SubscriptionQrCard({ value }: Props) {
+export default function SubscriptionQrCard({ value, active = true }: Props) {
   const [src, setSrc] = useState("");
   const [error, setError] = useState("");
 
@@ -15,11 +16,12 @@ export default function SubscriptionQrCard({ value }: Props) {
     let cancelled = false;
 
     const generate = async () => {
-      if (!value) {
+      if (!value || !active) {
         setSrc("");
         setError("");
         return;
       }
+
       try {
         const { toDataURL } = await import("qrcode");
         const nextSrc = await toDataURL(value, {
@@ -46,10 +48,14 @@ export default function SubscriptionQrCard({ value }: Props) {
     return () => {
       cancelled = true;
     };
-  }, [value]);
+  }, [active, value]);
 
   if (!value) {
-    return <p className="mt-3 text-sm text-slate-500">Ссылка пока недоступна</p>;
+    return <p className="mt-3 text-sm text-slate-500">Ссылка пока недоступна.</p>;
+  }
+
+  if (!active) {
+    return <p className="mt-3 text-sm text-slate-500">QR-код соберём по запросу, когда он понадобится.</p>;
   }
 
   if (error) {
