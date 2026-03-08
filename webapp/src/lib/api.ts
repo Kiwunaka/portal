@@ -517,6 +517,12 @@ export type AdminNodeHealthRow = {
   panel_latency_ms?: number | null;
   panel_error_rate: number;
   active_clients: number;
+  cpu_percent: number;
+  memory_used_mb: number;
+  memory_total_mb: number;
+  disk_used_gb: number;
+  disk_total_gb: number;
+  disk_free_gb: number;
   last_ok_at?: string | null;
   last_health_at?: string | null;
   weight: number;

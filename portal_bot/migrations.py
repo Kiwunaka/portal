@@ -254,6 +254,12 @@ def run_migrations(engine: Engine) -> None:
                 ("panel_latency_ms", "INTEGER"),
                 ("panel_error_rate", "FLOAT DEFAULT 0"),
                 ("active_clients", "INTEGER DEFAULT 0"),
+                ("cpu_percent", "FLOAT DEFAULT 0"),
+                ("memory_used_mb", "INTEGER DEFAULT 0"),
+                ("memory_total_mb", "INTEGER DEFAULT 0"),
+                ("disk_used_gb", "FLOAT DEFAULT 0"),
+                ("disk_total_gb", "FLOAT DEFAULT 0"),
+                ("disk_free_gb", "FLOAT DEFAULT 0"),
                 ("last_ok_at", "DATETIME"),
             ]
             for col, ddl in wanted_cols:
@@ -276,6 +282,12 @@ def run_migrations(engine: Engine) -> None:
                   panel_latency_ms INTEGER,
                   panel_error_rate FLOAT DEFAULT 0,
                   active_clients INTEGER DEFAULT 0,
+                  cpu_percent FLOAT DEFAULT 0,
+                  memory_used_mb INTEGER DEFAULT 0,
+                  memory_total_mb INTEGER DEFAULT 0,
+                  disk_used_gb FLOAT DEFAULT 0,
+                  disk_total_gb FLOAT DEFAULT 0,
+                  disk_free_gb FLOAT DEFAULT 0,
                   total_up_bytes BIGINT DEFAULT 0,
                   total_down_bytes BIGINT DEFAULT 0,
                   total_traffic_bytes BIGINT DEFAULT 0,
@@ -288,6 +300,12 @@ def run_migrations(engine: Engine) -> None:
         )
         if conn.execute(text("SELECT name FROM sqlite_master WHERE type='table' AND name='node_health_samples';")).fetchone():
             node_sample_cols = [
+                ("cpu_percent", "FLOAT DEFAULT 0"),
+                ("memory_used_mb", "INTEGER DEFAULT 0"),
+                ("memory_total_mb", "INTEGER DEFAULT 0"),
+                ("disk_used_gb", "FLOAT DEFAULT 0"),
+                ("disk_total_gb", "FLOAT DEFAULT 0"),
+                ("disk_free_gb", "FLOAT DEFAULT 0"),
                 ("total_up_bytes", "BIGINT DEFAULT 0"),
                 ("total_down_bytes", "BIGINT DEFAULT 0"),
                 ("total_traffic_bytes", "BIGINT DEFAULT 0"),
@@ -726,8 +744,20 @@ def _run_postgres_migrations(engine: Engine) -> None:
         conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS current_plan_code VARCHAR(32);"))
         conn.execute(text("ALTER TABLE nodes ADD COLUMN IF NOT EXISTS accepting_new_clients BOOLEAN DEFAULT TRUE;"))
         conn.execute(text("ALTER TABLE nodes ADD COLUMN IF NOT EXISTS is_draining BOOLEAN DEFAULT FALSE;"))
+        conn.execute(text("ALTER TABLE nodes ADD COLUMN IF NOT EXISTS cpu_percent DOUBLE PRECISION DEFAULT 0;"))
+        conn.execute(text("ALTER TABLE nodes ADD COLUMN IF NOT EXISTS memory_used_mb INTEGER DEFAULT 0;"))
+        conn.execute(text("ALTER TABLE nodes ADD COLUMN IF NOT EXISTS memory_total_mb INTEGER DEFAULT 0;"))
+        conn.execute(text("ALTER TABLE nodes ADD COLUMN IF NOT EXISTS disk_used_gb DOUBLE PRECISION DEFAULT 0;"))
+        conn.execute(text("ALTER TABLE nodes ADD COLUMN IF NOT EXISTS disk_total_gb DOUBLE PRECISION DEFAULT 0;"))
+        conn.execute(text("ALTER TABLE nodes ADD COLUMN IF NOT EXISTS disk_free_gb DOUBLE PRECISION DEFAULT 0;"))
         conn.execute(text("CREATE INDEX IF NOT EXISTS ix_nodes_accepting_new_clients ON nodes(accepting_new_clients);"))
         conn.execute(text("CREATE INDEX IF NOT EXISTS ix_nodes_is_draining ON nodes(is_draining);"))
+        conn.execute(text("ALTER TABLE node_health_samples ADD COLUMN IF NOT EXISTS cpu_percent DOUBLE PRECISION DEFAULT 0;"))
+        conn.execute(text("ALTER TABLE node_health_samples ADD COLUMN IF NOT EXISTS memory_used_mb INTEGER DEFAULT 0;"))
+        conn.execute(text("ALTER TABLE node_health_samples ADD COLUMN IF NOT EXISTS memory_total_mb INTEGER DEFAULT 0;"))
+        conn.execute(text("ALTER TABLE node_health_samples ADD COLUMN IF NOT EXISTS disk_used_gb DOUBLE PRECISION DEFAULT 0;"))
+        conn.execute(text("ALTER TABLE node_health_samples ADD COLUMN IF NOT EXISTS disk_total_gb DOUBLE PRECISION DEFAULT 0;"))
+        conn.execute(text("ALTER TABLE node_health_samples ADD COLUMN IF NOT EXISTS disk_free_gb DOUBLE PRECISION DEFAULT 0;"))
         conn.execute(text("ALTER TABLE node_health_samples ADD COLUMN IF NOT EXISTS total_up_bytes BIGINT DEFAULT 0;"))
         conn.execute(text("ALTER TABLE node_health_samples ADD COLUMN IF NOT EXISTS total_down_bytes BIGINT DEFAULT 0;"))
         conn.execute(text("ALTER TABLE node_health_samples ADD COLUMN IF NOT EXISTS total_traffic_bytes BIGINT DEFAULT 0;"))

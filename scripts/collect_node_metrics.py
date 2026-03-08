@@ -83,10 +83,23 @@ async def _collect_one(*, node: Node, error_window: int, source: str) -> dict:
     active_clients = 0
     total_up_bytes = 0
     total_down_bytes = 0
+    cpu_percent: float | None = None
+    memory_used_mb: int | None = None
+    memory_total_mb: int | None = None
+    disk_used_gb: float | None = None
+    disk_total_gb: float | None = None
+    disk_free_gb: float | None = None
 
     try:
         ok = await client.login()
         if ok:
+            system_metrics = await client.get_system_metrics()
+            cpu_percent = system_metrics.get("cpu_percent")  # type: ignore[assignment]
+            memory_used_mb = system_metrics.get("memory_used_mb")  # type: ignore[assignment]
+            memory_total_mb = system_metrics.get("memory_total_mb")  # type: ignore[assignment]
+            disk_used_gb = system_metrics.get("disk_used_gb")  # type: ignore[assignment]
+            disk_total_gb = system_metrics.get("disk_total_gb")  # type: ignore[assignment]
+            disk_free_gb = system_metrics.get("disk_free_gb")  # type: ignore[assignment]
             inbounds = await client._get_inbounds()
             for inb in inbounds:
                 if int(inb.get("id") or 0) != int(runtime.inbound_id):
@@ -132,6 +145,12 @@ async def _collect_one(*, node: Node, error_window: int, source: str) -> dict:
             panel_latency_ms=latency_ms,
             panel_error_rate=error_rate,
             active_clients=active_clients,
+            cpu_percent=float(cpu_percent or 0.0),
+            memory_used_mb=int(memory_used_mb or 0),
+            memory_total_mb=int(memory_total_mb or 0),
+            disk_used_gb=float(disk_used_gb or 0.0),
+            disk_total_gb=float(disk_total_gb or 0.0),
+            disk_free_gb=float(disk_free_gb or 0.0),
             total_up_bytes=max(0, int(total_up_bytes)),
             total_down_bytes=max(0, int(total_down_bytes)),
             total_traffic_bytes=max(0, int(total_up_bytes) + int(total_down_bytes)),
@@ -149,6 +168,12 @@ async def _collect_one(*, node: Node, error_window: int, source: str) -> dict:
             row.panel_latency_ms = latency_ms
             row.panel_error_rate = error_rate
             row.active_clients = active_clients
+            row.cpu_percent = float(cpu_percent or 0.0)
+            row.memory_used_mb = int(memory_used_mb or 0)
+            row.memory_total_mb = int(memory_total_mb or 0)
+            row.disk_used_gb = float(disk_used_gb or 0.0)
+            row.disk_total_gb = float(disk_total_gb or 0.0)
+            row.disk_free_gb = float(disk_free_gb or 0.0)
             if healthy:
                 row.last_ok_at = now
         s.commit()
@@ -161,6 +186,10 @@ async def _collect_one(*, node: Node, error_window: int, source: str) -> dict:
             "total_up_bytes": max(0, int(total_up_bytes)),
             "total_down_bytes": max(0, int(total_down_bytes)),
             "error_rate": round(error_rate, 4),
+            "cpu_percent": cpu_percent,
+            "memory_used_mb": memory_used_mb,
+            "memory_total_mb": memory_total_mb,
+            "disk_free_gb": disk_free_gb,
         }
     finally:
         s.close()
@@ -187,7 +216,8 @@ async def run(*, error_window: int, source: str) -> int:
             f"{row['code']}: healthy={row['healthy']} score={row['score']} "
             f"latency_ms={row['latency_ms']} active_clients={row['active_clients']} "
             f"up_bytes={row['total_up_bytes']} down_bytes={row['total_down_bytes']} "
-            f"error_rate={row['error_rate']}"
+            f"error_rate={row['error_rate']} cpu={row['cpu_percent']} "
+            f"ram={row['memory_used_mb']}/{row['memory_total_mb']}MB disk_free={row['disk_free_gb']}GB"
         )
     return 0
 

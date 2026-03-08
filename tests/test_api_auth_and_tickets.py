@@ -449,6 +449,54 @@ class ApiAuthAndTicketsTests(unittest.TestCase):
         finally:
             s.close()
 
+    def test_admin_nodes_health_exposes_resource_metrics(self) -> None:
+        from db import SessionLocal
+        from models import Node
+
+        s = SessionLocal()
+        try:
+            node = Node(
+                code="nl",
+                name="Netherlands",
+                host="nl.example.test",
+                vless_port=443,
+                reality_sni="www.kpn.com",
+                reality_pbk="pbk-nl",
+                reality_sid="sid-nl",
+                panel_base_url="https://nl.example.test:8444",
+                panel_path="/panel",
+                panel_user="admin",
+                panel_pass="pass",
+                inbound_id=1,
+                enabled=True,
+                health_score=96.2,
+                panel_latency_ms=88,
+                panel_error_rate=0.0,
+                active_clients=21,
+                cpu_percent=37.5,
+                memory_used_mb=1240,
+                memory_total_mb=2048,
+                disk_used_gb=11.4,
+                disk_total_gb=40.0,
+                disk_free_gb=28.6,
+            )
+            s.add(node)
+            s.commit()
+        finally:
+            s.close()
+
+        admin_hdrs = {"X-Telegram-Init-Data": self._init_data(9999, "admin")}
+        r = self.client.get("/api/admin/nodes/health", headers=admin_hdrs)
+        self.assertEqual(r.status_code, 200, r.text)
+        rows = r.json()["nodes"]
+        item = next(row for row in rows if row["code"] == "nl")
+        self.assertEqual(item["cpu_percent"], 37.5)
+        self.assertEqual(item["memory_used_mb"], 1240)
+        self.assertEqual(item["memory_total_mb"], 2048)
+        self.assertEqual(item["disk_used_gb"], 11.4)
+        self.assertEqual(item["disk_total_gb"], 40.0)
+        self.assertEqual(item["disk_free_gb"], 28.6)
+
     def test_web_login_session_flow(self) -> None:
         payload = self._telegram_login_payload(1001, "alice")
         login = self.client.post("/api/auth/telegram/web-login", json=payload)

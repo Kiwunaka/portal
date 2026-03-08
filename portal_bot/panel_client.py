@@ -6,6 +6,7 @@ import time
 from dataclasses import dataclass
 import os
 from datetime import datetime, timezone
+import re
 from urllib.parse import quote
 
 import aiohttp
@@ -14,6 +15,69 @@ from nodes_repo import NodeRuntime
 
 
 logger = logging.getLogger(__name__)
+
+
+def _deep_find(obj, keys: set[str]):
+    if isinstance(obj, dict):
+        for key, value in obj.items():
+            normalized = re.sub(r"[^a-z0-9]+", "", str(key or "").lower())
+            if normalized in keys:
+                return value
+            found = _deep_find(value, keys)
+            if found is not None:
+                return found
+    elif isinstance(obj, list):
+        for item in obj:
+            found = _deep_find(item, keys)
+            if found is not None:
+                return found
+    return None
+
+
+def _to_float(value) -> float | None:
+    if value is None or value == "":
+        return None
+    if isinstance(value, (int, float)):
+        return float(value)
+    text = str(value).strip().replace(",", ".")
+    match = re.search(r"-?\d+(?:\.\d+)?", text)
+    if not match:
+        return None
+    try:
+        return float(match.group(0))
+    except Exception:
+        return None
+
+
+def _size_to_bytes(value) -> int | None:
+    if value is None or value == "":
+        return None
+    if isinstance(value, (int, float)):
+        numeric = float(value)
+        if numeric <= 0:
+            return 0
+        return int(numeric)
+    text = str(value).strip().replace(",", ".")
+    match = re.search(r"(-?\d+(?:\.\d+)?)\s*([kmgtp]?i?b)?", text, re.I)
+    if not match:
+        return None
+    number = float(match.group(1))
+    unit = (match.group(2) or "b").lower()
+    factors = {
+        "b": 1,
+        "kb": 1024,
+        "kib": 1024,
+        "mb": 1024**2,
+        "mib": 1024**2,
+        "gb": 1024**3,
+        "gib": 1024**3,
+        "tb": 1024**4,
+        "tib": 1024**4,
+        "pb": 1024**5,
+        "pib": 1024**5,
+    }
+    factor = factors.get(unit, 1)
+    return int(max(0.0, number) * factor)
 
 
 @dataclass
@@ -189,6 +253,74 @@ class PanelClient:
             if not data.get("success"):
                 return []
             return data.get("obj", []) or []
+
+    async def get_server_status(self) -> dict | None:
+        if not self.cookies:
+            ok = await self.login()
+            if not ok:
+                return None
+        await self.ensure_session()
+        try:
+            async with self.session.get(
+                f"{self._base()}/panel/api/server/status",
+                cookies=self.cookies,
+                timeout=aiohttp.ClientTimeout(total=20),
+            ) as resp:
+                if resp.status != 200:
+                    return None
+                data = await resp.json(content_type=None)
+                if not isinstance(data, dict) or not bool(data.get("success")):
+                    return None
+                obj = data.get("obj")
+                return obj if isinstance(obj, dict) else None
+        except Exception:
+            return None
+
+    async def get_system_metrics(self) -> dict[str, float | int | None]:
+        status = await self.get_server_status()
+        if not status:
+            return {
+                "cpu_percent": None,
+                "memory_used_mb": None,
+                "memory_total_mb": None,
+                "disk_used_gb": None,
+                "disk_total_gb": None,
+                "disk_free_gb": None,
+            }
+
+        cpu_percent = _to_float(
+            _deep_find(
+                status,
+                {
+                    "cpu",
+                    "cpupercent",
+                    "cpuusage",
+                    "cpucurrent",
+                    "cpuuse",
+                },
+            )
+        )
+
+        mem_used_raw = _deep_find(status, {"memused", "memoryused", "currentmem", "currentmemory", "usedmemory"})
+        mem_total_raw = _deep_find(status, {"memtotal", "memorytotal", "totalmem", "totalmemory"})
+        disk_used_raw = _deep_find(status, {"diskused", "useddisk", "currdisk"})
+        disk_total_raw = _deep_find(status, {"disktotal", "totaldisk"})
+        disk_free_raw = _deep_find(status, {"diskfree", "freedisk", "diskavail", "diskavailable"})
+
+        mem_used_bytes = _size_to_bytes(mem_used_raw)
+        mem_total_bytes = _size_to_bytes(mem_total_raw)
+        disk_used_bytes = _size_to_bytes(disk_used_raw)
+        disk_total_bytes = _size_to_bytes(disk_total_raw)
+        disk_free_bytes = _size_to_bytes(disk_free_raw)
+
+        return {
+            "cpu_percent": round(cpu_percent, 1) if cpu_percent is not None else None,
+            "memory_used_mb": int(round(mem_used_bytes / (1024**2))) if mem_used_bytes is not None else None,
+            "memory_total_mb": int(round(mem_total_bytes / (1024**2))) if mem_total_bytes is not None else None,
+            "disk_used_gb": round(disk_used_bytes / (1024**3), 2) if disk_used_bytes is not None else None,
+            "disk_total_gb": round(disk_total_bytes / (1024**3), 2) if disk_total_bytes is not None else None,
+            "disk_free_gb": round(disk_free_bytes / (1024**3), 2) if disk_free_bytes is not None else None,
+        }
 
     async def get_inbound_snapshot(self, inbound_id: int | None = None) -> dict | None:
         target_id = int(inbound_id or self.node.inbound_id or 0)
