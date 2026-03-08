@@ -1,10 +1,10 @@
 "use client";
 
+import AppRouteLink from "@/components/app-route-link";
 import SubscriptionQrCard from "@/components/subscription-qr-card";
 import { fetchNodeStatus, type NodeStatus } from "@/lib/api";
 import { getCopyText } from "@/lib/portal";
 import { usePortalSession } from "@/lib/session";
-import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 
 function fmtDate(value?: string | null): string {
@@ -105,21 +105,21 @@ export default function DashboardPage() {
           </div>
 
           <div className="mt-6 flex flex-wrap gap-3">
-            <Link href={primaryHref} className="btn-primary rounded-xl px-5 py-2.5 text-sm font-semibold uppercase tracking-[0.12em]">
+            <AppRouteLink href={primaryHref} className="btn-primary rounded-xl px-5 py-2.5 text-sm font-semibold uppercase tracking-[0.12em]">
               {primaryLabel}
-            </Link>
+            </AppRouteLink>
             {dash?.is_active ? (
-              <Link href="/subscription/checkout/" className="outline-btn rounded-xl px-5 py-2.5 text-sm font-semibold uppercase tracking-[0.12em]">
+              <AppRouteLink href="/subscription/checkout/" className="outline-btn rounded-xl px-5 py-2.5 text-sm font-semibold uppercase tracking-[0.12em]">
                 {getCopyText("webapp.dashboard.primary_cta", "Продлить доступ")}
-              </Link>
+              </AppRouteLink>
             ) : null}
-            <Link href="/support/" className="outline-btn rounded-xl px-5 py-2.5 text-sm font-semibold uppercase tracking-[0.12em]">
+            <AppRouteLink href="/support/" className="outline-btn rounded-xl px-5 py-2.5 text-sm font-semibold uppercase tracking-[0.12em]">
               {getCopyText("webapp.dashboard.support_cta", "Поддержка")}
-            </Link>
+            </AppRouteLink>
             {!dash?.is_active ? (
-              <Link href="/dashboard/downloads/" className="outline-btn rounded-xl px-5 py-2.5 text-sm font-semibold uppercase tracking-[0.12em]">
+              <AppRouteLink href="/dashboard/downloads/" className="outline-btn rounded-xl px-5 py-2.5 text-sm font-semibold uppercase tracking-[0.12em]">
                 Скачать приложения
-              </Link>
+              </AppRouteLink>
             ) : null}
           </div>
         </article>

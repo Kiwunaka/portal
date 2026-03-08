@@ -1,10 +1,10 @@
 "use client";
 
+import AppRouteLink from "@/components/app-route-link";
 import { createTicket, fetchTickets, uploadTicketAttachment, type TicketAttachmentInput, type TicketInfo } from "@/lib/api";
 import { getCopyText, getPortalPublicConfig } from "@/lib/portal";
 import { usePortalSession } from "@/lib/session";
 import { AnimatePresence, motion } from "framer-motion";
-import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 
 type TicketCategory = "Подключение" | "Оплата" | "Скорость" | "Общий вопрос";
@@ -158,9 +158,9 @@ export default function SupportPage() {
             <h2 className="mt-2 font-display text-2xl font-semibold">Оферта и политика</h2>
             <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">Юридические документы доступны отдельно, чтобы всё нужное было под рукой.</p>
             <div className="mt-4 flex flex-wrap gap-3">
-              <Link href="/support/legal" className="outline-btn rounded-xl px-4 py-2 text-sm font-semibold">
+              <AppRouteLink href="/support/legal" className="outline-btn rounded-xl px-4 py-2 text-sm font-semibold">
                 Открыть документы
-              </Link>
+              </AppRouteLink>
               <button type="button" onClick={() => setCreateOpen(true)} className="btn-primary rounded-xl px-4 py-2 text-sm font-semibold uppercase tracking-[0.12em]">
                 Создать обращение
               </button>
@@ -190,13 +190,13 @@ export default function SupportPage() {
             <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">Обычно отвечаем в течение 10-15 минут.</p>
             <div className="mt-5 grid gap-3 sm:grid-cols-2">
               {contactCards.map((card) => (
-                <Link key={card.label} href={card.href} target="_blank" className="outline-btn rounded-xl px-3 py-3 text-center text-sm font-semibold">
+                <AppRouteLink key={card.label} href={card.href} target="_blank" hardNavigate={false} className="outline-btn rounded-xl px-3 py-3 text-center text-sm font-semibold">
                   <div className="flex items-center justify-center gap-2">
                     <span className="material-symbols-rounded text-base">{card.icon}</span>
                     {card.label}
                   </div>
                   <div className="mt-1 text-[11px] font-normal uppercase tracking-[0.12em] text-slate-500">{card.hint}</div>
-                </Link>
+                </AppRouteLink>
               ))}
             </div>
           </div>
@@ -211,14 +211,14 @@ export default function SupportPage() {
               </div>
             ) : (
               tickets.map((ticket) => (
-                <Link key={ticket.id} href={`/support/thread/?id=${ticket.id}`} className="glass-card block px-4 py-3 transition hover:scale-[1.01]">
+                <AppRouteLink key={ticket.id} href={`/support/thread/?id=${ticket.id}`} className="glass-card block px-4 py-3 transition hover:scale-[1.01]">
                   <div className="mb-2 flex items-center justify-between text-xs">
                     <span className="font-mono">#{ticket.id}</span>
                     <span className={`rounded-full px-2 py-1 ${statusClass(ticket.status)}`}>{statusLabel(ticket.status)}</span>
                   </div>
                   <p className="font-medium">{ticket.subject || "Без темы"}</p>
                   <p className="mt-1 text-xs text-slate-500">{ticket.last_message_preview || "Сообщений пока нет"}</p>
-                </Link>
+                </AppRouteLink>
               ))
             )}
             {error ? <p className="text-xs text-rose-500">{error}</p> : null}

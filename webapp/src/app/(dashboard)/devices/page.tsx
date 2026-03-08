@@ -1,9 +1,9 @@
 "use client";
 
+import AppRouteLink from "@/components/app-route-link";
 import { getCopyText, getPortalPublicConfig } from "@/lib/portal";
 import { usePortalSession } from "@/lib/session";
 import { AnimatePresence, motion } from "framer-motion";
-import Link from "next/link";
 import { useMemo, useState } from "react";
 
 const config = getPortalPublicConfig(process.env as Record<string, string | undefined>);
@@ -61,9 +61,9 @@ export default function DevicesPage() {
           <p className="font-mono text-xs uppercase tracking-[0.18em] text-rose-500">ошибка</p>
           <h1 className="mt-2 font-display text-4xl font-bold">Не удалось загрузить сессии</h1>
           <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">{error || "Нет данных профиля."}</p>
-          <Link href={config.botUrl} target="_blank" className="outline-btn mt-5 inline-flex rounded-xl px-4 py-2 text-sm font-semibold">
+          <AppRouteLink href={config.botUrl} target="_blank" hardNavigate={false} className="outline-btn mt-5 inline-flex rounded-xl px-4 py-2 text-sm font-semibold">
             Открыть Telegram
-          </Link>
+          </AppRouteLink>
         </section>
       </main>
     );
@@ -100,12 +100,12 @@ export default function DevicesPage() {
           <button type="button" onClick={() => void copySubscription()} className="outline-btn rounded-xl px-4 py-2 text-sm font-semibold">
             Скопировать ссылку доступа
           </button>
-          <Link href="/dashboard/downloads" className="outline-btn rounded-xl px-4 py-2 text-sm font-semibold">
+          <AppRouteLink href="/dashboard/downloads" className="outline-btn rounded-xl px-4 py-2 text-sm font-semibold">
             Скачать приложения
-          </Link>
-          <Link href={config.supportTelegramUrl} target="_blank" className="btn-primary rounded-xl px-4 py-2 text-sm font-semibold">
+          </AppRouteLink>
+          <AppRouteLink href={config.supportTelegramUrl} target="_blank" hardNavigate={false} className="btn-primary rounded-xl px-4 py-2 text-sm font-semibold">
             Поддержка
-          </Link>
+          </AppRouteLink>
         </div>
       </section>
 

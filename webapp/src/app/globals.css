@@ -333,10 +333,12 @@ body.qa-hitbox :is(a, button, [role="button"]) {
 }
 
 .tg-bottom-nav {
+  display: none;
   transition: transform 0.2s ease, opacity 0.2s ease;
 }
 
 body.tg-webapp .tg-bottom-nav {
+  display: flex;
   bottom: calc(0.75rem + var(--tg-safe-area-bottom));
 }
 

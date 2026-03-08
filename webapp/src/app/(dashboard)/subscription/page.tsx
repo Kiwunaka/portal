@@ -1,9 +1,9 @@
 "use client";
 
+import AppRouteLink from "@/components/app-route-link";
 import { fetchPublicPlans, type PlanCatalogRow } from "@/lib/api";
 import { getCopyText, getPortalPublicConfig, normalizePlanCode } from "@/lib/portal";
 import { usePortalSession } from "@/lib/session";
-import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 
 const config = getPortalPublicConfig(process.env as Record<string, string | undefined>);
@@ -12,7 +12,7 @@ const COMPARISON_ROWS = [
   { metric: "Устройства", start: "1", pro: "До 5", ultra: "До 5" },
   { metric: "Точки подключения", start: "NL", pro: "IT, NL, PL, US", ultra: "IT, NL, PL, US" },
   { metric: "Срок", start: "30 дней", pro: "1 или 3 месяца", ultra: "6, 9 или 12 месяцев" },
-  { metric: "Поддержка", start: "Стандартная", pro: "Быстрый ответ", ultra: "Приоритетная" }
+  { metric: "Поддержка", start: "Стандартная", pro: "Быстрый ответ", ultra: "Приоритетная" },
 ] as const;
 
 function planColumn(planCode: string | null | undefined): "start" | "pro" | "ultra" {
@@ -24,9 +24,42 @@ function planColumn(planCode: string | null | undefined): "start" | "pro" | "ult
 
 function fallbackPlans(): PlanCatalogRow[] {
   return [
-    { code: "start_99", label: "Start 30 дней", amount_rub: 99, amount_stars: 0, days: 30, device_limit: 1, node_policy: "nl_only", badge: "Вход", is_active: true, sort_order: 1 },
-    { code: "1_month", label: "Pro 1 месяц", amount_rub: 249, amount_stars: 249, days: 30, device_limit: 5, node_policy: "paid_pool", badge: "Популярный", is_active: true, sort_order: 2 },
-    { code: "12_months", label: "Ultra 12 месяцев", amount_rub: 1499, amount_stars: 1499, days: 365, device_limit: 5, node_policy: "paid_pool", badge: "Выгода", is_active: true, sort_order: 3 }
+    {
+      code: "start_99",
+      label: "Start 30 дней",
+      amount_rub: 99,
+      amount_stars: 0,
+      days: 30,
+      device_limit: 1,
+      node_policy: "nl_only",
+      badge: "Вход",
+      is_active: true,
+      sort_order: 1,
+    },
+    {
+      code: "1_month",
+      label: "Pro 1 месяц",
+      amount_rub: 249,
+      amount_stars: 249,
+      days: 30,
+      device_limit: 5,
+      node_policy: "paid_pool",
+      badge: "Популярный",
+      is_active: true,
+      sort_order: 2,
+    },
+    {
+      code: "12_months",
+      label: "Ultra 12 месяцев",
+      amount_rub: 1499,
+      amount_stars: 1499,
+      days: 365,
+      device_limit: 5,
+      node_policy: "paid_pool",
+      badge: "Выгода",
+      is_active: true,
+      sort_order: 3,
+    },
   ];
 }
 
@@ -78,15 +111,18 @@ export default function SubscriptionPage() {
           {getCopyText("webapp.subscription.title", "Управление доступом")}
         </h1>
         <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">
-          {getCopyText("webapp.subscription.subtitle", "Сравните планы, проверьте лимиты и продлите доступ без лишних шагов.")}
+          {getCopyText(
+            "webapp.subscription.subtitle",
+            "Сравните планы, проверьте лимиты и продлите доступ без лишних шагов.",
+          )}
         </p>
         <div className="mt-5 flex flex-wrap gap-3">
-          <Link href="/subscription/checkout/" className="btn-primary rounded-xl px-6 py-3 text-sm font-semibold uppercase tracking-[0.12em]">
+          <AppRouteLink href="/subscription/checkout/" className="btn-primary rounded-xl px-6 py-3 text-sm font-semibold uppercase tracking-[0.12em]">
             {getCopyText("webapp.dashboard.primary_cta", "Открыть оплату")}
-          </Link>
-          <Link href={config.botUrl} target="_blank" className="outline-btn rounded-xl px-6 py-3 text-sm font-semibold uppercase tracking-[0.12em]">
+          </AppRouteLink>
+          <AppRouteLink href={config.botUrl} target="_blank" hardNavigate={false} className="outline-btn rounded-xl px-6 py-3 text-sm font-semibold uppercase tracking-[0.12em]">
             Продолжить в Telegram
-          </Link>
+          </AppRouteLink>
         </div>
         <p className="mt-4 text-xs text-slate-500">
           Пользователь: {user?.username ? `@${user.username}` : `ID ${user?.tg_id || "—"}`}
@@ -99,13 +135,15 @@ export default function SubscriptionPage() {
             <p className="font-mono text-xs uppercase tracking-[0.14em] text-slate-500">{plan.badge || "План"}</p>
             <h2 className="mt-2 font-display text-3xl font-bold">{plan.label}</h2>
             <p className="mt-3 text-2xl font-semibold">{Number(plan.amount_rub || 0)} ₽</p>
-            <p className="mt-1 text-xs text-slate-500">{plan.days} дней • до {plan.device_limit} устройств • {nodePolicyLabel(plan.node_policy)}</p>
-            <Link
+            <p className="mt-1 text-xs text-slate-500">
+              {plan.days} дней • до {plan.device_limit} устройств • {nodePolicyLabel(plan.node_policy)}
+            </p>
+            <AppRouteLink
               href={`/subscription/checkout/?plan=${encodeURIComponent(plan.code)}`}
               className="btn-primary mt-5 inline-flex rounded-xl px-5 py-2.5 text-xs font-semibold uppercase tracking-[0.12em]"
             >
               Выбрать
-            </Link>
+            </AppRouteLink>
           </article>
         ))}
       </section>

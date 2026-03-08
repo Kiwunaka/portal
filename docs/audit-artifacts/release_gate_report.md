@@ -1,19 +1,19 @@
 # Release Gate Report
 
-- Generated at: `2026-03-07 21:06:01`
+- Generated at: `2026-03-08 00:36:47`
 - Status: `FAIL`
 
 ## Summary
 
 | Gate | Exit code | Duration (s) |
 |---|---:|---:|
-| Backend unit tests | 1 | 87.31 |
-| Admin/auth regressions | 0 | 39.70 |
-| Public link checks | 0 | 0.10 |
-| Marketing production build | 0 | 45.71 |
+| Backend unit tests | 1 | 81.91 |
+| Admin/auth regressions | 0 | 37.00 |
+| Public link checks | 0 | 0.09 |
+| Marketing production build | 0 | 34.44 |
 | Admin webapp smoke | 0 | 0.10 |
-| WebApp production build | 0 | 47.35 |
-| UI visual smoke | 0 | 0.10 |
+| WebApp production build | 0 | 43.08 |
+| UI visual smoke | 1 | 0.09 |
 
 ## Command Tails
 
@@ -51,16 +51,16 @@ Traceback (most recent call last):
   File "C:\Users\kiwun\Documents\ai\VPN\tests\test_portal_api.py", line 147, in test_nodes_for_user_excludes_brain_from_paid_pool
     out = api._nodes_for_user(user, nodes)
           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "C:\Users\kiwun\Documents\ai\VPN\portal_bot\api.py", line 7450, in _nodes_for_user
+  File "C:\Users\kiwun\Documents\ai\VPN\portal_bot\api.py", line 7637, in _nodes_for_user
     mapped = _mapped_nodes_for_user(s, user, nodes)
              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "C:\Users\kiwun\Documents\ai\VPN\portal_bot\api.py", line 7361, in _mapped_nodes_for_user
+  File "C:\Users\kiwun\Documents\ai\VPN\portal_bot\api.py", line 7548, in _mapped_nodes_for_user
     .filter(UserNode.tg_id == int(user.tg_id))
                                   ^^^^^^^^^^
 AttributeError: 'types.SimpleNamespace' object has no attribute 'tg_id'
 
 ----------------------------------------------------------------------
-Ran 123 tests in 85.967s
+Ran 133 tests in 80.650s
 
 FAILED (errors=9)
 ```
@@ -94,7 +94,7 @@ subscription lookup failed token_fp=fe675fe7aaee token_len=4
   user.expiry_at = datetime.utcnow() + timedelta(days=10)
 .......
 ----------------------------------------------------------------------
-Ran 32 tests in 38.593s
+Ran 32 tests in 35.976s
 
 OK
 ```
@@ -142,7 +142,7 @@ Link check passed.
 Route (app)                              Size     First Load JS
 ┌ ○ /                                    8.87 kB        96.3 kB
 ├ ○ /_not-found                          873 B          88.3 kB
-├ ○ /checkout                            5.29 kB        92.7 kB
+├ ○ /checkout                            6.64 kB        94.1 kB
 ├ ○ /offer                               142 B          87.6 kB
 └ ○ /privacy                             142 B          87.6 kB
 + First Load JS shared by all            87.4 kB
@@ -174,14 +174,14 @@ Admin WebApp smoke passed.
 ▲ Next.js 16.1.6 (Turbopack)
 
   Creating an optimized production build ...
-✓ Compiled successfully in 2.2s
+✓ Compiled successfully in 2.5s
   Running TypeScript ...
   Collecting page data using 19 workers ...
   Generating static pages using 19 workers (0/23) ...
   Generating static pages using 19 workers (5/23) 
   Generating static pages using 19 workers (11/23) 
   Generating static pages using 19 workers (17/23) 
-✓ Generating static pages using 19 workers (23/23) in 552.9ms
+✓ Generating static pages using 19 workers (23/23) in 509.9ms
   Finalizing page optimization ...
 
 Route (app)
@@ -214,8 +214,10 @@ Route (app)
 ### UI visual smoke
 
 - Command: `C:\Users\kiwun\AppData\Local\Programs\Python\Python312\python.exe scripts/ui_visual_smoke.py`
-- Exit: `0`
+- Exit: `1`
 
 ```text
-UI visual smoke passed.
+[FAIL] marketing-checkout-gateway: missing `����������� ����� Telegram` in marketing\src\app\checkout\page.tsx
+[FAIL] marketing-checkout-gateway: missing `���������� � Telegram` in marketing\src\app\checkout\page.tsx
+[FAIL] marketing-checkout-gateway: missing `������� � ������` in marketing\src\app\checkout\page.tsx
 ```

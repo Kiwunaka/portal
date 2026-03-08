@@ -1,9 +1,9 @@
 ﻿"use client";
 
+import AppRouteLink from "@/components/app-route-link";
 import TelegramLoginWidget from "@/components/telegram-login-widget";
 import { PortalSessionProvider, usePortalSession } from "@/lib/session";
 import { getTgUser } from "@/lib/telegram";
-import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 
@@ -101,9 +101,9 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
             {webLoginError ? <p className="text-xs text-rose-500">{webLoginError}</p> : null}
           </div>
           <div className="mt-6 flex flex-wrap gap-3">
-            <Link href={BOT_WEBLOGIN_URL} target="_blank" className="outline-btn rounded-xl px-5 py-2.5 text-sm font-semibold uppercase tracking-[0.12em]">
+            <AppRouteLink href={BOT_WEBLOGIN_URL} target="_blank" hardNavigate={false} className="outline-btn rounded-xl px-5 py-2.5 text-sm font-semibold uppercase tracking-[0.12em]">
               Открыть бота
-            </Link>
+            </AppRouteLink>
             <button className="outline-btn rounded-xl px-5 py-2.5 text-sm font-semibold uppercase tracking-[0.12em]" type="button" onClick={logoutWebSession}>
               Сбросить web-сессию
             </button>
@@ -151,7 +151,7 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
               {navItems.map((item) => {
                 const selected = active === item.href;
                 return (
-                  <Link
+                  <AppRouteLink
                     key={item.href}
                     href={item.href}
                     className={`haptic-tap flex items-center gap-3 rounded-xl px-4 py-3 text-sm transition ${
@@ -161,7 +161,7 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
                   >
                     <span className="material-symbols-rounded text-[20px]">{item.icon}</span>
                     <span className="font-medium">{item.label}</span>
-                  </Link>
+                  </AppRouteLink>
                 );
               })}
             </nav>
@@ -225,7 +225,7 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
         {navItems.map((item) => {
           const selected = active === item.href;
           return (
-            <Link
+            <AppRouteLink
               key={item.href}
               href={item.href}
               className={`haptic-tap flex min-w-12 flex-col items-center text-[10px] ${selected ? "text-violet-600 dark:text-violet-300" : "text-slate-500"}`}
@@ -233,7 +233,7 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
             >
               <span className="material-symbols-rounded text-lg">{item.icon}</span>
               {item.label}
-            </Link>
+            </AppRouteLink>
           );
         })}
         </nav>
@@ -265,7 +265,7 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
               {navItems.map((item) => {
                 const selected = active === item.href;
                 return (
-                  <Link
+                  <AppRouteLink
                     key={item.href}
                     href={item.href}
                     onClick={() => setMobileMenuPath(null)}
@@ -274,7 +274,7 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
                   >
                     <span className="material-symbols-rounded text-[20px]">{item.icon}</span>
                     {item.label}
-                  </Link>
+                  </AppRouteLink>
                 );
               })}
             </nav>
