@@ -143,6 +143,12 @@ export function PortalSessionProvider({ children, mode = "dashboard" }: PortalSe
       const auth = await authByTelegramWebLogin(payload);
       if (!auth?.token) throw new Error("Не получен web session token");
       setWebSessionToken(auth.token);
+      if (typeof window !== "undefined") {
+        const current = new URL(window.location.href);
+        current.searchParams.delete("clear_web_session");
+        window.location.replace(`${current.pathname}${current.search}${current.hash}` || "/webapp/");
+        return;
+      }
       await refresh();
     } catch (error) {
       setWebLoginError(parseErrorMessage(error));
