@@ -4,6 +4,7 @@ import {
   authByTelegramWebLogin,
   clearWebSessionToken,
   consumeWebSessionTokenFromUrl,
+  fetchAuthSession,
   fetchDashboard,
   fetchUser,
   hasWebSessionToken,
@@ -66,24 +67,33 @@ export function PortalSessionProvider({ children, mode = "dashboard" }: PortalSe
     setWebLoginError("");
 
     try {
+      const authSession = await fetchAuthSession();
+      const authTgId = Number(authSession?.user?.id || tgUser?.id || 0);
+
       if (mode === "entry") {
         setUser(null);
         setDash(null);
         return;
       }
 
-      const tgId = Number(tgUser?.id || 0);
-      const dashboardPromise = fetchDashboard();
-      const profilePromise = tgId > 0 ? fetchUser(tgId) : null;
-
-      const dashboard = await dashboardPromise;
-      const profile = profilePromise ? await profilePromise : await fetchUser(Number(dashboard.tg_id));
+      const [dashboard, profile] = await Promise.all([
+        fetchDashboard(),
+        authTgId > 0 ? fetchUser(authTgId) : fetchDashboard().then((payload) => fetchUser(Number(payload.tg_id))),
+      ]);
       setDash(dashboard);
       setUser(profile);
     } catch (error) {
       const message = parseErrorMessage(error);
-      if (!tgUser && message.toLowerCase().includes("telegram auth required")) {
+      const lowered = message.toLowerCase();
+      if (
+        !tgUser &&
+        (lowered.includes("telegram auth required") ||
+          lowered.includes("invalid telegram signature") ||
+          lowered.includes("access denied"))
+      ) {
         clearWebSessionToken();
+        setUser(null);
+        setDash(null);
         setWebLoginRequired(true);
         setError("");
       } else {
@@ -121,6 +131,9 @@ export function PortalSessionProvider({ children, mode = "dashboard" }: PortalSe
     setError("");
     setWebLoginError("");
     setWebLoginRequired(true);
+    if (typeof window !== "undefined") {
+      window.location.assign("/webapp/");
+    }
   }, []);
 
   return (

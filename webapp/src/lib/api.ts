@@ -686,6 +686,11 @@ export type WebLoginResult = {
   expires_in: number;
 };
 
+export type AuthSessionPayload = {
+  ok: boolean;
+  user: { id: number; username?: string | null };
+};
+
 function getWebSessionToken(): string {
   if (typeof window === "undefined") return "";
   return String(window.localStorage.getItem(WEB_SESSION_TOKEN_KEY) || "").trim();
@@ -908,6 +913,10 @@ export async function authByTelegramWebLogin(payload: TelegramWebLoginPayload): 
     }
   }
   throw lastErr || new Error("API error");
+}
+
+export function fetchAuthSession(): Promise<AuthSessionPayload> {
+  return apiFetch<AuthSessionPayload>("/api/auth/session");
 }
 
 export async function fetchTickets(limit = 20): Promise<TicketInfo[]> {
