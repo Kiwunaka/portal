@@ -751,6 +751,22 @@ function defaultApiBase(): string {
   return "https://portal-privacy.online";
 }
 
+function dispatchAuthRequired(): void {
+  if (typeof window === "undefined") return;
+  window.dispatchEvent(new CustomEvent("portal-auth-required"));
+}
+
+async function readApiError(r: Response): Promise<string> {
+  const text = (await r.text()).trim();
+  if (!text) return `API error: ${r.status}`;
+  try {
+    const parsed = JSON.parse(text) as { detail?: string; message?: string };
+    return String(parsed?.detail || parsed?.message || text);
+  } catch {
+    return text;
+  }
+}
+
 function candidateApiBases(): string[] {
   const envBaseRaw = (
     process.env.NEXT_PUBLIC_API_BASE_URL ||
@@ -791,9 +807,10 @@ async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
       applyAuthHeaders(headers);
       const r = await fetch(`${base}${path}`, { ...init, headers });
       if (!r.ok) {
-        const text = await r.text();
-        if (r.status === 401 && !getInitData() && getWebSessionToken()) {
+        const text = await readApiError(r);
+        if (r.status === 401) {
           clearWebSessionToken();
+          dispatchAuthRequired();
         }
         throw new Error(text || `API error: ${r.status}`);
       }

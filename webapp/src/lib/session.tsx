@@ -121,6 +121,21 @@ export function PortalSessionProvider({ children, mode = "dashboard" }: PortalSe
     void refresh();
   }, [refresh]);
 
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const onAuthRequired = () => {
+      clearWebSessionToken();
+      setUser(null);
+      setDash(null);
+      setError("");
+      setWebLoginError("");
+      setWebLoginRequired(true);
+      setLoading(false);
+    };
+    window.addEventListener("portal-auth-required", onAuthRequired as EventListener);
+    return () => window.removeEventListener("portal-auth-required", onAuthRequired as EventListener);
+  }, []);
+
   const loginByWidget = useCallback(async (payload: TelegramWebLoginPayload) => {
     setWebLoginBusy(true);
     setWebLoginError("");
