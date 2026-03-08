@@ -35,7 +35,12 @@ function parseErrorMessage(error: unknown): string {
   return String((error as { message?: string })?.message || error || "Не удалось загрузить данные");
 }
 
-export function PortalSessionProvider({ children }: { children: React.ReactNode }) {
+type PortalSessionProviderProps = {
+  children: React.ReactNode;
+  mode?: "entry" | "dashboard";
+};
+
+export function PortalSessionProvider({ children, mode = "dashboard" }: PortalSessionProviderProps) {
   const tgUser = useMemo(() => getTgUser(), []);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -61,6 +66,12 @@ export function PortalSessionProvider({ children }: { children: React.ReactNode 
     setWebLoginError("");
 
     try {
+      if (mode === "entry") {
+        setUser(null);
+        setDash(null);
+        return;
+      }
+
       const tgId = Number(tgUser?.id || 0);
       const dashboardPromise = fetchDashboard();
       const profilePromise = tgId > 0 ? fetchUser(tgId) : null;
@@ -81,7 +92,7 @@ export function PortalSessionProvider({ children }: { children: React.ReactNode 
     } finally {
       setLoading(false);
     }
-  }, [tgUser]);
+  }, [mode, tgUser]);
 
   useEffect(() => {
     void refresh();

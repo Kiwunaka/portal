@@ -2,6 +2,7 @@
 
 import TelegramLoginWidget from "@/components/telegram-login-widget";
 import { PortalSessionProvider, usePortalSession } from "@/lib/session";
+import { getTgUser } from "@/lib/telegram";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
@@ -45,6 +46,7 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
     const saved = localStorage.getItem("portal-theme");
     return saved ? saved === "dark" : window.matchMedia("(prefers-color-scheme: dark)").matches;
   });
+  const [inTelegramContext] = useState(() => Boolean(getTgUser()));
   const [mobileMenuPath, setMobileMenuPath] = useState<string | null>(null);
   const isAdminRoute = pathname.startsWith("/admin");
   const mobileMenuOpen = !isAdminRoute && mobileMenuPath === pathname;
@@ -218,7 +220,7 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
         </div>
       </div>
 
-      {!isAdminRoute ? (
+      {!isAdminRoute && inTelegramContext ? (
         <nav className={`tg-bottom-nav glass-card fixed left-1/2 z-40 flex w-[min(96vw,540px)] -translate-x-1/2 justify-between rounded-2xl px-4 py-3 lg:hidden ${mobileMenuOpen ? "pointer-events-none opacity-0" : ""}`}>
         {navItems.map((item) => {
           const selected = active === item.href;

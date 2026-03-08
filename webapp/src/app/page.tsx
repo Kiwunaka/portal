@@ -1,7 +1,7 @@
 "use client";
 
 import TelegramLoginWidget from "@/components/telegram-login-widget";
-import { getCopyText, getPortalPublicConfig } from "@/lib/portal";
+import { getPortalPublicConfig } from "@/lib/portal";
 import { PortalSessionProvider, usePortalSession } from "@/lib/session";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -12,14 +12,14 @@ const BOT_WEBLOGIN_URL = `${config.botUrl}${config.botUrl.includes("?") ? "&" : 
 
 function EntryBody() {
   const router = useRouter();
-  const { loading, error, webLoginRequired, webLoginBusy, webLoginError, user, dash, refresh, logoutWebSession } =
+  const { loading, error, webLoginRequired, webLoginBusy, webLoginError, refresh, logoutWebSession } =
     usePortalSession();
 
   useEffect(() => {
-    if (!loading && !webLoginRequired && user && dash) {
+    if (!loading && !webLoginRequired) {
       router.replace("/dashboard/");
     }
-  }, [dash, loading, router, user, webLoginRequired]);
+  }, [loading, router, webLoginRequired]);
 
   if (loading) {
     return (
@@ -69,14 +69,9 @@ function EntryBody() {
         <p className="font-mono text-xs uppercase tracking-[0.16em] text-violet-600 dark:text-violet-300">
           portal entry
         </p>
-        <h1 className="mt-2 font-display text-4xl font-bold">
-          {getCopyText("webapp.entry.title", "Продолжить вход в PORTAL")}
-        </h1>
+        <h1 className="mt-2 font-display text-4xl font-bold">Продолжить вход в PORTAL</h1>
         <p className="mt-3 text-sm text-slate-600 dark:text-slate-300">
-          {getCopyText(
-            "webapp.entry.subtitle",
-            "Если вы уже в Telegram, вход подтвердится автоматически. В браузере используйте виджет ниже или откройте вход через бота.",
-          )}
+          В браузере вход подтверждается через Telegram. После подтверждения кабинет откроется сразу, без лишнего промежуточного экрана.
         </p>
 
         {webLoginRequired ? (
@@ -100,14 +95,6 @@ function EntryBody() {
           >
             Открыть Telegram
           </Link>
-          {!webLoginRequired ? (
-            <Link
-              href="/dashboard/"
-              className="outline-btn rounded-xl px-5 py-2.5 text-sm font-semibold uppercase tracking-[0.12em]"
-            >
-              Перейти в кабинет
-            </Link>
-          ) : null}
           <button
             className="outline-btn rounded-xl px-5 py-2.5 text-sm font-semibold uppercase tracking-[0.12em]"
             onClick={logoutWebSession}
@@ -123,7 +110,7 @@ function EntryBody() {
 
 export default function Page() {
   return (
-    <PortalSessionProvider>
+    <PortalSessionProvider mode="entry">
       <EntryBody />
     </PortalSessionProvider>
   );
