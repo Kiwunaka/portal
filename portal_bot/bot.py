@@ -857,7 +857,7 @@ TARIFFS = {
         "sub_type": "FREE"
     },
     "start_99": {
-        "name": "⚡ Start 30 дней",
+        "name": "⚡ Приветственный 30 дней",
         "stars": 99,
         "days": 30,
         "gb": 0,
@@ -897,8 +897,8 @@ TARIFFS = {
         "sub_type": "PAID"
     },
     "12_months": {
-        "name": "📅 1 Год",
-        "stars": 1499,
+        "name": "📅 12 Месяцев",
+        "stars": 1644,
         "days": 365,
         "gb": 0,
         "subId": "YEARLY",
@@ -2994,7 +2994,7 @@ def build_choose_tariff_text() -> str:
     if s9:
         savings.append(f"9 мес: -{s9}%")
     if s12:
-        savings.append(f"1 год: -{s12}%")
+        savings.append(f"12 мес: -{s12}%")
     savings_line = (" (" + ", ".join(savings) + ")") if savings else ""
 
     payment_hint = "_Оплата Telegram Stars доступна как быстрый резервный путь._"
@@ -3007,7 +3007,8 @@ def build_choose_tariff_text() -> str:
         f"💠 *Премиум* — {paid_count} стран: {paid_list}\n\n"
         f"Бесплатный: до {FREE_TOTAL_GB} ГБ, до {FREE_LIMIT_IP} устройств (по IP), до {FREE_SPEED_MBIT} Мбит/с.\n"
         "Бесплатный: спокойный старт для повседневных задач и одного основного подключения.\n"
-        f"Премиум: все доступные страны, до {PAID_LIMIT_IP} устройств и комфортный запас по скорости.\n\n"
+        f"Премиум: все доступные страны, до {PAID_LIMIT_IP} устройств и комфортный запас по скорости.\n"
+        "Приветственный тариф за 99 ₽ доступен один раз на аккаунт.\n\n"
         "На кнопках ниже сначала показана цена в ₽, затем цена в Stars.\n\n"
         f"💰 *Выгода при оплате на срок:*{savings_line}\n\n"
         f"{payment_hint}"
@@ -3337,11 +3338,11 @@ def tariff_keyboard(
         plans = [
             ("6_months", "📅 6 Месяцев"),
             ("9_months", "📅 9 Месяцев"),
-            ("12_months", "📅 1 Год"),
+            ("12_months", "📅 12 Месяцев"),
         ]
     else:
         plans = [
-            ("start_99", "⚡ Start 30 дней"),
+            ("start_99", "⚡ Приветственный 30 дней"),
             ("1_month", "📅 1 Месяц"),
             ("3_months", "📅 3 Месяца"),
         ]
@@ -3369,7 +3370,7 @@ def tariff_keyboard(
         elif key == "12_months":
             icon = "👑"
             savings = _tariff_savings_pct(key) or 0
-            marketing_badge = f" (МАКС ВЫГОДА, -{savings}%)" if savings > 0 else " (МАКС ВЫГОДА)"
+            marketing_badge = f" (САМЫЙ ДОЛГИЙ СРОК, -{savings}%)" if savings > 0 else " (САМЫЙ ДОЛГИЙ СРОК)"
 
         savings = _tariff_savings_pct(key)
         savings_text = f" (-{savings}%)" if savings and key not in {"12_months"} else ""
@@ -8410,7 +8411,7 @@ async def admin_tariff_menu(callback: CallbackQuery):
         [InlineKeyboardButton(text=f"📅 3 Месяца ({p3} ⭐)", callback_data=f"adm_set_{tg_id}_3_months")],
         [InlineKeyboardButton(text=f"📅 6 Месяцев ({p6} ⭐)", callback_data=f"adm_set_{tg_id}_6_months")],
         [InlineKeyboardButton(text=f"📅 9 Месяцев ({p9} ⭐)", callback_data=f"adm_set_{tg_id}_9_months")],
-        [InlineKeyboardButton(text=f"📅 1 Год ({p12} ⭐)", callback_data=f"adm_set_{tg_id}_12_months")],
+        [InlineKeyboardButton(text=f"📅 12 Месяцев ({p12} ⭐)", callback_data=f"adm_set_{tg_id}_12_months")],
         [InlineKeyboardButton(text="◀️ Назад", callback_data=f"adm_user_{tg_id}")]
     ])
     

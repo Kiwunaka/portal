@@ -566,6 +566,9 @@ class BotPaywallTests(unittest.TestCase):
         self.assertTrue(any("699 ₽ / 699⭐" in text for text in labels))
         self.assertFalse(any("points" in text.lower() for text in labels))
 
+    def test_twelve_month_tariff_savings_is_45_percent(self) -> None:
+        self.assertEqual(self.bot_module._tariff_savings_pct("12_months"), 45)
+
     def test_tariff_payment_choice_text_calls_points_bonuses(self) -> None:
         self.bot_module.ensure_pending_user(1001, username="alice")
         with patch.object(self.bot_module, "preview_redeemable_points") as preview:

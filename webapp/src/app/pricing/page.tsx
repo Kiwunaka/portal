@@ -1,9 +1,10 @@
 "use client";
 
-import { getPlan, normalizePromo, PLAN_CONFIG, computePrice, parseBillingPeriod } from "@/lib/pricing";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useMemo, useState } from "react";
+
+import { computePlanPrice, normalizePromo, PRICING_PLANS } from "@/lib/pricing";
 
 type PromoStatus = { kind: "ok" | "error"; text: string } | null;
 
@@ -12,21 +13,20 @@ export default function PricingPage() {
   const searchParams = useSearchParams();
   const from = (searchParams.get("from") || "").trim().toLowerCase();
   const fromLK = from === "lk";
-
-  const initialPeriod = parseBillingPeriod(searchParams.get("period"));
-  const [period, setPeriod] = useState<"monthly" | "annual">(initialPeriod);
   const [promo, setPromo] = useState((searchParams.get("promo") || "").trim().toUpperCase());
   const [promoStatus, setPromoStatus] = useState<PromoStatus>(null);
 
   const backHref = fromLK ? "/subscription/" : "/";
-  const backLabel = fromLK ? "назад в кабинет" : "назад ко входу";
+  const backLabel = fromLK ? "Назад в кабинет" : "Назад ко входу";
 
-  const cards = useMemo(() => {
-    return PLAN_CONFIG.map((plan) => ({
-      ...plan,
-      price: computePrice(plan.alias, period, promo)
-    }));
-  }, [period, promo]);
+  const cards = useMemo(
+    () =>
+      PRICING_PLANS.map((plan) => ({
+        ...plan,
+        pricing: computePlanPrice(plan.code, promo),
+      })),
+    [promo],
+  );
 
   const applyPromo = (): void => {
     const normalized = normalizePromo(promo);
@@ -34,25 +34,23 @@ export default function PricingPage() {
       setPromoStatus({ kind: "error", text: "Введите промокод, чтобы проверить скидку." });
       return;
     }
-    const percent = computePrice("pro", period, normalized).discountPercent;
-    if (!percent) {
+    const matched = cards.some((plan) => plan.pricing.discountPercent > 0);
+    if (!matched) {
       setPromoStatus({ kind: "error", text: "Код не найден. Проверьте написание и попробуйте снова." });
       return;
     }
     setPromo(normalized);
-    setPromoStatus({ kind: "ok", text: `Промокод активирован: -${percent}% на выбранный период.` });
+    setPromoStatus({ kind: "ok", text: "Промокод применён. Итоговая сумма уже показана на карточках." });
   };
 
-  const pickPlan = (alias: "start" | "pro" | "ultra"): void => {
-    const selected = getPlan(alias);
-    const result = computePrice(alias, period, promo);
+  const pickPlan = (planCode: string): void => {
     const params = new URLSearchParams({
-      plan: result.planCode,
-      alias: selected.alias,
-      period,
-      from: fromLK ? "lk" : "site"
+      plan: planCode,
+      from: fromLK ? "lk" : "site",
     });
-    if (result.discountPercent > 0) params.set("promo", normalizePromo(promo));
+    if (normalizePromo(promo)) {
+      params.set("promo", normalizePromo(promo));
+    }
     router.push(`/subscription/checkout/?${params.toString()}`);
   };
 
@@ -63,76 +61,58 @@ export default function PricingPage() {
           <span className="material-symbols-rounded">arrow_back</span>
           {backLabel}
         </Link>
-        <h1 className="mt-4 font-display text-5xl font-bold">Выберите план и удобный срок</h1>
+        <h1 className="mt-4 font-display text-5xl font-bold">Выберите тариф и срок, который вам удобен</h1>
         <p className="mt-4 max-w-3xl text-sm leading-6 text-slate-600 dark:text-slate-300">
-          Здесь всегда показаны актуальные суммы и сроки. Если вы уже вошли, после выбора сразу откроется оплата.
-          Если вход ещё не подтверждён, сначала откроется быстрый шаг через Telegram, а выбранный план сохранится.
+          Здесь показаны реальные тарифы без внутренних названий. Приветственный тариф за 99 ₽ доступен один раз,
+          дальше остаются обычные сроки на 1, 3, 6, 9 или 12 месяцев.
         </p>
-
-        <div className="mt-7 inline-flex rounded-xl bg-white/70 p-1 dark:bg-slate-900/70">
-          <button
-            type="button"
-            onClick={() => setPeriod("monthly")}
-            className={`rounded-lg px-5 py-2 text-sm font-semibold transition ${
-              period === "monthly" ? "bg-white shadow-sm dark:bg-slate-800" : "text-slate-500"
-            }`}
-          >
-            Короткий срок
-          </button>
-          <button
-            type="button"
-            onClick={() => setPeriod("annual")}
-            className={`rounded-lg px-5 py-2 text-sm font-semibold transition ${
-              period === "annual" ? "bg-white shadow-sm dark:bg-slate-800" : "text-slate-500"
-            }`}
-          >
-            Дольше и спокойнее
-          </button>
-        </div>
       </div>
 
-      <section className="mt-8 grid gap-6 md:grid-cols-3">
+      <section className="mt-8 grid gap-6 md:grid-cols-2 xl:grid-cols-3">
         {cards.map((plan) => {
-          const highlighted = plan.alias === "pro";
+          const highlighted = plan.code === "6_months";
           return (
-            <article key={plan.alias} className={`glass-card p-6 ${highlighted ? "ring-2 ring-violet-400/40" : ""}`}>
-              <div className="mb-4 flex items-center justify-between gap-3">
+            <article key={plan.code} className={`glass-card p-6 ${highlighted ? "ring-2 ring-violet-400/40" : ""}`}>
+              <div className="mb-4 flex items-start justify-between gap-3">
                 <div>
-                  <h2 className="font-display text-3xl font-semibold">{plan.name}</h2>
-                  <p className="text-sm text-violet-700 dark:text-violet-300">{plan.subtitle}</p>
+                  <p className="text-xs uppercase tracking-[0.16em] text-slate-500">{plan.badge || "Тариф"}</p>
+                  <h2 className="mt-2 font-display text-3xl font-semibold">{plan.label}</h2>
                 </div>
                 {highlighted ? <span className="rounded-full bg-violet-600 px-3 py-1 text-[11px] text-white">Рекомендуем</span> : null}
               </div>
 
               <p className="font-display text-5xl font-bold">
-                {plan.price.total} <span className="text-xl font-medium text-slate-500">₽ / {plan.price.periodLabel}</span>
+                {plan.pricing.total} <span className="text-xl font-medium text-slate-500">₽</span>
               </p>
-              {plan.price.discountPercent ? (
+              {plan.pricing.discountPercent ? (
                 <p className="mt-1 text-xs text-emerald-600 dark:text-emerald-400">
-                  Было {plan.price.base} ₽, скидка {plan.price.discountPercent}% (-{plan.price.discountAmount} ₽)
+                  Было {plan.pricing.base} ₽, скидка {plan.pricing.discountPercent}% (-{plan.pricing.discountAmount} ₽)
                 </p>
               ) : null}
 
               <ul className="mt-5 space-y-2 text-sm text-slate-600 dark:text-slate-300">
-                {plan.perks.map((perk) => (
-                  <li key={perk} className="flex items-center gap-2">
-                    <span className="material-symbols-rounded text-base text-violet-500">verified</span>
-                    {perk}
-                  </li>
-                ))}
+                <li className="flex items-center gap-2">
+                  <span className="material-symbols-rounded text-base text-violet-500">verified</span>
+                  {plan.days} дней доступа
+                </li>
+                <li className="flex items-center gap-2">
+                  <span className="material-symbols-rounded text-base text-violet-500">devices</span>
+                  До {plan.deviceLimit} устройств
+                </li>
+                <li className="flex items-center gap-2">
+                  <span className="material-symbols-rounded text-base text-violet-500">info</span>
+                  {plan.note}
+                </li>
               </ul>
-
-              <p className="mt-5 text-xs text-slate-500">{plan.promise}</p>
-              <p className="mt-2 text-xs text-slate-500">{plan.objection}</p>
 
               <button
                 className={`mt-6 w-full rounded-xl py-3 text-sm font-bold uppercase tracking-[0.14em] ${
-                  plan.alias === "start" ? "outline-btn" : "btn-primary"
+                  plan.code === "start_99" ? "outline-btn" : "btn-primary"
                 }`}
                 type="button"
-                onClick={() => pickPlan(plan.alias)}
+                onClick={() => pickPlan(plan.code)}
               >
-                Выбрать план
+                Выбрать тариф
               </button>
             </article>
           );

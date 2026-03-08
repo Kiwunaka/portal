@@ -19,9 +19,12 @@ const FEATURES = [
 ];
 
 const PLANS = [
-  { code: "start_99", name: "Start", price: "99 ₽", period: "30 дней", note: "1 устройство • быстрый вход без лишних шагов" },
-  { code: "1_month", name: "Pro", price: "249 ₽", period: "1 месяц", note: "До 5 устройств • оптимально на каждый день", highlight: true },
-  { code: "12_months", name: "Ultra", price: "1499 ₽", period: "12 месяцев", note: "До 5 устройств • длинный срок и меньше рутины" },
+  { code: "start_99", name: "Приветственный", price: "99 ₽", period: "30 дней", note: "1 устройство • можно использовать один раз" },
+  { code: "1_month", name: "1 месяц", price: "249 ₽", period: "30 дней", note: "До 5 устройств • базовый понятный срок", highlight: true },
+  { code: "3_months", name: "3 месяца", price: "699 ₽", period: "91 день", note: "До 5 устройств • удобнее, чем продлевать каждый месяц" },
+  { code: "6_months", name: "6 месяцев", price: "1199 ₽", period: "182 дня", note: "До 5 устройств • хороший баланс срока и цены" },
+  { code: "9_months", name: "9 месяцев", price: "1399 ₽", period: "273 дня", note: "До 5 устройств • редкие продления и спокойный запас" },
+  { code: "12_months", name: "12 месяцев", price: "1644 ₽", period: "365 дней", note: "До 5 устройств • скидка 45% при длинном сроке" },
 ];
 
 export default function HomePage() {
@@ -67,8 +70,8 @@ export default function HomePage() {
               <span>средний путь до кабинета</span>
             </div>
             <div>
-              <strong>3 плана</strong>
-              <span>без перегруза выбором</span>
+              <strong>6 тарифов</strong>
+              <span>от приветственного до годового</span>
             </div>
             <div>
               <strong>Telegram</strong>

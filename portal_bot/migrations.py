@@ -1,5 +1,6 @@
 ﻿from __future__ import annotations
 
+import os
 from datetime import datetime, timezone
 
 from sqlalchemy import Engine, text
@@ -68,6 +69,8 @@ RETENTION_TEMPLATE_PRESETS: dict[str, str] = {
     ),
 }
 
+DEFAULT_PAID_DEVICE_LIMIT = max(1, int(os.getenv("PAID_LIMIT_IP") or "5"))
+
 
 def _utcnow() -> datetime:
     return datetime.now(timezone.utc).replace(tzinfo=None)
@@ -97,6 +100,144 @@ def _seed_retention_templates(conn, *, dialect: str) -> None:
         conn.execute(
             text('INSERT INTO templates ("key", "text", "created_at") VALUES (:key, :text, :created_at);'),
             {"key": key, "text": value, "created_at": _utcnow()},
+        )
+
+
+PLAN_CATALOG_PRESETS = [
+    {
+        "code": "start_99",
+        "label": "Приветственный 30 дней",
+        "amount_rub": 99,
+        "amount_stars": 99,
+        "days": 30,
+        "device_limit": 1,
+        "node_policy": "nl_only",
+        "badge": "Один раз",
+        "is_active": True,
+        "sort_order": 1,
+    },
+    {
+        "code": "1_month",
+        "label": "1 месяц",
+        "amount_rub": 249,
+        "amount_stars": 249,
+        "days": 30,
+        "device_limit": DEFAULT_PAID_DEVICE_LIMIT,
+        "node_policy": "paid_pool",
+        "badge": "Базовый",
+        "is_active": True,
+        "sort_order": 2,
+    },
+    {
+        "code": "3_months",
+        "label": "3 месяца",
+        "amount_rub": 699,
+        "amount_stars": 699,
+        "days": 91,
+        "device_limit": DEFAULT_PAID_DEVICE_LIMIT,
+        "node_policy": "paid_pool",
+        "badge": "Выгоднее",
+        "is_active": True,
+        "sort_order": 3,
+    },
+    {
+        "code": "6_months",
+        "label": "6 месяцев",
+        "amount_rub": 1199,
+        "amount_stars": 1199,
+        "days": 182,
+        "device_limit": DEFAULT_PAID_DEVICE_LIMIT,
+        "node_policy": "paid_pool",
+        "badge": "Популярный",
+        "is_active": True,
+        "sort_order": 4,
+    },
+    {
+        "code": "9_months",
+        "label": "9 месяцев",
+        "amount_rub": 1399,
+        "amount_stars": 1399,
+        "days": 273,
+        "device_limit": DEFAULT_PAID_DEVICE_LIMIT,
+        "node_policy": "paid_pool",
+        "badge": "Надолго",
+        "is_active": True,
+        "sort_order": 5,
+    },
+    {
+        "code": "12_months",
+        "label": "12 месяцев",
+        "amount_rub": 1644,
+        "amount_stars": 1644,
+        "days": 365,
+        "device_limit": DEFAULT_PAID_DEVICE_LIMIT,
+        "node_policy": "paid_pool",
+        "badge": "-45%",
+        "is_active": True,
+        "sort_order": 6,
+    },
+]
+
+
+def _seed_plan_catalog(conn, *, dialect: str) -> None:
+    if dialect == "sqlite":
+        exists = conn.execute(
+            text("SELECT name FROM sqlite_master WHERE type='table' AND name='plan_catalog';")
+        ).fetchone()
+        if not exists:
+            return
+    elif dialect == "postgresql":
+        exists = conn.execute(text("SELECT to_regclass('public.plan_catalog');")).scalar()
+        if not exists:
+            return
+    else:
+        return
+
+    now = _utcnow()
+    for item in PLAN_CATALOG_PRESETS:
+        updated = conn.execute(
+            text(
+                """
+                UPDATE plan_catalog
+                SET label = :label,
+                    amount_rub = :amount_rub,
+                    amount_stars = :amount_stars,
+                    days = :days,
+                    device_limit = :device_limit,
+                    node_policy = :node_policy,
+                    badge = :badge,
+                    is_active = :is_active,
+                    sort_order = :sort_order,
+                    updated_at = :updated_at
+                WHERE lower(code) = :code;
+                """
+            ),
+            {
+                **item,
+                "code": str(item["code"]).lower(),
+                "updated_at": now,
+            },
+        )
+        if int(getattr(updated, "rowcount", 0) or 0) > 0:
+            continue
+        conn.execute(
+            text(
+                """
+                INSERT INTO plan_catalog (
+                    code, label, amount_rub, amount_stars, days, device_limit, node_policy,
+                    badge, is_active, sort_order, created_at, updated_at
+                )
+                VALUES (
+                    :code, :label, :amount_rub, :amount_stars, :days, :device_limit, :node_policy,
+                    :badge, :is_active, :sort_order, :created_at, :updated_at
+                );
+                """
+            ),
+            {
+                **item,
+                "created_at": now,
+                "updated_at": now,
+            },
         )
 
 def run_migrations(engine: Engine) -> None:
@@ -710,6 +851,7 @@ def run_migrations(engine: Engine) -> None:
 
         # Seed default retention templates for admin editing (idempotent).
         _seed_retention_templates(conn, dialect="sqlite")
+        _seed_plan_catalog(conn, dialect="sqlite")
 
 
 def _run_postgres_migrations(engine: Engine) -> None:
@@ -1032,3 +1174,4 @@ def _run_postgres_migrations(engine: Engine) -> None:
 
         # Seed default retention templates for admin editing (idempotent).
         _seed_retention_templates(conn, dialect="postgresql")
+        _seed_plan_catalog(conn, dialect="postgresql")

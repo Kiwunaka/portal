@@ -201,7 +201,7 @@ API_PLAN_PRICES = {
     "3_months": 699,
     "6_months": 1199,
     "9_months": 1399,
-    "12_months": 1499,
+    "12_months": 1644,
 }
 RUB_PLAN_PRICES = {
     "start_99": {"amount_rub": 99, "days": 30},
@@ -209,15 +209,15 @@ RUB_PLAN_PRICES = {
     "3_months": {"amount_rub": 699, "days": 91},
     "6_months": {"amount_rub": 1199, "days": 182},
     "9_months": {"amount_rub": 1399, "days": 273},
-    "12_months": {"amount_rub": 1499, "days": 365},
+    "12_months": {"amount_rub": 1644, "days": 365},
 }
 RUB_PLAN_LABELS = {
-    "start_99": "Start 30 дней",
-    "1_month": "Pro 1 месяц",
-    "3_months": "Pro 3 месяца",
-    "6_months": "Ultra 6 месяцев",
-    "9_months": "Ultra 9 месяцев",
-    "12_months": "Ultra 12 месяцев",
+    "start_99": "Приветственный 30 дней",
+    "1_month": "1 месяц",
+    "3_months": "3 месяца",
+    "6_months": "6 месяцев",
+    "9_months": "9 месяцев",
+    "12_months": "12 месяцев",
 }
 GIFT_CARD_TYPES = {
     "mini": {"days": 7, "stars": 59, "name": "Mini"},
@@ -226,12 +226,12 @@ GIFT_CARD_TYPES = {
 }
 PAYMENT_PROVIDER_WHITELIST = {"cardlink", "freekassa", "pally", "platima"}
 RUB_PLAN_LABELS = {
-    "start_99": "Start 30 дней",
-    "1_month": "Pro 1 месяц",
-    "3_months": "Pro 3 месяца",
-    "6_months": "Ultra 6 месяцев",
-    "9_months": "Ultra 9 месяцев",
-    "12_months": "Ultra 12 месяцев",
+    "start_99": "Приветственный 30 дней",
+    "1_month": "1 месяц",
+    "3_months": "3 месяца",
+    "6_months": "6 месяцев",
+    "9_months": "9 месяцев",
+    "12_months": "12 месяцев",
 }
 FK_NOTIFY_IP_ALLOWLIST = [
     x.strip()
@@ -249,6 +249,14 @@ DEFAULT_LOYALTY_CONFIG: dict[str, Any] = {
 
 
 def _default_plan_catalog() -> list[dict[str, Any]]:
+    badges = {
+        "start_99": "Один раз",
+        "1_month": "Базовый",
+        "3_months": "Выгоднее",
+        "6_months": "Популярный",
+        "9_months": "Надолго",
+        "12_months": "-45%",
+    }
     return [
         {
             "code": code,
@@ -258,7 +266,7 @@ def _default_plan_catalog() -> list[dict[str, Any]]:
             "days": int(RUB_PLAN_PRICES.get(code, {}).get("days") or 30),
             "device_limit": 1 if code == "start_99" else max(1, int(PAID_LIMIT_IP)),
             "node_policy": "nl_only" if code == "start_99" else "paid_pool",
-            "badge": "New" if code == "start_99" else "",
+            "badge": badges.get(code, ""),
             "is_active": True,
             "sort_order": idx + 1,
         }

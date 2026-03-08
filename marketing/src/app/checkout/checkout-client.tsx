@@ -65,12 +65,12 @@ const config = getPortalPublicConfig(process.env as Record<string, string | unde
 const CHECKOUT_CACHE_PREFIX = "portal_checkout_payment_v2";
 
 const FALLBACK_PLANS: PlanOption[] = [
-  { code: "start_99", label: "Start 30 дней", amount_rub: 99, days: 30, device_limit: 1 },
-  { code: "1_month", label: "Pro 1 месяц", amount_rub: 249, days: 30, device_limit: 5 },
-  { code: "3_months", label: "Pro 3 месяца", amount_rub: 699, days: 91, device_limit: 5 },
-  { code: "6_months", label: "Ultra 6 месяцев", amount_rub: 1199, days: 182, device_limit: 5 },
-  { code: "9_months", label: "Ultra 9 месяцев", amount_rub: 1399, days: 273, device_limit: 5 },
-  { code: "12_months", label: "Ultra 12 месяцев", amount_rub: 1499, days: 365, device_limit: 5 },
+  { code: "start_99", label: "Приветственный 30 дней", amount_rub: 99, days: 30, device_limit: 1 },
+  { code: "1_month", label: "1 месяц", amount_rub: 249, days: 30, device_limit: 5 },
+  { code: "3_months", label: "3 месяца", amount_rub: 699, days: 91, device_limit: 5 },
+  { code: "6_months", label: "6 месяцев", amount_rub: 1199, days: 182, device_limit: 5 },
+  { code: "9_months", label: "9 месяцев", amount_rub: 1399, days: 273, device_limit: 5 },
+  { code: "12_months", label: "12 месяцев", amount_rub: 1644, days: 365, device_limit: 5 },
 ];
 
 function candidateApiBases(): string[] {

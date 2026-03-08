@@ -9,54 +9,54 @@ import { useEffect, useMemo, useState } from "react";
 const config = getPortalPublicConfig(process.env as Record<string, string | undefined>);
 
 const COMPARISON_ROWS = [
-  { metric: "Устройства", start: "1", pro: "До 5", ultra: "До 5" },
-  { metric: "Точки подключения", start: "NL", pro: "IT, NL, PL, US", ultra: "IT, NL, PL, US" },
-  { metric: "Срок", start: "30 дней", pro: "1 или 3 месяца", ultra: "6, 9 или 12 месяцев" },
-  { metric: "Поддержка", start: "Стандартная", pro: "Быстрый ответ", ultra: "Приоритетная" },
+  { metric: "Устройства", start: "1", standard: "До 5", long: "До 5" },
+  { metric: "Страны", start: "NL", standard: "IT, NL, PL, US", long: "IT, NL, PL, US" },
+  { metric: "Срок", start: "30 дней", standard: "1 или 3 месяца", long: "6, 9 или 12 месяцев" },
+  { metric: "Для кого", start: "Спокойная проверка сервиса", standard: "Обычное ежемесячное использование", long: "Редкие продления и лучший срок" },
 ] as const;
 
-function planColumn(planCode: string | null | undefined): "start" | "pro" | "ultra" {
+function planColumn(planCode: string | null | undefined): "start" | "standard" | "long" {
   const code = normalizePlanCode(planCode || "");
   if (code === "start_99") return "start";
-  if (code === "1_month" || code === "3_months") return "pro";
-  return "ultra";
+  if (code === "1_month" || code === "3_months") return "standard";
+  return "long";
 }
 
 function fallbackPlans(): PlanCatalogRow[] {
   return [
     {
       code: "start_99",
-      label: "Start 30 дней",
+      label: "Приветственный 30 дней",
       amount_rub: 99,
-      amount_stars: 0,
+      amount_stars: 99,
       days: 30,
       device_limit: 1,
       node_policy: "nl_only",
-      badge: "Вход",
+      badge: "Один раз",
       is_active: true,
       sort_order: 1,
     },
     {
       code: "1_month",
-      label: "Pro 1 месяц",
+      label: "1 месяц",
       amount_rub: 249,
       amount_stars: 249,
       days: 30,
       device_limit: 5,
       node_policy: "paid_pool",
-      badge: "Популярный",
+      badge: "Базовый",
       is_active: true,
       sort_order: 2,
     },
     {
       code: "12_months",
-      label: "Ultra 12 месяцев",
-      amount_rub: 1499,
-      amount_stars: 1499,
+      label: "12 месяцев",
+      amount_rub: 1644,
+      amount_stars: 1644,
       days: 365,
       device_limit: 5,
       node_policy: "paid_pool",
-      badge: "Выгода",
+      badge: "-45%",
       is_active: true,
       sort_order: 3,
     },
@@ -159,9 +159,9 @@ export default function SubscriptionPage() {
             <thead className="bg-white/55 dark:bg-white/5">
               <tr>
                 <th className="px-4 py-3">Параметр</th>
-                <th className={`px-4 py-3 ${activeColumn === "start" ? "text-violet-600 dark:text-violet-300" : ""}`}>Start</th>
-                <th className={`px-4 py-3 ${activeColumn === "pro" ? "text-violet-600 dark:text-violet-300" : ""}`}>Pro</th>
-                <th className={`px-4 py-3 ${activeColumn === "ultra" ? "text-violet-600 dark:text-violet-300" : ""}`}>Ultra</th>
+                <th className={`px-4 py-3 ${activeColumn === "start" ? "text-violet-600 dark:text-violet-300" : ""}`}>Приветственный</th>
+                <th className={`px-4 py-3 ${activeColumn === "standard" ? "text-violet-600 dark:text-violet-300" : ""}`}>1–3 месяца</th>
+                <th className={`px-4 py-3 ${activeColumn === "long" ? "text-violet-600 dark:text-violet-300" : ""}`}>6–12 месяцев</th>
               </tr>
             </thead>
             <tbody>
@@ -169,8 +169,8 @@ export default function SubscriptionPage() {
                 <tr key={row.metric} className="border-t border-white/40 dark:border-white/10">
                   <td className="px-4 py-3 font-semibold">{row.metric}</td>
                   <td className={`px-4 py-3 ${activeColumn === "start" ? "font-semibold text-violet-600 dark:text-violet-300" : ""}`}>{row.start}</td>
-                  <td className={`px-4 py-3 ${activeColumn === "pro" ? "font-semibold text-violet-600 dark:text-violet-300" : ""}`}>{row.pro}</td>
-                  <td className={`px-4 py-3 ${activeColumn === "ultra" ? "font-semibold text-violet-600 dark:text-violet-300" : ""}`}>{row.ultra}</td>
+                  <td className={`px-4 py-3 ${activeColumn === "standard" ? "font-semibold text-violet-600 dark:text-violet-300" : ""}`}>{row.standard}</td>
+                  <td className={`px-4 py-3 ${activeColumn === "long" ? "font-semibold text-violet-600 dark:text-violet-300" : ""}`}>{row.long}</td>
                 </tr>
               ))}
             </tbody>

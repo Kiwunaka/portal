@@ -23,16 +23,49 @@ function normalizePlans(rows: PlanCatalogRow[]): PlanCatalogRow[] {
 
 function fallbackPlans(): PlanCatalogRow[] {
   return [
-    { code: "start_99", label: "Start 30 дней", amount_rub: 99, amount_stars: 0, days: 30, device_limit: 1, node_policy: "nl_only", badge: "Вход", is_active: true, sort_order: 1 },
-    { code: "1_month", label: "Pro 1 месяц", amount_rub: 249, amount_stars: 249, days: 30, device_limit: 5, node_policy: "paid_pool", badge: "Популярный", is_active: true, sort_order: 2 },
-    { code: "12_months", label: "Ultra 12 месяцев", amount_rub: 1499, amount_stars: 1499, days: 365, device_limit: 5, node_policy: "paid_pool", badge: "Выгода", is_active: true, sort_order: 3 }
+    {
+      code: "start_99",
+      label: "Приветственный 30 дней",
+      amount_rub: 99,
+      amount_stars: 99,
+      days: 30,
+      device_limit: 1,
+      node_policy: "nl_only",
+      badge: "Один раз",
+      is_active: true,
+      sort_order: 1,
+    },
+    {
+      code: "1_month",
+      label: "1 месяц",
+      amount_rub: 249,
+      amount_stars: 249,
+      days: 30,
+      device_limit: 5,
+      node_policy: "paid_pool",
+      badge: "Базовый",
+      is_active: true,
+      sort_order: 2,
+    },
+    {
+      code: "12_months",
+      label: "12 месяцев",
+      amount_rub: 1644,
+      amount_stars: 1644,
+      days: 365,
+      device_limit: 5,
+      node_policy: "paid_pool",
+      badge: "-45%",
+      is_active: true,
+      sort_order: 3,
+    },
   ];
 }
 
 function nodePolicyLabel(value: string | null | undefined): string {
   const normalized = String(value || "").trim().toLowerCase();
-  if (normalized === "nl_only") return "NL";
-  if (normalized === "paid_pool") return "IT, NL, PL, US";
+  if (normalized === "nl_only") return "Нидерланды";
+  if (normalized === "paid_pool") return "Все премиум-ноды: IT, NL, PL, US";
   return "Актуальный пул";
 }
 
@@ -110,12 +143,9 @@ export default function CheckoutPage() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [selectedProvider]);
 
-  const activePlan = useMemo(() => {
-    return plans.find((plan) => plan.code === selectedCode) || plans[0] || null;
-  }, [plans, selectedCode]);
-
+  const activePlan = useMemo(() => plans.find((plan) => plan.code === selectedCode) || plans[0] || null, [plans, selectedCode]);
   const activeProvider = useMemo(() => {
     const current = String(selectedProvider || "").trim().toLowerCase();
     return providers.find((provider) => String(provider.code || "").trim().toLowerCase() === current) || providers[0] || null;
@@ -138,7 +168,7 @@ export default function CheckoutPage() {
         tg_id: user.tg_id,
         campaign: queryCampaign || undefined,
         promo_code: queryPromo || undefined,
-        currency: "RUB"
+        currency: "RUB",
       });
       const base = Number(order.base_amount_rub ?? order.amount_rub ?? activePlan.amount_rub);
       const final = Number(order.amount_rub ?? activePlan.amount_rub);
@@ -161,7 +191,9 @@ export default function CheckoutPage() {
     <main className="space-y-6">
       <section className="glass-card p-7">
         <p className="font-mono text-xs uppercase tracking-[0.16em] text-violet-600 dark:text-violet-300">checkout</p>
-        <h1 className="mt-2 font-display text-4xl font-bold">{getCopyText("webapp.checkout.title", "Оплата и продление")}</h1>
+        <h1 className="mt-2 font-display text-4xl font-bold">
+          {getCopyText("webapp.checkout.title", "Оплата и продление")}
+        </h1>
         <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">
           {getCopyText(
             "webapp.checkout.subtitle",
@@ -172,7 +204,7 @@ export default function CheckoutPage() {
 
       <section className="grid gap-5 lg:grid-cols-[1.25fr,0.9fr]">
         <article className="glass-card p-6">
-          <h2 className="font-display text-2xl font-semibold">Выберите план</h2>
+          <h2 className="font-display text-2xl font-semibold">Выберите тариф</h2>
           <div className="mt-4 space-y-2">
             {plans.map((plan) => (
               <button
@@ -189,7 +221,9 @@ export default function CheckoutPage() {
                   <span className="font-semibold">{plan.label}</span>
                   <span className="font-mono text-sm">{Number(plan.amount_rub || 0)} ₽</span>
                 </div>
-                <p className="mt-1 text-xs text-slate-500">{plan.days} дней • до {plan.device_limit} устройств</p>
+                <p className="mt-1 text-xs text-slate-500">
+                  {plan.days} дней • до {plan.device_limit} устройств
+                </p>
               </button>
             ))}
           </div>
@@ -234,22 +268,29 @@ export default function CheckoutPage() {
           <h2 className="font-display text-2xl font-semibold">Итог</h2>
           {activePlan ? (
             <div className="mt-3 space-y-2 text-sm text-slate-600 dark:text-slate-300">
-              <p>План: <span className="font-semibold text-slate-900 dark:text-white">{activePlan.label}</span></p>
+              <p>
+                Тариф: <span className="font-semibold text-slate-900 dark:text-white">{activePlan.label}</span>
+              </p>
               <p>Срок: {activePlan.days} дней</p>
               <p>Лимит устройств: до {activePlan.device_limit}</p>
               <p>Точки подключения: {nodePolicyLabel(activePlan.node_policy)}</p>
-              <p>Касса: <span className="font-semibold text-slate-900 dark:text-white">{activeProvider?.label || "Будет выбрана автоматически"}</span></p>
+              <p>
+                Касса:{" "}
+                <span className="font-semibold text-slate-900 dark:text-white">
+                  {activeProvider?.label || "Будет выбрана автоматически"}
+                </span>
+              </p>
               {queryPromo ? <p>Промокод: {queryPromo}</p> : null}
               {breakdown ? (
                 <div className="rounded-xl border border-white/45 bg-white/65 p-4 text-xs dark:border-white/10 dark:bg-white/5">
-                  <p>База: {breakdown.base.toFixed(0)} ₽</p>
+                  <p>Базовая цена: {breakdown.base.toFixed(0)} ₽</p>
                   <p>Скидка: {breakdown.discountPct}%</p>
-                  <p className="font-semibold text-slate-900 dark:text-white">Итог: {breakdown.final.toFixed(0)} ₽</p>
+                  <p className="font-semibold text-slate-900 dark:text-white">К оплате: {breakdown.final.toFixed(0)} ₽</p>
                 </div>
               ) : null}
             </div>
           ) : (
-            <p className="mt-3 text-sm text-slate-500">Планы загружаются...</p>
+            <p className="mt-3 text-sm text-slate-500">Тарифы загружаются...</p>
           )}
 
           <button

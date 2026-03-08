@@ -1,71 +1,78 @@
-import { PLAN_ALIAS_TO_CODE, type PlanAlias, type PlanCode } from "./portal";
+import { normalizePlanCode, type PlanCode } from "./portal";
 
-export type BillingPeriod = "monthly" | "annual";
-
-export type PlanConfig = {
-  alias: PlanAlias;
-  defaultCode: PlanCode;
-  name: string;
-  subtitle: string;
-  shortPrice: number;
-  longPrice: number;
-  shortLabel: string;
-  longLabel: string;
-  devices: string;
-  promise: string;
-  objection: string;
-  perks: string[];
+export type PricingPlan = {
+  code: PlanCode;
+  label: string;
+  price: number;
+  days: number;
+  deviceLimit: number;
+  badge?: string;
+  isOneTime?: boolean;
+  note: string;
 };
 
-export const PLAN_CONFIG: PlanConfig[] = [
+export const PRICING_PLANS: PricingPlan[] = [
   {
-    alias: "start",
-    defaultCode: PLAN_ALIAS_TO_CODE.start,
-    name: "Start",
-    subtitle: "Спокойный вход без лишних затрат",
-    shortPrice: 99,
-    longPrice: 99,
-    shortLabel: "30 дней",
-    longLabel: "30 дней",
-    devices: "1 устройство",
-    promise: "Подходит, чтобы спокойно проверить сервис в реальном ежедневном сценарии.",
-    objection: "Если позже понадобится больше устройств и стран, можно перейти на Pro.",
-    perks: ["30 дней доступа", "1 устройство", "Базовый набор стран"]
+    code: "start_99",
+    label: "Приветственный 30 дней",
+    price: 99,
+    days: 30,
+    deviceLimit: 1,
+    badge: "Один раз",
+    isOneTime: true,
+    note: "Чтобы спокойно проверить сервис без лишних обязательств.",
   },
   {
-    alias: "pro",
-    defaultCode: PLAN_ALIAS_TO_CODE.pro,
-    name: "Pro",
-    subtitle: "Оптимальный ритм на каждый день",
-    shortPrice: 249,
-    longPrice: 699,
-    shortLabel: "1 месяц",
-    longLabel: "3 месяца",
-    devices: "До 5 устройств",
-    promise: "Хороший баланс по сроку, цене и количеству устройств для повседневного использования.",
-    objection: "Если не хотите часто возвращаться к продлению, удобнее взять Ultra на долгий срок.",
-    perks: ["1 или 3 месяца", "До 5 устройств", "Полный набор стран"]
+    code: "1_month",
+    label: "1 месяц",
+    price: 249,
+    days: 30,
+    deviceLimit: 5,
+    badge: "Базовый",
+    note: "Короткий понятный срок для обычного ежемесячного использования.",
   },
   {
-    alias: "ultra",
-    defaultCode: PLAN_ALIAS_TO_CODE.ultra,
-    name: "Ultra",
-    subtitle: "Длинный горизонт и меньше рутины",
-    shortPrice: 1199,
-    longPrice: 1499,
-    shortLabel: "6 месяцев",
-    longLabel: "12 месяцев",
-    devices: "До 5 устройств",
-    promise: "Самая спокойная модель для тех, кто не хочет постоянно возвращаться к оплате.",
-    objection: "В линейке есть 6, 9 и 12 месяцев, так что можно выбрать удобный запас по сроку.",
-    perks: ["6, 9 или 12 месяцев", "До 5 устройств", "Приоритетная поддержка"]
-  }
+    code: "3_months",
+    label: "3 месяца",
+    price: 699,
+    days: 91,
+    deviceLimit: 5,
+    badge: "Выгоднее",
+    note: "Удобный вариант, если не хочется возвращаться к оплате каждый месяц.",
+  },
+  {
+    code: "6_months",
+    label: "6 месяцев",
+    price: 1199,
+    days: 182,
+    deviceLimit: 5,
+    badge: "Популярный",
+    note: "Хороший баланс между общей суммой и экономией на длительном сроке.",
+  },
+  {
+    code: "9_months",
+    label: "9 месяцев",
+    price: 1399,
+    days: 273,
+    deviceLimit: 5,
+    badge: "Надолго",
+    note: "Для тех, кто хочет реже продлевать и зафиксировать доступ заранее.",
+  },
+  {
+    code: "12_months",
+    label: "12 месяцев",
+    price: 1644,
+    days: 365,
+    deviceLimit: 5,
+    badge: "-45%",
+    note: "Максимальный срок с крупной скидкой, но без слишком агрессивного дисконта.",
+  },
 ];
 
 const PROMO_RULES: Record<string, number> = {
   PORTAL10: 10,
   WELCOME15: 15,
-  STARTBOOST: 15
+  STARTBOOST: 15,
 };
 
 export function normalizePromo(raw: string): string {
@@ -76,34 +83,21 @@ export function promoDiscountPercent(raw: string): number {
   return PROMO_RULES[normalizePromo(raw)] || 0;
 }
 
-export function parsePlanAlias(raw: string | null | undefined): PlanAlias {
-  if (raw === "start" || raw === "pro" || raw === "ultra") return raw;
-  return "pro";
+export function getPricingPlan(raw: string | null | undefined): PricingPlan {
+  const code = normalizePlanCode(raw, "1_month");
+  return PRICING_PLANS.find((plan) => plan.code === code) || PRICING_PLANS[1];
 }
 
-export function parseBillingPeriod(raw: string | null | undefined): BillingPeriod {
-  if (raw === "annual" || raw === "monthly") return raw;
-  return "monthly";
-}
-
-export function getPlan(alias: PlanAlias): PlanConfig {
-  return PLAN_CONFIG.find((item) => item.alias === alias) || PLAN_CONFIG[1];
-}
-
-export function computePrice(alias: PlanAlias, period: BillingPeriod, promo: string) {
-  const config = getPlan(alias);
-  const base = period === "annual" ? config.longPrice : config.shortPrice;
-  const periodLabel = period === "annual" ? config.longLabel : config.shortLabel;
+export function computePlanPrice(planCode: string | null | undefined, promo: string) {
+  const plan = getPricingPlan(planCode);
   const discountPercent = promoDiscountPercent(promo);
-  const discountAmount = Math.round((base * discountPercent) / 100);
-  const total = Math.max(0, base - discountAmount);
-
+  const discountAmount = Math.round((plan.price * discountPercent) / 100);
+  const total = Math.max(0, plan.price - discountAmount);
   return {
-    base,
-    periodLabel,
+    plan,
+    base: plan.price,
     discountPercent,
     discountAmount,
     total,
-    planCode: config.defaultCode
   };
 }
