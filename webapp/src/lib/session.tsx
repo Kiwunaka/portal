@@ -52,6 +52,19 @@ export function PortalSessionProvider({ children, mode = "dashboard" }: PortalSe
   const [dash, setDash] = useState<DashboardSnapshot | null>(null);
 
   const refresh = useCallback(async () => {
+    if (typeof window !== "undefined") {
+      try {
+        const current = new URL(window.location.href);
+        if (current.searchParams.get("clear_web_session") === "1") {
+          clearWebSessionToken();
+          current.searchParams.delete("clear_web_session");
+          window.history.replaceState({}, "", `${current.pathname}${current.search}${current.hash}` || "/webapp/");
+        }
+      } catch {
+        // ignore malformed location
+      }
+    }
+
     const consumedFromUrl = consumeWebSessionTokenFromUrl();
     const hasSession = hasWebSessionToken() || consumedFromUrl;
     if (!tgUser && !hasSession) {

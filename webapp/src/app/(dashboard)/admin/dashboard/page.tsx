@@ -1,6 +1,7 @@
 "use client";
 
 import { adminMetricsStatus, adminMetricsTimeseries, adminSummary, type AdminMetricsPoint, type AdminMetricsStatus, type AdminSummaryPayload } from "@/lib/api";
+import { usePortalSession } from "@/lib/session";
 import { Activity, RefreshCw, Server, Star, TrendingUp, Users, Ticket, ArrowUp, ArrowDown, AlertTriangle } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { fmtRuDate } from "../nav";
@@ -64,6 +65,7 @@ function buildMetricsHealthSummary(metrics: AdminMetricsStatus | null): { value:
 }
 
 export default function AdminDashboardPage() {
+  const { loading: sessionLoading, user, webLoginRequired } = usePortalSession();
   const [summary, setSummary] = useState<AdminSummaryPayload | null>(null);
   const [metrics, setMetrics] = useState<AdminMetricsStatus | null>(null);
   const [series, setSeries] = useState<AdminMetricsPoint[]>([]);
@@ -71,6 +73,9 @@ export default function AdminDashboardPage() {
   const [error, setError] = useState("");
 
   const refresh = async (): Promise<void> => {
+    if (sessionLoading || webLoginRequired || !user?.is_admin) {
+      return;
+    }
     setLoading(true);
     setError("");
     try {
@@ -91,8 +96,11 @@ export default function AdminDashboardPage() {
   };
 
   useEffect(() => {
+    if (sessionLoading || webLoginRequired || !user?.is_admin) {
+      return;
+    }
     void refresh();
-  }, []);
+  }, [sessionLoading, user?.is_admin, webLoginRequired]);
 
   const totals = useMemo(() => {
     return (series || []).reduce(

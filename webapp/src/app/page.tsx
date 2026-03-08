@@ -1,9 +1,9 @@
 "use client";
 
+import AppRouteLink from "@/components/app-route-link";
 import TelegramLoginWidget from "@/components/telegram-login-widget";
 import { getPortalPublicConfig } from "@/lib/portal";
 import { PortalSessionProvider, usePortalSession } from "@/lib/session";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 
@@ -50,13 +50,14 @@ function EntryBody() {
             >
               Повторить
             </button>
-            <Link
+            <AppRouteLink
               href={BOT_WEBLOGIN_URL}
               target="_blank"
+              hardNavigate={false}
               className="outline-btn rounded-xl px-5 py-2.5 text-sm font-semibold uppercase tracking-[0.12em]"
             >
               Продолжить через Telegram
-            </Link>
+            </AppRouteLink>
           </div>
         </section>
       </main>
@@ -88,20 +89,20 @@ function EntryBody() {
         )}
 
         <div className="mt-6 flex flex-wrap gap-3">
-          <Link
+          <AppRouteLink
             href={BOT_WEBLOGIN_URL}
             target="_blank"
+            hardNavigate={false}
             className="btn-primary rounded-xl px-5 py-2.5 text-sm font-semibold uppercase tracking-[0.12em]"
           >
             Открыть Telegram
-          </Link>
-          <button
+          </AppRouteLink>
+          <AppRouteLink
+            href="/webapp/?clear_web_session=1"
             className="outline-btn rounded-xl px-5 py-2.5 text-sm font-semibold uppercase tracking-[0.12em]"
-            onClick={logoutWebSession}
-            type="button"
           >
             Очистить веб-вход
-          </button>
+          </AppRouteLink>
         </div>
       </section>
     </main>
