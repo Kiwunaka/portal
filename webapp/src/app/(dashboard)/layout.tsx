@@ -25,16 +25,6 @@ const BOT_BASE_URL = String(process.env.NEXT_PUBLIC_TELEGRAM_BOT_URL || "https:/
   .trim()
   .replace(/\/+$/, "");
 const BOT_WEBLOGIN_URL = `${BOT_BASE_URL}${BOT_BASE_URL.includes("?") ? "&" : "?"}start=weblogin`;
-const WEB_WIDGET_BOT = String(
-  process.env.NEXT_PUBLIC_TELEGRAM_LOGIN_BOT ||
-    process.env.VITE_TELEGRAM_LOGIN_BOT ||
-    BOT_BASE_URL.replace(/^https?:\/\/t\.me\//i, "").replace(/^@+/, ""),
-)
-  .trim()
-  .replace(/^@+/, "")
-  .replace(/\/+$/, "")
-  .toLowerCase();
-const TELEGRAM_WIDGET_ENABLED = Boolean(WEB_WIDGET_BOT);
 
 function DashboardShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -104,11 +94,7 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
           <h1 className="mt-2 font-display text-4xl font-bold">Вход через Telegram</h1>
           <p className="mt-3 text-sm text-slate-600 dark:text-slate-300">Авторизуйтесь через Telegram Login Widget, чтобы открыть личный кабинет в браузере.</p>
           <div className="mt-5 space-y-3">
-            {TELEGRAM_WIDGET_ENABLED ? (
-              <TelegramLoginWidget />
-            ) : (
-              <p className="text-xs text-slate-500">Telegram Login Widget отключён в конфиге этого окружения.</p>
-            )}
+            <TelegramLoginWidget />
             {webLoginBusy ? <p className="text-xs text-slate-500">Проверяем аккаунт...</p> : null}
             {webLoginError ? <p className="text-xs text-rose-500">{webLoginError}</p> : null}
           </div>

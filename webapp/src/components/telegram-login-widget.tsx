@@ -21,7 +21,9 @@ export default function TelegramLoginWidget() {
     if (!host) return;
     host.innerHTML = "";
 
-    const botFromUrl = String(process.env.NEXT_PUBLIC_TELEGRAM_BOT_URL || process.env.VITE_TELEGRAM_BOT_URL || "")
+    const botFromUrl = String(
+      process.env.NEXT_PUBLIC_TELEGRAM_BOT_URL || process.env.VITE_TELEGRAM_BOT_URL || "https://t.me/portal_service_bot",
+    )
       .trim()
       .replace(/^https?:\/\/t\.me\//i, "")
       .replace(/^@+/, "")

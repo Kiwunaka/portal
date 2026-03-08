@@ -61,8 +61,12 @@ export function PortalSessionProvider({ children }: { children: React.ReactNode 
     setWebLoginError("");
 
     try {
-      const dashboard = await fetchDashboard();
-      const profile = await fetchUser(Number(dashboard.tg_id));
+      const tgId = Number(tgUser?.id || 0);
+      const dashboardPromise = fetchDashboard();
+      const profilePromise = tgId > 0 ? fetchUser(tgId) : null;
+
+      const dashboard = await dashboardPromise;
+      const profile = profilePromise ? await profilePromise : await fetchUser(Number(dashboard.tg_id));
       setDash(dashboard);
       setUser(profile);
     } catch (error) {
