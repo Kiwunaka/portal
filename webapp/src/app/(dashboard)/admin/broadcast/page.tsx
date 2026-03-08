@@ -232,8 +232,11 @@ export default function AdminBroadcastPage() {
           </div>
           <div>
             <h2 className="font-display text-xl font-bold">Рассылка</h2>
-            <p className="text-xs text-slate-500">Массовая рассылка пользователям</p>
+            <p className="text-xs text-slate-500">Массовая отправка сообщений по выбранному сегменту пользователей</p>
           </div>
+        </div>
+        <div className="rounded-xl bg-white/60 p-3 text-xs text-slate-500 dark:bg-white/5 dark:text-slate-400">
+          Используйте рассылку для новостей, напоминаний и важных объявлений. Если сообщение критичное, сначала отправьте его на небольшой сегмент и только потом на всю базу.
         </div>
 
         <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
@@ -264,7 +267,7 @@ export default function AdminBroadcastPage() {
               value={tgIdsRaw}
               onChange={(event) => setTgIdsRaw(event.target.value)}
               className="w-full rounded-xl border border-violet-200/50 bg-white/80 px-3 py-2 text-sm outline-none dark:border-violet-500/30 dark:bg-slate-900/70"
-              placeholder="123, 456, 789"
+              placeholder="Если нужно, укажите конкретные Telegram ID через запятую"
             />
           </div>
         </div>
@@ -277,6 +280,7 @@ export default function AdminBroadcastPage() {
               onChange={(event) => setText(event.target.value)}
               rows={6}
               placeholder="Текст рассылки..."
+              
               className="w-full rounded-xl border border-violet-200/50 bg-white/80 px-3 py-2 text-sm outline-none dark:border-violet-500/30 dark:bg-slate-900/70 resize-none"
             />
           </div>
@@ -308,7 +312,7 @@ export default function AdminBroadcastPage() {
             </div>
             <div>
               <h3 className="font-display text-xl font-bold">Retention-шаблоны</h3>
-              <p className="text-xs text-slate-500">Welcome, T-3, T-1, T0 и reactivation без захода в бот</p>
+              <p className="text-xs text-slate-500">Готовые шаблоны для приветствия, напоминаний о продлении и возврата пользователей</p>
             </div>
           </div>
           <span className="badge badge-info">{templates.length} шаблонов</span>
@@ -358,7 +362,7 @@ export default function AdminBroadcastPage() {
             </div>
             <div>
               <h3 className="font-display text-xl font-bold">Новости в приложении</h3>
-              <p className="text-xs text-slate-500">Новости в личном кабинете пользователей</p>
+              <p className="text-xs text-slate-500">Карточки новостей, которые пользователи видят прямо в кабинете</p>
             </div>
           </div>
           <button className="btn-primary rounded-xl px-4 py-2 text-sm font-semibold inline-flex items-center gap-1.5" type="button" onClick={() => void createLiveUpdate()} disabled={busy}>

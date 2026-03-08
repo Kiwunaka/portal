@@ -162,6 +162,13 @@ export default function AdminReferralsPage() {
 
   return (
     <section className="space-y-5">
+      <article className="glass-card p-4">
+        <h2 className="font-display text-xl font-bold">Рефералы и welcome-ссылки</h2>
+        <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">
+          Здесь вы управляете ссылками, по которым пользователь впервые приходит в бот, а также очередью реферальных начислений. Если нужен новый входной сценарий для канала или рекламы, начинайте со стартовой ссылки.
+        </p>
+      </article>
+
       {/* ── Start links ────────────────────────────────── */}
       <article className="glass-card p-5">
         <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
@@ -169,7 +176,7 @@ export default function AdminReferralsPage() {
             <div className="stat-icon stat-icon-violet"><Link2 size={20} /></div>
             <div>
               <h2 className="font-display text-xl font-bold">Стартовые ссылки</h2>
-              <p className="text-xs text-slate-500">Welcome / campaign ссылки для бота</p>
+              <p className="text-xs text-slate-500">Ссылки для первого входа: welcome, акция, партнёрский поток</p>
             </div>
           </div>
           <div className="flex gap-2">
@@ -225,7 +232,7 @@ export default function AdminReferralsPage() {
           <div className="stat-icon stat-icon-emerald"><Sparkles size={20} /></div>
           <div>
             <h2 className="font-display text-xl font-bold">Генератор welcome/campaign ссылок</h2>
-            <p className="text-xs text-slate-500">Генерация ссылок для маркетинговых кампаний</p>
+            <p className="text-xs text-slate-500">Собирает готовые ссылки для бота, оплаты и кабинета под конкретную кампанию</p>
           </div>
         </div>
         <div className="grid gap-3 md:grid-cols-3">
@@ -250,7 +257,7 @@ export default function AdminReferralsPage() {
           <div className="grid gap-2 text-sm">
             {built.checkout_mode === "bot_fallback" ? (
               <div className="rounded-xl border border-amber-400/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-300">
-                Публичный checkout для этой ссылки недоступен без привязанного пользователя. Используйте вход через бота или WebApp.
+                Для этой кампании прямой публичный checkout сейчас не подходит. Безопаснее вести пользователя через бота или личный кабинет.
               </div>
             ) : null}
             {[
@@ -279,7 +286,7 @@ export default function AdminReferralsPage() {
             <div className="stat-icon stat-icon-amber"><Search size={20} /></div>
             <div>
               <h2 className="font-display text-xl font-bold">Антифрод очередь рефералов</h2>
-              <p className="text-xs text-slate-500">Подтверждение бонуса после окна активного использования</p>
+              <p className="text-xs text-slate-500">Здесь видно, кому бонус уже можно начислить, а кто ещё ждёт проверку активности</p>
             </div>
           </div>
           <div className="flex items-center gap-2">

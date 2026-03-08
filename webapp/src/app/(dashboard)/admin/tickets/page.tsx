@@ -76,6 +76,9 @@ export default function AdminTicketsPage() {
     <section className="grid gap-4 xl:grid-cols-[0.9fr,1.1fr]">
       {/* ── Ticket list ────────────────────────────────── */}
       <article className="glass-card p-4">
+        <div className="mb-3 rounded-xl bg-white/60 p-3 text-xs text-slate-500 dark:bg-white/5 dark:text-slate-400">
+          Здесь собраны обращения пользователей. Слева список диалогов, справа переписка и быстрые статусы. Если нужно просто разобрать очередь, начните с фильтра и верхних карточек.
+        </div>
         <div className="mb-3 flex flex-wrap items-center gap-2">
           <div className="stat-icon stat-icon-amber">
             <MessageCircle size={18} />
@@ -193,7 +196,7 @@ export default function AdminTicketsPage() {
                 value={reply}
                 onChange={(event) => setReply(event.target.value)}
                 rows={3}
-                placeholder="Ответ оператором..."
+                placeholder="Напишите ответ пользователю простыми словами"
                 className="w-full rounded-xl border border-violet-200/50 bg-white/80 px-3 py-2 text-sm outline-none dark:border-violet-500/30 dark:bg-slate-900/70 resize-none"
                 onKeyDown={(e) => {
                   if (e.key === "Enter" && (e.metaKey || e.ctrlKey) && reply.trim()) {
@@ -202,7 +205,7 @@ export default function AdminTicketsPage() {
                 }}
               />
               <div className="flex items-center justify-between">
-                <p className="text-[10px] text-slate-400">⌘ + Enter для отправки</p>
+                <p className="text-[10px] text-slate-400">Подсказка: можно отправить быстрее через Ctrl/⌘ + Enter</p>
                 <button
                   className="btn-primary rounded-xl px-4 py-2 text-sm font-semibold uppercase tracking-[0.12em] inline-flex items-center gap-2"
                   type="button"

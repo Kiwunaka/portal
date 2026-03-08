@@ -247,6 +247,13 @@ export default function AdminPromosPage() {
 
   return (
     <section className="space-y-5">
+      <article className="glass-card p-4">
+        <h2 className="font-display text-xl font-bold">Промо и тарифы без лишней путаницы</h2>
+        <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">
+          Этот раздел нужен для акций и коммерческих сценариев: промокоды, подарочные коды, тарифы и кампании. Если создаёте новую акцию, обычно путь такой: сначала код или подарок, потом кампания, и только после этого публикация ссылки.
+        </p>
+      </article>
+
       <div className="glass-card p-4 flex flex-wrap items-center gap-3">
         <button className="btn-primary rounded-xl px-4 py-2 text-sm font-semibold inline-flex items-center gap-1.5" type="button" onClick={() => setDialog({ kind: "createPromo", code: "WELCOME14", promoType: "days", value: "14", usesLeft: "100" })} disabled={busy}>
           <Plus size={14} /> Промокод
@@ -274,6 +281,7 @@ export default function AdminPromosPage() {
             <div className="stat-icon stat-icon-violet"><Tag size={20} /></div>
             <h2 className="font-display text-xl font-bold">Промокоды</h2>
           </div>
+          <p className="mb-4 text-xs text-slate-500">Промокод даёт скидку или бонусные дни. Здесь видно, сколько раз код ещё можно использовать.</p>
           <div className="space-y-2">
             {promos.length === 0 ? <div className="empty-state"><Tag size={24} /><p className="text-xs">Нет промокодов</p></div> : null}
             {promos.map((promo) => (
@@ -305,6 +313,7 @@ export default function AdminPromosPage() {
             <div className="stat-icon stat-icon-amber"><Gift size={20} /></div>
             <h2 className="font-display text-xl font-bold">Gift-коды</h2>
           </div>
+          <p className="mb-4 text-xs text-slate-500">Подарочные коды удобно использовать для партнёров, ручных бонусов и акций в канале.</p>
           <div className="space-y-2">
             {giftCodes.length === 0 ? <div className="empty-state"><Gift size={24} /><p className="text-xs">Нет gift-кодов</p></div> : null}
             {giftCodes.map((gift) => (
@@ -330,6 +339,7 @@ export default function AdminPromosPage() {
           <div className="stat-icon stat-icon-blue"><Package size={20} /></div>
           <h2 className="font-display text-xl font-bold">Кампании</h2>
         </div>
+        <p className="mb-4 text-xs text-slate-500">Кампания связывает код или подарок с сегментом пользователей, сроками и лимитом активаций.</p>
         <div className="space-y-2">
           {campaigns.length === 0 ? <div className="empty-state"><Package size={24} /><p className="text-xs">Нет кампаний</p></div> : null}
           {campaigns.map((row) => (
@@ -362,6 +372,7 @@ export default function AdminPromosPage() {
           <div className="stat-icon stat-icon-emerald"><Package size={20} /></div>
           <h2 className="font-display text-xl font-bold">Тарифы</h2>
         </div>
+        <p className="mb-4 text-xs text-slate-500">Здесь лежит каталог тарифов, который видят пользователи при выборе плана.</p>
         <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
           {plans.map((plan) => (
             <div key={plan.code} className="stat-card p-4">

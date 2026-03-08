@@ -158,9 +158,12 @@ export default function AdminBonusesPage() {
           <div className="stat-icon stat-icon-amber"><Dices size={22} /></div>
           <div>
             <h2 className="font-display text-xl font-bold">Бонусы и рулетка</h2>
-            <p className="text-xs text-slate-500">Настройка cooldown и весов выдачи дней бонуса</p>
+            <p className="text-xs text-slate-500">Настройка бонусной рулетки и уровней лояльности</p>
           </div>
         </div>
+        <p className="mt-3 text-sm text-slate-600 dark:text-slate-300">
+          Этот раздел отвечает за игровые и удерживающие механики. Здесь можно менять шанс выпадения бонусных дней, паузу между спинами и уровни лояльности для постоянных пользователей.
+        </p>
       </article>
 
       <div className="grid gap-5 xl:grid-cols-[1fr,0.6fr]">
@@ -209,6 +212,7 @@ export default function AdminBonusesPage() {
 
               <div>
                 <label className="block text-[10px] uppercase tracking-[0.1em] text-slate-500 mb-1.5">Веса (days:weight, по строкам)</label>
+                <p className="mb-2 text-xs text-slate-500">Чем больше weight, тем чаще выпадает награда. Каждая строка задаётся в формате `дни:вес`.</p>
                 <textarea
                   rows={7}
                   value={weightsText}
@@ -247,6 +251,7 @@ export default function AdminBonusesPage() {
         {/* ── Weight distribution visual ───────────────── */}
         <article className="glass-card p-5">
           <h3 className="font-display text-lg font-bold mb-3">Распределение весов</h3>
+          <p className="mb-3 text-xs text-slate-500">Наглядно показывает, какие награды выпадают чаще, а какие реже.</p>
           {weightBars.length === 0 ? (
             <div className="empty-state py-6">
               <Dices size={24} />
@@ -290,7 +295,7 @@ export default function AdminBonusesPage() {
               включено
             </label>
           </div>
-          <p className="text-xs text-slate-500">Формат строк: `days:bonus_days:perk`</p>
+          <p className="text-xs text-slate-500">Каждая строка описывает уровень лояльности в формате `дней_оплаты:бонусные_дни:привилегия`.</p>
           <textarea
             rows={6}
             value={loyaltyText}
@@ -305,6 +310,7 @@ export default function AdminBonusesPage() {
 
         <article className="glass-card p-5 space-y-3">
           <h3 className="font-display text-lg font-bold">Ручная выдача tier</h3>
+          <p className="text-xs text-slate-500">Нужно, если хотите вручную выдать пользователю уровень лояльности без ожидания автоматической логики.</p>
           <input
             value={loyaltyGrantUser}
             onChange={(event) => setLoyaltyGrantUser(event.target.value)}
