@@ -50,7 +50,10 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       <main className="space-y-4">
         <section className="glass-card p-6">
           <p className="font-mono text-xs uppercase tracking-[0.15em] text-slate-500">админ</p>
-          <h1 className="mt-2 font-display text-3xl font-bold">Загрузка админ-панели...</h1>
+          <h1 className="mt-2 font-display text-3xl font-bold">Открываем панель управления...</h1>
+          <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">
+            Подгружаем права доступа, метрики и рабочие разделы. Обычно это занимает пару секунд.
+          </p>
           <div className="mt-4 h-1.5 overflow-hidden rounded-full bg-slate-200/60 dark:bg-slate-800">
             <div className="h-full w-1/3 animate-pulse rounded-full bg-violet-600" />
           </div>
@@ -64,7 +67,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       <AdminStateCard
         eyebrow="сессия истекла"
         title="Нужно заново подтвердить вход"
-        description="Сессия администратора недоступна. Откройте кабинет через Telegram или выполните повторный вход в браузере."
+        description="Браузерная сессия закончилась. Просто войдите через Telegram ещё раз, и админка откроется без дополнительных действий."
         primaryHref="/"
         primaryLabel="Открыть вход"
       />
@@ -86,7 +89,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       <AdminStateCard
         eyebrow="доступ закрыт"
         title="Раздел только для администраторов"
-        description="API-права на стороне сервера тоже ограничены, поэтому продолжить без роли администратора не получится."
+        description="У этого аккаунта нет прав администратора. Если доступ нужен для работы, назначьте роль в системе и попробуйте снова."
       />
     );
   }
@@ -101,7 +104,9 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           <div className="flex-1">
             <p className="font-mono text-xs uppercase tracking-[0.15em] text-violet-500 dark:text-violet-300">админ / portal</p>
             <h1 className="mt-1 font-display text-3xl font-bold">Панель управления</h1>
-            <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">Операции, модерация, наблюдаемость и работа с кампаниями без бота.</p>
+            <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">
+              Здесь вы управляете пользователями, нодами, платежами, обращениями и рассылками. Если заходите впервые, начните со вкладки «Сводка».
+            </p>
           </div>
         </div>
       </section>
@@ -126,6 +131,9 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             );
           })}
         </nav>
+        <div className="px-3 pb-3 pt-2 text-xs text-slate-500 dark:text-slate-400">
+          «Сводка» показывает общее состояние сервиса, «Пользователи» помогает решать частные кейсы, а «Ноды» нужна для контроля инфраструктуры.
+        </div>
       </section>
 
       {children}

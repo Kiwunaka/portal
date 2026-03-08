@@ -42,8 +42,8 @@ function formatSecondsToShortAge(seconds?: number | null): string {
 function buildMetricsHealthSummary(metrics: AdminMetricsStatus | null): { value: string; detail: string } {
   if (!metrics) {
     return {
-      value: "unknown",
-      detail: "Статус collector ещё не загружен",
+      value: "нет данных",
+      detail: "Проверка метрик ещё не завершилась. Обычно это значит, что страница только открылась или collector ещё не отдал свежий срез.",
     };
   }
 
@@ -53,14 +53,14 @@ function buildMetricsHealthSummary(metrics: AdminMetricsStatus | null): { value:
 
   if (metrics.status === "stale") {
     return {
-      value: `stale / ${age}`,
-      detail: `Последний сэмпл: ${sample}. Порог freshness: ${threshold}.`,
+      value: `устарели / ${age}`,
+      detail: `Последний срез получен ${sample}. Если возраст больше ${threshold}, данные по нодам уже неактуальны и нужно проверить collector.`,
     };
   }
 
   return {
-    value: `fresh / ${age}`,
-    detail: `Последний сэмпл: ${sample}. Порог stale: ${threshold}.`,
+    value: `актуальны / ${age}`,
+    detail: `Последний срез получен ${sample}. Всё в порядке, пока возраст не превышает ${threshold}.`,
   };
 }
 
@@ -121,28 +121,28 @@ export default function AdminDashboardPage() {
 
   const attentionItems = [
     summary?.errors.stale_metrics
-      ? `Метрики устарели: последний сэмпл ${metrics?.last_sample_at ? fmtRuDate(metrics.last_sample_at) : "неизвестен"}, возраст ${formatSecondsToShortAge(metrics?.age_seconds)}.`
+      ? `Метрики давно не обновлялись: последний срез ${metrics?.last_sample_at ? fmtRuDate(metrics.last_sample_at) : "неизвестен"}, возраст ${formatSecondsToShortAge(metrics?.age_seconds)}.`
       : "",
     Number(summary?.errors.unhealthy_nodes || 0) > 0
-      ? `Проблемных нод: ${summary?.errors.unhealthy_nodes}. Проверьте latency, health score и panel sync до релиза.`
+      ? `Есть ноды с риском: ${summary?.errors.unhealthy_nodes}. Сначала проверьте задержку, стабильность панели и свежесть метрик.`
       : "",
     Number(summary?.errors.payment_callback_failures_24h || 0) > 0
-      ? `Ошибок callback за 24ч: ${summary?.errors.payment_callback_failures_24h}. Нужна проверка подписей, allowlist и processed_ok=false событий.`
+      ? `Платёжные уведомления дали ошибки ${summary?.errors.payment_callback_failures_24h} раз за 24 часа. Лучше проверить логи и убедиться, что оплаты доходят до системы.`
       : "",
     Number(summary?.errors.subscription_numeric_fallbacks_24h || 0) > 0
-      ? `Numeric fallback сработал ${summary?.errors.subscription_numeric_fallbacks_24h} раз за 24ч. Это сигнал на cleanup старых подписочных токенов.`
+      ? `Старый способ поиска подписки сработал ${summary?.errors.subscription_numeric_fallbacks_24h} раз за 24 часа. Это значит, что у части пользователей ещё остались старые токены.`
       : "",
     Number(summary?.errors.open_tickets || 0) > 0
-      ? `Открытых тикетов: ${summary?.errors.open_tickets}. Убедитесь, что очередь поддержки не копится перед релизом.`
+      ? `В поддержке сейчас ${summary?.errors.open_tickets} открытых обращений. Проверьте, не копится ли очередь перед запуском рассылки или релиза.`
       : "",
     Number(summary?.bonus_events_24h.channel_denied || 0) > Number(summary?.bonus_events_24h.channel_activated || 0)
-      ? `Отказов по бонусу за канал больше, чем успешных активаций: ${summary?.bonus_events_24h.channel_denied} vs ${summary?.bonus_events_24h.channel_activated}. Проверьте публичный канал, bot-flow и guard.`
+      ? `По бонусу за канал отказов больше, чем успешных активаций: ${summary?.bonus_events_24h.channel_denied} против ${summary?.bonus_events_24h.channel_activated}. Проверьте канал и сценарий выдачи бонуса.`
       : "",
     Number(summary?.bonus_events_24h.promo_denied || 0) > Number(summary?.bonus_events_24h.promo_redeemed || 0)
-      ? `Отказов по промокодам больше, чем успешных активаций: ${summary?.bonus_events_24h.promo_denied} vs ${summary?.bonus_events_24h.promo_redeemed}. Проверьте актуальность кодов и ограничения кампаний.`
+      ? `По промокодам отказов больше, чем успешных активаций: ${summary?.bonus_events_24h.promo_denied} против ${summary?.bonus_events_24h.promo_redeemed}. Возможно, часть кодов истекла или настроена слишком строго.`
       : "",
     Number(summary?.bonus_events_24h.gift_denied || 0) > Number(summary?.bonus_events_24h.gift_redeemed || 0)
-      ? `Отказов по подарочным кодам больше, чем успешных активаций: ${summary?.bonus_events_24h.gift_denied} vs ${summary?.bonus_events_24h.gift_redeemed}. Проверьте gift flow и restrictions.`
+      ? `По подарочным кодам отказов больше, чем успешных активаций: ${summary?.bonus_events_24h.gift_denied} против ${summary?.bonus_events_24h.gift_redeemed}. Проверьте сами коды и ограничения для кампаний.`
       : "",
   ].filter(Boolean);
 
@@ -157,25 +157,25 @@ export default function AdminDashboardPage() {
       label: "Ноды с риском",
       value: summary?.errors.unhealthy_nodes ?? "—",
       tone: Number(summary?.errors.unhealthy_nodes || 0) > 0 ? "badge-danger" : "badge-success",
-      detail: "health score, panel latency и просадки collector",
+      detail: "Ноды, у которых ухудшились отклик, стабильность панели или свежесть метрик.",
     },
     {
       label: "Callback ошибки 24ч",
       value: summary?.errors.payment_callback_failures_24h ?? "—",
       tone: Number(summary?.errors.payment_callback_failures_24h || 0) > 0 ? "badge-warning" : "badge-success",
-      detail: "invalid signature / processed_ok=false",
+      detail: "Платёжные уведомления, которые не удалось принять или обработать.",
     },
     {
       label: "Fallback подписки 24ч",
       value: summary?.errors.subscription_numeric_fallbacks_24h ?? "—",
       tone: Number(summary?.errors.subscription_numeric_fallbacks_24h || 0) > 0 ? "badge-warning" : "badge-success",
-      detail: "случаи lookup по tg_id вместо sub_token",
+      detail: "Случаи, когда система нашла подписку по старой схеме вместо нормального токена.",
     },
     {
       label: "Открытые тикеты",
       value: summary?.errors.open_tickets ?? "—",
       tone: Number(summary?.errors.open_tickets || 0) > 0 ? "badge-info" : "badge-success",
-      detail: "очередь поддержки и риск задержки ответа",
+      detail: "Текущая очередь поддержки. Чем число выше, тем выше риск задержки ответа.",
     },
   ];
 
@@ -192,7 +192,7 @@ export default function AdminDashboardPage() {
     {
       label: "Тикеты",
       value: summary?.tickets.open ?? "—",
-      sub: "Открытые обращения",
+      sub: "Сколько диалогов ждут ответа оператора",
       icon: Ticket,
       iconClass: "stat-icon-amber",
       sparkline: [] as number[],
@@ -201,7 +201,7 @@ export default function AdminDashboardPage() {
     {
       label: "Ноды",
       value: `${summary?.nodes.healthy ?? "—"} / ${summary?.nodes.total ?? "—"}`,
-      sub: metrics?.status === "fresh" ? `Метрики свежие (${formatSecondsToShortAge(metrics?.age_seconds)})` : `Метрики устарели (${formatSecondsToShortAge(metrics?.age_seconds)})`,
+      sub: metrics?.status === "fresh" ? `Метрики актуальны (${formatSecondsToShortAge(metrics?.age_seconds)})` : `Метрики устарели (${formatSecondsToShortAge(metrics?.age_seconds)})`,
       icon: Server,
       iconClass: metrics?.status === "fresh" ? "stat-icon-emerald" : "stat-icon-amber",
       sparkline: [] as number[],
@@ -229,7 +229,7 @@ export default function AdminDashboardPage() {
       label: "Канал: отказ",
       value: summary?.bonus_events_24h.channel_denied ?? "—",
       tone: Number(summary?.bonus_events_24h.channel_denied || 0) > 0 ? "badge-warning" : "badge-success",
-      detail: "not_member, tos_required и другие denied reason-коды",
+      detail: "Сколько раз бонус не выдался: нет подписки, не выполнены условия или сработали ограничения.",
     },
     {
       label: "Промо: успех",
@@ -241,7 +241,7 @@ export default function AdminDashboardPage() {
       label: "Промо: отказ",
       value: summary?.bonus_events_24h.promo_denied ?? "—",
       tone: Number(summary?.bonus_events_24h.promo_denied || 0) > 0 ? "badge-warning" : "badge-success",
-      detail: "expired, invalid_value, already_redeemed и campaign mismatch",
+      detail: "Промокод не сработал: истёк, уже использован или не подходит под условия.",
     },
     {
       label: "Подарки: успех",
@@ -253,7 +253,7 @@ export default function AdminDashboardPage() {
       label: "Подарки: отказ",
       value: summary?.bonus_events_24h.gift_denied ?? "—",
       tone: Number(summary?.bonus_events_24h.gift_denied || 0) > 0 ? "badge-warning" : "badge-success",
-      detail: "already_redeemed, invalid_code и campaign restrictions",
+      detail: "Подарочный код не сработал: код уже использован, неверный или не подходит под текущую кампанию.",
     },
   ];
 
@@ -262,19 +262,19 @@ export default function AdminDashboardPage() {
       label: "Истекают за 3 дня",
       value: summary?.retention.expiring_3d ?? "—",
       tone: Number(summary?.retention.expiring_3d || 0) > 0 ? "badge-warning" : "badge-success",
-      detail: "Кого важно догреть на T-3 / T-1 / T0",
+      detail: "Пользователи, у которых скоро закончится доступ. Им стоит напомнить о продлении.",
     },
     {
       label: "Истекли за 7 дней",
       value: summary?.retention.expired_7d ?? "—",
       tone: Number(summary?.retention.expired_7d || 0) > 0 ? "badge-info" : "badge-success",
-      detail: "Кого уже можно возвращать в reactivation flow",
+      detail: "Пользователи, у которых доступ уже закончился. Это кандидаты на возврат.",
     },
     {
       label: "Кандидаты на reactivate",
       value: summary?.retention.reactivation_candidates ?? "—",
       tone: Number(summary?.retention.reactivation_candidates || 0) > 0 ? "badge-info" : "badge-success",
-      detail: "Истёкшие и неактивные free users",
+      detail: "База для сценариев возврата и повторного предложения тарифа.",
     },
     {
       label: "Retention ping 24ч",
@@ -289,13 +289,13 @@ export default function AdminDashboardPage() {
         0
           ? "badge-success"
           : "badge-warning",
-      detail: `T-3: ${summary?.retention.pings_24h.t3 ?? 0}, T-1: ${summary?.retention.pings_24h.t1 ?? 0}, T0: ${summary?.retention.pings_24h.t0 ?? 0}`,
+      detail: `Напоминания перед окончанием доступа: T-3 — ${summary?.retention.pings_24h.t3 ?? 0}, T-1 — ${summary?.retention.pings_24h.t1 ?? 0}, T0 — ${summary?.retention.pings_24h.t0 ?? 0}.`,
     },
     {
       label: "Welcome ping 24ч",
       value: summary?.retention.pings_24h.welcome ?? "—",
       tone: Number(summary?.retention.pings_24h.welcome || 0) > 0 ? "badge-success" : "badge-info",
-      detail: "Первое касание новых пользователей",
+      detail: "Сколько новых пользователей получили первое приветственное сообщение.",
     },
     {
       label: "Reactivate / Start99 24ч",
@@ -304,12 +304,19 @@ export default function AdminDashboardPage() {
         Number(summary?.retention.pings_24h.reactivation || 0) > 0 || Number(summary?.retention.pings_24h.start99_offer || 0) > 0
           ? "badge-success"
           : "badge-info",
-      detail: "Реактивация и upsell-поток для недавних оплат",
+      detail: "Сколько человек получили предложение вернуться или попробовать стартовый тариф.",
     },
   ];
 
   return (
     <section className="space-y-5">
+      <div className="glass-card p-5">
+        <h2 className="font-display text-xl font-bold">Как читать эту страницу</h2>
+        <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">
+          Этот экран нужен, чтобы за минуту понять общее состояние сервиса. Если времени мало, сначала смотрите блок «Сводка ошибок и рисков», потом «Топ нод», а уже после этого уходите в детали по пользователям и бонусам.
+        </p>
+      </div>
+
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         {statCards.map((card) => {
           const Icon = card.icon;
@@ -483,7 +490,7 @@ export default function AdminDashboardPage() {
           </div>
           <div>
             <h2 className="font-display text-xl font-bold">Бонусы и промо за 24 часа</h2>
-            <p className="text-xs text-slate-500">Success/denied event trail для channel, promo и gift flow</p>
+            <p className="text-xs text-slate-500">Показывает, сколько бонусов реально сработало, а сколько не выдалось из-за условий или ошибок.</p>
           </div>
         </div>
         <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
@@ -506,7 +513,7 @@ export default function AdminDashboardPage() {
           </div>
           <div>
             <h2 className="font-display text-xl font-bold">Удержание и реактивация</h2>
-            <p className="text-xs text-slate-500">Кого нужно догревать, кого возвращать и как отработал retention worker</p>
+            <p className="text-xs text-slate-500">Помогает понять, кому пора напомнить о продлении и кого уже стоит возвращать обратно.</p>
           </div>
         </div>
         <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
@@ -534,7 +541,7 @@ export default function AdminDashboardPage() {
       </div>
       {summary?.errors.stale_metrics || Number(summary?.errors.unhealthy_nodes || 0) > 0 || summary?.resilience.single_point_risk ? (
         <p className="text-xs text-amber-500">
-          Проверьте `portal-node-metrics.timer`, свежесть сэмплов и проблемные ноды до релиза.
+          Перед релизом или рассылкой проверьте таймер метрик, свежесть срезов и ноды с предупреждениями.
         </p>
       ) : null}
     </section>

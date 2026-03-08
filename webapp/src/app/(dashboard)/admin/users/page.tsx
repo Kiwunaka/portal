@@ -487,7 +487,7 @@ export default function AdminUsersPage() {
           <input
             value={query}
             onChange={(event) => setQuery(event.target.value)}
-            placeholder="Поиск по username или tg_id"
+            placeholder="Найти по username, Telegram ID или части имени"
             className="flex-1 rounded-xl border border-violet-200/50 bg-white/80 px-3 py-2 text-sm outline-none dark:border-violet-500/30 dark:bg-slate-900/70"
           />
           <button className="outline-btn rounded-xl px-4 py-2 text-sm font-semibold" type="button" onClick={() => void loadUsers()}>
@@ -499,7 +499,10 @@ export default function AdminUsersPage() {
         </div>
 
         <div className="mb-3 rounded-xl border border-violet-200/40 bg-white/70 p-3 dark:border-violet-500/20 dark:bg-white/5">
-          <p className="mb-2 text-xs font-semibold uppercase tracking-[0.08em] text-slate-500">Безопасные массовые действия по ключам</p>
+          <p className="mb-1 text-xs font-semibold uppercase tracking-[0.08em] text-slate-500">Массовые действия по ключам</p>
+          <p className="mb-2 text-xs text-slate-500">
+            Используйте этот блок, если нужно сразу обработать группу пользователей. Сначала лучше запускать предпросмотр, а уже потом применять изменения.
+          </p>
           <div className="grid gap-2 sm:grid-cols-2">
             <select
               value={bulkAction.action}
@@ -518,7 +521,7 @@ export default function AdminUsersPage() {
             >
               <option value="all">Сегмент: все</option>
               <option value="paid">Сегмент: платные</option>
-              <option value="free">Сегмент: free</option>
+              <option value="free">Сегмент: бесплатные</option>
               <option value="manual">Сегмент: ручные</option>
               <option value="active">Сегмент: активные</option>
               <option value="inactive">Сегмент: неактивные</option>
@@ -557,7 +560,7 @@ export default function AdminUsersPage() {
               принудительно
             </label>
               <button className="outline-btn rounded-xl px-3 py-1.5 text-xs font-semibold" type="button" onClick={() => void runBulkAction()} disabled={busy}>
-                Запустить
+                Запустить действие
               </button>
           </div>
           {bulkResult ? <p className="mt-2 text-xs text-emerald-500">{bulkResult}</p> : null}
@@ -708,15 +711,18 @@ export default function AdminUsersPage() {
 
             <div className="mb-3 flex flex-wrap gap-2">
               <button className={tabButtonClass("overview")} type="button" onClick={() => setDetailTab("overview")}>обзор</button>
-              <button className={tabButtonClass("keys")} type="button" onClick={() => setDetailTab("keys")}>ключи</button>
-              <button className={tabButtonClass("history")} type="button" onClick={() => setDetailTab("history")}>история ключей</button>
-              <button className={tabButtonClass("audit")} type="button" onClick={() => setDetailTab("audit")}>журнал админа</button>
+              <button className={tabButtonClass("keys")} type="button" onClick={() => setDetailTab("keys")}>ключи и лимиты</button>
+              <button className={tabButtonClass("history")} type="button" onClick={() => setDetailTab("history")}>история изменений</button>
+              <button className={tabButtonClass("audit")} type="button" onClick={() => setDetailTab("audit")}>действия админа</button>
             </div>
 
             {detailTab === "overview" ? (
               <>
                 <div className="rounded-xl bg-white/70 p-3 text-sm dark:bg-white/10">
                   <p className="mb-2 font-semibold">Сводка ключей</p>
+                  <p className="mb-2 text-xs text-slate-500">
+                    Здесь видно, на скольких нодах у пользователя есть ключ, сколько трафика уже прошло и есть ли рассинхрон между PORTAL и панелью.
+                  </p>
                   {summary ? (
                     <div className="grid gap-2 text-xs sm:grid-cols-2">
                       <p>Нод с ключом: <strong>{summary.nodes_with_client}/{summary.nodes_total}</strong></p>
@@ -751,6 +757,9 @@ export default function AdminUsersPage() {
                     Обновить
                   </button>
                 </div>
+                <p className="mb-3 text-xs text-slate-500">
+                  В этом разделе можно включать и выключать ключи, сбрасывать трафик, пересинхронизировать данные и выставлять лимиты по каждой ноде отдельно.
+                </p>
                 <div className="space-y-2">
                   {keys.length === 0 ? <p className="text-xs text-slate-500">Ключи не найдены для текущего плана.</p> : null}
                   {keys.map((key) => {
@@ -849,6 +858,9 @@ export default function AdminUsersPage() {
                     Обновить
                   </button>
                 </div>
+                <p className="mb-3 text-xs text-slate-500">
+                  Журнал помогает понять, что именно происходило с ключами пользователя: продления, ротации, переносы, отключения и ручные действия.
+                </p>
                 <div className="max-h-[44vh] overflow-auto">
                   <table className="min-w-full text-xs">
                     <thead>
@@ -885,6 +897,9 @@ export default function AdminUsersPage() {
                     Обновить
                   </button>
                 </div>
+                <p className="mb-3 text-xs text-slate-500">
+                  Здесь видно, кто из операторов что менял в карточке пользователя и когда это произошло.
+                </p>
                 <div className="max-h-[44vh] overflow-auto">
                   <table className="min-w-full text-xs">
                     <thead>
