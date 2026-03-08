@@ -59,7 +59,7 @@ function actionLabel(action: string): string {
   if (!value) return "—";
   if (value.includes("regen") || value.includes("rotate")) return "ротация ключа";
   if (value.includes("reset")) return "сброс трафика";
-  if (value.includes("resync")) return "синхронизация subId";
+  if (value.includes("resync")) return "синхронизация ID подписки";
   if (value.includes("move") || value.includes("node")) return "перенос между нодами";
   if (value.includes("disable") || value.includes("block")) return "отключение/блокировка";
   if (value.includes("enable") || value.includes("unblock")) return "включение/разблокировка";
@@ -184,7 +184,7 @@ export default function AdminUsersPage() {
         }
       }
     } catch (err) {
-      setError(String((err as { message?: string })?.message || err || "Ошибка загрузки"));
+      setError(String((err as { message?: string })?.message || err || "Не удалось загрузить список пользователей"));
     } finally {
       setLoading(false);
     }
@@ -219,7 +219,7 @@ export default function AdminUsersPage() {
       await loadCardDetails(tgId);
       setDetailTab("overview");
     } catch (err) {
-      setError(String((err as { message?: string })?.message || err || "Не удалось открыть карточку"));
+      setError(String((err as { message?: string })?.message || err || "Не удалось открыть карточку пользователя"));
     } finally {
       setBusy(false);
     }
@@ -238,7 +238,7 @@ export default function AdminUsersPage() {
       await navigator.clipboard.writeText(text.trim());
       setOkMessage("Скопировано в буфер.");
     } catch {
-      setError("Не удалось скопировать в буфер.");
+      setError("Не удалось скопировать ссылку или ключ.");
     }
   };
 
@@ -256,7 +256,7 @@ export default function AdminUsersPage() {
       setDialog(null);
       await reloadSelected();
     } catch (err) {
-      setError(String((err as { message?: string })?.message || err || "Ошибка отправки"));
+      setError(String((err as { message?: string })?.message || err || "Не удалось отправить сообщение"));
     } finally {
       setBusy(false);
     }
@@ -282,7 +282,7 @@ export default function AdminUsersPage() {
       await reloadSelected();
       await loadUsers();
     } catch (err) {
-      setError(String((err as { message?: string })?.message || err || "Ошибка продления"));
+      setError(String((err as { message?: string })?.message || err || "Не удалось продлить доступ"));
     } finally {
       setBusy(false);
     }
@@ -298,7 +298,7 @@ export default function AdminUsersPage() {
       await reloadSelected();
       await loadUsers();
     } catch (err) {
-      setError(String((err as { message?: string })?.message || err || "Ошибка блокировки"));
+      setError(String((err as { message?: string })?.message || err || "Не удалось изменить статус пользователя"));
     } finally {
       setBusy(false);
     }
@@ -309,11 +309,11 @@ export default function AdminUsersPage() {
     setBusy(true);
     try {
       const out = await adminManualRegenerateToken(selectedTgId);
-      setOkMessage(`Новый токен создан (синхронизация: ${out.sync_ok ? "ok" : "предупреждение"}).`);
+      setOkMessage(`Новая ссылка создана (${out.sync_ok ? "данные синхронизированы" : "синхронизацию стоит проверить"}).`);
       setDialog({ kind: "token", subscriptionUrl: out.subscription_url, syncOk: Boolean(out.sync_ok) });
       await reloadSelected();
     } catch (err) {
-      setError(String((err as { message?: string })?.message || err || "Ошибка ротации токена"));
+      setError(String((err as { message?: string })?.message || err || "Не удалось перевыпустить ссылку"));
     } finally {
       setBusy(false);
     }
@@ -338,7 +338,7 @@ export default function AdminUsersPage() {
       setDialog(null);
       await loadUsers();
     } catch (err) {
-      setError(String((err as { message?: string })?.message || err || "Ошибка создания manual пользователя"));
+      setError(String((err as { message?: string })?.message || err || "Не удалось создать ручного пользователя"));
     } finally {
       setBusy(false);
     }
@@ -361,7 +361,7 @@ export default function AdminUsersPage() {
       setOkMessage(`Операция ${action} выполнена для ${key.node_code}.`);
       await reloadSelected();
     } catch (err) {
-      setError(String((err as { message?: string })?.message || err || "Ошибка управления ключом"));
+      setError(String((err as { message?: string })?.message || err || "Не удалось выполнить действие с ключом"));
     } finally {
       setKeyBusy("");
     }
@@ -377,7 +377,7 @@ export default function AdminUsersPage() {
       setOkMessage(`Сценарий ${result.preset} выполнен.`);
       await reloadSelected();
     } catch (err) {
-      setError(String((err as { message?: string })?.message || err || "Не удалось выполнить сценарий"));
+      setError(String((err as { message?: string })?.message || err || "Не удалось выполнить быстрый сценарий"));
     } finally {
       setBusy(false);
     }
@@ -440,7 +440,7 @@ export default function AdminUsersPage() {
         await loadUsers();
       }
     } catch (err) {
-      setError(String((err as { message?: string })?.message || err || "Ошибка массовой операции"));
+      setError(String((err as { message?: string })?.message || err || "Не удалось выполнить массовое действие"));
     } finally {
       setBusy(false);
     }
@@ -453,10 +453,10 @@ export default function AdminUsersPage() {
     setOkMessage("");
     try {
       const out = await adminUserLoyaltyGrant(selectedTgId, tierDays);
-      setOkMessage(`Награда лояльности ${out.tier_days} дней выдана (синхронизация: ${out.sync_ok ? "ok" : "предупреждение"}).`);
+      setOkMessage(`Бонус лояльности на ${out.tier_days} дней выдан (${out.sync_ok ? "данные синхронизированы" : "синхронизацию стоит проверить"}).`);
       await reloadSelected();
     } catch (err) {
-      setError(String((err as { message?: string })?.message || err || "Не удалось выдать loyalty-награду"));
+      setError(String((err as { message?: string })?.message || err || "Не удалось выдать бонус лояльности"));
     } finally {
       setBusy(false);
     }
@@ -529,7 +529,7 @@ export default function AdminUsersPage() {
             <input
               value={bulkAction.q}
               onChange={(event) => setBulkAction((prev) => ({ ...prev, q: event.target.value }))}
-              placeholder="Доп. фильтр (username/tg_id)"
+              placeholder="Дополнительный фильтр: username или Telegram ID"
               className="rounded-xl border border-violet-200/50 bg-white/90 px-3 py-2 text-xs outline-none dark:border-violet-500/30 dark:bg-slate-900/70"
             />
             <input
@@ -728,7 +728,7 @@ export default function AdminUsersPage() {
                       <p>Нод с ключом: <strong>{summary.nodes_with_client}/{summary.nodes_total}</strong></p>
                       <p>Онлайн нод: <strong>{summary.nodes_online}</strong></p>
                       <p>Включённых нод: <strong>{summary.nodes_enabled}</strong></p>
-                      <p>Несовпадений subId: <strong>{summary.subid_mismatch_count}</strong></p>
+                      <p>Расхождений по ID подписки: <strong>{summary.subid_mismatch_count}</strong></p>
                       <p>Трафик всего: <strong>{fmtTraffic(summary.traffic_total_bytes)}</strong></p>
                       <p>Состояние панели: <strong>{panelStateLabel(String(summary.panel_state || ""))}</strong></p>
                     </div>
@@ -779,8 +779,8 @@ export default function AdminUsersPage() {
                           </span>
                         </div>
                         <p className="mt-1">Онлайн: <strong>{fmtOnline(key.online)}</strong> • Включен: <strong>{key.enabled ? "да" : "нет"}</strong></p>
-                        <p>SubId: <strong>{key.sub_id || "—"}</strong></p>
-                        <p>Ожидаемый: <strong>{key.expected_sub_id || "—"}</strong> • Совпадает: <strong>{key.sub_id_match ? "да" : "нет"}</strong></p>
+                        <p>ID подписки в панели: <strong>{key.sub_id || "—"}</strong></p>
+                        <p>Ожидаемый ID: <strong>{key.expected_sub_id || "—"}</strong> • Совпадает: <strong>{key.sub_id_match ? "да" : "нет"}</strong></p>
                         <p>Трафик: <strong>{fmtTraffic(key.total_bytes)}</strong> ({key.up_bytes}↑ / {key.down_bytes}↓)</p>
                         <p>Последний онлайн: <strong>{fmtRuDate(key.last_online_at)}</strong></p>
 
@@ -792,7 +792,7 @@ export default function AdminUsersPage() {
                             {busyReset ? "..." : "Сбросить трафик"}
                           </button>
                           <button className="outline-btn rounded-xl px-2.5 py-1 text-[11px] font-semibold" type="button" disabled={busy || !key.exists || !!keyBusy} onClick={() => void runKeyAction(key, "resync")}>
-                            {busyResync ? "..." : "Синхронизировать subId"}
+                            {busyResync ? "..." : "Синхронизировать ID подписки"}
                           </button>
                           <button className="outline-btn rounded-xl px-2.5 py-1 text-[11px] font-semibold" type="button" disabled={!String(key.vless_link || "").trim()} onClick={() => void copyText(String(key.vless_link || ""))}>
                             Копировать ключ
@@ -1030,7 +1030,7 @@ export default function AdminUsersPage() {
               <>
                 <h3 className="font-display text-xl font-semibold">Новая ссылка готова</h3>
                 <p className="mt-1 text-xs text-slate-500">
-                  Синхронизация панели: {dialog.syncOk ? "ok" : "warning"}.
+                  Синхронизация панели: {dialog.syncOk ? "прошла успешно" : "нужна дополнительная проверка"}.
                 </p>
                 <input
                   value={dialog.subscriptionUrl}

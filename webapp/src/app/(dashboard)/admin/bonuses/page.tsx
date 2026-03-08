@@ -48,7 +48,7 @@ export default function AdminBonusesPage() {
       setLoyaltyConfig(loyalty.loyalty_config);
       setLoyaltyText((loyalty.loyalty_config.tiers || []).map((row) => `${row.days}:${row.bonus_days}:${row.perk}`).join("\n"));
     } catch (err) {
-      setError(String((err as { message?: string })?.message || err || "Ошибка загрузки конфигурации рулетки"));
+      setError(String((err as { message?: string })?.message || err || "Не удалось загрузить настройки бонусов"));
     }
   };
 
@@ -72,7 +72,7 @@ export default function AdminBonusesPage() {
       setWeightsText(weightsToText(out.wheel_config.weights || []));
       setResult("Конфигурация рулетки сохранена.");
     } catch (err) {
-      setError(String((err as { message?: string })?.message || err || "Ошибка сохранения"));
+      setError(String((err as { message?: string })?.message || err || "Не удалось сохранить настройки рулетки"));
     } finally {
       setBusy(false);
     }
@@ -107,7 +107,7 @@ export default function AdminBonusesPage() {
       setLoyaltyText((out.loyalty_config.tiers || []).map((row) => `${row.days}:${row.bonus_days}:${row.perk}`).join("\n"));
       setResult("Конфигурация лояльности сохранена.");
     } catch (err) {
-      setError(String((err as { message?: string })?.message || err || "Ошибка сохранения конфигурации лояльности"));
+      setError(String((err as { message?: string })?.message || err || "Не удалось сохранить уровни лояльности"));
     } finally {
       setBusy(false);
     }
@@ -117,7 +117,7 @@ export default function AdminBonusesPage() {
     const tgId = Number(loyaltyGrantUser || 0);
     const tierDays = Number(loyaltyGrantTier || 0);
     if (!Number.isFinite(tgId) || tgId <= 0 || !Number.isFinite(tierDays) || tierDays <= 0) {
-      setError("Укажите корректные tg_id и дни уровня");
+      setError("Укажите корректный Telegram ID и срок уровня");
       return;
     }
     setBusy(true);
@@ -125,7 +125,7 @@ export default function AdminBonusesPage() {
     setResult("");
     try {
       const out = await adminUserLoyaltyGrant(tgId, tierDays);
-      setResult(`Награда лояльности выдана: ${out.tier_days} дней для ${tgId} (синхронизация: ${out.sync_ok ? "ok" : "предупреждение"})`);
+      setResult(`Уровень лояльности выдан: ${out.tier_days} дней для пользователя ${tgId} (${out.sync_ok ? "данные синхронизированы" : "синхронизацию стоит проверить"}).`);
     } catch (err) {
       setError(String((err as { message?: string })?.message || err || "Не удалось выдать награду лояльности"));
     } finally {
@@ -170,7 +170,7 @@ export default function AdminBonusesPage() {
         {/* ── Config form ──────────────────────────────── */}
         <article className="glass-card p-5 space-y-4">
           {!config ? (
-            <p className="text-sm text-slate-500">Загрузка конфигурации...</p>
+            <p className="text-sm text-slate-500">Загружаем настройки бонусов...</p>
           ) : (
             <>
               <div className="grid gap-4 md:grid-cols-2">
@@ -314,13 +314,13 @@ export default function AdminBonusesPage() {
           <input
             value={loyaltyGrantUser}
             onChange={(event) => setLoyaltyGrantUser(event.target.value)}
-            placeholder="tg_id пользователя"
+            placeholder="Telegram ID пользователя"
             className="w-full rounded-xl border border-violet-200/50 bg-white/80 px-3 py-2 text-sm outline-none dark:border-violet-500/30 dark:bg-slate-900/70"
           />
           <input
             value={loyaltyGrantTier}
             onChange={(event) => setLoyaltyGrantTier(event.target.value)}
-            placeholder="дни уровня (30/90/180)"
+            placeholder="Срок уровня, например 30 / 90 / 180"
             className="w-full rounded-xl border border-violet-200/50 bg-white/80 px-3 py-2 text-sm outline-none dark:border-violet-500/30 dark:bg-slate-900/70"
           />
           <button className="outline-btn rounded-xl px-4 py-2 text-sm font-semibold" type="button" onClick={() => void grantLoyalty()} disabled={busy}>

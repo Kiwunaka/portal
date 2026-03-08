@@ -52,7 +52,7 @@ export default function AdminReferralsPage() {
       setLinks(rows);
       setQueueRows(queue);
     } catch (err) {
-      setError(String((err as { message?: string })?.message || err || "Ошибка загрузки ссылок"));
+      setError(String((err as { message?: string })?.message || err || "Не удалось загрузить стартовые ссылки и очередь рефералов"));
     }
   }, [queueStatus]);
 
@@ -91,7 +91,7 @@ export default function AdminReferralsPage() {
     try {
       if (linkDialog.kind === "create") {
         if (!linkDialog.code.trim()) {
-          setError("Укажите код start-ссылки.");
+      setError("Укажите код стартовой ссылки.");
           setBusy(false);
           return;
         }
@@ -103,7 +103,7 @@ export default function AdminReferralsPage() {
         });
       } else if (linkDialog.kind === "edit") {
         if (!linkDialog.code.trim()) {
-          setError("Укажите код start-ссылки.");
+      setError("Укажите код стартовой ссылки.");
           setBusy(false);
           return;
         }
@@ -119,7 +119,7 @@ export default function AdminReferralsPage() {
       setLinkDialog(null);
       await load();
     } catch (err) {
-      setError(String((err as { message?: string })?.message || err || "Не удалось сохранить start-ссылку"));
+      setError(String((err as { message?: string })?.message || err || "Не удалось сохранить стартовую ссылку"));
     } finally {
       setBusy(false);
     }
@@ -137,7 +137,7 @@ export default function AdminReferralsPage() {
       });
       setBuilt(out);
     } catch (err) {
-      setError(String((err as { message?: string })?.message || err || "Не удалось собрать кампейн-ссылки"));
+      setError(String((err as { message?: string })?.message || err || "Не удалось собрать ссылки для кампании"));
     } finally { setBusy(false); }
   };
 
@@ -151,10 +151,10 @@ export default function AdminReferralsPage() {
     setResult("");
     try {
       const out = await adminReferralProcess({ limit: 120, force_without_activity: forceWithoutActivity });
-      setResult(`Обработано: ${out.processed}, начислено: ${out.rewarded}, в ожидании: ${out.waiting}, отклонено: ${out.rejected}`);
+      setResult(`Очередь обработана: начислено ${out.rewarded}, ждут ${out.waiting}, отклонено ${out.rejected}, всего проверено ${out.processed}.`);
       await load();
     } catch (err) {
-      setError(String((err as { message?: string })?.message || err || "Не удалось обработать антифрод-очередь"));
+      setError(String((err as { message?: string })?.message || err || "Не удалось обработать очередь реферальных начислений"));
     } finally {
       setBusy(false);
     }
@@ -232,7 +232,7 @@ export default function AdminReferralsPage() {
           <div className="stat-icon stat-icon-emerald"><Sparkles size={20} /></div>
           <div>
             <h2 className="font-display text-xl font-bold">Генератор welcome/campaign ссылок</h2>
-            <p className="text-xs text-slate-500">Собирает готовые ссылки для бота, оплаты и кабинета под конкретную кампанию</p>
+              <p className="text-xs text-slate-500">Собирает готовые ссылки для бота, оплаты и кабинета под конкретную кампанию</p>
           </div>
         </div>
         <div className="grid gap-3 md:grid-cols-3">
@@ -375,7 +375,7 @@ export default function AdminReferralsPage() {
                       )
                     }
                     className="w-full rounded-xl border border-violet-200/50 bg-white/80 px-3 py-2 text-sm outline-none dark:border-violet-500/30 dark:bg-slate-900/70"
-                    placeholder="target_action"
+                    placeholder="Что должно открываться по этой ссылке"
                   />
                   {linkDialog.kind === "edit" ? (
                     <label className="inline-flex items-center gap-2 text-sm text-slate-500">

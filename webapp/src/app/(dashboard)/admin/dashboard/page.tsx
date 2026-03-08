@@ -160,13 +160,13 @@ export default function AdminDashboardPage() {
       detail: "Ноды, у которых ухудшились отклик, стабильность панели или свежесть метрик.",
     },
     {
-      label: "Callback ошибки 24ч",
+      label: "Платежи с ошибкой 24ч",
       value: summary?.errors.payment_callback_failures_24h ?? "—",
       tone: Number(summary?.errors.payment_callback_failures_24h || 0) > 0 ? "badge-warning" : "badge-success",
       detail: "Платёжные уведомления, которые не удалось принять или обработать.",
     },
     {
-      label: "Fallback подписки 24ч",
+      label: "Старые подписки 24ч",
       value: summary?.errors.subscription_numeric_fallbacks_24h ?? "—",
       tone: Number(summary?.errors.subscription_numeric_fallbacks_24h || 0) > 0 ? "badge-warning" : "badge-success",
       detail: "Случаи, когда система нашла подписку по старой схеме вместо нормального токена.",
@@ -220,31 +220,31 @@ export default function AdminDashboardPage() {
 
   const bonusCards = [
     {
-      label: "Канал: успех",
+      label: "Бонус за канал: выдан",
       value: summary?.bonus_events_24h.channel_activated ?? "—",
       tone: Number(summary?.bonus_events_24h.channel_activated || 0) > 0 ? "badge-success" : "badge-info",
       detail: "Успешные выдачи бонуса за канал за 24ч",
     },
     {
-      label: "Канал: отказ",
+      label: "Бонус за канал: отказ",
       value: summary?.bonus_events_24h.channel_denied ?? "—",
       tone: Number(summary?.bonus_events_24h.channel_denied || 0) > 0 ? "badge-warning" : "badge-success",
       detail: "Сколько раз бонус не выдался: нет подписки, не выполнены условия или сработали ограничения.",
     },
     {
-      label: "Промо: успех",
+      label: "Промокоды: сработали",
       value: summary?.bonus_events_24h.promo_redeemed ?? "—",
       tone: Number(summary?.bonus_events_24h.promo_redeemed || 0) > 0 ? "badge-success" : "badge-info",
       detail: "Успешные активации промокодов за 24ч",
     },
     {
-      label: "Промо: отказ",
+      label: "Промокоды: отказ",
       value: summary?.bonus_events_24h.promo_denied ?? "—",
       tone: Number(summary?.bonus_events_24h.promo_denied || 0) > 0 ? "badge-warning" : "badge-success",
       detail: "Промокод не сработал: истёк, уже использован или не подходит под условия.",
     },
     {
-      label: "Подарки: успех",
+      label: "Подарки: сработали",
       value: summary?.bonus_events_24h.gift_redeemed ?? "—",
       tone: Number(summary?.bonus_events_24h.gift_redeemed || 0) > 0 ? "badge-success" : "badge-info",
       detail: "Успешные активации gift code за 24ч",

@@ -31,7 +31,7 @@ export default function AdminTicketsPage() {
         setSelectedId((prev) => prev || rows[0].id);
       }
     } catch (err) {
-      setError(String((err as { message?: string })?.message || err || "Ошибка загрузки тикетов"));
+      setError(String((err as { message?: string })?.message || err || "Не удалось загрузить обращения пользователей"));
     }
   }, [statusFilter]);
 
@@ -51,7 +51,7 @@ export default function AdminTicketsPage() {
       setReply("");
       setTickets((prev) => prev.map((row) => (row.id === updated.id ? updated : row)));
     } catch (err) {
-      setError(String((err as { message?: string })?.message || err || "Не удалось отправить ответ"));
+      setError(String((err as { message?: string })?.message || err || "Не удалось отправить ответ пользователю"));
     } finally {
       setBusy(false);
     }
@@ -64,7 +64,7 @@ export default function AdminTicketsPage() {
       const updated = await adminTicketStatus(selected.id, nextStatus);
       setTickets((prev) => prev.map((row) => (row.id === updated.id ? updated : row)));
     } catch (err) {
-      setError(String((err as { message?: string })?.message || err || "Не удалось обновить статус"));
+      setError(String((err as { message?: string })?.message || err || "Не удалось обновить статус обращения"));
     } finally {
       setBusy(false);
     }
@@ -142,7 +142,7 @@ export default function AdminTicketsPage() {
             <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
               <div>
                 <h2 className="font-display text-2xl font-bold">Тикет #{selected.id}</h2>
-                <p className="mt-0.5 text-xs text-slate-500">Обновлен: {fmtRuDate(selected.updated_at)}</p>
+                <p className="mt-0.5 text-xs text-slate-500">Последнее обновление: {fmtRuDate(selected.updated_at)}</p>
               </div>
               <div className="flex flex-wrap gap-1.5">
                 {Object.entries(STATUS_META).map(([key, meta]) => {

@@ -71,7 +71,7 @@ export default function AdminBroadcastPage() {
       const rows = await adminLiveUpdates(true);
       setLiveUpdates(rows);
     } catch (err) {
-      setError(String((err as { message?: string })?.message || err || "Ошибка загрузки новостей"));
+      setError(String((err as { message?: string })?.message || err || "Не удалось загрузить новости приложения"));
     }
   };
 
@@ -80,7 +80,7 @@ export default function AdminBroadcastPage() {
       const rows = await adminTemplates(200);
       setTemplates(rows);
     } catch (err) {
-      setError(String((err as { message?: string })?.message || err || "Ошибка загрузки retention-шаблонов"));
+      setError(String((err as { message?: string })?.message || err || "Не удалось загрузить шаблоны сообщений"));
     }
   };
 
@@ -102,9 +102,9 @@ export default function AdminBroadcastPage() {
         limit: Math.max(1, Math.min(1000, Number(limit) || 1)),
         tg_ids: tgIds.length ? tgIds : undefined,
       });
-      setResult(`Отправлено: ${out?.sent ?? 0}, ошибок: ${out?.failed ?? 0}, попыток: ${out?.attempted ?? 0}`);
+      setResult(`Рассылка завершена: отправлено ${out?.sent ?? 0}, ошибок ${out?.failed ?? 0}, попыток ${out?.attempted ?? 0}.`);
     } catch (err) {
-      setError(String((err as { message?: string })?.message || err || "Ошибка рассылки"));
+      setError(String((err as { message?: string })?.message || err || "Не удалось выполнить рассылку"));
     } finally {
       setBusy(false);
     }
@@ -188,7 +188,7 @@ export default function AdminBroadcastPage() {
       await loadLiveUpdates();
       setLiveDialog(null);
     } catch (err) {
-      setError(String((err as { message?: string })?.message || err || "Не удалось сохранить новость"));
+      setError(String((err as { message?: string })?.message || err || "Не удалось сохранить новость в приложении"));
     } finally {
       setBusy(false);
     }
@@ -198,7 +198,7 @@ export default function AdminBroadcastPage() {
     if (!templateDialog) return;
     const textValue = templateDialog.text.trim();
     if (!textValue) {
-      setError("Текст шаблона не может быть пустым.");
+      setError("Шаблон не может быть пустым.");
       return;
     }
     setBusy(true);
@@ -214,7 +214,7 @@ export default function AdminBroadcastPage() {
       await loadTemplates();
       setTemplateDialog(null);
     } catch (err) {
-      setError(String((err as { message?: string })?.message || err || "Не удалось сохранить retention-шаблон"));
+      setError(String((err as { message?: string })?.message || err || "Не удалось сохранить шаблон сообщения"));
     } finally {
       setBusy(false);
     }
@@ -262,7 +262,7 @@ export default function AdminBroadcastPage() {
             />
           </div>
           <div className="xl:col-span-2">
-            <label className="block text-[10px] uppercase tracking-[0.1em] text-slate-500 mb-1">tg_ids (опционально)</label>
+            <label className="block text-[10px] uppercase tracking-[0.1em] text-slate-500 mb-1">Telegram ID (необязательно)</label>
             <input
               value={tgIdsRaw}
               onChange={(event) => setTgIdsRaw(event.target.value)}
@@ -279,8 +279,7 @@ export default function AdminBroadcastPage() {
               value={text}
               onChange={(event) => setText(event.target.value)}
               rows={6}
-              placeholder="Текст рассылки..."
-              
+              placeholder="Напишите текст рассылки простыми словами"
               className="w-full rounded-xl border border-violet-200/50 bg-white/80 px-3 py-2 text-sm outline-none dark:border-violet-500/30 dark:bg-slate-900/70 resize-none"
             />
           </div>

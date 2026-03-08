@@ -116,7 +116,7 @@ export default function AdminPromosPage() {
       setPlans(planRows);
       setCampaigns(campaignRows);
     } catch (err) {
-      setError(String((err as { message?: string })?.message || err || "Ошибка загрузки"));
+      setError(String((err as { message?: string })?.message || err || "Не удалось загрузить промо, подарки, тарифы и кампании"));
     }
   };
 
@@ -129,7 +129,7 @@ export default function AdminPromosPage() {
       await navigator.clipboard.writeText(text);
       setResult("Скопировано в буфер.");
     } catch {
-      setError("Не удалось скопировать в буфер.");
+      setError("Не удалось скопировать код в буфер.");
     }
   };
 
@@ -224,7 +224,7 @@ export default function AdminPromosPage() {
       setDialog(null);
       await load();
     } catch (err) {
-      setError(String((err as { message?: string })?.message || err || "Не удалось выполнить действие"));
+      setError(String((err as { message?: string })?.message || err || "Не удалось выполнить выбранное действие"));
     } finally {
       setBusy(false);
     }
@@ -239,7 +239,7 @@ export default function AdminPromosPage() {
       setResult(`Тариф ${code} ${current ? "отключён" : "включён"}.`);
       await load();
     } catch (err) {
-      setError(String((err as { message?: string })?.message || err || "Не удалось обновить план"));
+      setError(String((err as { message?: string })?.message || err || "Не удалось обновить тариф"));
     } finally {
       setBusy(false);
     }
