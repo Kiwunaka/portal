@@ -21,7 +21,17 @@ export default function TelegramLoginWidget() {
     if (!host) return;
     host.innerHTML = "";
 
-    const rawBot = String(process.env.NEXT_PUBLIC_TELEGRAM_LOGIN_BOT || process.env.VITE_TELEGRAM_LOGIN_BOT || "")
+    const botFromUrl = String(process.env.NEXT_PUBLIC_TELEGRAM_BOT_URL || process.env.VITE_TELEGRAM_BOT_URL || "")
+      .trim()
+      .replace(/^https?:\/\/t\.me\//i, "")
+      .replace(/^@+/, "")
+      .replace(/\/+$/, "")
+      .toLowerCase();
+    const rawBot = String(
+      process.env.NEXT_PUBLIC_TELEGRAM_LOGIN_BOT ||
+        process.env.VITE_TELEGRAM_LOGIN_BOT ||
+        botFromUrl,
+    )
       .trim()
       .replace(/^@+/, "")
       .toLowerCase();

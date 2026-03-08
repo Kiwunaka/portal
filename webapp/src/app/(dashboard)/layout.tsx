@@ -25,9 +25,14 @@ const BOT_BASE_URL = String(process.env.NEXT_PUBLIC_TELEGRAM_BOT_URL || "https:/
   .trim()
   .replace(/\/+$/, "");
 const BOT_WEBLOGIN_URL = `${BOT_BASE_URL}${BOT_BASE_URL.includes("?") ? "&" : "?"}start=weblogin`;
-const WEB_WIDGET_BOT = String(process.env.NEXT_PUBLIC_TELEGRAM_LOGIN_BOT || process.env.VITE_TELEGRAM_LOGIN_BOT || "")
+const WEB_WIDGET_BOT = String(
+  process.env.NEXT_PUBLIC_TELEGRAM_LOGIN_BOT ||
+    process.env.VITE_TELEGRAM_LOGIN_BOT ||
+    BOT_BASE_URL.replace(/^https?:\/\/t\.me\//i, "").replace(/^@+/, ""),
+)
   .trim()
   .replace(/^@+/, "")
+  .replace(/\/+$/, "")
   .toLowerCase();
 const TELEGRAM_WIDGET_ENABLED = Boolean(WEB_WIDGET_BOT);
 

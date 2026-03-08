@@ -26,11 +26,11 @@ npm run build
 ## Ключевые ENV (frontend)
 
 - `NEXT_PUBLIC_API_BASE_URL`
-- `NEXT_PUBLIC_TELEGRAM_LOGIN_BOT`
 - `NEXT_PUBLIC_TELEGRAM_BOT_URL`
+- `NEXT_PUBLIC_TELEGRAM_LOGIN_BOT` (optional override)
 
 Для плавного перехода поддерживаются fallback-переменные `VITE_*`.
-Если `NEXT_PUBLIC_TELEGRAM_LOGIN_BOT` не задан, Telegram Login Widget не рендерится, и остаётся вход через deep-link бота.
+Если `NEXT_PUBLIC_TELEGRAM_LOGIN_BOT` не задан, Telegram Login Widget берёт username из `NEXT_PUBLIC_TELEGRAM_BOT_URL`.
 
 ## Auth flows
 
