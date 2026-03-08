@@ -126,8 +126,10 @@ export default function TelegramWebAppInit() {
     if (!webApp) return;
     const inTelegramContext = Boolean(webApp.initData);
 
-    document.documentElement.classList.add("tg-webapp");
-    document.body.classList.add("tg-webapp");
+    if (inTelegramContext) {
+      document.documentElement.classList.add("tg-webapp");
+      document.body.classList.add("tg-webapp");
+    }
 
     webApp.ready();
     if (inTelegramContext) {
@@ -167,12 +169,14 @@ export default function TelegramWebAppInit() {
       document.body.classList.toggle("tg-keyboard-open", delta > 140);
     };
 
-    window.visualViewport?.addEventListener("resize", onKeyboardResize);
-    window.addEventListener("resize", onKeyboardResize);
-    onKeyboardResize();
+    if (inTelegramContext) {
+      window.visualViewport?.addEventListener("resize", onKeyboardResize);
+      window.addEventListener("resize", onKeyboardResize);
+      onKeyboardResize();
+    }
 
     let lastHapticTime = 0;
-    const onClick = (event: MouseEvent): void => {
+    const onPointerUp = (event: PointerEvent): void => {
       if (!inTelegramContext) return;
       const target = event.target as HTMLElement | null;
       if (!target) return;
@@ -184,14 +188,20 @@ export default function TelegramWebAppInit() {
       webApp.HapticFeedback?.impactOccurred(detectHapticStyle(interactive));
     };
 
-    document.addEventListener("click", onClick, true);
+    if (inTelegramContext) {
+      document.addEventListener("pointerup", onPointerUp, { capture: true, passive: true });
+    }
 
     return () => {
       webApp.offEvent?.("themeChanged", onThemeChanged);
       webApp.offEvent?.("viewportChanged", onViewportChanged);
-      window.visualViewport?.removeEventListener("resize", onKeyboardResize);
-      window.removeEventListener("resize", onKeyboardResize);
-      document.removeEventListener("click", onClick, true);
+      if (inTelegramContext) {
+        window.visualViewport?.removeEventListener("resize", onKeyboardResize);
+        window.removeEventListener("resize", onKeyboardResize);
+        document.removeEventListener("pointerup", onPointerUp, true);
+        document.documentElement.classList.remove("tg-webapp");
+        document.body.classList.remove("tg-webapp");
+      }
     };
   }, []);
 
