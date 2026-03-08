@@ -35,6 +35,8 @@ def _to_runtime(node: Node) -> NodeRuntime:
         panel_user=node.panel_user,
         panel_pass=node.panel_pass,
         inbound_id=node.inbound_id,
+        accepting_new_clients=bool(getattr(node, "accepting_new_clients", True)),
+        is_draining=bool(getattr(node, "is_draining", False)),
         weight=int(node.weight or 0),
         health_score=float(node.health_score or 0.0),
         last_health_at=node.last_health_at,
