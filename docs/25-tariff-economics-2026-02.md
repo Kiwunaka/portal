@@ -2,6 +2,10 @@
 
 Updated: `2026-02-14`
 
+> Historical snapshot.
+> This file contains an old tariff ladder. The current active ladder is:
+> `start_99 = 99`, `1_month = 249`, `3_months = 699`, `6_months = 1199`, `9_months = 1399`, `12_months = 1644`.
+
 ## 1. Purpose
 
 This document defines a simple model to evaluate:
@@ -72,7 +76,7 @@ Operational target:
 - `3_months`: `699`
 - `6_months`: `1199`
 - `9_months`: `1399`
-- `12_months`: `1499`
+- `12_months`: `1644`
 
 Use one spreadsheet tab per plan:
 
