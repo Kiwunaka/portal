@@ -7347,6 +7347,64 @@ def _node_label_ru(code: str, fallback_name: str = "") -> str:
     return f"{flag} {nm}".strip()
 
 
+def _singbox_remote_rule_sets() -> list[dict[str, Any]]:
+    return [
+        {
+            "type": "remote",
+            "tag": "geoip-ru",
+            "format": "binary",
+            "url": "https://raw.githubusercontent.com/SagerNet/sing-geoip/rule-set/geoip-ru.srs",
+            "download_detour": "direct",
+        },
+        {
+            "type": "remote",
+            "tag": "geosite-category-ads-all",
+            "format": "binary",
+            "url": "https://raw.githubusercontent.com/SagerNet/sing-geosite/rule-set/geosite-category-ads-all.srs",
+            "download_detour": "direct",
+        },
+    ]
+
+
+def _singbox_common_route_rules(*, selector_tag: str, youtube_direct: bool = False) -> list[dict[str, Any]]:
+    youtube_domain_suffix = [
+        "youtube.com",
+        "youtu.be",
+        "ytimg.com",
+        "googlevideo.com",
+        "youtubei.googleapis.com",
+        "yt3.ggpht.com",
+    ]
+    rules: list[dict[str, Any]] = [
+        {"rule_set": ["geoip-ru"], "outbound": "direct"},
+        {
+            "domain_suffix": [
+                "steampowered.com",
+                "steamcommunity.com",
+                "steamcontent.com",
+                "steamusercontent.com",
+                "steamstatic.com",
+                "steamgames.com",
+                "steamserver.net",
+                "steam-chat.com",
+            ],
+            "outbound": "direct",
+        },
+        {"domain": ["steamcdn-a.akamaihd.net"], "outbound": "direct"},
+        {"protocol": "bittorrent", "outbound": "direct"},
+    ]
+    if youtube_direct:
+        rules.append({"domain_suffix": youtube_domain_suffix, "outbound": "direct"})
+    rules.extend(
+        [
+            {"protocol": "dns", "outbound": "dns-out"},
+            {"rule_set": ["geosite-category-ads-all"], "outbound": "block"},
+            {"ip_is_private": True, "outbound": "direct"},
+        ]
+    )
+    return rules
+
+
 def _singbox_multi_node_config(*, user_uuid: str, nodes: list, title: str) -> dict:
     outbounds = []
     selector_opts = []
@@ -7398,34 +7456,8 @@ def _singbox_multi_node_config(*, user_uuid: str, nodes: list, title: str) -> di
         "inbounds": [],
         "outbounds": outbounds,
         "route": {
-            "rules": [
-                # Split routing defaults:
-                # - Keep RU traffic direct (faster/cheaper, reduces unnecessary detours).
-                # - Keep large Steam downloads direct (common request).
-                # - Keep torrents direct (avoid proxying P2P).
-                #
-                # Note: split routing is client-side. Apps that import plain vless:// links may ignore this.
-                {"geoip": ["ru"], "outbound": "direct"},
-                {"geosite": ["geolocation-ru"], "outbound": "direct"},
-                {
-                    "domain_suffix": [
-                        "steampowered.com",
-                        "steamcommunity.com",
-                        "steamcontent.com",
-                        "steamusercontent.com",
-                        "steamstatic.com",
-                        "steamgames.com",
-                        "steamserver.net",
-                        "steam-chat.com",
-                    ],
-                    "outbound": "direct",
-                },
-                {"domain": ["steamcdn-a.akamaihd.net"], "outbound": "direct"},
-                {"protocol": "dns", "outbound": "dns-out"},
-                {"protocol": "bittorrent", "outbound": "direct"},
-                {"geosite": ["category-ads-all"], "outbound": "block"},
-                {"geoip": ["private"], "outbound": "direct"},
-            ],
+            "rule_set": _singbox_remote_rule_sets(),
+            "rules": _singbox_common_route_rules(selector_tag=selector_tag),
             "auto_detect_interface": True,
             "final": selector_tag,
         },
@@ -7448,15 +7480,6 @@ def _singbox_free_allowlist_config(*, user_uuid: str, nodes: list, title: str) -
     - YouTube direct
     """
     selector_tag = "🌍 Страны"
-
-    youtube_domain_suffix = [
-        "youtube.com",
-        "youtu.be",
-        "ytimg.com",
-        "googlevideo.com",
-        "youtubei.googleapis.com",
-        "yt3.ggpht.com",
-    ]
 
     outbounds = []
     for n in nodes:
@@ -7506,29 +7529,8 @@ def _singbox_free_allowlist_config(*, user_uuid: str, nodes: list, title: str) -
         "inbounds": [],
         "outbounds": outbounds,
         "route": {
-            "rules": [
-                {"geoip": ["ru"], "outbound": "direct"},
-                {"geosite": ["geolocation-ru"], "outbound": "direct"},
-                {
-                    "domain_suffix": [
-                        "steampowered.com",
-                        "steamcommunity.com",
-                        "steamcontent.com",
-                        "steamusercontent.com",
-                        "steamstatic.com",
-                        "steamgames.com",
-                        "steamserver.net",
-                        "steam-chat.com",
-                    ],
-                    "outbound": "direct",
-                },
-                {"domain": ["steamcdn-a.akamaihd.net"], "outbound": "direct"},
-                {"protocol": "bittorrent", "outbound": "direct"},
-                {"domain_suffix": youtube_domain_suffix, "outbound": "direct"},
-                {"protocol": "dns", "outbound": "dns-out"},
-                {"geosite": ["category-ads-all"], "outbound": "block"},
-                {"geoip": ["private"], "outbound": "direct"},
-            ],
+            "rule_set": _singbox_remote_rule_sets(),
+            "rules": _singbox_common_route_rules(selector_tag=selector_tag, youtube_direct=True),
             "auto_detect_interface": True,
             "final": selector_tag,
         },
@@ -7766,7 +7768,7 @@ async def _notify_admin_on_subscription_fallback(*, user_tg_id: int, token_fp: s
 
 
 @app.api_route("/s8Kx2mP7qR4wT/{token}", methods=["GET", "HEAD"])
-async def subscription(token: str, request: Request):
+async def subscription(token: str, request: Request, format: str = Query(default="", alias="format")):
     """
     Multi-node subscription endpoint.
     - token is usually `sub_token`
@@ -7809,13 +7811,18 @@ async def subscription(token: str, request: Request):
         s.close()
 
     user_agent = request.headers.get("user-agent", "").lower()
+    format_hint = str(format or "").strip().lower()
     is_smart = any(x in user_agent for x in ["hiddify", "dart", "sing-box", "nekobox"])
+    force_smart = format_hint in {"smart", "json", "singbox"}
+    force_plain = format_hint in {"plain", "legacy", "vless"}
+    wants_smart = force_smart or (not force_plain and is_smart)
     logger.info(
-        "subscription resolved token_fp=%s tg_id=%s lookup_mode=%s smart=%s",
+        "subscription resolved token_fp=%s tg_id=%s lookup_mode=%s smart=%s format_hint=%s",
         token_fp,
         int(user.tg_id),
         lookup_mode,
-        bool(is_smart),
+        bool(wants_smart),
+        format_hint or "-",
     )
     if lookup_mode == "tg_id_fallback":
         logger.warning(
@@ -7837,7 +7844,7 @@ async def subscription(token: str, request: Request):
     nodes_for_user = _nodes_for_user(user, nodes, session=s)
 
     # FREE and smart clients receive sing-box JSON profiles.
-    if (user.sub_type or "").upper() == "FREE" or is_smart:
+    if (user.sub_type or "").upper() == "FREE" or wants_smart:
         if (user.sub_type or "").upper() == "FREE" and not nodes_for_user:
             # Dedicated free pool is required for FREE users.
             return Response(content="", media_type="text/plain", status_code=503)

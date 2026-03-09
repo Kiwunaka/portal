@@ -12,7 +12,12 @@ const COMPARISON_ROWS = [
   { metric: "Устройства", start: "1", standard: "До 5", long: "До 5" },
   { metric: "Страны", start: "NL", standard: "IT, NL, PL, US", long: "IT, NL, PL, US" },
   { metric: "Срок", start: "30 дней", standard: "1 или 3 месяца", long: "6, 9 или 12 месяцев" },
-  { metric: "Для кого", start: "Спокойная проверка сервиса", standard: "Обычное ежемесячное использование", long: "Редкие продления и лучший срок" },
+  {
+    metric: "Для кого",
+    start: "Спокойно проверить сервис",
+    standard: "Обычное ежемесячное использование",
+    long: "Редкие продления и лучшая цена",
+  },
 ] as const;
 
 function planColumn(planCode: string | null | undefined): "start" | "standard" | "long" {
@@ -70,10 +75,21 @@ function nodePolicyLabel(value: string | null | undefined): string {
   return "Актуальный пул";
 }
 
+function buildSmartLink(subscriptionUrl: string): string {
+  if (!subscriptionUrl) return "";
+  return subscriptionUrl.includes("?") ? `${subscriptionUrl}&format=smart` : `${subscriptionUrl}?format=smart`;
+}
+
+function buildPlainLink(subscriptionUrl: string): string {
+  if (!subscriptionUrl) return "";
+  return subscriptionUrl.includes("?") ? `${subscriptionUrl}&format=plain` : `${subscriptionUrl}?format=plain`;
+}
+
 export default function SubscriptionPage() {
   const { user, dash } = usePortalSession();
   const [plans, setPlans] = useState<PlanCatalogRow[]>([]);
   const [error, setError] = useState("");
+  const [copyState, setCopyState] = useState<"" | "smart" | "plain">("");
 
   useEffect(() => {
     let cancelled = false;
@@ -102,6 +118,21 @@ export default function SubscriptionPage() {
 
   const activeColumn = planColumn(dash?.current_plan_code || dash?.sub_type || "");
   const planCards = useMemo(() => (plans.length ? plans : fallbackPlans()), [plans]);
+  const subscriptionUrl = String(dash?.subscription_url || user?.subscription_url || "").trim();
+  const smartLink = buildSmartLink(subscriptionUrl);
+  const plainLink = buildPlainLink(subscriptionUrl);
+
+  const copyLink = async (kind: "smart" | "plain") => {
+    const value = kind === "smart" ? smartLink : plainLink;
+    if (!value) return;
+    try {
+      await navigator.clipboard.writeText(value);
+      setCopyState(kind);
+      window.setTimeout(() => setCopyState(""), 1800);
+    } catch {
+      setCopyState("");
+    }
+  };
 
   return (
     <main className="space-y-6">
@@ -124,9 +155,71 @@ export default function SubscriptionPage() {
             Продолжить в Telegram
           </AppRouteLink>
         </div>
-        <p className="mt-4 text-xs text-slate-500">
-          Пользователь: {user?.username ? `@${user.username}` : `ID ${user?.tg_id || "—"}`}
-        </p>
+        <p className="mt-4 text-xs text-slate-500">Пользователь: {user?.username ? `@${user.username}` : `ID ${user?.tg_id || "—"}`}</p>
+      </section>
+
+      <section className="grid gap-5 lg:grid-cols-2">
+        <article className="glass-card p-6">
+          <p className="font-mono text-xs uppercase tracking-[0.14em] text-emerald-500">умная подписка</p>
+          <h2 className="mt-2 font-display text-3xl font-bold">С маршрутами и автонастройкой</h2>
+          <p className="mt-3 text-sm text-slate-600 dark:text-slate-300">
+            Для Hiddify, sing-box и NekoBox. Внутри уже есть страны, прямой маршрут для РФ, Steam и торрентов, плюс блокировка рекламы.
+          </p>
+          <div className="mt-4 rounded-2xl border border-white/40 bg-white/50 p-4 text-xs text-slate-600 dark:border-white/10 dark:bg-white/5 dark:text-slate-300">
+            {smartLink || "Ссылка появится после активации доступа."}
+          </div>
+          <div className="mt-4 flex flex-wrap gap-3">
+            <button
+              type="button"
+              onClick={() => void copyLink("smart")}
+              className="btn-primary rounded-xl px-5 py-2.5 text-xs font-semibold uppercase tracking-[0.12em]"
+              disabled={!smartLink}
+            >
+              {copyState === "smart" ? "Скопировано" : "Скопировать"}
+            </button>
+            {smartLink ? (
+              <a
+                href={smartLink}
+                target="_blank"
+                rel="noreferrer"
+                className="outline-btn rounded-xl px-5 py-2.5 text-xs font-semibold uppercase tracking-[0.12em]"
+              >
+                Открыть ссылку
+              </a>
+            ) : null}
+          </div>
+        </article>
+
+        <article className="glass-card p-6">
+          <p className="font-mono text-xs uppercase tracking-[0.14em] text-slate-500">обычная ссылка</p>
+          <h2 className="mt-2 font-display text-3xl font-bold">Без встроенных маршрутов</h2>
+          <p className="mt-3 text-sm text-slate-600 dark:text-slate-300">
+            Нужна только для простых клиентов, которые умеют принять список серверов, но не понимают умный JSON-профиль.
+          </p>
+          <div className="mt-4 rounded-2xl border border-white/40 bg-white/50 p-4 text-xs text-slate-600 dark:border-white/10 dark:bg-white/5 dark:text-slate-300">
+            {plainLink || "Ссылка появится после активации доступа."}
+          </div>
+          <div className="mt-4 flex flex-wrap gap-3">
+            <button
+              type="button"
+              onClick={() => void copyLink("plain")}
+              className="outline-btn rounded-xl px-5 py-2.5 text-xs font-semibold uppercase tracking-[0.12em]"
+              disabled={!plainLink}
+            >
+              {copyState === "plain" ? "Скопировано" : "Скопировать"}
+            </button>
+            {plainLink ? (
+              <a
+                href={plainLink}
+                target="_blank"
+                rel="noreferrer"
+                className="outline-btn rounded-xl px-5 py-2.5 text-xs font-semibold uppercase tracking-[0.12em]"
+              >
+                Открыть ссылку
+              </a>
+            ) : null}
+          </div>
+        </article>
       </section>
 
       <section className="grid gap-5 md:grid-cols-3">
@@ -151,7 +244,7 @@ export default function SubscriptionPage() {
       <section className="glass-card p-7">
         <div className="mb-4">
           <p className="font-mono text-xs uppercase tracking-[0.16em] text-slate-500">сравнение</p>
-          <h2 className="mt-2 font-display text-3xl font-bold">Что видно сейчас</h2>
+          <h2 className="mt-2 font-display text-3xl font-bold">Что меняется по планам</h2>
         </div>
 
         <div className="overflow-x-auto rounded-xl border border-white/45 dark:border-white/10">
@@ -160,8 +253,8 @@ export default function SubscriptionPage() {
               <tr>
                 <th className="px-4 py-3">Параметр</th>
                 <th className={`px-4 py-3 ${activeColumn === "start" ? "text-violet-600 dark:text-violet-300" : ""}`}>Приветственный</th>
-                <th className={`px-4 py-3 ${activeColumn === "standard" ? "text-violet-600 dark:text-violet-300" : ""}`}>1–3 месяца</th>
-                <th className={`px-4 py-3 ${activeColumn === "long" ? "text-violet-600 dark:text-violet-300" : ""}`}>6–12 месяцев</th>
+                <th className={`px-4 py-3 ${activeColumn === "standard" ? "text-violet-600 dark:text-violet-300" : ""}`}>1-3 месяца</th>
+                <th className={`px-4 py-3 ${activeColumn === "long" ? "text-violet-600 dark:text-violet-300" : ""}`}>6-12 месяцев</th>
               </tr>
             </thead>
             <tbody>

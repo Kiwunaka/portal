@@ -3931,6 +3931,7 @@ async def show_key(callback: CallbackQuery):
     await asyncio.sleep(0.35)
 
     sub_link = build_subscription_link(tg_id)
+    plain_link = f"{sub_link}?format=plain"
 
     is_free = _is_freemium_sub_type(user.sub_type if user else "")
     free_note = ""
@@ -3950,9 +3951,9 @@ async def show_key(callback: CallbackQuery):
             f"• Лимит трафика: до {FREE_TOTAL_GB} ГБ\n"
             f"• Лимит устройств: до {FREE_LIMIT_IP} (по IP)\n"
             f"• Лимит скорости: до {FREE_SPEED_MBIT} Мбит/с\n"
-            "• Проксируются только соцсети + AI\n"
-            "• YouTube идёт напрямую (сервис не помогает)\n"
-            "• Всё остальное идёт напрямую (будет виден ваш обычный IP)\n"
+            "• Умная подписка направляет соцсети и AI через доступ\n"
+            "• YouTube, Steam и торренты идут напрямую\n"
+            "• Простая ссылка без маршрутов не включает эти правила\n"
         )
     
     kb = InlineKeyboardMarkup(
@@ -3969,6 +3970,11 @@ async def show_key(callback: CallbackQuery):
         f"🔑 *Ваш ключ доступа:*\n\n"
         f"`{sub_link}`\n\n"
         f"📋 _Нажмите на ссылку, чтобы скопировать_\n\n"
+        "🧠 *Умная подписка с маршрутами*\n"
+        "Подходит для Hiddify, sing-box и NekoBox. Эти клиенты заберут страны, прямые маршруты для РФ/Steam/торрентов и блок рекламы автоматически.\n\n"
+        "📄 *Обычная ссылка без маршрутов*\n"
+        f"`{plain_link}`\n"
+        "Нужна только для простых клиентов, которые не понимают умный JSON-профиль.\n\n"
         f"📱 Добавьте как подписку в Hiddify, Streisand или v2rayNG."
         f"{free_note}",
         reply_markup=kb,

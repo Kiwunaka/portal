@@ -119,4 +119,18 @@
 - Бот поддержки: `https://t.me/portal_privacy_helpbot`
 - Feedback-бот / зачаток обратной связи: `https://t.me/portalfeedbackbot`
 
+## Subscription addendum (2026-03-09)
+
+- Production source of truth по пользователям, нодам и подпискам: `Postgres` из `DATABASE_URL`.
+- Локальный `portal.db` в репозитории и старый `/root/portal_bot/portal.db` на brain могут существовать как dev/исторический артефакт, но не являются текущей production-истиной.
+- `/s8Kx2mP7qR4wT/{token}` теперь умеет два явных формата:
+  - `?format=smart` — JSON-подписка для Hiddify / sing-box / NekoBox c маршрутами;
+  - `?format=plain` — обычная base64 `vless://` подписка без встроенных маршрутов.
+- Встроенные маршруты живут не на нодах, а в smart-подписке клиента:
+  - РФ напрямую;
+  - Steam и торренты напрямую;
+  - реклама в блок;
+  - остальное через выбранную страну.
+- Актуальный Reality target для `PL` после canary-замены: `www.play.pl:443`.
+
 Для env defaults, public copy, smoke-проверок и новых правок canonical username основного бота — `portal_service_bot`. Упоминания `portal_privacy_bot` считаются legacy-следом и должны удаляться при ближайшем касании файла.

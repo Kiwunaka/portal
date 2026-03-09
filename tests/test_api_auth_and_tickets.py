@@ -1085,6 +1085,41 @@ class ApiAuthAndTicketsTests(unittest.TestCase):
         self.assertEqual(hiddify.headers.get("profile-title"), "Portal")
         self.assertIn("Portal.json", hiddify.headers.get("content-disposition", ""))
 
+    def test_subscription_endpoint_supports_explicit_smart_and_plain_formats(self) -> None:
+        from db import SessionLocal
+        from models import User
+
+        s = SessionLocal()
+        try:
+            user = s.query(User).filter_by(tg_id=1001).first()
+            assert user is not None
+            user.sub_token = "token_1001_secure"
+            user.sub_type = "BONUS"
+            user.current_plan_code = "1_month"
+            user.is_active = True
+            user.expiry_at = datetime.utcnow() + timedelta(days=10)
+            s.add(user)
+            s.commit()
+        finally:
+            s.close()
+
+        with patch.object(self.api, "_nodes_for_user", side_effect=lambda user, nodes, session=None: list(nodes or [])[:1]):
+            smart = self.client.get("/s8Kx2mP7qR4wT/token_1001_secure?format=smart")
+        self.assertEqual(smart.status_code, 200, smart.text)
+        self.assertEqual(smart.headers.get("content-type"), "application/json")
+        smart_body = smart.json()
+        self.assertIn("route", smart_body)
+        self.assertIn("rule_set", smart_body["route"])
+        rendered_route = json.dumps(smart_body["route"], ensure_ascii=False)
+        self.assertNotIn('"geoip":', rendered_route)
+        self.assertNotIn('"geosite":', rendered_route)
+
+        plain = self.client.get("/s8Kx2mP7qR4wT/token_1001_secure?format=plain")
+        self.assertEqual(plain.status_code, 200, plain.text)
+        self.assertIn("text/plain", plain.headers.get("content-type", ""))
+        self.assertIsInstance(plain.text, str)
+        self.assertTrue(bool(plain.text.strip()))
+
     def test_admin_metrics_timeseries_and_nodes_traffic_endpoints(self) -> None:
         from db import SessionLocal
         from models import Event, ExternalOrder, ExternalPaymentEvent, NodeHealthSample, PayAttempt
