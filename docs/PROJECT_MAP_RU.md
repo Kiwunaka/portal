@@ -131,6 +131,6 @@
   - Steam и торренты напрямую;
   - реклама в блок;
   - остальное через выбранную страну.
-- Актуальный Reality target для `PL` после canary-замены: `www.play.pl:443`.
+- Актуальный Reality target для `PL` после canary-замены: `www.onet.pl:443`.
 
 Для env defaults, public copy, smoke-проверок и новых правок canonical username основного бота — `portal_service_bot`. Упоминания `portal_privacy_bot` считаются legacy-следом и должны удаляться при ближайшем касании файла.

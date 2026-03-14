@@ -297,4 +297,4 @@ Source of truth:
   - реклама в блок;
   - остальной трафик через выбранную страну.
 - На самих worker-нодах split-routing не настраивается: ноды остаются обычными transport-узлами `VLESS + TCP + Reality`.
-- Для `PL` актуальный canary target после замены: `www.play.pl:443`.
+- Для `PL` актуальный canary target после замены: `www.onet.pl:443`.
