@@ -34,6 +34,8 @@ class ControlPanelFreeFallbackTests(unittest.IsolatedAsyncioTestCase):
             code=code,
             name=code,
             host="example.test",
+            accepting_new_clients=True,
+            is_draining=False,
             vless_port=443,
             reality_sni="example.com",
             reality_pbk="pbk",
