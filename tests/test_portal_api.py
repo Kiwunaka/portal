@@ -101,10 +101,57 @@ class PortalApiTests(unittest.TestCase):
         self.assertEqual(len(selector["outbounds"]), 3)
         self.assertEqual(set(selector["outbounds"]), {o.get("tag") for o in vless_outbounds})
         self.assertEqual(selector["default"], vless_outbounds[0].get("tag"))
+        self.assertTrue(any(r.get("tag") == "geoip-ru" for r in cfg["route"]["rule_set"]))
         rules = cfg["route"]["rules"]
-        self.assertTrue(any(r.get("geoip") == ["ru"] and r.get("outbound") == "direct" for r in rules))
+        self.assertTrue(any(r.get("rule_set") == ["geoip-ru"] and r.get("outbound") == "direct" for r in rules))
         self.assertTrue(any(r.get("protocol") == "bittorrent" and r.get("outbound") == "direct" for r in rules))
         self.assertFalse(any(r.get("domain_suffix") and "youtube.com" in r.get("domain_suffix") and r.get("outbound") == "direct" for r in rules))
+
+    def test_singbox_config_keeps_unique_tags_for_poland_canary_nodes(self) -> None:
+        import importlib
+
+        api = importlib.import_module("api")
+        importlib.reload(api)
+
+        nodes = [
+            SimpleNamespace(
+                code="pl",
+                name="Poland",
+                host="pl.test",
+                vless_port=443,
+                reality_sni="www.play.pl",
+                reality_pbk="pbk",
+                reality_sid="sid",
+                fingerprint="firefox",
+                flow="xtls-rprx-vision",
+            ),
+            SimpleNamespace(
+                code="pl_canary",
+                name="Poland Canary",
+                host="pl-canary.test",
+                vless_port=443,
+                reality_sni="www.play.pl",
+                reality_pbk="pbk",
+                reality_sid="sid",
+                fingerprint="firefox",
+                flow="xtls-rprx-vision",
+            ),
+        ]
+
+        cfg = api._singbox_multi_node_config(
+            user_uuid="11111111-1111-1111-1111-111111111111",
+            nodes=nodes,
+            title="Portal",
+        )
+        vless_outbounds = [o for o in cfg["outbounds"] if o.get("type") == "vless"]
+        tags = [o.get("tag") for o in vless_outbounds]
+        selector = next(o for o in cfg["outbounds"] if o.get("type") == "selector")
+
+        self.assertEqual(len(tags), 2)
+        self.assertEqual(len(set(tags)), 2)
+        self.assertEqual(len(set(selector["outbounds"])), 2)
+        self.assertIn("Польша", tags[0])
+        self.assertIn("Canary", tags[1])
 
     def test_free_config_split_routing_and_youtube_direct(self) -> None:
         import importlib
@@ -123,8 +170,9 @@ class PortalApiTests(unittest.TestCase):
         self.assertNotIn("transport", first_vless)
         self.assertEqual(selector["default"], first_vless["tag"])
 
+        self.assertTrue(any(r.get("tag") == "geoip-ru" for r in cfg["route"]["rule_set"]))
         rules = cfg["route"]["rules"]
-        self.assertTrue(any(r.get("geoip") == ["ru"] and r.get("outbound") == "direct" for r in rules))
+        self.assertTrue(any(r.get("rule_set") == ["geoip-ru"] and r.get("outbound") == "direct" for r in rules))
         self.assertTrue(any(r.get("protocol") == "bittorrent" and r.get("outbound") == "direct" for r in rules))
         self.assertTrue(any(r.get("domain") == ["steamcdn-a.akamaihd.net"] and r.get("outbound") == "direct" for r in rules))
         self.assertTrue(any(r.get("domain_suffix") and "youtube.com" in r.get("domain_suffix") and r.get("outbound") == "direct" for r in rules))
@@ -135,7 +183,7 @@ class PortalApiTests(unittest.TestCase):
         api = importlib.import_module("api")
         importlib.reload(api)
 
-        user = SimpleNamespace(sub_type="PAID")
+        user = SimpleNamespace(tg_id=1001, sub_type="PAID", current_plan_code="1_month")
         nodes = [
             SimpleNamespace(code="brain"),
             SimpleNamespace(code="de"),

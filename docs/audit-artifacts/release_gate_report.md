@@ -1,18 +1,18 @@
 # Release Gate Report
 
-- Generated at: `2026-03-08 05:01:08`
-- Status: `FAIL`
+- Generated at: `2026-03-14 21:33:18`
+- Status: `PASS`
 
 ## Summary
 
 | Gate | Exit code | Duration (s) |
 |---|---:|---:|
-| Critical worker regression | 0 | 3.81 |
-| Public link checks | 0 | 0.10 |
-| Marketing production build | 0 | 45.67 |
+| Critical worker regression | 0 | 3.29 |
+| Public link checks | 0 | 0.09 |
+| Marketing production build | 0 | 34.43 |
 | Admin webapp smoke | 0 | 0.10 |
-| WebApp production build | 0 | 44.05 |
-| UI visual smoke | 1 | 0.09 |
+| WebApp production build | 0 | 42.25 |
+| UI visual smoke | 0 | 0.08 |
 
 ## Command Tails
 
@@ -28,7 +28,7 @@ C:\Users\kiwun\AppData\Local\Programs\Python\Python312\Lib\site-packages\sqlalch
   return util.wrap_callable(lambda ctx: fn(), fn)  # type: ignore
 ...
 ----------------------------------------------------------------------
-Ran 7 tests in 3.226s
+Ran 7 tests in 2.796s
 
 OK
 ```
@@ -76,7 +76,7 @@ Link check passed.
 Route (app)                              Size     First Load JS
 ┌ ○ /                                    8.87 kB        96.3 kB
 ├ ○ /_not-found                          873 B          88.3 kB
-├ ○ /checkout                            6.64 kB        94.1 kB
+├ ○ /checkout                            6.65 kB        94.1 kB
 ├ ○ /offer                               142 B          87.6 kB
 └ ○ /privacy                             142 B          87.6 kB
 + First Load JS shared by all            87.4 kB
@@ -108,14 +108,14 @@ Admin WebApp smoke passed.
 ▲ Next.js 16.1.6 (Turbopack)
 
   Creating an optimized production build ...
-✓ Compiled successfully in 2.2s
+✓ Compiled successfully in 2.8s
   Running TypeScript ...
   Collecting page data using 19 workers ...
   Generating static pages using 19 workers (0/23) ...
   Generating static pages using 19 workers (5/23) 
   Generating static pages using 19 workers (11/23) 
   Generating static pages using 19 workers (17/23) 
-✓ Generating static pages using 19 workers (23/23) in 526.1ms
+✓ Generating static pages using 19 workers (23/23) in 502.1ms
   Finalizing page optimization ...
 
 Route (app)
@@ -148,10 +148,8 @@ Route (app)
 ### UI visual smoke
 
 - Command: `C:\Users\kiwun\AppData\Local\Programs\Python\Python312\python.exe scripts/ui_visual_smoke.py`
-- Exit: `1`
+- Exit: `0`
 
 ```text
-[FAIL] marketing-checkout-gateway: missing `����������� ����� Telegram` in marketing\src\app\checkout\page.tsx
-[FAIL] marketing-checkout-gateway: missing `���������� � Telegram` in marketing\src\app\checkout\page.tsx
-[FAIL] marketing-checkout-gateway: missing `������� � ������` in marketing\src\app\checkout\page.tsx
+UI visual smoke passed.
 ```

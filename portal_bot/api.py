@@ -7344,7 +7344,14 @@ def _node_label_ru(code: str, fallback_name: str = "") -> str:
     }
     flag = flags.get(base, "🏳️")
     nm = names.get(base, fallback_name or (base.upper() if base else (code_raw or "Node")))
-    return f"{flag} {nm}".strip()
+    variant = ""
+    lowered = code_raw.lower()
+    if base and lowered.startswith(base):
+        suffix = code_raw[len(base) :].lstrip("._- ").strip()
+        if suffix:
+            parts = [part for part in re.split(r"[._-]+", suffix) if part]
+            variant = " ".join(part.upper() if part.isdigit() else part.capitalize() for part in parts)
+    return f"{flag} {nm} {variant}".strip()
 
 
 def _singbox_remote_rule_sets() -> list[dict[str, Any]]:

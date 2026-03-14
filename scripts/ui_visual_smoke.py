@@ -36,16 +36,8 @@ def _run_checks(checks: list[Check]) -> tuple[int, list[str]]:
     return len(failures), failures
 
 
-def main() -> int:
-    parser = argparse.ArgumentParser(description="Content-aware UI smoke for exported marketing/webapp artifacts.")
-    parser.add_argument(
-        "--report",
-        default=str(REPO_ROOT / "docs" / "audit-artifacts" / "ui-visual-smoke-report.md"),
-        help="Path to markdown report.",
-    )
-    args = parser.parse_args()
-
-    checks = [
+def _default_checks() -> list[Check]:
+    return [
         Check(
             name="marketing-home-cta",
             path=REPO_ROOT / "marketing" / "src" / "app" / "page.tsx",
@@ -60,7 +52,7 @@ def main() -> int:
         ),
         Check(
             name="marketing-checkout-gateway",
-            path=REPO_ROOT / "marketing" / "src" / "app" / "checkout" / "page.tsx",
+            path=REPO_ROOT / "marketing" / "src" / "app" / "checkout" / "checkout-client.tsx",
             must_contain=("Продолжение через Telegram", "Продолжить в Telegram", "Перейти к оплате"),
             must_not_contain=("PORTALcheckout",),
         ),
@@ -81,6 +73,18 @@ def main() -> int:
             must_not_contain=("api.qrserver.com",),
         ),
     ]
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser(description="Content-aware UI smoke for exported marketing/webapp artifacts.")
+    parser.add_argument(
+        "--report",
+        default=str(REPO_ROOT / "docs" / "audit-artifacts" / "ui-visual-smoke-report.md"),
+        help="Path to markdown report.",
+    )
+    args = parser.parse_args()
+
+    checks = _default_checks()
 
     fail_count, failures = _run_checks(checks)
     report = Path(args.report)
