@@ -105,6 +105,21 @@ class PortalApiTests(unittest.TestCase):
         rules = cfg["route"]["rules"]
         self.assertTrue(any(r.get("rule_set") == ["geoip-ru"] and r.get("outbound") == "direct" for r in rules))
         self.assertTrue(any(r.get("protocol") == "bittorrent" and r.get("outbound") == "direct" for r in rules))
+        steam_rule = next(r for r in rules if r.get("domain_suffix") and "steampowered.com" in r.get("domain_suffix"))
+        self.assertIn("s.team", steam_rule["domain_suffix"])
+        self.assertIn("steam.tv", steam_rule["domain_suffix"])
+        self.assertIn("steam-api.com", steam_rule["domain_suffix"])
+        self.assertIn("steamdeck.com", steam_rule["domain_suffix"])
+        self.assertIn("valvesoftware.com", steam_rule["domain_suffix"])
+        self.assertIn("steampipe.akamaized.net", steam_rule["domain_suffix"])
+        self.assertIn("steamstore-a.akamaihd.net", steam_rule["domain_suffix"])
+        self.assertTrue(
+            any(
+                r.get("process_name") == ["steam.exe", "steamservice.exe", "steamwebhelper.exe", "steam", "steamservice", "steamwebhelper"]
+                and r.get("outbound") == "direct"
+                for r in rules
+            )
+        )
         self.assertFalse(any(r.get("domain_suffix") and "youtube.com" in r.get("domain_suffix") and r.get("outbound") == "direct" for r in rules))
 
     def test_singbox_config_keeps_unique_tags_for_poland_canary_nodes(self) -> None:
@@ -174,7 +189,15 @@ class PortalApiTests(unittest.TestCase):
         rules = cfg["route"]["rules"]
         self.assertTrue(any(r.get("rule_set") == ["geoip-ru"] and r.get("outbound") == "direct" for r in rules))
         self.assertTrue(any(r.get("protocol") == "bittorrent" and r.get("outbound") == "direct" for r in rules))
-        self.assertTrue(any(r.get("domain") == ["steamcdn-a.akamaihd.net"] and r.get("outbound") == "direct" for r in rules))
+        steam_rule = next(r for r in rules if r.get("domain_suffix") and "steampowered.com" in r.get("domain_suffix"))
+        self.assertIn("steamcdn-a.akamaihd.net", steam_rule["domain_suffix"])
+        self.assertTrue(
+            any(
+                r.get("process_name") == ["steam.exe", "steamservice.exe", "steamwebhelper.exe", "steam", "steamservice", "steamwebhelper"]
+                and r.get("outbound") == "direct"
+                for r in rules
+            )
+        )
         self.assertTrue(any(r.get("domain_suffix") and "youtube.com" in r.get("domain_suffix") and r.get("outbound") == "direct" for r in rules))
 
     def test_nodes_for_user_excludes_brain_from_paid_pool(self) -> None:

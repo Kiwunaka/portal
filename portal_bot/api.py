@@ -7373,6 +7373,64 @@ def _singbox_remote_rule_sets() -> list[dict[str, Any]]:
     ]
 
 
+def _steam_direct_domain_suffixes() -> list[str]:
+    # Based on the official community Steam domain list plus the CDN hosts we
+    # observed in production traffic. Keeping this local avoids a hard runtime
+    # dependency on third-party list availability inside client configs.
+    return [
+        "a4e8s8k3.map2.ssl.hwcdn.net",
+        "edge.steam-dns.top.comcast.net",
+        "f3b7q2p3.ssl.hwcdn.net",
+        "playartifact.com",
+        "s.team",
+        "steam-api.com",
+        "steam-chat.com",
+        "steam.apac.qtlglb.com",
+        "steam.cdn.on.net",
+        "steam.cdn.orcon.net.nz",
+        "steam.cdn.slingshot.co.nz",
+        "steam.cdn.webra.ru",
+        "steam.eca.qtlglb.com",
+        "steam.naeu.qtlglb.com",
+        "steam.ru.qtlglb.com",
+        "steam.tv",
+        "steamcloudsweden.blob.core.windows.net",
+        "steamcommunity-a.akamaihd.net",
+        "steamcommunity-a.akamaihd.net.edgesuite.net",
+        "steamcommunity.com",
+        "steamcontent.com",
+        "steamdeck.com",
+        "steamgames.com",
+        "steampipe-kr.akamaized.net",
+        "steampipe-partner.akamaized.net",
+        "steampipe.akamaized.net",
+        "steampowered.com",
+        "steamserver.net",
+        "steamstatic.com",
+        "steamstore-a.akamaihd.net",
+        "steamusercontent-a.akamaihd.net",
+        "steamusercontent.com",
+        "steamuserimages-a.akamaihd.net",
+        "steamvideo-a.akamaihd.net",
+        "steambroadcast.akamaized.net",
+        "steamcdn-a.akamaihd.net",
+        "steammobile.akamaized.net",
+        "underlords.com",
+        "valvesoftware.com",
+    ]
+
+
+def _steam_direct_process_names() -> list[str]:
+    return [
+        "steam.exe",
+        "steamservice.exe",
+        "steamwebhelper.exe",
+        "steam",
+        "steamservice",
+        "steamwebhelper",
+    ]
+
+
 def _singbox_common_route_rules(*, selector_tag: str, youtube_direct: bool = False) -> list[dict[str, Any]]:
     youtube_domain_suffix = [
         "youtube.com",
@@ -7384,20 +7442,8 @@ def _singbox_common_route_rules(*, selector_tag: str, youtube_direct: bool = Fal
     ]
     rules: list[dict[str, Any]] = [
         {"rule_set": ["geoip-ru"], "outbound": "direct"},
-        {
-            "domain_suffix": [
-                "steampowered.com",
-                "steamcommunity.com",
-                "steamcontent.com",
-                "steamusercontent.com",
-                "steamstatic.com",
-                "steamgames.com",
-                "steamserver.net",
-                "steam-chat.com",
-            ],
-            "outbound": "direct",
-        },
-        {"domain": ["steamcdn-a.akamaihd.net"], "outbound": "direct"},
+        {"process_name": _steam_direct_process_names(), "outbound": "direct"},
+        {"domain_suffix": _steam_direct_domain_suffixes(), "outbound": "direct"},
         {"protocol": "bittorrent", "outbound": "direct"},
     ]
     if youtube_direct:
