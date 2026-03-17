@@ -11,11 +11,11 @@ const config = getPortalPublicConfig(process.env as Record<string, string | unde
 const COMPARISON_ROWS = [
   { metric: "Устройства", start: "1", standard: "До 5", long: "До 5" },
   { metric: "Страны", start: "NL", standard: "IT, NL, PL, US", long: "IT, NL, PL, US" },
-  { metric: "Срок", start: "30 дней", standard: "1 или 3 месяца", long: "6, 9 или 12 месяцев" },
+  { metric: "Срок", start: "Тест / старт", standard: "1 или 3 месяца", long: "6, 9 или 12 месяцев" },
   {
     metric: "Для кого",
-    start: "Спокойно проверить сервис",
-    standard: "Обычное ежемесячное использование",
+    start: "Проверить сервис и подключение",
+    standard: "Обычный рабочий режим",
     long: "Редкие продления и лучшая цена",
   },
 ] as const;
@@ -121,6 +121,7 @@ export default function SubscriptionPage() {
   const subscriptionUrl = String(dash?.subscription_url || user?.subscription_url || "").trim();
   const smartLink = buildSmartLink(subscriptionUrl);
   const plainLink = buildPlainLink(subscriptionUrl);
+  const isTrialLike = ["FREE", "TRIAL", "BONUS"].includes(String(dash?.sub_type || "").toUpperCase()) || String(dash?.current_plan_code || "") === "trial";
 
   const copyLink = async (kind: "smart" | "plain") => {
     const value = kind === "smart" ? smartLink : plainLink;
@@ -139,17 +140,17 @@ export default function SubscriptionPage() {
       <section className="glass-card p-7">
         <p className="font-mono text-xs uppercase tracking-[0.18em] text-slate-500">subscription</p>
         <h1 className="mt-2 font-display text-4xl font-bold">
-          {getCopyText("webapp.subscription.title", "Управление доступом")}
+          {getCopyText("webapp.subscription.title", "План и следующий шаг")}
         </h1>
         <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">
           {getCopyText(
             "webapp.subscription.subtitle",
-            "Сравните планы, проверьте лимиты и продлите доступ без лишних шагов.",
+            "Здесь видно, что делать дальше: проверить тест, сравнить страны и устройства или спокойно перейти к продлению.",
           )}
         </p>
         <div className="mt-5 flex flex-wrap gap-3">
           <AppRouteLink href="/subscription/checkout/" className="btn-primary rounded-xl px-6 py-3 text-sm font-semibold uppercase tracking-[0.12em]">
-            {getCopyText("webapp.dashboard.primary_cta", "Открыть оплату")}
+            Открыть продление
           </AppRouteLink>
           <AppRouteLink href={config.botUrl} target="_blank" hardNavigate={false} className="outline-btn rounded-xl px-6 py-3 text-sm font-semibold uppercase tracking-[0.12em]">
             Продолжить в Telegram
@@ -158,12 +159,31 @@ export default function SubscriptionPage() {
         <p className="mt-4 text-xs text-slate-500">Пользователь: {user?.username ? `@${user.username}` : `ID ${user?.tg_id || "—"}`}</p>
       </section>
 
+      {isTrialLike ? (
+        <section className="grid gap-5 lg:grid-cols-2">
+          <article className="glass-card p-6">
+            <p className="font-mono text-xs uppercase tracking-[0.14em] text-emerald-500">trial-first</p>
+            <h2 className="mt-2 font-display text-3xl font-bold">План и следующий шаг</h2>
+            <p className="mt-3 text-sm text-slate-600 dark:text-slate-300">
+              Чтобы забыть про лимиты и спокойно пользоваться сервисом каждый день, переходите на полный доступ.
+            </p>
+          </article>
+          <article className="glass-card p-6">
+            <p className="font-mono text-xs uppercase tracking-[0.14em] text-slate-500">free fallback</p>
+            <h2 className="mt-2 font-display text-3xl font-bold">Базовый доступ (на всякий случай)</h2>
+            <p className="mt-3 text-sm text-slate-600 dark:text-slate-300">
+              Это запасной сценарий: 5 ГБ и 1 устройство, если тест уже завершён. Для спокойного повседневного использования лучше перейти на полный доступ.
+            </p>
+          </article>
+        </section>
+      ) : null}
+
       <section className="grid gap-5 lg:grid-cols-2">
         <article className="glass-card p-6">
-          <p className="font-mono text-xs uppercase tracking-[0.14em] text-emerald-500">умная подписка</p>
-          <h2 className="mt-2 font-display text-3xl font-bold">С маршрутами и автонастройкой</h2>
+          <p className="font-mono text-xs uppercase tracking-[0.14em] text-emerald-500">умная ссылка</p>
+          <h2 className="mt-2 font-display text-3xl font-bold">С маршрутами и автоподстройкой</h2>
           <p className="mt-3 text-sm text-slate-600 dark:text-slate-300">
-            Для Hiddify, sing-box и NekoBox. Внутри уже есть страны, прямой маршрут для РФ, Steam и торрентов, плюс блокировка рекламы.
+            Для Hiddify, sing-box и NekoBox. Внутри уже есть страны, быстрые маршруты и понятный путь для первого запуска.
           </p>
           <div className="mt-4 rounded-2xl border border-white/40 bg-white/50 p-4 text-xs text-slate-600 dark:border-white/10 dark:bg-white/5 dark:text-slate-300">
             {smartLink || "Ссылка появится после активации доступа."}
@@ -177,24 +197,14 @@ export default function SubscriptionPage() {
             >
               {copyState === "smart" ? "Скопировано" : "Скопировать"}
             </button>
-            {smartLink ? (
-              <a
-                href={smartLink}
-                target="_blank"
-                rel="noreferrer"
-                className="outline-btn rounded-xl px-5 py-2.5 text-xs font-semibold uppercase tracking-[0.12em]"
-              >
-                Открыть ссылку
-              </a>
-            ) : null}
           </div>
         </article>
 
         <article className="glass-card p-6">
           <p className="font-mono text-xs uppercase tracking-[0.14em] text-slate-500">обычная ссылка</p>
-          <h2 className="mt-2 font-display text-3xl font-bold">Без встроенных маршрутов</h2>
+          <h2 className="mt-2 font-display text-3xl font-bold">Без доп. маршрутов</h2>
           <p className="mt-3 text-sm text-slate-600 dark:text-slate-300">
-            Нужна только для простых клиентов, которые умеют принять список серверов, но не понимают умный JSON-профиль.
+            Нужна для простых клиентов, которым достаточно стандартного подключения и списка серверов.
           </p>
           <div className="mt-4 rounded-2xl border border-white/40 bg-white/50 p-4 text-xs text-slate-600 dark:border-white/10 dark:bg-white/5 dark:text-slate-300">
             {plainLink || "Ссылка появится после активации доступа."}
@@ -208,16 +218,6 @@ export default function SubscriptionPage() {
             >
               {copyState === "plain" ? "Скопировано" : "Скопировать"}
             </button>
-            {plainLink ? (
-              <a
-                href={plainLink}
-                target="_blank"
-                rel="noreferrer"
-                className="outline-btn rounded-xl px-5 py-2.5 text-xs font-semibold uppercase tracking-[0.12em]"
-              >
-                Открыть ссылку
-              </a>
-            ) : null}
           </div>
         </article>
       </section>
@@ -244,7 +244,7 @@ export default function SubscriptionPage() {
       <section className="glass-card p-7">
         <div className="mb-4">
           <p className="font-mono text-xs uppercase tracking-[0.16em] text-slate-500">сравнение</p>
-          <h2 className="mt-2 font-display text-3xl font-bold">Что меняется по планам</h2>
+          <h2 className="mt-2 font-display text-3xl font-bold">Что меняется по срокам</h2>
         </div>
 
         <div className="overflow-x-auto rounded-xl border border-white/45 dark:border-white/10">
@@ -252,7 +252,7 @@ export default function SubscriptionPage() {
             <thead className="bg-white/55 dark:bg-white/5">
               <tr>
                 <th className="px-4 py-3">Параметр</th>
-                <th className={`px-4 py-3 ${activeColumn === "start" ? "text-violet-600 dark:text-violet-300" : ""}`}>Приветственный</th>
+                <th className={`px-4 py-3 ${activeColumn === "start" ? "text-violet-600 dark:text-violet-300" : ""}`}>Старт</th>
                 <th className={`px-4 py-3 ${activeColumn === "standard" ? "text-violet-600 dark:text-violet-300" : ""}`}>1-3 месяца</th>
                 <th className={`px-4 py-3 ${activeColumn === "long" ? "text-violet-600 dark:text-violet-300" : ""}`}>6-12 месяцев</th>
               </tr>

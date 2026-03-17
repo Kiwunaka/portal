@@ -1,7 +1,7 @@
 "use client";
 
 import AppRouteLink from "@/components/app-route-link";
-import { getCopyText, getPortalPublicConfig } from "@/lib/portal";
+import { getPortalPublicConfig } from "@/lib/portal";
 import { usePortalSession } from "@/lib/session";
 import { AnimatePresence, motion } from "framer-motion";
 import { useMemo, useState } from "react";
@@ -13,6 +13,11 @@ function fmtNumber(value: number): string {
   return new Intl.NumberFormat("ru-RU").format(Math.max(0, Math.floor(value)));
 }
 
+function isTrialLike(subType?: string | null): boolean {
+  const value = String(subType || "").toUpperCase();
+  return value.includes("TRIAL") || value.includes("FREE");
+}
+
 export default function DevicesPage() {
   const { loading, error, user, dash } = usePortalSession();
   const [toast, setToast] = useState<string | null>(null);
@@ -20,6 +25,7 @@ export default function DevicesPage() {
   const activeSessions = Math.max(0, Number(dash?.active_sessions || 0));
   const deviceLimit = Math.max(1, Number(dash?.device_limit || user?.limits?.device_limit || 1));
   const freeSlots = Math.max(0, deviceLimit - activeSessions);
+  const trialMode = isTrialLike(dash?.sub_type || dash?.current_plan_code || user?.sub_type);
 
   const nodes = useMemo(() => {
     const list = [...(user?.nodes || [])];
@@ -48,7 +54,7 @@ export default function DevicesPage() {
       <main className="space-y-6">
         <section className="glass-card p-7">
           <p className="font-mono text-xs uppercase tracking-[0.18em] text-slate-500">devices</p>
-          <h1 className="mt-2 font-display text-4xl font-bold">Загружаем данные...</h1>
+          <h1 className="mt-2 font-display text-4xl font-bold">Загружаем устройства...</h1>
         </section>
       </main>
     );
@@ -59,7 +65,7 @@ export default function DevicesPage() {
       <main className="space-y-6">
         <section className="glass-card p-7">
           <p className="font-mono text-xs uppercase tracking-[0.18em] text-rose-500">ошибка</p>
-          <h1 className="mt-2 font-display text-4xl font-bold">Не удалось загрузить сессии</h1>
+          <h1 className="mt-2 font-display text-4xl font-bold">Не удалось загрузить устройства</h1>
           <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">{error || "Нет данных профиля."}</p>
           <AppRouteLink href={config.botUrl} target="_blank" hardNavigate={false} className="outline-btn mt-5 inline-flex rounded-xl px-4 py-2 text-sm font-semibold">
             Открыть Telegram
@@ -73,17 +79,14 @@ export default function DevicesPage() {
     <main className="space-y-6">
       <section className="glass-card p-7">
         <p className="font-mono text-xs uppercase tracking-[0.18em] text-slate-500">devices</p>
-        <h1 className="mt-2 font-display text-4xl font-bold">{getCopyText("webapp.devices.title", "Сессии и точки подключения")}</h1>
+        <h1 className="mt-2 font-display text-4xl font-bold">Устройства и точки подключения</h1>
         <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">
-          {getCopyText(
-            "webapp.devices.subtitle",
-            "Здесь видны текущие лимиты, активные сессии и доступные точки подключения по вашему плану.",
-          )}
+          Здесь видно, сколько устройств уже подключено, сколько слотов доступно сейчас и какие точки работают по вашему профилю.
         </p>
 
         <div className="mt-5 grid gap-3 sm:grid-cols-3">
           <div className="rounded-xl bg-white/70 p-3 dark:bg-white/10">
-            <p className="text-xs text-slate-500">Активные сессии</p>
+            <p className="text-xs text-slate-500">Подключено сейчас</p>
             <p className="mt-1 text-2xl font-semibold">{fmtNumber(activeSessions)}</p>
           </div>
           <div className="rounded-xl bg-white/70 p-3 dark:bg-white/10">
@@ -101,13 +104,35 @@ export default function DevicesPage() {
             Скопировать ссылку доступа
           </button>
           <AppRouteLink href="/dashboard/downloads" className="outline-btn rounded-xl px-4 py-2 text-sm font-semibold">
-            Скачать приложения
+            Открыть приложения
           </AppRouteLink>
           <AppRouteLink href={config.supportTelegramUrl} target="_blank" hardNavigate={false} className="btn-primary rounded-xl px-4 py-2 text-sm font-semibold">
             Поддержка
           </AppRouteLink>
         </div>
       </section>
+
+      {trialMode ? (
+        <section className="glass-card p-6">
+          <div className="flex flex-wrap items-start justify-between gap-4">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-[0.14em] text-orange-500">trial / free</p>
+              <h2 className="mt-2 font-display text-2xl font-semibold">Нужны дополнительные устройства?</h2>
+              <p className="mt-2 max-w-2xl text-sm text-slate-600 dark:text-slate-300">
+                В тестовом и базовом режиме число устройств ограничено. Если хотите подключить больше техники и не думать о лимитах, переходите к тарифам или продолжайте в Telegram.
+              </p>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <AppRouteLink href="/dashboard/subscription" className="outline-btn rounded-xl px-4 py-2 text-sm font-semibold">
+                Смотреть тарифы
+              </AppRouteLink>
+              <AppRouteLink href={config.botUrl} target="_blank" hardNavigate={false} className="btn-primary rounded-xl px-4 py-2 text-sm font-semibold">
+                Продолжить в Telegram
+              </AppRouteLink>
+            </div>
+          </div>
+        </section>
+      ) : null}
 
       <section className="glass-card p-5">
         <div className="mb-3 flex items-center justify-between gap-2">
@@ -126,7 +151,9 @@ export default function DevicesPage() {
                   </span>
                 </div>
                 <p className="mt-1 text-xs text-slate-500">Код: {node.code}</p>
-                <p className="text-xs text-slate-500">Хост: {node.host}:{node.port}</p>
+                <p className="text-xs text-slate-500">
+                  Хост: {node.host}:{node.port}
+                </p>
               </article>
             ))}
           </div>

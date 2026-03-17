@@ -65,7 +65,7 @@ function fallbackPlans(): PlanCatalogRow[] {
 function nodePolicyLabel(value: string | null | undefined): string {
   const normalized = String(value || "").trim().toLowerCase();
   if (normalized === "nl_only") return "Нидерланды";
-  if (normalized === "paid_pool") return "Все премиум-ноды: IT, NL, PL, US";
+  if (normalized === "paid_pool") return "IT, NL, PL, US";
   return "Актуальный пул";
 }
 
@@ -154,7 +154,7 @@ export default function CheckoutPage() {
   const onCreateOrder = async (): Promise<void> => {
     if (!activePlan || !user) return;
     if (!activeProvider?.code) {
-      setStatusText("Сейчас нет доступных касс. Попробуйте позже или откройте поддержку.");
+      setStatusText("Сейчас касса не готова. Безопасный fallback — продолжить в Telegram и не терять сценарий пользователя.");
       return;
     }
     setBusy(true);
@@ -179,7 +179,7 @@ export default function CheckoutPage() {
         window.location.href = order.payment_url;
         return;
       }
-      setStatusText("Не удалось получить ссылку на оплату. Попробуйте ещё раз или откройте поддержку.");
+      setStatusText("Не удалось получить ссылку на оплату. Лучше продолжить через Telegram или написать в поддержку.");
     } catch (error) {
       setStatusText(String((error as { message?: string })?.message || error || "Ошибка создания заказа"));
     } finally {
@@ -192,12 +192,12 @@ export default function CheckoutPage() {
       <section className="glass-card p-7">
         <p className="font-mono text-xs uppercase tracking-[0.16em] text-violet-600 dark:text-violet-300">checkout</p>
         <h1 className="mt-2 font-display text-4xl font-bold">
-          {getCopyText("webapp.checkout.title", "Оплата и продление")}
+          {getCopyText("webapp.checkout.title", "Продление без лишних обещаний")}
         </h1>
         <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">
           {getCopyText(
             "webapp.checkout.subtitle",
-            "Сумма и скидка видны до перехода на страницу оплаты. После подтверждения доступ обновится автоматически.",
+            "Здесь видны реальная сумма, срок и касса. Если касса временно недоступна, главный fallback остаётся простым: продолжить в Telegram.",
           )}
         </p>
       </section>
@@ -258,7 +258,7 @@ export default function CheckoutPage() {
               </div>
             ) : (
               <div className="mt-3 rounded-xl border border-amber-300/40 bg-amber-500/10 px-4 py-3 text-sm text-amber-900 dark:text-amber-200">
-                Сейчас нет подключённых касс. Как только их добавим на сервере, они появятся здесь автоматически.
+                Сейчас нет доступных касс. Лучше продолжить в Telegram и не обрывать пользователя на полурабочем checkout.
               </div>
             )}
           </div>
@@ -273,7 +273,7 @@ export default function CheckoutPage() {
               </p>
               <p>Срок: {activePlan.days} дней</p>
               <p>Лимит устройств: до {activePlan.device_limit}</p>
-              <p>Точки подключения: {nodePolicyLabel(activePlan.node_policy)}</p>
+              <p>Страны: {nodePolicyLabel(activePlan.node_policy)}</p>
               <p>
                 Касса:{" "}
                 <span className="font-semibold text-slate-900 dark:text-white">

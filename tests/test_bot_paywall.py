@@ -475,8 +475,9 @@ class BotPaywallTests(unittest.TestCase):
         self.bot_module.ensure_pending_user(1001, username="alice")
         text = self.bot_module._build_tariff_payment_choice_text(tariff_key="1_month", tg_id=1001)
         self.assertIn("Цена в ₽: *249 ₽*", text)
-        self.assertIn("Цена в Stars: *249⭐*", text)
-        self.assertIn("Сначала выберите удобный способ оплаты", text)
+        self.assertNotIn("Stars", text)
+        self.assertNotIn("⭐", text)
+        self.assertIn("Откроем оплату в рублях", text)
 
     def test_tariff_payment_choice_keyboard_keeps_plan_in_checkout_url(self) -> None:
         self.bot_module.PAY_CHECKOUT_URL = "https://portal-privacy.online/checkout?from=bot"
@@ -494,7 +495,9 @@ class BotPaywallTests(unittest.TestCase):
             self.bot_module.enabled_provider_catalog = old_catalog
         self.assertEqual(keyboard.inline_keyboard[0][0].text, "💳 Cardlink · 699 ₽")
         self.assertEqual(keyboard.inline_keyboard[0][0].callback_data, "pay_rub:cardlink:3_months")
-        self.assertEqual(keyboard.inline_keyboard[1][0].callback_data, "pay_stars_3_months")
+        flat_rows = [button.text for row in keyboard.inline_keyboard for button in row]
+        self.assertIn("📚 Посмотреть долгие тарифы", flat_rows)
+        self.assertIn("◀️ К тарифам", flat_rows)
 
     def test_direct_rub_payment_keyboard_keeps_site_fallback(self) -> None:
         self.bot_module.PAY_CHECKOUT_URL = "https://portal-privacy.online/checkout?from=bot"
@@ -511,6 +514,8 @@ class BotPaywallTests(unittest.TestCase):
         self.assertIn("plan=3_months", keyboard.inline_keyboard[1][0].url)
         self.assertIn("promo=WELCOME14", keyboard.inline_keyboard[1][0].url)
         self.assertIn("campaign=launch_week_1", keyboard.inline_keyboard[1][0].url)
+        flat_text = [button.text for row in keyboard.inline_keyboard for button in row]
+        self.assertFalse(any("Stars" in text or "⭐" in text for text in flat_text))
 
     def test_process_buy_rub_opens_direct_payment_link(self) -> None:
         callback = _FakeCallback(1001, data="pay_rub:cardlink:1_month")
@@ -556,14 +561,18 @@ class BotPaywallTests(unittest.TestCase):
 
         self.assertEqual(keyboard.inline_keyboard[0][0].callback_data, "pay_rub:cardlink:1_month")
         self.assertEqual(keyboard.inline_keyboard[1][0].callback_data, "pay_rub:pally:1_month")
-        self.assertEqual(keyboard.inline_keyboard[2][0].callback_data, "pay_stars_1_month")
+        flat_rows = [button.text for row in keyboard.inline_keyboard for button in row]
+        self.assertIn("📚 Посмотреть долгие тарифы", flat_rows)
+        self.assertIn("◀️ К тарифам", flat_rows)
 
-    def test_tariff_keyboard_shows_rubles_before_stars(self) -> None:
+    def test_tariff_keyboard_is_rub_first_without_visible_stars(self) -> None:
         keyboard = self.bot_module.tariff_keyboard(tg_id=1001, show_trial=True, include_long_plans=False)
         labels = [row[0].text for row in keyboard.inline_keyboard]
-        self.assertTrue(any("99 ₽ / 99⭐" in text for text in labels))
-        self.assertTrue(any("249 ₽ / 249⭐" in text for text in labels))
-        self.assertTrue(any("699 ₽ / 699⭐" in text for text in labels))
+        self.assertTrue(any("99 ₽" in text for text in labels))
+        self.assertTrue(any("249 ₽" in text for text in labels))
+        self.assertTrue(any("699 ₽" in text for text in labels))
+        self.assertFalse(any("⭐" in text for text in labels))
+        self.assertFalse(any("Stars" in text for text in labels))
         self.assertFalse(any("points" in text.lower() for text in labels))
 
     def test_twelve_month_tariff_savings_is_45_percent(self) -> None:
@@ -574,8 +583,17 @@ class BotPaywallTests(unittest.TestCase):
         with patch.object(self.bot_module, "preview_redeemable_points") as preview:
             preview.return_value = types.SimpleNamespace(redeemable_points=100)
             text = self.bot_module._build_tariff_payment_choice_text(tariff_key="1_month", tg_id=1001)
-        self.assertIn("Цена в Stars уже уменьшена на *100⭐* за счёт ваших бонусов.", text)
-        self.assertNotIn("по points", text)
+        self.assertNotIn("Stars", text)
+        self.assertNotIn("⭐", text)
+        self.assertNotIn("points", text.lower())
+
+    def test_choose_tariff_text_is_trial_first_and_no_stars(self) -> None:
+        text = self.bot_module.build_choose_tariff_text()
+        self.assertIn("3 дня", text)
+        self.assertIn("тест", text.lower())
+        self.assertIn("5 ГБ", text)
+        self.assertNotIn("Stars", text)
+        self.assertNotIn("⭐", text)
 
     def test_activate_promo_code_rejects_expired_promo(self) -> None:
         self.bot_module.ensure_pending_user(1001, username="alice")

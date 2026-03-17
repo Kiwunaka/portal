@@ -188,7 +188,7 @@ PANEL_USER = os.getenv("PANEL_USER", "admin")
 PANEL_PASS = os.getenv("PANEL_PASS", "")
 PANEL_PATH = os.getenv("PANEL_PATH", "")
 INBOUND_ID = int(os.getenv("INBOUND_ID", "4"))
-TRIAL_LIMIT_GB = 30
+TRIAL_LIMIT_GB = 5
 INBOUND_ID_BACKUP = int(os.getenv("INBOUND_ID_BACKUP", "0"))  # Optional legacy failover inbound id (0 = disabled)
 
 # Server
@@ -227,7 +227,7 @@ APP_WINDOWS_MIRROR_URL = (os.getenv("APP_WINDOWS_MIRROR_URL") or "").strip()
 APP_DOCS_URL = (os.getenv("APP_DOCS_URL") or "").strip()
 FREE_LIMIT_IP = int(os.getenv("FREE_LIMIT_IP", "1"))
 PAID_LIMIT_IP = int(os.getenv("PAID_LIMIT_IP", "5"))
-FREE_TOTAL_GB = int(os.getenv("FREE_TOTAL_GB", "30"))
+FREE_TOTAL_GB = int(os.getenv("FREE_TOTAL_GB", "5"))
 FREE_SPEED_LIMIT_KBPS = int(os.getenv("FREE_SPEED_LIMIT_KBPS", "6250"))
 FREE_SPEED_MBIT = max(1, int(round((FREE_SPEED_LIMIT_KBPS * 8) / 1000)))
 NEWS_CHANNEL_ID = os.getenv("NEWS_CHANNEL_ID", "@portal_privacy")
@@ -302,8 +302,8 @@ FRIEND_GIFT_CAMPAIGN_KEY = (
 CHANNEL_PREMIUM_DAYS = max(1, int(os.getenv("CHANNEL_PREMIUM_DAYS", "10")))
 BOT_RUB_BUTTON_ENABLED = _env_bool("BOT_RUB_BUTTON_ENABLED", default=False)
 MAIN_CONNECT_CTA_LABELS = {
-    "a": "🟦 Подключить / Продлить",
-    "b": "🟦 Выбрать тариф",
+    "a": "🚀 Запустить тест",
+    "b": "🚀 Запустить тест",
 }
 
 
@@ -844,17 +844,16 @@ ACHIEVEMENTS = {
     },
 }
 
-# Tariff definitions (Stars).
+# Tariff definitions (RUB-first in UX; legacy Stars values stay for compatibility).
 TARIFFS = {
     "trial": {
-        # Free tier: enforced by subscription JSON allowlist rules (see api.py).
-        "name": "🆓 Бесплатный (соцсети + AI)",
+        # Trial/fallback tier: enforced by subscription JSON allowlist rules (see api.py).
+        "name": "🚀 Тест на 3 дня",
         "stars": 0,
-        # Long expiry so users can keep the profile without re-issuing.
-        "days": 3650,
+        "days": 3,
         "gb": FREE_TOTAL_GB,
-        "subId": "FREE",
-        "sub_type": "FREE"
+        "subId": "TRIAL_3D",
+        "sub_type": "TRIAL"
     },
     "start_99": {
         "name": "⚡ Приветственный 30 дней",
@@ -2997,19 +2996,16 @@ def build_choose_tariff_text() -> str:
         savings.append(f"12 мес: -{s12}%")
     savings_line = (" (" + ", ".join(savings) + ")") if savings else ""
 
-    payment_hint = "_Оплата Telegram Stars доступна как быстрый резервный путь._"
-    if BOT_RUB_BUTTON_ENABLED:
-        payment_hint = "_Сначала выберите тариф здесь, в Telegram. Затем мы предложим ₽ на сайте или Telegram Stars._"
+    payment_hint = "_Сначала запустите тест или выберите тариф. Оплата откроется в рублях по персональной ссылке._"
 
     return (
         "💎 *Выберите уровень доступа*\n\n"
-        f"🆓 *Бесплатный* — 1 страна: {free_label}\n"
+        f"🚀 *Тест 3 дня* — быстрый старт: {free_label}\n"
         f"💠 *Премиум* — {paid_count} стран: {paid_list}\n\n"
-        f"Бесплатный: до {FREE_TOTAL_GB} ГБ, до {FREE_LIMIT_IP} устройств (по IP), до {FREE_SPEED_MBIT} Мбит/с.\n"
-        "Бесплатный: спокойный старт для повседневных задач и одного основного подключения.\n"
+        f"Тест: 3 дня, до {FREE_TOTAL_GB} ГБ, до {FREE_LIMIT_IP} устройства, базовый профиль для знакомства с сервисом.\n"
+        "Тест не рассчитан на тяжёлую нагрузку и потоковое видео, зато помогает быстро понять, подходит ли вам сервис.\n"
         f"Премиум: все доступные страны, до {PAID_LIMIT_IP} устройств и комфортный запас по скорости.\n"
-        "Приветственный тариф за 99 ₽ доступен один раз на аккаунт.\n\n"
-        "На кнопках ниже сначала показана цена в ₽, затем цена в Stars.\n\n"
+        "Приветственный тариф за 99 ₽ остаётся как мягкий апгрейд после теста.\n\n"
         f"💰 *Выгода при оплате на срок:*{savings_line}\n\n"
         f"{payment_hint}"
     )
@@ -3065,8 +3061,7 @@ def _tariff_pricing_for_user(tg_id: int, tariff_key: str) -> dict[str, int | boo
 def _tariff_button_label(*, tg_id: int, tariff_key: str, label: str, marketing_badge: str = "", savings_text: str = "") -> str:
     pricing = _tariff_pricing_for_user(tg_id, tariff_key)
     rub_price = int(pricing["base_price"])
-    stars_price = int(pricing["final_stars"])
-    return f"{label} — {rub_price} ₽ / {stars_price}⭐{marketing_badge}{savings_text}"
+    return f"{label} — {rub_price} ₽{marketing_badge}{savings_text}"
 
 
 def _build_tariff_payment_choice_text(*, tariff_key: str, tg_id: int) -> str:
@@ -3077,9 +3072,6 @@ def _build_tariff_payment_choice_text(*, tariff_key: str, tg_id: int) -> str:
         discount_chunks.append("-20% за реферала")
     if int(pricing["pending_discount_pct"]) > 0:
         discount_chunks.append(f"-{int(pricing['pending_discount_pct'])}% по промокоду")
-    points_note = ""
-    if int(pricing["points_to_use"]) > 0:
-        points_note = f"\nЦена в Stars уже уменьшена на *{int(pricing['points_to_use'])}⭐* за счёт ваших бонусов."
 
     discount_line = ""
     if discount_chunks:
@@ -3098,10 +3090,10 @@ def _build_tariff_payment_choice_text(*, tariff_key: str, tg_id: int) -> str:
         f"Устройств: *до {PAID_LIMIT_IP}*\n"
         f"Страны: *все премиум-локации*\n\n"
         f"Цена в ₽: *{rub_price} ₽*\n"
-        f"Цена в Stars: *{int(pricing['final_stars'])}⭐*{points_note}\n\n"
+        "Откроем оплату в рублях без лишних шагов.\n\n"
         f"{discount_line}"
         f"{provider_line}"
-        "Сначала выберите удобный способ оплаты. "
+        "Сначала выберите удобную кассу. "
         "После оплаты доступ обновится автоматически."
     )
 
@@ -3120,7 +3112,6 @@ def _build_tariff_payment_choice_keyboard(*, tg_id: int, tariff_key: str) -> Inl
                     )
                 ]
             )
-    rows.append([InlineKeyboardButton(text=f"⭐ Оплатить Stars · {int(pricing['final_stars'])}⭐", callback_data=f"pay_stars_{tariff_key}")])
     if tariff_key not in {"6_months", "9_months", "12_months"}:
         rows.append([InlineKeyboardButton(text="📚 Посмотреть долгие тарифы", callback_data="charge_long")])
     rows.append([InlineKeyboardButton(text="◀️ К тарифам", callback_data="charge")])
@@ -3234,7 +3225,6 @@ def _build_direct_rub_payment_keyboard(*, tg_id: int, tariff_key: str, payment_u
     rows = [
         [InlineKeyboardButton(text=f"💳 Открыть оплату · {provider_label} · {int(pricing['base_price'])} ₽", url=str(payment_url or "").strip())],
         [InlineKeyboardButton(text="🌐 Открыть через сайт, если окно не открылось", url=checkout_url)],
-        [InlineKeyboardButton(text=f"⭐ Оплатить Stars · {int(pricing['final_stars'])}⭐", callback_data=f"pay_stars_{tariff_key}")],
         [InlineKeyboardButton(text="◀️ К тарифам", callback_data="charge")],
         [InlineKeyboardButton(text="🏠 Главное меню", callback_data="back")],
     ]
@@ -3251,16 +3241,15 @@ def _dual_pay_text(*, show_trial: bool) -> str:
     if show_trial:
         return (
             "🚀 *Как хотите продолжить?*\n\n"
-            "🆓 Бесплатный режим уже доступен для базовых задач и быстрого старта.\n"
-            "Если нужен полный доступ, все страны и больше устройств — выберите тариф и способ оплаты.\n"
+            "Сначала можно запустить тест на 3 дня и проверить сервис в реальном использовании.\n"
+            "Если нужен полный доступ, все страны и больше устройств — выберите тариф и оплату в рублях.\n"
             f"{rub_hint}\n"
             "После оплаты доступ обновится автоматически.\n\n"
             "Выберите удобный вариант:"
         )
     return (
-        "💳 *Оплата в рублях + Stars*\n\n"
+        "💳 *Оплата в рублях*\n\n"
         f"{rub_hint}\n"
-        "Telegram Stars остаются как резервный вариант.\n"
         "После оплаты доступ обновится автоматически.\n\n"
         "Выберите удобный способ:"
     )
@@ -3269,11 +3258,10 @@ def _dual_pay_text(*, show_trial: bool) -> str:
 def _dual_pay_keyboard(*, tg_id: int, show_trial: bool) -> InlineKeyboardMarkup:
     rows: list[list[InlineKeyboardButton]] = []
     if show_trial:
-        rows.append([InlineKeyboardButton(text="🆓 Начать с бесплатного режима", callback_data="buy_trial")])
+        rows.append([InlineKeyboardButton(text="🚀 Запустить тест на 3 дня", callback_data="buy_trial")])
     rows.extend(
         [
-            [InlineKeyboardButton(text="💳 Выбрать тариф и оплату в ₽", callback_data="charge")],
-            [InlineKeyboardButton(text="⭐ Оплатить Stars", callback_data="charge_stars")],
+            [InlineKeyboardButton(text="💳 Смотреть тарифы и оплату в ₽", callback_data="charge")],
         ]
     )
     rows.append([InlineKeyboardButton(text="◀️ Назад", callback_data="back")])
@@ -3325,7 +3313,7 @@ def tariff_keyboard(
         buttons.append(
             [
                 InlineKeyboardButton(
-                    text=f"🆓 Бесплатный — 1 страна, {FREE_TOTAL_GB} ГБ, {FREE_LIMIT_IP} устр., {FREE_SPEED_MBIT} Мбит/с",
+                    text=f"🚀 Тест 3 дня — {FREE_TOTAL_GB} ГБ, {FREE_LIMIT_IP} устройство, базовый профиль",
                     callback_data="buy_trial",
                 )
             ]
@@ -3365,7 +3353,7 @@ def tariff_keyboard(
             icon = "🎯"
             marketing_badge = " (РЕКОМЕНДУЕМ)"
         elif key == "9_months":
-            icon = "⭐"
+            icon = "🧭"
             marketing_badge = " (РАСШИРЕННЫЙ)"
         elif key == "12_months":
             icon = "👑"
@@ -4406,12 +4394,9 @@ async def show_referral(callback: CallbackQuery):
     ])
     
     await callback.message.edit_text(
-        f"📡 *Программа расширения сети*\n\n"
-        f"Ваш идентификатор агента: `{ref_code}`\n\n"
-        f"Расширяйте покрытие PORTAL, подключая новые узлы (друзей).\n"
-        f"├ *Им:* скидка 20% на первый доступ\n"
-        f"└ *Вам:* +{REFERRAL_BONUS_DAYS} дней доступа за каждую активацию\n\n"
-        "Если пользователь оплатит после теста, реферальный бонус начислится автоматически.\n\n"
+        f"🎁 *Пригласите друга по своей ссылке*\n\n"
+        "Друг получает понятный старт и быстрый путь к подключению.\n"
+        f"После активации вы получите *+{REFERRAL_BONUS_DAYS} дней* к доступу.\n\n"
         f"👇 *Ваша ссылка для приглашения:*\n`{invite_link}`\n\n"
         f"Активировано по ссылке: {ref_count}\n"
         f"Бонусных дней начислено: {bonus_earned}",
@@ -4720,9 +4705,9 @@ FAQ_ANSWERS = {
     ),
     "referral": (
         "🎁 *Реферальная программа*\n\n"
-        "• Пригласи друга по своей ссылке\n"
-        "• Друг получит *скидку 20%* на первую покупку\n"
-        f"• Ты получишь *+{REFERRAL_BONUS_DAYS} дней* за каждую его покупку!\n\n"
+        "• Пригласите друга по своей ссылке\n"
+        "• Друг получает понятный старт и быстрый путь к подключению\n"
+        f"• Вы получаете *+{REFERRAL_BONUS_DAYS} дней* к доступу после его активации\n\n"
         "Свою ссылку найдёшь в меню → *🎁 Пригласить друга*"
     ),
     "device": (
@@ -8203,8 +8188,8 @@ async def _activate_trial_tariff(
     if not is_subscribed:
         channel_name = _channel_name_for_url()
         await callback.message.answer(
-            "⚡ *Базовый профиль FREE активируется без блокировки.*\n\n"
-            "Если подпишетесь на канал, получите приоритетный профиль и бонусы.\n"
+            "🚀 *Тестовый профиль активируется сразу.*\n\n"
+            "Если подпишетесь на канал, получите бонусные дни и более выгодный путь к апгрейду.\n"
             f"Канал: https://t.me/{channel_name}",
             parse_mode=ParseMode.MARKDOWN,
         )
@@ -8214,13 +8199,13 @@ async def _activate_trial_tariff(
     expiry = _naive_utc(user.expiry_at) if user else None
     has_active = bool(user and user.is_active and expiry and expiry > now)
     if has_active and _is_freemium_sub_type(current_sub):
-        await callback.answer("Бесплатный режим уже активен. Повторная активация не требуется.", show_alert=True)
+        await callback.answer("Тест уже активирован. Можно открыть ключ или выбрать апгрейд.", show_alert=True)
         return
     if has_active and not _is_freemium_sub_type(current_sub):
-        await callback.answer("У вас уже активирован полный доступ. Бесплатный режим не требуется.", show_alert=True)
+        await callback.answer("У вас уже активирован полный доступ. Тест больше не нужен.", show_alert=True)
         return
 
-    await callback.answer("⏳ Включаю бесплатный режим...")
+    await callback.answer("⏳ Запускаю тест...")
     await create_subscription(callback.message, tg_id, tariff, bot)
 
 

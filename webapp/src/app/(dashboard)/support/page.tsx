@@ -14,21 +14,21 @@ const CATEGORIES: TicketCategory[] = ["Подключение", "Оплата", 
 
 const FAQ = [
   {
-    q: "Где открыть оплату?",
-    a: "Оплата открывается в разделе доступа. Если удобнее продолжить в Telegram, тот же шаг можно сделать там."
+    q: "Где запускать тест?",
+    a: "Главный вход для первого шага находится в Telegram. Там запускается тест на 3 дня, а дальше уже можно перейти в кабинет и к продлению.",
   },
   {
-    q: "Как понять, что профиль активен?",
-    a: "В кабинете статус, срок доступа и доступные точки подключения видны на главном экране и в сводке."
+    q: "Чем отличаются free, trial и premium?",
+    a: "Trial — это основной лид-магнит на 3 дня. Free остаётся как ограниченный fallback. Premium — платные тарифы с нормальным сроком, несколькими устройствами и полным сценарным использованием.",
   },
   {
-    q: "Что делать, если приложение не запускается?",
-    a: "Проверьте раздел загрузок и, если нужно, напишите в поддержку. Подскажем по конкретному устройству и приложению."
+    q: "Что делать, если касса не открылась?",
+    a: "Не пытайтесь насильно добивать broken checkout. Продолжите в Telegram или напишите в поддержку — это основной fallback, пока кассы не стабилизированы.",
   },
   {
-    q: "Как быстро отвечаете?",
-    a: "Обычно первый ответ приходит в течение 10-15 минут."
-  }
+    q: "Как понять, что профиль уже активен?",
+    a: "На главном экране кабинета видны статус, срок доступа, ключ, QR и следующие действия. Если чего-то не хватает, лучше сразу открыть обращение.",
+  },
 ];
 
 function statusLabel(status: string): string {
@@ -55,7 +55,7 @@ function formatFileSize(bytes: number): string {
 }
 
 export default function SupportPage() {
-  const { user } = usePortalSession();
+  const { user, dash } = usePortalSession();
   const [tickets, setTickets] = useState<TicketInfo[]>([]);
   const [loadingTickets, setLoadingTickets] = useState(true);
   const [openedFaq, setOpenedFaq] = useState<number | null>(0);
@@ -69,6 +69,7 @@ export default function SupportPage() {
   const [toast, setToast] = useState("");
 
   const supportLink = user?.support?.link || config.supportTelegramUrl;
+  const isTrialLike = ["FREE", "TRIAL", "BONUS"].includes(String(dash?.sub_type || "").toUpperCase()) || String(dash?.current_plan_code || "") === "trial";
 
   const contactCards = useMemo(
     () => [
@@ -76,16 +77,16 @@ export default function SupportPage() {
         label: "Telegram",
         href: supportLink,
         icon: "send",
-        hint: "Самый быстрый канал ответа"
+        hint: "Самый быстрый канал ответа",
       },
-        {
-          label: "Email",
-          href: `mailto:${config.contactEmail}`,
-          icon: "mail",
-          hint: "Если удобнее написать письмом"
-        }
+      {
+        label: "Email",
+        href: `mailto:${config.contactEmail}`,
+        icon: "mail",
+        hint: "Если удобнее написать письмом",
+      },
     ],
-    [supportLink]
+    [supportLink],
   );
 
   const loadTickets = async (): Promise<void> => {
@@ -145,18 +146,28 @@ export default function SupportPage() {
   return (
     <main className="space-y-6">
       <section className="glass-card p-7">
-        <h1 className="font-display text-4xl font-bold">{getCopyText("webapp.support.title", "Поддержка PORTAL")}</h1>
+        <h1 className="font-display text-4xl font-bold">{getCopyText("webapp.support.title", "Поддержка PORTAL. Мы на связи.")}</h1>
         <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">
-          {getCopyText("webapp.support.subtitle", "Быстрые ответы, обращения в один шаг и вся история общения в одном разделе.")}
+          {getCopyText("webapp.support.subtitle", "Что-то не подключается, касса не открылась или просто есть вопрос? Напишите нам. Отвечаем быстро, спокойно и по делу.")}
         </p>
       </section>
+
+      {isTrialLike ? (
+        <section className="glass-card p-6">
+          <p className="font-mono text-xs uppercase tracking-[0.16em] text-emerald-600 dark:text-emerald-300">trial support</p>
+          <h2 className="mt-2 font-display text-3xl font-bold">Застряли на старте? Не мучайтесь — поможем всё настроить за пару минут.</h2>
+          <p className="mt-3 max-w-3xl text-sm text-slate-600 dark:text-slate-300">
+            Если что-то не заработало с первого раза, просто напишите нам. Поможем быстро, спокойно и без лишней переписки.
+          </p>
+        </section>
+      ) : null}
 
       <section className="grid gap-5 xl:grid-cols-[1.2fr,0.9fr]">
         <article className="space-y-3">
           <div className="glass-card p-5">
             <p className="font-mono text-xs uppercase tracking-[0.15em] text-slate-500">документы</p>
             <h2 className="mt-2 font-display text-2xl font-semibold">Оферта и политика</h2>
-            <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">Юридические документы доступны отдельно, чтобы всё нужное было под рукой.</p>
+            <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">Юридические документы вынесены отдельно, чтобы всё важное было под рукой.</p>
             <div className="mt-4 flex flex-wrap gap-3">
               <AppRouteLink href="/support/legal" className="outline-btn rounded-xl px-4 py-2 text-sm font-semibold">
                 Открыть документы
@@ -187,7 +198,7 @@ export default function SupportPage() {
               headset_mic
             </span>
             <h2 className="mt-3 font-display text-2xl font-semibold">Нужна помощь прямо сейчас?</h2>
-            <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">Обычно отвечаем в течение 10-15 минут.</p>
+            <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">Если checkout или подключение тормозит, лучше не ждать и сразу перейти в живой канал поддержки.</p>
             <div className="mt-5 grid gap-3 sm:grid-cols-2">
               {contactCards.map((card) => (
                 <AppRouteLink key={card.label} href={card.href} target="_blank" hardNavigate={false} className="outline-btn rounded-xl px-3 py-3 text-center text-sm font-semibold">
@@ -207,7 +218,7 @@ export default function SupportPage() {
               <div className="glass-card p-4 text-sm text-slate-500">Загружаем обращения...</div>
             ) : tickets.length === 0 ? (
               <div className="glass-card p-4 text-sm text-slate-500">
-                {getCopyText("webapp.support.empty_tickets", "Обращений пока нет. Создайте первое сообщение, если нужна помощь.")}
+                {getCopyText("webapp.support.empty_tickets", "Обращений пока нет. Если нужна помощь, создайте первое сообщение в пару строк.")}
               </div>
             ) : (
               tickets.map((ticket) => (
@@ -260,7 +271,7 @@ export default function SupportPage() {
                 <input value={subject} onChange={(event) => setSubject(event.target.value)} className="w-full rounded-xl border border-violet-200/50 bg-white/80 px-4 py-3 text-sm outline-none dark:border-violet-500/30 dark:bg-slate-900/70" placeholder="Коротко: что случилось" />
                 <textarea value={body} onChange={(event) => setBody(event.target.value)} className="w-full rounded-xl border border-violet-200/50 bg-white/80 px-4 py-3 text-sm outline-none dark:border-violet-500/30 dark:bg-slate-900/70" rows={5} placeholder="Опишите, что происходит и на каком устройстве это заметили" />
                 <label className="block rounded-2xl border border-dashed border-violet-300/60 bg-white/70 px-4 py-4 text-sm dark:border-violet-500/35 dark:bg-slate-900/55">
-                  <span className="mb-2 block font-medium">Скриншот, видео или файл логов</span>
+                  <span className="mb-2 block font-medium">Скриншот, видео или лог</span>
                   <span className="block text-xs text-slate-500">Поддерживаются изображения, видео, PDF и текстовые файлы до 20 МБ.</span>
                   <input
                     type="file"
@@ -279,7 +290,7 @@ export default function SupportPage() {
                   {attachmentFile ? <p className="mt-2 text-[11px] uppercase tracking-[0.12em] text-slate-500">{formatFileSize(attachmentFile.size)}</p> : null}
                 </label>
                 <div className="flex items-center justify-between gap-3">
-                  <span className="text-xs text-slate-500">После отправки обращение появится в списке справа, а вложение сохранится в истории переписки.</span>
+                  <span className="text-xs text-slate-500">После отправки обращение появится справа, а вложение сохранится в истории переписки.</span>
                   <button type="button" onClick={() => void onCreateTicket()} disabled={busy || !body.trim()} className="btn-primary rounded-xl px-5 py-2.5 text-sm font-semibold uppercase tracking-[0.12em] disabled:opacity-60">
                     {busy ? "Отправляем..." : "Отправить"}
                   </button>

@@ -648,7 +648,7 @@ export default function AdminUsersPage() {
             <div className="mb-3 grid gap-3 sm:grid-cols-2">
               <div className="rounded-xl bg-white/70 p-3 text-sm dark:bg-white/10">
                 <p>План: <strong>{selected.user.sub_type}</strong></p>
-                <p>Оплачено Stars: <strong>{selected.user.stars_paid}</strong></p>
+                <p>Архивный платёжный счётчик: <strong>{selected.user.stars_paid}</strong></p>
                 <p>Рефералов: <strong>{selected.user.referral_count}</strong></p>
                 <p>Серия лояльности: <strong>{loyalty?.streak_days ?? 0} дн.</strong></p>
               </div>
@@ -1053,3 +1053,4 @@ export default function AdminUsersPage() {
     </section>
   );
 }
+

@@ -61,12 +61,44 @@ export default function PricingPage() {
           <span className="material-symbols-rounded">arrow_back</span>
           {backLabel}
         </Link>
-        <h1 className="mt-4 font-display text-5xl font-bold">Выберите тариф и срок, который вам удобен</h1>
+        <h1 className="mt-4 font-display text-5xl font-bold">Выберите свой PORTAL</h1>
         <p className="mt-4 max-w-3xl text-sm leading-6 text-slate-600 dark:text-slate-300">
-          Здесь показаны реальные тарифы без внутренних названий. Приветственный тариф за 99 ₽ доступен один раз,
-          дальше остаются обычные сроки на 1, 3, 6, 9 или 12 месяцев.
+          Сначала тестируем, потом выбираем. Если ещё не пробовали сервис — забирайте 3 бесплатных дня в Telegram. Если уже с нами, выберите удобный тариф для себя и своих устройств.
         </p>
+        <div className="mt-6 flex flex-wrap gap-3">
+          <Link
+            href="/subscription/"
+            className="outline-btn rounded-xl px-6 py-3 text-sm font-semibold uppercase tracking-[0.12em]"
+          >
+            Открыть кабинет
+          </Link>
+          <a
+            href="https://t.me/portal_service_bot"
+            target="_blank"
+            rel="noreferrer"
+            className="btn-primary rounded-xl px-6 py-3 text-sm font-semibold uppercase tracking-[0.12em]"
+          >
+            Запустить тест в Telegram
+          </a>
+        </div>
       </div>
+
+      <section className="mt-8 grid gap-6 lg:grid-cols-2">
+        <article className="glass-card p-6">
+          <p className="text-xs uppercase tracking-[0.16em] text-emerald-600 dark:text-emerald-300">lead magnet</p>
+          <h2 className="mt-2 font-display text-3xl font-semibold">Тест 3 дня</h2>
+          <p className="mt-3 text-sm text-slate-600 dark:text-slate-300">
+            Главный вход для холодного трафика: один профиль, 5 ГБ, понятный старт через Telegram и быстрый переход к ключу или QR.
+          </p>
+        </article>
+        <article className="glass-card p-6">
+          <p className="text-xs uppercase tracking-[0.16em] text-slate-500">free fallback</p>
+          <h2 className="mt-2 font-display text-3xl font-semibold">Базовый доступ (на всякий случай)</h2>
+          <p className="mt-3 text-sm text-slate-600 dark:text-slate-300">
+            5 ГБ и 1 устройство как базовый доступ, если тест уже завершён. Основной путь всё равно начинается с теста и дальше ведёт к полному доступу.
+          </p>
+        </article>
+      </section>
 
       <section className="mt-8 grid gap-6 md:grid-cols-2 xl:grid-cols-3">
         {cards.map((plan) => {
@@ -112,7 +144,7 @@ export default function PricingPage() {
                 type="button"
                 onClick={() => pickPlan(plan.code)}
               >
-                Выбрать тариф
+                {plan.code === "start_99" ? "Открыть приветственный план" : "Перейти к продлению"}
               </button>
             </article>
           );

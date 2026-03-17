@@ -24,9 +24,11 @@ BANNED_PATTERNS = [
 ]
 
 PUBLIC_FORBIDDEN_PATTERNS = [
-    re.compile(r"\bVPN\b", re.IGNORECASE),
     re.compile(r"safe checkout flow", re.IGNORECASE),
     re.compile(r"tg_id=", re.IGNORECASE),
+    re.compile(r"Telegram\s+Stars", re.IGNORECASE),
+    re.compile(r"\bStars\b", re.IGNORECASE),
+    re.compile(r"зв[её]зд", re.IGNORECASE),
 ]
 
 MOJIBAKE_MARKERS = ["РЎ", "Рџ", "СЃ", "вЂ", "рџ", "вљ", "вњ"]
@@ -70,3 +72,38 @@ def test_public_copy_has_no_mojibake_markers() -> None:
             if marker in text:
                 violations.append(f"{path.relative_to(ROOT)}: found mojibake marker {marker!r}")
     assert not violations, "\n".join(violations)
+
+
+def test_trial_first_copy_pack_is_present_on_key_public_pages() -> None:
+    expected_substrings = {
+        ROOT / "marketing/src/app/page.tsx": [
+            "PORTAL VPN. Свободный интернет через Telegram.",
+        ],
+        ROOT / "marketing/src/components/marketing-landing.tsx": [
+            "Свободный интернет без танцев с бубном.",
+            "Потому что так честнее.",
+        ],
+        ROOT / "webapp/src/app/pricing/page.tsx": [
+            "Выберите свой PORTAL",
+            "Базовый доступ (на всякий случай)",
+        ],
+        ROOT / "webapp/src/app/(dashboard)/dashboard/page.tsx": [
+            "Тест уже работает. Останется только решить, нужен ли полный доступ.",
+        ],
+        ROOT / "webapp/src/app/(dashboard)/subscription/page.tsx": [
+            "Чтобы забыть про лимиты и спокойно пользоваться сервисом каждый день, переходите на полный доступ.",
+        ],
+        ROOT / "webapp/src/app/(dashboard)/support/page.tsx": [
+            "Поддержка PORTAL. Мы на связи.",
+            "Застряли на старте? Не мучайтесь — поможем всё настроить за пару минут.",
+        ],
+    }
+
+    missing: list[str] = []
+    for path, snippets in expected_substrings.items():
+        text = path.read_text(encoding="utf-8")
+        for snippet in snippets:
+            if snippet not in text:
+                missing.append(f"{path.relative_to(ROOT)} missing: {snippet}")
+
+    assert not missing, "\n".join(missing)

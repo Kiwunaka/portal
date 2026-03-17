@@ -1,4 +1,4 @@
-import { getCopyText, getPortalPublicConfig } from "../../lib/portal";
+import { getPortalPublicConfig } from "../../lib/portal";
 
 const config = getPortalPublicConfig(process.env as Record<string, string | undefined>);
 
@@ -6,12 +6,12 @@ export default function OfferPage() {
   return (
     <main className="legal-page">
       <h1>Публичная оферта</h1>
-      <p>{getCopyText("marketing.legal.offer.intro", "Этот документ описывает условия доступа к цифровым услугам PORTAL и порядок оплаты выбранного периода.")}</p>
+      <p>Этот документ описывает общие условия доступа к цифровым услугам PORTAL, порядок продления и базовые правила использования сервиса.</p>
       <ul>
-        <li>Сервис предоставляется в формате цифровой услуги по модели best-effort.</li>
-        <li>Пользователь самостоятельно соблюдает применимые нормы своей юрисдикции.</li>
-        <li>Возврат средств рассматривается индивидуально по действующему регламенту.</li>
-        <li>Для работы аккаунта сохраняется только необходимый минимум служебных данных.</li>
+        <li>Сервис предоставляется в формате цифровой подписки с доступом на выбранный срок.</li>
+        <li>Тестовый период и бесплатные fallback-сценарии могут иметь отдельные ограничения по устройствам, трафику и доступным возможностям.</li>
+        <li>Продление и оплата запускаются в интерфейсах PORTAL или через Telegram-бота, если это предусмотрено текущим сценарием.</li>
+        <li>Возврат средств и спорные случаи рассматриваются индивидуально через поддержку.</li>
       </ul>
       <p>Актуальные редакции документов доступны на сайте, в кабинете и по запросу в поддержку.</p>
       <h2>Контакты</h2>
@@ -23,7 +23,7 @@ export default function OfferPage() {
       </ul>
       <div className="legal-actions">
         <a className="btn btn-ghost" href="/">На главную</a>
-        <a className="btn btn-primary" href={config.botUrl} target="_blank" rel="noreferrer">Продолжить в Telegram</a>
+        <a className="btn btn-primary" href={config.botUrl} target="_blank" rel="noreferrer">Открыть Telegram-бота</a>
       </div>
     </main>
   );

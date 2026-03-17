@@ -29,9 +29,10 @@ export default function DashboardPage() {
   const [copyState, setCopyState] = useState<"idle" | "ok" | "fail">("idle");
 
   const connectionKey = String(dash?.subscription_url || "").trim();
+  const isTrialLike = ["FREE", "TRIAL", "BONUS"].includes(String(dash?.sub_type || "").toUpperCase()) || String(dash?.current_plan_code || "") === "trial";
   const primaryHref = dash?.is_active ? "/dashboard/downloads/" : "/subscription/checkout/";
   const primaryLabel = dash?.is_active
-    ? "Скачать приложения"
+    ? "Открыть приложения"
     : getCopyText("webapp.dashboard.primary_cta", "Продлить доступ");
 
   useEffect(() => {
@@ -79,6 +80,18 @@ export default function DashboardPage() {
     window.setTimeout(() => setCopyState("idle"), 1800);
   };
 
+  const nextStepTitle = dash?.is_active
+    ? isTrialLike
+      ? "🚀 Тест запущен! Самое время открыть YouTube, TikTok или любимые сайты и проверить скорость. Спойлер: скорее всего, вам понравится."
+      : "✨ Всё работает как надо. Пользуйтесь свободным интернетом, а статистика, настройки и продление всегда под рукой."
+    : "⏸ Доступ на паузе. Давайте быстро вернём вас в онлайн: выберите удобный тариф, и всё снова заработает без лишней суеты.";
+
+  const nextStepBody = dash?.is_active
+    ? isTrialLike
+      ? "Откройте приложение, проверьте YouTube, TikTok, сайты и привычные сценарии. Если всё устраивает, следующий шаг — апгрейд на платный тариф."
+      : "Здесь уже собраны ключ, QR, приложения и кнопка продления. Ничего дополнительно искать не нужно."
+    : "Если касса сейчас ведёт себя нестабильно, основной fallback остаётся простым: продолжить через Telegram и не терять пользователя в битом checkout.";
+
   return (
     <main className="space-y-6">
       <section className="grid gap-5 xl:grid-cols-3">
@@ -87,13 +100,9 @@ export default function DashboardPage() {
             <div>
               <p className="font-mono text-xs uppercase tracking-[0.16em] text-slate-500">текущий статус</p>
               <h1 className="mt-2 font-display text-4xl font-bold text-emerald-600">
-                {dash?.is_active ? "АКТИВЕН" : "ТРЕБУЕТ ПРОДЛЕНИЯ"}
+                {dash?.is_active ? "АКТИВЕН" : "ТРЕБУЕТ ДЕЙСТВИЯ"}
               </h1>
-              <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">
-                {dash?.is_active
-                  ? "Доступ уже работает. Ниже можно скопировать ссылку, открыть QR и выбрать приложение для подключения."
-                  : "После оплаты статус обновится автоматически, а ссылка для приложения появится здесь без ручных шагов."}
-              </p>
+              <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">{nextStepBody}</p>
             </div>
             <span
               className={`rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.14em] ${
@@ -108,41 +117,44 @@ export default function DashboardPage() {
             <AppRouteLink href={primaryHref} className="btn-primary rounded-xl px-5 py-2.5 text-sm font-semibold uppercase tracking-[0.12em]">
               {primaryLabel}
             </AppRouteLink>
-            {dash?.is_active ? (
-              <AppRouteLink href="/subscription/checkout/" className="outline-btn rounded-xl px-5 py-2.5 text-sm font-semibold uppercase tracking-[0.12em]">
-                {getCopyText("webapp.dashboard.primary_cta", "Продлить доступ")}
-              </AppRouteLink>
-            ) : null}
+            <AppRouteLink href="/subscription/" className="outline-btn rounded-xl px-5 py-2.5 text-sm font-semibold uppercase tracking-[0.12em]">
+              Смотреть тарифы
+            </AppRouteLink>
             <AppRouteLink href="/support/" className="outline-btn rounded-xl px-5 py-2.5 text-sm font-semibold uppercase tracking-[0.12em]">
               {getCopyText("webapp.dashboard.support_cta", "Поддержка")}
             </AppRouteLink>
-            {!dash?.is_active ? (
-              <AppRouteLink href="/dashboard/downloads/" className="outline-btn rounded-xl px-5 py-2.5 text-sm font-semibold uppercase tracking-[0.12em]">
-                Скачать приложения
-              </AppRouteLink>
-            ) : null}
           </div>
         </article>
 
         <article className="glass-card p-7">
-          <p className="font-mono text-xs uppercase tracking-[0.16em] text-slate-500">профиль</p>
+          <p className="font-mono text-xs uppercase tracking-[0.16em] text-slate-500">что делать дальше</p>
+          <h2 className="mt-3 font-display text-2xl font-bold">{nextStepTitle}</h2>
           <div className="mt-4 space-y-2 text-sm text-slate-600 dark:text-slate-300">
-            <p>Пользователь: {user?.username ? `@${user.username}` : `ID ${user?.tg_id}`}</p>
             <p>План: {dash?.current_plan_code || dash?.sub_type || "—"}</p>
             <p>До окончания: {fmtDate(dash?.expiry_at)}</p>
-            <p>Лимит устройств: {dash?.device_limit ?? "—"}</p>
-            <p>Сессии: {dash?.active_sessions ?? "—"}</p>
+            <p>Устройств: {dash?.device_limit ?? "—"}</p>
+            <p>Сессий: {dash?.active_sessions ?? "—"}</p>
             <p>Точки подключения: {connectionPointsLabel}</p>
           </div>
-          {nodesLoading && !nodes.length ? <p className="mt-3 text-xs text-slate-500">Проверяем статусы точек...</p> : null}
+          {nodesLoading && !nodes.length ? <p className="mt-3 text-xs text-slate-500">Проверяем точки подключения...</p> : null}
           {nodesError ? <p className="mt-3 text-xs text-rose-500">{nodesError}</p> : null}
         </article>
       </section>
 
+      {isTrialLike ? (
+        <section className="glass-card p-6">
+          <p className="font-mono text-xs uppercase tracking-[0.16em] text-emerald-600 dark:text-emerald-300">trial-first</p>
+          <h2 className="mt-2 font-display text-3xl font-bold">Тест уже работает. Останется только решить, нужен ли полный доступ.</h2>
+          <p className="mt-3 max-w-3xl text-sm text-slate-600 dark:text-slate-300">
+            Проверьте сервис на своих устройствах и в привычных сценариях. Если всё устраивает, переходите в тарифы и продлевайте без повторной настройки.
+          </p>
+        </section>
+      ) : null}
+
       <section className="glass-card p-7">
         <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
           <div>
-            <p className="font-mono text-xs uppercase tracking-[0.16em] text-slate-500">ссылка доступа</p>
+            <p className="font-mono text-xs uppercase tracking-[0.16em] text-slate-500">ключ и QR</p>
             <h2 className="mt-2 font-display text-3xl font-bold">Показать, скопировать или открыть по QR</h2>
           </div>
           <div className="flex flex-wrap gap-2">

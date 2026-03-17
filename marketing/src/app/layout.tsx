@@ -1,13 +1,10 @@
 import type { Metadata } from "next";
-import { getCopyText } from "../lib/portal";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: getCopyText("marketing.meta.title", "PORTAL - цифровой доступ без лишних шагов"),
-  description: getCopyText(
-    "marketing.meta.description",
-    "Быстрый запуск через Telegram, оплата в рублях и спокойный личный кабинет без перегруза деталями.",
-  )
+  title: "PORTAL VPN через Telegram | Тест 3 дня",
+  description:
+    "VPN-сервис с bot-first воронкой: сначала тест на 3 дня, потом тарифы, продление и поддержка через Telegram и WebApp.",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
@@ -17,7 +14,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <script
           dangerouslySetInnerHTML={{
             __html:
-              "(function(){try{var t=localStorage.getItem('portal-theme');if(t==='light'||t==='dark'){document.documentElement.setAttribute('data-theme',t);}}catch(_e){}})();"
+              "(function(){try{var t=localStorage.getItem('portal-theme');if(t==='light'||t==='dark'){document.documentElement.setAttribute('data-theme',t);}}catch(_e){}})();",
           }}
         />
         <link rel="preconnect" href="https://fonts.googleapis.com" />
