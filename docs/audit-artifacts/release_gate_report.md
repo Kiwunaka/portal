@@ -1,19 +1,19 @@
 # Release Gate Report
 
-- Generated at: `2026-03-17 23:29:13`
-- Status: `FAIL`
+- Generated at: `2026-03-17 23:41:03`
+- Status: `PASS`
 
 ## Summary
 
 | Gate | Exit code | Duration (s) |
 |---|---:|---:|
-| Backend unit tests | 0 | 89.09 |
-| Admin/auth regressions | 0 | 38.77 |
-| Public link checks | 0 | 0.11 |
-| Marketing production build | 0 | 45.51 |
-| Admin webapp smoke | 1 | 0.55 |
-| WebApp production build | 0 | 41.86 |
-| UI visual smoke | 1 | 0.09 |
+| Backend unit tests | 0 | 86.78 |
+| Admin/auth regressions | 0 | 38.38 |
+| Public link checks | 0 | 0.10 |
+| Marketing production build | 0 | 34.43 |
+| Admin webapp smoke | 0 | 0.11 |
+| WebApp production build | 0 | 41.82 |
+| UI visual smoke | 0 | 0.10 |
 
 ## Command Tails
 
@@ -46,7 +46,7 @@ payment callback signature invalid: provider=freekassa event=result reason=inval
   return datetime.utcnow().replace(tzinfo=None)
 ....C:\Users\kiwun\Documents\ai\VPN\portal_bot\bot.py:1562: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
   now_ts = int(datetime.utcnow().timestamp())
-...2026-03-17 23:26:26,137 [WARNING] check_subscription verify-fail user=1001 channel=@portal_news_channel err=api unavailable
+...2026-03-17 23:38:29,602 [WARNING] check_subscription verify-fail user=1001 channel=@portal_news_channel err=api unavailable
 ...........................C:\Users\kiwun\Documents\ai\VPN\tests\test_free_cycle_service.py:64: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
   now = datetime.utcnow()
 C:\Users\kiwun\Documents\ai\VPN\tests\test_free_cycle_service.py:136: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
@@ -55,12 +55,12 @@ C:\Users\kiwun\Documents\ai\VPN\tests\test_free_cycle_service.py:136: Deprecatio
   self.assertGreater(u.free_cycle_next_reset_at, datetime.utcnow())
 ........C:\Users\kiwun\Documents\ai\VPN\tests\test_p0_services.py:111: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
   db_row.started_at = datetime.utcnow() - timedelta(minutes=70)
-.....2026-03-17 23:26:41,058 [INFO] cleaned cross-inbound conflict node=pl from_inbound=2 client_uuid=u-2
-2026-03-17 23:26:41,058 [INFO] cleaned cross-inbound conflict node=pl from_inbound=3 client_uuid=u-3
-...............2026-03-17 23:26:44,398 [INFO] HTTP Request: GET http://testserver/api/reviews "HTTP/1.1 200 OK"
-.............
+.....2026-03-17 23:38:44,006 [INFO] cleaned cross-inbound conflict node=pl from_inbound=2 client_uuid=u-2
+2026-03-17 23:38:44,006 [INFO] cleaned cross-inbound conflict node=pl from_inbound=3 client_uuid=u-3
+...............2026-03-17 23:38:47,044 [INFO] HTTP Request: GET http://testserver/api/reviews "HTTP/1.1 200 OK"
+..............
 ----------------------------------------------------------------------
-Ran 139 tests in 87.584s
+Ran 141 tests in 85.507s
 
 OK
 ```
@@ -96,7 +96,7 @@ subscription lookup failed token_fp=fe675fe7aaee token_len=4
   user.expiry_at = datetime.utcnow() + timedelta(days=10)
 .......
 ----------------------------------------------------------------------
-Ran 34 tests in 37.674s
+Ran 34 tests in 37.286s
 
 OK
 ```
@@ -164,12 +164,10 @@ Route (app)                              Size     First Load JS
 ### Admin webapp smoke
 
 - Command: `C:\Users\kiwun\AppData\Local\Programs\Python\Python312\python.exe scripts/admin_webapp_smoke.py`
-- Exit: `1`
+- Exit: `0`
 
 ```text
-Admin WebApp smoke failed:
-- possible mojibake marker `�` in C:\Users\kiwun\Documents\ai\VPN\webapp\src\app\(dashboard)\admin\dashboard\page.tsx
-- possible mojibake marker `�` in C:\Users\kiwun\Documents\ai\VPN\webapp\src\app\(dashboard)\admin\promos\page.tsx
+Admin WebApp smoke passed.
 ```
 
 ### WebApp production build
@@ -183,14 +181,14 @@ Admin WebApp smoke failed:
 ▲ Next.js 16.1.6 (Turbopack)
 
   Creating an optimized production build ...
-✓ Compiled successfully in 3.0s
+✓ Compiled successfully in 2.8s
   Running TypeScript ...
   Collecting page data using 19 workers ...
   Generating static pages using 19 workers (0/23) ...
   Generating static pages using 19 workers (5/23) 
   Generating static pages using 19 workers (11/23) 
   Generating static pages using 19 workers (17/23) 
-✓ Generating static pages using 19 workers (23/23) in 531.3ms
+✓ Generating static pages using 19 workers (23/23) in 506.3ms
   Finalizing page optimization ...
 
 Route (app)
@@ -223,13 +221,8 @@ Route (app)
 ### UI visual smoke
 
 - Command: `C:\Users\kiwun\AppData\Local\Programs\Python\Python312\python.exe scripts/ui_visual_smoke.py`
-- Exit: `1`
+- Exit: `0`
 
 ```text
-[FAIL] marketing-home-cta: missing `������������ � Telegram` in marketing\src\app\page.tsx
-[FAIL] marketing-home-cta: missing `�������� �����` in marketing\src\app\page.tsx
-[FAIL] marketing-home-cta: missing `��� ����������?` in marketing\src\app\page.tsx
-[FAIL] marketing-offer-flow: missing `���������� � Telegram` in marketing\src\app\offer\page.tsx
-[FAIL] marketing-checkout-gateway: missing `����������� ����� Telegram` in marketing\src\app\checkout\checkout-client.tsx
-[FAIL] marketing-checkout-gateway: missing `������� � ������` in marketing\src\app\checkout\checkout-client.tsx
+UI visual smoke passed.
 ```
