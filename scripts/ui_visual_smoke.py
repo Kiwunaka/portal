@@ -40,20 +40,20 @@ def _default_checks() -> list[Check]:
     return [
         Check(
             name="marketing-home-cta",
-            path=REPO_ROOT / "marketing" / "src" / "app" / "page.tsx",
-            must_contain=("Подключиться в Telegram", "Сравнить планы", "Уже подключены?"),
+            path=REPO_ROOT / "marketing" / "src" / "components" / "marketing-landing.tsx",
+            must_contain=("🚀 Начать бесплатно", "Посмотреть тарифы", "Открыть в Telegram"),
             must_not_contain=("Открыть Telegram",),
         ),
         Check(
             name="marketing-offer-flow",
             path=REPO_ROOT / "marketing" / "src" / "app" / "offer" / "page.tsx",
-            must_contain=("Продолжить в Telegram",),
+            must_contain=("Открыть Telegram-бота",),
             must_not_contain=("/checkout/", "Открыть оплату"),
         ),
         Check(
             name="marketing-checkout-gateway",
             path=REPO_ROOT / "marketing" / "src" / "app" / "checkout" / "checkout-client.tsx",
-            must_contain=("Продолжение через Telegram", "Продолжить в Telegram", "Перейти к оплате"),
+            must_contain=("Продолжить в Telegram", "Запустить тест в Telegram", "Прямая оплата открывается только по персональной ссылке из Telegram или кабинета."),
             must_not_contain=("PORTALcheckout",),
         ),
         Check(

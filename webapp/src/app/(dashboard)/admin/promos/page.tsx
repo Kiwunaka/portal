@@ -385,7 +385,7 @@ export default function AdminPromosPage() {
               <p className="text-lg font-bold">{plan.label}</p>
               <div className="mt-2 grid grid-cols-3 gap-2 text-center text-xs">
                 <div className="rounded-lg bg-white/50 p-1.5 dark:bg-white/5"><p className="text-slate-400">RUB</p><p className="font-bold">{plan.amount_rub}</p></div>
-                <div className="rounded-lg bg-white/50 p-1.5 dark:bg-white/5"><p className="text-slate-400">????.</p><p className="font-bold">{plan.device_limit}</p></div>
+                <div className="rounded-lg bg-white/50 p-1.5 dark:bg-white/5"><p className="text-slate-400">Устр.</p><p className="font-bold">{plan.device_limit}</p></div>
                 <div className="rounded-lg bg-white/50 p-1.5 dark:bg-white/5"><p className="text-slate-400">Р”РЅРµР№</p><p className="font-bold">{plan.days}</p></div>
               </div>
               <div className="mt-3 flex justify-end">

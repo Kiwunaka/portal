@@ -38,12 +38,13 @@ REQUIRED_API_EXPORTS = [
     "adminNodesTraffic",
 ]
 
+# Keep this list focused on real mojibake patterns. An em dash can be misread
+# as a short mojibake-like sequence, so we avoid matching that false positive.
 MOJIBAKE_MARKERS = [
-    "вЂ",
-    "РџР",
-    "РћС",
-    "Р°Р",
-    "СЃС",
+    "ÐŸÐ",
+    "ÐžÑ",
+    "Ð°Ð",
+    "ÑÑ",
 ]
 
 
