@@ -1426,6 +1426,54 @@ def _build_app_device_rows(user: User) -> list[dict[str, Any]]:
     ]
 
 
+def _linked_telegram_id(user: User | None) -> int:
+    if not user:
+        return 0
+    return int(getattr(user, "linked_telegram_id", 0) or 0)
+
+
+def _membership_check_tg_id(user: User | None) -> int:
+    if not user:
+        return 0
+    if bool(getattr(user, "is_app_user", False)):
+        return _linked_telegram_id(user)
+    return int(getattr(user, "tg_id", 0) or 0)
+
+
+def _create_app_telegram_start_code(s, *, account_tg_id: int) -> str:
+    action = f"app_link:{int(account_tg_id)}"
+    existing = (
+        s.query(StartLink)
+        .filter(StartLink.target_action == action)
+        .filter(StartLink.is_active == True)
+        .order_by(StartLink.updated_at.desc(), StartLink.id.desc())
+        .first()
+    )
+    if existing and str(existing.code or "").strip():
+        existing.updated_at = _utcnow()
+        s.flush()
+        return str(existing.code).strip().lower()
+
+    now = _utcnow()
+    for _ in range(10):
+        code = f"app{secrets.token_urlsafe(12).replace('-', '').replace('_', '').lower()}"[:32]
+        duplicate = s.query(StartLink.id).filter(func.lower(StartLink.code) == code).first()
+        if duplicate:
+            continue
+        row = StartLink(
+            code=code,
+            description=f"App Telegram link for {int(account_tg_id)}",
+            target_action=action[:64],
+            is_active=True,
+            created_at=now,
+            updated_at=now,
+        )
+        s.add(row)
+        s.flush()
+        return code
+    raise HTTPException(status_code=500, detail="Unable to create Telegram link")
+
+
 def _upsert_app_trial_user(*, s, payload: AppStartTrialIn, request: Request | None = None) -> tuple[User, bool]:
     install_id = str(payload.install_id or "").strip()[:128]
     if not install_id:
@@ -3188,6 +3236,11 @@ async def auth_session(request: Request, x_telegram_init_data: str = Header(defa
             "account_id": str(tg_id),
             "username": (auth_user.get("username") or (getattr(user, "username", None) if user else None)),
             "device_name": device_name,
+            "linked_telegram_id": _linked_telegram_id(user),
+            "linked_telegram_username": (
+                str(getattr(user, "linked_telegram_username", "") or "").strip() if user else ""
+            )
+            or None,
             "is_authorized": True,
             "auth_type": "app" if bool(getattr(user, "is_app_user", False)) else "telegram",
         },
@@ -3243,6 +3296,36 @@ async def client_start_trial(payload: AppStartTrialIn, request: Request) -> dict
         "subscription_url": f"{Settings.PUBLIC_API_BASE_URL.rstrip('/')}/s8Kx2mP7qR4wT/{user.sub_token}",
         "sync_ok": bool(sync_ok),
     }
+
+
+@app.post("/api/client/telegram/link")
+async def client_telegram_link_start(request: Request, x_telegram_init_data: str = Header(default="")) -> dict:
+    auth_user = _require_auth_user(x_telegram_init_data, request=request)
+    tg_id = int(auth_user.get("id", 0))
+    s = SessionLocal()
+    try:
+        user = s.query(User).filter(User.tg_id == tg_id).first()
+        if not user:
+            raise HTTPException(status_code=404, detail="User not found")
+        linked_id = _linked_telegram_id(user)
+        linked_username = str(getattr(user, "linked_telegram_username", "") or "").strip()
+        start_code = ""
+        if not linked_id:
+            start_code = _create_app_telegram_start_code(s, account_tg_id=int(user.tg_id))
+        s.commit()
+        bot_username = (BOT_USERNAME or "portal_service_bot").lstrip("@")
+        channel_username = (PUBLIC_CHANNEL or "").lstrip("@").strip()
+        return {
+            "ok": True,
+            "linked": bool(linked_id),
+            "linked_telegram_id": linked_id or None,
+            "linked_telegram_username": linked_username or None,
+            "start_code": start_code,
+            "bot_url": f"https://t.me/{bot_username}?start={start_code}" if start_code else f"https://t.me/{bot_username}",
+            "channel_url": f"https://t.me/{channel_username}" if channel_username else None,
+        }
+    finally:
+        s.close()
 
 
 @app.api_route("/pay/success", methods=["GET", "POST"])
@@ -4366,7 +4449,26 @@ async def channel_subscriber_check(request: Request, x_telegram_init_data: str =
     if not PUBLIC_CHANNEL:
         raise HTTPException(status_code=400, detail="Public channel is not configured")
 
-    is_member, reason = await _is_channel_member(PUBLIC_CHANNEL, tg_id)
+    s = SessionLocal()
+    try:
+        user = s.query(User).filter_by(tg_id=tg_id).first()
+        if not user:
+            raise HTTPException(status_code=404, detail="User not found")
+        membership_tg_id = _membership_check_tg_id(user)
+    finally:
+        s.close()
+
+    if membership_tg_id <= 0:
+        return {
+            "ok": True,
+            "subscriber": False,
+            "reason": "telegram_link_required",
+            "points_granted": 0,
+            "campaign_marked": False,
+            "link_required": True,
+        }
+
+    is_member, reason = await _is_channel_member(PUBLIC_CHANNEL, membership_tg_id)
     if not is_member:
         return {
             "ok": True,
@@ -4374,6 +4476,7 @@ async def channel_subscriber_check(request: Request, x_telegram_init_data: str =
             "reason": reason,
             "points_granted": 0,
             "campaign_marked": False,
+            "link_required": False,
         }
 
     points_granted = 0
@@ -4414,6 +4517,7 @@ async def channel_subscriber_check(request: Request, x_telegram_init_data: str =
         "reason": "member",
         "points_granted": int(points_granted),
         "campaign_marked": bool(campaign_marked),
+        "link_required": False,
     }
 
 
@@ -4470,7 +4574,16 @@ async def claim_channel_bonus(request: Request, x_telegram_init_data: str = Head
             )
             raise HTTPException(status_code=400, detail="Бонус доступен только в стартовом режиме")
 
-        is_member, reason = await _is_channel_member(PUBLIC_CHANNEL, tg_id)
+        membership_tg_id = _membership_check_tg_id(user)
+        if membership_tg_id <= 0:
+            _track_bonus_event(
+                tg_id=tg_id,
+                event_name="promo_channel_denied",
+                meta={"reason": "telegram_link_required"},
+            )
+            raise HTTPException(status_code=400, detail="Сначала привяжите Telegram к аккаунту PORTAL VPN")
+
+        is_member, reason = await _is_channel_member(PUBLIC_CHANNEL, membership_tg_id)
         if not is_member:
             normalized_reason = str(reason or "").strip().lower()
             if normalized_reason in {"left", "kicked", "not_member"}:
@@ -4534,6 +4647,8 @@ async def claim_channel_bonus(request: Request, x_telegram_init_data: str = Head
             "channel": PUBLIC_CHANNEL,
             "sync_ok": bool(sync_ok),
             "points_granted": int(points_granted),
+            "linked_telegram_id": _linked_telegram_id(user) or None,
+            "linked_telegram_username": str(getattr(user, "linked_telegram_username", "") or "").strip() or None,
         }
     finally:
         if 'sync_ok' in locals():

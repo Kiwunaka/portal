@@ -1663,7 +1663,7 @@ def _parse_start_deeplink_context(start_arg: str) -> tuple[str, str]:
 def _resolve_start_link_action(start_arg: str) -> dict[str, str | bool]:
     raw = (start_arg or "").strip().lower()
     if not raw:
-        return {"promo_code": "", "campaign_key": "", "opening_bonus": False}
+        return {"promo_code": "", "campaign_key": "", "opening_bonus": False, "app_link_account_id": 0}
     session = Session()
     try:
         row = (
@@ -1675,25 +1675,87 @@ def _resolve_start_link_action(start_arg: str) -> dict[str, str | bool]:
     finally:
         session.close()
     if not row:
-        return {"promo_code": "", "campaign_key": "", "opening_bonus": False}
+        return {"promo_code": "", "campaign_key": "", "opening_bonus": False, "app_link_account_id": 0}
 
     action = str(getattr(row, "target_action", "") or "").strip()
     lowered = action.lower()
     if lowered == "opening_bonus":
-        return {"promo_code": "", "campaign_key": "", "opening_bonus": True}
+        return {"promo_code": "", "campaign_key": "", "opening_bonus": True, "app_link_account_id": 0}
     if lowered.startswith("promo:"):
         promo = _sanitize_start_token(action.split(":", 1)[1], max_len=20, uppercase=True)
-        return {"promo_code": promo, "campaign_key": "", "opening_bonus": False}
+        return {"promo_code": promo, "campaign_key": "", "opening_bonus": False, "app_link_account_id": 0}
     if lowered.startswith("campaign:"):
         campaign = _sanitize_start_token(action.split(":", 1)[1], max_len=64, uppercase=False)
-        return {"promo_code": "", "campaign_key": campaign, "opening_bonus": False}
+        return {"promo_code": "", "campaign_key": campaign, "opening_bonus": False, "app_link_account_id": 0}
     if lowered.startswith("campaign_promo:"):
         rest = action.split(":", 1)[1].strip()
         parts = rest.split(":", 1)
         campaign = _sanitize_start_token(parts[0] if parts else "", max_len=64, uppercase=False)
         promo = _sanitize_start_token(parts[1] if len(parts) > 1 else "", max_len=20, uppercase=True)
-        return {"promo_code": promo, "campaign_key": campaign, "opening_bonus": False}
-    return {"promo_code": "", "campaign_key": "", "opening_bonus": False}
+        return {"promo_code": promo, "campaign_key": campaign, "opening_bonus": False, "app_link_account_id": 0}
+    if lowered.startswith("app_link:"):
+        try:
+            account_tg_id = int(action.split(":", 1)[1].strip())
+        except Exception:
+            account_tg_id = 0
+        return {
+            "promo_code": "",
+            "campaign_key": "",
+            "opening_bonus": False,
+            "app_link_account_id": max(0, int(account_tg_id)),
+        }
+    return {"promo_code": "", "campaign_key": "", "opening_bonus": False, "app_link_account_id": 0}
+
+
+def _bind_app_account_to_telegram(
+    *,
+    account_tg_id: int,
+    telegram_id: int,
+    telegram_username: str | None,
+    start_code: str,
+) -> str:
+    if int(account_tg_id) <= 0 or int(telegram_id) <= 0:
+        return "invalid"
+
+    raw_code = str(start_code or "").strip().lower()
+    session = Session()
+    try:
+        row = (
+            session.query(StartLink)
+            .filter(func.lower(StartLink.code) == raw_code)
+            .filter(StartLink.is_active == True)
+            .first()
+        )
+        if not row:
+            return "expired"
+        user = session.query(User).filter(User.tg_id == int(account_tg_id)).first()
+        if not user:
+            return "not_found"
+        other = (
+            session.query(User)
+            .filter(User.linked_telegram_id == int(telegram_id))
+            .filter(User.tg_id != int(account_tg_id))
+            .first()
+        )
+        if other:
+            return "telegram_already_linked"
+        linked_id = int(getattr(user, "linked_telegram_id", 0) or 0)
+        if linked_id and linked_id != int(telegram_id):
+            return "account_linked_elsewhere"
+
+        now = _utcnow()
+        user.linked_telegram_id = int(telegram_id)
+        user.linked_telegram_username = str(telegram_username or "").strip() or None
+        user.linked_telegram_linked_at = now
+        row.is_active = False
+        row.updated_at = now
+        session.commit()
+        return "linked" if linked_id != int(telegram_id) else "already_linked"
+    except Exception:
+        session.rollback()
+        return "error"
+    finally:
+        session.close()
 
 
 def _parse_friend_gift_ref_code(start_arg: str) -> str:
@@ -3393,6 +3455,7 @@ async def cmd_start(message: Message):
     deeplink_campaign_key = ""
     friend_gift_referral_code = ""
     opening_bonus_requested = False
+    app_link_account_id = 0
     if message.text:
         parts = message.text.split()
         if len(parts) > 1:
@@ -3410,6 +3473,7 @@ async def cmd_start(message: Message):
             if str(start_link_action.get("campaign_key") or "").strip():
                 deeplink_campaign_key = str(start_link_action.get("campaign_key") or "").strip()[:64]
             opening_bonus_requested = bool(start_link_action.get("opening_bonus"))
+            app_link_account_id = int(start_link_action.get("app_link_account_id") or 0)
 
     try:
         await message.delete()
@@ -3450,6 +3514,67 @@ async def cmd_start(message: Message):
             "promo_code": str(deeplink_promo_code or "").upper()[:20],
             "campaign_key": str(deeplink_campaign_key or "")[:64],
         }
+
+    if app_link_account_id > 0:
+        bind_status = _bind_app_account_to_telegram(
+            account_tg_id=int(app_link_account_id),
+            telegram_id=int(tg_id),
+            telegram_username=username,
+            start_code=start_arg,
+        )
+        track_event(
+            tg_id=int(tg_id),
+            event_name="app_telegram_link_start",
+            source="bot",
+            meta={"account_tg_id": int(app_link_account_id), "status": str(bind_status or "")},
+        )
+        messages = {
+            "linked": (
+                "✅ *Telegram привязан к PORTAL VPN.*\n\n"
+                "Теперь вернитесь в приложение и нажмите «Проверить подписку», чтобы получить бонус."
+            ),
+            "already_linked": (
+                "✅ *Этот Telegram уже привязан к вашему аккаунту PORTAL VPN.*\n\n"
+                "Вернитесь в приложение и нажмите «Проверить подписку»."
+            ),
+            "telegram_already_linked": (
+                "⚠️ Этот Telegram уже привязан к другому аккаунту PORTAL VPN.\n\n"
+                "Если это ошибка, напишите в поддержку."
+            ),
+            "account_linked_elsewhere": (
+                "⚠️ Этот аккаунт PORTAL VPN уже привязан к другому Telegram.\n\n"
+                "Если нужно переназначить привязку, напишите в поддержку."
+            ),
+            "not_found": (
+                "⚠️ Не удалось найти аккаунт PORTAL VPN для этой ссылки.\n\n"
+                "Откройте приложение и запросите новую ссылку привязки."
+            ),
+            "expired": (
+                "⌛ Ссылка привязки устарела.\n\n"
+                "Откройте приложение PORTAL VPN и запросите новую ссылку."
+            ),
+            "invalid": (
+                "⚠️ Ссылка привязки некорректна.\n\n"
+                "Откройте приложение PORTAL VPN и создайте новую ссылку."
+            ),
+            "error": (
+                "⚠️ Не удалось завершить привязку прямо сейчас.\n\n"
+                "Попробуйте ещё раз через минуту или напишите в поддержку."
+            ),
+        }
+        await message.answer(
+            messages.get(
+                str(bind_status or ""),
+                "⚠️ Не удалось обработать ссылку привязки.\n\nОткройте приложение PORTAL VPN и запросите новую ссылку.",
+            ),
+            reply_markup=InlineKeyboardMarkup(
+                inline_keyboard=[
+                    [InlineKeyboardButton(text="📢 Канал PORTAL", url=f"https://t.me/{_channel_name_for_url()}")],
+                ]
+            ),
+            parse_mode=ParseMode.MARKDOWN,
+        )
+        return
 
     if str(start_arg or "").strip().lower() in {"weblogin", "web_login", "login_web"}:
         token = create_web_session_token(tg_id=int(tg_id), username=username)

@@ -289,6 +289,9 @@ def run_migrations(engine: Engine) -> None:
                 ("app_timezone", "VARCHAR(64)"),
                 ("app_last_seen_at", "DATETIME"),
                 ("app_last_ip", "VARCHAR(64)"),
+                ("linked_telegram_id", "BIGINT"),
+                ("linked_telegram_username", "VARCHAR(100)"),
+                ("linked_telegram_linked_at", "DATETIME"),
             ]
             for col, ddl in wanted_cols:
                 if not _sqlite_column_exists(conn, "users", col):
@@ -343,6 +346,7 @@ def run_migrations(engine: Engine) -> None:
         conn.execute(text("CREATE INDEX IF NOT EXISTS ix_user_nodes_node_id ON user_nodes(node_id);"))
         conn.execute(text("CREATE UNIQUE INDEX IF NOT EXISTS uq_promo_usage_tg_code ON promo_usage(tg_id, promo_code);"))
         conn.execute(text("CREATE UNIQUE INDEX IF NOT EXISTS uq_users_app_install_id ON users(app_install_id) WHERE app_install_id IS NOT NULL;"))
+        conn.execute(text("CREATE UNIQUE INDEX IF NOT EXISTS uq_users_linked_telegram_id ON users(linked_telegram_id) WHERE linked_telegram_id IS NOT NULL;"))
 
         # support_tickets table: backfill columns for legacy DBs if table already exists
         if conn.execute(text("SELECT name FROM sqlite_master WHERE type='table' AND name='support_tickets';")).fetchone():
@@ -905,7 +909,11 @@ def _run_postgres_migrations(engine: Engine) -> None:
         conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS app_timezone VARCHAR(64);"))
         conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS app_last_seen_at TIMESTAMP;"))
         conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS app_last_ip VARCHAR(64);"))
+        conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS linked_telegram_id BIGINT;"))
+        conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS linked_telegram_username VARCHAR(100);"))
+        conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS linked_telegram_linked_at TIMESTAMP;"))
         conn.execute(text("CREATE UNIQUE INDEX IF NOT EXISTS uq_users_app_install_id ON users(app_install_id) WHERE app_install_id IS NOT NULL;"))
+        conn.execute(text("CREATE UNIQUE INDEX IF NOT EXISTS uq_users_linked_telegram_id ON users(linked_telegram_id) WHERE linked_telegram_id IS NOT NULL;"))
         conn.execute(text("ALTER TABLE nodes ADD COLUMN IF NOT EXISTS accepting_new_clients BOOLEAN DEFAULT TRUE;"))
         conn.execute(text("ALTER TABLE nodes ADD COLUMN IF NOT EXISTS is_draining BOOLEAN DEFAULT FALSE;"))
         conn.execute(text("ALTER TABLE nodes ADD COLUMN IF NOT EXISTS cpu_percent DOUBLE PRECISION DEFAULT 0;"))

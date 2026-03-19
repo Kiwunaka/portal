@@ -154,3 +154,87 @@ def test_app_session_can_create_support_ticket(monkeypatch, tmp_path):
     ticket_payload = create_ticket_response.json()["ticket"]
     assert ticket_payload["subject"] == "Не подключается"
     assert ticket_payload["messages"][0]["body"] == "Нужна помощь с первым запуском"
+
+
+def test_app_session_can_request_telegram_link(monkeypatch, tmp_path):
+    api = _load_api(monkeypatch, tmp_path)
+    client = TestClient(api.app)
+
+    trial_response = client.post(
+        "/api/client/session/start-trial",
+        json={
+            "install_id": "install-link",
+            "device_name": "Pixel 10",
+            "platform": "android",
+            "trial_days": 5,
+        },
+    )
+
+    token = trial_response.json()["session_token"]
+    link_response = client.post(
+        "/api/client/telegram/link",
+        headers={"Authorization": f"Bearer {token}"},
+    )
+
+    assert link_response.status_code == 200
+    payload = link_response.json()
+    assert payload["ok"] is True
+    assert payload["linked"] is False
+    assert payload["bot_url"].startswith("https://t.me/portal_service_bot?start=")
+    assert payload["start_code"].startswith("app")
+
+
+def test_channel_bonus_claim_uses_linked_telegram_identity_for_app_account(monkeypatch, tmp_path):
+    api = _load_api(monkeypatch, tmp_path)
+    client = TestClient(api.app)
+
+    async def fake_is_channel_member(channel_username: str, tg_id: int):
+        assert channel_username == "portal_privacy"
+        return (tg_id == 777001, "member" if tg_id == 777001 else "not_member")
+
+    monkeypatch.setattr(api, "_is_channel_member", fake_is_channel_member)
+
+    trial_response = client.post(
+        "/api/client/session/start-trial",
+        json={
+            "install_id": "install-bonus",
+            "device_name": "Galaxy Fold",
+            "platform": "android",
+            "trial_days": 5,
+        },
+    )
+    token = trial_response.json()["session_token"]
+    session_response = client.get(
+        "/api/auth/session",
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    account_id = int(session_response.json()["user"]["account_id"])
+
+    db = api.SessionLocal()
+    try:
+        user = db.query(api.User).filter_by(tg_id=account_id).first()
+        user.linked_telegram_id = 777001
+        user.linked_telegram_username = "portal_user"
+        db.commit()
+    finally:
+        db.close()
+
+    claim_response = client.post(
+        "/api/bonuses/channel/claim",
+        headers={"Authorization": f"Bearer {token}"},
+    )
+
+    assert claim_response.status_code == 200
+    payload = claim_response.json()
+    assert payload["ok"] is True
+    assert payload["already_claimed"] is False
+    assert payload["premium_days"] == 10
+
+    user_response = client.get(
+        f"/api/user/{account_id}",
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert user_response.status_code == 200
+    user_payload = user_response.json()
+    assert user_payload["sub_type"] == "BONUS"
+    assert user_payload["bonuses"]["channel_bonus"]["claimed_at"]

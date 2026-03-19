@@ -75,6 +75,9 @@ class User(Base):
     app_timezone = Column(String(64), nullable=True)
     app_last_seen_at = Column(DateTime, nullable=True)
     app_last_ip = Column(String(64), nullable=True)
+    linked_telegram_id = Column(BigInteger, index=True, nullable=True)
+    linked_telegram_username = Column(String(100), nullable=True)
+    linked_telegram_linked_at = Column(DateTime, nullable=True)
 
 
 class Achievement(Base):
