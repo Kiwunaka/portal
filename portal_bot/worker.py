@@ -363,10 +363,20 @@ async def _telegram_get_chat_member(channel_username: str, user_id: int) -> tupl
         async with aiohttp.ClientSession() as session:
             async with session.post(endpoint, json=payload, timeout=aiohttp.ClientTimeout(total=15)) as resp:
                 body = await resp.json(content_type=None)
+                desc = str((body or {}).get("description") or "").lower()
                 if resp.status != 200:
+                    if "chat not found" in desc:
+                        return False, "channel_not_found"
+                    if "bot is not a member" in desc:
+                        return False, "bot_not_in_channel"
+                    if "not a member" in desc or "user not found" in desc:
+                        return False, "not_member"
                     return False, "telegram_http_error"
                 if not isinstance(body, dict) or not body.get("ok"):
-                    desc = str((body or {}).get("description") or "").lower()
+                    if "chat not found" in desc:
+                        return False, "channel_not_found"
+                    if "bot is not a member" in desc:
+                        return False, "bot_not_in_channel"
                     if "not a member" in desc or "user not found" in desc:
                         return False, "not_member"
                     return False, "telegram_api_error"
@@ -382,6 +392,8 @@ def _normalize_channel_membership_reason(reason: str) -> str:
     raw = str(reason or "").strip().lower()
     raw = raw.strip("`'\"")
     raw = " ".join(raw.split())
+    if raw in {"channel_not_found", "bot_not_in_channel"}:
+        return raw
     if raw in {"not_member", "left", "kicked"}:
         return "not_member"
     if "not a member" in raw or "user not found" in raw:

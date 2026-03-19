@@ -6,6 +6,7 @@ import unittest
 import uuid
 from datetime import timedelta
 from pathlib import Path
+from unittest import mock
 
 from sqlalchemy.exc import IntegrityError
 
@@ -97,6 +98,41 @@ class WorkerRetentionTests(unittest.TestCase):
         self.assertEqual(self.worker._normalize_channel_membership_reason("kicked"), "not_member")
         self.assertEqual(self.worker._normalize_channel_membership_reason("not_member"), "not_member")
         self.assertEqual(self.worker._normalize_channel_membership_reason("telegram_http_error"), "telegram_http_error")
+
+    def test_get_chat_member_maps_chat_not_found_from_non_200_response(self) -> None:
+        class _FakeResponse:
+            status = 400
+
+            async def json(self, content_type=None):
+                return {
+                    "ok": False,
+                    "error_code": 400,
+                    "description": "Bad Request: chat not found",
+                }
+
+            async def __aenter__(self):
+                return self
+
+            async def __aexit__(self, exc_type, exc, tb):
+                return False
+
+        class _FakeSession:
+            def post(self, *args, **kwargs):
+                return _FakeResponse()
+
+            async def __aenter__(self):
+                return self
+
+            async def __aexit__(self, exc_type, exc, tb):
+                return False
+
+        with mock.patch.object(self.worker.aiohttp, "ClientSession", return_value=_FakeSession()):
+            is_member, reason = self.worker.asyncio.run(
+                self.worker._telegram_get_chat_member("portal_privacy", 123456789)
+            )
+
+        self.assertFalse(is_member)
+        self.assertEqual(reason, "channel_not_found")
 
     def test_referral_queue_does_not_double_increment_already_counted_referral(self) -> None:
         from models import Event, ReferralBonusQueue, User
