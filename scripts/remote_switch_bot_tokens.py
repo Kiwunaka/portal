@@ -54,6 +54,44 @@ def _upsert(lines: list[str], mapping: dict[str, int], key: str, value: str) -> 
     lines.append(row)
 
 
+def apply_bot_switch(
+    env_raw: str,
+    *,
+    new_bot_token: str,
+    new_bot_username: str,
+    migration_target_url: str,
+    public_channel: str,
+    profile_update_hours: int,
+    help_bot_token: str = "",
+    support_username: str = "",
+) -> str:
+    lines, mapping = _parse_env_lines(env_raw)
+
+    old_token = ""
+    if "BOT_TOKEN" in mapping:
+        old_line = lines[mapping["BOT_TOKEN"]]
+        old_token = old_line.split("=", 1)[1].strip()
+
+    _upsert(lines, mapping, "BOT_TOKEN", new_bot_token.strip())
+    _upsert(lines, mapping, "BOT_USERNAME", new_bot_username.strip().lstrip("@"))
+    _upsert(lines, mapping, "BOT_MIGRATION_TARGET_URL", migration_target_url.strip())
+    _upsert(lines, mapping, "PUBLIC_CHANNEL", public_channel.strip().lstrip("@"))
+    _upsert(lines, mapping, "PROFILE_UPDATE_INTERVAL_HOURS", str(max(1, int(profile_update_hours))))
+    _upsert(lines, mapping, "WORKER_EMBEDDED", "false")
+
+    normalized_support_username = support_username.strip().lstrip("@")
+    if help_bot_token.strip():
+        _upsert(lines, mapping, "HELP_BOT_TOKEN", help_bot_token.strip())
+    if normalized_support_username:
+        _upsert(lines, mapping, "SUPPORT_USERNAME", normalized_support_username)
+        _upsert(lines, mapping, "SUPPORT_BOT_USERNAME", normalized_support_username)
+
+    if old_token and old_token != new_bot_token.strip():
+        _upsert(lines, mapping, "LEGACY_BOT_TOKEN", old_token)
+
+    return "\n".join(lines).rstrip("\n") + "\n"
+
+
 def _ensure_dir(sftp: paramiko.SFTPClient, remote_dir: str) -> None:
     parts: list[str] = []
     cur = remote_dir
@@ -87,6 +125,8 @@ def main() -> int:
     ap.add_argument("--migration-target-url", default="https://t.me/portal_service_bot")
     ap.add_argument("--public-channel", default="portal_privacy")
     ap.add_argument("--profile-update-hours", type=int, default=6)
+    ap.add_argument("--help-bot-token", default="", help="Token for dedicated support bot.")
+    ap.add_argument("--support-username", default="portal_privacy_helpbot")
     ap.add_argument("--enable-legacy-redirect", action="store_true")
     args = ap.parse_args()
 
@@ -111,24 +151,16 @@ def main() -> int:
             env_path = "/root/portal_bot/.env"
             with sftp.file(env_path, "r") as f:
                 env_raw = f.read().decode("utf-8", errors="replace")
-            lines, mapping = _parse_env_lines(env_raw)
-
-            old_token = ""
-            if "BOT_TOKEN" in mapping:
-                old_line = lines[mapping["BOT_TOKEN"]]
-                old_token = old_line.split("=", 1)[1].strip()
-
-            _upsert(lines, mapping, "BOT_TOKEN", str(args.new_bot_token).strip())
-            _upsert(lines, mapping, "BOT_USERNAME", str(args.new_bot_username).strip().lstrip("@"))
-            _upsert(lines, mapping, "BOT_MIGRATION_TARGET_URL", str(args.migration_target_url).strip())
-            _upsert(lines, mapping, "PUBLIC_CHANNEL", str(args.public_channel).strip().lstrip("@"))
-            _upsert(lines, mapping, "PROFILE_UPDATE_INTERVAL_HOURS", str(max(1, int(args.profile_update_hours))))
-            _upsert(lines, mapping, "WORKER_EMBEDDED", "false")
-
-            if old_token and old_token != str(args.new_bot_token).strip():
-                _upsert(lines, mapping, "LEGACY_BOT_TOKEN", old_token)
-
-            new_env = "\n".join(lines).rstrip("\n") + "\n"
+            new_env = apply_bot_switch(
+                env_raw,
+                new_bot_token=str(args.new_bot_token),
+                new_bot_username=str(args.new_bot_username),
+                migration_target_url=str(args.migration_target_url),
+                public_channel=str(args.public_channel),
+                profile_update_hours=int(args.profile_update_hours),
+                help_bot_token=str(args.help_bot_token),
+                support_username=str(args.support_username),
+            )
             with sftp.file(env_path, "w") as f:
                 f.write(new_env)
 

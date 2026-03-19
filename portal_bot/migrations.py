@@ -279,6 +279,16 @@ def run_migrations(engine: Engine) -> None:
                 ("free_cycle_anchor_at", "DATETIME"),
                 ("free_cycle_last_reset_at", "DATETIME"),
                 ("free_cycle_next_reset_at", "DATETIME"),
+                ("is_app_user", "BOOLEAN DEFAULT 0"),
+                ("app_install_id", "VARCHAR(128)"),
+                ("app_device_name", "VARCHAR(120)"),
+                ("app_platform", "VARCHAR(32)"),
+                ("app_os_version", "VARCHAR(64)"),
+                ("app_version", "VARCHAR(32)"),
+                ("app_locale", "VARCHAR(32)"),
+                ("app_timezone", "VARCHAR(64)"),
+                ("app_last_seen_at", "DATETIME"),
+                ("app_last_ip", "VARCHAR(64)"),
             ]
             for col, ddl in wanted_cols:
                 if not _sqlite_column_exists(conn, "users", col):
@@ -332,6 +342,7 @@ def run_migrations(engine: Engine) -> None:
         conn.execute(text("CREATE INDEX IF NOT EXISTS ix_user_nodes_tg_id ON user_nodes(tg_id);"))
         conn.execute(text("CREATE INDEX IF NOT EXISTS ix_user_nodes_node_id ON user_nodes(node_id);"))
         conn.execute(text("CREATE UNIQUE INDEX IF NOT EXISTS uq_promo_usage_tg_code ON promo_usage(tg_id, promo_code);"))
+        conn.execute(text("CREATE UNIQUE INDEX IF NOT EXISTS uq_users_app_install_id ON users(app_install_id) WHERE app_install_id IS NOT NULL;"))
 
         # support_tickets table: backfill columns for legacy DBs if table already exists
         if conn.execute(text("SELECT name FROM sqlite_master WHERE type='table' AND name='support_tickets';")).fetchone():
@@ -884,6 +895,17 @@ def _run_postgres_migrations(engine: Engine) -> None:
         conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS free_cycle_last_reset_at TIMESTAMP;"))
         conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS free_cycle_next_reset_at TIMESTAMP;"))
         conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS current_plan_code VARCHAR(32);"))
+        conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS is_app_user BOOLEAN DEFAULT FALSE;"))
+        conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS app_install_id VARCHAR(128);"))
+        conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS app_device_name VARCHAR(120);"))
+        conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS app_platform VARCHAR(32);"))
+        conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS app_os_version VARCHAR(64);"))
+        conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS app_version VARCHAR(32);"))
+        conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS app_locale VARCHAR(32);"))
+        conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS app_timezone VARCHAR(64);"))
+        conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS app_last_seen_at TIMESTAMP;"))
+        conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS app_last_ip VARCHAR(64);"))
+        conn.execute(text("CREATE UNIQUE INDEX IF NOT EXISTS uq_users_app_install_id ON users(app_install_id) WHERE app_install_id IS NOT NULL;"))
         conn.execute(text("ALTER TABLE nodes ADD COLUMN IF NOT EXISTS accepting_new_clients BOOLEAN DEFAULT TRUE;"))
         conn.execute(text("ALTER TABLE nodes ADD COLUMN IF NOT EXISTS is_draining BOOLEAN DEFAULT FALSE;"))
         conn.execute(text("ALTER TABLE nodes ADD COLUMN IF NOT EXISTS cpu_percent DOUBLE PRECISION DEFAULT 0;"))

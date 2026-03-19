@@ -59,12 +59,22 @@ class User(Base):
     pending_discount_code = Column(String(20), nullable=True)
     pending_discount_set_at = Column(DateTime, nullable=True)
     is_manual = Column(Boolean, default=False)
+    is_app_user = Column(Boolean, default=False)
     created_by_admin = Column(BigInteger, nullable=True)
     display_name = Column(String(100), nullable=True)
     device_reset_last_at = Column(DateTime, nullable=True)
     free_cycle_anchor_at = Column(DateTime, nullable=True)
     free_cycle_last_reset_at = Column(DateTime, nullable=True)
     free_cycle_next_reset_at = Column(DateTime, nullable=True)
+    app_install_id = Column(String(128), index=True, nullable=True)
+    app_device_name = Column(String(120), nullable=True)
+    app_platform = Column(String(32), nullable=True)
+    app_os_version = Column(String(64), nullable=True)
+    app_version = Column(String(32), nullable=True)
+    app_locale = Column(String(32), nullable=True)
+    app_timezone = Column(String(64), nullable=True)
+    app_last_seen_at = Column(DateTime, nullable=True)
+    app_last_ip = Column(String(64), nullable=True)
 
 
 class Achievement(Base):

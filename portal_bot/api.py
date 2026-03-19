@@ -151,6 +151,9 @@ REFERRAL_BONUS_DAYS = env_int("REFERRAL_BONUS_DAYS", 15)
 REFERRAL_ANTIFRAUD_HOURS = max(0, env_int("REFERRAL_ANTIFRAUD_HOURS", 24))
 REFERRAL_ANTIFRAUD_MAX_WAIT_HOURS = max(1, env_int("REFERRAL_ANTIFRAUD_MAX_WAIT_HOURS", 168))
 CHANNEL_PREMIUM_DAYS = env_int("CHANNEL_PREMIUM_DAYS", 10)
+APP_TRIAL_DEFAULT_DAYS = max(1, env_int("APP_TRIAL_DEFAULT_DAYS", 5))
+APP_TRIAL_MAX_DAYS = max(APP_TRIAL_DEFAULT_DAYS, env_int("APP_TRIAL_MAX_DAYS", 7))
+APP_ACCOUNT_TG_ID_BASE = max(9_000_000_000_000, env_int("APP_ACCOUNT_TG_ID_BASE", 9_000_000_000_000))
 OPENING_PREMIUM_DAYS = max(1, env_int("OPENING_PREMIUM_DAYS", 14))
 OPENING_PREMIUM_CAMPAIGN_KEY = (
     os.getenv("OPENING_PREMIUM_CAMPAIGN_KEY") or f"opening_premium_{OPENING_PREMIUM_DAYS}d"
@@ -624,6 +627,17 @@ class TelegramWebLoginIn(BaseModel):
     last_name: str | None = None
     username: str | None = None
     photo_url: str | None = None
+
+
+class AppStartTrialIn(BaseModel):
+    install_id: str = Field(min_length=8, max_length=128)
+    device_name: str = Field(min_length=2, max_length=120)
+    platform: str = Field(min_length=2, max_length=32)
+    os_version: str | None = Field(default=None, max_length=64)
+    app_version: str | None = Field(default=None, max_length=32)
+    locale: str | None = Field(default=None, max_length=32)
+    time_zone: str | None = Field(default=None, max_length=64)
+    trial_days: int = Field(default=APP_TRIAL_DEFAULT_DAYS, ge=1, le=APP_TRIAL_MAX_DAYS)
 
 
 class ReviewCreateIn(BaseModel):
@@ -1358,6 +1372,133 @@ def _extract_web_session_token(request: Request | None) -> str:
     if auth_header.lower().startswith("bearer "):
         return auth_header[7:].strip()
     return str(request.headers.get("x-web-auth-token") or "").strip()
+
+
+def _request_client_ip(request: Request | None) -> str:
+    if request is None:
+        request = _current_request_ctx.get()
+    if request is None:
+        return ""
+    for header in ("cf-connecting-ip", "x-real-ip", "x-forwarded-for"):
+        raw = str(request.headers.get(header) or "").strip()
+        if not raw:
+            continue
+        if header == "x-forwarded-for":
+            raw = raw.split(",", 1)[0].strip()
+        if raw:
+            return raw[:64]
+    client = getattr(request, "client", None)
+    host = getattr(client, "host", "") if client else ""
+    return str(host or "").strip()[:64]
+
+
+def _normalize_app_device_name(value: str | None, *, fallback: str = "Current device") -> str:
+    text = str(value or "").strip()
+    if not text:
+        return fallback
+    return text[:120]
+
+
+def _next_app_account_tg_id(s) -> int:
+    max_id = s.query(func.max(User.tg_id)).filter(User.tg_id >= int(APP_ACCOUNT_TG_ID_BASE)).scalar()
+    if max_id is None:
+        return int(APP_ACCOUNT_TG_ID_BASE)
+    return int(max_id) + 1
+
+
+def _build_app_device_rows(user: User) -> list[dict[str, Any]]:
+    install_id = str(getattr(user, "app_install_id", "") or "").strip()
+    if not install_id:
+        return []
+    return [
+        {
+            "id": install_id,
+            "name": _normalize_app_device_name(
+                getattr(user, "app_device_name", None) or getattr(user, "display_name", None),
+            ),
+            "platform": str(getattr(user, "app_platform", "") or "").strip() or "device",
+            "os_version": str(getattr(user, "app_os_version", "") or "").strip() or None,
+            "app_version": str(getattr(user, "app_version", "") or "").strip() or None,
+            "last_seen_at": _safe_iso(getattr(user, "app_last_seen_at", None) or getattr(user, "created_at", None)),
+            "is_active": bool(getattr(user, "is_active", False)),
+            "is_current": True,
+        }
+    ]
+
+
+def _upsert_app_trial_user(*, s, payload: AppStartTrialIn, request: Request | None = None) -> tuple[User, bool]:
+    install_id = str(payload.install_id or "").strip()[:128]
+    if not install_id:
+        raise HTTPException(status_code=400, detail="install_id is required")
+
+    now = _utcnow()
+    trial_days = max(1, min(int(payload.trial_days or APP_TRIAL_DEFAULT_DAYS), int(APP_TRIAL_MAX_DAYS)))
+    device_name = _normalize_app_device_name(payload.device_name)
+    client_ip = _request_client_ip(request)
+    user = s.query(User).filter(User.app_install_id == install_id).first()
+    created = False
+
+    if not user:
+        tg_id = _next_app_account_tg_id(s)
+        user = User(
+            tg_id=int(tg_id),
+            username=f"app_{str(tg_id)[-6:]}",
+            uuid=str(uuid.uuid4()),
+            email=f"APP_{int(tg_id)}",
+            sub_type="FREE",
+            current_plan_code="trial",
+            created_at=now,
+            expiry_at=now + timedelta(days=trial_days),
+            is_active=True,
+            stars_paid=0,
+            total_gb=0,
+            trial_used=True,
+            tos_accepted=True,
+            first_purchase_done=False,
+            sub_token=_generate_sub_token(),
+            is_manual=False,
+            is_app_user=True,
+            display_name=device_name,
+            app_install_id=install_id,
+            app_device_name=device_name,
+            app_platform=str(payload.platform or "").strip()[:32],
+            app_os_version=str(payload.os_version or "").strip()[:64] or None,
+            app_version=str(payload.app_version or "").strip()[:32] or None,
+            app_locale=str(payload.locale or "").strip()[:32] or None,
+            app_timezone=str(payload.time_zone or "").strip()[:64] or None,
+            app_last_seen_at=now,
+            app_last_ip=client_ip or None,
+        )
+        mark_user_became_free(user, now=now)
+        s.add(user)
+        s.flush()
+        created = True
+    else:
+        user.is_app_user = True
+        user.display_name = device_name
+        user.app_device_name = device_name
+        user.app_platform = str(payload.platform or "").strip()[:32] or user.app_platform
+        user.app_os_version = str(payload.os_version or "").strip()[:64] or user.app_os_version
+        user.app_version = str(payload.app_version or "").strip()[:32] or user.app_version
+        user.app_locale = str(payload.locale or "").strip()[:32] or user.app_locale
+        user.app_timezone = str(payload.time_zone or "").strip()[:64] or user.app_timezone
+        user.app_last_seen_at = now
+        user.app_last_ip = client_ip or user.app_last_ip
+        if not user.sub_token:
+            user.sub_token = _generate_sub_token()
+        if not user.username:
+            user.username = f"app_{str(user.tg_id)[-6:]}"
+        if not user.current_plan_code:
+            user.current_plan_code = "trial"
+        if not user.sub_type:
+            user.sub_type = "FREE"
+        if not user.expiry_at:
+            user.expiry_at = now + timedelta(days=trial_days)
+        if user.is_active is None:
+            user.is_active = True
+        s.flush()
+
+    return user, created
 
 
 def _ensure_user_row_for_login(*, tg_id: int, username: str | None = None) -> None:
@@ -3030,12 +3171,77 @@ async def auth_telegram_web_login(payload: TelegramWebLoginIn) -> dict:
 @app.get("/api/auth/session")
 async def auth_session(request: Request, x_telegram_init_data: str = Header(default="")) -> dict:
     auth_user = _require_auth_user(x_telegram_init_data, request=request)
+    tg_id = int(auth_user.get("id", 0))
+    s = SessionLocal()
+    try:
+        user = s.query(User).filter(User.tg_id == tg_id).first()
+    finally:
+        s.close()
+    device_name = _normalize_app_device_name(
+        (getattr(user, "app_device_name", None) if user else None)
+        or (getattr(user, "display_name", None) if user else None),
+    )
     return {
         "ok": True,
         "user": {
-            "id": int(auth_user.get("id", 0)),
-            "username": auth_user.get("username"),
+            "id": tg_id,
+            "account_id": str(tg_id),
+            "username": (auth_user.get("username") or (getattr(user, "username", None) if user else None)),
+            "device_name": device_name,
+            "is_authorized": True,
+            "auth_type": "app" if bool(getattr(user, "is_app_user", False)) else "telegram",
         },
+    }
+
+
+@app.post("/api/client/session/start-trial")
+async def client_start_trial(payload: AppStartTrialIn, request: Request) -> dict:
+    s = SessionLocal()
+    try:
+        user, created = _upsert_app_trial_user(s=s, payload=payload, request=request)
+        s.commit()
+        s.refresh(user)
+    except HTTPException:
+        s.rollback()
+        raise
+    except Exception:
+        s.rollback()
+        raise
+    finally:
+        s.close()
+
+    session_token = create_web_session_token(
+        tg_id=int(user.tg_id),
+        username=str(user.username or "").strip() or None,
+    )
+    if not session_token:
+        raise HTTPException(status_code=500, detail="App session is not configured")
+
+    sync_ok = False
+    panel = ControlPanel()
+    try:
+        sync_ok = bool(
+            await panel.add_client(
+                user_uuid=str(user.uuid),
+                email=str(user.email),
+                sub_type=str(user.sub_type or "FREE"),
+                total_gb=int(user.total_gb or 0),
+                tg_id=int(user.tg_id),
+                sub_token=str(user.sub_token or ""),
+            )
+        )
+    except Exception:
+        sync_ok = False
+    finally:
+        await panel.close()
+
+    return {
+        "ok": True,
+        "created": bool(created),
+        "session_token": session_token,
+        "account_id": str(int(user.tg_id)),
+        "subscription_url": f"{Settings.PUBLIC_API_BASE_URL.rstrip('/')}/s8Kx2mP7qR4wT/{user.sub_token}",
+        "sync_ok": bool(sync_ok),
     }
 
 
@@ -3887,10 +4093,15 @@ async def user_data(tg_id: int, request: Request, x_telegram_init_data: str = He
             and (user.sub_type or "").upper() == "FREE"
             and free_speed_kbps < int(FREE_SPEED_LIMIT_KBPS)
         )
+        devices_payload = _build_app_device_rows(user)
 
         return {
             "tg_id": tg_id,
             "username": user.username or auth_user.get("username"),
+            "account_id": str(tg_id),
+            "device_name": _normalize_app_device_name(
+                getattr(user, "app_device_name", None) or getattr(user, "display_name", None),
+            ),
             "subscription_url": subscription_url,
             "is_active": is_active,
             "is_admin": role_admin,
@@ -3908,6 +4119,7 @@ async def user_data(tg_id: int, request: Request, x_telegram_init_data: str = He
                 {"code": n.code, "name": n.name, "host": n.host, "port": n.vless_port, "enabled": True}
                 for n in nodes_for_user
             ],
+            "devices": devices_payload,
             "traffic": {
                 "used_gb": used_gb,
                 "total_gb": total_gb,

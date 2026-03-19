@@ -2,6 +2,7 @@
 import { getInitData } from "./telegram";
 
 const WEB_SESSION_TOKEN_KEY = "portal_web_session_token";
+const DIRECT_API_BASE = "https://kiwunaka.space";
 
 export type NodeInfo = {
   code: string;
@@ -754,7 +755,7 @@ function defaultApiBase(): string {
   if (typeof window !== "undefined") {
     return window.location.origin;
   }
-  return "https://portal-privacy.online";
+  return DIRECT_API_BASE;
 }
 
 function dispatchAuthRequired(): void {
@@ -781,16 +782,17 @@ function candidateApiBases(): string[] {
     ""
   ).trim();
   if (envBaseRaw) return [envBaseRaw.replace(/\/+$/, "")];
-  if (typeof window === "undefined") return [defaultApiBase().replace(/\/+$/, ""), "https://kiwunaka.space"];
+  if (typeof window === "undefined") return [defaultApiBase().replace(/\/+$/, ""), DIRECT_API_BASE];
 
   const origin = window.location.origin.replace(/\/+$/, "");
   const proto = window.location.protocol;
   const host = window.location.hostname;
   const legacy = `${proto}//${host}:2096`;
+  const hasSessionToken = !!getWebSessionToken();
   const useLegacyFallback =
     String(process.env.NEXT_PUBLIC_ENABLE_LEGACY_PORT_FALLBACK || process.env.VITE_ENABLE_LEGACY_PORT_FALLBACK || "")
       .toLowerCase() === "true";
-  const defaults = [origin, "https://kiwunaka.space"];
+  const defaults = hasSessionToken ? [DIRECT_API_BASE, origin] : [origin, DIRECT_API_BASE];
   if (useLegacyFallback) defaults.push(legacy.replace(/\/+$/, ""));
   return Array.from(new Set(defaults));
 }
