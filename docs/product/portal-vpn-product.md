@@ -74,7 +74,7 @@ The platform still includes:
 - bonus value: `+10 days`
 - bonus requires Telegram linking to the app-first account
 - bonus additionally requires membership verification against the configured public channel
-- channel verification logic is implemented, but the actual production channel username is currently unresolved
+- current verified public channel: `@pokrov_vpn`
 
 ## Advanced Settings Policy
 
@@ -119,4 +119,3 @@ Current logo source for the client fork:
 ## Current Known Product Risk
 
 The Telegram bonus path is code-ready but not fully operational until a real Telegram channel username is configured and `@portal_service_bot` is added there.
-

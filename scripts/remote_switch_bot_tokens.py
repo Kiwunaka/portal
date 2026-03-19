@@ -123,7 +123,7 @@ def main() -> int:
     ap.add_argument("--new-bot-token", required=True, help="Token for new main bot (not persisted in repo).")
     ap.add_argument("--new-bot-username", default="portal_service_bot")
     ap.add_argument("--migration-target-url", default="https://t.me/portal_service_bot")
-    ap.add_argument("--public-channel", default="portal_privacy")
+    ap.add_argument("--public-channel", default="pokrov_vpn")
     ap.add_argument("--profile-update-hours", type=int, default=6)
     ap.add_argument("--help-bot-token", default="", help="Token for dedicated support bot.")
     ap.add_argument("--support-username", default="portal_privacy_helpbot")

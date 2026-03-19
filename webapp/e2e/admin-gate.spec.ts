@@ -29,10 +29,10 @@ function mockUser(isAdmin: boolean) {
       channel_bonus: { premium_days: 0, claimed_at: null, can_claim: false },
     },
     referral: { code: "mock", link: "https://t.me/portal_service_bot?start=ref_mock", bonus_days: 0 },
-    channel: { username: "portal_privacy", link: "https://t.me/portal_privacy", subscriber: true, speed_bump_active: false },
+    channel: { username: "pokrov_vpn", link: "https://t.me/pokrov_vpn", subscriber: true, speed_bump_active: false },
     actions: {
       open_helpbot: "https://t.me/portal_privacy_helpbot",
-      open_channel: "https://t.me/portal_privacy",
+      open_channel: "https://t.me/pokrov_vpn",
       pay_via_bot: "https://t.me/portal_service_bot?start=pay",
     },
     points: { available: 0, expiring_soon: 0, monthly_cap: 300, expires_days: 90 },

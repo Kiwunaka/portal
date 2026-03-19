@@ -107,5 +107,5 @@ Canonical bot usernames:
 Current channel state:
 
 - bonus verification code is live
-- current channel usernames in docs/config are not valid Telegram channels yet
-
+- verified public channel: `@pokrov_vpn`
+- `@portal_service_bot` is an administrator in that channel

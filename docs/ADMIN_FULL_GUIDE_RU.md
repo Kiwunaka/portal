@@ -276,7 +276,7 @@ Source of truth:
 
 ## 12. Telegram registry (актуально на 7 марта 2026)
 
-- Главный канал и новости: `https://t.me/portal_privacy`
+- Главный канал и новости: `https://t.me/pokrov_vpn`
 - Основной бот: `https://t.me/portal_service_bot`
 - Бот поддержки: `https://t.me/portal_privacy_helpbot`
 - Feedback-бот / зачаток обратной связи: `https://t.me/portalfeedbackbot`

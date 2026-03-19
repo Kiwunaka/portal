@@ -145,7 +145,7 @@ PAID_LIMIT_IP = env_int("PAID_LIMIT_IP", 5)
 FREE_SPEED_LIMIT_KBPS = env_int("FREE_SPEED_LIMIT_KBPS", 6250)
 SUPPORT_USERNAME = (os.getenv("SUPPORT_USERNAME") or "portal_privacy_helpbot").lstrip("@")
 SUPPORT_USERNAME = (os.getenv("SUPPORT_BOT_USERNAME") or SUPPORT_USERNAME).lstrip("@")
-PUBLIC_CHANNEL = (os.getenv("PUBLIC_CHANNEL") or "portal_privacy").lstrip("@")
+PUBLIC_CHANNEL = (os.getenv("PUBLIC_CHANNEL") or "pokrov_vpn").lstrip("@")
 BOT_USERNAME = (os.getenv("BOT_USERNAME") or "portal_service_bot").lstrip("@")
 REFERRAL_BONUS_DAYS = env_int("REFERRAL_BONUS_DAYS", 15)
 REFERRAL_ANTIFRAUD_HOURS = max(0, env_int("REFERRAL_ANTIFRAUD_HOURS", 24))
@@ -278,7 +278,7 @@ def _default_plan_catalog() -> list[dict[str, Any]]:
 
 
 def _default_live_updates() -> list[dict[str, Any]]:
-    channel = (PUBLIC_CHANNEL or "portal_privacy").lstrip("@")
+    channel = (PUBLIC_CHANNEL or "pokrov_vpn").lstrip("@")
     return [
         {
             "id": 0,
@@ -305,7 +305,7 @@ def _default_live_updates() -> list[dict[str, Any]]:
 
 
 def _default_live_updates() -> list[dict[str, Any]]:
-    channel = (PUBLIC_CHANNEL or "portal_privacy").lstrip("@")
+    channel = (PUBLIC_CHANNEL or "pokrov_vpn").lstrip("@")
     return [
         {
             "id": 0,

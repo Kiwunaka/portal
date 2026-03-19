@@ -785,7 +785,7 @@ class ApiPaymentCallbacksTests(unittest.TestCase):
             json={
                 "title": "Node maintenance completed",
                 "summary": "New route profile is online.",
-                "channel_username": "portal_privacy",
+                "channel_username": "pokrov_vpn",
                 "post_id": 999,
                 "published_at": "2026-02-15T10:00:00",
                 "is_active": True,
@@ -807,9 +807,9 @@ class ApiPaymentCallbacksTests(unittest.TestCase):
         self.assertEqual(rows.status_code, 200, rows.text)
         found = next((r for r in rows.json().get("updates", []) if int(r.get("id") or 0) == update_id), None)
         self.assertIsNotNone(found)
-        self.assertEqual(str(found.get("channel_username") or ""), "portal_privacy")
+        self.assertEqual(str(found.get("channel_username") or ""), "pokrov_vpn")
         self.assertEqual(int(found.get("post_id") or 0), 1001)
-        self.assertEqual(str(found.get("tg_link") or ""), "https://t.me/portal_privacy/1001")
+        self.assertEqual(str(found.get("tg_link") or ""), "https://t.me/pokrov_vpn/1001")
 
         remove = client.delete(f"/api/admin/live-updates/{update_id}", headers=admin_hdrs)
         self.assertEqual(remove.status_code, 200, remove.text)

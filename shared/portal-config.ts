@@ -89,7 +89,7 @@ export function getPortalPublicConfig(env: Record<string, string | undefined>): 
     contactFormUrl,
     newsChannelUrl: normalizeTelegramUrl(
       env.NEXT_PUBLIC_TG_CHANNEL_LINK || env.NEXT_PUBLIC_NEWS_CHANNEL || "",
-      "https://t.me/portal_privacy",
+      "https://t.me/pokrov_vpn",
     ),
     androidPlayUrl: trim(env.NEXT_PUBLIC_APP_ANDROID_PLAY_URL),
     androidApkUrl: trim(env.NEXT_PUBLIC_APP_ANDROID_APK_URL),

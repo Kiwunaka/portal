@@ -59,7 +59,7 @@ class ApiP0ExtensionsTests(unittest.TestCase):
         os.environ["ADMIN_ID"] = "9999"
         os.environ["BOT_USERNAME"] = "net4ebur_bot"
         os.environ["SUPPORT_USERNAME"] = "portal_privacy_helpbot"
-        os.environ["PUBLIC_CHANNEL"] = "portal_privacy"
+        os.environ["PUBLIC_CHANNEL"] = "pokrov_vpn"
         os.environ["WEBAPP_DEV_AUTH"] = "true"
         os.environ["WEBAPP_DEV_TG_ID"] = "1001"
         os.environ["APP_ANDROID_PLAY_URL"] = ""

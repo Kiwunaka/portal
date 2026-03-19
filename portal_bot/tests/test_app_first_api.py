@@ -18,7 +18,7 @@ def _load_api(monkeypatch, tmp_path: Path):
     monkeypatch.setenv("WEBAPP_SESSION_SECRET", "portal-test-secret")
     monkeypatch.setenv("PUBLIC_API_BASE_URL", "https://api.portal.test")
     monkeypatch.setenv("PUBLIC_WEB_DOMAIN", "portal.test")
-    monkeypatch.setenv("PUBLIC_CHANNEL", "portal_privacy")
+    monkeypatch.setenv("PUBLIC_CHANNEL", "pokrov_vpn")
     monkeypatch.setenv("BOT_USERNAME", "portal_service_bot")
     monkeypatch.setenv("SUPPORT_BOT_USERNAME", "portal_privacy_helpbot")
 
@@ -189,7 +189,7 @@ def test_channel_bonus_claim_uses_linked_telegram_identity_for_app_account(monke
     client = TestClient(api.app)
 
     async def fake_is_channel_member(channel_username: str, tg_id: int):
-        assert channel_username == "portal_privacy"
+        assert channel_username == "pokrov_vpn"
         return (tg_id == 777001, "member" if tg_id == 777001 else "not_member")
 
     monkeypatch.setattr(api, "_is_channel_member", fake_is_channel_member)

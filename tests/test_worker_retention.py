@@ -26,7 +26,7 @@ class WorkerRetentionTests(unittest.TestCase):
         self.db_path = (repo_root / f"portal_api_test_{uuid.uuid4().hex}.db").resolve()
         os.environ["DATABASE_URL"] = f"sqlite:///{self.db_path.as_posix()}"
         os.environ["BOT_TOKEN"] = "test_bot_token_123"
-        os.environ["PUBLIC_CHANNEL"] = "portal_privacy"
+        os.environ["PUBLIC_CHANNEL"] = "pokrov_vpn"
 
         for mod_name in ("config", "db", "worker"):
             if mod_name in sys.modules:
@@ -91,7 +91,7 @@ class WorkerRetentionTests(unittest.TestCase):
     def test_retention_buttons_include_channel_for_welcome(self) -> None:
         buttons = self.worker._retention_buttons(flow="welcome", variant="a")
         self.assertGreaterEqual(len(buttons), 2)
-        self.assertIn("t.me/portal_privacy", str(buttons[1][0].get("url") or ""))
+        self.assertIn("t.me/pokrov_vpn", str(buttons[1][0].get("url") or ""))
 
     def test_channel_membership_reason_normalization(self) -> None:
         self.assertEqual(self.worker._normalize_channel_membership_reason("left"), "not_member")
@@ -128,7 +128,7 @@ class WorkerRetentionTests(unittest.TestCase):
 
         with mock.patch.object(self.worker.aiohttp, "ClientSession", return_value=_FakeSession()):
             is_member, reason = self.worker.asyncio.run(
-                self.worker._telegram_get_chat_member("portal_privacy", 123456789)
+                self.worker._telegram_get_chat_member("pokrov_vpn", 123456789)
             )
 
         self.assertFalse(is_member)

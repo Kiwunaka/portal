@@ -92,7 +92,6 @@ Telegram bonus verification depends on a valid public channel username.
 
 Current state:
 
-- configured candidate usernames are not valid channels
-- code-side diagnostics are fixed
-- runtime channel configuration still needs the real final channel username
-
+- active public channel: `@pokrov_vpn`
+- `@portal_service_bot` is present in that channel as administrator
+- production env should keep `PUBLIC_CHANNEL=pokrov_vpn` and `NEWS_CHANNEL_ID=@pokrov_vpn`

@@ -75,7 +75,7 @@ Behavior:
 
 ## Important Current Runtime Note
 
-The bonus code path and API are live, but the configured public channel is still unresolved.
+The bonus code path and API are live, and the active public channel is now `@pokrov_vpn`.
 
 What is already fixed:
 
@@ -85,11 +85,8 @@ What is already fixed:
   - `not_member`
   - `telegram_http_error`
 - the old misleading generic alert is no longer the only signal
-
-What still blocks full production success:
-
-- the actual channel username must point to a real Telegram channel
-- `@portal_service_bot` must be added to that channel with enough visibility for membership checks
+- `@portal_service_bot` is an administrator in `@pokrov_vpn`
+- production env should keep both `PUBLIC_CHANNEL` and `NEWS_CHANNEL_ID` aligned to `pokrov_vpn`
 
 ## Support Flow
 
@@ -105,4 +102,3 @@ The target support direction is consistent across app, WebApp, and helpbot:
 - [portal_bot/bot.py](C:/Users/kiwun/Documents/ai/VPN/portal_bot/bot.py)
 - [portal_bot/worker.py](C:/Users/kiwun/Documents/ai/VPN/portal_bot/worker.py)
 - [client session flow doc](C:/Users/kiwun/Documents/ai/VPN/external/client-fork/app/docs/architecture/app-first-session-flow.md)
-

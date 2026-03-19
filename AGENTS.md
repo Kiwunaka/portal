@@ -66,11 +66,11 @@ Canonical bots:
 - support bot: `@portal_privacy_helpbot`
 - feedback bot: `@portalfeedbackbot`
 
-Important current issue:
+Current channel configuration:
 
-- channel bonus verification is code-fixed, but the actual public channel username is still not resolved in production
-- both `portal_privacy` and `portal_news_channel` currently resolve as Telegram contacts, not channels
-- do not assume channel bonus flow is fully live until a valid channel username is provided and the bot is added there
+- public channel: `@pokrov_vpn`
+- verified channel URL: `https://t.me/pokrov_vpn/10`
+- `@portal_service_bot` is currently an administrator in that channel
 
 ## Secrets, Access, And Deploy Materials
 

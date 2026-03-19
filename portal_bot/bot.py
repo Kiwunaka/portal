@@ -230,7 +230,7 @@ PAID_LIMIT_IP = int(os.getenv("PAID_LIMIT_IP", "5"))
 FREE_TOTAL_GB = int(os.getenv("FREE_TOTAL_GB", "5"))
 FREE_SPEED_LIMIT_KBPS = int(os.getenv("FREE_SPEED_LIMIT_KBPS", "6250"))
 FREE_SPEED_MBIT = max(1, int(round((FREE_SPEED_LIMIT_KBPS * 8) / 1000)))
-NEWS_CHANNEL_ID = os.getenv("NEWS_CHANNEL_ID", "@portal_privacy")
+NEWS_CHANNEL_ID = os.getenv("NEWS_CHANNEL_ID", "@pokrov_vpn")
 STACK_TOTAL_DISCOUNT_CAP = float(os.getenv("STACK_TOTAL_DISCOUNT_CAP", "0.70"))
 FAMILY_SLOT_STARS = int(os.getenv("FAMILY_SLOT_STARS", "99"))
 FAMILY_SLOT_DAYS = int(os.getenv("FAMILY_SLOT_DAYS", "30"))
@@ -1545,8 +1545,8 @@ async def _try_activate_friend_gift_bonus(
 
 
 def _channel_name_for_url() -> str:
-    channel = (NEWS_CHANNEL_ID or "@portal_privacy").strip().lstrip("@")
-    return channel or "portal_privacy"
+    channel = (NEWS_CHANNEL_ID or "@pokrov_vpn").strip().lstrip("@")
+    return channel or "pokrov_vpn"
 
 
 def _checkout_ticket_for_user(
