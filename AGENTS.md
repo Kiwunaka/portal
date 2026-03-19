@@ -1,167 +1,152 @@
-﻿# Repository Agents
+# Repository Agents
 
-This file documents the intended "agents" (roles) and the rules they must follow when changing anything under this directory.
+Last updated: 2026-03-19
 
-## Global Rules
+This file is the operational knowledge contract for any agent working inside `C:\Users\kiwun\Documents\ai\VPN`.
 
-- Never commit or paste secrets (tokens, passwords, server IPs tied to auth) into the repo.
-- All credentials must be provided via environment variables and/or secret managers on the target server.
-- Any public-facing copy must not mention the word "VPN" unless explicitly required.
-- Prefer backward-compatible changes where possible (fallback to legacy single-node behavior if `nodes` table is empty).
-- For node operations, `PORTAL` DB is the source of truth; `3x-ui` must be treated as a node-local execution layer, not the authoritative inventory.
-- RUB payments are now provider-agnostic: `PORTAL` chooses from enabled providers via env-driven catalog, with `Stars` as the built-in Telegram path.
-- Payment-provider research or onboarding is allowed when explicitly requested by the owner or when replacing a failing active cashier.
-- For release work, default completion includes `push + deploy`; if this is blocked, document the blocker and rollback-safe state in docs.
-- After backend/frontend/infrastructure changes, a scope-appropriate smoke check is mandatory:
-  - backend: health + subscription + checkout + ticket endpoints;
-  - webapp/marketing: build + key routes + current Telegram links;
-  - ops: systemd service/timer status + metrics freshness.
+## Must-Read Order
 
-## Agents
+Before changing anything substantial, read these files in order:
 
-### backend-infra
-Scope:
-- `portal_bot/`
-- `scripts/`
-- `infra/`
-- root deployment scripts
+1. [Docs Index](C:/Users/kiwun/Documents/ai/VPN/docs/README.md)
+2. [Product Overview](C:/Users/kiwun/Documents/ai/VPN/docs/product/portal-vpn-product.md)
+3. [System Architecture](C:/Users/kiwun/Documents/ai/VPN/docs/architecture/system-overview.md)
+4. [App-First And Bonus Flows](C:/Users/kiwun/Documents/ai/VPN/docs/architecture/app-first-and-bonus-flows.md)
+5. [Deployment And Access](C:/Users/kiwun/Documents/ai/VPN/docs/operations/deployment-and-access.md)
+6. [Developer Guide](C:/Users/kiwun/Documents/ai/VPN/docs/developer/developer-guide.md)
 
-Responsibilities:
-- Multi-node data model (`nodes`, `user_nodes`) and idempotent migrations
-- 3x-ui panel integration per node
-- Subscription endpoint returns all countries
-- Node lifecycle via `PORTAL`: `drain -> resync -> disable`
-- Security hardening: remove hardcoded secrets, least-privilege access patterns
+For client work, additionally read:
 
-### frontend-ui
-Scope:
-- `webapp/` (Telegram WebApp / LK)
-- `marketing/` (sales site)
+- [Client Fork Docs Index](C:/Users/kiwun/Documents/ai/VPN/external/client-fork/app/docs/README.md)
+- [PORTAL VPN Product Spec](C:/Users/kiwun/Documents/ai/VPN/external/client-fork/app/docs/product/portal-vpn-v1-spec.md)
+- [App-First Session Flow](C:/Users/kiwun/Documents/ai/VPN/external/client-fork/app/docs/architecture/app-first-session-flow.md)
 
-Responsibilities:
-- Make LK fast, readable, and touch-friendly
-- Add "Countries" UI and quick actions
-- Implement kinetic typography on marketing site (primary visual language)
-- Keep copy compliant: do not mention "VPN"
+## Canonical Product Rules
 
-### marketing-copywriter
-Scope:
-- `marketing/`
-- `webapp/`
-- `portal_bot/`
-- `docs/` (copy packs and campaign playbooks)
+- Brand name: `PORTAL` for platform and `PORTAL VPN` for the client app.
+- Client UX direction: `consumer-first`.
+- Client account model: `app-first`.
+- Telegram is optional for first launch and normal usage.
+- Free trial duration: `5 days`.
+- Telegram reward duration: `+10 days`.
+- Default client runtime core: `sing-box`.
+- `xray` is advanced compatibility fallback only.
+- The app must provision a real working subscription after `Try free`.
+- Do not restore the old "import key first" UX as the primary journey.
 
-Responsibilities:
-- Write conversion-focused copy for landing, checkout, bot, and WebApp
-- Build soft-sell user journeys (welcome, T-3 renewal, retention/reactivation)
-- Prepare promo/campaign text packs for deep links and channel posts
-- Keep tone premium-friendly and claims realistic
-- Keep public copy compliant: do not mention "VPN"
+## Architecture Snapshot
 
-### docs
-Scope:
-- `docs/`
-- `USER_GUIDE_RU.md`, `ADMIN_GUIDE.md` (if/when updated)
+Main platform components:
 
-Responsibilities:
-- Clear setup/ops docs
-- Node bootstrap + migration playbook
-- Incident/runbook docs
+- `portal_bot/api.py`: FastAPI backend, public API, admin API, checkout, subscription delivery.
+- `portal_bot/bot.py`: main Telegram bot.
+- `portal_bot/helpbot.py`: support bot.
+- `portal_bot/worker.py`: jobs, retention, channel bonus guard, free-cycle operations.
+- `portal_bot/models.py`, `portal_bot/migrations.py`: data model and schema evolution.
+- `portal_bot/control_panel.py`, `portal_bot/panel_client.py`: 3x-ui and node synchronization layer.
+- `webapp/`: user cabinet and web-admin.
+- `marketing/`: public site and legal pages.
+- `external/client-fork/app/`: consumer VPN client fork for Windows and Android.
 
-### payments-integration
-Scope:
-- `portal_bot/`
-- `docs/`
-- `scripts/`
+Production source of truth:
 
-Responsibilities:
-- Maintain provider-agnostic RUB integration contracts (site/bot flows, callbacks, idempotency, allowlist / signature rules).
-- Keep payment env matrix, callback URLs, provider priority/fallback order, and runbooks consistent with production.
-- Ensure checkout ticket flow and metadata contracts stay backward-compatible.
+- Postgres from `DATABASE_URL`
 
-### qa-regression
-Scope:
-- `tests/`
-- `portal_bot/`
-- `webapp/`
+Not source of truth:
 
-Responsibilities:
-- Maintain fast smoke/regression checks for core user/admin flows
-- Catch behavioral regressions after backend/frontend changes
-- Keep test scenarios aligned with multi-node and free/paid routing logic
+- local SQLite files
+- local temporary DBs
+- local archived audit snapshots
 
-### release-ops
-Scope:
-- `scripts/`
-- `infra/`
-- root deployment scripts
+## Telegram Registry
 
-Responsibilities:
-- Safe deploy/rollback procedures for bot, API, and static apps
-- Post-deploy sanity checks (services, endpoints, subscription health)
-- Keep deployment steps idempotent and operator-friendly
+Canonical bots:
 
-### security-audit
-Scope:
-- whole repository
+- main bot: `@portal_service_bot`
+- support bot: `@portal_privacy_helpbot`
+- feedback bot: `@portalfeedbackbot`
 
-Responsibilities:
-- Detect secret leaks, weak defaults, and unsafe operational patterns
-- Enforce environment-only credential usage and least-privilege access
-- Maintain practical hardening checklist before production changes
+Important current issue:
 
-### support-automation
-Scope:
-- `portal_bot/`
-- `webapp/`
-- `docs/`
+- channel bonus verification is code-fixed, but the actual public channel username is still not resolved in production
+- both `portal_privacy` and `portal_news_channel` currently resolve as Telegram contacts, not channels
+- do not assume channel bonus flow is fully live until a valid channel username is provided and the bot is added there
 
-Responsibilities:
-- Build and evolve support workflows (FAQ, ticket intake, operator replies)
-- Keep support entrypoints configurable via env (no hardcoded usernames/tokens)
-- Align bot and WebApp support UX with the same status/diagnostic data
+## Secrets, Access, And Deploy Materials
 
-### network-stealth
-Scope:
-- `scripts/`
-- `infra/`
-- `docs/`
+Keep these locations intact:
 
-Responsibilities:
-- Node-level network checks (DNS leak, TLS/SNI consistency, country-fit defaults)
-- Safe rollout scripts for routing/security hardening on worker nodes
-- Maintain reproducible diagnostics and rollback instructions for network changes
+- `portal_bot/.env`
+- `VPN NODE SSH KEYS/`
+- `secrets for merchant/`
+- `ops-local/`
+- `external/client-fork/app/windows/`
 
-### metrics-analytics
-Scope:
-- `portal_bot/`
-- `scripts/`
-- `webapp/`
-- `docs/`
+Canonical control-plane host:
 
-Responsibilities:
-- Maintain daily aggregates for registrations, churn, revenue (RUB + Stars), node traffic and device counts.
-- Keep `portal-node-metrics.timer` runbook current and ensure freshness checks are documented.
-- Verify admin metrics DTO/API compatibility (`summary`, `metrics/status`, `metrics/timeseries`, `nodes/traffic`).
-- Maintain smoke scenarios for admin analytics screens and post-deploy metric sanity.
+- `82.21.114.104`
+
+Rules:
+
+- never paste raw tokens, passwords, or private keys into markdown
+- never commit secrets
+- document locations and usage, not values
+
+## Documentation Maintenance Rules
+
+Whenever you change behavior, update the matching docs in the same task.
+
+Minimum mapping:
+
+- product behavior -> `docs/product/portal-vpn-product.md`
+- backend or runtime architecture -> `docs/architecture/system-overview.md`
+- app-first or Telegram reward logic -> `docs/architecture/app-first-and-bonus-flows.md`
+- deploy, server access, release procedures -> `docs/operations/deployment-and-access.md`
+- developer workflow, test and build commands -> `docs/developer/developer-guide.md`
+- user-facing behavior or support flow -> `docs/user/portal-vpn-user-guide-ru.md`
+- client-specific UX or contracts -> `external/client-fork/app/docs/*`
+
+If older flat docs conflict with the canonical docs above, treat the canonical docs as correct and mark older notes as historical.
+
+## Release Rules
+
+For release work, default completion includes:
+
+- code change
+- tests or smoke checks
+- push
+- deploy
+
+If deploy is blocked, document:
+
+- what was changed
+- what was verified
+- what remains blocked
+- rollback-safe state
+
+## Cleanup Rules
+
+Safe to remove:
+
+- `__pycache__/`
+- `.pytest_cache/`
+- frontend build caches like `.next/`, `test-results/`, `tsconfig.tsbuildinfo`
+- temporary test DBs such as `portal_api_test_*.db`
+
+Do not remove without explicit reason:
+
+- secrets
+- signing materials
+- local access packs
+- archived evidence needed for operations
+- client release artifacts in `out/` if they are still needed
 
 ## Reporting Format
 
-For any substantial task, leave a short mini-log in docs or the handoff:
-- `Что проверил`
-- `Что нашёл`
-- `Что изменил`
-- `Как проверил`
-- `Что осталось / риск`
+For substantial tasks, leave a short handoff with:
 
-## Cross References
-
-- `docs/PROJECT_MAP_RU.md`
-- `docs/ISSUES_REGISTRY.md`
-- `docs/SMOKE_TEST_CHECKLIST_RU.md`
-- `docs/PAYMENTS_FLOW_RU.md`
-- `docs/BONUS_SYSTEM_RULES_RU.md`
-- `docs/METRICS_RU.md`
-- `docs/INFRA_PLAN_RU.md`
-- `docs/NODE_LIFECYCLE_RU.md`
-- `docs/FINAL_REPORT_RU.md`
+- `What I checked`
+- `What I found`
+- `What I changed`
+- `How I verified`
+- `What remains / risk`

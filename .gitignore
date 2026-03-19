@@ -21,6 +21,10 @@ __pycache__/
 .venv/
 venv/
 
+# Flutter / Dart
+.dart_tool/
+build/
+
 # Node / frontend
 node_modules/
 dist/
@@ -51,11 +55,13 @@ portal.db.*
 Thumbs.db
 .idea/
 .vscode/
+.superpowers/
 
 # x-ui DB backups (may include private keys)
 x-ui*.db
 
 # External client fork workspace (separate repository lives here)
+external/
 external/client-fork/app/
 external/client-fork/upstream/
 external/client-fork/.cache/
