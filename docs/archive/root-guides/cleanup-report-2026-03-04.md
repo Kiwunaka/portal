@@ -86,3 +86,4 @@
 ## guardrails updated
 - Added ignore rule:
   - `mockupv3/`
+> Historical file. Preserved as an old cleanup snapshot after the 2026-03-20 documentation refresh.

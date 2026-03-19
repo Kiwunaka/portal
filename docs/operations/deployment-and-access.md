@@ -1,10 +1,10 @@
 # Deployment And Access
 
-Last updated: 2026-03-19
+Last updated: 2026-03-20
 
-## Purpose
+## Document Status
 
-This document is the operational entrypoint for deployment, runtime access, and sensitive material locations.
+This file is living source of truth for deployment entrypoints, runtime access, and sensitive material locations.
 
 ## Control Plane
 
@@ -61,6 +61,22 @@ python scripts/remote_deploy_brain_portal_code.py --brain-ip 82.21.114.104 --res
 
 - [release_orchestrator.py](C:/Users/kiwun/Documents/ai/VPN/scripts/release_orchestrator.py)
 
+## Release Rule
+
+For release-oriented work, default completion includes:
+
+- code or config change
+- tests or smoke checks
+- push
+- deploy
+
+If deploy is blocked, record:
+
+- what changed
+- what was verified
+- what remains blocked
+- rollback-safe state
+
 ## Post-Deploy Checks
 
 At minimum, verify:
@@ -69,7 +85,7 @@ At minimum, verify:
 - app-first `start-trial`
 - support ticket creation
 - subscription endpoint availability
-- current Telegram links
+- Telegram linking / channel bonus path
 - `portal-api`, `portal-bot`, and `portal-helpbot` service status
 
 ## Client Build Artifacts
@@ -86,12 +102,11 @@ Important outputs:
 
 Do not delete release artifacts if they are still being distributed or verified.
 
-## Current Operational Risk
+## Current Telegram Runtime Alignment
 
-Telegram bonus verification depends on a valid public channel username.
-
-Current state:
+Current operational state:
 
 - active public channel: `@pokrov_vpn`
-- `@portal_service_bot` is present in that channel as administrator
-- production env should keep `PUBLIC_CHANNEL=pokrov_vpn` and `NEWS_CHANNEL_ID=@pokrov_vpn`
+- `@portal_service_bot` is an administrator in that channel
+- production env should keep `PUBLIC_CHANNEL=pokrov_vpn`
+- production env should keep `NEWS_CHANNEL_ID=@pokrov_vpn`

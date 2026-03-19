@@ -1,10 +1,14 @@
 # App-First And Bonus Flows
 
-Last updated: 2026-03-19
+Last updated: 2026-03-20
+
+## Document Status
+
+This file is living source of truth for app-first identity, Telegram linking, and Telegram reward logic.
 
 ## Goal
 
-Document the current app-first identity model and the Telegram bonus flow used by `PORTAL VPN`.
+Document the current app-first identity model and the live Telegram bonus flow used by `PORTAL VPN`.
 
 ## App-First Trial Flow
 
@@ -27,14 +31,12 @@ Document the current app-first identity model and the Telegram bonus flow used b
 
 Important concepts:
 
-- `install_id` is the stable client-side primary identifier
-- device context is used for abuse control and diagnostics
+- `install_id` is the stable client-side identifier
+- device context supports diagnostics and abuse control
 - app session token is used for subsequent app API calls
 - Telegram is optional and not required for account creation
 
-## Device Identity
-
-Preferred identity inputs:
+## Preferred Device Identity Inputs
 
 - `install_id`
 - `device_name`
@@ -44,59 +46,68 @@ Preferred identity inputs:
 - soft fingerprint signal
 - `last_ip`
 
-This supports a friendlier device limiter than a pure Telegram-only model.
+This supports a friendlier device model than a Telegram-only account design.
+
+## Live App-First Endpoints
+
+Current live backend contract:
+
+- `POST /api/client/session/start-trial`
+- `POST /api/client/telegram/link`
+- `POST /api/bonuses/channel/claim`
+
+Related live surfaces also exposed by the backend:
+
+- `GET /api/dashboard`
+- `GET /api/client/apps`
+- `GET /api/nodes/status`
+- `GET /api/bonuses`
+- ticket endpoints under `/api/tickets`
 
 ## Telegram Linking Flow
 
-Current live backend contract:
-
-- `POST /api/client/telegram/link`
-
-Behavior:
-
 1. app-first account requests Telegram linking
-2. backend issues a bot deep link to `@portal_service_bot`
+2. backend issues a deep link to `@portal_service_bot`
 3. user opens the bot link
-4. bot binds the app account to the Telegram identity
-5. later reward and recovery logic can use the linked Telegram account
+4. bot binds the app account to Telegram identity
+5. reward and recovery logic can then use the linked Telegram account
 
 ## Telegram Bonus Claim Flow
 
-Current live backend contract:
+1. app-first account must already be linked to Telegram
+2. the app calls `POST /api/bonuses/channel/claim`
+3. backend checks membership for the linked Telegram account
+4. if membership is valid, backend grants `+10 days`
+5. if not linked or not eligible, backend returns the correct reason
 
-- `POST /api/bonuses/channel/claim`
+## Runtime Notes
 
-Behavior:
+The bonus path is live and configured for:
 
-1. app-first account must already have linked Telegram
-2. backend checks Telegram membership for the linked account
-3. if membership is valid, backend grants `+10 days`
-4. if not linked, backend returns a link-required response
+- public channel: `@pokrov_vpn`
+- bot: `@portal_service_bot`
 
-## Important Current Runtime Note
+The worker and API distinguish channel failures such as:
 
-The bonus code path and API are live, and the active public channel is now `@pokrov_vpn`.
+- `channel_not_found`
+- `bot_not_in_channel`
+- `not_member`
+- `telegram_http_error`
 
-What is already fixed:
+Production environment should keep:
 
-- worker now distinguishes:
-  - `channel_not_found`
-  - `bot_not_in_channel`
-  - `not_member`
-  - `telegram_http_error`
-- the old misleading generic alert is no longer the only signal
-- `@portal_service_bot` is an administrator in `@pokrov_vpn`
-- production env should keep both `PUBLIC_CHANNEL` and `NEWS_CHANNEL_ID` aligned to `pokrov_vpn`
+- `PUBLIC_CHANNEL=pokrov_vpn`
+- `NEWS_CHANNEL_ID=@pokrov_vpn`
 
-## Support Flow
+## Support Flow Direction
 
-The target support direction is consistent across app, WebApp, and helpbot:
+Support direction should stay consistent across app, WebApp, and helpbot:
 
 - support messages should include device context
-- user should be able to contact support from inside the app
+- users should be able to start support from inside the app
 - helpbot remains a valid external fallback
 
-## Current Related Files
+## Related Files
 
 - [portal_bot/api.py](C:/Users/kiwun/Documents/ai/VPN/portal_bot/api.py)
 - [portal_bot/bot.py](C:/Users/kiwun/Documents/ai/VPN/portal_bot/bot.py)

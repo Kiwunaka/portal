@@ -118,3 +118,4 @@ Checkout ticket:
 - Поддерживать актуальный `FK_NOTIFY_IP_ALLOWLIST`.
 - Использовать только env/secret manager для платёжных ключей.
 - Перед релизом проверять идемпотентность callback и аудит-логи операций.
+> Historical file. Kept for reference after the 2026-03-20 documentation canonicalization pass.

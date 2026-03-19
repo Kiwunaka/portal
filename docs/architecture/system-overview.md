@@ -1,25 +1,35 @@
 # PORTAL System Overview
 
-Last updated: 2026-03-19
+Last updated: 2026-03-20
+
+## Document Status
+
+This file is living source of truth for the platform architecture map.
 
 ## Purpose
 
-This document is the canonical high-level architecture map for the `PORTAL` platform.
+`PORTAL` is a platform composed of:
+
+- a Python backend and Telegram control plane
+- a user cabinet and admin web surface
+- a marketing and legal site
+- a Flutter client fork for `PORTAL VPN`
+- operational scripts for deployment, node management, and release flow
 
 ## Main Components
 
 ### Control Plane
 
 - `portal_bot/api.py`
-  FastAPI backend for public API, admin API, payment callbacks, subscription delivery, and app-first flows.
+  FastAPI backend for health checks, app-first session bootstrap, payments, bonuses, tickets, public data, and admin APIs.
 - `portal_bot/bot.py`
-  Main Telegram bot for onboarding, billing, bonuses, referrals, and admin actions.
+  Main Telegram bot for billing, campaigns, referrals, and operator actions.
 - `portal_bot/helpbot.py`
   Dedicated support bot.
 - `portal_bot/worker.py`
-  Background jobs such as retention, channel bonus guard, and free-cycle resets.
+  Background jobs for retention, bonus enforcement, and free-cycle operations.
 - `portal_bot/models.py`
-  SQLAlchemy models.
+  SQLAlchemy model layer.
 - `portal_bot/migrations.py`
   Additive schema migration helpers.
 
@@ -30,20 +40,27 @@ This document is the canonical high-level architecture map for the `PORTAL` plat
 - node inventory and routing logic
 - 3x-ui panels as node-local execution layer
 
-Current node lifecycle principle:
+Node lifecycle rule:
 
-- `PORTAL` database chooses assignment and lifecycle
+- `PORTAL` database decides assignment and lifecycle
 - 3x-ui executes the resulting config
-- correct sequence for node retirement is `drain -> resync -> disable`
+- node retirement sequence is `drain -> resync -> disable`
 
 ### User Interfaces
 
 - `webapp/`
   user cabinet and web-admin
 - `marketing/`
-  public site, legal pages, public entrypoints
+  public website, legal pages, and public conversion flows
 - `external/client-fork/app/`
   `PORTAL VPN` consumer client for Android and Windows
+
+### Operational Tooling
+
+- `scripts/`
+  deploy, smoke, release, node, audit, and migration tooling
+- `infra/`
+  runtime units and infrastructure assets
 
 ## Data Source Of Truth
 
@@ -54,21 +71,14 @@ Production source of truth:
 Not source of truth:
 
 - local SQLite files
-- archived test databases
+- archived test DBs
 - audit snapshots
-- stale static reports
+- generated frontend caches
+- stale root markdown notes
 
 ## Current Primary Flows
 
-### Telegram-first platform flow
-
-1. user enters through bot or WebApp
-2. backend validates session or Telegram identity
-3. billing and bonus state updates in backend
-4. panel sync updates runtime user access
-5. subscription endpoint serves the client configuration
-
-### App-first client flow
+### App-First Client Flow
 
 1. client generates `install_id`
 2. user taps `Try free`
@@ -76,11 +86,20 @@ Not source of truth:
 4. backend returns a real subscription source
 5. client imports and activates the profile
 
-### Support flow
+### Telegram Linking And Reward Flow
+
+1. app-first account requests Telegram linking
+2. backend issues a deep link to `@portal_service_bot`
+3. bot links Telegram identity to the app-first account
+4. app calls reward claim API
+5. backend validates membership in `@pokrov_vpn`
+6. backend grants `+10 days` when eligible
+
+### Support Flow
 
 1. user opens support from app, WebApp, or helpbot
-2. message is stored as a support ticket thread
-3. operator responds through current support tooling
+2. the platform stores or routes the support thread
+3. operator responds through the current support tooling
 
 ## Runtime Hosts And Services
 
@@ -88,13 +107,33 @@ Canonical control-plane host:
 
 - `brain`: `82.21.114.104`
 
-Important runtime services:
+Important services:
 
 - `portal-api`
 - `portal-bot`
 - `portal-helpbot`
 - `caddy`
 - `x-ui`
+
+## Public API Shape
+
+Major currently live public and app-first routes in `portal_bot/api.py` include:
+
+- `GET /api/health`
+- `GET /api/public/plans`
+- `POST /api/auth/telegram/web-login`
+- `POST /api/client/session/start-trial`
+- `POST /api/client/telegram/link`
+- `GET /api/payments/providers`
+- `POST /api/payments/orders/create`
+- `POST /api/payments/orders/create-public`
+- `GET /api/dashboard`
+- `GET /api/client/apps`
+- `GET /api/nodes/status`
+- `POST /api/bonuses/channel/claim`
+- tickets and admin APIs under `/api/tickets` and `/api/admin/*`
+
+The backend exposes both public/app-first surfaces and a broader Telegram/admin-oriented API set. Keep docs aligned with the actual route inventory in `portal_bot/api.py`.
 
 ## Telegram Registry
 
@@ -106,6 +145,6 @@ Canonical bot usernames:
 
 Current channel state:
 
-- bonus verification code is live
 - verified public channel: `@pokrov_vpn`
+- bonus verification is live
 - `@portal_service_bot` is an administrator in that channel

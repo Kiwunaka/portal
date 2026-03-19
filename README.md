@@ -1,77 +1,39 @@
-# PORTAL Platform Workspace
+# PORTAL Workspace
 
-Last updated: 2026-03-19
+Last updated: 2026-03-20
 
-This repository is the main workspace for the `PORTAL` backend, bot layer, WebApp, marketing site, operational scripts, and project documentation.
+This repository is the main workspace for the `PORTAL` platform:
 
-The consumer client application lives in a separate repository workspace under [external/client-fork/app](C:/Users/kiwun/Documents/ai/VPN/external/client-fork/app), but this repository remains the source of truth for backend contracts, deploy flow, and platform architecture.
+- `portal_bot/` backend, Telegram bots, worker jobs, node sync
+- `webapp/` user cabinet and web-admin
+- `marketing/` public site and legal pages
+- `scripts/` deploy, smoke, migration, and ops tooling
+- `docs/` canonical platform documentation
+- `external/client-fork/app/` `PORTAL VPN` Flutter client fork
 
-## What Lives Here
+## Start Here
 
-- `portal_bot/`  
-  FastAPI backend, main Telegram bot, support bot, worker jobs, data model, panel integration.
-- `webapp/`  
-  User cabinet and web-admin frontend.
-- `marketing/`  
-  Public website and legal pages.
-- `scripts/`  
-  Deploy, smoke, migration, ops, and release tooling.
-- `infra/`  
-  Service and timer units, runtime infra assets.
-- `docs/`  
-  Current source-of-truth docs and historical notes.
-- `external/client-fork/app/`  
-  `PORTAL VPN` Android/Windows client fork.
+- Agent or contributor: [AGENTS.md](C:/Users/kiwun/Documents/ai/VPN/AGENTS.md)
+- Documentation index: [docs/README.md](C:/Users/kiwun/Documents/ai/VPN/docs/README.md)
+- Product overview: [docs/product/portal-vpn-product.md](C:/Users/kiwun/Documents/ai/VPN/docs/product/portal-vpn-product.md)
+- Deployment and access: [docs/operations/deployment-and-access.md](C:/Users/kiwun/Documents/ai/VPN/docs/operations/deployment-and-access.md)
+- Developer workflow: [docs/developer/developer-guide.md](C:/Users/kiwun/Documents/ai/VPN/docs/developer/developer-guide.md)
+- User guide: [docs/user/portal-vpn-user-guide-ru.md](C:/Users/kiwun/Documents/ai/VPN/docs/user/portal-vpn-user-guide-ru.md)
+- Client docs: [external/client-fork/app/docs/README.md](C:/Users/kiwun/Documents/ai/VPN/external/client-fork/app/docs/README.md)
 
-## Source Of Truth Docs
+## Current Product Facts
 
-Start here:
-
-- [Docs Index](C:/Users/kiwun/Documents/ai/VPN/docs/README.md)
-- [Product Overview](C:/Users/kiwun/Documents/ai/VPN/docs/product/portal-vpn-product.md)
-- [System Architecture](C:/Users/kiwun/Documents/ai/VPN/docs/architecture/system-overview.md)
-- [App-First And Bonus Flows](C:/Users/kiwun/Documents/ai/VPN/docs/architecture/app-first-and-bonus-flows.md)
-- [Deployment And Access](C:/Users/kiwun/Documents/ai/VPN/docs/operations/deployment-and-access.md)
-- [Developer Guide](C:/Users/kiwun/Documents/ai/VPN/docs/developer/developer-guide.md)
-- [User Guide (RU)](C:/Users/kiwun/Documents/ai/VPN/docs/user/portal-vpn-user-guide-ru.md)
-
-## Current Product Direction
-
-- Final product name: `PORTAL VPN`
-- Platforms in current client scope: `Android`, `Windows`
-- UX strategy: `consumer-first`
+- Brand: `PORTAL` / `PORTAL VPN`
+- Client strategy: `consumer-first`
 - Identity strategy: `app-first`
-- Free trial: `5 days`
-- Telegram bonus: `+10 days`
+- Trial: `5 days`
+- Telegram reward: `+10 days`
 - Default client core: `sing-box`
-- `xray` remains advanced fallback only
+- Public channel: `@pokrov_vpn`
+- Control-plane host: `82.21.114.104`
 
-## Secrets And Access
+## Safety
 
-Secrets are intentionally not duplicated in markdown.
-
-Canonical local locations:
-
-- runtime env: `portal_bot/.env`
-- node/server access materials: `VPN NODE SSH KEYS/`
-- payment and merchant materials: `secrets for merchant/`
-- local ops snapshots: `ops-local/`
-- Windows signing materials for client fork: `external/client-fork/app/windows/`
-
-Canonical control-plane host:
-
-- `brain`: `82.21.114.104`
-
-## Safety Rules
-
-- Do not copy raw tokens, passwords, or private keys into docs or commits.
-- Do not treat local SQLite files as production source of truth.
-- Production user, node, and subscription state lives in Postgres from `DATABASE_URL`.
-- Keep docs current whenever contracts, flows, deploy scripts, or operator actions change.
-
-## Fast Start For Operators
-
-1. Read [Deployment And Access](C:/Users/kiwun/Documents/ai/VPN/docs/operations/deployment-and-access.md).
-2. Read [System Architecture](C:/Users/kiwun/Documents/ai/VPN/docs/architecture/system-overview.md).
-3. For client-facing app work, also read [Client Fork Docs](C:/Users/kiwun/Documents/ai/VPN/external/client-fork/app/docs/README.md).
-
+- Never commit secrets or private keys.
+- Production truth lives in Postgres from `DATABASE_URL`.
+- Root-level historical guides were moved under `docs/archive/`; use the canonical docs above instead.

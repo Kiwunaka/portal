@@ -1,43 +1,47 @@
 # PORTAL VPN Product Overview
 
-Last updated: 2026-03-19
+Last updated: 2026-03-20
+
+## Document Status
+
+This file is living source of truth for product direction and user-facing product rules.
 
 ## Product Names
 
 - platform brand: `PORTAL`
 - client application: `PORTAL VPN`
 
-## Current Product Strategy
+## Product Strategy
 
-`PORTAL VPN` is a `consumer-first`, `app-first` VPN client for:
+`PORTAL VPN` is a `consumer-first`, `app-first` VPN product for:
 
 - `Android`
 - `Windows`
 
-The product goal is simple:
+Primary user goal:
 
 1. open the app
 2. tap `Try free`
 3. receive a real working subscription
 4. tap `Connect`
 
-Telegram is not required for first launch, trial activation, or normal usage.
+Telegram is optional for first launch, free trial activation, and normal daily use.
 
-## Core Product Decisions
+## Locked Product Rules
 
 - primary UX: `consumer-first`
 - primary identity model: `app-first`
 - default runtime core: `sing-box`
-- `xray` availability: advanced compatibility fallback only
-- trial duration: `5 days`
+- `xray` role: advanced compatibility fallback only
+- free trial: `5 days`
 - Telegram reward: `+10 days`
-- product language priority: Russian must be first-class
+- Russian is a first-class user language
 
-## Main User Surfaces
+## Current User Surfaces
 
 ### Client App
 
-Primary tabs:
+Primary navigation:
 
 1. `VPN`
 2. `Locations`
@@ -47,38 +51,38 @@ Primary tabs:
 
 ### Telegram
 
-Telegram remains useful for:
+Telegram remains in the product for:
 
 - optional account linking
-- growth and community
-- recovery flows
-- support entrypoints outside the app
+- bonus claim flow
+- recovery scenarios
+- community and announcements
+- external support entrypoints
 
 ### WebApp And Marketing
 
-The platform still includes:
-
-- `webapp/` for account and admin scenarios
-- `marketing/` for public website and legal pages
+- `webapp/` handles account and admin scenarios
+- `marketing/` handles the public website, checkout entrypoints, and legal pages
 
 ## Trial And Bonus Rules
 
-### Trial
+### Free Trial
 
 - every valid first device account can receive `5 days`
-- trial must create a real backend account and a real working subscription
-- trial is never decorative UI-only state
+- trial must create a real backend account, device, session, and working subscription source
+- trial must never be decorative UI-only state
 
-### Telegram Bonus
+### Telegram Reward
 
-- bonus value: `+10 days`
-- bonus requires Telegram linking to the app-first account
-- bonus additionally requires membership verification against the configured public channel
-- current verified public channel: `@pokrov_vpn`
+- reward value: `+10 days`
+- the app-first account must first link Telegram
+- reward validation then checks membership in the configured public channel
+- active public channel: `@pokrov_vpn`
+- `@portal_service_bot` is an administrator in that channel
 
 ## Advanced Settings Policy
 
-Advanced networking controls stay in the product, but they must not dominate the first-layer journey.
+Advanced networking controls remain available, but they must not dominate first-run UX.
 
 Hidden from first layer:
 
@@ -90,7 +94,7 @@ Hidden from first layer:
 - TLS tricks
 - logs
 - Clash API
-- manual subscription import as primary CTA
+- manual import as the primary CTA
 
 Visible in advanced:
 
@@ -102,7 +106,7 @@ Visible in advanced:
 
 ## Branding Rules
 
-The client and public UX must be fully branded as `PORTAL` / `PORTAL VPN`.
+All public and client-facing surfaces must be branded as `PORTAL` / `PORTAL VPN`.
 
 Replace or remove:
 
@@ -110,12 +114,22 @@ Replace or remove:
 - old launcher and tray assets
 - legacy bot names
 - old support usernames
-- demo nodes and fake platform labels
+- fake demo branding
 
 Current logo source for the client fork:
 
 - [logogo.png](C:/Users/kiwun/Documents/ai/VPN/external/logogo.png)
 
-## Current Known Product Risk
+## Support Direction
 
-The Telegram bonus path is code-ready but not fully operational until a real Telegram channel username is configured and `@portal_service_bot` is added there.
+Support should be reachable from:
+
+- the client app
+- the WebApp
+- helpbot `@portal_privacy_helpbot`
+
+Support payloads should carry enough device and app context for operator diagnosis.
+
+## Product Risk Focus
+
+Current major risks are not around channel configuration anymore. The main remaining risk is documentation and UX drift between the platform canon and the client fork while app-first rollout continues.

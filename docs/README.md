@@ -1,45 +1,80 @@
 # PORTAL Documentation Index
 
-Last updated: 2026-03-19
+Last updated: 2026-03-20
 
-This directory contains both living documentation and historical notes.
+This directory is split into two classes of material:
 
-The files below are the current source of truth. Start with them first.
+- living source-of-truth documentation
+- historical, audit, and forensic records
 
-## Source Of Truth
+Use the role-based paths below first. If you need older context, go to the archive sections afterward.
 
-### Product
+## Start Here As Agent
 
-- [PORTAL VPN Product Overview](C:/Users/kiwun/Documents/ai/VPN/docs/product/portal-vpn-product.md)
+1. [Root Agent Contract](C:/Users/kiwun/Documents/ai/VPN/AGENTS.md)
+2. [Product Overview](C:/Users/kiwun/Documents/ai/VPN/docs/product/portal-vpn-product.md)
+3. [System Overview](C:/Users/kiwun/Documents/ai/VPN/docs/architecture/system-overview.md)
+4. [App-First And Bonus Flows](C:/Users/kiwun/Documents/ai/VPN/docs/architecture/app-first-and-bonus-flows.md)
+5. [Deployment And Access](C:/Users/kiwun/Documents/ai/VPN/docs/operations/deployment-and-access.md)
+6. [Developer Guide](C:/Users/kiwun/Documents/ai/VPN/docs/developer/developer-guide.md)
+7. [Repository Map](C:/Users/kiwun/Documents/ai/VPN/docs/developer/repository-map.md)
 
-### Architecture
+## Start Here As Developer
 
+- [Developer Guide](C:/Users/kiwun/Documents/ai/VPN/docs/developer/developer-guide.md)
+- [Repository Map](C:/Users/kiwun/Documents/ai/VPN/docs/developer/repository-map.md)
 - [System Overview](C:/Users/kiwun/Documents/ai/VPN/docs/architecture/system-overview.md)
 - [App-First And Bonus Flows](C:/Users/kiwun/Documents/ai/VPN/docs/architecture/app-first-and-bonus-flows.md)
 
-### Operations
+## Start Here As Operator
 
 - [Deployment And Access](C:/Users/kiwun/Documents/ai/VPN/docs/operations/deployment-and-access.md)
+- [System Overview](C:/Users/kiwun/Documents/ai/VPN/docs/architecture/system-overview.md)
+- [Product Overview](C:/Users/kiwun/Documents/ai/VPN/docs/product/portal-vpn-product.md)
+
+## Start Here As User
+
+- [PORTAL VPN User Guide (RU)](C:/Users/kiwun/Documents/ai/VPN/docs/user/portal-vpn-user-guide-ru.md)
+
+## Start Here For Client Fork
+
+- [Client Docs Index](C:/Users/kiwun/Documents/ai/VPN/external/client-fork/app/docs/README.md)
+- [Client Product Spec](C:/Users/kiwun/Documents/ai/VPN/external/client-fork/app/docs/product/portal-vpn-v1-spec.md)
+- [Client App-First Session Flow](C:/Users/kiwun/Documents/ai/VPN/external/client-fork/app/docs/architecture/app-first-session-flow.md)
+
+## Living Source Of Truth
+
+### Product
+
+- [docs/product/portal-vpn-product.md](C:/Users/kiwun/Documents/ai/VPN/docs/product/portal-vpn-product.md)
+
+### Architecture
+
+- [docs/architecture/system-overview.md](C:/Users/kiwun/Documents/ai/VPN/docs/architecture/system-overview.md)
+- [docs/architecture/app-first-and-bonus-flows.md](C:/Users/kiwun/Documents/ai/VPN/docs/architecture/app-first-and-bonus-flows.md)
+
+### Operations
+
+- [docs/operations/deployment-and-access.md](C:/Users/kiwun/Documents/ai/VPN/docs/operations/deployment-and-access.md)
 
 ### Developer
 
-- [Developer Guide](C:/Users/kiwun/Documents/ai/VPN/docs/developer/developer-guide.md)
+- [docs/developer/developer-guide.md](C:/Users/kiwun/Documents/ai/VPN/docs/developer/developer-guide.md)
+- [docs/developer/repository-map.md](C:/Users/kiwun/Documents/ai/VPN/docs/developer/repository-map.md)
 
 ### User
 
-- [User Guide (RU)](C:/Users/kiwun/Documents/ai/VPN/docs/user/portal-vpn-user-guide-ru.md)
+- [docs/user/portal-vpn-user-guide-ru.md](C:/Users/kiwun/Documents/ai/VPN/docs/user/portal-vpn-user-guide-ru.md)
 
 ### Client Fork
 
-- [Client Docs Index](C:/Users/kiwun/Documents/ai/VPN/external/client-fork/app/docs/README.md)
+- [external/client-fork/app/docs/README.md](C:/Users/kiwun/Documents/ai/VPN/external/client-fork/app/docs/README.md)
 
-## Historical And Supporting Material
+## Historical Records
 
-These older files still contain useful context, audit history, and incident evidence, but they are no longer the first place to look for current truth:
+- [Archive Guide](C:/Users/kiwun/Documents/ai/VPN/docs/archive/README.md)
+- dated flat docs in `docs/*.md`
+- audit evidence in `docs/audit-artifacts/`
+- archived root guides in `docs/archive/root-guides/`
 
-- flat docs in `docs/*.md`
-- audits in `docs/audit-artifacts/`
-- earlier snapshots such as `23-global-architecture-and-capacity-2026-02-09.md`
-
-If an older file conflicts with a source-of-truth file, prefer the source-of-truth file and update or annotate the older note later.
-
+If a historical file conflicts with a living source-of-truth doc, prefer the living doc and then relabel or archive the older note.
