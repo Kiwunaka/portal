@@ -11,7 +11,7 @@ async function loadFeaturedReviews(): Promise<MarketingReview[]> {
   const apiBase = (config.apiBaseUrl || "https://api.pokrov.space").replace(/\/+$/, "");
 
   try {
-    const response = await fetch(`${apiBase}/api/reviews`, { cache: "no-store" });
+    const response = await fetch(`${apiBase}/api/reviews`);
     if (!response.ok) return [];
 
     const data = (await response.json()) as {
