@@ -113,6 +113,21 @@ class Review(Base):
     is_featured = Column(Boolean, default=False)
 
 
+class FeedbackEntry(Base):
+    __tablename__ = "feedback_entries"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    tg_id = Column(BigInteger, index=True, nullable=False)
+    username = Column(String(100), nullable=True)
+    category = Column(String(32), default="general", nullable=False)
+    text = Column(String(1000), nullable=False)
+    status = Column(String(20), default="new", nullable=False)
+    source = Column(String(32), default="webapp", nullable=False)
+    review_id = Column(Integer, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    reviewed_at = Column(DateTime, nullable=True)
+
+
 class PromoCode(Base):
     __tablename__ = "promo_codes"
 

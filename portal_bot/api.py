@@ -1,4 +1,4 @@
-# -*- coding: utf-8 -*-
+﻿# -*- coding: utf-8 -*-
 """
 Portal API for Telegram WebApp and Subscription endpoint.
 
@@ -52,6 +52,7 @@ from models import (
     ExternalOrder,
     ExternalPaymentEvent,
     FamilySlot,
+    FeedbackEntry,
     GiftCard,
     IncentiveCampaign,
     KeyActionHistory,
@@ -114,8 +115,11 @@ from free_cycle_service import ensure_user_free_cycle_state, mark_user_became_fr
 from gift_cards_service import redeem_gift_card as redeem_gift_card_service
 from web_auth_service import (
     SESSION_TTL_SECONDS,
+    build_telegram_oidc_authorize_url,
     create_web_session_token,
+    exchange_telegram_oidc_code,
     verify_telegram_login_payload,
+    verify_telegram_oidc_state_token,
     verify_web_session_token,
 )
 
@@ -143,10 +147,10 @@ FREE_TOTAL_GB = env_int("FREE_TOTAL_GB", 30)
 FREE_LIMIT_IP = env_int("FREE_LIMIT_IP", 1)
 PAID_LIMIT_IP = env_int("PAID_LIMIT_IP", 5)
 FREE_SPEED_LIMIT_KBPS = env_int("FREE_SPEED_LIMIT_KBPS", 6250)
-SUPPORT_USERNAME = (os.getenv("SUPPORT_USERNAME") or "portal_privacy_helpbot").lstrip("@")
+SUPPORT_USERNAME = (os.getenv("SUPPORT_USERNAME") or "pokrov_supportbot").lstrip("@")
 SUPPORT_USERNAME = (os.getenv("SUPPORT_BOT_USERNAME") or SUPPORT_USERNAME).lstrip("@")
 PUBLIC_CHANNEL = (os.getenv("PUBLIC_CHANNEL") or "pokrov_vpn").lstrip("@")
-BOT_USERNAME = (os.getenv("BOT_USERNAME") or "portal_service_bot").lstrip("@")
+BOT_USERNAME = (os.getenv("BOT_USERNAME") or "pokrov_vpnbot").lstrip("@")
 REFERRAL_BONUS_DAYS = env_int("REFERRAL_BONUS_DAYS", 15)
 REFERRAL_ANTIFRAUD_HOURS = max(0, env_int("REFERRAL_ANTIFRAUD_HOURS", 24))
 REFERRAL_ANTIFRAUD_MAX_WAIT_HOURS = max(1, env_int("REFERRAL_ANTIFRAUD_MAX_WAIT_HOURS", 168))
@@ -629,6 +633,11 @@ class TelegramWebLoginIn(BaseModel):
     photo_url: str | None = None
 
 
+class TelegramOidcFinishIn(BaseModel):
+    code: str = Field(min_length=4, max_length=4096)
+    state: str = Field(min_length=16, max_length=4096)
+
+
 class AppStartTrialIn(BaseModel):
     install_id: str = Field(min_length=8, max_length=128)
     device_name: str = Field(min_length=2, max_length=120)
@@ -643,6 +652,13 @@ class AppStartTrialIn(BaseModel):
 class ReviewCreateIn(BaseModel):
     rating: int = Field(ge=1, le=5)
     text: str = Field(min_length=1, max_length=500)
+
+
+class FeedbackCreateIn(BaseModel):
+    category: str = Field(default="general", min_length=2, max_length=32)
+    text: str = Field(min_length=1, max_length=1000)
+    source: str = Field(default="webapp", min_length=2, max_length=32)
+    review_id: int | None = Field(default=None, ge=1)
 
 
 class AdminMessageIn(BaseModel):
@@ -1296,9 +1312,38 @@ def _mask_public_username(username: str | None) -> str:
     raw = _normalize_mojibake(username).strip()
     if raw.startswith("@"):
         raw = raw[1:].strip()
+    raw = re.sub(r"\s+", "", raw)
     if not raw:
         return "Пользователь"
-    return f"{raw[:2]}***"
+    return f"{raw[:4]}****"
+
+
+def _normalize_feedback_text(text_value: str | None, *, max_len: int) -> str:
+    normalized = _normalize_mojibake(text_value or "")
+    normalized = re.sub(r"\s+", " ", normalized).strip()
+    return normalized[:max_len]
+
+
+_FEEDBACK_CATEGORY_ALLOWLIST = {"general", "idea", "bug", "support", "review", "billing"}
+_FEEDBACK_SOURCE_ALLOWLIST = {"webapp", "marketing", "bot", "support"}
+
+
+def _normalize_feedback_category(raw_value: str | None) -> str:
+    value = re.sub(r"[^a-z0-9_]+", "", str(raw_value or "").strip().lower())
+    if not value:
+        return "general"
+    if value not in _FEEDBACK_CATEGORY_ALLOWLIST:
+        raise HTTPException(status_code=400, detail="Unsupported feedback category")
+    return value
+
+
+def _normalize_feedback_source(raw_value: str | None) -> str:
+    value = re.sub(r"[^a-z0-9_]+", "", str(raw_value or "").strip().lower())
+    if not value:
+        return "webapp"
+    if value not in _FEEDBACK_SOURCE_ALLOWLIST:
+        raise HTTPException(status_code=400, detail="Unsupported feedback source")
+    return value
 
 
 def _is_admin_tg(tg_id: int) -> bool:
@@ -1714,10 +1759,10 @@ def _safe_public_url(value: str) -> str:
 
 
 def _public_webapp_url() -> str:
-    host = str(getattr(Settings, "PUBLIC_WEB_DOMAIN", "") or "").strip().strip("/")
-    if host:
-        return f"https://{host}/webapp/"
-    return _safe_public_url(getattr(Settings, "WEBAPP_URL", "")) or "/webapp/"
+    configured = _safe_public_url(getattr(Settings, "WEBAPP_URL", ""))
+    if configured:
+        return configured
+    return "https://app.pokrov.space/"
 
 
 def _public_checkout_url() -> str:
@@ -1726,15 +1771,14 @@ def _public_checkout_url() -> str:
         try:
             parsed = urlparse(configured)
             cfg_host = (parsed.hostname or "").lower().strip()
-            if cfg_host and not cfg_host.endswith("kiwunaka.space"):
+            if cfg_host and cfg_host != "pay.pokrov.space":
                 return configured
         except Exception:
             return configured
 
-    host = str(getattr(Settings, "PUBLIC_WEB_DOMAIN", "") or "").strip().strip("/")
-    if host:
-        return f"https://{host}/checkout/"
-    return configured
+    if _safe_public_url(getattr(Settings, "PAY_CHECKOUT_URL", "")):
+        return configured
+    return "https://pay.pokrov.space/checkout/"
 
 
 def _checkout_runtime_errors() -> list[str]:
@@ -1765,7 +1809,7 @@ def _ensure_checkout_runtime_ready() -> None:
 
 
 def _payment_callback_base_url() -> str:
-    return _safe_public_url(Settings.PUBLIC_API_BASE_URL) or f"https://{(Settings.PUBLIC_API_DOMAIN or Settings.HOST_DOMAIN or 'kiwunaka.space').strip().strip('/')}"
+    return _safe_public_url(Settings.PUBLIC_API_BASE_URL) or f"https://{(Settings.PUBLIC_API_DOMAIN or Settings.HOST_DOMAIN or 'api.pokrov.space').strip().strip('/')}"
 
 
 def _pay_success_url(provider: str = "") -> str:
@@ -1803,7 +1847,7 @@ def _provider_chargeback_url(provider: str) -> str:
 
 
 def _checkout_url_for_user(*, tg_id: int, plan_code: str = "", promo_code: str = "", campaign_key: str = "", source: str = "bot") -> str:
-    base = _public_checkout_url() or f"https://{(Settings.PUBLIC_WEB_DOMAIN or 'portal-privacy.online').strip().strip('/')}/checkout/"
+    base = _public_checkout_url() or "https://pay.pokrov.space/checkout/"
     parsed = urlparse(base)
     q = dict(parse_qsl(parsed.query, keep_blank_values=True))
     q["source"] = (source or "bot").strip().lower()
@@ -3216,6 +3260,50 @@ async def auth_telegram_web_login(payload: TelegramWebLoginIn) -> dict:
     }
 
 
+@app.get("/api/auth/telegram/oidc/start")
+async def auth_telegram_oidc_start() -> dict:
+    try:
+        payload = build_telegram_oidc_authorize_url()
+    except RuntimeError as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+    return {
+        "ok": True,
+        "mode": "oidc",
+        "auth_url": payload["auth_url"],
+        "redirect_uri": payload["redirect_uri"],
+    }
+
+
+@app.post("/api/auth/telegram/oidc/finish")
+async def auth_telegram_oidc_finish(payload: TelegramOidcFinishIn) -> dict:
+    if not verify_telegram_oidc_state_token(payload.state):
+        raise HTTPException(status_code=401, detail="Invalid Telegram OAuth state")
+    try:
+        verified = await exchange_telegram_oidc_code(
+            code=payload.code,
+            state_token=payload.state,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=401, detail=str(exc)) from exc
+    except RuntimeError as exc:
+        raise HTTPException(status_code=502, detail=str(exc)) from exc
+
+    tg_id = int(verified.get("id") or 0)
+    if tg_id <= 0:
+        raise HTTPException(status_code=401, detail="Invalid Telegram user")
+    username = (verified.get("preferred_username") or verified.get("username") or "").strip() or None
+    _ensure_user_row_for_login(tg_id=tg_id, username=username)
+    token = create_web_session_token(tg_id=tg_id, username=username)
+    if not token:
+        raise HTTPException(status_code=500, detail="Web session is not configured")
+    return {
+        "ok": True,
+        "token": token,
+        "user": {"id": tg_id, "username": username},
+        "expires_in": int(SESSION_TTL_SECONDS),
+    }
+
+
 @app.get("/api/auth/session")
 async def auth_session(request: Request, x_telegram_init_data: str = Header(default="")) -> dict:
     auth_user = _require_auth_user(x_telegram_init_data, request=request)
@@ -3313,7 +3401,7 @@ async def client_telegram_link_start(request: Request, x_telegram_init_data: str
         if not linked_id:
             start_code = _create_app_telegram_start_code(s, account_tg_id=int(user.tg_id))
         s.commit()
-        bot_username = (BOT_USERNAME or "portal_service_bot").lstrip("@")
+        bot_username = (BOT_USERNAME or "pokrov_vpnbot").lstrip("@")
         channel_username = (PUBLIC_CHANNEL or "").lstrip("@").strip()
         return {
             "ok": True,
@@ -3964,16 +4052,22 @@ async def featured_reviews() -> dict:
     s = SessionLocal()
     try:
         rows = s.query(Review).filter_by(is_featured=True).order_by(Review.created_at.desc()).limit(10).all()
-        return {
-            "reviews": [
+        reviews = []
+        for row in rows:
+            text_value = _normalize_feedback_text(row.text, max_len=500)
+            if not text_value:
+                continue
+            reviews.append(
                 {
-                    "username": _mask_public_username(r.username),
-                    "rating": r.rating,
-                    "text": _normalize_mojibake(r.text or ""),
-                    "date": r.created_at.strftime("%d.%m.%Y") if r.created_at else "",
+                    "username": _mask_public_username(row.username),
+                    "rating": int(row.rating or 0),
+                    "text": text_value,
+                    "date": row.created_at.strftime("%d.%m.%Y") if row.created_at else "",
                 }
-                for r in rows
-            ]
+            )
+        return {
+            "reviews": reviews,
+            "updated_at": _utcnow().isoformat() + "Z",
         }
     finally:
         s.close()
@@ -4869,16 +4963,54 @@ async def create_review(payload: ReviewCreateIn, request: Request, x_telegram_in
         db_user = s.query(User).filter_by(tg_id=tg_id).first()
         if not db_user:
             raise HTTPException(status_code=404, detail="User not found")
+        review_text = _normalize_feedback_text(payload.text, max_len=500)
+        if len(review_text) < 3:
+            raise HTTPException(status_code=400, detail="Review text is too short")
         row = Review(
             tg_id=tg_id,
-            username=db_user.username or auth_user.get("username"),
+            username=db_user.username or db_user.linked_telegram_username or auth_user.get("username"),
             rating=int(payload.rating),
-            text=(payload.text or "").strip()[:500],
+            text=review_text,
             is_featured=False,
         )
         s.add(row)
         s.commit()
         return {"ok": True, "review_id": row.id}
+    finally:
+        s.close()
+
+
+@app.post("/api/feedback")
+async def create_feedback(payload: FeedbackCreateIn, request: Request, x_telegram_init_data: str = Header(default="")) -> dict:
+    auth_user = _require_auth_user(x_telegram_init_data, request=request)
+    tg_id = int(auth_user.get("id", 0))
+    s = SessionLocal()
+    try:
+        db_user = s.query(User).filter_by(tg_id=tg_id).first()
+        if not db_user:
+            raise HTTPException(status_code=404, detail="User not found")
+        feedback_text = _normalize_feedback_text(payload.text, max_len=1000)
+        if len(feedback_text) < 5:
+            raise HTTPException(status_code=400, detail="Feedback text is too short")
+
+        review_id = int(payload.review_id or 0) or None
+        if review_id is not None:
+            review_row = s.query(Review).filter_by(id=review_id, tg_id=tg_id).first()
+            if not review_row:
+                raise HTTPException(status_code=404, detail="Review not found")
+
+        row = FeedbackEntry(
+            tg_id=tg_id,
+            username=db_user.username or db_user.linked_telegram_username or auth_user.get("username"),
+            category=_normalize_feedback_category(payload.category),
+            text=feedback_text,
+            status="new",
+            source=_normalize_feedback_source(payload.source),
+            review_id=review_id,
+        )
+        s.add(row)
+        s.commit()
+        return {"ok": True, "feedback_id": row.id, "status": row.status}
     finally:
         s.close()
 
@@ -6714,7 +6846,7 @@ async def admin_start_links(x_telegram_init_data: str = Header(default=""), incl
         if not include_inactive:
             q = q.filter(StartLink.is_active == True)
         rows = q.order_by(StartLink.updated_at.desc(), StartLink.id.desc()).limit(500).all()
-        bot_username = (BOT_USERNAME or "portal_service_bot").lstrip("@")
+        bot_username = (BOT_USERNAME or "pokrov_vpnbot").lstrip("@")
         return {
             "start_links": [
                 {
@@ -6858,10 +6990,10 @@ async def admin_campaign_links_build(payload: AdminCampaignLinksBuildIn, x_teleg
         start_payload = f"campaign_{campaign}"
     if start_payload and len(start_payload) > 64:
         raise HTTPException(status_code=400, detail="Telegram start payload exceeds 64 chars")
-    bot_username = (BOT_USERNAME or "portal_service_bot").lstrip("@")
+    bot_username = (BOT_USERNAME or "pokrov_vpnbot").lstrip("@")
     bot_start_link = f"https://t.me/{bot_username}" + (f"?start={start_payload}" if start_payload else "")
 
-    base_checkout = _public_checkout_url() or f"https://{(Settings.PUBLIC_WEB_DOMAIN or 'portal-privacy.online').strip().strip('/')}/checkout/"
+    base_checkout = _public_checkout_url() or "https://pay.pokrov.space/checkout/"
     parsed = urlparse(base_checkout)
     q = dict(parse_qsl(parsed.query, keep_blank_values=True))
     q["source"] = source or "bot"
@@ -6875,7 +7007,7 @@ async def admin_campaign_links_build(payload: AdminCampaignLinksBuildIn, x_teleg
     # so the "checkout" action must stay in a safe bot-first flow.
     checkout_link = bot_start_link
 
-    webapp_base = _safe_public_url(Settings.WEBAPP_URL) or f"https://{(Settings.PUBLIC_WEB_DOMAIN or 'portal-privacy.online').strip().strip('/')}/webapp/"
+    webapp_base = _safe_public_url(Settings.WEBAPP_URL) or "https://app.pokrov.space/"
     wp = urlparse(webapp_base)
     wq = dict(parse_qsl(wp.query, keep_blank_values=True))
     if promo:
@@ -6884,7 +7016,7 @@ async def admin_campaign_links_build(payload: AdminCampaignLinksBuildIn, x_teleg
         wq["campaign"] = campaign
     if plan:
         wq["plan"] = plan
-    webapp_link = f"{wp.scheme}://{wp.netloc}{wp.path or '/webapp/'}?{urlencode(wq)}" if wp.scheme and wp.netloc else f"/webapp/?{urlencode(wq)}"
+    webapp_link = f"{wp.scheme}://{wp.netloc}{wp.path or '/'}?{urlencode(wq)}" if wp.scheme and wp.netloc else f"/?{urlencode(wq)}"
     return {
         "ok": True,
         "bot_start_link": bot_start_link,

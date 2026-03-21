@@ -35,7 +35,7 @@ def _run(ssh: paramiko.SSHClient, cmd: str, *, timeout: int = 120) -> tuple[int,
 def main() -> int:
     ap = argparse.ArgumentParser(description="Check subscription Profile-Update-Interval header.")
     ap.add_argument("--brain-ip", required=True)
-    ap.add_argument("--domain", default="kiwunaka.space")
+    ap.add_argument("--domain", default="api.pokrov.space")
     ap.add_argument("--ssh-user", default="root")
     ap.add_argument("--ssh-port", type=int, default=29374)
     ap.add_argument("--passwords", default=str(DEFAULT_PASSWORDS))
@@ -62,7 +62,7 @@ def main() -> int:
             "\"select sub_token from users where is_active=true and sub_token is not null order by created_at asc limit 1\" "
             "2>/dev/null | tr -d '[:space:]'); "
             "if [ -z \"$TOK\" ]; then echo no_token; exit 2; fi; "
-            f"curl -k -sI --resolve {args.domain}:2096:127.0.0.1 https://{args.domain}:2096/s8Kx2mP7qR4wT/$TOK | grep -i '^Profile-Update-Interval:' || true"
+            f"curl -k -sI --resolve {args.domain}:443:127.0.0.1 https://{args.domain}/s8Kx2mP7qR4wT/$TOK | grep -i '^Profile-Update-Interval:' || true"
         )
         _, out, err = _run(ssh, cmd, timeout=120)
         print((out.strip() or err.strip()).strip())

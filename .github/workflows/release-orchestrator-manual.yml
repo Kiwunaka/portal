@@ -20,12 +20,12 @@ on:
       web_domain:
         description: "Web domain"
         required: true
-        default: "portal-privacy.online"
+        default: "pokrov.space"
         type: string
       api_domain:
         description: "API domain"
         required: true
-        default: "kiwunaka.space"
+        default: "api.pokrov.space"
         type: string
       quick_gate:
         description: "Use quick gate set"

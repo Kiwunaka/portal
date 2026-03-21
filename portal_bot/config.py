@@ -22,6 +22,11 @@ class Settings:
     BOT_TOKEN: str = os.getenv("BOT_TOKEN", "")
     ADMIN_ID: int = env_int("ADMIN_ID", 0)
     DATABASE_URL: str = os.getenv("DATABASE_URL", "sqlite:///portal.db")
+    PLATFORM_BRAND: str = (os.getenv("PLATFORM_BRAND") or "POKROV").strip()
+    CLIENT_BRAND: str = (os.getenv("CLIENT_BRAND") or "POKROV VPN").strip()
+    MAIN_BOT_USERNAME: str = (os.getenv("MAIN_BOT_USERNAME") or os.getenv("BOT_USERNAME") or "pokrov_vpnbot").lstrip("@")
+    CONTACT_EMAIL: str = (os.getenv("CONTACT_EMAIL") or "support@pokrov.space").strip()
+    ENTERPRISE_EMAIL: str = (os.getenv("ENTERPRISE_EMAIL") or "enterprise@pokrov.space").strip()
 
     # Public domains:
     # - API/callbacks/subscription live on PUBLIC_API_DOMAIN.
@@ -30,13 +35,17 @@ class Settings:
         os.getenv("PUBLIC_API_DOMAIN")
         or os.getenv("HOST_DOMAIN")
         or os.getenv("DOMAIN")
-        or "kiwunaka.space"
+        or "api.pokrov.space"
     )
-    PUBLIC_WEB_DOMAIN: str = (os.getenv("PUBLIC_WEB_DOMAIN") or "portal-privacy.online").strip()
+    PUBLIC_WEB_DOMAIN: str = (os.getenv("PUBLIC_WEB_DOMAIN") or "pokrov.space").strip()
+    PUBLIC_CONNECT_DOMAIN: str = (os.getenv("PUBLIC_CONNECT_DOMAIN") or "connect.pokrov.space").strip()
 
     # Backward-compatible alias used by older scripts.
     HOST_DOMAIN: str = PUBLIC_API_DOMAIN
     PUBLIC_API_BASE_URL: str = os.getenv("PUBLIC_API_BASE_URL", f"https://{PUBLIC_API_DOMAIN}")
+    PUBLIC_CONNECT_URL: str = os.getenv("PUBLIC_CONNECT_URL", f"https://{PUBLIC_CONNECT_DOMAIN}").strip()
+    PUBLIC_PAY_DOMAIN: str = (os.getenv("PUBLIC_PAY_DOMAIN") or "pay.pokrov.space").strip()
+    PUBLIC_PAY_BASE_URL: str = os.getenv("PUBLIC_PAY_BASE_URL", f"https://{PUBLIC_PAY_DOMAIN}").strip()
 
     # Legacy single-node fallback (when `nodes` table is empty)
     LEGACY_NODE_CODE: str = os.getenv("LEGACY_NODE_CODE", "default")
@@ -58,13 +67,19 @@ class Settings:
     INBOUND_ID: int = env_int("INBOUND_ID", 4)
 
     # WebApp (Telegram Mini App)
-    WEBAPP_URL: str = os.getenv("WEBAPP_URL", f"https://{PUBLIC_WEB_DOMAIN}/webapp/?v=20260214")
+    WEBAPP_URL: str = os.getenv("WEBAPP_URL", "https://app.pokrov.space/?v=20260320")
     WEBAPP_SESSION_SECRET: str = os.getenv("WEBAPP_SESSION_SECRET", "").strip()
-    SUPPORT_BOT_USERNAME: str = (os.getenv("SUPPORT_BOT_USERNAME") or os.getenv("SUPPORT_USERNAME") or "portal_privacy_helpbot").lstrip("@")
-    NEWS_CHANNEL_ID: str = os.getenv("NEWS_CHANNEL_ID", "@portal_news_channel")
-    PAY_CHECKOUT_URL: str = os.getenv("PAY_CHECKOUT_URL", "").strip()
-    PAY_SUCCESS_URL: str = os.getenv("PAY_SUCCESS_URL", f"https://{PUBLIC_API_DOMAIN}/pay/success").strip()
-    PAY_FAIL_URL: str = os.getenv("PAY_FAIL_URL", f"https://{PUBLIC_API_DOMAIN}/pay/fail").strip()
+    SUPPORT_BOT_USERNAME: str = (os.getenv("SUPPORT_BOT_USERNAME") or os.getenv("SUPPORT_USERNAME") or "pokrov_supportbot").lstrip("@")
+    FEEDBACK_BOT_USERNAME: str = (
+        os.getenv("FEEDBACK_BOT_USERNAME")
+        or os.getenv("FEEDBACK_USERNAME")
+        or "pokrov_feedbackbot"
+    ).lstrip("@")
+    NEWS_CHANNEL_ID: str = os.getenv("NEWS_CHANNEL_ID", "@pokrov_vpn")
+    NEWS_CHANNEL_URL: str = (os.getenv("NEWS_CHANNEL_URL") or "https://t.me/pokrov_vpn").strip()
+    PAY_CHECKOUT_URL: str = os.getenv("PAY_CHECKOUT_URL", f"{PUBLIC_PAY_BASE_URL}/checkout").strip()
+    PAY_SUCCESS_URL: str = os.getenv("PAY_SUCCESS_URL", f"{PUBLIC_PAY_BASE_URL}/success").strip()
+    PAY_FAIL_URL: str = os.getenv("PAY_FAIL_URL", f"{PUBLIC_PAY_BASE_URL}/fail").strip()
     PAY_RESULT_BASE_PATH: str = os.getenv("PAY_RESULT_BASE_PATH", "/api/payments/result").strip()
     PAY_REFUND_BASE_PATH: str = os.getenv("PAY_REFUND_BASE_PATH", "/api/payments/refund").strip()
     PAY_CHARGEBACK_BASE_PATH: str = os.getenv("PAY_CHARGEBACK_BASE_PATH", "/api/payments/chargeback").strip()

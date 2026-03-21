@@ -57,8 +57,8 @@ class ApiP0ExtensionsTests(unittest.TestCase):
         os.environ["DATABASE_URL"] = f"sqlite:///{db_uri_path}"
         os.environ["BOT_TOKEN"] = self.bot_token
         os.environ["ADMIN_ID"] = "9999"
-        os.environ["BOT_USERNAME"] = "net4ebur_bot"
-        os.environ["SUPPORT_USERNAME"] = "portal_privacy_helpbot"
+        os.environ["BOT_USERNAME"] = "pokrov_vpnbot"
+        os.environ["SUPPORT_USERNAME"] = "pokrov_supportbot"
         os.environ["PUBLIC_CHANNEL"] = "pokrov_vpn"
         os.environ["WEBAPP_DEV_AUTH"] = "true"
         os.environ["WEBAPP_DEV_TG_ID"] = "1001"
@@ -212,7 +212,7 @@ class ApiP0ExtensionsTests(unittest.TestCase):
         body = start.json()
         self.assertTrue(body["ok"])
         self.assertEqual(body["amount_stars"], 1399)
-        self.assertIn("t.me/net4ebur_bot", body["pay_url"])
+        self.assertIn("t.me/pokrov_vpnbot", body["pay_url"])
 
         points = client.get("/api/points", headers=hdrs)
         self.assertEqual(points.status_code, 200, points.text)
@@ -259,8 +259,45 @@ class ApiP0ExtensionsTests(unittest.TestCase):
         self.assertEqual(r.status_code, 200, r.text)
         body = r.json()
         self.assertEqual(len(body.get("reviews", [])), 1)
-        self.assertEqual(body["reviews"][0]["username"], "al***")
+        self.assertEqual(body["reviews"][0]["username"], "alex****")
         self.assertNotIn("alexey", str(body))
+
+    def test_review_create_rejects_too_short_text_after_trim(self) -> None:
+        client = TestClient(self.api.app)
+        hdrs = {"X-Telegram-Init-Data": self._init_data(1001, "alice")}
+
+        r = client.post("/api/reviews", headers=hdrs, json={"rating": 5, "text": "  ok  "})
+        self.assertEqual(r.status_code, 400, r.text)
+        self.assertEqual(r.json()["detail"], "Review text is too short")
+
+    def test_feedback_endpoint_persists_new_entry(self) -> None:
+        from db import SessionLocal
+        from models import FeedbackEntry
+
+        client = TestClient(self.api.app)
+        hdrs = {"X-Telegram-Init-Data": self._init_data(1001, "alice")}
+        r = client.post(
+            "/api/feedback",
+            headers=hdrs,
+            json={"category": "idea", "text": "Добавьте больше живых отзывов на сайт"},
+        )
+        self.assertEqual(r.status_code, 200, r.text)
+        body = r.json()
+        self.assertTrue(body["ok"])
+        self.assertEqual(body["status"], "new")
+        self.assertGreater(int(body["feedback_id"]), 0)
+
+        s = SessionLocal()
+        try:
+            row = s.query(FeedbackEntry).filter_by(id=int(body["feedback_id"])).first()
+            self.assertIsNotNone(row)
+            self.assertEqual(row.tg_id, 1001)
+            self.assertEqual(row.username, "alice")
+            self.assertEqual(row.category, "idea")
+            self.assertEqual(row.status, "new")
+            self.assertEqual(row.text, "Добавьте больше живых отзывов на сайт")
+        finally:
+            s.close()
 
     def test_admin_metrics_status_endpoint(self) -> None:
         client = TestClient(self.api.app)

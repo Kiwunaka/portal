@@ -23,7 +23,7 @@ def main() -> int:
 
     ap = argparse.ArgumentParser(description="Fetch a subscription and print the display names (#fragment) for each line.")
     ap.add_argument("--db", default=str(REPO_ROOT / "portal.db.cluster.db"))
-    ap.add_argument("--public-api-base", default="https://kiwunaka.space:2096")
+    ap.add_argument("--public-api-base", default="https://api.pokrov.space")
     args = ap.parse_args()
 
     con = sqlite3.connect(str(Path(args.db)))

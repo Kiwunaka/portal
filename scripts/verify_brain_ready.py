@@ -97,8 +97,8 @@ def _curl_retry(url: str, *, host: str, contains: str | None = None, attempts: i
 
 def main() -> int:
     ap = argparse.ArgumentParser()
-    ap.add_argument("--web-domain", default="portal-privacy.online", help="Public web domain for / and /webapp checks")
-    ap.add_argument("--api-domain", default="kiwunaka.space", help="Public API domain for /api/health and subscription checks")
+    ap.add_argument("--web-domain", default="pokrov.space", help="Public web domain for / and /webapp checks")
+    ap.add_argument("--api-domain", default="api.pokrov.space", help="Public API domain for /api/health and subscription checks")
     ap.add_argument("--domain", default="", help="Deprecated alias for --web-domain")
     ap.add_argument("--brain-ip", required=True)
     ap.add_argument("--ssh-user", default="root")
@@ -134,11 +134,11 @@ def main() -> int:
 
         curl_checks = [
             ("health443", _curl_retry(f"{api_domain}/api/health", host=api_domain)),
-            ("webapp443", _curl_retry(f"{web_domain}/webapp/", host=web_domain)),
+            ("webapp443", _curl_retry("app.pokrov.space/", host="app.pokrov.space")),
             ("mkt443", _curl_retry(f"{web_domain}/", host=web_domain, contains="Подключиться в Telegram")),
             ("mktHeroSecondary443", _curl_retry(f"{web_domain}/", host=web_domain, contains="Посмотреть планы")),
             ("offer443", _curl_retry(f"{web_domain}/offer/", host=web_domain, contains="Продолжить в Telegram")),
-            ("checkout443", _curl_retry(f"{web_domain}/checkout/", host=web_domain, contains="Продолжение через Telegram")),
+            ("checkout443", _curl_retry("pay.pokrov.space/checkout/", host="pay.pokrov.space", contains="Продолжение через Telegram")),
             ("fkverify443", _curl_retry(f"{web_domain}/fk-verify.html", host=web_domain)),
         ]
         if args.check_legacy_2096:

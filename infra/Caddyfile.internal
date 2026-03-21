@@ -1,77 +1,96 @@
 ﻿# Internal Caddy listener behind HAProxy TCP passthrough.
 # External :443 is terminated/passed by L4 on brain.
 
-:4443 {
-  tls internal
+pokrov.space:8444, www.pokrov.space:8444, app.pokrov.space:8444, connect.pokrov.space:8444, api.pokrov.space:8444, pay.pokrov.space:8444, portal-privacy.online:8444, www.portal-privacy.online:8444, connect.portal-privacy.online:8444, kiwunaka.space:8444, www.kiwunaka.space:8444, pay.kiwunaka.space:8444 {
   encode zstd gzip
 
-  @portal_hosts host portal-privacy.online www.portal-privacy.online
-  handle @portal_hosts {
-    @portal_redirect_api path /api/* /pay/* /s8Kx2mP7qR4wT/*
-    redir @portal_redirect_api https://kiwunaka.space{uri} 308
+  @marketing_hosts host pokrov.space www.pokrov.space
+  handle @marketing_hosts {
+    @apex_api path /api/* /pay/* /s8Kx2mP7qR4wT/*
+    redir @apex_api https://api.pokrov.space{uri} 308
 
-    @webapp_noslash path /webapp
-    redir @webapp_noslash /webapp/ 308
-
-    handle_path /webapp/* {
-      root * /var/www/portal/webapp
-      try_files {path} /index.html
+    handle {
+      root * /var/www/portal/marketing
+      try_files {path} {path}/index.html /index.html
       file_server
+    }
+  }
+
+  @webapp_host host app.pokrov.space
+  handle @webapp_host {
+    root * /var/www/portal/webapp
+    try_files {path} {path}/index.html /index.html
+    file_server
+  }
+
+  @connect_host host connect.pokrov.space
+  handle @connect_host {
+    redir https://app.pokrov.space{uri} 308
+  }
+
+  @api_hosts host api.pokrov.space
+  handle @api_hosts {
+    @subscription path /s8Kx2mP7qR4wT/*
+    handle @subscription {
+      reverse_proxy 127.0.0.1:8080
+    }
+
+    @api path /api/*
+    handle @api {
+      reverse_proxy 127.0.0.1:8080
+    }
+
+    @pay path /pay/*
+    handle @pay {
+      reverse_proxy 127.0.0.1:8080
+    }
+
+    respond "Not Found" 404
+  }
+
+  @pay_host host pay.pokrov.space
+  handle @pay_host {
+    @subscription path /s8Kx2mP7qR4wT/*
+    handle @subscription {
+      reverse_proxy 127.0.0.1:8080
+    }
+
+    @api path /api/*
+    handle @api {
+      reverse_proxy 127.0.0.1:8080
+    }
+
+    @pay path /pay/*
+    handle @pay {
+      reverse_proxy 127.0.0.1:8080
     }
 
     handle {
       root * /var/www/portal/marketing
-      try_files {path} /index.html
+      try_files {path} {path}/index.html /index.html
       file_server
     }
   }
 
-  @api_hosts host kiwunaka.space www.kiwunaka.space
-  handle @api_hosts {
-    @subscription path /s8Kx2mP7qR4wT/*
-    handle @subscription {
-      reverse_proxy 127.0.0.1:2096
-    }
-
-    @api path /api/*
-    handle @api {
-      reverse_proxy 127.0.0.1:2096
-    }
-
-    @pay path /pay/*
-    handle @pay {
-      reverse_proxy 127.0.0.1:2096
-    }
-
-    # Internal-only mode for API domain:
-    # do not serve marketing/site content from kiwunaka.space.
-    respond "Not Found" 404
+  @legacy_web_hosts host portal-privacy.online www.portal-privacy.online
+  handle @legacy_web_hosts {
+    redir https://pokrov.space{uri} 308
   }
 
-  @pay_host host pay.kiwunaka.space
-  handle @pay_host {
-    @subscription path /s8Kx2mP7qR4wT/*
-    handle @subscription {
-      reverse_proxy 127.0.0.1:2096
-    }
+  @legacy_connect_hosts host connect.portal-privacy.online
+  handle @legacy_connect_hosts {
+    redir https://app.pokrov.space{uri} 308
+  }
 
-    @api path /api/*
-    handle @api {
-      reverse_proxy 127.0.0.1:2096
-    }
-
-    @pay path /pay/*
-    handle @pay {
-      reverse_proxy 127.0.0.1:2096
-    }
-
-    respond "Not Found" 404
+  @legacy_api_hosts host kiwunaka.space www.kiwunaka.space pay.kiwunaka.space
+  handle @legacy_api_hosts {
+    redir https://api.pokrov.space{uri} 308
   }
 
   # Unknown hosts default to marketing site.
   handle {
     root * /var/www/portal/marketing
-    try_files {path} /index.html
+    try_files {path} {path}/index.html /index.html
     file_server
   }
 }

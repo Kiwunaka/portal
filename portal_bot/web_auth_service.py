@@ -5,9 +5,27 @@ import hashlib
 import hmac
 import json
 import os
+import re
+import secrets
 import time
 from typing import Any
+from urllib.parse import urlencode, urlsplit, urlunsplit
 
+import aiohttp
+from cryptography.exceptions import InvalidSignature
+from cryptography.hazmat.primitives import hashes
+from cryptography.hazmat.primitives.asymmetric import padding, rsa
+
+
+TELEGRAM_OAUTH_AUTHORIZE_URL = "https://oauth.telegram.org/auth"
+TELEGRAM_OAUTH_TOKEN_URL = "https://oauth.telegram.org/token"
+TELEGRAM_OAUTH_JWKS_URL = "https://oauth.telegram.org/.well-known/jwks.json"
+TELEGRAM_OAUTH_ISSUER = "https://oauth.telegram.org"
+TELEGRAM_OAUTH_SCOPES = os.getenv("TELEGRAM_OAUTH_SCOPES", "openid profile telegram:bot_access").strip() or "openid profile"
+TELEGRAM_OAUTH_STATE_TTL_SECONDS = max(120, int(os.getenv("TELEGRAM_OAUTH_STATE_TTL_SECONDS", "900")))
+TELEGRAM_OAUTH_CLOCK_SKEW_SECONDS = max(0, int(os.getenv("TELEGRAM_OAUTH_CLOCK_SKEW_SECONDS", "60")))
+_JWKS_CACHE_SECONDS_DEFAULT = max(60, int(os.getenv("TELEGRAM_OAUTH_JWKS_CACHE_SECONDS", "3600")))
+_jwks_cache: dict[str, Any] = {"value": None, "expires_at": 0}
 
 SESSION_TTL_SECONDS = max(300, int(os.getenv("WEBAPP_SESSION_TTL_SECONDS", "86400")))
 
@@ -35,6 +53,298 @@ def _sign(text: str) -> str:
     if not secret:
         return ""
     return hmac.new(secret.encode("utf-8"), text.encode("utf-8"), hashlib.sha256).hexdigest()
+
+
+def _clean_url(value: str) -> str:
+    return str(value or "").strip().rstrip("/")
+
+
+def _telegram_oidc_client_id() -> str:
+    explicit = str(
+        os.getenv("TELEGRAM_OAUTH_CLIENT_ID")
+        or os.getenv("TELEGRAM_OIDC_CLIENT_ID")
+        or ""
+    ).strip()
+    if explicit:
+        return explicit
+    bot_token = str(os.getenv("BOT_TOKEN") or "").strip()
+    prefix = bot_token.split(":", 1)[0].strip()
+    return prefix if prefix.isdigit() else ""
+
+
+def _telegram_oidc_client_secret() -> str:
+    return str(
+        os.getenv("TELEGRAM_OAUTH_CLIENT_SECRET")
+        or os.getenv("TELEGRAM_OIDC_CLIENT_SECRET")
+        or ""
+    ).strip()
+
+
+def _telegram_oidc_redirect_uri() -> str:
+    raw = str(
+        os.getenv("TELEGRAM_OAUTH_REDIRECT_URI")
+        or os.getenv("TELEGRAM_OIDC_REDIRECT_URI")
+        or os.getenv("WEBAPP_URL")
+        or "https://app.pokrov.space/"
+    ).strip()
+    parsed = urlsplit(raw)
+    scheme = parsed.scheme or "https"
+    netloc = parsed.netloc
+    path = parsed.path or "/"
+    if not netloc:
+        raise RuntimeError("Telegram OAuth redirect URI is not configured")
+    return urlunsplit((scheme, netloc, path, "", ""))
+
+
+def _require_telegram_oidc_config() -> tuple[str, str, str]:
+    client_id = _telegram_oidc_client_id()
+    client_secret = _telegram_oidc_client_secret()
+    redirect_uri = _telegram_oidc_redirect_uri()
+    if not client_id:
+        raise RuntimeError("Telegram OAuth client ID is not configured")
+    if not client_secret:
+        raise RuntimeError("Telegram OAuth client secret is not configured")
+    return client_id, client_secret, redirect_uri
+
+
+def _pkce_verifier() -> str:
+    verifier = secrets.token_urlsafe(64).replace("-", "A").replace("_", "B")
+    return verifier[:96]
+
+
+def _pkce_challenge(verifier: str) -> str:
+    return _b64url(hashlib.sha256(verifier.encode("ascii")).digest())
+
+
+def create_telegram_oidc_state_token(*, redirect_uri: str, code_verifier: str | None = None) -> str:
+    verifier = str(code_verifier or _pkce_verifier()).strip()
+    if len(verifier) < 43:
+        verifier = verifier.ljust(43, "x")
+    now = int(time.time())
+    payload = {
+        "type": "telegram_oidc",
+        "csrf": secrets.token_urlsafe(18),
+        "code_verifier": verifier,
+        "redirect_uri": str(redirect_uri or "").strip(),
+        "iat": now,
+        "exp": now + TELEGRAM_OAUTH_STATE_TTL_SECONDS,
+    }
+    body = _b64url(json.dumps(payload, separators=(",", ":"), ensure_ascii=True).encode("utf-8"))
+    sig = _sign(body)
+    if not sig:
+        return ""
+    return f"{body}.{sig}"
+
+
+def verify_telegram_oidc_state_token(token: str) -> dict[str, Any] | None:
+    raw = str(token or "").strip()
+    if "." not in raw:
+        return None
+    body, sig = raw.rsplit(".", 1)
+    expected = _sign(body)
+    if not expected or not hmac.compare_digest(expected, sig):
+        return None
+    try:
+        payload = json.loads(_b64url_decode(body).decode("utf-8"))
+    except Exception:
+        return None
+    if not isinstance(payload, dict):
+        return None
+    if str(payload.get("type") or "") != "telegram_oidc":
+        return None
+    try:
+        exp = int(payload.get("exp") or 0)
+    except Exception:
+        return None
+    redirect_uri = str(payload.get("redirect_uri") or "").strip()
+    verifier = str(payload.get("code_verifier") or "").strip()
+    if exp <= int(time.time()) or not redirect_uri or len(verifier) < 43:
+        return None
+    return {
+        "redirect_uri": redirect_uri,
+        "code_verifier": verifier,
+        "csrf": str(payload.get("csrf") or "").strip(),
+    }
+
+
+def build_telegram_oidc_authorize_url() -> dict[str, str]:
+    client_id, _client_secret, redirect_uri = _require_telegram_oidc_config()
+    state_token = create_telegram_oidc_state_token(redirect_uri=redirect_uri)
+    if not state_token:
+        raise RuntimeError("Telegram OAuth state signing is not configured")
+    verified_state = verify_telegram_oidc_state_token(state_token)
+    if not verified_state:
+        raise RuntimeError("Telegram OAuth state validation failed")
+    query = urlencode(
+        {
+            "client_id": client_id,
+            "redirect_uri": redirect_uri,
+            "response_type": "code",
+            "scope": TELEGRAM_OAUTH_SCOPES,
+            "state": state_token,
+            "code_challenge": _pkce_challenge(str(verified_state["code_verifier"])),
+            "code_challenge_method": "S256",
+        }
+    )
+    return {
+        "auth_url": f"{TELEGRAM_OAUTH_AUTHORIZE_URL}?{query}",
+        "redirect_uri": redirect_uri,
+        "state": state_token,
+    }
+
+
+def _jwt_json(segment: str) -> dict[str, Any]:
+    decoded = _b64url_decode(segment)
+    parsed = json.loads(decoded.decode("utf-8"))
+    return parsed if isinstance(parsed, dict) else {}
+
+
+def _jwk_cache_ttl(headers: "aiohttp.typedefs.LooseHeaders") -> int:
+    cache_control = str(headers.get("Cache-Control") or headers.get("cache-control") or "").strip()
+    match = re.search(r"max-age=(\d+)", cache_control)
+    if match:
+        try:
+            return max(60, int(match.group(1)))
+        except Exception:
+            return _JWKS_CACHE_SECONDS_DEFAULT
+    return _JWKS_CACHE_SECONDS_DEFAULT
+
+
+async def fetch_telegram_oidc_jwks(*, force: bool = False) -> dict[str, Any]:
+    now = int(time.time())
+    cached_value = _jwks_cache.get("value")
+    cached_exp = int(_jwks_cache.get("expires_at") or 0)
+    if not force and cached_value and cached_exp > now:
+        return cached_value
+
+    timeout = aiohttp.ClientTimeout(total=10)
+    async with aiohttp.ClientSession(timeout=timeout) as session:
+        async with session.get(TELEGRAM_OAUTH_JWKS_URL) as response:
+            if response.status != 200:
+                text = (await response.text()).strip()
+                raise RuntimeError(text or f"Telegram JWKS request failed: {response.status}")
+            payload = await response.json()
+            if not isinstance(payload, dict):
+                raise RuntimeError("Telegram JWKS payload is invalid")
+            _jwks_cache["value"] = payload
+            _jwks_cache["expires_at"] = now + _jwk_cache_ttl(response.headers)
+            return payload
+
+
+def validate_telegram_oidc_id_token(*, id_token: str, client_id: str, jwks: dict[str, Any]) -> dict[str, Any]:
+    parts = str(id_token or "").split(".")
+    if len(parts) != 3:
+        raise ValueError("Telegram ID token is invalid")
+    header_b64, payload_b64, signature_b64 = parts
+    header = _jwt_json(header_b64)
+    claims = _jwt_json(payload_b64)
+    if str(header.get("alg") or "") != "RS256":
+        raise ValueError("Telegram ID token uses an unsupported algorithm")
+    kid = str(header.get("kid") or "").strip()
+    if not kid:
+        raise ValueError("Telegram ID token is missing a key id")
+
+    keys = jwks.get("keys") if isinstance(jwks, dict) else None
+    if not isinstance(keys, list):
+        raise ValueError("Telegram JWKS payload is invalid")
+    jwk = next((row for row in keys if isinstance(row, dict) and str(row.get("kid") or "") == kid), None)
+    if not jwk:
+        raise ValueError("Telegram signing key was not found")
+    if str(jwk.get("kty") or "") != "RSA":
+        raise ValueError("Telegram signing key type is unsupported")
+
+    try:
+        n = int.from_bytes(_b64url_decode(str(jwk.get("n") or "")), "big")
+        e = int.from_bytes(_b64url_decode(str(jwk.get("e") or "")), "big")
+        public_key = rsa.RSAPublicNumbers(e=e, n=n).public_key()
+        public_key.verify(
+            _b64url_decode(signature_b64),
+            f"{header_b64}.{payload_b64}".encode("ascii"),
+            padding.PKCS1v15(),
+            hashes.SHA256(),
+        )
+    except InvalidSignature as exc:
+        raise ValueError("Telegram ID token signature is invalid") from exc
+    except Exception as exc:
+        raise ValueError("Telegram signing key is invalid") from exc
+
+    now = int(time.time())
+    try:
+        exp = int(claims.get("exp") or 0)
+        iat = int(claims.get("iat") or 0)
+    except Exception as exc:
+        raise ValueError("Telegram ID token claims are invalid") from exc
+    if exp <= now - TELEGRAM_OAUTH_CLOCK_SKEW_SECONDS:
+        raise ValueError("Telegram ID token has expired")
+    if iat > now + TELEGRAM_OAUTH_CLOCK_SKEW_SECONDS:
+        raise ValueError("Telegram ID token is not valid yet")
+    if str(claims.get("iss") or "") != TELEGRAM_OAUTH_ISSUER:
+        raise ValueError("Telegram ID token issuer is invalid")
+    aud = claims.get("aud")
+    valid_aud = False
+    if isinstance(aud, str):
+        valid_aud = aud == str(client_id)
+    elif isinstance(aud, list):
+        valid_aud = str(client_id) in {str(item) for item in aud}
+    if not valid_aud:
+        raise ValueError("Telegram ID token audience is invalid")
+    try:
+        tg_id = int(claims.get("id") or claims.get("sub") or 0)
+    except Exception as exc:
+        raise ValueError("Telegram ID token user is invalid") from exc
+    if tg_id <= 0:
+        raise ValueError("Telegram ID token user is invalid")
+
+    verified = dict(claims)
+    verified["id"] = tg_id
+    verified["preferred_username"] = str(claims.get("preferred_username") or "").strip() or None
+    return verified
+
+
+async def exchange_telegram_oidc_code(*, code: str, state_token: str) -> dict[str, Any]:
+    client_id, client_secret, _redirect_uri = _require_telegram_oidc_config()
+    verified_state = verify_telegram_oidc_state_token(state_token)
+    if not verified_state:
+        raise ValueError("Telegram OAuth state is invalid or expired")
+
+    token_headers = {
+        "Content-Type": "application/x-www-form-urlencoded",
+        "Authorization": "Basic "
+        + base64.b64encode(f"{client_id}:{client_secret}".encode("utf-8")).decode("ascii"),
+    }
+    token_body = urlencode(
+        {
+            "grant_type": "authorization_code",
+            "code": str(code or "").strip(),
+            "redirect_uri": str(verified_state["redirect_uri"]),
+            "client_id": client_id,
+            "code_verifier": str(verified_state["code_verifier"]),
+        }
+    )
+
+    timeout = aiohttp.ClientTimeout(total=15)
+    async with aiohttp.ClientSession(timeout=timeout) as session:
+        async with session.post(
+            TELEGRAM_OAUTH_TOKEN_URL,
+            data=token_body,
+            headers=token_headers,
+        ) as response:
+            if response.status != 200:
+                text = (await response.text()).strip()
+                raise RuntimeError(text or f"Telegram token exchange failed: {response.status}")
+            token_payload = await response.json()
+            if not isinstance(token_payload, dict):
+                raise RuntimeError("Telegram token response is invalid")
+
+    id_token = str(token_payload.get("id_token") or "").strip()
+    if not id_token:
+        raise RuntimeError("Telegram token response is missing id_token")
+    jwks = await fetch_telegram_oidc_jwks()
+    return validate_telegram_oidc_id_token(
+        id_token=id_token,
+        client_id=client_id,
+        jwks=jwks,
+    )
 
 
 def create_web_session_token(*, tg_id: int, username: str | None = None) -> str:

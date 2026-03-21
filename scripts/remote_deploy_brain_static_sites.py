@@ -89,12 +89,12 @@ def main() -> int:
     ap.add_argument("--brain-ip", required=True)
     ap.add_argument(
         "--web-domain",
-        default="portal-privacy.online",
+        default="pokrov.space",
         help="Public web domain for marketing + /webapp checks",
     )
     ap.add_argument(
         "--api-domain",
-        default="kiwunaka.space",
+        default="api.pokrov.space",
         help="Public API domain for /api/health checks",
     )
     ap.add_argument(
@@ -188,9 +188,10 @@ find {releases_root} -mindepth 1 -maxdepth 1 -type d | sort | head -n -5 | xargs
         chk = [
             f"curl -fsS --insecure --resolve {api_domain}:443:127.0.0.1 https://{api_domain}/api/health | head -c 200 || true",
             f"curl -fsS --insecure --resolve {web_domain}:443:127.0.0.1 https://{web_domain}/ | head -c 80 || true",
-            f"curl -fsS --insecure --resolve {web_domain}:443:127.0.0.1 https://{web_domain}/webapp/ | head -c 80 || true",
+            f"curl -fsS --insecure --resolve app.pokrov.space:443:127.0.0.1 https://app.pokrov.space/ | head -c 80 || true",
             f"curl -fsS --insecure --resolve {web_domain}:443:127.0.0.1 https://{web_domain}/fk-verify.html | head -c 80 || true",
             f"curl -fsS --insecure --resolve {web_domain}:443:127.0.0.1 https://{web_domain}/fk-payment-theme.css | head -c 120 || true",
+            "curl -fsS --insecure --resolve pay.pokrov.space:443:127.0.0.1 https://pay.pokrov.space/checkout/ | head -c 120 || true",
         ]
         for c in chk:
             _, out, err = _run(ssh, c, timeout=30)

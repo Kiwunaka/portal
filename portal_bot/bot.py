@@ -1,6 +1,6 @@
-﻿# -*- coding: utf-8 -*-
+# -*- coding: utf-8 -*-
 """
-🌐 Kiwunaka Portal Bot v2
+🌐 POKROV VPN Bot v2
 Aiogram 3.x + SQLite + Telegram Stars
 
 FIXED: Handle existing users in 3x-ui panel
@@ -179,7 +179,7 @@ load_dotenv()
 
 BOT_TOKEN = os.getenv("BOT_TOKEN")
 ADMIN_ID = int(os.getenv("ADMIN_ID", "0"))
-BOT_USERNAME = (os.getenv("BOT_USERNAME") or "portal_service_bot").lstrip("@")
+BOT_USERNAME = (os.getenv("BOT_USERNAME") or "pokrov_vpnbot").lstrip("@")
 BOT_USERNAME_MD = BOT_USERNAME.replace("_", "\\_")
 
 # Panel
@@ -192,8 +192,9 @@ TRIAL_LIMIT_GB = 5
 INBOUND_ID_BACKUP = int(os.getenv("INBOUND_ID_BACKUP", "0"))  # Optional legacy failover inbound id (0 = disabled)
 
 # Server
-HOST_DOMAIN = os.getenv("HOST_DOMAIN") or os.getenv("DOMAIN") or "kiwunaka.space"
-PUBLIC_WEB_DOMAIN = (os.getenv("PUBLIC_WEB_DOMAIN") or "").strip()
+HOST_DOMAIN = os.getenv("HOST_DOMAIN") or os.getenv("DOMAIN") or "api.pokrov.space"
+PUBLIC_WEB_DOMAIN = (os.getenv("PUBLIC_WEB_DOMAIN") or "pokrov.space").strip()
+APP_WEB_DOMAIN = (os.getenv("APP_WEB_DOMAIN") or "app.pokrov.space").strip()
 VLESS_PORT = int(os.getenv("VLESS_PORT", "443"))
 VLESS_SNI = os.getenv("VLESS_SNI", "yahoo.com")
 VLESS_PBK = os.getenv("VLESS_PBK", "")
@@ -203,26 +204,28 @@ VLESS_FLOW = os.getenv("VLESS_FLOW", "xtls-rprx-vision")
 
 # URLs
 # Cache-buster helps Telegram in-app webview pick up new builds quickly.
-_WEBAPP_DEFAULT_HOST = PUBLIC_WEB_DOMAIN or HOST_DOMAIN
-WEBAPP_URL = os.getenv("WEBAPP_URL", f"https://{_WEBAPP_DEFAULT_HOST}/webapp/?v=20260214")
+_WEBAPP_DEFAULT_HOST = APP_WEB_DOMAIN
+WEBAPP_URL = os.getenv("WEBAPP_URL", f"https://{_WEBAPP_DEFAULT_HOST}/?v=20260320")
 PUBLIC_API_BASE_URL = os.getenv("PUBLIC_API_BASE_URL", f"https://{HOST_DOMAIN}")
 BOT_INTERNAL_API_BASE_URL = (os.getenv("BOT_INTERNAL_API_BASE_URL") or os.getenv("INTERNAL_API_BASE_URL") or "").strip()
 PAY_CHECKOUT_URL = (
     os.getenv("PAY_CHECKOUT_URL")
     or os.getenv("CHECKOUT_URL")
-    or f"https://{(PUBLIC_WEB_DOMAIN or HOST_DOMAIN)}/checkout/"
+    or "https://pay.pokrov.space/checkout/"
 ).strip()
 CHECKOUT_TICKET_SECRET = (
     (os.getenv("CHECKOUT_TICKET_SECRET") or "").strip()
     or (os.getenv("WEBAPP_SESSION_SECRET") or "").strip()
 )
 CHECKOUT_TICKET_TTL_SECONDS = max(60, int(os.getenv("CHECKOUT_TICKET_TTL_SECONDS", "900")))
-SUPPORT_USERNAME = (os.getenv("SUPPORT_USERNAME") or "portal_privacy_helpbot").lstrip("@")
+SUPPORT_USERNAME = (os.getenv("SUPPORT_USERNAME") or "pokrov_supportbot").lstrip("@")
 SUPPORT_USERNAME = (os.getenv("SUPPORT_BOT_USERNAME") or SUPPORT_USERNAME).lstrip("@")
+FEEDBACK_USERNAME = (os.getenv("FEEDBACK_USERNAME") or "pokrov_feedbackbot").lstrip("@")
+FEEDBACK_USERNAME = (os.getenv("FEEDBACK_BOT_USERNAME") or FEEDBACK_USERNAME).lstrip("@")
 APP_ANDROID_PLAY_URL = (os.getenv("APP_ANDROID_PLAY_URL") or "https://play.google.com/store/apps/details?id=app.hiddify.com").strip()
 APP_ANDROID_APK_URL = (os.getenv("APP_ANDROID_APK_URL") or "").strip()
 APP_ANDROID_MIRROR_URL = (os.getenv("APP_ANDROID_MIRROR_URL") or "").strip()
-APP_WINDOWS_EXE_URL = (os.getenv("APP_WINDOWS_EXE_URL") or "https://github.com/hiddify/hiddify-next/releases").strip()
+APP_WINDOWS_EXE_URL = (os.getenv("APP_WINDOWS_EXE_URL") or "https://github.com/NikitaSH999/POKROVapp/releases").strip()
 APP_WINDOWS_MIRROR_URL = (os.getenv("APP_WINDOWS_MIRROR_URL") or "").strip()
 APP_DOCS_URL = (os.getenv("APP_DOCS_URL") or "").strip()
 FREE_LIMIT_IP = int(os.getenv("FREE_LIMIT_IP", "1"))
@@ -248,7 +251,7 @@ def _first_non_empty(*values: str) -> str:
 IOS_APP_LINK = "https://apps.apple.com/app/streisand/id6450534064"
 ANDROID_APP_LINK = _first_non_empty(APP_ANDROID_PLAY_URL, APP_ANDROID_APK_URL, APP_ANDROID_MIRROR_URL)
 WINDOWS_APP_LINK = _first_non_empty(APP_WINDOWS_EXE_URL, APP_WINDOWS_MIRROR_URL)
-MAC_APP_LINK = WINDOWS_APP_LINK or "https://github.com/hiddify/hiddify-next/releases"
+MAC_APP_LINK = WINDOWS_APP_LINK or "https://github.com/NikitaSH999/POKROVapp/releases"
 
 # Protected users — NEVER modify, sync, or message these users
 PROTECTED_USERS = {
@@ -838,7 +841,7 @@ ACHIEVEMENTS = {
     },
     "loyal_year": {
         "name": "👑 Architect",
-        "desc": "Год в системе PORTAL",
+        "desc": "Год в системе POKROV VPN",
         "days": 30,
         "icon": "👑"
     },
@@ -1288,7 +1291,7 @@ def _tos_offer_text() -> str:
 
 
 def _tos_offer_keyboard(*, back_callback: str = "back") -> InlineKeyboardMarkup:
-    offer_url = f"https://{(PUBLIC_WEB_DOMAIN or HOST_DOMAIN).strip().strip('/')}/offer"
+    offer_url = f"https://{PUBLIC_WEB_DOMAIN.strip().strip('/')}/offer"
     return InlineKeyboardMarkup(
         inline_keyboard=[
             [InlineKeyboardButton(text="📄 Читать полностью", url=offer_url)],
@@ -1582,7 +1585,7 @@ def _bot_checkout_url(
     promo_code: str | None = None,
     campaign_key: str | None = None,
 ) -> str:
-    base = (PAY_CHECKOUT_URL or "").strip() or f"https://{(PUBLIC_WEB_DOMAIN or HOST_DOMAIN)}/checkout/"
+    base = (PAY_CHECKOUT_URL or "").strip() or "https://pay.pokrov.space/checkout/"
     parsed = urlsplit(base)
     query = dict(parse_qsl(parsed.query, keep_blank_values=True))
     query["source"] = "bot"
@@ -1610,14 +1613,14 @@ def _bot_checkout_url(
 
 
 def _web_login_url_with_token(token: str) -> str:
-    base = (WEBAPP_URL or "").strip() or f"https://{(PUBLIC_WEB_DOMAIN or HOST_DOMAIN)}/webapp/"
+    base = (WEBAPP_URL or "").strip() or "https://app.pokrov.space/"
     parsed = urlsplit(base)
     query = dict(parse_qsl(parsed.query, keep_blank_values=True))
     query["web_session_token"] = str(token or "").strip()
     built_query = urlencode(query)
     if parsed.scheme and parsed.netloc:
-        return urlunsplit((parsed.scheme, parsed.netloc, parsed.path or "/webapp/", built_query, parsed.fragment))
-    return urlunsplit(("", "", parsed.path or "/webapp/", built_query, parsed.fragment))
+        return urlunsplit((parsed.scheme, parsed.netloc, parsed.path or "/", built_query, parsed.fragment))
+    return urlunsplit(("", "", parsed.path or "/", built_query, parsed.fragment))
 
 
 _START_TOKEN_RE = re.compile(r"^[A-Za-z0-9_-]{1,64}$")
@@ -2852,22 +2855,22 @@ async def check_subscription(user_id: int, bot: Bot) -> bool:
 
 TEXTS = {
     "welcome": (
-        "🛡 *PORTAL*\n\n"
-        f"{get_copy_text('bot.welcome', 'PORTAL помогает быстро начать работу через Telegram: понятный выбор плана, короткий путь к оплате и живая поддержка рядом.')}\n\n"
-        "🔻 *Нажмите кнопку ниже, чтобы продолжить:*"
+        "🛡 *POKROV VPN*\n\n"
+        f"{get_copy_text('bot.welcome', 'POKROV VPN помогает быстро начать работу через Telegram: понятный выбор плана, короткий путь к оплате и тёплая поддержка рядом.')}\n\n"
+        "👇 *Нажмите кнопку ниже, чтобы продолжить:*"
     ),
     "choose_tariff": (
         "💎 *Выберите уровень доступа*\n\n"
         f"{get_copy_text('bot.choose_tariff', 'Выберите удобный план. В каждом уже видны срок доступа, лимит устройств и доступные страны.')}\n\n"
         "👇 *Тарифные планы:*"
     ),
-    "portal_ready": (
-        "✅ *Доступ разрешен*\n"
+    "pokrov_ready": (
+        "✅ *Доступ разрешён*\n"
         "➖➖➖➖➖➖➖➖➖➖\n"
         "🔑 *Статус:* `АКТИВЕН`\n"
         "⏳ *Истекает:* `{expiry}`\n"
         "➖➖➖➖➖➖➖➖➖➖\n\n"
-        "Нажмите *«🌐 ОТКРЫТЬ ПОРТАЛ (WEB APP)»* для получения ключей доступа."
+        "Нажмите *«🌐 ОТКРЫТЬ POKROV VPN (WEB APP)»* для получения ключей доступа."
     ),
     "already_active": (
         "🛡 *Система активна*\n\n"
@@ -2892,7 +2895,7 @@ TEXTS = {
     ),
     "instruction": (
         "⚙️ *Быстрая настройка*\n\n"
-        "1️⃣ Нажмите кнопку *«🌐 ОТКРЫТЬ ПОРТАЛ (WEB APP)»*\n"
+        "1️⃣ Нажмите кнопку *«🌐 ОТКРЫТЬ POKROV VPN (WEB APP)»*\n"
         "2️⃣ Скопируйте ваш *Ключ доступа*\n"
         "3️⃣ Выберите приложение под вашу платформу\n"
         "4️⃣ Импортируйте ключ и нажмите «Подключить»\n\n"
@@ -2904,7 +2907,7 @@ TEXTS = {
         "🟢 Активных: `{active}`\n"
         "💰 Оборот: `{stars}` Stars"
     ),
-    "trial_used": "❌ Бесплатный режим уже использован. Выберите платный план.",
+    "trial_used": "❌ Бесплатный режим уже использован. Выберите подходящий платный план.",
     "payment_success": "✅ *Оплата принята!* Обновляем статус доступа...",
     "gift_success": "✅ Подписка выдана пользователю {tg_id} на {days} дней."
 }
@@ -3530,32 +3533,32 @@ async def cmd_start(message: Message):
         )
         messages = {
             "linked": (
-                "✅ *Telegram привязан к PORTAL VPN.*\n\n"
+                "✅ *Telegram привязан к POKROV VPN.*\n\n"
                 "Теперь вернитесь в приложение и нажмите «Проверить подписку», чтобы получить бонус."
             ),
             "already_linked": (
-                "✅ *Этот Telegram уже привязан к вашему аккаунту PORTAL VPN.*\n\n"
+                "✅ *Этот Telegram уже привязан к вашему аккаунту POKROV VPN.*\n\n"
                 "Вернитесь в приложение и нажмите «Проверить подписку»."
             ),
             "telegram_already_linked": (
-                "⚠️ Этот Telegram уже привязан к другому аккаунту PORTAL VPN.\n\n"
+                "⚠️ Этот Telegram уже привязан к другому аккаунту POKROV VPN.\n\n"
                 "Если это ошибка, напишите в поддержку."
             ),
             "account_linked_elsewhere": (
-                "⚠️ Этот аккаунт PORTAL VPN уже привязан к другому Telegram.\n\n"
+                "⚠️ Этот аккаунт POKROV VPN уже привязан к другому Telegram.\n\n"
                 "Если нужно переназначить привязку, напишите в поддержку."
             ),
             "not_found": (
-                "⚠️ Не удалось найти аккаунт PORTAL VPN для этой ссылки.\n\n"
+                "⚠️ Не удалось найти аккаунт POKROV VPN для этой ссылки.\n\n"
                 "Откройте приложение и запросите новую ссылку привязки."
             ),
             "expired": (
                 "⌛ Ссылка привязки устарела.\n\n"
-                "Откройте приложение PORTAL VPN и запросите новую ссылку."
+                "Откройте приложение POKROV VPN и запросите новую ссылку."
             ),
             "invalid": (
                 "⚠️ Ссылка привязки некорректна.\n\n"
-                "Откройте приложение PORTAL VPN и создайте новую ссылку."
+                "Откройте приложение POKROV VPN и создайте новую ссылку."
             ),
             "error": (
                 "⚠️ Не удалось завершить привязку прямо сейчас.\n\n"
@@ -3565,11 +3568,11 @@ async def cmd_start(message: Message):
         await message.answer(
             messages.get(
                 str(bind_status or ""),
-                "⚠️ Не удалось обработать ссылку привязки.\n\nОткройте приложение PORTAL VPN и запросите новую ссылку.",
+                "⚠️ Не удалось обработать ссылку привязки.\n\nОткройте приложение POKROV VPN и запросите новую ссылку.",
             ),
             reply_markup=InlineKeyboardMarkup(
                 inline_keyboard=[
-                    [InlineKeyboardButton(text="📢 Канал PORTAL", url=f"https://t.me/{_channel_name_for_url()}")],
+                    [InlineKeyboardButton(text="📢 Канал POKROV", url=f"https://t.me/{_channel_name_for_url()}")],
                 ]
             ),
             parse_mode=ParseMode.MARKDOWN,
@@ -3706,20 +3709,20 @@ async def cmd_start(message: Message):
         ok = await _send_text_with_specs(
             bot=message.bot,
             chat_id=tg_id,
-            text="👋 *С возвращением в PORTAL!*",
+            text="👋 *С возвращением в POKROV VPN!*",
             rows=main_keyboard_specs(tg_id),
             parse_mode=ParseMode.MARKDOWN,
         )
         if not ok:
             await message.answer(
-                "👋 *С возвращением в PORTAL!*",
+                "👋 *С возвращением в POKROV VPN!*",
                 reply_markup=main_keyboard(tg_id),
                 parse_mode=ParseMode.MARKDOWN,
             )
         return
 
     text = (
-        "🛡 *Добро пожаловать в PORTAL*\n\n"
+        "🛡 *Добро пожаловать в POKROV VPN*\n\n"
         "Мы подготовили понятный путь запуска и подключения.\n"
         "Как вы хотите настроить подключение?\n\n"
         "🐣 *Новичок*\n"
@@ -4115,7 +4118,7 @@ async def show_qr_code(callback: CallbackQuery):
     bio = BytesIO()
     img.save(bio, "PNG")
     bio.seek(0)
-    file = BufferedInputFile(bio.read(), filename="portal-key.png")
+    file = BufferedInputFile(bio.read(), filename="pokrov-key.png")
 
     await callback.message.answer_photo(
         photo=file,
@@ -4133,12 +4136,12 @@ async def share_family_access(callback: CallbackQuery):
     tg_id = callback.from_user.id
     sub_link = build_subscription_link(tg_id)
     share_text = (
-        "🔑 *Доступ к защищенной сети PORTAL*\n\n"
+        "🔑 *Доступ к защищённой сети POKROV VPN*\n\n"
         "Я делюсь с тобой своим приватным каналом связи.\n"
         "1. Скачай приложение Hiddify\n"
         "2. Скопируй ключ ниже и добавь его в приложение\n\n"
         f"`{sub_link}`\n\n"
-        "🛡 *Быстро. Надежно. Конфиденциально.*"
+        "🛡 *Быстро. Надёжно. Конфиденциально.*"
     )
     await callback.message.answer(
         "📤 *Перешлите сообщение ниже*\n\nОтправьте его тому, с кем хотите поделиться доступом.",
@@ -4390,6 +4393,7 @@ async def menu_bonuses(callback: CallbackQuery):
 @router.callback_query(F.data == "menu_more")
 async def menu_more(callback: CallbackQuery):
     """More menu: gift cards, promo, share"""
+    feedback_url = f"https://t.me/{FEEDBACK_USERNAME}"
     kb = InlineKeyboardMarkup(
         inline_keyboard=[
             [InlineKeyboardButton(text="🎫 Подарить", callback_data="gift_cards")],
@@ -4400,13 +4404,14 @@ async def menu_more(callback: CallbackQuery):
             ],
             [InlineKeyboardButton(text="ℹ️ Помощь по промокоду", callback_data="promo_help")],
             [InlineKeyboardButton(text="⭐ Оставить отзыв", callback_data="review_start")],
+            [InlineKeyboardButton(text="💌 Идеи и фидбэк", url=feedback_url)],
             [InlineKeyboardButton(text="◀️ Назад", callback_data="back")],
         ]
     )
     
     await callback.message.edit_text(
         "📦 *Ещё*\n\n"
-        "Дополнительные возможности:",
+        "Дополнительные возможности для удобного старта:",
         reply_markup=kb,
         parse_mode=ParseMode.MARKDOWN
     )
@@ -4436,8 +4441,8 @@ async def gift_redeem_prompt(callback: CallbackQuery):
     ])
     await callback.message.edit_text(
         "🎁 *Активация подарка*\n\n"
-        "Отправь код в формате `PORTAL-XXXX-XXXX` следующим сообщением.\n"
-        "_Старые коды `SWAZ-...` тоже принимаются._",
+        "Отправь код следующим сообщением.\n"
+        "_Если у тебя старый код `SWAZ-...`, он тоже пока принимается._",
         reply_markup=kb,
         parse_mode=ParseMode.MARKDOWN,
     )
@@ -4466,7 +4471,7 @@ async def review_start(callback: CallbackQuery):
     user = get_user(tg_id)
     
     if not user or not user.is_active:
-        await callback.answer("❌ Активируй подписку, чтобы оставить отзыв", show_alert=True)
+        await callback.answer("❌ Активируй подписку, чтобы оставить отзыв для главной", show_alert=True)
         return
     
     if has_user_review(tg_id):
@@ -4485,8 +4490,8 @@ async def review_start(callback: CallbackQuery):
     ])
     
     await callback.message.edit_text(
-        "⭐ *Оставь отзыв!*\n\n"
-        "Оцени сервис от 1 до 5 звёзд:",
+        "⭐ *Поделись впечатлением*\n\n"
+        "Оцени сервис от 1 до 5 звёзд, а короткий текст поможет нам выбрать отзыв для главной страницы:",
         reply_markup=kb,
         parse_mode=ParseMode.MARKDOWN
     )
@@ -4514,7 +4519,7 @@ async def show_referral(callback: CallbackQuery):
     bonus_earned = stats['bonus_earned']
     
     kb = InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text="📤 Поделиться реферальной ссылкой", url=f"https://t.me/share/url?url={invite_link}&text=🛡 PORTAL — приглашение в защищенную сеть")],
+        [InlineKeyboardButton(text="📤 Поделиться реферальной ссылкой", url=f"https://t.me/share/url?url={invite_link}&text=🛡 POKROV VPN — приглашение в защищённую сеть")],
         [InlineKeyboardButton(text="◀️ Назад", callback_data="back")]
     ])
     
@@ -4901,7 +4906,7 @@ async def redeem_command(message: Message, bot: Bot):
     if len(args) < 2:
         await message.answer(
             "📥 *Активация подарочной карты*\n\n"
-            "Использование: `/redeem PORTAL-XXXX-XXXX`\n\n"
+            "Использование: `/redeem POKROV-XXXX-XXXX`\n\n"
             "_Старые коды `SWAZ-...` тоже работают._\n\n"
             "_Введи код карты, которую тебе подарили_",
             parse_mode=ParseMode.MARKDOWN
@@ -4949,7 +4954,7 @@ def _mask_review_username(username: str | None) -> str:
         raw = raw[1:].strip()
     if not raw:
         return "Пользователь"
-    return f"{raw[:2]}***"
+    return f"{raw[:4]}****"
 
 
 def has_user_review(tg_id: int) -> bool:
@@ -5011,7 +5016,7 @@ async def review_command(message: Message):
     # Check if can review (has active sub, used for 7+ days, no existing review)
     user = get_user(tg_id)
     if not user or not user.is_active:
-        await message.answer("❌ Активируй подписку, чтобы оставить отзыв")
+        await message.answer("❌ Активируй подписку, чтобы оставить отзыв для главной")
         return
     
     if has_user_review(tg_id):
@@ -5030,8 +5035,8 @@ async def review_command(message: Message):
     ])
     
     await message.answer(
-        "⭐ *Оставь отзыв!*\n\n"
-        "Оцени сервис от 1 до 5 звёзд:",
+        "⭐ *Поделись впечатлением*\n\n"
+        "Оцени сервис от 1 до 5 звёзд, а короткий текст поможет нам выбрать отзыв для главной страницы:",
         reply_markup=kb,
         parse_mode=ParseMode.MARKDOWN
     )
@@ -5053,7 +5058,7 @@ async def rate_review(callback: CallbackQuery):
     await callback.message.edit_text(
         f"Твоя оценка: {'⭐' * rating}\n\n"
         "Напиши короткий отзыв (до 200 символов):\n\n"
-        "_Или нажми 'Пропустить' чтобы оставить только оценку_",
+        "_Или нажми 'Пропустить', чтобы оставить только оценку_",
         reply_markup=kb,
         parse_mode=ParseMode.MARKDOWN
     )
@@ -5071,7 +5076,8 @@ async def skip_review_text(callback: CallbackQuery):
     if success:
         await callback.message.edit_text(
             f"✅ *Спасибо за отзыв!*\n\n"
-            f"Ты поставил: {'⭐' * rating}",
+            f"Ты поставил: {'⭐' * rating}\n"
+            "Если отзыв подойдёт под главную, мы покажем его после модерации.",
             parse_mode=ParseMode.MARKDOWN
         )
     else:
@@ -5775,6 +5781,7 @@ async def show_support(callback: CallbackQuery):
     _set_support_context(callback.from_user.id, enabled=True)
     support_new_url = f"https://t.me/{SUPPORT_USERNAME}?start=ticket_new"
     support_my_url = f"https://t.me/{SUPPORT_USERNAME}?start=ticket_my"
+    feedback_url = f"https://t.me/{FEEDBACK_USERNAME}"
     kb = InlineKeyboardMarkup(inline_keyboard=[
         [InlineKeyboardButton(text="❓ Как подключить?", callback_data="faq_connect")],
         [InlineKeyboardButton(text="⚠️ Не работает", callback_data="faq_notwork")],
@@ -5784,13 +5791,14 @@ async def show_support(callback: CallbackQuery):
         [InlineKeyboardButton(text="🔧 Диагностика", callback_data="support_diagnose")],
         [InlineKeyboardButton(text="🎫 Создать тикет", url=support_new_url)],
         [InlineKeyboardButton(text="📂 Мои тикеты (helpbot)", url=support_my_url)],
+        [InlineKeyboardButton(text="💌 Идеи и фидбэк", url=feedback_url)],
         [InlineKeyboardButton(text="◀️ Назад", callback_data="back")]
     ])
     
     await callback.message.edit_text(
-        "🤖 *Поддержка*\n\n"
-        "Единый канал поддержки: отдельный helpbot.\n"
-        "Напиши туда проблему, оператор ответит в той же ветке.\n\n"
+        "🤖 *Поддержка POKROV VPN*\n\n"
+        "Если нужно помочь с подключением, оплатой или устройством, helpbot подхватит диалог и доведёт его до ответа.\n"
+        "А если хочется поделиться идеей или тёплым отзывом, открой feedback bot ниже.\n\n"
         "Выбери вопрос или действие:",
         reply_markup=kb,
         parse_mode=ParseMode.MARKDOWN
@@ -6673,13 +6681,13 @@ async def _render_reviews_page(*, callback: CallbackQuery, featured_only: bool, 
     pages = max(1, (total + per_page - 1) // per_page)
     page = min(page, pages - 1)
 
-    title = "⭐ Избранные отзывы" if featured_only else "📝 Все отзывы"
+    title = "⭐ Отзывы на главной" if featured_only else "📝 Все отзывы"
     if not rows:
         kb = InlineKeyboardMarkup(
             inline_keyboard=[
                 [
                     InlineKeyboardButton(text="📝 Все", callback_data="admin_reviews_all:0"),
-                    InlineKeyboardButton(text="⭐ Избранные", callback_data="admin_reviews_featured:0"),
+                    InlineKeyboardButton(text="⭐ На главную", callback_data="admin_reviews_featured:0"),
                 ],
                 [InlineKeyboardButton(text="◀️ Назад", callback_data="admin")],
             ]
@@ -6691,7 +6699,7 @@ async def _render_reviews_page(*, callback: CallbackQuery, featured_only: bool, 
     kb_rows: list[list[InlineKeyboardButton]] = [
         [
             InlineKeyboardButton(text="📝 Все", callback_data="admin_reviews_all:0"),
-            InlineKeyboardButton(text="⭐ Избранные", callback_data="admin_reviews_featured:0"),
+            InlineKeyboardButton(text="⭐ На главную", callback_data="admin_reviews_featured:0"),
         ]
     ]
 
@@ -6956,7 +6964,7 @@ async def admin_custom_msg_prompt(callback: CallbackQuery):
         "*Формат с кнопкой URL:*\n"
         "`Текст сообщения\n---\nТекст кнопки|https://ссылка.com`\n\n"
         "_Пример:_\n"
-        "`Привет! Новое обновление!\n---\n🌐 Подробнее|https://portal-privacy.online/`",
+        "`Привет! Новое обновление!\n---\n🌐 Подробнее|https://pokrov.space/`",
         reply_markup=kb,
         parse_mode=ParseMode.MARKDOWN
     )
@@ -7199,7 +7207,7 @@ async def admin_start_links_menu(callback: CallbackQuery):
     finally:
         s.close()
 
-    bot_username = (BOT_USERNAME or "portal_service_bot").lstrip("@")
+    bot_username = (BOT_USERNAME or "pokrov_vpnbot").lstrip("@")
     lines = ["🔗 *Launch ссылки*\n"]
     kb_rows: list[list[InlineKeyboardButton]] = []
     if not rows:
@@ -9920,7 +9928,7 @@ async def reviews_moderation(message: Message):
     session = Session()
     if show_featured:
         reviews = session.query(Review).filter_by(is_featured=True).order_by(Review.created_at.desc()).limit(10).all()
-        title = "⭐ Избранные отзывы"
+        title = "⭐ Отзывы на главной"
     else:
         reviews = session.query(Review).order_by(Review.created_at.desc()).limit(10).all()
         title = "📝 Последние отзывы"
@@ -9928,7 +9936,7 @@ async def reviews_moderation(message: Message):
     session.close()
     
     if not reviews:
-        await message.answer("📭 Отзывов нет")
+        await message.answer("📭 Отзывов пока нет")
         return
     
     for r in reviews:
@@ -9938,7 +9946,7 @@ async def reviews_moderation(message: Message):
         text = r.text[:100] if r.text else "—"
         kb = InlineKeyboardMarkup(inline_keyboard=[
             [
-                InlineKeyboardButton(text="⭐ Featured" if not r.is_featured else "❌ Unfeatured", 
+                InlineKeyboardButton(text="⭐ На главную" if not r.is_featured else "❌ Снять с главной", 
                                      callback_data=f"review_toggle_{r.id}"),
                 InlineKeyboardButton(text="🗑️ Удалить", callback_data=f"review_delete_{r.id}")
             ]
@@ -9962,7 +9970,7 @@ async def toggle_review_featured(callback: CallbackQuery):
     review = session.query(Review).filter_by(id=review_id).first()
     if review:
         review.is_featured = not review.is_featured
-        status = "добавлен в избранное" if review.is_featured else "убран из избранного"
+        status = "добавлен на главную" if review.is_featured else "убран с главной"
         session.commit()
         await callback.answer(f"✅ Отзыв {status}")
     session.close()
@@ -10465,7 +10473,7 @@ async def main():
         pass
     dp.include_router(router)
     
-    logger.info("🌐 Portal Bot v2 starting...")
+    logger.info("🌐 POKROV VPN Bot v2 starting...")
     
     await panel.login()
     await _configure_public_bot_menu(bot)

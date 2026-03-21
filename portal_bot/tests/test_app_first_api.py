@@ -16,11 +16,11 @@ def _load_api(monkeypatch, tmp_path: Path):
     db_path = tmp_path / "portal-test.db"
     monkeypatch.setenv("DATABASE_URL", f"sqlite:///{db_path.as_posix()}")
     monkeypatch.setenv("WEBAPP_SESSION_SECRET", "portal-test-secret")
-    monkeypatch.setenv("PUBLIC_API_BASE_URL", "https://api.portal.test")
-    monkeypatch.setenv("PUBLIC_WEB_DOMAIN", "portal.test")
+    monkeypatch.setenv("PUBLIC_API_BASE_URL", "https://api.pokrov.test")
+    monkeypatch.setenv("PUBLIC_WEB_DOMAIN", "pokrov.test")
     monkeypatch.setenv("PUBLIC_CHANNEL", "pokrov_vpn")
-    monkeypatch.setenv("BOT_USERNAME", "portal_service_bot")
-    monkeypatch.setenv("SUPPORT_BOT_USERNAME", "portal_privacy_helpbot")
+    monkeypatch.setenv("BOT_USERNAME", "pokrov_vpnbot")
+    monkeypatch.setenv("SUPPORT_BOT_USERNAME", "pokrov_supportbot")
 
     for name in [
         "api",
@@ -180,7 +180,7 @@ def test_app_session_can_request_telegram_link(monkeypatch, tmp_path):
     payload = link_response.json()
     assert payload["ok"] is True
     assert payload["linked"] is False
-    assert payload["bot_url"].startswith("https://t.me/portal_service_bot?start=")
+    assert payload["bot_url"].startswith("https://t.me/pokrov_vpnbot?start=")
     assert payload["start_code"].startswith("app")
 
 

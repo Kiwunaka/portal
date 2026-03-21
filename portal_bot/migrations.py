@@ -341,12 +341,75 @@ def run_migrations(engine: Engine) -> None:
         # Best-effort indexes
         # (SQLite IF NOT EXISTS supported for indexes)
         conn.execute(text("CREATE INDEX IF NOT EXISTS ix_reviews_tg_id ON reviews(tg_id);"))
+        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_reviews_featured_created ON reviews(is_featured, created_at);"))
         conn.execute(text("CREATE INDEX IF NOT EXISTS ix_achievements_tg_id ON achievements(tg_id);"))
         conn.execute(text("CREATE INDEX IF NOT EXISTS ix_user_nodes_tg_id ON user_nodes(tg_id);"))
         conn.execute(text("CREATE INDEX IF NOT EXISTS ix_user_nodes_node_id ON user_nodes(node_id);"))
         conn.execute(text("CREATE UNIQUE INDEX IF NOT EXISTS uq_promo_usage_tg_code ON promo_usage(tg_id, promo_code);"))
         conn.execute(text("CREATE UNIQUE INDEX IF NOT EXISTS uq_users_app_install_id ON users(app_install_id) WHERE app_install_id IS NOT NULL;"))
         conn.execute(text("CREATE UNIQUE INDEX IF NOT EXISTS uq_users_linked_telegram_id ON users(linked_telegram_id) WHERE linked_telegram_id IS NOT NULL;"))
+
+        conn.execute(
+            text(
+                """
+                CREATE TABLE IF NOT EXISTS feedback_entries (
+                  id INTEGER PRIMARY KEY AUTOINCREMENT,
+                  tg_id BIGINT NOT NULL,
+                  username VARCHAR(100),
+                  category VARCHAR(32) NOT NULL DEFAULT 'general',
+                  text VARCHAR(1000) NOT NULL,
+                  status VARCHAR(20) NOT NULL DEFAULT 'new',
+                  source VARCHAR(32) NOT NULL DEFAULT 'webapp',
+                  review_id INTEGER,
+                  created_at DATETIME NOT NULL,
+                  reviewed_at DATETIME
+                );
+                """
+            )
+        )
+        if conn.execute(text("SELECT name FROM sqlite_master WHERE type='table' AND name='feedback_entries';")).fetchone():
+            wanted_cols = [
+                ("username", "VARCHAR(100)"),
+                ("category", "VARCHAR(32) NOT NULL DEFAULT 'general'"),
+                ("status", "VARCHAR(20) NOT NULL DEFAULT 'new'"),
+                ("source", "VARCHAR(32) NOT NULL DEFAULT 'webapp'"),
+                ("review_id", "INTEGER"),
+                ("reviewed_at", "DATETIME"),
+            ]
+            for col, ddl in wanted_cols:
+                if not _sqlite_column_exists(conn, "feedback_entries", col):
+                    conn.execute(text(f"ALTER TABLE feedback_entries ADD COLUMN {col} {ddl};"))
+            conn.execute(
+                text(
+                    """
+                    UPDATE feedback_entries
+                    SET category = 'general'
+                    WHERE category IS NULL OR trim(category) = '';
+                    """
+                )
+            )
+            conn.execute(
+                text(
+                    """
+                    UPDATE feedback_entries
+                    SET status = 'new'
+                    WHERE status IS NULL OR trim(status) = '';
+                    """
+                )
+            )
+            conn.execute(
+                text(
+                    """
+                    UPDATE feedback_entries
+                    SET source = 'webapp'
+                    WHERE source IS NULL OR trim(source) = '';
+                    """
+                )
+            )
+        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_feedback_entries_tg_id ON feedback_entries(tg_id);"))
+        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_feedback_entries_status ON feedback_entries(status);"))
+        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_feedback_entries_created_at ON feedback_entries(created_at);"))
+        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_feedback_entries_review_id ON feedback_entries(review_id);"))
 
         # support_tickets table: backfill columns for legacy DBs if table already exists
         if conn.execute(text("SELECT name FROM sqlite_master WHERE type='table' AND name='support_tickets';")).fetchone():
@@ -876,6 +939,35 @@ def _run_postgres_migrations(engine: Engine) -> None:
     """
     with engine.begin() as conn:
         conn.execute(text("ALTER TABLE gift_cards ALTER COLUMN code TYPE VARCHAR(32);"))
+        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_reviews_featured_created ON reviews(is_featured, created_at);"))
+        conn.execute(
+            text(
+                """
+                CREATE TABLE IF NOT EXISTS feedback_entries (
+                  id SERIAL PRIMARY KEY,
+                  tg_id BIGINT NOT NULL,
+                  username VARCHAR(100),
+                  category VARCHAR(32) NOT NULL DEFAULT 'general',
+                  text VARCHAR(1000) NOT NULL,
+                  status VARCHAR(20) NOT NULL DEFAULT 'new',
+                  source VARCHAR(32) NOT NULL DEFAULT 'webapp',
+                  review_id INTEGER,
+                  created_at TIMESTAMP NOT NULL,
+                  reviewed_at TIMESTAMP
+                );
+                """
+            )
+        )
+        conn.execute(text("ALTER TABLE feedback_entries ADD COLUMN IF NOT EXISTS username VARCHAR(100);"))
+        conn.execute(text("ALTER TABLE feedback_entries ADD COLUMN IF NOT EXISTS category VARCHAR(32) DEFAULT 'general';"))
+        conn.execute(text("ALTER TABLE feedback_entries ADD COLUMN IF NOT EXISTS status VARCHAR(20) DEFAULT 'new';"))
+        conn.execute(text("ALTER TABLE feedback_entries ADD COLUMN IF NOT EXISTS source VARCHAR(32) DEFAULT 'webapp';"))
+        conn.execute(text("ALTER TABLE feedback_entries ADD COLUMN IF NOT EXISTS review_id INTEGER;"))
+        conn.execute(text("ALTER TABLE feedback_entries ADD COLUMN IF NOT EXISTS reviewed_at TIMESTAMP;"))
+        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_feedback_entries_tg_id ON feedback_entries(tg_id);"))
+        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_feedback_entries_status ON feedback_entries(status);"))
+        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_feedback_entries_created_at ON feedback_entries(created_at);"))
+        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_feedback_entries_review_id ON feedback_entries(review_id);"))
         conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS referral_code VARCHAR(10);"))
         conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS first_purchase_done BOOLEAN DEFAULT FALSE;"))
         conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS sub_token VARCHAR(64);"))

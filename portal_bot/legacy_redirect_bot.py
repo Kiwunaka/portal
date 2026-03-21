@@ -15,7 +15,7 @@ load_dotenv(dotenv_path=Path(__file__).resolve().with_name(".env"))
 load_dotenv()
 
 LEGACY_BOT_TOKEN = (os.getenv("LEGACY_BOT_TOKEN") or "").strip()
-TARGET_URL = (os.getenv("BOT_MIGRATION_TARGET_URL") or "https://t.me/portal_service_bot").strip()
+TARGET_URL = (os.getenv("BOT_MIGRATION_TARGET_URL") or "https://t.me/pokrov_vpnbot").strip()
 
 if not LEGACY_BOT_TOKEN:
     raise SystemExit("LEGACY_BOT_TOKEN is empty")
@@ -31,15 +31,15 @@ router = Router()
 
 def _redirect_text() -> str:
     return (
-        "\u2139\ufe0f \u042d\u0442\u043e\u0442 \u0431\u043e\u0442 \u043f\u0435\u0440\u0435\u0435\u0445\u0430\u043b.\n\n"
-        "\u041f\u043e\u0436\u0430\u043b\u0443\u0439\u0441\u0442\u0430, \u0438\u0441\u043f\u043e\u043b\u044c\u0437\u0443\u0439\u0442\u0435 \u043d\u043e\u0432\u044b\u0439 \u0431\u043e\u0442:\n"
+        "\u2139\ufe0f \u042d\u0442\u043e\u0442 \u0431\u043e\u0442 \u043f\u0435\u0440\u0435\u0435\u0445\u0430\u043b \u0432 POKROV VPN.\n\n"
+        "\u041f\u043e\u0436\u0430\u043b\u0443\u0439\u0441\u0442\u0430, \u043e\u0442\u043a\u0440\u043e\u0439\u0442\u0435 \u043d\u043e\u0432\u044b\u0439 \u0431\u043e\u0442:\n"
         f"{TARGET_URL}"
     )
 
 
 def _redirect_kb() -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(
-        inline_keyboard=[[InlineKeyboardButton(text="\u041e\u0442\u043a\u0440\u044b\u0442\u044c \u043d\u043e\u0432\u044b\u0439 \u0431\u043e\u0442", url=TARGET_URL)]]
+        inline_keyboard=[[InlineKeyboardButton(text="\u041e\u0442\u043a\u0440\u044b\u0442\u044c POKROV VPN", url=TARGET_URL)]]
     )
 
 
@@ -50,7 +50,7 @@ async def start(message: Message) -> None:
 
 @router.callback_query()
 async def any_callback(callback: CallbackQuery) -> None:
-    await callback.answer("\u0411\u043e\u0442 \u043f\u0435\u0440\u0435\u0435\u0445\u0430\u043b", show_alert=False)
+    await callback.answer("\u0411\u043e\u0442 \u043f\u0435\u0440\u0435\u0435\u0445\u0430\u043b \u0432 POKROV VPN", show_alert=False)
     await callback.message.answer(_redirect_text(), reply_markup=_redirect_kb(), disable_web_page_preview=True)
 
 

@@ -42,7 +42,7 @@ from tickets_repo import (
 
 HELP_BOT_TOKEN = (os.getenv("HELP_BOT_TOKEN") or "").strip()
 ADMIN_ID = int(os.getenv("ADMIN_ID", "0"))
-MAIN_BOT_USERNAME = (os.getenv("BOT_USERNAME") or "portal_service_bot").lstrip("@")
+MAIN_BOT_USERNAME = (os.getenv("BOT_USERNAME") or "pokrov_vpnbot").lstrip("@")
 HELPBOT_START_MEDIA_PATH = (os.getenv("HELPBOT_START_MEDIA_PATH") or "").strip()
 HELPBOT_START_MEDIA_TYPE = (os.getenv("HELPBOT_START_MEDIA_TYPE") or "photo").strip().lower()
 
@@ -103,11 +103,16 @@ def _main_menu(is_admin: bool) -> InlineKeyboardMarkup:
 def _welcome_text(is_admin: bool) -> str:
     headline = get_copy_text(
         "bot.support.welcome",
-        "Поддержка PORTAL рядом. Откройте новое обращение или продолжите уже начатый диалог.",
+        "Поддержка POKROV VPN рядом. Откройте новый запрос или продолжите уже начатый диалог без лишних шагов.",
     )
-    text = f"👨‍💻 *{headline}*\n\nНажмите «Начать», чтобы открыть новый запрос.\nОбычно отвечаем в течение 15 минут.\n\n👇 *Выберите действие:*"
+    text = (
+        f"👨‍💻 *{headline}*\n\n"
+        "Нажмите «Начать», чтобы открыть новый запрос.\n"
+        "Обычно отвечаем быстро и по-человечески.\n\n"
+        "👇 *Выберите действие:*"
+    )
     if is_admin:
-        text += "\n\nРежим оператора: доступна очередь тикетов."
+        text += "\n\nРежим оператора: доступна очередь тикетов и ручной ответ пользователям."
     return text
 
 
@@ -239,10 +244,10 @@ async def start(message: Message) -> None:
         if created:
             await _notify_admin(
                 message.bot,
-                f"🆕 Новый тикет #{ticket.id} от пользователя {tg_id} (helpbot).\n{_main_bot_hint()}",
+                f"🆕 Новый запрос #{ticket.id} от пользователя {tg_id} (helpbot).\n{_main_bot_hint()}",
             )
         await message.answer(
-            f"Тикет #{ticket.id} открыт.\nОпиши проблему одним сообщением.",
+            f"Тикет #{ticket.id} открыт.\nОпиши вопрос одним сообщением, и мы аккуратно разберёмся.",
             reply_markup=InlineKeyboardMarkup(
                 inline_keyboard=[
                     [InlineKeyboardButton(text="🎫 Открыть тикет", callback_data=f"hb_ticket_view_{ticket.id}")],
@@ -260,7 +265,7 @@ async def start(message: Message) -> None:
             session.close()
         if not tickets:
             await message.answer(
-                "Тикетов пока нет.",
+                "Тикетов пока нет. Как только появится новый запрос, он сразу попадёт сюда.",
                 reply_markup=InlineKeyboardMarkup(
                     inline_keyboard=[
                         [InlineKeyboardButton(text="➕ Новый запрос", callback_data="hb_ticket_new")],
@@ -297,11 +302,11 @@ async def ticket_new(callback: CallbackQuery) -> None:
         if created:
             await _notify_admin(
                 callback.bot,
-                f"🆕 Новый тикет #{ticket.id} от пользователя {tg_id} (helpbot).\n{_main_bot_hint()}",
+                f"🆕 Новый запрос #{ticket.id} от пользователя {tg_id} (helpbot).\n{_main_bot_hint()}",
             )
         pending_ticket_replies[tg_id] = ticket.id
         await callback.message.edit_text(
-            f"Тикет #{ticket.id} готов.\nОтправь одним сообщением описание проблемы.",
+            f"Тикет #{ticket.id} готов.\nОтправь одним сообщением, что случилось и где именно застряли.",
             reply_markup=InlineKeyboardMarkup(
                 inline_keyboard=[
                     [InlineKeyboardButton(text="🎫 Открыть тикет", callback_data=f"hb_ticket_view_{ticket.id}")],
@@ -325,7 +330,7 @@ async def ticket_my(callback: CallbackQuery) -> None:
 
     if not tickets:
         await callback.message.edit_text(
-            "Тикетов пока нет.",
+            "Тикетов пока нет. Как только появится новый запрос, он сразу попадёт сюда.",
             reply_markup=InlineKeyboardMarkup(
                 inline_keyboard=[
                     [InlineKeyboardButton(text="➕ Новый запрос", callback_data="hb_ticket_new")],
@@ -379,7 +384,7 @@ async def ticket_reply(callback: CallbackQuery) -> None:
 
     pending_ticket_replies[callback.from_user.id] = ticket_id
     await callback.message.edit_text(
-        f"Ответ в тикет #{ticket_id}: отправь одно текстовое сообщение.",
+        f"Ответ в тикет #{ticket_id}: отправь одно текстовое сообщение, и мы сразу прикрепим его к диалогу.",
         reply_markup=InlineKeyboardMarkup(
             inline_keyboard=[[InlineKeyboardButton(text="◀️ Назад", callback_data=f"hb_ticket_view_{ticket_id}")]]
         ),
@@ -467,14 +472,14 @@ async def admin_queue(callback: CallbackQuery) -> None:
         )
     rows.append([InlineKeyboardButton(text="🔄 Обновить", callback_data="hb_admin_queue")])
     rows.append([InlineKeyboardButton(text="◀️ Назад", callback_data="hb_back_home")])
-    await callback.message.edit_text("Активные тикеты:", reply_markup=InlineKeyboardMarkup(inline_keyboard=rows))
+    await callback.message.edit_text("Активные запросы:", reply_markup=InlineKeyboardMarkup(inline_keyboard=rows))
 
 
 @router.callback_query(F.data == "hb_back_home")
 async def back_home(callback: CallbackQuery) -> None:
     await _safe_answer(callback)
     await callback.message.edit_text(
-        "Меню поддержки.",
+        "Меню поддержки POKROV VPN.",
         reply_markup=_main_menu(callback.from_user.id == ADMIN_ID),
     )
 
@@ -496,7 +501,7 @@ async def capture_ticket_reply(message: Message) -> None:
             ticket, created = _get_or_create_user_ticket(session, tg_id)
             ticket_id = ticket.id
         if not ticket and tg_id == ADMIN_ID:
-            await message.answer("Выбери тикет в очереди и нажми «Ответить».", reply_markup=_main_menu(True))
+            await message.answer("Выбери запрос в очереди и нажми «Ответить».", reply_markup=_main_menu(True))
             return
         if not ticket:
             await message.answer("Тикет не найден.", reply_markup=_main_menu(tg_id == ADMIN_ID))
@@ -516,7 +521,7 @@ async def capture_ticket_reply(message: Message) -> None:
         if tg_id == ADMIN_ID:
             set_ticket_status(session, ticket=ticket, status=STATUS_IN_PROGRESS, assigned_admin_tg_id=ADMIN_ID)
             try:
-                await message.bot.send_message(ticket.user_tg_id, f"💬 Новый ответ оператора в тикете #{ticket.id}:\n{text}")
+                await message.bot.send_message(ticket.user_tg_id, f"💬 Новый ответ команды POKROV VPN в тикете #{ticket.id}:\n{text}")
             except Exception as e:
                 logger.warning("helpbot reply to user failed ticket=%s err=%s", ticket.id, e)
         else:
@@ -528,7 +533,7 @@ async def capture_ticket_reply(message: Message) -> None:
             if created:
                 await _notify_admin(
                     message.bot,
-                    f"🆕 Новый тикет #{ticket.id} от пользователя {tg_id} (helpbot).\n{_main_bot_hint()}",
+                    f"🆕 Новый запрос #{ticket.id} от пользователя {tg_id} (helpbot).\n{_main_bot_hint()}",
                 )
         session.commit()
         pending_ticket_replies.pop(tg_id, None)

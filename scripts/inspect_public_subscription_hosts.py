@@ -15,7 +15,7 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 def main() -> int:
     ap = argparse.ArgumentParser(description="Fetch a subscription from PUBLIC_API_BASE_URL and print unique hosts (no tokens printed).")
     ap.add_argument("--db", default=str(REPO_ROOT / "portal.db.cluster.db"))
-    ap.add_argument("--public-api-base", default="https://kiwunaka.space:2096")
+    ap.add_argument("--public-api-base", default="https://api.pokrov.space")
     args = ap.parse_args()
 
     db = Path(args.db)
@@ -66,4 +66,3 @@ def main() -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
-

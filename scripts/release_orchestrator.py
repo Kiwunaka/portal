@@ -26,8 +26,8 @@ def _dry_run(name: str, cmd: list[str], cwd: Path = REPO_ROOT) -> None:
 def main() -> int:
     parser = argparse.ArgumentParser(description="One-command release orchestrator: gates -> deploy -> verify.")
     parser.add_argument("--brain-ip", default="", help="Brain node public IP (required for deploy/verify steps)")
-    parser.add_argument("--web-domain", default="portal-privacy.online")
-    parser.add_argument("--api-domain", default="kiwunaka.space")
+    parser.add_argument("--web-domain", default="pokrov.space")
+    parser.add_argument("--api-domain", default="api.pokrov.space")
     parser.add_argument("--ssh-user", default="root")
     parser.add_argument("--ssh-port", type=int, default=29374)
     parser.add_argument("--passwords", default=str(REPO_ROOT / "VPN NODE SSH KEYS" / "PASSWORDS.txt"))

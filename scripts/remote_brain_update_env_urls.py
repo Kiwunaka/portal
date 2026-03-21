@@ -39,6 +39,9 @@ def _rewrite_env(
     webapp_url: str,
     public_api_domain: str,
     public_web_domain: str,
+    telegram_oauth_client_id: str,
+    telegram_oauth_redirect_uri: str,
+    telegram_oauth_client_secret: str,
 ) -> str:
     lines = text.splitlines()
     out: list[str] = []
@@ -47,6 +50,9 @@ def _rewrite_env(
     seen_api_domain = False
     seen_web_domain = False
     seen_host_domain = False
+    seen_oauth_client_id = False
+    seen_oauth_redirect_uri = False
+    seen_oauth_client_secret = False
     for ln in lines:
         if ln.strip().startswith("PUBLIC_API_BASE_URL="):
             out.append(f"PUBLIC_API_BASE_URL={public_api_base}")
@@ -68,6 +74,18 @@ def _rewrite_env(
             out.append(f"HOST_DOMAIN={public_api_domain}")
             seen_host_domain = True
             continue
+        if ln.strip().startswith("TELEGRAM_OAUTH_CLIENT_ID="):
+            out.append(f"TELEGRAM_OAUTH_CLIENT_ID={telegram_oauth_client_id}")
+            seen_oauth_client_id = True
+            continue
+        if ln.strip().startswith("TELEGRAM_OAUTH_REDIRECT_URI="):
+            out.append(f"TELEGRAM_OAUTH_REDIRECT_URI={telegram_oauth_redirect_uri}")
+            seen_oauth_redirect_uri = True
+            continue
+        if telegram_oauth_client_secret and ln.strip().startswith("TELEGRAM_OAUTH_CLIENT_SECRET="):
+            out.append(f"TELEGRAM_OAUTH_CLIENT_SECRET={telegram_oauth_client_secret}")
+            seen_oauth_client_secret = True
+            continue
         out.append(ln)
     if not seen_api:
         out.append(f"PUBLIC_API_BASE_URL={public_api_base}")
@@ -79,14 +97,20 @@ def _rewrite_env(
         out.append(f"PUBLIC_WEB_DOMAIN={public_web_domain}")
     if not seen_host_domain:
         out.append(f"HOST_DOMAIN={public_api_domain}")
+    if telegram_oauth_client_id and not seen_oauth_client_id:
+        out.append(f"TELEGRAM_OAUTH_CLIENT_ID={telegram_oauth_client_id}")
+    if telegram_oauth_redirect_uri and not seen_oauth_redirect_uri:
+        out.append(f"TELEGRAM_OAUTH_REDIRECT_URI={telegram_oauth_redirect_uri}")
+    if telegram_oauth_client_secret and not seen_oauth_client_secret:
+        out.append(f"TELEGRAM_OAUTH_CLIENT_SECRET={telegram_oauth_client_secret}")
     return "\n".join(out).rstrip() + "\n"
 
 
 def main() -> int:
     ap = argparse.ArgumentParser(description="Update /root/portal_bot/.env URLs on brain without printing secrets.")
     ap.add_argument("--brain-ip", required=True)
-    ap.add_argument("--api-domain", default="kiwunaka.space")
-    ap.add_argument("--web-domain", default="portal-privacy.online")
+    ap.add_argument("--api-domain", default="api.pokrov.space")
+    ap.add_argument("--web-domain", default="pokrov.space")
     ap.add_argument("--public-api-port", type=int, default=443)
     ap.add_argument("--webapp-port", type=int, default=443)
     ap.add_argument("--ssh-user", default="root")
@@ -103,7 +127,10 @@ def main() -> int:
     api_port = int(args.public_api_port)
     web_port = int(args.webapp_port)
     public_api_base = f"https://{api_domain}" if api_port == 443 else f"https://{api_domain}:{api_port}"
-    webapp_url = f"https://{web_domain}/webapp/" if web_port == 443 else f"https://{web_domain}:{web_port}/webapp/"
+    webapp_url = f"https://app.pokrov.space/" if web_port == 443 else f"https://app.pokrov.space:{web_port}/"
+    telegram_oauth_client_id = (os.getenv("TELEGRAM_OAUTH_CLIENT_ID") or "").strip()
+    telegram_oauth_redirect_uri = (os.getenv("TELEGRAM_OAUTH_REDIRECT_URI") or webapp_url).strip()
+    telegram_oauth_client_secret = (os.getenv("TELEGRAM_OAUTH_CLIENT_SECRET") or "").strip()
 
     ssh = paramiko.SSHClient()
     ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
@@ -123,6 +150,9 @@ def main() -> int:
                 webapp_url=webapp_url,
                 public_api_domain=api_domain,
                 public_web_domain=web_domain,
+                telegram_oauth_client_id=telegram_oauth_client_id,
+                telegram_oauth_redirect_uri=telegram_oauth_redirect_uri,
+                telegram_oauth_client_secret=telegram_oauth_client_secret,
             )
             with sftp.file(rp, "w") as f:
                 f.write(updated.encode("utf-8"))
