@@ -4,7 +4,7 @@ Last updated: 2026-03-20
 
 ## Document Status
 
-This file is living source of truth for developer workflow in the `PORTAL` workspace.
+This file is living source of truth for developer workflow in the `POKROV` workspace.
 
 ## Purpose
 
@@ -39,7 +39,7 @@ Contains backend, bots, worker jobs, webapp, marketing site, ops scripts, and pl
 
 - [C:/Users/kiwun/Documents/ai/VPN/external/client-fork/app](C:/Users/kiwun/Documents/ai/VPN/external/client-fork/app)
 
-Contains the `PORTAL VPN` Flutter fork for Android and Windows.
+Contains the `POKROV VPN` Flutter fork for Android and Windows.
 
 ## Backend Commands
 
@@ -84,6 +84,11 @@ flutter_distributor package --platform windows --targets msix
 ## Documentation Rules
 
 Whenever behavior, contracts, support flow, or release flow changes, update the canonical docs in the same task.
+
+When public copy, review moderation, or nickname masking changes, also update:
+
+- [tests/test_public_copy_guardrails.py](C:/Users/kiwun/Documents/ai/VPN/tests/test_public_copy_guardrails.py)
+- [tests/test_reviews_username_masking.py](C:/Users/kiwun/Documents/ai/VPN/tests/test_reviews_username_masking.py)
 
 Minimum docs to touch when relevant:
 

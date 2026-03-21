@@ -8,7 +8,7 @@ This file is living source of truth for app-first identity, Telegram linking, an
 
 ## Goal
 
-Document the current app-first identity model and the live Telegram bonus flow used by `PORTAL VPN`.
+Document the current app-first identity model and the live Telegram bonus flow used by `POKROV VPN`.
 
 ## App-First Trial Flow
 
@@ -67,7 +67,7 @@ Related live surfaces also exposed by the backend:
 ## Telegram Linking Flow
 
 1. app-first account requests Telegram linking
-2. backend issues a deep link to `@portal_service_bot`
+2. backend issues a deep link to `@pokrov_vpnbot`
 3. user opens the bot link
 4. bot binds the app account to Telegram identity
 5. reward and recovery logic can then use the linked Telegram account
@@ -85,7 +85,7 @@ Related live surfaces also exposed by the backend:
 The bonus path is live and configured for:
 
 - public channel: `@pokrov_vpn`
-- bot: `@portal_service_bot`
+- bot: `@pokrov_vpnbot`
 
 The worker and API distinguish channel failures such as:
 
@@ -106,6 +106,16 @@ Support direction should stay consistent across app, WebApp, and helpbot:
 - support messages should include device context
 - users should be able to start support from inside the app
 - helpbot remains a valid external fallback
+
+## Feedback And Review Flow
+
+1. user leaves feedback from the app, WebApp, or `@pokrov_feedbackbot`
+2. backend stores the submission for moderation
+3. operator approves selected reviews for public display
+4. the public homepage and cabinet show only featured reviews
+5. visible nicknames are masked in a friendly format such as `mikh****`
+
+If a username is missing or unusable, the public display should fall back to a neutral label like `Пользователь`.
 
 ## Related Files
 

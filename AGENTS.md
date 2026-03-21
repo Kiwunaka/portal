@@ -13,8 +13,8 @@ Use it to answer four questions before touching code:
 
 ## Current Facts
 
-- Platform brand: `PORTAL`
-- Client brand: `PORTAL VPN`
+- Platform brand: `POKROV`
+- Client brand: `POKROV VPN`
 - Client strategy: `consumer-first`
 - Identity model: `app-first`
 - Trial duration: `5 days`
@@ -22,9 +22,9 @@ Use it to answer four questions before touching code:
 - Default client core: `sing-box`
 - Compatibility fallback: `xray` only in advanced settings
 - Public channel: `@pokrov_vpn`
-- Main bot: `@portal_service_bot`
-- Support bot: `@portal_privacy_helpbot`
-- Feedback bot: `@portalfeedbackbot`
+- Main bot: `@pokrov_vpnbot`
+- Support bot: `@pokrov_supportbot`
+- Feedback bot: `@pokrov_feedbackbot`
 - Canonical control-plane host: `82.21.114.104`
 
 ## Must-Read Order
@@ -42,7 +42,7 @@ Before any substantial change, read these files in order:
 For client work, also read:
 
 - [Client Docs Index](C:/Users/kiwun/Documents/ai/VPN/external/client-fork/app/docs/README.md)
-- [PORTAL VPN Product Spec](C:/Users/kiwun/Documents/ai/VPN/external/client-fork/app/docs/product/portal-vpn-v1-spec.md)
+- [POKROV VPN Product Spec](C:/Users/kiwun/Documents/ai/VPN/external/client-fork/app/docs/product/portal-vpn-v1-spec.md)
 - [App-First Session Flow](C:/Users/kiwun/Documents/ai/VPN/external/client-fork/app/docs/architecture/app-first-session-flow.md)
 
 ## Canonical Docs
@@ -198,9 +198,9 @@ Do not treat archived evidence under `docs/audit-artifacts/` as disposable by de
 
 ## Current Telegram Registry
 
-- Main bot: `@portal_service_bot`
-- Support bot: `@portal_privacy_helpbot`
-- Feedback bot: `@portalfeedbackbot`
+- Main bot: `@pokrov_vpnbot`
+- Support bot: `@pokrov_supportbot`
+- Feedback bot: `@pokrov_feedbackbot`
 - Public channel: `@pokrov_vpn`
 - Verified channel URL: `https://t.me/pokrov_vpn/10`
 

@@ -1,4 +1,4 @@
-# PORTAL Documentation Index
+# POKROV Documentation Index
 
 Last updated: 2026-03-20
 
@@ -34,7 +34,7 @@ Use the role-based paths below first. If you need older context, go to the archi
 
 ## Start Here As User
 
-- [PORTAL VPN User Guide (RU)](C:/Users/kiwun/Documents/ai/VPN/docs/user/portal-vpn-user-guide-ru.md)
+- [POKROV VPN User Guide (RU)](C:/Users/kiwun/Documents/ai/VPN/docs/user/portal-vpn-user-guide-ru.md)
 
 ## Start Here For Client Fork
 
@@ -47,6 +47,7 @@ Use the role-based paths below first. If you need older context, go to the archi
 ### Product
 
 - [docs/product/portal-vpn-product.md](C:/Users/kiwun/Documents/ai/VPN/docs/product/portal-vpn-product.md)
+- [docs/product/pokrov-growth-and-competitor-notes.md](C:/Users/kiwun/Documents/ai/VPN/docs/product/pokrov-growth-and-competitor-notes.md)
 
 ### Architecture
 

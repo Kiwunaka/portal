@@ -95,6 +95,7 @@ This file is living source of truth for repository layout, local authorities, sc
 ### Bot, support, and user surfaces
 
 - `tests/test_bot_paywall.py`
+- `tests/test_public_copy_guardrails.py`
 - `tests/test_tickets_repo.py`
 - `tests/test_reviews_username_masking.py`
 

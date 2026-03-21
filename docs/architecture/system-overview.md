@@ -1,4 +1,4 @@
-# PORTAL System Overview
+# POKROV System Overview
 
 Last updated: 2026-03-20
 
@@ -8,12 +8,12 @@ This file is living source of truth for the platform architecture map.
 
 ## Purpose
 
-`PORTAL` is a platform composed of:
+`POKROV` is a platform composed of:
 
 - a Python backend and Telegram control plane
 - a user cabinet and admin web surface
 - a marketing and legal site
-- a Flutter client fork for `PORTAL VPN`
+- a Flutter client fork for `POKROV VPN`
 - operational scripts for deployment, node management, and release flow
 
 ## Main Components
@@ -21,9 +21,9 @@ This file is living source of truth for the platform architecture map.
 ### Control Plane
 
 - `portal_bot/api.py`
-  FastAPI backend for health checks, app-first session bootstrap, payments, bonuses, tickets, public data, and admin APIs.
+  FastAPI backend for health checks, app-first session bootstrap, payments, bonuses, tickets, public data, public reviews, and admin APIs.
 - `portal_bot/bot.py`
-  Main Telegram bot for billing, campaigns, referrals, and operator actions.
+  Main Telegram bot for billing, campaigns, referrals, review moderation, and operator actions.
 - `portal_bot/helpbot.py`
   Dedicated support bot.
 - `portal_bot/worker.py`
@@ -42,7 +42,7 @@ This file is living source of truth for the platform architecture map.
 
 Node lifecycle rule:
 
-- `PORTAL` database decides assignment and lifecycle
+- `POKROV` database decides assignment and lifecycle
 - 3x-ui executes the resulting config
 - node retirement sequence is `drain -> resync -> disable`
 
@@ -53,7 +53,7 @@ Node lifecycle rule:
 - `marketing/`
   public website, legal pages, and public conversion flows
 - `external/client-fork/app/`
-  `PORTAL VPN` consumer client for Android and Windows
+  `POKROV VPN` consumer client for Android and Windows
 
 ### Operational Tooling
 
@@ -89,7 +89,7 @@ Not source of truth:
 ### Telegram Linking And Reward Flow
 
 1. app-first account requests Telegram linking
-2. backend issues a deep link to `@portal_service_bot`
+2. backend issues a deep link to `@pokrov_vpnbot`
 3. bot links Telegram identity to the app-first account
 4. app calls reward claim API
 5. backend validates membership in `@pokrov_vpn`
@@ -100,6 +100,14 @@ Not source of truth:
 1. user opens support from app, WebApp, or helpbot
 2. the platform stores or routes the support thread
 3. operator responds through the current support tooling
+
+### Feedback And Review Flow
+
+1. user leaves feedback from the app, WebApp, or `@pokrov_feedbackbot`
+2. backend stores the submission for moderation
+3. operator approves selected reviews for public display
+4. marketing and cabinet surfaces render only featured reviews
+5. visible nicknames are masked in a friendly format such as `mikh****`
 
 ## Runtime Hosts And Services
 
@@ -130,6 +138,8 @@ Major currently live public and app-first routes in `portal_bot/api.py` include:
 - `GET /api/dashboard`
 - `GET /api/client/apps`
 - `GET /api/nodes/status`
+- `GET /api/reviews`
+- `POST /api/reviews`
 - `POST /api/bonuses/channel/claim`
 - tickets and admin APIs under `/api/tickets` and `/api/admin/*`
 
@@ -139,12 +149,12 @@ The backend exposes both public/app-first surfaces and a broader Telegram/admin-
 
 Canonical bot usernames:
 
-- `portal_service_bot`
-- `portal_privacy_helpbot`
-- `portalfeedbackbot`
+- `pokrov_vpnbot`
+- `pokrov_supportbot`
+- `pokrov_feedbackbot`
 
 Current channel state:
 
 - verified public channel: `@pokrov_vpn`
 - bonus verification is live
-- `@portal_service_bot` is an administrator in that channel
+- `@pokrov_vpnbot` is an administrator in that channel

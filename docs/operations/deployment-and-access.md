@@ -88,6 +88,30 @@ At minimum, verify:
 - Telegram linking / channel bonus path
 - `portal-api`, `portal-bot`, and `portal-helpbot` service status
 
+## Telegram OAuth / OIDC Runtime
+
+`POKROV` now supports Telegram OAuth / OIDC for web login.
+
+Runtime env on `brain` must include:
+
+- `TELEGRAM_OAUTH_CLIENT_ID`
+- `TELEGRAM_OAUTH_CLIENT_SECRET`
+- `TELEGRAM_OAUTH_REDIRECT_URI`
+
+Current canonical redirect URI:
+
+- `https://app.pokrov.space/`
+
+Current trusted origins in `BotFather` should include:
+
+- `https://pokrov.space/`
+- `https://app.pokrov.space/`
+
+Safe deploy note:
+
+- use local env injection for the client secret
+- do not write raw OAuth secrets into docs, commits, or terminal summaries
+
 ## Client Build Artifacts
 
 Current client workspace:
@@ -102,11 +126,109 @@ Important outputs:
 
 Do not delete release artifacts if they are still being distributed or verified.
 
+## POKROV Client Release Path
+
+Canonical client release workflow:
+
+- `external/client-fork/app/.github/workflows/fork-android-windows-release.yml`
+
+Default release slug in this repo:
+
+- `pokrov-vpn`
+
+Default artifact names:
+
+- `pokrov-vpn-android-universal.apk`
+- `pokrov-vpn-android-market.aab`
+- `pokrov-vpn-windows-setup-x64.exe`
+- `pokrov-vpn-windows-setup-x64.msix`
+- `pokrov-vpn-windows-portable-x64.zip`
+
+Local build-smoke commands:
+
+```powershell
+cd external/client-fork/app
+flutter build windows --release
+$env:PATH = "$PWD\build\windows\x64\runner\Release;$env:PATH"
+flutter test
+flutter build apk --release
+flutter build appbundle --release
+```
+
+Windows note:
+
+- local `flutter test` for this client expects `sqlite3.dll` from the Windows runner output, so build `windows --release` first and prepend `build\windows\x64\runner\Release` to `PATH` before running the full suite
+
+Signed release path:
+
+- Android signing requires `ANDROID_SIGNING_KEY`, `ANDROID_SIGNING_STORE_PASSWORD`, `ANDROID_SIGNING_KEY_PASSWORD`, `ANDROID_SIGNING_KEY_ALIAS`
+- Windows signing requires `WINDOWS_SIGNING_KEY`, `WINDOWS_SIGNING_PASSWORD`
+- without those secrets, local builds are valid only as unsigned smoke artifacts
+- keep Android `applicationId` on `space.pokrov.vpn`, but keep Gradle `namespace` on `com.hiddify.hiddify` until the Kotlin package tree is migrated too
+
+Release handoff after publishing artifacts:
+
+```powershell
+pwsh external/client-fork/scripts/release_handoff.ps1 `
+  -AndroidApkUrl "https://github.com/<org>/<repo>/releases/download/<tag>/pokrov-vpn-android-universal.apk" `
+  -WindowsExeUrl "https://github.com/<org>/<repo>/releases/download/<tag>/pokrov-vpn-windows-setup-x64.exe"
+python external/client-fork/scripts/check_release_urls.py --env-file external/client-fork/release-links.env
+```
+
+Then copy the resulting URLs into runtime env:
+
+- `APP_ANDROID_PLAY_URL`
+- `APP_ANDROID_APK_URL`
+- `APP_ANDROID_MIRROR_URL`
+- `APP_WINDOWS_EXE_URL`
+- `APP_WINDOWS_MIRROR_URL`
+- `APP_DOCS_URL`
+
+## Existing User Cutover
+
+Release communication for existing users must explicitly say:
+
+- `POKROV VPN` is the new official app line
+- Android and Windows should be treated as a fresh install path
+- existing `kiwunaka.space` profiles stay temporarily compatible during migration
+- users should install the new app, connect successfully, and only then remove the old app
+
+Recommended migration order:
+
+1. publish new Android and Windows artifacts
+2. update runtime download URLs from release handoff
+3. post migration notice in `@pokrov_vpn`
+4. answer support with the same canonical instructions
+5. keep old `kiwunaka.space` subscription hosts active until most users rotate to new profiles
+
+Operator message template:
+
+```text
+POKROV VPN is now the official app.
+
+If you used the old app, install the new POKROV VPN release as a separate app.
+Do not delete the old app first.
+
+1. Install POKROV VPN
+2. Open it and activate or import your access
+3. Confirm that the new app connects successfully
+4. Only after that remove the old app if you want
+
+Old subscription links continue to work temporarily during migration.
+If you need help, contact @pokrov_supportbot.
+```
+
 ## Current Telegram Runtime Alignment
 
 Current operational state:
 
 - active public channel: `@pokrov_vpn`
-- `@portal_service_bot` is an administrator in that channel
+- `@pokrov_vpnbot` is an administrator in that channel
+- `@pokrov_feedbackbot` handles feedback intake for reviews and product suggestions
 - production env should keep `PUBLIC_CHANNEL=pokrov_vpn`
 - production env should keep `NEWS_CHANNEL_ID=@pokrov_vpn`
+
+Post-deploy checks should also confirm:
+
+- the public review feed loads with masked usernames
+- featured review cards on the public homepage use the approved review copy

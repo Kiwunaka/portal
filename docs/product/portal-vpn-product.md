@@ -1,4 +1,4 @@
-# PORTAL VPN Product Overview
+# POKROV VPN Product Overview
 
 Last updated: 2026-03-20
 
@@ -8,12 +8,12 @@ This file is living source of truth for product direction and user-facing produc
 
 ## Product Names
 
-- platform brand: `PORTAL`
-- client application: `PORTAL VPN`
+- platform brand: `POKROV`
+- client application: `POKROV VPN`
 
 ## Product Strategy
 
-`PORTAL VPN` is a `consumer-first`, `app-first` VPN product for:
+`POKROV VPN` is a `consumer-first`, `app-first` VPN product for:
 
 - `Android`
 - `Windows`
@@ -58,6 +58,7 @@ Telegram remains in the product for:
 - recovery scenarios
 - community and announcements
 - external support entrypoints
+- feedback collection and public review moderation
 
 ### WebApp And Marketing
 
@@ -78,7 +79,7 @@ Telegram remains in the product for:
 - the app-first account must first link Telegram
 - reward validation then checks membership in the configured public channel
 - active public channel: `@pokrov_vpn`
-- `@portal_service_bot` is an administrator in that channel
+- `@pokrov_vpnbot` is an administrator in that channel
 
 ## Advanced Settings Policy
 
@@ -106,7 +107,7 @@ Visible in advanced:
 
 ## Branding Rules
 
-All public and client-facing surfaces must be branded as `PORTAL` / `PORTAL VPN`.
+All public and client-facing surfaces must be branded as `POKROV` / `POKROV VPN`.
 
 Replace or remove:
 
@@ -126,9 +127,32 @@ Support should be reachable from:
 
 - the client app
 - the WebApp
-- helpbot `@portal_privacy_helpbot`
+- helpbot `@pokrov_supportbot`
+- feedback bot `@pokrov_feedbackbot`
 
 Support payloads should carry enough device and app context for operator diagnosis.
+
+## Reviews And Feedback
+
+Users can leave feedback from:
+
+- the client app
+- the WebApp
+- `@pokrov_feedbackbot`
+
+Moderation rules:
+
+- raw feedback stays private until an operator approves it
+- approved reviews can be featured on the public homepage and cabinet surfaces
+- visible usernames must use a masked format like `mikh****`
+- if a username is missing, use a neutral label such as `Пользователь`
+
+Public review copy should stay:
+
+- short
+- friendly
+- specific
+- truthful about what the service does
 
 ## Product Risk Focus
 
