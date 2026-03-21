@@ -22,7 +22,7 @@ const BASE_NAV_ITEMS: NavItem[] = [
   { href: "/support", icon: "support_agent", label: "Поддержка", match: (path) => path.startsWith("/support") },
 ];
 
-const BOT_BASE_URL = String(process.env.NEXT_PUBLIC_TELEGRAM_BOT_URL || "https://t.me/portal_service_bot")
+const BOT_BASE_URL = String(process.env.NEXT_PUBLIC_TELEGRAM_BOT_URL || "https://t.me/pokrov_vpnbot")
   .trim()
   .replace(/\/+$/, "");
 const BOT_WEBLOGIN_URL = `${BOT_BASE_URL}${BOT_BASE_URL.includes("?") ? "&" : "?"}start=weblogin`;
@@ -43,7 +43,7 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
 
   const [dark, setDark] = useState(() => {
     if (typeof window === "undefined") return false;
-    const saved = localStorage.getItem("portal-theme");
+    const saved = localStorage.getItem("pokrov-theme");
     return saved ? saved === "dark" : window.matchMedia("(prefers-color-scheme: dark)").matches;
   });
   const [inTelegramContext] = useState(() => Boolean(getTgUser()));
@@ -53,7 +53,7 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     document.documentElement.classList.toggle("dark", dark);
-    localStorage.setItem("portal-theme", dark ? "dark" : "light");
+    localStorage.setItem("pokrov-theme", dark ? "dark" : "light");
   }, [dark]);
 
   useEffect(() => {
@@ -78,7 +78,7 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
     return (
       <main className="mx-auto grid min-h-[70vh] w-[min(96vw,720px)] place-items-center py-8">
         <section className="glass-card w-full p-7">
-          <p className="font-mono text-xs uppercase tracking-[0.16em] text-slate-500">portal webapp</p>
+          <p className="font-mono text-xs uppercase tracking-[0.16em] text-slate-500">pokrov webapp</p>
           <h1 className="mt-3 font-display text-4xl font-bold">Загружаем данные профиля</h1>
           <div className="mt-4 h-2 overflow-hidden rounded-full bg-slate-200/80 dark:bg-slate-800">
             <div className="h-full w-1/3 animate-pulse rounded-full bg-violet-600" />
@@ -94,7 +94,7 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
         <section className="glass-card w-full p-7">
           <p className="font-mono text-xs uppercase tracking-[0.16em] text-violet-600 dark:text-violet-300">[web login]</p>
           <h1 className="mt-2 font-display text-4xl font-bold">Вход через Telegram</h1>
-          <p className="mt-3 text-sm text-slate-600 dark:text-slate-300">Авторизуйтесь через Telegram Login Widget, чтобы открыть личный кабинет в браузере.</p>
+          <p className="mt-3 text-sm text-slate-600 dark:text-slate-300">Подтвердите вход через Telegram, чтобы открыть кабинет POKROV VPN в браузере.</p>
           <div className="mt-5 space-y-3">
             <TelegramLoginWidget />
             {webLoginBusy ? <p className="text-xs text-slate-500">Проверяем аккаунт...</p> : null}
@@ -142,7 +142,7 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
             <div className="mb-9 flex items-center gap-3 px-3">
               <span className="material-symbols-rounded rounded-xl bg-violet-500/20 p-2 text-2xl text-violet-600 dark:text-violet-300">grid_view</span>
               <div>
-                <p className="font-display text-xl font-bold tracking-[0.12em]">PORTAL</p>
+                <p className="font-display text-xl font-bold tracking-[0.12em]">POKROV</p>
                 <p className="font-mono text-[11px] uppercase tracking-[0.16em] text-slate-500">dashboard</p>
               </div>
             </div>
@@ -252,7 +252,7 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
               <div className="flex items-center gap-2">
                 <span className="material-symbols-rounded rounded-xl bg-violet-500/20 p-2 text-violet-600 dark:text-violet-300">grid_view</span>
                 <div>
-                  <p className="font-display text-lg font-bold tracking-[0.12em]">PORTAL</p>
+                  <p className="font-display text-lg font-bold tracking-[0.12em]">POKROV</p>
                   <p className="font-mono text-[10px] uppercase tracking-[0.14em] text-slate-500">menu</p>
                 </div>
               </div>

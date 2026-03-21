@@ -5,22 +5,24 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 
 PUBLIC_COPY_FILES = [
-    ROOT / "copy/catalog.ru.json",
-    ROOT / "marketing/src/app/page.tsx",
-    ROOT / "marketing/src/app/checkout/page.tsx",
-    ROOT / "marketing/src/app/offer/page.tsx",
-    ROOT / "marketing/src/app/privacy/page.tsx",
-    ROOT / "webapp/src/app/page.tsx",
-    ROOT / "webapp/src/app/(dashboard)/dashboard/page.tsx",
-    ROOT / "webapp/src/app/(dashboard)/subscription/page.tsx",
-    ROOT / "webapp/src/app/(dashboard)/subscription/checkout/page.tsx",
-    ROOT / "webapp/src/app/(dashboard)/support/page.tsx",
+    ROOT / "docs/product/portal-vpn-product.md",
+    ROOT / "docs/architecture/system-overview.md",
+    ROOT / "docs/architecture/app-first-and-bonus-flows.md",
+    ROOT / "docs/operations/deployment-and-access.md",
+    ROOT / "docs/developer/developer-guide.md",
+    ROOT / "docs/developer/repository-map.md",
+    ROOT / "docs/user/portal-vpn-user-guide-ru.md",
+]
+FRONTEND_COPY_FILES = [
+    ROOT / "shared/portal-config.ts",
+    ROOT / "webapp/src/lib/portal.ts",
+    ROOT / "marketing/src/lib/portal.ts",
 ]
 
 BANNED_PATTERNS = [
     re.compile(r"\b100%\b", re.IGNORECASE),
-    re.compile(r"гарантирован\w*", re.IGNORECASE),
-    re.compile(r"без\s+ограничений", re.IGNORECASE),
+    re.compile(r"РіР°СЂР°РЅС‚РёСЂРѕРІР°РЅ\w*", re.IGNORECASE),
+    re.compile(r"Р±РµР·\s+РѕРіСЂР°РЅРёС‡РµРЅРёР№", re.IGNORECASE),
 ]
 
 PUBLIC_FORBIDDEN_PATTERNS = [
@@ -28,10 +30,14 @@ PUBLIC_FORBIDDEN_PATTERNS = [
     re.compile(r"tg_id=", re.IGNORECASE),
     re.compile(r"Telegram\s+Stars", re.IGNORECASE),
     re.compile(r"\bStars\b", re.IGNORECASE),
-    re.compile(r"зв[её]зд", re.IGNORECASE),
+    re.compile(r"\bPORTAL\b"),
+    re.compile(r"@portal_service_bot", re.IGNORECASE),
+    re.compile(r"@portal_privacy_helpbot", re.IGNORECASE),
+    re.compile(r"portalfeedbackbot", re.IGNORECASE),
+    re.compile(r"\bPORTAL VPN\b", re.IGNORECASE),
 ]
 
-MOJIBAKE_MARKERS = ["РЎ", "Рџ", "СЃ", "вЂ", "рџ", "вљ", "вњ"]
+MOJIBAKE_MARKERS = ["Р РЋ", "Р Сџ", "РЎРѓ", "РІР‚", "СЂСџ", "РІС™", "РІСљ", "�"]
 
 
 def _public_text(path: Path) -> str:
@@ -40,6 +46,13 @@ def _public_text(path: Path) -> str:
         items = payload.get("items") or {}
         return "\n".join(str((item or {}).get("ru") or "") for item in items.values())
     return path.read_text(encoding="utf-8")
+
+
+def _frontend_text_without_legacy_catalog(path: Path) -> str:
+    text = path.read_text(encoding="utf-8")
+    if path.suffix.lower() == ".ts":
+        text = re.sub(r"export const LEGACY_PUBLIC_MARKERS = \[(?:.|\n)*?\] as const;\n?", "", text)
+    return text
 
 
 def test_public_copy_has_no_banned_claims() -> None:
@@ -74,28 +87,64 @@ def test_public_copy_has_no_mojibake_markers() -> None:
     assert not violations, "\n".join(violations)
 
 
-def test_trial_first_copy_pack_is_present_on_key_public_pages() -> None:
+def test_frontend_public_copy_catalogs_stay_pokrov_only() -> None:
+    violations: list[str] = []
+    required_snippets = (
+        "POKROV VPN",
+        "https://api.pokrov.space",
+        "https://app.pokrov.space",
+        "https://connect.pokrov.space",
+        "https://pay.pokrov.space",
+        "https://t.me/pokrov_vpnbot",
+        "https://t.me/pokrov_supportbot",
+        "https://t.me/pokrov_feedbackbot",
+        "https://t.me/pokrov_vpn",
+    )
+    forbidden_markers = (
+        "portal-privacy.online",
+        "kiwunaka.space",
+        "portal_service_bot",
+        "portal_privacy_helpbot",
+        "portalfeedbackbot",
+        "PORTAL ENTRY",
+    )
+
+    for path in FRONTEND_COPY_FILES:
+        text = _frontend_text_without_legacy_catalog(path)
+        for marker in MOJIBAKE_MARKERS:
+            if marker in text:
+                violations.append(f"{path.relative_to(ROOT)}: found mojibake marker {marker!r}")
+        for snippet in required_snippets:
+            if snippet not in text:
+                violations.append(f"{path.relative_to(ROOT)}: missing required snippet {snippet}")
+        for marker in forbidden_markers:
+            if marker in text:
+                violations.append(f"{path.relative_to(ROOT)}: found forbidden legacy marker {marker}")
+
+    assert not violations, "\n".join(violations)
+
+
+def test_public_copy_pack_is_present_on_canonical_docs() -> None:
     expected_substrings = {
-        ROOT / "marketing/src/app/page.tsx": [
-            "PORTAL VPN. Свободный интернет через Telegram.",
+        ROOT / "docs/product/portal-vpn-product.md": [
+            "POKROV VPN",
+            "@pokrov_feedbackbot",
+            "mikh****",
         ],
-        ROOT / "marketing/src/components/marketing-landing.tsx": [
-            "Свободный интернет без танцев с бубном.",
-            "Потому что так честнее.",
+        ROOT / "docs/architecture/system-overview.md": [
+            "GET /api/reviews",
+            "visible nicknames are masked in a friendly format such as `mikh****`",
         ],
-        ROOT / "webapp/src/app/pricing/page.tsx": [
-            "Выберите свой PORTAL",
-            "Базовый доступ (на всякий случай)",
+        ROOT / "docs/architecture/app-first-and-bonus-flows.md": [
+            "operator approves selected reviews for public display",
+            "mikh****",
         ],
-        ROOT / "webapp/src/app/(dashboard)/dashboard/page.tsx": [
-            "Тест уже работает. Останется только решить, нужен ли полный доступ.",
+        ROOT / "docs/operations/deployment-and-access.md": [
+            "@pokrov_feedbackbot",
+            "public review feed loads with masked usernames",
         ],
-        ROOT / "webapp/src/app/(dashboard)/subscription/page.tsx": [
-            "Чтобы забыть про лимиты и спокойно пользоваться сервисом каждый день, переходите на полный доступ.",
-        ],
-        ROOT / "webapp/src/app/(dashboard)/support/page.tsx": [
-            "Поддержка PORTAL. Мы на связи.",
-            "Застряли на старте? Не мучайтесь — поможем всё настроить за пару минут.",
+        ROOT / "docs/user/portal-vpn-user-guide-ru.md": [
+            "Публичные отзывы показываются с маскировкой ника, например `mikh****`",
         ],
     }
 

@@ -4,9 +4,12 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useMemo, useState } from "react";
 
+import { getPortalPublicConfig } from "@/lib/portal";
 import { computePlanPrice, normalizePromo, PRICING_PLANS } from "@/lib/pricing";
 
 type PromoStatus = { kind: "ok" | "error"; text: string } | null;
+
+const config = getPortalPublicConfig(process.env as Record<string, string | undefined>);
 
 export default function PricingPage() {
   const router = useRouter();
@@ -36,7 +39,7 @@ export default function PricingPage() {
     }
     const matched = cards.some((plan) => plan.pricing.discountPercent > 0);
     if (!matched) {
-      setPromoStatus({ kind: "error", text: "Код не найден. Проверьте написание и попробуйте снова." });
+      setPromoStatus({ kind: "error", text: "Код не найден. Проверьте написание и попробуйте ещё раз." });
       return;
     }
     setPromo(normalized);
@@ -48,8 +51,9 @@ export default function PricingPage() {
       plan: planCode,
       from: fromLK ? "lk" : "site",
     });
-    if (normalizePromo(promo)) {
-      params.set("promo", normalizePromo(promo));
+    const normalized = normalizePromo(promo);
+    if (normalized) {
+      params.set("promo", normalized);
     }
     router.push(`/subscription/checkout/?${params.toString()}`);
   };
@@ -61,9 +65,9 @@ export default function PricingPage() {
           <span className="material-symbols-rounded">arrow_back</span>
           {backLabel}
         </Link>
-        <h1 className="mt-4 font-display text-5xl font-bold">Выберите свой PORTAL</h1>
+        <h1 className="mt-4 font-display text-5xl font-bold">Выберите план POKROV VPN</h1>
         <p className="mt-4 max-w-3xl text-sm leading-6 text-slate-600 dark:text-slate-300">
-          Сначала тестируем, потом выбираем. Если ещё не пробовали сервис — забирайте 3 бесплатных дня в Telegram. Если уже с нами, выберите удобный тариф для себя и своих устройств.
+          Сначала проверяете сервис в спокойном режиме, потом выбираете тариф без спешки. Если вы ещё не запускали тест, начните с Telegram-бота и возьмите 5 дней, чтобы всё посмотреть своими глазами.
         </p>
         <div className="mt-6 flex flex-wrap gap-3">
           <Link
@@ -73,7 +77,7 @@ export default function PricingPage() {
             Открыть кабинет
           </Link>
           <a
-            href="https://t.me/portal_service_bot"
+            href={config.botUrl}
             target="_blank"
             rel="noreferrer"
             className="btn-primary rounded-xl px-6 py-3 text-sm font-semibold uppercase tracking-[0.12em]"
@@ -85,17 +89,17 @@ export default function PricingPage() {
 
       <section className="mt-8 grid gap-6 lg:grid-cols-2">
         <article className="glass-card p-6">
-          <p className="text-xs uppercase tracking-[0.16em] text-emerald-600 dark:text-emerald-300">lead magnet</p>
-          <h2 className="mt-2 font-display text-3xl font-semibold">Тест 3 дня</h2>
+          <p className="text-xs uppercase tracking-[0.16em] text-emerald-600 dark:text-emerald-300">trial-first</p>
+          <h2 className="mt-2 font-display text-3xl font-semibold">5 дней, чтобы спокойно всё проверить</h2>
           <p className="mt-3 text-sm text-slate-600 dark:text-slate-300">
-            Главный вход для холодного трафика: один профиль, 5 ГБ, понятный старт через Telegram и быстрый переход к ключу или QR.
+            Пробный доступ нужен не для спешки, а чтобы вы успели открыть привычные сайты, проверить скорость и понять, подходит ли вам сервис на своих устройствах.
           </p>
         </article>
         <article className="glass-card p-6">
-          <p className="text-xs uppercase tracking-[0.16em] text-slate-500">free fallback</p>
-          <h2 className="mt-2 font-display text-3xl font-semibold">Базовый доступ (на всякий случай)</h2>
+          <p className="text-xs uppercase tracking-[0.16em] text-slate-500">что дальше</p>
+          <h2 className="mt-2 font-display text-3xl font-semibold">Платный доступ без лишней суеты</h2>
           <p className="mt-3 text-sm text-slate-600 dark:text-slate-300">
-            5 ГБ и 1 устройство как базовый доступ, если тест уже завершён. Основной путь всё равно начинается с теста и дальше ведёт к полному доступу.
+            Когда тест уже показал себя нормально, выбирайте комфортный срок и пользуйтесь интернетом без повторной настройки и лишней возни.
           </p>
         </article>
       </section>
@@ -107,10 +111,12 @@ export default function PricingPage() {
             <article key={plan.code} className={`glass-card p-6 ${highlighted ? "ring-2 ring-violet-400/40" : ""}`}>
               <div className="mb-4 flex items-start justify-between gap-3">
                 <div>
-                  <p className="text-xs uppercase tracking-[0.16em] text-slate-500">{plan.badge || "Тариф"}</p>
+                  <p className="text-xs uppercase tracking-[0.16em] text-slate-500">{plan.badge || "План"}</p>
                   <h2 className="mt-2 font-display text-3xl font-semibold">{plan.label}</h2>
                 </div>
-                {highlighted ? <span className="rounded-full bg-violet-600 px-3 py-1 text-[11px] text-white">Рекомендуем</span> : null}
+                {highlighted ? (
+                  <span className="rounded-full bg-violet-600 px-3 py-1 text-[11px] text-white">Рекомендуем</span>
+                ) : null}
               </div>
 
               <p className="font-display text-5xl font-bold">
@@ -160,7 +166,7 @@ export default function PricingPage() {
               setPromo(event.target.value);
               if (promoStatus) setPromoStatus(null);
             }}
-            placeholder="Например: PORTAL10"
+            placeholder="Например: POKROV10"
             className="w-full rounded-xl border border-violet-200/60 bg-white/80 px-4 py-3 text-sm outline-none dark:border-violet-500/30 dark:bg-slate-900/70"
           />
           <button
@@ -172,7 +178,11 @@ export default function PricingPage() {
           </button>
         </div>
         {promoStatus ? (
-          <p className={`mt-3 text-xs ${promoStatus.kind === "ok" ? "text-emerald-600 dark:text-emerald-400" : "text-rose-600 dark:text-rose-400"}`}>
+          <p
+            className={`mt-3 text-xs ${
+              promoStatus.kind === "ok" ? "text-emerald-600 dark:text-emerald-400" : "text-rose-600 dark:text-rose-400"
+            }`}
+          >
             {promoStatus.text}
           </p>
         ) : null}

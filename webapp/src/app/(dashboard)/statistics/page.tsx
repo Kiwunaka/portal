@@ -115,7 +115,7 @@ export default function StatisticsPage() {
               </p>
             </div>
             <div className="flex flex-wrap gap-2">
-              <AppRouteLink href="/dashboard/subscription" className="outline-btn rounded-xl px-4 py-2 text-sm font-semibold">
+              <AppRouteLink href="/subscription" className="outline-btn rounded-xl px-4 py-2 text-sm font-semibold">
                 Смотреть тарифы
               </AppRouteLink>
               <AppRouteLink href={config.botUrl} target="_blank" hardNavigate={false} className="btn-primary rounded-xl px-4 py-2 text-sm font-semibold">
@@ -148,7 +148,7 @@ export default function StatisticsPage() {
             <li>Если нужен апгрейд по устройствам и трафику, переходите в раздел подписки.</li>
           </ul>
           <div className="mt-4 flex flex-wrap gap-2">
-            <AppRouteLink href="/dashboard/subscription" className="outline-btn rounded-xl px-4 py-2 text-sm font-semibold">
+            <AppRouteLink href="/subscription" className="outline-btn rounded-xl px-4 py-2 text-sm font-semibold">
               Раздел подписки
             </AppRouteLink>
             <AppRouteLink href={config.supportTelegramUrl} target="_blank" hardNavigate={false} className="btn-primary rounded-xl px-4 py-2 text-sm font-semibold">

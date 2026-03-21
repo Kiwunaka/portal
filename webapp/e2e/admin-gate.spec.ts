@@ -8,7 +8,7 @@ function mockUser(isAdmin: boolean) {
   return {
     tg_id: 1001,
     username: "qa_admin",
-    subscription_url: "https://kiwunaka.space/s8Kx2mP7qR4wT/mock_token",
+    subscription_url: "https://api.pokrov.space/s8Kx2mP7qR4wT/mock_token",
     is_active: true,
     is_admin: isAdmin,
     sub_type: "PAID",
@@ -19,21 +19,21 @@ function mockUser(isAdmin: boolean) {
     limits: { device_limit: 5, total_gb: 0, speed_mbps: 100 },
     traffic: { used_gb: 0, total_gb: 0, remaining_gb: 0 },
     support: {
-      username: "portal_privacy_helpbot",
-      link: "https://t.me/portal_privacy_helpbot",
-      new_ticket_link: "https://t.me/portal_privacy_helpbot?start=ticket_new",
+      username: "pokrov_supportbot",
+      link: "https://t.me/pokrov_supportbot",
+      new_ticket_link: "https://t.me/pokrov_supportbot?start=ticket_new",
     },
     bonuses: {
       wheel: { last_spin_at: null, streak_months: 0 },
       referral_count: 0,
       channel_bonus: { premium_days: 0, claimed_at: null, can_claim: false },
     },
-    referral: { code: "mock", link: "https://t.me/portal_service_bot?start=ref_mock", bonus_days: 0 },
+    referral: { code: "mock", link: "https://t.me/pokrov_vpnbot?start=ref_mock", bonus_days: 0 },
     channel: { username: "pokrov_vpn", link: "https://t.me/pokrov_vpn", subscriber: true, speed_bump_active: false },
     actions: {
-      open_helpbot: "https://t.me/portal_privacy_helpbot",
+      open_helpbot: "https://t.me/pokrov_supportbot",
       open_channel: "https://t.me/pokrov_vpn",
-      pay_via_bot: "https://t.me/portal_service_bot?start=pay",
+      pay_via_bot: "https://t.me/pokrov_vpnbot?start=pay",
     },
     points: { available: 0, expiring_soon: 0, monthly_cap: 300, expires_days: 90 },
     features: { haptic: true, lottie: true },
@@ -56,7 +56,7 @@ function mockDashboard() {
     speed_limit_mbps: 100,
     free_next_reset_at: null,
     family_slots: 0,
-    subscription_url: "https://kiwunaka.space/s8Kx2mP7qR4wT/mock_token",
+    subscription_url: "https://api.pokrov.space/s8Kx2mP7qR4wT/mock_token",
     active_offer: null,
     points: { available: 0, expiring_soon: 0, monthly_cap: 300, expires_days: 90 },
     features: { haptic: true, lottie: true },
@@ -111,7 +111,7 @@ async function registerApiMocks(page: Page, opts: MockOptions): Promise<void> {
       return json({ wheel_config: { preset: "balanced", cooldown_hours: 168, weights: [{ days: 1, weight: 100 }] } });
     }
     if (path === "/api/admin/campaign-links/build") {
-      return json({ ok: true, bot_start_link: "https://t.me/portal_service_bot?start=x", checkout_link: "https://portal-privacy.online/webapp/subscription/checkout/", webapp_link: "https://portal-privacy.online/webapp/" });
+      return json({ ok: true, bot_start_link: "https://t.me/pokrov_vpnbot?start=x", checkout_link: "https://pay.pokrov.space/checkout/", webapp_link: "https://app.pokrov.space/" });
     }
 
     return json({ ok: true });

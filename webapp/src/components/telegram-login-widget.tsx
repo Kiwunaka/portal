@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import type { TelegramWebLoginPayload } from "@/lib/api";
 import { usePortalSession } from "@/lib/session";
@@ -10,37 +10,48 @@ declare global {
   }
 }
 
+function resolveTelegramBotName(raw: string): string {
+  const value = String(raw || "").trim();
+  if (!value) return "";
+
+  if (/^https?:\/\//i.test(value)) {
+    try {
+      const url = new URL(value);
+      const segment = url.pathname.split("/").filter(Boolean)[0] || "";
+      return segment.replace(/^@+/, "").toLowerCase();
+    } catch {
+      return value
+        .replace(/^https?:\/\/t\.me\//i, "")
+        .replace(/^@+/, "")
+        .split(/[/?#]/)[0]
+        .toLowerCase();
+    }
+  }
+
+  return value.replace(/^@+/, "").split(/[/?#]/)[0].toLowerCase();
+}
+
 export default function TelegramLoginWidget() {
   const hostRef = useRef<HTMLDivElement | null>(null);
   const authDoneRef = useRef(false);
-  const [widgetHint, setWidgetHint] = useState("");
-  const { loginByWidget } = usePortalSession();
+  const botSource = String(
+    process.env.NEXT_PUBLIC_TELEGRAM_BOT_URL || process.env.VITE_TELEGRAM_BOT_URL || "https://t.me/pokrov_vpnbot",
+  ).trim();
+  const botName = resolveTelegramBotName(botSource);
+  const [widgetHint, setWidgetHint] = useState(() =>
+    botName ? "" : "Не удалось подготовить Telegram-вход. Откройте кнопку ниже и продолжите вручную.",
+  );
+  const { loginByWidget, startTelegramLogin, webLoginBusy } = usePortalSession();
 
   useEffect(() => {
     const host = hostRef.current;
     if (!host) return;
     host.innerHTML = "";
-
-    const botFromUrl = String(
-      process.env.NEXT_PUBLIC_TELEGRAM_BOT_URL || process.env.VITE_TELEGRAM_BOT_URL || "https://t.me/portal_service_bot",
-    )
-      .trim()
-      .replace(/^https?:\/\/t\.me\//i, "")
-      .replace(/^@+/, "")
-      .replace(/\/+$/, "")
-      .toLowerCase();
-    const rawBot = String(
-      process.env.NEXT_PUBLIC_TELEGRAM_LOGIN_BOT ||
-        process.env.VITE_TELEGRAM_LOGIN_BOT ||
-        botFromUrl,
-    )
-      .trim()
-      .replace(/^@+/, "")
-      .toLowerCase();
-    const botName = rawBot;
     if (!botName) {
+      delete window.onTelegramAuth;
       return;
     }
+
     authDoneRef.current = false;
 
     window.onTelegramAuth = (user: TelegramWebLoginPayload) => {
@@ -57,15 +68,16 @@ export default function TelegramLoginWidget() {
     script.setAttribute("data-userpic", "false");
     script.setAttribute("data-request-access", "write");
     script.setAttribute("data-radius", "12");
+    script.setAttribute("data-lang", "ru");
     script.setAttribute("data-onauth", "onTelegramAuth(user)");
     script.onerror = () => {
-      setWidgetHint("Не удалось открыть Telegram-виджет. Используйте кнопку входа через Telegram ниже.");
+      setWidgetHint("Telegram-виджет не загрузился. Нажмите кнопку ниже, это тот же вход.");
     };
     host.appendChild(script);
 
     const warnTimer = window.setTimeout(() => {
       if (authDoneRef.current) return;
-      setWidgetHint("Если виджет не подтверждает вход, продолжите через Telegram кнопкой ниже.");
+      setWidgetHint("Если Telegram не подхватился автоматически, просто нажмите кнопку ниже.");
     }, 4500);
 
     return () => {
@@ -73,12 +85,23 @@ export default function TelegramLoginWidget() {
       host.innerHTML = "";
       delete window.onTelegramAuth;
     };
-  }, [loginByWidget]);
+  }, [botName, loginByWidget]);
 
   return (
     <div className="space-y-2">
+      <button
+        className="btn-primary w-full rounded-xl px-5 py-3 text-sm font-semibold uppercase tracking-[0.12em]"
+        disabled={webLoginBusy}
+        onClick={() => void startTelegramLogin()}
+        type="button"
+      >
+        {webLoginBusy ? "Подключаем Telegram..." : "Продолжить через Telegram"}
+      </button>
+      <p className="text-xs leading-5 text-slate-500 dark:text-slate-400">
+        Telegram подтвердит вход и вернёт вас обратно в кабинет без лишних экранов.
+      </p>
       <div ref={hostRef} className="min-h-[56px]" id="tg-login-widget" />
-      {widgetHint ? <p className="text-xs text-amber-500">{widgetHint}</p> : null}
+      {widgetHint ? <p className="text-xs leading-5 text-amber-600 dark:text-amber-300">{widgetHint}</p> : null}
     </div>
   );
 }

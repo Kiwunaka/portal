@@ -1,18 +1,18 @@
 import MarketingLanding, { buildMarketingMetadata } from "../../components/marketing-landing";
 
 export const metadata = buildMarketingMetadata(
-  "VPN на iPhone, Android и Windows | PORTAL",
-  "VPN на iPhone, Android и Windows с единым путём через Telegram, тестом на 3 дня и переходом в WebApp.",
+  "VPN на iPhone, Android и Windows | POKROV VPN",
+  "Telegram как единый старт, тест на 5 дней и понятный маршрут к кабинету на основных устройствах.",
 );
 
 export default function MultiDeviceVpnPage() {
   return (
     <MarketingLanding
-      heroKicker="SEO landing • VPN на iPhone / Android / Windows"
-      heroTitle="VPN на iPhone, Android и Windows с одним понятным маршрутом запуска"
-      heroSubtitle="Независимо от устройства пользователь проходит один и тот же сценарий: Telegram-бот, тест 3 дня, подключение приложения, затем тарифы и продление внутри экосистемы PORTAL."
-      clusterTitle="Кластер вокруг устройств"
-      clusterBody="Эта страница закрывает запросы по устройствам и усиливает WebApp-наратив: кабинету не нужно объяснять продукт заново, он продолжает уже понятную воронку."
+      heroKicker="Для всех основных устройств"
+      heroTitle="VPN на iPhone, Android и Windows с одним понятным маршрутом"
+      heroSubtitle="Независимо от устройства путь остаётся одинаковым: Telegram-бот, тест на 5 дней, кабинет и продление, если сервис вам подходит."
+      clusterTitle="Страница для выбора устройства"
+      clusterBody="Здесь можно быстро перейти к сценарию под смартфон или компьютер и не объяснять продукт заново на каждом шаге."
     />
   );
 }

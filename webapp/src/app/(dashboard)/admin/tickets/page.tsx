@@ -31,7 +31,7 @@ export default function AdminTicketsPage() {
         setSelectedId((prev) => prev || rows[0].id);
       }
     } catch (err) {
-      setError(String((err as { message?: string })?.message || err || "Не удалось загрузить обращения пользователей"));
+      setError(String((err as { message?: string })?.message || err || "    "));
     }
   }, [statusFilter]);
 
@@ -51,7 +51,7 @@ export default function AdminTicketsPage() {
       setReply("");
       setTickets((prev) => prev.map((row) => (row.id === updated.id ? updated : row)));
     } catch (err) {
-      setError(String((err as { message?: string })?.message || err || "Не удалось отправить ответ пользователю"));
+      setError(String((err as { message?: string })?.message || err || "    "));
     } finally {
       setBusy(false);
     }
@@ -64,7 +64,7 @@ export default function AdminTicketsPage() {
       const updated = await adminTicketStatus(selected.id, nextStatus);
       setTickets((prev) => prev.map((row) => (row.id === updated.id ? updated : row)));
     } catch (err) {
-      setError(String((err as { message?: string })?.message || err || "Не удалось обновить статус обращения"));
+      setError(String((err as { message?: string })?.message || err || "    "));
     } finally {
       setBusy(false);
     }
@@ -180,7 +180,7 @@ export default function AdminTicketsPage() {
                 return (
                   <div key={msg.id} className={`flex ${isAdmin ? "justify-end" : "justify-start"}`}>
                     <div className={`chat-bubble ${isAdmin ? "chat-bubble-admin" : "chat-bubble-user"} text-sm`}>
-                      <p className="text-[10px] uppercase tracking-[0.12em] text-slate-500 mb-1">{isAdmin ? "оператор" : "пользователь"}</p>
+                      <p className="text-[10px] uppercase tracking-[0.12em] text-slate-500 mb-1">{isAdmin ? "" : ""}</p>
                       <p className="whitespace-pre-line">{msg.body}</p>
                       <p className="mt-1.5 text-[10px] text-slate-400 text-right">{fmtRuDate(msg.created_at)}</p>
                     </div>
@@ -213,7 +213,7 @@ export default function AdminTicketsPage() {
                   disabled={busy || !reply.trim()}
                 >
                   {busy ? <Loader2 size={14} className="animate-spin" /> : <Send size={14} />}
-                  {busy ? "Отправка..." : "Отправить"}
+                  {busy ? "..." : ""}
                 </button>
               </div>
             </div>

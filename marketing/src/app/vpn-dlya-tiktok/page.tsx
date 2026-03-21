@@ -1,18 +1,18 @@
 import MarketingLanding, { buildMarketingMetadata } from "../../components/marketing-landing";
 
 export const metadata = buildMarketingMetadata(
-  "VPN для TikTok через Telegram | PORTAL",
-  "VPN для TikTok с тестом на 3 дня, быстрым запуском через Telegram и простым подключением на телефоне.",
+  "VPN для TikTok через Telegram | POKROV VPN",
+  "Запуск через Telegram, тест на 5 дней и понятное подключение для TikTok-сценария.",
 );
 
 export default function VpnForTiktokPage() {
   return (
     <MarketingLanding
-      heroKicker="SEO landing • VPN для TikTok"
-      heroTitle="VPN для TikTok с тестом на 3 дня и понятным запуском через Telegram"
-      heroSubtitle="Посадка под TikTok-интент выводит человека не на сложный checkout, а в сценарий, где можно быстро попробовать сервис, подключить телефон и только потом перейти на тариф."
-      clusterTitle="Кластер вокруг TikTok и short-video"
-      clusterBody="Страница работает как вход для вертикального контента и коротких видео, а дальше переводит пользователя в общую воронку PORTAL без раздвоения оффера."
+      heroKicker="Для TikTok и коротких видео"
+      heroTitle="VPN для TikTok с понятным запуском через Telegram"
+      heroSubtitle="Страница помогает быстро проверить сервис, подключить телефон и уже потом спокойно перейти к тарифу, если всё подошло."
+      clusterTitle="Ещё варианты под короткие видео"
+      clusterBody="Отсюда удобно перейти к похожим сценариям: YouTube, быстрый VPN на телефон, Telegram-бот и подключение на разных устройствах."
     />
   );
 }

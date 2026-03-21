@@ -1,18 +1,18 @@
 import MarketingLanding, { buildMarketingMetadata } from "../../components/marketing-landing";
 
 export const metadata = buildMarketingMetadata(
-  "VPN для YouTube через Telegram | PORTAL",
-  "VPN для YouTube с bot-first запуском: тест 3 дня, подключение через Telegram и понятный путь к продлению.",
+  "VPN для YouTube через Telegram | POKROV VPN",
+  "Запуск через Telegram, тест на 5 дней и спокойная проверка YouTube-сценария перед выбором тарифа.",
 );
 
 export default function VpnForYoutubePage() {
   return (
     <MarketingLanding
-      heroKicker="SEO landing • VPN для YouTube"
-      heroTitle="VPN для YouTube, который можно поднять через Telegram за пару минут"
-      heroSubtitle="Эта страница собрана под поисковый сценарий, когда человеку нужен VPN для YouTube без длинной настройки. Главный шаг остаётся тем же: перейти в бота, запустить тест и проверить сервис на реальном трафике."
-      clusterTitle="Кластер вокруг YouTube-сценария"
-      clusterBody="Отсюда пользователь может перейти в смежные поисковые ветки: TikTok, VPN Telegram bot, быстрый VPN на телефон и подключение на разных устройствах."
+      heroKicker="Для YouTube и длинных видео"
+      heroTitle="VPN для YouTube без долгого старта"
+      heroSubtitle="Если хочется просто проверить доступ к YouTube и не возиться с длинной настройкой, начните с Telegram-бота и протестируйте сервис в своём темпе."
+      clusterTitle="Похожие страницы"
+      clusterBody="Отсюда удобно перейти к TikTok, Telegram-боту, телефону и другим сценариям, где нужен тот же короткий и понятный маршрут."
     />
   );
 }

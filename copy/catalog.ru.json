@@ -283,7 +283,7 @@
     },
     "bot.welcome": {
       "surface": "bot.main",
-      "ru": "PORTAL помогает быстро подключиться через Telegram: понятный выбор плана, короткий путь к оплате и поддержка рядом.",
+      "ru": "POKROV VPN помогает быстро подключиться через Telegram: понятный выбор плана, короткий путь к оплате и поддержка рядом.",
       "variables": [],
       "tone": "premium-friendly",
       "allowed_public": false,
@@ -301,11 +301,38 @@
     },
     "bot.support.welcome": {
       "surface": "bot.support",
-      "ru": "Поддержка PORTAL рядом. Откройте новое обращение или продолжите уже начатый диалог без лишних шагов.",
+      "ru": "Поддержка POKROV VPN рядом. Откройте новый запрос или продолжите уже начатый диалог без лишних шагов.",
       "variables": [],
       "tone": "friendly",
       "allowed_public": false,
       "compliance_notes": "Short-first support message.",
+      "ab_variant": "control"
+    },
+    "bot.feedback.welcome": {
+      "surface": "bot.feedback",
+      "ru": "Сюда можно отправить идеи, отзывы и короткие заметки о POKROV VPN. Мы читаем всё и берём лучшие фразы на главную страницу.",
+      "variables": [],
+      "tone": "friendly",
+      "allowed_public": false,
+      "compliance_notes": "Warm feedback intake.",
+      "ab_variant": "control"
+    },
+    "bot.feedback.prompt": {
+      "surface": "bot.feedback",
+      "ru": "Напиши, что понравилось, что хочется улучшить или какой момент запомнился сильнее всего.",
+      "variables": [],
+      "tone": "friendly",
+      "allowed_public": false,
+      "compliance_notes": "Short prompt for feedback intake.",
+      "ab_variant": "control"
+    },
+    "bot.feedback.thanks": {
+      "surface": "bot.feedback",
+      "ru": "Спасибо! Мы сохранили отзыв и передали его на модерацию. Если он подойдёт для главной, покажем его на сайте.",
+      "variables": [],
+      "tone": "friendly",
+      "allowed_public": false,
+      "compliance_notes": "No hard promise of publication.",
       "ab_variant": "control"
     },
     "retention.welcome": {

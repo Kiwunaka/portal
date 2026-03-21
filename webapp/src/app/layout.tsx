@@ -14,7 +14,7 @@ const chakra = Chakra_Petch({
 const mono = JetBrains_Mono({ subsets: ["latin", "cyrillic"], variable: "--font-mono" });
 
 export const metadata: Metadata = {
-  title: "PORTAL - Личный кабинет",
+  title: "POKROV VPN - Личный кабинет",
   description: "Управление доступом в одном кабинете: статус, ключ подключения, поддержка и оплата в рублях.",
 };
 

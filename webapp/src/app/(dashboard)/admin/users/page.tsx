@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import {
   adminAuditLog,
@@ -32,9 +32,9 @@ function fmtTraffic(bytes: number): string {
 }
 
 function fmtOnline(value: boolean | null | undefined): string {
-  if (value === true) return "онлайн";
-  if (value === false) return "офлайн";
-  return "неизвестно";
+  if (value === true) return "������";
+  if (value === false) return "������";
+  return "����������";
 }
 
 function parseNullableNumber(input: string): number | null {
@@ -56,42 +56,42 @@ function historyBadgeClass(action: string): string {
 
 function actionLabel(action: string): string {
   const value = String(action || "").toLowerCase();
-  if (!value) return "—";
-  if (value.includes("regen") || value.includes("rotate")) return "ротация ключа";
-  if (value.includes("reset")) return "сброс трафика";
-  if (value.includes("resync")) return "синхронизация ID подписки";
-  if (value.includes("move") || value.includes("node")) return "перенос между нодами";
-  if (value.includes("disable") || value.includes("block")) return "отключение/блокировка";
-  if (value.includes("enable") || value.includes("unblock")) return "включение/разблокировка";
-  if (value.includes("create")) return "создание";
-  if (value.includes("delete") || value.includes("remove")) return "удаление";
-  if (value.includes("extend")) return "продление";
+  if (!value) return "�";
+  if (value.includes("regen") || value.includes("rotate")) return "������� �����";
+  if (value.includes("reset")) return "����� �������";
+  if (value.includes("resync")) return "������������� ID ��������";
+  if (value.includes("move") || value.includes("node")) return "������� ����� ������";
+  if (value.includes("disable") || value.includes("block")) return "����������/����������";
+  if (value.includes("enable") || value.includes("unblock")) return "���������/�������������";
+  if (value.includes("create")) return "��������";
+  if (value.includes("delete") || value.includes("remove")) return "��������";
+  if (value.includes("extend")) return "���������";
   return action;
 }
 
 function riskLevelLabel(level: string): string {
   const value = String(level || "").toLowerCase();
-  if (["low", "низкий"].includes(value)) return "низкий";
-  if (["medium", "med", "средний"].includes(value)) return "средний";
-  if (["high", "высокий"].includes(value)) return "высокий";
-  if (["critical", "crit", "критический"].includes(value)) return "критический";
-  return value || "низкий";
+  if (["low", "������"].includes(value)) return "������";
+  if (["medium", "med", "�������"].includes(value)) return "�������";
+  if (["high", "�������"].includes(value)) return "�������";
+  if (["critical", "crit", "�����������"].includes(value)) return "�����������";
+  return value || "������";
 }
 
 function panelStateLabel(state: string): string {
   const value = String(state || "").toLowerCase();
-  if (["ok", "healthy", "fresh"].includes(value)) return "норма";
-  if (["degraded", "stale", "warn", "warning"].includes(value)) return "предупреждение";
-  if (["error", "down", "offline", "fail"].includes(value)) return "ошибка";
-  return value || "неизвестно";
+  if (["ok", "healthy", "fresh"].includes(value)) return "�����";
+  if (["degraded", "stale", "warn", "warning"].includes(value)) return "��������������";
+  if (["error", "down", "offline", "fail"].includes(value)) return "������";
+  return value || "����������";
 }
 
 function ticketStatusLabel(status: string): string {
   const value = String(status || "").toLowerCase().replace(/\s+/g, "_");
-  if (value === "open") return "открыт";
-  if (value === "in_progress") return "в работе";
-  if (value === "closed") return "закрыт";
-  return status || "—";
+  if (value === "open") return "������";
+  if (value === "in_progress") return "� ������";
+  if (value === "closed") return "������";
+  return status || "�";
 }
 
 type DetailTab = "overview" | "keys" | "history" | "audit";
@@ -184,7 +184,7 @@ export default function AdminUsersPage() {
         }
       }
     } catch (err) {
-      setError(String((err as { message?: string })?.message || err || "Не удалось загрузить список пользователей"));
+      setError(String((err as { message?: string })?.message || err || "    "));
     } finally {
       setLoading(false);
     }
@@ -219,7 +219,7 @@ export default function AdminUsersPage() {
       await loadCardDetails(tgId);
       setDetailTab("overview");
     } catch (err) {
-      setError(String((err as { message?: string })?.message || err || "Не удалось открыть карточку пользователя"));
+      setError(String((err as { message?: string })?.message || err || "    "));
     } finally {
       setBusy(false);
     }
@@ -236,9 +236,9 @@ export default function AdminUsersPage() {
     if (!text.trim()) return;
     try {
       await navigator.clipboard.writeText(text.trim());
-      setOkMessage("Скопировано в буфер.");
+      setOkMessage("����������� � �����.");
     } catch {
-      setError("Не удалось скопировать ссылку или ключ.");
+      setError("�� ������� ����������� ������ ��� ����.");
     }
   };
 
@@ -252,11 +252,11 @@ export default function AdminUsersPage() {
     setBusy(true);
     try {
       await adminUserMessage(selectedTgId, dialog.text.trim());
-      setOkMessage("Сообщение отправлено.");
+      setOkMessage("��������� ����������.");
       setDialog(null);
       await reloadSelected();
     } catch (err) {
-      setError(String((err as { message?: string })?.message || err || "Не удалось отправить сообщение"));
+      setError(String((err as { message?: string })?.message || err || "   "));
     } finally {
       setBusy(false);
     }
@@ -271,18 +271,18 @@ export default function AdminUsersPage() {
     if (!selectedTgId || !dialog || dialog.kind !== "extend") return;
     const days = Number(dialog.days || 0);
     if (!Number.isFinite(days) || days === 0) {
-      setError("Укажите корректное количество дней.");
+      setError("������� ���������� ���������� ����.");
       return;
     }
     setBusy(true);
     try {
       await adminManualExtend(selectedTgId, days);
-      setOkMessage(`Подписка продлена на ${days} дн.`);
+      setOkMessage(`�������� �������� �� ${days} ��.`);
       setDialog(null);
       await reloadSelected();
       await loadUsers();
     } catch (err) {
-      setError(String((err as { message?: string })?.message || err || "Не удалось продлить доступ"));
+      setError(String((err as { message?: string })?.message || err || "   "));
     } finally {
       setBusy(false);
     }
@@ -294,11 +294,11 @@ export default function AdminUsersPage() {
     setBusy(true);
     try {
       await adminManualBlock(selectedTgId, blocked);
-      setOkMessage(blocked ? "Пользователь заблокирован." : "Пользователь разблокирован.");
+      setOkMessage(blocked ? " ." : " .");
       await reloadSelected();
       await loadUsers();
     } catch (err) {
-      setError(String((err as { message?: string })?.message || err || "Не удалось изменить статус пользователя"));
+      setError(String((err as { message?: string })?.message || err || "    "));
     } finally {
       setBusy(false);
     }
@@ -309,18 +309,18 @@ export default function AdminUsersPage() {
     setBusy(true);
     try {
       const out = await adminManualRegenerateToken(selectedTgId);
-      setOkMessage(`Новая ссылка создана (${out.sync_ok ? "данные синхронизированы" : "синхронизацию стоит проверить"}).`);
+      setOkMessage(`   (${out.sync_ok ? " " : "  "}).`);
       setDialog({ kind: "token", subscriptionUrl: out.subscription_url, syncOk: Boolean(out.sync_ok) });
       await reloadSelected();
     } catch (err) {
-      setError(String((err as { message?: string })?.message || err || "Не удалось перевыпустить ссылку"));
+      setError(String((err as { message?: string })?.message || err || "   "));
     } finally {
       setBusy(false);
     }
   };
 
   const actionCreateManual = async (): Promise<void> => {
-    setDialog({ kind: "create", displayName: "Оффлайн пользователь", days: "30" });
+    setDialog({ kind: "create", displayName: "������� ������������", days: "30" });
   };
 
   const submitCreateManualDialog = async (): Promise<void> => {
@@ -328,17 +328,17 @@ export default function AdminUsersPage() {
     const displayName = dialog.displayName.trim();
     const days = Number(dialog.days || 0);
     if (!displayName || !Number.isFinite(days) || days <= 0) {
-      setError("Проверьте имя и срок доступа для ручного пользователя.");
+      setError("��������� ��� � ���� ������� ��� ������� ������������.");
       return;
     }
     setBusy(true);
     try {
       await adminManualCreate({ display_name: displayName, days });
-      setOkMessage("Ручной пользователь создан.");
+      setOkMessage("������ ������������ ������.");
       setDialog(null);
       await loadUsers();
     } catch (err) {
-      setError(String((err as { message?: string })?.message || err || "Не удалось создать ручного пользователя"));
+      setError(String((err as { message?: string })?.message || err || "    "));
     } finally {
       setBusy(false);
     }
@@ -358,10 +358,10 @@ export default function AdminUsersPage() {
       } else {
         await adminUserKeyResyncSubId(selectedTgId, key.node_code);
       }
-      setOkMessage(`Операция ${action} выполнена для ${key.node_code}.`);
+      setOkMessage(`�������� ${action} ��������� ��� ${key.node_code}.`);
       await reloadSelected();
     } catch (err) {
-      setError(String((err as { message?: string })?.message || err || "Не удалось выполнить действие с ключом"));
+      setError(String((err as { message?: string })?.message || err || "     "));
     } finally {
       setKeyBusy("");
     }
@@ -374,10 +374,10 @@ export default function AdminUsersPage() {
     setOkMessage("");
     try {
       const result = await adminUserPresetRun(selectedTgId, preset);
-      setOkMessage(`Сценарий ${result.preset} выполнен.`);
+      setOkMessage(`�������� ${result.preset} ��������.`);
       await reloadSelected();
     } catch (err) {
-      setError(String((err as { message?: string })?.message || err || "Не удалось выполнить быстрый сценарий"));
+      setError(String((err as { message?: string })?.message || err || "    "));
     } finally {
       setBusy(false);
     }
@@ -399,10 +399,10 @@ export default function AdminUsersPage() {
         auto_disable_on_hard: draft.auto_disable_on_hard,
         apply_now: draft.apply_now,
       });
-      setOkMessage(`Лимиты для ${nodeCode} сохранены.`);
+      setOkMessage(`������ ��� ${nodeCode} ���������.`);
       await reloadSelected();
     } catch (err) {
-      setError(String((err as { message?: string })?.message || err || "Не удалось сохранить лимиты"));
+      setError(String((err as { message?: string })?.message || err || "   "));
     } finally {
       setPolicyBusy("");
     }
@@ -431,8 +431,8 @@ export default function AdminUsersPage() {
       });
       const affected = Number(out?.affected || 0);
       const failed = Number(out?.failed || 0);
-      const mode = out?.dry_run ? "предпросмотр" : "применено";
-      setBulkResult(`Массовая операция (${mode}): обработано ${affected}, ошибок ${failed}`);
+      const mode = out?.dry_run ? "" : "";
+      setBulkResult(`�������� �������� (${mode}): ���������� ${affected}, ������ ${failed}`);
       if (!out?.dry_run) {
         setDialog(null);
       }
@@ -440,7 +440,7 @@ export default function AdminUsersPage() {
         await loadUsers();
       }
     } catch (err) {
-      setError(String((err as { message?: string })?.message || err || "Не удалось выполнить массовое действие"));
+      setError(String((err as { message?: string })?.message || err || "    "));
     } finally {
       setBusy(false);
     }
@@ -453,10 +453,10 @@ export default function AdminUsersPage() {
     setOkMessage("");
     try {
       const out = await adminUserLoyaltyGrant(selectedTgId, tierDays);
-      setOkMessage(`Бонус лояльности на ${out.tier_days} дней выдан (${out.sync_ok ? "данные синхронизированы" : "синхронизацию стоит проверить"}).`);
+      setOkMessage(`   ${out.tier_days}   (${out.sync_ok ? " " : "  "}).`);
       await reloadSelected();
     } catch (err) {
-      setError(String((err as { message?: string })?.message || err || "Не удалось выдать бонус лояльности"));
+      setError(String((err as { message?: string })?.message || err || "    "));
     } finally {
       setBusy(false);
     }
@@ -487,21 +487,21 @@ export default function AdminUsersPage() {
           <input
             value={query}
             onChange={(event) => setQuery(event.target.value)}
-            placeholder="Найти по username, Telegram ID или части имени"
+            placeholder="����� �� username, Telegram ID ��� ����� �����"
             className="flex-1 rounded-xl border border-violet-200/50 bg-white/80 px-3 py-2 text-sm outline-none dark:border-violet-500/30 dark:bg-slate-900/70"
           />
           <button className="outline-btn rounded-xl px-4 py-2 text-sm font-semibold" type="button" onClick={() => void loadUsers()}>
-            Найти
+            �����
           </button>
           <button className="btn-primary rounded-xl px-4 py-2 text-sm font-semibold" type="button" onClick={() => void actionCreateManual()} disabled={busy}>
-            + Ручной пользователь
+            + ������ ������������
           </button>
         </div>
 
         <div className="mb-3 rounded-xl border border-violet-200/40 bg-white/70 p-3 dark:border-violet-500/20 dark:bg-white/5">
-          <p className="mb-1 text-xs font-semibold uppercase tracking-[0.08em] text-slate-500">Массовые действия по ключам</p>
+          <p className="mb-1 text-xs font-semibold uppercase tracking-[0.08em] text-slate-500">�������� �������� �� ������</p>
           <p className="mb-2 text-xs text-slate-500">
-            Используйте этот блок, если нужно сразу обработать группу пользователей. Сначала лучше запускать предпросмотр, а уже потом применять изменения.
+            ����������� ���� ����, ���� ����� ����� ���������� ������ �������������. ������� ����� ��������� ������������, � ��� ����� ��������� ���������.
           </p>
           <div className="grid gap-2 sm:grid-cols-2">
             <select
@@ -509,39 +509,39 @@ export default function AdminUsersPage() {
               onChange={(event) => setBulkAction((prev) => ({ ...prev, action: event.target.value as "disable" | "enable" | "reset" | "resync" }))}
               className="rounded-xl border border-violet-200/50 bg-white/90 px-3 py-2 text-xs outline-none dark:border-violet-500/30 dark:bg-slate-900/70"
             >
-              <option value="disable">Отключить ключи</option>
-              <option value="enable">Включить ключи</option>
-              <option value="reset">Сбросить трафик</option>
-              <option value="resync">Пересинхронизировать subId</option>
+              <option value="disable">��������� �����</option>
+              <option value="enable">�������� �����</option>
+              <option value="reset">�������� ������</option>
+              <option value="resync">�������������������� subId</option>
             </select>
             <select
               value={bulkAction.segment}
               onChange={(event) => setBulkAction((prev) => ({ ...prev, segment: event.target.value }))}
               className="rounded-xl border border-violet-200/50 bg-white/90 px-3 py-2 text-xs outline-none dark:border-violet-500/30 dark:bg-slate-900/70"
             >
-              <option value="all">Сегмент: все</option>
-              <option value="paid">Сегмент: платные</option>
-              <option value="free">Сегмент: бесплатные</option>
-              <option value="manual">Сегмент: ручные</option>
-              <option value="active">Сегмент: активные</option>
-              <option value="inactive">Сегмент: неактивные</option>
+              <option value="all">�������: ���</option>
+              <option value="paid">�������: �������</option>
+              <option value="free">�������: ����������</option>
+              <option value="manual">�������: ������</option>
+              <option value="active">�������: ��������</option>
+              <option value="inactive">�������: ����������</option>
             </select>
             <input
               value={bulkAction.q}
               onChange={(event) => setBulkAction((prev) => ({ ...prev, q: event.target.value }))}
-              placeholder="Дополнительный фильтр: username или Telegram ID"
+              placeholder="�������������� ������: username ��� Telegram ID"
               className="rounded-xl border border-violet-200/50 bg-white/90 px-3 py-2 text-xs outline-none dark:border-violet-500/30 dark:bg-slate-900/70"
             />
             <input
               value={bulkAction.nodeCodes}
               onChange={(event) => setBulkAction((prev) => ({ ...prev, nodeCodes: event.target.value }))}
-              placeholder="Ноды через запятую (опц.)"
+              placeholder="���� ����� ������� (���.)"
               className="rounded-xl border border-violet-200/50 bg-white/90 px-3 py-2 text-xs outline-none dark:border-violet-500/30 dark:bg-slate-900/70"
             />
           </div>
           <div className="mt-2 flex flex-wrap items-center gap-3">
             <label className="text-xs text-slate-600 dark:text-slate-300">
-              лимит:
+              �����:
               <input
                 type="number"
                 min={1}
@@ -553,20 +553,20 @@ export default function AdminUsersPage() {
             </label>
             <label className="inline-flex items-center gap-1 text-xs text-slate-600 dark:text-slate-300">
               <input type="checkbox" checked={bulkAction.dryRun} onChange={(event) => setBulkAction((prev) => ({ ...prev, dryRun: event.target.checked }))} />
-              предпросмотр
+              ������������
             </label>
             <label className="inline-flex items-center gap-1 text-xs text-slate-600 dark:text-slate-300">
               <input type="checkbox" checked={bulkAction.force} onChange={(event) => setBulkAction((prev) => ({ ...prev, force: event.target.checked }))} />
-              принудительно
+              �������������
             </label>
               <button className="outline-btn rounded-xl px-3 py-1.5 text-xs font-semibold" type="button" onClick={() => void runBulkAction()} disabled={busy}>
-                Запустить действие
+                ��������� ��������
               </button>
           </div>
           {bulkResult ? <p className="mt-2 text-xs text-emerald-500">{bulkResult}</p> : null}
         </div>
 
-        {loading ? <p className="text-sm text-slate-500">Загрузка пользователей...</p> : null}
+        {loading ? <p className="text-sm text-slate-500"> ...</p> : null}
         {error ? <p className="mb-2 text-sm text-rose-500">{error}</p> : null}
         {okMessage ? <p className="mb-2 text-sm text-emerald-500">{okMessage}</p> : null}
 
@@ -575,9 +575,9 @@ export default function AdminUsersPage() {
             <thead>
               <tr className="text-left text-slate-500">
                 <th className="px-2 py-2">ID</th>
-                <th className="px-2 py-2">Пользователь</th>
-                <th className="px-2 py-2">План</th>
-                <th className="px-2 py-2">Статус</th>
+                <th className="px-2 py-2">������������</th>
+                <th className="px-2 py-2">����</th>
+                <th className="px-2 py-2">������</th>
               </tr>
             </thead>
             <tbody>
@@ -590,11 +590,11 @@ export default function AdminUsersPage() {
                   onClick={() => void pickUser(row.tg_id)}
                 >
                   <td className="px-2 py-2 font-mono text-xs">{row.tg_id}</td>
-                  <td className="px-2 py-2">{row.display_name || row.username || "—"}</td>
-                  <td className="px-2 py-2">{row.sub_type || "—"}</td>
+                  <td className="px-2 py-2">{row.display_name || row.username || "�"}</td>
+                  <td className="px-2 py-2">{row.sub_type || "�"}</td>
                   <td className="px-2 py-2">
                     <span className={`rounded-full px-2 py-1 text-xs ${row.is_active ? "bg-emerald-500/20 text-emerald-600" : "bg-rose-500/20 text-rose-500"}`}>
-                      {row.is_active ? "активен" : "заблокирован"}
+                      {row.is_active ? "" : ""}
                     </span>
                   </td>
                 </tr>
@@ -606,66 +606,66 @@ export default function AdminUsersPage() {
 
       <article className="glass-card p-4">
         {!selected ? (
-          <p className="text-sm text-slate-500">Выберите пользователя слева.</p>
+          <p className="text-sm text-slate-500">�������� ������������ �����.</p>
         ) : (
           <>
             <div className="mb-3">
-              <h2 className="font-display text-2xl font-semibold">Карточка #{selected.user.tg_id}</h2>
-              <p className="text-xs text-slate-500">Создан: {fmtRuDate(selected.user.created_at)}</p>
-              <p className="text-xs text-slate-500">Истекает: {fmtRuDate(selected.user.expiry_at)}</p>
+              <h2 className="font-display text-2xl font-semibold">�������� #{selected.user.tg_id}</h2>
+              <p className="text-xs text-slate-500">������: {fmtRuDate(selected.user.created_at)}</p>
+              <p className="text-xs text-slate-500">��������: {fmtRuDate(selected.user.expiry_at)}</p>
             </div>
 
             <div className="mb-3 grid gap-2 sm:grid-cols-2">
               <button className="outline-btn rounded-xl px-3 py-2 text-sm font-semibold" type="button" onClick={() => void actionMessage()} disabled={busy}>
-                Сообщение
+                ���������
               </button>
               <button className="outline-btn rounded-xl px-3 py-2 text-sm font-semibold" type="button" onClick={() => void actionExtend()} disabled={busy}>
-                Продлить
+                ��������
               </button>
               <button className="outline-btn rounded-xl px-3 py-2 text-sm font-semibold" type="button" onClick={() => void actionRegenerateToken()} disabled={busy}>
-                Новый токен
+                ����� �����
               </button>
               <button className="outline-btn rounded-xl px-3 py-2 text-sm font-semibold" type="button" onClick={() => void actionToggleBlock()} disabled={busy}>
-                {selected.user.is_active ? "Блокировать" : "Разблокировать"}
+                {selected.user.is_active ? "" : ""}
               </button>
             </div>
 
             <div className="mb-3 grid gap-2 sm:grid-cols-2">
               <button className="outline-btn rounded-xl px-3 py-2 text-xs font-semibold" type="button" onClick={() => void runPreset("reset_key")} disabled={busy}>
-                Сценарий: сброс ключа
+                ��������: ����� �����
               </button>
               <button className="outline-btn rounded-xl px-3 py-2 text-xs font-semibold" type="button" onClick={() => void runPreset("rotate_link")} disabled={busy}>
-                Сценарий: ротация ссылки
+                ��������: ������� ������
               </button>
               <button className="outline-btn rounded-xl px-3 py-2 text-xs font-semibold" type="button" onClick={() => void runPreset("extend_1d")} disabled={busy}>
-                Сценарий: +1 день
+                ��������: +1 ����
               </button>
               <button className="outline-btn rounded-xl px-3 py-2 text-xs font-semibold" type="button" onClick={() => void runPreset("send_guide")} disabled={busy}>
-                Сценарий: отправить инструкцию
+                ��������: ��������� ����������
               </button>
             </div>
 
             <div className="mb-3 grid gap-3 sm:grid-cols-2">
               <div className="rounded-xl bg-white/70 p-3 text-sm dark:bg-white/10">
-                <p>План: <strong>{selected.user.sub_type}</strong></p>
-                <p>Архивный платёжный счётчик: <strong>{selected.user.stars_paid}</strong></p>
-                <p>Рефералов: <strong>{selected.user.referral_count}</strong></p>
-                <p>Серия лояльности: <strong>{loyalty?.streak_days ?? 0} дн.</strong></p>
+                <p>����: <strong>{selected.user.sub_type}</strong></p>
+                <p>�������� �������� �������: <strong>{selected.user.stars_paid}</strong></p>
+                <p>���������: <strong>{selected.user.referral_count}</strong></p>
+                <p> : <strong>{loyalty?.streak_days ?? 0} .</strong></p>
               </div>
               <div className="rounded-xl bg-white/70 p-3 text-sm dark:bg-white/10">
                 <div className="mb-1 flex items-center gap-2">
-                  <span className={`badge ${riskClass}`}>риск {Math.round(risk?.score || 0)}</span>
+                  <span className={`badge ${riskClass}`}> {Math.round(risk?.score || 0)}</span>
                   <span className="text-xs text-slate-500">{riskLevelLabel(String(risk?.level || ""))}</span>
                 </div>
-                <p className="text-xs">Регенераций: <strong>{risk?.signals?.regen_count ?? 0}</strong></p>
-                <p className="text-xs">Админ-операций с ключами: <strong>{risk?.signals?.admin_key_ops ?? 0}</strong></p>
-                <p className="text-xs">Уникальных IP: <strong>{risk?.signals?.unique_ips ?? 0}</strong></p>
-                <p className="text-xs">Трафик: <strong>{Number(risk?.signals?.traffic_gb || 0).toFixed(2)} GB</strong></p>
+                <p className="text-xs">: <strong>{risk?.signals?.regen_count ?? 0}</strong></p>
+                <p className="text-xs">-  : <strong>{risk?.signals?.admin_key_ops ?? 0}</strong></p>
+                <p className="text-xs"> IP: <strong>{risk?.signals?.unique_ips ?? 0}</strong></p>
+                <p className="text-xs">: <strong>{Number(risk?.signals?.traffic_gb || 0).toFixed(2)} GB</strong></p>
               </div>
             </div>
 
             <div className="mt-3 rounded-xl bg-white/70 p-3 text-sm dark:bg-white/10">
-              <p className="mb-1 font-semibold">Подписка</p>
+              <p className="mb-1 font-semibold">��������</p>
               <div className="flex items-start gap-2">
                 <input
                   value={String(selected.user.subscription_url || "")}
@@ -673,7 +673,7 @@ export default function AdminUsersPage() {
                   className="w-full rounded-xl border border-violet-200/50 bg-white/80 px-3 py-2 text-xs outline-none dark:border-violet-500/30 dark:bg-slate-900/70"
                 />
                 <button className="outline-btn rounded-xl px-3 py-2 text-xs font-semibold" type="button" onClick={() => void copyText(String(selected.user.subscription_url || ""))}>
-                  Копировать URL
+                  ���������� URL
                 </button>
               </div>
               <div className="mt-2 flex items-start gap-2">
@@ -683,24 +683,24 @@ export default function AdminUsersPage() {
                   className="w-full rounded-xl border border-violet-200/50 bg-white/80 px-3 py-2 text-xs outline-none dark:border-violet-500/30 dark:bg-slate-900/70"
                 />
                 <button className="outline-btn rounded-xl px-3 py-2 text-xs font-semibold" type="button" onClick={() => void copyText(String(selected.user.subscription_token || ""))}>
-                  Копировать токен
+                  ���������� �����
                 </button>
               </div>
             </div>
 
             {loyalty?.tiers?.length ? (
               <div className="mb-3 rounded-xl bg-white/70 p-3 text-sm dark:bg-white/10">
-                <p className="mb-2 font-semibold">Уровни лояльности (30/90/180)</p>
+                <p className="mb-2 font-semibold">������ ���������� (30/90/180)</p>
                 <div className="grid gap-2 sm:grid-cols-3">
                   {loyalty.tiers.map((tier) => (
                     <div key={tier.reward_key} className="rounded-xl border border-white/30 bg-white/70 p-2 text-xs dark:border-white/10 dark:bg-white/5">
-                      <p className="font-semibold">{tier.days} дн.</p>
-                      <p>Бонус: {tier.bonus_days} дн.</p>
-                      <p>Привилегия: {tier.perk}</p>
-                      <p className="mt-1">Статус: {tier.claimed ? "получен" : tier.unlocked ? "доступен" : "заблокирован"}</p>
+                      <p className="font-semibold">{tier.days} ��.</p>
+                      <p>�����: {tier.bonus_days} ��.</p>
+                      <p>����������: {tier.perk}</p>
+                      <p className="mt-1">: {tier.claimed ? "" : tier.unlocked ? "" : ""}</p>
                       {!tier.claimed && tier.unlocked ? (
                         <button className="mt-2 outline-btn rounded-lg px-2 py-1 text-[11px] font-semibold" type="button" disabled={busy} onClick={() => void grantLoyaltyTier(tier.days)}>
-                          Выдать уровень
+                          ������ �������
                         </button>
                       ) : null}
                     </div>
@@ -710,41 +710,41 @@ export default function AdminUsersPage() {
             ) : null}
 
             <div className="mb-3 flex flex-wrap gap-2">
-              <button className={tabButtonClass("overview")} type="button" onClick={() => setDetailTab("overview")}>обзор</button>
-              <button className={tabButtonClass("keys")} type="button" onClick={() => setDetailTab("keys")}>ключи и лимиты</button>
-              <button className={tabButtonClass("history")} type="button" onClick={() => setDetailTab("history")}>история изменений</button>
-              <button className={tabButtonClass("audit")} type="button" onClick={() => setDetailTab("audit")}>действия админа</button>
+              <button className={tabButtonClass("overview")} type="button" onClick={() => setDetailTab("overview")}>�����</button>
+              <button className={tabButtonClass("keys")} type="button" onClick={() => setDetailTab("keys")}>����� � ������</button>
+              <button className={tabButtonClass("history")} type="button" onClick={() => setDetailTab("history")}>������� ���������</button>
+              <button className={tabButtonClass("audit")} type="button" onClick={() => setDetailTab("audit")}>�������� ������</button>
             </div>
 
             {detailTab === "overview" ? (
               <>
                 <div className="rounded-xl bg-white/70 p-3 text-sm dark:bg-white/10">
-                  <p className="mb-2 font-semibold">Сводка ключей</p>
+                  <p className="mb-2 font-semibold">������ ������</p>
                   <p className="mb-2 text-xs text-slate-500">
-                    Здесь видно, на скольких нодах у пользователя есть ключ, сколько трафика уже прошло и есть ли рассинхрон между PORTAL и панелью.
+                    ����� �����, �� �������� ����� � ������������ ���� ����, ������� ������� ��� ������ � ���� �� ���������� ����� POKROV � �������.
                   </p>
                   {summary ? (
                     <div className="grid gap-2 text-xs sm:grid-cols-2">
-                      <p>Нод с ключом: <strong>{summary.nodes_with_client}/{summary.nodes_total}</strong></p>
-                      <p>Онлайн нод: <strong>{summary.nodes_online}</strong></p>
-                      <p>Включённых нод: <strong>{summary.nodes_enabled}</strong></p>
-                      <p>Расхождений по ID подписки: <strong>{summary.subid_mismatch_count}</strong></p>
-                      <p>Трафик всего: <strong>{fmtTraffic(summary.traffic_total_bytes)}</strong></p>
-                      <p>Состояние панели: <strong>{panelStateLabel(String(summary.panel_state || ""))}</strong></p>
+                      <p>��� � ������: <strong>{summary.nodes_with_client}/{summary.nodes_total}</strong></p>
+                      <p>������ ���: <strong>{summary.nodes_online}</strong></p>
+                      <p>���������� ���: <strong>{summary.nodes_enabled}</strong></p>
+                      <p>����������� �� ID ��������: <strong>{summary.subid_mismatch_count}</strong></p>
+                      <p>������ �����: <strong>{fmtTraffic(summary.traffic_total_bytes)}</strong></p>
+                      <p>��������� ������: <strong>{panelStateLabel(String(summary.panel_state || ""))}</strong></p>
                     </div>
                   ) : (
-                    <p className="text-xs text-slate-500">Сводка недоступна.</p>
+                    <p className="text-xs text-slate-500">������ ����������.</p>
                   )}
                 </div>
-                <h3 className="mt-4 font-display text-xl font-semibold">Последние тикеты</h3>
+                <h3 className="mt-4 font-display text-xl font-semibold">��������� ������</h3>
                 <div className="mt-2 space-y-2">
                   {(selected.tickets || []).map((ticket) => (
                     <div key={ticket.id} className="rounded-xl bg-white/70 p-3 text-sm dark:bg-white/10">
-                      <p className="font-medium">#{ticket.id} • {ticketStatusLabel(ticket.status_title)}</p>
-                      <p className="text-xs text-slate-500">{ticket.last_message_preview || "Без сообщений"}</p>
+                      <p className="font-medium">#{ticket.id} � {ticketStatusLabel(ticket.status_title)}</p>
+                      <p className="text-xs text-slate-500">{ticket.last_message_preview || "��� ���������"}</p>
                     </div>
                   ))}
-                  {!selected.tickets?.length ? <p className="text-xs text-slate-500">Тикетов нет.</p> : null}
+                  {!selected.tickets?.length ? <p className="text-xs text-slate-500"> .</p> : null}
                 </div>
               </>
             ) : null}
@@ -752,16 +752,16 @@ export default function AdminUsersPage() {
             {detailTab === "keys" ? (
               <div className="rounded-xl bg-white/70 p-3 text-sm dark:bg-white/10">
                 <div className="mb-2 flex items-center justify-between gap-2">
-                  <p className="font-semibold">Ключи, лимиты и управление</p>
+                  <p className="font-semibold">�����, ������ � ����������</p>
                   <button className="outline-btn rounded-xl px-3 py-1.5 text-xs font-semibold" type="button" onClick={() => void reloadSelected()} disabled={busy || !!keyBusy || !!policyBusy}>
-                    Обновить
+                    ��������
                   </button>
                 </div>
                 <p className="mb-3 text-xs text-slate-500">
-                  В этом разделе можно включать и выключать ключи, сбрасывать трафик, пересинхронизировать данные и выставлять лимиты по каждой ноде отдельно.
+                  � ���� ������� ����� �������� � ��������� �����, ���������� ������, �������������������� ������ � ���������� ������ �� ������ ���� ��������.
                 </p>
                 <div className="space-y-2">
-                  {keys.length === 0 ? <p className="text-xs text-slate-500">Ключи не найдены для текущего плана.</p> : null}
+                  {keys.length === 0 ? <p className="text-xs text-slate-500">     .</p> : null}
                   {keys.map((key) => {
                     const toggleOp = `${key.node_code}:toggle`;
                     const resetOp = `${key.node_code}:reset`;
@@ -773,73 +773,73 @@ export default function AdminUsersPage() {
                     return (
                       <div key={key.node_code} className="rounded-xl border border-white/35 bg-white/70 p-3 text-xs dark:border-white/10 dark:bg-white/5">
                         <div className="flex flex-wrap items-center justify-between gap-2">
-                          <p className="font-semibold">{key.node_code} • {key.node_name || "Нода"}</p>
+                          <p className="font-semibold">{key.node_code} � {key.node_name || "����"}</p>
                           <span className={`rounded-full px-2 py-0.5 ${key.exists ? "bg-emerald-500/20 text-emerald-600" : "bg-slate-300/40 text-slate-500"}`}>
-                            {key.exists ? "ключ найден" : "ключа нет"}
+                            {key.exists ? " " : " "}
                           </span>
                         </div>
-                        <p className="mt-1">Онлайн: <strong>{fmtOnline(key.online)}</strong> • Включен: <strong>{key.enabled ? "да" : "нет"}</strong></p>
-                        <p>ID подписки в панели: <strong>{key.sub_id || "—"}</strong></p>
-                        <p>Ожидаемый ID: <strong>{key.expected_sub_id || "—"}</strong> • Совпадает: <strong>{key.sub_id_match ? "да" : "нет"}</strong></p>
-                        <p>Трафик: <strong>{fmtTraffic(key.total_bytes)}</strong> ({key.up_bytes}↑ / {key.down_bytes}↓)</p>
-                        <p>Последний онлайн: <strong>{fmtRuDate(key.last_online_at)}</strong></p>
+                        <p className="mt-1">: <strong>{fmtOnline(key.online)}</strong>  : <strong>{key.enabled ? "" : ""}</strong></p>
+                        <p>ID �������� � ������: <strong>{key.sub_id || "�"}</strong></p>
+                        <p> ID: <strong>{key.expected_sub_id || ""}</strong>  : <strong>{key.sub_id_match ? "" : ""}</strong></p>
+                        <p>������: <strong>{fmtTraffic(key.total_bytes)}</strong> ({key.up_bytes}^ / {key.down_bytes}v)</p>
+                        <p>��������� ������: <strong>{fmtRuDate(key.last_online_at)}</strong></p>
 
                         <div className="mt-2 flex flex-wrap gap-2">
                           <button className="outline-btn rounded-xl px-2.5 py-1 text-[11px] font-semibold" type="button" disabled={busy || !key.exists || !!keyBusy} onClick={() => void runKeyAction(key, "toggle")}>
-                            {busyToggle ? "..." : key.enabled ? "Отключить" : "Включить"}
+                            {busyToggle ? "..." : key.enabled ? "" : ""}
                           </button>
                           <button className="outline-btn rounded-xl px-2.5 py-1 text-[11px] font-semibold" type="button" disabled={busy || !key.exists || !!keyBusy} onClick={() => void runKeyAction(key, "reset")}>
-                            {busyReset ? "..." : "Сбросить трафик"}
+                            {busyReset ? "..." : " "}
                           </button>
                           <button className="outline-btn rounded-xl px-2.5 py-1 text-[11px] font-semibold" type="button" disabled={busy || !key.exists || !!keyBusy} onClick={() => void runKeyAction(key, "resync")}>
-                            {busyResync ? "..." : "Синхронизировать ID подписки"}
+                            {busyResync ? "..." : " ID "}
                           </button>
                           <button className="outline-btn rounded-xl px-2.5 py-1 text-[11px] font-semibold" type="button" disabled={!String(key.vless_link || "").trim()} onClick={() => void copyText(String(key.vless_link || ""))}>
-                            Копировать ключ
+                            ���������� ����
                           </button>
                         </div>
 
                         <div className="mt-3 rounded-xl border border-violet-200/40 bg-white/80 p-2 dark:border-violet-500/20 dark:bg-slate-900/60">
-                          <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-500">Лимиты на ключ и автоуведомления</p>
+                          <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-500">������ �� ���� � ���������������</p>
                           <div className="grid gap-2 sm:grid-cols-3">
                             <input
                               value={draft.burst_mbps}
                               onChange={(event) => setPolicyDrafts((prev) => ({ ...prev, [key.node_code]: { ...draft, burst_mbps: event.target.value } }))}
-                              placeholder="пиковая скорость (Mbps)"
+                              placeholder="������� �������� (Mbps)"
                               className="rounded-lg border border-violet-200/50 bg-white px-2 py-1 text-xs outline-none dark:border-violet-500/30 dark:bg-slate-900/70"
                             />
                             <input
                               value={draft.soft_cap_gb}
                               onChange={(event) => setPolicyDrafts((prev) => ({ ...prev, [key.node_code]: { ...draft, soft_cap_gb: event.target.value } }))}
-                              placeholder="soft-лимит (GB)"
+                              placeholder="soft-����� (GB)"
                               className="rounded-lg border border-violet-200/50 bg-white px-2 py-1 text-xs outline-none dark:border-violet-500/30 dark:bg-slate-900/70"
                             />
                             <input
                               value={draft.hard_cap_gb}
                               onChange={(event) => setPolicyDrafts((prev) => ({ ...prev, [key.node_code]: { ...draft, hard_cap_gb: event.target.value } }))}
-                              placeholder="hard-лимит (GB)"
+                              placeholder="hard-����� (GB)"
                               className="rounded-lg border border-violet-200/50 bg-white px-2 py-1 text-xs outline-none dark:border-violet-500/30 dark:bg-slate-900/70"
                             />
                           </div>
                           <div className="mt-2 flex flex-wrap items-center gap-3">
                             <label className="inline-flex items-center gap-1 text-[11px]">
                               <input type="checkbox" checked={draft.notify_soft} onChange={(event) => setPolicyDrafts((prev) => ({ ...prev, [key.node_code]: { ...draft, notify_soft: event.target.checked } }))} />
-                              уведомлять о soft-лимите
+                              ���������� � soft-������
                             </label>
                             <label className="inline-flex items-center gap-1 text-[11px]">
                               <input type="checkbox" checked={draft.notify_hard} onChange={(event) => setPolicyDrafts((prev) => ({ ...prev, [key.node_code]: { ...draft, notify_hard: event.target.checked } }))} />
-                              уведомлять о hard-лимите
+                              ���������� � hard-������
                             </label>
                             <label className="inline-flex items-center gap-1 text-[11px]">
                               <input type="checkbox" checked={draft.auto_disable_on_hard} onChange={(event) => setPolicyDrafts((prev) => ({ ...prev, [key.node_code]: { ...draft, auto_disable_on_hard: event.target.checked } }))} />
-                              автоотключение при hard-лимите
+                              �������������� ��� hard-������
                             </label>
                             <label className="inline-flex items-center gap-1 text-[11px]">
                               <input type="checkbox" checked={draft.apply_now} onChange={(event) => setPolicyDrafts((prev) => ({ ...prev, [key.node_code]: { ...draft, apply_now: event.target.checked } }))} />
-                              применить сразу
+                              ��������� �����
                             </label>
                             <button className="outline-btn rounded-lg px-2 py-1 text-[11px] font-semibold" type="button" onClick={() => void savePolicy(key.node_code)} disabled={policyBusy === key.node_code}>
-                              {policyBusy === key.node_code ? "Сохраняем..." : "Сохранить лимиты"}
+                              {policyBusy === key.node_code ? "..." : " "}
                             </button>
                           </div>
                         </div>
@@ -853,23 +853,23 @@ export default function AdminUsersPage() {
             {detailTab === "history" ? (
               <div className="rounded-xl bg-white/70 p-3 text-sm dark:bg-white/10">
                 <div className="mb-2 flex items-center justify-between gap-2">
-                  <p className="font-semibold">История ключей (регены / блокировки / переносы)</p>
+                  <p className="font-semibold">������� ������ (������ / ���������� / ��������)</p>
                   <button className="outline-btn rounded-xl px-3 py-1.5 text-xs font-semibold" type="button" onClick={() => void reloadSelected()} disabled={busy}>
-                    Обновить
+                    ��������
                   </button>
                 </div>
                 <p className="mb-3 text-xs text-slate-500">
-                  Журнал помогает понять, что именно происходило с ключами пользователя: продления, ротации, переносы, отключения и ручные действия.
+                  ������ �������� ������, ��� ������ ����������� � ������� ������������: ���������, �������, ��������, ���������� � ������ ��������.
                 </p>
                 <div className="max-h-[44vh] overflow-auto">
                   <table className="min-w-full text-xs">
                     <thead>
                       <tr className="text-left text-slate-500">
-                        <th className="px-2 py-2">Дата</th>
-                        <th className="px-2 py-2">Действие</th>
-                        <th className="px-2 py-2">Нода</th>
-                        <th className="px-2 py-2">Оператор</th>
-                        <th className="px-2 py-2">Метаданные</th>
+                        <th className="px-2 py-2">����</th>
+                        <th className="px-2 py-2">��������</th>
+                        <th className="px-2 py-2">����</th>
+                        <th className="px-2 py-2">��������</th>
+                        <th className="px-2 py-2">����������</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -877,14 +877,14 @@ export default function AdminUsersPage() {
                         <tr key={row.id} className="border-t border-white/30 dark:border-white/10">
                           <td className="px-2 py-2 whitespace-nowrap">{fmtRuDate(row.created_at)}</td>
                           <td className="px-2 py-2"><span className={`badge ${historyBadgeClass(row.action)}`}>{actionLabel(row.action)}</span></td>
-                          <td className="px-2 py-2">{row.node_code || "—"}</td>
-                          <td className="px-2 py-2">{row.actor_tg_id || "—"}</td>
-                          <td className="px-2 py-2 max-w-[260px] truncate">{row.meta ? JSON.stringify(row.meta) : "—"}</td>
+                          <td className="px-2 py-2">{row.node_code || "�"}</td>
+                          <td className="px-2 py-2">{row.actor_tg_id || "�"}</td>
+                          <td className="px-2 py-2 max-w-[260px] truncate">{row.meta ? JSON.stringify(row.meta) : ""}</td>
                         </tr>
                       ))}
                     </tbody>
                   </table>
-                  {!keyHistoryRows.length ? <p className="px-2 py-3 text-xs text-slate-500">История пуста.</p> : null}
+                  {!keyHistoryRows.length ? <p className="px-2 py-3 text-xs text-slate-500"> .</p> : null}
                 </div>
               </div>
             ) : null}
@@ -892,22 +892,22 @@ export default function AdminUsersPage() {
             {detailTab === "audit" ? (
               <div className="rounded-xl bg-white/70 p-3 text-sm dark:bg-white/10">
                 <div className="mb-2 flex items-center justify-between gap-2">
-                  <p className="font-semibold">Журнал действий админа</p>
+                  <p className="font-semibold">������ �������� ������</p>
                   <button className="outline-btn rounded-xl px-3 py-1.5 text-xs font-semibold" type="button" onClick={() => void reloadSelected()} disabled={busy}>
-                    Обновить
+                    ��������
                   </button>
                 </div>
                 <p className="mb-3 text-xs text-slate-500">
-                  Здесь видно, кто из операторов что менял в карточке пользователя и когда это произошло.
+                  ����� �����, ��� �� ���������� ��� ����� � �������� ������������ � ����� ��� ���������.
                 </p>
                 <div className="max-h-[44vh] overflow-auto">
                   <table className="min-w-full text-xs">
                     <thead>
                       <tr className="text-left text-slate-500">
-                        <th className="px-2 py-2">Дата</th>
-                        <th className="px-2 py-2">Оператор</th>
-                        <th className="px-2 py-2">Действие</th>
-                        <th className="px-2 py-2">Метаданные</th>
+                        <th className="px-2 py-2">����</th>
+                        <th className="px-2 py-2">��������</th>
+                        <th className="px-2 py-2">��������</th>
+                        <th className="px-2 py-2">����������</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -916,12 +916,12 @@ export default function AdminUsersPage() {
                           <td className="px-2 py-2 whitespace-nowrap">{fmtRuDate(row.created_at)}</td>
                           <td className="px-2 py-2">{row.actor_tg_id}</td>
                           <td className="px-2 py-2"><span className="badge badge-violet">{actionLabel(row.action)}</span></td>
-                          <td className="px-2 py-2 max-w-[280px] truncate">{row.meta ? JSON.stringify(row.meta) : "—"}</td>
+                          <td className="px-2 py-2 max-w-[280px] truncate">{row.meta ? JSON.stringify(row.meta) : ""}</td>
                         </tr>
                       ))}
                     </tbody>
                   </table>
-                  {!auditRows.length ? <p className="px-2 py-3 text-xs text-slate-500">Действий пока нет.</p> : null}
+                  {!auditRows.length ? <p className="px-2 py-3 text-xs text-slate-500">  .</p> : null}
                 </div>
               </div>
             ) : null}
@@ -934,21 +934,21 @@ export default function AdminUsersPage() {
           <div className="glass-card w-full max-w-lg p-5">
             {dialog.kind === "message" ? (
               <>
-                <h3 className="font-display text-xl font-semibold">Сообщение пользователю</h3>
-                <p className="mt-1 text-xs text-slate-500">Сообщение уйдёт прямо в Telegram.</p>
+                <h3 className="font-display text-xl font-semibold">��������� ������������</h3>
+                <p className="mt-1 text-xs text-slate-500">��������� ���� ����� � Telegram.</p>
                 <textarea
                   value={dialog.text}
                   onChange={(event) => setDialog({ kind: "message", text: event.target.value })}
                   rows={5}
                   className="mt-4 w-full rounded-xl border border-violet-200/50 bg-white/80 px-3 py-3 text-sm outline-none dark:border-violet-500/30 dark:bg-slate-900/70"
-                  placeholder="Текст сообщения"
+                  placeholder="����� ���������"
                 />
                 <div className="mt-4 flex justify-end gap-2">
                   <button className="outline-btn rounded-xl px-4 py-2 text-sm font-semibold" type="button" onClick={() => setDialog(null)}>
-                    Отмена
+                    ������
                   </button>
                   <button className="btn-primary rounded-xl px-4 py-2 text-sm font-semibold" type="button" disabled={busy || !dialog.text.trim()} onClick={() => void submitMessageDialog()}>
-                    Отправить
+                    ���������
                   </button>
                 </div>
               </>
@@ -956,22 +956,22 @@ export default function AdminUsersPage() {
 
             {dialog.kind === "extend" ? (
               <>
-                <h3 className="font-display text-xl font-semibold">Продлить доступ</h3>
-                <p className="mt-1 text-xs text-slate-500">Изменение сразу уйдёт в профиль и ключи пользователя.</p>
+                <h3 className="font-display text-xl font-semibold">�������� ������</h3>
+                <p className="mt-1 text-xs text-slate-500">��������� ����� ���� � ������� � ����� ������������.</p>
                 <input
                   value={dialog.days}
                   onChange={(event) => setDialog({ kind: "extend", days: event.target.value })}
                   type="number"
                   min={1}
                   className="mt-4 w-full rounded-xl border border-violet-200/50 bg-white/80 px-3 py-3 text-sm outline-none dark:border-violet-500/30 dark:bg-slate-900/70"
-                  placeholder="Дней"
+                  placeholder="����"
                 />
                 <div className="mt-4 flex justify-end gap-2">
                   <button className="outline-btn rounded-xl px-4 py-2 text-sm font-semibold" type="button" onClick={() => setDialog(null)}>
-                    Отмена
+                    ������
                   </button>
                   <button className="btn-primary rounded-xl px-4 py-2 text-sm font-semibold" type="button" disabled={busy} onClick={() => void submitExtendDialog()}>
-                    Применить
+                    ���������
                   </button>
                 </div>
               </>
@@ -979,13 +979,13 @@ export default function AdminUsersPage() {
 
             {dialog.kind === "create" ? (
               <>
-                <h3 className="font-display text-xl font-semibold">Ручной пользователь</h3>
-                <p className="mt-1 text-xs text-slate-500">Для офлайн-выдачи и нестандартных кейсов.</p>
+                <h3 className="font-display text-xl font-semibold">������ ������������</h3>
+                <p className="mt-1 text-xs text-slate-500">��� ������-������ � ������������� ������.</p>
                 <input
                   value={dialog.displayName}
                   onChange={(event) => setDialog({ kind: "create", displayName: event.target.value, days: dialog.days })}
                   className="mt-4 w-full rounded-xl border border-violet-200/50 bg-white/80 px-3 py-3 text-sm outline-none dark:border-violet-500/30 dark:bg-slate-900/70"
-                  placeholder="Имя пользователя"
+                  placeholder="��� ������������"
                 />
                 <input
                   value={dialog.days}
@@ -993,14 +993,14 @@ export default function AdminUsersPage() {
                   type="number"
                   min={1}
                   className="mt-3 w-full rounded-xl border border-violet-200/50 bg-white/80 px-3 py-3 text-sm outline-none dark:border-violet-500/30 dark:bg-slate-900/70"
-                  placeholder="Срок доступа в днях"
+                  placeholder="���� ������� � ����"
                 />
                 <div className="mt-4 flex justify-end gap-2">
                   <button className="outline-btn rounded-xl px-4 py-2 text-sm font-semibold" type="button" onClick={() => setDialog(null)}>
-                    Отмена
+                    ������
                   </button>
                   <button className="btn-primary rounded-xl px-4 py-2 text-sm font-semibold" type="button" disabled={busy} onClick={() => void submitCreateManualDialog()}>
-                    Создать
+                    �������
                   </button>
                 </div>
               </>
@@ -1008,19 +1008,19 @@ export default function AdminUsersPage() {
 
             {dialog.kind === "bulkConfirm" ? (
               <>
-                <h3 className="font-display text-xl font-semibold">Подтвердить массовую операцию</h3>
+                <h3 className="font-display text-xl font-semibold">����������� �������� ��������</h3>
                 <p className="mt-2 text-sm text-slate-500">
-                  Будет выполнено действие <strong>{bulkAction.action}</strong> для сегмента <strong>{bulkAction.segment}</strong>.
+                  ����� ��������� �������� <strong>{bulkAction.action}</strong> ��� �������� <strong>{bulkAction.segment}</strong>.
                 </p>
                 <p className="mt-2 text-xs text-slate-500">
-                  Фильтр: {bulkAction.q.trim() || "без фильтра"} • лимит: {bulkAction.limit} • ноды: {bulkAction.nodeCodes.trim() || "все"}
+                  ������: {bulkAction.q.trim() || "��� �������"} � �����: {bulkAction.limit} � ����: {bulkAction.nodeCodes.trim() || "���"}
                 </p>
                 <div className="mt-4 flex justify-end gap-2">
                   <button className="outline-btn rounded-xl px-4 py-2 text-sm font-semibold" type="button" onClick={() => setDialog(null)}>
-                    Отмена
+                    ������
                   </button>
                   <button className="btn-primary rounded-xl px-4 py-2 text-sm font-semibold" type="button" disabled={busy} onClick={() => void runBulkAction(true)}>
-                    Применить
+                    ���������
                   </button>
                 </div>
               </>
@@ -1028,9 +1028,9 @@ export default function AdminUsersPage() {
 
             {dialog.kind === "token" ? (
               <>
-                <h3 className="font-display text-xl font-semibold">Новая ссылка готова</h3>
+                <h3 className="font-display text-xl font-semibold">����� ������ ������</h3>
                 <p className="mt-1 text-xs text-slate-500">
-                  Синхронизация панели: {dialog.syncOk ? "прошла успешно" : "нужна дополнительная проверка"}.
+                   : {dialog.syncOk ? " " : "  "}.
                 </p>
                 <input
                   value={dialog.subscriptionUrl}
@@ -1039,10 +1039,10 @@ export default function AdminUsersPage() {
                 />
                 <div className="mt-4 flex justify-end gap-2">
                   <button className="outline-btn rounded-xl px-4 py-2 text-sm font-semibold" type="button" onClick={() => void copyText(dialog.subscriptionUrl)}>
-                    Копировать
+                    ����������
                   </button>
                   <button className="btn-primary rounded-xl px-4 py-2 text-sm font-semibold" type="button" onClick={() => setDialog(null)}>
-                    Закрыть
+                    �������
                   </button>
                 </div>
               </>

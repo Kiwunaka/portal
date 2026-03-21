@@ -1,8 +1,8 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
+﻿/* eslint-disable @typescript-eslint/no-explicit-any */
 import { getInitData } from "./telegram";
 
 const WEB_SESSION_TOKEN_KEY = "portal_web_session_token";
-const DIRECT_API_BASE = "https://kiwunaka.space";
+const DIRECT_API_BASE = "https://api.pokrov.space";
 
 export type NodeInfo = {
   code: string;
@@ -693,6 +693,18 @@ export type WebLoginResult = {
   expires_in: number;
 };
 
+export type TelegramOidcStartResult = {
+  ok: boolean;
+  mode: "oidc";
+  auth_url: string;
+  redirect_uri: string;
+};
+
+export type TelegramOidcFinishPayload = {
+  code: string;
+  state: string;
+};
+
 export type AuthSessionPayload = {
   ok: boolean;
   user: { id: number; username?: string | null };
@@ -935,6 +947,46 @@ export async function authByTelegramWebLogin(payload: TelegramWebLoginPayload): 
       return (await r.json()) as WebLoginResult;
     } catch (e: any) {
       lastErr = e;
+    }
+  }
+  throw lastErr || new Error("API error");
+}
+
+export async function startTelegramOidcLogin(): Promise<TelegramOidcStartResult> {
+  const bases = candidateApiBases();
+  let lastErr: any = null;
+  for (const base of bases) {
+    try {
+      const r = await fetch(`${base}/api/auth/telegram/oidc/start`, { method: "GET" });
+      if (!r.ok) {
+        const text = await readApiError(r);
+        throw new Error(text || `API error: ${r.status}`);
+      }
+      return (await r.json()) as TelegramOidcStartResult;
+    } catch (error: any) {
+      lastErr = error;
+    }
+  }
+  throw lastErr || new Error("API error");
+}
+
+export async function finishTelegramOidcLogin(payload: TelegramOidcFinishPayload): Promise<WebLoginResult> {
+  const bases = candidateApiBases();
+  let lastErr: any = null;
+  for (const base of bases) {
+    try {
+      const r = await fetch(`${base}/api/auth/telegram/oidc/finish`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      if (!r.ok) {
+        const text = await readApiError(r);
+        throw new Error(text || `API error: ${r.status}`);
+      }
+      return (await r.json()) as WebLoginResult;
+    } catch (error: any) {
+      lastErr = error;
     }
   }
   throw lastErr || new Error("API error");

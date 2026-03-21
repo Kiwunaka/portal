@@ -4,17 +4,24 @@ import {
   authByTelegramWebLogin,
   clearWebSessionToken,
   consumeWebSessionTokenFromUrl,
+  finishTelegramOidcLogin,
   fetchAuthSession,
   fetchDashboard,
   fetchUser,
   hasWebSessionToken,
   setWebSessionToken,
+  startTelegramOidcLogin,
   type DashboardSnapshot,
   type TelegramWebLoginPayload,
   type UserPayload,
 } from "@/lib/api";
+import {
+  clearTelegramOidcCallback,
+  describeTelegramOidcError,
+  readTelegramOidcCallback,
+} from "@/lib/telegram-oidc";
 import { getTgUser, type TgUser } from "@/lib/telegram";
-import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useState } from "react";
 
 type PortalSessionContextValue = {
   loading: boolean;
@@ -26,6 +33,7 @@ type PortalSessionContextValue = {
   dash: DashboardSnapshot | null;
   tgUser: TgUser | null;
   refresh: () => Promise<void>;
+  startTelegramLogin: () => Promise<void>;
   loginByWidget: (payload: TelegramWebLoginPayload) => Promise<void>;
   logoutWebSession: () => void;
 };
@@ -33,7 +41,13 @@ type PortalSessionContextValue = {
 const PortalSessionContext = createContext<PortalSessionContextValue | null>(null);
 
 function parseErrorMessage(error: unknown): string {
-  return String((error as { message?: string })?.message || error || "Не удалось загрузить данные");
+  if (error instanceof Error) {
+    return error.message || "Не удалось загрузить данные";
+  }
+  if (typeof error === "string") {
+    return error;
+  }
+  return String((error as { message?: string })?.message || "Не удалось загрузить данные");
 }
 
 type PortalSessionProviderProps = {
@@ -42,7 +56,7 @@ type PortalSessionProviderProps = {
 };
 
 export function PortalSessionProvider({ children, mode = "dashboard" }: PortalSessionProviderProps) {
-  const tgUser = useMemo(() => getTgUser(), []);
+  const [tgUser] = useState<TgUser | null>(() => getTgUser());
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [webLoginRequired, setWebLoginRequired] = useState(false);
@@ -51,6 +65,39 @@ export function PortalSessionProvider({ children, mode = "dashboard" }: PortalSe
   const [user, setUser] = useState<UserPayload | null>(null);
   const [dash, setDash] = useState<DashboardSnapshot | null>(null);
 
+  const consumeTelegramOidcRedirect = useCallback(async (): Promise<boolean> => {
+    const callback = readTelegramOidcCallback();
+    if (!callback) return false;
+
+    setWebLoginBusy(true);
+    setWebLoginError("");
+    try {
+      if (callback.error || !callback.code || !callback.state) {
+        throw new Error(describeTelegramOidcError(callback));
+      }
+      const auth = await finishTelegramOidcLogin({
+        code: callback.code,
+        state: callback.state,
+      });
+      if (!auth?.token) {
+        throw new Error("Не получен web session token");
+      }
+      setWebSessionToken(auth.token);
+      return true;
+    } catch (error) {
+      clearWebSessionToken();
+      setUser(null);
+      setDash(null);
+      setError("");
+      setWebLoginRequired(true);
+      setWebLoginError(parseErrorMessage(error));
+      return false;
+    } finally {
+      clearTelegramOidcCallback();
+      setWebLoginBusy(false);
+    }
+  }, []);
+
   const refresh = useCallback(async () => {
     if (typeof window !== "undefined") {
       try {
@@ -58,17 +105,19 @@ export function PortalSessionProvider({ children, mode = "dashboard" }: PortalSe
         if (current.searchParams.get("clear_web_session") === "1") {
           clearWebSessionToken();
           current.searchParams.delete("clear_web_session");
-          window.history.replaceState({}, "", `${current.pathname}${current.search}${current.hash}` || "/webapp/");
+          window.history.replaceState({}, "", `${current.pathname}${current.search}${current.hash}` || "/");
         }
       } catch {
         // ignore malformed location
       }
     }
 
+    const completedOidcFromUrl = await consumeTelegramOidcRedirect();
     const consumedFromUrl = consumeWebSessionTokenFromUrl();
-    const hasSession = hasWebSessionToken() || consumedFromUrl;
+    const hasSession = hasWebSessionToken() || completedOidcFromUrl || consumedFromUrl;
     if (!tgUser && !hasSession) {
       setLoading(false);
+      setWebLoginBusy(false);
       setError("");
       setWebLoginRequired(true);
       return;
@@ -89,10 +138,14 @@ export function PortalSessionProvider({ children, mode = "dashboard" }: PortalSe
         return;
       }
 
-      const [dashboard, profile] = await Promise.all([
-        fetchDashboard(),
-        authTgId > 0 ? fetchUser(authTgId) : fetchDashboard().then((payload) => fetchUser(Number(payload.tg_id))),
-      ]);
+      let dashboard: DashboardSnapshot;
+      let profile: UserPayload;
+      if (authTgId > 0) {
+        [dashboard, profile] = await Promise.all([fetchDashboard(), fetchUser(authTgId)]);
+      } else {
+        dashboard = await fetchDashboard();
+        profile = await fetchUser(Number(dashboard.tg_id));
+      }
       setDash(dashboard);
       setUser(profile);
     } catch (error) {
@@ -108,6 +161,7 @@ export function PortalSessionProvider({ children, mode = "dashboard" }: PortalSe
         setUser(null);
         setDash(null);
         setWebLoginRequired(true);
+        setWebLoginBusy(false);
         setError("");
       } else {
         setError(message);
@@ -115,7 +169,7 @@ export function PortalSessionProvider({ children, mode = "dashboard" }: PortalSe
     } finally {
       setLoading(false);
     }
-  }, [mode, tgUser]);
+  }, [consumeTelegramOidcRedirect, mode, tgUser]);
 
   useEffect(() => {
     void refresh();
@@ -146,7 +200,7 @@ export function PortalSessionProvider({ children, mode = "dashboard" }: PortalSe
       if (typeof window !== "undefined") {
         const current = new URL(window.location.href);
         current.searchParams.delete("clear_web_session");
-        window.location.replace(`${current.pathname}${current.search}${current.hash}` || "/webapp/");
+        window.location.replace(`${current.pathname}${current.search}${current.hash}` || "/");
         return;
       }
       await refresh();
@@ -158,15 +212,36 @@ export function PortalSessionProvider({ children, mode = "dashboard" }: PortalSe
     }
   }, [refresh]);
 
+  const startTelegramLogin = useCallback(async () => {
+    setWebLoginBusy(true);
+    setWebLoginError("");
+    try {
+      const auth = await startTelegramOidcLogin();
+      const authUrl = String(auth?.auth_url || "").trim();
+      if (!authUrl) {
+        throw new Error("Telegram OAuth URL is missing");
+      }
+      if (typeof window !== "undefined") {
+        window.location.assign(authUrl);
+        return;
+      }
+    } catch (error) {
+      setWebLoginError(parseErrorMessage(error));
+      setWebLoginBusy(false);
+      throw error;
+    }
+  }, []);
+
   const logoutWebSession = useCallback(() => {
     clearWebSessionToken();
     setUser(null);
     setDash(null);
     setError("");
     setWebLoginError("");
+    setWebLoginBusy(false);
     setWebLoginRequired(true);
     if (typeof window !== "undefined") {
-      window.location.assign("/webapp/");
+      window.location.assign("/");
     }
   }, []);
 
@@ -182,6 +257,7 @@ export function PortalSessionProvider({ children, mode = "dashboard" }: PortalSe
         dash,
         tgUser,
         refresh,
+        startTelegramLogin,
         loginByWidget,
         logoutWebSession,
       }}

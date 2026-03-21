@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { adminLoyaltyConfig, adminLoyaltyConfigUpdate, adminUserLoyaltyGrant, adminWheelConfig, adminWheelConfigUpdate, type AdminLoyaltyConfig, type AdminWheelConfig } from "@/lib/api";
 import { Dices, Loader2, RefreshCw, Save, Timer } from "lucide-react";
@@ -15,11 +15,11 @@ function parseWeights(input: string): Array<{ days: number; weight: number }> {
     const days = Number(daysRaw || 0);
     const weight = Number(weightRaw || 0);
     if (!Number.isFinite(days) || !Number.isFinite(weight) || days <= 0 || weight <= 0) {
-      throw new Error(`Некорректная строка весов: ${line}`);
+      throw new Error(`������������ ������ �����: ${line}`);
     }
     return { days: Math.floor(days), weight: Math.floor(weight) };
   });
-  if (parsed.length === 0) throw new Error("Укажите хотя бы одну строку весов");
+  if (parsed.length === 0) throw new Error("������� ���� �� ���� ������ �����");
   return parsed;
 }
 
@@ -48,7 +48,7 @@ export default function AdminBonusesPage() {
       setLoyaltyConfig(loyalty.loyalty_config);
       setLoyaltyText((loyalty.loyalty_config.tiers || []).map((row) => `${row.days}:${row.bonus_days}:${row.perk}`).join("\n"));
     } catch (err) {
-      setError(String((err as { message?: string })?.message || err || "Не удалось загрузить настройки бонусов"));
+      setError(String((err as { message?: string })?.message || err || "    "));
     }
   };
 
@@ -70,9 +70,9 @@ export default function AdminBonusesPage() {
       const out = await adminWheelConfigUpdate(payload);
       setConfig(out.wheel_config);
       setWeightsText(weightsToText(out.wheel_config.weights || []));
-      setResult("Конфигурация рулетки сохранена.");
+      setResult("������������ ������� ���������.");
     } catch (err) {
-      setError(String((err as { message?: string })?.message || err || "Не удалось сохранить настройки рулетки"));
+      setError(String((err as { message?: string })?.message || err || "    "));
     } finally {
       setBusy(false);
     }
@@ -94,7 +94,7 @@ export default function AdminBonusesPage() {
           const bonusDays = Number(bonusRaw || 0);
           const perk = perkRaw.join(":").trim();
           if (!Number.isFinite(days) || !Number.isFinite(bonusDays) || days <= 0 || bonusDays < 0 || !perk) {
-            throw new Error(`Некорректная строка уровней лояльности: ${line}`);
+            throw new Error(`������������ ������ ������� ����������: ${line}`);
           }
           return { days: Math.floor(days), bonus_days: Math.floor(bonusDays), perk };
         });
@@ -105,9 +105,9 @@ export default function AdminBonusesPage() {
       const out = await adminLoyaltyConfigUpdate(payload);
       setLoyaltyConfig(out.loyalty_config);
       setLoyaltyText((out.loyalty_config.tiers || []).map((row) => `${row.days}:${row.bonus_days}:${row.perk}`).join("\n"));
-      setResult("Конфигурация лояльности сохранена.");
+      setResult("������������ ���������� ���������.");
     } catch (err) {
-      setError(String((err as { message?: string })?.message || err || "Не удалось сохранить уровни лояльности"));
+      setError(String((err as { message?: string })?.message || err || "    "));
     } finally {
       setBusy(false);
     }
@@ -117,7 +117,7 @@ export default function AdminBonusesPage() {
     const tgId = Number(loyaltyGrantUser || 0);
     const tierDays = Number(loyaltyGrantTier || 0);
     if (!Number.isFinite(tgId) || tgId <= 0 || !Number.isFinite(tierDays) || tierDays <= 0) {
-      setError("Укажите корректный Telegram ID и срок уровня");
+      setError("������� ���������� Telegram ID � ���� ������");
       return;
     }
     setBusy(true);
@@ -125,9 +125,9 @@ export default function AdminBonusesPage() {
     setResult("");
     try {
       const out = await adminUserLoyaltyGrant(tgId, tierDays);
-      setResult(`Уровень лояльности выдан: ${out.tier_days} дней для пользователя ${tgId} (${out.sync_ok ? "данные синхронизированы" : "синхронизацию стоит проверить"}).`);
+      setResult(`  : ${out.tier_days}    ${tgId} (${out.sync_ok ? " " : "  "}).`);
     } catch (err) {
-      setError(String((err as { message?: string })?.message || err || "Не удалось выдать награду лояльности"));
+      setError(String((err as { message?: string })?.message || err || "    "));
     } finally {
       setBusy(false);
     }
@@ -145,10 +145,10 @@ export default function AdminBonusesPage() {
   }, [weightsText]);
 
   const PRESET_OPTIONS = [
-    { value: "balanced", label: "сбалансированный" },
-    { value: "generous", label: "щедрый" },
-    { value: "conservative", label: "консервативный" },
-    { value: "jackpot", label: "джекпот" },
+    { value: "balanced", label: "����������������" },
+    { value: "generous", label: "������" },
+    { value: "conservative", label: "��������������" },
+    { value: "jackpot", label: "�������" },
   ];
 
   return (
@@ -157,25 +157,25 @@ export default function AdminBonusesPage() {
         <div className="flex items-center gap-3 mb-1">
           <div className="stat-icon stat-icon-amber"><Dices size={22} /></div>
           <div>
-            <h2 className="font-display text-xl font-bold">Бонусы и рулетка</h2>
-            <p className="text-xs text-slate-500">Настройка бонусной рулетки и уровней лояльности</p>
+            <h2 className="font-display text-xl font-bold">������ � �������</h2>
+            <p className="text-xs text-slate-500">��������� �������� ������� � ������� ����������</p>
           </div>
         </div>
         <p className="mt-3 text-sm text-slate-600 dark:text-slate-300">
-          Этот раздел отвечает за игровые и удерживающие механики. Здесь можно менять шанс выпадения бонусных дней, паузу между спинами и уровни лояльности для постоянных пользователей.
+          ���� ������ �������� �� ������� � ������������ ��������. ����� ����� ������ ���� ��������� �������� ����, ����� ����� ������� � ������ ���������� ��� ���������� �������������.
         </p>
       </article>
 
       <div className="grid gap-5 xl:grid-cols-[1fr,0.6fr]">
-        {/* ── Config form ──────────────────────────────── */}
+        {/* -- Config form -------------------------------- */}
         <article className="glass-card p-5 space-y-4">
           {!config ? (
-            <p className="text-sm text-slate-500">Загружаем настройки бонусов...</p>
+            <p className="text-sm text-slate-500">��������� ��������� �������...</p>
           ) : (
             <>
               <div className="grid gap-4 md:grid-cols-2">
                 <div>
-                  <label className="block text-[10px] uppercase tracking-[0.1em] text-slate-500 mb-1.5">Профиль</label>
+                  <label className="block text-[10px] uppercase tracking-[0.1em] text-slate-500 mb-1.5">�������</label>
                   <div className="flex flex-wrap gap-1.5">
                     {PRESET_OPTIONS.map((preset) => (
                       <button
@@ -194,7 +194,7 @@ export default function AdminBonusesPage() {
                 </div>
                 <div>
                   <label className="block text-[10px] uppercase tracking-[0.1em] text-slate-500 mb-1.5 flex items-center gap-1">
-                    <Timer size={10} /> Cooldown (часы)
+                    <Timer size={10} /> Cooldown (����)
                   </label>
                   <input
                     type="number"
@@ -206,13 +206,13 @@ export default function AdminBonusesPage() {
                     }
                     className="w-full rounded-xl border border-violet-200/50 bg-white/80 px-3 py-2 text-sm outline-none dark:border-violet-500/30 dark:bg-slate-900/70"
                   />
-                  <p className="mt-1 text-[10px] text-slate-400">{Math.round((config.cooldown_hours || 168) / 24)} дней между спинами</p>
+                  <p className="mt-1 text-[10px] text-slate-400">{Math.round((config.cooldown_hours || 168) / 24)} ���� ����� �������</p>
                 </div>
               </div>
 
               <div>
-                <label className="block text-[10px] uppercase tracking-[0.1em] text-slate-500 mb-1.5">Веса (days:weight, по строкам)</label>
-                <p className="mb-2 text-xs text-slate-500">Чем больше weight, тем чаще выпадает награда. Каждая строка задаётся в формате `дни:вес`.</p>
+                <label className="block text-[10px] uppercase tracking-[0.1em] text-slate-500 mb-1.5">���� (days:weight, �� �������)</label>
+                <p className="mb-2 text-xs text-slate-500">��� ������ weight, ��� ���� �������� �������. ������ ������ ������� � ������� `���:���`.</p>
                 <textarea
                   rows={7}
                   value={weightsText}
@@ -225,10 +225,10 @@ export default function AdminBonusesPage() {
               <div className="flex flex-wrap gap-2">
                 <button className="btn-primary rounded-xl px-5 py-2.5 text-sm font-semibold uppercase tracking-[0.12em] inline-flex items-center gap-2" type="button" onClick={() => void save()} disabled={busy}>
                   {busy ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}
-                  {busy ? "Сохранение..." : "Сохранить"}
+                  {busy ? "..." : ""}
                 </button>
                 <button className="outline-btn rounded-xl px-4 py-2 text-sm font-semibold inline-flex items-center gap-1.5" type="button" onClick={() => void load()}>
-                  <RefreshCw size={13} /> Перезагрузить
+                  <RefreshCw size={13} /> �������������
                 </button>
               </div>
             </>
@@ -248,14 +248,14 @@ export default function AdminBonusesPage() {
           ) : null}
         </article>
 
-        {/* ── Weight distribution visual ───────────────── */}
+        {/* -- Weight distribution visual ----------------- */}
         <article className="glass-card p-5">
-          <h3 className="font-display text-lg font-bold mb-3">Распределение весов</h3>
-          <p className="mb-3 text-xs text-slate-500">Наглядно показывает, какие награды выпадают чаще, а какие реже.</p>
+          <h3 className="font-display text-lg font-bold mb-3">������������� �����</h3>
+          <p className="mb-3 text-xs text-slate-500">�������� ����������, ����� ������� �������� ����, � ����� ����.</p>
           {weightBars.length === 0 ? (
             <div className="empty-state py-6">
               <Dices size={24} />
-              <p className="text-xs">Введите корректные веса</p>
+              <p className="text-xs">������� ���������� ����</p>
             </div>
           ) : (
             <div className="space-y-3">
@@ -285,17 +285,17 @@ export default function AdminBonusesPage() {
       <div className="grid gap-5 xl:grid-cols-[1fr,0.8fr]">
         <article className="glass-card p-5 space-y-4">
           <div className="flex items-center justify-between gap-2">
-            <h3 className="font-display text-lg font-bold">Лояльность без оттока</h3>
+            <h3 className="font-display text-lg font-bold">���������� ��� ������</h3>
             <label className="inline-flex items-center gap-2 text-xs">
               <input
                 type="checkbox"
                 checked={Boolean(loyaltyConfig?.enabled)}
                 onChange={(event) => setLoyaltyConfig((prev) => (prev ? { ...prev, enabled: event.target.checked } : prev))}
               />
-              включено
+              ��������
             </label>
           </div>
-          <p className="text-xs text-slate-500">Каждая строка описывает уровень лояльности в формате `дней_оплаты:бонусные_дни:привилегия`.</p>
+          <p className="text-xs text-slate-500">������ ������ ��������� ������� ���������� � ������� `����_������:��������_���:����������`.</p>
           <textarea
             rows={6}
             value={loyaltyText}
@@ -304,27 +304,27 @@ export default function AdminBonusesPage() {
             placeholder={"30:1:priority_support\n90:3:fast_resync\n180:7:vip_queue"}
           />
             <button className="outline-btn rounded-xl px-4 py-2 text-sm font-semibold" type="button" onClick={() => void saveLoyalty()} disabled={busy}>
-            Сохранить лояльность
+            ��������� ����������
           </button>
         </article>
 
         <article className="glass-card p-5 space-y-3">
-          <h3 className="font-display text-lg font-bold">Ручная выдача tier</h3>
-          <p className="text-xs text-slate-500">Нужно, если хотите вручную выдать пользователю уровень лояльности без ожидания автоматической логики.</p>
+          <h3 className="font-display text-lg font-bold">������ ������ tier</h3>
+          <p className="text-xs text-slate-500">�����, ���� ������ ������� ������ ������������ ������� ���������� ��� �������� �������������� ������.</p>
           <input
             value={loyaltyGrantUser}
             onChange={(event) => setLoyaltyGrantUser(event.target.value)}
-            placeholder="Telegram ID пользователя"
+            placeholder="Telegram ID ������������"
             className="w-full rounded-xl border border-violet-200/50 bg-white/80 px-3 py-2 text-sm outline-none dark:border-violet-500/30 dark:bg-slate-900/70"
           />
           <input
             value={loyaltyGrantTier}
             onChange={(event) => setLoyaltyGrantTier(event.target.value)}
-            placeholder="Срок уровня, например 30 / 90 / 180"
+            placeholder="���� ������, �������� 30 / 90 / 180"
             className="w-full rounded-xl border border-violet-200/50 bg-white/80 px-3 py-2 text-sm outline-none dark:border-violet-500/30 dark:bg-slate-900/70"
           />
           <button className="outline-btn rounded-xl px-4 py-2 text-sm font-semibold" type="button" onClick={() => void grantLoyalty()} disabled={busy}>
-            Выдать уровень
+            ������ �������
           </button>
         </article>
       </div>

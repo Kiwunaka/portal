@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import {
   adminCampaignCreate,
@@ -58,14 +58,14 @@ type PromoDialog =
   | null;
 
 function promoTypeLabel(value: string): string {
-  if (String(value).toLowerCase() === "discount") return "СЃРєРёРґРєР°";
-  if (String(value).toLowerCase() === "days") return "РґРЅРё";
+  if (String(value).toLowerCase() === "discount") return "скидка";
+  if (String(value).toLowerCase() === "days") return "дни";
   return value;
 }
 
 function campaignTypeLabel(value: string): string {
-  if (String(value).toLowerCase() === "promo") return "РїСЂРѕРјРѕ";
-  if (String(value).toLowerCase() === "gift") return "РїРѕРґР°СЂРѕРє";
+  if (String(value).toLowerCase() === "promo") return "промо";
+  if (String(value).toLowerCase() === "gift") return "подарок";
   return value;
 }
 
@@ -116,7 +116,7 @@ export default function AdminPromosPage() {
       setPlans(planRows);
       setCampaigns(campaignRows);
     } catch (err) {
-      setError(String((err as { message?: string })?.message || err || "РќРµ СѓРґР°Р»РѕСЃСЊ Р·Р°РіСЂСѓР·РёС‚СЊ РїСЂРѕРјРѕ, РїРѕРґР°СЂРєРё, С‚Р°СЂРёС„С‹ Рё РєР°РјРїР°РЅРёРё"));
+      setError(String((err as { message?: string })?.message || err || "   , ,   "));
     }
   };
 
@@ -127,9 +127,9 @@ export default function AdminPromosPage() {
   const copyText = async (text: string): Promise<void> => {
     try {
       await navigator.clipboard.writeText(text);
-      setResult("РЎРєРѕРїРёСЂРѕРІР°РЅРѕ РІ Р±СѓС„РµСЂ.");
+      setResult("Скопировано в буфер.");
     } catch {
-      setError("РќРµ СѓРґР°Р»РѕСЃСЊ СЃРєРѕРїРёСЂРѕРІР°С‚СЊ РєРѕРґ РІ Р±СѓС„РµСЂ.");
+      setError("Не удалось скопировать код в буфер.");
     }
   };
 
@@ -141,7 +141,7 @@ export default function AdminPromosPage() {
     try {
       if (dialog.kind === "createPromo") {
         if (!dialog.code.trim()) {
-          setError("РЈРєР°Р¶РёС‚Рµ РєРѕРґ РїСЂРѕРјРѕРєРѕРґР°.");
+          setError("Укажите код промокода.");
           setBusy(false);
           return;
         }
@@ -151,23 +151,23 @@ export default function AdminPromosPage() {
           value: Math.max(1, parseIntSafe(dialog.value, 1)),
           uses_left: Math.max(1, parseIntSafe(dialog.usesLeft, 1)),
         });
-        setResult(`РџСЂРѕРјРѕРєРѕРґ ${dialog.code.trim().toUpperCase()} СЃРѕР·РґР°РЅ.`);
+        setResult(`Промокод ${dialog.code.trim().toUpperCase()} создан.`);
       } else if (dialog.kind === "editPromo") {
         await adminPromoUpdate(dialog.code, {
           promo_type: dialog.promoType,
           value: Math.max(1, parseIntSafe(dialog.value, 1)),
           uses_left: Math.max(0, parseIntSafe(dialog.usesLeft, 0)),
         });
-        setResult(`РџСЂРѕРјРѕРєРѕРґ ${dialog.code} РѕР±РЅРѕРІР»С‘РЅ.`);
+        setResult(`Промокод ${dialog.code} обновлён.`);
       } else if (dialog.kind === "deletePromo") {
         await adminPromoDelete(dialog.code);
-        setResult(`РџСЂРѕРјРѕРєРѕРґ ${dialog.code} СѓРґР°Р»С‘РЅ.`);
+        setResult(`Промокод ${dialog.code} удалён.`);
       } else if (dialog.kind === "createGift") {
         await adminGiftCodeCreate(dialog.cardType);
-        setResult(`Gift-РєРѕРґ С‚РёРїР° ${dialog.cardType} СЃРѕР·РґР°РЅ.`);
+        setResult(`Gift-код типа ${dialog.cardType} создан.`);
       } else if (dialog.kind === "createPlan") {
         if (!dialog.code.trim() || !dialog.label.trim()) {
-          setError("РЈРєР°Р¶РёС‚Рµ РєРѕРґ Рё РЅР°Р·РІР°РЅРёРµ С‚Р°СЂРёС„Р°.");
+          setError("Укажите код и название тарифа.");
           setBusy(false);
           return;
         }
@@ -180,13 +180,13 @@ export default function AdminPromosPage() {
           device_limit: Math.max(1, parseIntSafe(dialog.deviceLimit, 1)),
           is_active: true,
         });
-        setResult(`РўР°СЂРёС„ ${dialog.code.trim()} СЃРѕР·РґР°РЅ.`);
+        setResult(`Тариф ${dialog.code.trim()} создан.`);
       } else if (dialog.kind === "deletePlan") {
         await adminPlanDelete(dialog.code);
-        setResult(`РўР°СЂРёС„ ${dialog.code} СѓРґР°Р»С‘РЅ.`);
+        setResult(`Тариф ${dialog.code} удалён.`);
       } else if (dialog.kind === "createCampaign") {
         if (!dialog.name.trim() || !dialog.targetValue.trim()) {
-          setError("РЈРєР°Р¶РёС‚Рµ РЅР°Р·РІР°РЅРёРµ Рё target value РєР°РјРїР°РЅРёРё.");
+          setError("Укажите название и target value кампании.");
           setBusy(false);
           return;
         }
@@ -201,10 +201,10 @@ export default function AdminPromosPage() {
           auto_disable: true,
           is_active: dialog.isActive,
         });
-        setResult(`РљР°РјРїР°РЅРёСЏ ${dialog.name.trim()} СЃРѕР·РґР°РЅР°.`);
+        setResult(`Кампания ${dialog.name.trim()} создана.`);
       } else if (dialog.kind === "editCampaign") {
         if (!dialog.name.trim() || !dialog.targetValue.trim()) {
-          setError("РЈРєР°Р¶РёС‚Рµ РЅР°Р·РІР°РЅРёРµ Рё target value РєР°РјРїР°РЅРёРё.");
+          setError("Укажите название и target value кампании.");
           setBusy(false);
           return;
         }
@@ -216,15 +216,15 @@ export default function AdminPromosPage() {
           max_activations: Math.max(0, parseIntSafe(dialog.maxActivations, 0)),
           is_active: dialog.isActive,
         });
-        setResult(`РљР°РјРїР°РЅРёСЏ #${dialog.id} РѕР±РЅРѕРІР»РµРЅР°.`);
+        setResult(`Кампания #${dialog.id} обновлена.`);
       } else if (dialog.kind === "deleteCampaign") {
         await adminCampaignDelete(dialog.id);
-        setResult(`РљР°РјРїР°РЅРёСЏ ${dialog.name} СѓРґР°Р»РµРЅР°.`);
+        setResult(`Кампания ${dialog.name} удалена.`);
       }
       setDialog(null);
       await load();
     } catch (err) {
-      setError(String((err as { message?: string })?.message || err || "РќРµ СѓРґР°Р»РѕСЃСЊ РІС‹РїРѕР»РЅРёС‚СЊ РІС‹Р±СЂР°РЅРЅРѕРµ РґРµР№СЃС‚РІРёРµ"));
+      setError(String((err as { message?: string })?.message || err || "    "));
     } finally {
       setBusy(false);
     }
@@ -236,10 +236,10 @@ export default function AdminPromosPage() {
     setResult("");
     try {
       await adminPlanUpdate(code, { is_active: !current });
-      setResult(`РўР°СЂРёС„ ${code} ${current ? "РѕС‚РєР»СЋС‡С‘РЅ" : "РІРєР»СЋС‡С‘РЅ"}.`);
+      setResult(` ${code} ${current ? "" : ""}.`);
       await load();
     } catch (err) {
-      setError(String((err as { message?: string })?.message || err || "РќРµ СѓРґР°Р»РѕСЃСЊ РѕР±РЅРѕРІРёС‚СЊ С‚Р°СЂРёС„"));
+      setError(String((err as { message?: string })?.message || err || "   "));
     } finally {
       setBusy(false);
     }
@@ -248,27 +248,27 @@ export default function AdminPromosPage() {
   return (
     <section className="space-y-5">
       <article className="glass-card p-4">
-        <h2 className="font-display text-xl font-bold">РџСЂРѕРјРѕ Рё С‚Р°СЂРёС„С‹ Р±РµР· Р»РёС€РЅРµР№ РїСѓС‚Р°РЅРёС†С‹</h2>
+        <h2 className="font-display text-xl font-bold">Промо и тарифы без лишней путаницы</h2>
         <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">
-          Р­С‚РѕС‚ СЂР°Р·РґРµР» РЅСѓР¶РµРЅ РґР»СЏ Р°РєС†РёР№ Рё РєРѕРјРјРµСЂС‡РµСЃРєРёС… СЃС†РµРЅР°СЂРёРµРІ: РїСЂРѕРјРѕРєРѕРґС‹, РїРѕРґР°СЂРѕС‡РЅС‹Рµ РєРѕРґС‹, С‚Р°СЂРёС„С‹ Рё РєР°РјРїР°РЅРёРё. Р•СЃР»Рё СЃРѕР·РґР°С‘С‚Рµ РЅРѕРІСѓСЋ Р°РєС†РёСЋ, РѕР±С‹С‡РЅРѕ РїСѓС‚СЊ С‚Р°РєРѕР№: СЃРЅР°С‡Р°Р»Р° РєРѕРґ РёР»Рё РїРѕРґР°СЂРѕРє, РїРѕС‚РѕРј РєР°РјРїР°РЅРёСЏ, Рё С‚РѕР»СЊРєРѕ РїРѕСЃР»Рµ СЌС‚РѕРіРѕ РїСѓР±Р»РёРєР°С†РёСЏ СЃСЃС‹Р»РєРё.
+          Этот раздел нужен для акций и коммерческих сценариев: промокоды, подарочные коды, тарифы и кампании. Если создаёте новую акцию, обычно путь такой: сначала код или подарок, потом кампания, и только после этого публикация ссылки.
         </p>
       </article>
 
       <div className="glass-card p-4 flex flex-wrap items-center gap-3">
         <button className="btn-primary rounded-xl px-4 py-2 text-sm font-semibold inline-flex items-center gap-1.5" type="button" onClick={() => setDialog({ kind: "createPromo", code: "WELCOME14", promoType: "days", value: "14", usesLeft: "100" })} disabled={busy}>
-          <Plus size={14} /> РџСЂРѕРјРѕРєРѕРґ
+          <Plus size={14} /> Промокод
         </button>
         <button className="outline-btn rounded-xl px-4 py-2 text-sm font-semibold inline-flex items-center gap-1.5" type="button" onClick={() => setDialog({ kind: "createGift", cardType: "standard" })} disabled={busy}>
-          <Gift size={14} /> Gift-РєРѕРґ
+          <Gift size={14} /> Gift-код
         </button>
-        <button className="outline-btn rounded-xl px-4 py-2 text-sm font-semibold inline-flex items-center gap-1.5" type="button" onClick={() => setDialog({ kind: "createPlan", code: "new_plan", label: "РќРѕРІС‹Р№ С‚Р°СЂРёС„", amountRub: "299", days: "30", deviceLimit: "5" })} disabled={busy}>
-          <CreditCard size={14} /> РўР°СЂРёС„
+        <button className="outline-btn rounded-xl px-4 py-2 text-sm font-semibold inline-flex items-center gap-1.5" type="button" onClick={() => setDialog({ kind: "createPlan", code: "new_plan", label: "Новый тариф", amountRub: "299", days: "30", deviceLimit: "5" })} disabled={busy}>
+          <CreditCard size={14} /> Тариф
         </button>
-        <button className="outline-btn rounded-xl px-4 py-2 text-sm font-semibold inline-flex items-center gap-1.5" type="button" onClick={() => setDialog({ kind: "createCampaign", name: "Р’РµСЃРµРЅРЅРµРµ РїСЂРѕРјРѕ", campaignType: "promo", targetValue: "WELCOME14", segment: "all", startsAt: "", endsAt: "", maxActivations: "0", isActive: true })} disabled={busy}>
-          <Package size={14} /> РљР°РјРїР°РЅРёСЏ
+        <button className="outline-btn rounded-xl px-4 py-2 text-sm font-semibold inline-flex items-center gap-1.5" type="button" onClick={() => setDialog({ kind: "createCampaign", name: "Весеннее промо", campaignType: "promo", targetValue: "WELCOME14", segment: "all", startsAt: "", endsAt: "", maxActivations: "0", isActive: true })} disabled={busy}>
+          <Package size={14} /> Кампания
         </button>
         <button className="outline-btn rounded-xl px-4 py-2 text-sm font-semibold inline-flex items-center gap-1.5 ml-auto" type="button" onClick={() => void load()} disabled={busy}>
-          <RefreshCw size={14} /> РћР±РЅРѕРІРёС‚СЊ
+          <RefreshCw size={14} /> Обновить
         </button>
       </div>
 
@@ -279,20 +279,20 @@ export default function AdminPromosPage() {
         <article className="glass-card p-5">
           <div className="flex items-center gap-3 mb-4">
             <div className="stat-icon stat-icon-violet"><Tag size={20} /></div>
-            <h2 className="font-display text-xl font-bold">РџСЂРѕРјРѕРєРѕРґС‹</h2>
+            <h2 className="font-display text-xl font-bold">Промокоды</h2>
           </div>
-          <p className="mb-4 text-xs text-slate-500">РџСЂРѕРјРѕРєРѕРґ РґР°С‘С‚ СЃРєРёРґРєСѓ РёР»Рё Р±РѕРЅСѓСЃРЅС‹Рµ РґРЅРё. Р—РґРµСЃСЊ РІРёРґРЅРѕ, СЃРєРѕР»СЊРєРѕ СЂР°Р· РєРѕРґ РµС‰С‘ РјРѕР¶РЅРѕ РёСЃРїРѕР»СЊР·РѕРІР°С‚СЊ.</p>
+          <p className="mb-4 text-xs text-slate-500">Промокод даёт скидку или бонусные дни. Здесь видно, сколько раз код ещё можно использовать.</p>
           <div className="space-y-2">
-            {promos.length === 0 ? <div className="empty-state"><Tag size={24} /><p className="text-xs">РќРµС‚ РїСЂРѕРјРѕРєРѕРґРѕРІ</p></div> : null}
+            {promos.length === 0 ? <div className="empty-state"><Tag size={24} /><p className="text-xs"> </p></div> : null}
             {promos.map((promo) => (
               <div key={promo.code} className="node-card flex items-center justify-between gap-3">
                 <div className="flex items-center gap-3 min-w-0">
-                  <button type="button" className="haptic-tap" onClick={() => void copyText(promo.code)} title="РљРѕРїРёСЂРѕРІР°С‚СЊ">
+                  <button type="button" className="haptic-tap" onClick={() => void copyText(promo.code)} title="Копировать">
                     <span className="badge badge-violet font-mono">{promo.code}</span>
                   </button>
                   <div>
                     <span className={`badge ${promo.promo_type === "discount" ? "badge-warning" : "badge-info"}`}>{promoTypeLabel(promo.promo_type)}</span>
-                    <span className="ml-2 text-xs text-slate-500">Р·РЅР°С‡РµРЅРёРµ: <strong>{promo.value}</strong> вЂў РёСЃРїРѕР»СЊР·РѕРІР°РЅРёР№: <strong>{promo.uses_left}</strong></span>
+                    <span className="ml-2 text-xs text-slate-500">значение: <strong>{promo.value}</strong> • использований: <strong>{promo.uses_left}</strong></span>
                   </div>
                 </div>
                 <div className="flex gap-1.5 flex-shrink-0">
@@ -311,15 +311,15 @@ export default function AdminPromosPage() {
         <article className="glass-card p-5">
           <div className="flex items-center gap-3 mb-4">
             <div className="stat-icon stat-icon-amber"><Gift size={20} /></div>
-            <h2 className="font-display text-xl font-bold">Gift-РєРѕРґС‹</h2>
+            <h2 className="font-display text-xl font-bold">Gift-коды</h2>
           </div>
-          <p className="mb-4 text-xs text-slate-500">РџРѕРґР°СЂРѕС‡РЅС‹Рµ РєРѕРґС‹ СѓРґРѕР±РЅРѕ РёСЃРїРѕР»СЊР·РѕРІР°С‚СЊ РґР»СЏ РїР°СЂС‚РЅС‘СЂРѕРІ, СЂСѓС‡РЅС‹С… Р±РѕРЅСѓСЃРѕРІ Рё Р°РєС†РёР№ РІ РєР°РЅР°Р»Рµ.</p>
+          <p className="mb-4 text-xs text-slate-500">Подарочные коды удобно использовать для партнёров, ручных бонусов и акций в канале.</p>
           <div className="space-y-2">
-            {giftCodes.length === 0 ? <div className="empty-state"><Gift size={24} /><p className="text-xs">РќРµС‚ gift-РєРѕРґРѕРІ</p></div> : null}
+            {giftCodes.length === 0 ? <div className="empty-state"><Gift size={24} /><p className="text-xs"> gift-</p></div> : null}
             {giftCodes.map((gift) => (
               <div key={gift.code} className="node-card flex items-center justify-between gap-3">
                 <div className="flex items-center gap-3 min-w-0">
-                  <button type="button" className="haptic-tap" onClick={() => void copyText(gift.code)} title="РљРѕРїРёСЂРѕРІР°С‚СЊ">
+                  <button type="button" className="haptic-tap" onClick={() => void copyText(gift.code)} title="Копировать">
                     <span className="badge badge-violet font-mono">{gift.code}</span>
                   </button>
                   <div className="text-xs text-slate-500">
@@ -327,7 +327,7 @@ export default function AdminPromosPage() {
                     <span className="ml-2">{gift.days}d</span>
                   </div>
                 </div>
-                <span className={`badge ${gift.redeemed_at ? "badge-success" : "badge-danger"}`}>{gift.redeemed_at ? fmtRuDate(gift.redeemed_at) : "РЅРµ РёСЃРїРѕР»СЊР·РѕРІР°РЅ"}</span>
+                <span className={`badge ${gift.redeemed_at ? "badge-success" : "badge-danger"}`}>{gift.redeemed_at ? fmtRuDate(gift.redeemed_at) : " "}</span>
               </div>
             ))}
           </div>
@@ -337,22 +337,22 @@ export default function AdminPromosPage() {
       <article className="glass-card p-5">
         <div className="flex items-center gap-3 mb-4">
           <div className="stat-icon stat-icon-blue"><Package size={20} /></div>
-          <h2 className="font-display text-xl font-bold">РљР°РјРїР°РЅРёРё</h2>
+          <h2 className="font-display text-xl font-bold">Кампании</h2>
         </div>
-        <p className="mb-4 text-xs text-slate-500">РљР°РјРїР°РЅРёСЏ СЃРІСЏР·С‹РІР°РµС‚ РєРѕРґ РёР»Рё РїРѕРґР°СЂРѕРє СЃ СЃРµРіРјРµРЅС‚РѕРј РїРѕР»СЊР·РѕРІР°С‚РµР»РµР№, СЃСЂРѕРєР°РјРё Рё Р»РёРјРёС‚РѕРј Р°РєС‚РёРІР°С†РёР№.</p>
+        <p className="mb-4 text-xs text-slate-500">Кампания связывает код или подарок с сегментом пользователей, сроками и лимитом активаций.</p>
         <div className="space-y-2">
-          {campaigns.length === 0 ? <div className="empty-state"><Package size={24} /><p className="text-xs">РќРµС‚ РєР°РјРїР°РЅРёР№</p></div> : null}
+          {campaigns.length === 0 ? <div className="empty-state"><Package size={24} /><p className="text-xs"> </p></div> : null}
           {campaigns.map((row) => (
             <div key={row.id} className="node-card flex items-center justify-between gap-3">
               <div className="min-w-0 flex-1">
                 <div className="flex flex-wrap items-center gap-2">
                   <span className="badge badge-violet">#{row.id}</span>
                   <strong className="text-sm">{row.name}</strong>
-                  <span className={`badge ${row.is_active ? "badge-success" : "badge-danger"}`}>{row.is_active ? "Р°РєС‚РёРІРЅР°" : "РІС‹РєР»"}</span>
+                  <span className={`badge ${row.is_active ? "badge-success" : "badge-danger"}`}>{row.is_active ? "" : ""}</span>
                   <span className="badge badge-info">{campaignTypeLabel(row.campaign_type)}</span>
                 </div>
-                <p className="mt-1 text-xs text-slate-500">С†РµР»СЊ: <strong>{row.target_value}</strong> вЂў СЃРµРіРјРµРЅС‚: <strong>{row.segment}</strong> вЂў Р°РєС‚РёРІР°С†РёРё: <strong>{row.activations_count}/{row.max_activations || "в€ћ"}</strong></p>
-                <p className="text-[10px] text-slate-400">РїРµСЂРёРѕРґ: {fmtRuDate(row.starts_at)} в†’ {fmtRuDate(row.ends_at)}</p>
+                <p className="mt-1 text-xs text-slate-500">цель: <strong>{row.target_value}</strong> • сегмент: <strong>{row.segment}</strong> • активации: <strong>{row.activations_count}/{row.max_activations || "∞"}</strong></p>
+                <p className="text-[10px] text-slate-400">период: {fmtRuDate(row.starts_at)} → {fmtRuDate(row.ends_at)}</p>
               </div>
               <div className="flex gap-1.5 flex-shrink-0">
                 <button className="outline-btn rounded-lg px-2 py-1 text-[10px] font-semibold inline-flex items-center gap-1" type="button" onClick={() => setDialog({ kind: "editCampaign", id: row.id, name: row.name || "", campaignType: row.campaign_type === "gift" ? "gift" : "promo", targetValue: row.target_value || "", segment: row.segment || "all", startsAt: normalizeIsoInput(row.starts_at), endsAt: normalizeIsoInput(row.ends_at), maxActivations: String(row.max_activations || 0), isActive: Boolean(row.is_active) })} disabled={busy}>
@@ -370,32 +370,32 @@ export default function AdminPromosPage() {
       <article className="glass-card p-5">
         <div className="flex items-center gap-3 mb-4">
           <div className="stat-icon stat-icon-emerald"><Package size={20} /></div>
-          <h2 className="font-display text-xl font-bold">РўР°СЂРёС„С‹</h2>
+          <h2 className="font-display text-xl font-bold">Тарифы</h2>
         </div>
-        <p className="mb-4 text-xs text-slate-500">Р—РґРµСЃСЊ Р»РµР¶РёС‚ РєР°С‚Р°Р»РѕРі С‚Р°СЂРёС„РѕРІ, РєРѕС‚РѕСЂС‹Р№ РІРёРґСЏС‚ РїРѕР»СЊР·РѕРІР°С‚РµР»Рё РїСЂРё РІС‹Р±РѕСЂРµ РїР»Р°РЅР°.</p>
+        <p className="mb-4 text-xs text-slate-500">Здесь лежит каталог тарифов, который видят пользователи при выборе плана.</p>
         <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
           {plans.map((plan) => (
             <div key={plan.code} className="stat-card p-4">
               <div className="flex items-center justify-between gap-2 mb-3">
                 <span className="badge badge-violet font-mono">{plan.code}</span>
                 <button type="button" className={`badge haptic-tap ${plan.is_active ? "badge-success" : "badge-danger"}`} onClick={() => void togglePlan(plan.code, plan.is_active)} disabled={busy}>
-                  {plan.is_active ? "Р°РєС‚РёРІРµРЅ" : "РІС‹РєР»СЋС‡РµРЅ"}
+                  {plan.is_active ? "" : ""}
                 </button>
               </div>
               <p className="text-lg font-bold">{plan.label}</p>
               <div className="mt-2 grid grid-cols-3 gap-2 text-center text-xs">
                 <div className="rounded-lg bg-white/50 p-1.5 dark:bg-white/5"><p className="text-slate-400">RUB</p><p className="font-bold">{plan.amount_rub}</p></div>
-                <div className="rounded-lg bg-white/50 p-1.5 dark:bg-white/5"><p className="text-slate-400">Устр.</p><p className="font-bold">{plan.device_limit}</p></div>
-                <div className="rounded-lg bg-white/50 p-1.5 dark:bg-white/5"><p className="text-slate-400">Р”РЅРµР№</p><p className="font-bold">{plan.days}</p></div>
+                <div className="rounded-lg bg-white/50 p-1.5 dark:bg-white/5"><p className="text-slate-400">����.</p><p className="font-bold">{plan.device_limit}</p></div>
+                <div className="rounded-lg bg-white/50 p-1.5 dark:bg-white/5"><p className="text-slate-400">Дней</p><p className="font-bold">{plan.days}</p></div>
               </div>
               <div className="mt-3 flex justify-end">
                 <button className="outline-btn rounded-lg px-2.5 py-1 text-[10px] font-semibold inline-flex items-center gap-1 text-rose-500" type="button" onClick={() => setDialog({ kind: "deletePlan", code: plan.code, label: plan.label })} disabled={busy}>
-                  <Trash2 size={10} /> РЈРґР°Р»РёС‚СЊ
+                  <Trash2 size={10} /> Удалить
                 </button>
               </div>
             </div>
           ))}
-          {plans.length === 0 ? <div className="empty-state col-span-full"><Package size={28} /><p className="text-xs">РќРµС‚ РїР»Р°РЅРѕРІ</p></div> : null}
+          {plans.length === 0 ? <div className="empty-state col-span-full"><Package size={28} /><p className="text-xs"> </p></div> : null}
         </div>
       </article>
 
@@ -404,22 +404,22 @@ export default function AdminPromosPage() {
           <div className="glass-card w-full max-w-2xl p-5">
             {(dialog.kind === "createPromo" || dialog.kind === "editPromo") ? (
               <>
-                <h3 className="font-display text-xl font-semibold">{dialog.kind === "createPromo" ? "РќРѕРІС‹Р№ РїСЂРѕРјРѕРєРѕРґ" : `Р РµРґР°РєС‚РёСЂРѕРІР°РЅРёРµ РїСЂРѕРјРѕРєРѕРґР° ${dialog.code}`}</h3>
+                <h3 className="font-display text-xl font-semibold">{dialog.kind === "createPromo" ? " " : `  ${dialog.code}`}</h3>
                 <div className="mt-4 grid gap-3 md:grid-cols-2">
-                  <input value={dialog.code} onChange={(event) => setDialog((prev) => prev && (prev.kind === "createPromo" || prev.kind === "editPromo") ? { ...prev, code: event.target.value.toUpperCase() } : prev)} readOnly={dialog.kind === "editPromo"} className="rounded-xl border border-violet-200/50 bg-white/80 px-3 py-2 text-sm outline-none dark:border-violet-500/30 dark:bg-slate-900/70" placeholder="РљРѕРґ" />
+                  <input value={dialog.code} onChange={(event) => setDialog((prev) => prev && (prev.kind === "createPromo" || prev.kind === "editPromo") ? { ...prev, code: event.target.value.toUpperCase() } : prev)} readOnly={dialog.kind === "editPromo"} className="rounded-xl border border-violet-200/50 bg-white/80 px-3 py-2 text-sm outline-none dark:border-violet-500/30 dark:bg-slate-900/70" placeholder="" />
                   <select value={dialog.promoType} onChange={(event) => setDialog((prev) => prev && (prev.kind === "createPromo" || prev.kind === "editPromo") ? { ...prev, promoType: event.target.value as "discount" | "days" } : prev)} className="rounded-xl border border-violet-200/50 bg-white/80 px-3 py-2 text-sm outline-none dark:border-violet-500/30 dark:bg-slate-900/70">
-                    <option value="days">Р”РЅРё</option>
-                    <option value="discount">РЎРєРёРґРєР°</option>
+                    <option value="days">Дни</option>
+                    <option value="discount">Скидка</option>
                   </select>
-                  <input value={dialog.value} onChange={(event) => setDialog((prev) => prev && (prev.kind === "createPromo" || prev.kind === "editPromo") ? { ...prev, value: event.target.value } : prev)} type="number" min={1} className="rounded-xl border border-violet-200/50 bg-white/80 px-3 py-2 text-sm outline-none dark:border-violet-500/30 dark:bg-slate-900/70" placeholder="Р—РЅР°С‡РµРЅРёРµ" />
-                  <input value={dialog.usesLeft} onChange={(event) => setDialog((prev) => prev && (prev.kind === "createPromo" || prev.kind === "editPromo") ? { ...prev, usesLeft: event.target.value } : prev)} type="number" min={0} className="rounded-xl border border-violet-200/50 bg-white/80 px-3 py-2 text-sm outline-none dark:border-violet-500/30 dark:bg-slate-900/70" placeholder="Р›РёРјРёС‚ РёСЃРїРѕР»СЊР·РѕРІР°РЅРёР№" />
+                  <input value={dialog.value} onChange={(event) => setDialog((prev) => prev && (prev.kind === "createPromo" || prev.kind === "editPromo") ? { ...prev, value: event.target.value } : prev)} type="number" min={1} className="rounded-xl border border-violet-200/50 bg-white/80 px-3 py-2 text-sm outline-none dark:border-violet-500/30 dark:bg-slate-900/70" placeholder="" />
+                  <input value={dialog.usesLeft} onChange={(event) => setDialog((prev) => prev && (prev.kind === "createPromo" || prev.kind === "editPromo") ? { ...prev, usesLeft: event.target.value } : prev)} type="number" min={0} className="rounded-xl border border-violet-200/50 bg-white/80 px-3 py-2 text-sm outline-none dark:border-violet-500/30 dark:bg-slate-900/70" placeholder=" " />
                 </div>
               </>
             ) : null}
 
             {dialog.kind === "createGift" ? (
               <>
-                <h3 className="font-display text-xl font-semibold">РќРѕРІС‹Р№ gift-РєРѕРґ</h3>
+                <h3 className="font-display text-xl font-semibold">Новый gift-код</h3>
                 <div className="mt-4">
                   <select value={dialog.cardType} onChange={(event) => setDialog({ kind: "createGift", cardType: event.target.value as "mini" | "standard" | "premium" })} className="w-full rounded-xl border border-violet-200/50 bg-white/80 px-3 py-2 text-sm outline-none dark:border-violet-500/30 dark:bg-slate-900/70">
                     <option value="mini">mini</option>
@@ -432,58 +432,58 @@ export default function AdminPromosPage() {
 
             {dialog.kind === "createPlan" ? (
               <>
-                <h3 className="font-display text-xl font-semibold">РќРѕРІС‹Р№ С‚Р°СЂРёС„</h3>
+                <h3 className="font-display text-xl font-semibold">Новый тариф</h3>
                 <div className="mt-4 grid gap-3 md:grid-cols-2">
-                  <input value={dialog.code} onChange={(event) => setDialog({ ...dialog, code: event.target.value })} className="rounded-xl border border-violet-200/50 bg-white/80 px-3 py-2 text-sm outline-none dark:border-violet-500/30 dark:bg-slate-900/70" placeholder="РљРѕРґ" />
-                  <input value={dialog.label} onChange={(event) => setDialog({ ...dialog, label: event.target.value })} className="rounded-xl border border-violet-200/50 bg-white/80 px-3 py-2 text-sm outline-none dark:border-violet-500/30 dark:bg-slate-900/70" placeholder="РќР°Р·РІР°РЅРёРµ" />
+                  <input value={dialog.code} onChange={(event) => setDialog({ ...dialog, code: event.target.value })} className="rounded-xl border border-violet-200/50 bg-white/80 px-3 py-2 text-sm outline-none dark:border-violet-500/30 dark:bg-slate-900/70" placeholder="Код" />
+                  <input value={dialog.label} onChange={(event) => setDialog({ ...dialog, label: event.target.value })} className="rounded-xl border border-violet-200/50 bg-white/80 px-3 py-2 text-sm outline-none dark:border-violet-500/30 dark:bg-slate-900/70" placeholder="Название" />
                   <input value={dialog.amountRub} onChange={(event) => setDialog({ ...dialog, amountRub: event.target.value })} type="number" min={1} className="rounded-xl border border-violet-200/50 bg-white/80 px-3 py-2 text-sm outline-none dark:border-violet-500/30 dark:bg-slate-900/70" placeholder="RUB" />
-                  <input value={dialog.days} onChange={(event) => setDialog({ ...dialog, days: event.target.value })} type="number" min={1} className="rounded-xl border border-violet-200/50 bg-white/80 px-3 py-2 text-sm outline-none dark:border-violet-500/30 dark:bg-slate-900/70" placeholder="Р”РЅРµР№" />
-                  <input value={dialog.deviceLimit} onChange={(event) => setDialog({ ...dialog, deviceLimit: event.target.value })} type="number" min={1} className="rounded-xl border border-violet-200/50 bg-white/80 px-3 py-2 text-sm outline-none dark:border-violet-500/30 dark:bg-slate-900/70" placeholder="Р›РёРјРёС‚ СѓСЃС‚СЂРѕР№СЃС‚РІ" />
+                  <input value={dialog.days} onChange={(event) => setDialog({ ...dialog, days: event.target.value })} type="number" min={1} className="rounded-xl border border-violet-200/50 bg-white/80 px-3 py-2 text-sm outline-none dark:border-violet-500/30 dark:bg-slate-900/70" placeholder="Дней" />
+                  <input value={dialog.deviceLimit} onChange={(event) => setDialog({ ...dialog, deviceLimit: event.target.value })} type="number" min={1} className="rounded-xl border border-violet-200/50 bg-white/80 px-3 py-2 text-sm outline-none dark:border-violet-500/30 dark:bg-slate-900/70" placeholder="Лимит устройств" />
                 </div>
               </>
             ) : null}
 
             {(dialog.kind === "createCampaign" || dialog.kind === "editCampaign") ? (
               <>
-                <h3 className="font-display text-xl font-semibold">{dialog.kind === "createCampaign" ? "РќРѕРІР°СЏ РєР°РјРїР°РЅРёСЏ" : `Р РµРґР°РєС‚РёСЂРѕРІР°РЅРёРµ РєР°РјРїР°РЅРёРё #${dialog.id}`}</h3>
+                <h3 className="font-display text-xl font-semibold">{dialog.kind === "createCampaign" ? " " : `  #${dialog.id}`}</h3>
                 <div className="mt-4 grid gap-3 md:grid-cols-2">
-                  <input value={dialog.name} onChange={(event) => setDialog({ ...dialog, name: event.target.value })} className="rounded-xl border border-violet-200/50 bg-white/80 px-3 py-2 text-sm outline-none dark:border-violet-500/30 dark:bg-slate-900/70" placeholder="РќР°Р·РІР°РЅРёРµ" />
+                  <input value={dialog.name} onChange={(event) => setDialog({ ...dialog, name: event.target.value })} className="rounded-xl border border-violet-200/50 bg-white/80 px-3 py-2 text-sm outline-none dark:border-violet-500/30 dark:bg-slate-900/70" placeholder="Название" />
                   <select value={dialog.campaignType} onChange={(event) => setDialog({ ...dialog, campaignType: event.target.value as "promo" | "gift" })} className="rounded-xl border border-violet-200/50 bg-white/80 px-3 py-2 text-sm outline-none dark:border-violet-500/30 dark:bg-slate-900/70">
                     <option value="promo">promo</option>
                     <option value="gift">gift</option>
                   </select>
                   <input value={dialog.targetValue} onChange={(event) => setDialog({ ...dialog, targetValue: event.target.value })} className="rounded-xl border border-violet-200/50 bg-white/80 px-3 py-2 text-sm outline-none dark:border-violet-500/30 dark:bg-slate-900/70" placeholder="Target value" />
-                  <input value={dialog.segment} onChange={(event) => setDialog({ ...dialog, segment: event.target.value })} className="rounded-xl border border-violet-200/50 bg-white/80 px-3 py-2 text-sm outline-none dark:border-violet-500/30 dark:bg-slate-900/70" placeholder="РЎРµРіРјРµРЅС‚" />
+                  <input value={dialog.segment} onChange={(event) => setDialog({ ...dialog, segment: event.target.value })} className="rounded-xl border border-violet-200/50 bg-white/80 px-3 py-2 text-sm outline-none dark:border-violet-500/30 dark:bg-slate-900/70" placeholder="Сегмент" />
                   <input value={dialog.startsAt} onChange={(event) => setDialog({ ...dialog, startsAt: event.target.value })} type="datetime-local" className="rounded-xl border border-violet-200/50 bg-white/80 px-3 py-2 text-sm outline-none dark:border-violet-500/30 dark:bg-slate-900/70" />
                   <input value={dialog.endsAt} onChange={(event) => setDialog({ ...dialog, endsAt: event.target.value })} type="datetime-local" className="rounded-xl border border-violet-200/50 bg-white/80 px-3 py-2 text-sm outline-none dark:border-violet-500/30 dark:bg-slate-900/70" />
-                  <input value={dialog.maxActivations} onChange={(event) => setDialog({ ...dialog, maxActivations: event.target.value })} type="number" min={0} className="rounded-xl border border-violet-200/50 bg-white/80 px-3 py-2 text-sm outline-none dark:border-violet-500/30 dark:bg-slate-900/70" placeholder="Р›РёРјРёС‚ Р°РєС‚РёРІР°С†РёР№" />
+                  <input value={dialog.maxActivations} onChange={(event) => setDialog({ ...dialog, maxActivations: event.target.value })} type="number" min={0} className="rounded-xl border border-violet-200/50 bg-white/80 px-3 py-2 text-sm outline-none dark:border-violet-500/30 dark:bg-slate-900/70" placeholder="Лимит активаций" />
                   <label className="inline-flex items-center gap-2 rounded-xl border border-violet-200/50 bg-white/80 px-3 py-2 text-sm text-slate-600 dark:border-violet-500/30 dark:bg-slate-900/70 dark:text-slate-300">
                     <input type="checkbox" checked={dialog.isActive} onChange={(event) => setDialog({ ...dialog, isActive: event.target.checked })} />
-                    РђРєС‚РёРІРЅР°
+                    Активна
                   </label>
                 </div>
               </>
             ) : null}
 
             {dialog.kind === "deletePromo" ? <>
-              <h3 className="font-display text-xl font-semibold">РЈРґР°Р»РёС‚СЊ РїСЂРѕРјРѕРєРѕРґ {dialog.code}?</h3>
-              <p className="mt-2 text-sm text-slate-500">РљРѕРґ РїРµСЂРµСЃС‚Р°РЅРµС‚ СЂР°Р±РѕС‚Р°С‚СЊ РІ РЅРѕРІС‹С… checkout-СЃС†РµРЅР°СЂРёСЏС….</p>
+              <h3 className="font-display text-xl font-semibold">  {dialog.code}?</h3>
+              <p className="mt-2 text-sm text-slate-500">Код перестанет работать в новых checkout-сценариях.</p>
             </> : null}
             {dialog.kind === "deletePlan" ? <>
-              <h3 className="font-display text-xl font-semibold">РЈРґР°Р»РёС‚СЊ С‚Р°СЂРёС„ {dialog.code}?</h3>
+              <h3 className="font-display text-xl font-semibold">  {dialog.code}?</h3>
               <p className="mt-2 text-sm text-slate-500">{dialog.label}</p>
             </> : null}
             {dialog.kind === "deleteCampaign" ? <>
-              <h3 className="font-display text-xl font-semibold">РЈРґР°Р»РёС‚СЊ РєР°РјРїР°РЅРёСЋ {dialog.name}?</h3>
-              <p className="mt-2 text-sm text-slate-500">Р­С‚Рѕ РѕС‚РєР»СЋС‡РёС‚ РёСЃРїРѕР»СЊР·РѕРІР°РЅРёРµ РєР°РјРїР°РЅРёРё РІ РЅРѕРІС‹С… СЃС†РµРЅР°СЂРёСЏС….</p>
+              <h3 className="font-display text-xl font-semibold">  {dialog.name}?</h3>
+              <p className="mt-2 text-sm text-slate-500">Это отключит использование кампании в новых сценариях.</p>
             </> : null}
 
             <div className="mt-5 flex justify-end gap-2">
               <button className="outline-btn rounded-xl px-4 py-2 text-sm font-semibold" type="button" onClick={() => setDialog(null)} disabled={busy}>
-                РћС‚РјРµРЅР°
+                Отмена
               </button>
               <button className="btn-primary rounded-xl px-4 py-2 text-sm font-semibold" type="button" onClick={() => void submitDialog()} disabled={busy}>
-                {dialog.kind.startsWith("delete") ? "РЈРґР°Р»РёС‚СЊ" : "РЎРѕС…СЂР°РЅРёС‚СЊ"}
+                {dialog.kind.startsWith("delete") ? "" : ""}
               </button>
             </div>
           </div>

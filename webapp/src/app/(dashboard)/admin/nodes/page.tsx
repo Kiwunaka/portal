@@ -126,7 +126,7 @@ export default function AdminNodesPage() {
       setStatus(metricsStatus);
       setTraffic(trafficRows);
     } catch (err) {
-      setError(String((err as { message?: string })?.message || err || "Не удалось загрузить данные по нодам"));
+      setError(String((err as { message?: string })?.message || err || "     "));
     }
   };
 
@@ -141,7 +141,7 @@ export default function AdminNodesPage() {
       const report = await adminNodesDrift();
       setDrift(report);
     } catch (err) {
-      setError(String((err as { message?: string })?.message || err || "Не удалось проверить расхождения"));
+      setError(String((err as { message?: string })?.message || err || "   "));
     } finally {
       setDriftBusy(false);
     }
@@ -170,7 +170,7 @@ export default function AdminNodesPage() {
       await load();
       if (drift) await loadDrift();
     } catch (err) {
-      setError(String((err as { message?: string })?.message || err || "Не удалось выполнить действие с нодой"));
+      setError(String((err as { message?: string })?.message || err || "     "));
     } finally {
       setNodeActionBusy("");
     }
@@ -185,13 +185,13 @@ export default function AdminNodesPage() {
       await load();
       setNodeActionNote(
         segment === "active"
-          ? "Пересобраны назначения для активных пользователей."
+          ? "    ."
           : segment === "free"
-            ? "Пересобраны назначения для бесплатного контура."
+            ? "    ."
             : "Пересобраны назначения для платного контура.",
       );
     } catch (err) {
-      setError(String((err as { message?: string })?.message || err || "Не удалось пересобрать назначения"));
+      setError(String((err as { message?: string })?.message || err || "   "));
     } finally {
       setBusy(false);
       setSyncTarget("");
@@ -209,7 +209,7 @@ export default function AdminNodesPage() {
             <div>
               <h2 className="font-display text-xl font-bold">Ноды и состояние инфраструктуры</h2>
               <p className="mt-0.5 text-xs text-slate-500">
-                Метрики сейчас <strong>{formatFreshness(status?.status)}</strong>. Последняя проверка: {formatIso(status?.last_sample_at)}.
+                  <strong>{formatFreshness(status?.status)}</strong>.  : {formatIso(status?.last_sample_at)}.
               </p>
             </div>
           </div>
@@ -248,9 +248,9 @@ export default function AdminNodesPage() {
         <div className="glass-card p-5">
           <div className="mb-4 flex items-center justify-between gap-3">
             <div>
-              <h3 className="font-display text-xl font-bold">Сверка PORTAL и панели</h3>
+              <h3 className="font-display text-xl font-bold">Сверка POKROV и панели</h3>
               <p className="text-xs text-slate-500">
-                Помогает понять, совпадает ли то, что записано в PORTAL, с реальным inbound на ноде.
+                Помогает понять, совпадает ли то, что записано в POKROV, с реальным inbound на ноде.
               </p>
             </div>
             <div className="flex items-center gap-2">
@@ -268,22 +268,22 @@ export default function AdminNodesPage() {
                     <div className="flex items-center gap-2">
                       <strong className="text-base">{row.node_code.toUpperCase()}</strong>
                       <span className={`badge ${row.status === "ok" ? "badge-success" : "badge-warning"}`}>
-                        {row.status === "ok" ? "в порядке" : "есть расхождения"}
+                        {row.status === "ok" ? " " : " "}
                       </span>
                     </div>
                     <p className="mt-1 text-xs text-slate-500">{row.node_host || "нет данных о хосте"}</p>
                   </div>
                   <div className="text-right text-xs text-slate-500">
-                    <div>Порт: <strong>{row.runtime?.port ?? "—"}</strong></div>
-                    <div>Защита: <strong>{row.runtime?.security || "—"}</strong></div>
+                    <div>: <strong>{row.runtime?.port ?? ""}</strong></div>
+                    <div>: <strong>{row.runtime?.security || ""}</strong></div>
                   </div>
                 </div>
                 {row.mismatches.length > 0 ? (
                   <p className="mt-3 text-sm text-amber-500">Не совпадает: {row.mismatches.join(", ")}</p>
                 ) : (
-                  <p className="mt-3 text-sm text-emerald-500">Настройка ноды совпадает с тем, что ожидает PORTAL.</p>
+                  <p className="mt-3 text-sm text-emerald-500">Настройка ноды совпадает с тем, что ожидает POKROV.</p>
                 )}
-                {row.error ? <p className="mt-2 text-xs text-rose-500">Не удалось проверить: {row.error}</p> : null}
+                {row.error ? <p className="mt-2 text-xs text-rose-500">  : {row.error}</p> : null}
               </div>
             ))}
           </div>
@@ -308,7 +308,7 @@ export default function AdminNodesPage() {
                     <div className="mt-0.5 flex items-center gap-1.5">
                       <span className={`status-dot ${node.is_healthy ? "status-dot-online" : "status-dot-offline"}`} />
                       <span className={`badge ${node.is_healthy ? "badge-success" : "badge-danger"}`}>
-                        {node.is_healthy ? "работает" : "нужна проверка"}
+                        {node.is_healthy ? "" : " "}
                       </span>
                     </div>
                   </div>
@@ -335,7 +335,7 @@ export default function AdminNodesPage() {
               <div className="mt-4 grid grid-cols-3 gap-2 text-center">
                 <div className="rounded-lg bg-white/50 p-2 dark:bg-white/5">
                   <p className="text-xs text-slate-500">Отклик</p>
-                  <p className="text-sm font-bold">{node.panel_latency_ms ?? "—"}<span className="text-[10px] text-slate-400"> ms</span></p>
+                  <p className="text-sm font-bold">{node.panel_latency_ms ?? ""}<span className="text-[10px] text-slate-400"> ms</span></p>
                 </div>
                 <div className="rounded-lg bg-white/50 p-2 dark:bg-white/5">
                   <p className="text-xs text-slate-500">Ошибки</p>
@@ -349,7 +349,7 @@ export default function AdminNodesPage() {
 
               <div className="mt-3 grid grid-cols-3 gap-2 text-center">
                 <div className="rounded-lg bg-white/50 p-2 dark:bg-white/5">
-                  <p className="text-xs text-slate-500">Назначено в PORTAL</p>
+                  <p className="text-xs text-slate-500">Назначено в POKROV</p>
                   <p className="text-sm font-bold">{node.mapped_users}</p>
                 </div>
                 <div className="rounded-lg bg-white/50 p-2 dark:bg-white/5">
@@ -373,7 +373,7 @@ export default function AdminNodesPage() {
                 </div>
                 <div className="mt-1 flex items-center justify-between text-xs text-slate-500">
                   <span>Свободно</span>
-                  <span>{node.disk_free_gb > 0 ? `${node.disk_free_gb.toFixed(1)} ГБ` : "нет данных"}</span>
+                  <span>{node.disk_free_gb > 0 ? `${node.disk_free_gb.toFixed(1)} ` : " "}</span>
                 </div>
                 {diskPercent != null ? (
                   <>
@@ -387,12 +387,12 @@ export default function AdminNodesPage() {
 
               <div className="mt-4 flex flex-wrap gap-2">
                 <span className={`badge ${node.enabled ? "badge-success" : "badge-danger"}`}>
-                  {node.enabled ? "участвует в выдаче" : "выключена"}
+                  {node.enabled ? "  " : ""}
                 </span>
                 <span className={`badge ${node.accepting_new_clients ? "badge-info" : "badge-warning"}`}>
-                  {node.accepting_new_clients ? "принимает новых" : "новые назначения остановлены"}
+                  {node.accepting_new_clients ? " " : "  "}
                 </span>
-                {node.is_draining ? <span className="badge badge-warning">идёт мягкий вывод</span> : null}
+                {node.is_draining ? <span className="badge badge-warning">  </span> : null}
               </div>
 
               <div className="mt-4 grid grid-cols-2 gap-2">
@@ -403,7 +403,7 @@ export default function AdminNodesPage() {
                     disabled={!!nodeActionBusy}
                     onClick={() => void runNodeAction(node, "drain")}
                   >
-                    {nodeActionBusy === `drain:${node.code}` ? "..." : "Остановить новые назначения"}
+                    {nodeActionBusy === `drain:${node.code}` ? "..." : "  "}
                   </button>
                 ) : (
                   <button
@@ -412,7 +412,7 @@ export default function AdminNodesPage() {
                     disabled={!!nodeActionBusy}
                     onClick={() => void runNodeAction(node, "enable")}
                   >
-                    {nodeActionBusy === `enable:${node.code}` ? "..." : "Вернуть в выдачу"}
+                    {nodeActionBusy === `enable:${node.code}` ? "..." : "  "}
                   </button>
                 )}
                 <button
@@ -421,7 +421,7 @@ export default function AdminNodesPage() {
                   disabled={!!nodeActionBusy || !node.enabled}
                   onClick={() => void runNodeAction(node, "resync")}
                 >
-                  {nodeActionBusy === `resync:${node.code}` ? "..." : "Пересобрать назначения"}
+                  {nodeActionBusy === `resync:${node.code}` ? "..." : " "}
                 </button>
                 <button
                   type="button"
@@ -429,13 +429,13 @@ export default function AdminNodesPage() {
                   disabled={!!nodeActionBusy || !node.enabled}
                   onClick={() => void runNodeAction(node, "disable")}
                 >
-                  {nodeActionBusy === `disable:${node.code}` ? "..." : "Выключить из выдачи"}
+                  {nodeActionBusy === `disable:${node.code}` ? "..." : "  "}
                 </button>
               </div>
 
               <p className="mt-3 text-[11px] text-slate-500">
                 Последняя проверка: {formatIso(node.last_health_at)}.
-                {memoryPercent != null ? ` Память занята на ${formatPercent(memoryPercent, 0)}.` : ""}
+                {memoryPercent != null ? `    ${formatPercent(memoryPercent, 0)}.` : ""}
               </p>
             </article>
           );

@@ -62,7 +62,7 @@ type CachedCheckoutPayment = {
 };
 
 const config = getPortalPublicConfig(process.env as Record<string, string | undefined>);
-const CHECKOUT_CACHE_PREFIX = "portal_checkout_payment_v2";
+const CHECKOUT_CACHE_PREFIX = "pokrov_checkout_payment_v2";
 
 const FALLBACK_PLANS: PlanOption[] = [
   { code: "start_99", label: "Старт на 30 дней", amount_rub: 99, days: 30, device_limit: 1 },
@@ -77,7 +77,7 @@ function candidateApiBases(): string[] {
   const out: string[] = [];
   if (config.apiBaseUrl) out.push(config.apiBaseUrl.replace(/\/+$/, ""));
   if (typeof window !== "undefined") out.push(window.location.origin.replace(/\/+$/, ""));
-  out.push("https://portal-privacy.online");
+  out.push("https://pokrov.space");
   return Array.from(new Set(out.filter(Boolean)));
 }
 
@@ -111,20 +111,20 @@ export function CheckoutLoadingFallback() {
     <main className="checkout-shell">
       <section className="checkout-hero">
         <div className="checkout-kicker">Продление и оплата</div>
-        <div className="checkout-status-chip checkout-status-chip--fallback">Готовим страницу</div>
+        <div className="checkout-status-chip checkout-status-chip--fallback">Готовим страницу оплаты</div>
         <h1 className="checkout-title">
-          <span>PORTAL</span> <span>Через Telegram</span>
+          <span>POKROV</span> <span>Через Telegram</span>
         </h1>
         <p className="checkout-sub">
-          Проверяем персональную ссылку, тарифы и доступные RUB-кассы. Если касса недоступна, покажем безопасный возврат в Telegram.
+          Проверяем персональную ссылку, тарифы и доступные способы оплаты. Если нужный маршрут временно недоступен, вернём вас в Telegram без лишних рисков.
         </p>
       </section>
       <section className="checkout-grid">
         <article className="glass-card">
-          <div className="checkout-helper">Загружаем тарифы и сценарий оплаты...</div>
+          <div className="checkout-helper">Загружаем тарифы и сценарий оплаты…</div>
         </article>
         <article className="glass-card checkout-sticky">
-          <div className="checkout-helper">Собираем итог и резервный путь через Telegram.</div>
+          <div className="checkout-helper">Собираем итог и резервный путь через Telegram…</div>
         </article>
       </section>
     </main>
@@ -282,7 +282,7 @@ export default function CheckoutClient() {
       return;
     }
     if (!activeProvider?.code) {
-      setStatusText("Сейчас нет стабильной RUB-кассы. Проще продолжить в Telegram и открыть новую персональную ссылку.");
+      setStatusText("Сейчас нужный платёжный маршрут недоступен. Проще продолжить в Telegram и открыть новую персональную ссылку.");
       return;
     }
     if (ticketExpired) {
@@ -317,7 +317,7 @@ export default function CheckoutClient() {
           final: Number(data.amount_rub ?? activePlan.amount_rub),
         });
         if (!data.payment_url) {
-          throw new Error("Платёжная ссылка не получена.");
+        throw new Error("Платёжная ссылка не получена.");
         }
         const cacheEntry: CachedCheckoutPayment = {
           order_id: String(data.order_id || ""),
@@ -332,7 +332,7 @@ export default function CheckoutClient() {
           window.localStorage.setItem(cacheKey, JSON.stringify(cacheEntry));
         }
         setCachedPayment(cacheEntry);
-        setStatusText(`Ссылка готова. Переводим на страницу оплаты через ${cacheEntry.provider_label}...`);
+        setStatusText(`Ссылка готова. Переводим на страницу оплаты через ${cacheEntry.provider_label}…`);
         window.location.href = data.payment_url;
         return;
       } catch (error) {
@@ -346,9 +346,9 @@ export default function CheckoutClient() {
   const heroStatus = hasCheckoutTicket ? "Персональная ссылка активна" : "Основной путь через Telegram";
   const heroText = hasCheckoutTicket
     ? fromBot
-      ? "Вы открыли персональную ссылку из Telegram. Выберите срок, проверьте RUB-кассу и переходите к оплате. Если касса не отвечает, продолжайте в боте."
-      : "Здесь можно завершить продление по персональной ссылке. Мы покажем только доступные RUB-кассы и честный fallback в Telegram."
-    : "Эта страница работает как витрина. Для безопасной оплаты и запуска теста начните путь в Telegram, где для вас создаётся персональная ссылка.";
+      ? "Вы открыли персональную ссылку из Telegram. Выберите срок, проверьте платёжный маршрут и переходите к оплате. Если что-то не отвечает, продолжайте в боте."
+      : "Здесь можно завершить продление по персональной ссылке. Мы покажем только доступные платёжные маршруты и честный возврат в Telegram."
+    : "Эта страница работает как витрина. Для безопасного старта начните путь в Telegram: там для вас создаётся персональная ссылка.";
 
   const primaryButtonLabel = busy
     ? "Готовим ссылку..."
@@ -356,17 +356,17 @@ export default function CheckoutClient() {
       ? "Ссылка истекла"
       : hasCheckoutTicket && activeProvider
         ? `Открыть оплату через ${activeProvider.label}`
-        : "Продолжить в Telegram";
+         : "Продолжить в Telegram";
 
   return (
     <main className="checkout-shell">
       <section className="checkout-hero">
-        <div className="checkout-kicker">{getCopyText("marketing.checkout.title", "Продление и оплата")}</div>
+          <div className="checkout-kicker">{getCopyText("marketing.checkout.title", "Продление и оплата")}</div>
         <div className={`checkout-status-chip ${hasCheckoutTicket ? "checkout-status-chip--ready" : "checkout-status-chip--fallback"}`}>
           {heroStatus}
         </div>
         <h1 className="checkout-title">
-          <span>PORTAL VPN</span> <span>{hasCheckoutTicket ? "Продление доступа" : "Старт через Telegram"}</span>
+          <span>POKROV VPN</span> <span>{hasCheckoutTicket ? "Продление доступа" : "Старт через Telegram"}</span>
         </h1>
         <p className="checkout-sub">{heroText}</p>
       </section>
@@ -398,7 +398,7 @@ export default function CheckoutClient() {
 
               {providers.length > 0 ? (
                 <div className="checkout-provider-section">
-                  <strong>Доступные RUB-кассы</strong>
+                  <strong>Доступные способы оплаты</strong>
                   <div className="checkout-provider-list">
                     {providers.map((provider) => (
                       <button
@@ -418,19 +418,19 @@ export default function CheckoutClient() {
                 </div>
               ) : (
                 <div className="checkout-provider-empty">
-                  <strong>Кассы временно нестабильны</strong>
-                  <p>Если нужная касса не появилась, не тратьте время: вернитесь в Telegram и откройте новый персональный сценарий оплаты.</p>
+                  <strong>Платёжные маршруты временно недоступны</strong>
+                  <p>Если нужный способ оплаты не появился, не тратьте время: вернитесь в Telegram и откройте новый персональный сценарий.</p>
                 </div>
               )}
             </>
           ) : (
             <div className="checkout-empty">
-              <p>Главный сценарий сейчас такой: откройте бот, запустите тест на 3 дня, подключитесь за пару минут и только потом переходите к продлению.</p>
+              <p>Главный сценарий сейчас такой: откройте бот, запустите тест на 5 дней, подключитесь за пару минут и только потом переходите к продлению.</p>
               <div className="checkout-actions">
                 <a href={config.botUrl} target="_blank" rel="noreferrer" className="checkout-secondary">
                   Запустить тест в Telegram
                 </a>
-                <a href={config.webappUrl} target="_blank" rel="noreferrer" className="checkout-secondary">
+                <a href={config.connectUrl} target="_blank" rel="noreferrer" className="checkout-secondary">
                   Открыть WebApp
                 </a>
               </div>
@@ -442,7 +442,7 @@ export default function CheckoutClient() {
             <ul className="checkout-trust-list">
               {hasCheckoutTicket ? (
                 <>
-                  <li>Откроется защищённая страница выбранной RUB-кассы.</li>
+                  <li>Откроется защищённая страница выбранного платёжного маршрута.</li>
                   <li>После подтверждения доступ обновится автоматически.</li>
                   <li>Если окно оплаты закроется, можно вернуться по сохранённой ссылке или продолжить в Telegram.</li>
                 </>
@@ -450,7 +450,7 @@ export default function CheckoutClient() {
                 <>
                   <li>Бот сразу открывает тестовый доступ и подсказывает 3 шага подключения.</li>
                   <li>Там же появится персональная ссылка на оплату, когда вы решите продлить доступ.</li>
-                  <li>Если касса не работает, бот и поддержка быстрее переведут вас на резервный сценарий.</li>
+                  <li>Если платёжный маршрут не работает, бот и поддержка быстро переведут вас на резервный сценарий.</li>
                 </>
               )}
             </ul>
@@ -461,7 +461,7 @@ export default function CheckoutClient() {
           <h2>{hasCheckoutTicket ? "Итог" : "Основной CTA"}</h2>
           <p className="checkout-note">
             {hasCheckoutTicket
-              ? "План уже привязан к вашему профилю. Мы не показываем лишние способы оплаты: только RUB-кассы и возврат в Telegram, если что-то пошло не так."
+              ? "План уже привязан к вашему профилю. Мы не показываем лишние способы оплаты: только доступные платёжные маршруты и возврат в Telegram, если что-то пошло не так."
               : "Публичный checkout сейчас не главный вход. Самый короткий путь к подключению и тесту идёт через Telegram-бот."}
           </p>
 
@@ -538,10 +538,10 @@ export default function CheckoutClient() {
             <p className="checkout-helper">
               {ticketExpired
                 ? "Время этой ссылки закончилось. Вернитесь в Telegram и откройте оплату заново."
-                : "Если RUB-касса не открывается или сумма выглядит странно, не продолжайте вслепую: вернитесь в Telegram или напишите в поддержку."}
+                : "Если способ оплаты не открывается или сумма выглядит странно, не продолжайте вслепую: вернитесь в Telegram или напишите в поддержку."}
             </p>
           ) : (
-            <p className="checkout-helper">Начните с теста на 3 дня в Telegram, а продление откройте уже из персонального сценария.</p>
+              <p className="checkout-helper">Начните с теста на 5 дней в Telegram, а продление откройте уже из персонального сценария.</p>
           )}
 
           {statusText ? <p className="checkout-status">{statusText}</p> : null}
