@@ -17,6 +17,7 @@ Key services expected there:
 - `portal-api`
 - `portal-bot`
 - `portal-helpbot`
+- `portal-feedbackbot`
 - `caddy`
 - `x-ui`
 
@@ -61,6 +62,10 @@ python scripts/remote_deploy_brain_portal_code.py --brain-ip 82.21.114.104 --res
 
 - [release_orchestrator.py](C:/Users/kiwun/Documents/ai/VPN/scripts/release_orchestrator.py)
 
+### Feedback bot service install
+
+- [remote_install_feedbackbot_service.py](C:/Users/kiwun/Documents/ai/VPN/scripts/remote_install_feedbackbot_service.py)
+
 ## Release Rule
 
 For release-oriented work, default completion includes:
@@ -87,6 +92,7 @@ At minimum, verify:
 - subscription endpoint availability
 - Telegram linking / channel bonus path
 - `portal-api`, `portal-bot`, and `portal-helpbot` service status
+- `portal-feedbackbot` service status
 
 ## Telegram OAuth / OIDC Runtime
 
