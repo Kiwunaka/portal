@@ -61,7 +61,7 @@ def _resolve_with_nslookup(host: str) -> tuple[list[str], list[str], str]:
 
 
 def _build_hosts(*, domain: str, include_brain: bool, inventory: dict[str, str]) -> list[NodeHost]:
-    workers = ["pl", "it", "us"]
+    workers = ["pl", "it", "us", "nl", "free"]
     hosts: list[NodeHost] = []
     for code in workers:
         hosts.append(NodeHost(code=code, host=f"{code}.{domain}", expected_ipv4=inventory.get(code)))

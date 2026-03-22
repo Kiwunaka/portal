@@ -76,6 +76,21 @@ Public funnel rule:
 - checkout must continue from a valid web session or checkout ticket
 - Telegram bot purchase flow remains available, but it is not the default public story
 
+## Official Hostnames
+
+Canonical public hostnames:
+
+- `https://pokrov.space/`
+- `https://app.pokrov.space/`
+- `https://api.pokrov.space/`
+
+Hostname policy:
+
+- `pokrov.space` is the official public brand and entrypoint for new users
+- `app.pokrov.space` is the official browser surface for account continuation and checkout continuation
+- `api.pokrov.space` is the canonical API base for web and app-first browser flows
+- `kiwunaka.space` is compatibility-only during migration and must not be used in new product copy, new onboarding, or fresh distribution links
+
 ## Trial And Bonus Rules
 
 ### Free Trial
@@ -147,6 +162,13 @@ Support should be reachable from:
 - feedback bot `@pokrov_feedbackbot`
 
 Support payloads should carry enough device and app context for operator diagnosis.
+
+Support visibility should be able to connect:
+
+- linked Telegram identity when present
+- current device identity and app version
+- recent IP context
+- current subscription and node state
 
 ## Reviews And Feedback
 

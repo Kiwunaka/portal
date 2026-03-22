@@ -16,6 +16,7 @@ from db import SessionLocal, init_db  # noqa: E402
 from models import Node, NodeHealthSample  # noqa: E402
 from nodes_repo import NodeRuntime  # noqa: E402
 from panel_client import PanelClient  # noqa: E402
+from node_dataplane_probe import probe_node_endpoint  # noqa: E402
 
 
 def _to_runtime(node: Node) -> NodeRuntime:
@@ -73,6 +74,13 @@ def _rolling_error_rate(s, node_code: str, window: int) -> float:
     return errors / total
 
 
+def _truncate_error(message: object, limit: int = 500) -> str:
+    text = str(message or "").strip()
+    if len(text) <= limit:
+        return text
+    return text[: limit - 3].rstrip() + "..."
+
+
 async def _collect_one(*, node: Node, error_window: int, source: str) -> dict:
     runtime = _to_runtime(node)
     client = PanelClient(runtime)
@@ -89,10 +97,17 @@ async def _collect_one(*, node: Node, error_window: int, source: str) -> dict:
     disk_used_gb: float | None = None
     disk_total_gb: float | None = None
     disk_free_gb: float | None = None
+    probe_stage = "panel_login"
+    probe_error_kind = "panel_login_failed"
+    probe_error_message = "panel login returned false"
+    probe_at = now
 
     try:
         ok = await client.login()
         if ok:
+            probe_stage = "panel_status"
+            probe_error_kind = ""
+            probe_error_message = ""
             system_metrics = await client.get_system_metrics()
             cpu_percent = system_metrics.get("cpu_percent")  # type: ignore[assignment]
             memory_used_mb = system_metrics.get("memory_used_mb")  # type: ignore[assignment]
@@ -100,6 +115,7 @@ async def _collect_one(*, node: Node, error_window: int, source: str) -> dict:
             disk_used_gb = system_metrics.get("disk_used_gb")  # type: ignore[assignment]
             disk_total_gb = system_metrics.get("disk_total_gb")  # type: ignore[assignment]
             disk_free_gb = system_metrics.get("disk_free_gb")  # type: ignore[assignment]
+            probe_stage = "panel_inbound_lookup"
             inbounds = await client._get_inbounds()
             for inb in inbounds:
                 if int(inb.get("id") or 0) != int(runtime.inbound_id):
@@ -120,13 +136,35 @@ async def _collect_one(*, node: Node, error_window: int, source: str) -> dict:
                     total_up_bytes = 0
                     total_down_bytes = 0
                 healthy = True
+                probe_stage = "panel_inbound_lookup"
+                probe_error_kind = ""
+                probe_error_message = ""
                 break
+            if not healthy:
+                probe_error_kind = "inbound_not_found"
+                probe_error_message = f"inbound {runtime.inbound_id} not found on panel"
         latency_ms = int((time.perf_counter() - started) * 1000)
-    except Exception:
+    except Exception as exc:
         healthy = False
         latency_ms = int((time.perf_counter() - started) * 1000)
+        probe_error_kind = "panel_probe_failed"
+        probe_error_message = _truncate_error(exc)
     finally:
         await client.close()
+
+    if healthy:
+        probe = probe_node_endpoint(
+            host=str(runtime.host or "").strip(),
+            port=int(runtime.vless_port or 443),
+            sni=str(runtime.reality_sni or runtime.host or "").strip() or None,
+        )
+        probe_at = probe.get("probed_at") or now
+        probe_stage = str(probe.get("stage") or probe_stage or "")
+        probe_error_kind = str(probe.get("error_kind") or "")
+        probe_error_message = _truncate_error(probe.get("error_message") or "")
+        healthy = bool(probe.get("ok"))
+    else:
+        probe_at = now
 
     s = SessionLocal()
     try:
@@ -157,6 +195,10 @@ async def _collect_one(*, node: Node, error_window: int, source: str) -> dict:
             is_healthy=healthy,
             score=score,
             source=source,
+            probe_at=probe_at,
+            probe_stage=probe_stage,
+            probe_error_kind=probe_error_kind or None,
+            probe_error_message=probe_error_message or None,
         )
         s.add(sample)
 
@@ -174,6 +216,10 @@ async def _collect_one(*, node: Node, error_window: int, source: str) -> dict:
             row.disk_used_gb = float(disk_used_gb or 0.0)
             row.disk_total_gb = float(disk_total_gb or 0.0)
             row.disk_free_gb = float(disk_free_gb or 0.0)
+            row.last_probe_at = probe_at
+            row.last_probe_stage = probe_stage or None
+            row.last_probe_error_kind = probe_error_kind or None
+            row.last_probe_error_message = probe_error_message or None
             if healthy:
                 row.last_ok_at = now
         s.commit()
@@ -190,6 +236,8 @@ async def _collect_one(*, node: Node, error_window: int, source: str) -> dict:
             "memory_used_mb": memory_used_mb,
             "memory_total_mb": memory_total_mb,
             "disk_free_gb": disk_free_gb,
+            "probe_stage": probe_stage,
+            "probe_error_kind": probe_error_kind,
         }
     finally:
         s.close()

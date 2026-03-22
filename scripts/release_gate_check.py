@@ -158,6 +158,34 @@ def _optional_runtime_smoke_gate() -> tuple[str, list[str], Path] | None:
     )
 
 
+def _predeploy_node_readiness_gate(
+    *,
+    brain_ip: str,
+    domain: str,
+    ssh_user: str,
+    ssh_port: int,
+    passwords: str,
+) -> tuple[str, list[str], Path]:
+    return (
+        "Node predeploy readiness",
+        [
+            sys.executable,
+            "scripts/predeploy_node_readiness.py",
+            "--brain-ip",
+            brain_ip,
+            "--web-domain",
+            domain,
+            "--ssh-user",
+            ssh_user,
+            "--ssh-port",
+            str(ssh_port),
+            "--passwords",
+            passwords,
+        ],
+        REPO_ROOT,
+    )
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description="Run local release gates and save markdown report.")
     parser.add_argument(
@@ -170,9 +198,26 @@ def main() -> int:
         action="store_true",
         help="Run a shorter gate set.",
     )
+    parser.add_argument("--brain-ip", default="")
+    parser.add_argument("--web-domain", default="pokrov.space")
+    parser.add_argument("--ssh-user", default="root")
+    parser.add_argument("--ssh-port", type=int, default=29374)
+    parser.add_argument("--passwords", default=str(REPO_ROOT / "VPN NODE SSH KEYS" / "PASSWORDS.txt"))
     args = parser.parse_args()
 
-    gates: list[tuple[str, list[str], Path]] = [
+    gates: list[tuple[str, list[str], Path]] = []
+    if str(args.brain_ip or "").strip():
+        gates.append(
+            _predeploy_node_readiness_gate(
+                brain_ip=str(args.brain_ip).strip(),
+                domain=args.web_domain,
+                ssh_user=args.ssh_user,
+                ssh_port=int(args.ssh_port),
+                passwords=args.passwords,
+            )
+        )
+
+    gates.extend([
         ("Backend unit tests", [sys.executable, "-m", "unittest", "discover", "tests"], REPO_ROOT),
         ("Admin/auth regressions", [sys.executable, "-m", "unittest", "tests.test_api_auth_and_tickets"], REPO_ROOT),
         ("Public link checks", [sys.executable, "scripts/check-links.py"], REPO_ROOT),
@@ -180,16 +225,27 @@ def main() -> int:
         ("Admin webapp smoke", [sys.executable, "scripts/admin_webapp_smoke.py"], REPO_ROOT),
         ("WebApp production build", [_npm_exec(), "run", "build"], REPO_ROOT / "webapp"),
         ("UI visual smoke", [sys.executable, "scripts/ui_visual_smoke.py"], REPO_ROOT),
-    ]
+    ])
     if args.quick:
-        gates = [
+        gates = []
+        if str(args.brain_ip or "").strip():
+            gates.append(
+                _predeploy_node_readiness_gate(
+                    brain_ip=str(args.brain_ip).strip(),
+                    domain=args.web_domain,
+                    ssh_user=args.ssh_user,
+                    ssh_port=int(args.ssh_port),
+                    passwords=args.passwords,
+                )
+            )
+        gates.extend([
             ("Critical worker regression", [sys.executable, "-m", "unittest", "tests.test_worker_retention"], REPO_ROOT),
             ("Public link checks", [sys.executable, "scripts/check-links.py"], REPO_ROOT),
             ("Marketing production build", [_npm_exec(), "run", "build"], REPO_ROOT / "marketing"),
             ("Admin webapp smoke", [sys.executable, "scripts/admin_webapp_smoke.py"], REPO_ROOT),
             ("WebApp production build", [_npm_exec(), "run", "build"], REPO_ROOT / "webapp"),
             ("UI visual smoke", [sys.executable, "scripts/ui_visual_smoke.py"], REPO_ROOT),
-        ]
+        ])
 
     runtime_smoke_gate = _optional_runtime_smoke_gate()
     if runtime_smoke_gate is not None:

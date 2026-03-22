@@ -66,6 +66,10 @@ python scripts/remote_deploy_brain_portal_code.py --brain-ip 82.21.114.104 --res
 
 - [publishing-and-signing-guide.md](C:/Users/kiwun/Documents/ai/VPN/docs/operations/publishing-and-signing-guide.md)
 
+### Monitoring and visibility guide
+
+- [monitoring-and-visibility.md](C:/Users/kiwun/Documents/ai/VPN/docs/operations/monitoring-and-visibility.md)
+
 ### Feedback bot service install
 
 - [remote_install_feedbackbot_service.py](C:/Users/kiwun/Documents/ai/VPN/scripts/remote_install_feedbackbot_service.py)
@@ -131,6 +135,12 @@ Current official public surfaces:
 - user cabinet and web login: `https://app.pokrov.space/`
 - public API host: `https://api.pokrov.space/`
 
+Hostname role policy:
+
+- `pokrov.space` is the canonical public hostname family
+- `kiwunaka.space` remains compatibility-only for migration and older subscriptions
+- support, onboarding, release notes, and new links must always prefer `pokrov.space`
+
 Web runtime rule:
 
 - `https://api.pokrov.space/` is the canonical API base for browser flows
@@ -140,6 +150,10 @@ Migration-only legacy note:
 
 - `kiwunaka.space` hosts remain compatibility surfaces for older subscriptions during cutover
 - do not use `kiwunaka.space` in new release copy, onboarding copy, or fresh distribution links
+
+Monitoring note:
+
+- the external RU probe runbook, hostname migration visibility, and device or Telegram visibility rules live in [Monitoring And Visibility](C:/Users/kiwun/Documents/ai/VPN/docs/operations/monitoring-and-visibility.md)
 
 Safe deploy note:
 

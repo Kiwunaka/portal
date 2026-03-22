@@ -105,6 +105,24 @@ class RetentionTemplateSeedTests(unittest.TestCase):
             self.assertIsNotNone(start_link_table)
             self.assertIsNotNone(app_settings_table)
 
+    def test_run_migrations_adds_node_probe_columns(self) -> None:
+        self.db.init_db()
+        self.migrations.run_migrations(self.db.engine)
+
+        with self.db.engine.begin() as conn:
+            node_cols = conn.execute(self.migrations.text("PRAGMA table_info(nodes);")).fetchall()
+            node_names = {str(r[1]) for r in node_cols}
+            self.assertIn("last_probe_at", node_names)
+            self.assertIn("last_probe_stage", node_names)
+            self.assertIn("last_probe_error_kind", node_names)
+            self.assertIn("last_probe_error_message", node_names)
+
+            sample_cols = conn.execute(self.migrations.text("PRAGMA table_info(node_health_samples);")).fetchall()
+            sample_names = {str(r[1]) for r in sample_cols}
+            self.assertIn("probe_stage", sample_names)
+            self.assertIn("probe_error_kind", sample_names)
+            self.assertIn("probe_error_message", sample_names)
+
 
 if __name__ == "__main__":
     unittest.main()

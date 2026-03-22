@@ -7,7 +7,7 @@ import sys
 from pathlib import Path
 
 
-RE_SCRIPT = re.compile(r"(?:python\s+)?(scripts/[A-Za-z0-9_.\-]+\.py)")
+RE_SCRIPT = re.compile(r"(?<![A-Za-z0-9_./-])(?:python\s+)?(scripts/[A-Za-z0-9_.\-]+\.py)")
 RE_LEGACY_ENTRY = re.compile(r"\b(deploy_all_fixes\.py)\b")
 
 

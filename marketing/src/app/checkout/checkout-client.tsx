@@ -35,6 +35,11 @@ type PublicPlansResponse = {
 type RubProvidersResponse = {
   ok?: boolean;
   providers?: RubProviderOption[];
+  blocked?: boolean;
+  blocked_reasons?: string[];
+  blocked_reason_texts?: string[];
+  checkout_mode?: string;
+  telegram_fallback_available?: boolean;
 };
 
 type CreatePublicOrderResponse = {
@@ -77,8 +82,23 @@ function candidateApiBases(): string[] {
   const out: string[] = [];
   if (config.apiBaseUrl) out.push(config.apiBaseUrl.replace(/\/+$/, ""));
   if (typeof window !== "undefined") out.push(window.location.origin.replace(/\/+$/, ""));
-  out.push("https://pokrov.space");
+  out.push("https://api.pokrov.space");
   return Array.from(new Set(out.filter(Boolean)));
+}
+
+async function fetchJsonFromBases<T>(path: string): Promise<T | null> {
+  for (const base of candidateApiBases()) {
+    try {
+      const response = await fetch(`${base}${path}`, { cache: "no-store" });
+      if (!response.ok) continue;
+      const contentType = String(response.headers.get("content-type") || "").toLowerCase();
+      if (!contentType.includes("json")) continue;
+      return (await response.json()) as T;
+    } catch {
+      // Try next base.
+    }
+  }
+  return null;
 }
 
 function decodeTicketPayload(token: string): { exp?: number; tg_id?: number; plan_code?: string; source?: string } | null {
@@ -147,6 +167,8 @@ export default function CheckoutClient() {
   const [breakdown, setBreakdown] = useState<{ base: number; pct: number; final: number } | null>(null);
   const [secondsLeft, setSecondsLeft] = useState(0);
   const [cachedPayment, setCachedPayment] = useState<CachedCheckoutPayment | null>(null);
+  const [providersBlocked, setProvidersBlocked] = useState(false);
+  const [providerBlockedTexts, setProviderBlockedTexts] = useState<string[]>([]);
 
   const ticketPayload = useMemo(() => decodeTicketPayload(checkoutTicket), [checkoutTicket]);
   const ticketExp = Number(ticketPayload?.exp || 0);
@@ -170,29 +192,20 @@ export default function CheckoutClient() {
   useEffect(() => {
     let cancelled = false;
     const loadPlans = async () => {
-      for (const base of candidateApiBases()) {
-        try {
-          const response = await fetch(`${base}/api/public/plans`, { cache: "no-store" });
-          if (!response.ok) continue;
-          const data = (await response.json()) as PublicPlansResponse;
-          const mapped = (Array.isArray(data.plans) ? data.plans : [])
-            .filter((item) => Boolean(item?.code) && Number(item?.amount_rub || 0) > 0 && item?.is_active !== false)
-            .map((item) => ({
-              code: String(item.code || "").trim().toLowerCase(),
-              label: String(item.label || item.code || "").trim(),
-              amount_rub: Number(item.amount_rub || 0),
-              days: Math.max(1, Number(item.days || 30)),
-              device_limit: Math.max(1, Number(item.device_limit || 1)),
-            }));
-          if (!mapped.length || cancelled) continue;
-          setPlans(mapped);
-          if (!mapped.some((item) => item.code === selectedPlan)) {
-            setSelectedPlan(mapped[0].code);
-          }
-          return;
-        } catch {
-          // Try next base.
-        }
+      const data = await fetchJsonFromBases<PublicPlansResponse>("/api/public/plans");
+      const mapped = (Array.isArray(data?.plans) ? data?.plans : [])
+        .filter((item) => Boolean(item?.code) && Number(item?.amount_rub || 0) > 0 && item?.is_active !== false)
+        .map((item) => ({
+          code: String(item.code || "").trim().toLowerCase(),
+          label: String(item.label || item.code || "").trim(),
+          amount_rub: Number(item.amount_rub || 0),
+          days: Math.max(1, Number(item.days || 30)),
+          device_limit: Math.max(1, Number(item.device_limit || 1)),
+        }));
+      if (!mapped.length || cancelled) return;
+      setPlans(mapped);
+      if (!mapped.some((item) => item.code === selectedPlan)) {
+        setSelectedPlan(mapped[0].code);
       }
     };
     void loadPlans();
@@ -204,26 +217,16 @@ export default function CheckoutClient() {
   useEffect(() => {
     let cancelled = false;
     const loadProviders = async () => {
-      for (const base of candidateApiBases()) {
-        try {
-          const response = await fetch(`${base}/api/payments/providers`, { cache: "no-store" });
-          if (!response.ok) continue;
-          const data = (await response.json()) as RubProvidersResponse;
-          const mapped = (Array.isArray(data.providers) ? data.providers : []).filter((item) => item?.supports_public !== false && item?.code);
-          if (cancelled) return;
-          setProviders(mapped);
-          const normalizedCurrent = String(selectedProvider || "").trim().toLowerCase();
-          if (!mapped.some((item) => String(item.code || "").trim().toLowerCase() === normalizedCurrent)) {
-            setSelectedProvider(String(mapped[0]?.code || ""));
-          }
-          return;
-        } catch {
-          // Try next base.
-        }
-      }
-      if (!cancelled) {
-        setProviders([]);
-        setSelectedProvider("");
+      const data = await fetchJsonFromBases<RubProvidersResponse>("/api/payments/providers");
+      if (cancelled) return;
+      const mapped = (Array.isArray(data?.providers) ? data?.providers : []).filter((item) => item?.supports_public !== false && item?.code);
+      const blocked = Boolean(data?.blocked) || Boolean(data?.ok === false) || mapped.length === 0;
+      setProviders(mapped);
+      setProvidersBlocked(blocked);
+      setProviderBlockedTexts((Array.isArray(data?.blocked_reason_texts) ? data?.blocked_reason_texts : []).filter(Boolean));
+      const normalizedCurrent = String(selectedProvider || "").trim().toLowerCase();
+      if (!mapped.some((item) => String(item.code || "").trim().toLowerCase() === normalizedCurrent)) {
+        setSelectedProvider(String(mapped[0]?.code || ""));
       }
     };
     void loadProviders();
@@ -358,6 +361,8 @@ export default function CheckoutClient() {
         ? `Открыть оплату через ${activeProvider.label}`
         : "Открыть кабинет";
 
+  const providerBlockedList = providerBlockedTexts.filter(Boolean);
+
   return (
     <main className="checkout-shell">
       <section className="checkout-hero">
@@ -396,7 +401,7 @@ export default function CheckoutClient() {
                 ))}
               </div>
 
-              {providers.length > 0 ? (
+              {providers.length > 0 && !providersBlocked ? (
                 <div className="checkout-provider-section">
                   <strong>Доступные способы оплаты</strong>
                   <div className="checkout-provider-list">
@@ -419,7 +424,15 @@ export default function CheckoutClient() {
               ) : (
                 <div className="checkout-provider-empty">
                   <strong>Платёжные маршруты временно недоступны</strong>
-                  <p>Если нужный способ оплаты не появился, не тратьте время: вернитесь в Telegram и откройте новый персональный сценарий.</p>
+                  {providerBlockedList.length > 0 ? (
+                    <ul className="checkout-trust-list">
+                      {providerBlockedList.map((message) => (
+                        <li key={message}>{message}</li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <p>Если нужный способ оплаты не появился, не тратьте время: вернитесь в Telegram и откройте новый персональный сценарий.</p>
+                  )}
                 </div>
               )}
             </>
@@ -476,7 +489,7 @@ export default function CheckoutClient() {
               Устройства: <strong>до {activePlan.device_limit}</strong>
             </p>
             <p>
-              Касса: <strong>{activeProvider?.label || "после личного входа"}</strong>
+              Касса: <strong>{providersBlocked ? "временно недоступна" : activeProvider?.label || "после личного входа"}</strong>
             </p>
             {promo ? (
               <p>

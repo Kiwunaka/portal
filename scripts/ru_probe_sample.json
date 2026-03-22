@@ -1,0 +1,22 @@
+{
+  "timestamp_utc": "2026-03-22T12:00:00Z",
+  "probe_host": "ru-external-probe-1",
+  "probe_public_ip": "203.0.113.10",
+  "google_reachable": true,
+  "nodes": {
+    "nl-1": {
+      "address": "198.51.100.11:443",
+      "reachable": true,
+      "detail": "tcp ok"
+    },
+    "de-1": {
+      "address": "198.51.100.12:443",
+      "reachable": false,
+      "detail": "timeout"
+    }
+  },
+  "notes": [
+    "Probe executed from external RU host outside the control plane.",
+    "Use this format as input for scripts/render_ru_probe_report.py."
+  ]
+}

@@ -141,6 +141,61 @@ Important services:
 - `caddy`
 - `x-ui`
 
+## Public Hostnames And Migration Roles
+
+Canonical public surfaces:
+
+- `https://pokrov.space/`
+- `https://app.pokrov.space/`
+- `https://api.pokrov.space/`
+
+Role split:
+
+- `pokrov.space` is the canonical public hostname family
+- `kiwunaka.space` is a migration compatibility layer for older subscriptions and must not be treated as a fresh-entry surface
+- browser flows must prefer `api.pokrov.space` for API traffic and never rely on HTML returned from `app.pokrov.space` as if it were API JSON
+
+## Monitoring And Visibility Model
+
+Current operational monitoring should correlate:
+
+- canonical public hostname health
+- app-first session bootstrap and dashboard health
+- Telegram bot and support bot availability
+- node reachability and public egress
+- device and account visibility for support diagnosis
+
+Required external geography check:
+
+- run an RU-based external probe every `6 hours`
+- verify the probe host itself can reach `google.com`
+- verify the current `POKROV` nodes remain reachable from that external RU vantage point
+
+This gives operators a useful distinction between:
+
+- a broken probe host
+- a broken node or public edge
+- a hostname migration issue where legacy compatibility paths still work but canonical `pokrov.space` paths do not
+
+## Device, Telegram, And IP Correlation
+
+The app-first model is not only about authentication. It also provides a friendlier support map than a Telegram-only design.
+
+Operator diagnosis should be able to correlate:
+
+- app account
+- linked Telegram identity when present
+- device record
+- recent `last_ip`
+- current node/subscription context
+
+This visibility supports:
+
+- connection triage
+- abuse control
+- account recovery
+- targeted incident response
+
 ## Public API Shape
 
 Major currently live public and app-first routes in `portal_bot/api.py` include:

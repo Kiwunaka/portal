@@ -780,6 +780,11 @@ class RubProviderChoiceOut(BaseModel):
 class RubProvidersOut(BaseModel):
     ok: bool = True
     providers: list[RubProviderChoiceOut] = Field(default_factory=list)
+    blocked: bool = False
+    blocked_reasons: list[str] = Field(default_factory=list)
+    blocked_reason_texts: list[str] = Field(default_factory=list)
+    checkout_mode: str = "account_session_first"
+    telegram_fallback_available: bool = True
 
 
 class RubOrderCreateIn(BaseModel):
@@ -1771,6 +1776,8 @@ def _public_checkout_url() -> str:
         try:
             parsed = urlparse(configured)
             cfg_host = (parsed.hostname or "").lower().strip()
+            if cfg_host in {"portal-privacy.online", "www.portal-privacy.online"}:
+                return "https://pay.pokrov.space/checkout/"
             if cfg_host and cfg_host != "pay.pokrov.space":
                 return configured
         except Exception:
@@ -1781,25 +1788,47 @@ def _public_checkout_url() -> str:
     return "https://pay.pokrov.space/checkout/"
 
 
-def _checkout_runtime_errors() -> list[str]:
-    errors: list[str] = []
+def _checkout_runtime_issues() -> list[tuple[str, str]]:
+    issues: list[tuple[str, str]] = []
     if not RUB_CHECKOUT_ENABLED:
-        errors.append("RUB_CHECKOUT_ENABLED is false")
+        issues.append(("checkout_disabled", "RUB checkout is disabled"))
     if not _checkout_secret():
-        errors.append("CHECKOUT_TICKET_SECRET is empty")
+        issues.append(("missing_checkout_ticket_secret", "CHECKOUT_TICKET_SECRET is empty"))
     checkout_url = _public_checkout_url()
     if not checkout_url:
-        errors.append("PAY_CHECKOUT_URL or PUBLIC_WEB_DOMAIN is not configured")
+        issues.append(("missing_checkout_url", "PAY_CHECKOUT_URL or PUBLIC_WEB_DOMAIN is not configured"))
     if not _safe_public_url(Settings.PUBLIC_API_BASE_URL):
-        errors.append("PUBLIC_API_BASE_URL is empty")
+        issues.append(("missing_public_api_base_url", "PUBLIC_API_BASE_URL is empty"))
     if not (_safe_public_url(Settings.PAY_SUCCESS_URL) or _safe_public_url(Settings.PUBLIC_API_BASE_URL)):
-        errors.append("PAY_SUCCESS_URL is not configured")
+        issues.append(("missing_pay_success_url", "PAY_SUCCESS_URL is not configured"))
     if not (_safe_public_url(Settings.PAY_FAIL_URL) or _safe_public_url(Settings.PUBLIC_API_BASE_URL)):
-        errors.append("PAY_FAIL_URL is not configured")
+        issues.append(("missing_pay_fail_url", "PAY_FAIL_URL is not configured"))
     enabled = enabled_rub_provider_codes()
     if not enabled:
-        errors.append("No RUB payment providers are configured")
-    return errors
+        issues.append(("no_enabled_providers", "No RUB payment providers are configured"))
+    return issues
+
+
+def _checkout_runtime_errors() -> list[str]:
+    return [detail for _code, detail in _checkout_runtime_issues()]
+
+
+def _public_checkout_provider_state() -> RubProvidersOut:
+    issues = _checkout_runtime_issues()
+    blocked = bool(issues)
+    rows = [] if blocked else [RubProviderChoiceOut(**row) for row in enabled_provider_catalog()]
+    if not rows and not blocked:
+        issues = [("no_enabled_providers", "No RUB payment providers are configured")]
+        blocked = True
+    return RubProvidersOut(
+        ok=not blocked,
+        providers=rows,
+        blocked=blocked,
+        blocked_reasons=[code for code, _detail in issues],
+        blocked_reason_texts=[detail for _code, detail in issues],
+        checkout_mode="account_session_first",
+        telegram_fallback_available=True,
+    )
 
 
 def _ensure_checkout_runtime_ready() -> None:
@@ -3663,7 +3692,7 @@ async def _rub_create_order_internal(
 
 @app.get("/api/payments/providers", response_model=RubProvidersOut)
 async def rub_payment_providers() -> RubProvidersOut:
-    return RubProvidersOut(providers=[RubProviderChoiceOut(**row) for row in enabled_provider_catalog()])
+    return _public_checkout_provider_state()
 
 
 @app.post("/api/payments/orders/create", response_model=RubOrderActionOut)
@@ -4297,6 +4326,17 @@ async def user_data(tg_id: int, request: Request, x_telegram_init_data: str = He
                 for n in nodes_for_user
             ],
             "devices": devices_payload,
+            "last_ip": str(getattr(user, "app_last_ip", "") or "").strip() or None,
+            "linked_telegram": {
+                "id": _linked_telegram_id(user) or None,
+                "username": str(getattr(user, "linked_telegram_username", "") or "").strip() or None,
+            },
+            "sync": {
+                "app_identity_known": bool(str(getattr(user, "app_install_id", "") or "").strip()),
+                "telegram_linked": bool(_linked_telegram_id(user)),
+                "subscription_ready": bool(str(getattr(user, "sub_token", "") or "").strip()),
+                "device_count": int(len(devices_payload)),
+            },
             "traffic": {
                 "used_gb": used_gb,
                 "total_gb": total_gb,

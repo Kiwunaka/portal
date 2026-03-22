@@ -381,6 +381,40 @@ class ApiP0ExtensionsTests(unittest.TestCase):
         self.assertIn("/s8Kx2mP7qR4wT/", str(body["subscription_url"]))
         self.assertTrue(calls)
 
+    def test_user_payload_includes_app_and_telegram_monitoring_context(self) -> None:
+        from db import SessionLocal
+        from models import User
+
+        s = SessionLocal()
+        try:
+            row = s.query(User).filter(User.tg_id == 1001).first()
+            self.assertIsNotNone(row)
+            row.is_app_user = True
+            row.app_install_id = "install-1001"
+            row.app_device_name = "Alice phone"
+            row.app_platform = "android"
+            row.app_version = "1.2.3"
+            row.app_last_ip = "203.0.113.10"
+            row.linked_telegram_id = 777001
+            row.linked_telegram_username = "alice_linked"
+            row.sub_token = row.sub_token or "subtoken-monitoring"
+            s.commit()
+        finally:
+            s.close()
+
+        client = TestClient(self.api.app)
+        hdrs = {"X-Telegram-Init-Data": self._init_data(1001, "alice")}
+        r = client.get("/api/user/1001", headers=hdrs)
+        self.assertEqual(r.status_code, 200, r.text)
+        body = r.json()
+        self.assertEqual(body.get("last_ip"), "203.0.113.10")
+        self.assertEqual(body.get("linked_telegram", {}).get("id"), 777001)
+        self.assertEqual(body.get("linked_telegram", {}).get("username"), "alice_linked")
+        self.assertTrue(body.get("sync", {}).get("app_identity_known"))
+        self.assertTrue(body.get("sync", {}).get("telegram_linked"))
+        self.assertTrue(body.get("sync", {}).get("subscription_ready"))
+        self.assertEqual(body.get("sync", {}).get("device_count"), 1)
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -26,6 +26,7 @@ Always start with:
 For client work, also read:
 
 - [external/client-fork/app/docs/README.md](C:/Users/kiwun/Documents/ai/VPN/external/client-fork/app/docs/README.md)
+- [Monitoring And Visibility](C:/Users/kiwun/Documents/ai/VPN/docs/operations/monitoring-and-visibility.md)
 - [Publishing And Signing Guide](C:/Users/kiwun/Documents/ai/VPN/docs/operations/publishing-and-signing-guide.md)
 
 ## Main Workspaces
@@ -106,6 +107,7 @@ Minimum docs to touch when relevant:
 - user-facing flow
 - client-specific contracts
 - publishing and signing guide when distribution, certificates, store status, or artifact names change
+- monitoring and visibility guide when hostname policy, probe expectations, support telemetry, or operator visibility changes
 
 ## Generated Artifact Policy
 

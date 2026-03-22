@@ -56,7 +56,20 @@ def main() -> int:
     steps: list[tuple[str, list[str], Path]] = []
 
     if not args.skip_gates:
-        gate_cmd = [python, "scripts/release_gate_check.py"]
+        gate_cmd = [
+            python,
+            "scripts/release_gate_check.py",
+            "--brain-ip",
+            args.brain_ip,
+            "--web-domain",
+            args.web_domain,
+            "--ssh-user",
+            args.ssh_user,
+            "--ssh-port",
+            str(args.ssh_port),
+            "--passwords",
+            args.passwords,
+        ]
         if args.quick_gate:
             gate_cmd.append("--quick")
         steps.append(("release gates", gate_cmd, REPO_ROOT))

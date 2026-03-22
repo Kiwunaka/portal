@@ -607,11 +607,40 @@ class ApiPaymentCallbacksTests(unittest.TestCase):
         client = TestClient(self.api.app)
         response = client.get("/api/payments/providers")
         self.assertEqual(response.status_code, 200, response.text)
-        rows = response.json().get("providers", [])
+        body = response.json()
+        self.assertTrue(body.get("ok"))
+        self.assertFalse(body.get("blocked"))
+        self.assertEqual(body.get("checkout_mode"), "account_session_first")
+        rows = body.get("providers", [])
         self.assertTrue(any((row.get("code") == "cardlink") for row in rows))
         self.assertTrue(any((row.get("code") == "pally") for row in rows))
         self.assertTrue(any((row.get("code") == "platima") for row in rows))
         self.assertTrue(any((row.get("code") == "freekassa") for row in rows))
+
+    def test_rub_provider_catalog_reports_blocked_state_when_checkout_disabled(self) -> None:
+        client = TestClient(self.api.app)
+        old_enabled = self.api.RUB_CHECKOUT_ENABLED
+        try:
+            self.api.RUB_CHECKOUT_ENABLED = False
+            response = client.get("/api/payments/providers")
+        finally:
+            self.api.RUB_CHECKOUT_ENABLED = old_enabled
+
+        self.assertEqual(response.status_code, 200, response.text)
+        body = response.json()
+        self.assertFalse(body.get("ok"))
+        self.assertTrue(body.get("blocked"))
+        self.assertEqual(body.get("providers"), [])
+        self.assertIn("checkout_disabled", body.get("blocked_reasons", []))
+        self.assertTrue(any("disabled" in text.lower() for text in body.get("blocked_reason_texts", [])))
+
+    def test_public_checkout_url_rewrites_legacy_portal_privacy_host(self) -> None:
+        old_url = getattr(self.api.Settings, "PAY_CHECKOUT_URL", "")
+        try:
+            self.api.Settings.PAY_CHECKOUT_URL = "https://portal-privacy.online/checkout?from=bot"
+            self.assertEqual(self.api._public_checkout_url(), "https://pay.pokrov.space/checkout/")
+        finally:
+            self.api.Settings.PAY_CHECKOUT_URL = old_url
 
     def test_generic_create_public_order_uses_selected_provider(self) -> None:
         client = TestClient(self.api.app)

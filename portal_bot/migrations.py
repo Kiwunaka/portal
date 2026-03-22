@@ -480,6 +480,10 @@ def run_migrations(engine: Engine) -> None:
                 ("disk_total_gb", "FLOAT DEFAULT 0"),
                 ("disk_free_gb", "FLOAT DEFAULT 0"),
                 ("last_ok_at", "DATETIME"),
+                ("last_probe_at", "DATETIME"),
+                ("last_probe_stage", "VARCHAR(64)"),
+                ("last_probe_error_kind", "VARCHAR(64)"),
+                ("last_probe_error_message", "VARCHAR(500)"),
             ]
             for col, ddl in wanted_cols:
                 if not _sqlite_column_exists(conn, "nodes", col):
@@ -512,7 +516,11 @@ def run_migrations(engine: Engine) -> None:
                   total_traffic_bytes BIGINT DEFAULT 0,
                   is_healthy BOOLEAN DEFAULT 1,
                   score FLOAT DEFAULT 0,
-                  source VARCHAR(64) DEFAULT 'collector'
+                  source VARCHAR(64) DEFAULT 'collector',
+                  probe_at DATETIME,
+                  probe_stage VARCHAR(64),
+                  probe_error_kind VARCHAR(64),
+                  probe_error_message VARCHAR(500)
                 );
                 """
             )
@@ -528,6 +536,10 @@ def run_migrations(engine: Engine) -> None:
                 ("total_up_bytes", "BIGINT DEFAULT 0"),
                 ("total_down_bytes", "BIGINT DEFAULT 0"),
                 ("total_traffic_bytes", "BIGINT DEFAULT 0"),
+                ("probe_at", "DATETIME"),
+                ("probe_stage", "VARCHAR(64)"),
+                ("probe_error_kind", "VARCHAR(64)"),
+                ("probe_error_message", "VARCHAR(500)"),
             ]
             for col, ddl in node_sample_cols:
                 if not _sqlite_column_exists(conn, "node_health_samples", col):
@@ -1014,6 +1026,10 @@ def _run_postgres_migrations(engine: Engine) -> None:
         conn.execute(text("ALTER TABLE nodes ADD COLUMN IF NOT EXISTS disk_used_gb DOUBLE PRECISION DEFAULT 0;"))
         conn.execute(text("ALTER TABLE nodes ADD COLUMN IF NOT EXISTS disk_total_gb DOUBLE PRECISION DEFAULT 0;"))
         conn.execute(text("ALTER TABLE nodes ADD COLUMN IF NOT EXISTS disk_free_gb DOUBLE PRECISION DEFAULT 0;"))
+        conn.execute(text("ALTER TABLE nodes ADD COLUMN IF NOT EXISTS last_probe_at TIMESTAMP;"))
+        conn.execute(text("ALTER TABLE nodes ADD COLUMN IF NOT EXISTS last_probe_stage VARCHAR(64);"))
+        conn.execute(text("ALTER TABLE nodes ADD COLUMN IF NOT EXISTS last_probe_error_kind VARCHAR(64);"))
+        conn.execute(text("ALTER TABLE nodes ADD COLUMN IF NOT EXISTS last_probe_error_message VARCHAR(500);"))
         conn.execute(text("CREATE INDEX IF NOT EXISTS ix_nodes_accepting_new_clients ON nodes(accepting_new_clients);"))
         conn.execute(text("CREATE INDEX IF NOT EXISTS ix_nodes_is_draining ON nodes(is_draining);"))
         conn.execute(text("ALTER TABLE node_health_samples ADD COLUMN IF NOT EXISTS cpu_percent DOUBLE PRECISION DEFAULT 0;"))
@@ -1025,6 +1041,10 @@ def _run_postgres_migrations(engine: Engine) -> None:
         conn.execute(text("ALTER TABLE node_health_samples ADD COLUMN IF NOT EXISTS total_up_bytes BIGINT DEFAULT 0;"))
         conn.execute(text("ALTER TABLE node_health_samples ADD COLUMN IF NOT EXISTS total_down_bytes BIGINT DEFAULT 0;"))
         conn.execute(text("ALTER TABLE node_health_samples ADD COLUMN IF NOT EXISTS total_traffic_bytes BIGINT DEFAULT 0;"))
+        conn.execute(text("ALTER TABLE node_health_samples ADD COLUMN IF NOT EXISTS probe_at TIMESTAMP;"))
+        conn.execute(text("ALTER TABLE node_health_samples ADD COLUMN IF NOT EXISTS probe_stage VARCHAR(64);"))
+        conn.execute(text("ALTER TABLE node_health_samples ADD COLUMN IF NOT EXISTS probe_error_kind VARCHAR(64);"))
+        conn.execute(text("ALTER TABLE node_health_samples ADD COLUMN IF NOT EXISTS probe_error_message VARCHAR(500);"))
 
         conn.execute(
             text(

@@ -197,6 +197,10 @@ class Node(Base):
     disk_total_gb = Column(Float, default=0.0)
     disk_free_gb = Column(Float, default=0.0)
     last_ok_at = Column(DateTime, nullable=True)
+    last_probe_at = Column(DateTime, nullable=True)
+    last_probe_stage = Column(String(64), nullable=True)
+    last_probe_error_kind = Column(String(64), nullable=True)
+    last_probe_error_message = Column(String(500), nullable=True)
 
 
 class UserNode(Base):
@@ -354,6 +358,10 @@ class NodeHealthSample(Base):
     is_healthy = Column(Boolean, default=True)
     score = Column(Float, default=0.0)
     source = Column(String(64), default="collector")
+    probe_at = Column(DateTime, nullable=True)
+    probe_stage = Column(String(64), nullable=True)
+    probe_error_kind = Column(String(64), nullable=True)
+    probe_error_message = Column(String(500), nullable=True)
 
 
 class Event(Base):

@@ -48,6 +48,22 @@ Important concepts:
 
 This supports a friendlier device model than a Telegram-only account design.
 
+## Visibility Expectations
+
+For support and operations, the app-first account model should make it possible to inspect one connected story across:
+
+- app account and session
+- linked Telegram account when present
+- device record and device name
+- recent `last_ip`
+- current subscription and node context
+
+Visibility rule:
+
+- Telegram remains optional for the user journey
+- once linked, Telegram identity becomes part of the support and recovery context
+- device and IP context should be used for diagnosis and abuse control, not as a public-facing marketing message
+
 ## Live App-First Endpoints
 
 Current live backend contract:
@@ -134,6 +150,13 @@ Support direction should stay consistent across app, WebApp, and helpbot:
 - support messages should include device context
 - users should be able to start support from inside the app
 - helpbot remains a valid external fallback
+
+Support operators should also be able to see:
+
+- whether Telegram is linked
+- the current or most recent device name and platform
+- recent `last_ip` context
+- enough node and subscription state to understand whether the problem is user-specific or wider
 
 ## Release Scope Note
 

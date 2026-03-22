@@ -29,6 +29,7 @@ Use the role-based paths below first. If you need older context, go to the archi
 ## Start Here As Operator
 
 - [Deployment And Access](C:/Users/kiwun/Documents/ai/VPN/docs/operations/deployment-and-access.md)
+- [Monitoring And Visibility](C:/Users/kiwun/Documents/ai/VPN/docs/operations/monitoring-and-visibility.md)
 - [Publishing And Signing Guide](C:/Users/kiwun/Documents/ai/VPN/docs/operations/publishing-and-signing-guide.md)
 - [System Overview](C:/Users/kiwun/Documents/ai/VPN/docs/architecture/system-overview.md)
 - [Product Overview](C:/Users/kiwun/Documents/ai/VPN/docs/product/portal-vpn-product.md)
@@ -58,6 +59,7 @@ Use the role-based paths below first. If you need older context, go to the archi
 ### Operations
 
 - [docs/operations/deployment-and-access.md](C:/Users/kiwun/Documents/ai/VPN/docs/operations/deployment-and-access.md)
+- [docs/operations/monitoring-and-visibility.md](C:/Users/kiwun/Documents/ai/VPN/docs/operations/monitoring-and-visibility.md)
 - [docs/operations/publishing-and-signing-guide.md](C:/Users/kiwun/Documents/ai/VPN/docs/operations/publishing-and-signing-guide.md)
 
 ### Developer

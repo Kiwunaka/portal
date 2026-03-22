@@ -26,6 +26,7 @@ This file is living source of truth for repository layout, local authorities, sc
 | Platform architecture | [docs/architecture/system-overview.md](C:/Users/kiwun/Documents/ai/VPN/docs/architecture/system-overview.md) |
 | App-first and Telegram reward flow | [docs/architecture/app-first-and-bonus-flows.md](C:/Users/kiwun/Documents/ai/VPN/docs/architecture/app-first-and-bonus-flows.md) |
 | Deploy and access | [docs/operations/deployment-and-access.md](C:/Users/kiwun/Documents/ai/VPN/docs/operations/deployment-and-access.md) |
+| Monitoring and visibility | [docs/operations/monitoring-and-visibility.md](C:/Users/kiwun/Documents/ai/VPN/docs/operations/monitoring-and-visibility.md) |
 | Publishing and signing | [docs/operations/publishing-and-signing-guide.md](C:/Users/kiwun/Documents/ai/VPN/docs/operations/publishing-and-signing-guide.md) |
 | Developer workflow | [docs/developer/developer-guide.md](C:/Users/kiwun/Documents/ai/VPN/docs/developer/developer-guide.md) |
 | User journey | [docs/user/portal-vpn-user-guide-ru.md](C:/Users/kiwun/Documents/ai/VPN/docs/user/portal-vpn-user-guide-ru.md) |
@@ -44,6 +45,7 @@ This file is living source of truth for repository layout, local authorities, sc
 
 - `admin_webapp_smoke.py`
 - `release_gate_check.py`
+- `render_ru_probe_report.py`
 - `smoke_client_apps.py`
 - `ui_visual_smoke.py`
 - `check-links.py`
