@@ -1,6 +1,6 @@
 # POKROV Documentation Index
 
-Last updated: 2026-03-20
+Last updated: 2026-03-22
 
 This directory is split into two classes of material:
 
@@ -29,6 +29,7 @@ Use the role-based paths below first. If you need older context, go to the archi
 ## Start Here As Operator
 
 - [Deployment And Access](C:/Users/kiwun/Documents/ai/VPN/docs/operations/deployment-and-access.md)
+- [Publishing And Signing Guide](C:/Users/kiwun/Documents/ai/VPN/docs/operations/publishing-and-signing-guide.md)
 - [System Overview](C:/Users/kiwun/Documents/ai/VPN/docs/architecture/system-overview.md)
 - [Product Overview](C:/Users/kiwun/Documents/ai/VPN/docs/product/portal-vpn-product.md)
 
@@ -57,6 +58,7 @@ Use the role-based paths below first. If you need older context, go to the archi
 ### Operations
 
 - [docs/operations/deployment-and-access.md](C:/Users/kiwun/Documents/ai/VPN/docs/operations/deployment-and-access.md)
+- [docs/operations/publishing-and-signing-guide.md](C:/Users/kiwun/Documents/ai/VPN/docs/operations/publishing-and-signing-guide.md)
 
 ### Developer
 

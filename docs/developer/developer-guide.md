@@ -1,6 +1,6 @@
 # Developer Guide
 
-Last updated: 2026-03-20
+Last updated: 2026-03-22
 
 ## Document Status
 
@@ -26,6 +26,7 @@ Always start with:
 For client work, also read:
 
 - [external/client-fork/app/docs/README.md](C:/Users/kiwun/Documents/ai/VPN/external/client-fork/app/docs/README.md)
+- [Publishing And Signing Guide](C:/Users/kiwun/Documents/ai/VPN/docs/operations/publishing-and-signing-guide.md)
 
 ## Main Workspaces
 
@@ -40,6 +41,11 @@ Contains backend, bots, worker jobs, webapp, marketing site, ops scripts, and pl
 - [C:/Users/kiwun/Documents/ai/VPN/external/client-fork/app](C:/Users/kiwun/Documents/ai/VPN/external/client-fork/app)
 
 Contains the `POKROV VPN` Flutter fork for Android and Windows.
+
+Current scope note:
+
+- full public `v1` target is Android and Windows
+- `iOS` and `macOS` work in this wave is documentation, readiness, and packaging prep only
 
 ## Backend Commands
 
@@ -99,6 +105,7 @@ Minimum docs to touch when relevant:
 - developer workflow
 - user-facing flow
 - client-specific contracts
+- publishing and signing guide when distribution, certificates, store status, or artifact names change
 
 ## Generated Artifact Policy
 

@@ -1,13 +1,11 @@
-import { getPortalPublicConfig } from "@/lib/portal";
+import { CANONICAL_MARKETING_SITE_URL } from "@/lib/portal";
 import Link from "next/link";
 
-const config = getPortalPublicConfig(process.env as Record<string, string | undefined>);
-
 function marketingDocumentUrl(pathname: "/offer/" | "/privacy/"): string {
-  const checkoutUrl = String(config.checkoutUrl || "").trim();
-  if (checkoutUrl) {
+  const marketingSiteUrl = String(CANONICAL_MARKETING_SITE_URL || "").trim();
+  if (marketingSiteUrl) {
     try {
-      const url = new URL(checkoutUrl);
+      const url = new URL(marketingSiteUrl);
       url.pathname = pathname;
       url.search = "";
       url.hash = "";
@@ -16,7 +14,7 @@ function marketingDocumentUrl(pathname: "/offer/" | "/privacy/"): string {
       // Fall through to domain fallback below.
     }
   }
-  return `https://pokrov.space${pathname}`;
+  return `${CANONICAL_MARKETING_SITE_URL}${pathname}`;
 }
 
 export default function SupportLegalPage() {

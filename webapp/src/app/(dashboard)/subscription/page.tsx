@@ -183,7 +183,7 @@ export default function SubscriptionPage() {
           <p className="font-mono text-xs uppercase tracking-[0.14em] text-emerald-500">умная ссылка</p>
           <h2 className="mt-2 font-display text-3xl font-bold">С маршрутами и автоподстройкой</h2>
           <p className="mt-3 text-sm text-slate-600 dark:text-slate-300">
-            Для Hiddify, sing-box и NekoBox. Внутри уже есть страны, быстрые маршруты и понятный путь для первого запуска.
+            Для POKROV VPN, sing-box и NekoBox. Внутри уже есть страны, быстрые маршруты и понятный путь для первого запуска.
           </p>
           <div className="mt-4 rounded-2xl border border-white/40 bg-white/50 p-4 text-xs text-slate-600 dark:border-white/10 dark:bg-white/5 dark:text-slate-300">
             {smartLink || "Ссылка появится после активации доступа."}

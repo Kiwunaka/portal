@@ -134,6 +134,22 @@ def _render_markdown(results: list[GateResult]) -> str:
     return "\n".join(lines)
 
 
+def _optional_runtime_smoke_gate() -> tuple[str, list[str], Path] | None:
+    init_data = str(os.getenv("TELEGRAM_INIT_DATA", "") or "").strip()
+    if not init_data:
+        return None
+    return (
+        "Client apps runtime smoke",
+        [
+            sys.executable,
+            "scripts/smoke_client_apps.py",
+            "--check-providers",
+            "--require-release-handoff",
+        ],
+        REPO_ROOT,
+    )
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description="Run local release gates and save markdown report.")
     parser.add_argument(
@@ -166,6 +182,10 @@ def main() -> int:
             ("WebApp production build", [_npm_exec(), "run", "build"], REPO_ROOT / "webapp"),
             ("UI visual smoke", [sys.executable, "scripts/ui_visual_smoke.py"], REPO_ROOT),
         ]
+
+    runtime_smoke_gate = _optional_runtime_smoke_gate()
+    if runtime_smoke_gate is not None:
+        gates.append(runtime_smoke_gate)
 
     results: list[GateResult] = []
     for name, cmd, cwd in gates:

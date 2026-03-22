@@ -1,6 +1,6 @@
 # POKROV System Overview
 
-Last updated: 2026-03-20
+Last updated: 2026-03-22
 
 ## Document Status
 
@@ -49,11 +49,16 @@ Node lifecycle rule:
 ### User Interfaces
 
 - `webapp/`
-  user cabinet and web-admin
+  user cabinet, session continuation, and web-admin
 - `marketing/`
-  public website, legal pages, and public conversion flows
+  public website, pricing, legal pages, and public conversion flows
 - `external/client-fork/app/`
   `POKROV VPN` consumer client for Android and Windows
+
+Current release scope rule:
+
+- full public `v1` ship target: `Android` and `Windows`
+- `iOS` and `macOS`: readiness and packaging documentation only in this wave
 
 ### Operational Tooling
 
@@ -94,6 +99,19 @@ Not source of truth:
 4. app calls reward claim API
 5. backend validates membership in `@pokrov_vpn`
 6. backend grants `+10 days` when eligible
+
+### Checkout Continuation Flow
+
+1. user opens pricing or renewal from marketing, webapp, or bot
+2. platform resolves a valid web session or signed checkout ticket
+3. checkout loads real payment providers or a truthful unavailable state
+4. payment completion returns the user to the active account journey
+
+Architecture rule:
+
+- public pricing may introduce checkout
+- real checkout must continue from authenticated or ticketed context
+- bot purchase flow remains valid, but it does not replace app-first public onboarding
 
 ### Support Flow
 
@@ -144,6 +162,16 @@ Major currently live public and app-first routes in `portal_bot/api.py` include:
 - tickets and admin APIs under `/api/tickets` and `/api/admin/*`
 
 The backend exposes both public/app-first surfaces and a broader Telegram/admin-oriented API set. Keep docs aligned with the actual route inventory in `portal_bot/api.py`.
+
+Current release-gate smoke focus should cover:
+
+- `GET /api/health`
+- `POST /api/client/session/start-trial`
+- Telegram OIDC start and finish
+- bot token handoff into webapp
+- `GET /api/client/apps`
+- `GET /api/payments/providers`
+- checkout continuation from session or ticket
 
 ## Telegram Registry
 

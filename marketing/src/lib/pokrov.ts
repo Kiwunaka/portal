@@ -1,7 +1,7 @@
 export type {
   PlanAlias,
   PlanCode,
-  PortalPublicConfig,
+  PortalPublicConfig as PokrovPublicConfig,
 } from "../../../shared/portal-config";
 
 export {
@@ -13,15 +13,12 @@ export {
   CANONICAL_CONTACT_EMAIL,
   CANONICAL_ENTERPRISE_EMAIL,
   CANONICAL_FEEDBACK_BOT_URL,
-  CANONICAL_MARKETING_SITE_URL,
   CANONICAL_NEWS_CHANNEL_URL,
   CANONICAL_PAY_ORIGIN,
   CANONICAL_PLATFORM_BRAND,
   CANONICAL_SUPPORT_BOT_URL,
   CANONICAL_WEBAPP_URL,
-  LEGACY_PUBLIC_MARKERS,
   PLAN_ALIAS_TO_CODE,
-  getPortalPublicConfig,
   normalizeCheckoutUrl,
   normalizePlanCode,
   normalizeTelegramUrl,
@@ -32,3 +29,5 @@ export {
   getCopyCatalogVersion,
   getCopyText,
 } from "../../../shared/copy";
+
+export { getPortalPublicConfig as getPokrovPublicConfig } from "../../../shared/portal-config";

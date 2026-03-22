@@ -320,7 +320,7 @@ def _default_live_updates() -> list[dict[str, Any]]:
         },
         {
             "id": 0,
-            "title": "Обновлён кабинет PORTAL",
+            "title": "Обновлён кабинет POKROV",
             "summary": "Сделали поддержку, загрузки и checkout более понятными и без лишнего шума.",
             "date": "2026-02-13",
             "link": f"https://t.me/{channel}/2",
@@ -3603,7 +3603,7 @@ async def _rub_create_order_internal(
             order_id=order_id,
             amount_rub=amount_rub,
             currency="RUB",
-            description=f"PORTAL {plan_label}",
+            description=f"POKROV VPN {plan_label}",
             success_url=_pay_success_url(provider),
             fail_url=_pay_fail_url(provider),
             result_url=_provider_result_url(provider),
@@ -8350,7 +8350,7 @@ async def subscription(token: str, request: Request, format: str = Query(default
     headers = {
         "Subscription-Userinfo": f"upload=0; download=0; total={total_bytes}; expire={header_expire}",
         "Profile-Update-Interval": str(int(PROFILE_UPDATE_INTERVAL_HOURS)),
-        "Content-Disposition": 'attachment; filename="Portal_Subscription"',
+        "Content-Disposition": 'attachment; filename="pokrov_vpn_subscription"',
     }
 
     nodes_for_user = _nodes_for_user(user, nodes, session=s)
@@ -8362,12 +8362,12 @@ async def subscription(token: str, request: Request, format: str = Query(default
             return Response(content="", media_type="text/plain", status_code=503)
 
         cfg = (
-            _singbox_free_allowlist_config(user_uuid=user.uuid, nodes=nodes_for_user, title="Portal (Free)")
+            _singbox_free_allowlist_config(user_uuid=user.uuid, nodes=nodes_for_user, title="POKROV VPN (Free)")
             if (user.sub_type or "").upper() == "FREE"
-            else _singbox_multi_node_config(user_uuid=user.uuid, nodes=nodes_for_user, title="Portal")
+            else _singbox_multi_node_config(user_uuid=user.uuid, nodes=nodes_for_user, title="POKROV VPN")
         )
-        headers["Content-Disposition"] = 'attachment; filename="Portal.json"'
-        headers["Profile-Title"] = "Portal"
+        headers["Content-Disposition"] = 'attachment; filename="pokrov-vpn.json"'
+        headers["Profile-Title"] = "POKROV VPN"
         if request.method == "HEAD":
             return Response(content="", media_type="application/json", headers=headers)
         return Response(content=json.dumps(cfg, indent=2), media_type="application/json", headers=headers)

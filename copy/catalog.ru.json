@@ -1,10 +1,10 @@
 {
-  "catalog_version": "2026-03-06",
+  "catalog_version": "2026-03-22",
   "locale": "ru",
   "items": {
     "marketing.meta.title": {
       "surface": "marketing.meta",
-      "ru": "PORTAL - цифровой доступ без лишних шагов",
+      "ru": "POKROV VPN - понятный VPN для телефона и компьютера",
       "variables": [],
       "tone": "premium-friendly",
       "allowed_public": true,
@@ -13,7 +13,7 @@
     },
     "marketing.meta.description": {
       "surface": "marketing.meta",
-      "ru": "Быстрый старт через Telegram, оплата в рублях и понятный кабинет с поддержкой без долгого ожидания.",
+      "ru": "Скачайте приложение для Android или Windows, получите 5 дней бесплатно и управляйте доступом без сложной настройки. Telegram остаётся как запасной путь и поддержка.",
       "variables": [],
       "tone": "friendly",
       "allowed_public": true,
@@ -22,7 +22,7 @@
     },
     "marketing.hero.kicker": {
       "surface": "marketing.home.hero",
-      "ru": "PORTAL • Telegram-first • оплата в рублях",
+      "ru": "POKROV VPN • 5 дней бесплатно • Android и Windows",
       "variables": [],
       "tone": "friendly",
       "allowed_public": true,
@@ -31,7 +31,7 @@
     },
     "marketing.hero.title": {
       "surface": "marketing.home.hero",
-      "ru": "Цифровой доступ без сложной настройки",
+      "ru": "Простой старт, спокойный интернет и никакой путаницы",
       "variables": [],
       "tone": "premium-friendly",
       "allowed_public": true,
@@ -40,7 +40,7 @@
     },
     "marketing.hero.subtitle": {
       "surface": "marketing.home.hero",
-      "ru": "Откройте Telegram, выберите план и получите готовый доступ за пару минут — с понятным кабинетом и живой поддержкой.",
+      "ru": "Основной путь начинается с приложения: устанавливаете POKROV VPN, получаете 5 дней бесплатно и проверяете сервис в своих обычных сценариях. Если понадобится, Telegram всегда рядом для входа, оплаты и помощи.",
       "variables": [],
       "tone": "friendly",
       "allowed_public": true,
@@ -49,7 +49,7 @@
     },
     "marketing.hero.primary_cta": {
       "surface": "marketing.home.hero",
-      "ru": "Подключиться в Telegram",
+      "ru": "Скачать приложение",
       "variables": [],
       "tone": "direct",
       "allowed_public": true,
@@ -58,7 +58,7 @@
     },
     "marketing.hero.secondary_cta": {
       "surface": "marketing.home.hero",
-      "ru": "Сравнить планы",
+      "ru": "Открыть кабинет",
       "variables": [],
       "tone": "direct",
       "allowed_public": true,
@@ -67,7 +67,7 @@
     },
     "marketing.support.title": {
       "surface": "marketing.home.support",
-      "ru": "Если нужна помощь, не придётся разбираться в одиночку",
+      "ru": "Если нужен человек, а не автопилот",
       "variables": [],
       "tone": "friendly",
       "allowed_public": true,
@@ -76,7 +76,7 @@
     },
     "marketing.support.subtitle": {
       "surface": "marketing.home.support",
-      "ru": "Поддержка отвечает в Telegram и помогает с оплатой, приложениями и подключением без долгих переписок.",
+      "ru": "Поддержка помогает с приложением, оплатой, переносом на новый клиент и любыми непонятными моментами. Telegram здесь не навязывается как главный вход, а работает как быстрый живой канал.",
       "variables": [],
       "tone": "friendly",
       "allowed_public": true,
@@ -94,7 +94,7 @@
     },
     "marketing.checkout.subtitle": {
       "surface": "marketing.checkout",
-      "ru": "Срок и итоговая сумма видны сразу. После оплаты доступ обновится автоматически, а если что-то пойдёт не так — сценарий можно продолжить через Telegram.",
+      "ru": "Показываем только реальные способы оплаты и только по настоящему сценарию: из кабинета или по персональной ссылке. Если маршрут временно недоступен, переводим на понятный запасной путь.",
       "variables": [],
       "tone": "friendly",
       "allowed_public": true,
@@ -103,7 +103,7 @@
     },
     "marketing.checkout.primary_cta": {
       "surface": "marketing.checkout",
-      "ru": "Перейти к оплате",
+      "ru": "Открыть кабинет и продолжить",
       "variables": [],
       "tone": "direct",
       "allowed_public": true,
@@ -112,7 +112,7 @@
     },
     "marketing.legal.offer.intro": {
       "surface": "marketing.legal.offer",
-      "ru": "Здесь собраны основные условия доступа к сервису PORTAL, порядок оплаты и правила использования выбранного периода.",
+      "ru": "Здесь собраны базовые условия доступа к POKROV VPN, порядок продления и основные правила использования сервиса без лишнего юридического тумана.",
       "variables": [],
       "tone": "neutral",
       "allowed_public": true,
@@ -121,7 +121,7 @@
     },
     "marketing.legal.privacy.intro": {
       "surface": "marketing.legal.privacy",
-      "ru": "PORTAL хранит только данные, которые действительно нужны для работы аккаунта, поддержки и стабильности сервиса.",
+      "ru": "POKROV VPN хранит только те данные, которые действительно нужны для работы аккаунта, оплаты, поддержки и стабильности сервиса.",
       "variables": [],
       "tone": "neutral",
       "allowed_public": true,
@@ -130,7 +130,7 @@
     },
     "webapp.entry.title": {
       "surface": "webapp.entry",
-      "ru": "Продолжить вход в PORTAL",
+      "ru": "Войдите и сразу продолжайте в кабинете",
       "variables": [],
       "tone": "direct",
       "allowed_public": true,
@@ -139,7 +139,7 @@
     },
     "webapp.entry.subtitle": {
       "surface": "webapp.entry",
-      "ru": "В Telegram вход подтверждается автоматически. Если вы открыли кабинет в браузере, просто вернитесь в бот и нажмите кнопку входа.",
+      "ru": "В браузере вход подтверждается через Telegram. Если доступ уже подтверждён, кабинет откроется автоматически. Если нет, покажем понятную кнопку и короткий запасной путь.",
       "variables": [],
       "tone": "friendly",
       "allowed_public": true,
@@ -175,7 +175,7 @@
     },
     "webapp.subscription.subtitle": {
       "surface": "webapp.subscription",
-      "ru": "Сравните варианты, проверьте лимиты и продлите доступ без лишних действий.",
+      "ru": "Здесь видно, что делать дальше: проверить тест, сравнить срок, устройства и спокойно перейти к продлению без сюрпризов.",
       "variables": [],
       "tone": "friendly",
       "allowed_public": true,
@@ -193,7 +193,7 @@
     },
     "webapp.checkout.subtitle": {
       "surface": "webapp.checkout",
-      "ru": "Проверяйте сумму до перехода на оплату. После подтверждения доступ обновится автоматически.",
+      "ru": "Сначала показываем срок и сумму, потом переводим только на рабочий маршрут оплаты. Если что-то не сходится, остаётся понятный возврат в Telegram и поддержку.",
       "variables": [],
       "tone": "friendly",
       "allowed_public": true,
@@ -211,7 +211,7 @@
     },
     "webapp.support.subtitle": {
       "surface": "webapp.support",
-      "ru": "Быстрый вопрос, новый тикет или продолжение диалога — всё в одном разделе.",
+      "ru": "Если что-то не работает или вызывает вопросы, не нужно искать обходные тропинки. Поддержка уже здесь и видит контекст аккаунта.",
       "variables": [],
       "tone": "friendly",
       "allowed_public": true,
@@ -220,7 +220,7 @@
     },
     "webapp.support.empty_tickets": {
       "surface": "webapp.support",
-      "ru": "Пока пусто. Если нужна помощь, создайте обращение в пару строк.",
+      "ru": "Пока обращений нет. Если понадобится помощь, напишите пару строк и мы продолжим уже с контекстом.",
       "variables": [],
       "tone": "friendly",
       "allowed_public": true,
@@ -229,7 +229,7 @@
     },
     "webapp.devices.title": {
       "surface": "webapp.devices",
-      "ru": "Устройства и точки подключения",
+      "ru": "Устройства и подключения",
       "variables": [],
       "tone": "direct",
       "allowed_public": true,
@@ -238,7 +238,7 @@
     },
     "webapp.devices.subtitle": {
       "surface": "webapp.devices",
-      "ru": "Здесь видны лимит устройств, текущие сессии и доступные страны по вашему плану.",
+      "ru": "Показываем лимит устройств, текущие подключения и доступные точки без перегруза служебными деталями.",
       "variables": [],
       "tone": "friendly",
       "allowed_public": true,
@@ -256,7 +256,7 @@
     },
     "webapp.statistics.subtitle": {
       "surface": "webapp.statistics",
-      "ru": "Показываем только реальные данные: срок, лимиты, трафик и здоровье точек подключения.",
+      "ru": "Только полезные данные: срок, лимиты, трафик и текущее состояние узлов, без декоративной аналитики.",
       "variables": [],
       "tone": "friendly",
       "allowed_public": true,
@@ -274,7 +274,7 @@
     },
     "webapp.downloads.subtitle": {
       "surface": "webapp.downloads",
-      "ru": "Здесь только актуальные ссылки на приложения и короткий путь к инструкции.",
+      "ru": "Здесь держим только актуальные ссылки на Android и Windows, плюс короткий путь к инструкции и поддержке.",
       "variables": [],
       "tone": "friendly",
       "allowed_public": true,
@@ -283,7 +283,7 @@
     },
     "bot.welcome": {
       "surface": "bot.main",
-      "ru": "POKROV VPN помогает быстро подключиться через Telegram: понятный выбор плана, короткий путь к оплате и поддержка рядом.",
+      "ru": "POKROV VPN помогает быстро продолжить путь, если вы пришли из Telegram: открыть кабинет, выбрать план, получить персональную ссылку на оплату или задать вопрос без путаницы.",
       "variables": [],
       "tone": "premium-friendly",
       "allowed_public": false,
@@ -292,7 +292,7 @@
     },
     "bot.choose_tariff": {
       "surface": "bot.main",
-      "ru": "Выберите удобный план. Сразу видно срок, лимит устройств и какие страны будут доступны.",
+      "ru": "Выберите удобный срок. Сразу видно цену, лимит устройств и следующий шаг без лишних экранов.",
       "variables": [],
       "tone": "friendly",
       "allowed_public": false,
@@ -301,7 +301,7 @@
     },
     "bot.support.welcome": {
       "surface": "bot.support",
-      "ru": "Поддержка POKROV VPN рядом. Откройте новый запрос или продолжите уже начатый диалог без лишних шагов.",
+      "ru": "Поддержка POKROV VPN рядом. Откройте новый запрос или продолжите уже начатый диалог без лишней бюрократии.",
       "variables": [],
       "tone": "friendly",
       "allowed_public": false,
@@ -310,7 +310,7 @@
     },
     "bot.feedback.welcome": {
       "surface": "bot.feedback",
-      "ru": "Сюда можно отправить идеи, отзывы и короткие заметки о POKROV VPN. Мы читаем всё и берём лучшие фразы на главную страницу.",
+      "ru": "Сюда можно отправить отзыв, идею или короткое замечание о POKROV VPN. Мы всё читаем и лучшие формулировки выносим на главную после модерации.",
       "variables": [],
       "tone": "friendly",
       "allowed_public": false,
@@ -328,7 +328,7 @@
     },
     "bot.feedback.thanks": {
       "surface": "bot.feedback",
-      "ru": "Спасибо! Мы сохранили отзыв и передали его на модерацию. Если он подойдёт для главной, покажем его на сайте.",
+      "ru": "Спасибо. Мы сохранили отзыв и передали его на модерацию. Если он подойдёт для главной, покажем его на сайте с маской ника.",
       "variables": [],
       "tone": "friendly",
       "allowed_public": false,

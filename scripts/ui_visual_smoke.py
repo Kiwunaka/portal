@@ -41,25 +41,26 @@ def _default_checks() -> list[Check]:
         Check(
             name="marketing-home-cta",
             path=REPO_ROOT / "marketing" / "src" / "components" / "marketing-landing.tsx",
-            must_contain=("🚀 Начать бесплатно", "Посмотреть тарифы", "Открыть в Telegram"),
-            must_not_contain=("Открыть Telegram",),
+            must_contain=("Скачать приложение", "Открыть кабинет", "POKROV VPN"),
+            must_not_contain=("Telegram-first",),
         ),
         Check(
             name="marketing-offer-flow",
             path=REPO_ROOT / "marketing" / "src" / "app" / "offer" / "page.tsx",
             must_contain=("Открыть Telegram-бота",),
-            must_not_contain=("/checkout/", "Открыть оплату"),
+            must_not_contain=("/checkout/", "PORTAL"),
         ),
         Check(
             name="marketing-checkout-gateway",
             path=REPO_ROOT / "marketing" / "src" / "app" / "checkout" / "checkout-client.tsx",
-            must_contain=("Продолжить в Telegram", "Запустить тест в Telegram", "Прямая оплата открывается только по персональной ссылке из Telegram или кабинета."),
+            must_contain=("Продолжить в Telegram", "Открыть кабинет", "Чтобы открыть оплату по-настоящему, сначала войдите в кабинет или получите персональную ссылку через Telegram."),
             must_not_contain=("PORTALcheckout",),
         ),
         Check(
             name="webapp-entry",
             path=REPO_ROOT / "webapp" / "src" / "app" / "page.tsx",
-            must_contain=("portal entry", "Продолжить вход в PORTAL", "Очистить веб-вход"),
+            must_contain=("Войдите и сразу продолжайте в кабинете", "Открыть Telegram", "Сбросить вход"),
+            must_not_contain=("Продолжить вход в PORTAL",),
         ),
         Check(
             name="webapp-local-qr",

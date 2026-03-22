@@ -71,12 +71,62 @@ def _iter_urls(payload: dict) -> Iterable[tuple[str, str]]:
             yield key, val
 
 
+def _release_handoff_failures(payload: dict) -> list[str]:
+    android = payload.get("android", {}) or {}
+    windows = payload.get("windows", {}) or {}
+    docs_url = str(payload.get("docs_url", "") or "").strip()
+    failures: list[str] = []
+
+    android_primary = str(android.get("play_url", "") or "").strip() or str(android.get("apk_url", "") or "").strip()
+    windows_primary = str(windows.get("exe_url", "") or "").strip()
+
+    if not android_primary:
+        failures.append("android release URL is missing")
+    if not windows_primary:
+        failures.append("windows release URL is missing")
+    if not docs_url:
+        failures.append("docs_url is missing")
+    return failures
+
+
+def _provider_readiness_failures(payload: dict) -> list[str]:
+    rows = payload.get("providers", [])
+    if not isinstance(rows, list) or not rows:
+        return ["no enabled RUB payment providers"]
+
+    valid_rows = 0
+    for row in rows:
+        if not isinstance(row, dict):
+            continue
+        code = str(row.get("code", "") or "").strip()
+        label = str(row.get("label", "") or "").strip()
+        enabled = row.get("enabled", True)
+        if code and label and enabled is not False:
+            valid_rows += 1
+
+    if valid_rows == 0:
+        return ["no valid RUB payment providers in catalog"]
+    return []
+
+
+def _parse_json(result: HttpResult, *, endpoint: str) -> dict:
+    try:
+        payload = json.loads(result.body)
+    except json.JSONDecodeError as exc:
+        raise ValueError(f"{endpoint} returned non-JSON payload: {exc}") from exc
+    if not isinstance(payload, dict):
+        raise ValueError(f"{endpoint} returned non-object JSON payload")
+    return payload
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description="Smoke-check /api/client/apps and referenced download links.")
     parser.add_argument("--base-url", default=os.getenv("PORTAL_API_BASE_URL", "https://127.0.0.1"), help="API base URL")
     parser.add_argument("--init-data", default=os.getenv("TELEGRAM_INIT_DATA", ""), help="Telegram initData for auth")
     parser.add_argument("--timeout", type=int, default=15, help="HTTP timeout in seconds")
     parser.add_argument("--insecure", action="store_true", help="Disable TLS certificate verification")
+    parser.add_argument("--check-providers", action="store_true", help="Also validate /api/payments/providers readiness")
+    parser.add_argument("--require-release-handoff", action="store_true", help="Require Android, Windows and docs URLs to be present")
     args = parser.parse_args()
 
     base_url = args.base_url.rstrip("/")
@@ -113,14 +163,21 @@ def main() -> int:
         return 2
 
     try:
-        payload = json.loads(apps_resp.body)
-    except json.JSONDecodeError as exc:
-        print(f"[FAIL] /api/client/apps returned non-JSON payload: {exc}")
+        payload = _parse_json(apps_resp, endpoint="/api/client/apps")
+    except ValueError as exc:
+        print(f"[FAIL] {exc}")
         return 2
 
     print(f"[OK] /api/client/apps -> {apps_resp.status}")
 
     failures = 0
+    if args.require_release_handoff:
+        for failure in _release_handoff_failures(payload):
+            failures += 1
+            print(f"[FAIL] release handoff: {failure}")
+        if failures == 0:
+            print("[OK] release handoff URLs are present")
+
     checked = 0
     for key, url in _iter_urls(payload):
         checked += 1
@@ -139,8 +196,37 @@ def main() -> int:
     if checked == 0:
         print("[WARN] /api/client/apps contains no URLs to check")
 
+    if args.check_providers:
+        try:
+            providers_resp = _request(
+                f"{base_url}/api/payments/providers",
+                timeout=args.timeout,
+                insecure=args.insecure,
+            )
+        except URLError as exc:
+            print(f"[FAIL] /api/payments/providers request error: {exc}")
+            return 2
+
+        if not _is_ok(providers_resp.status):
+            print(f"[FAIL] /api/payments/providers -> {providers_resp.status}: {providers_resp.body[:200]!r}")
+            return 2
+
+        try:
+            providers_payload = _parse_json(providers_resp, endpoint="/api/payments/providers")
+        except ValueError as exc:
+            print(f"[FAIL] {exc}")
+            return 2
+
+        provider_failures = _provider_readiness_failures(providers_payload)
+        if provider_failures:
+            for failure in provider_failures:
+                failures += 1
+                print(f"[FAIL] providers: {failure}")
+        else:
+            print(f"[OK] /api/payments/providers -> {providers_resp.status}")
+
     if failures:
-        print(f"[FAIL] {failures} URL checks failed")
+        print(f"[FAIL] {failures} smoke checks failed")
         return 1
 
     print("[OK] smoke completed")

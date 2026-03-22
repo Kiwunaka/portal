@@ -189,7 +189,7 @@ def _rewrite_env(env_txt: str, *, public_api_base: str, webapp_url: str) -> str:
 
 def main() -> int:
     ap = argparse.ArgumentParser()
-    ap.add_argument("--domain", required=True, help="public domain, e.g. kiwunaka.space")
+    ap.add_argument("--domain", required=True, help="public domain, e.g. pokrov.space")
     ap.add_argument("--brain-ip", required=True)
     ap.add_argument("--brain-ssh-port", type=int, default=29374)
     ap.add_argument("--brain-ssh-user", default="root")

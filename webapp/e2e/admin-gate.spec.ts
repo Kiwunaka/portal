@@ -122,7 +122,7 @@ test.describe("Admin gate", () => {
   test("redirects non-admin from /admin/* to /dashboard", async ({ page }) => {
     await registerApiMocks(page, { isAdmin: false });
     await page.goto("admin/dashboard/");
-    await expect(page).toHaveURL(/\/webapp\/dashboard\/?$/);
+    await expect(page).toHaveURL(/\/dashboard\/?$/);
   });
 
   test("allows admin to open all admin sections", async ({ page }) => {
@@ -141,7 +141,7 @@ test.describe("Admin gate", () => {
 
     for (const section of sections) {
       await page.goto(section);
-      await expect(page).toHaveURL(new RegExp(`/webapp/${section.replace(/\//g, "\\/")}$`));
+      await expect(page).toHaveURL(new RegExp(`/${section.replace(/\//g, "\\/")}$`));
       await expect(page.getByText("Панель управления")).toBeVisible();
     }
   });

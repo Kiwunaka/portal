@@ -2,9 +2,9 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "POKROV VPN | Свободный интернет через Telegram",
+  title: "POKROV VPN | Приложение для Android и Windows",
   description:
-    "POKROV VPN помогает начать с 5-дневного теста в Telegram, а затем перейти к кабинету, тарифу и поддержке без лишней суеты.",
+    "POKROV VPN помогает начать с приложения, получить 5-дневный тест и спокойно перейти к кабинету, продлению и поддержке без лишней суеты.",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

@@ -51,7 +51,7 @@ def _parse_inventory_ips(path: Path) -> dict[str, str]:
 def main() -> int:
     ap = argparse.ArgumentParser(description="Set nodes.host to DNS or IPv4 values on the brain control-plane DB.")
     ap.add_argument("--brain-ip", required=True)
-    ap.add_argument("--domain", required=True, help="root domain, e.g. kiwunaka.space")
+    ap.add_argument("--domain", required=True, help="root domain, e.g. pokrov.space")
     ap.add_argument("--mode", choices=["dns", "ip"], default="dns", help="dns: per-country hostnames; ip: force per-node IPv4 hosts")
     ap.add_argument("--ssh-user", default="root")
     ap.add_argument("--ssh-port", type=int, default=29374)

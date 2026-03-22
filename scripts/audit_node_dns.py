@@ -74,7 +74,7 @@ def main() -> int:
     ap = argparse.ArgumentParser(
         description="Audit DNS A/AAAA answers for node hosts and detect risky patterns."
     )
-    ap.add_argument("--domain", required=True, help="Root domain, e.g. kiwunaka.space")
+    ap.add_argument("--domain", required=True, help="Root domain, e.g. pokrov.space")
     ap.add_argument(
         "--inventory",
         default="docs/08-node-inventory.md",

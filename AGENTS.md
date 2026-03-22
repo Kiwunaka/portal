@@ -1,6 +1,6 @@
 # Repository Agents
 
-Last updated: 2026-03-20
+Last updated: 2026-03-22
 
 This file is the working contract for any agent or developer operating inside `C:\Users\kiwun\Documents\ai\VPN`.
 
@@ -25,6 +25,7 @@ Use it to answer four questions before touching code:
 - Main bot: `@pokrov_vpnbot`
 - Support bot: `@pokrov_supportbot`
 - Feedback bot: `@pokrov_feedbackbot`
+- Official public surfaces: `https://pokrov.space/`, `https://app.pokrov.space/`, `https://api.pokrov.space/`
 - Canonical control-plane host: `82.21.114.104`
 
 ## Must-Read Order

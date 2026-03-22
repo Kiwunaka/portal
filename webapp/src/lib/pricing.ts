@@ -70,6 +70,7 @@ export const PRICING_PLANS: PricingPlan[] = [
 ];
 
 const PROMO_RULES: Record<string, number> = {
+  POKROV10: 10,
   PORTAL10: 10,
   WELCOME15: 15,
   STARTBOOST: 15,

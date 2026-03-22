@@ -1,6 +1,6 @@
 # App-First And Bonus Flows
 
-Last updated: 2026-03-20
+Last updated: 2026-03-22
 
 ## Document Status
 
@@ -8,7 +8,7 @@ This file is living source of truth for app-first identity, Telegram linking, an
 
 ## Goal
 
-Document the current app-first identity model and the live Telegram bonus flow used by `POKROV VPN`.
+Document the current app-first identity model, checkout continuation, and the live Telegram bonus flow used by `POKROV VPN`.
 
 ## App-First Trial Flow
 
@@ -64,6 +64,34 @@ Related live surfaces also exposed by the backend:
 - `GET /api/bonuses`
 - ticket endpoints under `/api/tickets`
 
+## Web Login And Session Continuation
+
+Web surfaces support app-first continuation through:
+
+- Telegram widget or Telegram OIDC login in browser
+- bot-issued `web_session_token` handoff into `app.pokrov.space`
+- dashboard and checkout continuation from an existing web session
+
+Contract rule:
+
+- canonical API base is `https://api.pokrov.space/`
+- HTML responses from `app.pokrov.space` must never be treated as valid API JSON
+- web login should continue the user into account or checkout, not into a dead-end landing
+
+## Checkout Continuation
+
+1. user opens pricing, renewal, or upgrade
+2. platform resolves an active web session or signed checkout ticket
+3. web checkout requests available providers
+4. if providers are unavailable, UI must show a truthful blocked state
+5. on success, the user returns to the active account journey
+
+Checkout rule:
+
+- public pricing can start the flow
+- real payment actions require authenticated or ticketed continuation
+- Telegram bot billing remains valid as a secondary path
+
 ## Telegram Linking Flow
 
 1. app-first account requests Telegram linking
@@ -106,6 +134,15 @@ Support direction should stay consistent across app, WebApp, and helpbot:
 - support messages should include device context
 - users should be able to start support from inside the app
 - helpbot remains a valid external fallback
+
+## Release Scope Note
+
+This flow document applies to the full public `v1` experience on:
+
+- `Android`
+- `Windows`
+
+For `iOS` and `macOS`, only readiness, signing prerequisites, and packaging notes are in scope in this release wave.
 
 ## Feedback And Review Flow
 

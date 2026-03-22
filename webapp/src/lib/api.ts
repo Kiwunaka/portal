@@ -1,4 +1,5 @@
 ﻿/* eslint-disable @typescript-eslint/no-explicit-any */
+import { classifyApiPayload, resolveCandidateApiBases, resolvePrimaryApiBase } from "./api-base.mjs";
 import { getInitData } from "./telegram";
 
 const WEB_SESSION_TOKEN_KEY = "portal_web_session_token";
@@ -763,13 +764,6 @@ export function clearWebSessionToken(): void {
   window.localStorage.removeItem(WEB_SESSION_TOKEN_KEY);
 }
 
-function defaultApiBase(): string {
-  if (typeof window !== "undefined") {
-    return window.location.origin;
-  }
-  return DIRECT_API_BASE;
-}
-
 function dispatchAuthRequired(): void {
   if (typeof window === "undefined") return;
   window.dispatchEvent(new CustomEvent("portal-auth-required"));
@@ -778,6 +772,9 @@ function dispatchAuthRequired(): void {
 async function readApiError(r: Response): Promise<string> {
   const text = (await r.text()).trim();
   if (!text) return `API error: ${r.status}`;
+  if (classifyApiPayload({ bodyText: text, contentType: r.headers.get("content-type") || "" }) === "html") {
+    return "Received app shell instead of API response";
+  }
   try {
     const parsed = JSON.parse(text) as { detail?: string; message?: string };
     return String(parsed?.detail || parsed?.message || text);
@@ -793,20 +790,18 @@ function candidateApiBases(): string[] {
     process.env.VITE_PUBLIC_API_BASE_URL ||
     ""
   ).trim();
-  if (envBaseRaw) return [envBaseRaw.replace(/\/+$/, "")];
-  if (typeof window === "undefined") return [defaultApiBase().replace(/\/+$/, ""), DIRECT_API_BASE];
-
-  const origin = window.location.origin.replace(/\/+$/, "");
-  const proto = window.location.protocol;
-  const host = window.location.hostname;
-  const legacy = `${proto}//${host}:2096`;
-  const hasSessionToken = !!getWebSessionToken();
+  const origin = typeof window !== "undefined" ? window.location.origin : "";
+  const hasSessionToken = typeof window !== "undefined" && !!getWebSessionToken();
   const useLegacyFallback =
     String(process.env.NEXT_PUBLIC_ENABLE_LEGACY_PORT_FALLBACK || process.env.VITE_ENABLE_LEGACY_PORT_FALLBACK || "")
       .toLowerCase() === "true";
-  const defaults = hasSessionToken ? [DIRECT_API_BASE, origin] : [origin, DIRECT_API_BASE];
-  if (useLegacyFallback) defaults.push(legacy.replace(/\/+$/, ""));
-  return Array.from(new Set(defaults));
+  return resolveCandidateApiBases({
+    envBase: envBaseRaw,
+    origin,
+    directApiBase: DIRECT_API_BASE,
+    hasSessionToken,
+    enableLegacyPortFallback: useLegacyFallback,
+  });
 }
 
 export function resolveApiUrl(path: string): string {
@@ -814,8 +809,35 @@ export function resolveApiUrl(path: string): string {
   if (!raw) return "";
   if (/^https?:\/\//i.test(raw)) return raw;
   const normalizedPath = raw.startsWith("/") ? raw : `/${raw}`;
-  const [base] = candidateApiBases();
+  const base = resolvePrimaryApiBase({
+    envBase:
+      process.env.NEXT_PUBLIC_API_BASE_URL ||
+      process.env.NEXT_PUBLIC_PUBLIC_API_BASE_URL ||
+      process.env.VITE_PUBLIC_API_BASE_URL ||
+      "",
+    origin: typeof window !== "undefined" ? window.location.origin : "",
+    directApiBase: DIRECT_API_BASE,
+  });
   return `${base}${normalizedPath}`;
+}
+
+async function parseJsonResponse<T>(response: Response): Promise<T> {
+  const text = await response.text();
+  const kind = classifyApiPayload({
+    bodyText: text,
+    contentType: response.headers.get("content-type") || "",
+  });
+  if (kind === "html") {
+    throw new Error("Received app shell instead of API response");
+  }
+  if (!text.trim()) {
+    return {} as T;
+  }
+  try {
+    return JSON.parse(text) as T;
+  } catch {
+    throw new Error("Invalid API JSON response");
+  }
 }
 
 async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
@@ -835,11 +857,16 @@ async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
         throw new Error(text || `API error: ${r.status}`);
       }
       if (r.status === 204) return {} as T;
-      return (await r.json()) as T;
+      return await parseJsonResponse<T>(r);
     } catch (e: any) {
       lastErr = e;
       const msg = String(e?.message || e);
-      if (msg.includes("Failed to fetch") || msg.includes("NetworkError") || msg.includes("fetch")) {
+      if (
+        msg.includes("Failed to fetch") ||
+        msg.includes("NetworkError") ||
+        msg.includes("fetch") ||
+        msg.includes("Received app shell instead of API response")
+      ) {
         continue;
       }
       break;
@@ -941,10 +968,10 @@ export async function authByTelegramWebLogin(payload: TelegramWebLoginPayload): 
         body: JSON.stringify(payload),
       });
       if (!r.ok) {
-        const text = await r.text();
+        const text = await readApiError(r);
         throw new Error(text || `API error: ${r.status}`);
       }
-      return (await r.json()) as WebLoginResult;
+      return await parseJsonResponse<WebLoginResult>(r);
     } catch (e: any) {
       lastErr = e;
     }
@@ -962,7 +989,7 @@ export async function startTelegramOidcLogin(): Promise<TelegramOidcStartResult>
         const text = await readApiError(r);
         throw new Error(text || `API error: ${r.status}`);
       }
-      return (await r.json()) as TelegramOidcStartResult;
+      return await parseJsonResponse<TelegramOidcStartResult>(r);
     } catch (error: any) {
       lastErr = error;
     }
@@ -984,7 +1011,7 @@ export async function finishTelegramOidcLogin(payload: TelegramOidcFinishPayload
         const text = await readApiError(r);
         throw new Error(text || `API error: ${r.status}`);
       }
-      return (await r.json()) as WebLoginResult;
+      return await parseJsonResponse<WebLoginResult>(r);
     } catch (error: any) {
       lastErr = error;
     }

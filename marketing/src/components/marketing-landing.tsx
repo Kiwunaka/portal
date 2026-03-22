@@ -1,9 +1,9 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 
-import { getPortalPublicConfig } from "../lib/portal";
+import { getCopyText, getPokrovPublicConfig } from "../lib/pokrov";
 
-const config = getPortalPublicConfig(process.env as Record<string, string | undefined>);
+const config = getPokrovPublicConfig(process.env as Record<string, string | undefined>);
 
 export type MarketingReview = {
   name: string;
@@ -15,122 +15,143 @@ const DEFAULT_REVIEWS: MarketingReview[] = [
   {
     name: "mikh****",
     role: "Android",
-    text: "Запустил тест через Telegram, спокойно всё проверил и уже потом перешёл к платному доступу. Путь действительно короткий и без лишней путаницы.",
+    text: "Поставил приложение, спокойно проверил на своих сайтах и только потом решил продлевать. Наконец-то путь без суеты.",
   },
   {
     name: "anna****",
-    role: "iPhone",
-    text: "Понравилось, что сначала можно просто попробовать сервис на своих задачах, а потом уже без спешки выбрать подходящий вариант.",
+    role: "Windows",
+    text: "Понравилось, что сначала дают реальный тест, а не декоративную витрину. И поддержка отвечает по-человечески.",
   },
   {
     name: "serg****",
-    role: "Windows",
-    text: "Подключение оказалось понятным: бот, кабинет, продление и поддержка на своих местах. Не пришлось разбираться в десятке экранов.",
+    role: "Telegram",
+    text: "Telegram остался как удобный запасной канал, но сам сервис стал заметно понятнее и чище.",
   },
 ];
 
-const BENEFITS = [
+const PROMISE_CARDS = [
   {
-    title: "Понятный старт без сложной настройки",
-    desc: "Сначала Telegram-бот, затем тест на 5 дней, потом кабинет и продление, если сервис вам подошёл. Без длинных анкет и лишних развилок.",
+    title: "Сначала пробуете, потом решаете",
+    desc: "Пять дней бесплатного доступа помогают проверить скорость, удобство и ваши обычные сценарии без оплаты вслепую.",
   },
   {
-    title: "Сначала проверяете сами",
-    desc: "POKROV VPN не просит платить вслепую. Сначала вы смотрите, как сервис ведёт себя на ваших устройствах и привычных сайтах.",
+    title: "Приложение — главный вход",
+    desc: "В релизе делаем ставку на Android и Windows: понятный стартовый экран, крупная кнопка подключения и меньше лишнего шума.",
   },
   {
-    title: "Поддержка рядом, когда она нужна",
-    desc: "Если что-то непонятно с оплатой, приложением или подключением, можно сразу написать в поддержку и быстро получить ответ.",
-  },
-];
-
-const USE_CASES = [
-  {
-    title: "YouTube и длинные видео",
-    desc: "Когда нужен спокойный доступ к роликам, стримам и привычным видеосценариям без долгого старта.",
-  },
-  {
-    title: "TikTok, Instagram и короткие форматы",
-    desc: "Подходит для повседневного мобильного сценария, когда важны понятный запуск и быстрый возврат к привычному ритму.",
-  },
-  {
-    title: "Телефон, планшет и ноутбук",
-    desc: "Один понятный маршрут для Android, iPhone и Windows, чтобы не осваивать новый процесс на каждом устройстве.",
+    title: "Telegram помогает, а не мешает",
+    desc: "Через Telegram удобно продолжить вход, получить персональную ссылку на оплату, задать вопрос или восстановить доступ.",
   },
 ];
 
 const STEPS = [
   {
-    title: "1. Откройте бота",
-    desc: "Главный вход в сервис начинается в Telegram. Бот даёт понятный первый шаг и не перегружает лишними действиями.",
+    title: "1. Выберите устройство",
+    desc: "Ниже есть основные карточки для Android и Windows. Для iPhone и Mac сейчас честно показываем статус подготовки, без ложных обещаний.",
   },
   {
-    title: "2. Запустите тест на 5 дней",
-    desc: "Этого времени хватает, чтобы спокойно проверить доступ, интерфейс и то, как сервис подходит именно под ваш сценарий.",
+    title: "2. Запустите бесплатный тест",
+    desc: "Пять дней хватает, чтобы понять, подходит ли сервис по скорости, удобству и вашему обычному ритму использования.",
   },
   {
-    title: "3. Перейдите к кабинету и оплате",
-    desc: "Если всё подошло, дальше можно открыть кабинет, выбрать срок доступа и продлить подписку без лишних шагов.",
-  },
-];
-
-const TRIAL_CARDS = [
-  {
-    title: "Тест на 5 дней",
-    price: "0 ₽",
-    note: "Спокойный старт для знакомства с сервисом. Сначала проверяете сами, потом уже решаете, нужен ли платный период.",
-    cta: "🚀 Начать в Telegram",
-    href: config.botUrl,
-  },
-  {
-    title: "Кабинет и управление",
-    price: "Без лишней суеты",
-    note: "Если вы уже внутри сервиса, кабинет помогает быстро перейти к управлению доступом, оплате и полезным подсказкам.",
-    cta: "Открыть кабинет",
-    href: config.connectUrl,
-  },
-];
-
-const PAID_PLANS = [
-  { code: "1_month", name: "1 месяц", price: "249 ₽", note: "До 5 устройств • хороший вариант, если хочется начать с короткого периода" },
-  { code: "3_months", name: "3 месяца", price: "699 ₽", note: "До 5 устройств • удобный срок, если сервис уже проверен на практике" },
-  { code: "6_months", name: "6 месяцев", price: "1199 ₽", note: "До 5 устройств • заметно реже нужно продлевать доступ" },
-  { code: "12_months", name: "12 месяцев", price: "1644 ₽", note: "До 5 устройств • самый выгодный вариант по цене на длинной дистанции" },
-];
-
-const FAQ = [
-  {
-    q: "Почему сначала бот, а не сразу оплата?",
-    a: "Потому что так проще и честнее. Сначала вы берёте тест на 5 дней и смотрите, подходит ли вам сервис, а потом уже переходите к тарифу.",
-  },
-  {
-    q: "Что входит в тестовый период?",
-    a: "Тест даёт доступ к основному пользовательскому сценарию: запуск через Telegram, переход к кабинету и подключение без лишней спешки.",
-  },
-  {
-    q: "Можно ли потом продлить подписку через сайт?",
-    a: "Да. После теста и первого входа можно использовать кабинет и публичную страницу оплаты на новом контуре POKROV.",
-  },
-  {
-    q: "Что делать, если нужна помощь?",
-    a: "Напишите в поддержку в Telegram. Это самый быстрый маршрут для вопросов по оплате, доступу, приложениям и подключению.",
+    title: "3. Продлите доступ по реальному маршруту",
+    desc: "Оплата открывается только после входа в кабинет или по персональной ссылке. Без декоративной витрины и странных тупиков.",
   },
 ];
 
 const RELATED_PAGES = [
   { href: "/vpn-dlya-youtube/", label: "VPN для YouTube" },
-  { href: "/vpn-telegram-bot/", label: "VPN через Telegram-бота" },
+  { href: "/vpn-telegram-bot/", label: "Telegram как резервный путь" },
   { href: "/vpn-dlya-tiktok/", label: "VPN для TikTok" },
-  { href: "/bystryy-vpn-na-telefon/", label: "Быстрый VPN на телефон" },
-  { href: "/vpn-na-iphone-android-windows/", label: "VPN на iPhone, Android и Windows" },
 ];
+
+function firstNonEmpty(...values: Array<string | undefined>): string {
+  return values.find((value) => Boolean(String(value || "").trim()))?.trim() || "";
+}
 
 function buildCheckoutHref(planCode: string): string {
   const joiner = config.checkoutUrl.includes("?") ? "&" : "?";
   return `${config.checkoutUrl}${joiner}plan=${encodeURIComponent(planCode)}`;
 }
 
-export function buildMarketingMetadata(title: string, description: string): Metadata {
+function buildMarketingPlans() {
+  return [
+    { code: "start_99", name: "Старт на 30 дней", price: "99 ₽", note: getCopyText("marketing.plan.start.note", "Для короткого платного старта после теста.") },
+    { code: "1_month", name: "1 месяц", price: "249 ₽", note: getCopyText("marketing.plan.month.note", "Понятный вариант на каждый месяц без лишней переплаты.") },
+    { code: "3_months", name: "3 месяца", price: "699 ₽", note: getCopyText("marketing.plan.quarter.note", "Если уже всё проверили и не хотите часто возвращаться к продлению.") },
+    { code: "6_months", name: "6 месяцев", price: "1199 ₽", note: getCopyText("marketing.plan.half.note", "Удобный баланс между сроком, экономией и редкими продлениями.") },
+    { code: "12_months", name: "12 месяцев", price: "1644 ₽", note: getCopyText("marketing.plan.long.note", "Для тех, кто хочет надолго закрыть вопрос с доступом.") },
+  ];
+}
+
+function buildDownloadCards() {
+  const androidHref = firstNonEmpty(config.androidPlayUrl, config.androidApkUrl, config.androidMirrorUrl, config.connectUrl);
+  const windowsHref = firstNonEmpty(config.windowsExeUrl, config.windowsMirrorUrl, config.connectUrl);
+
+  return [
+    {
+      title: "Android",
+      status: "Главный релиз",
+      desc: "Ставка на простой первый запуск, аккуратный интерфейс и быстрый переход к реальному подключению без ручной настройки.",
+      cta: getCopyText("marketing.download.android.cta", "Скачать для Android"),
+      href: androidHref,
+    },
+    {
+      title: "Windows",
+      status: "Главный релиз",
+      desc: "Новый клиент POKROV VPN для Windows готовим как отдельное приложение с собственным брендингом и понятной установкой.",
+      cta: getCopyText("marketing.download.windows.cta", "Скачать для Windows"),
+      href: windowsHref,
+    },
+    {
+      title: "iPhone и Mac",
+      status: "В подготовке",
+      desc: "Публикацию для Apple готовим отдельно: сейчас собираем подпись, сертификаты и store readiness, не обещая сроки раньше времени.",
+      cta: getCopyText("marketing.download.apple.cta", "Открыть кабинет"),
+      href: config.connectUrl,
+    },
+  ];
+}
+
+const FAQ = [
+  {
+    q: getCopyText("marketing.faq.1.q", "Почему теперь упор на приложение, а не только на Telegram?"),
+    a: getCopyText(
+      "marketing.faq.1.a",
+      "Потому что для обычного пользователя так проще: приложение даёт понятный первый экран и быстрый путь к подключению, а Telegram остаётся как запасной маршрут и поддержка.",
+    ),
+  },
+  {
+    q: getCopyText("marketing.faq.2.q", "Что входит в бесплатные 5 дней?"),
+    a: getCopyText(
+      "marketing.faq.2.a",
+      "Доступ к реальному пользовательскому сценарию: приложение, подключение, кабинет и основные действия без декоративного демо-режима.",
+    ),
+  },
+  {
+    q: getCopyText("marketing.faq.3.q", "Можно ли оплатить доступ прямо с сайта?"),
+    a: getCopyText(
+      "marketing.faq.3.a",
+      "Да, но только по реальному сценарию: после входа в кабинет или по персональной ссылке. Мы не отправляем пользователя на фальшивую витрину вместо оплаты.",
+    ),
+  },
+  {
+    q: getCopyText("marketing.faq.4.q", "Что делать, если нужна помощь или что-то не сработало?"),
+    a: getCopyText(
+      "marketing.faq.4.a",
+      "Напишите в поддержку: Telegram остаётся быстрым резервным каналом, чтобы не оставлять человека один на один с ошибкой, оплатой или настройкой.",
+    ),
+  },
+];
+
+export function buildMarketingMetadata(
+  title = getCopyText("marketing.meta.title", "POKROV VPN - понятный VPN для телефона и компьютера"),
+  description = getCopyText(
+    "marketing.meta.description",
+    "Скачайте приложение для Android или Windows, получите 5 дней бесплатно и управляйте доступом без сложной настройки.",
+  ),
+): Metadata {
+
   return {
     title,
     description,
@@ -143,9 +164,9 @@ export function buildMarketingMetadata(title: string, description: string): Meta
 }
 
 type MarketingLandingProps = {
-  heroKicker: string;
-  heroTitle: string;
-  heroSubtitle: string;
+  heroKicker?: string;
+  heroTitle?: string;
+  heroSubtitle?: string;
   clusterTitle?: string;
   clusterBody?: string;
   featuredReviews?: MarketingReview[];
@@ -160,69 +181,73 @@ export default function MarketingLanding({
   featuredReviews,
 }: MarketingLandingProps) {
   const reviews = featuredReviews?.length ? featuredReviews : DEFAULT_REVIEWS;
+  const plans = buildMarketingPlans();
+  const downloadCards = buildDownloadCards();
 
   return (
     <>
       <div className="lp-bg-blobs" aria-hidden="true" />
       <header className="lp-nav">
         <a href="#main-content" className="lp-brand">
-          <span>●</span>
-          POKROV VPN
+          <img src="/pokrov-logo.svg" alt="POKROV VPN" className="lp-brand-logo" />
+          <span>POKROV VPN</span>
         </a>
         <nav className="lp-menu">
-          <a href="#benefits">Преимущества</a>
-          <a href="#trial">Тест</a>
-          <a href="#pricing">Тарифы</a>
+          <a href="#downloads">Приложение</a>
+          <a href="#pricing">Планы</a>
           <a href="#faq">FAQ</a>
           <a href={config.connectUrl} target="_blank" rel="noreferrer" className="lp-chip">
             Открыть кабинет
           </a>
-          <a href={config.botUrl} target="_blank" rel="noreferrer" className="lp-chip lp-chip--primary">
-            🚀 Начать тест
+          <a href={config.supportTelegramUrl} target="_blank" rel="noreferrer" className="lp-chip lp-chip--primary">
+            Написать в поддержку
           </a>
         </nav>
       </header>
 
       <main id="main-content" className="lp-main">
         <section className="lp-hero">
-          <div className="lp-kicker">{heroKicker}</div>
-          <h1>{heroTitle}</h1>
-          <p>{heroSubtitle}</p>
+          <div className="lp-kicker">{heroKicker || getCopyText("marketing.hero.kicker", "POKROV VPN • 5 дней бесплатно • Android и Windows")}</div>
+          <h1>{heroTitle || getCopyText("marketing.hero.title", "Простой старт, спокойный интернет и никакой путаницы")}</h1>
+          <p>
+            {heroSubtitle ||
+              getCopyText(
+                "marketing.hero.subtitle",
+                "Основной путь начинается с приложения: устанавливаете POKROV VPN, получаете 5 дней бесплатно и проверяете сервис в своих обычных сценариях.",
+              )}
+          </p>
           <div className="lp-hero-actions">
-            <a href={config.botUrl} target="_blank" rel="noreferrer" className="lp-btn lp-btn--primary">
-              🚀 Начать в Telegram
+            <a href="#downloads" className="lp-btn lp-btn--primary">
+              {getCopyText("marketing.hero.primary_cta", "Скачать приложение")}
             </a>
-            <a href="#pricing" className="lp-btn lp-btn--ghost">
-              Посмотреть тарифы
+            <a href={config.connectUrl} target="_blank" rel="noreferrer" className="lp-btn lp-btn--ghost">
+              {getCopyText("marketing.hero.secondary_cta", "Открыть кабинет")}
             </a>
           </div>
           <div className="lp-proof">
             <div>
-              <strong>5 дней</strong>
-              <span>тестового доступа, чтобы спокойно всё проверить</span>
+              <strong>{getCopyText("marketing.hero.proof_1.title", "5 дней")}</strong>
+              <span>{getCopyText("marketing.hero.proof_1.text", "бесплатно, чтобы спокойно проверить сервис")}</span>
             </div>
             <div>
-              <strong>Telegram → кабинет</strong>
-              <span>один понятный маршрут от первого касания до продления</span>
+              <strong>{getCopyText("marketing.hero.proof_2.title", "Android + Windows")}</strong>
+              <span>{getCopyText("marketing.hero.proof_2.text", "главный релиз уже готовим именно для этих устройств")}</span>
             </div>
             <div>
-              <strong>Поддержка рядом</strong>
-              <span>если нужен человек, а не квест из подсказок</span>
+              <strong>{getCopyText("marketing.hero.proof_3.title", "Живой человек рядом")}</strong>
+              <span>{getCopyText("marketing.hero.proof_3.text", "если что-то непонятно, можно быстро продолжить через Telegram и поддержку")}</span>
             </div>
           </div>
         </section>
 
-        <section id="benefits" className="lp-section">
+        <section className="lp-section">
           <div className="lp-section-head">
-            <span>[Преимущества]</span>
-            <h2>Свободный интернет без перегруза на старте</h2>
-            <p>
-              POKROV VPN помогает спокойно перейти к привычным сайтам и сервисам без сложной настройки. Вход остаётся
-              простым: бот, тест, кабинет, оплата и поддержка на своих местах.
-            </p>
+            <span>[Обещание]</span>
+            <h2>{getCopyText("marketing.promise.title", "Что вы получаете на старте")}</h2>
+            <p>{getCopyText("marketing.promise.subtitle", "Без квеста из пяти экранов: установка, тест, подключение, продление и помощь находятся в одном понятном маршруте.")}</p>
           </div>
           <div className="lp-feature-grid">
-            {BENEFITS.map((item, idx) => (
+            {PROMISE_CARDS.map((item, idx) => (
               <article key={item.title} className="lp-card">
                 <div className="lp-card-index">0{idx + 1}</div>
                 <h3>{item.title}</h3>
@@ -232,16 +257,21 @@ export default function MarketingLanding({
           </div>
         </section>
 
-        <section className="lp-section">
+        <section id="downloads" className="lp-section">
           <div className="lp-section-head">
-            <span>[Сценарии]</span>
-            <h2>Где этот путь особенно удобен</h2>
+            <span>[Приложение]</span>
+            <h2>{getCopyText("marketing.downloads.title", "С чего начать прямо сейчас")}</h2>
+            <p>{getCopyText("marketing.downloads.subtitle", "Основной релиз идёт через Android и Windows. Для iPhone и Mac мы готовим отдельную публикацию и не обещаем её раньше времени.")}</p>
           </div>
-          <div className="lp-feature-grid">
-            {USE_CASES.map((item) => (
-              <article key={item.title} className="lp-card">
-                <h3>{item.title}</h3>
-                <p>{item.desc}</p>
+          <div className="lp-download-grid">
+            {downloadCards.map((card) => (
+              <article key={card.title} className="lp-card lp-plan">
+                <div className="lp-card-index">{card.status}</div>
+                <h3>{card.title}</h3>
+                <p>{card.desc}</p>
+                <a href={card.href} target="_blank" rel="noreferrer" className="lp-btn lp-btn--primary" style={{ marginTop: 20 }}>
+                  {card.cta}
+                </a>
               </article>
             ))}
           </div>
@@ -249,8 +279,9 @@ export default function MarketingLanding({
 
         <section className="lp-section">
           <div className="lp-section-head">
-            <span>[Как начать]</span>
-            <h2>Три коротких шага до подключения</h2>
+            <span>[Маршрут]</span>
+            <h2>{getCopyText("marketing.steps.title", "Как выглядит путь без путаницы")}</h2>
+            <p>{getCopyText("marketing.steps.subtitle", "POKROV VPN не заставляет сначала читать десяток инструкций. Мы оставляем только шаги, которые реально нужны пользователю.")}</p>
           </div>
           <div className="lp-feature-grid">
             {STEPS.map((item) => (
@@ -262,42 +293,20 @@ export default function MarketingLanding({
           </div>
         </section>
 
-        <section id="trial" className="lp-section">
-          <div className="lp-section-head">
-            <span>[Тест]</span>
-            <h2>Сначала попробуйте, потом принимайте решение</h2>
-            <p>Тест на 5 дней помогает понять, подходит ли вам сервис по скорости, удобству и самому сценарию запуска.</p>
-          </div>
-          <div className="lp-support-grid">
-            {TRIAL_CARDS.map((card) => (
-              <article key={card.title} className="lp-card">
-                <h3>{card.title}</h3>
-                <div className="lp-price" style={{ marginTop: 12 }}>
-                  {card.price}
-                </div>
-                <p>{card.note}</p>
-                <a href={card.href} target="_blank" rel="noreferrer" className="lp-btn lp-btn--primary" style={{ marginTop: 20 }}>
-                  {card.cta}
-                </a>
-              </article>
-            ))}
-          </div>
-        </section>
-
         <section id="pricing" className="lp-section">
           <div className="lp-section-head">
-            <span>[Тарифы]</span>
-            <h2>Планы для тех, кто уже всё проверил</h2>
-            <p>Когда тест и сценарий вас устраивают, можно спокойно перейти на страницу оплаты и выбрать подходящий срок доступа.</p>
+            <span>[Планы]</span>
+            <h2>{getCopyText("marketing.pricing.title", "Планы для тех, кто уже всё проверил")}</h2>
+            <p>{getCopyText("marketing.pricing.subtitle", "Публичная страница больше не притворяется кассой. Сначала вход и персональный маршрут, потом честная ссылка на оплату и понятная сумма.")}</p>
           </div>
           <div className="lp-plan-grid">
-            {PAID_PLANS.map((plan) => (
-              <article key={plan.code} className="lp-card lp-plan">
+            {plans.map((plan, index) => (
+              <article key={plan.code} className={`lp-card lp-plan ${index === plans.length - 1 ? "lp-plan--highlight" : ""}`}>
                 <h3>{plan.name}</h3>
                 <div className="lp-price">{plan.price}</div>
                 <p>{plan.note}</p>
-                <a href={buildCheckoutHref(plan.code)} target="_blank" rel="noreferrer" className="lp-btn lp-btn--primary" style={{ marginTop: 20 }}>
-                  Перейти к оплате
+                <a href={buildCheckoutHref(plan.code)} target="_blank" rel="noreferrer" className="lp-btn lp-btn--ghost" style={{ marginTop: 20 }}>
+                  {getCopyText("marketing.plan.cta", "Открыть кабинет и продолжить")}
                 </a>
               </article>
             ))}
@@ -307,8 +316,8 @@ export default function MarketingLanding({
         <section className="lp-section">
           <div className="lp-section-head">
             <span>[Отзывы]</span>
-            <h2>Что пишут пользователи</h2>
-            <p>На главную попадают только одобренные отзывы. Ники показываем в маске, чтобы сохранить приватность.</p>
+            <h2>{getCopyText("marketing.reviews.title", "Что пишут пользователи")}</h2>
+            <p>{getCopyText("marketing.reviews.subtitle", "На главной показываем только одобренные отзывы. Ники маскируем, чтобы не раскрывать лишние данные.")}</p>
           </div>
           <div className="lp-feature-grid">
             {reviews.map((item) => (
@@ -324,7 +333,7 @@ export default function MarketingLanding({
         <section id="faq" className="lp-section">
           <div className="lp-section-head">
             <span>[FAQ]</span>
-            <h2>Коротко о том, как всё устроено</h2>
+            <h2>{getCopyText("marketing.faq.title", "Коротко о важном")}</h2>
           </div>
           <div className="lp-feature-grid">
             {FAQ.map((item) => (
@@ -339,7 +348,7 @@ export default function MarketingLanding({
         {clusterTitle && clusterBody ? (
           <section className="lp-section">
             <div className="lp-section-head">
-              <span>[Полезные страницы]</span>
+              <span>[Полезное]</span>
               <h2>{clusterTitle}</h2>
               <p>{clusterBody}</p>
             </div>
@@ -358,25 +367,20 @@ export default function MarketingLanding({
         ) : null}
 
         <section className="lp-section">
-          <div className="lp-card" style={{ display: "flex", justifyContent: "space-between", gap: 24, flexWrap: "wrap" }}>
+          <div className="lp-card lp-footer-card">
             <div>
-              <h3 style={{ marginBottom: 8 }}>POKROV VPN</h3>
-              <p>
-                Начать проще всего с Telegram: запустить тест, спокойно проверить сервис и уже потом перейти к кабинету или оплате, если всё подошло.
-              </p>
+              <h3>{getCopyText("marketing.footer.title", "POKROV VPN для спокойного повседневного использования")}</h3>
+              <p>{getCopyText("marketing.footer.body", "Начните с приложения, проверьте сервис на своих задачах и только потом решайте, нужен ли полный доступ.")}</p>
             </div>
-            <div style={{ display: "flex", gap: 12, flexWrap: "wrap", alignItems: "center" }}>
-              <a href={config.botUrl} target="_blank" rel="noreferrer" className="lp-btn lp-btn--primary">
-                🚀 Запустить тест
-              </a>
-              <a href={config.connectUrl} target="_blank" rel="noreferrer" className="lp-btn lp-btn--ghost">
+            <div className="lp-footer-actions">
+              <a href={config.connectUrl} target="_blank" rel="noreferrer" className="lp-btn lp-btn--primary">
                 Открыть кабинет
               </a>
               <a href={config.supportTelegramUrl} target="_blank" rel="noreferrer" className="lp-btn lp-btn--ghost">
-                💬 Поддержка
+                Поддержка
               </a>
               <a href={config.feedbackbotUrl} target="_blank" rel="noreferrer" className="lp-btn lp-btn--ghost">
-                🫶 Оставить отзыв
+                Оставить отзыв
               </a>
               <Link href="/offer/" className="lp-btn lp-btn--ghost">
                 Оферта

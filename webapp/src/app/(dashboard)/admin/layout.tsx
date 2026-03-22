@@ -102,7 +102,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             <Shield size={22} />
           </div>
           <div className="flex-1">
-            <p className="font-mono text-xs uppercase tracking-[0.15em] text-violet-500 dark:text-violet-300">админ / portal</p>
+            <p className="font-mono text-xs uppercase tracking-[0.15em] text-violet-500 dark:text-violet-300">админ / pokrov</p>
             <h1 className="mt-1 font-display text-3xl font-bold">Панель управления</h1>
             <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">
               Здесь вы управляете пользователями, нодами, платежами, обращениями и рассылками. Если заходите впервые, начните со вкладки «Сводка».

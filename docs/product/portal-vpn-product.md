@@ -1,6 +1,6 @@
 # POKROV VPN Product Overview
 
-Last updated: 2026-03-20
+Last updated: 2026-03-22
 
 ## Document Status
 
@@ -18,6 +18,8 @@ This file is living source of truth for product direction and user-facing produc
 - `Android`
 - `Windows`
 
+`iOS` and `macOS` are readiness tracks only for this release wave. They are not part of the full public `v1` promise.
+
 Primary user goal:
 
 1. open the app
@@ -26,11 +28,14 @@ Primary user goal:
 4. tap `Connect`
 
 Telegram is optional for first launch, free trial activation, and normal daily use.
+Telegram remains a secondary path for linking, bonus claim, recovery, support entrypoints, and bot-side purchase continuation.
 
 ## Locked Product Rules
 
 - primary UX: `consumer-first`
 - primary identity model: `app-first`
+- full public `v1` scope: `Android + Windows`
+- Apple scope in this wave: readiness, signing prep, and store prerequisites only
 - default runtime core: `sing-box`
 - `xray` role: advanced compatibility fallback only
 - free trial: `5 days`
@@ -62,8 +67,14 @@ Telegram remains in the product for:
 
 ### WebApp And Marketing
 
-- `webapp/` handles account and admin scenarios
-- `marketing/` handles the public website, checkout entrypoints, and legal pages
+- `webapp/` handles account, session continuation, and admin scenarios
+- `marketing/` handles the public website, pricing, checkout entrypoints, and legal pages
+
+Public funnel rule:
+
+- marketing and webapp should present `app-first` onboarding first
+- checkout must continue from a valid web session or checkout ticket
+- Telegram bot purchase flow remains available, but it is not the default public story
 
 ## Trial And Bonus Rules
 
@@ -121,6 +132,11 @@ Current logo source for the client fork:
 
 - [logogo.png](C:/Users/kiwun/Documents/ai/VPN/external/logogo.png)
 
+Current release logo set for public and client surfaces:
+
+- [logoclear.svg](C:/Users/kiwun/Documents/ai/VPN/logo/logoclear.svg)
+- [logowithtext.svg](C:/Users/kiwun/Documents/ai/VPN/logo/logowithtext.svg)
+
 ## Support Direction
 
 Support should be reachable from:
@@ -156,4 +172,9 @@ Public review copy should stay:
 
 ## Product Risk Focus
 
-Current major risks are not around channel configuration anymore. The main remaining risk is documentation and UX drift between the platform canon and the client fork while app-first rollout continues.
+Current major product risks are:
+
+- app-first copy drifting back into Telegram-first wording
+- public pricing or checkout behaving like a decorative vitrine instead of a real continuation flow
+- Android and Windows release wiring drifting away from canonical artifact URLs
+- Apple readiness notes being mistaken for a public ship promise

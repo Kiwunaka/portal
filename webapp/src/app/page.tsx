@@ -2,7 +2,7 @@
 
 import AppRouteLink from "@/components/app-route-link";
 import TelegramLoginWidget from "@/components/telegram-login-widget";
-import { getPortalPublicConfig } from "@/lib/portal";
+import { getCopyText, getPortalPublicConfig } from "@/lib/portal";
 import { PortalSessionProvider, usePortalSession } from "@/lib/session";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
@@ -12,16 +12,25 @@ const BOT_WEBLOGIN_URL = `${config.botUrl}${config.botUrl.includes("?") ? "&" : 
 
 const ENTRY_STEPS = [
   {
-    title: "Откройте Telegram",
-    text: "Нажмите кнопку ниже или дождитесь встроенного виджета. Вход начнётся прямо через Telegram.",
+    title: getCopyText("webapp.entry.step_1.title", "Откройте Telegram"),
+    text: getCopyText(
+      "webapp.entry.step_1.desc",
+      "Нажмите кнопку ниже или используйте встроенный виджет. Это самый короткий путь к подтверждению входа.",
+    ),
   },
   {
-    title: "Подтвердите аккаунт",
-    text: "Telegram сверит данные и вернёт вас обратно без лишних промежуточных экранов.",
+    title: getCopyText("webapp.entry.step_2.title", "Подтвердите аккаунт"),
+    text: getCopyText(
+      "webapp.entry.step_2.desc",
+      "Telegram проверит данные и вернёт вас обратно без лишних промежуточных экранов.",
+    ),
   },
   {
-    title: "Добро пожаловать",
-    text: "Если доступ уже подтверждён, кабинет откроется автоматически и сразу покажет ваш статус.",
+    title: getCopyText("webapp.entry.step_3.title", "Кабинет откроется сам"),
+    text: getCopyText(
+      "webapp.entry.step_3.desc",
+      "Если доступ уже подтверждён, вы сразу попадёте к своему статусу, тарифу и следующему действию.",
+    ),
   },
 ] as const;
 
@@ -107,11 +116,12 @@ function EntryBody() {
               POKROV VPN
             </div>
             <div className="max-w-2xl space-y-4">
-              <h1 className="font-display text-4xl font-bold leading-[1.05] sm:text-5xl">
-                Продолжим вход и сразу откроем кабинет
-              </h1>
+              <h1 className="font-display text-4xl font-bold leading-[1.05] sm:text-5xl">{getCopyText("webapp.entry.title", "Войдите и сразу продолжайте в кабинете")}</h1>
               <p className="max-w-xl text-sm leading-6 text-slate-600 dark:text-slate-300">
-                В браузере вход подтверждается через Telegram. Если доступ уже есть, мы переведём вас в кабинет автоматически. Если нет, покажем понятную кнопку и не оставим в тупике.
+                {getCopyText(
+                  "webapp.entry.subtitle",
+                  "В браузере вход подтверждается через Telegram. Если доступ уже подтверждён, кабинет откроется автоматически. Если нет, покажем понятную кнопку и короткий запасной путь.",
+                )}
               </p>
             </div>
 
@@ -132,10 +142,13 @@ function EntryBody() {
 
             <div className="rounded-3xl border border-slate-200/70 bg-slate-50/80 p-5 dark:border-slate-800/70 dark:bg-slate-950/30">
               <p className="font-mono text-[11px] uppercase tracking-[0.2em] text-emerald-600 dark:text-emerald-300">
-                Памятка
+                {getCopyText("webapp.entry.note.title", "Короткая памятка")}
               </p>
               <p className="mt-2 text-sm leading-6 text-slate-600 dark:text-slate-300">
-                Если Telegram не откроется автоматически, нажмите кнопку ниже. Это тот же вход, только в ручном режиме.
+                {getCopyText(
+                  "webapp.entry.note.body",
+                  "Если Telegram не открылся автоматически, просто нажмите кнопку ниже. Это тот же вход, только в ручном режиме.",
+                )}
               </p>
             </div>
           </div>
@@ -145,9 +158,9 @@ function EntryBody() {
               <p className="font-mono text-[11px] uppercase tracking-[0.2em] text-slate-400 dark:text-slate-500">
                 Telegram login
               </p>
-              <h2 className="mt-2 font-display text-2xl font-bold">Подтвердите аккаунт</h2>
+              <h2 className="mt-2 font-display text-2xl font-bold">{getCopyText("webapp.entry.card_title", "Подтвердите аккаунт")}</h2>
               <p className="mt-2 text-sm leading-6 text-slate-600 dark:text-slate-300">
-                Нажмите кнопку Telegram, вернитесь обратно и мы продолжим без лишних экранов.
+                {getCopyText("webapp.entry.card_body", "Нажмите кнопку Telegram, вернитесь обратно и мы продолжим без лишних экранов.")}
               </p>
 
               <div className="mt-5">
@@ -161,14 +174,14 @@ function EntryBody() {
                   hardNavigate={false}
                   className="btn-primary rounded-xl px-5 py-2.5 text-sm font-semibold uppercase tracking-[0.12em]"
                 >
-                  Открыть Telegram
+                  {getCopyText("webapp.entry.primary_cta", "Открыть Telegram")}
                 </AppRouteLink>
                 <button
                   className="outline-btn rounded-xl px-5 py-2.5 text-sm font-semibold uppercase tracking-[0.12em]"
                   onClick={() => logoutWebSession()}
                   type="button"
                 >
-                  Сбросить вход
+                  {getCopyText("webapp.entry.secondary_cta", "Сбросить вход")}
                 </button>
               </div>
 

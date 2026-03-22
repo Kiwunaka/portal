@@ -1,12 +1,12 @@
-import { getPortalPublicConfig } from "../../lib/portal";
+import { getCopyText, getPokrovPublicConfig } from "../../lib/pokrov";
 
-const config = getPortalPublicConfig(process.env as Record<string, string | undefined>);
+const config = getPokrovPublicConfig(process.env as Record<string, string | undefined>);
 
 export default function OfferPage() {
   return (
     <main className="legal-page">
       <h1>Публичная оферта</h1>
-      <p>Этот документ описывает базовые условия доступа к цифровым услугам POKROV VPN, порядок продления и основные правила использования сервиса.</p>
+      <p>{getCopyText("marketing.legal.offer.intro", "Этот документ описывает базовые условия доступа к цифровым услугам POKROV VPN, порядок продления и основные правила использования сервиса.")}</p>
       <ul>
         <li>Сервис предоставляется в формате цифровой подписки на выбранный срок.</li>
         <li>Тестовый период и отдельные сценарии доступа могут иметь свои ограничения по устройствам и функциям.</li>

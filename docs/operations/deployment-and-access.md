@@ -1,6 +1,6 @@
 # Deployment And Access
 
-Last updated: 2026-03-20
+Last updated: 2026-03-22
 
 ## Document Status
 
@@ -62,6 +62,10 @@ python scripts/remote_deploy_brain_portal_code.py --brain-ip 82.21.114.104 --res
 
 - [release_orchestrator.py](C:/Users/kiwun/Documents/ai/VPN/scripts/release_orchestrator.py)
 
+### Publishing and signing guide
+
+- [publishing-and-signing-guide.md](C:/Users/kiwun/Documents/ai/VPN/docs/operations/publishing-and-signing-guide.md)
+
 ### Feedback bot service install
 
 - [remote_install_feedbackbot_service.py](C:/Users/kiwun/Documents/ai/VPN/scripts/remote_install_feedbackbot_service.py)
@@ -82,6 +86,11 @@ If deploy is blocked, record:
 - what remains blocked
 - rollback-safe state
 
+Current product release scope:
+
+- full public `v1`: `Android + Windows`
+- `iOS` and `macOS`: readiness-only in this wave
+
 ## Post-Deploy Checks
 
 At minimum, verify:
@@ -90,6 +99,9 @@ At minimum, verify:
 - app-first `start-trial`
 - support ticket creation
 - subscription endpoint availability
+- `GET /api/client/apps`
+- `GET /api/payments/providers`
+- checkout continuation from session or ticket
 - Telegram linking / channel bonus path
 - `portal-api`, `portal-bot`, and `portal-helpbot` service status
 - `portal-feedbackbot` service status
@@ -113,6 +125,22 @@ Current trusted origins in `BotFather` should include:
 - `https://pokrov.space/`
 - `https://app.pokrov.space/`
 
+Current official public surfaces:
+
+- marketing and public site: `https://pokrov.space/`
+- user cabinet and web login: `https://app.pokrov.space/`
+- public API host: `https://api.pokrov.space/`
+
+Web runtime rule:
+
+- `https://api.pokrov.space/` is the canonical API base for browser flows
+- `app.pokrov.space` may host the UI, but it must not be treated as an API origin when it returns HTML
+
+Migration-only legacy note:
+
+- `kiwunaka.space` hosts remain compatibility surfaces for older subscriptions during cutover
+- do not use `kiwunaka.space` in new release copy, onboarding copy, or fresh distribution links
+
 Safe deploy note:
 
 - use local env injection for the client secret
@@ -131,6 +159,10 @@ Important outputs:
 - Windows EXE / portable ZIP / MSIX
 
 Do not delete release artifacts if they are still being distributed or verified.
+
+Related guide:
+
+- [Publishing And Signing Guide](C:/Users/kiwun/Documents/ai/VPN/docs/operations/publishing-and-signing-guide.md)
 
 ## POKROV Client Release Path
 
@@ -190,13 +222,18 @@ Then copy the resulting URLs into runtime env:
 - `APP_WINDOWS_MIRROR_URL`
 - `APP_DOCS_URL`
 
+Distribution rule until store URLs are live:
+
+- GitHub release artifacts are the canonical Android and Windows binary source
+- app, webapp, and bot download surfaces must read from the same release handoff URLs
+
 ## Existing User Cutover
 
 Release communication for existing users must explicitly say:
 
 - `POKROV VPN` is the new official app line
 - Android and Windows should be treated as a fresh install path
-- existing `kiwunaka.space` profiles stay temporarily compatible during migration
+- existing `kiwunaka.space` profiles stay temporarily compatible during migration, but they are legacy compatibility hosts rather than current public entrypoints
 - users should install the new app, connect successfully, and only then remove the old app
 
 Recommended migration order:
@@ -238,3 +275,4 @@ Post-deploy checks should also confirm:
 
 - the public review feed loads with masked usernames
 - featured review cards on the public homepage use the approved review copy
+- download links across app, webapp, and bot point to the same current Android and Windows artifacts

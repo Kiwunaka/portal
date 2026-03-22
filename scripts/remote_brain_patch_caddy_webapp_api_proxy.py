@@ -34,7 +34,7 @@ def _run(ssh: paramiko.SSHClient, cmd: str, *, timeout: int = 120) -> tuple[int,
 def main() -> int:
     ap = argparse.ArgumentParser(description="Patch brain Caddyfile so WebApp can call /api same-origin on :8444.")
     ap.add_argument("--brain-ip", required=True)
-    ap.add_argument("--domain", default="kiwunaka.space")
+    ap.add_argument("--domain", default="pokrov.space")
     ap.add_argument("--ssh-user", default="root")
     ap.add_argument("--ssh-port", type=int, default=29374)
     ap.add_argument("--passwords", default=str(DEFAULT_PASSWORDS))

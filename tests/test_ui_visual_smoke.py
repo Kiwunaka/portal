@@ -31,16 +31,16 @@ class UiVisualSmokeTests(unittest.TestCase):
 
         hero_check = checks["marketing-home-cta"]
         self.assertTrue(str(hero_check.path).endswith("marketing\\src\\components\\marketing-landing.tsx"))
-        self.assertIn("🚀 Начать бесплатно", hero_check.must_contain)
-        self.assertIn("Посмотреть тарифы", hero_check.must_contain)
-        self.assertIn("Открыть в Telegram", hero_check.must_contain)
+        self.assertIn("Скачать приложение", hero_check.must_contain)
+        self.assertIn("Открыть кабинет", hero_check.must_contain)
+        self.assertIn("POKROV VPN", hero_check.must_contain)
 
         offer_check = checks["marketing-offer-flow"]
         self.assertIn("Открыть Telegram-бота", offer_check.must_contain)
 
         checkout_check = checks["marketing-checkout-gateway"]
         self.assertIn("Продолжить в Telegram", checkout_check.must_contain)
-        self.assertIn("Запустить тест в Telegram", checkout_check.must_contain)
+        self.assertIn("Открыть кабинет", checkout_check.must_contain)
 
 
 if __name__ == "__main__":

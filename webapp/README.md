@@ -1,6 +1,6 @@
-﻿# Portal WebApp (Next App Router)
+# POKROV WebApp (Next App Router)
 
-Личный кабинет PORTAL собран как Next static app.
+Личный кабинет POKROV собран как Next static app для `https://app.pokrov.space/`.
 
 ## Локальный запуск
 
@@ -16,10 +16,11 @@ npm run build
 ```
 
 `next.config.ts` настроен на:
+
 - `output: "export"`
 - `trailingSlash: true`
-- `basePath: "/webapp"`
-- `assetPrefix: "/webapp"`
+- `basePath` не используется
+- `assetPrefix` не используется
 
 Готовые статик-файлы появляются в `webapp/out`.
 
@@ -32,7 +33,17 @@ npm run build
 Для плавного перехода поддерживаются fallback-переменные `VITE_*`.
 Если `NEXT_PUBLIC_TELEGRAM_LOGIN_BOT` не задан, Telegram Login Widget берёт username из `NEXT_PUBLIC_TELEGRAM_BOT_URL`.
 
+Канонический API для браузерного кабинета:
+
+- `https://api.pokrov.space`
+
+Важно:
+
+- фронтенд не должен считать `https://app.pokrov.space/api/*` валидным API fallback
+- если с app origin приходит HTML вместо JSON, это считается ошибкой auth/runtime wiring, а не успешным ответом
+
 ## Auth flows
 
 - Внутри Telegram: авторизация через `initData`.
 - В браузере: Telegram Login Widget -> `POST /api/auth/telegram/web-login`.
+- Из бота: `web_session_token` handoff должен открывать кабинет без ручного копирования токена.

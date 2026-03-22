@@ -8,8 +8,11 @@ const nextConfig: NextConfig = {
   trailingSlash: true,
   basePath: BASE_PATH || undefined,
   assetPrefix: BASE_PATH || undefined,
+  experimental: {
+    externalDir: true,
+  },
   turbopack: {
-    root: path.join(__dirname),
+    root: path.join(__dirname, ".."),
   },
 };
 

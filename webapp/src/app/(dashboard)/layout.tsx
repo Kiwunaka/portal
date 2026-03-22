@@ -2,6 +2,7 @@
 
 import AppRouteLink from "@/components/app-route-link";
 import TelegramLoginWidget from "@/components/telegram-login-widget";
+import { getPortalPublicConfig } from "@/lib/portal";
 import { PortalSessionProvider, usePortalSession } from "@/lib/session";
 import { getTgUser } from "@/lib/telegram";
 import { usePathname } from "next/navigation";
@@ -22,9 +23,8 @@ const BASE_NAV_ITEMS: NavItem[] = [
   { href: "/support", icon: "support_agent", label: "Поддержка", match: (path) => path.startsWith("/support") },
 ];
 
-const BOT_BASE_URL = String(process.env.NEXT_PUBLIC_TELEGRAM_BOT_URL || "https://t.me/pokrov_vpnbot")
-  .trim()
-  .replace(/\/+$/, "");
+const config = getPortalPublicConfig(process.env as Record<string, string | undefined>);
+const BOT_BASE_URL = config.botUrl;
 const BOT_WEBLOGIN_URL = `${BOT_BASE_URL}${BOT_BASE_URL.includes("?") ? "&" : "?"}start=weblogin`;
 
 function DashboardShell({ children }: { children: React.ReactNode }) {

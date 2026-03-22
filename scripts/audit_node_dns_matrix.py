@@ -76,7 +76,7 @@ def _build_hosts(*, domain: str, include_brain: bool, inventory: dict[str, str])
 
 def main() -> int:
     ap = argparse.ArgumentParser(description="Run DNS audit against multiple resolvers for node hosts.")
-    ap.add_argument("--domain", required=True, help="Root domain, e.g. kiwunaka.space")
+    ap.add_argument("--domain", required=True, help="Root domain, e.g. pokrov.space")
     ap.add_argument("--inventory", default="docs/08-node-inventory.md")
     ap.add_argument("--include-brain", action="store_true")
     ap.add_argument("--resolvers", default="system,1.1.1.1,8.8.8.8,9.9.9.9")

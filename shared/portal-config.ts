@@ -22,6 +22,7 @@ export type PortalPublicConfig = {
 export const CANONICAL_PLATFORM_BRAND = "POKROV";
 export const CANONICAL_CLIENT_BRAND = "POKROV VPN";
 export const CANONICAL_API_BASE_URL = "https://api.pokrov.space";
+export const CANONICAL_MARKETING_SITE_URL = "https://pokrov.space";
 export const CANONICAL_WEBAPP_URL = "https://app.pokrov.space";
 export const CANONICAL_CONNECT_URL = "https://connect.pokrov.space";
 export const CANONICAL_PAY_ORIGIN = "https://pay.pokrov.space";

@@ -1,6 +1,6 @@
 # Repository Map
 
-Last updated: 2026-03-20
+Last updated: 2026-03-22
 
 ## Document Status
 
@@ -14,6 +14,7 @@ This file is living source of truth for repository layout, local authorities, sc
 | `webapp/` | Next.js user cabinet and web-admin | `webapp/README.md` |
 | `marketing/` | public website, checkout, legal pages | root canonical docs plus source tree |
 | `scripts/` | deploy, smoke, node, release, audit, migration scripts | this file and `docs/operations/deployment-and-access.md` |
+| `docs/operations/publishing-and-signing-guide.md` | canonical store, certificate, and release artifact guidance | this file and the operations guide itself |
 | `docs/` | canonical platform docs plus archive | `docs/README.md` |
 | `external/client-fork/app/` | Flutter client fork | `external/client-fork/app/docs/README.md` |
 
@@ -25,6 +26,7 @@ This file is living source of truth for repository layout, local authorities, sc
 | Platform architecture | [docs/architecture/system-overview.md](C:/Users/kiwun/Documents/ai/VPN/docs/architecture/system-overview.md) |
 | App-first and Telegram reward flow | [docs/architecture/app-first-and-bonus-flows.md](C:/Users/kiwun/Documents/ai/VPN/docs/architecture/app-first-and-bonus-flows.md) |
 | Deploy and access | [docs/operations/deployment-and-access.md](C:/Users/kiwun/Documents/ai/VPN/docs/operations/deployment-and-access.md) |
+| Publishing and signing | [docs/operations/publishing-and-signing-guide.md](C:/Users/kiwun/Documents/ai/VPN/docs/operations/publishing-and-signing-guide.md) |
 | Developer workflow | [docs/developer/developer-guide.md](C:/Users/kiwun/Documents/ai/VPN/docs/developer/developer-guide.md) |
 | User journey | [docs/user/portal-vpn-user-guide-ru.md](C:/Users/kiwun/Documents/ai/VPN/docs/user/portal-vpn-user-guide-ru.md) |
 | Client-specific contracts | [external/client-fork/app/docs/README.md](C:/Users/kiwun/Documents/ai/VPN/external/client-fork/app/docs/README.md) |

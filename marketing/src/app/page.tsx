@@ -1,13 +1,10 @@
 import MarketingLanding, { buildMarketingMetadata, type MarketingReview } from "../components/marketing-landing";
-import { getPortalPublicConfig } from "../lib/portal";
+import { getPokrovPublicConfig } from "../lib/pokrov";
 
-export const metadata = buildMarketingMetadata(
-  "POKROV VPN | Свободный интернет без лишней суеты",
-  "Запуск через Telegram, тест на 5 дней, кабинет, поддержка и продление без сложной настройки и лишних шагов.",
-);
+export const metadata = buildMarketingMetadata();
 
 async function loadFeaturedReviews(): Promise<MarketingReview[]> {
-  const config = getPortalPublicConfig(process.env as Record<string, string | undefined>);
+  const config = getPokrovPublicConfig(process.env as Record<string, string | undefined>);
   const apiBase = (config.apiBaseUrl || "https://api.pokrov.space").replace(/\/+$/, "");
 
   try {
@@ -39,15 +36,5 @@ async function loadFeaturedReviews(): Promise<MarketingReview[]> {
 
 export default async function HomePage() {
   const featuredReviews = await loadFeaturedReviews();
-
-  return (
-    <MarketingLanding
-      heroKicker="POKROV VPN • Telegram • тест 5 дней"
-      heroTitle="Свободный интернет без лишней суеты"
-      heroSubtitle="Сначала запускаете тест в Telegram, спокойно проверяете сервис на своих задачах, а потом уже решаете, нужен ли платный доступ."
-      clusterTitle="Полезные страницы под частые сценарии"
-      clusterBody="Мы собрали отдельные страницы под YouTube, TikTok, телефон, разные устройства и Telegram-бота, чтобы быстрее вести человека в понятный маршрут: бот, тест, кабинет и оплата."
-      featuredReviews={featuredReviews}
-    />
-  );
+  return <MarketingLanding featuredReviews={featuredReviews} />;
 }

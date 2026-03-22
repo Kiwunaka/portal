@@ -1,12 +1,12 @@
-import { getPortalPublicConfig } from "../../lib/portal";
+import { getCopyText, getPokrovPublicConfig } from "../../lib/pokrov";
 
-const config = getPortalPublicConfig(process.env as Record<string, string | undefined>);
+const config = getPokrovPublicConfig(process.env as Record<string, string | undefined>);
 
 export default function PrivacyPage() {
   return (
     <main className="legal-page">
       <h1>Политика конфиденциальности</h1>
-      <p>POKROV VPN собирает только те данные, которые нужны для работы аккаунта, поддержки, защиты сервиса и проведения платежей.</p>
+      <p>{getCopyText("marketing.legal.privacy.intro", "POKROV VPN собирает только те данные, которые нужны для работы аккаунта, поддержки, защиты сервиса и проведения платежей.")}</p>
       <ul>
         <li>Данные аккаунта: идентификатор, срок доступа, активный план и служебные метки для работы продукта.</li>
         <li>Технические события: ошибки оплаты, события авторизации, обращения в поддержку и сигналы стабильности сервиса.</li>

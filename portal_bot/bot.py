@@ -222,12 +222,12 @@ SUPPORT_USERNAME = (os.getenv("SUPPORT_USERNAME") or "pokrov_supportbot").lstrip
 SUPPORT_USERNAME = (os.getenv("SUPPORT_BOT_USERNAME") or SUPPORT_USERNAME).lstrip("@")
 FEEDBACK_USERNAME = (os.getenv("FEEDBACK_USERNAME") or "pokrov_feedbackbot").lstrip("@")
 FEEDBACK_USERNAME = (os.getenv("FEEDBACK_BOT_USERNAME") or FEEDBACK_USERNAME).lstrip("@")
-APP_ANDROID_PLAY_URL = (os.getenv("APP_ANDROID_PLAY_URL") or "https://play.google.com/store/apps/details?id=app.hiddify.com").strip()
+APP_ANDROID_PLAY_URL = (os.getenv("APP_ANDROID_PLAY_URL") or "").strip()
 APP_ANDROID_APK_URL = (os.getenv("APP_ANDROID_APK_URL") or "").strip()
 APP_ANDROID_MIRROR_URL = (os.getenv("APP_ANDROID_MIRROR_URL") or "").strip()
-APP_WINDOWS_EXE_URL = (os.getenv("APP_WINDOWS_EXE_URL") or "https://github.com/NikitaSH999/POKROVapp/releases").strip()
+APP_WINDOWS_EXE_URL = (os.getenv("APP_WINDOWS_EXE_URL") or "").strip()
 APP_WINDOWS_MIRROR_URL = (os.getenv("APP_WINDOWS_MIRROR_URL") or "").strip()
-APP_DOCS_URL = (os.getenv("APP_DOCS_URL") or "").strip()
+APP_DOCS_URL = (os.getenv("APP_DOCS_URL") or "https://pokrov.space/install/").strip()
 FREE_LIMIT_IP = int(os.getenv("FREE_LIMIT_IP", "1"))
 PAID_LIMIT_IP = int(os.getenv("PAID_LIMIT_IP", "5"))
 FREE_TOTAL_GB = int(os.getenv("FREE_TOTAL_GB", "5"))
@@ -248,10 +248,10 @@ def _first_non_empty(*values: str) -> str:
     return ""
 
 
-IOS_APP_LINK = "https://apps.apple.com/app/streisand/id6450534064"
-ANDROID_APP_LINK = _first_non_empty(APP_ANDROID_PLAY_URL, APP_ANDROID_APK_URL, APP_ANDROID_MIRROR_URL)
-WINDOWS_APP_LINK = _first_non_empty(APP_WINDOWS_EXE_URL, APP_WINDOWS_MIRROR_URL)
-MAC_APP_LINK = WINDOWS_APP_LINK or "https://github.com/NikitaSH999/POKROVapp/releases"
+IOS_APP_LINK = APP_DOCS_URL
+ANDROID_APP_LINK = _first_non_empty(APP_ANDROID_PLAY_URL, APP_ANDROID_APK_URL, APP_ANDROID_MIRROR_URL, APP_DOCS_URL)
+WINDOWS_APP_LINK = _first_non_empty(APP_WINDOWS_EXE_URL, APP_WINDOWS_MIRROR_URL, APP_DOCS_URL)
+MAC_APP_LINK = APP_DOCS_URL
 
 # Protected users — NEVER modify, sync, or message these users
 PROTECTED_USERS = {
@@ -851,11 +851,11 @@ ACHIEVEMENTS = {
 TARIFFS = {
     "trial": {
         # Trial/fallback tier: enforced by subscription JSON allowlist rules (see api.py).
-        "name": "🚀 Тест на 3 дня",
+        "name": "🚀 Тест на 5 дней",
         "stars": 0,
-        "days": 3,
+        "days": 5,
         "gb": FREE_TOTAL_GB,
-        "subId": "TRIAL_3D",
+        "subId": "TRIAL_5D",
         "sub_type": "TRIAL"
     },
     "start_99": {
@@ -3065,9 +3065,9 @@ def build_choose_tariff_text() -> str:
 
     return (
         "💎 *Выберите уровень доступа*\n\n"
-        f"🚀 *Тест 3 дня* — быстрый старт: {free_label}\n"
+        f"🚀 *Тест 5 дней* — быстрый старт: {free_label}\n"
         f"💠 *Премиум* — {paid_count} стран: {paid_list}\n\n"
-        f"Тест: 3 дня, до {FREE_TOTAL_GB} ГБ, до {FREE_LIMIT_IP} устройства, базовый профиль для знакомства с сервисом.\n"
+        f"Тест: 5 дней, до {FREE_TOTAL_GB} ГБ, до {FREE_LIMIT_IP} устройства, базовый профиль для знакомства с сервисом.\n"
         "Тест не рассчитан на тяжёлую нагрузку и потоковое видео, зато помогает быстро понять, подходит ли вам сервис.\n"
         f"Премиум: все доступные страны, до {PAID_LIMIT_IP} устройств и комфортный запас по скорости.\n"
         "Приветственный тариф за 99 ₽ остаётся как мягкий апгрейд после теста.\n\n"
@@ -3306,7 +3306,7 @@ def _dual_pay_text(*, show_trial: bool) -> str:
     if show_trial:
         return (
             "🚀 *Как хотите продолжить?*\n\n"
-            "Сначала можно запустить тест на 3 дня и проверить сервис в реальном использовании.\n"
+            "Сначала можно запустить тест на 5 дней и спокойно проверить сервис в реальном использовании.\n"
             "Если нужен полный доступ, все страны и больше устройств — выберите тариф и оплату в рублях.\n"
             f"{rub_hint}\n"
             "После оплаты доступ обновится автоматически.\n\n"
@@ -3323,7 +3323,7 @@ def _dual_pay_text(*, show_trial: bool) -> str:
 def _dual_pay_keyboard(*, tg_id: int, show_trial: bool) -> InlineKeyboardMarkup:
     rows: list[list[InlineKeyboardButton]] = []
     if show_trial:
-        rows.append([InlineKeyboardButton(text="🚀 Запустить тест на 3 дня", callback_data="buy_trial")])
+        rows.append([InlineKeyboardButton(text="🚀 Запустить тест на 5 дней", callback_data="buy_trial")])
     rows.extend(
         [
             [InlineKeyboardButton(text="💳 Смотреть тарифы и оплату в ₽", callback_data="charge")],
@@ -3334,7 +3334,7 @@ def _dual_pay_keyboard(*, tg_id: int, show_trial: bool) -> InlineKeyboardMarkup:
 
 def main_keyboard_specs(tg_id: int = 0) -> list[list[dict[str, str]]]:
     rows = [
-        [_btn_spec(text="🌐 ОТКРЫТЬ ПОРТАЛ (WEB APP)", web_app_url=WEBAPP_URL)],
+        [_btn_spec(text="🌐 ОТКРЫТЬ КАБИНЕТ", web_app_url=WEBAPP_URL)],
         [
             _btn_spec(
                 text=_main_connect_cta_text(tg_id),
@@ -3378,7 +3378,7 @@ def tariff_keyboard(
         buttons.append(
             [
                 InlineKeyboardButton(
-                    text=f"🚀 Тест 3 дня — {FREE_TOTAL_GB} ГБ, {FREE_LIMIT_IP} устройство, базовый профиль",
+                text=f"🚀 Тест 5 дней — {FREE_TOTAL_GB} ГБ, {FREE_LIMIT_IP} устройство, базовый профиль",
                     callback_data="buy_trial",
                 )
             ]
@@ -4087,11 +4087,11 @@ async def show_key(callback: CallbackQuery):
         f"`{sub_link}`\n\n"
         f"📋 _Нажмите на ссылку, чтобы скопировать_\n\n"
         "🧠 *Умная подписка с маршрутами*\n"
-        "Подходит для Hiddify, sing-box и NekoBox. Эти клиенты заберут страны, прямые маршруты для РФ/Steam/торрентов и блок рекламы автоматически.\n\n"
+        "Лучше всего работает в приложении POKROV VPN и совместимых клиентах на sing-box. Маршруты по странам, прямые пути для РФ/Steam и базовые правила подключатся автоматически.\n\n"
         "📄 *Обычная ссылка без маршрутов*\n"
         f"`{plain_link}`\n"
         "Нужна только для простых клиентов, которые не понимают умный JSON-профиль.\n\n"
-        f"📱 Добавьте как подписку в Hiddify, Streisand или v2rayNG."
+        f"📱 Откройте приложение POKROV VPN или совместимый клиент и импортируйте подписку по ссылке."
         f"{free_note}",
         reply_markup=kb,
         parse_mode=ParseMode.MARKDOWN
@@ -4124,7 +4124,7 @@ async def show_qr_code(callback: CallbackQuery):
         photo=file,
         caption=(
             "📱 *Ваш QR-ключ доступа*\n\n"
-            "Отсканируйте в приложении (Hiddify / v2rayNG)."
+            "Отсканируйте в приложении POKROV VPN или совместимом клиенте."
         ),
         parse_mode=ParseMode.MARKDOWN,
     )
@@ -4138,7 +4138,7 @@ async def share_family_access(callback: CallbackQuery):
     share_text = (
         "🔑 *Доступ к защищённой сети POKROV VPN*\n\n"
         "Я делюсь с тобой своим приватным каналом связи.\n"
-        "1. Скачай приложение Hiddify\n"
+        "1. Скачай приложение POKROV VPN или открой страницу загрузок\n"
         "2. Скопируй ключ ниже и добавь его в приложение\n\n"
         f"`{sub_link}`\n\n"
         "🛡 *Быстро. Надёжно. Конфиденциально.*"
@@ -4254,7 +4254,7 @@ async def panic_execute(callback: CallbackQuery, bot: Bot):
 @router.callback_query(F.data == "mtproto")
 async def show_mtproto(callback: CallbackQuery):
     await callback.message.edit_text(
-        "ℹ️ Этот раздел отключен.\n\nИспользуйте «🌐 ОТКРЫТЬ ПОРТАЛ (WEB APP)» для подключения.",
+        "ℹ️ Этот раздел отключен.\n\nИспользуйте «🌐 ОТКРЫТЬ КАБИНЕТ» для подключения.",
         reply_markup=InlineKeyboardMarkup(inline_keyboard=[[InlineKeyboardButton(text="◀️ Назад", callback_data="back")]]),
         parse_mode=ParseMode.MARKDOWN,
     )
@@ -4271,7 +4271,7 @@ async def show_instruction(callback: CallbackQuery):
             InlineKeyboardButton(text="💻 Windows", callback_data="instr_win"),
             InlineKeyboardButton(text="🍎 macOS", callback_data="instr_mac"),
         ],
-        [InlineKeyboardButton(text="🌐 Открыть Портал", web_app=WebAppInfo(url=WEBAPP_URL))],
+        [InlineKeyboardButton(text="🌐 Открыть кабинет", web_app=WebAppInfo(url=WEBAPP_URL))],
         [InlineKeyboardButton(text="◀️ Назад", callback_data="back")],
     ])
     await callback.message.edit_text(
@@ -4305,36 +4305,36 @@ async def show_settings(callback: CallbackQuery):
 async def instruction_platform(callback: CallbackQuery):
     mapping = {
         "instr_ios": (
-            "🍏 *Настройка для iOS*\n\n"
-            "1. Скачайте Streisand\n"
-            "2. Скопируйте ключ в боте\n"
-            "3. В приложении нажмите `+` → `Import from Clipboard`",
+            "🍏 *Подключение на iPhone*\n\n"
+            "1. Откройте страницу приложений POKROV VPN\n"
+            "2. Установите доступный клиент для iOS или откройте инструкцию ожидания релиза\n"
+            "3. Скопируйте ключ в боте и импортируйте его в приложение",
             IOS_APP_LINK,
-            "📥 Скачать Streisand",
+            "📥 Открыть инструкцию для iPhone",
         ),
         "instr_android": (
-            "🤖 *Настройка для Android*\n\n"
-            "1. Скачайте Hiddify или v2rayNG\n"
+            "🤖 *Подключение на Android*\n\n"
+            "1. Скачайте POKROV VPN для Android\n"
             "2. Скопируйте ключ в боте\n"
-            "3. В приложении импортируйте ключ из буфера",
+            "3. В приложении импортируйте ключ из буфера или откройте кабинет для быстрого старта",
             ANDROID_APP_LINK,
-            "📥 Скачать Hiddify",
+            "📥 Скачать POKROV VPN",
         ),
         "instr_win": (
-            "💻 *Настройка для Windows*\n\n"
-            "1. Установите Hiddify Next или v2rayN\n"
+            "💻 *Подключение на Windows*\n\n"
+            "1. Скачайте POKROV VPN для Windows\n"
             "2. Скопируйте ключ доступа\n"
-            "3. Импортируйте ссылку подписки в клиент",
+            "3. Импортируйте ссылку подписки в приложение или завершите вход через кабинет",
             WINDOWS_APP_LINK,
-            "📥 Скачать клиент",
+            "📥 Скачать POKROV VPN",
         ),
         "instr_mac": (
-            "🍎 *Настройка для macOS*\n\n"
-            "1. Установите Hiddify Next\n"
-            "2. Скопируйте ключ доступа\n"
-            "3. Импортируйте подписку в приложении",
+            "🍎 *Подключение на macOS*\n\n"
+            "1. Откройте страницу приложений POKROV VPN\n"
+            "2. Посмотрите текущий статус macOS и доступные инструкции\n"
+            "3. Скопируйте ключ доступа и импортируйте его в совместимый клиент, если используете macOS уже сейчас",
             MAC_APP_LINK,
-            "📥 Скачать клиент",
+            "📥 Открыть инструкцию для macOS",
         ),
     }
     text, url, btn = mapping.get(callback.data or "", mapping["instr_android"])
@@ -4807,9 +4807,9 @@ FAQ_ANSWERS = {
     "connect": (
         "📱 *Как подключить?*\n\n"
         "1️⃣ Скачай приложение:\n"
-        f"• iOS: [Streisand]({IOS_APP_LINK})\n"
-        f"• Android: [Клиент]({ANDROID_APP_LINK})\n"
-        f"• Windows: [Клиент]({WINDOWS_APP_LINK})\n\n"
+        f"• iPhone / iPad: [Инструкция и статус релиза]({IOS_APP_LINK})\n"
+        f"• Android: [POKROV VPN]({ANDROID_APP_LINK})\n"
+        f"• Windows: [POKROV VPN]({WINDOWS_APP_LINK})\n\n"
         "2️⃣ Нажми *🔑 Мой ключ* в боте\n\n"
         "3️⃣ Скопируй ссылку подписки\n\n"
         "4️⃣ В приложении: ➕ → *Импорт из буфера*\n\n"
@@ -4927,7 +4927,7 @@ async def redeem_command(message: Message, bot: Bot):
     success, result_msg = await redeem_gift_card(code, tg_id, bot)
     
     kb = InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text="🌐 Открыть Портал", web_app=WebAppInfo(url=WEBAPP_URL))],
+        [InlineKeyboardButton(text="🌐 Открыть кабинет", web_app=WebAppInfo(url=WEBAPP_URL))],
         [InlineKeyboardButton(text="◀️ В меню", callback_data="back")]
     ]) if success else None
     
@@ -5217,7 +5217,7 @@ async def handle_text_input(message: Message):
             return
         success, result_msg = await redeem_gift_card(code, tg_id, message.bot)
         kb = InlineKeyboardMarkup(inline_keyboard=[
-            [InlineKeyboardButton(text="🌐 Открыть Портал", web_app=WebAppInfo(url=WEBAPP_URL))],
+            [InlineKeyboardButton(text="🌐 Открыть кабинет", web_app=WebAppInfo(url=WEBAPP_URL))],
             [InlineKeyboardButton(text="◀️ В меню", callback_data="back")],
         ]) if success else InlineKeyboardMarkup(inline_keyboard=[
             [InlineKeyboardButton(text="🔁 Ввести код снова", callback_data="gift_redeem_prompt")],
@@ -8243,13 +8243,13 @@ async def mode_simple_start(callback: CallbackQuery):
 async def mode_simple_step2(callback: CallbackQuery):
     mode = callback.data or ""
     if mode == "simple_ios":
-        app_name = "Streisand"
+        app_name = "совместимый клиент для iPhone"
         app_link = IOS_APP_LINK
     elif mode == "simple_android":
-        app_name = "Hiddify"
+        app_name = "POKROV VPN"
         app_link = ANDROID_APP_LINK
     else:
-        app_name = "Hiddify"
+        app_name = "POKROV VPN"
         app_link = WINDOWS_APP_LINK
 
     text = (
@@ -8789,7 +8789,7 @@ async def process_buy_stars(callback: CallbackQuery, bot: Bot):
     )
     await bot.send_invoice(
         chat_id=tg_id,
-        title=f"Портал: {tariff['name']}",
+        title=f"POKROV VPN: {tariff['name']}",
         description=description,
         payload=invoice_payload,
         provider_token="",
@@ -9168,7 +9168,7 @@ async def create_subscription(
                 [InlineKeyboardButton(text="💬 Написать в поддержку", url=f"https://t.me/{SUPPORT_USERNAME}?start=ticket_new")],
                 [InlineKeyboardButton(text="◀️ Назад", callback_data="back")]
             ])
-            await message.answer("❌ Не удалось активировать портал.\n\nНажмите кнопку ниже для связи с поддержкой.", reply_markup=kb)
+            await message.answer("❌ Не удалось активировать доступ.\n\nНажмите кнопку ниже для связи с поддержкой.", reply_markup=kb)
             return
         
         # Create user in DB with the generated sub_token
@@ -9247,12 +9247,12 @@ async def create_subscription(
     sub_link = build_subscription_link(tg_id)
     
     kb = InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text="🌐 Открыть Портал", web_app=WebAppInfo(url=WEBAPP_URL))],
+        [InlineKeyboardButton(text="🌐 Открыть кабинет", web_app=WebAppInfo(url=WEBAPP_URL))],
         [InlineKeyboardButton(text="◀️ В меню", callback_data="back")]
     ])
     
     await message.answer(
-        f"✅ *Портал активирован!*\n\n"
+        f"✅ *Доступ активирован!*\n\n"
         f"🔋 Энергии хватит до: `{expiry}`\n\n"
         f"🔗 *Ваша подписка:*\n"
         f"`{sub_link}`\n\n"
@@ -10336,7 +10336,7 @@ async def admin_gift(message: Message, bot: Bot):
         sub_link = build_subscription_link(gift_tg_id)
         await bot.send_message(
             gift_tg_id,
-            f"🎁 *Вам подарили доступ к Порталу!*\n\n"
+            f"🎁 *Вам подарили доступ к POKROV VPN!*\n\n"
             f"📦 Тариф: {name}\n"
             f"📅 Дней: {days}\n"
             f"📡 Режим: полный доступ\n\n"

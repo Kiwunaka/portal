@@ -589,11 +589,22 @@ class BotPaywallTests(unittest.TestCase):
 
     def test_choose_tariff_text_is_trial_first_and_no_stars(self) -> None:
         text = self.bot_module.build_choose_tariff_text()
-        self.assertIn("3 дня", text)
+        self.assertIn("5 дней", text)
         self.assertIn("тест", text.lower())
         self.assertIn("5 ГБ", text)
         self.assertNotIn("Stars", text)
         self.assertNotIn("⭐", text)
+
+    def test_dual_pay_text_uses_five_day_trial_copy(self) -> None:
+        text = self.bot_module._dual_pay_text(show_trial=True)
+        self.assertIn("5 дней", text)
+        self.assertNotIn("3 дня", text)
+
+    def test_main_keyboard_uses_kabinet_label_instead_of_portal(self) -> None:
+        rows = self.bot_module.main_keyboard_specs(1001)
+        labels = [str(button.get("text") or "") for row in rows for button in row]
+        self.assertTrue(any("КАБИНЕТ" in label for label in labels))
+        self.assertFalse(any("ПОРТАЛ" in label for label in labels))
 
     def test_activate_promo_code_rejects_expired_promo(self) -> None:
         self.bot_module.ensure_pending_user(1001, username="alice")

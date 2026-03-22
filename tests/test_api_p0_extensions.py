@@ -324,12 +324,12 @@ class ApiP0ExtensionsTests(unittest.TestCase):
         self.assertTrue(body["updated_at"].endswith("Z"))
 
     def test_client_apps_endpoint_returns_configured_urls(self) -> None:
-        self.api.Settings.APP_ANDROID_PLAY_URL = "https://play.google.com/store/apps/details?id=example.portal"
-        self.api.Settings.APP_ANDROID_APK_URL = "https://github.com/example/portal/releases/latest/download/portal.apk"
-        self.api.Settings.APP_ANDROID_MIRROR_URL = "https://downloads.example.com/mobile/portal.apk"
-        self.api.Settings.APP_WINDOWS_EXE_URL = "https://github.com/example/portal/releases/latest/download/portal.exe"
-        self.api.Settings.APP_WINDOWS_MIRROR_URL = "https://downloads.example.com/desktop/portal.exe"
-        self.api.Settings.APP_DOCS_URL = "https://portal.example.com/install/"
+        self.api.Settings.APP_ANDROID_PLAY_URL = "https://play.google.com/store/apps/details?id=space.pokrov.vpn"
+        self.api.Settings.APP_ANDROID_APK_URL = "https://github.com/example/pokrov-vpn/releases/latest/download/pokrov-vpn-android.apk"
+        self.api.Settings.APP_ANDROID_MIRROR_URL = "https://downloads.example.com/mobile/pokrov-vpn-android.apk"
+        self.api.Settings.APP_WINDOWS_EXE_URL = "https://github.com/example/pokrov-vpn/releases/latest/download/pokrov-vpn-windows.exe"
+        self.api.Settings.APP_WINDOWS_MIRROR_URL = "https://downloads.example.com/desktop/pokrov-vpn-windows.exe"
+        self.api.Settings.APP_DOCS_URL = "https://pokrov.space/install/"
 
         client = TestClient(self.api.app)
         hdrs = {"X-Telegram-Init-Data": self._init_data(1001, "alice")}
@@ -342,6 +342,44 @@ class ApiP0ExtensionsTests(unittest.TestCase):
         self.assertEqual(body["windows"]["exe_url"], self.api.Settings.APP_WINDOWS_EXE_URL)
         self.assertEqual(body["windows"]["mirror_url"], self.api.Settings.APP_WINDOWS_MIRROR_URL)
         self.assertEqual(body["docs_url"], self.api.Settings.APP_DOCS_URL)
+
+    def test_start_trial_returns_session_and_subscription_url(self) -> None:
+        calls: list[dict[str, object]] = []
+
+        class _FakePanel:
+            async def add_client(self, **kwargs):
+                calls.append(kwargs)
+                return True
+
+            async def close(self):
+                return None
+
+        old_panel = self.api.ControlPanel
+        try:
+            self.api.ControlPanel = _FakePanel
+            client = TestClient(self.api.app)
+            response = client.post(
+                "/api/client/session/start-trial",
+                json={
+                    "install_id": "install-12345678",
+                    "device_name": "Alice Pixel",
+                    "platform": "android",
+                    "os_version": "14",
+                    "app_version": "1.0.0",
+                    "locale": "ru-RU",
+                    "time_zone": "Europe/Moscow",
+                },
+            )
+        finally:
+            self.api.ControlPanel = old_panel
+
+        self.assertEqual(response.status_code, 200, response.text)
+        body = response.json()
+        self.assertTrue(body["ok"])
+        self.assertTrue(body["created"])
+        self.assertTrue(str(body["session_token"]))
+        self.assertIn("/s8Kx2mP7qR4wT/", str(body["subscription_url"]))
+        self.assertTrue(calls)
 
 
 if __name__ == "__main__":
