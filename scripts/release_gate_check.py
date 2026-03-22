@@ -40,6 +40,14 @@ def _prepare_frontend_build_copy(cwd: Path) -> Path:
         target,
         ignore=shutil.ignore_patterns("out", ".next", "node_modules"),
     )
+    shared_src = REPO_ROOT / "shared"
+    shared_dst = temp_root / "shared"
+    if shared_src.exists():
+        shutil.copytree(shared_src, shared_dst, dirs_exist_ok=True)
+    copy_src = REPO_ROOT / "copy"
+    copy_dst = temp_root / "copy"
+    if copy_src.exists():
+        shutil.copytree(copy_src, copy_dst, dirs_exist_ok=True)
     source_node_modules = cwd / "node_modules"
     target_node_modules = target / "node_modules"
     if cwd.name.lower() == "webapp":
