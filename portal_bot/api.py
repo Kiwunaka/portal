@@ -4675,7 +4675,7 @@ async def claim_channel_bonus(request: Request, x_telegram_init_data: str = Head
                 event_name="promo_channel_denied",
                 meta={"reason": "telegram_link_required"},
             )
-            raise HTTPException(status_code=400, detail="Сначала привяжите Telegram к аккаунту PORTAL VPN")
+            raise HTTPException(status_code=400, detail="Сначала привяжите Telegram к аккаунту POKROV VPN")
 
         is_member, reason = await _is_channel_member(PUBLIC_CHANNEL, membership_tg_id)
         if not is_member:

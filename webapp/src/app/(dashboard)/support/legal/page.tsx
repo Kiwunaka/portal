@@ -16,7 +16,7 @@ function marketingDocumentUrl(pathname: "/offer/" | "/privacy/"): string {
       // Fall through to domain fallback below.
     }
   }
-  return `https://portal-privacy.online${pathname}`;
+  return `https://pokrov.space${pathname}`;
 }
 
 export default function SupportLegalPage() {
@@ -32,7 +32,7 @@ export default function SupportLegalPage() {
         </Link>
         <h1 className="mt-3 font-display text-4xl font-bold">Юридическая информация</h1>
         <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">
-          Ниже находятся актуальные публичные документы PORTAL: оферта и политика конфиденциальности.
+          Ниже находятся актуальные публичные документы POKROV: оферта и политика конфиденциальности.
         </p>
       </section>
 

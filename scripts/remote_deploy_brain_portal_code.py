@@ -59,11 +59,24 @@ def main() -> int:
         try:
             for p in sorted((REPO_ROOT / "portal_bot").glob("*.py")):
                 sftp.put(str(p), f"/root/portal_bot/{p.name}")
+            requirements = REPO_ROOT / "portal_bot" / "requirements.txt"
+            if requirements.exists():
+                sftp.put(str(requirements), "/root/portal_bot/requirements.txt")
             collector = REPO_ROOT / "scripts" / "collect_node_metrics.py"
             if collector.exists():
                 sftp.put(str(collector), "/root/portal_bot/collect_node_metrics.py")
         finally:
             sftp.close()
+
+        _run(
+            ssh,
+            (
+                "cd /root/portal_bot && "
+                "test -x venv/bin/python || python3 -m venv venv && "
+                "venv/bin/python -m pip install -r requirements.txt >/tmp/portal_requirements.log 2>&1"
+            ),
+            timeout=1800,
+        )
 
         for unit in [u.strip() for u in args.restart.split(",") if u.strip()]:
             _run(ssh, f"systemctl restart {unit} >/dev/null 2>&1 || true", timeout=60)
