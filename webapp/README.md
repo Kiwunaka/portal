@@ -5,14 +5,15 @@
 ## Локальный запуск
 
 ```bash
-npm install
-npm run dev
+npm.cmd install
+npm.cmd run dev
 ```
 
 ## Прод-сборка
 
 ```bash
-npm run build
+npm.cmd run build
+npm.cmd run test:e2e:admin
 ```
 
 `next.config.ts` настроен на:

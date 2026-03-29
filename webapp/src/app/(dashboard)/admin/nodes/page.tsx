@@ -16,7 +16,7 @@ import {
   type AdminNodeTrafficRow,
 } from "@/lib/api";
 import { Activity, Gauge, HardDrive, Loader2, RefreshCw, Server, Wifi } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 const COUNTRY_FLAGS: Record<string, string> = {
   us: "🇺🇸",
@@ -37,10 +37,10 @@ function range7d(): { from: string; to: string } {
 
 function formatFreshness(value?: string | null): string {
   const normalized = String(value || "").toLowerCase();
-  if (normalized === "fresh") return "актуальны";
-  if (normalized === "stale") return "устарели";
-  if (normalized === "missing") return "нет данных";
-  return normalized || "неизвестно";
+  if (normalized === "fresh") return "Метрики свежие";
+  if (normalized === "stale") return "Метрики устарели";
+  if (normalized === "missing") return "Нет данных по метрикам";
+  return "Состояние метрик неизвестно";
 }
 
 function formatIso(value?: string | null): string {
@@ -101,6 +101,21 @@ function scoreTone(score: number): { fillClass: string; dotClass: string; badgeC
   };
 }
 
+function alertKindLabel(kind: string): string {
+  const value = String(kind || "").toLowerCase();
+  if (value === "cpu_high") return "CPU";
+  if (value === "memory_high") return "RAM";
+  if (value === "disk_high") return "Диск";
+  if (value === "latency_high") return "Задержка";
+  if (value === "error_rate_high") return "Ошибки";
+  if (value === "active_clients_high" || value === "client_density_high") return "Клиенты";
+  return kind;
+}
+
+function nodeCodeKey(value: string): string {
+  return String(value || "").trim().toLowerCase();
+}
+
 export default function AdminNodesPage() {
   const [nodes, setNodes] = useState<AdminNodeHealthRow[]>([]);
   const [traffic, setTraffic] = useState<AdminNodeTrafficRow[]>([]);
@@ -113,20 +128,36 @@ export default function AdminNodesPage() {
   const [nodeActionNote, setNodeActionNote] = useState("");
   const [error, setError] = useState("");
 
+  const freshnessByNode = useMemo(
+    () =>
+      new Map(
+        (status?.nodes || []).map((row) => [
+          nodeCodeKey(row.node_code),
+          {
+            freshness: row.status,
+            alertKinds: row.alert_kinds || [],
+            lastSampleAt: row.last_sample_at,
+            ageSeconds: row.age_seconds,
+          },
+        ]),
+      ),
+    [status?.nodes],
+  );
+
   const load = async (): Promise<void> => {
     setError("");
     try {
-      const r = range7d();
+      const range = range7d();
       const [healthRows, metricsStatus, trafficRows] = await Promise.all([
         adminNodesHealth(),
         adminMetricsStatus(),
-        adminNodesTraffic(r),
+        adminNodesTraffic(range),
       ]);
       setNodes(healthRows);
       setStatus(metricsStatus);
       setTraffic(trafficRows);
     } catch (err) {
-      setError(String((err as { message?: string })?.message || err || "     "));
+      setError(String((err as { message?: string })?.message || err || "Не удалось загрузить данные по нодам."));
     }
   };
 
@@ -141,7 +172,7 @@ export default function AdminNodesPage() {
       const report = await adminNodesDrift();
       setDrift(report);
     } catch (err) {
-      setError(String((err as { message?: string })?.message || err || "   "));
+      setError(String((err as { message?: string })?.message || err || "Не удалось проверить расхождения."));
     } finally {
       setDriftBusy(false);
     }
@@ -154,7 +185,7 @@ export default function AdminNodesPage() {
     try {
       if (action === "drain") {
         await adminNodeDrain(node.code);
-        setNodeActionNote(`Нода ${node.code.toUpperCase()} больше не принимает новые назначения. Текущие пользователи не тронуты.`);
+        setNodeActionNote(`Нода ${node.code.toUpperCase()} больше не принимает новые назначения. Текущие клиенты не затронуты.`);
       } else if (action === "enable") {
         await adminNodeEnable(node.code);
         setNodeActionNote(`Нода ${node.code.toUpperCase()} снова участвует в выдаче новых пользователей.`);
@@ -170,7 +201,7 @@ export default function AdminNodesPage() {
       await load();
       if (drift) await loadDrift();
     } catch (err) {
-      setError(String((err as { message?: string })?.message || err || "     "));
+      setError(String((err as { message?: string })?.message || err || "Не удалось выполнить действие с нодой."));
     } finally {
       setNodeActionBusy("");
     }
@@ -183,15 +214,15 @@ export default function AdminNodesPage() {
     try {
       await adminNodesSync({ segment, limit: 200 });
       await load();
-      setNodeActionNote(
-        segment === "active"
-          ? "    ."
-          : segment === "free"
-            ? "    ."
-            : "Пересобраны назначения для платного контура.",
-      );
+      if (segment === "active") {
+        setNodeActionNote("Пересобраны назначения для активных пользователей.");
+      } else if (segment === "free") {
+        setNodeActionNote("Пересобраны назначения для free-контура.");
+      } else {
+        setNodeActionNote("Пересобраны назначения для платного контура.");
+      }
     } catch (err) {
-      setError(String((err as { message?: string })?.message || err || "   "));
+      setError(String((err as { message?: string })?.message || err || "Не удалось пересобрать назначения."));
     } finally {
       setBusy(false);
       setSyncTarget("");
@@ -209,7 +240,7 @@ export default function AdminNodesPage() {
             <div>
               <h2 className="font-display text-xl font-bold">Ноды и состояние инфраструктуры</h2>
               <p className="mt-0.5 text-xs text-slate-500">
-                  <strong>{formatFreshness(status?.status)}</strong>.  : {formatIso(status?.last_sample_at)}.
+                <strong>{formatFreshness(status?.status)}</strong>. Последний срез: {formatIso(status?.last_sample_at)}.
               </p>
             </div>
           </div>
@@ -218,23 +249,32 @@ export default function AdminNodesPage() {
               { code: "active", label: "Пересобрать активных" },
               { code: "paid", label: "Пересобрать платных" },
               { code: "free", label: "Пересобрать free" },
-            ].map((seg) => (
+            ].map((segment) => (
               <button
-                key={seg.code}
+                key={segment.code}
                 className="outline-btn inline-flex items-center gap-1.5 rounded-xl px-3 py-2 text-xs font-semibold"
                 type="button"
-                onClick={() => void runSync(seg.code)}
+                onClick={() => void runSync(segment.code)}
                 disabled={busy}
               >
-                {busy && syncTarget === seg.code ? <Loader2 size={12} className="animate-spin" /> : <RefreshCw size={12} />}
-                {seg.label}
+                {busy && syncTarget === segment.code ? <Loader2 size={12} className="animate-spin" /> : <RefreshCw size={12} />}
+                {segment.label}
               </button>
             ))}
-            <button className="outline-btn inline-flex items-center gap-1.5 rounded-xl px-3 py-2 text-xs font-semibold" type="button" onClick={() => void loadDrift()} disabled={driftBusy}>
+            <button
+              className="outline-btn inline-flex items-center gap-1.5 rounded-xl px-3 py-2 text-xs font-semibold"
+              type="button"
+              onClick={() => void loadDrift()}
+              disabled={driftBusy}
+            >
               {driftBusy ? <Loader2 size={12} className="animate-spin" /> : <Server size={12} />}
               Проверить расхождения
             </button>
-            <button className="btn-primary inline-flex items-center gap-1.5 rounded-xl px-4 py-2 text-xs font-semibold" type="button" onClick={() => void load()}>
+            <button
+              className="btn-primary inline-flex items-center gap-1.5 rounded-xl px-4 py-2 text-xs font-semibold"
+              type="button"
+              onClick={() => void load()}
+            >
               <Activity size={14} />
               Обновить
             </button>
@@ -242,6 +282,15 @@ export default function AdminNodesPage() {
         </div>
         {error ? <p className="mt-3 text-sm text-rose-500">{error}</p> : null}
         {nodeActionNote ? <p className="mt-2 text-sm text-emerald-500">{nodeActionNote}</p> : null}
+        {status?.active_alerts?.length ? (
+          <div className="mt-3 flex flex-wrap gap-2">
+            {status.active_alerts.map((alert) => (
+              <span key={`${alert.node_code}-${alert.kind}`} className="badge badge-warning">
+                {alert.node_code.toUpperCase()}: {alertKindLabel(alert.kind)}
+              </span>
+            ))}
+          </div>
+        ) : null}
       </div>
 
       {drift ? (
@@ -268,14 +317,14 @@ export default function AdminNodesPage() {
                     <div className="flex items-center gap-2">
                       <strong className="text-base">{row.node_code.toUpperCase()}</strong>
                       <span className={`badge ${row.status === "ok" ? "badge-success" : "badge-warning"}`}>
-                        {row.status === "ok" ? " " : " "}
+                        {row.status === "ok" ? "Совпало" : "Расхождение"}
                       </span>
                     </div>
                     <p className="mt-1 text-xs text-slate-500">{row.node_host || "нет данных о хосте"}</p>
                   </div>
                   <div className="text-right text-xs text-slate-500">
-                    <div>: <strong>{row.runtime?.port ?? ""}</strong></div>
-                    <div>: <strong>{row.runtime?.security || ""}</strong></div>
+                    <div>Порт: <strong>{row.runtime?.port ?? "—"}</strong></div>
+                    <div>Безопасность: <strong>{row.runtime?.security || "—"}</strong></div>
                   </div>
                 </div>
                 {row.mismatches.length > 0 ? (
@@ -283,7 +332,7 @@ export default function AdminNodesPage() {
                 ) : (
                   <p className="mt-3 text-sm text-emerald-500">Настройка ноды совпадает с тем, что ожидает POKROV.</p>
                 )}
-                {row.error ? <p className="mt-2 text-xs text-rose-500">  : {row.error}</p> : null}
+                {row.error ? <p className="mt-2 text-xs text-rose-500">Ошибка проверки: {row.error}</p> : null}
               </div>
             ))}
           </div>
@@ -294,9 +343,10 @@ export default function AdminNodesPage() {
         {nodes.map((node) => {
           const score = Number(node.health_score || 0);
           const tone = scoreTone(score);
-          const flag = COUNTRY_FLAGS[node.code.toLowerCase()] || "🌐";
+          const flag = COUNTRY_FLAGS[nodeCodeKey(node.code)] || "🌐";
           const memoryPercent = node.memory_total_mb > 0 ? (node.memory_used_mb / node.memory_total_mb) * 100 : null;
           const diskPercent = node.disk_total_gb > 0 ? (node.disk_used_gb / node.disk_total_gb) * 100 : null;
+          const nodeFreshness = freshnessByNode.get(nodeCodeKey(node.code));
 
           return (
             <article key={node.code} className="stat-card p-5">
@@ -306,9 +356,9 @@ export default function AdminNodesPage() {
                   <div>
                     <p className="text-lg font-bold">{node.code.toUpperCase()}</p>
                     <div className="mt-0.5 flex items-center gap-1.5">
-                      <span className={`status-dot ${node.is_healthy ? "status-dot-online" : "status-dot-offline"}`} />
+                      <span className={`status-dot ${node.is_healthy ? tone.dotClass : "status-dot-offline"}`} />
                       <span className={`badge ${node.is_healthy ? "badge-success" : "badge-danger"}`}>
-                        {node.is_healthy ? "" : " "}
+                        {node.is_healthy ? "Стабильно" : "Нужна проверка"}
                       </span>
                     </div>
                   </div>
@@ -335,14 +385,17 @@ export default function AdminNodesPage() {
               <div className="mt-4 grid grid-cols-3 gap-2 text-center">
                 <div className="rounded-lg bg-white/50 p-2 dark:bg-white/5">
                   <p className="text-xs text-slate-500">Отклик</p>
-                  <p className="text-sm font-bold">{node.panel_latency_ms ?? ""}<span className="text-[10px] text-slate-400"> ms</span></p>
+                  <p className="text-sm font-bold">
+                    {node.panel_latency_ms ?? "—"}
+                    <span className="text-[10px] text-slate-400"> ms</span>
+                  </p>
                 </div>
                 <div className="rounded-lg bg-white/50 p-2 dark:bg-white/5">
                   <p className="text-xs text-slate-500">Ошибки</p>
                   <p className="text-sm font-bold">{formatPercent(node.panel_error_rate * 100, 1)}</p>
                 </div>
                 <div className="rounded-lg bg-white/50 p-2 dark:bg-white/5">
-                  <p className="text-xs text-slate-500">Записей в панели</p>
+                  <p className="text-xs text-slate-500">Клиенты в панели</p>
                   <p className="text-sm font-bold">{node.active_clients}</p>
                 </div>
               </div>
@@ -373,12 +426,17 @@ export default function AdminNodesPage() {
                 </div>
                 <div className="mt-1 flex items-center justify-between text-xs text-slate-500">
                   <span>Свободно</span>
-                  <span>{node.disk_free_gb > 0 ? `${node.disk_free_gb.toFixed(1)} ` : " "}</span>
+                  <span>{node.disk_free_gb > 0 ? `${node.disk_free_gb.toFixed(1)} ГБ` : "—"}</span>
                 </div>
                 {diskPercent != null ? (
                   <>
                     <div className="mt-2 progress-track">
-                      <div className={`progress-fill ${diskPercent > 90 ? "progress-fill-rose" : diskPercent > 75 ? "progress-fill-amber" : "progress-fill-emerald"}`} style={{ width: `${Math.min(100, Math.max(0, diskPercent))}%` }} />
+                      <div
+                        className={`progress-fill ${
+                          diskPercent > 90 ? "progress-fill-rose" : diskPercent > 75 ? "progress-fill-amber" : "progress-fill-emerald"
+                        }`}
+                        style={{ width: `${Math.min(100, Math.max(0, diskPercent))}%` }}
+                      />
                     </div>
                     <p className="mt-1 text-[11px] text-slate-500">Использовано {formatPercent(diskPercent, 0)}</p>
                   </>
@@ -387,12 +445,22 @@ export default function AdminNodesPage() {
 
               <div className="mt-4 flex flex-wrap gap-2">
                 <span className={`badge ${node.enabled ? "badge-success" : "badge-danger"}`}>
-                  {node.enabled ? "  " : ""}
+                  {node.enabled ? "В выдаче" : "Выключена"}
                 </span>
                 <span className={`badge ${node.accepting_new_clients ? "badge-info" : "badge-warning"}`}>
-                  {node.accepting_new_clients ? " " : "  "}
+                  {node.accepting_new_clients ? "Принимает новых" : "Только текущие"}
                 </span>
-                {node.is_draining ? <span className="badge badge-warning">  </span> : null}
+                {node.is_draining ? <span className="badge badge-warning">Дренируется</span> : null}
+                {nodeFreshness ? (
+                  <span className={`badge ${nodeFreshness.freshness === "fresh" ? "badge-success" : "badge-warning"}`}>
+                    {formatFreshness(nodeFreshness.freshness)}
+                  </span>
+                ) : null}
+                {(nodeFreshness?.alertKinds || []).map((kind) => (
+                  <span key={`${node.code}-${kind}`} className="badge badge-warning">
+                    {alertKindLabel(kind)}
+                  </span>
+                ))}
               </div>
 
               <div className="mt-4 grid grid-cols-2 gap-2">
@@ -403,7 +471,7 @@ export default function AdminNodesPage() {
                     disabled={!!nodeActionBusy}
                     onClick={() => void runNodeAction(node, "drain")}
                   >
-                    {nodeActionBusy === `drain:${node.code}` ? "..." : "  "}
+                    {nodeActionBusy === `drain:${node.code}` ? "..." : "Остановить новые"}
                   </button>
                 ) : (
                   <button
@@ -412,7 +480,7 @@ export default function AdminNodesPage() {
                     disabled={!!nodeActionBusy}
                     onClick={() => void runNodeAction(node, "enable")}
                   >
-                    {nodeActionBusy === `enable:${node.code}` ? "..." : "  "}
+                    {nodeActionBusy === `enable:${node.code}` ? "..." : "Вернуть в выдачу"}
                   </button>
                 )}
                 <button
@@ -421,21 +489,35 @@ export default function AdminNodesPage() {
                   disabled={!!nodeActionBusy || !node.enabled}
                   onClick={() => void runNodeAction(node, "resync")}
                 >
-                  {nodeActionBusy === `resync:${node.code}` ? "..." : " "}
+                  {nodeActionBusy === `resync:${node.code}` ? "..." : "Пересобрать назначения"}
                 </button>
                 <button
                   type="button"
-                  className="outline-btn rounded-xl col-span-2 px-3 py-2 text-xs font-semibold"
+                  className="outline-btn col-span-2 rounded-xl px-3 py-2 text-xs font-semibold"
                   disabled={!!nodeActionBusy || !node.enabled}
                   onClick={() => void runNodeAction(node, "disable")}
                 >
-                  {nodeActionBusy === `disable:${node.code}` ? "..." : "  "}
+                  {nodeActionBusy === `disable:${node.code}` ? "..." : "Выключить ноду"}
                 </button>
               </div>
 
+              {node.last_probe_error_kind || node.last_probe_error_message ? (
+                <div className="mt-3 rounded-xl border border-rose-200/50 bg-rose-50/70 p-3 text-xs text-rose-600 dark:border-rose-500/20 dark:bg-rose-500/10">
+                  <div className="font-semibold">
+                    Сбой проверки
+                    {node.last_probe_stage ? ` на этапе ${node.last_probe_stage}` : ""}
+                    {node.last_probe_error_kind ? `: ${node.last_probe_error_kind}` : ""}
+                  </div>
+                  {node.last_probe_error_message ? (
+                    <div className="mt-1 text-slate-600 dark:text-slate-300">{node.last_probe_error_message}</div>
+                  ) : null}
+                </div>
+              ) : null}
+
               <p className="mt-3 text-[11px] text-slate-500">
                 Последняя проверка: {formatIso(node.last_health_at)}.
-                {memoryPercent != null ? `    ${formatPercent(memoryPercent, 0)}.` : ""}
+                {nodeFreshness?.lastSampleAt ? ` Срез метрик: ${formatIso(nodeFreshness.lastSampleAt)}.` : ""}
+                {memoryPercent != null ? ` RAM: ${formatPercent(memoryPercent, 0)}.` : ""}
               </p>
             </article>
           );
@@ -469,10 +551,13 @@ export default function AdminNodesPage() {
               </tr>
             </thead>
             <tbody>
-              {traffic.map((row, idx) => {
-                const flag = COUNTRY_FLAGS[row.node_code.toLowerCase()] || "🌐";
+              {traffic.map((row, index) => {
+                const flag = COUNTRY_FLAGS[nodeCodeKey(row.node_code)] || "🌐";
                 return (
-                  <tr key={`${row.date}:${row.node_code}`} className={`border-t border-white/20 dark:border-white/5 ${idx % 2 === 0 ? "bg-white/30 dark:bg-white/[0.02]" : ""}`}>
+                  <tr
+                    key={`${row.date}:${row.node_code}`}
+                    className={`border-t border-white/20 dark:border-white/5 ${index % 2 === 0 ? "bg-white/30 dark:bg-white/[0.02]" : ""}`}
+                  >
                     <td className="px-3 py-2.5 font-medium">{row.date}</td>
                     <td className="px-3 py-2.5">
                       <span className="inline-flex items-center gap-1.5">

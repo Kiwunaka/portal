@@ -11,6 +11,16 @@ const STATUS_META: Record<string, { color: string; badge: string; icon: typeof C
   closed: { color: "badge-success", badge: "Закрыт", icon: CheckCircle },
 };
 
+function normalizeTicketStatus(ticket: Pick<TicketInfo, "status" | "status_title"> | null | undefined): keyof typeof STATUS_META {
+  const raw = String(ticket?.status || "").toLowerCase().replace(/\s+/g, "_");
+  if (raw in STATUS_META) return raw as keyof typeof STATUS_META;
+
+  const title = String(ticket?.status_title || "").toLowerCase().replace(/\s+/g, "_");
+  if (title === "в_работе") return "in_progress";
+  if (title === "закрыт") return "closed";
+  return "open";
+}
+
 export default function AdminTicketsPage() {
   const [statusFilter, setStatusFilter] = useState("");
   const [tickets, setTickets] = useState<TicketInfo[]>([]);
@@ -20,7 +30,7 @@ export default function AdminTicketsPage() {
   const [error, setError] = useState("");
   const messagesEnd = useRef<HTMLDivElement>(null);
 
-  const selected = useMemo(() => tickets.find((t) => t.id === selectedId) || null, [selectedId, tickets]);
+  const selected = useMemo(() => tickets.find((ticket) => ticket.id === selectedId) || null, [selectedId, tickets]);
 
   const load = useCallback(async (): Promise<void> => {
     setError("");
@@ -28,10 +38,12 @@ export default function AdminTicketsPage() {
       const rows = await adminTickets(statusFilter, 80);
       setTickets(rows);
       if (rows[0]?.id) {
-        setSelectedId((prev) => prev || rows[0].id);
+        setSelectedId((prev) => (rows.some((ticket) => ticket.id === prev) ? prev : rows[0].id));
+      } else {
+        setSelectedId(0);
       }
     } catch (err) {
-      setError(String((err as { message?: string })?.message || err || "    "));
+      setError(String((err as { message?: string })?.message || err || "Не удалось загрузить тикеты."));
     }
   }, [statusFilter]);
 
@@ -51,7 +63,7 @@ export default function AdminTicketsPage() {
       setReply("");
       setTickets((prev) => prev.map((row) => (row.id === updated.id ? updated : row)));
     } catch (err) {
-      setError(String((err as { message?: string })?.message || err || "    "));
+      setError(String((err as { message?: string })?.message || err || "Не удалось отправить ответ."));
     } finally {
       setBusy(false);
     }
@@ -64,20 +76,20 @@ export default function AdminTicketsPage() {
       const updated = await adminTicketStatus(selected.id, nextStatus);
       setTickets((prev) => prev.map((row) => (row.id === updated.id ? updated : row)));
     } catch (err) {
-      setError(String((err as { message?: string })?.message || err || "    "));
+      setError(String((err as { message?: string })?.message || err || "Не удалось обновить статус тикета."));
     } finally {
       setBusy(false);
     }
   };
 
-  const selectedStatus = selected?.status_title?.toLowerCase().replace(/\s+/g, "_") || "open";
+  const selectedStatus = normalizeTicketStatus(selected);
 
   return (
     <section className="grid gap-4 xl:grid-cols-[0.9fr,1.1fr]">
-      {/* ── Ticket list ────────────────────────────────── */}
       <article className="glass-card p-4">
         <div className="mb-3 rounded-xl bg-white/60 p-3 text-xs text-slate-500 dark:bg-white/5 dark:text-slate-400">
-          Здесь собраны обращения пользователей. Слева список диалогов, справа переписка и быстрые статусы. Если нужно просто разобрать очередь, начните с фильтра и верхних карточек.
+          Здесь собраны обращения пользователей. Слева список диалогов, справа переписка и быстрые статусы. Если нужно
+          быстро разобрать очередь, начните с фильтра и верхних карточек.
         </div>
         <div className="mb-3 flex flex-wrap items-center gap-2">
           <div className="stat-icon stat-icon-amber">
@@ -93,8 +105,13 @@ export default function AdminTicketsPage() {
             <option value="in_progress">В работе</option>
             <option value="closed">Закрыт</option>
           </select>
-          <button className="outline-btn rounded-xl px-3 py-2 text-sm font-semibold inline-flex items-center gap-1.5" type="button" onClick={() => void load()}>
+          <button
+            className="outline-btn inline-flex items-center gap-1.5 rounded-xl px-3 py-2 text-sm font-semibold"
+            type="button"
+            onClick={() => void load()}
+          >
             <RefreshCw size={13} />
+            Обновить
           </button>
         </div>
         {error ? <p className="mb-2 text-sm text-rose-500">{error}</p> : null}
@@ -106,19 +123,18 @@ export default function AdminTicketsPage() {
             </div>
           ) : null}
           {tickets.map((ticket) => {
-            const tStatus = ticket.status_title?.toLowerCase().replace(/\s+/g, "_") || "open";
-            const meta = STATUS_META[tStatus] || STATUS_META.open;
+            const meta = STATUS_META[normalizeTicketStatus(ticket)] || STATUS_META.open;
             return (
               <button
                 key={ticket.id}
                 type="button"
                 onClick={() => setSelectedId(ticket.id)}
-                className={`haptic-tap w-full rounded-xl px-4 py-3 text-left transition-all ${selectedId === ticket.id ? "stat-card" : "bg-white/60 hover:bg-white/80 dark:bg-white/5 dark:hover:bg-white/10"}`}
+                className={`haptic-tap w-full rounded-xl px-4 py-3 text-left transition-all ${
+                  selectedId === ticket.id ? "stat-card" : "bg-white/60 hover:bg-white/80 dark:bg-white/5 dark:hover:bg-white/10"
+                }`}
               >
                 <div className="flex items-center justify-between gap-2">
-                  <span className="flex items-center gap-2">
-                    <span className="text-sm font-bold">#{ticket.id}</span>
-                  </span>
+                  <span className="text-sm font-bold">#{ticket.id}</span>
                   <span className={`badge ${meta.color}`}>{meta.badge}</span>
                 </div>
                 <p className="mt-1.5 text-sm font-medium">{ticket.subject || "Без темы"}</p>
@@ -129,7 +145,6 @@ export default function AdminTicketsPage() {
         </div>
       </article>
 
-      {/* ── Ticket detail ──────────────────────────────── */}
       <article className="glass-card p-4">
         {!selected ? (
           <div className="empty-state min-h-[300px]">
@@ -138,7 +153,6 @@ export default function AdminTicketsPage() {
           </div>
         ) : (
           <>
-            {/* Header */}
             <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
               <div>
                 <h2 className="font-display text-2xl font-bold">Тикет #{selected.id}</h2>
@@ -151,10 +165,9 @@ export default function AdminTicketsPage() {
                   return (
                     <button
                       key={key}
-                      className={`haptic-tap rounded-xl px-3 py-1.5 text-xs font-semibold inline-flex items-center gap-1.5 transition-all ${isActive
-                          ? "bg-violet-600 text-white shadow-md shadow-violet-600/20"
-                          : "outline-btn"
-                        }`}
+                      className={`haptic-tap inline-flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-semibold transition-all ${
+                        isActive ? "bg-violet-600 text-white shadow-md shadow-violet-600/20" : "outline-btn"
+                      }`}
                       type="button"
                       onClick={() => void updateStatus(key)}
                       disabled={busy}
@@ -167,22 +180,23 @@ export default function AdminTicketsPage() {
               </div>
             </div>
 
-            {/* ── Chat messages ──────────────────────────── */}
-            <div className="max-h-[42vh] overflow-auto rounded-xl bg-white/40 p-3 dark:bg-white/[0.03] flex flex-col gap-2">
+            <div className="flex max-h-[42vh] flex-col gap-2 overflow-auto rounded-xl bg-white/40 p-3 dark:bg-white/[0.03]">
               {(selected.messages || []).length === 0 ? (
                 <div className="empty-state py-8">
                   <MessageCircle size={24} />
                   <p className="text-xs">Нет сообщений</p>
                 </div>
               ) : null}
-              {(selected.messages || []).map((msg) => {
-                const isAdmin = msg.sender_role === "admin";
+              {(selected.messages || []).map((message) => {
+                const isAdmin = message.sender_role === "admin";
                 return (
-                  <div key={msg.id} className={`flex ${isAdmin ? "justify-end" : "justify-start"}`}>
-                    <div className={`chat-bubble ${isAdmin ? "chat-bubble-admin" : "chat-bubble-user"} text-sm`}>
-                      <p className="text-[10px] uppercase tracking-[0.12em] text-slate-500 mb-1">{isAdmin ? "" : ""}</p>
-                      <p className="whitespace-pre-line">{msg.body}</p>
-                      <p className="mt-1.5 text-[10px] text-slate-400 text-right">{fmtRuDate(msg.created_at)}</p>
+                  <div key={message.id} className={`flex ${isAdmin ? "justify-end" : "justify-start"}`}>
+                    <div className={`chat-bubble text-sm ${isAdmin ? "chat-bubble-admin" : "chat-bubble-user"}`}>
+                      <p className="mb-1 text-[10px] uppercase tracking-[0.12em] text-slate-500">
+                        {isAdmin ? "Оператор" : "Пользователь"}
+                      </p>
+                      <p className="whitespace-pre-line">{message.body}</p>
+                      <p className="mt-1.5 text-right text-[10px] text-slate-400">{fmtRuDate(message.created_at)}</p>
                     </div>
                   </div>
                 );
@@ -190,30 +204,29 @@ export default function AdminTicketsPage() {
               <div ref={messagesEnd} />
             </div>
 
-            {/* ── Reply box ─────────────────────────────── */}
             <div className="mt-3 space-y-2">
               <textarea
                 value={reply}
                 onChange={(event) => setReply(event.target.value)}
                 rows={3}
                 placeholder="Напишите ответ пользователю простыми словами"
-                className="w-full rounded-xl border border-violet-200/50 bg-white/80 px-3 py-2 text-sm outline-none dark:border-violet-500/30 dark:bg-slate-900/70 resize-none"
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" && (e.metaKey || e.ctrlKey) && reply.trim()) {
+                className="w-full resize-none rounded-xl border border-violet-200/50 bg-white/80 px-3 py-2 text-sm outline-none dark:border-violet-500/30 dark:bg-slate-900/70"
+                onKeyDown={(event) => {
+                  if (event.key === "Enter" && (event.metaKey || event.ctrlKey) && reply.trim()) {
                     void sendReply();
                   }
                 }}
               />
-              <div className="flex items-center justify-between">
+              <div className="flex items-center justify-between gap-3">
                 <p className="text-[10px] text-slate-400">Подсказка: можно отправить быстрее через Ctrl/⌘ + Enter</p>
                 <button
-                  className="btn-primary rounded-xl px-4 py-2 text-sm font-semibold uppercase tracking-[0.12em] inline-flex items-center gap-2"
+                  className="btn-primary inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold uppercase tracking-[0.12em]"
                   type="button"
                   onClick={() => void sendReply()}
                   disabled={busy || !reply.trim()}
                 >
                   {busy ? <Loader2 size={14} className="animate-spin" /> : <Send size={14} />}
-                  {busy ? "..." : ""}
+                  {busy ? "Отправка..." : "Отправить"}
                 </button>
               </div>
             </div>
