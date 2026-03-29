@@ -178,6 +178,31 @@ class CollectNodeMetricsObservabilityTests(unittest.TestCase):
         self.assertEqual(sample.probe_stage, "panel_login")
         self.assertEqual(sample.probe_error_kind, "panel_login_failed")
 
+    def test_calc_score_penalizes_resource_pressure(self) -> None:
+        baseline = self.collector._calc_score(
+            latency_ms=80,
+            error_rate=0.0,
+            active_clients=20,
+            healthy=True,
+            cpu_percent=15.0,
+            memory_used_mb=256,
+            memory_total_mb=2048,
+            disk_used_gb=10.0,
+            disk_total_gb=40.0,
+        )
+        pressured = self.collector._calc_score(
+            latency_ms=80,
+            error_rate=0.0,
+            active_clients=20,
+            healthy=True,
+            cpu_percent=92.0,
+            memory_used_mb=1960,
+            memory_total_mb=2048,
+            disk_used_gb=38.5,
+            disk_total_gb=40.0,
+        )
+        self.assertLess(pressured, baseline)
+
 
 if __name__ == "__main__":
     unittest.main()

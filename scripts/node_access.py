@@ -21,6 +21,8 @@ KEY_STEMS: dict[str, list[str]] = {
     "it": ["ITnode"],
     "nl": ["NLnode", "Low ping v2", "LowPingV2"],
     "free": ["FREEnode", "FreeNode", "FREE"],
+    "mini": ["RUSSIA", "Russia", "RFMINI"],
+    "rf1": ["RFRESERVE1", "rf1"],
 }
 
 

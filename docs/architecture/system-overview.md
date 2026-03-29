@@ -1,6 +1,6 @@
 # POKROV System Overview
 
-Last updated: 2026-03-22
+Last updated: 2026-03-29
 
 ## Document Status
 
@@ -45,15 +45,23 @@ Node lifecycle rule:
 - `POKROV` database decides assignment and lifecycle
 - 3x-ui executes the resulting config
 - node retirement sequence is `drain -> resync -> disable`
+- the RF reserve contour lives outside the normal delivery lifecycle until explicitly promoted
 
 ### User Interfaces
 
 - `webapp/`
-  user cabinet, session continuation, and web-admin
+  user cabinet, session continuation, and the primary admin operator surface
 - `marketing/`
   public website, pricing, legal pages, and public conversion flows
 - `external/client-fork/app/`
   `POKROV VPN` consumer client for Android and Windows
+- `shared/`
+  shared public copy, canonical hostnames, and cross-surface product constants
+
+Admin ownership rule:
+
+- `webapp` is the primary admin surface for user, node, ticket, and metrics work
+- Telegram admin in `portal_bot/bot.py` is fallback/emergency tooling and must follow the same user-status semantics as web admin
 
 Current release scope rule:
 
@@ -141,6 +149,20 @@ Important services:
 - `caddy`
 - `x-ui`
 
+Auxiliary RF hosts:
+
+- `mini`
+  dedicated RU probe vantage point for whitelist and foreign-reachability checks
+- `rf1`
+  reserve RF ingress for operator and VIP/manual access, chained onward to an EU exit
+
+RF host rule:
+
+- do not place control-plane services on `mini` or `rf1`
+- keep `rf1` outside the default runtime delivery pool in phase 1
+- RU ingress / RF reserve experiments are currently in backlog
+- do not spend implementation time on `mini` ingress variants or `rf1` promotion until the product owner explicitly requests a return to this work
+
 ## Public Hostnames And Migration Roles
 
 Canonical public surfaces:
@@ -152,8 +174,15 @@ Canonical public surfaces:
 Role split:
 
 - `pokrov.space` is the canonical public hostname family
+- `connect.pokrov.space` is the canonical config/connect host
+- `pay.pokrov.space/checkout/` is the canonical hosted checkout entry
 - `kiwunaka.space` is a migration compatibility layer for older subscriptions and must not be treated as a fresh-entry surface
 - browser flows must prefer `api.pokrov.space` for API traffic and never rely on HTML returned from `app.pokrov.space` as if it were API JSON
+
+Copy/config rule:
+
+- new public copy and CTA text must stay centralized through `shared/copy.ts` and `copy/catalog.ru.json`
+- bot, site, app, and checkout links should resolve from shared host config rather than hard-coded per surface
 
 ## Monitoring And Visibility Model
 
@@ -163,19 +192,37 @@ Current operational monitoring should correlate:
 - app-first session bootstrap and dashboard health
 - Telegram bot and support bot availability
 - node reachability and public egress
+- per-node metrics freshness, sustained resource pressure, and probe-failure reasons
 - device and account visibility for support diagnosis
 
 Required external geography check:
 
 - run an RU-based external probe every `6 hours`
 - verify the probe host itself can reach `google.com`
+- verify Telegram surfaces such as `api.telegram.org` and `t.me`
 - verify the current `POKROV` nodes remain reachable from that external RU vantage point
+- verify the RF reserve ingress state:
+  - `xhttp_alive`
+  - `hysteria_alive`
 
 This gives operators a useful distinction between:
 
 - a broken probe host
 - a broken node or public edge
 - a hostname migration issue where legacy compatibility paths still work but canonical `pokrov.space` paths do not
+- a reserve path that still works for operator and VIP access while canonical paths fail
+
+Current admin status model for operators:
+
+- `active`
+- `expired`
+- `blocked`
+- `manual_test`
+
+Manual/test cleanup rule:
+
+- only explicit manual/test users may be deleted from admin
+- real-user deletion is out of scope for the main admin surface in this wave
 
 ## Device, Telegram, And IP Correlation
 

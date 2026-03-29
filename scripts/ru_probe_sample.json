@@ -1,22 +1,87 @@
 {
-  "timestamp_utc": "2026-03-22T12:00:00Z",
-  "probe_host": "ru-external-probe-1",
+  "timestamp_utc": "2026-03-23T12:00:00Z",
+  "probe_host": "mini-rf-1",
   "probe_public_ip": "203.0.113.10",
   "google_reachable": true,
-  "nodes": {
-    "nl-1": {
-      "address": "198.51.100.11:443",
-      "reachable": true,
-      "detail": "tcp ok"
+  "classifications": [
+    "canonical_host_problem",
+    "eu_node_problem",
+    "foreign_edge_problem",
+    "xhttp_alive"
+  ],
+  "reserve": {
+    "host": "rf1.pokrov.space",
+    "xhttp_alive": true,
+    "hysteria_alive": false
+  },
+  "targets": [
+    {
+      "name": "google",
+      "kind": "internet",
+      "host": "google.com",
+      "port": 443,
+      "ok": true,
+      "dns_ok": true,
+      "tcp_ok": true,
+      "tls_ok": true,
+      "http_ok": true,
+      "udp_ok": null,
+      "detail": "http 301"
     },
-    "de-1": {
-      "address": "198.51.100.12:443",
+    {
+      "name": "pokrov-space",
+      "kind": "canonical",
+      "host": "pokrov.space",
+      "port": 443,
+      "ok": false,
+      "dns_ok": true,
+      "tcp_ok": true,
+      "tls_ok": false,
+      "http_ok": false,
+      "udp_ok": null,
+      "detail": "certificate names do not match expected reality target"
+    },
+    {
+      "name": "reserve-xhttp",
+      "kind": "reserve_xhttp",
+      "host": "rf1.pokrov.space",
+      "port": 443,
+      "ok": true,
+      "dns_ok": true,
+      "tcp_ok": true,
+      "tls_ok": true,
+      "http_ok": null,
+      "udp_ok": null,
+      "detail": "tls ok"
+    },
+    {
+      "name": "reserve-hysteria",
+      "kind": "reserve_hysteria",
+      "host": "rf1.pokrov.space",
+      "port": 443,
+      "ok": false,
+      "dns_ok": true,
+      "tcp_ok": null,
+      "tls_ok": null,
+      "http_ok": null,
+      "udp_ok": false,
+      "detail": "udp_probe_failed"
+    }
+  ],
+  "nodes": {
+    "pl": {
+      "address": "82.40.38.84:443",
       "reachable": false,
       "detail": "timeout"
+    },
+    "nl": {
+      "address": "82.24.195.93:443",
+      "reachable": true,
+      "detail": "tls ok"
     }
   },
   "notes": [
     "Probe executed from external RU host outside the control plane.",
-    "Use this format as input for scripts/render_ru_probe_report.py."
+    "UDP checks are best-effort and should be interpreted as a viability hint for Hysteria2, not a full QUIC handshake guarantee."
   ]
 }

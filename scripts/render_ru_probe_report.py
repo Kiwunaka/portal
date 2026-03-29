@@ -27,6 +27,9 @@ def _render(payload: dict[str, Any]) -> str:
     google_status = _status(payload.get("google_reachable"))
     notes = payload.get("notes", [])
     nodes = payload.get("nodes", {})
+    classifications = payload.get("classifications", [])
+    reserve = payload.get("reserve", {})
+    targets = payload.get("targets", [])
 
     lines = [
         "# RU Probe Report",
@@ -36,9 +39,51 @@ def _render(payload: dict[str, Any]) -> str:
         f"- probe_public_ip: `{probe_ip}`",
         f"- google.com: `{google_status}`",
         "",
+    ]
+
+    if reserve or classifications:
+        lines.extend(["## Reserve", ""])
+        reserve_host = reserve.get("host", "unknown")
+        lines.append(f"- reserve_host: `{reserve_host}`")
+        lines.append(f"- xhttp: `{_status(reserve.get('xhttp_alive'))}`")
+        lines.append(f"- hysteria2: `{_status(reserve.get('hysteria_alive'))}`")
+        lines.append("")
+        lines.append("## Classification")
+        lines.append("")
+        if classifications:
+            for item in classifications:
+                lines.append(f"- `{item}`")
+        else:
+            lines.append("- no classifications")
+        lines.append("")
+
+    if targets:
+        lines.extend(["## Targets", ""])
+        for item in targets:
+            name = item.get("name", "unknown")
+            kind = item.get("kind", "target")
+            host = item.get("host", "unknown")
+            port = item.get("port", "unknown")
+            parts = [
+                f"dns={_status(item.get('dns_ok'))}",
+                f"tcp={_status(item.get('tcp_ok'))}",
+                f"tls={_status(item.get('tls_ok'))}",
+            ]
+            if item.get("http_ok") is not None:
+                parts.append(f"http={_status(item.get('http_ok'))}")
+            if item.get("udp_ok") is not None:
+                parts.append(f"udp={_status(item.get('udp_ok'))}")
+            detail = str(item.get("detail") or "").strip()
+            row = f"- `{name}` `{kind}` `{host}:{port}` -> `{_status(item.get('ok'))}` [{', '.join(parts)}]"
+            if detail:
+                row += f" ({detail})"
+            lines.append(row)
+        lines.append("")
+
+    lines.extend([
         "## Nodes",
         "",
-    ]
+    ])
 
     if not nodes:
         lines.append("- no node results were provided")
@@ -66,8 +111,10 @@ def _render(payload: dict[str, Any]) -> str:
             "## Interpretation",
             "",
             "- If `google.com` is down here, treat this run as a probe-host problem first.",
-            "- If `google.com` is up but nodes fail, treat it as a node or public-edge incident.",
+            "- If `google.com` is up but foreign nodes fail, treat it as a node or public-edge incident.",
             "- If legacy hosts still work while canonical `pokrov.space` paths fail, treat it as a hostname migration incident.",
+            "- If `xhttp` is alive but `hysteria2` is not, keep the reserve bridge on the TCP path only.",
+            "- If `hysteria2` is alive, treat it as a reserve-only contour until repeated RU probes confirm stability.",
         ]
     )
 

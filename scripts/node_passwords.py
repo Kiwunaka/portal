@@ -34,6 +34,8 @@ def _find_marker_index(lines: list[str], code: str) -> int | None:
         "it": ["itnode"],
         "nl": ["nlnode", "low ping v2"],
         "free": ["free node", "freenode"],
+        "mini": ["ru sber", "russia", "rfmini"],
+        "rf1": ["rfreserve1", "rf1", "russia reserve"],
     }
     patterns = [re.compile(rf"\b{re.escape(alias)}\b", flags=re.IGNORECASE) for alias in marker_aliases.get(code, [])]
     patterns.extend(
@@ -55,6 +57,8 @@ def _extract_password_near(lines: list[str], marker_idx: int) -> str:
     for j in range(marker_idx + 1, min(marker_idx + 15, len(lines))):
         raw = lines[j].strip()
         if not raw:
+            continue
+        if re.fullmatch(r"(\d{1,3}\.){3}\d{1,3}", raw):
             continue
         if raw.startswith("ssh-ed25519 ") or raw.startswith("ssh-rsa "):
             continue

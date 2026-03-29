@@ -680,16 +680,23 @@ from models import (
     AdminAudit,
     AppSetting,
     CampaignSend,
+    Event,
     FamilySlot,
     GiftCard,
     IncentiveCampaign,
+    KeyActionHistory,
     LiveUpdate,
+    PointsLedger,
     PromoCode,
     PromoUsage,
     Review,
     StartLink,
+    SupportTicket,
+    SupportTicketMessage,
     Template,
     User,
+    UserKeyPolicy,
+    UserNode,
 )
 from nodes_repo import enabled_nodes
 from events_service import track_event
@@ -6321,12 +6328,13 @@ async def admin_manual_list(callback: CallbackQuery):
     buttons: list[list[InlineKeyboardButton]] = []
     for u in rows:
         name = (u.display_name or u.email or f"manual_{abs(u.tg_id)}").strip()
+        status_icon = "🧪"
         buttons.append([
-            InlineKeyboardButton(text=f"{name} ({u.tg_id})", callback_data=f"adm_user_{u.tg_id}"),
+            InlineKeyboardButton(text=f"{status_icon} {name} ({u.tg_id})", callback_data=f"adm_user_{u.tg_id}"),
         ])
     buttons.append([InlineKeyboardButton(text="◀️ Назад", callback_data="admin_manual_menu")])
     await callback.message.edit_text(
-        "📋 *Manual users*",
+        "📋 *Manual/Test users*",
         reply_markup=InlineKeyboardMarkup(inline_keyboard=buttons),
         parse_mode=ParseMode.MARKDOWN,
     )
@@ -7801,77 +7809,111 @@ async def show_admin_users(callback: CallbackQuery):
     if callback.from_user.id != ADMIN_ID:
         await callback.answer("⛔️ Доступ запрещён")
         return
-    
-    # Params: admin_users[:page][:segment]
+
     page = 0
-    segment = "all"  # all|active|expired|free
+    segment = "all"  # all|active|expired|blocked|manual_test
     parts = (callback.data or "").split(":")
     if len(parts) >= 2 and parts[1].isdigit():
         page = max(0, int(parts[1]))
     if len(parts) >= 3 and parts[2]:
         segment = parts[2]
-    if segment not in {"all", "active", "expired", "free"}:
+    if segment == "manual":
+        segment = "manual_test"
+    if segment == "inactive":
+        segment = "expired"
+    if segment not in {"all", "active", "expired", "blocked", "manual_test"}:
         segment = "all"
+
+    segment_labels = {
+        "all": "Все",
+        "active": "Active",
+        "expired": "Expired",
+        "blocked": "Blocked",
+        "manual_test": "Manual/Test",
+    }
+    segment_buttons = [
+        [
+            InlineKeyboardButton(text="Все", callback_data="admin_users:0:all"),
+            InlineKeyboardButton(text="Active", callback_data="admin_users:0:active"),
+            InlineKeyboardButton(text="Expired", callback_data="admin_users:0:expired"),
+        ],
+        [
+            InlineKeyboardButton(text="Blocked", callback_data="admin_users:0:blocked"),
+            InlineKeyboardButton(text="Manual/Test", callback_data="admin_users:0:manual_test"),
+        ],
+    ]
 
     now = _utcnow()
     per_page = 12
     offset = page * per_page
 
     session = Session()
-    q = session.query(User)
+    try:
+        q = session.query(User)
+        if segment == "active":
+            q = q.filter(User.is_active == True).filter(User.expiry_at.isnot(None)).filter(User.expiry_at > now)
+        elif segment == "expired":
+            q = q.filter((User.expiry_at.is_(None)) | (User.expiry_at <= now))
+            q = q.filter(~((User.tg_id < 0) | (func.upper(User.sub_type) == "MANUAL") | (User.is_manual == True)))
+        elif segment == "blocked":
+            q = q.filter(User.is_active == False).filter(User.expiry_at.isnot(None)).filter(User.expiry_at > now)
+        elif segment == "manual_test":
+            q = q.filter((User.tg_id < 0) | (func.upper(User.sub_type) == "MANUAL") | (User.is_manual == True))
 
-    if segment == "active":
-        q = q.filter(User.is_active == True).filter(User.expiry_at.isnot(None)).filter(User.expiry_at > now)
-    elif segment == "expired":
-        q = q.filter((User.is_active == False) | (User.expiry_at.is_(None)) | (User.expiry_at <= now))
-    elif segment == "free":
-        q = q.filter(func.upper(User.sub_type).in_(["FREE", "TRIAL", "BONUS"]))
+        total = q.count()
+        users = q.order_by(User.created_at.desc()).offset(offset).limit(per_page).all()
+    finally:
+        session.close()
 
-    total = q.count()
-    users = q.order_by(User.created_at.desc()).offset(offset).limit(per_page).all()
-    session.close()
-    
     pages = max(1, (total + per_page - 1) // per_page)
     page = min(page, pages - 1)
 
     if not users:
         kb = InlineKeyboardMarkup(
             inline_keyboard=[
-                [
-                    InlineKeyboardButton(text="Все", callback_data="admin_users:0:all"),
-                    InlineKeyboardButton(text="Актив", callback_data="admin_users:0:active"),
-                    InlineKeyboardButton(text="Бесплатный", callback_data="admin_users:0:free"),
-                ],
+                *segment_buttons,
                 [InlineKeyboardButton(text="◀️ Назад", callback_data="admin")],
             ]
         )
-        await callback.message.edit_text("👥 Пользователи\n\nПусто для выбранного фильтра.", reply_markup=kb)
+        await callback.message.edit_text(
+            "👥 Пользователи\n\n"
+            "Telegram admin работает как safe fallback. "
+            "Для выбранного статуса пользователей пока нет.",
+            reply_markup=kb,
+        )
         await callback.answer()
         return
 
-    seg_label = {"all": "Все", "active": "Активные", "expired": "Истекшие", "free": "Бесплатный"}.get(segment, "Все")
-    header = f"👥 <b>Пользователи</b> — {seg_label}\nВсего: {total} | Стр {page+1}/{pages}\n\n"
-
-    lines: list[str] = []
-    buttons: list[list[InlineKeyboardButton]] = []
-    buttons.append(
-        [
-            InlineKeyboardButton(text="Все", callback_data="admin_users:0:all"),
-            InlineKeyboardButton(text="Актив", callback_data="admin_users:0:active"),
-            InlineKeyboardButton(text="Истек", callback_data="admin_users:0:expired"),
-            InlineKeyboardButton(text="Бесплатный", callback_data="admin_users:0:free"),
-        ]
+    header = (
+        f"👥 <b>Пользователи</b> — {html.escape(segment_labels.get(segment, 'Все'))}\n"
+        f"Всего: {total} | Стр. {page+1}/{pages}\n"
+        "Telegram admin: safe fallback, destructive cleanup только для manual/test.\n\n"
     )
 
+    lines: list[str] = []
+    buttons: list[list[InlineKeyboardButton]] = list(segment_buttons)
     for u in users:
         expiry = _naive_utc(u.expiry_at)
-        is_active = bool(u.is_active and expiry and expiry > now)
-        status = "✅" if is_active else "❌"
+        effective_status = _admin_user_effective_status(u, now=now)
+        status_label = _admin_user_status_label(effective_status)
+        origin_label = _admin_user_origin_label(u)
         uname = f"@{u.username}" if u.username else f"ID:{u.tg_id}"
         days_left = (expiry - now).days if expiry and expiry > now else 0
+        expiry_txt = expiry.strftime("%d.%m.%Y") if expiry else "—"
         plan = (u.sub_type or "—").upper()
-        lines.append(f"{status} {html.escape(uname)} — {days_left}д — {html.escape(plan)}")
-        label = f"{status} @{u.username}" if u.username else f"{status} {u.tg_id}"
+        lines.append(
+            f"{html.escape(status_label)} {html.escape(uname)} — "
+            f"{html.escape(origin_label)} — до {html.escape(expiry_txt)} "
+            f"({days_left} дн.) — {html.escape(plan)}"
+        )
+
+        status_icon = {
+            "active": "✅",
+            "expired": "⌛",
+            "blocked": "⛔",
+            "manual_test": "🧪",
+        }.get(effective_status, "⌛")
+        label = f"{status_icon} @{u.username}" if u.username else f"{status_icon} {u.tg_id}"
         buttons.append([InlineKeyboardButton(text=label, callback_data=f"adm_user_{u.tg_id}")])
 
     nav: list[InlineKeyboardButton] = []
@@ -8451,13 +8493,15 @@ async def render_admin_user_view(callback: CallbackQuery, tg_id: int):
     uname = f"@{user.username}" if user.username else "—"
     now = _utcnow()
     expiry = _naive_utc(user.expiry_at)
-    is_active = bool(user.is_active and expiry and expiry > now)
-    status = "✅ Активен" if is_active else "❌ Неактивен"
+    effective_status = _admin_user_effective_status(user, now=now)
+    is_active = effective_status == "active"
+    status = _admin_user_status_label(effective_status)
     expiry_txt = expiry.strftime("%d.%m.%Y") if expiry else "—"
     days_left = (expiry - now).days if expiry and expiry > now else 0
     plan = (user.sub_type or "—").upper()
     manual_name = (getattr(user, "display_name", None) or "").strip()
-    is_manual = bool(getattr(user, "is_manual", False) or plan == "MANUAL" or user.tg_id < 0)
+    is_manual = _is_manual_test_user(user)
+    origin_label = _admin_user_origin_label(user)
     free_usage_line = ""
     if _is_freemium_sub_type(plan):
         remaining_gb, total_gb = await _free_remaining_gb(tg_id)
@@ -8477,7 +8521,7 @@ async def render_admin_user_view(callback: CallbackQuery, tg_id: int):
         f"📝 Ник: {html.escape(uname)}\n"
         f"{manual_line}"
         f"📦 Тариф: <b>{html.escape(plan)}</b>\n"
-        f"🧩 Тип: <b>{'MANUAL' if is_manual else 'TELEGRAM'}</b>\n"
+        f"🧩 Origin: <b>{html.escape(origin_label)}</b>\n"
         f"🔋 Статус: {html.escape(status)}\n\n"
         f"📅 До: <b>{html.escape(expiry_txt)}</b> ({days_left} дн.)\n"
         f"📡 Режим: <b>{html.escape(_plan_mode_label(plan))}</b>\n"
@@ -8509,9 +8553,11 @@ async def render_admin_user_view(callback: CallbackQuery, tg_id: int):
             )
         ],
         [InlineKeyboardButton(text="♻️ Перевыпустить токен", callback_data=f"adm_regen_token_{tg_id}")],
-        [
-            InlineKeyboardButton(text="🗑️ Удалить", callback_data=f"adm_del_{tg_id}")
-        ],
+        *(
+            [[InlineKeyboardButton(text="🗑️ Удалить manual/test", callback_data=f"adm_del_{tg_id}")]]
+            if is_manual
+            else []
+        ),
         [InlineKeyboardButton(text="◀️ К списку", callback_data="admin_manual_list" if is_manual else "admin_users")]
     ])
     
@@ -8677,25 +8723,39 @@ async def admin_reset_traffic(callback: CallbackQuery):
 async def admin_delete_user(callback: CallbackQuery):
     if callback.from_user.id != ADMIN_ID:
         return
-    
+
     tg_id = int(callback.data.replace("adm_del_", ""))
-    
-    # Delete from panel
-    await panel.delete_client(tg_id)
-    
-    # Delete from DB
+
     session = Session()
-    user = session.query(User).filter_by(tg_id=tg_id).first()
-    if user:
-        session.delete(user)
+    try:
+        user = session.query(User).filter_by(tg_id=tg_id).first()
+        if not _is_manual_test_user(user):
+            await callback.answer("Удаление доступно только для manual/test пользователей", show_alert=True)
+            return
+
+        try:
+            await panel.delete_client(tg_id)
+        except Exception:
+            pass
+
+        session.query(UserNode).filter_by(tg_id=tg_id).delete(synchronize_session=False)
+        session.query(UserKeyPolicy).filter_by(tg_id=tg_id).delete(synchronize_session=False)
+        session.query(KeyActionHistory).filter_by(tg_id=tg_id).delete(synchronize_session=False)
+        session.query(Event).filter_by(tg_id=tg_id).delete(synchronize_session=False)
+        session.query(SupportTicketMessage).filter_by(author_tg_id=tg_id).delete(synchronize_session=False)
+        session.query(SupportTicket).filter_by(user_tg_id=tg_id).delete(synchronize_session=False)
+        session.query(PointsLedger).filter_by(tg_id=tg_id).delete(synchronize_session=False)
+        session.query(AdminAudit).filter_by(target_tg_id=tg_id).delete(synchronize_session=False)
+        if user:
+            session.delete(user)
         session.commit()
-    session.close()
-    
-    audit_admin(callback.from_user.id, "delete_user", tg_id)
-    
-    await callback.answer(f"✅ Пользователь {tg_id} удалён!")
-    
-    # Go back to paged list (re-render)
+    finally:
+        session.close()
+
+    audit_admin(callback.from_user.id, "admin_safe_delete_test_user", tg_id)
+
+    await callback.answer(f"✅ Manual/test пользователь {tg_id} удалён!")
+
     callback_copy = callback
     callback_copy._data = "admin_users:0:all"
     await show_admin_users(callback_copy)
@@ -9750,6 +9810,55 @@ def activate_promo_code_for_user(tg_id: int, code: str) -> tuple[bool, str]:
         return True, f"✅ *Промокод активирован!*\n\n{result_text}"
     finally:
         session.close()
+
+
+def _is_manual_test_user(user: User | None) -> bool:
+    if not user:
+        return False
+    return bool(
+        getattr(user, "is_manual", False)
+        or int(getattr(user, "tg_id", 0) or 0) < 0
+        or str(getattr(user, "sub_type", "") or "").upper() == "MANUAL"
+        or getattr(user, "created_by_admin", None) is not None
+    )
+
+
+def _admin_user_effective_status(user: User | None, *, now: datetime | None = None) -> str:
+    if not user:
+        return "expired"
+    if _is_manual_test_user(user):
+        return "manual_test"
+    current = now or _utcnow()
+    expiry = _naive_utc(getattr(user, "expiry_at", None))
+    if not bool(getattr(user, "is_active", False)):
+        return "blocked"
+    if not expiry or expiry <= current:
+        return "expired"
+    return "active"
+
+
+def _admin_user_status_label(status: str) -> str:
+    if status == "active":
+        return "✅ Активен"
+    if status == "blocked":
+        return "⛔ Заблокирован"
+    if status == "manual_test":
+        return "🧪 Manual/Test"
+    return "⌛ Истёк"
+
+
+def _admin_user_origin_label(user: User | None) -> str:
+    if not user:
+        return "—"
+    if _is_manual_test_user(user):
+        return "MANUAL/TEST"
+    has_app = bool(getattr(user, "app_install_id", None) or getattr(user, "is_app_user", False))
+    has_telegram = bool(getattr(user, "linked_telegram_id", None) or getattr(user, "username", None) or int(getattr(user, "tg_id", 0) or 0) > 0)
+    if has_app and has_telegram:
+        return "APP + TELEGRAM"
+    if has_app:
+        return "APP"
+    return "TELEGRAM"
 
 
 @router.message(Command("promo"))

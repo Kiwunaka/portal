@@ -1,6 +1,6 @@
 # Deployment And Access
 
-Last updated: 2026-03-22
+Last updated: 2026-03-24
 
 ## Document Status
 
@@ -20,6 +20,21 @@ Key services expected there:
 - `portal-feedbackbot`
 - `caddy`
 - `x-ui`
+
+RF auxiliary hosts:
+
+- `mini`
+  dedicated external RU probe origin
+- `rf1`
+  reserve RF ingress for operator and VIP/manual access
+
+RF access rule:
+
+- do not place control-plane services on `mini` or `rf1`
+- do not add `rf1` to the normal runtime delivery pool in phase 1
+- keep a hard kill switch for the `rf1` VIP/manual contour so it can be withdrawn without touching the standard consumer path
+- RU ingress / RF reserve work is currently backlog-only
+- do not resume `mini` ingress experiments, do not provision `rf1`, and do not treat this contour as active work unless the product owner explicitly asks to return to it
 
 ## Sensitive Material Locations
 
@@ -69,6 +84,27 @@ python scripts/remote_deploy_brain_portal_code.py --brain-ip 82.21.114.104 --res
 ### Monitoring and visibility guide
 
 - [monitoring-and-visibility.md](C:/Users/kiwun/Documents/ai/VPN/docs/operations/monitoring-and-visibility.md)
+
+### External RU probe runner
+
+- [ru_probe_runner.py](C:/Users/kiwun/Documents/ai/VPN/scripts/ru_probe_runner.py)
+
+Typical use from the external RU host:
+
+```powershell
+python scripts/ru_probe_runner.py --reserve-host rf1.pokrov.space --probe-host mini --out ops-local/ru-probe.json
+python scripts/render_ru_probe_report.py --input ops-local/ru-probe.json
+```
+
+### RF Reserve Note
+
+- [remote_install_mini_canary_stack.py](C:/Users/kiwun/Documents/ai/VPN/scripts/remote_install_mini_canary_stack.py)
+
+Status:
+
+- previous `mini` canary experiments and the `rf1` reserve-bridge idea are now in backlog
+- keep the script as historical/operator tooling only
+- do not run this script, do not continue the experiment, and do not evolve the contour unless the product owner explicitly requests a return to this work
 
 ### Feedback bot service install
 

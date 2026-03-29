@@ -140,6 +140,13 @@ def _utcnow() -> datetime:
     return datetime.now(timezone.utc).replace(tzinfo=None)
 
 
+def _env_float(name: str, default: float) -> float:
+    try:
+        return float(os.getenv(name, str(default)))
+    except Exception:
+        return float(default)
+
+
 API_ENABLE_USAGE = env_bool("API_ENABLE_USAGE", default=False)
 AUTO_DOWNGRADE_TO_FREE = env_bool("AUTO_DOWNGRADE_TO_FREE", default=True)
 AUTO_FREE_DAYS = int(os.getenv("AUTO_FREE_DAYS", "3650"))
@@ -186,6 +193,13 @@ PROFILE_UPDATE_INTERVAL_HOURS = max(1, env_int("PROFILE_UPDATE_INTERVAL_HOURS", 
 PAYMENT_CALLBACK_TOLERANT_MODE = env_bool("PAYMENT_CALLBACK_TOLERANT_MODE", default=False)
 SUBSCRIPTION_NUMERIC_FALLBACK_ENABLED = env_bool("SUBSCRIPTION_NUMERIC_FALLBACK_ENABLED", default=True)
 TELEGRAM_WEB_LOGIN_MAX_AGE_SECONDS = max(60, env_int("TELEGRAM_WEB_LOGIN_MAX_AGE_SECONDS", 86400))
+NODE_METRICS_CPU_ALERT_PERCENT = _env_float("NODE_METRICS_CPU_ALERT_PERCENT", 70.0)
+NODE_METRICS_MEMORY_ALERT_PERCENT = _env_float("NODE_METRICS_MEMORY_ALERT_PERCENT", 85.0)
+NODE_METRICS_DISK_ALERT_PERCENT = _env_float("NODE_METRICS_DISK_ALERT_PERCENT", 90.0)
+NODE_METRICS_LATENCY_ALERT_MS = _env_float("NODE_METRICS_LATENCY_ALERT_MS", 800.0)
+NODE_METRICS_ERROR_RATE_ALERT = _env_float("NODE_METRICS_ERROR_RATE_ALERT", 0.2)
+NODE_METRICS_ACTIVE_CLIENTS_ALERT = max(1, env_int("NODE_METRICS_ACTIVE_CLIENTS_ALERT", 200))
+NODE_METRICS_SUSTAINED_SAMPLES = max(2, env_int("NODE_METRICS_SUSTAINED_SAMPLES", 3))
 SUPPORT_UPLOAD_DIR = Path(
     os.getenv("SUPPORT_UPLOAD_DIR") or (Path(__file__).resolve().parent / "uploads" / "support")
 ).resolve()
@@ -961,6 +975,10 @@ class ManualUserBlockRequest(BaseModel):
     blocked: bool = True
 
 
+class AdminUserSafeDeleteIn(BaseModel):
+    confirm: bool = False
+
+
 class AdminUserKeyToggleIn(BaseModel):
     enable: bool
 
@@ -1646,6 +1664,136 @@ def _plan_segment(user: User, now: datetime | None = None) -> str:
     if sub == "FREE":
         return "FREE"
     return "PAID"
+
+
+def _manual_test_user_filter():
+    return or_(
+        User.is_manual == True,
+        User.tg_id < 0,
+        func.upper(func.coalesce(User.sub_type, "")) == "MANUAL",
+        User.created_by_admin.isnot(None),
+    )
+
+
+def _app_origin_filter():
+    return or_(User.is_app_user == True, User.app_install_id.isnot(None))
+
+
+def _is_manual_test_user(user: User) -> bool:
+    try:
+        tg_id = int(getattr(user, "tg_id", 0) or 0)
+    except Exception:
+        tg_id = 0
+    sub = str(getattr(user, "sub_type", "") or "").strip().upper()
+    return bool(
+        getattr(user, "is_manual", False)
+        or tg_id < 0
+        or sub == "MANUAL"
+        or getattr(user, "created_by_admin", None) is not None
+    )
+
+
+def _user_effective_status(user: User, now: datetime | None = None) -> str:
+    if _is_manual_test_user(user):
+        return "manual_test"
+    n = now or _utcnow()
+    expiry = getattr(user, "expiry_at", None)
+    if bool(getattr(user, "is_active", False)) and expiry and expiry > n:
+        return "active"
+    if (not bool(getattr(user, "is_active", False))) and expiry and expiry > n:
+        return "blocked"
+    return "expired"
+
+
+def _user_origin(user: User) -> str:
+    if _is_manual_test_user(user):
+        return "manual_test"
+    is_app = bool(getattr(user, "is_app_user", False) or str(getattr(user, "app_install_id", "") or "").strip())
+    if is_app:
+        return "app"
+    return "telegram"
+
+
+def _apply_admin_user_search(query, q: str):
+    q_norm = str(q or "").strip()
+    if not q_norm:
+        return query
+    filters = [
+        User.username.ilike(f"%{q_norm}%"),
+        User.display_name.ilike(f"%{q_norm}%"),
+        User.email.ilike(f"%{q_norm}%"),
+        User.linked_telegram_username.ilike(f"%{q_norm}%"),
+        User.app_install_id.ilike(f"%{q_norm}%"),
+    ]
+    if q_norm.isdigit():
+        filters.extend(
+            [
+                User.tg_id == int(q_norm),
+                User.linked_telegram_id == int(q_norm),
+            ]
+        )
+    return query.filter(or_(*filters))
+
+
+def _admin_user_status_filter(status: str, *, now: datetime):
+    status_norm = str(status or "").strip().lower()
+    manual_expr = _manual_test_user_filter()
+    active_expr = and_(~manual_expr, User.is_active == True, User.expiry_at.isnot(None), User.expiry_at > now)
+    blocked_expr = and_(~manual_expr, User.is_active == False, User.expiry_at.isnot(None), User.expiry_at > now)
+    expired_expr = and_(~manual_expr, or_(User.expiry_at.is_(None), User.expiry_at <= now))
+    if status_norm in {"", "all"}:
+        return None
+    if status_norm == "active":
+        return active_expr
+    if status_norm == "blocked":
+        return blocked_expr
+    if status_norm == "expired":
+        return expired_expr
+    if status_norm == "inactive":
+        return or_(blocked_expr, expired_expr)
+    if status_norm in {"manual", "manual_test"}:
+        return manual_expr
+    raise HTTPException(status_code=400, detail="Unsupported status")
+
+
+def _admin_user_origin_filter(origin: str):
+    origin_norm = str(origin or "").strip().lower()
+    if origin_norm in {"", "all"}:
+        return None
+    manual_expr = _manual_test_user_filter()
+    app_expr = _app_origin_filter()
+    if origin_norm in {"manual", "manual_test"}:
+        return manual_expr
+    if origin_norm == "app":
+        return and_(~manual_expr, app_expr, or_(User.linked_telegram_id.is_(None), User.username.is_(None)))
+    if origin_norm == "hybrid":
+        return and_(~manual_expr, app_expr, User.linked_telegram_id.isnot(None), User.username.isnot(None))
+    if origin_norm == "telegram":
+        return and_(~manual_expr, ~app_expr)
+    raise HTTPException(status_code=400, detail="Unsupported origin")
+
+
+def _serialize_admin_user_row(user: User, *, now: datetime | None = None) -> dict[str, Any]:
+    current_now = now or _utcnow()
+    status = _user_effective_status(user, now=current_now)
+    origin = _user_origin(user)
+    return {
+        "tg_id": int(user.tg_id),
+        "username": user.username,
+        "display_name": getattr(user, "display_name", None),
+        "sub_type": user.sub_type,
+        "is_active": bool(user.is_active),
+        "effective_active": bool(status == "active"),
+        "status": status,
+        "origin": origin,
+        "is_manual": bool(_is_manual_test_user(user)),
+        "expiry_at": _safe_iso(user.expiry_at),
+        "stars_paid": int(user.stars_paid or 0),
+        "created_at": _safe_iso(user.created_at),
+        "linked_telegram_id": int(user.linked_telegram_id) if getattr(user, "linked_telegram_id", None) is not None else None,
+        "linked_telegram_username": getattr(user, "linked_telegram_username", None),
+        "app_install_id": getattr(user, "app_install_id", None),
+    }
 
 
 def _ensure_free_cycle_state_persisted(s, user: User) -> None:
@@ -3106,8 +3254,16 @@ EVENT_WHITELIST = {
     "copied_key",
     "clicked_connect",
     "clicked_pay",
+    "pay_started",
     "paid",
     "connected_ok",
+    "connect_failed",
+    "auth_handoff_started",
+    "config_opened",
+    "config_import_attempted",
+    "config_import_failed",
+    "reconnect_loop_detected",
+    "renewed",
     "ticket_created",
     "expired",
     "deep_link_opened",
@@ -3869,6 +4025,196 @@ async def freekassa_currency_status(
     return {"ok": True, "provider": "freekassa", "currency": str(currency or "").upper(), "remote": remote}
 
 
+def _sample_memory_percent(sample: NodeHealthSample | None) -> float:
+    if not sample:
+        return 0.0
+    total = float(getattr(sample, "memory_total_mb", 0) or 0.0)
+    if total <= 0:
+        return 0.0
+    used = float(getattr(sample, "memory_used_mb", 0) or 0.0)
+    return round((used / total) * 100.0, 2)
+
+
+def _sample_disk_percent(sample: NodeHealthSample | None) -> float:
+    if not sample:
+        return 0.0
+    total = float(getattr(sample, "disk_total_gb", 0.0) or 0.0)
+    if total <= 0:
+        return 0.0
+    used = float(getattr(sample, "disk_used_gb", 0.0) or 0.0)
+    return round((used / total) * 100.0, 2)
+
+
+def _active_node_metric_alert_kinds(
+    *,
+    samples: list[NodeHealthSample],
+    last_sample_at: datetime | None,
+    stale_after_seconds: int,
+    now: datetime,
+) -> list[str]:
+    kinds: list[str] = []
+    age_seconds = int((now - last_sample_at).total_seconds()) if last_sample_at else None
+    if age_seconds is None or age_seconds > stale_after_seconds:
+        kinds.append("stale_metrics")
+        return kinds
+
+    if len(samples) < NODE_METRICS_SUSTAINED_SAMPLES:
+        return kinds
+
+    window = samples[:NODE_METRICS_SUSTAINED_SAMPLES]
+    if all(float(getattr(sample, "cpu_percent", 0.0) or 0.0) >= NODE_METRICS_CPU_ALERT_PERCENT for sample in window):
+        kinds.append("cpu_high")
+    if all(_sample_memory_percent(sample) >= NODE_METRICS_MEMORY_ALERT_PERCENT for sample in window):
+        kinds.append("memory_high")
+    if all(_sample_disk_percent(sample) >= NODE_METRICS_DISK_ALERT_PERCENT for sample in window):
+        kinds.append("disk_high")
+    if all(float(getattr(sample, "panel_latency_ms", 0) or 0.0) >= NODE_METRICS_LATENCY_ALERT_MS for sample in window):
+        kinds.append("latency_high")
+    if all(float(getattr(sample, "panel_error_rate", 0.0) or 0.0) >= NODE_METRICS_ERROR_RATE_ALERT for sample in window):
+        kinds.append("error_rate_high")
+    if all(int(getattr(sample, "active_clients", 0) or 0) >= NODE_METRICS_ACTIVE_CLIENTS_ALERT for sample in window):
+        kinds.append("client_density_high")
+    return kinds
+
+
+def _node_snapshot_alert_kinds(
+    *,
+    node: Node,
+    last_sample_at: datetime | None,
+    stale_after_seconds: int,
+    now: datetime,
+) -> list[str]:
+    age_seconds = int((now - last_sample_at).total_seconds()) if last_sample_at else None
+    kinds: list[str] = []
+    if age_seconds is None or age_seconds > stale_after_seconds:
+        kinds.append("stale_metrics")
+    cpu_percent = float(getattr(node, "cpu_percent", 0.0) or 0.0)
+    memory_total = float(getattr(node, "memory_total_mb", 0.0) or 0.0)
+    memory_used = float(getattr(node, "memory_used_mb", 0.0) or 0.0)
+    disk_total = float(getattr(node, "disk_total_gb", 0.0) or 0.0)
+    disk_used = float(getattr(node, "disk_used_gb", 0.0) or 0.0)
+    memory_percent = (memory_used / memory_total * 100.0) if memory_total > 0 else 0.0
+    disk_percent = (disk_used / disk_total * 100.0) if disk_total > 0 else 0.0
+    if cpu_percent >= NODE_METRICS_CPU_ALERT_PERCENT:
+        kinds.append("cpu_high")
+    if memory_percent >= NODE_METRICS_MEMORY_ALERT_PERCENT:
+        kinds.append("memory_high")
+    if disk_percent >= NODE_METRICS_DISK_ALERT_PERCENT:
+        kinds.append("disk_high")
+    if float(getattr(node, "panel_latency_ms", 0.0) or 0.0) >= NODE_METRICS_LATENCY_ALERT_MS:
+        kinds.append("latency_high")
+    if float(getattr(node, "panel_error_rate", 0.0) or 0.0) >= NODE_METRICS_ERROR_RATE_ALERT:
+        kinds.append("error_rate_high")
+    if int(getattr(node, "active_clients", 0) or 0) >= NODE_METRICS_ACTIVE_CLIENTS_ALERT:
+        kinds.append("client_density_high")
+    return kinds
+
+
+def _legacy_node_alert_kind(kind: str) -> str:
+    mapping = {
+        "cpu_high": "high_cpu",
+        "memory_high": "high_memory",
+        "disk_high": "high_disk",
+        "latency_high": "high_latency",
+        "error_rate_high": "high_error_rate",
+        "client_density_high": "high_client_density",
+        "stale_metrics": "stale_metrics",
+    }
+    return mapping.get(str(kind or ""), str(kind or ""))
+
+
+def _legacy_node_alerts(kinds: list[str]) -> list[str]:
+    return sorted({_legacy_node_alert_kind(kind) for kind in kinds if str(kind or "").strip()})
+
+
+def _build_admin_metrics_status_snapshot(*, s, now: datetime, stale_after_seconds: int) -> dict[str, Any]:
+    nodes = (
+        s.query(Node)
+        .filter(Node.enabled == True)
+        .order_by(Node.weight.desc(), Node.code.asc())
+        .all()
+    )
+    rows: list[dict[str, Any]] = []
+    active_alerts: list[dict[str, Any]] = []
+    overall_last_sample: datetime | None = None
+    overall_age_seconds: int | None = None
+
+    for node in nodes:
+        samples = (
+            s.query(NodeHealthSample)
+            .filter(NodeHealthSample.node_code == str(node.code or ""))
+            .order_by(NodeHealthSample.sampled_at.desc(), NodeHealthSample.id.desc())
+            .limit(NODE_METRICS_SUSTAINED_SAMPLES)
+            .all()
+        )
+        latest = samples[0] if samples else None
+        last_sample_at = getattr(latest, "sampled_at", None) or getattr(node, "last_health_at", None)
+        age_seconds = int((now - last_sample_at).total_seconds()) if last_sample_at else None
+        alert_kinds = _active_node_metric_alert_kinds(
+            samples=samples,
+            last_sample_at=last_sample_at,
+            stale_after_seconds=stale_after_seconds,
+            now=now,
+        )
+        if not alert_kinds:
+            alert_kinds = _node_snapshot_alert_kinds(
+                node=node,
+                last_sample_at=last_sample_at,
+                stale_after_seconds=stale_after_seconds,
+                now=now,
+            )
+        if last_sample_at and (overall_last_sample is None or last_sample_at > overall_last_sample):
+            overall_last_sample = last_sample_at
+        if age_seconds is not None:
+            overall_age_seconds = age_seconds if overall_age_seconds is None else max(overall_age_seconds, age_seconds)
+        row = {
+            "node_code": str(node.code or ""),
+            "code": str(node.code or ""),
+            "status": "stale" if "stale_metrics" in alert_kinds else "fresh",
+            "freshness_status": "stale" if "stale_metrics" in alert_kinds else "fresh",
+            "last_sample_at": _safe_iso(last_sample_at),
+            "age_seconds": age_seconds,
+            "cpu_percent": float(getattr(latest, "cpu_percent", getattr(node, "cpu_percent", 0.0)) or 0.0),
+            "memory_percent": _sample_memory_percent(latest),
+            "disk_percent": _sample_disk_percent(latest),
+            "active_clients": int(getattr(latest, "active_clients", getattr(node, "active_clients", 0)) or 0),
+            "alert_kinds": sorted(set(alert_kinds)),
+            "alerts": _legacy_node_alerts(alert_kinds),
+        }
+        rows.append(row)
+        for kind in row["alert_kinds"]:
+            active_alerts.append(
+                {
+                    "node_code": row["node_code"],
+                    "kind": kind,
+                    "status": row["status"],
+                    "age_seconds": row["age_seconds"],
+                    "last_sample_at": row["last_sample_at"],
+                }
+            )
+
+    overall_status = "fresh" if rows and all(row["status"] == "fresh" for row in rows) else "stale"
+    legacy_alert_counts = {
+        "stale_nodes": sum(1 for row in rows if row["freshness_status"] == "stale"),
+        "high_cpu_nodes": sum(1 for row in rows if "high_cpu" in row["alerts"]),
+        "high_memory_nodes": sum(1 for row in rows if "high_memory" in row["alerts"]),
+        "high_disk_nodes": sum(1 for row in rows if "high_disk" in row["alerts"]),
+        "high_latency_nodes": sum(1 for row in rows if "high_latency" in row["alerts"]),
+        "high_error_rate_nodes": sum(1 for row in rows if "high_error_rate" in row["alerts"]),
+        "high_client_density_nodes": sum(1 for row in rows if "high_client_density" in row["alerts"]),
+    }
+    return {
+        "status": overall_status,
+        "last_sample_at": _safe_iso(overall_last_sample),
+        "age_seconds": overall_age_seconds,
+        "stale_after_seconds": stale_after_seconds,
+        "nodes": rows,
+        "active_alerts": active_alerts,
+        "node_statuses": rows,
+        "alerts": legacy_alert_counts,
+    }
+
+
 @app.get("/api/admin/metrics/status")
 async def admin_metrics_status(request: Request, x_telegram_init_data: str = Header(default="")) -> dict:
     _require_admin(x_telegram_init_data, request=request)
@@ -3876,18 +4222,11 @@ async def admin_metrics_status(request: Request, x_telegram_init_data: str = Hea
     now = _utcnow()
     s = SessionLocal()
     try:
-        last_sample = s.query(func.max(NodeHealthSample.sampled_at)).scalar()
-        if not last_sample:
-            # Fallback for environments where sample table may be temporarily empty
-            # but per-node health timestamps are present.
-            last_sample = s.query(func.max(Node.last_health_at)).scalar()
-        age_seconds = int((now - last_sample).total_seconds()) if last_sample else None
-        return {
-            "status": "fresh" if (age_seconds is not None and age_seconds <= stale_after_seconds) else "stale",
-            "last_sample_at": _safe_iso(last_sample),
-            "age_seconds": age_seconds,
-            "stale_after_seconds": stale_after_seconds,
-        }
+        return _build_admin_metrics_status_snapshot(
+            s=s,
+            now=now,
+            stale_after_seconds=stale_after_seconds,
+        )
     finally:
         s.close()
 
@@ -5195,7 +5534,16 @@ async def admin_summary(x_telegram_init_data: str = Header(default="")) -> dict:
     s = SessionLocal()
     try:
         total_users = s.query(func.count(User.tg_id)).scalar() or 0
-        active_users = s.query(func.count(User.tg_id)).filter(User.is_active == True).scalar() or 0
+        active_users = (
+            s.query(func.count(User.tg_id))
+            .filter(User.tg_id > 0)
+            .filter(~_manual_test_user_filter())
+            .filter(User.is_active == True)
+            .filter(User.expiry_at.isnot(None))
+            .filter(User.expiry_at > now)
+            .scalar()
+            or 0
+        )
         free_users = s.query(func.count(User.tg_id)).filter(func.upper(User.sub_type) == "FREE").scalar() or 0
         paid_users = s.query(func.count(User.tg_id)).filter(func.upper(User.sub_type) == "PAID").scalar() or 0
         open_tickets = s.query(func.count(SupportTicket.id)).filter(SupportTicket.status != STATUS_CLOSED).scalar() or 0
@@ -5204,10 +5552,12 @@ async def admin_summary(x_telegram_init_data: str = Header(default="")) -> dict:
         free_node_enabled = bool(
             s.query(Node.id).filter(Node.enabled == True, func.lower(func.coalesce(Node.code, "")) == "free").first()
         )
-        last_metric_sample = s.query(func.max(NodeHealthSample.sampled_at)).scalar()
-        if not last_metric_sample:
-            last_metric_sample = s.query(func.max(Node.last_health_at)).scalar()
-        metrics_age_seconds = int((now - last_metric_sample).total_seconds()) if last_metric_sample else None
+        metrics_status = _build_admin_metrics_status_snapshot(
+            s=s,
+            now=now,
+            stale_after_seconds=stale_after_seconds,
+        )
+        metrics_age_seconds = metrics_status.get("age_seconds")
         payment_callback_failures_24h = (
             s.query(func.count(ExternalPaymentEvent.id))
             .filter(
@@ -5326,9 +5676,7 @@ async def admin_summary(x_telegram_init_data: str = Header(default="")) -> dict:
             "tickets": {"open": int(open_tickets)},
             "nodes": {"total": int(total_nodes), "healthy": int(healthy_nodes)},
             "errors": {
-                "stale_metrics": bool(
-                    metrics_age_seconds is None or metrics_age_seconds > stale_after_seconds
-                ),
+                "stale_metrics": bool(metrics_status.get("status") != "fresh"),
                 "unhealthy_nodes": max(0, int(total_nodes) - int(healthy_nodes)),
                 "open_tickets": int(open_tickets),
                 "payment_callback_failures_24h": int(payment_callback_failures_24h),
@@ -5365,40 +5713,65 @@ async def admin_summary(x_telegram_init_data: str = Header(default="")) -> dict:
 async def admin_users(
     x_telegram_init_data: str = Header(default=""),
     q: str = "",
+    status: str = "",
+    origin: str = "",
+    sort: str = "created_desc",
     limit: int = 50,
     offset: int = 0,
+    page: int = 0,
+    page_size: int = 0,
 ) -> dict:
     _require_admin(x_telegram_init_data)
-    q_norm = (q or "").strip()
+    now = _utcnow()
+    page_size_value = max(1, min(int(page_size or limit or 50), 200))
+    if int(page or 0) > 0:
+        offset_value = max(0, (int(page) - 1) * page_size_value)
+        page_value = int(page)
+    else:
+        offset_value = max(0, int(offset))
+        page_value = (offset_value // page_size_value) + 1
     s = SessionLocal()
     try:
         query = s.query(User)
-        if q_norm:
-            filters = [User.username.ilike(f"%{q_norm}%")]
-            if q_norm.isdigit():
-                filters.append(User.tg_id == int(q_norm))
-            query = query.filter(or_(*filters))
+        status_filter = _admin_user_status_filter(status, now=now)
+        if status_filter is not None:
+            query = query.filter(status_filter)
+        origin_filter = _admin_user_origin_filter(origin)
+        if origin_filter is not None:
+            query = query.filter(origin_filter)
+        query = _apply_admin_user_search(query, q)
+        sort_norm = str(sort or "created_desc").strip().lower()
+        if sort_norm == "created_asc":
+            query = query.order_by(User.created_at.asc(), User.tg_id.asc())
+        elif sort_norm == "expiry_asc":
+            query = query.order_by(User.expiry_at.asc(), User.tg_id.asc())
+        elif sort_norm == "expiry_desc":
+            query = query.order_by(User.expiry_at.desc(), User.tg_id.desc())
+        elif sort_norm == "name_asc":
+            query = query.order_by(
+                func.lower(func.coalesce(User.display_name, User.username, User.email, "")),
+                User.tg_id.asc(),
+            )
+        elif sort_norm == "name_desc":
+            query = query.order_by(
+                func.lower(func.coalesce(User.display_name, User.username, User.email, "")).desc(),
+                User.tg_id.desc(),
+            )
+        else:
+            sort_norm = "created_desc"
+            query = query.order_by(User.created_at.desc(), User.tg_id.desc())
+        total = int(query.count() or 0)
         rows = (
-            query.order_by(User.created_at.desc(), User.tg_id.desc())
-            .offset(max(0, int(offset)))
-            .limit(max(1, min(int(limit), 200)))
+            query.offset(offset_value)
+            .limit(page_size_value)
             .all()
         )
         return {
-            "users": [
-                {
-                    "tg_id": int(u.tg_id),
-                    "username": u.username,
-                    "display_name": getattr(u, "display_name", None),
-                    "sub_type": u.sub_type,
-                    "is_active": bool(u.is_active),
-                    "is_manual": bool(getattr(u, "is_manual", False) or int(u.tg_id) < 0 or (u.sub_type or "").upper() == "MANUAL"),
-                    "expiry_at": _safe_iso(u.expiry_at),
-                    "stars_paid": int(u.stars_paid or 0),
-                    "created_at": _safe_iso(u.created_at),
-                }
-                for u in rows
-            ]
+            "page": int(page_value),
+            "page_size": int(page_size_value),
+            "total": int(total),
+            "sort": sort_norm,
+            "users": [_serialize_admin_user_row(u, now=now) for u in rows],
         }
     finally:
         s.close()
@@ -5412,30 +5785,39 @@ def _admin_select_users_for_segment(
     tg_ids: list[int] | None = None,
     limit: int = 100,
 ) -> list[User]:
-    seg = str(segment or "all_active").strip().lower()
-    query = s.query(User).filter(User.tg_id > 0)
-    if seg == "all_active":
-        query = query.filter(User.is_active == True)
+    seg = str(segment or "active").strip().lower()
+    now = _utcnow()
+    query = s.query(User)
+    if seg in {"all_active"}:
+        seg = "active"
+    if seg in {"manual"}:
+        seg = "manual_test"
+
+    if seg == "all":
+        query = query.filter(User.tg_id > 0).filter(~_manual_test_user_filter())
+    elif seg == "active":
+        query = query.filter(_admin_user_status_filter("active", now=now))
+    elif seg == "inactive":
+        query = query.filter(_admin_user_status_filter("inactive", now=now))
+    elif seg == "expired":
+        query = query.filter(_admin_user_status_filter("expired", now=now))
+    elif seg == "blocked":
+        query = query.filter(_admin_user_status_filter("blocked", now=now))
     elif seg == "paid":
-        query = query.filter(func.upper(User.sub_type) == "PAID")
+        query = query.filter(User.tg_id > 0).filter(~_manual_test_user_filter()).filter(func.upper(User.sub_type) == "PAID")
     elif seg == "free":
-        query = query.filter(func.upper(User.sub_type) == "FREE")
-    elif seg == "manual":
-        query = query.filter(or_(User.is_manual == True, func.upper(User.sub_type) == "MANUAL"))
+        query = query.filter(User.tg_id > 0).filter(~_manual_test_user_filter()).filter(func.upper(User.sub_type) == "FREE")
+    elif seg == "manual_test":
+        query = query.filter(_manual_test_user_filter())
     elif seg == "custom":
-        picked = sorted({int(x) for x in (tg_ids or []) if int(x) > 0})
+        picked = sorted({int(x) for x in (tg_ids or [])})
         if not picked:
             return []
         query = query.filter(User.tg_id.in_(picked))
     else:
         raise HTTPException(status_code=400, detail="Unsupported segment")
 
-    q_norm = str(q or "").strip()
-    if q_norm:
-        filters = [User.username.ilike(f"%{q_norm}%")]
-        if q_norm.isdigit():
-            filters.append(User.tg_id == int(q_norm))
-        query = query.filter(or_(*filters))
+    query = _apply_admin_user_search(query, q)
 
     rows = (
         query.order_by(User.created_at.desc(), User.tg_id.desc())
@@ -5596,13 +5978,18 @@ async def admin_user_card(tg_id: int, x_telegram_init_data: str = Header(default
         )
         loyalty_snapshot = _user_loyalty_snapshot(s=s, user=user)
         sub_token = str(getattr(user, "sub_token", "") or "").strip()
+        user_status = _user_effective_status(user)
+        user_origin = _user_origin(user)
         user_payload = {
             "tg_id": int(user.tg_id),
             "username": user.username,
             "display_name": getattr(user, "display_name", None),
             "sub_type": user.sub_type,
             "is_active": bool(user.is_active),
-            "is_manual": bool(getattr(user, "is_manual", False) or int(user.tg_id) < 0 or (user.sub_type or "").upper() == "MANUAL"),
+            "effective_active": bool(user_status == "active"),
+            "status": user_status,
+            "origin": user_origin,
+            "is_manual": bool(_is_manual_test_user(user)),
             "expiry_at": _safe_iso(user.expiry_at),
             "stars_paid": int(user.stars_paid or 0),
             "total_gb": int(user.total_gb or 0),
@@ -5612,6 +5999,11 @@ async def admin_user_card(tg_id: int, x_telegram_init_data: str = Header(default
             "created_at": _safe_iso(user.created_at),
             "subscription_url": _admin_subscription_url(user),
             "subscription_token": sub_token,
+            "linked_telegram_id": int(user.linked_telegram_id) if getattr(user, "linked_telegram_id", None) is not None else None,
+            "linked_telegram_username": getattr(user, "linked_telegram_username", None),
+            "app_install_id": getattr(user, "app_install_id", None),
+            "app_platform": getattr(user, "app_platform", None),
+            "app_last_seen_at": _safe_iso(getattr(user, "app_last_seen_at", None)),
         }
         ticket_payload = [_ticket_row(t, list_ticket_messages(s, t.id, limit=1)) for t in tickets]
         policy_payload = [_serialize_key_policy(row) for row in policies]
@@ -5857,6 +6249,68 @@ async def admin_regenerate_manual_token(tg_id: int, x_telegram_init_data: str = 
         "subscription_url": f"{Settings.PUBLIC_API_BASE_URL.rstrip('/')}/s8Kx2mP7qR4wT/{sub_token}",
         "sync_ok": bool(sync_ok),
     }
+
+
+@app.post("/api/admin/users/{tg_id}/safe-delete")
+async def admin_safe_delete_test_user(
+    tg_id: int,
+    payload: AdminUserSafeDeleteIn,
+    x_telegram_init_data: str = Header(default=""),
+) -> dict:
+    actor = int(_require_admin(x_telegram_init_data).get("id", 0))
+    if not bool(payload.confirm):
+        raise HTTPException(status_code=400, detail="confirm=true is required")
+
+    s = SessionLocal()
+    try:
+        user = s.query(User).filter(User.tg_id == int(tg_id)).first()
+        if not user:
+            raise HTTPException(status_code=404, detail="User not found")
+        if not _is_manual_test_user(user):
+            raise HTTPException(status_code=400, detail="Only explicit manual/test users can be deleted")
+        target_meta = {
+            "tg_id": int(user.tg_id),
+            "display_name": str(getattr(user, "display_name", "") or ""),
+            "sub_type": str(getattr(user, "sub_type", "") or ""),
+        }
+        s.query(UserNode).filter(UserNode.tg_id == int(tg_id)).delete(synchronize_session=False)
+        s.query(UserKeyPolicy).filter(UserKeyPolicy.tg_id == int(tg_id)).delete(synchronize_session=False)
+        s.query(KeyActionHistory).filter(KeyActionHistory.tg_id == int(tg_id)).delete(synchronize_session=False)
+        s.query(Event).filter(Event.tg_id == int(tg_id)).delete(synchronize_session=False)
+        s.delete(user)
+        s.commit()
+    finally:
+        s.close()
+
+    panel_deleted = False
+    panel = ControlPanel()
+    try:
+        await panel.login()
+        panel_deleted = bool(await panel.delete_client(int(tg_id)))
+    except Exception as exc:
+        logger.warning("admin safe delete panel cleanup failed tg_id=%s err=%s", int(tg_id), exc)
+    finally:
+        await panel.close()
+
+    _audit_admin(
+        actor_tg_id=actor,
+        action="admin_safe_delete_test_user",
+        target_tg_id=int(tg_id),
+        meta={**target_meta, "panel_deleted": bool(panel_deleted)},
+    )
+    return {"ok": True, "tg_id": int(tg_id), "panel_deleted": bool(panel_deleted)}
+
+
+@app.post("/api/admin/users/{tg_id}/delete-test-user")
+async def admin_delete_test_user_compat(
+    tg_id: int,
+    x_telegram_init_data: str = Header(default=""),
+) -> dict:
+    return await admin_safe_delete_test_user(
+        tg_id=tg_id,
+        payload=AdminUserSafeDeleteIn(confirm=True),
+        x_telegram_init_data=x_telegram_init_data,
+    )
 
 
 @app.post("/api/admin/users/{tg_id}/keys/{node_code}/toggle")
@@ -8229,6 +8683,15 @@ def _nodes_for_user(user: User, nodes: list, session=None) -> list:
 
 
 def _serialize_admin_node(n: Node, *, mapped_users: int = 0) -> dict[str, Any]:
+    stale_after_seconds = max(300, int(os.getenv("NODE_METRICS_STALE_AFTER_SECONDS", "900")))
+    now = _utcnow()
+    last_sample_at = getattr(n, "last_health_at", None) or getattr(n, "last_probe_at", None)
+    alert_kinds = _node_snapshot_alert_kinds(
+        node=n,
+        last_sample_at=last_sample_at,
+        stale_after_seconds=stale_after_seconds,
+        now=now,
+    )
     return {
         "code": n.code,
         "name": n.name,
@@ -8249,6 +8712,13 @@ def _serialize_admin_node(n: Node, *, mapped_users: int = 0) -> dict[str, Any]:
         "disk_free_gb": float(getattr(n, "disk_free_gb", 0.0) or 0.0),
         "last_ok_at": _safe_iso(getattr(n, "last_ok_at", None)),
         "last_health_at": _safe_iso(getattr(n, "last_health_at", None)),
+        "freshness_status": "stale" if "stale_metrics" in alert_kinds else "fresh",
+        "freshness_age_seconds": int((now - last_sample_at).total_seconds()) if last_sample_at else None,
+        "alerts": _legacy_node_alerts(alert_kinds),
+        "alert_kinds": sorted(set(alert_kinds)),
+        "last_probe_stage": str(getattr(n, "last_probe_stage", "") or "") or None,
+        "last_probe_error_kind": str(getattr(n, "last_probe_error_kind", "") or "") or None,
+        "last_probe_error_message": str(getattr(n, "last_probe_error_message", "") or "") or None,
         "weight": int(getattr(n, "weight", 0) or 0),
     }
 
@@ -8390,7 +8860,7 @@ async def subscription(token: str, request: Request, format: str = Query(default
     headers = {
         "Subscription-Userinfo": f"upload=0; download=0; total={total_bytes}; expire={header_expire}",
         "Profile-Update-Interval": str(int(PROFILE_UPDATE_INTERVAL_HOURS)),
-        "Content-Disposition": 'attachment; filename="pokrov_vpn_subscription"',
+        "Content-Disposition": 'attachment; filename="Portal_Subscription"',
     }
 
     nodes_for_user = _nodes_for_user(user, nodes, session=s)
@@ -8406,8 +8876,8 @@ async def subscription(token: str, request: Request, format: str = Query(default
             if (user.sub_type or "").upper() == "FREE"
             else _singbox_multi_node_config(user_uuid=user.uuid, nodes=nodes_for_user, title="POKROV VPN")
         )
-        headers["Content-Disposition"] = 'attachment; filename="pokrov-vpn.json"'
-        headers["Profile-Title"] = "POKROV VPN"
+        headers["Content-Disposition"] = 'attachment; filename="Portal.json"'
+        headers["Profile-Title"] = "Portal"
         if request.method == "HEAD":
             return Response(content="", media_type="application/json", headers=headers)
         return Response(content=json.dumps(cfg, indent=2), media_type="application/json", headers=headers)

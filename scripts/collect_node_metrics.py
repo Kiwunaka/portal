@@ -49,13 +49,29 @@ def _to_runtime(node: Node) -> NodeRuntime:
     )
 
 
-def _calc_score(*, latency_ms: int | None, error_rate: float, active_clients: int, healthy: bool) -> float:
+def _calc_score(
+    *,
+    latency_ms: int | None,
+    error_rate: float,
+    active_clients: int,
+    healthy: bool,
+    cpu_percent: float = 0.0,
+    memory_used_mb: int = 0,
+    memory_total_mb: int = 0,
+    disk_used_gb: float = 0.0,
+    disk_total_gb: float = 0.0,
+) -> float:
     if not healthy:
         return 0.0
     latency_penalty = min(max(latency_ms or 0, 0), 3000) / 30.0
     error_penalty = max(0.0, min(error_rate, 1.0)) * 40.0
     load_penalty = min(max(active_clients, 0), 2000) / 20.0
-    score = 100.0 - latency_penalty - error_penalty - load_penalty
+    memory_percent = (float(memory_used_mb or 0) / float(memory_total_mb or 0) * 100.0) if int(memory_total_mb or 0) > 0 else 0.0
+    disk_percent = (float(disk_used_gb or 0.0) / float(disk_total_gb or 0.0) * 100.0) if float(disk_total_gb or 0.0) > 0 else 0.0
+    cpu_penalty = min(max(float(cpu_percent or 0.0), 0.0), 100.0) / 4.0
+    memory_penalty = min(max(memory_percent, 0.0), 100.0) / 5.0
+    disk_penalty = min(max(disk_percent, 0.0), 100.0) / 6.0
+    score = 100.0 - latency_penalty - error_penalty - load_penalty - cpu_penalty - memory_penalty - disk_penalty
     return max(0.0, round(score, 3))
 
 
@@ -176,6 +192,11 @@ async def _collect_one(*, node: Node, error_window: int, source: str) -> dict:
             error_rate=error_rate,
             active_clients=active_clients,
             healthy=healthy,
+            cpu_percent=float(cpu_percent or 0.0),
+            memory_used_mb=int(memory_used_mb or 0),
+            memory_total_mb=int(memory_total_mb or 0),
+            disk_used_gb=float(disk_used_gb or 0.0),
+            disk_total_gb=float(disk_total_gb or 0.0),
         )
         sample = NodeHealthSample(
             node_code=runtime.code,

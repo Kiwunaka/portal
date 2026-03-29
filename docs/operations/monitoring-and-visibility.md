@@ -1,6 +1,6 @@
 # Monitoring And Visibility
 
-Last updated: 2026-03-22
+Last updated: 2026-03-29
 
 ## Document Status
 
@@ -13,6 +13,8 @@ Current official public surfaces are:
 - marketing and public site: `https://pokrov.space/`
 - user cabinet and web login: `https://app.pokrov.space/`
 - public API host: `https://api.pokrov.space/`
+- config / subscription host: `https://connect.pokrov.space/`
+- hosted checkout entry: `https://pay.pokrov.space/checkout/`
 
 Hostname role split:
 
@@ -35,6 +37,7 @@ Monitoring should cover four layers together:
 2. app, webapp, and bot session health
 3. node reachability and public egress
 4. support visibility for linked Telegram, device, and IP context
+5. per-node freshness, sustained resource alerts, and probe failure reasons
 
 The platform should be operated as one system. A broken Telegram handoff, dead node, or wrong hostname can all appear to the user as "VPN does not work".
 
@@ -51,8 +54,12 @@ Required probe origin:
 Required checks on each run:
 
 1. confirm the probe host can reach `google.com`
-2. confirm the probe host can resolve and reach the current public `POKROV` surfaces when needed
-3. confirm the probe host can reach the intended node endpoints used by current subscriptions
+2. confirm the probe host can reach Telegram surfaces such as `api.telegram.org` and `t.me`
+3. confirm the probe host can resolve and reach the current public `POKROV` surfaces when needed
+4. confirm the probe host can reach the intended node endpoints used by current subscriptions
+5. confirm the current reserve ingress state from RU:
+   - `xhttp_alive`
+   - `hysteria_alive`
 4. record failures in a compact operator-readable report
 
 Minimum report fields:
@@ -60,7 +67,11 @@ Minimum report fields:
 - UTC timestamp
 - probe host label and public IP if known
 - whether `google.com` was reachable
+- whether the Telegram surfaces were reachable
 - node-by-node status
+- per-target split health for `DNS`, `TCP`, `TLS`, `HTTP`, and `UDP` when applicable
+- reserve status for `xhttp_alive` and `hysteria_alive`
+- derived classifications such as `probe_host_problem`, `canonical_host_problem`, `foreign_edge_problem`, `eu_node_problem`
 - notes for DNS, TCP, TLS, or route anomalies
 
 Escalation rule:
@@ -77,6 +88,33 @@ Operator response:
 4. drain and resync unhealthy nodes before disabling them if recovery fails
 5. keep support informed with the canonical hostnames only
 
+## Node Metrics Freshness And Alerts
+
+The admin and operator view must treat node freshness per node, not only as one global timestamp.
+
+Required node-level visibility:
+
+- freshness state for each node
+- sustained CPU / RAM / disk pressure alerts
+- sustained latency / error-rate alerts
+- high client-density alerts
+- `last_probe_stage`
+- `last_probe_error_kind`
+- `last_probe_error_message`
+
+Operational rule:
+
+- `portal-node-metrics.timer` must stay healthy on every relevant host
+- hoster CPU warnings should trigger a review of per-node metrics plus control-plane load on the canonical host
+
+Primary repository touchpoints:
+
+- `scripts/collect_node_metrics.py`
+- `infra/portal-node-metrics.service`
+- `infra/portal-node-metrics.timer`
+- `/api/admin/metrics/status`
+- `/api/admin/nodes/health`
+
 ## Suggested RU Probe Workflow
 
 Existing repository helpers:
@@ -86,6 +124,7 @@ Existing repository helpers:
 
 Repository helper added for reporting:
 
+- [scripts/ru_probe_runner.py](C:/Users/kiwun/Documents/ai/VPN/scripts/ru_probe_runner.py)
 - [scripts/render_ru_probe_report.py](C:/Users/kiwun/Documents/ai/VPN/scripts/render_ru_probe_report.py)
 - [scripts/ru_probe_sample.json](C:/Users/kiwun/Documents/ai/VPN/scripts/ru_probe_sample.json)
 
@@ -99,8 +138,29 @@ Recommended external RU probe flow:
 Example:
 
 ```powershell
+python scripts/ru_probe_runner.py --reserve-host rf1.pokrov.space --probe-host mini --out ops-local/ru-probe.json
 python scripts/render_ru_probe_report.py --input scripts/ru_probe_sample.json
 ```
+
+RF role split:
+
+- `mini` is the canonical RU probe origin
+- `rf1` is the reserve ingress for operator and VIP/manual access
+- do not use `mini` for general user traffic
+- do not treat `rf1` as a general delivery node until repeated RU probes prove stability
+
+Current backlog note:
+
+- RU ingress / RF reserve experiments are paused
+- keep using `mini` only as the RU probe origin
+- do not resume `mini` canary work or `rf1` promotion until the product owner explicitly requests it
+
+Reserve interpretation:
+
+- `xhttp_alive=true` means the TCP reserve path remains available for operator and VIP access
+- `hysteria_alive=true` is still best-effort and should be treated as a UDP viability signal until repeated RU checks confirm it
+- if `xhttp_alive=true` while canonical hosts fail, preserve the reserve contour and keep the default consumer path unchanged
+- while the RF reserve idea is in backlog, keep collecting probe evidence but do not treat reserve-path improvements as active roadmap work
 
 ## App, Bot, Device, And IP Visibility
 
@@ -124,6 +184,7 @@ Useful operator-visible fields include:
 - `last_ip` or equivalent last seen public IP field
 - current subscription status
 - assigned node or recent node history when available
+- effective admin status: `active`, `expired`, `blocked`, `manual_test`
 
 Visibility rule:
 
@@ -164,5 +225,10 @@ Operator-visible:
 - recent IP context
 - node assignment and reachability clues
 - incident history and probe results
+
+Manual/test cleanup policy:
+
+- only explicit manual/test users are eligible for destructive cleanup in admin
+- operators should keep real-user cleanup out of routine admin tooling
 
 Only collect and expose the minimum operational context needed to diagnose service problems and keep the app-first account model working reliably.

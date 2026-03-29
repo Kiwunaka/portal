@@ -1,6 +1,6 @@
 # Node Inventory
 
-> Updated: 2026-03-07
+> Updated: 2026-03-23
 
 This file tracks the current node list and their roles. Do not put secrets here (passwords, private keys, panel paths).
 
@@ -14,6 +14,8 @@ This file tracks the current node list and their roles. Do not put secrets here 
 | `us` | `USnode` | `US` | Premium delivery | enabled for delivery | `1 vCPU / 2 GB RAM / 40 GB NVMe` | `82.21.92.142` |
 | `nl` | `NLnode` | `NL` | Premium delivery | enabled for delivery | `1 vCPU / 2 GB RAM / 40 GB NVMe` | `82.24.195.93` |
 | `free` | `FREENLnode` | `NL` | Dedicated free pool | enabled for delivery | `1 vCPU / 1 GB RAM / 40 GB NVMe` | `151.245.217.23` |
+| `mini` | `RFMINI` | `RU` | RU probe only | external RU vantage host; never part of delivery pool; reserve-ingress experiments are paused and moved to backlog | `low-spec mini server` | `176.123.166.119` |
+| `rf1` | `RFRESERVE1` | `RU` | reserve ingress / VIP-manual contour | backlog only; do not provision or promote until explicitly requested by product owner | `2 vCPU / 4 GB RAM / 40 GB NVMe` | `TBD` |
 
 ## Ops Notes
 
@@ -24,6 +26,10 @@ This file tracks the current node list and their roles. Do not put secrets here 
 - Current standard delivery profile is `VLESS + TCP + Reality`.
 - Current runtime free contour is the dedicated node code `free`. Physically this is the separate NL-based server `FREENLnode`, but in runtime and subscription logic it remains a standalone free pool.
 - `pl:8443` (`PL Free Reality`) was retired on 2026-03-07: inbound `id=2` is disabled and UFW exposure for `8443/tcp` was removed. Keep it only as a disabled legacy row until final deletion.
+- `mini` is the canonical external RU probe host. It should run layered reachability checks and report whitelist symptoms.
+- RU ingress / RF reserve experiments were tried on `mini` and moved to backlog after inconsistent mobile results. Do not resume or expand this work until the product owner explicitly asks for it.
+- `rf1` remains a backlog concept only. Do not provision it, document it as active work, or promote it into runtime planning until explicitly requested.
+- Neither `mini` nor `rf1` should host `portal-api`, bots, payments, or other control-plane services.
 
 ## Checklist
 

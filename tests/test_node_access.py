@@ -2,6 +2,7 @@ import sys
 import unittest
 from pathlib import Path
 from unittest.mock import patch
+import tempfile
 
 
 class NodeAccessTests(unittest.TestCase):
@@ -49,6 +50,17 @@ class NodeAccessTests(unittest.TestCase):
 
         self.assertEqual(method, "password")
         self.assertEqual(attempts, [(29374, True), (22, True)])
+
+    def test_private_key_candidates_support_mini_russia_key_names(self) -> None:
+        import node_access
+
+        with tempfile.TemporaryDirectory() as tmp:
+            key_dir = Path(tmp)
+            candidates = node_access._private_key_candidates("mini", key_dir)
+
+        names = [path.name for path in candidates]
+        self.assertIn("RUSSIA_private.ppk", names)
+        self.assertIn("RUSSIA.ppk", names)
 
 
 if __name__ == "__main__":

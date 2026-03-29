@@ -170,6 +170,167 @@ class ApiAuthAndTicketsTests(unittest.TestCase):
         r = self.client.get("/api/admin/summary", headers=hdrs)
         self.assertEqual(r.status_code, 403)
 
+    def test_admin_users_supports_effective_status_origin_and_extended_search(self) -> None:
+        from db import SessionLocal
+        from models import User
+
+        now = datetime.utcnow()
+        s = SessionLocal()
+        try:
+            s.add_all(
+                [
+                    User(
+                        tg_id=1002,
+                        username="bob",
+                        uuid=str(uuid.uuid4()),
+                        email="user_1002",
+                        sub_type="PAID",
+                        is_active=True,
+                        expiry_at=now - timedelta(days=2),
+                        tos_accepted=True,
+                    ),
+                    User(
+                        tg_id=1003,
+                        username="carol",
+                        uuid=str(uuid.uuid4()),
+                        email="user_1003",
+                        sub_type="PAID",
+                        is_active=False,
+                        expiry_at=now + timedelta(days=20),
+                        tos_accepted=True,
+                    ),
+                    User(
+                        tg_id=-501,
+                        username=None,
+                        uuid=str(uuid.uuid4()),
+                        email="manual_501",
+                        sub_type="MANUAL",
+                        is_active=True,
+                        expiry_at=now + timedelta(days=30),
+                        tos_accepted=True,
+                        is_manual=True,
+                        display_name="QA Manual",
+                        created_by_admin=9999,
+                    ),
+                    User(
+                        tg_id=1004,
+                        username=None,
+                        uuid=str(uuid.uuid4()),
+                        email="user_1004",
+                        sub_type="FREE",
+                        is_active=True,
+                        expiry_at=now + timedelta(days=15),
+                        tos_accepted=True,
+                        is_app_user=True,
+                        app_install_id="ios-install-1004",
+                        display_name="Alice iPhone",
+                        linked_telegram_id=4040,
+                        linked_telegram_username="linked_alice",
+                    ),
+                ]
+            )
+            s.commit()
+        finally:
+            s.close()
+
+        admin_hdrs = {"X-Telegram-Init-Data": self._init_data(9999, "admin")}
+
+        manual = self.client.get(
+            "/api/admin/users",
+            headers=admin_hdrs,
+            params={"status": "manual_test", "origin": "manual_test", "sort": "created_desc", "page": 1, "page_size": 10},
+        )
+        self.assertEqual(manual.status_code, 200, manual.text)
+        manual_body = manual.json()
+        self.assertEqual(int(manual_body["total"]), 1)
+        self.assertEqual(int(manual_body["users"][0]["tg_id"]), -501)
+        self.assertEqual(manual_body["users"][0]["status"], "manual_test")
+        self.assertEqual(manual_body["users"][0]["origin"], "manual_test")
+
+        inactive = self.client.get(
+            "/api/admin/users",
+            headers=admin_hdrs,
+            params={"status": "inactive", "sort": "status", "page": 1, "page_size": 20},
+        )
+        self.assertEqual(inactive.status_code, 200, inactive.text)
+        inactive_rows = {int(row["tg_id"]): row["status"] for row in inactive.json()["users"]}
+        self.assertEqual(inactive_rows[1002], "expired")
+        self.assertEqual(inactive_rows[1003], "blocked")
+
+        search = self.client.get(
+            "/api/admin/users",
+            headers=admin_hdrs,
+            params={"q": "ios-install-1004", "page": 1, "page_size": 10},
+        )
+        self.assertEqual(search.status_code, 200, search.text)
+        search_rows = search.json()["users"]
+        self.assertEqual(len(search_rows), 1)
+        self.assertEqual(int(search_rows[0]["tg_id"]), 1004)
+        self.assertEqual(search_rows[0]["origin"], "app")
+
+    def test_admin_delete_test_user_rejects_real_user_and_deletes_manual_user(self) -> None:
+        from db import SessionLocal
+        from models import Event, User, UserKeyPolicy, UserNode
+
+        now = datetime.utcnow()
+        s = SessionLocal()
+        try:
+            user = User(
+                tg_id=-777,
+                username=None,
+                uuid=str(uuid.uuid4()),
+                email="manual_777",
+                sub_type="MANUAL",
+                is_active=True,
+                expiry_at=now + timedelta(days=7),
+                tos_accepted=True,
+                is_manual=True,
+                display_name="Delete Me",
+                created_by_admin=9999,
+                sub_token="manual-delete-token",
+            )
+            s.add(user)
+            s.flush()
+            s.add(UserNode(tg_id=-777, node_id=1, client_uuid=str(user.uuid), panel_email=str(user.email)))
+            s.add(UserKeyPolicy(tg_id=-777, node_code="nl"))
+            s.add(Event(tg_id=-777, event_name="opened_webapp", source="tests"))
+            s.commit()
+        finally:
+            s.close()
+
+        class FakePanel:
+            async def login(self):
+                return True
+
+            async def close(self):
+                return True
+
+            async def delete_client(self, tg_id: int):
+                return tg_id == -777
+
+        original_panel = self.api.ControlPanel
+        self.api.ControlPanel = FakePanel
+        try:
+            admin_hdrs = {"X-Telegram-Init-Data": self._init_data(9999, "admin")}
+
+            real = self.client.post("/api/admin/users/1001/delete-test-user", headers=admin_hdrs)
+            self.assertEqual(real.status_code, 400, real.text)
+
+            deleted = self.client.post("/api/admin/users/-777/delete-test-user", headers=admin_hdrs)
+            self.assertEqual(deleted.status_code, 200, deleted.text)
+            self.assertTrue(bool(deleted.json()["panel_deleted"]))
+        finally:
+            self.api.ControlPanel = original_panel
+
+        s = SessionLocal()
+        try:
+            self.assertIsNone(s.query(User).filter(User.tg_id == -777).first())
+            self.assertIsNone(s.query(UserNode).filter(UserNode.tg_id == -777).first())
+            self.assertIsNone(s.query(UserKeyPolicy).filter(UserKeyPolicy.tg_id == -777).first())
+            self.assertIsNone(s.query(Event).filter(Event.tg_id == -777).first())
+        finally:
+            s.close()
+
     def test_admin_nodes_drift_returns_summary(self) -> None:
         admin_hdrs = {"X-Telegram-Init-Data": self._init_data(9999, "admin")}
 
@@ -479,6 +640,9 @@ class ApiAuthAndTicketsTests(unittest.TestCase):
                 disk_used_gb=11.4,
                 disk_total_gb=40.0,
                 disk_free_gb=28.6,
+                last_probe_stage="tls_sni",
+                last_probe_error_kind="tls_handshake_failed",
+                last_probe_error_message="tls handshake failed",
             )
             s.add(node)
             s.commit()
@@ -496,6 +660,155 @@ class ApiAuthAndTicketsTests(unittest.TestCase):
         self.assertEqual(item["disk_used_gb"], 11.4)
         self.assertEqual(item["disk_total_gb"], 40.0)
         self.assertEqual(item["disk_free_gb"], 28.6)
+        self.assertEqual(item["last_probe_stage"], "tls_sni")
+        self.assertEqual(item["last_probe_error_kind"], "tls_handshake_failed")
+        self.assertEqual(item["last_probe_error_message"], "tls handshake failed")
+
+    def test_admin_nodes_health_exposes_probe_failure_fields_and_alerts(self) -> None:
+        from db import SessionLocal
+        from models import Node
+
+        now = datetime.utcnow()
+        s = SessionLocal()
+        try:
+            node = Node(
+                code="de",
+                name="Germany",
+                host="de.example.test",
+                vless_port=443,
+                reality_sni="www.telekom.de",
+                reality_pbk="pbk-de",
+                reality_sid="sid-de",
+                panel_base_url="https://de.example.test:8444",
+                panel_path="/panel",
+                panel_user="admin",
+                panel_pass="pass",
+                inbound_id=1,
+                enabled=True,
+                health_score=44.0,
+                is_healthy=False,
+                panel_latency_ms=1800,
+                panel_error_rate=0.31,
+                active_clients=220,
+                cpu_percent=91.0,
+                memory_used_mb=1940,
+                memory_total_mb=2048,
+                disk_used_gb=38.0,
+                disk_total_gb=40.0,
+                disk_free_gb=2.0,
+                last_health_at=now - timedelta(hours=2),
+                last_probe_at=now - timedelta(hours=2),
+                last_probe_stage="tls_sni",
+                last_probe_error_kind="tls_timeout",
+                last_probe_error_message="tls handshake timeout",
+            )
+            s.add(node)
+            s.commit()
+        finally:
+            s.close()
+
+        admin_hdrs = {"X-Telegram-Init-Data": self._init_data(9999, "admin")}
+        r = self.client.get("/api/admin/nodes/health", headers=admin_hdrs)
+        self.assertEqual(r.status_code, 200, r.text)
+        item = next(row for row in r.json()["nodes"] if row["code"] == "de")
+        self.assertEqual(item["last_probe_stage"], "tls_sni")
+        self.assertEqual(item["last_probe_error_kind"], "tls_timeout")
+        self.assertEqual(item["last_probe_error_message"], "tls handshake timeout")
+        self.assertEqual(item["freshness_status"], "stale")
+        self.assertIn("high_cpu", item["alerts"])
+        self.assertIn("high_memory", item["alerts"])
+        self.assertIn("high_disk", item["alerts"])
+        self.assertIn("high_client_density", item["alerts"])
+        self.assertIn("high_latency", item["alerts"])
+        self.assertIn("high_error_rate", item["alerts"])
+
+    def test_admin_metrics_status_reports_per_node_staleness_and_alerts(self) -> None:
+        from db import SessionLocal
+        from models import Node
+
+        now = datetime.utcnow()
+        s = SessionLocal()
+        try:
+            s.add_all(
+                [
+                    Node(
+                        code="pl",
+                        name="Poland",
+                        host="pl.example.test",
+                        vless_port=443,
+                        reality_sni="www.orange.pl",
+                        reality_pbk="pbk-pl",
+                        reality_sid="sid-pl",
+                        panel_base_url="https://pl.example.test:8444",
+                        panel_path="/panel",
+                        panel_user="admin",
+                        panel_pass="pass",
+                        inbound_id=1,
+                        enabled=True,
+                        is_healthy=True,
+                        cpu_percent=78.0,
+                        memory_used_mb=900,
+                        memory_total_mb=2048,
+                        disk_used_gb=10.0,
+                        disk_total_gb=40.0,
+                        active_clients=45,
+                        last_health_at=now - timedelta(minutes=5),
+                        last_probe_at=now - timedelta(minutes=5),
+                    ),
+                    Node(
+                        code="it",
+                        name="Italy",
+                        host="it.example.test",
+                        vless_port=443,
+                        reality_sni="www.tim.it",
+                        reality_pbk="pbk-it",
+                        reality_sid="sid-it",
+                        panel_base_url="https://it.example.test:8444",
+                        panel_path="/panel",
+                        panel_user="admin",
+                        panel_pass="pass",
+                        inbound_id=1,
+                        enabled=True,
+                        is_healthy=True,
+                        cpu_percent=12.0,
+                        memory_used_mb=300,
+                        memory_total_mb=2048,
+                        disk_used_gb=5.0,
+                        disk_total_gb=40.0,
+                        active_clients=12,
+                        last_health_at=now - timedelta(hours=3),
+                        last_probe_at=now - timedelta(hours=3),
+                    ),
+                ]
+            )
+            s.commit()
+        finally:
+            s.close()
+
+        admin_hdrs = {"X-Telegram-Init-Data": self._init_data(9999, "admin")}
+        r = self.client.get("/api/admin/metrics/status", headers=admin_hdrs)
+        self.assertEqual(r.status_code, 200, r.text)
+        body = r.json()
+        self.assertEqual(body["status"], "stale")
+        self.assertEqual(int(body["alerts"]["stale_nodes"]), 1)
+        self.assertEqual(int(body["alerts"]["high_cpu_nodes"]), 1)
+        rows = {row["code"]: row for row in body["node_statuses"]}
+        self.assertEqual(rows["pl"]["freshness_status"], "fresh")
+        self.assertIn("high_cpu", rows["pl"]["alerts"])
+        self.assertEqual(rows["it"]["freshness_status"], "stale")
+        self.assertIn("stale_metrics", rows["it"]["alerts"])
+
+    def test_api_events_accepts_extended_user_metric_events(self) -> None:
+        user_hdrs = {"X-Telegram-Init-Data": self._init_data(1001, "alice")}
+        r = self.client.post(
+            "/api/events",
+            headers=user_hdrs,
+            json={"event_name": "config_import_failed", "source": "app", "meta": {"reason": "bad_qr"}},
+        )
+        self.assertEqual(r.status_code, 200, r.text)
+        rows = self._event_rows("config_import_failed")
+        self.assertEqual(len(rows), 1)
+        self.assertEqual(rows[0]["meta"]["reason"], "bad_qr")
 
     def test_web_login_session_flow(self) -> None:
         payload = self._telegram_login_payload(1001, "alice")
@@ -815,6 +1128,244 @@ class ApiAuthAndTicketsTests(unittest.TestCase):
         self.assertTrue(regen.json()["ok"])
         self.assertTrue(bool(regen.json().get("sync_ok")))
         self.assertIn("/s8Kx2mP7qR4wT/", regen.json()["subscription_url"])
+
+    def test_admin_users_support_effective_status_origin_filters_and_search(self) -> None:
+        from db import SessionLocal
+        from models import User
+
+        now = datetime.utcnow().replace(microsecond=0)
+        s = SessionLocal()
+        try:
+            base_user = s.query(User).filter_by(tg_id=1001).first()
+            assert base_user is not None
+            base_user.display_name = "Alice Visible"
+            base_user.expiry_at = now + timedelta(days=2)
+            base_user.linked_telegram_username = "alice_visible"
+
+            s.add(
+                User(
+                    tg_id=2001,
+                    username="paid_active",
+                    display_name="Paid Active",
+                    uuid=str(uuid.uuid4()),
+                    email="paid_active_2001",
+                    sub_type="PAID",
+                    is_active=True,
+                    expiry_at=now + timedelta(days=5),
+                    tos_accepted=True,
+                )
+            )
+            s.add(
+                User(
+                    tg_id=2002,
+                    username="expired_paid",
+                    display_name="Expired Paid",
+                    uuid=str(uuid.uuid4()),
+                    email="expired_paid_2002",
+                    sub_type="PAID",
+                    is_active=True,
+                    expiry_at=now - timedelta(days=1),
+                    tos_accepted=True,
+                )
+            )
+            s.add(
+                User(
+                    tg_id=2003,
+                    username="blocked_paid",
+                    display_name="Blocked Paid",
+                    uuid=str(uuid.uuid4()),
+                    email="blocked_paid_2003",
+                    sub_type="PAID",
+                    is_active=False,
+                    expiry_at=now + timedelta(days=5),
+                    tos_accepted=True,
+                )
+            )
+            s.add(
+                User(
+                    tg_id=2004,
+                    username=None,
+                    display_name="Standalone App User",
+                    uuid=str(uuid.uuid4()),
+                    email="app_user_2004",
+                    sub_type="FREE",
+                    is_active=True,
+                    expiry_at=now + timedelta(days=3),
+                    tos_accepted=True,
+                    is_app_user=True,
+                    app_install_id="install-2004",
+                )
+            )
+            s.add(
+                User(
+                    tg_id=-10050,
+                    username=None,
+                    display_name="Router Lab",
+                    uuid=str(uuid.uuid4()),
+                    email="manual_router_lab",
+                    sub_type="MANUAL",
+                    is_active=True,
+                    expiry_at=now + timedelta(days=30),
+                    tos_accepted=True,
+                    is_manual=True,
+                    created_by_admin=9999,
+                )
+            )
+            s.commit()
+        finally:
+            s.close()
+
+        admin_hdrs = {"X-Telegram-Init-Data": self._init_data(9999, "admin")}
+
+        inactive_resp = self.client.get(
+            "/api/admin/users?status=inactive&sort=created_desc&page=1&page_size=20",
+            headers=admin_hdrs,
+        )
+        self.assertEqual(inactive_resp.status_code, 200, inactive_resp.text)
+        inactive_body = inactive_resp.json()
+        self.assertEqual(int(inactive_body.get("page") or 0), 1)
+        self.assertEqual(int(inactive_body.get("page_size") or 0), 20)
+        inactive_rows = inactive_body.get("users", [])
+        inactive_ids = {int(row["tg_id"]) for row in inactive_rows}
+        inactive_statuses = {str(row.get("status") or "") for row in inactive_rows}
+        self.assertTrue({2002, 2003}.issubset(inactive_ids))
+        self.assertEqual(inactive_statuses, {"expired", "blocked"})
+
+        manual_resp = self.client.get(
+            "/api/admin/users?origin=manual_test&q=Router%20Lab&page=1&page_size=20",
+            headers=admin_hdrs,
+        )
+        self.assertEqual(manual_resp.status_code, 200, manual_resp.text)
+        manual_rows = manual_resp.json().get("users", [])
+        self.assertEqual(len(manual_rows), 1)
+        self.assertEqual(int(manual_rows[0]["tg_id"]), -10050)
+        self.assertEqual(str(manual_rows[0].get("origin") or ""), "manual_test")
+        self.assertEqual(str(manual_rows[0].get("status") or ""), "manual_test")
+
+        app_resp = self.client.get(
+            "/api/admin/users?origin=app&page=1&page_size=20",
+            headers=admin_hdrs,
+        )
+        self.assertEqual(app_resp.status_code, 200, app_resp.text)
+        self.assertTrue(any(int(row["tg_id"]) == 2004 for row in app_resp.json().get("users", [])))
+
+    def test_admin_bulk_key_action_accepts_inactive_and_manual_test_segments(self) -> None:
+        from db import SessionLocal
+        from models import User
+
+        now = datetime.utcnow().replace(microsecond=0)
+        s = SessionLocal()
+        try:
+            s.add(
+                User(
+                    tg_id=2101,
+                    username="inactive_paid",
+                    uuid=str(uuid.uuid4()),
+                    email="inactive_paid_2101",
+                    sub_type="PAID",
+                    is_active=False,
+                    expiry_at=now + timedelta(days=7),
+                    tos_accepted=True,
+                )
+            )
+            s.add(
+                User(
+                    tg_id=-10060,
+                    username=None,
+                    display_name="Manual Segment User",
+                    uuid=str(uuid.uuid4()),
+                    email="manual_segment_user",
+                    sub_type="MANUAL",
+                    is_active=True,
+                    expiry_at=now + timedelta(days=30),
+                    tos_accepted=True,
+                    is_manual=True,
+                    created_by_admin=9999,
+                )
+            )
+            s.commit()
+        finally:
+            s.close()
+
+        admin_hdrs = {"X-Telegram-Init-Data": self._init_data(9999, "admin")}
+
+        inactive_resp = self.client.post(
+            "/api/admin/users/keys/bulk-action",
+            headers=admin_hdrs,
+            json={"action": "disable", "segment": "inactive", "dry_run": True},
+        )
+        self.assertEqual(inactive_resp.status_code, 200, inactive_resp.text)
+        self.assertIn(2101, inactive_resp.json().get("preview_tg_ids", []))
+
+        manual_resp = self.client.post(
+            "/api/admin/users/keys/bulk-action",
+            headers=admin_hdrs,
+            json={"action": "disable", "segment": "manual_test", "dry_run": True},
+        )
+        self.assertEqual(manual_resp.status_code, 200, manual_resp.text)
+        self.assertIn(-10060, manual_resp.json().get("preview_tg_ids", []))
+
+    def test_admin_safe_delete_only_removes_explicit_test_users(self) -> None:
+        from db import SessionLocal
+        from models import User
+
+        class FakePanel:
+            async def login(self):
+                return True
+
+            async def close(self):
+                return True
+
+            async def delete_client(self, _tg_id: int):
+                return True
+
+        self.api.ControlPanel = FakePanel
+
+        now = datetime.utcnow().replace(microsecond=0)
+        s = SessionLocal()
+        try:
+            s.add(
+                User(
+                    tg_id=-10070,
+                    username=None,
+                    display_name="Disposable Router",
+                    uuid=str(uuid.uuid4()),
+                    email="disposable_router",
+                    sub_type="MANUAL",
+                    is_active=True,
+                    expiry_at=now + timedelta(days=30),
+                    tos_accepted=True,
+                    is_manual=True,
+                    created_by_admin=9999,
+                )
+            )
+            s.commit()
+        finally:
+            s.close()
+
+        admin_hdrs = {"X-Telegram-Init-Data": self._init_data(9999, "admin")}
+
+        reject_real = self.client.post(
+            "/api/admin/users/1001/safe-delete",
+            headers=admin_hdrs,
+            json={"confirm": True},
+        )
+        self.assertEqual(reject_real.status_code, 400, reject_real.text)
+
+        deleted = self.client.post(
+            "/api/admin/users/-10070/safe-delete",
+            headers=admin_hdrs,
+            json={"confirm": True},
+        )
+        self.assertEqual(deleted.status_code, 200, deleted.text)
+        self.assertTrue(bool(deleted.json().get("ok")))
+
+        s = SessionLocal()
+        try:
+            row = s.query(User).filter(User.tg_id == -10070).first()
+            self.assertIsNone(row)
+        finally:
+            s.close()
 
     def test_admin_promos_templates_and_gift_codes_crud(self) -> None:
         admin_hdrs = {"X-Telegram-Init-Data": self._init_data(9999, "admin")}
@@ -1259,6 +1810,60 @@ class ApiAuthAndTicketsTests(unittest.TestCase):
         self.assertEqual(int(bonus_events.get("gift_redeemed") or 0), 1)
         self.assertEqual(int(bonus_events.get("gift_denied") or 0), 1)
 
+    def test_admin_summary_uses_effective_active_status(self) -> None:
+        from db import SessionLocal
+        from models import User
+
+        now = datetime.utcnow().replace(microsecond=0)
+        admin_hdrs = {"X-Telegram-Init-Data": self._init_data(9999, "admin")}
+
+        s = SessionLocal()
+        try:
+            s.add(
+                User(
+                    tg_id=3201,
+                    username="effective_active",
+                    uuid="00000000-0000-0000-0000-000000003201",
+                    email="effective_active_3201",
+                    sub_type="PAID",
+                    is_active=True,
+                    expiry_at=now + timedelta(days=5),
+                    tos_accepted=True,
+                )
+            )
+            s.add(
+                User(
+                    tg_id=3202,
+                    username="effective_expired",
+                    uuid="00000000-0000-0000-0000-000000003202",
+                    email="effective_expired_3202",
+                    sub_type="PAID",
+                    is_active=True,
+                    expiry_at=now - timedelta(days=1),
+                    tos_accepted=True,
+                )
+            )
+            s.add(
+                User(
+                    tg_id=3203,
+                    username="effective_blocked",
+                    uuid="00000000-0000-0000-0000-000000003203",
+                    email="effective_blocked_3203",
+                    sub_type="PAID",
+                    is_active=False,
+                    expiry_at=now + timedelta(days=5),
+                    tos_accepted=True,
+                )
+            )
+            s.commit()
+        finally:
+            s.close()
+
+        summary_resp = self.client.get("/api/admin/summary", headers=admin_hdrs)
+        self.assertEqual(summary_resp.status_code, 200, summary_resp.text)
+        payload = summary_resp.json()
+        self.assertEqual(int(payload.get("users", {}).get("active") or 0), 1)
+
     def test_admin_summary_includes_retention_cohorts_and_pings(self) -> None:
         from db import SessionLocal
         from models import Event, User
@@ -1330,6 +1935,135 @@ class ApiAuthAndTicketsTests(unittest.TestCase):
         self.assertEqual(int(pings.get("t0") or 0), 1)
         self.assertEqual(int(pings.get("reactivation") or 0), 1)
         self.assertEqual(int(pings.get("start99_offer") or 0), 1)
+
+    def test_admin_metrics_status_reports_per_node_freshness_and_alerts(self) -> None:
+        from db import SessionLocal
+        from models import Node, NodeHealthSample
+
+        now = datetime.utcnow().replace(microsecond=0)
+        admin_hdrs = {"X-Telegram-Init-Data": self._init_data(9999, "admin")}
+
+        s = SessionLocal()
+        try:
+            s.add(
+                Node(
+                    code="pl",
+                    name="Poland",
+                    host="pl.example.test",
+                    vless_port=443,
+                    reality_sni="www.orange.pl",
+                    reality_pbk="pbk-pl",
+                    reality_sid="sid-pl",
+                    panel_base_url="https://pl.example.test:8444",
+                    panel_path="/panel",
+                    panel_user="admin",
+                    panel_pass="pass",
+                    inbound_id=7,
+                    enabled=True,
+                )
+            )
+            s.add(
+                Node(
+                    code="de",
+                    name="Germany",
+                    host="de.example.test",
+                    vless_port=443,
+                    reality_sni="www.telekom.de",
+                    reality_pbk="pbk-de",
+                    reality_sid="sid-de",
+                    panel_base_url="https://de.example.test:8444",
+                    panel_path="/panel",
+                    panel_user="admin",
+                    panel_pass="pass",
+                    inbound_id=9,
+                    enabled=True,
+                )
+            )
+            for minutes_ago in (1, 2, 3):
+                s.add(
+                    NodeHealthSample(
+                        node_code="pl",
+                        sampled_at=now - timedelta(minutes=minutes_ago),
+                        cpu_percent=82.0,
+                        memory_used_mb=1800,
+                        memory_total_mb=2048,
+                        disk_used_gb=38.5,
+                        disk_total_gb=40.0,
+                        disk_free_gb=1.5,
+                        active_clients=140,
+                        panel_latency_ms=120,
+                        panel_error_rate=0.01,
+                        is_healthy=True,
+                        score=92.0,
+                    )
+                )
+            s.add(
+                NodeHealthSample(
+                    node_code="de",
+                    sampled_at=now - timedelta(minutes=45),
+                    cpu_percent=15.0,
+                    memory_used_mb=700,
+                    memory_total_mb=2048,
+                    disk_used_gb=10.0,
+                    disk_total_gb=40.0,
+                    disk_free_gb=30.0,
+                    active_clients=12,
+                    panel_latency_ms=90,
+                    panel_error_rate=0.0,
+                    is_healthy=True,
+                    score=95.0,
+                )
+            )
+            s.commit()
+        finally:
+            s.close()
+
+        old_stale_after = os.environ.get("NODE_METRICS_STALE_AFTER_SECONDS")
+        os.environ["NODE_METRICS_STALE_AFTER_SECONDS"] = "900"
+        try:
+            metrics_resp = self.client.get("/api/admin/metrics/status", headers=admin_hdrs)
+        finally:
+            if old_stale_after is None:
+                os.environ.pop("NODE_METRICS_STALE_AFTER_SECONDS", None)
+            else:
+                os.environ["NODE_METRICS_STALE_AFTER_SECONDS"] = old_stale_after
+        self.assertEqual(metrics_resp.status_code, 200, metrics_resp.text)
+        payload = metrics_resp.json()
+        self.assertEqual(payload.get("status"), "stale")
+        self.assertTrue(payload.get("nodes"))
+        self.assertTrue(payload.get("active_alerts"))
+
+        pl = next(row for row in payload["nodes"] if row["node_code"] == "pl")
+        de = next(row for row in payload["nodes"] if row["node_code"] == "de")
+        self.assertEqual(pl["status"], "fresh")
+        self.assertIn("cpu_high", pl.get("alert_kinds", []))
+        self.assertEqual(de["status"], "stale")
+        self.assertIn("stale_metrics", de.get("alert_kinds", []))
+        self.assertTrue(any(alert.get("kind") == "cpu_high" and alert.get("node_code") == "pl" for alert in payload.get("active_alerts", [])))
+
+    def test_api_events_accept_extended_funnel_event_names(self) -> None:
+        user_hdrs = {"X-Telegram-Init-Data": self._init_data(1001, "alice")}
+
+        import_attempt = self.client.post(
+            "/api/events",
+            headers=user_hdrs,
+            json={"event_name": "config_import_attempted", "source": "webapp", "meta": {"surface": "dashboard"}},
+        )
+        self.assertEqual(import_attempt.status_code, 200, import_attempt.text)
+
+        connect_fail = self.client.post(
+            "/api/events",
+            headers=user_hdrs,
+            json={"event_name": "connect_failed", "source": "webapp", "meta": {"reason": "timeout"}},
+        )
+        self.assertEqual(connect_fail.status_code, 200, connect_fail.text)
+
+        import_rows = self._event_rows("config_import_attempted")
+        fail_rows = self._event_rows("connect_failed")
+        self.assertEqual(len(import_rows), 1)
+        self.assertEqual(len(fail_rows), 1)
+        self.assertEqual(import_rows[0]["meta"].get("surface"), "dashboard")
+        self.assertEqual(fail_rows[0]["meta"].get("reason"), "timeout")
 
     def test_admin_start_links_and_wheel_config(self) -> None:
         admin_hdrs = {"X-Telegram-Init-Data": self._init_data(9999, "admin")}

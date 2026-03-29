@@ -91,6 +91,8 @@ def _parse_passwords(path: Path) -> dict[str, str]:
         "it": "ITnode",
         "nl": "NLnode",
         "free": "Free Node",
+        "mini": "RU SBER",
+        "rf1": "RFRESERVE1",
     }
 
     for code, marker in markers.items():
@@ -102,6 +104,8 @@ def _parse_passwords(path: Path) -> dict[str, str]:
         for j in range(idx + 1, min(idx + 12, len(lines))):
             ln = lines[j]
             if not ln:
+                continue
+            if re.fullmatch(r"(\d{1,3}\.){3}\d{1,3}", ln):
                 continue
             if ln.startswith("ssh-ed25519 "):
                 continue
@@ -441,6 +445,7 @@ def main() -> int:
             "it": "ITnode_public",
             "nl": "NLnode_public",
             "free": "FREEnode_public",
+            "mini": "Russia_public",
         }.items():
             pth = key_dir / fname
             if pth.exists():

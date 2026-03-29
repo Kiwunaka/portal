@@ -1,6 +1,6 @@
 # App-First And Bonus Flows
 
-Last updated: 2026-03-22
+Last updated: 2026-03-29
 
 ## Document Status
 
@@ -107,6 +107,7 @@ Checkout rule:
 - public pricing can start the flow
 - real payment actions require authenticated or ticketed continuation
 - Telegram bot billing remains valid as a secondary path
+- buying VPN must remain possible from bot, site, and app with the same backend contract behind each surface
 
 ## Telegram Linking Flow
 
@@ -157,6 +158,37 @@ Support operators should also be able to see:
 - the current or most recent device name and platform
 - recent `last_ip` context
 - enough node and subscription state to understand whether the problem is user-specific or wider
+
+## Admin Status And Cleanup Semantics
+
+Current effective status model used across admin surfaces:
+
+- `active`
+- `expired`
+- `blocked`
+- `manual_test`
+
+Current cleanup rule:
+
+- only explicit manual/test accounts may be deleted from admin
+- customer accounts remain non-destructive and should be handled through support or billing flows instead
+
+## Funnel And Failure Metrics
+
+Current event taxonomy should make the app-first journey visible across bot, site, and app. Important live/expected events include:
+
+- open / dashboard open
+- auth handoff start
+- pay start
+- pay success
+- config open
+- config import attempt
+- connect success
+- connect fail
+- reconnect loop detection
+- ticket create
+- expiry / churn
+- renewal / return
 
 ## Release Scope Note
 

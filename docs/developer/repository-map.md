@@ -1,6 +1,6 @@
 # Repository Map
 
-Last updated: 2026-03-22
+Last updated: 2026-03-29
 
 ## Document Status
 
@@ -11,8 +11,10 @@ This file is living source of truth for repository layout, local authorities, sc
 | Path | Purpose | Local authority |
 | --- | --- | --- |
 | `portal_bot/` | FastAPI backend, Telegram bots, worker, data model, panel sync | root canonical docs plus code |
-| `webapp/` | Next.js user cabinet and web-admin | `webapp/README.md` |
-| `marketing/` | public website, checkout, legal pages | root canonical docs plus source tree |
+| `webapp/` | Next.js user cabinet and primary admin surface | `webapp/README.md`, `webapp/src/app/(dashboard)/admin/`, `webapp/src/lib/api.ts`, `webapp/e2e/` |
+| `marketing/` | public website, checkout, legal pages | root canonical docs plus `marketing/src/`, `shared/copy.ts`, `copy/catalog.ru.json` |
+| `shared/` | shared host config and public copy for bot/site/app | `shared/portal-config.ts`, `shared/copy.ts` |
+| `infra/` | runtime units and infra assets | `infra/portal-node-metrics.service`, `infra/portal-node-metrics.timer` |
 | `scripts/` | deploy, smoke, node, release, audit, migration scripts | this file and `docs/operations/deployment-and-access.md` |
 | `docs/operations/publishing-and-signing-guide.md` | canonical store, certificate, and release artifact guidance | this file and the operations guide itself |
 | `docs/` | canonical platform docs plus archive | `docs/README.md` |
@@ -38,6 +40,7 @@ This file is living source of truth for repository layout, local authorities, sc
 
 - `remote_deploy_brain_portal_code.py`
 - `remote_deploy_brain_static_sites.py`
+- `remote_install_mini_canary_stack.py`
 - `remote_switch_bot_tokens.py`
 - `release_orchestrator.py`
 
@@ -46,6 +49,7 @@ This file is living source of truth for repository layout, local authorities, sc
 - `admin_webapp_smoke.py`
 - `release_gate_check.py`
 - `render_ru_probe_report.py`
+- `ru_probe_runner.py`
 - `smoke_client_apps.py`
 - `ui_visual_smoke.py`
 - `check-links.py`
@@ -108,6 +112,7 @@ This file is living source of truth for repository layout, local authorities, sc
 - `tests/test_admin_webapp_smoke.py`
 - `tests/test_public_copy_guardrails.py`
 - `tests/test_ui_visual_smoke.py`
+- `webapp/e2e/admin-gate.spec.ts`
 
 ## Generated Artifact Policy
 
@@ -122,6 +127,8 @@ Treat these as disposable local output unless intentionally retained:
 - `dist/`
 - `portal_api_test_*.db`
 - `*.tsbuildinfo`
+- `webapp/out`
+- `marketing/out`
 
 Treat these as retained assets and preserve them unless you have explicit reason:
 

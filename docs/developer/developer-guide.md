@@ -1,6 +1,6 @@
 # Developer Guide
 
-Last updated: 2026-03-22
+Last updated: 2026-03-29
 
 ## Document Status
 
@@ -29,6 +29,12 @@ For client work, also read:
 - [Monitoring And Visibility](C:/Users/kiwun/Documents/ai/VPN/docs/operations/monitoring-and-visibility.md)
 - [Publishing And Signing Guide](C:/Users/kiwun/Documents/ai/VPN/docs/operations/publishing-and-signing-guide.md)
 
+For web-admin or marketing work, also read:
+
+- [docs/architecture/system-overview.md](C:/Users/kiwun/Documents/ai/VPN/docs/architecture/system-overview.md)
+- [docs/architecture/app-first-and-bonus-flows.md](C:/Users/kiwun/Documents/ai/VPN/docs/architecture/app-first-and-bonus-flows.md)
+- [Monitoring And Visibility](C:/Users/kiwun/Documents/ai/VPN/docs/operations/monitoring-and-visibility.md)
+
 ## Main Workspaces
 
 ### Platform workspace
@@ -56,6 +62,7 @@ Run focused tests:
 python -m pytest portal_bot/tests/test_app_first_api.py -q
 python -m pytest tests/test_portal_api.py -q
 python -m pytest tests/test_worker_retention.py -q
+python -m unittest tests.test_node_dataplane_probe tests.test_ru_probe_runner tests.test_render_ru_probe_report
 ```
 
 Deploy backend:
@@ -70,9 +77,16 @@ Run inside `webapp/`:
 
 ```powershell
 npm install
-npm run dev
-npm run build
+npm.cmd run dev
+npm.cmd run build
+npm.cmd run test:e2e:admin
 ```
+
+Notes:
+
+- `webapp` owns the primary admin surface.
+- Real browser checks live under `webapp/e2e/`.
+- `tests/test_admin_webapp_smoke.py` is a structure/build smoke, not a replacement for Playwright browser coverage.
 
 Run inside the client repo:
 
@@ -108,6 +122,24 @@ Minimum docs to touch when relevant:
 - client-specific contracts
 - publishing and signing guide when distribution, certificates, store status, or artifact names change
 - monitoring and visibility guide when hostname policy, probe expectations, support telemetry, or operator visibility changes
+- shared copy/catalog sources when public CTA text, checkout hosts, or cross-surface copy changes
+
+## RF Probe And Reserve Commands
+
+Run from the repository root:
+
+```powershell
+python scripts/ru_probe_runner.py --reserve-host rf1.pokrov.space --probe-host mini --out ops-local/ru-probe.json
+python scripts/render_ru_probe_report.py --input ops-local/ru-probe.json
+```
+
+Operational rules:
+
+- `mini` is probe-only for current work
+- RU ingress / RF reserve experiments are backlog-only
+- do not resume `mini` canary work, evolve the transport matrix, or provision `rf1` unless the product owner explicitly asks to return to that track
+- `rf1` is reserve-only for operator and VIP/manual use in phase 1
+- keep `rf1` outside the default runtime delivery pool until repeated RU probes confirm stable behavior
 
 ## Generated Artifact Policy
 
@@ -120,6 +152,7 @@ Safe to remove when they are local-generated:
 - `portal_api_test_*.db`
 - `*.tsbuildinfo`
 - local `node_modules/`, `.dart_tool/`, `build/`, `dist/` if not needed as retained outputs
+- `webapp/out`, `marketing/out` after rebuild or deploy
 
 Not safe to remove without intent:
 

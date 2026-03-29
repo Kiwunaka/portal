@@ -337,16 +337,25 @@ export type AdminSummaryPayload = {
   }>;
 };
 
+export type AdminUserStatus = "active" | "expired" | "blocked" | "manual_test";
+export type AdminUserOrigin = "telegram" | "app" | "hybrid" | "manual_test";
+
 export type AdminUserRow = {
   tg_id: number;
   username?: string | null;
   display_name?: string | null;
   sub_type: string;
   is_active: boolean;
+  effective_active?: boolean;
+  status: AdminUserStatus;
+  origin: AdminUserOrigin;
   is_manual?: boolean;
   expiry_at?: string | null;
   stars_paid: number;
   created_at?: string | null;
+  linked_telegram_id?: number | null;
+  linked_telegram_username?: string | null;
+  app_install_id?: string | null;
 };
 
 export type AdminUserCard = {
@@ -356,6 +365,9 @@ export type AdminUserCard = {
     display_name?: string | null;
     sub_type: string;
     is_active: boolean;
+    effective_active?: boolean;
+    status: AdminUserStatus;
+    origin: AdminUserOrigin;
     is_manual?: boolean;
     expiry_at?: string | null;
     stars_paid: number;
@@ -366,6 +378,11 @@ export type AdminUserCard = {
     created_at?: string | null;
     subscription_url?: string;
     subscription_token?: string;
+    linked_telegram_id?: number | null;
+    linked_telegram_username?: string | null;
+    app_install_id?: string | null;
+    app_platform?: string | null;
+    app_last_seen_at?: string | null;
   };
   tickets: TicketInfo[];
   keys?: AdminUserKey[];
@@ -527,6 +544,9 @@ export type AdminNodeHealthRow = {
   disk_free_gb: number;
   last_ok_at?: string | null;
   last_health_at?: string | null;
+  last_probe_stage?: string | null;
+  last_probe_error_kind?: string | null;
+  last_probe_error_message?: string | null;
   weight: number;
 };
 
@@ -570,10 +590,45 @@ export type AdminNodeDriftReport = {
 };
 
 export type AdminMetricsStatus = {
-  status: "fresh" | "stale";
+  status: "fresh" | "stale" | "missing";
   last_sample_at?: string | null;
   age_seconds?: number | null;
   stale_after_seconds: number;
+  nodes?: Array<{
+    node_code: string;
+    status: "fresh" | "stale";
+    last_sample_at?: string | null;
+    age_seconds?: number | null;
+    cpu_percent?: number;
+    memory_percent?: number;
+    disk_percent?: number;
+    active_clients?: number;
+    alert_kinds?: string[];
+  }>;
+  active_alerts?: Array<{
+    node_code: string;
+    kind: string;
+    status: "fresh" | "stale";
+    age_seconds?: number | null;
+    last_sample_at?: string | null;
+  }>;
+};
+
+export type AdminUsersQuery = {
+  q?: string;
+  status?: string;
+  origin?: string;
+  sort?: string;
+  page?: number;
+  page_size?: number;
+};
+
+export type AdminUsersResponse = {
+  users: AdminUserRow[];
+  total: number;
+  page: number;
+  page_size: number;
+  sort: string;
 };
 
 export type AdminMetricsPoint = {
@@ -1176,14 +1231,144 @@ export async function runNetworkProbe(size_mb = 2): Promise<{ latencyMs: number;
   return { latencyMs, downloadMs, quality };
 }
 
-export function adminSummary(): Promise<AdminSummaryPayload> {
-  return apiFetch<AdminSummaryPayload>("/api/admin/summary");
+function normalizeAdminSummaryPayload(payload: Partial<AdminSummaryPayload> | null | undefined): AdminSummaryPayload {
+  const data = payload || {};
+  return {
+    actor_tg_id: Number(data.actor_tg_id || 0),
+    users: {
+      total: Number(data.users?.total || 0),
+      active: Number(data.users?.active || 0),
+      free: Number(data.users?.free || 0),
+      paid: Number(data.users?.paid || 0),
+    },
+    retention: {
+      expiring_3d: Number(data.retention?.expiring_3d || 0),
+      expired_7d: Number(data.retention?.expired_7d || 0),
+      reactivation_candidates: Number(data.retention?.reactivation_candidates || 0),
+      pings_24h: {
+        welcome: Number(data.retention?.pings_24h?.welcome || 0),
+        t3: Number(data.retention?.pings_24h?.t3 || 0),
+        t1: Number(data.retention?.pings_24h?.t1 || 0),
+        t0: Number(data.retention?.pings_24h?.t0 || 0),
+        reactivation: Number(data.retention?.pings_24h?.reactivation || 0),
+        start99_offer: Number(data.retention?.pings_24h?.start99_offer || 0),
+      },
+    },
+    tickets: { open: Number(data.tickets?.open || 0) },
+    nodes: {
+      total: Number(data.nodes?.total || 0),
+      healthy: Number(data.nodes?.healthy || 0),
+    },
+    errors: {
+      stale_metrics: Boolean(data.errors?.stale_metrics),
+      unhealthy_nodes: Number(data.errors?.unhealthy_nodes || 0),
+      open_tickets: Number(data.errors?.open_tickets || 0),
+      payment_callback_failures_24h: Number(data.errors?.payment_callback_failures_24h || 0),
+      subscription_numeric_fallbacks_24h: Number(data.errors?.subscription_numeric_fallbacks_24h || 0),
+    },
+    resilience: {
+      single_point_risk: Boolean(data.resilience?.single_point_risk),
+      free_node_enabled: Boolean(data.resilience?.free_node_enabled),
+    },
+    bonus_events_24h: {
+      channel_activated: Number(data.bonus_events_24h?.channel_activated || 0),
+      channel_denied: Number(data.bonus_events_24h?.channel_denied || 0),
+      promo_redeemed: Number(data.bonus_events_24h?.promo_redeemed || 0),
+      promo_denied: Number(data.bonus_events_24h?.promo_denied || 0),
+      gift_redeemed: Number(data.bonus_events_24h?.gift_redeemed || 0),
+      gift_denied: Number(data.bonus_events_24h?.gift_denied || 0),
+    },
+    top_nodes: Array.isArray(data.top_nodes)
+      ? data.top_nodes.map((row) => ({
+          code: String(row.code || ""),
+          health_score: Number(row.health_score || 0),
+          panel_latency_ms: row.panel_latency_ms ?? null,
+          active_clients: Number(row.active_clients || 0),
+          last_health_at: row.last_health_at ?? null,
+        }))
+      : [],
+  };
 }
 
-export async function adminUsers(q: string, limit = 50, offset = 0): Promise<AdminUserRow[]> {
-  const query = encodeURIComponent(q || "");
-  const data = await apiFetch<{ users: AdminUserRow[] }>(`/api/admin/users?q=${query}&limit=${limit}&offset=${offset}`);
-  return data.users || [];
+function normalizeAdminMetricsStatus(payload: Partial<AdminMetricsStatus> | null | undefined): AdminMetricsStatus {
+  const data = payload || {};
+  const rawStatus = String(data.status || "").toLowerCase();
+  const status: AdminMetricsStatus["status"] = rawStatus === "fresh" || rawStatus === "stale" ? rawStatus : "missing";
+  return {
+    status,
+    last_sample_at: data.last_sample_at ?? null,
+    age_seconds: data.age_seconds ?? null,
+    stale_after_seconds: Number(data.stale_after_seconds || 0),
+    nodes: Array.isArray(data.nodes)
+      ? data.nodes.map((row) => ({
+          node_code: String(row.node_code || ""),
+          status: row.status === "fresh" ? "fresh" : "stale",
+          last_sample_at: row.last_sample_at ?? null,
+          age_seconds: row.age_seconds ?? null,
+          cpu_percent: row.cpu_percent ?? 0,
+          memory_percent: row.memory_percent ?? 0,
+          disk_percent: row.disk_percent ?? 0,
+          active_clients: row.active_clients ?? 0,
+          alert_kinds: Array.isArray(row.alert_kinds) ? row.alert_kinds.map((item) => String(item || "")) : [],
+        }))
+      : [],
+    active_alerts: Array.isArray(data.active_alerts)
+      ? data.active_alerts.map((row) => ({
+          node_code: String(row.node_code || ""),
+          kind: String(row.kind || ""),
+          status: row.status === "fresh" ? "fresh" : "stale",
+          age_seconds: row.age_seconds ?? null,
+          last_sample_at: row.last_sample_at ?? null,
+        }))
+      : [],
+  };
+}
+
+function normalizeAdminUsersResponse(payload: Partial<AdminUsersResponse> | null | undefined): AdminUsersResponse {
+  const data = payload || {};
+  return {
+    users: Array.isArray(data.users)
+      ? data.users.map((row) => ({
+          tg_id: Number(row.tg_id || 0),
+          username: row.username ?? null,
+          display_name: row.display_name ?? null,
+          sub_type: String(row.sub_type || ""),
+          is_active: Boolean(row.is_active),
+          effective_active: Boolean(row.effective_active),
+          status: (row.status || "expired") as AdminUserStatus,
+          origin: (row.origin || "telegram") as AdminUserOrigin,
+          is_manual: Boolean(row.is_manual),
+          expiry_at: row.expiry_at ?? null,
+          stars_paid: Number(row.stars_paid || 0),
+          created_at: row.created_at ?? null,
+          linked_telegram_id: row.linked_telegram_id ?? null,
+          linked_telegram_username: row.linked_telegram_username ?? null,
+          app_install_id: row.app_install_id ?? null,
+        }))
+      : [],
+    total: Number(data.total || 0),
+    page: Number(data.page || 1),
+    page_size: Number(data.page_size || 50),
+    sort: String(data.sort || "created_desc"),
+  };
+}
+
+export async function adminSummary(): Promise<AdminSummaryPayload> {
+  const data = await apiFetch<Partial<AdminSummaryPayload>>("/api/admin/summary");
+  return normalizeAdminSummaryPayload(data);
+}
+
+export async function adminUsers(params: AdminUsersQuery = {}): Promise<AdminUsersResponse> {
+  const qs = new URLSearchParams();
+  if (params.q) qs.set("q", params.q);
+  if (params.status) qs.set("status", params.status);
+  if (params.origin) qs.set("origin", params.origin);
+  if (params.sort) qs.set("sort", params.sort);
+  if (params.page) qs.set("page", String(params.page));
+  if (params.page_size) qs.set("page_size", String(params.page_size));
+  const suffix = qs.toString() ? `?${qs.toString()}` : "";
+  const data = await apiFetch<Partial<AdminUsersResponse>>(`/api/admin/users${suffix}`);
+  return normalizeAdminUsersResponse(data);
 }
 
 export function adminUserCard(tgId: number): Promise<AdminUserCard> {
@@ -1411,6 +1596,14 @@ export function adminManualRegenerateToken(tgId: number): Promise<{ ok: boolean;
   return apiFetch(`/api/admin/users/${tgId}/manual/regenerate-token`, { method: "POST" });
 }
 
+export function adminDeleteTestUser(tgId: number): Promise<{ ok: boolean; tg_id: number; panel_deleted?: boolean }> {
+  return apiFetch(`/api/admin/users/${tgId}/safe-delete`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ confirm: true }),
+  });
+}
+
 export function adminBroadcast(payload: {
   text: string;
   segment: string;
@@ -1453,8 +1646,9 @@ export async function adminNodesHealth(): Promise<AdminNodeHealthRow[]> {
   return data.nodes || [];
 }
 
-export function adminMetricsStatus(): Promise<AdminMetricsStatus> {
-  return apiFetch<AdminMetricsStatus>("/api/admin/metrics/status");
+export async function adminMetricsStatus(): Promise<AdminMetricsStatus> {
+  const data = await apiFetch<Partial<AdminMetricsStatus>>("/api/admin/metrics/status");
+  return normalizeAdminMetricsStatus(data);
 }
 
 export function adminNodesSync(payload: { tg_id?: number; segment?: string; limit?: number }): Promise<any> {
