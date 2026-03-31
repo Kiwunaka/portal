@@ -39,6 +39,10 @@ class NodeReadinessRow:
     last_probe_stage: str = ""
     last_probe_error_kind: str = ""
     last_probe_error_message: str = ""
+    observer_push_configured: bool = False
+    observer_last_push_at: datetime | None = None
+    observer_unmatched_count: int = 0
+    observer_parse_error_count: int = 0
     inbound_id: int = 0
     vless_port: int = 443
     reality_sni: str = ""
@@ -119,11 +123,15 @@ def _parse_node_rows(raw: str) -> list[NodeReadinessRow]:
                 last_probe_stage=str(parts[9]).strip(),
                 last_probe_error_kind=str(parts[10]).strip(),
                 last_probe_error_message=str(parts[11]).strip(),
-                inbound_id=int(parts[12] or 0),
-                vless_port=int(parts[13] or 443),
-                reality_sni=str(parts[14]).strip(),
-                reality_sid=str(parts[15]).strip() if len(parts) > 15 else "",
-                reality_pbk=str(parts[16]).strip() if len(parts) > 16 else "",
+                observer_push_configured=str(parts[12]).strip().lower() in {"t", "true", "1"},
+                observer_last_push_at=_parse_epoch(parts[13]) if len(parts) > 13 else None,
+                observer_unmatched_count=int(parts[14] or 0) if len(parts) > 14 else 0,
+                observer_parse_error_count=int(parts[15] or 0) if len(parts) > 15 else 0,
+                inbound_id=int(parts[16] or 0) if len(parts) > 16 else 0,
+                vless_port=int(parts[17] or 443) if len(parts) > 17 else 443,
+                reality_sni=str(parts[18]).strip() if len(parts) > 18 else "",
+                reality_sid=str(parts[19]).strip() if len(parts) > 19 else "",
+                reality_pbk=str(parts[20]).strip() if len(parts) > 20 else "",
             )
         )
     return rows
@@ -152,6 +160,20 @@ def _load_node_rows_from_brain(*, brain_ip: str, ssh_user: str, ssh_port: int, p
             if "last_probe_error_message" in columns
             else "''"
         )
+        observer_push_configured_sql = (
+            "case when coalesce(observer_push_secret,'') <> '' then true else false end"
+            if "observer_push_secret" in columns
+            else "false"
+        )
+        observer_push_epoch_sql = (
+            "coalesce(extract(epoch from observer_last_push_at),0)"
+            if "observer_last_push_at" in columns
+            else "0"
+        )
+        observer_unmatched_sql = "coalesce(observer_unmatched_count,0)" if "observer_unmatched_count" in columns else "0"
+        observer_parse_error_sql = (
+            "coalesce(observer_parse_error_count,0)" if "observer_parse_error_count" in columns else "0"
+        )
         query = (
             r"""runuser -u postgres -- psql -d portal -Atc "select """
             r"""code,host,enabled,accepting_new_clients,is_draining,coalesce(is_healthy,false),"""
@@ -165,6 +187,14 @@ def _load_node_rows_from_brain(*, brain_ip: str, ssh_user: str, ssh_port: int, p
             + r""","""
             + probe_error_message_sql
             + r""","""
+            + observer_push_configured_sql
+            + r""","""
+            + observer_push_epoch_sql
+            + r""","""
+            + observer_unmatched_sql
+            + r""","""
+            + observer_parse_error_sql
+            + r""","""
             r"""coalesce(inbound_id,0),coalesce(vless_port,443),"""
             r"""coalesce(reality_sni,''),coalesce(reality_sid,''),coalesce(reality_pbk,'') """
             r"""from nodes where enabled=true order by code;" """
@@ -177,7 +207,13 @@ def _load_node_rows_from_brain(*, brain_ip: str, ssh_user: str, ssh_port: int, p
         ssh.close()
 
 
-def _readiness_failures(rows: list[NodeReadinessRow], *, stale_after_seconds: int, now: datetime) -> list[str]:
+def _readiness_failures(
+    rows: list[NodeReadinessRow],
+    *,
+    stale_after_seconds: int,
+    observer_stale_after_seconds: int,
+    now: datetime,
+) -> list[str]:
     failures: list[str] = []
     for row in rows:
         if not row.enabled:
@@ -189,6 +225,9 @@ def _readiness_failures(rows: list[NodeReadinessRow], *, stale_after_seconds: in
             failures.append(f"stale:{row.code}")
         if row.last_probe_error_kind:
             failures.append(f"probe_error:{row.code}:{row.last_probe_error_kind}")
+        if row.observer_push_configured:
+            if row.observer_last_push_at is None or (now - row.observer_last_push_at).total_seconds() > observer_stale_after_seconds:
+                failures.append(f"observer_stale:{row.code}")
     return failures
 
 
@@ -439,6 +478,7 @@ def main() -> int:
     parser.add_argument("--passwords", default=str(DEFAULT_PASSWORDS))
     parser.add_argument("--inventory", default=str(REPO_ROOT / "docs" / "08-node-inventory.md"))
     parser.add_argument("--stale-after-seconds", type=int, default=1800)
+    parser.add_argument("--observer-stale-after-seconds", type=int, default=180)
     parser.add_argument("--json-out", default="")
     args = parser.parse_args()
 
@@ -449,7 +489,12 @@ def main() -> int:
         ssh_port=int(args.ssh_port),
         passwords=passwords,
     )
-    readiness = _readiness_failures(rows, stale_after_seconds=int(args.stale_after_seconds), now=_utcnow())
+    readiness = _readiness_failures(
+        rows,
+        stale_after_seconds=int(args.stale_after_seconds),
+        observer_stale_after_seconds=int(args.observer_stale_after_seconds),
+        now=_utcnow(),
+    )
     dns_report = _collect_dns_report(domain=args.web_domain, inventory_path=Path(args.inventory), include_brain=False)
     drift_payload = _collect_drift_payload(rows, ssh_user=args.ssh_user, ssh_port=int(args.ssh_port), passwords=passwords)
     probe_results = [_probe_node_dataplane_with_retry(row) for row in rows]

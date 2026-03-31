@@ -1,6 +1,6 @@
 # Repository Map
 
-Last updated: 2026-03-29
+Last updated: 2026-03-31
 
 ## Document Status
 
@@ -14,7 +14,7 @@ This file is living source of truth for repository layout, local authorities, sc
 | `webapp/` | Next.js user cabinet and primary admin surface | `webapp/README.md`, `webapp/src/app/(dashboard)/admin/`, `webapp/src/lib/api.ts`, `webapp/e2e/` |
 | `marketing/` | public website, checkout, legal pages | root canonical docs plus `marketing/src/`, `shared/copy.ts`, `copy/catalog.ru.json` |
 | `shared/` | shared host config and public copy for bot/site/app | `shared/portal-config.ts`, `shared/copy.ts` |
-| `infra/` | runtime units and infra assets | `infra/portal-node-metrics.service`, `infra/portal-node-metrics.timer` |
+| `infra/` | runtime units and infra assets | `infra/portal-node-metrics.service`, `infra/portal-node-metrics.timer`, `infra/portal-node-observer.service`, `infra/portal-node-observer.timer` |
 | `scripts/` | deploy, smoke, node, release, audit, migration scripts | this file and `docs/operations/deployment-and-access.md` |
 | `docs/operations/publishing-and-signing-guide.md` | canonical store, certificate, and release artifact guidance | this file and the operations guide itself |
 | `docs/` | canonical platform docs plus archive | `docs/README.md` |
@@ -67,9 +67,11 @@ This file is living source of truth for repository layout, local authorities, sc
 - `audit_node_dns.py`
 - `audit_node_dns_matrix.py`
 - `collect_node_metrics.py`
+- `collect_xray_observer.py`
 - `control_plane_drift_report.py`
 - `inspect_*`
 - `remote_*inspect*`
+- `remote_install_node_observer.py`
 
 ### Data and migration
 
@@ -99,6 +101,10 @@ This file is living source of truth for repository layout, local authorities, sc
 - `tests/test_nodes_repo_load_aware.py`
 - `tests/test_node_access.py`
 - `tests/test_panel_client_conflicts.py`
+- `tests/test_observer_service.py`
+- `tests/test_observer_api.py`
+- `tests/test_collect_xray_observer.py`
+- `tests/test_predeploy_node_readiness.py`
 
 ### Bot, support, and user surfaces
 

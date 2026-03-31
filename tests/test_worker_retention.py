@@ -1,4 +1,5 @@
 ﻿import importlib
+import asyncio
 import os
 import sys
 import tempfile
@@ -221,6 +222,43 @@ class WorkerRetentionTests(unittest.TestCase):
         self.assertFalse(out)
         self.assertTrue(fake.rollback_called)
         self.assertTrue(fake.closed)
+
+    def test_observer_retention_job_runs_cleanup_and_commits(self) -> None:
+        cleanup_calls: list[int] = []
+
+        class _FakeSession:
+            def __init__(self) -> None:
+                self.committed = False
+                self.closed = False
+
+            def commit(self) -> None:
+                self.committed = True
+
+            def rollback(self) -> None:
+                return None
+
+            def close(self) -> None:
+                self.closed = True
+
+        fake_session = _FakeSession()
+
+        async def _stop_after_first_sleep(_seconds: float) -> None:
+            raise asyncio.CancelledError()
+
+        def _cleanup(*, s, now=None):
+            cleanup_calls.append(1)
+            self.assertIs(s, fake_session)
+            return {"deleted_daily": 0}
+
+        with mock.patch.object(self.worker, "SessionLocal", return_value=fake_session), \
+             mock.patch.object(self.worker, "cleanup_observer_retention", side_effect=_cleanup), \
+             mock.patch.object(self.worker.asyncio, "sleep", side_effect=_stop_after_first_sleep):
+            with self.assertRaises(asyncio.CancelledError):
+                self.worker.asyncio.run(self.worker.observer_retention_job())
+
+        self.assertEqual(cleanup_calls, [1])
+        self.assertTrue(fake_session.committed)
+        self.assertTrue(fake_session.closed)
 
 
 if __name__ == "__main__":

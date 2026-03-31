@@ -1,6 +1,6 @@
 # Deployment And Access
 
-Last updated: 2026-03-24
+Last updated: 2026-03-31
 
 ## Document Status
 
@@ -65,6 +65,12 @@ Typical use:
 python scripts/remote_deploy_brain_portal_code.py --brain-ip 82.21.114.104 --restart portal-api,portal-bot,portal-helpbot
 ```
 
+Observer-lite canary install:
+
+```powershell
+python scripts/remote_install_node_observer.py --brain-ip 82.21.114.104 --node-code pl --run-now
+```
+
 ### Static sites deploy
 
 - [remote_deploy_brain_static_sites.py](C:/Users/kiwun/Documents/ai/VPN/scripts/remote_deploy_brain_static_sites.py)
@@ -76,6 +82,10 @@ python scripts/remote_deploy_brain_portal_code.py --brain-ip 82.21.114.104 --res
 ### Release orchestration
 
 - [release_orchestrator.py](C:/Users/kiwun/Documents/ai/VPN/scripts/release_orchestrator.py)
+
+### Observer-lite node install
+
+- [remote_install_node_observer.py](C:/Users/kiwun/Documents/ai/VPN/scripts/remote_install_node_observer.py)
 
 ### Publishing and signing guide
 
@@ -145,6 +155,7 @@ At minimum, verify:
 - Telegram linking / channel bonus path
 - `portal-api`, `portal-bot`, and `portal-helpbot` service status
 - `portal-feedbackbot` service status
+- when observer-lite is enabled on any node, `portal-node-observer.timer` freshness on that node plus `/api/admin/metrics/status` and `/api/admin/nodes/health` observer fields
 
 ## Telegram OAuth / OIDC Runtime
 

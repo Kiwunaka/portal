@@ -17,6 +17,7 @@ import {
   adminUserPresetRun,
   adminUsers,
   type AdminAuditRow,
+  type AdminObserverState,
   type AdminUserCard,
   type AdminUserKey,
   type AdminUserKeyHistoryRow,
@@ -150,6 +151,20 @@ function originLabel(origin: string): string {
   return "Telegram";
 }
 
+function observerStateLabel(state: AdminObserverState | string): string {
+  const value = String(state || "").toLowerCase();
+  if (value === "watch") return "watch";
+  if (value === "suspicious") return "suspicious";
+  return "ok";
+}
+
+function observerStateBadgeClass(state: AdminObserverState | string): string {
+  const value = String(state || "").toLowerCase();
+  if (value === "suspicious") return "badge-danger";
+  if (value === "watch") return "badge-warning";
+  return "badge-success";
+}
+
 function isManualTestUserLike(user: {
   tg_id?: number | null;
   origin?: string | null;
@@ -184,6 +199,7 @@ export default function AdminUsersPage() {
   const [dialog, setDialog] = useState<AdminActionDialog>(null);
   const [statusFilter, setStatusFilter] = useState("all");
   const [originFilter, setOriginFilter] = useState("all");
+  const [observerFilter, setObserverFilter] = useState("all");
   const [sortOrder, setSortOrder] = useState("created_desc");
   const [page, setPage] = useState(1);
   const pageSize = 80;
@@ -216,6 +232,7 @@ export default function AdminUsersPage() {
         q: query.trim() || undefined,
         status: statusFilter !== "all" ? statusFilter : undefined,
         origin: originFilter !== "all" ? originFilter : undefined,
+        observer_state: observerFilter !== "all" ? observerFilter : undefined,
         sort: sortOrder,
         page,
         page_size: pageSize,
@@ -240,7 +257,7 @@ export default function AdminUsersPage() {
     } finally {
       setLoading(false);
     }
-  }, [loadCardDetails, originFilter, page, query, sortOrder, statusFilter]);
+  }, [loadCardDetails, observerFilter, originFilter, page, query, sortOrder, statusFilter]);
 
   useEffect(() => {
     void loadUsers();
@@ -248,7 +265,7 @@ export default function AdminUsersPage() {
 
   useEffect(() => {
     setPage(1);
-  }, [originFilter, query, sortOrder, statusFilter]);
+  }, [observerFilter, originFilter, query, sortOrder, statusFilter]);
 
   useEffect(() => {
     selectedIdRef.current = Number(selected?.user.tg_id || 0);
@@ -568,6 +585,7 @@ export default function AdminUsersPage() {
   const summary = selected?.summary;
   const risk = selected?.risk;
   const loyalty = selected?.loyalty;
+  const observer = selected?.observer;
   const selectedCanDelete = isManualTestUserLike(selected?.user);
   const pageStart = rows.length ? (page - 1) * pageSize + 1 : 0;
   const pageEnd = rows.length ? pageStart + rows.length - 1 : 0;
@@ -587,9 +605,9 @@ export default function AdminUsersPage() {
     }`;
 
   return (
-    <section className="grid gap-4 xl:grid-cols-[1fr,1fr]">
+    <section className="grid gap-4 xl:grid-cols-[minmax(0,1fr),minmax(0,1fr)]">
       <article className="glass-card min-w-0 p-4">
-        <div className="mb-3 grid gap-2 sm:grid-cols-2 2xl:grid-cols-[minmax(0,1.7fr),repeat(3,minmax(0,0.9fr)),auto,auto]">
+        <div className="mb-3 grid gap-2 sm:grid-cols-2 2xl:grid-cols-[minmax(0,1.6fr),repeat(4,minmax(0,0.9fr)),auto,auto]">
           <input
             value={query}
             onChange={(event) => {
@@ -626,6 +644,19 @@ export default function AdminUsersPage() {
             <option value="app">Приложение</option>
             <option value="hybrid">Приложение + Telegram</option>
             <option value="manual_test">Manual/Test</option>
+          </select>
+          <select
+            value={observerFilter}
+            onChange={(event) => {
+              setObserverFilter(event.target.value);
+              setPage(1);
+            }}
+            className="rounded-xl border border-violet-200/50 bg-white/90 px-3 py-2 text-sm outline-none dark:border-violet-500/30 dark:bg-slate-900/70"
+          >
+            <option value="all">Observer: all</option>
+            <option value="ok">Observer: ok</option>
+            <option value="watch">Observer: watch</option>
+            <option value="suspicious">Observer: suspicious</option>
           </select>
           <select
             value={sortOrder}
@@ -748,6 +779,7 @@ export default function AdminUsersPage() {
             <thead>
               <tr className="text-left text-slate-500">
                 <th className="px-2 py-2">ID</th>
+                <th className="px-2 py-2">Observer</th>
                 <th className="px-2 py-2">Пользователь</th>
                 <th className="px-2 py-2">Статус</th>
                 <th className="px-2 py-2">Источник</th>
@@ -765,6 +797,9 @@ export default function AdminUsersPage() {
                   onClick={() => void pickUser(row.tg_id)}
                 >
                   <td className="px-2 py-2 font-mono text-xs">{row.tg_id}</td>
+                  <td className="px-2 py-2">
+                    <span className={`badge ${observerStateBadgeClass(row.observer_state)}`}>{observerStateLabel(row.observer_state)}</span>
+                  </td>
                   <td className="px-2 py-2">
                     <div className="font-medium">{row.display_name || row.username || "Без имени"}</div>
                     <div className="text-xs text-slate-500">
@@ -820,6 +855,7 @@ export default function AdminUsersPage() {
                 <div className="space-y-2 text-right">
                   <div className="flex flex-wrap items-center justify-end gap-2">
                     <span className={`rounded-full px-2 py-1 text-xs ${userStatusBadgeClass(selected.user.status)}`}>{userStatusLabel(selected.user.status)}</span>
+                    <span className={`badge ${observerStateBadgeClass(selected.user.observer_state)}`}>Observer {observerStateLabel(selected.user.observer_state)}</span>
                     <span className="badge badge-violet">{originLabel(selected.user.origin)}</span>
                   </div>
                   <p className="text-xs text-slate-500">
@@ -878,7 +914,7 @@ export default function AdminUsersPage() {
               </button>
             </div>
 
-            <div className="mb-3 grid gap-3 sm:grid-cols-2">
+            <div className="mb-3 grid gap-3 xl:grid-cols-3">
               <div className="rounded-xl bg-white/70 p-3 text-sm dark:bg-white/10">
                 <p>Тариф: <strong>{selected.user.sub_type || "-"}</strong></p>
                 <p>Оплачено stars: <strong>{selected.user.stars_paid}</strong></p>
@@ -895,6 +931,21 @@ export default function AdminUsersPage() {
                 <p className="text-xs">Уникальные IP: <strong>{risk?.signals?.unique_ips ?? 0}</strong></p>
                 <p className="text-xs">Трафик: <strong>{Number(risk?.signals?.traffic_gb || 0).toFixed(2)} GB</strong></p>
               </div>
+            </div>
+
+            <div className="mb-3 rounded-xl bg-white/70 p-3 text-sm dark:bg-white/10">
+              <div className="mb-1 flex items-center gap-2">
+                <span className={`badge ${observerStateBadgeClass(observer?.state || selected.user.observer_state)}`}>
+                  Observer {observerStateLabel(observer?.state || selected.user.observer_state)}
+                </span>
+                <span className="text-xs text-slate-500">
+                  {observer?.updated_at ? `updated ${fmtRuDate(observer.updated_at)}` : "updated: n/a"}
+                </span>
+              </div>
+              <p className="text-xs">IP 24h: <strong>{observer?.observed_ip_count_24h ?? 0}</strong></p>
+              <p className="text-xs">Nodes 24h: <strong>{observer?.observed_node_count_24h ?? 0}</strong></p>
+              <p className="text-xs">Overlap 24h: <strong>{observer?.overlap_count_24h ?? 0}</strong></p>
+              <p className="text-xs">Reasons: <strong>{observer?.reasons?.length ? observer.reasons.join(", ") : "none"}</strong></p>
             </div>
 
             <div className="mt-3 rounded-xl bg-white/70 p-3 text-sm dark:bg-white/10">
@@ -970,6 +1021,55 @@ export default function AdminUsersPage() {
                   )}
                 </div>
                 <h3 className="mt-4 font-display text-xl font-semibold">Обращения поддержки</h3>
+                <div className="mt-4 rounded-xl bg-white/70 p-3 text-sm dark:bg-white/10">
+                  <div className="mb-2 flex flex-wrap items-center gap-2">
+                    <p className="font-semibold">Observer-lite</p>
+                    <span className={`badge ${observerStateBadgeClass(observer?.state || selected.user.observer_state)}`}>
+                      {observerStateLabel(observer?.state || selected.user.observer_state)}
+                    </span>
+                  </div>
+                  <div className="grid gap-3 lg:grid-cols-2">
+                    <div className="space-y-1 text-xs">
+                      <p>IPs: <strong>{observer?.observed_ip_count_24h ?? 0}</strong> / 24h, <strong>{observer?.observed_ip_count_7d ?? 0}</strong> / 7d, <strong>{observer?.observed_ip_count_30d ?? 0}</strong> / 30d</p>
+                      <p>Nodes: <strong>{observer?.observed_node_count_24h ?? 0}</strong> / 24h, <strong>{observer?.observed_node_count_7d ?? 0}</strong> / 7d, <strong>{observer?.observed_node_count_30d ?? 0}</strong> / 30d</p>
+                      <p>Overlap 24h: <strong>{observer?.overlap_count_24h ?? 0}</strong></p>
+                      <p>Last observed: <strong>{fmtRuDate(observer?.last_observed_at)}</strong></p>
+                      <p>Reasons: <strong>{observer?.reasons?.length ? observer.reasons.join(", ") : "none"}</strong></p>
+                    </div>
+                    <div className="grid gap-3 lg:grid-cols-2">
+                      <div>
+                        <p className="mb-1 text-xs font-semibold uppercase tracking-[0.08em] text-slate-500">Recent IPs</p>
+                        <div className="space-y-1">
+                          {(observer?.recent_ips || []).map((row) => (
+                            <div key={`${row.node_code}:${row.source_ip_raw}:${row.last_seen_at}`} className="rounded-lg border border-white/20 bg-white/60 px-2 py-1 text-xs dark:border-white/10 dark:bg-white/5">
+                              <div className="flex items-center justify-between gap-2">
+                                <span className="font-mono">{row.source_ip_raw}</span>
+                                <span className="badge badge-info">{String(row.node_code || "").toUpperCase()}</span>
+                              </div>
+                              <div className="mt-1 text-slate-500">{fmtRuDate(row.last_seen_at)}</div>
+                            </div>
+                          ))}
+                          {!observer?.recent_ips?.length ? <p className="text-xs text-slate-500">No recent IPs.</p> : null}
+                        </div>
+                      </div>
+                      <div>
+                        <p className="mb-1 text-xs font-semibold uppercase tracking-[0.08em] text-slate-500">Recent nodes</p>
+                        <div className="space-y-1">
+                          {(observer?.recent_nodes || []).map((row) => (
+                            <div key={`${row.node_id}:${row.last_seen_at}`} className="rounded-lg border border-white/20 bg-white/60 px-2 py-1 text-xs dark:border-white/10 dark:bg-white/5">
+                              <div className="flex items-center justify-between gap-2">
+                                <span>{String(row.node_code || "").toUpperCase()}</span>
+                                <span>{row.score_ip_count} IP</span>
+                              </div>
+                              <div className="mt-1 text-slate-500">{fmtRuDate(row.last_seen_at)}</div>
+                            </div>
+                          ))}
+                          {!observer?.recent_nodes?.length ? <p className="text-xs text-slate-500">No recent nodes.</p> : null}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
                 <div className="mt-2 space-y-2">
                   {(selected.tickets || []).map((ticket) => (
                     <div key={ticket.id} className="rounded-xl bg-white/70 p-3 text-sm dark:bg-white/10">

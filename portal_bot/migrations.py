@@ -484,6 +484,11 @@ def run_migrations(engine: Engine) -> None:
                 ("last_probe_stage", "VARCHAR(64)"),
                 ("last_probe_error_kind", "VARCHAR(64)"),
                 ("last_probe_error_message", "VARCHAR(500)"),
+                ("observer_push_secret", "VARCHAR(128)"),
+                ("observer_last_push_at", "DATETIME"),
+                ("observer_last_batch_id", "VARCHAR(128)"),
+                ("observer_unmatched_count", "INTEGER DEFAULT 0"),
+                ("observer_parse_error_count", "INTEGER DEFAULT 0"),
             ]
             for col, ddl in wanted_cols:
                 if not _sqlite_column_exists(conn, "nodes", col):
@@ -567,6 +572,109 @@ def run_migrations(engine: Engine) -> None:
         conn.execute(text("CREATE INDEX IF NOT EXISTS ix_events_event_name ON events(event_name);"))
         conn.execute(text("CREATE INDEX IF NOT EXISTS ix_events_event_created ON events(event_name, created_at);"))
         conn.execute(text("CREATE INDEX IF NOT EXISTS ix_events_tg_created ON events(tg_id, created_at);"))
+
+        conn.execute(
+            text(
+                """
+                CREATE TABLE IF NOT EXISTS observer_batches (
+                  id INTEGER PRIMARY KEY AUTOINCREMENT,
+                  node_id INTEGER NOT NULL,
+                  batch_id VARCHAR(128) NOT NULL,
+                  cursor_json TEXT,
+                  observation_count INTEGER DEFAULT 0,
+                  accepted_count INTEGER DEFAULT 0,
+                  deduped_count INTEGER DEFAULT 0,
+                  unmatched_count INTEGER DEFAULT 0,
+                  parse_error_count INTEGER DEFAULT 0,
+                  updated_tg_ids_json TEXT,
+                  created_at DATETIME NOT NULL
+                );
+                """
+            )
+        )
+        conn.execute(
+            text(
+                """
+                CREATE TABLE IF NOT EXISTS observer_daily_observations (
+                  id INTEGER PRIMARY KEY AUTOINCREMENT,
+                  tg_id BIGINT NOT NULL,
+                  node_id INTEGER NOT NULL,
+                  source_ip_raw VARCHAR(64) NOT NULL,
+                  score_ip_key VARCHAR(64) NOT NULL,
+                  day_bucket DATE NOT NULL,
+                  first_seen_at DATETIME NOT NULL,
+                  last_seen_at DATETIME NOT NULL,
+                  hit_count INTEGER DEFAULT 0,
+                  identity_source VARCHAR(32) NOT NULL,
+                  counts_for_suspicion BOOLEAN DEFAULT 1
+                );
+                """
+            )
+        )
+        conn.execute(
+            text(
+                """
+                CREATE TABLE IF NOT EXISTS observer_window_observations (
+                  id INTEGER PRIMARY KEY AUTOINCREMENT,
+                  tg_id BIGINT NOT NULL,
+                  node_id INTEGER NOT NULL,
+                  source_ip_raw VARCHAR(64) NOT NULL,
+                  score_ip_key VARCHAR(64) NOT NULL,
+                  window_bucket_at DATETIME NOT NULL,
+                  first_seen_at DATETIME NOT NULL,
+                  last_seen_at DATETIME NOT NULL,
+                  hit_count INTEGER DEFAULT 0,
+                  counts_for_suspicion BOOLEAN DEFAULT 1
+                );
+                """
+            )
+        )
+        conn.execute(
+            text(
+                """
+                CREATE TABLE IF NOT EXISTS observer_user_state (
+                  tg_id BIGINT PRIMARY KEY,
+                  state VARCHAR(20) NOT NULL DEFAULT 'ok',
+                  reasons_json TEXT,
+                  observed_ip_count_24h INTEGER DEFAULT 0,
+                  observed_ip_count_7d INTEGER DEFAULT 0,
+                  observed_ip_count_30d INTEGER DEFAULT 0,
+                  observed_node_count_24h INTEGER DEFAULT 0,
+                  observed_node_count_7d INTEGER DEFAULT 0,
+                  observed_node_count_30d INTEGER DEFAULT 0,
+                  overlap_count_24h INTEGER DEFAULT 0,
+                  last_observed_at DATETIME,
+                  updated_at DATETIME NOT NULL
+                );
+                """
+            )
+        )
+        conn.execute(
+            text(
+                "CREATE UNIQUE INDEX IF NOT EXISTS uq_observer_batches_node_batch "
+                "ON observer_batches(node_id, batch_id);"
+            )
+        )
+        conn.execute(
+            text(
+                "CREATE UNIQUE INDEX IF NOT EXISTS uq_observer_daily_tg_node_ip_day "
+                "ON observer_daily_observations(tg_id, node_id, source_ip_raw, day_bucket);"
+            )
+        )
+        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_observer_daily_tg_id ON observer_daily_observations(tg_id);"))
+        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_observer_daily_node_id ON observer_daily_observations(node_id);"))
+        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_observer_daily_score_ip_key ON observer_daily_observations(score_ip_key);"))
+        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_observer_daily_day_bucket ON observer_daily_observations(day_bucket);"))
+        conn.execute(
+            text(
+                "CREATE UNIQUE INDEX IF NOT EXISTS uq_observer_window_tg_node_score_bucket "
+                "ON observer_window_observations(tg_id, node_id, score_ip_key, window_bucket_at);"
+            )
+        )
+        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_observer_window_tg_id ON observer_window_observations(tg_id);"))
+        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_observer_window_node_id ON observer_window_observations(node_id);"))
+        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_observer_window_score_ip_key ON observer_window_observations(score_ip_key);"))
+        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_observer_window_bucket ON observer_window_observations(window_bucket_at);"))
 
         # offers: one-time offers and retention prompts.
         conn.execute(
@@ -1030,6 +1138,11 @@ def _run_postgres_migrations(engine: Engine) -> None:
         conn.execute(text("ALTER TABLE nodes ADD COLUMN IF NOT EXISTS last_probe_stage VARCHAR(64);"))
         conn.execute(text("ALTER TABLE nodes ADD COLUMN IF NOT EXISTS last_probe_error_kind VARCHAR(64);"))
         conn.execute(text("ALTER TABLE nodes ADD COLUMN IF NOT EXISTS last_probe_error_message VARCHAR(500);"))
+        conn.execute(text("ALTER TABLE nodes ADD COLUMN IF NOT EXISTS observer_push_secret VARCHAR(128);"))
+        conn.execute(text("ALTER TABLE nodes ADD COLUMN IF NOT EXISTS observer_last_push_at TIMESTAMP;"))
+        conn.execute(text("ALTER TABLE nodes ADD COLUMN IF NOT EXISTS observer_last_batch_id VARCHAR(128);"))
+        conn.execute(text("ALTER TABLE nodes ADD COLUMN IF NOT EXISTS observer_unmatched_count INTEGER DEFAULT 0;"))
+        conn.execute(text("ALTER TABLE nodes ADD COLUMN IF NOT EXISTS observer_parse_error_count INTEGER DEFAULT 0;"))
         conn.execute(text("CREATE INDEX IF NOT EXISTS ix_nodes_accepting_new_clients ON nodes(accepting_new_clients);"))
         conn.execute(text("CREATE INDEX IF NOT EXISTS ix_nodes_is_draining ON nodes(is_draining);"))
         conn.execute(text("ALTER TABLE node_health_samples ADD COLUMN IF NOT EXISTS cpu_percent DOUBLE PRECISION DEFAULT 0;"))
@@ -1118,6 +1231,109 @@ def _run_postgres_migrations(engine: Engine) -> None:
         conn.execute(text("CREATE INDEX IF NOT EXISTS ix_points_ledger_tg_exp_created ON points_ledger(tg_id, expires_at, created_at);"))
         conn.execute(text("CREATE UNIQUE INDEX IF NOT EXISTS uq_campaign_sends_tg_campaign ON campaign_sends(tg_id, campaign_key);"))
         conn.execute(text("CREATE UNIQUE INDEX IF NOT EXISTS uq_promo_usage_tg_code ON promo_usage(tg_id, promo_code);"))
+
+        conn.execute(
+            text(
+                """
+                CREATE TABLE IF NOT EXISTS observer_batches (
+                  id SERIAL PRIMARY KEY,
+                  node_id INTEGER NOT NULL,
+                  batch_id VARCHAR(128) NOT NULL,
+                  cursor_json TEXT,
+                  observation_count INTEGER DEFAULT 0,
+                  accepted_count INTEGER DEFAULT 0,
+                  deduped_count INTEGER DEFAULT 0,
+                  unmatched_count INTEGER DEFAULT 0,
+                  parse_error_count INTEGER DEFAULT 0,
+                  updated_tg_ids_json TEXT,
+                  created_at TIMESTAMP NOT NULL
+                );
+                """
+            )
+        )
+        conn.execute(
+            text(
+                """
+                CREATE TABLE IF NOT EXISTS observer_daily_observations (
+                  id SERIAL PRIMARY KEY,
+                  tg_id BIGINT NOT NULL,
+                  node_id INTEGER NOT NULL,
+                  source_ip_raw VARCHAR(64) NOT NULL,
+                  score_ip_key VARCHAR(64) NOT NULL,
+                  day_bucket DATE NOT NULL,
+                  first_seen_at TIMESTAMP NOT NULL,
+                  last_seen_at TIMESTAMP NOT NULL,
+                  hit_count INTEGER DEFAULT 0,
+                  identity_source VARCHAR(32) NOT NULL,
+                  counts_for_suspicion BOOLEAN DEFAULT TRUE
+                );
+                """
+            )
+        )
+        conn.execute(
+            text(
+                """
+                CREATE TABLE IF NOT EXISTS observer_window_observations (
+                  id SERIAL PRIMARY KEY,
+                  tg_id BIGINT NOT NULL,
+                  node_id INTEGER NOT NULL,
+                  source_ip_raw VARCHAR(64) NOT NULL,
+                  score_ip_key VARCHAR(64) NOT NULL,
+                  window_bucket_at TIMESTAMP NOT NULL,
+                  first_seen_at TIMESTAMP NOT NULL,
+                  last_seen_at TIMESTAMP NOT NULL,
+                  hit_count INTEGER DEFAULT 0,
+                  counts_for_suspicion BOOLEAN DEFAULT TRUE
+                );
+                """
+            )
+        )
+        conn.execute(
+            text(
+                """
+                CREATE TABLE IF NOT EXISTS observer_user_state (
+                  tg_id BIGINT PRIMARY KEY,
+                  state VARCHAR(20) NOT NULL DEFAULT 'ok',
+                  reasons_json TEXT,
+                  observed_ip_count_24h INTEGER DEFAULT 0,
+                  observed_ip_count_7d INTEGER DEFAULT 0,
+                  observed_ip_count_30d INTEGER DEFAULT 0,
+                  observed_node_count_24h INTEGER DEFAULT 0,
+                  observed_node_count_7d INTEGER DEFAULT 0,
+                  observed_node_count_30d INTEGER DEFAULT 0,
+                  overlap_count_24h INTEGER DEFAULT 0,
+                  last_observed_at TIMESTAMP,
+                  updated_at TIMESTAMP NOT NULL
+                );
+                """
+            )
+        )
+        conn.execute(
+            text(
+                "CREATE UNIQUE INDEX IF NOT EXISTS uq_observer_batches_node_batch "
+                "ON observer_batches(node_id, batch_id);"
+            )
+        )
+        conn.execute(
+            text(
+                "CREATE UNIQUE INDEX IF NOT EXISTS uq_observer_daily_tg_node_ip_day "
+                "ON observer_daily_observations(tg_id, node_id, source_ip_raw, day_bucket);"
+            )
+        )
+        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_observer_daily_tg_id ON observer_daily_observations(tg_id);"))
+        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_observer_daily_node_id ON observer_daily_observations(node_id);"))
+        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_observer_daily_score_ip_key ON observer_daily_observations(score_ip_key);"))
+        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_observer_daily_day_bucket ON observer_daily_observations(day_bucket);"))
+        conn.execute(
+            text(
+                "CREATE UNIQUE INDEX IF NOT EXISTS uq_observer_window_tg_node_score_bucket "
+                "ON observer_window_observations(tg_id, node_id, score_ip_key, window_bucket_at);"
+            )
+        )
+        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_observer_window_tg_id ON observer_window_observations(tg_id);"))
+        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_observer_window_node_id ON observer_window_observations(node_id);"))
+        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_observer_window_score_ip_key ON observer_window_observations(score_ip_key);"))
+        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_observer_window_bucket ON observer_window_observations(window_bucket_at);"))
 
         conn.execute(
             text(

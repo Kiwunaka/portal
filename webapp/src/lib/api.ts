@@ -331,6 +331,10 @@ export type ReviewPayload = {
 export type AdminSummaryPayload = {
   actor_tg_id: number;
   users: { total: number; active: number; free: number; paid: number };
+  observer: {
+    watch_users: number;
+    suspicious_users: number;
+  };
   retention: {
     expiring_3d: number;
     expired_7d: number;
@@ -376,6 +380,36 @@ export type AdminSummaryPayload = {
 
 export type AdminUserStatus = "active" | "expired" | "blocked" | "manual_test";
 export type AdminUserOrigin = "telegram" | "app" | "hybrid" | "manual_test";
+export type AdminObserverState = "ok" | "watch" | "suspicious";
+
+export type AdminObserverBlock = {
+  state: AdminObserverState;
+  reasons: string[];
+  observed_ip_count_24h: number;
+  observed_ip_count_7d: number;
+  observed_ip_count_30d: number;
+  observed_node_count_24h: number;
+  observed_node_count_7d: number;
+  observed_node_count_30d: number;
+  overlap_count_24h: number;
+  last_observed_at?: string | null;
+  updated_at?: string | null;
+  recent_ips: Array<{
+    source_ip_raw: string;
+    score_ip_key: string;
+    node_code?: string | null;
+    node_name?: string | null;
+    last_seen_at?: string | null;
+    counts_for_suspicion: boolean;
+  }>;
+  recent_nodes: Array<{
+    node_id: number;
+    node_code?: string | null;
+    node_name?: string | null;
+    last_seen_at?: string | null;
+    score_ip_count: number;
+  }>;
+};
 
 export type AdminUserRow = {
   tg_id: number;
@@ -393,6 +427,8 @@ export type AdminUserRow = {
   linked_telegram_id?: number | null;
   linked_telegram_username?: string | null;
   app_install_id?: string | null;
+  observer_state: AdminObserverState;
+  observer_updated_at?: string | null;
 };
 
 export type AdminUserCard = {
@@ -420,6 +456,8 @@ export type AdminUserCard = {
     app_install_id?: string | null;
     app_platform?: string | null;
     app_last_seen_at?: string | null;
+    observer_state: AdminObserverState;
+    observer_updated_at?: string | null;
   };
   tickets: TicketInfo[];
   keys?: AdminUserKey[];
@@ -428,6 +466,7 @@ export type AdminUserCard = {
   admin_actions?: AdminAuditRow[];
   risk?: AdminUserRisk;
   loyalty?: AdminUserLoyalty;
+  observer: AdminObserverBlock;
   summary?: {
     nodes_total: number;
     nodes_with_client: number;
@@ -584,6 +623,10 @@ export type AdminNodeHealthRow = {
   last_probe_stage?: string | null;
   last_probe_error_kind?: string | null;
   last_probe_error_message?: string | null;
+  observer_last_push_at?: string | null;
+  observer_unmatched_count: number;
+  observer_parse_error_count: number;
+  observer_is_stale: boolean;
   weight: number;
 };
 
@@ -640,6 +683,8 @@ export type AdminMetricsStatus = {
     memory_percent?: number;
     disk_percent?: number;
     active_clients?: number;
+    observer_last_push_at?: string | null;
+    observer_is_stale?: boolean;
     alert_kinds?: string[];
   }>;
   active_alerts?: Array<{
@@ -655,6 +700,7 @@ export type AdminUsersQuery = {
   q?: string;
   status?: string;
   origin?: string;
+  observer_state?: string;
   sort?: string;
   page?: number;
   page_size?: number;
@@ -1278,6 +1324,10 @@ function normalizeAdminSummaryPayload(payload: Partial<AdminSummaryPayload> | nu
       free: Number(data.users?.free || 0),
       paid: Number(data.users?.paid || 0),
     },
+    observer: {
+      watch_users: Number(data.observer?.watch_users || 0),
+      suspicious_users: Number(data.observer?.suspicious_users || 0),
+    },
     retention: {
       expiring_3d: Number(data.retention?.expiring_3d || 0),
       expired_7d: Number(data.retention?.expired_7d || 0),
@@ -1327,6 +1377,48 @@ function normalizeAdminSummaryPayload(payload: Partial<AdminSummaryPayload> | nu
   };
 }
 
+function normalizeAdminObserverState(value: unknown): AdminObserverState {
+  const raw = String(value || "").toLowerCase();
+  if (raw === "watch" || raw === "suspicious") return raw;
+  return "ok";
+}
+
+function normalizeAdminObserverBlock(payload: Partial<AdminObserverBlock> | null | undefined): AdminObserverBlock {
+  const data = payload || {};
+  return {
+    state: normalizeAdminObserverState(data.state),
+    reasons: Array.isArray(data.reasons) ? data.reasons.map((item) => String(item || "")) : [],
+    observed_ip_count_24h: Number(data.observed_ip_count_24h || 0),
+    observed_ip_count_7d: Number(data.observed_ip_count_7d || 0),
+    observed_ip_count_30d: Number(data.observed_ip_count_30d || 0),
+    observed_node_count_24h: Number(data.observed_node_count_24h || 0),
+    observed_node_count_7d: Number(data.observed_node_count_7d || 0),
+    observed_node_count_30d: Number(data.observed_node_count_30d || 0),
+    overlap_count_24h: Number(data.overlap_count_24h || 0),
+    last_observed_at: data.last_observed_at ?? null,
+    updated_at: data.updated_at ?? null,
+    recent_ips: Array.isArray(data.recent_ips)
+      ? data.recent_ips.map((row) => ({
+          source_ip_raw: String(row.source_ip_raw || ""),
+          score_ip_key: String(row.score_ip_key || ""),
+          node_code: row.node_code ?? null,
+          node_name: row.node_name ?? null,
+          last_seen_at: row.last_seen_at ?? null,
+          counts_for_suspicion: Boolean(row.counts_for_suspicion),
+        }))
+      : [],
+    recent_nodes: Array.isArray(data.recent_nodes)
+      ? data.recent_nodes.map((row) => ({
+          node_id: Number(row.node_id || 0),
+          node_code: row.node_code ?? null,
+          node_name: row.node_name ?? null,
+          last_seen_at: row.last_seen_at ?? null,
+          score_ip_count: Number(row.score_ip_count || 0),
+        }))
+      : [],
+  };
+}
+
 function normalizeAdminMetricsStatus(payload: Partial<AdminMetricsStatus> | null | undefined): AdminMetricsStatus {
   const data = payload || {};
   const rawStatus = String(data.status || "").toLowerCase();
@@ -1346,6 +1438,8 @@ function normalizeAdminMetricsStatus(payload: Partial<AdminMetricsStatus> | null
           memory_percent: row.memory_percent ?? 0,
           disk_percent: row.disk_percent ?? 0,
           active_clients: row.active_clients ?? 0,
+          observer_last_push_at: row.observer_last_push_at ?? null,
+          observer_is_stale: Boolean(row.observer_is_stale),
           alert_kinds: Array.isArray(row.alert_kinds) ? row.alert_kinds.map((item) => String(item || "")) : [],
         }))
       : [],
@@ -1381,6 +1475,8 @@ function normalizeAdminUsersResponse(payload: Partial<AdminUsersResponse> | null
           linked_telegram_id: row.linked_telegram_id ?? null,
           linked_telegram_username: row.linked_telegram_username ?? null,
           app_install_id: row.app_install_id ?? null,
+          observer_state: normalizeAdminObserverState(row.observer_state),
+          observer_updated_at: row.observer_updated_at ?? null,
         }))
       : [],
     total: Number(data.total || 0),
@@ -1388,6 +1484,80 @@ function normalizeAdminUsersResponse(payload: Partial<AdminUsersResponse> | null
     page_size: Number(data.page_size || 50),
     sort: String(data.sort || "created_desc"),
   };
+}
+
+function normalizeAdminNodeHealthRow(payload: Partial<AdminNodeHealthRow> | null | undefined): AdminNodeHealthRow {
+  const data = payload || {};
+  return {
+    code: String(data.code || ""),
+    name: String(data.name || ""),
+    enabled: Boolean(data.enabled),
+    accepting_new_clients: Boolean(data.accepting_new_clients),
+    is_draining: Boolean(data.is_draining),
+    mapped_users: Number(data.mapped_users || 0),
+    is_healthy: Boolean(data.is_healthy),
+    health_score: Number(data.health_score || 0),
+    panel_latency_ms: data.panel_latency_ms ?? null,
+    panel_error_rate: Number(data.panel_error_rate || 0),
+    active_clients: Number(data.active_clients || 0),
+    cpu_percent: Number(data.cpu_percent || 0),
+    memory_used_mb: Number(data.memory_used_mb || 0),
+    memory_total_mb: Number(data.memory_total_mb || 0),
+    disk_used_gb: Number(data.disk_used_gb || 0),
+    disk_total_gb: Number(data.disk_total_gb || 0),
+    disk_free_gb: Number(data.disk_free_gb || 0),
+    last_ok_at: data.last_ok_at ?? null,
+    last_health_at: data.last_health_at ?? null,
+    last_probe_stage: data.last_probe_stage ?? null,
+    last_probe_error_kind: data.last_probe_error_kind ?? null,
+    last_probe_error_message: data.last_probe_error_message ?? null,
+    observer_last_push_at: data.observer_last_push_at ?? null,
+    observer_unmatched_count: Number(data.observer_unmatched_count || 0),
+    observer_parse_error_count: Number(data.observer_parse_error_count || 0),
+    observer_is_stale: Boolean(data.observer_is_stale),
+    weight: Number(data.weight || 0),
+  };
+}
+
+function normalizeAdminUserCard(payload: Partial<AdminUserCard> | null | undefined): AdminUserCard {
+  const data = payload || {};
+  const user = data.user || ({} as AdminUserCard["user"]);
+  return {
+    ...data,
+    user: {
+      tg_id: Number(user.tg_id || 0),
+      username: user.username ?? null,
+      display_name: user.display_name ?? null,
+      sub_type: String(user.sub_type || ""),
+      is_active: Boolean(user.is_active),
+      effective_active: Boolean(user.effective_active),
+      status: (user.status || "expired") as AdminUserStatus,
+      origin: (user.origin || "telegram") as AdminUserOrigin,
+      is_manual: Boolean(user.is_manual),
+      expiry_at: user.expiry_at ?? null,
+      stars_paid: Number(user.stars_paid || 0),
+      total_gb: Number(user.total_gb || 0),
+      trial_used: Boolean(user.trial_used),
+      referral_count: Number(user.referral_count || 0),
+      streak_months: Number(user.streak_months || 0),
+      created_at: user.created_at ?? null,
+      subscription_url: user.subscription_url || "",
+      subscription_token: user.subscription_token || "",
+      linked_telegram_id: user.linked_telegram_id ?? null,
+      linked_telegram_username: user.linked_telegram_username ?? null,
+      app_install_id: user.app_install_id ?? null,
+      app_platform: user.app_platform ?? null,
+      app_last_seen_at: user.app_last_seen_at ?? null,
+      observer_state: normalizeAdminObserverState(user.observer_state),
+      observer_updated_at: user.observer_updated_at ?? null,
+    },
+    tickets: Array.isArray(data.tickets) ? data.tickets : [],
+    keys: Array.isArray(data.keys) ? data.keys : [],
+    key_history: Array.isArray(data.key_history) ? data.key_history : [],
+    key_policies: Array.isArray(data.key_policies) ? data.key_policies : [],
+    admin_actions: Array.isArray(data.admin_actions) ? data.admin_actions : [],
+    observer: normalizeAdminObserverBlock(data.observer),
+  } as AdminUserCard;
 }
 
 export async function adminSummary(): Promise<AdminSummaryPayload> {
@@ -1400,6 +1570,7 @@ export async function adminUsers(params: AdminUsersQuery = {}): Promise<AdminUse
   if (params.q) qs.set("q", params.q);
   if (params.status) qs.set("status", params.status);
   if (params.origin) qs.set("origin", params.origin);
+  if (params.observer_state) qs.set("observer_state", params.observer_state);
   if (params.sort) qs.set("sort", params.sort);
   if (params.page) qs.set("page", String(params.page));
   if (params.page_size) qs.set("page_size", String(params.page_size));
@@ -1408,8 +1579,9 @@ export async function adminUsers(params: AdminUsersQuery = {}): Promise<AdminUse
   return normalizeAdminUsersResponse(data);
 }
 
-export function adminUserCard(tgId: number): Promise<AdminUserCard> {
-  return apiFetch<AdminUserCard>(`/api/admin/users/${tgId}`);
+export async function adminUserCard(tgId: number): Promise<AdminUserCard> {
+  const data = await apiFetch<Partial<AdminUserCard>>(`/api/admin/users/${tgId}`);
+  return normalizeAdminUserCard(data);
 }
 
 export async function adminUserKeyHistory(tgId: number, limit = 100): Promise<AdminUserKeyHistoryRow[]> {
@@ -1679,8 +1851,8 @@ export async function adminTicketStatus(ticketId: number, status: string): Promi
 }
 
 export async function adminNodesHealth(): Promise<AdminNodeHealthRow[]> {
-  const data = await apiFetch<{ nodes: AdminNodeHealthRow[] }>("/api/admin/nodes/health");
-  return data.nodes || [];
+  const data = await apiFetch<{ nodes: Partial<AdminNodeHealthRow>[] }>("/api/admin/nodes/health");
+  return Array.isArray(data.nodes) ? data.nodes.map((row) => normalizeAdminNodeHealthRow(row)) : [];
 }
 
 export async function adminMetricsStatus(): Promise<AdminMetricsStatus> {

@@ -109,6 +109,7 @@ function alertKindLabel(kind: string): string {
   if (value === "latency_high") return "Задержка";
   if (value === "error_rate_high") return "Ошибки";
   if (value === "active_clients_high" || value === "client_density_high") return "Клиенты";
+  if (value === "observer_push_stale") return "Observer";
   return kind;
 }
 
@@ -138,6 +139,8 @@ export default function AdminNodesPage() {
             alertKinds: row.alert_kinds || [],
             lastSampleAt: row.last_sample_at,
             ageSeconds: row.age_seconds,
+            observerLastPushAt: row.observer_last_push_at ?? null,
+            observerIsStale: Boolean(row.observer_is_stale),
           },
         ]),
       ),
@@ -513,6 +516,21 @@ export default function AdminNodesPage() {
                   ) : null}
                 </div>
               ) : null}
+
+              <div className="mt-3 rounded-xl border border-white/15 bg-white/35 p-3 dark:border-white/10 dark:bg-white/[0.04]">
+                <div className="mb-2 flex items-center justify-between gap-2 text-sm font-semibold">
+                  <span>Observer collector</span>
+                  <span className={`badge ${node.observer_is_stale || nodeFreshness?.observerIsStale ? "badge-warning" : "badge-success"}`}>
+                    {node.observer_is_stale || nodeFreshness?.observerIsStale ? "stale" : "fresh"}
+                  </span>
+                </div>
+                <div className="grid gap-2 text-xs sm:grid-cols-2">
+                  <p>last push: <strong>{formatIso(node.observer_last_push_at || nodeFreshness?.observerLastPushAt || null)}</strong></p>
+                  <p>parse: <strong>{node.observer_parse_error_count}</strong></p>
+                  <p>unmatched: <strong>{node.observer_unmatched_count}</strong></p>
+                  <p>collector: <strong>{node.observer_is_stale || nodeFreshness?.observerIsStale ? "needs check" : "ok"}</strong></p>
+                </div>
+              </div>
 
               <p className="mt-3 text-[11px] text-slate-500">
                 Последняя проверка: {formatIso(node.last_health_at)}.

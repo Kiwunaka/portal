@@ -16,6 +16,8 @@ type AdminUserRowMock = {
   linked_telegram_id?: number | null;
   linked_telegram_username?: string | null;
   app_install_id?: string | null;
+  observer_state?: "ok" | "watch" | "suspicious";
+  observer_updated_at?: string | null;
 };
 
 type MockOptions = {
@@ -134,6 +136,7 @@ function mockAdminSummary() {
   return {
     actor_tg_id: 1001,
     users: { total: 3, active: 2, free: 0, paid: 2 },
+    observer: { watch_users: 0, suspicious_users: 0 },
     retention: {
       expiring_3d: 0,
       expired_7d: 1,
@@ -197,6 +200,8 @@ function makeAdminUserRow(overrides: Partial<AdminUserRowMock> = {}): AdminUserR
     linked_telegram_id: 1001,
     linked_telegram_username: "qa_admin",
     app_install_id: "android-qa",
+    observer_state: "ok",
+    observer_updated_at: "2030-01-01T00:00:00",
     ...overrides,
   };
 }
@@ -237,6 +242,8 @@ function mockAdminUserCard() {
       app_install_id: "android-qa",
       app_platform: "android",
       app_last_seen_at: "2030-01-01T00:00:00",
+      observer_state: "ok",
+      observer_updated_at: "2030-01-01T00:00:00",
     },
     tickets: [],
     keys: [],
@@ -256,6 +263,21 @@ function mockAdminUserCard() {
       },
       factors: [],
       updated_at: "2030-01-01T00:00:00",
+    },
+    observer: {
+      state: "ok",
+      reasons: [],
+      observed_ip_count_24h: 0,
+      observed_ip_count_7d: 0,
+      observed_ip_count_30d: 0,
+      observed_node_count_24h: 0,
+      observed_node_count_7d: 0,
+      observed_node_count_30d: 0,
+      overlap_count_24h: 0,
+      last_observed_at: "2030-01-01T00:00:00",
+      updated_at: "2030-01-01T00:00:00",
+      recent_ips: [],
+      recent_nodes: [],
     },
     loyalty: {
       enabled: true,
@@ -300,6 +322,55 @@ function buildAdminUserCard(row: AdminUserRowMock) {
       linked_telegram_id: row.linked_telegram_id ?? null,
       linked_telegram_username: row.linked_telegram_username ?? null,
       app_install_id: row.app_install_id ?? null,
+      observer_state: row.observer_state ?? "ok",
+      observer_updated_at: row.observer_updated_at ?? "2030-01-01T00:00:00",
+    },
+    observer: {
+      ...base.observer,
+      state: row.observer_state ?? "ok",
+      updated_at: row.observer_updated_at ?? "2030-01-01T00:00:00",
+      reasons:
+        row.observer_state === "suspicious"
+          ? ["multi_node_overlap_10m"]
+          : row.observer_state === "watch"
+            ? ["multi_ip_multi_node_24h"]
+            : [],
+      observed_ip_count_24h: row.observer_state === "suspicious" ? 5 : row.observer_state === "watch" ? 3 : 0,
+      observed_ip_count_7d: row.observer_state === "suspicious" ? 6 : row.observer_state === "watch" ? 5 : 0,
+      observed_ip_count_30d: row.observer_state === "suspicious" ? 6 : row.observer_state === "watch" ? 5 : 0,
+      observed_node_count_24h: row.observer_state === "ok" ? 0 : 2,
+      observed_node_count_7d: row.observer_state === "ok" ? 0 : 2,
+      observed_node_count_30d: row.observer_state === "ok" ? 0 : 2,
+      overlap_count_24h: row.observer_state === "suspicious" ? 1 : 0,
+      last_observed_at: row.observer_updated_at ?? "2030-01-01T00:00:00",
+      recent_ips:
+        row.observer_state === "ok"
+          ? []
+          : [
+              {
+                source_ip_raw: "8.8.8.8",
+                score_ip_key: "8.8.8.8",
+                node_code: "pl",
+                node_name: "Poland",
+                last_seen_at: "2030-01-01T00:00:00",
+                counts_for_suspicion: true,
+              },
+              {
+                source_ip_raw: row.observer_state === "suspicious" ? "9.9.9.9" : "1.1.1.1",
+                score_ip_key: row.observer_state === "suspicious" ? "9.9.9.9" : "1.1.1.1",
+                node_code: "de",
+                node_name: "Germany",
+                last_seen_at: "2030-01-01T00:05:00",
+                counts_for_suspicion: true,
+              },
+            ],
+      recent_nodes:
+        row.observer_state === "ok"
+          ? []
+          : [
+              { node_id: 1, node_code: "pl", node_name: "Poland", last_seen_at: "2030-01-01T00:00:00", score_ip_count: 2 },
+              { node_id: 2, node_code: "de", node_name: "Germany", last_seen_at: "2030-01-01T00:05:00", score_ip_count: 1 },
+            ],
     },
   };
 }
@@ -320,6 +391,8 @@ function mockMetricsStatus() {
         memory_percent: 58,
         disk_percent: 61,
         active_clients: 25,
+        observer_last_push_at: "2030-01-01T00:00:00",
+        observer_is_stale: false,
         alert_kinds: [],
       },
     ],
@@ -353,6 +426,10 @@ function mockNodeHealth() {
         last_probe_stage: null,
         last_probe_error_kind: null,
         last_probe_error_message: null,
+        observer_last_push_at: "2030-01-01T00:00:00",
+        observer_unmatched_count: 0,
+        observer_parse_error_count: 0,
+        observer_is_stale: false,
         weight: 1,
       },
     ],
@@ -400,6 +477,7 @@ function filterAdminUsers(rows: AdminUserRowMock[], url: URL) {
   const q = (url.searchParams.get("q") || "").trim().toLowerCase();
   const status = (url.searchParams.get("status") || "all").trim().toLowerCase();
   const origin = (url.searchParams.get("origin") || "all").trim().toLowerCase();
+  const observerState = (url.searchParams.get("observer_state") || "all").trim().toLowerCase();
   const sort = (url.searchParams.get("sort") || "created_desc").trim().toLowerCase();
   const page = Math.max(1, Number(url.searchParams.get("page") || 1));
   const pageSize = Math.max(1, Number(url.searchParams.get("page_size") || 80));
@@ -432,6 +510,10 @@ function filterAdminUsers(rows: AdminUserRowMock[], url: URL) {
 
   if (origin !== "all") {
     filtered = filtered.filter((row) => row.origin === origin);
+  }
+
+  if (observerState !== "all") {
+    filtered = filtered.filter((row) => (row.observer_state || "ok") === observerState);
   }
 
   filtered.sort((left, right) => {
@@ -695,7 +777,7 @@ test.describe("Admin gate", () => {
     await expect(page.getByText("Показаны 1-80 из 81 пользователей.", { exact: true })).toBeVisible();
     await expect(page.locator("tbody tr").first()).toContainText("User 081");
 
-    await page.locator("select").nth(2).selectOption("name_asc");
+    await page.locator("select").nth(3).selectOption("name_asc");
     await expect(page.locator("tbody tr").first()).toContainText("User 001");
 
     await page.getByRole("button", { name: "Следующая" }).first().click();
@@ -743,6 +825,47 @@ test.describe("Admin gate", () => {
 
     await expect(page.getByText("Manual/test пользователь удалён.")).toBeVisible();
     await expect(page.getByText("По текущим фильтрам пользователей нет.")).toBeVisible();
+  });
+
+  test("shows observer-lite badges, filters, and detail diagnostics", async ({ page }) => {
+    const userRows = [
+      makeAdminUserRow({
+        tg_id: 3101,
+        username: "watch_user",
+        display_name: "Watch User",
+        observer_state: "watch",
+      }),
+      makeAdminUserRow({
+        tg_id: 3102,
+        username: "suspicious_user",
+        display_name: "Suspicious User",
+        observer_state: "suspicious",
+      }),
+    ];
+
+    await registerApiMocks(page, {
+      isAdmin: true,
+      adminSummary: {
+        ...mockAdminSummary(),
+        observer: { watch_users: 1, suspicious_users: 1 },
+      },
+      userRows,
+    });
+
+    await page.goto("admin/dashboard/");
+    await expect(page.getByText("Observer watch")).toBeVisible();
+    await expect(page.getByText("Observer suspicious")).toBeVisible();
+
+    await page.goto("admin/users/");
+    await page.locator("select").nth(2).selectOption("suspicious");
+    await expect(page.locator("tbody tr").first()).toContainText("Suspicious User");
+    await expect(page.locator("tbody tr").first()).toContainText("suspicious");
+
+    await page.locator("tbody tr").first().click();
+    await expect(page.getByText("Observer-lite")).toBeVisible();
+    await expect(page.getByText("multi_node_overlap_10m").first()).toBeVisible();
+    await expect(page.getByText("8.8.8.8")).toBeVisible();
+    await expect(page.getByText("PL").first()).toBeVisible();
   });
 
   test("keeps admin pages clickable and inside the viewport on mobile", async ({ page }) => {
@@ -820,10 +943,19 @@ test.describe("Admin gate", () => {
             memory_percent: 71,
             disk_percent: 61,
             active_clients: 240,
-            alert_kinds: ["client_density_high"],
+            observer_last_push_at: "2029-12-31T23:00:00",
+            observer_is_stale: true,
+            alert_kinds: ["client_density_high", "observer_push_stale"],
           },
         ],
         active_alerts: [
+          {
+            node_code: "us",
+            kind: "observer_push_stale",
+            status: "stale",
+            age_seconds: 1800,
+            last_sample_at: "2030-01-01T00:00:00",
+          },
           {
             node_code: "us",
             kind: "client_density_high",
@@ -841,6 +973,10 @@ test.describe("Admin gate", () => {
             last_probe_stage: "tls_sni",
             last_probe_error_kind: "tls_handshake_failed",
             last_probe_error_message: "tls handshake failed",
+            observer_last_push_at: "2029-12-31T23:00:00",
+            observer_unmatched_count: 3,
+            observer_parse_error_count: 2,
+            observer_is_stale: true,
           },
         ],
       },
@@ -851,6 +987,10 @@ test.describe("Admin gate", () => {
     await expect(page.locator(".badge", { hasText: "Нужно проверить данные" }).first()).toBeVisible();
     await expect(page.getByText(/Сбой проверки/i)).toBeVisible();
     await expect(page.getByText("tls handshake failed")).toBeVisible();
+    await expect(page.getByText("US: Observer")).toBeVisible();
+    await expect(page.getByText("Observer collector")).toBeVisible();
+    await expect(page.getByText("parse: 2")).toBeVisible();
+    await expect(page.getByText("unmatched: 3")).toBeVisible();
   });
 
   test("lets admin triage a ticket and send a reply using stable status codes", async ({ page }) => {

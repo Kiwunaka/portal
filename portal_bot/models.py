@@ -6,6 +6,7 @@ from sqlalchemy import (
     BigInteger,
     Boolean,
     Column,
+    Date,
     DateTime,
     Float,
     Integer,
@@ -201,6 +202,11 @@ class Node(Base):
     last_probe_stage = Column(String(64), nullable=True)
     last_probe_error_kind = Column(String(64), nullable=True)
     last_probe_error_message = Column(String(500), nullable=True)
+    observer_push_secret = Column(String(128), nullable=True)
+    observer_last_push_at = Column(DateTime, nullable=True)
+    observer_last_batch_id = Column(String(128), nullable=True)
+    observer_unmatched_count = Column(Integer, default=0)
+    observer_parse_error_count = Column(Integer, default=0)
 
 
 class UserNode(Base):
@@ -374,6 +380,89 @@ class Event(Base):
     session_id = Column(String(64), nullable=True)
     meta_json = Column(String(4000), nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+
+
+class ObserverBatch(Base):
+    __tablename__ = "observer_batches"
+    __table_args__ = (UniqueConstraint("node_id", "batch_id", name="uq_observer_batches_node_batch"),)
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    node_id = Column(Integer, index=True, nullable=False)
+    batch_id = Column(String(128), nullable=False)
+    cursor_json = Column(Text, nullable=True)
+    observation_count = Column(Integer, default=0, nullable=False)
+    accepted_count = Column(Integer, default=0, nullable=False)
+    deduped_count = Column(Integer, default=0, nullable=False)
+    unmatched_count = Column(Integer, default=0, nullable=False)
+    parse_error_count = Column(Integer, default=0, nullable=False)
+    updated_tg_ids_json = Column(Text, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+
+
+class ObserverDailyObservation(Base):
+    __tablename__ = "observer_daily_observations"
+    __table_args__ = (
+        UniqueConstraint(
+            "tg_id",
+            "node_id",
+            "source_ip_raw",
+            "day_bucket",
+            name="uq_observer_daily_tg_node_ip_day",
+        ),
+    )
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    tg_id = Column(BigInteger, index=True, nullable=False)
+    node_id = Column(Integer, index=True, nullable=False)
+    source_ip_raw = Column(String(64), nullable=False)
+    score_ip_key = Column(String(64), index=True, nullable=False)
+    day_bucket = Column(Date, index=True, nullable=False)
+    first_seen_at = Column(DateTime, nullable=False)
+    last_seen_at = Column(DateTime, nullable=False)
+    hit_count = Column(Integer, default=0, nullable=False)
+    identity_source = Column(String(32), nullable=False)
+    counts_for_suspicion = Column(Boolean, default=True, nullable=False)
+
+
+class ObserverWindowObservation(Base):
+    __tablename__ = "observer_window_observations"
+    __table_args__ = (
+        UniqueConstraint(
+            "tg_id",
+            "node_id",
+            "score_ip_key",
+            "window_bucket_at",
+            name="uq_observer_window_tg_node_score_bucket",
+        ),
+    )
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    tg_id = Column(BigInteger, index=True, nullable=False)
+    node_id = Column(Integer, index=True, nullable=False)
+    source_ip_raw = Column(String(64), nullable=False)
+    score_ip_key = Column(String(64), index=True, nullable=False)
+    window_bucket_at = Column(DateTime, index=True, nullable=False)
+    first_seen_at = Column(DateTime, nullable=False)
+    last_seen_at = Column(DateTime, nullable=False)
+    hit_count = Column(Integer, default=0, nullable=False)
+    counts_for_suspicion = Column(Boolean, default=True, nullable=False)
+
+
+class ObserverUserState(Base):
+    __tablename__ = "observer_user_state"
+
+    tg_id = Column(BigInteger, primary_key=True)
+    state = Column(String(20), default="ok", nullable=False)
+    reasons_json = Column(Text, nullable=True)
+    observed_ip_count_24h = Column(Integer, default=0, nullable=False)
+    observed_ip_count_7d = Column(Integer, default=0, nullable=False)
+    observed_ip_count_30d = Column(Integer, default=0, nullable=False)
+    observed_node_count_24h = Column(Integer, default=0, nullable=False)
+    observed_node_count_7d = Column(Integer, default=0, nullable=False)
+    observed_node_count_30d = Column(Integer, default=0, nullable=False)
+    overlap_count_24h = Column(Integer, default=0, nullable=False)
+    last_observed_at = Column(DateTime, nullable=True)
+    updated_at = Column(DateTime, default=datetime.utcnow, nullable=False)
 
 
 class Offer(Base):

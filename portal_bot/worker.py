@@ -25,6 +25,7 @@ from events_service import track_event
 from free_cycle_service import mark_user_became_free, process_due_free_cycle_resets
 from models import CampaignSend, Event, ExternalOrder, KeyActionHistory, NodeHealthSample, ReferralBonusQueue, Template, User, UserKeyPolicy
 from offers_service import create_offer, expire_stale_offers, get_active_offer
+from observer_service import cleanup_observer_retention
 from pay_attempts_service import find_abandoned_candidates, mark_abandoned, mark_abandoned_notified
 
 logger = logging.getLogger(__name__)
@@ -1099,6 +1100,20 @@ async def free_cycle_reset_job() -> None:
         await asyncio.sleep(600)
 
 
+async def observer_retention_job() -> None:
+    while True:
+        session = SessionLocal()
+        try:
+            cleanup_observer_retention(s=session)
+            session.commit()
+        except Exception:
+            session.rollback()
+            logger.exception("observer_retention_job failed")
+        finally:
+            session.close()
+        await asyncio.sleep(21600)
+
+
 async def main() -> None:
     init_db()
     tasks = [
@@ -1111,6 +1126,7 @@ async def main() -> None:
         asyncio.create_task(node_metrics_watchdog_job()),
         asyncio.create_task(channel_bonus_guard_job()),
         asyncio.create_task(free_cycle_reset_job()),
+        asyncio.create_task(observer_retention_job()),
         asyncio.create_task(referral_bonus_queue_job()),
         asyncio.create_task(key_limits_watchdog_job()),
     ]

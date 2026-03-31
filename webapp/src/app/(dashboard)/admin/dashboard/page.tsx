@@ -235,6 +235,24 @@ export default function AdminDashboardPage() {
       sparkline: revenueValues,
       sparkColor: "emerald" as const,
     },
+    {
+      label: "Observer watch",
+      value: summary?.observer.watch_users ?? 0,
+      sub: "Пользователи под наблюдением observer-lite",
+      icon: Activity,
+      iconClass: Number(summary?.observer.watch_users || 0) > 0 ? "stat-icon-amber" : "stat-icon-blue",
+      sparkline: [] as number[],
+      sparkColor: "violet" as const,
+    },
+    {
+      label: "Observer suspicious",
+      value: summary?.observer.suspicious_users ?? 0,
+      sub: "Консервативные подозрения без авто-блокировок",
+      icon: AlertTriangle,
+      iconClass: Number(summary?.observer.suspicious_users || 0) > 0 ? "stat-icon-rose" : "stat-icon-blue",
+      sparkline: [] as number[],
+      sparkColor: "rose" as const,
+    },
   ];
 
   const bonusCards = [

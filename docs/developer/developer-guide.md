@@ -1,6 +1,6 @@
 # Developer Guide
 
-Last updated: 2026-03-29
+Last updated: 2026-03-31
 
 ## Document Status
 
@@ -62,6 +62,7 @@ Run focused tests:
 python -m pytest portal_bot/tests/test_app_first_api.py -q
 python -m pytest tests/test_portal_api.py -q
 python -m pytest tests/test_worker_retention.py -q
+python -m pytest tests/test_observer_service.py tests/test_observer_api.py tests/test_collect_xray_observer.py tests/test_predeploy_node_readiness.py -q
 python -m unittest tests.test_node_dataplane_probe tests.test_ru_probe_runner tests.test_render_ru_probe_report
 ```
 
@@ -69,6 +70,7 @@ Deploy backend:
 
 ```powershell
 python scripts/remote_deploy_brain_portal_code.py --brain-ip 82.21.114.104 --restart portal-api,portal-bot,portal-helpbot
+python scripts/remote_install_node_observer.py --brain-ip 82.21.114.104 --node-code pl --run-now
 ```
 
 ## Frontend Commands
@@ -88,6 +90,7 @@ Notes:
 - Real browser checks live under `webapp/e2e/`.
 - `tests/test_admin_webapp_smoke.py` is a structure/build smoke, not a replacement for Playwright browser coverage.
 - admin browser checks should include a narrow mobile or Telegram WebView-like viewport so tap targets, overflow, and modal actions stay usable inside the embedded webapp.
+- observer-lite admin checks should cover dashboard summary counts, users-table filter parity, detail diagnostics, and node collector health rendering.
 
 Run inside the client repo:
 
@@ -141,6 +144,7 @@ Operational rules:
 - do not resume `mini` canary work, evolve the transport matrix, or provision `rf1` unless the product owner explicitly asks to return to that track
 - `rf1` is reserve-only for operator and VIP/manual use in phase 1
 - keep `rf1` outside the default runtime delivery pool until repeated RU probes confirm stable behavior
+- observer-lite phase 1 stays observe-only; do not add throttle or block actions without an explicit product decision
 
 ## Generated Artifact Policy
 

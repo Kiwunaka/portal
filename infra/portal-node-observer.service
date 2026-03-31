@@ -1,0 +1,11 @@
+[Unit]
+Description=Portal observer-lite xray access collector
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+WorkingDirectory=/root/portal-node-observer
+EnvironmentFile=-/root/portal-node-observer/observer.env
+ExecStart=/usr/bin/env python3 /root/portal-node-observer/collect_xray_observer.py
+User=root

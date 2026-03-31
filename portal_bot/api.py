@@ -59,6 +59,7 @@ from models import (
     LiveUpdate,
     Node,
     NodeHealthSample,
+    ObserverUserState,
     PlanCatalog,
     PromoCode,
     PromoUsage,
@@ -113,6 +114,13 @@ from points_service import (
 )
 from free_cycle_service import ensure_user_free_cycle_state, mark_user_became_free
 from gift_cards_service import redeem_gift_card as redeem_gift_card_service
+from observer_service import (
+    OBSERVER_PUSH_MAX_AGE_SECONDS,
+    build_admin_observer_block,
+    get_observer_state_map,
+    ingest_observer_batch,
+    observer_stale_after_seconds,
+)
 from web_auth_service import (
     SESSION_TTL_SECONDS,
     build_telegram_oidc_authorize_url,
@@ -744,6 +752,22 @@ class EventIn(BaseModel):
     source: str = Field(default="webapp", max_length=32)
     session_id: str | None = Field(default=None, max_length=64)
     meta: dict[str, Any] | None = None
+
+
+class ObserverObservationIn(BaseModel):
+    occurred_at: str = Field(min_length=10, max_length=64)
+    client_email: str | None = Field(default=None, max_length=200)
+    client_sub_id: str | None = Field(default=None, max_length=128)
+    client_tg_id: int | None = None
+    source_ip: str = Field(min_length=3, max_length=64)
+    inbound_tag: str | None = Field(default=None, max_length=128)
+
+
+class ObserverBatchIn(BaseModel):
+    batch_id: str = Field(min_length=3, max_length=128)
+    cursor: dict[str, Any] | None = None
+    parse_error_count: int = Field(default=0, ge=0, le=100000)
+    observations: list[ObserverObservationIn] = Field(default_factory=list)
 
 
 class PayAttemptStartIn(BaseModel):
@@ -1775,10 +1799,33 @@ def _admin_user_origin_filter(origin: str):
     raise HTTPException(status_code=400, detail="Unsupported origin")
 
 
-def _serialize_admin_user_row(user: User, *, now: datetime | None = None) -> dict[str, Any]:
+def _normalize_observer_state_filter(value: str) -> str:
+    raw = str(value or "").strip().lower()
+    if raw in {"", "all"}:
+        return ""
+    if raw not in {"ok", "watch", "suspicious"}:
+        raise HTTPException(status_code=400, detail="Unsupported observer_state")
+    return raw
+
+
+def _observer_snapshot_or_default(snapshot: dict[str, Any] | None) -> dict[str, Any]:
+    data = dict(snapshot or {})
+    return {
+        "state": str(data.get("state") or "ok"),
+        "updated_at": data.get("updated_at"),
+    }
+
+
+def _serialize_admin_user_row(
+    user: User,
+    *,
+    now: datetime | None = None,
+    observer_snapshot: dict[str, Any] | None = None,
+) -> dict[str, Any]:
     current_now = now or _utcnow()
     status = _user_effective_status(user, now=current_now)
     origin = _user_origin(user)
+    observer = _observer_snapshot_or_default(observer_snapshot)
     return {
         "tg_id": int(user.tg_id),
         "username": user.username,
@@ -1795,6 +1842,8 @@ def _serialize_admin_user_row(user: User, *, now: datetime | None = None) -> dic
         "linked_telegram_id": int(user.linked_telegram_id) if getattr(user, "linked_telegram_id", None) is not None else None,
         "linked_telegram_username": getattr(user, "linked_telegram_username", None),
         "app_install_id": getattr(user, "app_install_id", None),
+        "observer_state": observer["state"],
+        "observer_updated_at": observer["updated_at"],
     }
 
 
@@ -2083,6 +2132,30 @@ def _payload_value(payload: dict[str, Any], *keys: str) -> str:
 
 def _hmac_sha256_hex(secret: str, data: bytes) -> str:
     return hmac.new(secret.encode("utf-8"), data, hashlib.sha256).hexdigest()
+
+
+def _observer_signature_payload(*, node_code: str, timestamp: int, raw_body: bytes) -> bytes:
+    raw_text = raw_body.decode("utf-8", errors="replace")
+    return f"{str(node_code).strip().lower()}\n{int(timestamp)}\n{raw_text}".encode("utf-8")
+
+
+def _verify_observer_push(*, s, node_code: str, timestamp: int, signature: str, raw_body: bytes) -> Node:
+    code = str(node_code or "").strip().lower()
+    if not code:
+        raise HTTPException(status_code=401, detail="Missing node code")
+    node = s.query(Node).filter(func.lower(Node.code) == code).first()
+    if not node:
+        raise HTTPException(status_code=401, detail="Unknown node")
+    secret = str(getattr(node, "observer_push_secret", "") or "").strip()
+    if not secret:
+        raise HTTPException(status_code=401, detail="Observer push secret is not configured")
+    now_ts = int(time.time())
+    if abs(now_ts - int(timestamp)) > int(OBSERVER_PUSH_MAX_AGE_SECONDS):
+        raise HTTPException(status_code=401, detail="Observer push timestamp is stale")
+    expected = _hmac_sha256_hex(secret, _observer_signature_payload(node_code=code, timestamp=int(timestamp), raw_body=raw_body))
+    if not hmac.compare_digest(expected, str(signature or "").strip().lower()):
+        raise HTTPException(status_code=401, detail="Observer push signature is invalid")
+    return node
 
 
 async def _read_callback_payload(request: Request) -> tuple[dict[str, Any], bytes]:
@@ -3098,6 +3171,8 @@ def _compute_user_risk(*, s, user: User, keys_summary: dict[str, Any] | None = N
     ip_count = int(len(unique_ips))
     mismatch_count = int((keys_summary or {}).get("subid_mismatch_count", 0) or 0)
     traffic_gb = float((keys_summary or {}).get("traffic_total_gb", 0.0) or 0.0)
+    observer_state_row = s.query(ObserverUserState).filter(ObserverUserState.tg_id == tg_id).first()
+    observer_state = str(getattr(observer_state_row, "state", "") or "ok").strip().lower() or "ok"
 
     score = 0
     factors: list[dict[str, Any]] = []
@@ -3117,6 +3192,12 @@ def _compute_user_risk(*, s, user: User, keys_summary: dict[str, Any] | None = N
         val = min(20, mismatch_count * 7)
         score += val
         factors.append({"key": "subid_mismatch", "weight": val, "value": mismatch_count})
+    if observer_state == "watch":
+        score += 15
+        factors.append({"key": "observer_watch", "weight": 15, "value": observer_state})
+    elif observer_state == "suspicious":
+        score += 40
+        factors.append({"key": "observer_suspicious", "weight": 40, "value": observer_state})
     if str(user.sub_type or "").upper() == "FREE" and traffic_gb > float(FREE_TOTAL_GB) * 1.2:
         val = min(25, int((traffic_gb / max(1.0, float(FREE_TOTAL_GB))) * 8))
         score += val
@@ -3131,6 +3212,7 @@ def _compute_user_risk(*, s, user: User, keys_summary: dict[str, Any] | None = N
             "regen_count": regen_count,
             "admin_key_ops": disable_count,
             "unique_ips": ip_count,
+            "observer_state": observer_state,
             "traffic_gb": round(traffic_gb, 3),
             "subid_mismatch_count": mismatch_count,
         },
@@ -3478,6 +3560,56 @@ async def _get_user_runtime_summary(*, s, user: User, nodes: list[Node] | None =
 @app.get("/api/health")
 async def health() -> dict:
     return {"status": "ok", "ts": _utcnow().isoformat()}
+
+
+@app.post("/api/internal/observer/batches")
+async def api_internal_observer_batches(
+    request: Request,
+    x_portal_node: str = Header(default=""),
+    x_portal_timestamp: str = Header(default=""),
+    x_portal_signature: str = Header(default=""),
+) -> dict:
+    raw_body = await request.body()
+    try:
+        raw_payload = json.loads(raw_body.decode("utf-8", errors="replace"))
+        payload = ObserverBatchIn.model_validate(raw_payload if isinstance(raw_payload, dict) else {})
+    except Exception:
+        raise HTTPException(status_code=400, detail="Observer batch payload is invalid")
+
+    try:
+        timestamp = int(str(x_portal_timestamp or "").strip())
+    except Exception:
+        raise HTTPException(status_code=401, detail="Observer push timestamp is invalid")
+
+    s = SessionLocal()
+    try:
+        node = _verify_observer_push(
+            s=s,
+            node_code=x_portal_node,
+            timestamp=timestamp,
+            signature=x_portal_signature,
+            raw_body=raw_body,
+        )
+        result = ingest_observer_batch(
+            s=s,
+            node=node,
+            batch_id=payload.batch_id,
+            cursor=payload.cursor,
+            observations=[item.model_dump() for item in payload.observations],
+            collector_parse_error_count=int(payload.parse_error_count or 0),
+            received_at=_utcnow(),
+        )
+        s.commit()
+        return result
+    except HTTPException:
+        s.rollback()
+        raise
+    except Exception:
+        s.rollback()
+        logger.exception("observer batch ingest failed node=%s", str(x_portal_node or "").strip().lower())
+        raise HTTPException(status_code=500, detail="Observer batch ingest failed")
+    finally:
+        s.close()
 
 
 @app.get("/api/public/plans")
@@ -4159,6 +4291,16 @@ def _sample_disk_percent(sample: NodeHealthSample | None) -> float:
     return round((used / total) * 100.0, 2)
 
 
+def _observer_is_stale(node: Node, *, now: datetime) -> bool:
+    last_push_at = getattr(node, "observer_last_push_at", None)
+    configured = bool(str(getattr(node, "observer_push_secret", "") or "").strip())
+    if not configured and not last_push_at:
+        return False
+    if not last_push_at:
+        return True
+    return int((now - last_push_at).total_seconds()) > observer_stale_after_seconds()
+
+
 def _active_node_metric_alert_kinds(
     *,
     samples: list[NodeHealthSample],
@@ -4221,6 +4363,8 @@ def _node_snapshot_alert_kinds(
         kinds.append("error_rate_high")
     if int(getattr(node, "active_clients", 0) or 0) >= NODE_METRICS_ACTIVE_CLIENTS_ALERT:
         kinds.append("client_density_high")
+    if _observer_is_stale(node, now=now):
+        kinds.append("observer_push_stale")
     return kinds
 
 
@@ -4232,6 +4376,7 @@ def _legacy_node_alert_kind(kind: str) -> str:
         "latency_high": "high_latency",
         "error_rate_high": "high_error_rate",
         "client_density_high": "high_client_density",
+        "observer_push_stale": "observer_push_stale",
         "stale_metrics": "stale_metrics",
     }
     return mapping.get(str(kind or ""), str(kind or ""))
@@ -4292,6 +4437,8 @@ def _build_admin_metrics_status_snapshot(*, s, now: datetime, stale_after_second
             "memory_percent": _sample_memory_percent(latest),
             "disk_percent": _sample_disk_percent(latest),
             "active_clients": int(getattr(latest, "active_clients", getattr(node, "active_clients", 0)) or 0),
+            "observer_last_push_at": _safe_iso(getattr(node, "observer_last_push_at", None)),
+            "observer_is_stale": bool(_observer_is_stale(node, now=now)),
             "alert_kinds": sorted(set(alert_kinds)),
             "alerts": _legacy_node_alerts(alert_kinds),
         }
@@ -5699,6 +5846,18 @@ async def admin_summary(x_telegram_init_data: str = Header(default="")) -> dict:
         free_node_enabled = bool(
             s.query(Node.id).filter(Node.enabled == True, func.lower(func.coalesce(Node.code, "")) == "free").first()
         )
+        observer_watch_users = (
+            s.query(func.count(ObserverUserState.tg_id))
+            .filter(ObserverUserState.state == "watch")
+            .scalar()
+            or 0
+        )
+        observer_suspicious_users = (
+            s.query(func.count(ObserverUserState.tg_id))
+            .filter(ObserverUserState.state == "suspicious")
+            .scalar()
+            or 0
+        )
         metrics_status = _build_admin_metrics_status_snapshot(
             s=s,
             now=now,
@@ -5822,6 +5981,10 @@ async def admin_summary(x_telegram_init_data: str = Header(default="")) -> dict:
             },
             "tickets": {"open": int(open_tickets)},
             "nodes": {"total": int(total_nodes), "healthy": int(healthy_nodes)},
+            "observer": {
+                "watch_users": int(observer_watch_users),
+                "suspicious_users": int(observer_suspicious_users),
+            },
             "errors": {
                 "stale_metrics": bool(metrics_status.get("status") != "fresh"),
                 "unhealthy_nodes": max(0, int(total_nodes) - int(healthy_nodes)),
@@ -5862,6 +6025,7 @@ async def admin_users(
     q: str = "",
     status: str = "",
     origin: str = "",
+    observer_state: str = "",
     sort: str = "created_desc",
     limit: int = 50,
     offset: int = 0,
@@ -5886,6 +6050,15 @@ async def admin_users(
         origin_filter = _admin_user_origin_filter(origin)
         if origin_filter is not None:
             query = query.filter(origin_filter)
+        observer_state_norm = _normalize_observer_state_filter(observer_state)
+        if observer_state_norm == "ok":
+            query = query.outerjoin(ObserverUserState, ObserverUserState.tg_id == User.tg_id).filter(
+                or_(ObserverUserState.tg_id.is_(None), ObserverUserState.state == "ok")
+            )
+        elif observer_state_norm in {"watch", "suspicious"}:
+            query = query.join(ObserverUserState, ObserverUserState.tg_id == User.tg_id).filter(
+                ObserverUserState.state == observer_state_norm
+            )
         query = _apply_admin_user_search(query, q)
         sort_norm = str(sort or "created_desc").strip().lower()
         if sort_norm == "created_asc":
@@ -5913,12 +6086,23 @@ async def admin_users(
             .limit(page_size_value)
             .all()
         )
+        observer_map = get_observer_state_map(
+            s=s,
+            tg_ids=[int(getattr(row, "tg_id", 0) or 0) for row in rows],
+        )
         return {
             "page": int(page_value),
             "page_size": int(page_size_value),
             "total": int(total),
             "sort": sort_norm,
-            "users": [_serialize_admin_user_row(u, now=now) for u in rows],
+            "users": [
+                _serialize_admin_user_row(
+                    u,
+                    now=now,
+                    observer_snapshot=observer_map.get(int(getattr(u, "tg_id", 0) or 0)),
+                )
+                for u in rows
+            ],
         }
     finally:
         s.close()
@@ -6124,6 +6308,7 @@ async def admin_user_card(tg_id: int, x_telegram_init_data: str = Header(default
             .all()
         )
         loyalty_snapshot = _user_loyalty_snapshot(s=s, user=user)
+        observer_payload = build_admin_observer_block(s=s, tg_id=int(tg_id))
         sub_token = str(getattr(user, "sub_token", "") or "").strip()
         user_status = _user_effective_status(user)
         user_origin = _user_origin(user)
@@ -6151,6 +6336,8 @@ async def admin_user_card(tg_id: int, x_telegram_init_data: str = Header(default
             "app_install_id": getattr(user, "app_install_id", None),
             "app_platform": getattr(user, "app_platform", None),
             "app_last_seen_at": _safe_iso(getattr(user, "app_last_seen_at", None)),
+            "observer_state": observer_payload.get("state", "ok"),
+            "observer_updated_at": observer_payload.get("updated_at"),
         }
         ticket_payload = [_ticket_row(t, list_ticket_messages(s, t.id, limit=1)) for t in tickets]
         policy_payload = [_serialize_key_policy(row) for row in policies]
@@ -6193,6 +6380,7 @@ async def admin_user_card(tg_id: int, x_telegram_init_data: str = Header(default
         "key_history": history_payload,
         "admin_actions": recent_admin_payload,
         "risk": risk,
+        "observer": observer_payload,
         "loyalty": loyalty_snapshot,
         **keys_state,
     }
@@ -8866,6 +9054,10 @@ def _serialize_admin_node(n: Node, *, mapped_users: int = 0) -> dict[str, Any]:
         "last_probe_stage": str(getattr(n, "last_probe_stage", "") or "") or None,
         "last_probe_error_kind": str(getattr(n, "last_probe_error_kind", "") or "") or None,
         "last_probe_error_message": str(getattr(n, "last_probe_error_message", "") or "") or None,
+        "observer_last_push_at": _safe_iso(getattr(n, "observer_last_push_at", None)),
+        "observer_unmatched_count": int(getattr(n, "observer_unmatched_count", 0) or 0),
+        "observer_parse_error_count": int(getattr(n, "observer_parse_error_count", 0) or 0),
+        "observer_is_stale": bool(_observer_is_stale(n, now=now)),
         "weight": int(getattr(n, "weight", 0) or 0),
     }
 

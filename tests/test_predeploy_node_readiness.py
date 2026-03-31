@@ -38,6 +38,8 @@ class PredeployNodeReadinessTests(unittest.TestCase):
                 last_probe_stage="panel_metrics",
                 last_probe_error_kind="",
                 last_probe_error_message="",
+                observer_push_configured=True,
+                observer_last_push_at=now - timedelta(seconds=45),
             ),
             self.module.NodeReadinessRow(
                 code="us",
@@ -52,18 +54,22 @@ class PredeployNodeReadinessTests(unittest.TestCase):
                 last_probe_stage="tcp_connect",
                 last_probe_error_kind="tcp_timeout",
                 last_probe_error_message="timed out",
+                observer_push_configured=True,
+                observer_last_push_at=now - timedelta(minutes=8),
             ),
         ]
 
         failures = self.module._readiness_failures(
             rows,
             stale_after_seconds=1800,
+            observer_stale_after_seconds=180,
             now=now,
         )
 
         self.assertIn("unhealthy:us", failures)
         self.assertIn("stale:us", failures)
         self.assertIn("probe_error:us:tcp_timeout", failures)
+        self.assertIn("observer_stale:us", failures)
 
     def test_dns_and_drift_failures_are_aggregated(self) -> None:
         dns_report = {
@@ -135,6 +141,20 @@ class PredeployNodeReadinessTests(unittest.TestCase):
         self.assertEqual(probe_mock.call_count, 2)
         self.assertTrue(result.tcp_ok)
         self.assertTrue(result.target_tls_ok)
+
+    def test_parse_node_rows_reads_observer_fields(self) -> None:
+        raw = (
+            "pl|pl.pokrov.space|t|t|f|t|92.1|1711821000|1711821120|panel_metrics|||t|1711821180|3|2|17|443|discord.com|abcd|pubkey\n"
+        )
+
+        rows = self.module._parse_node_rows(raw)
+
+        self.assertEqual(len(rows), 1)
+        row = rows[0]
+        self.assertTrue(row.observer_push_configured)
+        self.assertEqual(row.observer_unmatched_count, 3)
+        self.assertEqual(row.observer_parse_error_count, 2)
+        self.assertEqual(row.inbound_id, 17)
 
 
 if __name__ == "__main__":

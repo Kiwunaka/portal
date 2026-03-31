@@ -37,6 +37,12 @@ def main() -> int:
     parser.add_argument("--skip-static", action="store_true")
     parser.add_argument("--skip-verify", action="store_true")
     parser.add_argument("--ensure-metrics-timer", action="store_true", help="Install/repair portal-node-metrics.timer before verify")
+    parser.add_argument(
+        "--ensure-observer-node",
+        action="append",
+        default=[],
+        help="Install/repair portal-node-observer.timer on the given delivery node code. Can be repeated.",
+    )
     parser.add_argument("--gates-only", action="store_true", help="Run gates only (no remote deploy/verify)")
     parser.add_argument("--verify-only", action="store_true", help="Run only post-deploy verify")
     parser.add_argument("--dry-run", action="store_true", help="Print planned commands without executing them")
@@ -100,6 +106,28 @@ def main() -> int:
                     "scripts/remote_install_node_metrics_timer.py",
                     "--brain-ip",
                     args.brain_ip,
+                    "--ssh-user",
+                    args.ssh_user,
+                    "--ssh-port",
+                    str(args.ssh_port),
+                    "--passwords",
+                    args.passwords,
+                ],
+                REPO_ROOT,
+            )
+        )
+
+    for node_code in [str(item or "").strip().lower() for item in (args.ensure_observer_node or []) if str(item or "").strip()]:
+        steps.append(
+            (
+                f"observer timer ensure ({node_code})",
+                [
+                    python,
+                    "scripts/remote_install_node_observer.py",
+                    "--brain-ip",
+                    args.brain_ip,
+                    "--node-code",
+                    node_code,
                     "--ssh-user",
                     args.ssh_user,
                     "--ssh-port",

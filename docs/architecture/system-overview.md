@@ -1,6 +1,6 @@
 # POKROV System Overview
 
-Last updated: 2026-03-29
+Last updated: 2026-03-31
 
 ## Document Status
 
@@ -39,6 +39,7 @@ This file is living source of truth for the platform architecture map.
 - `portal_bot/panel_client.py`
 - node inventory and routing logic
 - 3x-ui panels as node-local execution layer
+- observer-lite uses `xray access.log -> node collector -> brain ingest -> Postgres state -> web admin`
 
 Node lifecycle rule:
 
@@ -193,6 +194,7 @@ Current operational monitoring should correlate:
 - Telegram bot and support bot availability
 - node reachability and public egress
 - per-node metrics freshness, sustained resource pressure, and probe-failure reasons
+- per-user observer-lite IP/node footprint and conservative `ok | watch | suspicious` state
 - device and account visibility for support diagnosis
 
 Dashboard and user-cabinet traffic visibility must come from server-side node runtime snapshots rather than app-only telemetry.

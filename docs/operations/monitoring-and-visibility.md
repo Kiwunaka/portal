@@ -1,6 +1,6 @@
 # Monitoring And Visibility
 
-Last updated: 2026-03-29
+Last updated: 2026-03-31
 
 ## Document Status
 
@@ -98,6 +98,8 @@ Required node-level visibility:
 - sustained CPU / RAM / disk pressure alerts
 - sustained latency / error-rate alerts
 - high client-density alerts
+- observer collector freshness per node
+- observer parse-error and unmatched counters per node
 - `last_probe_stage`
 - `last_probe_error_kind`
 - `last_probe_error_message`
@@ -105,6 +107,7 @@ Required node-level visibility:
 Operational rule:
 
 - `portal-node-metrics.timer` must stay healthy on every relevant host
+- `portal-node-observer.timer` must stay healthy on every rollout node where `observer_push_secret` is configured
 - hoster CPU warnings should trigger a review of per-node metrics plus control-plane load on the canonical host
 - code deploys for the metrics collector must ship both `collect_node_metrics.py` and `node_dataplane_probe.py`, otherwise the systemd job will fail with an import error on the control-plane host
 
@@ -112,10 +115,22 @@ Primary repository touchpoints:
 
 - `scripts/collect_node_metrics.py`
 - `scripts/node_dataplane_probe.py`
+- `scripts/collect_xray_observer.py`
+- `scripts/remote_install_node_observer.py`
 - `infra/portal-node-metrics.service`
 - `infra/portal-node-metrics.timer`
+- `infra/portal-node-observer.service`
+- `infra/portal-node-observer.timer`
 - `/api/admin/metrics/status`
 - `/api/admin/nodes/health`
+- `/api/internal/observer/batches`
+
+Observer-lite rollout rule:
+
+- delivery nodes that participate in observer-lite must keep a stable xray access log at `/var/log/xray/access.log`
+- install collector/logrotate/timer with `scripts/remote_install_node_observer.py`
+- rollout starts with one canary node for `24-48h`
+- only after low parse-error and unmatched rates on the canary can the timer be enabled on the rest of the delivery pool
 
 ## Suggested RU Probe Workflow
 
@@ -187,12 +202,15 @@ Useful operator-visible fields include:
 - current subscription status
 - assigned node or recent node history when available
 - effective admin status: `active`, `expired`, `blocked`, `manual_test`
+- observer state: `ok`, `watch`, `suspicious`
+- observer reasons, recent IPs, recent nodes, and last observed time
 
 Visibility rule:
 
 - this data exists for support diagnosis, abuse control, and account recovery
 - it must not be echoed back to public marketing copy as surveillance language
 - user-facing support copy should describe this as technical context used to help diagnose connection issues
+- observer-lite phase 1 is `observe-only`: no auto-block, no auto-throttle, no Telegram operator spam
 
 ## Support And Incident Triage
 

@@ -54,6 +54,7 @@ echo "[5/8] Install 3x-ui"
 echo "NOTE: 3x-ui install method changes over time. Install it now, then continue."
 echo "Recommended: install 3x-ui, then ensure panel listens on localhost only."
 echo "After install, ensure xray inbound for VLESS Reality is on ${XRAY_PORT}."
+echo "Also enable xray access logging to /var/log/xray/access.log for observer-lite."
 
 echo "[6/8] Panel access restriction"
 echo "Goal: expose panel ONLY to control-plane IP, via a reverse proxy on port ${PANEL_PORT}."
@@ -87,5 +88,8 @@ cat <<EOF
 
 4) Sync users to the new node:
    - Run scripts/migrate_to_nodes.py --node <code>
+
+5) Install observer-lite collector after the node exists in control-plane:
+   - Run scripts/remote_install_node_observer.py --brain-ip ${CONTROL_PLANE_IP} --node-code <code> --run-now
 
 EOF

@@ -1,0 +1,12 @@
+[Unit]
+Description=Run Portal observer-lite collector every 60 seconds
+
+[Timer]
+OnBootSec=30s
+OnUnitActiveSec=60s
+AccuracySec=1s
+Unit=portal-node-observer.service
+Persistent=true
+
+[Install]
+WantedBy=timers.target
