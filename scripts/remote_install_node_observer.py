@@ -114,6 +114,10 @@ def _render_env(
 
 
 def main() -> int:
+    try:
+        sys.stdout.reconfigure(encoding="utf-8")
+    except Exception:
+        pass
     parser = argparse.ArgumentParser(description="Install portal-node-observer collector on a delivery node and wire its secret in control-plane.")
     parser.add_argument("--brain-ip", required=True)
     parser.add_argument("--node-code", required=True)
