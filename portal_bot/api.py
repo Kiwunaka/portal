@@ -335,7 +335,7 @@ def _default_live_updates() -> list[dict[str, Any]]:
         {
             "id": 0,
             "title": "Обновлён кабинет POKROV",
-            "summary": "Сделали поддержку, загрузки и checkout более понятными и без лишнего шума.",
+            "summary": "Сделали службу заботы, загрузки и checkout более понятными и без лишнего шума.",
             "date": "2026-02-13",
             "link": f"https://t.me/{channel}/2",
         },
@@ -912,12 +912,14 @@ class DashboardResponse(BaseModel):
     total_gb: float
     remaining_gb: float
     active_sessions: int
+    active_sessions_source: str | None = None
     device_limit: int
     speed_limit_mbps: int | None = None
     free_next_reset_at: str | None = None
     family_slots: int
     subscription_url: str
     segment: str
+    connection_snapshot: dict[str, Any] | None = None
     active_offer: dict[str, Any] | None
     points: dict[str, Any]
     features: dict[str, bool]
@@ -3361,6 +3363,118 @@ async def _get_panel_usage_legacy(tg_id: int) -> dict | None:
     return None
 
 
+async def _get_user_runtime_summary(*, s, user: User, nodes: list[Node] | None = None) -> dict[str, Any]:
+    allowed_nodes = list(nodes or [])
+    node_codes = [str(getattr(node, "code", "") or "").strip() for node in allowed_nodes if str(getattr(node, "code", "") or "").strip()]
+    fallback = {
+        "panel_state": "ok",
+        "panel_error": None,
+        "known_nodes": 0,
+        "active_nodes": 0,
+        "enabled_nodes": 0,
+        "active_connections": 0,
+        "active_connections_source": "none",
+        "traffic_up_bytes": 0,
+        "traffic_down_bytes": 0,
+        "traffic_total_bytes": 0,
+        "last_online_at": None,
+        "last_online_age_seconds": None,
+        "status": "unknown",
+    }
+    if not node_codes:
+        return fallback
+
+    panel_rows: list[dict[str, Any]] = []
+    panel_error = ""
+    panel = ControlPanel()
+    try:
+        await panel.login()
+        panel_rows = await panel.get_user_key_snapshots(tg_id=int(user.tg_id), node_codes=node_codes)
+    except Exception as exc:
+        panel_error = str(exc)[:200]
+    finally:
+        try:
+            await panel.close()
+        except Exception:
+            pass
+
+    if panel_error:
+        return {**fallback, "panel_state": "error", "panel_error": panel_error}
+
+    known_nodes = 0
+    active_nodes = 0
+    enabled_nodes = 0
+    total_up = 0
+    total_down = 0
+    active_connections = 0
+    saw_ip_count = False
+    last_online_at = None
+    last_online_age_seconds = None
+
+    for row in panel_rows or []:
+        client = row.get("client") or {}
+        runtime = row.get("runtime") or {}
+        if client:
+            known_nodes += 1
+        if not isinstance(runtime, dict):
+            continue
+        if bool(runtime.get("enable", client.get("enable", False))):
+            enabled_nodes += 1
+        if runtime.get("online") is True:
+            active_nodes += 1
+        up = int(runtime.get("up", 0) or 0)
+        down = int(runtime.get("down", 0) or 0)
+        total_up += up
+        total_down += down
+        ip_count_raw = runtime.get("ip_count")
+        if ip_count_raw is not None:
+            try:
+                active_connections += max(0, int(ip_count_raw))
+                saw_ip_count = True
+            except Exception:
+                pass
+        age_raw = runtime.get("last_online_age_seconds")
+        iso_raw = str(runtime.get("last_online_at") or "").strip() or None
+        if age_raw is None or not iso_raw:
+            continue
+        try:
+            age_value = max(0, int(age_raw))
+        except Exception:
+            continue
+        if last_online_age_seconds is None or age_value < int(last_online_age_seconds):
+            last_online_age_seconds = age_value
+            last_online_at = iso_raw
+
+    if not saw_ip_count:
+        active_connections = int(active_nodes)
+        active_connections_source = "online_nodes" if known_nodes else "none"
+    else:
+        active_connections_source = "panel_ip_count"
+
+    if active_nodes > 0:
+        status = "online"
+    elif known_nodes > 0:
+        status = "offline"
+    else:
+        status = "unknown"
+
+    return {
+        "panel_state": "ok",
+        "panel_error": None,
+        "known_nodes": int(known_nodes),
+        "active_nodes": int(active_nodes),
+        "enabled_nodes": int(enabled_nodes),
+        "active_connections": int(active_connections),
+        "active_connections_source": active_connections_source,
+        "traffic_up_bytes": int(total_up),
+        "traffic_down_bytes": int(total_down),
+        "traffic_total_bytes": int(total_up + total_down),
+        "last_online_at": last_online_at,
+        "last_online_age_seconds": int(last_online_age_seconds) if last_online_age_seconds is not None else None,
+        "status": status,
+    }
+
+
 @app.get("/api/health")
 async def health() -> dict:
     return {"status": "ok", "ts": _utcnow().isoformat()}
@@ -3624,7 +3738,7 @@ async def pay_fail(request: Request):
     return HTMLResponse(
         content=_payment_page_html(
             title="Платеж не завершен",
-            message="Платеж не прошел. Можно повторить попытку или обратиться в поддержку через Telegram.",
+            message="Платеж не прошел. Можно повторить попытку или обратиться в службу заботы через Telegram.",
             action_url=action,
             action_label="Повторить оплату",
         )
@@ -4612,7 +4726,12 @@ async def user_data(tg_id: int, request: Request, x_telegram_init_data: str = He
         family_slots = _family_slots_for_user(s, tg_id)
         points_available, points_expiring_soon = available_points(tg_id=tg_id)
         total_gb = _plan_total_gb(user)
-        used_gb = round((usage["used_bytes"] / (1024**3)), 3) if usage else 0
+        runtime = await _get_user_runtime_summary(s=s, user=user, nodes=nodes_for_user)
+        runtime_used_bytes = int(runtime.get("traffic_total_bytes", 0) or 0)
+        legacy_used_bytes = int(usage["used_bytes"] or 0) if usage else 0
+        traffic_source = "panel_runtime" if runtime.get("panel_state") == "ok" and (runtime_used_bytes > 0 or int(runtime.get("known_nodes", 0) or 0) > 0) else "legacy_panel" if usage else "unavailable"
+        used_bytes = runtime_used_bytes if traffic_source == "panel_runtime" else legacy_used_bytes
+        used_gb = round((used_bytes / (1024**3)), 3) if used_bytes else 0
         remaining_gb = max(round(total_gb - used_gb, 3), 0) if total_gb > 0 else 0
         referral_code = (user.referral_code or "").strip()
         channel_link = f"https://t.me/{PUBLIC_CHANNEL}" if PUBLIC_CHANNEL else ""
@@ -4678,8 +4797,19 @@ async def user_data(tg_id: int, request: Request, x_telegram_init_data: str = He
             },
             "traffic": {
                 "used_gb": used_gb,
+                "used_bytes": int(used_bytes),
                 "total_gb": total_gb,
                 "remaining_gb": remaining_gb,
+                "source": traffic_source,
+            },
+            "connections": {
+                "status": str(runtime.get("status") or "unknown"),
+                "active_connections": int(runtime.get("active_connections", 0) or 0),
+                "active_nodes": int(runtime.get("active_nodes", 0) or 0),
+                "known_nodes": int(runtime.get("known_nodes", 0) or 0),
+                "last_online_at": runtime.get("last_online_at"),
+                "last_online_age_seconds": runtime.get("last_online_age_seconds"),
+                "source": "panel_runtime" if runtime.get("panel_state") == "ok" else "unavailable",
             },
             "support": {
                 "username": SUPPORT_USERNAME,
@@ -4759,9 +4889,16 @@ async def dashboard_snapshot(request: Request, x_telegram_init_data: str = Heade
 
         _maybe_downgrade_expired_to_free(s, user)
         _ensure_free_cycle_state_persisted(s, user)
+        nodes = enabled_nodes(s)
+        nodes_for_user = _nodes_for_user(user, nodes, session=s)
+        runtime = await _get_user_runtime_summary(s=s, user=user, nodes=nodes_for_user)
         usage = await _get_panel_usage_legacy(tg_id)
         total_gb = float(_plan_total_gb(user))
-        used_gb = round((usage["used_bytes"] / (1024**3)), 3) if usage else 0.0
+        runtime_used_bytes = int(runtime.get("traffic_total_bytes", 0) or 0)
+        legacy_used_bytes = int(usage["used_bytes"] or 0) if usage else 0
+        traffic_source = "panel_runtime" if runtime.get("panel_state") == "ok" and (runtime_used_bytes > 0 or int(runtime.get("known_nodes", 0) or 0) > 0) else "legacy_panel" if usage else "unavailable"
+        used_bytes = runtime_used_bytes if traffic_source == "panel_runtime" else legacy_used_bytes
+        used_gb = round((used_bytes / (1024**3)), 3) if used_bytes else 0.0
         remaining = max(round(total_gb - used_gb, 3), 0.0) if total_gb > 0 else 0.0
         expiry = user.expiry_at
         active = bool(user.is_active and expiry and expiry > _utcnow())
@@ -4781,7 +4918,8 @@ async def dashboard_snapshot(request: Request, x_telegram_init_data: str = Heade
             used_gb=float(used_gb),
             total_gb=float(total_gb),
             remaining_gb=float(remaining),
-            active_sessions=int(getattr(user, "active_sessions", 0) or 0),
+            active_sessions=int(runtime.get("active_connections", 0) or 0),
+            active_sessions_source=str(runtime.get("active_connections_source") or "none"),
             device_limit=int(_plan_device_limit(user) + family_slots),
             speed_limit_mbps=(
                 int(round((_effective_free_speed_kbps(user) * 8) / 1000))
@@ -4796,6 +4934,15 @@ async def dashboard_snapshot(request: Request, x_telegram_init_data: str = Heade
             family_slots=int(family_slots),
             subscription_url=sub_url,
             segment=segment,
+            connection_snapshot={
+                "status": str(runtime.get("status") or "unknown"),
+                "active_connections": int(runtime.get("active_connections", 0) or 0),
+                "active_nodes": int(runtime.get("active_nodes", 0) or 0),
+                "known_nodes": int(runtime.get("known_nodes", 0) or 0),
+                "last_online_at": runtime.get("last_online_at"),
+                "last_online_age_seconds": runtime.get("last_online_age_seconds"),
+                "source": "panel_runtime" if runtime.get("panel_state") == "ok" else "unavailable",
+            },
             active_offer=_active_offer_payload(tg_id),
             points={
                 "available": int(points_available),
@@ -5462,7 +5609,7 @@ async def create_user_ticket(payload: TicketCreateIn, request: Request, x_telegr
         s.close()
 
     if Settings.ADMIN_ID:
-        await _telegram_send_message(int(Settings.ADMIN_ID), f"🆕 Новый тикет #{ticket.id} от пользователя {tg_id}.")
+        await _telegram_send_message(int(Settings.ADMIN_ID), f"🆕 Новый обращение #{ticket.id} от пользователя {tg_id}.")
     track_event(tg_id=tg_id, event_name="ticket_created", source="webapp", meta={"ticket_id": int(ticket.id)})
     return {"ticket": _ticket_row(ticket, msgs)}
 
@@ -5518,9 +5665,9 @@ async def add_ticket_user_message(ticket_id: int, payload: TicketMessageIn, requ
         s.close()
 
     if role == "admin":
-        await _telegram_send_message(int(ticket.user_tg_id), f"💬 Новый ответ оператора в тикете #{ticket.id}.")
+        await _telegram_send_message(int(ticket.user_tg_id), f"💬 Новый ответ оператора в обращении #{ticket.id}.")
     elif Settings.ADMIN_ID:
-        await _telegram_send_message(int(Settings.ADMIN_ID), f"🆕 Новое сообщение в тикете #{ticket.id} от {actor}.")
+        await _telegram_send_message(int(Settings.ADMIN_ID), f"🆕 Новое сообщение в обращении #{ticket.id} от {actor}.")
     return {"ticket": _ticket_row(ticket, msgs)}
 
 
@@ -7900,7 +8047,7 @@ async def admin_ticket_reply(ticket_id: int, payload: AdminTicketReplyIn, x_tele
     finally:
         s.close()
 
-    await _telegram_send_message(int(ticket.user_tg_id), f"💬 Ответ оператора в тикете #{ticket.id}.")
+    await _telegram_send_message(int(ticket.user_tg_id), f"💬 Ответ оператора в обращении #{ticket.id}.")
     _audit_admin(actor_tg_id=actor, action="admin_ticket_reply", target_tg_id=int(ticket.user_tg_id), meta={"ticket_id": ticket.id})
     return {"ticket": _ticket_row(ticket, msgs)}
 
@@ -7924,7 +8071,7 @@ async def admin_ticket_status(ticket_id: int, payload: AdminTicketStatusIn, x_te
 
     _audit_admin(actor_tg_id=actor, action="admin_ticket_status", target_tg_id=int(ticket.user_tg_id), meta={"ticket_id": ticket.id, "status": new_status})
     if new_status == STATUS_CLOSED:
-        await _telegram_send_message(int(ticket.user_tg_id), f"✅ Тикет #{ticket.id} закрыт оператором.")
+        await _telegram_send_message(int(ticket.user_tg_id), f"✅ Обращение #{ticket.id} закрыто оператором.")
     return {"ticket": _ticket_row(ticket, msgs)}
 
 

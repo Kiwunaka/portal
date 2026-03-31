@@ -1,8 +1,8 @@
 "use client";
 
+import AppRouteLink from "@/components/app-route-link";
 import { usePortalSession } from "@/lib/session";
 import { Shield } from "lucide-react";
-import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useMemo } from "react";
 import { ADMIN_NAV_ITEMS } from "./nav";
@@ -27,9 +27,9 @@ function AdminStateCard({
         <h1 className="mt-2 font-display text-3xl font-bold">{title}</h1>
         <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">{description}</p>
         <div className="mt-4">
-          <Link href={primaryHref} className="outline-btn rounded-xl px-4 py-2 text-sm font-semibold uppercase tracking-[0.12em]">
+          <AppRouteLink href={primaryHref} className="outline-btn rounded-xl px-4 py-2 text-sm font-semibold uppercase tracking-[0.12em]">
             {primaryLabel}
-          </Link>
+          </AppRouteLink>
         </div>
       </section>
     </main>
@@ -111,12 +111,12 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         </div>
       </section>
 
-      <section className="glass-card p-2">
+      <section className="glass-card overflow-x-auto p-2">
         <nav className="flex flex-wrap gap-1.5">
           {ADMIN_NAV_ITEMS.map((item) => {
             const selected = active === item.href;
             return (
-              <Link
+              <AppRouteLink
                 key={item.href}
                 href={item.href}
                 className={`haptic-tap inline-flex items-center gap-1.5 rounded-xl px-3.5 py-2 text-xs font-semibold uppercase tracking-[0.1em] transition-all duration-200 ${
@@ -127,7 +127,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
               >
                 <span className="material-symbols-rounded text-base" style={{ fontSize: "16px" }}>{item.icon}</span>
                 <span className="hidden sm:inline">{item.label}</span>
-              </Link>
+              </AppRouteLink>
             );
           })}
         </nav>

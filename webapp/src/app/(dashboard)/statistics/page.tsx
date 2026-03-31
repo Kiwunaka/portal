@@ -71,9 +71,12 @@ export default function StatisticsPage() {
         hint: `Осталось ${formatGb(dash?.remaining_gb)}`,
       },
       {
-        label: "Устройства",
-        value: String(dash?.active_sessions ?? 0),
-        hint: `Лимит устройств ${dash?.device_limit ?? user?.limits?.device_limit ?? 1}`,
+        label: "Подключения",
+        value: `${dash?.connection_snapshot?.active_connections ?? dash?.active_sessions ?? 0} / ${dash?.device_limit ?? user?.limits?.device_limit ?? 1}`,
+        hint:
+          dash?.active_sessions_source === "panel_ip_count"
+            ? "Живой счетчик по нодам POKROV"
+            : "Резервный счетчик по активности на нодах",
       },
       {
         label: "Точки подключения",
@@ -90,7 +93,7 @@ export default function StatisticsPage() {
         <p className="font-mono text-xs uppercase tracking-[0.18em] text-slate-500">usage snapshot</p>
         <h1 className="mt-2 font-display text-4xl font-bold">Сводка по использованию</h1>
         <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">
-          Здесь мы показываем только реальные данные профиля: срок доступа, трафик, устройства и состояние точек подключения.
+          Здесь видно трафик, состояние подписки и живые подключения. Трафик и активность считаются серверно по нодам POKROV, а не только по приложению.
         </p>
       </section>
 
@@ -116,7 +119,7 @@ export default function StatisticsPage() {
             </div>
             <div className="flex flex-wrap gap-2">
               <AppRouteLink href="/subscription" className="outline-btn rounded-xl px-4 py-2 text-sm font-semibold">
-                Смотреть тарифы
+                Перейти к тарифам
               </AppRouteLink>
               <AppRouteLink href={config.botUrl} target="_blank" hardNavigate={false} className="btn-primary rounded-xl px-4 py-2 text-sm font-semibold">
                 Продолжить в Telegram
@@ -141,10 +144,10 @@ export default function StatisticsPage() {
         </article>
 
         <article className="glass-card p-6">
-          <h2 className="font-display text-2xl font-semibold">Что делать, если цифры не сходятся</h2>
+          <h2 className="font-display text-2xl font-semibold">Остались вопросы по статистике?</h2>
           <ul className="mt-4 space-y-2 text-sm text-slate-600 dark:text-slate-300">
             <li>Обновите страницу после смены тарифа или нового подключения.</li>
-            <li>Если точек подключения стало меньше ожидаемого, откройте поддержку или Telegram-бот.</li>
+            <li>Если точек подключения стало меньше ожидаемого, откройте службу заботы или Telegram-бот.</li>
             <li>Если нужен апгрейд по устройствам и трафику, переходите в раздел подписки.</li>
           </ul>
           <div className="mt-4 flex flex-wrap gap-2">
@@ -152,7 +155,7 @@ export default function StatisticsPage() {
               Раздел подписки
             </AppRouteLink>
             <AppRouteLink href={config.supportTelegramUrl} target="_blank" hardNavigate={false} className="btn-primary rounded-xl px-4 py-2 text-sm font-semibold">
-              Написать в поддержку
+              Написать в службу заботы
             </AppRouteLink>
           </div>
           {nodesError ? <p className="mt-3 text-xs text-amber-600 dark:text-amber-300">Не удалось обновить статус точек подключения: {nodesError}</p> : null}

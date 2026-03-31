@@ -62,9 +62,13 @@ def main() -> int:
             requirements = REPO_ROOT / "portal_bot" / "requirements.txt"
             if requirements.exists():
                 sftp.put(str(requirements), "/root/portal_bot/requirements.txt")
-            collector = REPO_ROOT / "scripts" / "collect_node_metrics.py"
-            if collector.exists():
-                sftp.put(str(collector), "/root/portal_bot/collect_node_metrics.py")
+            for source_name, target_name in (
+                ("collect_node_metrics.py", "collect_node_metrics.py"),
+                ("node_dataplane_probe.py", "node_dataplane_probe.py"),
+            ):
+                source = REPO_ROOT / "scripts" / source_name
+                if source.exists():
+                    sftp.put(str(source), f"/root/portal_bot/{target_name}")
         finally:
             sftp.close()
 

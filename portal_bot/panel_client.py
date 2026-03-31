@@ -461,6 +461,7 @@ class PanelClient:
 
             online = None
             last_online_epoch = None
+            ip_count_value = None
             if isinstance(stat, dict):
                 for key in ("online", "isOnline", "is_online"):
                     if key in stat:
@@ -470,9 +471,11 @@ class PanelClient:
                     ip_count = stat.get("ipCount", stat.get("ip_count"))
                     if ip_count is not None:
                         try:
-                            online = int(ip_count) > 0
+                            ip_count_value = max(0, int(ip_count))
+                            online = ip_count_value > 0
                         except Exception:
                             online = None
+                            ip_count_value = None
                 for key in ("lastOnlineTime", "lastOnline", "last_online", "lastSeen", "last_seen"):
                     if key in stat:
                         last_online_epoch = self._as_epoch_seconds(stat.get(key))
@@ -501,6 +504,7 @@ class PanelClient:
                 "up": up,
                 "down": down,
                 "total": up + down,
+                "ip_count": ip_count_value,
                 "last_online_at": last_online_at,
                 "last_online_age_seconds": last_online_age_seconds,
             }

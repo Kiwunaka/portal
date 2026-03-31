@@ -491,6 +491,225 @@ class ApiAuthAndTicketsTests(unittest.TestCase):
         nodes = r.json()["nodes"]
         self.assertEqual([row["code"] for row in nodes], ["it"])
 
+    def test_dashboard_uses_runtime_summary_for_usage_and_connections(self) -> None:
+        from db import SessionLocal
+        from models import Node, User, UserNode
+
+        gib = 1024 ** 3
+        s = SessionLocal()
+        try:
+            user = s.query(User).filter_by(tg_id=1001).first()
+            assert user is not None
+            user.sub_type = "PAID"
+            user.current_plan_code = "1_month"
+            user.total_gb = 50
+            user.expiry_at = datetime.utcnow() + timedelta(days=30)
+            user.sub_token = "subtoken-paid-1001"
+            it = Node(
+                code="it",
+                name="Italy",
+                host="it.example.test",
+                vless_port=443,
+                reality_sni="www.tim.it",
+                reality_pbk="pbk-it",
+                reality_sid="sid-it",
+                panel_base_url="https://it.example.test:8444",
+                panel_path="/panel",
+                panel_user="admin",
+                panel_pass="pass",
+                inbound_id=1,
+                enabled=True,
+            )
+            nl = Node(
+                code="nl",
+                name="Netherlands",
+                host="nl.example.test",
+                vless_port=443,
+                reality_sni="www.kpn.com",
+                reality_pbk="pbk-nl",
+                reality_sid="sid-nl",
+                panel_base_url="https://nl.example.test:8444",
+                panel_path="/panel",
+                panel_user="admin",
+                panel_pass="pass",
+                inbound_id=1,
+                enabled=True,
+            )
+            s.add_all([it, nl])
+            s.flush()
+            s.add_all(
+                [
+                    UserNode(tg_id=1001, node_id=it.id, client_uuid=str(user.uuid), panel_email=str(user.email)),
+                    UserNode(tg_id=1001, node_id=nl.id, client_uuid=str(user.uuid), panel_email=str(user.email)),
+                ]
+            )
+            s.commit()
+        finally:
+            s.close()
+
+        class FakePanel:
+            async def login(self):
+                return True
+
+            async def close(self):
+                return True
+
+            async def get_user_key_snapshots(self, *, tg_id: int, node_codes=None):
+                self.tg_id = tg_id
+                self.node_codes = node_codes or []
+                return [
+                    {
+                        "node_code": "it",
+                        "node_name": "Italy",
+                        "node_host": "it.example.test",
+                        "client": {"id": "it-client", "enable": True},
+                        "runtime": {
+                            "enable": True,
+                            "online": True,
+                            "up": gib,
+                            "down": gib,
+                            "total": 2 * gib,
+                            "ip_count": 2,
+                            "last_online_at": "2030-01-01T00:00:00Z",
+                            "last_online_age_seconds": 30,
+                        },
+                        "error": "",
+                    },
+                    {
+                        "node_code": "nl",
+                        "node_name": "Netherlands",
+                        "node_host": "nl.example.test",
+                        "client": {"id": "nl-client", "enable": True},
+                        "runtime": {
+                            "enable": True,
+                            "online": False,
+                            "up": gib // 2,
+                            "down": gib // 2,
+                            "total": gib,
+                            "ip_count": 0,
+                            "last_online_at": "2030-01-01T00:10:00Z",
+                            "last_online_age_seconds": 600,
+                        },
+                        "error": "",
+                    },
+                ]
+
+        async def fake_legacy_usage(_tg_id: int):
+            return None
+
+        original_panel = self.api.ControlPanel
+        original_legacy = self.api._get_panel_usage_legacy
+        self.api.ControlPanel = FakePanel
+        self.api._get_panel_usage_legacy = fake_legacy_usage
+        try:
+            hdrs = {"X-Telegram-Init-Data": self._init_data(1001, "alice")}
+            r = self.client.get("/api/dashboard", headers=hdrs)
+            self.assertEqual(r.status_code, 200, r.text)
+            body = r.json()
+            self.assertEqual(body["used_gb"], 3.0)
+            self.assertEqual(body["remaining_gb"], 0.0)
+            self.assertEqual(body["active_sessions"], 2)
+            self.assertEqual(body["active_sessions_source"], "panel_ip_count")
+            self.assertEqual(body["connection_snapshot"]["active_connections"], 2)
+            self.assertEqual(body["connection_snapshot"]["active_nodes"], 1)
+            self.assertEqual(body["connection_snapshot"]["known_nodes"], 2)
+            self.assertEqual(body["connection_snapshot"]["status"], "online")
+        finally:
+            self.api.ControlPanel = original_panel
+            self.api._get_panel_usage_legacy = original_legacy
+
+    def test_user_data_exposes_runtime_traffic_and_connections_without_app_install(self) -> None:
+        from db import SessionLocal
+        from models import Node, User, UserNode
+
+        gib = 1024 ** 3
+        s = SessionLocal()
+        try:
+            user = s.query(User).filter_by(tg_id=1001).first()
+            assert user is not None
+            user.sub_type = "PAID"
+            user.current_plan_code = "1_month"
+            user.total_gb = 25
+            user.expiry_at = datetime.utcnow() + timedelta(days=14)
+            user.app_install_id = None
+            user.app_device_name = None
+            user.sub_token = "subtoken-paid-1001"
+            it = Node(
+                code="it",
+                name="Italy",
+                host="it.example.test",
+                vless_port=443,
+                reality_sni="www.tim.it",
+                reality_pbk="pbk-it",
+                reality_sid="sid-it",
+                panel_base_url="https://it.example.test:8444",
+                panel_path="/panel",
+                panel_user="admin",
+                panel_pass="pass",
+                inbound_id=1,
+                enabled=True,
+            )
+            s.add(it)
+            s.flush()
+            s.add(UserNode(tg_id=1001, node_id=it.id, client_uuid=str(user.uuid), panel_email=str(user.email)))
+            s.commit()
+        finally:
+            s.close()
+
+        class FakePanel:
+            async def login(self):
+                return True
+
+            async def close(self):
+                return True
+
+            async def get_user_key_snapshots(self, *, tg_id: int, node_codes=None):
+                return [
+                    {
+                        "node_code": "it",
+                        "node_name": "Italy",
+                        "node_host": "it.example.test",
+                        "client": {"id": "it-client", "enable": True},
+                        "runtime": {
+                            "enable": True,
+                            "online": True,
+                            "up": gib,
+                            "down": gib // 2,
+                            "total": gib + (gib // 2),
+                            "ip_count": 1,
+                            "last_online_at": "2030-01-01T00:00:00Z",
+                            "last_online_age_seconds": 15,
+                        },
+                        "error": "",
+                    }
+                ]
+
+        async def fake_legacy_usage(_tg_id: int):
+            return None
+
+        original_panel = self.api.ControlPanel
+        original_legacy = self.api._get_panel_usage_legacy
+        self.api.ControlPanel = FakePanel
+        self.api._get_panel_usage_legacy = fake_legacy_usage
+        try:
+            hdrs = {"X-Telegram-Init-Data": self._init_data(1001, "alice")}
+            r = self.client.get("/api/user/1001", headers=hdrs)
+            self.assertEqual(r.status_code, 200, r.text)
+            body = r.json()
+            self.assertEqual(body["devices"], [])
+            self.assertEqual(int(body["sync"]["device_count"]), 0)
+            self.assertEqual(body["traffic"]["source"], "panel_runtime")
+            self.assertEqual(body["traffic"]["used_bytes"], gib + (gib // 2))
+            self.assertAlmostEqual(body["traffic"]["used_gb"], 1.5, places=3)
+            self.assertEqual(body["connections"]["active_connections"], 1)
+            self.assertEqual(body["connections"]["active_nodes"], 1)
+            self.assertEqual(body["connections"]["known_nodes"], 1)
+            self.assertEqual(body["connections"]["status"], "online")
+            self.assertEqual(body["connections"]["source"], "panel_runtime")
+        finally:
+            self.api.ControlPanel = original_panel
+            self.api._get_panel_usage_legacy = original_legacy
+
     def test_admin_node_disable_requires_resync_when_mapped_users_exist(self) -> None:
         from db import SessionLocal
         from models import Node, UserNode

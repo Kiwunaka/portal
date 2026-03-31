@@ -20,7 +20,7 @@ const BASE_NAV_ITEMS: NavItem[] = [
   { href: "/subscription", icon: "account_balance_wallet", label: "Подписка", match: (path) => path.startsWith("/subscription") },
   { href: "/devices", icon: "devices", label: "Устройства", match: (path) => path.startsWith("/devices") },
   { href: "/statistics", icon: "bar_chart", label: "Статистика", match: (path) => path.startsWith("/statistics") },
-  { href: "/support", icon: "support_agent", label: "Поддержка", match: (path) => path.startsWith("/support") },
+  { href: "/support", icon: "support_agent", label: "Служба заботы", match: (path) => path.startsWith("/support") },
 ];
 
 const config = getPortalPublicConfig(process.env as Record<string, string | undefined>);
@@ -134,8 +134,8 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <div className="relative min-h-screen" style={{ minHeight: "var(--tg-viewport-height, 100dvh)" }}>
-      <div className="mx-auto flex min-h-screen max-w-[1500px]">
+    <div className="relative min-h-screen overflow-x-clip" style={{ minHeight: "var(--tg-viewport-height, 100dvh)" }}>
+      <div className="mx-auto flex min-h-screen min-w-0 max-w-[1500px]">
         {!isAdminRoute ? (
           <aside className="hidden w-72 flex-col justify-between px-5 py-7 lg:flex">
           <div>
@@ -179,7 +179,7 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
         ) : null}
 
         <div
-          className={`flex-1 px-3 pt-4 md:px-6 lg:pt-7 ${isAdminRoute ? "pb-6" : "pb-28"}`}
+          className={`min-w-0 flex-1 px-3 pt-4 md:px-6 lg:pt-7 ${isAdminRoute ? "pb-6" : "pb-28"}`}
           style={{
             paddingTop: "max(1rem, var(--tg-safe-area-top, 0px))",
             paddingBottom: isAdminRoute ? "calc(1.25rem + var(--tg-safe-area-bottom, 0px))" : "calc(7rem + var(--tg-safe-area-bottom, 0px))",

@@ -195,6 +195,12 @@ Current operational monitoring should correlate:
 - per-node metrics freshness, sustained resource pressure, and probe-failure reasons
 - device and account visibility for support diagnosis
 
+Dashboard and user-cabinet traffic visibility must come from server-side node runtime snapshots rather than app-only telemetry.
+
+- current traffic usage should prefer live panel/runtime counters aggregated across the user nodes
+- current connection count should prefer runtime connection evidence such as active IP counts or active nodes
+- app device records remain useful, but they are a separate app-first visibility layer and must not be shown as the only source of "connected devices"
+
 Required external geography check:
 
 - run an RU-based external probe every `6 hours`
@@ -235,6 +241,8 @@ Operator diagnosis should be able to correlate:
 - device record
 - recent `last_ip`
 - current node/subscription context
+- current runtime connection footprint across assigned nodes
+- current traffic usage source, including whether it comes from runtime panel data or a fallback
 
 This visibility supports:
 

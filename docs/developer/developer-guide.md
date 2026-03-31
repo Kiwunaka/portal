@@ -87,6 +87,7 @@ Notes:
 - `webapp` owns the primary admin surface.
 - Real browser checks live under `webapp/e2e/`.
 - `tests/test_admin_webapp_smoke.py` is a structure/build smoke, not a replacement for Playwright browser coverage.
+- admin browser checks should include a narrow mobile or Telegram WebView-like viewport so tap targets, overflow, and modal actions stay usable inside the embedded webapp.
 
 Run inside the client repo:
 

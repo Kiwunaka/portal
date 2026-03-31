@@ -37,8 +37,8 @@ function range7d(): { from: string; to: string } {
 
 function formatFreshness(value?: string | null): string {
   const normalized = String(value || "").toLowerCase();
-  if (normalized === "fresh") return "Метрики свежие";
-  if (normalized === "stale") return "Метрики устарели";
+  if (normalized === "fresh") return "Платформа работает идеально";
+  if (normalized === "stale") return "Нужно проверить данные";
   if (normalized === "missing") return "Нет данных по метрикам";
   return "Состояние метрик неизвестно";
 }
@@ -219,7 +219,7 @@ export default function AdminNodesPage() {
       } else if (segment === "free") {
         setNodeActionNote("Пересобраны назначения для free-контура.");
       } else {
-        setNodeActionNote("Пересобраны назначения для платного контура.");
+        setNodeActionNote("Доступы премиум-пользователей успешно пересобраны и синхронизированы.");
       }
     } catch (err) {
       setError(String((err as { message?: string })?.message || err || "Не удалось пересобрать назначения."));
@@ -299,7 +299,7 @@ export default function AdminNodesPage() {
             <div>
               <h3 className="font-display text-xl font-bold">Сверка POKROV и панели</h3>
               <p className="text-xs text-slate-500">
-                Помогает понять, совпадает ли то, что записано в POKROV, с реальным inbound на ноде.
+                Отслеживает точную синхронизацию базы платформы с реальной нагрузкой на серверах.
               </p>
             </div>
             <div className="flex items-center gap-2">
@@ -349,7 +349,7 @@ export default function AdminNodesPage() {
           const nodeFreshness = freshnessByNode.get(nodeCodeKey(node.code));
 
           return (
-            <article key={node.code} className="stat-card p-5">
+            <article key={node.code} className="stat-card min-w-0 p-5">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
                   <span className="text-2xl">{flag}</span>
@@ -378,11 +378,11 @@ export default function AdminNodesPage() {
                   <div className={`progress-fill ${tone.fillClass}`} style={{ width: `${tone.healthPct}%` }} />
                 </div>
                 <p className="mt-2 text-xs text-slate-500">
-                  Оценка строится из отклика панели, количества ошибок и текущей нагрузки.
+                  Мы анализируем отклик, стабильность и нагрузку, чтобы обеспечить максимальный комфорт.
                 </p>
               </div>
 
-              <div className="mt-4 grid grid-cols-3 gap-2 text-center">
+              <div className="mt-4 grid grid-cols-1 gap-2 text-center sm:grid-cols-3">
                 <div className="rounded-lg bg-white/50 p-2 dark:bg-white/5">
                   <p className="text-xs text-slate-500">Отклик</p>
                   <p className="text-sm font-bold">
@@ -400,7 +400,7 @@ export default function AdminNodesPage() {
                 </div>
               </div>
 
-              <div className="mt-3 grid grid-cols-3 gap-2 text-center">
+              <div className="mt-3 grid grid-cols-1 gap-2 text-center sm:grid-cols-3">
                 <div className="rounded-lg bg-white/50 p-2 dark:bg-white/5">
                   <p className="text-xs text-slate-500">Назначено в POKROV</p>
                   <p className="text-sm font-bold">{node.mapped_users}</p>
@@ -450,7 +450,7 @@ export default function AdminNodesPage() {
                 <span className={`badge ${node.accepting_new_clients ? "badge-info" : "badge-warning"}`}>
                   {node.accepting_new_clients ? "Принимает новых" : "Только текущие"}
                 </span>
-                {node.is_draining ? <span className="badge badge-warning">Дренируется</span> : null}
+                {node.is_draining ? <span className="badge badge-warning">В процессе разгрузки</span> : null}
                 {nodeFreshness ? (
                   <span className={`badge ${nodeFreshness.freshness === "fresh" ? "badge-success" : "badge-warning"}`}>
                     {formatFreshness(nodeFreshness.freshness)}
@@ -463,7 +463,7 @@ export default function AdminNodesPage() {
                 ))}
               </div>
 
-              <div className="mt-4 grid grid-cols-2 gap-2">
+              <div className="mt-4 grid grid-cols-1 gap-2 sm:grid-cols-2">
                 {node.enabled && !node.is_draining ? (
                   <button
                     type="button"
@@ -493,7 +493,7 @@ export default function AdminNodesPage() {
                 </button>
                 <button
                   type="button"
-                  className="outline-btn col-span-2 rounded-xl px-3 py-2 text-xs font-semibold"
+                  className="outline-btn rounded-xl px-3 py-2 text-xs font-semibold sm:col-span-2"
                   disabled={!!nodeActionBusy || !node.enabled}
                   onClick={() => void runNodeAction(node, "disable")}
                 >

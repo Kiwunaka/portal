@@ -32,7 +32,7 @@ export default function DashboardPage() {
   const isTrialLike = ["FREE", "TRIAL", "BONUS"].includes(String(dash?.sub_type || "").toUpperCase()) || String(dash?.current_plan_code || "") === "trial";
   const primaryHref = dash?.is_active ? "/dashboard/downloads/" : "/subscription/checkout/";
   const primaryLabel = dash?.is_active
-    ? "Открыть приложения"
+    ? "Мои приложения"
     : getCopyText("webapp.dashboard.primary_cta", "Продлить доступ");
 
   useEffect(() => {
@@ -84,13 +84,13 @@ export default function DashboardPage() {
     ? isTrialLike
       ? "🚀 Тест запущен! Самое время открыть YouTube, TikTok или любимые сайты и проверить скорость. Спойлер: скорее всего, вам понравится."
       : "✨ Всё работает как надо. Пользуйтесь свободным интернетом, а статистика, настройки и продление всегда под рукой."
-    : "⏸ Доступ на паузе. Давайте быстро вернём вас в онлайн: выберите удобный тариф, и всё снова заработает без лишней суеты.";
+    : "⏸ Ваш профиль ожидает продления. Верните безлимитный интернет в пару кликов!";
 
   const nextStepBody = dash?.is_active
     ? isTrialLike
       ? "Откройте приложение, проверьте YouTube, TikTok, сайты и привычные сценарии. Если всё устраивает, следующий шаг — апгрейд на платный тариф."
       : "Здесь уже собраны ключ, QR, приложения и кнопка продления. Ничего дополнительно искать не нужно."
-    : "Если касса сейчас ведёт себя нестабильно, основной fallback остаётся простым: продолжить через Telegram и не терять пользователя в битом checkout.";
+    : "Если платежный шлюз временно перегружен, мы предложим комфортно оплатить через Telegram.";
 
   return (
     <main className="space-y-6">
@@ -118,10 +118,10 @@ export default function DashboardPage() {
               {primaryLabel}
             </AppRouteLink>
             <AppRouteLink href="/subscription/" className="outline-btn rounded-xl px-5 py-2.5 text-sm font-semibold uppercase tracking-[0.12em]">
-              Смотреть тарифы
+              Перейти к тарифам
             </AppRouteLink>
             <AppRouteLink href="/support/" className="outline-btn rounded-xl px-5 py-2.5 text-sm font-semibold uppercase tracking-[0.12em]">
-              {getCopyText("webapp.dashboard.support_cta", "Поддержка")}
+              {getCopyText("webapp.dashboard.support_cta", "Служба заботы")}
             </AppRouteLink>
           </div>
         </article>
@@ -130,11 +130,11 @@ export default function DashboardPage() {
           <p className="font-mono text-xs uppercase tracking-[0.16em] text-slate-500">что делать дальше</p>
           <h2 className="mt-3 font-display text-2xl font-bold">{nextStepTitle}</h2>
           <div className="mt-4 space-y-2 text-sm text-slate-600 dark:text-slate-300">
-            <p>План: {dash?.current_plan_code || dash?.sub_type || "—"}</p>
+            <p>Ваш тариф: {dash?.current_plan_code || dash?.sub_type || "—"}</p>
             <p>До окончания: {fmtDate(dash?.expiry_at)}</p>
-            <p>Устройств: {dash?.device_limit ?? "—"}</p>
-            <p>Сессий: {dash?.active_sessions ?? "—"}</p>
-            <p>Точки подключения: {connectionPointsLabel}</p>
+            <p>Лимит устройств: {dash?.device_limit ?? "—"}</p>
+            <p>Подключений сейчас: {dash?.connection_snapshot?.active_connections ?? dash?.active_sessions ?? "—"}</p>
+            <p>Активные серверы: {connectionPointsLabel}</p>
           </div>
           {nodesLoading && !nodes.length ? <p className="mt-3 text-xs text-slate-500">Проверяем точки подключения...</p> : null}
           {nodesError ? <p className="mt-3 text-xs text-rose-500">{nodesError}</p> : null}
@@ -144,7 +144,7 @@ export default function DashboardPage() {
       {isTrialLike ? (
         <section className="glass-card p-6">
           <p className="font-mono text-xs uppercase tracking-[0.16em] text-emerald-600 dark:text-emerald-300">trial-first</p>
-          <h2 className="mt-2 font-display text-3xl font-bold">Тест уже работает. Останется только решить, нужен ли полный доступ.</h2>
+          <h2 className="mt-2 font-display text-3xl font-bold">Вы в бонусном периоде! Наслаждайтесь высокой скоростью, а после выберите удобный тариф.</h2>
           <p className="mt-3 max-w-3xl text-sm text-slate-600 dark:text-slate-300">
             Проверьте сервис на своих устройствах и в привычных сценариях. Если всё устраивает, переходите в тарифы и продлевайте без повторной настройки.
           </p>
@@ -185,17 +185,17 @@ export default function DashboardPage() {
 
         <div className="grid gap-5 lg:grid-cols-[1.4fr,0.9fr]">
           <article className="rounded-2xl border border-white/45 bg-white/65 p-4 dark:border-white/10 dark:bg-white/5">
-            <p className="text-xs uppercase tracking-[0.14em] text-slate-500">Ссылка для приложения</p>
+            <p className="text-xs uppercase tracking-[0.14em] text-slate-500">Ваша премиум-ссылка</p>
             <p className="mt-3 break-all font-mono text-xs leading-6 text-slate-700 dark:text-slate-200">
               {maskKey(connectionKey, keyVisible)}
             </p>
             <p className="mt-3 text-xs text-slate-500">Используйте эту ссылку только на своих устройствах.</p>
             {copyState === "ok" ? <p className="mt-2 text-xs text-emerald-600 dark:text-emerald-300">Ссылка скопирована.</p> : null}
-            {copyState === "fail" ? <p className="mt-2 text-xs text-rose-500">Не удалось скопировать ссылку.</p> : null}
+            {copyState === "fail" ? <p className="mt-2 text-xs text-rose-500">Ой, ссылка не скопировалась. Попробуйте еще раз.</p> : null}
           </article>
 
           <article className="rounded-2xl border border-white/45 bg-white/65 p-4 dark:border-white/10 dark:bg-white/5">
-            <p className="text-xs uppercase tracking-[0.14em] text-slate-500">QR-код</p>
+            <p className="text-xs uppercase tracking-[0.14em] text-slate-500">Умный Умный QR-код доступа доступа</p>
             <SubscriptionQrCard value={connectionKey} active={qrVisible} />
           </article>
         </div>

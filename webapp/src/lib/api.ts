@@ -53,11 +53,21 @@ export type DashboardSnapshot = {
   total_gb: number;
   remaining_gb: number;
   active_sessions: number;
+  active_sessions_source?: string | null;
   device_limit: number;
   speed_limit_mbps?: number | null;
   free_next_reset_at?: string | null;
   family_slots?: number;
   subscription_url: string;
+  connection_snapshot?: {
+    status: string;
+    active_connections: number;
+    active_nodes: number;
+    known_nodes: number;
+    last_online_at?: string | null;
+    last_online_age_seconds?: number | null;
+    source?: string | null;
+  } | null;
   active_offer?: {
     id: number;
     offer_type: string;
@@ -121,10 +131,37 @@ export type UserPayload = {
     total_gb: number;
     speed_mbps?: number | null;
   };
+  devices?: Array<{
+    id: string;
+    name: string;
+    platform?: string | null;
+    os_version?: string | null;
+    app_version?: string | null;
+    last_seen_at?: string | null;
+    is_active?: boolean;
+    is_current?: boolean;
+  }>;
+  sync?: {
+    app_identity_known?: boolean;
+    telegram_linked?: boolean;
+    subscription_ready?: boolean;
+    device_count?: number;
+  };
   traffic: {
     used_gb: number;
+    used_bytes?: number;
     total_gb: number;
     remaining_gb: number;
+    source?: string | null;
+  };
+  connections?: {
+    status: string;
+    active_connections: number;
+    active_nodes: number;
+    known_nodes: number;
+    last_online_at?: string | null;
+    last_online_age_seconds?: number | null;
+    source?: string | null;
   };
   support: {
     username: string;

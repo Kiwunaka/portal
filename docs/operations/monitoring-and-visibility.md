@@ -106,10 +106,12 @@ Operational rule:
 
 - `portal-node-metrics.timer` must stay healthy on every relevant host
 - hoster CPU warnings should trigger a review of per-node metrics plus control-plane load on the canonical host
+- code deploys for the metrics collector must ship both `collect_node_metrics.py` and `node_dataplane_probe.py`, otherwise the systemd job will fail with an import error on the control-plane host
 
 Primary repository touchpoints:
 
 - `scripts/collect_node_metrics.py`
+- `scripts/node_dataplane_probe.py`
 - `infra/portal-node-metrics.service`
 - `infra/portal-node-metrics.timer`
 - `/api/admin/metrics/status`

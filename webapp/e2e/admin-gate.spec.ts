@@ -56,9 +56,25 @@ function mockSessionUser(isAdmin: boolean) {
     segment: "PAID",
     expiry_at: "2030-01-01T00:00:00",
     family_slots: 0,
+    devices: [],
+    sync: {
+      app_identity_known: false,
+      telegram_linked: true,
+      subscription_ready: true,
+      device_count: 0,
+    },
     nodes: [],
     limits: { device_limit: 5, total_gb: 0, speed_mbps: 100 },
-    traffic: { used_gb: 0, total_gb: 0, remaining_gb: 0 },
+    traffic: { used_gb: 0, used_bytes: 0, total_gb: 0, remaining_gb: 0, source: "panel_runtime" },
+    connections: {
+      status: "online",
+      active_connections: 0,
+      active_nodes: 0,
+      known_nodes: 0,
+      last_online_at: null,
+      last_online_age_seconds: null,
+      source: "panel_runtime",
+    },
     support: {
       username: "pokrov_supportbot",
       link: "https://t.me/pokrov_supportbot",
@@ -93,11 +109,21 @@ function mockDashboard() {
     total_gb: 0,
     remaining_gb: 0,
     active_sessions: 0,
+    active_sessions_source: "panel_ip_count",
     device_limit: 5,
     speed_limit_mbps: 100,
     free_next_reset_at: null,
     family_slots: 0,
     subscription_url: "https://api.pokrov.space/s8Kx2mP7qR4wT/mock_token",
+    connection_snapshot: {
+      status: "online",
+      active_connections: 0,
+      active_nodes: 0,
+      known_nodes: 0,
+      last_online_at: null,
+      last_online_age_seconds: null,
+      source: "panel_runtime",
+    },
     active_offer: null,
     points: { available: 0, expiring_soon: 0, monthly_cap: 300, expires_days: 90 },
     features: { haptic: true, lottie: true },
@@ -711,11 +737,69 @@ test.describe("Admin gate", () => {
     await page.locator("tbody tr").first().click();
     await expect(page.getByRole("button", { name: "Удалить manual/test пользователя" }).first()).toBeVisible();
 
-    page.once("dialog", (dialog) => dialog.accept());
     await page.getByRole("button", { name: "Удалить manual/test пользователя" }).first().click();
+    await expect(page.getByRole("heading", { name: "Удалить manual/test пользователя" })).toBeVisible();
+    await page.getByRole("button", { name: "Удалить пользователя" }).click();
 
     await expect(page.getByText("Manual/test пользователь удалён.")).toBeVisible();
     await expect(page.getByText("По текущим фильтрам пользователей нет.")).toBeVisible();
+  });
+
+  test("keeps admin pages clickable and inside the viewport on mobile", async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await registerApiMocks(page, {
+      isAdmin: true,
+      userRows: [
+        makeAdminUserRow({
+          tg_id: -7001,
+          username: null,
+          display_name: "Router Lab",
+          sub_type: "MANUAL",
+          is_active: true,
+          effective_active: false,
+          status: "manual_test",
+          origin: "manual_test",
+          is_manual: true,
+          linked_telegram_id: null,
+          linked_telegram_username: null,
+          app_install_id: null,
+          created_at: "2030-01-02T00:00:00",
+        }),
+      ],
+    });
+
+    await page.goto("admin/");
+    await page.getByRole("link", { name: /Пользователи/i }).first().click();
+    await expect(page).toHaveURL(/\/admin\/users\/?$/);
+
+    await page.locator("select").nth(0).selectOption("manual_test");
+    await page.locator("select").nth(1).selectOption("manual_test");
+    await page.locator("tbody tr").first().click();
+    await page.getByRole("button", { name: "Удалить manual/test пользователя" }).first().click();
+    await expect(page.getByRole("button", { name: "Отмена" })).toBeVisible();
+    await page.getByRole("button", { name: "Отмена" }).click();
+
+    const usersWidth = await page.evaluate(() => ({
+      viewport: window.innerWidth,
+      page: document.documentElement.scrollWidth,
+    }));
+    expect(usersWidth.page).toBeLessThanOrEqual(usersWidth.viewport + 1);
+
+    await page.goto("admin/nodes/");
+    const nodesWidth = await page.evaluate(() => ({
+      viewport: window.innerWidth,
+      page: document.documentElement.scrollWidth,
+    }));
+    expect(nodesWidth.page).toBeLessThanOrEqual(nodesWidth.viewport + 1);
+
+    await page.goto("admin/tickets/");
+    await page.getByPlaceholder("Напишите ответ пользователю простыми словами").fill("Проверили мобильную админку.");
+    await expect(page.getByRole("button", { name: "Отправить" })).toBeVisible();
+    const ticketsWidth = await page.evaluate(() => ({
+      viewport: window.innerWidth,
+      page: document.documentElement.scrollWidth,
+    }));
+    expect(ticketsWidth.page).toBeLessThanOrEqual(ticketsWidth.viewport + 1);
   });
 
   test("shows node alert labels and probe failure details", async ({ page }) => {
@@ -764,7 +848,7 @@ test.describe("Admin gate", () => {
 
     await page.goto("admin/nodes/");
     await expect(page.getByText("US: Клиенты")).toBeVisible();
-    await expect(page.locator(".badge", { hasText: "Метрики устарели" }).first()).toBeVisible();
+    await expect(page.locator(".badge", { hasText: "Нужно проверить данные" }).first()).toBeVisible();
     await expect(page.getByText(/Сбой проверки/i)).toBeVisible();
     await expect(page.getByText("tls handshake failed")).toBeVisible();
   });

@@ -22,9 +22,11 @@ export default function DevicesPage() {
   const { loading, error, user, dash } = usePortalSession();
   const [toast, setToast] = useState<string | null>(null);
 
-  const activeSessions = Math.max(0, Number(dash?.active_sessions || 0));
+  const activeConnections = Math.max(0, Number(dash?.connection_snapshot?.active_connections ?? dash?.active_sessions ?? 0));
   const deviceLimit = Math.max(1, Number(dash?.device_limit || user?.limits?.device_limit || 1));
-  const freeSlots = Math.max(0, deviceLimit - activeSessions);
+  const knownAppDevices = Math.max(0, Number(user?.sync?.device_count ?? user?.devices?.length ?? 0));
+  const activeNodes = Math.max(0, Number(dash?.connection_snapshot?.active_nodes ?? 0));
+  const knownNodes = Math.max(0, Number(dash?.connection_snapshot?.known_nodes ?? user?.nodes?.length ?? 0));
   const trialMode = isTrialLike(dash?.sub_type || dash?.current_plan_code || user?.sub_type);
 
   const nodes = useMemo(() => {
@@ -45,7 +47,7 @@ export default function DevicesPage() {
       await navigator.clipboard.writeText(value);
       popToast("Ссылка доступа скопирована.");
     } catch {
-      popToast("Не удалось скопировать ссылку.");
+      popToast("Ой, ссылка не скопировалась. Попробуйте еще раз.");
     }
   };
 
@@ -81,21 +83,28 @@ export default function DevicesPage() {
         <p className="font-mono text-xs uppercase tracking-[0.18em] text-slate-500">devices</p>
         <h1 className="mt-2 font-display text-4xl font-bold">Устройства и точки подключения</h1>
         <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">
-          Здесь видно, сколько устройств уже подключено, сколько слотов доступно сейчас и какие точки работают по вашему профилю.
+          Живые подключения считаются по runtime нод POKROV. Это работает не только для приложения, но и для импортированного конфига на сайте, в боте и вручную.
         </p>
 
         <div className="mt-5 grid gap-3 sm:grid-cols-3">
           <div className="rounded-xl bg-white/70 p-3 dark:bg-white/10">
-            <p className="text-xs text-slate-500">Подключено сейчас</p>
-            <p className="mt-1 text-2xl font-semibold">{fmtNumber(activeSessions)}</p>
+            <p className="text-xs text-slate-500">Подключений сейчас</p>
+            <p className="mt-1 text-2xl font-semibold">
+              {fmtNumber(activeConnections)} / {fmtNumber(deviceLimit)}
+            </p>
+            <p className="mt-1 text-[11px] text-slate-500">Из доступных слотов тарифа</p>
           </div>
           <div className="rounded-xl bg-white/70 p-3 dark:bg-white/10">
-            <p className="text-xs text-slate-500">Лимит устройств</p>
-            <p className="mt-1 text-2xl font-semibold">{fmtNumber(deviceLimit)}</p>
+            <p className="text-xs text-slate-500">Нод с активностью</p>
+            <p className="mt-1 text-2xl font-semibold">
+              {fmtNumber(activeNodes)} / {fmtNumber(knownNodes)}
+            </p>
+            <p className="mt-1 text-[11px] text-slate-500">Где сейчас виден ваш ключ</p>
           </div>
           <div className="rounded-xl bg-white/70 p-3 dark:bg-white/10">
-            <p className="text-xs text-slate-500">Свободные слоты</p>
-            <p className="mt-1 text-2xl font-semibold">{fmtNumber(freeSlots)}</p>
+            <p className="text-xs text-slate-500">Известных app-устройств</p>
+            <p className="mt-1 text-2xl font-semibold">{fmtNumber(knownAppDevices)}</p>
+            <p className="mt-1 text-[11px] text-slate-500">Это отдельная app-first телеметрия</p>
           </div>
         </div>
 
@@ -104,10 +113,10 @@ export default function DevicesPage() {
             Скопировать ссылку доступа
           </button>
           <AppRouteLink href="/dashboard/downloads" className="outline-btn rounded-xl px-4 py-2 text-sm font-semibold">
-            Открыть приложения
+            Мои приложения
           </AppRouteLink>
           <AppRouteLink href={config.supportTelegramUrl} target="_blank" hardNavigate={false} className="btn-primary rounded-xl px-4 py-2 text-sm font-semibold">
-            Поддержка
+            Служба заботы
           </AppRouteLink>
         </div>
       </section>
@@ -124,7 +133,7 @@ export default function DevicesPage() {
             </div>
             <div className="flex flex-wrap gap-2">
               <AppRouteLink href="/subscription" className="outline-btn rounded-xl px-4 py-2 text-sm font-semibold">
-                Смотреть тарифы
+                Перейти к тарифам
               </AppRouteLink>
               <AppRouteLink href={config.botUrl} target="_blank" hardNavigate={false} className="btn-primary rounded-xl px-4 py-2 text-sm font-semibold">
                 Продолжить в Telegram
@@ -158,7 +167,7 @@ export default function DevicesPage() {
             ))}
           </div>
         ) : (
-          <p className="text-sm text-slate-500">Точки подключения пока не назначены. Если это выглядит неожиданно, напишите в поддержку.</p>
+          <p className="text-sm text-slate-500">Точки подключения пока не назначены. Если это выглядит неожиданно, напишите в службу заботы.</p>
         )}
       </section>
 

@@ -121,6 +121,7 @@ type AdminActionDialog =
   | { kind: "message"; text: string }
   | { kind: "extend"; days: string }
   | { kind: "create"; displayName: string; days: string }
+  | { kind: "deleteConfirm"; tgId: number; displayName: string }
   | { kind: "bulkConfirm" }
   | { kind: "token"; subscriptionUrl: string; syncOk: boolean }
   | null;
@@ -380,11 +381,19 @@ export default function AdminUsersPage() {
 
   const actionDeleteTestUser = async (): Promise<void> => {
     if (!selectedTgId || !isManualTestUserLike(selected?.user)) return;
-    if (!window.confirm(`Удалить manual/test пользователя #${selectedTgId}? Действие нельзя отменить.`)) return;
+    const displayName = String(selected?.user.display_name || selected?.user.username || `#${selectedTgId}`);
+    setDialog({ kind: "deleteConfirm", tgId: selectedTgId, displayName });
+  };
+
+  const submitDeleteTestUserDialog = async (): Promise<void> => {
+    if (!dialog || dialog.kind !== "deleteConfirm") return;
+    const targetTgId = Number(dialog.tgId || 0);
+    if (!targetTgId) return;
     setBusy(true);
     try {
-      await adminDeleteTestUser(selectedTgId);
+      await adminDeleteTestUser(targetTgId);
       setOkMessage("Manual/test пользователь удалён.");
+      setDialog(null);
       selectedIdRef.current = 0;
       setSelected(null);
       setKeyHistoryRows([]);
@@ -579,8 +588,8 @@ export default function AdminUsersPage() {
 
   return (
     <section className="grid gap-4 xl:grid-cols-[1fr,1fr]">
-      <article className="glass-card p-4">
-        <div className="mb-3 grid gap-2 lg:grid-cols-[minmax(0,1.7fr),repeat(4,minmax(0,0.9fr)),auto,auto]">
+      <article className="glass-card min-w-0 p-4">
+        <div className="mb-3 grid gap-2 sm:grid-cols-2 2xl:grid-cols-[minmax(0,1.7fr),repeat(3,minmax(0,0.9fr)),auto,auto]">
           <input
             value={query}
             onChange={(event) => {
@@ -734,7 +743,7 @@ export default function AdminUsersPage() {
           <span>Безопасное удаление доступно только для явных manual/test пользователей.</span>
         </div>
 
-        <div className="max-h-[58vh] overflow-auto rounded-xl border border-white/20">
+        <div className="max-h-[58vh] overflow-x-auto overflow-y-auto rounded-xl border border-white/20">
           <table className="min-w-full text-sm">
             <thead>
               <tr className="text-left text-slate-500">
@@ -795,7 +804,7 @@ export default function AdminUsersPage() {
         </div>
       </article>
 
-      <article className="glass-card p-4">
+      <article className="glass-card min-w-0 p-4">
         {!selected ? (
           <p className="text-sm text-slate-500">Выберите пользователя в таблице, чтобы открыть детали.</p>
         ) : (
@@ -945,7 +954,7 @@ export default function AdminUsersPage() {
                 <div className="rounded-xl bg-white/70 p-3 text-sm dark:bg-white/10">
                   <p className="mb-2 font-semibold">Сводка по подключению</p>
                   <p className="mb-2 text-xs text-slate-500">
-                    Этот блок объединяет состояние нод пользователя, сигналы синхронизации панели и здоровье подписки в один операторский срез.
+                    Единое окно контроля профиля: мониторинг состояния серверов, биллинга и коннекта пользователя.
                   </p>
                   {summary ? (
                     <div className="grid gap-2 text-xs sm:grid-cols-2">
@@ -960,7 +969,7 @@ export default function AdminUsersPage() {
                     <p className="text-xs text-slate-500">Сводка по этому пользователю пока недоступна.</p>
                   )}
                 </div>
-                <h3 className="mt-4 font-display text-xl font-semibold">Тикеты поддержки</h3>
+                <h3 className="mt-4 font-display text-xl font-semibold">Обращения поддержки</h3>
                 <div className="mt-2 space-y-2">
                   {(selected.tickets || []).map((ticket) => (
                     <div key={ticket.id} className="rounded-xl bg-white/70 p-3 text-sm dark:bg-white/10">
@@ -968,7 +977,7 @@ export default function AdminUsersPage() {
                       <p className="text-xs text-slate-500">{ticket.last_message_preview || "Превью сообщения пока нет"}</p>
                     </div>
                   ))}
-                  {!selected.tickets?.length ? <p className="text-xs text-slate-500">Тикетов пока нет.</p> : null}
+                  {!selected.tickets?.length ? <p className="text-xs text-slate-500">Обращениеов пока нет.</p> : null}
                 </div>
               </>
             ) : null}
@@ -1155,7 +1164,7 @@ export default function AdminUsersPage() {
 
       {dialog ? (
         <div className="fixed inset-0 z-[260] flex items-center justify-center bg-slate-950/65 p-4">
-          <div className="glass-card w-full max-w-lg p-5">
+          <div className="glass-card max-h-[min(92vh,720px)] w-full max-w-lg overflow-auto p-5">
             {dialog.kind === "message" ? (
               <>
                 <h3 className="font-display text-xl font-semibold">Сообщение пользователю</h3>
@@ -1225,6 +1234,23 @@ export default function AdminUsersPage() {
                   </button>
                   <button className="btn-primary rounded-xl px-4 py-2 text-sm font-semibold" type="button" disabled={busy} onClick={() => void submitCreateManualDialog()}>
                     Создать
+                  </button>
+                </div>
+              </>
+            ) : null}
+
+            {dialog.kind === "deleteConfirm" ? (
+              <>
+                <h3 className="font-display text-xl font-semibold">Удалить manual/test пользователя</h3>
+                <p className="mt-2 text-sm text-slate-500">
+                  Вы собираетесь удалить <strong>{dialog.displayName}</strong> ({dialog.tgId}). Это действие необратимо и доступно только для явных manual/test аккаунтов.
+                </p>
+                <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:justify-end">
+                  <button className="outline-btn rounded-xl px-4 py-2 text-sm font-semibold" type="button" onClick={() => setDialog(null)}>
+                    Отмена
+                  </button>
+                  <button className="btn-primary rounded-xl px-4 py-2 text-sm font-semibold" type="button" disabled={busy} onClick={() => void submitDeleteTestUserDialog()}>
+                    Удалить пользователя
                   </button>
                 </div>
               </>

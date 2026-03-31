@@ -43,7 +43,7 @@ export default function AdminTicketsPage() {
         setSelectedId(0);
       }
     } catch (err) {
-      setError(String((err as { message?: string })?.message || err || "Не удалось загрузить тикеты."));
+      setError(String((err as { message?: string })?.message || err || "Не удалось загрузить обращения."));
     }
   }, [statusFilter]);
 
@@ -76,7 +76,7 @@ export default function AdminTicketsPage() {
       const updated = await adminTicketStatus(selected.id, nextStatus);
       setTickets((prev) => prev.map((row) => (row.id === updated.id ? updated : row)));
     } catch (err) {
-      setError(String((err as { message?: string })?.message || err || "Не удалось обновить статус тикета."));
+      setError(String((err as { message?: string })?.message || err || "Не удалось обновить статус обращения."));
     } finally {
       setBusy(false);
     }
@@ -86,12 +86,12 @@ export default function AdminTicketsPage() {
 
   return (
     <section className="grid gap-4 xl:grid-cols-[0.9fr,1.1fr]">
-      <article className="glass-card p-4">
+      <article className="glass-card min-w-0 p-4">
         <div className="mb-3 rounded-xl bg-white/60 p-3 text-xs text-slate-500 dark:bg-white/5 dark:text-slate-400">
           Здесь собраны обращения пользователей. Слева список диалогов, справа переписка и быстрые статусы. Если нужно
           быстро разобрать очередь, начните с фильтра и верхних карточек.
         </div>
-        <div className="mb-3 flex flex-wrap items-center gap-2">
+        <div className="mb-3 flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
           <div className="stat-icon stat-icon-amber">
             <MessageCircle size={18} />
           </div>
@@ -119,7 +119,7 @@ export default function AdminTicketsPage() {
           {tickets.length === 0 ? (
             <div className="empty-state">
               <Inbox size={32} />
-              <p className="text-sm">Нет тикетов</p>
+              <p className="text-sm">Нет обращениеов</p>
             </div>
           ) : null}
           {tickets.map((ticket) => {
@@ -137,7 +137,7 @@ export default function AdminTicketsPage() {
                   <span className="text-sm font-bold">#{ticket.id}</span>
                   <span className={`badge ${meta.color}`}>{meta.badge}</span>
                 </div>
-                <p className="mt-1.5 text-sm font-medium">{ticket.subject || "Без темы"}</p>
+                <p className="mt-1.5 text-sm font-medium">{ticket.subject || "Новое обращение"}</p>
                 <p className="mt-1 text-xs text-slate-500 line-clamp-1">{ticket.last_message_preview || "Нет сообщений"}</p>
               </button>
             );
@@ -145,17 +145,17 @@ export default function AdminTicketsPage() {
         </div>
       </article>
 
-      <article className="glass-card p-4">
+      <article className="glass-card min-w-0 p-4">
         {!selected ? (
           <div className="empty-state min-h-[300px]">
             <MessageCircle size={36} />
-            <p className="text-sm">Выберите тикет в левом списке</p>
+            <p className="text-sm">Выберите обращение в левом списке</p>
           </div>
         ) : (
           <>
             <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
               <div>
-                <h2 className="font-display text-2xl font-bold">Тикет #{selected.id}</h2>
+                <h2 className="font-display text-2xl font-bold">Обращение #{selected.id}</h2>
                 <p className="mt-0.5 text-xs text-slate-500">Последнее обновление: {fmtRuDate(selected.updated_at)}</p>
               </div>
               <div className="flex flex-wrap gap-1.5">
@@ -217,10 +217,10 @@ export default function AdminTicketsPage() {
                   }
                 }}
               />
-              <div className="flex items-center justify-between gap-3">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <p className="text-[10px] text-slate-400">Подсказка: можно отправить быстрее через Ctrl/⌘ + Enter</p>
                 <button
-                  className="btn-primary inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold uppercase tracking-[0.12em]"
+                  className="btn-primary inline-flex w-full items-center justify-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold uppercase tracking-[0.12em] sm:w-auto"
                   type="button"
                   onClick={() => void sendReply()}
                   disabled={busy || !reply.trim()}
