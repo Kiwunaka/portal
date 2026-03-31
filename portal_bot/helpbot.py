@@ -103,7 +103,7 @@ def _main_menu(is_admin: bool) -> InlineKeyboardMarkup:
 def _welcome_text(is_admin: bool) -> str:
     headline = get_copy_text(
         "bot.support.welcome",
-        "Поддержка POKROV VPN рядом. Откройте новый запрос или продолжите уже начатый диалог без лишних шагов.",
+        "Служба заботы POKROV VPN рядом. Откройте новый запрос или продолжите уже начатый диалог без лишних шагов.",
     )
     text = (
         f"👨‍💻 *{headline}*\n\n"
@@ -112,7 +112,7 @@ def _welcome_text(is_admin: bool) -> str:
         "👇 *Выберите действие:*"
     )
     if is_admin:
-        text += "\n\nРежим оператора: доступна очередь тикетов и ручной ответ пользователям."
+        text += "\n\nРежим оператора: доступна очередь обращениеов и ручной ответ пользователям."
     return text
 
 
@@ -173,7 +173,7 @@ async def _notify_admin(bot: Bot, text: str) -> None:
 
 def _main_bot_hint() -> str:
     if not MAIN_BOT_USERNAME:
-        return "Ответить можно из очереди тикетов в основном боте."
+        return "Ответить можно из очереди обращениеов в основном боте."
     return f"Ответ из админки: https://t.me/{MAIN_BOT_USERNAME}"
 
 
@@ -195,7 +195,7 @@ async def _render_ticket(callback: CallbackQuery, ticket_id: int) -> None:
     try:
         ticket = get_ticket_by_id(session, ticket_id)
         if not ticket:
-            await _safe_answer(callback, "Тикет не найден", show_alert=True)
+            await _safe_answer(callback, "Обращение не найден", show_alert=True)
             return
         if not can_access_ticket(ticket, tg_id, ADMIN_ID):
             await _safe_answer(callback, "Нет доступа", show_alert=True)
@@ -209,7 +209,7 @@ async def _render_ticket(callback: CallbackQuery, ticket_id: int) -> None:
         history = "\n".join(lines) if lines else "Сообщений пока нет."
 
         text = (
-            f"🎫 Тикет #{ticket.id}\n"
+            f"🎫 Обращение #{ticket.id}\n"
             f"Статус: {_ticket_status_title(ticket.status)}\n"
             f"Пользователь: {ticket.user_tg_id}\n"
             f"Создан: {_now_str(ticket.created_at)}\n"
@@ -247,10 +247,10 @@ async def start(message: Message) -> None:
                 f"🆕 Новый запрос #{ticket.id} от пользователя {tg_id} (helpbot).\n{_main_bot_hint()}",
             )
         await message.answer(
-            f"Тикет #{ticket.id} открыт.\nОпиши вопрос одним сообщением, и мы аккуратно разберёмся.",
+            f"Обращение #{ticket.id} открыт.\nОпиши вопрос одним сообщением, и мы аккуратно разберёмся.",
             reply_markup=InlineKeyboardMarkup(
                 inline_keyboard=[
-                    [InlineKeyboardButton(text="🎫 Открыть тикет", callback_data=f"hb_ticket_view_{ticket.id}")],
+                    [InlineKeyboardButton(text="🎫 Создать обращение", callback_data=f"hb_ticket_view_{ticket.id}")],
                     [InlineKeyboardButton(text="🏠 В меню", callback_data="hb_back_home")],
                 ]
             ),
@@ -265,7 +265,7 @@ async def start(message: Message) -> None:
             session.close()
         if not tickets:
             await message.answer(
-                "Тикетов пока нет. Как только появится новый запрос, он сразу попадёт сюда.",
+                "Обращениеов пока нет. Как только появится новый запрос, он сразу попадёт сюда.",
                 reply_markup=InlineKeyboardMarkup(
                     inline_keyboard=[
                         [InlineKeyboardButton(text="➕ Новый запрос", callback_data="hb_ticket_new")],
@@ -306,10 +306,10 @@ async def ticket_new(callback: CallbackQuery) -> None:
             )
         pending_ticket_replies[tg_id] = ticket.id
         await callback.message.edit_text(
-            f"Тикет #{ticket.id} готов.\nОтправь одним сообщением, что случилось и где именно застряли.",
+            f"Обращение #{ticket.id} готов.\nОтправь одним сообщением, что случилось и где именно застряли.",
             reply_markup=InlineKeyboardMarkup(
                 inline_keyboard=[
-                    [InlineKeyboardButton(text="🎫 Открыть тикет", callback_data=f"hb_ticket_view_{ticket.id}")],
+                    [InlineKeyboardButton(text="🎫 Создать обращение", callback_data=f"hb_ticket_view_{ticket.id}")],
                     [InlineKeyboardButton(text="📂 Мои запросы", callback_data="hb_ticket_my")],
                 ]
             ),
@@ -330,7 +330,7 @@ async def ticket_my(callback: CallbackQuery) -> None:
 
     if not tickets:
         await callback.message.edit_text(
-            "Тикетов пока нет. Как только появится новый запрос, он сразу попадёт сюда.",
+            "Обращениеов пока нет. Как только появится новый запрос, он сразу попадёт сюда.",
             reply_markup=InlineKeyboardMarkup(
                 inline_keyboard=[
                     [InlineKeyboardButton(text="➕ Новый запрос", callback_data="hb_ticket_new")],
@@ -369,7 +369,7 @@ async def ticket_reply(callback: CallbackQuery) -> None:
     try:
         ticket = get_ticket_by_id(session, ticket_id)
         if not ticket:
-            await callback.message.edit_text("Тикет не найден.", reply_markup=_main_menu(callback.from_user.id == ADMIN_ID))
+            await callback.message.edit_text("Обращение не найден.", reply_markup=_main_menu(callback.from_user.id == ADMIN_ID))
             return
         if not can_access_ticket(ticket, callback.from_user.id, ADMIN_ID):
             await callback.message.edit_text("Нет доступа.", reply_markup=_main_menu(callback.from_user.id == ADMIN_ID))
@@ -384,7 +384,7 @@ async def ticket_reply(callback: CallbackQuery) -> None:
 
     pending_ticket_replies[callback.from_user.id] = ticket_id
     await callback.message.edit_text(
-        f"Ответ в тикет #{ticket_id}: отправь одно текстовое сообщение, и мы сразу прикрепим его к диалогу.",
+        f"Ответ в обращение #{ticket_id}: отправь одно текстовое сообщение, и мы сразу прикрепим его к диалогу.",
         reply_markup=InlineKeyboardMarkup(
             inline_keyboard=[[InlineKeyboardButton(text="◀️ Назад", callback_data=f"hb_ticket_view_{ticket_id}")]]
         ),
@@ -399,7 +399,7 @@ async def ticket_close(callback: CallbackQuery) -> None:
     try:
         ticket = get_ticket_by_id(session, ticket_id)
         if not ticket:
-            await callback.message.edit_text("Тикет не найден.", reply_markup=_main_menu(callback.from_user.id == ADMIN_ID))
+            await callback.message.edit_text("Обращение не найден.", reply_markup=_main_menu(callback.from_user.id == ADMIN_ID))
             return
         if not can_access_ticket(ticket, callback.from_user.id, ADMIN_ID):
             await callback.message.edit_text("Нет доступа.", reply_markup=_main_menu(callback.from_user.id == ADMIN_ID))
@@ -409,7 +409,7 @@ async def ticket_close(callback: CallbackQuery) -> None:
     finally:
         session.close()
 
-    await _notify_admin(callback.bot, f"Тикет #{ticket_id} закрыт пользователем {callback.from_user.id}.")
+    await _notify_admin(callback.bot, f"Обращение #{ticket_id} закрыт пользователем {callback.from_user.id}.")
     await _render_ticket(callback, ticket_id)
 
 
@@ -421,7 +421,7 @@ async def ticket_reopen(callback: CallbackQuery) -> None:
     try:
         ticket = get_ticket_by_id(session, ticket_id)
         if not ticket:
-            await callback.message.edit_text("Тикет не найден.", reply_markup=_main_menu(callback.from_user.id == ADMIN_ID))
+            await callback.message.edit_text("Обращение не найден.", reply_markup=_main_menu(callback.from_user.id == ADMIN_ID))
             return
         if not can_access_ticket(ticket, callback.from_user.id, ADMIN_ID):
             await callback.message.edit_text("Нет доступа.", reply_markup=_main_menu(callback.from_user.id == ADMIN_ID))
@@ -431,7 +431,7 @@ async def ticket_reopen(callback: CallbackQuery) -> None:
     finally:
         session.close()
 
-    await _notify_admin(callback.bot, f"Тикет #{ticket_id} переоткрыт пользователем {callback.from_user.id}.")
+    await _notify_admin(callback.bot, f"Обращение #{ticket_id} переоткрыт пользователем {callback.from_user.id}.")
     await _render_ticket(callback, ticket_id)
 
 
@@ -450,7 +450,7 @@ async def admin_queue(callback: CallbackQuery) -> None:
 
     if not tickets:
         await callback.message.edit_text(
-            "В очереди нет активных тикетов.",
+            "В очереди нет активных обращениеов.",
             reply_markup=InlineKeyboardMarkup(
                 inline_keyboard=[
                     [InlineKeyboardButton(text="🔄 Обновить", callback_data="hb_admin_queue")],
@@ -504,10 +504,10 @@ async def capture_ticket_reply(message: Message) -> None:
             await message.answer("Выбери запрос в очереди и нажми «Ответить».", reply_markup=_main_menu(True))
             return
         if not ticket:
-            await message.answer("Тикет не найден.", reply_markup=_main_menu(tg_id == ADMIN_ID))
+            await message.answer("Обращение не найден.", reply_markup=_main_menu(tg_id == ADMIN_ID))
             return
         if not can_access_ticket(ticket, tg_id, ADMIN_ID):
-            await message.answer("Нет доступа к тикету.", reply_markup=_main_menu(tg_id == ADMIN_ID))
+            await message.answer("Нет доступа к обращениеу.", reply_markup=_main_menu(tg_id == ADMIN_ID))
             return
 
         role = "admin" if tg_id == ADMIN_ID else "user"
@@ -521,14 +521,14 @@ async def capture_ticket_reply(message: Message) -> None:
         if tg_id == ADMIN_ID:
             set_ticket_status(session, ticket=ticket, status=STATUS_IN_PROGRESS, assigned_admin_tg_id=ADMIN_ID)
             try:
-                await message.bot.send_message(ticket.user_tg_id, f"💬 Новый ответ команды POKROV VPN в тикете #{ticket.id}:\n{text}")
+                await message.bot.send_message(ticket.user_tg_id, f"💬 Новый ответ команды POKROV VPN в обращениее #{ticket.id}:\n{text}")
             except Exception as e:
                 logger.warning("helpbot reply to user failed ticket=%s err=%s", ticket.id, e)
         else:
             set_ticket_status(session, ticket=ticket, status=STATUS_OPEN)
             await _notify_admin(
                 message.bot,
-                f"🆕 Новое сообщение в тикете #{ticket.id} от пользователя {tg_id} (helpbot).\n{text}\n\n{_main_bot_hint()}",
+                f"🆕 Новое сообщение в обращениее #{ticket.id} от пользователя {tg_id} (helpbot).\n{text}\n\n{_main_bot_hint()}",
             )
             if created:
                 await _notify_admin(
@@ -541,10 +541,10 @@ async def capture_ticket_reply(message: Message) -> None:
         session.close()
 
     await message.answer(
-        f"Ответ добавлен в тикет #{ticket_id}.",
+        f"Ответ добавлен в обращение #{ticket_id}.",
         reply_markup=InlineKeyboardMarkup(
             inline_keyboard=[
-                [InlineKeyboardButton(text="🎫 Открыть тикет", callback_data=f"hb_ticket_view_{ticket_id}")],
+                [InlineKeyboardButton(text="🎫 Создать обращение", callback_data=f"hb_ticket_view_{ticket_id}")],
                 [InlineKeyboardButton(text="🏠 В меню", callback_data="hb_back_home")],
             ]
         ),

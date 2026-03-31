@@ -12,24 +12,24 @@ const BOT_WEBLOGIN_URL = `${config.botUrl}${config.botUrl.includes("?") ? "&" : 
 
 const ENTRY_STEPS = [
   {
-    title: getCopyText("webapp.entry.step_1.title", "Откройте Telegram"),
+    title: getCopyText("webapp.entry.step_1.title", "Быстрый вход через Telegram"),
     text: getCopyText(
       "webapp.entry.step_1.desc",
-      "Нажмите кнопку ниже или используйте встроенный виджет. Это самый короткий путь к подтверждению входа.",
+      "Просто нажмите кнопку входа. Это самый удобный и безопасный способ попасть в личный кабинет авторизцации.",
     ),
   },
   {
-    title: getCopyText("webapp.entry.step_2.title", "Подтвердите аккаунт"),
+    title: getCopyText("webapp.entry.step_2.title", "Мгновенный доступ"),
     text: getCopyText(
       "webapp.entry.step_2.desc",
-      "Telegram проверит данные и вернёт вас обратно без лишних промежуточных экранов.",
+      "После подтверждения вас мгновенно перенаправит в ваш профиль. Больше никаких сложных логинов и паролей!",
     ),
   },
   {
-    title: getCopyText("webapp.entry.step_3.title", "Кабинет откроется сам"),
+    title: getCopyText("webapp.entry.step_3.title", "Всё готово к работе"),
     text: getCopyText(
       "webapp.entry.step_3.desc",
-      "Если доступ уже подтверждён, вы сразу попадёте к своему статусу, тарифу и следующему действию.",
+      "Вам сразу станут доступны все настройки, активная подписка и удобное управление сервисом POKROV VPN.",
     ),
   },
 ] as const;
@@ -53,9 +53,9 @@ function EntryBody() {
           <p className="font-mono text-xs uppercase tracking-[0.18em] text-emerald-600 dark:text-emerald-300">
             POKROV VPN
           </p>
-          <h1 className="mt-3 font-display text-4xl font-bold">Подтягиваем ваш кабинет</h1>
+          <h1 className="mt-3 font-display text-4xl font-bold">Загрузка личного кабинета</h1>
           <p className="mt-3 max-w-xl text-sm leading-6 text-slate-600 dark:text-slate-300">
-            Проверяем доступ и готовим безопасный вход через Telegram. Обычно это занимает всего несколько секунд.
+            Готовим безопасный и быстрый вход через ваш Telegram. Это займет буквально пару секунд!
           </p>
           <div className="mt-5 h-2 overflow-hidden rounded-full bg-slate-200/80 dark:bg-slate-800">
             <div className="h-full w-1/3 animate-pulse rounded-full bg-emerald-600" />
@@ -71,7 +71,7 @@ function EntryBody() {
         <div className="absolute inset-0 -z-10 bg-[radial-gradient(circle_at_top_left,_rgba(16,185,129,0.15),_transparent_28%),radial-gradient(circle_at_bottom_right,_rgba(239,68,68,0.10),_transparent_30%)]" />
         <section className="glass-card w-full overflow-hidden border border-white/60 p-8 shadow-2xl shadow-slate-950/10 dark:border-slate-800/80 dark:shadow-black/30">
           <p className="font-mono text-xs uppercase tracking-[0.18em] text-rose-500">POKROV VPN</p>
-          <h1 className="mt-3 font-display text-4xl font-bold">Не удалось открыть кабинет</h1>
+          <h1 className="mt-3 font-display text-4xl font-bold">Ой, что-то пошло не так</h1>
           <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-600 dark:text-slate-300">{error}</p>
           <div className="mt-6 flex flex-wrap gap-3">
             <button
@@ -79,7 +79,7 @@ function EntryBody() {
               onClick={() => void refresh()}
               type="button"
             >
-              Проверить ещё раз
+              Повторить попытку
             </button>
             <AppRouteLink
               href={BOT_WEBLOGIN_URL}
@@ -94,11 +94,11 @@ function EntryBody() {
               onClick={() => logoutWebSession()}
               type="button"
             >
-              Начать заново
+              Начать сначала
             </button>
           </div>
           <p className="mt-5 text-xs leading-5 text-slate-500 dark:text-slate-400">
-            Если вы уже подтвердили вход в Telegram, просто попробуйте повторить проверку. Если нет, откройте бота и завершите авторизацию там.
+            Видимо, авторизация не завершена. Пожалуйста, откройте Telegram по кнопке ниже и подтвердите вход, чтобы открыть личный кабинет.
           </p>
         </section>
       </main>
@@ -116,11 +116,11 @@ function EntryBody() {
               POKROV VPN
             </div>
             <div className="max-w-2xl space-y-4">
-              <h1 className="font-display text-4xl font-bold leading-[1.05] sm:text-5xl">{getCopyText("webapp.entry.title", "Войдите и сразу продолжайте в кабинете")}</h1>
+              <h1 className="font-display text-4xl font-bold leading-[1.05] sm:text-5xl">{getCopyText("webapp.entry.title", "Добро пожаловать в личный кабинет POKROV VPN")}</h1>
               <p className="max-w-xl text-sm leading-6 text-slate-600 dark:text-slate-300">
                 {getCopyText(
                   "webapp.entry.subtitle",
-                  "В браузере вход подтверждается через Telegram. Если доступ уже подтверждён, кабинет откроется автоматически. Если нет, покажем понятную кнопку и короткий запасной путь.",
+                  "Авторизация через Telegram — это быстро и абсолютно безопасно. Подтвердите вход, и ваш удобный личный профиль со всеми функциями мгновенно появится на экране.",
                 )}
               </p>
             </div>
@@ -142,12 +142,12 @@ function EntryBody() {
 
             <div className="rounded-3xl border border-slate-200/70 bg-slate-50/80 p-5 dark:border-slate-800/70 dark:bg-slate-950/30">
               <p className="font-mono text-[11px] uppercase tracking-[0.2em] text-emerald-600 dark:text-emerald-300">
-                {getCopyText("webapp.entry.note.title", "Короткая памятка")}
+                {getCopyText("webapp.entry.note.title", "Удобная авторизация")}
               </p>
               <p className="mt-2 text-sm leading-6 text-slate-600 dark:text-slate-300">
                 {getCopyText(
                   "webapp.entry.note.body",
-                  "Если Telegram не открылся автоматически, просто нажмите кнопку ниже. Это тот же вход, только в ручном режиме.",
+                  "Если окно Telegram не появилось само, нажмите на кнопку подтверждения прямо тут. Это гарантированно безопасный процесс в один клик.",
                 )}
               </p>
             </div>
@@ -158,9 +158,9 @@ function EntryBody() {
               <p className="font-mono text-[11px] uppercase tracking-[0.2em] text-slate-400 dark:text-slate-500">
                 Telegram login
               </p>
-              <h2 className="mt-2 font-display text-2xl font-bold">{getCopyText("webapp.entry.card_title", "Подтвердите аккаунт")}</h2>
+              <h2 className="mt-2 font-display text-2xl font-bold">{getCopyText("webapp.entry.card_title", "Откройте себе доступ")}</h2>
               <p className="mt-2 text-sm leading-6 text-slate-600 dark:text-slate-300">
-                {getCopyText("webapp.entry.card_body", "Нажмите кнопку Telegram, вернитесь обратно и мы продолжим без лишних экранов.")}
+                {getCopyText("webapp.entry.card_body", "Сделайте всего один клик, чтобы управлять профилем, тарифами и своими подключениями максимально комфортно.")}
               </p>
 
               <div className="mt-5">
@@ -181,21 +181,21 @@ function EntryBody() {
                   onClick={() => logoutWebSession()}
                   type="button"
                 >
-                  {getCopyText("webapp.entry.secondary_cta", "Сбросить вход")}
+                  {getCopyText("webapp.entry.secondary_cta", "Отменить вход")}
                 </button>
               </div>
 
               <p className="mt-4 text-xs leading-5 text-slate-500 dark:text-slate-400" aria-live="polite">
                 {webLoginBusy
-                  ? "Проверяем вход через Telegram..."
+                  ? "Безопасное подключение...⏳"
                   : webLoginError
                     ? webLoginError
-                    : "Если вход уже подтверждён, кабинет откроется автоматически."}
+                    : "Всего пара мгновений, и ваш статус загрузится!"}
               </p>
             </div>
 
             <p className="mt-4 text-xs leading-5 text-slate-500 dark:text-slate-400">
-              Вход подтверждается на стороне Telegram. Мы не просим лишних данных и не делаем лишних шагов между вами и кабинетом.
+              Мы ценим вашу приватность: авторизация проходит на защищенной стороне Telegram. Вы получаете моментальный доступ без ввода лишних данных.
             </p>
           </div>
         </div>

@@ -152,7 +152,7 @@ def delete_feedback_entry(session, entry_id: int) -> bool:
 def _menu_markup(*, is_admin: bool = False) -> InlineKeyboardMarkup:
     rows = [
         [InlineKeyboardButton(text="✍️ Оставить отзыв", callback_data="fb_new")],
-        [InlineKeyboardButton(text="💬 В поддержку", url=f"https://t.me/{SUPPORT_USERNAME}?start=ticket_new")],
+        [InlineKeyboardButton(text="💬 В службу заботы", url=f"https://t.me/{SUPPORT_USERNAME}?start=ticket_new")],
     ]
     if is_admin:
         rows.append([InlineKeyboardButton(text="🧑‍💼 Очередь модерации", callback_data="fb_admin_queue")])

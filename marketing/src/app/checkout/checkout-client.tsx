@@ -144,7 +144,7 @@ export function CheckoutLoadingFallback() {
           <div className="checkout-helper">Загружаем тарифы и сценарий оплаты…</div>
         </article>
         <article className="glass-card checkout-sticky">
-          <div className="checkout-helper">Собираем итог и запасной маршрут, если понадобится поддержка…</div>
+          <div className="checkout-helper">Собираем итог и запасной маршрут, если понадобится служба заботы…</div>
         </article>
       </section>
     </main>
@@ -285,7 +285,7 @@ export default function CheckoutClient() {
       return;
     }
     if (!activeProvider?.code) {
-      setStatusText("Сейчас нужный платёжный маршрут недоступен. Проще продолжить в Telegram и открыть новую персональную ссылку.");
+      setStatusText("Платежный шлюз временно обновляется. Мы заботливо переведем вас в Telegram для безопасной оплаты.");
       return;
     }
     if (ticketExpired) {
@@ -438,7 +438,7 @@ export default function CheckoutClient() {
             </>
           ) : (
             <div className="checkout-empty">
-              <p>Оплата открывается только после личного входа. Самый короткий путь сейчас такой: приложение или кабинет для входа, а Telegram остаётся как запасной сценарий и помощь.</p>
+              <p>Для вашей безопасности касса доступна только после авторизации. Пожалуйста, войдите в кабинет или Telegram.</p>
               <div className="checkout-actions">
                 <a href={config.connectUrl} target="_blank" rel="noreferrer" className="checkout-secondary">
                   Открыть кабинет
@@ -463,7 +463,7 @@ export default function CheckoutClient() {
                 <>
                   <li>Кабинет или Telegram создают персональный сценарий именно для вашего профиля.</li>
                   <li>После этого мы показываем только рабочие способы оплаты и честную сумму.</li>
-                  <li>Если маршрут оплаты временно недоступен, поддержка быстро переведёт вас на запасной путь.</li>
+                  <li>Если маршрут оплаты временно недоступен, служба заботы быстро переведёт вас на запасной путь.</li>
                 </>
               )}
             </ul>
@@ -480,7 +480,7 @@ export default function CheckoutClient() {
 
           <div className="checkout-summary">
             <p>
-              План: <strong>{activePlan.label}</strong>
+              Ваш тариф: <strong>{activePlan.label}</strong>
             </p>
             <p>
               Срок: <strong>{activePlan.days} дней</strong>
@@ -551,7 +551,7 @@ export default function CheckoutClient() {
             <p className="checkout-helper">
               {ticketExpired
                 ? "Время этой ссылки закончилось. Вернитесь в Telegram и откройте оплату заново."
-                : "Если способ оплаты не открывается или сумма выглядит странно, не продолжайте вслепую: вернитесь в Telegram или напишите в поддержку."}
+                : "Если у вас возникли сомнения при оплате — наша заботливая поддержка в Telegram моментально во всем разберется."}
             </p>
           ) : (
               <p className="checkout-helper">Сначала откройте кабинет или продолжите через Telegram, а продление уже запускайте из персонального сценария.</p>

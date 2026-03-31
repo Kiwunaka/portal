@@ -145,7 +145,7 @@ export default function SubscriptionPage() {
         <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">
           {getCopyText(
             "webapp.subscription.subtitle",
-            "Здесь видно, что делать дальше: проверить тест, сравнить страны и устройства или спокойно перейти к продлению.",
+            "Все прозрачно и удобно: управляйте подпиской, сравнивайте тарифы и продлевайте Премиум за пару кликов.",
           )}
         </p>
         <div className="mt-5 flex flex-wrap gap-3">
@@ -170,9 +170,9 @@ export default function SubscriptionPage() {
           </article>
           <article className="glass-card p-6">
             <p className="font-mono text-xs uppercase tracking-[0.14em] text-slate-500">free fallback</p>
-            <h2 className="mt-2 font-display text-3xl font-bold">Базовый доступ (на всякий случай)</h2>
+            <h2 className="mt-2 font-display text-3xl font-bold">Базовый доступ (ваша подстраховка)</h2>
             <p className="mt-3 text-sm text-slate-600 dark:text-slate-300">
-              Это запасной сценарий: 5 ГБ и 1 устройство, если тест уже завершён. Для спокойного повседневного использования лучше перейти на полный доступ.
+              Резервный доступ для экстренных ситуаций. Для комфортного серфинга рекомендуем премиум-тариф.
             </p>
           </article>
         </section>
@@ -183,7 +183,7 @@ export default function SubscriptionPage() {
           <p className="font-mono text-xs uppercase tracking-[0.14em] text-emerald-500">умная ссылка</p>
           <h2 className="mt-2 font-display text-3xl font-bold">С маршрутами и автоподстройкой</h2>
           <p className="mt-3 text-sm text-slate-600 dark:text-slate-300">
-            Для POKROV VPN, sing-box и NekoBox. Внутри уже есть страны, быстрые маршруты и понятный путь для первого запуска.
+            Идеально для коннекта 24/7. Внутри — лучшие локации, умные маршруты обхода блокировок и мгновенный старт.
           </p>
           <div className="mt-4 rounded-2xl border border-white/40 bg-white/50 p-4 text-xs text-slate-600 dark:border-white/10 dark:bg-white/5 dark:text-slate-300">
             {smartLink || "Ссылка появится после активации доступа."}
@@ -204,7 +204,7 @@ export default function SubscriptionPage() {
           <p className="font-mono text-xs uppercase tracking-[0.14em] text-slate-500">обычная ссылка</p>
           <h2 className="mt-2 font-display text-3xl font-bold">Без доп. маршрутов</h2>
           <p className="mt-3 text-sm text-slate-600 dark:text-slate-300">
-            Нужна для простых клиентов, которым достаточно стандартного подключения и списка серверов.
+            Простая и надежная конфигурация для мгновенного подключения без лишних настроек.
           </p>
           <div className="mt-4 rounded-2xl border border-white/40 bg-white/50 p-4 text-xs text-slate-600 dark:border-white/10 dark:bg-white/5 dark:text-slate-300">
             {plainLink || "Ссылка появится после активации доступа."}

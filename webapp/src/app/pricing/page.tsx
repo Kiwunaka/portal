@@ -92,7 +92,7 @@ export default function PricingPage() {
           <p className="text-xs uppercase tracking-[0.16em] text-emerald-600 dark:text-emerald-300">trial-first</p>
           <h2 className="mt-2 font-display text-3xl font-semibold">5 дней, чтобы спокойно всё проверить</h2>
           <p className="mt-3 text-sm text-slate-600 dark:text-slate-300">
-            Пробный доступ нужен не для спешки, а чтобы вы успели открыть привычные сайты, проверить скорость и понять, подходит ли вам сервис на своих устройствах.
+            Бесплатный период дан вам для комфорта: убедитесь в высокой скорости сервиса прямо сейчас!
           </p>
         </article>
         <article className="glass-card p-6">

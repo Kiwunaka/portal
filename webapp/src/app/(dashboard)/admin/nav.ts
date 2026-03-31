@@ -11,7 +11,7 @@ export const ADMIN_NAV_ITEMS: AdminNavItem[] = [
   { href: "/admin/dashboard", label: "Сводка", icon: "space_dashboard", match: (path) => path === "/admin" || path.startsWith("/admin/dashboard") },
   { href: "/admin/users", label: "Пользователи", icon: "groups", match: (path) => path.startsWith("/admin/users") },
   { href: "/admin/nodes", label: "Ноды", icon: "hub", match: (path) => path.startsWith("/admin/nodes") },
-  { href: "/admin/tickets", label: "Поддержка", icon: "support_agent", match: (path) => path.startsWith("/admin/tickets") },
+  { href: "/admin/tickets", label: "Служба заботы", icon: "support_agent", match: (path) => path.startsWith("/admin/tickets") },
   { href: "/admin/promos", label: "Промо", icon: "sell", match: (path) => path.startsWith("/admin/promos") },
   { href: "/admin/broadcast", label: "Рассылки", icon: "campaign", match: (path) => path.startsWith("/admin/broadcast") },
   { href: "/admin/referrals", label: "Рефералы", icon: "link", match: (path) => path.startsWith("/admin/referrals") },

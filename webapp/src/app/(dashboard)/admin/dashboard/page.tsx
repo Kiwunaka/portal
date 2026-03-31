@@ -308,7 +308,7 @@ export default function AdminDashboardPage() {
         0
           ? "badge-success"
           : "badge-warning",
-      detail: `Отправлено: T-3 ${summary?.retention.pings_24h.t3 ?? 0}, T-1 ${summary?.retention.pings_24h.t1 ?? 0}, T0 ${summary?.retention.pings_24h.t0 ?? 0}.`,
+      detail: `Отправлено: за 3 дня — ${summary?.retention.pings_24h.t3 ?? 0}, за 1 день — ${summary?.retention.pings_24h.t1 ?? 0}, в день окончания — ${summary?.retention.pings_24h.t0 ?? 0}.`,
     },
     {
       label: "Welcome-сообщения 24ч",

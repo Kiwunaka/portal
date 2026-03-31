@@ -33,12 +33,12 @@ const SEGMENT_OPTIONS = [
 const RETENTION_TEMPLATE_GROUPS = [
   { key: "retention_welcome_a", label: "Welcome A", flow: "Welcome", hint: "������ ������� ����� �����������" },
   { key: "retention_welcome_b", label: "Welcome B", flow: "Welcome", hint: "�������������� welcome-�������" },
-  { key: "retention_t3_a", label: "T-3 A", flow: "���������", hint: "�� 3 ��� �� ��������� �������" },
-  { key: "retention_t3_b", label: "T-3 B", flow: "���������", hint: "������ ������� ��� T-3" },
-  { key: "retention_t1_a", label: "T-1 A", flow: "���������", hint: "�� ����� �� ��������� �������" },
-  { key: "retention_t1_b", label: "T-1 B", flow: "���������", hint: "������ ������� ��� T-1" },
-  { key: "retention_t0_a", label: "T0 A", flow: "���������", hint: "��������� ������� � ���� ���������" },
-  { key: "retention_t0_b", label: "T0 B", flow: "���������", hint: "������ ������� ��� T0" },
+  { key: "retention_t3_a", label: "За 3 дня (А)", flow: "���������", hint: "�� 3 ��� �� ��������� �������" },
+  { key: "retention_t3_b", label: "За 3 дня (Б)", flow: "���������", hint: "������ ������� ��� T-3" },
+  { key: "retention_t1_a", label: "За 1 день (А)", flow: "���������", hint: "�� ����� �� ��������� �������" },
+  { key: "retention_t1_b", label: "За 1 день (Б)", flow: "���������", hint: "������ ������� ��� T-1" },
+  { key: "retention_t0_a", label: "В день окончания (А)", flow: "���������", hint: "��������� ������� � ���� ���������" },
+  { key: "retention_t0_b", label: "В день окончания (Б)", flow: "���������", hint: "������ ������� ��� T0" },
   { key: "retention_reactivation_a", label: "Reactivation A", flow: "�������", hint: "������� ����� ������" },
   { key: "retention_reactivation_b", label: "Reactivation B", flow: "�������", hint: "�������������� reactivation-�������" },
 ];

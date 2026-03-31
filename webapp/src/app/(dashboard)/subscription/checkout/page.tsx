@@ -179,7 +179,7 @@ export default function CheckoutPage() {
         window.location.href = order.payment_url;
         return;
       }
-      setStatusText("Не удалось получить ссылку на оплату. Лучше продолжить через Telegram или написать в поддержку.");
+      setStatusText("Не удалось получить ссылку на оплату. Лучше продолжить через Telegram или написать в службу заботы.");
     } catch (error) {
       setStatusText(String((error as { message?: string })?.message || error || "Ошибка создания заказа"));
     } finally {
@@ -192,12 +192,12 @@ export default function CheckoutPage() {
       <section className="glass-card p-7">
         <p className="font-mono text-xs uppercase tracking-[0.16em] text-violet-600 dark:text-violet-300">checkout</p>
         <h1 className="mt-2 font-display text-4xl font-bold">
-          {getCopyText("webapp.checkout.title", "Продление без лишних обещаний")}
+          {getCopyText("webapp.checkout.title", "Комфортное и быстрое продление")}
         </h1>
         <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">
           {getCopyText(
             "webapp.checkout.subtitle",
-            "Здесь видны реальная сумма, срок и касса. Если касса временно недоступна, главный fallback остаётся простым: продолжить в Telegram.",
+            "Все предельно прозрачно: сумма, срок и касса. При любых заминках мы легко продолжим в Telegram.",
           )}
         </p>
       </section>
@@ -315,7 +315,7 @@ export default function CheckoutPage() {
               target="_blank"
               className="outline-btn block rounded-xl py-3 text-center text-sm font-semibold uppercase tracking-[0.12em]"
             >
-              Поддержка
+              Служба заботы
             </Link>
           </div>
 

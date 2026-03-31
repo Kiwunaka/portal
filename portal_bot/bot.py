@@ -2863,7 +2863,7 @@ async def check_subscription(user_id: int, bot: Bot) -> bool:
 TEXTS = {
     "welcome": (
         "🛡 *POKROV VPN*\n\n"
-        f"{get_copy_text('bot.welcome', 'POKROV VPN помогает быстро начать работу через Telegram: понятный выбор плана, короткий путь к оплате и тёплая поддержка рядом.')}\n\n"
+        f"{get_copy_text('bot.welcome', 'POKROV VPN помогает быстро начать работу через Telegram: понятный выбор плана, короткий путь к оплате и тёплая служба заботы рядом.')}\n\n"
         "👇 *Нажмите кнопку ниже, чтобы продолжить:*"
     ),
     "choose_tariff": (
@@ -3075,7 +3075,7 @@ def build_choose_tariff_text() -> str:
         f"🚀 *Тест 5 дней* — быстрый старт: {free_label}\n"
         f"💠 *Премиум* — {paid_count} стран: {paid_list}\n\n"
         f"Тест: 5 дней, до {FREE_TOTAL_GB} ГБ, до {FREE_LIMIT_IP} устройства, базовый профиль для знакомства с сервисом.\n"
-        "Тест не рассчитан на тяжёлую нагрузку и потоковое видео, зато помогает быстро понять, подходит ли вам сервис.\n"
+        "Тестовый тариф — идеальный способ познакомиться с сервисом. А для тяжелых видео и игр ждем вас на Премиуме!\n"
         f"Премиум: все доступные страны, до {PAID_LIMIT_IP} устройств и комфортный запас по скорости.\n"
         "Приветственный тариф за 99 ₽ остаётся как мягкий апгрейд после теста.\n\n"
         f"💰 *Выгода при оплате на срок:*{savings_line}\n\n"
@@ -3159,7 +3159,7 @@ def _build_tariff_payment_choice_text(*, tariff_key: str, tg_id: int) -> str:
     return (
         f"💳 *{tariff.get('name', 'Тариф')}*\n\n"
         f"Срок: *{int(tariff.get('days', 0))} дней*\n"
-        f"Устройств: *до {PAID_LIMIT_IP}*\n"
+        f"Ваши устройства: *до {PAID_LIMIT_IP}*\n"
         f"Страны: *все премиум-локации*\n\n"
         f"Цена в ₽: *{rub_price} ₽*\n"
         "Откроем оплату в рублях без лишних шагов.\n\n"
@@ -3333,7 +3333,7 @@ def _dual_pay_keyboard(*, tg_id: int, show_trial: bool) -> InlineKeyboardMarkup:
         rows.append([InlineKeyboardButton(text="🚀 Запустить тест на 5 дней", callback_data="buy_trial")])
     rows.extend(
         [
-            [InlineKeyboardButton(text="💳 Смотреть тарифы и оплату в ₽", callback_data="charge")],
+            [InlineKeyboardButton(text="💳 Перейти к тарифам и оплату в ₽", callback_data="charge")],
         ]
     )
     rows.append([InlineKeyboardButton(text="◀️ Назад", callback_data="back")])
@@ -3356,7 +3356,7 @@ def main_keyboard_specs(tg_id: int = 0) -> list[list[dict[str, str]]]:
         ],
         [
             _btn_spec(text="🔑 Мой ключ", callback_data="show_key"),
-            _btn_spec(text="🆘 Поддержка", callback_data="support"),
+            _btn_spec(text="🆘 Служба заботы", callback_data="support"),
         ],
         [
             _btn_spec(text="🎁 Бонусы", callback_data="menu_bonuses"),
@@ -3549,11 +3549,11 @@ async def cmd_start(message: Message):
             ),
             "telegram_already_linked": (
                 "⚠️ Этот Telegram уже привязан к другому аккаунту POKROV VPN.\n\n"
-                "Если это ошибка, напишите в поддержку."
+                "Если это ошибка, напишите в службу заботы."
             ),
             "account_linked_elsewhere": (
                 "⚠️ Этот аккаунт POKROV VPN уже привязан к другому Telegram.\n\n"
-                "Если нужно переназначить привязку, напишите в поддержку."
+                "Если нужно переназначить привязку, напишите в службу заботы."
             ),
             "not_found": (
                 "⚠️ Не удалось найти аккаунт POKROV VPN для этой ссылки.\n\n"
@@ -3569,7 +3569,7 @@ async def cmd_start(message: Message):
             ),
             "error": (
                 "⚠️ Не удалось завершить привязку прямо сейчас.\n\n"
-                "Попробуйте ещё раз через минуту или напишите в поддержку."
+                "Попробуйте ещё раз через минуту или напишите в службу заботы."
             ),
         }
         await message.answer(
@@ -4082,7 +4082,7 @@ async def show_key(callback: CallbackQuery):
     kb = InlineKeyboardMarkup(
         inline_keyboard=[
             [InlineKeyboardButton(text="📋 Скопировать ссылку", callback_data="copy_key")],
-            [InlineKeyboardButton(text="📱 QR-код", callback_data="show_qr")],
+            [InlineKeyboardButton(text="📱 Умный Умный QR-код доступа доступа", callback_data="show_qr")],
             [InlineKeyboardButton(text="👨‍👩‍👧‍👦 Поделиться с семьёй", callback_data="share_access")],
             [InlineKeyboardButton(text="🚨 Panic Mode", callback_data="panic_menu")],
             [InlineKeyboardButton(text="◀️ Назад", callback_data="back")],
@@ -4135,7 +4135,7 @@ async def show_qr_code(callback: CallbackQuery):
         ),
         parse_mode=ParseMode.MARKDOWN,
     )
-    await callback.answer("QR-код готов")
+    await callback.answer("Умный Умный QR-код доступа доступа готов")
 
 
 @router.callback_query(F.data == "share_access")
@@ -4830,7 +4830,7 @@ FAQ_ANSWERS = {
         "3. *Проверь интернет* — отключи прокси, открой google.com\n\n"
         "4. *Смени сервер* — если их несколько в списке\n\n"
         "5. *Перезагрузи телефон*\n\n"
-        "Не помогло? Напиши в поддержку 👇"
+        "Не помогло? Напиши в службу заботы 👇"
     ),
     "renew": (
         "💳 *Как продлить доступ?*\n\n"
@@ -5148,17 +5148,17 @@ async def handle_text_input(message: Message):
         ticket_id = pending_ticket_replies.get(tg_id, 0)
         body = (message.text or "").strip()
         if not body:
-            await message.answer("❌ Отправь текст для тикета.")
+            await message.answer("❌ Отправь текст для обращения.")
             return
 
         session = Session()
         try:
             ticket = get_ticket_by_id(session, ticket_id)
             if not ticket:
-                await message.answer("❌ Тикет не найден.")
+                await message.answer("❌ Обращение не найден.")
                 return
             if not can_access_ticket(ticket, tg_id, ADMIN_ID):
-                await message.answer("⛔ Нет доступа к тикету.")
+                await message.answer("⛔ Нет доступа к обращениеу.")
                 return
 
             role = "admin" if tg_id == ADMIN_ID else "user"
@@ -5180,29 +5180,29 @@ async def handle_text_input(message: Message):
                 set_ticket_status(session, ticket=ticket, status=STATUS_OPEN)
             session.commit()
 
-            await message.answer(f"✅ Ответ добавлен в тикет #{ticket.id}.")
+            await message.answer(f"✅ Ответ добавлен в обращение #{ticket.id}.")
 
             # Notify opposite side.
             if tg_id == ADMIN_ID:
                 kb = InlineKeyboardMarkup(
-                    inline_keyboard=[[InlineKeyboardButton(text="🎫 Открыть тикет", callback_data=f"ticket_view_{ticket.id}")]]
+                    inline_keyboard=[[InlineKeyboardButton(text="🎫 Создать обращение", callback_data=f"ticket_view_{ticket.id}")]]
                 )
                 try:
                     await message.bot.send_message(
                         ticket.user_tg_id,
-                        f"💬 Новый ответ оператора в тикете #{ticket.id}.",
+                        f"💬 Новый ответ оператора в обращениее #{ticket.id}.",
                         reply_markup=kb,
                     )
                 except Exception:
                     pass
             else:
                 kb = InlineKeyboardMarkup(
-                    inline_keyboard=[[InlineKeyboardButton(text="🎫 Открыть тикет", callback_data=f"ticket_view_{ticket.id}")]]
+                    inline_keyboard=[[InlineKeyboardButton(text="🎫 Создать обращение", callback_data=f"ticket_view_{ticket.id}")]]
                 )
                 try:
                     await message.bot.send_message(
                         ADMIN_ID,
-                        f"🆕 Новое сообщение в тикете #{ticket.id} от `{ticket.user_tg_id}`",
+                        f"🆕 Новое сообщение в обращениее #{ticket.id} от `{ticket.user_tg_id}`",
                         parse_mode=ParseMode.MARKDOWN,
                         reply_markup=kb,
                     )
@@ -5796,14 +5796,14 @@ async def show_support(callback: CallbackQuery):
         [InlineKeyboardButton(text="🎁 Реферальная программа", callback_data="faq_referral")],
         [InlineKeyboardButton(text="📲 Смена устройства", callback_data="faq_device")],
         [InlineKeyboardButton(text="🔧 Диагностика", callback_data="support_diagnose")],
-        [InlineKeyboardButton(text="🎫 Создать тикет", url=support_new_url)],
-        [InlineKeyboardButton(text="📂 Мои тикеты (helpbot)", url=support_my_url)],
+        [InlineKeyboardButton(text="🎫 Создать обращение", url=support_new_url)],
+        [InlineKeyboardButton(text="📂 Мои обращения (helpbot)", url=support_my_url)],
         [InlineKeyboardButton(text="💌 Идеи и фидбэк", url=feedback_url)],
         [InlineKeyboardButton(text="◀️ Назад", callback_data="back")]
     ])
     
     await callback.message.edit_text(
-        "🤖 *Поддержка POKROV VPN*\n\n"
+        "🤖 *Служба заботы POKROV VPN*\n\n"
         "Если нужно помочь с подключением, оплатой или устройством, helpbot подхватит диалог и доведёт его до ответа.\n"
         "А если хочется поделиться идеей или тёплым отзывом, открой feedback bot ниже.\n\n"
         "Выбери вопрос или действие:",
@@ -5820,7 +5820,7 @@ async def show_faq_answer(callback: CallbackQuery):
     
     kb = InlineKeyboardMarkup(inline_keyboard=[
         [InlineKeyboardButton(text="◀️ Назад к вопросам", callback_data="support")],
-        [InlineKeyboardButton(text="💬 Написать в поддержку", url=f"https://t.me/{SUPPORT_USERNAME}?start=ticket_new")]
+        [InlineKeyboardButton(text="💬 Написать в службу заботы", url=f"https://t.me/{SUPPORT_USERNAME}?start=ticket_new")]
     ])
     
     await callback.message.edit_text(
@@ -5865,7 +5865,7 @@ async def support_diagnose(callback: CallbackQuery):
     kb = InlineKeyboardMarkup(inline_keyboard=[
         [InlineKeyboardButton(text="🔑 Моя ссылка", callback_data="show_key")],
         [InlineKeyboardButton(text="◀️ Назад к поддержке", callback_data="support")],
-        [InlineKeyboardButton(text="💬 Написать в поддержку", url=f"https://t.me/{SUPPORT_USERNAME}?start=ticket_new")]
+        [InlineKeyboardButton(text="💬 Написать в службу заботы", url=f"https://t.me/{SUPPORT_USERNAME}?start=ticket_new")]
     ])
     
     await callback.message.edit_text(
@@ -5908,7 +5908,7 @@ def _ticket_view_keyboard(ticket_id: int, status: str, *, is_admin: bool) -> Inl
         rows.append([InlineKeyboardButton(text="🧑‍💼 Взять в работу", callback_data=f"ticket_claim_{ticket_id}")])
         rows.append([InlineKeyboardButton(text="◀️ Назад", callback_data="admin_tickets")])
     else:
-        rows.append([InlineKeyboardButton(text="📂 Мои тикеты", callback_data="ticket_my")])
+        rows.append([InlineKeyboardButton(text="📂 Мои обращения", callback_data="ticket_my")])
         rows.append([InlineKeyboardButton(text="◀️ Назад", callback_data="support")])
     return InlineKeyboardMarkup(inline_keyboard=rows)
 
@@ -5920,10 +5920,10 @@ async def _render_ticket(callback: CallbackQuery, ticket_id: int) -> None:
     try:
         ticket = get_ticket_by_id(session, ticket_id)
         if not ticket:
-            await callback.answer("Тикет не найден", show_alert=True)
+            await callback.answer("Обращение не найден", show_alert=True)
             return
         if not can_access_ticket(ticket, tg_id, ADMIN_ID):
-            await callback.answer("Нет доступа к тикету", show_alert=True)
+            await callback.answer("Нет доступа к обращениеу", show_alert=True)
             return
 
         msgs = list_ticket_messages(session, ticket_id=ticket.id, limit=20)
@@ -5939,7 +5939,7 @@ async def _render_ticket(callback: CallbackQuery, ticket_id: int) -> None:
         history = "\n".join(lines) if lines else "Сообщений пока нет."
 
         text = (
-            f"🎫 Тикет #{ticket.id}\n"
+            f"🎫 Обращение #{ticket.id}\n"
             f"Статус: {status}\n"
             f"Пользователь: {ticket.user_tg_id}\n"
             f"Оператор: {assigned}\n"
@@ -5964,11 +5964,11 @@ async def ticket_new(callback: CallbackQuery):
         ticket = get_user_active_ticket(session, tg_id)
         if ticket:
             await callback.message.edit_text(
-                f"У тебя уже есть активный тикет #{ticket.id}.",
+                f"У тебя уже есть активный обращение #{ticket.id}.",
                 reply_markup=InlineKeyboardMarkup(
                     inline_keyboard=[
-                        [InlineKeyboardButton(text="🎫 Открыть тикет", callback_data=f"ticket_view_{ticket.id}")],
-                        [InlineKeyboardButton(text="📂 Мои тикеты", callback_data="ticket_my")],
+                        [InlineKeyboardButton(text="🎫 Создать обращение", callback_data=f"ticket_view_{ticket.id}")],
+                        [InlineKeyboardButton(text="📂 Мои обращения", callback_data="ticket_my")],
                         [InlineKeyboardButton(text="◀️ Назад", callback_data="support")],
                     ]
                 ),
@@ -5981,7 +5981,7 @@ async def ticket_new(callback: CallbackQuery):
         pending_ticket_replies[tg_id] = ticket.id
 
         await callback.message.edit_text(
-            f"Тикет #{ticket.id} создан.\nОтправь одним сообщением описание проблемы.",
+            f"Обращение #{ticket.id} создан.\nОтправь одним сообщением описание проблемы.",
             reply_markup=InlineKeyboardMarkup(
                 inline_keyboard=[[InlineKeyboardButton(text="Отмена", callback_data="support")]]
             ),
@@ -5989,12 +5989,12 @@ async def ticket_new(callback: CallbackQuery):
         await callback.answer()
 
         kb = InlineKeyboardMarkup(
-            inline_keyboard=[[InlineKeyboardButton(text="🎫 Открыть тикет", callback_data=f"ticket_view_{ticket.id}")]]
+            inline_keyboard=[[InlineKeyboardButton(text="🎫 Создать обращение", callback_data=f"ticket_view_{ticket.id}")]]
         )
         try:
             await callback.bot.send_message(
                 ADMIN_ID,
-                f"🆕 Новый тикет #{ticket.id} от пользователя `{tg_id}`",
+                f"🆕 Новый обращение #{ticket.id} от пользователя `{tg_id}`",
                 parse_mode=ParseMode.MARKDOWN,
                 reply_markup=kb,
             )
@@ -6015,10 +6015,10 @@ async def ticket_my(callback: CallbackQuery):
 
     if not tickets:
         await callback.message.edit_text(
-            "Тикетов пока нет.",
+            "Обращениеов пока нет.",
             reply_markup=InlineKeyboardMarkup(
                 inline_keyboard=[
-                    [InlineKeyboardButton(text="🎫 Создать тикет", callback_data="ticket_new")],
+                    [InlineKeyboardButton(text="🎫 Создать обращение", callback_data="ticket_new")],
                     [InlineKeyboardButton(text="◀️ Назад", callback_data="support")],
                 ]
             ),
@@ -6036,11 +6036,11 @@ async def ticket_my(callback: CallbackQuery):
                 )
             ]
         )
-    rows.append([InlineKeyboardButton(text="🎫 Создать тикет", callback_data="ticket_new")])
+    rows.append([InlineKeyboardButton(text="🎫 Создать обращение", callback_data="ticket_new")])
     rows.append([InlineKeyboardButton(text="◀️ Назад", callback_data="support")])
 
     await callback.message.edit_text(
-        "Мои тикеты:",
+        "Мои обращения:",
         reply_markup=InlineKeyboardMarkup(inline_keyboard=rows),
     )
     await callback.answer()
@@ -6059,7 +6059,7 @@ async def ticket_reply(callback: CallbackQuery):
     try:
         ticket = get_ticket_by_id(session, ticket_id)
         if not ticket:
-            await callback.answer("Тикет не найден", show_alert=True)
+            await callback.answer("Обращение не найден", show_alert=True)
             return
         if not can_access_ticket(ticket, callback.from_user.id, ADMIN_ID):
             await callback.answer("Нет доступа", show_alert=True)
@@ -6079,7 +6079,7 @@ async def ticket_reply(callback: CallbackQuery):
 
     pending_ticket_replies[callback.from_user.id] = ticket_id
     await callback.message.edit_text(
-        f"Ответ в тикет #{ticket_id}: отправь одно текстовое сообщение.",
+        f"Ответ в обращение #{ticket_id}: отправь одно текстовое сообщение.",
         reply_markup=InlineKeyboardMarkup(
             inline_keyboard=[[InlineKeyboardButton(text="◀️ Назад", callback_data=f"ticket_view_{ticket_id}")]]
         ),
@@ -6094,7 +6094,7 @@ async def ticket_close(callback: CallbackQuery):
     try:
         ticket = get_ticket_by_id(session, ticket_id)
         if not ticket:
-            await callback.answer("Тикет не найден", show_alert=True)
+            await callback.answer("Обращение не найден", show_alert=True)
             return
         if not can_access_ticket(ticket, callback.from_user.id, ADMIN_ID):
             await callback.answer("Нет доступа", show_alert=True)
@@ -6105,14 +6105,14 @@ async def ticket_close(callback: CallbackQuery):
         # Notify opposite side.
         if callback.from_user.id == ADMIN_ID:
             try:
-                await callback.bot.send_message(ticket.user_tg_id, f"Тикет #{ticket.id} закрыт оператором.")
+                await callback.bot.send_message(ticket.user_tg_id, f"Обращение #{ticket.id} закрыт оператором.")
             except Exception:
                 pass
         else:
             try:
                 await callback.bot.send_message(
                     ADMIN_ID,
-                    f"Пользователь `{ticket.user_tg_id}` закрыл тикет #{ticket.id}.",
+                    f"Пользователь `{ticket.user_tg_id}` закрыл обращение #{ticket.id}.",
                     parse_mode=ParseMode.MARKDOWN,
                 )
             except Exception:
@@ -6129,7 +6129,7 @@ async def ticket_reopen(callback: CallbackQuery):
     try:
         ticket = get_ticket_by_id(session, ticket_id)
         if not ticket:
-            await callback.answer("Тикет не найден", show_alert=True)
+            await callback.answer("Обращение не найден", show_alert=True)
             return
         if not can_access_ticket(ticket, callback.from_user.id, ADMIN_ID):
             await callback.answer("Нет доступа", show_alert=True)
@@ -6141,7 +6141,7 @@ async def ticket_reopen(callback: CallbackQuery):
             try:
                 await callback.bot.send_message(
                     ADMIN_ID,
-                    f"Тикет #{ticket.id} переоткрыт пользователем `{ticket.user_tg_id}`.",
+                    f"Обращение #{ticket.id} переоткрыт пользователем `{ticket.user_tg_id}`.",
                     parse_mode=ParseMode.MARKDOWN,
                 )
             except Exception:
@@ -6161,7 +6161,7 @@ async def ticket_claim(callback: CallbackQuery):
     try:
         ticket = get_ticket_by_id(session, ticket_id)
         if not ticket:
-            await callback.answer("Тикет не найден", show_alert=True)
+            await callback.answer("Обращение не найден", show_alert=True)
             return
         set_ticket_status(
             session,
@@ -6189,7 +6189,7 @@ async def admin_tickets(callback: CallbackQuery):
 
     if not tickets:
         await callback.message.edit_text(
-            "В очереди нет активных тикетов.",
+            "В очереди нет активных обращениеов.",
             reply_markup=InlineKeyboardMarkup(
                 inline_keyboard=[[InlineKeyboardButton(text="◀️ Назад", callback_data="admin")]]
             ),
@@ -6211,7 +6211,7 @@ async def admin_tickets(callback: CallbackQuery):
     rows.append([InlineKeyboardButton(text="◀️ Назад", callback_data="admin")])
 
     await callback.message.edit_text(
-        "Активные тикеты:",
+        "Активные обращения:",
         reply_markup=InlineKeyboardMarkup(inline_keyboard=rows),
     )
     await callback.answer()
@@ -6250,7 +6250,7 @@ async def show_admin_panel(callback: CallbackQuery):
             InlineKeyboardButton(text="🔗 Launch ссылки", callback_data="admin_start_links"),
         ],
         [
-            InlineKeyboardButton(text="🎫 Очередь тикетов", callback_data="admin_tickets"),
+            InlineKeyboardButton(text="🎫 Очередь обращениеов", callback_data="admin_tickets"),
         ],
         [
             InlineKeyboardButton(text="Ноды", callback_data="admin_nodes"),
@@ -8963,7 +8963,7 @@ async def payment_success(message: Message, bot: Bot):
             buyer_tg_id = int(buyer_raw)
         except Exception:
             logger.warning("payment_success giftcard parse error payload=%s", payload)
-            await message.answer("❌ Ошибка обработки оплаты. Напиши в поддержку.")
+            await message.answer("❌ Ошибка обработки оплаты. Напиши в службу заботы.")
             return
         
         code = create_gift_card(buyer_tg_id, card_type)
@@ -8984,7 +8984,7 @@ async def payment_success(message: Message, bot: Bot):
             )
         else:
             logger.warning("payment_success giftcard create failed buyer_tg_id=%s card_type=%s", buyer_tg_id, card_type)
-            await message.answer("❌ Ошибка создания карты. Напиши в поддержку.")
+            await message.answer("❌ Ошибка создания карты. Напиши в службу заботы.")
         return
 
     # Handle family-slot purchase
@@ -9035,7 +9035,7 @@ async def payment_success(message: Message, bot: Bot):
             points_used = max(0, int(match.group("points"))) if match.group("points") else 0
         except Exception:
             logger.warning("payment_success portal parse error payload=%s", payload)
-            await message.answer("❌ Ошибка обработки оплаты. Напиши в поддержку.")
+            await message.answer("❌ Ошибка обработки оплаты. Напиши в службу заботы.")
             return
 
         tariff = TARIFFS.get(tariff_key)
@@ -9165,7 +9165,7 @@ async def payment_success(message: Message, bot: Bot):
         payment.total_amount,
         payment.currency,
     )
-    await message.answer("✅ Оплата получена. Проверяем активацию, если не активировалось — напишите в поддержку.")
+    await message.answer("✅ Оплата получена. Проверяем активацию, если не активировалось — напишите в службу заботы.")
 
 async def create_subscription(
     message: Message,
@@ -9225,7 +9225,7 @@ async def create_subscription(
         
         if not success:
             kb = InlineKeyboardMarkup(inline_keyboard=[
-                [InlineKeyboardButton(text="💬 Написать в поддержку", url=f"https://t.me/{SUPPORT_USERNAME}?start=ticket_new")],
+                [InlineKeyboardButton(text="💬 Написать в службу заботы", url=f"https://t.me/{SUPPORT_USERNAME}?start=ticket_new")],
                 [InlineKeyboardButton(text="◀️ Назад", callback_data="back")]
             ])
             await message.answer("❌ Не удалось активировать доступ.\n\nНажмите кнопку ниже для связи с поддержкой.", reply_markup=kb)
@@ -10209,7 +10209,7 @@ async def admin_broadcast(message: Message, bot: Bot):
             await bot.send_message(
                 user.tg_id,
                 f"🔄 *Обновление подписки*\n\n"
-                f"Мы обновили систему для повышения безопасности.\n\n"
+                f"Мы установили важное обновление: ваш трафик стал еще более защищенным и невидимым.\n\n"
                 f"🔗 *Ваша новая ссылка подписки:*\n"
                 f"`{sub_link}`\n\n"
                 f"📋 _Пожалуйста, обновите ссылку в вашем приложении._\n\n"

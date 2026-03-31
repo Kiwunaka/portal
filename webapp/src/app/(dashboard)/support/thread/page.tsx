@@ -130,7 +130,7 @@ export default function SupportTicketThreadPage() {
     return (
       <main className="space-y-6">
         <section className="glass-card p-7">
-          <h1 className="font-display text-3xl font-bold">Загрузка тикета...</h1>
+          <h1 className="font-display text-3xl font-bold">Загрузка обращения...</h1>
         </section>
       </main>
     );
@@ -140,11 +140,11 @@ export default function SupportTicketThreadPage() {
     return (
       <main className="space-y-6">
         <section className="glass-card p-7">
-          <h1 className="font-display text-3xl font-bold">Не удалось открыть тикет</h1>
-          <p className="mt-3 text-sm text-rose-500">{error || "Тикет не найден"}</p>
+          <h1 className="font-display text-3xl font-bold">Не удалось открыть обращение</h1>
+          <p className="mt-3 text-sm text-rose-500">{error || "Обращение не найден"}</p>
           <div className="mt-4">
             <Link href="/support/" className="outline-btn rounded-xl px-4 py-2 text-sm font-semibold uppercase tracking-[0.12em]">
-              Назад в поддержку
+              Назад в службу заботы
             </Link>
           </div>
         </section>
@@ -159,7 +159,7 @@ export default function SupportTicketThreadPage() {
           <div>
             <div className="flex items-center gap-2">
               <span className="font-mono text-xs text-violet-600 dark:text-violet-300">#{ticket.id}</span>
-              <h1 className="font-display text-2xl font-bold">{ticket.subject || "Тикет без темы"}</h1>
+              <h1 className="font-display text-2xl font-bold">{ticket.subject || "Обращение без темы"}</h1>
             </div>
             <p className="mt-2 text-xs text-slate-500">
               {statusTitle(ticket.status)} • обновлён {fmtDate(ticket.updated_at)}
@@ -214,7 +214,7 @@ export default function SupportTicketThreadPage() {
 
         <div className="mt-4 border-t border-white/45 pt-4 dark:border-white/10">
           {!canReply ? (
-            <p className="text-sm text-slate-500">Тикет закрыт. Для нового вопроса создайте новое обращение.</p>
+            <p className="text-sm text-slate-500">Обращение закрыт. Для нового вопроса создайте новое обращение.</p>
           ) : (
             <>
               <textarea

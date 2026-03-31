@@ -31,7 +31,7 @@ function buildCards(payload: ClientAppsPayload | null): AppCard[] {
       links: [
         { label: "Google Play", href: androidPlay },
         { label: "APK", href: androidApk },
-        { label: "Резервная ссылка", href: androidMirror }
+        { label: "Альтернативная ссылка", href: androidMirror }
       ].filter((item) => item.href)
     },
     {
@@ -40,7 +40,7 @@ function buildCards(payload: ClientAppsPayload | null): AppCard[] {
       icon: "desktop_windows",
       links: [
         { label: "Скачать EXE", href: windowsExe },
-        { label: "Резервная ссылка", href: windowsMirror }
+        { label: "Альтернативная ссылка", href: windowsMirror }
       ].filter((item) => item.href)
     },
     {
@@ -142,13 +142,13 @@ export default function DownloadsPage() {
           <div>
             <h3 className="font-display text-2xl font-semibold">Нужна помощь с установкой?</h3>
             <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">
-              Если ссылка открылась не там или приложение не запускается, поддержка поможет в Telegram.
+              Если что-то пошло не так, наша дружелюбная служба заботы мгновенно поможет в Telegram.
             </p>
             {payload?.updated_at ? <p className="mt-1 text-xs text-slate-500">Актуальность ссылок: {new Date(payload.updated_at).toLocaleString("ru-RU")}</p> : null}
             {error ? <p className="mt-2 text-xs text-amber-600 dark:text-amber-300">Часть ссылок не подтянулась автоматически: {error}</p> : null}
           </div>
           <a href={config.supportTelegramUrl} target="_blank" rel="noreferrer" className="btn-primary rounded-xl px-6 py-3 text-sm font-semibold uppercase tracking-[0.12em]">
-            Открыть поддержку
+            Открыть службу заботы
           </a>
         </div>
       </section>

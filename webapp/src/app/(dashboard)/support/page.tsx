@@ -13,26 +13,26 @@ import { usePortalSession } from "@/lib/session";
 import { AnimatePresence, motion } from "framer-motion";
 import { useEffect, useMemo, useState } from "react";
 
-type TicketCategory = "Подключение" | "Оплата" | "Скорость" | "Общий вопрос";
+type TicketCategory = "Подключение" | "Оплата" | "Скорость" | "Любой другой вопрос";
 
 const config = getPortalPublicConfig(process.env as Record<string, string | undefined>);
-const CATEGORIES: TicketCategory[] = ["Подключение", "Оплата", "Скорость", "Общий вопрос"];
+const CATEGORIES: TicketCategory[] = ["Подключение", "Оплата", "Скорость", "Любой другой вопрос"];
 
 const FAQ = [
   {
     q: "С чего лучше начать, если я только открыл кабинет?",
-    a: "Самый простой путь такой: открыть Telegram-бота, забрать тест, потом вернуться в кабинет и уже отсюда скачать приложение, скопировать ключ или перейти к продлению.",
+    a: "Активируйте подписку в нашем приветливом Telegram-боте, а здесь скачивайте приложения и управляйте доступом.",
   },
   {
     q: "Чем отличается тест от полного доступа?",
     a: "Тест нужен, чтобы спокойно проверить скорость и запуск на своих устройствах. Полный доступ подходит для постоянного использования без жёстких ограничений по сценарию.",
   },
   {
-    q: "Что делать, если оплата не открывается?",
-    a: "Не застревайте на одном экране. Можно продолжить через Telegram или сразу написать в поддержку, чтобы не терять время на кассе, которая ведёт себя нестабильно.",
+    q: "Как быть, если возникли трудности с оплатой?",
+    a: "Не теряйте ни секунды времени! Напишите нам в Telegram, и мы моментально решим вопрос на месте.",
   },
   {
-    q: "Когда стоит создавать тикет, а когда просто писать в Telegram?",
+    q: "Когда стоит создавать обращение, а когда просто писать в Telegram?",
     a: "Если вопрос короткий и нужен быстрый ответ, Telegram подойдёт лучше. Если важно приложить скриншот, видео, лог или сохранить историю диалога, удобнее создать обращение здесь.",
   },
 ];
@@ -85,7 +85,7 @@ export default function SupportPage() {
         label: "Telegram",
         href: supportLink,
         icon: "send",
-        hint: "Самый быстрый ответ",
+        hint: "Мгновенная реакция",
       },
       {
         label: "Email",
@@ -97,7 +97,7 @@ export default function SupportPage() {
         label: "Feedback",
         href: config.feedbackbotUrl,
         icon: "rate_review",
-        hint: "Идеи, отзывы и пожелания",
+        hint: "Мы открыты к предложениям",
       },
     ],
     [supportLink],
@@ -163,12 +163,12 @@ export default function SupportPage() {
     <main className="space-y-6">
       <section className="glass-card p-7">
         <h1 className="font-display text-4xl font-bold">
-          {getCopyText("webapp.support.title", "Поддержка POKROV VPN. Мы рядом.")}
+          {getCopyText("webapp.support.title", "Служба заботы POKROV VPN. Рады помочь!")}
         </h1>
         <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">
           {getCopyText(
             "webapp.support.subtitle",
-            "Быстрый вопрос, новый тикет или продолжение диалога - всё в одном месте и без лишней бюрократии.",
+            "Быстрый вопрос, новый обращение или продолжение диалога - всё в одном месте и без лишней бюрократии.",
           )}
         </p>
       </section>
@@ -178,7 +178,7 @@ export default function SupportPage() {
           <p className="text-xs font-semibold uppercase tracking-[0.14em] text-emerald-500">trial support</p>
           <h2 className="mt-2 font-display text-2xl font-semibold">Если на старте что-то пошло не так, поможем быстро и спокойно.</h2>
           <p className="mt-2 max-w-3xl text-sm text-slate-600 dark:text-slate-300">
-            Не нужно разбираться в одиночку. Напишите нам, если не открывается нужный сайт, не импортируется ключ или просто хочется проверить, всё ли настроено как надо.
+            Мы ценим ваше время. Напишите нам, и наш оператор заботливо поможет с подключением или любым другим вопросом.
           </p>
         </section>
       ) : null}
@@ -264,7 +264,7 @@ export default function SupportPage() {
               <div className="glass-card p-4 text-sm text-slate-500">
                 {getCopyText(
                   "webapp.support.empty_tickets",
-                  "Пока пусто. Если нужна помощь, создайте первое сообщение в пару строк.",
+                  "Вы пока не задавали вопросов, значит все работает отлично! Если что, мы всегда рядом.",
                 )}
               </div>
             ) : (
@@ -280,7 +280,7 @@ export default function SupportPage() {
                       {statusLabel(ticket.status)}
                     </span>
                   </div>
-                  <p className="font-medium">{ticket.subject || "Без темы"}</p>
+                  <p className="font-medium">{ticket.subject || "Новое обращение"}</p>
                   <p className="mt-1 text-xs text-slate-500">
                     {ticket.last_message_preview || "Сообщений пока нет"}
                   </p>
@@ -331,14 +331,14 @@ export default function SupportPage() {
                   value={subject}
                   onChange={(event) => setSubject(event.target.value)}
                   className="w-full rounded-xl border border-violet-200/50 bg-white/80 px-4 py-3 text-sm outline-none dark:border-violet-500/30 dark:bg-slate-900/70"
-                  placeholder="Коротко: что случилось"
+                  placeholder="Расскажите, что произошло"
                 />
                 <textarea
                   value={body}
                   onChange={(event) => setBody(event.target.value)}
                   className="w-full rounded-xl border border-violet-200/50 bg-white/80 px-4 py-3 text-sm outline-none dark:border-violet-500/30 dark:bg-slate-900/70"
                   rows={5}
-                  placeholder="Опишите, что происходит и на каком устройстве это заметили"
+                  placeholder="Опишите вашу ситуацию во всех подробностях"
                 />
                 <label className="block rounded-2xl border border-dashed border-violet-300/60 bg-white/70 px-4 py-4 text-sm dark:border-violet-500/35 dark:bg-slate-900/55">
                   <span className="mb-2 block font-medium">Скриншот, видео или лог</span>

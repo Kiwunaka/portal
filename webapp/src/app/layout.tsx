@@ -15,7 +15,7 @@ const mono = JetBrains_Mono({ subsets: ["latin", "cyrillic"], variable: "--font-
 
 export const metadata: Metadata = {
   title: "POKROV VPN - Личный кабинет",
-  description: "Управление доступом в одном кабинете: статус, ключ подключения, поддержка и оплата в рублях.",
+  description: "Управление доступом в одном кабинете: статус, ключ подключения, служба заботы и оплата в рублях.",
 };
 
 const QA_OVERLAY_ENABLED = String(process.env.NEXT_PUBLIC_ENABLE_QA_OVERLAY || "").toLowerCase() === "true";

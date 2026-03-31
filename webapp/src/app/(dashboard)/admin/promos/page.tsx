@@ -250,7 +250,7 @@ export default function AdminPromosPage() {
       <article className="glass-card p-4">
         <h2 className="font-display text-xl font-bold">Промо и тарифы без лишней путаницы</h2>
         <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">
-          Этот раздел нужен для акций и коммерческих сценариев: промокоды, подарочные коды, тарифы и кампании. Если создаёте новую акцию, обычно путь такой: сначала код или подарок, потом кампания, и только после этого публикация ссылки.
+          Удобный центр управления акциями, подарками и специальными тарифами.
         </p>
       </article>
 
@@ -339,7 +339,7 @@ export default function AdminPromosPage() {
           <div className="stat-icon stat-icon-blue"><Package size={20} /></div>
           <h2 className="font-display text-xl font-bold">Кампании</h2>
         </div>
-        <p className="mb-4 text-xs text-slate-500">Кампания связывает код или подарок с сегментом пользователей, сроками и лимитом активаций.</p>
+        <p className="mb-4 text-xs text-slate-500">Настройка таргета: укажите, кому, когда и в каком количестве будет доступен бонус.</p>
         <div className="space-y-2">
           {campaigns.length === 0 ? <div className="empty-state"><Package size={24} /><p className="text-xs"> </p></div> : null}
           {campaigns.map((row) => (
