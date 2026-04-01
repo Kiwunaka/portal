@@ -99,6 +99,10 @@ def test_runtime_and_edge_configs_use_pokrov_domains() -> None:
     assert "\n:8444 {" not in caddy_text
     assert "tls internal" not in caddy_text
     assert "reverse_proxy 127.0.0.1:8080" in caddy_text
+    connect_host_block = caddy_text.split("@connect_host host connect.pokrov.space", 1)[1].split("@api_hosts", 1)[0]
+    assert "/s8Kx2mP7qR4wT/*" in connect_host_block
+    assert "reverse_proxy 127.0.0.1:8080" in connect_host_block
+    assert "redir https://app.pokrov.space{uri} 308" in connect_host_block
     pay_host_block = caddy_text.split("@pay_host host pay.pokrov.space", 1)[1].split("@legacy_web_hosts", 1)[0]
     assert "root * /var/www/portal/marketing" in pay_host_block
     assert 'default="pokrov.space"' in deploy_text
@@ -112,6 +116,7 @@ def test_runtime_and_edge_configs_use_pokrov_domains() -> None:
     assert 'default="api.pokrov.space"' in subscription_interval_text
     assert 'default="pokrov.space"' in verify_text
     assert 'default="api.pokrov.space"' in verify_text
+    assert 'default="connect.pokrov.space"' in verify_text
     assert 'const BASE_PATH = ""' in web_next_config
 
 

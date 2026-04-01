@@ -95,6 +95,104 @@ def _curl_retry(url: str, *, host: str, contains: str | None = None, attempts: i
     return "bash -lc " + shlex.quote(script)
 
 
+def _build_subscription_check_script(*, api_domain: str, connect_domain: str, repeat: int) -> str:
+    return f"""#!/usr/bin/env bash
+set -euo pipefail
+
+CANDIDATES="$(runuser -u postgres -- psql -d portal -tAc \"select tg_id||'|'||sub_token from users where is_active=true and sub_token is not null and sub_token<>'' order by created_at asc limit 25\" 2>/dev/null | sed '/^\\s*$/d' || true)"
+if [ -z "${{CANDIDATES:-}}" ]; then
+  CANDIDATES="$(python3 -c "import sqlite3;db='/root/portal_bot/portal.db';con=sqlite3.connect(db);cur=con.cursor();rows=cur.execute(\\"select tg_id,sub_token from users where is_active=1 and sub_token is not null and sub_token<>'' order by created_at asc limit 25\\").fetchall();print('\\\\n'.join(f'{{r[0]}}|{{r[1]}}' for r in rows))" 2>/dev/null || true)"
+fi
+if [ -z "${{CANDIDATES:-}}" ]; then
+  echo "no_active_tokens"
+  exit 2
+fi
+
+SEL_TG=""
+SEL_TOK=""
+while IFS='|' read -r TRY_TG TRY_TOK; do
+  [ -z "${{TRY_TG:-}}" ] && continue
+  [ -z "${{TRY_TOK:-}}" ] && continue
+  RAW="$(curl -fsS --insecure --resolve {api_domain}:443:127.0.0.1 https://{api_domain}/s8Kx2mP7qR4wT/$TRY_TOK 2>/dev/null || true)"
+  if [ -n "$RAW" ]; then
+    SEL_TG="$TRY_TG"
+    SEL_TOK="$TRY_TOK"
+    break
+  fi
+  RAW="$(curl -fsS --insecure --resolve {api_domain}:443:127.0.0.1 https://{api_domain}/s8Kx2mP7qR4wT/$TRY_TG 2>/dev/null || true)"
+  if [ -n "$RAW" ]; then
+    SEL_TG="$TRY_TG"
+    SEL_TOK="$TRY_TOK"
+    break
+  fi
+done <<< "$CANDIDATES"
+
+if [ -z "${{SEL_TG:-}}" ]; then
+  echo "no_resolvable_subscription_user"
+  exit 2
+fi
+
+for i in $(seq 1 {int(repeat)}); do
+  MODE="token"
+  RAW="$(curl -fsS --insecure --resolve {api_domain}:443:127.0.0.1 https://{api_domain}/s8Kx2mP7qR4wT/$SEL_TOK 2>/dev/null || true)"
+  if [ -z "$RAW" ]; then
+    MODE="tg_id_fallback"
+    RAW="$(curl -fsS --insecure --resolve {api_domain}:443:127.0.0.1 https://{api_domain}/s8Kx2mP7qR4wT/$SEL_TG 2>/dev/null || true)"
+  fi
+  if [ -z "$RAW" ]; then
+    echo "sub_fetch_$i tg_id=$SEL_TG mode=failed"
+    exit 2
+  fi
+  RAW_CONNECT="$(curl -fsS --insecure --resolve {connect_domain}:443:127.0.0.1 https://{connect_domain}/s8Kx2mP7qR4wT/$SEL_TOK 2>/dev/null || true)"
+  if [ -z "$RAW_CONNECT" ]; then
+    echo "sub_fetch_$i tg_id=$SEL_TG connect=failed"
+    exit 2
+  fi
+  METRICS="$(RAW_PAYLOAD="$RAW" python3 - <<'PY'
+import base64
+import re
+import sys
+import os
+
+raw = os.environ.get("RAW_PAYLOAD", "").strip()
+text = raw
+fmt = "plain"
+if raw:
+    try:
+        cand = base64.b64decode(raw + ("=" * (-len(raw) % 4)), validate=False).decode("utf-8", "replace")
+        if "vless://" in cand or "\\n" in cand:
+            text = cand
+            fmt = "base64"
+    except Exception:
+        pass
+
+lines = [ln for ln in text.splitlines() if ln.strip()]
+hosts = set()
+for ln in lines:
+    m = re.search(r'@([^:]+):', ln)
+    if m:
+        hosts.add(m.group(1))
+print(f"fmt={{fmt}} lines={{len(lines)}} hosts={{len(hosts)}}")
+PY
+)"
+  CONNECT_METRICS="$(RAW_CONNECT_PAYLOAD="$RAW_CONNECT" python3 - <<'PY'
+import json
+import sys
+import os
+
+raw = os.environ.get("RAW_CONNECT_PAYLOAD", "").strip()
+payload = json.loads(raw)
+if not isinstance(payload, dict) or "outbounds" not in payload:
+    raise SystemExit(2)
+print(f"connect_json=1 outbounds={{len(payload.get('outbounds') or [])}}")
+PY
+)"
+  echo "sub_fetch_$i tg_id=$SEL_TG mode=$MODE $METRICS $CONNECT_METRICS"
+  sleep 0.4
+done
+"""
+
+
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--web-domain", default="pokrov.space", help="Public web domain for / and /webapp checks")
@@ -154,100 +252,11 @@ def main() -> int:
             code, out, err = _run(ssh, cmd, timeout=30)
             _print_result(name, out, err)
 
-        sub_check = f"""#!/usr/bin/env bash
-set -euo pipefail
-
-CANDIDATES="$(runuser -u postgres -- psql -d portal -tAc \"select tg_id||'|'||sub_token from users where is_active=true and sub_token is not null and sub_token<>'' order by created_at asc limit 25\" 2>/dev/null | sed '/^\\s*$/d' || true)"
-if [ -z "${{CANDIDATES:-}}" ]; then
-  CANDIDATES="$(python3 -c "import sqlite3;db='/root/portal_bot/portal.db';con=sqlite3.connect(db);cur=con.cursor();rows=cur.execute(\\"select tg_id,sub_token from users where is_active=1 and sub_token is not null and sub_token<>'' order by created_at asc limit 25\\").fetchall();print('\\\\n'.join(f'{{r[0]}}|{{r[1]}}' for r in rows))" 2>/dev/null || true)"
-fi
-if [ -z "${{CANDIDATES:-}}" ]; then
-  echo "no_active_tokens"
-  exit 2
-fi
-
-SEL_TG=""
-SEL_TOK=""
-while IFS='|' read -r TRY_TG TRY_TOK; do
-  [ -z "${{TRY_TG:-}}" ] && continue
-  [ -z "${{TRY_TOK:-}}" ] && continue
-RAW="$(curl -fsS --insecure --resolve {api_domain}:443:127.0.0.1 https://{api_domain}/s8Kx2mP7qR4wT/$TRY_TOK 2>/dev/null || true)"
-  if [ -n "$RAW" ]; then
-    SEL_TG="$TRY_TG"
-    SEL_TOK="$TRY_TOK"
-    break
-  fi
-  RAW="$(curl -fsS --insecure --resolve {api_domain}:443:127.0.0.1 https://{api_domain}/s8Kx2mP7qR4wT/$TRY_TG 2>/dev/null || true)"
-  if [ -n "$RAW" ]; then
-    SEL_TG="$TRY_TG"
-    SEL_TOK="$TRY_TOK"
-    break
-  fi
-done <<< "$CANDIDATES"
-
-if [ -z "${{SEL_TG:-}}" ]; then
-  echo "no_resolvable_subscription_user"
-  exit 2
-fi
-
-for i in $(seq 1 {int(args.repeat)}); do
-  MODE="token"
-  RAW="$(curl -fsS --insecure --resolve {api_domain}:443:127.0.0.1 https://{api_domain}/s8Kx2mP7qR4wT/$SEL_TOK 2>/dev/null || true)"
-  if [ -z "$RAW" ]; then
-    MODE="tg_id_fallback"
-    RAW="$(curl -fsS --insecure --resolve {api_domain}:443:127.0.0.1 https://{api_domain}/s8Kx2mP7qR4wT/$SEL_TG 2>/dev/null || true)"
-  fi
-  if [ -z "$RAW" ]; then
-    echo "sub_fetch_$i tg_id=$SEL_TG mode=failed"
-    exit 2
-  fi
-  RAW_CONNECT="$(curl -fsS --insecure --resolve {connect_domain}:443:127.0.0.1 https://{connect_domain}/s8Kx2mP7qR4wT/$SEL_TOK 2>/dev/null || true)"
-  if [ -z "$RAW_CONNECT" ]; then
-    echo "sub_fetch_$i tg_id=$SEL_TG connect=failed"
-    exit 2
-  fi
-  METRICS="$(python3 - <<'PY'
-import base64
-import json
-import re
-import sys
-
-raw = sys.stdin.read().strip()
-text = raw
-fmt = "plain"
-if raw:
-    try:
-        cand = base64.b64decode(raw + ("=" * (-len(raw) % 4)), validate=False).decode("utf-8", "replace")
-        if "vless://" in cand or "\n" in cand:
-            text = cand
-            fmt = "base64"
-    except Exception:
-        pass
-
-lines = [ln for ln in text.splitlines() if ln.strip()]
-hosts = set()
-for ln in lines:
-    m = re.search(r'@([^:]+):', ln)
-    if m:
-        hosts.add(m.group(1))
-print(f"fmt={{fmt}} lines={{len(lines)}} hosts={{len(hosts)}}")
-PY
-<<< "$RAW")"
-  CONNECT_METRICS="$(python3 - <<'PY'
-import json
-import sys
-
-raw = sys.stdin.read().strip()
-payload = json.loads(raw)
-if not isinstance(payload, dict) or "outbounds" not in payload:
-    raise SystemExit(2)
-print(f"connect_json=1 outbounds={len(payload.get('outbounds') or [])}")
-PY
-<<< "$RAW_CONNECT")"
-  echo "sub_fetch_$i tg_id=$SEL_TG mode=$MODE $METRICS $CONNECT_METRICS"
-  sleep 0.4
-done
-"""
+        sub_check = _build_subscription_check_script(
+            api_domain=api_domain,
+            connect_domain=connect_domain,
+            repeat=args.repeat,
+        )
         sftp = ssh.open_sftp()
         try:
             remote = "/tmp/verify_subscriptions.sh"

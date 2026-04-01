@@ -25,7 +25,14 @@ pokrov.space:8444, www.pokrov.space:8444, app.pokrov.space:8444, connect.pokrov.
 
   @connect_host host connect.pokrov.space
   handle @connect_host {
-    redir https://app.pokrov.space{uri} 308
+    @subscription path /s8Kx2mP7qR4wT/*
+    handle @subscription {
+      reverse_proxy 127.0.0.1:8080
+    }
+
+    handle {
+      redir https://app.pokrov.space{uri} 308
+    }
   }
 
   @api_hosts host api.pokrov.space
