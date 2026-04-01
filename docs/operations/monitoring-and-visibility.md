@@ -21,6 +21,9 @@ Hostname role split:
 - `pokrov.space` is the canonical public brand and must be used in new product copy, onboarding, release notes, support scripts, and distribution links
 - `app.pokrov.space` is the canonical browser entry for account continuation, web login, and checkout continuation
 - `api.pokrov.space` is the canonical API base for browser and app-first web flows
+- `connect.pokrov.space` is the canonical public config host for `subscription_url`, QR import, and browser-visible connection delivery
+- `connect.pokrov.space` should default to the smart profile expected by current user-facing flows
+- legacy `api.pokrov.space/s8Kx2mP7qR4wT/...` should be monitored as compatibility, not as the primary public connection surface
 - `kiwunaka.space` is compatibility-only for migration and legacy subscription continuity
 
 Compatibility rule for `kiwunaka.space`:

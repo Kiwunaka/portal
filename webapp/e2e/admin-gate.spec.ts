@@ -51,7 +51,7 @@ function mockSessionUser(isAdmin: boolean) {
   return {
     tg_id: 1001,
     username: "qa_admin",
-    subscription_url: "https://api.pokrov.space/s8Kx2mP7qR4wT/mock_token",
+    subscription_url: "https://connect.pokrov.space/s8Kx2mP7qR4wT/mock_token",
     is_active: true,
     is_admin: isAdmin,
     sub_type: "PAID",
@@ -116,7 +116,7 @@ function mockDashboard() {
     speed_limit_mbps: 100,
     free_next_reset_at: null,
     family_slots: 0,
-    subscription_url: "https://api.pokrov.space/s8Kx2mP7qR4wT/mock_token",
+    subscription_url: "https://connect.pokrov.space/s8Kx2mP7qR4wT/mock_token",
     connection_snapshot: {
       status: "online",
       active_connections: 0,
@@ -235,7 +235,7 @@ function mockAdminUserCard() {
       referral_count: 0,
       streak_months: 0,
       created_at: "2029-12-01T00:00:00",
-      subscription_url: "https://api.pokrov.space/s8Kx2mP7qR4wT/mock_token",
+      subscription_url: "https://connect.pokrov.space/s8Kx2mP7qR4wT/mock_token",
       subscription_token: "mock_token",
       linked_telegram_id: 1001,
       linked_telegram_username: "qa_admin",
@@ -607,7 +607,7 @@ async function registerApiMocks(page: Page, opts: MockOptions): Promise<void> {
       if (action === "manual/regenerate-token") {
         return json({
           ok: true,
-          subscription_url: "https://api.pokrov.space/s8Kx2mP7qR4wT/manual_token",
+          subscription_url: "https://connect.pokrov.space/s8Kx2mP7qR4wT/manual_token",
           sync_ok: true,
         });
       }
@@ -688,10 +688,25 @@ async function registerApiMocks(page: Page, opts: MockOptions): Promise<void> {
   });
 }
 
+async function openRoute(page: Page, href: string): Promise<void> {
+  for (let attempt = 0; attempt < 2; attempt += 1) {
+    try {
+      await page.goto(href, { waitUntil: "domcontentloaded" });
+      return;
+    } catch (error) {
+      const message = String((error as Error)?.message || error || "");
+      if (attempt === 1 || !message.includes("ERR_ABORTED")) {
+        throw error;
+      }
+      await page.waitForTimeout(250);
+    }
+  }
+}
+
 test.describe("Admin gate", () => {
   test("redirects non-admin from /admin/* to /dashboard", async ({ page }) => {
     await registerApiMocks(page, { isAdmin: false });
-    await page.goto("admin/dashboard/");
+    await openRoute(page, "admin/dashboard/");
     await expect(page).toHaveURL(/\/dashboard\/?$/);
   });
 
@@ -710,7 +725,7 @@ test.describe("Admin gate", () => {
     ];
 
     for (const section of sections) {
-      await page.goto(section);
+      await openRoute(page, section);
       await expect(page).toHaveURL(new RegExp(`/${section.replace(/\//g, "\\/")}$`));
       await expect(page.getByRole("navigation")).toBeVisible();
       await expect(page.locator("main h1, main h2").first()).toBeVisible();
@@ -731,7 +746,7 @@ test.describe("Admin gate", () => {
       },
     });
 
-    await page.goto("admin/dashboard/");
+    await openRoute(page, "admin/dashboard/");
     await expect(page).toHaveURL(/\/admin\/dashboard\/?$/);
     await expect(page.getByRole("button", { name: /обновить|refresh/i })).toBeVisible();
     expect(pageErrors).toEqual([]);
@@ -740,21 +755,21 @@ test.describe("Admin gate", () => {
   test("shows clean Russian copy across admin surfaces", async ({ page }) => {
     await registerApiMocks(page, { isAdmin: true });
 
-    await page.goto("admin/dashboard/");
+    await openRoute(page, "admin/dashboard/");
     await expect(page.getByRole("heading", { name: "Как читать эту страницу" })).toBeVisible();
     await expect(page.getByRole("heading", { name: "Сводка ошибок и рисков" })).toBeVisible();
 
-    await page.goto("admin/users/");
+    await openRoute(page, "admin/users/");
     await expect(page.getByRole("link", { name: "Сводка" })).toBeVisible();
     await expect(page.getByRole("link", { name: "Пользователи" })).toBeVisible();
     await expect(page.getByPlaceholder("Поиск по username, Telegram ID, имени или app install ID")).toBeVisible();
     await expect(page.getByRole("button", { name: "Создать manual/test пользователя" })).toBeVisible();
 
-    await page.goto("admin/nodes/");
+    await openRoute(page, "admin/nodes/");
     await expect(page.getByRole("heading", { name: "Ноды и состояние инфраструктуры" })).toBeVisible();
     await expect(page.getByRole("button", { name: "Проверить расхождения" })).toBeVisible();
 
-    await page.goto("admin/tickets/");
+    await openRoute(page, "admin/tickets/");
     await expect(page.getByText("Здесь собраны обращения пользователей.")).toBeVisible();
     await expect(page.getByPlaceholder("Напишите ответ пользователю простыми словами")).toBeVisible();
   });
@@ -772,7 +787,7 @@ test.describe("Admin gate", () => {
     );
 
     await registerApiMocks(page, { isAdmin: true, userRows });
-    await page.goto("admin/users/");
+    await openRoute(page, "admin/users/");
 
     await expect(page.getByText("Показаны 1-80 из 81 пользователей.", { exact: true })).toBeVisible();
     await expect(page.locator("tbody tr").first()).toContainText("User 081");
@@ -810,7 +825,7 @@ test.describe("Admin gate", () => {
     ];
 
     await registerApiMocks(page, { isAdmin: true, userRows });
-    await page.goto("admin/users/");
+    await openRoute(page, "admin/users/");
 
     await page.locator("select").nth(0).selectOption("manual_test");
     await page.locator("select").nth(1).selectOption("manual_test");
@@ -852,11 +867,11 @@ test.describe("Admin gate", () => {
       userRows,
     });
 
-    await page.goto("admin/dashboard/");
+    await openRoute(page, "admin/dashboard/");
     await expect(page.getByText("Observer watch")).toBeVisible();
     await expect(page.getByText("Observer suspicious")).toBeVisible();
 
-    await page.goto("admin/users/");
+    await openRoute(page, "admin/users/");
     await page.locator("select").nth(2).selectOption("suspicious");
     await expect(page.locator("tbody tr").first()).toContainText("Suspicious User");
     await expect(page.locator("tbody tr").first()).toContainText("suspicious");
@@ -891,7 +906,7 @@ test.describe("Admin gate", () => {
       ],
     });
 
-    await page.goto("admin/");
+    await openRoute(page, "admin/");
     await page.getByRole("link", { name: /Пользователи/i }).first().click();
     await expect(page).toHaveURL(/\/admin\/users\/?$/);
 
@@ -908,14 +923,14 @@ test.describe("Admin gate", () => {
     }));
     expect(usersWidth.page).toBeLessThanOrEqual(usersWidth.viewport + 1);
 
-    await page.goto("admin/nodes/");
+    await openRoute(page, "admin/nodes/");
     const nodesWidth = await page.evaluate(() => ({
       viewport: window.innerWidth,
       page: document.documentElement.scrollWidth,
     }));
     expect(nodesWidth.page).toBeLessThanOrEqual(nodesWidth.viewport + 1);
 
-    await page.goto("admin/tickets/");
+    await openRoute(page, "admin/tickets/");
     await page.getByPlaceholder("Напишите ответ пользователю простыми словами").fill("Проверили мобильную админку.");
     await expect(page.getByRole("button", { name: "Отправить" })).toBeVisible();
     const ticketsWidth = await page.evaluate(() => ({
@@ -982,7 +997,7 @@ test.describe("Admin gate", () => {
       },
     });
 
-    await page.goto("admin/nodes/");
+    await openRoute(page, "admin/nodes/");
     await expect(page.getByText("US: Клиенты")).toBeVisible();
     await expect(page.locator(".badge", { hasText: "Нужно проверить данные" }).first()).toBeVisible();
     await expect(page.getByText(/Сбой проверки/i)).toBeVisible();
@@ -1014,7 +1029,7 @@ test.describe("Admin gate", () => {
       ],
     });
 
-    await page.goto("admin/tickets/");
+    await openRoute(page, "admin/tickets/");
     await expect(page.getByText("Не открывается конфиг")).toBeVisible();
     const statusButton = page.getByRole("button", { name: "В работе", exact: true });
     await statusButton.click();

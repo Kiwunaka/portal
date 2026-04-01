@@ -378,7 +378,7 @@ class ApiP0ExtensionsTests(unittest.TestCase):
         self.assertTrue(body["ok"])
         self.assertTrue(body["created"])
         self.assertTrue(str(body["session_token"]))
-        self.assertIn("/s8Kx2mP7qR4wT/", str(body["subscription_url"]))
+        self.assertTrue(str(body["subscription_url"]).startswith("https://connect.pokrov.space/s8Kx2mP7qR4wT/"))
         self.assertTrue(calls)
 
     def test_user_payload_includes_app_and_telegram_monitoring_context(self) -> None:

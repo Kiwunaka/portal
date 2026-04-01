@@ -27,7 +27,10 @@ function AdminStateCard({
         <h1 className="mt-2 font-display text-3xl font-bold">{title}</h1>
         <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">{description}</p>
         <div className="mt-4">
-          <AppRouteLink href={primaryHref} className="outline-btn rounded-xl px-4 py-2 text-sm font-semibold uppercase tracking-[0.12em]">
+          <AppRouteLink
+            href={primaryHref}
+            className="outline-btn inline-flex w-full justify-center rounded-xl px-4 py-2 text-sm font-semibold uppercase tracking-[0.12em] sm:w-auto"
+          >
             {primaryLabel}
           </AppRouteLink>
         </div>
@@ -96,12 +99,12 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
   return (
     <main className="space-y-5">
-      <section className="stat-card p-6">
-        <div className="flex items-start gap-4">
+      <section className="stat-card p-5 sm:p-6">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-start">
           <div className="stat-icon stat-icon-violet">
             <Shield size={22} />
           </div>
-          <div className="flex-1">
+          <div className="min-w-0 flex-1">
             <p className="font-mono text-xs uppercase tracking-[0.15em] text-violet-500 dark:text-violet-300">админ / pokrov</p>
             <h1 className="mt-1 font-display text-3xl font-bold">Панель управления</h1>
             <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">
@@ -112,14 +115,14 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       </section>
 
       <section className="glass-card overflow-x-auto p-2">
-        <nav className="flex flex-wrap gap-1.5">
+        <nav className="flex min-w-max flex-nowrap gap-1.5 pb-1 sm:min-w-0 sm:flex-wrap sm:pb-0">
           {ADMIN_NAV_ITEMS.map((item) => {
             const selected = active === item.href;
             return (
               <AppRouteLink
                 key={item.href}
                 href={item.href}
-                className={`haptic-tap inline-flex items-center gap-1.5 rounded-xl px-3.5 py-2 text-xs font-semibold uppercase tracking-[0.1em] transition-all duration-200 ${
+                className={`haptic-tap inline-flex shrink-0 items-center gap-1.5 rounded-xl px-3.5 py-2 text-xs font-semibold uppercase tracking-[0.1em] transition-all duration-200 ${
                   selected
                     ? "bg-gradient-to-r from-violet-600 to-violet-700 text-white shadow-lg shadow-violet-600/25"
                     : "text-slate-600 hover:bg-white/70 dark:text-slate-300 dark:hover:bg-white/10"
@@ -131,7 +134,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             );
           })}
         </nav>
-        <div className="px-3 pb-3 pt-2 text-xs text-slate-500 dark:text-slate-400">
+        <div className="px-3 pb-3 pt-2 text-xs leading-relaxed text-slate-500 dark:text-slate-400">
           «Сводка» показывает общее состояние сервиса, «Пользователи» помогает решать частные кейсы, а «Ноды» нужна для контроля инфраструктуры.
         </div>
       </section>

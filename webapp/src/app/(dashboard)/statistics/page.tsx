@@ -90,7 +90,7 @@ export default function StatisticsPage() {
   return (
     <main className="space-y-6">
       <section className="glass-card p-7">
-        <p className="font-mono text-xs uppercase tracking-[0.18em] text-slate-500">usage snapshot</p>
+        <p className="font-mono text-xs uppercase tracking-[0.18em] text-slate-500">сводка</p>
         <h1 className="mt-2 font-display text-4xl font-bold">Сводка по использованию</h1>
         <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">
           Здесь видно трафик, состояние подписки и живые подключения. Трафик и активность считаются серверно по нодам POKROV, а не только по приложению.
@@ -111,7 +111,7 @@ export default function StatisticsPage() {
         <section className="glass-card p-6">
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.14em] text-orange-500">trial / free</p>
+              <p className="text-xs font-semibold uppercase tracking-[0.14em] text-orange-500">тестовый доступ</p>
               <h2 className="mt-2 font-display text-2xl font-semibold">Хотите больше трафика и устройств?</h2>
               <p className="mt-2 max-w-2xl text-sm text-slate-600 dark:text-slate-300">
                 Тест и базовый доступ созданы, чтобы быстро проверить скорость и запуск. Для постоянного использования без жёстких ограничений лучше сразу перейти к тарифам.
@@ -136,7 +136,7 @@ export default function StatisticsPage() {
             <p>
               Тариф: <span className="font-semibold text-slate-900 dark:text-white">{dash?.current_plan_code || dash?.sub_type || "—"}</span>
             </p>
-            <p>Ссылка доступа: {user?.subscription_url ? "готова" : "пока недоступна"}</p>
+            <p>Ссылка подключения: {user?.subscription_url ? "готова" : "пока недоступна"}</p>
             <p>Объём профиля: {formatGb(dash?.total_gb)}</p>
             <p>Скорость: {dash?.speed_limit_mbps ? `${dash.speed_limit_mbps} Мбит/с` : "по текущей политике профиля"}</p>
             <p>Семейные слоты: {dash?.family_slots ?? user?.family_slots ?? 0}</p>

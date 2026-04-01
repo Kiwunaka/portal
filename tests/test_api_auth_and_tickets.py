@@ -1284,7 +1284,7 @@ class ApiAuthAndTicketsTests(unittest.TestCase):
         body = created.json()
         self.assertTrue(body["ok"])
         self.assertTrue(body["sync_ok"])
-        self.assertIn("/s8Kx2mP7qR4wT/", body["user"]["subscription_url"])
+        self.assertTrue(str(body["user"]["subscription_url"]).startswith("https://connect.pokrov.space/s8Kx2mP7qR4wT/"))
         manual_tg_id = int(body["user"]["tg_id"])
         self.assertLess(manual_tg_id, 0)
 
@@ -1346,7 +1346,7 @@ class ApiAuthAndTicketsTests(unittest.TestCase):
         self.assertEqual(regen.status_code, 200, regen.text)
         self.assertTrue(regen.json()["ok"])
         self.assertTrue(bool(regen.json().get("sync_ok")))
-        self.assertIn("/s8Kx2mP7qR4wT/", regen.json()["subscription_url"])
+        self.assertTrue(str(regen.json()["subscription_url"]).startswith("https://connect.pokrov.space/s8Kx2mP7qR4wT/"))
 
     def test_admin_users_support_effective_status_origin_filters_and_search(self) -> None:
         from db import SessionLocal
@@ -1889,6 +1889,66 @@ class ApiAuthAndTicketsTests(unittest.TestCase):
         self.assertIn("text/plain", plain.headers.get("content-type", ""))
         self.assertIsInstance(plain.text, str)
         self.assertTrue(bool(plain.text.strip()))
+
+    def test_subscription_endpoint_defaults_to_smart_profile_on_connect_host(self) -> None:
+        from db import SessionLocal
+        from models import User
+
+        s = SessionLocal()
+        try:
+            user = s.query(User).filter_by(tg_id=1001).first()
+            assert user is not None
+            user.sub_token = "token_1001_secure"
+            user.sub_type = "PAID"
+            user.current_plan_code = "1_month"
+            user.is_active = True
+            user.expiry_at = datetime.utcnow() + timedelta(days=10)
+            s.add(user)
+            s.commit()
+        finally:
+            s.close()
+
+        with patch.object(self.api, "_nodes_for_user", side_effect=lambda user, nodes, session=None: list(nodes or [])[:1]):
+            connect_default = self.client.get(
+                "/s8Kx2mP7qR4wT/token_1001_secure",
+                headers={"Host": "connect.pokrov.space"},
+            )
+        self.assertEqual(connect_default.status_code, 200, connect_default.text)
+        self.assertEqual(connect_default.headers.get("content-type"), "application/json")
+        self.assertIn("route", connect_default.json())
+
+        legacy_default = self.client.get(
+            "/s8Kx2mP7qR4wT/token_1001_secure",
+            headers={"Host": "api.pokrov.space"},
+        )
+        self.assertEqual(legacy_default.status_code, 200, legacy_default.text)
+        self.assertIn("text/plain", legacy_default.headers.get("content-type", ""))
+        self.assertTrue(bool(legacy_default.text.strip()))
+
+    def test_dashboard_and_profile_payloads_use_canonical_connect_host(self) -> None:
+        from db import SessionLocal
+        from models import User
+
+        s = SessionLocal()
+        try:
+            user = s.query(User).filter_by(tg_id=1001).first()
+            assert user is not None
+            user.sub_token = "token_1001_secure"
+            user.is_active = True
+            user.expiry_at = datetime.utcnow() + timedelta(days=10)
+            s.commit()
+        finally:
+            s.close()
+
+        headers = {"Authorization": "Bearer " + self.api.create_web_session_token(tg_id=1001, username="alice")}
+
+        dashboard = self.client.get("/api/dashboard", headers=headers)
+        self.assertEqual(dashboard.status_code, 200, dashboard.text)
+        self.assertTrue(str(dashboard.json().get("subscription_url") or "").startswith("https://connect.pokrov.space/s8Kx2mP7qR4wT/"))
+
+        profile = self.client.get("/api/user/1001", headers=headers)
+        self.assertEqual(profile.status_code, 200, profile.text)
+        self.assertTrue(str(profile.json().get("subscription_url") or "").startswith("https://connect.pokrov.space/s8Kx2mP7qR4wT/"))
 
     def test_admin_metrics_timeseries_and_nodes_traffic_endpoints(self) -> None:
         from db import SessionLocal

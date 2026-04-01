@@ -63,6 +63,7 @@ python -m pytest portal_bot/tests/test_app_first_api.py -q
 python -m pytest tests/test_portal_api.py -q
 python -m pytest tests/test_worker_retention.py -q
 python -m pytest tests/test_observer_service.py tests/test_observer_api.py tests/test_collect_xray_observer.py tests/test_predeploy_node_readiness.py -q
+python scripts/api_lifecycle_smoke.py
 python -m unittest tests.test_node_dataplane_probe tests.test_ru_probe_runner tests.test_render_ru_probe_report
 ```
 
@@ -81,6 +82,7 @@ Run inside `webapp/`:
 npm install
 npm.cmd run dev
 npm.cmd run build
+npm.cmd run test:e2e
 npm.cmd run test:e2e:admin
 ```
 
@@ -89,8 +91,10 @@ Notes:
 - `webapp` owns the primary admin surface.
 - Real browser checks live under `webapp/e2e/`.
 - `tests/test_admin_webapp_smoke.py` is a structure/build smoke, not a replacement for Playwright browser coverage.
+- `webapp/e2e/cabinet-flow.spec.ts` covers the non-app user cabinet flow with mocked API contracts.
 - admin browser checks should include a narrow mobile or Telegram WebView-like viewport so tap targets, overflow, and modal actions stay usable inside the embedded webapp.
 - observer-lite admin checks should cover dashboard summary counts, users-table filter parity, detail diagnostics, and node collector health rendering.
+- user-facing config delivery should expose one public `ссылка подключения` via `connect.pokrov.space`; hidden `?format=plain` compatibility must stay out of normal copy and browser flows.
 
 Run inside the client repo:
 

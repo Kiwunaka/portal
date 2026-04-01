@@ -91,8 +91,11 @@ Web surfaces support app-first continuation through:
 Contract rule:
 
 - canonical API base is `https://api.pokrov.space/`
+- canonical public config host is `https://connect.pokrov.space/`
 - HTML responses from `app.pokrov.space` must never be treated as valid API JSON
 - web login should continue the user into account or checkout, not into a dead-end landing
+- new user-facing `subscription_url` values must point to `connect.pokrov.space`
+- legacy `api.pokrov.space/s8Kx2mP7qR4wT/...` remains compatibility-only for older imports and recovery cases
 
 ## Checkout Continuation
 
@@ -108,6 +111,19 @@ Checkout rule:
 - real payment actions require authenticated or ticketed continuation
 - Telegram bot billing remains valid as a secondary path
 - buying VPN must remain possible from bot, site, and app with the same backend contract behind each surface
+
+## Subscription Delivery Semantics
+
+Current user-facing delivery semantics:
+
+- one public `ссылка подключения`
+- one QR built from the same URL
+- no public smart/plain split in bot, site, or webapp wording
+
+Compatibility note:
+
+- `?format=plain` still exists for backend compatibility and advanced/manual recovery
+- that compatibility override must stay out of normal user-facing onboarding and CTA copy
 
 ## Telegram Linking Flow
 

@@ -99,6 +99,7 @@ def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--web-domain", default="pokrov.space", help="Public web domain for / and /webapp checks")
     ap.add_argument("--api-domain", default="api.pokrov.space", help="Public API domain for /api/health and subscription checks")
+    ap.add_argument("--connect-domain", default="connect.pokrov.space", help="Canonical connect host for smart subscription checks")
     ap.add_argument("--domain", default="", help="Deprecated alias for --web-domain")
     ap.add_argument("--brain-ip", required=True)
     ap.add_argument("--ssh-user", default="root")
@@ -114,10 +115,13 @@ def main() -> int:
 
     web_domain = (args.domain or "").strip() or (args.web_domain or "").strip()
     api_domain = (args.api_domain or "").strip()
+    connect_domain = (args.connect_domain or "").strip()
     if not web_domain:
         raise SystemExit("Missing --web-domain")
     if not api_domain:
         raise SystemExit("Missing --api-domain")
+    if not connect_domain:
+        raise SystemExit("Missing --connect-domain")
 
     ssh = _ssh_connect(args.brain_ip, user=args.ssh_user, port=args.ssh_port, password=pw)
     try:
@@ -167,7 +171,7 @@ SEL_TOK=""
 while IFS='|' read -r TRY_TG TRY_TOK; do
   [ -z "${{TRY_TG:-}}" ] && continue
   [ -z "${{TRY_TOK:-}}" ] && continue
-  RAW="$(curl -fsS --insecure --resolve {api_domain}:443:127.0.0.1 https://{api_domain}/s8Kx2mP7qR4wT/$TRY_TOK 2>/dev/null || true)"
+RAW="$(curl -fsS --insecure --resolve {api_domain}:443:127.0.0.1 https://{api_domain}/s8Kx2mP7qR4wT/$TRY_TOK 2>/dev/null || true)"
   if [ -n "$RAW" ]; then
     SEL_TG="$TRY_TG"
     SEL_TOK="$TRY_TOK"
@@ -197,8 +201,14 @@ for i in $(seq 1 {int(args.repeat)}); do
     echo "sub_fetch_$i tg_id=$SEL_TG mode=failed"
     exit 2
   fi
+  RAW_CONNECT="$(curl -fsS --insecure --resolve {connect_domain}:443:127.0.0.1 https://{connect_domain}/s8Kx2mP7qR4wT/$SEL_TOK 2>/dev/null || true)"
+  if [ -z "$RAW_CONNECT" ]; then
+    echo "sub_fetch_$i tg_id=$SEL_TG connect=failed"
+    exit 2
+  fi
   METRICS="$(python3 - <<'PY'
 import base64
+import json
 import re
 import sys
 
@@ -223,7 +233,18 @@ for ln in lines:
 print(f"fmt={{fmt}} lines={{len(lines)}} hosts={{len(hosts)}}")
 PY
 <<< "$RAW")"
-  echo "sub_fetch_$i tg_id=$SEL_TG mode=$MODE $METRICS"
+  CONNECT_METRICS="$(python3 - <<'PY'
+import json
+import sys
+
+raw = sys.stdin.read().strip()
+payload = json.loads(raw)
+if not isinstance(payload, dict) or "outbounds" not in payload:
+    raise SystemExit(2)
+print(f"connect_json=1 outbounds={len(payload.get('outbounds') or [])}")
+PY
+<<< "$RAW_CONNECT")"
+  echo "sub_fetch_$i tg_id=$SEL_TG mode=$MODE $METRICS $CONNECT_METRICS"
   sleep 0.4
 done
 """

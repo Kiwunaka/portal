@@ -39,7 +39,7 @@ export default function SubscriptionQrCard({ value, active = true }: Props) {
       } catch (err) {
         if (!cancelled) {
           setSrc("");
-          setError(String((err as { message?: string })?.message || err || "Не удалось собрать Умный Умный QR-код доступа доступа."));
+          setError(String((err as { message?: string })?.message || err || "Не удалось собрать QR-код для подключения."));
         }
       }
     };
@@ -55,7 +55,7 @@ export default function SubscriptionQrCard({ value, active = true }: Props) {
   }
 
   if (!active) {
-    return <p className="mt-3 text-sm text-slate-500">Умный Умный QR-код доступа доступа соберём по запросу, когда он понадобится.</p>;
+    return <p className="mt-3 text-sm text-slate-500">QR-код появится, когда ссылка подключения станет доступна.</p>;
   }
 
   if (error) {
@@ -69,7 +69,7 @@ export default function SubscriptionQrCard({ value, active = true }: Props) {
   return (
     <Image
       src={src}
-      alt="Умный Умный QR-код доступа доступа подписки"
+      alt="QR-код ссылки подключения"
       width={220}
       height={220}
       unoptimized

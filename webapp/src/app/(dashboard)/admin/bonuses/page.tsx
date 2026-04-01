@@ -15,11 +15,11 @@ function parseWeights(input: string): Array<{ days: number; weight: number }> {
     const days = Number(daysRaw || 0);
     const weight = Number(weightRaw || 0);
     if (!Number.isFinite(days) || !Number.isFinite(weight) || days <= 0 || weight <= 0) {
-      throw new Error(`������������ ������ �����: ${line}`);
+      throw new Error(`Некорректная строка веса: ${line}`);
     }
     return { days: Math.floor(days), weight: Math.floor(weight) };
   });
-  if (parsed.length === 0) throw new Error("������� ���� �� ���� ������ �����");
+  if (parsed.length === 0) throw new Error("Добавьте хотя бы одну строку с весом.");
   return parsed;
 }
 
@@ -48,7 +48,7 @@ export default function AdminBonusesPage() {
       setLoyaltyConfig(loyalty.loyalty_config);
       setLoyaltyText((loyalty.loyalty_config.tiers || []).map((row) => `${row.days}:${row.bonus_days}:${row.perk}`).join("\n"));
     } catch (err) {
-      setError(String((err as { message?: string })?.message || err || "    "));
+      setError(String((err as { message?: string })?.message || err || "Не удалось загрузить бонусы."));
     }
   };
 
@@ -70,9 +70,9 @@ export default function AdminBonusesPage() {
       const out = await adminWheelConfigUpdate(payload);
       setConfig(out.wheel_config);
       setWeightsText(weightsToText(out.wheel_config.weights || []));
-      setResult("������������ ������� ���������.");
+      setResult("Настройки колеса сохранены.");
     } catch (err) {
-      setError(String((err as { message?: string })?.message || err || "    "));
+      setError(String((err as { message?: string })?.message || err || "Не удалось сохранить настройки колеса."));
     } finally {
       setBusy(false);
     }
@@ -94,7 +94,7 @@ export default function AdminBonusesPage() {
           const bonusDays = Number(bonusRaw || 0);
           const perk = perkRaw.join(":").trim();
           if (!Number.isFinite(days) || !Number.isFinite(bonusDays) || days <= 0 || bonusDays < 0 || !perk) {
-            throw new Error(`������������ ������ ������� ����������: ${line}`);
+            throw new Error(`Некорректная строка уровня лояльности: ${line}`);
           }
           return { days: Math.floor(days), bonus_days: Math.floor(bonusDays), perk };
         });
@@ -105,9 +105,9 @@ export default function AdminBonusesPage() {
       const out = await adminLoyaltyConfigUpdate(payload);
       setLoyaltyConfig(out.loyalty_config);
       setLoyaltyText((out.loyalty_config.tiers || []).map((row) => `${row.days}:${row.bonus_days}:${row.perk}`).join("\n"));
-      setResult("������������ ���������� ���������.");
+      setResult("Настройки лояльности сохранены.");
     } catch (err) {
-      setError(String((err as { message?: string })?.message || err || "    "));
+      setError(String((err as { message?: string })?.message || err || "Не удалось сохранить лояльность."));
     } finally {
       setBusy(false);
     }
@@ -117,7 +117,7 @@ export default function AdminBonusesPage() {
     const tgId = Number(loyaltyGrantUser || 0);
     const tierDays = Number(loyaltyGrantTier || 0);
     if (!Number.isFinite(tgId) || tgId <= 0 || !Number.isFinite(tierDays) || tierDays <= 0) {
-      setError("������� ���������� Telegram ID � ���� ������");
+      setError("Укажите Telegram ID пользователя и длину уровня.");
       return;
     }
     setBusy(true);
@@ -125,15 +125,14 @@ export default function AdminBonusesPage() {
     setResult("");
     try {
       const out = await adminUserLoyaltyGrant(tgId, tierDays);
-      setResult(`  : ${out.tier_days}    ${tgId} (${out.sync_ok ? " " : "  "}).`);
+      setResult(`Лояльность выдана: ${out.tier_days} дней пользователю ${tgId} (${out.sync_ok ? "синхронизация успешна" : "есть рассинхрон"}).`);
     } catch (err) {
-      setError(String((err as { message?: string })?.message || err || "    "));
+      setError(String((err as { message?: string })?.message || err || "Не удалось выдать бонус."));
     } finally {
       setBusy(false);
     }
   };
 
-  // Visual weight distribution
   const weightBars = useMemo(() => {
     try {
       const parsed = parseWeights(weightsText);
@@ -145,46 +144,46 @@ export default function AdminBonusesPage() {
   }, [weightsText]);
 
   const PRESET_OPTIONS = [
-    { value: "balanced", label: "����������������" },
-    { value: "generous", label: "������" },
-    { value: "conservative", label: "��������������" },
-    { value: "jackpot", label: "�������" },
+    { value: "balanced", label: "Сбалансированный" },
+    { value: "generous", label: "Щедрый" },
+    { value: "conservative", label: "Осторожный" },
+    { value: "jackpot", label: "Джекпот" },
   ];
 
   return (
     <section className="space-y-5">
-      <article className="stat-card p-6">
-        <div className="flex items-center gap-3 mb-1">
-          <div className="stat-icon stat-icon-amber"><Dices size={22} /></div>
-          <div>
-            <h2 className="font-display text-xl font-bold">������ � �������</h2>
-            <p className="text-xs text-slate-500">��������� �������� ������� � ������� ����������</p>
+      <article className="stat-card p-5 sm:p-6">
+        <div className="mb-1 flex flex-col gap-3 sm:flex-row sm:items-center">
+          <div className="stat-icon stat-icon-amber">
+            <Dices size={22} />
+          </div>
+          <div className="min-w-0">
+            <h2 className="font-display text-xl font-bold">Бонусы и лояльность</h2>
+            <p className="text-xs text-slate-500">Колесо бонусов, ручная выдача уровней и настройка сценариев удержания.</p>
           </div>
         </div>
         <p className="mt-3 text-sm text-slate-600 dark:text-slate-300">
-          ���� ������ �������� �� ������� � ������������ ��������. ����� ����� ������ ���� ��������� �������� ����, ����� ����� ������� � ������ ���������� ��� ���������� �������������.
+          Используйте этот раздел, чтобы управлять вероятностями, паузой между попытками и правилами начисления лояльности.
         </p>
       </article>
 
-      <div className="grid gap-5 xl:grid-cols-[1fr,0.6fr]">
-        {/* -- Config form -------------------------------- */}
+      <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr),minmax(280px,0.6fr)]">
         <article className="glass-card p-5 space-y-4">
           {!config ? (
-            <p className="text-sm text-slate-500">��������� ��������� �������...</p>
+            <p className="text-sm text-slate-500">Загружаем настройки...</p>
           ) : (
             <>
               <div className="grid gap-4 md:grid-cols-2">
                 <div>
-                  <label className="block text-[10px] uppercase tracking-[0.1em] text-slate-500 mb-1.5">�������</label>
+                  <label className="mb-1.5 block text-[10px] uppercase tracking-[0.1em] text-slate-500">Пресет</label>
                   <div className="flex flex-wrap gap-1.5">
                     {PRESET_OPTIONS.map((preset) => (
                       <button
                         key={preset.value}
                         type="button"
-                        className={`haptic-tap rounded-xl px-3 py-1.5 text-xs font-semibold transition-all ${config.preset === preset.value
-                            ? "bg-violet-600 text-white shadow-md shadow-violet-600/20"
-                            : "outline-btn"
-                          }`}
+                        className={`haptic-tap rounded-xl px-3 py-1.5 text-xs font-semibold transition-all ${
+                          config.preset === preset.value ? "bg-violet-600 text-white shadow-md shadow-violet-600/20" : "outline-btn"
+                        }`}
                         onClick={() => setConfig((prev) => (prev ? { ...prev, preset: preset.value } : prev))}
                       >
                         {preset.label}
@@ -193,8 +192,8 @@ export default function AdminBonusesPage() {
                   </div>
                 </div>
                 <div>
-                  <label className="block text-[10px] uppercase tracking-[0.1em] text-slate-500 mb-1.5 flex items-center gap-1">
-                    <Timer size={10} /> Cooldown (����)
+                  <label className="mb-1.5 flex items-center gap-1 text-[10px] uppercase tracking-[0.1em] text-slate-500">
+                    <Timer size={10} /> Охлаждение (часы)
                   </label>
                   <input
                     type="number"
@@ -206,56 +205,55 @@ export default function AdminBonusesPage() {
                     }
                     className="w-full rounded-xl border border-violet-200/50 bg-white/80 px-3 py-2 text-sm outline-none dark:border-violet-500/30 dark:bg-slate-900/70"
                   />
-                  <p className="mt-1 text-[10px] text-slate-400">{Math.round((config.cooldown_hours || 168) / 24)} ���� ����� �������</p>
+                  <p className="mt-1 text-[10px] text-slate-400">{Math.round((config.cooldown_hours || 168) / 24)} дней до следующего запуска</p>
                 </div>
               </div>
 
               <div>
-                <label className="block text-[10px] uppercase tracking-[0.1em] text-slate-500 mb-1.5">���� (days:weight, �� �������)</label>
-                <p className="mb-2 text-xs text-slate-500">��� ������ weight, ��� ���� �������� �������. ������ ������ ������� � ������� `���:���`.</p>
+                <label className="mb-1.5 block text-[10px] uppercase tracking-[0.1em] text-slate-500">Весы колеса (days:weight, по одной строке)</label>
+                <p className="mb-2 text-xs text-slate-500">Чем выше weight, тем чаще выпадает бонус с указанной длительностью. Формат строки: <code className="rounded bg-white/70 px-1 py-0.5 dark:bg-white/10">дни:вес</code>.</p>
                 <textarea
                   rows={7}
                   value={weightsText}
                   onChange={(event) => setWeightsText(event.target.value)}
-                  className="w-full rounded-xl border border-violet-200/50 bg-white/80 px-3 py-2 font-mono text-xs outline-none dark:border-violet-500/30 dark:bg-slate-900/70 resize-none"
+                  className="w-full resize-none rounded-xl border border-violet-200/50 bg-white/80 px-3 py-2 font-mono text-xs outline-none dark:border-violet-500/30 dark:bg-slate-900/70"
                   placeholder={"1:45\n3:35\n7:15\n30:5"}
                 />
               </div>
 
-              <div className="flex flex-wrap gap-2">
-                <button className="btn-primary rounded-xl px-5 py-2.5 text-sm font-semibold uppercase tracking-[0.12em] inline-flex items-center gap-2" type="button" onClick={() => void save()} disabled={busy}>
+              <div className="flex flex-col gap-2 sm:flex-row">
+                <button className="btn-primary inline-flex items-center gap-2 rounded-xl px-5 py-2.5 text-sm font-semibold uppercase tracking-[0.12em]" type="button" onClick={() => void save()} disabled={busy}>
                   {busy ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}
-                  {busy ? "..." : ""}
+                  {busy ? "Сохраняем..." : "Сохранить"}
                 </button>
-                <button className="outline-btn rounded-xl px-4 py-2 text-sm font-semibold inline-flex items-center gap-1.5" type="button" onClick={() => void load()}>
-                  <RefreshCw size={13} /> �������������
+                <button className="outline-btn inline-flex items-center gap-1.5 rounded-xl px-4 py-2 text-sm font-semibold" type="button" onClick={() => void load()}>
+                  <RefreshCw size={13} /> Перезагрузить
                 </button>
               </div>
             </>
           )}
 
           {result ? (
-            <div className="rounded-xl bg-emerald-500/10 p-3 flex items-center gap-2">
+            <div className="flex items-center gap-2 rounded-xl bg-emerald-500/10 p-3">
               <span className="status-dot status-dot-online" />
-              <p className="text-sm text-emerald-600 dark:text-emerald-300 font-medium">{result}</p>
+              <p className="text-sm font-medium text-emerald-600 dark:text-emerald-300">{result}</p>
             </div>
           ) : null}
           {error ? (
-            <div className="rounded-xl bg-rose-500/10 p-3 flex items-center gap-2">
+            <div className="flex items-center gap-2 rounded-xl bg-rose-500/10 p-3">
               <span className="status-dot status-dot-offline" />
-              <p className="text-sm text-rose-500 font-medium">{error}</p>
+              <p className="text-sm font-medium text-rose-500">{error}</p>
             </div>
           ) : null}
         </article>
 
-        {/* -- Weight distribution visual ----------------- */}
         <article className="glass-card p-5">
-          <h3 className="font-display text-lg font-bold mb-3">������������� �����</h3>
-          <p className="mb-3 text-xs text-slate-500">�������� ����������, ����� ������� �������� ����, � ����� ����.</p>
+          <h3 className="mb-3 font-display text-lg font-bold">Распределение веса</h3>
+          <p className="mb-3 text-xs text-slate-500">Сводка показывает, насколько часто выпадает каждый вариант в текущем наборе весов.</p>
           {weightBars.length === 0 ? (
             <div className="empty-state py-6">
               <Dices size={24} />
-              <p className="text-xs">������� ���������� ����</p>
+              <p className="text-xs">Сначала задайте весы колеса</p>
             </div>
           ) : (
             <div className="space-y-3">
@@ -264,7 +262,7 @@ export default function AdminBonusesPage() {
                 const fillClass = colors[idx % colors.length];
                 return (
                   <div key={`${bar.days}-${idx}`}>
-                    <div className="flex items-center justify-between text-xs mb-1">
+                    <div className="mb-1 flex items-center justify-between text-xs">
                       <span className="flex items-center gap-1.5">
                         <span className="badge badge-violet">{bar.days}d</span>
                         <span className="text-slate-500">weight: {bar.weight}</span>
@@ -282,49 +280,49 @@ export default function AdminBonusesPage() {
         </article>
       </div>
 
-      <div className="grid gap-5 xl:grid-cols-[1fr,0.8fr]">
-        <article className="glass-card p-5 space-y-4">
-          <div className="flex items-center justify-between gap-2">
-            <h3 className="font-display text-lg font-bold">���������� ��� ������</h3>
+      <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr),minmax(320px,0.8fr)]">
+        <article className="glass-card space-y-4 p-5">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <h3 className="font-display text-lg font-bold">Настройки лояльности</h3>
             <label className="inline-flex items-center gap-2 text-xs">
               <input
                 type="checkbox"
                 checked={Boolean(loyaltyConfig?.enabled)}
                 onChange={(event) => setLoyaltyConfig((prev) => (prev ? { ...prev, enabled: event.target.checked } : prev))}
               />
-              ��������
+              Включено
             </label>
           </div>
-          <p className="text-xs text-slate-500">������ ������ ��������� ������� ���������� � ������� `����_������:��������_���:����������`.</p>
+          <p className="text-xs text-slate-500">Формат строки: <code className="rounded bg-white/70 px-1 py-0.5 dark:bg-white/10">days:bonus_days:perk</code>. Один уровень на строку.</p>
           <textarea
             rows={6}
             value={loyaltyText}
             onChange={(event) => setLoyaltyText(event.target.value)}
-            className="w-full rounded-xl border border-violet-200/50 bg-white/80 px-3 py-2 font-mono text-xs outline-none dark:border-violet-500/30 dark:bg-slate-900/70 resize-none"
+            className="w-full resize-none rounded-xl border border-violet-200/50 bg-white/80 px-3 py-2 font-mono text-xs outline-none dark:border-violet-500/30 dark:bg-slate-900/70"
             placeholder={"30:1:priority_support\n90:3:fast_resync\n180:7:vip_queue"}
           />
-            <button className="outline-btn rounded-xl px-4 py-2 text-sm font-semibold" type="button" onClick={() => void saveLoyalty()} disabled={busy}>
-            ��������� ����������
+          <button className="outline-btn inline-flex w-full items-center justify-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold sm:w-auto" type="button" onClick={() => void saveLoyalty()} disabled={busy}>
+            Сохранить лояльность
           </button>
         </article>
 
-        <article className="glass-card p-5 space-y-3">
-          <h3 className="font-display text-lg font-bold">������ ������ tier</h3>
-          <p className="text-xs text-slate-500">�����, ���� ������ ������� ������ ������������ ������� ���������� ��� �������� �������������� ������.</p>
+        <article className="glass-card space-y-3 p-5">
+          <h3 className="font-display text-lg font-bold">Выдать уровень вручную</h3>
+          <p className="text-xs text-slate-500">Быстрая ручная выдача бонуса по Telegram ID.</p>
           <input
             value={loyaltyGrantUser}
             onChange={(event) => setLoyaltyGrantUser(event.target.value)}
-            placeholder="Telegram ID ������������"
+            placeholder="Telegram ID пользователя"
             className="w-full rounded-xl border border-violet-200/50 bg-white/80 px-3 py-2 text-sm outline-none dark:border-violet-500/30 dark:bg-slate-900/70"
           />
           <input
             value={loyaltyGrantTier}
             onChange={(event) => setLoyaltyGrantTier(event.target.value)}
-            placeholder="���� ������, �������� 30 / 90 / 180"
+            placeholder="Дни уровня, например 30 / 90 / 180"
             className="w-full rounded-xl border border-violet-200/50 bg-white/80 px-3 py-2 text-sm outline-none dark:border-violet-500/30 dark:bg-slate-900/70"
           />
-          <button className="outline-btn rounded-xl px-4 py-2 text-sm font-semibold" type="button" onClick={() => void grantLoyalty()} disabled={busy}>
-            ������ �������
+          <button className="outline-btn inline-flex w-full items-center justify-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold" type="button" onClick={() => void grantLoyalty()} disabled={busy}>
+            Выдать бонус
           </button>
         </article>
       </div>

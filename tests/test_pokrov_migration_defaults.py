@@ -30,7 +30,7 @@ def test_backend_and_web_defaults_point_to_pokrov_surface() -> None:
     shared_portal_text = _read("shared/portal-config.ts")
     config_text = _read("portal_bot/config.py")
     web_portal_text = _read("webapp/src/lib/portal.ts")
-    marketing_portal_text = _read("marketing/src/lib/portal.ts")
+    marketing_portal_text = _read("marketing/src/lib/pokrov.ts")
     client_portal_text = _read("external/client-fork/app/lib/features/portal/config/portal_public_config.dart")
 
     assert "pokrov.space" in config_text
@@ -46,28 +46,20 @@ def test_backend_and_web_defaults_point_to_pokrov_surface() -> None:
     assert 'export const CANONICAL_CHECKOUT_URL = `${CANONICAL_PAY_ORIGIN}/checkout`;' in shared_portal_text
     assert "connect.pokrov.space" in shared_portal_text
     assert "pokrov_feedbackbot" in shared_portal_text
-    assert 'export const CANONICAL_CLIENT_BRAND = "POKROV VPN";' in web_portal_text
-    assert 'export const CANONICAL_CHECKOUT_URL = `${CANONICAL_PAY_ORIGIN}/checkout`;' in web_portal_text
-    assert "https://api.pokrov.space" in web_portal_text
-    assert "https://app.pokrov.space" in web_portal_text
-    assert "https://connect.pokrov.space" in web_portal_text
-    assert "https://pay.pokrov.space" in web_portal_text
-    assert "https://t.me/pokrov_vpnbot" in web_portal_text
-    assert "https://t.me/pokrov_supportbot" in web_portal_text
-    assert "https://t.me/pokrov_feedbackbot" in web_portal_text
-    assert "Продолжить вход в POKROV VPN" in web_portal_text
-    assert "Связаться с поддержкой" in web_portal_text
-    assert 'export const CANONICAL_CLIENT_BRAND = "POKROV VPN";' in marketing_portal_text
-    assert 'export const CANONICAL_CHECKOUT_URL = `${CANONICAL_PAY_ORIGIN}/checkout`;' in marketing_portal_text
-    assert "https://api.pokrov.space" in marketing_portal_text
-    assert "https://app.pokrov.space" in marketing_portal_text
-    assert "https://connect.pokrov.space" in marketing_portal_text
-    assert "https://pay.pokrov.space" in marketing_portal_text
-    assert "https://t.me/pokrov_vpnbot" in marketing_portal_text
-    assert "https://t.me/pokrov_supportbot" in marketing_portal_text
-    assert "https://t.me/pokrov_feedbackbot" in marketing_portal_text
-    assert "Свободный интернет без сложной настройки" in marketing_portal_text
-    assert "POKROV VPN • Telegram-first • понятный старт" in marketing_portal_text
+    assert "CANONICAL_CLIENT_BRAND" in web_portal_text
+    assert "CANONICAL_CHECKOUT_URL" in web_portal_text
+    assert "CANONICAL_CONNECT_URL" in web_portal_text
+    assert "getPortalPublicConfig" in web_portal_text
+    assert "getCopyText" in web_portal_text
+    assert "../../../shared/portal-config" in web_portal_text
+    assert "../../../shared/copy" in web_portal_text
+    assert "CANONICAL_CLIENT_BRAND" in marketing_portal_text
+    assert "CANONICAL_CHECKOUT_URL" in marketing_portal_text
+    assert "CANONICAL_CONNECT_URL" in marketing_portal_text
+    assert "getPokrovPublicConfig" in marketing_portal_text
+    assert "getCopyText" in marketing_portal_text
+    assert "../../../shared/portal-config" in marketing_portal_text
+    assert "../../../shared/copy" in marketing_portal_text
     assert "https://api.pokrov.space" in client_portal_text
     assert "https://app.pokrov.space" in client_portal_text
     assert "https://pay.pokrov.space" in client_portal_text
@@ -75,7 +67,7 @@ def test_backend_and_web_defaults_point_to_pokrov_surface() -> None:
     assert "https://t.me/pokrov_supportbot" in client_portal_text
     _assert_no_legacy_markers("shared/portal-config.ts", _without_legacy_marker_catalog(shared_portal_text))
     _assert_no_legacy_markers("webapp/src/lib/portal.ts", _without_legacy_marker_catalog(web_portal_text))
-    _assert_no_legacy_markers("marketing/src/lib/portal.ts", _without_legacy_marker_catalog(marketing_portal_text))
+    _assert_no_legacy_markers("marketing/src/lib/pokrov.ts", _without_legacy_marker_catalog(marketing_portal_text))
     _assert_no_legacy_markers("portal_bot/config.py", config_text)
 
 
@@ -227,7 +219,7 @@ def test_runtime_bot_defaults_use_new_pokrov_identities() -> None:
     assert 'or "pokrov_feedbackbot"' in config_text
     assert "connect.pokrov.space" in config_text
     assert "https://t.me/pokrov_vpnbot" in redirect_text
-    assert "https://api.pokrov.space/s8Kx2mP7qR4wT/mock_token" in webapp_e2e_text
+    assert "https://connect.pokrov.space/s8Kx2mP7qR4wT/mock_token" in webapp_e2e_text
     assert "https://t.me/pokrov_supportbot" in webapp_e2e_text
     assert "https://t.me/pokrov_vpnbot?start=ref_mock" in webapp_e2e_text
     assert 'or "pokrov_vpnbot"' in config_text

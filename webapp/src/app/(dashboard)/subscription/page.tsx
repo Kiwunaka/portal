@@ -1,6 +1,7 @@
 "use client";
 
 import AppRouteLink from "@/components/app-route-link";
+import SubscriptionQrCard from "@/components/subscription-qr-card";
 import { fetchPublicPlans, type PlanCatalogRow } from "@/lib/api";
 import { getCopyText, getPortalPublicConfig, normalizePlanCode } from "@/lib/portal";
 import { usePortalSession } from "@/lib/session";
@@ -75,21 +76,11 @@ function nodePolicyLabel(value: string | null | undefined): string {
   return "Актуальный пул";
 }
 
-function buildSmartLink(subscriptionUrl: string): string {
-  if (!subscriptionUrl) return "";
-  return subscriptionUrl.includes("?") ? `${subscriptionUrl}&format=smart` : `${subscriptionUrl}?format=smart`;
-}
-
-function buildPlainLink(subscriptionUrl: string): string {
-  if (!subscriptionUrl) return "";
-  return subscriptionUrl.includes("?") ? `${subscriptionUrl}&format=plain` : `${subscriptionUrl}?format=plain`;
-}
-
 export default function SubscriptionPage() {
   const { user, dash } = usePortalSession();
   const [plans, setPlans] = useState<PlanCatalogRow[]>([]);
   const [error, setError] = useState("");
-  const [copyState, setCopyState] = useState<"" | "smart" | "plain">("");
+  const [copyState, setCopyState] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -118,34 +109,31 @@ export default function SubscriptionPage() {
 
   const activeColumn = planColumn(dash?.current_plan_code || dash?.sub_type || "");
   const planCards = useMemo(() => (plans.length ? plans : fallbackPlans()), [plans]);
-  const subscriptionUrl = String(dash?.subscription_url || user?.subscription_url || "").trim();
-  const smartLink = buildSmartLink(subscriptionUrl);
-  const plainLink = buildPlainLink(subscriptionUrl);
+  const connectionLink = String(dash?.subscription_url || user?.subscription_url || "").trim();
   const isTrialLike = ["FREE", "TRIAL", "BONUS"].includes(String(dash?.sub_type || "").toUpperCase()) || String(dash?.current_plan_code || "") === "trial";
 
-  const copyLink = async (kind: "smart" | "plain") => {
-    const value = kind === "smart" ? smartLink : plainLink;
-    if (!value) return;
+  const copyLink = async () => {
+    if (!connectionLink) return;
     try {
-      await navigator.clipboard.writeText(value);
-      setCopyState(kind);
-      window.setTimeout(() => setCopyState(""), 1800);
+      await navigator.clipboard.writeText(connectionLink);
+      setCopyState(true);
+      window.setTimeout(() => setCopyState(false), 1800);
     } catch {
-      setCopyState("");
+      setCopyState(false);
     }
   };
 
   return (
     <main className="space-y-6">
       <section className="glass-card p-7">
-        <p className="font-mono text-xs uppercase tracking-[0.18em] text-slate-500">subscription</p>
+        <p className="font-mono text-xs uppercase tracking-[0.18em] text-slate-500">подписка</p>
         <h1 className="mt-2 font-display text-4xl font-bold">
-          {getCopyText("webapp.subscription.title", "План и следующий шаг")}
+          {getCopyText("webapp.subscription.title", "Подписка и подключение")}
         </h1>
         <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">
           {getCopyText(
             "webapp.subscription.subtitle",
-            "Все прозрачно и удобно: управляйте подпиской, сравнивайте тарифы и продлевайте Премиум за пару кликов.",
+            "Здесь вы можете посмотреть текущий тариф, срок доступа и ссылку подключения, а при необходимости быстро продлить подписку.",
           )}
         </p>
         <div className="mt-5 flex flex-wrap gap-3">
@@ -162,17 +150,18 @@ export default function SubscriptionPage() {
       {isTrialLike ? (
         <section className="grid gap-5 lg:grid-cols-2">
           <article className="glass-card p-6">
-            <p className="font-mono text-xs uppercase tracking-[0.14em] text-emerald-500">trial-first</p>
-            <h2 className="mt-2 font-display text-3xl font-bold">План и следующий шаг</h2>
+            <p className="font-mono text-xs uppercase tracking-[0.14em] text-emerald-500">тестовый период</p>
+            <h2 className="mt-2 font-display text-3xl font-bold">Подписка и следующий шаг</h2>
             <p className="mt-3 text-sm text-slate-600 dark:text-slate-300">
               Чтобы забыть про лимиты и спокойно пользоваться сервисом каждый день, переходите на полный доступ.
             </p>
           </article>
           <article className="glass-card p-6">
-            <p className="font-mono text-xs uppercase tracking-[0.14em] text-slate-500">free fallback</p>
-            <h2 className="mt-2 font-display text-3xl font-bold">Базовый доступ (ваша подстраховка)</h2>
+            <p className="font-mono text-xs uppercase tracking-[0.14em] text-slate-500">полный доступ</p>
+            <h2 className="mt-2 font-display text-3xl font-bold">Что изменится после продления</h2>
             <p className="mt-3 text-sm text-slate-600 dark:text-slate-300">
-              Резервный доступ для экстренных ситуаций. Для комфортного серфинга рекомендуем премиум-тариф.
+              Полный доступ открывает до пяти устройств, весь пул локаций и спокойное ежедневное использование без
+              лишних ограничений.
             </p>
           </article>
         </section>
@@ -180,44 +169,39 @@ export default function SubscriptionPage() {
 
       <section className="grid gap-5 lg:grid-cols-2">
         <article className="glass-card p-6">
-          <p className="font-mono text-xs uppercase tracking-[0.14em] text-emerald-500">умная ссылка</p>
-          <h2 className="mt-2 font-display text-3xl font-bold">С маршрутами и автоподстройкой</h2>
+          <p className="font-mono text-xs uppercase tracking-[0.14em] text-emerald-500">ссылка подключения</p>
+          <h2 className="mt-2 font-display text-3xl font-bold">Одна ссылка для всех подключений</h2>
           <p className="mt-3 text-sm text-slate-600 dark:text-slate-300">
-            Идеально для коннекта 24/7. Внутри — лучшие локации, умные маршруты обхода блокировок и мгновенный старт.
+            Используйте ее в приложении или импортируйте в совместимый клиент. Это основной способ подключения через
+            {` `}
+            {config.connectUrl.replace(/^https?:\/\//, "")}.
           </p>
           <div className="mt-4 rounded-2xl border border-white/40 bg-white/50 p-4 text-xs text-slate-600 dark:border-white/10 dark:bg-white/5 dark:text-slate-300">
-            {smartLink || "Ссылка появится после активации доступа."}
+            {connectionLink || "Ссылка появится после активации доступа."}
           </div>
           <div className="mt-4 flex flex-wrap gap-3">
             <button
               type="button"
-              onClick={() => void copyLink("smart")}
+              onClick={() => void copyLink()}
               className="btn-primary rounded-xl px-5 py-2.5 text-xs font-semibold uppercase tracking-[0.12em]"
-              disabled={!smartLink}
+              disabled={!connectionLink}
             >
-              {copyState === "smart" ? "Скопировано" : "Скопировать"}
+              {copyState ? "Скопировано" : "Скопировать"}
             </button>
           </div>
         </article>
 
         <article className="glass-card p-6">
-          <p className="font-mono text-xs uppercase tracking-[0.14em] text-slate-500">обычная ссылка</p>
-          <h2 className="mt-2 font-display text-3xl font-bold">Без доп. маршрутов</h2>
+          <p className="font-mono text-xs uppercase tracking-[0.14em] text-slate-500">qr для подключения</p>
+          <h2 className="mt-2 font-display text-3xl font-bold">Откройте на втором устройстве</h2>
           <p className="mt-3 text-sm text-slate-600 dark:text-slate-300">
-            Простая и надежная конфигурация для мгновенного подключения без лишних настроек.
+            Отсканируйте QR-код, чтобы быстро передать ссылку подключения на телефон, планшет или другой компьютер.
           </p>
-          <div className="mt-4 rounded-2xl border border-white/40 bg-white/50 p-4 text-xs text-slate-600 dark:border-white/10 dark:bg-white/5 dark:text-slate-300">
-            {plainLink || "Ссылка появится после активации доступа."}
-          </div>
-          <div className="mt-4 flex flex-wrap gap-3">
-            <button
-              type="button"
-              onClick={() => void copyLink("plain")}
-              className="outline-btn rounded-xl px-5 py-2.5 text-xs font-semibold uppercase tracking-[0.12em]"
-              disabled={!plainLink}
-            >
-              {copyState === "plain" ? "Скопировано" : "Скопировать"}
-            </button>
+          <div className="mt-4 flex flex-col items-start gap-3">
+            <SubscriptionQrCard value={connectionLink} />
+            <p className="text-xs text-slate-500">
+              Если QR не нужен, можно просто скопировать ссылку подключения и открыть ее на нужном устройстве.
+            </p>
           </div>
         </article>
       </section>

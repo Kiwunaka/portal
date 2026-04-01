@@ -26,21 +26,21 @@ function buildCards(payload: ClientAppsPayload | null): AppCard[] {
   return [
     {
       name: "Android",
-      details: "Google Play, APK или резервная ссылка",
+      details: "Google Play, APK и резервный вариант",
       icon: "android",
       links: [
         { label: "Google Play", href: androidPlay },
         { label: "APK", href: androidApk },
-        { label: "Альтернативная ссылка", href: androidMirror }
+        { label: "Резервная ссылка", href: androidMirror }
       ].filter((item) => item.href)
     },
     {
       name: "Windows",
-      details: "EXE или резервная ссылка",
+      details: "EXE и резервный вариант",
       icon: "desktop_windows",
       links: [
         { label: "Скачать EXE", href: windowsExe },
-        { label: "Альтернативная ссылка", href: windowsMirror }
+        { label: "Резервная ссылка", href: windowsMirror }
       ].filter((item) => item.href)
     },
     {
@@ -90,12 +90,12 @@ export default function DownloadsPage() {
       <section className="glass-card p-7">
         <div className="flex flex-col items-start justify-between gap-4 md:flex-row md:items-center">
           <div>
-            <p className="font-mono text-xs uppercase tracking-[0.18em] text-slate-500">downloads</p>
+            <p className="font-mono text-xs uppercase tracking-[0.18em] text-slate-500">приложения</p>
             <h1 className="mt-2 font-display text-4xl font-bold">{getCopyText("webapp.downloads.title", "Приложения и быстрый запуск")}</h1>
             <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">
               {getCopyText(
                 "webapp.downloads.subtitle",
-                "Показываем только актуальные ссылки, которые уже настроены в системе для Android, Windows и справки.",
+                "Показываем только актуальные ссылки для Android, Windows и справки.",
               )}
             </p>
           </div>

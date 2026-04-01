@@ -1,0 +1,345 @@
+import hashlib
+import hmac
+import importlib
+import json
+import os
+import sys
+import tempfile
+import unittest
+import uuid
+from datetime import datetime, timedelta
+from pathlib import Path
+from unittest.mock import patch
+from urllib.parse import urlencode, urlparse
+
+from fastapi.testclient import TestClient
+
+
+def _sign_telegram_init_data(*, bot_token: str, tg_id: int, username: str) -> str:
+    params = {
+        "auth_date": "1700000000",
+        "query_id": "AAEAAAE",
+        "user": f'{{"id":{tg_id},"first_name":"Test","username":"{username}"}}',
+    }
+    items = sorted((k, v) for k, v in params.items())
+    data_check_string = "\n".join([f"{k}={v}" for k, v in items])
+    secret_key = hmac.new(b"WebAppData", bot_token.encode(), hashlib.sha256).digest()
+    check_hash = hmac.new(secret_key, data_check_string.encode(), hashlib.sha256).hexdigest()
+    params["hash"] = check_hash
+    return urlencode(params)
+
+
+class ApiLifecycleSmokeTests(unittest.TestCase):
+    def setUp(self) -> None:
+        repo_root = Path(__file__).resolve().parents[1]
+        portal_dir = str(repo_root / "portal_bot")
+        if portal_dir not in sys.path:
+            sys.path.insert(0, portal_dir)
+
+        self._tmp = tempfile.TemporaryDirectory()
+        self.db_path = str((repo_root / f"portal_api_test_{uuid.uuid4().hex}.db").resolve())
+        db_uri_path = Path(self.db_path).as_posix()
+        self.bot_token = "test_bot_token_123"
+
+        self._saved_env: dict[str, str | None] = {}
+        for key in (
+            "DATABASE_URL",
+            "BOT_TOKEN",
+            "ADMIN_ID",
+            "WEBAPP_SESSION_SECRET",
+            "PUBLIC_CHANNEL",
+            "SUPPORT_UPLOAD_DIR",
+            "RUB_CHECKOUT_ENABLED",
+            "CHECKOUT_TICKET_SECRET",
+            "CHECKOUT_TICKET_TTL_SECONDS",
+            "FREEKASSA_SIGNING_SECRET",
+            "FK_SITE_SHOP_ID",
+            "FK_SITE_API_KEY",
+            "FK_SITE_SECRET_WORD_1",
+            "FK_SITE_SECRET_WORD_2",
+            "RUB_PAYMENT_PROVIDER_ENABLED",
+            "RUB_PAYMENT_PROVIDER_ORDER",
+        ):
+            self._saved_env[key] = os.environ.get(key)
+
+        os.environ["DATABASE_URL"] = f"sqlite:///{db_uri_path}"
+        os.environ["BOT_TOKEN"] = self.bot_token
+        os.environ["ADMIN_ID"] = "9999"
+        os.environ["WEBAPP_SESSION_SECRET"] = "test_webapp_secret_123"
+        os.environ["PUBLIC_CHANNEL"] = "pokrov_vpn"
+        os.environ["SUPPORT_UPLOAD_DIR"] = str((Path(self._tmp.name) / "support_uploads").resolve())
+        os.environ["RUB_CHECKOUT_ENABLED"] = "true"
+        os.environ["CHECKOUT_TICKET_SECRET"] = "checkout_secret_test_123"
+        os.environ["CHECKOUT_TICKET_TTL_SECONDS"] = "900"
+        os.environ["FREEKASSA_SIGNING_SECRET"] = "test_fk_secret"
+        os.environ["FK_SITE_SHOP_ID"] = "69962"
+        os.environ["FK_SITE_API_KEY"] = "fk_api_key_test"
+        os.environ["FK_SITE_SECRET_WORD_1"] = "fk_sw1_test"
+        os.environ["FK_SITE_SECRET_WORD_2"] = "fk_sw2_test"
+        os.environ["RUB_PAYMENT_PROVIDER_ENABLED"] = "freekassa"
+        os.environ["RUB_PAYMENT_PROVIDER_ORDER"] = "freekassa"
+
+        for module_name in ("api", "db", "models", "migrations", "config", "offers_service", "points_service", "gift_cards_service"):
+            if module_name in sys.modules:
+                sys.modules.pop(module_name, None)
+
+        importlib.import_module("config")
+        importlib.import_module("db")
+        self.api = importlib.import_module("api")
+        importlib.reload(self.api)
+        self.client = TestClient(self.api.app)
+
+    def tearDown(self) -> None:
+        try:
+            from db import engine
+
+            engine.dispose()
+        except Exception:
+            pass
+        for key, value in self._saved_env.items():
+            if value is None:
+                os.environ.pop(key, None)
+            else:
+                os.environ[key] = value
+        try:
+            Path(self.db_path).unlink(missing_ok=True)
+        except Exception:
+            pass
+        self._tmp.cleanup()
+
+    def _auth_headers(self, tg_id: int, username: str) -> dict[str, str]:
+        return {
+            "X-Telegram-Init-Data": _sign_telegram_init_data(
+                bot_token=self.bot_token,
+                tg_id=tg_id,
+                username=username,
+            )
+        }
+
+    @staticmethod
+    def _fk_sci_signature(*, merchant_id: str, amount: str, order_id: str, secret_word_2: str) -> str:
+        base = f"{merchant_id}:{amount}:{secret_word_2}:{order_id}"
+        return hashlib.md5(base.encode("utf-8")).hexdigest()
+
+    def test_api_only_lifecycle_covers_trial_connect_support_bonuses_and_purchase(self) -> None:
+        class _FakePanel:
+            async def add_client(self, **_kwargs):
+                return True
+
+            async def close(self):
+                return None
+
+        old_panel = self.api.ControlPanel
+        self.api.ControlPanel = _FakePanel
+        try:
+            trial = self.client.post(
+                "/api/client/session/start-trial",
+                json={
+                    "install_id": f"install-{uuid.uuid4().hex}",
+                    "device_name": "Smoke Pixel",
+                    "platform": "android",
+                    "os_version": "14",
+                    "app_version": "1.0.0",
+                    "locale": "ru-RU",
+                    "time_zone": "Europe/Moscow",
+                },
+            )
+        finally:
+            self.api.ControlPanel = old_panel
+
+        self.assertEqual(trial.status_code, 200, trial.text)
+        trial_body = trial.json()
+        self.assertTrue(trial_body.get("ok"))
+        self.assertTrue(trial_body.get("created"))
+        session_token = str(trial_body.get("session_token") or "")
+        self.assertTrue(session_token)
+        account_id = int(trial_body.get("account_id") or 0)
+        self.assertGreater(account_id, 0)
+        subscription_url = str(trial_body.get("subscription_url") or "")
+        self.assertTrue(subscription_url.startswith("https://connect.pokrov.space/s8Kx2mP7qR4wT/"))
+
+        auth_headers = {"Authorization": f"Bearer {session_token}"}
+        auth_session = self.client.get("/api/auth/session", headers=auth_headers)
+        self.assertEqual(auth_session.status_code, 200, auth_session.text)
+        self.assertEqual(int(auth_session.json()["user"]["id"]), account_id)
+        self.assertEqual(str(auth_session.json()["user"]["auth_type"]), "app")
+
+        dashboard_before = self.client.get("/api/dashboard", headers=auth_headers)
+        self.assertEqual(dashboard_before.status_code, 200, dashboard_before.text)
+        dashboard_before_body = dashboard_before.json()
+        self.assertTrue(str(dashboard_before_body.get("subscription_url") or "").startswith("https://connect.pokrov.space/s8Kx2mP7qR4wT/"))
+        expiry_before = str(dashboard_before_body.get("expiry_at") or "")
+
+        profile = self.client.get(f"/api/user/{account_id}", headers=auth_headers)
+        self.assertEqual(profile.status_code, 200, profile.text)
+        self.assertEqual(int(profile.json()["tg_id"]), account_id)
+
+        config_path = urlparse(subscription_url).path
+        with patch.object(self.api, "_nodes_for_user", side_effect=lambda user, nodes, session=None: list(nodes or [])[:1]):
+            smart_profile = self.client.get(config_path, headers={"Host": "connect.pokrov.space"})
+        self.assertEqual(smart_profile.status_code, 200, smart_profile.text)
+        self.assertEqual(smart_profile.headers.get("content-type"), "application/json")
+        self.assertIn("outbounds", smart_profile.json())
+
+        ticket = self.client.post(
+            "/api/tickets",
+            headers=auth_headers,
+            json={"subject": "Smoke support", "body": "Проверка полного API-цикла"},
+        )
+        self.assertEqual(ticket.status_code, 200, ticket.text)
+        self.assertEqual(str(ticket.json()["ticket"]["status"]), "open")
+
+        admin_headers = self._auth_headers(9999, "admin")
+        promo = self.client.post(
+            "/api/admin/promos",
+            headers=admin_headers,
+            json={"code": "SMOKE14", "promo_type": "days", "value": 14, "uses_left": 10},
+        )
+        self.assertEqual(promo.status_code, 200, promo.text)
+
+        gift = self.client.post(
+            "/api/admin/gift-codes",
+            headers=admin_headers,
+            json={"card_type": "standard"},
+        )
+        self.assertEqual(gift.status_code, 200, gift.text)
+        gift_code = str(gift.json().get("gift_code", {}).get("code") or "")
+        self.assertTrue(gift_code)
+
+        from db import SessionLocal
+        from models import Event, ExternalOrder, ExternalPaymentEvent, ReferralBonusQueue, User
+
+        s = SessionLocal()
+        try:
+            linked_user = s.query(User).filter(User.tg_id == account_id).first()
+            self.assertIsNotNone(linked_user)
+            linked_user.linked_telegram_id = account_id
+            linked_user.linked_telegram_username = f"app_{account_id}"
+            s.commit()
+        finally:
+            s.close()
+
+        async def _always_member(*_args, **_kwargs):
+            return True, "member"
+
+        with patch.object(self.api, "_is_channel_member", new=_always_member):
+            channel_bonus = self.client.post("/api/bonuses/channel/claim", headers=auth_headers)
+        self.assertEqual(channel_bonus.status_code, 200, channel_bonus.text)
+        self.assertTrue(channel_bonus.json().get("ok"))
+
+        promo_redeem = self.client.post("/api/promo/redeem", headers=auth_headers, json={"code": "SMOKE14"})
+        self.assertEqual(promo_redeem.status_code, 200, promo_redeem.text)
+        self.assertTrue(promo_redeem.json().get("ok"))
+
+        gift_redeem = self.client.post("/api/gift/redeem", headers=auth_headers, json={"code": gift_code})
+        self.assertEqual(gift_redeem.status_code, 200, gift_redeem.text)
+        self.assertTrue(gift_redeem.json().get("ok"))
+
+        s = SessionLocal()
+        try:
+            s.add(
+                User(
+                    tg_id=2002,
+                    username="referrer",
+                    uuid=str(uuid.uuid4()),
+                    email="user_2002",
+                    sub_type="PAID",
+                    is_active=True,
+                    tos_accepted=True,
+                    expiry_at=datetime.utcnow() + timedelta(days=20),
+                    referral_count=0,
+                )
+            )
+            user = s.query(User).filter(User.tg_id == account_id).first()
+            self.assertIsNotNone(user)
+            user.referrer_id = 2002
+            user.first_purchase_done = False
+            s.commit()
+        finally:
+            s.close()
+
+        checkout_ticket = self.api._create_checkout_ticket(
+            tg_id=account_id,
+            plan_code="1_month",
+            promo_code="SMOKE14",
+            campaign_key="api_smoke",
+            source="site",
+        )
+        create_order = self.client.post(
+            "/api/payments/freekassa/orders/create-public",
+            json={"plan_code": "1_month", "checkout_ticket": checkout_ticket, "currency": "RUB"},
+        )
+        self.assertEqual(create_order.status_code, 200, create_order.text)
+        order_body = create_order.json()
+        self.assertTrue(order_body.get("ok"))
+        self.assertEqual(str(order_body.get("status") or ""), "pending")
+        self.assertTrue(str(order_body.get("payment_url") or "").startswith("https://pay.fk.money/?"))
+        self.assertTrue(bool(order_body.get("discount_applied")))
+
+        order_id = str(order_body.get("order_id") or "")
+        self.assertTrue(order_id)
+        amount = f"{float(order_body.get('amount_rub') or 0):.2f}"
+        callback_payload = {
+            "MERCHANT_ID": "69962",
+            "AMOUNT": amount,
+            "MERCHANT_ORDER_ID": order_id,
+            "SIGN": self._fk_sci_signature(
+                merchant_id="69962",
+                amount=amount,
+                order_id=order_id,
+                secret_word_2="fk_sw2_test",
+            ),
+            "us_tg_id": str(account_id),
+            "us_plan_code": "1_month",
+            "us_campaign": "api_smoke",
+            "us_promo_code": "SMOKE14",
+            "intid": f"tx-{uuid.uuid4().hex[:12]}",
+        }
+        callback = self.client.post("/api/payments/freekassa/notify", params=callback_payload)
+        self.assertEqual(callback.status_code, 200, callback.text)
+        self.assertEqual(callback.text.strip(), "YES")
+
+        dashboard_after = self.client.get("/api/dashboard", headers=auth_headers)
+        self.assertEqual(dashboard_after.status_code, 200, dashboard_after.text)
+        dashboard_after_body = dashboard_after.json()
+        self.assertEqual(str(dashboard_after_body.get("sub_type") or ""), "PAID")
+        self.assertEqual(str(dashboard_after_body.get("current_plan_code") or ""), "1_month")
+        self.assertNotEqual(str(dashboard_after_body.get("expiry_at") or ""), expiry_before)
+
+        final_ticket_list = self.client.get("/api/tickets", headers=auth_headers)
+        self.assertEqual(final_ticket_list.status_code, 200, final_ticket_list.text)
+        self.assertTrue(final_ticket_list.json().get("tickets"))
+
+        s = SessionLocal()
+        try:
+            order_row = s.query(ExternalOrder).filter(ExternalOrder.order_id == order_id).first()
+            payment_events = s.query(ExternalPaymentEvent).filter(ExternalPaymentEvent.order_id == order_id).all()
+            bonus_queue = s.query(ReferralBonusQueue).filter(ReferralBonusQueue.order_id == order_id).first()
+            bonus_events = (
+                s.query(Event)
+                .filter(
+                    Event.tg_id == account_id,
+                    Event.event_name.in_(
+                        [
+                            "promo_channel_activated",
+                            "promo_redeemed",
+                            "gift_redeemed",
+                            "ticket_created",
+                        ]
+                    ),
+                )
+                .all()
+            )
+            referred_user = s.query(User).filter(User.tg_id == account_id).first()
+            referrer = s.query(User).filter(User.tg_id == 2002).first()
+            self.assertIsNotNone(order_row)
+            self.assertEqual(str(order_row.status or ""), "paid")
+            self.assertEqual(len(payment_events), 1)
+            self.assertIsNotNone(bonus_queue)
+            self.assertEqual(len(bonus_events), 4)
+            self.assertIsNotNone(referred_user)
+            self.assertTrue(bool(referred_user.first_purchase_done))
+            self.assertIsNotNone(referrer)
+            self.assertEqual(int(referrer.referral_count or 0), 1)
+        finally:
+            s.close()

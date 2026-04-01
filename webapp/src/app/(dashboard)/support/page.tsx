@@ -85,7 +85,7 @@ export default function SupportPage() {
         label: "Telegram",
         href: supportLink,
         icon: "send",
-        hint: "Мгновенная реакция",
+        hint: "Быстрый ответ",
       },
       {
         label: "Email",
@@ -94,7 +94,7 @@ export default function SupportPage() {
         hint: "Если удобнее написать письмом",
       },
       {
-        label: "Feedback",
+        label: "Отзывы",
         href: config.feedbackbotUrl,
         icon: "rate_review",
         hint: "Мы открыты к предложениям",
@@ -163,19 +163,19 @@ export default function SupportPage() {
     <main className="space-y-6">
       <section className="glass-card p-7">
         <h1 className="font-display text-4xl font-bold">
-          {getCopyText("webapp.support.title", "Служба заботы POKROV VPN. Рады помочь!")}
+          {getCopyText("webapp.support.title", "Служба заботы POKROV VPN")}
         </h1>
         <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">
           {getCopyText(
             "webapp.support.subtitle",
-            "Быстрый вопрос, новый обращение или продолжение диалога - всё в одном месте и без лишней бюрократии.",
+            "Быстрый вопрос, новое обращение или продолжение диалога — всё в одном месте и без лишней бюрократии.",
           )}
         </p>
       </section>
 
       {isTrialLike ? (
         <section className="glass-card p-6">
-          <p className="text-xs font-semibold uppercase tracking-[0.14em] text-emerald-500">trial support</p>
+          <p className="text-xs font-semibold uppercase tracking-[0.14em] text-emerald-500">помощь в тесте</p>
           <h2 className="mt-2 font-display text-2xl font-semibold">Если на старте что-то пошло не так, поможем быстро и спокойно.</h2>
           <p className="mt-2 max-w-3xl text-sm text-slate-600 dark:text-slate-300">
             Мы ценим ваше время. Напишите нам, и наш оператор заботливо поможет с подключением или любым другим вопросом.

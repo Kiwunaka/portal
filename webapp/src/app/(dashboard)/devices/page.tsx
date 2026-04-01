@@ -45,7 +45,7 @@ export default function DevicesPage() {
     if (!value) return;
     try {
       await navigator.clipboard.writeText(value);
-      popToast("Ссылка доступа скопирована.");
+      popToast("Ссылка подключения скопирована.");
     } catch {
       popToast("Ой, ссылка не скопировалась. Попробуйте еще раз.");
     }
@@ -55,7 +55,7 @@ export default function DevicesPage() {
     return (
       <main className="space-y-6">
         <section className="glass-card p-7">
-          <p className="font-mono text-xs uppercase tracking-[0.18em] text-slate-500">devices</p>
+          <p className="font-mono text-xs uppercase tracking-[0.18em] text-slate-500">устройства</p>
           <h1 className="mt-2 font-display text-4xl font-bold">Загружаем устройства...</h1>
         </section>
       </main>
@@ -80,8 +80,8 @@ export default function DevicesPage() {
   return (
     <main className="space-y-6">
       <section className="glass-card p-7">
-        <p className="font-mono text-xs uppercase tracking-[0.18em] text-slate-500">devices</p>
-        <h1 className="mt-2 font-display text-4xl font-bold">Устройства и точки подключения</h1>
+          <p className="font-mono text-xs uppercase tracking-[0.18em] text-slate-500">устройства</p>
+          <h1 className="mt-2 font-display text-4xl font-bold">Устройства и подключения</h1>
         <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">
           Живые подключения считаются по runtime нод POKROV. Это работает не только для приложения, но и для импортированного конфига на сайте, в боте и вручную.
         </p>
@@ -110,7 +110,7 @@ export default function DevicesPage() {
 
         <div className="mt-5 flex flex-wrap gap-2">
           <button type="button" onClick={() => void copySubscription()} className="outline-btn rounded-xl px-4 py-2 text-sm font-semibold">
-            Скопировать ссылку доступа
+            Скопировать ссылку подключения
           </button>
           <AppRouteLink href="/dashboard/downloads" className="outline-btn rounded-xl px-4 py-2 text-sm font-semibold">
             Мои приложения
@@ -125,7 +125,7 @@ export default function DevicesPage() {
         <section className="glass-card p-6">
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.14em] text-orange-500">trial / free</p>
+              <p className="text-xs font-semibold uppercase tracking-[0.14em] text-orange-500">тестовый доступ</p>
               <h2 className="mt-2 font-display text-2xl font-semibold">Нужны дополнительные устройства?</h2>
               <p className="mt-2 max-w-2xl text-sm text-slate-600 dark:text-slate-300">
                 В тестовом и базовом режиме число устройств ограничено. Если хотите подключить больше техники и не думать о лимитах, переходите к тарифам или продолжайте в Telegram.

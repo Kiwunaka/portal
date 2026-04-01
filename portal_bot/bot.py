@@ -26,6 +26,7 @@ import qrcode
 from sqlalchemy.exc import IntegrityError
 from copy_catalog import get_copy_text
 from payment_providers import enabled_provider_catalog, normalize_provider as normalize_payment_provider
+from public_urls import build_subscription_url as build_public_subscription_url
 try:
     from aiogram import Bot, Dispatcher, F, Router, BaseMiddleware
     from aiogram.filters import Command, CommandStart
@@ -2454,7 +2455,7 @@ def build_vless_link(client_uuid: str, email: str = "User") -> str:
     return link
 
 def build_subscription_link(tg_id: int) -> str:
-    """Generate subscription URL for auto-updating config"""
+    """Generate the canonical public connection link."""
     # Backward compatibility:
     # - prefer per-user secure token when present
     # - fallback to numeric tg_id route for legacy users without token
@@ -2468,8 +2469,7 @@ def build_subscription_link(tg_id: int) -> str:
     if not sub_id:
         sub_id = str(tg_id)
 
-    # Secure path (Proxy on 2096)
-    return f"{PUBLIC_API_BASE_URL.rstrip('/')}/s8Kx2mP7qR4wT/{sub_id}"
+    return build_public_subscription_url(sub_id)
 
 
 def next_manual_tg_id() -> int:
@@ -4054,7 +4054,6 @@ async def show_key(callback: CallbackQuery):
     await asyncio.sleep(0.35)
 
     sub_link = build_subscription_link(tg_id)
-    plain_link = f"{sub_link}?format=plain"
 
     is_free = _is_freemium_sub_type(user.sub_type if user else "")
     free_note = ""
@@ -4074,15 +4073,15 @@ async def show_key(callback: CallbackQuery):
             f"• Лимит трафика: до {FREE_TOTAL_GB} ГБ\n"
             f"• Лимит устройств: до {FREE_LIMIT_IP} (по IP)\n"
             f"• Лимит скорости: до {FREE_SPEED_MBIT} Мбит/с\n"
-            "• Умная подписка направляет соцсети и AI через доступ\n"
+            "• Ссылка подключения сама подберет совместимый профиль\n"
             "• YouTube, Steam и торренты идут напрямую\n"
-            "• Простая ссылка без маршрутов не включает эти правила\n"
+            "• Для нового импорта достаточно одной ссылки или QR\n"
         )
     
     kb = InlineKeyboardMarkup(
         inline_keyboard=[
             [InlineKeyboardButton(text="📋 Скопировать ссылку", callback_data="copy_key")],
-            [InlineKeyboardButton(text="📱 Умный Умный QR-код доступа доступа", callback_data="show_qr")],
+            [InlineKeyboardButton(text="📱 QR для подключения", callback_data="show_qr")],
             [InlineKeyboardButton(text="👨‍👩‍👧‍👦 Поделиться с семьёй", callback_data="share_access")],
             [InlineKeyboardButton(text="🚨 Panic Mode", callback_data="panic_menu")],
             [InlineKeyboardButton(text="◀️ Назад", callback_data="back")],
@@ -4090,15 +4089,14 @@ async def show_key(callback: CallbackQuery):
     )
     
     await msg.edit_text(
-        f"🔑 *Ваш ключ доступа:*\n\n"
+        f"🔑 *Ваша ссылка подключения:*\n\n"
         f"`{sub_link}`\n\n"
         f"📋 _Нажмите на ссылку, чтобы скопировать_\n\n"
-        "🧠 *Умная подписка с маршрутами*\n"
-        "Лучше всего работает в приложении POKROV VPN и совместимых клиентах на sing-box. Маршруты по странам, прямые пути для РФ/Steam и базовые правила подключатся автоматически.\n\n"
-        "📄 *Обычная ссылка без маршрутов*\n"
-        f"`{plain_link}`\n"
-        "Нужна только для простых клиентов, которые не понимают умный JSON-профиль.\n\n"
-        f"📱 Откройте приложение POKROV VPN или совместимый клиент и импортируйте подписку по ссылке."
+        "🧠 *Одна ссылка для подключения*\n"
+        "Откройте ее в POKROV VPN или в совместимом клиенте на sing-box. Профиль получит актуальные маршруты и настройки автоматически.\n\n"
+        "📱 *QR для подключения*\n"
+        "Если удобнее, откройте QR ниже и импортируйте доступ без ручных настроек.\n\n"
+        f"📱 Откройте приложение POKROV VPN или совместимый клиент и импортируйте доступ по ссылке."
         f"{free_note}",
         reply_markup=kb,
         parse_mode=ParseMode.MARKDOWN
@@ -4130,12 +4128,12 @@ async def show_qr_code(callback: CallbackQuery):
     await callback.message.answer_photo(
         photo=file,
         caption=(
-            "📱 *Ваш QR-ключ доступа*\n\n"
+            "📱 *Ваш QR для подключения*\n\n"
             "Отсканируйте в приложении POKROV VPN или совместимом клиенте."
         ),
         parse_mode=ParseMode.MARKDOWN,
     )
-    await callback.answer("Умный Умный QR-код доступа доступа готов")
+    await callback.answer("QR для подключения готов")
 
 
 @router.callback_query(F.data == "share_access")

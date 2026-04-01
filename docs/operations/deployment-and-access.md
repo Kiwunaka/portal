@@ -83,6 +83,10 @@ python scripts/remote_install_node_observer.py --brain-ip 82.21.114.104 --node-c
 
 - [release_orchestrator.py](C:/Users/kiwun/Documents/ai/VPN/scripts/release_orchestrator.py)
 
+### API-only lifecycle smoke
+
+- [api_lifecycle_smoke.py](C:/Users/kiwun/Documents/ai/VPN/scripts/api_lifecycle_smoke.py)
+
 ### Observer-lite node install
 
 - [remote_install_node_observer.py](C:/Users/kiwun/Documents/ai/VPN/scripts/remote_install_node_observer.py)
@@ -148,14 +152,21 @@ At minimum, verify:
 - backend health endpoint
 - app-first `start-trial`
 - support ticket creation
-- subscription endpoint availability
+- canonical `connect.pokrov.space` subscription endpoint availability
+- legacy `api.pokrov.space` subscription compatibility
 - `GET /api/client/apps`
 - `GET /api/payments/providers`
 - checkout continuation from session or ticket
 - Telegram linking / channel bonus path
+- API-only lifecycle smoke for bonuses, checkout order creation, callback success, and post-payment dashboard state
 - `portal-api`, `portal-bot`, and `portal-helpbot` service status
 - `portal-feedbackbot` service status
 - when observer-lite is enabled on any node, `portal-node-observer.timer` freshness on that node plus `/api/admin/metrics/status` and `/api/admin/nodes/health` observer fields
+
+Release gate rule:
+
+- full release gate should include backend tests, `api_lifecycle_smoke.py`, marketing/webapp builds, and browser E2E from `webapp/e2e/`
+- `verify_brain_ready.py` should validate both the canonical connect host and the legacy API compatibility path before a release is considered healthy
 
 ## Telegram OAuth / OIDC Runtime
 

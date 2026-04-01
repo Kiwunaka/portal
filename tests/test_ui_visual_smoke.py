@@ -31,7 +31,7 @@ class UiVisualSmokeTests(unittest.TestCase):
 
         hero_check = checks["marketing-home-cta"]
         self.assertTrue(str(hero_check.path).endswith("marketing\\src\\components\\marketing-landing.tsx"))
-        self.assertIn("Скачать приложение", hero_check.must_contain)
+        self.assertIn("Начать пользоваться", hero_check.must_contain)
         self.assertIn("Открыть кабинет", hero_check.must_contain)
         self.assertIn("POKROV VPN", hero_check.must_contain)
 

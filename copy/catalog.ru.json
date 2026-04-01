@@ -148,7 +148,7 @@
     },
     "webapp.dashboard.primary_cta": {
       "surface": "webapp.dashboard",
-      "ru": "Продлить подписку",
+      "ru": "Продлить доступ",
       "variables": [],
       "tone": "premium",
       "allowed_public": true,
@@ -157,7 +157,7 @@
     },
     "webapp.dashboard.support_cta": {
       "surface": "webapp.dashboard",
-      "ru": "Связаться с поддержкой",
+      "ru": "Написать в поддержку",
       "variables": [],
       "tone": "premium",
       "allowed_public": true,
@@ -166,7 +166,7 @@
     },
     "webapp.subscription.title": {
       "surface": "webapp.subscription",
-      "ru": "Ваша подписка",
+      "ru": "Подписка и подключение",
       "variables": [],
       "tone": "premium",
       "allowed_public": true,
@@ -175,7 +175,7 @@
     },
     "webapp.subscription.subtitle": {
       "surface": "webapp.subscription",
-      "ru": "Здесь вы можете посмотреть текущий тариф, проверить срок действия доступа и легко продлить подписку с максимальной выгодой.",
+      "ru": "Здесь вы можете посмотреть текущий тариф, срок доступа и ссылку подключения, а при необходимости быстро продлить подписку.",
       "variables": [],
       "tone": "premium",
       "allowed_public": true,
@@ -202,7 +202,7 @@
     },
     "webapp.support.title": {
       "surface": "webapp.support",
-      "ru": "Служба заботы о клиентах",
+      "ru": "Служба заботы",
       "variables": [],
       "tone": "premium",
       "allowed_public": true,
@@ -211,7 +211,7 @@
     },
     "webapp.support.subtitle": {
       "surface": "webapp.support",
-      "ru": "Нужна помощь с настройкой или возник вопрос по оплате? Мы всегда на вашей стороне и готовы оперативно помочь в любой ситуации.",
+      "ru": "Если нужна помощь с подключением, оплатой или работой кабинета, напишите нам. Мы быстро разберёмся и подскажем следующий шаг.",
       "variables": [],
       "tone": "premium",
       "allowed_public": true,
@@ -220,7 +220,7 @@
     },
     "webapp.support.empty_tickets": {
       "surface": "webapp.support",
-      "ru": "У вас пока нет активных обращений: всё работает отлично! Если возникнут вопросы — мы всегда на связи.",
+      "ru": "Пока нет активных обращений. Если появится вопрос, мы всегда на связи.",
       "variables": [],
       "tone": "premium",
       "allowed_public": true,
@@ -229,7 +229,7 @@
     },
     "webapp.devices.title": {
       "surface": "webapp.devices",
-      "ru": "Мои устройства",
+      "ru": "Устройства и подключения",
       "variables": [],
       "tone": "premium",
       "allowed_public": true,
@@ -238,7 +238,7 @@
     },
     "webapp.devices.subtitle": {
       "surface": "webapp.devices",
-      "ru": "Управляйте подключениями и добавляйте новые устройства для безопасного интернета на всех ваших гаджетах.",
+      "ru": "Управляйте своими устройствами и отслеживайте активные подключения на всех ваших устройствах.",
       "variables": [],
       "tone": "premium",
       "allowed_public": true,
@@ -247,7 +247,7 @@
     },
     "webapp.statistics.title": {
       "surface": "webapp.statistics",
-      "ru": "Статус подключения",
+      "ru": "Статистика подключения",
       "variables": [],
       "tone": "premium",
       "allowed_public": true,
@@ -256,7 +256,7 @@
     },
     "webapp.statistics.subtitle": {
       "surface": "webapp.statistics",
-      "ru": "Вся актуальная информация о вашей подписке и трафике собрана здесь для вашего удобства.",
+      "ru": "Здесь собраны данные о подписке, трафике и активных подключениях — всё, что нужно для быстрого контроля.",
       "variables": [],
       "tone": "premium",
       "allowed_public": true,
@@ -265,7 +265,7 @@
     },
     "webapp.downloads.title": {
       "surface": "webapp.downloads",
-      "ru": "Скачать приложение",
+      "ru": "Приложения и быстрый старт",
       "variables": [],
       "tone": "premium",
       "allowed_public": true,
@@ -274,7 +274,7 @@
     },
     "webapp.downloads.subtitle": {
       "surface": "webapp.downloads",
-      "ru": "Установите стильный и понятный клиент POKROV VPN. Актуальные версии для всех платформ и инструкции ждут вас здесь.",
+      "ru": "Скачайте актуальные приложения для Android и Windows и откройте справку, если нужна помощь с запуском.",
       "variables": [],
       "tone": "premium",
       "allowed_public": true,

@@ -158,6 +158,17 @@ def _optional_runtime_smoke_gate() -> tuple[str, list[str], Path] | None:
     )
 
 
+def _api_lifecycle_smoke_gate() -> tuple[str, list[str], Path]:
+    return (
+        "API lifecycle smoke",
+        [
+            sys.executable,
+            "scripts/api_lifecycle_smoke.py",
+        ],
+        REPO_ROOT,
+    )
+
+
 def _predeploy_node_readiness_gate(
     *,
     brain_ip: str,
@@ -220,10 +231,12 @@ def main() -> int:
     gates.extend([
         ("Backend unit tests", [sys.executable, "-m", "unittest", "discover", "tests"], REPO_ROOT),
         ("Admin/auth regressions", [sys.executable, "-m", "unittest", "tests.test_api_auth_and_tickets"], REPO_ROOT),
+        _api_lifecycle_smoke_gate(),
         ("Public link checks", [sys.executable, "scripts/check-links.py"], REPO_ROOT),
         ("Marketing production build", [_npm_exec(), "run", "build"], REPO_ROOT / "marketing"),
         ("Admin webapp smoke", [sys.executable, "scripts/admin_webapp_smoke.py"], REPO_ROOT),
         ("WebApp production build", [_npm_exec(), "run", "build"], REPO_ROOT / "webapp"),
+        ("WebApp Playwright E2E", [_npm_exec(), "run", "test:e2e"], REPO_ROOT / "webapp"),
         ("UI visual smoke", [sys.executable, "scripts/ui_visual_smoke.py"], REPO_ROOT),
     ])
     if args.quick:
@@ -240,10 +253,12 @@ def main() -> int:
             )
         gates.extend([
             ("Critical worker regression", [sys.executable, "-m", "unittest", "tests.test_worker_retention"], REPO_ROOT),
+            _api_lifecycle_smoke_gate(),
             ("Public link checks", [sys.executable, "scripts/check-links.py"], REPO_ROOT),
             ("Marketing production build", [_npm_exec(), "run", "build"], REPO_ROOT / "marketing"),
             ("Admin webapp smoke", [sys.executable, "scripts/admin_webapp_smoke.py"], REPO_ROOT),
             ("WebApp production build", [_npm_exec(), "run", "build"], REPO_ROOT / "webapp"),
+            ("WebApp Playwright E2E", [_npm_exec(), "run", "test:e2e"], REPO_ROOT / "webapp"),
             ("UI visual smoke", [sys.executable, "scripts/ui_visual_smoke.py"], REPO_ROOT),
         ])
 

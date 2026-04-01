@@ -13,6 +13,7 @@ npm.cmd run dev
 
 ```bash
 npm.cmd run build
+npm.cmd run test:e2e
 npm.cmd run test:e2e:admin
 ```
 
@@ -38,10 +39,16 @@ npm.cmd run test:e2e:admin
 
 - `https://api.pokrov.space`
 
+Каноническая публичная ссылка подключения:
+
+- `https://connect.pokrov.space/s8Kx2mP7qR4wT/{token}`
+
 Важно:
 
 - фронтенд не должен считать `https://app.pokrov.space/api/*` валидным API fallback
 - если с app origin приходит HTML вместо JSON, это считается ошибкой auth/runtime wiring, а не успешным ответом
+- пользовательский UI показывает одну `ссылку подключения` и один QR для подключения
+- `?format=plain` остаётся скрытой backend-совместимостью и не должен торчать в обычном webapp UX
 
 ## Auth flows
 

@@ -84,7 +84,7 @@ export default function DashboardPage() {
     ? isTrialLike
       ? "🚀 Тест запущен! Самое время открыть YouTube, TikTok или любимые сайты и проверить скорость. Спойлер: скорее всего, вам понравится."
       : "✨ Всё работает как надо. Пользуйтесь свободным интернетом, а статистика, настройки и продление всегда под рукой."
-    : "⏸ Ваш профиль ожидает продления. Верните безлимитный интернет в пару кликов!";
+    : "⏸ Ваш профиль ожидает продления. Верните безлимитный интернет в пару кликов.";
 
   const nextStepBody = dash?.is_active
     ? isTrialLike
@@ -104,12 +104,12 @@ export default function DashboardPage() {
               </h1>
               <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">{nextStepBody}</p>
             </div>
-            <span
+              <span
               className={`rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.14em] ${
                 dash?.is_active ? "bg-emerald-500 text-white" : "bg-amber-400 text-slate-900"
               }`}
             >
-              {dash?.is_active ? "online" : "pending"}
+              {dash?.is_active ? "активен" : "ожидание"}
             </span>
           </div>
 
@@ -143,7 +143,7 @@ export default function DashboardPage() {
 
       {isTrialLike ? (
         <section className="glass-card p-6">
-          <p className="font-mono text-xs uppercase tracking-[0.16em] text-emerald-600 dark:text-emerald-300">trial-first</p>
+          <p className="font-mono text-xs uppercase tracking-[0.16em] text-emerald-600 dark:text-emerald-300">бонусный период</p>
           <h2 className="mt-2 font-display text-3xl font-bold">Вы в бонусном периоде! Наслаждайтесь высокой скоростью, а после выберите удобный тариф.</h2>
           <p className="mt-3 max-w-3xl text-sm text-slate-600 dark:text-slate-300">
             Проверьте сервис на своих устройствах и в привычных сценариях. Если всё устраивает, переходите в тарифы и продлевайте без повторной настройки.
@@ -154,8 +154,8 @@ export default function DashboardPage() {
       <section className="glass-card p-7">
         <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
           <div>
-            <p className="font-mono text-xs uppercase tracking-[0.16em] text-slate-500">ключ и QR</p>
-            <h2 className="mt-2 font-display text-3xl font-bold">Показать, скопировать или открыть по QR</h2>
+            <p className="font-mono text-xs uppercase tracking-[0.16em] text-slate-500">ссылка подключения и QR</p>
+            <h2 className="mt-2 font-display text-3xl font-bold">Показать ссылку подключения или открыть QR</h2>
           </div>
           <div className="flex flex-wrap gap-2">
             <button
@@ -185,17 +185,17 @@ export default function DashboardPage() {
 
         <div className="grid gap-5 lg:grid-cols-[1.4fr,0.9fr]">
           <article className="rounded-2xl border border-white/45 bg-white/65 p-4 dark:border-white/10 dark:bg-white/5">
-            <p className="text-xs uppercase tracking-[0.14em] text-slate-500">Ваша премиум-ссылка</p>
+            <p className="text-xs uppercase tracking-[0.14em] text-slate-500">Ссылка подключения</p>
             <p className="mt-3 break-all font-mono text-xs leading-6 text-slate-700 dark:text-slate-200">
               {maskKey(connectionKey, keyVisible)}
             </p>
-            <p className="mt-3 text-xs text-slate-500">Используйте эту ссылку только на своих устройствах.</p>
+            <p className="mt-3 text-xs text-slate-500">Используйте эту ссылку подключения только на своих устройствах.</p>
             {copyState === "ok" ? <p className="mt-2 text-xs text-emerald-600 dark:text-emerald-300">Ссылка скопирована.</p> : null}
             {copyState === "fail" ? <p className="mt-2 text-xs text-rose-500">Ой, ссылка не скопировалась. Попробуйте еще раз.</p> : null}
           </article>
 
           <article className="rounded-2xl border border-white/45 bg-white/65 p-4 dark:border-white/10 dark:bg-white/5">
-            <p className="text-xs uppercase tracking-[0.14em] text-slate-500">Умный Умный QR-код доступа доступа</p>
+            <p className="text-xs uppercase tracking-[0.14em] text-slate-500">QR для подключения</p>
             <SubscriptionQrCard value={connectionKey} active={qrVisible} />
           </article>
         </div>

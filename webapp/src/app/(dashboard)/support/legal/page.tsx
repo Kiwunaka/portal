@@ -26,7 +26,7 @@ export default function SupportLegalPage() {
       <section className="glass-card p-7">
         <Link href="/support" className="inline-flex items-center gap-2 text-xs uppercase tracking-[0.16em] text-slate-500">
           <span className="material-symbols-rounded">arrow_back</span>
-          назад в службу заботы
+          Назад в службу заботы
         </Link>
         <h1 className="mt-3 font-display text-4xl font-bold">Юридическая информация</h1>
         <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">

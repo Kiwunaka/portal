@@ -47,11 +47,13 @@ This file is living source of truth for repository layout, local authorities, sc
 ### Smoke and verification
 
 - `admin_webapp_smoke.py`
+- `api_lifecycle_smoke.py`
 - `release_gate_check.py`
 - `render_ru_probe_report.py`
 - `ru_probe_runner.py`
 - `smoke_client_apps.py`
 - `ui_visual_smoke.py`
+- `verify_brain_ready.py`
 - `check-links.py`
 
 ### Node and panel operations
@@ -119,6 +121,7 @@ This file is living source of truth for repository layout, local authorities, sc
 - `tests/test_public_copy_guardrails.py`
 - `tests/test_ui_visual_smoke.py`
 - `webapp/e2e/admin-gate.spec.ts`
+- `webapp/e2e/cabinet-flow.spec.ts`
 
 ## Generated Artifact Policy
 

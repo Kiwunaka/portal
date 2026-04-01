@@ -83,13 +83,32 @@ Canonical public hostnames:
 - `https://pokrov.space/`
 - `https://app.pokrov.space/`
 - `https://api.pokrov.space/`
+- `https://connect.pokrov.space/`
+- `https://pay.pokrov.space/checkout/`
 
 Hostname policy:
 
 - `pokrov.space` is the official public brand and entrypoint for new users
 - `app.pokrov.space` is the official browser surface for account continuation and checkout continuation
 - `api.pokrov.space` is the canonical API base for web and app-first browser flows
+- `connect.pokrov.space` is the canonical public host for config delivery, QR import, and `subscription_url`
+- new public connection links must always point to `connect.pokrov.space`
+- legacy `api.pokrov.space/s8Kx2mP7qR4wT/...` links may continue to work for imported profiles, but must not be shown as the primary user-facing path
 - `kiwunaka.space` is compatibility-only during migration and must not be used in new product copy, new onboarding, or fresh distribution links
+
+## Connection Link Policy
+
+Public connection delivery now follows one simple rule:
+
+- one public connection link
+- one QR based on that same link
+- one canonical host: `connect.pokrov.space`
+
+Product wording rule:
+
+- user-facing copy should say `ссылка подключения` and `QR для подключения`
+- do not describe separate public `умный` and `обычный` keys
+- `?format=plain` remains backend compatibility-only and must stay hidden from normal site, bot, and webapp flows
 
 ## Trial And Bonus Rules
 

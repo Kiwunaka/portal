@@ -7,13 +7,13 @@ import {
   adminLiveUpdateUpdate,
   adminLiveUpdates,
   adminTemplateCreate,
-  adminTemplates,
   adminTemplateUpdate,
+  adminTemplates,
   type AdminTemplateRow,
   type LiveUpdateRow,
 } from "@/lib/api";
 import { Check, ExternalLink, Eye, Loader2, Megaphone, Newspaper, PencilLine, Plus, Send, Trash2, X } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 function parseTgIds(input: string): number[] {
   return input
@@ -24,23 +24,23 @@ function parseTgIds(input: string): number[] {
 }
 
 const SEGMENT_OPTIONS = [
-  { value: "all_active", label: " ", icon: "??" },
-  { value: "free", label: "", icon: "??" },
-  { value: "paid", label: "", icon: "??" },
-  { value: "expired", label: "", icon: "?" },
+  { value: "all_active", label: "Все активные" },
+  { value: "free", label: "Бесплатные" },
+  { value: "paid", label: "Платные" },
+  { value: "expired", label: "Истекшие" },
 ];
 
 const RETENTION_TEMPLATE_GROUPS = [
-  { key: "retention_welcome_a", label: "Welcome A", flow: "Welcome", hint: "������ ������� ����� �����������" },
-  { key: "retention_welcome_b", label: "Welcome B", flow: "Welcome", hint: "�������������� welcome-�������" },
-  { key: "retention_t3_a", label: "За 3 дня (А)", flow: "���������", hint: "�� 3 ��� �� ��������� �������" },
-  { key: "retention_t3_b", label: "За 3 дня (Б)", flow: "���������", hint: "������ ������� ��� T-3" },
-  { key: "retention_t1_a", label: "За 1 день (А)", flow: "���������", hint: "�� ����� �� ��������� �������" },
-  { key: "retention_t1_b", label: "За 1 день (Б)", flow: "���������", hint: "������ ������� ��� T-1" },
-  { key: "retention_t0_a", label: "В день окончания (А)", flow: "���������", hint: "��������� ������� � ���� ���������" },
-  { key: "retention_t0_b", label: "В день окончания (Б)", flow: "���������", hint: "������ ������� ��� T0" },
-  { key: "retention_reactivation_a", label: "Reactivation A", flow: "�������", hint: "������� ����� ������" },
-  { key: "retention_reactivation_b", label: "Reactivation B", flow: "�������", hint: "�������������� reactivation-�������" },
+  { key: "retention_welcome_a", label: "Welcome A", flow: "Welcome", hint: "Первый вариант приветствия для новых пользователей." },
+  { key: "retention_welcome_b", label: "Welcome B", flow: "Welcome", hint: "Второй вариант приветствия с альтернативным тоном." },
+  { key: "retention_t3_a", label: "За 3 дня (A)", flow: "Retention", hint: "Шаблон для напоминания за три дня до окончания подписки." },
+  { key: "retention_t3_b", label: "За 3 дня (B)", flow: "Retention", hint: "Альтернатива для сценария T-3." },
+  { key: "retention_t1_a", label: "За 1 день (A)", flow: "Retention", hint: "Шаблон для мягкого напоминания за день до конца." },
+  { key: "retention_t1_b", label: "За 1 день (B)", flow: "Retention", hint: "Альтернатива для сценария T-1." },
+  { key: "retention_t0_a", label: "В день окончания (A)", flow: "Retention", hint: "Сообщение на день, когда подписка уже закончилась." },
+  { key: "retention_t0_b", label: "В день окончания (B)", flow: "Retention", hint: "Альтернативный вариант сообщения для T0." },
+  { key: "retention_reactivation_a", label: "Реактивация A", flow: "Reactivation", hint: "Шаблон для возврата ушедших пользователей." },
+  { key: "retention_reactivation_b", label: "Реактивация B", flow: "Reactivation", hint: "Альтернативный вариант для реактивационной цепочки." },
 ];
 
 type LiveUpdateDialog =
@@ -66,12 +66,14 @@ export default function AdminBroadcastPage() {
   const [liveDialog, setLiveDialog] = useState<LiveUpdateDialog>(null);
   const [templateDialog, setTemplateDialog] = useState<TemplateDialog>(null);
 
+  const templatesByKey = useMemo(() => new Map(templates.map((row) => [row.key, row])), [templates]);
+
   const loadLiveUpdates = async (): Promise<void> => {
     try {
       const rows = await adminLiveUpdates(true);
       setLiveUpdates(rows);
     } catch (err) {
-      setError(String((err as { message?: string })?.message || err || "    "));
+      setError(String((err as { message?: string })?.message || err || "Не удалось загрузить новости."));
     }
   };
 
@@ -80,7 +82,7 @@ export default function AdminBroadcastPage() {
       const rows = await adminTemplates(200);
       setTemplates(rows);
     } catch (err) {
-      setError(String((err as { message?: string })?.message || err || "    "));
+      setError(String((err as { message?: string })?.message || err || "Не удалось загрузить шаблоны."));
     }
   };
 
@@ -102,25 +104,25 @@ export default function AdminBroadcastPage() {
         limit: Math.max(1, Math.min(1000, Number(limit) || 1)),
         tg_ids: tgIds.length ? tgIds : undefined,
       });
-      setResult(` :  ${out?.sent ?? 0},  ${out?.failed ?? 0},  ${out?.attempted ?? 0}.`);
+      setResult(`Отправлено: ${out?.sent ?? 0}, ошибок: ${out?.failed ?? 0}, адресатов: ${out?.attempted ?? 0}.`);
     } catch (err) {
-      setError(String((err as { message?: string })?.message || err || "   "));
+      setError(String((err as { message?: string })?.message || err || "Не удалось отправить рассылку."));
     } finally {
       setBusy(false);
     }
   };
 
-  const createLiveUpdate = async (): Promise<void> => {
+  const createLiveUpdate = (): void => {
     setLiveDialog({
       kind: "create",
-      title: "���������� �������",
-      summary: "����� ��������� ������������ � ��������",
+      title: "Новая новость",
+      summary: "Короткий анонс для главной ленты.",
       link: "https://t.me/pokrov_vpnbot",
       sortOrder: "100",
     });
   };
 
-  const editLiveUpdate = async (row: LiveUpdateRow): Promise<void> => {
+  const editLiveUpdate = (row: LiveUpdateRow): void => {
     setLiveDialog({
       kind: "edit",
       id: row.id,
@@ -131,14 +133,14 @@ export default function AdminBroadcastPage() {
     });
   };
 
-  const removeLiveUpdate = async (id: number): Promise<void> => {
+  const removeLiveUpdate = (id: number): void => {
     setLiveDialog({ kind: "delete", id });
   };
 
   const openTemplateDialog = (templateKey: string): void => {
     const meta = RETENTION_TEMPLATE_GROUPS.find((row) => row.key === templateKey);
     if (!meta) return;
-    const existing = templates.find((row) => row.key === templateKey);
+    const existing = templatesByKey.get(templateKey);
     setTemplateDialog({
       key: templateKey,
       text: existing?.text || "",
@@ -155,7 +157,7 @@ export default function AdminBroadcastPage() {
     try {
       if (liveDialog.kind === "create") {
         if (!liveDialog.title.trim()) {
-          setError("������� ��������� �������.");
+          setError("У новости должен быть заголовок.");
           setBusy(false);
           return;
         }
@@ -167,10 +169,10 @@ export default function AdminBroadcastPage() {
           is_active: true,
           sort_order: Number.isFinite(sortOrder) ? Math.max(0, Math.floor(sortOrder)) : 100,
         });
-        setResult("������� ���������.");
+        setResult("Новость создана.");
       } else if (liveDialog.kind === "edit") {
         if (!liveDialog.title.trim()) {
-          setError("������� ��������� �������.");
+          setError("У новости должен быть заголовок.");
           setBusy(false);
           return;
         }
@@ -180,15 +182,15 @@ export default function AdminBroadcastPage() {
           link: liveDialog.link.trim(),
           is_active: liveDialog.isActive,
         });
-        setResult(`������� #${liveDialog.id} ���������.`);
+        setResult(`Новость #${liveDialog.id} обновлена.`);
       } else if (liveDialog.kind === "delete") {
         await adminLiveUpdateDelete(liveDialog.id);
-        setResult(`������� #${liveDialog.id} �������.`);
+        setResult(`Новость #${liveDialog.id} удалена.`);
       }
       await loadLiveUpdates();
       setLiveDialog(null);
     } catch (err) {
-      setError(String((err as { message?: string })?.message || err || "     "));
+      setError(String((err as { message?: string })?.message || err || "Не удалось сохранить новость."));
     } finally {
       setBusy(false);
     }
@@ -198,7 +200,7 @@ export default function AdminBroadcastPage() {
     if (!templateDialog) return;
     const textValue = templateDialog.text.trim();
     if (!textValue) {
-      setError("������ �� ����� ���� ������.");
+      setError("Шаблон не может быть пустым.");
       return;
     }
     setBusy(true);
@@ -206,54 +208,55 @@ export default function AdminBroadcastPage() {
     try {
       if (templateDialog.mode === "create") {
         await adminTemplateCreate({ key: templateDialog.key, text: textValue });
-        setResult(`������ ${templateDialog.title} ������.`);
+        setResult(`Шаблон ${templateDialog.title} создан.`);
       } else {
         await adminTemplateUpdate(templateDialog.key, { text: textValue });
-        setResult(`������ ${templateDialog.title} �������.`);
+        setResult(`Шаблон ${templateDialog.title} обновлён.`);
       }
       await loadTemplates();
       setTemplateDialog(null);
     } catch (err) {
-      setError(String((err as { message?: string })?.message || err || "    "));
+      setError(String((err as { message?: string })?.message || err || "Не удалось сохранить шаблон."));
     } finally {
       setBusy(false);
     }
   };
 
-  const templatesByKey = new Map(templates.map((row) => [row.key, row]));
-
   return (
     <section className="space-y-5">
-      {/* -- Broadcast composer --------------------------- */}
-      <article className="stat-card p-6 space-y-4">
-        <div className="flex items-center gap-3">
+      <article className="stat-card p-5 sm:p-6 space-y-4">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-start">
           <div className="stat-icon stat-icon-rose">
             <Megaphone size={20} />
           </div>
-          <div>
-            <h2 className="font-display text-xl font-bold">��������</h2>
-            <p className="text-xs text-slate-500">�������� �������� ��������� �� ���������� �������� �������������</p>
+          <div className="min-w-0 flex-1">
+            <h2 className="font-display text-xl font-bold">Рассылки</h2>
+            <p className="text-xs text-slate-500">
+              Отсюда отправляются массовые сообщения и управляются новости на витрине. Перед запуском проверьте сегмент, лимит и текст.
+            </p>
           </div>
         </div>
-        <div className="rounded-xl bg-white/60 p-3 text-xs text-slate-500 dark:bg-white/5 dark:text-slate-400">
-          ����������� �������� ��� ��������, ����������� � ������ ����������. ���� ��������� ���������, ������� ��������� ��� �� ��������� ������� � ������ ����� �� ��� ����.
+        <div className="rounded-xl bg-white/60 p-3 text-xs leading-relaxed text-slate-500 dark:bg-white/5 dark:text-slate-400">
+          Для Telegram ID можно указать список через пробел, запятую или точку с запятой. Если список пустой, рассылка пойдёт по выбранному сегменту.
         </div>
 
         <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
           <div>
-            <label className="block text-[10px] uppercase tracking-[0.1em] text-slate-500 mb-1">�������</label>
+            <label className="mb-1 block text-[10px] uppercase tracking-[0.1em] text-slate-500">Сегмент</label>
             <select
               value={segment}
               onChange={(event) => setSegment(event.target.value)}
               className="w-full rounded-xl border border-violet-200/50 bg-white/80 px-3 py-2 text-sm outline-none dark:border-violet-500/30 dark:bg-slate-900/70"
             >
               {SEGMENT_OPTIONS.map((opt) => (
-                <option key={opt.value} value={opt.value}>{opt.icon} {opt.label}</option>
+                <option key={opt.value} value={opt.value}>
+                  {opt.label}
+                </option>
               ))}
             </select>
           </div>
           <div>
-            <label className="block text-[10px] uppercase tracking-[0.1em] text-slate-500 mb-1">�����</label>
+            <label className="mb-1 block text-[10px] uppercase tracking-[0.1em] text-slate-500">Лимит</label>
             <input
               type="number"
               value={limit}
@@ -262,60 +265,64 @@ export default function AdminBroadcastPage() {
             />
           </div>
           <div className="xl:col-span-2">
-            <label className="block text-[10px] uppercase tracking-[0.1em] text-slate-500 mb-1">Telegram ID (�������������)</label>
+            <label className="mb-1 block text-[10px] uppercase tracking-[0.1em] text-slate-500">Telegram ID</label>
             <input
               value={tgIdsRaw}
               onChange={(event) => setTgIdsRaw(event.target.value)}
               className="w-full rounded-xl border border-violet-200/50 bg-white/80 px-3 py-2 text-sm outline-none dark:border-violet-500/30 dark:bg-slate-900/70"
-              placeholder="���� �����, ������� ���������� Telegram ID ����� �������"
+              placeholder="Например: 123456789, 987654321"
             />
           </div>
         </div>
 
-        <div className="grid gap-4 lg:grid-cols-[1fr,0.4fr]">
+        <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr),minmax(260px,0.4fr)]">
           <div>
-            <label className="block text-[10px] uppercase tracking-[0.1em] text-slate-500 mb-1">����� ��������</label>
+            <label className="mb-1 block text-[10px] uppercase tracking-[0.1em] text-slate-500">Текст рассылки</label>
             <textarea
               value={text}
               onChange={(event) => setText(event.target.value)}
               rows={6}
-              placeholder="�������� ����� �������� �������� �������"
-              className="w-full rounded-xl border border-violet-200/50 bg-white/80 px-3 py-2 text-sm outline-none dark:border-violet-500/30 dark:bg-slate-900/70 resize-none"
+              placeholder="Введите текст сообщения для отправки."
+              className="w-full resize-none rounded-xl border border-violet-200/50 bg-white/80 px-3 py-2 text-sm outline-none dark:border-violet-500/30 dark:bg-slate-900/70"
             />
           </div>
-          {/* Preview */}
           <div>
-            <label className="block text-[10px] uppercase tracking-[0.1em] text-slate-500 mb-1 flex items-center gap-1"><Eye size={10} /> ������</label>
-            <div className="rounded-xl bg-white/50 p-3 dark:bg-white/5 min-h-[120px] text-sm whitespace-pre-line text-slate-600 dark:text-slate-300">
-              {text.trim() || <span className="text-slate-400 italic">������� �����</span>}
+            <label className="mb-1 flex items-center gap-1 text-[10px] uppercase tracking-[0.1em] text-slate-500">
+              <Eye size={10} /> Превью
+            </label>
+            <div className="min-h-[120px] rounded-xl bg-white/50 p-3 text-sm whitespace-pre-line text-slate-600 dark:bg-white/5 dark:text-slate-300">
+              {text.trim() || <span className="text-slate-400 italic">Здесь появится текст сообщения</span>}
             </div>
           </div>
         </div>
 
         <button
-          className="btn-primary rounded-xl px-5 py-2.5 text-sm font-semibold uppercase tracking-[0.12em] inline-flex items-center gap-2"
+          className="btn-primary inline-flex items-center gap-2 rounded-xl px-5 py-2.5 text-sm font-semibold uppercase tracking-[0.12em] w-full sm:w-auto"
           type="button"
           onClick={() => void submit()}
           disabled={busy || !text.trim()}
         >
           {busy ? <Loader2 size={14} className="animate-spin" /> : <Send size={14} />}
-          {busy ? "..." : ""}
+          {busy ? "Отправляем..." : "Отправить"}
         </button>
       </article>
 
       <article className="glass-card p-5">
-        <div className="mb-4 flex items-center justify-between gap-3">
+        <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-3">
             <div className="stat-icon stat-icon-violet">
               <PencilLine size={20} />
             </div>
-            <div>
-              <h3 className="font-display text-xl font-bold">Retention-�������</h3>
-              <p className="text-xs text-slate-500">������� ������� ��� �����������, ����������� � ��������� � �������� �������������</p>
+            <div className="min-w-0">
+              <h3 className="font-display text-xl font-bold">Retention-шаблоны</h3>
+              <p className="text-xs text-slate-500">
+                Здесь редактируются сценарии приветствия, удержания и реактивации. Шаблоны используются в автоматических цепочках.
+              </p>
             </div>
           </div>
-          <span className="badge badge-info">{templates.length} ��������</span>
+          <span className="badge badge-info self-start sm:self-auto">{templates.length} шаблонов</span>
         </div>
+
         <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
           {RETENTION_TEMPLATE_GROUPS.map((item) => {
             const existing = templatesByKey.get(item.key);
@@ -326,24 +333,21 @@ export default function AdminBroadcastPage() {
                     <p className="text-[10px] uppercase tracking-[0.1em] text-slate-500">{item.flow}</p>
                     <h4 className="mt-1 text-sm font-bold">{item.label}</h4>
                   </div>
-                  <span className={`badge ${existing ? "badge-success" : "badge-warning"}`}>
-                    {existing ? "" : ""}
-                  </span>
+                  <span className={`badge ${existing ? "badge-success" : "badge-warning"}`}>{existing ? "Есть" : "Нет"}</span>
                 </div>
                 <p className="mt-2 text-xs text-slate-500">{item.hint}</p>
                 <div className="mt-3 rounded-xl bg-white/50 p-3 text-xs leading-relaxed text-slate-600 dark:bg-white/5 dark:text-slate-300">
-                  {(existing?.text || "   .     .").slice(0, 240)}
-                  {existing?.text && existing.text.length > 240 ? "" : ""}
+                  {(existing?.text || "Шаблон пока не задан.").slice(0, 240)}
                 </div>
                 <div className="mt-3 flex justify-end">
                   <button
-                    className="outline-btn rounded-xl px-3 py-2 text-xs font-semibold inline-flex items-center gap-1.5"
+                    className="outline-btn inline-flex items-center gap-1.5 rounded-xl px-3 py-2 text-xs font-semibold"
                     type="button"
                     onClick={() => openTemplateDialog(item.key)}
                     disabled={busy}
                   >
                     <PencilLine size={12} />
-                    {existing ? "" : ""}
+                    {existing ? "Редактировать" : "Создать"}
                   </button>
                 </div>
               </article>
@@ -352,20 +356,21 @@ export default function AdminBroadcastPage() {
         </div>
       </article>
 
-      {/* -- Live updates --------------------------------- */}
       <article className="glass-card p-5">
-        <div className="mb-4 flex items-center justify-between gap-3">
+        <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-3">
             <div className="stat-icon stat-icon-blue">
               <Newspaper size={20} />
             </div>
-            <div>
-              <h3 className="font-display text-xl font-bold">������� � ����������</h3>
-              <p className="text-xs text-slate-500">�������� ��������, ������� ������������ ����� ����� � ��������</p>
+            <div className="min-w-0">
+              <h3 className="font-display text-xl font-bold">Новости и анонсы</h3>
+              <p className="text-xs text-slate-500">
+                Управляйте короткими карточками на главной витрине и связанными ссылками.
+              </p>
             </div>
           </div>
-          <button className="btn-primary rounded-xl px-4 py-2 text-sm font-semibold inline-flex items-center gap-1.5" type="button" onClick={() => void createLiveUpdate()} disabled={busy}>
-            <Plus size={14} /> ��������
+          <button className="btn-primary inline-flex items-center gap-1.5 rounded-xl px-4 py-2 text-sm font-semibold" type="button" onClick={() => createLiveUpdate()} disabled={busy}>
+            <Plus size={14} /> Новая новость
           </button>
         </div>
 
@@ -373,29 +378,29 @@ export default function AdminBroadcastPage() {
           {liveUpdates.map((row) => (
             <div key={row.id} className="node-card">
               <div className="flex items-start justify-between gap-2">
-                <div className="flex-1">
+                <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">
                     <span className={`status-dot ${row.is_active ? "status-dot-online" : "status-dot-stale"}`} />
                     <p className="text-sm font-bold">{row.title}</p>
                   </div>
-                  <p className="mt-1 text-xs text-slate-500 line-clamp-2">{row.summary || "�"}</p>
+                  <p className="mt-1 line-clamp-2 text-xs text-slate-500">{row.summary || "Без описания"}</p>
                 </div>
-                <span className={`badge ${row.is_active ? "badge-success" : "badge-danger"}`}>
-                  {row.is_active ? "" : ""}
-                </span>
+                <span className={`badge ${row.is_active ? "badge-success" : "badge-danger"}`}>{row.is_active ? "Активна" : "Скрыта"}</span>
               </div>
               <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
                 {row.link ? (
-                  <a href={row.link} target="_blank" className="inline-flex items-center gap-1 text-xs text-violet-600 dark:text-violet-300 hover:underline">
-                    <ExternalLink size={10} /> �������
+                  <a href={row.link} target="_blank" className="inline-flex items-center gap-1 text-xs text-violet-600 hover:underline dark:text-violet-300">
+                    <ExternalLink size={10} /> Открыть
                   </a>
-                ) : <span />}
+                ) : (
+                  <span />
+                )}
                 <div className="flex gap-1.5">
-                  <button className="outline-btn rounded-lg px-2.5 py-1 text-[10px] font-semibold inline-flex items-center gap-1" type="button" onClick={() => void editLiveUpdate(row)} disabled={busy}>
-                    <PencilLine size={10} /> ��������
+                  <button className="outline-btn inline-flex items-center gap-1 rounded-lg px-2.5 py-1 text-[10px] font-semibold" type="button" onClick={() => editLiveUpdate(row)} disabled={busy}>
+                    <PencilLine size={10} /> Править
                   </button>
-                  <button className="outline-btn rounded-lg px-2.5 py-1 text-[10px] font-semibold inline-flex items-center gap-1 text-rose-500" type="button" onClick={() => void removeLiveUpdate(row.id)} disabled={busy}>
-                    <Trash2 size={10} /> �������
+                  <button className="outline-btn inline-flex items-center gap-1 rounded-lg px-2.5 py-1 text-[10px] font-semibold text-rose-500" type="button" onClick={() => removeLiveUpdate(row.id)} disabled={busy}>
+                    <Trash2 size={10} /> Удалить
                   </button>
                 </div>
               </div>
@@ -404,23 +409,26 @@ export default function AdminBroadcastPage() {
           {liveUpdates.length === 0 ? (
             <div className="empty-state col-span-full">
               <Newspaper size={28} />
-              <p className="text-xs">�������� ���� ���</p>
+              <p className="text-xs">Пока нет опубликованных новостей</p>
             </div>
           ) : null}
         </div>
       </article>
 
-      {/* -- Result / error ------------------------------- */}
       {result ? (
-        <div className="stat-card p-4 flex items-center gap-3">
-          <div className="stat-icon stat-icon-emerald"><Check size={18} /></div>
-          <p className="text-sm text-emerald-600 dark:text-emerald-300 font-medium">{result}</p>
+        <div className="stat-card flex items-center gap-3 p-4">
+          <div className="stat-icon stat-icon-emerald">
+            <Check size={18} />
+          </div>
+          <p className="text-sm font-medium text-emerald-600 dark:text-emerald-300">{result}</p>
         </div>
       ) : null}
       {error ? (
-        <div className="stat-card p-4 flex items-center gap-3">
-          <div className="stat-icon stat-icon-rose"><X size={18} /></div>
-          <p className="text-sm text-rose-500 font-medium">{error}</p>
+        <div className="stat-card flex items-center gap-3 p-4">
+          <div className="stat-icon stat-icon-rose">
+            <X size={18} />
+          </div>
+          <p className="text-sm font-medium text-rose-500">{error}</p>
         </div>
       ) : null}
 
@@ -430,7 +438,7 @@ export default function AdminBroadcastPage() {
             {liveDialog.kind === "create" || liveDialog.kind === "edit" ? (
               <>
                 <h3 className="font-display text-xl font-semibold">
-                  {liveDialog.kind === "create" ? " " : `  #${liveDialog.id}`}
+                  {liveDialog.kind === "create" ? "Новая новость" : `Новость #${liveDialog.id}`}
                 </h3>
                 <div className="mt-4 space-y-3">
                   <input
@@ -441,7 +449,7 @@ export default function AdminBroadcastPage() {
                       )
                     }
                     className="w-full rounded-xl border border-violet-200/50 bg-white/80 px-3 py-2 text-sm outline-none dark:border-violet-500/30 dark:bg-slate-900/70"
-                    placeholder="���������"
+                    placeholder="Заголовок"
                   />
                   <textarea
                     value={liveDialog.summary}
@@ -452,7 +460,7 @@ export default function AdminBroadcastPage() {
                     }
                     rows={4}
                     className="w-full rounded-xl border border-violet-200/50 bg-white/80 px-3 py-2 text-sm outline-none dark:border-violet-500/30 dark:bg-slate-900/70"
-                    placeholder="������� ��������"
+                    placeholder="Короткое описание"
                   />
                   <input
                     value={liveDialog.link}
@@ -462,7 +470,7 @@ export default function AdminBroadcastPage() {
                       )
                     }
                     className="w-full rounded-xl border border-violet-200/50 bg-white/80 px-3 py-2 text-sm outline-none dark:border-violet-500/30 dark:bg-slate-900/70"
-                    placeholder="������"
+                    placeholder="Ссылка"
                   />
                   {liveDialog.kind === "create" ? (
                     <input
@@ -473,7 +481,7 @@ export default function AdminBroadcastPage() {
                       type="number"
                       min={0}
                       className="w-full rounded-xl border border-violet-200/50 bg-white/80 px-3 py-2 text-sm outline-none dark:border-violet-500/30 dark:bg-slate-900/70"
-                      placeholder="sort_order"
+                      placeholder="Порядок сортировки"
                     />
                   ) : (
                     <label className="inline-flex items-center gap-2 text-sm text-slate-500">
@@ -484,16 +492,16 @@ export default function AdminBroadcastPage() {
                           setLiveDialog((prev) => (prev && prev.kind === "edit" ? { ...prev, isActive: event.target.checked } : prev))
                         }
                       />
-                      �������
+                      Публиковать карточку
                     </label>
                   )}
                 </div>
-                <div className="mt-4 flex justify-end gap-2">
+                <div className="mt-4 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
                   <button className="outline-btn rounded-xl px-4 py-2 text-sm font-semibold" type="button" onClick={() => setLiveDialog(null)}>
-                    ������
+                    Отмена
                   </button>
                   <button className="btn-primary rounded-xl px-4 py-2 text-sm font-semibold" type="button" disabled={busy} onClick={() => void submitLiveDialog()}>
-                    ���������
+                    Сохранить
                   </button>
                 </div>
               </>
@@ -501,14 +509,14 @@ export default function AdminBroadcastPage() {
 
             {liveDialog.kind === "delete" ? (
               <>
-                <h3 className="font-display text-xl font-semibold">  #{liveDialog.id}?</h3>
-                <p className="mt-2 text-sm text-slate-500">�������� ������ �������� �� ����� ����������.</p>
-                <div className="mt-4 flex justify-end gap-2">
+                <h3 className="font-display text-xl font-semibold">Удалить новость #{liveDialog.id}?</h3>
+                <p className="mt-2 text-sm text-slate-500">Карточка исчезнет из ленты и перестанет показываться пользователям.</p>
+                <div className="mt-4 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
                   <button className="outline-btn rounded-xl px-4 py-2 text-sm font-semibold" type="button" onClick={() => setLiveDialog(null)}>
-                    ������
+                    Отмена
                   </button>
                   <button className="btn-primary rounded-xl px-4 py-2 text-sm font-semibold" type="button" disabled={busy} onClick={() => void submitLiveDialog()}>
-                    �������
+                    Удалить
                   </button>
                 </div>
               </>
@@ -525,19 +533,17 @@ export default function AdminBroadcastPage() {
             <p className="mt-1 text-xs uppercase tracking-[0.1em] text-slate-500">{templateDialog.key}</p>
             <textarea
               value={templateDialog.text}
-              onChange={(event) =>
-                setTemplateDialog((prev) => (prev ? { ...prev, text: event.target.value } : prev))
-              }
+              onChange={(event) => setTemplateDialog((prev) => (prev ? { ...prev, text: event.target.value } : prev))}
               rows={12}
               className="mt-4 w-full rounded-2xl border border-violet-200/50 bg-white/80 px-3 py-3 text-sm outline-none dark:border-violet-500/30 dark:bg-slate-900/70"
-              placeholder="����� �������. ����� ������������ ���������� ����� {expiry_date}, {channel}, {discount_pct}."
+              placeholder="Текст шаблона. Доступны переменные {expiry_date}, {channel}, {discount_pct}."
             />
-            <div className="mt-4 flex justify-end gap-2">
+            <div className="mt-4 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
               <button className="outline-btn rounded-xl px-4 py-2 text-sm font-semibold" type="button" onClick={() => setTemplateDialog(null)}>
-                ������
+                Отмена
               </button>
               <button className="btn-primary rounded-xl px-4 py-2 text-sm font-semibold" type="button" disabled={busy} onClick={() => void submitTemplateDialog()}>
-                {templateDialog.mode === "create" ? "" : ""}
+                {templateDialog.mode === "create" ? "Создать" : "Сохранить"}
               </button>
             </div>
           </div>

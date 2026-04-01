@@ -121,6 +121,7 @@ from observer_service import (
     ingest_observer_batch,
     observer_stale_after_seconds,
 )
+from public_urls import build_subscription_url, public_connect_host
 from web_auth_service import (
     SESSION_TTL_SECONDS,
     build_telegram_oidc_authorize_url,
@@ -3812,7 +3813,7 @@ async def client_start_trial(payload: AppStartTrialIn, request: Request) -> dict
         "created": bool(created),
         "session_token": session_token,
         "account_id": str(int(user.tg_id)),
-        "subscription_url": f"{Settings.PUBLIC_API_BASE_URL.rstrip('/')}/s8Kx2mP7qR4wT/{user.sub_token}",
+        "subscription_url": build_subscription_url(str(user.sub_token or "")),
         "sync_ok": bool(sync_ok),
     }
 
@@ -4857,7 +4858,7 @@ async def user_data(tg_id: int, request: Request, x_telegram_init_data: str = He
         nodes_for_user = _nodes_for_user(user, nodes, session=s)
         subscription_url = ""
         if user.sub_token:
-            subscription_url = f"{Settings.PUBLIC_API_BASE_URL.rstrip('/')}/s8Kx2mP7qR4wT/{user.sub_token}"
+            subscription_url = build_subscription_url(str(user.sub_token or ""))
 
         # active check (DB-first)
         is_active = bool(user.is_active)
@@ -5054,7 +5055,7 @@ async def dashboard_snapshot(request: Request, x_telegram_init_data: str = Heade
         points_available, points_expiring_soon = available_points(tg_id=tg_id)
         sub_url = ""
         if user.sub_token:
-            sub_url = f"{Settings.PUBLIC_API_BASE_URL.rstrip('/')}/s8Kx2mP7qR4wT/{user.sub_token}"
+            sub_url = build_subscription_url(str(user.sub_token or ""))
 
         return DashboardResponse(
             tg_id=tg_id,
@@ -6161,7 +6162,7 @@ def _admin_select_users_for_segment(
 def _admin_subscription_url(user: User) -> str:
     token = str(getattr(user, "sub_token", "") or "").strip()
     token_or_id = token or str(int(user.tg_id))
-    return f"{Settings.PUBLIC_API_BASE_URL.rstrip('/')}/s8Kx2mP7qR4wT/{token_or_id}"
+    return build_subscription_url(token_or_id)
 
 
 def _bytes_to_gb(value: int) -> float:
@@ -6465,7 +6466,7 @@ async def admin_create_manual_user(payload: ManualUserCreateRequest, x_telegram_
             "sub_type": created["sub_type"],
             "is_active": bool(created["is_active"]),
             "expiry_at": created["expiry_at"],
-            "subscription_url": f"{Settings.PUBLIC_API_BASE_URL.rstrip('/')}/s8Kx2mP7qR4wT/{created['sub_token']}",
+            "subscription_url": build_subscription_url(str(created["sub_token"] or "")),
         },
         "sync_ok": sync_ok,
     }
@@ -6581,7 +6582,7 @@ async def admin_regenerate_manual_token(tg_id: int, x_telegram_init_data: str = 
     )
     return {
         "ok": True,
-        "subscription_url": f"{Settings.PUBLIC_API_BASE_URL.rstrip('/')}/s8Kx2mP7qR4wT/{sub_token}",
+        "subscription_url": build_subscription_url(str(sub_token or "")),
         "sync_ok": bool(sync_ok),
     }
 
@@ -7115,7 +7116,7 @@ async def admin_user_preset_run(
         "preset": preset,
         "changed": int(changed),
         "failed": int(failed),
-        "subscription_url": f"{Settings.PUBLIC_API_BASE_URL.rstrip('/')}/s8Kx2mP7qR4wT/{expected_sub_id}",
+        "subscription_url": build_subscription_url(expected_sub_id),
     }
 
 
@@ -9173,17 +9174,22 @@ async def subscription(token: str, request: Request, format: str = Query(default
 
     user_agent = request.headers.get("user-agent", "").lower()
     format_hint = str(format or "").strip().lower()
+    request_host = str(request.url.hostname or request.headers.get("host") or "").split(":", 1)[0].strip().lower()
+    connect_host = public_connect_host()
+    is_connect_request = bool(request_host and request_host == connect_host)
     is_smart = any(x in user_agent for x in ["hiddify", "dart", "sing-box", "nekobox"])
     force_smart = format_hint in {"smart", "json", "singbox"}
     force_plain = format_hint in {"plain", "legacy", "vless"}
-    wants_smart = force_smart or (not force_plain and is_smart)
+    wants_smart = force_smart or (not force_plain and (is_smart or is_connect_request))
     logger.info(
-        "subscription resolved token_fp=%s tg_id=%s lookup_mode=%s smart=%s format_hint=%s",
+        "subscription resolved token_fp=%s tg_id=%s lookup_mode=%s smart=%s format_hint=%s host=%s connect_host=%s",
         token_fp,
         int(user.tg_id),
         lookup_mode,
         bool(wants_smart),
         format_hint or "-",
+        request_host or "-",
+        bool(is_connect_request),
     )
     if lookup_mode == "tg_id_fallback":
         logger.warning(

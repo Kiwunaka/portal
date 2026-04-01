@@ -58,14 +58,14 @@ type PromoDialog =
   | null;
 
 function promoTypeLabel(value: string): string {
-  if (String(value).toLowerCase() === "discount") return "скидка";
-  if (String(value).toLowerCase() === "days") return "дни";
+  if (String(value).toLowerCase() === "discount") return "Скидка";
+  if (String(value).toLowerCase() === "days") return "Дни";
   return value;
 }
 
 function campaignTypeLabel(value: string): string {
-  if (String(value).toLowerCase() === "promo") return "промо";
-  if (String(value).toLowerCase() === "gift") return "подарок";
+  if (String(value).toLowerCase() === "promo") return "Промо";
+  if (String(value).toLowerCase() === "gift") return "Подарок";
   return value;
 }
 
@@ -83,10 +83,8 @@ function normalizeIsoInput(value?: string | null): string {
 function StatusMessage({ tone, text }: { tone: "success" | "error"; text: string }) {
   const isSuccess = tone === "success";
   return (
-    <div className="stat-card p-4 flex items-center gap-3">
-      <div className={`stat-icon ${isSuccess ? "stat-icon-emerald" : "stat-icon-rose"}`}>
-        {isSuccess ? <Check size={18} /> : <X size={18} />}
-      </div>
+    <div className="stat-card flex items-center gap-3 p-4">
+      <div className={`stat-icon ${isSuccess ? "stat-icon-emerald" : "stat-icon-rose"}`}>{isSuccess ? <Check size={18} /> : <X size={18} />}</div>
       <p className={`text-sm font-medium ${isSuccess ? "text-emerald-600 dark:text-emerald-300" : "text-rose-500"}`}>{text}</p>
     </div>
   );
@@ -105,18 +103,13 @@ export default function AdminPromosPage() {
   const load = async (): Promise<void> => {
     setError("");
     try {
-      const [promoRows, giftRows, planRows, campaignRows] = await Promise.all([
-        adminPromos(120),
-        adminGiftCodes(80),
-        adminPlans(true),
-        adminCampaigns(120),
-      ]);
+      const [promoRows, giftRows, planRows, campaignRows] = await Promise.all([adminPromos(120), adminGiftCodes(80), adminPlans(true), adminCampaigns(120)]);
       setPromos(promoRows);
       setGiftCodes(giftRows);
       setPlans(planRows);
       setCampaigns(campaignRows);
     } catch (err) {
-      setError(String((err as { message?: string })?.message || err || "   , ,   "));
+      setError(String((err as { message?: string })?.message || err || "Не удалось загрузить промо-раздел."));
     }
   };
 
@@ -224,7 +217,7 @@ export default function AdminPromosPage() {
       setDialog(null);
       await load();
     } catch (err) {
-      setError(String((err as { message?: string })?.message || err || "    "));
+      setError(String((err as { message?: string })?.message || err || "Не удалось сохранить изменения."));
     } finally {
       setBusy(false);
     }
@@ -236,10 +229,10 @@ export default function AdminPromosPage() {
     setResult("");
     try {
       await adminPlanUpdate(code, { is_active: !current });
-      setResult(` ${code} ${current ? "" : ""}.`);
+      setResult(`Тариф ${code} ${current ? "отключён" : "включён"}.`);
       await load();
     } catch (err) {
-      setError(String((err as { message?: string })?.message || err || "   "));
+      setError(String((err as { message?: string })?.message || err || "Не удалось обновить тариф."));
     } finally {
       setBusy(false);
     }
@@ -248,26 +241,26 @@ export default function AdminPromosPage() {
   return (
     <section className="space-y-5">
       <article className="glass-card p-4">
-        <h2 className="font-display text-xl font-bold">Промо и тарифы без лишней путаницы</h2>
+        <h2 className="font-display text-xl font-bold">Промо, подарки и тарифы</h2>
         <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">
-          Удобный центр управления акциями, подарками и специальными тарифами.
+          Единая панель для промокодов, gift-кодов, кампаний и каталога тарифов. Здесь же настраиваются сценарии, которые видят пользователи при покупке.
         </p>
       </article>
 
-      <div className="glass-card p-4 flex flex-wrap items-center gap-3">
-        <button className="btn-primary rounded-xl px-4 py-2 text-sm font-semibold inline-flex items-center gap-1.5" type="button" onClick={() => setDialog({ kind: "createPromo", code: "WELCOME14", promoType: "days", value: "14", usesLeft: "100" })} disabled={busy}>
+      <div className="glass-card flex flex-col gap-3 p-4 sm:flex-row sm:flex-wrap sm:items-center">
+        <button className="btn-primary inline-flex items-center gap-1.5 rounded-xl px-4 py-2 text-sm font-semibold" type="button" onClick={() => setDialog({ kind: "createPromo", code: "WELCOME14", promoType: "days", value: "14", usesLeft: "100" })} disabled={busy}>
           <Plus size={14} /> Промокод
         </button>
-        <button className="outline-btn rounded-xl px-4 py-2 text-sm font-semibold inline-flex items-center gap-1.5" type="button" onClick={() => setDialog({ kind: "createGift", cardType: "standard" })} disabled={busy}>
+        <button className="outline-btn inline-flex items-center gap-1.5 rounded-xl px-4 py-2 text-sm font-semibold" type="button" onClick={() => setDialog({ kind: "createGift", cardType: "standard" })} disabled={busy}>
           <Gift size={14} /> Gift-код
         </button>
-        <button className="outline-btn rounded-xl px-4 py-2 text-sm font-semibold inline-flex items-center gap-1.5" type="button" onClick={() => setDialog({ kind: "createPlan", code: "new_plan", label: "Новый тариф", amountRub: "299", days: "30", deviceLimit: "5" })} disabled={busy}>
+        <button className="outline-btn inline-flex items-center gap-1.5 rounded-xl px-4 py-2 text-sm font-semibold" type="button" onClick={() => setDialog({ kind: "createPlan", code: "new_plan", label: "Новый тариф", amountRub: "299", days: "30", deviceLimit: "5" })} disabled={busy}>
           <CreditCard size={14} /> Тариф
         </button>
-        <button className="outline-btn rounded-xl px-4 py-2 text-sm font-semibold inline-flex items-center gap-1.5" type="button" onClick={() => setDialog({ kind: "createCampaign", name: "Весеннее промо", campaignType: "promo", targetValue: "WELCOME14", segment: "all", startsAt: "", endsAt: "", maxActivations: "0", isActive: true })} disabled={busy}>
+        <button className="outline-btn inline-flex items-center gap-1.5 rounded-xl px-4 py-2 text-sm font-semibold" type="button" onClick={() => setDialog({ kind: "createCampaign", name: "Весеннее промо", campaignType: "promo", targetValue: "WELCOME14", segment: "all", startsAt: "", endsAt: "", maxActivations: "0", isActive: true })} disabled={busy}>
           <Package size={14} /> Кампания
         </button>
-        <button className="outline-btn rounded-xl px-4 py-2 text-sm font-semibold inline-flex items-center gap-1.5 ml-auto" type="button" onClick={() => void load()} disabled={busy}>
+        <button className="outline-btn inline-flex items-center gap-1.5 rounded-xl px-4 py-2 text-sm font-semibold sm:ml-auto" type="button" onClick={() => void load()} disabled={busy}>
           <RefreshCw size={14} /> Обновить
         </button>
       </div>
@@ -277,29 +270,38 @@ export default function AdminPromosPage() {
 
       <div className="grid gap-5 xl:grid-cols-2">
         <article className="glass-card p-5">
-          <div className="flex items-center gap-3 mb-4">
-            <div className="stat-icon stat-icon-violet"><Tag size={20} /></div>
+          <div className="mb-4 flex items-center gap-3">
+            <div className="stat-icon stat-icon-violet">
+              <Tag size={20} />
+            </div>
             <h2 className="font-display text-xl font-bold">Промокоды</h2>
           </div>
-          <p className="mb-4 text-xs text-slate-500">Промокод даёт скидку или бонусные дни. Здесь видно, сколько раз код ещё можно использовать.</p>
+          <p className="mb-4 text-xs text-slate-500">Промокод даёт скидку или бонусные дни. Здесь видно и остаток использования, и тип награды.</p>
           <div className="space-y-2">
-            {promos.length === 0 ? <div className="empty-state"><Tag size={24} /><p className="text-xs"> </p></div> : null}
+            {promos.length === 0 ? (
+              <div className="empty-state">
+                <Tag size={24} />
+                <p className="text-xs">Промокодов пока нет</p>
+              </div>
+            ) : null}
             {promos.map((promo) => (
-              <div key={promo.code} className="node-card flex items-center justify-between gap-3">
-                <div className="flex items-center gap-3 min-w-0">
-                  <button type="button" className="haptic-tap" onClick={() => void copyText(promo.code)} title="Копировать">
+              <div key={promo.code} className="node-card flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div className="flex min-w-0 items-start gap-3">
+                  <button type="button" className="haptic-tap" onClick={() => void copyText(promo.code)} title="Скопировать">
                     <span className="badge badge-violet font-mono">{promo.code}</span>
                   </button>
-                  <div>
+                  <div className="min-w-0">
                     <span className={`badge ${promo.promo_type === "discount" ? "badge-warning" : "badge-info"}`}>{promoTypeLabel(promo.promo_type)}</span>
-                    <span className="ml-2 text-xs text-slate-500">значение: <strong>{promo.value}</strong> • использований: <strong>{promo.uses_left}</strong></span>
+                    <span className="ml-2 text-xs text-slate-500">
+                      значение: <strong>{promo.value}</strong> • использований: <strong>{promo.uses_left}</strong>
+                    </span>
                   </div>
                 </div>
-                <div className="flex gap-1.5 flex-shrink-0">
-                  <button className="outline-btn rounded-lg px-2 py-1 text-[10px] font-semibold inline-flex items-center gap-1" type="button" onClick={() => setDialog({ kind: "editPromo", code: promo.code, promoType: promo.promo_type === "discount" ? "discount" : "days", value: String(promo.value || 0), usesLeft: String(promo.uses_left || 0) })} disabled={busy}>
+                <div className="flex shrink-0 gap-1.5">
+                  <button className="outline-btn inline-flex items-center gap-1 rounded-lg px-2 py-1 text-[10px] font-semibold" type="button" onClick={() => setDialog({ kind: "editPromo", code: promo.code, promoType: promo.promo_type === "discount" ? "discount" : "days", value: String(promo.value || 0), usesLeft: String(promo.uses_left || 0) })} disabled={busy}>
                     <PencilLine size={10} />
                   </button>
-                  <button className="outline-btn rounded-lg px-2 py-1 text-[10px] font-semibold inline-flex items-center gap-1 text-rose-500" type="button" onClick={() => setDialog({ kind: "deletePromo", code: promo.code })} disabled={busy}>
+                  <button className="outline-btn inline-flex items-center gap-1 rounded-lg px-2 py-1 text-[10px] font-semibold text-rose-500" type="button" onClick={() => setDialog({ kind: "deletePromo", code: promo.code })} disabled={busy}>
                     <Trash2 size={10} />
                   </button>
                 </div>
@@ -309,17 +311,24 @@ export default function AdminPromosPage() {
         </article>
 
         <article className="glass-card p-5">
-          <div className="flex items-center gap-3 mb-4">
-            <div className="stat-icon stat-icon-amber"><Gift size={20} /></div>
+          <div className="mb-4 flex items-center gap-3">
+            <div className="stat-icon stat-icon-amber">
+              <Gift size={20} />
+            </div>
             <h2 className="font-display text-xl font-bold">Gift-коды</h2>
           </div>
-          <p className="mb-4 text-xs text-slate-500">Подарочные коды удобно использовать для партнёров, ручных бонусов и акций в канале.</p>
+          <p className="mb-4 text-xs text-slate-500">Подарочные коды удобно использовать для партнёров, ручных бонусов и промо-акций в канале.</p>
           <div className="space-y-2">
-            {giftCodes.length === 0 ? <div className="empty-state"><Gift size={24} /><p className="text-xs"> gift-</p></div> : null}
+            {giftCodes.length === 0 ? (
+              <div className="empty-state">
+                <Gift size={24} />
+                <p className="text-xs">Gift-кодов пока нет</p>
+              </div>
+            ) : null}
             {giftCodes.map((gift) => (
-              <div key={gift.code} className="node-card flex items-center justify-between gap-3">
-                <div className="flex items-center gap-3 min-w-0">
-                  <button type="button" className="haptic-tap" onClick={() => void copyText(gift.code)} title="Копировать">
+              <div key={gift.code} className="node-card flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div className="flex min-w-0 items-start gap-3">
+                  <button type="button" className="haptic-tap" onClick={() => void copyText(gift.code)} title="Скопировать">
                     <span className="badge badge-violet font-mono">{gift.code}</span>
                   </button>
                   <div className="text-xs text-slate-500">
@@ -327,7 +336,7 @@ export default function AdminPromosPage() {
                     <span className="ml-2">{gift.days}d</span>
                   </div>
                 </div>
-                <span className={`badge ${gift.redeemed_at ? "badge-success" : "badge-danger"}`}>{gift.redeemed_at ? fmtRuDate(gift.redeemed_at) : " "}</span>
+                <span className={`badge ${gift.redeemed_at ? "badge-success" : "badge-danger"}`}>{gift.redeemed_at ? fmtRuDate(gift.redeemed_at) : "Не использован"}</span>
               </div>
             ))}
           </div>
@@ -335,30 +344,41 @@ export default function AdminPromosPage() {
       </div>
 
       <article className="glass-card p-5">
-        <div className="flex items-center gap-3 mb-4">
-          <div className="stat-icon stat-icon-blue"><Package size={20} /></div>
+        <div className="mb-4 flex items-center gap-3">
+          <div className="stat-icon stat-icon-blue">
+            <Package size={20} />
+          </div>
           <h2 className="font-display text-xl font-bold">Кампании</h2>
         </div>
-        <p className="mb-4 text-xs text-slate-500">Настройка таргета: укажите, кому, когда и в каком количестве будет доступен бонус.</p>
+        <p className="mb-4 text-xs text-slate-500">Кампании связывают промо, подарок и период активности. Здесь удобно править таргет и срок жизни сценария.</p>
         <div className="space-y-2">
-          {campaigns.length === 0 ? <div className="empty-state"><Package size={24} /><p className="text-xs"> </p></div> : null}
+          {campaigns.length === 0 ? (
+            <div className="empty-state">
+              <Package size={24} />
+              <p className="text-xs">Кампаний пока нет</p>
+            </div>
+          ) : null}
           {campaigns.map((row) => (
-            <div key={row.id} className="node-card flex items-center justify-between gap-3">
+            <div key={row.id} className="node-card flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <div className="min-w-0 flex-1">
                 <div className="flex flex-wrap items-center gap-2">
                   <span className="badge badge-violet">#{row.id}</span>
                   <strong className="text-sm">{row.name}</strong>
-                  <span className={`badge ${row.is_active ? "badge-success" : "badge-danger"}`}>{row.is_active ? "" : ""}</span>
+                  <span className={`badge ${row.is_active ? "badge-success" : "badge-danger"}`}>{row.is_active ? "Активна" : "Пауза"}</span>
                   <span className="badge badge-info">{campaignTypeLabel(row.campaign_type)}</span>
                 </div>
-                <p className="mt-1 text-xs text-slate-500">цель: <strong>{row.target_value}</strong> • сегмент: <strong>{row.segment}</strong> • активации: <strong>{row.activations_count}/{row.max_activations || "∞"}</strong></p>
-                <p className="text-[10px] text-slate-400">период: {fmtRuDate(row.starts_at)} → {fmtRuDate(row.ends_at)}</p>
+                <p className="mt-1 text-xs text-slate-500">
+                  цель: <strong>{row.target_value}</strong> • сегмент: <strong>{row.segment}</strong> • активации: <strong>{row.activations_count}/{row.max_activations || "∞"}</strong>
+                </p>
+                <p className="text-[10px] text-slate-400">
+                  период: {fmtRuDate(row.starts_at)} → {fmtRuDate(row.ends_at)}
+                </p>
               </div>
-              <div className="flex gap-1.5 flex-shrink-0">
-                <button className="outline-btn rounded-lg px-2 py-1 text-[10px] font-semibold inline-flex items-center gap-1" type="button" onClick={() => setDialog({ kind: "editCampaign", id: row.id, name: row.name || "", campaignType: row.campaign_type === "gift" ? "gift" : "promo", targetValue: row.target_value || "", segment: row.segment || "all", startsAt: normalizeIsoInput(row.starts_at), endsAt: normalizeIsoInput(row.ends_at), maxActivations: String(row.max_activations || 0), isActive: Boolean(row.is_active) })} disabled={busy}>
+              <div className="flex shrink-0 gap-1.5">
+                <button className="outline-btn inline-flex items-center gap-1 rounded-lg px-2 py-1 text-[10px] font-semibold" type="button" onClick={() => setDialog({ kind: "editCampaign", id: row.id, name: row.name || "", campaignType: row.campaign_type === "gift" ? "gift" : "promo", targetValue: row.target_value || "", segment: row.segment || "all", startsAt: normalizeIsoInput(row.starts_at), endsAt: normalizeIsoInput(row.ends_at), maxActivations: String(row.max_activations || 0), isActive: Boolean(row.is_active) })} disabled={busy}>
                   <PencilLine size={10} />
                 </button>
-                <button className="outline-btn rounded-lg px-2 py-1 text-[10px] font-semibold inline-flex items-center gap-1 text-rose-500" type="button" onClick={() => setDialog({ kind: "deleteCampaign", id: row.id, name: row.name || `#${row.id}` })} disabled={busy}>
+                <button className="outline-btn inline-flex items-center gap-1 rounded-lg px-2 py-1 text-[10px] font-semibold text-rose-500" type="button" onClick={() => setDialog({ kind: "deleteCampaign", id: row.id, name: row.name || `#${row.id}` })} disabled={busy}>
                   <Trash2 size={10} />
                 </button>
               </div>
@@ -368,34 +388,50 @@ export default function AdminPromosPage() {
       </article>
 
       <article className="glass-card p-5">
-        <div className="flex items-center gap-3 mb-4">
-          <div className="stat-icon stat-icon-emerald"><Package size={20} /></div>
+        <div className="mb-4 flex items-center gap-3">
+          <div className="stat-icon stat-icon-emerald">
+            <CreditCard size={20} />
+          </div>
           <h2 className="font-display text-xl font-bold">Тарифы</h2>
         </div>
-        <p className="mb-4 text-xs text-slate-500">Здесь лежит каталог тарифов, который видят пользователи при выборе плана.</p>
+        <p className="mb-4 text-xs text-slate-500">Каталог тарифов, который видят пользователи при выборе плана. Отсюда можно включать и выключать отдельные позиции.</p>
         <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
           {plans.map((plan) => (
             <div key={plan.code} className="stat-card p-4">
-              <div className="flex items-center justify-between gap-2 mb-3">
+              <div className="mb-3 flex items-center justify-between gap-2">
                 <span className="badge badge-violet font-mono">{plan.code}</span>
                 <button type="button" className={`badge haptic-tap ${plan.is_active ? "badge-success" : "badge-danger"}`} onClick={() => void togglePlan(plan.code, plan.is_active)} disabled={busy}>
-                  {plan.is_active ? "" : ""}
+                  {plan.is_active ? "Вкл." : "Выкл."}
                 </button>
               </div>
               <p className="text-lg font-bold">{plan.label}</p>
               <div className="mt-2 grid grid-cols-3 gap-2 text-center text-xs">
-                <div className="rounded-lg bg-white/50 p-1.5 dark:bg-white/5"><p className="text-slate-400">RUB</p><p className="font-bold">{plan.amount_rub}</p></div>
-                <div className="rounded-lg bg-white/50 p-1.5 dark:bg-white/5"><p className="text-slate-400">����.</p><p className="font-bold">{plan.device_limit}</p></div>
-                <div className="rounded-lg bg-white/50 p-1.5 dark:bg-white/5"><p className="text-slate-400">Дней</p><p className="font-bold">{plan.days}</p></div>
+                <div className="rounded-lg bg-white/50 p-1.5 dark:bg-white/5">
+                  <p className="text-slate-400">RUB</p>
+                  <p className="font-bold">{plan.amount_rub}</p>
+                </div>
+                <div className="rounded-lg bg-white/50 p-1.5 dark:bg-white/5">
+                  <p className="text-slate-400">Устройств</p>
+                  <p className="font-bold">{plan.device_limit}</p>
+                </div>
+                <div className="rounded-lg bg-white/50 p-1.5 dark:bg-white/5">
+                  <p className="text-slate-400">Дней</p>
+                  <p className="font-bold">{plan.days}</p>
+                </div>
               </div>
               <div className="mt-3 flex justify-end">
-                <button className="outline-btn rounded-lg px-2.5 py-1 text-[10px] font-semibold inline-flex items-center gap-1 text-rose-500" type="button" onClick={() => setDialog({ kind: "deletePlan", code: plan.code, label: plan.label })} disabled={busy}>
+                <button className="outline-btn inline-flex items-center gap-1 rounded-lg px-2.5 py-1 text-[10px] font-semibold text-rose-500" type="button" onClick={() => setDialog({ kind: "deletePlan", code: plan.code, label: plan.label })} disabled={busy}>
                   <Trash2 size={10} /> Удалить
                 </button>
               </div>
             </div>
           ))}
-          {plans.length === 0 ? <div className="empty-state col-span-full"><Package size={28} /><p className="text-xs"> </p></div> : null}
+          {plans.length === 0 ? (
+            <div className="empty-state col-span-full">
+              <CreditCard size={28} />
+              <p className="text-xs">Тарифов пока нет</p>
+            </div>
+          ) : null}
         </div>
       </article>
 
@@ -404,15 +440,15 @@ export default function AdminPromosPage() {
           <div className="glass-card w-full max-w-2xl p-5">
             {(dialog.kind === "createPromo" || dialog.kind === "editPromo") ? (
               <>
-                <h3 className="font-display text-xl font-semibold">{dialog.kind === "createPromo" ? " " : `  ${dialog.code}`}</h3>
+                <h3 className="font-display text-xl font-semibold">{dialog.kind === "createPromo" ? "Новый промокод" : `Промокод ${dialog.code}`}</h3>
                 <div className="mt-4 grid gap-3 md:grid-cols-2">
-                  <input value={dialog.code} onChange={(event) => setDialog((prev) => prev && (prev.kind === "createPromo" || prev.kind === "editPromo") ? { ...prev, code: event.target.value.toUpperCase() } : prev)} readOnly={dialog.kind === "editPromo"} className="rounded-xl border border-violet-200/50 bg-white/80 px-3 py-2 text-sm outline-none dark:border-violet-500/30 dark:bg-slate-900/70" placeholder="" />
+                  <input value={dialog.code} onChange={(event) => setDialog((prev) => prev && (prev.kind === "createPromo" || prev.kind === "editPromo") ? { ...prev, code: event.target.value.toUpperCase() } : prev)} readOnly={dialog.kind === "editPromo"} className="rounded-xl border border-violet-200/50 bg-white/80 px-3 py-2 text-sm outline-none dark:border-violet-500/30 dark:bg-slate-900/70" placeholder="Код" />
                   <select value={dialog.promoType} onChange={(event) => setDialog((prev) => prev && (prev.kind === "createPromo" || prev.kind === "editPromo") ? { ...prev, promoType: event.target.value as "discount" | "days" } : prev)} className="rounded-xl border border-violet-200/50 bg-white/80 px-3 py-2 text-sm outline-none dark:border-violet-500/30 dark:bg-slate-900/70">
                     <option value="days">Дни</option>
                     <option value="discount">Скидка</option>
                   </select>
-                  <input value={dialog.value} onChange={(event) => setDialog((prev) => prev && (prev.kind === "createPromo" || prev.kind === "editPromo") ? { ...prev, value: event.target.value } : prev)} type="number" min={1} className="rounded-xl border border-violet-200/50 bg-white/80 px-3 py-2 text-sm outline-none dark:border-violet-500/30 dark:bg-slate-900/70" placeholder="" />
-                  <input value={dialog.usesLeft} onChange={(event) => setDialog((prev) => prev && (prev.kind === "createPromo" || prev.kind === "editPromo") ? { ...prev, usesLeft: event.target.value } : prev)} type="number" min={0} className="rounded-xl border border-violet-200/50 bg-white/80 px-3 py-2 text-sm outline-none dark:border-violet-500/30 dark:bg-slate-900/70" placeholder=" " />
+                  <input value={dialog.value} onChange={(event) => setDialog((prev) => prev && (prev.kind === "createPromo" || prev.kind === "editPromo") ? { ...prev, value: event.target.value } : prev)} type="number" min={1} className="rounded-xl border border-violet-200/50 bg-white/80 px-3 py-2 text-sm outline-none dark:border-violet-500/30 dark:bg-slate-900/70" placeholder="Значение" />
+                  <input value={dialog.usesLeft} onChange={(event) => setDialog((prev) => prev && (prev.kind === "createPromo" || prev.kind === "editPromo") ? { ...prev, usesLeft: event.target.value } : prev)} type="number" min={0} className="rounded-xl border border-violet-200/50 bg-white/80 px-3 py-2 text-sm outline-none dark:border-violet-500/30 dark:bg-slate-900/70" placeholder="Остаток" />
                 </div>
               </>
             ) : null}
@@ -445,7 +481,7 @@ export default function AdminPromosPage() {
 
             {(dialog.kind === "createCampaign" || dialog.kind === "editCampaign") ? (
               <>
-                <h3 className="font-display text-xl font-semibold">{dialog.kind === "createCampaign" ? " " : `  #${dialog.id}`}</h3>
+                <h3 className="font-display text-xl font-semibold">{dialog.kind === "createCampaign" ? "Новая кампания" : `Кампания #${dialog.id}`}</h3>
                 <div className="mt-4 grid gap-3 md:grid-cols-2">
                   <input value={dialog.name} onChange={(event) => setDialog({ ...dialog, name: event.target.value })} className="rounded-xl border border-violet-200/50 bg-white/80 px-3 py-2 text-sm outline-none dark:border-violet-500/30 dark:bg-slate-900/70" placeholder="Название" />
                   <select value={dialog.campaignType} onChange={(event) => setDialog({ ...dialog, campaignType: event.target.value as "promo" | "gift" })} className="rounded-xl border border-violet-200/50 bg-white/80 px-3 py-2 text-sm outline-none dark:border-violet-500/30 dark:bg-slate-900/70">
@@ -465,25 +501,31 @@ export default function AdminPromosPage() {
               </>
             ) : null}
 
-            {dialog.kind === "deletePromo" ? <>
-              <h3 className="font-display text-xl font-semibold">  {dialog.code}?</h3>
-              <p className="mt-2 text-sm text-slate-500">Код перестанет работать в новых checkout-сценариях.</p>
-            </> : null}
-            {dialog.kind === "deletePlan" ? <>
-              <h3 className="font-display text-xl font-semibold">  {dialog.code}?</h3>
-              <p className="mt-2 text-sm text-slate-500">{dialog.label}</p>
-            </> : null}
-            {dialog.kind === "deleteCampaign" ? <>
-              <h3 className="font-display text-xl font-semibold">  {dialog.name}?</h3>
-              <p className="mt-2 text-sm text-slate-500">Это отключит использование кампании в новых сценариях.</p>
-            </> : null}
+            {dialog.kind === "deletePromo" ? (
+              <>
+                <h3 className="font-display text-xl font-semibold">Удалить промокод {dialog.code}?</h3>
+                <p className="mt-2 text-sm text-slate-500">Код перестанет работать в новых checkout-сценариях.</p>
+              </>
+            ) : null}
+            {dialog.kind === "deletePlan" ? (
+              <>
+                <h3 className="font-display text-xl font-semibold">Удалить тариф {dialog.code}?</h3>
+                <p className="mt-2 text-sm text-slate-500">{dialog.label}</p>
+              </>
+            ) : null}
+            {dialog.kind === "deleteCampaign" ? (
+              <>
+                <h3 className="font-display text-xl font-semibold">Удалить кампанию {dialog.name}?</h3>
+                <p className="mt-2 text-sm text-slate-500">После удаления сценарий больше не будет доступен в новых запусках.</p>
+              </>
+            ) : null}
 
-            <div className="mt-5 flex justify-end gap-2">
+            <div className="mt-5 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
               <button className="outline-btn rounded-xl px-4 py-2 text-sm font-semibold" type="button" onClick={() => setDialog(null)} disabled={busy}>
                 Отмена
               </button>
               <button className="btn-primary rounded-xl px-4 py-2 text-sm font-semibold" type="button" onClick={() => void submitDialog()} disabled={busy}>
-                {dialog.kind.startsWith("delete") ? "" : ""}
+                {dialog.kind.startsWith("delete") ? "Удалить" : "Сохранить"}
               </button>
             </div>
           </div>
@@ -492,4 +534,3 @@ export default function AdminPromosPage() {
     </section>
   );
 }
-

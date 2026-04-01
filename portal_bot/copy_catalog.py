@@ -13,7 +13,7 @@ _CATALOG_PATH = Path(__file__).resolve().parents[1] / "copy" / "catalog.ru.json"
 def _load_catalog() -> dict[str, Any]:
     if not _CATALOG_PATH.exists():
         return {"items": {}}
-    return json.loads(_CATALOG_PATH.read_text(encoding="utf-8"))
+    return json.loads(_CATALOG_PATH.read_text(encoding="utf-8-sig"))
 
 
 def get_copy_item(key: str) -> dict[str, Any] | None:

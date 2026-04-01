@@ -41,7 +41,7 @@ def _default_checks() -> list[Check]:
         Check(
             name="marketing-home-cta",
             path=REPO_ROOT / "marketing" / "src" / "components" / "marketing-landing.tsx",
-            must_contain=("Скачать приложение", "Открыть кабинет", "POKROV VPN"),
+            must_contain=("Начать пользоваться", "Открыть кабинет", "POKROV VPN"),
             must_not_contain=("Telegram-first",),
         ),
         Check(
@@ -59,19 +59,19 @@ def _default_checks() -> list[Check]:
         Check(
             name="webapp-entry",
             path=REPO_ROOT / "webapp" / "src" / "app" / "page.tsx",
-            must_contain=("Войдите и сразу продолжайте в кабинете", "Открыть Telegram", "Сбросить вход"),
+            must_contain=("Добро пожаловать в личный кабинет POKROV VPN", "Открыть Telegram", "Telegram login"),
             must_not_contain=("Продолжить вход в PORTAL",),
         ),
         Check(
             name="webapp-local-qr",
             path=REPO_ROOT / "webapp" / "src" / "components" / "subscription-qr-card.tsx",
-            must_contain=('import("qrcode")',),
+            must_contain=('import("qrcode")', "QR-код ссылки подключения"),
         ),
         Check(
             name="webapp-dashboard-qr-usage",
             path=REPO_ROOT / "webapp" / "src" / "app" / "(dashboard)" / "dashboard" / "page.tsx",
-            must_contain=("SubscriptionQrCard",),
-            must_not_contain=("api.qrserver.com",),
+            must_contain=("SubscriptionQrCard", "Показать ссылку подключения или открыть QR"),
+            must_not_contain=("api.qrserver.com", "?format=plain", "Обычная ссылка"),
         ),
     ]
 

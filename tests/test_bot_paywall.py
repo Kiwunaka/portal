@@ -125,6 +125,68 @@ class BotPaywallTests(unittest.TestCase):
             sys.modules["qrcode"] = self._saved_qrcode
         self._tmp.cleanup()
 
+    def test_build_subscription_link_uses_canonical_connect_host(self) -> None:
+        self.bot_module.ensure_pending_user(1001, username="alice")
+        session = self.bot_module.Session()
+        try:
+            user = session.query(self.bot_module.User).filter_by(tg_id=1001).first()
+            self.assertIsNotNone(user)
+            user.sub_token = "token_1001_secure"
+            session.commit()
+        finally:
+            session.close()
+
+        link = self.bot_module.build_subscription_link(1001)
+        self.assertTrue(link.startswith("https://connect.pokrov.space/s8Kx2mP7qR4wT/token_1001_secure"))
+
+    def test_show_key_exposes_single_public_connection_link(self) -> None:
+        class _EditableMessage(_FakeMessage):
+            async def edit_text(self, text, **kwargs):
+                self.edits.append(str(text))
+                self.edit_kwargs.append(dict(kwargs))
+                return self
+
+            async def answer_photo(self, photo=None, caption=None, **kwargs):
+                self.answers.append((str(caption), dict(kwargs)))
+                return None
+
+        class _EditableCallback(_FakeCallback):
+            def __init__(self, tg_id: int):
+                super().__init__(tg_id=tg_id, data="show_key")
+                self.message = _EditableMessage()
+
+        self.bot_module.ensure_pending_user(1001, username="alice")
+        self.bot_module.set_tos_accepted(1001)
+        session = self.bot_module.Session()
+        try:
+            user = session.query(self.bot_module.User).filter_by(tg_id=1001).first()
+            self.assertIsNotNone(user)
+            user.sub_token = "token_1001_secure"
+            user.is_active = True
+            user.sub_type = "PAID"
+            user.expiry_at = self.bot_module._utcnow() + timedelta(days=30)
+            session.commit()
+        finally:
+            session.close()
+
+        callback = _EditableCallback(1001)
+
+        async def _fast_sleep(_seconds: float):
+            return None
+
+        with patch("asyncio.sleep", new=_fast_sleep):
+            asyncio.run(self.bot_module.show_key(callback))
+
+        final_text = callback.message.edits[-1]
+        self.assertIn("https://connect.pokrov.space/s8Kx2mP7qR4wT/token_1001_secure", final_text)
+        self.assertNotIn("?format=plain", final_text)
+        self.assertNotIn("Обычная ссылка", final_text)
+
+        reply_markup = callback.message.edit_kwargs[-1]["reply_markup"]
+        labels = [button.text for row in reply_markup.inline_keyboard for button in row]
+        self.assertIn("📋 Скопировать ссылку", labels)
+        self.assertIn("📱 QR для подключения", labels)
+
     def test_check_subscription_allows_when_channel_not_configured(self) -> None:
         self.bot_module.NEWS_CHANNEL_ID = ""
         fake = _FakeBot(status="left")
