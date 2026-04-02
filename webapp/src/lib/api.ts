@@ -643,6 +643,15 @@ export type AdminNodeHealthRow = {
   disk_used_gb?: number | null;
   disk_total_gb?: number | null;
   disk_free_gb?: number | null;
+  network_rx_bytes_total?: number | null;
+  network_tx_bytes_total?: number | null;
+  network_rx_mbps?: number | null;
+  network_tx_mbps?: number | null;
+  network_total_mbps?: number | null;
+  network_peak_mbps_24h?: number | null;
+  network_port_capacity_mbps?: number | null;
+  network_utilization_percent?: number | null;
+  network_peak_utilization_percent_24h?: number | null;
   last_ok_at?: string | null;
   last_health_at?: string | null;
   last_probe_stage?: string | null;
@@ -1531,6 +1540,16 @@ function normalizeAdminNodeHealthRow(payload: Partial<AdminNodeHealthRow> | null
     disk_used_gb: data.disk_used_gb == null ? null : Number(data.disk_used_gb),
     disk_total_gb: data.disk_total_gb == null ? null : Number(data.disk_total_gb),
     disk_free_gb: data.disk_free_gb == null ? null : Number(data.disk_free_gb),
+    network_rx_bytes_total: data.network_rx_bytes_total == null ? null : Number(data.network_rx_bytes_total),
+    network_tx_bytes_total: data.network_tx_bytes_total == null ? null : Number(data.network_tx_bytes_total),
+    network_rx_mbps: data.network_rx_mbps == null ? null : Number(data.network_rx_mbps),
+    network_tx_mbps: data.network_tx_mbps == null ? null : Number(data.network_tx_mbps),
+    network_total_mbps: data.network_total_mbps == null ? null : Number(data.network_total_mbps),
+    network_peak_mbps_24h: data.network_peak_mbps_24h == null ? null : Number(data.network_peak_mbps_24h),
+    network_port_capacity_mbps: data.network_port_capacity_mbps == null ? null : Number(data.network_port_capacity_mbps),
+    network_utilization_percent: data.network_utilization_percent == null ? null : Number(data.network_utilization_percent),
+    network_peak_utilization_percent_24h:
+      data.network_peak_utilization_percent_24h == null ? null : Number(data.network_peak_utilization_percent_24h),
     last_ok_at: data.last_ok_at ?? null,
     last_health_at: data.last_health_at ?? null,
     last_probe_stage: data.last_probe_stage ?? null,

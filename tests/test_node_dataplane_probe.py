@@ -81,6 +81,48 @@ class NodeDataplaneProbeTests(unittest.TestCase):
         self.assertTrue(self.module._certificate_matches_expected_target("api.example.com", ["*.example.com"]))
         self.assertFalse(self.module._certificate_matches_expected_target("www.example.com", ["cdn.example.net"]))
 
+    def test_probe_tls_treats_missing_certificate_names_as_unknown_not_mismatch(self) -> None:
+        class _FakeSocket:
+            def __enter__(self):
+                return self
+
+            def __exit__(self, exc_type, exc, tb):
+                return False
+
+        class _FakeTlsSocket:
+            def __enter__(self):
+                return self
+
+            def __exit__(self, exc_type, exc, tb):
+                return False
+
+            def getpeercert(self):
+                return {}
+
+            def version(self):
+                return "TLSv1.3"
+
+            def cipher(self):
+                return ("TLS_AES_256_GCM_SHA384", "", "")
+
+        class _FakeContext:
+            check_hostname = False
+            verify_mode = None
+
+            def wrap_socket(self, sock, server_hostname=None):
+                return _FakeTlsSocket()
+
+        with mock.patch.object(self.module.ssl, "create_default_context", return_value=_FakeContext()), mock.patch.object(
+            self.module.socket,
+            "create_connection",
+            return_value=_FakeSocket(),
+        ):
+            result = self.module._probe_tls("pl.pokrov.space", 443, "www.example.com", 5.0)
+
+        self.assertEqual(result["certificate_names"], [])
+        self.assertTrue(result["target_ok"])
+        self.assertNotIn("error_kind", result)
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -80,6 +80,11 @@ function formatDiskFree(value?: number | null): string {
   return `${Number(value).toFixed(1)} ГБ`;
 }
 
+function formatMbps(value?: number | null, digits = 1): string {
+  if (value == null || Number.isNaN(Number(value))) return "нет данных";
+  return `${Number(value).toFixed(digits)} Mbps`;
+}
+
 function scoreTone(score: number): { dotClass: string; badgeClass: string } {
   if (score >= 8) return { dotClass: "status-dot-online", badgeClass: "badge-success" };
   if (score >= 5) return { dotClass: "status-dot-warning", badgeClass: "badge-warning" };
@@ -95,6 +100,7 @@ function alertKindLabel(kind: string): string {
   if (value === "error_rate_high") return "Ошибки";
   if (value === "active_clients_high" || value === "client_density_high") return "Клиенты";
   if (value === "observer_push_stale") return "Observer";
+  if (value === "network_high") return "Ethernet";
   return kind;
 }
 
@@ -239,6 +245,9 @@ export default function AdminNodesPage() {
               <p className="mt-0.5 text-xs text-slate-500">
                 <strong>{formatFreshness(status?.status)}</strong>. Последний срез: {formatIso(status?.last_sample_at)}.
               </p>
+              <p className="mt-0.5 text-xs text-slate-500">
+                Отклик и dataplane-check здесь идут с control plane `brain`; внешний RU probe живёт отдельно.
+              </p>
             </div>
           </div>
           <div className="flex flex-wrap gap-2">
@@ -341,6 +350,8 @@ export default function AdminNodesPage() {
             : null;
           const nodeFreshness = freshnessByNode.get(nodeCodeKey(node.code));
           const probeFailure = probeFailureCopy(node.last_probe_error_kind, node.last_probe_stage, node.last_probe_error_message);
+          const networkPercent = node.network_utilization_percent;
+          const networkPeakPercent = node.network_peak_utilization_percent_24h;
 
           return (
             <article key={node.code} className="stat-card min-w-0 p-5">
@@ -365,7 +376,7 @@ export default function AdminNodesPage() {
 
               <div className="mt-4 grid grid-cols-1 gap-2 text-center sm:grid-cols-3">
                 <div className="rounded-lg bg-white/50 p-2 dark:bg-white/5">
-                  <p className="text-xs text-slate-500">Отклик</p>
+                  <p className="text-xs text-slate-500">Отклик с brain</p>
                   <p className="text-sm font-bold">{node.panel_latency_ms ?? "нет данных"}{node.panel_latency_ms != null ? <span className="text-[10px] text-slate-400"> ms</span> : null}</p>
                 </div>
                 <div className="rounded-lg bg-white/50 p-2 dark:bg-white/5">
@@ -405,6 +416,29 @@ export default function AdminNodesPage() {
                 <div className="mt-1 flex items-center justify-between text-xs text-slate-500">
                   <span>Свободно</span>
                   <span>{formatDiskFree(node.disk_free_gb)}</span>
+                </div>
+              </div>
+
+              <div className="mt-3 rounded-xl border border-white/15 bg-white/35 p-3 dark:border-white/10 dark:bg-white/[0.04]">
+                <div className="mb-2 flex items-center justify-between gap-2 text-sm font-semibold">
+                  <span>Ethernet</span>
+                  <span>{networkPercent == null ? "нет данных" : formatPercent(networkPercent, 0)}</span>
+                </div>
+                <div className="flex items-center justify-between text-xs text-slate-500">
+                  <span>Сейчас RX / TX</span>
+                  <span>{formatMbps(node.network_rx_mbps)} / {formatMbps(node.network_tx_mbps)}</span>
+                </div>
+                <div className="mt-1 flex items-center justify-between text-xs text-slate-500">
+                  <span>Суммарно сейчас</span>
+                  <span>{formatMbps(node.network_total_mbps)}</span>
+                </div>
+                <div className="mt-1 flex items-center justify-between text-xs text-slate-500">
+                  <span>Пик за 24 часа</span>
+                  <span>{formatMbps(node.network_peak_mbps_24h)}{networkPeakPercent == null ? "" : ` (${formatPercent(networkPeakPercent, 0)})`}</span>
+                </div>
+                <div className="mt-1 flex items-center justify-between text-xs text-slate-500">
+                  <span>Лимит порта</span>
+                  <span>{formatMbps(node.network_port_capacity_mbps, 0)}</span>
                 </div>
               </div>
 

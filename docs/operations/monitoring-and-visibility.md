@@ -99,6 +99,9 @@ Required node-level visibility:
 
 - freshness state for each node
 - sustained CPU / RAM / disk pressure alerts
+- current Ethernet RX/TX throughput in `Mbps`
+- 24h peak Ethernet throughput in `Mbps`
+- port-capacity utilization against the default `1 Gbit/s` node uplink
 - sustained latency / error-rate alerts
 - high client-density alerts
 - observer collector freshness per node
@@ -110,6 +113,11 @@ Required node-level visibility:
 Operator-facing rendering rule:
 
 - distinguish real `0` from missing telemetry; `RAM`, disk totals, and free space must show that metrics did not arrive when totals are absent
+- current node-card latency and dataplane probe in admin are collected from the control-plane host `brain`
+- do not confuse the `brain -> node` control-plane probe with the separate external RU probe result
+- current Ethernet throughput in admin comes from the live panel/server metrics collected by `brain`
+- if network counters are missing, the admin surface must show missing telemetry rather than `0 Mbps`
+- use the current and 24h peak Ethernet view for capacity planning, server purchase decisions, and early warning before saturating the `1 Gbit/s` uplink
 - keep raw probe fields visible, but add a readable operator explanation for known probe failures
 - for `reality_target_mismatch`, explain that the expected REALITY target name did not match the certificate name or SNI returned by the node
 
@@ -213,6 +221,11 @@ Useful operator-visible fields include:
 - effective admin status: `active`, `expired`, `blocked`, `manual_test`
 - observer state: `ok`, `watch`, `suspicious`
 - observer reasons, recent IPs, recent nodes, and last observed time
+
+Visibility rule for non-app configs:
+
+- runtime IP and observer-lite visibility must keep working for imported/manual configs even when the official app was never installed
+- app device records remain a separate app-first telemetry layer and must not be treated as the only source of "devices in use"
 
 Visibility rule:
 

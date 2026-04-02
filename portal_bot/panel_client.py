@@ -80,6 +80,15 @@ def _size_to_bytes(value) -> int | None:
     return int(max(0.0, number) * factor)
 
 
+def _nested_value(obj, *path: str):
+    current = obj
+    for part in path:
+        if not isinstance(current, dict):
+            return None
+        current = current.get(part)
+    return current
+
+
 @dataclass
 class PanelClient:
     node: NodeRuntime
@@ -286,6 +295,10 @@ class PanelClient:
                 "disk_used_gb": None,
                 "disk_total_gb": None,
                 "disk_free_gb": None,
+                "network_rx_bytes_total": None,
+                "network_tx_bytes_total": None,
+                "network_rx_bytes_per_sec": None,
+                "network_tx_bytes_per_sec": None,
             }
 
         cpu_percent = _to_float(
@@ -301,17 +314,29 @@ class PanelClient:
             )
         )
 
-        mem_used_raw = _deep_find(status, {"memused", "memoryused", "currentmem", "currentmemory", "usedmemory"})
-        mem_total_raw = _deep_find(status, {"memtotal", "memorytotal", "totalmem", "totalmemory"})
-        disk_used_raw = _deep_find(status, {"diskused", "useddisk", "currdisk"})
-        disk_total_raw = _deep_find(status, {"disktotal", "totaldisk"})
-        disk_free_raw = _deep_find(status, {"diskfree", "freedisk", "diskavail", "diskavailable"})
+        mem_used_raw = _nested_value(status, "mem", "current") or _deep_find(
+            status, {"memused", "memoryused", "currentmem", "currentmemory", "usedmemory"}
+        )
+        mem_total_raw = _nested_value(status, "mem", "total") or _deep_find(
+            status, {"memtotal", "memorytotal", "totalmem", "totalmemory"}
+        )
+        disk_used_raw = _nested_value(status, "disk", "current") or _deep_find(status, {"diskused", "useddisk", "currdisk"})
+        disk_total_raw = _nested_value(status, "disk", "total") or _deep_find(status, {"disktotal", "totaldisk"})
+        disk_free_raw = _nested_value(status, "disk", "free") or _deep_find(
+            status, {"diskfree", "freedisk", "diskavail", "diskavailable"}
+        )
+        net_tx_bytes_per_sec = _size_to_bytes(_nested_value(status, "netIO", "up"))
+        net_rx_bytes_per_sec = _size_to_bytes(_nested_value(status, "netIO", "down"))
+        net_tx_bytes_total = _size_to_bytes(_nested_value(status, "netTraffic", "sent"))
+        net_rx_bytes_total = _size_to_bytes(_nested_value(status, "netTraffic", "recv"))
 
         mem_used_bytes = _size_to_bytes(mem_used_raw)
         mem_total_bytes = _size_to_bytes(mem_total_raw)
         disk_used_bytes = _size_to_bytes(disk_used_raw)
         disk_total_bytes = _size_to_bytes(disk_total_raw)
         disk_free_bytes = _size_to_bytes(disk_free_raw)
+        if disk_free_bytes is None and disk_total_bytes is not None and disk_used_bytes is not None:
+            disk_free_bytes = max(0, int(disk_total_bytes) - int(disk_used_bytes))
 
         return {
             "cpu_percent": round(cpu_percent, 1) if cpu_percent is not None else None,
@@ -320,6 +345,10 @@ class PanelClient:
             "disk_used_gb": round(disk_used_bytes / (1024**3), 2) if disk_used_bytes is not None else None,
             "disk_total_gb": round(disk_total_bytes / (1024**3), 2) if disk_total_bytes is not None else None,
             "disk_free_gb": round(disk_free_bytes / (1024**3), 2) if disk_free_bytes is not None else None,
+            "network_rx_bytes_total": net_rx_bytes_total,
+            "network_tx_bytes_total": net_tx_bytes_total,
+            "network_rx_bytes_per_sec": net_rx_bytes_per_sec,
+            "network_tx_bytes_per_sec": net_tx_bytes_per_sec,
         }
 
     async def get_inbound_snapshot(self, inbound_id: int | None = None) -> dict | None:

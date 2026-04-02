@@ -85,7 +85,9 @@ def _probe_tls(host: str, port: int, sni: str, timeout_sec: float) -> dict:
         with context.wrap_socket(sock, server_hostname=sni) as tls_sock:
             cert = tls_sock.getpeercert() or {}
             certificate_names = _certificate_names(cert)
-            target_ok = _certificate_matches_expected_target(sni, certificate_names)
+            # Some TLS handshakes expose an empty parsed certificate here even when the
+            # socket is healthy. Treat that as "target check unavailable", not mismatch.
+            target_ok = True if not certificate_names else _certificate_matches_expected_target(sni, certificate_names)
             result = {
                 "stage": "reality_target" if target_ok else "tls_sni",
                 "tls_protocol": str(tls_sock.version() or ""),

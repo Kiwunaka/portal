@@ -25,6 +25,10 @@ class _FakePanelClientOk:
             "disk_used_gb": 10.0,
             "disk_total_gb": 40.0,
             "disk_free_gb": 30.0,
+            "network_rx_bytes_total": 1_500_000_000,
+            "network_tx_bytes_total": 900_000_000,
+            "network_rx_bytes_per_sec": 125_000,
+            "network_tx_bytes_per_sec": 250_000,
         }
 
     async def _get_inbounds(self) -> list[dict]:
@@ -46,6 +50,40 @@ class _FakePanelClientLoginFail:
 
     async def login(self) -> bool:
         return False
+
+    async def close(self) -> None:
+        return None
+
+
+class _FakePanelClientNoSystemMetrics:
+    def __init__(self, runtime) -> None:
+        self.runtime = runtime
+
+    async def login(self) -> bool:
+        return True
+
+    async def get_system_metrics(self) -> dict:
+        return {
+            "cpu_percent": 11.0,
+            "memory_used_mb": None,
+            "memory_total_mb": None,
+            "disk_used_gb": None,
+            "disk_total_gb": None,
+            "disk_free_gb": None,
+            "network_rx_bytes_total": None,
+            "network_tx_bytes_total": None,
+            "network_rx_bytes_per_sec": None,
+            "network_tx_bytes_per_sec": None,
+        }
+
+    async def _get_inbounds(self) -> list[dict]:
+        return [
+            {
+                "id": self.runtime.inbound_id,
+                "settings": '{"clients":[{"id":"u1"},{"id":"u2"}]}',
+                "clientStats": [{"up": 100, "down": 200}],
+            }
+        ]
 
     async def close(self) -> None:
         return None
@@ -202,6 +240,120 @@ class CollectNodeMetricsObservabilityTests(unittest.TestCase):
             disk_total_gb=40.0,
         )
         self.assertLess(pressured, baseline)
+
+    def test_collect_one_preserves_missing_system_metrics_as_null(self) -> None:
+        session = self.db.SessionLocal()
+        try:
+            node = session.query(self.models.Node).filter(self.models.Node.id == self.node_id).first()
+        finally:
+            session.close()
+
+        with mock.patch.object(self.collector, "PanelClient", _FakePanelClientNoSystemMetrics), mock.patch.object(
+            self.collector,
+            "probe_node_endpoint",
+            return_value={
+                "ok": True,
+                "stage": "reality_target",
+                "error_kind": "",
+                "error_message": "",
+                "probed_at": datetime.utcnow(),
+            },
+        ):
+            result = asyncio.run(self.collector._collect_one(node=node, error_window=5, source="tests"))
+
+        self.assertTrue(result["healthy"])
+        node_row, sample = self._load_node()
+        self.assertIsNone(node_row.memory_used_mb)
+        self.assertIsNone(node_row.memory_total_mb)
+        self.assertIsNone(node_row.disk_used_gb)
+        self.assertIsNone(node_row.disk_total_gb)
+        self.assertIsNone(node_row.disk_free_gb)
+        self.assertIsNone(sample.memory_used_mb)
+        self.assertIsNone(sample.memory_total_mb)
+        self.assertIsNone(sample.disk_used_gb)
+        self.assertIsNone(sample.disk_total_gb)
+        self.assertIsNone(sample.disk_free_gb)
+
+    def test_collect_one_calculates_network_rates_from_cumulative_totals(self) -> None:
+        session = self.db.SessionLocal()
+        try:
+            session.add(
+                self.models.NodeHealthSample(
+                    node_code="pl",
+                    sampled_at=datetime.utcnow(),
+                    network_rx_bytes_total=1_000_000_000,
+                    network_tx_bytes_total=500_000_000,
+                    network_rx_mbps=0.0,
+                    network_tx_mbps=0.0,
+                    network_total_mbps=0.0,
+                    is_healthy=True,
+                    score=90.0,
+                    source="seed",
+                )
+            )
+            session.commit()
+            node = session.query(self.models.Node).filter(self.models.Node.id == self.node_id).first()
+        finally:
+            session.close()
+
+        class _FakePanelClientNetwork:
+            def __init__(self, runtime) -> None:
+                self.runtime = runtime
+
+            async def login(self) -> bool:
+                return True
+
+            async def get_system_metrics(self) -> dict:
+                return {
+                    "cpu_percent": 11.0,
+                    "memory_used_mb": 256,
+                    "memory_total_mb": 1024,
+                    "disk_used_gb": 10.0,
+                    "disk_total_gb": 40.0,
+                    "disk_free_gb": 30.0,
+                    "network_rx_bytes_total": 1_060_000_000,
+                    "network_tx_bytes_total": 515_000_000,
+                    "network_rx_bytes_per_sec": None,
+                    "network_tx_bytes_per_sec": None,
+                }
+
+            async def _get_inbounds(self) -> list[dict]:
+                return [
+                    {
+                        "id": self.runtime.inbound_id,
+                        "settings": '{"clients":[{"id":"u1"},{"id":"u2"}]}',
+                        "clientStats": [{"up": 100, "down": 200}],
+                    }
+                ]
+
+            async def close(self) -> None:
+                return None
+
+        with mock.patch.object(self.collector, "PanelClient", _FakePanelClientNetwork), mock.patch.object(
+            self.collector,
+            "probe_node_endpoint",
+            return_value={
+                "ok": True,
+                "stage": "reality_target",
+                "error_kind": "",
+                "error_message": "",
+                "probed_at": datetime.utcnow(),
+            },
+        ), mock.patch.object(
+            self.collector,
+            "_utcnow",
+            side_effect=[datetime(2026, 4, 2, 12, 0, 0), datetime(2026, 4, 2, 12, 1, 0)],
+        ):
+            result = asyncio.run(self.collector._collect_one(node=node, error_window=5, source="tests"))
+
+        self.assertTrue(result["healthy"])
+        node_row, sample = self._load_node()
+        self.assertEqual(node_row.network_rx_bytes_total, 1_060_000_000)
+        self.assertEqual(node_row.network_tx_bytes_total, 515_000_000)
+        self.assertAlmostEqual(float(node_row.network_rx_mbps or 0.0), 8.0, places=2)
+        self.assertAlmostEqual(float(node_row.network_tx_mbps or 0.0), 2.0, places=2)
+        self.assertAlmostEqual(float(node_row.network_total_mbps or 0.0), 10.0, places=2)
+        self.assertAlmostEqual(float(sample.network_total_mbps or 0.0), 10.0, places=2)
 
 
 if __name__ == "__main__":

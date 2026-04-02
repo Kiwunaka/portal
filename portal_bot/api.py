@@ -1,6 +1,6 @@
 ﻿# -*- coding: utf-8 -*-
 """
-Portal API for Telegram WebApp and Subscription endpoint.
+POKROV API for Telegram WebApp and Subscription endpoint.
 
 - `/api/user/{tg_id}`: authenticated by Telegram WebApp initData
 - `/api/reviews`: featured reviews for WebApp
@@ -206,6 +206,8 @@ TELEGRAM_WEB_LOGIN_MAX_AGE_SECONDS = max(60, env_int("TELEGRAM_WEB_LOGIN_MAX_AGE
 NODE_METRICS_CPU_ALERT_PERCENT = _env_float("NODE_METRICS_CPU_ALERT_PERCENT", 70.0)
 NODE_METRICS_MEMORY_ALERT_PERCENT = _env_float("NODE_METRICS_MEMORY_ALERT_PERCENT", 85.0)
 NODE_METRICS_DISK_ALERT_PERCENT = _env_float("NODE_METRICS_DISK_ALERT_PERCENT", 90.0)
+NODE_METRICS_NETWORK_ALERT_PERCENT = _env_float("NODE_METRICS_NETWORK_ALERT_PERCENT", 70.0)
+NODE_METRICS_PORT_CAPACITY_MBPS = _env_float("NODE_METRICS_PORT_CAPACITY_MBPS", 1000.0)
 NODE_METRICS_LATENCY_ALERT_MS = _env_float("NODE_METRICS_LATENCY_ALERT_MS", 800.0)
 NODE_METRICS_ERROR_RATE_ALERT = _env_float("NODE_METRICS_ERROR_RATE_ALERT", 0.2)
 NODE_METRICS_ACTIVE_CLIENTS_ALERT = max(1, env_int("NODE_METRICS_ACTIVE_CLIENTS_ALERT", 200))
@@ -1219,7 +1221,7 @@ def _maybe_downgrade_expired_to_free(s, user: User) -> bool:
     except Exception:
         return False
 
-app = FastAPI(title="Portal API", version="2.0.0")
+app = FastAPI(title="POKROV API", version="2.0.0")
 
 
 @app.middleware("http")
@@ -1401,7 +1403,7 @@ def _generate_gift_code_for_admin(s) -> str:
     alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
     for _ in range(30):
         token = "".join(secrets.choice(alphabet) for _ in range(8))
-        code = f"PORTAL-{token[:4]}-{token[4:]}"
+        code = f"POKROV-{token[:4]}-{token[4:]}"
         exists = s.query(GiftCard.id).filter(GiftCard.code == code).first()
         if not exists:
             return code
@@ -4364,6 +4366,20 @@ def _sample_disk_percent(sample: NodeHealthSample | None) -> float:
     return round((used / total) * 100.0, 2)
 
 
+def _network_utilization_percent(total_mbps: object) -> float:
+    current = float(total_mbps or 0.0)
+    capacity = float(NODE_METRICS_PORT_CAPACITY_MBPS or 0.0)
+    if current <= 0 or capacity <= 0:
+        return 0.0
+    return round((current / capacity) * 100.0, 2)
+
+
+def _sample_network_percent(sample: NodeHealthSample | None) -> float:
+    if not sample:
+        return 0.0
+    return _network_utilization_percent(getattr(sample, "network_total_mbps", 0.0))
+
+
 def _observer_is_stale(node: Node, *, now: datetime) -> bool:
     last_push_at = getattr(node, "observer_last_push_at", None)
     configured = bool(str(getattr(node, "observer_push_secret", "") or "").strip())
@@ -4397,6 +4413,8 @@ def _active_node_metric_alert_kinds(
         kinds.append("memory_high")
     if all(_sample_disk_percent(sample) >= NODE_METRICS_DISK_ALERT_PERCENT for sample in window):
         kinds.append("disk_high")
+    if all(_sample_network_percent(sample) >= NODE_METRICS_NETWORK_ALERT_PERCENT for sample in window):
+        kinds.append("network_high")
     if all(float(getattr(sample, "panel_latency_ms", 0) or 0.0) >= NODE_METRICS_LATENCY_ALERT_MS for sample in window):
         kinds.append("latency_high")
     if all(float(getattr(sample, "panel_error_rate", 0.0) or 0.0) >= NODE_METRICS_ERROR_RATE_ALERT for sample in window):
@@ -4422,6 +4440,7 @@ def _node_snapshot_alert_kinds(
     memory_used = float(getattr(node, "memory_used_mb", 0.0) or 0.0)
     disk_total = float(getattr(node, "disk_total_gb", 0.0) or 0.0)
     disk_used = float(getattr(node, "disk_used_gb", 0.0) or 0.0)
+    network_total_mbps = float(getattr(node, "network_total_mbps", 0.0) or 0.0)
     memory_percent = (memory_used / memory_total * 100.0) if memory_total > 0 else 0.0
     disk_percent = (disk_used / disk_total * 100.0) if disk_total > 0 else 0.0
     if cpu_percent >= NODE_METRICS_CPU_ALERT_PERCENT:
@@ -4430,6 +4449,8 @@ def _node_snapshot_alert_kinds(
         kinds.append("memory_high")
     if disk_percent >= NODE_METRICS_DISK_ALERT_PERCENT:
         kinds.append("disk_high")
+    if _network_utilization_percent(network_total_mbps) >= NODE_METRICS_NETWORK_ALERT_PERCENT:
+        kinds.append("network_high")
     if float(getattr(node, "panel_latency_ms", 0.0) or 0.0) >= NODE_METRICS_LATENCY_ALERT_MS:
         kinds.append("latency_high")
     if float(getattr(node, "panel_error_rate", 0.0) or 0.0) >= NODE_METRICS_ERROR_RATE_ALERT:
@@ -4446,6 +4467,7 @@ def _legacy_node_alert_kind(kind: str) -> str:
         "cpu_high": "high_cpu",
         "memory_high": "high_memory",
         "disk_high": "high_disk",
+        "network_high": "high_network",
         "latency_high": "high_latency",
         "error_rate_high": "high_error_rate",
         "client_density_high": "high_client_density",
@@ -4457,6 +4479,38 @@ def _legacy_node_alert_kind(kind: str) -> str:
 
 def _legacy_node_alerts(kinds: list[str]) -> list[str]:
     return sorted({_legacy_node_alert_kind(kind) for kind in kinds if str(kind or "").strip()})
+
+
+def _nullable_node_memory_value(*, used_mb: object, total_mb: object) -> tuple[int | None, int | None]:
+    total = int(total_mb or 0)
+    if total <= 0:
+        return None, None
+    return int(used_mb or 0), total
+
+
+def _nullable_node_disk_value(*, used_gb: object, total_gb: object, free_gb: object) -> tuple[float | None, float | None, float | None]:
+    total = float(total_gb or 0.0)
+    if total <= 0:
+        return None, None, None
+    return float(used_gb or 0.0), total, float(free_gb or 0.0)
+
+
+def _nullable_node_network_value(
+    *,
+    rx_bytes_total: object,
+    tx_bytes_total: object,
+    rx_mbps: object,
+    tx_mbps: object,
+    total_mbps: object,
+) -> tuple[int | None, int | None, float | None, float | None, float | None]:
+    rx_total = int(rx_bytes_total) if rx_bytes_total is not None else None
+    tx_total = int(tx_bytes_total) if tx_bytes_total is not None else None
+    rx_rate = float(rx_mbps) if rx_mbps is not None else None
+    tx_rate = float(tx_mbps) if tx_mbps is not None else None
+    total_rate = float(total_mbps) if total_mbps is not None else None
+    if total_rate is None and (rx_rate is not None or tx_rate is not None):
+        total_rate = float(rx_rate or 0.0) + float(tx_rate or 0.0)
+    return rx_total, tx_total, rx_rate, tx_rate, total_rate
 
 
 def _build_admin_metrics_status_snapshot(*, s, now: datetime, stale_after_seconds: int) -> dict[str, Any]:
@@ -4509,6 +4563,10 @@ def _build_admin_metrics_status_snapshot(*, s, now: datetime, stale_after_second
             "cpu_percent": float(getattr(latest, "cpu_percent", getattr(node, "cpu_percent", 0.0)) or 0.0),
             "memory_percent": _sample_memory_percent(latest),
             "disk_percent": _sample_disk_percent(latest),
+            "network_total_mbps": float(getattr(latest, "network_total_mbps", getattr(node, "network_total_mbps", 0.0)) or 0.0),
+            "network_utilization_percent": _network_utilization_percent(
+                getattr(latest, "network_total_mbps", getattr(node, "network_total_mbps", 0.0))
+            ),
             "active_clients": int(getattr(latest, "active_clients", getattr(node, "active_clients", 0)) or 0),
             "observer_last_push_at": _safe_iso(getattr(node, "observer_last_push_at", None)),
             "observer_is_stale": bool(_observer_is_stale(node, now=now)),
@@ -4533,6 +4591,7 @@ def _build_admin_metrics_status_snapshot(*, s, now: datetime, stale_after_second
         "high_cpu_nodes": sum(1 for row in rows if "high_cpu" in row["alerts"]),
         "high_memory_nodes": sum(1 for row in rows if "high_memory" in row["alerts"]),
         "high_disk_nodes": sum(1 for row in rows if "high_disk" in row["alerts"]),
+        "high_network_nodes": sum(1 for row in rows if "high_network" in row["alerts"]),
         "high_latency_nodes": sum(1 for row in rows if "high_latency" in row["alerts"]),
         "high_error_rate_nodes": sum(1 for row in rows if "high_error_rate" in row["alerts"]),
         "high_client_density_nodes": sum(1 for row in rows if "high_client_density" in row["alerts"]),
@@ -8358,6 +8417,19 @@ async def admin_nodes_health(x_telegram_init_data: str = Header(default="")) -> 
     s = SessionLocal()
     try:
         rows = s.query(Node).order_by(Node.enabled.desc(), Node.health_score.desc(), Node.weight.desc(), Node.code.asc()).all()
+        window_start = _utcnow() - timedelta(hours=24)
+        peak_by_code = {
+            str(node_code or ""): (float(peak_mbps) if peak_mbps is not None else None)
+            for node_code, peak_mbps in (
+                s.query(
+                    NodeHealthSample.node_code,
+                    func.max(NodeHealthSample.network_total_mbps),
+                )
+                .filter(NodeHealthSample.sampled_at >= window_start)
+                .group_by(NodeHealthSample.node_code)
+                .all()
+            )
+        }
         mapped_counts = {
             int(node_id): int(count or 0)
             for node_id, count in (
@@ -8366,7 +8438,16 @@ async def admin_nodes_health(x_telegram_init_data: str = Header(default="")) -> 
                 .all()
             )
         }
-        return {"nodes": [_serialize_admin_node(n, mapped_users=mapped_counts.get(int(n.id), 0)) for n in rows]}
+        return {
+            "nodes": [
+                _serialize_admin_node(
+                    n,
+                    mapped_users=mapped_counts.get(int(n.id), 0),
+                    network_peak_mbps_24h=peak_by_code.get(str(n.code or ""), None),
+                )
+                for n in rows
+            ]
+        }
     finally:
         s.close()
 
@@ -9106,7 +9187,12 @@ def _nodes_for_user(user: User, nodes: list, session=None) -> list:
             s.close()
 
 
-def _serialize_admin_node(n: Node, *, mapped_users: int = 0) -> dict[str, Any]:
+def _serialize_admin_node(
+    n: Node,
+    *,
+    mapped_users: int = 0,
+    network_peak_mbps_24h: float | None = None,
+) -> dict[str, Any]:
     stale_after_seconds = max(300, int(os.getenv("NODE_METRICS_STALE_AFTER_SECONDS", "900")))
     now = _utcnow()
     last_sample_at = getattr(n, "last_health_at", None) or getattr(n, "last_probe_at", None)
@@ -9116,6 +9202,31 @@ def _serialize_admin_node(n: Node, *, mapped_users: int = 0) -> dict[str, Any]:
         stale_after_seconds=stale_after_seconds,
         now=now,
     )
+    memory_used_mb, memory_total_mb = _nullable_node_memory_value(
+        used_mb=getattr(n, "memory_used_mb", None),
+        total_mb=getattr(n, "memory_total_mb", None),
+    )
+    disk_used_gb, disk_total_gb, disk_free_gb = _nullable_node_disk_value(
+        used_gb=getattr(n, "disk_used_gb", None),
+        total_gb=getattr(n, "disk_total_gb", None),
+        free_gb=getattr(n, "disk_free_gb", None),
+    )
+    (
+        network_rx_bytes_total,
+        network_tx_bytes_total,
+        network_rx_mbps,
+        network_tx_mbps,
+        network_total_mbps,
+    ) = _nullable_node_network_value(
+        rx_bytes_total=getattr(n, "network_rx_bytes_total", None),
+        tx_bytes_total=getattr(n, "network_tx_bytes_total", None),
+        rx_mbps=getattr(n, "network_rx_mbps", None),
+        tx_mbps=getattr(n, "network_tx_mbps", None),
+        total_mbps=getattr(n, "network_total_mbps", None),
+    )
+    network_port_capacity_mbps = float(NODE_METRICS_PORT_CAPACITY_MBPS or 0.0)
+    network_utilization_percent = _network_utilization_percent(network_total_mbps)
+    network_peak_utilization_percent_24h = _network_utilization_percent(network_peak_mbps_24h)
     return {
         "code": n.code,
         "name": n.name,
@@ -9129,11 +9240,22 @@ def _serialize_admin_node(n: Node, *, mapped_users: int = 0) -> dict[str, Any]:
         "panel_error_rate": float(getattr(n, "panel_error_rate", 0.0) or 0.0),
         "active_clients": int(getattr(n, "active_clients", 0) or 0),
         "cpu_percent": float(getattr(n, "cpu_percent", 0.0) or 0.0),
-        "memory_used_mb": int(getattr(n, "memory_used_mb", 0) or 0),
-        "memory_total_mb": int(getattr(n, "memory_total_mb", 0) or 0),
-        "disk_used_gb": float(getattr(n, "disk_used_gb", 0.0) or 0.0),
-        "disk_total_gb": float(getattr(n, "disk_total_gb", 0.0) or 0.0),
-        "disk_free_gb": float(getattr(n, "disk_free_gb", 0.0) or 0.0),
+        "memory_used_mb": memory_used_mb,
+        "memory_total_mb": memory_total_mb,
+        "disk_used_gb": disk_used_gb,
+        "disk_total_gb": disk_total_gb,
+        "disk_free_gb": disk_free_gb,
+        "network_rx_bytes_total": network_rx_bytes_total,
+        "network_tx_bytes_total": network_tx_bytes_total,
+        "network_rx_mbps": network_rx_mbps,
+        "network_tx_mbps": network_tx_mbps,
+        "network_total_mbps": network_total_mbps,
+        "network_peak_mbps_24h": float(network_peak_mbps_24h) if network_peak_mbps_24h is not None else None,
+        "network_port_capacity_mbps": network_port_capacity_mbps if network_port_capacity_mbps > 0 else None,
+        "network_utilization_percent": network_utilization_percent if network_total_mbps is not None else None,
+        "network_peak_utilization_percent_24h": (
+            network_peak_utilization_percent_24h if network_peak_mbps_24h is not None else None
+        ),
         "last_ok_at": _safe_iso(getattr(n, "last_ok_at", None)),
         "last_health_at": _safe_iso(getattr(n, "last_health_at", None)),
         "freshness_status": "stale" if "stale_metrics" in alert_kinds else "fresh",
@@ -9293,7 +9415,7 @@ async def subscription(token: str, request: Request, format: str = Query(default
     headers = {
         "Subscription-Userinfo": f"upload=0; download=0; total={total_bytes}; expire={header_expire}",
         "Profile-Update-Interval": str(int(PROFILE_UPDATE_INTERVAL_HOURS)),
-        "Content-Disposition": 'attachment; filename="Portal_Subscription"',
+        "Content-Disposition": 'attachment; filename="POKROV_Subscription"',
     }
 
     nodes_for_user = _nodes_for_user(user, nodes, session=s)
@@ -9309,8 +9431,8 @@ async def subscription(token: str, request: Request, format: str = Query(default
             if (user.sub_type or "").upper() == "FREE"
             else _singbox_multi_node_config(user_uuid=user.uuid, nodes=nodes_for_user, title="POKROV VPN")
         )
-        headers["Content-Disposition"] = 'attachment; filename="Portal.json"'
-        headers["Profile-Title"] = "Portal"
+        headers["Content-Disposition"] = 'attachment; filename="POKROV.json"'
+        headers["Profile-Title"] = "POKROV"
         if request.method == "HEAD":
             return Response(content="", media_type="application/json", headers=headers)
         return Response(content=json.dumps(cfg, indent=2), media_type="application/json", headers=headers)

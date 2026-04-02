@@ -29,7 +29,7 @@ RETENTION_TEMPLATE_PRESETS: dict[str, str] = {
         "Если где-то застряли — напишите в службу заботы. Мы рядом и обычно помогаем очень быстро."
     ),
     "retention_welcome_b": (
-        "✨ Добро пожаловать в PORTAL.\n\n"
+        "✨ Добро пожаловать в POKROV.\n\n"
         "Перед первым запуском:\n"
         "• выберите приложение для своего устройства;\n"
         "• импортируйте ключ одним действием;\n"
@@ -479,6 +479,11 @@ def run_migrations(engine: Engine) -> None:
                 ("disk_used_gb", "FLOAT DEFAULT 0"),
                 ("disk_total_gb", "FLOAT DEFAULT 0"),
                 ("disk_free_gb", "FLOAT DEFAULT 0"),
+                ("network_rx_bytes_total", "BIGINT"),
+                ("network_tx_bytes_total", "BIGINT"),
+                ("network_rx_mbps", "FLOAT"),
+                ("network_tx_mbps", "FLOAT"),
+                ("network_total_mbps", "FLOAT"),
                 ("last_ok_at", "DATETIME"),
                 ("last_probe_at", "DATETIME"),
                 ("last_probe_stage", "VARCHAR(64)"),
@@ -516,6 +521,11 @@ def run_migrations(engine: Engine) -> None:
                   disk_used_gb FLOAT DEFAULT 0,
                   disk_total_gb FLOAT DEFAULT 0,
                   disk_free_gb FLOAT DEFAULT 0,
+                  network_rx_bytes_total BIGINT,
+                  network_tx_bytes_total BIGINT,
+                  network_rx_mbps FLOAT,
+                  network_tx_mbps FLOAT,
+                  network_total_mbps FLOAT,
                   total_up_bytes BIGINT DEFAULT 0,
                   total_down_bytes BIGINT DEFAULT 0,
                   total_traffic_bytes BIGINT DEFAULT 0,
@@ -538,6 +548,11 @@ def run_migrations(engine: Engine) -> None:
                 ("disk_used_gb", "FLOAT DEFAULT 0"),
                 ("disk_total_gb", "FLOAT DEFAULT 0"),
                 ("disk_free_gb", "FLOAT DEFAULT 0"),
+                ("network_rx_bytes_total", "BIGINT"),
+                ("network_tx_bytes_total", "BIGINT"),
+                ("network_rx_mbps", "FLOAT"),
+                ("network_tx_mbps", "FLOAT"),
+                ("network_total_mbps", "FLOAT"),
                 ("total_up_bytes", "BIGINT DEFAULT 0"),
                 ("total_down_bytes", "BIGINT DEFAULT 0"),
                 ("total_traffic_bytes", "BIGINT DEFAULT 0"),
@@ -1045,7 +1060,7 @@ def run_migrations(engine: Engine) -> None:
         conn.execute(text("CREATE INDEX IF NOT EXISTS ix_reward_claims_tg_id ON reward_claims(tg_id);"))
 
         # SQLite does not enforce VARCHAR length, so legacy gift card code storage
-        # already accepts the newer PORTAL-XXXX-XXXX format without table rebuild.
+        # already accepts the newer POKROV-XXXX-XXXX format without table rebuild.
 
         # Seed default retention templates for admin editing (idempotent).
         _seed_retention_templates(conn, dialect="sqlite")
@@ -1134,6 +1149,11 @@ def _run_postgres_migrations(engine: Engine) -> None:
         conn.execute(text("ALTER TABLE nodes ADD COLUMN IF NOT EXISTS disk_used_gb DOUBLE PRECISION DEFAULT 0;"))
         conn.execute(text("ALTER TABLE nodes ADD COLUMN IF NOT EXISTS disk_total_gb DOUBLE PRECISION DEFAULT 0;"))
         conn.execute(text("ALTER TABLE nodes ADD COLUMN IF NOT EXISTS disk_free_gb DOUBLE PRECISION DEFAULT 0;"))
+        conn.execute(text("ALTER TABLE nodes ADD COLUMN IF NOT EXISTS network_rx_bytes_total BIGINT;"))
+        conn.execute(text("ALTER TABLE nodes ADD COLUMN IF NOT EXISTS network_tx_bytes_total BIGINT;"))
+        conn.execute(text("ALTER TABLE nodes ADD COLUMN IF NOT EXISTS network_rx_mbps DOUBLE PRECISION;"))
+        conn.execute(text("ALTER TABLE nodes ADD COLUMN IF NOT EXISTS network_tx_mbps DOUBLE PRECISION;"))
+        conn.execute(text("ALTER TABLE nodes ADD COLUMN IF NOT EXISTS network_total_mbps DOUBLE PRECISION;"))
         conn.execute(text("ALTER TABLE nodes ADD COLUMN IF NOT EXISTS last_probe_at TIMESTAMP;"))
         conn.execute(text("ALTER TABLE nodes ADD COLUMN IF NOT EXISTS last_probe_stage VARCHAR(64);"))
         conn.execute(text("ALTER TABLE nodes ADD COLUMN IF NOT EXISTS last_probe_error_kind VARCHAR(64);"))
@@ -1151,6 +1171,11 @@ def _run_postgres_migrations(engine: Engine) -> None:
         conn.execute(text("ALTER TABLE node_health_samples ADD COLUMN IF NOT EXISTS disk_used_gb DOUBLE PRECISION DEFAULT 0;"))
         conn.execute(text("ALTER TABLE node_health_samples ADD COLUMN IF NOT EXISTS disk_total_gb DOUBLE PRECISION DEFAULT 0;"))
         conn.execute(text("ALTER TABLE node_health_samples ADD COLUMN IF NOT EXISTS disk_free_gb DOUBLE PRECISION DEFAULT 0;"))
+        conn.execute(text("ALTER TABLE node_health_samples ADD COLUMN IF NOT EXISTS network_rx_bytes_total BIGINT;"))
+        conn.execute(text("ALTER TABLE node_health_samples ADD COLUMN IF NOT EXISTS network_tx_bytes_total BIGINT;"))
+        conn.execute(text("ALTER TABLE node_health_samples ADD COLUMN IF NOT EXISTS network_rx_mbps DOUBLE PRECISION;"))
+        conn.execute(text("ALTER TABLE node_health_samples ADD COLUMN IF NOT EXISTS network_tx_mbps DOUBLE PRECISION;"))
+        conn.execute(text("ALTER TABLE node_health_samples ADD COLUMN IF NOT EXISTS network_total_mbps DOUBLE PRECISION;"))
         conn.execute(text("ALTER TABLE node_health_samples ADD COLUMN IF NOT EXISTS total_up_bytes BIGINT DEFAULT 0;"))
         conn.execute(text("ALTER TABLE node_health_samples ADD COLUMN IF NOT EXISTS total_down_bytes BIGINT DEFAULT 0;"))
         conn.execute(text("ALTER TABLE node_health_samples ADD COLUMN IF NOT EXISTS total_traffic_bytes BIGINT DEFAULT 0;"))

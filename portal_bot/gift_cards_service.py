@@ -32,7 +32,7 @@ def _generate_sub_token() -> str:
 def _generate_gift_code() -> str:
     alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
     token = "".join(secrets.choice(alphabet) for _ in range(8))
-    return f"PORTAL-{token[:4]}-{token[4:]}"
+    return f"POKROV-{token[:4]}-{token[4:]}"
 
 
 def create_gift_card(*, buyer_tg_id: int, card_type: str) -> str | None:

@@ -1962,7 +1962,7 @@ class ApiAuthAndTicketsTests(unittest.TestCase):
         self.assertEqual(plain.text, "")
         self.assertEqual(plain.headers.get("content-type"), "text/plain; charset=utf-8")
         self.assertEqual(plain.headers.get("profile-update-interval"), "6")
-        self.assertIn("Portal_Subscription", plain.headers.get("content-disposition", ""))
+        self.assertIn("POKROV_Subscription", plain.headers.get("content-disposition", ""))
 
         hiddify = self.client.head(
             "/s8Kx2mP7qR4wT/token_1001_secure",
@@ -1971,8 +1971,8 @@ class ApiAuthAndTicketsTests(unittest.TestCase):
         self.assertEqual(hiddify.status_code, 200, hiddify.text)
         self.assertEqual(hiddify.text, "")
         self.assertEqual(hiddify.headers.get("content-type"), "application/json")
-        self.assertEqual(hiddify.headers.get("profile-title"), "Portal")
-        self.assertIn("Portal.json", hiddify.headers.get("content-disposition", ""))
+        self.assertEqual(hiddify.headers.get("profile-title"), "POKROV")
+        self.assertIn("POKROV.json", hiddify.headers.get("content-disposition", ""))
 
     def test_subscription_endpoint_supports_explicit_smart_and_plain_formats(self) -> None:
         from db import SessionLocal
@@ -2388,6 +2388,9 @@ class ApiAuthAndTicketsTests(unittest.TestCase):
                         disk_used_gb=38.5,
                         disk_total_gb=40.0,
                         disk_free_gb=1.5,
+                        network_rx_mbps=410.0,
+                        network_tx_mbps=410.0,
+                        network_total_mbps=820.0,
                         active_clients=140,
                         panel_latency_ms=120,
                         panel_error_rate=0.01,
@@ -2435,9 +2438,113 @@ class ApiAuthAndTicketsTests(unittest.TestCase):
         de = next(row for row in payload["nodes"] if row["node_code"] == "de")
         self.assertEqual(pl["status"], "fresh")
         self.assertIn("cpu_high", pl.get("alert_kinds", []))
+        self.assertIn("network_high", pl.get("alert_kinds", []))
         self.assertEqual(de["status"], "stale")
         self.assertIn("stale_metrics", de.get("alert_kinds", []))
         self.assertTrue(any(alert.get("kind") == "cpu_high" and alert.get("node_code") == "pl" for alert in payload.get("active_alerts", [])))
+        self.assertTrue(any(alert.get("kind") == "network_high" and alert.get("node_code") == "pl" for alert in payload.get("active_alerts", [])))
+
+    def test_admin_nodes_health_preserves_missing_ram_and_disk_as_null(self) -> None:
+        from db import SessionLocal
+        from models import Node
+
+        admin_hdrs = {"X-Telegram-Init-Data": self._init_data(9999, "admin")}
+
+        s = SessionLocal()
+        try:
+            s.add(
+                Node(
+                    code="pl",
+                    name="Poland",
+                    host="pl.example.test",
+                    vless_port=443,
+                    reality_sni="www.orange.pl",
+                    reality_pbk="pbk-pl",
+                    reality_sid="sid-pl",
+                    panel_base_url="https://pl.example.test:8444",
+                    panel_path="/panel",
+                    panel_user="admin",
+                    panel_pass="pass",
+                    inbound_id=7,
+                    enabled=True,
+                    memory_used_mb=0,
+                    memory_total_mb=0,
+                    disk_used_gb=0.0,
+                    disk_total_gb=0.0,
+                    disk_free_gb=0.0,
+                )
+            )
+            s.commit()
+        finally:
+            s.close()
+
+        response = self.client.get("/api/admin/nodes/health", headers=admin_hdrs)
+        self.assertEqual(response.status_code, 200, response.text)
+        rows = response.json().get("nodes") or []
+        pl = next(row for row in rows if row.get("code") == "pl")
+        self.assertIsNone(pl["memory_used_mb"])
+        self.assertIsNone(pl["memory_total_mb"])
+        self.assertIsNone(pl["disk_used_gb"])
+        self.assertIsNone(pl["disk_total_gb"])
+        self.assertIsNone(pl["disk_free_gb"])
+
+    def test_admin_nodes_health_exposes_network_capacity_and_peak(self) -> None:
+        from db import SessionLocal
+        from models import Node, NodeHealthSample
+
+        admin_hdrs = {"X-Telegram-Init-Data": self._init_data(9999, "admin")}
+        now = datetime.utcnow().replace(microsecond=0)
+
+        s = SessionLocal()
+        try:
+            s.add(
+                Node(
+                    code="pl",
+                    name="Poland",
+                    host="pl.example.test",
+                    vless_port=443,
+                    reality_sni="www.orange.pl",
+                    reality_pbk="pbk-pl",
+                    reality_sid="sid-pl",
+                    panel_base_url="https://pl.example.test:8444",
+                    panel_path="/panel",
+                    panel_user="admin",
+                    panel_pass="pass",
+                    inbound_id=7,
+                    enabled=True,
+                    network_rx_bytes_total=1_500_000_000,
+                    network_tx_bytes_total=900_000_000,
+                    network_rx_mbps=420.0,
+                    network_tx_mbps=180.0,
+                    network_total_mbps=600.0,
+                )
+            )
+            s.add(
+                NodeHealthSample(
+                    node_code="pl",
+                    sampled_at=now - timedelta(hours=2),
+                    network_rx_mbps=500.0,
+                    network_tx_mbps=280.0,
+                    network_total_mbps=780.0,
+                    is_healthy=True,
+                    score=95.0,
+                )
+            )
+            s.commit()
+        finally:
+            s.close()
+
+        response = self.client.get("/api/admin/nodes/health", headers=admin_hdrs)
+        self.assertEqual(response.status_code, 200, response.text)
+        rows = response.json().get("nodes") or []
+        pl = next(row for row in rows if row.get("code") == "pl")
+        self.assertEqual(pl["network_rx_bytes_total"], 1_500_000_000)
+        self.assertEqual(pl["network_tx_bytes_total"], 900_000_000)
+        self.assertAlmostEqual(float(pl["network_total_mbps"] or 0.0), 600.0, places=2)
+        self.assertAlmostEqual(float(pl["network_peak_mbps_24h"] or 0.0), 780.0, places=2)
+        self.assertAlmostEqual(float(pl["network_utilization_percent"] or 0.0), 60.0, places=2)
+        self.assertAlmostEqual(float(pl["network_peak_utilization_percent_24h"] or 0.0), 78.0, places=2)
+        self.assertEqual(float(pl["network_port_capacity_mbps"] or 0.0), 1000.0)
 
     def test_api_events_accept_extended_funnel_event_names(self) -> None:
         user_hdrs = {"X-Telegram-Init-Data": self._init_data(1001, "alice")}
