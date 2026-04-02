@@ -2546,6 +2546,214 @@ class ApiAuthAndTicketsTests(unittest.TestCase):
         self.assertAlmostEqual(float(pl["network_peak_utilization_percent_24h"] or 0.0), 78.0, places=2)
         self.assertEqual(float(pl["network_port_capacity_mbps"] or 0.0), 1000.0)
 
+    def test_admin_nodes_health_exposes_live_online_keys_and_connections(self) -> None:
+        from db import SessionLocal
+        from models import Node
+
+        admin_hdrs = {"X-Telegram-Init-Data": self._init_data(9999, "admin")}
+
+        s = SessionLocal()
+        try:
+            s.add(
+                Node(
+                    code="it",
+                    name="Italy",
+                    host="it.example.test",
+                    vless_port=443,
+                    reality_sni="www.tim.it",
+                    reality_pbk="pbk-it",
+                    reality_sid="sid-it",
+                    panel_base_url="https://it.example.test:8444",
+                    panel_path="/panel",
+                    panel_user="admin",
+                    panel_pass="pass",
+                    inbound_id=7,
+                    enabled=True,
+                )
+            )
+            s.commit()
+        finally:
+            s.close()
+
+        class FakePanel:
+            async def login(self):
+                return True
+
+            async def close(self):
+                return True
+
+            async def get_node_online_summaries(self, *, node_codes=None):
+                self.node_codes = list(node_codes or [])
+                return {
+                    "it": {
+                        "online_keys_now": 2,
+                        "online_connections_now": 5,
+                    }
+                }
+
+        original_panel = self.api.ControlPanel
+        self.api.ControlPanel = FakePanel
+        try:
+            response = self.client.get("/api/admin/nodes/health", headers=admin_hdrs)
+            self.assertEqual(response.status_code, 200, response.text)
+            rows = response.json().get("nodes") or []
+            it = next(row for row in rows if row.get("code") == "it")
+            self.assertEqual(int(it["online_keys_now"] or 0), 2)
+            self.assertEqual(int(it["online_connections_now"] or 0), 5)
+        finally:
+            self.api.ControlPanel = original_panel
+
+    def test_admin_user_card_exposes_online_now_summary_and_current_nodes(self) -> None:
+        from db import SessionLocal
+        from models import Node, User, UserNode
+
+        admin_hdrs = {"X-Telegram-Init-Data": self._init_data(9999, "admin")}
+
+        s = SessionLocal()
+        try:
+            user = s.query(User).filter_by(tg_id=1001).first()
+            assert user is not None
+            user.sub_token = "subtoken-1001"
+            pl = Node(
+                code="pl",
+                name="Poland",
+                host="pl.example.test",
+                vless_port=443,
+                reality_sni="www.orange.pl",
+                reality_pbk="pbk-pl",
+                reality_sid="sid-pl",
+                panel_base_url="https://pl.example.test:8444",
+                panel_path="/panel",
+                panel_user="admin",
+                panel_pass="pass",
+                inbound_id=1,
+                enabled=True,
+            )
+            us = Node(
+                code="us",
+                name="USA",
+                host="us.example.test",
+                vless_port=443,
+                reality_sni="www.att.com",
+                reality_pbk="pbk-us",
+                reality_sid="sid-us",
+                panel_base_url="https://us.example.test:8444",
+                panel_path="/panel",
+                panel_user="admin",
+                panel_pass="pass",
+                inbound_id=2,
+                enabled=True,
+            )
+            nl = Node(
+                code="nl",
+                name="Netherlands",
+                host="nl.example.test",
+                vless_port=443,
+                reality_sni="www.kpn.com",
+                reality_pbk="pbk-nl",
+                reality_sid="sid-nl",
+                panel_base_url="https://nl.example.test:8444",
+                panel_path="/panel",
+                panel_user="admin",
+                panel_pass="pass",
+                inbound_id=3,
+                enabled=True,
+            )
+            s.add_all([pl, us, nl])
+            s.flush()
+            s.add_all(
+                [
+                    UserNode(tg_id=1001, node_id=pl.id, client_uuid=str(user.uuid), panel_email=str(user.email)),
+                    UserNode(tg_id=1001, node_id=us.id, client_uuid=str(user.uuid), panel_email=str(user.email)),
+                    UserNode(tg_id=1001, node_id=nl.id, client_uuid=str(user.uuid), panel_email=str(user.email)),
+                ]
+            )
+            s.commit()
+        finally:
+            s.close()
+
+        class FakePanel:
+            async def login(self):
+                return True
+
+            async def close(self):
+                return True
+
+            async def get_user_key_snapshots(self, *, tg_id: int, node_codes=None):
+                self.tg_id = tg_id
+                self.node_codes = list(node_codes or [])
+                return [
+                    {
+                        "node_code": "pl",
+                        "node_name": "Poland",
+                        "node_host": "pl.example.test",
+                        "client": {"id": "pl-client", "enable": True, "subId": "subtoken-1001"},
+                        "runtime": {
+                            "enable": True,
+                            "online": True,
+                            "up": 100,
+                            "down": 200,
+                            "total": 300,
+                            "ip_count": 3,
+                            "last_online_at": "2030-01-01T00:00:00Z",
+                            "last_online_age_seconds": 5,
+                        },
+                        "error": "",
+                    },
+                    {
+                        "node_code": "us",
+                        "node_name": "USA",
+                        "node_host": "us.example.test",
+                        "client": {"id": "us-client", "enable": True, "subId": "subtoken-1001"},
+                        "runtime": {
+                            "enable": True,
+                            "online": True,
+                            "up": 50,
+                            "down": 75,
+                            "total": 125,
+                            "ip_count": None,
+                            "last_online_at": "2030-01-01T00:00:02Z",
+                            "last_online_age_seconds": 7,
+                        },
+                        "error": "",
+                    },
+                    {
+                        "node_code": "nl",
+                        "node_name": "Netherlands",
+                        "node_host": "nl.example.test",
+                        "client": {"id": "nl-client", "enable": True, "subId": "subtoken-1001"},
+                        "runtime": {
+                            "enable": True,
+                            "online": False,
+                            "up": 25,
+                            "down": 25,
+                            "total": 50,
+                            "ip_count": 0,
+                            "last_online_at": "2030-01-01T00:10:00Z",
+                            "last_online_age_seconds": 600,
+                        },
+                        "error": "",
+                    },
+                ]
+
+        original_panel = self.api.ControlPanel
+        self.api.ControlPanel = FakePanel
+        try:
+            response = self.client.get("/api/admin/users/1001", headers=admin_hdrs)
+            self.assertEqual(response.status_code, 200, response.text)
+            body = response.json()
+            summary = body.get("summary") or {}
+            self.assertEqual(int(summary.get("online_keys_now") or 0), 2)
+            self.assertEqual(int(summary.get("online_connections_now") or 0), 4)
+            self.assertEqual(summary.get("online_node_codes_now"), ["pl", "us"])
+
+            key_rows = {str(row.get("node_code") or ""): row for row in body.get("keys") or []}
+            self.assertEqual(int(key_rows["pl"].get("current_connections") or 0), 3)
+            self.assertEqual(int(key_rows["us"].get("current_connections") or 0), 1)
+            self.assertEqual(int(key_rows["nl"].get("current_connections") or 0), 0)
+        finally:
+            self.api.ControlPanel = original_panel
+
     def test_api_events_accept_extended_funnel_event_names(self) -> None:
         user_hdrs = {"X-Telegram-Init-Data": self._init_data(1001, "alice")}
 

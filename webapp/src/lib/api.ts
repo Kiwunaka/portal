@@ -496,6 +496,9 @@ export type AdminUserCard = {
     nodes_total: number;
     nodes_with_client: number;
     nodes_online: number;
+    online_keys_now: number;
+    online_connections_now: number;
+    online_node_codes_now: string[];
     nodes_enabled: number;
     subid_mismatch_count: number;
     traffic_up_bytes: number;
@@ -516,6 +519,7 @@ export type AdminUserKey = {
   panel_email?: string;
   enabled: boolean;
   online?: boolean | null;
+  current_connections: number;
   sub_id?: string;
   expected_sub_id?: string;
   sub_id_match?: boolean;
@@ -632,6 +636,8 @@ export type AdminNodeHealthRow = {
   accepting_new_clients: boolean;
   is_draining: boolean;
   mapped_users: number;
+  online_keys_now: number;
+  online_connections_now: number;
   is_healthy: boolean;
   health_score: number;
   panel_latency_ms?: number | null;
@@ -1529,6 +1535,8 @@ function normalizeAdminNodeHealthRow(payload: Partial<AdminNodeHealthRow> | null
     accepting_new_clients: Boolean(data.accepting_new_clients),
     is_draining: Boolean(data.is_draining),
     mapped_users: Number(data.mapped_users || 0),
+    online_keys_now: Number(data.online_keys_now || 0),
+    online_connections_now: Number(data.online_connections_now || 0),
     is_healthy: Boolean(data.is_healthy),
     health_score: Number(data.health_score || 0),
     panel_latency_ms: data.panel_latency_ms ?? null,
@@ -1596,10 +1604,54 @@ function normalizeAdminUserCard(payload: Partial<AdminUserCard> | null | undefin
       observer_updated_at: user.observer_updated_at ?? null,
     },
     tickets: Array.isArray(data.tickets) ? data.tickets : [],
-    keys: Array.isArray(data.keys) ? data.keys : [],
+    keys: Array.isArray(data.keys)
+      ? data.keys.map((row) => ({
+          node_code: String(row.node_code || ""),
+          node_name: row.node_name ?? "",
+          node_host: row.node_host ?? "",
+          exists: Boolean(row.exists),
+          client_uuid: row.client_uuid ?? "",
+          panel_email: row.panel_email ?? "",
+          enabled: Boolean(row.enabled),
+          online: row.online ?? null,
+          current_connections: Number(row.current_connections || 0),
+          sub_id: row.sub_id ?? "",
+          expected_sub_id: row.expected_sub_id ?? "",
+          sub_id_match: Boolean(row.sub_id_match),
+          up_bytes: Number(row.up_bytes || 0),
+          down_bytes: Number(row.down_bytes || 0),
+          total_bytes: Number(row.total_bytes || 0),
+          total_gb: Number(row.total_gb || 0),
+          last_online_at: row.last_online_at ?? null,
+          last_online_age_seconds: row.last_online_age_seconds == null ? null : Number(row.last_online_age_seconds),
+          vless_link: row.vless_link ?? "",
+          panel_error: row.panel_error ?? null,
+          policy: row.policy ?? null,
+        }))
+      : [],
     key_history: Array.isArray(data.key_history) ? data.key_history : [],
     key_policies: Array.isArray(data.key_policies) ? data.key_policies : [],
     admin_actions: Array.isArray(data.admin_actions) ? data.admin_actions : [],
+    summary: data.summary
+      ? {
+          nodes_total: Number(data.summary.nodes_total || 0),
+          nodes_with_client: Number(data.summary.nodes_with_client || 0),
+          nodes_online: Number(data.summary.nodes_online || 0),
+          online_keys_now: Number(data.summary.online_keys_now || 0),
+          online_connections_now: Number(data.summary.online_connections_now || 0),
+          online_node_codes_now: Array.isArray(data.summary.online_node_codes_now)
+            ? data.summary.online_node_codes_now.map((value) => String(value || ""))
+            : [],
+          nodes_enabled: Number(data.summary.nodes_enabled || 0),
+          subid_mismatch_count: Number(data.summary.subid_mismatch_count || 0),
+          traffic_up_bytes: Number(data.summary.traffic_up_bytes || 0),
+          traffic_down_bytes: Number(data.summary.traffic_down_bytes || 0),
+          traffic_total_bytes: Number(data.summary.traffic_total_bytes || 0),
+          traffic_total_gb: Number(data.summary.traffic_total_gb || 0),
+          panel_state: String(data.summary.panel_state || "ok"),
+          panel_error: data.summary.panel_error ?? null,
+        }
+      : undefined,
     observer: normalizeAdminObserverBlock(data.observer),
   } as AdminUserCard;
 }

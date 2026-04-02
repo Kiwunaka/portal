@@ -389,15 +389,26 @@ export default function AdminNodesPage() {
                 </div>
               </div>
 
-              <div className="mt-3 grid grid-cols-1 gap-2 text-center sm:grid-cols-3">
+              <div className="mt-3 grid grid-cols-1 gap-2 text-center sm:grid-cols-4">
                 <div className="rounded-lg bg-white/50 p-2 dark:bg-white/5">
                   <p className="text-xs text-slate-500">Назначено в POKROV</p>
                   <p className="text-sm font-bold">{node.mapped_users}</p>
                 </div>
                 <div className="rounded-lg bg-white/50 p-2 dark:bg-white/5">
+                  <p className="text-xs text-slate-500">Ключей online сейчас</p>
+                  <p className="text-sm font-bold">{node.online_keys_now}</p>
+                </div>
+                <div className="rounded-lg bg-white/50 p-2 dark:bg-white/5">
+                  <p className="text-xs text-slate-500">Подключений сейчас</p>
+                  <p className="text-sm font-bold">{node.online_connections_now}</p>
+                </div>
+                <div className="rounded-lg bg-white/50 p-2 dark:bg-white/5">
                   <p className="text-xs text-slate-500">CPU</p>
                   <p className="text-sm font-bold">{formatPercent(node.cpu_percent, 0)}</p>
                 </div>
+              </div>
+
+              <div className="mt-3 grid grid-cols-1 gap-2 text-center sm:grid-cols-1">
                 <div className="rounded-lg bg-white/50 p-2 dark:bg-white/5">
                   <p className="text-xs text-slate-500">RAM</p>
                   <p className="text-sm font-bold">{formatMbPair(node.memory_used_mb, node.memory_total_mb)}</p>

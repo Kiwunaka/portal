@@ -1040,6 +1040,8 @@ export default function AdminUsersPage() {
                     <div className="grid gap-2 text-xs sm:grid-cols-2">
                       <p>Нод с клиентом: <strong>{summary.nodes_with_client}/{summary.nodes_total}</strong></p>
                       <p>Нод в сети: <strong>{summary.nodes_online}</strong></p>
+                      <p>Ключей online сейчас: <strong>{summary.online_keys_now}</strong></p>
+                      <p>Подключений сейчас: <strong>{summary.online_connections_now}</strong></p>
                       <p>Нод в выдаче: <strong>{summary.nodes_enabled}</strong></p>
                       <p>Расхождения sub ID: <strong>{summary.subid_mismatch_count}</strong></p>
                       <p>Общий трафик: <strong>{fmtTraffic(summary.traffic_total_bytes)}</strong></p>
@@ -1047,6 +1049,13 @@ export default function AdminUsersPage() {
                     </div>
                   ) : (
                     <p className="text-xs text-slate-500">Сводка по этому пользователю пока недоступна.</p>
+                  )}
+                  {summary?.online_node_codes_now?.length ? (
+                    <p className="mt-2 text-xs text-slate-500">
+                      Сейчас online на нодах: <strong>{summary.online_node_codes_now.map((code) => String(code || "").toUpperCase()).join(", ")}</strong>
+                    </p>
+                  ) : (
+                    <p className="mt-2 text-xs text-slate-500">Сейчас online ноды не видны: ключ либо офлайн, либо runtime ещё не обновился.</p>
                   )}
                 </div>
                 <h3 className="mt-4 font-display text-xl font-semibold">Обращения поддержки</h3>
@@ -1100,6 +1109,7 @@ export default function AdminUsersPage() {
                       </div>
                     </div>
                   )}
+                  <p className="mt-3 text-[11px] text-slate-500">Эта телеметрия показывает, где ключ видели недавно. Статус "сейчас online" берётся отдельно из live runtime панели.</p>
                 </div>
                 <div className="mt-2 space-y-2">
                   {(selected.tickets || []).map((ticket) => (
@@ -1143,6 +1153,7 @@ export default function AdminUsersPage() {
                           </span>
                         </div>
                         <p className="mt-1">В сети: <strong>{fmtOnline(key.online)}</strong> | Включён: <strong>{key.enabled ? "да" : "нет"}</strong></p>
+                        <p>Подключений сейчас: <strong>{key.current_connections}</strong></p>
                         <p>Текущий sub ID: <strong>{key.sub_id || "-"}</strong></p>
                         <p>Ожидаемый sub ID: <strong>{key.expected_sub_id || "-"}</strong> | Совпадает: <strong>{key.sub_id_match ? "да" : "нет"}</strong></p>
                         <p>Трафик: <strong>{fmtTraffic(key.total_bytes)}</strong> ({key.up_bytes} up / {key.down_bytes} down)</p>

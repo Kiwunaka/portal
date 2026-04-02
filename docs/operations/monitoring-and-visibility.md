@@ -99,6 +99,8 @@ Required node-level visibility:
 
 - freshness state for each node
 - sustained CPU / RAM / disk pressure alerts
+- live `online_keys_now` count per node from panel runtime
+- live `online_connections_now` count per node from panel runtime `ip_count` with a per-key fallback when the panel omits it
 - current Ethernet RX/TX throughput in `Mbps`
 - 24h peak Ethernet throughput in `Mbps`
 - port-capacity utilization against the default `1 Gbit/s` node uplink
@@ -115,6 +117,7 @@ Operator-facing rendering rule:
 - distinguish real `0` from missing telemetry; `RAM`, disk totals, and free space must show that metrics did not arrive when totals are absent
 - current node-card latency and dataplane probe in admin are collected from the control-plane host `brain`
 - do not confuse the `brain -> node` control-plane probe with the separate external RU probe result
+- node cards should show both `online_keys_now` and `online_connections_now`; these are live runtime numbers, not observer-lite history
 - current Ethernet throughput in admin comes from the live panel/server metrics collected by `brain`
 - if network counters are missing, the admin surface must show missing telemetry rather than `0 Mbps`
 - use the current and 24h peak Ethernet view for capacity planning, server purchase decisions, and early warning before saturating the `1 Gbit/s` uplink
@@ -218,6 +221,14 @@ Useful operator-visible fields include:
 - `last_ip` or equivalent last seen public IP field
 - current subscription status
 - assigned node or recent node history when available
+- current `online now` node list for the key from panel runtime
+- recent observer node/IP history as a separate "seen recently" layer
+
+Operator interpretation rule for shared-family keys:
+
+- "online now" should be treated as live key/runtime presence on one or more nodes
+- observer-lite should be treated as recent evidence of where the key was seen, not as proof of a current active session
+- without a separate per-device identity model, one shared key can show multiple simultaneous runtime connections but still represents one subscription identity
 - effective admin status: `active`, `expired`, `blocked`, `manual_test`
 - observer state: `ok`, `watch`, `suspicious`
 - observer reasons, recent IPs, recent nodes, and last observed time

@@ -339,6 +339,45 @@ class ControlPanel:
             )
         return rows
 
+    async def get_node_online_summaries(self, *, node_codes: list[str] | None = None) -> dict[str, dict]:
+        nodes = await self.refresh()
+        selected_nodes: list = []
+        seen: set[str] = set()
+        if node_codes:
+            groups = self._requested_node_groups(nodes, node_codes)
+            for _group_key, candidates in groups:
+                for n in candidates:
+                    code = str(getattr(n, "code", "") or "").strip()
+                    if not code or code in seen:
+                        continue
+                    seen.add(code)
+                    selected_nodes.append(n)
+        else:
+            selected_nodes = list(nodes)
+
+        async def _collect(node):
+            code = str(getattr(node, "code", "") or "").strip()
+            if not code:
+                return None
+            try:
+                summary = await self._clients[code].get_node_online_summary()
+            except Exception as exc:
+                summary = {
+                    "online_keys_now": 0,
+                    "online_connections_now": 0,
+                    "panel_error": str(exc)[:200],
+                }
+            return code, summary
+
+        rows = await asyncio.gather(*[_collect(n) for n in selected_nodes], return_exceptions=False)
+        out: dict[str, dict] = {}
+        for row in rows:
+            if not row:
+                continue
+            code, summary = row
+            out[str(code)] = dict(summary or {})
+        return out
+
     async def _resolve_target_node(self, node_code: str):
         wanted = str(node_code or "").strip().lower()
         if not wanted:

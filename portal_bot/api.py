@@ -6345,10 +6345,12 @@ async def _admin_user_keys_state(user: User, *, nodes: list) -> dict[str, Any]:
 
     keys: list[dict[str, Any]] = []
     online_count = 0
+    online_connections_now = 0
     enabled_count = 0
     total_up = 0
     total_down = 0
     mismatch_count = 0
+    online_node_codes_now: list[str] = []
 
     for row in panel_rows:
         code = str(row.get("node_code") or "").strip()
@@ -6366,6 +6368,15 @@ async def _admin_user_keys_state(user: User, *, nodes: list) -> dict[str, Any]:
         total = int((runtime or {}).get("total", up + down) or (up + down))
         last_online_at = str((runtime or {}).get("last_online_at") or "") or None
         last_online_age_seconds = (runtime or {}).get("last_online_age_seconds")
+        ip_count_raw = (runtime or {}).get("ip_count")
+        current_connections = 0
+        if ip_count_raw is not None:
+            try:
+                current_connections = max(0, int(ip_count_raw))
+            except Exception:
+                current_connections = 0
+        elif online is True:
+            current_connections = 1
         policy = policy_by_code.get(code.lower(), {})
         link = (
             _generate_vless_link(user_uuid=str(user.uuid or ""), node=node, name=_node_label_ru(node.code, node.name))
@@ -6374,6 +6385,9 @@ async def _admin_user_keys_state(user: User, *, nodes: list) -> dict[str, Any]:
         )
         if online is True:
             online_count += 1
+            online_connections_now += current_connections
+            if code:
+                online_node_codes_now.append(code)
         if enabled:
             enabled_count += 1
         if exists and not sub_id_match:
@@ -6390,6 +6404,7 @@ async def _admin_user_keys_state(user: User, *, nodes: list) -> dict[str, Any]:
                 "panel_email": str(client.get("email", "") or ""),
                 "enabled": enabled,
                 "online": online,
+                "current_connections": int(current_connections),
                 "sub_id": current_sub_id,
                 "expected_sub_id": expected_sub_id,
                 "sub_id_match": sub_id_match,
@@ -6412,6 +6427,9 @@ async def _admin_user_keys_state(user: User, *, nodes: list) -> dict[str, Any]:
             "nodes_total": int(len(keys)),
             "nodes_with_client": int(sum(1 for k in keys if bool(k.get("exists")))),
             "nodes_online": int(online_count),
+            "online_keys_now": int(online_count),
+            "online_connections_now": int(online_connections_now),
+            "online_node_codes_now": sorted(set(online_node_codes_now)),
             "nodes_enabled": int(enabled_count),
             "subid_mismatch_count": int(mismatch_count),
             "traffic_up_bytes": int(total_up),
@@ -8438,18 +8456,33 @@ async def admin_nodes_health(x_telegram_init_data: str = Header(default="")) -> 
                 .all()
             )
         }
-        return {
-            "nodes": [
-                _serialize_admin_node(
-                    n,
-                    mapped_users=mapped_counts.get(int(n.id), 0),
-                    network_peak_mbps_24h=peak_by_code.get(str(n.code or ""), None),
-                )
-                for n in rows
-            ]
-        }
     finally:
         s.close()
+
+    online_summary_by_code: dict[str, dict[str, Any]] = {}
+    panel = ControlPanel()
+    try:
+        await panel.login()
+        online_summary_by_code = await panel.get_node_online_summaries(
+            node_codes=[str(getattr(n, "code", "") or "").strip() for n in rows if str(getattr(n, "code", "") or "").strip()]
+        )
+    except Exception:
+        online_summary_by_code = {}
+    finally:
+        await panel.close()
+
+    return {
+        "nodes": [
+            _serialize_admin_node(
+                n,
+                mapped_users=mapped_counts.get(int(n.id), 0),
+                network_peak_mbps_24h=peak_by_code.get(str(n.code or ""), None),
+                online_keys_now=int((online_summary_by_code.get(str(n.code or ""), {}) or {}).get("online_keys_now") or 0),
+                online_connections_now=int((online_summary_by_code.get(str(n.code or ""), {}) or {}).get("online_connections_now") or 0),
+            )
+            for n in rows
+        ]
+    }
 
 
 async def _build_admin_node_drift_report(*, only_codes: list[str] | None = None) -> dict:
@@ -9192,6 +9225,8 @@ def _serialize_admin_node(
     *,
     mapped_users: int = 0,
     network_peak_mbps_24h: float | None = None,
+    online_keys_now: int = 0,
+    online_connections_now: int = 0,
 ) -> dict[str, Any]:
     stale_after_seconds = max(300, int(os.getenv("NODE_METRICS_STALE_AFTER_SECONDS", "900")))
     now = _utcnow()
@@ -9234,6 +9269,8 @@ def _serialize_admin_node(
         "accepting_new_clients": bool(getattr(n, "accepting_new_clients", True)),
         "is_draining": bool(getattr(n, "is_draining", False)),
         "mapped_users": int(mapped_users),
+        "online_keys_now": int(online_keys_now),
+        "online_connections_now": int(online_connections_now),
         "is_healthy": bool(getattr(n, "is_healthy", True)),
         "health_score": float(getattr(n, "health_score", 0.0) or 0.0),
         "panel_latency_ms": getattr(n, "panel_latency_ms", None),

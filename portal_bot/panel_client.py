@@ -539,6 +539,90 @@ class PanelClient:
             }
         return None
 
+    async def get_node_online_summary(self) -> dict[str, int]:
+        """
+        Return best-effort live summary for the configured inbound on this node.
+
+        Metrics:
+        - online_keys_now: distinct keys currently online on this node
+        - online_connections_now: current connection estimate using panel ip_count,
+          with a fallback of 1 per online key when ip_count is missing
+        """
+        inbounds = await self._get_inbounds()
+        target_inbound = None
+        for inb in inbounds:
+            if inb.get("id") == self.node.inbound_id:
+                target_inbound = inb
+                break
+        if not isinstance(target_inbound, dict):
+            return {
+                "online_keys_now": 0,
+                "online_connections_now": 0,
+            }
+
+        settings = json.loads(target_inbound.get("settings", "{}"))
+        clients = settings.get("clients", []) or []
+        stats_by_email: dict[str, dict] = {}
+        for stat in target_inbound.get("clientStats", []) or []:
+            email = str((stat or {}).get("email", "") or "").strip()
+            if email:
+                stats_by_email[email] = stat
+
+        online_emails_fetched = False
+        online_emails: set[str] = set()
+        online_keys_now = 0
+        online_connections_now = 0
+
+        for client in clients:
+            email = str((client or {}).get("email", "") or "").strip()
+            stat = stats_by_email.get(email)
+            online = None
+            ip_count_value = None
+            last_online_epoch = None
+
+            if isinstance(stat, dict):
+                for key in ("online", "isOnline", "is_online"):
+                    if key in stat:
+                        online = self._as_bool(stat.get(key))
+                        break
+                if online is None:
+                    ip_count = stat.get("ipCount", stat.get("ip_count"))
+                    if ip_count is not None:
+                        try:
+                            ip_count_value = max(0, int(ip_count))
+                            online = ip_count_value > 0
+                        except Exception:
+                            online = None
+                            ip_count_value = None
+                for key in ("lastOnlineTime", "lastOnline", "last_online", "lastSeen", "last_seen"):
+                    if key in stat:
+                        last_online_epoch = self._as_epoch_seconds(stat.get(key))
+                        if last_online_epoch is not None:
+                            break
+
+            if online is None and email:
+                if not online_emails_fetched:
+                    online_emails_fetched, online_emails = await self._get_online_emails()
+                if online_emails_fetched:
+                    online = email in online_emails
+            if online is None and last_online_epoch is not None:
+                recent_sec = max(15, self._to_int(os.getenv("PANEL_ONLINE_RECENT_SECONDS"), 90))
+                online = (int(datetime.now(timezone.utc).timestamp()) - int(last_online_epoch)) <= recent_sec
+
+            if online is not True:
+                continue
+
+            online_keys_now += 1
+            if ip_count_value is not None:
+                online_connections_now += max(0, int(ip_count_value))
+            else:
+                online_connections_now += 1
+
+        return {
+            "online_keys_now": int(online_keys_now),
+            "online_connections_now": int(online_connections_now),
+        }
+
     async def add_client(
         self,
         *,
