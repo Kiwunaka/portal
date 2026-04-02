@@ -2,6 +2,18 @@
 
 import AppRouteLink from "@/components/app-route-link";
 import SubscriptionQrCard from "@/components/subscription-qr-card";
+import {
+  getAccessState,
+  getDeviceLimit,
+  getNextResetAt,
+  getTrafficLimitGb,
+  isFreeMonthlyState,
+  isPaidUnlimitedState,
+  isSoftModeState,
+  isTrialPremiumState,
+  resolvePlanLabel,
+  resolveTrafficStatusText,
+} from "@/lib/access-policy";
 import { fetchPublicPlans, type PlanCatalogRow } from "@/lib/api";
 import { getCopyText, getPortalPublicConfig, normalizePlanCode } from "@/lib/portal";
 import { usePortalSession } from "@/lib/session";
@@ -12,10 +24,10 @@ const config = getPortalPublicConfig(process.env as Record<string, string | unde
 const COMPARISON_ROWS = [
   { metric: "Устройства", start: "1", standard: "До 5", long: "До 5" },
   { metric: "Страны", start: "NL", standard: "IT, NL, PL, US", long: "IT, NL, PL, US" },
-  { metric: "Срок", start: "Тест / старт", standard: "1 или 3 месяца", long: "6, 9 или 12 месяцев" },
+  { metric: "Срок", start: "Старт", standard: "1 или 3 месяца", long: "6, 9 или 12 месяцев" },
   {
     metric: "Для кого",
-    start: "Проверить сервис и подключение",
+    start: "Быстро проверить сервис",
     standard: "Обычный рабочий режим",
     long: "Редкие продления и лучшая цена",
   },
@@ -76,6 +88,13 @@ function nodePolicyLabel(value: string | null | undefined): string {
   return "Актуальный пул";
 }
 
+function formatDate(value?: string | null): string {
+  if (!value) return "—";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  return date.toLocaleString("ru-RU");
+}
+
 export default function SubscriptionPage() {
   const { user, dash } = usePortalSession();
   const [plans, setPlans] = useState<PlanCatalogRow[]>([]);
@@ -110,7 +129,14 @@ export default function SubscriptionPage() {
   const activeColumn = planColumn(dash?.current_plan_code || dash?.sub_type || "");
   const planCards = useMemo(() => (plans.length ? plans : fallbackPlans()), [plans]);
   const connectionLink = String(dash?.subscription_url || user?.subscription_url || "").trim();
-  const isTrialLike = ["FREE", "TRIAL", "BONUS"].includes(String(dash?.sub_type || "").toUpperCase()) || String(dash?.current_plan_code || "") === "trial";
+  const accessState = getAccessState(dash, user);
+  const paidMode = isPaidUnlimitedState(accessState);
+  const trialMode = isTrialPremiumState(accessState);
+  const freeMode = isFreeMonthlyState(accessState);
+  const softMode = isSoftModeState(accessState);
+  const nextResetAt = getNextResetAt(dash, user);
+  const deviceLimit = getDeviceLimit(dash, user);
+  const freeLimitGb = getTrafficLimitGb(dash, user);
 
   const copyLink = async () => {
     if (!connectionLink) return;
@@ -133,7 +159,7 @@ export default function SubscriptionPage() {
         <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">
           {getCopyText(
             "webapp.subscription.subtitle",
-            "Здесь вы можете посмотреть текущий тариф, срок доступа и ссылку подключения, а при необходимости быстро продлить подписку.",
+            "Здесь видно текущий режим доступа, ссылка подключения и варианты продления.",
           )}
         </p>
         <div className="mt-5 flex flex-wrap gap-3">
@@ -147,33 +173,46 @@ export default function SubscriptionPage() {
         <p className="mt-4 text-xs text-slate-500">Пользователь: {user?.username ? `@${user.username}` : `ID ${user?.tg_id || "—"}`}</p>
       </section>
 
-      {isTrialLike ? (
-        <section className="grid gap-5 lg:grid-cols-2">
-          <article className="glass-card p-6">
-            <p className="font-mono text-xs uppercase tracking-[0.14em] text-emerald-500">тестовый период</p>
-            <h2 className="mt-2 font-display text-3xl font-bold">Подписка и следующий шаг</h2>
-            <p className="mt-3 text-sm text-slate-600 dark:text-slate-300">
-              Чтобы забыть про лимиты и спокойно пользоваться сервисом каждый день, переходите на полный доступ.
-            </p>
-          </article>
-          <article className="glass-card p-6">
-            <p className="font-mono text-xs uppercase tracking-[0.14em] text-slate-500">полный доступ</p>
-            <h2 className="mt-2 font-display text-3xl font-bold">Что изменится после продления</h2>
-            <p className="mt-3 text-sm text-slate-600 dark:text-slate-300">
-              Полный доступ открывает до пяти устройств, весь пул локаций и спокойное ежедневное использование без
-              лишних ограничений.
-            </p>
-          </article>
-        </section>
-      ) : null}
+      <section className="grid gap-5 lg:grid-cols-2">
+        <article className="glass-card p-6">
+          <p className="font-mono text-xs uppercase tracking-[0.14em] text-emerald-500">что доступно сейчас</p>
+          <h2 className="mt-2 font-display text-3xl font-bold">{resolvePlanLabel(dash, user)}</h2>
+          <div className="mt-3 space-y-2 text-sm text-slate-600 dark:text-slate-300">
+            <p>Трафик: {resolveTrafficStatusText(dash, user)}</p>
+            <p>Устройства: до {deviceLimit}</p>
+            <p>Срок доступа: {formatDate(dash?.expiry_at)}</p>
+            {freeMode && nextResetAt ? <p>Следующий сброс: {formatDate(nextResetAt)}</p> : null}
+          </div>
+        </article>
+        <article className="glass-card p-6">
+          <p className="font-mono text-xs uppercase tracking-[0.14em] text-slate-500">логика тарифов</p>
+          <h2 className="mt-2 font-display text-3xl font-bold">
+            {paidMode
+              ? "Paid уже даёт безлимит и до 5 устройств"
+              : trialMode
+                ? "После премиум-периода включится Free Monthly"
+                : softMode
+                  ? "Сейчас профиль в мягком режиме"
+                  : "Free Monthly остаётся режимом с квотой"}
+          </h2>
+          <p className="mt-3 text-sm text-slate-600 dark:text-slate-300">
+            {paidMode
+              ? "На paid не показываем остаток в гигабайтах: это безлимитный доступ."
+              : trialMode
+                ? "Премиум-период нужен для старта. После него профиль автоматически переходит в бесплатный режим 5 ГБ в месяц."
+                : softMode
+                  ? "Мягкий режим включается после исчерпания месячной квоты и снимается следующим сбросом."
+                  : `Free Monthly — это ${freeLimitGb || 5} ГБ в месяц и до ${deviceLimit} устройства.`}
+          </p>
+        </article>
+      </section>
 
       <section className="grid gap-5 lg:grid-cols-2">
         <article className="glass-card p-6">
           <p className="font-mono text-xs uppercase tracking-[0.14em] text-emerald-500">ссылка подключения</p>
           <h2 className="mt-2 font-display text-3xl font-bold">Одна ссылка для всех подключений</h2>
           <p className="mt-3 text-sm text-slate-600 dark:text-slate-300">
-            Используйте ее в приложении или импортируйте в совместимый клиент. Это основной способ подключения через
-            {` `}
+            Используйте её в приложении или импортируйте в совместимый клиент через {` `}
             {config.connectUrl.replace(/^https?:\/\//, "")}.
           </p>
           <div className="mt-4 rounded-2xl border border-white/40 bg-white/50 p-4 text-xs text-slate-600 dark:border-white/10 dark:bg-white/5 dark:text-slate-300">
@@ -195,13 +234,10 @@ export default function SubscriptionPage() {
           <p className="font-mono text-xs uppercase tracking-[0.14em] text-slate-500">qr для подключения</p>
           <h2 className="mt-2 font-display text-3xl font-bold">Откройте на втором устройстве</h2>
           <p className="mt-3 text-sm text-slate-600 dark:text-slate-300">
-            Отсканируйте QR-код, чтобы быстро передать ссылку подключения на телефон, планшет или другой компьютер.
+            Отсканируйте QR-код, чтобы быстро передать ссылку на телефон, планшет или другой компьютер.
           </p>
           <div className="mt-4 flex flex-col items-start gap-3">
             <SubscriptionQrCard value={connectionLink} />
-            <p className="text-xs text-slate-500">
-              Если QR не нужен, можно просто скопировать ссылку подключения и открыть ее на нужном устройстве.
-            </p>
           </div>
         </article>
       </section>

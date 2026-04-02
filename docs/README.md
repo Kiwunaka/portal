@@ -1,11 +1,16 @@
 # POKROV Documentation Index
 
-Last updated: 2026-03-22
+Last updated: 2026-04-01
 
 This directory is split into two classes of material:
 
 - living source-of-truth documentation
 - historical, audit, and forensic records
+
+Legacy filename note:
+
+- some canonical docs still live under legacy filenames like `portal-vpn-product.md`, `portal-vpn-user-guide-ru.md`, and `portal-vpn-v1-spec.md`
+- those paths are still current for `POKROV VPN`; the filename is legacy, the content is not
 
 Use the role-based paths below first. If you need older context, go to the archive sections afterward.
 

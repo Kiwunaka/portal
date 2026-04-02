@@ -159,10 +159,11 @@ def _env_float(name: str, default: float) -> float:
 API_ENABLE_USAGE = env_bool("API_ENABLE_USAGE", default=False)
 AUTO_DOWNGRADE_TO_FREE = env_bool("AUTO_DOWNGRADE_TO_FREE", default=True)
 AUTO_FREE_DAYS = int(os.getenv("AUTO_FREE_DAYS", "3650"))
-FREE_TOTAL_GB = env_int("FREE_TOTAL_GB", 30)
+FREE_TOTAL_GB = env_int("FREE_TOTAL_GB", 5)
 FREE_LIMIT_IP = env_int("FREE_LIMIT_IP", 1)
 PAID_LIMIT_IP = env_int("PAID_LIMIT_IP", 5)
 FREE_SPEED_LIMIT_KBPS = env_int("FREE_SPEED_LIMIT_KBPS", 6250)
+FREE_SOFT_MODE_SPEED_LIMIT_KBPS = env_int("FREE_SOFT_MODE_SPEED_LIMIT_KBPS", 256)
 SUPPORT_USERNAME = (os.getenv("SUPPORT_USERNAME") or "pokrov_supportbot").lstrip("@")
 SUPPORT_USERNAME = (os.getenv("SUPPORT_BOT_USERNAME") or SUPPORT_USERNAME).lstrip("@")
 PUBLIC_CHANNEL = (os.getenv("PUBLIC_CHANNEL") or "pokrov_vpn").lstrip("@")
@@ -931,11 +932,17 @@ class DashboardResponse(BaseModel):
     tg_id: int
     sub_type: str
     current_plan_code: str | None = None
+    access_state: str
     is_active: bool
     expiry_at: str | None
     used_gb: float
     total_gb: float
     remaining_gb: float
+    traffic_policy: dict[str, Any]
+    traffic_limit_gb: float | None = None
+    traffic_remaining_gb: float | None = None
+    next_reset_at: str | None = None
+    soft_mode_active: bool = False
     active_sessions: int
     active_sessions_source: str | None = None
     device_limit: int
@@ -1071,6 +1078,9 @@ class AdminCampaignUpdateIn(BaseModel):
 def _plan_total_gb(user: User) -> int:
     st = (user.sub_type or "").upper()
     if st == "FREE":
+        plan_code = str(getattr(user, "current_plan_code", "") or "").strip().lower()
+        if plan_code == "trial":
+            return 0
         return max(0, int(FREE_TOTAL_GB))
     return 0
 
@@ -1097,6 +1107,8 @@ def _effective_free_speed_kbps(user: User) -> int:
     base = max(1, int(FREE_SPEED_LIMIT_KBPS))
     if (user.sub_type or "").upper() != "FREE":
         return base
+    if bool(getattr(user, "_free_soft_mode_active", False)):
+        return max(1, int(FREE_SOFT_MODE_SPEED_LIMIT_KBPS))
     if not CHANNEL_SPEED_BUMP_ENABLED:
         return base
     # If channel subscription is not confirmed, keep conservative speed profile.
@@ -1109,6 +1121,66 @@ def _gb_to_bytes(gb: int) -> int:
     if gb <= 0:
         return 0
     return int(gb) * 1024 * 1024 * 1024
+
+
+def _build_access_policy(*, user: User, used_bytes: int, now: datetime | None = None) -> dict[str, Any]:
+    current_now = now or _utcnow()
+    sub_type = str(getattr(user, "sub_type", "") or "").strip().upper()
+    plan_code = str(getattr(user, "current_plan_code", "") or "").strip().lower()
+    expiry = getattr(user, "expiry_at", None)
+    active_window = bool(getattr(user, "is_active", False) and expiry and expiry > current_now)
+    used_gb = round((int(used_bytes or 0) / (1024**3)), 3) if used_bytes else 0.0
+    next_reset_at = _safe_iso(getattr(user, "free_cycle_next_reset_at", None)) if sub_type == "FREE" else None
+
+    if sub_type == "FREE" and active_window and plan_code == "trial":
+        access_state = "bonus_premium" if getattr(user, "channel_bonus_claimed_at", None) else "trial_premium"
+        return {
+            "access_state": access_state,
+            "traffic_policy": {
+                "kind": "unlimited",
+                "label": "premium_unlimited",
+            },
+            "traffic_limit_gb": None,
+            "traffic_remaining_gb": None,
+            "next_reset_at": None,
+            "soft_mode_active": False,
+        }
+
+    if sub_type == "FREE":
+        limit_gb = float(max(0, int(FREE_TOTAL_GB)))
+        remaining_gb = max(round(limit_gb - used_gb, 3), 0.0) if limit_gb > 0 else 0.0
+        soft_mode_active = bool(limit_gb > 0 and int(used_bytes or 0) >= _gb_to_bytes(int(limit_gb)))
+        if active_window:
+            access_state = "free_soft_mode" if soft_mode_active else "free_monthly"
+        else:
+            access_state = "expired_or_blocked"
+        return {
+            "access_state": access_state,
+            "traffic_policy": {
+                "kind": "soft_limited" if soft_mode_active else "metered",
+                "label": "free_monthly",
+                "limit_gb": limit_gb,
+                "remaining_gb": remaining_gb,
+                "next_reset_at": next_reset_at,
+            },
+            "traffic_limit_gb": limit_gb,
+            "traffic_remaining_gb": remaining_gb,
+            "next_reset_at": next_reset_at,
+            "soft_mode_active": soft_mode_active,
+        }
+
+    access_state = "paid_unlimited" if active_window else "expired_or_blocked"
+    return {
+        "access_state": access_state,
+        "traffic_policy": {
+            "kind": "unlimited",
+            "label": "paid_unlimited",
+        },
+        "traffic_limit_gb": None,
+        "traffic_remaining_gb": None,
+        "next_reset_at": None,
+        "soft_mode_active": False,
+    }
 
 
 def _maybe_downgrade_expired_to_free(s, user: User) -> bool:
@@ -1132,13 +1204,13 @@ def _maybe_downgrade_expired_to_free(s, user: User) -> bool:
         if (user.sub_type or "").upper() == "FREE":
             # Already free but expired; extend so the free profile stays usable.
             user.expiry_at = _utcnow() + timedelta(days=int(AUTO_FREE_DAYS))
-            user.current_plan_code = "trial"
+            user.current_plan_code = "free_monthly"
             ensure_user_free_cycle_state(user)
             s.commit()
             return True
 
         user.sub_type = "FREE"
-        user.current_plan_code = "trial"
+        user.current_plan_code = "free_monthly"
         user.expiry_at = _utcnow() + timedelta(days=int(AUTO_FREE_DAYS))
         user.is_active = True
         mark_user_became_free(user)
@@ -1662,7 +1734,7 @@ def _ensure_user_row_for_login(*, tg_id: int, username: str | None = None) -> No
             uuid=str(uuid.uuid4()),
             email=f"User_{int(tg_id)}",
             sub_type="FREE",
-            current_plan_code="trial",
+            current_plan_code="free_monthly",
             created_at=now,
             expiry_at=now + timedelta(days=max(3650, int(AUTO_FREE_DAYS))),
             is_active=True,
@@ -4852,7 +4924,6 @@ async def user_data(tg_id: int, request: Request, x_telegram_init_data: str = He
             except Exception:
                 pass
         _ensure_free_cycle_state_persisted(s, user)
-        _ensure_free_cycle_state_persisted(s, user)
 
         nodes = enabled_nodes(s)
         nodes_for_user = _nodes_for_user(user, nodes, session=s)
@@ -4873,12 +4944,14 @@ async def user_data(tg_id: int, request: Request, x_telegram_init_data: str = He
         segment = _plan_segment(user)
         family_slots = _family_slots_for_user(s, tg_id)
         points_available, points_expiring_soon = available_points(tg_id=tg_id)
-        total_gb = _plan_total_gb(user)
         runtime = await _get_user_runtime_summary(s=s, user=user, nodes=nodes_for_user)
         runtime_used_bytes = int(runtime.get("traffic_total_bytes", 0) or 0)
         legacy_used_bytes = int(usage["used_bytes"] or 0) if usage else 0
         traffic_source = "panel_runtime" if runtime.get("panel_state") == "ok" and (runtime_used_bytes > 0 or int(runtime.get("known_nodes", 0) or 0) > 0) else "legacy_panel" if usage else "unavailable"
         used_bytes = runtime_used_bytes if traffic_source == "panel_runtime" else legacy_used_bytes
+        access_policy = _build_access_policy(user=user, used_bytes=used_bytes)
+        setattr(user, "_free_soft_mode_active", bool(access_policy["soft_mode_active"]))
+        total_gb = _plan_total_gb(user)
         used_gb = round((used_bytes / (1024**3)), 3) if used_bytes else 0
         remaining_gb = max(round(total_gb - used_gb, 3), 0) if total_gb > 0 else 0
         referral_code = (user.referral_code or "").strip()
@@ -4919,8 +4992,14 @@ async def user_data(tg_id: int, request: Request, x_telegram_init_data: str = He
             "is_admin": role_admin,
             "sub_type": user.sub_type,
             "current_plan_code": str(getattr(user, "current_plan_code", "") or ""),
+            "access_state": str(access_policy["access_state"]),
             "segment": segment,
             "expiry_at": user.expiry_at.isoformat() if user.expiry_at else None,
+            "traffic_policy": access_policy["traffic_policy"],
+            "traffic_limit_gb": access_policy["traffic_limit_gb"],
+            "traffic_remaining_gb": access_policy["traffic_remaining_gb"],
+            "next_reset_at": access_policy["next_reset_at"],
+            "soft_mode_active": bool(access_policy["soft_mode_active"]),
             "limits": {
                 "device_limit": _plan_device_limit(user) + family_slots,
                 "total_gb": total_gb,
@@ -4949,6 +5028,7 @@ async def user_data(tg_id: int, request: Request, x_telegram_init_data: str = He
                 "total_gb": total_gb,
                 "remaining_gb": remaining_gb,
                 "source": traffic_source,
+                "policy": access_policy["traffic_policy"],
             },
             "connections": {
                 "status": str(runtime.get("status") or "unknown"),
@@ -5041,11 +5121,13 @@ async def dashboard_snapshot(request: Request, x_telegram_init_data: str = Heade
         nodes_for_user = _nodes_for_user(user, nodes, session=s)
         runtime = await _get_user_runtime_summary(s=s, user=user, nodes=nodes_for_user)
         usage = await _get_panel_usage_legacy(tg_id)
-        total_gb = float(_plan_total_gb(user))
         runtime_used_bytes = int(runtime.get("traffic_total_bytes", 0) or 0)
         legacy_used_bytes = int(usage["used_bytes"] or 0) if usage else 0
         traffic_source = "panel_runtime" if runtime.get("panel_state") == "ok" and (runtime_used_bytes > 0 or int(runtime.get("known_nodes", 0) or 0) > 0) else "legacy_panel" if usage else "unavailable"
         used_bytes = runtime_used_bytes if traffic_source == "panel_runtime" else legacy_used_bytes
+        access_policy = _build_access_policy(user=user, used_bytes=used_bytes)
+        setattr(user, "_free_soft_mode_active", bool(access_policy["soft_mode_active"]))
+        total_gb = float(_plan_total_gb(user))
         used_gb = round((used_bytes / (1024**3)), 3) if used_bytes else 0.0
         remaining = max(round(total_gb - used_gb, 3), 0.0) if total_gb > 0 else 0.0
         expiry = user.expiry_at
@@ -5061,11 +5143,17 @@ async def dashboard_snapshot(request: Request, x_telegram_init_data: str = Heade
             tg_id=tg_id,
             sub_type=str(user.sub_type or ""),
             current_plan_code=str(getattr(user, "current_plan_code", "") or ""),
+            access_state=str(access_policy["access_state"]),
             is_active=active,
             expiry_at=_safe_iso(expiry),
             used_gb=float(used_gb),
             total_gb=float(total_gb),
             remaining_gb=float(remaining),
+            traffic_policy=access_policy["traffic_policy"],
+            traffic_limit_gb=access_policy["traffic_limit_gb"],
+            traffic_remaining_gb=access_policy["traffic_remaining_gb"],
+            next_reset_at=access_policy["next_reset_at"],
+            soft_mode_active=bool(access_policy["soft_mode_active"]),
             active_sessions=int(runtime.get("active_connections", 0) or 0),
             active_sessions_source=str(runtime.get("active_connections_source") or "none"),
             device_limit=int(_plan_device_limit(user) + family_slots),

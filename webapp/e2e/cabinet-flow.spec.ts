@@ -27,6 +27,7 @@ function mockSessionUser() {
     is_admin: false,
     sub_type: "PAID",
     segment: "PAID",
+    access_state: "paid_unlimited",
     expiry_at: "2030-01-01T00:00:00",
     family_slots: 1,
     devices: [
@@ -52,6 +53,18 @@ function mockSessionUser() {
     ],
     limits: { device_limit: 5, total_gb: 0, speed_mbps: 100 },
     traffic: { used_gb: 12.4, used_bytes: 0, total_gb: 0, remaining_gb: 0, source: "panel_runtime" },
+    traffic_policy: {
+      kind: "unlimited",
+      label: "Безлимитный трафик",
+      limit_gb: null,
+      remaining_gb: null,
+      next_reset_at: null,
+      soft_mode_active: false,
+    },
+    traffic_limit_gb: null,
+    traffic_remaining_gb: null,
+    next_reset_at: null,
+    soft_mode_active: false,
     connections: {
       status: "online",
       active_connections: 2,
@@ -89,6 +102,7 @@ function mockDashboard() {
     sub_type: "PAID",
     current_plan_code: "1_month",
     segment: "PAID",
+    access_state: "paid_unlimited",
     is_active: true,
     expiry_at: "2030-01-01T00:00:00",
     used_gb: 12.4,
@@ -99,6 +113,18 @@ function mockDashboard() {
     device_limit: 5,
     speed_limit_mbps: 100,
     free_next_reset_at: null,
+    traffic_policy: {
+      kind: "unlimited",
+      label: "Безлимитный трафик",
+      limit_gb: null,
+      remaining_gb: null,
+      next_reset_at: null,
+      soft_mode_active: false,
+    },
+    traffic_limit_gb: null,
+    traffic_remaining_gb: null,
+    next_reset_at: null,
+    soft_mode_active: false,
     family_slots: 1,
     subscription_url: "https://connect.pokrov.space/s8Kx2mP7qR4wT/mock_token",
     connection_snapshot: {
@@ -328,6 +354,8 @@ test.describe("Cabinet flow", () => {
     await expect(page.getByRole("heading", { name: "Сводка по использованию" })).toBeVisible();
     await expect(page.getByRole("heading", { name: "Что доступно сейчас" })).toBeVisible();
     await expect(page.locator("main")).toContainText("Ссылка подключения: готова");
+    await expect(page.locator("main")).toContainText("Трафик: безлимитный");
+    await expect(page.locator("main")).not.toContainText("Объём профиля: 0 ГБ");
   });
 
   test("keeps downloads and support flows usable without the app", async ({ page }) => {

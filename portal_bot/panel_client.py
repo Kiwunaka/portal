@@ -149,7 +149,7 @@ class PanelClient:
     def _total_gb_policy(self) -> int:
         """
         Per-node traffic cap in GB.
-        Free default: 30 GB.
+        Free default: 5 GB.
         Paid: always unlimited (0).
         """
         if self._is_free_node():
@@ -158,7 +158,7 @@ class PanelClient:
                 self._node_or_global_int(
                     node_suffix="TOTAL_GB",
                     global_name="FREE_TOTAL_GB",
-                    default=30,
+                    default=5,
                 ),
             )
         return 0

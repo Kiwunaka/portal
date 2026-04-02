@@ -141,6 +141,26 @@ Compatibility note:
 4. if membership is valid, backend grants `+10 days`
 5. if not linked or not eligible, backend returns the correct reason
 
+## Access-State Continuation After Trial
+
+Current backend-derived access states exposed to WebApp and admin surfaces:
+
+- `trial_premium`
+- `bonus_premium`
+- `free_monthly`
+- `free_soft_mode`
+- `paid_unlimited`
+- `expired_or_blocked`
+
+Rules:
+
+- app-first trial starts with `5 days` of premium-grade access
+- channel claim extends that premium window by `+10 days`
+- once premium expires, auto-downgrade must set `current_plan_code=free_monthly`, not `trial`
+- `free_monthly` keeps `5 GB / 30 days` with device limit `1`
+- after the `5 GB` quota is exhausted, UI and policy should treat the account as `free_soft_mode` until the next free-cycle reset
+- `paid_unlimited` remains unlimited traffic with device limit `5`
+
 ## Runtime Notes
 
 The bonus path is live and configured for:

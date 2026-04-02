@@ -1,6 +1,6 @@
 # Developer Guide
 
-Last updated: 2026-03-31
+Last updated: 2026-04-01
 
 ## Document Status
 
@@ -14,6 +14,11 @@ Use this guide for:
 - which commands to run for focused verification
 - when to update docs
 - what cleanup is safe
+
+Legacy filename note:
+
+- some canonical docs still use legacy `portal-vpn-*` filenames
+- those files remain authoritative for current `POKROV VPN` behavior until a dedicated rename pass happens
 
 ## Read Before Editing
 
@@ -160,8 +165,15 @@ Safe to remove when they are local-generated:
 - `test-results/`
 - `portal_api_test_*.db`
 - `*.tsbuildinfo`
-- local `node_modules/`, `.dart_tool/`, `build/`, `dist/` if not needed as retained outputs
 - `webapp/out`, `marketing/out` after rebuild or deploy
+
+Only remove these with explicit intent to reset a workspace:
+
+- local `node_modules/`
+- `.dart_tool/`
+- `build/`
+- `dist/`
+- `.venv/`
 
 Not safe to remove without intent:
 

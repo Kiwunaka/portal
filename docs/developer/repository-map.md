@@ -1,10 +1,15 @@
 # Repository Map
 
-Last updated: 2026-03-31
+Last updated: 2026-04-01
 
 ## Document Status
 
 This file is living source of truth for repository layout, local authorities, script categories, and test coverage entrypoints.
+
+Legacy filename note:
+
+- some canonical docs still use legacy `portal-vpn-*` path names
+- those filenames do not change the current product brand: the live product is `POKROV VPN`
 
 ## Repository Layout
 
@@ -130,14 +135,18 @@ Treat these as disposable local output unless intentionally retained:
 - `__pycache__/`
 - `.pytest_cache/`
 - `.next/`
-- `node_modules/`
-- `.dart_tool/`
-- `build/`
-- `dist/`
 - `portal_api_test_*.db`
 - `*.tsbuildinfo`
 - `webapp/out`
 - `marketing/out`
+
+Treat these as workspace dependencies or intentional reset targets, not routine cleanup:
+
+- `node_modules/`
+- `.dart_tool/`
+- `build/`
+- `dist/`
+- `.venv/`
 
 Treat these as retained assets and preserve them unless you have explicit reason:
 

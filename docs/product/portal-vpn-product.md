@@ -117,6 +117,8 @@ Product wording rule:
 - every valid first device account can receive `5 days`
 - trial must create a real backend account, device, session, and working subscription source
 - trial must never be decorative UI-only state
+- trial is premium-grade access during those `5 days`
+- after trial expiry the account automatically moves to `free_monthly`
 
 ### Telegram Reward
 
@@ -125,6 +127,14 @@ Product wording rule:
 - reward validation then checks membership in the configured public channel
 - active public channel: `@pokrov_vpn`
 - `@pokrov_vpnbot` is an administrator in that channel
+
+### Post-Trial Access Model
+
+- `free_monthly`: `5 GB / 30 days`
+- `free_monthly` device limit: `1`
+- `free_monthly` keeps monthly traffic reset via the free-cycle job
+- after `5 GB` is exhausted, the account stays usable in `soft mode` until the next reset
+- `paid` remains unlimited traffic with up to `5 devices`
 
 ## Advanced Settings Policy
 

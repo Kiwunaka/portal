@@ -15,7 +15,7 @@ import {
   type AdminNodeHealthRow,
   type AdminNodeTrafficRow,
 } from "@/lib/api";
-import { Activity, Gauge, HardDrive, Loader2, RefreshCw, Server, Wifi } from "lucide-react";
+import { Activity, Loader2, RefreshCw, Server, Wifi } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 
 const COUNTRY_FLAGS: Record<string, string> = {
@@ -37,7 +37,7 @@ function range7d(): { from: string; to: string } {
 
 function formatFreshness(value?: string | null): string {
   const normalized = String(value || "").toLowerCase();
-  if (normalized === "fresh") return "Платформа работает идеально";
+  if (normalized === "fresh") return "Метрики свежие";
   if (normalized === "stale") return "Нужно проверить данные";
   if (normalized === "missing") return "Нет данных по метрикам";
   return "Состояние метрик неизвестно";
@@ -59,46 +59,31 @@ function formatIso(value?: string | null): string {
 }
 
 function formatPercent(value?: number | null, digits = 0): string {
-  if (value == null || Number.isNaN(Number(value))) return "—";
+  if (value == null || Number.isNaN(Number(value))) return "метрики не поступили";
   return `${Number(value).toFixed(digits)}%`;
 }
 
 function formatMbPair(used?: number | null, total?: number | null): string {
-  if (!total) return "нет данных";
+  if (used == null || total == null) return "метрики не поступили";
   const usedGb = Number((Number(used || 0) / 1024).toFixed(1));
   const totalGb = Number((Number(total || 0) / 1024).toFixed(1));
   return `${usedGb} / ${totalGb} ГБ`;
 }
 
 function formatGbPair(used?: number | null, total?: number | null): string {
-  if (!total) return "нет данных";
+  if (used == null || total == null) return "метрики не поступили";
   return `${Number(used || 0).toFixed(1)} / ${Number(total || 0).toFixed(1)} ГБ`;
 }
 
-function scoreTone(score: number): { fillClass: string; dotClass: string; badgeClass: string; healthPct: number } {
-  const healthPct = Math.min(100, Math.max(0, score * 10));
-  if (score >= 8) {
-    return {
-      fillClass: "progress-fill-emerald",
-      dotClass: "status-dot-online",
-      badgeClass: "badge-success",
-      healthPct,
-    };
-  }
-  if (score >= 5) {
-    return {
-      fillClass: "progress-fill-amber",
-      dotClass: "status-dot-warning",
-      badgeClass: "badge-warning",
-      healthPct,
-    };
-  }
-  return {
-    fillClass: "progress-fill-rose",
-    dotClass: "status-dot-offline",
-    badgeClass: "badge-danger",
-    healthPct,
-  };
+function formatDiskFree(value?: number | null): string {
+  if (value == null || Number.isNaN(Number(value))) return "метрики не поступили";
+  return `${Number(value).toFixed(1)} ГБ`;
+}
+
+function scoreTone(score: number): { dotClass: string; badgeClass: string } {
+  if (score >= 8) return { dotClass: "status-dot-online", badgeClass: "badge-success" };
+  if (score >= 5) return { dotClass: "status-dot-warning", badgeClass: "badge-warning" };
+  return { dotClass: "status-dot-offline", badgeClass: "badge-danger" };
 }
 
 function alertKindLabel(kind: string): string {
@@ -115,6 +100,24 @@ function alertKindLabel(kind: string): string {
 
 function nodeCodeKey(value: string): string {
   return String(value || "").trim().toLowerCase();
+}
+
+function probeFailureCopy(kind?: string | null, stage?: string | null, message?: string | null): { title: string; detail?: string; raw?: string } | null {
+  const rawKind = String(kind || "").trim();
+  const rawMessage = String(message || "").trim();
+  if (!rawKind && !rawMessage) return null;
+  if (rawKind === "reality_target_mismatch") {
+    return {
+      title: `REALITY target mismatch${stage ? ` на этапе ${stage}` : ""}`,
+      detail: "Ожидаемое имя REALITY target не совпало с сертификатом или SNI, который вернул узел.",
+      raw: rawKind,
+    };
+  }
+  return {
+    title: `Сбой проверки${stage ? ` на этапе ${stage}` : ""}`,
+    detail: rawMessage || undefined,
+    raw: rawKind || undefined,
+  };
 }
 
 export default function AdminNodesPage() {
@@ -138,7 +141,6 @@ export default function AdminNodesPage() {
             freshness: row.status,
             alertKinds: row.alert_kinds || [],
             lastSampleAt: row.last_sample_at,
-            ageSeconds: row.age_seconds,
             observerLastPushAt: row.observer_last_push_at ?? null,
             observerIsStale: Boolean(row.observer_is_stale),
           },
@@ -188,18 +190,16 @@ export default function AdminNodesPage() {
     try {
       if (action === "drain") {
         await adminNodeDrain(node.code);
-        setNodeActionNote(`Нода ${node.code.toUpperCase()} больше не принимает новые назначения. Текущие клиенты не затронуты.`);
+        setNodeActionNote(`Нода ${node.code.toUpperCase()} больше не принимает новые назначения.`);
       } else if (action === "enable") {
         await adminNodeEnable(node.code);
-        setNodeActionNote(`Нода ${node.code.toUpperCase()} снова участвует в выдаче новых пользователей.`);
+        setNodeActionNote(`Нода ${node.code.toUpperCase()} снова участвует в выдаче.`);
       } else if (action === "disable") {
         await adminNodeDisable(node.code, {});
         setNodeActionNote(`Нода ${node.code.toUpperCase()} выключена из выдачи.`);
       } else {
         const result = await adminNodeResync(node.code, { limit: 200 });
-        setNodeActionNote(
-          `Пересборка назначений для ${node.code.toUpperCase()}: перенесено ${result.migrated}, пропущено ${result.skipped}, ошибок ${result.failed}.`,
-        );
+        setNodeActionNote(`Пересборка ${node.code.toUpperCase()}: перенесено ${result.migrated}, пропущено ${result.skipped}, ошибок ${result.failed}.`);
       }
       await load();
       if (drift) await loadDrift();
@@ -217,13 +217,7 @@ export default function AdminNodesPage() {
     try {
       await adminNodesSync({ segment, limit: 200 });
       await load();
-      if (segment === "active") {
-        setNodeActionNote("Пересобраны назначения для активных пользователей.");
-      } else if (segment === "free") {
-        setNodeActionNote("Пересобраны назначения для free-контура.");
-      } else {
-        setNodeActionNote("Доступы премиум-пользователей успешно пересобраны и синхронизированы.");
-      }
+      setNodeActionNote(`Сегмент ${segment} пересобран и синхронизирован.`);
     } catch (err) {
       setError(String((err as { message?: string })?.message || err || "Не удалось пересобрать назначения."));
     } finally {
@@ -250,7 +244,7 @@ export default function AdminNodesPage() {
           <div className="flex flex-wrap gap-2">
             {[
               { code: "active", label: "Пересобрать активных" },
-              { code: "paid", label: "Пересобрать платных" },
+              { code: "paid", label: "Пересобрать paid" },
               { code: "free", label: "Пересобрать free" },
             ].map((segment) => (
               <button
@@ -273,11 +267,7 @@ export default function AdminNodesPage() {
               {driftBusy ? <Loader2 size={12} className="animate-spin" /> : <Server size={12} />}
               Проверить расхождения
             </button>
-            <button
-              className="btn-primary inline-flex items-center gap-1.5 rounded-xl px-4 py-2 text-xs font-semibold"
-              type="button"
-              onClick={() => void load()}
-            >
+            <button className="btn-primary inline-flex items-center gap-1.5 rounded-xl px-4 py-2 text-xs font-semibold" type="button" onClick={() => void load()}>
               <Activity size={14} />
               Обновить
             </button>
@@ -301,15 +291,11 @@ export default function AdminNodesPage() {
           <div className="mb-4 flex items-center justify-between gap-3">
             <div>
               <h3 className="font-display text-xl font-bold">Сверка POKROV и панели</h3>
-              <p className="text-xs text-slate-500">
-                Отслеживает точную синхронизацию базы платформы с реальной нагрузкой на серверах.
-              </p>
+              <p className="text-xs text-slate-500">Показывает, совпадают ли ожидания контрольной плоскости с фактической конфигурацией узлов.</p>
             </div>
             <div className="flex items-center gap-2">
               <span className="badge badge-success">совпали: {drift.summary.ok}</span>
-              <span className={`badge ${drift.summary.drift > 0 ? "badge-warning" : "badge-success"}`}>
-                расхождения: {drift.summary.drift}
-              </span>
+              <span className={`badge ${drift.summary.drift > 0 ? "badge-warning" : "badge-success"}`}>расхождения: {drift.summary.drift}</span>
             </div>
           </div>
           <div className="space-y-3">
@@ -327,13 +313,13 @@ export default function AdminNodesPage() {
                   </div>
                   <div className="text-right text-xs text-slate-500">
                     <div>Порт: <strong>{row.runtime?.port ?? "—"}</strong></div>
-                    <div>Безопасность: <strong>{row.runtime?.security || "—"}</strong></div>
+                    <div>Security: <strong>{row.runtime?.security || "—"}</strong></div>
                   </div>
                 </div>
                 {row.mismatches.length > 0 ? (
                   <p className="mt-3 text-sm text-amber-500">Не совпадает: {row.mismatches.join(", ")}</p>
                 ) : (
-                  <p className="mt-3 text-sm text-emerald-500">Настройка ноды совпадает с тем, что ожидает POKROV.</p>
+                  <p className="mt-3 text-sm text-emerald-500">Конфигурация ноды совпадает с тем, что ожидает POKROV.</p>
                 )}
                 {row.error ? <p className="mt-2 text-xs text-rose-500">Ошибка проверки: {row.error}</p> : null}
               </div>
@@ -347,9 +333,14 @@ export default function AdminNodesPage() {
           const score = Number(node.health_score || 0);
           const tone = scoreTone(score);
           const flag = COUNTRY_FLAGS[nodeCodeKey(node.code)] || "🌐";
-          const memoryPercent = node.memory_total_mb > 0 ? (node.memory_used_mb / node.memory_total_mb) * 100 : null;
-          const diskPercent = node.disk_total_gb > 0 ? (node.disk_used_gb / node.disk_total_gb) * 100 : null;
+          const memoryPercent = node.memory_used_mb != null && node.memory_total_mb && node.memory_total_mb > 0
+            ? (node.memory_used_mb / node.memory_total_mb) * 100
+            : null;
+          const diskPercent = node.disk_used_gb != null && node.disk_total_gb && node.disk_total_gb > 0
+            ? (node.disk_used_gb / node.disk_total_gb) * 100
+            : null;
           const nodeFreshness = freshnessByNode.get(nodeCodeKey(node.code));
+          const probeFailure = probeFailureCopy(node.last_probe_error_kind, node.last_probe_stage, node.last_probe_error_message);
 
           return (
             <article key={node.code} className="stat-card min-w-0 p-5">
@@ -372,26 +363,10 @@ export default function AdminNodesPage() {
                 </div>
               </div>
 
-              <div className="mt-4">
-                <div className="mb-1.5 flex items-center justify-between text-xs text-slate-500">
-                  <span>Общая устойчивость</span>
-                  <span>{Math.round(tone.healthPct)}%</span>
-                </div>
-                <div className="progress-track">
-                  <div className={`progress-fill ${tone.fillClass}`} style={{ width: `${tone.healthPct}%` }} />
-                </div>
-                <p className="mt-2 text-xs text-slate-500">
-                  Мы анализируем отклик, стабильность и нагрузку, чтобы обеспечить максимальный комфорт.
-                </p>
-              </div>
-
               <div className="mt-4 grid grid-cols-1 gap-2 text-center sm:grid-cols-3">
                 <div className="rounded-lg bg-white/50 p-2 dark:bg-white/5">
                   <p className="text-xs text-slate-500">Отклик</p>
-                  <p className="text-sm font-bold">
-                    {node.panel_latency_ms ?? "—"}
-                    <span className="text-[10px] text-slate-400"> ms</span>
-                  </p>
+                  <p className="text-sm font-bold">{node.panel_latency_ms ?? "нет данных"}{node.panel_latency_ms != null ? <span className="text-[10px] text-slate-400"> ms</span> : null}</p>
                 </div>
                 <div className="rounded-lg bg-white/50 p-2 dark:bg-white/5">
                   <p className="text-xs text-slate-500">Ошибки</p>
@@ -419,9 +394,9 @@ export default function AdminNodesPage() {
               </div>
 
               <div className="mt-3 rounded-xl border border-white/15 bg-white/35 p-3 dark:border-white/10 dark:bg-white/[0.04]">
-                <div className="mb-2 flex items-center gap-2 text-sm font-semibold">
-                  <HardDrive size={15} />
-                  Диск
+                <div className="mb-2 flex items-center justify-between gap-2 text-sm font-semibold">
+                  <span>Диск</span>
+                  <span>{diskPercent == null ? "нет данных" : formatPercent(diskPercent, 0)}</span>
                 </div>
                 <div className="flex items-center justify-between text-xs text-slate-500">
                   <span>Занято / всего</span>
@@ -429,36 +404,15 @@ export default function AdminNodesPage() {
                 </div>
                 <div className="mt-1 flex items-center justify-between text-xs text-slate-500">
                   <span>Свободно</span>
-                  <span>{node.disk_free_gb > 0 ? `${node.disk_free_gb.toFixed(1)} ГБ` : "—"}</span>
+                  <span>{formatDiskFree(node.disk_free_gb)}</span>
                 </div>
-                {diskPercent != null ? (
-                  <>
-                    <div className="mt-2 progress-track">
-                      <div
-                        className={`progress-fill ${
-                          diskPercent > 90 ? "progress-fill-rose" : diskPercent > 75 ? "progress-fill-amber" : "progress-fill-emerald"
-                        }`}
-                        style={{ width: `${Math.min(100, Math.max(0, diskPercent))}%` }}
-                      />
-                    </div>
-                    <p className="mt-1 text-[11px] text-slate-500">Использовано {formatPercent(diskPercent, 0)}</p>
-                  </>
-                ) : null}
               </div>
 
               <div className="mt-4 flex flex-wrap gap-2">
-                <span className={`badge ${node.enabled ? "badge-success" : "badge-danger"}`}>
-                  {node.enabled ? "В выдаче" : "Выключена"}
-                </span>
-                <span className={`badge ${node.accepting_new_clients ? "badge-info" : "badge-warning"}`}>
-                  {node.accepting_new_clients ? "Принимает новых" : "Только текущие"}
-                </span>
+                <span className={`badge ${node.enabled ? "badge-success" : "badge-danger"}`}>{node.enabled ? "В выдаче" : "Выключена"}</span>
+                <span className={`badge ${node.accepting_new_clients ? "badge-info" : "badge-warning"}`}>{node.accepting_new_clients ? "Принимает новых" : "Только текущие"}</span>
                 {node.is_draining ? <span className="badge badge-warning">В процессе разгрузки</span> : null}
-                {nodeFreshness ? (
-                  <span className={`badge ${nodeFreshness.freshness === "fresh" ? "badge-success" : "badge-warning"}`}>
-                    {formatFreshness(nodeFreshness.freshness)}
-                  </span>
-                ) : null}
+                {nodeFreshness ? <span className={`badge ${nodeFreshness.freshness === "fresh" ? "badge-success" : "badge-warning"}`}>{formatFreshness(nodeFreshness.freshness)}</span> : null}
                 {(nodeFreshness?.alertKinds || []).map((kind) => (
                   <span key={`${node.code}-${kind}`} className="badge badge-warning">
                     {alertKindLabel(kind)}
@@ -468,52 +422,27 @@ export default function AdminNodesPage() {
 
               <div className="mt-4 grid grid-cols-1 gap-2 sm:grid-cols-2">
                 {node.enabled && !node.is_draining ? (
-                  <button
-                    type="button"
-                    className="outline-btn rounded-xl px-3 py-2 text-xs font-semibold"
-                    disabled={!!nodeActionBusy}
-                    onClick={() => void runNodeAction(node, "drain")}
-                  >
+                  <button type="button" className="outline-btn rounded-xl px-3 py-2 text-xs font-semibold" disabled={!!nodeActionBusy} onClick={() => void runNodeAction(node, "drain")}>
                     {nodeActionBusy === `drain:${node.code}` ? "..." : "Остановить новые"}
                   </button>
                 ) : (
-                  <button
-                    type="button"
-                    className="outline-btn rounded-xl px-3 py-2 text-xs font-semibold"
-                    disabled={!!nodeActionBusy}
-                    onClick={() => void runNodeAction(node, "enable")}
-                  >
+                  <button type="button" className="outline-btn rounded-xl px-3 py-2 text-xs font-semibold" disabled={!!nodeActionBusy} onClick={() => void runNodeAction(node, "enable")}>
                     {nodeActionBusy === `enable:${node.code}` ? "..." : "Вернуть в выдачу"}
                   </button>
                 )}
-                <button
-                  type="button"
-                  className="outline-btn rounded-xl px-3 py-2 text-xs font-semibold"
-                  disabled={!!nodeActionBusy || !node.enabled}
-                  onClick={() => void runNodeAction(node, "resync")}
-                >
+                <button type="button" className="outline-btn rounded-xl px-3 py-2 text-xs font-semibold" disabled={!!nodeActionBusy || !node.enabled} onClick={() => void runNodeAction(node, "resync")}>
                   {nodeActionBusy === `resync:${node.code}` ? "..." : "Пересобрать назначения"}
                 </button>
-                <button
-                  type="button"
-                  className="outline-btn rounded-xl px-3 py-2 text-xs font-semibold sm:col-span-2"
-                  disabled={!!nodeActionBusy || !node.enabled}
-                  onClick={() => void runNodeAction(node, "disable")}
-                >
+                <button type="button" className="outline-btn rounded-xl px-3 py-2 text-xs font-semibold sm:col-span-2" disabled={!!nodeActionBusy || !node.enabled} onClick={() => void runNodeAction(node, "disable")}>
                   {nodeActionBusy === `disable:${node.code}` ? "..." : "Выключить ноду"}
                 </button>
               </div>
 
-              {node.last_probe_error_kind || node.last_probe_error_message ? (
+              {probeFailure ? (
                 <div className="mt-3 rounded-xl border border-rose-200/50 bg-rose-50/70 p-3 text-xs text-rose-600 dark:border-rose-500/20 dark:bg-rose-500/10">
-                  <div className="font-semibold">
-                    Сбой проверки
-                    {node.last_probe_stage ? ` на этапе ${node.last_probe_stage}` : ""}
-                    {node.last_probe_error_kind ? `: ${node.last_probe_error_kind}` : ""}
-                  </div>
-                  {node.last_probe_error_message ? (
-                    <div className="mt-1 text-slate-600 dark:text-slate-300">{node.last_probe_error_message}</div>
-                  ) : null}
+                  <div className="font-semibold">{probeFailure.title}</div>
+                  {probeFailure.detail ? <div className="mt-1 text-slate-600 dark:text-slate-300">{probeFailure.detail}</div> : null}
+                  {probeFailure.raw ? <div className="mt-1 text-slate-500">raw error_kind: {probeFailure.raw}</div> : null}
                 </div>
               ) : null}
 
@@ -535,14 +464,14 @@ export default function AdminNodesPage() {
               <p className="mt-3 text-[11px] text-slate-500">
                 Последняя проверка: {formatIso(node.last_health_at)}.
                 {nodeFreshness?.lastSampleAt ? ` Срез метрик: ${formatIso(nodeFreshness.lastSampleAt)}.` : ""}
-                {memoryPercent != null ? ` RAM: ${formatPercent(memoryPercent, 0)}.` : ""}
+                {memoryPercent != null ? ` RAM: ${formatPercent(memoryPercent, 0)}.` : " RAM: нет данных."}
               </p>
             </article>
           );
         })}
         {nodes.length === 0 ? (
           <div className="empty-state col-span-full">
-            <Gauge size={36} />
+            <Server size={36} />
             <p className="text-sm">Данных по нодам пока нет</p>
           </div>
         ) : null}
@@ -572,21 +501,14 @@ export default function AdminNodesPage() {
               {traffic.map((row, index) => {
                 const flag = COUNTRY_FLAGS[nodeCodeKey(row.node_code)] || "🌐";
                 return (
-                  <tr
-                    key={`${row.date}:${row.node_code}`}
-                    className={`border-t border-white/20 dark:border-white/5 ${index % 2 === 0 ? "bg-white/30 dark:bg-white/[0.02]" : ""}`}
-                  >
+                  <tr key={`${row.date}:${row.node_code}`} className={`border-t border-white/20 dark:border-white/5 ${index % 2 === 0 ? "bg-white/30 dark:bg-white/[0.02]" : ""}`}>
                     <td className="px-3 py-2.5 font-medium">{row.date}</td>
                     <td className="px-3 py-2.5">
-                      <span className="inline-flex items-center gap-1.5">
-                        <span>{flag}</span>
-                        <strong>{row.node_code.toUpperCase()}</strong>
-                      </span>
+                      <span className="mr-2">{flag}</span>
+                      {row.node_code.toUpperCase()}
                     </td>
-                    <td className="px-3 py-2.5">
-                      <span className="badge badge-info">{row.devices}</span>
-                    </td>
-                    <td className="px-3 py-2.5 font-mono font-medium">{row.traffic_gb.toFixed(3)}</td>
+                    <td className="px-3 py-2.5">{row.devices}</td>
+                    <td className="px-3 py-2.5">{row.traffic_gb.toFixed(2)}</td>
                   </tr>
                 );
               })}

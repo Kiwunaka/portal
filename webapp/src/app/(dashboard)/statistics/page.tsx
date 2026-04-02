@@ -1,6 +1,20 @@
 "use client";
 
 import AppRouteLink from "@/components/app-route-link";
+import {
+  formatTrafficGb,
+  getAccessState,
+  getDeviceLimit,
+  getNextResetAt,
+  getTrafficLimitGb,
+  getTrafficRemainingGb,
+  isFreeMonthlyState,
+  isPaidUnlimitedState,
+  isSoftModeState,
+  isTrialPremiumState,
+  resolvePlanLabel,
+  resolveTrafficStatusText,
+} from "@/lib/access-policy";
 import { fetchNodeStatus } from "@/lib/api";
 import { getPortalPublicConfig } from "@/lib/portal";
 import { usePortalSession } from "@/lib/session";
@@ -13,16 +27,6 @@ function formatDate(value?: string | null): string {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return value;
   return date.toLocaleString("ru-RU");
-}
-
-function formatGb(value?: number | null): string {
-  if (!Number.isFinite(Number(value))) return "0 ГБ";
-  return `${Number(value || 0).toLocaleString("ru-RU", { maximumFractionDigits: 1 })} ГБ`;
-}
-
-function isTrialLike(subType?: string | null): boolean {
-  const value = String(subType || "").toUpperCase();
-  return value.includes("TRIAL") || value.includes("FREE");
 }
 
 export default function StatisticsPage() {
@@ -56,7 +60,45 @@ export default function StatisticsPage() {
     };
   }, []);
 
-  const trialMode = isTrialLike(dash?.sub_type || dash?.current_plan_code || user?.sub_type);
+  const accessState = getAccessState(dash, user);
+  const trialMode = isTrialPremiumState(accessState);
+  const paidMode = isPaidUnlimitedState(accessState);
+  const freeMode = isFreeMonthlyState(accessState);
+  const softMode = isSoftModeState(accessState);
+  const limitGb = getTrafficLimitGb(dash, user);
+  const remainingGb = getTrafficRemainingGb(dash, user);
+  const nextResetAt = getNextResetAt(dash, user);
+  const usedGb = Number(dash?.used_gb || user?.traffic?.used_gb || 0);
+  const deviceLimit = getDeviceLimit(dash, user);
+
+  const trafficCard = useMemo(() => {
+    if (paidMode || trialMode) {
+      return {
+        label: "Трафик",
+        value: "Безлимитный",
+        hint: `Использовано ${formatTrafficGb(usedGb)}`,
+      };
+    }
+    if (softMode) {
+      return {
+        label: "Трафик",
+        value: "Мягкий режим",
+        hint: nextResetAt ? `До сброса ${formatDate(nextResetAt)}` : "До следующего месячного сброса",
+      };
+    }
+    if (freeMode && limitGb != null) {
+      return {
+        label: "Трафик",
+        value: `${formatTrafficGb(usedGb)} из ${formatTrafficGb(limitGb)}`,
+        hint: nextResetAt ? `Сброс ${formatDate(nextResetAt)}` : "Месячный лимит бесплатного тарифа",
+      };
+    }
+    return {
+      label: "Использовано",
+      value: formatTrafficGb(usedGb),
+      hint: `Осталось ${formatTrafficGb(remainingGb)}`,
+    };
+  }, [freeMode, limitGb, nextResetAt, paidMode, remainingGb, softMode, trialMode, usedGb]);
 
   const usageCards = useMemo(
     () => [
@@ -65,18 +107,14 @@ export default function StatisticsPage() {
         value: dash?.is_active ? "Активен" : "Требует продления",
         hint: dash?.expiry_at ? `До ${formatDate(dash.expiry_at)}` : "Срок не указан",
       },
-      {
-        label: "Использовано",
-        value: formatGb(dash?.used_gb),
-        hint: `Осталось ${formatGb(dash?.remaining_gb)}`,
-      },
+      trafficCard,
       {
         label: "Подключения",
-        value: `${dash?.connection_snapshot?.active_connections ?? dash?.active_sessions ?? 0} / ${dash?.device_limit ?? user?.limits?.device_limit ?? 1}`,
+        value: `${dash?.connection_snapshot?.active_connections ?? dash?.active_sessions ?? 0} / ${deviceLimit}`,
         hint:
           dash?.active_sessions_source === "panel_ip_count"
-            ? "Живой счетчик по нодам POKROV"
-            : "Резервный счетчик по активности на нодах",
+            ? "Живой счётчик по runtime-нодам POKROV"
+            : "Резервный счётчик по активности на нодах",
       },
       {
         label: "Точки подключения",
@@ -84,7 +122,7 @@ export default function StatisticsPage() {
         hint: nodeHealth.updatedAt ? `Обновлено ${formatDate(nodeHealth.updatedAt)}` : "Показываем текущее состояние профиля",
       },
     ],
-    [dash, nodeHealth, user?.limits?.device_limit, user?.nodes],
+    [dash, deviceLimit, nodeHealth, trafficCard, user?.nodes],
   );
 
   return (
@@ -93,7 +131,8 @@ export default function StatisticsPage() {
         <p className="font-mono text-xs uppercase tracking-[0.18em] text-slate-500">сводка</p>
         <h1 className="mt-2 font-display text-4xl font-bold">Сводка по использованию</h1>
         <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">
-          Здесь видно трафик, состояние подписки и живые подключения. Трафик и активность считаются серверно по нодам POKROV, а не только по приложению.
+          Здесь видно трафик, состояние доступа и живые подключения. Метрики собираются по runtime-нодам POKROV, а не
+          только по приложению.
         </p>
       </section>
 
@@ -111,17 +150,23 @@ export default function StatisticsPage() {
         <section className="glass-card p-6">
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.14em] text-orange-500">тестовый доступ</p>
-              <h2 className="mt-2 font-display text-2xl font-semibold">Хотите больше трафика и устройств?</h2>
+              <p className="text-xs font-semibold uppercase tracking-[0.14em] text-orange-500">премиум-период</p>
+              <h2 className="mt-2 font-display text-2xl font-semibold">Сейчас у вас премиум без лимита трафика</h2>
               <p className="mt-2 max-w-2xl text-sm text-slate-600 dark:text-slate-300">
-                Тест и базовый доступ созданы, чтобы быстро проверить скорость и запуск. Для постоянного использования без жёстких ограничений лучше сразу перейти к тарифам.
+                Это стартовый или бонусный премиум-период. После него профиль автоматически перейдёт в бесплатный режим
+                на 5 ГБ в месяц, поэтому тариф можно выбрать заранее.
               </p>
             </div>
             <div className="flex flex-wrap gap-2">
               <AppRouteLink href="/subscription" className="outline-btn rounded-xl px-4 py-2 text-sm font-semibold">
                 Перейти к тарифам
               </AppRouteLink>
-              <AppRouteLink href={config.botUrl} target="_blank" hardNavigate={false} className="btn-primary rounded-xl px-4 py-2 text-sm font-semibold">
+              <AppRouteLink
+                href={config.botUrl}
+                target="_blank"
+                hardNavigate={false}
+                className="btn-primary rounded-xl px-4 py-2 text-sm font-semibold"
+              >
                 Продолжить в Telegram
               </AppRouteLink>
             </div>
@@ -134,27 +179,34 @@ export default function StatisticsPage() {
           <h2 className="font-display text-2xl font-semibold">Что доступно сейчас</h2>
           <div className="mt-4 space-y-3 text-sm text-slate-600 dark:text-slate-300">
             <p>
-              Тариф: <span className="font-semibold text-slate-900 dark:text-white">{dash?.current_plan_code || dash?.sub_type || "—"}</span>
+              Тариф: <span className="font-semibold text-slate-900 dark:text-white">{resolvePlanLabel(dash, user)}</span>
             </p>
             <p>Ссылка подключения: {user?.subscription_url ? "готова" : "пока недоступна"}</p>
-            <p>Объём профиля: {formatGb(dash?.total_gb)}</p>
-            <p>Скорость: {dash?.speed_limit_mbps ? `${dash.speed_limit_mbps} Мбит/с` : "по текущей политике профиля"}</p>
+            <p>Трафик: {resolveTrafficStatusText(dash, user)}</p>
+            {freeMode && nextResetAt ? <p>Следующий сброс: {formatDate(nextResetAt)}</p> : null}
+            <p>Устройства: до {deviceLimit}</p>
+            <p>Скорость: {softMode ? "ограничена до следующего сброса" : dash?.speed_limit_mbps ? `${dash.speed_limit_mbps} Мбит/с` : "по текущей политике профиля"}</p>
             <p>Семейные слоты: {dash?.family_slots ?? user?.family_slots ?? 0}</p>
           </div>
         </article>
 
         <article className="glass-card p-6">
-          <h2 className="font-display text-2xl font-semibold">Остались вопросы по статистике?</h2>
+          <h2 className="font-display text-2xl font-semibold">Как читать эти данные</h2>
           <ul className="mt-4 space-y-2 text-sm text-slate-600 dark:text-slate-300">
-            <li>Обновите страницу после смены тарифа или нового подключения.</li>
-            <li>Если точек подключения стало меньше ожидаемого, откройте службу заботы или Telegram-бот.</li>
-            <li>Если нужен апгрейд по устройствам и трафику, переходите в раздел подписки.</li>
+            <li>Paid отображается как безлимитный трафик и до 5 устройств.</li>
+            <li>Free Monthly показывает расход из 5 ГБ и дату следующего месячного сброса.</li>
+            <li>Soft mode означает, что месячная квота исчерпана и профиль работает с ограничением до сброса.</li>
           </ul>
           <div className="mt-4 flex flex-wrap gap-2">
             <AppRouteLink href="/subscription" className="outline-btn rounded-xl px-4 py-2 text-sm font-semibold">
               Раздел подписки
             </AppRouteLink>
-            <AppRouteLink href={config.supportTelegramUrl} target="_blank" hardNavigate={false} className="btn-primary rounded-xl px-4 py-2 text-sm font-semibold">
+            <AppRouteLink
+              href={config.supportTelegramUrl}
+              target="_blank"
+              hardNavigate={false}
+              className="btn-primary rounded-xl px-4 py-2 text-sm font-semibold"
+            >
               Написать в службу заботы
             </AppRouteLink>
           </div>

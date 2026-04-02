@@ -2,6 +2,19 @@
 
 import AppRouteLink from "@/components/app-route-link";
 import SubscriptionQrCard from "@/components/subscription-qr-card";
+import {
+  formatTrafficGb,
+  getAccessState,
+  getDeviceLimit,
+  getNextResetAt,
+  getTrafficLimitGb,
+  isFreeMonthlyState,
+  isPaidUnlimitedState,
+  isSoftModeState,
+  isTrialPremiumState,
+  resolvePlanLabel,
+  resolveTrafficStatusText,
+} from "@/lib/access-policy";
 import { fetchNodeStatus, type NodeStatus } from "@/lib/api";
 import { getCopyText } from "@/lib/portal";
 import { usePortalSession } from "@/lib/session";
@@ -29,7 +42,11 @@ export default function DashboardPage() {
   const [copyState, setCopyState] = useState<"idle" | "ok" | "fail">("idle");
 
   const connectionKey = String(dash?.subscription_url || "").trim();
-  const isTrialLike = ["FREE", "TRIAL", "BONUS"].includes(String(dash?.sub_type || "").toUpperCase()) || String(dash?.current_plan_code || "") === "trial";
+  const accessState = getAccessState(dash, user);
+  const paidMode = isPaidUnlimitedState(accessState);
+  const trialMode = isTrialPremiumState(accessState);
+  const freeMode = isFreeMonthlyState(accessState);
+  const softMode = isSoftModeState(accessState);
   const primaryHref = dash?.is_active ? "/dashboard/downloads/" : "/subscription/checkout/";
   const primaryLabel = dash?.is_active
     ? "Мои приложения"
@@ -68,6 +85,9 @@ export default function DashboardPage() {
   const healthyNodes = useMemo(() => nodes.filter((node) => node.is_healthy).length, [nodes]);
   const plannedNodes = user?.nodes?.length || 0;
   const connectionPointsLabel = nodes.length ? `${healthyNodes}/${nodes.length}` : plannedNodes ? `${plannedNodes}` : "—";
+  const deviceLimit = getDeviceLimit(dash, user);
+  const freeLimitGb = getTrafficLimitGb(dash, user);
+  const nextResetAt = getNextResetAt(dash, user);
 
   const onCopyKey = async (): Promise<void> => {
     if (!connectionKey) return;
@@ -80,17 +100,25 @@ export default function DashboardPage() {
     window.setTimeout(() => setCopyState("idle"), 1800);
   };
 
-  const nextStepTitle = dash?.is_active
-    ? isTrialLike
-      ? "🚀 Тест запущен! Самое время открыть YouTube, TikTok или любимые сайты и проверить скорость. Спойлер: скорее всего, вам понравится."
-      : "✨ Всё работает как надо. Пользуйтесь свободным интернетом, а статистика, настройки и продление всегда под рукой."
-    : "⏸ Ваш профиль ожидает продления. Верните безлимитный интернет в пару кликов.";
+  const nextStepTitle = !dash?.is_active
+    ? "Профиль ждёт продления"
+    : trialMode
+      ? "Премиум-период уже активен"
+      : softMode
+        ? "Мягкий режим до следующего сброса"
+        : freeMode
+          ? "Бесплатный режим с месячной квотой"
+          : "Безлимитный доступ активен";
 
-  const nextStepBody = dash?.is_active
-    ? isTrialLike
-      ? "Откройте приложение, проверьте YouTube, TikTok, сайты и привычные сценарии. Если всё устраивает, следующий шаг — апгрейд на платный тариф."
-      : "Здесь уже собраны ключ, QR, приложения и кнопка продления. Ничего дополнительно искать не нужно."
-    : "Если платежный шлюз временно перегружен, мы предложим комфортно оплатить через Telegram.";
+  const nextStepBody = !dash?.is_active
+    ? "Верните полный доступ в пару кликов."
+    : trialMode
+      ? "Сейчас можно спокойно проверить сервис. После премиум-периода профиль автоматически перейдёт в бесплатный режим 5 ГБ в месяц."
+      : softMode
+        ? "Месячная квота бесплатного тарифа уже исчерпана, поэтому профиль работает в мягком режиме до следующего сброса."
+        : freeMode
+          ? `Профиль находится в бесплатном режиме: ${freeLimitGb ? formatTrafficGb(freeLimitGb) : "месячная квота"} и до ${deviceLimit} устройства.`
+          : "Пользуйтесь свободным интернетом: здесь уже собраны ключ, QR, приложения и быстрый доступ к продлению.";
 
   return (
     <main className="space-y-6">
@@ -104,7 +132,7 @@ export default function DashboardPage() {
               </h1>
               <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">{nextStepBody}</p>
             </div>
-              <span
+            <span
               className={`rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.14em] ${
                 dash?.is_active ? "bg-emerald-500 text-white" : "bg-amber-400 text-slate-900"
               }`}
@@ -130,9 +158,11 @@ export default function DashboardPage() {
           <p className="font-mono text-xs uppercase tracking-[0.16em] text-slate-500">что делать дальше</p>
           <h2 className="mt-3 font-display text-2xl font-bold">{nextStepTitle}</h2>
           <div className="mt-4 space-y-2 text-sm text-slate-600 dark:text-slate-300">
-            <p>Ваш тариф: {dash?.current_plan_code || dash?.sub_type || "—"}</p>
+            <p>Тариф: {resolvePlanLabel(dash, user)}</p>
             <p>До окончания: {fmtDate(dash?.expiry_at)}</p>
-            <p>Лимит устройств: {dash?.device_limit ?? "—"}</p>
+            <p>Трафик: {resolveTrafficStatusText(dash, user)}</p>
+            {freeMode && nextResetAt ? <p>Следующий сброс: {fmtDate(nextResetAt)}</p> : null}
+            <p>Лимит устройств: {deviceLimit}</p>
             <p>Подключений сейчас: {dash?.connection_snapshot?.active_connections ?? dash?.active_sessions ?? "—"}</p>
             <p>Активные серверы: {connectionPointsLabel}</p>
           </div>
@@ -141,12 +171,12 @@ export default function DashboardPage() {
         </article>
       </section>
 
-      {isTrialLike ? (
+      {trialMode ? (
         <section className="glass-card p-6">
-          <p className="font-mono text-xs uppercase tracking-[0.16em] text-emerald-600 dark:text-emerald-300">бонусный период</p>
-          <h2 className="mt-2 font-display text-3xl font-bold">Вы в бонусном периоде! Наслаждайтесь высокой скоростью, а после выберите удобный тариф.</h2>
+          <p className="font-mono text-xs uppercase tracking-[0.16em] text-emerald-600 dark:text-emerald-300">премиум-период</p>
+          <h2 className="mt-2 font-display text-3xl font-bold">Сейчас у вас премиум без лимита трафика</h2>
           <p className="mt-3 max-w-3xl text-sm text-slate-600 dark:text-slate-300">
-            Проверьте сервис на своих устройствах и в привычных сценариях. Если всё устраивает, переходите в тарифы и продлевайте без повторной настройки.
+            Проверьте сервис на своих устройствах и в привычных сценариях. После этого можно перейти на paid без повторной настройки.
           </p>
         </section>
       ) : null}
@@ -189,9 +219,9 @@ export default function DashboardPage() {
             <p className="mt-3 break-all font-mono text-xs leading-6 text-slate-700 dark:text-slate-200">
               {maskKey(connectionKey, keyVisible)}
             </p>
-            <p className="mt-3 text-xs text-slate-500">Используйте эту ссылку подключения только на своих устройствах.</p>
+            <p className="mt-3 text-xs text-slate-500">Используйте эту ссылку только на своих устройствах.</p>
             {copyState === "ok" ? <p className="mt-2 text-xs text-emerald-600 dark:text-emerald-300">Ссылка скопирована.</p> : null}
-            {copyState === "fail" ? <p className="mt-2 text-xs text-rose-500">Ой, ссылка не скопировалась. Попробуйте еще раз.</p> : null}
+            {copyState === "fail" ? <p className="mt-2 text-xs text-rose-500">Ссылка не скопировалась. Попробуйте ещё раз.</p> : null}
           </article>
 
           <article className="rounded-2xl border border-white/45 bg-white/65 p-4 dark:border-white/10 dark:bg-white/5">

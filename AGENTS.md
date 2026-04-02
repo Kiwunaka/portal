@@ -1,6 +1,6 @@
 # Repository Agents
 
-Last updated: 2026-03-29
+Last updated: 2026-04-01
 
 This file is the working contract for any agent or developer operating inside `C:\Users\kiwun\Documents\ai\VPN`.
 
@@ -52,6 +52,12 @@ For client work, also read:
 - [Publishing And Signing Guide](C:/Users/kiwun/Documents/ai/VPN/docs/operations/publishing-and-signing-guide.md)
 
 ## Canonical Docs
+
+Legacy filename note:
+
+- some canonical docs still use legacy path names such as `portal-vpn-product.md`, `portal-vpn-user-guide-ru.md`, and `portal-vpn-v1-spec.md`
+- these files are still the live source of truth for current `POKROV VPN` behavior until a separate rename wave happens
+- treat the content as current even when the path still contains an older name
 
 Living documentation lives only in these areas:
 
@@ -231,6 +237,11 @@ Not source of truth:
 - `.next/`, `.dart_tool/`, `node_modules/`, test caches
 - old root guides moved into `docs/archive/`
 
+Routine cleanup rule:
+
+- default cleanup should target repo-local generated caches, exported static builds, test artifacts, and temporary DBs
+- do not delete `.venv/` or active dependency trees as part of normal cleanup unless you intentionally want a full workspace reset
+
 3x-ui is an execution layer, not the product authority.
 
 ## Safe Cleanup Matrix
@@ -243,7 +254,7 @@ Not source of truth:
 | `.next/` | Next.js build cache |
 | `test-results/` | Generated test artifacts |
 | `*.tsbuildinfo` | TypeScript incremental cache |
-| local `node_modules/`, `.dart_tool/`, `build/`, `dist/` | Only when clearly local-generated and not retained release output |
+| local `node_modules/`, `.dart_tool/`, `build/`, `dist/` | Remove only during an intentional workspace reset, not as routine cleanup |
 | `webapp/out`, `marketing/out` | Generated static export outputs; safe to rebuild, must not be committed |
 
 ## Never-Touch Zones

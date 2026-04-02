@@ -6,7 +6,7 @@ Last updated: 2026-03-22
 
 This note captures the highest-leverage growth opportunities discovered during the `POKROV VPN` rebrand, webapp cleanup, and current-state comparison against `https://perec.app/`.
 
-Treat this file as a product support note for future landing-page, onboarding, and conversion work. Canonical product rules still live in [portal-vpn-product.md](C:/Users/kiwun/Documents/ai/VPN/docs/product/portal-vpn-product.md).
+Treat this file as a product support note for future landing-page, onboarding, and conversion work. Canonical product rules still live in [portal-vpn-product.md](C:/Users/kiwun/Documents/ai/VPN/docs/product/portal-vpn-product.md). The filename is legacy; the content is the live `POKROV VPN` canon.
 
 ## Current POKROV Strengths
 

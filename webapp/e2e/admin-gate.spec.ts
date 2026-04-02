@@ -56,6 +56,7 @@ function mockSessionUser(isAdmin: boolean) {
     is_admin: isAdmin,
     sub_type: "PAID",
     segment: "PAID",
+    access_state: "paid_unlimited",
     expiry_at: "2030-01-01T00:00:00",
     family_slots: 0,
     devices: [],
@@ -68,6 +69,18 @@ function mockSessionUser(isAdmin: boolean) {
     nodes: [],
     limits: { device_limit: 5, total_gb: 0, speed_mbps: 100 },
     traffic: { used_gb: 0, used_bytes: 0, total_gb: 0, remaining_gb: 0, source: "panel_runtime" },
+    traffic_policy: {
+      kind: "unlimited",
+      label: "Безлимитный трафик",
+      limit_gb: null,
+      remaining_gb: null,
+      next_reset_at: null,
+      soft_mode_active: false,
+    },
+    traffic_limit_gb: null,
+    traffic_remaining_gb: null,
+    next_reset_at: null,
+    soft_mode_active: false,
     connections: {
       status: "online",
       active_connections: 0,
@@ -105,6 +118,7 @@ function mockDashboard() {
     sub_type: "PAID",
     current_plan_code: "1_month",
     segment: "PAID",
+    access_state: "paid_unlimited",
     is_active: true,
     expiry_at: "2030-01-01T00:00:00",
     used_gb: 0,
@@ -115,6 +129,18 @@ function mockDashboard() {
     device_limit: 5,
     speed_limit_mbps: 100,
     free_next_reset_at: null,
+    traffic_policy: {
+      kind: "unlimited",
+      label: "Безлимитный трафик",
+      limit_gb: null,
+      remaining_gb: null,
+      next_reset_at: null,
+      soft_mode_active: false,
+    },
+    traffic_limit_gb: null,
+    traffic_remaining_gb: null,
+    next_reset_at: null,
+    soft_mode_active: false,
     family_slots: 0,
     subscription_url: "https://connect.pokrov.space/s8Kx2mP7qR4wT/mock_token",
     connection_snapshot: {
@@ -274,7 +300,7 @@ function mockAdminUserCard() {
       observed_node_count_7d: 0,
       observed_node_count_30d: 0,
       overlap_count_24h: 0,
-      last_observed_at: "2030-01-01T00:00:00",
+      last_observed_at: null,
       updated_at: "2030-01-01T00:00:00",
       recent_ips: [],
       recent_nodes: [],
@@ -881,6 +907,17 @@ test.describe("Admin gate", () => {
     await expect(page.getByText("multi_node_overlap_10m").first()).toBeVisible();
     await expect(page.getByText("8.8.8.8")).toBeVisible();
     await expect(page.getByText("PL").first()).toBeVisible();
+  });
+
+  test("shows observer-lite empty state instead of misleading zero-only activity", async ({ page }) => {
+    await registerApiMocks(page, { isAdmin: true });
+
+    await openRoute(page, "admin/users/");
+    await page.locator("tbody tr").first().click();
+    await expect(page.getByText("Observer-lite")).toBeVisible();
+    await expect(page.getByText("Данных наблюдения пока нет.")).toBeVisible();
+    await expect(page.getByText("No recent IPs.")).not.toBeVisible();
+    await expect(page.getByText("No recent nodes.")).not.toBeVisible();
   });
 
   test("keeps admin pages clickable and inside the viewport on mobile", async ({ page }) => {

@@ -2,6 +2,7 @@ import importlib
 import os
 import sys
 import unittest
+from datetime import datetime, timedelta
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -77,8 +78,8 @@ class PlanPolicyTests(unittest.TestCase):
         paid_client = PanelClient(self._node("pl"))
 
         self.assertEqual(free_client._limit_ip_policy(), 1)
-        self.assertEqual(free_client._total_gb_policy(), 30)
-        self.assertEqual(free_client._total_bytes_policy(), 30 * 1024 * 1024 * 1024)
+        self.assertEqual(free_client._total_gb_policy(), 5)
+        self.assertEqual(free_client._total_bytes_policy(), 5 * 1024 * 1024 * 1024)
 
         self.assertEqual(paid_client._limit_ip_policy(), 5)
         self.assertEqual(paid_client._total_gb_policy(), 0)
@@ -89,8 +90,8 @@ class PlanPolicyTests(unittest.TestCase):
 
         os.environ["FREE_LIMIT_IP"] = "1"
         os.environ["NODE_PL_FREE_LIMIT_IP"] = "3"
-        os.environ["FREE_TOTAL_GB"] = "30"
-        os.environ["NODE_PL_FREE_TOTAL_GB"] = "45"
+        os.environ["FREE_TOTAL_GB"] = "5"
+        os.environ["NODE_PL_FREE_TOTAL_GB"] = "8"
         os.environ["PAID_LIMIT_IP"] = "5"
         os.environ["NODE_PL_LIMIT_IP"] = "7"
 
@@ -98,11 +99,11 @@ class PlanPolicyTests(unittest.TestCase):
         paid_client = PanelClient(self._node("pl"))
 
         self.assertEqual(free_client._limit_ip_policy(), 3)
-        self.assertEqual(free_client._total_gb_policy(), 45)
+        self.assertEqual(free_client._total_gb_policy(), 8)
         self.assertEqual(paid_client._limit_ip_policy(), 7)
 
     def test_api_plan_total_gb_policy(self) -> None:
-        os.environ["FREE_TOTAL_GB"] = "30"
+        os.environ["FREE_TOTAL_GB"] = "5"
         os.environ["FREE_LIMIT_IP"] = "1"
         os.environ["PAID_LIMIT_IP"] = "5"
 
@@ -112,10 +113,71 @@ class PlanPolicyTests(unittest.TestCase):
         free_user = SimpleNamespace(sub_type="FREE")
         paid_user = SimpleNamespace(sub_type="PAID")
 
-        self.assertEqual(api._plan_total_gb(free_user), 30)
+        self.assertEqual(api._plan_total_gb(free_user), 5)
         self.assertEqual(api._plan_total_gb(paid_user), 0)
         self.assertEqual(api._plan_device_limit(free_user), 1)
         self.assertEqual(api._plan_device_limit(paid_user), 5)
+
+    def test_api_access_policy_for_paid_trial_bonus_and_free_soft_mode(self) -> None:
+        os.environ["FREE_TOTAL_GB"] = "5"
+        os.environ["FREE_LIMIT_IP"] = "1"
+        os.environ["PAID_LIMIT_IP"] = "5"
+
+        api = importlib.import_module("api")
+        importlib.reload(api)
+
+        now = datetime(2030, 1, 10, 12, 0, 0)
+        paid_user = SimpleNamespace(
+            sub_type="PAID",
+            current_plan_code="1_month",
+            is_active=True,
+            expiry_at=now + timedelta(days=30),
+            channel_bonus_claimed_at=None,
+        )
+        paid = api._build_access_policy(user=paid_user, used_bytes=3 * 1024**3, now=now)
+        self.assertEqual(paid["access_state"], "paid_unlimited")
+        self.assertEqual(paid["traffic_policy"]["kind"], "unlimited")
+        self.assertIsNone(paid["traffic_limit_gb"])
+        self.assertIsNone(paid["traffic_remaining_gb"])
+
+        trial_user = SimpleNamespace(
+            sub_type="FREE",
+            current_plan_code="trial",
+            is_active=True,
+            expiry_at=now + timedelta(days=5),
+            channel_bonus_claimed_at=None,
+            free_cycle_next_reset_at=None,
+        )
+        trial = api._build_access_policy(user=trial_user, used_bytes=0, now=now)
+        self.assertEqual(trial["access_state"], "trial_premium")
+        self.assertEqual(trial["traffic_policy"]["kind"], "unlimited")
+
+        bonus_user = SimpleNamespace(
+            sub_type="FREE",
+            current_plan_code="trial",
+            is_active=True,
+            expiry_at=now + timedelta(days=10),
+            channel_bonus_claimed_at=now,
+            free_cycle_next_reset_at=None,
+        )
+        bonus = api._build_access_policy(user=bonus_user, used_bytes=0, now=now)
+        self.assertEqual(bonus["access_state"], "bonus_premium")
+        self.assertEqual(bonus["traffic_policy"]["kind"], "unlimited")
+
+        free_user = SimpleNamespace(
+            sub_type="FREE",
+            current_plan_code="free_monthly",
+            is_active=True,
+            expiry_at=now + timedelta(days=365),
+            channel_bonus_claimed_at=None,
+            free_cycle_next_reset_at=now + timedelta(days=12),
+        )
+        soft = api._build_access_policy(user=free_user, used_bytes=6 * 1024**3, now=now)
+        self.assertEqual(soft["access_state"], "free_soft_mode")
+        self.assertEqual(soft["traffic_policy"]["kind"], "soft_limited")
+        self.assertTrue(soft["soft_mode_active"])
+        self.assertEqual(soft["traffic_limit_gb"], 5.0)
+        self.assertEqual(soft["traffic_remaining_gb"], 0.0)
 
     def test_api_plan_catalog_fallback_defaults(self) -> None:
         api = importlib.import_module("api")

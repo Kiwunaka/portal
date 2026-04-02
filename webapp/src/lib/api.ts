@@ -46,12 +46,24 @@ export type DashboardSnapshot = {
   tg_id: number;
   sub_type: string;
   current_plan_code?: string | null;
+  access_state?: string;
   segment?: string;
   is_active: boolean;
   expiry_at?: string | null;
   used_gb: number;
   total_gb: number;
   remaining_gb: number;
+  traffic_policy?: {
+    kind: "unlimited" | "metered" | "soft_limited";
+    label?: string | null;
+    limit_gb?: number | null;
+    remaining_gb?: number | null;
+    next_reset_at?: string | null;
+  } | null;
+  traffic_limit_gb?: number | null;
+  traffic_remaining_gb?: number | null;
+  next_reset_at?: string | null;
+  soft_mode_active?: boolean;
   active_sessions: number;
   active_sessions_source?: string | null;
   device_limit: number;
@@ -122,9 +134,22 @@ export type UserPayload = {
   is_active: boolean;
   is_admin: boolean;
   sub_type: string;
+  current_plan_code?: string | null;
+  access_state?: string;
   segment?: string;
   expiry_at: string | null;
   family_slots?: number;
+  traffic_policy?: {
+    kind: "unlimited" | "metered" | "soft_limited";
+    label?: string | null;
+    limit_gb?: number | null;
+    remaining_gb?: number | null;
+    next_reset_at?: string | null;
+  } | null;
+  traffic_limit_gb?: number | null;
+  traffic_remaining_gb?: number | null;
+  next_reset_at?: string | null;
+  soft_mode_active?: boolean;
   nodes: NodeInfo[];
   limits: {
     device_limit: number;
@@ -612,12 +637,12 @@ export type AdminNodeHealthRow = {
   panel_latency_ms?: number | null;
   panel_error_rate: number;
   active_clients: number;
-  cpu_percent: number;
-  memory_used_mb: number;
-  memory_total_mb: number;
-  disk_used_gb: number;
-  disk_total_gb: number;
-  disk_free_gb: number;
+  cpu_percent?: number | null;
+  memory_used_mb?: number | null;
+  memory_total_mb?: number | null;
+  disk_used_gb?: number | null;
+  disk_total_gb?: number | null;
+  disk_free_gb?: number | null;
   last_ok_at?: string | null;
   last_health_at?: string | null;
   last_probe_stage?: string | null;
@@ -1500,12 +1525,12 @@ function normalizeAdminNodeHealthRow(payload: Partial<AdminNodeHealthRow> | null
     panel_latency_ms: data.panel_latency_ms ?? null,
     panel_error_rate: Number(data.panel_error_rate || 0),
     active_clients: Number(data.active_clients || 0),
-    cpu_percent: Number(data.cpu_percent || 0),
-    memory_used_mb: Number(data.memory_used_mb || 0),
-    memory_total_mb: Number(data.memory_total_mb || 0),
-    disk_used_gb: Number(data.disk_used_gb || 0),
-    disk_total_gb: Number(data.disk_total_gb || 0),
-    disk_free_gb: Number(data.disk_free_gb || 0),
+    cpu_percent: data.cpu_percent == null ? null : Number(data.cpu_percent),
+    memory_used_mb: data.memory_used_mb == null ? null : Number(data.memory_used_mb),
+    memory_total_mb: data.memory_total_mb == null ? null : Number(data.memory_total_mb),
+    disk_used_gb: data.disk_used_gb == null ? null : Number(data.disk_used_gb),
+    disk_total_gb: data.disk_total_gb == null ? null : Number(data.disk_total_gb),
+    disk_free_gb: data.disk_free_gb == null ? null : Number(data.disk_free_gb),
     last_ok_at: data.last_ok_at ?? null,
     last_health_at: data.last_health_at ?? null,
     last_probe_stage: data.last_probe_stage ?? null,

@@ -606,6 +606,11 @@ class ApiAuthAndTicketsTests(unittest.TestCase):
             r = self.client.get("/api/dashboard", headers=hdrs)
             self.assertEqual(r.status_code, 200, r.text)
             body = r.json()
+            self.assertEqual(body["access_state"], "paid_unlimited")
+            self.assertEqual(body["traffic_policy"]["kind"], "unlimited")
+            self.assertIsNone(body["traffic_limit_gb"])
+            self.assertIsNone(body["traffic_remaining_gb"])
+            self.assertFalse(body["soft_mode_active"])
             self.assertEqual(body["used_gb"], 3.0)
             self.assertEqual(body["remaining_gb"], 0.0)
             self.assertEqual(body["active_sessions"], 2)
@@ -696,6 +701,10 @@ class ApiAuthAndTicketsTests(unittest.TestCase):
             r = self.client.get("/api/user/1001", headers=hdrs)
             self.assertEqual(r.status_code, 200, r.text)
             body = r.json()
+            self.assertEqual(body["access_state"], "paid_unlimited")
+            self.assertEqual(body["traffic_policy"]["kind"], "unlimited")
+            self.assertIsNone(body["traffic_limit_gb"])
+            self.assertIsNone(body["traffic_remaining_gb"])
             self.assertEqual(body["devices"], [])
             self.assertEqual(int(body["sync"]["device_count"]), 0)
             self.assertEqual(body["traffic"]["source"], "panel_runtime")
@@ -708,6 +717,116 @@ class ApiAuthAndTicketsTests(unittest.TestCase):
             self.assertEqual(body["connections"]["source"], "panel_runtime")
         finally:
             self.api.ControlPanel = original_panel
+            self.api._get_panel_usage_legacy = original_legacy
+
+    def test_dashboard_downgrades_expired_premium_to_free_monthly(self) -> None:
+        from db import SessionLocal
+        from models import User
+
+        s = SessionLocal()
+        try:
+            user = s.query(User).filter_by(tg_id=1001).first()
+            assert user is not None
+            user.sub_type = "PAID"
+            user.current_plan_code = "1_month"
+            user.expiry_at = datetime.utcnow() - timedelta(days=1)
+            user.is_active = True
+            user.sub_token = "downgrade-token-1001"
+            s.commit()
+        finally:
+            s.close()
+
+        async def fake_runtime(*, s, user, nodes=None):
+            return {
+                "panel_state": "ok",
+                "known_nodes": 0,
+                "active_nodes": 0,
+                "enabled_nodes": 0,
+                "active_connections": 0,
+                "active_connections_source": "none",
+                "traffic_total_bytes": 0,
+                "status": "unknown",
+                "last_online_at": None,
+                "last_online_age_seconds": None,
+            }
+
+        original_runtime = self.api._get_user_runtime_summary
+        original_legacy = self.api._get_panel_usage_legacy
+        self.api._get_user_runtime_summary = fake_runtime
+        self.api._get_panel_usage_legacy = AsyncMock(return_value=None)
+        try:
+            hdrs = {"X-Telegram-Init-Data": self._init_data(1001, "alice")}
+            response = self.client.get("/api/dashboard", headers=hdrs)
+            self.assertEqual(response.status_code, 200, response.text)
+            body = response.json()
+            self.assertEqual(body["current_plan_code"], "free_monthly")
+            self.assertEqual(body["access_state"], "free_monthly")
+            self.assertEqual(body["traffic_policy"]["kind"], "metered")
+            self.assertEqual(body["traffic_limit_gb"], 5.0)
+            self.assertFalse(body["soft_mode_active"])
+            self.assertTrue(body["next_reset_at"])
+        finally:
+            self.api._get_user_runtime_summary = original_runtime
+            self.api._get_panel_usage_legacy = original_legacy
+
+        s = SessionLocal()
+        try:
+            user = s.query(User).filter_by(tg_id=1001).first()
+            assert user is not None
+            self.assertEqual(user.current_plan_code, "free_monthly")
+        finally:
+            s.close()
+
+    def test_dashboard_marks_free_soft_mode_after_monthly_quota(self) -> None:
+        from db import SessionLocal
+        from models import User
+
+        gib = 1024 ** 3
+        s = SessionLocal()
+        try:
+            user = s.query(User).filter_by(tg_id=1001).first()
+            assert user is not None
+            user.sub_type = "FREE"
+            user.current_plan_code = "free_monthly"
+            user.expiry_at = datetime.utcnow() + timedelta(days=365)
+            user.is_active = True
+            user.sub_token = "free-soft-token-1001"
+            user.free_cycle_next_reset_at = datetime.utcnow() + timedelta(days=11)
+            s.commit()
+        finally:
+            s.close()
+
+        async def fake_runtime(*, s, user, nodes=None):
+            return {
+                "panel_state": "ok",
+                "known_nodes": 1,
+                "active_nodes": 1,
+                "enabled_nodes": 1,
+                "active_connections": 1,
+                "active_connections_source": "panel_ip_count",
+                "traffic_total_bytes": 6 * gib,
+                "status": "online",
+                "last_online_at": "2030-01-01T00:00:00Z",
+                "last_online_age_seconds": 30,
+            }
+
+        original_runtime = self.api._get_user_runtime_summary
+        original_legacy = self.api._get_panel_usage_legacy
+        self.api._get_user_runtime_summary = fake_runtime
+        self.api._get_panel_usage_legacy = AsyncMock(return_value=None)
+        try:
+            hdrs = {"X-Telegram-Init-Data": self._init_data(1001, "alice")}
+            response = self.client.get("/api/dashboard", headers=hdrs)
+            self.assertEqual(response.status_code, 200, response.text)
+            body = response.json()
+            self.assertEqual(body["access_state"], "free_soft_mode")
+            self.assertEqual(body["traffic_policy"]["kind"], "soft_limited")
+            self.assertEqual(body["traffic_limit_gb"], 5.0)
+            self.assertEqual(body["traffic_remaining_gb"], 0.0)
+            self.assertTrue(body["soft_mode_active"])
+            self.assertTrue(body["next_reset_at"])
+        finally:
+            self.api._get_user_runtime_summary = original_runtime
             self.api._get_panel_usage_legacy = original_legacy
 
     def test_admin_node_disable_requires_resync_when_mapped_users_exist(self) -> None:

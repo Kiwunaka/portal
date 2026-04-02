@@ -107,6 +107,12 @@ Required node-level visibility:
 - `last_probe_error_kind`
 - `last_probe_error_message`
 
+Operator-facing rendering rule:
+
+- distinguish real `0` from missing telemetry; `RAM`, disk totals, and free space must show that metrics did not arrive when totals are absent
+- keep raw probe fields visible, but add a readable operator explanation for known probe failures
+- for `reality_target_mismatch`, explain that the expected REALITY target name did not match the certificate name or SNI returned by the node
+
 Operational rule:
 
 - `portal-node-metrics.timer` must stay healthy on every relevant host
@@ -214,6 +220,7 @@ Visibility rule:
 - it must not be echoed back to public marketing copy as surveillance language
 - user-facing support copy should describe this as technical context used to help diagnose connection issues
 - observer-lite phase 1 is `observe-only`: no auto-block, no auto-throttle, no Telegram operator spam
+- when observer-lite has no observations yet, admin surfaces should show an explicit empty state instead of presenting zero-only counters as meaningful observations
 
 ## Support And Incident Triage
 

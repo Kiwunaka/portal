@@ -180,6 +180,22 @@ function isManualTestUserLike(user: {
   );
 }
 
+function observerHasData(observer: AdminUserCard["observer"] | null | undefined): boolean {
+  if (!observer) return false;
+  return Boolean(
+    observer.observed_ip_count_24h ||
+      observer.observed_ip_count_7d ||
+      observer.observed_ip_count_30d ||
+      observer.observed_node_count_24h ||
+      observer.observed_node_count_7d ||
+      observer.observed_node_count_30d ||
+      observer.overlap_count_24h ||
+      observer.reasons?.length ||
+      observer.recent_ips?.length ||
+      observer.recent_nodes?.length,
+  );
+}
+
 export default function AdminUsersPage() {
   const [query, setQuery] = useState("");
   const [rows, setRows] = useState<AdminUserRow[]>([]);
@@ -933,6 +949,13 @@ export default function AdminUsersPage() {
               </div>
             </div>
 
+            <div className="mb-3 rounded-xl border border-white/30 bg-white/70 p-3 text-xs text-slate-500 dark:border-white/10 dark:bg-white/10">
+              <p>Расшифровка рисков:</p>
+              <p>Ротации = ротации ссылки/ключа за 30 дней.</p>
+              <p>Операции админа с ключами = ручные admin-действия за 30 дней.</p>
+              <p>Уникальные IP = адреса из event log за 30 дней, а не runtime panel IP.</p>
+            </div>
+
             <div className="mb-3 rounded-xl bg-white/70 p-3 text-sm dark:bg-white/10">
               <div className="mb-1 flex items-center gap-2">
                 <span className={`badge ${observerStateBadgeClass(observer?.state || selected.user.observer_state)}`}>
@@ -942,10 +965,16 @@ export default function AdminUsersPage() {
                   {observer?.updated_at ? `updated ${fmtRuDate(observer.updated_at)}` : "updated: n/a"}
                 </span>
               </div>
-              <p className="text-xs">IP 24h: <strong>{observer?.observed_ip_count_24h ?? 0}</strong></p>
-              <p className="text-xs">Nodes 24h: <strong>{observer?.observed_node_count_24h ?? 0}</strong></p>
-              <p className="text-xs">Overlap 24h: <strong>{observer?.overlap_count_24h ?? 0}</strong></p>
-              <p className="text-xs">Reasons: <strong>{observer?.reasons?.length ? observer.reasons.join(", ") : "none"}</strong></p>
+              {!observerHasData(observer) ? (
+                <p className="text-xs text-slate-500">Observer пока не прислал наблюдений.</p>
+              ) : (
+                <>
+                  <p className="text-xs">IP 24h: <strong>{observer?.observed_ip_count_24h ?? 0}</strong></p>
+                  <p className="text-xs">Nodes 24h: <strong>{observer?.observed_node_count_24h ?? 0}</strong></p>
+                  <p className="text-xs">Overlap 24h: <strong>{observer?.overlap_count_24h ?? 0}</strong></p>
+                  <p className="text-xs">Reasons: <strong>{observer?.reasons?.length ? observer.reasons.join(", ") : "none"}</strong></p>
+                </>
+              )}
             </div>
 
             <div className="mt-3 rounded-xl bg-white/70 p-3 text-sm dark:bg-white/10">
@@ -1028,47 +1057,49 @@ export default function AdminUsersPage() {
                       {observerStateLabel(observer?.state || selected.user.observer_state)}
                     </span>
                   </div>
-                  <div className="grid gap-3 lg:grid-cols-2">
-                    <div className="space-y-1 text-xs">
-                      <p>IPs: <strong>{observer?.observed_ip_count_24h ?? 0}</strong> / 24h, <strong>{observer?.observed_ip_count_7d ?? 0}</strong> / 7d, <strong>{observer?.observed_ip_count_30d ?? 0}</strong> / 30d</p>
-                      <p>Nodes: <strong>{observer?.observed_node_count_24h ?? 0}</strong> / 24h, <strong>{observer?.observed_node_count_7d ?? 0}</strong> / 7d, <strong>{observer?.observed_node_count_30d ?? 0}</strong> / 30d</p>
-                      <p>Overlap 24h: <strong>{observer?.overlap_count_24h ?? 0}</strong></p>
-                      <p>Last observed: <strong>{fmtRuDate(observer?.last_observed_at)}</strong></p>
-                      <p>Reasons: <strong>{observer?.reasons?.length ? observer.reasons.join(", ") : "none"}</strong></p>
-                    </div>
+                  {!observerHasData(observer) ? (
+                    <p className="text-xs text-slate-500">Данных наблюдения пока нет.</p>
+                  ) : (
                     <div className="grid gap-3 lg:grid-cols-2">
-                      <div>
-                        <p className="mb-1 text-xs font-semibold uppercase tracking-[0.08em] text-slate-500">Recent IPs</p>
-                        <div className="space-y-1">
-                          {(observer?.recent_ips || []).map((row) => (
-                            <div key={`${row.node_code}:${row.source_ip_raw}:${row.last_seen_at}`} className="rounded-lg border border-white/20 bg-white/60 px-2 py-1 text-xs dark:border-white/10 dark:bg-white/5">
-                              <div className="flex items-center justify-between gap-2">
-                                <span className="font-mono">{row.source_ip_raw}</span>
-                                <span className="badge badge-info">{String(row.node_code || "").toUpperCase()}</span>
-                              </div>
-                              <div className="mt-1 text-slate-500">{fmtRuDate(row.last_seen_at)}</div>
-                            </div>
-                          ))}
-                          {!observer?.recent_ips?.length ? <p className="text-xs text-slate-500">No recent IPs.</p> : null}
-                        </div>
+                      <div className="space-y-1 text-xs">
+                        <p>IPs: <strong>{observer?.observed_ip_count_24h ?? 0}</strong> / 24h, <strong>{observer?.observed_ip_count_7d ?? 0}</strong> / 7d, <strong>{observer?.observed_ip_count_30d ?? 0}</strong> / 30d</p>
+                        <p>Nodes: <strong>{observer?.observed_node_count_24h ?? 0}</strong> / 24h, <strong>{observer?.observed_node_count_7d ?? 0}</strong> / 7d, <strong>{observer?.observed_node_count_30d ?? 0}</strong> / 30d</p>
+                        <p>Overlap 24h: <strong>{observer?.overlap_count_24h ?? 0}</strong></p>
+                        <p>Last observed: <strong>{fmtRuDate(observer?.last_observed_at)}</strong></p>
+                        <p>Reasons: <strong>{observer?.reasons?.length ? observer.reasons.join(", ") : "none"}</strong></p>
                       </div>
-                      <div>
-                        <p className="mb-1 text-xs font-semibold uppercase tracking-[0.08em] text-slate-500">Recent nodes</p>
-                        <div className="space-y-1">
-                          {(observer?.recent_nodes || []).map((row) => (
-                            <div key={`${row.node_id}:${row.last_seen_at}`} className="rounded-lg border border-white/20 bg-white/60 px-2 py-1 text-xs dark:border-white/10 dark:bg-white/5">
-                              <div className="flex items-center justify-between gap-2">
-                                <span>{String(row.node_code || "").toUpperCase()}</span>
-                                <span>{row.score_ip_count} IP</span>
+                      <div className="grid gap-3 lg:grid-cols-2">
+                        <div>
+                          <p className="mb-1 text-xs font-semibold uppercase tracking-[0.08em] text-slate-500">Recent IPs</p>
+                          <div className="space-y-1">
+                            {(observer?.recent_ips || []).map((row) => (
+                              <div key={`${row.node_code}:${row.source_ip_raw}:${row.last_seen_at}`} className="rounded-lg border border-white/20 bg-white/60 px-2 py-1 text-xs dark:border-white/10 dark:bg-white/5">
+                                <div className="flex items-center justify-between gap-2">
+                                  <span className="font-mono">{row.source_ip_raw}</span>
+                                  <span className="badge badge-info">{String(row.node_code || "").toUpperCase()}</span>
+                                </div>
+                                <div className="mt-1 text-slate-500">{fmtRuDate(row.last_seen_at)}</div>
                               </div>
-                              <div className="mt-1 text-slate-500">{fmtRuDate(row.last_seen_at)}</div>
-                            </div>
-                          ))}
-                          {!observer?.recent_nodes?.length ? <p className="text-xs text-slate-500">No recent nodes.</p> : null}
+                            ))}
+                          </div>
+                        </div>
+                        <div>
+                          <p className="mb-1 text-xs font-semibold uppercase tracking-[0.08em] text-slate-500">Recent nodes</p>
+                          <div className="space-y-1">
+                            {(observer?.recent_nodes || []).map((row) => (
+                              <div key={`${row.node_id}:${row.last_seen_at}`} className="rounded-lg border border-white/20 bg-white/60 px-2 py-1 text-xs dark:border-white/10 dark:bg-white/5">
+                                <div className="flex items-center justify-between gap-2">
+                                  <span>{String(row.node_code || "").toUpperCase()}</span>
+                                  <span>{row.score_ip_count} IP</span>
+                                </div>
+                                <div className="mt-1 text-slate-500">{fmtRuDate(row.last_seen_at)}</div>
+                              </div>
+                            ))}
+                          </div>
                         </div>
                       </div>
                     </div>
-                  </div>
+                  )}
                 </div>
                 <div className="mt-2 space-y-2">
                   {(selected.tickets || []).map((ticket) => (
