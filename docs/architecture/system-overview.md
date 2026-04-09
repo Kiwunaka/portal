@@ -1,6 +1,6 @@
 # POKROV System Overview
 
-Last updated: 2026-03-31
+Last updated: 2026-04-08
 
 ## Document Status
 
@@ -58,6 +58,11 @@ Node lifecycle rule:
   `POKROV VPN` consumer client for Android and Windows
 - `shared/`
   shared public copy, canonical hostnames, and cross-surface product constants
+
+Client release safety rule:
+
+- Android and Windows remain the public `v1` target pair
+- Android must not be released as publicly safe until release-build verification proves that localhost proxy, DNS, command, and admin surfaces are not exposed without acceptable protection
 
 Admin ownership rule:
 
@@ -219,6 +224,13 @@ Current operational monitoring should correlate:
 - per-user observer-lite IP/node footprint and conservative `ok | watch | suspicious` state
 - device and account visibility for support diagnosis
 
+Current release validation also has to correlate:
+
+- client localhost-listener security smoke
+- routing preset smoke for `Global` and `Все, кроме РФ`
+- DNS split and leak checks
+- three-vantage node checks from current operator origin, `brain`, and an RU-origin probe when available
+
 Dashboard and user-cabinet traffic visibility must come from server-side node runtime snapshots rather than app-only telemetry.
 
 - current traffic usage should prefer live panel/runtime counters aggregated across the user nodes
@@ -241,6 +253,12 @@ This gives operators a useful distinction between:
 - a broken node or public edge
 - a hostname migration issue where legacy compatibility paths still work but canonical `pokrov.space` paths do not
 - a reserve path that still works for operator and VIP access while canonical paths fail
+
+Probe-readiness rule:
+
+- `mini` is the preferred RU probe origin when it is healthy
+- `mini` is not guaranteed to be available at all times
+- RU-origin observability remains incomplete until `mini` or a replacement RU host is working again
 
 Current admin status model for operators:
 

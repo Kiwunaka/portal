@@ -1,6 +1,6 @@
 # POKROV VPN Product Overview
 
-Last updated: 2026-03-22
+Last updated: 2026-04-08
 
 ## Document Status
 
@@ -41,6 +41,28 @@ Telegram remains a secondary path for linking, bonus claim, recovery, support en
 - free trial: `5 days`
 - Telegram reward: `+10 days`
 - Russian is a first-class user language
+
+## Current Release Constraints
+
+- release target remains `Android + Windows`
+- `Windows` stays in scope for the public `v1` ship when its normal gates are green
+- `Android` remains release-blocked until a real release-build audit proves that localhost listeners and local control surfaces are either disabled or safely authenticated
+- do not describe Android app-isolation features such as split tunneling, Private Space, Knox, Shelter, or similar tooling as sufficient mitigations for an unauthenticated local control surface
+
+## Russia-Aware Routing Direction
+
+Current product direction for Russian users:
+
+- recommended preset: `Все, кроме РФ`
+- additional presets: `Global` and `Только заблокированное`
+- `Все, кроме РФ` is meant to keep `geoip:ru` plus private and reserved networks direct while proxying the rest
+- DNS behavior must be selected explicitly per routing mode rather than being hidden behind one hardcoded preset
+
+Current truth:
+
+- the shipping client already has a `Region.ru` placeholder
+- the full routing strategy and geo-asset wiring are not yet complete
+- do not market RU-special routing as fully shipped until the real strategy layer, DNS split checks, and release smoke are in place
 
 ## Current User Surfaces
 
@@ -192,6 +214,18 @@ Support should be reachable from:
 
 Support payloads should carry enough device and app context for operator diagnosis.
 
+Client diagnostics should be useful without leaking secrets. User-facing diagnostics may show:
+
+- active routing mode
+- current route category
+- reconnect or profile-refresh guidance
+
+They must not expose:
+
+- raw config bodies
+- keys or subscription secrets
+- detailed topology that is unnecessary for support
+
 Support visibility should be able to connect:
 
 - linked Telegram identity when present
@@ -229,3 +263,5 @@ Current major product risks are:
 - public pricing or checkout behaving like a decorative vitrine instead of a real continuation flow
 - Android and Windows release wiring drifting away from canonical artifact URLs
 - Apple readiness notes being mistaken for a public ship promise
+- Android release being treated as ready before localhost listener and control-surface safety is proven in a release build
+- RU routing and DNS presets being described as finished before the real strategy layer and leak checks ship

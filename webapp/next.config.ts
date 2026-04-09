@@ -4,6 +4,7 @@ import type { NextConfig } from "next";
 const BASE_PATH = "";
 
 const nextConfig: NextConfig = {
+  allowedDevOrigins: ["127.0.0.1", "localhost"],
   output: "export",
   trailingSlash: true,
   basePath: BASE_PATH || undefined,

@@ -55,6 +55,35 @@ class PortalApiTests(unittest.TestCase):
         self.assertIsNotNone(user)
         self.assertEqual(user["id"], 12345)
 
+    def test_verify_telegram_data_uses_runtime_bot_token_when_settings_were_cached(self) -> None:
+        import importlib
+
+        config = importlib.import_module("config")
+        stale_token = "stale_bot_token_456"
+        original_token = os.environ["BOT_TOKEN"]
+        try:
+            os.environ["BOT_TOKEN"] = stale_token
+            importlib.reload(config)
+
+            os.environ["BOT_TOKEN"] = original_token
+            api = importlib.import_module("api")
+            importlib.reload(api)
+
+            init_data = _sign_telegram_init_data(
+                bot_token=original_token,
+                params={
+                    "auth_date": "1700000000",
+                    "query_id": "AAEAAAE",
+                    "user": '{"id":54321,"first_name":"Test","username":"runtime"}',
+                },
+            )
+            user = api._verify_telegram_data(init_data)
+            self.assertIsNotNone(user)
+            self.assertEqual(user["id"], 54321)
+        finally:
+            os.environ["BOT_TOKEN"] = original_token
+            importlib.reload(config)
+
     def test_generate_vless_link_contains_reality_params(self) -> None:
         import importlib
 

@@ -123,29 +123,43 @@ class ApiLifecycleSmokeTests(unittest.TestCase):
 
     def test_api_only_lifecycle_covers_trial_connect_support_bonuses_and_purchase(self) -> None:
         class _FakePanel:
+            async def login(self):
+                return True
+
             async def add_client(self, **_kwargs):
                 return True
+
+            async def enable_client(self, *_args, **_kwargs):
+                return True
+
+            async def refresh(self):
+                return []
+
+            async def get_user_key_snapshots(self, **_kwargs):
+                return []
 
             async def close(self):
                 return None
 
-        old_panel = self.api.ControlPanel
         self.api.ControlPanel = _FakePanel
-        try:
-            trial = self.client.post(
-                "/api/client/session/start-trial",
-                json={
-                    "install_id": f"install-{uuid.uuid4().hex}",
-                    "device_name": "Smoke Pixel",
-                    "platform": "android",
-                    "os_version": "14",
-                    "app_version": "1.0.0",
-                    "locale": "ru-RU",
-                    "time_zone": "Europe/Moscow",
-                },
-            )
-        finally:
-            self.api.ControlPanel = old_panel
+        control_panel = importlib.import_module("control_panel")
+        gift_cards_service = importlib.import_module("gift_cards_service")
+        free_cycle_service = importlib.import_module("free_cycle_service")
+        control_panel.ControlPanel = _FakePanel
+        gift_cards_service.ControlPanel = _FakePanel
+        free_cycle_service.ControlPanel = _FakePanel
+        trial = self.client.post(
+            "/api/client/session/start-trial",
+            json={
+                "install_id": f"install-{uuid.uuid4().hex}",
+                "device_name": "Smoke Pixel",
+                "platform": "android",
+                "os_version": "14",
+                "app_version": "1.0.0",
+                "locale": "ru-RU",
+                "time_zone": "Europe/Moscow",
+            },
+        )
 
         self.assertEqual(trial.status_code, 200, trial.text)
         trial_body = trial.json()

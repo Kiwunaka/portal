@@ -1,6 +1,6 @@
 # Repository Agents
 
-Last updated: 2026-04-01
+Last updated: 2026-04-08
 
 This file is the working contract for any agent or developer operating inside `C:\Users\kiwun\Documents\ai\VPN`.
 
@@ -30,6 +30,8 @@ Use it to answer four questions before touching code:
 - Canonical checkout host: `https://pay.pokrov.space/checkout/`
 - Legacy compatibility host: `kiwunaka.space`
 - Canonical control-plane host: `82.21.114.104`
+- Android public release is blocked until release-build localhost/control-surface checks prove the client is safe
+- RU-origin probe readiness is an operational dependency, not a guaranteed property of `mini`
 
 ## Must-Read Order
 
@@ -50,6 +52,14 @@ For client work, also read:
 - [POKROV VPN Product Spec](C:/Users/kiwun/Documents/ai/VPN/external/client-fork/app/docs/product/portal-vpn-v1-spec.md)
 - [App-First Session Flow](C:/Users/kiwun/Documents/ai/VPN/external/client-fork/app/docs/architecture/app-first-session-flow.md)
 - [Publishing And Signing Guide](C:/Users/kiwun/Documents/ai/VPN/docs/operations/publishing-and-signing-guide.md)
+
+## Operator Access
+
+Shell guidance:
+
+- prefer `bash` when it is the simpler and clearer path
+- explicitly fall back to `powershell` when quoting, SSH, Windows paths, or local tooling reliability is better
+- do not treat one shell as mandatory if the other is safer for the exact task
 
 ## Canonical Docs
 
@@ -192,13 +202,15 @@ When behavior changes, update the matching canonical docs in the same task.
 2. Inspect `scripts/collect_node_metrics.py`, `infra/portal-node-metrics.service`, and `infra/portal-node-metrics.timer`.
 3. Verify `/api/admin/metrics/status` freshness, per-node alerts, and probe-failure fields.
 4. Treat hoster CPU warnings as capacity incidents requiring node and control-plane telemetry review.
+5. Treat RU probe readiness itself as a tracked dependency. `mini` may be unavailable and must not be assumed as a guaranteed origin.
 
 ### Client task
 
 1. Read the must-read set plus the client docs.
 2. Inspect `external/client-fork/app/lib/` and packaging assets as needed.
 3. Run targeted Flutter tests or build-smoke commands.
-4. Sync both client docs and root canonical docs if contracts changed.
+4. Treat Android release-build localhost/control-surface verification as a release gate, not an optional audit.
+5. Sync both client docs and root canonical docs if contracts changed.
 
 ### Docs-only task
 
@@ -221,6 +233,12 @@ If deploy is blocked, document:
 - what was verified
 - what remains blocked
 - rollback-safe state
+
+For node-access diagnostics and release handoffs, explicitly distinguish:
+
+- `current-origin check`: from the operator workstation currently in use
+- `brain-origin check`: from the control-plane host `82.21.114.104`
+- `RU-origin check`: from `mini` or a replacement external RU probe host
 
 ## Source Of Truth Rules
 
@@ -290,3 +308,9 @@ For substantial tasks, leave a short handoff with:
 - `What I changed`
 - `How I verified`
 - `What remains / risk`
+
+For node-access diagnostics, also include:
+
+- `current-origin check`
+- `brain-origin check`
+- `RU-origin check`

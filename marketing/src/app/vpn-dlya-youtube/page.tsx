@@ -2,7 +2,11 @@ import MarketingLanding, { buildMarketingMetadata } from "../../components/marke
 
 export const metadata = buildMarketingMetadata(
   "VPN для YouTube | POKROV VPN",
-  "Приложение, тест на 5 дней и спокойная проверка YouTube-сценария перед выбором тарифа.",
+  "Приложение, 5 дней теста и спокойная проверка YouTube-сценария перед выбором тарифа.",
+  {
+    path: "/vpn-dlya-youtube/",
+    keywords: ["vpn для youtube", "впн для youtube", "youtube vpn", "vpn youtube android"],
+  },
 );
 
 export default function VpnForYoutubePage() {
@@ -10,9 +14,9 @@ export default function VpnForYoutubePage() {
     <MarketingLanding
       heroKicker="Для YouTube и длинных видео"
       heroTitle="VPN для YouTube без долгого старта"
-      heroSubtitle="Если хочется просто проверить доступ к YouTube и не возиться с длинной настройкой, начните с приложения и протестируйте сервис в своём темпе. Telegram остаётся рядом как запасной путь."
+      heroSubtitle="Сначала проверьте доступ к YouTube в приложении и только потом переходите к кабинету и продлению, если сервис подошёл."
       clusterTitle="Похожие страницы"
-      clusterBody="Отсюда удобно перейти к TikTok, телефону и другим сценариям, где нужен тот же короткий и понятный маршрут."
+      clusterBody="Отсюда удобно перейти к TikTok, телефону и Telegram-сценарию, не дублируя главную страницу и сохраняя один понятный маршрут."
     />
   );
 }

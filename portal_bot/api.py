@@ -156,6 +156,10 @@ def _env_float(name: str, default: float) -> float:
         return float(default)
 
 
+def _current_bot_token() -> str:
+    return str(os.getenv("BOT_TOKEN") or Settings.BOT_TOKEN or "").strip()
+
+
 API_ENABLE_USAGE = env_bool("API_ENABLE_USAGE", default=False)
 AUTO_DOWNGRADE_TO_FREE = env_bool("AUTO_DOWNGRADE_TO_FREE", default=True)
 AUTO_FREE_DAYS = int(os.getenv("AUTO_FREE_DAYS", "3650"))
@@ -1252,11 +1256,14 @@ def _verify_telegram_data(init_data: str) -> dict[str, Any] | None:
     try:
         parsed = dict(parse_qsl(init_data, keep_blank_values=True))
         check_hash = parsed.pop("hash", "")
+        bot_token = _current_bot_token()
+        if not check_hash or not bot_token:
+            return None
 
         data_check_arr = sorted([f"{k}={v}" for k, v in parsed.items()])
         data_check_string = "\n".join(data_check_arr)
 
-        secret_key = hmac.new(b"WebAppData", Settings.BOT_TOKEN.encode(), hashlib.sha256).digest()
+        secret_key = hmac.new(b"WebAppData", bot_token.encode(), hashlib.sha256).digest()
         calculated_hash = hmac.new(secret_key, data_check_string.encode(), hashlib.sha256).hexdigest()
 
         if calculated_hash != check_hash:
@@ -2789,7 +2796,7 @@ async def _freekassa_api_request(*, source: str, method: str, data: dict[str, An
 
 
 async def _telegram_send_message(chat_id: int, text: str) -> bool:
-    token = (Settings.BOT_TOKEN or "").strip()
+    token = _current_bot_token()
     if not token:
         return False
     endpoint = f"https://api.telegram.org/bot{token}/sendMessage"
@@ -2806,7 +2813,7 @@ async def _telegram_send_message(chat_id: int, text: str) -> bool:
 
 
 async def _telegram_get_chat_member(chat_id: str, user_id: int) -> dict[str, Any] | None:
-    token = (Settings.BOT_TOKEN or "").strip()
+    token = _current_bot_token()
     if not token:
         return None
     endpoint = f"https://api.telegram.org/bot{token}/getChatMember"
@@ -3744,7 +3751,7 @@ async def public_live_updates(response: Response, limit: int = Query(default=3, 
 async def auth_telegram_web_login(payload: TelegramWebLoginIn) -> dict:
     verified = verify_telegram_login_payload(
         payload=payload.model_dump(),
-        bot_token=Settings.BOT_TOKEN,
+        bot_token=_current_bot_token(),
         max_age_seconds=TELEGRAM_WEB_LOGIN_MAX_AGE_SECONDS,
     )
     if not verified:

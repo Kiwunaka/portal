@@ -1,15 +1,28 @@
-import { getCopyText, getPokrovPublicConfig } from "../../lib/pokrov";
+import { buildMarketingMetadata } from "../../components/marketing-landing";
+import { getPokrovPublicConfig } from "../../lib/pokrov";
 
 const config = getPokrovPublicConfig(process.env as Record<string, string | undefined>);
+
+export const metadata = buildMarketingMetadata(
+  "Публичная оферта | POKROV VPN",
+  "Базовые условия цифровой подписки POKROV VPN, порядок продления и контакты поддержки.",
+  {
+    path: "/offer/",
+    keywords: ["оферта pokrov vpn", "условия подписки vpn", "pokrov offer"],
+  },
+);
 
 export default function OfferPage() {
   return (
     <main className="legal-page">
       <h1>Публичная оферта</h1>
-      <p>{getCopyText("marketing.legal.offer.intro", "Этот документ описывает базовые условия доступа к цифровым услугам POKROV VPN, порядок продления и основные правила использования сервиса.")}</p>
+      <p>
+        Этот документ описывает базовые условия доступа к цифровым услугам POKROV VPN, порядок продления и основные правила
+        использования сервиса.
+      </p>
       <ul>
-        <li>Сервис предоставляется в формате цифровой подписки на выбранный срок.</li>
-        <li>Тестовый период и отдельные сценарии доступа могут иметь свои ограничения по устройствам и функциям.</li>
+        <li>Сервис предоставляется как цифровая подписка на выбранный срок.</li>
+        <li>Бесплатный тест и отдельные сценарии доступа могут иметь свои ограничения по устройствам и функциям.</li>
         <li>Продление и оплата запускаются через интерфейсы POKROV VPN или через Telegram-бота, если это предусмотрено текущим маршрутом.</li>
         <li>Возвраты и спорные случаи рассматриваются индивидуально через службу заботы.</li>
       </ul>
@@ -29,9 +42,9 @@ export default function OfferPage() {
           </a>
         </li>
         <li>
-          Форма связи:{" "}
-          <a href={config.contactFormUrl} target="_blank" rel="noreferrer">
-            {config.contactFormUrl}
+          Канал новостей:{" "}
+          <a href={config.newsChannelUrl} target="_blank" rel="noreferrer">
+            {config.newsChannelUrl}
           </a>
         </li>
       </ul>

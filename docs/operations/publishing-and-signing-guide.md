@@ -1,6 +1,6 @@
 # Publishing And Signing Guide
 
-Last updated: 2026-03-22
+Last updated: 2026-04-08
 
 ## Document Status
 
@@ -60,16 +60,18 @@ Current canonical release artifacts:
 ### Release steps
 
 1. Build release artifacts in `external/client-fork/app/`.
-2. Sign the Android release with the production keystore.
-3. Upload the `AAB` to Google Play when store publication is ready.
-4. Upload the universal `APK` to GitHub Releases for direct download.
-5. Run release handoff and sync the final URLs into runtime env.
+2. Audit the release build for localhost listeners and local control surfaces before public publication.
+3. Sign the Android release with the production keystore.
+4. Upload the `AAB` to Google Play when store publication is ready.
+5. Upload the universal `APK` to GitHub Releases for direct download.
+6. Run release handoff and sync the final URLs into runtime env.
 
 ### Store notes
 
 - Google Play submission is the preferred Android store path.
 - Direct APK distribution remains valid while Play rollout is pending.
 - Android package continuity should be treated as a fresh install path if package identity changed.
+- Android public release is blocked if the release-build audit cannot prove that local proxy, DNS, command, and admin surfaces are safely disabled or protected
 
 ### Cost note
 
@@ -207,3 +209,6 @@ Minimum publishing verification:
 - download links resolve from every public surface
 - store metadata matches `POKROV VPN`
 - Apple surfaces, if any, are clearly labeled as upcoming or waitlist-only
+- `python scripts/client_security_smoke.py` stays green before final Android sign-off
+- Android release-build checks confirm there is no unauthenticated local SOCKS/API-style control surface exposed
+- routing and DNS verification covers `Global` plus the recommended RU preset before RU-specific copy is treated as shipped

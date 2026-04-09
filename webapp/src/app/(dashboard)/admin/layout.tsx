@@ -61,6 +61,27 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             <div className="h-full w-1/3 animate-pulse rounded-full bg-violet-600" />
           </div>
         </section>
+        <section className="glass-card overflow-x-auto p-2">
+          <nav aria-label="Admin sections" className="flex min-w-max flex-nowrap gap-1.5 pb-1 sm:min-w-0 sm:flex-wrap sm:pb-0">
+            {ADMIN_NAV_ITEMS.map((item) => {
+              const selected = active === item.href;
+              return (
+                <span
+                  key={item.href}
+                  aria-current={selected ? "page" : undefined}
+                  className={`inline-flex shrink-0 items-center gap-1.5 rounded-xl px-3.5 py-2 text-xs font-semibold uppercase tracking-[0.1em] transition-all duration-200 ${
+                    selected
+                      ? "bg-gradient-to-r from-violet-600 to-violet-700 text-white shadow-lg shadow-violet-600/25"
+                      : "text-slate-600 opacity-80 dark:text-slate-300"
+                  }`}
+                >
+                  <span className="material-symbols-rounded text-base" style={{ fontSize: "16px" }}>{item.icon}</span>
+                  <span className="hidden sm:inline">{item.label}</span>
+                </span>
+              );
+            })}
+          </nav>
+        </section>
       </main>
     );
   }
@@ -115,7 +136,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       </section>
 
       <section className="glass-card overflow-x-auto p-2">
-        <nav className="flex min-w-max flex-nowrap gap-1.5 pb-1 sm:min-w-0 sm:flex-wrap sm:pb-0">
+        <nav aria-label="Admin sections" className="flex min-w-max flex-nowrap gap-1.5 pb-1 sm:min-w-0 sm:flex-wrap sm:pb-0">
           {ADMIN_NAV_ITEMS.map((item) => {
             const selected = active === item.href;
             return (

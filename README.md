@@ -1,15 +1,15 @@
-# PORTAL Workspace
+# POKROV Workspace
 
-Last updated: 2026-03-20
+Last updated: 2026-04-03
 
-This repository is the main workspace for the `PORTAL` platform:
+This repository is the main workspace for the `POKROV` platform:
 
 - `portal_bot/` backend, Telegram bots, worker jobs, node sync
 - `webapp/` user cabinet and web-admin
 - `marketing/` public site and legal pages
 - `scripts/` deploy, smoke, migration, and ops tooling
 - `docs/` canonical platform documentation
-- `external/client-fork/app/` `PORTAL VPN` Flutter client fork
+- `external/client-fork/app/` `POKROV VPN` Flutter client fork
 
 ## Start Here
 
@@ -23,7 +23,7 @@ This repository is the main workspace for the `PORTAL` platform:
 
 ## Current Product Facts
 
-- Brand: `PORTAL` / `PORTAL VPN`
+- Brand: `POKROV` / `POKROV VPN`
 - Client strategy: `consumer-first`
 - Identity strategy: `app-first`
 - Trial: `5 days`

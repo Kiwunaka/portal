@@ -1,6 +1,6 @@
 # UI Visual Smoke Report
 
-- Checks: 6
+- Checks: 8
 - FAIL: 0
 
 ## Result

@@ -13,6 +13,19 @@ from pathlib import Path
 
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
+RELEASE_PYTEST_ARGS = [
+    "portal_bot/tests/test_app_first_api.py",
+    "tests/test_portal_api.py",
+    "tests/test_worker_retention.py",
+    "tests/test_observer_service.py",
+    "tests/test_observer_api.py",
+    "tests/test_collect_xray_observer.py",
+    "tests/test_predeploy_node_readiness.py",
+    "tests/test_admin_webapp_smoke.py",
+    "tests/test_public_copy_guardrails.py",
+    "tests/test_reviews_username_masking.py",
+    "-q",
+]
 
 
 def _npm_exec() -> str:
@@ -158,6 +171,28 @@ def _optional_runtime_smoke_gate() -> tuple[str, list[str], Path] | None:
     )
 
 
+def _optional_android_localhost_audit_gate() -> tuple[str, list[str], Path] | None:
+    serial = str(os.getenv("ANDROID_AUDIT_SERIAL", "") or "").strip()
+    if not serial:
+        return None
+    connect_wait_sec = str(os.getenv("ANDROID_AUDIT_CONNECT_WAIT_SEC", "30") or "30").strip()
+    disconnect_wait_sec = str(os.getenv("ANDROID_AUDIT_DISCONNECT_WAIT_SEC", "15") or "15").strip()
+    return (
+        "Android localhost audit",
+        [
+            sys.executable,
+            "scripts/android_localhost_audit.py",
+            "--serial",
+            serial,
+            "--connect-wait-sec",
+            connect_wait_sec,
+            "--disconnect-wait-sec",
+            disconnect_wait_sec,
+        ],
+        REPO_ROOT,
+    )
+
+
 def _api_lifecycle_smoke_gate() -> tuple[str, list[str], Path]:
     return (
         "API lifecycle smoke",
@@ -165,6 +200,22 @@ def _api_lifecycle_smoke_gate() -> tuple[str, list[str], Path]:
             sys.executable,
             "scripts/api_lifecycle_smoke.py",
         ],
+        REPO_ROOT,
+    )
+
+
+def _release_pytest_gate() -> tuple[str, list[str], Path]:
+    return (
+        "Release pytest matrix",
+        [sys.executable, "-m", "pytest", *RELEASE_PYTEST_ARGS],
+        REPO_ROOT,
+    )
+
+
+def _client_security_smoke_gate() -> tuple[str, list[str], Path]:
+    return (
+        "Client security smoke",
+        [sys.executable, "scripts/client_security_smoke.py"],
         REPO_ROOT,
     )
 
@@ -195,6 +246,35 @@ def _predeploy_node_readiness_gate(
         ],
         REPO_ROOT,
     )
+
+
+def _default_gates() -> list[tuple[str, list[str], Path]]:
+    return [
+        _release_pytest_gate(),
+        ("Admin/auth regressions", [sys.executable, "-m", "pytest", "tests/test_api_auth_and_tickets.py", "-q"], REPO_ROOT),
+        _client_security_smoke_gate(),
+        _api_lifecycle_smoke_gate(),
+        ("Public link checks", [sys.executable, "scripts/check-links.py"], REPO_ROOT),
+        ("Marketing production build", [_npm_exec(), "run", "build"], REPO_ROOT / "marketing"),
+        ("Admin webapp smoke", [sys.executable, "scripts/admin_webapp_smoke.py"], REPO_ROOT),
+        ("WebApp production build", [_npm_exec(), "run", "build"], REPO_ROOT / "webapp"),
+        ("WebApp Playwright E2E", [_npm_exec(), "run", "test:e2e"], REPO_ROOT / "webapp"),
+        ("UI visual smoke", [sys.executable, "scripts/ui_visual_smoke.py"], REPO_ROOT),
+    ]
+
+
+def _quick_gates() -> list[tuple[str, list[str], Path]]:
+    return [
+        ("Critical worker regression", [sys.executable, "-m", "pytest", "tests/test_worker_retention.py", "-q"], REPO_ROOT),
+        _client_security_smoke_gate(),
+        _api_lifecycle_smoke_gate(),
+        ("Public link checks", [sys.executable, "scripts/check-links.py"], REPO_ROOT),
+        ("Marketing production build", [_npm_exec(), "run", "build"], REPO_ROOT / "marketing"),
+        ("Admin webapp smoke", [sys.executable, "scripts/admin_webapp_smoke.py"], REPO_ROOT),
+        ("WebApp production build", [_npm_exec(), "run", "build"], REPO_ROOT / "webapp"),
+        ("WebApp Playwright E2E", [_npm_exec(), "run", "test:e2e"], REPO_ROOT / "webapp"),
+        ("UI visual smoke", [sys.executable, "scripts/ui_visual_smoke.py"], REPO_ROOT),
+    ]
 
 
 def main() -> int:
@@ -228,17 +308,7 @@ def main() -> int:
             )
         )
 
-    gates.extend([
-        ("Backend unit tests", [sys.executable, "-m", "unittest", "discover", "tests"], REPO_ROOT),
-        ("Admin/auth regressions", [sys.executable, "-m", "unittest", "tests.test_api_auth_and_tickets"], REPO_ROOT),
-        _api_lifecycle_smoke_gate(),
-        ("Public link checks", [sys.executable, "scripts/check-links.py"], REPO_ROOT),
-        ("Marketing production build", [_npm_exec(), "run", "build"], REPO_ROOT / "marketing"),
-        ("Admin webapp smoke", [sys.executable, "scripts/admin_webapp_smoke.py"], REPO_ROOT),
-        ("WebApp production build", [_npm_exec(), "run", "build"], REPO_ROOT / "webapp"),
-        ("WebApp Playwright E2E", [_npm_exec(), "run", "test:e2e"], REPO_ROOT / "webapp"),
-        ("UI visual smoke", [sys.executable, "scripts/ui_visual_smoke.py"], REPO_ROOT),
-    ])
+    gates.extend(_default_gates())
     if args.quick:
         gates = []
         if str(args.brain_ip or "").strip():
@@ -251,20 +321,15 @@ def main() -> int:
                     passwords=args.passwords,
                 )
             )
-        gates.extend([
-            ("Critical worker regression", [sys.executable, "-m", "unittest", "tests.test_worker_retention"], REPO_ROOT),
-            _api_lifecycle_smoke_gate(),
-            ("Public link checks", [sys.executable, "scripts/check-links.py"], REPO_ROOT),
-            ("Marketing production build", [_npm_exec(), "run", "build"], REPO_ROOT / "marketing"),
-            ("Admin webapp smoke", [sys.executable, "scripts/admin_webapp_smoke.py"], REPO_ROOT),
-            ("WebApp production build", [_npm_exec(), "run", "build"], REPO_ROOT / "webapp"),
-            ("WebApp Playwright E2E", [_npm_exec(), "run", "test:e2e"], REPO_ROOT / "webapp"),
-            ("UI visual smoke", [sys.executable, "scripts/ui_visual_smoke.py"], REPO_ROOT),
-        ])
+        gates.extend(_quick_gates())
 
     runtime_smoke_gate = _optional_runtime_smoke_gate()
     if runtime_smoke_gate is not None:
         gates.append(runtime_smoke_gate)
+
+    android_localhost_audit_gate = _optional_android_localhost_audit_gate()
+    if android_localhost_audit_gate is not None:
+        gates.append(android_localhost_audit_gate)
 
     results: list[GateResult] = []
     for name, cmd, cwd in gates:

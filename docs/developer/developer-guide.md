@@ -1,6 +1,6 @@
 # Developer Guide
 
-Last updated: 2026-04-01
+Last updated: 2026-04-08
 
 ## Document Status
 
@@ -59,6 +59,11 @@ Current scope note:
 - full public `v1` target is Android and Windows
 - `iOS` and `macOS` work in this wave is documentation, readiness, and packaging prep only
 
+Shell note:
+
+- prefer `bash` when it is simpler
+- use `powershell` when Windows quoting, SSH, or local tool behavior is more reliable there
+
 ## Backend Commands
 
 Run focused tests:
@@ -71,6 +76,22 @@ python -m pytest tests/test_observer_service.py tests/test_observer_api.py tests
 python scripts/api_lifecycle_smoke.py
 python -m unittest tests.test_node_dataplane_probe tests.test_ru_probe_runner tests.test_render_ru_probe_report
 ```
+
+Full public-v1 release gate from a fresh shell:
+
+```powershell
+python scripts/release_gate_check.py
+python scripts/release_orchestrator.py --gates-only
+```
+
+Notes:
+
+- `release_gate_check.py` now runs the canonical public-v1 `pytest` matrix plus client security smoke, lifecycle smoke, link checks, marketing/webapp production builds, and Playwright browser E2E.
+- `scripts/release_orchestrator.py --gates-only` is the one-command entrypoint when you want the documented gate flow without remote deploy steps.
+- Add `--brain-ip 82.21.114.104` when you also want the predeploy node-readiness gate included in the same report.
+- After client artifacts are published, use `--release-env-file external/client-fork/release-links.env` with `release_orchestrator.py` to sync runtime download URLs before deploy or verify.
+- `scripts/client_security_smoke.py` is the repo-level static guardrail for default local-surface settings, RU preset groundwork, and known localhost control paths; it does not replace the required Android release-build reachability audit.
+- set `ANDROID_AUDIT_SERIAL=<device-serial>` before `release_gate_check.py` when you want the opt-in adb runtime localhost audit folded into the same report
 
 Deploy backend:
 
@@ -101,6 +122,22 @@ Notes:
 - observer-lite admin checks should cover dashboard summary counts, users-table filter parity, detail diagnostics, and node collector health rendering.
 - user-facing config delivery should expose one public `ссылка подключения` via `connect.pokrov.space`; hidden `?format=plain` compatibility must stay out of normal copy and browser flows.
 
+Run inside `marketing/`:
+
+```powershell
+npm.cmd run build
+python ..\scripts\check-links.py
+python ..\scripts\ui_visual_smoke.py
+```
+
+Marketing release rules:
+
+- public acquisition CTA must never route users into raw `connect.pokrov.space`
+- Android and Windows download CTA should use runtime `APP_*` release URLs when they exist, otherwise the install/docs fallback
+- public `Открыть кабинет` CTA should point to `https://app.pokrov.space/`
+- pricing CTA should enter through public `/checkout/` with plan context, not directly through `pay.pokrov.space`
+- `robots.ts`, `sitemap.ts`, `manifest.ts`, favicon, apple icon, and share-preview assets are part of the release contract, not optional polish
+
 Run inside the client repo:
 
 ```powershell
@@ -108,6 +145,14 @@ flutter test test/features/portal
 flutter build apk --release
 flutter build windows --release
 ```
+
+Client release-gate note:
+
+- Android stays release-blocked until a release-build audit proves there is no unauthenticated localhost proxy, DNS, command, or admin/control surface exposed to other apps
+- run `python scripts/client_security_smoke.py` before broader client release verification so default local-surface settings and RU preset groundwork fail fast in CI or local gates
+- run `python scripts/android_localhost_audit.py --serial <device-serial> --connect-wait-sec 30 --disconnect-wait-sec 15` on a release-installed Android build for the manual-assisted localhost listener audit
+- client verification for this wave must also cover routing presets `Global` and `Все, кроме РФ`, plus DNS split and leak checks on Android and Windows
+- when node-reachability evidence is included in a client release handoff, label `current-origin`, `brain-origin`, and `RU-origin` checks separately
 
 For Windows packaging:
 
@@ -149,6 +194,7 @@ python scripts/render_ru_probe_report.py --input ops-local/ru-probe.json
 Operational rules:
 
 - `mini` is probe-only for current work
+- `mini` may be unavailable; RU probe readiness is its own tracked operational dependency
 - RU ingress / RF reserve experiments are backlog-only
 - do not resume `mini` canary work, evolve the transport matrix, or provision `rf1` unless the product owner explicitly asks to return to that track
 - `rf1` is reserve-only for operator and VIP/manual use in phase 1

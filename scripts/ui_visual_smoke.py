@@ -41,20 +41,31 @@ def _default_checks() -> list[Check]:
         Check(
             name="marketing-home-cta",
             path=REPO_ROOT / "marketing" / "src" / "components" / "marketing-landing.tsx",
-            must_contain=("Начать пользоваться", "Открыть кабинет", "POKROV VPN"),
-            must_not_contain=("Telegram-first",),
+            must_contain=("POKROV VPN", "config.webappUrl", "config.newsChannelUrl", "/checkout/?plan="),
+            must_not_contain=("href={config.connectUrl}",),
         ),
         Check(
-            name="marketing-offer-flow",
-            path=REPO_ROOT / "marketing" / "src" / "app" / "offer" / "page.tsx",
-            must_contain=("Открыть Telegram-бота",),
-            must_not_contain=("/checkout/", "PORTAL"),
+            name="marketing-layout-seo",
+            path=REPO_ROOT / "marketing" / "src" / "app" / "layout.tsx",
+            must_contain=("metadataBase", "manifest", "favicon.ico", "apple-icon.png", "JsonLd"),
         ),
         Check(
             name="marketing-checkout-gateway",
             path=REPO_ROOT / "marketing" / "src" / "app" / "checkout" / "checkout-client.tsx",
-            must_contain=("Продолжить в Telegram", "Открыть кабинет", "Чтобы открыть оплату по-настоящему, сначала войдите в кабинет или получите персональную ссылку через Telegram."),
-            must_not_contain=("PORTALcheckout",),
+            must_contain=("config.webappUrl", "Продолжить в Telegram", "Открыть кабинет"),
+            must_not_contain=("config.connectUrl", "PORTALcheckout"),
+        ),
+        Check(
+            name="marketing-offer-flow",
+            path=REPO_ROOT / "marketing" / "src" / "app" / "offer" / "page.tsx",
+            must_contain=("Открыть Telegram-бота", "Публичная оферта"),
+            must_not_contain=("/checkout/", "PORTAL"),
+        ),
+        Check(
+            name="marketing-privacy-flow",
+            path=REPO_ROOT / "marketing" / "src" / "app" / "privacy" / "page.tsx",
+            must_contain=("Политика конфиденциальности", "config.contactEmail"),
+            must_not_contain=("/checkout/", "PORTAL"),
         ),
         Check(
             name="webapp-entry",
@@ -77,7 +88,7 @@ def _default_checks() -> list[Check]:
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Content-aware UI smoke for exported marketing/webapp artifacts.")
+    parser = argparse.ArgumentParser(description="Content-aware UI smoke for marketing and webapp release surfaces.")
     parser.add_argument(
         "--report",
         default=str(REPO_ROOT / "docs" / "audit-artifacts" / "ui-visual-smoke-report.md"),

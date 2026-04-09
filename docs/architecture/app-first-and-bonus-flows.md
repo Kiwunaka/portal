@@ -1,6 +1,6 @@
 # App-First And Bonus Flows
 
-Last updated: 2026-03-29
+Last updated: 2026-04-08
 
 ## Document Status
 
@@ -194,6 +194,13 @@ Support operators should also be able to see:
 - the current or most recent device name and platform
 - recent `last_ip` context
 - enough node and subscription state to understand whether the problem is user-specific or wider
+
+Client-facing diagnostics rule:
+
+- diagnostics may show the active routing mode and a safe route category summary
+- diagnostics must not expose raw configs, keys, or internal topology that would make config leakage easier
+- the app should prefer safe operator actions such as `change location`, `refresh profile`, `reconnect`, and `contact support`
+- do not describe Private Space, split tunneling, Knox, Shelter, or similar isolation features as a verified fix for a local control-surface exposure unless a dedicated security audit has proven that statement
 
 ## Admin Status And Cleanup Semantics
 

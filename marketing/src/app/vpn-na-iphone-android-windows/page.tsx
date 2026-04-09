@@ -3,6 +3,10 @@ import MarketingLanding, { buildMarketingMetadata } from "../../components/marke
 export const metadata = buildMarketingMetadata(
   "VPN на iPhone, Android и Windows | POKROV VPN",
   "Приложение как основной старт, тест на 5 дней и понятный маршрут к кабинету на основных устройствах.",
+  {
+    path: "/vpn-na-iphone-android-windows/",
+    keywords: ["vpn на iphone android windows", "впн iphone android windows", "vpn для windows", "vpn для android"],
+  },
 );
 
 export default function MultiDeviceVpnPage() {
@@ -10,9 +14,9 @@ export default function MultiDeviceVpnPage() {
     <MarketingLanding
       heroKicker="Для всех основных устройств"
       heroTitle="VPN на iPhone, Android и Windows с одним понятным маршрутом"
-      heroSubtitle="Для Android и Windows основной путь уже ведём через приложение, тест на 5 дней, кабинет и продление. Для Apple сейчас честно держим readiness-статус без лишних обещаний."
-      clusterTitle="Страница для выбора устройства"
-      clusterBody="Здесь можно быстро перейти к сценарию под смартфон или компьютер и не объяснять продукт заново на каждом шаге."
+      heroSubtitle="Для Android и Windows основной путь уже идёт через приложение, тест, кабинет и продление. Для Apple мы честно держим readiness-статус без ложного обещания доступности."
+      clusterTitle="Страница выбора устройства"
+      clusterBody="Эта страница ловит device-intent и помогает быстро перейти к нужному сценарию без дублирования главной."
     />
   );
 }

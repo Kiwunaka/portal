@@ -440,7 +440,7 @@ export default function CheckoutClient() {
             <div className="checkout-empty">
               <p>Для вашей безопасности касса доступна только после авторизации. Пожалуйста, войдите в кабинет или Telegram.</p>
               <div className="checkout-actions">
-                <a href={config.connectUrl} target="_blank" rel="noreferrer" className="checkout-secondary">
+                <a href={config.webappUrl} target="_blank" rel="noreferrer" className="checkout-secondary">
                   Открыть кабинет
                 </a>
                 <a href={config.botUrl} target="_blank" rel="noreferrer" className="checkout-secondary">
@@ -520,7 +520,7 @@ export default function CheckoutClient() {
             type="button"
             onClick={() => {
               if (!hasCheckoutTicket || !activeProvider) {
-                window.location.href = config.connectUrl;
+                window.location.href = config.webappUrl;
                 return;
               }
               void createOrder();

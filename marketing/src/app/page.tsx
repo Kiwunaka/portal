@@ -1,7 +1,16 @@
+import JsonLd from "../components/json-ld";
 import MarketingLanding, { buildMarketingMetadata, type MarketingReview } from "../components/marketing-landing";
+import { MARKETING_FAQ, buildFaqJsonLd } from "../lib/marketing-site";
 import { getPokrovPublicConfig } from "../lib/pokrov";
 
-export const metadata = buildMarketingMetadata();
+export const metadata = buildMarketingMetadata(
+  "POKROV VPN — быстрый VPN для Android и Windows",
+  "Скачайте приложение, включите 5 дней бесплатного теста и продолжайте через кабинет и безопасный checkout-маршрут.",
+  {
+    path: "/",
+    keywords: ["vpn", "впн", "vpn для android", "vpn для windows", "быстрый vpn", "pokrov vpn"],
+  },
+);
 
 async function loadFeaturedReviews(): Promise<MarketingReview[]> {
   const config = getPokrovPublicConfig(process.env as Record<string, string | undefined>);
@@ -25,7 +34,7 @@ async function loadFeaturedReviews(): Promise<MarketingReview[]> {
       .slice(0, 3)
       .map((item) => ({
         name: String(item.username || "user").trim() || "user",
-        role: item.date ? `Telegram • ${item.date}` : `Telegram • ${item.rating ? `${item.rating}/5` : "отзыв"}`,
+        role: item.date ? `TELEGRAM • ${item.date}` : `TELEGRAM • ${item.rating ? `${item.rating}/5` : "отзыв"}`,
         text: String(item.text || "").trim(),
       }))
       .filter((item) => Boolean(item.text));
@@ -36,5 +45,11 @@ async function loadFeaturedReviews(): Promise<MarketingReview[]> {
 
 export default async function HomePage() {
   const featuredReviews = await loadFeaturedReviews();
-  return <MarketingLanding featuredReviews={featuredReviews} />;
+
+  return (
+    <>
+      <JsonLd data={buildFaqJsonLd(MARKETING_FAQ)} />
+      <MarketingLanding featuredReviews={featuredReviews} />
+    </>
+  );
 }

@@ -21,7 +21,7 @@ class UiVisualSmokeTests(unittest.TestCase):
 
         self.assertTrue(str(checkout_check.path).endswith("marketing\\src\\app\\checkout\\checkout-client.tsx"))
 
-    def test_ui_smoke_tracks_current_trial_first_copy(self) -> None:
+    def test_ui_smoke_tracks_marketing_release_contract(self) -> None:
         import importlib
 
         smoke = importlib.import_module("ui_visual_smoke")
@@ -31,16 +31,25 @@ class UiVisualSmokeTests(unittest.TestCase):
 
         hero_check = checks["marketing-home-cta"]
         self.assertTrue(str(hero_check.path).endswith("marketing\\src\\components\\marketing-landing.tsx"))
-        self.assertIn("Начать пользоваться", hero_check.must_contain)
-        self.assertIn("Открыть кабинет", hero_check.must_contain)
-        self.assertIn("POKROV VPN", hero_check.must_contain)
+        self.assertIn("config.webappUrl", hero_check.must_contain)
+        self.assertIn("config.newsChannelUrl", hero_check.must_contain)
+        self.assertIn("/checkout/?plan=", hero_check.must_contain)
+        self.assertIn("href={config.connectUrl}", hero_check.must_not_contain)
+
+        layout_check = checks["marketing-layout-seo"]
+        self.assertIn("metadataBase", layout_check.must_contain)
+        self.assertIn("apple-icon.png", layout_check.must_contain)
 
         offer_check = checks["marketing-offer-flow"]
         self.assertIn("Открыть Telegram-бота", offer_check.must_contain)
 
+        privacy_check = checks["marketing-privacy-flow"]
+        self.assertIn("config.contactEmail", privacy_check.must_contain)
+
         checkout_check = checks["marketing-checkout-gateway"]
+        self.assertIn("config.webappUrl", checkout_check.must_contain)
         self.assertIn("Продолжить в Telegram", checkout_check.must_contain)
-        self.assertIn("Открыть кабинет", checkout_check.must_contain)
+        self.assertIn("config.connectUrl", checkout_check.must_not_contain)
 
 
 if __name__ == "__main__":

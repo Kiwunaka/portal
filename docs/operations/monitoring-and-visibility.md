@@ -1,6 +1,6 @@
 # Monitoring And Visibility
 
-Last updated: 2026-03-31
+Last updated: 2026-04-09
 
 ## Document Status
 
@@ -54,6 +54,12 @@ Required probe origin:
 
 - an external RU node or other external RU vantage point that is outside the control-plane host
 
+Availability rule:
+
+- `mini` is the preferred RU probe host when healthy
+- `mini` is not guaranteed to be available
+- if `mini` is down, treat RU-origin observability as degraded until a replacement external RU host is ready
+
 Required checks on each run:
 
 1. confirm the probe host can reach `google.com`
@@ -91,6 +97,14 @@ Operator response:
 4. drain and resync unhealthy nodes before disabling them if recovery fails
 5. keep support informed with the canonical hostnames only
 
+Vantage-point reporting rule:
+
+- `current-origin check` means the probe ran from the operator workstation currently in use
+- `brain-origin check` means the probe ran from the control-plane host `82.21.114.104`
+- `RU-origin check` means the probe ran from `mini` or a replacement external RU host
+- do not collapse these into one status line because each origin answers a different question
+- do not call a node RU-broken until an `RU-origin check` actually fails from a working RU probe host
+
 ## Node Metrics Freshness And Alerts
 
 The admin and operator view must treat node freshness per node, not only as one global timestamp.
@@ -123,6 +137,9 @@ Operator-facing rendering rule:
 - use the current and 24h peak Ethernet view for capacity planning, server purchase decisions, and early warning before saturating the `1 Gbit/s` uplink
 - keep raw probe fields visible, but add a readable operator explanation for known probe failures
 - for `reality_target_mismatch`, explain that the expected REALITY target name did not match the certificate name or SNI returned by the node
+- if a node shows field failures with an otherwise green basic TLS probe, treat the current REALITY camouflage target as suspect and be ready to rotate it instead of assuming the dataplane is healthy
+- when rotating a REALITY target, update both the node runtime inbound (`dest` plus `serverNames`) and the `brain` `nodes.reality_sni` value in the same task so drift, subscriptions, and operator diagnostics stay aligned
+- prefer country-appropriate, normal public TLS targets for each node; avoid keeping a generic target after it has shown region-specific failures in the field
 
 Operational rule:
 
@@ -191,6 +208,12 @@ Current backlog note:
 - RU ingress / RF reserve experiments are paused
 - keep using `mini` only as the RU probe origin
 - do not resume `mini` canary work or `rf1` promotion until the product owner explicitly requests it
+
+Interpretation note:
+
+- a successful `current-origin check` only proves reachability from that current workstation
+- a successful `brain-origin check` only proves control-plane reachability
+- missing `RU-origin check` data means RU-specific conclusions remain unproven, even if another origin succeeds or fails
 
 Reserve interpretation:
 

@@ -1,18 +1,31 @@
-import { getCopyText, getPokrovPublicConfig } from "../../lib/pokrov";
+import { buildMarketingMetadata } from "../../components/marketing-landing";
+import { getPokrovPublicConfig } from "../../lib/pokrov";
 
 const config = getPokrovPublicConfig(process.env as Record<string, string | undefined>);
+
+export const metadata = buildMarketingMetadata(
+  "Политика конфиденциальности | POKROV VPN",
+  "Какие данные использует POKROV VPN для работы аккаунта, поддержки и платежей, и как связаться со службой заботы.",
+  {
+    path: "/privacy/",
+    keywords: ["политика конфиденциальности vpn", "privacy pokrov vpn", "данные pokrov vpn"],
+  },
+);
 
 export default function PrivacyPage() {
   return (
     <main className="legal-page">
       <h1>Политика конфиденциальности</h1>
-      <p>{getCopyText("marketing.legal.privacy.intro", "POKROV VPN собирает только те данные, которые нужны для работы аккаунта, поддержки, защиты сервиса и проведения платежей.")}</p>
+      <p>
+        POKROV VPN использует только те данные, которые нужны для работы аккаунта, поддержки, защиты сервиса и проведения
+        платежей.
+      </p>
       <ul>
         <li>Данные аккаунта: идентификатор, срок доступа, активный план и служебные метки для работы продукта.</li>
-        <li>Технические события: ошибки оплаты, события авторизации, обращения в службу заботы и сигналы стабильности сервиса.</li>
+        <li>Технические события: ошибки оплаты, события авторизации, обращения в поддержку и сигналы стабильности сервиса.</li>
         <li>Сообщения и файлы, которые пользователь сам отправляет в службу заботы.</li>
       </ul>
-      <p>Мы не продаём персональные данные и используем их только там, где это нужно для работы сервиса, поддержки и обязательных расчётов.</p>
+      <p>Мы не продаём персональные данные и используем их только там, где это нужно для работы сервиса и обязательных расчётов.</p>
       <h2>Контакты</h2>
       <ul>
         <li>
@@ -28,9 +41,9 @@ export default function PrivacyPage() {
           </a>
         </li>
         <li>
-          Форма связи:{" "}
-          <a href={config.contactFormUrl} target="_blank" rel="noreferrer">
-            {config.contactFormUrl}
+          Канал новостей:{" "}
+          <a href={config.newsChannelUrl} target="_blank" rel="noreferrer">
+            {config.newsChannelUrl}
           </a>
         </li>
       </ul>
