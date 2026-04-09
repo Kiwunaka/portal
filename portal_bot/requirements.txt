@@ -3,6 +3,7 @@ aiohttp>=3.9.0
 python-dotenv>=1.0.0
 SQLAlchemy>=2.0.0
 fastapi>=0.110.0
+starlette>=0.40.0,<1.0.0
 uvicorn>=0.27.0
 greenlet>=3.0.0
 qrcode>=8.0
