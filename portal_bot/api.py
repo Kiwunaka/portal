@@ -3538,6 +3538,8 @@ async def _get_user_runtime_summary(*, s, user: User, nodes: list[Node] | None =
         "enabled_nodes": 0,
         "active_connections": 0,
         "active_connections_source": "none",
+        "active_users_estimate": 0,
+        "active_users_source": "none",
         "traffic_up_bytes": 0,
         "traffic_down_bytes": 0,
         "traffic_total_bytes": 0,
@@ -3615,6 +3617,15 @@ async def _get_user_runtime_summary(*, s, user: User, nodes: list[Node] | None =
     else:
         active_connections_source = "panel_ip_count"
 
+    observer_row = s.query(ObserverUserState).filter(ObserverUserState.tg_id == int(user.tg_id)).first()
+    observed_ip_count_24h = int(getattr(observer_row, "observed_ip_count_24h", 0) or 0)
+    active_users_estimate, active_users_source = _estimate_active_users_proxy(
+        live_connections=active_connections,
+        live_nodes=active_nodes,
+        saw_ip_count=saw_ip_count,
+        observed_ip_count_24h=observed_ip_count_24h,
+    )
+
     if active_nodes > 0:
         status = "online"
     elif known_nodes > 0:
@@ -3630,6 +3641,8 @@ async def _get_user_runtime_summary(*, s, user: User, nodes: list[Node] | None =
         "enabled_nodes": int(enabled_nodes),
         "active_connections": int(active_connections),
         "active_connections_source": active_connections_source,
+        "active_users_estimate": int(active_users_estimate),
+        "active_users_source": active_users_source,
         "traffic_up_bytes": int(total_up),
         "traffic_down_bytes": int(total_down),
         "traffic_total_bytes": int(total_up + total_down),
@@ -5099,6 +5112,10 @@ async def user_data(tg_id: int, request: Request, x_telegram_init_data: str = He
             "connections": {
                 "status": str(runtime.get("status") or "unknown"),
                 "active_connections": int(runtime.get("active_connections", 0) or 0),
+                "active_users_estimate": int(runtime.get("active_users_estimate", runtime.get("active_connections", 0)) or 0),
+                "active_users_source": str(
+                    runtime.get("active_users_source") or runtime.get("active_connections_source") or "none"
+                ),
                 "active_nodes": int(runtime.get("active_nodes", 0) or 0),
                 "known_nodes": int(runtime.get("known_nodes", 0) or 0),
                 "last_online_at": runtime.get("last_online_at"),
@@ -5239,6 +5256,10 @@ async def dashboard_snapshot(request: Request, x_telegram_init_data: str = Heade
             connection_snapshot={
                 "status": str(runtime.get("status") or "unknown"),
                 "active_connections": int(runtime.get("active_connections", 0) or 0),
+                "active_users_estimate": int(runtime.get("active_users_estimate", runtime.get("active_connections", 0)) or 0),
+                "active_users_source": str(
+                    runtime.get("active_users_source") or runtime.get("active_connections_source") or "none"
+                ),
                 "active_nodes": int(runtime.get("active_nodes", 0) or 0),
                 "known_nodes": int(runtime.get("known_nodes", 0) or 0),
                 "last_online_at": runtime.get("last_online_at"),
@@ -6323,16 +6344,40 @@ def _bytes_to_gb(value: int) -> float:
     return round(float(max(0, int(value or 0))) / float(1024**3), 3)
 
 
+def _estimate_active_users_proxy(
+    *,
+    live_connections: int,
+    live_nodes: int,
+    saw_ip_count: bool,
+    observed_ip_count_24h: int | None,
+) -> tuple[int, str]:
+    connections = max(0, int(live_connections or 0))
+    nodes = max(0, int(live_nodes or 0))
+    observed = max(0, int(observed_ip_count_24h or 0))
+    if saw_ip_count:
+        if connections <= 0:
+            return 0, "panel_ip_count"
+        if observed > 0:
+            return min(connections, observed), "panel_ip_count_capped_by_unique_ip_24h"
+        return connections, "panel_ip_count"
+    if nodes > 0:
+        return nodes, "online_nodes"
+    return 0, "none"
+
+
 async def _admin_user_keys_state(user: User, *, nodes: list) -> dict[str, Any]:
     allowed_nodes = _nodes_for_user(user, nodes)
     allowed_by_code = {str(getattr(n, "code", "") or ""): n for n in allowed_nodes}
     expected_sub_id = str(getattr(user, "sub_token", "") or user.tg_id)
     policy_by_code: dict[str, dict[str, Any]] = {}
+    observed_ip_count_24h = 0
     s = SessionLocal()
     try:
         policy_rows = s.query(UserKeyPolicy).filter(UserKeyPolicy.tg_id == int(user.tg_id)).all()
         for row in policy_rows:
             policy_by_code[str(row.node_code or "").strip().lower()] = _serialize_key_policy(row)
+        observer_row = s.query(ObserverUserState).filter(ObserverUserState.tg_id == int(user.tg_id)).first()
+        observed_ip_count_24h = int(getattr(observer_row, "observed_ip_count_24h", 0) or 0)
     finally:
         s.close()
     panel_rows: list[dict] = []
@@ -6358,6 +6403,7 @@ async def _admin_user_keys_state(user: User, *, nodes: list) -> dict[str, Any]:
     total_down = 0
     mismatch_count = 0
     online_node_codes_now: list[str] = []
+    saw_ip_count = False
 
     for row in panel_rows:
         code = str(row.get("node_code") or "").strip()
@@ -6380,6 +6426,7 @@ async def _admin_user_keys_state(user: User, *, nodes: list) -> dict[str, Any]:
         if ip_count_raw is not None:
             try:
                 current_connections = max(0, int(ip_count_raw))
+                saw_ip_count = True
             except Exception:
                 current_connections = 0
         elif online is True:
@@ -6428,6 +6475,12 @@ async def _admin_user_keys_state(user: User, *, nodes: list) -> dict[str, Any]:
         )
 
     keys.sort(key=lambda item: str(item.get("node_code") or ""))
+    active_users_estimate, active_users_source = _estimate_active_users_proxy(
+        live_connections=online_connections_now,
+        live_nodes=online_count,
+        saw_ip_count=saw_ip_count,
+        observed_ip_count_24h=observed_ip_count_24h,
+    )
     return {
         "keys": keys,
         "summary": {
@@ -6436,6 +6489,8 @@ async def _admin_user_keys_state(user: User, *, nodes: list) -> dict[str, Any]:
             "nodes_online": int(online_count),
             "online_keys_now": int(online_count),
             "online_connections_now": int(online_connections_now),
+            "active_users_estimate": int(active_users_estimate),
+            "active_users_source": active_users_source,
             "online_node_codes_now": sorted(set(online_node_codes_now)),
             "nodes_enabled": int(enabled_count),
             "subid_mismatch_count": int(mismatch_count),

@@ -21,12 +21,19 @@ import { usePortalSession } from "@/lib/session";
 import { useEffect, useMemo, useState } from "react";
 
 const config = getPortalPublicConfig(process.env as Record<string, string | undefined>);
+const ACTIVE_USERS_LABEL = "Пользователей по IP сейчас";
+const ACTIVE_USERS_HINT = "Оценка по живым IP, но не выше уникальных IP за 24 часа. Не точное число людей.";
 
 function formatDate(value?: string | null): string {
   if (!value) return "—";
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return value;
   return date.toLocaleString("ru-RU");
+}
+
+function formatCount(value: number): string {
+  if (!Number.isFinite(value)) return "0";
+  return new Intl.NumberFormat("ru-RU").format(Math.max(0, Math.round(value)));
 }
 
 export default function StatisticsPage() {
@@ -70,6 +77,7 @@ export default function StatisticsPage() {
   const nextResetAt = getNextResetAt(dash, user);
   const usedGb = Number(dash?.used_gb || user?.traffic?.used_gb || 0);
   const deviceLimit = getDeviceLimit(dash, user);
+  const activeUsersEstimate = Math.max(0, Number(dash?.connection_snapshot?.active_users_estimate ?? user?.connections?.active_users_estimate ?? 0));
 
   const trafficCard = useMemo(() => {
     if (paidMode || trialMode) {
@@ -100,7 +108,7 @@ export default function StatisticsPage() {
     };
   }, [freeMode, limitGb, nextResetAt, paidMode, remainingGb, softMode, trialMode, usedGb]);
 
-  const usageCards = useMemo(
+  const usageCards = useMemo<Array<{ label: string; value: string; hint: string; tone?: "emerald" }>>(
     () => [
       {
         label: "Статус",
@@ -117,12 +125,18 @@ export default function StatisticsPage() {
             : "Резервный счётчик по активности на нодах",
       },
       {
+        label: ACTIVE_USERS_LABEL,
+        value: formatCount(activeUsersEstimate),
+        hint: ACTIVE_USERS_HINT,
+        tone: "emerald",
+      },
+      {
         label: "Точки подключения",
         value: nodeHealth.total ? `${nodeHealth.healthy}/${nodeHealth.total}` : String((user?.nodes || []).length || 0),
         hint: nodeHealth.updatedAt ? `Обновлено ${formatDate(nodeHealth.updatedAt)}` : "Показываем текущее состояние профиля",
       },
     ],
-    [dash, deviceLimit, nodeHealth, trafficCard, user?.nodes],
+    [activeUsersEstimate, dash, deviceLimit, nodeHealth, trafficCard, user?.nodes],
   );
 
   return (
@@ -136,9 +150,16 @@ export default function StatisticsPage() {
         </p>
       </section>
 
-      <section className="grid gap-5 md:grid-cols-2 xl:grid-cols-4">
+      <section className="grid gap-5 md:grid-cols-2 xl:grid-cols-5">
         {usageCards.map((card) => (
-          <article key={card.label} className="glass-card p-5">
+          <article
+            key={card.label}
+            className={
+              card.tone === "emerald"
+                ? "glass-card border border-emerald-200/60 bg-emerald-50/80 p-5 dark:border-emerald-500/30 dark:bg-emerald-500/10"
+                : "glass-card p-5"
+            }
+          >
             <p className="font-mono text-xs uppercase tracking-[0.16em] text-slate-500">{card.label}</p>
             <p className="mt-3 font-display text-4xl font-bold">{card.value}</p>
             <p className="mt-2 text-xs text-slate-500">{card.hint}</p>

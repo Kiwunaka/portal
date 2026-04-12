@@ -1,6 +1,6 @@
 # POKROV System Overview
 
-Last updated: 2026-04-08
+Last updated: 2026-04-12
 
 ## Document Status
 
@@ -235,6 +235,7 @@ Dashboard and user-cabinet traffic visibility must come from server-side node ru
 
 - current traffic usage should prefer live panel/runtime counters aggregated across the user nodes
 - current connection count should prefer runtime connection evidence such as active IP counts or active nodes
+- the cabinet/admin subscription-sharing proxy metric should be described as an estimate, not a people counter: it is derived from live IP activity and capped by recent unique IP evidence so operators can distinguish likely people-sharing from raw connection fan-out
 - app device records remain useful, but they are a separate app-first visibility layer and must not be shown as the only source of "connected devices"
 
 Required external geography check:

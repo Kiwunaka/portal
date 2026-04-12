@@ -74,6 +74,8 @@ export type DashboardSnapshot = {
   connection_snapshot?: {
     status: string;
     active_connections: number;
+    active_users_estimate: number;
+    active_users_source?: string | null;
     active_nodes: number;
     known_nodes: number;
     last_online_at?: string | null;
@@ -182,6 +184,8 @@ export type UserPayload = {
   connections?: {
     status: string;
     active_connections: number;
+    active_users_estimate: number;
+    active_users_source?: string | null;
     active_nodes: number;
     known_nodes: number;
     last_online_at?: string | null;
@@ -498,6 +502,8 @@ export type AdminUserCard = {
     nodes_online: number;
     online_keys_now: number;
     online_connections_now: number;
+    active_users_estimate: number;
+    active_users_source?: string | null;
     online_node_codes_now: string[];
     nodes_enabled: number;
     subid_mismatch_count: number;
@@ -1639,6 +1645,8 @@ function normalizeAdminUserCard(payload: Partial<AdminUserCard> | null | undefin
           nodes_online: Number(data.summary.nodes_online || 0),
           online_keys_now: Number(data.summary.online_keys_now || 0),
           online_connections_now: Number(data.summary.online_connections_now || 0),
+          active_users_estimate: Number(data.summary.active_users_estimate || 0),
+          active_users_source: data.summary.active_users_source ?? null,
           online_node_codes_now: Array.isArray(data.summary.online_node_codes_now)
             ? data.summary.online_node_codes_now.map((value) => String(value || ""))
             : [],

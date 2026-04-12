@@ -26,6 +26,9 @@ import {
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { fmtRuDate } from "../nav";
 
+const ACTIVE_USERS_LABEL = "Пользователей по IP сейчас";
+const ACTIVE_USERS_HINT = "Оценка по живым IP, но не выше уникальных IP за 24 часа. Не точное число людей.";
+
 function fmtTraffic(bytes: number): string {
   const gb = Number(bytes || 0) / (1024 ** 3);
   return `${gb.toFixed(2)} GB`;
@@ -1037,6 +1040,7 @@ export default function AdminUsersPage() {
                     Единое окно контроля профиля: мониторинг состояния серверов, биллинга и коннекта пользователя.
                   </p>
                   {summary ? (
+                    <>
                     <div className="grid gap-2 text-xs sm:grid-cols-2">
                       <p>Нод с клиентом: <strong>{summary.nodes_with_client}/{summary.nodes_total}</strong></p>
                       <p>Нод в сети: <strong>{summary.nodes_online}</strong></p>
@@ -1047,6 +1051,11 @@ export default function AdminUsersPage() {
                       <p>Общий трафик: <strong>{fmtTraffic(summary.traffic_total_bytes)}</strong></p>
                       <p>Состояние панели: <strong>{panelStateLabel(String(summary.panel_state || ""))}</strong></p>
                     </div>
+                    <div className="mt-3 rounded-xl border border-emerald-200/60 bg-emerald-50/80 p-3 text-xs text-emerald-900 dark:border-emerald-500/30 dark:bg-emerald-500/10 dark:text-emerald-100">
+                      <p className="font-semibold">{ACTIVE_USERS_LABEL}: {summary.active_users_estimate}</p>
+                      <p className="mt-1 text-emerald-800/80 dark:text-emerald-100/80">{ACTIVE_USERS_HINT}</p>
+                    </div>
+                    </>
                   ) : (
                     <p className="text-xs text-slate-500">Сводка по этому пользователю пока недоступна.</p>
                   )}
@@ -1109,7 +1118,7 @@ export default function AdminUsersPage() {
                       </div>
                     </div>
                   )}
-                  <p className="mt-3 text-[11px] text-slate-500">Эта телеметрия показывает, где ключ видели недавно. Статус "сейчас online" берётся отдельно из live runtime панели.</p>
+                  <p className="mt-3 text-[11px] text-slate-500">Эта телеметрия показывает, где ключ видели недавно. Статус &quot;сейчас online&quot; берётся отдельно из live runtime панели.</p>
                 </div>
                 <div className="mt-2 space-y-2">
                   {(selected.tickets || []).map((ticket) => (

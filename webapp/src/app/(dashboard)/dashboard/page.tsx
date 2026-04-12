@@ -9,7 +9,6 @@ import {
   getNextResetAt,
   getTrafficLimitGb,
   isFreeMonthlyState,
-  isPaidUnlimitedState,
   isSoftModeState,
   isTrialPremiumState,
   resolvePlanLabel,
@@ -19,6 +18,9 @@ import { fetchNodeStatus, type NodeStatus } from "@/lib/api";
 import { getCopyText } from "@/lib/portal";
 import { usePortalSession } from "@/lib/session";
 import { useEffect, useMemo, useState } from "react";
+
+const ACTIVE_USERS_LABEL = "Пользователей по IP сейчас";
+const ACTIVE_USERS_HINT = "Оценка по живым IP, но не выше уникальных IP за 24 часа. Не точное число людей.";
 
 function fmtDate(value?: string | null): string {
   if (!value) return "—";
@@ -32,6 +34,11 @@ function maskKey(value: string, shown: boolean): string {
   return `${value.slice(0, 8)}••••••••••••${value.slice(-8)}`;
 }
 
+function fmtMetricCount(value?: number | null): string {
+  if (value == null || !Number.isFinite(Number(value))) return "—";
+  return new Intl.NumberFormat("ru-RU").format(Math.max(0, Math.round(Number(value))));
+}
+
 export default function DashboardPage() {
   const { user, dash } = usePortalSession();
   const [nodes, setNodes] = useState<NodeStatus[]>([]);
@@ -43,7 +50,6 @@ export default function DashboardPage() {
 
   const connectionKey = String(dash?.subscription_url || "").trim();
   const accessState = getAccessState(dash, user);
-  const paidMode = isPaidUnlimitedState(accessState);
   const trialMode = isTrialPremiumState(accessState);
   const freeMode = isFreeMonthlyState(accessState);
   const softMode = isSoftModeState(accessState);
@@ -86,6 +92,8 @@ export default function DashboardPage() {
   const plannedNodes = user?.nodes?.length || 0;
   const connectionPointsLabel = nodes.length ? `${healthyNodes}/${nodes.length}` : plannedNodes ? `${plannedNodes}` : "—";
   const deviceLimit = getDeviceLimit(dash, user);
+  const activeConnectionsNow = dash?.connection_snapshot?.active_connections ?? dash?.active_sessions ?? null;
+  const activeUsersEstimate = dash?.connection_snapshot?.active_users_estimate ?? user?.connections?.active_users_estimate ?? null;
   const freeLimitGb = getTrafficLimitGb(dash, user);
   const nextResetAt = getNextResetAt(dash, user);
 
@@ -163,8 +171,19 @@ export default function DashboardPage() {
             <p>Трафик: {resolveTrafficStatusText(dash, user)}</p>
             {freeMode && nextResetAt ? <p>Следующий сброс: {fmtDate(nextResetAt)}</p> : null}
             <p>Лимит устройств: {deviceLimit}</p>
-            <p>Подключений сейчас: {dash?.connection_snapshot?.active_connections ?? dash?.active_sessions ?? "—"}</p>
             <p>Активные серверы: {connectionPointsLabel}</p>
+          </div>
+          <div className="mt-4 grid gap-2">
+            <div className="rounded-xl bg-white/70 p-3 dark:bg-white/10">
+              <p className="text-xs text-slate-500">Подключений сейчас</p>
+              <p className="mt-1 text-2xl font-semibold">{fmtMetricCount(activeConnectionsNow)}</p>
+              <p className="mt-1 text-[11px] text-slate-500">Живые соединения на нодах POKROV.</p>
+            </div>
+            <div className="rounded-xl border border-emerald-200/60 bg-emerald-50/80 p-3 dark:border-emerald-500/30 dark:bg-emerald-500/10">
+              <p className="text-xs text-emerald-700 dark:text-emerald-300">{ACTIVE_USERS_LABEL}</p>
+              <p className="mt-1 text-2xl font-semibold text-emerald-700 dark:text-emerald-200">{fmtMetricCount(activeUsersEstimate)}</p>
+              <p className="mt-1 text-[11px] text-emerald-700/80 dark:text-emerald-200/80">{ACTIVE_USERS_HINT}</p>
+            </div>
           </div>
           {nodesLoading && !nodes.length ? <p className="mt-3 text-xs text-slate-500">Проверяем точки подключения...</p> : null}
           {nodesError ? <p className="mt-3 text-xs text-rose-500">{nodesError}</p> : null}

@@ -18,6 +18,10 @@ type TicketMock = {
   messages: TicketMessageMock[];
 };
 
+const ACTIVE_USERS_LABEL = "\u041f\u043e\u043b\u044c\u0437\u043e\u0432\u0430\u0442\u0435\u043b\u0435\u0439 \u043f\u043e IP \u0441\u0435\u0439\u0447\u0430\u0441";
+const ACTIVE_USERS_HINT =
+  "\u041e\u0446\u0435\u043d\u043a\u0430 \u043f\u043e \u0436\u0438\u0432\u044b\u043c IP, \u043d\u043e \u043d\u0435 \u0432\u044b\u0448\u0435 \u0443\u043d\u0438\u043a\u0430\u043b\u044c\u043d\u044b\u0445 IP \u0437\u0430 24 \u0447\u0430\u0441\u0430. \u041d\u0435 \u0442\u043e\u0447\u043d\u043e\u0435 \u0447\u0438\u0441\u043b\u043e \u043b\u044e\u0434\u0435\u0439.";
+
 function mockSessionUser() {
   return {
     tg_id: 1001,
@@ -68,6 +72,8 @@ function mockSessionUser() {
     connections: {
       status: "online",
       active_connections: 2,
+      active_users_estimate: 1,
+      active_users_source: "panel_ip_count_capped_by_unique_ip_24h",
       active_nodes: 1,
       known_nodes: 2,
       last_online_at: "2030-01-01T00:00:00",
@@ -130,6 +136,8 @@ function mockDashboard() {
     connection_snapshot: {
       status: "online",
       active_connections: 2,
+      active_users_estimate: 1,
+      active_users_source: "panel_ip_count_capped_by_unique_ip_24h",
       active_nodes: 1,
       known_nodes: 2,
       last_online_at: "2030-01-01T00:00:00",
@@ -318,6 +326,7 @@ test.describe("Cabinet flow", () => {
 
   test("shows a single connect link flow on the dashboard", async ({ page }) => {
     await page.goto("dashboard/");
+    await expect(page.locator("main")).toContainText("Пользователей по IP сейчас");
 
     await expect(page.getByRole("heading", { name: "Показать ссылку подключения или открыть QR" })).toBeVisible();
     await page.getByRole("button", { name: "Показать", exact: true }).click();
@@ -347,10 +356,12 @@ test.describe("Cabinet flow", () => {
     await expect(page.getByRole("heading", { name: "Устройства и подключения" })).toBeVisible();
     await expect(page.locator("main")).toContainText("Подключений сейчас");
     await expect(page.locator("main")).toContainText("2 / 5");
+    await expect(page.locator("main")).toContainText("Пользователей по IP сейчас");
     await expect(page.locator("main")).toContainText("Нод с активностью");
     await expect(page.locator("main")).toContainText("1 / 2");
 
     await page.goto("statistics/");
+    await expect(page.locator("main")).toContainText("Пользователей по IP сейчас");
     await expect(page.getByRole("heading", { name: "Сводка по использованию" })).toBeVisible();
     await expect(page.getByRole("heading", { name: "Что доступно сейчас" })).toBeVisible();
     await expect(page.locator("main")).toContainText("Ссылка подключения: готова");

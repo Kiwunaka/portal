@@ -15,6 +15,8 @@ import { AnimatePresence, motion } from "framer-motion";
 import { useMemo, useState } from "react";
 
 const config = getPortalPublicConfig(process.env as Record<string, string | undefined>);
+const ACTIVE_USERS_LABEL = "Пользователей по IP сейчас";
+const ACTIVE_USERS_HINT = "Оценка по живым IP, но не выше уникальных IP за 24 часа. Не точное число людей.";
 
 function fmtNumber(value: number): string {
   if (!Number.isFinite(value)) return "0";
@@ -26,6 +28,7 @@ export default function DevicesPage() {
   const [toast, setToast] = useState<string | null>(null);
 
   const activeConnections = Math.max(0, Number(dash?.connection_snapshot?.active_connections ?? dash?.active_sessions ?? 0));
+  const activeUsersEstimate = Math.max(0, Number(dash?.connection_snapshot?.active_users_estimate ?? user?.connections?.active_users_estimate ?? 0));
   const deviceLimit = getDeviceLimit(dash, user);
   const knownAppDevices = Math.max(0, Number(user?.sync?.device_count ?? user?.devices?.length ?? 0));
   const activeNodes = Math.max(0, Number(dash?.connection_snapshot?.active_nodes ?? 0));
@@ -104,13 +107,18 @@ export default function DevicesPage() {
                 : "Текущее число подключений зависит от активной политики профиля."}
         </p>
 
-        <div className="mt-5 grid gap-3 sm:grid-cols-3">
+        <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
           <div className="rounded-xl bg-white/70 p-3 dark:bg-white/10">
             <p className="text-xs text-slate-500">Подключений сейчас</p>
             <p className="mt-1 text-2xl font-semibold">
               {fmtNumber(activeConnections)} / {fmtNumber(deviceLimit)}
             </p>
             <p className="mt-1 text-[11px] text-slate-500">Из доступных слотов тарифа</p>
+          </div>
+          <div className="rounded-xl border border-emerald-200/60 bg-emerald-50/80 p-3 dark:border-emerald-500/30 dark:bg-emerald-500/10">
+            <p className="text-xs text-emerald-700 dark:text-emerald-300">{ACTIVE_USERS_LABEL}</p>
+            <p className="mt-1 text-2xl font-semibold text-emerald-700 dark:text-emerald-200">{fmtNumber(activeUsersEstimate)}</p>
+            <p className="mt-1 text-[11px] text-emerald-700/80 dark:text-emerald-200/80">{ACTIVE_USERS_HINT}</p>
           </div>
           <div className="rounded-xl bg-white/70 p-3 dark:bg-white/10">
             <p className="text-xs text-slate-500">Нод с активностью</p>

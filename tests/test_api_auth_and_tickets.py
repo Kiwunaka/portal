@@ -493,7 +493,7 @@ class ApiAuthAndTicketsTests(unittest.TestCase):
 
     def test_dashboard_uses_runtime_summary_for_usage_and_connections(self) -> None:
         from db import SessionLocal
-        from models import Node, User, UserNode
+        from models import Node, ObserverUserState, User, UserNode
 
         gib = 1024 ** 3
         s = SessionLocal()
@@ -542,6 +542,19 @@ class ApiAuthAndTicketsTests(unittest.TestCase):
                     UserNode(tg_id=1001, node_id=it.id, client_uuid=str(user.uuid), panel_email=str(user.email)),
                     UserNode(tg_id=1001, node_id=nl.id, client_uuid=str(user.uuid), panel_email=str(user.email)),
                 ]
+            )
+            s.add(
+                ObserverUserState(
+                    tg_id=1001,
+                    state="watch",
+                    observed_ip_count_24h=1,
+                    observed_ip_count_7d=2,
+                    observed_ip_count_30d=2,
+                    observed_node_count_24h=1,
+                    observed_node_count_7d=1,
+                    observed_node_count_30d=1,
+                    overlap_count_24h=0,
+                )
             )
             s.commit()
         finally:
@@ -616,6 +629,8 @@ class ApiAuthAndTicketsTests(unittest.TestCase):
             self.assertEqual(body["active_sessions"], 2)
             self.assertEqual(body["active_sessions_source"], "panel_ip_count")
             self.assertEqual(body["connection_snapshot"]["active_connections"], 2)
+            self.assertEqual(body["connection_snapshot"]["active_users_estimate"], 1)
+            self.assertEqual(body["connection_snapshot"]["active_users_source"], "panel_ip_count_capped_by_unique_ip_24h")
             self.assertEqual(body["connection_snapshot"]["active_nodes"], 1)
             self.assertEqual(body["connection_snapshot"]["known_nodes"], 2)
             self.assertEqual(body["connection_snapshot"]["status"], "online")
@@ -625,7 +640,7 @@ class ApiAuthAndTicketsTests(unittest.TestCase):
 
     def test_user_data_exposes_runtime_traffic_and_connections_without_app_install(self) -> None:
         from db import SessionLocal
-        from models import Node, User, UserNode
+        from models import Node, ObserverUserState, User, UserNode
 
         gib = 1024 ** 3
         s = SessionLocal()
@@ -657,6 +672,19 @@ class ApiAuthAndTicketsTests(unittest.TestCase):
             s.add(it)
             s.flush()
             s.add(UserNode(tg_id=1001, node_id=it.id, client_uuid=str(user.uuid), panel_email=str(user.email)))
+            s.add(
+                ObserverUserState(
+                    tg_id=1001,
+                    state="watch",
+                    observed_ip_count_24h=2,
+                    observed_ip_count_7d=2,
+                    observed_ip_count_30d=2,
+                    observed_node_count_24h=1,
+                    observed_node_count_7d=1,
+                    observed_node_count_30d=1,
+                    overlap_count_24h=0,
+                )
+            )
             s.commit()
         finally:
             s.close()
@@ -681,7 +709,7 @@ class ApiAuthAndTicketsTests(unittest.TestCase):
                             "up": gib,
                             "down": gib // 2,
                             "total": gib + (gib // 2),
-                            "ip_count": 1,
+                            "ip_count": 3,
                             "last_online_at": "2030-01-01T00:00:00Z",
                             "last_online_age_seconds": 15,
                         },
@@ -710,7 +738,9 @@ class ApiAuthAndTicketsTests(unittest.TestCase):
             self.assertEqual(body["traffic"]["source"], "panel_runtime")
             self.assertEqual(body["traffic"]["used_bytes"], gib + (gib // 2))
             self.assertAlmostEqual(body["traffic"]["used_gb"], 1.5, places=3)
-            self.assertEqual(body["connections"]["active_connections"], 1)
+            self.assertEqual(body["connections"]["active_connections"], 3)
+            self.assertEqual(body["connections"]["active_users_estimate"], 2)
+            self.assertEqual(body["connections"]["active_users_source"], "panel_ip_count_capped_by_unique_ip_24h")
             self.assertEqual(body["connections"]["active_nodes"], 1)
             self.assertEqual(body["connections"]["known_nodes"], 1)
             self.assertEqual(body["connections"]["status"], "online")
@@ -2605,7 +2635,7 @@ class ApiAuthAndTicketsTests(unittest.TestCase):
 
     def test_admin_user_card_exposes_online_now_summary_and_current_nodes(self) -> None:
         from db import SessionLocal
-        from models import Node, User, UserNode
+        from models import Node, ObserverUserState, User, UserNode
 
         admin_hdrs = {"X-Telegram-Init-Data": self._init_data(9999, "admin")}
 
@@ -2667,6 +2697,19 @@ class ApiAuthAndTicketsTests(unittest.TestCase):
                     UserNode(tg_id=1001, node_id=us.id, client_uuid=str(user.uuid), panel_email=str(user.email)),
                     UserNode(tg_id=1001, node_id=nl.id, client_uuid=str(user.uuid), panel_email=str(user.email)),
                 ]
+            )
+            s.add(
+                ObserverUserState(
+                    tg_id=1001,
+                    state="watch",
+                    observed_ip_count_24h=2,
+                    observed_ip_count_7d=3,
+                    observed_ip_count_30d=3,
+                    observed_node_count_24h=2,
+                    observed_node_count_7d=2,
+                    observed_node_count_30d=2,
+                    overlap_count_24h=0,
+                )
             )
             s.commit()
         finally:
@@ -2745,6 +2788,8 @@ class ApiAuthAndTicketsTests(unittest.TestCase):
             summary = body.get("summary") or {}
             self.assertEqual(int(summary.get("online_keys_now") or 0), 2)
             self.assertEqual(int(summary.get("online_connections_now") or 0), 4)
+            self.assertEqual(int(summary.get("active_users_estimate") or 0), 2)
+            self.assertEqual(summary.get("active_users_source"), "panel_ip_count_capped_by_unique_ip_24h")
             self.assertEqual(summary.get("online_node_codes_now"), ["pl", "us"])
 
             key_rows = {str(row.get("node_code") or ""): row for row in body.get("keys") or []}
