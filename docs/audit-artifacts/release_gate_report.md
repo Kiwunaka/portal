@@ -1,73 +1,24 @@
 # Release Gate Report
 
-- Generated at: `2026-04-09 05:36:01`
+- Generated at: `2026-04-12 14:20:19`
 - Status: `PASS`
 
 ## Summary
 
 | Gate | Exit code | Duration (s) |
 |---|---:|---:|
-| Node predeploy readiness | 0 | 39.42 |
-| Release pytest matrix | 0 | 48.28 |
-| Admin/auth regressions | 0 | 62.34 |
-| Client security smoke | 0 | 0.07 |
-| API lifecycle smoke | 0 | 8.38 |
-| Public link checks | 0 | 0.10 |
-| Marketing production build | 0 | 45.67 |
-| Admin webapp smoke | 0 | 0.13 |
-| WebApp production build | 0 | 42.83 |
-| WebApp Playwright E2E | 0 | 82.47 |
-| UI visual smoke | 0 | 0.11 |
+| Release pytest matrix | 0 | 47.91 |
+| Admin/auth regressions | 0 | 57.56 |
+| Client security smoke | 0 | 0.13 |
+| API lifecycle smoke | 0 | 8.03 |
+| Public link checks | 0 | 0.14 |
+| Marketing production build | 0 | 45.54 |
+| Admin webapp smoke | 0 | 0.38 |
+| WebApp production build | 0 | 42.66 |
+| WebApp Playwright E2E | 0 | 75.26 |
+| UI visual smoke | 0 | 0.09 |
 
 ## Command Tails
-
-### Node predeploy readiness
-
-- Command: `C:\Users\kiwun\AppData\Local\Programs\Python\Python312\python.exe scripts/predeploy_node_readiness.py --brain-ip 82.21.114.104 --web-domain pokrov.space --ssh-user root --ssh-port 29374 --passwords C:\Users\kiwun\Documents\ai\VPN\VPN NODE SSH KEYS\PASSWORDS.txt`
-- Exit: `0`
-
-```text
-      "dns_ok": true,
-      "tcp_ok": true,
-      "tls_ok": true,
-      "target_tls_ok": true,
-      "dns_records": [
-        "82.24.195.93"
-      ],
-      "error_kind": "",
-      "error_message": ""
-    },
-    {
-      "code": "pl",
-      "host": "pl.kiwunaka.space",
-      "dns_ok": true,
-      "tcp_ok": true,
-      "tls_ok": true,
-      "target_tls_ok": true,
-      "dns_records": [
-        "82.40.38.84"
-      ],
-      "error_kind": "",
-      "error_message": ""
-    },
-    {
-      "code": "us",
-      "host": "us.kiwunaka.space",
-      "dns_ok": true,
-      "tcp_ok": true,
-      "tls_ok": true,
-      "target_tls_ok": true,
-      "dns_records": [
-        "82.21.92.142"
-      ],
-      "error_kind": "",
-      "error_message": ""
-    }
-  ],
-  "failures": [],
-  "ok": true
-}
-```
 
 ### Release pytest matrix
 
@@ -114,7 +65,7 @@ tests/test_collect_xray_observer.py::CollectXrayObserverTests::test_run_pushes_h
     return datetime.utcnow().replace(microsecond=0)
 
 -- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
-44 passed, 765 warnings in 47.09s
+44 passed, 765 warnings in 46.51s
 ```
 
 ### Admin/auth regressions
@@ -126,11 +77,11 @@ tests/test_collect_xray_observer.py::CollectXrayObserverTests::test_run_pushes_h
     user.expiry_at = datetime.utcnow() - timedelta(days=1)
 
 tests/test_api_auth_and_tickets.py::ApiAuthAndTicketsTests::test_dashboard_marks_free_soft_mode_after_monthly_quota
-  C:\Users\kiwun\Documents\ai\VPN\tests\test_api_auth_and_tickets.py:791: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+  C:\Users\kiwun\Documents\ai\VPN\tests\test_api_auth_and_tickets.py:821: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
     user.expiry_at = datetime.utcnow() + timedelta(days=365)
 
 tests/test_api_auth_and_tickets.py::ApiAuthAndTicketsTests::test_dashboard_marks_free_soft_mode_after_monthly_quota
-  C:\Users\kiwun\Documents\ai\VPN\tests\test_api_auth_and_tickets.py:794: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+  C:\Users\kiwun\Documents\ai\VPN\tests\test_api_auth_and_tickets.py:824: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
     user.free_cycle_next_reset_at = datetime.utcnow() + timedelta(days=11)
 
 tests/test_api_auth_and_tickets.py::ApiAuthAndTicketsTests::test_dashboard_uses_runtime_summary_for_usage_and_connections
@@ -138,31 +89,31 @@ tests/test_api_auth_and_tickets.py::ApiAuthAndTicketsTests::test_dashboard_uses_
     user.expiry_at = datetime.utcnow() + timedelta(days=30)
 
 tests/test_api_auth_and_tickets.py::ApiAuthAndTicketsTests::test_subscription_endpoint_accepts_sub_token_and_tg_id_fallback
-  C:\Users\kiwun\Documents\ai\VPN\tests\test_api_auth_and_tickets.py:1908: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+  C:\Users\kiwun\Documents\ai\VPN\tests\test_api_auth_and_tickets.py:1938: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
     user.expiry_at = datetime.utcnow() + timedelta(days=10)
 
 tests/test_api_auth_and_tickets.py::ApiAuthAndTicketsTests::test_subscription_endpoint_blocks_numeric_fallback_when_flag_disabled
-  C:\Users\kiwun\Documents\ai\VPN\tests\test_api_auth_and_tickets.py:1935: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+  C:\Users\kiwun\Documents\ai\VPN\tests\test_api_auth_and_tickets.py:1965: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
     user.expiry_at = datetime.utcnow() + timedelta(days=10)
 
 tests/test_api_auth_and_tickets.py::ApiAuthAndTicketsTests::test_subscription_endpoint_defaults_to_smart_profile_on_connect_host
-  C:\Users\kiwun\Documents\ai\VPN\tests\test_api_auth_and_tickets.py:2024: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+  C:\Users\kiwun\Documents\ai\VPN\tests\test_api_auth_and_tickets.py:2054: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
     user.expiry_at = datetime.utcnow() + timedelta(days=10)
 
 tests/test_api_auth_and_tickets.py::ApiAuthAndTicketsTests::test_subscription_endpoint_supports_explicit_smart_and_plain_formats
-  C:\Users\kiwun\Documents\ai\VPN\tests\test_api_auth_and_tickets.py:1989: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+  C:\Users\kiwun\Documents\ai\VPN\tests\test_api_auth_and_tickets.py:2019: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
     user.expiry_at = datetime.utcnow() + timedelta(days=10)
 
 tests/test_api_auth_and_tickets.py::ApiAuthAndTicketsTests::test_subscription_endpoint_supports_head_for_plain_and_hiddify_clients
-  C:\Users\kiwun\Documents\ai\VPN\tests\test_api_auth_and_tickets.py:1955: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+  C:\Users\kiwun\Documents\ai\VPN\tests\test_api_auth_and_tickets.py:1985: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
     user.expiry_at = datetime.utcnow() + timedelta(days=10)
 
 tests/test_api_auth_and_tickets.py::ApiAuthAndTicketsTests::test_user_data_exposes_runtime_traffic_and_connections_without_app_install
-  C:\Users\kiwun\Documents\ai\VPN\tests\test_api_auth_and_tickets.py:638: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+  C:\Users\kiwun\Documents\ai\VPN\tests\test_api_auth_and_tickets.py:653: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
     user.expiry_at = datetime.utcnow() + timedelta(days=14)
 
 -- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
-55 passed, 2020 warnings in 61.19s (0:01:01)
+55 passed, 2023 warnings in 56.64s
 ```
 
 ### Client security smoke
@@ -196,7 +147,7 @@ C:\Users\kiwun\Documents\ai\VPN\tests\test_api_lifecycle_smoke.py:263: Deprecati
   expiry_at=datetime.utcnow() + timedelta(days=20),
 .
 ----------------------------------------------------------------------
-Ran 1 test in 7.315s
+Ran 1 test in 7.148s
 
 OK
 ```
@@ -263,7 +214,7 @@ Route (app)                              Size     First Load JS
 ├ ○ /_not-found                          873 B          88.3 kB
 ├ ○ /apple-icon.png                      0 B                0 B
 ├ ○ /bystryy-vpn-na-telefon              195 B          96.3 kB
-├ ○ /checkout                            9.46 kB         106 kB
+├ ○ /checkout                            11.3 kB         107 kB
 ├ ○ /icon.png                            0 B                0 B
 ├ ○ /manifest.webmanifest                0 B                0 B
 ├ ○ /offer                               195 B          96.3 kB
@@ -303,14 +254,14 @@ Admin WebApp smoke passed.
   ✓ externalDir
 
   Creating an optimized production build ...
-✓ Compiled successfully in 2.7s
+✓ Compiled successfully in 2.2s
   Running TypeScript ...
   Collecting page data using 19 workers ...
   Generating static pages using 19 workers (0/23) ...
   Generating static pages using 19 workers (5/23) 
   Generating static pages using 19 workers (11/23) 
   Generating static pages using 19 workers (17/23) 
-✓ Generating static pages using 19 workers (23/23) in 604.0ms
+✓ Generating static pages using 19 workers (23/23) in 509.5ms
   Finalizing page optimization ...
 
 Route (app)
@@ -347,12 +298,12 @@ Route (app)
 
 ```text
 > pokrov-webapp@0.1.0 test:e2e
-> playwright test e2e/admin-gate.spec.ts e2e/cabinet-flow.spec.ts
+> powershell -NoProfile -ExecutionPolicy Bypass -Command "$port=3102; Get-NetTCPConnection -LocalPort $port -ErrorAction SilentlyContinue | Select-Object -ExpandProperty OwningProcess -Unique | ForEach-Object { Stop-Process -Id $_ -Force -ErrorAction SilentlyContinue }; exit 0" && set E2E_PORT=3102&& set PLAYWRIGHT_FRESH_SERVER=1&& playwright test e2e/admin-gate.spec.ts e2e/cabinet-flow.spec.ts
 
 
 Running 16 tests using 1 worker
 
-  ok  1 e2e\admin-gate.spec.ts:733:7 › Admin gate › redirects non-admin from /admin/* to /dashboard (2.0s)
+  ok  1 e2e\admin-gate.spec.ts:737:7 › Admin gate › redirects non-admin from /admin/* to /dashboard (1.6s)
 [2m[WebServer] [22m[33m[1m⚠[22m[39m Fast Refresh had to perform a full reload. Read more: https://nextjs.org/docs/messages/fast-refresh-reload
 [2m[WebServer] [22m[33m[1m⚠[22m[39m Fast Refresh had to perform a full reload. Read more: https://nextjs.org/docs/messages/fast-refresh-reload
 [2m[WebServer] [22m[33m[1m⚠[22m[39m Fast Refresh had to perform a full reload. Read more: https://nextjs.org/docs/messages/fast-refresh-reload
@@ -360,25 +311,25 @@ Running 16 tests using 1 worker
 [2m[WebServer] [22m[33m[1m⚠[22m[39m Fast Refresh had to perform a full reload. Read more: https://nextjs.org/docs/messages/fast-refresh-reload
 [2m[WebServer] [22m[33m[1m⚠[22m[39m Fast Refresh had to perform a full reload. Read more: https://nextjs.org/docs/messages/fast-refresh-reload
 [2m[WebServer] [22m[33m[1m⚠[22m[39m Fast Refresh had to perform a full reload. Read more: https://nextjs.org/docs/messages/fast-refresh-reload
-  ok  2 e2e\admin-gate.spec.ts:739:7 › Admin gate › allows admin to open all admin sections (17.9s)
-  ok  3 e2e\admin-gate.spec.ts:761:7 › Admin gate › keeps admin dashboard stable when summary omits optional blocks (2.0s)
-  ok  4 e2e\admin-gate.spec.ts:781:7 › Admin gate › shows clean Russian copy across admin surfaces (6.0s)
-  ok  5 e2e\admin-gate.spec.ts:803:7 › Admin gate › lets admin search, sort, and paginate the users table (2.4s)
-  ok  6 e2e\admin-gate.spec.ts:833:7 › Admin gate › lets admin safely delete only manual or test users (2.4s)
-  ok  7 e2e\admin-gate.spec.ts:871:7 › Admin gate › shows observer-lite badges, filters, and detail diagnostics (3.3s)
-  ok  8 e2e\admin-gate.spec.ts:912:7 › Admin gate › shows observer-lite empty state instead of misleading zero-only activity (2.3s)
-  ok  9 e2e\admin-gate.spec.ts:923:7 › Admin gate › keeps admin pages clickable and inside the viewport on mobile (5.4s)
-  ok 10 e2e\admin-gate.spec.ts:980:7 › Admin gate › shows node alert labels and probe failure details (2.2s)
-  ok 11 e2e\admin-gate.spec.ts:1048:7 › Admin gate › lets admin triage a ticket and send a reply using stable status codes (2.4s)
-  ok 12 e2e\cabinet-flow.spec.ts:319:7 › Cabinet flow › shows a single connect link flow on the dashboard (3.6s)
-  ok 13 e2e\cabinet-flow.spec.ts:332:7 › Cabinet flow › keeps the subscription page on one public connection link plus QR (3.3s)
+  ok  2 e2e\admin-gate.spec.ts:743:7 › Admin gate › allows admin to open all admin sections (18.1s)
+  ok  3 e2e\admin-gate.spec.ts:765:7 › Admin gate › keeps admin dashboard stable when summary omits optional blocks (1.5s)
+  ok  4 e2e\admin-gate.spec.ts:785:7 › Admin gate › shows clean Russian copy across admin surfaces (5.3s)
+  ok  5 e2e\admin-gate.spec.ts:807:7 › Admin gate › lets admin search, sort, and paginate the users table (2.2s)
+  ok  6 e2e\admin-gate.spec.ts:837:7 › Admin gate › lets admin safely delete only manual or test users (2.1s)
+  ok  7 e2e\admin-gate.spec.ts:875:7 › Admin gate › shows observer-lite badges, filters, and detail diagnostics (2.7s)
+  ok  8 e2e\admin-gate.spec.ts:916:7 › Admin gate › shows observer-lite empty state instead of misleading zero-only activity (2.0s)
+  ok  9 e2e\admin-gate.spec.ts:927:7 › Admin gate › keeps admin pages clickable and inside the viewport on mobile (4.4s)
+  ok 10 e2e\admin-gate.spec.ts:984:7 › Admin gate › shows node alert labels and probe failure details (1.5s)
+  ok 11 e2e\admin-gate.spec.ts:1052:7 › Admin gate › lets admin triage a ticket and send a reply using stable status codes (2.9s)
+  ok 12 e2e\cabinet-flow.spec.ts:323:7 › Cabinet flow › shows a single connect link flow on the dashboard (3.4s)
+  ok 13 e2e\cabinet-flow.spec.ts:337:7 › Cabinet flow › keeps the subscription page on one public connection link plus QR (2.9s)
 [2m[WebServer] [22m[33m[1m⚠[22m[39m Fast Refresh had to perform a full reload. Read more: https://nextjs.org/docs/messages/fast-refresh-reload
-  ok 14 e2e\cabinet-flow.spec.ts:345:7 › Cabinet flow › renders runtime connections on devices and keeps statistics actionable (5.5s)
+  ok 14 e2e\cabinet-flow.spec.ts:350:7 › Cabinet flow › renders runtime connections on devices and keeps statistics actionable (4.3s)
 [2m[WebServer] [22m[33m[1m⚠[22m[39m Fast Refresh had to perform a full reload. Read more: https://nextjs.org/docs/messages/fast-refresh-reload
-  ok 15 e2e\cabinet-flow.spec.ts:361:7 › Cabinet flow › keeps downloads and support flows usable without the app (7.0s)
-  ok 16 e2e\cabinet-flow.spec.ts:377:7 › Cabinet flow › stays inside a narrow mobile viewport for core cabinet pages (4.5s)
+  ok 15 e2e\cabinet-flow.spec.ts:368:7 › Cabinet flow › keeps downloads and support flows usable without the app (5.9s)
+  ok 16 e2e\cabinet-flow.spec.ts:384:7 › Cabinet flow › stays inside a narrow mobile viewport for core cabinet pages (4.8s)
 
-  16 passed (1.3m)
+  16 passed (1.2m)
 ```
 
 ### UI visual smoke

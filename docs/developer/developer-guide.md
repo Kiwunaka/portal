@@ -1,6 +1,6 @@
 # Developer Guide
 
-Last updated: 2026-04-08
+Last updated: 2026-04-12
 
 ## Document Status
 
@@ -39,6 +39,7 @@ For web-admin or marketing work, also read:
 - [docs/architecture/system-overview.md](C:/Users/kiwun/Documents/ai/VPN/docs/architecture/system-overview.md)
 - [docs/architecture/app-first-and-bonus-flows.md](C:/Users/kiwun/Documents/ai/VPN/docs/architecture/app-first-and-bonus-flows.md)
 - [Monitoring And Visibility](C:/Users/kiwun/Documents/ai/VPN/docs/operations/monitoring-and-visibility.md)
+- [webapp/README.md](C:/Users/kiwun/Documents/ai/VPN/webapp/README.md)
 
 ## Main Workspaces
 
@@ -118,6 +119,7 @@ Notes:
 - Real browser checks live under `webapp/e2e/`.
 - `tests/test_admin_webapp_smoke.py` is a structure/build smoke, not a replacement for Playwright browser coverage.
 - `webapp/e2e/cabinet-flow.spec.ts` covers the non-app user cabinet flow with mocked API contracts.
+- `npm.cmd run test:e2e` uses an isolated Playwright dev server on port `3102`, and `npm.cmd run test:e2e:admin` uses port `3101`; both scripts clear a stale port owner first and disable server reuse so local browser checks do not inherit stale HMR state.
 - admin browser checks should include a narrow mobile or Telegram WebView-like viewport so tap targets, overflow, and modal actions stay usable inside the embedded webapp.
 - observer-lite admin checks should cover dashboard summary counts, users-table filter parity, detail diagnostics, and node collector health rendering.
 - user-facing config delivery should expose one public `ссылка подключения` via `connect.pokrov.space`; hidden `?format=plain` compatibility must stay out of normal copy and browser flows.
@@ -137,6 +139,15 @@ Marketing release rules:
 - public `Открыть кабинет` CTA should point to `https://app.pokrov.space/`
 - pricing CTA should enter through public `/checkout/` with plan context, not directly through `pay.pokrov.space`
 - `robots.ts`, `sitemap.ts`, `manifest.ts`, favicon, apple icon, and share-preview assets are part of the release contract, not optional polish
+
+## Frontend Surface Map
+
+After the current premium/SEO/copy pass, keep this split explicit:
+
+- `marketing/` owns the public homepage, `/checkout/`, offer/privacy pages, indexable SEO landings, and site metadata surfaces
+- `webapp/` owns `app.pokrov.space` entry, dashboard, pricing, subscription checkout continuation, downloads, devices, support, and admin
+- `connect.pokrov.space` is config delivery only and must not be treated as a public acquisition page
+- when a task spans both surfaces, verify the handoff `pokrov.space -> app.pokrov.space` instead of reviewing each side in isolation
 
 Run inside the client repo:
 
@@ -163,6 +174,15 @@ flutter_distributor package --platform windows --targets msix
 ## Documentation Rules
 
 Whenever behavior, contracts, support flow, or release flow changes, update the canonical docs in the same task.
+
+If code is still in flight, document only the confirmed surfaces and routes that already exist in:
+
+- `marketing/src/app/`
+- `webapp/src/app/`
+- `shared/copy.ts`
+- `shared/portal-config.ts`
+
+Do not document speculative routes, unfinished CTA behavior, or future release promises just because the copy pass has started.
 
 When public copy, review moderation, or nickname masking changes, also update:
 

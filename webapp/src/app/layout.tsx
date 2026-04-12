@@ -1,21 +1,25 @@
-﻿import type { Metadata } from "next";
-import { Inter, Chakra_Petch, JetBrains_Mono } from "next/font/google";
+import type { Metadata } from "next";
+import { JetBrains_Mono, Manrope, Playfair_Display } from "next/font/google";
 import Script from "next/script";
+
+import { CANONICAL_WEBAPP_URL } from "@/lib/portal";
+
 import QaOverlayHost from "./qa-overlay-host";
 import TelegramWebAppInit from "./telegram-webapp-init";
 import "./globals.css";
 
-const inter = Inter({ subsets: ["latin", "cyrillic"], variable: "--font-body" });
-const chakra = Chakra_Petch({
-  subsets: ["latin"],
-  weight: ["400", "500", "600", "700"],
-  variable: "--font-display",
-});
+const bodyFont = Manrope({ subsets: ["latin", "cyrillic"], variable: "--font-body" });
+const displayFont = Playfair_Display({ subsets: ["latin", "cyrillic"], variable: "--font-display" });
 const mono = JetBrains_Mono({ subsets: ["latin", "cyrillic"], variable: "--font-mono" });
 
 export const metadata: Metadata = {
+  metadataBase: new URL(CANONICAL_WEBAPP_URL),
   title: "POKROV VPN - Личный кабинет",
   description: "Управление доступом в одном кабинете: статус, ключ подключения, служба заботы и оплата в рублях.",
+  robots: {
+    index: false,
+    follow: false,
+  },
 };
 
 const QA_OVERLAY_ENABLED = String(process.env.NEXT_PUBLIC_ENABLE_QA_OVERLAY || "").toLowerCase() === "true";
@@ -23,7 +27,7 @@ const QA_OVERLAY_ENABLED = String(process.env.NEXT_PUBLIC_ENABLE_QA_OVERLAY || "
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="ru" className="scroll-smooth" suppressHydrationWarning>
-      <body className={`${inter.variable} ${chakra.variable} ${mono.variable} font-body`} suppressHydrationWarning>
+      <body className={`${bodyFont.variable} ${displayFont.variable} ${mono.variable} font-body`} suppressHydrationWarning>
         <Script src="https://telegram.org/js/telegram-web-app.js" strategy="beforeInteractive" />
         <Script
           id="material-symbols-fonts"

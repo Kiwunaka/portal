@@ -1,6 +1,4 @@
-import JsonLd from "../components/json-ld";
 import MarketingLanding, { buildMarketingMetadata, type MarketingReview } from "../components/marketing-landing";
-import { MARKETING_FAQ, buildFaqJsonLd } from "../lib/marketing-site";
 import { getPokrovPublicConfig } from "../lib/pokrov";
 
 export const metadata = buildMarketingMetadata(
@@ -36,6 +34,7 @@ async function loadFeaturedReviews(): Promise<MarketingReview[]> {
         name: String(item.username || "user").trim() || "user",
         role: item.date ? `TELEGRAM • ${item.date}` : `TELEGRAM • ${item.rating ? `${item.rating}/5` : "отзыв"}`,
         text: String(item.text || "").trim(),
+        date: item.date,
       }))
       .filter((item) => Boolean(item.text));
   } catch {
@@ -48,8 +47,12 @@ export default async function HomePage() {
 
   return (
     <>
-      <JsonLd data={buildFaqJsonLd(MARKETING_FAQ)} />
-      <MarketingLanding featuredReviews={featuredReviews} />
+      <MarketingLanding
+        pagePath="/"
+        heroTitle="POKROV VPN для Android и Windows с понятным стартом"
+        heroSubtitle="Скачайте приложение, включите 5 дней бесплатного премиум-доступа и спокойно проверьте сервис в реальных сценариях. Кабинет и Telegram остаются рядом для управления, продления и поддержки."
+        featuredReviews={featuredReviews}
+      />
     </>
   );
 }

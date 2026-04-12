@@ -21,7 +21,7 @@ import {
   TrendingUp,
   Users,
 } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { fmtRuDate } from "../nav";
 
 function lastDaysRange(days: number): { from: string; to: string } {
@@ -103,7 +103,7 @@ export default function AdminDashboardPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
-  const refresh = async (): Promise<void> => {
+  const refresh = useCallback(async (): Promise<void> => {
     if (sessionLoading || webLoginRequired || !user?.is_admin) return;
     setLoading(true);
     setError("");
@@ -118,12 +118,11 @@ export default function AdminDashboardPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [sessionLoading, user?.is_admin, webLoginRequired]);
 
   useEffect(() => {
-    if (sessionLoading || webLoginRequired || !user?.is_admin) return;
     void refresh();
-  }, [sessionLoading, user?.is_admin, webLoginRequired]);
+  }, [refresh]);
 
   const totals = useMemo(
     () =>

@@ -35,3 +35,13 @@ def test_marketing_metadata_declares_canonical_and_share_metadata() -> None:
     assert "canonical" in landing
     assert "twitter" in landing
     assert "images" in landing
+
+
+def test_marketing_landing_has_quiet_luxury_structure() -> None:
+    landing = _read("components", "marketing-landing.tsx")
+
+    assert "lp-hero-stage" in landing
+    assert "lp-trust-grid" in landing
+    assert "lp-pricing-shell" in landing
+    assert "lp-footer-cta" in landing
+    assert '<details className="lp-faq-item">' in landing

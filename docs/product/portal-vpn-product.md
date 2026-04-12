@@ -1,6 +1,6 @@
 # POKROV VPN Product Overview
 
-Last updated: 2026-04-08
+Last updated: 2026-04-12
 
 ## Document Status
 
@@ -76,6 +76,27 @@ Primary navigation:
 4. `Profile`
 5. `Support`
 
+### Marketing Site
+
+`marketing/` is the public acquisition and discovery surface for `POKROV VPN`.
+
+Current public role:
+
+- `https://pokrov.space/` is the fresh-entry homepage for new users
+- `https://pokrov.space/checkout/` is the public checkout explainer and plan-intent page
+- indexable landing pages can capture platform, use-case, or Telegram intent, but they must converge to the same product facts and CTA set
+- public legal pages also live on the marketing surface
+
+### WebApp
+
+`webapp/` is the continuation surface for known users, session continuation, and operator work.
+
+Current cabinet role:
+
+- `https://app.pokrov.space/` continues an existing browser session or bot handoff
+- current route families include cabinet entry, dashboard, pricing, subscription, authenticated checkout continuation, devices, downloads, and support
+- `webapp` is also the primary admin operator surface
+
 ### Telegram
 
 Telegram remains in the product for:
@@ -87,16 +108,24 @@ Telegram remains in the product for:
 - external support entrypoints
 - feedback collection and public review moderation
 
-### WebApp And Marketing
-
-- `webapp/` handles account, session continuation, and admin scenarios
-- `marketing/` handles the public website, pricing, checkout entrypoints, and legal pages
-
 Public funnel rule:
 
-- marketing and webapp should present `app-first` onboarding first
+- marketing introduces the product and captures public intent
+- `pokrov.space/checkout/` explains the next step, but it does not replace authenticated checkout continuation
+- `app.pokrov.space` continues real account, renewal, support, and checkout flows
 - checkout must continue from a valid web session or checkout ticket
 - Telegram bot purchase flow remains available, but it is not the default public story
+- `connect.pokrov.space` remains the delivery surface for the one public connection link and matching QR, not a fresh-entry marketing surface
+
+## Unified Public Copy Direction
+
+Public-facing copy across marketing and webapp should follow one simple style:
+
+- calm, direct, and premium without fake urgency
+- `app-first` in onboarding language, with Telegram framed as optional continuation or fallback
+- one product story across homepage, SEO landings, cabinet, and checkout
+- explicit next-step CTA wording such as `download app`, `open cabinet`, `continue to checkout`, or `open Telegram` only when that is the real next step
+- no separate product variants or conflicting promises invented for SEO pages
 
 ## Official Hostnames
 

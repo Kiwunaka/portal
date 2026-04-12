@@ -34,6 +34,11 @@ class UiVisualSmokeTests(unittest.TestCase):
         self.assertIn("config.webappUrl", hero_check.must_contain)
         self.assertIn("config.newsChannelUrl", hero_check.must_contain)
         self.assertIn("/checkout/?plan=", hero_check.must_contain)
+        self.assertIn("lp-hero-stage", hero_check.must_contain)
+        self.assertIn("lp-trust-grid", hero_check.must_contain)
+        self.assertIn("lp-pricing-shell", hero_check.must_contain)
+        self.assertIn("lp-footer-cta", hero_check.must_contain)
+        self.assertIn('<details className="lp-faq-item">', hero_check.must_contain)
         self.assertIn("href={config.connectUrl}", hero_check.must_not_contain)
 
         layout_check = checks["marketing-layout-seo"]
@@ -50,6 +55,10 @@ class UiVisualSmokeTests(unittest.TestCase):
         self.assertIn("config.webappUrl", checkout_check.must_contain)
         self.assertIn("Продолжить в Telegram", checkout_check.must_contain)
         self.assertIn("config.connectUrl", checkout_check.must_not_contain)
+
+        webapp_entry = checks["webapp-entry"]
+        self.assertIn("Личный кабинет POKROV VPN", webapp_entry.must_contain)
+        self.assertIn("secure Telegram login", webapp_entry.must_contain)
 
 
 if __name__ == "__main__":

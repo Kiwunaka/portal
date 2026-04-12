@@ -11,6 +11,15 @@ import {
 
 export const DEFAULT_MARKETING_SHARE_IMAGE_PATH = "/opengraph-image.png";
 export const DEFAULT_MARKETING_TWITTER_IMAGE_PATH = "/twitter-image.png";
+export const DEFAULT_MARKETING_SHARE_IMAGE_WIDTH = 1200;
+export const DEFAULT_MARKETING_SHARE_IMAGE_HEIGHT = 630;
+
+export const MARKETING_FEATURE_LIST = [
+  "5 дней бесплатного теста",
+  "Приложения для Android и Windows",
+  "Личный кабинет для продления и управления",
+  "Поддержка через Telegram и email",
+] as const;
 
 export type MarketingRouteConfig = {
   path: string;
@@ -25,7 +34,6 @@ export const MARKETING_SITEMAP_ROUTES: MarketingRouteConfig[] = [
   { path: "/vpn-dlya-tiktok/", changeFrequency: "weekly", priority: 0.86 },
   { path: "/vpn-na-iphone-android-windows/", changeFrequency: "weekly", priority: 0.88 },
   { path: "/vpn-telegram-bot/", changeFrequency: "weekly", priority: 0.78 },
-  { path: "/checkout/", changeFrequency: "weekly", priority: 0.72 },
   { path: "/offer/", changeFrequency: "monthly", priority: 0.36 },
   { path: "/privacy/", changeFrequency: "monthly", priority: 0.34 },
 ];
@@ -33,6 +41,17 @@ export const MARKETING_SITEMAP_ROUTES: MarketingRouteConfig[] = [
 export type MarketingFaqItem = {
   question: string;
   answer: string;
+};
+
+export type MarketingBreadcrumbItem = {
+  name: string;
+  path: string;
+};
+
+export type MarketingStructuredReview = {
+  author: string;
+  body: string;
+  datePublished?: string;
 };
 
 export const MARKETING_FAQ: MarketingFaqItem[] = [
@@ -81,6 +100,8 @@ export function buildOrganizationJsonLd() {
     name: CANONICAL_CLIENT_BRAND,
     url: `${CANONICAL_MARKETING_SITE_URL}/`,
     logo: buildMarketingUrl("/icon.png"),
+    description:
+      "POKROV VPN — consumer-first VPN-сервис с app-first стартом, бесплатным тестом и прозрачным управлением доступом.",
     email: CANONICAL_CONTACT_EMAIL,
     contactPoint: [
       {
@@ -109,7 +130,24 @@ export function buildWebSiteJsonLd() {
   };
 }
 
-export function buildSoftwareApplicationJsonLd() {
+export function buildSoftwareApplicationJsonLd(options?: {
+  pagePath?: string;
+  reviews?: MarketingStructuredReview[];
+}) {
+  const canonicalUrl = buildMarketingUrl(options?.pagePath || "/");
+  const review =
+    options?.reviews
+      ?.filter((item) => item.author.trim() && item.body.trim())
+      .map((item) => ({
+        "@type": "Review",
+        author: {
+          "@type": "Person",
+          name: item.author,
+        },
+        reviewBody: item.body,
+        ...(item.datePublished ? { datePublished: item.datePublished } : {}),
+      })) || [];
+
   return {
     "@context": "https://schema.org",
     "@type": "SoftwareApplication",
@@ -117,6 +155,22 @@ export function buildSoftwareApplicationJsonLd() {
     applicationCategory: "SecurityApplication",
     operatingSystem: "Android, Windows",
     inLanguage: "ru-RU",
+    image: buildMarketingUrl(DEFAULT_MARKETING_SHARE_IMAGE_PATH),
+    screenshot: buildMarketingUrl(DEFAULT_MARKETING_SHARE_IMAGE_PATH),
+    featureList: MARKETING_FEATURE_LIST,
+    ...(review.length ? { review } : {}),
+    publisher: {
+      "@type": "Organization",
+      name: CANONICAL_CLIENT_BRAND,
+      url: `${CANONICAL_MARKETING_SITE_URL}/`,
+    },
+    softwareHelp: {
+      "@type": "ContactPoint",
+      contactType: "customer support",
+      email: CANONICAL_CONTACT_EMAIL,
+      url: CANONICAL_SUPPORT_BOT_URL,
+      availableLanguage: ["ru"],
+    },
     offers: {
       "@type": "Offer",
       price: "99",
@@ -125,9 +179,23 @@ export function buildSoftwareApplicationJsonLd() {
       url: buildMarketingUrl("/checkout/"),
     },
     downloadUrl: buildMarketingUrl("/#downloads"),
-    url: `${CANONICAL_MARKETING_SITE_URL}/`,
+    mainEntityOfPage: canonicalUrl,
+    url: canonicalUrl,
     description:
       "Приложение VPN для Android и Windows с app-first стартом, бесплатным 5-дневным тестом и поддержкой через Telegram.",
+  };
+}
+
+export function buildBreadcrumbJsonLd(items: MarketingBreadcrumbItem[]) {
+  return {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    itemListElement: items.map((item, index) => ({
+      "@type": "ListItem",
+      position: index + 1,
+      name: item.name,
+      item: buildMarketingUrl(item.path),
+    })),
   };
 }
 

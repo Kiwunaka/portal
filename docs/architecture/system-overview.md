@@ -59,6 +59,12 @@ Node lifecycle rule:
 - `shared/`
   shared public copy, canonical hostnames, and cross-surface product constants
 
+Current public-surface split:
+
+- `marketing/` owns the homepage, public `/checkout/` explainer, offer/privacy pages, indexable SEO landings, and metadata assets such as `robots`, `sitemap`, `manifest`, Open Graph, Twitter, and JSON-LD
+- `webapp/` owns browser entry, dashboard, pricing, subscription renewal, authenticated checkout continuation, downloads, devices, support, and the primary admin operator surface
+- `connect.pokrov.space` stays outside the marketing/cabinet storytelling layer and remains the config-delivery host for the one public connection link plus QR
+
 Client release safety rule:
 
 - Android and Windows remain the public `v1` target pair
@@ -134,6 +140,21 @@ Architecture rule:
 - real checkout must continue from authenticated or ticketed context
 - bot purchase flow remains valid, but it does not replace app-first public onboarding
 - buying VPN must remain equally possible from bot, site, and app against the same backend contracts
+
+### Public Web Journey
+
+1. user lands on `https://pokrov.space/` or an indexable marketing landing page
+2. marketing CTA routes into app download, `pokrov.space/checkout/`, or cabinet entry depending on user intent
+3. a known browser session or signed checkout ticket continues in `https://app.pokrov.space/`
+4. webapp renders the relevant cabinet flow such as dashboard, pricing, renewal, downloads, devices, or support
+5. payment-provider handoff happens only from a real session or ticketed checkout flow
+6. successful payment returns the user to the active cabinet journey
+
+Public web rule:
+
+- `marketing/` is the indexable discovery layer
+- `webapp/` is the authenticated or session-aware continuation layer
+- public SEO pages may vary the entry copy, but they must not create separate product rules or bypass the canonical checkout/session model
 
 ### API-Only Regression Flow
 

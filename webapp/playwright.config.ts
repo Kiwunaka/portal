@@ -1,6 +1,7 @@
 ﻿import { defineConfig } from "@playwright/test";
 
 const port = Number(process.env.E2E_PORT || 3100);
+const reuseExistingServer = process.env.PLAYWRIGHT_FRESH_SERVER === "1" ? false : !process.env.CI;
 
 export default defineConfig({
   testDir: "./e2e",
@@ -19,7 +20,7 @@ export default defineConfig({
   webServer: {
     command: `npm.cmd run dev -- --port ${port}`,
     url: `http://localhost:${port}/`,
-    reuseExistingServer: !process.env.CI,
+    reuseExistingServer,
     timeout: 120_000,
   },
 });

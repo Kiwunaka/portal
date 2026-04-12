@@ -1,57 +1,134 @@
-# POKROV WebApp (Next App Router)
+# POKROV WebApp
 
-Личный кабинет POKROV собран как Next static app для `https://app.pokrov.space/`.
+Last updated: 2026-04-12
 
-## Локальный запуск
+## Document Status
 
-```bash
+This file is the local authority for `webapp/` and the browser cabinet/admin surface at `https://app.pokrov.space/`.
+
+## Purpose
+
+`webapp/` is the continuation surface for:
+
+- browser entry and web-login continuation
+- personal cabinet flows for status, subscription, devices, downloads, and support
+- authenticated checkout continuation
+- the primary admin operator surface
+
+It is not the public marketing or SEO surface. Public acquisition pages live in `marketing/` at `https://pokrov.space/`.
+
+## Current Surface Map
+
+Current user-facing route families in `webapp/src/app/`:
+
+- `/` for browser entry, Telegram web-login, and bot handoff continuation
+- `/dashboard/` for the main cabinet snapshot
+- `/pricing/` for plan selection inside the cabinet journey
+- `/subscription/` for subscription state and renewal entry
+- `/subscription/checkout/` for authenticated checkout continuation
+- `/devices/` for device visibility
+- `/dashboard/downloads/` for app-download continuation
+- `/support/` plus support thread/legal routes
+
+Current operator routes:
+
+- `/admin/`
+- `/admin/dashboard/`
+- `/admin/users/`
+- `/admin/nodes/`
+- `/admin/tickets/`
+- `/admin/bonuses/`
+- `/admin/promos/`
+- `/admin/referrals/`
+- `/admin/broadcast/`
+
+## Surface Boundary
+
+Keep the public/browser split explicit:
+
+- `marketing/` owns the homepage, public `/checkout/`, offer/privacy pages, and indexable SEO landing pages
+- `webapp/` starts when the user needs session continuation, cabinet actions, support, renewal, or admin tooling
+- public `Open cabinet` CTA should point to `https://app.pokrov.space/`
+- public pricing pages may introduce plan intent, but real payment continuation belongs to the authenticated cabinet flow
+
+## Runtime Contract
+
+Canonical browser/runtime wiring:
+
+- API base: `https://api.pokrov.space`
+- browser cabinet URL: `https://app.pokrov.space`
+- public config delivery host: `https://connect.pokrov.space`
+- hosted checkout host: `https://pay.pokrov.space/checkout/`
+
+Rules:
+
+- frontend must not treat `https://app.pokrov.space/api/*` HTML fallback as valid API success
+- user-facing cabinet copy should show one public `ссылка подключения` and one QR built from the same URL
+- `?format=plain` remains hidden compatibility-only behavior and must stay out of normal cabinet UX
+- `connect.pokrov.space` is for config delivery, not for public acquisition or payment entry
+
+## Frontend Environment
+
+Primary public env keys:
+
+- `NEXT_PUBLIC_API_BASE_URL`
+- `NEXT_PUBLIC_TELEGRAM_BOT_URL`
+- `NEXT_PUBLIC_TELEGRAM_LOGIN_BOT`
+- `NEXT_PUBLIC_WEBAPP_URL`
+- `NEXT_PUBLIC_CONNECT_URL`
+- `NEXT_PUBLIC_CHECKOUT_PAGE_URL`
+- `NEXT_PUBLIC_APP_ANDROID_PLAY_URL`
+- `NEXT_PUBLIC_APP_ANDROID_APK_URL`
+- `NEXT_PUBLIC_APP_WINDOWS_EXE_URL`
+- `NEXT_PUBLIC_APP_DOCS_URL`
+
+Compatibility note:
+
+- `VITE_*` fallback env names still exist for smoother migration, but new work should prefer the `NEXT_PUBLIC_*` names
+
+## Build Output
+
+Current Next.js export expectations:
+
+- `next.config.ts` uses `output: "export"`
+- `trailingSlash: true`
+- `basePath` is not used
+- `assetPrefix` is not used
+- generated static files are emitted to `webapp/out`
+
+## Auth Continuation
+
+Current supported auth paths:
+
+- inside Telegram: authorization through `initData`
+- in browser: Telegram Login Widget -> `POST /api/auth/telegram/web-login`
+- from bot handoff: `web_session_token` should open the cabinet without manual token copy/paste
+
+## Local Run
+
+```powershell
 npm.cmd install
 npm.cmd run dev
 ```
 
-## Прод-сборка
+## Verification
 
-```bash
+```powershell
 npm.cmd run build
 npm.cmd run test:e2e
 npm.cmd run test:e2e:admin
 ```
 
-`next.config.ts` настроен на:
+Verification rule:
 
-- `output: "export"`
-- `trailingSlash: true`
-- `basePath` не используется
-- `assetPrefix` не используется
+- run `npm.cmd run build` on every webapp task
+- run `npm.cmd run test:e2e` when cabinet, pricing, renewal, downloads, support, or login flows change
+- run `npm.cmd run test:e2e:admin` when admin routes, permissions, dashboards, or operator actions change
+- `npm.cmd run test:e2e` starts an isolated Playwright dev server on port `3102`, and `npm.cmd run test:e2e:admin` uses port `3101`; both scripts clear a stale port owner first so browser checks do not reuse a stale local `next dev` session
 
-Готовые статик-файлы появляются в `webapp/out`.
+## Related Canonical Docs
 
-## Ключевые ENV (frontend)
-
-- `NEXT_PUBLIC_API_BASE_URL`
-- `NEXT_PUBLIC_TELEGRAM_BOT_URL`
-- `NEXT_PUBLIC_TELEGRAM_LOGIN_BOT` (optional override)
-
-Для плавного перехода поддерживаются fallback-переменные `VITE_*`.
-Если `NEXT_PUBLIC_TELEGRAM_LOGIN_BOT` не задан, Telegram Login Widget берёт username из `NEXT_PUBLIC_TELEGRAM_BOT_URL`.
-
-Канонический API для браузерного кабинета:
-
-- `https://api.pokrov.space`
-
-Каноническая публичная ссылка подключения:
-
-- `https://connect.pokrov.space/s8Kx2mP7qR4wT/{token}`
-
-Важно:
-
-- фронтенд не должен считать `https://app.pokrov.space/api/*` валидным API fallback
-- если с app origin приходит HTML вместо JSON, это считается ошибкой auth/runtime wiring, а не успешным ответом
-- пользовательский UI показывает одну `ссылку подключения` и один QR для подключения
-- `?format=plain` остаётся скрытой backend-совместимостью и не должен торчать в обычном webapp UX
-
-## Auth flows
-
-- Внутри Telegram: авторизация через `initData`.
-- В браузере: Telegram Login Widget -> `POST /api/auth/telegram/web-login`.
-- Из бота: `web_session_token` handoff должен открывать кабинет без ручного копирования токена.
+- [Product Overview](C:/Users/kiwun/Documents/ai/VPN/docs/product/portal-vpn-product.md)
+- [System Overview](C:/Users/kiwun/Documents/ai/VPN/docs/architecture/system-overview.md)
+- [App-First And Bonus Flows](C:/Users/kiwun/Documents/ai/VPN/docs/architecture/app-first-and-bonus-flows.md)
+- [Developer Guide](C:/Users/kiwun/Documents/ai/VPN/docs/developer/developer-guide.md)
