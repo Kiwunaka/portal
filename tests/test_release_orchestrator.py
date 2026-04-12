@@ -3,6 +3,7 @@ import sys
 import unittest
 from argparse import Namespace
 from pathlib import Path
+from unittest.mock import patch
 
 
 def _load_module():
@@ -50,6 +51,19 @@ class ReleaseOrchestratorTests(unittest.TestCase):
         self.assertIn("scripts/remote_brain_apply_release_handoff.py", " ".join(steps[0][1]))
         self.assertIn("--env-file", steps[0][1])
         self.assertIn("C:/tmp/release-links.env", steps[0][1])
+
+    def test_main_gates_only_dry_run_builds_and_prints_gate_steps(self) -> None:
+        steps = [("release gates", ["python", "scripts/release_gate_check.py"], self.module.REPO_ROOT)]
+        with patch.object(self.module, "_build_steps", return_value=steps) as build_steps:
+            with patch.object(self.module, "_dry_run") as dry_run:
+                with patch.object(self.module, "_run") as run:
+                    with patch.object(sys, "argv", ["release_orchestrator.py", "--gates-only", "--dry-run"]):
+                        rc = self.module.main()
+
+        self.assertEqual(rc, 0)
+        build_steps.assert_called_once()
+        dry_run.assert_called_once_with("release gates", ["python", "scripts/release_gate_check.py"], self.module.REPO_ROOT)
+        run.assert_not_called()
 
 
 if __name__ == "__main__":

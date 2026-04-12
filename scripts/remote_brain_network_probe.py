@@ -22,10 +22,10 @@ def _parse_inventory(path: Path) -> dict[str, str]:
         if not line.startswith("|") or "`" not in line:
             continue
         parts = [p.strip() for p in line.strip("|").split("|")]
-        if len(parts) < 4:
+        if len(parts) < 7:
             continue
         code = parts[0].strip("`").strip().lower()
-        ip = parts[3].strip("`").strip()
+        ip = parts[6].strip("`").strip()
         if not code or code == "code":
             continue
         if not re.fullmatch(r"[a-z0-9_-]+", code):

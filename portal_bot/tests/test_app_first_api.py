@@ -45,8 +45,20 @@ def _load_api(monkeypatch, tmp_path: Path):
     return importlib.import_module("api")
 
 
+def _patch_success_panel(monkeypatch, api):
+    class FakePanel:
+        async def add_client(self, **_kwargs):
+            return True
+
+        async def close(self):
+            return True
+
+    monkeypatch.setattr(api, "ControlPanel", FakePanel)
+
+
 def test_start_trial_returns_session_and_real_device_payload(monkeypatch, tmp_path):
     api = _load_api(monkeypatch, tmp_path)
+    _patch_success_panel(monkeypatch, api)
     client = TestClient(api.app)
 
     start_trial_response = client.post(
@@ -91,6 +103,7 @@ def test_start_trial_returns_session_and_real_device_payload(monkeypatch, tmp_pa
 
 def test_start_trial_reuses_existing_install_id(monkeypatch, tmp_path):
     api = _load_api(monkeypatch, tmp_path)
+    _patch_success_panel(monkeypatch, api)
     client = TestClient(api.app)
 
     request_payload = {
@@ -122,8 +135,43 @@ def test_start_trial_reuses_existing_install_id(monkeypatch, tmp_path):
     assert first_session.json()["user"]["account_id"] == second_session.json()["user"]["account_id"]
 
 
+def test_start_trial_rolls_back_new_account_when_panel_sync_fails(monkeypatch, tmp_path):
+    api = _load_api(monkeypatch, tmp_path)
+    client = TestClient(api.app)
+
+    class FakePanel:
+        async def add_client(self, **_kwargs):
+            return False
+
+        async def close(self):
+            return True
+
+    monkeypatch.setattr(api, "ControlPanel", FakePanel)
+
+    response = client.post(
+        "/api/client/session/start-trial",
+        json={
+            "install_id": "install-sync-fail",
+            "device_name": "Broken Provisioning",
+            "platform": "android",
+            "trial_days": 5,
+        },
+    )
+
+    assert response.status_code == 503
+    assert response.json()["detail"] == "Trial provisioning failed"
+
+    db = api.SessionLocal()
+    try:
+        user = db.query(api.User).filter_by(app_install_id="install-sync-fail").first()
+        assert user is None
+    finally:
+        db.close()
+
+
 def test_app_session_can_create_support_ticket(monkeypatch, tmp_path):
     api = _load_api(monkeypatch, tmp_path)
+    _patch_success_panel(monkeypatch, api)
     client = TestClient(api.app)
 
     trial_response = client.post(
@@ -158,6 +206,7 @@ def test_app_session_can_create_support_ticket(monkeypatch, tmp_path):
 
 def test_app_session_can_request_telegram_link(monkeypatch, tmp_path):
     api = _load_api(monkeypatch, tmp_path)
+    _patch_success_panel(monkeypatch, api)
     client = TestClient(api.app)
 
     trial_response = client.post(
@@ -186,6 +235,7 @@ def test_app_session_can_request_telegram_link(monkeypatch, tmp_path):
 
 def test_channel_bonus_claim_uses_linked_telegram_identity_for_app_account(monkeypatch, tmp_path):
     api = _load_api(monkeypatch, tmp_path)
+    _patch_success_panel(monkeypatch, api)
     client = TestClient(api.app)
 
     async def fake_is_channel_member(channel_username: str, tg_id: int):

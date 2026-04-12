@@ -317,7 +317,7 @@ test.describe("Cabinet flow", () => {
   });
 
   test("shows a single connect link flow on the dashboard", async ({ page }) => {
-    await page.goto("dashboard/");
+    await page.goto("/dashboard/");
 
     await expect(page.getByRole("heading", { name: "Показать ссылку подключения или открыть QR" })).toBeVisible();
     await page.getByRole("button", { name: "Показать", exact: true }).click();
@@ -330,7 +330,7 @@ test.describe("Cabinet flow", () => {
   });
 
   test("keeps the subscription page on one public connection link plus QR", async ({ page }) => {
-    await page.goto("subscription/");
+    await page.goto("/subscription/");
 
     await expect(page.getByRole("heading", { name: "Одна ссылка для всех подключений" })).toBeVisible();
     await expect(page.getByRole("heading", { name: "Откройте на втором устройстве" })).toBeVisible();
@@ -343,14 +343,14 @@ test.describe("Cabinet flow", () => {
   });
 
   test("renders runtime connections on devices and keeps statistics actionable", async ({ page }) => {
-    await page.goto("devices/");
+    await page.goto("/devices/");
     await expect(page.getByRole("heading", { name: "Устройства и подключения" })).toBeVisible();
     await expect(page.locator("main")).toContainText("Подключений сейчас");
     await expect(page.locator("main")).toContainText("2 / 5");
     await expect(page.locator("main")).toContainText("Нод с активностью");
     await expect(page.locator("main")).toContainText("1 / 2");
 
-    await page.goto("statistics/");
+    await page.goto("/statistics/");
     await expect(page.getByRole("heading", { name: "Сводка по использованию" })).toBeVisible();
     await expect(page.getByRole("heading", { name: "Что доступно сейчас" })).toBeVisible();
     await expect(page.locator("main")).toContainText("Ссылка подключения: готова");
@@ -359,12 +359,12 @@ test.describe("Cabinet flow", () => {
   });
 
   test("keeps downloads and support flows usable without the app", async ({ page }) => {
-    await page.goto("dashboard/downloads/");
+    await page.goto("/dashboard/downloads/");
     await expect(page.getByRole("heading", { name: "Приложения и быстрый старт" })).toBeVisible();
     await expect(page.getByRole("link", { name: "Google Play" })).toBeVisible();
     await expect(page.getByRole("link", { name: "Скачать EXE" })).toBeVisible();
 
-    await page.goto("support/");
+    await page.goto("/support/");
     await expect(page.getByRole("heading", { name: "Служба заботы" })).toBeVisible();
     await page.getByRole("button", { name: "Создать обращение" }).click();
     await page.getByPlaceholder("Расскажите, что произошло").fill("Нужна помощь с импортом");

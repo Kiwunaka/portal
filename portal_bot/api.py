@@ -3851,10 +3851,43 @@ async def auth_session(request: Request, x_telegram_init_data: str = Header(defa
 @app.post("/api/client/session/start-trial")
 async def client_start_trial(payload: AppStartTrialIn, request: Request) -> dict:
     s = SessionLocal()
+    panel: ControlPanel | None = None
     try:
         user, created = _upsert_app_trial_user(s=s, payload=payload, request=request)
+        session_token = create_web_session_token(
+            tg_id=int(user.tg_id),
+            username=str(user.username or "").strip() or None,
+        )
+        if not session_token:
+            raise HTTPException(status_code=500, detail="App session is not configured")
+
+        panel = ControlPanel()
+        try:
+            sync_ok = bool(
+                await panel.add_client(
+                    user_uuid=str(user.uuid),
+                    email=str(user.email),
+                    sub_type=str(user.sub_type or "FREE"),
+                    total_gb=int(user.total_gb or 0),
+                    tg_id=int(user.tg_id),
+                    sub_token=str(user.sub_token or ""),
+                )
+            )
+        except Exception as exc:
+            raise HTTPException(status_code=503, detail="Trial provisioning failed") from exc
+        if not sync_ok:
+            raise HTTPException(status_code=503, detail="Trial provisioning failed")
+
+        response_payload = {
+            "ok": True,
+            "created": bool(created),
+            "session_token": session_token,
+            "account_id": str(int(user.tg_id)),
+            "subscription_url": build_subscription_url(str(user.sub_token or "")),
+            "sync_ok": True,
+        }
         s.commit()
-        s.refresh(user)
+        return response_payload
     except HTTPException:
         s.rollback()
         raise
@@ -3863,40 +3896,8 @@ async def client_start_trial(payload: AppStartTrialIn, request: Request) -> dict
         raise
     finally:
         s.close()
-
-    session_token = create_web_session_token(
-        tg_id=int(user.tg_id),
-        username=str(user.username or "").strip() or None,
-    )
-    if not session_token:
-        raise HTTPException(status_code=500, detail="App session is not configured")
-
-    sync_ok = False
-    panel = ControlPanel()
-    try:
-        sync_ok = bool(
-            await panel.add_client(
-                user_uuid=str(user.uuid),
-                email=str(user.email),
-                sub_type=str(user.sub_type or "FREE"),
-                total_gb=int(user.total_gb or 0),
-                tg_id=int(user.tg_id),
-                sub_token=str(user.sub_token or ""),
-            )
-        )
-    except Exception:
-        sync_ok = False
-    finally:
-        await panel.close()
-
-    return {
-        "ok": True,
-        "created": bool(created),
-        "session_token": session_token,
-        "account_id": str(int(user.tg_id)),
-        "subscription_url": build_subscription_url(str(user.sub_token or "")),
-        "sync_ok": bool(sync_ok),
-    }
+        if panel is not None:
+            await panel.close()
 
 
 @app.post("/api/client/telegram/link")
@@ -8484,8 +8485,16 @@ async def admin_nodes_health(x_telegram_init_data: str = Header(default="")) -> 
                 n,
                 mapped_users=mapped_counts.get(int(n.id), 0),
                 network_peak_mbps_24h=peak_by_code.get(str(n.code or ""), None),
-                online_keys_now=int((online_summary_by_code.get(str(n.code or ""), {}) or {}).get("online_keys_now") or 0),
-                online_connections_now=int((online_summary_by_code.get(str(n.code or ""), {}) or {}).get("online_connections_now") or 0),
+                online_keys_now=_online_summary_count(
+                    online_summary_by_code,
+                    node_code=str(n.code or ""),
+                    key="online_keys_now",
+                ),
+                online_connections_now=_online_summary_count(
+                    online_summary_by_code,
+                    node_code=str(n.code or ""),
+                    key="online_connections_now",
+                ),
             )
             for n in rows
         ]
@@ -9227,13 +9236,26 @@ def _nodes_for_user(user: User, nodes: list, session=None) -> list:
             s.close()
 
 
+def _online_summary_count(summary_by_code: dict[str, dict[str, Any]], *, node_code: str, key: str) -> int | None:
+    summary = summary_by_code.get(str(node_code or ""), None)
+    if not isinstance(summary, dict) or key not in summary:
+        return None
+    value = summary.get(key)
+    if value is None:
+        return None
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return None
+
+
 def _serialize_admin_node(
     n: Node,
     *,
     mapped_users: int = 0,
     network_peak_mbps_24h: float | None = None,
-    online_keys_now: int = 0,
-    online_connections_now: int = 0,
+    online_keys_now: int | None = None,
+    online_connections_now: int | None = None,
 ) -> dict[str, Any]:
     stale_after_seconds = max(300, int(os.getenv("NODE_METRICS_STALE_AFTER_SECONDS", "900")))
     now = _utcnow()
@@ -9276,8 +9298,8 @@ def _serialize_admin_node(
         "accepting_new_clients": bool(getattr(n, "accepting_new_clients", True)),
         "is_draining": bool(getattr(n, "is_draining", False)),
         "mapped_users": int(mapped_users),
-        "online_keys_now": int(online_keys_now),
-        "online_connections_now": int(online_connections_now),
+        "online_keys_now": int(online_keys_now) if online_keys_now is not None else None,
+        "online_connections_now": int(online_connections_now) if online_connections_now is not None else None,
         "is_healthy": bool(getattr(n, "is_healthy", True)),
         "health_score": float(getattr(n, "health_score", 0.0) or 0.0),
         "panel_latency_ms": getattr(n, "panel_latency_ms", None),

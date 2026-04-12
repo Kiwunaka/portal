@@ -1,6 +1,7 @@
 ﻿"use client";
 
 import { addTicketMessage, getTicket, resolveApiUrl, uploadTicketAttachment, type TicketAttachmentInput, type TicketInfo, type TicketMessage } from "@/lib/api";
+import Image from "next/image";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -158,7 +159,7 @@ export default function SupportTicketThreadPage() {
         <div className="flex items-center justify-between gap-3">
           <div>
             <div className="flex items-center gap-2">
-              <span className="font-mono text-xs text-violet-600 dark:text-violet-300">#{ticket.id}</span>
+              <span className="font-mono text-xs text-emerald-600 dark:text-amber-200">#{ticket.id}</span>
               <h1 className="font-display text-2xl font-bold">{ticket.subject || "Обращение без темы"}</h1>
             </div>
             <p className="mt-2 text-xs text-slate-500">
@@ -181,12 +182,19 @@ export default function SupportTicketThreadPage() {
                 const attachment = ticketAttachment(msg);
                 return (
                   <div key={msg.id} className={`flex ${isAdmin ? "justify-start" : "justify-end"}`}>
-                    <div className={`max-w-[86%] rounded-2xl px-4 py-3 text-sm leading-6 ${isAdmin ? "bg-white/75 dark:bg-white/10" : "bg-violet-500/15 dark:bg-violet-500/25"}`}>
+                    <div className={`max-w-[86%] rounded-2xl px-4 py-3 text-sm leading-6 ${isAdmin ? "bg-white/75 dark:bg-white/10" : "bg-emerald-500/12 dark:bg-emerald-500/20"}`}>
                       <p className="text-xs uppercase tracking-[0.12em] text-slate-500">{isAdmin ? "Оператор" : "Вы"}</p>
                       <p className="mt-1 whitespace-pre-line">{msg.body}</p>
                       {attachment?.kind === "image" ? (
                         <a href={attachment.url} target="_blank" rel="noreferrer" className="mt-3 block overflow-hidden rounded-2xl border border-white/40">
-                          <img src={attachment.url} alt={attachment.name || "Вложение"} className="max-h-72 w-full object-cover" />
+                          <Image
+                            src={attachment.url}
+                            alt={attachment.name || "Вложение"}
+                            width={1280}
+                            height={720}
+                            unoptimized
+                            className="max-h-72 w-full object-cover"
+                          />
                         </a>
                       ) : null}
                       {attachment?.kind === "video" ? (
@@ -222,15 +230,15 @@ export default function SupportTicketThreadPage() {
                 onChange={(event) => setMessage(event.target.value)}
                 rows={4}
                 placeholder="Напишите ответ..."
-                className="w-full rounded-xl border border-violet-200/50 bg-white/80 px-4 py-3 text-sm outline-none dark:border-violet-500/30 dark:bg-slate-900/70"
+                className="brand-input px-4 py-3 text-sm"
               />
-              <label className="mt-3 block rounded-2xl border border-dashed border-violet-300/60 bg-white/70 px-4 py-4 text-sm dark:border-violet-500/35 dark:bg-slate-900/55">
+              <label className="brand-upload mt-3 block px-4 py-4 text-sm">
                 <span className="block font-medium">Добавить вложение</span>
                 <span className="mt-1 block text-xs text-slate-500">Скриншот, видео, PDF или текстовый файл до 20 МБ.</span>
                 <input
                   type="file"
                   accept="image/*,video/*,.pdf,.txt,.log,application/pdf,text/plain"
-                  className="mt-3 block w-full cursor-pointer text-sm text-slate-600 file:mr-3 file:rounded-xl file:border-0 file:bg-violet-500/15 file:px-4 file:py-2 file:font-medium file:text-violet-700 dark:text-slate-300 dark:file:bg-violet-500/20 dark:file:text-violet-200"
+                  className="brand-file mt-3 block w-full cursor-pointer text-sm text-slate-600 dark:text-slate-300"
                   onChange={(event) => setAttachmentFile(event.target.files?.[0] ?? null)}
                 />
                 {attachmentFile ? (

@@ -1,6 +1,6 @@
 # App-First And Bonus Flows
 
-Last updated: 2026-04-08
+Last updated: 2026-04-12
 
 ## Document Status
 
@@ -78,6 +78,8 @@ Related live surfaces also exposed by the backend:
 - `GET /api/client/apps`
 - `GET /api/nodes/status`
 - `GET /api/bonuses`
+- `GET /api/auth/telegram/oidc/start`
+- `POST /api/auth/telegram/oidc/finish`
 - ticket endpoints under `/api/tickets`
 
 ## Web Login And Session Continuation
@@ -93,9 +95,15 @@ Contract rule:
 - canonical API base is `https://api.pokrov.space/`
 - canonical public config host is `https://connect.pokrov.space/`
 - HTML responses from `app.pokrov.space` must never be treated as valid API JSON
+- if browser OIDC start on the app origin returns HTML, the WebApp must retry the same flow against `https://api.pokrov.space/`
 - web login should continue the user into account or checkout, not into a dead-end landing
 - new user-facing `subscription_url` values must point to `connect.pokrov.space`
 - legacy `api.pokrov.space/s8Kx2mP7qR4wT/...` remains compatibility-only for older imports and recovery cases
+
+Release coverage rule:
+
+- the default `npm.cmd run test:e2e` suite in `webapp/` must continue to exercise the OIDC fallback path
+- narrowing the default E2E script to selected specs is a release regression because it can hide app-origin HTML fallback failures
 
 ## Checkout Continuation
 

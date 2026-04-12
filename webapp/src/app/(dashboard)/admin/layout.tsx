@@ -2,7 +2,6 @@
 
 import AppRouteLink from "@/components/app-route-link";
 import { usePortalSession } from "@/lib/session";
-import { Shield } from "lucide-react";
 import { usePathname } from "next/navigation";
 import { useMemo } from "react";
 import { ADMIN_NAV_ITEMS } from "./nav";
@@ -58,7 +57,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             Подгружаем права доступа, метрики и рабочие разделы. Обычно это занимает пару секунд.
           </p>
           <div className="mt-4 h-1.5 overflow-hidden rounded-full bg-slate-200/60 dark:bg-slate-800">
-            <div className="h-full w-1/3 animate-pulse rounded-full bg-violet-600" />
+            <div className="h-full w-1/3 animate-pulse rounded-full bg-emerald-600" />
           </div>
         </section>
         <section className="glass-card overflow-x-auto p-2">
@@ -71,7 +70,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                   aria-current={selected ? "page" : undefined}
                   className={`inline-flex shrink-0 items-center gap-1.5 rounded-xl px-3.5 py-2 text-xs font-semibold uppercase tracking-[0.1em] transition-all duration-200 ${
                     selected
-                      ? "bg-gradient-to-r from-violet-600 to-violet-700 text-white shadow-lg shadow-violet-600/25"
+                      ? "bg-gradient-to-r from-emerald-700 to-emerald-600 text-white shadow-lg shadow-emerald-700/25"
                       : "text-slate-600 opacity-80 dark:text-slate-300"
                   }`}
                 >
@@ -123,10 +122,10 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       <section className="stat-card p-5 sm:p-6">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-start">
           <div className="stat-icon stat-icon-violet">
-            <Shield size={22} />
+            <span className="material-symbols-rounded text-[22px]">shield</span>
           </div>
           <div className="min-w-0 flex-1">
-            <p className="font-mono text-xs uppercase tracking-[0.15em] text-violet-500 dark:text-violet-300">админ / pokrov</p>
+            <p className="font-mono text-xs uppercase tracking-[0.15em] text-emerald-600 dark:text-amber-200">админ / pokrov</p>
             <h1 className="mt-1 font-display text-3xl font-bold">Панель управления</h1>
             <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">
               Здесь вы управляете пользователями, нодами, платежами, обращениями и рассылками. Если заходите впервые, начните со вкладки «Сводка».
@@ -145,7 +144,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                 href={item.href}
                 className={`haptic-tap inline-flex shrink-0 items-center gap-1.5 rounded-xl px-3.5 py-2 text-xs font-semibold uppercase tracking-[0.1em] transition-all duration-200 ${
                   selected
-                    ? "bg-gradient-to-r from-violet-600 to-violet-700 text-white shadow-lg shadow-violet-600/25"
+                    ? "bg-gradient-to-r from-emerald-700 to-emerald-600 text-white shadow-lg shadow-emerald-700/25"
                     : "text-slate-600 hover:bg-white/70 dark:text-slate-300 dark:hover:bg-white/10"
                 }`}
               >

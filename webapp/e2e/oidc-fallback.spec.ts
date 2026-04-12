@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { test } from "@playwright/test";
 
 test("falls back to the canonical API when app origin returns HTML for OIDC start", async ({ page }) => {
   await page.route("**/api/auth/telegram/oidc/start", async (route) => {

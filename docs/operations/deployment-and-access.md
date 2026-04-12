@@ -1,6 +1,6 @@
 # Deployment And Access
 
-Last updated: 2026-04-09
+Last updated: 2026-04-12
 
 ## Document Status
 
@@ -163,6 +163,8 @@ At minimum, verify:
 
 - backend health endpoint
 - app-first `start-trial`
+- canonical Telegram OIDC start from `api.pokrov.space`
+- webapp OIDC fallback when the app origin returns HTML instead of JSON
 - support ticket creation
 - canonical `connect.pokrov.space` subscription endpoint availability
 - legacy `api.pokrov.space` subscription compatibility
@@ -179,6 +181,7 @@ At minimum, verify:
 Release gate rule:
 
 - full release gate should include backend tests, `client_security_smoke.py`, `api_lifecycle_smoke.py`, marketing/webapp builds, and browser E2E from `webapp/e2e/`
+- the default `webapp` release script `npm.cmd run test:e2e` must stay on `playwright test` so the full suite runs, including `webapp/e2e/oidc-fallback.spec.ts`
 - marketing release readiness also requires `python scripts/check-links.py` and `python scripts/ui_visual_smoke.py` to stay green after every CTA, legal, SEO, or branding change
 - `verify_brain_ready.py` should validate both the canonical connect host and the legacy API compatibility path before a release is considered healthy
 - `client_security_smoke.py` is the static repo-level gate for default local-surface settings, RU preset groundwork, and known localhost control paths; it does not replace the Android release-build port and reachability audit
@@ -197,10 +200,12 @@ python scripts/release_orchestrator.py --gates-only
 Notes:
 
 - `release_gate_check.py` is the canonical local report generator for the public-v1 gate set.
-- `release_orchestrator.py --gates-only` should be the default operator path when you want the same gate flow in one command without deploy.
+- `release_orchestrator.py --gates-only` is the working one-command local gate path when you want the same gate flow without remote deploy or verify steps.
+- `python scripts/release_orchestrator.py --gates-only --dry-run` should print the planned local gate step instead of exiting silently.
 - pass `--brain-ip 82.21.114.104` to either command when you also want `predeploy_node_readiness.py` folded into the same run.
 - when signed client artifacts are already published, pass `--release-env-file external/client-fork/release-links.env` to `release_orchestrator.py` so runtime `APP_*` download URLs are synced onto brain before deploy or verify.
 - when node reachability is part of a release handoff, report `current-origin`, `brain-origin`, and `RU-origin` results separately instead of collapsing them into one verdict
+- if `mini` is unavailable, keep `RU-origin` in degraded state and record Check-Host RU-node output as coarse corroboration plus RIPE Atlas measurements as stronger corroboration until a replacement RU host is running
 
 ## Telegram OAuth / OIDC Runtime
 
@@ -237,6 +242,7 @@ Web runtime rule:
 
 - `https://api.pokrov.space/` is the canonical API base for browser flows
 - `app.pokrov.space` may host the UI, but it must not be treated as an API origin when it returns HTML
+- if `/api/auth/telegram/oidc/start` on the app origin returns HTML, the browser client must retry against `https://api.pokrov.space/` instead of parsing the HTML as JSON
 
 Migration-only legacy note:
 
@@ -313,7 +319,7 @@ Signed release path:
 Android release-block rule:
 
 - do not publish Android as a trusted public release until the release-build audit proves that localhost proxy, local DNS, libbox command, Clash API, and equivalent control surfaces are either unavailable to other apps or protected to an acceptable standard
-- if that proof is missing, keep Android in blocked state even if the app otherwise builds and signs correctly
+- if that proof is missing, keep Android in blocked state even if the app otherwise builds, signs, or passes repo-level static smoke checks
 
 Release handoff after publishing artifacts:
 

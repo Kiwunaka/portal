@@ -721,7 +721,8 @@ async function openRoute(page: Page, href: string): Promise<void> {
       return;
     } catch (error) {
       const message = String((error as Error)?.message || error || "");
-      if (attempt === 1 || !message.includes("ERR_ABORTED")) {
+      const isRetryable = message.includes("ERR_ABORTED") || message.includes("interrupted by another navigation");
+      if (attempt === 1 || !isRetryable) {
         throw error;
       }
       await page.waitForTimeout(250);

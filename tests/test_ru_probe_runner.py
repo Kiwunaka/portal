@@ -49,6 +49,7 @@ class RuProbeRunnerTests(unittest.TestCase):
         self.assertIn("pokrov-space", names)
         self.assertIn("app-pokrov-space", names)
         self.assertIn("api-pokrov-space", names)
+        self.assertIn("connect-pokrov-space", names)
         self.assertIn("node-pl", names)
         self.assertIn("node-nl", names)
         self.assertIn("reserve-xhttp", names)
@@ -124,6 +125,50 @@ class RuProbeRunnerTests(unittest.TestCase):
         self.assertTrue(result["tcp_ok"])
         self.assertTrue(result["tls_ok"])
         self.assertTrue(result["ok"])
+
+    def test_foreign_node_probe_rejects_plain_tcp_without_tls_handshake(self) -> None:
+        with mock.patch.object(
+            self.module.dataplane_probe,
+            "probe_node_endpoint",
+            return_value={
+                "ok": False,
+                "stage": "tcp_connect",
+                "error_kind": "tls_handshake_failed",
+                "error_message": "tls handshake failed",
+                "resolved_ips": ["82.21.92.142"],
+                "latency_ms": 42,
+                "tls_protocol": "",
+                "tls_cipher": "",
+            },
+        ):
+            result = self.module._run_target_probe(
+                {
+                    "name": "node-us",
+                    "kind": "foreign_node",
+                    "host": "82.21.92.142",
+                    "port": 443,
+                    "sni": "",
+                    "include_http": False,
+                },
+                timeout_sec=5.0,
+            )
+
+        self.assertTrue(result["tcp_ok"])
+        self.assertFalse(result["tls_ok"])
+        self.assertFalse(result["ok"])
+
+    def test_probe_exit_code_fails_when_any_canonical_or_foreign_target_is_down(self) -> None:
+        payload = {
+            "google_reachable": True,
+            "targets": [
+                {"name": "connect-pokrov-space", "kind": "canonical", "ok": False},
+                {"name": "node-us", "kind": "foreign_node", "ok": True},
+            ],
+            "reserve": {"xhttp_alive": False, "hysteria_alive": False},
+            "classifications": ["canonical_host_problem"],
+        }
+
+        self.assertEqual(self.module._probe_exit_code(payload), 2)
 
 
 if __name__ == "__main__":

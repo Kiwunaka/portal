@@ -7,7 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "test:e2e": "playwright test e2e/admin-gate.spec.ts e2e/cabinet-flow.spec.ts",
+    "test:e2e": "playwright test",
     "test:e2e:admin": "playwright test e2e/admin-gate.spec.ts",
     "test:e2e:cabinet": "playwright test e2e/cabinet-flow.spec.ts",
     "test:e2e:admin:headed": "playwright test e2e/admin-gate.spec.ts --headed",

@@ -225,14 +225,21 @@ def main() -> int:
         args.skip_verify = False
         args.ensure_metrics_timer = False
 
+    if args.gates_only:
+        args.skip_backend = True
+        args.skip_static = True
+        args.skip_verify = True
+        args.ensure_metrics_timer = False
+        args.ensure_observer_node = []
+
     release_env_file = str(args.release_env_file or "").strip()
     if release_env_file and args.gates_only:
         raise SystemExit("--release-env-file cannot be used with --gates-only")
 
     python = sys.executable
-    steps: list[tuple[str, list[str], Path]] = []
 
     if args.gates_only:
+        steps = _build_steps(args, python=python)
         if args.dry_run:
             for name, cmd, cwd in steps:
                 _dry_run(name, cmd, cwd)

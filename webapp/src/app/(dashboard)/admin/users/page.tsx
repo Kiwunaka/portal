@@ -1109,7 +1109,7 @@ export default function AdminUsersPage() {
                       </div>
                     </div>
                   )}
-                  <p className="mt-3 text-[11px] text-slate-500">Эта телеметрия показывает, где ключ видели недавно. Статус "сейчас online" берётся отдельно из live runtime панели.</p>
+                  <p className="mt-3 text-[11px] text-slate-500">Эта телеметрия показывает, где ключ видели недавно. Статус &quot;сейчас online&quot; берётся отдельно из live runtime панели.</p>
                 </div>
                 <div className="mt-2 space-y-2">
                   {(selected.tickets || []).map((ticket) => (

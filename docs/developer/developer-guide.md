@@ -1,6 +1,6 @@
 # Developer Guide
 
-Last updated: 2026-04-08
+Last updated: 2026-04-12
 
 ## Document Status
 
@@ -87,7 +87,8 @@ python scripts/release_orchestrator.py --gates-only
 Notes:
 
 - `release_gate_check.py` now runs the canonical public-v1 `pytest` matrix plus client security smoke, lifecycle smoke, link checks, marketing/webapp production builds, and Playwright browser E2E.
-- `scripts/release_orchestrator.py --gates-only` is the one-command entrypoint when you want the documented gate flow without remote deploy steps.
+- `scripts/release_orchestrator.py --gates-only` is the working one-command entrypoint when you want the documented gate flow without remote deploy steps.
+- `python scripts/release_orchestrator.py --gates-only --dry-run` should print the planned local gate step instead of returning an empty pass.
 - Add `--brain-ip 82.21.114.104` when you also want the predeploy node-readiness gate included in the same report.
 - After client artifacts are published, use `--release-env-file external/client-fork/release-links.env` with `release_orchestrator.py` to sync runtime download URLs before deploy or verify.
 - `scripts/client_security_smoke.py` is the repo-level static guardrail for default local-surface settings, RU preset groundwork, and known localhost control paths; it does not replace the required Android release-build reachability audit.
@@ -116,8 +117,10 @@ Notes:
 
 - `webapp` owns the primary admin surface.
 - Real browser checks live under `webapp/e2e/`.
+- `npm.cmd run test:e2e` must stay mapped to `playwright test` so the default release gate runs every spec, including `webapp/e2e/oidc-fallback.spec.ts`.
 - `tests/test_admin_webapp_smoke.py` is a structure/build smoke, not a replacement for Playwright browser coverage.
 - `webapp/e2e/cabinet-flow.spec.ts` covers the non-app user cabinet flow with mocked API contracts.
+- `webapp/e2e/oidc-fallback.spec.ts` protects the browser fallback where `app.pokrov.space` returns HTML and the client must retry OIDC start against `api.pokrov.space`.
 - admin browser checks should include a narrow mobile or Telegram WebView-like viewport so tap targets, overflow, and modal actions stay usable inside the embedded webapp.
 - observer-lite admin checks should cover dashboard summary counts, users-table filter parity, detail diagnostics, and node collector health rendering.
 - user-facing config delivery should expose one public `ссылка подключения` via `connect.pokrov.space`; hidden `?format=plain` compatibility must stay out of normal copy and browser flows.
@@ -148,7 +151,7 @@ flutter build windows --release
 
 Client release-gate note:
 
-- Android stays release-blocked until a release-build audit proves there is no unauthenticated localhost proxy, DNS, command, or admin/control surface exposed to other apps
+- Android stays release-blocked until a release-build audit proves there is no unauthenticated localhost proxy, DNS, command, or admin/control surface exposed to other apps, even if APK/AAB build smoke is green
 - run `python scripts/client_security_smoke.py` before broader client release verification so default local-surface settings and RU preset groundwork fail fast in CI or local gates
 - run `python scripts/android_localhost_audit.py --serial <device-serial> --connect-wait-sec 30 --disconnect-wait-sec 15` on a release-installed Android build for the manual-assisted localhost listener audit
 - client verification for this wave must also cover routing presets `Global` and `Все, кроме РФ`, plus DNS split and leak checks on Android and Windows
@@ -195,6 +198,7 @@ Operational rules:
 
 - `mini` is probe-only for current work
 - `mini` may be unavailable; RU probe readiness is its own tracked operational dependency
+- if `mini` is unavailable, use Check-Host as coarse RU corroboration and RIPE Atlas as stronger corroboration, but do not relabel that evidence as a true `RU-origin check`
 - RU ingress / RF reserve experiments are backlog-only
 - do not resume `mini` canary work, evolve the transport matrix, or provision `rf1` unless the product owner explicitly asks to return to that track
 - `rf1` is reserve-only for operator and VIP/manual use in phase 1

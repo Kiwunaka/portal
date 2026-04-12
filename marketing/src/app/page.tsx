@@ -4,8 +4,8 @@ import { MARKETING_FAQ, buildFaqJsonLd } from "../lib/marketing-site";
 import { getPokrovPublicConfig } from "../lib/pokrov";
 
 export const metadata = buildMarketingMetadata(
-  "POKROV VPN — быстрый VPN для Android и Windows",
-  "Скачайте приложение, включите 5 дней бесплатного теста и продолжайте через кабинет и безопасный checkout-маршрут.",
+  "POKROV VPN — приложение VPN для Android и Windows",
+  "Скачайте приложение для Android или Windows, включите 5 дней бесплатного теста и переходите в кабинет только когда будете готовы.",
   {
     path: "/",
     keywords: ["vpn", "впн", "vpn для android", "vpn для windows", "быстрый vpn", "pokrov vpn"],
@@ -33,7 +33,7 @@ async function loadFeaturedReviews(): Promise<MarketingReview[]> {
       .filter((item) => Boolean(item?.username || item?.text))
       .slice(0, 3)
       .map((item) => ({
-        name: String(item.username || "user").trim() || "user",
+        name: String(item.username || "Пользователь").trim() || "Пользователь",
         role: item.date ? `TELEGRAM • ${item.date}` : `TELEGRAM • ${item.rating ? `${item.rating}/5` : "отзыв"}`,
         text: String(item.text || "").trim(),
       }))

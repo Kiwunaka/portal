@@ -2603,6 +2603,58 @@ class ApiAuthAndTicketsTests(unittest.TestCase):
         finally:
             self.api.ControlPanel = original_panel
 
+    def test_admin_nodes_health_keeps_live_counts_missing_when_panel_summary_fails(self) -> None:
+        from db import SessionLocal
+        from models import Node
+
+        admin_hdrs = {"X-Telegram-Init-Data": self._init_data(9999, "admin")}
+
+        s = SessionLocal()
+        try:
+            s.add(
+                Node(
+                    code="us",
+                    name="USA",
+                    host="us.example.test",
+                    vless_port=443,
+                    reality_sni="www.att.com",
+                    reality_pbk="pbk-us",
+                    reality_sid="sid-us",
+                    panel_base_url="https://us.example.test:8444",
+                    panel_path="/panel",
+                    panel_user="admin",
+                    panel_pass="pass",
+                    inbound_id=7,
+                    enabled=True,
+                )
+            )
+            s.commit()
+        finally:
+            s.close()
+
+        class FakePanel:
+            async def login(self):
+                return True
+
+            async def close(self):
+                return True
+
+            async def get_node_online_summaries(self, *, node_codes=None):
+                self.node_codes = list(node_codes or [])
+                raise RuntimeError("panel runtime unavailable")
+
+        original_panel = self.api.ControlPanel
+        self.api.ControlPanel = FakePanel
+        try:
+            response = self.client.get("/api/admin/nodes/health", headers=admin_hdrs)
+            self.assertEqual(response.status_code, 200, response.text)
+            rows = response.json().get("nodes") or []
+            us = next(row for row in rows if row.get("code") == "us")
+            self.assertIsNone(us["online_keys_now"])
+            self.assertIsNone(us["online_connections_now"])
+        finally:
+            self.api.ControlPanel = original_panel
+
     def test_admin_user_card_exposes_online_now_summary_and_current_nodes(self) -> None:
         from db import SessionLocal
         from models import Node, User, UserNode

@@ -1,23 +1,23 @@
 # Release Gate Report
 
-- Generated at: `2026-04-09 05:36:01`
+- Generated at: `2026-04-12 05:35:01`
 - Status: `PASS`
 
 ## Summary
 
 | Gate | Exit code | Duration (s) |
 |---|---:|---:|
-| Node predeploy readiness | 0 | 39.42 |
-| Release pytest matrix | 0 | 48.28 |
-| Admin/auth regressions | 0 | 62.34 |
-| Client security smoke | 0 | 0.07 |
-| API lifecycle smoke | 0 | 8.38 |
-| Public link checks | 0 | 0.10 |
-| Marketing production build | 0 | 45.67 |
-| Admin webapp smoke | 0 | 0.13 |
-| WebApp production build | 0 | 42.83 |
-| WebApp Playwright E2E | 0 | 82.47 |
-| UI visual smoke | 0 | 0.11 |
+| Node predeploy readiness | 0 | 38.69 |
+| Release pytest matrix | 0 | 30.24 |
+| Admin/auth regressions | 0 | 58.60 |
+| Client security smoke | 0 | 0.06 |
+| API lifecycle smoke | 0 | 8.21 |
+| Public link checks | 0 | 0.09 |
+| Marketing production build | 0 | 34.43 |
+| Admin webapp smoke | 0 | 0.10 |
+| WebApp production build | 0 | 41.62 |
+| WebApp Playwright E2E | 0 | 54.14 |
+| UI visual smoke | 0 | 0.09 |
 
 ## Command Tails
 
@@ -114,7 +114,7 @@ tests/test_collect_xray_observer.py::CollectXrayObserverTests::test_run_pushes_h
     return datetime.utcnow().replace(microsecond=0)
 
 -- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
-44 passed, 765 warnings in 47.09s
+45 passed, 793 warnings in 29.40s
 ```
 
 ### Admin/auth regressions
@@ -162,7 +162,7 @@ tests/test_api_auth_and_tickets.py::ApiAuthAndTicketsTests::test_user_data_expos
     user.expiry_at = datetime.utcnow() + timedelta(days=14)
 
 -- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
-55 passed, 2020 warnings in 61.19s (0:01:01)
+56 passed, 2055 warnings in 57.71s
 ```
 
 ### Client security smoke
@@ -196,7 +196,7 @@ C:\Users\kiwun\Documents\ai\VPN\tests\test_api_lifecycle_smoke.py:263: Deprecati
   expiry_at=datetime.utcnow() + timedelta(days=20),
 .
 ----------------------------------------------------------------------
-Ran 1 test in 7.315s
+Ran 1 test in 7.394s
 
 OK
 ```
@@ -259,21 +259,21 @@ Link check passed.
    Collecting build traces ...
 
 Route (app)                              Size     First Load JS
-┌ ○ /                                    195 B          96.3 kB
+┌ ○ /                                    202 B           101 kB
 ├ ○ /_not-found                          873 B          88.3 kB
 ├ ○ /apple-icon.png                      0 B                0 B
-├ ○ /bystryy-vpn-na-telefon              195 B          96.3 kB
-├ ○ /checkout                            9.46 kB         106 kB
+├ ○ /bystryy-vpn-na-telefon              202 B           101 kB
+├ ○ /checkout                            9.41 kB         110 kB
 ├ ○ /icon.png                            0 B                0 B
 ├ ○ /manifest.webmanifest                0 B                0 B
-├ ○ /offer                               195 B          96.3 kB
-├ ○ /privacy                             195 B          96.3 kB
+├ ○ /offer                               202 B           101 kB
+├ ○ /privacy                             202 B           101 kB
 ├ ○ /robots.txt                          0 B                0 B
 ├ ○ /sitemap.xml                         0 B                0 B
-├ ○ /vpn-dlya-tiktok                     195 B          96.3 kB
-├ ○ /vpn-dlya-youtube                    195 B          96.3 kB
-├ ○ /vpn-na-iphone-android-windows       195 B          96.3 kB
-└ ○ /vpn-telegram-bot                    195 B          96.3 kB
+├ ○ /vpn-dlya-tiktok                     202 B           101 kB
+├ ○ /vpn-dlya-youtube                    202 B           101 kB
+├ ○ /vpn-na-iphone-android-windows       202 B           101 kB
+└ ○ /vpn-telegram-bot                    202 B           101 kB
 + First Load JS shared by all            87.4 kB
   ├ chunks/004092b4-fb7a74995ea98db8.js  53.6 kB
   ├ chunks/645-292c8134570c70af.js       31.9 kB
@@ -303,14 +303,14 @@ Admin WebApp smoke passed.
   ✓ externalDir
 
   Creating an optimized production build ...
-✓ Compiled successfully in 2.7s
+✓ Compiled successfully in 2.1s
   Running TypeScript ...
   Collecting page data using 19 workers ...
   Generating static pages using 19 workers (0/23) ...
   Generating static pages using 19 workers (5/23) 
   Generating static pages using 19 workers (11/23) 
   Generating static pages using 19 workers (17/23) 
-✓ Generating static pages using 19 workers (23/23) in 604.0ms
+✓ Generating static pages using 19 workers (23/23) in 471.5ms
   Finalizing page optimization ...
 
 Route (app)
@@ -347,38 +347,30 @@ Route (app)
 
 ```text
 > pokrov-webapp@0.1.0 test:e2e
-> playwright test e2e/admin-gate.spec.ts e2e/cabinet-flow.spec.ts
+> playwright test
 
 
-Running 16 tests using 1 worker
+Running 17 tests using 1 worker
 
-  ok  1 e2e\admin-gate.spec.ts:733:7 › Admin gate › redirects non-admin from /admin/* to /dashboard (2.0s)
-[2m[WebServer] [22m[33m[1m⚠[22m[39m Fast Refresh had to perform a full reload. Read more: https://nextjs.org/docs/messages/fast-refresh-reload
-[2m[WebServer] [22m[33m[1m⚠[22m[39m Fast Refresh had to perform a full reload. Read more: https://nextjs.org/docs/messages/fast-refresh-reload
-[2m[WebServer] [22m[33m[1m⚠[22m[39m Fast Refresh had to perform a full reload. Read more: https://nextjs.org/docs/messages/fast-refresh-reload
-[2m[WebServer] [22m[33m[1m⚠[22m[39m Fast Refresh had to perform a full reload. Read more: https://nextjs.org/docs/messages/fast-refresh-reload
-[2m[WebServer] [22m[33m[1m⚠[22m[39m Fast Refresh had to perform a full reload. Read more: https://nextjs.org/docs/messages/fast-refresh-reload
-[2m[WebServer] [22m[33m[1m⚠[22m[39m Fast Refresh had to perform a full reload. Read more: https://nextjs.org/docs/messages/fast-refresh-reload
-[2m[WebServer] [22m[33m[1m⚠[22m[39m Fast Refresh had to perform a full reload. Read more: https://nextjs.org/docs/messages/fast-refresh-reload
-  ok  2 e2e\admin-gate.spec.ts:739:7 › Admin gate › allows admin to open all admin sections (17.9s)
-  ok  3 e2e\admin-gate.spec.ts:761:7 › Admin gate › keeps admin dashboard stable when summary omits optional blocks (2.0s)
-  ok  4 e2e\admin-gate.spec.ts:781:7 › Admin gate › shows clean Russian copy across admin surfaces (6.0s)
-  ok  5 e2e\admin-gate.spec.ts:803:7 › Admin gate › lets admin search, sort, and paginate the users table (2.4s)
-  ok  6 e2e\admin-gate.spec.ts:833:7 › Admin gate › lets admin safely delete only manual or test users (2.4s)
-  ok  7 e2e\admin-gate.spec.ts:871:7 › Admin gate › shows observer-lite badges, filters, and detail diagnostics (3.3s)
-  ok  8 e2e\admin-gate.spec.ts:912:7 › Admin gate › shows observer-lite empty state instead of misleading zero-only activity (2.3s)
-  ok  9 e2e\admin-gate.spec.ts:923:7 › Admin gate › keeps admin pages clickable and inside the viewport on mobile (5.4s)
-  ok 10 e2e\admin-gate.spec.ts:980:7 › Admin gate › shows node alert labels and probe failure details (2.2s)
-  ok 11 e2e\admin-gate.spec.ts:1048:7 › Admin gate › lets admin triage a ticket and send a reply using stable status codes (2.4s)
-  ok 12 e2e\cabinet-flow.spec.ts:319:7 › Cabinet flow › shows a single connect link flow on the dashboard (3.6s)
-  ok 13 e2e\cabinet-flow.spec.ts:332:7 › Cabinet flow › keeps the subscription page on one public connection link plus QR (3.3s)
-[2m[WebServer] [22m[33m[1m⚠[22m[39m Fast Refresh had to perform a full reload. Read more: https://nextjs.org/docs/messages/fast-refresh-reload
-  ok 14 e2e\cabinet-flow.spec.ts:345:7 › Cabinet flow › renders runtime connections on devices and keeps statistics actionable (5.5s)
-[2m[WebServer] [22m[33m[1m⚠[22m[39m Fast Refresh had to perform a full reload. Read more: https://nextjs.org/docs/messages/fast-refresh-reload
-  ok 15 e2e\cabinet-flow.spec.ts:361:7 › Cabinet flow › keeps downloads and support flows usable without the app (7.0s)
-  ok 16 e2e\cabinet-flow.spec.ts:377:7 › Cabinet flow › stays inside a narrow mobile viewport for core cabinet pages (4.5s)
+  ok  1 e2e\admin-gate.spec.ts:734:7 › Admin gate › redirects non-admin from /admin/* to /dashboard (776ms)
+  ok  2 e2e\admin-gate.spec.ts:740:7 › Admin gate › allows admin to open all admin sections (10.0s)
+  ok  3 e2e\admin-gate.spec.ts:762:7 › Admin gate › keeps admin dashboard stable when summary omits optional blocks (1.9s)
+  ok  4 e2e\admin-gate.spec.ts:782:7 › Admin gate › shows clean Russian copy across admin surfaces (5.0s)
+  ok  5 e2e\admin-gate.spec.ts:804:7 › Admin gate › lets admin search, sort, and paginate the users table (2.1s)
+  ok  6 e2e\admin-gate.spec.ts:834:7 › Admin gate › lets admin safely delete only manual or test users (2.0s)
+  ok  7 e2e\admin-gate.spec.ts:872:7 › Admin gate › shows observer-lite badges, filters, and detail diagnostics (2.9s)
+  ok  8 e2e\admin-gate.spec.ts:913:7 › Admin gate › shows observer-lite empty state instead of misleading zero-only activity (2.9s)
+  ok  9 e2e\admin-gate.spec.ts:924:7 › Admin gate › keeps admin pages clickable and inside the viewport on mobile (3.6s)
+  ok 10 e2e\admin-gate.spec.ts:981:7 › Admin gate › shows node alert labels and probe failure details (1.9s)
+  ok 11 e2e\admin-gate.spec.ts:1049:7 › Admin gate › lets admin triage a ticket and send a reply using stable status codes (2.1s)
+  ok 12 e2e\cabinet-flow.spec.ts:319:7 › Cabinet flow › shows a single connect link flow on the dashboard (1.9s)
+  ok 13 e2e\cabinet-flow.spec.ts:332:7 › Cabinet flow › keeps the subscription page on one public connection link plus QR (1.9s)
+  ok 14 e2e\cabinet-flow.spec.ts:345:7 › Cabinet flow › renders runtime connections on devices and keeps statistics actionable (2.5s)
+  ok 15 e2e\cabinet-flow.spec.ts:361:7 › Cabinet flow › keeps downloads and support flows usable without the app (3.4s)
+  ok 16 e2e\cabinet-flow.spec.ts:377:7 › Cabinet flow › stays inside a narrow mobile viewport for core cabinet pages (4.3s)
+  ok 17 e2e\oidc-fallback.spec.ts:3:5 › falls back to the canonical API when app origin returns HTML for OIDC start (1.7s)
 
-  16 passed (1.3m)
+  17 passed (52.6s)
 ```
 
 ### UI visual smoke

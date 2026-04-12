@@ -111,6 +111,15 @@ def _build_default_targets(inventory_path: Path, reserve_host: str = "", reserve
             "include_http": True,
             "http_path": "/api/health",
         },
+        {
+            "name": "connect-pokrov-space",
+            "kind": "canonical",
+            "host": "connect.pokrov.space",
+            "port": 443,
+            "sni": "connect.pokrov.space",
+            "include_http": True,
+            "http_path": "/",
+        },
     ]
 
     for row in _parse_inventory(inventory_path):
@@ -330,11 +339,11 @@ def _run_target_probe(target: dict[str, Any], *, timeout_sec: float) -> dict[str
         return payload
 
     if payload["kind"] == "foreign_node":
-        payload["ok"] = bool(payload["tls_ok"] or payload["tcp_ok"])
+        payload["ok"] = bool(payload["tls_ok"])
         if payload["ok"] and payload["error_kind"] == "reality_target_mismatch":
             payload["error_kind"] = ""
             payload["error_message"] = ""
-        payload["detail"] = "tls handshake ok" if payload["tls_ok"] else ("tcp ok" if payload["tcp_ok"] else payload["detail"])
+        payload["detail"] = "tls handshake ok" if payload["tls_ok"] else (payload["error_message"] or "tls handshake failed")
         return payload
 
     payload["detail"] = payload["error_message"] or ("tls ok" if payload["ok"] else "probe failed")
@@ -422,6 +431,12 @@ def _run_probe(*, inventory_path: Path, reserve_host: str, reserve_hysteria_port
     return payload
 
 
+def _probe_exit_code(payload: dict[str, Any]) -> int:
+    classifications = {str(item or "").strip() for item in (payload.get("classifications") or []) if str(item or "").strip()}
+    hard_failures = {"probe_host_problem", "canonical_host_problem", "foreign_edge_problem"}
+    return 2 if classifications & hard_failures else 0
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(
         description="Run layered RU-origin reachability checks for public hosts, delivery nodes, and the RF reserve bridge."
@@ -451,7 +466,7 @@ def main() -> int:
         print(out_path)
     else:
         print(text)
-    return 0 if payload.get("google_reachable") else 2
+    return _probe_exit_code(payload)
 
 
 if __name__ == "__main__":

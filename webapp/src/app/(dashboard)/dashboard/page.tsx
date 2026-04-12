@@ -9,7 +9,6 @@ import {
   getNextResetAt,
   getTrafficLimitGb,
   isFreeMonthlyState,
-  isPaidUnlimitedState,
   isSoftModeState,
   isTrialPremiumState,
   resolvePlanLabel,
@@ -43,7 +42,6 @@ export default function DashboardPage() {
 
   const connectionKey = String(dash?.subscription_url || "").trim();
   const accessState = getAccessState(dash, user);
-  const paidMode = isPaidUnlimitedState(accessState);
   const trialMode = isTrialPremiumState(accessState);
   const freeMode = isFreeMonthlyState(accessState);
   const softMode = isSoftModeState(accessState);

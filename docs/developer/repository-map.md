@@ -1,6 +1,6 @@
 # Repository Map
 
-Last updated: 2026-04-08
+Last updated: 2026-04-12
 
 ## Document Status
 
@@ -45,6 +45,7 @@ Legacy filename note:
 
 - `remote_deploy_brain_portal_code.py`
 - `remote_deploy_brain_static_sites.py`
+- `remote_brain_apply_release_handoff.py`
 - `remote_install_mini_canary_stack.py`
 - `remote_switch_bot_tokens.py`
 - `release_orchestrator.py`
@@ -132,9 +133,13 @@ Marketing-specific release checks now live in:
 
 - `tests/test_admin_webapp_smoke.py`
 - `tests/test_public_copy_guardrails.py`
+- `tests/test_release_orchestrator.py`
+- `tests/test_remote_brain_network_probe.py`
+- `tests/test_webapp_release_scripts.py`
 - `tests/test_ui_visual_smoke.py`
 - `webapp/e2e/admin-gate.spec.ts`
 - `webapp/e2e/cabinet-flow.spec.ts`
+- `webapp/e2e/oidc-fallback.spec.ts`
 
 ### Client release verification
 

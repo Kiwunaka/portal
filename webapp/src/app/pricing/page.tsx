@@ -108,14 +108,14 @@ export default function PricingPage() {
         {cards.map((plan) => {
           const highlighted = plan.code === "6_months";
           return (
-            <article key={plan.code} className={`glass-card p-6 ${highlighted ? "ring-2 ring-violet-400/40" : ""}`}>
+            <article key={plan.code} className={`glass-card p-6 ${highlighted ? "ring-2 ring-emerald-500/30" : ""}`}>
               <div className="mb-4 flex items-start justify-between gap-3">
                 <div>
                   <p className="text-xs uppercase tracking-[0.16em] text-slate-500">{plan.badge || "План"}</p>
                   <h2 className="mt-2 font-display text-3xl font-semibold">{plan.label}</h2>
                 </div>
                 {highlighted ? (
-                  <span className="rounded-full bg-violet-600 px-3 py-1 text-[11px] text-white">Рекомендуем</span>
+                  <span className="rounded-full bg-gradient-to-r from-emerald-700 to-amber-500 px-3 py-1 text-[11px] text-white">Рекомендуем</span>
                 ) : null}
               </div>
 
@@ -130,15 +130,15 @@ export default function PricingPage() {
 
               <ul className="mt-5 space-y-2 text-sm text-slate-600 dark:text-slate-300">
                 <li className="flex items-center gap-2">
-                  <span className="material-symbols-rounded text-base text-violet-500">verified</span>
+                  <span className="material-symbols-rounded text-base text-emerald-700 dark:text-amber-200">verified</span>
                   {plan.days} дней доступа
                 </li>
                 <li className="flex items-center gap-2">
-                  <span className="material-symbols-rounded text-base text-violet-500">devices</span>
+                  <span className="material-symbols-rounded text-base text-emerald-700 dark:text-amber-200">devices</span>
                   До {plan.deviceLimit} устройств
                 </li>
                 <li className="flex items-center gap-2">
-                  <span className="material-symbols-rounded text-base text-violet-500">info</span>
+                  <span className="material-symbols-rounded text-base text-emerald-700 dark:text-amber-200">info</span>
                   {plan.note}
                 </li>
               </ul>
@@ -167,7 +167,7 @@ export default function PricingPage() {
               if (promoStatus) setPromoStatus(null);
             }}
             placeholder="Например: POKROV10"
-            className="w-full rounded-xl border border-violet-200/60 bg-white/80 px-4 py-3 text-sm outline-none dark:border-violet-500/30 dark:bg-slate-900/70"
+            className="brand-input px-4 py-3 text-sm"
           />
           <button
             type="button"

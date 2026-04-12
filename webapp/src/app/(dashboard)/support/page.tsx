@@ -47,7 +47,7 @@ function statusLabel(status: string): string {
 
 function statusClass(status: string): string {
   const normalized = String(status || "").trim().toLowerCase();
-  if (normalized === "open") return "bg-violet-100 text-violet-700 dark:bg-violet-900/35 dark:text-violet-300";
+  if (normalized === "open") return "bg-amber-100 text-amber-800 dark:bg-amber-900/35 dark:text-amber-200";
   if (normalized === "in_progress") return "bg-blue-100 text-blue-700 dark:bg-blue-900/35 dark:text-blue-300";
   if (normalized === "closed") return "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/35 dark:text-emerald-300";
   return "bg-slate-200 text-slate-700 dark:bg-slate-700 dark:text-slate-200";
@@ -162,6 +162,7 @@ export default function SupportPage() {
   return (
     <main className="space-y-6">
       <section className="glass-card p-7">
+        <p className="font-mono text-xs uppercase tracking-[0.16em] text-emerald-600 dark:text-amber-200">support / pokrov</p>
         <h1 className="font-display text-4xl font-bold">
           {getCopyText("webapp.support.title", "Служба заботы POKROV VPN")}
         </h1>
@@ -216,7 +217,7 @@ export default function SupportPage() {
               >
                 <div className="flex items-center justify-between gap-3">
                   <span className="font-semibold">{item.q}</span>
-                  <span className="material-symbols-rounded text-violet-500">
+                  <span className="material-symbols-rounded text-emerald-700 dark:text-amber-200">
                     {opened ? "expand_less" : "expand_more"}
                   </span>
                 </div>
@@ -228,7 +229,7 @@ export default function SupportPage() {
 
         <aside className="space-y-4">
           <div className="glass-card p-6 text-center">
-            <span className="material-symbols-rounded rounded-full bg-violet-100 p-3 text-3xl text-violet-600 dark:bg-violet-900/35 dark:text-violet-200">
+            <span className="material-symbols-rounded rounded-full bg-emerald-100 p-3 text-3xl text-emerald-700 dark:bg-amber-900/25 dark:text-amber-200">
               headset_mic
             </span>
             <h2 className="mt-3 font-display text-2xl font-semibold">Нужна помощь прямо сейчас?</h2>
@@ -319,7 +320,7 @@ export default function SupportPage() {
                 <select
                   value={category}
                   onChange={(event) => setCategory(event.target.value as TicketCategory)}
-                  className="w-full rounded-xl border border-violet-200/50 bg-white/80 px-4 py-3 text-sm outline-none dark:border-violet-500/30 dark:bg-slate-900/70"
+                  className="brand-input px-4 py-3 text-sm"
                 >
                   {CATEGORIES.map((item) => (
                     <option key={item} value={item}>
@@ -330,17 +331,17 @@ export default function SupportPage() {
                 <input
                   value={subject}
                   onChange={(event) => setSubject(event.target.value)}
-                  className="w-full rounded-xl border border-violet-200/50 bg-white/80 px-4 py-3 text-sm outline-none dark:border-violet-500/30 dark:bg-slate-900/70"
+                  className="brand-input px-4 py-3 text-sm"
                   placeholder="Расскажите, что произошло"
                 />
                 <textarea
                   value={body}
                   onChange={(event) => setBody(event.target.value)}
-                  className="w-full rounded-xl border border-violet-200/50 bg-white/80 px-4 py-3 text-sm outline-none dark:border-violet-500/30 dark:bg-slate-900/70"
+                  className="brand-input px-4 py-3 text-sm"
                   rows={5}
                   placeholder="Опишите вашу ситуацию во всех подробностях"
                 />
-                <label className="block rounded-2xl border border-dashed border-violet-300/60 bg-white/70 px-4 py-4 text-sm dark:border-violet-500/35 dark:bg-slate-900/55">
+                <label className="brand-upload block px-4 py-4 text-sm">
                   <span className="mb-2 block font-medium">Скриншот, видео или лог</span>
                   <span className="block text-xs text-slate-500">
                     Поддерживаются изображения, видео, PDF и текстовые файлы до 20 МБ.
@@ -348,7 +349,7 @@ export default function SupportPage() {
                   <input
                     type="file"
                     accept="image/*,video/*,.pdf,.txt,.log,application/pdf,text/plain"
-                    className="mt-3 block w-full cursor-pointer text-sm text-slate-600 file:mr-3 file:rounded-xl file:border-0 file:bg-violet-500/15 file:px-4 file:py-2 file:font-medium file:text-violet-700 dark:text-slate-300 dark:file:bg-violet-500/20 dark:file:text-violet-200"
+                    className="brand-file mt-3 block w-full cursor-pointer text-sm text-slate-600 dark:text-slate-300"
                     onChange={(event) => setAttachmentFile(event.target.files?.[0] ?? null)}
                   />
                   {attachmentFile ? (

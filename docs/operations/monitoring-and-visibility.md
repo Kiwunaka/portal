@@ -1,6 +1,6 @@
 # Monitoring And Visibility
 
-Last updated: 2026-04-09
+Last updated: 2026-04-12
 
 ## Document Status
 
@@ -60,16 +60,23 @@ Availability rule:
 - `mini` is not guaranteed to be available
 - if `mini` is down, treat RU-origin observability as degraded until a replacement external RU host is ready
 
+Fallback corroboration when `mini` is unavailable:
+
+- use Check-Host RU nodes only as coarse external smoke for `pokrov.space`, `api.pokrov.space/api/health`, `connect.pokrov.space`, and candidate node `:443`
+- use RIPE Atlas user-defined measurements from RU probes as stronger corroboration for DNS, TCP, TLS, or HTTP reachability evidence
+- record these results as RU corroboration, not as a full `RU-origin check`, until a real external RU host is executing the repository probe flow again
+- do not let third-party corroboration replace the requirement to restore a working external RU host
+
 Required checks on each run:
 
 1. confirm the probe host can reach `google.com`
 2. confirm the probe host can reach Telegram surfaces such as `api.telegram.org` and `t.me`
-3. confirm the probe host can resolve and reach the current public `POKROV` surfaces when needed
+3. confirm the probe host can resolve and reach the current public `POKROV` surfaces, including `connect.pokrov.space`
 4. confirm the probe host can reach the intended node endpoints used by current subscriptions
 5. confirm the current reserve ingress state from RU:
    - `xhttp_alive`
    - `hysteria_alive`
-4. record failures in a compact operator-readable report
+6. record failures in a compact operator-readable report
 
 Minimum report fields:
 
@@ -102,6 +109,7 @@ Vantage-point reporting rule:
 - `current-origin check` means the probe ran from the operator workstation currently in use
 - `brain-origin check` means the probe ran from the control-plane host `82.21.114.104`
 - `RU-origin check` means the probe ran from `mini` or a replacement external RU host
+- third-party evidence from Check-Host or RIPE Atlas should be labeled `RU corroboration`, not `RU-origin check`
 - do not collapse these into one status line because each origin answers a different question
 - do not call a node RU-broken until an `RU-origin check` actually fails from a working RU probe host
 
@@ -189,6 +197,12 @@ Recommended external RU probe flow:
 3. render a compact operator summary with `render_ru_probe_report.py`
 4. attach the rendered summary to the operator handoff or incident thread
 
+Current probe semantics:
+
+- `scripts/ru_probe_runner.py` now treats foreign delivery nodes as healthy only when a TLS handshake succeeds; plain TCP alone is not enough
+- the default canonical target set includes `connect.pokrov.space` alongside `pokrov.space` and `api.pokrov.space`
+- `scripts/remote_brain_network_probe.py` should be treated as the `brain-origin` view based on the current inventory format
+
 Example:
 
 ```powershell
@@ -198,7 +212,7 @@ python scripts/render_ru_probe_report.py --input scripts/ru_probe_sample.json
 
 RF role split:
 
-- `mini` is the canonical RU probe origin
+- `mini` is the preferred RU probe origin
 - `rf1` is the reserve ingress for operator and VIP/manual access
 - do not use `mini` for general user traffic
 - do not treat `rf1` as a general delivery node until repeated RU probes prove stability

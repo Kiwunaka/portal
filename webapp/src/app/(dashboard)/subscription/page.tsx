@@ -272,18 +272,18 @@ export default function SubscriptionPage() {
             <thead className="bg-white/55 dark:bg-white/5">
               <tr>
                 <th className="px-4 py-3">Параметр</th>
-                <th className={`px-4 py-3 ${activeColumn === "start" ? "text-violet-600 dark:text-violet-300" : ""}`}>Старт</th>
-                <th className={`px-4 py-3 ${activeColumn === "standard" ? "text-violet-600 dark:text-violet-300" : ""}`}>1-3 месяца</th>
-                <th className={`px-4 py-3 ${activeColumn === "long" ? "text-violet-600 dark:text-violet-300" : ""}`}>6-12 месяцев</th>
+                <th className={`px-4 py-3 ${activeColumn === "start" ? "text-emerald-700 dark:text-amber-200" : ""}`}>Старт</th>
+                <th className={`px-4 py-3 ${activeColumn === "standard" ? "text-emerald-700 dark:text-amber-200" : ""}`}>1-3 месяца</th>
+                <th className={`px-4 py-3 ${activeColumn === "long" ? "text-emerald-700 dark:text-amber-200" : ""}`}>6-12 месяцев</th>
               </tr>
             </thead>
             <tbody>
               {COMPARISON_ROWS.map((row) => (
                 <tr key={row.metric} className="border-t border-white/40 dark:border-white/10">
                   <td className="px-4 py-3 font-semibold">{row.metric}</td>
-                  <td className={`px-4 py-3 ${activeColumn === "start" ? "font-semibold text-violet-600 dark:text-violet-300" : ""}`}>{row.start}</td>
-                  <td className={`px-4 py-3 ${activeColumn === "standard" ? "font-semibold text-violet-600 dark:text-violet-300" : ""}`}>{row.standard}</td>
-                  <td className={`px-4 py-3 ${activeColumn === "long" ? "font-semibold text-violet-600 dark:text-violet-300" : ""}`}>{row.long}</td>
+                  <td className={`px-4 py-3 ${activeColumn === "start" ? "font-semibold text-emerald-700 dark:text-amber-200" : ""}`}>{row.start}</td>
+                  <td className={`px-4 py-3 ${activeColumn === "standard" ? "font-semibold text-emerald-700 dark:text-amber-200" : ""}`}>{row.standard}</td>
+                  <td className={`px-4 py-3 ${activeColumn === "long" ? "font-semibold text-emerald-700 dark:text-amber-200" : ""}`}>{row.long}</td>
                 </tr>
               ))}
             </tbody>

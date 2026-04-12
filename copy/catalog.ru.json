@@ -1,10 +1,10 @@
 {
-  "catalog_version": "2026-03-22",
+  "catalog_version": "2026-04-12",
   "locale": "ru",
   "items": {
     "marketing.meta.title": {
       "surface": "marketing.meta",
-      "ru": "POKROV VPN — Быстрый и надежный VPN для телефона и ПК",
+      "ru": "POKROV VPN — приложение VPN для Android и Windows",
       "variables": [],
       "tone": "premium",
       "allowed_public": true,
@@ -13,7 +13,7 @@
     },
     "marketing.meta.description": {
       "surface": "marketing.meta",
-      "ru": "Попробуйте первые 5 дней бесплатно. POKROV VPN — это стабильное соединение, удобное приложение и мгновенный доступ без лишних настроек.",
+      "ru": "Скачайте приложение для Android или Windows, включите 5 дней бесплатного теста и переходите в кабинет только когда будете готовы.",
       "variables": [],
       "tone": "premium",
       "allowed_public": true,
@@ -22,7 +22,7 @@
     },
     "marketing.hero.kicker": {
       "surface": "marketing.home.hero",
-      "ru": "POKROV VPN • Первые 5 дней бесплатно",
+      "ru": "POKROV VPN • приложение сначала, кабинет потом",
       "variables": [],
       "tone": "premium",
       "allowed_public": true,
@@ -31,7 +31,7 @@
     },
     "marketing.hero.title": {
       "surface": "marketing.home.hero",
-      "ru": "Свободный интернет на максимальной скорости",
+      "ru": "Свободный интернет без лишней настройки",
       "variables": [],
       "tone": "premium",
       "allowed_public": true,
@@ -40,7 +40,7 @@
     },
     "marketing.hero.subtitle": {
       "surface": "marketing.home.hero",
-      "ru": "Установите стильное приложение для Android или Windows и получите 5 дней бесплатного премиум-доступа. Наслаждайтесь стабильным соединением везде, где вам это нужно. Быстрая служба заботы 24/7 всегда доступна в Telegram.",
+      "ru": "Скачайте приложение для Android или Windows, включите 5 дней бесплатного теста и проверьте сервис в привычных сценариях. Кабинет и Telegram пригодятся позже — для продления, поддержки и бонуса за канал.",
       "variables": [],
       "tone": "premium",
       "allowed_public": true,
@@ -49,7 +49,7 @@
     },
     "marketing.hero.primary_cta": {
       "surface": "marketing.home.hero",
-      "ru": "Начать бесплатно",
+      "ru": "Скачать приложение",
       "variables": [],
       "tone": "premium",
       "allowed_public": true,
@@ -58,7 +58,7 @@
     },
     "marketing.hero.secondary_cta": {
       "surface": "marketing.home.hero",
-      "ru": "Личный кабинет",
+      "ru": "Открыть кабинет",
       "variables": [],
       "tone": "premium",
       "allowed_public": true,
@@ -67,7 +67,7 @@
     },
     "marketing.support.title": {
       "surface": "marketing.home.support",
-      "ru": "Всегда на связи и готовы помочь",
+      "ru": "Поможем спокойно продолжить",
       "variables": [],
       "tone": "premium",
       "allowed_public": true,
@@ -76,7 +76,7 @@
     },
     "marketing.support.subtitle": {
       "surface": "marketing.home.support",
-      "ru": "Возникли вопросы? Наша команда ответит максимально быстро. Никаких ботов и долгих ожиданий — живая служба заботы поможет с любыми задачами.",
+      "ru": "Если появится вопрос, подскажем следующий шаг через Telegram или почту — спокойно, без перегруза и лишних обещаний.",
       "variables": [],
       "tone": "premium",
       "allowed_public": true,

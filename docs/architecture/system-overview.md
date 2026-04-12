@@ -1,6 +1,6 @@
 # POKROV System Overview
 
-Last updated: 2026-04-08
+Last updated: 2026-04-12
 
 ## Document Status
 
@@ -26,8 +26,18 @@ This file is living source of truth for the platform architecture map.
   Main Telegram bot for billing, campaigns, referrals, review moderation, and operator actions.
 - `portal_bot/helpbot.py`
   Dedicated support bot.
+- `portal_bot/feedbackbot.py`
+  Feedback intake, moderation, and public-review publishing bot.
+- `portal_bot/legacy_redirect_bot.py`
+  Compatibility bot surface used during username or token cutovers.
 - `portal_bot/worker.py`
   Background jobs for retention, bonus enforcement, and free-cycle operations.
+- `portal_bot/web_auth_service.py`
+  Telegram web-login and OIDC helper logic for browser session continuation.
+- `portal_bot/events_service.py`
+  Funnel and session event tracking for app, site, and bot journeys.
+- `portal_bot/pay_attempts_service.py`
+  Checkout-attempt tracking and payment funnel diagnostics.
 - `portal_bot/models.py`
   SQLAlchemy model layer.
 - `portal_bot/migrations.py`
@@ -229,7 +239,8 @@ Current release validation also has to correlate:
 - client localhost-listener security smoke
 - routing preset smoke for `Global` and `Все, кроме РФ`
 - DNS split and leak checks
-- three-vantage node checks from current operator origin, `brain`, and an RU-origin probe when available
+- browser OIDC fallback regression where an app-origin HTML shell must retry against `https://api.pokrov.space/`
+- three-vantage node checks reported separately as `current-origin`, `brain-origin`, and `RU-origin`
 
 Dashboard and user-cabinet traffic visibility must come from server-side node runtime snapshots rather than app-only telemetry.
 
@@ -242,6 +253,7 @@ Required external geography check:
 - run an RU-based external probe every `6 hours`
 - verify the probe host itself can reach `google.com`
 - verify Telegram surfaces such as `api.telegram.org` and `t.me`
+- verify canonical public hosts including `pokrov.space`, `api.pokrov.space/api/health`, and `connect.pokrov.space`
 - verify the current `POKROV` nodes remain reachable from that external RU vantage point
 - verify the RF reserve ingress state:
   - `xhttp_alive`
@@ -259,6 +271,7 @@ Probe-readiness rule:
 - `mini` is the preferred RU probe origin when it is healthy
 - `mini` is not guaranteed to be available at all times
 - RU-origin observability remains incomplete until `mini` or a replacement RU host is working again
+- if `mini` is unavailable, use Check-Host RU nodes only as coarse corroboration and RIPE Atlas user-defined measurements as stronger corroboration while a replacement RU host is being restored
 
 Current admin status model for operators:
 
@@ -300,6 +313,8 @@ Major currently live public and app-first routes in `portal_bot/api.py` include:
 - `GET /api/health`
 - `GET /api/public/plans`
 - `POST /api/auth/telegram/web-login`
+- `GET /api/auth/telegram/oidc/start`
+- `POST /api/auth/telegram/oidc/finish`
 - `POST /api/client/session/start-trial`
 - `POST /api/client/telegram/link`
 - `GET /api/payments/providers`
@@ -321,6 +336,7 @@ Current release-gate smoke focus should cover:
 - `POST /api/client/session/start-trial`
 - Telegram OIDC start and finish
 - bot token handoff into webapp
+- default WebApp Playwright coverage from `webapp/e2e/`, including the OIDC HTML-fallback regression
 - `GET /api/client/apps`
 - `GET /api/payments/providers`
 - checkout continuation from session or ticket
