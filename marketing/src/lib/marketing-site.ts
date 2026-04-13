@@ -7,6 +7,7 @@ import {
   CANONICAL_MARKETING_SITE_URL,
   CANONICAL_NEWS_CHANNEL_URL,
   CANONICAL_SUPPORT_BOT_URL,
+  getCopyText,
 } from "./pokrov";
 
 export const DEFAULT_MARKETING_SHARE_IMAGE_PATH = "/opengraph-image.png";
@@ -56,24 +57,32 @@ export type MarketingStructuredReview = {
 
 export const MARKETING_FAQ: MarketingFaqItem[] = [
   {
-    question: "Как начать пользоваться POKROV VPN?",
-    answer:
-      "Скачайте приложение для Android или Windows, запустите бесплатный 5-дневный период и проверьте сервис в своих обычных сценариях. Кабинет и Telegram нужны уже для управления доступом и поддержкой.",
+    question: getCopyText("marketing.faq.1.q", "Как начать пользоваться POKROV VPN?"),
+    answer: getCopyText(
+      "marketing.faq.1.a",
+      "Скачайте приложение для Android или Windows, включите 5 дней доступа и проверьте сервис в своих обычных сценариях. Кабинет нужен для продления и управления.",
+    ),
   },
   {
-    question: "Что входит в бесплатный тест?",
-    answer:
-      "Во время теста доступен полноценный премиум-маршрут: основные локации, стабильное подключение и тот же интерфейс, который остаётся в платной версии.",
+    question: getCopyText("marketing.faq.2.q", "Что входит в бесплатные 5 дней?"),
+    answer: getCopyText(
+      "marketing.faq.2.a",
+      "Это полноценный премиум-доступ на 5 дней: можно спокойно проверить скорость, стабильность и удобство сервиса перед продолжением.",
+    ),
   },
   {
-    question: "Как проходит оплата?",
-    answer:
-      "Публичная страница только объясняет следующий шаг. Саму оплату мы открываем после личного входа в кабинет или через персональный маршрут из Telegram.",
+    question: getCopyText("marketing.faq.3.q", "Как оформить продление?"),
+    answer: getCopyText(
+      "marketing.faq.3.a",
+      "Сначала откройте кабинет или персональную ссылку из Telegram. После этого checkout покажет только подходящие способы оплаты и честную сумму.",
+    ),
   },
   {
-    question: "Куда писать, если нужна помощь?",
-    answer:
-      "Для поддержки используйте @pokrov_supportbot или письмо на support@pokrov.space. Если нужно, мы переводим и в запасной маршрут оплаты или подключения.",
+    question: getCopyText("marketing.faq.4.q", "Куда обратиться, если нужна помощь?"),
+    answer: getCopyText(
+      "marketing.faq.4.a",
+      "Напишите в @pokrov_supportbot или на support@pokrov.space. Если нужно, поддержка переведёт вас в нужный маршрут.",
+    ),
   },
 ];
 
@@ -100,8 +109,10 @@ export function buildOrganizationJsonLd() {
     name: CANONICAL_CLIENT_BRAND,
     url: `${CANONICAL_MARKETING_SITE_URL}/`,
     logo: buildMarketingUrl("/icon.png"),
-    description:
-      "POKROV VPN — consumer-first VPN-сервис с app-first стартом, бесплатным тестом и прозрачным управлением доступом.",
+    description: getCopyText(
+      "marketing.meta.description",
+      "Скачайте приложение для Android или Windows, получите 5 дней бесплатно и продолжайте через личный кабинет и безопасный checkout-маршрут.",
+    ),
     email: CANONICAL_CONTACT_EMAIL,
     contactPoint: [
       {
@@ -178,11 +189,13 @@ export function buildSoftwareApplicationJsonLd(options?: {
       availability: "https://schema.org/InStock",
       url: buildMarketingUrl("/checkout/"),
     },
-    downloadUrl: buildMarketingUrl("/#downloads"),
+    downloadUrl: buildMarketingUrl("/install/"),
     mainEntityOfPage: canonicalUrl,
     url: canonicalUrl,
-    description:
-      "Приложение VPN для Android и Windows с app-first стартом, бесплатным 5-дневным тестом и поддержкой через Telegram.",
+    description: getCopyText(
+      "marketing.meta.description",
+      "Скачайте приложение для Android или Windows, получите 5 дней бесплатно и продолжайте через личный кабинет и безопасный checkout-маршрут.",
+    ),
   };
 }
 

@@ -834,6 +834,33 @@ test.describe("Admin gate", () => {
     await expect(page.locator("tbody tr").first()).toContainText("User 081");
   });
 
+  test("keeps the users filters synced into the URL and restores them on reload", async ({ page }) => {
+    const userRows = Array.from({ length: 81 }, (_, index) =>
+      makeAdminUserRow({
+        tg_id: 3000 + index,
+        username: `user_${String(index + 1).padStart(3, "0")}`,
+        display_name: `User ${String(index + 1).padStart(3, "0")}`,
+        origin: "telegram",
+        created_at: new Date(Date.UTC(2030, 0, 1, 0, index, 0)).toISOString(),
+      }),
+    );
+
+    await registerApiMocks(page, { isAdmin: true, userRows });
+    await openRoute(page, "admin/users/?q=User&status=all&origin=telegram&observer_state=all&sort=name_asc&page=2");
+
+    await expect(page.getByPlaceholder("Поиск по username, Telegram ID, имени или app install ID")).toHaveValue("User");
+    await expect(page.locator("tbody tr").first()).toContainText("User 081");
+
+    await page.getByPlaceholder("Поиск по username, Telegram ID, имени или app install ID").fill("User 008");
+    await expect.poll(() => new URL(page.url()).searchParams.get("q")).toBe("User 008");
+    await expect.poll(() => new URL(page.url()).searchParams.get("page")).toBe("1");
+    await expect(page.getByPlaceholder("Поиск по username, Telegram ID, имени или app install ID")).toHaveValue("User 008");
+
+    await page.reload({ waitUntil: "domcontentloaded" });
+    await expect(page.getByPlaceholder("Поиск по username, Telegram ID, имени или app install ID")).toHaveValue("User 008");
+    await expect(page.locator("tbody tr").first()).toContainText("User 008");
+  });
+
   test("lets admin safely delete only manual or test users", async ({ page }) => {
     const userRows = [
       makeAdminUserRow(),
@@ -914,9 +941,14 @@ test.describe("Admin gate", () => {
   });
 
   test("shows observer-lite empty state instead of misleading zero-only activity", async ({ page }) => {
-    await registerApiMocks(page, { isAdmin: true });
+    await registerApiMocks(page, {
+      isAdmin: true,
+      userRows: [makeAdminUserRow()],
+    });
 
     await openRoute(page, "admin/users/");
+    await expect(page.getByText("РџРѕРґС‚СЏРіРёРІР°РµРј РґР°РЅРЅС‹Рµ РєР°Р±РёРЅРµС‚Р°")).not.toBeVisible();
+    await expect(page.locator("tbody tr").first()).toContainText("QA Admin");
     await page.locator("tbody tr").first().click();
     await expect(page.getByText("Observer-lite")).toBeVisible();
     await expect(page.getByText("Данных наблюдения пока нет.")).toBeVisible();

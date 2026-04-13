@@ -126,6 +126,14 @@ function formatCountdown(secondsLeft: number): string {
   return `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
 }
 
+function buildWebappContinuationHref(webSessionToken: string): string {
+  const href = new URL(config.webappUrl);
+  if (webSessionToken.trim()) {
+    href.searchParams.set("web_session_token", webSessionToken.trim());
+  }
+  return href.toString();
+}
+
 export function CheckoutLoadingFallback() {
   return (
     <main className="checkout-shell">
@@ -155,8 +163,8 @@ export default function CheckoutClient() {
   const searchParams = useSearchParams();
   const queryPlan = normalizePlanCode(searchParams.get("plan"), "1_month");
   const checkoutTicket = (searchParams.get("checkout_ticket") || "").trim();
+  const webSessionToken = (searchParams.get("web_session_token") || searchParams.get("web_session") || "").trim();
   const promo = (searchParams.get("promo") || "").trim().toUpperCase();
-  const entrySource = (searchParams.get("source") || "site").trim().toLowerCase() || "site";
 
   const [plans, setPlans] = useState<PlanOption[]>(FALLBACK_PLANS);
   const [providers, setProviders] = useState<RubProviderOption[]>([]);
@@ -251,8 +259,10 @@ export default function CheckoutClient() {
   );
 
   const hasCheckoutTicket = Boolean(checkoutTicket);
-  const fromBot = entrySource === "bot";
+  const hasWebSession = Boolean(webSessionToken) && !hasCheckoutTicket;
+  const continuationMode = hasCheckoutTicket ? "ticketed" : hasWebSession ? "session" : "anonymous";
   const ticketExpired = hasCheckoutTicket && ticketExp > 0 && secondsLeft <= 0;
+  const continuationHref = hasWebSession ? buildWebappContinuationHref(webSessionToken) : config.webappUrl;
   const cacheKey = `${CHECKOUT_CACHE_PREFIX}:${checkoutTicket}:${selectedPlan}:${activeProvider?.code || "none"}`;
 
   useEffect(() => {
@@ -346,20 +356,37 @@ export default function CheckoutClient() {
     setBusy(false);
   }
 
-  const heroStatus = hasCheckoutTicket ? "Персональная ссылка активна" : "Нужен личный вход";
-  const heroText = hasCheckoutTicket
-    ? fromBot
-      ? "Вы открыли персональную ссылку из Telegram. Выберите срок, проверьте платёжный маршрут и переходите к оплате. Если что-то не отвечает, продолжайте в боте."
-      : "Здесь можно завершить продление по персональной ссылке. Мы покажем только доступные платёжные маршруты и честный возврат в Telegram."
-    : "Чтобы открыть оплату по-настоящему, сначала войдите в кабинет или получите персональную ссылку через Telegram. Без этого мы не будем отправлять вас на пустую кассу.";
+  const heroStatus =
+    continuationMode === "ticketed"
+      ? getCopyText("marketing.checkout.ticket.status", "Персональная ссылка активна")
+      : continuationMode === "session"
+        ? getCopyText("marketing.checkout.session.status", "Кабинет готов")
+        : getCopyText("marketing.checkout.anonymous.status", "Нужен личный вход");
+  const heroText =
+    continuationMode === "ticketed"
+      ? getCopyText(
+          "marketing.checkout.ticket.subtitle",
+          "Вы открыли персональную ссылку. Выберите срок, проверьте платёжный маршрут и переходите к оплате.",
+        )
+      : continuationMode === "session"
+        ? getCopyText(
+            "marketing.checkout.session.subtitle",
+            "Вы уже вошли в кабинет. Здесь можно выбрать план и продолжить в персональном сценарии без анонимной оплаты.",
+          )
+        : getCopyText(
+            "marketing.checkout.anonymous.subtitle",
+            "Чтобы открыть оплату по-настоящему, сначала войдите в кабинет или получите персональную ссылку через Telegram. Без этого мы не будем отправлять вас на пустую кассу.",
+          );
 
   const primaryButtonLabel = busy
     ? "Готовим ссылку..."
     : ticketExpired
       ? "Ссылка истекла"
-      : hasCheckoutTicket && activeProvider
+      : continuationMode === "ticketed" && activeProvider
         ? `Открыть оплату через ${activeProvider.label}`
-        : "Открыть кабинет";
+        : continuationMode === "session"
+          ? getCopyText("marketing.checkout.session.primary_cta", "Продолжить в кабинете")
+          : getCopyText("marketing.checkout.anonymous.primary_cta", "Открыть кабинет");
 
   const providerBlockedList = providerBlockedTexts.filter(Boolean);
 
@@ -371,14 +398,21 @@ export default function CheckoutClient() {
           {heroStatus}
         </div>
         <h1 className="checkout-title">
-          <span>POKROV VPN</span> <span>{hasCheckoutTicket ? "Продление доступа" : "Личный вход перед оплатой"}</span>
+          <span>POKROV VPN</span>
+          <span>
+            {hasCheckoutTicket
+              ? getCopyText("marketing.checkout.ticket.title", "Продление доступа")
+              : hasWebSession
+                ? getCopyText("marketing.checkout.session.title", "Продолжение в кабинете")
+                : getCopyText("marketing.checkout.anonymous.title", "Личный вход перед оплатой")}
+          </span>
         </h1>
         <p className="checkout-sub">{heroText}</p>
       </section>
 
       <section className="checkout-grid">
         <article className="glass-card">
-          <h2>{hasCheckoutTicket ? "Выберите срок" : "Что делать дальше"}</h2>
+          <h2>{hasCheckoutTicket ? "Выберите срок" : hasWebSession ? "Продолжить в кабинете" : "Что делать дальше"}</h2>
 
           {hasCheckoutTicket ? (
             <>
@@ -436,9 +470,21 @@ export default function CheckoutClient() {
                 </div>
               )}
             </>
+          ) : hasWebSession ? (
+            <div className="checkout-empty">
+              <p>Вы уже вошли в кабинет. Продолжение оплаты открывается из персонального сценария, а не из публичной кассы.</p>
+              <div className="checkout-actions">
+                <a href={continuationHref} target="_blank" rel="noreferrer" className="checkout-secondary">
+                  Продолжить в кабинете
+                </a>
+                <a href={config.botUrl} target="_blank" rel="noreferrer" className="checkout-secondary">
+                  Продолжить в Telegram
+                </a>
+              </div>
+            </div>
           ) : (
             <div className="checkout-empty">
-              <p>Для вашей безопасности касса доступна только после авторизации. Пожалуйста, войдите в кабинет или Telegram.</p>
+              <p>Для вашей безопасности касса доступна только после личного входа. Пожалуйста, войдите в кабинет или Telegram.</p>
               <div className="checkout-actions">
                 <a href={config.webappUrl} target="_blank" rel="noreferrer" className="checkout-secondary">
                   Открыть кабинет
@@ -451,13 +497,21 @@ export default function CheckoutClient() {
           )}
 
           <div className="checkout-trust">
-                <strong>{hasCheckoutTicket ? "Что будет дальше" : "Почему нужен личный маршрут"}</strong>
+            <strong>
+              {hasCheckoutTicket ? "Что будет дальше" : hasWebSession ? "Почему кабинет продолжает checkout" : "Почему нужен личный маршрут"}
+            </strong>
             <ul className="checkout-trust-list">
               {hasCheckoutTicket ? (
                 <>
                   <li>Откроется защищённая страница выбранного платёжного маршрута.</li>
                   <li>После подтверждения доступ обновится автоматически.</li>
                   <li>Если окно оплаты закроется, можно вернуться по сохранённой ссылке или продолжить в Telegram.</li>
+                </>
+              ) : hasWebSession ? (
+                <>
+                  <li>Вы уже в личном кабинете, поэтому продолжение не требует повторного входа.</li>
+                  <li>Из кабинета откроются только реальные доступные действия для вашего профиля.</li>
+                  <li>Если понадобится помощь, Telegram и поддержка остаются рядом.</li>
                 </>
               ) : (
                 <>
@@ -471,11 +525,22 @@ export default function CheckoutClient() {
         </article>
 
         <article className="glass-card checkout-sticky">
-          <h2>{hasCheckoutTicket ? "Итог" : "Следующий шаг"}</h2>
+          <h2>{hasCheckoutTicket ? "Итог" : hasWebSession ? "Продолжение" : "Следующий шаг"}</h2>
           <p className="checkout-note">
             {hasCheckoutTicket
-              ? "План уже привязан к вашему профилю. Мы не показываем лишние способы оплаты: только доступные платёжные маршруты и возврат в Telegram, если что-то пошло не так."
-              : "Публичный checkout без личного входа не работает как касса. Сначала откройте кабинет или продолжите через Telegram, чтобы получить персональный маршрут."}
+              ? getCopyText(
+                  "marketing.checkout.ticket.subtitle",
+                  "План уже привязан к вашему профилю. Мы не показываем лишние способы оплаты: только доступные платёжные маршруты и возврат в Telegram, если что-то пошло не так.",
+                )
+              : hasWebSession
+                ? getCopyText(
+                    "marketing.checkout.session.subtitle",
+                    "Вы уже вошли в кабинет. Продолжение оплаты откроется после перехода в персональный маршрут, а не из анонимной кассы.",
+                  )
+                : getCopyText(
+                    "marketing.checkout.anonymous.subtitle",
+                    "Публичный checkout без личного входа не работает как касса. Сначала откройте кабинет или продолжите через Telegram, чтобы получить персональный маршрут.",
+                  )}
           </p>
 
           <div className="checkout-summary">
@@ -489,7 +554,7 @@ export default function CheckoutClient() {
               Устройства: <strong>до {activePlan.device_limit}</strong>
             </p>
             <p>
-              Касса: <strong>{providersBlocked ? "временно недоступна" : activeProvider?.label || "после личного входа"}</strong>
+              Касса: <strong>{providersBlocked ? "временно недоступна" : activeProvider?.label || (hasWebSession ? "в кабинете" : "после личного входа")}</strong>
             </p>
             {promo ? (
               <p>
@@ -520,7 +585,7 @@ export default function CheckoutClient() {
             type="button"
             onClick={() => {
               if (!hasCheckoutTicket || !activeProvider) {
-                window.location.href = config.webappUrl;
+                window.location.href = continuationHref;
                 return;
               }
               void createOrder();
@@ -551,10 +616,25 @@ export default function CheckoutClient() {
             <p className="checkout-helper">
               {ticketExpired
                 ? "Время этой ссылки закончилось. Вернитесь в Telegram и откройте оплату заново."
-                : "Если у вас возникли сомнения при оплате — наша заботливая поддержка в Telegram моментально во всем разберется."}
+                : getCopyText(
+                    "marketing.checkout.helper.ticket",
+                    "Если у вас возникли сомнения при оплате — наша заботливая поддержка в Telegram моментально во всем разберется.",
+                  )}
+            </p>
+          ) : hasWebSession ? (
+            <p className="checkout-helper">
+              {getCopyText(
+                "marketing.checkout.helper.session",
+                "Вы уже вошли в кабинет. Откройте персональный маршрут, чтобы продолжить без лишних шагов.",
+              )}
             </p>
           ) : (
-              <p className="checkout-helper">Сначала откройте кабинет или продолжите через Telegram, а продление уже запускайте из персонального сценария.</p>
+            <p className="checkout-helper">
+              {getCopyText(
+                "marketing.checkout.helper.anonymous",
+                "Сначала откройте кабинет или продолжите через Telegram, а продление уже запускайте из персонального сценария.",
+              )}
+            </p>
           )}
 
           {statusText ? <p className="checkout-status">{statusText}</p> : null}

@@ -1,0 +1,20 @@
+{
+  "theme": {
+    "name": "quiet-core-luminous-edge",
+    "base_palette": "warm-stone-forest",
+    "accent_palette": "restrained-cyan-magenta-champagne"
+  },
+  "glass": {
+    "usage": "chrome-floating-shells-connect-controls",
+    "content_planes": "solid",
+    "reduced_transparency_fallback": "solid"
+  },
+  "motion": {
+    "section_narrative": "enabled",
+    "reduced_motion_fallback": "fade-only"
+  },
+  "accessibility": {
+    "focus_visible": "high-contrast-ring",
+    "browser_checks": ["a11y", "performance"]
+  }
+}

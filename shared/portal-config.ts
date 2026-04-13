@@ -1,3 +1,6 @@
+import { getProductFacts } from "./product-facts";
+import { getPublicUrls } from "./public-urls";
+
 export type PortalPublicConfig = {
   apiBaseUrl: string;
   webappUrl: string;
@@ -19,20 +22,12 @@ export type PortalPublicConfig = {
   docsUrl: string;
 };
 
-export const CANONICAL_PLATFORM_BRAND = "POKROV";
-export const CANONICAL_CLIENT_BRAND = "POKROV VPN";
-export const CANONICAL_API_BASE_URL = "https://api.pokrov.space";
-export const CANONICAL_MARKETING_SITE_URL = "https://pokrov.space";
-export const CANONICAL_WEBAPP_URL = "https://app.pokrov.space";
-export const CANONICAL_CONNECT_URL = "https://connect.pokrov.space";
-export const CANONICAL_PAY_ORIGIN = "https://pay.pokrov.space";
-export const CANONICAL_CHECKOUT_URL = `${CANONICAL_PAY_ORIGIN}/checkout`;
-export const CANONICAL_BOT_URL = "https://t.me/pokrov_vpnbot";
-export const CANONICAL_SUPPORT_BOT_URL = "https://t.me/pokrov_supportbot";
-export const CANONICAL_FEEDBACK_BOT_URL = "https://t.me/pokrov_feedbackbot";
-export const CANONICAL_NEWS_CHANNEL_URL = "https://t.me/pokrov_vpn";
-export const CANONICAL_CONTACT_EMAIL = "support@pokrov.space";
-export const CANONICAL_ENTERPRISE_EMAIL = "enterprise@pokrov.space";
+const PRODUCT_FACTS = getProductFacts();
+const PUBLIC_URLS = getPublicUrls();
+const SURFACES = PUBLIC_URLS.surfaces;
+const TELEGRAM = PUBLIC_URLS.telegram;
+const CONTACT = PUBLIC_URLS.contact;
+
 export const LEGACY_PUBLIC_MARKERS = [
   "portal-privacy.online",
   "kiwunaka.space",
@@ -50,6 +45,25 @@ export const PLAN_ALIAS_TO_CODE = {
 
 export type PlanAlias = keyof typeof PLAN_ALIAS_TO_CODE;
 export type PlanCode = (typeof PLAN_ALIAS_TO_CODE)[PlanAlias] | "3_months" | "6_months" | "9_months";
+
+function stripTrailingSlash(value: string): string {
+  return String(value || "").trim().replace(/\/+$/, "");
+}
+
+export const CANONICAL_PLATFORM_BRAND = PRODUCT_FACTS.brands.platform;
+export const CANONICAL_CLIENT_BRAND = PRODUCT_FACTS.brands.client;
+export const CANONICAL_API_BASE_URL = stripTrailingSlash(SURFACES.api);
+export const CANONICAL_MARKETING_SITE_URL = stripTrailingSlash(SURFACES.marketing);
+export const CANONICAL_WEBAPP_URL = stripTrailingSlash(SURFACES.webapp);
+export const CANONICAL_CONNECT_URL = stripTrailingSlash(SURFACES.connect);
+export const CANONICAL_CHECKOUT_URL = stripTrailingSlash(SURFACES.checkout);
+export const CANONICAL_PAY_ORIGIN = new URL(CANONICAL_CHECKOUT_URL).origin;
+export const CANONICAL_BOT_URL = TELEGRAM.bot;
+export const CANONICAL_SUPPORT_BOT_URL = TELEGRAM.support_bot;
+export const CANONICAL_FEEDBACK_BOT_URL = TELEGRAM.feedback_bot;
+export const CANONICAL_NEWS_CHANNEL_URL = TELEGRAM.channel;
+export const CANONICAL_CONTACT_EMAIL = CONTACT.support_email;
+export const CANONICAL_ENTERPRISE_EMAIL = CONTACT.enterprise_email;
 
 function trim(value: string | undefined, fallback = ""): string {
   return String(value || fallback).trim();

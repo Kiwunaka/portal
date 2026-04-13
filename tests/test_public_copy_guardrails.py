@@ -15,6 +15,8 @@ PUBLIC_COPY_FILES = [
 ]
 FRONTEND_COPY_FILES = [
     ROOT / "shared/portal-config.ts",
+    ROOT / "shared/public-urls.json",
+    ROOT / "shared/product-facts.json",
     ROOT / "copy/catalog.ru.json",
 ]
 
@@ -51,7 +53,9 @@ def _frontend_text_without_legacy_catalog(path: Path) -> str:
     if path.suffix.lower() == ".json":
         payload = json.loads(path.read_text(encoding="utf-8"))
         items = payload.get("items") or {}
-        return "\n".join(str((item or {}).get("ru") or "") for item in items.values())
+        if items:
+            return "\n".join(str((item or {}).get("ru") or "") for item in items.values())
+        return json.dumps(payload, ensure_ascii=False)
     text = path.read_text(encoding="utf-8")
     if path.suffix.lower() == ".ts":
         text = re.sub(r"export const LEGACY_PUBLIC_MARKERS = \[(?:.|\n)*?\] as const;\n?", "", text)
@@ -92,8 +96,20 @@ def test_public_copy_has_no_mojibake_markers() -> None:
 
 def test_frontend_public_copy_catalogs_stay_pokrov_only() -> None:
     violations: list[str] = []
-    required_ts_snippets = (
-        "POKROV VPN",
+    portal_config_required_snippets = (
+        'from "./product-facts"',
+        'from "./public-urls"',
+        "CANONICAL_CLIENT_BRAND",
+        "CANONICAL_API_BASE_URL",
+        "CANONICAL_WEBAPP_URL",
+        "CANONICAL_CONNECT_URL",
+        "CANONICAL_CHECKOUT_URL",
+        "CANONICAL_BOT_URL",
+        "CANONICAL_SUPPORT_BOT_URL",
+        "CANONICAL_FEEDBACK_BOT_URL",
+        "CANONICAL_NEWS_CHANNEL_URL",
+    )
+    public_urls_required_snippets = (
         "https://api.pokrov.space",
         "https://app.pokrov.space",
         "https://connect.pokrov.space",
@@ -102,6 +118,9 @@ def test_frontend_public_copy_catalogs_stay_pokrov_only() -> None:
         "https://t.me/pokrov_supportbot",
         "https://t.me/pokrov_feedbackbot",
         "https://t.me/pokrov_vpn",
+    )
+    product_facts_required_snippets = (
+        "POKROV VPN",
     )
     forbidden_markers = (
         "portal-privacy.online",
@@ -117,13 +136,22 @@ def test_frontend_public_copy_catalogs_stay_pokrov_only() -> None:
         for marker in MOJIBAKE_MARKERS:
             if marker in text:
                 violations.append(f"{path.relative_to(ROOT)}: found mojibake marker {marker!r}")
-        if path.suffix.lower() == ".ts":
-            for snippet in required_ts_snippets:
+        if path.name == "portal-config.ts":
+            for snippet in portal_config_required_snippets:
                 if snippet not in text:
                     violations.append(f"{path.relative_to(ROOT)}: missing required snippet {snippet}")
-        for marker in forbidden_markers:
-            if marker in text:
-                violations.append(f"{path.relative_to(ROOT)}: found forbidden legacy marker {marker}")
+        elif path.name == "public-urls.json":
+            for snippet in public_urls_required_snippets:
+                if snippet not in text:
+                    violations.append(f"{path.relative_to(ROOT)}: missing required snippet {snippet}")
+        elif path.name == "product-facts.json":
+            for snippet in product_facts_required_snippets:
+                if snippet not in text:
+                    violations.append(f"{path.relative_to(ROOT)}: missing required snippet {snippet}")
+        if path.name != "product-facts.json":
+            for marker in forbidden_markers:
+                if marker in text:
+                    violations.append(f"{path.relative_to(ROOT)}: found forbidden legacy marker {marker}")
 
     assert not violations, "\n".join(violations)
 

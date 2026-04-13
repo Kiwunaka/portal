@@ -3,6 +3,8 @@
 import Link, { type LinkProps } from "next/link";
 import { forwardRef, type AnchorHTMLAttributes, type MouseEvent } from "react";
 
+import { cn, FOCUS_RING } from "./utils";
+
 type AnchorProps = Omit<AnchorHTMLAttributes<HTMLAnchorElement>, keyof LinkProps>;
 
 type AppRouteLinkProps = LinkProps &
@@ -22,15 +24,18 @@ function shouldUseBrowserNavigation(event: MouseEvent<HTMLAnchorElement>): boole
 }
 
 const AppRouteLink = forwardRef<HTMLAnchorElement, AppRouteLinkProps>(function AppRouteLink(
-  { hardNavigate = true, prefetch = false, onClick, target, href, ...props },
+  { hardNavigate = false, onClick, target, rel, className, href, ...props },
   ref,
 ) {
+  const nextRel = target === "_blank" ? [rel, "noopener noreferrer"].filter(Boolean).join(" ") : rel;
+
   return (
     <Link
       {...props}
+      className={cn(FOCUS_RING, className)}
       ref={ref}
       href={href}
-      prefetch={prefetch}
+      rel={nextRel}
       target={target}
       onClick={(event) => {
         onClick?.(event);

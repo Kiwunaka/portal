@@ -3,6 +3,7 @@
 import argparse
 import subprocess
 import sys
+from copy import copy
 from pathlib import Path
 
 
@@ -233,6 +234,14 @@ def main() -> int:
     steps: list[tuple[str, list[str], Path]] = []
 
     if args.gates_only:
+        gate_args = copy(args)
+        gate_args.skip_backend = True
+        gate_args.skip_static = True
+        gate_args.skip_verify = True
+        gate_args.ensure_metrics_timer = False
+        gate_args.ensure_observer_node = []
+        gate_args.release_env_file = ""
+        steps = _build_steps(gate_args, python=python)
         if args.dry_run:
             for name, cmd, cwd in steps:
                 _dry_run(name, cmd, cwd)

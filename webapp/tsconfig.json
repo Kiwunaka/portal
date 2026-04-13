@@ -30,6 +30,7 @@
     ".next/dev/types/**/*.ts",
     "**/*.mts",
     "../shared/**/*.ts",
+    "../shared/**/*.json",
     "../copy/**/*.json"
   ],
   "exclude": ["node_modules"]

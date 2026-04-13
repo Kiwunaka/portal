@@ -1,9 +1,11 @@
 from __future__ import annotations
 
 import argparse
+import functools
 import json
 import os
 import re
+import shutil
 import subprocess
 import sys
 import time
@@ -37,8 +39,40 @@ class PortProbeResult:
     stderr: str
 
 
+def _sdk_root_candidates() -> list[Path]:
+    candidates: list[Path] = []
+    for env_name in ("ANDROID_AUDIT_SDK_ROOT", "ANDROID_SDK_ROOT", "ANDROID_HOME"):
+        value = os.environ.get(env_name, "").strip()
+        if value:
+            candidates.append(Path(value))
+    local_app_data = os.environ.get("LOCALAPPDATA", "").strip()
+    if local_app_data:
+        candidates.append(Path(local_app_data) / "Android" / "Sdk")
+    deduped: list[Path] = []
+    seen: set[Path] = set()
+    for candidate in candidates:
+        if candidate not in seen:
+            deduped.append(candidate)
+            seen.add(candidate)
+    return deduped
+
+
+@functools.lru_cache(maxsize=1)
 def _adb_executable() -> str:
-    return "adb.exe" if os.name == "nt" else "adb"
+    override = os.environ.get("ANDROID_AUDIT_ADB", "").strip()
+    if override:
+        return override
+
+    adb_name = "adb.exe" if os.name == "nt" else "adb"
+    for sdk_root in _sdk_root_candidates():
+        candidate = sdk_root / "platform-tools" / adb_name
+        if candidate.exists():
+            return str(candidate)
+
+    resolved = shutil.which(adb_name)
+    if resolved:
+        return resolved
+    return adb_name
 
 
 def _adb_base(serial: str | None) -> list[str]:
@@ -63,11 +97,39 @@ def _run_adb_shell(serial: str | None, shell_command: str) -> subprocess.Complet
     return _run([*_adb_base(serial), "shell", shell_command])
 
 
+def _is_recoverable_adb_error(output: str) -> bool:
+    normalized = " ".join(str(output or "").strip().lower().split())
+    if not normalized:
+        return False
+    recoverable_snippets = (
+        "device '",
+        "device not found",
+        "device offline",
+        "device still authorizing",
+        "no devices/emulators found",
+    )
+    return any(snippet in normalized for snippet in recoverable_snippets)
+
+
+def _ensure_device_ready(serial: str) -> None:
+    start_server = _run([_adb_executable(), "start-server"])
+    if start_server.returncode != 0:
+        raise RuntimeError((start_server.stderr or start_server.stdout or "adb start-server failed").strip())
+
+    wait_for_device = _run([*_adb_base(serial), "wait-for-device"])
+    if wait_for_device.returncode != 0:
+        raise RuntimeError((wait_for_device.stderr or wait_for_device.stdout or "adb wait-for-device failed").strip())
+
+    state = _run([*_adb_base(serial), "get-state"])
+    if state.returncode != 0 or "device" not in (state.stdout or "").split():
+        raise RuntimeError((state.stderr or state.stdout or "adb device is not ready").strip())
+
+
 def _parse_ss_listeners(raw: str) -> list[Listener]:
     listeners: list[Listener] = []
     for line in raw.splitlines():
         line = line.strip()
-        if not line or line.lower().startswith("netid state"):
+        if not line or line.lower().startswith("netid"):
             continue
         parts = re.split(r"\s+", line, maxsplit=5)
         if len(parts) < 5:
@@ -76,7 +138,10 @@ def _parse_ss_listeners(raw: str) -> list[Listener]:
         state = parts[1].upper()
         local_address = parts[4]
         process_blob = parts[5] if len(parts) > 5 else ""
-        host, port = _split_host_port(local_address)
+        try:
+            host, port = _split_host_port(local_address)
+        except ValueError:
+            continue
         if host not in LOCALHOST_HOSTS:
             continue
         process_name = ""
@@ -188,6 +253,11 @@ def _collect_listeners(serial: str) -> list[Listener]:
     last_error = ""
     for command in commands:
         proc = _run_adb_shell(serial, command)
+        if proc.returncode != 0:
+            output = (proc.stderr or proc.stdout or "").strip()
+            if _is_recoverable_adb_error(output):
+                _ensure_device_ready(serial)
+                proc = _run_adb_shell(serial, command)
         if proc.returncode == 0 and proc.stdout.strip():
             return _parse_ss_listeners(proc.stdout)
         last_error = (proc.stderr or proc.stdout or "").strip()
@@ -296,6 +366,7 @@ def main() -> int:
 
     try:
         serial = _select_serial(args.serial.strip() or None)
+        _ensure_device_ready(serial)
         baseline = _collect_listeners(serial)
         print(f"[device] {serial}")
         print(f"[phase] baseline listeners: {len(baseline)}")

@@ -1310,6 +1310,10 @@ export function checkChannelSubscriberStatus(): Promise<{
   ok: boolean;
   subscriber: boolean;
   reason?: string;
+  claim_required?: boolean;
+  already_claimed?: boolean;
+  bonus_days?: number;
+  link_required?: boolean;
   points_granted?: number;
   campaign_marked?: boolean;
 }> {

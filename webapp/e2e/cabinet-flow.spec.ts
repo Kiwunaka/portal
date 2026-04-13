@@ -334,6 +334,34 @@ test.describe("Cabinet flow", () => {
     await expect(page.getByAltText("QR-код ссылки подключения")).toBeVisible();
   });
 
+  test("keeps cabinet navigation on native Next.js routing", async ({ page }) => {
+    await page.goto("dashboard/");
+    await page.evaluate(() => {
+      (window as Window & { __routeMarker?: string }).__routeMarker = "persist-me";
+    });
+
+    await page.getByRole("link", { name: "Подписка" }).click();
+    await expect(page).toHaveURL(/\/subscription\/?$/);
+    await expect(page.getByRole("heading", { name: "Подписка и подключение" })).toBeVisible();
+
+    const markerPersisted = await page.evaluate(
+      () => Boolean((window as Window & { __routeMarker?: string }).__routeMarker),
+    );
+    expect(markerPersisted).toBe(true);
+  });
+
+  test("shows branded root and cabinet not-found recovery screens", async ({ page }) => {
+    await page.goto("no-such-route/");
+    await expect(page.getByRole("heading", { name: "Страница не найдена" })).toBeVisible();
+    await expect(page.getByRole("link", { name: "В кабинет" })).toBeVisible();
+    await expect(page.getByRole("link", { name: "В поддержку" })).toBeVisible();
+
+    await page.goto("dashboard/no-such-route/");
+    await expect(page.getByRole("heading", { name: "Страница не найдена" })).toBeVisible();
+    await expect(page.getByRole("link", { name: "В кабинет" })).toBeVisible();
+    await expect(page.getByRole("link", { name: "В поддержку" })).toBeVisible();
+  });
+
   test("keeps the subscription page on one public connection link plus QR", async ({ page }) => {
     await page.goto("subscription/");
 

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import importlib
 import sys
+from datetime import timedelta
 from pathlib import Path
 
 from fastapi.testclient import TestClient
@@ -87,6 +88,46 @@ def test_start_trial_returns_session_and_real_device_payload(monkeypatch, tmp_pa
     user_payload = user_response.json()
     assert user_payload["devices"][0]["name"] == "Samsung S25"
     assert user_payload["devices"][0]["platform"] == "android"
+
+
+def test_start_trial_enforces_canonical_trial_days_and_reports_provisioning(monkeypatch, tmp_path):
+    api = _load_api(monkeypatch, tmp_path)
+    client = TestClient(api.app)
+
+    start_trial_response = client.post(
+        "/api/client/session/start-trial",
+        json={
+            "install_id": "install-canonical-trial",
+            "device_name": "Surface Laptop",
+            "platform": "windows",
+            "os_version": "11",
+            "app_version": "1.0.0",
+            "locale": "ru",
+            "time_zone": "Europe/Moscow",
+            "trial_days": 1,
+        },
+    )
+
+    assert start_trial_response.status_code == 200
+    payload = start_trial_response.json()
+    assert payload["ok"] is True
+    assert payload["session"]["token"] == payload["session_token"]
+    assert payload["session"]["account_id"] == payload["account_id"]
+    assert payload["access"]["trial_days"] == 5
+    assert payload["access"]["subscription_url"] == payload["subscription_url"]
+    assert payload["provisioning"]["status"] in {"ready", "pending_sync"}
+    assert payload["provisioning"]["sync_ok"] == payload["sync_ok"]
+
+    db = api.SessionLocal()
+    try:
+        user = db.query(api.User).filter_by(tg_id=int(payload["account_id"])).first()
+        assert user is not None
+        assert user.expiry_at is not None
+        remaining = user.expiry_at - api._utcnow()
+        assert remaining >= timedelta(days=4)
+        assert remaining <= timedelta(days=6)
+    finally:
+        db.close()
 
 
 def test_start_trial_reuses_existing_install_id(monkeypatch, tmp_path):
@@ -238,3 +279,57 @@ def test_channel_bonus_claim_uses_linked_telegram_identity_for_app_account(monke
     user_payload = user_response.json()
     assert user_payload["sub_type"] == "BONUS"
     assert user_payload["bonuses"]["channel_bonus"]["claimed_at"]
+
+
+def test_channel_subscriber_check_is_read_only_for_linked_app_account(monkeypatch, tmp_path):
+    api = _load_api(monkeypatch, tmp_path)
+    client = TestClient(api.app)
+
+    async def fake_is_channel_member(channel_username: str, tg_id: int):
+        assert channel_username == "pokrov_vpn"
+        return (tg_id == 888001, "member" if tg_id == 888001 else "not_member")
+
+    monkeypatch.setattr(api, "_is_channel_member", fake_is_channel_member)
+
+    trial_response = client.post(
+        "/api/client/session/start-trial",
+        json={
+            "install_id": "install-readonly-check",
+            "device_name": "Pixel Fold",
+            "platform": "android",
+            "trial_days": 5,
+        },
+    )
+    token = trial_response.json()["session_token"]
+
+    session_response = client.get(
+        "/api/auth/session",
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    account_id = int(session_response.json()["user"]["account_id"])
+
+    db = api.SessionLocal()
+    try:
+        user = db.query(api.User).filter_by(tg_id=account_id).first()
+        user.linked_telegram_id = 888001
+        user.linked_telegram_username = "readonly_member"
+        db.commit()
+    finally:
+        db.close()
+
+    check_response = client.post(
+        "/api/channel/subscriber/check",
+        headers={"Authorization": f"Bearer {token}"},
+    )
+
+    assert check_response.status_code == 200
+    payload = check_response.json()
+    assert payload["ok"] is True
+    assert payload["subscriber"] is True
+    assert payload["reason"] == "member"
+    assert payload["claim_required"] is True
+    assert payload["bonus_days"] == 10
+    assert payload["points_granted"] == 0
+    assert payload["campaign_marked"] is False
+
+    assert api.available_points(tg_id=account_id)[0] == 0

@@ -22,6 +22,10 @@ This file is living source of truth for the platform architecture map.
 
 - `portal_bot/api.py`
   FastAPI backend for health checks, app-first session bootstrap, payments, bonuses, tickets, public data, public reviews, and admin APIs.
+- `portal_bot/app_first_service.py`
+  Bounded app-first/session helper used by the API for trial bootstrap, session payload shaping, and Telegram link start context.
+- `portal_bot/channel_bonus_service.py`
+  Bounded Telegram bonus helper used by the API for read-only subscriber checks and explicit claim flow.
 - `portal_bot/bot.py`
   Main Telegram bot for billing, campaigns, referrals, review moderation, and operator actions.
 - `portal_bot/helpbot.py`
@@ -57,7 +61,7 @@ Node lifecycle rule:
 - `external/client-fork/app/`
   `POKROV VPN` consumer client for Android and Windows
 - `shared/`
-  shared public copy, canonical hostnames, and cross-surface product constants
+  shared public copy, canonical hostnames, product facts, and design tokens
 
 Current public-surface split:
 
@@ -99,6 +103,10 @@ Current release scope rule:
 Production source of truth:
 
 - Postgres from `DATABASE_URL`
+- cross-surface public facts from:
+  - `shared/product-facts.json`
+  - `shared/public-urls.json`
+  - `shared/design-tokens.json`
 
 Not source of truth:
 
@@ -115,7 +123,7 @@ Not source of truth:
 1. client generates `install_id`
 2. user taps `Try free`
 3. backend creates app account, device record, and app session
-4. backend returns a real subscription source
+4. backend returns canonical `session`, `access`, and `provisioning` payloads plus a real subscription source
 5. client imports and activates the profile
 
 ### Telegram Linking And Reward Flow
@@ -123,9 +131,10 @@ Not source of truth:
 1. app-first account requests Telegram linking
 2. backend issues a deep link to `@pokrov_vpnbot`
 3. bot links Telegram identity to the app-first account
-4. app calls reward claim API
-5. backend validates membership in `@pokrov_vpn`
-6. backend grants `+10 days` when eligible
+4. app or web surfaces may call read-only subscriber status check
+5. reward grant still happens only on the explicit claim API
+6. backend validates membership in `@pokrov_vpn`
+7. backend grants `+10 days` when eligible
 
 ### Checkout Continuation Flow
 
@@ -231,6 +240,7 @@ Role split:
 Copy/config rule:
 
 - new public copy and CTA text must stay centralized through `shared/copy.ts` and `copy/catalog.ru.json`
+- locked cross-surface facts such as trial length, Telegram reward, canonical hosts, and design direction must stay centralized through `shared/product-facts.json`, `shared/public-urls.json`, and `shared/design-tokens.json`
 - bot, site, app, and checkout links should resolve from shared host config rather than hard-coded per surface
 
 ## Monitoring And Visibility Model

@@ -1,0 +1,33 @@
+{
+  "brands": {
+    "platform": "POKROV",
+    "client": "POKROV VPN"
+  },
+  "strategy": {
+    "client": "consumer-first",
+    "identity_model": "app-first"
+  },
+  "trial": {
+    "days": 5
+  },
+  "telegram_reward": {
+    "days": 10,
+    "claim_flow": "explicit"
+  },
+  "engines": {
+    "default": "sing-box",
+    "advanced_fallback": "xray"
+  },
+  "platform_scope": {
+    "public": ["android", "windows"],
+    "readiness_only": ["apple"]
+  },
+  "legal": {
+    "offer_path": "/offer/",
+    "privacy_path": "/privacy/"
+  },
+  "operations": {
+    "canonical_control_plane_host": "82.21.114.104",
+    "legacy_compatibility_host": "kiwunaka.space"
+  }
+}

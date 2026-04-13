@@ -1,0 +1,248 @@
+import Link from "next/link";
+
+import JsonLd from "../../components/json-ld";
+import { buildMarketingMetadata } from "../../components/marketing-landing";
+import { buildBreadcrumbJsonLd } from "../../lib/marketing-site";
+import { getCopyText, getPokrovPublicConfig } from "../../lib/pokrov";
+
+const config = getPokrovPublicConfig(process.env as Record<string, string | undefined>);
+
+function firstNonEmpty(...values: Array<string | undefined>): string {
+  return values.find((value) => Boolean(String(value || "").trim()))?.trim() || "";
+}
+
+function buildHelpHref(): string {
+  return firstNonEmpty(config.docsUrl, config.supportTelegramUrl, config.webappUrl, "/");
+}
+
+function buildArtifactHref(primary: string, fallback: string): string {
+  return firstNonEmpty(primary, fallback);
+}
+
+export const metadata = buildMarketingMetadata(
+  getCopyText("marketing.install.meta.title", "Установка и помощь | POKROV VPN"),
+  getCopyText(
+    "marketing.install.meta.description",
+    "Как скачать приложение для Android и Windows, что делать если файл недоступен, и куда перейти за помощью.",
+  ),
+  {
+    path: "/install/",
+    noIndex: true,
+    keywords: ["pokrov vpn install", "как установить vpn", "apk pokrov", "windows pokrov", "install help"],
+  },
+);
+
+export default function InstallPage() {
+  const helpHref = buildHelpHref();
+  const androidHref = buildArtifactHref(config.androidApkUrl, helpHref);
+  const windowsHref = buildArtifactHref(config.windowsExeUrl, helpHref);
+  const appleHref = buildHelpHref();
+  const androidHasArtifact = Boolean(String(config.androidApkUrl || "").trim());
+  const windowsHasArtifact = Boolean(String(config.windowsExeUrl || "").trim());
+
+  return (
+    <>
+      <JsonLd
+        data={buildBreadcrumbJsonLd([
+          { name: "POKROV VPN", path: "/" },
+          { name: "Установка и помощь", path: "/install/" },
+        ])}
+      />
+
+      <header className="lp-nav">
+        <div className="lp-nav-shell">
+          <Link href="/" className="lp-brand">
+            <img src="/pokrov-logo.svg" alt="POKROV VPN" className="lp-brand-logo" />
+            <span>POKROV VPN</span>
+          </Link>
+          <nav className="lp-menu" aria-label="Главная навигация">
+            <Link href="/">Главная</Link>
+            <Link href="/checkout/">Checkout</Link>
+            <a href={config.supportTelegramUrl} target="_blank" rel="noreferrer" className="lp-chip lp-chip--primary">
+              Служба заботы
+            </a>
+          </nav>
+        </div>
+      </header>
+
+      <main id="main-content" className="lp-main">
+        <section className="lp-hero">
+          <div className="lp-hero-copy">
+            <div className="lp-kicker">{getCopyText("marketing.install.kicker", "Install-help POKROV VPN")}</div>
+            <p className="lp-overline">Дедиковая страница помощи без тупиков и без ложной загрузки.</p>
+            <h1>{getCopyText("marketing.install.title", "Установка без тупиков")}</h1>
+            <p className="lp-hero-lead">
+              {getCopyText(
+                "marketing.install.subtitle",
+                "Кнопки ведут либо к актуальному релизному файлу, либо на эту же страницу помощи. Если файла пока нет, вы не теряете маршрут.",
+              )}
+            </p>
+            <div className="lp-hero-actions">
+              <a href={config.webappUrl} target="_blank" rel="noreferrer" className="lp-btn lp-btn--primary">
+                {getCopyText("marketing.install.primary_cta", "Открыть кабинет")}
+              </a>
+              <a href={config.supportTelegramUrl} target="_blank" rel="noreferrer" className="lp-btn lp-btn--ghost">
+                {getCopyText("marketing.install.secondary_cta", "Написать в поддержку")}
+              </a>
+            </div>
+          </div>
+
+          <div className="lp-hero-stage">
+            <article className="lp-stage-card lp-stage-card--primary">
+              <div className="lp-stage-label">Сначала файл, потом кабинет</div>
+              <h2>Каждый путь здесь либо реальный, либо объяснённый.</h2>
+              <p>
+                Если релизный файл уже опубликован, вы скачиваете его сразу. Если нет, install-help показывает понятную
+                инструкцию и не ведёт в пустую страницу.
+              </p>
+              <ol className="lp-stage-steps">
+                <li>
+                  <span>01</span>
+                  <div>
+                    <strong>Android</strong>
+                    <p>Сначала APK, а если файла нет, откройте помощь.</p>
+                  </div>
+                </li>
+                <li>
+                  <span>02</span>
+                  <div>
+                    <strong>Windows</strong>
+                    <p>Скачайте EXE или вернитесь за инструкцией установки.</p>
+                  </div>
+                </li>
+                <li>
+                  <span>03</span>
+                  <div>
+                    <strong>Поддержка</strong>
+                    <p>Если что-то не сходится, кабинет и Telegram остаются рядом.</p>
+                  </div>
+                </li>
+              </ol>
+            </article>
+
+            <article className="lp-stage-card">
+              <div className="lp-stage-label">Что делать, если файла нет</div>
+              <p>
+                Эта страница не притворяется загрузкой. Если релиз ещё не выложен, мы показываем помощь, актуальные
+                ссылки и понятный путь в кабинет.
+              </p>
+              <div className="lp-stage-links">
+                <a href={helpHref}>Открыть инструкцию</a>
+                <a href={config.webappUrl} target="_blank" rel="noreferrer">
+                  Кабинет
+                </a>
+                <a href={config.supportTelegramUrl} target="_blank" rel="noreferrer">
+                  Поддержка
+                </a>
+              </div>
+            </article>
+          </div>
+        </section>
+
+        <section className="lp-section">
+          <div className="lp-section-head">
+            <span>Скачивание</span>
+            <h2>{getCopyText("marketing.install.downloads.title", "Выберите релизный файл или откройте помощь")}</h2>
+            <p>
+              {getCopyText(
+                "marketing.install.downloads.subtitle",
+                "Каждая карточка ведёт к актуальному файлу или к живому help-сценарию, который объясняет следующий шаг без пустого ожидания.",
+              )}
+            </p>
+          </div>
+
+          <div className="lp-download-grid">
+            <article className="lp-platform-card lp-platform-card--featured">
+              <div className="lp-stage-label">
+                <span aria-hidden="true">●</span>
+                {getCopyText("marketing.install.android.status", "Android")}
+              </div>
+              <h3>{getCopyText("marketing.install.android.title", "APK для Android")}</h3>
+              <p>
+                {getCopyText(
+                  "marketing.install.android.desc",
+                  "Скачайте актуальный файл или откройте инструкцию по установке, если релизный пакет ещё не опубликован.",
+                )}
+              </p>
+              {androidHasArtifact ? (
+                <a href={androidHref} target="_blank" rel="noreferrer" className="lp-btn lp-btn--primary">
+                  {getCopyText("marketing.download.android.cta", "Скачать APK")}
+                </a>
+              ) : (
+                <a href={helpHref} className="lp-btn lp-btn--primary">
+                  {getCopyText("marketing.install.help_cta", "Открыть инструкцию")}
+                </a>
+              )}
+            </article>
+
+            <article className="lp-platform-card">
+              <div className="lp-stage-label">
+                <span aria-hidden="true">■</span>
+                {getCopyText("marketing.install.windows.status", "Windows")}
+              </div>
+              <h3>{getCopyText("marketing.install.windows.title", "EXE для Windows")}</h3>
+              <p>
+                {getCopyText(
+                  "marketing.install.windows.desc",
+                  "Десктопный файл для постоянной работы. Если релиз ещё в очереди, откройте помощь и не теряйте маршрут.",
+                )}
+              </p>
+              {windowsHasArtifact ? (
+                <a href={windowsHref} target="_blank" rel="noreferrer" className="lp-btn lp-btn--primary">
+                  {getCopyText("marketing.download.windows.cta", "Скачать для Windows")}
+                </a>
+              ) : (
+                <a href={helpHref} className="lp-btn lp-btn--primary">
+                  {getCopyText("marketing.install.help_cta", "Открыть инструкцию")}
+                </a>
+              )}
+            </article>
+
+            <article className="lp-platform-card">
+              <div className="lp-stage-label">
+                <span aria-hidden="true">◎</span>
+                {getCopyText("marketing.install.apple.status", "Apple readiness")}
+              </div>
+              <h3>{getCopyText("marketing.install.apple.title", "iPhone и Mac")}</h3>
+              <p>
+                {getCopyText(
+                  "marketing.install.apple.desc",
+                  "Apple-линейка пока остаётся в readiness-режиме. Здесь нет ложной загрузки, только честная инструкция и актуальный статус.",
+                )}
+              </p>
+              <a href={appleHref} target="_blank" rel="noreferrer" className="lp-btn lp-btn--ghost">
+                {getCopyText("marketing.download.apple.cta", "Открыть инструкцию")}
+              </a>
+            </article>
+          </div>
+        </section>
+
+        <section className="lp-section">
+          <div className="lp-footer-cta">
+            <div className="lp-footer-copy">
+              <span>{getCopyText("marketing.install.help_eyebrow", "Если нужен живой маршрут")}</span>
+              <h2>{getCopyText("marketing.install.help_title", "Кабинет, Telegram и помощь остаются рядом")}</h2>
+              <p>
+                {getCopyText(
+                  "marketing.install.help_body",
+                  "Если файл не находится, откройте кабинет или напишите в поддержку. Мы не оставляем вас на пустой странице и не прячем следующий шаг.",
+                )}
+              </p>
+            </div>
+            <div className="lp-footer-actions">
+              <a href={config.webappUrl} target="_blank" rel="noreferrer" className="lp-btn lp-btn--primary">
+                {getCopyText("marketing.install.primary_cta", "Открыть кабинет")}
+              </a>
+              <a href={config.supportTelegramUrl} target="_blank" rel="noreferrer" className="lp-btn lp-btn--ghost">
+                {getCopyText("marketing.install.secondary_cta", "Написать в поддержку")}
+              </a>
+              <Link href="/" className="lp-btn lp-btn--ghost">
+                {getCopyText("marketing.install.home_cta", "Вернуться на главную")}
+              </Link>
+            </div>
+          </div>
+        </section>
+      </main>
+    </>
+  );
+}

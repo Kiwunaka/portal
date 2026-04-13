@@ -1,0 +1,28 @@
+{
+  "surfaces": {
+    "marketing": "https://pokrov.space/",
+    "webapp": "https://app.pokrov.space/",
+    "api": "https://api.pokrov.space/",
+    "connect": "https://connect.pokrov.space/",
+    "checkout": "https://pay.pokrov.space/checkout/"
+  },
+  "legal": {
+    "offer": "https://pokrov.space/offer/",
+    "privacy": "https://pokrov.space/privacy/"
+  },
+  "telegram": {
+    "bot_username": "@pokrov_vpnbot",
+    "bot": "https://t.me/pokrov_vpnbot",
+    "support_bot_username": "@pokrov_supportbot",
+    "support_bot": "https://t.me/pokrov_supportbot",
+    "feedback_bot_username": "@pokrov_feedbackbot",
+    "feedback_bot": "https://t.me/pokrov_feedbackbot",
+    "channel_username": "@pokrov_vpn",
+    "channel": "https://t.me/pokrov_vpn",
+    "verified_post": "https://t.me/pokrov_vpn/10"
+  },
+  "contact": {
+    "support_email": "support@pokrov.space",
+    "enterprise_email": "enterprise@pokrov.space"
+  }
+}

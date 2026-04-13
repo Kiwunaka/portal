@@ -49,6 +49,10 @@ portal.db
 portal.db.*
 *.cluster.db
 *.from-old-*.db
+tmp-libcore-aar/
+tmp-libcore-classes/
+tmp-sentry-android-ndk/
+tmp-sentry-android-ndk.zip
 
 # OS / editor
 .DS_Store

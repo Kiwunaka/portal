@@ -113,6 +113,8 @@ from points_service import (
     referral_tier_snapshot,
 )
 from free_cycle_service import ensure_user_free_cycle_state, mark_user_became_free
+import app_first_service
+import channel_bonus_service
 from gift_cards_service import redeem_gift_card as redeem_gift_card_service
 from observer_service import (
     OBSERVER_PUSH_MAX_AGE_SECONDS,
@@ -122,6 +124,7 @@ from observer_service import (
     observer_stale_after_seconds,
 )
 from public_urls import build_subscription_url, public_connect_host
+from shared_surface_facts import get_product_facts, get_public_urls
 from web_auth_service import (
     SESSION_TTL_SECONDS,
     build_telegram_oidc_authorize_url,
@@ -160,6 +163,18 @@ def _current_bot_token() -> str:
     return str(os.getenv("BOT_TOKEN") or Settings.BOT_TOKEN or "").strip()
 
 
+_PRODUCT_FACTS = get_product_facts()
+_PUBLIC_URL_FACTS = get_public_urls()
+_PUBLIC_URL_TELEGRAM = _PUBLIC_URL_FACTS.get("telegram", {})
+_TRIAL_FACTS = _PRODUCT_FACTS.get("trial", {})
+_TELEGRAM_REWARD_FACTS = _PRODUCT_FACTS.get("telegram_reward", {})
+
+
+def _shared_telegram_username(key: str, fallback: str) -> str:
+    value = str(_PUBLIC_URL_TELEGRAM.get(key) or fallback).strip()
+    return value.lstrip("@")
+
+
 API_ENABLE_USAGE = env_bool("API_ENABLE_USAGE", default=False)
 AUTO_DOWNGRADE_TO_FREE = env_bool("AUTO_DOWNGRADE_TO_FREE", default=True)
 AUTO_FREE_DAYS = int(os.getenv("AUTO_FREE_DAYS", "3650"))
@@ -168,16 +183,18 @@ FREE_LIMIT_IP = env_int("FREE_LIMIT_IP", 1)
 PAID_LIMIT_IP = env_int("PAID_LIMIT_IP", 5)
 FREE_SPEED_LIMIT_KBPS = env_int("FREE_SPEED_LIMIT_KBPS", 6250)
 FREE_SOFT_MODE_SPEED_LIMIT_KBPS = env_int("FREE_SOFT_MODE_SPEED_LIMIT_KBPS", 256)
-SUPPORT_USERNAME = (os.getenv("SUPPORT_USERNAME") or "pokrov_supportbot").lstrip("@")
+SUPPORT_USERNAME = (
+    os.getenv("SUPPORT_USERNAME") or _shared_telegram_username("support_bot_username", "@pokrov_supportbot")
+).lstrip("@")
 SUPPORT_USERNAME = (os.getenv("SUPPORT_BOT_USERNAME") or SUPPORT_USERNAME).lstrip("@")
-PUBLIC_CHANNEL = (os.getenv("PUBLIC_CHANNEL") or "pokrov_vpn").lstrip("@")
-BOT_USERNAME = (os.getenv("BOT_USERNAME") or "pokrov_vpnbot").lstrip("@")
+PUBLIC_CHANNEL = (os.getenv("PUBLIC_CHANNEL") or _shared_telegram_username("channel_username", "@pokrov_vpn")).lstrip("@")
+BOT_USERNAME = (os.getenv("BOT_USERNAME") or _shared_telegram_username("bot_username", "@pokrov_vpnbot")).lstrip("@")
 REFERRAL_BONUS_DAYS = env_int("REFERRAL_BONUS_DAYS", 15)
 REFERRAL_ANTIFRAUD_HOURS = max(0, env_int("REFERRAL_ANTIFRAUD_HOURS", 24))
 REFERRAL_ANTIFRAUD_MAX_WAIT_HOURS = max(1, env_int("REFERRAL_ANTIFRAUD_MAX_WAIT_HOURS", 168))
-CHANNEL_PREMIUM_DAYS = env_int("CHANNEL_PREMIUM_DAYS", 10)
-APP_TRIAL_DEFAULT_DAYS = max(1, env_int("APP_TRIAL_DEFAULT_DAYS", 5))
-APP_TRIAL_MAX_DAYS = max(APP_TRIAL_DEFAULT_DAYS, env_int("APP_TRIAL_MAX_DAYS", 7))
+CHANNEL_PREMIUM_DAYS = max(1, env_int("CHANNEL_PREMIUM_DAYS", int(_TELEGRAM_REWARD_FACTS.get("days", 10) or 10)))
+APP_TRIAL_DEFAULT_DAYS = max(1, env_int("APP_TRIAL_DEFAULT_DAYS", int(_TRIAL_FACTS.get("days", 5) or 5)))
+APP_TRIAL_MAX_DAYS = APP_TRIAL_DEFAULT_DAYS
 APP_ACCOUNT_TG_ID_BASE = max(9_000_000_000_000, env_int("APP_ACCOUNT_TG_ID_BASE", 9_000_000_000_000))
 OPENING_PREMIUM_DAYS = max(1, env_int("OPENING_PREMIUM_DAYS", 14))
 OPENING_PREMIUM_CAMPAIGN_KEY = (
@@ -676,7 +693,8 @@ class AppStartTrialIn(BaseModel):
     app_version: str | None = Field(default=None, max_length=32)
     locale: str | None = Field(default=None, max_length=32)
     time_zone: str | None = Field(default=None, max_length=64)
-    trial_days: int = Field(default=APP_TRIAL_DEFAULT_DAYS, ge=1, le=APP_TRIAL_MAX_DAYS)
+    # Backward-compatible input field. The server enforces the canonical trial duration.
+    trial_days: int | None = Field(default=None, ge=1, le=365)
 
 
 class ReviewCreateIn(BaseModel):
@@ -1575,13 +1593,6 @@ def _normalize_app_device_name(value: str | None, *, fallback: str = "Current de
     return text[:120]
 
 
-def _next_app_account_tg_id(s) -> int:
-    max_id = s.query(func.max(User.tg_id)).filter(User.tg_id >= int(APP_ACCOUNT_TG_ID_BASE)).scalar()
-    if max_id is None:
-        return int(APP_ACCOUNT_TG_ID_BASE)
-    return int(max_id) + 1
-
-
 def _build_app_device_rows(user: User) -> list[dict[str, Any]]:
     install_id = str(getattr(user, "app_install_id", "") or "").strip()
     if not install_id:
@@ -1614,115 +1625,6 @@ def _membership_check_tg_id(user: User | None) -> int:
     if bool(getattr(user, "is_app_user", False)):
         return _linked_telegram_id(user)
     return int(getattr(user, "tg_id", 0) or 0)
-
-
-def _create_app_telegram_start_code(s, *, account_tg_id: int) -> str:
-    action = f"app_link:{int(account_tg_id)}"
-    existing = (
-        s.query(StartLink)
-        .filter(StartLink.target_action == action)
-        .filter(StartLink.is_active == True)
-        .order_by(StartLink.updated_at.desc(), StartLink.id.desc())
-        .first()
-    )
-    if existing and str(existing.code or "").strip():
-        existing.updated_at = _utcnow()
-        s.flush()
-        return str(existing.code).strip().lower()
-
-    now = _utcnow()
-    for _ in range(10):
-        code = f"app{secrets.token_urlsafe(12).replace('-', '').replace('_', '').lower()}"[:32]
-        duplicate = s.query(StartLink.id).filter(func.lower(StartLink.code) == code).first()
-        if duplicate:
-            continue
-        row = StartLink(
-            code=code,
-            description=f"App Telegram link for {int(account_tg_id)}",
-            target_action=action[:64],
-            is_active=True,
-            created_at=now,
-            updated_at=now,
-        )
-        s.add(row)
-        s.flush()
-        return code
-    raise HTTPException(status_code=500, detail="Unable to create Telegram link")
-
-
-def _upsert_app_trial_user(*, s, payload: AppStartTrialIn, request: Request | None = None) -> tuple[User, bool]:
-    install_id = str(payload.install_id or "").strip()[:128]
-    if not install_id:
-        raise HTTPException(status_code=400, detail="install_id is required")
-
-    now = _utcnow()
-    trial_days = max(1, min(int(payload.trial_days or APP_TRIAL_DEFAULT_DAYS), int(APP_TRIAL_MAX_DAYS)))
-    device_name = _normalize_app_device_name(payload.device_name)
-    client_ip = _request_client_ip(request)
-    user = s.query(User).filter(User.app_install_id == install_id).first()
-    created = False
-
-    if not user:
-        tg_id = _next_app_account_tg_id(s)
-        user = User(
-            tg_id=int(tg_id),
-            username=f"app_{str(tg_id)[-6:]}",
-            uuid=str(uuid.uuid4()),
-            email=f"APP_{int(tg_id)}",
-            sub_type="FREE",
-            current_plan_code="trial",
-            created_at=now,
-            expiry_at=now + timedelta(days=trial_days),
-            is_active=True,
-            stars_paid=0,
-            total_gb=0,
-            trial_used=True,
-            tos_accepted=True,
-            first_purchase_done=False,
-            sub_token=_generate_sub_token(),
-            is_manual=False,
-            is_app_user=True,
-            display_name=device_name,
-            app_install_id=install_id,
-            app_device_name=device_name,
-            app_platform=str(payload.platform or "").strip()[:32],
-            app_os_version=str(payload.os_version or "").strip()[:64] or None,
-            app_version=str(payload.app_version or "").strip()[:32] or None,
-            app_locale=str(payload.locale or "").strip()[:32] or None,
-            app_timezone=str(payload.time_zone or "").strip()[:64] or None,
-            app_last_seen_at=now,
-            app_last_ip=client_ip or None,
-        )
-        mark_user_became_free(user, now=now)
-        s.add(user)
-        s.flush()
-        created = True
-    else:
-        user.is_app_user = True
-        user.display_name = device_name
-        user.app_device_name = device_name
-        user.app_platform = str(payload.platform or "").strip()[:32] or user.app_platform
-        user.app_os_version = str(payload.os_version or "").strip()[:64] or user.app_os_version
-        user.app_version = str(payload.app_version or "").strip()[:32] or user.app_version
-        user.app_locale = str(payload.locale or "").strip()[:32] or user.app_locale
-        user.app_timezone = str(payload.time_zone or "").strip()[:64] or user.app_timezone
-        user.app_last_seen_at = now
-        user.app_last_ip = client_ip or user.app_last_ip
-        if not user.sub_token:
-            user.sub_token = _generate_sub_token()
-        if not user.username:
-            user.username = f"app_{str(user.tg_id)[-6:]}"
-        if not user.current_plan_code:
-            user.current_plan_code = "trial"
-        if not user.sub_type:
-            user.sub_type = "FREE"
-        if not user.expiry_at:
-            user.expiry_at = now + timedelta(days=trial_days)
-        if user.is_active is None:
-            user.is_active = True
-        s.flush()
-
-    return user, created
 
 
 def _ensure_user_row_for_login(*, tg_id: int, username: str | None = None) -> None:
@@ -3839,7 +3741,7 @@ async def auth_session(request: Request, x_telegram_init_data: str = Header(defa
         user = s.query(User).filter(User.tg_id == tg_id).first()
     finally:
         s.close()
-    device_name = _normalize_app_device_name(
+    device_name = app_first_service.normalize_app_device_name(
         (getattr(user, "app_device_name", None) if user else None)
         or (getattr(user, "display_name", None) if user else None),
     )
@@ -3865,7 +3767,13 @@ async def auth_session(request: Request, x_telegram_init_data: str = Header(defa
 async def client_start_trial(payload: AppStartTrialIn, request: Request) -> dict:
     s = SessionLocal()
     try:
-        user, created = _upsert_app_trial_user(s=s, payload=payload, request=request)
+        user, created = app_first_service.upsert_app_trial_user(
+            s=s,
+            payload=payload,
+            now=_utcnow(),
+            trial_days=APP_TRIAL_DEFAULT_DAYS,
+            request_client_ip=_request_client_ip(request),
+        )
         s.commit()
         s.refresh(user)
     except HTTPException:
@@ -3902,13 +3810,26 @@ async def client_start_trial(payload: AppStartTrialIn, request: Request) -> dict
     finally:
         await panel.close()
 
+    start_trial_parts = app_first_service.build_start_trial_response_parts(
+        user=user,
+        session_token=session_token,
+        now=_utcnow(),
+        sync_ok=bool(sync_ok),
+        build_access_policy=_build_access_policy,
+        trial_days=APP_TRIAL_DEFAULT_DAYS,
+        channel_bonus_days=CHANNEL_PREMIUM_DAYS,
+    )
+
     return {
         "ok": True,
         "created": bool(created),
         "session_token": session_token,
         "account_id": str(int(user.tg_id)),
-        "subscription_url": build_subscription_url(str(user.sub_token or "")),
+        "subscription_url": start_trial_parts["subscription_url"],
         "sync_ok": bool(sync_ok),
+        "session": start_trial_parts["session"],
+        "access": start_trial_parts["access"],
+        "provisioning": start_trial_parts["provisioning"],
     }
 
 
@@ -3925,7 +3846,11 @@ async def client_telegram_link_start(request: Request, x_telegram_init_data: str
         linked_username = str(getattr(user, "linked_telegram_username", "") or "").strip()
         start_code = ""
         if not linked_id:
-            start_code = _create_app_telegram_start_code(s, account_tg_id=int(user.tg_id))
+            start_code = app_first_service.create_app_telegram_start_code(
+                s,
+                account_tg_id=int(user.tg_id),
+                now=_utcnow(),
+            )
         s.commit()
         bot_username = (BOT_USERNAME or "pokrov_vpnbot").lstrip("@")
         channel_username = (PUBLIC_CHANNEL or "").lstrip("@").strip()
@@ -5397,71 +5322,15 @@ async def channel_subscriber_check(request: Request, x_telegram_init_data: str =
         user = s.query(User).filter_by(tg_id=tg_id).first()
         if not user:
             raise HTTPException(status_code=404, detail="User not found")
-        membership_tg_id = _membership_check_tg_id(user)
     finally:
         s.close()
 
-    if membership_tg_id <= 0:
-        return {
-            "ok": True,
-            "subscriber": False,
-            "reason": "telegram_link_required",
-            "points_granted": 0,
-            "campaign_marked": False,
-            "link_required": True,
-        }
-
-    is_member, reason = await _is_channel_member(PUBLIC_CHANNEL, membership_tg_id)
-    if not is_member:
-        return {
-            "ok": True,
-            "subscriber": False,
-            "reason": reason,
-            "points_granted": 0,
-            "campaign_marked": False,
-            "link_required": False,
-        }
-
-    points_granted = 0
-    campaign_marked = False
-    s = SessionLocal()
-    try:
-        user = s.query(User).filter_by(tg_id=tg_id).first()
-        if not user:
-            raise HTTPException(status_code=404, detail="User not found")
-
-        campaign_marked = _mark_campaign_once(
-            s,
-            tg_id=tg_id,
-            campaign_key=CHANNEL_SUBSCRIBER_CAMPAIGN_KEY,
-        )
-        if campaign_marked:
-            points_granted = int(
-                award_points(
-                    tg_id=tg_id,
-                    amount=100,
-                    reason="channel_subscribe_bonus",
-                    expires_days=POINTS_EXPIRY_DAYS,
-                )
-            )
-        s.commit()
-    except HTTPException:
-        s.rollback()
-        raise
-    except Exception:
-        s.rollback()
-        raise
-    finally:
-        s.close()
-
-    return {
-        "ok": True,
-        "subscriber": True,
-        "reason": "member",
-        "points_granted": int(points_granted),
-        "campaign_marked": bool(campaign_marked),
-        "link_required": False,
-    }
+    return await channel_bonus_service.build_channel_subscriber_check_response(
+        user=user,
+        channel_username=PUBLIC_CHANNEL,
+        bonus_days=CHANNEL_PREMIUM_DAYS,
+        is_channel_member=_is_channel_member,
+    )
 
 
 @app.post("/api/bonuses/channel/claim")
@@ -5469,142 +5338,27 @@ async def claim_channel_bonus(request: Request, x_telegram_init_data: str = Head
     auth_user = _require_auth_user(x_telegram_init_data, request=request)
     tg_id = int(auth_user.get("id", 0))
     if not PUBLIC_CHANNEL:
-        _track_bonus_event(tg_id=tg_id, event_name="promo_channel_denied", meta={"reason": "channel_not_configured"})
         raise HTTPException(status_code=400, detail="Public channel is not configured")
 
     s = SessionLocal()
     try:
         user = s.query(User).filter_by(tg_id=tg_id).first()
         if not user:
-            _track_bonus_event(tg_id=tg_id, event_name="promo_channel_denied", meta={"reason": "user_not_found"})
             raise HTTPException(status_code=404, detail="User not found")
-        if not bool(getattr(user, "tos_accepted", False)):
-            _track_bonus_event(tg_id=tg_id, event_name="promo_channel_denied", meta={"reason": "tos_required"})
-            raise HTTPException(status_code=400, detail="Сначала примите оферту в боте (/start)")
-        if (user.sub_type or "").upper() == "MANUAL":
-            _track_bonus_event(tg_id=tg_id, event_name="promo_channel_denied", meta={"reason": "manual_account"})
-            raise HTTPException(status_code=400, detail="Bonus is disabled for manual accounts")
-        if _has_campaign_mark(s, tg_id=tg_id, campaign_key=OPENING_PREMIUM_CAMPAIGN_KEY):
-            _track_bonus_event(
-                tg_id=tg_id,
-                event_name="promo_channel_denied",
-                meta={"reason": "opening_bonus_conflict", "campaign_key": OPENING_PREMIUM_CAMPAIGN_KEY},
-            )
-            raise HTTPException(
-                status_code=400,
-                detail="Для этого аккаунта уже активирован промо-бонус по ссылке. Бонус за канал недоступен.",
-            )
-        if getattr(user, "channel_bonus_claimed_at", None):
-            _track_bonus_event(
-                tg_id=tg_id,
-                event_name="promo_channel_already_claimed",
-                meta={"days": int(CHANNEL_PREMIUM_DAYS), "claimed_at": _safe_iso(user.channel_bonus_claimed_at)},
-            )
-            return {
-                "ok": True,
-                "already_claimed": True,
-                "premium_days": int(CHANNEL_PREMIUM_DAYS),
-                "claimed_at": _safe_iso(user.channel_bonus_claimed_at),
-                "expiry_at": _safe_iso(user.expiry_at),
-                "sub_type": user.sub_type,
-                "channel": PUBLIC_CHANNEL,
-            }
-        if (user.sub_type or "").upper() not in {"FREE", "BONUS", "TRIAL"}:
-            _track_bonus_event(
-                tg_id=tg_id,
-                event_name="promo_channel_denied",
-                meta={"reason": "not_start_mode", "sub_type": str(user.sub_type or "")},
-            )
-            raise HTTPException(status_code=400, detail="Бонус доступен только в стартовом режиме")
-
-        membership_tg_id = _membership_check_tg_id(user)
-        if membership_tg_id <= 0:
-            _track_bonus_event(
-                tg_id=tg_id,
-                event_name="promo_channel_denied",
-                meta={"reason": "telegram_link_required"},
-            )
-            raise HTTPException(status_code=400, detail="Сначала привяжите Telegram к аккаунту POKROV VPN")
-
-        is_member, reason = await _is_channel_member(PUBLIC_CHANNEL, membership_tg_id)
-        if not is_member:
-            normalized_reason = str(reason or "").strip().lower()
-            if normalized_reason in {"left", "kicked", "not_member"}:
-                normalized_reason = "not_member"
-            if normalized_reason == "not_member":
-                _track_bonus_event(tg_id=tg_id, event_name="promo_channel_denied", meta={"reason": "not_member"})
-                raise HTTPException(status_code=400, detail="Сначала подпишитесь на канал и повторите проверку")
-            _track_bonus_event(
-                tg_id=tg_id,
-                event_name="promo_channel_denied",
-                meta={"reason": "membership_check_failed", "raw_reason": str(reason or "")[:120]},
-            )
-            raise HTTPException(status_code=502, detail=f"Не удалось проверить подписку: {reason}")
-
-        now = _utcnow()
-        days = max(1, int(CHANNEL_PREMIUM_DAYS))
-        old_sub = (user.sub_type or "").upper()
-
-        if old_sub in {"FREE", "BONUS", "TRIAL"}:
-            # Freemium bonus windows are anchored from now.
-            user.expiry_at = now + timedelta(days=days)
-        else:
-            cur = user.expiry_at if user.expiry_at and user.expiry_at > now else now
-            user.expiry_at = cur + timedelta(days=days)
-
-        user.sub_type = "BONUS"
-        user.current_plan_code = "channel_bonus"
-        user.is_active = True
-        user.channel_bonus_claimed_at = now
-        user.channel_bonus_active = True
-        user.channel_bonus_expires_at = user.expiry_at
-        user.channel_bonus_revoked_at = None
-        first_channel_mark = _mark_campaign_once(
-            s,
+        result = await channel_bonus_service.claim_channel_bonus(
+            s=s,
+            user=user,
             tg_id=tg_id,
-            campaign_key=CHANNEL_SUBSCRIBER_CAMPAIGN_KEY,
+            public_channel=PUBLIC_CHANNEL,
+            bonus_days=CHANNEL_PREMIUM_DAYS,
+            opening_bonus_campaign_key=OPENING_PREMIUM_CAMPAIGN_KEY,
+            subscriber_campaign_key=CHANNEL_SUBSCRIBER_CAMPAIGN_KEY,
+            points_expiry_days=POINTS_EXPIRY_DAYS,
+            is_channel_member=_is_channel_member,
+            sync_user_after_paid_bonus=_sync_user_after_paid_bonus,
         )
-        points_granted = 0
-        if first_channel_mark:
-            points_granted = award_points(
-                tg_id=tg_id,
-                amount=100,
-                reason="channel_subscribe_bonus",
-                expires_days=POINTS_EXPIRY_DAYS,
-            )
-        s.commit()
-        s.refresh(user)
-        try:
-            sync_ok = bool(await _sync_user_after_paid_bonus(user))
-        except Exception as exc:
-            logger.warning("channel bonus sync failed tg_id=%s err=%s", tg_id, exc)
-            sync_ok = False
-
-        return {
-            "ok": True,
-            "already_claimed": False,
-            "premium_days": days,
-            "claimed_at": _safe_iso(user.channel_bonus_claimed_at),
-            "expiry_at": _safe_iso(user.expiry_at),
-            "sub_type": user.sub_type,
-            "channel": PUBLIC_CHANNEL,
-            "sync_ok": bool(sync_ok),
-            "points_granted": int(points_granted),
-            "linked_telegram_id": _linked_telegram_id(user) or None,
-            "linked_telegram_username": str(getattr(user, "linked_telegram_username", "") or "").strip() or None,
-        }
+        return result
     finally:
-        if 'sync_ok' in locals():
-            _track_bonus_event(
-                tg_id=tg_id,
-                event_name="promo_channel_activated",
-                meta={
-                    "days": int(CHANNEL_PREMIUM_DAYS),
-                    "channel": PUBLIC_CHANNEL,
-                    "sync_ok": bool(sync_ok),
-                    "points_granted": int(points_granted),
-                },
-            )
         s.close()
 
 

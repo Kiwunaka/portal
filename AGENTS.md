@@ -30,7 +30,7 @@ Use it to answer four questions before touching code:
 - Canonical checkout host: `https://pay.pokrov.space/checkout/`
 - Legacy compatibility host: `kiwunaka.space`
 - Canonical control-plane host: `82.21.114.104`
-- Android public release is blocked until release-build localhost/control-surface checks prove the client is safe
+- Android public release is blocked until the repo/static gate pack is green and a physical-device release-build localhost/control-surface audit proves the client is safe
 - RU-origin probe readiness is an operational dependency, not a guaranteed property of `mini`
 
 ## Must-Read Order
@@ -120,6 +120,8 @@ Current local authority:
 - [shared/copy.ts](C:/Users/kiwun/Documents/ai/VPN/shared/copy.ts)
 - [copy/catalog.ru.json](C:/Users/kiwun/Documents/ai/VPN/copy/catalog.ru.json)
 - [shared/portal-config.ts](C:/Users/kiwun/Documents/ai/VPN/shared/portal-config.ts)
+- [shared/product-facts.json](C:/Users/kiwun/Documents/ai/VPN/shared/product-facts.json)
+- [shared/public-urls.json](C:/Users/kiwun/Documents/ai/VPN/shared/public-urls.json)
 
 ### `shared/`
 
@@ -129,6 +131,9 @@ Current local authority:
 
 - [shared/copy.ts](C:/Users/kiwun/Documents/ai/VPN/shared/copy.ts)
 - [shared/portal-config.ts](C:/Users/kiwun/Documents/ai/VPN/shared/portal-config.ts)
+- [shared/product-facts.json](C:/Users/kiwun/Documents/ai/VPN/shared/product-facts.json)
+- [shared/public-urls.json](C:/Users/kiwun/Documents/ai/VPN/shared/public-urls.json)
+- [shared/design-tokens.json](C:/Users/kiwun/Documents/ai/VPN/shared/design-tokens.json)
 
 ### `infra/`
 
@@ -193,7 +198,7 @@ When behavior changes, update the matching canonical docs in the same task.
 ### Marketing task
 
 1. Read the must-read set plus product docs.
-2. Inspect `marketing/src/`, `shared/copy.ts`, `copy/catalog.ru.json`, and `shared/portal-config.ts`.
+2. Inspect `marketing/src/`, `shared/copy.ts`, `copy/catalog.ru.json`, `shared/portal-config.ts`, `shared/product-facts.json`, and `shared/public-urls.json`.
 3. Keep new public copy and CTA changes centralized in shared/catalog sources.
 
 ### Observability / Capacity task
@@ -245,7 +250,7 @@ For node-access diagnostics and release handoffs, explicitly distinguish:
 Production source of truth:
 
 - Postgres from `DATABASE_URL`
-- shared hostnames and public copy from `shared/portal-config.ts` and `shared/copy.ts`
+- shared hostnames, public copy, and locked cross-surface facts from `shared/portal-config.ts`, `shared/copy.ts`, `shared/product-facts.json`, `shared/public-urls.json`, and `shared/design-tokens.json`
 
 Not source of truth:
 

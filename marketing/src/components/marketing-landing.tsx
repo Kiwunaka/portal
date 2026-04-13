@@ -2,10 +2,11 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 import JsonLd from "./json-ld";
-import { CANONICAL_CLIENT_BRAND, CANONICAL_MARKETING_SITE_URL, getCopyText, getPokrovPublicConfig } from "../lib/pokrov";
+import { CANONICAL_CLIENT_BRAND, getCopyText, getPokrovPublicConfig } from "../lib/pokrov";
 import {
   buildFaqJsonLd,
   buildMarketingUrl,
+  MARKETING_FAQ,
   buildSoftwareApplicationJsonLd,
   DEFAULT_MARKETING_SHARE_IMAGE_HEIGHT,
   DEFAULT_MARKETING_SHARE_IMAGE_PATH,
@@ -137,37 +138,6 @@ const HERO_SIGNALS: HeroSignal[] = [
   },
 ];
 
-const FAQ = [
-  {
-    q: getCopyText("marketing.faq.1.q", "Как мне начать пользоваться сервисом?"),
-    a: getCopyText(
-      "marketing.faq.1.a",
-      "Скачайте приложение для Android или Windows, включите бесплатный 5-дневный период и проверьте сервис в своих обычных сценариях.",
-    ),
-  },
-  {
-    q: getCopyText("marketing.faq.2.q", "Что я получу во время бесплатного теста?"),
-    a: getCopyText(
-      "marketing.faq.2.a",
-      "Вы получаете полноценный маршрут сервиса: те же основные локации, скорость и стабильность, что и у платного доступа.",
-    ),
-  },
-  {
-    q: getCopyText("marketing.faq.3.q", "Как оформить платную подписку?"),
-    a: getCopyText(
-      "marketing.faq.3.a",
-      "Сначала откройте кабинет или персональный маршрут из Telegram. Уже после этого система покажет доступные способы оплаты и переведёт в кассу.",
-    ),
-  },
-  {
-    q: getCopyText("marketing.faq.4.q", "Куда обратиться, если возникнут вопросы?"),
-    a: getCopyText(
-      "marketing.faq.4.a",
-      "Напишите в @pokrov_supportbot или на support@pokrov.space. Если нужно, поддержка переведёт и в резервный маршрут оплаты.",
-    ),
-  },
-];
-
 const RELATED_PAGES = [
   { href: "/bystryy-vpn-na-telefon/", label: "VPN на телефон" },
   { href: "/vpn-na-iphone-android-windows/", label: "VPN на Android и Windows" },
@@ -181,7 +151,7 @@ function firstNonEmpty(...values: Array<string | undefined>): string {
 }
 
 function buildInstallHelpHref(): string {
-  return firstNonEmpty(config.docsUrl, `${CANONICAL_MARKETING_SITE_URL}/`);
+  return buildMarketingUrl("/install/");
 }
 
 function buildCheckoutHref(planCode: string): string {
@@ -435,12 +405,7 @@ export default function MarketingLanding({
   });
   const faqJsonLd =
     pagePath === "/"
-      ? buildFaqJsonLd(
-          FAQ.map((item) => ({
-            question: item.q,
-            answer: item.a,
-          })),
-        )
+      ? buildFaqJsonLd(MARKETING_FAQ)
       : null;
   const relatedTitle = clusterTitle || "Сценарии и ответы под ваш запрос";
   const relatedBody =
@@ -463,7 +428,7 @@ export default function MarketingLanding({
             <Link href="/">Главная</Link>
             <Link href="/bystryy-vpn-na-telefon/">На телефон</Link>
             <Link href="/vpn-na-iphone-android-windows/">Устройства</Link>
-            <a href="#downloads">Приложение</a>
+            <Link href="/install/">Приложение</Link>
             <a href="#pricing">Планы</a>
             <a href="#faq">FAQ</a>
             <a href={config.webappUrl} target="_blank" rel="noreferrer" className="lp-chip">
@@ -479,20 +444,22 @@ export default function MarketingLanding({
       <main id="main-content" className="lp-main">
         <section className="lp-hero">
           <div className="lp-hero-copy">
-            <div className="lp-kicker">{heroKicker || getCopyText("marketing.hero.kicker", "POKROV VPN • первые 5 дней бесплатно")}</div>
-            <p className="lp-overline">Consumer-first VPN с тихим premium маршрутом для Android и Windows.</p>
+            <div className="lp-kicker">{heroKicker || getCopyText("marketing.hero.kicker", "POKROV VPN • 5 дней бесплатного доступа")}</div>
+            <p className="lp-overline">
+              {getCopyText("marketing.hero.overline", "Consumer-first VPN с app-first стартом для Android и Windows.")}
+            </p>
             <h1>{heroTitle || getCopyText("marketing.hero.title", "Свободный интернет, который начинается с приложения")}</h1>
             <p className="lp-hero-lead">
               {heroSubtitle ||
                 getCopyText(
                   "marketing.hero.subtitle",
-                  "Сначала скачиваете приложение для Android или Windows, потом спокойно проверяете сервис в реальных сценариях. Кабинет и Telegram остаются для управления, оплаты и поддержки, а не подменяют сам продукт.",
+                  "Сначала установите приложение для Android или Windows, включите 5 дней доступа и спокойно проверьте сервис в реальных сценариях. Кабинет и Telegram остаются для управления, продления и поддержки, а не подменяют сам продукт.",
                 )}
             </p>
             <div className="lp-hero-actions">
-              <a href="#downloads" className="lp-btn lp-btn--primary">
-                {getCopyText("marketing.hero.primary_cta", "Начать бесплатно")}
-              </a>
+              <Link href="/install/" className="lp-btn lp-btn--primary">
+                {getCopyText("marketing.hero.primary_cta", "Установить и начать")}
+              </Link>
               <a href={config.webappUrl} target="_blank" rel="noreferrer" className="lp-btn lp-btn--ghost">
                 {getCopyText("marketing.hero.secondary_cta", "Открыть кабинет")}
               </a>
@@ -678,7 +645,7 @@ export default function MarketingLanding({
                   <div className="lp-price">{plan.price}</div>
                   <p>{plan.note}</p>
                   <Link href={buildCheckoutHref(plan.code)} className="lp-btn lp-btn--ghost">
-                    {getCopyText("marketing.plan.cta", "Открыть кабинет и продолжить")}
+                    {getCopyText("marketing.plan.cta", "Выбрать план и продолжить")}
                   </Link>
                 </article>
               ))}
@@ -719,16 +686,16 @@ export default function MarketingLanding({
                 <p>Короткие ответы держат маршрут понятным: приложение сначала, кабинет и Telegram только там, где они действительно нужны.</p>
               </div>
               <div className="lp-faq-list">
-                {FAQ.map((item) => (
-                  <div key={item.q}>
+                {MARKETING_FAQ.map((item) => (
+                  <div key={item.question}>
                     <details className="lp-faq-item">
                       <summary className="lp-faq-q">
-                        <span>{item.q}</span>
+                        <span>{item.question}</span>
                         <span className="lp-faq-icon" aria-hidden="true">
                           +
                         </span>
                       </summary>
-                      <p className="lp-faq-a">{item.a}</p>
+                      <p className="lp-faq-a">{item.answer}</p>
                     </details>
                   </div>
                 ))}

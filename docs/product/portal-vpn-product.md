@@ -1,6 +1,6 @@
 # POKROV VPN Product Overview
 
-Last updated: 2026-04-12
+Last updated: 2026-04-13
 
 ## Document Status
 
@@ -46,21 +46,26 @@ Telegram remains a secondary path for linking, bonus claim, recovery, support en
 
 - release target remains `Android + Windows`
 - `Windows` stays in scope for the public `v1` ship when its normal gates are green
-- `Android` remains release-blocked until a real release-build audit proves that localhost listeners and local control surfaces are either disabled or safely authenticated
+- `Android` remains release-blocked until the repo/static gate pack is green and a real release-build audit proves that localhost listeners and local control surfaces are either disabled or safely authenticated
+- as of `2026-04-13`, `python scripts/release_orchestrator.py --gates-only` is green for the documented repo/static/client gate pack; see `docs/audit-artifacts/release_gate_report.md` for the latest local snapshot
+- emulator or adb-only audit runs are valid preflight for adb wiring and timing, but final Android publication still requires `python scripts/android_localhost_audit.py` against a release-installed build on physical hardware before connect, after connect, and after disconnect
 - do not describe Android app-isolation features such as split tunneling, Private Space, Knox, Shelter, or similar tooling as sufficient mitigations for an unauthenticated local control surface
 
 ## Russia-Aware Routing Direction
 
 Current product direction for Russian users:
 
-- recommended preset: `Все, кроме РФ`
-- additional presets: `Global` and `Только заблокированное`
-- `Все, кроме РФ` is meant to keep `geoip:ru` plus private and reserved networks direct while proxying the rest
+- recommended preset: `All except RU`
+- currently implemented public routing modes: `Global` and `All except RU`
+- hidden follow-up preset: `Blocked only`
+- `All except RU` is meant to keep `geoip:ru` plus private and reserved networks direct while proxying the rest
 - DNS behavior must be selected explicitly per routing mode rather than being hidden behind one hardcoded preset
 
 Current truth:
 
-- the shipping client already has a `Region.ru` placeholder
+- the shipping client already has an explicit routing-mode layer for `Global` and `All except RU`
+- the shipping client still carries a `Region.ru` placeholder, but that placeholder is not the product authority
+- `Blocked only` remains internal or compatibility-only until geo assets, DNS split behavior, and leak checks are complete
 - the full routing strategy and geo-asset wiring are not yet complete
 - do not market RU-special routing as fully shipped until the real strategy layer, DNS split checks, and release smoke are in place
 
@@ -76,6 +81,8 @@ Primary navigation:
 4. `Profile`
 5. `Support`
 
+Legacy `/config-options`, `/about`, and `/logs` may remain as compatibility redirects only. Public IA is the five-tab shell above.
+
 ### Marketing Site
 
 `marketing/` is the public acquisition and discovery surface for `POKROV VPN`.
@@ -83,6 +90,7 @@ Primary navigation:
 Current public role:
 
 - `https://pokrov.space/` is the fresh-entry homepage for new users
+- `https://pokrov.space/install/` is the dedicated install-help surface used when a public download CTA cannot resolve directly to a real artifact
 - `https://pokrov.space/checkout/` is the public checkout explainer and plan-intent page
 - indexable landing pages can capture platform, use-case, or Telegram intent, but they must converge to the same product facts and CTA set
 - public legal pages also live on the marketing surface
@@ -239,6 +247,10 @@ Support should be reachable from:
 - the client app
 - the WebApp
 - helpbot `@pokrov_supportbot`
+- `support@pokrov.space`
+
+Feedback and public-review intake should remain reachable through:
+
 - feedback bot `@pokrov_feedbackbot`
 
 Support payloads should carry enough device and app context for operator diagnosis.
@@ -291,6 +303,7 @@ Current major product risks are:
 - app-first copy drifting back into Telegram-first wording
 - public pricing or checkout behaving like a decorative vitrine instead of a real continuation flow
 - Android and Windows release wiring drifting away from canonical artifact URLs
+- public download copy treating `AAB`, `MSIX`, or portable `ZIP` artifacts as first-layer user buttons before those surfaces are actually exposed
 - Apple readiness notes being mistaken for a public ship promise
 - Android release being treated as ready before localhost listener and control-surface safety is proven in a release build
 - RU routing and DNS presets being described as finished before the real strategy layer and leak checks ship

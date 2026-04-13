@@ -2,6 +2,9 @@ import importlib.util
 import sys
 import unittest
 from pathlib import Path
+from tempfile import TemporaryDirectory
+from unittest import mock
+from subprocess import CompletedProcess
 
 
 def _load_module():
@@ -36,6 +39,38 @@ tcp   LISTEN 0      50     [::1]:7078        *:*              users:(("app_proce
                 self.module.Listener(protocol="tcp", state="LISTEN", host="127.0.0.1", port=10808, process_name="libbox", pid=1234),
                 self.module.Listener(protocol="udp", state="UNCONN", host="127.0.0.1", port=16450, process_name="libbox", pid=1234),
                 self.module.Listener(protocol="tcp", state="LISTEN", host="::1", port=7078, process_name="app_process", pid=1234),
+            ],
+        )
+
+    def test_parse_ss_listeners_ignores_wide_header_spacing(self) -> None:
+        raw = """
+Netid  State      Recv-Q Send-Q Local Address:Port               Peer Address:Port
+udp    UNCONN     0      0      127.0.0.1:9001                  0.0.0.0:*
+"""
+
+        listeners = self.module._parse_ss_listeners(raw)
+
+        self.assertEqual(
+            listeners,
+            [
+                self.module.Listener(protocol="udp", state="UNCONN", host="127.0.0.1", port=9001, process_name="", pid=None),
+            ],
+        )
+
+    def test_parse_ss_listeners_ignores_unexpected_banner_lines(self) -> None:
+        raw = """
+adb server version (32) doesn't match this client (41); killing...
+* daemon started successfully
+error: device still authorizing
+udp    UNCONN     0      0      127.0.0.1:9001               0.0.0.0:*
+"""
+
+        listeners = self.module._parse_ss_listeners(raw)
+
+        self.assertEqual(
+            listeners,
+            [
+                self.module.Listener(protocol="udp", state="UNCONN", host="127.0.0.1", port=9001, process_name="", pid=None),
             ],
         )
 
@@ -98,6 +133,75 @@ tcp   LISTEN 0      50     [::1]:7078        *:*              users:(("app_proce
         )
 
         self.assertEqual(failures, [])
+
+    def test_adb_executable_prefers_sdk_platform_tools_on_windows(self) -> None:
+        with TemporaryDirectory() as tmp:
+            sdk_root = Path(tmp)
+            adb_path = sdk_root / "platform-tools" / "adb.exe"
+            adb_path.parent.mkdir(parents=True)
+            adb_path.write_text("", encoding="utf-8")
+
+            self.module._adb_executable.cache_clear()
+            with mock.patch.dict(
+                self.module.os.environ,
+                {
+                    "ANDROID_SDK_ROOT": str(sdk_root),
+                    "LOCALAPPDATA": str(sdk_root / "ignored"),
+                },
+                clear=False,
+            ):
+                with mock.patch.object(self.module.os, "name", "nt"):
+                    with mock.patch.object(self.module.shutil, "which", return_value="C:\\Windows\\adb.exe"):
+                        self.assertEqual(self.module._adb_executable(), str(adb_path))
+            self.module._adb_executable.cache_clear()
+
+    def test_adb_executable_respects_explicit_override(self) -> None:
+        self.module._adb_executable.cache_clear()
+        with mock.patch.dict(
+            self.module.os.environ,
+            {
+                "ANDROID_AUDIT_ADB": "D:\\tools\\adb.exe",
+                "ANDROID_SDK_ROOT": "",
+                "ANDROID_HOME": "",
+                "LOCALAPPDATA": "",
+            },
+            clear=False,
+        ):
+            with mock.patch.object(self.module.shutil, "which", return_value=None):
+                self.assertEqual(self.module._adb_executable(), "D:\\tools\\adb.exe")
+        self.module._adb_executable.cache_clear()
+
+    def test_recoverable_adb_error_detects_missing_or_offline_devices(self) -> None:
+        self.assertTrue(self.module._is_recoverable_adb_error("adb.exe: device 'emulator-5554' not found"))
+        self.assertTrue(self.module._is_recoverable_adb_error("error: device offline"))
+        self.assertTrue(self.module._is_recoverable_adb_error("error: device still authorizing"))
+        self.assertFalse(self.module._is_recoverable_adb_error("permission denied"))
+
+    def test_collect_listeners_recovers_after_transient_adb_failure(self) -> None:
+        failure = CompletedProcess(
+            args=["adb", "shell", "ss -ltnup"],
+            returncode=1,
+            stdout="",
+            stderr="adb.exe: device 'emulator-5554' not found",
+        )
+        success = CompletedProcess(
+            args=["adb", "shell", "ss -ltnup"],
+            returncode=0,
+            stdout="udp UNCONN 0 0 127.0.0.1:9001 0.0.0.0:*\n",
+            stderr="",
+        )
+
+        with mock.patch.object(self.module, "_run_adb_shell", side_effect=[failure, success]):
+            with mock.patch.object(self.module, "_ensure_device_ready") as ensure_device_ready:
+                listeners = self.module._collect_listeners("emulator-5554")
+
+        ensure_device_ready.assert_called_once_with("emulator-5554")
+        self.assertEqual(
+            listeners,
+            [
+                self.module.Listener(protocol="udp", state="UNCONN", host="127.0.0.1", port=9001, process_name="", pid=None),
+            ],
+        )
 
 
 if __name__ == "__main__":

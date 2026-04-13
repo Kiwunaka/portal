@@ -1,6 +1,6 @@
 # Deployment And Access
 
-Last updated: 2026-04-09
+Last updated: 2026-04-13
 
 ## Document Status
 
@@ -178,28 +178,36 @@ At minimum, verify:
 
 Release gate rule:
 
-- full release gate should include backend tests, `client_security_smoke.py`, `api_lifecycle_smoke.py`, marketing/webapp builds, and browser E2E from `webapp/e2e/`
+- full `release_gate_check.py` should stay green; by default that means the release `pytest` matrix, admin/auth regression, `client_security_smoke.py`, `python scripts/run_client_release_gate.py test --suite full`, `api_lifecycle_smoke.py`, link checks, marketing/webapp production builds, admin webapp smoke, browser E2E from `webapp/e2e/`, and `ui_visual_smoke.py`
 - marketing release readiness also requires `python scripts/check-links.py` and `python scripts/ui_visual_smoke.py` to stay green after every CTA, legal, SEO, or branding change
 - `verify_brain_ready.py` should validate both the canonical connect host and the legacy API compatibility path before a release is considered healthy
-- `client_security_smoke.py` is the static repo-level gate for default local-surface settings, RU preset groundwork, and known localhost control paths; it does not replace the Android release-build port and reachability audit
+- `client_security_smoke.py` is the static repo-level gate for default local-surface settings, routing preset groundwork, and known localhost control paths; it does not replace the Android release-build port and reachability audit
 - set `ANDROID_AUDIT_SERIAL=<device-serial>` when running `release_gate_check.py` if you want the opt-in adb localhost audit folded into the same markdown report
-- Android public release must also include a release-build localhost-listener audit covering proxy, DNS, command-server, and admin/control surfaces before connect, after connect, and after disconnect
+- set `ANDROID_AUDIT_CONNECT_WAIT_SEC` and `ANDROID_AUDIT_DISCONNECT_WAIT_SEC` when the adb localhost audit needs non-default timing in the same report
+- add `--client-platform-gates windows,android-apk,android-aab` or set `CLIENT_PLATFORM_GATES` when you want the same markdown report to include artifact-producing client builds
+- Android public release must also include a release-build localhost-listener audit covering proxy, DNS, command-server, and admin/control surfaces before connect, after connect, and after disconnect; green repo/static gates are necessary but not sufficient
 - the Android release gate fails if an unauthenticated local SOCKS, HTTP proxy, Clash API, command, or similar admin surface remains reachable
-- client release validation must include routing preset smoke for `Global` and `Все, кроме РФ` plus DNS split and leak checks on Android and Windows
+- public client release validation must include routing preset smoke for `Global` and `All except RU`, plus DNS split and leak checks on Android and Windows
+- `Blocked only` remains internal or compatibility-only until geo assets and DNS behavior are complete enough for honest public verification
 
 Current local gate entrypoints:
 
 ```powershell
 python scripts/release_gate_check.py
+python scripts/release_gate_check.py --client-platform-gates windows,android-apk,android-aab
 python scripts/release_orchestrator.py --gates-only
 ```
 
 Notes:
 
 - `release_gate_check.py` is the canonical local report generator for the public-v1 gate set.
-- `release_orchestrator.py --gates-only` should be the default operator path when you want the same gate flow in one command without deploy.
+- `release_gate_check.py --quick` swaps the default full client Flutter suite for `python scripts/run_client_release_gate.py test --suite portal`.
+- `release_orchestrator.py --gates-only` is the one-command wrapper for the same gate pack, but it intentionally exits before release handoff sync, backend deploy, static deploy, and post-deploy verify.
+- latest verified local run: `python scripts/release_orchestrator.py --gates-only` exited `0` on `2026-04-13`; see `docs/audit-artifacts/release_gate_report.md` for the current local gate snapshot
 - pass `--brain-ip 82.21.114.104` to either command when you also want `predeploy_node_readiness.py` folded into the same run.
-- when signed client artifacts are already published, pass `--release-env-file external/client-fork/release-links.env` to `release_orchestrator.py` so runtime `APP_*` download URLs are synced onto brain before deploy or verify.
+- `--release-env-file` cannot be combined with `--gates-only`; use the full `release_orchestrator.py` flow when you need runtime `APP_*` download URLs synced onto brain before deploy or verify.
+- without `ANDROID_AUDIT_SERIAL`, a green gate report does not replace the required on-device Android localhost audit
+- emulator-backed adb audits are preflight only and do not clear public Android release
 - when node reachability is part of a release handoff, report `current-origin`, `brain-origin`, and `RU-origin` results separately instead of collapsing them into one verdict
 
 ## Telegram OAuth / OIDC Runtime
@@ -288,20 +296,29 @@ Default artifact names:
 - `pokrov-vpn-windows-setup-x64.msix`
 - `pokrov-vpn-windows-portable-x64.zip`
 
-Local build-smoke commands:
+Current public download surfaces expose only:
+
+- Android `Play` / `APK` / mirror URL
+- Windows `EXE` / mirror URL
+- install/docs fallback via `APP_DOCS_URL`
+
+Treat `AAB`, `MSIX`, and portable `ZIP` as release/store/operator artifacts unless a later runtime payload and public surface explicitly expose them.
+
+Canonical local client verification commands:
 
 ```powershell
-cd external/client-fork/app
-flutter build windows --release
-$env:PATH = "$PWD\build\windows\x64\runner\Release;$env:PATH"
-flutter test
-flutter build apk --release
-flutter build appbundle --release
+python scripts/run_client_release_gate.py test --suite portal
+python scripts/run_client_release_gate.py test --suite full
+python scripts/run_client_release_gate.py build --target windows
+python scripts/run_client_release_gate.py build --target android-apk
+python scripts/run_client_release_gate.py build --target android-aab
 ```
 
-Windows note:
+Client verification notes:
 
-- local `flutter test` for this client expects `sqlite3.dll` from the Windows runner output, so build `windows --release` first and prepend `build\windows\x64\runner\Release` to `PATH` before running the full suite
+- `run_client_release_gate.py` is the canonical root-level wrapper for client release verification and enters `external/client-fork/app` automatically.
+- on Windows, `python scripts/run_client_release_gate.py test --suite full` bootstraps `flutter build windows --release` first when `sqlite3.dll` is missing, so the full Flutter suite does not rely on a manual `PATH` step.
+- direct `flutter` commands inside `external/client-fork/app` remain useful for focused inner-loop work, but the wrapper commands above are the release-workflow truth documented for operators and CI.
 
 Signed release path:
 
@@ -352,7 +369,9 @@ python scripts/release_orchestrator.py `
 Distribution rule until store URLs are live:
 
 - GitHub release artifacts are the canonical Android and Windows binary source
-- app, webapp, and bot download surfaces must read from the same release handoff URLs
+- runtime app, bot, and authenticated WebApp download surfaces must read from the same release handoff URLs
+- `remote_brain_apply_release_handoff.py` updates backend runtime env on brain; it does not rebuild static exports by itself
+- if public Android or Windows URLs changed, rebuild and redeploy static marketing outputs so `NEXT_PUBLIC_APP_*` stays aligned with the same release handoff values
 
 ## Existing User Cutover
 
@@ -402,8 +421,8 @@ Post-deploy checks should also confirm:
 
 - the public review feed loads with masked usernames
 - featured review cards on the public homepage use the approved review copy
-- download links across app, webapp, and bot point to the same current Android and Windows artifacts
-- marketing homepage download CTA point to real release URLs or the install/docs fallback, never directly to `connect.pokrov.space`
+- download links across app, bot, and authenticated WebApp point to the same current Android and Windows artifacts
+- marketing homepage download CTA point to the current built release URL or the install/docs fallback, never directly to `connect.pokrov.space`
 - public `Открыть кабинет` CTA on `pokrov.space` points to `https://app.pokrov.space/`
 - public pricing CTA enter through `https://pokrov.space/checkout/` with plan context, then continue via personal cabinet or Telegram route
 - `robots.txt`, `sitemap.xml`, `manifest.webmanifest`, `favicon.ico`, and `apple-icon.png` return dedicated content instead of homepage HTML

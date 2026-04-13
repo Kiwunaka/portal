@@ -4,7 +4,7 @@
   "items": {
     "marketing.meta.title": {
       "surface": "marketing.meta",
-      "ru": "POKROV VPN — Стабильный VPN для Android и Windows",
+      "ru": "POKROV VPN — начните в приложении и продолжайте в кабинете",
       "variables": [],
       "tone": "premium",
       "allowed_public": true,
@@ -13,7 +13,7 @@
     },
     "marketing.meta.description": {
       "surface": "marketing.meta",
-      "ru": "Установите POKROV VPN, получите 5 дней бесплатного премиум-доступа и продолжайте в личном кабинете без лишней суеты.",
+      "ru": "Установите приложение, проверьте 5 дней доступа и продолжайте через личный кабинет или персональную ссылку из Telegram.",
       "variables": [],
       "tone": "premium",
       "allowed_public": true,
@@ -22,7 +22,7 @@
     },
     "marketing.hero.kicker": {
       "surface": "marketing.home.hero",
-      "ru": "POKROV VPN • 5 дней премиум-доступа бесплатно",
+      "ru": "POKROV VPN • 5 дней бесплатного доступа",
       "variables": [],
       "tone": "premium",
       "allowed_public": true,
@@ -31,7 +31,7 @@
     },
     "marketing.hero.title": {
       "surface": "marketing.home.hero",
-      "ru": "VPN, с которым легко начать и приятно остаться",
+      "ru": "Сначала установите приложение, потом продолжайте в кабинете",
       "variables": [],
       "tone": "premium",
       "allowed_public": true,
@@ -40,7 +40,7 @@
     },
     "marketing.hero.subtitle": {
       "surface": "marketing.home.hero",
-      "ru": "Установите приложение для Android или Windows, включите 5 дней бесплатного премиум-доступа и пользуйтесь стабильным соединением без лишних шагов. Кабинет и Telegram остаются рядом для управления, продления и поддержки.",
+      "ru": "Скачайте приложение для Android или Windows, включите 5 дней доступа и спокойно проверьте сервис в реальных сценариях. Кабинет и Telegram остаются для управления, продления и поддержки, а не подменяют сам продукт.",
       "variables": [],
       "tone": "premium",
       "allowed_public": true,
@@ -49,7 +49,7 @@
     },
     "marketing.hero.primary_cta": {
       "surface": "marketing.home.hero",
-      "ru": "Скачать и попробовать",
+      "ru": "Установить и начать",
       "variables": [],
       "tone": "premium",
       "allowed_public": true,
@@ -63,6 +63,15 @@
       "tone": "premium",
       "allowed_public": true,
       "compliance_notes": "Sales-oriented friendly format.",
+      "ab_variant": "control"
+    },
+    "marketing.hero.overline": {
+      "surface": "marketing.home.hero",
+      "ru": "Consumer-first VPN с app-first стартом для Android и Windows.",
+      "variables": [],
+      "tone": "premium",
+      "allowed_public": true,
+      "compliance_notes": "Short overline for the hero.",
       "ab_variant": "control"
     },
     "marketing.hero.proof_1.title": {
@@ -139,7 +148,7 @@
     },
     "marketing.checkout.title": {
       "surface": "marketing.checkout",
-      "ru": "Продление без сюрпризов",
+      "ru": "Продление и оплата",
       "variables": [],
       "tone": "premium",
       "allowed_public": true,
@@ -148,7 +157,7 @@
     },
     "marketing.checkout.subtitle": {
       "surface": "marketing.checkout",
-      "ru": "Вы выбираете тариф в личном кабинете и заранее видите сумму и срок доступа. Всё прозрачно и без лишних шагов.",
+      "ru": "Публичная страница checkout объясняет следующий шаг, но сама касса открывается только после личного входа в кабинет или по персональной ссылке из Telegram.",
       "variables": [],
       "tone": "premium",
       "allowed_public": true,
@@ -157,11 +166,146 @@
     },
     "marketing.checkout.primary_cta": {
       "surface": "marketing.checkout",
-      "ru": "Выбрать тариф",
+      "ru": "Выбрать план",
       "variables": [],
       "tone": "premium",
       "allowed_public": true,
       "compliance_notes": "Sales-oriented friendly format.",
+      "ab_variant": "control"
+    },
+    "marketing.checkout.meta.title": {
+      "surface": "marketing.checkout",
+      "ru": "Личный маршрут оплаты | POKROV VPN",
+      "variables": [],
+      "tone": "premium",
+      "allowed_public": true,
+      "compliance_notes": "Metadata title for checkout page.",
+      "ab_variant": "control"
+    },
+    "marketing.checkout.meta.description": {
+      "surface": "marketing.checkout",
+      "ru": "Публичная страница checkout объясняет следующий шаг, но сама касса открывается только после личного входа в кабинет или по персональной ссылке из Telegram.",
+      "variables": [],
+      "tone": "premium",
+      "allowed_public": true,
+      "compliance_notes": "Metadata description for checkout page.",
+      "ab_variant": "control"
+    },
+    "marketing.checkout.breadcrumb": {
+      "surface": "marketing.checkout",
+      "ru": "Личный маршрут оплаты",
+      "variables": [],
+      "tone": "premium",
+      "allowed_public": true,
+      "compliance_notes": "Breadcrumb label for checkout page.",
+      "ab_variant": "control"
+    },
+    "marketing.checkout.anonymous.status": {
+      "surface": "marketing.checkout",
+      "ru": "Нужен личный вход",
+      "variables": [],
+      "tone": "premium",
+      "allowed_public": true,
+      "compliance_notes": "Status label for anonymous checkout state.",
+      "ab_variant": "control"
+    },
+    "marketing.checkout.anonymous.title": {
+      "surface": "marketing.checkout",
+      "ru": "Откройте кабинет или Telegram",
+      "variables": [],
+      "tone": "premium",
+      "allowed_public": true,
+      "compliance_notes": "Title for anonymous checkout state.",
+      "ab_variant": "control"
+    },
+    "marketing.checkout.anonymous.subtitle": {
+      "surface": "marketing.checkout",
+      "ru": "Публичный checkout без личного входа не работает как касса. Сначала откройте кабинет или продолжите через Telegram, чтобы получить персональный маршрут.",
+      "variables": [],
+      "tone": "premium",
+      "allowed_public": true,
+      "compliance_notes": "Subtitle for anonymous checkout state.",
+      "ab_variant": "control"
+    },
+    "marketing.checkout.session.status": {
+      "surface": "marketing.checkout",
+      "ru": "Кабинет готов",
+      "variables": [],
+      "tone": "premium",
+      "allowed_public": true,
+      "compliance_notes": "Status label for web-session checkout state.",
+      "ab_variant": "control"
+    },
+    "marketing.checkout.session.title": {
+      "surface": "marketing.checkout",
+      "ru": "Продолжите в кабинете",
+      "variables": [],
+      "tone": "premium",
+      "allowed_public": true,
+      "compliance_notes": "Title for web-session checkout state.",
+      "ab_variant": "control"
+    },
+    "marketing.checkout.session.subtitle": {
+      "surface": "marketing.checkout",
+      "ru": "Вы уже вошли в кабинет. Здесь можно выбрать план и продолжить в персональном сценарии без анонимной оплаты.",
+      "variables": [],
+      "tone": "premium",
+      "allowed_public": true,
+      "compliance_notes": "Subtitle for web-session checkout state.",
+      "ab_variant": "control"
+    },
+    "marketing.checkout.ticket.status": {
+      "surface": "marketing.checkout",
+      "ru": "Персональная ссылка активна",
+      "variables": [],
+      "tone": "premium",
+      "allowed_public": true,
+      "compliance_notes": "Status label for ticketed checkout state.",
+      "ab_variant": "control"
+    },
+    "marketing.checkout.ticket.title": {
+      "surface": "marketing.checkout",
+      "ru": "Продление доступа",
+      "variables": [],
+      "tone": "premium",
+      "allowed_public": true,
+      "compliance_notes": "Title for ticketed checkout state.",
+      "ab_variant": "control"
+    },
+    "marketing.checkout.ticket.subtitle": {
+      "surface": "marketing.checkout",
+      "ru": "Вы открыли персональную ссылку. Выберите срок, проверьте платёжный маршрут и переходите к оплате.",
+      "variables": [],
+      "tone": "premium",
+      "allowed_public": true,
+      "compliance_notes": "Subtitle for ticketed checkout state.",
+      "ab_variant": "control"
+    },
+    "marketing.checkout.helper.anonymous": {
+      "surface": "marketing.checkout",
+      "ru": "Сначала откройте кабинет или продолжите через Telegram, а продление уже запускайте из персонального сценария.",
+      "variables": [],
+      "tone": "premium",
+      "allowed_public": true,
+      "compliance_notes": "Helper copy for anonymous checkout state.",
+      "ab_variant": "control"
+    },
+    "marketing.checkout.helper.session": {
+      "surface": "marketing.checkout",
+      "ru": "Вы уже вошли в кабинет. Откройте персональный маршрут, чтобы продолжить без лишних шагов.",
+      "variables": [],
+      "tone": "premium",
+      "allowed_public": true,
+      "compliance_notes": "Helper copy for web-session checkout state.",
+      "ab_variant": "control"
+    },
+    "marketing.checkout.helper.ticket": {
+      "surface": "marketing.checkout",
+      "ru": "Если у вас возникли сомнения при оплате, наша поддержка в Telegram быстро поможет разобраться.",
+      "variables": [],
+      "tone": "premium",
+      "allowed_public": true,
+      "compliance_notes": "Helper copy for ticketed checkout state.",
       "ab_variant": "control"
     },
     "marketing.promise.title": {
@@ -193,7 +337,7 @@
     },
     "marketing.downloads.subtitle": {
       "surface": "marketing.home.downloads",
-      "ru": "Сайт ведет либо к актуальной загрузке, либо к понятной инструкции. Без технической путаницы и лишних переходов.",
+      "ru": "Кнопки ведут либо к актуальному релизному файлу, либо на страницу помощи с понятным маршрутом установки.",
       "variables": [],
       "tone": "premium",
       "allowed_public": true,
@@ -283,7 +427,7 @@
     },
     "marketing.plan.cta": {
       "surface": "marketing.home.pricing",
-      "ru": "Выбрать этот план",
+      "ru": "Выбрать план и продолжить",
       "variables": [],
       "tone": "premium",
       "allowed_public": true,
@@ -292,7 +436,7 @@
     },
     "marketing.download.android.cta": {
       "surface": "marketing.home.downloads",
-      "ru": "Скачать для Android",
+      "ru": "Скачать APK",
       "variables": [],
       "tone": "premium",
       "allowed_public": true,
@@ -310,11 +454,119 @@
     },
     "marketing.download.apple.cta": {
       "surface": "marketing.home.downloads",
-      "ru": "Открыть инструкции",
+      "ru": "Открыть инструкцию",
       "variables": [],
       "tone": "premium",
       "allowed_public": true,
       "compliance_notes": "CTA for Apple readiness card.",
+      "ab_variant": "control"
+    },
+    "marketing.install.meta.title": {
+      "surface": "marketing.install",
+      "ru": "Установка и помощь | POKROV VPN",
+      "variables": [],
+      "tone": "premium",
+      "allowed_public": true,
+      "compliance_notes": "Metadata title for the install-help page.",
+      "ab_variant": "control"
+    },
+    "marketing.install.meta.description": {
+      "surface": "marketing.install",
+      "ru": "Как скачать приложение для Android и Windows, что делать если файл недоступен, и куда перейти за помощью.",
+      "variables": [],
+      "tone": "premium",
+      "allowed_public": true,
+      "compliance_notes": "Metadata description for the install-help page.",
+      "ab_variant": "control"
+    },
+    "marketing.install.kicker": {
+      "surface": "marketing.install",
+      "ru": "Install-help POKROV VPN",
+      "variables": [],
+      "tone": "premium",
+      "allowed_public": true,
+      "compliance_notes": "Kicker for the install-help page.",
+      "ab_variant": "control"
+    },
+    "marketing.install.title": {
+      "surface": "marketing.install",
+      "ru": "Установка без тупиков",
+      "variables": [],
+      "tone": "premium",
+      "allowed_public": true,
+      "compliance_notes": "Title for the install-help page.",
+      "ab_variant": "control"
+    },
+    "marketing.install.subtitle": {
+      "surface": "marketing.install",
+      "ru": "Кнопки ведут либо к актуальному релизному файлу, либо на эту же страницу помощи. Если файла пока нет, вы не теряете маршрут.",
+      "variables": [],
+      "tone": "premium",
+      "allowed_public": true,
+      "compliance_notes": "Subtitle for the install-help page.",
+      "ab_variant": "control"
+    },
+    "marketing.install.primary_cta": {
+      "surface": "marketing.install",
+      "ru": "Открыть кабинет",
+      "variables": [],
+      "tone": "premium",
+      "allowed_public": true,
+      "compliance_notes": "Primary CTA for the install-help page.",
+      "ab_variant": "control"
+    },
+    "marketing.install.secondary_cta": {
+      "surface": "marketing.install",
+      "ru": "Написать в поддержку",
+      "variables": [],
+      "tone": "premium",
+      "allowed_public": true,
+      "compliance_notes": "Secondary CTA for the install-help page.",
+      "ab_variant": "control"
+    },
+    "marketing.install.help_cta": {
+      "surface": "marketing.install",
+      "ru": "Открыть инструкцию",
+      "variables": [],
+      "tone": "premium",
+      "allowed_public": true,
+      "compliance_notes": "Fallback CTA for missing install files.",
+      "ab_variant": "control"
+    },
+    "marketing.install.help_eyebrow": {
+      "surface": "marketing.install",
+      "ru": "Если нужен живой маршрут",
+      "variables": [],
+      "tone": "premium",
+      "allowed_public": true,
+      "compliance_notes": "Eyebrow for the install-help footer block.",
+      "ab_variant": "control"
+    },
+    "marketing.install.help_title": {
+      "surface": "marketing.install",
+      "ru": "Кабинет, Telegram и помощь остаются рядом",
+      "variables": [],
+      "tone": "premium",
+      "allowed_public": true,
+      "compliance_notes": "Title for the install-help footer block.",
+      "ab_variant": "control"
+    },
+    "marketing.install.help_body": {
+      "surface": "marketing.install",
+      "ru": "Если файл не находится, откройте кабинет или напишите в поддержку. Мы не оставляем вас на пустой странице и не прячем следующий шаг.",
+      "variables": [],
+      "tone": "premium",
+      "allowed_public": true,
+      "compliance_notes": "Body for the install-help footer block.",
+      "ab_variant": "control"
+    },
+    "marketing.install.home_cta": {
+      "surface": "marketing.install",
+      "ru": "Вернуться на главную",
+      "variables": [],
+      "tone": "premium",
+      "allowed_public": true,
+      "compliance_notes": "CTA back to the main landing page.",
       "ab_variant": "control"
     },
     "marketing.reviews.title": {
@@ -355,7 +607,7 @@
     },
     "marketing.faq.1.a": {
       "surface": "marketing.home.faq",
-      "ru": "Скачайте приложение для Android или Windows, включите 5 дней бесплатного доступа и проверьте сервис в своих обычных сценариях.",
+      "ru": "Скачайте приложение для Android или Windows, включите 5 дней доступа и проверьте сервис в своих обычных сценариях. Кабинет нужен для продления и управления.",
       "variables": [],
       "tone": "premium",
       "allowed_public": true,
@@ -373,7 +625,7 @@
     },
     "marketing.faq.2.a": {
       "surface": "marketing.home.faq",
-      "ru": "Это полноценный премиум-доступ на 5 дней: можно спокойно оценить скорость, стабильность и удобство сервиса до продления.",
+      "ru": "Это полноценный премиум-доступ на 5 дней: можно спокойно проверить скорость, стабильность и удобство сервиса перед продолжением.",
       "variables": [],
       "tone": "premium",
       "allowed_public": true,
@@ -391,7 +643,7 @@
     },
     "marketing.faq.3.a": {
       "surface": "marketing.home.faq",
-      "ru": "Откройте личный кабинет, выберите тариф и перейдите к оплате в персональном сценарии. Так вы видите только актуальные способы оплаты и свою сумму.",
+      "ru": "Сначала откройте личный кабинет или персональную ссылку из Telegram. После этого checkout покажет только подходящие способы оплаты и честную сумму.",
       "variables": [],
       "tone": "premium",
       "allowed_public": true,
@@ -400,7 +652,7 @@
     },
     "marketing.faq.4.q": {
       "surface": "marketing.home.faq",
-      "ru": "Где быстро получить помощь, если появится вопрос?",
+      "ru": "Куда обратиться, если нужна помощь?",
       "variables": [],
       "tone": "premium",
       "allowed_public": true,
@@ -409,7 +661,7 @@
     },
     "marketing.faq.4.a": {
       "surface": "marketing.home.faq",
-      "ru": "Напишите в @pokrov_supportbot. Если удобнее продолжить через Telegram, мы подскажем следующий шаг там же.",
+      "ru": "Напишите в @pokrov_supportbot или на support@pokrov.space. Если нужно, поддержка переведёт вас в нужный маршрут.",
       "variables": [],
       "tone": "premium",
       "allowed_public": true,
@@ -418,7 +670,7 @@
     },
     "marketing.footer.title": {
       "surface": "marketing.home.footer",
-      "ru": "POKROV VPN — спокойный путь к комфортному подключению",
+      "ru": "POKROV VPN: сначала приложение, потом всё остальное",
       "variables": [],
       "tone": "premium",
       "allowed_public": true,
@@ -427,7 +679,7 @@
     },
     "marketing.footer.body": {
       "surface": "marketing.home.footer",
-      "ru": "Сначала приложение и 5 дней бесплатного доступа. Потом кабинет, продление и поддержка — ровно тогда, когда они вам нужны.",
+      "ru": "Установите приложение, проверьте сервис бесплатно и только потом переходите к кабинету, продлению и поддержке. Это честный и безопасный путь для публичного запуска.",
       "variables": [],
       "tone": "premium",
       "allowed_public": true,

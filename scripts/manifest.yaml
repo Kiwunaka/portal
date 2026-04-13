@@ -30,6 +30,7 @@
     "scripts/release_gate_check.py",
     "scripts/render_ru_probe_report.py",
     "scripts/release_orchestrator.py",
+    "scripts/run_client_release_gate.py",
     "scripts/admin_webapp_smoke.py",
     "scripts/android_localhost_audit.py",
     "scripts/remote_bootstrap_nodes.py",

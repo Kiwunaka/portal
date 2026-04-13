@@ -5,6 +5,18 @@ export type {
 } from "../../../shared/portal-config";
 
 export {
+  getDesignTokens,
+} from "../../../shared/design-tokens";
+
+export {
+  getProductFacts as getSharedProductFacts,
+} from "../../../shared/product-facts";
+
+export {
+  getPublicUrls as getSharedPublicUrls,
+} from "../../../shared/public-urls";
+
+export {
   CANONICAL_API_BASE_URL,
   CANONICAL_BOT_URL,
   CANONICAL_CHECKOUT_URL,

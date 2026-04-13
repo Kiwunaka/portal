@@ -1,6 +1,6 @@
 # App-First And Bonus Flows
 
-Last updated: 2026-04-08
+Last updated: 2026-04-12
 
 ## Document Status
 
@@ -21,11 +21,15 @@ Document the current app-first identity model, checkout continuation, and the li
    - device record
    - app session
 6. backend returns:
-   - `session_token`
-   - trial expiry
-   - subscription source
+   - `session` payload with canonical session fields
+   - `access` payload with enforced `5-day` trial state
+   - `provisioning` payload with explicit readiness state
    - experience payload
 7. client silently imports the profile and switches to `Quick Connect`
+
+Contract rule:
+
+- caller-provided `trial_days` may still appear from older clients, but the backend must ignore it and always enforce the canonical `5-day` trial from `shared/product-facts.json`
 
 ## App Session Model
 
@@ -70,6 +74,7 @@ Current live backend contract:
 
 - `POST /api/client/session/start-trial`
 - `POST /api/client/telegram/link`
+- `POST /api/channel/subscriber/check`
 - `POST /api/bonuses/channel/claim`
 
 Related live surfaces also exposed by the backend:
@@ -136,10 +141,12 @@ Compatibility note:
 ## Telegram Bonus Claim Flow
 
 1. app-first account must already be linked to Telegram
-2. the app calls `POST /api/bonuses/channel/claim`
-3. backend checks membership for the linked Telegram account
-4. if membership is valid, backend grants `+10 days`
-5. if not linked or not eligible, backend returns the correct reason
+2. app or web surfaces may call `POST /api/channel/subscriber/check` to verify membership readiness
+3. `POST /api/channel/subscriber/check` is read-only and must never grant points or mark campaign state
+4. the real reward path calls `POST /api/bonuses/channel/claim`
+5. backend checks membership for the linked Telegram account
+6. if membership is valid, backend grants `+10 days`
+7. if not linked or not eligible, backend returns the correct reason
 
 ## Access-State Continuation After Trial
 
@@ -184,9 +191,14 @@ Production environment should keep:
 
 Support direction should stay consistent across app, WebApp, and helpbot:
 
+- first-layer client IA should stay `VPN`, `Locations`, `Devices`, `Profile`, and `Support`
+- renewal and subscription state should remain first-class inside `Profile`, not treated as an isolated side flow
+- legacy client route names such as `Logs`, `Config Options`, and `About` may survive only as compatibility redirects, not as the public IA
 - support messages should include device context
 - users should be able to start support from inside the app
 - helpbot remains a valid external fallback
+- `support@pokrov.space` remains the email fallback for cases where Telegram is unavailable or a store/support mailbox is required
+- feedback collection and public-review intake should continue through `@pokrov_feedbackbot`, not replace the primary support path
 
 Support operators should also be able to see:
 
