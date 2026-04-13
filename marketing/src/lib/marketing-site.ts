@@ -16,9 +16,9 @@ export const DEFAULT_MARKETING_SHARE_IMAGE_WIDTH = 1200;
 export const DEFAULT_MARKETING_SHARE_IMAGE_HEIGHT = 630;
 
 export const MARKETING_FEATURE_LIST = [
-  "5 дней бесплатного теста",
+  "5 дней бесплатного тест-драйва",
   "Приложения для Android и Windows",
-  "Личный кабинет для продления и управления",
+  "Личный кабинет для управления",
   "Поддержка через Telegram и email",
 ] as const;
 
@@ -57,17 +57,17 @@ export type MarketingStructuredReview = {
 
 export const MARKETING_FAQ: MarketingFaqItem[] = [
   {
-    question: getCopyText("marketing.faq.1.q", "Как начать пользоваться POKROV VPN?"),
+    question: getCopyText("marketing.faq.1.q", "Как разогнать свой интернет с POKROV Network?"),
     answer: getCopyText(
       "marketing.faq.1.a",
-      "Скачайте приложение для Android или Windows, включите 5 дней доступа и проверьте сервис в своих обычных сценариях. Кабинет нужен для продления и управления.",
+      "Просто установите наше приложение, запустите тест-драйв на 5 дней и наслаждайтесь магией скорости. Кабинет нужен для управления.",
     ),
   },
   {
     question: getCopyText("marketing.faq.2.q", "Что входит в бесплатные 5 дней?"),
     answer: getCopyText(
       "marketing.faq.2.a",
-      "Это полноценный премиум-доступ на 5 дней: можно спокойно проверить скорость, стабильность и удобство сервиса перед продолжением.",
+      "Это полноценный премиум-доступ на 5 дней: можно спокойно проверить скорость, стабильность и качество сети перед продлением.",
     ),
   },
   {
