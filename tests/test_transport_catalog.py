@@ -46,6 +46,92 @@ class TransportCatalogTests(unittest.TestCase):
         self.assertEqual(profiles[0]["port"], 443)
         self.assertEqual(profiles[0]["inbound_id"], 7)
 
+    def test_node_transport_profiles_synthesize_legacy_when_catalog_omits_it(self) -> None:
+        node = SimpleNamespace(
+            host="legacy.example.test",
+            vless_port=443,
+            reality_sni="legacy-sni.example.test",
+            reality_pbk="legacy-pbk",
+            reality_sid="legacy-sid",
+            fingerprint="firefox",
+            flow="xtls-rprx-vision",
+            inbound_id=7,
+            transport_profiles_json=json.dumps(
+                [
+                    {
+                        "name": "grpc_443_primary",
+                        "enabled": True,
+                        "kind": "grpc",
+                        "inbound_id": 18,
+                        "host": "grpc-primary.example.test",
+                        "port": 443,
+                        "tls_server_name": "grpc-sni.example.test",
+                        "grpc_service_name": "pokrov-grpc",
+                    }
+                ]
+            ),
+        )
+
+        profiles = self.transport_catalog.node_transport_profiles(node)
+
+        self.assertEqual(
+            [profile["name"] for profile in profiles],
+            ["legacy_reality_fallback", "grpc_443_primary"],
+        )
+        self.assertEqual(profiles[0]["inbound_id"], 7)
+        self.assertEqual(profiles[0]["kind"], "reality")
+        self.assertEqual(profiles[1]["grpc_service_name"], "pokrov-grpc")
+
+    def test_node_transport_profiles_accept_xhttp_fields_and_preserve_grpc_fields(self) -> None:
+        node = SimpleNamespace(
+            host="legacy.example.test",
+            vless_port=443,
+            reality_sni="legacy-sni.example.test",
+            reality_pbk="legacy-pbk",
+            reality_sid="legacy-sid",
+            fingerprint="firefox",
+            flow="xtls-rprx-vision",
+            inbound_id=7,
+            transport_profiles_json=json.dumps(
+                [
+                    {
+                        "name": "grpc_443_primary",
+                        "enabled": True,
+                        "kind": "grpc",
+                        "inbound_id": 18,
+                        "host": "grpc-primary.example.test",
+                        "port": 443,
+                        "tls_server_name": "grpc-sni.example.test",
+                        "grpc_service_name": "pokrov-grpc",
+                    },
+                    {
+                        "name": "operator_lab",
+                        "enabled": False,
+                        "kind": "xhttp",
+                        "inbound_id": 19,
+                        "host": "lab-front.example.test",
+                        "port": 443,
+                        "tls_server_name": "lab-sni.example.test",
+                        "xhttp_path": "/lab-front",
+                    },
+                ]
+            ),
+        )
+
+        profiles = self.transport_catalog.node_transport_profiles(node)
+        by_name = {profile["name"]: profile for profile in profiles}
+
+        self.assertEqual(
+            [profile["name"] for profile in profiles],
+            ["legacy_reality_fallback", "grpc_443_primary", "operator_lab"],
+        )
+        self.assertEqual(by_name["grpc_443_primary"]["kind"], "grpc")
+        self.assertEqual(by_name["grpc_443_primary"]["grpc_service_name"], "pokrov-grpc")
+        self.assertNotIn("xhttp_path", by_name["grpc_443_primary"])
+        self.assertEqual(by_name["operator_lab"]["kind"], "xhttp")
+        self.assertEqual(by_name["operator_lab"]["xhttp_path"], "/lab-front")
+        self.assertNotIn("grpc_service_name", by_name["operator_lab"])
+
     def test_generate_vless_link_uses_legacy_profile_from_catalog(self) -> None:
         node = SimpleNamespace(
             host="compat-fields.example.test",

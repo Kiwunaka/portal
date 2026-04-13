@@ -1,6 +1,7 @@
 ﻿from __future__ import annotations
 
 import argparse
+import re
 import subprocess
 import sys
 from copy import copy
@@ -8,6 +9,20 @@ from pathlib import Path
 
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
+
+
+def _parse_qdisc_hosts(values: list[str] | None) -> dict[str, str]:
+    mapping: dict[str, str] = {}
+    for raw in values or []:
+        text = str(raw or "").strip()
+        if not text or "=" not in text:
+            continue
+        node_code, host = text.split("=", 1)
+        node_code = str(node_code or "").strip().lower()
+        host = str(host or "").strip()
+        if node_code and host:
+            mapping[node_code] = host
+    return mapping
 
 
 def _run(name: str, cmd: list[str], cwd: Path = REPO_ROOT) -> int:
@@ -22,6 +37,62 @@ def _run(name: str, cmd: list[str], cwd: Path = REPO_ROOT) -> int:
 
 def _dry_run(name: str, cmd: list[str], cwd: Path = REPO_ROOT) -> None:
     print(f"[dry-run] {name}: {' '.join(cmd)} (cwd={cwd})")
+
+
+def _build_qdisc_base_cmd(args: argparse.Namespace, node_code: str) -> list[str]:
+    qdisc_hosts = _parse_qdisc_hosts(getattr(args, "qdisc_host", []))
+    base_cmd = [
+        "--profiles",
+        args.qdisc_profiles,
+        "--node-code",
+        node_code,
+        "--ssh-user",
+        args.ssh_user,
+        "--ssh-port",
+        str(args.ssh_port),
+        "--passwords",
+        args.passwords,
+    ]
+    host = qdisc_hosts.get(node_code, "")
+    if host:
+        base_cmd.extend(["--host", host])
+    return base_cmd
+
+
+def _extract_qdisc_node_code(step_name: str) -> str:
+    match = re.search(r"\(([^()]+)\)\s*$", str(step_name or "").strip())
+    return str(match.group(1)).strip().lower() if match else ""
+
+
+def _build_qdisc_failure_cleanup_steps(
+    args: argparse.Namespace,
+    *,
+    step_name: str,
+    python: str,
+) -> list[tuple[str, list[str], Path]]:
+    normalized_name = str(step_name or "").strip().lower()
+    if not normalized_name.startswith("qdisc "):
+        return []
+    if "rollback" in normalized_name or "disable" in normalized_name:
+        return []
+
+    node_code = _extract_qdisc_node_code(step_name)
+    if not node_code:
+        return []
+
+    base_cmd = _build_qdisc_base_cmd(args, node_code)
+    return [
+        (
+            f"qdisc rollback-safe disable ({node_code})",
+            [python, "scripts/remote_apply_node_qdisc.py", "disable", *base_cmd],
+            REPO_ROOT,
+        ),
+        (
+            f"qdisc rollback ({node_code})",
+            [python, "scripts/remote_apply_node_qdisc.py", "rollback", *base_cmd],
+            REPO_ROOT,
+        ),
+    ]
 
 
 def _build_steps(args: argparse.Namespace, *, python: str) -> list[tuple[str, list[str], Path]]:
@@ -157,6 +228,54 @@ def _build_steps(args: argparse.Namespace, *, python: str) -> list[tuple[str, li
             )
         )
 
+    for node_code in [str(item or "").strip().lower() for item in (getattr(args, "qdisc_node", []) or []) if str(item or "").strip()]:
+        base_cmd = _build_qdisc_base_cmd(args, node_code)
+        steps.append(
+            (
+                f"qdisc persistence install ({node_code})",
+                [python, "scripts/remote_apply_node_qdisc.py", "install", *base_cmd],
+                REPO_ROOT,
+            )
+        )
+        steps.append(
+            (
+                f"qdisc apply ({node_code})",
+                [python, "scripts/remote_apply_node_qdisc.py", "apply", *base_cmd],
+                REPO_ROOT,
+            )
+        )
+        steps.append(
+            (
+                f"qdisc smoke gate ({node_code})",
+                [
+                    python,
+                    "scripts/remote_node_qdisc_smoke.py",
+                    *base_cmd,
+                    "--probe-url",
+                    args.qdisc_probe_url,
+                    "--heavy-url",
+                    args.qdisc_heavy_url,
+                    "--probe-attempts",
+                    str(args.qdisc_probe_attempts),
+                    "--probe-pause-seconds",
+                    str(args.qdisc_probe_pause_seconds),
+                    "--heavy-duration-seconds",
+                    str(args.qdisc_heavy_duration_seconds),
+                    "--min-heavy-bytes",
+                    str(args.qdisc_min_heavy_bytes),
+                    "--min-probe-successes",
+                    str(args.qdisc_min_probe_successes),
+                    "--max-probe-connect-p95-seconds",
+                    str(args.qdisc_max_probe_connect_p95_seconds),
+                    "--max-probe-ttfb-p95-seconds",
+                    str(args.qdisc_max_probe_ttfb_p95_seconds),
+                    "--max-probe-total-p95-seconds",
+                    str(args.qdisc_max_probe_total_p95_seconds),
+                ],
+                REPO_ROOT,
+            )
+        )
+
     if not args.skip_verify:
         steps.append(
             (
@@ -214,6 +333,24 @@ def main() -> int:
         help="Local release-links.env path to sync APP_* download URLs onto brain before deploy/verify.",
     )
     parser.add_argument("--dry-run", action="store_true", help="Print planned commands without executing them")
+    parser.add_argument("--qdisc-node", action="append", default=[], help="Apply qdisc rollout steps for the given node code. Can be repeated.")
+    parser.add_argument(
+        "--qdisc-host",
+        action="append",
+        default=[],
+        help="Node-code to host mapping for qdisc rollout, e.g. pl=203.0.113.10. Can be repeated.",
+    )
+    parser.add_argument("--qdisc-profiles", default=str(REPO_ROOT / "infra" / "node-qdisc-profiles.json"))
+    parser.add_argument("--qdisc-probe-url", default="https://1.1.1.1/cdn-cgi/trace")
+    parser.add_argument("--qdisc-heavy-url", default="https://speed.cloudflare.com/__down?bytes=50000000")
+    parser.add_argument("--qdisc-probe-attempts", type=int, default=8)
+    parser.add_argument("--qdisc-probe-pause-seconds", type=float, default=1.0)
+    parser.add_argument("--qdisc-heavy-duration-seconds", type=float, default=10.0)
+    parser.add_argument("--qdisc-min-heavy-bytes", type=int, default=1048576)
+    parser.add_argument("--qdisc-min-probe-successes", type=int, default=3)
+    parser.add_argument("--qdisc-max-probe-connect-p95-seconds", type=float, default=1.0)
+    parser.add_argument("--qdisc-max-probe-ttfb-p95-seconds", type=float, default=1.0)
+    parser.add_argument("--qdisc-max-probe-total-p95-seconds", type=float, default=2.0)
     args = parser.parse_args()
 
     if args.gates_only and args.verify_only:
@@ -225,6 +362,8 @@ def main() -> int:
         args.skip_static = True
         args.skip_verify = False
         args.ensure_metrics_timer = False
+        args.qdisc_node = []
+        args.qdisc_host = []
 
     release_env_file = str(args.release_env_file or "").strip()
     if release_env_file and args.gates_only:
@@ -241,6 +380,8 @@ def main() -> int:
         gate_args.ensure_metrics_timer = False
         gate_args.ensure_observer_node = []
         gate_args.release_env_file = ""
+        gate_args.qdisc_node = []
+        gate_args.qdisc_host = []
         steps = _build_steps(gate_args, python=python)
         if args.dry_run:
             for name, cmd, cwd in steps:
@@ -268,6 +409,10 @@ def main() -> int:
     for name, cmd, cwd in steps:
         rc = _run(name, cmd, cwd)
         if rc != 0:
+            for cleanup_name, cleanup_cmd, cleanup_cwd in _build_qdisc_failure_cleanup_steps(args, step_name=name, python=python):
+                cleanup_rc = _run(cleanup_name, cleanup_cmd, cleanup_cwd)
+                if cleanup_rc != 0:
+                    print(f"[warn] {cleanup_name} exit={cleanup_rc}")
             return rc
 
     print("[done] release orchestration completed")

@@ -41,6 +41,19 @@ class ReleaseOrchestratorTests(unittest.TestCase):
             verify_only=True,
             dry_run=True,
             release_env_file="C:/tmp/release-links.env",
+            qdisc_node=[],
+            qdisc_host=[],
+            qdisc_profiles="C:/repo/infra/node-qdisc-profiles.json",
+            qdisc_probe_url="https://1.1.1.1/cdn-cgi/trace",
+            qdisc_heavy_url="https://speed.cloudflare.com/__down?bytes=50000000",
+            qdisc_probe_attempts=8,
+            qdisc_probe_pause_seconds=1.0,
+            qdisc_heavy_duration_seconds=10.0,
+            qdisc_min_heavy_bytes=1048576,
+            qdisc_min_probe_successes=3,
+            qdisc_max_probe_connect_p95_seconds=1.0,
+            qdisc_max_probe_ttfb_p95_seconds=1.0,
+            qdisc_max_probe_total_p95_seconds=2.0,
         )
 
         steps = self.module._build_steps(args, python="python")
@@ -71,6 +84,19 @@ class ReleaseOrchestratorTests(unittest.TestCase):
             verify_only=False,
             dry_run=False,
             release_env_file="",
+            qdisc_node=[],
+            qdisc_host=[],
+            qdisc_profiles="C:/repo/infra/node-qdisc-profiles.json",
+            qdisc_probe_url="https://1.1.1.1/cdn-cgi/trace",
+            qdisc_heavy_url="https://speed.cloudflare.com/__down?bytes=50000000",
+            qdisc_probe_attempts=8,
+            qdisc_probe_pause_seconds=1.0,
+            qdisc_heavy_duration_seconds=10.0,
+            qdisc_min_heavy_bytes=1048576,
+            qdisc_min_probe_successes=3,
+            qdisc_max_probe_connect_p95_seconds=1.0,
+            qdisc_max_probe_ttfb_p95_seconds=1.0,
+            qdisc_max_probe_total_p95_seconds=2.0,
         )
         gate_steps = [("release gates", ["python", "scripts/release_gate_check.py"], self.module.REPO_ROOT)]
 
@@ -102,6 +128,19 @@ class ReleaseOrchestratorTests(unittest.TestCase):
             verify_only=False,
             dry_run=True,
             release_env_file="",
+            qdisc_node=[],
+            qdisc_host=[],
+            qdisc_profiles="C:/repo/infra/node-qdisc-profiles.json",
+            qdisc_probe_url="https://1.1.1.1/cdn-cgi/trace",
+            qdisc_heavy_url="https://speed.cloudflare.com/__down?bytes=50000000",
+            qdisc_probe_attempts=8,
+            qdisc_probe_pause_seconds=1.0,
+            qdisc_heavy_duration_seconds=10.0,
+            qdisc_min_heavy_bytes=1048576,
+            qdisc_min_probe_successes=3,
+            qdisc_max_probe_connect_p95_seconds=1.0,
+            qdisc_max_probe_ttfb_p95_seconds=1.0,
+            qdisc_max_probe_total_p95_seconds=2.0,
         )
         gate_steps = [("release gates", ["python", "scripts/release_gate_check.py", "--quick"], self.module.REPO_ROOT)]
 
@@ -113,6 +152,99 @@ class ReleaseOrchestratorTests(unittest.TestCase):
         self.assertEqual(exit_code, 0)
         build_steps.assert_called_once()
         dry_run.assert_called_once_with("release gates", ["python", "scripts/release_gate_check.py", "--quick"], self.module.REPO_ROOT)
+
+    def test_build_steps_includes_explicit_qdisc_rollout_lane_before_verify(self) -> None:
+        args = Namespace(
+            brain_ip="82.21.114.104",
+            web_domain="pokrov.space",
+            api_domain="api.pokrov.space",
+            ssh_user="root",
+            ssh_port=29374,
+            passwords="C:/tmp/PASSWORDS.txt",
+            quick_gate=False,
+            skip_gates=True,
+            skip_backend=True,
+            skip_static=True,
+            skip_verify=False,
+            ensure_metrics_timer=False,
+            ensure_observer_node=[],
+            gates_only=False,
+            verify_only=False,
+            dry_run=True,
+            release_env_file="",
+            qdisc_node=["pl"],
+            qdisc_host=["pl=203.0.113.10"],
+            qdisc_profiles="C:/repo/infra/node-qdisc-profiles.json",
+            qdisc_probe_url="https://1.1.1.1/cdn-cgi/trace",
+            qdisc_heavy_url="https://speed.cloudflare.com/__down?bytes=50000000",
+            qdisc_probe_attempts=6,
+            qdisc_probe_pause_seconds=0.5,
+            qdisc_heavy_duration_seconds=12.0,
+            qdisc_min_heavy_bytes=2097152,
+            qdisc_min_probe_successes=4,
+            qdisc_max_probe_connect_p95_seconds=0.8,
+            qdisc_max_probe_ttfb_p95_seconds=1.2,
+            qdisc_max_probe_total_p95_seconds=2.5,
+        )
+
+        steps = self.module._build_steps(args, python="python")
+        names = [name for name, _, _ in steps]
+
+        self.assertIn("qdisc persistence install (pl)", names)
+        self.assertIn("qdisc apply (pl)", names)
+        self.assertIn("qdisc smoke gate (pl)", names)
+        self.assertLess(names.index("qdisc persistence install (pl)"), names.index("post-deploy verify"))
+        smoke_step = next(step for step in steps if step[0] == "qdisc smoke gate (pl)")
+        self.assertIn("scripts/remote_node_qdisc_smoke.py", " ".join(smoke_step[1]))
+        self.assertIn("--min-heavy-bytes", smoke_step[1])
+        self.assertIn("2097152", smoke_step[1])
+        self.assertIn("--max-probe-ttfb-p95-seconds", smoke_step[1])
+        self.assertIn("1.2", smoke_step[1])
+
+    def test_qdisc_smoke_failure_triggers_disable_and_rollback_cleanup(self) -> None:
+        args = Namespace(
+            brain_ip="82.21.114.104",
+            web_domain="pokrov.space",
+            api_domain="api.pokrov.space",
+            ssh_user="root",
+            ssh_port=29374,
+            passwords="C:/tmp/PASSWORDS.txt",
+            quick_gate=False,
+            skip_gates=True,
+            skip_backend=True,
+            skip_static=True,
+            skip_verify=True,
+            ensure_metrics_timer=False,
+            ensure_observer_node=[],
+            gates_only=False,
+            verify_only=False,
+            dry_run=False,
+            release_env_file="",
+            qdisc_node=["pl"],
+            qdisc_host=["pl=203.0.113.10"],
+            qdisc_profiles="C:/repo/infra/node-qdisc-profiles.json",
+            qdisc_probe_url="https://1.1.1.1/cdn-cgi/trace",
+            qdisc_heavy_url="https://speed.cloudflare.com/__down?bytes=50000000",
+            qdisc_probe_attempts=6,
+            qdisc_probe_pause_seconds=0.5,
+            qdisc_heavy_duration_seconds=12.0,
+            qdisc_min_heavy_bytes=2097152,
+            qdisc_min_probe_successes=4,
+            qdisc_max_probe_connect_p95_seconds=0.8,
+            qdisc_max_probe_ttfb_p95_seconds=1.2,
+            qdisc_max_probe_total_p95_seconds=2.5,
+        )
+
+        with patch.object(self.module.argparse.ArgumentParser, "parse_args", return_value=args):
+            with patch.object(self.module, "_run", side_effect=[0, 0, 7, 0, 0]) as run_step:
+                exit_code = self.module.main()
+
+        self.assertEqual(exit_code, 7)
+        self.assertEqual(run_step.call_args_list[0].args[0], "qdisc persistence install (pl)")
+        self.assertEqual(run_step.call_args_list[1].args[0], "qdisc apply (pl)")
+        self.assertEqual(run_step.call_args_list[2].args[0], "qdisc smoke gate (pl)")
+        self.assertEqual(run_step.call_args_list[3].args[0], "qdisc rollback-safe disable (pl)")
+        self.assertEqual(run_step.call_args_list[4].args[0], "qdisc rollback (pl)")
 
 
 if __name__ == "__main__":

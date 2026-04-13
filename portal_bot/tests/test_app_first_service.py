@@ -56,9 +56,19 @@ def _rollout_client_policy(
     *,
     ip_version_preference: str = "ipv4_only",
 ) -> dict[str, object]:
+    transport_kind = "reality"
+    engine_hint = "singbox"
+    if transport_profile == "grpc_443_primary":
+        transport_kind = "grpc"
+    elif transport_profile == "operator_lab":
+        transport_kind = "xhttp"
+        engine_hint = "xray"
     return {
         "routing_mode_default": "all_except_ru",
         "transport_profile": transport_profile,
+        "transport_kind": transport_kind,
+        "engine_hint": engine_hint,
+        "profile_revision": f"2026-04-13:{transport_profile}",
         "dns_policy": "ru_direct_split",
         "package_catalog_version": "2026-04-13",
         "ruleset_version": "2026-04-13",
@@ -174,6 +184,9 @@ def test_build_start_trial_response_parts_preserves_public_shape(monkeypatch, tm
         assert parts["session"]["account_id"] == str(user.tg_id)
         assert parts["client_policy"]["routing_mode_default"] == "all_except_ru"
         assert parts["client_policy"]["transport_profile"] == "legacy_reality_fallback"
+        assert parts["client_policy"]["transport_kind"] == "reality"
+        assert parts["client_policy"]["engine_hint"] == "singbox"
+        assert parts["client_policy"]["profile_revision"] == "2026-04-13:legacy_reality_fallback"
         assert parts["client_policy"]["dns_policy"] == "ru_direct_split"
         assert parts["client_policy"]["package_catalog_version"]
         assert parts["client_policy"]["support_context"]["transport"] == "legacy_reality_fallback"
@@ -211,11 +224,15 @@ def test_build_client_policy_respects_rollout_config_carrier_and_cohort_override
                 "ru-risk-canary": {
                     "install_ids": ["install-response-grpc"],
                     "transport_profile": "grpc_443_primary",
+                },
+                "operator-lab": {
+                    "install_ids": ["install-operator"],
+                    "transport_profile": "operator_lab",
                 }
             },
             "operator_lab": {
-                "enabled": False,
-                "allowlist_install_ids": [],
+                "enabled": True,
+                "allowlist_install_ids": ["install-operator"],
                 "allowlist_tg_ids": [],
                 "allowlist_node_codes": [],
                 "expires_at": None,
@@ -241,12 +258,30 @@ def test_build_client_policy_respects_rollout_config_carrier_and_cohort_override
             install_id="install-response-grpc",
             rollout_config=rollout_config,
         )
+        operator_policy = service.build_client_policy(
+            session=session,
+            install_id="install-operator",
+            rollout_config=rollout_config,
+        )
 
         assert default_policy["transport_profile"] == "legacy_reality_fallback"
+        assert default_policy["transport_kind"] == "reality"
+        assert default_policy["engine_hint"] == "singbox"
+        assert default_policy["profile_revision"] == "2026-04-13:legacy_reality_fallback"
         assert default_policy["support_context"]["ip_version_preference"] == "ipv4_only"
         assert carrier_policy["transport_profile"] == "grpc_443_primary"
+        assert carrier_policy["transport_kind"] == "grpc"
+        assert carrier_policy["engine_hint"] == "singbox"
+        assert carrier_policy["profile_revision"] == "2026-04-13:grpc_443_primary"
         assert carrier_policy["support_context"]["ip_version_preference"] == "ipv6_preferred"
         assert cohort_policy["transport_profile"] == "grpc_443_primary"
+        assert cohort_policy["transport_kind"] == "grpc"
+        assert cohort_policy["engine_hint"] == "singbox"
+        assert cohort_policy["profile_revision"] == "2026-04-13:grpc_443_primary"
         assert cohort_policy["support_context"]["transport"] == "grpc_443_primary"
+        assert operator_policy["transport_profile"] == "operator_lab"
+        assert operator_policy["transport_kind"] == "xhttp"
+        assert operator_policy["engine_hint"] == "xray"
+        assert operator_policy["profile_revision"] == "2026-04-13:operator_lab"
     finally:
         session.close()

@@ -72,6 +72,9 @@ class NodeDataplaneProbeTests(unittest.TestCase):
                 "reality_target": "healthy",
             },
         )
+        self.assertEqual(result["root_cause_summary"], "DNS, TCP, TLS, and reality-target checks passed.")
+        self.assertIn("1.2.3.4", result["root_cause_detail"])
+        self.assertIn("ipv4", result["root_cause_detail"])
 
     def test_probe_endpoint_reports_target_mismatch(self) -> None:
         with mock.patch.object(
@@ -124,6 +127,9 @@ class NodeDataplaneProbeTests(unittest.TestCase):
                 "reality_target": "degraded",
             },
         )
+        self.assertIn("certificate names did not match", result["root_cause_summary"].lower())
+        self.assertIn("other.example.com", result["root_cause_detail"])
+        self.assertIn("www.example.com", result["root_cause_detail"])
 
     def test_probe_endpoint_populates_default_health_fields_for_dns_failures(self) -> None:
         with mock.patch.object(
@@ -148,6 +154,97 @@ class NodeDataplaneProbeTests(unittest.TestCase):
                 "reality_target": "unavailable",
             },
         )
+        self.assertIn("dns lookup failed", result["root_cause_summary"].lower())
+        self.assertIn("pl.pokrov.space", result["root_cause_detail"])
+        self.assertIn("dns failed", result["root_cause_detail"].lower())
+
+    def test_probe_endpoint_derives_hoster_metadata_from_connected_ip(self) -> None:
+        with mock.patch.object(
+            self.module,
+            "_resolve_dns",
+            return_value={
+                "resolved_ips": ["5.45.84.10"],
+                "resolved_ipv4": ["5.45.84.10"],
+                "resolved_ipv6": [],
+                "stage": "dns",
+            },
+        ), mock.patch.object(
+            self.module,
+            "_probe_tcp",
+            return_value={
+                "latency_ms": 19,
+                "stage": "tcp_443",
+                "connected_ip": "5.45.84.10",
+                "connected_family": "ipv4",
+            },
+        ), mock.patch.object(
+            self.module,
+            "_probe_tls",
+            return_value={
+                "tls_protocol": "TLSv1.3",
+                "tls_cipher": "TLS_AES_256_GCM_SHA384",
+                "certificate_names": ["www.example.com"],
+                "target_ok": True,
+                "stage": "reality_target",
+                "connected_ip": "5.45.84.10",
+                "connected_family": "ipv4",
+            },
+        ), mock.patch.object(
+            self.module.socket,
+            "gethostbyaddr",
+            return_value=("static.hetzner.de", [], ["5.45.84.10"]),
+        ):
+            result = self.module.probe_node_endpoint(host="pl.pokrov.space", sni="www.example.com")
+
+        self.assertEqual(result["hoster_family"], "hetzner")
+        self.assertEqual(result["hoster_asn"], "AS24940")
+        self.assertEqual(result["hoster_subnet"], "5.45.84.0/24")
+
+    def test_probe_endpoint_uses_distinct_telegram_app_and_web_semantics(self) -> None:
+        with mock.patch.object(
+            self.module,
+            "_resolve_dns",
+            return_value={
+                "resolved_ips": ["149.154.167.220"],
+                "resolved_ipv4": ["149.154.167.220"],
+                "resolved_ipv6": [],
+                "stage": "dns",
+            },
+        ), mock.patch.object(
+            self.module,
+            "_probe_tcp",
+            return_value={
+                "latency_ms": 25,
+                "stage": "tcp_443",
+                "connected_ip": "149.154.167.220",
+                "connected_family": "ipv4",
+            },
+        ), mock.patch.object(
+            self.module,
+            "_probe_tls",
+            return_value={
+                "tls_protocol": "TLSv1.3",
+                "tls_cipher": "TLS_AES_256_GCM_SHA384",
+                "certificate_names": ["api.telegram.org"],
+                "target_ok": True,
+                "stage": "reality_target",
+                "connected_ip": "149.154.167.220",
+                "connected_family": "ipv4",
+            },
+        ):
+            app_result = self.module.probe_node_endpoint(host="api.telegram.org", sni="api.telegram.org")
+
+        with mock.patch.object(
+            self.module,
+            "_resolve_dns",
+            side_effect=socket.gaierror("telegram web dns failed"),
+        ):
+            web_result = self.module.probe_node_endpoint(host="t.me", sni="t.me")
+
+        self.assertEqual(app_result["target_semantics"], "telegram_app_path")
+        self.assertIn("telegram app path", app_result["root_cause_summary"].lower())
+        self.assertEqual(web_result["target_semantics"], "telegram_web_path")
+        self.assertIn("telegram web path", web_result["root_cause_summary"].lower())
 
     def test_validate_reality_target_accepts_exact_and_wildcard_names(self) -> None:
         self.assertTrue(self.module._certificate_matches_expected_target("www.example.com", ["www.example.com"]))

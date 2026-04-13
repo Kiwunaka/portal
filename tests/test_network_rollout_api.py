@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import base64
 import hashlib
 import hmac
 import importlib
@@ -162,8 +163,101 @@ def test_start_trial_resolves_default_and_cohort_rollout_from_app_setting(monkey
         },
     )
     assert carrier_trial.status_code == 200, carrier_trial.text
-    assert carrier_trial.json()["client_policy"]["transport_profile"] == "legacy_reality_fallback"
-    assert carrier_trial.json()["client_policy"]["support_context"]["ip_version_preference"] == "ipv4_only"
+    assert carrier_trial.json()["client_policy"]["transport_profile"] == "grpc_443_primary"
+    assert carrier_trial.json()["client_policy"]["transport_kind"] == "grpc"
+    assert carrier_trial.json()["client_policy"]["engine_hint"] == "singbox"
+    assert carrier_trial.json()["client_policy"]["profile_revision"] == "2026-04-13:grpc_443_primary"
+    assert carrier_trial.json()["client_policy"]["support_context"]["ip_version_preference"] == "ipv6_preferred"
+
+
+def test_carrier_rollout_flows_through_dashboard_user_managed_manifest_and_subscription(monkeypatch, tmp_path) -> None:
+    api = _load_api(monkeypatch, tmp_path)
+    client = TestClient(api.app)
+
+    db = api.SessionLocal()
+    try:
+        api._set_app_setting_json(s=db, key="network_rollout_config", value=_rollout_payload())
+        db.commit()
+    finally:
+        db.close()
+
+    start_trial = client.post(
+        "/api/client/session/start-trial",
+        headers={"X-Portal-Carrier": "carrier-x"},
+        json={
+            "install_id": "install-carrier-managed",
+            "device_name": "Carrier Device",
+            "platform": "android",
+            "trial_days": 5,
+        },
+    )
+    assert start_trial.status_code == 200, start_trial.text
+    start_body = start_trial.json()
+    assert start_body["client_policy"]["transport_profile"] == "grpc_443_primary"
+    assert start_body["client_policy"]["transport_kind"] == "grpc"
+    assert start_body["client_policy"]["engine_hint"] == "singbox"
+    assert start_body["client_policy"]["profile_revision"] == "2026-04-13:grpc_443_primary"
+
+    auth_headers = {
+        "Authorization": f"Bearer {start_body['session_token']}",
+        "X-Portal-Carrier": "carrier-x",
+    }
+
+    dashboard = client.get("/api/dashboard", headers=auth_headers)
+    assert dashboard.status_code == 200, dashboard.text
+    assert dashboard.json()["client_policy"]["transport_profile"] == "grpc_443_primary"
+    assert dashboard.json()["client_policy"]["transport_kind"] == "grpc"
+    assert dashboard.json()["client_policy"]["engine_hint"] == "singbox"
+    assert dashboard.json()["client_policy"]["profile_revision"] == "2026-04-13:grpc_443_primary"
+    assert dashboard.json()["client_policy"]["support_context"]["ip_version_preference"] == "ipv6_preferred"
+
+    user_response = client.get(f"/api/user/{start_body['account_id']}", headers=auth_headers)
+    assert user_response.status_code == 200, user_response.text
+    assert user_response.json()["client_policy"]["transport_profile"] == "grpc_443_primary"
+    assert user_response.json()["client_policy"]["transport_kind"] == "grpc"
+    assert user_response.json()["client_policy"]["engine_hint"] == "singbox"
+    assert user_response.json()["client_policy"]["profile_revision"] == "2026-04-13:grpc_443_primary"
+
+    managed_manifest = client.get("/api/client/profile/managed", headers=auth_headers)
+    assert managed_manifest.status_code == 200, managed_manifest.text
+    manifest_body = managed_manifest.json()
+    assert manifest_body["version"] == "2026-04-13"
+    assert manifest_body["profile_revision"] == "2026-04-13:grpc_443_primary"
+    assert manifest_body["transport_profile"] == "grpc_443_primary"
+    assert manifest_body["transport_kind"] == "grpc"
+    assert manifest_body["engine_hint"] == "singbox"
+    assert manifest_body["config_format"] == "singbox-json"
+    assert manifest_body["fallback_order"] == ["grpc_443_primary", "legacy_reality_fallback"]
+    assert manifest_body["support_context"]["transport"] == "grpc_443_primary"
+    assert manifest_body["support_context"]["ip_version_preference"] == "ipv6_preferred"
+    assert any(
+        ((item.get("transport") or {}).get("type") == "grpc")
+        for item in manifest_body["config_payload"]["outbounds"]
+        if isinstance(item, dict)
+    )
+
+    connect_client = TestClient(api.app, base_url="https://connect.pokrov.space")
+    subscription_path = start_body["subscription_url"].replace("https://connect.pokrov.space", "", 1)
+    smart_subscription = connect_client.get(
+        subscription_path,
+        headers={"X-Portal-Carrier": "carrier-x", "User-Agent": "sing-box/1.0"},
+    )
+    assert smart_subscription.status_code == 200, smart_subscription.text
+    smart_body = smart_subscription.json()
+    assert any(
+        ((item.get("transport") or {}).get("type") == "grpc")
+        for item in smart_body["outbounds"]
+        if isinstance(item, dict)
+    )
+
+    plain_subscription = connect_client.get(
+        f"{subscription_path}?format=plain",
+        headers={"X-Portal-Carrier": "carrier-x", "User-Agent": "curl/8.0"},
+    )
+    assert plain_subscription.status_code == 200, plain_subscription.text
+    plain_links = base64.b64decode(plain_subscription.text).decode("utf-8")
+    assert "security=reality" in plain_links
+    assert "serviceName=" not in plain_links
 
 
 def test_admin_network_rollout_config_roundtrip_if_route_is_exposed(monkeypatch, tmp_path) -> None:

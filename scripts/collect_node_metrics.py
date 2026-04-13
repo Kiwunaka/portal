@@ -135,6 +135,21 @@ def _json_text(value: object) -> str | None:
         return _string_or_none(value)
 
 
+def _json_dict(value: object) -> dict[str, object]:
+    if isinstance(value, dict):
+        return {str(key): item for key, item in value.items() if str(key or "").strip()}
+    text = _string_or_none(value)
+    if not text:
+        return {}
+    try:
+        parsed = json.loads(text)
+    except Exception:
+        return {}
+    if not isinstance(parsed, dict):
+        return {}
+    return {str(key): item for key, item in parsed.items() if str(key or "").strip()}
+
+
 def _utcnow() -> datetime:
     return datetime.now(timezone.utc).replace(tzinfo=None)
 
@@ -144,6 +159,93 @@ def _bytes_per_second_to_mbps(value: object) -> float | None:
     if numeric is None or numeric < 0:
         return None
     return round((numeric * 8.0) / 1_000_000.0, 3)
+
+
+def _combine_probe_root_cause(
+    *,
+    panel_state: str,
+    panel_stage: str,
+    panel_error_kind: str,
+    panel_error_message: str,
+    dataplane_state: str,
+    dataplane_stage: str,
+    dataplane_error_kind: str,
+    dataplane_error_message: str,
+    dataplane_summary: str,
+    dataplane_detail: str,
+) -> tuple[str, str]:
+    if panel_state == "healthy":
+        return dataplane_summary, dataplane_detail
+
+    stage_label = str(panel_stage or "panel probe").replace("_", " ").strip()
+    if stage_label.startswith("panel "):
+        stage_label = stage_label[len("panel ") :].strip() or "probe"
+    if dataplane_state == "healthy":
+        summary = f"Panel {stage_label} failed while dataplane remained healthy."
+    elif dataplane_state == "failed":
+        summary = f"Panel {stage_label} failed and dataplane also failed."
+    else:
+        summary = f"Panel {stage_label} failed."
+
+    details: list[str] = []
+    if panel_error_message or panel_error_kind:
+        details.append(f"panel error: {panel_error_message or panel_error_kind}")
+    if dataplane_state == "healthy":
+        details.append(f"dataplane healthy: {dataplane_detail or dataplane_summary}")
+    elif dataplane_error_message or dataplane_error_kind:
+        details.append(f"dataplane error: {dataplane_error_message or dataplane_error_kind}")
+        if dataplane_detail:
+            details.append(dataplane_detail)
+    elif dataplane_detail:
+        details.append(dataplane_detail)
+    return summary, " ".join(part for part in details if part).strip()
+
+
+def _build_transport_health_payload(
+    *,
+    panel_state: str,
+    panel_stage: str,
+    panel_error_kind: str,
+    panel_error_message: str,
+    dataplane_state: str,
+    dataplane_stage: str,
+    dataplane_error_kind: str,
+    dataplane_error_message: str,
+    probe: dict[str, object] | None,
+) -> dict[str, object]:
+    payload = _json_dict((probe or {}).get("transport_health"))
+    dataplane_summary = _string_or_none((probe or {}).get("root_cause_summary")) or ""
+    dataplane_detail = _string_or_none((probe or {}).get("root_cause_detail")) or ""
+    root_cause_summary, root_cause_detail = _combine_probe_root_cause(
+        panel_state=panel_state,
+        panel_stage=panel_stage,
+        panel_error_kind=panel_error_kind,
+        panel_error_message=panel_error_message,
+        dataplane_state=dataplane_state,
+        dataplane_stage=dataplane_stage,
+        dataplane_error_kind=dataplane_error_kind,
+        dataplane_error_message=dataplane_error_message,
+        dataplane_summary=dataplane_summary,
+        dataplane_detail=dataplane_detail,
+    )
+    payload.update(
+        {
+            "panel_state": panel_state,
+            "panel_stage": panel_stage,
+            "panel_error_kind": panel_error_kind,
+            "panel_error_message": panel_error_message,
+            "dataplane_state": dataplane_state,
+            "dataplane_stage": dataplane_stage,
+            "dataplane_error_kind": dataplane_error_kind,
+            "dataplane_error_message": dataplane_error_message,
+            "root_cause_summary": root_cause_summary,
+            "root_cause_detail": root_cause_detail,
+        }
+    )
+    target_semantics = _string_or_none((probe or {}).get("target_semantics"))
+    if target_semantics:
+        payload["target_semantics"] = target_semantics
+    return payload
 
 
 def _network_rate_from_totals(
@@ -203,7 +305,7 @@ async def _collect_one(*, node: Node, error_window: int, source: str) -> dict:
     client = PanelClient(runtime)
     started = time.perf_counter()
     now = _utcnow()
-    healthy = False
+    panel_healthy = False
     latency_ms: int | None = None
     active_clients = 0
     total_up_bytes = 0
@@ -221,18 +323,19 @@ async def _collect_one(*, node: Node, error_window: int, source: str) -> dict:
     network_rx_mbps: float | None = None
     network_tx_mbps: float | None = None
     network_total_mbps: float | None = None
-    probe_stage = "panel_login"
-    probe_error_kind = "panel_login_failed"
-    probe_error_message = "panel login returned false"
+    panel_stage = "panel_login"
+    panel_error_kind = "panel_login_failed"
+    panel_error_message = "panel login returned false"
+    panel_state = "failed"
     probe_at = now
     probe: dict | None = None
 
     try:
         ok = await client.login()
         if ok:
-            probe_stage = "panel_status"
-            probe_error_kind = ""
-            probe_error_message = ""
+            panel_stage = "panel_status"
+            panel_error_kind = ""
+            panel_error_message = ""
             system_metrics = await client.get_system_metrics()
             cpu_percent = system_metrics.get("cpu_percent")  # type: ignore[assignment]
             memory_used_mb = system_metrics.get("memory_used_mb")  # type: ignore[assignment]
@@ -244,7 +347,7 @@ async def _collect_one(*, node: Node, error_window: int, source: str) -> dict:
             network_tx_bytes_total = _nullable_int(system_metrics.get("network_tx_bytes_total"))
             network_rx_bytes_per_sec = _nullable_int(system_metrics.get("network_rx_bytes_per_sec"))
             network_tx_bytes_per_sec = _nullable_int(system_metrics.get("network_tx_bytes_per_sec"))
-            probe_stage = "panel_inbound_lookup"
+            panel_stage = "panel_inbound_lookup"
             inbounds = await client._get_inbounds()
             for inb in inbounds:
                 if int(inb.get("id") or 0) != int(runtime.inbound_id):
@@ -264,36 +367,52 @@ async def _collect_one(*, node: Node, error_window: int, source: str) -> dict:
                 except Exception:
                     total_up_bytes = 0
                     total_down_bytes = 0
-                healthy = True
-                probe_stage = "panel_inbound_lookup"
-                probe_error_kind = ""
-                probe_error_message = ""
+                panel_healthy = True
+                panel_state = "healthy"
+                panel_stage = "panel_inbound_lookup"
+                panel_error_kind = ""
+                panel_error_message = ""
                 break
-            if not healthy:
-                probe_error_kind = "inbound_not_found"
-                probe_error_message = f"inbound {runtime.inbound_id} not found on panel"
+            if not panel_healthy:
+                panel_error_kind = "inbound_not_found"
+                panel_error_message = f"inbound {runtime.inbound_id} not found on panel"
         latency_ms = int((time.perf_counter() - started) * 1000)
     except Exception as exc:
-        healthy = False
         latency_ms = int((time.perf_counter() - started) * 1000)
-        probe_error_kind = "panel_probe_failed"
-        probe_error_message = _truncate_error(exc)
+        panel_error_kind = "panel_probe_failed"
+        panel_error_message = _truncate_error(exc)
     finally:
         await client.close()
 
-    if healthy:
+    try:
         probe = probe_node_endpoint(
             host=str(runtime.host or "").strip(),
             port=int(runtime.vless_port or 443),
             sni=str(runtime.reality_sni or runtime.host or "").strip() or None,
         )
         probe_at = probe.get("probed_at") or now
-        probe_stage = str(probe.get("stage") or probe_stage or "")
-        probe_error_kind = str(probe.get("error_kind") or "")
-        probe_error_message = _truncate_error(probe.get("error_message") or "")
-        healthy = bool(probe.get("ok"))
-    else:
+    except Exception as exc:  # pragma: no cover - defensive fallback
+        probe = {
+            "ok": False,
+            "stage": "probe",
+            "error_kind": "probe_failed",
+            "error_message": _truncate_error(exc),
+            "probe_classification": "probe_failed",
+            "ipv4_health": "unknown",
+            "ipv6_health": "unknown",
+            "transport_health": {},
+            "root_cause_summary": "Dataplane probe failed before any operator-readable result was produced.",
+            "root_cause_detail": _truncate_error(exc),
+        }
         probe_at = now
+    dataplane_stage = str((probe or {}).get("stage") or "")
+    dataplane_error_kind = str((probe or {}).get("error_kind") or "")
+    dataplane_error_message = _truncate_error((probe or {}).get("error_message") or "")
+    dataplane_state = "healthy" if bool((probe or {}).get("ok")) else "failed"
+    healthy = bool(panel_healthy and dataplane_state == "healthy")
+    probe_stage = panel_stage if panel_state != "healthy" else dataplane_stage
+    probe_error_kind = panel_error_kind if panel_state != "healthy" else dataplane_error_kind
+    probe_error_message = panel_error_message if panel_state != "healthy" else dataplane_error_message
 
     hoster_family = _string_or_none((probe or {}).get("hoster_family"))
     hoster_asn = _string_or_none((probe or {}).get("hoster_asn"))
@@ -301,9 +420,18 @@ async def _collect_one(*, node: Node, error_window: int, source: str) -> dict:
     probe_classification = _string_or_none((probe or {}).get("probe_classification"))
     ipv4_health = _string_or_none((probe or {}).get("ipv4_health"))
     ipv6_health = _string_or_none((probe or {}).get("ipv6_health"))
-    transport_health_json = _json_text((probe or {}).get("transport_health_json"))
-    if transport_health_json is None:
-        transport_health_json = _json_text((probe or {}).get("transport_health"))
+    transport_health_payload = _build_transport_health_payload(
+        panel_state=panel_state,
+        panel_stage=panel_stage,
+        panel_error_kind=panel_error_kind,
+        panel_error_message=panel_error_message,
+        dataplane_state=dataplane_state,
+        dataplane_stage=dataplane_stage,
+        dataplane_error_kind=dataplane_error_kind,
+        dataplane_error_message=dataplane_error_message,
+        probe=probe,
+    )
+    transport_health_json = _json_text(transport_health_payload)
 
     s = SessionLocal()
     try:
@@ -421,6 +549,8 @@ async def _collect_one(*, node: Node, error_window: int, source: str) -> dict:
             "probe_classification": probe_classification,
             "ipv4_health": ipv4_health,
             "ipv6_health": ipv6_health,
+            "panel_state": panel_state,
+            "dataplane_state": dataplane_state,
         }
     finally:
         s.close()

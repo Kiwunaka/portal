@@ -150,6 +150,7 @@ Transport policy rule:
 - `carrier_overrides` and `cohort_overrides` may only change `transport_profile`, `dns_policy`, `routing_mode_default`, and `ip_version_preference`
 - `operator_lab` remains allowlist-only, carries `enabled`, `allowlist_install_ids`, `allowlist_tg_ids`, `allowlist_node_codes`, and `expires_at`, and must stay hidden from public UI and mass session/profile payloads
 - app-managed session and profile delivery should use the rollout-selected transport profile, while manual/export compatibility links stay on `legacy_reality_fallback` until the share-link parity wave lands
+- `GET /api/client/profile/managed` is the primary app-managed provisioning endpoint; `subscription_url` stays manual/import fallback only
 
 Rollout order:
 
@@ -167,8 +168,11 @@ Rollout order:
    - run `verify_brain_ready.py`
 3. Wave 2, infra canary
    - choose one premium node as the canary
-   - add the `grpc_443_primary` inbound on `:443`
+   - install the node-local transport front on public `:443` with `scripts/remote_apply_transport_front.py`
+   - move the live `legacy_reality_fallback` listener behind the transport front on a loopback backend port
+   - add the `grpc_443_primary` inbound on its loopback backend port behind the same transport front
    - seed the node transport catalog with `legacy_reality_fallback` and `grpc_443_primary`
+   - run `scripts/remote_transport_front_smoke.py` against the canary SNI names before cohort enablement
    - apply the qdisc profile and run the saturation smoke
    - enable `grpc_443_primary` only for a small RU-risk allowlist through `network_rollout_config`
 4. Wave 3, fleet expansion
@@ -191,10 +195,12 @@ Node shaping repo truth:
 
 - `infra/node-qdisc-profiles.json` records `node_code`, `iface`, `uplink_mbps`, `target_rate_mbps`, and `preferred_qdisc`
 - `target_rate_mbps` is fixed at `85%` of the confirmed sustainable uplink for each live node
-- `scripts/remote_apply_node_qdisc.py` supports `apply`, `show`, and `rollback`
+- `scripts/remote_apply_node_qdisc.py` supports `install`, `apply`, `show`, `disable`, `rollback`, and `uninstall`
+- `install` and `disable` control reboot persistence through `infra/portal-node-qdisc.service`; `rollback` removes the active qdisc without deleting the repo-truth profile
+- node selection must come from explicit `NODE_CODE` provisioning or the built-in alias normalization such as `PLnode -> pl` and `FREENLnode -> free`
 - if `sch_cake` is present, the script applies `CAKE nat triple-isolate`
 - if `sch_cake` is unavailable, the script falls back to `fq_codel` and must report that fallback explicitly
-- `scripts/remote_node_qdisc_smoke.py` runs one heavy egress flow plus parallel small HTTPS probes and records p95 latency / TTFB
+- `scripts/remote_node_qdisc_smoke.py` runs one heavy egress flow plus parallel small HTTPS probes, records p95 latency / TTFB, and fails the gate if the heavy flow never materializes or starvation exceeds the configured thresholds
 - `infra/portal-node-qdisc.service` restores the configured qdisc after reboot
 
 ## Release Rule
@@ -235,6 +241,7 @@ At minimum, verify:
 - `portal-api`, `portal-bot`, and `portal-helpbot` service status
 - `portal-feedbackbot` service status
 - transport rollout verification on the canary node with `scripts/remote_apply_node_qdisc.py show`
+- transport front verification with `scripts/remote_transport_front_smoke.py`
 - `tc -s qdisc` on the shaped interface
 - `scripts/remote_node_qdisc_smoke.py` results for heavy-flow saturation and small-probe latency
 - when observer-lite is enabled on any node, `portal-node-observer.timer` freshness on that node plus `/api/admin/metrics/status` and `/api/admin/nodes/health` observer fields
@@ -243,6 +250,7 @@ At minimum, verify:
 Release gate rule:
 
 - full `release_gate_check.py` should stay green; by default that means the release `pytest` matrix, admin/auth regression, `client_security_smoke.py`, `python scripts/run_client_release_gate.py test --suite full`, `api_lifecycle_smoke.py`, link checks, marketing/webapp production builds, admin webapp smoke, browser E2E from `webapp/e2e/`, and `ui_visual_smoke.py`
+- `python scripts/run_client_release_gate.py preflight` should be green before trusting any Flutter gate result; a dirty or drifted `libcore` checkout is a release blocker even if other repo-local tests happen to pass
 - marketing release readiness also requires `python scripts/check-links.py` and `python scripts/ui_visual_smoke.py` to stay green after every CTA, legal, SEO, or branding change
 - `verify_brain_ready.py` should validate both the canonical connect host and the legacy API compatibility path before a release is considered healthy
 - `client_security_smoke.py` is the static repo-level gate for default local-surface settings, routing preset groundwork, and known localhost control paths; it does not replace the Android release-build port and reachability audit
@@ -251,7 +259,7 @@ Release gate rule:
 - add `--client-platform-gates windows,android-apk,android-aab` or set `CLIENT_PLATFORM_GATES` when you want the same markdown report to include artifact-producing client builds
 - Android public release must also include a release-build localhost-listener audit covering proxy, DNS, command-server, and admin/control surfaces before connect, after connect, and after disconnect; green repo/static gates are necessary but not sufficient
 - the Android release gate fails if an unauthenticated local SOCKS, HTTP proxy, Clash API, command, or similar admin surface remains reachable
-- public client release validation must include routing preset smoke for `Global` and `All except RU`, plus DNS split and leak checks on Android and Windows
+- public client release validation must include routing preset smoke for `Full tunnel` and `All except RU`, plus DNS split and leak checks on Android and Windows
 - `Blocked only` remains internal or compatibility-only until geo assets and DNS behavior are complete enough for honest public verification
 
 Current local gate entrypoints:
@@ -371,6 +379,7 @@ Treat `AAB`, `MSIX`, and portable `ZIP` as release/store/operator artifacts unle
 Canonical local client verification commands:
 
 ```powershell
+python scripts/run_client_release_gate.py preflight
 python scripts/run_client_release_gate.py test --suite portal
 python scripts/run_client_release_gate.py test --suite full
 python scripts/run_client_release_gate.py build --target windows
@@ -381,7 +390,9 @@ python scripts/run_client_release_gate.py build --target android-aab
 Client verification notes:
 
 - `run_client_release_gate.py` is the canonical root-level wrapper for client release verification and enters `external/client-fork/app` automatically.
+- `python scripts/run_client_release_gate.py preflight` is the fastest repo-local proof that `external/client-fork/app/libcore` is present, pinned to the parent repo SHA, and clean before Flutter work begins.
 - on Windows, `python scripts/run_client_release_gate.py test --suite full` bootstraps `flutter build windows --release` first when `sqlite3.dll` is missing, so the full Flutter suite does not rely on a manual `PATH` step.
+- if `preflight` fails, inspect `git -C external/client-fork/app/libcore status --short` and `git -C external/client-fork/app/libcore diff --stat`; that fix belongs in the canonical client repo instead of as an ad hoc root-repo override.
 - direct `flutter` commands inside `external/client-fork/app` remain useful for focused inner-loop work, but the wrapper commands above are the release-workflow truth documented for operators and CI.
 
 Signed release path:
@@ -441,7 +452,7 @@ Distribution rule until store URLs are live:
 
 Release communication for existing users must explicitly say:
 
-- `POKROV VPN` is the new official app line
+- `POKROV` is the official public app line
 - Android and Windows should be treated as a fresh install path
 - existing `kiwunaka.space` profiles stay temporarily compatible during migration, but they are legacy compatibility hosts rather than current public entrypoints
 - users should install the new app, connect successfully, and only then remove the old app
@@ -457,12 +468,12 @@ Recommended migration order:
 Operator message template:
 
 ```text
-POKROV VPN is now the official app.
+POKROV is now the official app.
 
-If you used the old app, install the new POKROV VPN release as a separate app.
+If you used the old app, install the new POKROV release as a separate app.
 Do not delete the old app first.
 
-1. Install POKROV VPN
+1. Install POKROV
 2. Open it and activate or import your access
 3. Confirm that the new app connects successfully
 4. Only after that remove the old app if you want

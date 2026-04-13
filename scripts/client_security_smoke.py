@@ -147,13 +147,17 @@ def _routing_preset_failures(enum_text: str, config_text: str) -> list[str]:
 
 def _public_routing_surface_failures(config_page_text: str) -> list[str]:
     failures: list[str] = []
+    uses_filtered_choices = (
+        ".visibleChoices(" in config_page_text
+        or "consumerRoutingChoices(" in config_page_text
+    )
 
-    if "RoutingMode.values" in config_page_text and ".visibleChoices(" not in config_page_text:
+    if "RoutingMode.values" in config_page_text and not uses_filtered_choices:
         failures.append(
             "public routing picker must use RoutingMode.visibleChoices to keep blockedOnly internal by default"
         )
 
-    if ".visibleChoices(" not in config_page_text:
+    if not uses_filtered_choices:
         failures.append("public routing picker must filter routing presets before rendering choices")
 
     return failures

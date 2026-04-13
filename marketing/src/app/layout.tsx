@@ -20,11 +20,11 @@ const monoFont = JetBrains_Mono({ subsets: ["latin", "cyrillic"], variable: "--f
 export const metadata: Metadata = {
   metadataBase: new URL(CANONICAL_MARKETING_SITE_URL),
   title: {
-    default: "POKROV VPN | Приложение VPN для Android и Windows",
+    default: "POKROV Network | Умный ускоритель интернета и пинга",
     template: "%s",
   },
   description:
-    "POKROV VPN помогает начать с приложения, спокойно проверить сервис 5 дней бесплатно и управлять доступом без путаницы.",
+    "POKROV Network помогает начать с приложения, спокойно проверить сервис 5 дней бесплатно и управлять скоростью своего интернета без путаницы.",
   applicationName: CANONICAL_CLIENT_BRAND,
   alternates: {
     canonical: `${CANONICAL_MARKETING_SITE_URL}/`,
@@ -39,30 +39,30 @@ export const metadata: Metadata = {
     type: "website",
     locale: "ru_RU",
     siteName: CANONICAL_CLIENT_BRAND,
-    title: "POKROV VPN | Приложение VPN для Android и Windows",
+    title: "POKROV Network | Умная оптимизация и стабильная связь",
     description:
-      "Спокойный app-first VPN-сервис с бесплатным 5-дневным тестом, понятным кабинетом и поддержкой без лишнего шума.",
+      "Спокойный app-first сервис для ускорения сети с бесплатным 5-дневным тестом, понятным кабинетом и поддержкой без лишнего шума.",
     url: `${CANONICAL_MARKETING_SITE_URL}/`,
     images: [
       {
         url: DEFAULT_MARKETING_SHARE_IMAGE_PATH,
         width: DEFAULT_MARKETING_SHARE_IMAGE_WIDTH,
         height: DEFAULT_MARKETING_SHARE_IMAGE_HEIGHT,
-        alt: `${CANONICAL_CLIENT_BRAND} — VPN для Android и Windows`,
+        alt: `${CANONICAL_CLIENT_BRAND} — Умный ускоритель интернета`,
       },
     ],
   },
   twitter: {
     card: "summary_large_image",
-    title: "POKROV VPN | Приложение VPN для Android и Windows",
+    title: "POKROV Network | Чистая скорость и стабильный пинг",
     description:
-      "Скачайте приложение, включите 5 дней теста и переходите к кабинету только тогда, когда вам это действительно нужно.",
+      "Скачайте приложение, включите 5 дней теста и наслаждайтесь скоростью. Переходите к кабинету только тогда, когда вам это действительно нужно.",
     images: [
       {
         url: DEFAULT_MARKETING_TWITTER_IMAGE_PATH,
         width: DEFAULT_MARKETING_SHARE_IMAGE_WIDTH,
         height: DEFAULT_MARKETING_SHARE_IMAGE_HEIGHT,
-        alt: `${CANONICAL_CLIENT_BRAND} — VPN для Android и Windows`,
+        alt: `${CANONICAL_CLIENT_BRAND} — Умная оптимизация интернета`,
       },
     ],
   },

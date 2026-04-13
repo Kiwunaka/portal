@@ -183,6 +183,12 @@ def build_start_trial_response_parts(
         user=user,
         install_id=str(getattr(user, "app_install_id", "") or "").strip() or None,
     )
+    managed_manifest = {
+        "url": "/api/client/profile/managed",
+        "transport_kind": str(effective_client_policy.get("transport_kind") or "").strip(),
+        "engine_hint": str(effective_client_policy.get("engine_hint") or "").strip(),
+        "profile_revision": str(effective_client_policy.get("profile_revision") or "").strip(),
+    }
     return {
         "subscription_url": subscription_url,
         "session": {
@@ -210,5 +216,6 @@ def build_start_trial_response_parts(
             "status": "ready" if sync_ok else "pending_sync",
             "sync_ok": bool(sync_ok),
             "subscription_url": subscription_url,
+            "managed_manifest": managed_manifest,
         },
     }

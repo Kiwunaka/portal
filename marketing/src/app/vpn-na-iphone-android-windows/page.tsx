@@ -23,7 +23,7 @@ export default function MultiDeviceVpnPage() {
       <MarketingLanding
         pagePath="/vpn-na-iphone-android-windows/"
         heroKicker="Для всех основных устройств"
-        heroTitle="VPN на iPhone, Android и Windows с одним понятным маршрутом"
+        heroTitle="Свободная сеть на iPhone, Android и Windows с одним понятным маршрутом"
         heroSubtitle="Для Android и Windows основной путь уже идёт через приложение, тест, кабинет и продление. Для Apple мы честно держим readiness-статус без ложного обещания доступности."
         scenarioTitle="Как устроен маршрут по устройствам"
         scenarioBody="Страница не смешивает релизные обещания и readiness-статус: для Android и Windows путь публичный, для Apple — аккуратное ожидание и инструкции."

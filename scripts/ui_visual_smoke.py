@@ -42,7 +42,7 @@ def _default_checks() -> list[Check]:
             name="marketing-home-cta",
             path=REPO_ROOT / "marketing" / "src" / "components" / "marketing-landing.tsx",
             must_contain=(
-                "POKROV VPN",
+                "POKROV Network",
                 "config.webappUrl",
                 "config.newsChannelUrl",
                 "/checkout/?plan=",
@@ -80,7 +80,7 @@ def _default_checks() -> list[Check]:
         Check(
             name="webapp-entry",
             path=REPO_ROOT / "webapp" / "src" / "app" / "page.tsx",
-            must_contain=("Личный кабинет POKROV VPN", "Открыть Telegram", "secure Telegram login"),
+            must_contain=("Личный кабинет POKROV Network", "Открыть Telegram", "secure Telegram login"),
             must_not_contain=("Продолжить вход в PORTAL",),
         ),
         Check(

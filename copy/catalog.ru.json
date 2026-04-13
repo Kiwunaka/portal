@@ -688,7 +688,7 @@
     },
     "marketing.legal.offer.intro": {
       "surface": "marketing.legal.offer",
-      "ru": "Понятные правила использования POKROV VPN. Мы объясняем условия сервиса спокойно, прозрачно и без скрытого смысла.",
+      "ru": "Понятные правила использования POKROV Network. Мы объясняем условия сервиса спокойно, прозрачно и без скрытого смысла.",
       "variables": [],
       "tone": "premium",
       "allowed_public": true,

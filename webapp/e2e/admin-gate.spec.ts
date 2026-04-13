@@ -26,6 +26,7 @@ type MockOptions = {
   userRows?: AdminUserRowMock[];
   metricsStatus?: unknown;
   nodeHealth?: unknown;
+  networkRolloutConfig?: unknown;
   tickets?: TicketMock[];
 };
 
@@ -456,6 +457,24 @@ function mockNodeHealth() {
         last_probe_stage: null,
         last_probe_error_kind: null,
         last_probe_error_message: null,
+        hoster_family: null,
+        hoster_asn: null,
+        subnet: null,
+        probe_classification: null,
+        ipv4_health: null,
+        ipv6_health: null,
+        transport_health: null,
+        transport_profiles: {
+          legacy_reality_fallback: {
+            name: "legacy_reality_fallback",
+            kind: "reality",
+            enabled: true,
+            inbound_id: 1,
+            host: "us.pokrov.space",
+            port: 443,
+            tls_server_name: "www.example.com",
+          },
+        },
         observer_last_push_at: "2030-01-01T00:00:00",
         observer_unmatched_count: 0,
         observer_parse_error_count: 0,
@@ -464,6 +483,54 @@ function mockNodeHealth() {
       },
     ],
   };
+}
+
+function mockNetworkRolloutConfig() {
+  return {
+    version: "2026-04-13-rollout",
+    defaults: {
+      routing_mode_default: "all_except_ru",
+      transport_profile: "legacy_reality_fallback",
+      dns_policy: "ru_direct_split",
+      ip_version_preference: "ipv4_only",
+    },
+    carrier_overrides: {
+      mts: {
+        transport_profile: "grpc_443_primary",
+        dns_policy: "remote_only",
+      },
+    },
+    cohort_overrides: {
+      "install-default": {
+        transport_profile: "grpc_443_primary",
+        dns_policy: "remote_only",
+        routing_mode_default: "full_tunnel",
+        ip_version_preference: "prefer_ipv6",
+        install_ids: ["install-default-android", "install-default-windows"],
+        tg_ids: [1001, 1002],
+        linked_tg_ids: [2001],
+        platforms: ["android", "windows"],
+      },
+    },
+    operator_lab: {
+      enabled: true,
+      allowlist_install_ids: ["operator-device"],
+      allowlist_tg_ids: [3001],
+      allowlist_node_codes: ["pl"],
+      expires_at: "2030-01-02T00:00:00",
+    },
+    package_catalog_feed: {
+      version: "package-feed-v2",
+    },
+    routing_rules_feed: {
+      version: "rules-feed-v7",
+    },
+    support_recovery_order: ["app", "web", "telegram"],
+  };
+}
+
+function cloneJson<T>(value: T): T {
+  return JSON.parse(JSON.stringify(value)) as T;
 }
 
 function ticketStatusTitle(status: TicketMock["status"]): string {
@@ -581,6 +648,7 @@ async function registerApiMocks(page: Page, opts: MockOptions): Promise<void> {
   const adminSummary = opts.adminSummary ?? mockAdminSummary();
   const metricsStatus = opts.metricsStatus ?? mockMetricsStatus();
   const nodeHealth = opts.nodeHealth ?? mockNodeHealth();
+  let networkRolloutConfig = cloneJson(opts.networkRolloutConfig ?? mockNetworkRolloutConfig());
   let userRows = [...(opts.userRows || mockAdminUsers().users)];
   let tickets = [...(opts.tickets || [makeTicket()])];
 
@@ -603,6 +671,13 @@ async function registerApiMocks(page: Page, opts: MockOptions): Promise<void> {
     if (path === "/api/admin/metrics/timeseries") return json({ from: "2029-12-26", to: "2030-01-01", points: [] });
     if (path === "/api/admin/nodes/health") return json(nodeHealth);
     if (path === "/api/admin/nodes/traffic") return json({ rows: [] });
+    if (path === "/api/admin/network-rollout-config") {
+      if (request.method() === "PUT") {
+        networkRolloutConfig = cloneJson(JSON.parse(request.postData() || "{}"));
+        return json({ ok: true, network_rollout_config: networkRolloutConfig });
+      }
+      return json({ network_rollout_config: networkRolloutConfig });
+    }
     if (path === "/api/admin/users") return json(filterAdminUsers(userRows, url));
     if (path.startsWith("/api/admin/users/")) {
       const match = path.match(/^\/api\/admin\/users\/(-?\d+)(?:\/(.+))?$/);
@@ -746,6 +821,7 @@ test.describe("Admin gate", () => {
     const sections = [
       "admin/dashboard/",
       "admin/users/",
+      "admin/network/",
       "admin/nodes/",
       "admin/tickets/",
       "admin/promos/",
@@ -1061,6 +1137,18 @@ test.describe("Admin gate", () => {
             last_probe_stage: "tls_sni",
             last_probe_error_kind: "tls_handshake_failed",
             last_probe_error_message: "tls handshake failed",
+            hoster_family: "Hetzner",
+            hoster_asn: "AS24940",
+            subnet: "5.45.67.0/24",
+            probe_classification: "provider_specific_path",
+            ipv4_health: "degraded",
+            ipv6_health: "unknown",
+            transport_health: {
+              dns_resolution: "healthy",
+              tcp_connect: "healthy",
+              tls_handshake: "degraded",
+              reality_target: "degraded",
+            },
             observer_last_push_at: "2029-12-31T23:00:00",
             observer_unmatched_count: 3,
             observer_parse_error_count: 2,
@@ -1079,6 +1167,123 @@ test.describe("Admin gate", () => {
     await expect(page.getByText("Observer collector")).toBeVisible();
     await expect(page.getByText("parse: 2")).toBeVisible();
     await expect(page.getByText("unmatched: 3")).toBeVisible();
+  });
+
+  test("shows node context with separate panel, dataplane, and transport detail", async ({ page }) => {
+    await registerApiMocks(page, {
+      isAdmin: true,
+      nodeHealth: {
+        nodes: [
+          {
+            ...mockNodeHealth().nodes[0],
+            hoster_family: "Hetzner",
+            hoster_asn: "AS24940",
+            subnet: "5.45.67.0/24",
+            probe_classification: "provider_specific_path",
+            ipv4_health: "degraded",
+            ipv6_health: "unknown",
+            last_probe_stage: "reality_target",
+            last_probe_error_kind: "reality_target_mismatch",
+            last_probe_error_message: "certificate names do not match expected reality target",
+            transport_health: {
+              panel_state: "ok",
+              panel_stage: "panel_inbound_lookup",
+              panel_error_kind: "",
+              panel_error_message: "",
+              dataplane_state: "failed",
+              dataplane_stage: "reality_target",
+              dataplane_error_kind: "reality_target_mismatch",
+              dataplane_error_message: "certificate names do not match expected reality target",
+              root_cause_summary: "Panel sync is healthy, but the dataplane probe failed at the REALITY target validation stage.",
+              root_cause_detail: "Telegram app path is blocked while the web path still resolves; certificate names do not match expected reality target.",
+              dns_resolution: "healthy",
+              tcp_connect: "healthy",
+              tls_handshake: "degraded",
+              reality_target: "degraded",
+              telegram_app_path: "blocked",
+              telegram_web_path: "healthy",
+            },
+            transport_profiles: {
+              legacy_reality_fallback: {
+                name: "legacy_reality_fallback",
+                kind: "reality",
+                enabled: true,
+                inbound_id: 1,
+                host: "us.pokrov.space",
+                port: 443,
+                tls_server_name: "www.example.com",
+              },
+              grpc_443_primary: {
+                name: "grpc_443_primary",
+                kind: "grpc",
+                enabled: true,
+                inbound_id: 2,
+                host: "connect.pokrov.space",
+                port: 443,
+                tls_server_name: "connect.pokrov.space",
+              },
+            },
+          },
+        ],
+      },
+    });
+
+    await openRoute(page, "admin/nodes/");
+    const nodeCard = page.locator("article").filter({ hasText: "Hoster context" }).first();
+    await expect(nodeCard.getByText(/Hetzner/i)).toBeVisible();
+    await expect(nodeCard.getByText(/AS24940/)).toBeVisible();
+    await expect(nodeCard.getByText("5.45.67.0/24")).toBeVisible();
+    await expect(nodeCard.getByText(/Panel \/ control plane:/i)).toBeVisible();
+    await expect(nodeCard.getByText(/Dataplane probe:/i)).toBeVisible();
+    await expect(nodeCard.getByText(/Probe stage:/i)).toBeVisible();
+    await expect(nodeCard.getByText(/Probe classification:/i)).toBeVisible();
+    await expect(nodeCard.getByText(/Telegram app path:/i)).toBeVisible();
+    await expect(nodeCard.getByText(/Telegram web path:/i)).toBeVisible();
+    await expect(nodeCard.getByText(/TLS handshake:/i)).toBeVisible();
+    await expect(nodeCard.getByText(/REALITY target:/i)).toBeVisible();
+    await expect(nodeCard.getByText(/legacy_reality_fallback/i)).toBeVisible();
+    await expect(nodeCard.getByText(/grpc_443_primary/i)).toBeVisible();
+    await expect(nodeCard.getByText(/certificate names do not match expected reality target/i)).toBeVisible();
+  });
+
+  test("keeps rollout targeting fields and feed objects intact across save and reload", async ({ page }) => {
+    await registerApiMocks(page, {
+      isAdmin: true,
+      networkRolloutConfig: mockNetworkRolloutConfig(),
+    });
+
+    await openRoute(page, "admin/network/");
+
+    const textarea = page.locator("textarea");
+    const feedsCard = page.locator("article").filter({ has: page.locator("h3", { hasText: "Allowlist" }) });
+    const targetingCard = page.locator("article").filter({ has: page.locator("h3", { hasText: "Targeting selectors" }) });
+    await expect(textarea).toHaveValue(/"version": "2026-04-13-rollout"/);
+    await expect(textarea).toHaveValue(/"install_ids": \[/);
+    await expect(textarea).toHaveValue(/"linked_tg_ids": \[/);
+    await expect(textarea).toHaveValue(/"platforms": \[/);
+    await expect(feedsCard.getByText("package-feed-v2", { exact: true })).toBeVisible();
+    await expect(feedsCard.getByText("rules-feed-v7", { exact: true })).toBeVisible();
+    await expect(targetingCard.getByText("install-default-android")).toBeVisible();
+    await expect(targetingCard.getByText("1001")).toBeVisible();
+    await expect(targetingCard.getByText(/platforms:/i).last()).toContainText("android");
+
+    const initialJson = await textarea.inputValue();
+    const nextJson = initialJson
+      .replace('"transport_profile": "legacy_reality_fallback"', '"transport_profile": "grpc_443_primary"')
+      .replace('"version": "package-feed-v2"', '"version": "package-feed-v3"');
+    await textarea.fill(nextJson);
+    await page.getByRole("button", { name: /Сохранить/i }).click();
+    await expect(page.getByText(/Network rollout config/i)).toContainText(/сохран/i);
+
+    await page.reload({ waitUntil: "domcontentloaded" });
+    await expect(textarea).toHaveValue(/"version": "2026-04-13-rollout"/);
+    await expect(textarea).toHaveValue(/"transport_profile": "grpc_443_primary"/);
+    await expect(textarea).toHaveValue(/"install_ids": \[/);
+    await expect(textarea).toHaveValue(/"linked_tg_ids": \[/);
+    await expect(textarea).toHaveValue(/"platforms": \[/);
+    await expect(textarea).toHaveValue(/"version": "package-feed-v3"/);
+    await expect(targetingCard.getByText("install-default-windows")).toBeVisible();
+    await expect(feedsCard.getByText("rules-feed-v7", { exact: true })).toBeVisible();
   });
 
   test("lets admin triage a ticket and send a reply using stable status codes", async ({ page }) => {

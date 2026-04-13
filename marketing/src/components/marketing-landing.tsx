@@ -444,9 +444,9 @@ export default function MarketingLanding({
       <main id="main-content" className="lp-main">
         <section className="lp-hero">
           <div className="lp-hero-copy">
-            <div className="lp-kicker">{heroKicker || getCopyText("marketing.hero.kicker", "POKROV VPN • 5 дней бесплатного доступа")}</div>
+            <div className="lp-kicker">{heroKicker || getCopyText("marketing.hero.kicker", "POKROV Network • 5 дней бесплатного доступа")}</div>
             <p className="lp-overline">
-              {getCopyText("marketing.hero.overline", "Consumer-first VPN с app-first стартом для Android и Windows.")}
+              {getCopyText("marketing.hero.overline", "Умная оптимизация интернета с app-first стартом для Android и Windows.")}
             </p>
             <h1>{heroTitle || getCopyText("marketing.hero.title", "Стабильный интернет, который начинается с приложения")}</h1>
             <p className="lp-hero-lead">
@@ -485,7 +485,7 @@ export default function MarketingLanding({
               </div>
               <h2>Один спокойный путь без шума и ложных shortcut.</h2>
               <p>
-                Лендинг не уводит в технический host и не делает Telegram обязательным: сначала приложение, затем кабинет и checkout только в личном контексте.
+                Лендинг не уводит в технический контур и не делает Telegram обязательным: сначала приложение, затем кабинет и оплата только в личном контексте.
               </p>
               <ol className="lp-stage-steps">
                 {STEPS.map((item, index) => (
@@ -730,7 +730,7 @@ export default function MarketingLanding({
         <section className="lp-section">
           <div className="lp-footer-cta">
             <div className="lp-footer-copy">
-              <span>Финальный CTA</span>
+              <span>Финальный шаг к скорости</span>
               <h2>{getCopyText("marketing.footer.title", "POKROV Network: сначала приложение, потом всё остальное")}</h2>
               <p>
                 {getCopyText(

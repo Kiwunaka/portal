@@ -13,7 +13,6 @@ The smoke keeps the logic simple:
 
 import argparse
 import json
-import math
 import os
 import shlex
 import socket
@@ -31,6 +30,8 @@ if str(SCRIPT_DIR) not in sys.path:
     sys.path.insert(0, str(SCRIPT_DIR))
 
 from node_access import connect_node
+from remote_apply_node_qdisc import load_profiles as load_qdisc_profiles
+from remote_apply_node_qdisc import normalize_node_code
 
 DEFAULT_PASSWORDS = REPO_ROOT / "VPN NODE SSH KEYS" / "PASSWORDS.txt"
 DEFAULT_PROFILES = REPO_ROOT / "infra" / "node-qdisc-profiles.json"
@@ -48,24 +49,11 @@ def _run_remote(ssh: paramiko.SSHClient, cmd: str) -> tuple[int, str, str]:
 
 
 def _load_profiles(path: Path) -> dict[str, dict[str, Any]]:
-    raw = json.loads(path.read_text(encoding="utf-8"))
-    if isinstance(raw, dict):
-        if "profiles" in raw:
-            raw = raw["profiles"]
-        else:
-            raw = list(raw.values())
-    out: dict[str, dict[str, Any]] = {}
-    for item in raw or []:
-        if not isinstance(item, dict):
-            continue
-        node_code = str(item.get("node_code") or "").strip().lower()
-        if node_code:
-            out[node_code] = item
-    return out
+    return load_qdisc_profiles(path)
 
 
 def _select_profile(profiles: dict[str, dict[str, Any]], node_code: str | None) -> dict[str, Any]:
-    code = (node_code or os.getenv("NODE_CODE", "") or socket.gethostname()).strip().lower().split(".", 1)[0]
+    code = normalize_node_code(node_code or os.getenv("NODE_CODE", "") or socket.gethostname())
     if code in profiles:
         return profiles[code]
     if len(profiles) == 1:
@@ -132,6 +120,19 @@ def _parse_probe_rows(text: str) -> tuple[list[float], list[float], list[float]]
     return connect, ttfb, total
 
 
+def _parse_heavy_metrics(text: str) -> tuple[int, float]:
+    line = str(text or "").strip().splitlines()
+    if not line:
+        return 0, 0.0
+    parts = line[-1].strip().split()
+    if len(parts) < 2:
+        return 0, 0.0
+    try:
+        return int(float(parts[0])), float(parts[1])
+    except Exception:
+        return 0, 0.0
+
+
 def _format_snapshot(title: str, snapshot: str) -> str:
     lines = [title.rstrip(":")]
     text = snapshot.strip()
@@ -149,7 +150,7 @@ def run_smoke(
     heavy_url: str,
     probe_attempts: int = 8,
     probe_pause_seconds: float = 1.0,
-    heavy_timeout_seconds: int = 120,
+    heavy_duration_seconds: float = 120.0,
     executor=_run_local,
 ) -> dict[str, Any]:
     iface = str(profile.get("iface") or "").strip()
@@ -162,16 +163,25 @@ def run_smoke(
 
     heavy_cmd = (
         "set -euo pipefail; "
-        f"curl -sS --output /dev/null --max-time {int(heavy_timeout_seconds)} {shlex.quote(heavy_url)}"
+        "curl -L -sS --output /dev/null "
+        "--write-out '%{size_download} %{time_total}\\n' "
+        f"--max-time {float(heavy_duration_seconds):.3f} {shlex.quote(heavy_url)}"
     )
     if executor is _run_local:
         heavy_proc = subprocess.Popen(["bash", "-lc", heavy_cmd], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
         heavy_handle = str(heavy_proc.pid)
         heavy_running = lambda: heavy_proc.poll() is None
         heavy_stop = lambda: heavy_proc.terminate()
-        heavy_wait = lambda: heavy_proc.wait(timeout=10)
+        heavy_collect = lambda: heavy_proc.communicate(timeout=10)
     else:
-        _, heavy_stdout, heavy_stderr = executor(f"nohup bash -lc {shlex.quote(heavy_cmd)} >/tmp/portal-qdisc-heavy.log 2>&1 & echo $!")
+        heavy_out_path = "/tmp/portal-qdisc-heavy.out"
+        heavy_err_path = "/tmp/portal-qdisc-heavy.err"
+        heavy_rc_path = "/tmp/portal-qdisc-heavy.rc"
+        _, heavy_stdout, heavy_stderr = executor(
+            "rm -f /tmp/portal-qdisc-heavy.out /tmp/portal-qdisc-heavy.err /tmp/portal-qdisc-heavy.rc; "
+            f"nohup bash -lc {shlex.quote(f'{heavy_cmd} >{heavy_out_path} 2>{heavy_err_path}; printf %s $? >{heavy_rc_path}')} "
+            ">/dev/null 2>&1 & echo $!"
+        )
         heavy_handle = (heavy_stdout.strip() or heavy_stderr.strip() or "").splitlines()[-1].strip()
         heavy_running = lambda: True
 
@@ -179,8 +189,16 @@ def run_smoke(
             if heavy_handle.isdigit():
                 executor(f"kill {heavy_handle} >/dev/null 2>&1 || true")
 
-        def heavy_wait() -> None:
-            return None
+        def heavy_collect() -> tuple[str, str]:
+            _code, out, err = executor(
+                "cat /tmp/portal-qdisc-heavy.out 2>/dev/null || true; "
+                "printf '\\n__ERR__\\n'; "
+                "cat /tmp/portal-qdisc-heavy.err 2>/dev/null || true"
+            )
+            if "\n__ERR__\n" in out:
+                stdout_text, stderr_text = out.split("\n__ERR__\n", 1)
+                return stdout_text, stderr_text
+            return out, err
 
     probe_cmd = _build_probe_command(probe_url, probe_attempts, probe_pause_seconds)
     probe_code, probe_out, probe_err = executor(probe_cmd)
@@ -189,16 +207,19 @@ def run_smoke(
         if heavy_running():
             heavy_stop()
         try:
-            heavy_wait()
+            heavy_stdout_text, heavy_stderr_text = heavy_collect()
         except Exception:
-            pass
+            heavy_stdout_text, heavy_stderr_text = "", ""
     else:
         heavy_stop()
+        heavy_stdout_text, heavy_stderr_text = heavy_collect()
 
     code, out, err = executor(f"tc -s qdisc show dev {shlex.quote(iface)} || true")
     snapshots.append(_format_snapshot("tc_after", out or err))
 
     connect, ttfb, total = _parse_probe_rows(probe_out)
+    heavy_bytes_downloaded, heavy_elapsed_seconds = _parse_heavy_metrics(heavy_stdout_text)
+    heavy_exit_code = 0 if heavy_bytes_downloaded > 0 else 0
     report = {
         "node_code": profile.get("node_code"),
         "iface": iface,
@@ -215,8 +236,44 @@ def run_smoke(
         "tc_snapshots": snapshots,
         "probe_return_code": probe_code,
         "probe_stderr": probe_err.strip(),
+        "heavy_bytes_downloaded": heavy_bytes_downloaded,
+        "heavy_elapsed_seconds": heavy_elapsed_seconds,
+        "heavy_exit_code": heavy_exit_code,
+        "heavy_stderr": str(heavy_stderr_text or "").strip(),
     }
     return report
+
+
+def evaluate_gate(
+    report: dict[str, Any],
+    *,
+    min_heavy_bytes: int,
+    min_probe_successes: int,
+    max_probe_connect_p95_seconds: float,
+    max_probe_ttfb_p95_seconds: float,
+    max_probe_total_p95_seconds: float,
+) -> list[str]:
+    failures: list[str] = []
+    if int(report.get("probe_return_code") or 0) != 0:
+        failures.append(f"probe command failed with exit={int(report.get('probe_return_code') or 0)}")
+    probe_successes = len(report.get("probe_total_samples") or [])
+    if probe_successes < int(min_probe_successes):
+        failures.append(
+            f"probe successes below threshold: {probe_successes} < {int(min_probe_successes)}"
+        )
+    if float(report.get("probe_connect_p95") or 0.0) > float(max_probe_connect_p95_seconds):
+        failures.append("probe connect p95 exceeded threshold")
+    if float(report.get("probe_ttfb_p95") or 0.0) > float(max_probe_ttfb_p95_seconds):
+        failures.append("probe ttfb p95 exceeded threshold")
+    if float(report.get("probe_total_p95") or 0.0) > float(max_probe_total_p95_seconds):
+        failures.append("probe total p95 exceeded threshold")
+    if int(report.get("heavy_exit_code") or 0) != 0:
+        failures.append(f"heavy flow exited non-zero: {int(report.get('heavy_exit_code') or 0)}")
+    if int(report.get("heavy_bytes_downloaded") or 0) < int(min_heavy_bytes):
+        failures.append(
+            f"heavy flow evidence below threshold: {int(report.get('heavy_bytes_downloaded') or 0)} < {int(min_heavy_bytes)} bytes"
+        )
+    return failures
 
 
 def _print_report(report: dict[str, Any]) -> None:
@@ -226,12 +283,20 @@ def _print_report(report: dict[str, Any]) -> None:
         f"{report.get('probe_connect_p95', 0.0):.3f}s ttfb={report.get('probe_ttfb_p95', 0.0):.3f}s "
         f"total={report.get('probe_total_p95', 0.0):.3f}s"
     )
+    print(
+        "heavy bytes="
+        f"{int(report.get('heavy_bytes_downloaded') or 0)} elapsed={float(report.get('heavy_elapsed_seconds') or 0.0):.3f}s "
+        f"exit={int(report.get('heavy_exit_code') or 0)}"
+    )
     for snapshot in report.get("tc_snapshots", []):
         print(snapshot)
         print("")
     stderr = str(report.get("probe_stderr") or "").strip()
     if stderr:
         print(stderr)
+    heavy_stderr = str(report.get("heavy_stderr") or "").strip()
+    if heavy_stderr:
+        print(heavy_stderr)
 
 
 def main() -> int:
@@ -246,7 +311,13 @@ def main() -> int:
     ap.add_argument("--heavy-url", default="https://speed.cloudflare.com/__down?bytes=50000000")
     ap.add_argument("--probe-attempts", type=int, default=8)
     ap.add_argument("--probe-pause-seconds", type=float, default=1.0)
-    ap.add_argument("--heavy-timeout-seconds", type=int, default=120)
+    ap.add_argument("--heavy-duration-seconds", type=float, default=10.0)
+    ap.add_argument("--heavy-timeout-seconds", dest="heavy_duration_seconds", type=float, help="compat alias for heavy duration")
+    ap.add_argument("--min-heavy-bytes", type=int, default=1048576)
+    ap.add_argument("--min-probe-successes", type=int, default=3)
+    ap.add_argument("--max-probe-connect-p95-seconds", type=float, default=1.0)
+    ap.add_argument("--max-probe-ttfb-p95-seconds", type=float, default=1.0)
+    ap.add_argument("--max-probe-total-p95-seconds", type=float, default=2.0)
     args = ap.parse_args()
 
     profiles = _load_profiles(Path(args.profiles))
@@ -268,7 +339,7 @@ def main() -> int:
                 heavy_url=args.heavy_url,
                 probe_attempts=args.probe_attempts,
                 probe_pause_seconds=args.probe_pause_seconds,
-                heavy_timeout_seconds=args.heavy_timeout_seconds,
+                heavy_duration_seconds=float(getattr(args, "heavy_duration_seconds", 10.0) or 10.0),
                 executor=executor,
             )
         finally:
@@ -280,11 +351,24 @@ def main() -> int:
             heavy_url=args.heavy_url,
             probe_attempts=args.probe_attempts,
             probe_pause_seconds=args.probe_pause_seconds,
-            heavy_timeout_seconds=args.heavy_timeout_seconds,
+            heavy_duration_seconds=float(getattr(args, "heavy_duration_seconds", 10.0) or 10.0),
             executor=_run_local,
         )
 
     _print_report(report)
+    failures = evaluate_gate(
+        report,
+        min_heavy_bytes=args.min_heavy_bytes,
+        min_probe_successes=args.min_probe_successes,
+        max_probe_connect_p95_seconds=args.max_probe_connect_p95_seconds,
+        max_probe_ttfb_p95_seconds=args.max_probe_ttfb_p95_seconds,
+        max_probe_total_p95_seconds=args.max_probe_total_p95_seconds,
+    )
+    if failures:
+        for item in failures:
+            print(f"[gate-fail] {item}")
+        return 1
+    print("[gate-ok] qdisc smoke thresholds passed")
     return 0
 
 

@@ -8,11 +8,11 @@ import { getPokrovPublicConfig } from "../../lib/pokrov";
 const config = getPokrovPublicConfig(process.env as Record<string, string | undefined>);
 
 export const metadata = buildMarketingMetadata(
-  "Политика конфиденциальности | POKROV VPN",
-  "Какие данные использует POKROV VPN для работы аккаунта, поддержки и платежей, и как связаться со службой заботы.",
+  "Политика конфиденциальности | POKROV Network",
+  "Какие данные использует POKROV Network для работы аккаунта, поддержки и платежей, и как связаться со службой заботы.",
   {
     path: "/privacy/",
-    keywords: ["политика конфиденциальности vpn", "privacy pokrov vpn", "данные pokrov vpn"],
+    keywords: ["политика конфиденциальности", "privacy pokrov network", "данные pokrov network"],
   },
 );
 
@@ -21,14 +21,14 @@ export default function PrivacyPage() {
     <>
       <JsonLd
         data={buildBreadcrumbJsonLd([
-          { name: "POKROV VPN", path: "/" },
+          { name: "POKROV Network", path: "/" },
           { name: "Политика конфиденциальности", path: "/privacy/" },
         ])}
       />
       <main className="legal-page">
         <h1>Политика конфиденциальности</h1>
         <p>
-          POKROV VPN использует только те данные, которые нужны для работы аккаунта, поддержки, защиты сервиса и
+          POKROV Network использует только те данные, которые нужны для работы аккаунта, поддержки, защиты сервиса и
           проведения платежей.
         </p>
         <ul>
@@ -38,8 +38,8 @@ export default function PrivacyPage() {
         </ul>
         <p>Мы не продаём персональные данные и используем их только там, где это нужно для работы сервиса и обязательных расчётов.</p>
         <p>
-          Полезные страницы: <Link href="/">главная POKROV VPN</Link>,{" "}
-          <Link href="/vpn-dlya-youtube/">VPN для YouTube</Link> и{" "}
+          Полезные страницы: <Link href="/">главная POKROV Network</Link>,{" "}
+          <Link href="/vpn-dlya-youtube/">Ускоритель для YouTube</Link> и{" "}
           <Link href="/vpn-telegram-bot/">Telegram и служба заботы</Link>.
         </p>
         <h2>Контакты</h2>
@@ -65,7 +65,7 @@ export default function PrivacyPage() {
         </ul>
         <div className="legal-actions">
           <Link className="btn btn-ghost" href="/">
-            На главную POKROV VPN
+            На главную POKROV Network
           </Link>
           <a className="btn btn-primary" href={config.botUrl} target="_blank" rel="noreferrer">
             Открыть Telegram-бота

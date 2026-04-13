@@ -114,6 +114,25 @@ function transportHealthLabel(value?: unknown): { label: string; detail?: string
   if (Array.isArray(value)) return { label: `список: ${value.length}` };
   if (typeof value === "object") {
     const data = value as Record<string, unknown>;
+    const panelState = String(data.panel_state || "").trim();
+    const dataplaneState = String(data.dataplane_state || "").trim();
+    if (panelState || dataplaneState) {
+      let label = "degraded";
+      if (panelState === "healthy" && dataplaneState === "healthy") {
+        label = "healthy";
+      } else if (panelState !== "healthy" && dataplaneState === "healthy") {
+        label = "panel failed / dataplane healthy";
+      } else if (panelState === "healthy" && dataplaneState !== "healthy") {
+        label = "panel healthy / dataplane failed";
+      }
+      const detail =
+        data.root_cause_summary != null
+          ? String(data.root_cause_summary)
+          : data.root_cause_detail != null
+            ? String(data.root_cause_detail)
+            : undefined;
+      return { label, detail };
+    }
     const primary = data.status ?? data.state ?? data.kind ?? data.label ?? data.transport_profile;
     const label = primary != null ? String(primary) : `${Object.keys(data).length} полей`;
     const detail =
@@ -127,6 +146,17 @@ function transportHealthLabel(value?: unknown): { label: string; detail?: string
     return { label, detail };
   }
   return { label: String(value) };
+}
+
+function transportHealthRecord(value?: unknown): Record<string, unknown> | null {
+  return value && typeof value === "object" && !Array.isArray(value) ? (value as Record<string, unknown>) : null;
+}
+
+function transportHealthValueText(value: unknown): string {
+  if (value == null) return "нет данных";
+  if (typeof value === "string") return value || "нет данных";
+  if (typeof value === "number" || typeof value === "boolean") return String(value);
+  return JSON.stringify(value);
 }
 
 function transportProfileLabel(profile: {
@@ -392,7 +422,20 @@ export default function AdminNodesPage() {
           const networkPercent = node.network_utilization_percent;
           const networkPeakPercent = node.network_peak_utilization_percent_24h;
           const transportHealth = transportHealthLabel(node.transport_health);
-          const transportProfiles = Array.isArray(node.transport_profiles) ? node.transport_profiles.filter(Boolean) : [];
+          const transportHealthData = transportHealthRecord(node.transport_health);
+          const transportProfiles = Object.values(node.transport_profiles || {}).filter(Boolean);
+          const panelState = transportHealthValueText(transportHealthData?.panel_state);
+          const dataplaneState = transportHealthValueText(transportHealthData?.dataplane_state);
+          const probeStage = transportHealthValueText(
+            transportHealthData?.dataplane_stage ?? transportHealthData?.panel_stage ?? node.last_probe_stage,
+          );
+          const probeClassification = transportHealthValueText(node.probe_classification);
+          const telegramAppPath = transportHealthValueText(transportHealthData?.telegram_app_path);
+          const telegramWebPath = transportHealthValueText(transportHealthData?.telegram_web_path);
+          const tlsHandshake = transportHealthValueText(transportHealthData?.tls_handshake);
+          const realityTarget = transportHealthValueText(transportHealthData?.reality_target);
+          const rootCauseSummary = transportHealthData?.root_cause_summary ? String(transportHealthData.root_cause_summary) : "";
+          const rootCauseDetail = transportHealthData?.root_cause_detail ? String(transportHealthData.root_cause_detail) : "";
 
           return (
             <article key={node.code} className="stat-card min-w-0 p-5">
@@ -509,6 +552,17 @@ export default function AdminNodesPage() {
                 ))}
               </div>
 
+              {(node.hoster_family || node.hoster_asn || node.subnet) ? (
+                <div className="mt-3 rounded-xl border border-white/15 bg-white/35 p-3 dark:border-white/10 dark:bg-white/[0.04]">
+                  <div className="mb-2 text-sm font-semibold">Hoster context</div>
+                  <div className="grid gap-2 text-xs sm:grid-cols-3">
+                    <p>Hoster: <strong>{node.hoster_family || "нет данных"}</strong></p>
+                    <p>ASN: <strong>{node.hoster_asn || "нет данных"}</strong></p>
+                    <p>Subnet: <strong>{node.subnet || "нет данных"}</strong></p>
+                  </div>
+                </div>
+              ) : null}
+
               <div className="mt-3 rounded-xl border border-white/15 bg-white/35 p-3 dark:border-white/10 dark:bg-white/[0.04]">
                 <div className="mb-2 flex items-center justify-between gap-2 text-sm font-semibold">
                   <span>Transport</span>
@@ -517,6 +571,18 @@ export default function AdminNodesPage() {
                   </span>
                 </div>
                 {transportHealth.detail ? <p className="text-xs text-slate-500">{transportHealth.detail}</p> : null}
+                {rootCauseSummary ? <p className="mt-2 text-xs text-slate-600 dark:text-slate-300">{rootCauseSummary}</p> : null}
+                {rootCauseDetail ? <p className="mt-1 text-xs text-slate-500">{rootCauseDetail}</p> : null}
+                <div className="mt-3 grid gap-2 text-xs sm:grid-cols-2">
+                  <p>Panel / control plane: <strong>{panelState}</strong></p>
+                  <p>Dataplane probe: <strong>{dataplaneState}</strong></p>
+                  <p>Probe stage: <strong>{probeStage}</strong></p>
+                  <p>Probe classification: <strong>{probeClassification}</strong></p>
+                  <p>Telegram app path: <strong>{telegramAppPath}</strong></p>
+                  <p>Telegram web path: <strong>{telegramWebPath}</strong></p>
+                  <p>TLS handshake: <strong>{tlsHandshake}</strong></p>
+                  <p>REALITY target: <strong>{realityTarget}</strong></p>
+                </div>
                 <div className="mt-2 flex flex-wrap gap-2">
                   {transportProfiles.length ? (
                     transportProfiles.map((profile, index) => (

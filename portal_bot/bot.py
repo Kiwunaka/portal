@@ -808,13 +808,13 @@ def _mark_stars_payment_processed(*, payment_fingerprint: str, invoice_payload: 
 ACHIEVEMENTS = {
     "first_sub": {
         "name": "🟢 Inception",
-        "desc": "Первая активация защищенного канала",
+        "desc": "Первая активация личного маршрута",
         "days": 0,
         "icon": "🟢"
     },
     "week_active": {
         "name": "🛡 Sentinel",
-        "desc": "7 дней непрерывной защиты",
+        "desc": "7 дней непрерывной оптимизации",
         "days": 1,
         "icon": "🛡"
     },
@@ -850,7 +850,7 @@ ACHIEVEMENTS = {
     },
     "loyal_year": {
         "name": "👑 Architect",
-        "desc": "Год в системе POKROV VPN",
+        "desc": "Год в системе POKROV Network",
         "days": 30,
         "icon": "👑"
     },

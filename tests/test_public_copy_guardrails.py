@@ -120,7 +120,7 @@ def test_frontend_public_copy_catalogs_stay_pokrov_only() -> None:
         "https://t.me/pokrov_vpn",
     )
     product_facts_required_snippets = (
-        "POKROV VPN",
+        "POKROV Network",
     )
     forbidden_markers = (
         "portal-privacy.online",

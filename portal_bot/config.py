@@ -23,7 +23,7 @@ class Settings:
     ADMIN_ID: int = env_int("ADMIN_ID", 0)
     DATABASE_URL: str = os.getenv("DATABASE_URL", "sqlite:///portal.db")
     PLATFORM_BRAND: str = (os.getenv("PLATFORM_BRAND") or "POKROV").strip()
-    CLIENT_BRAND: str = (os.getenv("CLIENT_BRAND") or "POKROV VPN").strip()
+    CLIENT_BRAND: str = (os.getenv("CLIENT_BRAND") or "POKROV Network").strip()
     MAIN_BOT_USERNAME: str = (os.getenv("MAIN_BOT_USERNAME") or os.getenv("BOT_USERNAME") or "pokrov_vpnbot").lstrip("@")
     CONTACT_EMAIL: str = (os.getenv("CONTACT_EMAIL") or "support@pokrov.space").strip()
     ENTERPRISE_EMAIL: str = (os.getenv("ENTERPRISE_EMAIL") or "enterprise@pokrov.space").strip()

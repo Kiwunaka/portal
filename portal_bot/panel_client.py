@@ -250,6 +250,18 @@ class PanelClient:
                 return profile
         return None
 
+    @staticmethod
+    def _client_flow_value(flow, fallback: str | None = None) -> str:
+        if flow is None:
+            return str(fallback or "")
+        return str(flow)
+
+    def _managed_flow_for_inbound(self, inbound_id: int) -> str:
+        profile = self._transport_profile_for_inbound(inbound_id, include_disabled=True) or {}
+        if str(profile.get("kind") or "").lower() == "reality":
+            return str(profile.get("flow") or self.node.flow or "")
+        return ""
+
     def _selected_inbounds(self, inbounds: list[dict], *, include_disabled: bool = False) -> list[dict]:
         target_ids = set(self._managed_inbound_ids(include_disabled=include_disabled))
         if not target_ids:
@@ -705,7 +717,7 @@ class PanelClient:
         client_obj = {
             "id": client_uuid,
             "email": email,
-            "flow": str(flow or self.node.flow or ""),
+            "flow": self._client_flow_value(flow, self.node.flow or ""),
             "totalGB": total_gb_bytes,
             "expiryTime": 0,
             "subId": sub_id,
@@ -759,7 +771,7 @@ class PanelClient:
         updated = {
             "id": client.get("id"),
             "email": client.get("email"),
-            "flow": str(flow or client.get("flow") or self.node.flow or ""),
+            "flow": self._client_flow_value(flow, client.get("flow") or self.node.flow or ""),
             "totalGB": total_gb_bytes,
             "expiryTime": 0,
             "subId": str(sub_id or client.get("subId", "") or ""),
@@ -849,7 +861,7 @@ class PanelClient:
         updated = {
             "id": client.get("id"),
             "email": client.get("email"),
-            "flow": str(flow or client.get("flow") or self.node.flow or ""),
+            "flow": self._client_flow_value(flow, client.get("flow") or self.node.flow or ""),
             "totalGB": total_gb_bytes,
             "expiryTime": 0,
             "subId": client.get("subId", ""),
@@ -888,10 +900,7 @@ class PanelClient:
             email = str(client.get("email") or "").strip()
             if await self._reset_client_traffic_by_email(email=email, inbound_id=inbound_id):
                 continue
-            flow = None
-            profile = self._transport_profile_for_inbound(inbound_id, include_disabled=True)
-            if profile:
-                flow = str(profile.get("flow") or client.get("flow") or self.node.flow or "")
+            flow = self._managed_flow_for_inbound(inbound_id)
             ok = await self._update_client_with_reset_flag(client, inbound_id=inbound_id, flow=flow)
             ok_all = ok_all and ok
         return ok_all
@@ -1011,8 +1020,7 @@ class PanelClient:
 
         for inbound_id in target_inbound_ids:
             existing = existing_by_inbound.get(inbound_id)
-            profile = self._transport_profile_for_inbound(inbound_id, include_disabled=True) or {}
-            flow = str(profile.get("flow") or self.node.flow or "")
+            flow = self._managed_flow_for_inbound(inbound_id)
             if existing:
                 try:
                     ok = await self.update_client_enable(
@@ -1067,8 +1075,7 @@ class PanelClient:
         for inbound_id in target_inbound_ids:
             if inbound_id in existing_by_inbound:
                 continue
-            profile = self._transport_profile_for_inbound(inbound_id, include_disabled=True) or {}
-            flow = str(profile.get("flow") or self.node.flow or "")
+            flow = self._managed_flow_for_inbound(inbound_id)
             ok = await self.add_client(
                 client_uuid=client_uuid,
                 email=email,
@@ -1116,8 +1123,7 @@ class PanelClient:
         for inbound_id, client in matches:
             updated = dict(client)
             updated["comment"] = comment
-            profile = self._transport_profile_for_inbound(inbound_id, include_disabled=True) or {}
-            flow = str(profile.get("flow") or updated.get("flow") or self.node.flow or "")
+            flow = self._managed_flow_for_inbound(inbound_id)
             ok = await self.update_client_enable(
                 updated,
                 updated.get("enable", True),

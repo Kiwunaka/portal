@@ -18,8 +18,8 @@ const ENTRY_PILLARS = [
   },
   {
     icon: "vpn_key",
-    title: "Доступ и продление в одном месте",
-    text: "Статус подписки, продление и ссылка подключения собираются в одной спокойной точке входа.",
+    title: "Скорость и продление в одном месте",
+    text: "Статус, продление и ключи оптимизации собираются в одной спокойной точке входа.",
   },
   {
     icon: "support_agent",
@@ -72,10 +72,10 @@ function EntryBody() {
               </div>
               <div className="space-y-3">
                 <h1 className="font-display text-4xl font-semibold leading-[0.98] text-slate-900 dark:text-slate-50 sm:text-5xl">
-                  Подготавливаем ваш кабинет POKROV VPN
+                  Подготавливаем ваш кабинет POKROV Network
                 </h1>
                 <p className="max-w-xl text-sm leading-7 text-slate-600 dark:text-slate-300">
-                  Проверяем текущий вход и собираем аккуратный маршрут в кабинет, чтобы доступ, продление и поддержка открылись без лишнего шума.
+                  Проверяем текущий вход и собираем аккуратный маршрут в кабинет, чтобы скорость, продление и поддержка открылись без лишнего шума.
                 </p>
               </div>
               <div className="grid gap-3 sm:grid-cols-3">
@@ -187,12 +187,12 @@ function EntryBody() {
 
               <div className="max-w-2xl space-y-4">
                 <h1 className="font-display text-4xl font-semibold leading-[0.96] text-slate-900 dark:text-slate-50 sm:text-5xl lg:text-[3.6rem]">
-                  {getCopyText("webapp.entry.title", "Личный кабинет POKROV VPN")}
+                  {getCopyText("webapp.entry.title", "Личный кабинет POKROV Network")}
                 </h1>
                 <p className="max-w-2xl text-sm leading-7 text-slate-600 dark:text-slate-300 sm:text-[15px]">
                   {getCopyText(
                     "webapp.entry.subtitle",
-                    "Здесь удобно продолжать доступ: проверить статус, спокойно продлить подписку, открыть ссылку подключения и быстро выйти на поддержку, если она понадобится.",
+                    "Здесь удобно управлять скоростью: проверить статус, спокойно продлить подписку, открыть ключи оптимизации и быстро выйти на поддержку, если она понадобится.",
                   )}
                 </p>
               </div>
@@ -258,7 +258,7 @@ function EntryBody() {
               <p className="mt-3 text-sm leading-7 text-slate-600 dark:text-slate-300">
                 {getCopyText(
                   "webapp.entry.card_body",
-                  "После подтверждения кабинет сразу вернет вас к статусу доступа, продлению, ключу подключения и службе заботы, без дополнительной настройки.",
+                  "После подтверждения кабинет сразу вернет вас к статусу, продлению, ключам оптимизации и службе заботы, без дополнительной настройки.",
                 )}
               </p>
 
@@ -299,7 +299,7 @@ function EntryBody() {
                       ? "Проверяем подтверждение входа и готовим возврат в кабинет."
                       : webLoginError
                         ? webLoginError
-                        : "Если Telegram уже открыт на этом устройстве, подтверждение обычно занимает один спокойный шаг."}
+                        : "Если Telegram на этом устройстве подтвержден, вход в кабинет обычно занимает один спокойный шаг."}
                   </p>
                 </div>
               </div>

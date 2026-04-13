@@ -163,7 +163,7 @@ export default function SupportPage() {
     <main className="space-y-6">
       <section className="glass-card p-7">
         <h1 className="font-display text-4xl font-bold">
-          {getCopyText("webapp.support.title", "Служба заботы POKROV VPN")}
+          {getCopyText("webapp.support.title", "Служба заботы POKROV Network")}
         </h1>
         <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">
           {getCopyText(

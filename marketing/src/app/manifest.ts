@@ -5,8 +5,8 @@ import { CANONICAL_CLIENT_BRAND, CANONICAL_MARKETING_SITE_URL } from "../lib/pok
 export default function manifest(): MetadataRoute.Manifest {
   return {
     name: CANONICAL_CLIENT_BRAND,
-    short_name: "POKROV VPN",
-    description: "VPN-приложение для Android и Windows с 5-дневным бесплатным тестом.",
+    short_name: "POKROV Net",
+    description: "Умное ускорение интернета для Android и Windows с 5-дневным бесплатным тестом.",
     start_url: "/",
     display: "standalone",
     background_color: "#f5f7f3",

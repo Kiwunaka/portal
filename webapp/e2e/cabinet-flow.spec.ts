@@ -389,7 +389,7 @@ test.describe("Cabinet flow", () => {
     await expect(page.getByRole("heading", { name: "Сводка по использованию" })).toBeVisible();
     await expect(page.getByRole("heading", { name: "Что доступно сейчас" })).toBeVisible();
     await expect(page.locator("main")).toContainText("Ссылка подключения: готова");
-    await expect(page.locator("main")).toContainText("Трафик: безлимитный");
+    await expect(page.locator("main")).toContainText("Трафик: доступен разгон");
     await expect(page.locator("main")).not.toContainText("Объём профиля: 0 ГБ");
   });
 

@@ -54,6 +54,8 @@ Visibility rule:
 - the active transport profile should be readable from node health so operators can tell whether a node is still on `legacy_reality_fallback`, has moved to `grpc_443_primary`, or is reserved for `operator_lab`
 - `network_rollout_config` is the operator-owned source of rollout policy and should be checked whenever transport or DNS diverge by cohort
 - qdisc rollout evidence should stay operator-visible through `infra/node-qdisc-profiles.json`, `scripts/remote_apply_node_qdisc.py show`, `tc -s qdisc`, and `scripts/remote_node_qdisc_smoke.py`
+- admin node health must show `panel_state` and `dataplane_state` separately; panel failure must not suppress dataplane probe evidence
+- operator-readable node context must include `hoster_family`, `hoster_asn`, `subnet`, `root_cause_summary`, `root_cause_detail`, `telegram_app_path`, and `telegram_web_path`
 - `operator_lab` allowlists are control-plane data, not user-facing diagnostics, and must not leak into public UI or support copy
 - if a failure is provider- or family-specific, fail over by `subnet` first, then by `hoster_family`, and only then by country label
 - release and incident reports must keep `current-origin check`, `brain-origin check`, and `RU-origin check` as separate evidence lines

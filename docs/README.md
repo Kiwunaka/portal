@@ -10,7 +10,8 @@ This directory is split into two classes of material:
 Legacy filename note:
 
 - some canonical docs still live under legacy filenames like `portal-vpn-product.md`, `portal-vpn-user-guide-ru.md`, and `portal-vpn-v1-spec.md`
-- those paths are still current for `POKROV VPN`; the filename is legacy, the content is not
+- those paths are still current for the `POKROV` product; the filename is legacy, the content is not
+- legacy `POKROV VPN` labels in filenames or old identifiers do not authorize new direct-meaning `VPN` copy
 
 Use the role-based paths below first. If you need older context, go to the archive sections afterward.
 
@@ -42,7 +43,7 @@ Use the role-based paths below first. If you need older context, go to the archi
 
 ## Start Here As User
 
-- [POKROV VPN User Guide (RU)](C:/Users/kiwun/Documents/ai/VPN/docs/user/portal-vpn-user-guide-ru.md)
+- [POKROV User Guide (RU)](C:/Users/kiwun/Documents/ai/VPN/docs/user/portal-vpn-user-guide-ru.md)
 
 ## Start Here For Client Fork
 

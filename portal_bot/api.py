@@ -25,6 +25,7 @@ import time
 import uuid
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
+from types import SimpleNamespace
 from typing import Any
 from urllib.parse import parse_qsl, urlencode, urlparse
 
@@ -133,7 +134,7 @@ from network_rollout import (
 )
 from public_urls import build_subscription_url, public_connect_host
 from shared_surface_facts import get_product_facts, get_public_urls
-from transport_catalog import LEGACY_REALITY_FALLBACK, node_transport_profiles, transport_profile_by_name
+from transport_catalog import LEGACY_REALITY_FALLBACK, OPERATOR_LAB, node_transport_profiles, transport_profile_by_name
 from web_auth_service import (
     SESSION_TTL_SECONDS,
     build_telegram_oidc_authorize_url,
@@ -3796,6 +3797,7 @@ async def client_start_trial(payload: AppStartTrialIn, request: Request) -> dict
             session=s,
             user=user,
             install_id=str(getattr(user, "app_install_id", "") or "").strip() or None,
+            carrier=_request_carrier_header(request.headers.get("X-Portal-Carrier")),
         )
     except HTTPException:
         s.rollback()
@@ -3854,6 +3856,60 @@ async def client_start_trial(payload: AppStartTrialIn, request: Request) -> dict
         "access": start_trial_parts["access"],
         "provisioning": start_trial_parts["provisioning"],
     }
+
+
+@app.get("/api/client/profile/managed")
+async def client_managed_profile(
+    request: Request,
+    x_telegram_init_data: str = Header(default=""),
+    x_portal_carrier: str = Header(default=""),
+) -> dict[str, Any]:
+    auth_user = _require_auth_user(x_telegram_init_data, request=request)
+    tg_id = int(auth_user.get("id", 0))
+    s = SessionLocal()
+    try:
+        user = s.query(User).filter(User.tg_id == tg_id).first()
+        if not user:
+            raise HTTPException(status_code=404, detail="User not found")
+
+        _maybe_downgrade_expired_to_free(s, user)
+        _ensure_free_cycle_state_persisted(s, user)
+        rollout_config = load_network_rollout_config(session=s)
+        client_policy = app_first_service.build_client_policy(
+            session=s,
+            user=user,
+            install_id=str(getattr(user, "app_install_id", "") or "").strip() or None,
+            carrier=_request_carrier_header(x_portal_carrier),
+            rollout_config=rollout_config,
+        )
+        transport_profile = str(client_policy.get("transport_profile") or LEGACY_REALITY_FALLBACK).strip() or LEGACY_REALITY_FALLBACK
+        nodes = enabled_nodes(s)
+        nodes_for_user = _nodes_for_user(user, nodes, session=s)
+        effective_nodes = _effective_transport_nodes(
+            nodes=nodes_for_user,
+            rollout_config=rollout_config,
+            transport_profile=transport_profile,
+        )
+        config_format, config_payload = _managed_manifest_payload(
+            user=user,
+            nodes=effective_nodes,
+            title="POKROV",
+            transport_profile=transport_profile,
+        )
+        return {
+            "version": str(rollout_config.get("version") or ""),
+            "profile_revision": str(client_policy.get("profile_revision") or ""),
+            "transport_profile": transport_profile,
+            "transport_kind": str(client_policy.get("transport_kind") or ""),
+            "engine_hint": str(client_policy.get("engine_hint") or ""),
+            "config_format": config_format,
+            "config_payload": config_payload,
+            "fallback_order": _managed_manifest_fallback_order(transport_profile),
+            "support_context": dict(client_policy.get("support_context") or {}),
+            "subscription_url": build_subscription_url(str(getattr(user, "sub_token", "") or "")),
+        }
+    finally:
+        s.close()
 
 
 @app.post("/api/client/telegram/link")
@@ -8703,6 +8759,7 @@ def _node_transport_profile(node: Any, transport_profile: str | None) -> dict[st
 
 def _node_outbound_from_transport_profile(*, user_uuid: str, node: Any, tag: str, transport_profile: str | None) -> dict[str, Any]:
     profile = _node_transport_profile(node, transport_profile)
+    kind = str(profile.get("kind") or "reality").strip().lower()
     tls: dict[str, Any] = {
         "enabled": True,
         "server_name": str(profile.get("tls_server_name") or getattr(node, "reality_sni", "") or ""),
@@ -8724,10 +8781,18 @@ def _node_outbound_from_transport_profile(*, user_uuid: str, node: Any, tag: str
     if flow:
         outbound["flow"] = flow
 
-    if str(profile.get("kind") or "reality").strip().lower() == "grpc":
+    if kind == "grpc":
         outbound["transport"] = {
             "type": "grpc",
             "service_name": str(profile.get("grpc_service_name") or "").strip(),
+        }
+        outbound.pop("flow", None)
+        return outbound
+
+    if kind == "xhttp":
+        outbound["transport"] = {
+            "type": "http",
+            "path": str(profile.get("xhttp_path") or "/").strip() or "/",
         }
         outbound.pop("flow", None)
         return outbound
@@ -8749,6 +8814,175 @@ def _filter_nodes_for_transport_profile(*, nodes: list, rollout_config: dict[str
         for node in nodes
         if str(getattr(node, "code", "") or "").strip().lower() in allowlist
     ]
+
+
+def _node_supports_transport_profile(node: Any, transport_profile: str | None) -> bool:
+    requested = str(transport_profile or LEGACY_REALITY_FALLBACK).strip() or LEGACY_REALITY_FALLBACK
+    profile = transport_profile_by_name(
+        node,
+        requested,
+        include_disabled=False,
+        allow_operator_lab=True,
+    )
+    return str(profile.get("name") or "") == requested and bool(profile.get("enabled"))
+
+
+def _managed_manifest_fallback_order(transport_profile: str) -> list[str]:
+    primary = str(transport_profile or LEGACY_REALITY_FALLBACK).strip() or LEGACY_REALITY_FALLBACK
+    order = [primary]
+    if primary != LEGACY_REALITY_FALLBACK:
+        order.append(LEGACY_REALITY_FALLBACK)
+    return order
+
+
+def _synthetic_transport_node() -> Any:
+    connect_host = public_connect_host()
+    transport_profiles = [
+        {
+            "name": LEGACY_REALITY_FALLBACK,
+            "enabled": True,
+            "kind": "reality",
+            "inbound_id": 1,
+            "host": connect_host,
+            "port": 443,
+            "tls_server_name": connect_host,
+            "reality_public_key": "",
+            "reality_short_id": "",
+            "fingerprint": "firefox",
+            "flow": "xtls-rprx-vision",
+        },
+        {
+            "name": "grpc_443_primary",
+            "enabled": True,
+            "kind": "grpc",
+            "inbound_id": 2,
+            "host": connect_host,
+            "port": 443,
+            "tls_server_name": f"grpc.{connect_host}",
+            "fingerprint": "firefox",
+            "grpc_service_name": "pokrov-grpc",
+        },
+        {
+            "name": OPERATOR_LAB,
+            "enabled": True,
+            "kind": "xhttp",
+            "inbound_id": 3,
+            "host": connect_host,
+            "port": 443,
+            "tls_server_name": f"xhttp.{connect_host}",
+            "fingerprint": "firefox",
+            "xhttp_path": "/xhttp",
+        },
+    ]
+    return SimpleNamespace(
+        code="default",
+        name="Default",
+        host=connect_host,
+        vless_port=443,
+        reality_sni=connect_host,
+        reality_pbk="",
+        reality_sid="",
+        fingerprint="firefox",
+        flow="xtls-rprx-vision",
+        inbound_id=1,
+        transport_profiles_json=json.dumps(transport_profiles, ensure_ascii=False),
+    )
+
+
+def _effective_transport_nodes(*, nodes: list[Any], transport_profile: str, rollout_config: dict[str, Any]) -> list[Any]:
+    filtered = _filter_nodes_for_transport_profile(
+        nodes=nodes,
+        rollout_config=rollout_config,
+        transport_profile=transport_profile,
+    )
+    supporting = [
+        node for node in filtered if _node_supports_transport_profile(node, transport_profile)
+    ]
+    if supporting:
+        return supporting
+    if str(transport_profile or LEGACY_REALITY_FALLBACK).strip() == LEGACY_REALITY_FALLBACK and filtered:
+        return filtered
+    return [_synthetic_transport_node()]
+
+
+def _xray_multi_node_config(*, user_uuid: str, nodes: list, title: str, transport_profile: str) -> dict[str, Any]:
+    outbounds: list[dict[str, Any]] = []
+    selector_tag = "pokrov-selector"
+    for node in nodes:
+        profile = _node_transport_profile(node, transport_profile)
+        tag = str(getattr(node, "code", "") or getattr(node, "name", "") or "node").strip() or "node"
+        outbounds.append(
+            {
+                "tag": tag,
+                "protocol": "vless",
+                "settings": {
+                    "vnext": [
+                        {
+                            "address": str(profile.get("host") or getattr(node, "host", "") or ""),
+                            "port": int(profile.get("port") or getattr(node, "vless_port", 443) or 443),
+                            "users": [{"id": user_uuid, "encryption": "none"}],
+                        }
+                    ]
+                },
+                "streamSettings": {
+                    "network": "xhttp",
+                    "security": "tls",
+                    "tlsSettings": {
+                        "serverName": str(profile.get("tls_server_name") or getattr(node, "reality_sni", "") or ""),
+                    },
+                    "xhttpSettings": {
+                        "path": str(profile.get("xhttp_path") or "/").strip() or "/",
+                    },
+                },
+            }
+        )
+
+    return {
+        "log": {"loglevel": "warning"},
+        "routing": {"domainStrategy": "AsIs"},
+        "outbounds": [
+            {
+                "tag": selector_tag,
+                "protocol": "selector",
+                "settings": {"actors": [item["tag"] for item in outbounds]},
+            },
+            *outbounds,
+        ],
+        "_meta": {"title": title},
+    }
+
+
+def _managed_manifest_payload(*, user: User, nodes: list, title: str, transport_profile: str) -> tuple[str, dict[str, Any]]:
+    if str(transport_profile or "").strip() == OPERATOR_LAB:
+        return (
+            "xray-json",
+            _xray_multi_node_config(
+                user_uuid=str(user.uuid),
+                nodes=nodes,
+                title=title,
+                transport_profile=transport_profile,
+            ),
+        )
+
+    if user_uses_free_pool(user):
+        return (
+            "singbox-json",
+            _singbox_free_allowlist_config(
+                user_uuid=str(user.uuid),
+                nodes=nodes,
+                title=title,
+                transport_profile=transport_profile,
+            ),
+        )
+    return (
+        "singbox-json",
+        _singbox_multi_node_config(
+            user_uuid=str(user.uuid),
+            nodes=nodes,
+            title=title,
+            transport_profile=transport_profile,
+        ),
+    )
 
 
 def _generate_vless_link(*, user_uuid: str, node, name: str) -> str:
@@ -9356,7 +9590,8 @@ async def subscription(token: str, request: Request, format: str = Query(default
     token_fp = _token_fingerprint(token_text)
     nodes_for_user: list[Any] = []
     rollout_config = normalized_network_rollout_config({})
-    client_policy = resolved_client_policy(rollout_config=rollout_config)
+    carrier = _request_carrier_header(request.headers.get("X-Portal-Carrier"))
+    client_policy = resolved_client_policy(rollout_config=rollout_config, carrier=carrier)
     s = SessionLocal()
     try:
         user = s.query(User).filter_by(sub_token=token_text).first()
@@ -9394,6 +9629,8 @@ async def subscription(token: str, request: Request, format: str = Query(default
             session=s,
             user=user,
             install_id=str(getattr(user, "app_install_id", "") or "").strip() or None,
+            carrier=carrier,
+            rollout_config=rollout_config,
         )
     finally:
         s.close()
@@ -9434,17 +9671,14 @@ async def subscription(token: str, request: Request, format: str = Query(default
         "Content-Disposition": 'attachment; filename="POKROV_Subscription"',
     }
     smart_transport_profile = str(client_policy.get("transport_profile") or LEGACY_REALITY_FALLBACK)
-    smart_nodes_for_user = _filter_nodes_for_transport_profile(
+    smart_nodes_for_user = _effective_transport_nodes(
         nodes=nodes_for_user,
         rollout_config=rollout_config,
         transport_profile=smart_transport_profile,
     )
-    if not smart_nodes_for_user:
-        smart_transport_profile = LEGACY_REALITY_FALLBACK
-        smart_nodes_for_user = list(nodes_for_user)
 
-    # FREE and smart clients receive sing-box JSON profiles.
-    if (user.sub_type or "").upper() == "FREE" or wants_smart:
+    # Explicit plain requests must stay on the legacy/manual path even for FREE accounts.
+    if not force_plain and ((user.sub_type or "").upper() == "FREE" or wants_smart):
         if (user.sub_type or "").upper() == "FREE" and not smart_nodes_for_user:
             # Dedicated free pool is required for FREE users.
             return Response(content="", media_type="text/plain", status_code=503)
@@ -9471,7 +9705,12 @@ async def subscription(token: str, request: Request, format: str = Query(default
         return Response(content=json.dumps(cfg, indent=2), media_type="application/json", headers=headers)
 
     links = []
-    for n in nodes_for_user:
+    legacy_nodes_for_user = _effective_transport_nodes(
+        nodes=nodes_for_user,
+        rollout_config=rollout_config,
+        transport_profile=LEGACY_REALITY_FALLBACK,
+    )
+    for n in legacy_nodes_for_user:
         links.append(_generate_vless_link(user_uuid=user.uuid, node=n, name=_node_label_ru(n.code, n.name)))
     raw = "\n".join(links)
     encoded = base64.b64encode(raw.encode("utf-8")).decode("ascii")

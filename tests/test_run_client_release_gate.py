@@ -1,4 +1,5 @@
 import importlib.util
+import subprocess
 import sys
 import tempfile
 import unittest
@@ -49,6 +50,93 @@ class RunClientReleaseGateTests(unittest.TestCase):
             bootstrap_dir = self.module._windows_sqlite_bootstrap_dir(client_root)
 
         self.assertEqual(bootstrap_dir, runner_dir)
+
+    def test_libcore_preflight_requires_clean_expected_sha(self) -> None:
+        client_root = Path("C:/fake/client")
+
+        def fake_run(command, **kwargs):
+            rendered = " ".join(str(part) for part in command)
+            if rendered.endswith("rev-parse HEAD:libcore"):
+                return subprocess.CompletedProcess(command, 0, stdout="expectedsha\n", stderr="")
+            if rendered.endswith("rev-parse HEAD"):
+                return subprocess.CompletedProcess(command, 0, stdout="expectedsha\n", stderr="")
+            if rendered.endswith("branch --show-current"):
+                return subprocess.CompletedProcess(command, 0, stdout="\n", stderr="")
+            if rendered.endswith("status --porcelain"):
+                return subprocess.CompletedProcess(command, 0, stdout="", stderr="")
+            raise AssertionError(f"unexpected command: {rendered}")
+
+        issue = self.module._libcore_preflight_issue(client_root, runner=fake_run)
+
+        self.assertIsNone(issue)
+
+    def test_libcore_preflight_reports_sha_drift(self) -> None:
+        client_root = Path("C:/fake/client")
+
+        def fake_run(command, **kwargs):
+            rendered = " ".join(str(part) for part in command)
+            if rendered.endswith("rev-parse HEAD:libcore"):
+                return subprocess.CompletedProcess(command, 0, stdout="expectedsha\n", stderr="")
+            if rendered.endswith("rev-parse HEAD"):
+                return subprocess.CompletedProcess(command, 0, stdout="actualsha\n", stderr="")
+            if rendered.endswith("branch --show-current"):
+                return subprocess.CompletedProcess(command, 0, stdout="release-branch\n", stderr="")
+            if rendered.endswith("status --porcelain"):
+                return subprocess.CompletedProcess(command, 0, stdout="", stderr="")
+            raise AssertionError(f"unexpected command: {rendered}")
+
+        issue = self.module._libcore_preflight_issue(client_root, runner=fake_run)
+
+        self.assertIn("expectedsha", issue or "")
+        self.assertIn("actualsha", issue or "")
+        self.assertIn("release-branch", issue or "")
+
+    def test_libcore_preflight_reports_dirty_submodule(self) -> None:
+        client_root = Path("C:/fake/client")
+
+        def fake_run(command, **kwargs):
+            rendered = " ".join(str(part) for part in command)
+            if rendered.endswith("rev-parse HEAD:libcore"):
+                return subprocess.CompletedProcess(command, 0, stdout="expectedsha\n", stderr="")
+            if rendered.endswith("rev-parse HEAD"):
+                return subprocess.CompletedProcess(command, 0, stdout="expectedsha\n", stderr="")
+            if rendered.endswith("branch --show-current"):
+                return subprocess.CompletedProcess(command, 0, stdout="\n", stderr="")
+            if rendered.endswith("status --porcelain"):
+                return subprocess.CompletedProcess(
+                    command,
+                    0,
+                    stdout=" M libcore/file.go\n?? libcore/new_file.go\n",
+                    stderr="",
+                )
+            raise AssertionError(f"unexpected command: {rendered}")
+
+        issue = self.module._libcore_preflight_issue(client_root, runner=fake_run)
+
+        self.assertIn("dirty", issue or "")
+        self.assertIn("expectedsha", issue or "")
+        self.assertIn("(detached HEAD)", issue or "")
+        self.assertIn("M libcore/file.go", issue or "")
+
+    def test_render_libcore_preflight_report_lists_status_context(self) -> None:
+        client_root = Path("C:/fake/client")
+        status = self.module.LibcorePreflightStatus(
+            expected_sha="expectedsha",
+            actual_sha="expectedsha",
+            branch="(detached HEAD)",
+            dirty_lines=("M file.go", "?? new.go"),
+        )
+
+        report = self.module._render_libcore_preflight_report(
+            client_root,
+            status=status,
+            issue="libcore worktree is dirty",
+        )
+
+        self.assertIn("pinned SHA: expectedsha", report)
+        self.assertIn("checked-out SHA: expectedsha", report)
+        self.assertIn("dirty: M file.go", report)
+        self.assertIn("[fail] libcore worktree is dirty", report)
 
 
 if __name__ == "__main__":

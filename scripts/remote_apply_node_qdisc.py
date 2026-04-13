@@ -11,6 +11,7 @@ reuse the same normalization and command-building logic.
 import argparse
 import json
 import os
+import re
 import shlex
 import socket
 import subprocess
@@ -30,6 +31,25 @@ from node_access import connect_node
 
 DEFAULT_PROFILES_PATH = REPO_ROOT / "infra" / "node-qdisc-profiles.json"
 DEFAULT_PASSWORDS = REPO_ROOT / "VPN NODE SSH KEYS" / "PASSWORDS.txt"
+SERVICE_NAME = "portal-node-qdisc.service"
+REPO_SERVICE_PATH = "/root/portal_bot/infra/portal-node-qdisc.service"
+SYSTEMD_SERVICE_PATH = f"/etc/systemd/system/{SERVICE_NAME}"
+
+NODE_CODE_ALIASES: dict[str, str] = {
+    "brain": "brain",
+    "brainnode": "brain",
+    "us": "us",
+    "usnode": "us",
+    "pl": "pl",
+    "plnode": "pl",
+    "it": "it",
+    "itnode": "it",
+    "nl": "nl",
+    "nlnode": "nl",
+    "free": "free",
+    "freenode": "free",
+    "freenlnode": "free",
+}
 
 
 @dataclass(frozen=True)
@@ -50,6 +70,19 @@ class QdiscProfile:
             "preferred_qdisc": self.preferred_qdisc,
             "enabled": self.enabled,
         }
+
+
+def normalize_node_code(value: Any) -> str:
+    text = str(value or "").strip().lower()
+    if not text:
+        return ""
+    short = text.split(".", 1)[0]
+    compact = re.sub(r"[^a-z0-9]+", "", short)
+    if compact in NODE_CODE_ALIASES:
+        return NODE_CODE_ALIASES[compact]
+    if compact.endswith("node") and compact[:-4] in NODE_CODE_ALIASES:
+        return NODE_CODE_ALIASES[compact[:-4]]
+    return compact or short
 
 
 def _coerce_int(value: Any, default: int = 0) -> int:
@@ -78,7 +111,7 @@ def _coerce_bool(value: Any, default: bool = True) -> bool:
 
 
 def _normalize_profile(raw: dict[str, Any]) -> QdiscProfile:
-    node_code = str(raw.get("node_code") or raw.get("code") or "").strip().lower()
+    node_code = normalize_node_code(raw.get("node_code") or raw.get("code") or "")
     if not node_code:
         raise ValueError("qdisc profile is missing node_code")
 
@@ -128,12 +161,20 @@ def load_profiles(path: Path | str | None = None) -> dict[str, dict[str, Any]]:
 
 
 def _detect_local_node_code() -> str:
-    env_code = str(os.getenv("NODE_CODE", "")).strip().lower()
+    env_code = normalize_node_code(os.getenv("NODE_CODE", ""))
     if env_code:
         return env_code
-    host = socket.gethostname().strip().lower()
-    short = host.split(".", 1)[0]
-    return short or host
+    host = socket.gethostname().strip()
+    return normalize_node_code(host)
+
+
+def _selected_qdisc(profile: dict[str, Any], *, has_cake: bool) -> str:
+    preferred = str(profile.get("preferred_qdisc") or "cake").strip().lower()
+    if preferred == "fq_codel":
+        return "fq_codel"
+    if has_cake:
+        return "cake"
+    return "fq_codel"
 
 
 def _build_apply_commands(profile: dict[str, Any], has_cake: bool) -> list[str]:
@@ -141,9 +182,10 @@ def _build_apply_commands(profile: dict[str, Any], has_cake: bool) -> list[str]:
     target_rate = _coerce_int(profile.get("target_rate_mbps"), 0)
     if target_rate <= 0:
         target_rate = max(1, _coerce_int(profile.get("uplink_mbps"), 0))
+    selected_qdisc = _selected_qdisc(profile, has_cake=has_cake)
 
     commands = [f"tc qdisc del dev {shlex.quote(iface)} root 2>/dev/null || true"]
-    if has_cake:
+    if selected_qdisc == "cake":
         commands.append(
             "tc qdisc replace dev "
             f"{shlex.quote(iface)} root cake bandwidth {target_rate}mbit nat triple-isolate"
@@ -162,14 +204,43 @@ def _build_show_commands(profile: dict[str, Any]) -> list[str]:
 def _build_rollback_commands(profile: dict[str, Any]) -> list[str]:
     iface = str(profile["iface"]).strip()
     return [
+        *_build_persistence_commands("disable"),
         f"tc qdisc del dev {shlex.quote(iface)} root 2>/dev/null || true",
         f"tc -s qdisc show dev {shlex.quote(iface)} || true",
     ]
 
 
+def _build_persistence_commands(action: str) -> list[str]:
+    normalized = str(action or "").strip().lower()
+    if normalized == "install":
+        return [
+            f"install -D -m 0644 {shlex.quote(REPO_SERVICE_PATH)} {shlex.quote(SYSTEMD_SERVICE_PATH)}",
+            "systemctl daemon-reload",
+            f"systemctl enable --now {SERVICE_NAME}",
+        ]
+    if normalized == "disable":
+        return [
+            f"systemctl disable --now {SERVICE_NAME} >/dev/null 2>&1 || true",
+            "systemctl daemon-reload",
+        ]
+    if normalized == "uninstall":
+        return [
+            f"systemctl disable --now {SERVICE_NAME} >/dev/null 2>&1 || true",
+            f"rm -f {shlex.quote(SYSTEMD_SERVICE_PATH)}",
+            "systemctl daemon-reload",
+            f"systemctl reset-failed {SERVICE_NAME} >/dev/null 2>&1 || true",
+        ]
+    raise ValueError(f"Unsupported persistence action: {action}")
+
+
 def _probe_has_cake(executor) -> bool:
     result = executor("modprobe -n -q sch_cake >/dev/null 2>&1 && echo cake || true")
-    return "cake" in (result or "").strip().lower()
+    if isinstance(result, tuple):
+        _code, out, err = result
+        text = out or err
+    else:
+        text = result or ""
+    return "cake" in str(text).strip().lower()
 
 
 def _run_local(cmd: str) -> tuple[int, str, str]:
@@ -189,7 +260,7 @@ def _run_remote(ssh: paramiko.SSHClient, cmd: str) -> tuple[int, str, str]:
 
 
 def _select_profile(profiles: dict[str, dict[str, Any]], node_code: str | None = None) -> dict[str, Any]:
-    code = (node_code or _detect_local_node_code()).strip().lower()
+    code = normalize_node_code(node_code or _detect_local_node_code())
     if code in profiles:
         return profiles[code]
     if len(profiles) == 1:
@@ -219,6 +290,17 @@ def apply_profile(
     force_fq_codel: bool = False,
     executor=_run_local,
 ) -> tuple[int, str]:
+    if not _coerce_bool(profile.get("enabled"), True):
+        commands = _build_rollback_commands(profile)
+        outputs: list[str] = []
+        for cmd in commands:
+            code, out, err = executor(cmd)
+            outputs.append((out.strip() or err.strip()).strip())
+            if code != 0:
+                raise SystemExit(out.strip() or err.strip() or f"qdisc disable failed: {cmd}")
+        summary = f"node={profile['node_code']} iface={profile['iface']} status=disabled"
+        return 0, summary + ("\n" + "\n".join(x for x in outputs if x) if outputs else "")
+
     has_cake = _should_use_cake(force_fq_codel=force_fq_codel, executor=executor)
     commands = _build_apply_commands(profile, has_cake=has_cake)
     outputs: list[str] = []
@@ -227,8 +309,9 @@ def apply_profile(
         outputs.append((out.strip() or err.strip()).strip())
         if code != 0:
             raise SystemExit(out.strip() or err.strip() or f"qdisc apply failed: {cmd}")
-    summary = f"node={profile['node_code']} iface={profile['iface']} qdisc={'cake' if has_cake else 'fq_codel'}"
-    if not has_cake:
+    selected_qdisc = _selected_qdisc(profile, has_cake=has_cake)
+    summary = f"node={profile['node_code']} iface={profile['iface']} qdisc={selected_qdisc}"
+    if selected_qdisc != "cake" and str(profile.get("preferred_qdisc") or "cake").strip().lower() == "cake":
         summary += " fallback=fq_codel"
     return 0, summary + ("\n" + "\n".join(x for x in outputs if x) if outputs else "")
 
@@ -253,6 +336,16 @@ def rollback_profile(profile: dict[str, Any], *, executor=_run_local) -> tuple[i
     return 0, "\n".join(x for x in outputs if x)
 
 
+def persistence_action(action: str, *, executor=_run_local) -> tuple[int, str]:
+    outputs: list[str] = []
+    for cmd in _build_persistence_commands(action):
+        code, out, err = executor(cmd)
+        outputs.append(out.strip() or err.strip())
+        if code != 0:
+            raise SystemExit(out.strip() or err.strip() or f"qdisc persistence {action} failed: {cmd}")
+    return 0, "\n".join(x for x in outputs if x)
+
+
 def _build_ssh_executor(ssh: paramiko.SSHClient):
     def _exec(cmd: str) -> tuple[int, str, str]:
         return _run_remote(ssh, cmd)
@@ -262,7 +355,7 @@ def _build_ssh_executor(ssh: paramiko.SSHClient):
 
 def main() -> int:
     ap = argparse.ArgumentParser(description="Apply or inspect node qdisc profiles.")
-    ap.add_argument("action", choices=["apply", "show", "rollback"], nargs="?", default="apply")
+    ap.add_argument("action", choices=["apply", "show", "rollback", "install", "disable", "uninstall"], nargs="?", default="apply")
     ap.add_argument("--profiles", default=str(DEFAULT_PROFILES_PATH))
     ap.add_argument("--node-code", default="", help="node code from repo-truth profile catalog")
     ap.add_argument("--host", default="", help="remote host to connect to; omit for local execution")
@@ -289,8 +382,10 @@ def main() -> int:
                 _code, text = apply_profile(profile, force_fq_codel=args.force_fq_codel, executor=executor)
             elif args.action == "show":
                 _code, text = show_profile(profile, executor=executor)
-            else:
+            elif args.action == "rollback":
                 _code, text = rollback_profile(profile, executor=executor)
+            else:
+                _code, text = persistence_action(args.action, executor=executor)
             _print(text)
             return 0
         finally:
@@ -300,8 +395,10 @@ def main() -> int:
         _code, text = apply_profile(profile, force_fq_codel=args.force_fq_codel, executor=_run_local)
     elif args.action == "show":
         _code, text = show_profile(profile, executor=_run_local)
-    else:
+    elif args.action == "rollback":
         _code, text = rollback_profile(profile, executor=_run_local)
+    else:
+        _code, text = persistence_action(args.action, executor=_run_local)
     _print(text)
     return 0
 

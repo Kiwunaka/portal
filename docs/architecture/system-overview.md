@@ -13,7 +13,7 @@ This file is living source of truth for the platform architecture map.
 - a Python backend and Telegram control plane
 - a user cabinet and admin web surface
 - a marketing and legal site
-- a Flutter client fork for `POKROV VPN`
+- a Flutter client fork for the `POKROV` consumer app line
 - operational scripts for deployment, node management, and release flow
 
 ## Main Components
@@ -52,6 +52,8 @@ This file is living source of truth for the platform architecture map.
 - rollout overrides may only change `transport_profile`, `dns_policy`, `routing_mode_default`, and `ip_version_preference`
 - `operator_lab` stays allowlist-only and carries `enabled`, `allowlist_install_ids`, `allowlist_tg_ids`, `allowlist_node_codes`, and `expires_at`
 - app-managed session/profile payloads resolve their transport profile from rollout policy, while manual/export compatibility links stay on `legacy_reality_fallback` until a separate share-link parity wave
+- `GET /api/client/profile/managed` is the primary app-managed provisioning endpoint and returns `version`, `profile_revision`, `transport_profile`, `transport_kind`, `engine_hint`, `config_format`, `config_payload`, `fallback_order`, and `support_context`
+- additive `client_policy` fields `transport_kind`, `engine_hint`, and `profile_revision` let the client apply the right engine/runtime without guessing
 - one logical client is synchronized across all enabled inbounds in a node's transport catalog, while public UI still exposes only the rollout-selected app-managed path
 
 Node lifecycle rule:
@@ -68,7 +70,7 @@ Node lifecycle rule:
 - `marketing/`
   public website, pricing, legal pages, and public conversion flows
 - `external/client-fork/app/`
-  `POKROV VPN` consumer client for Android and Windows
+  `POKROV` consumer client for Android and Windows, with some legacy `POKROV VPN` identifiers still present for compatibility
 - `shared/`
   shared public copy, canonical hostnames, product facts, and design tokens
 
@@ -292,7 +294,7 @@ Current operational monitoring should correlate:
 Current release validation also has to correlate:
 
 - client localhost-listener security smoke
-- routing preset smoke for `Global` and `Все, кроме РФ`
+- routing preset smoke for `Full tunnel` and `Все, кроме РФ`
 - DNS split and leak checks
 - three-vantage node checks from current operator origin, `brain`, and an RU-origin probe when available
 

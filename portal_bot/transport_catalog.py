@@ -40,6 +40,26 @@ def _as_bool(value: Any) -> bool:
     return False
 
 
+def _normalize_kind(value: Any, *, default: str) -> str:
+    kind = _clean_text(value, fallback=default).lower()
+    if kind in {"reality", "grpc", "xhttp"}:
+        return kind
+    if "grpc" in kind:
+        return "grpc"
+    if "http" in kind:
+        return "xhttp"
+    return "reality"
+
+
+def _normalize_path(value: Any, *, fallback: str = "/") -> str:
+    path = _clean_text(value, fallback=fallback)
+    if not path:
+        return fallback
+    if not path.startswith("/"):
+        return f"/{path}"
+    return path
+
+
 def _legacy_transport_profile(node: Any) -> dict[str, Any]:
     inbound_id = _as_int(getattr(node, "inbound_id", 0), fallback=0)
     return {
@@ -63,9 +83,10 @@ def _normalize_profile(node: Any, profile: dict[str, Any]) -> dict[str, Any] | N
         return None
 
     legacy = _legacy_transport_profile(node)
-    kind = _clean_text(profile.get("kind"), fallback=("reality" if name == LEGACY_REALITY_FALLBACK else "grpc")).lower()
-    if kind not in {"reality", "grpc"}:
-        kind = "grpc" if "grpc" in kind else "reality"
+    kind = _normalize_kind(
+        profile.get("kind"),
+        default=("reality" if name == LEGACY_REALITY_FALLBACK else "grpc"),
+    )
 
     normalized = {
         "name": name,
@@ -83,6 +104,8 @@ def _normalize_profile(node: Any, profile: dict[str, Any]) -> dict[str, Any] | N
         normalized["reality_short_id"] = _clean_text(profile.get("reality_short_id"), fallback=legacy["reality_short_id"])
     if kind == "grpc":
         normalized["grpc_service_name"] = _clean_text(profile.get("grpc_service_name"))
+    if kind == "xhttp":
+        normalized["xhttp_path"] = _normalize_path(profile.get("xhttp_path"))
     return normalized
 
 
@@ -187,4 +210,3 @@ def transport_inbound_ids(
         seen.add(inbound_id)
         out.append(inbound_id)
     return out
-

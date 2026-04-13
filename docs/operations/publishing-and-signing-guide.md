@@ -63,6 +63,7 @@ Treat `AAB`, `MSIX`, and portable `ZIP` as required release/store artifacts, not
 Run from the repository root:
 
 ```powershell
+python scripts/run_client_release_gate.py preflight
 python scripts/run_client_release_gate.py test --suite portal
 python scripts/run_client_release_gate.py test --suite full
 python scripts/run_client_release_gate.py build --target windows
@@ -73,11 +74,14 @@ python scripts/release_gate_check.py --client-platform-gates windows,android-apk
 
 Notes:
 
+- `python scripts/run_client_release_gate.py preflight` is the fastest repo-local pin check for `external/client-fork/app/libcore`; it prints the pinned SHA, checked-out SHA, branch state, and dirty entries before any Flutter work starts.
 - `release_gate_check.py` already includes `python scripts/run_client_release_gate.py test --suite full` by default.
 - `release_gate_check.py --quick` swaps that default client suite for `python scripts/run_client_release_gate.py test --suite portal`.
 - add `--client-platform-gates windows,android-apk,android-aab` or set `CLIENT_PLATFORM_GATES` when you want the gate report to include artifact-producing client builds.
 - once `CLIENT_PLATFORM_GATES` includes `android-apk` or `android-aab`, `release_gate_check.py` requires `ANDROID_AUDIT_SERIAL` to point to physical Android hardware; emulator serials stay useful only for adb rehearsal.
 - on Windows, the wrapper auto-runs `flutter build windows --release` before Flutter tests when the required `sqlite3.dll` bootstrap is missing.
+- `scripts/run_client_release_gate.py` now fails early if `external/client-fork/app/libcore` is dirty, missing, or not on the expected pinned SHA; release builds must start from a clean checkout with tracked `libcore` state.
+- if the preflight fails, inspect the submodule directly with `git -C external/client-fork/app/libcore status --short` and `git -C external/client-fork/app/libcore diff --stat`; fixing those changes belongs in the canonical client repo, not as an ad hoc root-repo override.
 
 ## Android
 
@@ -253,11 +257,11 @@ Minimum publishing verification:
 - Android and Windows builds install successfully
 - signatures are present on public artifacts
 - download links resolve from every runtime-driven public surface, and static marketing exports are rebuilt when URLs changed
-- store metadata matches `POKROV VPN`
+- store metadata matches current `POKROV` public naming policy and keeps `POKROV VPN` only where legacy store/package constraints still require it
 - Apple surfaces, if any, are clearly labeled as upcoming or waitlist-only
 - `python scripts/client_security_smoke.py` stays green before final Android sign-off
 - Android release-build checks confirm there is no unauthenticated local SOCKS/API-style control surface exposed
-- public routing and DNS verification covers `Global` and `All except RU`
+- public routing and DNS verification covers `Full tunnel` and `All except RU`
 - `Blocked only` stays hidden or internal until geo assets and DNS behavior are ready for honest public verification
 - Android and Windows release verification should keep the wrapper-based client commands above green before signing or publication
 - `release_gate_check.py --client-platform-gates ...android-*...` is allowed to pass only when `ANDROID_AUDIT_SERIAL` points at physical hardware

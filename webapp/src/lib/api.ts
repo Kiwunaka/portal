@@ -673,20 +673,25 @@ export type AdminNodeHealthRow = {
   observer_unmatched_count: number;
   observer_parse_error_count: number;
   observer_is_stale: boolean;
+  hoster_family?: string | null;
+  hoster_asn?: string | null;
+  subnet?: string | null;
   probe_classification?: string | null;
   ipv4_health?: string | null;
   ipv6_health?: string | null;
   transport_health?: unknown | null;
-  transport_profiles?: Array<{
-    name?: string | null;
-    kind?: string | null;
-    enabled?: boolean | null;
-    inbound_id?: number | null;
-    host?: string | null;
-    port?: number | null;
-    tls_server_name?: string | null;
-  }> | null;
+  transport_profiles?: Record<string, AdminTransportProfile> | null;
   weight: number;
+};
+
+export type AdminTransportProfile = {
+  name?: string | null;
+  kind?: string | null;
+  enabled?: boolean | null;
+  inbound_id?: number | null;
+  host?: string | null;
+  port?: number | null;
+  tls_server_name?: string | null;
 };
 
 export type AdminNetworkRolloutOverride = {
@@ -694,6 +699,10 @@ export type AdminNetworkRolloutOverride = {
   dns_policy?: string;
   routing_mode_default?: string;
   ip_version_preference?: string;
+  install_ids?: string[];
+  tg_ids?: number[];
+  linked_tg_ids?: number[];
+  platforms?: string[];
 };
 
 export type AdminNetworkRolloutOperatorLab = {
@@ -705,7 +714,7 @@ export type AdminNetworkRolloutOperatorLab = {
 };
 
 export type AdminNetworkRolloutConfig = {
-  version: number;
+  version: string;
   defaults: {
     routing_mode_default: string;
     transport_profile: string;
@@ -715,8 +724,8 @@ export type AdminNetworkRolloutConfig = {
   carrier_overrides: Record<string, AdminNetworkRolloutOverride>;
   cohort_overrides: Record<string, AdminNetworkRolloutOverride>;
   operator_lab: AdminNetworkRolloutOperatorLab;
-  package_catalog_feed?: string | null;
-  routing_rules_feed?: string | null;
+  package_catalog_feed?: unknown | null;
+  routing_rules_feed?: unknown | null;
   support_recovery_order: string[];
 };
 
@@ -1621,6 +1630,9 @@ function normalizeAdminNodeHealthRow(payload: Partial<AdminNodeHealthRow> | null
     observer_unmatched_count: Number(data.observer_unmatched_count || 0),
     observer_parse_error_count: Number(data.observer_parse_error_count || 0),
     observer_is_stale: Boolean(data.observer_is_stale),
+    hoster_family: data.hoster_family ?? null,
+    hoster_asn: data.hoster_asn ?? null,
+    subnet: data.subnet ?? null,
     probe_classification: data.probe_classification ?? null,
     ipv4_health: data.ipv4_health ?? null,
     ipv6_health: data.ipv6_health ?? null,
@@ -1632,19 +1644,72 @@ function normalizeAdminNodeHealthRow(payload: Partial<AdminNodeHealthRow> | null
             ? [...data.transport_health]
             : { ...data.transport_health }
           : data.transport_health,
-    transport_profiles: Array.isArray(data.transport_profiles)
-      ? data.transport_profiles.map((profile) => ({
-          name: profile?.name ?? null,
-          kind: profile?.kind ?? null,
-          enabled: profile?.enabled ?? null,
-          inbound_id: profile?.inbound_id ?? null,
-          host: profile?.host ?? null,
-          port: profile?.port ?? null,
-          tls_server_name: profile?.tls_server_name ?? null,
-        }))
-      : null,
+    transport_profiles: normalizeAdminTransportProfiles(data.transport_profiles),
     weight: Number(data.weight || 0),
   };
+}
+
+function normalizeStringList(value: unknown): string[] {
+  return Array.isArray(value) ? value.map((item) => String(item)).filter((item) => item.trim().length > 0) : [];
+}
+
+function normalizeNumberList(value: unknown): number[] {
+  return Array.isArray(value)
+    ? value
+        .map((item) => Number(item))
+        .filter((item) => Number.isFinite(item))
+        .map((item) => Math.trunc(item))
+    : [];
+}
+
+function cloneJsonValue<T>(value: T): T {
+  if (value == null) return value;
+  if (typeof value !== "object") return value;
+  try {
+    return structuredClone(value);
+  } catch {
+    try {
+      return JSON.parse(JSON.stringify(value)) as T;
+    } catch {
+      return value;
+    }
+  }
+}
+
+function normalizeAdminTransportProfile(
+  key: string,
+  payload: Partial<AdminTransportProfile> | null | undefined,
+): AdminTransportProfile {
+  const data = payload || {};
+  return {
+    name: data.name == null ? key || null : String(data.name),
+    kind: data.kind == null ? null : String(data.kind),
+    enabled: data.enabled == null ? null : Boolean(data.enabled),
+    inbound_id: data.inbound_id == null ? null : Number(data.inbound_id),
+    host: data.host == null ? null : String(data.host),
+    port: data.port == null ? null : Number(data.port),
+    tls_server_name: data.tls_server_name == null ? null : String(data.tls_server_name),
+  };
+}
+
+function normalizeAdminTransportProfiles(value: unknown): Record<string, AdminTransportProfile> | null {
+  if (Array.isArray(value)) {
+    const entries = value
+      .map((profile, index) => {
+        const normalized = normalizeAdminTransportProfile("", profile as Partial<AdminTransportProfile>);
+        const key = String(normalized.name || `profile_${index + 1}`);
+        return [key, normalized] as const;
+      })
+      .filter(([key]) => key.trim().length > 0);
+    return entries.length ? Object.fromEntries(entries) : null;
+  }
+  if (value && typeof value === "object") {
+    const entries = Object.entries(value as Record<string, Partial<AdminTransportProfile>>)
+      .map(([key, profile]) => [key, normalizeAdminTransportProfile(key, profile)] as const)
+      .filter(([key]) => key.trim().length > 0);
+    return entries.length ? Object.fromEntries(entries) : null;
+  }
+  return null;
 }
 
 function normalizeAdminNetworkRolloutOverride(payload: Partial<AdminNetworkRolloutOverride> | null | undefined): AdminNetworkRolloutOverride {
@@ -1654,6 +1719,10 @@ function normalizeAdminNetworkRolloutOverride(payload: Partial<AdminNetworkRollo
   if (data.dns_policy != null) out.dns_policy = String(data.dns_policy);
   if (data.routing_mode_default != null) out.routing_mode_default = String(data.routing_mode_default);
   if (data.ip_version_preference != null) out.ip_version_preference = String(data.ip_version_preference);
+  if (data.install_ids != null) out.install_ids = normalizeStringList(data.install_ids);
+  if (data.tg_ids != null) out.tg_ids = normalizeNumberList(data.tg_ids);
+  if (data.linked_tg_ids != null) out.linked_tg_ids = normalizeNumberList(data.linked_tg_ids);
+  if (data.platforms != null) out.platforms = normalizeStringList(data.platforms);
   return out;
 }
 
@@ -1667,17 +1736,8 @@ function normalizeAdminNetworkRolloutConfig(payload: Partial<AdminNetworkRollout
           Object.entries(value as Record<string, Partial<AdminNetworkRolloutOverride>>).map(([key, item]) => [key, normalizeAdminNetworkRolloutOverride(item)]),
         )
       : {};
-  const normalizeList = (value: unknown): string[] =>
-    Array.isArray(value) ? value.map((item) => String(item)).filter((item) => item.trim().length > 0) : [];
-  const normalizeNumberList = (value: unknown): number[] =>
-    Array.isArray(value)
-      ? value
-          .map((item) => Number(item))
-          .filter((item) => Number.isFinite(item))
-          .map((item) => Math.trunc(item))
-      : [];
   return {
-    version: Number(data.version || 1),
+    version: data.version == null ? "1" : String(data.version),
     defaults: {
       routing_mode_default: String(defaults.routing_mode_default || "all_except_ru"),
       transport_profile: String(defaults.transport_profile || "legacy_reality_fallback"),
@@ -1688,14 +1748,14 @@ function normalizeAdminNetworkRolloutConfig(payload: Partial<AdminNetworkRollout
     cohort_overrides: normalizeOverrides(data.cohort_overrides),
     operator_lab: {
       enabled: Boolean(operatorLab.enabled),
-      allowlist_install_ids: normalizeList(operatorLab.allowlist_install_ids),
+      allowlist_install_ids: normalizeStringList(operatorLab.allowlist_install_ids),
       allowlist_tg_ids: normalizeNumberList(operatorLab.allowlist_tg_ids),
-      allowlist_node_codes: normalizeList(operatorLab.allowlist_node_codes),
+      allowlist_node_codes: normalizeStringList(operatorLab.allowlist_node_codes),
       expires_at: operatorLab.expires_at ?? null,
     },
-    package_catalog_feed: data.package_catalog_feed ?? null,
-    routing_rules_feed: data.routing_rules_feed ?? null,
-    support_recovery_order: normalizeList(data.support_recovery_order),
+    package_catalog_feed: cloneJsonValue(data.package_catalog_feed ?? null),
+    routing_rules_feed: cloneJsonValue(data.routing_rules_feed ?? null),
+    support_recovery_order: normalizeStringList(data.support_recovery_order),
   };
 }
 

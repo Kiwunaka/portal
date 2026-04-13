@@ -18,7 +18,8 @@ Use this guide for:
 Legacy filename note:
 
 - some canonical docs still use legacy `portal-vpn-*` filenames
-- those files remain authoritative for current `POKROV VPN` behavior until a dedicated rename pass happens
+- those files remain authoritative for current `POKROV` behavior until a dedicated rename pass happens
+- legacy `POKROV VPN` labels in filenames or identifiers do not authorize new direct-meaning `VPN` copy
 
 ## Read Before Editing
 
@@ -59,7 +60,7 @@ Contains backend, bots, worker jobs, webapp, marketing site, ops scripts, and pl
 
 - [C:/Users/kiwun/Documents/ai/VPN/external/client-fork/app](C:/Users/kiwun/Documents/ai/VPN/external/client-fork/app)
 
-Contains the `POKROV VPN` Flutter fork for Android and Windows.
+Contains the `POKROV` Flutter fork for Android and Windows. Some legacy filenames and package/store identifiers may still mention `POKROV VPN`.
 
 Current scope note:
 

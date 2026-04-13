@@ -32,9 +32,19 @@ class ApiP0ExtensionsTests(unittest.TestCase):
         *,
         ip_version_preference: str = "ipv4_only",
     ) -> dict[str, object]:
+        transport_kind = "reality"
+        engine_hint = "singbox"
+        if transport_profile == "grpc_443_primary":
+            transport_kind = "grpc"
+        elif transport_profile == "operator_lab":
+            transport_kind = "xhttp"
+            engine_hint = "xray"
         return {
             "routing_mode_default": "all_except_ru",
             "transport_profile": transport_profile,
+            "transport_kind": transport_kind,
+            "engine_hint": engine_hint,
+            "profile_revision": f"2026-04-13:{transport_profile}",
             "dns_policy": "ru_direct_split",
             "package_catalog_version": "2026-04-13",
             "ruleset_version": "2026-04-13",
@@ -401,6 +411,9 @@ class ApiP0ExtensionsTests(unittest.TestCase):
         self.assertTrue(str(body["subscription_url"]).startswith("https://connect.pokrov.space/s8Kx2mP7qR4wT/"))
         self.assertEqual(body["client_policy"]["routing_mode_default"], "all_except_ru")
         self.assertEqual(body["client_policy"]["transport_profile"], "legacy_reality_fallback")
+        self.assertEqual(body["client_policy"]["transport_kind"], "reality")
+        self.assertEqual(body["client_policy"]["engine_hint"], "singbox")
+        self.assertEqual(body["client_policy"]["profile_revision"], "2026-04-13:legacy_reality_fallback")
         self.assertEqual(body["client_policy"]["dns_policy"], "ru_direct_split")
         self.assertTrue(str(body["client_policy"]["package_catalog_version"]))
         self.assertTrue(calls)
@@ -428,6 +441,9 @@ class ApiP0ExtensionsTests(unittest.TestCase):
         self.assertEqual(response.status_code, 200, response.text)
         body = response.json()
         self.assertEqual(body["client_policy"]["transport_profile"], "grpc_443_primary")
+        self.assertEqual(body["client_policy"]["transport_kind"], "grpc")
+        self.assertEqual(body["client_policy"]["engine_hint"], "singbox")
+        self.assertEqual(body["client_policy"]["profile_revision"], "2026-04-13:grpc_443_primary")
         self.assertEqual(body["client_policy"]["support_context"]["transport"], "grpc_443_primary")
 
     def test_user_payload_includes_app_and_telegram_monitoring_context(self) -> None:
@@ -461,6 +477,9 @@ class ApiP0ExtensionsTests(unittest.TestCase):
         self.assertEqual(body.get("linked_telegram", {}).get("username"), "alice_linked")
         self.assertEqual(body.get("client_policy", {}).get("routing_mode_default"), "all_except_ru")
         self.assertEqual(body.get("client_policy", {}).get("transport_profile"), "legacy_reality_fallback")
+        self.assertEqual(body.get("client_policy", {}).get("transport_kind"), "reality")
+        self.assertEqual(body.get("client_policy", {}).get("engine_hint"), "singbox")
+        self.assertEqual(body.get("client_policy", {}).get("profile_revision"), "2026-04-13:legacy_reality_fallback")
         self.assertEqual(body.get("client_policy", {}).get("dns_policy"), "ru_direct_split")
         self.assertEqual(body.get("client_policy", {}).get("support_context", {}).get("ip_version_preference"), "ipv4_only")
         self.assertTrue(body.get("sync", {}).get("app_identity_known"))

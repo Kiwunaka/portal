@@ -8,7 +8,7 @@ This file is living source of truth for app-first identity, Telegram linking, an
 
 ## Goal
 
-Document the current app-first identity model, automatic username sync path, checkout continuation, node-pool assignment, and the live Telegram bonus flow used by `POKROV VPN`.
+Document the current app-first identity model, automatic username sync path, checkout continuation, node-pool assignment, and the live Telegram bonus flow used by the `POKROV` app line, including legacy `POKROV VPN`-labeled builds.
 
 ## App-First Trial Flow
 
@@ -37,6 +37,9 @@ Current `client_policy` contract:
 
 - `routing_mode_default`: `all_except_ru`
 - `transport_profile`: `legacy_reality_fallback`
+- `transport_kind`: `reality`
+- `engine_hint`: `singbox`
+- `profile_revision`: rollout-derived profile revision string
 - `dns_policy`: `ru_direct_split`
 - `package_catalog_version`: versioned Android direct-app catalog stamp from shared facts
 - `ruleset_version`: versioned routing/ruleset stamp from shared facts
@@ -48,8 +51,10 @@ Current `client_policy` contract:
 Rollout note:
 
 - `AppSetting.network_rollout_config` resolves the transport profile for app-managed session and profile payloads
+- `GET /api/client/profile/managed` is the primary app-managed provisioning endpoint and returns a manifest with `version`, `profile_revision`, `transport_profile`, `transport_kind`, `engine_hint`, `config_format`, `config_payload`, `fallback_order`, and `support_context`
 - allowlisted carrier or cohort overrides may switch app-managed flows to `grpc_443_primary` without changing the public endpoint set
 - manual/export compatibility links stay on `legacy_reality_fallback` until a separate share-link parity wave
+- `subscription_url` remains a compatibility and recovery artifact for manual import, legacy browser-visible delivery, and fallback when the managed manifest cannot be fetched
 - `network_rollout_config` carries `version`, `defaults`, `carrier_overrides`, `cohort_overrides`, `operator_lab`, `package_catalog_feed`, `routing_rules_feed`, and `support_recovery_order`
 - `defaults` keep `routing_mode_default=all_except_ru`, `transport_profile=legacy_reality_fallback`, and `dns_policy=ru_direct_split` until canary approval
 - overrides may only change `transport_profile`, `dns_policy`, `routing_mode_default`, and `ip_version_preference`

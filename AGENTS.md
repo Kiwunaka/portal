@@ -14,7 +14,9 @@ Use it to answer four questions before touching code:
 ## Current Facts
 
 - Platform brand: `POKROV`
-- Client brand: `POKROV VPN`
+- Public product line: `POKROV`
+- Legacy client identifier: `POKROV VPN` only where removal is not yet feasible
+- Public wording rule: do not use `VPN` as a direct public product description; keep it only in legacy names, compatibility labels, and unavoidable technical identifiers
 - Client strategy: `consumer-first`
 - Identity model: `app-first`
 - Trial duration: `5 days`
@@ -52,7 +54,7 @@ Before any substantial change, read these files in order:
 For client work, also read:
 
 - [Client Docs Index](C:/Users/kiwun/Documents/ai/VPN/external/client-fork/app/docs/README.md)
-- [POKROV VPN Product Spec](C:/Users/kiwun/Documents/ai/VPN/external/client-fork/app/docs/product/portal-vpn-v1-spec.md)
+- [Client Product Spec (legacy path)](C:/Users/kiwun/Documents/ai/VPN/external/client-fork/app/docs/product/portal-vpn-v1-spec.md)
 - [App-First Session Flow](C:/Users/kiwun/Documents/ai/VPN/external/client-fork/app/docs/architecture/app-first-session-flow.md)
 - [Publishing And Signing Guide](C:/Users/kiwun/Documents/ai/VPN/docs/operations/publishing-and-signing-guide.md)
 
@@ -69,7 +71,8 @@ Shell guidance:
 Legacy filename note:
 
 - some canonical docs still use legacy path names such as `portal-vpn-product.md`, `portal-vpn-user-guide-ru.md`, and `portal-vpn-v1-spec.md`
-- these files are still the live source of truth for current `POKROV VPN` behavior until a separate rename wave happens
+- these files are still the live source of truth for the current `POKROV` product until a separate rename wave happens
+- legacy `POKROV VPN` labels inside paths or old identifiers do not authorize new direct-meaning `VPN` copy
 - treat the content as current even when the path still contains an older name
 
 Living documentation lives only in these areas:

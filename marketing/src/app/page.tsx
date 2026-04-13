@@ -3,7 +3,7 @@ import { getPokrovPublicConfig } from "../lib/pokrov";
 
 export const metadata = buildMarketingMetadata(undefined, undefined, {
   path: "/",
-  keywords: ["vpn", "впн", "vpn для android", "vpn для windows", "быстрый vpn", "pokrov vpn"],
+  keywords: ["internet", "впн", "vpn для android", "vpn для windows", "быстрый vpn", "pokrov network"],
 });
 
 async function loadFeaturedReviews(): Promise<MarketingReview[]> {

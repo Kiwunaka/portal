@@ -1,6 +1,7 @@
 import asyncio
 import importlib
 import importlib.util
+import json
 import os
 import sys
 import unittest
@@ -50,6 +51,40 @@ class _FakePanelClientLoginFail:
 
     async def login(self) -> bool:
         return False
+
+    async def close(self) -> None:
+        return None
+
+
+class _FakePanelClientMissingInbound:
+    def __init__(self, runtime) -> None:
+        self.runtime = runtime
+
+    async def login(self) -> bool:
+        return True
+
+    async def get_system_metrics(self) -> dict:
+        return {
+            "cpu_percent": 9.0,
+            "memory_used_mb": 128,
+            "memory_total_mb": 1024,
+            "disk_used_gb": 8.0,
+            "disk_total_gb": 40.0,
+            "disk_free_gb": 32.0,
+            "network_rx_bytes_total": 100_000_000,
+            "network_tx_bytes_total": 120_000_000,
+            "network_rx_bytes_per_sec": 64_000,
+            "network_tx_bytes_per_sec": 32_000,
+        }
+
+    async def _get_inbounds(self) -> list[dict]:
+        return [
+            {
+                "id": self.runtime.inbound_id + 1,
+                "settings": '{"clients":[{"id":"u1"}]}',
+                "clientStats": [{"up": 50, "down": 75}],
+            }
+        ]
 
     async def close(self) -> None:
         return None
@@ -162,6 +197,10 @@ class CollectNodeMetricsObservabilityTests(unittest.TestCase):
         finally:
             session.close()
 
+    def _decode_transport_health(self, text: str | None) -> dict:
+        self.assertIsNotNone(text)
+        return json.loads(text or "{}")
+
     def test_collect_one_persists_external_probe_failure_details(self) -> None:
         session = self.db.SessionLocal()
         try:
@@ -215,7 +254,7 @@ class CollectNodeMetricsObservabilityTests(unittest.TestCase):
         self.assertEqual(sample.ipv6_health, "healthy")
         self.assertIn("grpc_443_primary", str(sample.transport_health_json))
 
-    def test_collect_one_persists_panel_login_failure_details(self) -> None:
+    def test_collect_one_persists_panel_and_dataplane_states_when_panel_login_fails(self) -> None:
         session = self.db.SessionLocal()
         try:
             node = session.query(self.models.Node).filter(self.models.Node.id == self.node_id).first()
@@ -225,17 +264,112 @@ class CollectNodeMetricsObservabilityTests(unittest.TestCase):
         with mock.patch.object(self.collector, "PanelClient", _FakePanelClientLoginFail), mock.patch.object(
             self.collector,
             "probe_node_endpoint",
-            return_value={"ok": True, "stage": "reality_target", "error_kind": "", "error_message": "", "probed_at": datetime.utcnow()},
-        ):
+            return_value={
+                "ok": True,
+                "stage": "reality_target",
+                "error_kind": "",
+                "error_message": "",
+                "probe_classification": "healthy",
+                "ipv4_health": "healthy",
+                "ipv6_health": "unavailable",
+                "hoster_family": "hetzner",
+                "hoster_asn": "AS24940",
+                "hoster_subnet": "1.2.3.0/24",
+                "transport_health": {
+                    "dns_resolution": "healthy",
+                    "tcp_connect": "healthy",
+                    "tls_handshake": "healthy",
+                    "reality_target": "healthy",
+                },
+                "root_cause_summary": "DNS, TCP, TLS, and reality-target checks passed.",
+                "root_cause_detail": "connected to 1.2.3.4 over ipv4",
+                "connected_ip": "1.2.3.4",
+                "probed_at": datetime.utcnow(),
+            },
+        ) as probe_mock:
             result = asyncio.run(self.collector._collect_one(node=node, error_window=5, source="tests"))
 
+        probe_mock.assert_called_once()
         self.assertFalse(result["healthy"])
+        self.assertEqual(result["panel_state"], "failed")
+        self.assertEqual(result["dataplane_state"], "healthy")
         node_row, sample = self._load_node()
         self.assertEqual(node_row.last_probe_stage, "panel_login")
         self.assertEqual(node_row.last_probe_error_kind, "panel_login_failed")
         self.assertIn("login", node_row.last_probe_error_message.lower())
+        self.assertEqual(node_row.last_probe_classification, "healthy")
+        self.assertEqual(node_row.hoster_family, "hetzner")
+        self.assertEqual(node_row.hoster_asn, "AS24940")
+        self.assertEqual(node_row.hoster_subnet, "1.2.3.0/24")
         self.assertEqual(sample.probe_stage, "panel_login")
         self.assertEqual(sample.probe_error_kind, "panel_login_failed")
+        node_transport = self._decode_transport_health(node_row.transport_health_json)
+        sample_transport = self._decode_transport_health(sample.transport_health_json)
+        self.assertEqual(node_transport["panel_state"], "failed")
+        self.assertEqual(node_transport["panel_error_kind"], "panel_login_failed")
+        self.assertEqual(node_transport["dataplane_state"], "healthy")
+        self.assertEqual(node_transport["dataplane_stage"], "reality_target")
+        self.assertEqual(node_transport["dns_resolution"], "healthy")
+        self.assertIn("panel login failed", node_transport["root_cause_summary"].lower())
+        self.assertIn("dataplane", node_transport["root_cause_detail"].lower())
+        self.assertEqual(sample_transport["panel_state"], "failed")
+        self.assertEqual(sample_transport["dataplane_state"], "healthy")
+
+    def test_collect_one_persists_panel_lookup_and_dataplane_failure_separately(self) -> None:
+        session = self.db.SessionLocal()
+        try:
+            node = session.query(self.models.Node).filter(self.models.Node.id == self.node_id).first()
+        finally:
+            session.close()
+
+        with mock.patch.object(self.collector, "PanelClient", _FakePanelClientMissingInbound), mock.patch.object(
+            self.collector,
+            "probe_node_endpoint",
+            return_value={
+                "ok": False,
+                "stage": "tls_sni",
+                "error_kind": "tls_handshake_failed",
+                "error_message": "tls handshake failed",
+                "probe_classification": "provider_specific_path",
+                "ipv4_health": "degraded",
+                "ipv6_health": "unavailable",
+                "transport_health": {
+                    "dns_resolution": "healthy",
+                    "tcp_connect": "healthy",
+                    "tls_handshake": "degraded",
+                    "reality_target": "unavailable",
+                },
+                "root_cause_summary": "TLS handshake reached the node but failed before the reality target check.",
+                "root_cause_detail": "connected to 1.2.3.4 over ipv4",
+                "connected_ip": "1.2.3.4",
+                "probed_at": datetime.utcnow(),
+            },
+        ) as probe_mock:
+            result = asyncio.run(self.collector._collect_one(node=node, error_window=5, source="tests"))
+
+        probe_mock.assert_called_once()
+        self.assertFalse(result["healthy"])
+        self.assertEqual(result["panel_state"], "failed")
+        self.assertEqual(result["dataplane_state"], "failed")
+        node_row, sample = self._load_node()
+        self.assertEqual(node_row.last_probe_stage, "panel_inbound_lookup")
+        self.assertEqual(node_row.last_probe_error_kind, "inbound_not_found")
+        self.assertEqual(node_row.last_probe_classification, "provider_specific_path")
+        self.assertEqual(sample.probe_stage, "panel_inbound_lookup")
+        self.assertEqual(sample.probe_error_kind, "inbound_not_found")
+        node_transport = self._decode_transport_health(node_row.transport_health_json)
+        sample_transport = self._decode_transport_health(sample.transport_health_json)
+        self.assertEqual(node_transport["panel_state"], "failed")
+        self.assertEqual(node_transport["panel_stage"], "panel_inbound_lookup")
+        self.assertEqual(node_transport["panel_error_kind"], "inbound_not_found")
+        self.assertEqual(node_transport["dataplane_state"], "failed")
+        self.assertEqual(node_transport["dataplane_stage"], "tls_sni")
+        self.assertEqual(node_transport["dataplane_error_kind"], "tls_handshake_failed")
+        self.assertEqual(node_transport["tls_handshake"], "degraded")
+        self.assertIn("panel inbound lookup failed", node_transport["root_cause_summary"].lower())
+        self.assertIn("tls handshake failed", node_transport["root_cause_detail"].lower())
+        self.assertEqual(sample_transport["panel_error_kind"], "inbound_not_found")
+        self.assertEqual(sample_transport["dataplane_error_kind"], "tls_handshake_failed")
 
     def test_calc_score_penalizes_resource_pressure(self) -> None:
         baseline = self.collector._calc_score(

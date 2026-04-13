@@ -72,12 +72,12 @@ class PanelClientMultiInboundTests(unittest.IsolatedAsyncioTestCase):
                     {
                         "name": "grpc_443_primary",
                         "enabled": True,
-                        "kind": "grpc",
+                        "kind": "xhttp",
                         "inbound_id": 2,
                         "host": "example.test",
                         "port": 443,
-                        "tls_server_name": "grpc.example.com",
-                        "grpc_service_name": "pokrov-grpc",
+                        "tls_server_name": "xhttp.example.com",
+                        "xhttp_path": "/mux-grpc",
                     },
                     {
                         "name": "operator_lab",
@@ -123,16 +123,16 @@ class PanelClientMultiInboundTests(unittest.IsolatedAsyncioTestCase):
                 {"id": 4, "settings": json.dumps({"clients": [{"id": "stale-42", "email": "User_42", "tgId": "42"}]})},
             ]
 
-        updated: list[tuple[int | None, str | None]] = []
-        added: list[int | None] = []
+        updated: list[tuple[int | None, str | None, str | None]] = []
+        added: list[tuple[int | None, str | None]] = []
         deleted: list[tuple[int, str]] = []
 
         async def fake_update_client_enable(client_payload: dict, enable: bool, sub_id: str | None = None, hard_cap_gb_override: int | None = None, inbound_id: int | None = None, flow: str | None = None) -> bool:
-            updated.append((inbound_id, sub_id))
+            updated.append((inbound_id, sub_id, flow))
             return True
 
         async def fake_add_client(**kwargs) -> bool:
-            added.append(kwargs.get("inbound_id"))
+            added.append((kwargs.get("inbound_id"), kwargs.get("flow")))
             return True
 
         async def fake_delete_client_from_inbound(*, inbound_id: int, client_uuid: str) -> bool:
@@ -153,6 +153,6 @@ class PanelClientMultiInboundTests(unittest.IsolatedAsyncioTestCase):
         )
 
         self.assertTrue(ok)
-        self.assertEqual(updated, [(1, "secure-42")])
-        self.assertEqual(added, [2])
+        self.assertEqual(updated, [(1, "secure-42", "xtls-rprx-vision")])
+        self.assertEqual(added, [(2, "")])
         self.assertEqual(deleted, [(4, "stale-42")])

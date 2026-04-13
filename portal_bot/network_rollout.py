@@ -141,6 +141,24 @@ def _normalize_policy_patch(payload: Any, *, defaults: dict[str, Any]) -> dict[s
     return {key: value for key, value in out.items() if key in _POLICY_OVERRIDE_KEYS and _clean_text(value)}
 
 
+def _transport_metadata(transport_profile: str, *, version: str) -> dict[str, str]:
+    profile = _clean_text(transport_profile, fallback=LEGACY_REALITY_FALLBACK)
+    if profile == GRPC_443_PRIMARY:
+        transport_kind = "grpc"
+        engine_hint = "singbox"
+    elif profile == OPERATOR_LAB:
+        transport_kind = "xhttp"
+        engine_hint = "xray"
+    else:
+        transport_kind = "reality"
+        engine_hint = "singbox"
+    return {
+        "transport_kind": transport_kind,
+        "engine_hint": engine_hint,
+        "profile_revision": f"{_clean_text(version, fallback=_default_rollout_version())}:{profile}",
+    }
+
+
 def normalized_network_rollout_config(payload: Any) -> dict[str, Any]:
     defaults = default_network_rollout_config()
     src = payload if isinstance(payload, dict) else {}
@@ -308,6 +326,7 @@ def resolved_client_policy(
         transport_profile = LEGACY_REALITY_FALLBACK
     if transport_profile not in {LEGACY_REALITY_FALLBACK, GRPC_443_PRIMARY, OPERATOR_LAB}:
         transport_profile = LEGACY_REALITY_FALLBACK
+    transport_meta = _transport_metadata(transport_profile, version=_clean_text(config.get("version"), fallback=_default_rollout_version()))
 
     versions = product_facts.get("versions", {}) if isinstance(product_facts, dict) else {}
     package_version = _clean_text(
@@ -328,6 +347,9 @@ def resolved_client_policy(
     return {
         "routing_mode_default": routing_mode,
         "transport_profile": transport_profile,
+        "transport_kind": transport_meta["transport_kind"],
+        "engine_hint": transport_meta["engine_hint"],
+        "profile_revision": transport_meta["profile_revision"],
         "dns_policy": dns_policy,
         "package_catalog_version": package_version,
         "ruleset_version": ruleset_version,
@@ -345,4 +367,3 @@ def transport_node_allowlist(config: dict[str, Any], transport_profile: str) -> 
         return []
     operator_lab = dict(config.get("operator_lab") or {})
     return _normalize_string_list(operator_lab.get("allowlist_node_codes"), lower=True)
-

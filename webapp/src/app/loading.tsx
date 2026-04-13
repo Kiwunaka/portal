@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { motion } from "framer-motion";
 
@@ -18,7 +18,7 @@ export default function Loading() {
         >
           Подтягиваем ваш вход
         </motion.p>
-        <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">POKROV VPN</p>
+        <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">POKROV Network</p>
       </div>
     </div>
   );

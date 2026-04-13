@@ -1,0 +1,16 @@
+[Unit]
+Description=Portal transport front TCP SNI mux
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+ExecStartPre=/usr/sbin/haproxy -c -f /etc/portal-transport-front.cfg
+ExecStart=/usr/sbin/haproxy -W -db -f /etc/portal-transport-front.cfg -p /run/portal-transport-front.pid
+ExecReload=/usr/sbin/haproxy -c -f /etc/portal-transport-front.cfg
+Restart=always
+RestartSec=2
+User=root
+
+[Install]
+WantedBy=multi-user.target

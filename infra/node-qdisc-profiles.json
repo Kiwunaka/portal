@@ -33,5 +33,12 @@
     "uplink_mbps": 750,
     "target_rate_mbps": 637,
     "preferred_qdisc": "cake"
+  },
+  {
+    "node_code": "free",
+    "iface": "eth0",
+    "uplink_mbps": 500,
+    "target_rate_mbps": 425,
+    "preferred_qdisc": "fq_codel"
   }
 ]

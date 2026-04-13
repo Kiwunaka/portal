@@ -9,7 +9,7 @@ This file is living source of truth for repository layout, local authorities, sc
 Legacy filename note:
 
 - some canonical docs still use legacy `portal-vpn-*` path names
-- those filenames do not change the current product brand: the live product is `POKROV VPN`
+- those filenames do not change the current source of truth: the live product is `POKROV`, while `POKROV VPN` remains a legacy identifier only
 
 ## Repository Layout
 

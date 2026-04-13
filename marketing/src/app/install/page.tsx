@@ -20,7 +20,7 @@ function buildArtifactHref(primary: string, fallback: string): string {
 }
 
 export const metadata = buildMarketingMetadata(
-  getCopyText("marketing.install.meta.title", "Установка и помощь | POKROV VPN"),
+  getCopyText("marketing.install.meta.title", "Установка и помощь | POKROV Network"),
   getCopyText(
     "marketing.install.meta.description",
     "Как скачать приложение для Android и Windows, что делать если файл недоступен, и куда перейти за помощью.",
@@ -44,7 +44,7 @@ export default function InstallPage() {
     <>
       <JsonLd
         data={buildBreadcrumbJsonLd([
-          { name: "POKROV VPN", path: "/" },
+          { name: "POKROV Network", path: "/" },
           { name: "Установка и помощь", path: "/install/" },
         ])}
       />
@@ -52,8 +52,8 @@ export default function InstallPage() {
       <header className="lp-nav">
         <div className="lp-nav-shell">
           <Link href="/" className="lp-brand">
-            <img src="/pokrov-logo.svg" alt="POKROV VPN" className="lp-brand-logo" />
-            <span>POKROV VPN</span>
+            <img src="/pokrov-logo.svg" alt="POKROV Network" className="lp-brand-logo" />
+            <span>POKROV Network</span>
           </Link>
           <nav className="lp-menu" aria-label="Главная навигация">
             <Link href="/">Главная</Link>
@@ -68,7 +68,7 @@ export default function InstallPage() {
       <main id="main-content" className="lp-main">
         <section className="lp-hero">
           <div className="lp-hero-copy">
-            <div className="lp-kicker">{getCopyText("marketing.install.kicker", "Install-help POKROV VPN")}</div>
+            <div className="lp-kicker">{getCopyText("marketing.install.kicker", "Установка и настройка POKROV Network")}</div>
             <p className="lp-overline">Дедиковая страница помощи без тупиков и без ложной загрузки.</p>
             <h1>{getCopyText("marketing.install.title", "Установка без тупиков")}</h1>
             <p className="lp-hero-lead">

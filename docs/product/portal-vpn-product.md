@@ -1,4 +1,4 @@
-# POKROV VPN Product Overview
+# POKROV Product Overview
 
 Last updated: 2026-04-13
 
@@ -9,11 +9,12 @@ This file is living source of truth for product direction and user-facing produc
 ## Product Names
 
 - platform brand: `POKROV`
-- client application: `POKROV VPN`
+- public product line: `POKROV`
+- legacy client identifier: `POKROV VPN` only for compatibility, old package/store history, legacy filenames, and references that are not yet migrated
 
 ## Product Strategy
 
-`POKROV VPN` is a `consumer-first`, `app-first` VPN product for:
+`POKROV` is a `consumer-first`, `app-first` connectivity product for:
 
 - `Android`
 - `Windows`
@@ -44,6 +45,7 @@ Telegram remains a secondary path for linking, bonus claim, recovery, support en
 - recommended public routing mode: `All except RU`
 - public routing mode set: `All except RU` and `Full tunnel`
 - public recovery order: `POKROV app -> web cabinet -> Telegram fallback`
+- public wording must avoid direct `VPN` wording and describe the product through app, connection, routing, access, or support context instead
 
 ## Current Release Constraints
 
@@ -91,7 +93,7 @@ Legacy `/config-options`, `/about`, and `/logs` may remain as compatibility redi
 
 ### Marketing Site
 
-`marketing/` is the public acquisition and discovery surface for `POKROV VPN`.
+`marketing/` is the public acquisition and discovery surface for `POKROV`.
 
 Current public role:
 
@@ -139,6 +141,7 @@ Public-facing copy across marketing and webapp should follow one simple style:
 - calm, direct, and premium without fake urgency
 - `app-first` in onboarding language, with Telegram framed as optional continuation or fallback
 - one product story across homepage, SEO landings, cabinet, and checkout
+- avoid direct-meaning `VPN` wording on public surfaces; `POKROV VPN` survives only as a legacy identifier where removal is not yet feasible
 - explicit next-step CTA wording such as `download app`, `open cabinet`, `continue to checkout`, or `open Telegram` only when that is the real next step
 - no separate product variants or conflicting promises invented for SEO pages
 
@@ -228,7 +231,9 @@ Visible in advanced:
 
 ## Branding Rules
 
-All public and client-facing surfaces must be branded as `POKROV` / `POKROV VPN`.
+All public and client-facing surfaces must be branded as `POKROV`.
+
+`POKROV VPN` may remain only as a legacy compatibility token in old filenames, package/store identifiers, bot handles, migration notes, or other surfaces that cannot yet be renamed safely.
 
 Replace or remove:
 
@@ -314,3 +319,4 @@ Current major product risks are:
 - Apple readiness notes being mistaken for a public ship promise
 - Android release being treated as ready before localhost listener and control-surface safety is proven in a release build
 - RU routing and DNS presets being described as finished before the real strategy layer and leak checks ship
+- public copy drifting back into direct `VPN` wording instead of policy-compliant neutral product language

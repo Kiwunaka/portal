@@ -7,7 +7,7 @@ import { getCopyText } from "../../lib/pokrov";
 import CheckoutClient, { CheckoutLoadingFallback } from "./checkout-client";
 
 export const metadata = buildMarketingMetadata(
-  getCopyText("marketing.checkout.meta.title", "Личный маршрут оплаты | POKROV VPN"),
+  getCopyText("marketing.checkout.meta.title", "Личный маршрут оплаты | POKROV Network"),
   getCopyText(
     "marketing.checkout.meta.description",
     "Публичная страница checkout объясняет следующий шаг, но сама касса открывается только после личного входа в кабинет или по персональной ссылке из Telegram.",
@@ -24,7 +24,7 @@ export default function CheckoutPage() {
     <>
       <JsonLd
         data={buildBreadcrumbJsonLd([
-          { name: "POKROV VPN", path: "/" },
+          { name: "POKROV Network", path: "/" },
           { name: getCopyText("marketing.checkout.breadcrumb", "Личный маршрут оплаты"), path: "/checkout/" },
         ])}
       />

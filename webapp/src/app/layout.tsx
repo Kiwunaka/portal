@@ -14,8 +14,8 @@ const mono = JetBrains_Mono({ subsets: ["latin", "cyrillic"], variable: "--font-
 
 export const metadata: Metadata = {
   metadataBase: new URL(CANONICAL_WEBAPP_URL),
-  title: "POKROV VPN - Личный кабинет",
-  description: "Управление доступом в одном кабинете: статус, ключ подключения, служба заботы и оплата в рублях.",
+  title: "POKROV Network - Личный кабинет",
+  description: "Управление скоростью в одном кабинете: статус, ключи оптимизации, служба заботы и оплата в рублях.",
   robots: {
     index: false,
     follow: false,
