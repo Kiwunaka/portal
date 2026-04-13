@@ -580,11 +580,11 @@
     },
     "marketing.reviews.subtitle": {
       "surface": "marketing.home.reviews",
-      "ru": "Коротко и по делу: как POKROV VPN ощущается в ежедневном использовании.",
+      "ru": "Честные отзывы о том, как интернет меняется к лучшему с POKROV Network.",
       "variables": [],
       "tone": "premium",
       "allowed_public": true,
-      "compliance_notes": "Section subtitle for review block.",
+      "compliance_notes": "Rebranded subtitle.",
       "ab_variant": "control"
     },
     "marketing.faq.title": {
@@ -598,20 +598,20 @@
     },
     "marketing.faq.1.q": {
       "surface": "marketing.home.faq",
-      "ru": "Как начать пользоваться POKROV VPN?",
+      "ru": "Как разогнать свой интернет с POKROV Network?",
       "variables": [],
       "tone": "premium",
       "allowed_public": true,
-      "compliance_notes": "FAQ item for onboarding.",
+      "compliance_notes": "Rebranded FAQ question.",
       "ab_variant": "control"
     },
     "marketing.faq.1.a": {
       "surface": "marketing.home.faq",
-      "ru": "Скачайте приложение для Android или Windows, включите 5 дней доступа и проверьте сервис в своих обычных сценариях. Кабинет нужен для продления и управления.",
+      "ru": "Просто установите наше приложение, запустите тест-драйв на 5 дней и наслаждайтесь магией скорости.",
       "variables": [],
       "tone": "premium",
       "allowed_public": true,
-      "compliance_notes": "FAQ answer for onboarding.",
+      "compliance_notes": "Rebranded FAQ answer.",
       "ab_variant": "control"
     },
     "marketing.faq.2.q": {
@@ -670,11 +670,11 @@
     },
     "marketing.footer.title": {
       "surface": "marketing.home.footer",
-      "ru": "POKROV VPN: сначала приложение, потом всё остальное",
+      "ru": "POKROV Network: сначала приложение, потом всё остальное",
       "variables": [],
       "tone": "premium",
       "allowed_public": true,
-      "compliance_notes": "Footer headline for the landing page.",
+      "compliance_notes": "Rebranded footer title.",
       "ab_variant": "control"
     },
     "marketing.footer.body": {
@@ -697,20 +697,20 @@
     },
     "marketing.legal.privacy.intro": {
       "surface": "marketing.legal.privacy",
-      "ru": "Приватность — важная часть сервиса. POKROV VPN бережно относится к вашим данным и не хранит историю посещенных сайтов.",
+      "ru": "Ваша приватность — наш приоритет. POKROV Network бережно относится к вашим данным и обеспечивает стабильность вашего соединения.",
       "variables": [],
       "tone": "premium",
       "allowed_public": true,
-      "compliance_notes": "Sales-oriented friendly format.",
+      "compliance_notes": "Rebranded legal intro.",
       "ab_variant": "control"
     },
     "webapp.entry.title": {
       "surface": "webapp.entry",
-      "ru": "Личный кабинет POKROV VPN",
+      "ru": "Личный кабинет POKROV Network",
       "variables": [],
       "tone": "premium",
       "allowed_public": true,
-      "compliance_notes": "Sales-oriented friendly format.",
+      "compliance_notes": "Rebranded webapp title.",
       "ab_variant": "control"
     },
     "webapp.entry.subtitle": {
@@ -967,11 +967,11 @@
     },
     "bot.welcome": {
       "surface": "bot.main",
-      "ru": "Добро пожаловать в мир POKROV VPN! Здесь вы можете быстро получить доступ в личный кабинет, выбрать тариф и начать пользоваться классным интернетом.",
+      "ru": "Добро пожаловать в мир POKROV Network! Здесь вы можете быстро получить доступ в личный кабинет, выбрать тариф и начать пользоваться классным интернетом.",
       "variables": [],
       "tone": "premium",
       "allowed_public": false,
-      "compliance_notes": "Sales-oriented friendly format.",
+      "compliance_notes": "Rebranded bot welcome.",
       "ab_variant": "control"
     },
     "bot.choose_tariff": {
@@ -985,20 +985,20 @@
     },
     "bot.support.welcome": {
       "surface": "bot.support",
-      "ru": "Служба заботы POKROV VPN на связи! Чем мы можем вам помочь сегодня? Задайте вопрос, и мы ответим максимально быстро.",
+      "ru": "Служба заботы POKROV Network на связи! Чем мы можем вам помочь сегодня? Задайте вопрос, и мы ответим максимально быстро.",
       "variables": [],
       "tone": "premium",
       "allowed_public": false,
-      "compliance_notes": "Sales-oriented friendly format.",
+      "compliance_notes": "Rebranded support welcome.",
       "ab_variant": "control"
     },
     "bot.feedback.welcome": {
       "surface": "bot.feedback",
-      "ru": "Будем рады узнать ваше мнение о POKROV VPN! Мы внимательно читаем все отзывы и каждый день совершенствуем наш сервис.",
+      "ru": "Будем рады узнать ваше мнение о POKROV Network! Мы внимательно читаем все отзывы и каждый день совершенствуем наш сервис.",
       "variables": [],
       "tone": "premium",
       "allowed_public": false,
-      "compliance_notes": "Sales-oriented friendly format.",
+      "compliance_notes": "Rebranded feedback welcome.",
       "ab_variant": "control"
     },
     "bot.feedback.prompt": {
@@ -1012,11 +1012,11 @@
     },
     "bot.feedback.thanks": {
       "surface": "bot.feedback",
-      "ru": "Огромное спасибо за ваш отзыв! Вы помогаете делать POKROV VPN по-настоящему классным продуктом.",
+      "ru": "Огромное спасибо за ваш отзыв! Вы помогаете делать POKROV Network по-настоящему классным продуктом.",
       "variables": [],
       "tone": "premium",
       "allowed_public": false,
-      "compliance_notes": "Sales-oriented friendly format.",
+      "compliance_notes": "Rebranded thanks.",
       "ab_variant": "control"
     },
     "retention.welcome": {
@@ -1039,40 +1039,40 @@
     },
     "retention.t1": {
       "surface": "bot.retention",
-      "ru": "Срок вашей подписки подходит к концу! Оформите продление прямо сейчас, чтобы ваш VPN работал быстро и без пауз.",
+      "ru": "Срок вашей подписки подходит к концу! Оформите продление прямо сейчас, чтобы ваш интернет летал быстро и без пауз.",
       "variables": [],
       "tone": "premium",
       "allowed_public": false,
-      "compliance_notes": "Sales-oriented friendly format.",
+      "compliance_notes": "Rebranded retention t1.",
       "ab_variant": "control"
     },
     "retention.t0": {
       "surface": "bot.retention",
-      "ru": "Ваша подписка истекает уже сегодня. Скорее перейдите к продлению, чтобы мы и дальше оставались вашим любимым VPN-помощником!",
+      "ru": "Ваша подписка истекает уже сегодня. Скорее перейдите к продлению, чтобы мы и дальше оставались вашим любимым помощником в мире интернета!",
       "variables": [],
       "tone": "premium",
       "allowed_public": false,
-      "compliance_notes": "Sales-oriented friendly format.",
+      "compliance_notes": "Rebranded retention t0.",
       "ab_variant": "control"
     },
     "retention.reactivation": {
       "surface": "bot.retention",
-      "ru": "Мы скучали! Восстановите подписку в пару кликов и продолжайте пользоваться безопасным интернетом вместе с POKROV VPN.",
+      "ru": "Мы скучали! Восстановите подписку в пару кликов и продолжайте пользоваться быстрым интернетом вместе с POKROV Network.",
       "variables": [],
       "tone": "premium",
       "allowed_public": false,
-      "compliance_notes": "Sales-oriented friendly format.",
+      "compliance_notes": "Rebranded reactivation.",
       "ab_variant": "control"
     },
     "retention.start99_offer": {
       "surface": "bot.retention",
-      "ru": "Понравился бесплатный доступ? Специально для вас мы сохранили скидку {discount_pct}% на первую оплату: пользуйтесь POKROV VPN с отличной скидкой!",
+      "ru": "Понравился бесплатный доступ? Специально для вас мы сохранили скидку {discount_pct}% на первую оплату: пользуйтесь POKROV Network с отличной скидкой!",
       "variables": [
         "discount_pct"
       ],
       "tone": "premium",
       "allowed_public": false,
-      "compliance_notes": "Sales-oriented friendly format.",
+      "compliance_notes": "Rebranded start99 offer.",
       "ab_variant": "control"
     }
   }
