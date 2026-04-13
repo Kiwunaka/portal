@@ -39,6 +39,12 @@ Legacy filename note:
 | User journey | [docs/user/portal-vpn-user-guide-ru.md](C:/Users/kiwun/Documents/ai/VPN/docs/user/portal-vpn-user-guide-ru.md) |
 | Client-specific contracts | [external/client-fork/app/docs/README.md](C:/Users/kiwun/Documents/ai/VPN/external/client-fork/app/docs/README.md) |
 
+## Canonical Branches
+
+- `portal/master` is the canonical branch for `portal_bot/`, `webapp/`, `marketing/`, `shared/`, `infra/`, root `docs/`, and root `scripts/`
+- `PORTALapp/main` is the canonical branch for `external/client-fork/app/`
+- treat the client checkout nested under the platform workspace as a separate repository with its own canonical branch, not as a subtree of `portal/master`
+
 ## Script Categories
 
 ### Deploy and release

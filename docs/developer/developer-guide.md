@@ -60,6 +60,13 @@ Current scope note:
 - full public `v1` target is Android and Windows
 - `iOS` and `macOS` work in this wave is documentation, readiness, and packaging prep only
 
+## Canonical Git Truth
+
+- `portal/master` is the only canonical git truth for `backend`, `webapp`, `marketing`, root `docs`, `shared`, `infra`, and root `scripts`
+- `PORTALapp/main` is the only canonical git truth for the Flutter client under `external/client-fork/app/`
+- the nested client workspace inside `portal/` is a convenience checkout, not a second authority for platform code
+- if a task changes both platform and client, push both canonical branches and report them separately
+
 Shell note:
 
 - prefer `bash` when it is simpler

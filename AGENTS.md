@@ -1,6 +1,6 @@
 # Repository Agents
 
-Last updated: 2026-04-08
+Last updated: 2026-04-13
 
 This file is the working contract for any agent or developer operating inside `C:\Users\kiwun\Documents\ai\VPN`.
 
@@ -251,6 +251,13 @@ Production source of truth:
 
 - Postgres from `DATABASE_URL`
 - shared hostnames, public copy, and locked cross-surface facts from `shared/portal-config.ts`, `shared/copy.ts`, `shared/product-facts.json`, `shared/public-urls.json`, and `shared/design-tokens.json`
+
+Repository source-of-truth rule:
+
+- if you work on `backend`, `webapp`, `marketing`, root `docs`, `shared`, `infra`, or `scripts`, the canonical git truth is `portal/master`
+- if you work on the `Android` or `Windows` Flutter client under `external/client-fork/app/`, the canonical git truth is `PORTALapp/main`
+- do not treat local feature branches, old redirect remotes, or the nested client workspace inside `portal/` as competing product truths once `portal/master` and `PORTALapp/main` are updated
+- if a task spans both repositories, update and push both canonical branches explicitly instead of assuming one repo transitively updates the other
 
 Not source of truth:
 
