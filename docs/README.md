@@ -1,6 +1,6 @@
 # POKROV Documentation Index
 
-Last updated: 2026-04-01
+Last updated: 2026-04-13
 
 This directory is split into two classes of material:
 
@@ -28,6 +28,7 @@ Use the role-based paths below first. If you need older context, go to the archi
 
 - [Developer Guide](C:/Users/kiwun/Documents/ai/VPN/docs/developer/developer-guide.md)
 - [Repository Map](C:/Users/kiwun/Documents/ai/VPN/docs/developer/repository-map.md)
+- [Orchestration Standard](C:/Users/kiwun/Documents/ai/VPN/docs/developer/orchestration/orchestration-standard.md)
 - [System Overview](C:/Users/kiwun/Documents/ai/VPN/docs/architecture/system-overview.md)
 - [App-First And Bonus Flows](C:/Users/kiwun/Documents/ai/VPN/docs/architecture/app-first-and-bonus-flows.md)
 
@@ -71,6 +72,9 @@ Use the role-based paths below first. If you need older context, go to the archi
 
 - [docs/developer/developer-guide.md](C:/Users/kiwun/Documents/ai/VPN/docs/developer/developer-guide.md)
 - [docs/developer/repository-map.md](C:/Users/kiwun/Documents/ai/VPN/docs/developer/repository-map.md)
+- [docs/developer/orchestration/README.md](C:/Users/kiwun/Documents/ai/VPN/docs/developer/orchestration/README.md)
+- [docs/developer/orchestration/orchestration-standard.md](C:/Users/kiwun/Documents/ai/VPN/docs/developer/orchestration/orchestration-standard.md)
+- [docs/developer/work-orders/README.md](C:/Users/kiwun/Documents/ai/VPN/docs/developer/work-orders/README.md)
 
 ### User
 

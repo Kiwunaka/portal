@@ -41,6 +41,12 @@ For web-admin or marketing work, also read:
 - [Monitoring And Visibility](C:/Users/kiwun/Documents/ai/VPN/docs/operations/monitoring-and-visibility.md)
 - [webapp/README.md](C:/Users/kiwun/Documents/ai/VPN/webapp/README.md)
 
+For orchestrated multi-step work, also read:
+
+- [docs/developer/orchestration/orchestration-standard.md](C:/Users/kiwun/Documents/ai/VPN/docs/developer/orchestration/orchestration-standard.md)
+- [docs/developer/orchestration/README.md](C:/Users/kiwun/Documents/ai/VPN/docs/developer/orchestration/README.md)
+- [docs/developer/work-orders/README.md](C:/Users/kiwun/Documents/ai/VPN/docs/developer/work-orders/README.md)
+
 ## Main Workspaces
 
 ### Platform workspace
@@ -72,6 +78,29 @@ Shell note:
 
 - prefer `bash` when it is simpler
 - use `powershell` when Windows quoting, SSH, or local tool behavior is more reliable there
+
+## Orchestrated Work Orders
+
+Use the orchestration standard when work should survive chat boundaries, needs executor and reviewer separation, or crosses the platform and client lanes.
+
+Canonical paths:
+
+- [docs/developer/orchestration/orchestration-standard.md](C:/Users/kiwun/Documents/ai/VPN/docs/developer/orchestration/orchestration-standard.md)
+- [docs/developer/orchestration/roles/](C:/Users/kiwun/Documents/ai/VPN/docs/developer/orchestration/roles)
+- [docs/developer/orchestration/templates/](C:/Users/kiwun/Documents/ai/VPN/docs/developer/orchestration/templates)
+- [docs/developer/work-orders/README.md](C:/Users/kiwun/Documents/ai/VPN/docs/developer/work-orders/README.md)
+
+Current rules:
+
+- the orchestrator owns WO routing, status, docs impact, and completion judgment
+- WOs route by `write-scope`, not by topic
+- `portal/master` remains the canonical truth for the platform lane
+- `PORTALapp/main` remains the canonical truth for the client lane
+- mixed WOs must preserve separate git evidence for the platform and client lanes
+- the executor does not self-close the WO
+- reviewers should run with fresh context
+- a green automated check does not close a WO when manual checks, deploy steps, Android localhost audit, or origin evidence still remain open
+- live execution artifacts belong under `docs/developer/work-orders/`; reusable templates belong under `docs/developer/orchestration/templates/`
 
 ## Current Runtime Contract Reminders
 
