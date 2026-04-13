@@ -25,6 +25,7 @@ import aiohttp
 import qrcode
 from sqlalchemy.exc import IntegrityError
 from copy_catalog import get_copy_text
+from node_policy import canonical_free_node_code, free_pool_node_codes
 from payment_providers import enabled_provider_catalog, normalize_provider as normalize_payment_provider
 from public_urls import build_subscription_url as build_public_subscription_url
 try:
@@ -1086,14 +1087,36 @@ def create_user(tg_id: int, user_uuid: str, email: str, sub_type: str, days: int
     session.close()
     return user
 
-def update_user_username(tg_id: int, username: str):
-    """Update user's telegram username"""
+def sync_telegram_identity(tg_id: int, username: str | None) -> bool:
+    """Persist Telegram username for both telegram-native and app-linked user rows."""
     session = Session()
-    user = session.query(User).filter_by(tg_id=tg_id).first()
-    if user and username:
-        user.username = username
-        session.commit()
-    session.close()
+    normalized = str(username or "").strip()[:100] or None
+    changed = False
+    try:
+        user = session.query(User).filter_by(tg_id=int(tg_id)).first()
+        if user and user.username != normalized:
+            user.username = normalized
+            changed = True
+
+        linked_rows = session.query(User).filter(User.linked_telegram_id == int(tg_id)).all()
+        for row in linked_rows:
+            if row.linked_telegram_username != normalized:
+                row.linked_telegram_username = normalized
+                changed = True
+
+        if changed:
+            session.commit()
+        return changed
+    except Exception:
+        session.rollback()
+        return False
+    finally:
+        session.close()
+
+
+def update_user_username(tg_id: int, username: str | None):
+    """Update user's telegram username"""
+    sync_telegram_identity(tg_id, username)
 
 def generate_sub_token() -> str:
     """Generate unique subscription token (43 chars, impossible to guess)"""
@@ -2666,6 +2689,17 @@ class CallbackContextMiddleware(BaseMiddleware):
         return await handler(event, data)
 
 
+class TelegramIdentitySyncMiddleware(BaseMiddleware):
+    async def __call__(self, handler, event, data):
+        try:
+            from_user = getattr(event, "from_user", None)
+            if from_user and not bool(getattr(from_user, "is_bot", False)):
+                sync_telegram_identity(int(from_user.id), getattr(from_user, "username", None))
+        except Exception:
+            pass
+        return await handler(event, data)
+
+
 @router.callback_query(F.data == "noop")
 async def noop(callback: CallbackQuery):
     # Used for "page indicator" buttons so Telegram doesn't return "message is not modified".
@@ -2938,7 +2972,7 @@ def _bot_enabled_nodes() -> list[dict]:
 
 def _bot_free_codes() -> list[str]:
     nodes = _bot_enabled_nodes()
-    return [((getattr(n, "code", "") or "").strip()) for n in nodes if "free" in (getattr(n, "code", "") or "").lower()]
+    return free_pool_node_codes(nodes)
 
 
 def _node_code_base(code: str) -> str:
@@ -3046,7 +3080,8 @@ def build_choose_tariff_text() -> str:
         if paid_nodes
         else ("1 локация" if nodes else "1 локация")
     )
-    free_node = next((n for n in nodes if "free" in (getattr(n, "code", "") or "").lower()), None)
+    free_code = str(canonical_free_node_code(nodes) or "").strip().lower()
+    free_node = next((n for n in nodes if (getattr(n, "code", "") or "").strip().lower() == free_code), None)
     free_label = (
         _node_label_ru_bot(getattr(free_node, "code", "free"), getattr(free_node, "name", "NL Free"))
         if free_node
@@ -7774,22 +7809,26 @@ async def admin_sync_callback(callback: CallbackQuery, bot: Bot):
     await callback.answer("🔄 Синхронизация запущена...")
     
     session = Session()
-    users = session.query(User).all()
+    try:
+        tg_ids: set[int] = set()
+        for user in session.query(User).all():
+            tg_id = int(getattr(user, "tg_id", 0) or 0)
+            linked_id = int(getattr(user, "linked_telegram_id", 0) or 0)
+            if 0 < tg_id < 9_000_000_000_000 and tg_id not in PROTECTED_USERS and tg_id != ADMIN_ID:
+                tg_ids.add(tg_id)
+            if linked_id > 0 and linked_id not in PROTECTED_USERS and linked_id != ADMIN_ID:
+                tg_ids.add(linked_id)
+    finally:
+        session.close()
+
     updated = 0
-    
-    for user in users:
-        if user.tg_id in PROTECTED_USERS:
-            continue
+    for tg_id in sorted(tg_ids):
         try:
-            chat = await bot.get_chat(user.tg_id)
-            if chat.username:
-                user.username = chat.username
+            chat = await bot.get_chat(tg_id)
+            if sync_telegram_identity(tg_id, getattr(chat, "username", None)):
                 updated += 1
-        except:
+        except Exception:
             pass
-    
-    session.commit()
-    session.close()
     
     kb = InlineKeyboardMarkup(inline_keyboard=[
         [InlineKeyboardButton(text="◀️ Назад", callback_data="admin")]
@@ -10139,36 +10178,39 @@ async def sync_usernames(message: Message, bot: Bot):
     await message.answer("🔄 Синхронизирую никнеймы и обновляю панель...")
     
     session = Session()
-    users = session.query(User).all()
+    try:
+        tg_ids: set[int] = set()
+        for user in session.query(User).all():
+            tg_id = int(getattr(user, "tg_id", 0) or 0)
+            linked_id = int(getattr(user, "linked_telegram_id", 0) or 0)
+            if 0 < tg_id < 9_000_000_000_000 and tg_id not in PROTECTED_USERS and tg_id != ADMIN_ID:
+                tg_ids.add(tg_id)
+            if linked_id > 0 and linked_id not in PROTECTED_USERS and linked_id != ADMIN_ID:
+                tg_ids.add(linked_id)
+    finally:
+        session.close()
+
     updated = 0
     panel_updated = 0
     errors = 0
     
-    for user in users:
-        # Skip protected users
-        if user.tg_id in PROTECTED_USERS:
-            continue
-        
+    for tg_id in sorted(tg_ids):
         try:
-            chat = await bot.get_chat(user.tg_id)
-            if chat.username:
-                user.username = chat.username
+            chat = await bot.get_chat(tg_id)
+            username = getattr(chat, "username", None)
+            if sync_telegram_identity(tg_id, username):
                 updated += 1
-                # Also update panel comment
-                if await panel.update_client_comment(user.tg_id, f"@{chat.username}"):
-                    panel_updated += 1
+            if username and await panel.update_client_comment(tg_id, f"@{username}"):
+                panel_updated += 1
         except Exception:
             errors += 1
-    
-    session.commit()
-    session.close()
     
     await message.answer(
         f"✅ Синхронизация завершена!\n\n"
         f"📊 Обновлено в БД: {updated}\n"
         f"📋 Обновлено в панели: {panel_updated}\n"
         f"❌ Ошибок: {errors}\n"
-        f"👥 Всего: {len(users)}"
+        f"👥 Всего: {len(tg_ids)}"
     )
 
 
@@ -10574,6 +10616,14 @@ async def main():
     bot = Bot(token=BOT_TOKEN)
     _patch_outgoing_message_methods(bot)
     dp = Dispatcher()
+    try:
+        dp.message.middleware(TelegramIdentitySyncMiddleware())
+    except Exception:
+        pass
+    try:
+        dp.callback_query.middleware(TelegramIdentitySyncMiddleware())
+    except Exception:
+        pass
     try:
         dp.callback_query.middleware(CallbackContextMiddleware())
     except Exception:

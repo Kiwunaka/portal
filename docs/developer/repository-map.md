@@ -43,7 +43,15 @@ Legacy filename note:
 
 - `portal/master` is the canonical branch for `portal_bot/`, `webapp/`, `marketing/`, `shared/`, `infra/`, root `docs/`, and root `scripts/`
 - `PORTALapp/main` is the canonical branch for `external/client-fork/app/`
+- root docs in this repository, including `AGENTS.md` and `docs/*`, land on `portal/master`; client docs under `external/client-fork/app/docs/` land on `PORTALapp/main`
 - treat the client checkout nested under the platform workspace as a separate repository with its own canonical branch, not as a subtree of `portal/master`
+
+## Current Runtime Contract Pointers
+
+- [docs/architecture/app-first-and-bonus-flows.md](C:/Users/kiwun/Documents/ai/VPN/docs/architecture/app-first-and-bonus-flows.md) is the canonical doc for app-first username sync and free-vs-premium node-pool behavior
+- automatic username sync is the primary path; manual username sync remains compatibility/recovery only
+- premium-grade access states `trial_premium`, `bonus_premium`, and `paid_unlimited` target all enabled non-free delivery nodes
+- free-tier access states `free_monthly` and `free_soft_mode` target only the dedicated `NL-free` node
 
 ## Script Categories
 

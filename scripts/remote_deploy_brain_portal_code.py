@@ -36,6 +36,31 @@ def _run(ssh: paramiko.SSHClient, cmd: str, *, timeout: int = 120) -> tuple[int,
     return code, out, err
 
 
+def iter_upload_mappings(repo_root: Path) -> list[tuple[Path, str]]:
+    mappings: list[tuple[Path, str]] = []
+    for path in sorted((repo_root / "portal_bot").glob("*.py")):
+        mappings.append((path, f"/root/portal_bot/{path.name}"))
+
+    requirements = repo_root / "portal_bot" / "requirements.txt"
+    if requirements.exists():
+        mappings.append((requirements, "/root/portal_bot/requirements.txt"))
+
+    for source_name, target_name in (
+        ("collect_node_metrics.py", "collect_node_metrics.py"),
+        ("node_dataplane_probe.py", "node_dataplane_probe.py"),
+    ):
+        source = repo_root / "scripts" / source_name
+        if source.exists():
+            mappings.append((source, f"/root/portal_bot/{target_name}"))
+
+    for shared_name in ("product-facts.json", "public-urls.json", "design-tokens.json"):
+        source = repo_root / "shared" / shared_name
+        if source.exists():
+            mappings.append((source, f"/root/shared/{shared_name}"))
+
+    return mappings
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description="Deploy portal_bot/*.py to brain and restart portal-api/portal-bot.")
     ap.add_argument("--brain-ip", required=True)
@@ -54,21 +79,11 @@ def main() -> int:
     )
     try:
         print(f"brain auth: {auth_method}")
-        _run(ssh, "mkdir -p /root/portal_bot", timeout=60)
+        _run(ssh, "mkdir -p /root/portal_bot /root/shared", timeout=60)
         sftp = ssh.open_sftp()
         try:
-            for p in sorted((REPO_ROOT / "portal_bot").glob("*.py")):
-                sftp.put(str(p), f"/root/portal_bot/{p.name}")
-            requirements = REPO_ROOT / "portal_bot" / "requirements.txt"
-            if requirements.exists():
-                sftp.put(str(requirements), "/root/portal_bot/requirements.txt")
-            for source_name, target_name in (
-                ("collect_node_metrics.py", "collect_node_metrics.py"),
-                ("node_dataplane_probe.py", "node_dataplane_probe.py"),
-            ):
-                source = REPO_ROOT / "scripts" / source_name
-                if source.exists():
-                    sftp.put(str(source), f"/root/portal_bot/{target_name}")
+            for source, target in iter_upload_mappings(REPO_ROOT):
+                sftp.put(str(source), target)
         finally:
             sftp.close()
 

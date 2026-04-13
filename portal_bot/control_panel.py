@@ -2,9 +2,11 @@ from __future__ import annotations
 
 import asyncio
 import logging
+from types import SimpleNamespace
 
 from db import SessionLocal
 from models import User, UserNode
+from node_policy import free_pool_node_codes, node_code_base, paid_pool_nodes, user_uses_free_pool
 from nodes_repo import enabled_nodes
 from panel_client import PanelClient
 
@@ -24,43 +26,14 @@ class ControlPanel:
 
     @staticmethod
     def _node_base(code: str) -> str:
-        raw = (code or "").lower().strip()
-        for sep in ("_", "-", "."):
-            if sep in raw:
-                raw = raw.split(sep, 1)[0]
-        return raw
+        return node_code_base(code)
 
     def _paid_node_groups(self, nodes: list) -> list[tuple[str, list]]:
-        # Keep control-plane/alias nodes out of paid traffic pools.
-        excluded_bases = {"brain", "de"}
-        grouped: dict[str, list] = {}
-        for n in nodes:
-            if not bool(getattr(n, "accepting_new_clients", True)):
-                continue
-            if bool(getattr(n, "is_draining", False)):
-                continue
-            if "free" in (n.code or "").lower():
-                continue
-            base = self._node_base(n.code)
-            if base in excluded_bases:
-                continue
-            grouped.setdefault(base, []).append(n)
-        return [(k, v) for k, v in grouped.items()]
+        return [((getattr(node, "code", "") or "").strip(), [node]) for node in paid_pool_nodes(nodes)]
 
     @staticmethod
     def _free_node_codes(nodes: list) -> list[str]:
-        out: list[str] = []
-        for n in nodes:
-            if not bool(getattr(n, "accepting_new_clients", True)):
-                continue
-            if bool(getattr(n, "is_draining", False)):
-                continue
-            code = (n.code or "").strip()
-            if not code:
-                continue
-            if "free" in code.lower():
-                out.append(code)
-        return out
+        return free_pool_node_codes(nodes)
 
     def _requested_node_groups(self, nodes: list, requested_codes: list[str]) -> list[tuple[str, list]]:
         groups: list[tuple[str, list]] = []
@@ -495,7 +468,17 @@ class ControlPanel:
         `sub_token` (preferred) is used as subscription subId in panels.
         """
         sub_id = sub_token or str(tg_id)
-        if (sub_type or "").upper() == "FREE":
+        user = None
+        try:
+            s = SessionLocal()
+            try:
+                user = s.query(User).filter_by(tg_id=int(tg_id)).first()
+            finally:
+                s.close()
+        except Exception:
+            user = None
+
+        if user_uses_free_pool(user or SimpleNamespace(sub_type=sub_type, current_plan_code=None)):
             nodes = await self.refresh()
             free_codes = self._free_node_codes(nodes)
             if not free_codes:
@@ -530,7 +513,7 @@ class ControlPanel:
             if not u:
                 return False
             sub_id = u.sub_token or str(u.tg_id)
-            if (u.sub_type or "").upper() == "FREE":
+            if user_uses_free_pool(u):
                 nodes = await self.refresh()
                 free_codes = self._free_node_codes(nodes)
                 if not free_codes:

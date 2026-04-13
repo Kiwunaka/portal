@@ -213,6 +213,72 @@ class BotPaywallTests(unittest.TestCase):
         ok = asyncio.run(self.bot_module.check_subscription(1001, fake))
         self.assertFalse(ok)
 
+    def test_sync_telegram_identity_updates_primary_and_linked_usernames(self) -> None:
+        self.bot_module.ensure_pending_user(1001, username="old_name")
+        session = self.bot_module.Session()
+        try:
+            linked = self.bot_module.User(
+                tg_id=9000000000100,
+                username="app_000100",
+                uuid=str(uuid.uuid4()),
+                email="APP_9000000000100",
+                sub_type="FREE",
+                current_plan_code="trial",
+                is_active=True,
+                linked_telegram_id=1001,
+                linked_telegram_username="old_linked",
+                sub_token="linked_token",
+            )
+            session.add(linked)
+            session.commit()
+        finally:
+            session.close()
+
+        changed = self.bot_module.sync_telegram_identity(1001, "fresh_name")
+        self.assertTrue(changed)
+
+        session = self.bot_module.Session()
+        try:
+            primary = session.query(self.bot_module.User).filter_by(tg_id=1001).first()
+            linked = session.query(self.bot_module.User).filter_by(tg_id=9000000000100).first()
+            self.assertEqual(primary.username, "fresh_name")
+            self.assertEqual(linked.linked_telegram_username, "fresh_name")
+        finally:
+            session.close()
+
+    def test_sync_telegram_identity_clears_stale_usernames(self) -> None:
+        self.bot_module.ensure_pending_user(1001, username="old_name")
+        session = self.bot_module.Session()
+        try:
+            linked = self.bot_module.User(
+                tg_id=9000000000101,
+                username="app_000101",
+                uuid=str(uuid.uuid4()),
+                email="APP_9000000000101",
+                sub_type="FREE",
+                current_plan_code="trial",
+                is_active=True,
+                linked_telegram_id=1001,
+                linked_telegram_username="old_linked",
+                sub_token="linked_token_2",
+            )
+            session.add(linked)
+            session.commit()
+        finally:
+            session.close()
+
+        changed = self.bot_module.sync_telegram_identity(1001, None)
+        self.assertTrue(changed)
+
+        session = self.bot_module.Session()
+        try:
+            primary = session.query(self.bot_module.User).filter_by(tg_id=1001).first()
+            linked = session.query(self.bot_module.User).filter_by(tg_id=9000000000101).first()
+            self.assertIsNone(primary.username)
+            self.assertIsNone(linked.linked_telegram_username)
+        finally:
+            session.close()
+
     def test_opening_bonus_activation_is_one_time(self) -> None:
         self.bot_module.OPENING_PREMIUM_ENABLED = True
         self.bot_module.OPENING_PREMIUM_DAYS = 14

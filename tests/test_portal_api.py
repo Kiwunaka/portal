@@ -229,7 +229,7 @@ class PortalApiTests(unittest.TestCase):
         )
         self.assertTrue(any(r.get("domain_suffix") and "youtube.com" in r.get("domain_suffix") and r.get("outbound") == "direct" for r in rules))
 
-    def test_nodes_for_user_excludes_brain_from_paid_pool(self) -> None:
+    def test_nodes_for_user_includes_all_non_free_nodes_for_paid_pool(self) -> None:
         import importlib
 
         api = importlib.import_module("api")
@@ -242,16 +242,46 @@ class PortalApiTests(unittest.TestCase):
             SimpleNamespace(code="pl"),
             SimpleNamespace(code="it"),
             SimpleNamespace(code="nl"),
-            SimpleNamespace(code="pl_free"),
+            SimpleNamespace(code="free"),
         ]
         out = api._nodes_for_user(user, nodes)
         codes = [n.code for n in out]
+        self.assertIn("brain", codes)
+        self.assertIn("de", codes)
         self.assertIn("pl", codes)
         self.assertIn("it", codes)
         self.assertIn("nl", codes)
-        self.assertNotIn("brain", codes)
-        self.assertNotIn("de", codes)
-        self.assertNotIn("pl_free", codes)
+        self.assertNotIn("free", codes)
+
+    def test_nodes_for_trial_user_use_premium_pool(self) -> None:
+        import importlib
+
+        api = importlib.import_module("api")
+        importlib.reload(api)
+
+        user = SimpleNamespace(tg_id=1002, sub_type="FREE", current_plan_code="trial")
+        nodes = [
+            SimpleNamespace(code="free"),
+            SimpleNamespace(code="nl"),
+            SimpleNamespace(code="it"),
+        ]
+        out = api._nodes_for_user(user, nodes)
+        self.assertEqual([n.code for n in out], ["nl", "it"])
+
+    def test_nodes_for_free_user_only_use_canonical_free_node(self) -> None:
+        import importlib
+
+        api = importlib.import_module("api")
+        importlib.reload(api)
+
+        user = SimpleNamespace(tg_id=1003, sub_type="FREE", current_plan_code="free_monthly")
+        nodes = [
+            SimpleNamespace(code="pl_free"),
+            SimpleNamespace(code="free"),
+            SimpleNamespace(code="nl"),
+        ]
+        out = api._nodes_for_user(user, nodes)
+        self.assertEqual([n.code for n in out], ["free"])
 
     def test_node_labels_include_nl_and_nl_free(self) -> None:
         import importlib

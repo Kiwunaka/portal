@@ -64,6 +64,7 @@ Current scope note:
 
 - `portal/master` is the only canonical git truth for `backend`, `webapp`, `marketing`, root `docs`, `shared`, `infra`, and root `scripts`
 - `PORTALapp/main` is the only canonical git truth for the Flutter client under `external/client-fork/app/`
+- root docs in this workspace, including `AGENTS.md` and `docs/*`, always land on `portal/master`; only client docs under `external/client-fork/app/docs/` land on `PORTALapp/main`
 - the nested client workspace inside `portal/` is a convenience checkout, not a second authority for platform code
 - if a task changes both platform and client, push both canonical branches and report them separately
 
@@ -71,6 +72,12 @@ Shell note:
 
 - prefer `bash` when it is simpler
 - use `powershell` when Windows quoting, SSH, or local tool behavior is more reliable there
+
+## Current Runtime Contract Reminders
+
+- automatic username sync is the primary identity-sync path across app-first, web-login, and Telegram-link flows; manual username sync is compatibility/recovery tooling only
+- premium-grade access states `trial_premium`, `bonus_premium`, and `paid_unlimited` use the paid pool, which means all enabled non-free delivery nodes
+- free-tier access states `free_monthly` and `free_soft_mode` use the free pool, which means the dedicated `NL-free` node only
 
 ## Backend Commands
 
@@ -221,7 +228,7 @@ Minimum docs to touch when relevant:
 
 - product behavior
 - runtime architecture
-- app-first / Telegram reward logic
+- app-first / Telegram reward / username sync / node-pool logic
 - deploy flow
 - developer workflow
 - user-facing flow

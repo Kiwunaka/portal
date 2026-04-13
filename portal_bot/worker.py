@@ -24,6 +24,7 @@ from db import SessionLocal, init_db
 from events_service import track_event
 from free_cycle_service import mark_user_became_free, process_due_free_cycle_resets
 from models import CampaignSend, Event, ExternalOrder, KeyActionHistory, NodeHealthSample, ReferralBonusQueue, Template, User, UserKeyPolicy
+from node_policy import free_pool_node_codes
 from offers_service import create_offer, expire_stale_offers, get_active_offer
 from observer_service import cleanup_observer_retention
 from pay_attempts_service import find_abandoned_candidates, mark_abandoned, mark_abandoned_notified
@@ -432,7 +433,7 @@ async def _switch_user_to_free(*, tg_id: int) -> bool:
         try:
             await panel.login()
             nodes = await panel.refresh()
-            free_codes = [(getattr(n, "code", "") or "").strip() for n in nodes if "free" in (getattr(n, "code", "") or "").lower()]
+            free_codes = free_pool_node_codes(nodes)
             paid_codes = [(getattr(n, "code", "") or "").strip() for n in nodes if "free" not in (getattr(n, "code", "") or "").lower()]
             if free_codes:
                 await panel.ensure_user_on_all_nodes(

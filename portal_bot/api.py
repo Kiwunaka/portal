@@ -99,6 +99,7 @@ from tickets_repo import (
     set_ticket_status,
 )
 from nodes_repo import enabled_nodes
+from node_policy import canonical_free_node_code, node_is_free, user_uses_free_pool
 from control_panel import ControlPanel
 from events_service import track_event
 from offers_service import accept_offer, create_offer, get_active_offer
@@ -1632,8 +1633,9 @@ def _ensure_user_row_for_login(*, tg_id: int, username: str | None = None) -> No
     try:
         user = s.query(User).filter(User.tg_id == int(tg_id)).first()
         if user:
-            if username and (not user.username):
-                user.username = str(username).strip()[:100]
+            normalized = str(username or "").strip()[:100] or None
+            if username is not None and user.username != normalized:
+                user.username = normalized
                 s.commit()
             return
 
@@ -8913,7 +8915,13 @@ def _subscription_excluded_codes() -> set[str]:
     }
 
 
-def _node_allowed_for_plan(user: User, node: Any, *, excluded_codes: set[str] | None = None) -> bool:
+def _node_allowed_for_plan(
+    user: User,
+    node: Any,
+    *,
+    excluded_codes: set[str] | None = None,
+    free_code: str | None = None,
+) -> bool:
     code = str(getattr(node, "code", "") or "").strip().lower()
     if not code:
         return False
@@ -8922,16 +8930,10 @@ def _node_allowed_for_plan(user: User, node: Any, *, excluded_codes: set[str] | 
     if code in excluded or base in excluded:
         return False
 
-    is_free = (user.sub_type or "").upper() == "FREE"
-    plan_code = str(getattr(user, "current_plan_code", "") or "").strip().lower()
+    if user_uses_free_pool(user):
+        return bool(free_code) and code == str(free_code).strip().lower()
 
-    if is_free:
-        return "free" in code
-
-    if plan_code == "start_99":
-        return "free" not in code and base == "nl"
-
-    return "free" not in code and base not in {"brain", "de"}
+    return not node_is_free(node)
 
 
 def _mapped_nodes_for_user(session, user: User, nodes: list) -> list:
@@ -8945,6 +8947,7 @@ def _mapped_nodes_for_user(session, user: User, nodes: list) -> list:
     out: list[Any] = []
     seen: set[str] = set()
     excluded_codes = _subscription_excluded_codes()
+    free_code = str(canonical_free_node_code(nodes) or "").strip().lower()
     for row in rows:
         node = node_by_id.get(int(getattr(row, "node_id", 0) or 0))
         if not node:
@@ -8952,7 +8955,12 @@ def _mapped_nodes_for_user(session, user: User, nodes: list) -> list:
         code = str(getattr(node, "code", "") or "").strip().lower()
         if not code or code in seen:
             continue
-        if not _node_allowed_for_plan(user, node, excluded_codes=excluded_codes):
+        if code in excluded_codes or _node_code_base(code) in excluded_codes:
+            continue
+        if user_uses_free_pool(user):
+            if not free_code or code != free_code:
+                continue
+        elif not _node_allowed_for_plan(user, node, excluded_codes=excluded_codes, free_code=free_code):
             continue
         seen.add(code)
         out.append(node)
@@ -8995,31 +9003,12 @@ def _fallback_nodes_for_user(user: User, nodes: list) -> list:
     if not candidate_nodes:
         candidate_nodes = list(nodes)
 
-    is_free = (user.sub_type or "").upper() == "FREE"
-    plan_code = str(getattr(user, "current_plan_code", "") or "").strip().lower()
-
-    if not is_free:
-        if plan_code == "start_99":
-            start_nodes = []
-            for n in candidate_nodes:
-                code = (getattr(n, "code", "") or "").lower()
-                if "free" in code:
-                    continue
-                if _node_code_base(code) == "nl":
-                    start_nodes.append(n)
-            if start_nodes:
-                return _apply_node_filters(start_nodes)
-        paid = []
-        for n in candidate_nodes:
-            code = (getattr(n, "code", "") or "").lower()
-            if "free" in code:
-                continue
-            if _node_code_base(code) in {"brain", "de"}:
-                continue
-            paid.append(n)
+    if not user_uses_free_pool(user):
+        paid = [n for n in candidate_nodes if not node_is_free(n)]
         return _apply_node_filters(paid)
 
-    free_nodes = [n for n in candidate_nodes if "free" in (getattr(n, "code", "") or "").lower()]
+    free_code = str(canonical_free_node_code(candidate_nodes) or canonical_free_node_code(nodes) or "").strip().lower()
+    free_nodes = [n for n in candidate_nodes if str(getattr(n, "code", "") or "").strip().lower() == free_code]
     return _apply_node_filters(free_nodes)
 
 

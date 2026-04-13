@@ -21,6 +21,9 @@ Use it to answer four questions before touching code:
 - Telegram reward: `+10 days`
 - Default client core: `sing-box`
 - Compatibility fallback: `xray` only in advanced settings
+- Username sync: `automatic` primary path; manual sync is compatibility/recovery only
+- Premium access node pool: all enabled non-free nodes
+- Free access node pool: dedicated `NL-free` node only
 - Public channel: `@pokrov_vpn`
 - Main bot: `@pokrov_vpnbot`
 - Support bot: `@pokrov_supportbot`
@@ -88,7 +91,7 @@ If a root-level guide or an older flat doc conflicts with a canonical doc, updat
 
 Contains the backend and Telegram control plane:
 
-- `api.py`: public API, app-first session flow, payments, admin API, tickets, bonuses, subscription delivery
+- `api.py`: public API, app-first session flow, automatic username sync, payments, admin API, tickets, bonuses, subscription delivery
 - `bot.py`: main Telegram bot
 - `helpbot.py`: support bot
 - `feedbackbot.py`: feedback intake, moderation, and public review publishing
@@ -171,7 +174,7 @@ When behavior changes, update the matching canonical docs in the same task.
 | --- | --- |
 | Product positioning, trial rules, pricing-facing behavior, branding | `docs/product/portal-vpn-product.md` |
 | Backend architecture, API responsibilities, runtime components | `docs/architecture/system-overview.md` |
-| App-first session flow, Telegram linking, Telegram reward, support flow | `docs/architecture/app-first-and-bonus-flows.md` |
+| App-first session flow, Telegram linking, username sync primary path, node-pool assignment, Telegram reward, support flow | `docs/architecture/app-first-and-bonus-flows.md` |
 | Deploy flow, server access, release procedures, secret locations | `docs/operations/deployment-and-access.md` |
 | Hostname policy, metrics freshness, node alerts, probe visibility, operator telemetry | `docs/operations/monitoring-and-visibility.md` |
 | Repository workflow, tests, local commands, script usage, cleanup policy | `docs/developer/developer-guide.md`, `docs/developer/repository-map.md` |
@@ -256,6 +259,7 @@ Repository source-of-truth rule:
 
 - if you work on `backend`, `webapp`, `marketing`, root `docs`, `shared`, `infra`, or `scripts`, the canonical git truth is `portal/master`
 - if you work on the `Android` or `Windows` Flutter client under `external/client-fork/app/`, the canonical git truth is `PORTALapp/main`
+- root docs in this repository, including `AGENTS.md` and `docs/*`, must land on `portal/master`; client docs under `external/client-fork/app/docs/` must land on `PORTALapp/main`
 - do not treat local feature branches, old redirect remotes, or the nested client workspace inside `portal/` as competing product truths once `portal/master` and `PORTALapp/main` are updated
 - if a task spans both repositories, update and push both canonical branches explicitly instead of assuming one repo transitively updates the other
 

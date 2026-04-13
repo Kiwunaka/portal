@@ -416,7 +416,7 @@ class ApiAuthAndTicketsTests(unittest.TestCase):
         nodes = r.json()["nodes"]
         self.assertEqual([row["code"] for row in nodes], ["it"])
 
-    def test_user_data_filters_legacy_free_and_brain_mappings_for_paid_user(self) -> None:
+    def test_user_data_filters_free_mapping_but_keeps_paid_brain_mapping(self) -> None:
         from db import SessionLocal
         from models import Node, User, UserNode
 
@@ -489,7 +489,7 @@ class ApiAuthAndTicketsTests(unittest.TestCase):
         r = self.client.get("/api/user/1001", headers=user_hdrs)
         self.assertEqual(r.status_code, 200, r.text)
         nodes = r.json()["nodes"]
-        self.assertEqual([row["code"] for row in nodes], ["it"])
+        self.assertEqual([row["code"] for row in nodes], ["brain", "it"])
 
     def test_dashboard_uses_runtime_summary_for_usage_and_connections(self) -> None:
         from db import SessionLocal

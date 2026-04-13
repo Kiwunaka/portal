@@ -72,6 +72,7 @@ if ENV_PATH.exists():
 try:
     from portal_bot.db import SessionLocal
     from portal_bot.models import Node, User, UserNode
+    from portal_bot.node_policy import canonical_free_node_code, node_is_free, paid_pool_node_codes, user_uses_free_pool
 
     def import_control_panel():
         from portal_bot.control_panel import ControlPanel
@@ -80,6 +81,7 @@ try:
 except ModuleNotFoundError:
     from db import SessionLocal
     from models import Node, User, UserNode
+    from node_policy import canonical_free_node_code, node_is_free, paid_pool_node_codes, user_uses_free_pool
 
     def import_control_panel():
         from control_panel import ControlPanel
@@ -99,34 +101,22 @@ def node_base(code: str) -> str:
 
 def active_paid_codes(session):
     rows = session.query(Node).order_by(Node.code.asc()).all()
-    result = []
-    for node in rows:
-        code = (node.code or "").strip().lower()
-        if not code:
-            continue
-        if not bool(node.enabled):
-            continue
-        if not bool(getattr(node, "accepting_new_clients", True)):
-            continue
-        if bool(getattr(node, "is_draining", False)):
-            continue
-        if "free" in code:
-            continue
-        if node_base(code) in {"brain", "de"}:
-            continue
-        result.append(code)
-    return sorted(dict.fromkeys(result))
+    return sorted(dict.fromkeys(str(code or "").strip().lower() for code in paid_pool_node_codes(rows) if str(code or "").strip()))
 
 
 def load_report(session, *, only_tg_id=None):
     target_codes = active_paid_codes(session)
     active_users = session.query(User).filter(User.is_active.is_(True)).order_by(User.created_at.asc(), User.tg_id.asc())
-    users_q = active_users.filter(User.sub_type.in_(["PAID", "paid"]))
     if only_tg_id is not None:
         active_users = active_users.filter(User.tg_id == int(only_tg_id))
-        users_q = users_q.filter(User.tg_id == int(only_tg_id))
-    users = users_q.all()
     active_user_rows = active_users.all()
+    users = [
+        user
+        for user in active_user_rows
+        if int(getattr(user, "tg_id", 0) or 0) > 0
+        and not bool(getattr(user, "is_manual", False))
+        and not user_uses_free_pool(user)
+    ]
 
     mapped = {}
     rows = (
@@ -139,11 +129,15 @@ def load_report(session, *, only_tg_id=None):
 
     result_rows = []
     disallowed_rows = []
+    free_code = str(canonical_free_node_code(session.query(Node).order_by(Node.code.asc()).all()) or "").strip().lower()
     missing_users = 0
     for user in users:
         user_codes = mapped.get(int(user.tg_id), set())
         missing = [code for code in target_codes if code not in user_codes]
-        disallowed = [code for code in sorted(user_codes) if ("free" in code) or (node_base(code) in {"brain", "de"})]
+        if user_uses_free_pool(user):
+            disallowed = [code for code in sorted(user_codes) if code != free_code]
+        else:
+            disallowed = [code for code in sorted(user_codes) if node_is_free(code)]
         if missing:
             missing_users += 1
         if disallowed:

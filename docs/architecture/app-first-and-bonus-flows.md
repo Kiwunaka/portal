@@ -1,6 +1,6 @@
 # App-First And Bonus Flows
 
-Last updated: 2026-04-12
+Last updated: 2026-04-13
 
 ## Document Status
 
@@ -8,7 +8,7 @@ This file is living source of truth for app-first identity, Telegram linking, an
 
 ## Goal
 
-Document the current app-first identity model, checkout continuation, and the live Telegram bonus flow used by `POKROV VPN`.
+Document the current app-first identity model, automatic username sync path, checkout continuation, node-pool assignment, and the live Telegram bonus flow used by `POKROV VPN`.
 
 ## App-First Trial Flow
 
@@ -51,6 +51,13 @@ Important concepts:
 - `last_ip`
 
 This supports a friendlier device model than a Telegram-only account design.
+
+## Username Sync Semantics
+
+- app-first accounts may start with an app-side placeholder username before any Telegram identity is linked
+- once Telegram or web-auth surfaces provide a real username, runtime flows should sync it automatically into the canonical account/session state
+- automatic username sync is the primary path for normal operation, support context, and recovery continuation
+- manual username sync remains compatibility/recovery tooling for operators and edge cases; it must not be treated as the normal happy path
 
 ## Visibility Expectations
 
@@ -138,6 +145,10 @@ Compatibility note:
 4. bot binds the app account to Telegram identity
 5. reward and recovery logic can then use the linked Telegram account
 
+Contract rule:
+
+- Telegram linking should also refresh the canonical linked username automatically when Telegram provides one
+
 ## Telegram Bonus Claim Flow
 
 1. app-first account must already be linked to Telegram
@@ -167,6 +178,9 @@ Rules:
 - `free_monthly` keeps `5 GB / 30 days` with device limit `1`
 - after the `5 GB` quota is exhausted, UI and policy should treat the account as `free_soft_mode` until the next free-cycle reset
 - `paid_unlimited` remains unlimited traffic with device limit `5`
+- premium-grade access states `trial_premium`, `bonus_premium`, and `paid_unlimited` must use the paid pool: all enabled non-free delivery nodes
+- free-tier access states `free_monthly` and `free_soft_mode` must use the free pool: the dedicated `NL-free` node only
+- backend-facing `node_policy` should therefore resolve to `paid_pool` for premium-grade access and `nl_only` for free-tier access
 
 ## Runtime Notes
 
