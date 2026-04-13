@@ -80,6 +80,7 @@ Notes:
 - add `--client-platform-gates windows,android-apk,android-aab` or set `CLIENT_PLATFORM_GATES` when you want the gate report to include artifact-producing client builds.
 - once `CLIENT_PLATFORM_GATES` includes `android-apk` or `android-aab`, `release_gate_check.py` requires `ANDROID_AUDIT_SERIAL` to point to physical Android hardware; emulator serials stay useful only for adb rehearsal.
 - on Windows, the wrapper auto-runs `flutter build windows --release` before Flutter tests when the required `sqlite3.dll` bootstrap is missing.
+- test/build modes now auto-run `flutter pub get` plus `flutter pub run build_runner build --delete-conflicting-outputs` when generated Dart assets are missing, so a clean checkout can rebuild the ignored `*.g.dart` / `*.freezed.dart` surface before Flutter tests start.
 - `scripts/run_client_release_gate.py` now fails early if `external/client-fork/app/libcore` is dirty, missing, or not on the expected pinned SHA; release builds must start from a clean checkout with tracked `libcore` state.
 - if the preflight fails, inspect the submodule directly with `git -C external/client-fork/app/libcore status --short` and `git -C external/client-fork/app/libcore diff --stat`; fixing those changes belongs in the canonical client repo, not as an ad hoc root-repo override.
 

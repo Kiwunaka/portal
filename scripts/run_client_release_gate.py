@@ -28,6 +28,13 @@ class LibcorePreflightStatus:
     dirty_lines: tuple[str, ...]
 
 
+GENERATED_MARKERS = (
+    Path("lib/gen/translations.g.dart"),
+    Path("lib/core/router/routes.g.dart"),
+    Path("lib/core/database/app_database.g.dart"),
+)
+
+
 def _run_captured(command: list[str], *, runner=subprocess.run) -> subprocess.CompletedProcess:
     return runner(
         command,
@@ -182,6 +189,43 @@ def _build_target_command(client_root: Path, *, target: str) -> ClientGateComman
     return ClientGateCommand(command=command, cwd=client_root, expected_artifact=artifact)
 
 
+def _resolve_flutter_executable() -> str:
+    return shutil.which("flutter.bat") or shutil.which("flutter") or "flutter"
+
+
+def _run_step(command: list[str], *, cwd: Path, env: dict[str, str]) -> int:
+    print(f"[client-gate] {' '.join(command)} (cwd={cwd})")
+    proc = subprocess.run(command, cwd=str(cwd), env=env)
+    return int(proc.returncode)
+
+
+def _ensure_codegen(client_root: Path, *, env: dict[str, str], flutter_executable: str) -> int:
+    missing = [marker for marker in GENERATED_MARKERS if not (client_root / marker).exists()]
+    if not missing:
+        return 0
+
+    print("[client-gate] generated Dart files are missing; bootstrapping codegen")
+    for marker in missing:
+        print(f"[client-gate] missing generated file: {client_root / marker}")
+
+    steps = (
+        [flutter_executable, "pub", "get"],
+        [
+            flutter_executable,
+            "pub",
+            "run",
+            "build_runner",
+            "build",
+            "--delete-conflicting-outputs",
+        ],
+    )
+    for step in steps:
+        rc = _run_step(step, cwd=client_root, env=env)
+        if rc != 0:
+            return rc
+    return 0
+
+
 def _windows_sqlite_bootstrap_dir(client_root: Path) -> Path | None:
     candidates = [
         client_root / "build" / "windows" / "x64" / "runner" / "Release",
@@ -209,11 +253,16 @@ def _run(command: ClientGateCommand) -> int:
         return 2
 
     env = os.environ.copy()
-    executable = shutil.which("flutter.bat") or shutil.which("flutter") or "flutter"
+    executable = _resolve_flutter_executable()
     resolved_command = [
         executable if index == 0 and value == "flutter" else value
         for index, value in enumerate(command.command)
     ]
+
+    if command.command[:1] == ["flutter"]:
+        rc = _ensure_codegen(command.cwd, env=env, flutter_executable=executable)
+        if rc != 0:
+            return rc
 
     if command.command[:2] == ["flutter", "test"] and os.name == "nt":
         bootstrap_dir = _windows_sqlite_bootstrap_dir(command.cwd)
@@ -226,10 +275,9 @@ def _run(command: ClientGateCommand) -> int:
         if bootstrap_dir is not None:
             env["PATH"] = f"{bootstrap_dir}{os.pathsep}{env.get('PATH', '')}"
 
-    print(f"[client-gate] {' '.join(command.command)} (cwd={command.cwd})")
-    proc = subprocess.run(resolved_command, cwd=str(command.cwd), env=env)
-    if proc.returncode != 0:
-        return int(proc.returncode)
+    rc = _run_step(resolved_command, cwd=command.cwd, env=env)
+    if rc != 0:
+        return rc
 
     if command.expected_artifact is not None and not command.expected_artifact.exists():
         print(f"[fail] expected artifact is missing: {command.expected_artifact}")
