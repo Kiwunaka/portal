@@ -70,17 +70,17 @@ const DEFAULT_REVIEWS: MarketingReview[] = [
   {
     name: "mikh****",
     role: "TELEGRAM • 28.12.2025",
-    text: "Приложение поставил за пару минут, тест включился без карты, а дальше уже спокойно продлил доступ через личный маршрут.",
+    text: "Приложение поставил за пару минут, тест включился без карты, а дальше уже спокойно оптимизировал интернет через личный кабинет.",
   },
   {
     name: "anna****",
     role: "WINDOWS • 17.01.2026",
-    text: "Наконец-то VPN, где всё понятно по-русски: скачать, проверить 5 дней, потом уже решить по оплате. И поддержка отвечает быстро.",
+    text: "Наконец-то сервис, где всё понятно по-русски: скачать, проверить пинг 5 дней, потом уже решить по оплате. И поддержка отвечает быстро.",
   },
   {
     name: "twst****",
     role: "TELEGRAM • 07.01.2026",
-    text: "Хороший сервис, приятные цены и честный маршрут без пустых касс и лишней суеты.",
+    text: "Хорошая стабильная сеть, приятные цены и честный маршрут без пустых касс и лишней суеты.",
   },
 ];
 
@@ -89,7 +89,7 @@ const PROMISE_CARDS: PromiseCard[] = [
     eyebrow: "Trial без декора",
     glyph: "shield",
     title: "Первые 5 дней действительно бесплатно",
-    desc: "Сначала пробуете сервис в приложении, потом решаете, нужен ли вам платный доступ. Без карты и без скрытого автосписания.",
+    desc: "Сначала пробуете качество сети в приложении, потом решаете, нужен ли вам полный доступ. Без карты и без скрытого автосписания.",
   },
   {
     eyebrow: "Тихий premium UI",
@@ -101,7 +101,7 @@ const PROMISE_CARDS: PromiseCard[] = [
     eyebrow: "Telegram по делу",
     glyph: "signal",
     title: "Поддержка и продолжение через Telegram",
-    desc: "Telegram у нас не заменяет продукт, а помогает с поддержкой, бонусом за канал и безопасным продолжением маршрута, если это нужно.",
+    desc: "Telegram у нас не заменяет продукт, а помогает с заботой, бонусом за канал и безопасным продолжением маршрута, если это нужно.",
   },
 ];
 
@@ -139,10 +139,10 @@ const HERO_SIGNALS: HeroSignal[] = [
 ];
 
 const RELATED_PAGES = [
-  { href: "/bystryy-vpn-na-telefon/", label: "VPN на телефон" },
-  { href: "/vpn-na-iphone-android-windows/", label: "VPN на Android и Windows" },
-  { href: "/vpn-dlya-youtube/", label: "VPN для YouTube" },
-  { href: "/vpn-dlya-tiktok/", label: "VPN для TikTok" },
+  { href: "/bystryy-vpn-na-telefon/", label: "Ускорение на телефон" },
+  { href: "/vpn-na-iphone-android-windows/", label: "Оптимизация Android и Windows" },
+  { href: "/vpn-dlya-youtube/", label: "Доступ для YouTube" },
+  { href: "/vpn-dlya-tiktok/", label: "Доступ для TikTok" },
   { href: "/vpn-telegram-bot/", label: "Telegram и служба заботы" },
 ];
 
@@ -207,7 +207,7 @@ function buildDownloadCards(): DownloadCard[] {
     {
       title: "Windows",
       status: "Уже доступно",
-      desc: "Десктопный путь для постоянной работы и повседневных сценариев на ПК.",
+      desc: "Десктопный путь для стабильной работы и низкого пинга на ПК.",
       cta: getCopyText("marketing.download.windows.cta", "Скачать для Windows"),
       href: firstNonEmpty(config.windowsExeUrl, installHelpHref),
     },
@@ -287,10 +287,10 @@ function LandingGlyph({ name }: { name: GlyphName }) {
 }
 
 export function buildMarketingMetadata(
-  title = getCopyText("marketing.meta.title", "POKROV VPN — быстрый VPN для Android и Windows"),
+  title = getCopyText("marketing.meta.title", "POKROV Network — умный ускоритель интернета"),
   description = getCopyText(
     "marketing.meta.description",
-    "Скачайте приложение для Android или Windows, получите 5 дней бесплатно и продолжайте через личный кабинет и безопасный checkout-маршрут.",
+    "Скачайте приложение для Android или Windows, получите 5 дней бесплатно и продолжайте через личный кабинет и безопасный маршрут.",
   ),
   options: MarketingMetadataOptions = {},
 ): Metadata {
@@ -421,14 +421,14 @@ export default function MarketingLanding({
       <header className="lp-nav">
         <div className="lp-nav-shell">
           <Link href="/" className="lp-brand">
-            <img src="/pokrov-logo.svg" alt="POKROV VPN" className="lp-brand-logo" />
-            <span>POKROV VPN</span>
+            <img src="/pokrov-logo.svg" alt="POKROV Network" className="lp-brand-logo" />
+            <span>POKROV Network</span>
           </Link>
           <nav className="lp-menu" aria-label="Главная навигация">
             <Link href="/">Главная</Link>
             <Link href="/bystryy-vpn-na-telefon/">На телефон</Link>
             <Link href="/vpn-na-iphone-android-windows/">Устройства</Link>
-            <Link href="/install/">Приложение</Link>
+            <Link href="/install/">Оптимизатор</Link>
             <a href="#pricing">Планы</a>
             <a href="#faq">FAQ</a>
             <a href={config.webappUrl} target="_blank" rel="noreferrer" className="lp-chip">
@@ -448,12 +448,12 @@ export default function MarketingLanding({
             <p className="lp-overline">
               {getCopyText("marketing.hero.overline", "Consumer-first VPN с app-first стартом для Android и Windows.")}
             </p>
-            <h1>{heroTitle || getCopyText("marketing.hero.title", "Свободный интернет, который начинается с приложения")}</h1>
+            <h1>{heroTitle || getCopyText("marketing.hero.title", "Стабильный интернет, который начинается с приложения")}</h1>
             <p className="lp-hero-lead">
               {heroSubtitle ||
                 getCopyText(
                   "marketing.hero.subtitle",
-                  "Сначала установите приложение для Android или Windows, включите 5 дней доступа и спокойно проверьте сервис в реальных сценариях. Кабинет и Telegram остаются для управления, продления и поддержки, а не подменяют сам продукт.",
+                  "Сначала установите приложение для Android или Windows, включите 5 дней теста и спокойно проверьте сеть в реальных сценариях. Кабинет и Telegram остаются для управления, продления и заботы, а не подменяют сам продукт.",
                 )}
             </p>
             <div className="lp-hero-actions">
@@ -541,7 +541,7 @@ export default function MarketingLanding({
             <p>
               {getCopyText(
                 "marketing.promise.subtitle",
-                "POKROV ведёт пользователя через приложение, честный trial, личный кабинет и спокойное продление. Каждая секция отвечает только за один шаг этой истории.",
+                "POKROV ведёт пользователя через приложение, честный тест-драйв, личный кабинет и спокойное продление. Каждая секция отвечает только за один шаг этой истории.",
               )}
             </p>
           </div>
@@ -584,7 +584,7 @@ export default function MarketingLanding({
         <section id="downloads" className="lp-section">
           <div className="lp-section-head">
             <span>Приложение</span>
-            <h2>{getCopyText("marketing.downloads.title", "Установите приложение и начните именно с него")}</h2>
+            <h2>{getCopyText("marketing.downloads.title", "Настройте интернет, начав с приложения")}</h2>
             <p>
               {getCopyText(
                 "marketing.downloads.subtitle",
@@ -731,11 +731,11 @@ export default function MarketingLanding({
           <div className="lp-footer-cta">
             <div className="lp-footer-copy">
               <span>Финальный CTA</span>
-              <h2>{getCopyText("marketing.footer.title", "POKROV VPN: сначала приложение, потом всё остальное")}</h2>
+              <h2>{getCopyText("marketing.footer.title", "POKROV Network: сначала приложение, потом всё остальное")}</h2>
               <p>
                 {getCopyText(
                   "marketing.footer.body",
-                  "Скачайте приложение, проверьте сервис бесплатно и только потом переходите к кабинету, продлению и поддержке. Это честный и безопасный путь для публичного запуска.",
+                  "Скачайте приложение, проверьте качество сети бесплатно и только потом переходите к кабинету, продлению и поддержке. Это честный и безопасный путь для публичного запуска.",
                 )}
               </p>
             </div>
@@ -746,7 +746,7 @@ export default function MarketingLanding({
               </div>
               <div>
                 <strong>5 дней</strong>
-                <span>реального premium-теста</span>
+                <span>реального тест-драйва</span>
               </div>
               <div>
                 <strong>+10 дней</strong>
