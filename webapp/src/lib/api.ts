@@ -673,7 +673,51 @@ export type AdminNodeHealthRow = {
   observer_unmatched_count: number;
   observer_parse_error_count: number;
   observer_is_stale: boolean;
+  probe_classification?: string | null;
+  ipv4_health?: string | null;
+  ipv6_health?: string | null;
+  transport_health?: unknown | null;
+  transport_profiles?: Array<{
+    name?: string | null;
+    kind?: string | null;
+    enabled?: boolean | null;
+    inbound_id?: number | null;
+    host?: string | null;
+    port?: number | null;
+    tls_server_name?: string | null;
+  }> | null;
   weight: number;
+};
+
+export type AdminNetworkRolloutOverride = {
+  transport_profile?: string;
+  dns_policy?: string;
+  routing_mode_default?: string;
+  ip_version_preference?: string;
+};
+
+export type AdminNetworkRolloutOperatorLab = {
+  enabled: boolean;
+  allowlist_install_ids: string[];
+  allowlist_tg_ids: number[];
+  allowlist_node_codes: string[];
+  expires_at?: string | null;
+};
+
+export type AdminNetworkRolloutConfig = {
+  version: number;
+  defaults: {
+    routing_mode_default: string;
+    transport_profile: string;
+    dns_policy: string;
+    ip_version_preference?: string | null;
+  };
+  carrier_overrides: Record<string, AdminNetworkRolloutOverride>;
+  cohort_overrides: Record<string, AdminNetworkRolloutOverride>;
+  operator_lab: AdminNetworkRolloutOperatorLab;
+  package_catalog_feed?: string | null;
+  routing_rules_feed?: string | null;
+  support_recovery_order: string[];
 };
 
 export type AdminNodeDriftRow = {
@@ -1577,7 +1621,81 @@ function normalizeAdminNodeHealthRow(payload: Partial<AdminNodeHealthRow> | null
     observer_unmatched_count: Number(data.observer_unmatched_count || 0),
     observer_parse_error_count: Number(data.observer_parse_error_count || 0),
     observer_is_stale: Boolean(data.observer_is_stale),
+    probe_classification: data.probe_classification ?? null,
+    ipv4_health: data.ipv4_health ?? null,
+    ipv6_health: data.ipv6_health ?? null,
+    transport_health:
+      data.transport_health == null
+        ? null
+        : data.transport_health && typeof data.transport_health === "object"
+          ? Array.isArray(data.transport_health)
+            ? [...data.transport_health]
+            : { ...data.transport_health }
+          : data.transport_health,
+    transport_profiles: Array.isArray(data.transport_profiles)
+      ? data.transport_profiles.map((profile) => ({
+          name: profile?.name ?? null,
+          kind: profile?.kind ?? null,
+          enabled: profile?.enabled ?? null,
+          inbound_id: profile?.inbound_id ?? null,
+          host: profile?.host ?? null,
+          port: profile?.port ?? null,
+          tls_server_name: profile?.tls_server_name ?? null,
+        }))
+      : null,
     weight: Number(data.weight || 0),
+  };
+}
+
+function normalizeAdminNetworkRolloutOverride(payload: Partial<AdminNetworkRolloutOverride> | null | undefined): AdminNetworkRolloutOverride {
+  const data = payload || {};
+  const out: AdminNetworkRolloutOverride = {};
+  if (data.transport_profile != null) out.transport_profile = String(data.transport_profile);
+  if (data.dns_policy != null) out.dns_policy = String(data.dns_policy);
+  if (data.routing_mode_default != null) out.routing_mode_default = String(data.routing_mode_default);
+  if (data.ip_version_preference != null) out.ip_version_preference = String(data.ip_version_preference);
+  return out;
+}
+
+function normalizeAdminNetworkRolloutConfig(payload: Partial<AdminNetworkRolloutConfig> | null | undefined): AdminNetworkRolloutConfig {
+  const data = payload || {};
+  const defaults = (data.defaults || {}) as Partial<AdminNetworkRolloutConfig["defaults"]>;
+  const operatorLab = (data.operator_lab || {}) as Partial<AdminNetworkRolloutOperatorLab>;
+  const normalizeOverrides = (value: unknown): Record<string, AdminNetworkRolloutOverride> =>
+    value && typeof value === "object" && !Array.isArray(value)
+      ? Object.fromEntries(
+          Object.entries(value as Record<string, Partial<AdminNetworkRolloutOverride>>).map(([key, item]) => [key, normalizeAdminNetworkRolloutOverride(item)]),
+        )
+      : {};
+  const normalizeList = (value: unknown): string[] =>
+    Array.isArray(value) ? value.map((item) => String(item)).filter((item) => item.trim().length > 0) : [];
+  const normalizeNumberList = (value: unknown): number[] =>
+    Array.isArray(value)
+      ? value
+          .map((item) => Number(item))
+          .filter((item) => Number.isFinite(item))
+          .map((item) => Math.trunc(item))
+      : [];
+  return {
+    version: Number(data.version || 1),
+    defaults: {
+      routing_mode_default: String(defaults.routing_mode_default || "all_except_ru"),
+      transport_profile: String(defaults.transport_profile || "legacy_reality_fallback"),
+      dns_policy: String(defaults.dns_policy || "ru_direct_split"),
+      ip_version_preference: defaults.ip_version_preference == null ? null : String(defaults.ip_version_preference),
+    },
+    carrier_overrides: normalizeOverrides(data.carrier_overrides),
+    cohort_overrides: normalizeOverrides(data.cohort_overrides),
+    operator_lab: {
+      enabled: Boolean(operatorLab.enabled),
+      allowlist_install_ids: normalizeList(operatorLab.allowlist_install_ids),
+      allowlist_tg_ids: normalizeNumberList(operatorLab.allowlist_tg_ids),
+      allowlist_node_codes: normalizeList(operatorLab.allowlist_node_codes),
+      expires_at: operatorLab.expires_at ?? null,
+    },
+    package_catalog_feed: data.package_catalog_feed ?? null,
+    routing_rules_feed: data.routing_rules_feed ?? null,
+    support_recovery_order: normalizeList(data.support_recovery_order),
   };
 }
 
@@ -1800,6 +1918,26 @@ export function adminLoyaltyConfigUpdate(payload: AdminLoyaltyConfig): Promise<{
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
   });
+}
+
+export async function adminNetworkRolloutConfig(): Promise<{ network_rollout_config: AdminNetworkRolloutConfig }> {
+  const data = await apiFetch<Partial<{ network_rollout_config: AdminNetworkRolloutConfig }>>("/api/admin/network-rollout-config");
+  return {
+    network_rollout_config: normalizeAdminNetworkRolloutConfig(data.network_rollout_config),
+  };
+}
+
+export function adminNetworkRolloutConfigUpdate(
+  payload: AdminNetworkRolloutConfig,
+) : Promise<{ ok: boolean; network_rollout_config: AdminNetworkRolloutConfig }> {
+  return apiFetch<Partial<{ ok: boolean; network_rollout_config: AdminNetworkRolloutConfig }>>("/api/admin/network-rollout-config", {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  }).then((data) => ({
+    ok: Boolean(data.ok),
+    network_rollout_config: normalizeAdminNetworkRolloutConfig(data.network_rollout_config),
+  }));
 }
 
 export async function adminCampaigns(limit = 200): Promise<AdminIncentiveCampaign[]> {

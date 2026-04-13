@@ -1,0 +1,13 @@
+[Unit]
+Description=Portal node qdisc bootstrap
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+WorkingDirectory=/root/portal_bot
+ExecStart=/bin/sh -lc 'exec /usr/bin/python3 /root/portal_bot/scripts/remote_apply_node_qdisc.py apply --profiles /root/portal_bot/infra/node-qdisc-profiles.json --node-code "${NODE_CODE:-$(hostname -s)}"'
+RemainAfterExit=yes
+
+[Install]
+WantedBy=multi-user.target

@@ -4,56 +4,56 @@
   "items": {
     "marketing.meta.title": {
       "surface": "marketing.meta",
-      "ru": "POKROV VPN — начните в приложении и продолжайте в кабинете",
+      "ru": "POKROV Network — умный ускоритель интернета и пинга",
       "variables": [],
       "tone": "premium",
       "allowed_public": true,
-      "compliance_notes": "Sales-oriented friendly format.",
+      "compliance_notes": "Rebranded title.",
       "ab_variant": "control"
     },
     "marketing.meta.description": {
       "surface": "marketing.meta",
-      "ru": "Установите приложение, проверьте 5 дней доступа и продолжайте через личный кабинет или персональную ссылку из Telegram.",
+      "ru": "Попробуйте 5 дней бесплатного ускорения. Оптимизируйте пинг и скорость интернета в один клик.",
       "variables": [],
       "tone": "premium",
       "allowed_public": true,
-      "compliance_notes": "Sales-oriented friendly format.",
+      "compliance_notes": "Rebranded description.",
       "ab_variant": "control"
     },
     "marketing.hero.kicker": {
       "surface": "marketing.home.hero",
-      "ru": "POKROV VPN • 5 дней бесплатного доступа",
+      "ru": "POKROV Network • 5 дней заботы о вашем интернете",
       "variables": [],
       "tone": "premium",
       "allowed_public": true,
-      "compliance_notes": "Sales-oriented friendly format.",
+      "compliance_notes": "Rebranded kicker.",
       "ab_variant": "control"
     },
     "marketing.hero.title": {
       "surface": "marketing.home.hero",
-      "ru": "Сначала установите приложение, потом продолжайте в кабинете",
+      "ru": "Начните с приложения, чтобы сразу почувствовать ускорение",
       "variables": [],
       "tone": "premium",
       "allowed_public": true,
-      "compliance_notes": "Sales-oriented friendly format.",
+      "compliance_notes": "Rebranded title.",
       "ab_variant": "control"
     },
     "marketing.hero.subtitle": {
       "surface": "marketing.home.hero",
-      "ru": "Скачайте приложение для Android или Windows, включите 5 дней доступа и спокойно проверьте сервис в реальных сценариях. Кабинет и Telegram остаются для управления, продления и поддержки, а не подменяют сам продукт.",
+      "ru": "Скачайте оптимизатор для Android или Windows, включите 5 дней теста и наслаждайтесь стабильной связью в играх и приложениях.",
       "variables": [],
       "tone": "premium",
       "allowed_public": true,
-      "compliance_notes": "Sales-oriented friendly format.",
+      "compliance_notes": "Rebranded subtitle.",
       "ab_variant": "control"
     },
     "marketing.hero.primary_cta": {
       "surface": "marketing.home.hero",
-      "ru": "Установить и начать",
+      "ru": "Ускорить интернет сейчас",
       "variables": [],
       "tone": "premium",
       "allowed_public": true,
-      "compliance_notes": "Sales-oriented friendly format.",
+      "compliance_notes": "Rebranded CTA.",
       "ab_variant": "control"
     },
     "marketing.hero.secondary_cta": {
@@ -67,11 +67,11 @@
     },
     "marketing.hero.overline": {
       "surface": "marketing.home.hero",
-      "ru": "Consumer-first VPN с app-first стартом для Android и Windows.",
+      "ru": "Премиальный оптимизатор маршрутов для Android и Windows.",
       "variables": [],
       "tone": "premium",
       "allowed_public": true,
-      "compliance_notes": "Short overline for the hero.",
+      "compliance_notes": "Rebranded overline.",
       "ab_variant": "control"
     },
     "marketing.hero.proof_1.title": {
@@ -85,11 +85,11 @@
     },
     "marketing.hero.proof_1.text": {
       "surface": "marketing.home.hero",
-      "ru": "бесплатного премиум-доступа",
+      "ru": "бесплатного тест-драйва сети",
       "variables": [],
       "tone": "premium",
       "allowed_public": true,
-      "compliance_notes": "Short proof point for the hero.",
+      "compliance_notes": "Rebranded proof point.",
       "ab_variant": "control"
     },
     "marketing.hero.proof_2.title": {
@@ -103,11 +103,11 @@
     },
     "marketing.hero.proof_2.text": {
       "surface": "marketing.home.hero",
-      "ru": "основные приложения POKROV VPN",
+      "ru": "удобные приложения POKROV Network",
       "variables": [],
       "tone": "premium",
       "allowed_public": true,
-      "compliance_notes": "Short proof point for the hero.",
+      "compliance_notes": "Rebranded proof point.",
       "ab_variant": "control"
     },
     "marketing.hero.proof_3.title": {
@@ -121,47 +121,47 @@
     },
     "marketing.hero.proof_3.text": {
       "surface": "marketing.home.hero",
-      "ru": "помощь и продолжение через Telegram",
+      "ru": "команда заботы всегда рядом в Telegram",
       "variables": [],
       "tone": "premium",
       "allowed_public": true,
-      "compliance_notes": "Short proof point for the hero.",
+      "compliance_notes": "Rebranded proof point.",
       "ab_variant": "control"
     },
     "marketing.support.title": {
       "surface": "marketing.home.support",
-      "ru": "Помогаем быстро и спокойно",
+      "ru": "Помогаем настроить идеальную связь",
       "variables": [],
       "tone": "premium",
       "allowed_public": true,
-      "compliance_notes": "Sales-oriented friendly format.",
+      "compliance_notes": "Rebranded support title.",
       "ab_variant": "control"
     },
     "marketing.support.subtitle": {
       "surface": "marketing.home.support",
-      "ru": "Если нужен совет по подключению, оплате или кабинету, служба заботы подскажет спокойный и понятный следующий шаг.",
+      "ru": "Если нужен совет по скорости, пингу или оплате, наши эксперты подскажут простой следующий шаг.",
       "variables": [],
       "tone": "premium",
       "allowed_public": true,
-      "compliance_notes": "Sales-oriented friendly format.",
+      "compliance_notes": "Rebranded support subtitle.",
       "ab_variant": "control"
     },
     "marketing.checkout.title": {
       "surface": "marketing.checkout",
-      "ru": "Продление и оплата",
+      "ru": "Подписка и ускорение",
       "variables": [],
       "tone": "premium",
       "allowed_public": true,
-      "compliance_notes": "Sales-oriented friendly format.",
+      "compliance_notes": "Rebranded checkout title.",
       "ab_variant": "control"
     },
     "marketing.checkout.subtitle": {
       "surface": "marketing.checkout",
-      "ru": "Публичная страница checkout объясняет следующий шаг, но сама касса открывается только после личного входа в кабинет или по персональной ссылке из Telegram.",
+      "ru": "Здесь вы выбираете свой путь к быстрому интернету. Полный доступ открывается в личном кабинете.",
       "variables": [],
       "tone": "premium",
       "allowed_public": true,
-      "compliance_notes": "Sales-oriented friendly format.",
+      "compliance_notes": "Rebranded checkout subtitle.",
       "ab_variant": "control"
     },
     "marketing.checkout.primary_cta": {
@@ -175,11 +175,11 @@
     },
     "marketing.checkout.meta.title": {
       "surface": "marketing.checkout",
-      "ru": "Личный маршрут оплаты | POKROV VPN",
+      "ru": "Ваш путь к быстрой сети | POKROV Network",
       "variables": [],
       "tone": "premium",
       "allowed_public": true,
-      "compliance_notes": "Metadata title for checkout page.",
+      "compliance_notes": "Rebranded checkout meta title.",
       "ab_variant": "control"
     },
     "marketing.checkout.meta.description": {
@@ -220,11 +220,11 @@
     },
     "marketing.checkout.anonymous.subtitle": {
       "surface": "marketing.checkout",
-      "ru": "Публичный checkout без личного входа не работает как касса. Сначала откройте кабинет или продолжите через Telegram, чтобы получить персональный маршрут.",
+      "ru": "Чтобы магия ускорения сработала лично для вас, пожалуйста, авторизуйтесь в кабинете или через Telegram.",
       "variables": [],
       "tone": "premium",
       "allowed_public": true,
-      "compliance_notes": "Subtitle for anonymous checkout state.",
+      "compliance_notes": "Rebranded subtitle.",
       "ab_variant": "control"
     },
     "marketing.checkout.session.status": {
@@ -310,20 +310,20 @@
     },
     "marketing.promise.title": {
       "surface": "marketing.home.promise",
-      "ru": "Почему с POKROV VPN легко начать",
+      "ru": "Почему интернет с POKROV Network лучше",
       "variables": [],
       "tone": "premium",
       "allowed_public": true,
-      "compliance_notes": "Section title for benefits block.",
+      "compliance_notes": "Rebranded title.",
       "ab_variant": "control"
     },
     "marketing.promise.subtitle": {
       "surface": "marketing.home.promise",
-      "ru": "Публичный путь устроен просто: сначала приложение, затем кабинет и понятное продление только тогда, когда оно вам действительно нужно.",
+      "ru": "Всё устроено очень просто: скачиваете приложение, чувствуете магию скорости и только потом принимаете решение.",
       "variables": [],
       "tone": "premium",
       "allowed_public": true,
-      "compliance_notes": "Section subtitle for benefits block.",
+      "compliance_notes": "Rebranded subtitle.",
       "ab_variant": "control"
     },
     "marketing.downloads.title": {
@@ -355,11 +355,11 @@
     },
     "marketing.steps.subtitle": {
       "surface": "marketing.home.steps",
-      "ru": "POKROV VPN объясняет путь простым языком: скачать, попробовать, затем при желании продлить.",
+      "ru": "Мы ценим простоту: один раз скачали, один раз попробовали и пользуетесь интернетом без границ.",
       "variables": [],
       "tone": "premium",
       "allowed_public": true,
-      "compliance_notes": "Section subtitle for onboarding steps.",
+      "compliance_notes": "Rebranded subtitle.",
       "ab_variant": "control"
     },
     "marketing.pricing.title": {
@@ -409,11 +409,11 @@
     },
     "marketing.plan.half.note": {
       "surface": "marketing.home.pricing",
-      "ru": "Оптимальный выбор, если VPN уже стал частью повседневных сценариев.",
+      "ru": "Оптимальный выбор тех, кто ценит качество и стабильность во всем.",
       "variables": [],
       "tone": "premium",
       "allowed_public": true,
-      "compliance_notes": "Pricing note for half-year plan.",
+      "compliance_notes": "Rebranded plan note.",
       "ab_variant": "control"
     },
     "marketing.plan.long.note": {
@@ -463,11 +463,11 @@
     },
     "marketing.install.meta.title": {
       "surface": "marketing.install",
-      "ru": "Установка и помощь | POKROV VPN",
+      "ru": "Как настроить идеальную сеть | POKROV Network",
       "variables": [],
       "tone": "premium",
       "allowed_public": true,
-      "compliance_notes": "Metadata title for the install-help page.",
+      "compliance_notes": "Rebranded meta title.",
       "ab_variant": "control"
     },
     "marketing.install.meta.description": {
@@ -481,11 +481,11 @@
     },
     "marketing.install.kicker": {
       "surface": "marketing.install",
-      "ru": "Install-help POKROV VPN",
+      "ru": "Помощь в установке POKROV Network",
       "variables": [],
       "tone": "premium",
       "allowed_public": true,
-      "compliance_notes": "Kicker for the install-help page.",
+      "compliance_notes": "Rebranded kicker.",
       "ab_variant": "control"
     },
     "marketing.install.title": {

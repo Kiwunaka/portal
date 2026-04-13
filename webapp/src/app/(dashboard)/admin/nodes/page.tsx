@@ -108,6 +108,45 @@ function nodeCodeKey(value: string): string {
   return String(value || "").trim().toLowerCase();
 }
 
+function transportHealthLabel(value?: unknown): { label: string; detail?: string } {
+  if (value == null) return { label: "нет данных" };
+  if (typeof value === "string") return { label: value };
+  if (Array.isArray(value)) return { label: `список: ${value.length}` };
+  if (typeof value === "object") {
+    const data = value as Record<string, unknown>;
+    const primary = data.status ?? data.state ?? data.kind ?? data.label ?? data.transport_profile;
+    const label = primary != null ? String(primary) : `${Object.keys(data).length} полей`;
+    const detail =
+      data.message != null
+        ? String(data.message)
+        : data.detail != null
+          ? String(data.detail)
+          : data.enabled === false
+            ? "disabled"
+            : undefined;
+    return { label, detail };
+  }
+  return { label: String(value) };
+}
+
+function transportProfileLabel(profile: {
+  name?: string | null;
+  kind?: string | null;
+  enabled?: boolean | null;
+  inbound_id?: number | null;
+  host?: string | null;
+  port?: number | null;
+  tls_server_name?: string | null;
+}): string {
+  const parts = [profile.name, profile.kind, profile.port != null ? `:${profile.port}` : null].filter(Boolean);
+  const prefix = profile.enabled === false ? "off" : "on";
+  const suffix = [profile.inbound_id != null ? `#${profile.inbound_id}` : null, profile.tls_server_name ? profile.tls_server_name : null]
+    .filter(Boolean)
+    .join(" · ");
+  const hostPart = profile.host ? ` @ ${profile.host}` : "";
+  return `${prefix} ${parts.join(" / ") || "profile"}${suffix ? ` · ${suffix}` : ""}${hostPart}`;
+}
+
 function probeFailureCopy(kind?: string | null, stage?: string | null, message?: string | null): { title: string; detail?: string; raw?: string } | null {
   const rawKind = String(kind || "").trim();
   const rawMessage = String(message || "").trim();
@@ -352,6 +391,8 @@ export default function AdminNodesPage() {
           const probeFailure = probeFailureCopy(node.last_probe_error_kind, node.last_probe_stage, node.last_probe_error_message);
           const networkPercent = node.network_utilization_percent;
           const networkPeakPercent = node.network_peak_utilization_percent_24h;
+          const transportHealth = transportHealthLabel(node.transport_health);
+          const transportProfiles = Array.isArray(node.transport_profiles) ? node.transport_profiles.filter(Boolean) : [];
 
           return (
             <article key={node.code} className="stat-card min-w-0 p-5">
@@ -458,11 +499,35 @@ export default function AdminNodesPage() {
                 <span className={`badge ${node.accepting_new_clients ? "badge-info" : "badge-warning"}`}>{node.accepting_new_clients ? "Принимает новых" : "Только текущие"}</span>
                 {node.is_draining ? <span className="badge badge-warning">В процессе разгрузки</span> : null}
                 {nodeFreshness ? <span className={`badge ${nodeFreshness.freshness === "fresh" ? "badge-success" : "badge-warning"}`}>{formatFreshness(nodeFreshness.freshness)}</span> : null}
+                {node.probe_classification ? <span className="badge badge-info">probe: {node.probe_classification}</span> : null}
+                {node.ipv4_health ? <span className="badge badge-violet">ipv4: {node.ipv4_health}</span> : null}
+                {node.ipv6_health ? <span className="badge badge-violet">ipv6: {node.ipv6_health}</span> : null}
                 {(nodeFreshness?.alertKinds || []).map((kind) => (
                   <span key={`${node.code}-${kind}`} className="badge badge-warning">
                     {alertKindLabel(kind)}
                   </span>
                 ))}
+              </div>
+
+              <div className="mt-3 rounded-xl border border-white/15 bg-white/35 p-3 dark:border-white/10 dark:bg-white/[0.04]">
+                <div className="mb-2 flex items-center justify-between gap-2 text-sm font-semibold">
+                  <span>Transport</span>
+                  <span className={`badge ${transportHealth.label === "ok" || transportHealth.label === "healthy" ? "badge-success" : "badge-info"}`}>
+                    {transportHealth.label}
+                  </span>
+                </div>
+                {transportHealth.detail ? <p className="text-xs text-slate-500">{transportHealth.detail}</p> : null}
+                <div className="mt-2 flex flex-wrap gap-2">
+                  {transportProfiles.length ? (
+                    transportProfiles.map((profile, index) => (
+                      <span key={`${node.code}-transport-${index}`} className={`badge ${profile.enabled === false ? "badge-warning" : "badge-success"}`}>
+                        {transportProfileLabel(profile)}
+                      </span>
+                    ))
+                  ) : (
+                    <span className="text-xs text-slate-500">Каталог transport-профилей не пришёл, используем legacy only view.</span>
+                  )}
+                </div>
               </div>
 
               <div className="mt-4 grid grid-cols-1 gap-2 sm:grid-cols-2">

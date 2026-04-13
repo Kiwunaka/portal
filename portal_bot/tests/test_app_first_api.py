@@ -116,7 +116,7 @@ def test_start_trial_enforces_canonical_trial_days_and_reports_provisioning(monk
     assert payload["access"]["trial_days"] == 5
     assert payload["access"]["subscription_url"] == payload["subscription_url"]
     assert payload["client_policy"]["routing_mode_default"] == "all_except_ru"
-    assert payload["client_policy"]["transport_profile"] == "grpc_443_primary"
+    assert payload["client_policy"]["transport_profile"] == "legacy_reality_fallback"
     assert payload["client_policy"]["dns_policy"] == "ru_direct_split"
     assert payload["client_policy"]["package_catalog_version"]
     assert payload["client_policy"]["support_context"]["routing_mode"] == "all_except_ru"

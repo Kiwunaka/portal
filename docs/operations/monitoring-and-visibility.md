@@ -22,7 +22,7 @@ Hostname role split:
 - `app.pokrov.space` is the canonical browser entry for account continuation, web login, and checkout continuation
 - `api.pokrov.space` is the canonical API base for browser and app-first web flows
 - `connect.pokrov.space` is the canonical public config host for `subscription_url`, QR import, and browser-visible connection delivery
-- `connect.pokrov.space` should default to the smart profile expected by current user-facing flows
+- `connect.pokrov.space` serves the rollout-selected app-managed profile and should keep `legacy_reality_fallback` as the baseline until canary cohorts are explicitly enabled for `grpc_443_primary`
 - legacy `api.pokrov.space/s8Kx2mP7qR4wT/...` should be monitored as compatibility, not as the primary public connection surface
 - `kiwunaka.space` is compatibility-only for migration and legacy subscription continuity
 
@@ -43,6 +43,21 @@ Monitoring should cover four layers together:
 5. per-node freshness, sustained resource alerts, and probe failure reasons
 
 The platform should be operated as one system. A broken Telegram handoff, dead node, or wrong hostname can all appear to the user as "VPN does not work".
+
+## Transport Rollout Visibility
+
+Transport rollout must stay visible to operators instead of being buried in opaque config.
+
+Visibility rule:
+
+- admin and operator views should show `transport_health`, `probe_classification`, `ipv4_health`, and `ipv6_health` alongside node freshness
+- the active transport profile should be readable from node health so operators can tell whether a node is still on `legacy_reality_fallback`, has moved to `grpc_443_primary`, or is reserved for `operator_lab`
+- `network_rollout_config` is the operator-owned source of rollout policy and should be checked whenever transport or DNS diverge by cohort
+- qdisc rollout evidence should stay operator-visible through `infra/node-qdisc-profiles.json`, `scripts/remote_apply_node_qdisc.py show`, `tc -s qdisc`, and `scripts/remote_node_qdisc_smoke.py`
+- `operator_lab` allowlists are control-plane data, not user-facing diagnostics, and must not leak into public UI or support copy
+- if a failure is provider- or family-specific, fail over by `subnet` first, then by `hoster_family`, and only then by country label
+- release and incident reports must keep `current-origin check`, `brain-origin check`, and `RU-origin check` as separate evidence lines
+- do not collapse those origins into a single verdict because each origin answers a different question
 
 ## External RU Probe Policy
 

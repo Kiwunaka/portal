@@ -51,6 +51,26 @@ def _load_api_and_service(monkeypatch, tmp_path: Path):
     return api, service
 
 
+def _rollout_client_policy(
+    transport_profile: str,
+    *,
+    ip_version_preference: str = "ipv4_only",
+) -> dict[str, object]:
+    return {
+        "routing_mode_default": "all_except_ru",
+        "transport_profile": transport_profile,
+        "dns_policy": "ru_direct_split",
+        "package_catalog_version": "2026-04-13",
+        "ruleset_version": "2026-04-13",
+        "support_context": {
+            "transport": transport_profile,
+            "routing_mode": "all_except_ru",
+            "ip_version_preference": ip_version_preference,
+        },
+        "support_recovery_order": ["app", "web", "telegram"],
+    }
+
+
 def test_upsert_app_trial_user_uses_canonical_trial_days(monkeypatch, tmp_path):
     api, service = _load_api_and_service(monkeypatch, tmp_path)
     session = api.SessionLocal()
@@ -135,6 +155,7 @@ def test_build_start_trial_response_parts_preserves_public_shape(monkeypatch, tm
         session.commit()
         session.refresh(user)
 
+        client_policy = _rollout_client_policy("legacy_reality_fallback")
         session_token = api.create_web_session_token(tg_id=int(user.tg_id), username=str(user.username))
         parts = service.build_start_trial_response_parts(
             user=user,
@@ -144,6 +165,7 @@ def test_build_start_trial_response_parts_preserves_public_shape(monkeypatch, tm
             build_access_policy=api._build_access_policy,
             trial_days=5,
             channel_bonus_days=10,
+            client_policy=client_policy,
         )
 
         assert parts["subscription_url"] == api.build_subscription_url(str(user.sub_token or ""))
@@ -151,14 +173,80 @@ def test_build_start_trial_response_parts_preserves_public_shape(monkeypatch, tm
         assert parts["session"]["session_token"] == session_token
         assert parts["session"]["account_id"] == str(user.tg_id)
         assert parts["client_policy"]["routing_mode_default"] == "all_except_ru"
-        assert parts["client_policy"]["transport_profile"] == "grpc_443_primary"
+        assert parts["client_policy"]["transport_profile"] == "legacy_reality_fallback"
         assert parts["client_policy"]["dns_policy"] == "ru_direct_split"
         assert parts["client_policy"]["package_catalog_version"]
-        assert parts["client_policy"]["support_context"]["transport"] == "grpc_443_primary"
+        assert parts["client_policy"]["support_context"]["transport"] == "legacy_reality_fallback"
         assert parts["access"]["trial_days"] == 5
         assert parts["access"]["bonus_days"] == 10
         assert parts["access"]["subscription_url"] == parts["subscription_url"]
         assert parts["provisioning"]["status"] == "ready"
         assert parts["provisioning"]["sync_ok"] is True
+    finally:
+        session.close()
+
+
+def test_build_client_policy_respects_rollout_config_carrier_and_cohort_overrides(monkeypatch, tmp_path):
+    api, service = _load_api_and_service(monkeypatch, tmp_path)
+    session = api.SessionLocal()
+
+    try:
+        rollout_config = {
+            "version": "2026-04-13",
+            "defaults": {
+                "routing_mode_default": "all_except_ru",
+                "transport_profile": "legacy_reality_fallback",
+                "dns_policy": "ru_direct_split",
+                "ip_version_preference": "ipv4_only",
+            },
+            "carrier_overrides": {
+                "carrier-x": {
+                    "transport_profile": "grpc_443_primary",
+                    "dns_policy": "ru_direct_split",
+                    "routing_mode_default": "all_except_ru",
+                    "ip_version_preference": "ipv6_preferred",
+                }
+            },
+            "cohort_overrides": {
+                "ru-risk-canary": {
+                    "install_ids": ["install-response-grpc"],
+                    "transport_profile": "grpc_443_primary",
+                }
+            },
+            "operator_lab": {
+                "enabled": False,
+                "allowlist_install_ids": [],
+                "allowlist_tg_ids": [],
+                "allowlist_node_codes": [],
+                "expires_at": None,
+            },
+            "package_catalog_feed": {"version": "2026-04-13"},
+            "routing_rules_feed": {"version": "2026-04-13"},
+            "support_recovery_order": ["app", "web", "telegram"],
+        }
+
+        default_policy = service.build_client_policy(
+            session=session,
+            install_id="install-default",
+            rollout_config=rollout_config,
+        )
+        carrier_policy = service.build_client_policy(
+            session=session,
+            install_id="install-default",
+            carrier="carrier-x",
+            rollout_config=rollout_config,
+        )
+        cohort_policy = service.build_client_policy(
+            session=session,
+            install_id="install-response-grpc",
+            rollout_config=rollout_config,
+        )
+
+        assert default_policy["transport_profile"] == "legacy_reality_fallback"
+        assert default_policy["support_context"]["ip_version_preference"] == "ipv4_only"
+        assert carrier_policy["transport_profile"] == "grpc_443_primary"
+        assert carrier_policy["support_context"]["ip_version_preference"] == "ipv6_preferred"
+        assert cohort_policy["transport_profile"] == "grpc_443_primary"
+        assert cohort_policy["support_context"]["transport"] == "grpc_443_primary"
     finally:
         session.close()

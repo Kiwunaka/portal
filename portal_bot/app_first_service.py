@@ -9,8 +9,8 @@ from fastapi import HTTPException
 
 from free_cycle_service import mark_user_became_free
 from models import StartLink, User
+from network_rollout import resolved_client_policy
 from public_urls import build_subscription_url
-from shared_surface_facts import get_product_facts
 
 
 def normalize_app_device_name(value: str | None, *, fallback: str = "Current device") -> str:
@@ -33,31 +33,21 @@ def _generate_sub_token() -> str:
     return secrets.token_urlsafe(32)
 
 
-def build_client_policy() -> dict[str, Any]:
-    product_facts = get_product_facts()
-    network_defaults = product_facts.get("network_defaults", {})
-    versions = product_facts.get("versions", {})
-    routing_mode = str(network_defaults.get("routing_mode_default") or "all_except_ru")
-    transport_profile = str(network_defaults.get("transport_profile_default") or "grpc_443_primary")
-    dns_policy = str(network_defaults.get("dns_policy_default") or "ru_direct_split")
-    package_catalog_version = str(versions.get("package_catalog_version") or "2026-04-13")
-    ruleset_version = str(versions.get("ruleset_version") or "2026-04-13")
-    support_recovery_order = versions.get("support_recovery_order") or ["app", "web", "telegram"]
-    if not isinstance(support_recovery_order, list):
-        support_recovery_order = ["app", "web", "telegram"]
-    return {
-        "routing_mode_default": routing_mode,
-        "transport_profile": transport_profile,
-        "dns_policy": dns_policy,
-        "package_catalog_version": package_catalog_version,
-        "ruleset_version": ruleset_version,
-        "support_context": {
-            "transport": transport_profile,
-            "routing_mode": routing_mode,
-            "ip_version_preference": "ipv4_only",
-        },
-        "support_recovery_order": [str(item) for item in support_recovery_order if str(item or "").strip()],
-    }
+def build_client_policy(
+    *,
+    session=None,
+    user: User | None = None,
+    install_id: str | None = None,
+    carrier: str | None = None,
+    rollout_config: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    return resolved_client_policy(
+        session=session,
+        user=user,
+        install_id=install_id,
+        carrier=carrier,
+        rollout_config=rollout_config,
+    )
 
 
 def create_app_telegram_start_code(session, *, account_tg_id: int, now: datetime) -> str:
@@ -183,11 +173,16 @@ def build_start_trial_response_parts(
     build_access_policy: Callable[..., dict[str, Any]],
     trial_days: int,
     channel_bonus_days: int,
+    client_policy: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     subscription_url = build_subscription_url(str(user.sub_token or ""))
     access_policy = build_access_policy(user=user, used_bytes=0, now=now)
     linked_telegram_id = int(getattr(user, "linked_telegram_id", 0) or 0) or None
     linked_telegram_username = str(getattr(user, "linked_telegram_username", "") or "").strip() or None
+    effective_client_policy = client_policy or build_client_policy(
+        user=user,
+        install_id=str(getattr(user, "app_install_id", "") or "").strip() or None,
+    )
     return {
         "subscription_url": subscription_url,
         "session": {
@@ -199,7 +194,7 @@ def build_start_trial_response_parts(
             "linked_telegram_id": linked_telegram_id,
             "linked_telegram_username": linked_telegram_username,
         },
-        "client_policy": build_client_policy(),
+        "client_policy": effective_client_policy,
         "access": {
             **access_policy,
             "sub_type": str(getattr(user, "sub_type", "") or ""),

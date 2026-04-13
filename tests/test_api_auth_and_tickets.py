@@ -1014,6 +1014,7 @@ class ApiAuthAndTicketsTests(unittest.TestCase):
                 ipv4_health="healthy",
                 ipv6_health="degraded",
                 last_probe_classification="provider_specific_path",
+                transport_profiles_json='{"legacy_reality_fallback":{"enabled":true},"grpc_443_primary":{"enabled":true}}',
                 transport_health_json='{"grpc_443_primary":"healthy","legacy_reality_fallback":"degraded"}',
                 last_probe_stage="tls_sni",
                 last_probe_error_kind="tls_handshake_failed",
@@ -1045,6 +1046,9 @@ class ApiAuthAndTicketsTests(unittest.TestCase):
         self.assertEqual(item["ipv6_health"], "degraded")
         self.assertEqual(item["probe_classification"], "provider_specific_path")
         self.assertEqual(item["transport_health"]["grpc_443_primary"], "healthy")
+        if "transport_profiles" in item:
+            self.assertTrue(item["transport_profiles"]["legacy_reality_fallback"]["enabled"])
+            self.assertTrue(item["transport_profiles"]["grpc_443_primary"]["enabled"])
 
     def test_admin_nodes_health_exposes_probe_failure_fields_and_alerts(self) -> None:
         from db import SessionLocal

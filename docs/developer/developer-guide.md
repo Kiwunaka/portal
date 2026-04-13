@@ -107,6 +107,10 @@ Current rules:
 - automatic username sync is the primary identity-sync path across app-first, web-login, and Telegram-link flows; manual username sync is compatibility/recovery tooling only
 - premium-grade access states `trial_premium`, `bonus_premium`, and `paid_unlimited` use the paid pool, which means all enabled non-free delivery nodes
 - free-tier access states `free_monthly` and `free_soft_mode` use the free pool, which means the dedicated `NL-free` node only
+- transport rollout is additive: `legacy_reality_fallback` stays the baseline until the canary completes, while `grpc_443_primary` is the allowlisted app-first primary for rollout cohorts
+- `network_rollout_config` is the operator-owned rollout policy for transport, DNS, routing, and operator-lab allowlists; treat it as the source of truth for app-managed policy resolution
+- node shaping is repo-truth driven through `infra/node-qdisc-profiles.json` and the `remote_apply_node_qdisc.py` / `remote_node_qdisc_smoke.py` helpers, so treat qdisc changes as part of release verification instead of an informal operator tweak
+- when reporting node reachability during rollout work, keep `current-origin check`, `brain-origin check`, and `RU-origin check` separate instead of collapsing them into one status
 
 ## Backend Commands
 
@@ -235,6 +239,14 @@ Windows packaging guardrails:
 ## Documentation Rules
 
 Whenever behavior, contracts, support flow, or release flow changes, update the canonical docs in the same task.
+
+When a task touches transport catalog behavior, `network_rollout_config`, or node shaping, keep the rollout docs aligned in the same change set:
+
+- [docs/architecture/system-overview.md](C:/Users/kiwun/Documents/ai/VPN/docs/architecture/system-overview.md)
+- [docs/architecture/app-first-and-bonus-flows.md](C:/Users/kiwun/Documents/ai/VPN/docs/architecture/app-first-and-bonus-flows.md)
+- [docs/operations/deployment-and-access.md](C:/Users/kiwun/Documents/ai/VPN/docs/operations/deployment-and-access.md)
+- [docs/operations/monitoring-and-visibility.md](C:/Users/kiwun/Documents/ai/VPN/docs/operations/monitoring-and-visibility.md)
+- [docs/developer/developer-guide.md](C:/Users/kiwun/Documents/ai/VPN/docs/developer/developer-guide.md)
 
 If code is still in flight, document only the confirmed surfaces and routes that already exist in:
 

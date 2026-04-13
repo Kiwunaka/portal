@@ -136,6 +136,67 @@ Status:
 
 - [remote_install_feedbackbot_service.py](C:/Users/kiwun/Documents/ai/VPN/scripts/remote_install_feedbackbot_service.py)
 
+## Transport Rollout And Node Shaping
+
+The transport rollout stays additive: the current Reality path remains in place while app-first cohorts are moved to `grpc_443_primary` through rollout policy and per-node transport catalogs.
+
+Transport policy rule:
+
+- `nodes.transport_profiles_json` is the canonical per-node transport catalog for rollout and should carry the fixed profile set `legacy_reality_fallback`, `grpc_443_primary`, and `operator_lab`
+- legacy node fields such as `inbound_id`, `vless_port`, and `reality_*` remain compatibility input and should synthesize `legacy_reality_fallback` when the transport catalog is empty
+- `AppSetting.network_rollout_config` is the operator-controlled rollout source of truth for `transport_profile`, `dns_policy`, `routing_mode_default`, and `ip_version_preference`
+- `network_rollout_config` is a JSON policy blob with `version`, `defaults`, `carrier_overrides`, `cohort_overrides`, `operator_lab`, `package_catalog_feed`, `routing_rules_feed`, and `support_recovery_order`
+- `defaults` pin `routing_mode_default=all_except_ru`, `transport_profile=legacy_reality_fallback`, and `dns_policy=ru_direct_split` until canary cohorts are explicitly approved
+- `carrier_overrides` and `cohort_overrides` may only change `transport_profile`, `dns_policy`, `routing_mode_default`, and `ip_version_preference`
+- `operator_lab` remains allowlist-only, carries `enabled`, `allowlist_install_ids`, `allowlist_tg_ids`, `allowlist_node_codes`, and `expires_at`, and must stay hidden from public UI and mass session/profile payloads
+- app-managed session and profile delivery should use the rollout-selected transport profile, while manual/export compatibility links stay on `legacy_reality_fallback` until the share-link parity wave lands
+
+Rollout order:
+
+1. Wave 0, code-first
+   - migrate `nodes.transport_profiles_json`
+   - backfill `legacy_reality_fallback` from the legacy node fields
+   - ship backend changes for multi-inbound sync and `network_rollout_config`
+   - expose rollout config and node transport health in admin/web surfaces
+   - update the canonical docs in this task
+2. Wave 1, deploy-first
+   - run local tests and smokes
+   - run `release_orchestrator.py --gates-only`
+   - deploy the brain portal code
+   - deploy static sites if the admin surface or public visibility changed
+   - run `verify_brain_ready.py`
+3. Wave 2, infra canary
+   - choose one premium node as the canary
+   - add the `grpc_443_primary` inbound on `:443`
+   - seed the node transport catalog with `legacy_reality_fallback` and `grpc_443_primary`
+   - apply the qdisc profile and run the saturation smoke
+   - enable `grpc_443_primary` only for a small RU-risk allowlist through `network_rollout_config`
+4. Wave 3, fleet expansion
+   - repeat inbound and qdisc rollout on the remaining premium nodes
+   - move failover by `subnet`, then by `hoster_family`, then by country
+   - after parity, switch `defaults.transport_profile` to `grpc_443_primary` for the RU-risk cohort
+5. Wave 4, operator lab
+   - add `operator_lab` on one controlled node only
+   - open it through allowlist entries only
+   - keep it out of public UI and non-operator payloads
+
+Rollback shape:
+
+- restore `defaults.transport_profile` to `legacy_reality_fallback`
+- set `operator_lab.enabled=false`
+- run `scripts/remote_apply_node_qdisc.py rollback`
+- keep `nodes.transport_profiles_json` in place as dormant metadata instead of deleting it
+
+Node shaping repo truth:
+
+- `infra/node-qdisc-profiles.json` records `node_code`, `iface`, `uplink_mbps`, `target_rate_mbps`, and `preferred_qdisc`
+- `target_rate_mbps` is fixed at `85%` of the confirmed sustainable uplink for each live node
+- `scripts/remote_apply_node_qdisc.py` supports `apply`, `show`, and `rollback`
+- if `sch_cake` is present, the script applies `CAKE nat triple-isolate`
+- if `sch_cake` is unavailable, the script falls back to `fq_codel` and must report that fallback explicitly
+- `scripts/remote_node_qdisc_smoke.py` runs one heavy egress flow plus parallel small HTTPS probes and records p95 latency / TTFB
+- `infra/portal-node-qdisc.service` restores the configured qdisc after reboot
+
 ## Release Rule
 
 For release-oriented work, default completion includes:
@@ -173,6 +234,9 @@ At minimum, verify:
 - API-only lifecycle smoke for bonuses, checkout order creation, callback success, and post-payment dashboard state
 - `portal-api`, `portal-bot`, and `portal-helpbot` service status
 - `portal-feedbackbot` service status
+- transport rollout verification on the canary node with `scripts/remote_apply_node_qdisc.py show`
+- `tc -s qdisc` on the shaped interface
+- `scripts/remote_node_qdisc_smoke.py` results for heavy-flow saturation and small-probe latency
 - when observer-lite is enabled on any node, `portal-node-observer.timer` freshness on that node plus `/api/admin/metrics/status` and `/api/admin/nodes/health` observer fields
 - after any REALITY target rotation, verify the node inbound `dest/serverNames`, the `brain` `nodes.reality_sni` row, and `python scripts/predeploy_node_readiness.py --brain-ip 82.21.114.104` in the same handoff
 

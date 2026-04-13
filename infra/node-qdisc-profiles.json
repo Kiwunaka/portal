@@ -1,0 +1,37 @@
+[
+  {
+    "node_code": "brain",
+    "iface": "eth0",
+    "uplink_mbps": 1000,
+    "target_rate_mbps": 850,
+    "preferred_qdisc": "cake"
+  },
+  {
+    "node_code": "us",
+    "iface": "eth0",
+    "uplink_mbps": 500,
+    "target_rate_mbps": 425,
+    "preferred_qdisc": "cake"
+  },
+  {
+    "node_code": "pl",
+    "iface": "eth0",
+    "uplink_mbps": 1000,
+    "target_rate_mbps": 850,
+    "preferred_qdisc": "cake"
+  },
+  {
+    "node_code": "it",
+    "iface": "eth0",
+    "uplink_mbps": 500,
+    "target_rate_mbps": 425,
+    "preferred_qdisc": "cake"
+  },
+  {
+    "node_code": "nl",
+    "iface": "eth0",
+    "uplink_mbps": 750,
+    "target_rate_mbps": 637,
+    "preferred_qdisc": "cake"
+  }
+]

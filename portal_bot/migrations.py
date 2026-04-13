@@ -1,6 +1,7 @@
 ﻿from __future__ import annotations
 
 import os
+import json
 from datetime import datetime, timezone
 
 from sqlalchemy import Engine, text
@@ -74,6 +75,43 @@ DEFAULT_PAID_DEVICE_LIMIT = max(1, int(os.getenv("PAID_LIMIT_IP") or "5"))
 
 def _utcnow() -> datetime:
     return datetime.now(timezone.utc).replace(tzinfo=None)
+
+
+def _legacy_transport_catalog_payload(
+    *,
+    host: str | None,
+    vless_port,
+    reality_sni: str | None,
+    reality_pbk: str | None,
+    reality_sid: str | None,
+    fingerprint: str | None,
+    flow: str | None,
+    inbound_id,
+) -> str:
+    try:
+        inbound_value = int(inbound_id or 0)
+    except Exception:
+        inbound_value = 0
+    try:
+        port_value = int(vless_port or 443)
+    except Exception:
+        port_value = 443
+    payload = [
+        {
+            "name": "legacy_reality_fallback",
+            "enabled": inbound_value > 0,
+            "kind": "reality",
+            "inbound_id": inbound_value,
+            "host": str(host or "").strip(),
+            "port": max(1, port_value),
+            "tls_server_name": str(reality_sni or "").strip(),
+            "reality_public_key": str(reality_pbk or "").strip(),
+            "reality_short_id": str(reality_sid or "").strip(),
+            "fingerprint": str(fingerprint or "").strip() or "firefox",
+            "flow": str(flow or "").strip() or "xtls-rprx-vision",
+        }
+    ]
+    return json.dumps(payload, ensure_ascii=False, separators=(",", ":"))
 
 def _seed_retention_templates(conn, *, dialect: str) -> None:
     if dialect == "sqlite":
@@ -496,6 +534,7 @@ def run_migrations(engine: Engine) -> None:
                 ("ipv6_health", "VARCHAR(32)"),
                 ("last_probe_classification", "VARCHAR(64)"),
                 ("transport_health_json", "TEXT"),
+                ("transport_profiles_json", "TEXT"),
                 ("observer_push_secret", "VARCHAR(128)"),
                 ("observer_last_push_at", "DATETIME"),
                 ("observer_last_batch_id", "VARCHAR(128)"),
@@ -510,6 +549,34 @@ def run_migrations(engine: Engine) -> None:
             conn.execute(text("CREATE INDEX IF NOT EXISTS ix_nodes_is_draining ON nodes(is_draining);"))
             conn.execute(text("CREATE INDEX IF NOT EXISTS ix_nodes_is_healthy ON nodes(is_healthy);"))
             conn.execute(text("CREATE INDEX IF NOT EXISTS ix_nodes_health_score ON nodes(health_score);"))
+            if _sqlite_column_exists(conn, "nodes", "transport_profiles_json"):
+                rows = conn.execute(
+                    text(
+                        """
+                        SELECT id, host, vless_port, reality_sni, reality_pbk, reality_sid, fingerprint, flow, inbound_id
+                        FROM nodes
+                        WHERE transport_profiles_json IS NULL OR trim(transport_profiles_json) = '';
+                        """
+                    )
+                ).fetchall()
+                for row in rows:
+                    mapping = row._mapping
+                    conn.execute(
+                        text("UPDATE nodes SET transport_profiles_json = :payload WHERE id = :row_id;"),
+                        {
+                            "row_id": int(mapping["id"]),
+                            "payload": _legacy_transport_catalog_payload(
+                                host=mapping["host"],
+                                vless_port=mapping["vless_port"],
+                                reality_sni=mapping["reality_sni"],
+                                reality_pbk=mapping["reality_pbk"],
+                                reality_sid=mapping["reality_sid"],
+                                fingerprint=mapping["fingerprint"],
+                                flow=mapping["flow"],
+                                inbound_id=mapping["inbound_id"],
+                            ),
+                        },
+                    )
 
         # node_health_samples: historical runtime samples.
         conn.execute(
@@ -1180,6 +1247,7 @@ def _run_postgres_migrations(engine: Engine) -> None:
         conn.execute(text("ALTER TABLE nodes ADD COLUMN IF NOT EXISTS ipv6_health VARCHAR(32);"))
         conn.execute(text("ALTER TABLE nodes ADD COLUMN IF NOT EXISTS last_probe_classification VARCHAR(64);"))
         conn.execute(text("ALTER TABLE nodes ADD COLUMN IF NOT EXISTS transport_health_json TEXT;"))
+        conn.execute(text("ALTER TABLE nodes ADD COLUMN IF NOT EXISTS transport_profiles_json TEXT;"))
         conn.execute(text("ALTER TABLE nodes ADD COLUMN IF NOT EXISTS observer_push_secret VARCHAR(128);"))
         conn.execute(text("ALTER TABLE nodes ADD COLUMN IF NOT EXISTS observer_last_push_at TIMESTAMP;"))
         conn.execute(text("ALTER TABLE nodes ADD COLUMN IF NOT EXISTS observer_last_batch_id VARCHAR(128);"))
@@ -1187,6 +1255,33 @@ def _run_postgres_migrations(engine: Engine) -> None:
         conn.execute(text("ALTER TABLE nodes ADD COLUMN IF NOT EXISTS observer_parse_error_count INTEGER DEFAULT 0;"))
         conn.execute(text("CREATE INDEX IF NOT EXISTS ix_nodes_accepting_new_clients ON nodes(accepting_new_clients);"))
         conn.execute(text("CREATE INDEX IF NOT EXISTS ix_nodes_is_draining ON nodes(is_draining);"))
+        rows = conn.execute(
+            text(
+                """
+                SELECT id, host, vless_port, reality_sni, reality_pbk, reality_sid, fingerprint, flow, inbound_id
+                FROM nodes
+                WHERE transport_profiles_json IS NULL OR btrim(transport_profiles_json) = '';
+                """
+            )
+        ).fetchall()
+        for row in rows:
+            mapping = row._mapping
+            conn.execute(
+                text("UPDATE nodes SET transport_profiles_json = :payload WHERE id = :row_id;"),
+                {
+                    "row_id": int(mapping["id"]),
+                    "payload": _legacy_transport_catalog_payload(
+                        host=mapping["host"],
+                        vless_port=mapping["vless_port"],
+                        reality_sni=mapping["reality_sni"],
+                        reality_pbk=mapping["reality_pbk"],
+                        reality_sid=mapping["reality_sid"],
+                        fingerprint=mapping["fingerprint"],
+                        flow=mapping["flow"],
+                        inbound_id=mapping["inbound_id"],
+                    ),
+                },
+            )
         conn.execute(text("ALTER TABLE node_health_samples ADD COLUMN IF NOT EXISTS cpu_percent DOUBLE PRECISION DEFAULT 0;"))
         conn.execute(text("ALTER TABLE node_health_samples ADD COLUMN IF NOT EXISTS memory_used_mb INTEGER DEFAULT 0;"))
         conn.execute(text("ALTER TABLE node_health_samples ADD COLUMN IF NOT EXISTS memory_total_mb INTEGER DEFAULT 0;"))

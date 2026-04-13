@@ -124,8 +124,16 @@ from observer_service import (
     ingest_observer_batch,
     observer_stale_after_seconds,
 )
+from network_rollout import (
+    NETWORK_ROLLOUT_CONFIG_KEY,
+    load_network_rollout_config,
+    normalized_network_rollout_config,
+    resolved_client_policy,
+    transport_node_allowlist,
+)
 from public_urls import build_subscription_url, public_connect_host
 from shared_surface_facts import get_product_facts, get_public_urls
+from transport_catalog import LEGACY_REALITY_FALLBACK, node_transport_profiles, transport_profile_by_name
 from web_auth_service import (
     SESSION_TTL_SECONDS,
     build_telegram_oidc_authorize_url,
@@ -455,6 +463,10 @@ def _set_app_setting_json(*, s, key: str, value: Any) -> None:
     else:
         row.value_json = encoded
         row.updated_at = now
+
+
+def _request_carrier_header(value: str | None) -> str:
+    return re.sub(r"[^a-z0-9._:-]+", "-", str(value or "").strip().lower()).strip("-")[:64]
 
 
 def _validate_wheel_weights(weights: list[dict[str, Any]]) -> list[dict[str, int]]:
@@ -3768,6 +3780,7 @@ async def auth_session(request: Request, x_telegram_init_data: str = Header(defa
 
 @app.post("/api/client/session/start-trial")
 async def client_start_trial(payload: AppStartTrialIn, request: Request) -> dict:
+    client_policy: dict[str, Any] | None = None
     s = SessionLocal()
     try:
         user, created = app_first_service.upsert_app_trial_user(
@@ -3779,6 +3792,11 @@ async def client_start_trial(payload: AppStartTrialIn, request: Request) -> dict
         )
         s.commit()
         s.refresh(user)
+        client_policy = app_first_service.build_client_policy(
+            session=s,
+            user=user,
+            install_id=str(getattr(user, "app_install_id", "") or "").strip() or None,
+        )
     except HTTPException:
         s.rollback()
         raise
@@ -3821,6 +3839,7 @@ async def client_start_trial(payload: AppStartTrialIn, request: Request) -> dict
         build_access_policy=_build_access_policy,
         trial_days=APP_TRIAL_DEFAULT_DAYS,
         channel_bonus_days=CHANNEL_PREMIUM_DAYS,
+        client_policy=client_policy,
     )
 
     return {
@@ -4916,7 +4935,12 @@ async def api_network_probe(size_mb: int = Query(default=2, ge=1, le=3)) -> Resp
 
 
 @app.get("/api/user/{tg_id}")
-async def user_data(tg_id: int, request: Request, x_telegram_init_data: str = Header(default="")) -> dict:
+async def user_data(
+    tg_id: int,
+    request: Request,
+    x_telegram_init_data: str = Header(default=""),
+    x_portal_carrier: str = Header(default=""),
+) -> dict:
     auth_user = _require_user_access(target_tg_id=tg_id, x_telegram_init_data=x_telegram_init_data, request=request)
 
     s = SessionLocal()
@@ -4987,6 +5011,12 @@ async def user_data(tg_id: int, request: Request, x_telegram_init_data: str = He
             and free_speed_kbps < int(FREE_SPEED_LIMIT_KBPS)
         )
         devices_payload = _build_app_device_rows(user)
+        client_policy = app_first_service.build_client_policy(
+            session=s,
+            user=user,
+            install_id=str(getattr(user, "app_install_id", "") or "").strip() or None,
+            carrier=_request_carrier_header(x_portal_carrier),
+        )
 
         return {
             "tg_id": tg_id,
@@ -5024,7 +5054,7 @@ async def user_data(tg_id: int, request: Request, x_telegram_init_data: str = He
                 "id": _linked_telegram_id(user) or None,
                 "username": str(getattr(user, "linked_telegram_username", "") or "").strip() or None,
             },
-            "client_policy": app_first_service.build_client_policy(),
+            "client_policy": client_policy,
             "sync": {
                 "app_identity_known": bool(str(getattr(user, "app_install_id", "") or "").strip()),
                 "telegram_linked": bool(_linked_telegram_id(user)),
@@ -5119,7 +5149,11 @@ async def user_data(tg_id: int, request: Request, x_telegram_init_data: str = He
 
 
 @app.get("/api/dashboard")
-async def dashboard_snapshot(request: Request, x_telegram_init_data: str = Header(default="")) -> DashboardResponse:
+async def dashboard_snapshot(
+    request: Request,
+    x_telegram_init_data: str = Header(default=""),
+    x_portal_carrier: str = Header(default=""),
+) -> DashboardResponse:
     auth_user = _require_auth_user(x_telegram_init_data, request=request)
     tg_id = int(auth_user.get("id", 0))
     s = SessionLocal()
@@ -5151,6 +5185,12 @@ async def dashboard_snapshot(request: Request, x_telegram_init_data: str = Heade
         sub_url = ""
         if user.sub_token:
             sub_url = build_subscription_url(str(user.sub_token or ""))
+        client_policy = app_first_service.build_client_policy(
+            session=s,
+            user=user,
+            install_id=str(getattr(user, "app_install_id", "") or "").strip() or None,
+            carrier=_request_carrier_header(x_portal_carrier),
+        )
 
         return DashboardResponse(
             tg_id=tg_id,
@@ -5183,7 +5223,7 @@ async def dashboard_snapshot(request: Request, x_telegram_init_data: str = Heade
             family_slots=int(family_slots),
             subscription_url=sub_url,
             segment=segment,
-            client_policy=app_first_service.build_client_policy(),
+            client_policy=client_policy,
             connection_snapshot={
                 "status": str(runtime.get("status") or "unknown"),
                 "active_connections": int(runtime.get("active_connections", 0) or 0),
@@ -7791,6 +7831,37 @@ async def admin_wheel_config_put(payload: AdminWheelConfigIn, x_telegram_init_da
     return {"ok": True, "wheel_config": normalized}
 
 
+@app.get("/api/admin/network-rollout-config")
+async def admin_network_rollout_config_get(x_telegram_init_data: str = Header(default="")) -> dict:
+    _require_admin(x_telegram_init_data)
+    s = SessionLocal()
+    try:
+        return {"network_rollout_config": load_network_rollout_config(session=s)}
+    finally:
+        s.close()
+
+
+@app.put("/api/admin/network-rollout-config")
+async def admin_network_rollout_config_put(payload: dict[str, Any], x_telegram_init_data: str = Header(default="")) -> dict:
+    actor = int(_require_admin(x_telegram_init_data).get("id", 0))
+    normalized = normalized_network_rollout_config(payload if isinstance(payload, dict) else {})
+    s = SessionLocal()
+    try:
+        _set_app_setting_json(s=s, key=NETWORK_ROLLOUT_CONFIG_KEY, value=normalized)
+        s.commit()
+    finally:
+        s.close()
+    _audit_admin(
+        actor_tg_id=actor,
+        action="admin_network_rollout_config_put",
+        meta={
+            "version": normalized.get("version"),
+            "default_transport_profile": ((normalized.get("defaults") or {}).get("transport_profile")),
+        },
+    )
+    return {"ok": True, "network_rollout_config": normalized}
+
+
 @app.post("/api/admin/campaign-links/build")
 async def admin_campaign_links_build(payload: AdminCampaignLinksBuildIn, x_telegram_init_data: str = Header(default="")) -> dict:
     _require_admin(x_telegram_init_data)
@@ -8611,22 +8682,94 @@ async def admin_node_resync(node_code: str, payload: AdminNodeResyncIn, x_telegr
     }
 
 
+def _transport_profiles_payload(node: Any) -> dict[str, dict[str, Any]]:
+    out: dict[str, dict[str, Any]] = {}
+    for profile in node_transport_profiles(node, include_disabled=True):
+        name = str(profile.get("name") or "").strip()
+        if not name:
+            continue
+        out[name] = dict(profile)
+    return out
+
+
+def _node_transport_profile(node: Any, transport_profile: str | None) -> dict[str, Any]:
+    return transport_profile_by_name(
+        node,
+        transport_profile or LEGACY_REALITY_FALLBACK,
+        include_disabled=True,
+        allow_operator_lab=True,
+    )
+
+
+def _node_outbound_from_transport_profile(*, user_uuid: str, node: Any, tag: str, transport_profile: str | None) -> dict[str, Any]:
+    profile = _node_transport_profile(node, transport_profile)
+    tls: dict[str, Any] = {
+        "enabled": True,
+        "server_name": str(profile.get("tls_server_name") or getattr(node, "reality_sni", "") or ""),
+        "utls": {
+            "enabled": True,
+            "fingerprint": str(profile.get("fingerprint") or getattr(node, "fingerprint", "") or "firefox"),
+        },
+    }
+    outbound: dict[str, Any] = {
+        "type": "vless",
+        "tag": tag,
+        "server": str(profile.get("host") or getattr(node, "host", "") or ""),
+        "server_port": int(profile.get("port") or getattr(node, "vless_port", 443) or 443),
+        "uuid": user_uuid,
+        "tls": tls,
+        "packet_encoding": "xudp",
+    }
+    flow = str(profile.get("flow") or getattr(node, "flow", "") or "").strip()
+    if flow:
+        outbound["flow"] = flow
+
+    if str(profile.get("kind") or "reality").strip().lower() == "grpc":
+        outbound["transport"] = {
+            "type": "grpc",
+            "service_name": str(profile.get("grpc_service_name") or "").strip(),
+        }
+        outbound.pop("flow", None)
+        return outbound
+
+    tls["reality"] = {
+        "enabled": True,
+        "public_key": str(profile.get("reality_public_key") or getattr(node, "reality_pbk", "") or ""),
+        "short_id": str(profile.get("reality_short_id") or getattr(node, "reality_sid", "") or ""),
+    }
+    return outbound
+
+
+def _filter_nodes_for_transport_profile(*, nodes: list, rollout_config: dict[str, Any], transport_profile: str) -> list:
+    allowlist = set(transport_node_allowlist(rollout_config, transport_profile))
+    if not allowlist:
+        return list(nodes)
+    return [
+        node
+        for node in nodes
+        if str(getattr(node, "code", "") or "").strip().lower() in allowlist
+    ]
+
+
 def _generate_vless_link(*, user_uuid: str, node, name: str) -> str:
     import urllib.parse
 
+    profile = _node_transport_profile(node, LEGACY_REALITY_FALLBACK)
     params = {
         "type": "tcp",
         "security": "reality",
-        "pbk": node.reality_pbk,
-        "fp": node.fingerprint,
-        "sni": node.reality_sni,
-        "sid": node.reality_sid,
+        "pbk": profile.get("reality_public_key") or getattr(node, "reality_pbk", ""),
+        "fp": profile.get("fingerprint") or getattr(node, "fingerprint", ""),
+        "sni": profile.get("tls_server_name") or getattr(node, "reality_sni", ""),
+        "sid": profile.get("reality_short_id") or getattr(node, "reality_sid", ""),
         "spx": "/",
-        "flow": node.flow,
+        "flow": profile.get("flow") or getattr(node, "flow", ""),
     }
     query = "&".join([f"{k}={urllib.parse.quote(str(v), safe='')}" for k, v in params.items()])
     safe_name = urllib.parse.quote(name)
-    return f"vless://{user_uuid}@{node.host}:{node.vless_port}?{query}#{safe_name}"
+    host = str(profile.get("host") or getattr(node, "host", "") or "")
+    port = int(profile.get("port") or getattr(node, "vless_port", 443) or 443)
+    return f"vless://{user_uuid}@{host}:{port}?{query}#{safe_name}"
 
 
 def _node_code_base(code: str) -> str:
@@ -8771,7 +8914,13 @@ def _singbox_common_route_rules(*, selector_tag: str, youtube_direct: bool = Fal
     return rules
 
 
-def _singbox_multi_node_config(*, user_uuid: str, nodes: list, title: str) -> dict:
+def _singbox_multi_node_config(
+    *,
+    user_uuid: str,
+    nodes: list,
+    title: str,
+    transport_profile: str = LEGACY_REALITY_FALLBACK,
+) -> dict:
     outbounds = []
     selector_opts = []
     selector_tag = "🌍 Страны"
@@ -8779,21 +8928,12 @@ def _singbox_multi_node_config(*, user_uuid: str, nodes: list, title: str) -> di
         tag = _node_label_ru(getattr(n, "code", ""), getattr(n, "name", ""))
         selector_opts.append(tag)
         outbounds.append(
-            {
-                "type": "vless",
-                "tag": tag,
-                "server": n.host,
-                "server_port": n.vless_port,
-                "uuid": user_uuid,
-                "flow": n.flow,
-                "tls": {
-                    "enabled": True,
-                    "server_name": n.reality_sni,
-                    "utls": {"enabled": True, "fingerprint": n.fingerprint},
-                    "reality": {"enabled": True, "public_key": n.reality_pbk, "short_id": n.reality_sid},
-                },
-                "packet_encoding": "xudp",
-            }
+            _node_outbound_from_transport_profile(
+                user_uuid=user_uuid,
+                node=n,
+                tag=tag,
+                transport_profile=transport_profile,
+            )
         )
 
     selector_default = selector_opts[0] if selector_opts else "direct"
@@ -8834,7 +8974,13 @@ def _singbox_multi_node_config(*, user_uuid: str, nodes: list, title: str) -> di
     }
 
 
-def _singbox_free_allowlist_config(*, user_uuid: str, nodes: list, title: str) -> dict:
+def _singbox_free_allowlist_config(
+    *,
+    user_uuid: str,
+    nodes: list,
+    title: str,
+    transport_profile: str = LEGACY_REALITY_FALLBACK,
+) -> dict:
     """
     Dedicated free-pool config.
     Split-routing defaults are the same as paid:
@@ -8850,20 +8996,12 @@ def _singbox_free_allowlist_config(*, user_uuid: str, nodes: list, title: str) -
     outbounds = []
     for n in nodes:
         outbounds.append(
-            {
-                "type": "vless",
-                "tag": _node_label_ru(n.code, n.name),
-                "server": n.host,
-                "server_port": n.vless_port,
-                "uuid": user_uuid,
-                "flow": n.flow,
-                "tls": {
-                    "enabled": True,
-                    "server_name": n.reality_sni,
-                    "reality": {"enabled": True, "public_key": n.reality_pbk, "short_id": n.reality_sid},
-                    "utls": {"enabled": True, "fingerprint": n.fingerprint},
-                },
-            }
+            _node_outbound_from_transport_profile(
+                user_uuid=user_uuid,
+                node=n,
+                tag=_node_label_ru(n.code, n.name),
+                transport_profile=transport_profile,
+            )
         )
 
     selector_opts = [o["tag"] for o in outbounds]
@@ -9084,6 +9222,7 @@ def _serialize_admin_node(
                 for key, value in parsed_transport_health.items()
                 if str(key or "").strip()
             }
+    transport_profiles = _transport_profiles_payload(n)
     return {
         "code": n.code,
         "name": n.name,
@@ -9131,6 +9270,7 @@ def _serialize_admin_node(
         "ipv6_health": str(getattr(n, "ipv6_health", "") or "") or None,
         "probe_classification": str(getattr(n, "last_probe_classification", "") or "") or None,
         "transport_health": transport_health,
+        "transport_profiles": transport_profiles,
         "observer_last_push_at": _safe_iso(getattr(n, "observer_last_push_at", None)),
         "observer_unmatched_count": int(getattr(n, "observer_unmatched_count", 0) or 0),
         "observer_parse_error_count": int(getattr(n, "observer_parse_error_count", 0) or 0),
@@ -9214,6 +9354,9 @@ async def subscription(token: str, request: Request, format: str = Query(default
     """
     token_text = str(token or "").strip()
     token_fp = _token_fingerprint(token_text)
+    nodes_for_user: list[Any] = []
+    rollout_config = normalized_network_rollout_config({})
+    client_policy = resolved_client_policy(rollout_config=rollout_config)
     s = SessionLocal()
     try:
         user = s.query(User).filter_by(sub_token=token_text).first()
@@ -9245,6 +9388,13 @@ async def subscription(token: str, request: Request, format: str = Query(default
             return Response(content="", media_type="text/plain")
 
         nodes = enabled_nodes(s)
+        nodes_for_user = _nodes_for_user(user, nodes, session=s)
+        rollout_config = load_network_rollout_config(session=s)
+        client_policy = app_first_service.build_client_policy(
+            session=s,
+            user=user,
+            install_id=str(getattr(user, "app_install_id", "") or "").strip() or None,
+        )
     finally:
         s.close()
 
@@ -9283,19 +9433,36 @@ async def subscription(token: str, request: Request, format: str = Query(default
         "Profile-Update-Interval": str(int(PROFILE_UPDATE_INTERVAL_HOURS)),
         "Content-Disposition": 'attachment; filename="POKROV_Subscription"',
     }
-
-    nodes_for_user = _nodes_for_user(user, nodes, session=s)
+    smart_transport_profile = str(client_policy.get("transport_profile") or LEGACY_REALITY_FALLBACK)
+    smart_nodes_for_user = _filter_nodes_for_transport_profile(
+        nodes=nodes_for_user,
+        rollout_config=rollout_config,
+        transport_profile=smart_transport_profile,
+    )
+    if not smart_nodes_for_user:
+        smart_transport_profile = LEGACY_REALITY_FALLBACK
+        smart_nodes_for_user = list(nodes_for_user)
 
     # FREE and smart clients receive sing-box JSON profiles.
     if (user.sub_type or "").upper() == "FREE" or wants_smart:
-        if (user.sub_type or "").upper() == "FREE" and not nodes_for_user:
+        if (user.sub_type or "").upper() == "FREE" and not smart_nodes_for_user:
             # Dedicated free pool is required for FREE users.
             return Response(content="", media_type="text/plain", status_code=503)
 
         cfg = (
-            _singbox_free_allowlist_config(user_uuid=user.uuid, nodes=nodes_for_user, title="POKROV VPN (Free)")
+            _singbox_free_allowlist_config(
+                user_uuid=user.uuid,
+                nodes=smart_nodes_for_user,
+                title="POKROV VPN (Free)",
+                transport_profile=smart_transport_profile,
+            )
             if (user.sub_type or "").upper() == "FREE"
-            else _singbox_multi_node_config(user_uuid=user.uuid, nodes=nodes_for_user, title="POKROV VPN")
+            else _singbox_multi_node_config(
+                user_uuid=user.uuid,
+                nodes=smart_nodes_for_user,
+                title="POKROV VPN",
+                transport_profile=smart_transport_profile,
+            )
         )
         headers["Content-Disposition"] = 'attachment; filename="POKROV.json"'
         headers["Profile-Title"] = "POKROV"

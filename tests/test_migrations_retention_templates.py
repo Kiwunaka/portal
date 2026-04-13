@@ -123,6 +123,7 @@ class RetentionTemplateSeedTests(unittest.TestCase):
             self.assertIn("ipv6_health", node_names)
             self.assertIn("last_probe_classification", node_names)
             self.assertIn("transport_health_json", node_names)
+            self.assertIn("transport_profiles_json", node_names)
 
             sample_cols = conn.execute(self.migrations.text("PRAGMA table_info(node_health_samples);")).fetchall()
             sample_names = {str(r[1]) for r in sample_cols}

@@ -35,6 +35,7 @@ class NodeRuntime:
     panel_error_rate: float
     active_clients: int
     last_ok_at: datetime | None
+    transport_profiles_json: str | None = None
 
 
 def _score_value(n: Node) -> float:
@@ -83,6 +84,7 @@ def legacy_node() -> NodeRuntime:
         panel_error_rate=0.0,
         active_clients=0,
         last_ok_at=None,
+        transport_profiles_json=None,
     )
 
 
@@ -121,6 +123,7 @@ def enabled_nodes(session) -> list[NodeRuntime]:
                 panel_error_rate=float(getattr(n, "panel_error_rate", 0.0) or 0.0),
                 active_clients=int(getattr(n, "active_clients", 0) or 0),
                 last_ok_at=getattr(n, "last_ok_at", None),
+                transport_profiles_json=getattr(n, "transport_profiles_json", None),
             )
         )
     return out

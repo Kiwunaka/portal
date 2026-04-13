@@ -36,14 +36,24 @@ Contract rule:
 Current `client_policy` contract:
 
 - `routing_mode_default`: `all_except_ru`
-- `transport_profile`: `grpc_443_primary`
+- `transport_profile`: `legacy_reality_fallback`
 - `dns_policy`: `ru_direct_split`
 - `package_catalog_version`: versioned Android direct-app catalog stamp from shared facts
 - `ruleset_version`: versioned routing/ruleset stamp from shared facts
-- `support_context.transport`: `grpc_443_primary`
+- `support_context.transport`: `legacy_reality_fallback`
 - `support_context.routing_mode`: `all_except_ru`
 - `support_context.ip_version_preference`: `ipv4_only`
 - `support_recovery_order`: `app`, `web`, `telegram`
+
+Rollout note:
+
+- `AppSetting.network_rollout_config` resolves the transport profile for app-managed session and profile payloads
+- allowlisted carrier or cohort overrides may switch app-managed flows to `grpc_443_primary` without changing the public endpoint set
+- manual/export compatibility links stay on `legacy_reality_fallback` until a separate share-link parity wave
+- `network_rollout_config` carries `version`, `defaults`, `carrier_overrides`, `cohort_overrides`, `operator_lab`, `package_catalog_feed`, `routing_rules_feed`, and `support_recovery_order`
+- `defaults` keep `routing_mode_default=all_except_ru`, `transport_profile=legacy_reality_fallback`, and `dns_policy=ru_direct_split` until canary approval
+- overrides may only change `transport_profile`, `dns_policy`, `routing_mode_default`, and `ip_version_preference`
+- `operator_lab` is allowlist-only and must stay out of public UI and mass session/profile payloads
 
 ## App Session Model
 
@@ -123,6 +133,7 @@ Contract rule:
 - web login should continue the user into account or checkout, not into a dead-end landing
 - new user-facing `subscription_url` values must point to `connect.pokrov.space`
 - legacy `api.pokrov.space/s8Kx2mP7qR4wT/...` remains compatibility-only for older imports and recovery cases
+- the same `client_policy` contract still flows through `start-trial`, `user`, and `dashboard`, but the rollout policy behind it can vary by cohort without introducing a new endpoint
 
 ## Checkout Continuation
 
@@ -151,6 +162,7 @@ Compatibility note:
 
 - `?format=plain` still exists for backend compatibility and advanced/manual recovery
 - that compatibility override must stay out of normal user-facing onboarding and CTA copy
+- app-first managed flows may still receive `grpc_443_primary` during rollout, but manual/export recovery and legacy browser-visible compatibility paths stay on Reality until the share-link parity wave lands
 
 ## Telegram Linking Flow
 

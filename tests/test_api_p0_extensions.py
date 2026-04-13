@@ -7,6 +7,7 @@ import uuid
 from datetime import datetime, timedelta
 from pathlib import Path
 from urllib.parse import urlencode
+from unittest.mock import patch
 
 from fastapi.testclient import TestClient
 
@@ -25,6 +26,26 @@ def _sign_telegram_init_data(*, bot_token: str, params: dict) -> str:
 
 
 class ApiP0ExtensionsTests(unittest.TestCase):
+    def _rollout_client_policy(
+        self,
+        transport_profile: str,
+        *,
+        ip_version_preference: str = "ipv4_only",
+    ) -> dict[str, object]:
+        return {
+            "routing_mode_default": "all_except_ru",
+            "transport_profile": transport_profile,
+            "dns_policy": "ru_direct_split",
+            "package_catalog_version": "2026-04-13",
+            "ruleset_version": "2026-04-13",
+            "support_context": {
+                "transport": transport_profile,
+                "routing_mode": "all_except_ru",
+                "ip_version_preference": ip_version_preference,
+            },
+            "support_recovery_order": ["app", "web", "telegram"],
+        }
+
     def setUp(self) -> None:
         repo_root = Path(__file__).resolve().parents[1]
         portal_dir = str(repo_root / "portal_bot")
@@ -87,7 +108,6 @@ class ApiP0ExtensionsTests(unittest.TestCase):
         importlib.import_module("db")
         self.api = importlib.import_module("api")
         importlib.reload(self.api)
-
         from db import SessionLocal
         from models import NodeHealthSample, User
 
@@ -380,10 +400,35 @@ class ApiP0ExtensionsTests(unittest.TestCase):
         self.assertTrue(str(body["session_token"]))
         self.assertTrue(str(body["subscription_url"]).startswith("https://connect.pokrov.space/s8Kx2mP7qR4wT/"))
         self.assertEqual(body["client_policy"]["routing_mode_default"], "all_except_ru")
-        self.assertEqual(body["client_policy"]["transport_profile"], "grpc_443_primary")
+        self.assertEqual(body["client_policy"]["transport_profile"], "legacy_reality_fallback")
         self.assertEqual(body["client_policy"]["dns_policy"], "ru_direct_split")
         self.assertTrue(str(body["client_policy"]["package_catalog_version"]))
         self.assertTrue(calls)
+
+    def test_start_trial_client_policy_can_follow_rollout_override(self) -> None:
+        with patch.object(
+            self.api.app_first_service,
+            "build_client_policy",
+            return_value=self._rollout_client_policy("grpc_443_primary"),
+        ):
+            client = TestClient(self.api.app)
+            response = client.post(
+                "/api/client/session/start-trial",
+                json={
+                    "install_id": "install-override",
+                    "device_name": "Alice Pixel",
+                    "platform": "android",
+                    "os_version": "14",
+                    "app_version": "1.0.0",
+                    "locale": "ru-RU",
+                    "time_zone": "Europe/Moscow",
+                },
+            )
+
+        self.assertEqual(response.status_code, 200, response.text)
+        body = response.json()
+        self.assertEqual(body["client_policy"]["transport_profile"], "grpc_443_primary")
+        self.assertEqual(body["client_policy"]["support_context"]["transport"], "grpc_443_primary")
 
     def test_user_payload_includes_app_and_telegram_monitoring_context(self) -> None:
         from db import SessionLocal
@@ -415,7 +460,7 @@ class ApiP0ExtensionsTests(unittest.TestCase):
         self.assertEqual(body.get("linked_telegram", {}).get("id"), 777001)
         self.assertEqual(body.get("linked_telegram", {}).get("username"), "alice_linked")
         self.assertEqual(body.get("client_policy", {}).get("routing_mode_default"), "all_except_ru")
-        self.assertEqual(body.get("client_policy", {}).get("transport_profile"), "grpc_443_primary")
+        self.assertEqual(body.get("client_policy", {}).get("transport_profile"), "legacy_reality_fallback")
         self.assertEqual(body.get("client_policy", {}).get("dns_policy"), "ru_direct_split")
         self.assertEqual(body.get("client_policy", {}).get("support_context", {}).get("ip_version_preference"), "ipv4_only")
         self.assertTrue(body.get("sync", {}).get("app_identity_known"))

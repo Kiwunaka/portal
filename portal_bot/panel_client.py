@@ -12,6 +12,7 @@ from urllib.parse import quote
 import aiohttp
 
 from nodes_repo import NodeRuntime
+from transport_catalog import node_transport_profiles, transport_inbound_ids
 
 
 logger = logging.getLogger(__name__)
@@ -212,6 +213,67 @@ class PanelClient:
         if iv > 10_000_000_000:
             iv //= 1000
         return iv
+
+    @staticmethod
+    def _decode_settings(raw) -> dict:
+        if isinstance(raw, dict):
+            return dict(raw)
+        if isinstance(raw, str):
+            try:
+                parsed = json.loads(raw)
+            except Exception:
+                return {}
+            return parsed if isinstance(parsed, dict) else {}
+        return {}
+
+    def _managed_inbound_ids(self, *, include_disabled: bool = False) -> list[int]:
+        ids = transport_inbound_ids(
+            self.node,
+            include_disabled=include_disabled,
+            include_operator_lab=include_disabled,
+        )
+        if ids:
+            return ids
+        fallback = int(self.node.inbound_id or 0)
+        return [fallback] if fallback > 0 else []
+
+    def _transport_profile_for_inbound(self, inbound_id: int, *, include_disabled: bool = False) -> dict | None:
+        target_id = int(inbound_id or 0)
+        if target_id <= 0:
+            return None
+        for profile in node_transport_profiles(self.node, include_disabled=include_disabled):
+            try:
+                current_id = int(profile.get("inbound_id") or 0)
+            except Exception:
+                current_id = 0
+            if current_id == target_id:
+                return profile
+        return None
+
+    def _selected_inbounds(self, inbounds: list[dict], *, include_disabled: bool = False) -> list[dict]:
+        target_ids = set(self._managed_inbound_ids(include_disabled=include_disabled))
+        if not target_ids:
+            fallback = int(self.node.inbound_id or 0)
+            return [inb for inb in inbounds if int(inb.get("id") or 0) == fallback]
+        return [inb for inb in inbounds if int(inb.get("id") or 0) in target_ids]
+
+    async def find_clients_by_tgid(self, tg_id: int, *, include_disabled: bool = False) -> list[tuple[int, dict]]:
+        target_tg = str(tg_id).strip()
+        matches: list[tuple[int, dict]] = []
+        for inb in self._selected_inbounds(await self._get_inbounds(), include_disabled=include_disabled):
+            inbound_id = int(inb.get("id") or 0)
+            settings = self._decode_settings(inb.get("settings", "{}"))
+            for client in settings.get("clients", []) or []:
+                if str((client or {}).get("tgId", "")).strip() != target_tg:
+                    continue
+                item = dict(client or {})
+                item["_panel_inbound_id"] = inbound_id
+                profile = self._transport_profile_for_inbound(inbound_id, include_disabled=True)
+                if profile:
+                    item["_transport_profile"] = str(profile.get("name") or "")
+                matches.append((inbound_id, item))
+        matches.sort(key=lambda row: row[0])
+        return matches
 
     async def ensure_session(self) -> None:
         if self.session is None:
@@ -437,27 +499,27 @@ class PanelClient:
 
     async def get_usage_by_email(self, email: str) -> dict | None:
         """
-        Returns traffic stats from panel clientStats for this node inbound.
+        Returns aggregated traffic stats from panel clientStats across managed node inbounds.
         """
+        total_up = 0
+        total_down = 0
+        found = False
         inbounds = await self._get_inbounds()
-        for inb in inbounds:
-            if inb.get("id") != self.node.inbound_id:
-                continue
+        for inb in self._selected_inbounds(inbounds):
             for cs in inb.get("clientStats", []) or []:
                 if cs.get("email") == email:
-                    return {"up": cs.get("up", 0), "down": cs.get("down", 0), "total": cs.get("up", 0) + cs.get("down", 0)}
-        return None
+                    total_up += int(cs.get("up", 0) or 0)
+                    total_down += int(cs.get("down", 0) or 0)
+                    found = True
+        if not found:
+            return None
+        return {"up": total_up, "down": total_down, "total": total_up + total_down}
 
     async def find_client_by_tgid(self, tg_id: int) -> dict | None:
-        inbounds = await self._get_inbounds()
-        for inb in inbounds:
-            if inb.get("id") != self.node.inbound_id:
-                continue
-            settings = json.loads(inb.get("settings", "{}"))
-            for c in settings.get("clients", []):
-                if str(c.get("tgId", "")).strip() == str(tg_id).strip():
-                    return c
-        return None
+        matches = await self.find_clients_by_tgid(tg_id)
+        if not matches:
+            return None
+        return matches[0][1]
 
     async def get_client_runtime_by_tgid(self, tg_id: int) -> dict | None:
         """
@@ -467,16 +529,14 @@ class PanelClient:
         - online status when the panel exposes it (field names vary by x-ui versions)
         """
         inbounds = await self._get_inbounds()
-        for inb in inbounds:
-            if inb.get("id") != self.node.inbound_id:
-                continue
-
-            settings = json.loads(inb.get("settings", "{}"))
+        for inb in self._selected_inbounds(inbounds):
+            settings = self._decode_settings(inb.get("settings", "{}"))
             clients = settings.get("clients", []) or []
             target = None
             for c in clients:
                 if str(c.get("tgId", "")).strip() == str(tg_id).strip():
-                    target = c
+                    target = dict(c or {})
+                    target["_panel_inbound_id"] = int(inb.get("id") or 0)
                     break
             if not target:
                 continue
@@ -548,79 +608,73 @@ class PanelClient:
         - online_connections_now: current connection estimate using panel ip_count,
           with a fallback of 1 per online key when ip_count is missing
         """
-        inbounds = await self._get_inbounds()
-        target_inbound = None
-        for inb in inbounds:
-            if inb.get("id") == self.node.inbound_id:
-                target_inbound = inb
-                break
-        if not isinstance(target_inbound, dict):
+        inbounds = self._selected_inbounds(await self._get_inbounds())
+        if not inbounds:
             return {
                 "online_keys_now": 0,
                 "online_connections_now": 0,
             }
-
-        settings = json.loads(target_inbound.get("settings", "{}"))
-        clients = settings.get("clients", []) or []
-        stats_by_email: dict[str, dict] = {}
-        for stat in target_inbound.get("clientStats", []) or []:
-            email = str((stat or {}).get("email", "") or "").strip()
-            if email:
-                stats_by_email[email] = stat
-
         online_emails_fetched = False
         online_emails: set[str] = set()
-        online_keys_now = 0
-        online_connections_now = 0
+        online_keys: set[str] = set()
+        online_connections_by_email: dict[str, int] = {}
 
-        for client in clients:
-            email = str((client or {}).get("email", "") or "").strip()
-            stat = stats_by_email.get(email)
-            online = None
-            ip_count_value = None
-            last_online_epoch = None
+        for target_inbound in inbounds:
+            settings = self._decode_settings(target_inbound.get("settings", "{}"))
+            clients = settings.get("clients", []) or []
+            stats_by_email: dict[str, dict] = {}
+            for stat in target_inbound.get("clientStats", []) or []:
+                email = str((stat or {}).get("email", "") or "").strip()
+                if email:
+                    stats_by_email[email] = stat
 
-            if isinstance(stat, dict):
-                for key in ("online", "isOnline", "is_online"):
-                    if key in stat:
-                        online = self._as_bool(stat.get(key))
-                        break
-                if online is None:
-                    ip_count = stat.get("ipCount", stat.get("ip_count"))
-                    if ip_count is not None:
-                        try:
-                            ip_count_value = max(0, int(ip_count))
-                            online = ip_count_value > 0
-                        except Exception:
-                            online = None
-                            ip_count_value = None
-                for key in ("lastOnlineTime", "lastOnline", "last_online", "lastSeen", "last_seen"):
-                    if key in stat:
-                        last_online_epoch = self._as_epoch_seconds(stat.get(key))
-                        if last_online_epoch is not None:
+            for client in clients:
+                email = str((client or {}).get("email", "") or "").strip()
+                stat = stats_by_email.get(email)
+                online = None
+                ip_count_value = None
+                last_online_epoch = None
+
+                if isinstance(stat, dict):
+                    for key in ("online", "isOnline", "is_online"):
+                        if key in stat:
+                            online = self._as_bool(stat.get(key))
                             break
+                    if online is None:
+                        ip_count = stat.get("ipCount", stat.get("ip_count"))
+                        if ip_count is not None:
+                            try:
+                                ip_count_value = max(0, int(ip_count))
+                                online = ip_count_value > 0
+                            except Exception:
+                                online = None
+                                ip_count_value = None
+                    for key in ("lastOnlineTime", "lastOnline", "last_online", "lastSeen", "last_seen"):
+                        if key in stat:
+                            last_online_epoch = self._as_epoch_seconds(stat.get(key))
+                            if last_online_epoch is not None:
+                                break
 
-            if online is None and email:
-                if not online_emails_fetched:
-                    online_emails_fetched, online_emails = await self._get_online_emails()
-                if online_emails_fetched:
-                    online = email in online_emails
-            if online is None and last_online_epoch is not None:
-                recent_sec = max(15, self._to_int(os.getenv("PANEL_ONLINE_RECENT_SECONDS"), 90))
-                online = (int(datetime.now(timezone.utc).timestamp()) - int(last_online_epoch)) <= recent_sec
+                if online is None and email:
+                    if not online_emails_fetched:
+                        online_emails_fetched, online_emails = await self._get_online_emails()
+                    if online_emails_fetched:
+                        online = email in online_emails
+                if online is None and last_online_epoch is not None:
+                    recent_sec = max(15, self._to_int(os.getenv("PANEL_ONLINE_RECENT_SECONDS"), 90))
+                    online = (int(datetime.now(timezone.utc).timestamp()) - int(last_online_epoch)) <= recent_sec
 
-            if online is not True:
-                continue
-
-            online_keys_now += 1
-            if ip_count_value is not None:
-                online_connections_now += max(0, int(ip_count_value))
-            else:
-                online_connections_now += 1
+                if online is not True or not email:
+                    continue
+                online_keys.add(email)
+                online_connections_by_email[email] = max(
+                    int(online_connections_by_email.get(email, 0)),
+                    max(1, int(ip_count_value or 1)),
+                )
 
         return {
-            "online_keys_now": int(online_keys_now),
-            "online_connections_now": int(online_connections_now),
+            "online_keys_now": int(len(online_keys)),
+            "online_connections_now": int(sum(online_connections_by_email.values())),
         }
 
     async def add_client(
@@ -634,6 +688,7 @@ class PanelClient:
         total_gb: int = 0,
         expiry_time: int = 0,
         flow: str,
+        inbound_id: int | None = None,
     ) -> bool:
         if not self.cookies:
             ok = await self.login()
@@ -650,7 +705,7 @@ class PanelClient:
         client_obj = {
             "id": client_uuid,
             "email": email,
-            "flow": flow,
+            "flow": str(flow or self.node.flow or ""),
             "totalGB": total_gb_bytes,
             "expiryTime": 0,
             "subId": sub_id,
@@ -659,7 +714,10 @@ class PanelClient:
             "limitIp": limit_ip,
             "reset": 0,
         }
-        payload = {"id": self.node.inbound_id, "settings": json.dumps({"clients": [client_obj]})}
+        target_inbound_id = int(inbound_id or self.node.inbound_id or 0)
+        if target_inbound_id <= 0:
+            return False
+        payload = {"id": target_inbound_id, "settings": json.dumps({"clients": [client_obj]})}
         try:
             async with self.session.post(
                 f"{self._base()}/panel/api/inbounds/addClient",
@@ -681,6 +739,8 @@ class PanelClient:
         enable: bool,
         sub_id: str | None = None,
         hard_cap_gb_override: int | None = None,
+        inbound_id: int | None = None,
+        flow: str | None = None,
     ) -> bool:
         if not self.cookies:
             ok = await self.login()
@@ -699,7 +759,7 @@ class PanelClient:
         updated = {
             "id": client.get("id"),
             "email": client.get("email"),
-            "flow": client.get("flow", self.node.flow),
+            "flow": str(flow or client.get("flow") or self.node.flow or ""),
             "totalGB": total_gb_bytes,
             "expiryTime": 0,
             "subId": str(sub_id or client.get("subId", "") or ""),
@@ -713,7 +773,10 @@ class PanelClient:
         if client.get("comment"):
             updated["comment"] = client["comment"]
 
-        payload = {"id": self.node.inbound_id, "settings": json.dumps({"clients": [updated]})}
+        target_inbound_id = int(inbound_id or client.get("_panel_inbound_id") or self.node.inbound_id or 0)
+        if target_inbound_id <= 0:
+            return False
+        payload = {"id": target_inbound_id, "settings": json.dumps({"clients": [updated]})}
         try:
             async with self.session.post(
                 f"{self._base()}/panel/api/inbounds/updateClient/{updated['id']}",
@@ -729,7 +792,7 @@ class PanelClient:
             logger.exception("update_client_enable error node=%s: %s", self.node.code, e)
             return False
 
-    async def _reset_client_traffic_by_email(self, *, email: str) -> bool:
+    async def _reset_client_traffic_by_email(self, *, email: str, inbound_id: int | None = None) -> bool:
         """
         Try known 3x-ui API paths for traffic reset.
         Different panel builds expose different routes.
@@ -742,8 +805,11 @@ class PanelClient:
                 return False
         await self.ensure_session()
         encoded_email = quote(str(email), safe="")
+        target_inbound_id = int(inbound_id or self.node.inbound_id or 0)
+        if target_inbound_id <= 0:
+            return False
         paths = [
-            f"/panel/api/inbounds/{int(self.node.inbound_id)}/resetClientTraffic/{encoded_email}",
+            f"/panel/api/inbounds/{target_inbound_id}/resetClientTraffic/{encoded_email}",
             f"/panel/api/inbounds/resetClientTraffic/{encoded_email}",
         ]
         for path in paths:
@@ -762,7 +828,13 @@ class PanelClient:
                 continue
         return False
 
-    async def _update_client_with_reset_flag(self, client: dict) -> bool:
+    async def _update_client_with_reset_flag(
+        self,
+        client: dict,
+        *,
+        inbound_id: int | None = None,
+        flow: str | None = None,
+    ) -> bool:
         """
         Fallback path when explicit reset endpoint is unavailable.
         """
@@ -777,7 +849,7 @@ class PanelClient:
         updated = {
             "id": client.get("id"),
             "email": client.get("email"),
-            "flow": client.get("flow", self.node.flow),
+            "flow": str(flow or client.get("flow") or self.node.flow or ""),
             "totalGB": total_gb_bytes,
             "expiryTime": 0,
             "subId": client.get("subId", ""),
@@ -789,7 +861,10 @@ class PanelClient:
         }
         if client.get("comment"):
             updated["comment"] = client["comment"]
-        payload = {"id": self.node.inbound_id, "settings": json.dumps({"clients": [updated]})}
+        target_inbound_id = int(inbound_id or client.get("_panel_inbound_id") or self.node.inbound_id or 0)
+        if target_inbound_id <= 0:
+            return False
+        payload = {"id": target_inbound_id, "settings": json.dumps({"clients": [updated]})}
         try:
             async with self.session.post(
                 f"{self._base()}/panel/api/inbounds/updateClient/{updated['id']}",
@@ -805,13 +880,21 @@ class PanelClient:
             return False
 
     async def reset_client_traffic_by_tgid(self, tg_id: int) -> bool:
-        client = await self.find_client_by_tgid(int(tg_id))
-        if not client:
+        matches = await self.find_clients_by_tgid(int(tg_id))
+        if not matches:
             return False
-        email = str(client.get("email") or "").strip()
-        if await self._reset_client_traffic_by_email(email=email):
-            return True
-        return await self._update_client_with_reset_flag(client)
+        ok_all = True
+        for inbound_id, client in matches:
+            email = str(client.get("email") or "").strip()
+            if await self._reset_client_traffic_by_email(email=email, inbound_id=inbound_id):
+                continue
+            flow = None
+            profile = self._transport_profile_for_inbound(inbound_id, include_disabled=True)
+            if profile:
+                flow = str(profile.get("flow") or client.get("flow") or self.node.flow or "")
+            ok = await self._update_client_with_reset_flag(client, inbound_id=inbound_id, flow=flow)
+            ok_all = ok_all and ok
+        return ok_all
 
     async def _delete_client_from_inbound(self, *, inbound_id: int, client_uuid: str) -> bool:
         if not self.cookies:
@@ -838,24 +921,27 @@ class PanelClient:
             )
             return False
 
-    async def _cleanup_cross_inbound_conflicts(self, *, tg_id: int, email: str) -> bool:
+    async def _cleanup_cross_inbound_conflicts(
+        self,
+        *,
+        tg_id: int,
+        email: str,
+        preserve_inbound_ids: set[int] | None = None,
+    ) -> bool:
         """
         3x-ui enforces unique email per node (not only per inbound).
         If a user was moved between plan inbounds (e.g. pl_free -> pl), stale records
         in another inbound can block addClient with "Duplicate email".
         """
         inbounds = await self._get_inbounds()
-        target_inbound = int(self.node.inbound_id)
+        preserved = {int(x) for x in (preserve_inbound_ids or set()) if int(x) > 0}
         to_delete: list[tuple[int, str]] = []
 
         for inb in inbounds:
             inb_id = int(inb.get("id") or 0)
-            if inb_id <= 0 or inb_id == target_inbound:
+            if inb_id <= 0 or inb_id in preserved:
                 continue
-            try:
-                settings = json.loads(inb.get("settings", "{}"))
-            except Exception:
-                settings = {}
+            settings = self._decode_settings(inb.get("settings", "{}"))
             clients = settings.get("clients", []) or []
             for c in clients:
                 c_id = str(c.get("id") or "").strip()
@@ -901,33 +987,99 @@ class PanelClient:
         """
         Idempotent: if client exists, just toggle enable; otherwise add.
         """
-        existing = await self.find_client_by_tgid(tg_id)
-        if existing:
-            # Always normalize client fields according to current node policy.
-            return await self.update_client_enable(existing, enable, sub_id=sub_id)
-        # Handle stale records on other inbounds before add (e.g. free->paid transitions).
-        await self._cleanup_cross_inbound_conflicts(tg_id=tg_id, email=email)
-        ok = await self.add_client(
-            client_uuid=client_uuid,
-            email=email,
-            tg_id=tg_id,
-            sub_id=sub_id,
-            enable=enable,
-            flow=self.node.flow,
-        )
-        if ok:
+        target_inbound_ids = self._managed_inbound_ids()
+        if not target_inbound_ids:
+            target_inbound_ids = [int(self.node.inbound_id or 0)]
+        target_inbound_ids = [x for x in target_inbound_ids if int(x) > 0]
+        if not target_inbound_ids:
+            return False
+
+        existing_by_inbound: dict[int, dict] = {}
+        existing_primary = await self.find_client_by_tgid(tg_id)
+        if existing_primary:
+            primary_inbound_id = int(existing_primary.get("_panel_inbound_id") or target_inbound_ids[0])
+            if primary_inbound_id > 0:
+                existing_by_inbound[primary_inbound_id] = existing_primary
+
+        using_default_find = getattr(getattr(self, "find_client_by_tgid", None), "__func__", None) is PanelClient.find_client_by_tgid
+        if using_default_find and len(target_inbound_ids) > 1:
+            existing_by_inbound = {
+                inbound_id: client for inbound_id, client in await self.find_clients_by_tgid(tg_id)
+            } or existing_by_inbound
+        ok_all = True
+        attempted_add = False
+
+        for inbound_id in target_inbound_ids:
+            existing = existing_by_inbound.get(inbound_id)
+            profile = self._transport_profile_for_inbound(inbound_id, include_disabled=True) or {}
+            flow = str(profile.get("flow") or self.node.flow or "")
+            if existing:
+                try:
+                    ok = await self.update_client_enable(
+                        existing,
+                        enable,
+                        sub_id=sub_id,
+                        inbound_id=inbound_id,
+                        flow=flow,
+                    )
+                except TypeError:
+                    ok = await self.update_client_enable(existing, enable, sub_id=sub_id)
+                ok_all = ok_all and ok
+                continue
+            attempted_add = True
+            ok = await self.add_client(
+                client_uuid=client_uuid,
+                email=email,
+                tg_id=tg_id,
+                sub_id=sub_id,
+                enable=enable,
+                flow=flow,
+                inbound_id=inbound_id,
+            )
+            ok_all = ok_all and ok
+
+        cleanup_ok = True
+        if attempted_add or len(target_inbound_ids) > 1:
+            try:
+                cleanup_ok = await self._cleanup_cross_inbound_conflicts(
+                    tg_id=tg_id,
+                    email=email,
+                    preserve_inbound_ids=set(target_inbound_ids),
+                )
+            except TypeError:
+                cleanup_ok = await self._cleanup_cross_inbound_conflicts(tg_id=tg_id, email=email)
+            ok_all = ok_all and cleanup_ok
+        if ok_all:
             return True
 
-        # One retry after conflict cleanup in case panel side state was stale.
-        await self._cleanup_cross_inbound_conflicts(tg_id=tg_id, email=email)
-        return await self.add_client(
-            client_uuid=client_uuid,
-            email=email,
-            tg_id=tg_id,
-            sub_id=sub_id,
-            enable=enable,
-            flow=self.node.flow,
-        )
+        if not attempted_add:
+            return False
+
+        try:
+            cleanup_retry_ok = await self._cleanup_cross_inbound_conflicts(
+                tg_id=tg_id,
+                email=email,
+                preserve_inbound_ids=set(target_inbound_ids),
+            )
+        except TypeError:
+            cleanup_retry_ok = await self._cleanup_cross_inbound_conflicts(tg_id=tg_id, email=email)
+        retry_ok = True
+        for inbound_id in target_inbound_ids:
+            if inbound_id in existing_by_inbound:
+                continue
+            profile = self._transport_profile_for_inbound(inbound_id, include_disabled=True) or {}
+            flow = str(profile.get("flow") or self.node.flow or "")
+            ok = await self.add_client(
+                client_uuid=client_uuid,
+                email=email,
+                tg_id=tg_id,
+                sub_id=sub_id,
+                enable=enable,
+                flow=flow,
+                inbound_id=inbound_id,
+            )
+            retry_ok = retry_ok and ok
+        return cleanup_retry_ok and retry_ok
 
     async def delete_client_uuid(self, client_uuid: str) -> bool:
         if not self.cookies:
@@ -935,24 +1087,42 @@ class PanelClient:
             if not ok:
                 return False
         await self.ensure_session()
-        try:
-            async with self.session.post(
-                f"{self._base()}/panel/api/inbounds/{self.node.inbound_id}/delClient/{client_uuid}",
-                cookies=self.cookies,
-                timeout=aiohttp.ClientTimeout(total=20),
-            ) as resp:
-                if resp.status != 200:
-                    return False
-                data = await resp.json()
-                return bool(data.get("success"))
-        except Exception as e:
-            logger.exception("delete_client error node=%s: %s", self.node.code, e)
-            return False
+        ok_any = False
+        ok_all = True
+        for inbound_id in self._managed_inbound_ids(include_disabled=True):
+            try:
+                async with self.session.post(
+                    f"{self._base()}/panel/api/inbounds/{inbound_id}/delClient/{client_uuid}",
+                    cookies=self.cookies,
+                    timeout=aiohttp.ClientTimeout(total=20),
+                ) as resp:
+                    if resp.status != 200:
+                        ok_all = False
+                        continue
+                    data = await resp.json()
+                    ok = bool(data.get("success"))
+                    ok_any = ok_any or ok
+                    ok_all = ok_all and ok
+            except Exception as e:
+                logger.exception("delete_client error node=%s inbound_id=%s: %s", self.node.code, inbound_id, e)
+                ok_all = False
+        return ok_any and ok_all
 
     async def update_client_comment_by_tgid(self, tg_id: int, comment: str) -> bool:
-        client = await self.find_client_by_tgid(tg_id)
-        if not client:
+        matches = await self.find_clients_by_tgid(tg_id)
+        if not matches:
             return False
-        client["comment"] = comment
-        # Reuse enable update path with same enable state
-        return await self.update_client_enable(client, client.get("enable", True))
+        ok_all = True
+        for inbound_id, client in matches:
+            updated = dict(client)
+            updated["comment"] = comment
+            profile = self._transport_profile_for_inbound(inbound_id, include_disabled=True) or {}
+            flow = str(profile.get("flow") or updated.get("flow") or self.node.flow or "")
+            ok = await self.update_client_enable(
+                updated,
+                updated.get("enable", True),
+                inbound_id=inbound_id,
+                flow=flow,
+            )
+            ok_all = ok_all and ok
+        return ok_all

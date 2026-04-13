@@ -214,6 +214,7 @@ class Node(Base):
     ipv6_health = Column(String(32), nullable=True)
     last_probe_classification = Column(String(64), nullable=True)
     transport_health_json = Column(Text, nullable=True)
+    transport_profiles_json = Column(Text, nullable=True)
     observer_push_secret = Column(String(128), nullable=True)
     observer_last_push_at = Column(DateTime, nullable=True)
     observer_last_batch_id = Column(String(128), nullable=True)
