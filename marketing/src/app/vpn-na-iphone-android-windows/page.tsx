@@ -3,11 +3,11 @@ import MarketingLanding, { buildMarketingMetadata } from "../../components/marke
 import { buildBreadcrumbJsonLd } from "../../lib/marketing-site";
 
 export const metadata = buildMarketingMetadata(
-  "VPN на iPhone, Android и Windows | POKROV VPN",
-  "Приложение как основной старт, тест на 5 дней и понятный маршрут к кабинету на основных устройствах.",
+  "Оптимизатор для Android и Windows | POKROV Network",
+  "Приложение как основной старт, 5 дней тест-драйва и идеальное ускорение на всех ваших устройствах.",
   {
     path: "/vpn-na-iphone-android-windows/",
-    keywords: ["vpn на iphone android windows", "впн iphone android windows", "vpn для windows", "vpn для android"],
+    keywords: ["ускоритель на windows", "ускоритель на android", "стабильная сеть для пк", "оптимизатор интернета"],
   },
 );
 
@@ -16,8 +16,8 @@ export default function MultiDeviceVpnPage() {
     <>
       <JsonLd
         data={buildBreadcrumbJsonLd([
-          { name: "POKROV VPN", path: "/" },
-          { name: "VPN на iPhone, Android и Windows", path: "/vpn-na-iphone-android-windows/" },
+          { name: "POKROV Network", path: "/" },
+          { name: "Устройства", path: "/vpn-na-iphone-android-windows/" },
         ])}
       />
       <MarketingLanding
@@ -32,19 +32,19 @@ export default function MultiDeviceVpnPage() {
             eyebrow: "Android + Windows",
             glyph: "window",
             title: "Основной релизный путь уже готов",
-            desc: "Именно эти платформы входят в текущий public promise, поэтому старт, тест и продление выстроены вокруг них.",
+            desc: "Именно эти платформы входят в текущий public promise, поэтому старт, тест-драйв и ускорение выстроены вокруг них.",
           },
           {
             eyebrow: "Apple readiness",
             glyph: "orbit",
-            title: "Никаких ложных обещаний по iPhone и Mac",
-            desc: "Если устройство Apple важно уже сейчас, страница честно показывает readiness-направление без подмены обещаний.",
+            title: "Работаем над поддержкой iPhone и Mac",
+            desc: "Если устройство Apple важно уже сейчас, страница честно показывает статус готовности без ложных обещаний.",
           },
           {
             eyebrow: "Один бренд-маршрут",
             glyph: "route",
-            title: "Какое бы устройство вы ни искали, логика остаётся одной",
-            desc: "Сайт отвечает за вход и выбор, приложение — за первый опыт, кабинет — за продолжение и управление доступом.",
+            title: "Единая логика для всех устройств",
+            desc: "Сайт отвечает за старт, приложение — за магию скорости, кабинет — за управление вашим доступом.",
           },
         ]}
         clusterTitle="Страница выбора устройства"

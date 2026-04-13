@@ -84,10 +84,10 @@ export function resolveTrafficStatusText(
   const limitGb = getTrafficLimitGb(dash, user);
 
   if (isPaidUnlimitedState(state) || isTrialPremiumState(state)) {
-    return "безлимитный";
+    return "доступен разгон";
   }
   if (isSoftModeState(state) && limitGb != null) {
-    return `мягкий режим после ${formatTrafficGb(limitGb)}`;
+    return `базовый режим после ${formatTrafficGb(limitGb)}`;
   }
   if (limitGb != null) {
     return `${formatTrafficGb(limitGb)} / месяц`;
@@ -100,11 +100,11 @@ export function resolvePlanLabel(
   user?: UserPayload | null,
 ): string {
   const state = getAccessState(dash, user);
-  if (state === "paid_unlimited") return "PAID";
-  if (state === "trial_premium") return "PREMIUM TRIAL";
+  if (state === "paid_unlimited") return "FULL ACCESS";
+  if (state === "trial_premium") return "PREMIUM TEST-DRIVE";
   if (state === "bonus_premium") return "PREMIUM BONUS";
   if (state === "free_monthly") return "FREE MONTHLY";
-  if (state === "free_soft_mode") return "FREE SOFT MODE";
+  if (state === "free_soft_mode") return "FREE BASIC MODE";
   return String(dash?.current_plan_code || user?.current_plan_code || dash?.sub_type || user?.sub_type || "—");
 }
 
