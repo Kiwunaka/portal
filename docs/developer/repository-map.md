@@ -1,6 +1,6 @@
 # Repository Map
 
-Last updated: 2026-04-08
+Last updated: 2026-04-13
 
 ## Document Status
 
@@ -15,10 +15,10 @@ Legacy filename note:
 
 | Path | Purpose | Local authority |
 | --- | --- | --- |
-| `portal_bot/` | FastAPI backend, Telegram bots, worker, data model, panel sync | root canonical docs plus code |
-| `webapp/` | Next.js user cabinet and primary admin surface | `webapp/README.md`, `webapp/src/app/(dashboard)/admin/`, `webapp/src/lib/api.ts`, `webapp/e2e/` |
-| `marketing/` | public website, checkout, legal pages, SEO routes and brand assets | root canonical docs plus `marketing/src/`, `marketing/public/`, `shared/copy.ts`, `copy/catalog.ru.json` |
-| `shared/` | shared host config and public copy for bot/site/app | `shared/portal-config.ts`, `shared/copy.ts` |
+| `portal_bot/` | FastAPI backend, Telegram bots, worker, data model, panel sync | root canonical docs plus `portal_bot/api.py`, `portal_bot/app_first_service.py`, `portal_bot/channel_bonus_service.py`, and related tests |
+| `webapp/` | Next.js user cabinet and primary admin surface | `webapp/README.md`, `webapp/src/app/(dashboard)/admin/`, `webapp/src/components/admin/users/`, `webapp/src/lib/api.ts`, `webapp/e2e/` |
+| `marketing/` | public website, checkout, legal pages, SEO routes and brand assets | root canonical docs plus `marketing/src/`, `marketing/src/app/install/`, `marketing/public/`, `shared/copy.ts`, `shared/product-facts.json`, `shared/public-urls.json`, `copy/catalog.ru.json` |
+| `shared/` | shared host config, locked product facts, design tokens, and public copy for bot/site/app | `shared/portal-config.ts`, `shared/product-facts.json`, `shared/public-urls.json`, `shared/design-tokens.json`, `shared/copy.ts` |
 | `infra/` | runtime units and infra assets | `infra/portal-node-metrics.service`, `infra/portal-node-metrics.timer`, `infra/portal-node-observer.service`, `infra/portal-node-observer.timer` |
 | `scripts/` | deploy, smoke, node, release, audit, migration scripts | this file and `docs/operations/deployment-and-access.md` |
 | `docs/operations/publishing-and-signing-guide.md` | canonical store, certificate, and release artifact guidance | this file and the operations guide itself |
@@ -45,6 +45,7 @@ Legacy filename note:
 
 - `remote_deploy_brain_portal_code.py`
 - `remote_deploy_brain_static_sites.py`
+- `remote_brain_apply_release_handoff.py`
 - `remote_install_mini_canary_stack.py`
 - `remote_switch_bot_tokens.py`
 - `release_orchestrator.py`
@@ -56,6 +57,7 @@ Legacy filename note:
 - `api_lifecycle_smoke.py`
 - `client_security_smoke.py`
 - `release_gate_check.py`
+- `run_client_release_gate.py`
 - `render_ru_probe_report.py`
 - `ru_probe_runner.py`
 - `smoke_client_apps.py`
@@ -93,12 +95,14 @@ Marketing-specific release checks now live in:
 - `migrate_sqlite_to_postgres.py`
 - `migrate_to_nodes.py`
 - `seed_nodes_from_facts.py`
+- `sync_shared_surface_facts.py`
 
 ## Test Matrix
 
 ### Backend and API
 
 - `portal_bot/tests/test_app_first_api.py`
+- `tests/test_shared_surface_facts.py`
 - `tests/test_portal_api.py`
 - `tests/test_api_auth_and_tickets.py`
 - `tests/test_api_payments_callbacks.py`
@@ -139,11 +143,19 @@ Marketing-specific release checks now live in:
 ### Client release verification
 
 - `python scripts/client_security_smoke.py`
+- `python scripts/run_client_release_gate.py test --suite portal`
+- `python scripts/run_client_release_gate.py test --suite full`
+- `python scripts/run_client_release_gate.py build --target windows`
+- `python scripts/run_client_release_gate.py build --target android-apk`
+- `python scripts/run_client_release_gate.py build --target android-aab`
+- `python scripts/release_gate_check.py --client-platform-gates windows,android-apk,android-aab`
 - `python scripts/android_localhost_audit.py --serial <device-serial> --connect-wait-sec 30 --disconnect-wait-sec 15`
-- `flutter test test/features/portal`
+- focused inner-loop inside `external/client-fork/app/`: `flutter test test/features/portal`
+- `release_gate_check.py` requires `ANDROID_AUDIT_SERIAL=<physical-device-serial>` when Android build gates are requested and rejects emulator serials for that public-release path
 - Android release-build localhost-listener audit before connect, after connect, and after disconnect
 - unauthorized local-client attempt against any proxy, DNS, Clash API, or command surface
-- routing preset smoke for `Global` and `Все, кроме РФ`
+- public routing preset smoke for `Global` and `All except RU`
+- hidden/internal `Blocked only` verification only after geo assets and DNS behavior are ready
 - DNS split and leak validation on Android and Windows
 - node-reachability evidence split into `current-origin`, `brain-origin`, and `RU-origin` checks
 

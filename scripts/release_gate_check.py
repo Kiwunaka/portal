@@ -193,6 +193,33 @@ def _optional_android_localhost_audit_gate() -> tuple[str, list[str], Path] | No
     )
 
 
+def _required_android_localhost_audit_gate() -> tuple[str, list[str], Path]:
+    gate = _optional_android_localhost_audit_gate()
+    if gate is None:
+        raise ValueError(
+            "ANDROID_AUDIT_SERIAL must reference a physical Android device when Android client build gates are requested"
+        )
+    serial = str(os.getenv("ANDROID_AUDIT_SERIAL", "") or "").strip().lower()
+    if serial.startswith("emulator-"):
+        raise ValueError(
+            "ANDROID_AUDIT_SERIAL must reference physical hardware, not an emulator, when Android client build gates are requested"
+        )
+    return gate
+
+
+def _select_android_localhost_audit_gate(
+    *, client_platform_gates: list[str]
+) -> tuple[str, list[str], Path] | None:
+    requires_android_audit = any(
+        target in {"android-apk", "android-aab"} for target in client_platform_gates
+    )
+    return (
+        _required_android_localhost_audit_gate()
+        if requires_android_audit
+        else _optional_android_localhost_audit_gate()
+    )
+
+
 def _api_lifecycle_smoke_gate() -> tuple[str, list[str], Path]:
     return (
         "API lifecycle smoke",
@@ -216,6 +243,31 @@ def _client_security_smoke_gate() -> tuple[str, list[str], Path]:
     return (
         "Client security smoke",
         [sys.executable, "scripts/client_security_smoke.py"],
+        REPO_ROOT,
+    )
+
+
+def _client_flutter_test_gate(*, suite: str) -> tuple[str, list[str], Path]:
+    gate_names = {
+        "full": "Client Flutter tests",
+        "portal": "Client portal Flutter tests",
+    }
+    return (
+        gate_names[suite],
+        [sys.executable, "scripts/run_client_release_gate.py", "test", "--suite", suite],
+        REPO_ROOT,
+    )
+
+
+def _client_build_gate(*, target: str) -> tuple[str, list[str], Path]:
+    gate_names = {
+        "windows": "Client Windows release build",
+        "android-apk": "Client Android APK build",
+        "android-aab": "Client Android AAB build",
+    }
+    return (
+        gate_names[target],
+        [sys.executable, "scripts/run_client_release_gate.py", "build", "--target", target],
         REPO_ROOT,
     )
 
@@ -248,11 +300,24 @@ def _predeploy_node_readiness_gate(
     )
 
 
-def _default_gates() -> list[tuple[str, list[str], Path]]:
-    return [
+def _parse_client_platform_gates(raw_value: str) -> list[str]:
+    source = str(raw_value or "").strip() or str(os.getenv("CLIENT_PLATFORM_GATES", "") or "").strip()
+    if not source:
+        return []
+    valid = {"windows", "android-apk", "android-aab"}
+    parsed = [item.strip().lower() for item in source.split(",") if item.strip()]
+    invalid = [item for item in parsed if item not in valid]
+    if invalid:
+        raise ValueError(f"unsupported client platform gates: {', '.join(invalid)}")
+    return parsed
+
+
+def _default_gates(*, client_platform_gates: list[str] | None = None) -> list[tuple[str, list[str], Path]]:
+    gates = [
         _release_pytest_gate(),
         ("Admin/auth regressions", [sys.executable, "-m", "pytest", "tests/test_api_auth_and_tickets.py", "-q"], REPO_ROOT),
         _client_security_smoke_gate(),
+        _client_flutter_test_gate(suite="full"),
         _api_lifecycle_smoke_gate(),
         ("Public link checks", [sys.executable, "scripts/check-links.py"], REPO_ROOT),
         ("Marketing production build", [_npm_exec(), "run", "build"], REPO_ROOT / "marketing"),
@@ -261,12 +326,16 @@ def _default_gates() -> list[tuple[str, list[str], Path]]:
         ("WebApp Playwright E2E", [_npm_exec(), "run", "test:e2e"], REPO_ROOT / "webapp"),
         ("UI visual smoke", [sys.executable, "scripts/ui_visual_smoke.py"], REPO_ROOT),
     ]
+    for target in client_platform_gates or []:
+        gates.append(_client_build_gate(target=target))
+    return gates
 
 
-def _quick_gates() -> list[tuple[str, list[str], Path]]:
-    return [
+def _quick_gates(*, client_platform_gates: list[str] | None = None) -> list[tuple[str, list[str], Path]]:
+    gates = [
         ("Critical worker regression", [sys.executable, "-m", "pytest", "tests/test_worker_retention.py", "-q"], REPO_ROOT),
         _client_security_smoke_gate(),
+        _client_flutter_test_gate(suite="portal"),
         _api_lifecycle_smoke_gate(),
         ("Public link checks", [sys.executable, "scripts/check-links.py"], REPO_ROOT),
         ("Marketing production build", [_npm_exec(), "run", "build"], REPO_ROOT / "marketing"),
@@ -275,6 +344,9 @@ def _quick_gates() -> list[tuple[str, list[str], Path]]:
         ("WebApp Playwright E2E", [_npm_exec(), "run", "test:e2e"], REPO_ROOT / "webapp"),
         ("UI visual smoke", [sys.executable, "scripts/ui_visual_smoke.py"], REPO_ROOT),
     ]
+    for target in client_platform_gates or []:
+        gates.append(_client_build_gate(target=target))
+    return gates
 
 
 def main() -> int:
@@ -294,7 +366,21 @@ def main() -> int:
     parser.add_argument("--ssh-user", default="root")
     parser.add_argument("--ssh-port", type=int, default=29374)
     parser.add_argument("--passwords", default=str(REPO_ROOT / "VPN NODE SSH KEYS" / "PASSWORDS.txt"))
+    parser.add_argument(
+        "--client-platform-gates",
+        default="",
+        help="Optional comma-separated client build gates: windows,android-apk,android-aab",
+    )
     args = parser.parse_args()
+
+    try:
+        client_platform_gates = _parse_client_platform_gates(args.client_platform_gates)
+        android_localhost_audit_gate = _select_android_localhost_audit_gate(
+            client_platform_gates=client_platform_gates
+        )
+    except ValueError as exc:
+        print(f"[fail] {exc}")
+        return 2
 
     gates: list[tuple[str, list[str], Path]] = []
     if str(args.brain_ip or "").strip():
@@ -308,7 +394,7 @@ def main() -> int:
             )
         )
 
-    gates.extend(_default_gates())
+    gates.extend(_default_gates(client_platform_gates=client_platform_gates))
     if args.quick:
         gates = []
         if str(args.brain_ip or "").strip():
@@ -321,13 +407,12 @@ def main() -> int:
                     passwords=args.passwords,
                 )
             )
-        gates.extend(_quick_gates())
+        gates.extend(_quick_gates(client_platform_gates=client_platform_gates))
 
     runtime_smoke_gate = _optional_runtime_smoke_gate()
     if runtime_smoke_gate is not None:
         gates.append(runtime_smoke_gate)
 
-    android_localhost_audit_gate = _optional_android_localhost_audit_gate()
     if android_localhost_audit_gate is not None:
         gates.append(android_localhost_audit_gate)
 

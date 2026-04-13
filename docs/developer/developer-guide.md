@@ -1,6 +1,6 @@
 # Developer Guide
 
-Last updated: 2026-04-12
+Last updated: 2026-04-13
 
 ## Document Status
 
@@ -87,12 +87,19 @@ python scripts/release_orchestrator.py --gates-only
 
 Notes:
 
-- `release_gate_check.py` now runs the canonical public-v1 `pytest` matrix plus client security smoke, lifecycle smoke, link checks, marketing/webapp production builds, and Playwright browser E2E.
-- `scripts/release_orchestrator.py --gates-only` is the one-command entrypoint when you want the documented gate flow without remote deploy steps.
+- `release_gate_check.py` now runs the canonical public-v1 `pytest` matrix plus admin/auth regression, client security smoke, `python scripts/run_client_release_gate.py test --suite full`, lifecycle smoke, link checks, marketing/webapp production builds, admin webapp smoke, Playwright browser E2E, and UI visual smoke.
+- `release_gate_check.py --quick` swaps the default full client Flutter suite for `python scripts/run_client_release_gate.py test --suite portal`.
+- add `--client-platform-gates windows,android-apk,android-aab` or set `CLIENT_PLATFORM_GATES` when you want the same report to include artifact-producing client builds.
+- once `CLIENT_PLATFORM_GATES` includes `android-apk` or `android-aab`, `release_gate_check.py` requires `ANDROID_AUDIT_SERIAL` and treats emulator serials as preflight-only, not as a valid public-release audit.
+- `scripts/release_orchestrator.py --gates-only` is the one-command entrypoint when you want the documented gate flow without remote deploy, release handoff sync, or post-deploy verify steps.
+- latest verified local run: `python scripts/release_orchestrator.py --gates-only` exited `0` on `2026-04-13`; see `docs/audit-artifacts/release_gate_report.md` for the current local gate snapshot.
 - Add `--brain-ip 82.21.114.104` when you also want the predeploy node-readiness gate included in the same report.
-- After client artifacts are published, use `--release-env-file external/client-fork/release-links.env` with `release_orchestrator.py` to sync runtime download URLs before deploy or verify.
+- `--release-env-file` cannot be combined with `--gates-only`; after client artifacts are published, use it with the full `release_orchestrator.py` flow to sync runtime download URLs before deploy or verify.
 - `scripts/client_security_smoke.py` is the repo-level static guardrail for default local-surface settings, RU preset groundwork, and known localhost control paths; it does not replace the required Android release-build reachability audit.
 - set `ANDROID_AUDIT_SERIAL=<device-serial>` before `release_gate_check.py` when you want the opt-in adb runtime localhost audit folded into the same report
+- set `ANDROID_AUDIT_CONNECT_WAIT_SEC` and `ANDROID_AUDIT_DISCONNECT_WAIT_SEC` when that adb localhost audit needs non-default timing
+- without `ANDROID_AUDIT_SERIAL`, a green repo/static gate run still does not authorize Android public publication
+- an emulator-backed `ANDROID_AUDIT_SERIAL` run is useful for adb preflight, but the final Android public-release gate still requires `python scripts/android_localhost_audit.py` on physical hardware
 
 Deploy backend:
 
@@ -135,7 +142,8 @@ python ..\scripts\ui_visual_smoke.py
 Marketing release rules:
 
 - public acquisition CTA must never route users into raw `connect.pokrov.space`
-- Android and Windows download CTA should use runtime `APP_*` release URLs when they exist, otherwise the install/docs fallback
+- authenticated WebApp download CTA should use `/api/client/apps` runtime URLs first, then the `APP_*` / docs fallback
+- marketing download CTA is build-time and must be rebuilt/redeployed when `NEXT_PUBLIC_APP_*` public URLs change
 - public `Открыть кабинет` CTA should point to `https://app.pokrov.space/`
 - pricing CTA should enter through public `/checkout/` with plan context, not directly through `pay.pokrov.space`
 - `robots.ts`, `sitemap.ts`, `manifest.ts`, favicon, apple icon, and share-preview assets are part of the release contract, not optional polish
@@ -149,20 +157,25 @@ After the current premium/SEO/copy pass, keep this split explicit:
 - `connect.pokrov.space` is config delivery only and must not be treated as a public acquisition page
 - when a task spans both surfaces, verify the handoff `pokrov.space -> app.pokrov.space` instead of reviewing each side in isolation
 
-Run inside the client repo:
+Canonical client verification from the repository root:
 
 ```powershell
-flutter test test/features/portal
-flutter build apk --release
-flutter build windows --release
+python scripts/run_client_release_gate.py test --suite portal
+python scripts/run_client_release_gate.py test --suite full
+python scripts/run_client_release_gate.py build --target windows
+python scripts/run_client_release_gate.py build --target android-apk
+python scripts/run_client_release_gate.py build --target android-aab
 ```
 
 Client release-gate note:
 
 - Android stays release-blocked until a release-build audit proves there is no unauthenticated localhost proxy, DNS, command, or admin/control surface exposed to other apps
 - run `python scripts/client_security_smoke.py` before broader client release verification so default local-surface settings and RU preset groundwork fail fast in CI or local gates
+- `run_client_release_gate.py` enters `external/client-fork/app` automatically; on Windows it bootstraps `flutter build windows --release` first when `sqlite3.dll` is missing for Flutter tests
 - run `python scripts/android_localhost_audit.py --serial <device-serial> --connect-wait-sec 30 --disconnect-wait-sec 15` on a release-installed Android build for the manual-assisted localhost listener audit
-- client verification for this wave must also cover routing presets `Global` and `Все, кроме РФ`, plus DNS split and leak checks on Android and Windows
+- if you fold Android build targets into `release_gate_check.py`, export `ANDROID_AUDIT_SERIAL=<physical-device-serial>` first or let the gate fail loudly instead of treating a repo/static-only run as release-ready
+- public client verification for this wave must cover routing presets `Global` and `All except RU`, plus DNS split and leak checks on Android and Windows
+- `Blocked only` remains hidden or internal until geo assets, rules, and DNS behavior are ready for honest public verification
 - when node-reachability evidence is included in a client release handoff, label `current-origin`, `brain-origin`, and `RU-origin` checks separately
 
 For Windows packaging:
@@ -170,6 +183,11 @@ For Windows packaging:
 ```powershell
 flutter_distributor package --platform windows --targets msix
 ```
+
+Windows packaging guardrails:
+
+- keep `windows/packaging/exe/make_config.yaml` on a canonical public publisher URL such as `https://pokrov.space/`, not a GitHub repository URL
+- treat a legacy `hiddify` string inside the packaged `MSIX` manifest as a release blocker, not a cosmetic follow-up
 
 ## Documentation Rules
 
@@ -181,6 +199,9 @@ If code is still in flight, document only the confirmed surfaces and routes that
 - `webapp/src/app/`
 - `shared/copy.ts`
 - `shared/portal-config.ts`
+- `shared/product-facts.json`
+- `shared/public-urls.json`
+- `shared/design-tokens.json`
 
 Do not document speculative routes, unfinished CTA behavior, or future release promises just because the copy pass has started.
 
@@ -201,6 +222,13 @@ Minimum docs to touch when relevant:
 - publishing and signing guide when distribution, certificates, store status, or artifact names change
 - monitoring and visibility guide when hostname policy, probe expectations, support telemetry, or operator visibility changes
 - shared copy/catalog sources when public CTA text, checkout hosts, or cross-surface copy changes
+
+Shared-surface rule:
+
+- treat `shared/product-facts.json`, `shared/public-urls.json`, and `shared/design-tokens.json` as the only non-localized source for locked product, host, and design facts
+- TypeScript reads those files directly through `shared/*.ts` adapters
+- Python reads those files through `portal_bot/shared_surface_facts.py`
+- Flutter syncs them through `scripts/sync_shared_surface_facts.py` into `external/client-fork/app/lib/features/portal/config/shared_surface_facts.dart`
 
 ## RF Probe And Reserve Commands
 

@@ -1,6 +1,6 @@
 # Publishing And Signing Guide
 
-Last updated: 2026-04-08
+Last updated: 2026-04-13
 
 ## Document Status
 
@@ -33,6 +33,13 @@ All public download surfaces must be wired from the same release handoff values:
 - marketing site
 - Telegram bot
 
+Current implementation note:
+
+- runtime app, bot, and authenticated WebApp download payloads read `APP_*` values from brain env
+- static marketing exports and static `NEXT_PUBLIC_APP_*` fallbacks need rebuild + redeploy when public Android or Windows URLs change
+- signed release builds inject client metadata through `PORTAL_RELEASE_REPOSITORY_URL`, `PORTAL_RELEASES_API_URL`, `PORTAL_RELEASES_LATEST_URL`, `PORTAL_RELEASES_APPCAST_URL`, and `PORTAL_WARP_DEFAULTS_URL`
+- outside signed release builds, updater and source-code surfaces stay disabled instead of falling back to a personal repository URL
+
 ## Artifact Canon
 
 Current canonical release artifacts:
@@ -42,6 +49,35 @@ Current canonical release artifacts:
 - `pokrov-vpn-windows-setup-x64.exe`
 - `pokrov-vpn-windows-setup-x64.msix`
 - `pokrov-vpn-windows-portable-x64.zip`
+
+Current public-facing download buttons in shipped surfaces are limited to:
+
+- Android `Play` / `APK` / mirror
+- Windows `EXE` / mirror
+- install/docs fallback
+
+Treat `AAB`, `MSIX`, and portable `ZIP` as required release/store artifacts, not first-layer user download buttons, unless the runtime payload and public surfaces are expanded together.
+
+## Canonical Client Verification Commands
+
+Run from the repository root:
+
+```powershell
+python scripts/run_client_release_gate.py test --suite portal
+python scripts/run_client_release_gate.py test --suite full
+python scripts/run_client_release_gate.py build --target windows
+python scripts/run_client_release_gate.py build --target android-apk
+python scripts/run_client_release_gate.py build --target android-aab
+python scripts/release_gate_check.py --client-platform-gates windows,android-apk,android-aab
+```
+
+Notes:
+
+- `release_gate_check.py` already includes `python scripts/run_client_release_gate.py test --suite full` by default.
+- `release_gate_check.py --quick` swaps that default client suite for `python scripts/run_client_release_gate.py test --suite portal`.
+- add `--client-platform-gates windows,android-apk,android-aab` or set `CLIENT_PLATFORM_GATES` when you want the gate report to include artifact-producing client builds.
+- once `CLIENT_PLATFORM_GATES` includes `android-apk` or `android-aab`, `release_gate_check.py` requires `ANDROID_AUDIT_SERIAL` to point to physical Android hardware; emulator serials stay useful only for adb rehearsal.
+- on Windows, the wrapper auto-runs `flutter build windows --release` before Flutter tests when the required `sqlite3.dll` bootstrap is missing.
 
 ## Android
 
@@ -60,11 +96,13 @@ Current canonical release artifacts:
 ### Release steps
 
 1. Build release artifacts in `external/client-fork/app/`.
-2. Audit the release build for localhost listeners and local control surfaces before public publication.
-3. Sign the Android release with the production keystore.
-4. Upload the `AAB` to Google Play when store publication is ready.
-5. Upload the universal `APK` to GitHub Releases for direct download.
-6. Run release handoff and sync the final URLs into runtime env.
+2. Run `python scripts/release_gate_check.py` and keep the default gate pack green; add `--client-platform-gates windows,android-apk,android-aab` when you want the same report to include release-build artifacts.
+3. If you include Android build gates in that report, export `ANDROID_AUDIT_SERIAL=<physical-device-serial>` first so the same report includes the mandatory physical-device localhost audit.
+4. Audit the release build for localhost listeners and local control surfaces before public publication.
+5. Sign the Android release with the production keystore.
+6. Upload the `AAB` to Google Play when store publication is ready.
+7. Upload the universal `APK` to GitHub Releases for direct download.
+8. Run release handoff and sync the final URLs into runtime env.
 
 ### Store notes
 
@@ -93,11 +131,18 @@ Current canonical release artifacts:
 
 ### Release steps
 
-1. Build the Windows release.
+1. Build the Windows release, preferably via `python scripts/run_client_release_gate.py build --target windows`.
 2. Sign the installer and MSIX package.
-3. Upload the signed `EXE` and optional ZIP to GitHub Releases.
-4. Keep the `MSIX` ready for Microsoft Store submission.
-5. Run release handoff and sync the final URLs into runtime env.
+3. Keep the packaging config on a canonical public publisher URL such as `https://pokrov.space/`; GitHub repository URLs are not valid publisher surfaces for the signed Windows release path.
+4. Verify the packaged `MSIX` manifest no longer contains legacy `hiddify` identity strings before publication.
+5. Upload the signed `EXE` and optional ZIP to GitHub Releases.
+6. Keep the `MSIX` ready for Microsoft Store submission.
+7. Run release handoff and sync the final URLs into runtime env.
+
+Current runtime-surface note:
+
+- the signed `EXE` is the Windows binary currently surfaced through app/web download flows
+- `MSIX` and portable `ZIP` remain store/fallback artifacts unless the public payload expands
 
 ### Store notes
 
@@ -157,7 +202,8 @@ After every client release:
 2. run release handoff
 3. validate URLs with the release-link checker
 4. update runtime env for all Android and Windows download links
-5. verify the same links appear in app, webapp, marketing, and bot surfaces
+5. verify the same links appear in app, bot, and authenticated WebApp surfaces
+6. rebuild and redeploy static marketing outputs if public download URLs changed
 
 ## Public Mailboxes And PR Readiness
 
@@ -206,9 +252,14 @@ Minimum publishing verification:
 - artifact names match canon
 - Android and Windows builds install successfully
 - signatures are present on public artifacts
-- download links resolve from every public surface
+- download links resolve from every runtime-driven public surface, and static marketing exports are rebuilt when URLs changed
 - store metadata matches `POKROV VPN`
 - Apple surfaces, if any, are clearly labeled as upcoming or waitlist-only
 - `python scripts/client_security_smoke.py` stays green before final Android sign-off
 - Android release-build checks confirm there is no unauthenticated local SOCKS/API-style control surface exposed
-- routing and DNS verification covers `Global` plus the recommended RU preset before RU-specific copy is treated as shipped
+- public routing and DNS verification covers `Global` and `All except RU`
+- `Blocked only` stays hidden or internal until geo assets and DNS behavior are ready for honest public verification
+- Android and Windows release verification should keep the wrapper-based client commands above green before signing or publication
+- `release_gate_check.py --client-platform-gates ...android-*...` is allowed to pass only when `ANDROID_AUDIT_SERIAL` points at physical hardware
+- as of `2026-04-13`, the documented repo/static/client gate pack is green in `docs/audit-artifacts/release_gate_report.md`, but that result alone does not authorize Android publication
+- an emulator audit may be used as rehearsal for adb flow and timing only; final Android publication still requires `python scripts/android_localhost_audit.py` on a release-installed build on physical hardware
