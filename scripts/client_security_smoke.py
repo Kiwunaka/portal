@@ -15,6 +15,8 @@ BOX_SERVICE_PATH = CLIENT_ROOT / "android" / "app" / "src" / "main" / "kotlin" /
 METHOD_HANDLER_PATH = CLIENT_ROOT / "android" / "app" / "src" / "main" / "kotlin" / "com" / "hiddify" / "hiddify" / "MethodHandler.kt"
 GO_DEFAULTS_PATH = CLIENT_ROOT / "libcore" / "config" / "hiddify_option.go"
 ANALYTICS_CONTROLLER_PATH = CLIENT_ROOT / "lib" / "core" / "analytics" / "analytics_controller.dart"
+APP_INFO_PATH = CLIENT_ROOT / "lib" / "core" / "model" / "app_info_entity.dart"
+PROFILE_REPOSITORY_PATH = CLIENT_ROOT / "lib" / "features" / "profile" / "data" / "profile_repository.dart"
 
 
 def _read_text(path: Path) -> str:
@@ -30,6 +32,19 @@ def _pref_default(config_text: str, key: str) -> str | None:
     if match is None:
         return None
     return match.group(1).strip()
+
+
+def _pref_block(config_text: str, key: str) -> str | None:
+    pattern = re.compile(
+        r'PreferencesNotifier\.create<[^>]+>\(\s*"'
+        + re.escape(key)
+        + r'"\s*,.*?\n\s*\);',
+        re.MULTILINE | re.DOTALL,
+    )
+    match = pattern.search(config_text)
+    if match is None:
+        return None
+    return match.group(0)
 
 
 def _security_default_failures(config_text: str, go_defaults_text: str) -> list[str]:
@@ -68,6 +83,30 @@ def _analytics_default_failures(analytics_text: str) -> list[str]:
 
     if "getBool(enableAnalyticsPrefKey) ?? false" not in analytics_text:
         failures.append("analytics must default to disabled until the user explicitly opts in")
+
+    return failures
+
+
+def _routing_default_failures(config_text: str) -> list[str]:
+    failures: list[str] = []
+
+    routing_mode_default = _pref_default(config_text, "routing-mode")
+    if routing_mode_default is None:
+        failures.append("routing-mode preference is missing")
+    elif routing_mode_default != "RoutingMode.allExceptRu":
+        failures.append("routing-mode must default to RoutingMode.allExceptRu for the consumer path")
+
+    remote_dns_default = _pref_default(config_text, "remote-dns-address")
+    if remote_dns_default is None:
+        failures.append("remote-dns-address preference is missing")
+    elif not remote_dns_default.startswith(('"https://', "'https://")):
+        failures.append("remote-dns-address must default to a tunneled DoH endpoint instead of udp://1.1.1.1")
+
+    direct_dns_block = _pref_block(config_text, "direct-dns-address")
+    if direct_dns_block is None:
+        failures.append("direct-dns-address preference is missing")
+    elif re.search(r'RoutingMode\.allExceptRu\s*=>\s*["\']local["\']', direct_dns_block) is None:
+        failures.append("direct-dns-address must default to local for split-direct routing")
 
     return failures
 
@@ -120,6 +159,32 @@ def _public_routing_surface_failures(config_page_text: str) -> list[str]:
     return failures
 
 
+def _contains_legacy_identity(text: str) -> bool:
+    lowered = text.casefold()
+    return any(token in lowered for token in ("clash", "v2ray", "v2rayng", "sing-box", "singbox"))
+
+
+def _identity_failures(app_info_text: str, profile_text: str) -> list[str]:
+    failures: list[str] = []
+
+    if _contains_legacy_identity(app_info_text):
+        failures.append("app user agent must not mention clash/v2ray/sing-box")
+
+    profile_user_agent_match = re.search(
+        r'userAgent\s*:\s*configs\.useXrayCoreWhenPossible\s*\?\s*(.+?)\s*:\s*null',
+        profile_text,
+        re.MULTILINE | re.DOTALL,
+    )
+    if profile_user_agent_match is None:
+        return failures
+
+    profile_user_agent = profile_user_agent_match.group(1).strip()
+    if _contains_legacy_identity(profile_user_agent) or "pokrov" not in profile_user_agent.casefold():
+        failures.append("compatibility profile downloads must use a first-party user agent")
+
+    return failures
+
+
 def _control_surface_observations(
     *,
     box_service_text: str,
@@ -150,6 +215,8 @@ def _check_required_files() -> list[str]:
         METHOD_HANDLER_PATH,
         GO_DEFAULTS_PATH,
         ANALYTICS_CONTROLLER_PATH,
+        APP_INFO_PATH,
+        PROFILE_REPOSITORY_PATH,
     ]:
         if not path.exists():
             missing.append(f"required client file is missing: {path.relative_to(REPO_ROOT)}")
@@ -170,11 +237,15 @@ def main() -> int:
     method_handler_text = _read_text(METHOD_HANDLER_PATH)
     go_defaults_text = _read_text(GO_DEFAULTS_PATH)
     analytics_text = _read_text(ANALYTICS_CONTROLLER_PATH)
+    app_info_text = _read_text(APP_INFO_PATH)
+    profile_text = _read_text(PROFILE_REPOSITORY_PATH)
 
     failures.extend(_security_default_failures(config_text, go_defaults_text))
     failures.extend(_analytics_default_failures(analytics_text))
+    failures.extend(_routing_default_failures(config_text))
     failures.extend(_routing_preset_failures(enum_text, config_text))
     failures.extend(_public_routing_surface_failures(config_page_text))
+    failures.extend(_identity_failures(app_info_text, profile_text))
     observations = _control_surface_observations(
         box_service_text=box_service_text,
         method_handler_text=method_handler_text,
@@ -187,6 +258,8 @@ def main() -> int:
     print(f"[check] android method handler: {METHOD_HANDLER_PATH.relative_to(REPO_ROOT)}")
     print(f"[check] libcore defaults: {GO_DEFAULTS_PATH.relative_to(REPO_ROOT)}")
     print(f"[check] analytics defaults: {ANALYTICS_CONTROLLER_PATH.relative_to(REPO_ROOT)}")
+    print(f"[check] app identity: {APP_INFO_PATH.relative_to(REPO_ROOT)}")
+    print(f"[check] profile identity: {PROFILE_REPOSITORY_PATH.relative_to(REPO_ROOT)}")
 
     for observation in observations:
         print(f"[observe] {observation}")

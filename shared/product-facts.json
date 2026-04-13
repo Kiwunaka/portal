@@ -22,6 +22,17 @@
     "public": ["android", "windows"],
     "readiness_only": ["apple"]
   },
+  "network_defaults": {
+    "routing_mode_default": "all_except_ru",
+    "transport_profile_default": "grpc_443_primary",
+    "dns_policy_default": "ru_direct_split"
+  },
+  "versions": {
+    "ruleset_version": "2026-04-13",
+    "package_catalog_version": "2026-04-13",
+    "client_transport_baseline": "grpc_443_primary",
+    "support_recovery_order": ["app", "web", "telegram"]
+  },
   "legal": {
     "offer_path": "/offer/",
     "privacy_path": "/privacy/"

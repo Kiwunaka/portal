@@ -10,6 +10,7 @@ from fastapi import HTTPException
 from free_cycle_service import mark_user_became_free
 from models import StartLink, User
 from public_urls import build_subscription_url
+from shared_surface_facts import get_product_facts
 
 
 def normalize_app_device_name(value: str | None, *, fallback: str = "Current device") -> str:
@@ -30,6 +31,33 @@ def _next_app_account_tg_id(session) -> int:
 
 def _generate_sub_token() -> str:
     return secrets.token_urlsafe(32)
+
+
+def build_client_policy() -> dict[str, Any]:
+    product_facts = get_product_facts()
+    network_defaults = product_facts.get("network_defaults", {})
+    versions = product_facts.get("versions", {})
+    routing_mode = str(network_defaults.get("routing_mode_default") or "all_except_ru")
+    transport_profile = str(network_defaults.get("transport_profile_default") or "grpc_443_primary")
+    dns_policy = str(network_defaults.get("dns_policy_default") or "ru_direct_split")
+    package_catalog_version = str(versions.get("package_catalog_version") or "2026-04-13")
+    ruleset_version = str(versions.get("ruleset_version") or "2026-04-13")
+    support_recovery_order = versions.get("support_recovery_order") or ["app", "web", "telegram"]
+    if not isinstance(support_recovery_order, list):
+        support_recovery_order = ["app", "web", "telegram"]
+    return {
+        "routing_mode_default": routing_mode,
+        "transport_profile": transport_profile,
+        "dns_policy": dns_policy,
+        "package_catalog_version": package_catalog_version,
+        "ruleset_version": ruleset_version,
+        "support_context": {
+            "transport": transport_profile,
+            "routing_mode": routing_mode,
+            "ip_version_preference": "ipv4_only",
+        },
+        "support_recovery_order": [str(item) for item in support_recovery_order if str(item or "").strip()],
+    }
 
 
 def create_app_telegram_start_code(session, *, account_tg_id: int, now: datetime) -> str:
@@ -171,6 +199,7 @@ def build_start_trial_response_parts(
             "linked_telegram_id": linked_telegram_id,
             "linked_telegram_username": linked_telegram_username,
         },
+        "client_policy": build_client_policy(),
         "access": {
             **access_policy,
             "sub_type": str(getattr(user, "sub_type", "") or ""),

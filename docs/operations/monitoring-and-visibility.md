@@ -1,6 +1,6 @@
 # Monitoring And Visibility
 
-Last updated: 2026-04-09
+Last updated: 2026-04-13
 
 ## Document Status
 
@@ -66,10 +66,17 @@ Required checks on each run:
 2. confirm the probe host can reach Telegram surfaces such as `api.telegram.org` and `t.me`
 3. confirm the probe host can resolve and reach the current public `POKROV` surfaces when needed
 4. confirm the probe host can reach the intended node endpoints used by current subscriptions
-5. confirm the current reserve ingress state from RU:
+5. measure the path as separate probe stages instead of one flat `ping`:
+   - `DNS`
+   - `TCP/443`
+   - `TLS`
+   - `large-body HTTPS >=64KB`
+   - `Telegram native/app-path`
+   - `Telegram web-path`
+6. confirm the current reserve ingress state from RU:
    - `xhttp_alive`
    - `hysteria_alive`
-4. record failures in a compact operator-readable report
+7. record failures in a compact operator-readable report
 
 Minimum report fields:
 
@@ -79,6 +86,10 @@ Minimum report fields:
 - whether the Telegram surfaces were reachable
 - node-by-node status
 - per-target split health for `DNS`, `TCP`, `TLS`, `HTTP`, and `UDP` when applicable
+- `probe_classification`
+- `ipv4_health`
+- `ipv6_health`
+- `transport_health`
 - reserve status for `xhttp_alive` and `hysteria_alive`
 - derived classifications such as `probe_host_problem`, `canonical_host_problem`, `foreign_edge_problem`, `eu_node_problem`
 - notes for DNS, TCP, TLS, or route anomalies
@@ -112,6 +123,9 @@ The admin and operator view must treat node freshness per node, not only as one 
 Required node-level visibility:
 
 - freshness state for each node
+- `hoster_family`
+- `hoster_asn`
+- `subnet`
 - sustained CPU / RAM / disk pressure alerts
 - live `online_keys_now` count per node from panel runtime
 - live `online_connections_now` count per node from panel runtime `ip_count` with a per-key fallback when the panel omits it
@@ -125,6 +139,10 @@ Required node-level visibility:
 - `last_probe_stage`
 - `last_probe_error_kind`
 - `last_probe_error_message`
+- `probe_classification`
+- `ipv4_health`
+- `ipv6_health`
+- `transport_health`
 
 Operator-facing rendering rule:
 
@@ -136,10 +154,12 @@ Operator-facing rendering rule:
 - if network counters are missing, the admin surface must show missing telemetry rather than `0 Mbps`
 - use the current and 24h peak Ethernet view for capacity planning, server purchase decisions, and early warning before saturating the `1 Gbit/s` uplink
 - keep raw probe fields visible, but add a readable operator explanation for known probe failures
+- do not use `ping` as the consumer-path health authority; prefer probe stage, TLS/body stage, and transport-health output
 - for `reality_target_mismatch`, explain that the expected REALITY target name did not match the certificate name or SNI returned by the node
 - if a node shows field failures with an otherwise green basic TLS probe, treat the current REALITY camouflage target as suspect and be ready to rotate it instead of assuming the dataplane is healthy
 - when rotating a REALITY target, update both the node runtime inbound (`dest` plus `serverNames`) and the `brain` `nodes.reality_sni` value in the same task so drift, subscriptions, and operator diagnostics stay aligned
 - prefer country-appropriate, normal public TLS targets for each node; avoid keeping a generic target after it has shown region-specific failures in the field
+- when a failure is provider- or family-specific, fail over by `subnet` first, then by `hoster_family`, and only then by country label
 
 Operational rule:
 

@@ -177,6 +177,16 @@ class CollectNodeMetricsObservabilityTests(unittest.TestCase):
                 "stage": "tls_sni",
                 "error_kind": "tls_handshake_failed",
                 "error_message": "tls handshake failed",
+                "hoster_family": "hetzner",
+                "hoster_asn": "AS24940",
+                "hoster_subnet": "1.2.3.0/24",
+                "probe_classification": "provider_specific_path",
+                "ipv4_health": "degraded",
+                "ipv6_health": "healthy",
+                "transport_health": {
+                    "legacy_reality_fallback": "degraded",
+                    "grpc_443_primary": "healthy",
+                },
                 "probed_at": datetime.utcnow(),
                 "resolved_ips": ["1.2.3.4"],
             },
@@ -189,10 +199,21 @@ class CollectNodeMetricsObservabilityTests(unittest.TestCase):
         self.assertEqual(node_row.last_probe_stage, "tls_sni")
         self.assertEqual(node_row.last_probe_error_kind, "tls_handshake_failed")
         self.assertEqual(node_row.last_probe_error_message, "tls handshake failed")
+        self.assertEqual(node_row.hoster_family, "hetzner")
+        self.assertEqual(node_row.hoster_asn, "AS24940")
+        self.assertEqual(node_row.hoster_subnet, "1.2.3.0/24")
+        self.assertEqual(node_row.last_probe_classification, "provider_specific_path")
+        self.assertEqual(node_row.ipv4_health, "degraded")
+        self.assertEqual(node_row.ipv6_health, "healthy")
+        self.assertIn("grpc_443_primary", str(node_row.transport_health_json))
         self.assertIsNotNone(node_row.last_probe_at)
         self.assertIsNotNone(sample)
         self.assertEqual(sample.probe_stage, "tls_sni")
         self.assertEqual(sample.probe_error_kind, "tls_handshake_failed")
+        self.assertEqual(sample.probe_classification, "provider_specific_path")
+        self.assertEqual(sample.ipv4_health, "degraded")
+        self.assertEqual(sample.ipv6_health, "healthy")
+        self.assertIn("grpc_443_primary", str(sample.transport_health_json))
 
     def test_collect_one_persists_panel_login_failure_details(self) -> None:
         session = self.db.SessionLocal()

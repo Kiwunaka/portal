@@ -22,6 +22,7 @@ Document the current app-first identity model, automatic username sync path, che
    - app session
 6. backend returns:
    - `session` payload with canonical session fields
+   - `client_policy` payload with routing, DNS, transport, and recovery defaults
    - `access` payload with enforced `5-day` trial state
    - `provisioning` payload with explicit readiness state
    - experience payload
@@ -30,6 +31,19 @@ Document the current app-first identity model, automatic username sync path, che
 Contract rule:
 
 - caller-provided `trial_days` may still appear from older clients, but the backend must ignore it and always enforce the canonical `5-day` trial from `shared/product-facts.json`
+- the backend must return the same `client_policy` contract from `start-trial`, `user`, and `dashboard` flows so the app can reconcile defaults without guessing
+
+Current `client_policy` contract:
+
+- `routing_mode_default`: `all_except_ru`
+- `transport_profile`: `grpc_443_primary`
+- `dns_policy`: `ru_direct_split`
+- `package_catalog_version`: versioned Android direct-app catalog stamp from shared facts
+- `ruleset_version`: versioned routing/ruleset stamp from shared facts
+- `support_context.transport`: `grpc_443_primary`
+- `support_context.routing_mode`: `all_except_ru`
+- `support_context.ip_version_preference`: `ipv4_only`
+- `support_recovery_order`: `app`, `web`, `telegram`
 
 ## App Session Model
 
@@ -87,6 +101,7 @@ Current live backend contract:
 Related live surfaces also exposed by the backend:
 
 - `GET /api/dashboard`
+- `GET /api/user/{tg_id}`
 - `GET /api/client/apps`
 - `GET /api/nodes/status`
 - `GET /api/bonuses`
@@ -213,6 +228,7 @@ Support direction should stay consistent across app, WebApp, and helpbot:
 - helpbot remains a valid external fallback
 - `support@pokrov.space` remains the email fallback for cases where Telegram is unavailable or a store/support mailbox is required
 - feedback collection and public-review intake should continue through `@pokrov_feedbackbot`, not replace the primary support path
+- public recovery order must stay `POKROV app -> web cabinet -> Telegram fallback`
 
 Support operators should also be able to see:
 

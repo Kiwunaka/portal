@@ -1,4 +1,5 @@
 import importlib.util
+import socket
 import sys
 import unittest
 from pathlib import Path
@@ -25,11 +26,21 @@ class NodeDataplaneProbeTests(unittest.TestCase):
         with mock.patch.object(
             self.module,
             "_resolve_dns",
-            return_value={"resolved_ips": ["1.2.3.4"], "stage": "dns"},
+            return_value={
+                "resolved_ips": ["1.2.3.4"],
+                "resolved_ipv4": ["1.2.3.4"],
+                "resolved_ipv6": [],
+                "stage": "dns",
+            },
         ), mock.patch.object(
             self.module,
             "_probe_tcp",
-            return_value={"latency_ms": 23, "stage": "tcp_443"},
+            return_value={
+                "latency_ms": 23,
+                "stage": "tcp_443",
+                "connected_ip": "1.2.3.4",
+                "connected_family": "ipv4",
+            },
         ), mock.patch.object(
             self.module,
             "_probe_tls",
@@ -39,6 +50,8 @@ class NodeDataplaneProbeTests(unittest.TestCase):
                 "certificate_names": ["www.example.com"],
                 "target_ok": True,
                 "stage": "reality_target",
+                "connected_ip": "1.2.3.4",
+                "connected_family": "ipv4",
             },
         ):
             result = self.module.probe_node_endpoint(host="pl.pokrov.space", sni="www.example.com")
@@ -47,16 +60,38 @@ class NodeDataplaneProbeTests(unittest.TestCase):
         self.assertEqual(result["stage"], "reality_target")
         self.assertEqual(result["error_kind"], "")
         self.assertEqual(result["certificate_names"], ["www.example.com"])
+        self.assertEqual(result["probe_classification"], "healthy")
+        self.assertEqual(result["ipv4_health"], "healthy")
+        self.assertEqual(result["ipv6_health"], "unavailable")
+        self.assertEqual(
+            result["transport_health"],
+            {
+                "dns_resolution": "healthy",
+                "tcp_connect": "healthy",
+                "tls_handshake": "healthy",
+                "reality_target": "healthy",
+            },
+        )
 
     def test_probe_endpoint_reports_target_mismatch(self) -> None:
         with mock.patch.object(
             self.module,
             "_resolve_dns",
-            return_value={"resolved_ips": ["1.2.3.4"], "stage": "dns"},
+            return_value={
+                "resolved_ips": ["1.2.3.4"],
+                "resolved_ipv4": ["1.2.3.4"],
+                "resolved_ipv6": [],
+                "stage": "dns",
+            },
         ), mock.patch.object(
             self.module,
             "_probe_tcp",
-            return_value={"latency_ms": 23, "stage": "tcp_443"},
+            return_value={
+                "latency_ms": 23,
+                "stage": "tcp_443",
+                "connected_ip": "1.2.3.4",
+                "connected_family": "ipv4",
+            },
         ), mock.patch.object(
             self.module,
             "_probe_tls",
@@ -68,6 +103,8 @@ class NodeDataplaneProbeTests(unittest.TestCase):
                 "stage": "reality_target",
                 "error_kind": "reality_target_mismatch",
                 "error_message": "certificate names do not match expected reality target",
+                "connected_ip": "1.2.3.4",
+                "connected_family": "ipv4",
             },
         ):
             result = self.module.probe_node_endpoint(host="pl.pokrov.space", sni="www.example.com")
@@ -75,6 +112,42 @@ class NodeDataplaneProbeTests(unittest.TestCase):
         self.assertFalse(result["ok"])
         self.assertEqual(result["stage"], "reality_target")
         self.assertEqual(result["error_kind"], "reality_target_mismatch")
+        self.assertEqual(result["probe_classification"], "provider_specific_path")
+        self.assertEqual(result["ipv4_health"], "degraded")
+        self.assertEqual(result["ipv6_health"], "unavailable")
+        self.assertEqual(
+            result["transport_health"],
+            {
+                "dns_resolution": "healthy",
+                "tcp_connect": "healthy",
+                "tls_handshake": "healthy",
+                "reality_target": "degraded",
+            },
+        )
+
+    def test_probe_endpoint_populates_default_health_fields_for_dns_failures(self) -> None:
+        with mock.patch.object(
+            self.module,
+            "_resolve_dns",
+            side_effect=socket.gaierror("dns failed"),
+        ):
+            result = self.module.probe_node_endpoint(host="pl.pokrov.space", sni="www.example.com")
+
+        self.assertFalse(result["ok"])
+        self.assertEqual(result["stage"], "dns")
+        self.assertEqual(result["error_kind"], "dns_lookup_failed")
+        self.assertEqual(result["probe_classification"], "dns_failure")
+        self.assertEqual(result["ipv4_health"], "unknown")
+        self.assertEqual(result["ipv6_health"], "unknown")
+        self.assertEqual(
+            result["transport_health"],
+            {
+                "dns_resolution": "degraded",
+                "tcp_connect": "unavailable",
+                "tls_handshake": "unavailable",
+                "reality_target": "unavailable",
+            },
+        )
 
     def test_validate_reality_target_accepts_exact_and_wildcard_names(self) -> None:
         self.assertTrue(self.module._certificate_matches_expected_target("www.example.com", ["www.example.com"]))

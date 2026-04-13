@@ -51,6 +51,13 @@ class NodeObservabilitySchemaTests(unittest.TestCase):
                 "last_probe_stage",
                 "last_probe_error_kind",
                 "last_probe_error_message",
+                "hoster_family",
+                "hoster_asn",
+                "hoster_subnet",
+                "ipv4_health",
+                "ipv6_health",
+                "last_probe_classification",
+                "transport_health_json",
             }.issubset(cols)
         )
 
@@ -62,6 +69,10 @@ class NodeObservabilitySchemaTests(unittest.TestCase):
                 "probe_stage",
                 "probe_error_kind",
                 "probe_error_message",
+                "probe_classification",
+                "ipv4_health",
+                "ipv6_health",
+                "transport_health_json",
             }.issubset(cols)
         )
 

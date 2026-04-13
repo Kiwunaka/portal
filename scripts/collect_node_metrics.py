@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import asyncio
+import json
 import os
 import sys
 import time
@@ -115,6 +116,25 @@ def _nullable_float(value: object) -> float | None:
         return None
 
 
+def _string_or_none(value: object) -> str | None:
+    if value is None:
+        return None
+    text = str(value).strip()
+    return text or None
+
+
+def _json_text(value: object) -> str | None:
+    if value is None:
+        return None
+    if isinstance(value, str):
+        text = value.strip()
+        return text or None
+    try:
+        return json.dumps(value, ensure_ascii=False, sort_keys=True)
+    except Exception:
+        return _string_or_none(value)
+
+
 def _utcnow() -> datetime:
     return datetime.now(timezone.utc).replace(tzinfo=None)
 
@@ -205,6 +225,7 @@ async def _collect_one(*, node: Node, error_window: int, source: str) -> dict:
     probe_error_kind = "panel_login_failed"
     probe_error_message = "panel login returned false"
     probe_at = now
+    probe: dict | None = None
 
     try:
         ok = await client.login()
@@ -274,6 +295,16 @@ async def _collect_one(*, node: Node, error_window: int, source: str) -> dict:
     else:
         probe_at = now
 
+    hoster_family = _string_or_none((probe or {}).get("hoster_family"))
+    hoster_asn = _string_or_none((probe or {}).get("hoster_asn"))
+    hoster_subnet = _string_or_none((probe or {}).get("hoster_subnet"))
+    probe_classification = _string_or_none((probe or {}).get("probe_classification"))
+    ipv4_health = _string_or_none((probe or {}).get("ipv4_health"))
+    ipv6_health = _string_or_none((probe or {}).get("ipv6_health"))
+    transport_health_json = _json_text((probe or {}).get("transport_health_json"))
+    if transport_health_json is None:
+        transport_health_json = _json_text((probe or {}).get("transport_health"))
+
     s = SessionLocal()
     try:
         previous_sample = (
@@ -321,6 +352,10 @@ async def _collect_one(*, node: Node, error_window: int, source: str) -> dict:
             probe_stage=probe_stage,
             probe_error_kind=probe_error_kind or None,
             probe_error_message=probe_error_message or None,
+            probe_classification=probe_classification,
+            ipv4_health=ipv4_health,
+            ipv6_health=ipv6_health,
+            transport_health_json=transport_health_json,
         )
         sample.memory_used_mb = _nullable_int(memory_used_mb)
         sample.memory_total_mb = _nullable_int(memory_total_mb)
@@ -357,6 +392,13 @@ async def _collect_one(*, node: Node, error_window: int, source: str) -> dict:
             row.last_probe_stage = probe_stage or None
             row.last_probe_error_kind = probe_error_kind or None
             row.last_probe_error_message = probe_error_message or None
+            row.hoster_family = hoster_family
+            row.hoster_asn = hoster_asn
+            row.hoster_subnet = hoster_subnet
+            row.ipv4_health = ipv4_health
+            row.ipv6_health = ipv6_health
+            row.last_probe_classification = probe_classification
+            row.transport_health_json = transport_health_json
             if healthy:
                 row.last_ok_at = now
         s.commit()
@@ -376,6 +418,9 @@ async def _collect_one(*, node: Node, error_window: int, source: str) -> dict:
             "network_total_mbps": network_total_mbps,
             "probe_stage": probe_stage,
             "probe_error_kind": probe_error_kind,
+            "probe_classification": probe_classification,
+            "ipv4_health": ipv4_health,
+            "ipv6_health": ipv6_health,
         }
     finally:
         s.close()

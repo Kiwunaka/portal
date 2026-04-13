@@ -116,12 +116,23 @@ class RetentionTemplateSeedTests(unittest.TestCase):
             self.assertIn("last_probe_stage", node_names)
             self.assertIn("last_probe_error_kind", node_names)
             self.assertIn("last_probe_error_message", node_names)
+            self.assertIn("hoster_family", node_names)
+            self.assertIn("hoster_asn", node_names)
+            self.assertIn("hoster_subnet", node_names)
+            self.assertIn("ipv4_health", node_names)
+            self.assertIn("ipv6_health", node_names)
+            self.assertIn("last_probe_classification", node_names)
+            self.assertIn("transport_health_json", node_names)
 
             sample_cols = conn.execute(self.migrations.text("PRAGMA table_info(node_health_samples);")).fetchall()
             sample_names = {str(r[1]) for r in sample_cols}
             self.assertIn("probe_stage", sample_names)
             self.assertIn("probe_error_kind", sample_names)
             self.assertIn("probe_error_message", sample_names)
+            self.assertIn("probe_classification", sample_names)
+            self.assertIn("ipv4_health", sample_names)
+            self.assertIn("ipv6_health", sample_names)
+            self.assertIn("transport_health_json", sample_names)
 
 
 if __name__ == "__main__":

@@ -227,6 +227,91 @@ ChoicePreferenceWidget(
 
         self.assertEqual(failures, [])
 
+    def test_routing_defaults_fail_when_consumer_path_starts_global_and_plain_udp_dns(self) -> None:
+        config_text = """
+static final routingMode = PreferencesNotifier.create<RoutingMode, String>(
+  "routing-mode",
+  RoutingMode.global,
+);
+static final remoteDnsAddress = PreferencesNotifier.create<String, String>(
+  "remote-dns-address",
+  "udp://1.1.1.1",
+);
+static final directDnsAddress = PreferencesNotifier.create<String, String>(
+  "direct-dns-address",
+  "udp://1.1.1.1",
+);
+"""
+
+        failures = self.module._routing_default_failures(config_text)
+
+        self.assertIn(
+            "routing-mode must default to RoutingMode.allExceptRu for the consumer path",
+            failures,
+        )
+        self.assertIn(
+            "remote-dns-address must default to a tunneled DoH endpoint instead of udp://1.1.1.1",
+            failures,
+        )
+        self.assertIn(
+            "direct-dns-address must default to local for split-direct routing",
+            failures,
+        )
+
+    def test_routing_defaults_accept_consumer_routing_and_split_direct_dns_defaults(self) -> None:
+        config_text = """
+static final routingMode = PreferencesNotifier.create<RoutingMode, String>(
+  "routing-mode",
+  RoutingMode.allExceptRu,
+);
+static final remoteDnsAddress = PreferencesNotifier.create<String, String>(
+  "remote-dns-address",
+  "https://sky.rethinkdns.com/dns-query",
+);
+static final directDnsAddress = PreferencesNotifier.create<String, String>(
+  "direct-dns-address",
+  "udp://1.1.1.1",
+  defaultValueFunction: (ref) {
+    return switch (ref.read(routingMode)) {
+      RoutingMode.global => "udp://1.1.1.1",
+      RoutingMode.allExceptRu => "local",
+      RoutingMode.blockedOnly => "local",
+    };
+  },
+);
+"""
+
+        failures = self.module._routing_default_failures(config_text)
+
+        self.assertEqual(failures, [])
+
+    def test_identity_defaults_fail_when_client_impersonates_legacy_tools(self) -> None:
+        app_info_text = """
+String get userAgent =>
+    "POKROVVPN/$version ($operatingSystem) like ClashMeta v2ray sing-box";
+"""
+        profile_text = """
+userAgent: configs.useXrayCoreWhenPossible ? "v2rayNG/1.8.23" : null,
+"""
+
+        failures = self.module._identity_failures(app_info_text, profile_text)
+
+        self.assertIn("app user agent must not mention clash/v2ray/sing-box", failures)
+        self.assertIn("compatibility profile downloads must use a first-party user agent", failures)
+
+    def test_identity_defaults_accept_neutral_first_party_identifiers(self) -> None:
+        app_info_text = """
+String get userAgent =>
+    "POKROVVPN/$version ($operatingSystem)";
+"""
+        profile_text = """
+userAgent: configs.useXrayCoreWhenPossible ? "POKROVVPN/XrayCompat" : null,
+"""
+
+        failures = self.module._identity_failures(app_info_text, profile_text)
+
+        self.assertEqual(failures, [])
+
     def test_control_surface_observations_ignore_release_guarded_command_server(self) -> None:
         box_service_text = """
 private fun startCommandServer() {

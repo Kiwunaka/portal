@@ -150,6 +150,11 @@ def test_build_start_trial_response_parts_preserves_public_shape(monkeypatch, tm
         assert parts["session"]["token"] == session_token
         assert parts["session"]["session_token"] == session_token
         assert parts["session"]["account_id"] == str(user.tg_id)
+        assert parts["client_policy"]["routing_mode_default"] == "all_except_ru"
+        assert parts["client_policy"]["transport_profile"] == "grpc_443_primary"
+        assert parts["client_policy"]["dns_policy"] == "ru_direct_split"
+        assert parts["client_policy"]["package_catalog_version"]
+        assert parts["client_policy"]["support_context"]["transport"] == "grpc_443_primary"
         assert parts["access"]["trial_days"] == 5
         assert parts["access"]["bonus_days"] == 10
         assert parts["access"]["subscription_url"] == parts["subscription_url"]

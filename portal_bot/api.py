@@ -977,6 +977,7 @@ class DashboardResponse(BaseModel):
     subscription_url: str
     segment: str
     connection_snapshot: dict[str, Any] | None = None
+    client_policy: dict[str, Any] | None = None
     active_offer: dict[str, Any] | None
     points: dict[str, Any]
     features: dict[str, bool]
@@ -3830,6 +3831,7 @@ async def client_start_trial(payload: AppStartTrialIn, request: Request) -> dict
         "subscription_url": start_trial_parts["subscription_url"],
         "sync_ok": bool(sync_ok),
         "session": start_trial_parts["session"],
+        "client_policy": start_trial_parts["client_policy"],
         "access": start_trial_parts["access"],
         "provisioning": start_trial_parts["provisioning"],
     }
@@ -5022,6 +5024,7 @@ async def user_data(tg_id: int, request: Request, x_telegram_init_data: str = He
                 "id": _linked_telegram_id(user) or None,
                 "username": str(getattr(user, "linked_telegram_username", "") or "").strip() or None,
             },
+            "client_policy": app_first_service.build_client_policy(),
             "sync": {
                 "app_identity_known": bool(str(getattr(user, "app_install_id", "") or "").strip()),
                 "telegram_linked": bool(_linked_telegram_id(user)),
@@ -5180,6 +5183,7 @@ async def dashboard_snapshot(request: Request, x_telegram_init_data: str = Heade
             family_slots=int(family_slots),
             subscription_url=sub_url,
             segment=segment,
+            client_policy=app_first_service.build_client_policy(),
             connection_snapshot={
                 "status": str(runtime.get("status") or "unknown"),
                 "active_connections": int(runtime.get("active_connections", 0) or 0),
@@ -9067,6 +9071,19 @@ def _serialize_admin_node(
     network_port_capacity_mbps = float(NODE_METRICS_PORT_CAPACITY_MBPS or 0.0)
     network_utilization_percent = _network_utilization_percent(network_total_mbps)
     network_peak_utilization_percent_24h = _network_utilization_percent(network_peak_mbps_24h)
+    transport_health: dict[str, Any] = {}
+    raw_transport_health = str(getattr(n, "transport_health_json", "") or "").strip()
+    if raw_transport_health:
+        try:
+            parsed_transport_health = json.loads(raw_transport_health)
+        except Exception:
+            parsed_transport_health = {}
+        if isinstance(parsed_transport_health, dict):
+            transport_health = {
+                str(key): value
+                for key, value in parsed_transport_health.items()
+                if str(key or "").strip()
+            }
     return {
         "code": n.code,
         "name": n.name,
@@ -9107,6 +9124,13 @@ def _serialize_admin_node(
         "last_probe_stage": str(getattr(n, "last_probe_stage", "") or "") or None,
         "last_probe_error_kind": str(getattr(n, "last_probe_error_kind", "") or "") or None,
         "last_probe_error_message": str(getattr(n, "last_probe_error_message", "") or "") or None,
+        "hoster_family": str(getattr(n, "hoster_family", "") or "") or None,
+        "hoster_asn": str(getattr(n, "hoster_asn", "") or "") or None,
+        "subnet": str(getattr(n, "hoster_subnet", "") or "") or None,
+        "ipv4_health": str(getattr(n, "ipv4_health", "") or "") or None,
+        "ipv6_health": str(getattr(n, "ipv6_health", "") or "") or None,
+        "probe_classification": str(getattr(n, "last_probe_classification", "") or "") or None,
+        "transport_health": transport_health,
         "observer_last_push_at": _safe_iso(getattr(n, "observer_last_push_at", None)),
         "observer_unmatched_count": int(getattr(n, "observer_unmatched_count", 0) or 0),
         "observer_parse_error_count": int(getattr(n, "observer_parse_error_count", 0) or 0),

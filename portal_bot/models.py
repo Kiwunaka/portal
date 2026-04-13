@@ -207,6 +207,13 @@ class Node(Base):
     last_probe_stage = Column(String(64), nullable=True)
     last_probe_error_kind = Column(String(64), nullable=True)
     last_probe_error_message = Column(String(500), nullable=True)
+    hoster_family = Column(String(64), nullable=True)
+    hoster_asn = Column(String(32), nullable=True)
+    hoster_subnet = Column(String(64), nullable=True)
+    ipv4_health = Column(String(32), nullable=True)
+    ipv6_health = Column(String(32), nullable=True)
+    last_probe_classification = Column(String(64), nullable=True)
+    transport_health_json = Column(Text, nullable=True)
     observer_push_secret = Column(String(128), nullable=True)
     observer_last_push_at = Column(DateTime, nullable=True)
     observer_last_batch_id = Column(String(128), nullable=True)
@@ -378,6 +385,10 @@ class NodeHealthSample(Base):
     probe_stage = Column(String(64), nullable=True)
     probe_error_kind = Column(String(64), nullable=True)
     probe_error_message = Column(String(500), nullable=True)
+    probe_classification = Column(String(64), nullable=True)
+    ipv4_health = Column(String(32), nullable=True)
+    ipv6_health = Column(String(32), nullable=True)
+    transport_health_json = Column(Text, nullable=True)
 
 
 class Event(Base):

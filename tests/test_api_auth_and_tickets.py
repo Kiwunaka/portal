@@ -1008,6 +1008,13 @@ class ApiAuthAndTicketsTests(unittest.TestCase):
                 disk_used_gb=11.4,
                 disk_total_gb=40.0,
                 disk_free_gb=28.6,
+                hoster_family="hetzner",
+                hoster_asn="AS24940",
+                hoster_subnet="5.45.84.0/24",
+                ipv4_health="healthy",
+                ipv6_health="degraded",
+                last_probe_classification="provider_specific_path",
+                transport_health_json='{"grpc_443_primary":"healthy","legacy_reality_fallback":"degraded"}',
                 last_probe_stage="tls_sni",
                 last_probe_error_kind="tls_handshake_failed",
                 last_probe_error_message="tls handshake failed",
@@ -1031,6 +1038,13 @@ class ApiAuthAndTicketsTests(unittest.TestCase):
         self.assertEqual(item["last_probe_stage"], "tls_sni")
         self.assertEqual(item["last_probe_error_kind"], "tls_handshake_failed")
         self.assertEqual(item["last_probe_error_message"], "tls handshake failed")
+        self.assertEqual(item["hoster_family"], "hetzner")
+        self.assertEqual(item["hoster_asn"], "AS24940")
+        self.assertEqual(item["subnet"], "5.45.84.0/24")
+        self.assertEqual(item["ipv4_health"], "healthy")
+        self.assertEqual(item["ipv6_health"], "degraded")
+        self.assertEqual(item["probe_classification"], "provider_specific_path")
+        self.assertEqual(item["transport_health"]["grpc_443_primary"], "healthy")
 
     def test_admin_nodes_health_exposes_probe_failure_fields_and_alerts(self) -> None:
         from db import SessionLocal

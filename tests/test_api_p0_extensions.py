@@ -379,6 +379,10 @@ class ApiP0ExtensionsTests(unittest.TestCase):
         self.assertTrue(body["created"])
         self.assertTrue(str(body["session_token"]))
         self.assertTrue(str(body["subscription_url"]).startswith("https://connect.pokrov.space/s8Kx2mP7qR4wT/"))
+        self.assertEqual(body["client_policy"]["routing_mode_default"], "all_except_ru")
+        self.assertEqual(body["client_policy"]["transport_profile"], "grpc_443_primary")
+        self.assertEqual(body["client_policy"]["dns_policy"], "ru_direct_split")
+        self.assertTrue(str(body["client_policy"]["package_catalog_version"]))
         self.assertTrue(calls)
 
     def test_user_payload_includes_app_and_telegram_monitoring_context(self) -> None:
@@ -410,6 +414,10 @@ class ApiP0ExtensionsTests(unittest.TestCase):
         self.assertEqual(body.get("last_ip"), "203.0.113.10")
         self.assertEqual(body.get("linked_telegram", {}).get("id"), 777001)
         self.assertEqual(body.get("linked_telegram", {}).get("username"), "alice_linked")
+        self.assertEqual(body.get("client_policy", {}).get("routing_mode_default"), "all_except_ru")
+        self.assertEqual(body.get("client_policy", {}).get("transport_profile"), "grpc_443_primary")
+        self.assertEqual(body.get("client_policy", {}).get("dns_policy"), "ru_direct_split")
+        self.assertEqual(body.get("client_policy", {}).get("support_context", {}).get("ip_version_preference"), "ipv4_only")
         self.assertTrue(body.get("sync", {}).get("app_identity_known"))
         self.assertTrue(body.get("sync", {}).get("telegram_linked"))
         self.assertTrue(body.get("sync", {}).get("subscription_ready"))

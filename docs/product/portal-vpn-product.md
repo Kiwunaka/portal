@@ -41,6 +41,9 @@ Telegram remains a secondary path for linking, bonus claim, recovery, support en
 - free trial: `5 days`
 - Telegram reward: `+10 days`
 - Russian is a first-class user language
+- recommended public routing mode: `All except RU`
+- public routing mode set: `All except RU` and `Full tunnel`
+- public recovery order: `POKROV app -> web cabinet -> Telegram fallback`
 
 ## Current Release Constraints
 
@@ -56,18 +59,21 @@ Telegram remains a secondary path for linking, bonus claim, recovery, support en
 Current product direction for Russian users:
 
 - recommended preset: `All except RU`
-- currently implemented public routing modes: `Global` and `All except RU`
+- public routing modes are marketed as `All except RU` and `Full tunnel`
 - hidden follow-up preset: `Blocked only`
 - `All except RU` is meant to keep `geoip:ru` plus private and reserved networks direct while proxying the rest
 - DNS behavior must be selected explicitly per routing mode rather than being hidden behind one hardcoded preset
 
 Current truth:
 
-- the shipping client already has an explicit routing-mode layer for `Global` and `All except RU`
+- the shipping client already has an explicit routing-mode layer for `global`, `allExceptRu`, and internal `blockedOnly`
+- public copy must describe `global` as `Full tunnel`, not as a raw implementation label
 - the shipping client still carries a `Region.ru` placeholder, but that placeholder is not the product authority
 - `Blocked only` remains internal or compatibility-only until geo assets, DNS split behavior, and leak checks are complete
 - the full routing strategy and geo-asset wiring are not yet complete
 - do not market RU-special routing as fully shipped until the real strategy layer, DNS split checks, and release smoke are in place
+- `All except RU` should default to tunneled remote DNS with local direct resolution only for curated direct paths
+- the public consumer path should stay `TUN`-first; loopback proxy mechanics remain advanced or internal-only
 
 ## Current User Surfaces
 
@@ -124,6 +130,7 @@ Public funnel rule:
 - checkout must continue from a valid web session or checkout ticket
 - Telegram bot purchase flow remains available, but it is not the default public story
 - `connect.pokrov.space` remains the delivery surface for the one public connection link and matching QR, not a fresh-entry marketing surface
+- if Telegram is degraded, recovery should continue through the app and `app.pokrov.space` before falling back to Telegram
 
 ## Unified Public Copy Direction
 

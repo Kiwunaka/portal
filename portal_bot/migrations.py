@@ -489,6 +489,13 @@ def run_migrations(engine: Engine) -> None:
                 ("last_probe_stage", "VARCHAR(64)"),
                 ("last_probe_error_kind", "VARCHAR(64)"),
                 ("last_probe_error_message", "VARCHAR(500)"),
+                ("hoster_family", "VARCHAR(64)"),
+                ("hoster_asn", "VARCHAR(32)"),
+                ("hoster_subnet", "VARCHAR(64)"),
+                ("ipv4_health", "VARCHAR(32)"),
+                ("ipv6_health", "VARCHAR(32)"),
+                ("last_probe_classification", "VARCHAR(64)"),
+                ("transport_health_json", "TEXT"),
                 ("observer_push_secret", "VARCHAR(128)"),
                 ("observer_last_push_at", "DATETIME"),
                 ("observer_last_batch_id", "VARCHAR(128)"),
@@ -535,7 +542,11 @@ def run_migrations(engine: Engine) -> None:
                   probe_at DATETIME,
                   probe_stage VARCHAR(64),
                   probe_error_kind VARCHAR(64),
-                  probe_error_message VARCHAR(500)
+                  probe_error_message VARCHAR(500),
+                  probe_classification VARCHAR(64),
+                  ipv4_health VARCHAR(32),
+                  ipv6_health VARCHAR(32),
+                  transport_health_json TEXT
                 );
                 """
             )
@@ -560,6 +571,10 @@ def run_migrations(engine: Engine) -> None:
                 ("probe_stage", "VARCHAR(64)"),
                 ("probe_error_kind", "VARCHAR(64)"),
                 ("probe_error_message", "VARCHAR(500)"),
+                ("probe_classification", "VARCHAR(64)"),
+                ("ipv4_health", "VARCHAR(32)"),
+                ("ipv6_health", "VARCHAR(32)"),
+                ("transport_health_json", "TEXT"),
             ]
             for col, ddl in node_sample_cols:
                 if not _sqlite_column_exists(conn, "node_health_samples", col):
@@ -1158,6 +1173,13 @@ def _run_postgres_migrations(engine: Engine) -> None:
         conn.execute(text("ALTER TABLE nodes ADD COLUMN IF NOT EXISTS last_probe_stage VARCHAR(64);"))
         conn.execute(text("ALTER TABLE nodes ADD COLUMN IF NOT EXISTS last_probe_error_kind VARCHAR(64);"))
         conn.execute(text("ALTER TABLE nodes ADD COLUMN IF NOT EXISTS last_probe_error_message VARCHAR(500);"))
+        conn.execute(text("ALTER TABLE nodes ADD COLUMN IF NOT EXISTS hoster_family VARCHAR(64);"))
+        conn.execute(text("ALTER TABLE nodes ADD COLUMN IF NOT EXISTS hoster_asn VARCHAR(32);"))
+        conn.execute(text("ALTER TABLE nodes ADD COLUMN IF NOT EXISTS hoster_subnet VARCHAR(64);"))
+        conn.execute(text("ALTER TABLE nodes ADD COLUMN IF NOT EXISTS ipv4_health VARCHAR(32);"))
+        conn.execute(text("ALTER TABLE nodes ADD COLUMN IF NOT EXISTS ipv6_health VARCHAR(32);"))
+        conn.execute(text("ALTER TABLE nodes ADD COLUMN IF NOT EXISTS last_probe_classification VARCHAR(64);"))
+        conn.execute(text("ALTER TABLE nodes ADD COLUMN IF NOT EXISTS transport_health_json TEXT;"))
         conn.execute(text("ALTER TABLE nodes ADD COLUMN IF NOT EXISTS observer_push_secret VARCHAR(128);"))
         conn.execute(text("ALTER TABLE nodes ADD COLUMN IF NOT EXISTS observer_last_push_at TIMESTAMP;"))
         conn.execute(text("ALTER TABLE nodes ADD COLUMN IF NOT EXISTS observer_last_batch_id VARCHAR(128);"))
@@ -1183,6 +1205,10 @@ def _run_postgres_migrations(engine: Engine) -> None:
         conn.execute(text("ALTER TABLE node_health_samples ADD COLUMN IF NOT EXISTS probe_stage VARCHAR(64);"))
         conn.execute(text("ALTER TABLE node_health_samples ADD COLUMN IF NOT EXISTS probe_error_kind VARCHAR(64);"))
         conn.execute(text("ALTER TABLE node_health_samples ADD COLUMN IF NOT EXISTS probe_error_message VARCHAR(500);"))
+        conn.execute(text("ALTER TABLE node_health_samples ADD COLUMN IF NOT EXISTS probe_classification VARCHAR(64);"))
+        conn.execute(text("ALTER TABLE node_health_samples ADD COLUMN IF NOT EXISTS ipv4_health VARCHAR(32);"))
+        conn.execute(text("ALTER TABLE node_health_samples ADD COLUMN IF NOT EXISTS ipv6_health VARCHAR(32);"))
+        conn.execute(text("ALTER TABLE node_health_samples ADD COLUMN IF NOT EXISTS transport_health_json TEXT;"))
 
         conn.execute(
             text(

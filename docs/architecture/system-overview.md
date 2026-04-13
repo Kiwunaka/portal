@@ -123,8 +123,14 @@ Not source of truth:
 1. client generates `install_id`
 2. user taps `Try free`
 3. backend creates app account, device record, and app session
-4. backend returns canonical `session`, `access`, and `provisioning` payloads plus a real subscription source
+4. backend returns canonical `session`, `client_policy`, `access`, and `provisioning` payloads plus a real subscription source
 5. client imports and activates the profile
+
+App-first contract note:
+
+- `client_policy` is the additive cross-surface contract for routing, DNS, transport, package-catalog version, and support recovery order
+- the same `client_policy` shape should be available from `start-trial`, `dashboard`, and `user` payloads
+- public recovery order stays `POKROV app -> web cabinet -> Telegram fallback`
 
 ### Telegram Linking And Reward Flow
 

@@ -24,6 +24,13 @@ def test_shared_surface_fact_loaders_expose_canonical_product_and_url_truth():
     assert product["trial"]["days"] == 5
     assert product["telegram_reward"]["days"] == 10
     assert product["platform_scope"]["public"] == ["android", "windows"]
+    assert product["network_defaults"]["routing_mode_default"] == "all_except_ru"
+    assert product["network_defaults"]["transport_profile_default"] == "grpc_443_primary"
+    assert product["network_defaults"]["dns_policy_default"] == "ru_direct_split"
+    assert product["versions"]["ruleset_version"]
+    assert product["versions"]["package_catalog_version"]
+    assert product["versions"]["client_transport_baseline"] == "grpc_443_primary"
+    assert product["versions"]["support_recovery_order"] == ["app", "web", "telegram"]
 
     assert urls["surfaces"]["marketing"] == "https://pokrov.space/"
     assert urls["surfaces"]["webapp"] == "https://app.pokrov.space/"
