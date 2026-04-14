@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import secrets
 import uuid
 from datetime import datetime, timedelta
@@ -12,12 +13,126 @@ from models import StartLink, User
 from network_rollout import resolved_client_policy
 from public_urls import build_subscription_url
 
+ROUTE_MODE_ALL_TRAFFIC = "all_traffic"
+ROUTE_MODE_SELECTED_APPS = "selected_apps"
+_ROUTE_MODE_VALUES = {ROUTE_MODE_ALL_TRAFFIC, ROUTE_MODE_SELECTED_APPS}
+_DESKTOP_ROUTE_PLATFORMS = {"windows", "linux", "macos", "darwin"}
+
 
 def normalize_app_device_name(value: str | None, *, fallback: str = "Current device") -> str:
     text = str(value or "").strip()
     if not text:
         return fallback
     return text[:120]
+
+
+def normalize_route_mode(value: str | None, *, fallback: str = ROUTE_MODE_ALL_TRAFFIC) -> str:
+    text = str(value or "").strip().lower()
+    if text in _ROUTE_MODE_VALUES:
+        return text
+    return fallback
+
+
+def normalize_selected_apps(value: Any, *, limit: int = 128) -> list[str]:
+    source = value
+    if isinstance(source, str):
+        text = source.strip()
+        if not text:
+            source = []
+        else:
+            try:
+                source = json.loads(text)
+            except Exception:
+                source = [text]
+    elif source is None:
+        source = []
+    if not isinstance(source, (list, tuple, set)):
+        return []
+
+    normalized: list[str] = []
+    seen: set[str] = set()
+    for raw in source:
+        text = str(raw or "").strip()
+        if not text:
+            continue
+        item = text[:260]
+        dedupe_key = item.lower()
+        if dedupe_key in seen:
+            continue
+        seen.add(dedupe_key)
+        normalized.append(item)
+        if len(normalized) >= limit:
+            break
+    return normalized
+
+
+def _default_route_requires_elevated_privileges(user: User | None) -> bool:
+    platform = str(
+        (getattr(user, "app_platform", None) if user is not None else "")
+        or (getattr(user, "platform", None) if user is not None else "")
+        or ""
+    ).strip().lower()
+    return platform in _DESKTOP_ROUTE_PLATFORMS
+
+
+def _default_route_requires_for_platform(platform: str | None) -> bool:
+    return str(platform or "").strip().lower() in _DESKTOP_ROUTE_PLATFORMS
+
+
+def resolve_route_policy(
+    user: User | None,
+    *,
+    route_mode: str | None = None,
+    selected_apps: Any = None,
+    requires_elevated_privileges: bool | None = None,
+) -> dict[str, Any]:
+    mode = normalize_route_mode(
+        route_mode if route_mode is not None else (getattr(user, "route_mode", None) if user is not None else None)
+    )
+    apps_source = (
+        selected_apps
+        if selected_apps is not None
+        else (getattr(user, "route_selected_apps_json", None) if user is not None else None)
+    )
+    apps = normalize_selected_apps(apps_source)
+    if mode != ROUTE_MODE_SELECTED_APPS:
+        apps = []
+
+    if requires_elevated_privileges is None:
+        persisted = getattr(user, "route_requires_elevated_privileges", None) if user is not None else None
+        required = _default_route_requires_elevated_privileges(user) if persisted is None else bool(persisted)
+    else:
+        required = bool(requires_elevated_privileges)
+
+    return {
+        "route_mode": mode,
+        "selected_apps": apps,
+        "requires_elevated_privileges": required,
+        "route_policy": {
+            "mode": mode,
+            "selected_apps": apps,
+            "requires_elevated_privileges": required,
+        },
+    }
+
+
+def persist_route_policy(
+    user: User,
+    *,
+    route_mode: str | None = None,
+    selected_apps: Any = None,
+    requires_elevated_privileges: bool | None = None,
+) -> dict[str, Any]:
+    policy = resolve_route_policy(
+        user,
+        route_mode=route_mode,
+        selected_apps=selected_apps,
+        requires_elevated_privileges=requires_elevated_privileges,
+    )
+    user.route_mode = str(policy["route_mode"])
+    user.route_selected_apps_json = json.dumps(policy["selected_apps"], ensure_ascii=True)
+    user.route_requires_elevated_privileges = bool(policy["requires_elevated_privileges"])
+    return policy
 
 
 def _next_app_account_tg_id(session) -> int:
@@ -41,13 +156,15 @@ def build_client_policy(
     carrier: str | None = None,
     rollout_config: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
-    return resolved_client_policy(
+    client_policy = resolved_client_policy(
         session=session,
         user=user,
         install_id=install_id,
         carrier=carrier,
         rollout_config=rollout_config,
     )
+    client_policy.update(resolve_route_policy(user))
+    return client_policy
 
 
 def create_app_telegram_start_code(session, *, account_tg_id: int, now: datetime) -> str:
@@ -131,6 +248,11 @@ def upsert_app_trial_user(
             app_timezone=str(getattr(payload, "time_zone", "") or "").strip()[:64] or None,
             app_last_seen_at=now,
             app_last_ip=client_ip or None,
+            route_mode=ROUTE_MODE_ALL_TRAFFIC,
+            route_selected_apps_json="[]",
+            route_requires_elevated_privileges=_default_route_requires_for_platform(
+                str(getattr(payload, "platform", "") or "").strip()
+            ),
         )
         mark_user_became_free(user, now=now)
         s.add(user)
@@ -159,6 +281,12 @@ def upsert_app_trial_user(
             user.expiry_at = now + timedelta(days=canonical_trial_days)
         if user.is_active is None:
             user.is_active = True
+        if not str(getattr(user, "route_mode", "") or "").strip():
+            user.route_mode = ROUTE_MODE_ALL_TRAFFIC
+        if getattr(user, "route_selected_apps_json", None) is None:
+            user.route_selected_apps_json = "[]"
+        if getattr(user, "route_requires_elevated_privileges", None) is None:
+            user.route_requires_elevated_privileges = _default_route_requires_elevated_privileges(user)
         s.flush()
 
     return user, created

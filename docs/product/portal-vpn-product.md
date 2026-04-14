@@ -1,6 +1,6 @@
 # POKROV Product Overview
 
-Last updated: 2026-04-13
+Last updated: 2026-04-14
 
 ## Document Status
 
@@ -35,12 +35,14 @@ Telegram remains a secondary path for linking, bonus claim, recovery, support en
 
 - primary UX: `consumer-first`
 - primary identity model: `app-first`
+- browser identity continuation: additive `email` auth plus existing app and Telegram handoff paths
 - full public `v1` scope: `Android + Windows`
 - Apple scope in this wave: readiness, signing prep, and store prerequisites only
 - default runtime core: `sing-box`
 - `xray` role: advanced compatibility fallback only
 - free trial: `5 days`
 - Telegram reward: `+10 days`
+- public user-facing client version line: `0.x.x-beta`
 - Russian is a first-class user language
 - recommended public routing mode: `All except RU`
 - public routing mode set: `All except RU` and `Full tunnel`
@@ -53,7 +55,9 @@ Telegram remains a secondary path for linking, bonus claim, recovery, support en
 - `Windows` stays in scope for the public `v1` ship when its normal gates are green
 - `Android` remains release-blocked until the repo/static gate pack is green and a real release-build audit proves that localhost listeners and local control surfaces are either disabled or safely authenticated
 - as of `2026-04-13`, `python scripts/release_orchestrator.py --gates-only` is green for the documented repo/static/client gate pack; see `docs/audit-artifacts/release_gate_report.md` for the latest local snapshot
+- that latest local green gate snapshot does not yet prove live deploy, live node enablement, or separate `current-origin`, `brain-origin`, and `RU-origin` checks
 - emulator or adb-only audit runs are valid preflight for adb wiring and timing, but final Android publication still requires `python scripts/android_localhost_audit.py` against a release-installed build on physical hardware before connect, after connect, and after disconnect
+- Android public promotion still requires production signing material; debug-keystore fallback is valid for local smoke only
 - do not describe Android app-isolation features such as split tunneling, Private Space, Knox, Shelter, or similar tooling as sufficient mitigations for an unauthenticated local control surface
 
 ## Russia-Aware Routing Direction
@@ -91,6 +95,26 @@ Primary navigation:
 
 Legacy `/config-options`, `/about`, and `/logs` may remain as compatibility redirects only. Public IA is the five-tab shell above.
 
+Quick Connect rule:
+
+- `Auto-select` remains the default daily path.
+- premium app-managed profiles expose a backend-built smart shortlist of up to `5` eligible non-free nodes
+- free-tier access still resolves only to the dedicated `NL-free` node
+- the shortlist rejects disabled, draining, unhealthy, stale, `cpu_percent >= 90`, and transport-incompatible nodes before the client measures latency
+- the client combines real device RTT with backend CPU and health penalties and keeps the previous node when the improvement stays below the `15%` stickiness threshold
+- public client screens must not expose raw hostnames, ports, public IP, raw connection links, sniffing terms, JSON/profile editors, or local-control surfaces in the normal consumer path
+
+First-run route-mode rule:
+
+- after account bootstrap and before the first live route activation, the app must ask how this device should be optimized
+- the first-layer consumer choice must be `Optimize everything on this device` or `Only selected apps`
+- `Optimize everything on this device` is the recommended default and stays `TUN`-first
+- `Only selected apps` is the split-tunneling path and must save a per-device app/process selection instead of opening raw networking controls
+- the saved route choice must stay synchronized through backend-owned `route_mode`, `selected_apps`, and `requires_elevated_privileges` fields so app, cabinet, and support see the same device state
+- Windows should use an executable or process picker; Android should use an installed-app package picker
+- if the chosen desktop route mode requires elevated rights, the app must explain that clearly and tell the user to relaunch as administrator before connect
+- system proxy, raw service-mode toggles, and manual subscription share/edit actions stay out of normal quick access
+
 ### Marketing Site
 
 `marketing/` is the public acquisition and discovery surface for `POKROV`.
@@ -102,6 +126,7 @@ Current public role:
 - `https://pokrov.space/checkout/` is the public checkout explainer and plan-intent page
 - indexable landing pages can capture platform, use-case, or Telegram intent, but they must converge to the same product facts and CTA set
 - public legal pages also live on the marketing surface
+- the current canonical public route family is `/mobile/`, `/tiktok/`, `/youtube/`, `/devices/`, and `/telegram/`, with permanent redirects from the earlier legacy SEO paths
 
 ### WebApp
 
@@ -110,8 +135,15 @@ Current public role:
 Current cabinet role:
 
 - `https://app.pokrov.space/` continues an existing browser session or bot handoff
+- browser entry also supports additive email signup, login, verification, and recovery without replacing the app-first model
+- public email signup, verification, and recovery should remain truthfully unavailable if transactional sender identity or delivery-confirmation/webhook readiness is degraded
 - current route families include cabinet entry, dashboard, pricing, subscription, authenticated checkout continuation, devices, downloads, and support
 - `webapp` is also the primary admin operator surface
+- site, cabinet, and admin must keep obvious navigation back to each other so no surface becomes a dead end
+- consumer cabinet screens should show safe summaries such as `connect.pokrov.space` and route categories while keeping raw personal links, public IP, and node internals hidden on screen
+- consumer cabinet screens must not expose raw subscription edit, regenerate, or share actions in the first-layer UI
+- authenticated support in the cabinet should continue as a real ticket thread with uploads, not as decorative form state or a fake live-chat promise
+- the primary admin information architecture is grouped as `People`, `Access`, `Payments`, `Network`, `Diagnostics`, `Messaging`, and `Feedback`
 
 ### Telegram
 
@@ -266,6 +298,8 @@ Feedback and public-review intake should remain reachable through:
 - feedback bot `@pokrov_feedbackbot`
 
 Support payloads should carry enough device and app context for operator diagnosis.
+- app and cabinet support should map to the same real ticket lifecycle so operators can continue one case across app-first, web, and admin surfaces
+- ticket-capable browser support may upload files through the authenticated cabinet flow, while the client must not promise a realtime in-app chat unless such a backend actually exists
 
 Client diagnostics should be useful without leaking secrets. User-facing diagnostics may show:
 

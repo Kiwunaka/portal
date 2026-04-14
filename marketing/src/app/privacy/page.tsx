@@ -2,17 +2,17 @@ import Link from "next/link";
 
 import JsonLd from "../../components/json-ld";
 import { buildMarketingMetadata } from "../../components/marketing-landing";
-import { buildBreadcrumbJsonLd } from "../../lib/marketing-site";
-import { getPokrovPublicConfig } from "../../lib/pokrov";
+import { buildBreadcrumbJsonLd, MARKETING_CANONICAL_PATHS } from "../../lib/marketing-site";
+import { CANONICAL_PLATFORM_BRAND, getPokrovPublicConfig } from "../../lib/pokrov";
 
 const config = getPokrovPublicConfig(process.env as Record<string, string | undefined>);
 
 export const metadata = buildMarketingMetadata(
-  "Политика конфиденциальности | POKROV Network",
-  "Какие данные использует POKROV Network для работы аккаунта, поддержки и платежей, и как связаться со службой заботы.",
+  "Политика конфиденциальности | POKROV",
+  "Какие данные использует POKROV для работы аккаунта, поддержки и платежей, и как связаться со службой заботы.",
   {
     path: "/privacy/",
-    keywords: ["политика конфиденциальности", "privacy pokrov network", "данные pokrov network"],
+    keywords: ["политика конфиденциальности", "privacy pokrov", "данные pokrov"],
   },
 );
 
@@ -21,14 +21,14 @@ export default function PrivacyPage() {
     <>
       <JsonLd
         data={buildBreadcrumbJsonLd([
-          { name: "POKROV Network", path: "/" },
+          { name: CANONICAL_PLATFORM_BRAND, path: "/" },
           { name: "Политика конфиденциальности", path: "/privacy/" },
         ])}
       />
       <main className="legal-page">
         <h1>Политика конфиденциальности</h1>
         <p>
-          POKROV Network использует только те данные, которые нужны для работы аккаунта, поддержки, защиты сервиса и
+          POKROV использует только те данные, которые нужны для работы аккаунта, поддержки, защиты сервиса и
           проведения платежей.
         </p>
         <ul>
@@ -38,9 +38,9 @@ export default function PrivacyPage() {
         </ul>
         <p>Мы не продаём персональные данные и используем их только там, где это нужно для работы сервиса и обязательных расчётов.</p>
         <p>
-          Полезные страницы: <Link href="/">главная POKROV Network</Link>,{" "}
-          <Link href="/vpn-dlya-youtube/">Ускоритель для YouTube</Link> и{" "}
-          <Link href="/vpn-telegram-bot/">Telegram и служба заботы</Link>.
+          Полезные страницы: <Link href="/">главная POKROV</Link>,{" "}
+          <Link href={MARKETING_CANONICAL_PATHS.youtube}>YouTube</Link> и{" "}
+          <Link href={MARKETING_CANONICAL_PATHS.telegram}>Telegram и служба заботы</Link>.
         </p>
         <h2>Контакты</h2>
         <ul>
@@ -65,7 +65,7 @@ export default function PrivacyPage() {
         </ul>
         <div className="legal-actions">
           <Link className="btn btn-ghost" href="/">
-            На главную POKROV Network
+            На главную POKROV
           </Link>
           <a className="btn btn-primary" href={config.botUrl} target="_blank" rel="noreferrer">
             Открыть Telegram-бота

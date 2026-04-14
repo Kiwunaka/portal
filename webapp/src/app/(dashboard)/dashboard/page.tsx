@@ -1,7 +1,6 @@
 "use client";
 
 import AppRouteLink from "@/components/app-route-link";
-import SubscriptionQrCard from "@/components/subscription-qr-card";
 import {
   formatTrafficGb,
   getAccessState,
@@ -19,19 +18,12 @@ import { getCopyText } from "@/lib/portal";
 import { usePortalSession } from "@/lib/session";
 import { useEffect, useMemo, useState } from "react";
 
-const ACTIVE_USERS_LABEL = "Пользователей по IP сейчас";
-const ACTIVE_USERS_HINT = "Оценка по живым IP, но не выше уникальных IP за 24 часа. Не точное число людей.";
+const ACTIVE_USERS_LABEL = "Людей онлайн сейчас";
+const ACTIVE_USERS_HINT = "Оценка по живой активности на точках POKROV. Это ориентир, а не точное число людей.";
 
 function fmtDate(value?: string | null): string {
   if (!value) return "—";
   return new Date(value).toLocaleString("ru-RU");
-}
-
-function maskKey(value: string, shown: boolean): string {
-  if (shown) return value;
-  if (!value) return "—";
-  if (value.length < 16) return "••••••••";
-  return `${value.slice(0, 8)}••••••••••••${value.slice(-8)}`;
 }
 
 function fmtMetricCount(value?: number | null): string {
@@ -39,16 +31,58 @@ function fmtMetricCount(value?: number | null): string {
   return new Intl.NumberFormat("ru-RU").format(Math.max(0, Math.round(Number(value))));
 }
 
+function DashboardPageSkeleton() {
+  return (
+    <main className="space-y-6" aria-busy="true" aria-live="polite">
+      <section className="grid gap-5 xl:grid-cols-3">
+        <article className="glass-card p-7 xl:col-span-2">
+          <div className="h-3 w-28 animate-pulse rounded-full bg-slate-200 dark:bg-white/10" />
+          <div className="mt-4 h-12 w-56 animate-pulse rounded-full bg-slate-200 dark:bg-white/10" />
+          <div className="mt-4 space-y-3">
+            <div className="h-4 w-full animate-pulse rounded-full bg-slate-200 dark:bg-white/10" />
+            <div className="h-4 w-5/6 animate-pulse rounded-full bg-slate-200 dark:bg-white/10" />
+          </div>
+          <div className="mt-6 flex flex-wrap gap-3">
+            {Array.from({ length: 3 }).map((_, index) => (
+              <div key={index} className="h-11 w-40 animate-pulse rounded-xl bg-slate-200 dark:bg-white/10" />
+            ))}
+          </div>
+        </article>
+
+        <article className="glass-card p-7">
+          <div className="h-3 w-36 animate-pulse rounded-full bg-slate-200 dark:bg-white/10" />
+          <div className="mt-4 h-8 w-52 animate-pulse rounded-full bg-slate-200 dark:bg-white/10" />
+          <div className="mt-4 space-y-3">
+            {Array.from({ length: 5 }).map((_, index) => (
+              <div key={index} className="h-4 w-full animate-pulse rounded-full bg-slate-200 dark:bg-white/10" />
+            ))}
+          </div>
+          <div className="mt-4 grid gap-2">
+            <div className="h-24 animate-pulse rounded-xl bg-slate-200 dark:bg-white/10" />
+            <div className="h-24 animate-pulse rounded-xl bg-emerald-100/80 dark:bg-emerald-500/10" />
+          </div>
+        </article>
+      </section>
+
+      <section className="glass-card p-7">
+        <div className="h-3 w-32 animate-pulse rounded-full bg-slate-200 dark:bg-white/10" />
+        <div className="mt-4 h-9 w-80 animate-pulse rounded-full bg-slate-200 dark:bg-white/10" />
+        <div className="mt-4 grid gap-3 lg:grid-cols-3">
+          {Array.from({ length: 3 }).map((_, index) => (
+            <div key={index} className="h-28 animate-pulse rounded-2xl bg-slate-200 dark:bg-white/10" />
+          ))}
+        </div>
+      </section>
+    </main>
+  );
+}
+
 export default function DashboardPage() {
-  const { user, dash } = usePortalSession();
+  const { user, dash, loading } = usePortalSession();
   const [nodes, setNodes] = useState<NodeStatus[]>([]);
   const [nodesError, setNodesError] = useState("");
   const [nodesLoading, setNodesLoading] = useState(false);
-  const [keyVisible, setKeyVisible] = useState(false);
-  const [qrVisible, setQrVisible] = useState(false);
-  const [copyState, setCopyState] = useState<"idle" | "ok" | "fail">("idle");
 
-  const connectionKey = String(dash?.subscription_url || "").trim();
   const accessState = getAccessState(dash, user);
   const trialMode = isTrialPremiumState(accessState);
   const freeMode = isFreeMonthlyState(accessState);
@@ -59,34 +93,30 @@ export default function DashboardPage() {
     : getCopyText("webapp.dashboard.primary_cta", "Продлить доступ");
 
   useEffect(() => {
-    let cancelled = false;
-    const timer = window.setTimeout(() => {
-      const load = async () => {
-        setNodesLoading(true);
-        try {
-          const rows = await fetchNodeStatus();
-          if (!cancelled) {
-            setNodes(rows);
-            setNodesError("");
-          }
-        } catch (error) {
-          if (!cancelled) {
-            setNodesError(String((error as { message?: string })?.message || error || ""));
-          }
-        } finally {
-          if (!cancelled) {
-            setNodesLoading(false);
-          }
+    const controller = new AbortController();
+    const load = async () => {
+      setNodesError("");
+      setNodesLoading(true);
+      try {
+        const rows = await fetchNodeStatus({ signal: controller.signal });
+        setNodes(rows);
+      } catch (error) {
+        if (controller.signal.aborted || (error as { name?: string } | null)?.name === "AbortError") return;
+        setNodesError(String((error as { message?: string })?.message || error || ""));
+      } finally {
+        if (!controller.signal.aborted) {
+          setNodesLoading(false);
         }
-      };
-      void load();
-    }, 900);
-
-    return () => {
-      cancelled = true;
-      window.clearTimeout(timer);
+      }
     };
+
+    void load();
+    return () => controller.abort();
   }, []);
+
+  if (loading) {
+    return <DashboardPageSkeleton />;
+  }
 
   const healthyNodes = useMemo(() => nodes.filter((node) => node.is_healthy).length, [nodes]);
   const plannedNodes = user?.nodes?.length || 0;
@@ -96,17 +126,6 @@ export default function DashboardPage() {
   const activeUsersEstimate = dash?.connection_snapshot?.active_users_estimate ?? user?.connections?.active_users_estimate ?? null;
   const freeLimitGb = getTrafficLimitGb(dash, user);
   const nextResetAt = getNextResetAt(dash, user);
-
-  const onCopyKey = async (): Promise<void> => {
-    if (!connectionKey) return;
-    try {
-      await navigator.clipboard.writeText(connectionKey);
-      setCopyState("ok");
-    } catch {
-      setCopyState("fail");
-    }
-    window.setTimeout(() => setCopyState("idle"), 1800);
-  };
 
   const nextStepTitle = !dash?.is_active
     ? "Профиль ждёт продления"
@@ -126,7 +145,7 @@ export default function DashboardPage() {
         ? "Месячная квота бесплатного тарифа уже исчерпана, поэтому профиль работает в мягком режиме до следующего сброса."
         : freeMode
           ? `Профиль находится в бесплатном режиме: ${freeLimitGb ? formatTrafficGb(freeLimitGb) : "месячная квота"} и до ${deviceLimit} устройства.`
-          : "Пользуйтесь свободным интернетом: здесь уже собраны ключ, QR, приложения и быстрый доступ к продлению.";
+          : "Пользуйтесь свободным интернетом: приложения, служба заботы и продление уже под рукой.";
 
   return (
     <main className="space-y-6">
@@ -185,7 +204,12 @@ export default function DashboardPage() {
               <p className="mt-1 text-[11px] text-emerald-700/80 dark:text-emerald-200/80">{ACTIVE_USERS_HINT}</p>
             </div>
           </div>
-          {nodesLoading && !nodes.length ? <p className="mt-3 text-xs text-slate-500">Проверяем точки подключения...</p> : null}
+          {nodesLoading && !nodes.length ? (
+            <div className="mt-3 space-y-2">
+              <div className="h-10 animate-pulse rounded-xl bg-slate-200 dark:bg-white/10" />
+              <div className="h-10 animate-pulse rounded-xl bg-slate-200 dark:bg-white/10" />
+            </div>
+          ) : null}
           {nodesError ? <p className="mt-3 text-xs text-rose-500">{nodesError}</p> : null}
         </article>
       </section>
@@ -201,52 +225,51 @@ export default function DashboardPage() {
       ) : null}
 
       <section className="glass-card p-7">
-        <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+        <div className="mb-4">
           <div>
-            <p className="font-mono text-xs uppercase tracking-[0.16em] text-slate-500">ссылка подключения и QR</p>
-            <h2 className="mt-2 font-display text-3xl font-bold">Показать ссылку подключения или открыть QR</h2>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            <button
-              type="button"
-              onClick={() => setKeyVisible((prev) => !prev)}
-              className="outline-btn rounded-xl px-4 py-2 text-xs font-semibold uppercase tracking-[0.12em]"
-            >
-              {keyVisible ? "Скрыть" : "Показать"}
-            </button>
-            <button
-              type="button"
-              onClick={() => setQrVisible((prev) => !prev)}
-              className="outline-btn rounded-xl px-4 py-2 text-xs font-semibold uppercase tracking-[0.12em]"
-            >
-              {qrVisible ? "Скрыть QR" : "Показать QR"}
-            </button>
-            <button
-              type="button"
-              onClick={() => void onCopyKey()}
-              className="btn-primary rounded-xl px-4 py-2 text-xs font-semibold uppercase tracking-[0.12em]"
-              disabled={!connectionKey}
-            >
-              Скопировать
-            </button>
+            <p className="font-mono text-xs uppercase tracking-[0.16em] text-slate-500">безопасный доступ</p>
+            <h2 className="mt-2 font-display text-3xl font-bold">Личный маршрут хранится в приложениях</h2>
+            <p className="mt-3 max-w-3xl text-sm text-slate-600 dark:text-slate-300">
+              Кабинет не показывает личную ссылку на экране и не предлагает ручное копирование. Открывайте приложения
+              POKROV на своих устройствах, а если переносите доступ или меняете устройство, используйте раздел с
+              приложениями либо сразу пишите в службу заботы.
+            </p>
           </div>
         </div>
 
-        <div className="grid gap-5 lg:grid-cols-[1.4fr,0.9fr]">
+        <div className="grid gap-3 lg:grid-cols-3">
           <article className="rounded-2xl border border-white/45 bg-white/65 p-4 dark:border-white/10 dark:bg-white/5">
-            <p className="text-xs uppercase tracking-[0.14em] text-slate-500">Ссылка подключения</p>
-            <p className="mt-3 break-all font-mono text-xs leading-6 text-slate-700 dark:text-slate-200">
-              {maskKey(connectionKey, keyVisible)}
+            <p className="text-xs uppercase tracking-[0.14em] text-slate-500">На этом устройстве</p>
+            <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">
+              Откройте приложения POKROV и включайте доступ без ручных ключей и скрытых экранов.
             </p>
-            <p className="mt-3 text-xs text-slate-500">Используйте эту ссылку только на своих устройствах.</p>
-            {copyState === "ok" ? <p className="mt-2 text-xs text-emerald-600 dark:text-emerald-300">Ссылка скопирована.</p> : null}
-            {copyState === "fail" ? <p className="mt-2 text-xs text-rose-500">Ссылка не скопировалась. Попробуйте ещё раз.</p> : null}
           </article>
-
           <article className="rounded-2xl border border-white/45 bg-white/65 p-4 dark:border-white/10 dark:bg-white/5">
-            <p className="text-xs uppercase tracking-[0.14em] text-slate-500">QR для подключения</p>
-            <SubscriptionQrCard value={connectionKey} active={qrVisible} />
+            <p className="text-xs uppercase tracking-[0.14em] text-slate-500">Если меняете устройство</p>
+            <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">
+              Берите свежую сборку из раздела приложений и входите под своим аккаунтом — доступ подтянется сам.
+            </p>
           </article>
+          <article className="rounded-2xl border border-white/45 bg-white/65 p-4 dark:border-white/10 dark:bg-white/5">
+            <p className="text-xs uppercase tracking-[0.14em] text-slate-500">Если что-то не сошлось</p>
+            <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">
+              Служба заботы поможет перенести доступ, проверить устройство и подсказать безопасный следующий шаг.
+            </p>
+          </article>
+        </div>
+
+        <div className="mt-5 flex flex-wrap gap-3">
+          <AppRouteLink href={primaryHref} className="btn-primary rounded-xl px-5 py-2.5 text-sm font-semibold uppercase tracking-[0.12em]">
+            Открыть приложения
+          </AppRouteLink>
+          <AppRouteLink href="/support/" className="outline-btn rounded-xl px-5 py-2.5 text-sm font-semibold uppercase tracking-[0.12em]">
+            Нужна помощь с подключением
+          </AppRouteLink>
+          {!dash?.is_active ? (
+            <AppRouteLink href="/subscription/" className="outline-btn rounded-xl px-5 py-2.5 text-sm font-semibold uppercase tracking-[0.12em]">
+              Проверить тарифы
+            </AppRouteLink>
+          ) : null}
         </div>
       </section>
     </main>

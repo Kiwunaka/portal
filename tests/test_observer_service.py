@@ -4,7 +4,7 @@ import sys
 import tempfile
 import unittest
 import uuid
-from datetime import datetime, timedelta
+from datetime import timedelta
 from pathlib import Path
 
 
@@ -75,7 +75,7 @@ class ObserverServiceTests(unittest.TestCase):
                     email="alice@example.com",
                     sub_type="PAID",
                     is_active=True,
-                    expiry_at=datetime.utcnow() + timedelta(days=30),
+                    expiry_at=self.observer_service._utcnow() + timedelta(days=30),
                     tos_accepted=True,
                 )
             )
@@ -112,7 +112,7 @@ class ObserverServiceTests(unittest.TestCase):
     def test_recompute_user_observer_state_marks_overlap_as_suspicious(self) -> None:
         session = self.db.SessionLocal()
         try:
-            now = datetime.utcnow().replace(microsecond=0)
+            now = self.observer_service._utcnow()
             pl = session.query(self.models.Node).filter(self.models.Node.code == "pl").first()
             de = session.query(self.models.Node).filter(self.models.Node.code == "de").first()
             assert pl is not None and de is not None
@@ -218,7 +218,7 @@ class ObserverServiceTests(unittest.TestCase):
     def test_cleanup_observer_retention_prunes_old_rows_and_downgrades_state(self) -> None:
         session = self.db.SessionLocal()
         try:
-            now = datetime.utcnow().replace(microsecond=0)
+            now = self.observer_service._utcnow()
             pl = session.query(self.models.Node).filter(self.models.Node.code == "pl").first()
             assert pl is not None
             old_dt = now - timedelta(days=45)

@@ -1,6 +1,6 @@
 # Repository Map
 
-Last updated: 2026-04-13
+Last updated: 2026-04-14
 
 ## Document Status
 
@@ -17,7 +17,7 @@ Legacy filename note:
 | --- | --- | --- |
 | `portal_bot/` | FastAPI backend, Telegram bots, worker, data model, panel sync | root canonical docs plus `portal_bot/api.py`, `portal_bot/app_first_service.py`, `portal_bot/channel_bonus_service.py`, and related tests |
 | `webapp/` | Next.js user cabinet and primary admin surface | `webapp/README.md`, `webapp/src/app/(dashboard)/admin/`, `webapp/src/components/admin/users/`, `webapp/src/lib/api.ts`, `webapp/e2e/` |
-| `marketing/` | public website, checkout, legal pages, SEO routes and brand assets | root canonical docs plus `marketing/src/`, `marketing/src/app/install/`, `marketing/public/`, `shared/copy.ts`, `shared/product-facts.json`, `shared/public-urls.json`, `copy/catalog.ru.json` |
+| `marketing/` | public website, checkout, legal pages, SEO routes and brand assets | root canonical docs plus `marketing/src/`, `marketing/src/app/install/`, `marketing/public/_redirects`, `shared/copy.ts`, `shared/product-facts.json`, `shared/public-urls.json`, `copy/catalog.ru.json` |
 | `shared/` | shared host config, locked product facts, design tokens, and public copy for bot/site/app | `shared/portal-config.ts`, `shared/product-facts.json`, `shared/public-urls.json`, `shared/design-tokens.json`, `shared/copy.ts` |
 | `infra/` | runtime units and infra assets | `infra/portal-node-metrics.service`, `infra/portal-node-metrics.timer`, `infra/portal-node-observer.service`, `infra/portal-node-observer.timer` |
 | `scripts/` | deploy, smoke, node, release, audit, migration scripts | this file and `docs/operations/deployment-and-access.md` |
@@ -55,6 +55,11 @@ Legacy filename note:
 - automatic username sync is the primary path; manual username sync remains compatibility/recovery only
 - premium-grade access states `trial_premium`, `bonus_premium`, and `paid_unlimited` target all enabled non-free delivery nodes
 - free-tier access states `free_monthly` and `free_soft_mode` target only the dedicated `NL-free` node
+- smart-connect shortlist logic, RTT upload, and stickiness are part of that same app-first contract and must not be documented separately from the pool rule
+- split-tunnel persistence is part of that same contract through `route_mode`, `selected_apps`, `requires_elevated_privileges`, and mirrored `route_policy.*` fields
+- additive browser email auth lives under `/api/auth/email/*` and should be documented together with transactional sender identity plus delivery-confirmation/webhook readiness
+- support tickets live under `/api/tickets`, `/api/tickets/uploads`, and `/api/tickets/{ticket_id}/messages`; cabinet and admin continue real ticket threads instead of fake live-chat state
+- public user-facing version labels stay on `0.x.x-beta`; inherited strings like `2.5.7 dev` are release regressions
 
 ## Script Categories
 
@@ -63,6 +68,7 @@ Legacy filename note:
 - `remote_deploy_brain_portal_code.py`
 - `remote_deploy_brain_static_sites.py`
 - `remote_brain_apply_release_handoff.py`
+- `remote_apply_transport_front.py`
 - `remote_install_mini_canary_stack.py`
 - `remote_switch_bot_tokens.py`
 - `release_orchestrator.py`
@@ -77,6 +83,7 @@ Legacy filename note:
 - `run_client_release_gate.py`
 - `render_ru_probe_report.py`
 - `ru_probe_runner.py`
+- `remote_transport_front_smoke.py`
 - `smoke_client_apps.py`
 - `ui_visual_smoke.py`
 - `verify_brain_ready.py`
@@ -124,6 +131,8 @@ Marketing-specific release checks now live in:
 - `tests/test_api_auth_and_tickets.py`
 - `tests/test_api_payments_callbacks.py`
 - `tests/test_api_p0_extensions.py`
+- `tests/test_smart_connect_api.py`
+- `tests/test_network_rollout_api.py`
 
 ### Worker and retention
 
@@ -141,6 +150,7 @@ Marketing-specific release checks now live in:
 - `tests/test_observer_api.py`
 - `tests/test_collect_xray_observer.py`
 - `tests/test_predeploy_node_readiness.py`
+- `tests/test_remote_apply_transport_front.py`
 
 ### Bot, support, and user surfaces
 
@@ -152,6 +162,7 @@ Marketing-specific release checks now live in:
 ### Frontend and smoke
 
 - `tests/test_admin_webapp_smoke.py`
+- `tests/test_client_security_smoke.py`
 - `tests/test_public_copy_guardrails.py`
 - `tests/test_ui_visual_smoke.py`
 - `webapp/e2e/admin-gate.spec.ts`

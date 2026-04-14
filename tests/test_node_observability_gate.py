@@ -6,7 +6,7 @@ import sys
 import tempfile
 import unittest
 import uuid
-from datetime import datetime, timedelta
+from datetime import timedelta
 from pathlib import Path
 
 
@@ -26,8 +26,13 @@ class NodeObservabilityGateTests(unittest.TestCase):
     def setUpClass(cls) -> None:
         cls.module = _load_module()
 
+    def test_utcnow_returns_naive_utc_datetime(self) -> None:
+        now = self.module._utcnow()
+
+        self.assertIsNone(now.tzinfo)
+
     def test_node_freshness_failures_report_stale_and_unhealthy_nodes(self) -> None:
-        now = datetime.utcnow()
+        now = self.module._utcnow()
         failures = self.module._node_state_failures(
             [
                 {

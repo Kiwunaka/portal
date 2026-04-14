@@ -3,6 +3,7 @@
   "private": true,
   "version": "0.1.0",
   "scripts": {
+    "check:seo": "node ./scripts/check-marketing-seo.mjs",
     "dev": "next dev",
     "build": "next build",
     "start": "next start",

@@ -6,12 +6,14 @@ from typing import Any
 
 LEGACY_REALITY_FALLBACK = "legacy_reality_fallback"
 GRPC_443_PRIMARY = "grpc_443_primary"
+RESERVE_XHTTP_CDN = "reserve_xhttp_cdn"
 OPERATOR_LAB = "operator_lab"
 
 _PROFILE_ORDER = {
     LEGACY_REALITY_FALLBACK: 0,
     GRPC_443_PRIMARY: 1,
-    OPERATOR_LAB: 2,
+    RESERVE_XHTTP_CDN: 2,
+    OPERATOR_LAB: 3,
 }
 
 

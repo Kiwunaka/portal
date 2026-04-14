@@ -1,10 +1,16 @@
 # Monitoring And Visibility
 
-Last updated: 2026-04-13
+Last updated: 2026-04-14
 
 ## Document Status
 
 This file is living source of truth for hostname migration policy, external RU probe operations, and operator visibility into app, bot, device, and IP context.
+
+Quick handoff runbooks:
+
+- [Email Delivery Webhook Handoff](C:/Users/kiwun/Documents/ai/VPN/docs/operations/email-delivery-webhook-handoff.md)
+- [RU Origin Probe Handoff](C:/Users/kiwun/Documents/ai/VPN/docs/operations/ru-origin-probe-handoff.md)
+- [Release Links And Final Handoff](C:/Users/kiwun/Documents/ai/VPN/docs/operations/release-links-and-final-handoff.md)
 
 ## Canonical Hostname Policy
 
@@ -44,6 +50,27 @@ Monitoring should cover four layers together:
 
 The platform should be operated as one system. A broken Telegram handoff, dead node, or wrong hostname can all appear to the user as "VPN does not work".
 
+## Identity And Email Visibility
+
+The browser identity rollout should stay operator-visible instead of hiding inside generic session errors.
+
+Required support and admin identity fields:
+
+- `auth_origin` such as `app`, `telegram`, `email`, or `checkout_ticket`
+- linked email presence and verification state when email auth is enabled
+- linked Telegram presence
+- install or device context tied to the same session
+
+Operational rule:
+
+- transactional sender health for `noreply@pokrov.space` should be monitored separately from node health and Telegram availability
+- email verification or recovery incidents must not be misclassified as node or routing incidents
+- the latest local green release-gate report does not replace `current-origin`, `brain-origin`, or `RU-origin` evidence in a release handoff
+
+If the issue is email-specific, hand off through:
+
+- [email-delivery-webhook-handoff.md](C:/Users/kiwun/Documents/ai/VPN/docs/operations/email-delivery-webhook-handoff.md)
+
 ## Transport Rollout Visibility
 
 Transport rollout must stay visible to operators instead of being buried in opaque config.
@@ -60,6 +87,36 @@ Visibility rule:
 - if a failure is provider- or family-specific, fail over by `subnet` first, then by `hoster_family`, and only then by country label
 - release and incident reports must keep `current-origin check`, `brain-origin check`, and `RU-origin check` as separate evidence lines
 - do not collapse those origins into a single verdict because each origin answers a different question
+
+## Subscription Truth And Smart-Connect Visibility
+
+Admin truth must be install-aware and explicit about missing data instead of implying certainty.
+
+Required admin summary fields:
+
+- `active_nonfree_accounts`
+- `trial_accounts`
+- `bonus_accounts`
+- `unique_install_ids_24h`
+- `unique_install_ids_7d`
+- `observer_seen_accounts_24h`
+- `data_quality.metrics`
+- `data_quality.app_installs`
+- `data_quality.observer`
+
+Required operator meaning:
+
+- entitlement counts describe backend truth for active premium-grade access, trial access, and bonus access
+- install counts describe recent app-seen activity, not a perfect human count
+- observer counts describe observer-seen accounts, not a full billing truth replacement
+- each data-quality badge must render as `ok`, `stale`, or `missing`
+
+Smart-connect visibility rule:
+
+- the managed manifest exposes shortlist-level `health_score`, `cpu_percent`, `panel_latency_ms`, `backend_penalty`, `cpu_penalty`, `shortlist_revision`, and stickiness metadata
+- accepted client RTT uploads are stored through the `smart_connect_latency_sample` event with `install_id`, `carrier`, `platform`, selected node, previous node, and accepted RTT samples
+- operators should be able to reason about recent RTT quality by node, carrier, and platform without exposing raw samples in public consumer UI
+- shortlist evidence must respect the paid-pool vs `NL-free` pool boundary; a “better ping” does not authorize crossing the access-tier rule
 
 ## External RU Probe Policy
 
@@ -107,6 +164,7 @@ Minimum report fields:
 - `ipv4_health`
 - `ipv6_health`
 - `transport_health`
+- recent smart-connect shortlist stickiness and RTT-quality evidence when install-scoped samples exist
 - reserve status for `xhttp_alive` and `hysteria_alive`
 - derived classifications such as `probe_host_problem`, `canonical_host_problem`, `foreign_edge_problem`, `eu_node_problem`
 - notes for DNS, TCP, TLS, or route anomalies
@@ -251,6 +309,10 @@ Interpretation note:
 - a successful `current-origin check` only proves reachability from that current workstation
 - a successful `brain-origin check` only proves control-plane reachability
 - missing `RU-origin check` data means RU-specific conclusions remain unproven, even if another origin succeeds or fails
+
+When handing this off, use:
+
+- [ru-origin-probe-handoff.md](C:/Users/kiwun/Documents/ai/VPN/docs/operations/ru-origin-probe-handoff.md)
 
 Reserve interpretation:
 

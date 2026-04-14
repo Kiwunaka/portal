@@ -3,6 +3,8 @@
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect } from "react";
 
+import { POKROV_LEGACY_THEME_STORAGE_KEYS, POKROV_THEME_STORAGE_KEY } from "./branding";
+
 type TelegramThemeParams = {
   bg_color?: string;
   secondary_bg_color?: string;
@@ -117,6 +119,19 @@ function detectHapticStyle(element: Element): "light" | "medium" | "heavy" | "ri
   return "light";
 }
 
+function readStoredThemePreference(): "light" | "dark" | null {
+  for (const key of [POKROV_THEME_STORAGE_KEY, ...POKROV_LEGACY_THEME_STORAGE_KEYS]) {
+    const value = window.localStorage.getItem(key);
+    if (value === "light" || value === "dark") {
+      if (key !== POKROV_THEME_STORAGE_KEY) {
+        window.localStorage.setItem(POKROV_THEME_STORAGE_KEY, value);
+      }
+      return value;
+    }
+  }
+  return null;
+}
+
 export default function TelegramWebAppInit() {
   const pathname = usePathname();
   const router = useRouter();
@@ -138,8 +153,8 @@ export default function TelegramWebAppInit() {
       webApp.enableClosingConfirmation?.();
     }
 
-    const hasManualTheme = Boolean(localStorage.getItem("portal-theme"));
-    if (!hasManualTheme && webApp.colorScheme) {
+    const savedTheme = readStoredThemePreference();
+    if (!savedTheme && webApp.colorScheme) {
       document.documentElement.classList.toggle("dark", webApp.colorScheme === "dark");
     }
 
@@ -149,7 +164,7 @@ export default function TelegramWebAppInit() {
 
     const onThemeChanged = (): void => {
       applyTheme(webApp);
-      if (!hasManualTheme && webApp.colorScheme) {
+      if (!savedTheme && webApp.colorScheme) {
         document.documentElement.classList.toggle("dark", webApp.colorScheme === "dark");
       }
     };

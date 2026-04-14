@@ -649,7 +649,7 @@ async def _edit_text_with_specs(
 
 def _utcnow() -> datetime:
     # Use naive UTC everywhere (SQLite DateTime is stored as text; legacy DBs may contain tz offsets).
-    return datetime.utcnow().replace(tzinfo=None)
+    return datetime.now(timezone.utc).replace(tzinfo=None)
 
 
 def _track_bonus_event(*, tg_id: int, event_name: str, meta: dict | None = None) -> None:
@@ -863,7 +863,7 @@ TARIFFS = {
         "name": "🚀 Тест на 5 дней",
         "stars": 0,
         "days": 5,
-        "gb": FREE_TOTAL_GB,
+        "gb": TRIAL_LIMIT_GB,
         "subId": "TRIAL_5D",
         "sub_type": "TRIAL"
     },
@@ -1593,7 +1593,7 @@ def _checkout_ticket_for_user(
 ) -> str:
     if not CHECKOUT_TICKET_SECRET:
         return ""
-    now_ts = int(datetime.utcnow().timestamp())
+    now_ts = int(datetime.now(timezone.utc).timestamp())
     payload = {
         "tg_id": int(tg_id),
         "plan_code": (plan_code or "").strip().lower()[:32],
@@ -2184,7 +2184,7 @@ def update_streak(tg_id: int) -> tuple[int, int]:
         session.close()
         return (0, 0)
     
-    now = datetime.utcnow()
+    now = _utcnow()
     old_streak = user.streak_months or 0
     
     # Check if streak should reset (subscription expired > 7 days ago)
@@ -2255,10 +2255,10 @@ def award_achievement(tg_id: int, achievement_id: str) -> int:
     if bonus_days > 0:
         user = session.query(User).filter_by(tg_id=tg_id).first()
         if user:
-            if user.expiry_at and user.expiry_at > datetime.utcnow():
+            if user.expiry_at and user.expiry_at > _utcnow():
                 user.expiry_at += timedelta(days=bonus_days)
             else:
-                user.expiry_at = datetime.utcnow() + timedelta(days=bonus_days)
+                user.expiry_at = _utcnow() + timedelta(days=bonus_days)
     
     session.commit()
     session.close()
@@ -2292,7 +2292,7 @@ async def check_achievements(tg_id: int, bot) -> list:
     
     # week_active: 7+ days since creation
     if user.created_at:
-        days_active = (datetime.utcnow() - user.created_at).days
+        days_active = (_utcnow() - user.created_at).days
         if days_active >= 7 and not has_achievement(tg_id, "week_active"):
             gb = award_achievement(tg_id, "week_active")
             if gb > 0:
@@ -2339,7 +2339,7 @@ async def check_achievements(tg_id: int, bot) -> list:
     
     # loyal_year: 1 year since creation
     if user.created_at:
-        days_active = (datetime.utcnow() - user.created_at).days
+        days_active = (_utcnow() - user.created_at).days
         if days_active >= 365 and not has_achievement(tg_id, "loyal_year"):
             gb = award_achievement(tg_id, "loyal_year")
             if gb > 0:
@@ -3109,7 +3109,7 @@ def build_choose_tariff_text() -> str:
         "💎 *Выберите уровень доступа*\n\n"
         f"🚀 *Тест 5 дней* — быстрый старт: {free_label}\n"
         f"💠 *Премиум* — {paid_count} стран: {paid_list}\n\n"
-        f"Тест: 5 дней, до {FREE_TOTAL_GB} ГБ, до {FREE_LIMIT_IP} устройства, базовый профиль для знакомства с сервисом.\n"
+        f"Тест: 5 дней, до {TRIAL_LIMIT_GB} ГБ, до {FREE_LIMIT_IP} устройства, базовый профиль для знакомства с сервисом.\n"
         "Тестовый тариф — идеальный способ познакомиться с сервисом. А для тяжелых видео и игр ждем вас на Премиуме!\n"
         f"Премиум: все доступные страны, до {PAID_LIMIT_IP} устройств и комфортный запас по скорости.\n"
         "Приветственный тариф за 99 ₽ остаётся как мягкий апгрейд после теста.\n\n"
@@ -3420,7 +3420,7 @@ def tariff_keyboard(
         buttons.append(
             [
                 InlineKeyboardButton(
-                text=f"🚀 Тест 5 дней — {FREE_TOTAL_GB} ГБ, {FREE_LIMIT_IP} устройство, базовый профиль",
+                text=f"🚀 Тест 5 дней — {TRIAL_LIMIT_GB} ГБ, {FREE_LIMIT_IP} устройство, базовый профиль",
                     callback_data="buy_trial",
                 )
             ]
@@ -5876,8 +5876,8 @@ async def support_diagnose(callback: CallbackQuery):
         details = "Активируй подписку через *🛒 Тарифы*"
     else:
         # Status
-        if user.is_active and user.expiry_at and user.expiry_at > datetime.utcnow():
-            days_left = (user.expiry_at - datetime.utcnow()).days
+        if user.is_active and user.expiry_at and user.expiry_at > _utcnow():
+            days_left = (user.expiry_at - _utcnow()).days
             status = f"✅ Активна (ещё {days_left} дн.)"
         else:
             status = "❌ Истекла"
@@ -6648,7 +6648,7 @@ async def admin_sync_free_pl(callback: CallbackQuery):
             )
             return
 
-        now = datetime.utcnow()
+        now = _utcnow()
         users = (
             s.query(User)
             .filter(func.upper(User.sub_type).in_(["FREE", "TRIAL", "BONUS"]))
@@ -9115,7 +9115,7 @@ async def payment_success(message: Message, bot: Bot):
                 "➖➖➖➖➖➖➖➖➖➖\n"
                 f"📦 Товар: *{tariff['name']}*\n"
                 f"💳 Сумма: *{payment.total_amount} XTR*\n"
-                f"📅 Дата: *{datetime.utcnow().strftime('%d.%m.%Y %H:%M')} UTC*\n"
+                f"📅 Дата: *{_utcnow().strftime('%d.%m.%Y %H:%M')} UTC*\n"
                 f"🆔 TransID: `{payload}`\n"
                 "➖➖➖➖➖➖➖➖➖➖\n"
                 "✅ *Лицензия активирована успешно*"

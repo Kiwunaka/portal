@@ -109,6 +109,12 @@ def _rollout_payload() -> dict[str, object]:
             "allowlist_node_codes": [],
             "expires_at": None,
         },
+        "reserve_xhttp_cdn": {
+            "enabled": False,
+            "allowlist_node_codes": [],
+            "xhttp_path": "/reserve-xhttp",
+            "tls_server_name": "cdn.connect.pokrov.space",
+        },
         "package_catalog_feed": {"version": "2026-04-13"},
         "routing_rules_feed": {"version": "2026-04-13"},
         "support_recovery_order": ["app", "web", "telegram"],
@@ -284,3 +290,55 @@ def test_admin_network_rollout_config_roundtrip_if_route_is_exposed(monkeypatch,
     get_after = client.get("/api/admin/network-rollout-config", headers=admin_hdrs)
     assert get_after.status_code == 200, get_after.text
     assert get_after.json()["network_rollout_config"]["cohort_overrides"]["ru-risk-canary"]["install_ids"] == ["install-canary"]
+
+
+def test_reserve_xhttp_rollout_stays_opt_in_and_emits_xray_manifest_only_when_enabled(monkeypatch, tmp_path) -> None:
+    api = _load_api(monkeypatch, tmp_path)
+    client = TestClient(api.app)
+
+    rollout_payload = _rollout_payload()
+    rollout_payload["reserve_xhttp_cdn"] = {
+        "enabled": True,
+        "allowlist_node_codes": ["default"],
+        "xhttp_path": "/reserve-xhttp",
+        "tls_server_name": "cdn.connect.pokrov.space",
+    }
+    rollout_payload["cohort_overrides"]["reserve-canary"] = {
+        "install_ids": ["install-reserve"],
+        "transport_profile": "reserve_xhttp_cdn",
+    }
+
+    db = api.SessionLocal()
+    try:
+        api._set_app_setting_json(s=db, key="network_rollout_config", value=rollout_payload)
+        db.commit()
+    finally:
+        db.close()
+
+    reserve_trial = client.post(
+        "/api/client/session/start-trial",
+        json={
+            "install_id": "install-reserve",
+            "device_name": "Reserve Device",
+            "platform": "android",
+            "trial_days": 5,
+        },
+    )
+    assert reserve_trial.status_code == 200, reserve_trial.text
+    reserve_body = reserve_trial.json()
+    assert reserve_body["client_policy"]["transport_profile"] == "reserve_xhttp_cdn"
+    assert reserve_body["client_policy"]["transport_kind"] == "xhttp"
+    assert reserve_body["client_policy"]["engine_hint"] == "xray"
+    assert reserve_body["client_policy"]["profile_revision"] == "2026-04-13:reserve_xhttp_cdn"
+
+    managed_manifest = client.get(
+        "/api/client/profile/managed",
+        headers={"Authorization": f"Bearer {reserve_body['session_token']}"},
+    )
+    assert managed_manifest.status_code == 200, managed_manifest.text
+    manifest_body = managed_manifest.json()
+    assert manifest_body["transport_profile"] == "reserve_xhttp_cdn"
+    assert manifest_body["transport_kind"] == "xhttp"
+    assert manifest_body["engine_hint"] == "xray"
+    assert manifest_body["config_format"] == "xray-json"
+    assert manifest_body["fallback_order"] == ["reserve_xhttp_cdn", "legacy_reality_fallback"]

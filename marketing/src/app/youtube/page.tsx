@@ -1,38 +1,39 @@
 import JsonLd from "../../components/json-ld";
 import MarketingLanding, { buildMarketingMetadata } from "../../components/marketing-landing";
-import { buildBreadcrumbJsonLd } from "../../lib/marketing-site";
+import { buildBreadcrumbJsonLd, MARKETING_CANONICAL_PATHS } from "../../lib/marketing-site";
+import { CANONICAL_PLATFORM_BRAND } from "../../lib/pokrov";
 
 export const metadata = buildMarketingMetadata(
-  "Оптимизация YouTube | POKROV Network",
-  "Приложение, 5 дней тест-драйва и идеальная работа YouTube-сценария без пауз и долгого ожидания.",
+  "YouTube без пауз | POKROV",
+  "Приложение, 5 дней теста и спокойный маршрут к длинным видео и предсказуемой загрузке без лишних шагов.",
   {
-    path: "/vpn-dlya-youtube/",
-    keywords: ["ускорение youtube", "стабильный youtube", "youtube без пауз", "оптимизатор youtube"],
+    path: MARKETING_CANONICAL_PATHS.youtube,
+    keywords: ["youtube без пауз", "стабильный youtube", "ускорение youtube", "pokrov youtube"],
   },
 );
 
-export default function VpnForYoutubePage() {
+export default function YoutubePage() {
   return (
     <>
       <JsonLd
         data={buildBreadcrumbJsonLd([
-          { name: "POKROV Network", path: "/" },
-          { name: "Ускорение YouTube", path: "/vpn-dlya-youtube/" },
+          { name: CANONICAL_PLATFORM_BRAND, path: MARKETING_CANONICAL_PATHS.home },
+          { name: "YouTube", path: MARKETING_CANONICAL_PATHS.youtube },
         ])}
       />
       <MarketingLanding
-        pagePath="/vpn-dlya-youtube/"
+        pagePath={MARKETING_CANONICAL_PATHS.youtube}
         heroKicker="Для YouTube и длинных видео"
-        heroTitle="Доступ к YouTube без пауз и зависаний"
+        heroTitle="YouTube без пауз и зависаний"
         heroSubtitle="Сначала проверьте качество видео в приложении и только потом переходите к кабинету и продлению, если сервис подошёл."
-        scenarioTitle="Почему YouTube летает"
+        scenarioTitle="Почему YouTube идёт стабильно"
         scenarioBody="Здесь важны стабильные маршруты, предсказуемость подключения и отсутствие лишних шагов перед первым запуском."
         scenarioCards={[
           {
             eyebrow: "Длинные видео",
             glyph: "signal",
             title: "Сразу проверяете тот сценарий, ради которого пришли",
-            desc: "Не обещаем абстракций, а ведём сразу к реальной проверке видео 4K через приложение и live-маршрут.",
+            desc: "Маршрут ведёт к реальной проверке видео, а не к абстрактным обещаниям.",
           },
           {
             eyebrow: "Приложение сначала",
@@ -44,11 +45,11 @@ export default function VpnForYoutubePage() {
             eyebrow: "Продление потом",
             glyph: "route",
             title: "Платная часть только по вашему выбору",
-            desc: "Маршрут остаётся спокойным: сначала личный опыт использования, потом уже решение в кабинете.",
+            desc: "Сначала личный опыт использования, потом уже решение в кабинете.",
           },
         ]}
         clusterTitle="Похожие сценарии"
-        clusterBody="Отсюда удобно перейти к TikTok, играм и другим страницам, сохраняя один понятный путь к быстрой сети."
+        clusterBody="Отсюда удобно перейти к TikTok, мобильному старту и другим страницам с тем же app-first маршрутом."
       />
     </>
   );

@@ -8,7 +8,7 @@ import os
 import re
 import time
 from collections import OrderedDict
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 from urllib import error, request
@@ -24,7 +24,7 @@ ACCESS_LINE_RE = re.compile(
 
 
 def _utcnow() -> datetime:
-    return datetime.utcnow().replace(microsecond=0)
+    return datetime.now(timezone.utc).replace(tzinfo=None, microsecond=0)
 
 
 def _load_cursor(cursor_path: Path) -> dict[str, Any]:

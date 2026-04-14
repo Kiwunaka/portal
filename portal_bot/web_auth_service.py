@@ -347,11 +347,21 @@ async def exchange_telegram_oidc_code(*, code: str, state_token: str) -> dict[st
     )
 
 
-def create_web_session_token(*, tg_id: int, username: str | None = None) -> str:
+def create_web_session_token(
+    *,
+    tg_id: int,
+    username: str | None = None,
+    auth_type: str | None = None,
+    auth_origin: str | None = None,
+    email: str | None = None,
+) -> str:
     now = int(time.time())
     payload = {
         "id": int(tg_id),
         "username": (username or "").strip() or None,
+        "auth_type": (auth_type or "").strip() or None,
+        "auth_origin": (auth_origin or "").strip() or None,
+        "email": (email or "").strip().lower() or None,
         "iat": now,
         "exp": now + SESSION_TTL_SECONDS,
     }
@@ -383,7 +393,13 @@ def verify_web_session_token(token: str) -> dict[str, Any] | None:
         return None
     if tg_id <= 0 or exp <= int(time.time()):
         return None
-    return {"id": tg_id, "username": payload.get("username")}
+    return {
+        "id": tg_id,
+        "username": payload.get("username"),
+        "auth_type": payload.get("auth_type"),
+        "auth_origin": payload.get("auth_origin"),
+        "email": payload.get("email"),
+    }
 
 
 def verify_telegram_login_payload(*, payload: dict[str, Any], bot_token: str, max_age_seconds: int = 86400) -> dict[str, Any] | None:

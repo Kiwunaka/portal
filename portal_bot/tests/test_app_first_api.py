@@ -120,6 +120,10 @@ def test_start_trial_enforces_canonical_trial_days_and_reports_provisioning(monk
     assert payload["client_policy"]["dns_policy"] == "ru_direct_split"
     assert payload["client_policy"]["package_catalog_version"]
     assert payload["client_policy"]["support_context"]["routing_mode"] == "all_except_ru"
+    assert payload["client_policy"]["route_mode"] == "all_traffic"
+    assert payload["client_policy"]["selected_apps"] == []
+    assert payload["client_policy"]["requires_elevated_privileges"] is True
+    assert payload["client_policy"]["route_policy"]["mode"] == "all_traffic"
     assert payload["provisioning"]["status"] in {"ready", "pending_sync"}
     assert payload["provisioning"]["sync_ok"] == payload["sync_ok"]
 
@@ -133,6 +137,64 @@ def test_start_trial_enforces_canonical_trial_days_and_reports_provisioning(monk
         assert remaining <= timedelta(days=6)
     finally:
         db.close()
+
+
+def test_app_route_policy_can_be_updated_and_reloaded(monkeypatch, tmp_path):
+    api = _load_api(monkeypatch, tmp_path)
+    client = TestClient(api.app)
+
+    trial_response = client.post(
+        "/api/client/session/start-trial",
+        json={
+            "install_id": "install-route-api",
+            "device_name": "Windows PC",
+            "platform": "windows",
+            "os_version": "11",
+            "app_version": "1.0.0",
+            "locale": "ru",
+            "time_zone": "Europe/Moscow",
+            "trial_days": 5,
+        },
+    )
+
+    assert trial_response.status_code == 200
+    token = trial_response.json()["session_token"]
+
+    update_response = client.post(
+        "/api/client/route-policy",
+        headers={"Authorization": f"Bearer {token}"},
+        json={
+            "route_mode": "selected_apps",
+            "selected_apps": ["chrome.exe", "telegram.exe"],
+        },
+    )
+
+    assert update_response.status_code == 200
+    updated_payload = update_response.json()
+    assert updated_payload["ok"] is True
+    assert updated_payload["route_mode"] == "selected_apps"
+    assert updated_payload["selected_apps"] == ["chrome.exe", "telegram.exe"]
+    assert updated_payload["requires_elevated_privileges"] is True
+
+    fetch_response = client.get(
+        "/api/client/route-policy",
+        headers={"Authorization": f"Bearer {token}"},
+    )
+
+    assert fetch_response.status_code == 200
+    fetched_payload = fetch_response.json()
+    assert fetched_payload["route_mode"] == "selected_apps"
+    assert fetched_payload["selected_apps"] == ["chrome.exe", "telegram.exe"]
+
+    dashboard_response = client.get(
+        "/api/dashboard",
+        headers={"Authorization": f"Bearer {token}"},
+    )
+
+    assert dashboard_response.status_code == 200
+    dashboard_payload = dashboard_response.json()
+    assert dashboard_payload["client_policy"]["route_mode"] == "selected_apps"
+    assert dashboard_payload["client_policy"]["selected_apps"] == ["chrome.exe", "telegram.exe"]
 
 
 def test_start_trial_reuses_existing_install_id(monkeypatch, tmp_path):

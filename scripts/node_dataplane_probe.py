@@ -6,7 +6,7 @@ import json
 import socket
 import ssl
 import time
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 
 _HOSTER_SIGNATURES: dict[str, tuple[tuple[str, ...], str]] = {
@@ -27,7 +27,7 @@ _HOSTER_SIGNATURES: dict[str, tuple[tuple[str, ...], str]] = {
 
 
 def _utcnow() -> datetime:
-    return datetime.utcnow()
+    return datetime.now(timezone.utc).replace(tzinfo=None)
 
 
 def _truncate(message: object, limit: int = 500) -> str:

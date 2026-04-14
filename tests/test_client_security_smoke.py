@@ -354,6 +354,82 @@ Libbox.newStandaloneCommandClient().serviceReload()
         self.assertIn("android libbox CommandServer is present and requires release-build localhost audit", observations)
         self.assertIn("android/libbox standalone command client calls are present", observations)
 
+    def test_packaging_branding_failures_detects_legacy_user_facing_vpn_branding(self) -> None:
+        manifest_text = '<application android:label="POKROV VPN"></application>'
+        exe_config_text = """
+publisher: POKROV VPN
+display_name: POKROV VPN
+output_base_file_name: pokrov-vpn-windows-setup-x64
+install_dir_name: "{autopf64}\\POKROV VPN"
+"""
+        msix_text = """
+display_name: POKROV VPN
+publisher_display_name: POKROV VPN
+protocol_activation: pokrovvpn
+"""
+        runner_rc_text = """
+VALUE "CompanyName", "POKROV VPN" "\\0"
+VALUE "FileDescription", "POKROV VPN" "\\0"
+VALUE "ProductName", "POKROV VPN" "\\0"
+"""
+        main_cpp_text = 'if (!window.Create(L"POKROV VPN", origin, size)) { return EXIT_FAILURE; }'
+
+        failures = self.module._packaging_branding_failures(
+            manifest_text=manifest_text,
+            exe_config_text=exe_config_text,
+            msix_text=msix_text,
+            runner_rc_text=runner_rc_text,
+            main_cpp_text=main_cpp_text,
+        )
+
+        self.assertIn("Android launcher label must be POKROV", failures)
+        self.assertIn("Android manifest must register pokrov:// as the canonical app link scheme", failures)
+        self.assertIn("Windows exe package display_name must be POKROV", failures)
+        self.assertIn("Windows exe package output filename must drop vpn wording", failures)
+        self.assertIn("Windows msix display_name must be POKROV", failures)
+        self.assertIn("Windows msix protocol activation must use pokrov", failures)
+        self.assertIn("Windows runner resources must use POKROV for CompanyName/FileDescription/ProductName", failures)
+        self.assertIn("Windows main window title must be POKROV", failures)
+
+    def test_packaging_branding_failures_accepts_pokrov_user_facing_labels_with_hidden_compatibility(self) -> None:
+        manifest_text = """
+<application android:label="POKROV">
+  <activity>
+    <intent-filter>
+      <data android:scheme="pokrov" />
+      <data android:scheme="pokrovvpn" />
+    </intent-filter>
+  </activity>
+</application>
+"""
+        exe_config_text = """
+publisher: POKROV
+display_name: POKROV
+output_base_file_name: pokrov-windows-setup-x64
+install_dir_name: "{autopf64}\\POKROV"
+"""
+        msix_text = """
+display_name: POKROV
+publisher_display_name: POKROV
+protocol_activation: pokrov
+"""
+        runner_rc_text = """
+VALUE "CompanyName", "POKROV" "\\0"
+VALUE "FileDescription", "POKROV" "\\0"
+VALUE "ProductName", "POKROV" "\\0"
+"""
+        main_cpp_text = 'if (!window.Create(L"POKROV", origin, size)) { return EXIT_FAILURE; }'
+
+        failures = self.module._packaging_branding_failures(
+            manifest_text=manifest_text,
+            exe_config_text=exe_config_text,
+            msix_text=msix_text,
+            runner_rc_text=runner_rc_text,
+            main_cpp_text=main_cpp_text,
+        )
+
+        self.assertEqual(failures, [])
+
 
 if __name__ == "__main__":
     unittest.main()

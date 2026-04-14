@@ -1,7 +1,7 @@
 {
   "brands": {
     "platform": "POKROV",
-    "client": "POKROV Network"
+    "client": "POKROV"
   },
   "strategy": {
     "client": "consumer-first",

@@ -138,7 +138,7 @@ export default function PricingPage() {
 
             <div className="space-y-4">
               <h1 className="font-display text-4xl font-semibold leading-[0.96] text-slate-900 dark:text-slate-50 sm:text-5xl lg:text-[3.5rem]">
-                Планы POKROV Network без витрины и суеты
+                Планы POKROV без витрины и суеты
               </h1>
               <p className="max-w-2xl text-sm leading-7 text-slate-600 dark:text-slate-300 sm:text-[15px]">
                 Сначала проверяете сервис в спокойном режиме, потом выбираете срок, который удобно живет вместе с вашим ритмом. Продление продолжается в том же кабинете, без повторной настройки и лишней беготни.

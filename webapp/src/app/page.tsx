@@ -1,11 +1,14 @@
 "use client";
 
 import AppRouteLink from "@/components/app-route-link";
-import TelegramLoginWidget from "@/components/telegram-login-widget";
+import CabinetEntryAuth from "@/components/cabinet-entry-auth";
 import { getCopyText, getPortalPublicConfig } from "@/lib/portal";
 import { PortalSessionProvider, usePortalSession } from "@/lib/session";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
+
+import { pokrovBranding } from "./branding";
+import PokrovLogo from "./pokrov-logo";
 
 const config = getPortalPublicConfig(process.env as Record<string, string | undefined>);
 const BOT_WEBLOGIN_URL = `${config.botUrl}${config.botUrl.includes("?") ? "&" : "?"}start=weblogin`;
@@ -13,18 +16,18 @@ const BOT_WEBLOGIN_URL = `${config.botUrl}${config.botUrl.includes("?") ? "&" : 
 const ENTRY_PILLARS = [
   {
     icon: "lock",
-    title: "Вход без паролей",
-    text: "Подтверждаете Telegram и возвращаетесь в кабинет без лишних шагов и ручных кодов.",
+    title: "Вход без лишних шагов",
+    text: "Подтверждаете Telegram или email и сразу возвращаетесь в кабинет с тем же доступом, устройствами и историей поддержки.",
   },
   {
-    icon: "vpn_key",
-    title: "Скорость и продление в одном месте",
-    text: "Статус, продление и ключи оптимизации собираются в одной спокойной точке входа.",
+    icon: "devices",
+    title: "Связь кабинета и приложений",
+    text: "Кабинет остаётся местом для статуса, продления и помощи, а само подключение продолжается внутри приложений POKROV.",
   },
   {
     icon: "support_agent",
-    title: "Поддержка рядом",
-    text: "Если что-то пойдет не так, служба заботы уже находится внутри того же маршрута, без поиска по чатам.",
+    title: "Служба заботы рядом",
+    text: "Если что-то пошло не так, здесь же можно быстро открыть поддержку или продолжить уже созданное обращение.",
   },
 ] as const;
 
@@ -44,15 +47,14 @@ const LOGIN_FACTS = [
 ] as const;
 
 const CABINET_AREAS = [
-  "Статус доступа и срок действия без ручной проверки.",
-  "Продление и планы в том же кабинете, без новой настройки.",
-  "Ссылка подключения и служба заботы под рукой, когда они реально нужны.",
+  "Статус доступа, срок действия и продление без ручной проверки по чатам.",
+  "Устройства, приложения и безопасные подсказки, если переносите доступ на новый экран.",
+  "Поддержка, где можно быстро написать в Telegram или открыть обращение с вложениями.",
 ] as const;
 
 function EntryBody() {
   const router = useRouter();
-  const { loading, error, webLoginRequired, webLoginBusy, webLoginError, refresh, logoutWebSession } =
-    usePortalSession();
+  const { loading, error, webLoginRequired, refresh, logoutWebSession } = usePortalSession();
 
   useEffect(() => {
     if (!loading && !webLoginRequired) {
@@ -63,19 +65,27 @@ function EntryBody() {
   if (loading) {
     return (
       <main className="relative mx-auto flex min-h-[calc(100vh-2rem)] w-[min(96vw,1120px)] items-center justify-center px-4 py-8 sm:px-6 lg:py-10">
-        <div className="absolute inset-0 -z-10 bg-[radial-gradient(circle_at_top_left,_rgba(11,72,50,0.16),_transparent_34%),radial-gradient(circle_at_bottom_right,_rgba(197,138,42,0.14),_transparent_32%)]" />
         <section className="glass-card w-full overflow-hidden border border-white/70 dark:border-[#243129]/80">
-          <div className="grid gap-0 lg:grid-cols-[1.06fr_0.94fr]">
-            <div className="space-y-5 px-6 py-8 sm:px-8 sm:py-10 lg:px-10 lg:py-11">
-              <div className="inline-flex items-center gap-2 rounded-full border border-emerald-900/10 bg-emerald-900/5 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-emerald-900/70 dark:border-emerald-100/10 dark:bg-emerald-100/5 dark:text-emerald-100/70">
-                cabinet access
+          <div className="grid gap-0 lg:grid-cols-[1.08fr_0.92fr]">
+            <div className="space-y-6 px-6 py-8 sm:px-8 sm:py-10 lg:px-10 lg:py-11">
+              <div className="flex flex-wrap items-center justify-between gap-4">
+                <PokrovLogo
+                  showWordmark
+                  className="inline-flex items-center gap-3"
+                  markClassName="h-12 w-12"
+                  caption={pokrovBranding.cabinetName}
+                  label="POKROV cabinet"
+                />
+                <div className="inline-flex items-center gap-2 rounded-full border border-emerald-900/10 bg-emerald-900/5 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-emerald-900/70 dark:border-emerald-100/10 dark:bg-emerald-100/5 dark:text-emerald-100/70">
+                  {pokrovBranding.entryEyebrow}
+                </div>
               </div>
               <div className="space-y-3">
                 <h1 className="font-display text-4xl font-semibold leading-[0.98] text-slate-900 dark:text-slate-50 sm:text-5xl">
-                  Подготавливаем ваш кабинет POKROV Network
+                  Подготавливаем ваш кабинет POKROV
                 </h1>
                 <p className="max-w-xl text-sm leading-7 text-slate-600 dark:text-slate-300">
-                  Проверяем текущий вход и собираем аккуратный маршрут в кабинет, чтобы скорость, продление и поддержка открылись без лишнего шума.
+                  Проверяем текущий вход и собираем спокойный маршрут к доступу, устройствам и поддержке, чтобы кабинет открылся уже с нужным контекстом.
                 </p>
               </div>
               <div className="grid gap-3 sm:grid-cols-3">
@@ -116,12 +126,20 @@ function EntryBody() {
   if (error) {
     return (
       <main className="relative mx-auto flex min-h-[calc(100vh-2rem)] w-[min(96vw,980px)] items-center justify-center px-4 py-8 sm:px-6 lg:py-10">
-        <div className="absolute inset-0 -z-10 bg-[radial-gradient(circle_at_top_left,_rgba(11,72,50,0.12),_transparent_34%),radial-gradient(circle_at_bottom_right,_rgba(190,24,93,0.10),_transparent_30%)]" />
         <section className="glass-card w-full overflow-hidden border border-white/70 p-7 dark:border-[#243129]/80 sm:p-8">
-          <div className="inline-flex items-center gap-2 rounded-full border border-rose-200/70 bg-rose-50/80 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-rose-700 dark:border-rose-400/20 dark:bg-rose-400/10 dark:text-rose-200">
-            нужен повторный вход
+          <div className="flex flex-wrap items-center justify-between gap-4">
+            <PokrovLogo
+              showWordmark
+              className="inline-flex items-center gap-3"
+              markClassName="h-12 w-12"
+              caption={pokrovBranding.cabinetName}
+              label="POKROV cabinet"
+            />
+            <div className="inline-flex items-center gap-2 rounded-full border border-rose-200/70 bg-rose-50/80 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-rose-700 dark:border-rose-400/20 dark:bg-rose-400/10 dark:text-rose-200">
+              нужен повторный вход
+            </div>
           </div>
-          <h1 className="mt-4 font-display text-4xl font-semibold leading-[1.02] text-slate-900 dark:text-slate-50 sm:text-5xl">
+          <h1 className="mt-6 font-display text-4xl font-semibold leading-[1.02] text-slate-900 dark:text-slate-50 sm:text-5xl">
             Не получилось открыть кабинет
           </h1>
           <p className="mt-4 max-w-2xl text-sm leading-7 text-slate-600 dark:text-slate-300">{error}</p>
@@ -154,6 +172,13 @@ function EntryBody() {
             >
               Открыть Telegram
             </AppRouteLink>
+            <AppRouteLink
+              href={pokrovBranding.marketingUrl}
+              hardNavigate
+              className="outline-btn rounded-2xl px-5 py-3 text-sm font-semibold uppercase tracking-[0.12em]"
+            >
+              {pokrovBranding.siteLinkLabel}
+            </AppRouteLink>
             <button
               className="outline-btn rounded-2xl px-5 py-3 text-sm font-semibold uppercase tracking-[0.12em]"
               onClick={() => logoutWebSession()}
@@ -164,7 +189,7 @@ function EntryBody() {
           </div>
 
           <p className="mt-5 text-xs leading-6 text-slate-500 dark:text-slate-400">
-            Если открыли кабинет отдельно от Telegram, просто заново подтвердите вход. После этого мы вернем вас обратно в кабинет автоматически.
+            Если открыли кабинет отдельно от Telegram, просто заново подтвердите вход. После этого мы вернём вас обратно к доступу, устройствам и поддержке автоматически.
           </p>
         </section>
       </main>
@@ -173,45 +198,63 @@ function EntryBody() {
 
   return (
     <main className="relative mx-auto flex min-h-[calc(100vh-2rem)] w-[min(96vw,1220px)] items-center justify-center px-4 py-8 sm:px-6 lg:py-10">
-      <div className="absolute inset-0 -z-10 bg-[radial-gradient(circle_at_top_left,_rgba(11,72,50,0.16),_transparent_32%),radial-gradient(circle_at_bottom_right,_rgba(197,138,42,0.14),_transparent_32%)]" />
       <section className="glass-card relative w-full overflow-hidden border border-white/70 dark:border-[#243129]/80">
         <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-emerald-700/45 to-transparent dark:via-emerald-300/30" />
         <div className="grid gap-0 lg:grid-cols-[1.08fr_0.92fr]">
           <div className="relative space-y-8 px-6 py-8 sm:px-8 sm:py-10 lg:px-10 lg:py-11">
             <div className="absolute right-0 top-0 hidden h-56 w-56 rounded-full bg-emerald-900/5 blur-3xl lg:block dark:bg-emerald-300/5" />
 
-            <div className="space-y-5">
-              <div className="inline-flex items-center gap-2 rounded-full border border-emerald-900/10 bg-emerald-900/5 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-emerald-900/70 dark:border-emerald-100/10 dark:bg-emerald-100/5 dark:text-emerald-100/70">
-                personal cabinet
+            <div className="flex flex-wrap items-center justify-between gap-4">
+              <PokrovLogo
+                showWordmark
+                className="inline-flex items-center gap-3"
+                markClassName="h-12 w-12"
+                caption={pokrovBranding.cabinetName}
+                label="POKROV cabinet"
+              />
+              <div className="flex flex-wrap gap-3">
+                <AppRouteLink
+                  href={pokrovBranding.marketingUrl}
+                  hardNavigate
+                  className="outline-btn rounded-full px-4 py-2 text-xs font-semibold uppercase tracking-[0.14em]"
+                >
+                  {pokrovBranding.siteLinkLabel}
+                </AppRouteLink>
+                <div className="inline-flex items-center gap-2 rounded-full border border-emerald-900/10 bg-emerald-900/5 px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-emerald-900/70 dark:border-emerald-100/10 dark:bg-emerald-100/5 dark:text-emerald-100/70">
+                  {pokrovBranding.entryEyebrow}
+                </div>
               </div>
+            </div>
 
-              <div className="max-w-2xl space-y-4">
-                <h1 className="font-display text-4xl font-semibold leading-[0.96] text-slate-900 dark:text-slate-50 sm:text-5xl lg:text-[3.6rem]">
-                  {getCopyText("webapp.entry.title", "Личный кабинет POKROV Network")}
-                </h1>
-                <p className="max-w-2xl text-sm leading-7 text-slate-600 dark:text-slate-300 sm:text-[15px]">
-                  {getCopyText(
-                    "webapp.entry.subtitle",
-                    "Здесь удобно управлять скоростью: проверить статус, спокойно продлить подписку, открыть ключи оптимизации и быстро выйти на поддержку, если она понадобится.",
-                  )}
-                </p>
-              </div>
+            <div className="max-w-2xl space-y-4">
+              <h1 className="font-display text-4xl font-semibold leading-[0.96] text-slate-900 dark:text-slate-50 sm:text-5xl lg:text-[3.6rem]">
+                {getCopyText("webapp.entry.title", "Личный кабинет POKROV")}
+              </h1>
+              <p className="max-w-2xl text-sm leading-7 text-slate-600 dark:text-slate-300 sm:text-[15px]">
+                {getCopyText(
+                  "webapp.entry.subtitle",
+                  "Кабинет помогает спокойно проверить статус, продлить доступ, разобраться с устройствами и быстро выйти на поддержку, если она понадобится.",
+                )}
+              </p>
+              <p className="max-w-xl text-xs uppercase tracking-[0.16em] text-slate-500 dark:text-slate-400">
+                {pokrovBranding.cabinetTagline}
+              </p>
+            </div>
 
-              <div className="grid gap-3 sm:grid-cols-3">
-                {LOGIN_FACTS.map((item) => (
-                  <article
-                    key={item.label}
-                    className="rounded-[24px] border border-white/70 bg-white/68 px-4 py-4 dark:border-white/10 dark:bg-white/[0.04]"
-                  >
-                    <p className="text-[11px] uppercase tracking-[0.16em] text-slate-500 dark:text-slate-400">
-                      {item.label}
-                    </p>
-                    <p className="mt-2 font-display text-[1.7rem] font-semibold leading-none text-slate-900 dark:text-slate-50">
-                      {item.value}
-                    </p>
-                  </article>
-                ))}
-              </div>
+            <div className="grid gap-3 sm:grid-cols-3">
+              {LOGIN_FACTS.map((item) => (
+                <article
+                  key={item.label}
+                  className="rounded-[24px] border border-white/70 bg-white/68 px-4 py-4 dark:border-white/10 dark:bg-white/[0.04]"
+                >
+                  <p className="text-[11px] uppercase tracking-[0.16em] text-slate-500 dark:text-slate-400">
+                    {item.label}
+                  </p>
+                  <p className="mt-2 font-display text-[1.7rem] font-semibold leading-none text-slate-900 dark:text-slate-50">
+                    {item.value}
+                  </p>
+                </article>
+              ))}
             </div>
 
             <div className="grid gap-3 sm:grid-cols-3">
@@ -250,7 +293,7 @@ function EntryBody() {
           <div className="border-t border-white/60 bg-white/55 px-6 py-8 dark:border-white/10 dark:bg-white/[0.03] sm:px-8 sm:py-10 lg:border-l lg:border-t-0 lg:px-10 lg:py-11">
             <div className="rounded-[30px] border border-white/70 bg-white/88 p-6 shadow-[0_26px_60px_-38px_rgba(18,48,36,0.5)] dark:border-white/10 dark:bg-[#121b17]/90">
               <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">
-                secure Telegram login
+                secure sign-in
               </p>
               <h2 className="mt-3 font-display text-[2rem] font-semibold leading-[0.98] text-slate-900 dark:text-slate-50">
                 {getCopyText("webapp.entry.card_title", "Подтвердите вход и продолжайте")}
@@ -258,50 +301,19 @@ function EntryBody() {
               <p className="mt-3 text-sm leading-7 text-slate-600 dark:text-slate-300">
                 {getCopyText(
                   "webapp.entry.card_body",
-                  "После подтверждения кабинет сразу вернет вас к статусу, продлению, ключам оптимизации и службе заботы, без дополнительной настройки.",
+                  "После подтверждения кабинет сразу вернёт вас к статусу, продлению, устройствам и службе заботы без лишней настройки.",
                 )}
               </p>
 
-              <div className="mt-6 rounded-[24px] border border-emerald-900/8 bg-[#f8f5ef]/90 p-4 dark:border-emerald-200/10 dark:bg-[#0f1714]">
-                <TelegramLoginWidget />
+              <div className="mt-5 rounded-[22px] border border-emerald-900/10 bg-emerald-900/[0.04] px-4 py-4 dark:border-emerald-200/10 dark:bg-emerald-200/[0.05]">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-emerald-800/80 dark:text-emerald-200/80">
+                  Спокойный маршрут
+                </p>
+                <p className="mt-2 text-sm leading-6 text-slate-700 dark:text-slate-200">{pokrovBranding.appFirstSummary}</p>
               </div>
 
-              <div className="mt-6 flex flex-wrap gap-3">
-                <AppRouteLink
-                  href={BOT_WEBLOGIN_URL}
-                  target="_blank"
-                  hardNavigate={false}
-                  className="btn-primary rounded-2xl px-5 py-3 text-sm font-semibold uppercase tracking-[0.12em]"
-                >
-                  {getCopyText("webapp.entry.primary_cta", "Открыть Telegram")}
-                </AppRouteLink>
-                <button
-                  className="outline-btn rounded-2xl px-5 py-3 text-sm font-semibold uppercase tracking-[0.12em]"
-                  onClick={() => logoutWebSession()}
-                  type="button"
-                >
-                  {getCopyText("webapp.entry.secondary_cta", "Сменить аккаунт")}
-                </button>
-              </div>
-
-              <div
-                className="mt-5 rounded-[22px] border border-emerald-900/8 bg-emerald-900/[0.03] px-4 py-3 text-sm leading-6 text-slate-600 dark:border-emerald-200/10 dark:bg-emerald-200/[0.04] dark:text-slate-300"
-                aria-live="polite"
-              >
-                <div className="flex items-start gap-3">
-                  <span className="mt-0.5 inline-flex h-8 w-8 items-center justify-center rounded-full bg-white text-emerald-800 shadow-sm dark:bg-white/10 dark:text-emerald-200">
-                    <span className="material-symbols-rounded text-[18px]">
-                      {webLoginBusy ? "progress_activity" : webLoginError ? "priority_high" : "verified_user"}
-                    </span>
-                  </span>
-                  <p>
-                    {webLoginBusy
-                      ? "Проверяем подтверждение входа и готовим возврат в кабинет."
-                      : webLoginError
-                        ? webLoginError
-                        : "Если Telegram на этом устройстве подтвержден, вход в кабинет обычно занимает один спокойный шаг."}
-                  </p>
-                </div>
+              <div className="mt-6">
+                <CabinetEntryAuth siteUrl={pokrovBranding.marketingUrl} />
               </div>
             </div>
 

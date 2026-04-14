@@ -36,7 +36,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse, PlainTextResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
-from sqlalchemy import and_, or_, func
+from sqlalchemy import and_, or_, case, func
 from sqlalchemy.exc import IntegrityError
 
 # Load env from repo-local file first to avoid cwd-dependent startup behavior.
@@ -74,6 +74,8 @@ from models import (
     User,
     UserKeyPolicy,
     UserNode,
+    WebEmailIdentity,
+    WebEmailToken,
 )
 from payment_providers import (
     PROVIDER_META,
@@ -100,7 +102,17 @@ from tickets_repo import (
     set_ticket_status,
 )
 from nodes_repo import enabled_nodes
-from node_policy import canonical_free_node_code, node_is_free, user_uses_free_pool
+from node_policy import (
+    SMART_CONNECT_SHORTLIST_LIMIT,
+    SMART_CONNECT_STALE_AFTER_SECONDS,
+    SMART_CONNECT_STICKINESS_THRESHOLD_PERCENT,
+    canonical_free_node_code,
+    node_backend_penalty,
+    node_cpu_penalty,
+    node_is_free,
+    node_is_stale,
+    user_uses_free_pool,
+)
 from control_panel import ControlPanel
 from events_service import track_event
 from offers_service import accept_offer, create_offer, get_active_offer
@@ -115,6 +127,20 @@ from points_service import (
     referral_tier_snapshot,
 )
 from free_cycle_service import ensure_user_free_cycle_state, mark_user_became_free
+from email_auth_service import (
+    DuplicateEmailIdentityError,
+    InvalidEmailCredentialsError,
+    InvalidEmailInputError,
+    InvalidEmailTokenError,
+    authenticate_email_identity,
+    build_debug_payload as build_email_auth_debug_payload,
+    deliver_auth_message,
+    get_verified_identity_for_user,
+    register_email_identity,
+    start_password_reset,
+    verify_email_identity,
+    finish_password_reset,
+)
 import app_first_service
 import channel_bonus_service
 from gift_cards_service import redeem_gift_card as redeem_gift_card_service
@@ -134,7 +160,7 @@ from network_rollout import (
 )
 from public_urls import build_subscription_url, public_connect_host
 from shared_surface_facts import get_product_facts, get_public_urls
-from transport_catalog import LEGACY_REALITY_FALLBACK, OPERATOR_LAB, node_transport_profiles, transport_profile_by_name
+from transport_catalog import LEGACY_REALITY_FALLBACK, OPERATOR_LAB, RESERVE_XHTTP_CDN, node_transport_profiles, transport_profile_by_name
 from web_auth_service import (
     SESSION_TTL_SECONDS,
     build_telegram_oidc_authorize_url,
@@ -699,6 +725,30 @@ class TelegramOidcFinishIn(BaseModel):
     state: str = Field(min_length=16, max_length=4096)
 
 
+class EmailRegisterIn(BaseModel):
+    email: str = Field(min_length=5, max_length=200)
+    password: str = Field(min_length=8, max_length=200)
+    display_name: str | None = Field(default=None, max_length=100)
+
+
+class EmailVerifyIn(BaseModel):
+    token: str = Field(min_length=16, max_length=255)
+
+
+class EmailLoginIn(BaseModel):
+    email: str = Field(min_length=5, max_length=200)
+    password: str = Field(min_length=8, max_length=200)
+
+
+class EmailRecoveryStartIn(BaseModel):
+    email: str = Field(min_length=5, max_length=200)
+
+
+class EmailRecoveryFinishIn(BaseModel):
+    token: str = Field(min_length=16, max_length=255)
+    password: str = Field(min_length=8, max_length=200)
+
+
 class AppStartTrialIn(BaseModel):
     install_id: str = Field(min_length=8, max_length=128)
     device_name: str = Field(min_length=2, max_length=120)
@@ -709,6 +759,12 @@ class AppStartTrialIn(BaseModel):
     time_zone: str | None = Field(default=None, max_length=64)
     # Backward-compatible input field. The server enforces the canonical trial duration.
     trial_days: int | None = Field(default=None, ge=1, le=365)
+
+
+class ClientRoutePolicyIn(BaseModel):
+    route_mode: str = Field(default=app_first_service.ROUTE_MODE_ALL_TRAFFIC, min_length=3, max_length=32)
+    selected_apps: list[str] = Field(default_factory=list, max_length=128)
+    requires_elevated_privileges: bool | None = None
 
 
 class ReviewCreateIn(BaseModel):
@@ -1583,6 +1639,39 @@ def _extract_web_session_token(request: Request | None) -> str:
     return str(request.headers.get("x-web-auth-token") or "").strip()
 
 
+def _optional_auth_user(x_telegram_init_data: str, request: Request | None = None) -> dict[str, Any] | None:
+    init_data = (x_telegram_init_data or "").strip()
+    if init_data:
+        user_data = _verify_telegram_data(init_data)
+        if user_data:
+            return {
+                "id": int(user_data.get("id") or 0),
+                "username": user_data.get("username"),
+                "auth_type": "telegram",
+                "auth_origin": "telegram",
+                "email": None,
+            }
+        raise HTTPException(status_code=401, detail="Invalid Telegram signature")
+
+    web_token = _extract_web_session_token(request)
+    if web_token:
+        payload = verify_web_session_token(web_token)
+        if payload:
+            return payload
+        raise HTTPException(status_code=401, detail="Invalid web session")
+
+    dev = _dev_auth_user(request)
+    if dev:
+        return {
+            "id": int(dev.get("id", 0)),
+            "username": dev.get("username"),
+            "auth_type": "dev",
+            "auth_origin": "dev",
+            "email": None,
+        }
+    return None
+
+
 def _request_client_ip(request: Request | None) -> str:
     if request is None:
         request = _current_request_ctx.get()
@@ -1642,6 +1731,16 @@ def _membership_check_tg_id(user: User | None) -> int:
     return int(getattr(user, "tg_id", 0) or 0)
 
 
+def _email_identity_payload(identity: WebEmailIdentity | None) -> dict[str, Any] | None:
+    if not identity:
+        return None
+    return {
+        "email": str(getattr(identity, "email", "") or "").strip() or None,
+        "verified": bool(getattr(identity, "is_verified", False)),
+        "verified_at": _safe_iso(getattr(identity, "verified_at", None)),
+    }
+
+
 def _ensure_user_row_for_login(*, tg_id: int, username: str | None = None) -> None:
     s = SessionLocal()
     try:
@@ -1698,6 +1797,46 @@ def _manual_test_user_filter():
         User.tg_id < 0,
         func.upper(func.coalesce(User.sub_type, "")) == "MANUAL",
         User.created_by_admin.isnot(None),
+    )
+
+
+def _effective_active_user_filter(*, now: datetime):
+    return and_(
+        User.tg_id > 0,
+        ~_manual_test_user_filter(),
+        User.is_active == True,
+        User.expiry_at.isnot(None),
+        User.expiry_at > now,
+    )
+
+
+def _premium_entitlement_filter():
+    sub_type = func.upper(func.coalesce(User.sub_type, ""))
+    plan_code = func.lower(func.coalesce(User.current_plan_code, ""))
+    return or_(
+        plan_code.in_(["trial", "channel_bonus", "start_99"]),
+        sub_type.in_(["PAID", "BONUS", "CHANNEL_BONUS", "OPENING_BONUS", "FRIEND_GIFT", "VIP", "PRO", "BASIC", "MONTHLY", "QUARTERLY", "HALF_YEAR", "YEARLY"]),
+        sub_type.like("PAID%"),
+        sub_type.like("PREMIUM%"),
+        sub_type.like("TRIAL%"),
+        sub_type.like("BONUS%"),
+    )
+
+
+def _trial_entitlement_filter():
+    sub_type = func.upper(func.coalesce(User.sub_type, ""))
+    plan_code = func.lower(func.coalesce(User.current_plan_code, ""))
+    return or_(plan_code == "trial", sub_type.like("TRIAL%"))
+
+
+def _bonus_entitlement_filter():
+    sub_type = func.upper(func.coalesce(User.sub_type, ""))
+    plan_code = func.lower(func.coalesce(User.current_plan_code, ""))
+    return or_(
+        User.channel_bonus_claimed_at.isnot(None),
+        plan_code == "channel_bonus",
+        sub_type.in_(["BONUS", "CHANNEL_BONUS", "OPENING_BONUS", "FRIEND_GIFT"]),
+        sub_type.like("BONUS%"),
     )
 
 
@@ -1922,24 +2061,9 @@ def _active_offer_payload(tg_id: int) -> dict[str, Any] | None:
 
 
 def _require_auth_user(x_telegram_init_data: str, request: Request | None = None) -> dict[str, Any]:
-    init_data = (x_telegram_init_data or "").strip()
-    if init_data:
-        user_data = _verify_telegram_data(init_data)
-        if user_data:
-            return user_data
-
-    web_token = _extract_web_session_token(request)
-    if web_token:
-        payload = verify_web_session_token(web_token)
-        if payload:
-            return {"id": int(payload.get("id") or 0), "username": payload.get("username")}
-
-    dev = _dev_auth_user(request)
-    if dev:
-        return dev
-
-    if init_data:
-        raise HTTPException(status_code=401, detail="Invalid Telegram signature")
+    user_data = _optional_auth_user(x_telegram_init_data, request=request)
+    if user_data:
+        return user_data
     raise HTTPException(status_code=401, detail="Telegram auth required")
 
 
@@ -3693,7 +3817,12 @@ async def auth_telegram_web_login(payload: TelegramWebLoginIn) -> dict:
         raise HTTPException(status_code=401, detail="Invalid Telegram user")
     username = (verified.get("username") or "").strip() or None
     _ensure_user_row_for_login(tg_id=tg_id, username=username)
-    token = create_web_session_token(tg_id=tg_id, username=username)
+    token = create_web_session_token(
+        tg_id=tg_id,
+        username=username,
+        auth_type="telegram",
+        auth_origin="telegram",
+    )
     if not token:
         raise HTTPException(status_code=500, detail="Web session is not configured")
     return {
@@ -3737,7 +3866,12 @@ async def auth_telegram_oidc_finish(payload: TelegramOidcFinishIn) -> dict:
         raise HTTPException(status_code=401, detail="Invalid Telegram user")
     username = (verified.get("preferred_username") or verified.get("username") or "").strip() or None
     _ensure_user_row_for_login(tg_id=tg_id, username=username)
-    token = create_web_session_token(tg_id=tg_id, username=username)
+    token = create_web_session_token(
+        tg_id=tg_id,
+        username=username,
+        auth_type="telegram",
+        auth_origin="telegram",
+    )
     if not token:
         raise HTTPException(status_code=500, detail="Web session is not configured")
     return {
@@ -3748,6 +3882,221 @@ async def auth_telegram_oidc_finish(payload: TelegramOidcFinishIn) -> dict:
     }
 
 
+@app.post("/api/auth/email/register")
+async def auth_email_register(
+    payload: EmailRegisterIn,
+    request: Request,
+    x_telegram_init_data: str = Header(default=""),
+) -> dict:
+    auth_user = _optional_auth_user(x_telegram_init_data, request=request)
+    linked_tg_id = int((auth_user or {}).get("id") or 0) or None
+    s = SessionLocal()
+    try:
+        try:
+            identity, verify_token = register_email_identity(
+                s,
+                email=payload.email,
+                password=payload.password,
+                linked_tg_id=linked_tg_id,
+                display_name=payload.display_name,
+            )
+        except DuplicateEmailIdentityError as exc:
+            raise HTTPException(status_code=409, detail=str(exc)) from exc
+        except InvalidEmailInputError as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+        s.commit()
+        s.refresh(identity)
+        delivery = await deliver_auth_message(
+            kind="verify",
+            email=str(identity.email),
+            token=verify_token,
+            linked_tg_id=int(identity.linked_tg_id or 0),
+        )
+        debug = build_email_auth_debug_payload(verify_token=verify_token)
+        return {
+            "ok": True,
+            "verification_required": True,
+            "delivery": delivery,
+            "identity": _email_identity_payload(identity),
+            "debug": debug,
+        }
+    except HTTPException:
+        s.rollback()
+        raise
+    except Exception:
+        s.rollback()
+        raise
+    finally:
+        s.close()
+
+
+@app.post("/api/auth/email/verify")
+async def auth_email_verify(payload: EmailVerifyIn) -> dict:
+    s = SessionLocal()
+    try:
+        try:
+            identity = verify_email_identity(s, token=payload.token)
+        except InvalidEmailTokenError as exc:
+            raise HTTPException(status_code=401, detail=str(exc)) from exc
+        user = s.query(User).filter(User.tg_id == int(identity.linked_tg_id)).first()
+        if not user:
+            raise HTTPException(status_code=409, detail="Linked account is missing")
+        token = create_web_session_token(
+            tg_id=int(user.tg_id),
+            username=str(user.username or "").strip() or None,
+            auth_type="email",
+            auth_origin="email",
+            email=str(identity.email),
+        )
+        if not token:
+            raise HTTPException(status_code=500, detail="Web session is not configured")
+        s.commit()
+        return {
+            "ok": True,
+            "token": token,
+            "expires_in": int(SESSION_TTL_SECONDS),
+            "user": {
+                "id": int(user.tg_id),
+                "username": str(user.username or "").strip() or None,
+                "email": str(identity.email),
+            },
+        }
+    except HTTPException:
+        s.rollback()
+        raise
+    except Exception:
+        s.rollback()
+        raise
+    finally:
+        s.close()
+
+
+@app.post("/api/auth/email/login")
+async def auth_email_login(payload: EmailLoginIn) -> dict:
+    s = SessionLocal()
+    try:
+        try:
+            identity = authenticate_email_identity(
+                s,
+                email=payload.email,
+                password=payload.password,
+            )
+        except (InvalidEmailInputError, InvalidEmailCredentialsError) as exc:
+            raise HTTPException(status_code=401, detail=str(exc)) from exc
+        user = s.query(User).filter(User.tg_id == int(identity.linked_tg_id)).first()
+        if not user:
+            raise HTTPException(status_code=409, detail="Linked account is missing")
+        token = create_web_session_token(
+            tg_id=int(user.tg_id),
+            username=str(user.username or "").strip() or None,
+            auth_type="email",
+            auth_origin="email",
+            email=str(identity.email),
+        )
+        if not token:
+            raise HTTPException(status_code=500, detail="Web session is not configured")
+        s.commit()
+        return {
+            "ok": True,
+            "token": token,
+            "expires_in": int(SESSION_TTL_SECONDS),
+            "user": {
+                "id": int(user.tg_id),
+                "username": str(user.username or "").strip() or None,
+                "email": str(identity.email),
+            },
+        }
+    except HTTPException:
+        s.rollback()
+        raise
+    except Exception:
+        s.rollback()
+        raise
+    finally:
+        s.close()
+
+
+@app.post("/api/auth/email/recovery/start")
+async def auth_email_recovery_start(payload: EmailRecoveryStartIn) -> dict:
+    s = SessionLocal()
+    try:
+        try:
+            identity, reset_token = start_password_reset(s, email=payload.email)
+        except InvalidEmailInputError as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+        s.commit()
+        delivery = {"status": "suppressed", "kind": "reset", "email": str(payload.email).strip().lower()}
+        if identity and reset_token:
+            delivery = await deliver_auth_message(
+                kind="reset",
+                email=str(identity.email),
+                token=reset_token,
+                linked_tg_id=int(identity.linked_tg_id or 0),
+            )
+        debug = build_email_auth_debug_payload(reset_token=reset_token)
+        return {
+            "ok": True,
+            "recovery_requested": True,
+            "delivery": delivery,
+            "debug": debug,
+        }
+    except HTTPException:
+        s.rollback()
+        raise
+    except Exception:
+        s.rollback()
+        raise
+    finally:
+        s.close()
+
+
+@app.post("/api/auth/email/recovery/finish")
+async def auth_email_recovery_finish(payload: EmailRecoveryFinishIn) -> dict:
+    s = SessionLocal()
+    try:
+        try:
+            identity = finish_password_reset(
+                s,
+                token=payload.token,
+                password=payload.password,
+            )
+        except InvalidEmailInputError as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+        except InvalidEmailTokenError as exc:
+            raise HTTPException(status_code=401, detail=str(exc)) from exc
+        user = s.query(User).filter(User.tg_id == int(identity.linked_tg_id)).first()
+        if not user:
+            raise HTTPException(status_code=409, detail="Linked account is missing")
+        token = create_web_session_token(
+            tg_id=int(user.tg_id),
+            username=str(user.username or "").strip() or None,
+            auth_type="email",
+            auth_origin="email",
+            email=str(identity.email),
+        )
+        if not token:
+            raise HTTPException(status_code=500, detail="Web session is not configured")
+        s.commit()
+        return {
+            "ok": True,
+            "token": token,
+            "expires_in": int(SESSION_TTL_SECONDS),
+            "user": {
+                "id": int(user.tg_id),
+                "username": str(user.username or "").strip() or None,
+                "email": str(identity.email),
+            },
+        }
+    except HTTPException:
+        s.rollback()
+        raise
+    except Exception:
+        s.rollback()
+        raise
+    finally:
+        s.close()
+
+
 @app.get("/api/auth/session")
 async def auth_session(request: Request, x_telegram_init_data: str = Header(default="")) -> dict:
     auth_user = _require_auth_user(x_telegram_init_data, request=request)
@@ -3755,11 +4104,23 @@ async def auth_session(request: Request, x_telegram_init_data: str = Header(defa
     s = SessionLocal()
     try:
         user = s.query(User).filter(User.tg_id == tg_id).first()
+        email_identity = get_verified_identity_for_user(s, tg_id=tg_id)
     finally:
         s.close()
     device_name = app_first_service.normalize_app_device_name(
         (getattr(user, "app_device_name", None) if user else None)
         or (getattr(user, "display_name", None) if user else None),
+    )
+    token_auth_type = str(auth_user.get("auth_type") or "").strip()
+    linked_email = _email_identity_payload(email_identity)
+    session_email = str(auth_user.get("email") or "") or ((linked_email or {}).get("email") if linked_email else None)
+    auth_type = token_auth_type or ("app" if bool(getattr(user, "is_app_user", False)) else "telegram")
+    auth_origin = str(auth_user.get("auth_origin") or "").strip() or auth_type
+    telegram_identity_id = _linked_telegram_id(user) or (tg_id if auth_type == "telegram" else 0)
+    telegram_identity_username = (
+        str(getattr(user, "linked_telegram_username", "") or "").strip() if user else ""
+    ) or (
+        str(auth_user.get("username") or "").strip() if auth_type == "telegram" else ""
     )
     return {
         "ok": True,
@@ -3767,6 +4128,7 @@ async def auth_session(request: Request, x_telegram_init_data: str = Header(defa
             "id": tg_id,
             "account_id": str(tg_id),
             "username": (auth_user.get("username") or (getattr(user, "username", None) if user else None)),
+            "email": session_email or None,
             "device_name": device_name,
             "linked_telegram_id": _linked_telegram_id(user),
             "linked_telegram_username": (
@@ -3774,7 +4136,17 @@ async def auth_session(request: Request, x_telegram_init_data: str = Header(defa
             )
             or None,
             "is_authorized": True,
-            "auth_type": "app" if bool(getattr(user, "is_app_user", False)) else "telegram",
+            "auth_type": auth_type,
+            "auth_origin": auth_origin,
+            "linked_identities": {
+                "telegram": {
+                    "id": telegram_identity_id or None,
+                    "username": telegram_identity_username or None,
+                }
+                if telegram_identity_id
+                else None,
+                "email": linked_email,
+            },
         },
     }
 
@@ -3811,6 +4183,8 @@ async def client_start_trial(payload: AppStartTrialIn, request: Request) -> dict
     session_token = create_web_session_token(
         tg_id=int(user.tg_id),
         username=str(user.username or "").strip() or None,
+        auth_type="app",
+        auth_origin="app",
     )
     if not session_token:
         raise HTTPException(status_code=500, detail="App session is not configured")
@@ -3858,6 +4232,226 @@ async def client_start_trial(payload: AppStartTrialIn, request: Request) -> dict
     }
 
 
+def _route_policy_payload(user: User | None) -> dict[str, Any]:
+    return {
+        "ok": True,
+        **app_first_service.resolve_route_policy(user),
+    }
+
+
+@app.get("/api/client/route-policy")
+async def client_route_policy(
+    request: Request,
+    x_telegram_init_data: str = Header(default=""),
+) -> dict[str, Any]:
+    auth_user = _require_auth_user(x_telegram_init_data, request=request)
+    tg_id = int(auth_user.get("id", 0))
+    s = SessionLocal()
+    try:
+        user = s.query(User).filter(User.tg_id == tg_id).first()
+        if not user:
+            raise HTTPException(status_code=404, detail="User not found")
+        return _route_policy_payload(user)
+    finally:
+        s.close()
+
+
+@app.post("/api/client/route-policy")
+async def client_update_route_policy(
+    payload: ClientRoutePolicyIn,
+    request: Request,
+    x_telegram_init_data: str = Header(default=""),
+) -> dict[str, Any]:
+    auth_user = _require_auth_user(x_telegram_init_data, request=request)
+    tg_id = int(auth_user.get("id", 0))
+    s = SessionLocal()
+    try:
+        user = s.query(User).filter(User.tg_id == tg_id).first()
+        if not user:
+            raise HTTPException(status_code=404, detail="User not found")
+        app_first_service.persist_route_policy(
+            user,
+            route_mode=payload.route_mode,
+            selected_apps=list(payload.selected_apps or []),
+            requires_elevated_privileges=payload.requires_elevated_privileges,
+        )
+        s.commit()
+        s.refresh(user)
+        return _route_policy_payload(user)
+    except HTTPException:
+        s.rollback()
+        raise
+    except Exception:
+        s.rollback()
+        raise
+    finally:
+        s.close()
+
+
+SMART_CONNECT_LATENCY_EVENT_NAME = "smart_connect_latency_sample"
+
+
+class NodeLatencyPointIn(BaseModel):
+    node_code: str = Field(min_length=2, max_length=32)
+    rtt_ms: int = Field(ge=1, le=60_000)
+
+
+class NodeLatencySamplesIn(BaseModel):
+    profile_revision: str | None = Field(default=None, max_length=128)
+    transport_profile: str | None = Field(default=None, max_length=64)
+    selected_node_code: str | None = Field(default=None, max_length=32)
+    previous_node_code: str | None = Field(default=None, max_length=32)
+    stickiness_applied: bool = False
+    samples: list[NodeLatencyPointIn] = Field(default_factory=list, max_length=10)
+
+
+def _smart_connect_latest_sample(session, *, user: User, install_id: str) -> dict[str, Any]:
+    query = session.query(Event).filter(Event.tg_id == int(user.tg_id), Event.event_name == SMART_CONNECT_LATENCY_EVENT_NAME)
+    if install_id:
+        query = query.filter(Event.session_id == install_id)
+    row = query.order_by(Event.created_at.desc(), Event.id.desc()).first()
+    if not row:
+        return {}
+    try:
+        payload = json.loads(str(getattr(row, "meta_json", "") or "{}"))
+    except Exception:
+        return {}
+    if not isinstance(payload, dict):
+        return {}
+    payload.setdefault("created_at", _safe_iso(getattr(row, "created_at", None)))
+    return payload
+
+
+def _smart_connect_rejection_reason(
+    node: Any,
+    *,
+    transport_profile: str,
+    rollout_config: dict[str, Any],
+    now: datetime,
+) -> str | None:
+    if not bool(getattr(node, "enabled", True)):
+        return "disabled"
+    if not bool(getattr(node, "accepting_new_clients", True)):
+        return "not_accepting_new_clients"
+    if bool(getattr(node, "is_draining", False)):
+        return "draining"
+    if not bool(getattr(node, "is_healthy", True)):
+        return "unhealthy"
+    if node_is_stale(node, now=now, stale_after_seconds=SMART_CONNECT_STALE_AFTER_SECONDS):
+        return "stale"
+    if node_cpu_penalty(node) is None:
+        return "cpu_hot"
+    if node_backend_penalty(node) is None:
+        return "health_score_low"
+    if not _node_supports_transport_profile(node, transport_profile):
+        return "transport_mismatch"
+    filtered = _filter_nodes_for_transport_profile(
+        nodes=[node],
+        rollout_config=rollout_config,
+        transport_profile=transport_profile,
+    )
+    if not filtered:
+        return "transport_allowlist_mismatch"
+    return None
+
+
+def _smart_connect_shortlist(
+    *,
+    session,
+    user: User,
+    nodes: list[Any],
+    transport_profile: str,
+    rollout_config: dict[str, Any],
+    profile_revision: str,
+) -> dict[str, Any]:
+    now = _utcnow()
+    rejected_counts: dict[str, int] = {}
+    eligible: list[Any] = []
+    for node in nodes:
+        reason = _smart_connect_rejection_reason(
+            node,
+            transport_profile=transport_profile,
+            rollout_config=rollout_config,
+            now=now,
+        )
+        if reason:
+            rejected_counts[reason] = int(rejected_counts.get(reason, 0) or 0) + 1
+            continue
+        eligible.append(node)
+
+    shortlist_limit = 1 if user_uses_free_pool(user) else SMART_CONNECT_SHORTLIST_LIMIT
+    shortlist_nodes = eligible[:shortlist_limit]
+    shortlist_codes = [str(getattr(node, "code", "") or "").strip().lower() for node in shortlist_nodes]
+    install_id = str(getattr(user, "app_install_id", "") or "").strip()
+    latest_sample = _smart_connect_latest_sample(session, user=user, install_id=install_id)
+    preferred_node_code = str(latest_sample.get("selected_node_code") or "").strip().lower() or None
+    if preferred_node_code and preferred_node_code not in shortlist_codes:
+        preferred_node_code = None
+
+    shortlist_payload = []
+    for index, node in enumerate(shortlist_nodes, start=1):
+        code = str(getattr(node, "code", "") or "").strip().lower()
+        shortlist_payload.append(
+            {
+                "code": code,
+                "country": _node_country_name(code),
+                "rank": index,
+                "rank_hint": {
+                    "health_score": float(getattr(node, "health_score", 0.0) or 0.0),
+                    "cpu_percent": float(getattr(node, "cpu_percent", 0.0) or 0.0),
+                    "panel_latency_ms": _safe_ping(node),
+                    "backend_penalty": int(node_backend_penalty(node) or 0),
+                    "cpu_penalty": int(node_cpu_penalty(node) or 0),
+                    "sticky_preferred": bool(preferred_node_code and preferred_node_code == code),
+                },
+            }
+        )
+
+    revision_seed = "|".join(
+        [
+            str(profile_revision or "").strip(),
+            str(transport_profile or "").strip(),
+            *(item["code"] for item in shortlist_payload),
+        ]
+    )
+    shortlist_revision = hashlib.sha256(revision_seed.encode("utf-8")).hexdigest()[:12] if revision_seed else ""
+    return {
+        "eligible": bool(shortlist_payload),
+        "fallback_required": not bool(shortlist_payload),
+        "shortlist_reason": "eligible" if shortlist_payload else "no_eligible_nodes",
+        "shortlist_limit": int(shortlist_limit),
+        "shortlist_revision": shortlist_revision,
+        "transport_profile": str(transport_profile or ""),
+        "profile_revision": str(profile_revision or ""),
+        "fallback_order": _managed_manifest_fallback_order(transport_profile),
+        "shortlist": shortlist_payload,
+        "stickiness": {
+            "preferred_node_code": preferred_node_code,
+            "threshold_percent": int(SMART_CONNECT_STICKINESS_THRESHOLD_PERCENT),
+            "latest_sample_at": latest_sample.get("created_at"),
+            "stickiness_applied": bool(latest_sample.get("stickiness_applied", False)),
+        },
+        "scoring": {
+            "formula": "effective_score = rtt_ms + cpu_penalty + backend_penalty",
+            "cpu_penalty_buckets": [
+                {"range": "<60", "penalty": 0},
+                {"range": "60-74", "penalty": 20},
+                {"range": "75-84", "penalty": 60},
+                {"range": "85-89", "penalty": 120},
+                {"range": ">=90", "penalty": "reject"},
+            ],
+            "backend_penalty_buckets": [
+                {"range": ">=90", "penalty": 0},
+                {"range": "75-89", "penalty": 30},
+                {"range": "60-74", "penalty": 80},
+                {"range": "<60", "penalty": "reject"},
+            ],
+            "stickiness_threshold_percent": int(SMART_CONNECT_STICKINESS_THRESHOLD_PERCENT),
+        },
+        "rejected_counts": rejected_counts,
+    }
+
+
 @app.get("/api/client/profile/managed")
 async def client_managed_profile(
     request: Request,
@@ -3896,6 +4490,14 @@ async def client_managed_profile(
             title="POKROV",
             transport_profile=transport_profile,
         )
+        smart_connect = _smart_connect_shortlist(
+            session=s,
+            user=user,
+            nodes=nodes_for_user,
+            transport_profile=transport_profile,
+            rollout_config=rollout_config,
+            profile_revision=str(client_policy.get("profile_revision") or ""),
+        )
         return {
             "version": str(rollout_config.get("version") or ""),
             "profile_revision": str(client_policy.get("profile_revision") or ""),
@@ -3907,6 +4509,97 @@ async def client_managed_profile(
             "fallback_order": _managed_manifest_fallback_order(transport_profile),
             "support_context": dict(client_policy.get("support_context") or {}),
             "subscription_url": build_subscription_url(str(getattr(user, "sub_token", "") or "")),
+            "smart_connect": smart_connect,
+        }
+    finally:
+        s.close()
+
+
+@app.post("/api/client/nodes/latency-samples")
+async def client_nodes_latency_samples(
+    payload: NodeLatencySamplesIn,
+    request: Request,
+    x_telegram_init_data: str = Header(default=""),
+    x_portal_carrier: str = Header(default=""),
+) -> dict[str, Any]:
+    auth_user = _require_auth_user(x_telegram_init_data, request=request)
+    tg_id = int(auth_user.get("id", 0))
+    s = SessionLocal()
+    try:
+        user = s.query(User).filter(User.tg_id == tg_id).first()
+        if not user:
+            raise HTTPException(status_code=404, detail="User not found")
+        install_id = str(getattr(user, "app_install_id", "") or "").strip()
+        if not install_id:
+            raise HTTPException(status_code=400, detail="install_id is required")
+
+        rollout_config = load_network_rollout_config(session=s)
+        client_policy = app_first_service.build_client_policy(
+            session=s,
+            user=user,
+            install_id=install_id or None,
+            carrier=_request_carrier_header(x_portal_carrier),
+            rollout_config=rollout_config,
+        )
+        transport_profile = (
+            str(payload.transport_profile or client_policy.get("transport_profile") or LEGACY_REALITY_FALLBACK).strip()
+            or LEGACY_REALITY_FALLBACK
+        )
+        nodes = enabled_nodes(s)
+        nodes_for_user = _nodes_for_user(user, nodes, session=s)
+        smart_connect = _smart_connect_shortlist(
+            session=s,
+            user=user,
+            nodes=nodes_for_user,
+            transport_profile=transport_profile,
+            rollout_config=rollout_config,
+            profile_revision=str(payload.profile_revision or client_policy.get("profile_revision") or ""),
+        )
+        allowed_codes = {
+            str(item.get("code") or "").strip().lower()
+            for item in smart_connect.get("shortlist") or []
+            if str(item.get("code") or "").strip()
+        }
+        accepted_samples: list[dict[str, int | str]] = []
+        for sample in list(payload.samples or [])[:10]:
+            code = str(sample.node_code or "").strip().lower()
+            if not code or (allowed_codes and code not in allowed_codes):
+                continue
+            accepted_samples.append({"node_code": code, "rtt_ms": int(sample.rtt_ms)})
+
+        selected_node_code = str(payload.selected_node_code or "").strip().lower()
+        if selected_node_code and allowed_codes and selected_node_code not in allowed_codes:
+            selected_node_code = ""
+        previous_node_code = str(payload.previous_node_code or "").strip().lower()
+        if previous_node_code and allowed_codes and previous_node_code not in allowed_codes:
+            previous_node_code = ""
+
+        event_meta = {
+            "install_id": install_id,
+            "profile_revision": str(payload.profile_revision or client_policy.get("profile_revision") or ""),
+            "transport_profile": transport_profile,
+            "selected_node_code": selected_node_code or None,
+            "previous_node_code": previous_node_code or None,
+            "stickiness_applied": bool(payload.stickiness_applied),
+            "carrier": _request_carrier_header(x_portal_carrier) or None,
+            "platform": str(getattr(user, "app_platform", "") or "").strip() or None,
+            "samples": accepted_samples,
+        }
+        s.add(
+            Event(
+                tg_id=int(user.tg_id),
+                event_name=SMART_CONNECT_LATENCY_EVENT_NAME,
+                source="app",
+                session_id=install_id,
+                meta_json=json.dumps(event_meta, ensure_ascii=False),
+                created_at=_utcnow(),
+            )
+        )
+        s.commit()
+        return {
+            "ok": True,
+            "accepted_samples": len(accepted_samples),
+            "preferred_node_code": selected_node_code or None,
         }
     finally:
         s.close()
@@ -4676,6 +5369,15 @@ def _date_key(value: Any) -> str:
         return ""
     text = str(value)
     return text[:10]
+
+
+def _quality_badge(status: str) -> str:
+    status_norm = str(status or "").strip().lower()
+    if status_norm in {"fresh", "ok"}:
+        return "good"
+    if status_norm == "missing":
+        return "bad"
+    return "warn"
 
 
 @app.get("/api/admin/nodes/traffic")
@@ -5859,34 +6561,93 @@ async def admin_summary(x_telegram_init_data: str = Header(default="")) -> dict:
     since_7d = now - timedelta(days=7)
     s = SessionLocal()
     try:
-        total_users = s.query(func.count(User.tg_id)).scalar() or 0
-        active_users = (
-            s.query(func.count(User.tg_id))
+        active_user_filter = _effective_active_user_filter(now=now)
+        user_sub_type = func.upper(func.coalesce(User.sub_type, ""))
+        user_counts = (
+            s.query(
+                func.count(User.tg_id).label("total_users"),
+                func.sum(case((active_user_filter, 1), else_=0)).label("active_users"),
+                func.sum(case((user_sub_type == "FREE", 1), else_=0)).label("free_users"),
+                func.sum(case((user_sub_type == "PAID", 1), else_=0)).label("paid_users"),
+                func.sum(case((and_(active_user_filter, _premium_entitlement_filter()), 1), else_=0)).label("active_nonfree_accounts"),
+                func.sum(case((and_(active_user_filter, _trial_entitlement_filter()), 1), else_=0)).label("trial_accounts"),
+                func.sum(case((and_(active_user_filter, _bonus_entitlement_filter()), 1), else_=0)).label("bonus_accounts"),
+            )
+            .one()
+        )
+        total_users = int(getattr(user_counts, "total_users", 0) or 0)
+        active_users = int(getattr(user_counts, "active_users", 0) or 0)
+        free_users = int(getattr(user_counts, "free_users", 0) or 0)
+        paid_users = int(getattr(user_counts, "paid_users", 0) or 0)
+        active_nonfree_accounts = int(getattr(user_counts, "active_nonfree_accounts", 0) or 0)
+        trial_accounts = int(getattr(user_counts, "trial_accounts", 0) or 0)
+        bonus_accounts = int(getattr(user_counts, "bonus_accounts", 0) or 0)
+        unique_install_ids_total = (
+            s.query(func.count(func.distinct(User.app_install_id)))
             .filter(User.tg_id > 0)
             .filter(~_manual_test_user_filter())
-            .filter(User.is_active == True)
-            .filter(User.expiry_at.isnot(None))
-            .filter(User.expiry_at > now)
+            .filter(User.app_install_id.isnot(None))
             .scalar()
             or 0
         )
-        free_users = s.query(func.count(User.tg_id)).filter(func.upper(User.sub_type) == "FREE").scalar() or 0
-        paid_users = s.query(func.count(User.tg_id)).filter(func.upper(User.sub_type) == "PAID").scalar() or 0
+        unique_install_ids_24h = (
+            s.query(func.count(func.distinct(User.app_install_id)))
+            .filter(User.tg_id > 0)
+            .filter(~_manual_test_user_filter())
+            .filter(User.app_install_id.isnot(None))
+            .filter(User.app_last_seen_at.isnot(None))
+            .filter(User.app_last_seen_at >= since_24h)
+            .scalar()
+            or 0
+        )
+        unique_install_ids_7d = (
+            s.query(func.count(func.distinct(User.app_install_id)))
+            .filter(User.tg_id > 0)
+            .filter(~_manual_test_user_filter())
+            .filter(User.app_install_id.isnot(None))
+            .filter(User.app_last_seen_at.isnot(None))
+            .filter(User.app_last_seen_at >= since_7d)
+            .scalar()
+            or 0
+        )
         open_tickets = s.query(func.count(SupportTicket.id)).filter(SupportTicket.status != STATUS_CLOSED).scalar() or 0
         total_nodes = s.query(func.count(Node.id)).filter(Node.enabled == True).scalar() or 0
         healthy_nodes = s.query(func.count(Node.id)).filter(Node.enabled == True, Node.is_healthy == True).scalar() or 0
         free_node_enabled = bool(
             s.query(Node.id).filter(Node.enabled == True, func.lower(func.coalesce(Node.code, "")) == "free").first()
         )
-        observer_watch_users = (
-            s.query(func.count(ObserverUserState.tg_id))
-            .filter(ObserverUserState.state == "watch")
+        observer_counts = (
+            s.query(
+                func.count(ObserverUserState.tg_id).label("total_rows"),
+                func.sum(case((ObserverUserState.state == "watch", 1), else_=0)).label("watch_users"),
+                func.sum(case((ObserverUserState.state == "suspicious", 1), else_=0)).label("suspicious_users"),
+                func.sum(
+                    case(
+                        (and_(ObserverUserState.last_observed_at.isnot(None), ObserverUserState.last_observed_at >= since_24h), 1),
+                        else_=0,
+                    )
+                ).label("seen_24h"),
+            )
+            .one()
+        )
+        observer_watch_users = int(getattr(observer_counts, "watch_users", 0) or 0)
+        observer_suspicious_users = int(getattr(observer_counts, "suspicious_users", 0) or 0)
+        observer_seen_accounts_24h = int(getattr(observer_counts, "seen_24h", 0) or 0)
+        observer_total_rows = int(getattr(observer_counts, "total_rows", 0) or 0)
+        observer_secret_filter = func.length(func.trim(func.coalesce(Node.observer_push_secret, ""))) > 0
+        observer_configured_nodes = (
+            s.query(func.count(Node.id))
+            .filter(Node.enabled == True)
+            .filter(observer_secret_filter)
             .scalar()
             or 0
         )
-        observer_suspicious_users = (
-            s.query(func.count(ObserverUserState.tg_id))
-            .filter(ObserverUserState.state == "suspicious")
+        observer_fresh_nodes = (
+            s.query(func.count(Node.id))
+            .filter(Node.enabled == True)
+            .filter(observer_secret_filter)
+            .filter(Node.observer_last_push_at.isnot(None))
+            .filter(Node.observer_last_push_at >= now - timedelta(seconds=observer_stale_after_seconds()))
             .scalar()
             or 0
         )
@@ -5896,6 +6657,19 @@ async def admin_summary(x_telegram_init_data: str = Header(default="")) -> dict:
             stale_after_seconds=stale_after_seconds,
         )
         metrics_age_seconds = metrics_status.get("age_seconds")
+        metrics_quality_status = "missing" if not metrics_status.get("nodes") else str(metrics_status.get("status") or "stale")
+        if unique_install_ids_7d > 0:
+            app_installs_quality_status = "ok"
+        elif int(unique_install_ids_total or 0) > 0:
+            app_installs_quality_status = "stale"
+        else:
+            app_installs_quality_status = "missing"
+        if observer_fresh_nodes > 0 or observer_seen_accounts_24h > 0:
+            observer_quality_status = "ok"
+        elif observer_configured_nodes > 0 or observer_total_rows > 0:
+            observer_quality_status = "stale"
+        else:
+            observer_quality_status = "missing"
         payment_callback_failures_24h = (
             s.query(func.count(ExternalPaymentEvent.id))
             .filter(
@@ -5997,6 +6771,36 @@ async def admin_summary(x_telegram_init_data: str = Header(default="")) -> dict:
                 "active": int(active_users),
                 "free": int(free_users),
                 "paid": int(paid_users),
+                "active_nonfree_accounts": int(active_nonfree_accounts),
+                "trial_accounts": int(trial_accounts),
+                "bonus_accounts": int(bonus_accounts),
+                "unique_install_ids_24h": int(unique_install_ids_24h),
+                "unique_install_ids_7d": int(unique_install_ids_7d),
+                "observer_seen_accounts_24h": int(observer_seen_accounts_24h),
+            },
+            "data_quality": {
+                "metrics": {
+                    "status": metrics_quality_status,
+                    "badge": _quality_badge(metrics_quality_status),
+                    "missing": bool(metrics_quality_status == "missing"),
+                    "age_seconds": metrics_age_seconds,
+                },
+                "app_installs": {
+                    "status": app_installs_quality_status,
+                    "badge": _quality_badge(app_installs_quality_status),
+                    "missing": bool(app_installs_quality_status == "missing"),
+                    "unique_install_ids_total": int(unique_install_ids_total),
+                    "unique_install_ids_24h": int(unique_install_ids_24h),
+                    "unique_install_ids_7d": int(unique_install_ids_7d),
+                },
+                "observer": {
+                    "status": observer_quality_status,
+                    "badge": _quality_badge(observer_quality_status),
+                    "missing": bool(observer_quality_status == "missing"),
+                    "configured_nodes": int(observer_configured_nodes),
+                    "fresh_nodes": int(observer_fresh_nodes),
+                    "seen_accounts_24h": int(observer_seen_accounts_24h),
+                },
             },
             "retention": {
                 "expiring_3d": int(expiring_3d),
@@ -8863,6 +9667,17 @@ def _synthetic_transport_node() -> Any:
             "grpc_service_name": "pokrov-grpc",
         },
         {
+            "name": RESERVE_XHTTP_CDN,
+            "enabled": True,
+            "kind": "xhttp",
+            "inbound_id": 4,
+            "host": connect_host,
+            "port": 443,
+            "tls_server_name": f"cdn.{connect_host}",
+            "fingerprint": "firefox",
+            "xhttp_path": "/reserve-xhttp",
+        },
+        {
             "name": OPERATOR_LAB,
             "enabled": True,
             "kind": "xhttp",
@@ -8953,7 +9768,7 @@ def _xray_multi_node_config(*, user_uuid: str, nodes: list, title: str, transpor
 
 
 def _managed_manifest_payload(*, user: User, nodes: list, title: str, transport_profile: str) -> tuple[str, dict[str, Any]]:
-    if str(transport_profile or "").strip() == OPERATOR_LAB:
+    if str(transport_profile or "").strip() in {OPERATOR_LAB, RESERVE_XHTTP_CDN}:
         return (
             "xray-json",
             _xray_multi_node_config(

@@ -285,3 +285,46 @@ def test_build_client_policy_respects_rollout_config_carrier_and_cohort_override
         assert operator_policy["profile_revision"] == "2026-04-13:operator_lab"
     finally:
         session.close()
+
+
+def test_build_client_policy_includes_persisted_route_policy(monkeypatch, tmp_path):
+    api, service = _load_api_and_service(monkeypatch, tmp_path)
+    session = api.SessionLocal()
+    now = datetime(2026, 4, 13, tzinfo=timezone.utc).replace(tzinfo=None)
+    payload = SimpleNamespace(
+        install_id="install-route-policy",
+        device_name="Windows PC",
+        platform="windows",
+        os_version="11",
+        app_version="1.0.0",
+        locale="ru",
+        time_zone="Europe/Moscow",
+    )
+
+    try:
+        user, _created = service.upsert_app_trial_user(
+            s=session,
+            payload=payload,
+            now=now,
+            trial_days=5,
+            request_client_ip="203.0.113.44",
+        )
+        user.route_mode = "selected_apps"
+        user.route_selected_apps_json = '["chrome.exe","telegram.exe"]'
+        user.route_requires_elevated_privileges = True
+        session.commit()
+        session.refresh(user)
+
+        policy = service.build_client_policy(
+            session=session,
+            user=user,
+            install_id=str(user.app_install_id),
+        )
+
+        assert policy["route_mode"] == "selected_apps"
+        assert policy["selected_apps"] == ["chrome.exe", "telegram.exe"]
+        assert policy["requires_elevated_privileges"] is True
+        assert policy["route_policy"]["mode"] == "selected_apps"
+        assert policy["route_policy"]["selected_apps"] == ["chrome.exe", "telegram.exe"]
+    finally:
+        session.close()

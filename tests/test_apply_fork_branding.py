@@ -73,6 +73,30 @@ install_dir_name: "{autopf64}\\Legacy VPN"
         self.assertIn("display_name: POKROV VPN", rewritten)
         self.assertNotIn("github.com/example/repo", rewritten)
 
+    def test_rewrite_android_manifest_promotes_pokrov_scheme_and_keeps_legacy_compatibility(self) -> None:
+        source = """
+<application android:label="POKROV VPN">
+  <activity>
+    <intent-filter>
+      <data android:scheme="pokrovvpn" />
+      <data android:host="install-sub" />
+      <data android:scheme="pokrovvpn" />
+      <data android:host="import" />
+    </intent-filter>
+  </activity>
+</application>
+"""
+
+        rewritten = self.module._rewrite_android_manifest(
+            source,
+            "POKROV",
+            "pokrov",
+        )
+
+        self.assertIn('android:label="POKROV"', rewritten)
+        self.assertIn('<data android:scheme="pokrov" />', rewritten)
+        self.assertIn('<data android:scheme="pokrovvpn" />', rewritten)
+
 
 if __name__ == "__main__":
     unittest.main()

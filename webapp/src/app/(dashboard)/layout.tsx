@@ -2,12 +2,14 @@
 
 import type { DashboardSnapshot } from "@/lib/api";
 import AppRouteLink from "@/components/app-route-link";
-import TelegramLoginWidget from "@/components/telegram-login-widget";
-import { getPortalPublicConfig } from "@/lib/portal";
+import CabinetEntryAuth from "@/components/cabinet-entry-auth";
 import { PortalSessionProvider, usePortalSession } from "@/lib/session";
 import { getTgUser } from "@/lib/telegram";
 import { usePathname } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
+
+import { POKROV_LEGACY_THEME_STORAGE_KEYS, POKROV_THEME_STORAGE_KEY, pokrovBranding } from "../branding";
+import PokrovLogo from "../pokrov-logo";
 
 type NavItem = {
   href: string;
@@ -44,9 +46,21 @@ const PLAN_LABELS: Record<string, string> = {
   trial: "Тестовый доступ",
 };
 
-const config = getPortalPublicConfig(process.env as Record<string, string | undefined>);
-const BOT_BASE_URL = config.botUrl;
-const BOT_WEBLOGIN_URL = `${BOT_BASE_URL}${BOT_BASE_URL.includes("?") ? "&" : "?"}start=weblogin`;
+const MARKETING_SITE_URL = pokrovBranding.marketingUrl;
+
+function readStoredThemePreference(): "light" | "dark" | null {
+  if (typeof window === "undefined") return null;
+  for (const key of [POKROV_THEME_STORAGE_KEY, ...POKROV_LEGACY_THEME_STORAGE_KEYS]) {
+    const value = window.localStorage.getItem(key);
+    if (value === "light" || value === "dark") {
+      if (key !== POKROV_THEME_STORAGE_KEY) {
+        window.localStorage.setItem(POKROV_THEME_STORAGE_KEY, value);
+      }
+      return value;
+    }
+  }
+  return null;
+}
 
 function formatDateLabel(value?: string | null): string {
   if (!value) return "дата уточняется";
@@ -99,8 +113,6 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
     loading,
     error,
     webLoginRequired,
-    webLoginBusy,
-    webLoginError,
     user,
     dash,
     logoutWebSession,
@@ -109,7 +121,7 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
 
   const [dark, setDark] = useState(() => {
     if (typeof window === "undefined") return false;
-    const saved = localStorage.getItem("pokrov-theme");
+    const saved = readStoredThemePreference();
     return saved ? saved === "dark" : window.matchMedia("(prefers-color-scheme: dark)").matches;
   });
   const [inTelegramContext] = useState(() => Boolean(getTgUser()));
@@ -119,7 +131,7 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     document.documentElement.classList.toggle("dark", dark);
-    localStorage.setItem("pokrov-theme", dark ? "dark" : "light");
+    localStorage.setItem(POKROV_THEME_STORAGE_KEY, dark ? "dark" : "light");
   }, [dark]);
 
   useEffect(() => {
@@ -146,8 +158,15 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
     return (
       <main className="mx-auto grid min-h-[72vh] w-[min(96vw,780px)] place-items-center py-8">
         <section className="glass-card w-full overflow-hidden border border-white/70 p-7 dark:border-[#243129]/80 sm:p-8">
+          <PokrovLogo
+            showWordmark
+            className="inline-flex items-center gap-3"
+            markClassName="h-11 w-11"
+            caption={pokrovBranding.cabinetName}
+            label="POKROV cabinet"
+          />
           <div className="inline-flex items-center gap-2 rounded-full border border-emerald-900/10 bg-emerald-900/5 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-emerald-900/70 dark:border-emerald-100/10 dark:bg-emerald-100/5 dark:text-emerald-100/70">
-            personal cabinet
+            {pokrovBranding.cabinetEyebrow}
           </div>
           <h1 className="mt-4 font-display text-4xl font-semibold leading-[1.02] text-slate-900 dark:text-slate-50 sm:text-5xl">
             Подтягиваем данные кабинета
@@ -158,6 +177,16 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
           <div className="mt-6 h-2 overflow-hidden rounded-full bg-slate-200/80 dark:bg-slate-800">
             <div className="h-full w-1/3 animate-pulse rounded-full bg-emerald-700 dark:bg-emerald-500" />
           </div>
+          <div className="mt-6 flex flex-wrap gap-3">
+            <AppRouteLink
+              href={MARKETING_SITE_URL}
+              hardNavigate
+              className="outline-btn inline-flex items-center gap-2 rounded-2xl px-4 py-3 text-sm font-semibold uppercase tracking-[0.12em]"
+            >
+              <span className="material-symbols-rounded text-[18px]">north_west</span>
+              {pokrovBranding.siteLinkLabel}
+            </AppRouteLink>
+          </div>
         </section>
       </main>
     );
@@ -167,8 +196,15 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
     return (
       <main className="mx-auto grid min-h-[72vh] w-[min(96vw,760px)] place-items-center py-8">
         <section className="glass-card w-full overflow-hidden border border-white/70 p-7 dark:border-[#243129]/80 sm:p-8">
+          <PokrovLogo
+            showWordmark
+            className="inline-flex items-center gap-3"
+            markClassName="h-11 w-11"
+            caption={pokrovBranding.cabinetName}
+            label="POKROV cabinet"
+          />
           <div className="inline-flex items-center gap-2 rounded-full border border-emerald-900/10 bg-emerald-900/5 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-emerald-900/70 dark:border-emerald-100/10 dark:bg-emerald-100/5 dark:text-emerald-100/70">
-            secure login
+            {pokrovBranding.cabinetEyebrow}
           </div>
           <h1 className="mt-4 font-display text-4xl font-semibold leading-[1.02] text-slate-900 dark:text-slate-50 sm:text-5xl">
             Подтвердите вход и продолжайте
@@ -177,23 +213,8 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
             Кабинет открывается после короткого подтверждения через Telegram. После этого вы сразу вернетесь к своему доступу, подписке и поддержке.
           </p>
 
-          <div className="mt-6 rounded-[28px] border border-emerald-900/8 bg-[#f8f5ef]/88 p-5 dark:border-emerald-200/10 dark:bg-[#0f1714]">
-            <TelegramLoginWidget />
-          </div>
-
-          <div className="mt-6 flex flex-wrap gap-3">
-            <AppRouteLink href={BOT_WEBLOGIN_URL} target="_blank" hardNavigate={false} className="btn-primary rounded-2xl px-5 py-3 text-sm font-semibold uppercase tracking-[0.12em]">
-              Открыть Telegram
-            </AppRouteLink>
-            <button className="outline-btn rounded-2xl px-5 py-3 text-sm font-semibold uppercase tracking-[0.12em]" type="button" onClick={logoutWebSession}>
-              Сменить аккаунт
-            </button>
-          </div>
-
-          <div className="mt-5 rounded-[22px] border border-emerald-900/8 bg-emerald-900/[0.03] px-4 py-3 text-sm leading-6 text-slate-600 dark:border-emerald-200/10 dark:bg-emerald-200/[0.04] dark:text-slate-300">
-            {webLoginBusy
-              ? "Проверяем подтверждение входа."
-              : webLoginError || "Если Telegram уже открыт на устройстве, подтверждение обычно занимает один шаг."}
+          <div className="mt-6">
+            <CabinetEntryAuth siteUrl={MARKETING_SITE_URL} />
           </div>
         </section>
       </main>
@@ -204,8 +225,15 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
     return (
       <main className="mx-auto grid min-h-[72vh] w-[min(96vw,780px)] place-items-center py-8">
         <section className="glass-card w-full overflow-hidden border border-white/70 p-7 dark:border-[#243129]/80 sm:p-8">
+          <PokrovLogo
+            showWordmark
+            className="inline-flex items-center gap-3"
+            markClassName="h-11 w-11"
+            caption={pokrovBranding.cabinetName}
+            label="POKROV cabinet"
+          />
           <div className="inline-flex items-center gap-2 rounded-full border border-rose-200/70 bg-rose-50/80 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-rose-700 dark:border-rose-400/20 dark:bg-rose-400/10 dark:text-rose-200">
-            cabinet recovery
+            {pokrovBranding.cabinetEyebrow}
           </div>
           <h1 className="mt-4 font-display text-4xl font-semibold leading-[1.02] text-slate-900 dark:text-slate-50 sm:text-5xl">
             Кабинет открылся не полностью
@@ -220,6 +248,13 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
             <button className="outline-btn rounded-2xl px-5 py-3 text-sm font-semibold uppercase tracking-[0.12em]" type="button" onClick={logoutWebSession}>
               Сменить аккаунт
             </button>
+            <AppRouteLink
+              href={MARKETING_SITE_URL}
+              hardNavigate
+              className="outline-btn rounded-2xl px-5 py-3 text-sm font-semibold uppercase tracking-[0.12em]"
+            >
+              {pokrovBranding.siteLinkLabel}
+            </AppRouteLink>
           </div>
         </section>
       </main>
@@ -244,18 +279,15 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
           <aside className="hidden w-[312px] shrink-0 lg:block">
             <div className="glass-card sticky top-4 flex min-h-[calc(100vh-2rem)] flex-col justify-between border border-white/70 px-5 py-5 dark:border-[#243129]/80">
               <div>
-                <div className="flex items-center gap-3 px-1">
-                  <span className="inline-flex h-14 w-14 items-center justify-center rounded-[20px] bg-emerald-900 text-white shadow-[0_20px_40px_-25px_rgba(18,48,36,0.7)] dark:bg-emerald-700">
-                    <span className="material-symbols-rounded text-[28px]">shield_lock</span>
-                  </span>
-                  <div>
-                    <p className="font-display text-[1.55rem] font-semibold tracking-[0.12em] text-slate-900 dark:text-slate-50">
-                      POKROV
-                    </p>
-                    <p className="text-[11px] uppercase tracking-[0.16em] text-slate-500 dark:text-slate-400">
-                      private cabinet
-                    </p>
-                  </div>
+                <div className="px-1">
+                  <PokrovLogo
+                    showWordmark
+                    className="inline-flex items-center gap-3"
+                    markClassName="h-14 w-14 rounded-[20px] bg-white/78 p-2.5 shadow-[0_20px_40px_-25px_rgba(18,48,36,0.28)] ring-1 ring-emerald-900/10 dark:bg-white/[0.06] dark:ring-white/10"
+                    caption={pokrovBranding.cabinetName}
+                    textClassName="space-y-1"
+                    label="POKROV cabinet navigation"
+                  />
                 </div>
 
                 <div className="mt-6 rounded-[28px] border border-emerald-900/8 bg-[#f8f5ef]/88 p-4 dark:border-emerald-200/10 dark:bg-[#0f1714]">
@@ -319,9 +351,18 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
                 <div className="rounded-[24px] border border-white/70 bg-white/72 px-4 py-4 dark:border-white/10 dark:bg-white/[0.04]">
                   <p className="text-[11px] uppercase tracking-[0.16em] text-slate-500 dark:text-slate-400">Коротко</p>
                   <p className="mt-2 text-sm leading-6 text-slate-700 dark:text-slate-200">
-                    Кабинет хранит ваш доступ, продление и службу заботы в одном спокойном маршруте без лишних витрин.
+                    {pokrovBranding.cabinetTagline}
                   </p>
                 </div>
+
+                <AppRouteLink
+                  href={MARKETING_SITE_URL}
+                  hardNavigate
+                  className="haptic-tap flex w-full items-center gap-3 rounded-[22px] border border-emerald-900/12 bg-white/72 px-4 py-3 text-sm font-medium text-slate-700 transition hover:border-emerald-900/20 hover:bg-white/90 dark:border-white/10 dark:bg-white/[0.04] dark:text-slate-100 dark:hover:bg-white/[0.06]"
+                >
+                  <span className="material-symbols-rounded text-[20px] text-emerald-700 dark:text-emerald-300">north_west</span>
+                  {pokrovBranding.siteLinkLabel}
+                </AppRouteLink>
 
                 <button
                   type="button"
@@ -356,12 +397,22 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
                 </button>
               ) : null}
 
+              {!isAdminRoute ? (
+                <PokrovLogo
+                  showWordmark
+                  className="hidden items-center gap-3 sm:inline-flex"
+                  markClassName="h-10 w-10"
+                  caption={activeItem?.label || pokrovBranding.cabinetName}
+                  label="POKROV cabinet header"
+                />
+              ) : null}
+              {!isAdminRoute ? <PokrovLogo className="h-10 w-10 shrink-0 sm:hidden" label="POKROV logo" /> : null}
               <div>
                 <p className="text-[11px] uppercase tracking-[0.16em] text-slate-500 dark:text-slate-400">
-                  {isAdminRoute ? "operator surface" : "personal cabinet"}
+                  {isAdminRoute ? "operator surface" : pokrovBranding.cabinetName}
                 </p>
                 <p className="mt-1 font-display text-[1.65rem] font-semibold leading-none text-slate-900 dark:text-slate-50">
-                  {isAdminRoute ? "Админ" : activeItem?.label || "Кабинет"}
+                  {isAdminRoute ? "Админ" : activeItem?.label || pokrovBranding.cabinetName}
                 </p>
               </div>
             </div>
@@ -377,6 +428,14 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
                     <span className="material-symbols-rounded text-[18px] text-emerald-700 dark:text-emerald-300">network_check</span>
                     {trafficLabel}
                   </div>
+                  <AppRouteLink
+                    href={MARKETING_SITE_URL}
+                    hardNavigate
+                    className="hidden items-center gap-2 rounded-full border border-white/70 bg-white/72 px-3 py-2 text-sm text-slate-700 dark:border-white/10 dark:bg-white/[0.04] dark:text-slate-200 md:inline-flex lg:hidden"
+                  >
+                    <span className="material-symbols-rounded text-[18px] text-emerald-700 dark:text-emerald-300">north_west</span>
+                    {pokrovBranding.siteLinkLabel}
+                  </AppRouteLink>
                 </>
               ) : null}
 
@@ -402,6 +461,35 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
               </div>
             </div>
           </header>
+
+          {!isAdminRoute ? (
+            <section className="glass-card mb-5 flex flex-wrap items-center justify-between gap-4 border border-white/70 px-4 py-4 dark:border-[#243129]/80 sm:px-5">
+              <div>
+                <p className="text-[11px] uppercase tracking-[0.16em] text-emerald-800/70 dark:text-emerald-200/70">
+                  {pokrovBranding.entryEyebrow}
+                </p>
+                <p className="mt-1 text-sm leading-6 text-slate-700 dark:text-slate-200">{pokrovBranding.appFirstSummary}</p>
+              </div>
+              <div className="flex flex-wrap gap-3">
+                <AppRouteLink
+                  href="/support"
+                  className="outline-btn inline-flex items-center gap-2 rounded-full px-4 py-2 text-xs font-semibold uppercase tracking-[0.14em]"
+                >
+                  <span className="material-symbols-rounded text-[18px]">support_agent</span>
+                  {pokrovBranding.supportTitle}
+                </AppRouteLink>
+            <AppRouteLink
+              href={MARKETING_SITE_URL}
+              hardNavigate
+              aria-label="Открыть сайт POKROV"
+              className="outline-btn inline-flex items-center gap-2 rounded-full px-4 py-2 text-xs font-semibold uppercase tracking-[0.14em]"
+            >
+                  <span className="material-symbols-rounded text-[18px]">north_west</span>
+                  {pokrovBranding.siteLinkLabel}
+                </AppRouteLink>
+              </div>
+            </section>
+          ) : null}
 
           {children}
         </div>
@@ -438,14 +526,15 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
             onClick={(event) => event.stopPropagation()}
           >
             <div className="flex items-start justify-between gap-3">
-              <div className="flex items-center gap-3">
-                <span className="inline-flex h-12 w-12 items-center justify-center rounded-[18px] bg-emerald-900 text-white dark:bg-emerald-700">
-                  <span className="material-symbols-rounded text-[24px]">shield_lock</span>
-                </span>
-                <div>
-                  <p className="font-display text-xl font-semibold tracking-[0.12em] text-slate-900 dark:text-slate-50">POKROV</p>
-                  <p className="text-[10px] uppercase tracking-[0.14em] text-slate-500 dark:text-slate-400">private cabinet</p>
-                </div>
+              <div className="min-w-0">
+                <PokrovLogo
+                  showWordmark
+                  className="inline-flex items-center gap-3"
+                  markClassName="h-12 w-12 rounded-[18px] bg-white/78 p-2.5 ring-1 ring-emerald-900/10 dark:bg-white/[0.06] dark:ring-white/10"
+                  caption={pokrovBranding.cabinetName}
+                  textClassName="space-y-1"
+                  label="POKROV cabinet mobile menu"
+                />
               </div>
               <button type="button" onClick={() => setMobileMenuPath(null)} className="haptic-tap inline-flex h-10 w-10 items-center justify-center rounded-xl bg-white/75 dark:bg-white/[0.06]" aria-label="Закрыть меню">
                 <span className="material-symbols-rounded">close</span>
@@ -481,6 +570,16 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
                 );
               })}
             </nav>
+
+            <AppRouteLink
+              href={MARKETING_SITE_URL}
+              hardNavigate
+              onClick={() => setMobileMenuPath(null)}
+              className="haptic-tap mt-6 flex w-full items-center gap-2 rounded-[20px] border border-emerald-900/12 bg-white/72 px-4 py-3 text-sm text-slate-700 dark:border-white/10 dark:bg-white/[0.04] dark:text-slate-100"
+            >
+              <span className="material-symbols-rounded text-[20px] text-emerald-700 dark:text-emerald-300">north_west</span>
+              {pokrovBranding.siteLinkLabel}
+            </AppRouteLink>
 
             <button
               type="button"

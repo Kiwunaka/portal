@@ -47,6 +47,12 @@ DEFAULT_ROUTES = [
         "backend_host": "127.0.0.1",
         "backend_port": 11443,
     },
+    {
+        "name": "reserve_xhttp_cdn",
+        "server_names": ["cdn.connect.pokrov.space"],
+        "backend_host": "127.0.0.1",
+        "backend_port": 12443,
+    },
 ]
 
 SERVICE_TEMPLATE = (REPO_ROOT / "infra" / "portal-transport-front.service").read_text(encoding="utf-8")

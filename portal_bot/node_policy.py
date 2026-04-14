@@ -1,10 +1,27 @@
 from __future__ import annotations
 
+from datetime import datetime, timezone
 from typing import Any
 
 
 FREE_NODE_CODE_PREFERENCES = ("nl-free", "nl_free", "free", "pl_free")
 _PREMIUM_PLAN_CODES = {"trial", "channel_bonus", "start_99"}
+SMART_CONNECT_SHORTLIST_LIMIT = 5
+SMART_CONNECT_STICKINESS_THRESHOLD_PERCENT = 15
+SMART_CONNECT_STALE_AFTER_SECONDS = 900
+SMART_CONNECT_CPU_REJECT_PERCENT = 90.0
+
+
+def _utcnow() -> datetime:
+    return datetime.now(timezone.utc).replace(tzinfo=None)
+
+
+def _normalize_utc_naive(value: datetime | None) -> datetime | None:
+    if not isinstance(value, datetime):
+        return None
+    if value.tzinfo is None:
+        return value
+    return value.astimezone(timezone.utc).replace(tzinfo=None)
 
 
 def node_code(value: Any) -> str:
@@ -29,6 +46,57 @@ def node_is_delivery_ready(node: Any) -> bool:
     return bool(getattr(node, "enabled", True)) and bool(getattr(node, "accepting_new_clients", True)) and not bool(
         getattr(node, "is_draining", False)
     )
+
+
+def node_last_freshness_at(node: Any) -> datetime | None:
+    for attr in ("last_health_at", "last_probe_at", "last_ok_at"):
+        value = getattr(node, attr, None)
+        if isinstance(value, datetime):
+            return _normalize_utc_naive(value)
+    return None
+
+
+def node_is_stale(
+    node: Any,
+    *,
+    now: datetime | None = None,
+    stale_after_seconds: int = SMART_CONNECT_STALE_AFTER_SECONDS,
+) -> bool:
+    sample_at = node_last_freshness_at(node)
+    if sample_at is None:
+        return True
+    current = _normalize_utc_naive(now) or _utcnow()
+    return (current - sample_at).total_seconds() > max(60, int(stale_after_seconds))
+
+
+def node_cpu_penalty(node: Any) -> int | None:
+    try:
+        cpu_percent = float(getattr(node, "cpu_percent", 0.0) or 0.0)
+    except Exception:
+        cpu_percent = 0.0
+    if cpu_percent >= SMART_CONNECT_CPU_REJECT_PERCENT:
+        return None
+    if cpu_percent >= 85.0:
+        return 120
+    if cpu_percent >= 75.0:
+        return 60
+    if cpu_percent >= 60.0:
+        return 20
+    return 0
+
+
+def node_backend_penalty(node: Any) -> int | None:
+    try:
+        health_score = float(getattr(node, "health_score", 0.0) or 0.0)
+    except Exception:
+        health_score = 0.0
+    if health_score < 60.0:
+        return None
+    if health_score < 75.0:
+        return 80
+    if health_score < 90.0:
+        return 30
+    return 0
 
 
 def user_uses_free_pool(user: Any) -> bool:

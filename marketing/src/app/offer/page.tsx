@@ -2,17 +2,17 @@ import Link from "next/link";
 
 import JsonLd from "../../components/json-ld";
 import { buildMarketingMetadata } from "../../components/marketing-landing";
-import { buildBreadcrumbJsonLd } from "../../lib/marketing-site";
-import { getPokrovPublicConfig } from "../../lib/pokrov";
+import { buildBreadcrumbJsonLd, MARKETING_CANONICAL_PATHS } from "../../lib/marketing-site";
+import { CANONICAL_PLATFORM_BRAND, getPokrovPublicConfig } from "../../lib/pokrov";
 
 const config = getPokrovPublicConfig(process.env as Record<string, string | undefined>);
 
 export const metadata = buildMarketingMetadata(
-  "Публичная оферта | POKROV Network",
-  "Базовые условия цифровой подписки POKROV Network, порядок продления и контакты поддержки.",
+  "Публичная оферта | POKROV",
+  "Базовые условия цифровой подписки POKROV, порядок продления и контакты поддержки.",
   {
     path: "/offer/",
-    keywords: ["оферта pokrov network", "условия подписки", "pokrov offer"],
+    keywords: ["оферта pokrov", "условия подписки", "pokrov offer"],
   },
 );
 
@@ -21,27 +21,27 @@ export default function OfferPage() {
     <>
       <JsonLd
         data={buildBreadcrumbJsonLd([
-          { name: "POKROV Network", path: "/" },
+          { name: CANONICAL_PLATFORM_BRAND, path: "/" },
           { name: "Публичная оферта", path: "/offer/" },
         ])}
       />
       <main className="legal-page">
         <h1>Публичная оферта</h1>
         <p>
-          Этот документ описывает базовые условия доступа к цифровым услугам POKROV Network, порядок продления и
+          Этот документ описывает базовые условия доступа к цифровым услугам POKROV, порядок продления и
           основные правила использования сервиса.
         </p>
         <ul>
           <li>Сервис предоставляется как цифровая подписка на выбранный срок.</li>
           <li>Бесплатный тест и отдельные сценарии доступа могут иметь свои ограничения по устройствам и функциям.</li>
-          <li>Продление и оплата запускаются через интерфейсы POKROV Network или через Telegram-бота, если это предусмотрено текущим маршрутом.</li>
+          <li>Продление и оплата запускаются через интерфейсы POKROV или через Telegram-бота, если это предусмотрено текущим маршрутом.</li>
           <li>Возвраты и спорные случаи рассматриваются индивидуально через службу заботы.</li>
         </ul>
         <p>Актуальные версии документов доступны на сайте, в кабинете и по запросу в службу заботы.</p>
         <p>
-          Полезные страницы: <Link href="/">главная POKROV Network</Link>,{" "}
-          <Link href="/bystryy-vpn-na-telefon/">быстрый Оптимизатор на телефон</Link> и{" "}
-          <Link href="/vpn-na-iphone-android-windows/">Сеть на Android и Windows</Link>.
+          Полезные страницы: <Link href="/">главная POKROV</Link>,{" "}
+          <Link href={MARKETING_CANONICAL_PATHS.mobile}>мобильный старт</Link> и{" "}
+          <Link href={MARKETING_CANONICAL_PATHS.devices}>Android и Windows</Link>.
         </p>
         <h2>Контакты</h2>
         <ul>
@@ -66,7 +66,7 @@ export default function OfferPage() {
         </ul>
         <div className="legal-actions">
           <Link className="btn btn-ghost" href="/">
-            На главную POKROV Network
+            На главную POKROV
           </Link>
           <a className="btn btn-primary" href={config.botUrl} target="_blank" rel="noreferrer">
             Открыть Telegram-бота

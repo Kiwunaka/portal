@@ -1,6 +1,6 @@
 # App-First And Bonus Flows
 
-Last updated: 2026-04-13
+Last updated: 2026-04-14
 
 ## Document Status
 
@@ -26,7 +26,9 @@ Document the current app-first identity model, automatic username sync path, che
    - `access` payload with enforced `5-day` trial state
    - `provisioning` payload with explicit readiness state
    - experience payload
-7. client silently imports the profile and switches to `Quick Connect`
+7. client silently imports the profile
+8. client asks how this device should be optimized before the first live route activation
+9. client saves the per-device route policy and then switches to `Quick Connect`
 
 Contract rule:
 
@@ -41,6 +43,15 @@ Current `client_policy` contract:
 - `engine_hint`: `singbox`
 - `profile_revision`: rollout-derived profile revision string
 - `dns_policy`: `ru_direct_split`
+- `route_mode_default`: `all_traffic`
+- `route_mode_choices`: `all_traffic`, `selected_apps`
+- `route_mode_requires_elevation`: platform-specific elevation hint for the default or chosen route mode
+- `route_mode`: persisted current per-device route mode
+- `selected_apps`: persisted package/process identifiers for the current split-tunnel choice
+- `requires_elevated_privileges`: persisted current elevation requirement for the chosen route mode
+- `route_policy.mode`: normalized mirror of the current `route_mode`
+- `route_policy.selected_apps`: normalized mirror of the current `selected_apps`
+- `route_policy.requires_elevated_privileges`: normalized mirror of the current elevation requirement
 - `package_catalog_version`: versioned Android direct-app catalog stamp from shared facts
 - `ruleset_version`: versioned routing/ruleset stamp from shared facts
 - `support_context.transport`: `legacy_reality_fallback`
@@ -48,17 +59,38 @@ Current `client_policy` contract:
 - `support_context.ip_version_preference`: `ipv4_only`
 - `support_recovery_order`: `app`, `web`, `telegram`
 
+First-run route-mode choice:
+
+- the client must show exactly two first-layer consumer choices: `Optimize everything on this device` and `Only selected apps`
+- `Optimize everything on this device` is the default public path and stays `TUN`-first
+- `Only selected apps` is the split-tunneling path and must write per-device app/process selection state instead of revealing raw proxy or service controls
+- the chosen mode must round-trip through backend-owned `route_mode`, `selected_apps`, and `route_policy.*` fields so `start-trial`, `dashboard`, and recovery flows all agree on the live device state
+- Windows should use a known-app or executable picker; Android should use an installed-package picker
+- the saved route-mode choice must remain editable later from a dedicated route-mode screen rather than only through hidden advanced settings
+
 Rollout note:
 
 - `AppSetting.network_rollout_config` resolves the transport profile for app-managed session and profile payloads
 - `GET /api/client/profile/managed` is the primary app-managed provisioning endpoint and returns a manifest with `version`, `profile_revision`, `transport_profile`, `transport_kind`, `engine_hint`, `config_format`, `config_payload`, `fallback_order`, and `support_context`
 - allowlisted carrier or cohort overrides may switch app-managed flows to `grpc_443_primary` without changing the public endpoint set
+- managed provisioning now also returns a `smart_connect` contract with shortlist candidates, fallback metadata, rejection counts, and scoring hints
 - manual/export compatibility links stay on `legacy_reality_fallback` until a separate share-link parity wave
 - `subscription_url` remains a compatibility and recovery artifact for manual import, legacy browser-visible delivery, and fallback when the managed manifest cannot be fetched
 - `network_rollout_config` carries `version`, `defaults`, `carrier_overrides`, `cohort_overrides`, `operator_lab`, `package_catalog_feed`, `routing_rules_feed`, and `support_recovery_order`
 - `defaults` keep `routing_mode_default=all_except_ru`, `transport_profile=legacy_reality_fallback`, and `dns_policy=ru_direct_split` until canary approval
 - overrides may only change `transport_profile`, `dns_policy`, `routing_mode_default`, and `ip_version_preference`
 - `operator_lab` is allowlist-only and must stay out of public UI and mass session/profile payloads
+
+Smart-connect contract:
+
+- `GET /api/client/profile/managed` returns a shortlist revision plus `smart_connect.shortlist`
+- premium users probe up to `5` eligible non-free nodes; free-tier users still probe only `NL-free`
+- the shortlist rejects disabled, draining, unhealthy, stale, `cpu_percent >= 90`, transport-incompatible, and rollout-blocked nodes before the client starts RTT checks
+- shortlist items expose `health_score`, `cpu_percent`, `panel_latency_ms`, `backend_penalty`, and `cpu_penalty`
+- the client compares candidates with `effective_score = rtt_ms + cpu_penalty + backend_penalty`
+- stickiness stays active with a `15%` threshold so the app does not flap between nodes on tiny wins
+- explicit `UserNode` mappings still take precedence; the shortlist is built from the user-assigned node set first instead of bypassing that pinning
+- the follow-up upload path is `POST /api/client/nodes/latency-samples`, which stores `install_id`, `carrier`, `platform`, accepted RTT samples, selected node, previous node, and whether stickiness was applied
 
 ## App Session Model
 
@@ -103,15 +135,23 @@ Visibility rule:
 - Telegram remains optional for the user journey
 - once linked, Telegram identity becomes part of the support and recovery context
 - device and IP context should be used for diagnosis and abuse control, not as a public-facing marketing message
+- install-scoped latency samples, carrier labels, and platform labels are operator-visible diagnostics for route quality and must not surface as raw telemetry in normal consumer UI
 
 ## Live App-First Endpoints
 
 Current live backend contract:
 
 - `POST /api/client/session/start-trial`
+- `GET /api/client/profile/managed`
+- `POST /api/client/nodes/latency-samples`
 - `POST /api/client/telegram/link`
 - `POST /api/channel/subscriber/check`
 - `POST /api/bonuses/channel/claim`
+- `GET /api/tickets`
+- `POST /api/tickets`
+- `POST /api/tickets/uploads`
+- `GET /api/tickets/{ticket_id}`
+- `POST /api/tickets/{ticket_id}/messages`
 
 Related live surfaces also exposed by the backend:
 
@@ -122,11 +162,12 @@ Related live surfaces also exposed by the backend:
 - `GET /api/bonuses`
 - ticket endpoints under `/api/tickets`
 
-## Web Login And Session Continuation
+## Web Login, Email Auth, And Session Continuation
 
 Web surfaces support app-first continuation through:
 
 - Telegram widget or Telegram OIDC login in browser
+- additive email signup, verification, login, recovery, and reset on the site and cabinet
 - bot-issued `web_session_token` handoff into `app.pokrov.space`
 - dashboard and checkout continuation from an existing web session
 
@@ -136,6 +177,9 @@ Contract rule:
 - canonical public config host is `https://connect.pokrov.space/`
 - HTML responses from `app.pokrov.space` must never be treated as valid API JSON
 - web login should continue the user into account or checkout, not into a dead-end landing
+- additive email auth must issue the same browser session family used by the cabinet, checkout, and support flows while exposing `auth_origin` and linked-identity summary for support/admin visibility
+- the additive email-auth rollout uses endpoint families under `/api/auth/email/*` for register, verify, login, recovery, and reset
+- public email register, verify, and recovery should remain enabled only while transactional sender identity and delivery-confirmation/webhook visibility are live; otherwise the web UI must show a truthful unavailable state
 - new user-facing `subscription_url` values must point to `connect.pokrov.space`
 - legacy `api.pokrov.space/s8Kx2mP7qR4wT/...` remains compatibility-only for older imports and recovery cases
 - the same `client_policy` contract still flows through `start-trial`, `user`, and `dashboard`, but the rollout policy behind it can vary by cohort without introducing a new endpoint
@@ -162,12 +206,29 @@ Current user-facing delivery semantics:
 - one public `ссылка подключения`
 - one QR built from the same URL
 - no public smart/plain split in bot, site, or webapp wording
+- consumer client and cabinet flows should prefer reconnect, refresh, route-mode change, checkout, and support over raw subscription copy/edit surfaces
 
 Compatibility note:
 
 - `?format=plain` still exists for backend compatibility and advanced/manual recovery
 - that compatibility override must stay out of normal user-facing onboarding and CTA copy
 - app-first managed flows may still receive `grpc_443_primary` during rollout, but manual/export recovery and legacy browser-visible compatibility paths stay on Reality until the share-link parity wave lands
+
+## Support Ticket Continuation
+
+1. user opens support from app, cabinet, or helpbot
+2. session-backed support may create a real ticket through `POST /api/tickets`
+3. cabinet/support surfaces may load the thread through `GET /api/tickets/{ticket_id}`
+4. follow-up replies continue through `POST /api/tickets/{ticket_id}/messages`
+5. attachment-capable browser support uses `POST /api/tickets/uploads`
+6. operators continue the same case through `/api/admin/tickets/*`
+
+Contract rule:
+
+- app-first support may start from prepared context even before a live thread exists
+- web and cabinet support must be documented as a real ticket lifecycle, not as decorative form state
+- attachment-capable ticket flows belong to authenticated browser and admin paths today
+- client UX must not promise a realtime in-app chat when the backed contract is asynchronous ticketing
 
 ## Telegram Linking Flow
 
@@ -244,6 +305,7 @@ Support direction should stay consistent across app, WebApp, and helpbot:
 - users should be able to start support from inside the app
 - helpbot remains a valid external fallback
 - `support@pokrov.space` remains the email fallback for cases where Telegram is unavailable or a store/support mailbox is required
+- cabinet support should continue the same ticket thread and uploads contract exposed by `/api/tickets*`
 - feedback collection and public-review intake should continue through `@pokrov_feedbackbot`, not replace the primary support path
 - public recovery order must stay `POKROV app -> web cabinet -> Telegram fallback`
 
@@ -259,6 +321,7 @@ Client-facing diagnostics rule:
 - diagnostics may show the active routing mode and a safe route category summary
 - diagnostics must not expose raw configs, keys, or internal topology that would make config leakage easier
 - the app should prefer safe operator actions such as `change location`, `refresh profile`, `reconnect`, and `contact support`
+- user-visible subscription edit, regenerate, and advanced share actions should stay in admin or recovery-only tooling, not the first-layer consumer path
 - do not describe Private Space, split tunneling, Knox, Shelter, or similar isolation features as a verified fix for a local control-surface exposure unless a dedicated security audit has proven that statement
 
 ## Admin Status And Cleanup Semantics

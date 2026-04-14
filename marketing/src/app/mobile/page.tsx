@@ -1,30 +1,31 @@
 import JsonLd from "../../components/json-ld";
 import MarketingLanding, { buildMarketingMetadata } from "../../components/marketing-landing";
-import { buildBreadcrumbJsonLd } from "../../lib/marketing-site";
+import { buildBreadcrumbJsonLd, MARKETING_CANONICAL_PATHS } from "../../lib/marketing-site";
+import { CANONICAL_PLATFORM_BRAND } from "../../lib/pokrov";
 
 export const metadata = buildMarketingMetadata(
-  "Быстрая сеть на телефон | POKROV Network",
-  "Быстрый старт для телефона: приложение, 5 дней тест-драйва и идеальное качество связи на Android без пауз и долгого ожидания.",
+  "Мобильный старт | POKROV",
+  "Быстрый старт для телефона: приложение, 5 дней теста и спокойный маршрут к стабильной сети на Android.",
   {
-    path: "/bystryy-vpn-na-telefon/",
-    keywords: ["быстрый интернет на телефон", "ускоритель на телефон", "оптимизатор на телефон", "стабильная сеть android"],
+    path: MARKETING_CANONICAL_PATHS.mobile,
+    keywords: ["быстрый интернет на телефон", "ускоритель на телефон", "android", "мобильный старт"],
   },
 );
 
-export default function FastPhoneVpnPage() {
+export default function MobilePage() {
   return (
     <>
       <JsonLd
         data={buildBreadcrumbJsonLd([
-          { name: "POKROV Network", path: "/" },
-          { name: "Сеть на телефон", path: "/bystryy-vpn-na-telefon/" },
+          { name: CANONICAL_PLATFORM_BRAND, path: MARKETING_CANONICAL_PATHS.home },
+          { name: "Мобильный старт", path: MARKETING_CANONICAL_PATHS.mobile },
         ])}
       />
       <MarketingLanding
-        pagePath="/bystryy-vpn-na-telefon/"
-        heroKicker="Быстрый старт для телефона"
+        pagePath={MARKETING_CANONICAL_PATHS.mobile}
+        heroKicker="Мобильный старт"
         heroTitle="Умная сеть на телефон без долгой настройки"
-        heroSubtitle="Если нужен быстрый мобильный старт, начните с приложения, включите тест-драйв на 5 дней и почувствуйте магию скорости уже сегодня."
+        heroSubtitle="Если нужен быстрый мобильный старт, начните с приложения, включите тест на 5 дней и почувствуйте разницу уже сегодня."
         scenarioTitle="Почему это удобно на телефоне"
         scenarioBody="В мобильном сценарии важны короткий путь к цели, стабильная связь и минимум ручных действий."
         scenarioCards={[
@@ -38,7 +39,7 @@ export default function FastPhoneVpnPage() {
             eyebrow: "Повседневный режим",
             glyph: "signal",
             title: "Проверяете связь там, где пользуетесь телефоном каждый день",
-            desc: "Открываете любимые приложения и наслаждаетесь стабильностью — мы позаботимся о качестве маршрутов за вас.",
+            desc: "Открываете любимые приложения и проверяете стабильность в привычных сценариях.",
           },
           {
             eyebrow: "Дальше без суеты",
@@ -47,8 +48,8 @@ export default function FastPhoneVpnPage() {
             desc: "Полный контроль всегда под рукой в личном кабинете, когда вы решите, что скорость вас устраивает.",
           },
         ]}
-        clusterTitle="Когда нужна стабильная сеть на телефоне"
-        clusterBody="Эта страница отвечает на мобильный сценарий и аккуратно ведёт в приложение, кабинет и checkout-маршрут без смешивания смыслов."
+        clusterTitle="Когда нужен быстрый старт на телефоне"
+        clusterBody="Эта страница отвечает на мобильный сценарий и ведёт в приложение, кабинет и оплату без смешивания смыслов."
       />
     </>
   );

@@ -398,7 +398,7 @@ export default function CheckoutClient() {
           {heroStatus}
         </div>
         <h1 className="checkout-title">
-          <span>POKROV Network</span>
+          <span>POKROV</span>
           <span>
             {hasCheckoutTicket
               ? getCopyText("marketing.checkout.ticket.title", "Продление доступа")

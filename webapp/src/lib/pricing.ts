@@ -60,7 +60,7 @@ export const PRICING_PLANS: PricingPlan[] = [
   },
   {
     code: "12_months",
-    label: "Годовой абонемент: POKROV Network",
+    label: "Годовой абонемент: POKROV",
     price: 1644,
     days: 365,
     deviceLimit: 5,

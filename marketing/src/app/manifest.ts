@@ -1,28 +1,29 @@
 import type { MetadataRoute } from "next";
 
-import { CANONICAL_CLIENT_BRAND, CANONICAL_MARKETING_SITE_URL } from "../lib/pokrov";
+import { CANONICAL_MARKETING_SITE_URL, CANONICAL_PLATFORM_BRAND } from "../lib/pokrov";
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: CANONICAL_CLIENT_BRAND,
-    short_name: "POKROV Net",
+    name: CANONICAL_PLATFORM_BRAND,
+    short_name: "POKROV",
     description: "Умное ускорение интернета для Android и Windows с 5-дневным бесплатным тестом.",
     start_url: "/",
     display: "standalone",
-    background_color: "#f5f7f3",
-    theme_color: "#0d4a35",
+    background_color: "#f5f1e8",
+    theme_color: "#143627",
     lang: "ru-RU",
     categories: ["security", "utilities", "productivity"],
     icons: [
       {
-        src: "/icon.png",
-        sizes: "512x512",
-        type: "image/png",
+        src: "/pokrov-logo.svg",
+        sizes: "any",
+        type: "image/svg+xml",
+        purpose: "any",
       },
       {
-        src: "/apple-icon.png",
-        sizes: "512x512",
-        type: "image/png",
+        src: "/pokrov-logo.svg",
+        sizes: "any",
+        type: "image/svg+xml",
       },
     ],
     scope: "/",

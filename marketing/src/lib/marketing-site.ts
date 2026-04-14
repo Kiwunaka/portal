@@ -2,10 +2,10 @@ import type { MetadataRoute } from "next";
 
 import {
   CANONICAL_BOT_URL,
-  CANONICAL_CLIENT_BRAND,
   CANONICAL_CONTACT_EMAIL,
   CANONICAL_MARKETING_SITE_URL,
   CANONICAL_NEWS_CHANNEL_URL,
+  CANONICAL_PLATFORM_BRAND,
   CANONICAL_SUPPORT_BOT_URL,
   getCopyText,
 } from "./pokrov";
@@ -14,6 +14,18 @@ export const DEFAULT_MARKETING_SHARE_IMAGE_PATH = "/opengraph-image.png";
 export const DEFAULT_MARKETING_TWITTER_IMAGE_PATH = "/twitter-image.png";
 export const DEFAULT_MARKETING_SHARE_IMAGE_WIDTH = 1200;
 export const DEFAULT_MARKETING_SHARE_IMAGE_HEIGHT = 630;
+export const MARKETING_CANONICAL_PATHS = {
+  home: "/",
+  mobile: "/mobile/",
+  tiktok: "/tiktok/",
+  youtube: "/youtube/",
+  devices: "/devices/",
+  telegram: "/telegram/",
+  checkout: "/checkout/",
+  install: "/install/",
+  offer: "/offer/",
+  privacy: "/privacy/",
+} as const;
 
 export const MARKETING_FEATURE_LIST = [
   "5 дней бесплатного тест-драйва",
@@ -29,14 +41,14 @@ export type MarketingRouteConfig = {
 };
 
 export const MARKETING_SITEMAP_ROUTES: MarketingRouteConfig[] = [
-  { path: "/", changeFrequency: "weekly", priority: 1 },
-  { path: "/bystryy-vpn-na-telefon/", changeFrequency: "weekly", priority: 0.9 },
-  { path: "/vpn-dlya-youtube/", changeFrequency: "weekly", priority: 0.86 },
-  { path: "/vpn-dlya-tiktok/", changeFrequency: "weekly", priority: 0.86 },
-  { path: "/vpn-na-iphone-android-windows/", changeFrequency: "weekly", priority: 0.88 },
-  { path: "/vpn-telegram-bot/", changeFrequency: "weekly", priority: 0.78 },
-  { path: "/offer/", changeFrequency: "monthly", priority: 0.36 },
-  { path: "/privacy/", changeFrequency: "monthly", priority: 0.34 },
+  { path: MARKETING_CANONICAL_PATHS.home, changeFrequency: "weekly", priority: 1 },
+  { path: MARKETING_CANONICAL_PATHS.mobile, changeFrequency: "weekly", priority: 0.9 },
+  { path: MARKETING_CANONICAL_PATHS.youtube, changeFrequency: "weekly", priority: 0.86 },
+  { path: MARKETING_CANONICAL_PATHS.tiktok, changeFrequency: "weekly", priority: 0.86 },
+  { path: MARKETING_CANONICAL_PATHS.devices, changeFrequency: "weekly", priority: 0.88 },
+  { path: MARKETING_CANONICAL_PATHS.telegram, changeFrequency: "weekly", priority: 0.78 },
+  { path: MARKETING_CANONICAL_PATHS.offer, changeFrequency: "monthly", priority: 0.36 },
+  { path: MARKETING_CANONICAL_PATHS.privacy, changeFrequency: "monthly", priority: 0.34 },
 ];
 
 export type MarketingFaqItem = {
@@ -57,7 +69,7 @@ export type MarketingStructuredReview = {
 
 export const MARKETING_FAQ: MarketingFaqItem[] = [
   {
-    question: getCopyText("marketing.faq.1.q", "Как разогнать свой интернет с POKROV Network?"),
+    question: getCopyText("marketing.faq.1.q", "Как ускорить интернет с POKROV?"),
     answer: getCopyText(
       "marketing.faq.1.a",
       "Просто установите наше приложение, запустите тест-драйв на 5 дней и наслаждайтесь магией скорости. Кабинет нужен для управления.",
@@ -106,9 +118,9 @@ export function buildOrganizationJsonLd() {
   return {
     "@context": "https://schema.org",
     "@type": "Organization",
-    name: CANONICAL_CLIENT_BRAND,
+    name: CANONICAL_PLATFORM_BRAND,
     url: `${CANONICAL_MARKETING_SITE_URL}/`,
-    logo: buildMarketingUrl("/icon.png"),
+    logo: buildMarketingUrl("/pokrov-logo.svg"),
     description: getCopyText(
       "marketing.meta.description",
       "Скачайте приложение для Android или Windows, получите 5 дней бесплатно и продолжайте через личный кабинет и безопасный checkout-маршрут.",
@@ -131,12 +143,12 @@ export function buildWebSiteJsonLd() {
   return {
     "@context": "https://schema.org",
     "@type": "WebSite",
-    name: CANONICAL_CLIENT_BRAND,
+    name: CANONICAL_PLATFORM_BRAND,
     url: `${CANONICAL_MARKETING_SITE_URL}/`,
     inLanguage: "ru-RU",
     publisher: {
       "@type": "Organization",
-      name: CANONICAL_CLIENT_BRAND,
+      name: CANONICAL_PLATFORM_BRAND,
     },
   };
 }
@@ -162,8 +174,8 @@ export function buildSoftwareApplicationJsonLd(options?: {
   return {
     "@context": "https://schema.org",
     "@type": "SoftwareApplication",
-    name: CANONICAL_CLIENT_BRAND,
-    applicationCategory: "SecurityApplication",
+    name: CANONICAL_PLATFORM_BRAND,
+    applicationCategory: "UtilitiesApplication",
     operatingSystem: "Android, Windows",
     inLanguage: "ru-RU",
     image: buildMarketingUrl(DEFAULT_MARKETING_SHARE_IMAGE_PATH),
@@ -172,7 +184,7 @@ export function buildSoftwareApplicationJsonLd(options?: {
     ...(review.length ? { review } : {}),
     publisher: {
       "@type": "Organization",
-      name: CANONICAL_CLIENT_BRAND,
+      name: CANONICAL_PLATFORM_BRAND,
       url: `${CANONICAL_MARKETING_SITE_URL}/`,
     },
     softwareHelp: {

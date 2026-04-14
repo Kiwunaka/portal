@@ -1,6 +1,6 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
-from datetime import datetime
+from datetime import datetime, timezone
 
 from sqlalchemy import (
     BigInteger,
@@ -20,6 +20,10 @@ from sqlalchemy.orm import declarative_base
 Base = declarative_base()
 
 
+def _utcnow() -> datetime:
+    return datetime.now(timezone.utc).replace(tzinfo=None)
+
+
 class User(Base):
     __tablename__ = "users"
 
@@ -29,7 +33,7 @@ class User(Base):
     email = Column(String(100))
     sub_type = Column(String(50))
     current_plan_code = Column(String(32), nullable=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=_utcnow)
     expiry_at = Column(DateTime)
     is_active = Column(Boolean, default=True)
     stars_paid = Column(Integer, default=0)
@@ -76,9 +80,39 @@ class User(Base):
     app_timezone = Column(String(64), nullable=True)
     app_last_seen_at = Column(DateTime, nullable=True)
     app_last_ip = Column(String(64), nullable=True)
+    route_mode = Column(String(32), nullable=True)
+    route_selected_apps_json = Column(Text, nullable=True)
+    route_requires_elevated_privileges = Column(Boolean, nullable=True)
     linked_telegram_id = Column(BigInteger, index=True, nullable=True)
     linked_telegram_username = Column(String(100), nullable=True)
     linked_telegram_linked_at = Column(DateTime, nullable=True)
+
+
+class WebEmailIdentity(Base):
+    __tablename__ = "web_email_identities"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    email = Column(String(200), nullable=False)
+    email_norm = Column(String(200), unique=True, index=True, nullable=False)
+    password_hash = Column(String(255), nullable=False)
+    linked_tg_id = Column(BigInteger, index=True, nullable=False)
+    is_verified = Column(Boolean, default=False, nullable=False)
+    verified_at = Column(DateTime, nullable=True)
+    last_login_at = Column(DateTime, nullable=True)
+    created_at = Column(DateTime, default=_utcnow, nullable=False)
+    updated_at = Column(DateTime, default=_utcnow, nullable=False)
+
+
+class WebEmailToken(Base):
+    __tablename__ = "web_email_tokens"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    identity_id = Column(Integer, index=True, nullable=False)
+    token_kind = Column(String(32), index=True, nullable=False)
+    token_hash = Column(String(64), unique=True, index=True, nullable=False)
+    expires_at = Column(DateTime, nullable=False)
+    used_at = Column(DateTime, nullable=True)
+    created_at = Column(DateTime, default=_utcnow, nullable=False)
 
 
 class Achievement(Base):
@@ -87,7 +121,7 @@ class Achievement(Base):
     id = Column(Integer, primary_key=True, autoincrement=True)
     tg_id = Column(BigInteger, index=True)
     achievement_id = Column(String(50))
-    unlocked_at = Column(DateTime, default=datetime.utcnow)
+    unlocked_at = Column(DateTime, default=_utcnow)
 
 
 class GiftCard(Base):
@@ -97,7 +131,7 @@ class GiftCard(Base):
     code = Column(String(32), unique=True, index=True)
     card_type = Column(String(20))
     created_by = Column(BigInteger)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=_utcnow)
     redeemed_by = Column(BigInteger, nullable=True)
     redeemed_at = Column(DateTime, nullable=True)
 
@@ -110,7 +144,7 @@ class Review(Base):
     username = Column(String(100), nullable=True)
     rating = Column(Integer)
     text = Column(String(500), nullable=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=_utcnow)
     is_featured = Column(Boolean, default=False)
 
 
@@ -125,7 +159,7 @@ class FeedbackEntry(Base):
     status = Column(String(20), default="new", nullable=False)
     source = Column(String(32), default="webapp", nullable=False)
     review_id = Column(Integer, nullable=True)
-    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    created_at = Column(DateTime, default=_utcnow, nullable=False)
     reviewed_at = Column(DateTime, nullable=True)
 
 
@@ -138,7 +172,7 @@ class PromoCode(Base):
     value = Column(Integer)
     uses_left = Column(Integer)
     expires_at = Column(DateTime, nullable=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=_utcnow)
 
 
 class PromoUsage(Base):
@@ -148,7 +182,7 @@ class PromoUsage(Base):
     id = Column(Integer, primary_key=True, autoincrement=True)
     tg_id = Column(BigInteger, index=True)
     promo_code = Column(String(20))
-    used_at = Column(DateTime, default=datetime.utcnow)
+    used_at = Column(DateTime, default=_utcnow)
 
 
 class Template(Base):
@@ -157,7 +191,7 @@ class Template(Base):
     id = Column(Integer, primary_key=True, autoincrement=True)
     key = Column(String(50), unique=True, index=True)
     text = Column(String(2000))
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=_utcnow)
 
 
 class Node(Base):
@@ -230,7 +264,7 @@ class UserNode(Base):
     node_id = Column(Integer, index=True, nullable=False)
     client_uuid = Column(String(36), nullable=False)
     panel_email = Column(String(100), nullable=False)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=_utcnow)
 
     __table_args__ = (UniqueConstraint("tg_id", "node_id", name="uq_user_nodes_tg_node"),)
 
@@ -243,7 +277,7 @@ class AdminAudit(Base):
     action = Column(String(64), nullable=False)
     target_tg_id = Column(BigInteger, index=True, nullable=True)
     meta = Column(String(2000), nullable=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=_utcnow)
 
 
 class KeyActionHistory(Base):
@@ -256,7 +290,7 @@ class KeyActionHistory(Base):
     actor_tg_id = Column(BigInteger, nullable=True)
     source = Column(String(32), default="admin", nullable=False)
     meta = Column(Text, nullable=True)
-    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    created_at = Column(DateTime, default=_utcnow, nullable=False)
 
 
 class UserKeyPolicy(Base):
@@ -273,7 +307,7 @@ class UserKeyPolicy(Base):
     notify_hard = Column(Boolean, default=True, nullable=False)
     auto_disable_on_hard = Column(Boolean, default=True, nullable=False)
     updated_by = Column(BigInteger, nullable=True)
-    updated_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    updated_at = Column(DateTime, default=_utcnow, nullable=False)
 
 
 class ReferralBonusQueue(Base):
@@ -291,7 +325,7 @@ class ReferralBonusQueue(Base):
     referrer_tg_id = Column(BigInteger, index=True, nullable=False)
     referred_tg_id = Column(BigInteger, index=True, nullable=False)
     order_id = Column(String(128), index=True, nullable=False)
-    queued_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    queued_at = Column(DateTime, default=_utcnow, nullable=False)
     ready_at = Column(DateTime, nullable=False)
     status = Column(String(24), default="pending", nullable=False)
     processed_at = Column(DateTime, nullable=True)
@@ -314,8 +348,8 @@ class IncentiveCampaign(Base):
     is_active = Column(Boolean, default=True, nullable=False)
     created_by = Column(BigInteger, nullable=True)
     metadata_json = Column(Text, nullable=True)
-    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
-    updated_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    created_at = Column(DateTime, default=_utcnow, nullable=False)
+    updated_at = Column(DateTime, default=_utcnow, nullable=False)
 
 
 class RewardClaim(Base):
@@ -326,7 +360,7 @@ class RewardClaim(Base):
     tg_id = Column(BigInteger, index=True, nullable=False)
     reward_key = Column(String(64), nullable=False)
     meta = Column(Text, nullable=True)
-    claimed_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    claimed_at = Column(DateTime, default=_utcnow, nullable=False)
 
 
 class SupportTicket(Base):
@@ -337,8 +371,8 @@ class SupportTicket(Base):
     status = Column(String(20), default="open", nullable=False)  # open / in_progress / closed
     subject = Column(String(200), nullable=True)
     assigned_admin_tg_id = Column(BigInteger, nullable=True)
-    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
-    updated_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    created_at = Column(DateTime, default=_utcnow, nullable=False)
+    updated_at = Column(DateTime, default=_utcnow, nullable=False)
     closed_at = Column(DateTime, nullable=True)
 
 
@@ -353,7 +387,7 @@ class SupportTicketMessage(Base):
     media_type = Column(String(32), nullable=True)
     media_file_id = Column(String(256), nullable=True)
     media_payload = Column(String(2000), nullable=True)
-    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    created_at = Column(DateTime, default=_utcnow, nullable=False)
 
 
 class NodeHealthSample(Base):
@@ -361,7 +395,7 @@ class NodeHealthSample(Base):
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     node_code = Column(String(20), index=True, nullable=False)
-    sampled_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    sampled_at = Column(DateTime, default=_utcnow, nullable=False)
     panel_latency_ms = Column(Integer, nullable=True)
     panel_error_rate = Column(Float, default=0.0)
     active_clients = Column(Integer, default=0)
@@ -401,7 +435,7 @@ class Event(Base):
     source = Column(String(32), default="unknown", nullable=False)
     session_id = Column(String(64), nullable=True)
     meta_json = Column(String(4000), nullable=True)
-    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    created_at = Column(DateTime, default=_utcnow, nullable=False)
 
 
 class ObserverBatch(Base):
@@ -418,7 +452,7 @@ class ObserverBatch(Base):
     unmatched_count = Column(Integer, default=0, nullable=False)
     parse_error_count = Column(Integer, default=0, nullable=False)
     updated_tg_ids_json = Column(Text, nullable=True)
-    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    created_at = Column(DateTime, default=_utcnow, nullable=False)
 
 
 class ObserverDailyObservation(Base):
@@ -484,7 +518,7 @@ class ObserverUserState(Base):
     observed_node_count_30d = Column(Integer, default=0, nullable=False)
     overlap_count_24h = Column(Integer, default=0, nullable=False)
     last_observed_at = Column(DateTime, nullable=True)
-    updated_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    updated_at = Column(DateTime, default=_utcnow, nullable=False)
 
 
 class Offer(Base):
@@ -499,7 +533,7 @@ class Offer(Base):
     trigger_reason = Column(String(64), nullable=True)
     expires_at = Column(DateTime, nullable=True)
     accepted_at = Column(DateTime, nullable=True)
-    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    created_at = Column(DateTime, default=_utcnow, nullable=False)
 
 
 class PayAttempt(Base):
@@ -514,8 +548,8 @@ class PayAttempt(Base):
     status = Column(String(20), default="started", nullable=False)
     invoice_payload = Column(String(255), unique=True, nullable=True)
     offer_id = Column(Integer, nullable=True)
-    started_at = Column(DateTime, default=datetime.utcnow, nullable=False)
-    updated_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    started_at = Column(DateTime, default=_utcnow, nullable=False)
+    updated_at = Column(DateTime, default=_utcnow, nullable=False)
     paid_at = Column(DateTime, nullable=True)
     abandoned_notified_at = Column(DateTime, nullable=True)
 
@@ -535,7 +569,7 @@ class ExternalOrder(Base):
     amount = Column(Float, default=0.0, nullable=False)
     currency = Column(String(16), default="RUB", nullable=False)
     status = Column(String(24), default="created", nullable=False)
-    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    created_at = Column(DateTime, default=_utcnow, nullable=False)
     paid_at = Column(DateTime, nullable=True)
 
     __table_args__ = (UniqueConstraint("provider", "order_id", name="uq_external_orders_provider_order"),)
@@ -552,7 +586,7 @@ class ExternalPaymentEvent(Base):
     payload_json = Column(Text, nullable=False)
     signature_ok = Column(Boolean, default=False, nullable=False)
     processed_ok = Column(Boolean, default=False, nullable=False)
-    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    created_at = Column(DateTime, default=_utcnow, nullable=False)
 
     __table_args__ = (
         UniqueConstraint(
@@ -574,7 +608,7 @@ class PointsLedger(Base):
     ref_tg_id = Column(BigInteger, nullable=True)
     pay_attempt_id = Column(Integer, nullable=True)
     expires_at = Column(DateTime, nullable=True)
-    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    created_at = Column(DateTime, default=_utcnow, nullable=False)
 
 
 class CampaignSend(Base):
@@ -584,7 +618,7 @@ class CampaignSend(Base):
     id = Column(Integer, primary_key=True, autoincrement=True)
     tg_id = Column(BigInteger, index=True, nullable=False)
     campaign_key = Column(String(64), nullable=False)
-    sent_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    sent_at = Column(DateTime, default=_utcnow, nullable=False)
 
 
 class FamilySlot(Base):
@@ -594,7 +628,7 @@ class FamilySlot(Base):
     tg_id = Column(BigInteger, index=True, nullable=False)
     slots = Column(Integer, default=1, nullable=False)
     expires_at = Column(DateTime, nullable=True)
-    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    created_at = Column(DateTime, default=_utcnow, nullable=False)
 
 
 class PlanCatalog(Base):
@@ -611,8 +645,8 @@ class PlanCatalog(Base):
     badge = Column(String(32), nullable=True)
     is_active = Column(Boolean, default=True, nullable=False)
     sort_order = Column(Integer, default=100, nullable=False)
-    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
-    updated_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    created_at = Column(DateTime, default=_utcnow, nullable=False)
+    updated_at = Column(DateTime, default=_utcnow, nullable=False)
 
 
 class LiveUpdate(Base):
@@ -627,8 +661,8 @@ class LiveUpdate(Base):
     published_at = Column(DateTime, nullable=True)
     is_active = Column(Boolean, default=True, nullable=False)
     sort_order = Column(Integer, default=100, nullable=False)
-    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
-    updated_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    created_at = Column(DateTime, default=_utcnow, nullable=False)
+    updated_at = Column(DateTime, default=_utcnow, nullable=False)
 
 
 class StartLink(Base):
@@ -639,8 +673,8 @@ class StartLink(Base):
     description = Column(String(240), nullable=True)
     target_action = Column(String(64), nullable=True)
     is_active = Column(Boolean, default=True, nullable=False)
-    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
-    updated_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    created_at = Column(DateTime, default=_utcnow, nullable=False)
+    updated_at = Column(DateTime, default=_utcnow, nullable=False)
 
 
 class AppSetting(Base):
@@ -648,4 +682,4 @@ class AppSetting(Base):
 
     key = Column(String(64), primary_key=True)
     value_json = Column(Text, nullable=True)
-    updated_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    updated_at = Column(DateTime, default=_utcnow, nullable=False)

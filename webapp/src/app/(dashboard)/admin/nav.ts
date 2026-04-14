@@ -1,23 +1,171 @@
 "use client";
 
+export type AdminNavCategoryId =
+  | "diagnostics"
+  | "people"
+  | "access"
+  | "payments"
+  | "network"
+  | "messaging"
+  | "feedback";
+
 export type AdminNavItem = {
   href: string;
   label: string;
   icon: string;
+  summary: string;
+  categoryId: AdminNavCategoryId;
   match: (path: string) => boolean;
 };
 
-export const ADMIN_NAV_ITEMS: AdminNavItem[] = [
-  { href: "/admin/dashboard", label: "Сводка", icon: "space_dashboard", match: (path) => path === "/admin" || path.startsWith("/admin/dashboard") },
-  { href: "/admin/users", label: "Пользователи", icon: "groups", match: (path) => path.startsWith("/admin/users") },
-  { href: "/admin/nodes", label: "Ноды", icon: "hub", match: (path) => path.startsWith("/admin/nodes") },
-  { href: "/admin/network", label: "Сеть", icon: "lan", match: (path) => path.startsWith("/admin/network") },
-  { href: "/admin/tickets", label: "Обращения", icon: "support_agent", match: (path) => path.startsWith("/admin/tickets") },
-  { href: "/admin/promos", label: "Промо", icon: "sell", match: (path) => path.startsWith("/admin/promos") },
-  { href: "/admin/broadcast", label: "Рассылки", icon: "campaign", match: (path) => path.startsWith("/admin/broadcast") },
-  { href: "/admin/referrals", label: "Рефералы", icon: "link", match: (path) => path.startsWith("/admin/referrals") },
-  { href: "/admin/bonuses", label: "Бонусы", icon: "casino", match: (path) => path.startsWith("/admin/bonuses") },
+export type AdminNavCategory = {
+  id: AdminNavCategoryId;
+  label: string;
+  icon: string;
+  description: string;
+  primaryHint: string;
+};
+
+export const ADMIN_NAV_CATEGORIES: AdminNavCategory[] = [
+  {
+    id: "diagnostics",
+    label: "Diagnostics",
+    icon: "monitoring",
+    description: "Сводка по свежести метрик, рискам, очередям и общему состоянию сервиса.",
+    primaryHint: "Начинайте отсюда, когда нужно быстро понять, где требуется внимание команды.",
+  },
+  {
+    id: "people",
+    label: "People",
+    icon: "groups",
+    description: "Поиск аккаунтов, ручные кейсы, ключи, лимиты и операторские действия.",
+    primaryHint: "Основное место для разборов по пользователям и доступа.",
+  },
+  {
+    id: "access",
+    label: "Access",
+    icon: "key",
+    description: "Лояльность, бонусы и стартовые сценарии, влияющие на выдачу и удержание доступа.",
+    primaryHint: "Управляйте бонусами и стартовыми ссылками здесь, а не через Telegram.",
+  },
+  {
+    id: "payments",
+    label: "Payments",
+    icon: "payments",
+    description: "Тарифы, промокоды, подарочные коды и incentive-кампании.",
+    primaryHint: "Все платёжные и промо-механики держите в одной операционной зоне.",
+  },
+  {
+    id: "network",
+    label: "Network",
+    icon: "lan",
+    description: "Ноды, rollout, таргетинг, drift и транспортная политика.",
+    primaryHint: "Изменения сети и транспорта вносите только из веб-админки как primary ops surface.",
+  },
+  {
+    id: "messaging",
+    label: "Messaging",
+    icon: "campaign",
+    description: "Рассылки, новости и retention-шаблоны для коммуникаций.",
+    primaryHint: "Массовые касания и анонсы должны быть заметны, воспроизводимы и легко проверяемы.",
+  },
+  {
+    id: "feedback",
+    label: "Feedback",
+    icon: "support_agent",
+    description: "Очередь обращений и рабочая переписка с пользователями.",
+    primaryHint: "Телеграм остаётся fallback-каналом, а рабочая очередь должна жить здесь.",
+  },
 ];
+
+export const ADMIN_NAV_ITEMS: AdminNavItem[] = [
+  {
+    href: "/admin/dashboard",
+    label: "Сводка",
+    icon: "space_dashboard",
+    summary: "Главная сменная сводка по рискам, нагрузке, retention и очередям.",
+    categoryId: "diagnostics",
+    match: (path) => path === "/admin" || path.startsWith("/admin/dashboard"),
+  },
+  {
+    href: "/admin/users",
+    label: "Пользователи",
+    icon: "manage_accounts",
+    summary: "Поиск, фильтры, ручные действия, observer watch и политика ключей.",
+    categoryId: "people",
+    match: (path) => path.startsWith("/admin/users"),
+  },
+  {
+    href: "/admin/bonuses",
+    label: "Бонусы",
+    icon: "workspace_premium",
+    summary: "Лояльность, wheel-конфиг и ручная выдача уровней.",
+    categoryId: "access",
+    match: (path) => path.startsWith("/admin/bonuses"),
+  },
+  {
+    href: "/admin/referrals",
+    label: "Рефералы",
+    icon: "link",
+    summary: "Стартовые ссылки, referral-очередь и кампании входа.",
+    categoryId: "access",
+    match: (path) => path.startsWith("/admin/referrals"),
+  },
+  {
+    href: "/admin/promos",
+    label: "Платежи и промо",
+    icon: "sell",
+    summary: "Тарифы, промокоды, gift-коды и связанные incentive-сценарии.",
+    categoryId: "payments",
+    match: (path) => path.startsWith("/admin/promos"),
+  },
+  {
+    href: "/admin/nodes",
+    label: "Ноды",
+    icon: "hub",
+    summary: "Health, alerts, drift и ручные действия по инфраструктуре.",
+    categoryId: "network",
+    match: (path) => path.startsWith("/admin/nodes"),
+  },
+  {
+    href: "/admin/network",
+    label: "Rollout",
+    icon: "route",
+    summary: "Rollout policy, targeting selectors, feeds и recovery order.",
+    categoryId: "network",
+    match: (path) => path.startsWith("/admin/network"),
+  },
+  {
+    href: "/admin/broadcast",
+    label: "Рассылки",
+    icon: "campaign",
+    summary: "Операционные рассылки, новости и retention templates.",
+    categoryId: "messaging",
+    match: (path) => path.startsWith("/admin/broadcast"),
+  },
+  {
+    href: "/admin/tickets",
+    label: "Обращения",
+    icon: "support",
+    summary: "Очередь поддержки, triage и ответы оператора.",
+    categoryId: "feedback",
+    match: (path) => path.startsWith("/admin/tickets"),
+  },
+];
+
+export const ADMIN_NAV_GROUPS = ADMIN_NAV_CATEGORIES.map((category) => ({
+  ...category,
+  items: ADMIN_NAV_ITEMS.filter((item) => item.categoryId === category.id),
+}));
+
+export function findAdminNavItem(path: string): AdminNavItem {
+  return ADMIN_NAV_ITEMS.find((item) => item.match(path)) || ADMIN_NAV_ITEMS[0];
+}
+
+export function findAdminNavCategory(path: string) {
+  const activeItem = findAdminNavItem(path);
+  return ADMIN_NAV_GROUPS.find((group) => group.id === activeItem.categoryId) || ADMIN_NAV_GROUPS[0];
+}
 
 export function fmtRuDate(value?: string | null): string {
   if (!value) return "-";

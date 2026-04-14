@@ -327,6 +327,9 @@ def run_migrations(engine: Engine) -> None:
                 ("app_timezone", "VARCHAR(64)"),
                 ("app_last_seen_at", "DATETIME"),
                 ("app_last_ip", "VARCHAR(64)"),
+                ("route_mode", "VARCHAR(32)"),
+                ("route_selected_apps_json", "TEXT"),
+                ("route_requires_elevated_privileges", "BOOLEAN"),
                 ("linked_telegram_id", "BIGINT"),
                 ("linked_telegram_username", "VARCHAR(100)"),
                 ("linked_telegram_linked_at", "DATETIME"),
@@ -386,6 +389,46 @@ def run_migrations(engine: Engine) -> None:
         conn.execute(text("CREATE UNIQUE INDEX IF NOT EXISTS uq_promo_usage_tg_code ON promo_usage(tg_id, promo_code);"))
         conn.execute(text("CREATE UNIQUE INDEX IF NOT EXISTS uq_users_app_install_id ON users(app_install_id) WHERE app_install_id IS NOT NULL;"))
         conn.execute(text("CREATE UNIQUE INDEX IF NOT EXISTS uq_users_linked_telegram_id ON users(linked_telegram_id) WHERE linked_telegram_id IS NOT NULL;"))
+
+        conn.execute(
+            text(
+                """
+                CREATE TABLE IF NOT EXISTS web_email_identities (
+                  id INTEGER PRIMARY KEY AUTOINCREMENT,
+                  email VARCHAR(200) NOT NULL,
+                  email_norm VARCHAR(200) NOT NULL,
+                  password_hash VARCHAR(255) NOT NULL,
+                  linked_tg_id BIGINT NOT NULL,
+                  is_verified BOOLEAN NOT NULL DEFAULT 0,
+                  verified_at DATETIME,
+                  last_login_at DATETIME,
+                  created_at DATETIME NOT NULL,
+                  updated_at DATETIME NOT NULL
+                );
+                """
+            )
+        )
+        conn.execute(
+            text(
+                """
+                CREATE TABLE IF NOT EXISTS web_email_tokens (
+                  id INTEGER PRIMARY KEY AUTOINCREMENT,
+                  identity_id INTEGER NOT NULL,
+                  token_kind VARCHAR(32) NOT NULL,
+                  token_hash VARCHAR(64) NOT NULL,
+                  expires_at DATETIME NOT NULL,
+                  used_at DATETIME,
+                  created_at DATETIME NOT NULL
+                );
+                """
+            )
+        )
+        conn.execute(text("CREATE UNIQUE INDEX IF NOT EXISTS uq_web_email_identities_email_norm ON web_email_identities(email_norm);"))
+        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_web_email_identities_linked_tg_id ON web_email_identities(linked_tg_id);"))
+        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_web_email_identities_verified ON web_email_identities(is_verified);"))
+        conn.execute(text("CREATE UNIQUE INDEX IF NOT EXISTS uq_web_email_tokens_token_hash ON web_email_tokens(token_hash);"))
+        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_web_email_tokens_identity_id ON web_email_tokens(identity_id);"))
+        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_web_email_tokens_kind ON web_email_tokens(token_kind);"))
 
         conn.execute(
             text(
@@ -1032,6 +1075,46 @@ def run_migrations(engine: Engine) -> None:
         conn.execute(
             text(
                 """
+                CREATE TABLE IF NOT EXISTS web_email_identities (
+                  id SERIAL PRIMARY KEY,
+                  email VARCHAR(200) NOT NULL,
+                  email_norm VARCHAR(200) NOT NULL,
+                  password_hash VARCHAR(255) NOT NULL,
+                  linked_tg_id BIGINT NOT NULL,
+                  is_verified BOOLEAN DEFAULT FALSE,
+                  verified_at TIMESTAMP,
+                  last_login_at TIMESTAMP,
+                  created_at TIMESTAMP NOT NULL,
+                  updated_at TIMESTAMP NOT NULL
+                );
+                """
+            )
+        )
+        conn.execute(
+            text(
+                """
+                CREATE TABLE IF NOT EXISTS web_email_tokens (
+                  id SERIAL PRIMARY KEY,
+                  identity_id INTEGER NOT NULL,
+                  token_kind VARCHAR(32) NOT NULL,
+                  token_hash VARCHAR(64) NOT NULL,
+                  expires_at TIMESTAMP NOT NULL,
+                  used_at TIMESTAMP,
+                  created_at TIMESTAMP NOT NULL
+                );
+                """
+            )
+        )
+        conn.execute(text("CREATE UNIQUE INDEX IF NOT EXISTS uq_web_email_identities_email_norm ON web_email_identities(email_norm);"))
+        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_web_email_identities_linked_tg_id ON web_email_identities(linked_tg_id);"))
+        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_web_email_identities_verified ON web_email_identities(is_verified);"))
+        conn.execute(text("CREATE UNIQUE INDEX IF NOT EXISTS uq_web_email_tokens_token_hash ON web_email_tokens(token_hash);"))
+        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_web_email_tokens_identity_id ON web_email_tokens(identity_id);"))
+        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_web_email_tokens_kind ON web_email_tokens(token_kind);"))
+
+        conn.execute(
+            text(
+                """
                 CREATE TABLE IF NOT EXISTS key_action_history (
                   id INTEGER PRIMARY KEY AUTOINCREMENT,
                   tg_id BIGINT NOT NULL,
@@ -1218,6 +1301,9 @@ def _run_postgres_migrations(engine: Engine) -> None:
         conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS app_timezone VARCHAR(64);"))
         conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS app_last_seen_at TIMESTAMP;"))
         conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS app_last_ip VARCHAR(64);"))
+        conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS route_mode VARCHAR(32);"))
+        conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS route_selected_apps_json TEXT;"))
+        conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS route_requires_elevated_privileges BOOLEAN;"))
         conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS linked_telegram_id BIGINT;"))
         conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS linked_telegram_username VARCHAR(100);"))
         conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS linked_telegram_linked_at TIMESTAMP;"))

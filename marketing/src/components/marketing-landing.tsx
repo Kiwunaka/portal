@@ -2,10 +2,11 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 import JsonLd from "./json-ld";
-import { CANONICAL_CLIENT_BRAND, getCopyText, getPokrovPublicConfig } from "../lib/pokrov";
+import { CANONICAL_PLATFORM_BRAND, getCopyText, getPokrovPublicConfig } from "../lib/pokrov";
 import {
   buildFaqJsonLd,
   buildMarketingUrl,
+  MARKETING_CANONICAL_PATHS,
   MARKETING_FAQ,
   buildSoftwareApplicationJsonLd,
   DEFAULT_MARKETING_SHARE_IMAGE_HEIGHT,
@@ -139,11 +140,11 @@ const HERO_SIGNALS: HeroSignal[] = [
 ];
 
 const RELATED_PAGES = [
-  { href: "/bystryy-vpn-na-telefon/", label: "Ускорение на телефон" },
-  { href: "/vpn-na-iphone-android-windows/", label: "Оптимизация Android и Windows" },
-  { href: "/vpn-dlya-youtube/", label: "Доступ для YouTube" },
-  { href: "/vpn-dlya-tiktok/", label: "Доступ для TikTok" },
-  { href: "/vpn-telegram-bot/", label: "Telegram и служба заботы" },
+  { href: MARKETING_CANONICAL_PATHS.mobile, label: "Мобильный старт" },
+  { href: MARKETING_CANONICAL_PATHS.devices, label: "Android и Windows" },
+  { href: MARKETING_CANONICAL_PATHS.youtube, label: "YouTube" },
+  { href: MARKETING_CANONICAL_PATHS.tiktok, label: "TikTok" },
+  { href: MARKETING_CANONICAL_PATHS.telegram, label: "Telegram и забота" },
 ];
 
 function firstNonEmpty(...values: Array<string | undefined>): string {
@@ -287,7 +288,7 @@ function LandingGlyph({ name }: { name: GlyphName }) {
 }
 
 export function buildMarketingMetadata(
-  title = getCopyText("marketing.meta.title", "POKROV Network — умный ускоритель интернета"),
+  title = getCopyText("marketing.meta.title", "POKROV — умный маршрут для скорости и низкого пинга"),
   description = getCopyText(
     "marketing.meta.description",
     "Скачайте приложение для Android или Windows, получите 5 дней бесплатно и продолжайте через личный кабинет и безопасный маршрут.",
@@ -295,7 +296,7 @@ export function buildMarketingMetadata(
   options: MarketingMetadataOptions = {},
 ): Metadata {
   const canonical = buildMarketingUrl(options.path || "/");
-  const shareAlt = `${title} | ${CANONICAL_CLIENT_BRAND}`;
+  const shareAlt = `${title} | ${CANONICAL_PLATFORM_BRAND}`;
 
   return {
     title,
@@ -316,7 +317,7 @@ export function buildMarketingMetadata(
     openGraph: {
       type: "website",
       locale: "ru_RU",
-      siteName: CANONICAL_CLIENT_BRAND,
+      siteName: CANONICAL_PLATFORM_BRAND,
       title,
       description,
       url: canonical,
@@ -367,6 +368,30 @@ function buildReviewJsonLdInput(reviews: MarketingReview[]) {
       body: item.text,
       datePublished: resolveReviewDate(item),
     }));
+}
+
+function ThemeToggleIcon({ mode }: { mode: "sun" | "moon" }) {
+  if (mode === "sun") {
+    return (
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <circle cx="12" cy="12" r="4.1" />
+        <path d="M12 2.8v2.5" />
+        <path d="M12 18.7v2.5" />
+        <path d="m5.5 5.5 1.8 1.8" />
+        <path d="m16.7 16.7 1.8 1.8" />
+        <path d="M2.8 12h2.5" />
+        <path d="M18.7 12h2.5" />
+        <path d="m5.5 18.5 1.8-1.8" />
+        <path d="m16.7 7.3 1.8-1.8" />
+      </svg>
+    );
+  }
+
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M18.2 15.4A6.7 6.7 0 0 1 9.1 6.3 7.8 7.8 0 1 0 18.2 15.4Z" />
+    </svg>
+  );
 }
 
 type MarketingLandingProps = {
@@ -420,23 +445,48 @@ export default function MarketingLanding({
 
       <header className="lp-nav">
         <div className="lp-nav-shell">
-          <Link href="/" className="lp-brand">
-            <img src="/pokrov-logo.svg" alt="POKROV Network" className="lp-brand-logo" />
-            <span>POKROV Network</span>
-          </Link>
+          <div className="lp-nav-branding">
+            <Link href="/" className="lp-brand">
+              <img src="/pokrov-logo.svg" alt={CANONICAL_PLATFORM_BRAND} className="lp-brand-logo" />
+              <span>{CANONICAL_PLATFORM_BRAND}</span>
+            </Link>
+            <button
+              type="button"
+              className="lp-theme-toggle"
+              data-theme-toggle
+              aria-label="Переключить на тёмную тему"
+              aria-pressed="false"
+              title="Переключить тему"
+            >
+              <span className="lp-theme-toggle__track" aria-hidden="true">
+                <span className="lp-theme-toggle__icon lp-theme-toggle__icon--sun">
+                  <ThemeToggleIcon mode="sun" />
+                </span>
+                <span className="lp-theme-toggle__thumb" />
+                <span className="lp-theme-toggle__icon lp-theme-toggle__icon--moon">
+                  <ThemeToggleIcon mode="moon" />
+                </span>
+              </span>
+              <span className="sr-only">Переключить тему</span>
+            </button>
+          </div>
           <nav className="lp-menu" aria-label="Главная навигация">
-            <Link href="/">Главная</Link>
-            <Link href="/bystryy-vpn-na-telefon/">На телефон</Link>
-            <Link href="/vpn-na-iphone-android-windows/">Устройства</Link>
-            <Link href="/install/">Оптимизатор</Link>
-            <a href="#pricing">Планы</a>
-            <a href="#faq">FAQ</a>
-            <a href={config.webappUrl} target="_blank" rel="noreferrer" className="lp-chip">
-              Открыть кабинет
-            </a>
-            <a href={config.supportTelegramUrl} target="_blank" rel="noreferrer" className="lp-chip lp-chip--primary">
-              Служба заботы
-            </a>
+            <div className="lp-nav-links">
+              <Link href="/">Главная</Link>
+              <Link href={MARKETING_CANONICAL_PATHS.mobile}>На телефон</Link>
+              <Link href={MARKETING_CANONICAL_PATHS.devices}>Устройства</Link>
+              <Link href="/install/">Оптимизатор</Link>
+              <a href="#pricing">Планы</a>
+              <a href="#faq">FAQ</a>
+            </div>
+            <div className="lp-nav-actions">
+              <a href={config.webappUrl} target="_blank" rel="noreferrer" className="lp-chip">
+                Открыть кабинет
+              </a>
+              <a href={config.supportTelegramUrl} target="_blank" rel="noreferrer" className="lp-chip lp-chip--primary">
+                Служба заботы
+              </a>
+            </div>
           </nav>
         </div>
       </header>
@@ -444,7 +494,7 @@ export default function MarketingLanding({
       <main id="main-content" className="lp-main">
         <section className="lp-hero">
           <div className="lp-hero-copy">
-            <div className="lp-kicker">{heroKicker || getCopyText("marketing.hero.kicker", "POKROV Network • 5 дней бесплатного доступа")}</div>
+            <div className="lp-kicker">{heroKicker || getCopyText("marketing.hero.kicker", "POKROV • 5 дней спокойного старта")}</div>
             <p className="lp-overline">
               {getCopyText("marketing.hero.overline", "Умная оптимизация интернета с app-first стартом для Android и Windows.")}
             </p>
@@ -731,7 +781,7 @@ export default function MarketingLanding({
           <div className="lp-footer-cta">
             <div className="lp-footer-copy">
               <span>Финальный шаг к скорости</span>
-              <h2>{getCopyText("marketing.footer.title", "POKROV Network: сначала приложение, потом всё остальное")}</h2>
+              <h2>{getCopyText("marketing.footer.title", "POKROV: сначала приложение, потом всё остальное")}</h2>
               <p>
                 {getCopyText(
                   "marketing.footer.body",

@@ -6,7 +6,7 @@ import tempfile
 import unittest
 import uuid
 import time
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from unittest.mock import AsyncMock, patch
 from urllib.parse import urlencode
@@ -26,6 +26,10 @@ def _sign_telegram_init_data(*, bot_token: str, params: dict) -> str:
     params2 = dict(params)
     params2["hash"] = check_hash
     return urlencode(params2)
+
+
+def _utcnow() -> datetime:
+    return datetime.now(timezone.utc).replace(tzinfo=None)
 
 
 class ApiAuthAndTicketsTests(unittest.TestCase):
@@ -174,7 +178,7 @@ class ApiAuthAndTicketsTests(unittest.TestCase):
         from db import SessionLocal
         from models import User
 
-        now = datetime.utcnow()
+        now = _utcnow()
         s = SessionLocal()
         try:
             s.add_all(
@@ -272,7 +276,7 @@ class ApiAuthAndTicketsTests(unittest.TestCase):
         from db import SessionLocal
         from models import Event, User, UserKeyPolicy, UserNode
 
-        now = datetime.utcnow()
+        now = _utcnow()
         s = SessionLocal()
         try:
             user = User(
@@ -503,7 +507,7 @@ class ApiAuthAndTicketsTests(unittest.TestCase):
             user.sub_type = "PAID"
             user.current_plan_code = "1_month"
             user.total_gb = 50
-            user.expiry_at = datetime.utcnow() + timedelta(days=30)
+            user.expiry_at = _utcnow() + timedelta(days=30)
             user.sub_token = "subtoken-paid-1001"
             it = Node(
                 code="it",
@@ -650,7 +654,7 @@ class ApiAuthAndTicketsTests(unittest.TestCase):
             user.sub_type = "PAID"
             user.current_plan_code = "1_month"
             user.total_gb = 25
-            user.expiry_at = datetime.utcnow() + timedelta(days=14)
+            user.expiry_at = _utcnow() + timedelta(days=14)
             user.app_install_id = None
             user.app_device_name = None
             user.sub_token = "subtoken-paid-1001"
@@ -759,7 +763,7 @@ class ApiAuthAndTicketsTests(unittest.TestCase):
             assert user is not None
             user.sub_type = "PAID"
             user.current_plan_code = "1_month"
-            user.expiry_at = datetime.utcnow() - timedelta(days=1)
+            user.expiry_at = _utcnow() - timedelta(days=1)
             user.is_active = True
             user.sub_token = "downgrade-token-1001"
             s.commit()
@@ -818,10 +822,10 @@ class ApiAuthAndTicketsTests(unittest.TestCase):
             assert user is not None
             user.sub_type = "FREE"
             user.current_plan_code = "free_monthly"
-            user.expiry_at = datetime.utcnow() + timedelta(days=365)
+            user.expiry_at = _utcnow() + timedelta(days=365)
             user.is_active = True
             user.sub_token = "free-soft-token-1001"
-            user.free_cycle_next_reset_at = datetime.utcnow() + timedelta(days=11)
+            user.free_cycle_next_reset_at = _utcnow() + timedelta(days=11)
             s.commit()
         finally:
             s.close()
@@ -1054,7 +1058,7 @@ class ApiAuthAndTicketsTests(unittest.TestCase):
         from db import SessionLocal
         from models import Node
 
-        now = datetime.utcnow()
+        now = _utcnow()
         s = SessionLocal()
         try:
             node = Node(
@@ -1112,7 +1116,7 @@ class ApiAuthAndTicketsTests(unittest.TestCase):
         from db import SessionLocal
         from models import Node
 
-        now = datetime.utcnow()
+        now = _utcnow()
         s = SessionLocal()
         try:
             s.add_all(
@@ -1519,7 +1523,7 @@ class ApiAuthAndTicketsTests(unittest.TestCase):
         from db import SessionLocal
         from models import User
 
-        now = datetime.utcnow().replace(microsecond=0)
+        now = _utcnow().replace(microsecond=0)
         s = SessionLocal()
         try:
             base_user = s.query(User).filter_by(tg_id=1001).first()
@@ -1639,7 +1643,7 @@ class ApiAuthAndTicketsTests(unittest.TestCase):
         from db import SessionLocal
         from models import User
 
-        now = datetime.utcnow().replace(microsecond=0)
+        now = _utcnow().replace(microsecond=0)
         s = SessionLocal()
         try:
             s.add(
@@ -1707,7 +1711,7 @@ class ApiAuthAndTicketsTests(unittest.TestCase):
 
         self.api.ControlPanel = FakePanel
 
-        now = datetime.utcnow().replace(microsecond=0)
+        now = _utcnow().replace(microsecond=0)
         s = SessionLocal()
         try:
             s.add(
@@ -1829,7 +1833,7 @@ class ApiAuthAndTicketsTests(unittest.TestCase):
         try:
             user = s.query(User).filter_by(tg_id=1001).first()
             self.assertIsNotNone(user)
-            user.created_at = datetime.utcnow() - timedelta(days=45)
+            user.created_at = _utcnow() - timedelta(days=45)
             s.commit()
         finally:
             s.close()
@@ -1953,7 +1957,7 @@ class ApiAuthAndTicketsTests(unittest.TestCase):
             user.sub_type = "PAID"
             user.sub_token = "token_1001_secure"
             user.is_active = True
-            user.expiry_at = datetime.utcnow() + timedelta(days=10)
+            user.expiry_at = _utcnow() + timedelta(days=10)
             s.commit()
         finally:
             s.close()
@@ -1980,7 +1984,7 @@ class ApiAuthAndTicketsTests(unittest.TestCase):
             user.sub_type = "PAID"
             user.sub_token = "token_1001_secure"
             user.is_active = True
-            user.expiry_at = datetime.utcnow() + timedelta(days=10)
+            user.expiry_at = _utcnow() + timedelta(days=10)
             s.commit()
         finally:
             s.close()
@@ -2000,7 +2004,7 @@ class ApiAuthAndTicketsTests(unittest.TestCase):
             user.sub_type = "PAID"
             user.sub_token = "token_1001_secure"
             user.is_active = True
-            user.expiry_at = datetime.utcnow() + timedelta(days=10)
+            user.expiry_at = _utcnow() + timedelta(days=10)
             s.commit()
         finally:
             s.close()
@@ -2034,7 +2038,7 @@ class ApiAuthAndTicketsTests(unittest.TestCase):
             user.sub_type = "BONUS"
             user.current_plan_code = "1_month"
             user.is_active = True
-            user.expiry_at = datetime.utcnow() + timedelta(days=10)
+            user.expiry_at = _utcnow() + timedelta(days=10)
             s.add(user)
             s.commit()
         finally:
@@ -2069,7 +2073,7 @@ class ApiAuthAndTicketsTests(unittest.TestCase):
             user.sub_type = "PAID"
             user.current_plan_code = "1_month"
             user.is_active = True
-            user.expiry_at = datetime.utcnow() + timedelta(days=10)
+            user.expiry_at = _utcnow() + timedelta(days=10)
             s.add(user)
             s.commit()
         finally:
@@ -2102,7 +2106,7 @@ class ApiAuthAndTicketsTests(unittest.TestCase):
             assert user is not None
             user.sub_token = "token_1001_secure"
             user.is_active = True
-            user.expiry_at = datetime.utcnow() + timedelta(days=10)
+            user.expiry_at = _utcnow() + timedelta(days=10)
             s.commit()
         finally:
             s.close()
@@ -2121,7 +2125,7 @@ class ApiAuthAndTicketsTests(unittest.TestCase):
         from db import SessionLocal
         from models import Event, ExternalOrder, ExternalPaymentEvent, NodeHealthSample, PayAttempt
 
-        now = datetime.utcnow().replace(microsecond=0)
+        now = _utcnow().replace(microsecond=0)
         day_start = now.replace(hour=0, minute=0, second=0)
         admin_hdrs = {"X-Telegram-Init-Data": self._init_data(9999, "admin")}
 
@@ -2227,7 +2231,7 @@ class ApiAuthAndTicketsTests(unittest.TestCase):
         from db import SessionLocal
         from models import Event
 
-        now = datetime.utcnow().replace(microsecond=0)
+        now = _utcnow().replace(microsecond=0)
         admin_hdrs = {"X-Telegram-Init-Data": self._init_data(9999, "admin")}
 
         s = SessionLocal()
@@ -2260,7 +2264,7 @@ class ApiAuthAndTicketsTests(unittest.TestCase):
         from db import SessionLocal
         from models import User
 
-        now = datetime.utcnow().replace(microsecond=0)
+        now = _utcnow().replace(microsecond=0)
         admin_hdrs = {"X-Telegram-Init-Data": self._init_data(9999, "admin")}
 
         s = SessionLocal()
@@ -2310,11 +2314,173 @@ class ApiAuthAndTicketsTests(unittest.TestCase):
         payload = summary_resp.json()
         self.assertEqual(int(payload.get("users", {}).get("active") or 0), 1)
 
+    def test_admin_summary_exposes_truth_metrics_and_quality_status(self) -> None:
+        from db import SessionLocal
+        from models import Node, NodeHealthSample, ObserverUserState, User
+
+        now = _utcnow().replace(microsecond=0)
+        admin_hdrs = {"X-Telegram-Init-Data": self._init_data(9999, "admin")}
+
+        s = SessionLocal()
+        try:
+            s.add(
+                Node(
+                    code="pl",
+                    name="Poland",
+                    host="pl.example.test",
+                    vless_port=443,
+                    reality_sni="www.orange.pl",
+                    reality_pbk="pbk-pl",
+                    reality_sid="sid-pl",
+                    panel_base_url="https://pl.example.test:8444",
+                    panel_path="/panel",
+                    panel_user="admin",
+                    panel_pass="pass",
+                    inbound_id=7,
+                    enabled=True,
+                    observer_push_secret="observer-secret",
+                    observer_last_push_at=now - timedelta(minutes=4),
+                )
+            )
+            s.add(
+                NodeHealthSample(
+                    node_code="pl",
+                    sampled_at=now - timedelta(minutes=2),
+                    cpu_percent=31.0,
+                    memory_used_mb=800,
+                    memory_total_mb=2048,
+                    disk_used_gb=14.0,
+                    disk_total_gb=40.0,
+                    disk_free_gb=26.0,
+                    network_total_mbps=120.0,
+                    active_clients=18,
+                    panel_latency_ms=90,
+                    panel_error_rate=0.0,
+                    is_healthy=True,
+                    score=96.0,
+                )
+            )
+            s.add_all(
+                [
+                    User(
+                        tg_id=3301,
+                        username="paid_truth",
+                        uuid="00000000-0000-0000-0000-000000003301",
+                        email="paid_truth_3301",
+                        sub_type="PAID",
+                        is_active=True,
+                        expiry_at=now + timedelta(days=15),
+                        tos_accepted=True,
+                        app_install_id="install-paid-3301",
+                        app_last_seen_at=now - timedelta(hours=2),
+                    ),
+                    User(
+                        tg_id=3302,
+                        username="trial_truth",
+                        uuid="00000000-0000-0000-0000-000000003302",
+                        email="trial_truth_3302",
+                        sub_type="FREE",
+                        current_plan_code="trial",
+                        is_active=True,
+                        expiry_at=now + timedelta(days=4),
+                        tos_accepted=True,
+                        app_install_id="install-trial-3302",
+                        app_last_seen_at=now - timedelta(hours=8),
+                    ),
+                    User(
+                        tg_id=3303,
+                        username="bonus_truth",
+                        uuid="00000000-0000-0000-0000-000000003303",
+                        email="bonus_truth_3303",
+                        sub_type="BONUS",
+                        current_plan_code="channel_bonus",
+                        is_active=True,
+                        expiry_at=now + timedelta(days=9),
+                        tos_accepted=True,
+                        channel_bonus_claimed_at=now - timedelta(hours=5),
+                        app_install_id="install-bonus-3303",
+                        app_last_seen_at=now - timedelta(days=3),
+                    ),
+                    User(
+                        tg_id=3304,
+                        username="free_truth",
+                        uuid="00000000-0000-0000-0000-000000003304",
+                        email="free_truth_3304",
+                        sub_type="FREE",
+                        current_plan_code="free_monthly",
+                        is_active=True,
+                        expiry_at=now + timedelta(days=2),
+                        tos_accepted=True,
+                        app_install_id="install-free-3304",
+                        app_last_seen_at=now - timedelta(days=12),
+                    ),
+                ]
+            )
+            s.add_all(
+                [
+                    ObserverUserState(
+                        tg_id=3301,
+                        state="ok",
+                        observed_ip_count_24h=1,
+                        observed_node_count_24h=1,
+                        last_observed_at=now - timedelta(hours=1),
+                    ),
+                    ObserverUserState(
+                        tg_id=3302,
+                        state="watch",
+                        observed_ip_count_24h=2,
+                        observed_node_count_24h=1,
+                        last_observed_at=now - timedelta(hours=6),
+                    ),
+                ]
+            )
+            s.commit()
+        finally:
+            s.close()
+
+        summary_resp = self.client.get("/api/admin/summary", headers=admin_hdrs)
+        self.assertEqual(summary_resp.status_code, 200, summary_resp.text)
+        payload = summary_resp.json()
+        users = payload.get("users") or {}
+        self.assertEqual(int(users.get("active_nonfree_accounts") or 0), 3)
+        self.assertEqual(int(users.get("trial_accounts") or 0), 1)
+        self.assertEqual(int(users.get("bonus_accounts") or 0), 1)
+        self.assertEqual(int(users.get("unique_install_ids_24h") or 0), 2)
+        self.assertEqual(int(users.get("unique_install_ids_7d") or 0), 3)
+        self.assertEqual(int(users.get("observer_seen_accounts_24h") or 0), 2)
+
+        quality = payload.get("data_quality") or {}
+        self.assertEqual((quality.get("metrics") or {}).get("status"), "fresh")
+        self.assertEqual((quality.get("metrics") or {}).get("badge"), "good")
+        self.assertEqual((quality.get("app_installs") or {}).get("status"), "ok")
+        self.assertEqual((quality.get("app_installs") or {}).get("badge"), "good")
+        self.assertEqual((quality.get("observer") or {}).get("status"), "ok")
+        self.assertEqual((quality.get("observer") or {}).get("badge"), "good")
+
+    def test_admin_summary_marks_missing_truth_data_sources(self) -> None:
+        admin_hdrs = {"X-Telegram-Init-Data": self._init_data(9999, "admin")}
+
+        summary_resp = self.client.get("/api/admin/summary", headers=admin_hdrs)
+        self.assertEqual(summary_resp.status_code, 200, summary_resp.text)
+        payload = summary_resp.json()
+        users = payload.get("users") or {}
+        self.assertEqual(int(users.get("unique_install_ids_24h") or 0), 0)
+        self.assertEqual(int(users.get("unique_install_ids_7d") or 0), 0)
+        self.assertEqual(int(users.get("observer_seen_accounts_24h") or 0), 0)
+
+        quality = payload.get("data_quality") or {}
+        self.assertEqual((quality.get("app_installs") or {}).get("status"), "missing")
+        self.assertEqual((quality.get("app_installs") or {}).get("badge"), "bad")
+        self.assertTrue(bool((quality.get("app_installs") or {}).get("missing")))
+        self.assertEqual((quality.get("observer") or {}).get("status"), "missing")
+        self.assertEqual((quality.get("observer") or {}).get("badge"), "bad")
+        self.assertTrue(bool((quality.get("observer") or {}).get("missing")))
+
     def test_admin_summary_includes_retention_cohorts_and_pings(self) -> None:
         from db import SessionLocal
         from models import Event, User
 
-        now = datetime.utcnow().replace(microsecond=0)
+        now = _utcnow().replace(microsecond=0)
         admin_hdrs = {"X-Telegram-Init-Data": self._init_data(9999, "admin")}
 
         s = SessionLocal()
@@ -2386,7 +2552,7 @@ class ApiAuthAndTicketsTests(unittest.TestCase):
         from db import SessionLocal
         from models import Node, NodeHealthSample
 
-        now = datetime.utcnow().replace(microsecond=0)
+        now = _utcnow().replace(microsecond=0)
         admin_hdrs = {"X-Telegram-Init-Data": self._init_data(9999, "admin")}
 
         s = SessionLocal()
@@ -2541,7 +2707,7 @@ class ApiAuthAndTicketsTests(unittest.TestCase):
         from models import Node, NodeHealthSample
 
         admin_hdrs = {"X-Telegram-Init-Data": self._init_data(9999, "admin")}
-        now = datetime.utcnow().replace(microsecond=0)
+        now = _utcnow().replace(microsecond=0)
 
         s = SessionLocal()
         try:

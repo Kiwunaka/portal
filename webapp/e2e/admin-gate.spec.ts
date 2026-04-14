@@ -838,6 +838,32 @@ test.describe("Admin gate", () => {
     }
   });
 
+  test("keeps an explicit path back to the cabinet from admin", async ({ page }) => {
+    await registerApiMocks(page, { isAdmin: true });
+
+    await openRoute(page, "admin/dashboard/");
+
+    const cabinetLink = page.getByRole("link", { name: "Вернуться в кабинет" }).first();
+    await expect(cabinetLink).toBeVisible();
+    await cabinetLink.click();
+    await expect(page).toHaveURL(/\/dashboard\/?$/);
+  });
+
+  test("groups admin routes by operational category and keeps Telegram as fallback only", async ({ page }) => {
+    await registerApiMocks(page, { isAdmin: true });
+
+    await openRoute(page, "admin/");
+
+    await expect(page.getByRole("heading", { name: "POKROV Admin" })).toBeVisible();
+    await expect(
+      page.getByText("Веб-админка — основной операторский интерфейс. Telegram используйте только для быстрых fallback-действий."),
+    ).toBeVisible();
+
+    for (const category of ["Diagnostics", "People", "Access", "Payments", "Network", "Messaging", "Feedback"]) {
+      await expect(page.getByRole("heading", { name: category })).toBeVisible();
+    }
+  });
+
   test("keeps admin dashboard stable when summary omits optional blocks", async ({ page }) => {
     const pageErrors: string[] = [];
     page.on("pageerror", (error) => pageErrors.push(error.message));

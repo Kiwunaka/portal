@@ -1,6 +1,6 @@
 # Developer Guide
 
-Last updated: 2026-04-13
+Last updated: 2026-04-14
 
 ## Document Status
 
@@ -108,9 +108,16 @@ Current rules:
 - automatic username sync is the primary identity-sync path across app-first, web-login, and Telegram-link flows; manual username sync is compatibility/recovery tooling only
 - premium-grade access states `trial_premium`, `bonus_premium`, and `paid_unlimited` use the paid pool, which means all enabled non-free delivery nodes
 - free-tier access states `free_monthly` and `free_soft_mode` use the free pool, which means the dedicated `NL-free` node only
+- smart-connect shortlist selection stays inside those pool boundaries; premium profiles can expose up to `5` eligible non-free nodes, while free stays `NL-free` only
+- the client-side RTT upload contract is `POST /api/client/nodes/latency-samples`; it stores install-scoped diagnostic evidence and does not bypass `UserNode` pinning
+- the persisted split-tunnel contract is backend-owned through `route_mode`, `selected_apps`, `requires_elevated_privileges`, and mirrored `route_policy.*` fields; do not document it as client-only local state
+- additive browser email auth lives under `/api/auth/email/*` and should not be treated as release-ready unless transactional sender identity and delivery-confirmation/webhook visibility are live
+- support is a real `/api/tickets*` contract, including `/api/tickets/uploads` for authenticated browser attachments; do not describe it as an imaginary live chat
 - transport rollout is additive: `legacy_reality_fallback` stays the baseline until the canary completes, while `grpc_443_primary` is the allowlisted app-first primary for rollout cohorts
+- `reserve_xhttp_cdn` is the dormant reserve transport profile; it stays disabled by default and is only for explicit allowlisted fallback
 - `network_rollout_config` is the operator-owned rollout policy for transport, DNS, routing, and operator-lab allowlists; treat it as the source of truth for app-managed policy resolution
 - node shaping is repo-truth driven through `infra/node-qdisc-profiles.json` and the `remote_apply_node_qdisc.py` / `remote_node_qdisc_smoke.py` helpers, so treat qdisc changes as part of release verification instead of an informal operator tweak
+- public user-facing version labels across app, web, cabinet, and release notes must stay on `0.x.x-beta`; treat inherited strings like `2.5.7 dev` as regressions
 - when reporting node reachability during rollout work, keep `current-origin check`, `brain-origin check`, and `RU-origin check` separate instead of collapsing them into one status
 
 ## Backend Commands
@@ -121,6 +128,9 @@ Run focused tests:
 python -m pytest portal_bot/tests/test_app_first_api.py -q
 python -m pytest tests/test_portal_api.py -q
 python -m pytest tests/test_worker_retention.py -q
+python -m pytest tests/test_smart_connect_api.py tests/test_network_rollout_api.py -q
+python -m pytest tests/test_api_auth_and_tickets.py -q
+python -m pytest tests/test_remote_apply_transport_front.py -q
 python -m pytest tests/test_observer_service.py tests/test_observer_api.py tests/test_collect_xray_observer.py tests/test_predeploy_node_readiness.py -q
 python scripts/api_lifecycle_smoke.py
 python -m unittest tests.test_node_dataplane_probe tests.test_ru_probe_runner tests.test_render_ru_probe_report
@@ -182,6 +192,7 @@ Notes:
 Run inside `marketing/`:
 
 ```powershell
+npm.cmd run check:seo
 npm.cmd run build
 python ..\scripts\check-links.py
 python ..\scripts\ui_visual_smoke.py
@@ -213,6 +224,8 @@ python scripts/run_client_release_gate.py test --suite full
 python scripts/run_client_release_gate.py build --target windows
 python scripts/run_client_release_gate.py build --target android-apk
 python scripts/run_client_release_gate.py build --target android-aab
+dart pub global run msix:create --build-windows false
+powershell -NoProfile -ExecutionPolicy Bypass -File "external/client-fork/app/scripts/package_windows.ps1"
 ```
 
 Client release-gate note:
@@ -235,7 +248,8 @@ flutter_distributor package --platform windows --targets msix
 Windows packaging guardrails:
 
 - keep `windows/packaging/exe/make_config.yaml` on a canonical public publisher URL such as `https://pokrov.space/`, not a GitHub repository URL
-- treat a legacy `hiddify` string inside the packaged `MSIX` manifest as a release blocker, not a cosmetic follow-up
+- public `MSIX` fields such as display name, publisher display name, description, and protocol activation must resolve to `POKROV` / `pokrov`
+- hidden internal manifest identifiers may remain temporarily if they are not user-visible and do not leak into public installer surfaces or protocol activation
 
 ## Documentation Rules
 

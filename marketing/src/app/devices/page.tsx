@@ -1,29 +1,30 @@
 import JsonLd from "../../components/json-ld";
 import MarketingLanding, { buildMarketingMetadata } from "../../components/marketing-landing";
-import { buildBreadcrumbJsonLd } from "../../lib/marketing-site";
+import { buildBreadcrumbJsonLd, MARKETING_CANONICAL_PATHS } from "../../lib/marketing-site";
+import { CANONICAL_PLATFORM_BRAND } from "../../lib/pokrov";
 
 export const metadata = buildMarketingMetadata(
-  "Оптимизатор для Android и Windows | POKROV Network",
-  "Приложение как основной старт, 5 дней тест-драйва и идеальное ускорение на всех ваших устройствах.",
+  "Android и Windows | POKROV",
+  "Приложение как основной старт, 5 дней теста и понятный маршрут по устройствам без ложных обещаний.",
   {
-    path: "/vpn-na-iphone-android-windows/",
-    keywords: ["ускоритель на windows", "ускоритель на android", "стабильная сеть для пк", "оптимизатор интернета"],
+    path: MARKETING_CANONICAL_PATHS.devices,
+    keywords: ["android и windows", "устройства pokrov", "оптимизация на пк", "мобильный и десктопный старт"],
   },
 );
 
-export default function MultiDeviceVpnPage() {
+export default function DevicesPage() {
   return (
     <>
       <JsonLd
         data={buildBreadcrumbJsonLd([
-          { name: "POKROV Network", path: "/" },
-          { name: "Устройства", path: "/vpn-na-iphone-android-windows/" },
+          { name: CANONICAL_PLATFORM_BRAND, path: MARKETING_CANONICAL_PATHS.home },
+          { name: "Устройства", path: MARKETING_CANONICAL_PATHS.devices },
         ])}
       />
       <MarketingLanding
-        pagePath="/vpn-na-iphone-android-windows/"
+        pagePath={MARKETING_CANONICAL_PATHS.devices}
         heroKicker="Для всех основных устройств"
-        heroTitle="Свободная сеть на iPhone, Android и Windows с одним понятным маршрутом"
+        heroTitle="Android и Windows с одним понятным маршрутом"
         heroSubtitle="Для Android и Windows основной путь уже идёт через приложение, тест, кабинет и продление. Для Apple мы честно держим readiness-статус без ложного обещания доступности."
         scenarioTitle="Как устроен маршрут по устройствам"
         scenarioBody="Страница не смешивает релизные обещания и readiness-статус: для Android и Windows путь публичный, для Apple — аккуратное ожидание и инструкции."
@@ -32,19 +33,19 @@ export default function MultiDeviceVpnPage() {
             eyebrow: "Android + Windows",
             glyph: "window",
             title: "Основной релизный путь уже готов",
-            desc: "Именно эти платформы входят в текущий public promise, поэтому старт, тест-драйв и ускорение выстроены вокруг них.",
+            desc: "Именно эти платформы входят в текущий public promise, поэтому старт и тест выстроены вокруг них.",
           },
           {
             eyebrow: "Apple readiness",
             glyph: "orbit",
-            title: "Работаем над поддержкой iPhone и Mac",
+            title: "Работаем над iPhone и Mac",
             desc: "Если устройство Apple важно уже сейчас, страница честно показывает статус готовности без ложных обещаний.",
           },
           {
             eyebrow: "Один бренд-маршрут",
             glyph: "route",
             title: "Единая логика для всех устройств",
-            desc: "Сайт отвечает за старт, приложение — за магию скорости, кабинет — за управление вашим доступом.",
+            desc: "Сайт отвечает за старт, приложение — за первый опыт, кабинет — за управление вашим доступом.",
           },
         ]}
         clusterTitle="Страница выбора устройства"

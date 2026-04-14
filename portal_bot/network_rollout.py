@@ -4,7 +4,7 @@ from datetime import datetime, timezone
 from typing import Any
 
 from shared_surface_facts import get_product_facts
-from transport_catalog import GRPC_443_PRIMARY, LEGACY_REALITY_FALLBACK, OPERATOR_LAB
+from transport_catalog import GRPC_443_PRIMARY, LEGACY_REALITY_FALLBACK, OPERATOR_LAB, RESERVE_XHTTP_CDN
 
 
 NETWORK_ROLLOUT_CONFIG_KEY = "network_rollout_config"
@@ -120,6 +120,12 @@ def default_network_rollout_config() -> dict[str, Any]:
             "allowlist_node_codes": [],
             "expires_at": None,
         },
+        "reserve_xhttp_cdn": {
+            "enabled": False,
+            "allowlist_node_codes": [],
+            "xhttp_path": "/reserve-xhttp",
+            "tls_server_name": "cdn.connect.pokrov.space",
+        },
         "package_catalog_feed": {
             "version": _clean_text(versions.get("package_catalog_version"), fallback=version),
         },
@@ -146,7 +152,7 @@ def _transport_metadata(transport_profile: str, *, version: str) -> dict[str, st
     if profile == GRPC_443_PRIMARY:
         transport_kind = "grpc"
         engine_hint = "singbox"
-    elif profile == OPERATOR_LAB:
+    elif profile in {OPERATOR_LAB, RESERVE_XHTTP_CDN}:
         transport_kind = "xhttp"
         engine_hint = "xray"
     else:
@@ -194,6 +200,14 @@ def normalized_network_rollout_config(payload: Any) -> dict[str, Any]:
         "allowlist_node_codes": _normalize_string_list((operator_lab_src or {}).get("allowlist_node_codes"), lower=True),
         "expires_at": _clean_text((operator_lab_src or {}).get("expires_at")) or None,
     }
+    reserve_xhttp_src = src.get(RESERVE_XHTTP_CDN)
+    reserve_xhttp_cdn = {
+        "enabled": _as_bool((reserve_xhttp_src or {}).get("enabled")) if isinstance(reserve_xhttp_src, dict) else False,
+        "allowlist_node_codes": _normalize_string_list((reserve_xhttp_src or {}).get("allowlist_node_codes"), lower=True),
+        "xhttp_path": _clean_text((reserve_xhttp_src or {}).get("xhttp_path"), fallback="/reserve-xhttp") or "/reserve-xhttp",
+        "tls_server_name": _clean_text((reserve_xhttp_src or {}).get("tls_server_name"), fallback="cdn.connect.pokrov.space")
+        or "cdn.connect.pokrov.space",
+    }
 
     package_catalog_feed = src.get("package_catalog_feed") if isinstance(src.get("package_catalog_feed"), dict) else {}
     routing_rules_feed = src.get("routing_rules_feed") if isinstance(src.get("routing_rules_feed"), dict) else {}
@@ -207,6 +221,7 @@ def normalized_network_rollout_config(payload: Any) -> dict[str, Any]:
         "carrier_overrides": carrier_overrides,
         "cohort_overrides": cohort_overrides,
         "operator_lab": operator_lab,
+        RESERVE_XHTTP_CDN: reserve_xhttp_cdn,
         "package_catalog_feed": {
             "version": _clean_text(package_catalog_feed.get("version"), fallback=defaults["package_catalog_feed"]["version"]),
         },
@@ -259,6 +274,11 @@ def operator_lab_access(
     install_value = _clean_text(install_id)
     tg_values = {int(value) for value in (tg_ids or [])}
     return bool((install_value and install_value in allowed_installs) or (allowed_tg_ids and tg_values.intersection(allowed_tg_ids)))
+
+
+def reserve_xhttp_cdn_enabled(config: dict[str, Any]) -> bool:
+    reserve = dict(config.get(RESERVE_XHTTP_CDN) or {})
+    return _as_bool(reserve.get("enabled"))
 
 
 def _cohort_matches(rule: dict[str, Any], *, install_id: str, tg_ids: list[int], platform: str) -> bool:
@@ -324,7 +344,9 @@ def resolved_client_policy(
     transport_profile = _clean_text(resolved.get("transport_profile"), fallback=LEGACY_REALITY_FALLBACK)
     if transport_profile == OPERATOR_LAB and not operator_lab_access(config, install_id=install_value, tg_ids=tg_ids):
         transport_profile = LEGACY_REALITY_FALLBACK
-    if transport_profile not in {LEGACY_REALITY_FALLBACK, GRPC_443_PRIMARY, OPERATOR_LAB}:
+    if transport_profile == RESERVE_XHTTP_CDN and not reserve_xhttp_cdn_enabled(config):
+        transport_profile = LEGACY_REALITY_FALLBACK
+    if transport_profile not in {LEGACY_REALITY_FALLBACK, GRPC_443_PRIMARY, RESERVE_XHTTP_CDN, OPERATOR_LAB}:
         transport_profile = LEGACY_REALITY_FALLBACK
     transport_meta = _transport_metadata(transport_profile, version=_clean_text(config.get("version"), fallback=_default_rollout_version()))
 
@@ -363,6 +385,11 @@ def resolved_client_policy(
 
 
 def transport_node_allowlist(config: dict[str, Any], transport_profile: str) -> list[str]:
+    if _clean_text(transport_profile) == RESERVE_XHTTP_CDN:
+        reserve = dict(config.get(RESERVE_XHTTP_CDN) or {})
+        if not _as_bool(reserve.get("enabled")):
+            return []
+        return _normalize_string_list(reserve.get("allowlist_node_codes"), lower=True)
     if _clean_text(transport_profile) != OPERATOR_LAB:
         return []
     operator_lab = dict(config.get("operator_lab") or {})

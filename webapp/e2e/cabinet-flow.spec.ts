@@ -320,18 +320,96 @@ test.describe("Cabinet flow", () => {
     await registerCabinetMocks(page);
   });
 
-  test("shows a single connect link flow on the dashboard", async ({ page }) => {
+  test("shows shared POKROV cabinet branding and a site return link", async ({ page }) => {
     await page.goto("dashboard/");
-    await expect(page.locator("main")).toContainText("Пользователей по IP сейчас");
 
-    await expect(page.getByRole("heading", { name: "Показать ссылку подключения или открыть QR" })).toBeVisible();
-    await page.getByRole("button", { name: "Показать", exact: true }).click();
-    await expect(page.locator("main")).toContainText("https://connect.pokrov.space/s8Kx2mP7qR4wT/mock_token");
+    await expect(page.getByLabel("POKROV logo").first()).toBeVisible();
+    await expect(page.locator("aside")).toContainText("POKROV");
+    await expect(page.locator("aside")).toContainText("Личный кабинет");
+    await expect(page.locator("aside")).not.toContainText("private cabinet");
+
+    const siteLink = page.getByRole("link", { name: "На сайт POKROV" });
+    await expect(siteLink).toBeVisible();
+    await expect(siteLink).toHaveAttribute("href", /https:\/\/pokrov\.space\/?$/);
+  });
+
+  test("supports additive email states on the root auth entry", async ({ page }) => {
+    await page.addInitScript(() => {
+      window.localStorage.removeItem("portal_web_session_token");
+    });
+
+    await page.goto("/?auth=email&email_state=sent&email=hello%40pokrov.space");
+
+    await expect(page.getByRole("button", { name: "Продолжить через email" })).toBeVisible();
+    await expect(page.getByRole("link", { name: "Вернуться на сайт" })).toBeVisible();
+    await expect(page.locator("main")).toContainText("hello@pokrov.space");
+  });
+
+  test("reuses an existing web session without double auth bootstrap on root entry", async ({ page }) => {
+    let authSessionRequests = 0;
+
+    await page.addInitScript(() => {
+      window.localStorage.setItem("portal_web_session_token", "e2e_existing_session");
+    });
+
+    const sessionUser = mockSessionUser();
+    const dashboard = mockDashboard();
+
+    await page.route("**/api/**", async (route) => {
+      const url = new URL(route.request().url());
+      const path = url.pathname;
+      const json = (payload: unknown, status = 200) =>
+        route.fulfill({
+          status,
+          contentType: "application/json",
+          body: JSON.stringify(payload),
+        });
+
+      if (path === "/api/auth/session") {
+        authSessionRequests += 1;
+        return json({ ok: true, user: { id: 1001, username: "qa_user" } });
+      }
+      if (path === "/api/dashboard") return json(dashboard);
+      if (path.startsWith("/api/user/")) return json(sessionUser);
+      if (path === "/api/nodes/status") {
+        return json({
+          nodes: [
+            {
+              code: "pl",
+              country: "Poland",
+              host: "pl.pokrov.space",
+              ping_ms: 42,
+              port_open: true,
+              dns_sni_status: "ok",
+              is_healthy: true,
+              updated_at: "2030-01-01T00:00:00",
+            },
+          ],
+        });
+      }
+
+      return json({ ok: true });
+    });
+
+    await page.goto("/");
+
+    await expect(page).toHaveURL(/\/dashboard\/?$/);
+    await expect.poll(() => authSessionRequests).toBe(1);
+  });
+
+  test("keeps the dashboard on consumer-safe access actions", async ({ page }) => {
+    await page.goto("dashboard/");
+    await expect(page.locator("main")).toContainText("Людей онлайн сейчас");
+
+    await expect(page.getByRole("heading", { name: "Личный маршрут хранится в приложениях" })).toBeVisible();
+    await expect(page.getByRole("link", { name: "Открыть приложения" })).toBeVisible();
+    await expect(page.getByRole("link", { name: "Нужна помощь с подключением" })).toBeVisible();
+    await expect(page.locator("main")).not.toContainText("QR");
     await expect(page.locator("main")).not.toContainText("?format=plain");
-    await expect(page.locator("main")).not.toContainText("Обычная ссылка");
-
-    await page.getByRole("button", { name: "Показать QR" }).click();
-    await expect(page.getByAltText("QR-код ссылки подключения")).toBeVisible();
+    await expect(page.locator("main")).not.toContainText("mock_token");
+    await expect(page.getByRole("button", { name: "Показать", exact: true })).toHaveCount(0);
+    await expect(page.getByRole("button", { name: "Показать QR" })).toHaveCount(0);
+    await expect(page.getByRole("button", { name: "Скопировать" })).toHaveCount(0);
   });
 
   test("keeps cabinet navigation on native Next.js routing", async ({ page }) => {
@@ -362,17 +440,16 @@ test.describe("Cabinet flow", () => {
     await expect(page.getByRole("link", { name: "В поддержку" })).toBeVisible();
   });
 
-  test("keeps the subscription page on one public connection link plus QR", async ({ page }) => {
+  test("keeps the subscription page on renewal and support instead of raw connection sharing", async ({ page }) => {
     await page.goto("subscription/");
 
-    await expect(page.getByRole("heading", { name: "Одна ссылка для всех подключений" })).toBeVisible();
-    await expect(page.getByRole("heading", { name: "Откройте на втором устройстве" })).toBeVisible();
-    await expect(page.locator("main")).toContainText("https://connect.pokrov.space/s8Kx2mP7qR4wT/mock_token");
-    await expect(page.locator("main")).not.toContainText("резервная ссылка");
+    await expect(page.getByRole("heading", { name: "Подключение ведём через приложения POKROV" })).toBeVisible();
+    await expect(page.getByRole("link", { name: "Открыть мои приложения" })).toBeVisible();
+    await expect(page.getByRole("link", { name: "Нужна помощь с устройством" })).toBeVisible();
     await expect(page.locator("main")).not.toContainText("?format=plain");
-
-    await page.getByRole("button", { name: "Скопировать" }).click();
-    await expect(page.getByRole("button", { name: "Скопировано" })).toBeVisible();
+    await expect(page.locator("main")).not.toContainText("mock_token");
+    await expect(page.locator("main")).not.toContainText("QR");
+    await expect(page.getByRole("button", { name: "Скопировать" })).toHaveCount(0);
   });
 
   test("renders runtime connections on devices and keeps statistics actionable", async ({ page }) => {
@@ -380,17 +457,31 @@ test.describe("Cabinet flow", () => {
     await expect(page.getByRole("heading", { name: "Устройства и подключения" })).toBeVisible();
     await expect(page.locator("main")).toContainText("Подключений сейчас");
     await expect(page.locator("main")).toContainText("2 / 5");
-    await expect(page.locator("main")).toContainText("Пользователей по IP сейчас");
+    await expect(page.locator("main")).toContainText("Людей онлайн сейчас");
     await expect(page.locator("main")).toContainText("Нод с активностью");
     await expect(page.locator("main")).toContainText("1 / 2");
 
     await page.goto("statistics/");
-    await expect(page.locator("main")).toContainText("Пользователей по IP сейчас");
+    await expect(page.locator("main")).toContainText("Людей онлайн сейчас");
     await expect(page.getByRole("heading", { name: "Сводка по использованию" })).toBeVisible();
     await expect(page.getByRole("heading", { name: "Что доступно сейчас" })).toBeVisible();
-    await expect(page.locator("main")).toContainText("Ссылка подключения: готова");
+    await expect(page.locator("main")).toContainText("App-first синхронизация: профиль готов для приложений");
     await expect(page.locator("main")).toContainText("Трафик: доступен разгон");
     await expect(page.locator("main")).not.toContainText("Объём профиля: 0 ГБ");
+  });
+
+  test("keeps cabinet copy human and hides node internals", async ({ page }) => {
+    await page.goto("devices/");
+    await expect(page.locator("main")).not.toContainText("pl.pokrov.space");
+    await expect(page.locator("main")).not.toContainText("us.pokrov.space");
+    await expect(page.locator("main")).not.toContainText(":443");
+    await expect(page.locator("main")).not.toContainText("IP");
+
+    await page.goto("subscription/");
+    await expect(page.locator("main")).not.toContainText("mock_token");
+
+    await page.goto("support/");
+    await expect(page.locator("main")).not.toContainText("Network");
   });
 
   test("keeps downloads and support flows usable without the app", async ({ page }) => {

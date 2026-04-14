@@ -2,8 +2,8 @@ import Link from "next/link";
 
 import JsonLd from "../../components/json-ld";
 import { buildMarketingMetadata } from "../../components/marketing-landing";
-import { buildBreadcrumbJsonLd } from "../../lib/marketing-site";
-import { getCopyText, getPokrovPublicConfig } from "../../lib/pokrov";
+import { buildBreadcrumbJsonLd, MARKETING_CANONICAL_PATHS } from "../../lib/marketing-site";
+import { CANONICAL_PLATFORM_BRAND, getCopyText, getPokrovPublicConfig } from "../../lib/pokrov";
 
 const config = getPokrovPublicConfig(process.env as Record<string, string | undefined>);
 
@@ -20,7 +20,7 @@ function buildArtifactHref(primary: string, fallback: string): string {
 }
 
 export const metadata = buildMarketingMetadata(
-  getCopyText("marketing.install.meta.title", "Установка и помощь | POKROV Network"),
+  getCopyText("marketing.install.meta.title", "Установка и помощь | POKROV"),
   getCopyText(
     "marketing.install.meta.description",
     "Как скачать приложение для Android и Windows, что делать если файл недоступен, и куда перейти за помощью.",
@@ -28,7 +28,7 @@ export const metadata = buildMarketingMetadata(
   {
     path: "/install/",
     noIndex: true,
-    keywords: ["pokrov vpn install", "как установить vpn", "apk pokrov", "windows pokrov", "install help"],
+    keywords: ["установка pokrov", "apk pokrov", "windows pokrov", "инструкция pokrov", "install help"],
   },
 );
 
@@ -44,7 +44,7 @@ export default function InstallPage() {
     <>
       <JsonLd
         data={buildBreadcrumbJsonLd([
-          { name: "POKROV Network", path: "/" },
+          { name: CANONICAL_PLATFORM_BRAND, path: "/" },
           { name: "Установка и помощь", path: "/install/" },
         ])}
       />
@@ -52,15 +52,23 @@ export default function InstallPage() {
       <header className="lp-nav">
         <div className="lp-nav-shell">
           <Link href="/" className="lp-brand">
-            <img src="/pokrov-logo.svg" alt="POKROV Network" className="lp-brand-logo" />
-            <span>POKROV Network</span>
+            <img src="/pokrov-logo.svg" alt={CANONICAL_PLATFORM_BRAND} className="lp-brand-logo" />
+            <span>{CANONICAL_PLATFORM_BRAND}</span>
           </Link>
           <nav className="lp-menu" aria-label="Главная навигация">
-            <Link href="/">Главная</Link>
-            <Link href="/checkout/">Checkout</Link>
-            <a href={config.supportTelegramUrl} target="_blank" rel="noreferrer" className="lp-chip lp-chip--primary">
-              Служба заботы
-            </a>
+            <div className="lp-nav-links">
+              <Link href="/">Главная</Link>
+              <Link href={MARKETING_CANONICAL_PATHS.devices}>Устройства</Link>
+              <Link href={MARKETING_CANONICAL_PATHS.mobile}>На телефон</Link>
+            </div>
+            <div className="lp-nav-actions">
+              <a href={config.webappUrl} target="_blank" rel="noreferrer" className="lp-chip">
+                Открыть кабинет
+              </a>
+              <a href={config.supportTelegramUrl} target="_blank" rel="noreferrer" className="lp-chip lp-chip--primary">
+                Служба заботы
+              </a>
+            </div>
           </nav>
         </div>
       </header>
@@ -68,7 +76,7 @@ export default function InstallPage() {
       <main id="main-content" className="lp-main">
         <section className="lp-hero">
           <div className="lp-hero-copy">
-            <div className="lp-kicker">{getCopyText("marketing.install.kicker", "Установка и настройка POKROV Network")}</div>
+            <div className="lp-kicker">{getCopyText("marketing.install.kicker", "Установка и настройка POKROV")}</div>
             <p className="lp-overline">Дедиковая страница помощи без тупиков и без ложной загрузки.</p>
             <h1>{getCopyText("marketing.install.title", "Установка без тупиков")}</h1>
             <p className="lp-hero-lead">

@@ -1,6 +1,6 @@
 # Deployment And Access
 
-Last updated: 2026-04-13
+Last updated: 2026-04-14
 
 ## Document Status
 
@@ -111,6 +111,16 @@ python scripts/remote_install_node_observer.py --brain-ip 82.21.114.104 --node-c
 
 - [monitoring-and-visibility.md](C:/Users/kiwun/Documents/ai/VPN/docs/operations/monitoring-and-visibility.md)
 
+## Operator Handoff Runbooks
+
+Use these when the release is blocked on one narrow operational step and the next person needs a simple checklist instead of the full guide:
+
+- [Android Production Signing Handoff](C:/Users/kiwun/Documents/ai/VPN/docs/operations/android-production-signing-handoff.md)
+- [Android Physical Device Audit Handoff](C:/Users/kiwun/Documents/ai/VPN/docs/operations/android-physical-device-audit-handoff.md)
+- [Email Delivery Webhook Handoff](C:/Users/kiwun/Documents/ai/VPN/docs/operations/email-delivery-webhook-handoff.md)
+- [Release Links And Final Handoff](C:/Users/kiwun/Documents/ai/VPN/docs/operations/release-links-and-final-handoff.md)
+- [RU Origin Probe Handoff](C:/Users/kiwun/Documents/ai/VPN/docs/operations/ru-origin-probe-handoff.md)
+
 ### External RU probe runner
 
 - [ru_probe_runner.py](C:/Users/kiwun/Documents/ai/VPN/scripts/ru_probe_runner.py)
@@ -142,12 +152,13 @@ The transport rollout stays additive: the current Reality path remains in place 
 
 Transport policy rule:
 
-- `nodes.transport_profiles_json` is the canonical per-node transport catalog for rollout and should carry the fixed profile set `legacy_reality_fallback`, `grpc_443_primary`, and `operator_lab`
+- `nodes.transport_profiles_json` is the canonical per-node transport catalog for rollout and should carry the fixed profile set `legacy_reality_fallback`, `grpc_443_primary`, `reserve_xhttp_cdn`, and `operator_lab`
 - legacy node fields such as `inbound_id`, `vless_port`, and `reality_*` remain compatibility input and should synthesize `legacy_reality_fallback` when the transport catalog is empty
 - `AppSetting.network_rollout_config` is the operator-controlled rollout source of truth for `transport_profile`, `dns_policy`, `routing_mode_default`, and `ip_version_preference`
-- `network_rollout_config` is a JSON policy blob with `version`, `defaults`, `carrier_overrides`, `cohort_overrides`, `operator_lab`, `package_catalog_feed`, `routing_rules_feed`, and `support_recovery_order`
+- `network_rollout_config` is a JSON policy blob with `version`, `defaults`, `carrier_overrides`, `cohort_overrides`, `reserve_xhttp_cdn`, `operator_lab`, `package_catalog_feed`, `routing_rules_feed`, and `support_recovery_order`
 - `defaults` pin `routing_mode_default=all_except_ru`, `transport_profile=legacy_reality_fallback`, and `dns_policy=ru_direct_split` until canary cohorts are explicitly approved
 - `carrier_overrides` and `cohort_overrides` may only change `transport_profile`, `dns_policy`, `routing_mode_default`, and `ip_version_preference`
+- `reserve_xhttp_cdn` stays opt-in, disabled by default, and is intended only as a reserve path on eligible nodes until a later rollout wave promotes it explicitly
 - `operator_lab` remains allowlist-only, carries `enabled`, `allowlist_install_ids`, `allowlist_tg_ids`, `allowlist_node_codes`, and `expires_at`, and must stay hidden from public UI and mass session/profile payloads
 - app-managed session and profile delivery should use the rollout-selected transport profile, while manual/export compatibility links stay on `legacy_reality_fallback` until the share-link parity wave lands
 - `GET /api/client/profile/managed` is the primary app-managed provisioning endpoint; `subscription_url` stays manual/import fallback only
@@ -157,6 +168,7 @@ Rollout order:
 1. Wave 0, code-first
    - migrate `nodes.transport_profiles_json`
    - backfill `legacy_reality_fallback` from the legacy node fields
+   - seed `reserve_xhttp_cdn` metadata on eligible nodes without enabling it for public cohorts
    - ship backend changes for multi-inbound sync and `network_rollout_config`
    - expose rollout config and node transport health in admin/web surfaces
    - update the canonical docs in this task
@@ -171,7 +183,8 @@ Rollout order:
    - install the node-local transport front on public `:443` with `scripts/remote_apply_transport_front.py`
    - move the live `legacy_reality_fallback` listener behind the transport front on a loopback backend port
    - add the `grpc_443_primary` inbound on its loopback backend port behind the same transport front
-   - seed the node transport catalog with `legacy_reality_fallback` and `grpc_443_primary`
+   - prepare the reserve backend `reserve_xhttp_cdn` on its loopback port and SNI mapping, but keep the rollout flag disabled unless the explicit reserve test is requested
+   - seed the node transport catalog with `legacy_reality_fallback`, `grpc_443_primary`, and reserve metadata
    - run `scripts/remote_transport_front_smoke.py` against the canary SNI names before cohort enablement
    - apply the qdisc profile and run the saturation smoke
    - enable `grpc_443_primary` only for a small RU-risk allowlist through `network_rollout_config`
@@ -191,6 +204,13 @@ Rollback shape:
 - run `scripts/remote_apply_node_qdisc.py rollback`
 - keep `nodes.transport_profiles_json` in place as dormant metadata instead of deleting it
 
+Reserve-path rule:
+
+- `reserve_xhttp_cdn` is prepared for operator-directed fallback only
+- current reserve SNI is `cdn.connect.pokrov.space`
+- the current transport-front template maps that reserve SNI to the loopback reserve backend
+- when the reserve profile is selected, the client uses `transport_kind=xhttp` and `engine_hint=xray`; this does not change the default public `sing-box` path
+
 Node shaping repo truth:
 
 - `infra/node-qdisc-profiles.json` records `node_code`, `iface`, `uplink_mbps`, `target_rate_mbps`, and `preferred_qdisc`
@@ -202,6 +222,47 @@ Node shaping repo truth:
 - if `sch_cake` is unavailable, the script falls back to `fq_codel` and must report that fallback explicitly
 - `scripts/remote_node_qdisc_smoke.py` runs one heavy egress flow plus parallel small HTTPS probes, records p95 latency / TTFB, and fails the gate if the heavy flow never materializes or starvation exceeds the configured thresholds
 - `infra/portal-node-qdisc.service` restores the configured qdisc after reboot
+
+## Current Local Build Matrix
+
+Canonical repo-local build and packaging commands for this wave:
+
+- `python scripts/run_client_release_gate.py preflight`
+- `python scripts/run_client_release_gate.py build --target windows`
+- `python scripts/run_client_release_gate.py build --target android-apk`
+- `python scripts/run_client_release_gate.py build --target android-aab`
+- `dart pub global run msix:create --build-windows false`
+- `powershell -NoProfile -ExecutionPolicy Bypass -File "scripts/package_windows.ps1"`
+
+Current local-build notes:
+
+- Android public promotion is still blocked until `python scripts/android_localhost_audit.py` is run against a release-installed build on physical hardware
+- local Android builds may fall back to the debug keystore when the production release keystore is unavailable; that is valid for local smoke only, not for publication
+- production Android signing still requires the local `android/key.properties` path or equivalent secret injection outside git
+- the repo-local MSIX smoke path is intentionally unsigned by default through `sign_msix: false`; signing still belongs to the release handoff
+- public Windows and Android labels, installer names, and protocol activation must read as `POKROV` / `pokrov`, while hidden compatibility handlers may still preserve legacy import continuity
+- `scripts/package_windows.ps1` now inspects the packaged `MSIX` via a temporary `.zip` copy because `Expand-Archive` cannot read `.msix` directly
+
+## Current Unclosed Release Blockers
+
+As of `2026-04-14`, the documented local green gate snapshot is not the same thing as a finished public release handoff.
+
+Still required before public promotion or node enablement:
+
+- live deploy of the released backend and static surfaces
+- live node enablement where the rollout depends on new node state
+- separate `current-origin check`, `brain-origin check`, and `RU-origin check` evidence lines
+- Android production signing instead of debug-keystore fallback
+- physical-device `python scripts/android_localhost_audit.py` on the release-installed Android build
+- live transactional sender readiness for public email registration or recovery mail
+
+Release handoff shortcuts:
+
+- Android signing: [android-production-signing-handoff.md](C:/Users/kiwun/Documents/ai/VPN/docs/operations/android-production-signing-handoff.md)
+- Android physical-device audit: [android-physical-device-audit-handoff.md](C:/Users/kiwun/Documents/ai/VPN/docs/operations/android-physical-device-audit-handoff.md)
+- email sender and webhook: [email-delivery-webhook-handoff.md](C:/Users/kiwun/Documents/ai/VPN/docs/operations/email-delivery-webhook-handoff.md)
+- release URL sync: [release-links-and-final-handoff.md](C:/Users/kiwun/Documents/ai/VPN/docs/operations/release-links-and-final-handoff.md)
+- RU-origin evidence: [ru-origin-probe-handoff.md](C:/Users/kiwun/Documents/ai/VPN/docs/operations/ru-origin-probe-handoff.md)
 
 ## Release Rule
 
@@ -257,6 +318,7 @@ Release gate rule:
 - set `ANDROID_AUDIT_SERIAL=<device-serial>` when running `release_gate_check.py` if you want the opt-in adb localhost audit folded into the same markdown report
 - set `ANDROID_AUDIT_CONNECT_WAIT_SEC` and `ANDROID_AUDIT_DISCONNECT_WAIT_SEC` when the adb localhost audit needs non-default timing in the same report
 - add `--client-platform-gates windows,android-apk,android-aab` or set `CLIENT_PLATFORM_GATES` when you want the same markdown report to include artifact-producing client builds
+- the latest documented `release_orchestrator.py --gates-only` success is a local-only proof and does not replace live deploy, live node enablement, or three-origin network evidence
 - Android public release must also include a release-build localhost-listener audit covering proxy, DNS, command-server, and admin/control surfaces before connect, after connect, and after disconnect; green repo/static gates are necessary but not sufficient
 - the Android release gate fails if an unauthenticated local SOCKS, HTTP proxy, Clash API, command, or similar admin surface remains reachable
 - public client release validation must include routing preset smoke for `Full tunnel` and `All except RU`, plus DNS split and leak checks on Android and Windows

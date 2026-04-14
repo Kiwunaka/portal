@@ -4,6 +4,8 @@ import { getInitData } from "./telegram";
 
 const WEB_SESSION_TOKEN_KEY = "portal_web_session_token";
 const DIRECT_API_BASE = "https://api.pokrov.space";
+const DEFAULT_API_TIMEOUT_MS = 15000;
+const NODE_STATUS_CACHE_TTL_MS = 30000;
 
 export type NodeInfo = {
   code: string;
@@ -729,6 +731,15 @@ export type AdminNetworkRolloutConfig = {
   support_recovery_order: string[];
 };
 
+type ApiRequestInit = RequestInit & {
+  timeoutMs?: number;
+};
+
+type NodeStatusRequestInit = ApiRequestInit & {
+  cacheTtlMs?: number;
+  forceRefresh?: boolean;
+};
+
 export type AdminNodeDriftRow = {
   node_code: string;
   node_name: string;
@@ -927,8 +938,32 @@ export type TelegramWebLoginPayload = {
 export type WebLoginResult = {
   ok: boolean;
   token: string;
-  user: { id: number; username?: string | null };
+  user: { id: number; username?: string | null; email?: string | null };
   expires_in: number;
+};
+
+export type EmailDeliveryPayload = {
+  status?: string;
+  kind?: string;
+  email?: string;
+  mode?: string;
+  detail?: string | null;
+  http_status?: number | null;
+};
+
+export type EmailIdentityPayload = {
+  email: string;
+  verified?: boolean;
+  linked_tg_id?: number | null;
+  verified_at?: string | null;
+};
+
+export type LinkedIdentityPayload = {
+  telegram?: {
+    id?: number | null;
+    username?: string | null;
+  } | null;
+  email?: EmailIdentityPayload | null;
 };
 
 export type TelegramOidcStartResult = {
@@ -945,7 +980,64 @@ export type TelegramOidcFinishPayload = {
 
 export type AuthSessionPayload = {
   ok: boolean;
-  user: { id: number; username?: string | null };
+  user: {
+    id: number;
+    account_id?: string;
+    username?: string | null;
+    email?: string | null;
+    device_name?: string | null;
+    linked_telegram_id?: number | null;
+    linked_telegram_username?: string | null;
+    is_authorized?: boolean;
+    auth_type?: string | null;
+    auth_origin?: string | null;
+    linked_identities?: LinkedIdentityPayload | null;
+  };
+};
+
+export type EmailRegisterPayload = {
+  email: string;
+  password: string;
+  display_name?: string;
+};
+
+export type EmailVerifyPayload = {
+  token: string;
+};
+
+export type EmailLoginPayload = {
+  email: string;
+  password: string;
+};
+
+export type EmailRecoveryStartPayload = {
+  email: string;
+};
+
+export type EmailRecoveryFinishPayload = {
+  token: string;
+  password: string;
+};
+
+export type EmailRegisterResult = {
+  ok: boolean;
+  verification_required: boolean;
+  delivery?: EmailDeliveryPayload;
+  identity?: EmailIdentityPayload | null;
+  debug?: {
+    verify_token?: string;
+    reset_token?: string;
+  } | null;
+};
+
+export type EmailRecoveryStartResult = {
+  ok: boolean;
+  recovery_requested: boolean;
+  delivery?: EmailDeliveryPayload;
+  debug?: {
+    verify_token?: string;
+    reset_token?: string;
+  } | null;
 };
 
 function getWebSessionToken(): string {
@@ -1077,14 +1169,158 @@ async function parseJsonResponse<T>(response: Response): Promise<T> {
   }
 }
 
-async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
+function createAbortError(reason?: unknown): Error {
+  if (reason instanceof Error) {
+    return reason;
+  }
+  if (typeof DOMException !== "undefined") {
+    return new DOMException("Request aborted", "AbortError");
+  }
+  const error = new Error("Request aborted");
+  error.name = "AbortError";
+  return error;
+}
+
+function createTimeoutError(timeoutMs: number): Error {
+  if (typeof DOMException !== "undefined") {
+    return new DOMException(`Request timed out after ${Math.round(timeoutMs / 1000)}s`, "TimeoutError");
+  }
+  const error = new Error(`Request timed out after ${Math.round(timeoutMs / 1000)}s`);
+  error.name = "TimeoutError";
+  return error;
+}
+
+function createManagedRequestSignal(signal: AbortSignal | null | undefined, timeoutMs: number) {
+  const controller = new AbortController();
+  let abortedByCaller = false;
+  let abortedByTimeout = false;
+  let timeoutHandle: ReturnType<typeof setTimeout> | null = null;
+
+  const abortFromSignal = () => {
+    abortedByCaller = true;
+    controller.abort(signal?.reason);
+  };
+
+  if (signal?.aborted) {
+    abortFromSignal();
+  } else if (signal) {
+    signal.addEventListener("abort", abortFromSignal, { once: true });
+  }
+
+  if (!controller.signal.aborted && timeoutMs > 0) {
+    timeoutHandle = setTimeout(() => {
+      abortedByTimeout = true;
+      controller.abort(createTimeoutError(timeoutMs));
+    }, timeoutMs);
+  }
+
+  return {
+    signal: controller.signal,
+    abortedByCaller: () => abortedByCaller,
+    abortedByTimeout: () => abortedByTimeout,
+    cleanup: () => {
+      if (timeoutHandle) {
+        clearTimeout(timeoutHandle);
+      }
+      if (signal) {
+        signal.removeEventListener("abort", abortFromSignal);
+      }
+    },
+  };
+}
+
+function withAbortSignal<T>(promise: Promise<T>, signal?: AbortSignal | null): Promise<T> {
+  if (!signal) {
+    return promise;
+  }
+  if (signal.aborted) {
+    return Promise.reject(createAbortError(signal.reason));
+  }
+  return new Promise<T>((resolve, reject) => {
+    const onAbort = () => {
+      cleanup();
+      reject(createAbortError(signal.reason));
+    };
+    const cleanup = () => signal.removeEventListener("abort", onAbort);
+    signal.addEventListener("abort", onAbort, { once: true });
+    promise.then(
+      (value) => {
+        cleanup();
+        resolve(value);
+      },
+      (error) => {
+        cleanup();
+        reject(error);
+      },
+    );
+  });
+}
+
+const nodeStatusCache: {
+  data: NodeStatus[] | null;
+  expiresAt: number;
+  promise: Promise<NodeStatus[]> | null;
+} = {
+  data: null,
+  expiresAt: 0,
+  promise: null,
+};
+
+async function unauthenticatedJsonPost<T>(path: string, payload: unknown, init?: ApiRequestInit): Promise<T> {
   const bases = candidateApiBases();
   let lastErr: any = null;
+  const { timeoutMs = DEFAULT_API_TIMEOUT_MS, signal, ...requestInit } = init || {};
   for (const base of bases) {
+    const managedSignal = createManagedRequestSignal(signal, timeoutMs);
     try {
-      const headers = new Headers(init?.headers || {});
+      const headers = new Headers({ "Content-Type": "application/json" });
       applyAuthHeaders(headers);
-      const r = await fetch(`${base}${path}`, { ...init, headers });
+      const response = await fetch(`${base}${path}`, {
+        ...requestInit,
+        method: "POST",
+        headers,
+        body: JSON.stringify(payload),
+        cache: "no-store",
+        signal: managedSignal.signal,
+      });
+      if (!response.ok) {
+        const text = await readApiError(response);
+        throw new Error(text || `API error: ${response.status}`);
+      }
+      return await parseJsonResponse<T>(response);
+    } catch (error: any) {
+      lastErr = managedSignal.abortedByTimeout() ? createTimeoutError(timeoutMs) : error;
+      if (managedSignal.abortedByCaller()) {
+        throw createAbortError(signal?.reason);
+      }
+      const msg = String(lastErr?.message || lastErr);
+      if (
+        managedSignal.abortedByTimeout() ||
+        msg.includes("Failed to fetch") ||
+        msg.includes("NetworkError") ||
+        msg.includes("fetch") ||
+        msg.includes("Received app shell instead of API response")
+      ) {
+        continue;
+      }
+      break;
+    } finally {
+      managedSignal.cleanup();
+    }
+  }
+  throw lastErr || new Error("API error");
+}
+
+async function apiFetch<T>(path: string, init?: ApiRequestInit): Promise<T> {
+  const bases = candidateApiBases();
+  let lastErr: any = null;
+  const { timeoutMs = DEFAULT_API_TIMEOUT_MS, signal, ...requestInit } = init || {};
+  for (const base of bases) {
+    const managedSignal = createManagedRequestSignal(signal, timeoutMs);
+    try {
+      const headers = new Headers(requestInit.headers || {});
+      applyAuthHeaders(headers);
+      const r = await fetch(`${base}${path}`, { ...requestInit, headers, signal: managedSignal.signal });
       if (!r.ok) {
         const text = await readApiError(r);
         if (r.status === 401) {
@@ -1096,9 +1332,13 @@ async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
       if (r.status === 204) return {} as T;
       return await parseJsonResponse<T>(r);
     } catch (e: any) {
-      lastErr = e;
-      const msg = String(e?.message || e);
+      lastErr = managedSignal.abortedByTimeout() ? createTimeoutError(timeoutMs) : e;
+      if (managedSignal.abortedByCaller()) {
+        throw createAbortError(signal?.reason);
+      }
+      const msg = String(lastErr?.message || lastErr);
       if (
+        managedSignal.abortedByTimeout() ||
         msg.includes("Failed to fetch") ||
         msg.includes("NetworkError") ||
         msg.includes("fetch") ||
@@ -1107,6 +1347,8 @@ async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
         continue;
       }
       break;
+    } finally {
+      managedSignal.cleanup();
     }
   }
   throw lastErr || new Error("API error");
@@ -1129,9 +1371,31 @@ export function fetchDashboard(): Promise<DashboardSnapshot> {
   return apiFetch<DashboardSnapshot>("/api/dashboard");
 }
 
-export async function fetchNodeStatus(): Promise<NodeStatus[]> {
-  const data = await apiFetch<{ nodes: NodeStatus[] }>("/api/nodes/status");
-  return data.nodes || [];
+export async function fetchNodeStatus(init?: NodeStatusRequestInit): Promise<NodeStatus[]> {
+  const { cacheTtlMs = NODE_STATUS_CACHE_TTL_MS, forceRefresh = false, signal, ...requestInit } = init || {};
+  const now = Date.now();
+  if (!forceRefresh && nodeStatusCache.data && nodeStatusCache.expiresAt > now) {
+    return nodeStatusCache.data;
+  }
+  if (!forceRefresh && nodeStatusCache.promise) {
+    return withAbortSignal(nodeStatusCache.promise, signal);
+  }
+  const requestPromise = apiFetch<{ nodes: NodeStatus[] }>("/api/nodes/status", {
+    ...requestInit,
+  })
+    .then((data) => {
+      const rows = data.nodes || [];
+      nodeStatusCache.data = rows;
+      nodeStatusCache.expiresAt = Date.now() + Math.max(0, cacheTtlMs);
+      return rows;
+    })
+    .finally(() => {
+      if (nodeStatusCache.promise === requestPromise) {
+        nodeStatusCache.promise = null;
+      }
+    });
+  nodeStatusCache.promise = requestPromise;
+  return withAbortSignal(requestPromise, signal);
 }
 
 export function fetchClientApps(): Promise<ClientAppsPayload> {
@@ -1258,6 +1522,26 @@ export async function finishTelegramOidcLogin(payload: TelegramOidcFinishPayload
 
 export function fetchAuthSession(): Promise<AuthSessionPayload> {
   return apiFetch<AuthSessionPayload>("/api/auth/session");
+}
+
+export function registerByEmail(payload: EmailRegisterPayload): Promise<EmailRegisterResult> {
+  return unauthenticatedJsonPost<EmailRegisterResult>("/api/auth/email/register", payload);
+}
+
+export function verifyEmailToken(payload: EmailVerifyPayload): Promise<WebLoginResult> {
+  return unauthenticatedJsonPost<WebLoginResult>("/api/auth/email/verify", payload);
+}
+
+export function loginByEmail(payload: EmailLoginPayload): Promise<WebLoginResult> {
+  return unauthenticatedJsonPost<WebLoginResult>("/api/auth/email/login", payload);
+}
+
+export function startEmailRecovery(payload: EmailRecoveryStartPayload): Promise<EmailRecoveryStartResult> {
+  return unauthenticatedJsonPost<EmailRecoveryStartResult>("/api/auth/email/recovery/start", payload);
+}
+
+export function finishEmailRecovery(payload: EmailRecoveryFinishPayload): Promise<WebLoginResult> {
+  return unauthenticatedJsonPost<WebLoginResult>("/api/auth/email/recovery/finish", payload);
 }
 
 export async function fetchTickets(limit = 20): Promise<TicketInfo[]> {

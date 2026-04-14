@@ -1,10 +1,16 @@
 # Publishing And Signing Guide
 
-Last updated: 2026-04-13
+Last updated: 2026-04-14
 
 ## Document Status
 
 This file is the canonical guide for `POKROV` client publishing, signing, store submission, and release-cost expectations.
+
+Focused release handoff runbooks:
+
+- [Android Production Signing Handoff](C:/Users/kiwun/Documents/ai/VPN/docs/operations/android-production-signing-handoff.md)
+- [Android Physical Device Audit Handoff](C:/Users/kiwun/Documents/ai/VPN/docs/operations/android-physical-device-audit-handoff.md)
+- [Release Links And Final Handoff](C:/Users/kiwun/Documents/ai/VPN/docs/operations/release-links-and-final-handoff.md)
 
 ## Release Scope
 
@@ -44,11 +50,11 @@ Current implementation note:
 
 Current canonical release artifacts:
 
-- `pokrov-vpn-android-universal.apk`
-- `pokrov-vpn-android-market.aab`
-- `pokrov-vpn-windows-setup-x64.exe`
-- `pokrov-vpn-windows-setup-x64.msix`
-- `pokrov-vpn-windows-portable-x64.zip`
+- `pokrov-android-universal.apk`
+- `pokrov-android-market.aab`
+- `pokrov-windows-setup-x64.exe`
+- `pokrov-windows-setup-x64.msix`
+- `pokrov-windows-portable-x64.zip`
 
 Current public-facing download buttons in shipped surfaces are limited to:
 
@@ -57,6 +63,15 @@ Current public-facing download buttons in shipped surfaces are limited to:
 - install/docs fallback
 
 Treat `AAB`, `MSIX`, and portable `ZIP` as required release/store artifacts, not first-layer user download buttons, unless the runtime payload and public surfaces are expanded together.
+
+## Public Versioning Policy
+
+Current public user-facing version policy:
+
+- the app, cabinet, marketing download surfaces, and release notes should present one beta line: `0.x.x-beta`
+- Android `versionName`, Windows display version, cabinet download badges, and public changelog copy should stay aligned to that beta line
+- internal build numbers and platform-native version codes may remain numeric or platform-specific and are not the public label
+- inherited upstream display strings such as `2.5.7 dev` must not remain visible on public user-facing surfaces
 
 ## Canonical Client Verification Commands
 
@@ -83,6 +98,7 @@ Notes:
 - test/build modes now auto-run `flutter pub get` plus `flutter pub run build_runner build --delete-conflicting-outputs` when generated Dart assets are missing, so a clean checkout can rebuild the ignored `*.g.dart` / `*.freezed.dart` surface before Flutter tests start.
 - `scripts/run_client_release_gate.py` now fails early if `external/client-fork/app/libcore` is dirty, missing, or not on the expected pinned SHA; release builds must start from a clean checkout with tracked `libcore` state.
 - if the preflight fails, inspect the submodule directly with `git -C external/client-fork/app/libcore status --short` and `git -C external/client-fork/app/libcore diff --stat`; fixing those changes belongs in the canonical client repo, not as an ad hoc root-repo override.
+- repo-local Windows MSIX smoke can also be produced with `dart pub global run msix:create --build-windows false`; that path intentionally keeps `sign_msix: false` for local verification and does not replace signed release handoff
 
 ## Android
 
@@ -104,10 +120,15 @@ Notes:
 2. Run `python scripts/release_gate_check.py` and keep the default gate pack green; add `--client-platform-gates windows,android-apk,android-aab` when you want the same report to include release-build artifacts.
 3. If you include Android build gates in that report, export `ANDROID_AUDIT_SERIAL=<physical-device-serial>` first so the same report includes the mandatory physical-device localhost audit.
 4. Audit the release build for localhost listeners and local control surfaces before public publication.
-5. Sign the Android release with the production keystore.
+5. Sign the Android release with the production keystore; debug-keystore fallback is valid only for local smoke and never for public publication.
 6. Upload the `AAB` to Google Play when store publication is ready.
 7. Upload the universal `APK` to GitHub Releases for direct download.
 8. Run release handoff and sync the final URLs into runtime env.
+
+Operator shortcut:
+
+- signing checklist: [android-production-signing-handoff.md](C:/Users/kiwun/Documents/ai/VPN/docs/operations/android-production-signing-handoff.md)
+- physical-device audit checklist: [android-physical-device-audit-handoff.md](C:/Users/kiwun/Documents/ai/VPN/docs/operations/android-physical-device-audit-handoff.md)
 
 ### Store notes
 
@@ -137,12 +158,14 @@ Notes:
 ### Release steps
 
 1. Build the Windows release, preferably via `python scripts/run_client_release_gate.py build --target windows`.
-2. Sign the installer and MSIX package.
-3. Keep the packaging config on a canonical public publisher URL such as `https://pokrov.space/`; GitHub repository URLs are not valid publisher surfaces for the signed Windows release path.
-4. Verify the packaged `MSIX` manifest no longer contains legacy `hiddify` identity strings before publication.
-5. Upload the signed `EXE` and optional ZIP to GitHub Releases.
-6. Keep the `MSIX` ready for Microsoft Store submission.
-7. Run release handoff and sync the final URLs into runtime env.
+2. For local MSIX smoke, run `dart pub global run msix:create --build-windows false` before the packaging step when you need a repo-local unsigned `MSIX`.
+3. Package the repo-local artifacts with `powershell -NoProfile -ExecutionPolicy Bypass -File "scripts/package_windows.ps1"` when you need the canonical `out/` bundle layout.
+4. Sign the installer and MSIX package.
+5. Keep the packaging config on a canonical public publisher URL such as `https://pokrov.space/`; GitHub repository URLs are not valid publisher surfaces for the signed Windows release path.
+6. Verify the packaged `MSIX` public fields resolve to `POKROV` / `pokrov`; hidden internal identifiers may remain temporarily only when they are not user-visible.
+7. Upload the signed `EXE` and optional ZIP to GitHub Releases.
+8. Keep the `MSIX` ready for Microsoft Store submission.
+9. Run release handoff and sync the final URLs into runtime env.
 
 Current runtime-surface note:
 
@@ -210,6 +233,10 @@ After every client release:
 5. verify the same links appear in app, bot, and authenticated WebApp surfaces
 6. rebuild and redeploy static marketing outputs if public download URLs changed
 
+Operator shortcut:
+
+- [release-links-and-final-handoff.md](C:/Users/kiwun/Documents/ai/VPN/docs/operations/release-links-and-final-handoff.md)
+
 ## Public Mailboxes And PR Readiness
 
 Recommended baseline public mailboxes for this release wave:
@@ -222,6 +249,7 @@ Notes:
 
 - mailbox setup is operationally useful before store submission, PR outreach, and TLS automation
 - user-facing support should keep `support@pokrov.space` as the primary published address
+- `noreply@pokrov.space` must be live before public email registration, verification, or recovery mail is enabled
 - do not block Android or Windows release on `press@` if the mailbox is not yet live, but create it before active PR outreach
 
 ## TLS Certificates For Public Surfaces
@@ -268,3 +296,4 @@ Minimum publishing verification:
 - `release_gate_check.py --client-platform-gates ...android-*...` is allowed to pass only when `ANDROID_AUDIT_SERIAL` points at physical hardware
 - as of `2026-04-13`, the documented repo/static/client gate pack is green in `docs/audit-artifacts/release_gate_report.md`, but that result alone does not authorize Android publication
 - an emulator audit may be used as rehearsal for adb flow and timing only; final Android publication still requires `python scripts/android_localhost_audit.py` on a release-installed build on physical hardware
+- the latest local green gate report does not replace live deploy, live node enablement, or separate `current-origin`, `brain-origin`, and `RU-origin` release evidence

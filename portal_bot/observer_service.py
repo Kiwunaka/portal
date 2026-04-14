@@ -3,7 +3,7 @@ from __future__ import annotations
 import ipaddress
 import json
 import os
-from datetime import date, datetime, timedelta
+from datetime import date, datetime, timedelta, timezone
 from typing import Any
 
 from sqlalchemy import String, func
@@ -26,7 +26,7 @@ OBSERVER_PUSH_STALE_AFTER_SECONDS = max(120, int(os.getenv("OBSERVER_PUSH_STALE_
 
 
 def _utcnow() -> datetime:
-    return datetime.utcnow().replace(microsecond=0)
+    return datetime.now(timezone.utc).replace(tzinfo=None, microsecond=0)
 
 
 def _safe_iso(value: datetime | None) -> str | None:

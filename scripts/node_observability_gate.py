@@ -4,7 +4,7 @@ import argparse
 import json
 import subprocess
 import sys
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 
@@ -15,6 +15,10 @@ if str(PORTAL_DIR) not in sys.path:
 
 from db import SessionLocal, init_db  # noqa: E402
 from models import Node  # noqa: E402
+
+
+def _utcnow() -> datetime:
+    return datetime.now(timezone.utc).replace(tzinfo=None)
 
 
 def _parse_dt(value: object) -> datetime | None:
@@ -56,7 +60,7 @@ def _node_rows() -> list[dict]:
 
 def _node_state_failures(rows: list[dict], *, stale_after_minutes: int, now: datetime | None = None) -> list[str]:
     failures: list[str] = []
-    current = now or datetime.utcnow()
+    current = now or _utcnow()
     stale_before = current - timedelta(minutes=max(1, int(stale_after_minutes)))
     for row in rows:
         if not bool(row.get("enabled")):
@@ -120,7 +124,7 @@ def _build_report(
 ) -> dict:
     failures = [*node_failures, *drift_failures, *dns_failures]
     return {
-        "generated_at": datetime.utcnow().isoformat(),
+        "generated_at": _utcnow().isoformat(),
         "ok": not failures,
         "failures": failures,
         "node_state": {

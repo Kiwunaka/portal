@@ -13,29 +13,83 @@ import { usePortalSession } from "@/lib/session";
 import { AnimatePresence, motion } from "framer-motion";
 import { useEffect, useMemo, useState } from "react";
 
+import { pokrovBranding } from "@/app/branding";
+
 type TicketCategory = "Подключение" | "Оплата" | "Скорость" | "Любой другой вопрос";
+type ContactCard =
+  | {
+      label: string;
+      href: string;
+      icon: string;
+      title: string;
+      hint: string;
+      action?: never;
+    }
+  | {
+      label: string;
+      href?: never;
+      icon: string;
+      title: string;
+      hint: string;
+      action: () => void;
+    };
 
 const config = getPortalPublicConfig(process.env as Record<string, string | undefined>);
 const CATEGORIES: TicketCategory[] = ["Подключение", "Оплата", "Скорость", "Любой другой вопрос"];
 
 const FAQ = [
   {
-    q: "С чего лучше начать, если я только открыл кабинет?",
-    a: "Активируйте подписку в нашем приветливом Telegram-боте, а здесь скачивайте приложения и управляйте доступом.",
+    q: "Когда лучше сразу писать в Telegram?",
+    a: "Если нужен быстрый ответ вживую или вы уже общаетесь с оператором, Telegram остаётся самым быстрым каналом.",
   },
   {
-    q: "Чем отличается тест от полного доступа?",
-    a: "Тест нужен, чтобы спокойно проверить скорость и запуск на своих устройствах. Полный доступ подходит для постоянного использования без жёстких ограничений по сценарию.",
+    q: "Когда лучше открыть тикет в кабинете?",
+    a: "Если важно приложить скриншот, видео или сохранить всю историю диалога в одном месте, удобнее открыть обращение прямо здесь.",
   },
   {
-    q: "Как быть, если возникли трудности с оплатой?",
-    a: "Не теряйте ни секунды времени! Напишите нам в Telegram, и мы моментально решим вопрос на месте.",
+    q: "Что лучше написать в первом сообщении?",
+    a: "Коротко опишите проблему, устройство, что уже попробовали и на каком шаге всё остановилось. Это помогает команде быстрее сориентироваться.",
   },
   {
-    q: "Когда стоит создавать обращение, а когда просто писать в Telegram?",
-    a: "Если вопрос короткий и нужен быстрый ответ, Telegram подойдёт лучше. Если важно приложить скриншот, видео, лог или сохранить историю диалога, удобнее создать обращение здесь.",
+    q: "Можно ли продолжить старый диалог позже?",
+    a: "Да. Все обращения сохраняются в кабинете, и вы можете вернуться к ним в любой момент.",
   },
-];
+] as const;
+
+const TICKET_CATEGORY_DETAILS: Record<
+  TicketCategory,
+  {
+    intro: string;
+    subject: string;
+    body: string;
+    checklist: string[];
+  }
+> = {
+  Подключение: {
+    intro: "Подходит, если приложение не подключается, не синхронизирует доступ или новое устройство не подтягивает кабинет.",
+    subject: "Не получается подключить устройство",
+    body: "Что происходит:\n\nЧто уже попробовал:\n\nУстройство и версия приложения:",
+    checklist: ["Модель устройства", "Где именно остановилось", "Что уже успели попробовать"],
+  },
+  Оплата: {
+    intro: "Подходит для вопросов по продлению, оплате, непрошедшему платежу или несоответствию статуса доступа.",
+    subject: "Вопрос по оплате или продлению",
+    body: "Что ожидал увидеть:\n\nЧто произошло вместо этого:\n\nКогда была попытка оплаты:",
+    checklist: ["Скрин шага оплаты", "Примерное время платежа", "Какой тариф выбирали"],
+  },
+  Скорость: {
+    intro: "Подходит, если сервис работает медленно, соединение нестабильно или есть сомнения по текущему маршруту.",
+    subject: "Нестабильная скорость или маршрут",
+    body: "Как проявляется проблема:\n\nНа каком устройстве заметно:\n\nЕсть ли разница между сетями Wi‑Fi и мобильной:",
+    checklist: ["Тип сети", "Когда началось", "Скрин или короткое видео, если удобно"],
+  },
+  "Любой другой вопрос": {
+    intro: "Подходит для любых вопросов по доступу, устройствам, восстановлению входа или обратной связи.",
+    subject: "Вопрос по кабинету POKROV",
+    body: "Коротко опишите вопрос:\n\nЧто хотите получить в итоге:\n\nНужны ли вложения или скриншоты:",
+    checklist: ["Краткое описание", "Желаемый результат", "Нужны ли вложения"],
+  },
+};
 
 function statusLabel(status: string): string {
   const normalized = String(status || "").trim().toLowerCase();
@@ -47,8 +101,8 @@ function statusLabel(status: string): string {
 
 function statusClass(status: string): string {
   const normalized = String(status || "").trim().toLowerCase();
-  if (normalized === "open") return "bg-violet-100 text-violet-700 dark:bg-violet-900/35 dark:text-violet-300";
-  if (normalized === "in_progress") return "bg-blue-100 text-blue-700 dark:bg-blue-900/35 dark:text-blue-300";
+  if (normalized === "open") return "bg-amber-100 text-amber-700 dark:bg-amber-900/35 dark:text-amber-200";
+  if (normalized === "in_progress") return "bg-sky-100 text-sky-700 dark:bg-sky-900/35 dark:text-sky-200";
   if (normalized === "closed") return "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/35 dark:text-emerald-300";
   return "bg-slate-200 text-slate-700 dark:bg-slate-700 dark:text-slate-200";
 }
@@ -58,6 +112,22 @@ function formatFileSize(bytes: number): string {
   if (bytes < 1024) return `${bytes} Б`;
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} КБ`;
   return `${(bytes / (1024 * 1024)).toFixed(1)} МБ`;
+}
+
+function formatTicketDate(value?: string | null): string {
+  if (!value) return "только что";
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) return "обновлено недавно";
+  return new Intl.DateTimeFormat("ru-RU", {
+    day: "numeric",
+    month: "short",
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(parsed);
+}
+
+function sanitizeSupportCopy(value: string): string {
+  return value.replace(/POKROV\s+Network/gi, "POKROV").replace(/\bNetwork\b/gi, "").replace(/\s{2,}/g, " ").trim();
 }
 
 export default function SupportPage() {
@@ -75,32 +145,56 @@ export default function SupportPage() {
   const [toast, setToast] = useState("");
 
   const supportLink = user?.support?.link || config.supportTelegramUrl;
-  const isTrialLike =
-    ["FREE", "TRIAL", "BONUS"].includes(String(dash?.sub_type || "").toUpperCase()) ||
-    String(dash?.current_plan_code || "") === "trial";
+  const activeCategory = TICKET_CATEGORY_DETAILS[category];
+  const openCount = tickets.filter((ticket) => String(ticket.status || "").toLowerCase() !== "closed").length;
 
-  const contactCards = useMemo(
+  const contactCards = useMemo<ContactCard[]>(
     () => [
       {
         label: "Telegram",
         href: supportLink,
         icon: "send",
-        hint: "Быстрый ответ",
+        title: "Быстрый живой ответ",
+        hint: "Лучше всего для короткого вопроса или если оператор уже ведёт диалог.",
+      },
+      {
+        label: "Обращение",
+        action: () => setCreateOpen(true),
+        icon: "support",
+        title: "История и вложения",
+        hint: "Подходит, когда нужно сохранить переписку, добавить видео, лог или скриншоты.",
       },
       {
         label: "Email",
         href: `mailto:${config.contactEmail}`,
         icon: "mail",
-        hint: "Если удобнее написать письмом",
-      },
-      {
-        label: "Отзывы",
-        href: config.feedbackbotUrl,
-        icon: "rate_review",
-        hint: "Мы открыты к предложениям",
+        title: "Резервный канал",
+        hint: "Если удобнее написать письмом или нужен формальный ответ на почту.",
       },
     ],
     [supportLink],
+  );
+
+  const supportContext = useMemo(
+    () => [
+      {
+        label: "Профиль",
+        value: user?.username ? `@${user.username}` : `ID ${user?.tg_id || "—"}`,
+      },
+      {
+        label: "План",
+        value: dash?.current_plan_code || dash?.sub_type || "уточняется",
+      },
+      {
+        label: "Устройства",
+        value: `${user?.sync?.device_count ?? user?.devices?.length ?? 0} известно`,
+      },
+      {
+        label: "Сеансы",
+        value: `${dash?.connection_snapshot?.active_connections ?? dash?.active_sessions ?? 0} активно`,
+      },
+    ],
+    [dash, user],
   );
 
   const loadTickets = async (): Promise<void> => {
@@ -123,6 +217,11 @@ export default function SupportPage() {
   const notify = (message: string): void => {
     setToast(message);
     window.setTimeout(() => setToast(""), 2200);
+  };
+
+  const applyCategoryTemplate = (): void => {
+    if (!subject.trim()) setSubject(activeCategory.subject);
+    if (!body.trim()) setBody(activeCategory.body);
   };
 
   const onCreateTicket = async (): Promise<void> => {
@@ -162,39 +261,71 @@ export default function SupportPage() {
   return (
     <main className="space-y-6">
       <section className="glass-card p-7">
-        <h1 className="font-display text-4xl font-bold">
-          {getCopyText("webapp.support.title", "Служба заботы POKROV Network")}
-        </h1>
-        <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">
-          {getCopyText(
-            "webapp.support.subtitle",
-            "Быстрый вопрос, новое обращение или продолжение диалога — всё в одном месте и без лишней бюрократии.",
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div className="max-w-3xl">
+            <p className="font-mono text-xs uppercase tracking-[0.18em] text-slate-500">{pokrovBranding.supportTitle}</p>
+            <h1 className="mt-2 font-display text-4xl font-bold">
+              {sanitizeSupportCopy(getCopyText("webapp.support.title", "Служба заботы POKROV"))}
+            </h1>
+            <p className="mt-2 text-sm leading-7 text-slate-600 dark:text-slate-300">
+              {sanitizeSupportCopy(
+                getCopyText(
+                  "webapp.support.subtitle",
+                  "Быстрый вопрос, новое обращение или продолжение диалога — всё в одном спокойном маршруте, без лишней бюрократии.",
+                ),
+              )}
+            </p>
+          </div>
+          <div className="rounded-2xl border border-emerald-900/10 bg-emerald-900/[0.04] px-4 py-4 text-sm leading-6 text-slate-700 dark:border-emerald-200/10 dark:bg-emerald-200/[0.05] dark:text-slate-200">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-emerald-800/80 dark:text-emerald-200/80">
+              Как это работает
+            </p>
+            <p className="mt-2">{pokrovBranding.appFirstSummary}</p>
+          </div>
+        </div>
+
+        <div className="mt-5 grid gap-3 lg:grid-cols-3">
+          {contactCards.map((card) =>
+            card.href ? (
+              <AppRouteLink
+                key={card.label}
+                href={card.href}
+                target="_blank"
+                hardNavigate={false}
+                className="rounded-[24px] border border-white/70 bg-white/72 p-5 text-left transition hover:-translate-y-0.5 dark:border-white/10 dark:bg-white/[0.04]"
+              >
+                <span className="inline-flex h-11 w-11 items-center justify-center rounded-2xl bg-emerald-900/8 text-emerald-800 dark:bg-emerald-200/10 dark:text-emerald-200">
+                  <span className="material-symbols-rounded text-[22px]">{card.icon}</span>
+                </span>
+                <h2 className="mt-4 text-lg font-semibold text-slate-900 dark:text-slate-50">{card.title}</h2>
+                <p className="mt-2 text-sm leading-6 text-slate-600 dark:text-slate-300">{card.hint}</p>
+              </AppRouteLink>
+            ) : (
+              <button
+                key={card.label}
+                type="button"
+                onClick={card.action}
+                className="rounded-[24px] border border-white/70 bg-white/72 p-5 text-left transition hover:-translate-y-0.5 dark:border-white/10 dark:bg-white/[0.04]"
+              >
+                <span className="inline-flex h-11 w-11 items-center justify-center rounded-2xl bg-emerald-900/8 text-emerald-800 dark:bg-emerald-200/10 dark:text-emerald-200">
+                  <span className="material-symbols-rounded text-[22px]">{card.icon}</span>
+                </span>
+                <h2 className="mt-4 text-lg font-semibold text-slate-900 dark:text-slate-50">{card.title}</h2>
+                <p className="mt-2 text-sm leading-6 text-slate-600 dark:text-slate-300">{card.hint}</p>
+              </button>
+            ),
           )}
-        </p>
+        </div>
       </section>
 
-      {isTrialLike ? (
-        <section className="glass-card p-6">
-          <p className="text-xs font-semibold uppercase tracking-[0.14em] text-emerald-500">помощь в тесте</p>
-          <h2 className="mt-2 font-display text-2xl font-semibold">Если на старте что-то пошло не так, поможем быстро и спокойно.</h2>
-          <p className="mt-2 max-w-3xl text-sm text-slate-600 dark:text-slate-300">
-            Мы ценим ваше время. Напишите нам, и наш оператор заботливо поможет с подключением или любым другим вопросом.
-          </p>
-        </section>
-      ) : null}
-
-      <section className="grid gap-5 xl:grid-cols-[1.2fr,0.9fr]">
-        <article className="space-y-3">
-          <div className="glass-card p-5">
-            <p className="font-mono text-xs uppercase tracking-[0.15em] text-slate-500">документы</p>
-            <h2 className="mt-2 font-display text-2xl font-semibold">Оферта и политика</h2>
-            <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">
-              Все важные юридические документы вынесены отдельно, чтобы их можно было открыть в один клик.
-            </p>
-            <div className="mt-4 flex flex-wrap gap-3">
-              <AppRouteLink href="/support/legal" className="outline-btn rounded-xl px-4 py-2 text-sm font-semibold">
-                Открыть документы
-              </AppRouteLink>
+      <section className="grid gap-5 xl:grid-cols-[1.15fr,0.85fr]">
+        <article className="space-y-4">
+          <div className="glass-card p-6">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-[0.14em] text-emerald-500">обращения</p>
+                <h2 className="mt-2 font-display text-3xl font-semibold">Что лучше выбрать прямо сейчас</h2>
+              </div>
               <button
                 type="button"
                 onClick={() => setCreateOpen(true)}
@@ -203,91 +334,131 @@ export default function SupportPage() {
                 Создать обращение
               </button>
             </div>
+
+            <div className="mt-4 grid gap-3 md:grid-cols-3">
+              <div className="rounded-2xl bg-white/70 p-4 dark:bg-white/10">
+                <p className="text-xs uppercase tracking-[0.16em] text-slate-500">Открыто сейчас</p>
+                <p className="mt-2 text-2xl font-semibold">{openCount}</p>
+                <p className="mt-2 text-[11px] text-slate-500">Столько обращений ждут ответа или ещё в работе</p>
+              </div>
+              <div className="rounded-2xl bg-white/70 p-4 dark:bg-white/10">
+                <p className="text-xs uppercase tracking-[0.16em] text-slate-500">Всего обращений</p>
+                <p className="mt-2 text-2xl font-semibold">{tickets.length}</p>
+                <p className="mt-2 text-[11px] text-slate-500">История ваших диалогов сохраняется в кабинете</p>
+              </div>
+              <div className="rounded-2xl bg-white/70 p-4 dark:bg-white/10">
+                <p className="text-xs uppercase tracking-[0.16em] text-slate-500">Юридические документы</p>
+                <AppRouteLink href="/support/legal" className="mt-2 inline-flex text-sm font-semibold text-emerald-700 dark:text-emerald-300">
+                  Открыть оферту и политику
+                </AppRouteLink>
+                <p className="mt-2 text-[11px] text-slate-500">Если нужен официальный текст, он вынесен отдельно</p>
+              </div>
+            </div>
           </div>
 
-          {FAQ.map((item, idx) => {
-            const opened = openedFaq === idx;
-            return (
-              <button
-                key={item.q}
-                type="button"
-                onClick={() => setOpenedFaq(opened ? null : idx)}
-                className="glass-card w-full px-5 py-4 text-left"
-              >
-                <div className="flex items-center justify-between gap-3">
-                  <span className="font-semibold">{item.q}</span>
-                  <span className="material-symbols-rounded text-violet-500">
-                    {opened ? "expand_less" : "expand_more"}
-                  </span>
+          <div className="glass-card p-6">
+            <p className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">что подготовить</p>
+            <h2 className="mt-2 font-display text-3xl font-semibold">Чем подробнее первое сообщение, тем быстрее помощь</h2>
+            <div className="mt-4 grid gap-3 md:grid-cols-2">
+              {supportContext.map((item) => (
+                <div key={item.label} className="rounded-2xl border border-white/40 bg-white/55 p-4 dark:border-white/10 dark:bg-white/5">
+                  <p className="text-[11px] uppercase tracking-[0.16em] text-slate-500 dark:text-slate-400">{item.label}</p>
+                  <p className="mt-2 text-sm font-semibold text-slate-900 dark:text-slate-50">{item.value}</p>
                 </div>
-                {opened ? <p className="pt-3 text-sm leading-6 text-slate-600 dark:text-slate-300">{item.a}</p> : null}
-              </button>
-            );
-          })}
-        </article>
-
-        <aside className="space-y-4">
-          <div className="glass-card p-6 text-center">
-            <span className="material-symbols-rounded rounded-full bg-violet-100 p-3 text-3xl text-violet-600 dark:bg-violet-900/35 dark:text-violet-200">
-              headset_mic
-            </span>
-            <h2 className="mt-3 font-display text-2xl font-semibold">Нужна помощь прямо сейчас?</h2>
-            <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">
-              Если оплата тормозит, не импортируется ключ или хотите просто быстро уточнить шаг, удобнее всего написать в живой канал поддержки.
-            </p>
-            <div className="mt-5 grid gap-3 sm:grid-cols-2">
-              {contactCards.map((card) => (
-                <AppRouteLink
-                  key={card.label}
-                  href={card.href}
-                  target="_blank"
-                  hardNavigate={false}
-                  className="outline-btn rounded-xl px-3 py-3 text-center text-sm font-semibold"
-                >
-                  <div className="flex items-center justify-center gap-2">
-                    <span className="material-symbols-rounded text-base">{card.icon}</span>
-                    {card.label}
-                  </div>
-                  <div className="mt-1 text-[11px] font-normal uppercase tracking-[0.12em] text-slate-500">
-                    {card.hint}
-                  </div>
-                </AppRouteLink>
               ))}
+            </div>
+            <div className="mt-4 rounded-2xl border border-white/40 bg-white/55 p-4 text-sm leading-6 text-slate-700 dark:border-white/10 dark:bg-white/5 dark:text-slate-200">
+              Лучше всего помогают: модель устройства, короткое описание шага, где всё остановилось, и скриншот или видео, если проблема визуальная.
             </div>
           </div>
 
           <div className="space-y-3">
-            <h3 className="px-1 font-display text-xl font-semibold">Мои обращения</h3>
-            {loadingTickets ? (
-              <div className="glass-card p-4 text-sm text-slate-500">Загружаем обращения...</div>
-            ) : tickets.length === 0 ? (
-              <div className="glass-card p-4 text-sm text-slate-500">
-                {getCopyText(
-                  "webapp.support.empty_tickets",
-                  "Вы пока не задавали вопросов, значит все работает отлично! Если что, мы всегда рядом.",
-                )}
-              </div>
-            ) : (
-              tickets.map((ticket) => (
-                <AppRouteLink
-                  key={ticket.id}
-                  href={`/support/thread/?id=${ticket.id}`}
-                  className="glass-card block px-4 py-3 transition hover:scale-[1.01]"
+            <h3 className="px-1 font-display text-xl font-semibold">Частые вопросы</h3>
+            {FAQ.map((item, idx) => {
+              const opened = openedFaq === idx;
+              return (
+                <button
+                  key={item.q}
+                  type="button"
+                  onClick={() => setOpenedFaq(opened ? null : idx)}
+                  className="glass-card w-full px-5 py-4 text-left"
                 >
-                  <div className="mb-2 flex items-center justify-between text-xs">
-                    <span className="font-mono">#{ticket.id}</span>
-                    <span className={`rounded-full px-2 py-1 ${statusClass(ticket.status)}`}>
-                      {statusLabel(ticket.status)}
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="font-semibold">{item.q}</span>
+                    <span className="material-symbols-rounded text-emerald-600 dark:text-emerald-300">
+                      {opened ? "expand_less" : "expand_more"}
                     </span>
                   </div>
-                  <p className="font-medium">{ticket.subject || "Новое обращение"}</p>
-                  <p className="mt-1 text-xs text-slate-500">
-                    {ticket.last_message_preview || "Сообщений пока нет"}
-                  </p>
-                </AppRouteLink>
-              ))
-            )}
-            {error ? <p className="text-xs text-rose-500">{error}</p> : null}
+                  {opened ? <p className="pt-3 text-sm leading-6 text-slate-600 dark:text-slate-300">{item.a}</p> : null}
+                </button>
+              );
+            })}
+          </div>
+        </article>
+
+        <aside className="space-y-4">
+          <div className="glass-card p-6">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-[0.14em] text-emerald-500">мои обращения</p>
+                <h2 className="mt-2 font-display text-2xl font-semibold">История поддержки</h2>
+              </div>
+              <button
+                type="button"
+                onClick={() => setCreateOpen(true)}
+                className="outline-btn rounded-xl px-3 py-2 text-xs font-semibold uppercase tracking-[0.12em]"
+              >
+                Новое
+              </button>
+            </div>
+
+            <div className="mt-4 space-y-3">
+              {loadingTickets ? (
+                <div className="rounded-2xl border border-white/40 bg-white/55 p-4 text-sm text-slate-500 dark:border-white/10 dark:bg-white/5">
+                  Загружаем обращения…
+                </div>
+              ) : tickets.length === 0 ? (
+                <div className="rounded-2xl border border-white/40 bg-white/55 p-4 text-sm text-slate-500 dark:border-white/10 dark:bg-white/5">
+                  {getCopyText(
+                    "webapp.support.empty_tickets",
+                    "Пока здесь пусто. Если появится вопрос по доступу, устройствам или оплате, можно открыть новое обращение в пару кликов.",
+                  )}
+                </div>
+              ) : (
+                tickets.map((ticket) => (
+                  <AppRouteLink
+                    key={ticket.id}
+                    href={`/support/thread/?id=${ticket.id}`}
+                    className="block rounded-2xl border border-white/40 bg-white/55 px-4 py-4 transition hover:-translate-y-0.5 dark:border-white/10 dark:bg-white/5"
+                  >
+                    <div className="mb-2 flex items-center justify-between gap-3 text-xs">
+                      <span className="font-mono">#{ticket.id}</span>
+                      <span className={`rounded-full px-2 py-1 ${statusClass(ticket.status)}`}>{statusLabel(ticket.status)}</span>
+                    </div>
+                    <p className="font-medium text-slate-900 dark:text-slate-50">{ticket.subject || "Новое обращение"}</p>
+                    <p className="mt-1 text-xs leading-5 text-slate-500">{ticket.last_message_preview || "Сообщений пока нет"}</p>
+                    <p className="mt-2 text-[11px] uppercase tracking-[0.12em] text-slate-400">{formatTicketDate(ticket.updated_at || ticket.created_at)}</p>
+                  </AppRouteLink>
+                ))
+              )}
+              {error ? <p className="text-xs text-rose-500">{error}</p> : null}
+            </div>
+          </div>
+
+          <div className="glass-card p-6">
+            <p className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">обратная связь</p>
+            <h2 className="mt-2 font-display text-2xl font-semibold">Хотите оставить отзыв или идею?</h2>
+            <p className="mt-2 text-sm leading-6 text-slate-600 dark:text-slate-300">
+              Для отзывов и предложений есть отдельный канал. Он не заменяет поддержку, но помогает нам улучшать POKROV и выбирать, что показывать на публичных поверхностях.
+            </p>
+            <AppRouteLink
+              href={config.feedbackbotUrl}
+              target="_blank"
+              hardNavigate={false}
+              className="outline-btn mt-4 inline-flex rounded-xl px-4 py-2 text-sm font-semibold"
+            >
+              Открыть отзывы
+            </AppRouteLink>
           </div>
         </aside>
       </section>
@@ -305,80 +476,111 @@ export default function SupportPage() {
               initial={{ opacity: 0, y: 24, scale: 0.96 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: 24, scale: 0.96 }}
-              className="glass-card w-full max-w-xl p-6"
+              className="glass-card w-full max-w-2xl p-6"
               onClick={(event) => event.stopPropagation()}
             >
-              <div className="mb-4 flex items-center justify-between">
-                <h3 className="font-display text-2xl font-semibold">Создать обращение</h3>
+              <div className="mb-4 flex items-start justify-between gap-4">
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-[0.14em] text-emerald-500">новое обращение</p>
+                  <h3 className="mt-2 font-display text-2xl font-semibold">Создать обращение</h3>
+                </div>
                 <button type="button" onClick={() => setCreateOpen(false)} className="rounded-lg bg-white/70 p-2 dark:bg-white/10">
                   <span className="material-symbols-rounded">close</span>
                 </button>
               </div>
 
-              <div className="space-y-4">
-                <select
-                  value={category}
-                  onChange={(event) => setCategory(event.target.value as TicketCategory)}
-                  className="w-full rounded-xl border border-violet-200/50 bg-white/80 px-4 py-3 text-sm outline-none dark:border-violet-500/30 dark:bg-slate-900/70"
-                >
-                  {CATEGORIES.map((item) => (
-                    <option key={item} value={item}>
-                      {item}
-                    </option>
-                  ))}
-                </select>
-                <input
-                  value={subject}
-                  onChange={(event) => setSubject(event.target.value)}
-                  className="w-full rounded-xl border border-violet-200/50 bg-white/80 px-4 py-3 text-sm outline-none dark:border-violet-500/30 dark:bg-slate-900/70"
-                  placeholder="Расскажите, что произошло"
-                />
-                <textarea
-                  value={body}
-                  onChange={(event) => setBody(event.target.value)}
-                  className="w-full rounded-xl border border-violet-200/50 bg-white/80 px-4 py-3 text-sm outline-none dark:border-violet-500/30 dark:bg-slate-900/70"
-                  rows={5}
-                  placeholder="Опишите вашу ситуацию во всех подробностях"
-                />
-                <label className="block rounded-2xl border border-dashed border-violet-300/60 bg-white/70 px-4 py-4 text-sm dark:border-violet-500/35 dark:bg-slate-900/55">
-                  <span className="mb-2 block font-medium">Скриншот, видео или лог</span>
-                  <span className="block text-xs text-slate-500">
-                    Поддерживаются изображения, видео, PDF и текстовые файлы до 20 МБ.
-                  </span>
-                  <input
-                    type="file"
-                    accept="image/*,video/*,.pdf,.txt,.log,application/pdf,text/plain"
-                    className="mt-3 block w-full cursor-pointer text-sm text-slate-600 file:mr-3 file:rounded-xl file:border-0 file:bg-violet-500/15 file:px-4 file:py-2 file:font-medium file:text-violet-700 dark:text-slate-300 dark:file:bg-violet-500/20 dark:file:text-violet-200"
-                    onChange={(event) => setAttachmentFile(event.target.files?.[0] ?? null)}
-                  />
-                  {attachmentFile ? (
-                    <div className="mt-3 flex items-center justify-between gap-3 rounded-xl bg-white/75 px-3 py-2 text-xs dark:bg-white/10">
-                      <span className="truncate">{attachmentFile.name}</span>
-                      <button type="button" onClick={() => setAttachmentFile(null)} className="text-rose-500">
-                        Убрать
+              <div className="grid gap-5 lg:grid-cols-[0.95fr,1.05fr]">
+                <div className="space-y-4">
+                  <div className="rounded-2xl border border-emerald-900/10 bg-emerald-900/[0.04] p-4 dark:border-emerald-200/10 dark:bg-emerald-200/[0.05]">
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-emerald-800/80 dark:text-emerald-200/80">Категория</p>
+                    <select
+                      value={category}
+                      onChange={(event) => setCategory(event.target.value as TicketCategory)}
+                      className="mt-3 w-full rounded-xl border border-emerald-900/10 bg-white/90 px-4 py-3 text-sm outline-none dark:border-emerald-200/10 dark:bg-[#0f1714]"
+                    >
+                      {CATEGORIES.map((item) => (
+                        <option key={item} value={item}>
+                          {item}
+                        </option>
+                      ))}
+                    </select>
+                    <p className="mt-3 text-sm leading-6 text-slate-700 dark:text-slate-200">{activeCategory.intro}</p>
+                  </div>
+
+                  <div className="rounded-2xl border border-white/40 bg-white/55 p-4 dark:border-white/10 dark:bg-white/5">
+                    <div className="flex items-center justify-between gap-3">
+                      <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500 dark:text-slate-400">Что лучше добавить</p>
+                      <button
+                        type="button"
+                        onClick={applyCategoryTemplate}
+                        className="text-xs font-semibold uppercase tracking-[0.12em] text-emerald-700 dark:text-emerald-300"
+                      >
+                        Подставить шаблон
                       </button>
                     </div>
-                  ) : null}
-                  {attachmentFile ? (
-                    <p className="mt-2 text-[11px] uppercase tracking-[0.12em] text-slate-500">
-                      {formatFileSize(attachmentFile.size)}
-                    </p>
-                  ) : null}
-                </label>
-                <div className="flex items-center justify-between gap-3">
-                  <span className="text-xs text-slate-500">
-                    После отправки обращение появится справа, а вложение сохранится в истории переписки.
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => void onCreateTicket()}
-                    disabled={busy || !body.trim()}
-                    className="btn-primary rounded-xl px-5 py-2.5 text-sm font-semibold uppercase tracking-[0.12em] disabled:opacity-60"
-                  >
-                    {busy ? "Отправляем..." : "Отправить"}
-                  </button>
+                    <ul className="mt-3 space-y-2 text-sm leading-6 text-slate-700 dark:text-slate-200">
+                      {activeCategory.checklist.map((item) => (
+                        <li key={item} className="flex items-start gap-2">
+                          <span className="material-symbols-rounded mt-0.5 text-[18px] text-emerald-600 dark:text-emerald-300">check_circle</span>
+                          <span>{item}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
                 </div>
-                {error ? <p className="text-xs text-rose-500">{error}</p> : null}
+
+                <div className="space-y-4">
+                  <input
+                    value={subject}
+                    onChange={(event) => setSubject(event.target.value)}
+                    className="w-full rounded-xl border border-white/50 bg-white/80 px-4 py-3 text-sm outline-none dark:border-white/10 dark:bg-slate-900/70"
+                    placeholder="Расскажите, что произошло"
+                  />
+                  <textarea
+                    value={body}
+                    onChange={(event) => setBody(event.target.value)}
+                    className="w-full rounded-xl border border-white/50 bg-white/80 px-4 py-3 text-sm outline-none dark:border-white/10 dark:bg-slate-900/70"
+                    rows={7}
+                    placeholder="Опишите вашу ситуацию во всех подробностях"
+                  />
+                  <label className="block rounded-2xl border border-dashed border-white/50 bg-white/70 px-4 py-4 text-sm dark:border-white/10 dark:bg-slate-900/55">
+                    <span className="mb-2 block font-medium">Скриншот, видео или лог</span>
+                    <span className="block text-xs text-slate-500">Поддерживаются изображения, видео, PDF и текстовые файлы до 20 МБ.</span>
+                    <input
+                      type="file"
+                      accept="image/*,video/*,.pdf,.txt,.log,application/pdf,text/plain"
+                      className="mt-3 block w-full cursor-pointer text-sm text-slate-600 file:mr-3 file:rounded-xl file:border-0 file:bg-emerald-500/15 file:px-4 file:py-2 file:font-medium file:text-emerald-700 dark:text-slate-300 dark:file:bg-emerald-500/20 dark:file:text-emerald-200"
+                      onChange={(event) => setAttachmentFile(event.target.files?.[0] ?? null)}
+                    />
+                    {attachmentFile ? (
+                      <div className="mt-3 flex items-center justify-between gap-3 rounded-xl bg-white/75 px-3 py-2 text-xs dark:bg-white/10">
+                        <span className="truncate">{attachmentFile.name}</span>
+                        <button type="button" onClick={() => setAttachmentFile(null)} className="text-rose-500">
+                          Убрать
+                        </button>
+                      </div>
+                    ) : null}
+                    {attachmentFile ? (
+                      <p className="mt-2 text-[11px] uppercase tracking-[0.12em] text-slate-500">
+                        {formatFileSize(attachmentFile.size)}
+                      </p>
+                    ) : null}
+                  </label>
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="text-xs text-slate-500">
+                      После отправки обращение появится в истории справа, а вложение сохранится в переписке.
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => void onCreateTicket()}
+                      disabled={busy || !body.trim()}
+                      className="btn-primary rounded-xl px-5 py-2.5 text-sm font-semibold uppercase tracking-[0.12em] disabled:opacity-60"
+                    >
+                      {busy ? "Отправляем…" : "Отправить"}
+                    </button>
+                  </div>
+                  {error ? <p className="text-xs text-rose-500">{error}</p> : null}
+                </div>
               </div>
             </motion.div>
           </motion.div>

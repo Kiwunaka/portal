@@ -34,7 +34,9 @@ class NodeRuntime:
     panel_latency_ms: int | None
     panel_error_rate: float
     active_clients: int
+    cpu_percent: float
     last_ok_at: datetime | None
+    last_probe_at: datetime | None
     transport_profiles_json: str | None = None
 
 
@@ -83,7 +85,9 @@ def legacy_node() -> NodeRuntime:
         panel_latency_ms=None,
         panel_error_rate=0.0,
         active_clients=0,
+        cpu_percent=0.0,
         last_ok_at=None,
+        last_probe_at=None,
         transport_profiles_json=None,
     )
 
@@ -122,7 +126,9 @@ def enabled_nodes(session) -> list[NodeRuntime]:
                 panel_latency_ms=getattr(n, "panel_latency_ms", None),
                 panel_error_rate=float(getattr(n, "panel_error_rate", 0.0) or 0.0),
                 active_clients=int(getattr(n, "active_clients", 0) or 0),
+                cpu_percent=float(getattr(n, "cpu_percent", 0.0) or 0.0),
                 last_ok_at=getattr(n, "last_ok_at", None),
+                last_probe_at=getattr(n, "last_probe_at", None),
                 transport_profiles_json=getattr(n, "transport_profiles_json", None),
             )
         )

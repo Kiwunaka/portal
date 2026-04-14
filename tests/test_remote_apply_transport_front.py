@@ -20,6 +20,17 @@ def _load_module():
 
 
 class RemoteApplyTransportFrontTests(unittest.TestCase):
+    def test_default_transport_front_routes_include_reserve_xhttp_cdn_route(self) -> None:
+        module = _load_module()
+
+        routes = module.default_transport_front_routes()
+
+        by_name = {route["name"]: route for route in routes}
+        self.assertIn("reserve_xhttp_cdn", by_name)
+        self.assertEqual(by_name["reserve_xhttp_cdn"]["server_names"], ["cdn.connect.pokrov.space"])
+        self.assertEqual(by_name["reserve_xhttp_cdn"]["backend_host"], "127.0.0.1")
+        self.assertEqual(by_name["reserve_xhttp_cdn"]["backend_port"], 12443)
+
     def test_normalize_transport_front_route_accepts_loopback_targets_only(self) -> None:
         module = _load_module()
 
@@ -73,6 +84,14 @@ class RemoteApplyTransportFrontTests(unittest.TestCase):
                     "backend_port": 11443,
                 }
             ),
+            module.normalize_transport_front_route(
+                {
+                    "name": "reserve_xhttp_cdn",
+                    "server_names": ["cdn.connect.pokrov.space"],
+                    "backend_host": "127.0.0.1",
+                    "backend_port": 12443,
+                }
+            ),
         ]
 
         rendered = module.render_transport_front_config(
@@ -90,9 +109,14 @@ class RemoteApplyTransportFrontTests(unittest.TestCase):
             "use_backend be_grpc_443_primary if { req.ssl_sni -i grpc.connect.pokrov.space }",
             rendered,
         )
+        self.assertIn(
+            "use_backend be_reserve_xhttp_cdn if { req.ssl_sni -i cdn.connect.pokrov.space }",
+            rendered,
+        )
         self.assertIn("default_backend be_legacy_reality_fallback", rendered)
         self.assertIn("server legacy_reality_fallback 127.0.0.1:10443 check", rendered)
         self.assertIn("server grpc_443_primary 127.0.0.1:11443 check", rendered)
+        self.assertIn("server reserve_xhttp_cdn 127.0.0.1:12443 check", rendered)
 
     def test_build_apply_commands_reloads_systemd_and_checks_listener(self) -> None:
         module = _load_module()

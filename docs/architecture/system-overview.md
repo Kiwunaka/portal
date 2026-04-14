@@ -1,6 +1,6 @@
 # POKROV System Overview
 
-Last updated: 2026-04-13
+Last updated: 2026-04-14
 
 ## Document Status
 
@@ -24,6 +24,8 @@ This file is living source of truth for the platform architecture map.
   FastAPI backend for health checks, app-first session bootstrap, payments, bonuses, tickets, public data, public reviews, and admin APIs.
 - `portal_bot/app_first_service.py`
   Bounded app-first/session helper used by the API for trial bootstrap, session payload shaping, and Telegram link start context.
+- `portal_bot/web_auth_service.py`
+  Bounded browser-auth helper used for Telegram web login, additive email verification/recovery, session issuance, and checkout handoff tokens.
 - `portal_bot/channel_bonus_service.py`
   Bounded Telegram bonus helper used by the API for read-only subscriber checks and explicit claim flow.
 - `portal_bot/bot.py`
@@ -44,17 +46,21 @@ This file is living source of truth for the platform architecture map.
 - node inventory and routing logic
 - 3x-ui panels as node-local execution layer
 - observer-lite uses `xray access.log -> node collector -> brain ingest -> Postgres state -> web admin`
-- transport rollout uses a per-node catalog so a node can carry `legacy_reality_fallback`, `grpc_443_primary`, and operator-only `operator_lab` entries side by side
+- transport rollout uses a per-node catalog so a node can carry `legacy_reality_fallback`, `grpc_443_primary`, hidden reserve `reserve_xhttp_cdn`, and operator-only `operator_lab` entries side by side
 - `nodes.transport_profiles_json` is the canonical per-node transport catalog; legacy inbound fields such as `inbound_id`, `vless_port`, and `reality_*` remain compatibility input and are synthesized into `legacy_reality_fallback` when the catalog is empty
 - `AppSetting.network_rollout_config` is the operator-controlled rollout policy for transport, DNS, routing, and operator lab allowlists, and it is exposed through admin GET/PUT endpoints
-- `network_rollout_config` is a JSON policy blob with `version`, `defaults`, `carrier_overrides`, `cohort_overrides`, `operator_lab`, `package_catalog_feed`, `routing_rules_feed`, and `support_recovery_order`
+- `network_rollout_config` is a JSON policy blob with `version`, `defaults`, `carrier_overrides`, `cohort_overrides`, `reserve_xhttp_cdn`, `operator_lab`, `package_catalog_feed`, `routing_rules_feed`, and `support_recovery_order`
 - `defaults` pin `routing_mode_default=all_except_ru`, `transport_profile=legacy_reality_fallback`, and `dns_policy=ru_direct_split` until canary cohorts are explicitly promoted
+- dormant reserve transport metadata also lives in rollout config and node catalogs under `reserve_xhttp_cdn`; it stays disabled by default and becomes active only through explicit rollout allowlists
 - rollout overrides may only change `transport_profile`, `dns_policy`, `routing_mode_default`, and `ip_version_preference`
 - `operator_lab` stays allowlist-only and carries `enabled`, `allowlist_install_ids`, `allowlist_tg_ids`, `allowlist_node_codes`, and `expires_at`
 - app-managed session/profile payloads resolve their transport profile from rollout policy, while manual/export compatibility links stay on `legacy_reality_fallback` until a separate share-link parity wave
-- `GET /api/client/profile/managed` is the primary app-managed provisioning endpoint and returns `version`, `profile_revision`, `transport_profile`, `transport_kind`, `engine_hint`, `config_format`, `config_payload`, `fallback_order`, and `support_context`
+- `GET /api/client/profile/managed` is the primary app-managed provisioning endpoint and returns `version`, `profile_revision`, `transport_profile`, `transport_kind`, `engine_hint`, `config_format`, `config_payload`, `fallback_order`, `support_context`, and `smart_connect`
+- `smart_connect` contains a rollout-compatible shortlist, rejection counters, scoring hints, and stickiness metadata so the client can combine real RTT with backend health/load signals without guessing
+- `POST /api/client/nodes/latency-samples` stores install-scoped RTT samples plus carrier/platform context for admin visibility and later shortlist stickiness
 - additive `client_policy` fields `transport_kind`, `engine_hint`, and `profile_revision` let the client apply the right engine/runtime without guessing
 - one logical client is synchronized across all enabled inbounds in a node's transport catalog, while public UI still exposes only the rollout-selected app-managed path
+- `reserve_xhttp_cdn` is prepared as a hidden reserve profile; when explicitly selected it resolves to `transport_kind=xhttp` with `engine_hint=xray`, while the normal consumer baseline stays `sing-box`
 
 Node lifecycle rule:
 
@@ -77,6 +83,7 @@ Node lifecycle rule:
 Current public-surface split:
 
 - `marketing/` owns the homepage, public `/checkout/` explainer, offer/privacy pages, indexable SEO landings, and metadata assets such as `robots`, `sitemap`, `manifest`, Open Graph, Twitter, and JSON-LD
+- current canonical indexable entry routes are `/mobile/`, `/tiktok/`, `/youtube/`, `/devices/`, and `/telegram/`, with permanent redirects from the earlier legacy SEO slugs
 - `webapp/` owns browser entry, dashboard, pricing, subscription renewal, authenticated checkout continuation, downloads, devices, support, and the primary admin operator surface
 - `connect.pokrov.space` stays outside the marketing/cabinet storytelling layer and remains the config-delivery host for the one public connection link plus QR; it serves the rollout-selected app-managed profile, with `legacy_reality_fallback` as the baseline until canary cohorts flip to `grpc_443_primary`
 
@@ -89,6 +96,7 @@ Admin ownership rule:
 
 - `webapp` is the primary admin surface for user, node, ticket, and metrics work
 - Telegram admin in `portal_bot/bot.py` is fallback/emergency tooling and must follow the same user-status semantics as web admin
+- `/api/admin/summary` is the operator truth snapshot for entitlement counts, install-backed activity, observer-backed activity, and data-quality status badges
 
 Public connection delivery rule:
 
@@ -135,8 +143,9 @@ Rollout rule:
 
 - `legacy_reality_fallback` stays the baseline transport profile until a canary cohort is explicitly enabled
 - `grpc_443_primary` is the new app-first primary profile for allowlisted cohorts and premium-node canaries
+- `reserve_xhttp_cdn` is the hidden reserve profile prepared on eligible nodes for emergency allowlisted fallback; it is not part of the default public rollout in this wave
 - `operator_lab` stays hidden behind allowlists and must not appear in public UI or mass session payloads
-- `xHTTP`, `Naive`, `Trojan`, and `Hysteria2` are not part of the mass public payload for this wave
+- `Naive`, `Trojan`, and `Hysteria2` are not part of the mass public payload for this wave
 
 Operational shaping rule:
 
@@ -161,6 +170,27 @@ App-first contract note:
 - the same `client_policy` shape should be available from `start-trial`, `dashboard`, and `user` payloads
 - `client_policy` is populated from `AppSetting.network_rollout_config`, not from a hard-coded transport default
 - public recovery order stays `POKROV app -> web cabinet -> Telegram fallback`
+- managed provisioning also returns `smart_connect`, which gives the client a shortlist revision, scoring hints, and fallback metadata before it measures live RTT from the device
+- the follow-up latency upload path is `POST /api/client/nodes/latency-samples`; those samples are diagnostic/operator truth and do not change the free-vs-premium pool rule
+
+Route-mode continuation note:
+
+- after provisioning succeeds, the client must still ask the user whether this device should optimize `all traffic` or `only selected apps`
+- the saved per-device route policy should expose `route_mode`, selected app/package identifiers when applicable, and whether the chosen mode requires elevated rights on the current platform
+- `Only selected apps` is a consumer split-tunneling choice, not a reason to surface raw proxy or service toggles in first-layer UI
+
+### Web Identity And Session Continuation Flow
+
+1. user opens marketing or cabinet in the browser
+2. browser continues from an app handoff, Telegram OIDC, or additive email auth
+3. backend issues a browser session with `auth_origin` and linked-identity summary
+4. cabinet, support, renewal, and checkout continue from that same session
+
+Architecture rule:
+
+- additive email auth extends the browser path without replacing app-first bootstrap or Telegram linking
+- public email auth depends on external transactional mail delivery and verified sender identity
+- cabinet and admin shells must keep explicit navigation back to the marketing site and standard cabinet entry
 
 ### Telegram Linking And Reward Flow
 
@@ -190,7 +220,7 @@ Architecture rule:
 
 1. user lands on `https://pokrov.space/` or an indexable marketing landing page
 2. marketing CTA routes into app download, `pokrov.space/checkout/`, or cabinet entry depending on user intent
-3. a known browser session or signed checkout ticket continues in `https://app.pokrov.space/`
+3. a known browser session, verified email auth, app/bot handoff, or signed checkout ticket continues in `https://app.pokrov.space/`
 4. webapp renders the relevant cabinet flow such as dashboard, pricing, renewal, downloads, devices, or support
 5. payment-provider handoff happens only from a real session or ticketed checkout flow
 6. successful payment returns the user to the active cabinet journey
@@ -347,6 +377,7 @@ The app-first model is not only about authentication. It also provides a friendl
 Operator diagnosis should be able to correlate:
 
 - app account
+- linked email identity when present
 - linked Telegram identity when present
 - device record
 - recent `last_ip`
@@ -368,6 +399,7 @@ Major currently live public and app-first routes in `portal_bot/api.py` include:
 - `GET /api/health`
 - `GET /api/public/plans`
 - `POST /api/auth/telegram/web-login`
+- additive email-auth rollout endpoints under `/api/auth/email/*` for register, verify, login, recovery, and reset
 - `POST /api/client/session/start-trial`
 - `POST /api/client/telegram/link`
 - `GET /api/payments/providers`
@@ -387,6 +419,7 @@ Current release-gate smoke focus should cover:
 
 - `GET /api/health`
 - `POST /api/client/session/start-trial`
+- email-auth register / verify / login
 - Telegram OIDC start and finish
 - bot token handoff into webapp
 - `GET /api/client/apps`

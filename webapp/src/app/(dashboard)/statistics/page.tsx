@@ -21,8 +21,8 @@ import { usePortalSession } from "@/lib/session";
 import { useEffect, useMemo, useState } from "react";
 
 const config = getPortalPublicConfig(process.env as Record<string, string | undefined>);
-const ACTIVE_USERS_LABEL = "Пользователей по IP сейчас";
-const ACTIVE_USERS_HINT = "Оценка по живым IP, но не выше уникальных IP за 24 часа. Не точное число людей.";
+const ACTIVE_USERS_LABEL = "Людей онлайн сейчас";
+const ACTIVE_USERS_HINT = "Оценка по живой активности на точках POKROV. Это ориентир, а не точное число людей.";
 
 function formatDate(value?: string | null): string {
   if (!value) return "—";
@@ -36,36 +36,72 @@ function formatCount(value: number): string {
   return new Intl.NumberFormat("ru-RU").format(Math.max(0, Math.round(value)));
 }
 
+function StatisticsPageSkeleton() {
+  return (
+    <main className="space-y-6" aria-busy="true" aria-live="polite">
+      <section className="glass-card p-7">
+        <div className="h-3 w-24 animate-pulse rounded-full bg-slate-200 dark:bg-white/10" />
+        <div className="mt-4 h-10 w-72 animate-pulse rounded-full bg-slate-200 dark:bg-white/10" />
+        <div className="mt-4 space-y-3">
+          <div className="h-4 w-full animate-pulse rounded-full bg-slate-200 dark:bg-white/10" />
+          <div className="h-4 w-5/6 animate-pulse rounded-full bg-slate-200 dark:bg-white/10" />
+        </div>
+      </section>
+
+      <section className="grid gap-5 md:grid-cols-2 xl:grid-cols-5">
+        {Array.from({ length: 5 }).map((_, index) => (
+          <article key={index} className="glass-card p-5">
+            <div className="h-3 w-24 animate-pulse rounded-full bg-slate-200 dark:bg-white/10" />
+            <div className="mt-4 h-10 w-28 animate-pulse rounded-full bg-slate-200 dark:bg-white/10" />
+            <div className="mt-4 h-4 w-full animate-pulse rounded-full bg-slate-200 dark:bg-white/10" />
+          </article>
+        ))}
+      </section>
+
+      <section className="grid gap-5 lg:grid-cols-[1.1fr,0.9fr]">
+        <article className="glass-card h-64 animate-pulse p-6" />
+        <article className="glass-card h-64 animate-pulse p-6" />
+      </section>
+    </main>
+  );
+}
+
 export default function StatisticsPage() {
-  const { user, dash } = usePortalSession();
+  const { user, dash, loading } = usePortalSession();
   const [nodeHealth, setNodeHealth] = useState<{ total: number; healthy: number; updatedAt: string }>({
     total: 0,
     healthy: 0,
     updatedAt: "",
   });
   const [nodesError, setNodesError] = useState("");
+  const [nodesLoading, setNodesLoading] = useState(false);
 
   useEffect(() => {
-    let cancelled = false;
+    const controller = new AbortController();
     const load = async () => {
+      setNodesError("");
+      setNodesLoading(true);
       try {
-        const rows = await fetchNodeStatus();
-        if (cancelled) return;
+        const rows = await fetchNodeStatus({ signal: controller.signal });
         const healthy = rows.filter((row) => row.is_healthy).length;
         const updatedAt = rows.find((row) => row.updated_at)?.updated_at || "";
         setNodeHealth({ total: rows.length, healthy, updatedAt });
-        setNodesError("");
       } catch (error) {
-        if (!cancelled) {
-          setNodesError(String((error as { message?: string })?.message || error || ""));
+        if (controller.signal.aborted || (error as { name?: string } | null)?.name === "AbortError") return;
+        setNodesError(String((error as { message?: string })?.message || error || ""));
+      } finally {
+        if (!controller.signal.aborted) {
+          setNodesLoading(false);
         }
       }
     };
     void load();
-    return () => {
-      cancelled = true;
-    };
+    return () => controller.abort();
   }, []);
+
+  if (loading) {
+    return <StatisticsPageSkeleton />;
+  }
 
   const accessState = getAccessState(dash, user);
   const trialMode = isTrialPremiumState(accessState);
@@ -202,7 +238,10 @@ export default function StatisticsPage() {
             <p>
               Тариф: <span className="font-semibold text-slate-900 dark:text-white">{resolvePlanLabel(dash, user)}</span>
             </p>
-            <p>Ссылка подключения: {user?.subscription_url ? "готова" : "пока недоступна"}</p>
+            <p>
+              App-first синхронизация:{" "}
+              {user?.sync?.subscription_ready || user?.subscription_url ? "профиль готов для приложений" : "профиль ещё подготавливается"}
+            </p>
             <p>Трафик: {resolveTrafficStatusText(dash, user)}</p>
             {freeMode && nextResetAt ? <p>Следующий сброс: {formatDate(nextResetAt)}</p> : null}
             <p>Устройства: до {deviceLimit}</p>
@@ -231,6 +270,7 @@ export default function StatisticsPage() {
               Написать в службу заботы
             </AppRouteLink>
           </div>
+          {nodesLoading ? <div className="mt-3 h-9 animate-pulse rounded-xl bg-slate-200 dark:bg-white/10" /> : null}
           {nodesError ? <p className="mt-3 text-xs text-amber-600 dark:text-amber-300">Не удалось обновить статус точек подключения: {nodesError}</p> : null}
         </article>
       </section>

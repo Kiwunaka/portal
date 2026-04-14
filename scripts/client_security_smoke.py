@@ -17,6 +17,11 @@ GO_DEFAULTS_PATH = CLIENT_ROOT / "libcore" / "config" / "hiddify_option.go"
 ANALYTICS_CONTROLLER_PATH = CLIENT_ROOT / "lib" / "core" / "analytics" / "analytics_controller.dart"
 APP_INFO_PATH = CLIENT_ROOT / "lib" / "core" / "model" / "app_info_entity.dart"
 PROFILE_REPOSITORY_PATH = CLIENT_ROOT / "lib" / "features" / "profile" / "data" / "profile_repository.dart"
+ANDROID_MANIFEST_PATH = CLIENT_ROOT / "android" / "app" / "src" / "main" / "AndroidManifest.xml"
+WINDOWS_EXE_CONFIG_PATH = CLIENT_ROOT / "windows" / "packaging" / "exe" / "make_config.yaml"
+WINDOWS_MSIX_CONFIG_PATH = CLIENT_ROOT / "windows" / "packaging" / "msix" / "make_config.yaml"
+WINDOWS_RUNNER_RC_PATH = CLIENT_ROOT / "windows" / "runner" / "Runner.rc"
+WINDOWS_MAIN_CPP_PATH = CLIENT_ROOT / "windows" / "runner" / "main.cpp"
 
 
 def _read_text(path: Path) -> str:
@@ -189,6 +194,45 @@ def _identity_failures(app_info_text: str, profile_text: str) -> list[str]:
     return failures
 
 
+def _packaging_branding_failures(
+    *,
+    manifest_text: str,
+    exe_config_text: str,
+    msix_text: str,
+    runner_rc_text: str,
+    main_cpp_text: str,
+) -> list[str]:
+    failures: list[str] = []
+
+    if 'android:label="POKROV"' not in manifest_text:
+        failures.append("Android launcher label must be POKROV")
+    if 'android:scheme="pokrov"' not in manifest_text:
+        failures.append("Android manifest must register pokrov:// as the canonical app link scheme")
+
+    if re.search(r"^\s*display_name:\s*POKROV\s*$", exe_config_text, flags=re.MULTILINE) is None:
+        failures.append("Windows exe package display_name must be POKROV")
+    if "output_base_file_name: pokrov-windows-setup-x64" not in exe_config_text:
+        failures.append("Windows exe package output filename must drop vpn wording")
+
+    if re.search(r"^\s*display_name:\s*POKROV\s*$", msix_text, flags=re.MULTILINE) is None:
+        failures.append("Windows msix display_name must be POKROV")
+    if re.search(r"^\s*protocol_activation:\s*pokrov\s*$", msix_text, flags=re.MULTILINE) is None:
+        failures.append("Windows msix protocol activation must use pokrov")
+
+    required_runner_values = (
+        'VALUE "CompanyName", "POKROV"',
+        'VALUE "FileDescription", "POKROV"',
+        'VALUE "ProductName", "POKROV"',
+    )
+    if any(value not in runner_rc_text for value in required_runner_values):
+        failures.append("Windows runner resources must use POKROV for CompanyName/FileDescription/ProductName")
+
+    if 'window.Create(L"POKROV"' not in main_cpp_text:
+        failures.append("Windows main window title must be POKROV")
+
+    return failures
+
+
 def _control_surface_observations(
     *,
     box_service_text: str,
@@ -221,6 +265,11 @@ def _check_required_files() -> list[str]:
         ANALYTICS_CONTROLLER_PATH,
         APP_INFO_PATH,
         PROFILE_REPOSITORY_PATH,
+        ANDROID_MANIFEST_PATH,
+        WINDOWS_EXE_CONFIG_PATH,
+        WINDOWS_MSIX_CONFIG_PATH,
+        WINDOWS_RUNNER_RC_PATH,
+        WINDOWS_MAIN_CPP_PATH,
     ]:
         if not path.exists():
             missing.append(f"required client file is missing: {path.relative_to(REPO_ROOT)}")
@@ -243,6 +292,11 @@ def main() -> int:
     analytics_text = _read_text(ANALYTICS_CONTROLLER_PATH)
     app_info_text = _read_text(APP_INFO_PATH)
     profile_text = _read_text(PROFILE_REPOSITORY_PATH)
+    manifest_text = _read_text(ANDROID_MANIFEST_PATH)
+    exe_config_text = _read_text(WINDOWS_EXE_CONFIG_PATH)
+    msix_text = _read_text(WINDOWS_MSIX_CONFIG_PATH)
+    runner_rc_text = _read_text(WINDOWS_RUNNER_RC_PATH)
+    main_cpp_text = _read_text(WINDOWS_MAIN_CPP_PATH)
 
     failures.extend(_security_default_failures(config_text, go_defaults_text))
     failures.extend(_analytics_default_failures(analytics_text))
@@ -250,6 +304,15 @@ def main() -> int:
     failures.extend(_routing_preset_failures(enum_text, config_text))
     failures.extend(_public_routing_surface_failures(config_page_text))
     failures.extend(_identity_failures(app_info_text, profile_text))
+    failures.extend(
+        _packaging_branding_failures(
+            manifest_text=manifest_text,
+            exe_config_text=exe_config_text,
+            msix_text=msix_text,
+            runner_rc_text=runner_rc_text,
+            main_cpp_text=main_cpp_text,
+        )
+    )
     observations = _control_surface_observations(
         box_service_text=box_service_text,
         method_handler_text=method_handler_text,
@@ -264,6 +327,11 @@ def main() -> int:
     print(f"[check] analytics defaults: {ANALYTICS_CONTROLLER_PATH.relative_to(REPO_ROOT)}")
     print(f"[check] app identity: {APP_INFO_PATH.relative_to(REPO_ROOT)}")
     print(f"[check] profile identity: {PROFILE_REPOSITORY_PATH.relative_to(REPO_ROOT)}")
+    print(f"[check] Android manifest: {ANDROID_MANIFEST_PATH.relative_to(REPO_ROOT)}")
+    print(f"[check] Windows exe package: {WINDOWS_EXE_CONFIG_PATH.relative_to(REPO_ROOT)}")
+    print(f"[check] Windows msix package: {WINDOWS_MSIX_CONFIG_PATH.relative_to(REPO_ROOT)}")
+    print(f"[check] Windows runner resources: {WINDOWS_RUNNER_RC_PATH.relative_to(REPO_ROOT)}")
+    print(f"[check] Windows main window: {WINDOWS_MAIN_CPP_PATH.relative_to(REPO_ROOT)}")
 
     for observation in observations:
         print(f"[observe] {observation}")
