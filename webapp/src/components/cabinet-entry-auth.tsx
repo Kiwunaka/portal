@@ -3,6 +3,7 @@
 import AppRouteLink from "@/components/app-route-link";
 import TelegramLoginWidget from "@/components/telegram-login-widget";
 import {
+  type EmailDeliveryPayload,
   finishEmailRecovery,
   loginByEmail,
   registerByEmail,
@@ -18,6 +19,10 @@ import { pokrovBranding } from "@/app/branding";
 import PokrovLogo from "@/app/pokrov-logo";
 
 type EmailPanelMode = "login" | "register" | "verify" | "recovery-start" | "recovery-finish";
+type EmailDeliveryUnavailableState = {
+  title: string;
+  body: string;
+};
 
 const config = getPortalPublicConfig(process.env as Record<string, string | undefined>);
 
@@ -36,6 +41,44 @@ function clearEmailAuthQueryParams(): void {
   window.history.replaceState({}, "", `${url.pathname}${url.search}${url.hash}` || "/");
 }
 
+function getEmailDeliveryUnavailableState(
+  delivery?: EmailDeliveryPayload | null,
+): EmailDeliveryUnavailableState | null {
+  const status = String(delivery?.status || "")
+    .trim()
+    .toLowerCase();
+
+  if (!status || status === "sent") {
+    return null;
+  }
+
+  if (status === "not_configured") {
+    return {
+      title: "Email-письма для входа и восстановления сейчас не подтверждены.",
+      body: "Почтовая доставка для кабинета ещё не настроена. Используйте Telegram или вход по уже существующему email-паролю, а регистрацию, подтверждение и восстановление мы временно прячем.",
+    };
+  }
+
+  if (status === "delivery_error") {
+    return {
+      title: "Email-письма для входа и восстановления сейчас не подтверждены.",
+      body: "Почтовая доставка отвечает с ошибкой, поэтому мы не показываем вам неподтверждённый сценарий. Можно продолжить через Telegram или войти по уже существующему паролю.",
+    };
+  }
+
+  if (status === "debug_echo") {
+    return {
+      title: "Email-письма для входа и восстановления сейчас не подтверждены.",
+      body: "Сейчас доступен только debug-echo путь, а не живая почтовая доставка. Для реального входа используйте Telegram или уже существующий email-пароль.",
+    };
+  }
+
+  return {
+    title: "Email-письма для входа и восстановления сейчас не подтверждены.",
+    body: "Живая почтовая доставка для кабинета сейчас не подтверждена. Можно продолжить через Telegram или войти по уже существующему email-паролю.",
+  };
+}
+
 export default function CabinetEntryAuth({ siteUrl }: { siteUrl: string }) {
   const { refresh, logoutWebSession, webLoginBusy, webLoginError } = usePortalSession();
 
@@ -49,6 +92,7 @@ export default function CabinetEntryAuth({ siteUrl }: { siteUrl: string }) {
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
   const [pending, setPending] = useState(false);
+  const [emailDeliveryUnavailable, setEmailDeliveryUnavailable] = useState<EmailDeliveryUnavailableState | null>(null);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -110,6 +154,16 @@ export default function CabinetEntryAuth({ siteUrl }: { siteUrl: string }) {
         password,
         display_name: displayName.trim() || undefined,
       });
+      const unavailableState = getEmailDeliveryUnavailableState(result.delivery);
+      if (unavailableState) {
+        setEmailDeliveryUnavailable(unavailableState);
+        setEmailMode("login");
+        setVerifyToken("");
+        setResetToken("");
+        setMessage("");
+        return;
+      }
+      setEmailDeliveryUnavailable(null);
       if (result.debug?.verify_token) {
         setVerifyToken(result.debug.verify_token);
       }
@@ -146,6 +200,15 @@ export default function CabinetEntryAuth({ siteUrl }: { siteUrl: string }) {
     setMessage("");
     try {
       const result = await startEmailRecovery({ email });
+      const unavailableState = getEmailDeliveryUnavailableState(result.delivery);
+      if (unavailableState) {
+        setEmailDeliveryUnavailable(unavailableState);
+        setEmailMode("login");
+        setResetToken("");
+        setMessage("");
+        return;
+      }
+      setEmailDeliveryUnavailable(null);
       if (result.debug?.reset_token) {
         setResetToken(result.debug.reset_token);
       }
@@ -174,13 +237,16 @@ export default function CabinetEntryAuth({ siteUrl }: { siteUrl: string }) {
   }
 
   const emailSwitchers = useMemo(
-    () => [
-      { key: "login" as const, label: "Войти" },
-      { key: "register" as const, label: "Регистрация" },
-      { key: "verify" as const, label: "Подтвердить email" },
-      { key: "recovery-start" as const, label: "Восстановить пароль" },
-    ],
-    [],
+    () =>
+      emailDeliveryUnavailable
+        ? [{ key: "login" as const, label: "Войти" }]
+        : [
+            { key: "login" as const, label: "Войти" },
+            { key: "register" as const, label: "Регистрация" },
+            { key: "verify" as const, label: "Подтвердить email" },
+            { key: "recovery-start" as const, label: "Восстановить пароль" },
+          ],
+    [emailDeliveryUnavailable],
   );
 
   const methodCards = [
@@ -272,6 +338,19 @@ export default function CabinetEntryAuth({ siteUrl }: { siteUrl: string }) {
             </p>
           </div>
 
+          {emailDeliveryUnavailable ? (
+            <div
+              data-testid="email-delivery-unavailable"
+              className="rounded-[20px] border border-amber-300/70 bg-amber-50/90 px-4 py-4 text-sm leading-6 text-amber-950 dark:border-amber-200/20 dark:bg-amber-300/10 dark:text-amber-100"
+            >
+              <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-amber-800/80 dark:text-amber-200/80">
+                truthful unavailable state
+              </p>
+              <p className="mt-2 font-semibold">{emailDeliveryUnavailable.title}</p>
+              <p className="mt-2">{emailDeliveryUnavailable.body}</p>
+            </div>
+          ) : null}
+
           <div className="flex flex-wrap gap-2">
             {emailSwitchers.map((item) => (
               <button
@@ -322,17 +401,19 @@ export default function CabinetEntryAuth({ siteUrl }: { siteUrl: string }) {
                 <button className="btn-primary rounded-2xl px-5 py-3 text-sm font-semibold uppercase tracking-[0.12em]" disabled={pending} type="submit">
                   {pending ? "Проверяем вход..." : "Открыть кабинет"}
                 </button>
-                <button
-                  type="button"
-                  className="outline-btn rounded-2xl px-5 py-3 text-sm font-semibold uppercase tracking-[0.12em]"
-                  onClick={() => {
-                    setEmailMode("recovery-start");
-                    setError("");
-                    setMessage("");
-                  }}
-                >
-                  Забыли пароль?
-                </button>
+                {emailDeliveryUnavailable ? null : (
+                  <button
+                    type="button"
+                    className="outline-btn rounded-2xl px-5 py-3 text-sm font-semibold uppercase tracking-[0.12em]"
+                    onClick={() => {
+                      setEmailMode("recovery-start");
+                      setError("");
+                      setMessage("");
+                    }}
+                  >
+                    Забыли пароль?
+                  </button>
+                )}
               </div>
             </form>
           ) : null}
@@ -449,7 +530,9 @@ export default function CabinetEntryAuth({ siteUrl }: { siteUrl: string }) {
           ) : null}
 
           <p className="text-xs leading-5 text-slate-500 dark:text-slate-400">
-            Email-вход работает как дополнительный путь к тому же кабинету. Приложение и Telegram остаются совместимыми и продолжают тот же аккаунт.
+            {emailDeliveryUnavailable
+              ? "Пока живая почтовая доставка не подтверждена, email в кабинете остаётся только входом по уже существующему паролю. Для нового доступа и восстановления используйте Telegram."
+              : "Email-вход работает как дополнительный путь к тому же кабинету. Приложение и Telegram остаются совместимыми и продолжают тот же аккаунт."}
           </p>
         </div>
       )}

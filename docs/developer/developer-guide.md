@@ -1,6 +1,6 @@
 # Developer Guide
 
-Last updated: 2026-04-14
+Last updated: 2026-04-15
 
 ## Document Status
 
@@ -112,6 +112,7 @@ Current rules:
 - the client-side RTT upload contract is `POST /api/client/nodes/latency-samples`; it stores install-scoped diagnostic evidence and does not bypass `UserNode` pinning
 - the persisted split-tunnel contract is backend-owned through `route_mode`, `selected_apps`, `requires_elevated_privileges`, and mirrored `route_policy.*` fields; do not document it as client-only local state
 - additive browser email auth lives under `/api/auth/email/*` and should not be treated as release-ready unless transactional sender identity and delivery-confirmation/webhook visibility are live
+- if that delivery path is not live, web and cabinet should expose a truthful unavailable state instead of acting like verify or reset mail works
 - support is a real `/api/tickets*` contract, including `/api/tickets/uploads` for authenticated browser attachments; do not describe it as an imaginary live chat
 - transport rollout is additive: `legacy_reality_fallback` stays the baseline until the canary completes, while `grpc_443_primary` is the allowlisted app-first primary for rollout cohorts
 - `reserve_xhttp_cdn` is the dormant reserve transport profile; it stays disabled by default and is only for explicit allowlisted fallback
@@ -147,9 +148,11 @@ Notes:
 
 - `release_gate_check.py` now runs the canonical public-v1 `pytest` matrix plus admin/auth regression, client security smoke, `python scripts/run_client_release_gate.py test --suite full`, lifecycle smoke, link checks, marketing/webapp production builds, admin webapp smoke, Playwright browser E2E, and UI visual smoke.
 - `release_gate_check.py --quick` swaps the default full client Flutter suite for `python scripts/run_client_release_gate.py test --suite portal`.
+- on Windows, `release_gate_check.py` injects a repo-local disposable `--basetemp` for every `python -m pytest ...` subprocess so release gates do not inherit a broken global `%TEMP%\\pytest-of-<user>\\pytest-current` cleanup tail from the workstation.
 - add `--client-platform-gates windows,android-apk,android-aab` or set `CLIENT_PLATFORM_GATES` when you want the same report to include artifact-producing client builds.
 - once `CLIENT_PLATFORM_GATES` includes `android-apk` or `android-aab`, `release_gate_check.py` requires `ANDROID_AUDIT_SERIAL` and treats emulator serials as preflight-only, not as a valid public-release audit.
 - `scripts/release_orchestrator.py --gates-only` is the one-command entrypoint when you want the documented gate flow without remote deploy, release handoff sync, or post-deploy verify steps.
+- the full `scripts/release_orchestrator.py` path can chain local gates, optional `APP_*` sync, backend deploy, static deploy, optional rollout helpers, and brain-local verify, but it still does not publish binaries or replace separate external-origin evidence
 - latest verified local run: `python scripts/release_orchestrator.py --gates-only` exited `0` on `2026-04-13`; see `docs/audit-artifacts/release_gate_report.md` for the current local gate snapshot.
 - Add `--brain-ip 82.21.114.104` when you also want the predeploy node-readiness gate included in the same report.
 - `--release-env-file` cannot be combined with `--gates-only`; after client artifacts are published, use it with the full `release_orchestrator.py` flow to sync runtime download URLs before deploy or verify.
@@ -225,7 +228,9 @@ python scripts/run_client_release_gate.py build --target windows
 python scripts/run_client_release_gate.py build --target android-apk
 python scripts/run_client_release_gate.py build --target android-aab
 dart pub global run msix:create --build-windows false
-powershell -NoProfile -ExecutionPolicy Bypass -File "external/client-fork/app/scripts/package_windows.ps1"
+Push-Location external/client-fork/app
+powershell -NoProfile -ExecutionPolicy Bypass -File ".\scripts\package_windows.ps1"
+Pop-Location
 ```
 
 Client release-gate note:
@@ -233,6 +238,8 @@ Client release-gate note:
 - Android stays release-blocked until a release-build audit proves there is no unauthenticated localhost proxy, DNS, command, or admin/control surface exposed to other apps
 - run `python scripts/client_security_smoke.py` before broader client release verification so default local-surface settings and RU preset groundwork fail fast in CI or local gates
 - `run_client_release_gate.py` enters `external/client-fork/app` automatically; on Windows it bootstraps `flutter build windows --release` first when `sqlite3.dll` is missing for Flutter tests
+- raw Android outputs live under `external/client-fork/app/build/app/outputs/...`; raw Windows outputs live under `external/client-fork/app/build/windows/x64/runner/Release/...`
+- client `out/` becomes the canonical packaged Windows bundle only after `external/client-fork/app/scripts/package_windows.ps1`; empty `out/` does not mean nothing was built
 - run `python scripts/android_localhost_audit.py --serial <device-serial> --connect-wait-sec 30 --disconnect-wait-sec 15` on a release-installed Android build for the manual-assisted localhost listener audit
 - if you fold Android build targets into `release_gate_check.py`, export `ANDROID_AUDIT_SERIAL=<physical-device-serial>` first or let the gate fail loudly instead of treating a repo/static-only run as release-ready
 - public client verification for this wave must cover routing presets `Global` and `All except RU`, plus DNS split and leak checks on Android and Windows
@@ -250,6 +257,7 @@ Windows packaging guardrails:
 - keep `windows/packaging/exe/make_config.yaml` on a canonical public publisher URL such as `https://pokrov.space/`, not a GitHub repository URL
 - public `MSIX` fields such as display name, publisher display name, description, and protocol activation must resolve to `POKROV` / `pokrov`
 - hidden internal manifest identifiers may remain temporarily if they are not user-visible and do not leak into public installer surfaces or protocol activation
+- release-facing raster branding should regenerate from [external/logogo.png](C:/Users/kiwun/Documents/ai/VPN/external/logogo.png), while vector branding should regenerate from [logo/logoclear.svg](C:/Users/kiwun/Documents/ai/VPN/logo/logoclear.svg) and [logo/logowithtext.svg](C:/Users/kiwun/Documents/ai/VPN/logo/logowithtext.svg)
 
 ## Documentation Rules
 

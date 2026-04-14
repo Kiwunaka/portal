@@ -9,6 +9,12 @@ from pathlib import Path
 
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
+DEFAULT_BACKEND_RESTART_UNITS = (
+    "portal-api",
+    "portal-bot",
+    "portal-helpbot",
+    "portal-feedbackbot",
+)
 
 
 def _parse_qdisc_hosts(values: list[str] | None) -> dict[str, str]:
@@ -198,7 +204,7 @@ def _build_steps(args: argparse.Namespace, *, python: str) -> list[tuple[str, li
                     "--passwords",
                     args.passwords,
                     "--restart",
-                    "portal-api,portal-bot,portal-helpbot",
+                    ",".join(DEFAULT_BACKEND_RESTART_UNITS),
                 ],
                 REPO_ROOT,
             )
@@ -305,6 +311,20 @@ def _build_steps(args: argparse.Namespace, *, python: str) -> list[tuple[str, li
     return steps
 
 
+def _has_remote_steps(args: argparse.Namespace, *, release_env_file: str) -> bool:
+    return any(
+        (
+            not args.skip_backend,
+            not args.skip_static,
+            not args.skip_verify,
+            bool(args.ensure_metrics_timer),
+            bool(release_env_file),
+            bool(getattr(args, "ensure_observer_node", [])),
+            bool(getattr(args, "qdisc_node", [])),
+        )
+    )
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description="One-command release orchestrator: gates -> deploy -> verify.")
     parser.add_argument("--brain-ip", default="", help="Brain node public IP (required for deploy/verify steps)")
@@ -362,6 +382,7 @@ def main() -> int:
         args.skip_static = True
         args.skip_verify = False
         args.ensure_metrics_timer = False
+        args.ensure_observer_node = []
         args.qdisc_node = []
         args.qdisc_host = []
 
@@ -395,7 +416,7 @@ def main() -> int:
         print("[done] gates-only mode finished")
         return 0
 
-    need_remote = not (args.skip_backend and args.skip_static and args.skip_verify and not args.ensure_metrics_timer and not release_env_file)
+    need_remote = _has_remote_steps(args, release_env_file=release_env_file)
     if need_remote and not args.brain_ip.strip():
         raise SystemExit("--brain-ip is required for deploy/verify steps")
     steps = _build_steps(args, python=python)

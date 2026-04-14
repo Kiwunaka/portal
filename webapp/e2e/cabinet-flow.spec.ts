@@ -345,6 +345,44 @@ test.describe("Cabinet flow", () => {
     await expect(page.locator("main")).toContainText("hello@pokrov.space");
   });
 
+  test("shows a truthful unavailable state when live email delivery is not configured", async ({ page }) => {
+    await page.addInitScript(() => {
+      window.localStorage.removeItem("portal_web_session_token");
+    });
+
+    await page.route("**/api/auth/email/register", async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          ok: true,
+          verification_required: true,
+          delivery: {
+            status: "not_configured",
+            kind: "verify",
+            email: "hello@pokrov.space",
+          },
+        }),
+      });
+    });
+
+    await page.goto("/");
+
+    await page.getByRole("button", { name: "Email" }).click();
+    await page.getByRole("button", { name: "Регистрация" }).click();
+    await page.getByLabel("Email").fill("hello@pokrov.space");
+    await page.getByLabel("Пароль").fill("super-secret-password");
+    await page.getByRole("button", { name: "Создать доступ" }).click();
+
+    await expect(page.getByTestId("email-delivery-unavailable")).toBeVisible();
+    await expect(page.getByTestId("email-delivery-unavailable")).toContainText(
+      "Email-письма для входа и восстановления сейчас не подтверждены",
+    );
+    await expect(page.getByRole("button", { name: "Регистрация" })).toHaveCount(0);
+    await expect(page.getByRole("button", { name: "Восстановить пароль" })).toHaveCount(0);
+    await expect(page.getByRole("button", { name: "Войти" })).toBeVisible();
+  });
+
   test("reuses an existing web session without double auth bootstrap on root entry", async ({ page }) => {
     let authSessionRequests = 0;
 

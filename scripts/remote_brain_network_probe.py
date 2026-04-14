@@ -17,15 +17,26 @@ DEFAULT_PASSWORDS = REPO_ROOT / "VPN NODE SSH KEYS" / "PASSWORDS.txt"
 def _parse_inventory(path: Path) -> dict[str, str]:
     txt = path.read_text(encoding="utf-8", errors="replace")
     out: dict[str, str] = {}
+    header_index: dict[str, int] = {}
     for line in txt.splitlines():
         line = line.strip()
-        if not line.startswith("|") or "`" not in line:
+        if not line.startswith("|"):
             continue
         parts = [p.strip() for p in line.strip("|").split("|")]
-        if len(parts) < 4:
+        lowered = [part.casefold() for part in parts]
+        if "code" in lowered and "ip" in lowered:
+            header_index = {name: index for index, name in enumerate(lowered)}
             continue
-        code = parts[0].strip("`").strip().lower()
-        ip = parts[3].strip("`").strip()
+        if "`" not in line or not header_index:
+            continue
+        code_column = header_index.get("code")
+        ip_column = header_index.get("ip")
+        if code_column is None or ip_column is None:
+            continue
+        if len(parts) <= max(code_column, ip_column):
+            continue
+        code = parts[code_column].strip("`").strip().lower()
+        ip = parts[ip_column].strip("`").strip()
         if not code or code == "code":
             continue
         if not re.fullmatch(r"[a-z0-9_-]+", code):

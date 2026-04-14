@@ -8,6 +8,12 @@ Last updated: 2026-04-15
 
 Сейчас backend отправляет письма не напрямую через SMTP, а через webhook. Если webhook или отправитель не настроены, публичный email auth считается заблокированным.
 
+Правдивое UI-правило:
+
+- пока delivery не подтверждена, web и cabinet должны показывать email auth как unavailable или blocked state, а не обещать рабочие verify или reset письма
+- backend-статусы `not_configured` и `delivery_error` считаются блокировкой для публичного email auth
+- `EMAIL_AUTH_DEBUG_ECHO=true` допустим только для локального теста и не считается живой доставкой
+
 ## Что backend ожидает увидеть
 
 Текущие настройки:

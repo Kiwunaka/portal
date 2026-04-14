@@ -1,6 +1,6 @@
 # POKROV Product Overview
 
-Last updated: 2026-04-14
+Last updated: 2026-04-15
 
 ## Document Status
 
@@ -275,14 +275,31 @@ Replace or remove:
 - old support usernames
 - fake demo branding
 
-Current logo source for the client fork:
+Current raster master source for release-derived assets:
 
 - [logogo.png](C:/Users/kiwun/Documents/ai/VPN/external/logogo.png)
 
-Current release logo set for public and client surfaces:
+Use that raster master to regenerate release-facing PNG and ICO assets such as:
+
+- Android launcher, banner, splash, and other platform raster assets
+- Windows app icon, installer icon, and tray assets
+- social/share preview images and other rasterized release surfaces
+
+Current vector master set for public and client surfaces:
 
 - [logoclear.svg](C:/Users/kiwun/Documents/ai/VPN/logo/logoclear.svg)
 - [logowithtext.svg](C:/Users/kiwun/Documents/ai/VPN/logo/logowithtext.svg)
+
+Use that vector set for:
+
+- in-app and web mark or wordmark rendering
+- favicon, icon, and manifest-source derivations
+- marketing and cabinet brand surfaces that should not depend on stale exported assets
+
+Brand-source rule:
+
+- do not treat checked-in launcher, tray, favicon, share-preview, or splash exports as independent truth once these masters change
+- regenerate derived release assets from the current raster and vector masters before publication
 
 ## Support Direction
 

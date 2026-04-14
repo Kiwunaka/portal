@@ -61,6 +61,12 @@ python scripts/remote_brain_apply_release_handoff.py --brain-ip 82.21.114.104 --
 6. После синхронизации перепроверьте download-поверхности, которые тянут ссылки из runtime.
 7. Только после этого пишите финальный release handoff.
 
+Важно по поверхностям:
+
+- marketing прямые download CTA сейчас зависят именно от `APP_ANDROID_APK_URL` и `APP_WINDOWS_EXE_URL`; только `Play` или только mirror-ссылки не дают той же прямой кнопки на публичной landing/install-странице
+- sync `APP_*` на `brain` обновляет runtime app, bot и authenticated webapp, но сам по себе не перестраивает static marketing или его build-time fallback
+- brain-local verify после sync полезен, но он не заменяет отдельные `current-origin check` и `RU-origin check`
+
 ## Что обязательно должно быть в финальном handoff
 
 Финальное сообщение должно быть простым и прямым:
@@ -95,6 +101,7 @@ python scripts/remote_brain_apply_release_handoff.py --brain-ip 82.21.114.104 --
 - runtime env уже обновили, а marketing всё ещё показывает старые ссылки
 - обновили только одну поверхность
 - Android signing или Android physical-device audit ещё не закрыты
+- финальные signed Android или Windows artifacts ещё не подтверждены как production-ready
 - в handoff написано "готово", но нет доказательств по origin checks или release URLs
 
 ## Связанные инструкции

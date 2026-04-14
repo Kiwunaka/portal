@@ -8,7 +8,7 @@ import tempfile
 import time
 import unittest
 import uuid
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from urllib.parse import urlencode
 
@@ -23,6 +23,10 @@ def _sign_telegram_init_data(*, bot_token: str, params: dict) -> str:
     params2 = dict(params)
     params2["hash"] = check_hash
     return urlencode(params2)
+
+
+def _utcnow() -> datetime:
+    return datetime.now(timezone.utc).replace(tzinfo=None)
 
 
 class ObserverApiTests(unittest.TestCase):
@@ -124,7 +128,7 @@ class ObserverApiTests(unittest.TestCase):
                 email="alice@example.com",
                 sub_type="PAID",
                 is_active=True,
-                expiry_at=datetime.utcnow() + timedelta(days=30),
+                expiry_at=_utcnow() + timedelta(days=30),
                 tos_accepted=True,
             )
             competitor = self.models.User(
@@ -134,7 +138,7 @@ class ObserverApiTests(unittest.TestCase):
                 email="panel-alice",
                 sub_type="PAID",
                 is_active=True,
-                expiry_at=datetime.utcnow() + timedelta(days=30),
+                expiry_at=_utcnow() + timedelta(days=30),
                 tos_accepted=True,
             )
             session.add_all([alice, competitor])
@@ -194,7 +198,7 @@ class ObserverApiTests(unittest.TestCase):
         }
 
     def test_internal_observer_batch_ingests_watch_state_and_exposes_admin_payloads(self) -> None:
-        now = datetime.utcnow().replace(microsecond=0)
+        now = _utcnow().replace(microsecond=0)
         pl_body = json.dumps(
             {
                 "batch_id": "pl-001",
@@ -260,7 +264,7 @@ class ObserverApiTests(unittest.TestCase):
         self.assertFalse(pl_node["observer_is_stale"])
 
     def test_internal_observer_batch_is_idempotent_for_replayed_batch_ids(self) -> None:
-        now = datetime.utcnow().replace(microsecond=0)
+        now = _utcnow().replace(microsecond=0)
         body = json.dumps(
             {
                 "batch_id": "pl-replay",
@@ -289,7 +293,7 @@ class ObserverApiTests(unittest.TestCase):
                 "batch_id": "pl-stale",
                 "cursor": {"inode": 12, "offset": 100},
                 "observations": [
-                    {"occurred_at": datetime.utcnow().replace(microsecond=0).isoformat(), "client_email": "panel-alice", "source_ip": "8.8.8.8"},
+                    {"occurred_at": _utcnow().replace(microsecond=0).isoformat(), "client_email": "panel-alice", "source_ip": "8.8.8.8"},
                 ],
             },
             ensure_ascii=False,
@@ -304,7 +308,7 @@ class ObserverApiTests(unittest.TestCase):
         stale_resp = self.client.post("/api/internal/observer/batches", content=stale_body, headers=stale_headers)
         self.assertEqual(stale_resp.status_code, 401, stale_resp.text)
 
-        now = datetime.utcnow().replace(microsecond=0)
+        now = _utcnow().replace(microsecond=0)
         body = json.dumps(
             {
                 "batch_id": "pl-errors",

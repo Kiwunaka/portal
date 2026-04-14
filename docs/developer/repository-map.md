@@ -1,6 +1,6 @@
 # Repository Map
 
-Last updated: 2026-04-14
+Last updated: 2026-04-15
 
 ## Document Status
 
@@ -25,7 +25,7 @@ Legacy filename note:
 | `docs/developer/orchestration/` | canonical orchestration standard, role contracts, and reusable templates | `docs/developer/orchestration/orchestration-standard.md` |
 | `docs/developer/work-orders/` | living wave and work-order execution artifacts | `docs/developer/work-orders/README.md` |
 | `docs/` | canonical platform docs plus archive | `docs/README.md` |
-| `external/client-fork/app/` | Flutter client fork | `external/client-fork/app/docs/README.md` |
+| `external/client-fork/app/` | Flutter client fork | `external/client-fork/app/docs/README.md`, `external/client-fork/app/scripts/package_windows.ps1`, release asset masters in `external/logogo.png`, `logo/logoclear.svg`, and `logo/logowithtext.svg` |
 
 ## Which Doc Is Authoritative
 
@@ -178,6 +178,7 @@ Marketing-specific release checks now live in:
 - `python scripts/run_client_release_gate.py build --target android-aab`
 - `python scripts/release_gate_check.py --client-platform-gates windows,android-apk,android-aab`
 - `python scripts/android_localhost_audit.py --serial <device-serial> --connect-wait-sec 30 --disconnect-wait-sec 15`
+- `Push-Location external/client-fork/app; powershell -NoProfile -ExecutionPolicy Bypass -File ".\scripts\package_windows.ps1"; Pop-Location`
 - focused inner-loop inside `external/client-fork/app/`: `flutter test test/features/portal`
 - `release_gate_check.py` requires `ANDROID_AUDIT_SERIAL=<physical-device-serial>` when Android build gates are requested and rejects emulator serials for that public-release path
 - Android release-build localhost-listener audit before connect, after connect, and after disconnect
@@ -209,10 +210,16 @@ Treat these as workspace dependencies or intentional reset targets, not routine 
 
 Treat these as retained assets and preserve them unless you have explicit reason:
 
-- client `out/`
+- client `out/` packaged release bundle
 - signing material in `external/client-fork/app/windows/`
 - ops snapshots in `ops-local/`
 - audit evidence in `docs/audit-artifacts/`
+
+Client artifact note:
+
+- raw Android outputs live under `external/client-fork/app/build/app/outputs/...`
+- raw Windows outputs live under `external/client-fork/app/build/windows/x64/runner/Release/...`
+- client `out/` may stay empty until the packaging script canonicalizes the Windows bundle
 
 ## Historical Material
 

@@ -397,6 +397,22 @@ def _classify_probe_report(payload: dict[str, Any]) -> list[str]:
     return classifications
 
 
+def _build_probe_notes(*, probe_host: str) -> list[str]:
+    probe_host_value = str(probe_host or "").strip().lower()
+    if probe_host_value == "current":
+        origin_note = "Probe executed from the operator workstation currently in use."
+    elif probe_host_value == "brain":
+        origin_note = "Probe executed from the control-plane host 82.21.114.104."
+    elif probe_host_value in {"mini", "ru", "ru-origin"}:
+        origin_note = "Probe executed from an external RU host outside the control plane."
+    else:
+        origin_note = "Probe executed from the declared probe host; verify the host label before drawing origin-specific conclusions."
+    return [
+        origin_note,
+        "UDP checks are best-effort and should be interpreted as a viability hint for Hysteria2, not a full QUIC handshake guarantee.",
+    ]
+
+
 def _run_probe(*, inventory_path: Path, reserve_host: str, reserve_hysteria_port: int, probe_host: str, probe_public_ip: str, timeout_sec: float) -> dict[str, Any]:
     targets = _build_default_targets(
         inventory_path=inventory_path,
@@ -413,10 +429,7 @@ def _run_probe(*, inventory_path: Path, reserve_host: str, reserve_hysteria_port
         "targets": results,
         "nodes": _build_nodes_view(results),
         "reserve": reserve,
-        "notes": [
-            "Probe executed from external RU host outside the control plane.",
-            "UDP checks are best-effort and should be interpreted as a viability hint for Hysteria2, not a full QUIC handshake guarantee.",
-        ],
+        "notes": _build_probe_notes(probe_host=probe_host or socket.gethostname()),
     }
     payload["classifications"] = _classify_probe_report(payload)
     return payload

@@ -1,23 +1,23 @@
 ﻿/*
-  FreeKassa hosted checkout theme for POKROV VPN.
+  FreeKassa hosted checkout theme for POKROV.
   URL: https://pokrov.space/fk-payment-theme.css
 */
 
 :root {
-  --pokrov-bg: #f6f1ff;
-  --pokrov-bg-soft: #efe7ff;
-  --pokrov-line: rgba(124, 76, 197, 0.2);
-  --pokrov-primary: #7d3be0;
-  --pokrov-accent: #ff4d6d;
-  --pokrov-text: #1d1835;
-  --pokrov-muted: #6f6886;
+  --pokrov-bg: #f5f1e8;
+  --pokrov-bg-soft: #ebe2d2;
+  --pokrov-line: rgba(20, 54, 39, 0.14);
+  --pokrov-primary: #143627;
+  --pokrov-accent: #b38b57;
+  --pokrov-text: #1d2f26;
+  --pokrov-muted: #6f6b61;
 }
 
 .payment-page-global__wrap {
   background:
-    radial-gradient(920px 480px at 6% -10%, rgba(125, 59, 224, 0.2), transparent 62%),
-    radial-gradient(700px 380px at 96% 8%, rgba(255, 77, 109, 0.16), transparent 60%),
-    linear-gradient(145deg, #faf7ff 0%, var(--pokrov-bg) 45%, #f3f8ff 100%) !important;
+    radial-gradient(920px 480px at 6% -10%, rgba(20, 54, 39, 0.16), transparent 62%),
+    radial-gradient(700px 380px at 96% 8%, rgba(179, 139, 87, 0.14), transparent 60%),
+    linear-gradient(145deg, #fcfaf5 0%, var(--pokrov-bg) 45%, #efe6d6 100%) !important;
   color: var(--pokrov-text) !important;
   font-family: "Inter", "Segoe UI", sans-serif !important;
 }
@@ -35,15 +35,15 @@
   background: linear-gradient(165deg, rgba(255, 255, 255, 0.88), rgba(255, 255, 255, 0.68)) !important;
   border: 1px solid var(--pokrov-line) !important;
   border-radius: 18px !important;
-  box-shadow: 0 24px 60px -34px rgba(61, 32, 120, 0.5) !important;
+  box-shadow: 0 24px 60px -34px rgba(20, 54, 39, 0.24) !important;
   backdrop-filter: blur(12px) !important;
 }
 
 .payment-page__list-item .active,
 .payment-page__list-item.active {
   border-radius: 12px !important;
-  border: 1px solid rgba(125, 59, 224, 0.45) !important;
-  box-shadow: 0 0 0 1px rgba(125, 59, 224, 0.2) inset !important;
+  border: 1px solid rgba(20, 54, 39, 0.38) !important;
+  box-shadow: 0 0 0 1px rgba(179, 139, 87, 0.2) inset !important;
 }
 
 .payment-page__list-sub-wrap:before {
@@ -69,14 +69,14 @@
 .payment-page__submit button,
 .payment-page__submit .btn,
 button[type="submit"] {
-  background: linear-gradient(135deg, var(--pokrov-primary), #5f22bf) !important;
+  background: linear-gradient(135deg, var(--pokrov-primary), #0c4a35) !important;
   border: 1px solid transparent !important;
   color: #ffffff !important;
   border-radius: 12px !important;
   text-transform: uppercase !important;
   letter-spacing: 0.08em !important;
   font-weight: 700 !important;
-  box-shadow: 0 14px 32px -20px rgba(95, 34, 191, 0.9) !important;
+  box-shadow: 0 14px 32px -20px rgba(20, 54, 39, 0.5) !important;
 }
 
 .payment-page__submit button:hover,

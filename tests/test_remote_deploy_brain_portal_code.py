@@ -2,6 +2,7 @@ import importlib.util
 import sys
 import unittest
 from pathlib import Path
+from unittest.mock import MagicMock, patch
 
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
@@ -28,6 +29,37 @@ class RemoteDeployBrainPortalCodeTests(unittest.TestCase):
         self.assertIn("/root/shared/product-facts.json", targets)
         self.assertIn("/root/shared/public-urls.json", targets)
         self.assertIn("/root/shared/design-tokens.json", targets)
+
+    def test_restart_default_includes_feedbackbot(self) -> None:
+        module = _load_module()
+        self.assertIn("portal-feedbackbot", module.DEFAULT_RESTART_UNITS)
+
+    def test_main_fails_when_requested_unit_is_not_active_after_restart(self) -> None:
+        module = _load_module()
+        ssh = MagicMock()
+        sftp = MagicMock()
+        ssh.open_sftp.return_value = sftp
+        run_results = [
+            (0, "", ""),
+            (0, "", ""),
+            (1, "", "restart failed"),
+            (3, "", "inactive"),
+        ]
+
+        with patch.object(module.argparse.ArgumentParser, "parse_args") as parse_args:
+            parse_args.return_value = module.argparse.Namespace(
+                brain_ip="82.21.114.104",
+                ssh_user="root",
+                ssh_port=29374,
+                passwords="C:/tmp/PASSWORDS.txt",
+                restart="portal-feedbackbot",
+            )
+            with patch.object(module, "connect_node", return_value=(ssh, "password")):
+                with patch.object(module, "_run", side_effect=run_results):
+                    exit_code = module.main()
+
+        self.assertEqual(exit_code, 1)
+        ssh.close.assert_called_once()
 
 
 if __name__ == "__main__":

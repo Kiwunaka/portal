@@ -77,6 +77,12 @@ def _utcnow() -> datetime:
     return datetime.now(timezone.utc).replace(tzinfo=None)
 
 
+def _datetime_sql_param(value: datetime, *, dialect: str) -> datetime | str:
+    if dialect == "sqlite":
+        return value.strftime("%Y-%m-%d %H:%M:%S.%f")
+    return value
+
+
 def _legacy_transport_catalog_payload(
     *,
     host: str | None,
@@ -137,7 +143,11 @@ def _seed_retention_templates(conn, *, dialect: str) -> None:
             continue
         conn.execute(
             text('INSERT INTO templates ("key", "text", "created_at") VALUES (:key, :text, :created_at);'),
-            {"key": key, "text": value, "created_at": _utcnow()},
+            {
+                "key": key,
+                "text": value,
+                "created_at": _datetime_sql_param(_utcnow(), dialect=dialect),
+            },
         )
 
 
@@ -232,6 +242,7 @@ def _seed_plan_catalog(conn, *, dialect: str) -> None:
         return
 
     now = _utcnow()
+    now_param = _datetime_sql_param(now, dialect=dialect)
     for item in PLAN_CATALOG_PRESETS:
         updated = conn.execute(
             text(
@@ -253,7 +264,7 @@ def _seed_plan_catalog(conn, *, dialect: str) -> None:
             {
                 **item,
                 "code": str(item["code"]).lower(),
-                "updated_at": now,
+                "updated_at": now_param,
             },
         )
         if int(getattr(updated, "rowcount", 0) or 0) > 0:
@@ -273,8 +284,8 @@ def _seed_plan_catalog(conn, *, dialect: str) -> None:
             ),
             {
                 **item,
-                "created_at": now,
-                "updated_at": now,
+                "created_at": now_param,
+                "updated_at": now_param,
             },
         )
 

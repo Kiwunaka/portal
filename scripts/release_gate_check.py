@@ -13,6 +13,7 @@ from pathlib import Path
 
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
+PYTEST_BASETEMP_ROOT = REPO_ROOT / ".tmp" / "pytest-basetemp"
 RELEASE_PYTEST_ARGS = [
     "portal_bot/tests/test_app_first_api.py",
     "tests/test_portal_api.py",
@@ -92,16 +93,36 @@ def _prepare_frontend_build_copy(cwd: Path) -> Path:
     return target
 
 
+def _is_pytest_command(command: list[str]) -> bool:
+    return len(command) >= 3 and command[1:3] == ["-m", "pytest"]
+
+
+def _has_pytest_basetemp(command: list[str]) -> bool:
+    return any(part == "--basetemp" or str(part).startswith("--basetemp=") for part in command)
+
+
+def _prepare_pytest_command(command: list[str]) -> tuple[list[str], Path | None]:
+    if not _is_pytest_command(command) or _has_pytest_basetemp(command):
+        return command, None
+    PYTEST_BASETEMP_ROOT.mkdir(parents=True, exist_ok=True)
+    basetemp = Path(tempfile.mkdtemp(prefix="release-gate-", dir=str(PYTEST_BASETEMP_ROOT)))
+    return [*command, "--basetemp", str(basetemp)], basetemp
+
+
 def _run_cmd(*, name: str, command: list[str], cwd: Path) -> GateResult:
     run_cwd = cwd
-    cleanup_dir: Path | None = None
+    cleanup_paths: list[Path] = []
+    prepared_command = command
     if _is_frontend_build(command, cwd):
         run_cwd = _prepare_frontend_build_copy(cwd)
-        cleanup_dir = run_cwd.parent
+        cleanup_paths.append(run_cwd.parent)
+    prepared_command, pytest_basetemp = _prepare_pytest_command(prepared_command)
+    if pytest_basetemp is not None:
+        cleanup_paths.append(pytest_basetemp)
     started = time.perf_counter()
     try:
         proc = subprocess.run(
-            command,
+            prepared_command,
             cwd=str(run_cwd),
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT,
@@ -110,14 +131,14 @@ def _run_cmd(*, name: str, command: list[str], cwd: Path) -> GateResult:
             errors="replace",
         )
     finally:
-        if cleanup_dir:
-            shutil.rmtree(cleanup_dir, ignore_errors=True)
+        for cleanup_path in reversed(cleanup_paths):
+            shutil.rmtree(cleanup_path, ignore_errors=True)
     duration = time.perf_counter() - started
     out = (proc.stdout or "").strip()
     tail = "\n".join(out.splitlines()[-40:]) if out else ""
     return GateResult(
         name=name,
-        command=" ".join(command),
+        command=" ".join(prepared_command),
         returncode=int(proc.returncode),
         duration_sec=duration,
         output_tail=tail,

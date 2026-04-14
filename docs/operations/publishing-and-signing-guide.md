@@ -1,6 +1,6 @@
 # Publishing And Signing Guide
 
-Last updated: 2026-04-14
+Last updated: 2026-04-15
 
 ## Document Status
 
@@ -38,6 +38,16 @@ All public download surfaces must be wired from the same release handoff values:
 - webapp
 - marketing site
 - Telegram bot
+
+Current release brand masters:
+
+- raster master: [external/logogo.png](C:/Users/kiwun/Documents/ai/VPN/external/logogo.png)
+- vector masters: [logo/logoclear.svg](C:/Users/kiwun/Documents/ai/VPN/logo/logoclear.svg) and [logo/logowithtext.svg](C:/Users/kiwun/Documents/ai/VPN/logo/logowithtext.svg)
+
+Brand publication rule:
+
+- regenerate launcher, splash, tray, Windows ICO, favicon, and share-preview assets from those masters before publication
+- do not treat previously exported PNG, ICO, or favicon files as independent truth once the masters change
 
 Current implementation note:
 
@@ -125,6 +135,11 @@ Notes:
 7. Upload the universal `APK` to GitHub Releases for direct download.
 8. Run release handoff and sync the final URLs into runtime env.
 
+Artifact-location note:
+
+- raw Android release outputs are expected under `external/client-fork/app/build/app/outputs/...`
+- those raw outputs do not prove production readiness until the production key path is confirmed and the physical-device audit is complete
+
 Operator shortcut:
 
 - signing checklist: [android-production-signing-handoff.md](C:/Users/kiwun/Documents/ai/VPN/docs/operations/android-production-signing-handoff.md)
@@ -159,13 +174,25 @@ Operator shortcut:
 
 1. Build the Windows release, preferably via `python scripts/run_client_release_gate.py build --target windows`.
 2. For local MSIX smoke, run `dart pub global run msix:create --build-windows false` before the packaging step when you need a repo-local unsigned `MSIX`.
-3. Package the repo-local artifacts with `powershell -NoProfile -ExecutionPolicy Bypass -File "scripts/package_windows.ps1"` when you need the canonical `out/` bundle layout.
+3. Package the repo-local artifacts from the client root when you need the canonical `out/` bundle layout:
+
+```powershell
+Push-Location external/client-fork/app
+powershell -NoProfile -ExecutionPolicy Bypass -File ".\scripts\package_windows.ps1"
+Pop-Location
+```
+
 4. Sign the installer and MSIX package.
 5. Keep the packaging config on a canonical public publisher URL such as `https://pokrov.space/`; GitHub repository URLs are not valid publisher surfaces for the signed Windows release path.
 6. Verify the packaged `MSIX` public fields resolve to `POKROV` / `pokrov`; hidden internal identifiers may remain temporarily only when they are not user-visible.
 7. Upload the signed `EXE` and optional ZIP to GitHub Releases.
 8. Keep the `MSIX` ready for Microsoft Store submission.
 9. Run release handoff and sync the final URLs into runtime env.
+
+Artifact-location note:
+
+- raw Windows build outputs are expected under `external/client-fork/app/build/windows/x64/runner/Release/...`
+- client `out/` stays empty until `external/client-fork/app/scripts/package_windows.ps1` canonicalizes the bundle; empty `out/` does not mean the raw `EXE` or `MSIX` are missing
 
 Current runtime-surface note:
 

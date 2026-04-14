@@ -1,6 +1,6 @@
 # Deployment And Access
 
-Last updated: 2026-04-14
+Last updated: 2026-04-15
 
 ## Document Status
 
@@ -70,8 +70,13 @@ Rules:
 Typical use:
 
 ```powershell
-python scripts/remote_deploy_brain_portal_code.py --brain-ip 82.21.114.104 --restart portal-api,portal-bot,portal-helpbot
+python scripts/remote_deploy_brain_portal_code.py --brain-ip 82.21.114.104 --restart portal-api,portal-bot,portal-helpbot,portal-feedbackbot
 ```
+
+Repo-side deploy rule:
+
+- the default restart set is `portal-api`, `portal-bot`, `portal-helpbot`, and `portal-feedbackbot`
+- the deploy step should be treated as failed if any requested unit does not become `active` after restart
 
 Observer-lite canary install:
 
@@ -232,20 +237,29 @@ Canonical repo-local build and packaging commands for this wave:
 - `python scripts/run_client_release_gate.py build --target android-apk`
 - `python scripts/run_client_release_gate.py build --target android-aab`
 - `dart pub global run msix:create --build-windows false`
-- `powershell -NoProfile -ExecutionPolicy Bypass -File "scripts/package_windows.ps1"`
+- `Push-Location external/client-fork/app; powershell -NoProfile -ExecutionPolicy Bypass -File ".\scripts\package_windows.ps1"; Pop-Location`
 
 Current local-build notes:
 
 - Android public promotion is still blocked until `python scripts/android_localhost_audit.py` is run against a release-installed build on physical hardware
+- raw Android release artifacts are produced under `external/client-fork/app/build/app/outputs/...`; their presence alone does not prove production signing or publication readiness
 - local Android builds may fall back to the debug keystore when the production release keystore is unavailable; that is valid for local smoke only, not for publication
 - production Android signing still requires the local `android/key.properties` path or equivalent secret injection outside git
+- raw Windows release outputs are produced under `external/client-fork/app/build/windows/x64/runner/Release/...`
+- client `out/` is the canonical packaged Windows bundle layout, but it is populated only by `external/client-fork/app/scripts/package_windows.ps1`; an empty `out/` does not mean raw build outputs are missing
 - the repo-local MSIX smoke path is intentionally unsigned by default through `sign_msix: false`; signing still belongs to the release handoff
 - public Windows and Android labels, installer names, and protocol activation must read as `POKROV` / `pokrov`, while hidden compatibility handlers may still preserve legacy import continuity
-- `scripts/package_windows.ps1` now inspects the packaged `MSIX` via a temporary `.zip` copy because `Expand-Archive` cannot read `.msix` directly
+- `external/client-fork/app/scripts/package_windows.ps1` uses the client repo root as its working directory and now inspects the packaged `MSIX` via a temporary `.zip` copy because `Expand-Archive` cannot read `.msix` directly
+
+Current brand-source rule for release assets:
+
+- start raster regeneration from [external/logogo.png](C:/Users/kiwun/Documents/ai/VPN/external/logogo.png)
+- start vector regeneration from [logo/logoclear.svg](C:/Users/kiwun/Documents/ai/VPN/logo/logoclear.svg) and [logo/logowithtext.svg](C:/Users/kiwun/Documents/ai/VPN/logo/logowithtext.svg)
+- do not ship stale derived launcher, splash, tray, favicon, or share-preview assets after those masters change
 
 ## Current Unclosed Release Blockers
 
-As of `2026-04-14`, the documented local green gate snapshot is not the same thing as a finished public release handoff.
+As of `2026-04-15`, the documented local green gate snapshot is not the same thing as a finished public release handoff.
 
 Still required before public promotion or node enablement:
 
@@ -253,8 +267,11 @@ Still required before public promotion or node enablement:
 - live node enablement where the rollout depends on new node state
 - separate `current-origin check`, `brain-origin check`, and `RU-origin check` evidence lines
 - Android production signing instead of debug-keystore fallback
+- confirmation that the final signed Android artifacts are actually production-ready
 - physical-device `python scripts/android_localhost_audit.py` on the release-installed Android build
-- live transactional sender readiness for public email registration or recovery mail
+- live Windows and Android scenario evidence on real devices and in a real network after the current UI pass
+- live transactional sender readiness for public email registration or recovery mail, including real mailbox or provider credentials and webhook configuration
+- final release handoff with published URLs, runtime sync, and redeployed static download surfaces
 
 Release handoff shortcuts:
 
@@ -280,6 +297,23 @@ If deploy is blocked, record:
 - what remains blocked
 - rollback-safe state
 
+## Current Deploy Contour
+
+The documented full release wrapper can currently chain:
+
+- local gates
+- optional `APP_*` runtime handoff sync
+- backend deploy to `brain`
+- static marketing and webapp deploy
+- optional qdisc or observer rollout helpers
+- brain-local readiness verification
+
+Current contour rule:
+
+- `scripts/release_orchestrator.py` does not publish Android or Windows binaries, does not create final signed artifacts, and does not by itself close the public release handoff
+- `scripts/verify_brain_ready.py` is brain-local verification, not a replacement for separate `current-origin` or `RU-origin` evidence
+- transport or node rollout helpers can support enablement, but they do not by themselves prove live node enablement unless the runtime pool and smoke evidence are also updated
+
 Current product release scope:
 
 - full public `v1`: `Android + Windows`
@@ -301,6 +335,7 @@ At minimum, verify:
 - API-only lifecycle smoke for bonuses, checkout order creation, callback success, and post-payment dashboard state
 - `portal-api`, `portal-bot`, and `portal-helpbot` service status
 - `portal-feedbackbot` service status
+- `verify_brain_ready.py` should fail the repo-side handoff if any required control-plane unit is inactive, if required listeners on `443` or `8444` are missing, or if the built-in HTTP and subscription probes fail
 - transport rollout verification on the canary node with `scripts/remote_apply_node_qdisc.py show`
 - transport front verification with `scripts/remote_transport_front_smoke.py`
 - `tc -s qdisc` on the shaped interface
@@ -314,6 +349,7 @@ Release gate rule:
 - `python scripts/run_client_release_gate.py preflight` should be green before trusting any Flutter gate result; a dirty or drifted `libcore` checkout is a release blocker even if other repo-local tests happen to pass
 - marketing release readiness also requires `python scripts/check-links.py` and `python scripts/ui_visual_smoke.py` to stay green after every CTA, legal, SEO, or branding change
 - `verify_brain_ready.py` should validate both the canonical connect host and the legacy API compatibility path before a release is considered healthy
+- the default full backend deploy and verify contour should include `portal-feedbackbot`, not just `portal-api`, `portal-bot`, and `portal-helpbot`
 - `client_security_smoke.py` is the static repo-level gate for default local-surface settings, routing preset groundwork, and known localhost control paths; it does not replace the Android release-build port and reachability audit
 - set `ANDROID_AUDIT_SERIAL=<device-serial>` when running `release_gate_check.py` if you want the opt-in adb localhost audit folded into the same markdown report
 - set `ANDROID_AUDIT_CONNECT_WAIT_SEC` and `ANDROID_AUDIT_DISCONNECT_WAIT_SEC` when the adb localhost audit needs non-default timing in the same report
@@ -336,10 +372,13 @@ Notes:
 
 - `release_gate_check.py` is the canonical local report generator for the public-v1 gate set.
 - `release_gate_check.py --quick` swaps the default full client Flutter suite for `python scripts/run_client_release_gate.py test --suite portal`.
+- on Windows, `release_gate_check.py` injects a repo-local disposable `--basetemp` for its `python -m pytest ...` gates so a broken workstation-level `%TEMP%\\pytest-of-<user>\\pytest-current` symlink does not pollute the release handoff tail.
 - `release_orchestrator.py --gates-only` is the one-command wrapper for the same gate pack, but it intentionally exits before release handoff sync, backend deploy, static deploy, and post-deploy verify.
 - latest verified local run: `python scripts/release_orchestrator.py --gates-only` exited `0` on `2026-04-13`; see `docs/audit-artifacts/release_gate_report.md` for the current local gate snapshot
 - pass `--brain-ip 82.21.114.104` to either command when you also want `predeploy_node_readiness.py` folded into the same run.
 - `--release-env-file` cannot be combined with `--gates-only`; use the full `release_orchestrator.py` flow when you need runtime `APP_*` download URLs synced onto brain before deploy or verify.
+- the full `release_orchestrator.py` flow uses the same default backend restart set as `remote_deploy_brain_portal_code.py`, including `portal-feedbackbot`
+- `--brain-ip` is required for the full remote contour, including release handoff sync, backend deploy, post-deploy verify, observer-timer ensure, metrics-timer ensure, and qdisc rollout lanes
 - without `ANDROID_AUDIT_SERIAL`, a green gate report does not replace the required on-device Android localhost audit
 - emulator-backed adb audits are preflight only and do not clear public Android release
 - when node reachability is part of a release handoff, report `current-origin`, `brain-origin`, and `RU-origin` results separately instead of collapsing them into one verdict
@@ -402,9 +441,9 @@ Current client workspace:
 
 Important outputs:
 
-- `out/` inside the client repo
-- Android APK
-- Windows EXE / portable ZIP / MSIX
+- raw Android outputs under `external/client-fork/app/build/app/outputs/...`
+- raw Windows outputs under `external/client-fork/app/build/windows/x64/runner/Release/...`
+- packaged Windows bundle in client `out/` after `external/client-fork/app/scripts/package_windows.ps1`
 
 Do not delete release artifacts if they are still being distributed or verified.
 

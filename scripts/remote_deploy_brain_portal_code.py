@@ -10,6 +10,12 @@ import paramiko
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_PASSWORDS = REPO_ROOT / "VPN NODE SSH KEYS" / "PASSWORDS.txt"
+DEFAULT_RESTART_UNITS = (
+    "portal-api",
+    "portal-bot",
+    "portal-helpbot",
+    "portal-feedbackbot",
+)
 if str(REPO_ROOT / "scripts") not in sys.path:
     sys.path.insert(0, str(REPO_ROOT / "scripts"))
 
@@ -34,6 +40,22 @@ def _run(ssh: paramiko.SSHClient, cmd: str, *, timeout: int = 120) -> tuple[int,
     out = stdout.read().decode(errors="replace")
     err = stderr.read().decode(errors="replace")
     return code, out, err
+
+
+def _print_remote_result(label: str, code: int, out: str, err: str) -> None:
+    message = (out.strip() or err.strip()).strip()
+    if message:
+        print(f"{label}: {message}")
+    else:
+        print(f"{label}: exit={code}")
+
+
+def _run_checked(ssh: paramiko.SSHClient, cmd: str, *, label: str, timeout: int = 120) -> bool:
+    code, out, err = _run(ssh, cmd, timeout=timeout)
+    if code == 0:
+        return True
+    _print_remote_result(label, code, out, err)
+    return False
 
 
 def iter_upload_mappings(repo_root: Path) -> list[tuple[Path, str]]:
@@ -67,7 +89,11 @@ def main() -> int:
     ap.add_argument("--ssh-user", default="root")
     ap.add_argument("--ssh-port", type=int, default=29374)
     ap.add_argument("--passwords", default=str(DEFAULT_PASSWORDS))
-    ap.add_argument("--restart", default="portal-api,portal-bot", help="comma-separated systemd units to restart")
+    ap.add_argument(
+        "--restart",
+        default=",".join(DEFAULT_RESTART_UNITS),
+        help="comma-separated systemd units to restart",
+    )
     args = ap.parse_args()
 
     ssh, auth_method = connect_node(
@@ -79,7 +105,8 @@ def main() -> int:
     )
     try:
         print(f"brain auth: {auth_method}")
-        _run(ssh, "mkdir -p /root/portal_bot /root/shared", timeout=60)
+        if not _run_checked(ssh, "mkdir -p /root/portal_bot /root/shared", label="prepare remote dirs", timeout=60):
+            return 1
         sftp = ssh.open_sftp()
         try:
             for source, target in iter_upload_mappings(REPO_ROOT):
@@ -87,20 +114,27 @@ def main() -> int:
         finally:
             sftp.close()
 
-        _run(
+        if not _run_checked(
             ssh,
             (
                 "cd /root/portal_bot && "
                 "test -x venv/bin/python || python3 -m venv venv && "
                 "venv/bin/python -m pip install -r requirements.txt >/tmp/portal_requirements.log 2>&1"
             ),
+            label="install portal requirements",
             timeout=1800,
-        )
+        ):
+            return 1
 
         for unit in [u.strip() for u in args.restart.split(",") if u.strip()]:
-            _run(ssh, f"systemctl restart {unit} >/dev/null 2>&1 || true", timeout=60)
-            _, out, err = _run(ssh, f"systemctl is-active {unit} || true", timeout=30)
-            print(f"{unit}: {(out.strip() or err.strip()).strip()}")
+            restart_ok = _run_checked(ssh, f"systemctl restart {unit}", label=f"{unit} restart", timeout=60)
+            code, out, err = _run(ssh, f"systemctl is-active {unit}", timeout=30)
+            status = (out.strip() or err.strip()).strip()
+            print(f"{unit}: {status}")
+            if not restart_ok or code != 0 or status != "active":
+                if code != 0 or status != "active":
+                    _print_remote_result(f"{unit} status", code, out, err)
+                return 1
         return 0
     finally:
         ssh.close()

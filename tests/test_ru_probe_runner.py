@@ -94,6 +94,15 @@ class RuProbeRunnerTests(unittest.TestCase):
 
         self.assertEqual(classifications[0], "probe_host_problem")
 
+    def test_build_probe_notes_match_origin_label(self) -> None:
+        current_notes = self.module._build_probe_notes(probe_host="current")
+        brain_notes = self.module._build_probe_notes(probe_host="brain")
+        ru_notes = self.module._build_probe_notes(probe_host="mini")
+
+        self.assertIn("operator workstation", current_notes[0])
+        self.assertIn("control-plane host 82.21.114.104", brain_notes[0])
+        self.assertIn("external RU host", ru_notes[0])
+
     def test_foreign_node_probe_treats_tls_handshake_as_reachability_even_on_target_mismatch(self) -> None:
         with mock.patch.object(
             self.module.dataplane_probe,

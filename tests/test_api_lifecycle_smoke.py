@@ -7,7 +7,7 @@ import sys
 import tempfile
 import unittest
 import uuid
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from unittest.mock import patch
 from urllib.parse import urlencode, urlparse
@@ -27,6 +27,10 @@ def _sign_telegram_init_data(*, bot_token: str, tg_id: int, username: str) -> st
     check_hash = hmac.new(secret_key, data_check_string.encode(), hashlib.sha256).hexdigest()
     params["hash"] = check_hash
     return urlencode(params)
+
+
+def _utcnow() -> datetime:
+    return datetime.now(timezone.utc).replace(tzinfo=None)
 
 
 class ApiLifecycleSmokeTests(unittest.TestCase):
@@ -260,7 +264,7 @@ class ApiLifecycleSmokeTests(unittest.TestCase):
                     sub_type="PAID",
                     is_active=True,
                     tos_accepted=True,
-                    expiry_at=datetime.utcnow() + timedelta(days=20),
+                    expiry_at=_utcnow() + timedelta(days=20),
                     referral_count=0,
                 )
             )

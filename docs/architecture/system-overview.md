@@ -1,6 +1,6 @@
 # POKROV System Overview
 
-Last updated: 2026-04-14
+Last updated: 2026-04-15
 
 ## Document Status
 
@@ -190,6 +190,7 @@ Architecture rule:
 
 - additive email auth extends the browser path without replacing app-first bootstrap or Telegram linking
 - public email auth depends on external transactional mail delivery and verified sender identity
+- when mail delivery is not live, browser email entry must stay in a truthful unavailable state instead of promising working verify or reset mail
 - cabinet and admin shells must keep explicit navigation back to the marketing site and standard cabinet entry
 
 ### Telegram Linking And Reward Flow
@@ -229,6 +230,8 @@ Public web rule:
 
 - `marketing/` is the indexable discovery layer
 - `webapp/` is the authenticated or session-aware continuation layer
+- authenticated app, bot, and cabinet download payloads should resolve runtime `APP_*` values through `/api/client/apps`
+- marketing download CTA, metadata icons, favicon, and share-preview assets are build-time outputs and must be rebuilt or redeployed when public release URLs or derived brand assets change
 - public SEO pages may vary the entry copy, but they must not create separate product rules or bypass the canonical checkout/session model
 
 ### API-Only Regression Flow

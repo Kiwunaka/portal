@@ -20,6 +20,14 @@ import paramiko
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_PASSWORDS = REPO_ROOT / "VPN NODE SSH KEYS" / "PASSWORDS.txt"
+DEFAULT_REQUIRED_UNITS = (
+    "caddy",
+    "portal-api",
+    "portal-bot",
+    "portal-helpbot",
+    "portal-feedbackbot",
+)
+DEFAULT_REQUIRED_LISTENER_PORTS = (443, 8444)
 
 
 def _parse_passwords(path: Path) -> dict[str, str]:
@@ -65,6 +73,30 @@ def _run(ssh: paramiko.SSHClient, cmd: str, *, timeout: int = 120) -> tuple[int,
 def _print_result(name: str, out: str, err: str) -> None:
     val = (out.strip() or err.strip()).strip().replace("\ufeff", "")
     print(f"[{name}] {val}")
+
+
+def _listener_probe_cmd(ports: tuple[int, ...]) -> str:
+    port_list = ", ".join(str(int(port)) for port in ports)
+    script = f"""python3 - <<'PY'
+import re
+import subprocess
+
+ports = [{port_list}]
+text = subprocess.run(["ss", "-tlnp"], check=False, capture_output=True, text=True).stdout
+for line in text.splitlines():
+    if any(re.search(rf":{{port}}\\b", line) for port in ports):
+        print(line)
+PY"""
+    return "bash -lc " + shlex.quote(script)
+
+
+def _listener_missing_ports(output: str, ports: tuple[int, ...]) -> list[int]:
+    text = str(output or "")
+    missing: list[int] = []
+    for port in ports:
+        if not re.search(rf":{int(port)}\b", text):
+            missing.append(int(port))
+    return missing
 
 
 def _curl_retry(url: str, *, host: str, contains: str | None = None, attempts: int = 12, pause_sec: float = 1.0) -> str:
@@ -223,24 +255,36 @@ def main() -> int:
 
     ssh = _ssh_connect(args.brain_ip, user=args.ssh_user, port=args.ssh_port, password=pw)
     try:
-        checks = [
-            ("caddy", "systemctl is-active caddy || true"),
-            ("portal-api", "systemctl is-active portal-api || true"),
-            ("portal-bot", "systemctl is-active portal-bot || true"),
-            ("portal-helpbot", "systemctl is-active portal-helpbot || true"),
-            ("listen", "ss -tlnp | grep -E ':(443|2096|8444)\\b' || true"),
-        ]
-        for name, cmd in checks:
+        failures: list[str] = []
+        for unit in DEFAULT_REQUIRED_UNITS:
+            name = unit
+            cmd = f"systemctl is-active {unit}"
             code, out, err = _run(ssh, cmd, timeout=60)
             _print_result(name, out, err)
+            if code != 0 or (out.strip() or err.strip()).strip() != "active":
+                failures.append(f"{unit} is not active")
+
+        required_listener_ports = list(DEFAULT_REQUIRED_LISTENER_PORTS)
+        if args.check_legacy_2096:
+            required_listener_ports.append(2096)
+        listen_cmd = _listener_probe_cmd(tuple(required_listener_ports))
+        code, out, err = _run(ssh, listen_cmd, timeout=60)
+        _print_result("listen", out, err)
+        missing_ports = _listener_missing_ports(out or err, tuple(required_listener_ports))
+        if code != 0 or missing_ports:
+            failures.append(
+                "missing listeners: " + ", ".join(str(port) for port in missing_ports)
+                if missing_ports
+                else "listener probe failed"
+            )
 
         curl_checks = [
             ("health443", _curl_retry(f"{api_domain}/api/health", host=api_domain)),
             ("webapp443", _curl_retry("app.pokrov.space/", host="app.pokrov.space")),
-            ("mkt443", _curl_retry(f"{web_domain}/", host=web_domain, contains="Подключиться в Telegram")),
-            ("mktHeroSecondary443", _curl_retry(f"{web_domain}/", host=web_domain, contains="Посмотреть планы")),
-            ("offer443", _curl_retry(f"{web_domain}/offer/", host=web_domain, contains="Продолжить в Telegram")),
-            ("checkout443", _curl_retry("pay.pokrov.space/checkout/", host="pay.pokrov.space", contains="Продолжение через Telegram")),
+            ("mkt443", _curl_retry(f"{web_domain}/", host=web_domain, contains="Ускорить интернет сейчас")),
+            ("mktHeroSecondary443", _curl_retry(f"{web_domain}/", host=web_domain, contains="Открыть кабинет")),
+            ("offer443", _curl_retry(f"{web_domain}/offer/", host=web_domain, contains="Публичная оферта | POKROV")),
+            ("checkout443", _curl_retry("pay.pokrov.space/checkout/", host="pay.pokrov.space", contains="Ваш путь к быстрой сети | POKROV")),
             ("fkverify443", _curl_retry(f"{web_domain}/fk-verify.html", host=web_domain)),
         ]
         if args.check_legacy_2096:
@@ -251,6 +295,8 @@ def main() -> int:
         for name, cmd in curl_checks:
             code, out, err = _run(ssh, cmd, timeout=30)
             _print_result(name, out, err)
+            if code != 0:
+                failures.append(f"{name} probe failed")
 
         sub_check = _build_subscription_check_script(
             api_domain=api_domain,
@@ -269,7 +315,15 @@ def main() -> int:
         code, out, err = _run(ssh, "bash /tmp/verify_subscriptions.sh", timeout=180)
         _run(ssh, "rm -f /tmp/verify_subscriptions.sh", timeout=30)
         print((out.strip() or err.strip()).strip())
-        return 0 if code == 0 else 2
+        if code != 0:
+            failures.append("subscription stability probe failed")
+
+        if failures:
+            print("[summary] verify failed:")
+            for item in failures:
+                print(f" - {item}")
+            return 2
+        return 0
     finally:
         ssh.close()
 
