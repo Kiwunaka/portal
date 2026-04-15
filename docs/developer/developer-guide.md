@@ -239,8 +239,9 @@ Client release-gate note:
 - run `python scripts/client_security_smoke.py` before broader client release verification so default local-surface settings and RU preset groundwork fail fast in CI or local gates
 - `run_client_release_gate.py` enters `external/client-fork/app` automatically; on Windows it bootstraps `flutter build windows --release` first when `sqlite3.dll` is missing for Flutter tests
 - raw Android outputs live under `external/client-fork/app/build/app/outputs/...`; raw Windows outputs live under `external/client-fork/app/build/windows/x64/runner/Release/...`
-- client `out/` becomes the canonical packaged Windows bundle only after `external/client-fork/app/scripts/package_windows.ps1`; empty `out/` does not mean nothing was built
-- after the final green release rerun, keep `external/client-fork/app/out/` as the canonical packaged Windows bundle and treat raw client `build/` and `dist/` outputs as disposable local artifacts
+- `python scripts/run_client_release_gate.py build --target android-apk` and `--target android-aab` also refresh the canonical Android copies in `external/client-fork/app/out/`
+- client `out/` is the canonical local release bundle: Android copies come from `run_client_release_gate.py`, Windows files from `external/client-fork/app/scripts/package_windows.ps1`
+- after the final green release rerun, keep `external/client-fork/app/out/` as the canonical local release bundle and treat raw client `build/` and `dist/` outputs as disposable local artifacts
 - run `python scripts/android_localhost_audit.py --serial <device-serial> --connect-wait-sec 30 --disconnect-wait-sec 15` on a release-installed Android build for the manual-assisted localhost listener audit
 - if you fold Android build targets into `release_gate_check.py`, export `ANDROID_AUDIT_SERIAL=<physical-device-serial>` first or let the gate fail loudly instead of treating a repo/static-only run as release-ready
 - public client verification for this wave must cover routing presets `Global` and `All except RU`, plus DNS split and leak checks on Android and Windows

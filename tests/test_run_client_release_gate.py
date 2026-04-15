@@ -40,6 +40,54 @@ class RunClientReleaseGateTests(unittest.TestCase):
         self.assertEqual(command.command, ["flutter", "build", "windows", "--release"])
         self.assertTrue(str(command.expected_artifact).endswith("build\\windows\\x64\\runner\\Release\\POKROV.exe"))
 
+    def test_android_apk_target_declares_canonical_out_artifact(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            client_root = Path(tmp)
+
+            command = self.module._build_target_command(client_root, target="android-apk")
+
+        self.assertEqual(command.command, ["flutter", "build", "apk", "--release"])
+        self.assertTrue(str(command.expected_artifact).endswith("build\\app\\outputs\\flutter-apk\\app-release.apk"))
+        self.assertTrue(str(command.published_artifact).endswith("out\\pokrov-android-universal.apk"))
+
+    def test_run_publishes_android_artifact_to_canonical_out(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            client_root = Path(tmp)
+            expected_artifact = (
+                client_root / "build" / "app" / "outputs" / "flutter-apk" / "app-release.apk"
+            )
+            expected_artifact.parent.mkdir(parents=True)
+            expected_artifact.write_bytes(b"apk-bytes")
+            command = self.module._build_target_command(client_root, target="android-apk")
+
+            original_run_step = self.module._run_step
+            original_ensure_codegen = self.module._ensure_codegen
+            original_resolve_flutter_executable = self.module._resolve_flutter_executable
+            original_libcore_preflight_status = self.module._libcore_preflight_status
+            try:
+                self.module._run_step = lambda *args, **kwargs: 0
+                self.module._ensure_codegen = lambda *args, **kwargs: 0
+                self.module._resolve_flutter_executable = lambda: "flutter"
+                self.module._libcore_preflight_status = lambda *args, **kwargs: (
+                    self.module.LibcorePreflightStatus(
+                        expected_sha="expectedsha",
+                        actual_sha="expectedsha",
+                        branch="main",
+                        dirty_lines=(),
+                    ),
+                    None,
+                )
+
+                rc = self.module._run(command)
+            finally:
+                self.module._run_step = original_run_step
+                self.module._ensure_codegen = original_ensure_codegen
+                self.module._resolve_flutter_executable = original_resolve_flutter_executable
+                self.module._libcore_preflight_status = original_libcore_preflight_status
+
+            self.assertEqual(rc, 0)
+            self.assertEqual(command.published_artifact.read_bytes(), b"apk-bytes")
+
     def test_windows_sqlite_bootstrap_dir_prefers_runner_release(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             client_root = Path(tmp)

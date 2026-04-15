@@ -18,6 +18,7 @@ class ClientGateCommand:
     command: list[str]
     cwd: Path
     expected_artifact: Path | None = None
+    published_artifact: Path | None = None
 
 
 @dataclass(frozen=True)
@@ -172,21 +173,34 @@ def _build_target_command(client_root: Path, *, target: str) -> ClientGateComman
         "windows": (
             ["flutter", "build", "windows", "--release"],
             client_root / "build" / "windows" / "x64" / "runner" / "Release" / "POKROV.exe",
+            None,
         ),
         "android-apk": (
             ["flutter", "build", "apk", "--release"],
             client_root / "build" / "app" / "outputs" / "flutter-apk" / "app-release.apk",
+            client_root / "out" / "pokrov-android-universal.apk",
         ),
         "android-aab": (
             ["flutter", "build", "appbundle", "--release"],
             client_root / "build" / "app" / "outputs" / "bundle" / "release" / "app-release.aab",
+            client_root / "out" / "pokrov-android-market.aab",
         ),
     }
     try:
-        command, artifact = commands[target]
+        command, artifact, published_artifact = commands[target]
     except KeyError as exc:
         raise ValueError(f"unsupported target: {target}") from exc
-    return ClientGateCommand(command=command, cwd=client_root, expected_artifact=artifact)
+    return ClientGateCommand(
+        command=command,
+        cwd=client_root,
+        expected_artifact=artifact,
+        published_artifact=published_artifact,
+    )
+
+
+def _publish_artifact(source: Path, destination: Path) -> None:
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    shutil.copy2(source, destination)
 
 
 def _resolve_flutter_executable() -> str:
@@ -282,6 +296,9 @@ def _run(command: ClientGateCommand) -> int:
     if command.expected_artifact is not None and not command.expected_artifact.exists():
         print(f"[fail] expected artifact is missing: {command.expected_artifact}")
         return 2
+
+    if command.expected_artifact is not None and command.published_artifact is not None:
+        _publish_artifact(command.expected_artifact, command.published_artifact)
 
     return 0
 

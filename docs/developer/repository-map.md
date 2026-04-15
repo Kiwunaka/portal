@@ -219,7 +219,8 @@ Client artifact note:
 
 - raw Android outputs live under `external/client-fork/app/build/app/outputs/...`
 - raw Windows outputs live under `external/client-fork/app/build/windows/x64/runner/Release/...`
-- client `out/` may stay empty until the packaging script canonicalizes the Windows bundle
+- Android build targets in `scripts/run_client_release_gate.py` refresh `external/client-fork/app/out/` with canonical `apk` and `aab` copies
+- Windows packaging still canonicalizes the Windows bundle into `external/client-fork/app/out/`
 
 ## Historical Material
 

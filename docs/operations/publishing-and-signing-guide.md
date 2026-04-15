@@ -107,6 +107,7 @@ Notes:
 - on Windows, the wrapper auto-runs `flutter build windows --release` before Flutter tests when the required `sqlite3.dll` bootstrap is missing.
 - test/build modes now auto-run `flutter pub get` plus `flutter pub run build_runner build --delete-conflicting-outputs` when generated Dart assets are missing, so a clean checkout can rebuild the ignored `*.g.dart` / `*.freezed.dart` surface before Flutter tests start.
 - `scripts/run_client_release_gate.py` now fails early if `external/client-fork/app/libcore` is dirty, missing, or not on the expected pinned SHA; release builds must start from a clean checkout with tracked `libcore` state.
+- Android build targets in `scripts/run_client_release_gate.py` now also refresh the canonical copies in `external/client-fork/app/out/` as `pokrov-android-universal.apk` and `pokrov-android-market.aab`, so operators do not need a separate manual copy step after a green local build.
 - if the preflight fails, inspect the submodule directly with `git -C external/client-fork/app/libcore status --short` and `git -C external/client-fork/app/libcore diff --stat`; fixing those changes belongs in the canonical client repo, not as an ad hoc root-repo override.
 - repo-local Windows MSIX smoke can also be produced with `dart pub global run msix:create --build-windows false`; that path intentionally keeps `sign_msix: false` for local verification and does not replace signed release handoff
 
@@ -138,6 +139,7 @@ Notes:
 Artifact-location note:
 
 - raw Android release outputs are expected under `external/client-fork/app/build/app/outputs/...`
+- the wrapper-based Android build commands also refresh the canonical copies in `external/client-fork/app/out/`
 - those raw outputs do not prove production readiness until the production key path is confirmed and the physical-device audit is complete
 
 Operator shortcut:
