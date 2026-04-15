@@ -1,7 +1,7 @@
 # Link Check Report
 
 - FAIL: 0
-- PASS: 24
+- PASS: 27
 
 | Status | File | Message |
 | --- | --- | --- |
@@ -10,6 +10,8 @@
 | PASS | `marketing\src\app\manifest.ts` | Marketing SEO route is present |
 | PASS | `marketing\public\opengraph-image.png` | Marketing SEO route is present |
 | PASS | `marketing\public\twitter-image.png` | Marketing SEO route is present |
+| PASS | `marketing\public\favicon.ico` | Marketing SEO route is present |
+| PASS | `marketing\public\apple-icon.png` | Marketing SEO route is present |
 | PASS | `marketing\src\components\marketing-landing.tsx` | Public marketing CTA no longer routes to connect host |
 | PASS | `marketing\src\components\marketing-landing.tsx` | Public cabinet CTA points to webapp host |
 | PASS | `marketing\src\components\marketing-landing.tsx` | Pricing CTA routes through public checkout gateway |
@@ -18,7 +20,8 @@
 | PASS | `marketing\src\app\layout.tsx` | Layout includes `manifest` metadata wiring |
 | PASS | `marketing\src\app\layout.tsx` | Layout includes `icons` metadata wiring |
 | PASS | `marketing\src\app\layout.tsx` | Layout includes `apple` metadata wiring |
-| PASS | `marketing\src\app\layout.tsx` | Layout includes `favicon.ico` metadata wiring |
+| PASS | `marketing\src\app\layout.tsx` | Layout includes `/favicon.ico` metadata wiring |
+| PASS | `marketing\src\app\layout.tsx` | Layout includes `/apple-icon.png` metadata wiring |
 | PASS | `marketing\src\components\marketing-landing.tsx` | Marketing metadata declares `alternates` |
 | PASS | `marketing\src\components\marketing-landing.tsx` | Marketing metadata declares `canonical` |
 | PASS | `marketing\src\components\marketing-landing.tsx` | Marketing metadata declares `twitter` |

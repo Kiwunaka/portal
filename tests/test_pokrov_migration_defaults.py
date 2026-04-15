@@ -38,14 +38,19 @@ def test_backend_and_web_defaults_point_to_pokrov_surface() -> None:
     assert "app.pokrov.space" in config_text
     assert "connect.pokrov.space" in config_text
     assert "pay.pokrov.space" in config_text
-    assert 'CLIENT_BRAND: str = (os.getenv("CLIENT_BRAND") or "POKROV VPN").strip()' in config_text
+    assert re.search(
+        r'CLIENT_BRAND: str = \(os\.getenv\("CLIENT_BRAND"\) or "POKROV[^"]*"\)\.strip\(\)',
+        config_text,
+    )
     assert 'MAIN_BOT_USERNAME: str = (os.getenv("MAIN_BOT_USERNAME") or os.getenv("BOT_USERNAME") or "pokrov_vpnbot").lstrip("@")' in config_text
     assert 'NEWS_CHANNEL_URL: str = (os.getenv("NEWS_CHANNEL_URL") or "https://t.me/pokrov_vpn").strip()' in config_text
     assert "pokrov_feedbackbot" in config_text
-    assert 'export const CANONICAL_CLIENT_BRAND = "POKROV VPN";' in shared_portal_text
-    assert 'export const CANONICAL_CHECKOUT_URL = `${CANONICAL_PAY_ORIGIN}/checkout`;' in shared_portal_text
-    assert "connect.pokrov.space" in shared_portal_text
-    assert "pokrov_feedbackbot" in shared_portal_text
+    assert "network_marker_legacy_metadata" in _read("shared/product-facts.json")
+    assert "export const CANONICAL_CLIENT_BRAND = PRODUCT_FACTS.brands.client;" in shared_portal_text
+    assert "export const CANONICAL_CHECKOUT_URL = stripTrailingSlash(SURFACES.checkout);" in shared_portal_text
+    assert "export const CANONICAL_PAY_ORIGIN = new URL(CANONICAL_CHECKOUT_URL).origin;" in shared_portal_text
+    assert "export const CANONICAL_CONNECT_URL = stripTrailingSlash(SURFACES.connect);" in shared_portal_text
+    assert "export const CANONICAL_FEEDBACK_BOT_URL = TELEGRAM.feedback_bot;" in shared_portal_text
     assert "CANONICAL_CLIENT_BRAND" in web_portal_text
     assert "CANONICAL_CHECKOUT_URL" in web_portal_text
     assert "CANONICAL_CONNECT_URL" in web_portal_text
@@ -60,11 +65,11 @@ def test_backend_and_web_defaults_point_to_pokrov_surface() -> None:
     assert "getCopyText" in marketing_portal_text
     assert "../../../shared/portal-config" in marketing_portal_text
     assert "../../../shared/copy" in marketing_portal_text
-    assert "https://api.pokrov.space" in client_portal_text
-    assert "https://app.pokrov.space" in client_portal_text
-    assert "https://pay.pokrov.space" in client_portal_text
-    assert "https://t.me/pokrov_vpnbot" in client_portal_text
-    assert "https://t.me/pokrov_supportbot" in client_portal_text
+    assert "PortalSharedPublicUrls.api" in client_portal_text
+    assert "PortalSharedPublicUrls.webapp" in client_portal_text
+    assert "PortalSharedPublicUrls.checkout" in client_portal_text
+    assert "PortalSharedPublicUrls.bot" in client_portal_text
+    assert "PortalSharedPublicUrls.supportBot" in client_portal_text
     _assert_no_legacy_markers("shared/portal-config.ts", _without_legacy_marker_catalog(shared_portal_text))
     _assert_no_legacy_markers("webapp/src/lib/portal.ts", _without_legacy_marker_catalog(web_portal_text))
     _assert_no_legacy_markers("marketing/src/lib/pokrov.ts", _without_legacy_marker_catalog(marketing_portal_text))
@@ -120,7 +125,7 @@ def test_runtime_and_edge_configs_use_pokrov_domains() -> None:
     assert 'const BASE_PATH = ""' in web_next_config
 
 
-def test_client_metadata_uses_pokrov_brand_and_new_identities() -> None:
+def test_client_metadata_uses_pokrov_public_brand_and_release_artifacts() -> None:
     constants_text = _read("external/client-fork/app/lib/core/model/constants.dart")
     pubspec_text = _read("external/client-fork/app/pubspec.yaml")
     android_gradle_text = _read("external/client-fork/app/android/app/build.gradle")
@@ -133,12 +138,10 @@ def test_client_metadata_uses_pokrov_brand_and_new_identities() -> None:
     windows_exe_script_text = _read("external/client-fork/app/windows/packaging/exe/inno_setup.sas")
     fork_branding_text = _read("external/client-fork/app/.github/scripts/apply_fork_branding.py")
     fork_release_workflow_text = _read("external/client-fork/app/.github/workflows/fork-android-windows-release.yml")
-    fork_brand_env_text = _read("external/client-fork/branding/brand.env.example")
     fork_release_setup_text = _read("external/client-fork/app/.github/FORK_RELEASE_SETUP.md")
-    fork_readme_text = _read("external/client-fork/README.md")
     package_windows_text = _read("external/client-fork/app/scripts/package_windows.ps1")
 
-    assert 'static const appName = "POKROV VPN"' in constants_text
+    assert 'static const appName = "POKROV"' in constants_text
     assert "https://t.me/pokrov_vpn" in constants_text
     assert "https://pokrov.space/privacy" in constants_text
     assert "https://pokrov.space/terms" in constants_text
@@ -146,60 +149,52 @@ def test_client_metadata_uses_pokrov_brand_and_new_identities() -> None:
     assert "namespace 'com.hiddify.hiddify'" in android_gradle_text
     assert 'testNamespace "test.com.hiddify.hiddify"' in android_gradle_text
     assert 'applicationId "space.pokrov.vpn"' in android_gradle_text
-    assert 'android:label="POKROV VPN"' in android_manifest_text
+    assert 'android:label="POKROV"' in android_manifest_text
+    assert '<data android:scheme="pokrov" />' in android_manifest_text
     assert '<data android:scheme="pokrovvpn" />' in android_manifest_text
-    assert "display_name: POKROV VPN" in msix_text
-    assert "identity_name: Pokrov.Vpn" in msix_text
-    assert "protocol_activation: pokrovvpn" in msix_text
-    assert 'project(pokrovvpn LANGUAGES CXX)' in windows_cmake_text
-    assert 'set(BINARY_NAME "POKROVVPN")' in windows_cmake_text
-    assert 'L"POKROVVPNMutex"' in windows_main_text
-    assert 'FindWindowA(NULL, "POKROV VPN")' in windows_main_text
-    assert 'window.SendAppLinkToInstance(L"POKROV VPN")' in windows_main_text
-    assert 'window.Create(L"POKROV VPN", origin, size)' in windows_main_text
-    assert 'VALUE "FileDescription", "POKROV VPN"' in windows_rc_text
-    assert 'VALUE "InternalName", "pokrovvpn"' in windows_rc_text
-    assert 'VALUE "OriginalFilename", "POKROVVPN.exe"' in windows_rc_text
-    assert 'VALUE "ProductName", "POKROV VPN"' in windows_rc_text
-    assert "display_name: POKROV VPN" in windows_exe_packaging_text
-    assert "executable_name: POKROVVPN.exe" in windows_exe_packaging_text
-    assert "output_base_file_name: POKROVVPN-setup" in windows_exe_packaging_text
-    assert 'install_dir_name: "{autopf64}\\\\POKROV VPN"' in windows_exe_packaging_text
-    assert "Exec('taskkill', '/F /IM POKROVVPN.exe'" in windows_exe_script_text
-    assert '_read_env("FORK_BRAND_NAME", "POKROV VPN")' in fork_branding_text
+    assert "display_name: POKROV" in msix_text
+    assert "publisher_display_name: POKROV" in msix_text
+    assert "identity_name: pokrov" in msix_text
+    assert "publisher: CN=POKROV" in msix_text
+    assert "protocol_activation: pokrov" in msix_text
+    assert "execution_alias: pokrov" in msix_text
+    assert 'project(pokrov LANGUAGES CXX)' in windows_cmake_text
+    assert 'set(BINARY_NAME "POKROV")' in windows_cmake_text
+    assert 'L"POKROVMutex"' in windows_main_text
+    assert 'FindWindowA(NULL, "POKROV")' in windows_main_text
+    assert 'window.Create(L"POKROV", origin, size)' in windows_main_text
+    assert 'VALUE "FileDescription", "POKROV"' in windows_rc_text
+    assert 'VALUE "InternalName", "pokrov"' in windows_rc_text
+    assert 'VALUE "OriginalFilename", "POKROV.exe"' in windows_rc_text
+    assert 'VALUE "ProductName", "POKROV"' in windows_rc_text
+    assert "display_name: POKROV" in windows_exe_packaging_text
+    assert "executable_name: POKROV.exe" in windows_exe_packaging_text
+    assert "output_base_file_name: pokrov-windows-setup-x64" in windows_exe_packaging_text
+    assert 'install_dir_name: "{autopf64}\\\\POKROV"' in windows_exe_packaging_text
+    assert "Exec('taskkill', '/F /IM POKROV.exe'" in windows_exe_script_text
+    assert '_read_env("FORK_BRAND_NAME", "POKROV")' in fork_branding_text
     assert '_read_env("FORK_ANDROID_APPLICATION_ID", "space.pokrov.vpn")' in fork_branding_text
     assert '_read_env("FORK_ANDROID_NAMESPACE", "com.hiddify.hiddify")' in fork_branding_text
     assert '"test.com.hiddify.hiddify"' in fork_branding_text
-    assert '_read_env("FORK_URI_SCHEME", "pokrovvpn")' in fork_branding_text
-    assert '_read_env("FORK_WINDOWS_IDENTITY_NAME", "Pokrov.Vpn")' in fork_branding_text
-    assert '_read_env("FORK_WINDOWS_EXE_STEM", "POKROVVPN")' in fork_branding_text
+    assert '_read_env("FORK_URI_SCHEME", "pokrov")' in fork_branding_text
+    assert '"FORK_WINDOWS_PUBLISHER_URL"' in fork_branding_text
+    assert '"https://pokrov.space/"' in fork_branding_text
+    assert '"pokrov-windows-setup-x64"' in fork_branding_text
     assert 'FindWindowA(NULL, "{brand_name}")' in fork_branding_text
-    assert 'window.SendAppLinkToInstance(L"{brand_name}")' in fork_branding_text
     assert 'window.Create(L"{brand_name}", origin, size)' in fork_branding_text
-    assert 'f"{exe_stem}-setup"' in fork_branding_text
-    assert 'windows_exe_stem: POKROVVPN' not in fork_branding_text
     assert '"ProductName",' in fork_branding_text and "brand_name" in fork_branding_text
-    assert 'APP_SLUG: "pokrov-vpn"' in fork_release_workflow_text
-    assert "default: \"/var/www/downloads/pokrov-vpn\"" in fork_release_workflow_text
+    assert 'APP_SLUG: "pokrov"' in fork_release_workflow_text
+    assert "default: \"/var/www/downloads/pokrov\"" in fork_release_workflow_text
     assert "APP_ANDROID_PACKAGE: ${{ vars.ANDROID_PACKAGE_NAME || 'space.pokrov.vpn' }}" in fork_release_workflow_text
-    assert 'FORK_BRAND_NAME=POKROV VPN' in fork_brand_env_text
-    assert 'FORK_ANDROID_APPLICATION_ID=space.pokrov.vpn' in fork_brand_env_text
-    assert 'FORK_ANDROID_NAMESPACE=com.hiddify.hiddify' in fork_brand_env_text
-    assert 'FORK_ANDROID_TEST_NAMESPACE=test.com.hiddify.hiddify' in fork_brand_env_text
-    assert 'FORK_URI_SCHEME=pokrovvpn' in fork_brand_env_text
-    assert 'FORK_WINDOWS_IDENTITY_NAME=Pokrov.Vpn' in fork_brand_env_text
-    assert 'FORK_WINDOWS_INSTALL_DIR=POKROV VPN' in fork_brand_env_text
-    assert 'FORK_WINDOWS_EXE_STEM=POKROVVPN' in fork_brand_env_text
-    assert '`pokrov-vpn`' in fork_release_setup_text
-    assert '/var/www/downloads/pokrov-vpn' in fork_release_setup_text
+    assert '`pokrov`' in fork_release_setup_text
+    assert '/var/www/downloads/pokrov' in fork_release_setup_text
     assert 'legacy `com.hiddify.hiddify` package' in fork_release_setup_text
-    assert 'pokrov-vpn-android-universal.apk' in fork_readme_text
-    assert 'pokrov-vpn-windows-setup-x64.exe' in fork_readme_text
     assert '$appSlug = if ($env:APP_SLUG)' in package_windows_text
-    assert '"pokrov-vpn"' in package_windows_text
-    assert '"*-setup.exe"' in package_windows_text
-    assert '$appSlug-windows-setup-x64.exe' in package_windows_text
-    assert '$appSlug-windows-portable-x64.zip' in package_windows_text
+    assert '$outputBaseName = Get-ConfigScalar -path $exeConfigPath -key "output_base_file_name"' in package_windows_text
+    assert 'Find-Artifact -patterns @("*pokrov*setup*.exe", "*hiddify*setup*.exe")' in package_windows_text
+    assert '$canonicalExe = Join-Path $outDir "$outputBaseName.exe"' in package_windows_text
+    assert '$canonicalMsix = Join-Path $outDir "$outputBaseName.msix"' in package_windows_text
+    assert '$portableArchiveName = if ($outputBaseName -match "^(.*)-windows-setup-x64$")' in package_windows_text
 
 
 def test_runtime_bot_defaults_use_new_pokrov_identities() -> None:
@@ -211,8 +206,8 @@ def test_runtime_bot_defaults_use_new_pokrov_identities() -> None:
     webapp_e2e_text = _read("webapp/e2e/admin-gate.spec.ts")
     config_text = _read("portal_bot/config.py")
 
-    assert 'or "pokrov_supportbot"' in api_text
-    assert 'or "pokrov_vpnbot"' in api_text
+    assert "@pokrov_supportbot" in api_text
+    assert "@pokrov_vpnbot" in api_text
     assert "api.pokrov.space" in api_text
     assert "pay.pokrov.space" in api_text
     assert 'or "pokrov_vpnbot"' in bot_text

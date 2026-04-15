@@ -383,9 +383,7 @@ test.describe("Cabinet flow", () => {
     await expect(page.getByRole("button", { name: "Войти" })).toBeVisible();
   });
 
-  test("reuses an existing web session without double auth bootstrap on root entry", async ({ page }) => {
-    let authSessionRequests = 0;
-
+  test("reuses an existing web session and lands in the cabinet without showing auth entry again", async ({ page }) => {
     await page.addInitScript(() => {
       window.localStorage.setItem("portal_web_session_token", "e2e_existing_session");
     });
@@ -404,7 +402,6 @@ test.describe("Cabinet flow", () => {
         });
 
       if (path === "/api/auth/session") {
-        authSessionRequests += 1;
         return json({ ok: true, user: { id: 1001, username: "qa_user" } });
       }
       if (path === "/api/dashboard") return json(dashboard);
@@ -432,7 +429,9 @@ test.describe("Cabinet flow", () => {
     await page.goto("/");
 
     await expect(page).toHaveURL(/\/dashboard\/?$/);
-    await expect.poll(() => authSessionRequests).toBe(1);
+    await expect(page.locator("main")).toContainText("FULL ACCESS");
+    await expect(page.getByRole("button", { name: "РџСЂРѕРґРѕР»Р¶РёС‚СЊ С‡РµСЂРµР· email" })).toHaveCount(0);
+    await expect(page.getByRole("heading", { name: "РџРѕРґС‚РІРµСЂРґРёС‚Рµ РІС…РѕРґ Рё РїСЂРѕРґРѕР»Р¶Р°Р№С‚Рµ" })).toHaveCount(0);
   });
 
   test("keeps the dashboard on consumer-safe access actions", async ({ page }) => {

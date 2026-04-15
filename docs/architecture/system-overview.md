@@ -433,12 +433,13 @@ Current release-gate smoke focus should cover:
 
 Canonical bot usernames:
 
-- `pokrov_vpnbot`
-- `pokrov_supportbot`
-- `pokrov_feedbackbot`
+- main bot: `pokrov_vpnbot`
+- support bot: `pokrov_supportbot`
+- feedback bot: `pokrov_feedbackbot`
 
 Current channel state:
 
 - verified public channel: `@pokrov_vpn`
 - bonus verification is live
 - `@pokrov_vpnbot` is an administrator in that channel
+- `swazist_bot` and `portal_service_bot` are legacy usernames that are officially disabled and must not be treated as active production bots

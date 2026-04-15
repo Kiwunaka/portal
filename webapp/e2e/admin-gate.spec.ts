@@ -797,6 +797,7 @@ async function openRoute(page: Page, href: string): Promise<void> {
   for (let attempt = 0; attempt < 2; attempt += 1) {
     try {
       await page.goto(href, { waitUntil: "domcontentloaded" });
+      await waitForPortalShell(page);
       return;
     } catch (error) {
       const message = String((error as Error)?.message || error || "");
@@ -805,6 +806,19 @@ async function openRoute(page: Page, href: string): Promise<void> {
       }
       await page.waitForTimeout(250);
     }
+  }
+}
+
+async function waitForPortalShell(page: Page): Promise<void> {
+  const loadingHeadings = [
+    page.getByRole("heading", { name: "Подтягиваем данные кабинета" }),
+    page.getByRole("heading", { name: "Открываем POKROV Admin..." }),
+  ];
+
+  for (const heading of loadingHeadings) {
+    const visible = await heading.isVisible().catch(() => false);
+    if (!visible) continue;
+    await expect(heading).toBeHidden({ timeout: 15_000 });
   }
 }
 

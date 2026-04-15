@@ -1,6 +1,6 @@
 # POKROV Work Orders
 
-Last updated: 2026-04-13
+Last updated: 2026-04-15
 
 ## Document Status
 
@@ -47,4 +47,4 @@ A new orchestrator should be able to resume from the wave folder alone:
 
 ## Historical Material
 
-Older flat orchestration and release logs under `docs/*.md` remain historical or supporting material unless canonical docs relink them as current.
+Older flat orchestration and release logs under `docs/archive/flat-docs/` remain historical or supporting material unless canonical docs relink them as current.

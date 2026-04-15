@@ -171,7 +171,7 @@ def _build_target_command(client_root: Path, *, target: str) -> ClientGateComman
     commands = {
         "windows": (
             ["flutter", "build", "windows", "--release"],
-            client_root / "build" / "windows" / "x64" / "runner" / "Release" / "POKROVVPN.exe",
+            client_root / "build" / "windows" / "x64" / "runner" / "Release" / "POKROV.exe",
         ),
         "android-apk": (
             ["flutter", "build", "apk", "--release"],

@@ -1,6 +1,6 @@
 # App-First And Bonus Flows
 
-Last updated: 2026-04-14
+Last updated: 2026-04-15
 
 ## Document Status
 
@@ -280,7 +280,10 @@ Rules:
 The bonus path is live and configured for:
 
 - public channel: `@pokrov_vpn`
-- bot: `@pokrov_vpnbot`
+- main bot: `@pokrov_vpnbot`
+- support bot: `@pokrov_supportbot`
+- feedback bot: `@pokrov_feedbackbot`
+- legacy usernames `swazist_bot` and `portal_service_bot` are officially disabled and must not be used as active runtime or support surfaces
 
 The worker and API distinguish channel failures such as:
 

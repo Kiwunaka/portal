@@ -184,7 +184,8 @@ Pop-Location
 
 4. Sign the installer and MSIX package.
 5. Keep the packaging config on a canonical public publisher URL such as `https://pokrov.space/`; GitHub repository URLs are not valid publisher surfaces for the signed Windows release path.
-6. Verify the packaged `MSIX` public fields resolve to `POKROV` / `pokrov`; hidden internal identifiers may remain temporarily only when they are not user-visible.
+6. Verify the packaged `MSIX` public and hidden identity fields resolve to `POKROV` / `pokrov`; do not ship legacy `POKROV VPN`, `Pokrov.Vpn`, or `hiddify` residue.
+7. Publish Windows package feeds under the canonical WinGet identifier `Pokrov.Pokrov`; reserve `Pokrov.Pokrov.Beta` for the dev channel and do not reuse the legacy `Pokrov.Vpn*` identifier family for new releases.
 7. Upload the signed `EXE` and optional ZIP to GitHub Releases.
 8. Keep the `MSIX` ready for Microsoft Store submission.
 9. Run release handoff and sync the final URLs into runtime env.
@@ -313,7 +314,7 @@ Minimum publishing verification:
 - Android and Windows builds install successfully
 - signatures are present on public artifacts
 - download links resolve from every runtime-driven public surface, and static marketing exports are rebuilt when URLs changed
-- store metadata matches current `POKROV` public naming policy and keeps `POKROV VPN` only where legacy store/package constraints still require it
+- store metadata matches current `POKROV` public naming policy, and Windows package identity or installer metadata does not leak legacy `POKROV VPN`, `Pokrov.Vpn`, or `hiddify` residue
 - Apple surfaces, if any, are clearly labeled as upcoming or waitlist-only
 - `python scripts/client_security_smoke.py` stays green before final Android sign-off
 - Android release-build checks confirm there is no unauthenticated local SOCKS/API-style control surface exposed

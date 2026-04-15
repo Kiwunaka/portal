@@ -43,14 +43,24 @@ def _collect_findings() -> list[Finding]:
     marketing_manifest = marketing_root / "app" / "manifest.ts"
     marketing_og = REPO_ROOT / "marketing" / "public" / "opengraph-image.png"
     marketing_twitter = REPO_ROOT / "marketing" / "public" / "twitter-image.png"
+    marketing_favicon = REPO_ROOT / "marketing" / "public" / "favicon.ico"
+    marketing_apple_icon = REPO_ROOT / "marketing" / "public" / "apple-icon.png"
     webapp_legal = REPO_ROOT / "webapp" / "src" / "app" / "(dashboard)" / "support" / "legal" / "page.tsx"
     api_file = REPO_ROOT / "portal_bot" / "api.py"
 
-    for path in (marketing_robots, marketing_sitemap, marketing_manifest, marketing_og, marketing_twitter):
-      if path.exists():
-          _add_pass(findings, path, "Marketing SEO route is present")
-      else:
-          _add_fail(findings, path, "Missing marketing SEO route")
+    for path in (
+        marketing_robots,
+        marketing_sitemap,
+        marketing_manifest,
+        marketing_og,
+        marketing_twitter,
+        marketing_favicon,
+        marketing_apple_icon,
+    ):
+        if path.exists():
+            _add_pass(findings, path, "Marketing SEO route is present")
+        else:
+            _add_fail(findings, path, "Missing marketing SEO route")
 
     landing_text = _read(marketing_landing)
     if "href={config.connectUrl}" in landing_text:
@@ -74,7 +84,7 @@ def _collect_findings() -> list[Finding]:
         _add_fail(findings, marketing_landing, "Marketing footer misses canonical news channel")
 
     layout_text = _read(marketing_layout)
-    for required in ("metadataBase", "manifest", "icons", "apple", "favicon.ico"):
+    for required in ("metadataBase", "manifest", "icons", "apple", "/favicon.ico", "/apple-icon.png"):
         if required in layout_text:
             _add_pass(findings, marketing_layout, f"Layout includes `{required}` metadata wiring")
         else:

@@ -305,7 +305,7 @@ For node-access or origin-sensitive work, also include:
 
 - prompt contracts and templates live under `docs/developer/orchestration/`
 - live execution artifacts live under `docs/developer/work-orders/`
-- historical flat logs under `docs/*.md` remain historical unless relinked as current by canonical docs
+- historical flat logs under `docs/archive/flat-docs/` remain historical unless relinked as current by canonical docs
 
 ## Minimal Launch Sequence
 

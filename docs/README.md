@@ -1,6 +1,6 @@
 # POKROV Documentation Index
 
-Last updated: 2026-04-13
+Last updated: 2026-04-15
 
 This directory is split into two classes of material:
 
@@ -88,7 +88,7 @@ Use the role-based paths below first. If you need older context, go to the archi
 ## Historical Records
 
 - [Archive Guide](C:/Users/kiwun/Documents/ai/VPN/docs/archive/README.md)
-- dated flat docs in `docs/*.md`
+- dated flat docs in `docs/archive/flat-docs/`
 - audit evidence in `docs/audit-artifacts/`
 - archived root guides in `docs/archive/root-guides/`
 

@@ -60,7 +60,7 @@ Contains backend, bots, worker jobs, webapp, marketing site, ops scripts, and pl
 
 - [C:/Users/kiwun/Documents/ai/VPN/external/client-fork/app](C:/Users/kiwun/Documents/ai/VPN/external/client-fork/app)
 
-Contains the `POKROV` Flutter fork for Android and Windows. Some legacy filenames and package/store identifiers may still mention `POKROV VPN`.
+Contains the `POKROV` Flutter fork for Android and Windows. Legacy filenames remain in some canonical paths, but current Windows release identity, executable naming, and packaged artifact canon target `POKROV` / `pokrov`.
 
 Current scope note:
 
@@ -240,6 +240,7 @@ Client release-gate note:
 - `run_client_release_gate.py` enters `external/client-fork/app` automatically; on Windows it bootstraps `flutter build windows --release` first when `sqlite3.dll` is missing for Flutter tests
 - raw Android outputs live under `external/client-fork/app/build/app/outputs/...`; raw Windows outputs live under `external/client-fork/app/build/windows/x64/runner/Release/...`
 - client `out/` becomes the canonical packaged Windows bundle only after `external/client-fork/app/scripts/package_windows.ps1`; empty `out/` does not mean nothing was built
+- after the final green release rerun, keep `external/client-fork/app/out/` as the canonical packaged Windows bundle and treat raw client `build/` and `dist/` outputs as disposable local artifacts
 - run `python scripts/android_localhost_audit.py --serial <device-serial> --connect-wait-sec 30 --disconnect-wait-sec 15` on a release-installed Android build for the manual-assisted localhost listener audit
 - if you fold Android build targets into `release_gate_check.py`, export `ANDROID_AUDIT_SERIAL=<physical-device-serial>` first or let the gate fail loudly instead of treating a repo/static-only run as release-ready
 - public client verification for this wave must cover routing presets `Global` and `All except RU`, plus DNS split and leak checks on Android and Windows
@@ -255,8 +256,8 @@ flutter_distributor package --platform windows --targets msix
 Windows packaging guardrails:
 
 - keep `windows/packaging/exe/make_config.yaml` on a canonical public publisher URL such as `https://pokrov.space/`, not a GitHub repository URL
-- public `MSIX` fields such as display name, publisher display name, description, and protocol activation must resolve to `POKROV` / `pokrov`
-- hidden internal manifest identifiers may remain temporarily if they are not user-visible and do not leak into public installer surfaces or protocol activation
+- public and packaged `MSIX` identity fields such as display name, identity name, publisher display name, description, executable naming, and protocol activation must resolve to `POKROV` / `pokrov`
+- do not ship legacy `POKROV VPN`, `Pokrov.Vpn`, or `hiddify` residue in packaged Windows public or hidden identity fields
 - release-facing raster branding should regenerate from [external/logogo.png](C:/Users/kiwun/Documents/ai/VPN/external/logogo.png), while vector branding should regenerate from [logo/logoclear.svg](C:/Users/kiwun/Documents/ai/VPN/logo/logoclear.svg) and [logo/logowithtext.svg](C:/Users/kiwun/Documents/ai/VPN/logo/logowithtext.svg)
 
 ## Documentation Rules

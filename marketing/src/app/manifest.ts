@@ -15,6 +15,12 @@ export default function manifest(): MetadataRoute.Manifest {
     categories: ["security", "utilities", "productivity"],
     icons: [
       {
+        src: "/apple-icon.png",
+        sizes: "512x512",
+        type: "image/png",
+        purpose: "any",
+      },
+      {
         src: "/pokrov-logo.svg",
         sizes: "any",
         type: "image/svg+xml",

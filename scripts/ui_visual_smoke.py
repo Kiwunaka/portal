@@ -42,7 +42,7 @@ def _default_checks() -> list[Check]:
             name="marketing-home-cta",
             path=REPO_ROOT / "marketing" / "src" / "components" / "marketing-landing.tsx",
             must_contain=(
-                "POKROV Network",
+                "POKROV",
                 "config.webappUrl",
                 "config.newsChannelUrl",
                 "/checkout/?plan=",
@@ -50,14 +50,14 @@ def _default_checks() -> list[Check]:
                 "lp-trust-grid",
                 "lp-pricing-shell",
                 "lp-footer-cta",
-                "<details className=\"lp-faq-item\">",
+                '<details className="lp-faq-item">',
             ),
-            must_not_contain=("href={config.connectUrl}",),
+            must_not_contain=("href={config.connectUrl}", "POKROV Network"),
         ),
         Check(
             name="marketing-layout-seo",
             path=REPO_ROOT / "marketing" / "src" / "app" / "layout.tsx",
-            must_contain=("metadataBase", "manifest", "favicon.ico", "apple-icon.png", "JsonLd"),
+            must_contain=("metadataBase", "manifest", "/favicon.ico", "/apple-icon.png", "JsonLd"),
         ),
         Check(
             name="marketing-checkout-gateway",
@@ -80,8 +80,8 @@ def _default_checks() -> list[Check]:
         Check(
             name="webapp-entry",
             path=REPO_ROOT / "webapp" / "src" / "app" / "page.tsx",
-            must_contain=("Личный кабинет POKROV Network", "Открыть Telegram", "secure Telegram login"),
-            must_not_contain=("Продолжить вход в PORTAL",),
+            must_contain=("Личный кабинет POKROV", "Открыть Telegram", "secure sign-in"),
+            must_not_contain=("Продолжить вход в PORTAL", "POKROV Network"),
         ),
         Check(
             name="webapp-local-qr",
@@ -89,10 +89,10 @@ def _default_checks() -> list[Check]:
             must_contain=('import("qrcode")', "QR-код ссылки подключения"),
         ),
         Check(
-            name="webapp-dashboard-qr-usage",
+            name="webapp-dashboard-app-first",
             path=REPO_ROOT / "webapp" / "src" / "app" / "(dashboard)" / "dashboard" / "page.tsx",
-            must_contain=("SubscriptionQrCard", "Показать ссылку подключения или открыть QR"),
-            must_not_contain=("api.qrserver.com", "?format=plain", "Обычная ссылка"),
+            must_contain=("Мои приложения", "Открыть приложения", "Нужна помощь с подключением"),
+            must_not_contain=("SubscriptionQrCard", "api.qrserver.com", "?format=plain"),
         ),
     ]
 

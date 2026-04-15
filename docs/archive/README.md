@@ -1,6 +1,6 @@
 # Historical Notes And Archive
 
-Last updated: 2026-03-20
+Last updated: 2026-04-15
 
 ## Purpose
 
@@ -14,7 +14,7 @@ The following materials are useful for investigation, migration context, and for
 - audits
 - postmortems
 - old rollout notes
-- older flat docs in `docs/*.md`
+- older flat docs in `docs/archive/flat-docs/`
 - root guides moved into `docs/archive/root-guides/`
 
 ## Root Guide Archive

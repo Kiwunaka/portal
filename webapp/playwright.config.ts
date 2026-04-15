@@ -1,7 +1,10 @@
-﻿import { defineConfig } from "@playwright/test";
+import os from "node:os";
+import path from "node:path";
+import { defineConfig } from "@playwright/test";
 
 const port = Number(process.env.E2E_PORT || 3100);
 const reuseExistingServer = process.env.PLAYWRIGHT_FRESH_SERVER === "1" ? false : !process.env.CI;
+const artifactsRoot = path.join(os.tmpdir(), "pokrov-playwright", "webapp");
 
 export default defineConfig({
   testDir: "./e2e",
@@ -10,7 +13,10 @@ export default defineConfig({
   fullyParallel: false,
   workers: 1,
   retries: process.env.CI ? 1 : 0,
-  reporter: process.env.CI ? [["github"], ["html", { open: "never" }]] : "list",
+  outputDir: path.join(artifactsRoot, "test-results"),
+  reporter: process.env.CI
+    ? [["github"], ["html", { open: "never", outputFolder: path.join(artifactsRoot, "html-report") }]]
+    : "list",
   use: {
     baseURL: `http://localhost:${port}/`,
     trace: "retain-on-failure",

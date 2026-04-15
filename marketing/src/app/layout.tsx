@@ -62,9 +62,12 @@ export const metadata: Metadata = {
     ],
   },
   icons: {
-    icon: [{ url: "/pokrov-logo.svg", type: "image/svg+xml", sizes: "any" }],
-    shortcut: [{ url: "/pokrov-logo.svg", type: "image/svg+xml", sizes: "any" }],
-    apple: [{ url: "/pokrov-logo.svg", type: "image/svg+xml", sizes: "any" }],
+    icon: [
+      { url: "/favicon.ico", sizes: "any" },
+      { url: "/pokrov-logo.svg", type: "image/svg+xml", sizes: "any" },
+    ],
+    shortcut: [{ url: "/favicon.ico", sizes: "any" }],
+    apple: [{ url: "/apple-icon.png", type: "image/png", sizes: "512x512" }],
   },
 };
 

@@ -1,6 +1,6 @@
 # POKROV Workspace
 
-Last updated: 2026-04-03
+Last updated: 2026-04-15
 
 This repository is the main workspace for the `POKROV` platform:
 
@@ -9,7 +9,7 @@ This repository is the main workspace for the `POKROV` platform:
 - `marketing/` public site and legal pages
 - `scripts/` deploy, smoke, migration, and ops tooling
 - `docs/` canonical platform documentation
-- `external/client-fork/app/` `POKROV VPN` Flutter client fork
+- `external/client-fork/app/` `POKROV` Flutter client fork
 
 ## Start Here
 
@@ -23,17 +23,22 @@ This repository is the main workspace for the `POKROV` platform:
 
 ## Current Product Facts
 
-- Brand: `POKROV` / `POKROV VPN`
+- Brand: `POKROV`
+- Legacy client identifier: `POKROV VPN` only where compatibility or store history still requires it
 - Client strategy: `consumer-first`
 - Identity strategy: `app-first`
 - Trial: `5 days`
 - Telegram reward: `+10 days`
 - Default client core: `sing-box`
+- Main bot: `@pokrov_vpnbot`
+- Support bot: `@pokrov_supportbot`
+- Feedback bot: `@pokrov_feedbackbot`
 - Public channel: `@pokrov_vpn`
+- `swazist_bot` and `portal_service_bot` are officially disabled legacy usernames
 - Control-plane host: `82.21.114.104`
 
 ## Safety
 
 - Never commit secrets or private keys.
 - Production truth lives in Postgres from `DATABASE_URL`.
-- Root-level historical guides were moved under `docs/archive/`; use the canonical docs above instead.
+- Root-level historical guides were moved under `docs/archive/`, and dated flat notes now live under `docs/archive/flat-docs/`; use the canonical docs above instead.

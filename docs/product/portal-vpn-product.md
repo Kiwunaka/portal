@@ -229,6 +229,14 @@ Product wording rule:
 - active public channel: `@pokrov_vpn`
 - `@pokrov_vpnbot` is an administrator in that channel
 
+Official Telegram surfaces:
+
+- main bot: `@pokrov_vpnbot`
+- support bot: `@pokrov_supportbot`
+- feedback bot: `@pokrov_feedbackbot`
+- news channel: `@pokrov_vpn`
+- legacy usernames `swazist_bot` and `portal_service_bot` are officially disabled and must not be documented as active product surfaces
+
 ### Post-Trial Access Model
 
 - `free_monthly`: `5 GB / 30 days`

@@ -38,7 +38,7 @@ class RunClientReleaseGateTests(unittest.TestCase):
             command = self.module._build_target_command(client_root, target="windows")
 
         self.assertEqual(command.command, ["flutter", "build", "windows", "--release"])
-        self.assertTrue(str(command.expected_artifact).endswith("build\\windows\\x64\\runner\\Release\\POKROVVPN.exe"))
+        self.assertTrue(str(command.expected_artifact).endswith("build\\windows\\x64\\runner\\Release\\POKROV.exe"))
 
     def test_windows_sqlite_bootstrap_dir_prefers_runner_release(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

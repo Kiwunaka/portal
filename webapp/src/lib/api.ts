@@ -6,6 +6,9 @@ const WEB_SESSION_TOKEN_KEY = "portal_web_session_token";
 const DIRECT_API_BASE = "https://api.pokrov.space";
 const DEFAULT_API_TIMEOUT_MS = 15000;
 const NODE_STATUS_CACHE_TTL_MS = 30000;
+let authSessionCacheKey = "";
+let authSessionCacheValue: AuthSessionPayload | null = null;
+let authSessionCachePromise: Promise<AuthSessionPayload> | null = null;
 
 export type NodeInfo = {
   code: string;
@@ -1045,6 +1048,24 @@ function getWebSessionToken(): string {
   return String(window.localStorage.getItem(WEB_SESSION_TOKEN_KEY) || "").trim();
 }
 
+function clearAuthSessionCache(): void {
+  authSessionCacheKey = "";
+  authSessionCacheValue = null;
+  authSessionCachePromise = null;
+}
+
+function getAuthSessionCacheKey(): string {
+  const token = getWebSessionToken();
+  if (token) {
+    return `token:${token}`;
+  }
+  const initData = getInitData();
+  if (initData) {
+    return `telegram:${initData}`;
+  }
+  return "";
+}
+
 function applyAuthHeaders(headers: Headers): void {
   const initData = getInitData();
   const token = getWebSessionToken();
@@ -1065,6 +1086,7 @@ export function setWebSessionToken(token: string): void {
   if (typeof window === "undefined") return;
   const value = String(token || "").trim();
   if (!value) return;
+  clearAuthSessionCache();
   window.localStorage.setItem(WEB_SESSION_TOKEN_KEY, value);
 }
 
@@ -1090,6 +1112,7 @@ export function consumeWebSessionTokenFromUrl(): boolean {
 
 export function clearWebSessionToken(): void {
   if (typeof window === "undefined") return;
+  clearAuthSessionCache();
   window.localStorage.removeItem(WEB_SESSION_TOKEN_KEY);
 }
 
@@ -1521,7 +1544,40 @@ export async function finishTelegramOidcLogin(payload: TelegramOidcFinishPayload
 }
 
 export function fetchAuthSession(): Promise<AuthSessionPayload> {
-  return apiFetch<AuthSessionPayload>("/api/auth/session");
+  const cacheKey = getAuthSessionCacheKey();
+  if (cacheKey && authSessionCacheKey === cacheKey) {
+    if (authSessionCacheValue) {
+      return Promise.resolve(authSessionCacheValue);
+    }
+    if (authSessionCachePromise) {
+      return authSessionCachePromise;
+    }
+  }
+
+  const request = apiFetch<AuthSessionPayload>("/api/auth/session")
+    .then((payload) => {
+      if (authSessionCacheKey === cacheKey) {
+        authSessionCacheValue = payload;
+        authSessionCachePromise = null;
+      }
+      return payload;
+    })
+    .catch((error) => {
+      if (authSessionCacheKey === cacheKey) {
+        authSessionCacheValue = null;
+        authSessionCachePromise = null;
+      }
+      throw error;
+    });
+
+  if (!cacheKey) {
+    return request;
+  }
+
+  authSessionCacheKey = cacheKey;
+  authSessionCacheValue = null;
+  authSessionCachePromise = request;
+  return request;
 }
 
 export function registerByEmail(payload: EmailRegisterPayload): Promise<EmailRegisterResult> {

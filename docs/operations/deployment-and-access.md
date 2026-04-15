@@ -247,8 +247,10 @@ Current local-build notes:
 - production Android signing still requires the local `android/key.properties` path or equivalent secret injection outside git
 - raw Windows release outputs are produced under `external/client-fork/app/build/windows/x64/runner/Release/...`
 - client `out/` is the canonical packaged Windows bundle layout, but it is populated only by `external/client-fork/app/scripts/package_windows.ps1`; an empty `out/` does not mean raw build outputs are missing
+- after the final green rerun, retain the canonical packaged bundle in `external/client-fork/app/out/` and clean raw `build/` and `dist/` outputs as disposable local artifacts
 - the repo-local MSIX smoke path is intentionally unsigned by default through `sign_msix: false`; signing still belongs to the release handoff
-- public Windows and Android labels, installer names, and protocol activation must read as `POKROV` / `pokrov`, while hidden compatibility handlers may still preserve legacy import continuity
+- public Windows and Android labels, Windows package identity, executable naming, installer names, and protocol activation must read as `POKROV` / `pokrov`
+- explicit legacy compatibility handlers such as hidden Android import continuity may remain only where separately documented and not as the Windows packaged identity truth
 - `external/client-fork/app/scripts/package_windows.ps1` uses the client repo root as its working directory and now inspects the packaged `MSIX` via a temporary `.zip` copy because `Expand-Archive` cannot read `.msix` directly
 
 Current brand-source rule for release assets:
@@ -459,15 +461,15 @@ Canonical client release workflow:
 
 Default release slug in this repo:
 
-- `pokrov-vpn`
+- `pokrov`
 
 Default artifact names:
 
-- `pokrov-vpn-android-universal.apk`
-- `pokrov-vpn-android-market.aab`
-- `pokrov-vpn-windows-setup-x64.exe`
-- `pokrov-vpn-windows-setup-x64.msix`
-- `pokrov-vpn-windows-portable-x64.zip`
+- `pokrov-android-universal.apk`
+- `pokrov-android-market.aab`
+- `pokrov-windows-setup-x64.exe`
+- `pokrov-windows-setup-x64.msix`
+- `pokrov-windows-portable-x64.zip`
 
 Current public download surfaces expose only:
 
@@ -512,8 +514,8 @@ Release handoff after publishing artifacts:
 
 ```powershell
 pwsh external/client-fork/scripts/release_handoff.ps1 `
-  -AndroidApkUrl "https://github.com/<org>/<repo>/releases/download/<tag>/pokrov-vpn-android-universal.apk" `
-  -WindowsExeUrl "https://github.com/<org>/<repo>/releases/download/<tag>/pokrov-vpn-windows-setup-x64.exe"
+  -AndroidApkUrl "https://github.com/<org>/<repo>/releases/download/<tag>/pokrov-android-universal.apk" `
+  -WindowsExeUrl "https://github.com/<org>/<repo>/releases/download/<tag>/pokrov-windows-setup-x64.exe"
 python external/client-fork/scripts/check_release_urls.py --env-file external/client-fork/release-links.env
 ```
 
