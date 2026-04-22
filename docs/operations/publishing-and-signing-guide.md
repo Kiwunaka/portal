@@ -78,7 +78,7 @@ Current canonical release artifacts:
 Retention rule:
 
 - keep alpha, beta, release-candidate, and public-release artifacts inside the canonical repo-local artifact paths for the active release lane instead of treating desktop downloads or CI workspace leftovers as the only copy
-- during the current bridge period, that means `external/client-fork/app/out/` remains the canonical checked and retained artifact folder for Android and Windows handoff material
+- during the current bridge period, `external/client-fork/app/out/` remains the canonical local build/signing working set, but the repo-backed retained archive must be mirrored into `C:/Users/kiwun/Documents/ai/POKROV-app/artifacts/releases/bridge/` because the public `Kiwunaka/PORTALapp` fork cannot accept new Git LFS release objects
 - once formal cutover moves release truth into `POKROV-app`, carry the same rule forward there instead of splitting artifact truth across ad hoc local folders
 
 Current public-facing download buttons in shipped surfaces are limited to:
@@ -123,6 +123,7 @@ Notes:
 - test/build modes now auto-run `flutter pub get` plus `flutter pub run build_runner build --delete-conflicting-outputs` when generated Dart assets are missing, so a clean checkout can rebuild the ignored `*.g.dart` / `*.freezed.dart` surface before Flutter tests start.
 - `scripts/run_client_release_gate.py` now fails early if `external/client-fork/app/libcore` is dirty, missing, or not on the expected pinned SHA; release builds must start from a clean checkout with tracked `libcore` state.
 - Android build targets in `scripts/run_client_release_gate.py` now also refresh the canonical copies in `external/client-fork/app/out/` as `pokrov-android-universal.apk` and `pokrov-android-market.aab`, so operators do not need a separate manual copy step after a green local build.
+- after the final green rerun, mirror the handoff bundle from `external/client-fork/app/out/` into `C:/Users/kiwun/Documents/ai/POKROV-app/artifacts/releases/bridge/<version>/` so testers and operators can fetch the exact bridge-period alpha/beta bundle from a repo that accepts Git LFS uploads.
 - if the preflight fails, inspect the submodule directly with `git -C external/client-fork/app/libcore status --short` and `git -C external/client-fork/app/libcore diff --stat`; fixing those changes belongs in the canonical client repo, not as an ad hoc root-repo override.
 - repo-local Windows MSIX smoke can also be produced with `dart pub global run msix:create --build-windows false`; that path intentionally keeps `sign_msix: false` for local verification and does not replace signed release handoff
 
@@ -155,6 +156,7 @@ Artifact-location note:
 
 - raw Android release outputs are expected under `external/client-fork/app/build/app/outputs/...`
 - the wrapper-based Android build commands also refresh the canonical copies in `external/client-fork/app/out/`
+- bridge-period repo-backed Android artifact retention lives in `C:/Users/kiwun/Documents/ai/POKROV-app/artifacts/releases/bridge/` after the local handoff bundle is refreshed
 - those raw outputs do not prove production readiness until the production key path is confirmed and the physical-device audit is complete
 - retain the formal Android localhost-audit evidence in `ops-local/android-localhost-audit*.json`, and keep any curated release evidence that must survive the handoff under `docs/audit-artifacts/`
 - treat repo-local screenshots, UI XML dumps, logcat captures, and ad hoc runtime snapshots from one Android validation pass as disposable scratch unless they are intentionally promoted into `docs/audit-artifacts/`
@@ -214,6 +216,7 @@ Artifact-location note:
 
 - raw Windows build outputs are expected under `external/client-fork/app/build/windows/x64/runner/Release/...`
 - client `out/` stays empty until `external/client-fork/app/scripts/package_windows.ps1` canonicalizes the bundle; empty `out/` does not mean the raw `EXE` or `MSIX` are missing
+- after Windows packaging succeeds, mirror the bridge-period bundle into `C:/Users/kiwun/Documents/ai/POKROV-app/artifacts/releases/bridge/<version>/` because the bridge fork remote cannot serve as the long-term Git LFS artifact archive
 
 Current runtime-surface note:
 

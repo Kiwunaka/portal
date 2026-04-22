@@ -258,7 +258,7 @@ Current local-build notes:
 - production Android signing still requires the local `android/key.properties` path or equivalent secret injection outside git
 - raw Windows release outputs are produced under `external/client-fork/app/build/windows/x64/runner/Release/...`
 - client `out/` is the canonical local release bundle layout: Android copies are refreshed by `scripts/run_client_release_gate.py`, while Windows artifacts are canonicalized by `external/client-fork/app/scripts/package_windows.ps1`
-- after the final green rerun, retain the canonical packaged bundle in `external/client-fork/app/out/` and clean raw `build/` and `dist/` outputs as disposable local artifacts
+- after the final green rerun, retain the canonical packaged bundle in `external/client-fork/app/out/` as the local build/signing working set, mirror the repo-backed archive into `C:/Users/kiwun/Documents/ai/POKROV-app/artifacts/releases/bridge/<version>/`, and clean raw `build/` and `dist/` outputs as disposable local artifacts
 - Android validation evidence hygiene is stricter: retain formal evidence in `ops-local/android-localhost-audit*.json` and in any intentionally promoted records under `docs/audit-artifacts/`
 - repo-local Android screenshots, UI XML dumps, logcat captures, and ad hoc runtime snapshots created during one validation pass are disposable scratch unless they are intentionally promoted into `docs/audit-artifacts/`
 - machine-local Android tooling noise such as `C:\Windows\adb.exe`, `%TEMP%`, SDK install directories, and `~/.android` is outside repo cleanup scope and must not be treated as repo evidence or repo cleanup targets
@@ -465,6 +465,7 @@ Important outputs:
 - raw Android outputs under `external/client-fork/app/build/app/outputs/...`
 - raw Windows outputs under `external/client-fork/app/build/windows/x64/runner/Release/...`
 - canonical Android and Windows release bundle in client `out/`; Android copies are refreshed by `scripts/run_client_release_gate.py`, Windows files by `external/client-fork/app/scripts/package_windows.ps1`
+- repo-backed bridge-period artifact mirror in `C:/Users/kiwun/Documents/ai/POKROV-app/artifacts/releases/bridge/<version>/` because the public fork remote for `external/client-fork/app` cannot accept new Git LFS release objects
 
 Do not delete release artifacts if they are still being distributed or verified.
 
@@ -515,6 +516,7 @@ Client verification notes:
 - `python scripts/run_client_release_gate.py preflight` is the fastest repo-local proof that `external/client-fork/app/libcore` is present, pinned to the parent repo SHA, and clean before Flutter work begins.
 - on Windows, `python scripts/run_client_release_gate.py test --suite full` bootstraps `flutter build windows --release` first when `sqlite3.dll` is missing, so the full Flutter suite does not rely on a manual `PATH` step.
 - `python scripts/run_client_release_gate.py build --target android-apk` and `--target android-aab` refresh the canonical `external/client-fork/app/out/` copies after a successful Flutter build so operator-visible artifacts stay in sync with the latest local rerun.
+- after those commands and the Windows packaging step succeed, mirror the exact bundle into `C:/Users/kiwun/Documents/ai/POKROV-app/artifacts/releases/bridge/<version>/` before handing alpha/beta builds to testers.
 - if `preflight` fails, inspect `git -C external/client-fork/app/libcore status --short` and `git -C external/client-fork/app/libcore diff --stat`; that fix belongs in the canonical client repo instead of as an ad hoc root-repo override.
 - direct `flutter` commands inside `external/client-fork/app` remain useful for focused inner-loop work, but the wrapper commands above are the release-workflow truth documented for operators and CI.
 
