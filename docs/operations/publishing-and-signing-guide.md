@@ -1,6 +1,6 @@
 # Publishing And Signing Guide
 
-Last updated: 2026-04-15
+Last updated: 2026-04-22
 
 ## Document Status
 
@@ -74,6 +74,12 @@ Current canonical release artifacts:
 - `pokrov-windows-setup-x64.exe`
 - `pokrov-windows-setup-x64.msix`
 - `pokrov-windows-portable-x64.zip`
+
+Retention rule:
+
+- keep alpha, beta, release-candidate, and public-release artifacts inside the canonical repo-local artifact paths for the active release lane instead of treating desktop downloads or CI workspace leftovers as the only copy
+- during the current bridge period, that means `external/client-fork/app/out/` remains the canonical checked and retained artifact folder for Android and Windows handoff material
+- once formal cutover moves release truth into `POKROV-app`, carry the same rule forward there instead of splitting artifact truth across ad hoc local folders
 
 Current public-facing download buttons in shipped surfaces are limited to:
 

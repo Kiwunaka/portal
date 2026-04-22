@@ -231,7 +231,10 @@ Notes:
 - Real browser checks live under `webapp/e2e/`.
 - `tests/test_admin_webapp_smoke.py` is a structure/build smoke, not a replacement for Playwright browser coverage.
 - `webapp/e2e/cabinet-flow.spec.ts` covers the non-app user cabinet flow with mocked API contracts.
-- `npm.cmd run test:e2e` uses an isolated Playwright dev server on port `3102`, and `npm.cmd run test:e2e:admin` uses port `3101`; both scripts clear a stale port owner first and disable server reuse so local browser checks do not inherit stale HMR state.
+- `npm.cmd run test:e2e` now builds the static export, then serves `webapp/out` through `webapp/scripts/serve_export.py` on port `3102`, so the main browser gate matches the export-style deploy surface instead of `next dev`.
+- `npm.cmd run test:e2e:admin` uses the same build-plus-export-server flow on port `3101`, which removes the standalone admin timeout that came from cold `next dev` bootstrap and HMR reload churn.
+- `npm.cmd run test:e2e:cabinet` remains the quicker inner-loop command when you only want that spec and do not need the full release-style export gate.
+- the release-style Playwright scripts still clear a stale port owner first and disable server reuse so local browser checks do not inherit a leftover export server or stale HMR session.
 - admin browser checks should include a narrow mobile or Telegram WebView-like viewport so tap targets, overflow, and modal actions stay usable inside the embedded webapp.
 - observer-lite admin checks should cover dashboard summary counts, users-table filter parity, detail diagnostics, and node collector health rendering.
 - user-facing config delivery should expose one public `ссылка подключения` via `connect.pokrov.space`; hidden `?format=plain` compatibility must stay out of normal copy and browser flows.

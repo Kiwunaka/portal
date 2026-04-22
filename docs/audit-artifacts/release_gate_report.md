@@ -1,44 +1,44 @@
 # Release Gate Report
 
-- Generated at: `2026-04-15 18:32:59`
+- Generated at: `2026-04-22 23:18:07`
 - Status: `PASS`
 
 ## Summary
 
 | Gate | Exit code | Duration (s) |
 |---|---:|---:|
-| Release pytest matrix | 0 | 157.43 |
-| Admin/auth regressions | 0 | 65.95 |
-| Client security smoke | 0 | 0.11 |
-| Client Flutter tests | 0 | 25.49 |
-| API lifecycle smoke | 0 | 8.37 |
-| Public link checks | 0 | 0.14 |
-| Marketing production build | 0 | 68.25 |
-| Admin webapp smoke | 0 | 0.17 |
-| WebApp production build | 0 | 56.28 |
-| WebApp Playwright E2E | 0 | 137.06 |
-| UI visual smoke | 0 | 0.15 |
+| Release pytest matrix | 0 | 143.65 |
+| Admin/auth regressions | 0 | 64.37 |
+| Client security smoke | 0 | 0.07 |
+| Client Flutter tests | 0 | 17.84 |
+| API lifecycle smoke | 0 | 7.84 |
+| Public link checks | 0 | 0.09 |
+| Marketing production build | 0 | 45.41 |
+| Admin webapp smoke | 0 | 0.11 |
+| WebApp production build | 0 | 43.93 |
+| WebApp Playwright E2E | 0 | 96.29 |
+| UI visual smoke | 0 | 0.09 |
 
 ## Command Tails
 
 ### Release pytest matrix
 
-- Command: `C:\Users\kiwun\AppData\Local\Programs\Python\Python312\python.exe -m pytest portal_bot/tests/test_app_first_api.py tests/test_portal_api.py tests/test_worker_retention.py tests/test_observer_service.py tests/test_observer_api.py tests/test_collect_xray_observer.py tests/test_predeploy_node_readiness.py tests/test_admin_webapp_smoke.py tests/test_public_copy_guardrails.py tests/test_reviews_username_masking.py -q --basetemp C:\Users\kiwun\Documents\ai\VPN\.tmp\pytest-basetemp\release-gate-amyqoemw`
+- Command: `C:\Users\kiwun\AppData\Local\Programs\Python\Python312\python.exe -m pytest portal_bot/tests/test_app_first_api.py tests/test_portal_api.py tests/test_worker_retention.py tests/test_observer_service.py tests/test_observer_api.py tests/test_collect_xray_observer.py tests/test_predeploy_node_readiness.py tests/test_admin_webapp_smoke.py tests/test_public_copy_guardrails.py tests/test_reviews_username_masking.py -q --basetemp C:\Users\kiwun\Documents\ai\VPN\.tmp\pytest-basetemp\release-gate-_53io108`
 - Exit: `0`
 
 ```text
 .................................................                        [100%]
-49 passed in 156.27s (0:02:36)
+49 passed in 142.63s (0:02:22)
 ```
 
 ### Admin/auth regressions
 
-- Command: `C:\Users\kiwun\AppData\Local\Programs\Python\Python312\python.exe -m pytest tests/test_api_auth_and_tickets.py -q --basetemp C:\Users\kiwun\Documents\ai\VPN\.tmp\pytest-basetemp\release-gate-j6mkvpwi`
+- Command: `C:\Users\kiwun\AppData\Local\Programs\Python\Python312\python.exe -m pytest tests/test_api_auth_and_tickets.py -q --basetemp C:\Users\kiwun\Documents\ai\VPN\.tmp\pytest-basetemp\release-gate-v9pujt_w`
 - Exit: `0`
 
 ```text
 .........................................................                [100%]
-57 passed in 64.90s (0:01:04)
+57 passed in 63.47s (0:01:03)
 ```
 
 ### Client security smoke
@@ -70,45 +70,45 @@
 - Exit: `0`
 
 ```text
-00:11 +72: C:/Users/kiwun/Documents/ai/VPN/external/client-fork/app/test/features/per_app_proxy/overview/per_app_proxy_page_test.dart: adds a curated preset without dropping manual selections
-00:11 +73: C:/Users/kiwun/Documents/ai/VPN/external/client-fork/app/test/features/per_app_proxy/overview/per_app_proxy_page_test.dart: adds a curated preset without dropping manual selections
-00:11 +74: C:/Users/kiwun/Documents/ai/VPN/external/client-fork/app/test/features/per_app_proxy/overview/per_app_proxy_page_test.dart: adds a curated preset without dropping manual selections
-00:11 +75: C:/Users/kiwun/Documents/ai/VPN/external/client-fork/app/test/features/per_app_proxy/overview/per_app_proxy_page_test.dart: adds a curated preset without dropping manual selections
-00:11 +76: C:/Users/kiwun/Documents/ai/VPN/external/client-fork/app/test/features/per_app_proxy/overview/per_app_proxy_page_test.dart: adds a curated preset without dropping manual selections
-00:11 +77: C:/Users/kiwun/Documents/ai/VPN/external/client-fork/app/test/features/per_app_proxy/overview/per_app_proxy_page_test.dart: adds a curated preset without dropping manual selections
-00:12 +78: C:/Users/kiwun/Documents/ai/VPN/external/client-fork/app/test/features/portal/data/portal_trial_activator_test.dart: activateTrial fetches managed manifest first and imports content
-00:12 +79: C:/Users/kiwun/Documents/ai/VPN/external/client-fork/app/test/features/portal/data/portal_trial_activator_test.dart: activateTrial falls back to subscription url when managed manifest fetch fails
-00:12 +80: C:/Users/kiwun/Documents/ai/VPN/external/client-fork/app/test/features/portal/router/portal_routes_test.dart: portal routes use canonical names and preserve legacy aliases
-00:12 +81: C:/Users/kiwun/Documents/ai/VPN/external/client-fork/app/test/features/portal/widget/devices_page_test.dart: shows consumer device overview with current device name
-00:13 +82: C:/Users/kiwun/Documents/ai/VPN/external/client-fork/app/test/features/portal/widget/empty_profiles_home_body_test.dart: shows the premium empty home state in English
-00:14 +83: C:/Users/kiwun/Documents/ai/VPN/external/client-fork/app/test/features/portal/widget/empty_profiles_home_body_test.dart: shows the premium empty home state in English
-00:14 +84: C:/Users/kiwun/Documents/ai/VPN/external/client-fork/app/test/features/portal/widget/empty_profiles_home_body_test.dart: shows the premium empty home state in English
-00:14 +85: C:/Users/kiwun/Documents/ai/VPN/external/client-fork/app/test/features/portal/widget/empty_profiles_home_body_test.dart: shows the premium empty home state in English
-00:14 +86: C:/Users/kiwun/Documents/ai/VPN/external/client-fork/app/test/features/portal/widget/locations_page_test.dart: shows auto-select and available locations
-00:14 +87: C:/Users/kiwun/Documents/ai/VPN/external/client-fork/app/test/features/portal/widget/locations_page_test.dart: shows auto-select and available locations
-00:14 +88: C:/Users/kiwun/Documents/ai/VPN/external/client-fork/app/test/features/portal/widget/premium_visuals_golden_test.dart: quick connect panel premium layout stays stable
-00:14 +89: C:/Users/kiwun/Documents/ai/VPN/external/client-fork/app/test/features/portal/widget/premium_visuals_golden_test.dart: quick connect panel premium layout stays stable
-00:15 +90: C:/Users/kiwun/Documents/ai/VPN/external/client-fork/app/test/features/portal/widget/profile_page_test.dart: shows profile rewards and telegram bonus entry point
-00:15 +91: C:/Users/kiwun/Documents/ai/VPN/external/client-fork/app/test/features/portal/widget/profile_page_test.dart: shows profile rewards and telegram bonus entry point
-00:15 +92: C:/Users/kiwun/Documents/ai/VPN/external/client-fork/app/test/features/portal/widget/quick_connect_panel_test.dart: shows premium quick connect summary for an active trial
-00:16 +93: C:/Users/kiwun/Documents/ai/VPN/external/client-fork/app/test/features/portal/widget/subscription_page_test.dart: shows browser checkout entry as the primary purchase action
-00:16 +94: C:/Users/kiwun/Documents/ai/VPN/external/client-fork/app/test/features/portal/widget/subscription_page_test.dart: shows browser checkout entry as the primary purchase action
-00:16 +95: C:/Users/kiwun/Documents/ai/VPN/external/client-fork/app/test/features/portal/widget/subscription_page_test.dart: shows browser checkout entry as the primary purchase action
-00:16 +96: C:/Users/kiwun/Documents/ai/VPN/external/client-fork/app/test/features/portal/widget/support_page_test.dart: shows in-app support composer and device context
-00:16 +97: C:/Users/kiwun/Documents/ai/VPN/external/client-fork/app/test/features/portal/widget/support_page_test.dart: shows in-app support composer and device context
-00:16 +98: C:/Users/kiwun/Documents/ai/VPN/external/client-fork/app/test/features/portal/widget/support_page_test.dart: shows in-app support composer and device context
-00:16 +99: C:/Users/kiwun/Documents/ai/VPN/external/client-fork/app/test/features/portal/widget/support_page_test.dart: shows in-app support composer and device context
-00:16 +100: C:/Users/kiwun/Documents/ai/VPN/external/client-fork/app/test/features/portal/widget/support_page_test.dart: shows in-app support composer and device context
-00:17 +101: C:/Users/kiwun/Documents/ai/VPN/external/client-fork/app/test/features/profile/data/profile_repository_test.dart: fetch keeps subscription downloads on the app default user agent
-00:17 +102: C:/Users/kiwun/Documents/ai/VPN/external/client-fork/app/test/features/settings/overview/settings_overview_page_test.dart: shows a consumer-first preferences shell with hidden compatibility tools
-00:18 +103: C:/Users/kiwun/Documents/ai/VPN/external/client-fork/app/test/features/settings/overview/settings_overview_page_test.dart: shows a consumer-first preferences shell with hidden compatibility tools
-00:18 +104: C:/Users/kiwun/Documents/ai/VPN/external/client-fork/app/test/features/settings/overview/settings_overview_page_test.dart: shows a consumer-first preferences shell with hidden compatibility tools
-00:18 +105: C:/Users/kiwun/Documents/ai/VPN/external/client-fork/app/test/features/settings/overview/settings_overview_page_test.dart: shows a consumer-first preferences shell with hidden compatibility tools
-00:18 +106: C:/Users/kiwun/Documents/ai/VPN/external/client-fork/app/test/features/settings/route_mode/route_mode_page_test.dart: lets the user choose optimize everything for this device
-00:18 +107: C:/Users/kiwun/Documents/ai/VPN/external/client-fork/app/test/features/settings/route_mode/route_mode_page_test.dart: lets the user choose optimize everything for this device
-00:19 +108: C:/Users/kiwun/Documents/ai/VPN/external/client-fork/app/test/features/settings/route_mode/route_mode_page_test.dart: uses a Windows executable entry flow for selected apps
-00:19 +109: C:/Users/kiwun/Documents/ai/VPN/external/client-fork/app/test/features/settings/route_mode/route_mode_page_test.dart: stores selected apps mode with the chosen packages
-00:19 +110: All tests passed!
+00:06 +72: C:/Users/kiwun/Documents/ai/VPN/external/client-fork/app/test/features/per_app_proxy/overview/per_app_proxy_page_test.dart: adds a curated preset without dropping manual selections
+00:06 +73: C:/Users/kiwun/Documents/ai/VPN/external/client-fork/app/test/features/per_app_proxy/overview/per_app_proxy_page_test.dart: adds a curated preset without dropping manual selections
+00:06 +74: C:/Users/kiwun/Documents/ai/VPN/external/client-fork/app/test/features/per_app_proxy/overview/per_app_proxy_page_test.dart: adds a curated preset without dropping manual selections
+00:06 +75: C:/Users/kiwun/Documents/ai/VPN/external/client-fork/app/test/features/per_app_proxy/overview/per_app_proxy_page_test.dart: adds a curated preset without dropping manual selections
+00:07 +76: C:/Users/kiwun/Documents/ai/VPN/external/client-fork/app/test/features/portal/data/portal_session_store_test.dart: ensureInstallId generates and reuses a persisted install id
+00:07 +77: C:/Users/kiwun/Documents/ai/VPN/external/client-fork/app/test/features/portal/data/portal_session_store_test.dart: saveSessionToken persists runtime auth for future requests
+00:07 +78: C:/Users/kiwun/Documents/ai/VPN/external/client-fork/app/test/features/portal/data/portal_trial_activator_test.dart: activateTrial fetches managed manifest first and imports content
+00:07 +79: C:/Users/kiwun/Documents/ai/VPN/external/client-fork/app/test/features/portal/data/portal_trial_activator_test.dart: activateTrial falls back to subscription url when managed manifest fetch fails
+00:07 +80: C:/Users/kiwun/Documents/ai/VPN/external/client-fork/app/test/features/portal/router/portal_routes_test.dart: portal routes use canonical names and preserve legacy aliases
+00:08 +81: C:/Users/kiwun/Documents/ai/VPN/external/client-fork/app/test/features/portal/widget/devices_page_test.dart: shows consumer device overview with current device name
+00:08 +82: C:/Users/kiwun/Documents/ai/VPN/external/client-fork/app/test/features/portal/widget/empty_profiles_home_body_test.dart: shows the premium empty home state in English
+00:08 +83: C:/Users/kiwun/Documents/ai/VPN/external/client-fork/app/test/features/portal/widget/empty_profiles_home_body_test.dart: shows the premium empty home state in English
+00:08 +84: C:/Users/kiwun/Documents/ai/VPN/external/client-fork/app/test/features/portal/widget/empty_profiles_home_body_test.dart: shows the premium empty home state in English
+00:08 +85: C:/Users/kiwun/Documents/ai/VPN/external/client-fork/app/test/features/portal/widget/empty_profiles_home_body_test.dart: shows the premium empty home state in English
+00:09 +86: C:/Users/kiwun/Documents/ai/VPN/external/client-fork/app/test/features/portal/widget/locations_page_test.dart: shows auto-select and available locations
+00:09 +87: C:/Users/kiwun/Documents/ai/VPN/external/client-fork/app/test/features/portal/widget/locations_page_test.dart: shows auto-select and available locations
+00:09 +88: C:/Users/kiwun/Documents/ai/VPN/external/client-fork/app/test/features/portal/widget/premium_visuals_golden_test.dart: quick connect panel premium layout stays stable
+00:09 +89: C:/Users/kiwun/Documents/ai/VPN/external/client-fork/app/test/features/portal/widget/premium_visuals_golden_test.dart: quick connect panel premium layout stays stable
+00:10 +90: C:/Users/kiwun/Documents/ai/VPN/external/client-fork/app/test/features/portal/widget/profile_page_test.dart: shows profile rewards and telegram bonus entry point
+00:10 +91: C:/Users/kiwun/Documents/ai/VPN/external/client-fork/app/test/features/portal/widget/profile_page_test.dart: shows profile rewards and telegram bonus entry point
+00:10 +92: C:/Users/kiwun/Documents/ai/VPN/external/client-fork/app/test/features/portal/widget/quick_connect_panel_test.dart: shows premium quick connect summary for an active trial
+00:10 +93: C:/Users/kiwun/Documents/ai/VPN/external/client-fork/app/test/features/portal/widget/subscription_page_test.dart: shows browser checkout entry as the primary purchase action
+00:10 +94: C:/Users/kiwun/Documents/ai/VPN/external/client-fork/app/test/features/portal/widget/subscription_page_test.dart: shows browser checkout entry as the primary purchase action
+00:10 +95: C:/Users/kiwun/Documents/ai/VPN/external/client-fork/app/test/features/portal/widget/subscription_page_test.dart: shows browser checkout entry as the primary purchase action
+00:10 +96: C:/Users/kiwun/Documents/ai/VPN/external/client-fork/app/test/features/portal/widget/support_page_test.dart: shows in-app support composer and device context
+00:11 +97: C:/Users/kiwun/Documents/ai/VPN/external/client-fork/app/test/features/portal/widget/support_page_test.dart: shows in-app support composer and device context
+00:11 +98: C:/Users/kiwun/Documents/ai/VPN/external/client-fork/app/test/features/portal/widget/support_page_test.dart: shows in-app support composer and device context
+00:11 +99: C:/Users/kiwun/Documents/ai/VPN/external/client-fork/app/test/features/portal/widget/support_page_test.dart: shows in-app support composer and device context
+00:11 +100: C:/Users/kiwun/Documents/ai/VPN/external/client-fork/app/test/features/portal/widget/support_page_test.dart: shows in-app support composer and device context
+00:11 +101: C:/Users/kiwun/Documents/ai/VPN/external/client-fork/app/test/features/profile/data/profile_repository_test.dart: fetch keeps subscription downloads on the app default user agent
+00:11 +102: C:/Users/kiwun/Documents/ai/VPN/external/client-fork/app/test/features/settings/overview/settings_overview_page_test.dart: shows a consumer-first preferences shell with hidden compatibility tools
+00:12 +103: C:/Users/kiwun/Documents/ai/VPN/external/client-fork/app/test/features/settings/overview/settings_overview_page_test.dart: shows a consumer-first preferences shell with hidden compatibility tools
+00:12 +104: C:/Users/kiwun/Documents/ai/VPN/external/client-fork/app/test/features/settings/overview/settings_overview_page_test.dart: shows a consumer-first preferences shell with hidden compatibility tools
+00:12 +105: C:/Users/kiwun/Documents/ai/VPN/external/client-fork/app/test/features/settings/overview/settings_overview_page_test.dart: shows a consumer-first preferences shell with hidden compatibility tools
+00:12 +106: C:/Users/kiwun/Documents/ai/VPN/external/client-fork/app/test/features/settings/route_mode/route_mode_page_test.dart: lets the user choose optimize everything for this device
+00:12 +107: C:/Users/kiwun/Documents/ai/VPN/external/client-fork/app/test/features/settings/route_mode/route_mode_page_test.dart: lets the user choose optimize everything for this device
+00:12 +108: C:/Users/kiwun/Documents/ai/VPN/external/client-fork/app/test/features/settings/route_mode/route_mode_page_test.dart: uses a Windows executable entry flow for selected apps
+00:13 +109: C:/Users/kiwun/Documents/ai/VPN/external/client-fork/app/test/features/settings/route_mode/route_mode_page_test.dart: stores selected apps mode with the chosen packages
+00:13 +110: All tests passed!
 [client-gate] C:\Users\kiwun\tools\flutter\git-3.24.3\bin\flutter.bat test (cwd=C:\Users\kiwun\Documents\ai\VPN\external\client-fork\app)
 ```
 
@@ -120,7 +120,7 @@
 ```text
 .
 ----------------------------------------------------------------------
-Ran 1 test in 7.315s
+Ran 1 test in 7.000s
 
 OK
 ```
@@ -168,13 +168,12 @@ Link check passed.
 - Exit: `0`
 
 ```text
-Retrying 1/3...
-request to https://fonts.gstatic.com/s/jetbrainsmono/v24/tDbV2o-flEEny0FZhsfKu5WU4xD0OwGtT0rU3BE.woff2 failed, reason: connect ETIMEDOUT 142.251.98.94:443
+> pokrov-marketing@0.1.0 build
+> next build
 
-Retrying 1/3...
-request to https://fonts.gstatic.com/s/playfairdisplay/v40/nuFiD-vYSZviVYUb_rj3ij__anPXDTzYgEM86xQ.woff2 failed, reason: connect ETIMEDOUT 142.251.98.94:443
+  ▲ Next.js 14.2.35
 
-Retrying 1/3...
+   Creating an optimized production build ...
  ✓ Compiled successfully
    Linting and checking validity of types ...
    Collecting page data ...
@@ -187,27 +186,28 @@ Retrying 1/3...
    Collecting build traces ...
 
 Route (app)                              Size     First Load JS
-┌ ○ /                                    198 B          96.3 kB
+┌ ƒ /                                    198 B          96.4 kB
 ├ ○ /_not-found                          873 B          88.3 kB
-├ ○ /checkout                            13.8 kB         110 kB
-├ ○ /devices                             198 B          96.3 kB
-├ ○ /install                             198 B          96.3 kB
+├ ○ /checkout                            7.39 kB         104 kB
+├ ○ /devices                             198 B          96.4 kB
+├ ○ /install                             198 B          96.4 kB
 ├ ○ /manifest.webmanifest                0 B                0 B
-├ ○ /mobile                              198 B          96.3 kB
-├ ○ /offer                               198 B          96.3 kB
-├ ○ /privacy                             198 B          96.3 kB
+├ ○ /mobile                              198 B          96.4 kB
+├ ○ /offer                               198 B          96.4 kB
+├ ○ /privacy                             198 B          96.4 kB
 ├ ○ /robots.txt                          0 B                0 B
 ├ ○ /sitemap.xml                         0 B                0 B
-├ ○ /telegram                            198 B          96.3 kB
-├ ○ /tiktok                              198 B          96.3 kB
-└ ○ /youtube                             198 B          96.3 kB
-+ First Load JS shared by all            87.4 kB
+├ ○ /telegram                            198 B          96.4 kB
+├ ○ /tiktok                              198 B          96.4 kB
+└ ○ /youtube                             198 B          96.4 kB
++ First Load JS shared by all            87.5 kB
   ├ chunks/004092b4-fb7a74995ea98db8.js  53.6 kB
-  ├ chunks/645-292c8134570c70af.js       31.9 kB
-  └ other shared chunks (total)          1.92 kB
+  ├ chunks/645-9f6b6af1d0e5a2b8.js       31.9 kB
+  └ other shared chunks (total)          1.95 kB
 
 
-○  (Static)  prerendered as static content
+○  (Static)   prerendered as static content
+ƒ  (Dynamic)  server-rendered on demand
 ```
 
 ### Admin webapp smoke
@@ -225,17 +225,16 @@ Admin WebApp smoke passed.
 - Exit: `0`
 
 ```text
-  ✓ externalDir
 
   Creating an optimized production build ...
-✓ Compiled successfully in 2.7s
+✓ Compiled successfully in 2.1s
   Running TypeScript ...
   Collecting page data using 19 workers ...
-  Generating static pages using 19 workers (0/25) ...
-  Generating static pages using 19 workers (6/25) 
-  Generating static pages using 19 workers (12/25) 
-  Generating static pages using 19 workers (18/25) 
-✓ Generating static pages using 19 workers (25/25) in 712.1ms
+  Generating static pages using 19 workers (0/26) ...
+  Generating static pages using 19 workers (6/26) 
+  Generating static pages using 19 workers (12/26) 
+  Generating static pages using 19 workers (19/26) 
+✓ Generating static pages using 19 workers (26/26) in 406.0ms
   Finalizing page optimization ...
 
 Route (app)
@@ -256,6 +255,7 @@ Route (app)
 ├ ○ /devices
 ├ ○ /icon.svg
 ├ ○ /pricing
+├ ○ /redeem
 ├ ○ /statistics
 ├ ○ /subscription
 ├ ○ /subscription/checkout
@@ -273,46 +273,46 @@ Route (app)
 - Exit: `0`
 
 ```text
-  ok  1 e2e\admin-gate.spec.ts:826:7 › Admin gate › redirects non-admin from /admin/* to /dashboard (3.6s)
-[2m[WebServer] [22m[33m[1m⚠[22m[39m Fast Refresh had to perform a full reload. Read more: https://nextjs.org/docs/messages/fast-refresh-reload
-[2m[WebServer] [22m[33m[1m⚠[22m[39m Fast Refresh had to perform a full reload. Read more: https://nextjs.org/docs/messages/fast-refresh-reload
-[2m[WebServer] [22m[33m[1m⚠[22m[39m Fast Refresh had to perform a full reload. Read more: https://nextjs.org/docs/messages/fast-refresh-reload
-[2m[WebServer] [22m[33m[1m⚠[22m[39m Fast Refresh had to perform a full reload. Read more: https://nextjs.org/docs/messages/fast-refresh-reload
-[2m[WebServer] [22m[33m[1m⚠[22m[39m Fast Refresh had to perform a full reload. Read more: https://nextjs.org/docs/messages/fast-refresh-reload
-[2m[WebServer] [22m[33m[1m⚠[22m[39m Fast Refresh had to perform a full reload. Read more: https://nextjs.org/docs/messages/fast-refresh-reload
-[2m[WebServer] [22m[33m[1m⚠[22m[39m Fast Refresh had to perform a full reload. Read more: https://nextjs.org/docs/messages/fast-refresh-reload
-[2m[WebServer] [22m[33m[1m⚠[22m[39m Fast Refresh had to perform a full reload. Read more: https://nextjs.org/docs/messages/fast-refresh-reload
-  ok  2 e2e\admin-gate.spec.ts:832:7 › Admin gate › allows admin to open all admin sections (22.8s)
-  ok  3 e2e\admin-gate.spec.ts:855:7 › Admin gate › keeps an explicit path back to the cabinet from admin (2.4s)
-  ok  4 e2e\admin-gate.spec.ts:866:7 › Admin gate › groups admin routes by operational category and keeps Telegram as fallback only (4.4s)
-  ok  5 e2e\admin-gate.spec.ts:881:7 › Admin gate › keeps admin dashboard stable when summary omits optional blocks (2.1s)
-  ok  6 e2e\admin-gate.spec.ts:901:7 › Admin gate › shows clean Russian copy across admin surfaces (7.3s)
-  ok  7 e2e\admin-gate.spec.ts:923:7 › Admin gate › lets admin search, sort, and paginate the users table (2.8s)
-  ok  8 e2e\admin-gate.spec.ts:953:7 › Admin gate › keeps the users filters synced into the URL and restores them on reload (3.5s)
-  ok  9 e2e\admin-gate.spec.ts:980:7 › Admin gate › lets admin safely delete only manual or test users (5.2s)
-  ok 10 e2e\admin-gate.spec.ts:1018:7 › Admin gate › shows observer-lite badges, filters, and detail diagnostics (3.0s)
-  ok 11 e2e\admin-gate.spec.ts:1059:7 › Admin gate › shows observer-lite empty state instead of misleading zero-only activity (2.1s)
-  ok 12 e2e\admin-gate.spec.ts:1075:7 › Admin gate › keeps admin pages clickable and inside the viewport on mobile (5.5s)
-  ok 13 e2e\admin-gate.spec.ts:1132:7 › Admin gate › shows node alert labels and probe failure details (2.0s)
-  ok 14 e2e\admin-gate.spec.ts:1212:7 › Admin gate › shows node context with separate panel, dataplane, and transport detail (2.1s)
-  ok 15 e2e\admin-gate.spec.ts:1289:7 › Admin gate › keeps rollout targeting fields and feed objects intact across save and reload (3.4s)
-  ok 16 e2e\admin-gate.spec.ts:1329:7 › Admin gate › lets admin triage a ticket and send a reply using stable status codes (5.9s)
-  ok 17 e2e\cabinet-flow.spec.ts:323:7 › Cabinet flow › shows shared POKROV cabinet branding and a site return link (2.0s)
-  ok 18 e2e\cabinet-flow.spec.ts:336:7 › Cabinet flow › supports additive email states on the root auth entry (2.0s)
-  ok 19 e2e\cabinet-flow.spec.ts:348:7 › Cabinet flow › shows a truthful unavailable state when live email delivery is not configured (2.5s)
-  ok 20 e2e\cabinet-flow.spec.ts:386:7 › Cabinet flow › reuses an existing web session and lands in the cabinet without showing auth entry again (2.0s)
-  ok 21 e2e\cabinet-flow.spec.ts:437:7 › Cabinet flow › keeps the dashboard on consumer-safe access actions (2.0s)
-  ok 22 e2e\cabinet-flow.spec.ts:452:7 › Cabinet flow › keeps cabinet navigation on native Next.js routing (5.9s)
-  ok 23 e2e\cabinet-flow.spec.ts:468:7 › Cabinet flow › shows branded root and cabinet not-found recovery screens (4.5s)
-  ok 24 e2e\cabinet-flow.spec.ts:480:7 › Cabinet flow › keeps the subscription page on renewal and support instead of raw connection sharing (2.0s)
-[2m[WebServer] [22m[33m[1m⚠[22m[39m Fast Refresh had to perform a full reload. Read more: https://nextjs.org/docs/messages/fast-refresh-reload
-  ok 25 e2e\cabinet-flow.spec.ts:492:7 › Cabinet flow › renders runtime connections on devices and keeps statistics actionable (6.1s)
-[2m[WebServer] [22m[33m[1m⚠[22m[39m Fast Refresh had to perform a full reload. Read more: https://nextjs.org/docs/messages/fast-refresh-reload
-  ok 26 e2e\cabinet-flow.spec.ts:510:7 › Cabinet flow › keeps cabinet copy human and hides node internals (6.4s)
-  ok 27 e2e\cabinet-flow.spec.ts:524:7 › Cabinet flow › keeps downloads and support flows usable without the app (5.9s)
-  ok 28 e2e\cabinet-flow.spec.ts:540:7 › Cabinet flow › stays inside a narrow mobile viewport for core cabinet pages (4.9s)
+├ ○ /support
+├ ○ /support/legal
+└ ○ /support/thread
 
-  28 passed (2.2m)
+
+○  (Static)  prerendered as static content
+
+
+Running 28 tests using 1 worker
+
+  ok  1 e2e\admin-gate.spec.ts:830:7 › Admin gate › redirects non-admin from /admin/* to /dashboard (1.5s)
+  ok  2 e2e\admin-gate.spec.ts:836:7 › Admin gate › allows admin to open all admin sections (4.8s)
+  ok  3 e2e\admin-gate.spec.ts:859:7 › Admin gate › keeps an explicit path back to the cabinet from admin (1.7s)
+  ok  4 e2e\admin-gate.spec.ts:870:7 › Admin gate › groups admin routes by operational category and keeps Telegram as fallback only (1.5s)
+  ok  5 e2e\admin-gate.spec.ts:885:7 › Admin gate › keeps admin dashboard stable when summary omits optional blocks (1.3s)
+  ok  6 e2e\admin-gate.spec.ts:905:7 › Admin gate › shows clean Russian copy across admin surfaces (2.6s)
+  ok  7 e2e\admin-gate.spec.ts:927:7 › Admin gate › lets admin search, sort, and paginate the users table (2.2s)
+  ok  8 e2e\admin-gate.spec.ts:957:7 › Admin gate › keeps the users filters synced into the URL and restores them on reload (1.4s)
+  ok  9 e2e\admin-gate.spec.ts:984:7 › Admin gate › lets admin safely delete only manual or test users (1.3s)
+  ok 10 e2e\admin-gate.spec.ts:1022:7 › Admin gate › shows observer-lite badges, filters, and detail diagnostics (2.8s)
+  ok 11 e2e\admin-gate.spec.ts:1063:7 › Admin gate › shows observer-lite empty state instead of misleading zero-only activity (1.3s)
+  ok 12 e2e\admin-gate.spec.ts:1079:7 › Admin gate › keeps admin pages clickable and inside the viewport on mobile (3.8s)
+  ok 13 e2e\admin-gate.spec.ts:1136:7 › Admin gate › shows node alert labels and probe failure details (1.4s)
+  ok 14 e2e\admin-gate.spec.ts:1216:7 › Admin gate › shows node context with separate panel, dataplane, and transport detail (1.4s)
+  ok 15 e2e\admin-gate.spec.ts:1293:7 › Admin gate › keeps rollout targeting fields and feed objects intact across save and reload (2.4s)
+  ok 16 e2e\admin-gate.spec.ts:1333:7 › Admin gate › lets admin triage a ticket and send a reply using stable status codes (2.1s)
+  ok 17 e2e\cabinet-flow.spec.ts:323:7 › Cabinet flow › shows shared POKROV cabinet branding and a site return link (1.6s)
+  ok 18 e2e\cabinet-flow.spec.ts:336:7 › Cabinet flow › supports additive email states on the root auth entry (1.6s)
+  ok 19 e2e\cabinet-flow.spec.ts:348:7 › Cabinet flow › shows a truthful unavailable state when live email delivery is not configured (1.5s)
+  ok 20 e2e\cabinet-flow.spec.ts:386:7 › Cabinet flow › reuses an existing web session and lands in the cabinet without showing auth entry again (1.5s)
+  ok 21 e2e\cabinet-flow.spec.ts:437:7 › Cabinet flow › keeps the dashboard on consumer-safe access actions (1.4s)
+  ok 22 e2e\cabinet-flow.spec.ts:452:7 › Cabinet flow › keeps cabinet navigation on native Next.js routing (1.9s)
+  ok 23 e2e\cabinet-flow.spec.ts:468:7 › Cabinet flow › shows branded root and cabinet not-found recovery screens (1.4s)
+  ok 24 e2e\cabinet-flow.spec.ts:480:7 › Cabinet flow › keeps the subscription page on renewal and support instead of raw connection sharing (1.3s)
+  ok 25 e2e\cabinet-flow.spec.ts:492:7 › Cabinet flow › renders runtime connections on devices and keeps statistics actionable (1.9s)
+  ok 26 e2e\cabinet-flow.spec.ts:510:7 › Cabinet flow › keeps cabinet copy human and hides node internals (2.4s)
+  ok 27 e2e\cabinet-flow.spec.ts:524:7 › Cabinet flow › keeps downloads and support flows usable without the app (2.1s)
+  ok 28 e2e\cabinet-flow.spec.ts:540:7 › Cabinet flow › stays inside a narrow mobile viewport for core cabinet pages (2.3s)
+
+  28 passed (57.0s)
 ```
 
 ### UI visual smoke

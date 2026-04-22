@@ -397,6 +397,14 @@ export default function CheckoutClient() {
             Погасить key в cabinet
           </a>
 
+          <a href={config.webappUrl} target="_blank" rel="noreferrer" className="checkout-secondary checkout-secondary-button">
+            Открыть кабинет
+          </a>
+
+          <a href={config.botUrl} target="_blank" rel="noreferrer" className="checkout-secondary checkout-secondary-button">
+            Продолжить в Telegram
+          </a>
+
           <Link href={MARKETING_CANONICAL_PATHS.install} className="checkout-secondary checkout-secondary-button">
             Сначала установить приложение
           </Link>

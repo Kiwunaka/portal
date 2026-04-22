@@ -5,6 +5,11 @@ import { defineConfig } from "@playwright/test";
 const port = Number(process.env.E2E_PORT || 3100);
 const reuseExistingServer = process.env.PLAYWRIGHT_FRESH_SERVER === "1" ? false : !process.env.CI;
 const artifactsRoot = path.join(os.tmpdir(), "pokrov-playwright", "webapp");
+const serverMode = process.env.PLAYWRIGHT_SERVER_MODE === "start" ? "start" : "dev";
+const serverCommand =
+  serverMode === "start"
+    ? `python scripts/serve_export.py --port ${port} --directory out`
+    : `npm.cmd run dev -- --port ${port}`;
 
 export default defineConfig({
   testDir: "./e2e",
@@ -18,14 +23,14 @@ export default defineConfig({
     ? [["github"], ["html", { open: "never", outputFolder: path.join(artifactsRoot, "html-report") }]]
     : "list",
   use: {
-    baseURL: `http://localhost:${port}/`,
+    baseURL: `http://127.0.0.1:${port}/`,
     trace: "retain-on-failure",
     screenshot: "only-on-failure",
     video: "retain-on-failure",
   },
   webServer: {
-    command: `npm.cmd run dev -- --port ${port}`,
-    url: `http://localhost:${port}/`,
+    command: serverCommand,
+    url: `http://127.0.0.1:${port}/`,
     reuseExistingServer,
     timeout: 120_000,
   },

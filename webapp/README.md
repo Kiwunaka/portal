@@ -126,7 +126,9 @@ Verification rule:
 - run `npm.cmd run build` on every webapp task
 - run `npm.cmd run test:e2e` when cabinet, pricing, renewal, downloads, support, or login flows change
 - run `npm.cmd run test:e2e:admin` when admin routes, permissions, dashboards, or operator actions change
-- `npm.cmd run test:e2e` starts an isolated Playwright dev server on port `3102`, and `npm.cmd run test:e2e:admin` uses port `3101`; both scripts clear a stale port owner first so browser checks do not reuse a stale local `next dev` session
+- `npm.cmd run test:e2e` now builds the static export and serves `webapp/out` on port `3102` through `webapp/scripts/serve_export.py`, so the full browser pack runs against the same export-style surface that deploy uses
+- `npm.cmd run test:e2e:admin` uses the same build-plus-export-server flow on port `3101`, which removes the standalone admin flake that came from `next dev` cold-start and HMR reload noise
+- both release-style Playwright scripts clear a stale port owner first and disable server reuse so local browser checks do not inherit an old process or stale session bootstrap
 
 ## Related Canonical Docs
 

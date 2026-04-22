@@ -1651,7 +1651,7 @@ async def _sync_control_panel_access(*, user: User) -> bool:
 
 
 def _linked_identities_payload(*, s, user: User, auth_user: dict[str, Any] | None = None) -> dict[str, Any]:
-    email_identity = get_verified_identity_for_user(s, int(user.tg_id))
+    email_identity = get_verified_identity_for_user(s, tg_id=int(user.tg_id))
     telegram_id = _linked_telegram_id(user) or (0 if bool(getattr(user, "is_app_user", False)) else int(user.tg_id))
     telegram_username = (
         str(getattr(user, "linked_telegram_username", "") or "").strip()

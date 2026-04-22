@@ -150,7 +150,7 @@ function buildInstallHref(): string {
 }
 
 function buildCheckoutHref(planCode: string): string {
-  return `${MARKETING_CANONICAL_PATHS.checkout}?plan=${encodeURIComponent(planCode)}`;
+  return `/checkout/?plan=${encodeURIComponent(planCode)}`;
 }
 
 function buildDownloadCards(): DownloadCard[] {
@@ -386,6 +386,7 @@ export default function MarketingLanding({
   const downloadCards = buildDownloadCards();
   const relatedPages = RELATED_PAGES.filter((item) => item.href !== pagePath);
   const currentScenarios = scenarioCards?.length ? scenarioCards : DEFAULT_SCENARIOS;
+  const defaultCheckoutHref = buildCheckoutHref(plans[0]?.code || "1_month");
   const softwareApplicationJsonLd = buildSoftwareApplicationJsonLd({
     pagePath,
     reviews: buildReviewJsonLdInput(reviews),
@@ -460,7 +461,7 @@ export default function MarketingLanding({
               <Link href={MARKETING_CANONICAL_PATHS.install} className="lp-btn lp-btn--primary">
                 Установить приложение
               </Link>
-              <Link href={MARKETING_CANONICAL_PATHS.checkout} className="lp-btn lp-btn--ghost">
+              <Link href={defaultCheckoutHref} className="lp-btn lp-btn--ghost">
                 Выбрать key-first план
               </Link>
             </div>
@@ -727,7 +728,7 @@ export default function MarketingLanding({
               <Link href={MARKETING_CANONICAL_PATHS.install} className="lp-btn lp-btn--primary">
                 Установить приложение
               </Link>
-              <Link href={MARKETING_CANONICAL_PATHS.checkout} className="lp-btn lp-btn--ghost">
+              <Link href={defaultCheckoutHref} className="lp-btn lp-btn--ghost">
                 Купить activation key
               </Link>
               <a href={config.webappUrl} target="_blank" rel="noreferrer" className="lp-btn lp-btn--ghost">

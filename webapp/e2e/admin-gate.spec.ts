@@ -794,14 +794,18 @@ async function registerApiMocks(page: Page, opts: MockOptions): Promise<void> {
 }
 
 async function openRoute(page: Page, href: string): Promise<void> {
-  for (let attempt = 0; attempt < 2; attempt += 1) {
+  for (let attempt = 0; attempt < 3; attempt += 1) {
     try {
       await page.goto(href, { waitUntil: "domcontentloaded" });
       await waitForPortalShell(page);
       return;
     } catch (error) {
       const message = String((error as Error)?.message || error || "");
-      if (attempt === 1 || !message.includes("ERR_ABORTED")) {
+      const retryable =
+        message.includes("ERR_ABORTED") ||
+        message.includes("toBeHidden") ||
+        message.includes("Подтягиваем данные кабинета");
+      if (attempt === 2 || !retryable) {
         throw error;
       }
       await page.waitForTimeout(250);
