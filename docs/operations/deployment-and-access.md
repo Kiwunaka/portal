@@ -85,6 +85,7 @@ python scripts/remote_deploy_brain_portal_code.py --brain-ip 82.21.114.104 --res
 Repo-side deploy rule:
 
 - the default restart set is `portal-api`, `portal-bot`, `portal-helpbot`, and `portal-feedbackbot`
+- the deploy payload must include the full shared backend truth set under `/root/shared/`: `product-facts.json`, `public-urls.json`, `design-tokens.json`, `tariff-catalog.json`, `access-matrix.json`, and `promo-slots.json`
 - the deploy step should be treated as failed if any requested unit does not become `active` after restart
 
 Observer-lite canary install:

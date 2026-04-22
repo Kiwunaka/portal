@@ -75,7 +75,14 @@ def iter_upload_mappings(repo_root: Path) -> list[tuple[Path, str]]:
         if source.exists():
             mappings.append((source, f"/root/portal_bot/{target_name}"))
 
-    for shared_name in ("product-facts.json", "public-urls.json", "design-tokens.json"):
+    for shared_name in (
+        "product-facts.json",
+        "public-urls.json",
+        "design-tokens.json",
+        "tariff-catalog.json",
+        "access-matrix.json",
+        "promo-slots.json",
+    ):
         source = repo_root / "shared" / shared_name
         if source.exists():
             mappings.append((source, f"/root/shared/{shared_name}"))
