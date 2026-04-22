@@ -14,26 +14,31 @@ import {
   resolveTrafficStatusText,
 } from "@/lib/access-policy";
 import { fetchPublicPlans, type PlanCatalogRow } from "@/lib/api";
-import { getCopyText, normalizePlanCode } from "@/lib/portal";
+import { getCopyText, getTariffPlans, normalizePlanCode } from "@/lib/portal";
 import { usePortalSession } from "@/lib/session";
 import { useEffect, useState } from "react";
 
 const COMPARISON_ROWS = [
-  { metric: "Устройства", start: "1", standard: "До 5", long: "До 5" },
-  { metric: "Страны", start: "NL", standard: "IT, NL, PL, US", long: "IT, NL, PL, US" },
-  { metric: "Срок", start: "Старт", standard: "1 или 3 месяца", long: "6, 9 или 12 месяцев" },
+  { metric: "\u0423\u0441\u0442\u0440\u043e\u0439\u0441\u0442\u0432\u0430", start: "1", standard: "\u0414\u043e 5", long: "\u0414\u043e 5" },
   {
-    metric: "Для кого",
-    start: "Быстро проверить сервис",
-    standard: "Спокойный рабочий режим",
-    long: "Редкие продления и лучшая цена",
+    metric: "\u041b\u043e\u0433\u0438\u0447\u0435\u0441\u043a\u0430\u044f \u043b\u043e\u043a\u0430\u0446\u0438\u044f",
+    start: "\u041e\u0434\u043d\u0430 \u043b\u043e\u043a\u0430\u0446\u0438\u044f POKROV",
+    standard: "\u041e\u0434\u043d\u0430 \u043b\u043e\u043a\u0430\u0446\u0438\u044f POKROV",
+    long: "\u041e\u0434\u043d\u0430 \u043b\u043e\u043a\u0430\u0446\u0438\u044f POKROV",
+  },
+  { metric: "\u0421\u0440\u043e\u043a", start: "\u0421\u0442\u0430\u0440\u0442", standard: "1-3 \u043c\u0435\u0441\u044f\u0446\u0430", long: "6-12 \u043c\u0435\u0441\u044f\u0446\u0435\u0432" },
+  {
+    metric: "\u041f\u0443\u0431\u043b\u0438\u0447\u043d\u044b\u0439 \u043c\u0430\u0440\u0448\u0440\u0443\u0442",
+    start: "All except RU",
+    standard: "All except RU",
+    long: "All except RU",
   },
 ] as const;
 
 const RENEWAL_STEPS = [
-  "Проверьте текущий статус доступа и лимиты прямо в кабинете.",
-  "Выберите продление или подходящий срок без ручной настройки подключения.",
-  "Если доступ переносится на новое устройство, откройте приложения POKROV и продолжайте уже там.",
+  "\u041f\u0440\u043e\u0432\u0435\u0440\u044c\u0442\u0435 \u0442\u0435\u043a\u0443\u0449\u0438\u0439 \u0440\u0435\u0436\u0438\u043c \u0434\u043e\u0441\u0442\u0443\u043f\u0430 \u0438 \u043b\u0438\u043c\u0438\u0442\u044b \u043f\u0440\u044f\u043c\u043e \u0432 \u043a\u0430\u0431\u0438\u043d\u0435\u0442\u0435.",
+  "\u0412\u044b\u0431\u0435\u0440\u0438\u0442\u0435 \u043f\u0440\u043e\u0434\u043b\u0435\u043d\u0438\u0435 \u0438\u043b\u0438 \u043f\u043e\u0434\u0445\u043e\u0434\u044f\u0449\u0438\u0439 \u0441\u0440\u043e\u043a \u0431\u0435\u0437 \u043f\u043e\u043a\u0430\u0437\u0430 raw-\u0441\u0441\u044b\u043b\u043e\u043a.",
+  "\u0415\u0441\u043b\u0438 \u043c\u0435\u043d\u044f\u0435\u0442\u0441\u044f \u0443\u0441\u0442\u0440\u043e\u0439\u0441\u0442\u0432\u043e, \u043f\u0440\u043e\u0434\u043e\u043b\u0436\u0430\u0439\u0442\u0435 \u0432\u0445\u043e\u0434 \u0432 \u0442\u043e\u0442 \u0436\u0435 app-first \u0430\u043a\u043a\u0430\u0443\u043d\u0442 \u0438 \u043f\u0440\u0438 \u043d\u0443\u0436\u0434\u0435 \u0438\u0441\u043f\u043e\u043b\u044c\u0437\u0443\u0439\u0442\u0435 redeem \u043a\u043b\u044e\u0447.",
 ] as const;
 
 function planColumn(planCode: string | null | undefined): "start" | "standard" | "long" {
@@ -47,36 +52,36 @@ function fallbackPlans(): PlanCatalogRow[] {
   return [
     {
       code: "start_99",
-      label: "Приветственный 30 дней",
+      label: "\u0421\u0442\u0430\u0440\u0442 30 \u0434\u043d\u0435\u0439",
       amount_rub: 99,
       amount_stars: 99,
       days: 30,
       device_limit: 1,
-      node_policy: "nl_only",
-      badge: "Один раз",
+      node_policy: "managed_premium",
+      badge: "\u0421\u0442\u0430\u0440\u0442",
       is_active: true,
       sort_order: 1,
     },
     {
       code: "1_month",
-      label: "1 месяц",
+      label: "1 \u043c\u0435\u0441\u044f\u0446",
       amount_rub: 249,
       amount_stars: 249,
       days: 30,
       device_limit: 5,
-      node_policy: "paid_pool",
-      badge: "Базовый",
+      node_policy: "managed_premium",
+      badge: "\u0411\u0430\u0437\u043e\u0432\u044b\u0439",
       is_active: true,
       sort_order: 2,
     },
     {
       code: "12_months",
-      label: "12 месяцев",
+      label: "12 \u043c\u0435\u0441\u044f\u0446\u0435\u0432",
       amount_rub: 1644,
       amount_stars: 1644,
       days: 365,
       device_limit: 5,
-      node_policy: "paid_pool",
+      node_policy: "managed_premium",
       badge: "-45%",
       is_active: true,
       sort_order: 3,
@@ -84,15 +89,36 @@ function fallbackPlans(): PlanCatalogRow[] {
   ];
 }
 
+function sharedFallbackPlans(): PlanCatalogRow[] {
+  const rows = getTariffPlans()
+    .filter((plan) => Boolean(plan.is_active) && Number(plan.amount_rub || 0) > 0)
+    .map((plan) => ({
+      code: plan.code,
+      label: plan.label,
+      amount_rub: Number(plan.amount_rub || 0),
+      amount_stars: Number(plan.amount_stars || 0),
+      days: Number(plan.duration_days || 0),
+      device_limit: Number(plan.device_limit || 0),
+      node_policy: plan.node_policy,
+      badge: plan.badge || "",
+      is_active: Boolean(plan.is_active),
+      sort_order: Number(plan.sort_order || 0),
+    }))
+    .sort((a, b) => Number(a.sort_order || 0) - Number(b.sort_order || 0));
+  return rows.length ? rows : fallbackPlans();
+}
+
 function nodePolicyLabel(value: string | null | undefined): string {
   const normalized = String(value || "").trim().toLowerCase();
-  if (normalized === "nl_only") return "NL";
-  if (normalized === "paid_pool") return "IT, NL, PL, US";
-  return "Актуальный пул";
+  if (normalized === "free_single_location" || normalized === "nl_only") return "NL-free";
+  if (normalized === "managed_premium" || normalized === "paid_pool") {
+    return "\u041e\u0434\u043d\u0430 \u043b\u043e\u0433\u0438\u0447\u0435\u0441\u043a\u0430\u044f \u043b\u043e\u043a\u0430\u0446\u0438\u044f POKROV";
+  }
+  return "\u0423\u043f\u0440\u0430\u0432\u043b\u044f\u0435\u0442\u0441\u044f \u043f\u0440\u043e\u0444\u0438\u043b\u0435\u043c";
 }
 
 function formatDate(value?: string | null): string {
-  if (!value) return "—";
+  if (!value) return "\u2014";
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return value;
   return date.toLocaleString("ru-RU");
@@ -100,7 +126,7 @@ function formatDate(value?: string | null): string {
 
 export default function SubscriptionPage() {
   const { user, dash } = usePortalSession();
-  const [plans, setPlans] = useState<PlanCatalogRow[]>(() => fallbackPlans());
+  const [plans, setPlans] = useState<PlanCatalogRow[]>(() => sharedFallbackPlans());
   const [error, setError] = useState("");
 
   useEffect(() => {
@@ -112,12 +138,12 @@ export default function SubscriptionPage() {
           .filter((plan) => Boolean(plan.is_active))
           .sort((a, b) => Number(a.sort_order || 0) - Number(b.sort_order || 0));
         if (!cancelled) {
-          setPlans(rows.length ? rows : fallbackPlans());
+          setPlans(rows.length ? rows : sharedFallbackPlans());
           setError("");
         }
       } catch (nextError) {
         if (!cancelled) {
-          setPlans(fallbackPlans());
+          setPlans(sharedFallbackPlans());
           setError(String((nextError as { message?: string })?.message || nextError || ""));
         }
       }
@@ -141,72 +167,90 @@ export default function SubscriptionPage() {
   return (
     <main className="space-y-6">
       <section className="glass-card p-7">
-        <p className="font-mono text-xs uppercase tracking-[0.18em] text-slate-500">подписка</p>
+        <p className="font-mono text-xs uppercase tracking-[0.18em] text-slate-500">\u0434\u043e\u0441\u0442\u0443\u043f</p>
         <h1 className="mt-2 font-display text-4xl font-bold">
-          {getCopyText("webapp.subscription.title", "Доступ и продление")}
+          {getCopyText("webapp.subscription.title", "\u0414\u043e\u0441\u0442\u0443\u043f \u0438 \u043f\u0440\u043e\u0434\u043b\u0435\u043d\u0438\u0435")}
         </h1>
-        <h2 className="mt-4 font-display text-2xl font-semibold">Подключение ведём через приложения POKROV</h2>
+        <h2 className="mt-4 font-display text-2xl font-semibold">
+          {"\u041f\u043e\u0434\u043a\u043b\u044e\u0447\u0435\u043d\u0438\u0435 \u0432\u0435\u0434\u0451\u043c \u0447\u0435\u0440\u0435\u0437 \u043f\u0440\u0438\u043b\u043e\u0436\u0435\u043d\u0438\u044f POKROV"}
+        </h2>
         <p className="mt-2 max-w-3xl text-sm text-slate-600 dark:text-slate-300">
           {getCopyText(
             "webapp.subscription.subtitle",
-            "Здесь видно текущий режим доступа, варианты продления и спокойный следующий шаг, если меняется устройство или нужна помощь.",
+            "\u0417\u0434\u0435\u0441\u044c \u0432\u0438\u0434\u043d\u043e \u0442\u0435\u043a\u0443\u0449\u0438\u0439 \u0440\u0435\u0436\u0438\u043c \u0434\u043e\u0441\u0442\u0443\u043f\u0430, \u043f\u0440\u043e\u0434\u043b\u0435\u043d\u0438\u0435, redeem \u043a\u043b\u044e\u0447\u0430 \u0438 \u0441\u043f\u043e\u043a\u043e\u0439\u043d\u044b\u0439 support path \u0431\u0435\u0437 raw subscription link \u0432 default UX.",
           )}
         </p>
         <p className="mt-2 max-w-3xl text-sm text-slate-600 dark:text-slate-300">
-          Кабинет не показывает и не редактирует личные ссылки подключения. Само подключение продолжается через приложения POKROV, а браузерный путь остаётся местом для статуса, продления и поддержки.
+          {
+            "\u041f\u0443\u0431\u043b\u0438\u0447\u043d\u043e \u043c\u044b \u0434\u0435\u0440\u0436\u0438\u043c \u043e\u0434\u043d\u0443 \u043b\u043e\u0433\u0438\u0447\u0435\u0441\u043a\u0443\u044e \u043b\u043e\u043a\u0430\u0446\u0438\u044e. \u0422\u0440\u0430\u043d\u0441\u043f\u043e\u0440\u0442\u043d\u044b\u0435 \u0432\u0430\u0440\u0438\u0430\u043d\u0442\u044b \u0438 \u0434\u0438\u0430\u0433\u043d\u043e\u0441\u0442\u0438\u043a\u0430 \u043e\u0441\u0442\u0430\u044e\u0442\u0441\u044f \u0432 \u0443\u043f\u0440\u0430\u0432\u043b\u044f\u0435\u043c\u043e\u043c \u043f\u0440\u043e\u0444\u0438\u043b\u0435, \u0430 \u043d\u0435 \u0432 \u043c\u0430\u0441\u0441\u043e\u0432\u043e\u043c UI."
+          }
         </p>
         <div className="mt-5 flex flex-wrap gap-3">
-          <AppRouteLink href="/subscription/checkout/" className="btn-primary rounded-xl px-6 py-3 text-sm font-semibold uppercase tracking-[0.12em]">
-            Открыть продление
+          <AppRouteLink href="/dashboard/downloads/" className="btn-primary rounded-xl px-6 py-3 text-sm font-semibold uppercase tracking-[0.12em]">
+            {"\u041e\u0442\u043a\u0440\u044b\u0442\u044c \u043c\u043e\u0438 \u043f\u0440\u0438\u043b\u043e\u0436\u0435\u043d\u0438\u044f"}
           </AppRouteLink>
-          <AppRouteLink href="/dashboard/downloads/" className="outline-btn rounded-xl px-6 py-3 text-sm font-semibold uppercase tracking-[0.12em]">
-            Открыть мои приложения
+          <AppRouteLink href="/subscription/checkout/" className="btn-primary rounded-xl px-6 py-3 text-sm font-semibold uppercase tracking-[0.12em]">
+            {"\u041e\u0442\u043a\u0440\u044b\u0442\u044c \u043f\u0440\u043e\u0434\u043b\u0435\u043d\u0438\u0435"}
+          </AppRouteLink>
+          <AppRouteLink href="/redeem/" className="outline-btn rounded-xl px-6 py-3 text-sm font-semibold uppercase tracking-[0.12em]">
+            {"Redeem key"}
           </AppRouteLink>
           <AppRouteLink href="/support/" className="outline-btn rounded-xl px-6 py-3 text-sm font-semibold uppercase tracking-[0.12em]">
-            Нужна помощь с устройством
+            {"\u041d\u0443\u0436\u043d\u0430 \u043f\u043e\u043c\u043e\u0449\u044c \u0441 \u0443\u0441\u0442\u0440\u043e\u0439\u0441\u0442\u0432\u043e\u043c"}
           </AppRouteLink>
         </div>
-        <p className="mt-4 text-xs text-slate-500">Пользователь: {user?.username ? `@${user.username}` : `ID ${user?.tg_id || "—"}`}</p>
+        <p className="mt-4 text-xs text-slate-500">
+          {"\u041f\u043e\u043b\u044c\u0437\u043e\u0432\u0430\u0442\u0435\u043b\u044c: "}
+          {user?.username ? `@${user.username}` : `ID ${user?.tg_id || "\u2014"}`}
+        </p>
       </section>
 
       <section className="grid gap-5 lg:grid-cols-2">
         <article className="glass-card p-6">
-          <p className="font-mono text-xs uppercase tracking-[0.14em] text-emerald-500">что доступно сейчас</p>
+          <p className="font-mono text-xs uppercase tracking-[0.14em] text-emerald-500">
+            {"\u0447\u0442\u043e \u0434\u043e\u0441\u0442\u0443\u043f\u043d\u043e \u0441\u0435\u0439\u0447\u0430\u0441"}
+          </p>
           <h2 className="mt-2 font-display text-3xl font-bold">{resolvePlanLabel(dash, user)}</h2>
           <div className="mt-3 space-y-2 text-sm text-slate-600 dark:text-slate-300">
-            <p>Трафик: {resolveTrafficStatusText(dash, user)}</p>
-            <p>Устройства: до {deviceLimit}</p>
-            <p>Срок доступа: {formatDate(dash?.expiry_at)}</p>
-            {freeMode && nextResetAt ? <p>Следующий сброс: {formatDate(nextResetAt)}</p> : null}
+            <p>{"\u0422\u0440\u0430\u0444\u0438\u043a: "}{resolveTrafficStatusText(dash, user)}</p>
+            <p>{"\u0423\u0441\u0442\u0440\u043e\u0439\u0441\u0442\u0432\u0430: \u0434\u043e "}{deviceLimit}</p>
+            <p>{"\u0421\u0440\u043e\u043a \u0434\u043e\u0441\u0442\u0443\u043f\u0430: "}{formatDate(dash?.expiry_at)}</p>
+            {freeMode && nextResetAt ? <p>{"\u0421\u043b\u0435\u0434\u0443\u044e\u0449\u0438\u0439 \u0441\u0431\u0440\u043e\u0441: "}{formatDate(nextResetAt)}</p> : null}
           </div>
         </article>
         <article className="glass-card p-6">
-          <p className="font-mono text-xs uppercase tracking-[0.14em] text-slate-500">логика доступа</p>
+          <p className="font-mono text-xs uppercase tracking-[0.14em] text-slate-500">
+            {"\u043b\u043e\u0433\u0438\u043a\u0430 \u0434\u043e\u0441\u0442\u0443\u043f\u0430"}
+          </p>
           <h2 className="mt-2 font-display text-3xl font-bold">
             {paidMode
-              ? "Оплаченный доступ уже даёт безлимит и спокойный запас по устройствам"
+              ? "\u041e\u043f\u043b\u0430\u0447\u0435\u043d\u043d\u044b\u0439 \u0434\u043e\u0441\u0442\u0443\u043f \u0443\u0436\u0435 \u0438\u0434\u0451\u0442 \u043a\u0430\u043a managed premium"
               : trialMode
-                ? "После премиум-периода включится Free Monthly"
+                ? "\u041f\u043e\u0441\u043b\u0435 trial \u043f\u0440\u043e\u0444\u0438\u043b\u044c \u043f\u0435\u0440\u0435\u0439\u0434\u0451\u0442 \u0432 Free Monthly"
                 : softMode
-                  ? "Сейчас профиль в мягком режиме"
-                  : "Free Monthly остаётся режимом с квотой"}
+                  ? "\u0421\u0435\u0439\u0447\u0430\u0441 \u043f\u0440\u043e\u0444\u0438\u043b\u044c \u0432 \u043c\u044f\u0433\u043a\u043e\u043c \u0440\u0435\u0436\u0438\u043c\u0435"
+                  : "Free Monthly \u043e\u0441\u0442\u0430\u0451\u0442\u0441\u044f \u0431\u0435\u0441\u043f\u043b\u0430\u0442\u043d\u043e\u0439 \u0442\u043e\u0447\u043a\u043e\u0439 \u0432\u0445\u043e\u0434\u0430"}
           </h2>
           <p className="mt-3 text-sm text-slate-600 dark:text-slate-300">
             {paidMode
-              ? "На paid не показываем остаток в гигабайтах: это безлимитный доступ."
+              ? "\u041f\u043e\u043a\u0443\u043f\u043a\u0430 \u0442\u0435\u043f\u0435\u0440\u044c \u0441\u0432\u044f\u0437\u0430\u043d\u0430 \u0441 key-first commerce: buy key, redeem key, managed premium."
               : trialMode
-                ? "Премиум-период нужен для старта. После него профиль автоматически переходит в бесплатный режим 5 ГБ в месяц."
+                ? "\u041f\u0435\u0440\u0432\u043e\u0435 \u0432\u0430\u043b\u0438\u0434\u043d\u043e\u0435 \u0443\u0441\u0442\u0440\u043e\u0439\u0441\u0442\u0432\u043e \u043f\u043e\u043b\u0443\u0447\u0430\u0435\u0442 5-\u0434\u043d\u0435\u0432\u043d\u044b\u0439 premium trial, \u0430 \u043f\u043e\u0442\u043e\u043c \u043f\u0430\u0434\u0430\u0435\u0442 \u0432 free tier."
                 : softMode
-                  ? "Мягкий режим включается после исчерпания месячной квоты и снимается следующим сбросом."
-                  : `Free Monthly — это ${freeLimitGb || 5} ГБ в месяц и до ${deviceLimit} устройств.`}
+                  ? "\u041c\u044f\u0433\u043a\u0438\u0439 \u0440\u0435\u0436\u0438\u043c \u0432\u043a\u043b\u044e\u0447\u0430\u0435\u0442\u0441\u044f \u043f\u043e\u0441\u043b\u0435 \u0438\u0441\u0447\u0435\u0440\u043f\u0430\u043d\u0438\u044f \u043c\u0435\u0441\u044f\u0447\u043d\u043e\u0439 \u043a\u0432\u043e\u0442\u044b \u0438 \u0441\u043d\u0438\u043c\u0430\u0435\u0442\u0441\u044f \u043d\u0430 \u0441\u043b\u0435\u0434\u0443\u044e\u0449\u0435\u043c reset."
+                  : `Free Monthly - ${freeLimitGb || 5} GB / 30 days, 1 device, NL-free.`}
           </p>
         </article>
       </section>
 
       <section className="grid gap-5 lg:grid-cols-[1.05fr,0.95fr]">
         <article className="glass-card p-6">
-          <p className="font-mono text-xs uppercase tracking-[0.14em] text-emerald-500">как продлить без сюрпризов</p>
-          <h2 className="mt-2 font-display text-3xl font-bold">Продление остаётся в кабинете, подключение — в приложениях</h2>
+          <p className="font-mono text-xs uppercase tracking-[0.14em] text-emerald-500">
+            {"\u043a\u0430\u043a \u043f\u0440\u043e\u0434\u043b\u0438\u0442\u044c \u0431\u0435\u0437 \u0441\u044e\u0440\u043f\u0440\u0438\u0437\u043e\u0432"}
+          </p>
+          <h2 className="mt-2 font-display text-3xl font-bold">
+            {"\u041a\u0430\u0431\u0438\u043d\u0435\u0442 \u0432\u0435\u0434\u0451\u0442 \u0432 checkout \u0438 redeem, \u0430 \u043d\u0435 \u0432 \u0440\u0443\u0447\u043d\u0443\u044e \u0440\u0430\u0437\u0434\u0430\u0447\u0443 \u043a\u043e\u043d\u0444\u0438\u0433\u043e\u0432"}
+          </h2>
           <div className="mt-4 space-y-3">
             {RENEWAL_STEPS.map((step, index) => (
               <div key={step} className="flex items-start gap-3 rounded-2xl border border-white/40 bg-white/55 p-4 dark:border-white/10 dark:bg-white/5">
@@ -220,13 +264,21 @@ export default function SubscriptionPage() {
         </article>
 
         <article className="glass-card p-6">
-          <p className="font-mono text-xs uppercase tracking-[0.14em] text-slate-500">что важно помнить</p>
-          <h2 className="mt-2 font-display text-3xl font-bold">Личный маршрут не выводим на экран кабинета</h2>
+          <p className="font-mono text-xs uppercase tracking-[0.14em] text-slate-500">
+            {"\u0447\u0442\u043e \u0432\u0430\u0436\u043d\u043e \u043f\u043e\u043c\u043d\u0438\u0442\u044c"}
+          </p>
+          <h2 className="mt-2 font-display text-3xl font-bold">
+            {"\u041f\u043e \u0443\u043c\u043e\u043b\u0447\u0430\u043d\u0438\u044e \u043c\u044b \u043d\u0435 \u043f\u043e\u043a\u0430\u0437\u044b\u0432\u0430\u0435\u043c raw subscription link"}
+          </h2>
           <p className="mt-3 text-sm leading-6 text-slate-600 dark:text-slate-300">
-            Это сделано специально: так пользователь не копирует личный путь в буфер обмена, историю браузера или скриншоты. Если доступ нужно продолжить на новом устройстве, открывайте приложения POKROV и входите в тот же аккаунт.
+            {
+              "\u042d\u0442\u043e \u0441\u043e\u0437\u043d\u0430\u0442\u0435\u043b\u044c\u043d\u043e: default UX \u0434\u0435\u0440\u0436\u0438\u0442 key-first commerce, managed profile \u0438 support/recovery path. \u0420\u0443\u0447\u043d\u0430\u044f \u0441\u0441\u044b\u043b\u043a\u0430 \u043e\u0441\u0442\u0430\u0451\u0442\u0441\u044f \u0442\u043e\u043b\u044c\u043a\u043e \u0434\u043b\u044f recovery \u0438 manual request."
+            }
           </p>
           <div className="mt-4 rounded-2xl border border-white/40 bg-white/55 p-4 text-sm text-slate-700 dark:border-white/10 dark:bg-white/5 dark:text-slate-200">
-            Если устройство не подтянуло доступ автоматически, лучше открыть службу заботы. Команда подскажет безопасный следующий шаг без ручной раздачи личных ссылок.
+            {
+              "\u0415\u0441\u043b\u0438 premium \u043d\u0435 \u043f\u043e\u0434\u0442\u044f\u043d\u0443\u043b\u0441\u044f \u0430\u0432\u0442\u043e\u043c\u0430\u0442\u0438\u0447\u0435\u0441\u043a\u0438, \u043e\u0442\u043a\u0440\u043e\u0439\u0442\u0435 support \u0438\u043b\u0438 Telegram continuation. \u0421\u0435\u0441\u0441\u0438\u044f, linked identities \u0438 access state \u0443\u0436\u0435 \u0432\u044b\u0440\u043e\u0432\u043d\u0435\u043d\u044b \u0432 \u0435\u0434\u0438\u043d\u044b\u0439 contract."
+            }
           </div>
         </article>
       </section>
@@ -234,17 +286,17 @@ export default function SubscriptionPage() {
       <section className="grid gap-5 md:grid-cols-3">
         {plans.map((plan) => (
           <article key={plan.code} className="glass-card p-6">
-            <p className="font-mono text-xs uppercase tracking-[0.14em] text-slate-500">{plan.badge || "План"}</p>
+            <p className="font-mono text-xs uppercase tracking-[0.14em] text-slate-500">{plan.badge || "\u041f\u043b\u0430\u043d"}</p>
             <h2 className="mt-2 font-display text-3xl font-bold">{plan.label}</h2>
-            <p className="mt-3 text-2xl font-semibold">{Number(plan.amount_rub || 0)} ₽</p>
+            <p className="mt-3 text-2xl font-semibold">{Number(plan.amount_rub || 0)} &#8381;</p>
             <p className="mt-1 text-xs text-slate-500">
-              {plan.days} дней • до {plan.device_limit} устройств • {nodePolicyLabel(plan.node_policy)}
+              {plan.days} {"\u0434\u043d\u0435\u0439 \u2022 \u0434\u043e "} {plan.device_limit} {" \u0443\u0441\u0442\u0440\u043e\u0439\u0441\u0442\u0432 \u2022 "} {nodePolicyLabel(plan.node_policy)}
             </p>
             <AppRouteLink
               href={`/subscription/checkout/?plan=${encodeURIComponent(plan.code)}`}
               className="btn-primary mt-5 inline-flex rounded-xl px-5 py-2.5 text-xs font-semibold uppercase tracking-[0.12em]"
             >
-              Продлить на {plan.label}
+              {"\u041f\u0440\u043e\u0434\u043b\u0438\u0442\u044c \u043d\u0430 "} {plan.label}
             </AppRouteLink>
           </article>
         ))}
@@ -252,18 +304,28 @@ export default function SubscriptionPage() {
 
       <section className="glass-card p-7">
         <div className="mb-4">
-          <p className="font-mono text-xs uppercase tracking-[0.16em] text-slate-500">сравнение</p>
-          <h2 className="mt-2 font-display text-3xl font-bold">Что меняется по срокам</h2>
+          <p className="font-mono text-xs uppercase tracking-[0.16em] text-slate-500">
+            {"\u0441\u0440\u0430\u0432\u043d\u0435\u043d\u0438\u0435"}
+          </p>
+          <h2 className="mt-2 font-display text-3xl font-bold">
+            {"\u0427\u0442\u043e \u043c\u0435\u043d\u044f\u0435\u0442\u0441\u044f \u043f\u043e \u0441\u0440\u043e\u043a\u0430\u043c"}
+          </h2>
         </div>
 
         <div className="overflow-x-auto rounded-xl border border-white/45 dark:border-white/10">
           <table className="w-full min-w-[680px] text-left text-sm">
             <thead className="bg-white/55 dark:bg-white/5">
               <tr>
-                <th className="px-4 py-3">Параметр</th>
-                <th className={`px-4 py-3 ${activeColumn === "start" ? "text-emerald-700 dark:text-emerald-300" : ""}`}>Старт</th>
-                <th className={`px-4 py-3 ${activeColumn === "standard" ? "text-emerald-700 dark:text-emerald-300" : ""}`}>1-3 месяца</th>
-                <th className={`px-4 py-3 ${activeColumn === "long" ? "text-emerald-700 dark:text-emerald-300" : ""}`}>6-12 месяцев</th>
+                <th className="px-4 py-3">{"\u041f\u0430\u0440\u0430\u043c\u0435\u0442\u0440"}</th>
+                <th className={`px-4 py-3 ${activeColumn === "start" ? "text-emerald-700 dark:text-emerald-300" : ""}`}>
+                  {"\u0421\u0442\u0430\u0440\u0442"}
+                </th>
+                <th className={`px-4 py-3 ${activeColumn === "standard" ? "text-emerald-700 dark:text-emerald-300" : ""}`}>
+                  {"1-3 \u043c\u0435\u0441\u044f\u0446\u0430"}
+                </th>
+                <th className={`px-4 py-3 ${activeColumn === "long" ? "text-emerald-700 dark:text-emerald-300" : ""}`}>
+                  {"6-12 \u043c\u0435\u0441\u044f\u0446\u0435\u0432"}
+                </th>
               </tr>
             </thead>
             <tbody>
@@ -279,7 +341,12 @@ export default function SubscriptionPage() {
           </table>
         </div>
 
-        {error ? <p className="mt-3 text-xs text-amber-600 dark:text-amber-300">Не все данные загрузились автоматически: {error}</p> : null}
+        {error ? (
+          <p className="mt-3 text-xs text-amber-600 dark:text-amber-300">
+            {"\u041d\u0435 \u0432\u0441\u0435 \u0434\u0430\u043d\u043d\u044b\u0435 \u0437\u0430\u0433\u0440\u0443\u0437\u0438\u043b\u0438\u0441\u044c \u0430\u0432\u0442\u043e\u043c\u0430\u0442\u0438\u0447\u0435\u0441\u043a\u0438: "}
+            {error}
+          </p>
+        ) : null}
       </section>
     </main>
   );

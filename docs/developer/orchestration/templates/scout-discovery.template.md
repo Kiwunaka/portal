@@ -13,7 +13,7 @@
 | Discovery owner | `<scout role or name>` |
 | Status | `draft | in-progress | ready-for-wo | blocked` |
 | Candidate WO class | `platform-only | client-only | mixed | unknown` |
-| Candidate primary repo lane | `portal/master | PORTALapp/main | unknown` |
+| Candidate primary repo lane | `portal/master | POKROV-app/main | legacy bridge main | unknown` |
 | Candidate secondary repo lane | `<blank if not mixed>` |
 | Timestamp | `<timestamp>` |
 
@@ -34,7 +34,8 @@
 - [ ] `docs/operations/monitoring-and-visibility.md`
 - [ ] `docs/developer/developer-guide.md`
 - [ ] `docs/developer/repository-map.md`
-- [ ] Client docs pack, if candidate scope touches `external/client-fork/app/**`
+- [ ] New-client docs pack, if candidate scope touches `POKROV-app` or `app-next/` bootstrap material
+- [ ] Legacy bridge docs pack, if candidate scope touches `external/client-fork/app/**`
 
 ## Current Truth Summary
 
@@ -84,6 +85,7 @@ Copy only the anchors that should later appear in the WO.
 | `docs/developer/developer-guide.md` | `<reason>` | `yes | no | maybe` |
 | `docs/developer/repository-map.md` | `<reason>` | `yes | no | maybe` |
 | `docs/user/portal-vpn-user-guide-ru.md` | `<reason>` | `yes | no | maybe` |
+| `C:/Users/kiwun/Documents/ai/POKROV-app/docs/...` | `<reason>` | `yes | no | maybe` |
 | `external/client-fork/app/docs/...` | `<reason>` | `yes | no | maybe` |
 
 ## Observed Gaps, Risks, Or Reasons For Work

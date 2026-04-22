@@ -1,6 +1,6 @@
 # POKROV System Overview
 
-Last updated: 2026-04-15
+Last updated: 2026-04-22
 
 ## Document Status
 
@@ -13,8 +13,27 @@ This file is living source of truth for the platform architecture map.
 - a Python backend and Telegram control plane
 - a user cabinet and admin web surface
 - a marketing and legal site
-- a Flutter client fork for the `POKROV` consumer app line
+- a dedicated new client repo at `C:/Users/kiwun/Documents/ai/POKROV-app`, a retained `app-next/` transition/bootstrap reference lane, and a retained legacy bridge client lane
 - operational scripts for deployment, node management, and release flow
+
+## Wave 0 Rework Target
+
+The new target architecture for the global rework freezes these boundaries before later code waves land:
+
+- platform truth remains in this root repository
+- new client development truth lives in `POKROV-app/main`, with local checkout path `C:/Users/kiwun/Documents/ai/POKROV-app`
+- `app-next/` is the retained bootstrap-source and transition/reference workspace for that repo after the initial local snapshot landed
+- `external/client-fork/app/` remains the bridge/hotfix lane and current public Android+Windows release/build/signing truth until formal cutover
+- one app-first account becomes the identity root for `install_id`, email, Telegram, devices, and activation keys
+- public acquisition, pricing, and paywall move entirely onto `marketing/`, while `webapp/` becomes session-aware continuation, redeem, support, renewal continuation, and admin only
+- commerce moves to hosted checkout plus activation-key issuance and redemption instead of raw subscription-link-first UX
+- remote promo content is limited to approved first-party promo slots; third-party ad SDKs remain out of scope
+- the public location story collapses to one logical location per user, while the transport matrix stays hidden behind rollout, diagnostics, and admin controls
+
+Bridge-period note:
+
+- the detailed route inventory and build/signing procedures later in this document may still describe the retained bridge release lane where formal cutover has not yet happened
+- Wave 0 intentionally separates long-term development truth from current release truth so later implementation waves can migrate without ambiguity
 
 ## Main Components
 
@@ -75,6 +94,8 @@ Node lifecycle rule:
   user cabinet, session continuation, and the primary admin operator surface
 - `marketing/`
   public website, pricing, legal pages, and public conversion flows
+- `C:/Users/kiwun/Documents/ai/POKROV-app/`
+  canonical clean-room client repo for new Android and Windows product-direction work
 - `external/client-fork/app/`
   `POKROV` consumer client for Android and Windows, with some legacy `POKROV VPN` identifiers still present for compatibility
 - `shared/`
@@ -82,9 +103,10 @@ Node lifecycle rule:
 
 Current public-surface split:
 
-- `marketing/` owns the homepage, public `/checkout/` explainer, offer/privacy pages, indexable SEO landings, and metadata assets such as `robots`, `sitemap`, `manifest`, Open Graph, Twitter, and JSON-LD
+- `marketing/` owns the homepage, public `/checkout/` pricing/paywall flow, offer/privacy pages, indexable SEO landings, and metadata assets such as `robots`, `sitemap`, `manifest`, Open Graph, Twitter, and JSON-LD
 - current canonical indexable entry routes are `/mobile/`, `/tiktok/`, `/youtube/`, `/devices/`, and `/telegram/`, with permanent redirects from the earlier legacy SEO slugs
-- `webapp/` owns browser entry, dashboard, pricing, subscription renewal, authenticated checkout continuation, downloads, devices, support, and the primary admin operator surface
+- `webapp/` owns browser entry, dashboard, subscription, hosted-checkout continuation, redeem, downloads, devices, support, and the primary admin operator surface
+- `/pricing/` in `webapp/` is compatibility-only continuation and must not drift back into a public acquisition surface
 - `connect.pokrov.space` stays outside the marketing/cabinet storytelling layer and remains the config-delivery host for the one public connection link plus QR; it serves the rollout-selected app-managed profile, with `legacy_reality_fallback` as the baseline until canary cohorts flip to `grpc_443_primary`
 
 Client release safety rule:
@@ -205,26 +227,26 @@ Architecture rule:
 
 ### Checkout Continuation Flow
 
-1. user opens pricing or renewal from marketing, webapp, or bot
-2. platform resolves a valid web session or signed checkout ticket
-3. checkout loads real payment providers or a truthful unavailable state
-4. payment completion returns the user to the active account journey
+1. user opens public pricing or renewal continuation from marketing, webapp, or bot
+2. hosted checkout sells an activation key against the canonical catalog
+3. user redeems that key in the app or `webapp`
+4. managed premium is refreshed on the canonical app-first account
 
 Architecture rule:
 
-- public pricing may introduce checkout
-- real checkout must continue from authenticated or ticketed context
+- `marketing` owns public pricing and acquisition
+- `webapp` renewal remains continuation-only and should defer to the same hosted key-first flow
 - bot purchase flow remains valid, but it does not replace app-first public onboarding
-- buying VPN must remain equally possible from bot, site, and app against the same backend contracts
+- raw subscription links stay manual-recovery-only and must not reappear as the default commerce story
 
 ### Public Web Journey
 
 1. user lands on `https://pokrov.space/` or an indexable marketing landing page
 2. marketing CTA routes into app download, `pokrov.space/checkout/`, or cabinet entry depending on user intent
-3. a known browser session, verified email auth, app/bot handoff, or signed checkout ticket continues in `https://app.pokrov.space/`
-4. webapp renders the relevant cabinet flow such as dashboard, pricing, renewal, downloads, devices, or support
-5. payment-provider handoff happens only from a real session or ticketed checkout flow
-6. successful payment returns the user to the active cabinet journey
+3. public checkout sells an activation key and sends the user toward redeem or install continuation
+4. a known browser session, verified email auth, or app/bot handoff continues in `https://app.pokrov.space/`
+5. `webapp` renders the relevant cabinet flow such as dashboard, subscription, redeem, downloads, devices, or support
+6. successful redeem or renewal returns the user to the active cabinet journey
 
 Public web rule:
 
@@ -401,9 +423,16 @@ Major currently live public and app-first routes in `portal_bot/api.py` include:
 
 - `GET /api/health`
 - `GET /api/public/plans`
+- `GET /api/public/catalog`
 - `POST /api/auth/telegram/web-login`
 - additive email-auth rollout endpoints under `/api/auth/email/*` for register, verify, login, recovery, and reset
 - `POST /api/client/session/start-trial`
+- `GET /api/access-keys/status/{key}`
+- `POST /api/access-keys/redeem`
+- `POST /api/admin/access-keys/issue`
+- `GET /api/client/promo-slots`
+- `GET /api/admin/promo-slots`
+- `PUT /api/admin/promo-slots`
 - `POST /api/client/telegram/link`
 - `GET /api/payments/providers`
 - `POST /api/payments/orders/create`

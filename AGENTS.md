@@ -53,9 +53,13 @@ Before any substantial change, read these files in order:
 
 For client work, also read:
 
-- [Client Docs Index](C:/Users/kiwun/Documents/ai/VPN/external/client-fork/app/docs/README.md)
-- [Client Product Spec (legacy path)](C:/Users/kiwun/Documents/ai/VPN/external/client-fork/app/docs/product/portal-vpn-v1-spec.md)
-- [App-First Session Flow](C:/Users/kiwun/Documents/ai/VPN/external/client-fork/app/docs/architecture/app-first-session-flow.md)
+- [POKROV App Docs Index](C:/Users/kiwun/Documents/ai/POKROV-app/docs/README.md)
+- [POKROV App Cutover Readiness](C:/Users/kiwun/Documents/ai/POKROV-app/docs/operations/cutover-readiness.md)
+- [App-Next Docs Index](C:/Users/kiwun/Documents/ai/VPN/app-next/docs/README.md)
+- [App-Next Cutover Readiness](C:/Users/kiwun/Documents/ai/VPN/app-next/docs/operations/cutover-readiness.md)
+- [Legacy Bridge Client Docs Index](C:/Users/kiwun/Documents/ai/VPN/external/client-fork/app/docs/README.md)
+- [Legacy Bridge Client Product Spec (legacy path)](C:/Users/kiwun/Documents/ai/VPN/external/client-fork/app/docs/product/portal-vpn-v1-spec.md)
+- [Legacy Bridge App-First Session Flow](C:/Users/kiwun/Documents/ai/VPN/external/client-fork/app/docs/architecture/app-first-session-flow.md)
 - [Publishing And Signing Guide](C:/Users/kiwun/Documents/ai/VPN/docs/operations/publishing-and-signing-guide.md)
 
 ## Operator Access
@@ -82,7 +86,9 @@ Living documentation lives only in these areas:
 - `docs/operations/`
 - `docs/developer/`
 - `docs/user/`
-- `external/client-fork/app/docs/`
+- `C:/Users/kiwun/Documents/ai/POKROV-app/docs/` as the live client-doc lane for the bootstrapped new client repo
+- `app-next/docs/` as retained bootstrap-source and transition/reference material inside the platform repo
+- `external/client-fork/app/docs/` only for legacy bridge/hotfix and current release-truth notes until formal cutover
 
 Everything else in `docs/` should be treated as historical, audit, or supporting material unless a canonical doc links to it as current.
 
@@ -161,18 +167,45 @@ Start from:
 - [Repository Map](C:/Users/kiwun/Documents/ai/VPN/docs/developer/repository-map.md)
 - [Deployment And Access](C:/Users/kiwun/Documents/ai/VPN/docs/operations/deployment-and-access.md)
 
+### `C:/Users/kiwun/Documents/ai/POKROV-app`
+
+Contains the new canonical client repository target for `Android` and `Windows`.
+
+Workspace lane note:
+
+- `POKROV-app/main` is the new client development truth for this rework program
+- expected local checkout path after bootstrap: `C:/Users/kiwun/Documents/ai/POKROV-app`
+- that checkout is now bootstrapped locally from `C:/Users/kiwun/Documents/ai/VPN/app-next/`
+- new client product-direction work must now land here instead of treating `app-next/` or the legacy fork as parallel canon
+
+### `app-next/`
+
+Contains the retained in-repo bootstrap source workspace for the new client lane.
+
+Workspace lane note:
+
+- `app-next/` feeds the initial snapshot into `POKROV-app/main`
+- treat it as transition/reference and migration material, not as a permanent parallel canon
+- the initial bootstrap snapshot has already landed in `POKROV-app`, so keep `app-next/` only as transition/reference material unless a later policy explicitly reopens it
+
+Current local authority:
+
+- [App-Next Docs Index](C:/Users/kiwun/Documents/ai/VPN/app-next/docs/README.md)
+- [Cutover Readiness](C:/Users/kiwun/Documents/ai/VPN/app-next/docs/operations/cutover-readiness.md)
+
 ### `external/client-fork/app/`
 
 Contains the consumer Flutter client fork for `Android` and `Windows`.
 
 Workspace lane note:
 
-- `external/client-fork/app/` is the default legacy client workspace and the current shipping client authority
-- `app-next` may exist as a machine-local future lane owned by platform work, but it is not the shipping truth in this cleanup wave
+- `external/client-fork/app/` is the retained legacy bridge/hotfix lane and the current public Android and Windows release-build/signing truth until formal cutover
+- do not start new product-direction work here when that work belongs to the new client lane
+- after formal cutover, this workspace becomes compatibility-only reference plus emergency rollback material
 
 Current local authority:
 
-- [Client Docs Index](C:/Users/kiwun/Documents/ai/VPN/external/client-fork/app/docs/README.md)
+- [Legacy Bridge Client Docs Index](C:/Users/kiwun/Documents/ai/VPN/external/client-fork/app/docs/README.md)
 
 ## Change-Impact Matrix
 
@@ -187,7 +220,7 @@ When behavior changes, update the matching canonical docs in the same task.
 | Hostname policy, metrics freshness, node alerts, probe visibility, operator telemetry | `docs/operations/monitoring-and-visibility.md` |
 | Repository workflow, tests, local commands, script usage, cleanup policy | `docs/developer/developer-guide.md`, `docs/developer/repository-map.md` |
 | User-facing onboarding, support, trial, Telegram bonus, renewal | `docs/user/portal-vpn-user-guide-ru.md` |
-| Client UX, client contracts, client roadmap | `external/client-fork/app/docs/*` |
+| Client UX, client contracts, client roadmap | `C:/Users/kiwun/Documents/ai/POKROV-app/docs/*` for the new client lane, plus `external/client-fork/app/docs/*` when legacy bridge or release-truth behavior changes |
 
 ## Fast Paths
 
@@ -223,10 +256,10 @@ When behavior changes, update the matching canonical docs in the same task.
 ### Client task
 
 1. Read the must-read set plus the client docs.
-2. Inspect `external/client-fork/app/lib/` and packaging assets as needed.
-3. Run targeted Flutter tests or build-smoke commands.
+2. Inspect `C:/Users/kiwun/Documents/ai/POKROV-app/` for new client work; inspect `app-next/` only when transition/reference context matters, and inspect `external/client-fork/app/` only when the task is bridge, hotfix, compatibility, or release-truth work.
+3. Run targeted Flutter tests or build-smoke commands in the lane that actually changed.
 4. Treat Android release-build localhost/control-surface verification as a release gate, not an optional audit.
-5. Sync both client docs and root canonical docs if contracts changed.
+5. Sync root canonical docs plus the correct client-doc lane: `POKROV-app/docs/*` for new client truth once bootstrapped, `external/client-fork/app/docs/*` when bridge release truth changed.
 
 ### Docs-only task
 
@@ -260,15 +293,16 @@ For node-access diagnostics and release handoffs, explicitly distinguish:
 
 - Keep the root workspace `C:\Users\kiwun\Documents\ai\VPN` on local `master` as the prospective clean baseline for root-repo work
 - Treat that root `master` baseline as the place you can resync from; do not turn it into a long-lived scratch branch
-- `portal/master` and `PORTALapp/main` are policy labels for the branches that are allowed to become shipping truth
-- In this workspace, those policy labels normally resolve to the real remote branches `origin/master` for the root repo and `origin/main` for `external/client-fork/app/`
-- Do not assume a literal remote named `portal` or `PORTALapp` must exist locally for the policy to apply
+- `portal/master` is the policy label for the promoted platform line and normally maps to real `origin/master`
+- `POKROV-app/main` is the policy label for the new client development line and should map to the real `main` branch in the dedicated `POKROV-app` repository
+- `external/client-fork/app` stays on its current `main` line as the bridge/hotfix lane and current public Android+Windows release/build/signing truth until formal cutover
+- Do not assume a literal remote alias must exist locally for a policy label to apply
 - Local branch or worktree names such as `main`, `portal-app`, and `app-next` are optional machine-local aliases only
 - If a local alias disagrees with the promotion target, the promotion target wins
 - Root-repo changes under `backend`, `webapp`, `marketing`, `shared`, `infra`, `scripts`, and root `docs` promote through the root repo `master` line
-- Shipping client changes promote through `external/client-fork/app/` on the client repo `main` line
-- `external/client-fork/app/` remains the default legacy client workspace for current releases
-- `app-next` is a platform-owned future lane for exploratory or successor client work and is not shipping truth in this cleanup wave
+- New client product-direction changes promote through `POKROV-app/main`
+- Bridge hotfix, compatibility, packaging, and release-runbook changes promote through `external/client-fork/app` on its existing `main` line until formal cutover
+- `app-next/` is the retained bootstrap-source workspace for `POKROV-app/main`, not the long-term promotion target now that the bootstrap snapshot has landed
 - When work needs isolation, create or use a dedicated feature branch or sibling worktree instead of reinterpreting baseline or alias branches as source of truth
 
 ## Source Of Truth Rules
@@ -281,12 +315,13 @@ Production source of truth:
 Repository source-of-truth rule:
 
 - if you work on `backend`, `webapp`, `marketing`, root `docs`, `shared`, `infra`, or `scripts`, the canonical git truth is `portal/master`, which is the policy label for the promoted root-repo line and normally maps to real `origin/master`
-- if you work on the `Android` or `Windows` Flutter client under `external/client-fork/app/`, the canonical git truth is `PORTALapp/main`, which is the policy label for the promoted client-repo line and normally maps to real `origin/main`
-- root docs in this repository, including `AGENTS.md` and `docs/*`, must land on `portal/master`; client docs under `external/client-fork/app/docs/` must land on `PORTALapp/main`
+- if you work on new `Android` or `Windows` client direction, the canonical git truth is `POKROV-app/main`, with expected checkout path `C:/Users/kiwun/Documents/ai/POKROV-app`
+- if you work on `external/client-fork/app/`, treat that repository as bridge/hotfix and current release-truth only; do not silently use it as the future client canon
+- root docs in this repository, including `AGENTS.md` and `docs/*`, must land on `portal/master`
+- new client docs land on `POKROV-app/docs/*`; keep `app-next/docs/*` only as retained bootstrap-source material and keep legacy bridge docs under `external/client-fork/app/docs/*` explicitly labeled as bridge truth
 - keep the root workspace on local `master` as the clean baseline prospectively; treat `main`, `portal-app`, and `app-next` as optional local aliases rather than promotion truth
-- do not treat local feature branches, old redirect remotes, or the nested client workspace inside `portal/` as competing product truths once `portal/master` and `PORTALapp/main` are updated
-- treat `external/client-fork/app/` as the default legacy client workspace for shipping changes; treat `app-next` as a future lane only unless a later policy explicitly promotes it
-- if a task spans both repositories, update and push both canonical branches explicitly instead of assuming one repo transitively updates the other
+- do not treat local feature branches, old redirect remotes, or the nested legacy client workspace as competing product truths once `portal/master` and `POKROV-app/main` are updated
+- if a task spans the platform repo, the new client repo, and the legacy bridge lane, update and report each affected repo explicitly instead of assuming one repo transitively updates the others
 
 Not source of truth:
 

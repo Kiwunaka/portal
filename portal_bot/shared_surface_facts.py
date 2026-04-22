@@ -32,5 +32,17 @@ def get_design_tokens() -> dict[str, Any]:
     return _load_shared_json("design-tokens.json")
 
 
+def get_tariff_catalog() -> dict[str, Any]:
+    return _load_shared_json("tariff-catalog.json")
+
+
+def get_access_matrix() -> dict[str, Any]:
+    return _load_shared_json("access-matrix.json")
+
+
+def get_promo_slots() -> dict[str, Any]:
+    return _load_shared_json("promo-slots.json")
+
+
 def clear_shared_surface_fact_caches() -> None:
     _load_shared_json.cache_clear()

@@ -106,6 +106,32 @@ export type DashboardSnapshot = {
     haptic: boolean;
     lottie: boolean;
   };
+  linked_identities?: LinkedIdentityPayload | null;
+  free_caps?: {
+    location_code?: string | null;
+    traffic_limit_gb?: number | null;
+    cycle_days?: number | null;
+    speed_limit_mbps?: number | null;
+    device_limit?: number | null;
+    monthly_reset?: boolean;
+  } | null;
+  redeem_eligibility?: {
+    eligible?: boolean;
+    reason?: string | null;
+  } | null;
+  promo_slots?: ClientPromoSlotsPayload | null;
+  hidden_transport_matrix?: {
+    ordered_transport_set?: string[];
+    logical_location_count?: number;
+    xhttp_enabled?: boolean;
+  } | null;
+  location_matrix?: {
+    locations?: Array<{
+      code?: string | null;
+      label?: string | null;
+      transport_order?: string[];
+    }>;
+  } | null;
 };
 
 export type TicketMessage = {
@@ -252,6 +278,32 @@ export type UserPayload = {
     haptic: boolean;
     lottie: boolean;
   };
+  linked_identities?: LinkedIdentityPayload | null;
+  free_caps?: {
+    location_code?: string | null;
+    traffic_limit_gb?: number | null;
+    cycle_days?: number | null;
+    speed_limit_mbps?: number | null;
+    device_limit?: number | null;
+    monthly_reset?: boolean;
+  } | null;
+  redeem_eligibility?: {
+    eligible?: boolean;
+    reason?: string | null;
+  } | null;
+  promo_slots?: ClientPromoSlotsPayload | null;
+  hidden_transport_matrix?: {
+    ordered_transport_set?: string[];
+    logical_location_count?: number;
+    xhttp_enabled?: boolean;
+  } | null;
+  location_matrix?: {
+    locations?: Array<{
+      code?: string | null;
+      label?: string | null;
+      transport_order?: string[];
+    }>;
+  } | null;
 };
 
 export type PointsSnapshot = {
@@ -341,6 +393,140 @@ export type CampaignLinksBuildResult = {
 export type PublicPlansPayload = {
   plans: PlanCatalogRow[];
   widget_enabled: boolean;
+};
+
+export type PublicCatalogPayload = {
+  catalog_version: string;
+  commerce_model: {
+    primary_purchase_flow: string;
+    primary_fulfillment_flow: string;
+    managed_access_mode: string;
+    raw_subscription_link_policy: string;
+  };
+  public_surface_policy: {
+    acquisition_owner: string;
+    pricing_owner: string;
+    webapp_mode: string;
+    public_platform_scope: string[];
+  };
+  pricing_preview: {
+    discount_codes?: Record<string, number>;
+  };
+  plans: PlanCatalogRow[];
+  free_tier: {
+    plan_code: string;
+    location_code: string;
+    traffic_limit_gb: number;
+    cycle_days: number;
+    speed_limit_mbps: number;
+    soft_mode_speed_limit_mbps?: number;
+    device_limit: number;
+    node_policy: string;
+    monthly_reset: boolean;
+  };
+  public_defaults: {
+    routing_mode: string;
+    public_platform_scope: string[];
+    logical_location_count: number;
+    logical_location_label: string;
+    raw_subscription_link_policy: string;
+    hidden_transport_order: string[];
+  };
+  promo_slots: {
+    mode: string;
+    fallback_behavior: string;
+    slot_ids: string[];
+  };
+};
+
+export type AccessKeyStatusPayload = {
+  key: string;
+  exists: boolean;
+  redeemed: boolean;
+  redeemed_at?: string | null;
+  issued_at?: string | null;
+  plan?: PlanCatalogRow | null;
+  kind: string;
+  legacy_type?: string | null;
+  days: number;
+  device_limit: number;
+  node_policy?: string | null;
+  created_by?: number | null;
+  redeemed_by?: number | null;
+};
+
+export type AccessKeyRedeemPayload = {
+  ok: boolean;
+  key: string;
+  status: AccessKeyStatusPayload;
+  plan?: PlanCatalogRow | null;
+  access?: Record<string, unknown>;
+  linked_identities?: Record<string, unknown> | null;
+  free_caps?: Record<string, unknown> | null;
+  redeem_eligibility?: Record<string, unknown> | null;
+  promo_slots?: ClientPromoSlotsPayload | null;
+  hidden_transport_matrix?: Record<string, unknown> | null;
+  location_matrix?: Record<string, unknown> | null;
+  sync_ok?: boolean;
+};
+
+export type PromoSlotAssignmentPayload = {
+  slot_id: string;
+  content_id: string;
+  enabled: boolean;
+  title?: string | null;
+  body?: string | null;
+  cta_label?: string | null;
+  cta_href?: string | null;
+  contexts: string[];
+  sort_order: number;
+};
+
+export type ClientPromoSlotsPayload = {
+  surface: string;
+  access_state: string;
+  remote_available: boolean;
+  fallback_behavior: string;
+  mode: string;
+  approved_slots: PromoSlotCatalogSlot[];
+  slots: Array<
+    PromoSlotAssignmentPayload & {
+      surface: string;
+      goal?: string | null;
+      kind?: string | null;
+    }
+  >;
+};
+
+export type PromoSlotCatalogSlot = {
+  id: string;
+  surface: string;
+  contexts: string[];
+  allowed_content_ids: string[];
+};
+
+export type PromoSlotCatalogContent = {
+  id: string;
+  kind: string;
+  goal: string;
+  default_enabled: boolean;
+};
+
+export type AdminPromoSlotsPayload = {
+  promo_slots: {
+    version: string;
+    mode: string;
+    remote_available: boolean;
+    fallback_behavior: string;
+    assignments: PromoSlotAssignmentPayload[];
+    catalog: {
+      version: string;
+      mode: string;
+      fallback_behavior: string;
+      slots: PromoSlotCatalogSlot[];
+      content_catalog: PromoSlotCatalogContent[];
+    };
+  };
 };
 
 export type BonusPayload = {
@@ -1385,6 +1571,10 @@ export function fetchPublicPlans(): Promise<PublicPlansPayload> {
   return apiFetch<PublicPlansPayload>("/api/public/plans");
 }
 
+export function fetchPublicCatalog(): Promise<PublicCatalogPayload> {
+  return apiFetch<PublicCatalogPayload>("/api/public/catalog");
+}
+
 export async function fetchPublicLiveUpdates(limit = 3): Promise<LiveUpdateRow[]> {
   const data = await apiFetch<{ updates: LiveUpdateRow[] }>(`/api/public/live-updates?limit=${Math.max(1, Math.min(10, limit))}`);
   return data.updates || [];
@@ -1478,6 +1668,18 @@ export function redeemGiftCode(code: string): Promise<any> {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ code }),
+  });
+}
+
+export function fetchAccessKeyStatus(key: string): Promise<AccessKeyStatusPayload> {
+  return apiFetch<AccessKeyStatusPayload>(`/api/access-keys/status/${encodeURIComponent(String(key || "").trim())}`);
+}
+
+export function redeemAccessKey(key: string): Promise<AccessKeyRedeemPayload> {
+  return apiFetch<AccessKeyRedeemPayload>("/api/access-keys/redeem", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ key }),
   });
 }
 
@@ -2633,6 +2835,48 @@ export function adminGiftCodeCreate(card_type: "mini" | "standard" | "premium"):
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ card_type }),
+  });
+}
+
+export function adminAccessKeysIssue(payload: {
+  plan_code: string;
+  quantity?: number;
+}): Promise<{
+  ok: boolean;
+  plan: PlanCatalogRow;
+  issued: Array<{
+    key: string;
+    plan: PlanCatalogRow;
+    issued_at?: string | null;
+  }>;
+}> {
+  return apiFetch("/api/admin/access-keys/issue", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+}
+
+export function adminPromoSlots(): Promise<AdminPromoSlotsPayload> {
+  return apiFetch<AdminPromoSlotsPayload>("/api/admin/promo-slots");
+}
+
+export function adminPromoSlotsUpdate(payload: {
+  assignments: PromoSlotAssignmentPayload[];
+}): Promise<{
+  ok: boolean;
+  promo_slots: {
+    version: string;
+    mode: string;
+    remote_available: boolean;
+    fallback_behavior: string;
+    assignments: PromoSlotAssignmentPayload[];
+  };
+}> {
+  return apiFetch("/api/admin/promo-slots", {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
   });
 }
 

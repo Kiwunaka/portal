@@ -1,0 +1,57 @@
+{
+  "version": "2026-04-22",
+  "mode": "whitelist_slots",
+  "fallback_behavior": "contextual_only_when_remote_unavailable",
+  "slots": [
+    {
+      "id": "app.protection.contextual",
+      "surface": "app",
+      "contexts": ["trial_premium", "free_monthly", "free_soft_mode"],
+      "allowed_content_ids": ["redeem_key", "telegram_bonus", "support_recovery"]
+    },
+    {
+      "id": "app.profile.contextual",
+      "surface": "app",
+      "contexts": ["free_monthly", "free_soft_mode", "expired_or_blocked"],
+      "allowed_content_ids": ["redeem_key", "support_recovery"]
+    },
+    {
+      "id": "webapp.subscription.contextual",
+      "surface": "webapp",
+      "contexts": ["free_monthly", "free_soft_mode", "expired_or_blocked"],
+      "allowed_content_ids": ["redeem_key", "support_recovery"]
+    },
+    {
+      "id": "webapp.dashboard.contextual",
+      "surface": "webapp",
+      "contexts": ["trial_premium", "free_monthly", "free_soft_mode"],
+      "allowed_content_ids": ["redeem_key", "telegram_bonus"]
+    },
+    {
+      "id": "marketing.checkout.contextual",
+      "surface": "marketing",
+      "contexts": ["anonymous", "session", "ticketed"],
+      "allowed_content_ids": ["redeem_key", "telegram_bonus", "support_recovery"]
+    }
+  ],
+  "content_catalog": [
+    {
+      "id": "redeem_key",
+      "kind": "first_party_promo",
+      "goal": "redeem_activation_key",
+      "default_enabled": true
+    },
+    {
+      "id": "telegram_bonus",
+      "kind": "first_party_promo",
+      "goal": "link_telegram_and_claim_bonus",
+      "default_enabled": true
+    },
+    {
+      "id": "support_recovery",
+      "kind": "first_party_promo",
+      "goal": "support_or_manual_recovery",
+      "default_enabled": true
+    }
+  ]
+}

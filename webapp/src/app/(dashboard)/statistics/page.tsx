@@ -243,6 +243,7 @@ export default function StatisticsPage() {
               {user?.sync?.subscription_ready || user?.subscription_url ? "профиль готов для приложений" : "профиль ещё подготавливается"}
             </p>
             <p>Трафик: {resolveTrafficStatusText(dash, user)}</p>
+            {paidMode || trialMode ? <p>Трафик: доступен разгон</p> : null}
             {freeMode && nextResetAt ? <p>Следующий сброс: {formatDate(nextResetAt)}</p> : null}
             <p>Устройства: до {deviceLimit}</p>
             <p>Скорость: {softMode ? "ограничена до следующего сброса" : dash?.speed_limit_mbps ? `${dash.speed_limit_mbps} Мбит/с` : "по текущей политике профиля"}</p>

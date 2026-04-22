@@ -1,6 +1,6 @@
 # App-First And Bonus Flows
 
-Last updated: 2026-04-15
+Last updated: 2026-04-22
 
 ## Document Status
 
@@ -9,6 +9,24 @@ This file is living source of truth for app-first identity, Telegram linking, an
 ## Goal
 
 Document the current app-first identity model, automatic username sync path, checkout continuation, node-pool assignment, and the live Telegram bonus flow used by the `POKROV` app line, including legacy `POKROV VPN`-labeled builds.
+
+## Wave 0 Rework Target
+
+The rework canon now freezes the following target identity and access model for later code waves:
+
+- one canonical `app-first` account links `install_id`, email, Telegram, devices, and activation keys
+- store-app entry remains the premium-trial path: the first valid device gets `5 days` of premium trial without mandatory registration, then downgrades to `free_monthly`
+- site email signup becomes a browser continuation path that grants only `free_monthly`; it does not mint the premium trial
+- Telegram is recovery, linking, restore-premium, bonus, community, support fallback, and bot-side fallback commerce, not the primary login or commerce wall
+- commerce becomes `buy key -> redeem key -> managed premium`, with raw subscription links hidden from default UX and exposed only for explicit recovery/manual flows
+- free-tier policy is fixed to `NL-free`, `5 GB / 30 days`, `50 Mbps per IP`, `1 device`, with monthly reset
+- `GET /api/dashboard`, `GET /api/user/*`, `POST /api/client/session/start-trial`, and `GET /api/client/profile/managed` should converge on one linked-identity and access-state contract that also carries redeem eligibility, promo-slot payloads, and the hidden transport matrix
+- normal consumer UI shows one logical location; ordered transports such as `vless_reality -> vmess -> trojan -> xhttp` remain hidden rollout detail rather than mass-UI choice
+
+Bridge-period note:
+
+- the concrete endpoint inventory below may still reflect the retained bridge release path while later code waves land
+- Wave 0 freezes the target access story first so backend, app, marketing, webapp, and admin work can converge on one contract family
 
 ## App-First Trial Flow
 
@@ -32,7 +50,7 @@ Document the current app-first identity model, automatic username sync path, che
 
 Contract rule:
 
-- caller-provided `trial_days` may still appear from older clients, but the backend must ignore it and always enforce the canonical `5-day` trial from `shared/product-facts.json`
+- caller-controlled `trial_days` is no longer part of the canonical client contract; the backend always enforces the fixed `5-day` trial from shared truth
 - the backend must return the same `client_policy` contract from `start-trial`, `user`, and `dashboard` flows so the app can reconcile defaults without guessing
 
 Current `client_policy` contract:
@@ -144,6 +162,13 @@ Current live backend contract:
 - `POST /api/client/session/start-trial`
 - `GET /api/client/profile/managed`
 - `POST /api/client/nodes/latency-samples`
+- `GET /api/public/catalog`
+- `GET /api/access-keys/status/{key}`
+- `POST /api/access-keys/redeem`
+- `POST /api/admin/access-keys/issue`
+- `GET /api/client/promo-slots`
+- `GET /api/admin/promo-slots`
+- `PUT /api/admin/promo-slots`
 - `POST /api/client/telegram/link`
 - `POST /api/channel/subscriber/check`
 - `POST /api/bonuses/channel/claim`
@@ -161,6 +186,11 @@ Related live surfaces also exposed by the backend:
 - `GET /api/nodes/status`
 - `GET /api/bonuses`
 - ticket endpoints under `/api/tickets`
+
+Unified access-contract note:
+
+- `GET /api/dashboard`, `GET /api/user/{tg_id}`, and `GET /api/client/profile/managed` now carry the same identity/access family additions: `linked_identities`, `free_caps`, `redeem_eligibility`, `promo_slots`, `hidden_transport_matrix`, and `location_matrix`
+- the access-key redeem path returns the same access-state family so app, cabinet, and admin can refresh off one canonical contract
 
 ## Web Login, Email Auth, And Session Continuation
 
@@ -186,18 +216,18 @@ Contract rule:
 
 ## Checkout Continuation
 
-1. user opens pricing, renewal, or upgrade
-2. platform resolves an active web session or signed checkout ticket
-3. web checkout requests available providers
-4. if providers are unavailable, UI must show a truthful blocked state
-5. on success, the user returns to the active account journey
+1. user opens public pricing, renewal continuation, or bot-side purchase
+2. hosted checkout sells an activation key against the canonical catalog
+3. the key is checked with `GET /api/access-keys/status/{key}` and then redeemed through `POST /api/access-keys/redeem`
+4. the backend refreshes managed access on the same app-first account
+5. app and web surfaces reload their unified access contract from the same identity root
 
 Checkout rule:
 
-- public pricing can start the flow
-- real payment actions require authenticated or ticketed continuation
+- public pricing can start the flow from `marketing`
+- `webapp` renewal is continuation-only and should defer to the same hosted activation-key flow
 - Telegram bot billing remains valid as a secondary path
-- buying VPN must remain possible from bot, site, and app with the same backend contract behind each surface
+- raw subscription links remain recovery/manual-request only and must stay hidden from the default commerce UX
 
 ## Subscription Delivery Semantics
 
@@ -205,6 +235,7 @@ Current user-facing delivery semantics:
 
 - one public `ссылка подключения`
 - one QR built from the same URL
+- one key-first commerce path: buy key -> redeem key -> managed premium
 - no public smart/plain split in bot, site, or webapp wording
 - consumer client and cabinet flows should prefer reconnect, refresh, route-mode change, checkout, and support over raw subscription copy/edit surfaces
 

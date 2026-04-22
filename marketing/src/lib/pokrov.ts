@@ -13,6 +13,21 @@ export {
 } from "../../../shared/product-facts";
 
 export {
+  getAccessMatrix,
+} from "../../../shared/access-matrix";
+
+export {
+  getPromoSlotsCatalog,
+} from "../../../shared/promo-slots";
+
+export {
+  getPricingPreviewDiscountPercent,
+  getTariffCatalog,
+  getTariffPlan,
+  getTariffPlans,
+} from "../../../shared/tariff-catalog";
+
+export {
   getPublicUrls as getSharedPublicUrls,
 } from "../../../shared/public-urls";
 
@@ -29,6 +44,8 @@ export {
   CANONICAL_NEWS_CHANNEL_URL,
   CANONICAL_PAY_ORIGIN,
   CANONICAL_PLATFORM_BRAND,
+  CANONICAL_PUBLIC_DEFAULT_ROUTE_MODE,
+  CANONICAL_PUBLIC_PLATFORM_SCOPE,
   CANONICAL_SUPPORT_BOT_URL,
   CANONICAL_WEBAPP_URL,
   PLAN_ALIAS_TO_CODE,

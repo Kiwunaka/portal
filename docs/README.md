@@ -45,11 +45,19 @@ Use the role-based paths below first. If you need older context, go to the archi
 
 - [POKROV User Guide (RU)](C:/Users/kiwun/Documents/ai/VPN/docs/user/portal-vpn-user-guide-ru.md)
 
-## Start Here For Client Fork
+## Start Here For New Client Lane
 
-- [Client Docs Index](C:/Users/kiwun/Documents/ai/VPN/external/client-fork/app/docs/README.md)
-- [Client Product Spec](C:/Users/kiwun/Documents/ai/VPN/external/client-fork/app/docs/product/portal-vpn-v1-spec.md)
-- [Client App-First Session Flow](C:/Users/kiwun/Documents/ai/VPN/external/client-fork/app/docs/architecture/app-first-session-flow.md)
+- canonical client repo: `C:/Users/kiwun/Documents/ai/POKROV-app`
+- [POKROV App Docs Index](C:/Users/kiwun/Documents/ai/POKROV-app/docs/README.md)
+- [POKROV App Cutover Readiness](C:/Users/kiwun/Documents/ai/POKROV-app/docs/operations/cutover-readiness.md)
+- [App-Next Docs Index](C:/Users/kiwun/Documents/ai/VPN/app-next/docs/README.md)
+- [App-Next Cutover Readiness](C:/Users/kiwun/Documents/ai/VPN/app-next/docs/operations/cutover-readiness.md)
+
+## Start Here For Legacy Bridge Client
+
+- [Legacy Bridge Client Docs Index](C:/Users/kiwun/Documents/ai/VPN/external/client-fork/app/docs/README.md)
+- [Legacy Bridge Client Product Spec](C:/Users/kiwun/Documents/ai/VPN/external/client-fork/app/docs/product/portal-vpn-v1-spec.md)
+- [Legacy Bridge Client App-First Session Flow](C:/Users/kiwun/Documents/ai/VPN/external/client-fork/app/docs/architecture/app-first-session-flow.md)
 
 ## Living Source Of Truth
 
@@ -83,7 +91,9 @@ Use the role-based paths below first. If you need older context, go to the archi
 
 ### Client Fork
 
-- [external/client-fork/app/docs/README.md](C:/Users/kiwun/Documents/ai/VPN/external/client-fork/app/docs/README.md)
+- live new client canon: `C:/Users/kiwun/Documents/ai/POKROV-app/docs/`
+- [app-next/docs/README.md](C:/Users/kiwun/Documents/ai/VPN/app-next/docs/README.md) as retained bootstrap-source docs inside this repository
+- [external/client-fork/app/docs/README.md](C:/Users/kiwun/Documents/ai/VPN/external/client-fork/app/docs/README.md) for legacy bridge/hotfix and current release-truth notes until formal cutover
 
 ## Historical Records
 

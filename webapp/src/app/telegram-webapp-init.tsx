@@ -92,11 +92,15 @@ function resolveBackFallback(pathname: string, query: URLSearchParams): string |
   if (pathname === "/" || pathname === "/dashboard") return null;
 
   if (pathname === "/pricing") {
-    return query.get("from")?.toLowerCase() === "lk" ? "/subscription" : "/";
+    return "/subscription";
   }
 
   if (pathname.startsWith("/subscription/checkout")) {
-    return query.get("from")?.toLowerCase() === "lk" ? "/subscription" : "/pricing";
+    return "/subscription";
+  }
+
+  if (pathname === "/redeem") {
+    return "/subscription";
   }
 
   if (pathname === "/subscription" || pathname === "/devices" || pathname === "/statistics" || pathname === "/support") {

@@ -1,5 +1,6 @@
 import { getProductFacts } from "./product-facts";
 import { getPublicUrls } from "./public-urls";
+import { getTariffCatalog } from "./tariff-catalog";
 
 export type PortalPublicConfig = {
   apiBaseUrl: string;
@@ -24,9 +25,11 @@ export type PortalPublicConfig = {
 
 const PRODUCT_FACTS = getProductFacts();
 const PUBLIC_URLS = getPublicUrls();
+const TARIFF_CATALOG = getTariffCatalog();
 const SURFACES = PUBLIC_URLS.surfaces;
 const TELEGRAM = PUBLIC_URLS.telegram;
 const CONTACT = PUBLIC_URLS.contact;
+const VALID_PLAN_CODES = new Set(TARIFF_CATALOG.plans.map((plan) => plan.code));
 
 export const LEGACY_PUBLIC_MARKERS = [
   "portal-privacy.online",
@@ -37,11 +40,7 @@ export const LEGACY_PUBLIC_MARKERS = [
   "PORTAL ENTRY",
 ] as const;
 
-export const PLAN_ALIAS_TO_CODE = {
-  start: "start_99",
-  pro: "1_month",
-  ultra: "12_months",
-} as const;
+export const PLAN_ALIAS_TO_CODE = TARIFF_CATALOG.plan_aliases;
 
 export type PlanAlias = keyof typeof PLAN_ALIAS_TO_CODE;
 export type PlanCode = (typeof PLAN_ALIAS_TO_CODE)[PlanAlias] | "3_months" | "6_months" | "9_months";
@@ -64,6 +63,8 @@ export const CANONICAL_FEEDBACK_BOT_URL = TELEGRAM.feedback_bot;
 export const CANONICAL_NEWS_CHANNEL_URL = TELEGRAM.channel;
 export const CANONICAL_CONTACT_EMAIL = CONTACT.support_email;
 export const CANONICAL_ENTERPRISE_EMAIL = CONTACT.enterprise_email;
+export const CANONICAL_PUBLIC_PLATFORM_SCOPE = PRODUCT_FACTS.platform_scope.public;
+export const CANONICAL_PUBLIC_DEFAULT_ROUTE_MODE = PRODUCT_FACTS.network_defaults.routing_mode_default;
 
 function trim(value: string | undefined, fallback = ""): string {
   return String(value || fallback).trim();
@@ -92,7 +93,7 @@ export function normalizePlanCode(raw: string | null | undefined, fallback: Plan
   if (normalized in PLAN_ALIAS_TO_CODE) {
     return PLAN_ALIAS_TO_CODE[normalized as PlanAlias];
   }
-  if (["start_99", "1_month", "3_months", "6_months", "9_months", "12_months"].includes(normalized)) {
+  if (VALID_PLAN_CODES.has(normalized)) {
     return normalized as PlanCode;
   }
   return fallback;

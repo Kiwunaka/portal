@@ -6,6 +6,15 @@ Last updated: 2026-04-15
 
 This file is the canonical guide for `POKROV` client publishing, signing, store submission, and release-cost expectations.
 
+## Client Lane Distinction
+
+Wave 0 separates development truth from current release truth:
+
+- `POKROV-app/main` is the new client development target and is now bootstrapped locally at `C:/Users/kiwun/Documents/ai/POKROV-app`
+- `app-next/` is the retained bootstrap-source workspace inside this repository after that snapshot landed
+- `external/client-fork/app/` remains the bridge/hotfix and current public Android+Windows release/build/signing truth until formal cutover
+- the verification and packaging commands below therefore describe bridge-period release operations unless a later cutover wave rewrites them
+
 Focused release handoff runbooks:
 
 - [Android Production Signing Handoff](C:/Users/kiwun/Documents/ai/VPN/docs/operations/android-production-signing-handoff.md)
@@ -83,7 +92,7 @@ Current public user-facing version policy:
 - internal build numbers and platform-native version codes may remain numeric or platform-specific and are not the public label
 - inherited upstream display strings such as `2.5.7 dev` must not remain visible on public user-facing surfaces
 
-## Canonical Client Verification Commands
+## Bridge-Period Client Verification Commands
 
 Run from the repository root:
 

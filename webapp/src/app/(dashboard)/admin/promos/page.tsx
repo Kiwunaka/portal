@@ -1,536 +1,577 @@
 "use client";
 
 import {
-  adminCampaignCreate,
-  adminCampaignDelete,
-  adminCampaignUpdate,
-  adminCampaigns,
-  adminGiftCodeCreate,
-  adminGiftCodes,
-  adminPlanCreate,
-  adminPlanDelete,
-  adminPlanUpdate,
-  adminPlans,
-  adminPromoCreate,
-  adminPromoDelete,
-  adminPromoUpdate,
-  adminPromos,
-  type AdminIncentiveCampaign,
-  type AdminGiftCodeRow,
-  type AdminPromoRow,
-  type PlanCatalogRow,
+  adminAccessKeysIssue,
+  adminPromoSlots,
+  adminPromoSlotsUpdate,
+  fetchAccessKeyStatus,
+  type AccessKeyStatusPayload,
+  type PromoSlotAssignmentPayload,
+  type PromoSlotCatalogContent,
+  type PromoSlotCatalogSlot,
 } from "@/lib/api";
-import { Check, CreditCard, Gift, Package, PencilLine, Plus, RefreshCw, Tag, Trash2, X } from "lucide-react";
-import { useEffect, useState } from "react";
+import { getAccessMatrix, getPromoSlotsCatalog, getTariffPlans } from "@/lib/portal";
+import { Check, Copy, KeyRound, LayoutTemplate, RefreshCw, Save, Search, ShieldCheck } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
 import { fmtRuDate } from "../nav";
 
-type PromoDialog =
-  | { kind: "createPromo"; code: string; promoType: "discount" | "days"; value: string; usesLeft: string }
-  | { kind: "editPromo"; code: string; promoType: "discount" | "days"; value: string; usesLeft: string }
-  | { kind: "deletePromo"; code: string }
-  | { kind: "createGift"; cardType: "mini" | "standard" | "premium" }
-  | { kind: "createPlan"; code: string; label: string; amountRub: string; days: string; deviceLimit: string }
-  | { kind: "deletePlan"; code: string; label: string }
-  | {
-      kind: "createCampaign";
-      name: string;
-      campaignType: "promo" | "gift";
-      targetValue: string;
-      segment: string;
-      startsAt: string;
-      endsAt: string;
-      maxActivations: string;
-      isActive: boolean;
-    }
-  | {
-      kind: "editCampaign";
-      id: number;
-      name: string;
-      campaignType: "promo" | "gift";
-      targetValue: string;
-      segment: string;
-      startsAt: string;
-      endsAt: string;
-      maxActivations: string;
-      isActive: boolean;
-    }
-  | { kind: "deleteCampaign"; id: number; name: string }
-  | null;
+const ACCESS_MATRIX = getAccessMatrix();
+const PROMO_CATALOG = getPromoSlotsCatalog();
+const DEFAULT_PROMO_SLOTS: PromoSlotCatalogSlot[] = PROMO_CATALOG.slots.map((slot) => ({
+  id: slot.id,
+  surface: slot.surface,
+  contexts: [...slot.contexts],
+  allowed_content_ids: [...slot.allowed_content_ids],
+}));
+const DEFAULT_PROMO_CONTENT: PromoSlotCatalogContent[] = PROMO_CATALOG.content_catalog.map((item) => ({
+  id: item.id,
+  kind: item.kind,
+  goal: item.goal,
+  default_enabled: Boolean(item.default_enabled),
+}));
+const SHARED_PLANS = getTariffPlans()
+  .slice()
+  .filter((plan) => Boolean(plan.is_active) && Number(plan.amount_rub || 0) > 0)
+  .sort((left, right) => Number(left.sort_order || 0) - Number(right.sort_order || 0))
+  .map((plan) => ({
+    code: plan.code,
+    label: plan.label,
+    badge: plan.badge || undefined,
+    amountRub: Number(plan.amount_rub || 0),
+    days: Number(plan.duration_days || 0),
+    deviceLimit: Number(plan.device_limit || 1),
+    note: plan.cabinet_note || plan.marketing_note || plan.label,
+  }));
 
-function promoTypeLabel(value: string): string {
-  if (String(value).toLowerCase() === "discount") return "Скидка";
-  if (String(value).toLowerCase() === "days") return "Дни";
-  return value;
+function normalizeKey(value: string): string {
+  return String(value || "").trim().toUpperCase();
 }
 
-function campaignTypeLabel(value: string): string {
-  if (String(value).toLowerCase() === "promo") return "Промо";
-  if (String(value).toLowerCase() === "gift") return "Подарок";
-  return value;
+function createAssignmentState(
+  assignments: PromoSlotAssignmentPayload[],
+  slots: PromoSlotCatalogSlot[],
+  contentCatalog: PromoSlotCatalogContent[],
+): PromoSlotAssignmentPayload[] {
+  const assignmentMap = new Map(assignments.map((item) => [item.slot_id, item]));
+  const contentMap = new Map(contentCatalog.map((item) => [item.id, item]));
+
+  return slots.map((slot, index) => {
+    const existing = assignmentMap.get(slot.id);
+    const fallbackContent = slot.allowed_content_ids.find((contentId) => contentMap.has(contentId)) || slot.allowed_content_ids[0] || "";
+    const nextContentId =
+      existing && slot.allowed_content_ids.includes(existing.content_id) ? existing.content_id : fallbackContent;
+
+    return {
+      slot_id: slot.id,
+      content_id: nextContentId,
+      enabled: existing?.enabled ?? Boolean(contentMap.get(nextContentId)?.default_enabled),
+      title: existing?.title ?? "",
+      body: existing?.body ?? "",
+      cta_label: existing?.cta_label ?? "",
+      cta_href: existing?.cta_href ?? "",
+      contexts: existing?.contexts?.length ? [...existing.contexts] : [...slot.contexts],
+      sort_order: existing?.sort_order ?? index + 1,
+    };
+  });
 }
 
-function parseIntSafe(value: string, fallback = 0): number {
-  const num = Number(value);
-  if (!Number.isFinite(num)) return fallback;
-  return Math.floor(num);
+function formatContexts(values: string[]): string {
+  return values.join(" • ");
 }
 
-function normalizeIsoInput(value?: string | null): string {
-  const text = String(value || "").trim();
-  return text ? text.slice(0, 16) : "";
+function formatPlanMeta(days: number, deviceLimit: number): string {
+  return `${days} days • up to ${deviceLimit} devices`;
 }
 
-function StatusMessage({ tone, text }: { tone: "success" | "error"; text: string }) {
-  const isSuccess = tone === "success";
+function StatusBanner({ tone, text }: { tone: "success" | "error"; text: string }) {
+  const success = tone === "success";
   return (
     <div className="stat-card flex items-center gap-3 p-4">
-      <div className={`stat-icon ${isSuccess ? "stat-icon-emerald" : "stat-icon-rose"}`}>{isSuccess ? <Check size={18} /> : <X size={18} />}</div>
-      <p className={`text-sm font-medium ${isSuccess ? "text-emerald-600 dark:text-emerald-300" : "text-rose-500"}`}>{text}</p>
+      <div className={`stat-icon ${success ? "stat-icon-emerald" : "stat-icon-rose"}`}>
+        {success ? <Check size={18} /> : <ShieldCheck size={18} />}
+      </div>
+      <p className={`text-sm font-medium ${success ? "text-emerald-600 dark:text-emerald-300" : "text-rose-500"}`}>
+        {text}
+      </p>
     </div>
   );
 }
 
 export default function AdminPromosPage() {
-  const [promos, setPromos] = useState<AdminPromoRow[]>([]);
-  const [giftCodes, setGiftCodes] = useState<AdminGiftCodeRow[]>([]);
-  const [plans, setPlans] = useState<PlanCatalogRow[]>([]);
-  const [campaigns, setCampaigns] = useState<AdminIncentiveCampaign[]>([]);
+  const [selectedPlan, setSelectedPlan] = useState(SHARED_PLANS[0]?.code || "1_month");
+  const [quantity, setQuantity] = useState("5");
+  const [issuedKeys, setIssuedKeys] = useState<
+    Array<{
+      key: string;
+      planLabel: string;
+      issuedAt?: string | null;
+    }>
+  >([]);
+  const [lookupKey, setLookupKey] = useState("");
+  const [lookupResult, setLookupResult] = useState<AccessKeyStatusPayload | null>(null);
+  const [slotCatalog, setSlotCatalog] = useState<PromoSlotCatalogSlot[]>(DEFAULT_PROMO_SLOTS);
+  const [contentCatalog, setContentCatalog] = useState<PromoSlotCatalogContent[]>(DEFAULT_PROMO_CONTENT);
+  const [assignments, setAssignments] = useState<PromoSlotAssignmentPayload[]>(
+    createAssignmentState([], DEFAULT_PROMO_SLOTS, DEFAULT_PROMO_CONTENT),
+  );
+  const [remoteVersion, setRemoteVersion] = useState(PROMO_CATALOG.version);
+  const [remoteMode, setRemoteMode] = useState(PROMO_CATALOG.mode);
+  const [remoteAvailable, setRemoteAvailable] = useState(false);
+  const [fallbackBehavior, setFallbackBehavior] = useState(PROMO_CATALOG.fallback_behavior);
+  const [loading, setLoading] = useState(false);
+  const [issuing, setIssuing] = useState(false);
+  const [lookupBusy, setLookupBusy] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [statusText, setStatusText] = useState("");
   const [error, setError] = useState("");
-  const [result, setResult] = useState("");
-  const [busy, setBusy] = useState(false);
-  const [dialog, setDialog] = useState<PromoDialog>(null);
 
-  const load = async (): Promise<void> => {
+  const contentById = useMemo(
+    () => new Map(contentCatalog.map((item) => [item.id, item])),
+    [contentCatalog],
+  );
+
+  const loadPromoSlots = async (): Promise<void> => {
+    setLoading(true);
     setError("");
     try {
-      const [promoRows, giftRows, planRows, campaignRows] = await Promise.all([adminPromos(120), adminGiftCodes(80), adminPlans(true), adminCampaigns(120)]);
-      setPromos(promoRows);
-      setGiftCodes(giftRows);
-      setPlans(planRows);
-      setCampaigns(campaignRows);
-    } catch (err) {
-      setError(String((err as { message?: string })?.message || err || "Не удалось загрузить промо-раздел."));
+      const payload = await adminPromoSlots();
+      const remote = payload.promo_slots;
+      const remoteCatalog = remote.catalog;
+      const nextSlots = remoteCatalog?.slots?.length ? remoteCatalog.slots : DEFAULT_PROMO_SLOTS;
+      const nextContent = remoteCatalog?.content_catalog?.length ? remoteCatalog.content_catalog : DEFAULT_PROMO_CONTENT;
+
+      setSlotCatalog(nextSlots);
+      setContentCatalog(nextContent);
+      setAssignments(createAssignmentState(remote.assignments || [], nextSlots, nextContent));
+      setRemoteVersion(String(remote.version || remoteCatalog?.version || PROMO_CATALOG.version));
+      setRemoteMode(String(remote.mode || remoteCatalog?.mode || PROMO_CATALOG.mode));
+      setRemoteAvailable(Boolean(remote.remote_available));
+      setFallbackBehavior(String(remote.fallback_behavior || remoteCatalog?.fallback_behavior || PROMO_CATALOG.fallback_behavior));
+      setStatusText("Promo-slot config загружен из backend.");
+    } catch (nextError) {
+      setSlotCatalog(DEFAULT_PROMO_SLOTS);
+      setContentCatalog(DEFAULT_PROMO_CONTENT);
+      setAssignments(createAssignmentState([], DEFAULT_PROMO_SLOTS, DEFAULT_PROMO_CONTENT));
+      setError(String((nextError as { message?: string })?.message || nextError || "Не удалось загрузить promo slots."));
+    } finally {
+      setLoading(false);
     }
   };
 
   useEffect(() => {
-    void load();
+    void loadPromoSlots();
   }, []);
+
+  const issueKeys = async (): Promise<void> => {
+    const nextQuantity = Math.max(1, Math.min(50, Number(quantity || 1)));
+    setIssuing(true);
+    setError("");
+    setStatusText("");
+    try {
+      const payload = await adminAccessKeysIssue({
+        plan_code: selectedPlan,
+        quantity: nextQuantity,
+      });
+      setIssuedKeys(
+        (payload.issued || []).map((item) => ({
+          key: item.key,
+          planLabel: item.plan?.label || payload.plan?.label || selectedPlan,
+          issuedAt: item.issued_at,
+        })),
+      );
+      setStatusText(`Выпущено ${payload.issued?.length || 0} access keys для плана ${payload.plan?.label || selectedPlan}.`);
+    } catch (nextError) {
+      setError(String((nextError as { message?: string })?.message || nextError || "Не удалось выпустить ключи."));
+    } finally {
+      setIssuing(false);
+    }
+  };
+
+  const lookupAccessKey = async (): Promise<void> => {
+    const key = normalizeKey(lookupKey);
+    if (!key) {
+      setError("Введите access key для проверки.");
+      return;
+    }
+    setLookupBusy(true);
+    setError("");
+    setStatusText("");
+    try {
+      const payload = await fetchAccessKeyStatus(key);
+      setLookupResult(payload);
+      setStatusText(payload.exists ? "Статус ключа загружен." : "Ключ не найден.");
+    } catch (nextError) {
+      setError(String((nextError as { message?: string })?.message || nextError || "Не удалось получить статус ключа."));
+    } finally {
+      setLookupBusy(false);
+    }
+  };
+
+  const savePromoSlots = async (): Promise<void> => {
+    setSaving(true);
+    setError("");
+    setStatusText("");
+    try {
+      const payload = await adminPromoSlotsUpdate({ assignments });
+      setAssignments(createAssignmentState(payload.promo_slots.assignments || [], slotCatalog, contentCatalog));
+      setRemoteMode(String(payload.promo_slots.mode || remoteMode));
+      setRemoteAvailable(Boolean(payload.promo_slots.remote_available));
+      setFallbackBehavior(String(payload.promo_slots.fallback_behavior || fallbackBehavior));
+      setStatusText("Promo-slot config сохранён.");
+    } catch (nextError) {
+      setError(String((nextError as { message?: string })?.message || nextError || "Не удалось сохранить promo slots."));
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const updateAssignment = (slotId: string, patch: Partial<PromoSlotAssignmentPayload>) => {
+    setAssignments((current) =>
+      current.map((item) => (item.slot_id === slotId ? { ...item, ...patch } : item)),
+    );
+  };
 
   const copyText = async (text: string): Promise<void> => {
     try {
       await navigator.clipboard.writeText(text);
-      setResult("Скопировано в буфер.");
+      setStatusText("Скопировано в буфер.");
+      setError("");
     } catch {
-      setError("Не удалось скопировать код в буфер.");
-    }
-  };
-
-  const submitDialog = async (): Promise<void> => {
-    if (!dialog) return;
-    setBusy(true);
-    setError("");
-    setResult("");
-    try {
-      if (dialog.kind === "createPromo") {
-        if (!dialog.code.trim()) {
-          setError("Укажите код промокода.");
-          setBusy(false);
-          return;
-        }
-        await adminPromoCreate({
-          code: dialog.code.trim().toUpperCase(),
-          promo_type: dialog.promoType,
-          value: Math.max(1, parseIntSafe(dialog.value, 1)),
-          uses_left: Math.max(1, parseIntSafe(dialog.usesLeft, 1)),
-        });
-        setResult(`Промокод ${dialog.code.trim().toUpperCase()} создан.`);
-      } else if (dialog.kind === "editPromo") {
-        await adminPromoUpdate(dialog.code, {
-          promo_type: dialog.promoType,
-          value: Math.max(1, parseIntSafe(dialog.value, 1)),
-          uses_left: Math.max(0, parseIntSafe(dialog.usesLeft, 0)),
-        });
-        setResult(`Промокод ${dialog.code} обновлён.`);
-      } else if (dialog.kind === "deletePromo") {
-        await adminPromoDelete(dialog.code);
-        setResult(`Промокод ${dialog.code} удалён.`);
-      } else if (dialog.kind === "createGift") {
-        await adminGiftCodeCreate(dialog.cardType);
-        setResult(`Gift-код типа ${dialog.cardType} создан.`);
-      } else if (dialog.kind === "createPlan") {
-        if (!dialog.code.trim() || !dialog.label.trim()) {
-          setError("Укажите код и название тарифа.");
-          setBusy(false);
-          return;
-        }
-        await adminPlanCreate({
-          code: dialog.code.trim(),
-          label: dialog.label.trim(),
-          amount_rub: Math.max(1, parseIntSafe(dialog.amountRub, 1)),
-          amount_stars: Math.max(0, parseIntSafe(dialog.amountRub, 1)),
-          days: Math.max(1, parseIntSafe(dialog.days, 1)),
-          device_limit: Math.max(1, parseIntSafe(dialog.deviceLimit, 1)),
-          is_active: true,
-        });
-        setResult(`Тариф ${dialog.code.trim()} создан.`);
-      } else if (dialog.kind === "deletePlan") {
-        await adminPlanDelete(dialog.code);
-        setResult(`Тариф ${dialog.code} удалён.`);
-      } else if (dialog.kind === "createCampaign") {
-        if (!dialog.name.trim() || !dialog.targetValue.trim()) {
-          setError("Укажите название и target value кампании.");
-          setBusy(false);
-          return;
-        }
-        await adminCampaignCreate({
-          name: dialog.name.trim(),
-          campaign_type: dialog.campaignType,
-          target_value: dialog.targetValue.trim(),
-          segment: dialog.segment.trim() || "all",
-          starts_at: dialog.startsAt.trim() || null,
-          ends_at: dialog.endsAt.trim() || null,
-          max_activations: Math.max(0, parseIntSafe(dialog.maxActivations, 0)),
-          auto_disable: true,
-          is_active: dialog.isActive,
-        });
-        setResult(`Кампания ${dialog.name.trim()} создана.`);
-      } else if (dialog.kind === "editCampaign") {
-        if (!dialog.name.trim() || !dialog.targetValue.trim()) {
-          setError("Укажите название и target value кампании.");
-          setBusy(false);
-          return;
-        }
-        await adminCampaignUpdate(dialog.id, {
-          name: dialog.name.trim(),
-          segment: dialog.segment.trim() || "all",
-          starts_at: dialog.startsAt.trim() || null,
-          ends_at: dialog.endsAt.trim() || null,
-          max_activations: Math.max(0, parseIntSafe(dialog.maxActivations, 0)),
-          is_active: dialog.isActive,
-        });
-        setResult(`Кампания #${dialog.id} обновлена.`);
-      } else if (dialog.kind === "deleteCampaign") {
-        await adminCampaignDelete(dialog.id);
-        setResult(`Кампания ${dialog.name} удалена.`);
-      }
-      setDialog(null);
-      await load();
-    } catch (err) {
-      setError(String((err as { message?: string })?.message || err || "Не удалось сохранить изменения."));
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  const togglePlan = async (code: string, current: boolean): Promise<void> => {
-    setBusy(true);
-    setError("");
-    setResult("");
-    try {
-      await adminPlanUpdate(code, { is_active: !current });
-      setResult(`Тариф ${code} ${current ? "отключён" : "включён"}.`);
-      await load();
-    } catch (err) {
-      setError(String((err as { message?: string })?.message || err || "Не удалось обновить тариф."));
-    } finally {
-      setBusy(false);
+      setError("Не удалось скопировать значение.");
     }
   };
 
   return (
     <section className="space-y-5">
-      <article className="glass-card p-4">
-        <h2 className="font-display text-xl font-bold">Промо, подарки и тарифы</h2>
+      <article className="glass-card p-5">
+        <h2 className="font-display text-xl font-bold">Access keys и promo slots</h2>
         <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">
-          Единая панель для промокодов, gift-кодов, кампаний и каталога тарифов. Здесь же настраиваются сценарии, которые видят пользователи при покупке.
+          Эта панель больше не живёт в legacy gift/promo логике. Здесь оператор выпускает activation keys,
+          проверяет recovery-кейсы, держит единый tariff catalog перед глазами и управляет только first-party
+          promo slots из approved whitelist.
         </p>
       </article>
 
-      <div className="glass-card flex flex-col gap-3 p-4 sm:flex-row sm:flex-wrap sm:items-center">
-        <button className="btn-primary inline-flex items-center gap-1.5 rounded-xl px-4 py-2 text-sm font-semibold" type="button" onClick={() => setDialog({ kind: "createPromo", code: "WELCOME14", promoType: "days", value: "14", usesLeft: "100" })} disabled={busy}>
-          <Plus size={14} /> Промокод
-        </button>
-        <button className="outline-btn inline-flex items-center gap-1.5 rounded-xl px-4 py-2 text-sm font-semibold" type="button" onClick={() => setDialog({ kind: "createGift", cardType: "standard" })} disabled={busy}>
-          <Gift size={14} /> Gift-код
-        </button>
-        <button className="outline-btn inline-flex items-center gap-1.5 rounded-xl px-4 py-2 text-sm font-semibold" type="button" onClick={() => setDialog({ kind: "createPlan", code: "new_plan", label: "Новый тариф", amountRub: "299", days: "30", deviceLimit: "5" })} disabled={busy}>
-          <CreditCard size={14} /> Тариф
-        </button>
-        <button className="outline-btn inline-flex items-center gap-1.5 rounded-xl px-4 py-2 text-sm font-semibold" type="button" onClick={() => setDialog({ kind: "createCampaign", name: "Весеннее промо", campaignType: "promo", targetValue: "WELCOME14", segment: "all", startsAt: "", endsAt: "", maxActivations: "0", isActive: true })} disabled={busy}>
-          <Package size={14} /> Кампания
-        </button>
-        <button className="outline-btn inline-flex items-center gap-1.5 rounded-xl px-4 py-2 text-sm font-semibold sm:ml-auto" type="button" onClick={() => void load()} disabled={busy}>
-          <RefreshCw size={14} /> Обновить
-        </button>
+      {statusText ? <StatusBanner tone="success" text={statusText} /> : null}
+      {error ? <StatusBanner tone="error" text={error} /> : null}
+
+      <div className="grid gap-5 md:grid-cols-3">
+        <article className="glass-card p-5">
+          <p className="text-[11px] uppercase tracking-[0.16em] text-slate-500">public scope</p>
+          <h3 className="mt-2 font-display text-2xl font-semibold">Android + Windows</h3>
+          <p className="mt-3 text-sm leading-6 text-slate-600 dark:text-slate-300">
+            Публичный promise этой волны держим только на этих платформах. Apple host shells остаются
+            engineering lane, но не входят в release acceptance.
+          </p>
+        </article>
+
+        <article className="glass-card p-5">
+          <p className="text-[11px] uppercase tracking-[0.16em] text-slate-500">free baseline</p>
+          <h3 className="mt-2 font-display text-2xl font-semibold">
+            {ACCESS_MATRIX.free_tier.location_code} • {ACCESS_MATRIX.free_tier.traffic_limit_gb} GB
+          </h3>
+          <p className="mt-3 text-sm leading-6 text-slate-600 dark:text-slate-300">
+            Monthly reset, {ACCESS_MATRIX.free_tier.speed_limit_mbps} Mbps per IP, до{" "}
+            {ACCESS_MATRIX.free_tier.device_limit} устройства. После trial сюда падает default downgrade.
+          </p>
+        </article>
+
+        <article className="glass-card p-5">
+          <p className="text-[11px] uppercase tracking-[0.16em] text-slate-500">hidden transport order</p>
+          <h3 className="mt-2 font-display text-2xl font-semibold">VLESS → VMess → Trojan → XHTTP</h3>
+          <p className="mt-3 text-sm leading-6 text-slate-600 dark:text-slate-300">
+            Операторская видимость сохраняется, но массовый UI видит одну логическую локацию. XHTTP допускается
+            только при готовом CDN/static prerequisite.
+          </p>
+        </article>
       </div>
 
-      {result ? <StatusMessage tone="success" text={result} /> : null}
-      {error ? <StatusMessage tone="error" text={error} /> : null}
-
-      <div className="grid gap-5 xl:grid-cols-2">
+      <div className="grid gap-5 xl:grid-cols-[1.05fr,0.95fr]">
         <article className="glass-card p-5">
           <div className="mb-4 flex items-center gap-3">
-            <div className="stat-icon stat-icon-violet">
-              <Tag size={20} />
+            <div className="stat-icon stat-icon-emerald">
+              <KeyRound size={20} />
             </div>
-            <h2 className="font-display text-xl font-bold">Промокоды</h2>
+            <h2 className="font-display text-xl font-bold">Issue access keys</h2>
           </div>
-          <p className="mb-4 text-xs text-slate-500">Промокод даёт скидку или бонусные дни. Здесь видно и остаток использования, и тип награды.</p>
-          <div className="space-y-2">
-            {promos.length === 0 ? (
-              <div className="empty-state">
-                <Tag size={24} />
-                <p className="text-xs">Промокодов пока нет</p>
-              </div>
-            ) : null}
-            {promos.map((promo) => (
-              <div key={promo.code} className="node-card flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                <div className="flex min-w-0 items-start gap-3">
-                  <button type="button" className="haptic-tap" onClick={() => void copyText(promo.code)} title="Скопировать">
-                    <span className="badge badge-violet font-mono">{promo.code}</span>
-                  </button>
+          <p className="mb-4 text-sm text-slate-600 dark:text-slate-300">
+            Key-first commerce начинается здесь: оператор выпускает ключи по canonical plan codes, а не через
+            legacy gift-code типы.
+          </p>
+
+          <div className="grid gap-3 md:grid-cols-[1fr,120px,auto]">
+            <select
+              value={selectedPlan}
+              onChange={(event) => setSelectedPlan(event.target.value)}
+              className="rounded-xl border border-white/45 bg-white/65 px-3 py-3 text-sm outline-none dark:border-white/10 dark:bg-white/5"
+            >
+              {SHARED_PLANS.map((plan) => (
+                <option key={plan.code} value={plan.code}>
+                  {plan.label} • {plan.amountRub} ₽
+                </option>
+              ))}
+            </select>
+            <input
+              value={quantity}
+              onChange={(event) => setQuantity(event.target.value)}
+              type="number"
+              min={1}
+              max={50}
+              className="rounded-xl border border-white/45 bg-white/65 px-3 py-3 text-sm outline-none dark:border-white/10 dark:bg-white/5"
+            />
+            <button
+              type="button"
+              onClick={() => void issueKeys()}
+              disabled={issuing}
+              className="btn-primary rounded-xl px-4 py-3 text-sm font-semibold uppercase tracking-[0.12em] disabled:opacity-60"
+            >
+              {issuing ? "Выпускаем..." : "Issue"}
+            </button>
+          </div>
+
+          <div className="mt-5 space-y-2">
+            {issuedKeys.length ? (
+              issuedKeys.map((item) => (
+                <div key={item.key} className="node-card flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                   <div className="min-w-0">
-                    <span className={`badge ${promo.promo_type === "discount" ? "badge-warning" : "badge-info"}`}>{promoTypeLabel(promo.promo_type)}</span>
-                    <span className="ml-2 text-xs text-slate-500">
-                      значение: <strong>{promo.value}</strong> • использований: <strong>{promo.uses_left}</strong>
-                    </span>
+                    <p className="badge badge-violet font-mono">{item.key}</p>
+                    <p className="mt-2 text-xs text-slate-500">
+                      {item.planLabel} • {fmtRuDate(item.issuedAt)}
+                    </p>
                   </div>
-                </div>
-                <div className="flex shrink-0 gap-1.5">
-                  <button className="outline-btn inline-flex items-center gap-1 rounded-lg px-2 py-1 text-[10px] font-semibold" type="button" onClick={() => setDialog({ kind: "editPromo", code: promo.code, promoType: promo.promo_type === "discount" ? "discount" : "days", value: String(promo.value || 0), usesLeft: String(promo.uses_left || 0) })} disabled={busy}>
-                    <PencilLine size={10} />
+                  <button
+                    type="button"
+                    onClick={() => void copyText(item.key)}
+                    className="outline-btn inline-flex items-center gap-2 rounded-xl px-3 py-2 text-xs font-semibold uppercase tracking-[0.12em]"
+                  >
+                    <Copy size={14} />
+                    Copy
                   </button>
-                  <button className="outline-btn inline-flex items-center gap-1 rounded-lg px-2 py-1 text-[10px] font-semibold text-rose-500" type="button" onClick={() => setDialog({ kind: "deletePromo", code: promo.code })} disabled={busy}>
-                    <Trash2 size={10} />
-                  </button>
                 </div>
+              ))
+            ) : (
+              <div className="empty-state">
+                <KeyRound size={24} />
+                <p className="text-xs">Новые access keys появятся здесь после выпуска.</p>
               </div>
-            ))}
+            )}
           </div>
         </article>
 
         <article className="glass-card p-5">
           <div className="mb-4 flex items-center gap-3">
-            <div className="stat-icon stat-icon-amber">
-              <Gift size={20} />
+            <div className="stat-icon stat-icon-blue">
+              <Search size={20} />
             </div>
-            <h2 className="font-display text-xl font-bold">Gift-коды</h2>
+            <h2 className="font-display text-xl font-bold">Recovery lookup</h2>
           </div>
-          <p className="mb-4 text-xs text-slate-500">Подарочные коды удобно использовать для партнёров, ручных бонусов и промо-акций в канале.</p>
-          <div className="space-y-2">
-            {giftCodes.length === 0 ? (
-              <div className="empty-state">
-                <Gift size={24} />
-                <p className="text-xs">Gift-кодов пока нет</p>
-              </div>
-            ) : null}
-            {giftCodes.map((gift) => (
-              <div key={gift.code} className="node-card flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                <div className="flex min-w-0 items-start gap-3">
-                  <button type="button" className="haptic-tap" onClick={() => void copyText(gift.code)} title="Скопировать">
-                    <span className="badge badge-violet font-mono">{gift.code}</span>
-                  </button>
-                  <div className="text-xs text-slate-500">
-                    <span className={`badge ${gift.card_type === "premium" ? "badge-warning" : gift.card_type === "standard" ? "badge-info" : "badge-success"}`}>{gift.card_type}</span>
-                    <span className="ml-2">{gift.days}d</span>
-                  </div>
-                </div>
-                <span className={`badge ${gift.redeemed_at ? "badge-success" : "badge-danger"}`}>{gift.redeemed_at ? fmtRuDate(gift.redeemed_at) : "Не использован"}</span>
-              </div>
-            ))}
-          </div>
-        </article>
-      </div>
+          <p className="mb-4 text-sm text-slate-600 dark:text-slate-300">
+            Для ручных recovery-кейсов оператор может проверить конкретный key status без показа raw subscription link.
+          </p>
 
-      <article className="glass-card p-5">
-        <div className="mb-4 flex items-center gap-3">
-          <div className="stat-icon stat-icon-blue">
-            <Package size={20} />
+          <div className="flex flex-col gap-3 sm:flex-row">
+            <input
+              value={lookupKey}
+              onChange={(event) => setLookupKey(normalizeKey(event.target.value))}
+              placeholder="POKROV-XXXX-XXXX"
+              className="w-full rounded-xl border border-white/45 bg-white/65 px-3 py-3 text-sm outline-none dark:border-white/10 dark:bg-white/5"
+            />
+            <button
+              type="button"
+              onClick={() => void lookupAccessKey()}
+              disabled={lookupBusy}
+              className="outline-btn rounded-xl px-4 py-3 text-sm font-semibold uppercase tracking-[0.12em] disabled:opacity-60"
+            >
+              {lookupBusy ? "Проверяем..." : "Lookup"}
+            </button>
           </div>
-          <h2 className="font-display text-xl font-bold">Кампании</h2>
-        </div>
-        <p className="mb-4 text-xs text-slate-500">Кампании связывают промо, подарок и период активности. Здесь удобно править таргет и срок жизни сценария.</p>
-        <div className="space-y-2">
-          {campaigns.length === 0 ? (
-            <div className="empty-state">
-              <Package size={24} />
-              <p className="text-xs">Кампаний пока нет</p>
+
+          {lookupResult ? (
+            <div className="mt-5 space-y-2 rounded-2xl border border-white/40 bg-white/55 p-4 text-sm text-slate-700 dark:border-white/10 dark:bg-white/5 dark:text-slate-200">
+              <p>Ключ: <strong>{lookupResult.key}</strong></p>
+              <p>Найден: <strong>{lookupResult.exists ? "да" : "нет"}</strong></p>
+              <p>Погашен: <strong>{lookupResult.redeemed ? "да" : "нет"}</strong></p>
+              <p>План: <strong>{lookupResult.plan?.label || lookupResult.kind || "—"}</strong></p>
+              <p>Лимит устройств: <strong>{lookupResult.device_limit}</strong></p>
+              <p>Выдан: <strong>{fmtRuDate(lookupResult.issued_at)}</strong></p>
+              <p>Погашен: <strong>{fmtRuDate(lookupResult.redeemed_at)}</strong></p>
             </div>
           ) : null}
-          {campaigns.map((row) => (
-            <div key={row.id} className="node-card flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-              <div className="min-w-0 flex-1">
-                <div className="flex flex-wrap items-center gap-2">
-                  <span className="badge badge-violet">#{row.id}</span>
-                  <strong className="text-sm">{row.name}</strong>
-                  <span className={`badge ${row.is_active ? "badge-success" : "badge-danger"}`}>{row.is_active ? "Активна" : "Пауза"}</span>
-                  <span className="badge badge-info">{campaignTypeLabel(row.campaign_type)}</span>
-                </div>
-                <p className="mt-1 text-xs text-slate-500">
-                  цель: <strong>{row.target_value}</strong> • сегмент: <strong>{row.segment}</strong> • активации: <strong>{row.activations_count}/{row.max_activations || "∞"}</strong>
-                </p>
-                <p className="text-[10px] text-slate-400">
-                  период: {fmtRuDate(row.starts_at)} → {fmtRuDate(row.ends_at)}
-                </p>
-              </div>
-              <div className="flex shrink-0 gap-1.5">
-                <button className="outline-btn inline-flex items-center gap-1 rounded-lg px-2 py-1 text-[10px] font-semibold" type="button" onClick={() => setDialog({ kind: "editCampaign", id: row.id, name: row.name || "", campaignType: row.campaign_type === "gift" ? "gift" : "promo", targetValue: row.target_value || "", segment: row.segment || "all", startsAt: normalizeIsoInput(row.starts_at), endsAt: normalizeIsoInput(row.ends_at), maxActivations: String(row.max_activations || 0), isActive: Boolean(row.is_active) })} disabled={busy}>
-                  <PencilLine size={10} />
-                </button>
-                <button className="outline-btn inline-flex items-center gap-1 rounded-lg px-2 py-1 text-[10px] font-semibold text-rose-500" type="button" onClick={() => setDialog({ kind: "deleteCampaign", id: row.id, name: row.name || `#${row.id}` })} disabled={busy}>
-                  <Trash2 size={10} />
-                </button>
-              </div>
-            </div>
-          ))}
-        </div>
-      </article>
+        </article>
+      </div>
 
       <article className="glass-card p-5">
         <div className="mb-4 flex items-center gap-3">
-          <div className="stat-icon stat-icon-emerald">
-            <CreditCard size={20} />
+          <div className="stat-icon stat-icon-amber">
+            <ShieldCheck size={20} />
           </div>
-          <h2 className="font-display text-xl font-bold">Тарифы</h2>
+          <h2 className="font-display text-xl font-bold">Tariff catalog</h2>
         </div>
-        <p className="mb-4 text-xs text-slate-500">Каталог тарифов, который видят пользователи при выборе плана. Отсюда можно включать и выключать отдельные позиции.</p>
         <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-          {plans.map((plan) => (
+          {SHARED_PLANS.map((plan) => (
             <div key={plan.code} className="stat-card p-4">
               <div className="mb-3 flex items-center justify-between gap-2">
                 <span className="badge badge-violet font-mono">{plan.code}</span>
-                <button type="button" className={`badge haptic-tap ${plan.is_active ? "badge-success" : "badge-danger"}`} onClick={() => void togglePlan(plan.code, plan.is_active)} disabled={busy}>
-                  {plan.is_active ? "Вкл." : "Выкл."}
-                </button>
+                <span className="badge badge-success">{plan.badge || "active"}</span>
               </div>
               <p className="text-lg font-bold">{plan.label}</p>
-              <div className="mt-2 grid grid-cols-3 gap-2 text-center text-xs">
-                <div className="rounded-lg bg-white/50 p-1.5 dark:bg-white/5">
-                  <p className="text-slate-400">RUB</p>
-                  <p className="font-bold">{plan.amount_rub}</p>
-                </div>
-                <div className="rounded-lg bg-white/50 p-1.5 dark:bg-white/5">
-                  <p className="text-slate-400">Устройств</p>
-                  <p className="font-bold">{plan.device_limit}</p>
-                </div>
-                <div className="rounded-lg bg-white/50 p-1.5 dark:bg-white/5">
-                  <p className="text-slate-400">Дней</p>
-                  <p className="font-bold">{plan.days}</p>
-                </div>
-              </div>
-              <div className="mt-3 flex justify-end">
-                <button className="outline-btn inline-flex items-center gap-1 rounded-lg px-2.5 py-1 text-[10px] font-semibold text-rose-500" type="button" onClick={() => setDialog({ kind: "deletePlan", code: plan.code, label: plan.label })} disabled={busy}>
-                  <Trash2 size={10} /> Удалить
-                </button>
-              </div>
+              <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">{plan.amountRub} ₽</p>
+              <p className="mt-1 text-xs text-slate-500">{formatPlanMeta(plan.days, plan.deviceLimit)}</p>
+              <p className="mt-3 text-xs leading-6 text-slate-500">{plan.note}</p>
             </div>
           ))}
-          {plans.length === 0 ? (
-            <div className="empty-state col-span-full">
-              <CreditCard size={28} />
-              <p className="text-xs">Тарифов пока нет</p>
-            </div>
-          ) : null}
         </div>
       </article>
 
-      {dialog ? (
-        <div className="fixed inset-0 z-[260] flex items-center justify-center bg-slate-950/65 p-4">
-          <div className="glass-card w-full max-w-2xl p-5">
-            {(dialog.kind === "createPromo" || dialog.kind === "editPromo") ? (
-              <>
-                <h3 className="font-display text-xl font-semibold">{dialog.kind === "createPromo" ? "Новый промокод" : `Промокод ${dialog.code}`}</h3>
-                <div className="mt-4 grid gap-3 md:grid-cols-2">
-                  <input value={dialog.code} onChange={(event) => setDialog((prev) => prev && (prev.kind === "createPromo" || prev.kind === "editPromo") ? { ...prev, code: event.target.value.toUpperCase() } : prev)} readOnly={dialog.kind === "editPromo"} className="rounded-xl border border-violet-200/50 bg-white/80 px-3 py-2 text-sm outline-none dark:border-violet-500/30 dark:bg-slate-900/70" placeholder="Код" />
-                  <select value={dialog.promoType} onChange={(event) => setDialog((prev) => prev && (prev.kind === "createPromo" || prev.kind === "editPromo") ? { ...prev, promoType: event.target.value as "discount" | "days" } : prev)} className="rounded-xl border border-violet-200/50 bg-white/80 px-3 py-2 text-sm outline-none dark:border-violet-500/30 dark:bg-slate-900/70">
-                    <option value="days">Дни</option>
-                    <option value="discount">Скидка</option>
-                  </select>
-                  <input value={dialog.value} onChange={(event) => setDialog((prev) => prev && (prev.kind === "createPromo" || prev.kind === "editPromo") ? { ...prev, value: event.target.value } : prev)} type="number" min={1} className="rounded-xl border border-violet-200/50 bg-white/80 px-3 py-2 text-sm outline-none dark:border-violet-500/30 dark:bg-slate-900/70" placeholder="Значение" />
-                  <input value={dialog.usesLeft} onChange={(event) => setDialog((prev) => prev && (prev.kind === "createPromo" || prev.kind === "editPromo") ? { ...prev, usesLeft: event.target.value } : prev)} type="number" min={0} className="rounded-xl border border-violet-200/50 bg-white/80 px-3 py-2 text-sm outline-none dark:border-violet-500/30 dark:bg-slate-900/70" placeholder="Остаток" />
-                </div>
-              </>
-            ) : null}
-
-            {dialog.kind === "createGift" ? (
-              <>
-                <h3 className="font-display text-xl font-semibold">Новый gift-код</h3>
-                <div className="mt-4">
-                  <select value={dialog.cardType} onChange={(event) => setDialog({ kind: "createGift", cardType: event.target.value as "mini" | "standard" | "premium" })} className="w-full rounded-xl border border-violet-200/50 bg-white/80 px-3 py-2 text-sm outline-none dark:border-violet-500/30 dark:bg-slate-900/70">
-                    <option value="mini">mini</option>
-                    <option value="standard">standard</option>
-                    <option value="premium">premium</option>
-                  </select>
-                </div>
-              </>
-            ) : null}
-
-            {dialog.kind === "createPlan" ? (
-              <>
-                <h3 className="font-display text-xl font-semibold">Новый тариф</h3>
-                <div className="mt-4 grid gap-3 md:grid-cols-2">
-                  <input value={dialog.code} onChange={(event) => setDialog({ ...dialog, code: event.target.value })} className="rounded-xl border border-violet-200/50 bg-white/80 px-3 py-2 text-sm outline-none dark:border-violet-500/30 dark:bg-slate-900/70" placeholder="Код" />
-                  <input value={dialog.label} onChange={(event) => setDialog({ ...dialog, label: event.target.value })} className="rounded-xl border border-violet-200/50 bg-white/80 px-3 py-2 text-sm outline-none dark:border-violet-500/30 dark:bg-slate-900/70" placeholder="Название" />
-                  <input value={dialog.amountRub} onChange={(event) => setDialog({ ...dialog, amountRub: event.target.value })} type="number" min={1} className="rounded-xl border border-violet-200/50 bg-white/80 px-3 py-2 text-sm outline-none dark:border-violet-500/30 dark:bg-slate-900/70" placeholder="RUB" />
-                  <input value={dialog.days} onChange={(event) => setDialog({ ...dialog, days: event.target.value })} type="number" min={1} className="rounded-xl border border-violet-200/50 bg-white/80 px-3 py-2 text-sm outline-none dark:border-violet-500/30 dark:bg-slate-900/70" placeholder="Дней" />
-                  <input value={dialog.deviceLimit} onChange={(event) => setDialog({ ...dialog, deviceLimit: event.target.value })} type="number" min={1} className="rounded-xl border border-violet-200/50 bg-white/80 px-3 py-2 text-sm outline-none dark:border-violet-500/30 dark:bg-slate-900/70" placeholder="Лимит устройств" />
-                </div>
-              </>
-            ) : null}
-
-            {(dialog.kind === "createCampaign" || dialog.kind === "editCampaign") ? (
-              <>
-                <h3 className="font-display text-xl font-semibold">{dialog.kind === "createCampaign" ? "Новая кампания" : `Кампания #${dialog.id}`}</h3>
-                <div className="mt-4 grid gap-3 md:grid-cols-2">
-                  <input value={dialog.name} onChange={(event) => setDialog({ ...dialog, name: event.target.value })} className="rounded-xl border border-violet-200/50 bg-white/80 px-3 py-2 text-sm outline-none dark:border-violet-500/30 dark:bg-slate-900/70" placeholder="Название" />
-                  <select value={dialog.campaignType} onChange={(event) => setDialog({ ...dialog, campaignType: event.target.value as "promo" | "gift" })} className="rounded-xl border border-violet-200/50 bg-white/80 px-3 py-2 text-sm outline-none dark:border-violet-500/30 dark:bg-slate-900/70">
-                    <option value="promo">promo</option>
-                    <option value="gift">gift</option>
-                  </select>
-                  <input value={dialog.targetValue} onChange={(event) => setDialog({ ...dialog, targetValue: event.target.value })} className="rounded-xl border border-violet-200/50 bg-white/80 px-3 py-2 text-sm outline-none dark:border-violet-500/30 dark:bg-slate-900/70" placeholder="Target value" />
-                  <input value={dialog.segment} onChange={(event) => setDialog({ ...dialog, segment: event.target.value })} className="rounded-xl border border-violet-200/50 bg-white/80 px-3 py-2 text-sm outline-none dark:border-violet-500/30 dark:bg-slate-900/70" placeholder="Сегмент" />
-                  <input value={dialog.startsAt} onChange={(event) => setDialog({ ...dialog, startsAt: event.target.value })} type="datetime-local" className="rounded-xl border border-violet-200/50 bg-white/80 px-3 py-2 text-sm outline-none dark:border-violet-500/30 dark:bg-slate-900/70" />
-                  <input value={dialog.endsAt} onChange={(event) => setDialog({ ...dialog, endsAt: event.target.value })} type="datetime-local" className="rounded-xl border border-violet-200/50 bg-white/80 px-3 py-2 text-sm outline-none dark:border-violet-500/30 dark:bg-slate-900/70" />
-                  <input value={dialog.maxActivations} onChange={(event) => setDialog({ ...dialog, maxActivations: event.target.value })} type="number" min={0} className="rounded-xl border border-violet-200/50 bg-white/80 px-3 py-2 text-sm outline-none dark:border-violet-500/30 dark:bg-slate-900/70" placeholder="Лимит активаций" />
-                  <label className="inline-flex items-center gap-2 rounded-xl border border-violet-200/50 bg-white/80 px-3 py-2 text-sm text-slate-600 dark:border-violet-500/30 dark:bg-slate-900/70 dark:text-slate-300">
-                    <input type="checkbox" checked={dialog.isActive} onChange={(event) => setDialog({ ...dialog, isActive: event.target.checked })} />
-                    Активна
-                  </label>
-                </div>
-              </>
-            ) : null}
-
-            {dialog.kind === "deletePromo" ? (
-              <>
-                <h3 className="font-display text-xl font-semibold">Удалить промокод {dialog.code}?</h3>
-                <p className="mt-2 text-sm text-slate-500">Код перестанет работать в новых checkout-сценариях.</p>
-              </>
-            ) : null}
-            {dialog.kind === "deletePlan" ? (
-              <>
-                <h3 className="font-display text-xl font-semibold">Удалить тариф {dialog.code}?</h3>
-                <p className="mt-2 text-sm text-slate-500">{dialog.label}</p>
-              </>
-            ) : null}
-            {dialog.kind === "deleteCampaign" ? (
-              <>
-                <h3 className="font-display text-xl font-semibold">Удалить кампанию {dialog.name}?</h3>
-                <p className="mt-2 text-sm text-slate-500">После удаления сценарий больше не будет доступен в новых запусках.</p>
-              </>
-            ) : null}
-
-            <div className="mt-5 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
-              <button className="outline-btn rounded-xl px-4 py-2 text-sm font-semibold" type="button" onClick={() => setDialog(null)} disabled={busy}>
-                Отмена
-              </button>
-              <button className="btn-primary rounded-xl px-4 py-2 text-sm font-semibold" type="button" onClick={() => void submitDialog()} disabled={busy}>
-                {dialog.kind.startsWith("delete") ? "Удалить" : "Сохранить"}
-              </button>
-            </div>
+      <article className="glass-card p-5">
+        <div className="mb-4 flex items-center gap-3">
+          <div className="stat-icon stat-icon-violet">
+            <LayoutTemplate size={20} />
+          </div>
+          <div>
+            <h2 className="font-display text-xl font-bold">Promo slot scheduling</h2>
+            <p className="text-xs text-slate-500">
+              version {remoteVersion} • mode {remoteMode} • remote {remoteAvailable ? "available" : "fallback"}
+            </p>
+          </div>
+          <div className="ml-auto flex gap-2">
+            <button
+              type="button"
+              onClick={() => void loadPromoSlots()}
+              disabled={loading}
+              className="outline-btn inline-flex items-center gap-2 rounded-xl px-3 py-2 text-xs font-semibold uppercase tracking-[0.12em] disabled:opacity-60"
+            >
+              <RefreshCw size={14} />
+              Refresh
+            </button>
+            <button
+              type="button"
+              onClick={() => void savePromoSlots()}
+              disabled={saving}
+              className="btn-primary inline-flex items-center gap-2 rounded-xl px-3 py-2 text-xs font-semibold uppercase tracking-[0.12em] disabled:opacity-60"
+            >
+              <Save size={14} />
+              {saving ? "Saving..." : "Save"}
+            </button>
           </div>
         </div>
-      ) : null}
+
+        <p className="mb-4 text-sm text-slate-600 dark:text-slate-300">
+          Разрешены только whitelist slots и first-party promo content. Если remote config недоступен, surface
+          падает в <strong>{fallbackBehavior}</strong>.
+        </p>
+
+        <div className="space-y-4">
+          {assignments.map((assignment) => {
+            const slot = slotCatalog.find((item) => item.id === assignment.slot_id);
+            const allowedContentIds = slot?.allowed_content_ids || [];
+
+            return (
+              <div key={assignment.slot_id} className="node-card space-y-4 p-4">
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="badge badge-violet font-mono">{assignment.slot_id}</span>
+                  <span className="badge badge-info">{slot?.surface || "surface"}</span>
+                  <span className="text-xs text-slate-500">{formatContexts(slot?.contexts || assignment.contexts || [])}</span>
+                </div>
+
+                <div className="grid gap-3 lg:grid-cols-[1fr,1fr,120px]">
+                  <label className="text-sm">
+                    <span className="mb-1 block text-xs uppercase tracking-[0.12em] text-slate-500">content</span>
+                    <select
+                      value={assignment.content_id}
+                      onChange={(event) => updateAssignment(assignment.slot_id, { content_id: event.target.value })}
+                      className="w-full rounded-xl border border-white/45 bg-white/65 px-3 py-3 text-sm outline-none dark:border-white/10 dark:bg-white/5"
+                    >
+                      {allowedContentIds.map((contentId) => {
+                        const content = contentById.get(contentId);
+                        return (
+                          <option key={contentId} value={contentId}>
+                            {content?.goal || contentId}
+                          </option>
+                        );
+                      })}
+                    </select>
+                  </label>
+
+                  <label className="text-sm">
+                    <span className="mb-1 block text-xs uppercase tracking-[0.12em] text-slate-500">contexts</span>
+                    <input
+                      value={(assignment.contexts || []).join(", ")}
+                      onChange={(event) =>
+                        updateAssignment(assignment.slot_id, {
+                          contexts: event.target.value
+                            .split(",")
+                            .map((item) => item.trim())
+                            .filter(Boolean),
+                        })
+                      }
+                      className="w-full rounded-xl border border-white/45 bg-white/65 px-3 py-3 text-sm outline-none dark:border-white/10 dark:bg-white/5"
+                    />
+                  </label>
+
+                  <label className="text-sm">
+                    <span className="mb-1 block text-xs uppercase tracking-[0.12em] text-slate-500">sort</span>
+                    <input
+                      value={assignment.sort_order}
+                      onChange={(event) => updateAssignment(assignment.slot_id, { sort_order: Math.max(0, Number(event.target.value || 0)) })}
+                      type="number"
+                      min={0}
+                      className="w-full rounded-xl border border-white/45 bg-white/65 px-3 py-3 text-sm outline-none dark:border-white/10 dark:bg-white/5"
+                    />
+                  </label>
+                </div>
+
+                <div className="grid gap-3 lg:grid-cols-2">
+                  <label className="text-sm">
+                    <span className="mb-1 block text-xs uppercase tracking-[0.12em] text-slate-500">title override</span>
+                    <input
+                      value={assignment.title || ""}
+                      onChange={(event) => updateAssignment(assignment.slot_id, { title: event.target.value })}
+                      className="w-full rounded-xl border border-white/45 bg-white/65 px-3 py-3 text-sm outline-none dark:border-white/10 dark:bg-white/5"
+                    />
+                  </label>
+
+                  <label className="text-sm">
+                    <span className="mb-1 block text-xs uppercase tracking-[0.12em] text-slate-500">body override</span>
+                    <input
+                      value={assignment.body || ""}
+                      onChange={(event) => updateAssignment(assignment.slot_id, { body: event.target.value })}
+                      className="w-full rounded-xl border border-white/45 bg-white/65 px-3 py-3 text-sm outline-none dark:border-white/10 dark:bg-white/5"
+                    />
+                  </label>
+
+                  <label className="text-sm">
+                    <span className="mb-1 block text-xs uppercase tracking-[0.12em] text-slate-500">cta label</span>
+                    <input
+                      value={assignment.cta_label || ""}
+                      onChange={(event) => updateAssignment(assignment.slot_id, { cta_label: event.target.value })}
+                      className="w-full rounded-xl border border-white/45 bg-white/65 px-3 py-3 text-sm outline-none dark:border-white/10 dark:bg-white/5"
+                    />
+                  </label>
+
+                  <label className="text-sm">
+                    <span className="mb-1 block text-xs uppercase tracking-[0.12em] text-slate-500">cta href</span>
+                    <input
+                      value={assignment.cta_href || ""}
+                      onChange={(event) => updateAssignment(assignment.slot_id, { cta_href: event.target.value })}
+                      className="w-full rounded-xl border border-white/45 bg-white/65 px-3 py-3 text-sm outline-none dark:border-white/10 dark:bg-white/5"
+                    />
+                  </label>
+                </div>
+
+                <label className="inline-flex items-center gap-2 text-sm text-slate-600 dark:text-slate-300">
+                  <input
+                    type="checkbox"
+                    checked={assignment.enabled}
+                    onChange={(event) => updateAssignment(assignment.slot_id, { enabled: event.target.checked })}
+                  />
+                  Slot enabled
+                </label>
+              </div>
+            );
+          })}
+        </div>
+      </article>
     </section>
   );
 }

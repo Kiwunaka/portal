@@ -31,6 +31,10 @@ Always start with:
 
 For client work, also read:
 
+- [C:/Users/kiwun/Documents/ai/POKROV-app/docs/README.md](C:/Users/kiwun/Documents/ai/POKROV-app/docs/README.md)
+- [C:/Users/kiwun/Documents/ai/POKROV-app/docs/operations/cutover-readiness.md](C:/Users/kiwun/Documents/ai/POKROV-app/docs/operations/cutover-readiness.md)
+- [app-next/docs/README.md](C:/Users/kiwun/Documents/ai/VPN/app-next/docs/README.md)
+- [app-next/docs/operations/cutover-readiness.md](C:/Users/kiwun/Documents/ai/VPN/app-next/docs/operations/cutover-readiness.md)
 - [external/client-fork/app/docs/README.md](C:/Users/kiwun/Documents/ai/VPN/external/client-fork/app/docs/README.md)
 - [Monitoring And Visibility](C:/Users/kiwun/Documents/ai/VPN/docs/operations/monitoring-and-visibility.md)
 - [Publishing And Signing Guide](C:/Users/kiwun/Documents/ai/VPN/docs/operations/publishing-and-signing-guide.md)
@@ -61,16 +65,38 @@ Platform baseline note:
 - prospectively keep the root workspace on `master` as the clean platform baseline
 - use feature branches or extra worktrees for platform experiments instead of redefining the root workspace as a different authoritative lane
 
-### Client workspace
+### New client development repo
 
-- [C:/Users/kiwun/Documents/ai/VPN/external/client-fork/app](C:/Users/kiwun/Documents/ai/VPN/external/client-fork/app)
+- `C:/Users/kiwun/Documents/ai/POKROV-app`
 
-Contains the `POKROV` Flutter fork for Android and Windows. Legacy filenames remain in some canonical paths, but current Windows release identity, executable naming, and packaged artifact canon target `POKROV` / `pokrov`.
+Contains the new canonical client-repo target for `Android` and `Windows`.
 
 Client lane note:
 
-- `external/client-fork/app` is the default legacy client workspace
-- `app-next` is a separate future lane only when explicitly created as its own machine-local worktree or alias; it does not replace the default client workspace in docs, cleanup, or handoffs
+- `POKROV-app/main` is the new client development truth for this rework
+- that checkout is now bootstrapped locally from `app-next/`, so new client product-direction work should land here by default
+
+### App-next bootstrap source workspace
+
+- [C:/Users/kiwun/Documents/ai/VPN/app-next](C:/Users/kiwun/Documents/ai/VPN/app-next)
+
+Contains the in-repo source workspace that feeds the initial `POKROV-app` bootstrap snapshot.
+
+Bootstrap note:
+
+- treat `app-next/` as retained migration source and validation material after the bootstrap
+- do not treat it as the long-term promotion target now that `POKROV-app/main` is live locally
+
+### Legacy bridge client workspace
+
+- [C:/Users/kiwun/Documents/ai/VPN/external/client-fork/app](C:/Users/kiwun/Documents/ai/VPN/external/client-fork/app)
+
+Contains the retained legacy Flutter fork for Android and Windows. Legacy filenames remain in some canonical paths, but current Windows release identity, executable naming, and packaged artifact canon target `POKROV` / `pokrov`.
+
+Bridge lane note:
+
+- `external/client-fork/app` is the bridge/hotfix workspace and current public Android+Windows release/build/signing truth until formal cutover
+- do not use it as the default destination for new product-direction client work
 
 Current scope note:
 
@@ -79,15 +105,18 @@ Current scope note:
 
 ## Branch, Worktree, And Promotion Policy
 
-- `portal/master` and `PORTALapp/main` are policy labels used in docs, work orders, and handoffs; the real upstream branches are `origin/master` for the platform repo and `origin/main` for the nested client repo
+- `portal/master` is the policy label used in docs, work orders, and handoffs for the platform lane; it maps to `origin/master`
+- `POKROV-app/main` is the policy label for the new client development lane and should map to the `main` branch of the dedicated `POKROV-app` repository
 - `portal/master` remains the only canonical git truth for `backend`, `webapp`, `marketing`, root `docs`, `shared`, `infra`, and root `scripts`
-- `PORTALapp/main` remains the only canonical git truth for the Flutter client under `external/client-fork/app/`
-- root docs in this workspace, including `AGENTS.md` and `docs/*`, always land on the platform lane; only client docs under `external/client-fork/app/docs/` land on the client lane
+- `POKROV-app/main` is the canonical git truth for new `Android` and `Windows` client development work
+- `external/client-fork/app` stays on its current `main` line as the explicit bridge/hotfix and release-truth lane until formal cutover
+- root docs in this workspace, including `AGENTS.md` and `docs/*`, always land on the platform lane; new client docs belong in `POKROV-app/docs/*`, while `external/client-fork/app/docs/*` are bridge docs only
 - prospectively treat the root workspace on `master` as the clean platform baseline, and promote platform changes back to `origin/master`
-- treat `external/client-fork/app` as the default legacy client checkout, and promote client changes back to `origin/main`
+- promote new client development changes through `POKROV-app/main`
+- promote legacy bridge, hotfix, packaging, and release-runbook changes through `external/client-fork/app` on its current `main` line
 - `main`, `portal-app`, and `app-next` are optional machine-local aliases or worktree names only; they are convenience labels, not authoritative roots or promotion targets
-- if `app-next` exists, keep it as a separate future lane and do not treat it as a silent replacement for the default legacy client workspace
-- if a task changes both platform and client, push both canonical branches and report them separately
+- if `app-next` exists, treat it as the temporary bootstrap-source workspace for `POKROV-app`, not as a silent replacement for either the new client repo or the bridge lane
+- if a task changes platform, the new client repo, and/or the legacy bridge repo, push and report each affected canonical branch separately
 
 Shell note:
 
@@ -110,8 +139,9 @@ Current rules:
 - the orchestrator owns WO routing, status, docs impact, and completion judgment
 - WOs route by `write-scope`, not by topic
 - `portal/master` remains the canonical truth label for the platform lane and maps to `origin/master`
-- `PORTALapp/main` remains the canonical truth label for the client lane and maps to `origin/main`
-- mixed WOs must preserve separate git evidence for the platform and client lanes
+- `POKROV-app/main` remains the canonical truth label for the new client development lane
+- the legacy bridge repo must be called out explicitly when a WO lands in `external/client-fork/app/` for release-truth or hotfix reasons
+- mixed WOs must preserve separate git evidence for the platform lane, the new client lane, and the bridge lane when each is touched
 - the executor does not self-close the WO
 - reviewers should run with fresh context
 - a green automated check does not close a WO when manual checks, deploy steps, Android localhost audit, or origin evidence still remain open
@@ -233,7 +263,7 @@ After the current premium/SEO/copy pass, keep this split explicit:
 - `connect.pokrov.space` is config delivery only and must not be treated as a public acquisition page
 - when a task spans both surfaces, verify the handoff `pokrov.space -> app.pokrov.space` instead of reviewing each side in isolation
 
-Canonical client verification from the repository root:
+Current bridge-period client release verification from the repository root:
 
 ```powershell
 python scripts/run_client_release_gate.py test --suite portal
@@ -322,7 +352,7 @@ Shared-surface rule:
 - treat `shared/product-facts.json`, `shared/public-urls.json`, and `shared/design-tokens.json` as the only non-localized source for locked product, host, and design facts
 - TypeScript reads those files directly through `shared/*.ts` adapters
 - Python reads those files through `portal_bot/shared_surface_facts.py`
-- Flutter syncs them through `scripts/sync_shared_surface_facts.py` into `external/client-fork/app/lib/features/portal/config/shared_surface_facts.dart`
+- Flutter currently syncs them through `scripts/sync_shared_surface_facts.py` into `external/client-fork/app/lib/features/portal/config/shared_surface_facts.dart` as bridge-period release truth; moving that sync target into `POKROV-app` is a later migration wave
 
 ## RF Probe And Reserve Commands
 
@@ -368,7 +398,7 @@ Retained evidence and release bundles:
 
 - `ops-local/` when it contains operator evidence or probe snapshots
 - `docs/audit-artifacts/`
-- `external/client-fork/app/out/`
+- `external/client-fork/app/out/` bridge-period packaged release bundle
 - `.env` files
 - signing materials
 - merchant secrets

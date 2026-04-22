@@ -6,6 +6,15 @@ Last updated: 2026-04-22
 
 This file is living source of truth for deployment entrypoints, runtime access, and sensitive material locations.
 
+## Client Lane Distinction
+
+Wave 0 now separates client development truth from current release truth:
+
+- new client development truth belongs to `POKROV-app/main`, with live local checkout path `C:/Users/kiwun/Documents/ai/POKROV-app`
+- `app-next/` inside this repository is the retained bootstrap-source and transition/reference workspace for that repo
+- `external/client-fork/app/` remains the explicit bridge/hotfix and current public Android+Windows release/build/signing truth until formal cutover
+- commands in this guide that mention `external/client-fork/app/` therefore describe bridge-period release operations, not the long-term development lane
+
 ## Control Plane
 
 Canonical control-plane host:
@@ -228,7 +237,7 @@ Node shaping repo truth:
 - `scripts/remote_node_qdisc_smoke.py` runs one heavy egress flow plus parallel small HTTPS probes, records p95 latency / TTFB, and fails the gate if the heavy flow never materializes or starvation exceeds the configured thresholds
 - `infra/portal-node-qdisc.service` restores the configured qdisc after reboot
 
-## Current Local Build Matrix
+## Current Bridge-Period Local Build Matrix
 
 Canonical repo-local build and packaging commands for this wave:
 
@@ -242,6 +251,7 @@ Canonical repo-local build and packaging commands for this wave:
 Current local-build notes:
 
 - Android public promotion is still blocked until `python scripts/android_localhost_audit.py` is run against a release-installed build on physical hardware
+- these build and packaging commands remain bridge-period release truth until formal cutover; they do not by themselves define the long-term new client repo workflow
 - raw Android release artifacts are produced under `external/client-fork/app/build/app/outputs/...`; their presence alone does not prove production signing or publication readiness
 - `python scripts/run_client_release_gate.py build --target android-apk` and `--target android-aab` also refresh the canonical copies in `external/client-fork/app/out/` as `pokrov-android-universal.apk` and `pokrov-android-market.aab`
 - local Android builds may fall back to the debug keystore when the production release keystore is unavailable; that is valid for local smoke only, not for publication
@@ -439,11 +449,16 @@ Safe deploy note:
 - use local env injection for the client secret
 - do not write raw OAuth secrets into docs, commits, or terminal summaries
 
-## Client Build Artifacts
+## Bridge-Period Client Build Artifacts
 
 Current client workspace:
 
 - [external/client-fork/app](C:/Users/kiwun/Documents/ai/VPN/external/client-fork/app)
+
+Development-truth note:
+
+- this section describes the retained bridge release workspace
+- new client development truth is `POKROV-app/main`, with `app-next/` acting as retained bootstrap-source material after the local repo bootstrap
 
 Important outputs:
 
@@ -457,7 +472,7 @@ Related guide:
 
 - [Publishing And Signing Guide](C:/Users/kiwun/Documents/ai/VPN/docs/operations/publishing-and-signing-guide.md)
 
-## POKROV Client Release Path
+## Legacy Bridge Client Release Path
 
 Canonical client release workflow:
 

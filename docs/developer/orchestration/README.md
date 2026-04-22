@@ -12,7 +12,9 @@ Use this directory when a task needs more than one execution pass, more than one
 
 This standard exists to keep multi-step work reliable in a workspace that has:
 
-- two canonical git truths: `portal/master` and `PORTALapp/main`
+- one canonical platform lane `portal/master`
+- one canonical new-client lane `POKROV-app/main`
+- one explicit legacy bridge release lane at `external/client-fork/app`
 - mandatory docs-update rules
 - release-sensitive manual checks
 - evidence requirements that outlive a single chat

@@ -2,18 +2,21 @@ import type { MetadataRoute } from "next";
 
 import {
   CANONICAL_BOT_URL,
+  CANONICAL_CHECKOUT_URL,
   CANONICAL_CONTACT_EMAIL,
   CANONICAL_MARKETING_SITE_URL,
   CANONICAL_NEWS_CHANNEL_URL,
   CANONICAL_PLATFORM_BRAND,
+  CANONICAL_PUBLIC_PLATFORM_SCOPE,
   CANONICAL_SUPPORT_BOT_URL,
-  getCopyText,
+  getTariffPlans,
 } from "./pokrov";
 
 export const DEFAULT_MARKETING_SHARE_IMAGE_PATH = "/opengraph-image.png";
 export const DEFAULT_MARKETING_TWITTER_IMAGE_PATH = "/twitter-image.png";
 export const DEFAULT_MARKETING_SHARE_IMAGE_WIDTH = 1200;
 export const DEFAULT_MARKETING_SHARE_IMAGE_HEIGHT = 630;
+
 export const MARKETING_CANONICAL_PATHS = {
   home: "/",
   mobile: "/mobile/",
@@ -27,11 +30,19 @@ export const MARKETING_CANONICAL_PATHS = {
   privacy: "/privacy/",
 } as const;
 
+const PUBLIC_TARIFF_PLANS = getTariffPlans()
+  .slice()
+  .filter((plan) => Boolean(plan.is_active))
+  .sort((left, right) => Number(left.sort_order || 0) - Number(right.sort_order || 0));
+
+const START_PLAN = PUBLIC_TARIFF_PLANS[0] || null;
+
 export const MARKETING_FEATURE_LIST = [
-  "5 дней бесплатного тест-драйва",
-  "Приложения для Android и Windows",
-  "Личный кабинет для управления",
-  "Поддержка через Telegram и email",
+  "Android и Windows как публичный app-first старт",
+  "5 дней premium trial внутри приложения",
+  "Free Monthly: NL-free, 5 GB / 30 days, 50 Mbps, 1 device",
+  "Buy key -> redeem key -> managed premium",
+  "Telegram как recovery, support и бонус +10 дней",
 ] as const;
 
 export type MarketingRouteConfig = {
@@ -43,9 +54,9 @@ export type MarketingRouteConfig = {
 export const MARKETING_SITEMAP_ROUTES: MarketingRouteConfig[] = [
   { path: MARKETING_CANONICAL_PATHS.home, changeFrequency: "weekly", priority: 1 },
   { path: MARKETING_CANONICAL_PATHS.mobile, changeFrequency: "weekly", priority: 0.9 },
-  { path: MARKETING_CANONICAL_PATHS.youtube, changeFrequency: "weekly", priority: 0.86 },
-  { path: MARKETING_CANONICAL_PATHS.tiktok, changeFrequency: "weekly", priority: 0.86 },
   { path: MARKETING_CANONICAL_PATHS.devices, changeFrequency: "weekly", priority: 0.88 },
+  { path: MARKETING_CANONICAL_PATHS.youtube, changeFrequency: "weekly", priority: 0.82 },
+  { path: MARKETING_CANONICAL_PATHS.tiktok, changeFrequency: "weekly", priority: 0.82 },
   { path: MARKETING_CANONICAL_PATHS.telegram, changeFrequency: "weekly", priority: 0.78 },
   { path: MARKETING_CANONICAL_PATHS.offer, changeFrequency: "monthly", priority: 0.36 },
   { path: MARKETING_CANONICAL_PATHS.privacy, changeFrequency: "monthly", priority: 0.34 },
@@ -69,32 +80,29 @@ export type MarketingStructuredReview = {
 
 export const MARKETING_FAQ: MarketingFaqItem[] = [
   {
-    question: getCopyText("marketing.faq.1.q", "Как ускорить интернет с POKROV?"),
-    answer: getCopyText(
-      "marketing.faq.1.a",
-      "Просто установите наше приложение, запустите тест-драйв на 5 дней и наслаждайтесь магией скорости. Кабинет нужен для управления.",
-    ),
+    question: "С чего начать?",
+    answer:
+      "Скачайте приложение для Android или Windows. Первый валидный device получает 5 дней premium trial без обязательной регистрации.",
   },
   {
-    question: getCopyText("marketing.faq.2.q", "Что входит в бесплатные 5 дней?"),
-    answer: getCopyText(
-      "marketing.faq.2.a",
-      "Это полноценный премиум-доступ на 5 дней: можно спокойно проверить скорость, стабильность и качество сети перед продлением.",
-    ),
+    question: "Что будет после trial?",
+    answer:
+      "После окончания trial доступ автоматически переходит в Free Monthly: NL-free, 5 GB / 30 days, 50 Mbps per IP, 1 device с ежемесячным reset.",
   },
   {
-    question: getCopyText("marketing.faq.3.q", "Как оформить продление?"),
-    answer: getCopyText(
-      "marketing.faq.3.a",
-      "Сначала откройте кабинет или персональную ссылку из Telegram. После этого checkout покажет только подходящие способы оплаты и честную сумму.",
-    ),
+    question: "Как работает покупка?",
+    answer:
+      "Публичный сайт продаёт activation key. Дальше ключ погашается в приложении или cabinet continuation, а доступ становится managed premium.",
   },
   {
-    question: getCopyText("marketing.faq.4.q", "Куда обратиться, если нужна помощь?"),
-    answer: getCopyText(
-      "marketing.faq.4.a",
-      "Напишите в @pokrov_supportbot или на support@pokrov.space. Если нужно, поддержка переведёт вас в нужный маршрут.",
-    ),
+    question: "Можно ли получить raw subscription link?",
+    answer:
+      "В default UX нет. Manual link остаётся только для explicit recovery или ручного support-сценария.",
+  },
+  {
+    question: "Зачем нужен Telegram?",
+    answer:
+      "Telegram не является основным paywall. Это канал для recovery, restore premium, бонуса +10 дней, community и support fallback.",
   },
 ];
 
@@ -121,10 +129,8 @@ export function buildOrganizationJsonLd() {
     name: CANONICAL_PLATFORM_BRAND,
     url: `${CANONICAL_MARKETING_SITE_URL}/`,
     logo: buildMarketingUrl("/pokrov-logo.svg"),
-    description: getCopyText(
-      "marketing.meta.description",
-      "Скачайте приложение для Android или Windows, получите 5 дней бесплатно и продолжайте через личный кабинет и безопасный checkout-маршрут.",
-    ),
+    description:
+      "POKROV ведёт в приложение, даёт честный premium trial, а потом продолжает доступ через key-first managed premium модель.",
     email: CANONICAL_CONTACT_EMAIL,
     contactPoint: [
       {
@@ -176,7 +182,7 @@ export function buildSoftwareApplicationJsonLd(options?: {
     "@type": "SoftwareApplication",
     name: CANONICAL_PLATFORM_BRAND,
     applicationCategory: "UtilitiesApplication",
-    operatingSystem: "Android, Windows",
+    operatingSystem: CANONICAL_PUBLIC_PLATFORM_SCOPE.join(", "),
     inLanguage: "ru-RU",
     image: buildMarketingUrl(DEFAULT_MARKETING_SHARE_IMAGE_PATH),
     screenshot: buildMarketingUrl(DEFAULT_MARKETING_SHARE_IMAGE_PATH),
@@ -196,18 +202,16 @@ export function buildSoftwareApplicationJsonLd(options?: {
     },
     offers: {
       "@type": "Offer",
-      price: "99",
+      price: String(START_PLAN?.amount_rub || 0),
       priceCurrency: "RUB",
       availability: "https://schema.org/InStock",
-      url: buildMarketingUrl("/checkout/"),
+      url: buildMarketingUrl(MARKETING_CANONICAL_PATHS.checkout),
     },
-    downloadUrl: buildMarketingUrl("/install/"),
+    downloadUrl: buildMarketingUrl(MARKETING_CANONICAL_PATHS.install),
     mainEntityOfPage: canonicalUrl,
     url: canonicalUrl,
-    description: getCopyText(
-      "marketing.meta.description",
-      "Скачайте приложение для Android или Windows, получите 5 дней бесплатно и продолжайте через личный кабинет и безопасный checkout-маршрут.",
-    ),
+    description:
+      "POKROV ведёт в приложение для Android и Windows, даёт 5 дней premium trial и переводит покупку в key-first managed premium flow.",
   };
 }
 
@@ -237,4 +241,13 @@ export function buildFaqJsonLd(items: MarketingFaqItem[]) {
       },
     })),
   };
+}
+
+export function buildCheckoutHostHref(planCode: string, promoCode?: string): string {
+  const url = new URL(CANONICAL_CHECKOUT_URL);
+  url.searchParams.set("plan", planCode);
+  if (promoCode) {
+    url.searchParams.set("promo", promoCode);
+  }
+  return url.toString();
 }

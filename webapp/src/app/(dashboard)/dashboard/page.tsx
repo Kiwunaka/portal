@@ -157,6 +157,11 @@ export default function DashboardPage() {
               <h1 className="mt-2 font-display text-4xl font-bold text-emerald-600">
                 {dash?.is_active ? "АКТИВЕН" : "ТРЕБУЕТ ДЕЙСТВИЯ"}
               </h1>
+              {dash?.is_active ? (
+                <p className="mt-2 text-xs font-semibold uppercase tracking-[0.18em] text-emerald-700 dark:text-emerald-300">
+                  FULL ACCESS
+                </p>
+              ) : null}
               <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">{nextStepBody}</p>
             </div>
             <span

@@ -1,328 +1,232 @@
 "use client";
 
+import AppRouteLink from "@/components/app-route-link";
+import { getAccessState, resolvePlanLabel } from "@/lib/access-policy";
+import { fetchPublicCatalog } from "@/lib/api";
 import {
-  createRubCheckoutOrder,
-  fetchPublicPlans,
-  getRubPaymentProviders,
-  type PlanCatalogRow,
-  type RubPaymentProvider,
-} from "@/lib/api";
-import { getCopyText, getPortalPublicConfig, normalizePlanCode } from "@/lib/portal";
+  getAccessMatrix,
+  getPortalPublicConfig,
+  getPricingPreviewDiscountPercent,
+  getTariffPlans,
+  normalizePlanCode,
+} from "@/lib/portal";
 import { usePortalSession } from "@/lib/session";
-import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 
+type DisplayPlan = {
+  code: string;
+  label: string;
+  badge?: string;
+  days: number;
+  amountRub: number;
+  deviceLimit: number;
+  note: string;
+};
+
 const config = getPortalPublicConfig(process.env as Record<string, string | undefined>);
+const ACCESS_MATRIX = getAccessMatrix();
+const SHARED_PLANS: DisplayPlan[] = getTariffPlans()
+  .slice()
+  .filter((plan) => Boolean(plan.is_active) && Number(plan.amount_rub || 0) > 0)
+  .sort((left, right) => Number(left.sort_order || 0) - Number(right.sort_order || 0))
+  .map((plan) => ({
+    code: plan.code,
+    label: plan.label,
+    badge: plan.badge || undefined,
+    days: Number(plan.duration_days || 0),
+    amountRub: Number(plan.amount_rub || 0),
+    deviceLimit: Number(plan.device_limit || 1),
+    note: plan.cabinet_note || plan.marketing_note || plan.label,
+  }));
 
-function normalizePlans(rows: PlanCatalogRow[]): PlanCatalogRow[] {
-  return rows
-    .filter((row) => Boolean(row.is_active) && Number(row.amount_rub || 0) > 0)
-    .sort((a, b) => Number(a.sort_order || 0) - Number(b.sort_order || 0));
+function normalizePromo(raw: string): string {
+  return String(raw || "").trim().toUpperCase();
 }
 
-function fallbackPlans(): PlanCatalogRow[] {
-  return [
-    {
-      code: "start_99",
-      label: "Приветственный 30 дней",
-      amount_rub: 99,
-      amount_stars: 99,
-      days: 30,
-      device_limit: 1,
-      node_policy: "nl_only",
-      badge: "Один раз",
-      is_active: true,
-      sort_order: 1,
-    },
-    {
-      code: "1_month",
-      label: "1 месяц",
-      amount_rub: 249,
-      amount_stars: 249,
-      days: 30,
-      device_limit: 5,
-      node_policy: "paid_pool",
-      badge: "Базовый",
-      is_active: true,
-      sort_order: 2,
-    },
-    {
-      code: "12_months",
-      label: "12 месяцев",
-      amount_rub: 1644,
-      amount_stars: 1644,
-      days: 365,
-      device_limit: 5,
-      node_policy: "paid_pool",
-      badge: "-45%",
-      is_active: true,
-      sort_order: 3,
-    },
-  ];
+function buildHostedCheckoutHref(planCode: string, promoCode?: string): string {
+  const url = new URL(config.checkoutUrl);
+  url.searchParams.set("plan", planCode);
+  url.searchParams.set("from", "webapp");
+  if (promoCode) {
+    url.searchParams.set("promo", promoCode);
+  }
+  return url.toString();
 }
 
-function nodePolicyLabel(value: string | null | undefined): string {
-  const normalized = String(value || "").trim().toLowerCase();
-  if (normalized === "nl_only") return "Нидерланды";
-  if (normalized === "paid_pool") return "IT, NL, PL, US";
-  return "Актуальный пул";
+function formatDuration(days: number): string {
+  if (days >= 365) return `${Math.round(days / 30)} мес.`;
+  if (days > 90) return `${Math.round(days / 30)} мес.`;
+  return `${days} дней`;
 }
 
 export default function CheckoutPage() {
   const searchParams = useSearchParams();
-  const { user } = usePortalSession();
-  const [plans, setPlans] = useState<PlanCatalogRow[]>([]);
-  const [providers, setProviders] = useState<RubPaymentProvider[]>([]);
-  const [selectedCode, setSelectedCode] = useState("1_month");
-  const [selectedProvider, setSelectedProvider] = useState("");
-  const [busy, setBusy] = useState(false);
-  const [statusText, setStatusText] = useState("");
-  const [breakdown, setBreakdown] = useState<{ base: number; discountPct: number; final: number } | null>(null);
-
-  const queryCampaign = (searchParams.get("campaign") || "").trim();
-  const queryPromo = (searchParams.get("promo") || "").trim().toUpperCase();
+  const { user, dash } = usePortalSession();
+  const [plans, setPlans] = useState<DisplayPlan[]>(SHARED_PLANS);
+  const [promoInput, setPromoInput] = useState(() => normalizePromo(searchParams.get("promo") || ""));
+  const [catalogError, setCatalogError] = useState("");
+  const [selectedCode, setSelectedCode] = useState(() => normalizePlanCode(searchParams.get("plan"), "1_month"));
 
   useEffect(() => {
-    const planCode = normalizePlanCode(searchParams.get("plan"), "1_month");
-    setSelectedCode(planCode);
+    setSelectedCode(normalizePlanCode(searchParams.get("plan"), "1_month"));
+    setPromoInput(normalizePromo(searchParams.get("promo") || ""));
   }, [searchParams]);
 
   useEffect(() => {
     let cancelled = false;
+
     const load = async () => {
       try {
-        const payload = await fetchPublicPlans();
-        const rows = normalizePlans(payload.plans || []);
+        const payload = await fetchPublicCatalog();
+        const nextPlans = (payload.plans || [])
+          .filter((plan) => Boolean(plan.is_active) && Number(plan.amount_rub || 0) > 0)
+          .sort((left, right) => Number(left.sort_order || 0) - Number(right.sort_order || 0))
+          .map((plan) => ({
+            code: plan.code,
+            label: plan.label,
+            badge: plan.badge || undefined,
+            days: Number(plan.days || 0),
+            amountRub: Number(plan.amount_rub || 0),
+            deviceLimit: Number(plan.device_limit || 1),
+            note: plan.label,
+          }));
+
         if (!cancelled) {
-          const nextPlans = rows.length ? rows : fallbackPlans();
-          setPlans(nextPlans);
-          if (!nextPlans.some((row) => row.code === selectedCode)) {
-            setSelectedCode(nextPlans[0].code);
-          }
+          setPlans(nextPlans.length ? nextPlans : SHARED_PLANS);
+          setCatalogError("");
         }
-      } catch {
+      } catch (nextError) {
         if (!cancelled) {
-          const nextPlans = fallbackPlans();
-          setPlans(nextPlans);
-          if (!nextPlans.some((row) => row.code === selectedCode)) {
-            setSelectedCode(nextPlans[0].code);
-          }
+          setPlans(SHARED_PLANS);
+          setCatalogError(String((nextError as { message?: string })?.message || nextError || ""));
         }
       }
     };
+
     void load();
+
     return () => {
       cancelled = true;
     };
-  }, [selectedCode]);
+  }, []);
 
-  useEffect(() => {
-    let cancelled = false;
-    const load = async () => {
-      try {
-        const payload = await getRubPaymentProviders();
-        const rows = Array.isArray(payload.providers)
-          ? payload.providers.filter((row) => Boolean(row.code) && row.supports_webapp !== false)
-          : [];
-        if (!cancelled) {
-          setProviders(rows);
-          const current = String(selectedProvider || "").trim().toLowerCase();
-          if (!rows.some((row) => String(row.code || "").trim().toLowerCase() === current)) {
-            setSelectedProvider(String(rows[0]?.code || ""));
-          }
-        }
-      } catch {
-        if (!cancelled) {
-          setProviders([]);
-          setSelectedProvider("");
-        }
-      }
-    };
-    void load();
-    return () => {
-      cancelled = true;
-    };
-  }, [selectedProvider]);
-
-  const activePlan = useMemo(() => plans.find((plan) => plan.code === selectedCode) || plans[0] || null, [plans, selectedCode]);
-  const activeProvider = useMemo(() => {
-    const current = String(selectedProvider || "").trim().toLowerCase();
-    return providers.find((provider) => String(provider.code || "").trim().toLowerCase() === current) || providers[0] || null;
-  }, [providers, selectedProvider]);
-
-  const onCreateOrder = async (): Promise<void> => {
-    if (!activePlan || !user) return;
-    if (!activeProvider?.code) {
-      setStatusText("Сейчас касса не готова. Безопасный fallback — продолжить в Telegram и не терять сценарий пользователя.");
-      return;
-    }
-    setBusy(true);
-    setStatusText("");
-    setBreakdown(null);
-    try {
-      const order = await createRubCheckoutOrder({
-        provider: activeProvider.code,
-        plan_code: activePlan.code,
-        source: "site",
-        tg_id: user.tg_id,
-        campaign: queryCampaign || undefined,
-        promo_code: queryPromo || undefined,
-        currency: "RUB",
-      });
-      const base = Number(order.base_amount_rub ?? order.amount_rub ?? activePlan.amount_rub);
-      const final = Number(order.amount_rub ?? activePlan.amount_rub);
-      const discountPct = Number(order.discount_pct ?? 0);
-      setBreakdown({ base, final, discountPct });
-      if (order.payment_url) {
-        setStatusText(`Ссылка готова. Открываем оплату через ${order.provider_label || activeProvider.label || activeProvider.code}...`);
-        window.location.href = order.payment_url;
-        return;
-      }
-      setStatusText("Не удалось получить ссылку на оплату. Лучше продолжить через Telegram или написать в службу заботы.");
-    } catch (error) {
-      setStatusText(String((error as { message?: string })?.message || error || "Ошибка создания заказа"));
-    } finally {
-      setBusy(false);
-    }
-  };
+  const activePlan = useMemo(
+    () => plans.find((plan) => plan.code === selectedCode) || plans[0] || SHARED_PLANS[0],
+    [plans, selectedCode],
+  );
+  const promoCode = normalizePromo(promoInput);
+  const discountPercent = getPricingPreviewDiscountPercent(promoCode);
+  const discountAmount = Math.round((Number(activePlan?.amountRub || 0) * discountPercent) / 100);
+  const totalAmount = Math.max(0, Number(activePlan?.amountRub || 0) - discountAmount);
+  const checkoutHref = buildHostedCheckoutHref(activePlan?.code || "1_month", discountPercent > 0 ? promoCode : undefined);
+  const accessState = getAccessState(dash, user) || "free_monthly";
 
   return (
     <main className="space-y-6">
       <section className="glass-card p-7">
-        <p className="font-mono text-xs uppercase tracking-[0.16em] text-violet-600 dark:text-violet-300">checkout</p>
-        <h1 className="mt-2 font-display text-4xl font-bold">
-          {getCopyText("webapp.checkout.title", "Комфортное и быстрое продление")}
-        </h1>
-        <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">
-          {getCopyText(
-            "webapp.checkout.subtitle",
-            "Все предельно прозрачно: сумма, срок и касса. При любых заминках мы легко продолжим в Telegram.",
-          )}
+        <p className="font-mono text-xs uppercase tracking-[0.16em] text-violet-600 dark:text-violet-300">renewal continuation</p>
+        <h1 className="mt-2 font-display text-4xl font-bold">Hosted checkout без ручной кассы в кабинете</h1>
+        <p className="mt-3 max-w-3xl text-sm leading-7 text-slate-600 dark:text-slate-300">
+          Кабинет больше не ведёт в прямую внутреннюю payment-витрину. Он продолжает сессию, помогает выбрать
+          срок и отправляет пользователя в canonical hosted checkout, где покупается activation key.
         </p>
+        <div className="mt-5 flex flex-wrap gap-3">
+          <a href={checkoutHref} className="btn-primary rounded-xl px-6 py-3 text-sm font-semibold uppercase tracking-[0.12em]">
+            Открыть hosted checkout
+          </a>
+          <AppRouteLink href="/redeem/" className="outline-btn rounded-xl px-6 py-3 text-sm font-semibold uppercase tracking-[0.12em]">
+            У меня уже есть ключ
+          </AppRouteLink>
+          <AppRouteLink href="/subscription/" className="outline-btn rounded-xl px-6 py-3 text-sm font-semibold uppercase tracking-[0.12em]">
+            Назад в доступ
+          </AppRouteLink>
+        </div>
       </section>
 
-      <section className="grid gap-5 lg:grid-cols-[1.25fr,0.9fr]">
+      <section className="grid gap-5 lg:grid-cols-[1.15fr,0.85fr]">
         <article className="glass-card p-6">
-          <h2 className="font-display text-2xl font-semibold">Выберите тариф</h2>
-          <div className="mt-4 space-y-2">
-            {plans.map((plan) => (
-              <button
-                key={plan.code}
-                type="button"
-                onClick={() => setSelectedCode(plan.code)}
-                className={`w-full rounded-xl border px-4 py-3 text-left transition ${
-                  selectedCode === plan.code
-                    ? "border-violet-500 bg-violet-500/10"
-                    : "border-white/45 bg-white/55 hover:border-violet-300 dark:border-white/10 dark:bg-white/5"
-                }`}
-              >
-                <div className="flex items-center justify-between gap-3">
-                  <span className="font-semibold">{plan.label}</span>
-                  <span className="font-mono text-sm">{Number(plan.amount_rub || 0)} ₽</span>
-                </div>
-                <p className="mt-1 text-xs text-slate-500">
-                  {plan.days} дней • до {plan.device_limit} устройств
-                </p>
-              </button>
-            ))}
-          </div>
-
-          <div className="mt-6">
-            <h3 className="font-display text-xl font-semibold">Выберите кассу</h3>
-            {providers.length ? (
-              <div className="mt-3 space-y-2">
-                {providers.map((provider) => {
-                  const selected = provider.code === activeProvider?.code;
-                  return (
-                    <button
-                      key={provider.code}
-                      type="button"
-                      onClick={() => setSelectedProvider(provider.code)}
-                      className={`w-full rounded-xl border px-4 py-3 text-left transition ${
-                        selected
-                          ? "border-violet-500 bg-violet-500/10"
-                          : "border-white/45 bg-white/55 hover:border-violet-300 dark:border-white/10 dark:bg-white/5"
-                      }`}
-                    >
-                      <div className="flex items-center justify-between gap-3">
-                        <span className="font-semibold">{provider.label}</span>
-                        <span className="text-xs text-slate-500">{provider.accent || "Карты и СБП"}</span>
-                      </div>
-                      {provider.checkout_hint ? (
-                        <p className="mt-1 text-xs text-slate-500">{provider.checkout_hint}</p>
-                      ) : null}
-                    </button>
-                  );
-                })}
-              </div>
-            ) : (
-              <div className="mt-3 rounded-xl border border-amber-300/40 bg-amber-500/10 px-4 py-3 text-sm text-amber-900 dark:text-amber-200">
-                Сейчас нет доступных касс. Лучше продолжить в Telegram и не обрывать пользователя на полурабочем checkout.
-              </div>
-            )}
+          <h2 className="font-display text-2xl font-semibold">Выберите срок</h2>
+          <div className="mt-4 space-y-3">
+            {plans.map((plan) => {
+              const selected = plan.code === activePlan?.code;
+              return (
+                <button
+                  key={plan.code}
+                  type="button"
+                  onClick={() => setSelectedCode(plan.code)}
+                  className={`w-full rounded-2xl border px-4 py-4 text-left transition ${
+                    selected
+                      ? "border-violet-500 bg-violet-500/10"
+                      : "border-white/45 bg-white/55 hover:border-violet-300 dark:border-white/10 dark:bg-white/5"
+                  }`}
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <p className="text-[11px] uppercase tracking-[0.14em] text-slate-500">{plan.badge || "план"}</p>
+                      <h3 className="mt-1 text-lg font-semibold">{plan.label}</h3>
+                    </div>
+                    <p className="font-mono text-lg font-semibold">{plan.amountRub} ₽</p>
+                  </div>
+                  <p className="mt-2 text-xs text-slate-500">
+                    {formatDuration(plan.days)} • до {plan.deviceLimit} устройств
+                  </p>
+                  <p className="mt-3 text-sm leading-6 text-slate-600 dark:text-slate-300">{plan.note}</p>
+                </button>
+              );
+            })}
           </div>
         </article>
 
         <article className="glass-card p-6">
           <h2 className="font-display text-2xl font-semibold">Итог</h2>
-          {activePlan ? (
-            <div className="mt-3 space-y-2 text-sm text-slate-600 dark:text-slate-300">
-              <p>
-                Тариф: <span className="font-semibold text-slate-900 dark:text-white">{activePlan.label}</span>
-              </p>
-              <p>Срок: {activePlan.days} дней</p>
-              <p>Лимит устройств: до {activePlan.device_limit}</p>
-              <p>Страны: {nodePolicyLabel(activePlan.node_policy)}</p>
-              <p>
-                Касса:{" "}
-                <span className="font-semibold text-slate-900 dark:text-white">
-                  {activeProvider?.label || "Будет выбрана автоматически"}
-                </span>
-              </p>
-              {queryPromo ? <p>Промокод: {queryPromo}</p> : null}
-              {breakdown ? (
-                <div className="rounded-xl border border-white/45 bg-white/65 p-4 text-xs dark:border-white/10 dark:bg-white/5">
-                  <p>Базовая цена: {breakdown.base.toFixed(0)} ₽</p>
-                  <p>Скидка: {breakdown.discountPct}%</p>
-                  <p className="font-semibold text-slate-900 dark:text-white">К оплате: {breakdown.final.toFixed(0)} ₽</p>
-                </div>
-              ) : null}
-            </div>
-          ) : (
-            <p className="mt-3 text-sm text-slate-500">Тарифы загружаются...</p>
-          )}
-
-          <button
-            type="button"
-            onClick={() => void onCreateOrder()}
-            disabled={!activePlan || !activeProvider || busy || !user}
-            className="btn-primary mt-5 w-full rounded-xl py-3 text-sm font-semibold uppercase tracking-[0.12em] disabled:opacity-60"
-          >
-            {busy ? "Создаём заказ..." : `Перейти к оплате${activeProvider?.label ? ` через ${activeProvider.label}` : ""}`}
-          </button>
-
-          <div className="mt-3 grid gap-3">
-            <Link
-              href={config.botUrl}
-              target="_blank"
-              className="outline-btn block rounded-xl py-3 text-center text-sm font-semibold uppercase tracking-[0.12em]"
-            >
-              Продолжить в Telegram
-            </Link>
-            <Link
-              href={config.supportTelegramUrl}
-              target="_blank"
-              className="outline-btn block rounded-xl py-3 text-center text-sm font-semibold uppercase tracking-[0.12em]"
-            >
-              Служба заботы
-            </Link>
+          <div className="mt-4 space-y-3 text-sm text-slate-600 dark:text-slate-300">
+            <p>Текущий кабинетный режим: <strong>{resolvePlanLabel(dash, user)}</strong></p>
+            <p>Текущее состояние доступа: <strong>{accessState}</strong></p>
+            <p>Выбранный срок: <strong>{activePlan?.label}</strong></p>
+            <p>Период: {activePlan?.days} дней</p>
+            <p>Лимит устройств: до {activePlan?.deviceLimit}</p>
+            <p>
+              Free fallback остаётся: {ACCESS_MATRIX.free_tier.location_code} • {ACCESS_MATRIX.free_tier.traffic_limit_gb} GB /{" "}
+              {ACCESS_MATRIX.free_tier.cycle_days} days
+            </p>
           </div>
 
-          {statusText ? (
-            <div className="mt-4 rounded-xl border border-white/45 bg-white/65 px-4 py-3 text-xs text-slate-600 dark:border-white/10 dark:bg-white/5 dark:text-slate-300">
-              {statusText}
-            </div>
+          <label className="mt-5 block text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">
+            Промокод
+          </label>
+          <input
+            value={promoInput}
+            onChange={(event) => setPromoInput(event.target.value)}
+            placeholder="Например: POKROV10"
+            className="mt-2 w-full rounded-2xl border border-white/45 bg-white/65 px-4 py-3 text-sm outline-none transition focus:border-violet-400 dark:border-white/10 dark:bg-white/5"
+          />
+
+          <div className="mt-4 rounded-2xl border border-white/40 bg-white/55 p-4 dark:border-white/10 dark:bg-white/5">
+            <p>Базовая цена: <strong>{activePlan?.amountRub} ₽</strong></p>
+            <p>Preview discount: <strong>{discountPercent}%</strong></p>
+            <p className="mt-2 text-base font-semibold text-slate-900 dark:text-white">К оплате: {totalAmount} ₽</p>
+          </div>
+
+          <div className="mt-5 grid gap-3">
+            <a href={checkoutHref} className="btn-primary block rounded-xl py-3 text-center text-sm font-semibold uppercase tracking-[0.12em]">
+              Купить activation key
+            </a>
+            <AppRouteLink href="/redeem/" className="outline-btn block rounded-xl py-3 text-center text-sm font-semibold uppercase tracking-[0.12em]">
+              Перейти к redeem
+            </AppRouteLink>
+          </div>
+
+          <div className="mt-5 space-y-2 text-xs leading-6 text-slate-500 dark:text-slate-400">
+            <p>Email signup не даёт premium trial. 5-дневный premium trial стартует в приложении на первом валидном устройстве.</p>
+            <p>Telegram остаётся для recovery, restore premium, бонуса +10 дней и fallback commerce/support.</p>
+            <p>После оплаты пользователь получает ключ, а доступ включается через redeem и managed profile.</p>
+          </div>
+
+          {catalogError ? (
+            <p className="mt-4 text-xs text-amber-600 dark:text-amber-300">
+              Каталог подтянулся не полностью, используется shared fallback: {catalogError}
+            </p>
           ) : null}
         </article>
       </section>

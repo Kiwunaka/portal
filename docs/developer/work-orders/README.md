@@ -45,6 +45,8 @@ A new orchestrator should be able to resume from the wave folder alone:
 - see what was verified
 - see what is still partial or blocked
 
+If a wave touches the platform lane, the new client lane, and/or the legacy bridge lane, keep that evidence separated inside the relevant `WO` files instead of collapsing them into one generic client result.
+
 ## Historical Material
 
 Older flat orchestration and release logs under `docs/archive/flat-docs/` remain historical or supporting material unless canonical docs relink them as current.

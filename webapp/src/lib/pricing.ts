@@ -1,4 +1,10 @@
-import { normalizePlanCode, type PlanCode } from "./portal";
+import {
+  getPricingPreviewDiscountPercent,
+  getTariffPlan,
+  getTariffPlans,
+  normalizePlanCode,
+  type PlanCode,
+} from "./portal";
 
 export type PricingPlan = {
   code: PlanCode;
@@ -11,82 +17,48 @@ export type PricingPlan = {
   note: string;
 };
 
-export const PRICING_PLANS: PricingPlan[] = [
-  {
-    code: "start_99",
-    label: "Старт: Ускорение на 30 дней",
-    price: 99,
-    days: 30,
-    deviceLimit: 1,
-    badge: "Пробный",
-    isOneTime: true,
-    note: "Позволяет лично убедиться в качестве магии ускорения без лишних обязательств.",
-  },
-  {
-    code: "1_month",
-    label: "Оптимизатор на 1 месяц",
-    price: 249,
-    days: 30,
-    deviceLimit: 5,
-    badge: "Стандарт",
-    note: "Удобный ежемесячный вариант для стабильной работы ваших приложений.",
-  },
-  {
-    code: "3_months",
-    label: "Квартал: Стабильная сеть",
-    price: 699,
-    days: 91,
-    deviceLimit: 5,
-    badge: "Выгоднее",
-    note: "Популярный выбор для тех, кто ценит предсказуемость и надежный результат.",
-  },
-  {
-    code: "6_months",
-    label: "Полугодие: Полный разгон",
-    price: 1199,
-    days: 182,
-    deviceLimit: 5,
-    badge: "Популярный",
-    note: "Оптимальный баланс для тех, кто уже сделал быструю сеть частью своего дня.",
-  },
-  {
-    code: "9_months",
-    label: "Премиум-доступ: 9 месяцев",
-    price: 1399,
-    days: 273,
-    deviceLimit: 5,
-    badge: "Надолго",
-    note: "Зафиксируйте идеальную скорость на длительный срок без лишних забот.",
-  },
-  {
-    code: "12_months",
-    label: "Годовой абонемент: POKROV",
-    price: 1644,
-    days: 365,
-    deviceLimit: 5,
-    badge: "-45%",
-    note: "Максимальный комфорт и экономия для тех, кому всегда нужен лучший интернет.",
-  },
-];
+function toPricingPlan(rawCode: string): PricingPlan {
+  const plan = getTariffPlan(rawCode);
+  if (!plan) {
+    return {
+      code: "1_month",
+      label: "1 месяц",
+      price: 249,
+      days: 30,
+      deviceLimit: 5,
+      badge: "Базовый",
+      note: "Ежемесячный managed premium без длинных обязательств.",
+    };
+  }
 
-const PROMO_RULES: Record<string, number> = {
-  POKROV10: 10,
-  PORTAL10: 10,
-  WELCOME15: 15,
-  STARTBOOST: 15,
-};
+  return {
+    code: plan.code as PlanCode,
+    label: plan.label,
+    price: Number(plan.amount_rub || 0),
+    days: Math.max(1, Number(plan.duration_days || 30)),
+    deviceLimit: Math.max(1, Number(plan.device_limit || 1)),
+    badge: plan.badge || undefined,
+    isOneTime: plan.code === "start_99",
+    note: plan.marketing_note || plan.cabinet_note || plan.label,
+  };
+}
+
+export const PRICING_PLANS: PricingPlan[] = getTariffPlans()
+  .slice()
+  .sort((left, right) => Number(left.sort_order || 0) - Number(right.sort_order || 0))
+  .map((plan) => toPricingPlan(plan.code));
 
 export function normalizePromo(raw: string): string {
   return raw.trim().toUpperCase();
 }
 
 export function promoDiscountPercent(raw: string): number {
-  return PROMO_RULES[normalizePromo(raw)] || 0;
+  return getPricingPreviewDiscountPercent(normalizePromo(raw));
 }
 
 export function getPricingPlan(raw: string | null | undefined): PricingPlan {
   const code = normalizePlanCode(raw, "1_month");
-  return PRICING_PLANS.find((plan) => plan.code === code) || PRICING_PLANS[1];
+  return PRICING_PLANS.find((plan) => plan.code === code) || toPricingPlan(code);
 }
 
 export function computePlanPrice(planCode: string | null | undefined, promo: string) {

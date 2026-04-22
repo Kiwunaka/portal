@@ -1,0 +1,95 @@
+{
+  "version": "2026-04-22",
+  "identity_model": "app-first",
+  "public_defaults": {
+    "routing_mode": "all_except_ru",
+    "public_platform_scope": ["android", "windows"],
+    "logical_location_count": 1,
+    "logical_location_label": "POKROV",
+    "raw_subscription_link_policy": "manual_recovery_only",
+    "hidden_transport_order": ["vless_reality", "vmess", "trojan", "xhttp"]
+  },
+  "entry_flows": {
+    "store_install": {
+      "grant_state": "trial_premium",
+      "requires_registration": false,
+      "trial_days": 5,
+      "downgrade_state": "free_monthly"
+    },
+    "site_email_signup": {
+      "grant_state": "free_monthly",
+      "requires_registration": true,
+      "trial_days": 0
+    },
+    "telegram": {
+      "role": "continuation_recovery_link",
+      "bonus_days": 10
+    }
+  },
+  "free_tier": {
+    "plan_code": "free_monthly",
+    "location_code": "NL-free",
+    "traffic_limit_gb": 5,
+    "cycle_days": 30,
+    "speed_limit_mbps": 50,
+    "soft_mode_speed_limit_mbps": 2,
+    "device_limit": 1,
+    "node_policy": "free_single_location",
+    "monthly_reset": true
+  },
+  "states": {
+    "trial_premium": {
+      "kind": "premium",
+      "traffic_policy": "unlimited",
+      "device_policy": "single_trial_device",
+      "premium": true,
+      "managed_profile_tier": "managed_premium",
+      "redeem_eligible": true
+    },
+    "bonus_premium": {
+      "kind": "premium",
+      "traffic_policy": "unlimited",
+      "device_policy": "single_trial_device",
+      "premium": true,
+      "managed_profile_tier": "managed_premium",
+      "redeem_eligible": true
+    },
+    "paid_unlimited": {
+      "kind": "premium",
+      "traffic_policy": "unlimited",
+      "device_policy": "plan_limit",
+      "premium": true,
+      "managed_profile_tier": "managed_premium",
+      "redeem_eligible": false
+    },
+    "free_monthly": {
+      "kind": "free",
+      "traffic_policy": "metered",
+      "device_policy": "free_limit",
+      "premium": false,
+      "managed_profile_tier": "free_monthly",
+      "redeem_eligible": true
+    },
+    "free_soft_mode": {
+      "kind": "free",
+      "traffic_policy": "soft_limited",
+      "device_policy": "free_limit",
+      "premium": false,
+      "managed_profile_tier": "free_soft_mode",
+      "redeem_eligible": true
+    },
+    "expired_or_blocked": {
+      "kind": "blocked",
+      "traffic_policy": "blocked",
+      "device_policy": "none",
+      "premium": false,
+      "managed_profile_tier": "blocked",
+      "redeem_eligible": true
+    }
+  },
+  "recovery_rules": {
+    "telegram": "restore_premium_link_support_bonus",
+    "email": "free_only_entry",
+    "manual_link": "explicit_request_only"
+  }
+}

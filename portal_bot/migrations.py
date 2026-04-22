@@ -3,6 +3,7 @@
 import os
 import json
 from datetime import datetime, timezone
+from pathlib import Path
 
 from sqlalchemy import Engine, text
 
@@ -18,6 +19,14 @@ def _sqlite_index_exists(conn, index_name: str) -> bool:
         {"name": index_name},
     ).fetchall()
     return bool(rows)
+
+
+_REPO_ROOT = Path(__file__).resolve().parents[1]
+_SHARED_DIR = _REPO_ROOT / "shared"
+
+
+def _load_shared_json(filename: str) -> dict:
+    return json.loads((_SHARED_DIR / filename).read_text(encoding="utf-8"))
 
 
 RETENTION_TEMPLATE_PRESETS: dict[str, str] = {
@@ -153,77 +162,19 @@ def _seed_retention_templates(conn, *, dialect: str) -> None:
 
 PLAN_CATALOG_PRESETS = [
     {
-        "code": "start_99",
-        "label": "Приветственный 30 дней",
-        "amount_rub": 99,
-        "amount_stars": 99,
-        "days": 30,
-        "device_limit": 1,
-        "node_policy": "nl_only",
-        "badge": "Один раз",
-        "is_active": True,
-        "sort_order": 1,
-    },
-    {
-        "code": "1_month",
-        "label": "1 месяц",
-        "amount_rub": 249,
-        "amount_stars": 249,
-        "days": 30,
-        "device_limit": DEFAULT_PAID_DEVICE_LIMIT,
-        "node_policy": "paid_pool",
-        "badge": "Базовый",
-        "is_active": True,
-        "sort_order": 2,
-    },
-    {
-        "code": "3_months",
-        "label": "3 месяца",
-        "amount_rub": 699,
-        "amount_stars": 699,
-        "days": 91,
-        "device_limit": DEFAULT_PAID_DEVICE_LIMIT,
-        "node_policy": "paid_pool",
-        "badge": "Выгоднее",
-        "is_active": True,
-        "sort_order": 3,
-    },
-    {
-        "code": "6_months",
-        "label": "6 месяцев",
-        "amount_rub": 1199,
-        "amount_stars": 1199,
-        "days": 182,
-        "device_limit": DEFAULT_PAID_DEVICE_LIMIT,
-        "node_policy": "paid_pool",
-        "badge": "Популярный",
-        "is_active": True,
-        "sort_order": 4,
-    },
-    {
-        "code": "9_months",
-        "label": "9 месяцев",
-        "amount_rub": 1399,
-        "amount_stars": 1399,
-        "days": 273,
-        "device_limit": DEFAULT_PAID_DEVICE_LIMIT,
-        "node_policy": "paid_pool",
-        "badge": "Надолго",
-        "is_active": True,
-        "sort_order": 5,
-    },
-    {
-        "code": "12_months",
-        "label": "12 месяцев",
-        "amount_rub": 1644,
-        "amount_stars": 1644,
-        "days": 365,
-        "device_limit": DEFAULT_PAID_DEVICE_LIMIT,
-        "node_policy": "paid_pool",
-        "badge": "-45%",
-        "is_active": True,
-        "sort_order": 6,
-    },
+        "code": str(plan.get("code") or "").strip().lower(),
+        "label": str(plan.get("label") or "").strip(),
+        "amount_rub": int(plan.get("amount_rub") or 0),
+        "amount_stars": int(plan.get("amount_stars") or 0),
+        "days": int(plan.get("duration_days") or 30),
+        "device_limit": max(1, int(plan.get("device_limit") or DEFAULT_PAID_DEVICE_LIMIT)),
+        "node_policy": str(plan.get("node_policy") or "").strip() or None,
+        "badge": str(plan.get("badge") or "").strip() or None,
+        "is_active": bool(plan.get("is_active", True)),
+        "sort_order": int(plan.get("sort_order") or 100),
+    }
+    for plan in list(_load_shared_json("tariff-catalog.json").get("plans") or [])
+    if str(plan.get("code") or "").strip()
 ]
 
 

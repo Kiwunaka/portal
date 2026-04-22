@@ -1,99 +1,122 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import { useSearchParams } from "next/navigation";
+import { useEffect, useMemo, useState } from "react";
 
-import { getCopyText, getPokrovPublicConfig, normalizePlanCode } from "../../lib/pokrov";
+import { buildCheckoutHostHref, MARKETING_CANONICAL_PATHS } from "../../lib/marketing-site";
+import {
+  getPricingPreviewDiscountPercent,
+  getPokrovPublicConfig,
+  getPromoSlotsCatalog,
+  getTariffPlans,
+  normalizePlanCode,
+} from "../../lib/pokrov";
 
-export type PlanOption = {
+type PlanOption = {
   code: string;
   label: string;
   amount_rub: number;
   days: number;
   device_limit: number;
+  marketing_note?: string;
+  badge?: string | null;
 };
 
-type RubProviderOption = {
-  code: string;
-  label: string;
-  accent?: string;
-  checkout_hint?: string;
-  supports_public?: boolean;
-};
-
-type PublicPlansResponse = {
-  plans?: Array<{
+type PublicCatalogResponse = {
+  catalog_version: string;
+  commerce_model: {
+    primary_purchase_flow: string;
+    primary_fulfillment_flow: string;
+    managed_access_mode: string;
+    raw_subscription_link_policy: string;
+  };
+  public_surface_policy: {
+    acquisition_owner: string;
+    pricing_owner: string;
+    webapp_mode: string;
+    public_platform_scope: string[];
+  };
+  plans: Array<{
     code: string;
     label: string;
     amount_rub: number;
     days: number;
     device_limit: number;
+    badge?: string | null;
     is_active?: boolean;
   }>;
+  free_tier: {
+    plan_code: string;
+    location_code: string;
+    traffic_limit_gb: number;
+    cycle_days: number;
+    speed_limit_mbps: number;
+    device_limit: number;
+  };
+  public_defaults: {
+    routing_mode: string;
+    public_platform_scope: string[];
+    logical_location_count: number;
+    logical_location_label: string;
+    hidden_transport_order: string[];
+  };
+  promo_slots: {
+    mode: string;
+    fallback_behavior: string;
+    slot_ids: string[];
+  };
 };
 
-type RubProvidersResponse = {
-  ok?: boolean;
-  providers?: RubProviderOption[];
-  blocked?: boolean;
-  blocked_reasons?: string[];
-  blocked_reason_texts?: string[];
-  checkout_mode?: string;
-  telegram_fallback_available?: boolean;
-};
-
-type CreatePublicOrderResponse = {
-  ok: boolean;
-  provider: string;
-  provider_label?: string | null;
-  order_id: string;
-  payment_url?: string | null;
-  amount_rub: number;
-  currency: string;
-  status: string;
-  discount_applied?: boolean;
-  base_amount_rub?: number | null;
-  discount_pct?: number;
-};
-
-type CachedCheckoutPayment = {
-  order_id: string;
-  payment_url: string;
-  plan_code: string;
-  provider: string;
-  provider_label: string;
-  ticket_exp: number;
-  saved_at: number;
+type AccessKeyStatusResponse = {
+  key: string;
+  exists: boolean;
+  redeemed: boolean;
+  redeemed_at?: string | null;
+  issued_at?: string | null;
+  days: number;
+  device_limit: number;
+  kind: string;
+  plan?: {
+    code: string;
+    label: string;
+  } | null;
 };
 
 const config = getPokrovPublicConfig(process.env as Record<string, string | undefined>);
-const CHECKOUT_CACHE_PREFIX = "pokrov_checkout_payment_v2";
+const promoCatalog = getPromoSlotsCatalog();
 
-const FALLBACK_PLANS: PlanOption[] = [
-  { code: "start_99", label: "Старт на 30 дней", amount_rub: 99, days: 30, device_limit: 1 },
-  { code: "1_month", label: "1 месяц", amount_rub: 249, days: 30, device_limit: 5 },
-  { code: "3_months", label: "3 месяца", amount_rub: 699, days: 91, device_limit: 5 },
-  { code: "6_months", label: "6 месяцев", amount_rub: 1199, days: 182, device_limit: 5 },
-  { code: "9_months", label: "9 месяцев", amount_rub: 1399, days: 273, device_limit: 5 },
-  { code: "12_months", label: "12 месяцев", amount_rub: 1644, days: 365, device_limit: 5 },
-];
-
-function candidateApiBases(): string[] {
-  const out: string[] = [];
-  if (config.apiBaseUrl) out.push(config.apiBaseUrl.replace(/\/+$/, ""));
-  if (typeof window !== "undefined") out.push(window.location.origin.replace(/\/+$/, ""));
-  out.push("https://api.pokrov.space");
-  return Array.from(new Set(out.filter(Boolean)));
+function fallbackPlans(): PlanOption[] {
+  return getTariffPlans()
+    .filter((plan) => Boolean(plan.is_active))
+    .slice()
+    .sort((left, right) => Number(left.sort_order || 0) - Number(right.sort_order || 0))
+    .map((plan) => ({
+      code: plan.code,
+      label: plan.label,
+      amount_rub: Number(plan.amount_rub || 0),
+      days: Number(plan.duration_days || 0),
+      device_limit: Number(plan.device_limit || 1),
+      marketing_note: plan.marketing_note,
+      badge: plan.badge || null,
+    }));
 }
 
-async function fetchJsonFromBases<T>(path: string): Promise<T | null> {
+function candidateApiBases(): string[] {
+  const bases = [
+    config.apiBaseUrl.replace(/\/+$/, ""),
+    typeof window !== "undefined" ? window.location.origin.replace(/\/+$/, "") : "",
+    "https://api.pokrov.space",
+  ];
+  return Array.from(new Set(bases.filter(Boolean)));
+}
+
+async function fetchCatalog(): Promise<PublicCatalogResponse | null> {
   for (const base of candidateApiBases()) {
     try {
-      const response = await fetch(`${base}${path}`, { cache: "no-store" });
+      const response = await fetch(`${base}/api/public/catalog`, { cache: "no-store" });
       if (!response.ok) continue;
-      const contentType = String(response.headers.get("content-type") || "").toLowerCase();
-      if (!contentType.includes("json")) continue;
-      return (await response.json()) as T;
+      return (await response.json()) as PublicCatalogResponse;
     } catch {
       // Try next base.
     }
@@ -101,58 +124,72 @@ async function fetchJsonFromBases<T>(path: string): Promise<T | null> {
   return null;
 }
 
-function decodeTicketPayload(token: string): { exp?: number; tg_id?: number; plan_code?: string; source?: string } | null {
-  const raw = String(token || "").trim();
-  if (!raw || !raw.includes(".")) return null;
-  const encoded = raw.split(".", 1)[0] || "";
-  if (!encoded) return null;
-  try {
-    const padding = "=".repeat((4 - (encoded.length % 4)) % 4);
-    const normalized = (encoded + padding).replace(/-/g, "+").replace(/_/g, "/");
-    const decoded = typeof window !== "undefined" ? window.atob(normalized) : "";
-    const bytes = Uint8Array.from(decoded, (char) => char.charCodeAt(0));
-    const payloadText = new TextDecoder().decode(bytes);
-    const parsed = JSON.parse(payloadText) as { exp?: number; tg_id?: number; plan_code?: string; source?: string };
-    return parsed && typeof parsed === "object" ? parsed : null;
-  } catch {
-    return null;
+async function fetchAccessKeyStatus(key: string): Promise<AccessKeyStatusResponse> {
+  let lastError = "Не удалось проверить ключ.";
+  for (const base of candidateApiBases()) {
+    try {
+      const response = await fetch(`${base}/api/access-keys/status/${encodeURIComponent(key)}`, { cache: "no-store" });
+      if (!response.ok) {
+        lastError = await response.text() || `HTTP ${response.status}`;
+        continue;
+      }
+      return (await response.json()) as AccessKeyStatusResponse;
+    } catch (error) {
+      lastError = String((error as { message?: string })?.message || error || lastError);
+    }
   }
+  throw new Error(lastError);
 }
 
-function formatCountdown(secondsLeft: number): string {
-  const safe = Math.max(0, Math.floor(secondsLeft));
-  const minutes = Math.floor(safe / 60);
-  const seconds = safe % 60;
-  return `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
+function describePromoContent(contentId: string): { title: string; body: string } {
+  if (contentId === "redeem_key") {
+    return {
+      title: "Уже есть activation key?",
+      body: "Проверьте его статус ниже и сразу переходите к redeem в приложении или cabinet continuation.",
+    };
+  }
+  if (contentId === "telegram_bonus") {
+    return {
+      title: "Telegram остаётся вторичным бонусом",
+      body: "После привязки аккаунта Telegram может дать +10 дней, но не заменяет app-first старт.",
+    };
+  }
+  return {
+    title: "Support и manual recovery",
+    body: "Если hosted checkout или redeem path недоступен, support проводит в ручной recovery без показа raw link в обычном UX.",
+  };
 }
 
-function buildWebappContinuationHref(webSessionToken: string): string {
-  const href = new URL(config.webappUrl);
-  if (webSessionToken.trim()) {
-    href.searchParams.set("web_session_token", webSessionToken.trim());
-  }
-  return href.toString();
+function formatPrice(price: number, discountPercent: number): string {
+  const total = Math.max(1, Math.round(price * (1 - discountPercent / 100)));
+  return `${total} ₽`;
+}
+
+function buildRedeemHref(key: string): string {
+  const url = new URL(config.webappUrl);
+  url.pathname = "/redeem/";
+  url.searchParams.set("key", key);
+  return url.toString();
 }
 
 export function CheckoutLoadingFallback() {
   return (
     <main className="checkout-shell">
       <section className="checkout-hero">
-        <div className="checkout-kicker">Продление и оплата</div>
-        <div className="checkout-status-chip checkout-status-chip--fallback">Готовим страницу оплаты</div>
+        <div className="checkout-kicker">Key-first checkout</div>
+        <div className="checkout-status-chip checkout-status-chip--fallback">Собираем публичный catalog</div>
         <h1 className="checkout-title">
-          <span>POKROV</span> <span>Персональный маршрут</span>
+          <span>POKROV</span>
+          <span>Activation key flow</span>
         </h1>
-        <p className="checkout-sub">
-          Проверяем персональную ссылку, тарифы и доступные способы оплаты. Если нужный маршрут временно недоступен, вернём вас в Telegram без лишних рисков.
-        </p>
+        <p className="checkout-sub">Подгружаем тарифы, free-tier facts и следующий шаг для покупки и redeem.</p>
       </section>
       <section className="checkout-grid">
         <article className="glass-card">
-          <div className="checkout-helper">Загружаем тарифы и сценарий оплаты…</div>
+          <div className="checkout-helper">Готовим key-first pricing и checkout host…</div>
         </article>
         <article className="glass-card checkout-sticky">
-          <div className="checkout-helper">Собираем итог и запасной маршрут, если понадобится служба заботы…</div>
+          <div className="checkout-helper">Проверяем public defaults и fallback paths…</div>
         </article>
       </section>
     </main>
@@ -162,390 +199,181 @@ export function CheckoutLoadingFallback() {
 export default function CheckoutClient() {
   const searchParams = useSearchParams();
   const queryPlan = normalizePlanCode(searchParams.get("plan"), "1_month");
-  const checkoutTicket = (searchParams.get("checkout_ticket") || "").trim();
-  const webSessionToken = (searchParams.get("web_session_token") || searchParams.get("web_session") || "").trim();
-  const promo = (searchParams.get("promo") || "").trim().toUpperCase();
-
-  const [plans, setPlans] = useState<PlanOption[]>(FALLBACK_PLANS);
-  const [providers, setProviders] = useState<RubProviderOption[]>([]);
-  const [selectedPlan, setSelectedPlan] = useState<string>(queryPlan);
-  const [selectedProvider, setSelectedProvider] = useState<string>((searchParams.get("provider") || "").trim().toLowerCase());
-  const [busy, setBusy] = useState(false);
+  const [catalog, setCatalog] = useState<PublicCatalogResponse | null>(null);
+  const [plans, setPlans] = useState<PlanOption[]>(() => fallbackPlans());
+  const [selectedPlan, setSelectedPlan] = useState(queryPlan);
+  const [promoCode, setPromoCode] = useState((searchParams.get("promo") || "").trim().toUpperCase());
+  const [keyInput, setKeyInput] = useState((searchParams.get("key") || "").trim().toUpperCase());
+  const [keyStatus, setKeyStatus] = useState<AccessKeyStatusResponse | null>(null);
   const [statusText, setStatusText] = useState("");
-  const [breakdown, setBreakdown] = useState<{ base: number; pct: number; final: number } | null>(null);
-  const [secondsLeft, setSecondsLeft] = useState(0);
-  const [cachedPayment, setCachedPayment] = useState<CachedCheckoutPayment | null>(null);
-  const [providersBlocked, setProvidersBlocked] = useState(false);
-  const [providerBlockedTexts, setProviderBlockedTexts] = useState<string[]>([]);
-
-  const ticketPayload = useMemo(() => decodeTicketPayload(checkoutTicket), [checkoutTicket]);
-  const ticketExp = Number(ticketPayload?.exp || 0);
-  const ticketCountdownLabel = ticketExp > 0 ? formatCountdown(secondsLeft) : "";
-
-  useEffect(() => {
-    setSelectedPlan(queryPlan);
-  }, [queryPlan]);
-
-  useEffect(() => {
-    if (!ticketExp) {
-      setSecondsLeft(0);
-      return;
-    }
-    const sync = () => setSecondsLeft(Math.max(0, ticketExp - Math.floor(Date.now() / 1000)));
-    sync();
-    const timer = window.setInterval(sync, 1000);
-    return () => window.clearInterval(timer);
-  }, [ticketExp]);
+  const [keyBusy, setKeyBusy] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
-    const loadPlans = async () => {
-      const data = await fetchJsonFromBases<PublicPlansResponse>("/api/public/plans");
-      const mapped = (Array.isArray(data?.plans) ? data?.plans : [])
-        .filter((item) => Boolean(item?.code) && Number(item?.amount_rub || 0) > 0 && item?.is_active !== false)
-        .map((item) => ({
-          code: String(item.code || "").trim().toLowerCase(),
-          label: String(item.label || item.code || "").trim(),
-          amount_rub: Number(item.amount_rub || 0),
-          days: Math.max(1, Number(item.days || 30)),
-          device_limit: Math.max(1, Number(item.device_limit || 1)),
+
+    const load = async () => {
+      const nextCatalog = await fetchCatalog();
+      if (!nextCatalog || cancelled) {
+        return;
+      }
+      const nextPlans = (nextCatalog.plans || [])
+        .filter((plan) => plan?.is_active !== false && Boolean(plan?.code))
+        .map((plan) => ({
+          code: String(plan.code || "").trim().toLowerCase(),
+          label: String(plan.label || plan.code || "").trim(),
+          amount_rub: Number(plan.amount_rub || 0),
+          days: Number(plan.days || 0),
+          device_limit: Number(plan.device_limit || 1),
+          badge: plan.badge || null,
         }));
-      if (!mapped.length || cancelled) return;
-      setPlans(mapped);
-      if (!mapped.some((item) => item.code === selectedPlan)) {
-        setSelectedPlan(mapped[0].code);
+      setCatalog(nextCatalog);
+      if (nextPlans.length) {
+        setPlans(nextPlans);
+        if (!nextPlans.some((plan) => plan.code === selectedPlan)) {
+          setSelectedPlan(nextPlans[0].code);
+        }
       }
     };
-    void loadPlans();
+
+    void load();
     return () => {
       cancelled = true;
     };
   }, [selectedPlan]);
 
   useEffect(() => {
-    let cancelled = false;
-    const loadProviders = async () => {
-      const data = await fetchJsonFromBases<RubProvidersResponse>("/api/payments/providers");
-      if (cancelled) return;
-      const mapped = (Array.isArray(data?.providers) ? data?.providers : []).filter((item) => item?.supports_public !== false && item?.code);
-      const blocked = Boolean(data?.blocked) || Boolean(data?.ok === false) || mapped.length === 0;
-      setProviders(mapped);
-      setProvidersBlocked(blocked);
-      setProviderBlockedTexts((Array.isArray(data?.blocked_reason_texts) ? data?.blocked_reason_texts : []).filter(Boolean));
-      const normalizedCurrent = String(selectedProvider || "").trim().toLowerCase();
-      if (!mapped.some((item) => String(item.code || "").trim().toLowerCase() === normalizedCurrent)) {
-        setSelectedProvider(String(mapped[0]?.code || ""));
-      }
-    };
-    void loadProviders();
-    return () => {
-      cancelled = true;
-    };
-  }, [selectedProvider]);
+    if (!keyInput) {
+      setKeyStatus(null);
+      return;
+    }
+    const normalized = keyInput.trim().toUpperCase();
+    if (normalized.length < 6) {
+      return;
+    }
+    setKeyBusy(true);
+    setStatusText("");
+    void fetchAccessKeyStatus(normalized)
+      .then((payload) => {
+        setKeyStatus(payload);
+      })
+      .catch((error) => {
+        setKeyStatus(null);
+        setStatusText(String((error as { message?: string })?.message || error || "Не удалось проверить ключ."));
+      })
+      .finally(() => {
+        setKeyBusy(false);
+      });
+  }, [keyInput]);
 
   const activePlan = useMemo(
-    () => plans.find((item) => item.code === selectedPlan) || plans[0] || FALLBACK_PLANS[0],
+    () => plans.find((plan) => plan.code === selectedPlan) || plans[0] || fallbackPlans()[0],
     [plans, selectedPlan],
   );
 
-  const activeProvider = useMemo(
-    () =>
-      providers.find(
-        (item) => String(item.code || "").trim().toLowerCase() === String(selectedProvider || "").trim().toLowerCase(),
-      ) ||
-      providers[0] ||
-      null,
-    [providers, selectedProvider],
-  );
-
-  const hasCheckoutTicket = Boolean(checkoutTicket);
-  const hasWebSession = Boolean(webSessionToken) && !hasCheckoutTicket;
-  const continuationMode = hasCheckoutTicket ? "ticketed" : hasWebSession ? "session" : "anonymous";
-  const ticketExpired = hasCheckoutTicket && ticketExp > 0 && secondsLeft <= 0;
-  const continuationHref = hasWebSession ? buildWebappContinuationHref(webSessionToken) : config.webappUrl;
-  const cacheKey = `${CHECKOUT_CACHE_PREFIX}:${checkoutTicket}:${selectedPlan}:${activeProvider?.code || "none"}`;
-
-  useEffect(() => {
-    if (typeof window === "undefined" || !checkoutTicket) {
-      setCachedPayment(null);
-      return;
-    }
-    try {
-      const raw = window.localStorage.getItem(cacheKey);
-      if (!raw) {
-        setCachedPayment(null);
-        return;
-      }
-      const parsed = JSON.parse(raw) as CachedCheckoutPayment;
-      const now = Math.floor(Date.now() / 1000);
-      if (!parsed?.payment_url || !parsed?.order_id || Number(parsed.ticket_exp || 0) <= now) {
-        window.localStorage.removeItem(cacheKey);
-        setCachedPayment(null);
-        return;
-      }
-      setCachedPayment(parsed);
-    } catch {
-      setCachedPayment(null);
-    }
-  }, [cacheKey, checkoutTicket]);
-
-  async function createOrder(): Promise<void> {
-    if (!activePlan?.code || !checkoutTicket) {
-      setStatusText("Прямая оплата открывается только по персональной ссылке из Telegram или кабинета.");
-      return;
-    }
-    if (!activeProvider?.code) {
-      setStatusText("Платежный шлюз временно обновляется. Мы заботливо переведем вас в Telegram для безопасной оплаты.");
-      return;
-    }
-    if (ticketExpired) {
-      setStatusText("Время этой ссылки закончилось. Вернитесь в Telegram и откройте оплату заново.");
-      return;
-    }
-
-    setBusy(true);
-    setStatusText("");
-    setBreakdown(null);
-
-    for (const base of candidateApiBases()) {
-      try {
-        const response = await fetch(`${base}/api/payments/orders/create-public`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            provider: activeProvider.code,
-            plan_code: activePlan.code,
-            checkout_ticket: checkoutTicket,
-            currency: "RUB",
-          }),
-        });
-        if (!response.ok) {
-          const text = await response.text();
-          throw new Error(text || `HTTP ${response.status}`);
-        }
-        const data = (await response.json()) as CreatePublicOrderResponse;
-        setBreakdown({
-          base: Number(data.base_amount_rub ?? data.amount_rub ?? activePlan.amount_rub),
-          pct: Number(data.discount_pct ?? 0),
-          final: Number(data.amount_rub ?? activePlan.amount_rub),
-        });
-        if (!data.payment_url) {
-        throw new Error("Платёжная ссылка не получена.");
-        }
-        const cacheEntry: CachedCheckoutPayment = {
-          order_id: String(data.order_id || ""),
-          payment_url: String(data.payment_url || ""),
-          plan_code: String(activePlan.code || ""),
-          provider: String(data.provider || activeProvider.code || ""),
-          provider_label: String(data.provider_label || activeProvider.label || activeProvider.code || ""),
-          ticket_exp: Number(ticketExp || 0),
-          saved_at: Math.floor(Date.now() / 1000),
-        };
-        if (typeof window !== "undefined") {
-          window.localStorage.setItem(cacheKey, JSON.stringify(cacheEntry));
-        }
-        setCachedPayment(cacheEntry);
-        setStatusText(`Ссылка готова. Переводим на страницу оплаты через ${cacheEntry.provider_label}…`);
-        window.location.href = data.payment_url;
-        return;
-      } catch (error) {
-        setStatusText(String((error as { message?: string })?.message || error || "Не удалось открыть оплату."));
-      }
-    }
-
-    setBusy(false);
-  }
-
-  const heroStatus =
-    continuationMode === "ticketed"
-      ? getCopyText("marketing.checkout.ticket.status", "Персональная ссылка активна")
-      : continuationMode === "session"
-        ? getCopyText("marketing.checkout.session.status", "Кабинет готов")
-        : getCopyText("marketing.checkout.anonymous.status", "Нужен личный вход");
-  const heroText =
-    continuationMode === "ticketed"
-      ? getCopyText(
-          "marketing.checkout.ticket.subtitle",
-          "Вы открыли персональную ссылку. Выберите срок, проверьте платёжный маршрут и переходите к оплате.",
-        )
-      : continuationMode === "session"
-        ? getCopyText(
-            "marketing.checkout.session.subtitle",
-            "Вы уже вошли в кабинет. Здесь можно выбрать план и продолжить в персональном сценарии без анонимной оплаты.",
-          )
-        : getCopyText(
-            "marketing.checkout.anonymous.subtitle",
-            "Чтобы открыть оплату по-настоящему, сначала войдите в кабинет или получите персональную ссылку через Telegram. Без этого мы не будем отправлять вас на пустую кассу.",
-          );
-
-  const primaryButtonLabel = busy
-    ? "Готовим ссылку..."
-    : ticketExpired
-      ? "Ссылка истекла"
-      : continuationMode === "ticketed" && activeProvider
-        ? `Открыть оплату через ${activeProvider.label}`
-        : continuationMode === "session"
-          ? getCopyText("marketing.checkout.session.primary_cta", "Продолжить в кабинете")
-          : getCopyText("marketing.checkout.anonymous.primary_cta", "Открыть кабинет");
-
-  const providerBlockedList = providerBlockedTexts.filter(Boolean);
+  const discountPercent = getPricingPreviewDiscountPercent(promoCode);
+  const checkoutHref = buildCheckoutHostHref(activePlan.code, promoCode || undefined);
+  const redeemHref = keyStatus?.key ? buildRedeemHref(keyStatus.key) : buildRedeemHref(keyInput);
+  const marketingPromoIds =
+    promoCatalog.slots.find((slot) => slot.id === "marketing.checkout.contextual")?.allowed_content_ids || [];
 
   return (
     <main className="checkout-shell">
       <section className="checkout-hero">
-          <div className="checkout-kicker">{getCopyText("marketing.checkout.title", "Продление и оплата")}</div>
-        <div className={`checkout-status-chip ${hasCheckoutTicket ? "checkout-status-chip--ready" : "checkout-status-chip--fallback"}`}>
-          {heroStatus}
+        <div className="checkout-kicker">Buy key {"->"} redeem key {"->"} managed premium</div>
+        <div className="checkout-status-chip checkout-status-chip--ready">
+          {catalog?.public_surface_policy?.pricing_owner === "marketing" ? "Marketing owns pricing" : "Public checkout"}
         </div>
         <h1 className="checkout-title">
           <span>POKROV</span>
-          <span>
-            {hasCheckoutTicket
-              ? getCopyText("marketing.checkout.ticket.title", "Продление доступа")
-              : hasWebSession
-                ? getCopyText("marketing.checkout.session.title", "Продолжение в кабинете")
-                : getCopyText("marketing.checkout.anonymous.title", "Личный вход перед оплатой")}
-          </span>
+          <span>Публичный key-first checkout</span>
         </h1>
-        <p className="checkout-sub">{heroText}</p>
+        <p className="checkout-sub">
+          Эта страница продаёт activation key и не показывает raw subscription link. После покупки ключ погашается в приложении или cabinet continuation.
+        </p>
       </section>
 
       <section className="checkout-grid">
         <article className="glass-card">
-          <h2>{hasCheckoutTicket ? "Выберите срок" : hasWebSession ? "Продолжить в кабинете" : "Что делать дальше"}</h2>
-
-          {hasCheckoutTicket ? (
-            <>
-              <div className="checkout-plan-list">
-                {plans.map((plan) => (
-                  <button
-                    key={plan.code}
-                    type="button"
-                    onClick={() => setSelectedPlan(plan.code)}
-                    className={`checkout-plan ${selectedPlan === plan.code ? "checkout-plan--active" : ""}`}
-                  >
-                    <div>
-                      <strong>{plan.label}</strong>
-                      <p>
-                        {plan.days} дней • до {plan.device_limit} устройств
-                      </p>
-                    </div>
-                    <span>{plan.amount_rub} ₽</span>
-                  </button>
-                ))}
-              </div>
-
-              {providers.length > 0 && !providersBlocked ? (
-                <div className="checkout-provider-section">
-                  <strong>Доступные способы оплаты</strong>
-                  <div className="checkout-provider-list">
-                    {providers.map((provider) => (
-                      <button
-                        key={provider.code}
-                        type="button"
-                        onClick={() => setSelectedProvider(provider.code)}
-                        className={`checkout-provider ${provider.code === activeProvider?.code ? "checkout-provider--active" : ""}`}
-                      >
-                        <div>
-                          <strong>{provider.label}</strong>
-                          {provider.accent ? <p>{provider.accent}</p> : null}
-                        </div>
-                        {provider.checkout_hint ? <span>{provider.checkout_hint}</span> : null}
-                      </button>
-                    ))}
-                  </div>
+          <h2>Выберите срок</h2>
+          <div className="checkout-plan-list">
+            {plans.map((plan) => (
+              <button
+                key={plan.code}
+                type="button"
+                onClick={() => setSelectedPlan(plan.code)}
+                className={`checkout-plan ${selectedPlan === plan.code ? "checkout-plan--active" : ""}`}
+              >
+                <div>
+                  <strong>{plan.label}</strong>
+                  <p>
+                    {plan.days} дней • до {plan.device_limit} устройств
+                  </p>
                 </div>
-              ) : (
-                <div className="checkout-provider-empty">
-                  <strong>Платёжные маршруты временно недоступны</strong>
-                  {providerBlockedList.length > 0 ? (
-                    <ul className="checkout-trust-list">
-                      {providerBlockedList.map((message) => (
-                        <li key={message}>{message}</li>
-                      ))}
-                    </ul>
-                  ) : (
-                    <p>Если нужный способ оплаты не появился, не тратьте время: вернитесь в Telegram и откройте новый персональный сценарий.</p>
-                  )}
-                </div>
-              )}
-            </>
-          ) : hasWebSession ? (
-            <div className="checkout-empty">
-              <p>Вы уже вошли в кабинет. Продолжение оплаты открывается из персонального сценария, а не из публичной кассы.</p>
-              <div className="checkout-actions">
-                <a href={continuationHref} target="_blank" rel="noreferrer" className="checkout-secondary">
-                  Продолжить в кабинете
-                </a>
-                <a href={config.botUrl} target="_blank" rel="noreferrer" className="checkout-secondary">
-                  Продолжить в Telegram
-                </a>
-              </div>
-            </div>
-          ) : (
-            <div className="checkout-empty">
-              <p>Для вашей безопасности касса доступна только после личного входа. Пожалуйста, войдите в кабинет или Telegram.</p>
-              <div className="checkout-actions">
-                <a href={config.webappUrl} target="_blank" rel="noreferrer" className="checkout-secondary">
-                  Открыть кабинет
-                </a>
-                <a href={config.botUrl} target="_blank" rel="noreferrer" className="checkout-secondary">
-                  Продолжить в Telegram
-                </a>
-              </div>
-            </div>
-          )}
+                <span>{formatPrice(plan.amount_rub, discountPercent)}</span>
+              </button>
+            ))}
+          </div>
 
           <div className="checkout-trust">
-            <strong>
-              {hasCheckoutTicket ? "Что будет дальше" : hasWebSession ? "Почему кабинет продолжает checkout" : "Почему нужен личный маршрут"}
-            </strong>
+            <strong>Как это работает</strong>
             <ul className="checkout-trust-list">
-              {hasCheckoutTicket ? (
-                <>
-                  <li>Откроется защищённая страница выбранного платёжного маршрута.</li>
-                  <li>После подтверждения доступ обновится автоматически.</li>
-                  <li>Если окно оплаты закроется, можно вернуться по сохранённой ссылке или продолжить в Telegram.</li>
-                </>
-              ) : hasWebSession ? (
-                <>
-                  <li>Вы уже в личном кабинете, поэтому продолжение не требует повторного входа.</li>
-                  <li>Из кабинета откроются только реальные доступные действия для вашего профиля.</li>
-                  <li>Если понадобится помощь, Telegram и поддержка остаются рядом.</li>
-                </>
-              ) : (
-                <>
-                  <li>Кабинет или Telegram создают персональный сценарий именно для вашего профиля.</li>
-                  <li>После этого мы показываем только рабочие способы оплаты и честную сумму.</li>
-                  <li>Если маршрут оплаты временно недоступен, служба заботы быстро переведёт вас на запасной путь.</li>
-                </>
-              )}
+              <li>В приложении первый валидный device получает 5 дней premium trial без обязательной регистрации.</li>
+              <li>
+                После trial доступ падает в {catalog?.free_tier?.location_code || "NL-free"} с лимитом{" "}
+                {catalog?.free_tier?.traffic_limit_gb || 5} GB / {catalog?.free_tier?.cycle_days || 30} days.
+              </li>
+              <li>Публичный routing story остаётся {catalog?.public_defaults?.routing_mode || "all_except_ru"}.</li>
+              <li>Telegram нужен для recovery, restore premium, бонуса +10 дней и support fallback.</li>
             </ul>
+          </div>
+
+          <div className="checkout-trust">
+            <strong>Промокод</strong>
+            <div className="checkout-actions">
+              <input
+                value={promoCode}
+                onChange={(event) => setPromoCode(event.target.value.toUpperCase().trim())}
+                placeholder="Например: POKROV10"
+                className="checkout-secondary"
+              />
+            </div>
+            <p className="checkout-helper">
+              {discountPercent > 0
+                ? `Скидка ${discountPercent}% уже заложена в итог для ${activePlan.label}.`
+                : "Промокод меняет только итог покупки activation key и не открывает raw manual route."}
+            </p>
+          </div>
+
+          <div className="checkout-trust">
+            <strong>Уже есть key?</strong>
+            <div className="checkout-actions">
+              <input
+                value={keyInput}
+                onChange={(event) => setKeyInput(event.target.value.toUpperCase().trim())}
+                placeholder="POKROV-XXXX-XXXX"
+                className="checkout-secondary"
+              />
+            </div>
+            {keyBusy ? <p className="checkout-helper">Проверяем статус activation key…</p> : null}
+            {keyStatus ? (
+              <ul className="checkout-trust-list">
+                <li>Ключ: {keyStatus.key}</li>
+                <li>План: {keyStatus.plan?.label || `${keyStatus.days} дней`}</li>
+                <li>Статус: {keyStatus.redeemed ? "уже погашен" : "готов к redeem"}</li>
+              </ul>
+            ) : null}
           </div>
         </article>
 
         <article className="glass-card checkout-sticky">
-          <h2>{hasCheckoutTicket ? "Итог" : hasWebSession ? "Продолжение" : "Следующий шаг"}</h2>
+          <h2>Итог</h2>
           <p className="checkout-note">
-            {hasCheckoutTicket
-              ? getCopyText(
-                  "marketing.checkout.ticket.subtitle",
-                  "План уже привязан к вашему профилю. Мы не показываем лишние способы оплаты: только доступные платёжные маршруты и возврат в Telegram, если что-то пошло не так.",
-                )
-              : hasWebSession
-                ? getCopyText(
-                    "marketing.checkout.session.subtitle",
-                    "Вы уже вошли в кабинет. Продолжение оплаты откроется после перехода в персональный маршрут, а не из анонимной кассы.",
-                  )
-                : getCopyText(
-                    "marketing.checkout.anonymous.subtitle",
-                    "Публичный checkout без личного входа не работает как касса. Сначала откройте кабинет или продолжите через Telegram, чтобы получить персональный маршрут.",
-                  )}
+            Покупка заканчивается activation key. Дальше тот же app-first аккаунт продолжает доступ как managed premium без повторной ручной настройки.
           </p>
 
           <div className="checkout-summary">
             <p>
-              Ваш тариф: <strong>{activePlan.label}</strong>
+              Тариф: <strong>{activePlan.label}</strong>
             </p>
             <p>
               Срок: <strong>{activePlan.days} дней</strong>
@@ -554,90 +382,44 @@ export default function CheckoutClient() {
               Устройства: <strong>до {activePlan.device_limit}</strong>
             </p>
             <p>
-              Касса: <strong>{providersBlocked ? "временно недоступна" : activeProvider?.label || (hasWebSession ? "в кабинете" : "после личного входа")}</strong>
+              Публичный scope: <strong>{(catalog?.public_surface_policy?.public_platform_scope || ["android", "windows"]).join(" + ")}</strong>
             </p>
-            {promo ? (
-              <p>
-                Промокод: <strong>{promo}</strong>
-              </p>
-            ) : null}
-            {breakdown ? (
-              <div className="checkout-summary-breakdown">
-                <p>База: {breakdown.base.toFixed(0)} ₽</p>
-                <p>Скидка: {breakdown.pct}%</p>
-                <p>
-                  Итого: <strong>{breakdown.final.toFixed(0)} ₽</strong>
-                </p>
-              </div>
-            ) : (
-              <p className="checkout-summary-total">
-                Сумма: <strong>{activePlan.amount_rub} ₽</strong>
-              </p>
-            )}
-            {hasCheckoutTicket && ticketExp > 0 ? (
-              <p className="checkout-summary-total">
-                Ссылка активна ещё: <strong>{ticketCountdownLabel}</strong>
-              </p>
-            ) : null}
+            <p className="checkout-summary-total">
+              Сумма: <strong>{formatPrice(activePlan.amount_rub, discountPercent)}</strong>
+            </p>
           </div>
 
-          <button
-            type="button"
-            onClick={() => {
-              if (!hasCheckoutTicket || !activeProvider) {
-                window.location.href = continuationHref;
-                return;
-              }
-              void createOrder();
-            }}
-            disabled={busy || ticketExpired}
-            className="checkout-submit"
-          >
-            {primaryButtonLabel}
-          </button>
-
-          <a href={config.botUrl} target="_blank" rel="noreferrer" className="checkout-secondary checkout-secondary-button">
-            Продолжить в Telegram
+          <a href={checkoutHref} target="_blank" rel="noreferrer" className="checkout-submit">
+            Купить activation key
           </a>
 
-          {hasCheckoutTicket && cachedPayment?.payment_url && !ticketExpired ? (
-            <button
-              type="button"
-              onClick={() => {
-                window.location.href = cachedPayment.payment_url;
-              }}
-              className="checkout-secondary checkout-secondary-button"
-            >
-              Вернуться к оплате через {cachedPayment.provider_label}
-            </button>
-          ) : null}
+          <a href={redeemHref} target="_blank" rel="noreferrer" className="checkout-secondary checkout-secondary-button">
+            Погасить key в cabinet
+          </a>
 
-          {hasCheckoutTicket ? (
-            <p className="checkout-helper">
-              {ticketExpired
-                ? "Время этой ссылки закончилось. Вернитесь в Telegram и откройте оплату заново."
-                : getCopyText(
-                    "marketing.checkout.helper.ticket",
-                    "Если у вас возникли сомнения при оплате — наша заботливая поддержка в Telegram моментально во всем разберется.",
-                  )}
-            </p>
-          ) : hasWebSession ? (
-            <p className="checkout-helper">
-              {getCopyText(
-                "marketing.checkout.helper.session",
-                "Вы уже вошли в кабинет. Откройте персональный маршрут, чтобы продолжить без лишних шагов.",
-              )}
-            </p>
-          ) : (
-            <p className="checkout-helper">
-              {getCopyText(
-                "marketing.checkout.helper.anonymous",
-                "Сначала откройте кабинет или продолжите через Telegram, а продление уже запускайте из персонального сценария.",
-              )}
-            </p>
-          )}
+          <Link href={MARKETING_CANONICAL_PATHS.install} className="checkout-secondary checkout-secondary-button">
+            Сначала установить приложение
+          </Link>
+
+          <p className="checkout-helper">
+            Email signup на сайте даёт только Free Monthly. Premium trial начинается именно из приложения на первом валидном устройстве.
+          </p>
 
           {statusText ? <p className="checkout-status">{statusText}</p> : null}
+
+          <div className="checkout-trust">
+            <strong>First-party promo slots</strong>
+            <ul className="checkout-trust-list">
+              {marketingPromoIds.map((contentId) => {
+                const content = describePromoContent(contentId);
+                return (
+                  <li key={contentId}>
+                    <strong>{content.title}</strong>: {content.body}
+                  </li>
+                );
+              })}
+            </ul>
+          </div>
         </article>
       </section>
     </main>

@@ -3,7 +3,7 @@ import { getPokrovPublicConfig } from "../lib/pokrov";
 
 export const metadata = buildMarketingMetadata(undefined, undefined, {
   path: "/",
-  keywords: ["ускорение интернета", "низкий ping", "android", "windows", "pokrov"],
+  keywords: ["pokrov", "android", "windows", "managed premium", "activation key", "all except ru"],
 });
 
 async function loadFeaturedReviews(): Promise<MarketingReview[]> {
@@ -11,7 +11,7 @@ async function loadFeaturedReviews(): Promise<MarketingReview[]> {
   const apiBase = (config.apiBaseUrl || "https://api.pokrov.space").replace(/\/+$/, "");
 
   try {
-    const response = await fetch(`${apiBase}/api/reviews`);
+    const response = await fetch(`${apiBase}/api/reviews`, { cache: "no-store" });
     if (!response.ok) return [];
 
     const data = (await response.json()) as {
@@ -28,7 +28,7 @@ async function loadFeaturedReviews(): Promise<MarketingReview[]> {
       .slice(0, 3)
       .map((item) => ({
         name: String(item.username || "user").trim() || "user",
-        role: item.date ? `TELEGRAM • ${item.date}` : `TELEGRAM • ${item.rating ? `${item.rating}/5` : "отзыв"}`,
+        role: item.date ? `TELEGRAM • ${item.date}` : `REVIEW • ${item.rating ? `${item.rating}/5` : "verified"}`,
         text: String(item.text || "").trim(),
         date: item.date,
       }))
@@ -41,12 +41,5 @@ async function loadFeaturedReviews(): Promise<MarketingReview[]> {
 export default async function HomePage() {
   const featuredReviews = await loadFeaturedReviews();
 
-  return (
-    <>
-      <MarketingLanding
-        pagePath="/"
-        featuredReviews={featuredReviews}
-      />
-    </>
-  );
+  return <MarketingLanding pagePath="/" featuredReviews={featuredReviews} />;
 }

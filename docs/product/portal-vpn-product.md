@@ -1,6 +1,6 @@
 # POKROV Product Overview
 
-Last updated: 2026-04-15
+Last updated: 2026-04-22
 
 ## Document Status
 
@@ -30,6 +30,26 @@ Primary user goal:
 
 Telegram is optional for first launch, free trial activation, and normal daily use.
 Telegram remains a secondary path for linking, bonus claim, recovery, support entrypoints, and bot-side purchase continuation.
+
+## Wave 0 Global Rework Decision Freeze
+
+The current program is locked around these target product decisions even where bridge-period release truth still trails behind implementation:
+
+- new client development truth now lives in the bootstrapped local repo `POKROV-app/main`; `app-next/` remains retained bootstrap/reference material, and `external/client-fork/app/` stays bridge/hotfix plus current release-build truth until formal cutover
+- one canonical `app-first` account links `install_id`, email, Telegram, devices, and activation keys
+- public delivery scope for this wave remains `Android + Windows`; Apple hosts may remain in engineering lanes but are not part of public promise or release acceptance
+- commercial flow becomes `buy key -> redeem key -> managed premium`, with raw subscription links hidden from default site, webapp, and bot UX and exposed only for explicit recovery or manual-request paths
+- `marketing` is the only public acquisition, pricing, and paywall surface; `webapp` is session-aware continuation, support, redeem, renewal continuation, and admin only
+- app surfaces must not use ad SDKs or third-party ads; only approved first-party promo slots may render remotely managed promo content
+- normal consumer UX should show one logical location, while transport variants `VLESS+REALITY`, `VMess`, `Trojan`, and `XHTTP` stay hidden behind auto, diagnostics, or admin controls
+- target client IA becomes `Protection / Locations / Rules / Profile`, with `Support`, `Devices`, `Subscription`, and `Settings` nested inside `Profile`
+- visible routing story becomes `All except RU`, `Full tunnel`, and `Selected apps`, with `Rules` owning split tunneling and bypass behavior
+- the public wording rule still forbids promoting the product through direct-meaning `VPN` wording on public surfaces
+
+Bridge-period note:
+
+- the detailed surface descriptions later in this document may still describe the retained bridge release path where formal cutover has not yet happened
+- Wave 0 freezes the target world first so later code waves converge on one product story instead of preserving the old one by inertia
 
 ## Locked Product Rules
 
@@ -87,13 +107,19 @@ Current truth:
 
 Primary navigation:
 
-1. `VPN`
+1. `Protection`
 2. `Locations`
-3. `Devices`
+3. `Rules`
 4. `Profile`
-5. `Support`
 
-Legacy `/config-options`, `/about`, and `/logs` may remain as compatibility redirects only. Public IA is the five-tab shell above.
+Nested under `Profile`:
+
+- `Support`
+- `Devices`
+- `Subscription`
+- `Settings`
+
+Legacy `/config-options`, `/about`, and `/logs` may remain as compatibility redirects only. Public IA is the four-tab shell above.
 
 Quick Connect rule:
 
@@ -123,7 +149,7 @@ Current public role:
 
 - `https://pokrov.space/` is the fresh-entry homepage for new users
 - `https://pokrov.space/install/` is the dedicated install-help surface used when a public download CTA cannot resolve directly to a real artifact
-- `https://pokrov.space/checkout/` is the public checkout explainer and plan-intent page
+- `https://pokrov.space/checkout/` is the public acquisition, pricing, paywall, and activation-key purchase surface
 - indexable landing pages can capture platform, use-case, or Telegram intent, but they must converge to the same product facts and CTA set
 - public legal pages also live on the marketing surface
 - the current canonical public route family is `/mobile/`, `/tiktok/`, `/youtube/`, `/devices/`, and `/telegram/`, with permanent redirects from the earlier legacy SEO paths
@@ -137,7 +163,8 @@ Current cabinet role:
 - `https://app.pokrov.space/` continues an existing browser session or bot handoff
 - browser entry also supports additive email signup, login, verification, and recovery without replacing the app-first model
 - public email signup, verification, and recovery should remain truthfully unavailable if transactional sender identity or delivery-confirmation/webhook readiness is degraded
-- current route families include cabinet entry, dashboard, pricing, subscription, authenticated checkout continuation, devices, downloads, and support
+- current route families include cabinet entry, dashboard, subscription, hosted-checkout continuation, redeem, devices, downloads, and support
+- `/pricing/` remains only as a compatibility continuation alias and must not become a second public pricing surface
 - `webapp` is also the primary admin operator surface
 - site, cabinet, and admin must keep obvious navigation back to each other so no surface becomes a dead end
 - consumer cabinet screens should show safe summaries such as `connect.pokrov.space` and route categories while keeping raw personal links, public IP, and node internals hidden on screen
@@ -159,9 +186,10 @@ Telegram remains in the product for:
 Public funnel rule:
 
 - marketing introduces the product and captures public intent
-- `pokrov.space/checkout/` explains the next step, but it does not replace authenticated checkout continuation
-- `app.pokrov.space` continues real account, renewal, support, and checkout flows
-- checkout must continue from a valid web session or checkout ticket
+- `pokrov.space/checkout/` can show public pricing and sell activation keys through the hosted checkout flow
+- `app.pokrov.space` continues real account, renewal, redeem, support, and admin flows
+- cabinet checkout is continuation-only and should defer to the same hosted activation-key flow instead of inventing a second paywall
+- the default site, cabinet, and bot UX must not expose raw subscription links
 - Telegram bot purchase flow remains available, but it is not the default public story
 - `connect.pokrov.space` remains the delivery surface for the one public connection link and matching QR, not a fresh-entry marketing surface
 - if Telegram is degraded, recovery should continue through the app and `app.pokrov.space` before falling back to Telegram

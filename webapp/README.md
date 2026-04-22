@@ -1,6 +1,6 @@
 # POKROV WebApp
 
-Last updated: 2026-04-12
+Last updated: 2026-04-22
 
 ## Document Status
 
@@ -12,7 +12,7 @@ This file is the local authority for `webapp/` and the browser cabinet/admin sur
 
 - browser entry and web-login continuation
 - personal cabinet flows for status, subscription, devices, downloads, and support
-- authenticated checkout continuation
+- hosted key-first checkout continuation
 - the primary admin operator surface
 
 It is not the public marketing or SEO surface. Public acquisition pages live in `marketing/` at `https://pokrov.space/`.
@@ -23,12 +23,13 @@ Current user-facing route families in `webapp/src/app/`:
 
 - `/` for browser entry, Telegram web-login, and bot handoff continuation
 - `/dashboard/` for the main cabinet snapshot
-- `/pricing/` for plan selection inside the cabinet journey
 - `/subscription/` for subscription state and renewal entry
-- `/subscription/checkout/` for authenticated checkout continuation
+- `/subscription/checkout/` for renewal continuation into the hosted activation-key checkout flow
+- `/redeem/` for activation-key lookup and redeem inside the cabinet
 - `/devices/` for device visibility
 - `/dashboard/downloads/` for app-download continuation
 - `/support/` plus support thread/legal routes
+- `/pricing/` only as a compatibility continuation alias; it must not become a public pricing surface again
 
 Current operator routes:
 
@@ -47,9 +48,9 @@ Current operator routes:
 Keep the public/browser split explicit:
 
 - `marketing/` owns the homepage, public `/checkout/`, offer/privacy pages, and indexable SEO landing pages
-- `webapp/` starts when the user needs session continuation, cabinet actions, support, renewal, or admin tooling
+- `webapp/` starts when the user needs session continuation, cabinet actions, redeem, support, renewal, or admin tooling
 - public `Open cabinet` CTA should point to `https://app.pokrov.space/`
-- public pricing pages may introduce plan intent, but real payment continuation belongs to the authenticated cabinet flow
+- public pricing and acquisition belong to `marketing/`; cabinet checkout is continuation-only and should defer to the hosted key-first flow
 
 ## Runtime Contract
 
@@ -66,6 +67,7 @@ Rules:
 - user-facing cabinet copy should show one public `ссылка подключения` and one QR built from the same URL
 - `?format=plain` remains hidden compatibility-only behavior and must stay out of normal cabinet UX
 - `connect.pokrov.space` is for config delivery, not for public acquisition or payment entry
+- cabinet checkout must not drift into a second public paywall or direct raw-link delivery story
 
 ## Frontend Environment
 

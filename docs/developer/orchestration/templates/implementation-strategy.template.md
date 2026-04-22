@@ -14,7 +14,7 @@
 | Strategy owner | `<role or name>` |
 | Status | `draft | recommended | approved | superseded` |
 | Candidate WO class | `platform-only | client-only | mixed` |
-| Primary repo lane | `portal/master | PORTALapp/main` |
+| Primary repo lane | `portal/master | POKROV-app/main | legacy bridge main` |
 | Secondary repo lane | `<blank if not mixed>` |
 | Timestamp | `<timestamp>` |
 

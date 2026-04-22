@@ -25,7 +25,15 @@ Legacy filename note:
 | `docs/developer/orchestration/` | canonical orchestration standard, role contracts, and reusable templates | `docs/developer/orchestration/orchestration-standard.md` |
 | `docs/developer/work-orders/` | living wave and work-order execution artifacts | `docs/developer/work-orders/README.md` |
 | `docs/` | canonical platform docs plus archive | `docs/README.md` |
-| `external/client-fork/app/` | Flutter client fork and default legacy client workspace | `external/client-fork/app/docs/README.md`, `external/client-fork/app/scripts/package_windows.ps1`, release asset masters in `external/logogo.png`, `logo/logoclear.svg`, and `logo/logowithtext.svg` |
+| `app-next/` | in-repo bootstrap source workspace for the new client lane | `app-next/docs/README.md`, `app-next/docs/operations/cutover-readiness.md` |
+| `external/client-fork/app/` | retained legacy Flutter fork and bridge/hotfix release lane | `external/client-fork/app/docs/README.md`, `external/client-fork/app/scripts/package_windows.ps1`, release asset masters in `external/logogo.png`, `logo/logoclear.svg`, and `logo/logowithtext.svg` |
+
+## Adjacent Repo Boundary
+
+- live new client repo checkout: `C:/Users/kiwun/Documents/ai/POKROV-app`
+- `POKROV-app/main` is the new client development truth for this program
+- `app-next/` in this repository is the retained bootstrap-source and transition/reference workspace for that repo
+- `external/client-fork/app/` remains the bridge/hotfix and current public release-truth lane until formal cutover
 
 ## Which Doc Is Authoritative
 
@@ -40,17 +48,18 @@ Legacy filename note:
 | Developer workflow | [docs/developer/developer-guide.md](C:/Users/kiwun/Documents/ai/VPN/docs/developer/developer-guide.md) |
 | Orchestrated work-order process | [docs/developer/orchestration/orchestration-standard.md](C:/Users/kiwun/Documents/ai/VPN/docs/developer/orchestration/orchestration-standard.md) |
 | User journey | [docs/user/portal-vpn-user-guide-ru.md](C:/Users/kiwun/Documents/ai/VPN/docs/user/portal-vpn-user-guide-ru.md) |
-| Client-specific contracts | [external/client-fork/app/docs/README.md](C:/Users/kiwun/Documents/ai/VPN/external/client-fork/app/docs/README.md) |
+| Client-specific contracts | [C:/Users/kiwun/Documents/ai/POKROV-app/docs/README.md](C:/Users/kiwun/Documents/ai/POKROV-app/docs/README.md) for the live new client lane, [app-next/docs/README.md](C:/Users/kiwun/Documents/ai/VPN/app-next/docs/README.md) as retained bootstrap-source material, and [external/client-fork/app/docs/README.md](C:/Users/kiwun/Documents/ai/VPN/external/client-fork/app/docs/README.md) for bridge release truth |
 
 ## Branches, Worktrees, And Lanes
 
-- `portal/master` and `PORTALapp/main` are policy labels for the two canonical lanes; on the actual remotes they mean `origin/master` for the platform repo and `origin/main` for the nested client repo
+- `portal/master` is the policy label for the platform lane and maps to `origin/master`
 - keep the root workspace `C:/Users/kiwun/Documents/ai/VPN` on `master` as the clean prospective platform baseline for `portal_bot/`, `webapp/`, `marketing/`, `shared/`, `infra/`, root `docs/`, and root `scripts/`
-- treat `external/client-fork/app/` as the default legacy client workspace and promote that lane against `origin/main`
-- root docs in this repository, including `AGENTS.md` and `docs/*`, land on the platform lane; client docs under `external/client-fork/app/docs/` land on the client lane
+- `POKROV-app/main` is the policy label for the new client development lane and should map to the real `main` branch in the dedicated client repo once bootstrapped locally
+- treat `external/client-fork/app/` as the explicit bridge/hotfix and current release-truth lane until formal cutover
+- root docs in this repository, including `AGENTS.md` and `docs/*`, land on the platform lane; new client docs belong in `POKROV-app/docs/*` once bootstrapped, while `external/client-fork/app/docs/*` are bridge docs only
 - `main`, `portal-app`, and `app-next` are optional machine-local alias names or worktrees only; they are convenience handles, not authoritative roots
-- if `app-next` exists, keep it as a separate future lane rather than a silent rename of the default legacy client workspace
-- treat the client checkout nested under the platform workspace as a separate repository with its own promotion path, not as a subtree of `portal/master`
+- if `app-next` exists, treat it as the temporary bootstrap-source workspace for `POKROV-app`, not as the permanent promotion target
+- treat the legacy client checkout nested under the platform workspace as a separate bridge repository with its own promotion path, not as a subtree of `portal/master`
 
 ## Current Runtime Contract Pointers
 

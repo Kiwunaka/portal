@@ -159,7 +159,13 @@ from network_rollout import (
     transport_node_allowlist,
 )
 from public_urls import build_subscription_url, public_connect_host
-from shared_surface_facts import get_product_facts, get_public_urls
+from shared_surface_facts import (
+    get_access_matrix,
+    get_product_facts,
+    get_promo_slots,
+    get_public_urls,
+    get_tariff_catalog,
+)
 from transport_catalog import LEGACY_REALITY_FALLBACK, OPERATOR_LAB, RESERVE_XHTTP_CDN, node_transport_profiles, transport_profile_by_name
 from web_auth_service import (
     SESSION_TTL_SECONDS,
@@ -200,10 +206,28 @@ def _current_bot_token() -> str:
 
 
 _PRODUCT_FACTS = get_product_facts()
+_ACCESS_MATRIX = get_access_matrix()
+_PROMO_SLOTS = get_promo_slots()
 _PUBLIC_URL_FACTS = get_public_urls()
+_TARIFF_CATALOG = get_tariff_catalog()
 _PUBLIC_URL_TELEGRAM = _PUBLIC_URL_FACTS.get("telegram", {})
-_TRIAL_FACTS = _PRODUCT_FACTS.get("trial", {})
-_TELEGRAM_REWARD_FACTS = _PRODUCT_FACTS.get("telegram_reward", {})
+_ACCESS_PUBLIC_DEFAULTS = _ACCESS_MATRIX.get("public_defaults", {})
+_ACCESS_ENTRY_FLOWS = _ACCESS_MATRIX.get("entry_flows", {})
+_FREE_TIER_FACTS = _ACCESS_MATRIX.get("free_tier", {})
+_TRIAL_FACTS = _ACCESS_ENTRY_FLOWS.get("store_install", {})
+_TELEGRAM_REWARD_FACTS = _ACCESS_ENTRY_FLOWS.get("telegram", {})
+_TARIFF_PLANS = list(_TARIFF_CATALOG.get("plans") or [])
+_TARIFF_PLAN_MAP = {
+    str(plan.get("code") or "").strip().lower(): plan
+    for plan in _TARIFF_PLANS
+    if str(plan.get("code") or "").strip()
+}
+PROMO_SLOTS_CONFIG_KEY = "promo_slots_config_v1"
+LEGACY_GIFT_PLAN_HINTS = {
+    "mini": "start_99",
+    "standard": "1_month",
+    "premium": "3_months",
+}
 
 
 def _shared_telegram_username(key: str, fallback: str) -> str:
@@ -214,11 +238,17 @@ def _shared_telegram_username(key: str, fallback: str) -> str:
 API_ENABLE_USAGE = env_bool("API_ENABLE_USAGE", default=False)
 AUTO_DOWNGRADE_TO_FREE = env_bool("AUTO_DOWNGRADE_TO_FREE", default=True)
 AUTO_FREE_DAYS = int(os.getenv("AUTO_FREE_DAYS", "3650"))
-FREE_TOTAL_GB = env_int("FREE_TOTAL_GB", 5)
-FREE_LIMIT_IP = env_int("FREE_LIMIT_IP", 1)
+FREE_TOTAL_GB = env_int("FREE_TOTAL_GB", int(_FREE_TIER_FACTS.get("traffic_limit_gb", 5) or 5))
+FREE_LIMIT_IP = env_int("FREE_LIMIT_IP", int(_FREE_TIER_FACTS.get("device_limit", 1) or 1))
 PAID_LIMIT_IP = env_int("PAID_LIMIT_IP", 5)
-FREE_SPEED_LIMIT_KBPS = env_int("FREE_SPEED_LIMIT_KBPS", 6250)
-FREE_SOFT_MODE_SPEED_LIMIT_KBPS = env_int("FREE_SOFT_MODE_SPEED_LIMIT_KBPS", 256)
+FREE_SPEED_LIMIT_KBPS = env_int(
+    "FREE_SPEED_LIMIT_KBPS",
+    int(round(float(_FREE_TIER_FACTS.get("speed_limit_mbps", 50) or 50) * 125)),
+)
+FREE_SOFT_MODE_SPEED_LIMIT_KBPS = env_int(
+    "FREE_SOFT_MODE_SPEED_LIMIT_KBPS",
+    int(round(float(_FREE_TIER_FACTS.get("soft_mode_speed_limit_mbps", 2) or 2) * 125)),
+)
 SUPPORT_USERNAME = (
     os.getenv("SUPPORT_USERNAME") or _shared_telegram_username("support_bot_username", "@pokrov_supportbot")
 ).lstrip("@")
@@ -228,8 +258,8 @@ BOT_USERNAME = (os.getenv("BOT_USERNAME") or _shared_telegram_username("bot_user
 REFERRAL_BONUS_DAYS = env_int("REFERRAL_BONUS_DAYS", 15)
 REFERRAL_ANTIFRAUD_HOURS = max(0, env_int("REFERRAL_ANTIFRAUD_HOURS", 24))
 REFERRAL_ANTIFRAUD_MAX_WAIT_HOURS = max(1, env_int("REFERRAL_ANTIFRAUD_MAX_WAIT_HOURS", 168))
-CHANNEL_PREMIUM_DAYS = max(1, env_int("CHANNEL_PREMIUM_DAYS", int(_TELEGRAM_REWARD_FACTS.get("days", 10) or 10)))
-APP_TRIAL_DEFAULT_DAYS = max(1, env_int("APP_TRIAL_DEFAULT_DAYS", int(_TRIAL_FACTS.get("days", 5) or 5)))
+CHANNEL_PREMIUM_DAYS = max(1, env_int("CHANNEL_PREMIUM_DAYS", int(_TELEGRAM_REWARD_FACTS.get("bonus_days", 10) or 10)))
+APP_TRIAL_DEFAULT_DAYS = max(1, env_int("APP_TRIAL_DEFAULT_DAYS", int(_TRIAL_FACTS.get("trial_days", 5) or 5)))
 APP_TRIAL_MAX_DAYS = APP_TRIAL_DEFAULT_DAYS
 APP_ACCOUNT_TG_ID_BASE = max(9_000_000_000_000, env_int("APP_ACCOUNT_TG_ID_BASE", 9_000_000_000_000))
 OPENING_PREMIUM_DAYS = max(1, env_int("OPENING_PREMIUM_DAYS", 14))
@@ -287,27 +317,21 @@ WEBAPP_DEV_ALLOWED_ORIGINS = {
 }
 API_PLAN_PRICES = {
     "trial": 0,
-    "1_month": 249,
-    "3_months": 699,
-    "6_months": 1199,
-    "9_months": 1399,
-    "12_months": 1644,
+    **{
+        code: int(plan.get("amount_stars") or 0)
+        for code, plan in _TARIFF_PLAN_MAP.items()
+    },
 }
 RUB_PLAN_PRICES = {
-    "start_99": {"amount_rub": 99, "days": 30},
-    "1_month": {"amount_rub": 249, "days": 30},
-    "3_months": {"amount_rub": 699, "days": 91},
-    "6_months": {"amount_rub": 1199, "days": 182},
-    "9_months": {"amount_rub": 1399, "days": 273},
-    "12_months": {"amount_rub": 1644, "days": 365},
+    code: {
+        "amount_rub": int(plan.get("amount_rub") or 0),
+        "days": int(plan.get("duration_days") or 30),
+    }
+    for code, plan in _TARIFF_PLAN_MAP.items()
 }
 RUB_PLAN_LABELS = {
-    "start_99": "Приветственный 30 дней",
-    "1_month": "1 месяц",
-    "3_months": "3 месяца",
-    "6_months": "6 месяцев",
-    "9_months": "9 месяцев",
-    "12_months": "12 месяцев",
+    code: str(plan.get("label") or code)
+    for code, plan in _TARIFF_PLAN_MAP.items()
 }
 GIFT_CARD_TYPES = {
     "mini": {"days": 7, "stars": 59, "name": "Mini"},
@@ -315,14 +339,6 @@ GIFT_CARD_TYPES = {
     "premium": {"days": 90, "stars": 699, "name": "Premium"},
 }
 PAYMENT_PROVIDER_WHITELIST = {"cardlink", "freekassa", "pally", "platima"}
-RUB_PLAN_LABELS = {
-    "start_99": "Приветственный 30 дней",
-    "1_month": "1 месяц",
-    "3_months": "3 месяца",
-    "6_months": "6 месяцев",
-    "9_months": "9 месяцев",
-    "12_months": "12 месяцев",
-}
 FK_NOTIFY_IP_ALLOWLIST = [
     x.strip()
     for x in (os.getenv("FK_NOTIFY_IP_ALLOWLIST") or "").split(",")
@@ -339,28 +355,20 @@ DEFAULT_LOYALTY_CONFIG: dict[str, Any] = {
 
 
 def _default_plan_catalog() -> list[dict[str, Any]]:
-    badges = {
-        "start_99": "Один раз",
-        "1_month": "Базовый",
-        "3_months": "Выгоднее",
-        "6_months": "Популярный",
-        "9_months": "Надолго",
-        "12_months": "-45%",
-    }
     return [
         {
             "code": code,
-            "label": RUB_PLAN_LABELS.get(code, code),
-            "amount_rub": int(RUB_PLAN_PRICES.get(code, {}).get("amount_rub") or 0),
-            "amount_stars": int(API_PLAN_PRICES.get(code) or 0),
-            "days": int(RUB_PLAN_PRICES.get(code, {}).get("days") or 30),
-            "device_limit": 1 if code == "start_99" else max(1, int(PAID_LIMIT_IP)),
-            "node_policy": "nl_only" if code == "start_99" else "paid_pool",
-            "badge": badges.get(code, ""),
+            "label": str(plan.get("label") or code),
+            "amount_rub": int(plan.get("amount_rub") or 0),
+            "amount_stars": int(plan.get("amount_stars") or 0),
+            "days": int(plan.get("duration_days") or 30),
+            "device_limit": max(1, int(plan.get("device_limit") or 1)),
+            "node_policy": str(plan.get("node_policy") or "").strip() or None,
+            "badge": str(plan.get("badge") or "").strip() or None,
             "is_active": True,
             "sort_order": idx + 1,
         }
-        for idx, code in enumerate(["start_99", "1_month", "3_months", "6_months", "9_months", "12_months"])
+        for idx, (code, plan) in enumerate(_TARIFF_PLAN_MAP.items())
     ]
 
 
@@ -757,8 +765,10 @@ class AppStartTrialIn(BaseModel):
     app_version: str | None = Field(default=None, max_length=32)
     locale: str | None = Field(default=None, max_length=32)
     time_zone: str | None = Field(default=None, max_length=64)
-    # Backward-compatible input field. The server enforces the canonical trial duration.
-    trial_days: int | None = Field(default=None, ge=1, le=365)
+
+
+class AccessKeyRedeemIn(BaseModel):
+    key: str = Field(min_length=3, max_length=64)
 
 
 class ClientRoutePolicyIn(BaseModel):
@@ -841,6 +851,27 @@ class AdminTemplateUpdateIn(BaseModel):
 
 class AdminGiftCodeCreateIn(BaseModel):
     card_type: str = Field(min_length=3, max_length=20)
+
+
+class AdminAccessKeyIssueIn(BaseModel):
+    plan_code: str = Field(min_length=2, max_length=32)
+    quantity: int = Field(default=1, ge=1, le=200)
+
+
+class AdminPromoSlotAssignmentIn(BaseModel):
+    slot_id: str = Field(min_length=3, max_length=120)
+    content_id: str = Field(min_length=2, max_length=120)
+    enabled: bool = True
+    title: str | None = Field(default=None, max_length=160)
+    body: str | None = Field(default=None, max_length=500)
+    cta_label: str | None = Field(default=None, max_length=80)
+    cta_href: str | None = Field(default=None, max_length=600)
+    contexts: list[str] = Field(default_factory=list, max_length=32)
+    sort_order: int = Field(default=100, ge=0, le=10_000)
+
+
+class AdminPromoSlotsPutIn(BaseModel):
+    assignments: list[AdminPromoSlotAssignmentIn] = Field(default_factory=list, max_length=128)
 
 
 class EventIn(BaseModel):
@@ -1047,6 +1078,12 @@ class DashboardResponse(BaseModel):
     segment: str
     connection_snapshot: dict[str, Any] | None = None
     client_policy: dict[str, Any] | None = None
+    linked_identities: dict[str, Any] | None = None
+    free_caps: dict[str, Any] | None = None
+    redeem_eligibility: dict[str, Any] | None = None
+    promo_slots: dict[str, Any] | None = None
+    hidden_transport_matrix: dict[str, Any] | None = None
+    location_matrix: dict[str, Any] | None = None
     active_offer: dict[str, Any] | None
     points: dict[str, Any]
     features: dict[str, bool]
@@ -1484,6 +1521,418 @@ def _resolve_plan_config(*, s, code: str) -> dict[str, Any] | None:
         if str(row.get("code") or "").strip().lower() == target:
             return row
     return None
+
+
+def _access_matrix_state_facts(access_state: str | None) -> dict[str, Any]:
+    states = dict(_ACCESS_MATRIX.get("states") or {})
+    return dict(states.get(str(access_state or "").strip(), {}) or {})
+
+
+def _normalized_plan_payload(plan: dict[str, Any] | None, *, fallback_code: str = "") -> dict[str, Any] | None:
+    if not plan:
+        return None
+    code = str(plan.get("code") or fallback_code).strip().lower()
+    if not code:
+        return None
+    return {
+        "code": code,
+        "label": _normalize_mojibake(str(plan.get("label") or code).strip()),
+        "amount_rub": int(plan.get("amount_rub") or 0),
+        "amount_stars": int(plan.get("amount_stars") or 0),
+        "days": int(plan.get("days") or plan.get("duration_days") or 0),
+        "device_limit": max(1, int(plan.get("device_limit") or 1)),
+        "node_policy": str(plan.get("node_policy") or "").strip() or None,
+        "badge": str(plan.get("badge") or "").strip() or None,
+        "comparison_group": str(plan.get("comparison_group") or "").strip() or None,
+    }
+
+
+def _access_key_meta_from_card_type(*, s, card_type: str) -> dict[str, Any] | None:
+    normalized = str(card_type or "").strip().lower()
+    if not normalized:
+        return None
+
+    plan = _resolve_plan_config(s=s, code=normalized)
+    normalized_plan = _normalized_plan_payload(plan, fallback_code=normalized)
+    if normalized_plan:
+        return {
+            "kind": "plan",
+            "plan_code": normalized_plan["code"],
+            "plan": normalized_plan,
+            "days": int(normalized_plan["days"] or 0),
+            "device_limit": int(normalized_plan["device_limit"] or 1),
+            "node_policy": normalized_plan.get("node_policy"),
+        }
+
+    legacy = dict(GIFT_CARD_TYPES.get(normalized) or {})
+    if not legacy:
+        return None
+
+    hinted_plan_code = str(LEGACY_GIFT_PLAN_HINTS.get(normalized) or "").strip().lower()
+    hinted_plan = _normalized_plan_payload(_resolve_plan_config(s=s, code=hinted_plan_code), fallback_code=hinted_plan_code)
+    return {
+        "kind": "legacy_gift",
+        "legacy_type": normalized,
+        "plan_code": hinted_plan_code or None,
+        "plan": hinted_plan,
+        "days": int(legacy.get("days") or 0),
+        "device_limit": int((hinted_plan or {}).get("device_limit") or 1),
+        "node_policy": (hinted_plan or {}).get("node_policy"),
+        "label": str(legacy.get("name") or normalized).strip(),
+    }
+
+
+def _access_key_status_payload(*, s, card: GiftCard) -> dict[str, Any]:
+    meta = _access_key_meta_from_card_type(s=s, card_type=str(card.card_type or ""))
+    return {
+        "key": str(card.code or "").strip(),
+        "exists": True,
+        "redeemed": bool(card.redeemed_by is not None),
+        "redeemed_at": _safe_iso(getattr(card, "redeemed_at", None)),
+        "issued_at": _safe_iso(getattr(card, "created_at", None)),
+        "plan": meta.get("plan") if meta else None,
+        "kind": str(meta.get("kind") or "unknown") if meta else "unknown",
+        "legacy_type": meta.get("legacy_type") if meta else None,
+        "days": int(meta.get("days") or 0) if meta else 0,
+        "device_limit": int(meta.get("device_limit") or 0) if meta else 0,
+        "node_policy": meta.get("node_policy") if meta else None,
+        "created_by": int(card.created_by or 0) if getattr(card, "created_by", None) is not None else None,
+        "redeemed_by": int(card.redeemed_by or 0) if getattr(card, "redeemed_by", None) is not None else None,
+    }
+
+
+def _apply_access_key_to_user(*, user: User, meta: dict[str, Any], now: datetime) -> dict[str, Any]:
+    days = max(1, int(meta.get("days") or 0))
+    current_expiry = getattr(user, "expiry_at", None)
+    if not current_expiry or current_expiry <= now:
+        current_expiry = now
+
+    if not getattr(user, "uuid", None):
+        user.uuid = str(uuid.uuid4())
+    if not getattr(user, "email", None):
+        user.email = f"User_{int(user.tg_id)}"
+    if not getattr(user, "sub_token", None):
+        user.sub_token = secrets.token_urlsafe(32)
+
+    user.expiry_at = current_expiry + timedelta(days=days)
+    user.sub_type = "PAID"
+    user.is_active = True
+    user.first_purchase_done = True
+
+    plan_code = str(meta.get("plan_code") or "").strip().lower()
+    if plan_code:
+        user.current_plan_code = plan_code
+
+    return {
+        "expiry_at": _safe_iso(getattr(user, "expiry_at", None)),
+        "current_plan_code": str(getattr(user, "current_plan_code", "") or "").strip().lower() or None,
+    }
+
+
+async def _sync_control_panel_access(*, user: User) -> bool:
+    sync_ok = False
+    panel = ControlPanel()
+    try:
+        sync_ok = bool(
+            await panel.add_client(
+                user_uuid=str(user.uuid or ""),
+                email=str(user.email or f"User_{int(user.tg_id)}"),
+                sub_type=str(user.sub_type or "FREE"),
+                total_gb=int(user.total_gb or 0),
+                tg_id=int(user.tg_id),
+                sub_token=str(user.sub_token or ""),
+            )
+        )
+    except Exception:
+        sync_ok = False
+    finally:
+        await panel.close()
+    return sync_ok
+
+
+def _linked_identities_payload(*, s, user: User, auth_user: dict[str, Any] | None = None) -> dict[str, Any]:
+    email_identity = get_verified_identity_for_user(s, int(user.tg_id))
+    telegram_id = _linked_telegram_id(user) or (0 if bool(getattr(user, "is_app_user", False)) else int(user.tg_id))
+    telegram_username = (
+        str(getattr(user, "linked_telegram_username", "") or "").strip()
+        or (str(getattr(user, "username", "") or "").strip() if telegram_id and not bool(getattr(user, "is_app_user", False)) else "")
+        or (str((auth_user or {}).get("username") or "").strip() if telegram_id else "")
+    )
+    return {
+        "app_account": {
+            "id": str(int(user.tg_id)),
+            "install_id": str(getattr(user, "app_install_id", "") or "").strip() or None,
+            "device_name": _normalize_app_device_name(
+                getattr(user, "app_device_name", None) or getattr(user, "display_name", None),
+            ),
+            "platform": str(getattr(user, "app_platform", "") or "").strip() or None,
+            "created_at": _safe_iso(getattr(user, "created_at", None)),
+        },
+        "telegram": {
+            "id": telegram_id or None,
+            "username": telegram_username or None,
+            "linked": bool(telegram_id),
+            "role": str(_ACCESS_ENTRY_FLOWS.get("telegram", {}).get("role") or "").strip() or None,
+        },
+        "email": _email_identity_payload(email_identity),
+        "devices": _build_app_device_rows(user),
+    }
+
+
+def _free_caps_payload(*, user: User, access_policy: dict[str, Any]) -> dict[str, Any]:
+    free_active = str(access_policy.get("access_state") or "").strip() in {"free_monthly", "free_soft_mode"}
+    return {
+        "plan_code": str(_FREE_TIER_FACTS.get("plan_code") or "free_monthly"),
+        "location_code": str(_FREE_TIER_FACTS.get("location_code") or "NL-free"),
+        "traffic_limit_gb": int(_FREE_TIER_FACTS.get("traffic_limit_gb") or 5),
+        "cycle_days": int(_FREE_TIER_FACTS.get("cycle_days") or 30),
+        "speed_limit_mbps": int(_FREE_TIER_FACTS.get("speed_limit_mbps") or 50),
+        "soft_mode_speed_limit_mbps": int(_FREE_TIER_FACTS.get("soft_mode_speed_limit_mbps") or 2),
+        "device_limit": int(_FREE_TIER_FACTS.get("device_limit") or 1),
+        "monthly_reset": bool(_FREE_TIER_FACTS.get("monthly_reset", True)),
+        "active": free_active,
+        "next_reset_at": access_policy.get("next_reset_at"),
+    }
+
+
+def _redeem_eligibility_payload(*, user: User, access_policy: dict[str, Any]) -> dict[str, Any]:
+    access_state = str(access_policy.get("access_state") or "").strip()
+    state_facts = _access_matrix_state_facts(access_state)
+    eligible = bool(state_facts.get("redeem_eligible", True))
+    reason = None
+    if not eligible:
+        reason = "already_managed_premium"
+    return {
+        "eligible": eligible,
+        "access_state": access_state,
+        "reason": reason,
+        "buy_flow": str((_TARIFF_CATALOG.get("commerce_model") or {}).get("primary_purchase_flow") or "buy_key"),
+        "redeem_flow": str((_TARIFF_CATALOG.get("commerce_model") or {}).get("primary_fulfillment_flow") or "redeem_key"),
+    }
+
+
+def _hidden_transport_matrix_payload(*, nodes: list[Any], client_policy: dict[str, Any] | None = None) -> dict[str, Any]:
+    order = list(_ACCESS_PUBLIC_DEFAULTS.get("hidden_transport_order") or ["vless_reality", "vmess", "trojan", "xhttp"])
+    active_transport = str((client_policy or {}).get("transport_kind") or "").strip().lower()
+    xhttp_available = any(
+        _node_supports_transport_profile(node, RESERVE_XHTTP_CDN) or _node_supports_transport_profile(node, OPERATOR_LAB)
+        for node in (nodes or [])
+    )
+    transports: list[dict[str, Any]] = []
+    for key in order:
+        available = False
+        gated_reason = None
+        if key == "vless_reality":
+            available = True
+        elif key == "xhttp":
+            available = bool(xhttp_available)
+            if not available:
+                gated_reason = "cdn_static_prerequisite"
+        else:
+            gated_reason = "not_enabled_in_current_rollout"
+        transports.append(
+            {
+                "id": key,
+                "hidden": True,
+                "available": available,
+                "active": active_transport == key,
+                "gated_reason": gated_reason,
+            }
+        )
+    return {
+        "logical_location_count": int(_ACCESS_PUBLIC_DEFAULTS.get("logical_location_count") or 1),
+        "logical_location_label": str(_ACCESS_PUBLIC_DEFAULTS.get("logical_location_label") or "POKROV"),
+        "order": order,
+        "transports": transports,
+    }
+
+
+def _location_matrix_payload(*, user: User, nodes: list[Any], client_policy: dict[str, Any] | None = None) -> dict[str, Any]:
+    route_mode = str((client_policy or {}).get("route_mode") or "").strip().lower()
+    active_public_route = "selected_apps" if route_mode == "selected_apps" else "all_except_ru"
+    hidden_transport_matrix = _hidden_transport_matrix_payload(nodes=nodes, client_policy=client_policy)
+    return {
+        "entries": [
+            {
+                "id": "pokrov-managed",
+                "label": str(_ACCESS_PUBLIC_DEFAULTS.get("logical_location_label") or "POKROV"),
+                "visible": True,
+                "recommended": True,
+                "active_routing_mode": active_public_route,
+                "routing_modes": [
+                    {"id": "all_except_ru", "label": "All except RU", "default": True},
+                    {"id": "full_tunnel", "label": "Full tunnel", "default": False},
+                    {"id": "selected_apps", "label": "Selected apps", "default": False},
+                ],
+                "hidden_transport_matrix": hidden_transport_matrix,
+            }
+        ],
+    }
+
+
+def _promo_slot_catalog_maps() -> tuple[dict[str, dict[str, Any]], dict[str, dict[str, Any]]]:
+    slot_map = {
+        str(slot.get("id") or "").strip(): dict(slot)
+        for slot in list(_PROMO_SLOTS.get("slots") or [])
+        if str(slot.get("id") or "").strip()
+    }
+    content_map = {
+        str(item.get("id") or "").strip(): dict(item)
+        for item in list(_PROMO_SLOTS.get("content_catalog") or [])
+        if str(item.get("id") or "").strip()
+    }
+    return slot_map, content_map
+
+
+def _normalize_promo_slot_assignment(raw: dict[str, Any], *, strict: bool) -> dict[str, Any] | None:
+    slot_map, content_map = _promo_slot_catalog_maps()
+    slot_id = str(raw.get("slot_id") or "").strip()
+    if slot_id not in slot_map:
+        if strict:
+            raise HTTPException(status_code=400, detail=f"Unsupported promo slot: {slot_id or 'empty'}")
+        return None
+
+    content_id = str(raw.get("content_id") or "").strip()
+    if content_id not in content_map:
+        if strict:
+            raise HTTPException(status_code=400, detail=f"Unsupported promo content: {content_id or 'empty'}")
+        return None
+
+    slot_facts = slot_map[slot_id]
+    allowed_content_ids = {
+        str(item).strip()
+        for item in list(slot_facts.get("allowed_content_ids") or [])
+        if str(item).strip()
+    }
+    if content_id not in allowed_content_ids:
+        if strict:
+            raise HTTPException(status_code=400, detail=f"Promo content {content_id} is not allowed for slot {slot_id}")
+        return None
+
+    allowed_contexts = {
+        str(item).strip()
+        for item in list(slot_facts.get("contexts") or [])
+        if str(item).strip()
+    }
+    contexts: list[str] = []
+    for raw_context in list(raw.get("contexts") or []):
+        context = str(raw_context or "").strip()
+        if not context:
+            continue
+        if context not in allowed_contexts:
+            if strict:
+                raise HTTPException(status_code=400, detail=f"Promo context {context} is not allowed for slot {slot_id}")
+            continue
+        if context not in contexts:
+            contexts.append(context)
+    if not contexts:
+        contexts = list(allowed_contexts)
+
+    return {
+        "slot_id": slot_id,
+        "content_id": content_id,
+        "enabled": bool(raw.get("enabled", True)),
+        "title": str(raw.get("title") or "").strip()[:160] or None,
+        "body": str(raw.get("body") or "").strip()[:500] or None,
+        "cta_label": str(raw.get("cta_label") or "").strip()[:80] or None,
+        "cta_href": str(raw.get("cta_href") or "").strip()[:600] or None,
+        "contexts": contexts,
+        "sort_order": max(0, int(raw.get("sort_order") or 100)),
+    }
+
+
+def _normalized_promo_slots_config(raw: Any, *, strict: bool = False) -> dict[str, Any]:
+    assignments_raw = []
+    if isinstance(raw, dict):
+        assignments_raw = list(raw.get("assignments") or [])
+
+    assignments: list[dict[str, Any]] = []
+    for item in assignments_raw:
+        if not isinstance(item, dict):
+            if strict:
+                raise HTTPException(status_code=400, detail="Promo assignments must be objects")
+            continue
+        normalized = _normalize_promo_slot_assignment(item, strict=strict)
+        if normalized:
+            assignments.append(normalized)
+
+    assignments.sort(key=lambda item: (int(item.get("sort_order") or 100), str(item.get("slot_id") or ""), str(item.get("content_id") or "")))
+    return {
+        "version": str(_PROMO_SLOTS.get("version") or ""),
+        "assignments": assignments,
+        "remote_available": bool(assignments),
+        "fallback_behavior": str(_PROMO_SLOTS.get("fallback_behavior") or "contextual_only_when_remote_unavailable"),
+        "mode": str(_PROMO_SLOTS.get("mode") or "whitelist_slots"),
+    }
+
+
+def _promo_slots_payload_for_surface(*, s, surface: str, access_state: str) -> dict[str, Any]:
+    slot_map, content_map = _promo_slot_catalog_maps()
+    normalized = _normalized_promo_slots_config(
+        _get_app_setting_json(s=s, key=PROMO_SLOTS_CONFIG_KEY, default={}),
+        strict=False,
+    )
+    approved_slots = [
+        dict(slot)
+        for slot in slot_map.values()
+        if str(slot.get("surface") or "").strip() == str(surface or "").strip()
+    ]
+
+    slots: list[dict[str, Any]] = []
+    for assignment in list(normalized.get("assignments") or []):
+        slot_id = str(assignment.get("slot_id") or "").strip()
+        slot_facts = slot_map.get(slot_id)
+        if not slot_facts:
+            continue
+        if str(slot_facts.get("surface") or "").strip() != str(surface or "").strip():
+            continue
+        if str(access_state or "").strip() not in set(assignment.get("contexts") or []):
+            continue
+        content_id = str(assignment.get("content_id") or "").strip()
+        content_facts = dict(content_map.get(content_id) or {})
+        slots.append(
+            {
+                "slot_id": slot_id,
+                "surface": str(slot_facts.get("surface") or "").strip(),
+                "enabled": bool(assignment.get("enabled", True)),
+                "content_id": content_id,
+                "contexts": list(assignment.get("contexts") or []),
+                "title": assignment.get("title"),
+                "body": assignment.get("body"),
+                "cta_label": assignment.get("cta_label"),
+                "cta_href": assignment.get("cta_href"),
+                "sort_order": int(assignment.get("sort_order") or 100),
+                "goal": str(content_facts.get("goal") or "").strip() or None,
+                "kind": str(content_facts.get("kind") or "").strip() or None,
+            }
+        )
+
+    return {
+        "surface": str(surface or "").strip(),
+        "access_state": str(access_state or "").strip(),
+        "remote_available": bool(normalized.get("remote_available")),
+        "fallback_behavior": str(normalized.get("fallback_behavior") or "contextual_only_when_remote_unavailable"),
+        "mode": str(normalized.get("mode") or "whitelist_slots"),
+        "approved_slots": approved_slots,
+        "slots": slots,
+    }
+
+
+def _public_catalog_payload(*, s) -> dict[str, Any]:
+    return {
+        "catalog_version": str(_TARIFF_CATALOG.get("catalog_version") or ""),
+        "commerce_model": dict(_TARIFF_CATALOG.get("commerce_model") or {}),
+        "public_surface_policy": dict(_TARIFF_CATALOG.get("public_surface_policy") or {}),
+        "pricing_preview": dict(_TARIFF_CATALOG.get("pricing_preview") or {}),
+        "plans": _plan_catalog_payload(s=s, only_active=True),
+        "free_tier": dict(_FREE_TIER_FACTS),
+        "public_defaults": dict(_ACCESS_PUBLIC_DEFAULTS),
+        "promo_slots": {
+            "mode": str(_PROMO_SLOTS.get("mode") or "whitelist_slots"),
+            "fallback_behavior": str(_PROMO_SLOTS.get("fallback_behavior") or "contextual_only_when_remote_unavailable"),
+            "slot_ids": [str(slot.get("id") or "").strip() for slot in list(_PROMO_SLOTS.get("slots") or []) if str(slot.get("id") or "").strip()],
+        },
+    }
 
 
 def _price_with_pending_discount(*, amount_rub: int, pending_pct: int | None) -> tuple[int, int]:
@@ -3760,6 +4209,16 @@ async def public_plans(response: Response) -> dict:
         s.close()
 
 
+@app.get("/api/public/catalog")
+async def public_catalog(response: Response) -> dict:
+    s = SessionLocal()
+    try:
+        response.headers["Cache-Control"] = "public, max-age=120"
+        return _public_catalog_payload(s=s)
+    finally:
+        s.close()
+
+
 @app.get("/api/public/live-updates")
 async def public_live_updates(response: Response, limit: int = Query(default=3, ge=1, le=10)) -> dict:
     s = SessionLocal()
@@ -4217,6 +4676,18 @@ async def client_start_trial(payload: AppStartTrialIn, request: Request) -> dict
         channel_bonus_days=CHANNEL_PREMIUM_DAYS,
         client_policy=client_policy,
     )
+    payload_s = SessionLocal()
+    try:
+        payload_user = payload_s.query(User).filter(User.tg_id == int(user.tg_id)).first() or user
+        payload_nodes = _nodes_for_user(payload_user, enabled_nodes(payload_s), session=payload_s)
+        promo_slots = _promo_slots_payload_for_surface(
+            s=payload_s,
+            surface="app",
+            access_state=str(start_trial_parts["access"].get("access_state") or ""),
+        )
+        linked_identities = _linked_identities_payload(s=payload_s, user=payload_user)
+    finally:
+        payload_s.close()
 
     return {
         "ok": True,
@@ -4228,6 +4699,12 @@ async def client_start_trial(payload: AppStartTrialIn, request: Request) -> dict
         "session": start_trial_parts["session"],
         "client_policy": start_trial_parts["client_policy"],
         "access": start_trial_parts["access"],
+        "linked_identities": linked_identities,
+        "free_caps": _free_caps_payload(user=user, access_policy=start_trial_parts["access"]),
+        "redeem_eligibility": _redeem_eligibility_payload(user=user, access_policy=start_trial_parts["access"]),
+        "promo_slots": promo_slots,
+        "hidden_transport_matrix": _hidden_transport_matrix_payload(nodes=payload_nodes, client_policy=client_policy),
+        "location_matrix": _location_matrix_payload(user=user, nodes=payload_nodes, client_policy=client_policy),
         "provisioning": start_trial_parts["provisioning"],
     }
 
@@ -4479,6 +4956,11 @@ async def client_managed_profile(
         transport_profile = str(client_policy.get("transport_profile") or LEGACY_REALITY_FALLBACK).strip() or LEGACY_REALITY_FALLBACK
         nodes = enabled_nodes(s)
         nodes_for_user = _nodes_for_user(user, nodes, session=s)
+        runtime = await _get_user_runtime_summary(s=s, user=user, nodes=nodes_for_user)
+        access_policy = _build_access_policy(
+            user=user,
+            used_bytes=int(runtime.get("traffic_total_bytes", 0) or 0),
+        )
         effective_nodes = _effective_transport_nodes(
             nodes=nodes_for_user,
             rollout_config=rollout_config,
@@ -4510,7 +4992,51 @@ async def client_managed_profile(
             "support_context": dict(client_policy.get("support_context") or {}),
             "subscription_url": build_subscription_url(str(getattr(user, "sub_token", "") or "")),
             "smart_connect": smart_connect,
+            "linked_identities": _linked_identities_payload(s=s, user=user, auth_user=auth_user),
+            "access": {
+                **access_policy,
+                "sub_type": str(getattr(user, "sub_type", "") or ""),
+                "current_plan_code": str(getattr(user, "current_plan_code", "") or ""),
+                "expiry_at": _safe_iso(getattr(user, "expiry_at", None)),
+            },
+            "free_caps": _free_caps_payload(user=user, access_policy=access_policy),
+            "redeem_eligibility": _redeem_eligibility_payload(user=user, access_policy=access_policy),
+            "promo_slots": _promo_slots_payload_for_surface(
+                s=s,
+                surface="app",
+                access_state=str(access_policy.get("access_state") or ""),
+            ),
+            "hidden_transport_matrix": _hidden_transport_matrix_payload(nodes=nodes_for_user, client_policy=client_policy),
+            "location_matrix": _location_matrix_payload(user=user, nodes=nodes_for_user, client_policy=client_policy),
         }
+    finally:
+        s.close()
+
+
+@app.get("/api/client/promo-slots")
+async def client_promo_slots(
+    request: Request,
+    surface: str = Query(default="app", min_length=2, max_length=32),
+    x_telegram_init_data: str = Header(default=""),
+) -> dict[str, Any]:
+    auth_user = _require_auth_user(x_telegram_init_data, request=request)
+    tg_id = int(auth_user.get("id", 0))
+    s = SessionLocal()
+    try:
+        user = s.query(User).filter(User.tg_id == tg_id).first()
+        if not user:
+            raise HTTPException(status_code=404, detail="User not found")
+        _maybe_downgrade_expired_to_free(s, user)
+        _ensure_free_cycle_state_persisted(s, user)
+        nodes = enabled_nodes(s)
+        nodes_for_user = _nodes_for_user(user, nodes, session=s)
+        runtime = await _get_user_runtime_summary(s=s, user=user, nodes=nodes_for_user)
+        access_policy = _build_access_policy(user=user, used_bytes=int(runtime.get("traffic_total_bytes", 0) or 0))
+        return _promo_slots_payload_for_surface(
+            s=s,
+            surface=str(surface or "app").strip().lower(),
+            access_state=str(access_policy.get("access_state") or ""),
+        )
     finally:
         s.close()
 
@@ -5813,6 +6339,16 @@ async def user_data(
                 "username": str(getattr(user, "linked_telegram_username", "") or "").strip() or None,
             },
             "client_policy": client_policy,
+            "linked_identities": _linked_identities_payload(s=s, user=user, auth_user=auth_user),
+            "free_caps": _free_caps_payload(user=user, access_policy=access_policy),
+            "redeem_eligibility": _redeem_eligibility_payload(user=user, access_policy=access_policy),
+            "promo_slots": _promo_slots_payload_for_surface(
+                s=s,
+                surface="webapp",
+                access_state=str(access_policy.get("access_state") or ""),
+            ),
+            "hidden_transport_matrix": _hidden_transport_matrix_payload(nodes=nodes_for_user, client_policy=client_policy),
+            "location_matrix": _location_matrix_payload(user=user, nodes=nodes_for_user, client_policy=client_policy),
             "sync": {
                 "app_identity_known": bool(str(getattr(user, "app_install_id", "") or "").strip()),
                 "telegram_linked": bool(_linked_telegram_id(user)),
@@ -5982,6 +6518,16 @@ async def dashboard_snapshot(
             subscription_url=sub_url,
             segment=segment,
             client_policy=client_policy,
+            linked_identities=_linked_identities_payload(s=s, user=user, auth_user=auth_user),
+            free_caps=_free_caps_payload(user=user, access_policy=access_policy),
+            redeem_eligibility=_redeem_eligibility_payload(user=user, access_policy=access_policy),
+            promo_slots=_promo_slots_payload_for_surface(
+                s=s,
+                surface="webapp",
+                access_state=str(access_policy.get("access_state") or ""),
+            ),
+            hidden_transport_matrix=_hidden_transport_matrix_payload(nodes=nodes_for_user, client_policy=client_policy),
+            location_matrix=_location_matrix_payload(user=user, nodes=nodes_for_user, client_policy=client_policy),
             connection_snapshot={
                 "status": str(runtime.get("status") or "unknown"),
                 "active_connections": int(runtime.get("active_connections", 0) or 0),
@@ -6359,6 +6905,136 @@ async def gift_redeem(payload: GiftRedeemIn, request: Request, x_telegram_init_d
         "tos_required": 400,
     }
     raise HTTPException(status_code=status_map.get(error, 400), detail=message)
+
+
+@app.get("/api/access-keys/status/{key}")
+async def access_key_status(key: str) -> dict[str, Any]:
+    code = str(key or "").strip().upper()
+    if not code:
+        raise HTTPException(status_code=400, detail="Access key is required")
+    s = SessionLocal()
+    try:
+        card = s.query(GiftCard).filter(func.upper(GiftCard.code) == code).first()
+        if not card:
+            raise HTTPException(status_code=404, detail="Access key not found")
+        payload = _access_key_status_payload(s=s, card=card)
+        if payload.get("kind") == "unknown":
+            raise HTTPException(status_code=400, detail="Access key type is not supported")
+        return payload
+    finally:
+        s.close()
+
+
+@app.post("/api/access-keys/redeem")
+async def access_key_redeem(
+    payload: AccessKeyRedeemIn,
+    request: Request,
+    x_telegram_init_data: str = Header(default=""),
+) -> dict[str, Any]:
+    auth_user = _require_auth_user(x_telegram_init_data, request=request)
+    tg_id = int(auth_user.get("id", 0))
+    code = str(payload.key or "").strip().upper()
+    if not code:
+        raise HTTPException(status_code=400, detail="Access key is required")
+
+    s = SessionLocal()
+    try:
+        user = s.query(User).filter(User.tg_id == int(tg_id)).first()
+        if not user:
+            raise HTTPException(status_code=404, detail="User not found")
+        card = s.query(GiftCard).filter(func.upper(GiftCard.code) == code).first()
+        if not card:
+            raise HTTPException(status_code=404, detail="Access key not found")
+        if card.redeemed_by is not None:
+            raise HTTPException(status_code=400, detail="Access key already redeemed")
+        if int(card.created_by or 0) == int(tg_id):
+            raise HTTPException(status_code=400, detail="You cannot redeem your own key")
+        if not bool(getattr(user, "tos_accepted", False)):
+            raise HTTPException(status_code=400, detail="Accept terms before redeeming a key")
+
+        meta = _access_key_meta_from_card_type(s=s, card_type=str(card.card_type or ""))
+        if not meta:
+            raise HTTPException(status_code=400, detail="Access key type is not supported")
+
+        now = _utcnow()
+        applied = _apply_access_key_to_user(user=user, meta=meta, now=now)
+        updated = (
+            s.query(GiftCard)
+            .filter(GiftCard.id == int(card.id), GiftCard.redeemed_by.is_(None))
+            .update(
+                {
+                    GiftCard.redeemed_by: int(tg_id),
+                    GiftCard.redeemed_at: now,
+                },
+                synchronize_session=False,
+            )
+        )
+        if int(updated or 0) != 1:
+            s.rollback()
+            raise HTTPException(status_code=400, detail="Access key already redeemed")
+
+        s.commit()
+        s.refresh(user)
+        card = s.query(GiftCard).filter(GiftCard.id == int(card.id)).first() or card
+        nodes = enabled_nodes(s)
+        nodes_for_user = _nodes_for_user(user, nodes, session=s)
+        client_policy = app_first_service.build_client_policy(
+            session=s,
+            user=user,
+            install_id=str(getattr(user, "app_install_id", "") or "").strip() or None,
+        )
+        access_policy = _build_access_policy(user=user, used_bytes=0)
+        linked_identities = _linked_identities_payload(s=s, user=user, auth_user=auth_user)
+        promo_slots = _promo_slots_payload_for_surface(
+            s=s,
+            surface="webapp",
+            access_state=str(access_policy.get("access_state") or ""),
+        )
+        key_status = _access_key_status_payload(s=s, card=card)
+    except HTTPException:
+        s.rollback()
+        raise
+    except Exception:
+        s.rollback()
+        logger.exception("access key redeem failed key=%s tg_id=%s", code, int(tg_id))
+        raise HTTPException(status_code=500, detail="Failed to redeem access key")
+    finally:
+        s.close()
+
+    sync_ok = await _sync_control_panel_access(user=user)
+    try:
+        track_event(
+            tg_id=int(tg_id),
+            event_name="access_key_redeemed",
+            source="webapp",
+            meta={"code": code, "plan_code": key_status.get("plan", {}).get("code"), "sync_ok": bool(sync_ok)},
+        )
+    except Exception:
+        logger.exception("failed to track access_key_redeemed tg_id=%s", int(tg_id))
+
+    return {
+        "ok": True,
+        "key": code,
+        "status": key_status,
+        "plan": key_status.get("plan"),
+        "access": {
+            **access_policy,
+            "sub_type": str(getattr(user, "sub_type", "") or ""),
+            "current_plan_code": applied.get("current_plan_code"),
+            "expiry_at": applied.get("expiry_at"),
+        },
+        "linked_identities": linked_identities,
+        "free_caps": _free_caps_payload(user=user, access_policy=access_policy),
+        "redeem_eligibility": _redeem_eligibility_payload(user=user, access_policy=access_policy),
+        "promo_slots": promo_slots,
+        "hidden_transport_matrix": _hidden_transport_matrix_payload(nodes=nodes_for_user, client_policy=client_policy),
+        "location_matrix": _location_matrix_payload(user=user, nodes=nodes_for_user, client_policy=client_policy),
+        "provisioning": {
+            "sync_ok": bool(sync_ok),
+            "managed_profile_path": "/api/client/profile/managed",
+            "dashboard_path": "/api/dashboard",
+        },
+    }
 
 
 @app.post("/api/reviews")
@@ -8722,6 +9398,51 @@ async def admin_network_rollout_config_put(payload: dict[str, Any], x_telegram_i
     return {"ok": True, "network_rollout_config": normalized}
 
 
+@app.get("/api/admin/promo-slots")
+async def admin_promo_slots_get(x_telegram_init_data: str = Header(default="")) -> dict[str, Any]:
+    _require_admin(x_telegram_init_data)
+    s = SessionLocal()
+    try:
+        config = _normalized_promo_slots_config(
+            _get_app_setting_json(s=s, key=PROMO_SLOTS_CONFIG_KEY, default={}),
+            strict=False,
+        )
+        slot_map, content_map = _promo_slot_catalog_maps()
+        return {
+            "promo_slots": {
+                **config,
+                "catalog": {
+                    "version": str(_PROMO_SLOTS.get("version") or ""),
+                    "mode": str(_PROMO_SLOTS.get("mode") or "whitelist_slots"),
+                    "fallback_behavior": str(_PROMO_SLOTS.get("fallback_behavior") or "contextual_only_when_remote_unavailable"),
+                    "slots": list(slot_map.values()),
+                    "content_catalog": list(content_map.values()),
+                },
+            }
+        }
+    finally:
+        s.close()
+
+
+@app.put("/api/admin/promo-slots")
+async def admin_promo_slots_put(payload: AdminPromoSlotsPutIn, x_telegram_init_data: str = Header(default="")) -> dict[str, Any]:
+    actor = int(_require_admin(x_telegram_init_data).get("id", 0))
+    normalized = _normalized_promo_slots_config({"assignments": payload.model_dump().get("assignments") or []}, strict=True)
+    s = SessionLocal()
+    try:
+        _set_app_setting_json(s=s, key=PROMO_SLOTS_CONFIG_KEY, value={"assignments": normalized.get("assignments") or []})
+        s.commit()
+    finally:
+        s.close()
+
+    _audit_admin(
+        actor_tg_id=actor,
+        action="admin_promo_slots_put",
+        meta={"assignments": len(list(normalized.get("assignments") or []))},
+    )
+    return {"ok": True, "promo_slots": normalized}
+
+
 @app.post("/api/admin/campaign-links/build")
 async def admin_campaign_links_build(payload: AdminCampaignLinksBuildIn, x_telegram_init_data: str = Header(default="")) -> dict:
     _require_admin(x_telegram_init_data)
@@ -9079,6 +9800,45 @@ async def admin_gift_codes(x_telegram_init_data: str = Header(default=""), limit
         }
     finally:
         s.close()
+
+
+@app.post("/api/admin/access-keys/issue")
+async def admin_access_keys_issue(payload: AdminAccessKeyIssueIn, x_telegram_init_data: str = Header(default="")) -> dict[str, Any]:
+    actor = int(_require_admin(x_telegram_init_data).get("id", 0))
+    plan_code = str(payload.plan_code or "").strip().lower()
+    s = SessionLocal()
+    try:
+        plan = _resolve_plan_config(s=s, code=plan_code)
+        normalized_plan = _normalized_plan_payload(plan, fallback_code=plan_code)
+        if not normalized_plan:
+            raise HTTPException(status_code=400, detail="Unsupported plan_code")
+
+        issued: list[dict[str, Any]] = []
+        for _ in range(int(payload.quantity or 1)):
+            code = _generate_gift_code_for_admin(s)
+            row = GiftCard(code=code, card_type=normalized_plan["code"], created_by=actor)
+            s.add(row)
+            issued.append(
+                {
+                    "key": code,
+                    "plan": normalized_plan,
+                    "issued_at": _safe_iso(_utcnow()),
+                }
+            )
+        s.commit()
+    finally:
+        s.close()
+
+    _audit_admin(
+        actor_tg_id=actor,
+        action="admin_access_keys_issue",
+        meta={"plan_code": plan_code, "quantity": int(payload.quantity or 1)},
+    )
+    return {
+        "ok": True,
+        "plan": normalized_plan,
+        "issued": issued,
+    }
 
 
 @app.post("/api/admin/gift-codes")
