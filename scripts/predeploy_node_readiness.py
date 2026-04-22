@@ -372,15 +372,18 @@ def _inspect_runtime_inbound(row: NodeReadinessRow, *, ssh_user: str, ssh_port: 
     ssh, auth_method = connect_node(code=row.code, host=row.host, user=ssh_user, port=ssh_port, passwords_path=passwords)
     try:
         sql = (
-            "sqlite3 /etc/x-ui/x-ui.db "
-            f"\"select id, port, protocol, stream_settings, remark, enable from inbounds where id={int(row.inbound_id)};\""
+            "sqlite3 -readonly /etc/x-ui/x-ui.db "
+            f"\"PRAGMA busy_timeout=5000; select id, port, protocol, stream_settings, remark, enable from inbounds where id={int(row.inbound_id)};\""
         )
-        _code, out, _err = _run(ssh, sql, timeout=30)
+        code, out, err = _run(ssh, sql, timeout=30)
     finally:
         ssh.close()
-    if not out.strip():
+    rows = [line.strip() for line in str(out or "").splitlines() if "|" in str(line or "")]
+    if code != 0 and not rows:
+        return {"inspect_error": f"sqlite_query_error:{str(err or '').strip()[:120]}", "auth_method": auth_method}
+    if not rows:
         return {"inspect_error": "inbound_not_found", "auth_method": auth_method}
-    parts = out.strip().split("|", 5)
+    parts = rows[-1].split("|", 5)
     try:
         stream = json.loads(parts[3])
     except Exception:

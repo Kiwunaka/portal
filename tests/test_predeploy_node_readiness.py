@@ -156,6 +156,44 @@ class PredeployNodeReadinessTests(unittest.TestCase):
         self.assertEqual(row.observer_parse_error_count, 2)
         self.assertEqual(row.inbound_id, 17)
 
+    def test_inspect_runtime_inbound_ignores_busy_timeout_output(self) -> None:
+        row = self.module.NodeReadinessRow(
+            code="us",
+            host="us.pokrov.space",
+            enabled=True,
+            accepting_new_clients=True,
+            is_draining=False,
+            is_healthy=True,
+            health_score=70.0,
+            last_health_at=None,
+            last_probe_at=None,
+            inbound_id=1,
+            vless_port=443,
+            reality_sni="www.apple.com",
+            reality_sid="abcd",
+            reality_pbk="pubkey",
+        )
+
+        class FakeSsh:
+            def close(self) -> None:
+                return None
+
+        with patch.object(self.module, "connect_node", return_value=(FakeSsh(), "key")), patch.object(
+            self.module,
+            "_run",
+            return_value=(0, "5000\n1|443|vless|{\"network\":\"tcp\",\"security\":\"reality\",\"realitySettings\":{\"dest\":\"www.apple.com:443\",\"serverNames\":[\"www.apple.com\"],\"shortIds\":[\"abcd\"],\"privateKey\":\"\"}}|US Reality|1\n", ""),
+        ):
+            inspected = self.module._inspect_runtime_inbound(
+                row,
+                ssh_user="root",
+                ssh_port=29374,
+                passwords=Path("dummy"),
+            )
+
+        self.assertEqual(inspected["inbound_id"], 1)
+        self.assertEqual(inspected["port"], 443)
+        self.assertEqual(inspected["protocol"], "vless")
+
 
 if __name__ == "__main__":
     unittest.main()
