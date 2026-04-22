@@ -287,6 +287,11 @@ def main() -> int:
             ("checkout443", _curl_retry("pay.pokrov.space/checkout/", host="pay.pokrov.space", contains="Ваш путь к быстрой сети | POKROV")),
             ("fkverify443", _curl_retry(f"{web_domain}/fk-verify.html", host=web_domain)),
         ]
+        updated_marketing_checks = {
+            "mkt443": _curl_retry(f"{web_domain}/", host=web_domain, contains="Android + Windows"),
+            "mktHeroSecondary443": _curl_retry(f"{web_domain}/", host=web_domain, contains="All except RU"),
+        }
+        curl_checks = [(name, updated_marketing_checks.get(name, cmd)) for name, cmd in curl_checks]
         if args.check_legacy_2096:
             curl_checks.append(
                 ("health2096", f"curl -fsS --insecure --resolve {api_domain}:2096:127.0.0.1 https://{api_domain}:2096/api/health"),

@@ -1,44 +1,93 @@
 # Release Gate Report
 
-- Generated at: `2026-04-22 23:18:07`
+- Generated at: `2026-04-23 01:25:35`
 - Status: `PASS`
 
 ## Summary
 
 | Gate | Exit code | Duration (s) |
 |---|---:|---:|
-| Release pytest matrix | 0 | 143.65 |
-| Admin/auth regressions | 0 | 64.37 |
+| Node predeploy readiness | 0 | 98.28 |
+| Release pytest matrix | 0 | 147.99 |
+| Admin/auth regressions | 0 | 64.41 |
 | Client security smoke | 0 | 0.07 |
-| Client Flutter tests | 0 | 17.84 |
-| API lifecycle smoke | 0 | 7.84 |
+| Client Flutter tests | 0 | 18.06 |
+| API lifecycle smoke | 0 | 8.04 |
 | Public link checks | 0 | 0.09 |
-| Marketing production build | 0 | 45.41 |
-| Admin webapp smoke | 0 | 0.11 |
-| WebApp production build | 0 | 43.93 |
-| WebApp Playwright E2E | 0 | 96.29 |
+| Marketing production build | 0 | 45.56 |
+| Admin webapp smoke | 0 | 0.12 |
+| WebApp production build | 0 | 44.28 |
+| WebApp Playwright E2E | 0 | 92.07 |
 | UI visual smoke | 0 | 0.09 |
 
 ## Command Tails
 
-### Release pytest matrix
+### Node predeploy readiness
 
-- Command: `C:\Users\kiwun\AppData\Local\Programs\Python\Python312\python.exe -m pytest portal_bot/tests/test_app_first_api.py tests/test_portal_api.py tests/test_worker_retention.py tests/test_observer_service.py tests/test_observer_api.py tests/test_collect_xray_observer.py tests/test_predeploy_node_readiness.py tests/test_admin_webapp_smoke.py tests/test_public_copy_guardrails.py tests/test_reviews_username_masking.py -q --basetemp C:\Users\kiwun\Documents\ai\VPN\.tmp\pytest-basetemp\release-gate-_53io108`
+- Command: `C:\Users\kiwun\AppData\Local\Programs\Python\Python312\python.exe scripts/predeploy_node_readiness.py --brain-ip 82.21.114.104 --web-domain pokrov.space --ssh-user root --ssh-port 29374 --passwords C:\Users\kiwun\Documents\ai\VPN\VPN NODE SSH KEYS\PASSWORDS.txt`
 - Exit: `0`
 
 ```text
-.................................................                        [100%]
-49 passed in 142.63s (0:02:22)
+      "dns_ok": true,
+      "tcp_ok": true,
+      "tls_ok": true,
+      "target_tls_ok": true,
+      "dns_records": [
+        "82.24.195.93"
+      ],
+      "error_kind": "",
+      "error_message": ""
+    },
+    {
+      "code": "pl",
+      "host": "pl.kiwunaka.space",
+      "dns_ok": true,
+      "tcp_ok": true,
+      "tls_ok": true,
+      "target_tls_ok": true,
+      "dns_records": [
+        "82.40.38.84"
+      ],
+      "error_kind": "",
+      "error_message": ""
+    },
+    {
+      "code": "us",
+      "host": "us.kiwunaka.space",
+      "dns_ok": true,
+      "tcp_ok": true,
+      "tls_ok": true,
+      "target_tls_ok": true,
+      "dns_records": [
+        "82.21.92.181"
+      ],
+      "error_kind": "",
+      "error_message": ""
+    }
+  ],
+  "failures": [],
+  "ok": true
+}
+```
+
+### Release pytest matrix
+
+- Command: `C:\Users\kiwun\AppData\Local\Programs\Python\Python312\python.exe -m pytest portal_bot/tests/test_app_first_api.py tests/test_portal_api.py tests/test_worker_retention.py tests/test_observer_service.py tests/test_observer_api.py tests/test_collect_xray_observer.py tests/test_predeploy_node_readiness.py tests/test_admin_webapp_smoke.py tests/test_public_copy_guardrails.py tests/test_reviews_username_masking.py -q --basetemp C:\Users\kiwun\Documents\ai\VPN\.tmp\pytest-basetemp\release-gate-k80kbxbv`
+- Exit: `0`
+
+```text
+..................................................                       [100%]
+50 passed in 146.93s (0:02:26)
 ```
 
 ### Admin/auth regressions
 
-- Command: `C:\Users\kiwun\AppData\Local\Programs\Python\Python312\python.exe -m pytest tests/test_api_auth_and_tickets.py -q --basetemp C:\Users\kiwun\Documents\ai\VPN\.tmp\pytest-basetemp\release-gate-v9pujt_w`
+- Command: `C:\Users\kiwun\AppData\Local\Programs\Python\Python312\python.exe -m pytest tests/test_api_auth_and_tickets.py -q --basetemp C:\Users\kiwun\Documents\ai\VPN\.tmp\pytest-basetemp\release-gate-m17l68jb`
 - Exit: `0`
 
 ```text
 .........................................................                [100%]
-57 passed in 63.47s (0:01:03)
+57 passed in 63.51s (0:01:03)
 ```
 
 ### Client security smoke
@@ -70,10 +119,10 @@
 - Exit: `0`
 
 ```text
-00:06 +72: C:/Users/kiwun/Documents/ai/VPN/external/client-fork/app/test/features/per_app_proxy/overview/per_app_proxy_page_test.dart: adds a curated preset without dropping manual selections
-00:06 +73: C:/Users/kiwun/Documents/ai/VPN/external/client-fork/app/test/features/per_app_proxy/overview/per_app_proxy_page_test.dart: adds a curated preset without dropping manual selections
-00:06 +74: C:/Users/kiwun/Documents/ai/VPN/external/client-fork/app/test/features/per_app_proxy/overview/per_app_proxy_page_test.dart: adds a curated preset without dropping manual selections
-00:06 +75: C:/Users/kiwun/Documents/ai/VPN/external/client-fork/app/test/features/per_app_proxy/overview/per_app_proxy_page_test.dart: adds a curated preset without dropping manual selections
+00:07 +72: C:/Users/kiwun/Documents/ai/VPN/external/client-fork/app/test/features/per_app_proxy/overview/per_app_proxy_page_test.dart: adds a curated preset without dropping manual selections
+00:07 +73: C:/Users/kiwun/Documents/ai/VPN/external/client-fork/app/test/features/per_app_proxy/overview/per_app_proxy_page_test.dart: adds a curated preset without dropping manual selections
+00:07 +74: C:/Users/kiwun/Documents/ai/VPN/external/client-fork/app/test/features/per_app_proxy/overview/per_app_proxy_page_test.dart: adds a curated preset without dropping manual selections
+00:07 +75: C:/Users/kiwun/Documents/ai/VPN/external/client-fork/app/test/features/per_app_proxy/overview/per_app_proxy_page_test.dart: adds a curated preset without dropping manual selections
 00:07 +76: C:/Users/kiwun/Documents/ai/VPN/external/client-fork/app/test/features/portal/data/portal_session_store_test.dart: ensureInstallId generates and reuses a persisted install id
 00:07 +77: C:/Users/kiwun/Documents/ai/VPN/external/client-fork/app/test/features/portal/data/portal_session_store_test.dart: saveSessionToken persists runtime auth for future requests
 00:07 +78: C:/Users/kiwun/Documents/ai/VPN/external/client-fork/app/test/features/portal/data/portal_trial_activator_test.dart: activateTrial fetches managed manifest first and imports content
@@ -81,9 +130,9 @@
 00:07 +80: C:/Users/kiwun/Documents/ai/VPN/external/client-fork/app/test/features/portal/router/portal_routes_test.dart: portal routes use canonical names and preserve legacy aliases
 00:08 +81: C:/Users/kiwun/Documents/ai/VPN/external/client-fork/app/test/features/portal/widget/devices_page_test.dart: shows consumer device overview with current device name
 00:08 +82: C:/Users/kiwun/Documents/ai/VPN/external/client-fork/app/test/features/portal/widget/empty_profiles_home_body_test.dart: shows the premium empty home state in English
-00:08 +83: C:/Users/kiwun/Documents/ai/VPN/external/client-fork/app/test/features/portal/widget/empty_profiles_home_body_test.dart: shows the premium empty home state in English
-00:08 +84: C:/Users/kiwun/Documents/ai/VPN/external/client-fork/app/test/features/portal/widget/empty_profiles_home_body_test.dart: shows the premium empty home state in English
-00:08 +85: C:/Users/kiwun/Documents/ai/VPN/external/client-fork/app/test/features/portal/widget/empty_profiles_home_body_test.dart: shows the premium empty home state in English
+00:09 +83: C:/Users/kiwun/Documents/ai/VPN/external/client-fork/app/test/features/portal/widget/empty_profiles_home_body_test.dart: shows the premium empty home state in English
+00:09 +84: C:/Users/kiwun/Documents/ai/VPN/external/client-fork/app/test/features/portal/widget/empty_profiles_home_body_test.dart: shows the premium empty home state in English
+00:09 +85: C:/Users/kiwun/Documents/ai/VPN/external/client-fork/app/test/features/portal/widget/empty_profiles_home_body_test.dart: shows the premium empty home state in English
 00:09 +86: C:/Users/kiwun/Documents/ai/VPN/external/client-fork/app/test/features/portal/widget/locations_page_test.dart: shows auto-select and available locations
 00:09 +87: C:/Users/kiwun/Documents/ai/VPN/external/client-fork/app/test/features/portal/widget/locations_page_test.dart: shows auto-select and available locations
 00:09 +88: C:/Users/kiwun/Documents/ai/VPN/external/client-fork/app/test/features/portal/widget/premium_visuals_golden_test.dart: quick connect panel premium layout stays stable
@@ -94,7 +143,7 @@
 00:10 +93: C:/Users/kiwun/Documents/ai/VPN/external/client-fork/app/test/features/portal/widget/subscription_page_test.dart: shows browser checkout entry as the primary purchase action
 00:10 +94: C:/Users/kiwun/Documents/ai/VPN/external/client-fork/app/test/features/portal/widget/subscription_page_test.dart: shows browser checkout entry as the primary purchase action
 00:10 +95: C:/Users/kiwun/Documents/ai/VPN/external/client-fork/app/test/features/portal/widget/subscription_page_test.dart: shows browser checkout entry as the primary purchase action
-00:10 +96: C:/Users/kiwun/Documents/ai/VPN/external/client-fork/app/test/features/portal/widget/support_page_test.dart: shows in-app support composer and device context
+00:11 +96: C:/Users/kiwun/Documents/ai/VPN/external/client-fork/app/test/features/portal/widget/support_page_test.dart: shows in-app support composer and device context
 00:11 +97: C:/Users/kiwun/Documents/ai/VPN/external/client-fork/app/test/features/portal/widget/support_page_test.dart: shows in-app support composer and device context
 00:11 +98: C:/Users/kiwun/Documents/ai/VPN/external/client-fork/app/test/features/portal/widget/support_page_test.dart: shows in-app support composer and device context
 00:11 +99: C:/Users/kiwun/Documents/ai/VPN/external/client-fork/app/test/features/portal/widget/support_page_test.dart: shows in-app support composer and device context
@@ -120,7 +169,7 @@
 ```text
 .
 ----------------------------------------------------------------------
-Ran 1 test in 7.000s
+Ran 1 test in 7.166s
 
 OK
 ```
@@ -186,7 +235,7 @@ Link check passed.
    Collecting build traces ...
 
 Route (app)                              Size     First Load JS
-┌ ƒ /                                    198 B          96.4 kB
+┌ ○ /                                    198 B          96.4 kB
 ├ ○ /_not-found                          873 B          88.3 kB
 ├ ○ /checkout                            7.39 kB         104 kB
 ├ ○ /devices                             198 B          96.4 kB
@@ -206,8 +255,7 @@ Route (app)                              Size     First Load JS
   └ other shared chunks (total)          1.95 kB
 
 
-○  (Static)   prerendered as static content
-ƒ  (Dynamic)  server-rendered on demand
+○  (Static)  prerendered as static content
 ```
 
 ### Admin webapp smoke
@@ -227,14 +275,14 @@ Admin WebApp smoke passed.
 ```text
 
   Creating an optimized production build ...
-✓ Compiled successfully in 2.1s
+✓ Compiled successfully in 2.2s
   Running TypeScript ...
   Collecting page data using 19 workers ...
   Generating static pages using 19 workers (0/26) ...
   Generating static pages using 19 workers (6/26) 
   Generating static pages using 19 workers (12/26) 
   Generating static pages using 19 workers (19/26) 
-✓ Generating static pages using 19 workers (26/26) in 406.0ms
+✓ Generating static pages using 19 workers (26/26) in 424.7ms
   Finalizing page optimization ...
 
 Route (app)
@@ -283,36 +331,36 @@ Route (app)
 
 Running 28 tests using 1 worker
 
-  ok  1 e2e\admin-gate.spec.ts:830:7 › Admin gate › redirects non-admin from /admin/* to /dashboard (1.5s)
-  ok  2 e2e\admin-gate.spec.ts:836:7 › Admin gate › allows admin to open all admin sections (4.8s)
-  ok  3 e2e\admin-gate.spec.ts:859:7 › Admin gate › keeps an explicit path back to the cabinet from admin (1.7s)
-  ok  4 e2e\admin-gate.spec.ts:870:7 › Admin gate › groups admin routes by operational category and keeps Telegram as fallback only (1.5s)
+  ok  1 e2e\admin-gate.spec.ts:830:7 › Admin gate › redirects non-admin from /admin/* to /dashboard (1.2s)
+  ok  2 e2e\admin-gate.spec.ts:836:7 › Admin gate › allows admin to open all admin sections (5.1s)
+  ok  3 e2e\admin-gate.spec.ts:859:7 › Admin gate › keeps an explicit path back to the cabinet from admin (1.3s)
+  ok  4 e2e\admin-gate.spec.ts:870:7 › Admin gate › groups admin routes by operational category and keeps Telegram as fallback only (1.4s)
   ok  5 e2e\admin-gate.spec.ts:885:7 › Admin gate › keeps admin dashboard stable when summary omits optional blocks (1.3s)
-  ok  6 e2e\admin-gate.spec.ts:905:7 › Admin gate › shows clean Russian copy across admin surfaces (2.6s)
-  ok  7 e2e\admin-gate.spec.ts:927:7 › Admin gate › lets admin search, sort, and paginate the users table (2.2s)
-  ok  8 e2e\admin-gate.spec.ts:957:7 › Admin gate › keeps the users filters synced into the URL and restores them on reload (1.4s)
-  ok  9 e2e\admin-gate.spec.ts:984:7 › Admin gate › lets admin safely delete only manual or test users (1.3s)
-  ok 10 e2e\admin-gate.spec.ts:1022:7 › Admin gate › shows observer-lite badges, filters, and detail diagnostics (2.8s)
-  ok 11 e2e\admin-gate.spec.ts:1063:7 › Admin gate › shows observer-lite empty state instead of misleading zero-only activity (1.3s)
-  ok 12 e2e\admin-gate.spec.ts:1079:7 › Admin gate › keeps admin pages clickable and inside the viewport on mobile (3.8s)
-  ok 13 e2e\admin-gate.spec.ts:1136:7 › Admin gate › shows node alert labels and probe failure details (1.4s)
-  ok 14 e2e\admin-gate.spec.ts:1216:7 › Admin gate › shows node context with separate panel, dataplane, and transport detail (1.4s)
-  ok 15 e2e\admin-gate.spec.ts:1293:7 › Admin gate › keeps rollout targeting fields and feed objects intact across save and reload (2.4s)
-  ok 16 e2e\admin-gate.spec.ts:1333:7 › Admin gate › lets admin triage a ticket and send a reply using stable status codes (2.1s)
-  ok 17 e2e\cabinet-flow.spec.ts:323:7 › Cabinet flow › shows shared POKROV cabinet branding and a site return link (1.6s)
-  ok 18 e2e\cabinet-flow.spec.ts:336:7 › Cabinet flow › supports additive email states on the root auth entry (1.6s)
+  ok  6 e2e\admin-gate.spec.ts:905:7 › Admin gate › shows clean Russian copy across admin surfaces (2.5s)
+  ok  7 e2e\admin-gate.spec.ts:927:7 › Admin gate › lets admin search, sort, and paginate the users table (2.1s)
+  ok  8 e2e\admin-gate.spec.ts:957:7 › Admin gate › keeps the users filters synced into the URL and restores them on reload (1.5s)
+  ok  9 e2e\admin-gate.spec.ts:984:7 › Admin gate › lets admin safely delete only manual or test users (1.4s)
+  ok 10 e2e\admin-gate.spec.ts:1022:7 › Admin gate › shows observer-lite badges, filters, and detail diagnostics (2.6s)
+  ok 11 e2e\admin-gate.spec.ts:1063:7 › Admin gate › shows observer-lite empty state instead of misleading zero-only activity (1.6s)
+  ok 12 e2e\admin-gate.spec.ts:1079:7 › Admin gate › keeps admin pages clickable and inside the viewport on mobile (3.9s)
+  ok 13 e2e\admin-gate.spec.ts:1136:7 › Admin gate › shows node alert labels and probe failure details (1.3s)
+  ok 14 e2e\admin-gate.spec.ts:1216:7 › Admin gate › shows node context with separate panel, dataplane, and transport detail (1.3s)
+  ok 15 e2e\admin-gate.spec.ts:1293:7 › Admin gate › keeps rollout targeting fields and feed objects intact across save and reload (1.6s)
+  ok 16 e2e\admin-gate.spec.ts:1333:7 › Admin gate › lets admin triage a ticket and send a reply using stable status codes (1.4s)
+  ok 17 e2e\cabinet-flow.spec.ts:323:7 › Cabinet flow › shows shared POKROV cabinet branding and a site return link (1.3s)
+  ok 18 e2e\cabinet-flow.spec.ts:336:7 › Cabinet flow › supports additive email states on the root auth entry (1.3s)
   ok 19 e2e\cabinet-flow.spec.ts:348:7 › Cabinet flow › shows a truthful unavailable state when live email delivery is not configured (1.5s)
-  ok 20 e2e\cabinet-flow.spec.ts:386:7 › Cabinet flow › reuses an existing web session and lands in the cabinet without showing auth entry again (1.5s)
+  ok 20 e2e\cabinet-flow.spec.ts:386:7 › Cabinet flow › reuses an existing web session and lands in the cabinet without showing auth entry again (1.3s)
   ok 21 e2e\cabinet-flow.spec.ts:437:7 › Cabinet flow › keeps the dashboard on consumer-safe access actions (1.4s)
-  ok 22 e2e\cabinet-flow.spec.ts:452:7 › Cabinet flow › keeps cabinet navigation on native Next.js routing (1.9s)
-  ok 23 e2e\cabinet-flow.spec.ts:468:7 › Cabinet flow › shows branded root and cabinet not-found recovery screens (1.4s)
+  ok 22 e2e\cabinet-flow.spec.ts:452:7 › Cabinet flow › keeps cabinet navigation on native Next.js routing (1.5s)
+  ok 23 e2e\cabinet-flow.spec.ts:468:7 › Cabinet flow › shows branded root and cabinet not-found recovery screens (1.3s)
   ok 24 e2e\cabinet-flow.spec.ts:480:7 › Cabinet flow › keeps the subscription page on renewal and support instead of raw connection sharing (1.3s)
-  ok 25 e2e\cabinet-flow.spec.ts:492:7 › Cabinet flow › renders runtime connections on devices and keeps statistics actionable (1.9s)
-  ok 26 e2e\cabinet-flow.spec.ts:510:7 › Cabinet flow › keeps cabinet copy human and hides node internals (2.4s)
-  ok 27 e2e\cabinet-flow.spec.ts:524:7 › Cabinet flow › keeps downloads and support flows usable without the app (2.1s)
-  ok 28 e2e\cabinet-flow.spec.ts:540:7 › Cabinet flow › stays inside a narrow mobile viewport for core cabinet pages (2.3s)
+  ok 25 e2e\cabinet-flow.spec.ts:492:7 › Cabinet flow › renders runtime connections on devices and keeps statistics actionable (1.8s)
+  ok 26 e2e\cabinet-flow.spec.ts:510:7 › Cabinet flow › keeps cabinet copy human and hides node internals (2.2s)
+  ok 27 e2e\cabinet-flow.spec.ts:524:7 › Cabinet flow › keeps downloads and support flows usable without the app (2.2s)
+  ok 28 e2e\cabinet-flow.spec.ts:540:7 › Cabinet flow › stays inside a narrow mobile viewport for core cabinet pages (1.8s)
 
-  28 passed (57.0s)
+  28 passed (53.1s)
 ```
 
 ### UI visual smoke
