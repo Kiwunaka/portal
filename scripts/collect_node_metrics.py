@@ -46,7 +46,9 @@ def _to_runtime(node: Node) -> NodeRuntime:
         panel_latency_ms=node.panel_latency_ms,
         panel_error_rate=float(node.panel_error_rate or 0.0),
         active_clients=int(node.active_clients or 0),
+        cpu_percent=float(getattr(node, "cpu_percent", 0.0) or 0.0),
         last_ok_at=node.last_ok_at,
+        last_probe_at=getattr(node, "last_probe_at", None),
     )
 
 
