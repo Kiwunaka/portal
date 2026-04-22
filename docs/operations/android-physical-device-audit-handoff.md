@@ -61,6 +61,12 @@ python scripts/android_localhost_audit.py --serial <device-serial> --connect-wai
 ops-local/android-localhost-audit.json
 ```
 
+## Evidence and scratch hygiene
+
+- Retained formal evidence: keep `ops-local/android-localhost-audit*.json` and any intentionally promoted audit records under `docs/audit-artifacts/`.
+- Disposable repo-local scratch: screenshots, UI XML dumps, logcat captures, and ad hoc runtime snapshots created for one Android audit run stay disposable unless they are deliberately copied into `docs/audit-artifacts/`.
+- Outside repo cleanup scope: machine-local Android tooling noise such as `C:\Windows\adb.exe`, `%TEMP%`, SDK install directories, and `~/.android` is workstation state, not repo cleanup state.
+
 9. Если времени не хватило, перезапустите проверку с большими таймаутами и запишите, какие значения использовали.
 
 ## Как включить это в общий release gate

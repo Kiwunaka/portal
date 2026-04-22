@@ -20,8 +20,15 @@ def _load_manifest(path: Path) -> dict:
 
 
 def _collect_doc_files(repo_root: Path) -> list[Path]:
-    files = [repo_root / "ADMIN_GUIDE.md", repo_root / "USER_GUIDE_RU.md"]
-    files.extend(sorted((repo_root / "docs").glob("**/*.md")))
+    files = [repo_root / "docs" / "README.md"]
+    for relative_root in (
+        "docs/product",
+        "docs/architecture",
+        "docs/operations",
+        "docs/developer",
+        "docs/user",
+    ):
+        files.extend(sorted((repo_root / relative_root).glob("**/*.md")))
     return [p for p in files if p.exists()]
 
 

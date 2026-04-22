@@ -1,6 +1,6 @@
 # POKROV Orchestration Standard
 
-Last updated: 2026-04-13
+Last updated: 2026-04-22
 
 ## Document Status
 
@@ -101,6 +101,8 @@ Fields that must stay provisional until discovery, review, or real execution evi
 
 - final `write scope`
 - final `Non-Goals`
+- execution worktree selection
+- promotion target per affected repo lane
 - reviewer verdicts
 - manual-check results
 - deploy status
@@ -148,9 +150,14 @@ Fields that must stay provisional until discovery, review, or real execution evi
 
 - Read the must-read set from `AGENTS.md` before substantial work.
 - Route by `write-scope`, not by topic or by which surface looks most visible.
+- `portal/master` and `PORTALapp/main` are policy labels, not extra remotes. In git terms they map to promotion into `origin/master` for the platform repo and `origin/main` for the client repo.
 - `portal/master` is canonical for `portal_bot/`, `webapp/`, `marketing/`, `shared/`, `infra/`, root `docs/`, and root `scripts/`.
 - `PORTALapp/main` is canonical for `external/client-fork/app/`.
 - Root docs land on `portal/master`. Client docs under `external/client-fork/app/docs/` land on `PORTALapp/main`.
+- The root platform checkout on `master` is the clean baseline prospectively, not the preferred place for active concurrent execution.
+- Active execution should prefer explicit `codex/*` branches in dedicated worktrees so orchestrated tasks do not trample each other.
+- Machine-local branch names such as `main`, `portal-app`, and `app-next` are aliases or convenience lanes only. They are never authoritative roots by themselves.
+- `app-next` is a platform-owned future lane and is not shipping truth for this cleanup wave unless a separate policy change says otherwise.
 - Production truth stays in Postgres plus the locked shared facts under `shared/`.
 - A green automated check does not close a WO if manual checks, release blockers, or missing docs updates remain open.
 - The executor never self-closes the WO.
@@ -189,17 +196,44 @@ Typical mixed cases:
 - app-first or release contract changes need both root docs and client docs/code
 - release or publishing flow changes need root operations docs plus client packaging or runtime work
 
+Mixed-lane execution rule:
+
+- one `WO` may cover both lanes when the product contract truly spans both
+- write scope must still be split explicitly into platform paths and client paths
+- orchestrators should prefer separate execution worktrees per lane when parallelism or review clarity matters
+- mixed status does not let platform work land in client aliases or client work land in platform aliases
+
+## Branch Labels And Worktrees
+
+Branch and worktree policy for orchestrated execution:
+
+- treat `portal/master` as the policy name for the platform lane that ultimately promotes to `origin/master`
+- treat `PORTALapp/main` as the policy name for the client lane that ultimately promotes to `origin/main`
+- keep the root platform checkout on `master` clean enough to serve as a known-good baseline for new worktrees
+- do not treat the root checkout as the default executor sandbox when concurrent work is active
+- prefer dedicated worktrees on explicit `codex/*` branches for execution, fix cycles, and review reproduction
+- record which worktree and branch carried each lane of work when a `WO` is mixed or when multiple executors run in parallel
+- machine-local names such as `main`, `portal-app`, and `app-next` may exist on one workstation for convenience, but they do not redefine lane ownership or promotion targets
+- `app-next` may hold future platform preparation, but it is not a shipping-truth branch for this wave and must not be treated as an alternate completion target
+
 ## Routing Policy
 
 The orchestrator must classify every WO before execution:
 
 1. identify exact write paths
 2. assign `platform-only`, `client-only`, or `mixed`
-3. bind the WO to the correct canonical branch expectations
+3. bind the WO to the correct canonical promotion target for each affected lane
 4. bind the WO to the required docs impact
-5. bind the WO to the required validation and manual checks
+5. choose the execution worktree strategy when parallel work or mixed lanes are involved
+6. bind the WO to the required validation and manual checks
 
 If write scope changes mid-task, the orchestrator must reclassify the WO instead of silently stretching it.
+
+Routing guardrails:
+
+- if the write scope stays in root `docs/`, `portal_bot/`, `webapp/`, `marketing/`, `shared/`, `infra/`, or root `scripts/`, route to the platform lane even if a machine-local branch is named `main`
+- if the write scope stays under `external/client-fork/app/`, route to the client lane even if the local checkout lives inside the platform workspace
+- if both lanes change, require separate lane evidence and promotion notes instead of assuming one branch transitively updates the other
 
 ## WO Lifecycle
 
@@ -264,8 +298,16 @@ Minimum evidence areas:
 - automated checks with exact commands and outcomes
 - manual checks with environment or origin labels
 - artifact paths under `docs/audit-artifacts/` when relevant
-- git evidence per repo lane
+- worktree and branch used for execution when relevant
+- git evidence per repo lane, including the intended promotion target
 - residual risk or blocker notes
+
+Evidence handling rule:
+
+- keep execution evidence tied to the lane that actually changed
+- do not treat a machine-local alias branch name as sufficient git evidence without stating which canonical lane it promotes into
+- for mixed WOs, preserve separate evidence for platform and client promotion even when one person executed both parts
+- store durable release or audit artifacts under canonical evidence locations, not inside throwaway worktree-only paths
 
 ## Completion Rules
 
@@ -275,7 +317,7 @@ A WO is `complete` only when all of these are true:
 - required canonical docs are updated or explicitly confirmed unchanged
 - required automated checks passed, or failures are resolved
 - required manual checks are complete, or the WO is explicitly not gated by them
-- git evidence is recorded for every affected canonical repo
+- git evidence is recorded for every affected canonical repo lane and identifies the intended promotion path
 - no unresolved reviewer findings remain
 
 A WO stays `partial` or `blocked` when:
@@ -283,7 +325,17 @@ A WO stays `partial` or `blocked` when:
 - Android public-release safety still depends on a physical-device localhost audit
 - deploy did not happen yet
 - root docs and client docs are not yet both aligned for a mixed WO
+- execution happened in a convenience branch or worktree but promotion to the canonical lane is still unproven
+- mixed-lane work has not preserved separate promotion evidence for platform and client
 - current-origin, brain-origin, or RU-origin evidence is still missing for an infra-sensitive change
+
+Promotion rule:
+
+- executors may work from `codex/*` branches in dedicated worktrees
+- orchestrators close the `WO` against promotion into the canonical lane, not merely against a local alias or an unmerged worktree branch
+- promotion for platform-scope work means `portal/master` policy alignment on `origin/master`
+- promotion for client-scope work means `PORTALapp/main` policy alignment on `origin/main`
+- `app-next` does not satisfy shipping-lane completion in this wave
 
 ## Reporting Format
 

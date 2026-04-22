@@ -43,6 +43,8 @@ node_inbounds*.json
 node_reality-inspected.json
 
 # Local bench/ref clones and temporary DBs
+.tmp/
+.tmp-*
 .tmp/bench/
 portal_api_test_*.db
 portal.db

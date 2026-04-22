@@ -1,6 +1,6 @@
 # Repository Agents
 
-Last updated: 2026-04-13
+Last updated: 2026-04-22
 
 This file is the working contract for any agent or developer operating inside `C:\Users\kiwun\Documents\ai\VPN`.
 
@@ -165,6 +165,11 @@ Start from:
 
 Contains the consumer Flutter client fork for `Android` and `Windows`.
 
+Workspace lane note:
+
+- `external/client-fork/app/` is the default legacy client workspace and the current shipping client authority
+- `app-next` may exist as a machine-local future lane owned by platform work, but it is not the shipping truth in this cleanup wave
+
 Current local authority:
 
 - [Client Docs Index](C:/Users/kiwun/Documents/ai/VPN/external/client-fork/app/docs/README.md)
@@ -251,6 +256,21 @@ For node-access diagnostics and release handoffs, explicitly distinguish:
 - `brain-origin check`: from the control-plane host `82.21.114.104`
 - `RU-origin check`: from `mini` or a replacement external RU probe host
 
+## Branch, Worktree, And Promotion Rules
+
+- Keep the root workspace `C:\Users\kiwun\Documents\ai\VPN` on local `master` as the prospective clean baseline for root-repo work
+- Treat that root `master` baseline as the place you can resync from; do not turn it into a long-lived scratch branch
+- `portal/master` and `PORTALapp/main` are policy labels for the branches that are allowed to become shipping truth
+- In this workspace, those policy labels normally resolve to the real remote branches `origin/master` for the root repo and `origin/main` for `external/client-fork/app/`
+- Do not assume a literal remote named `portal` or `PORTALapp` must exist locally for the policy to apply
+- Local branch or worktree names such as `main`, `portal-app`, and `app-next` are optional machine-local aliases only
+- If a local alias disagrees with the promotion target, the promotion target wins
+- Root-repo changes under `backend`, `webapp`, `marketing`, `shared`, `infra`, `scripts`, and root `docs` promote through the root repo `master` line
+- Shipping client changes promote through `external/client-fork/app/` on the client repo `main` line
+- `external/client-fork/app/` remains the default legacy client workspace for current releases
+- `app-next` is a platform-owned future lane for exploratory or successor client work and is not shipping truth in this cleanup wave
+- When work needs isolation, create or use a dedicated feature branch or sibling worktree instead of reinterpreting baseline or alias branches as source of truth
+
 ## Source Of Truth Rules
 
 Production source of truth:
@@ -260,10 +280,12 @@ Production source of truth:
 
 Repository source-of-truth rule:
 
-- if you work on `backend`, `webapp`, `marketing`, root `docs`, `shared`, `infra`, or `scripts`, the canonical git truth is `portal/master`
-- if you work on the `Android` or `Windows` Flutter client under `external/client-fork/app/`, the canonical git truth is `PORTALapp/main`
+- if you work on `backend`, `webapp`, `marketing`, root `docs`, `shared`, `infra`, or `scripts`, the canonical git truth is `portal/master`, which is the policy label for the promoted root-repo line and normally maps to real `origin/master`
+- if you work on the `Android` or `Windows` Flutter client under `external/client-fork/app/`, the canonical git truth is `PORTALapp/main`, which is the policy label for the promoted client-repo line and normally maps to real `origin/main`
 - root docs in this repository, including `AGENTS.md` and `docs/*`, must land on `portal/master`; client docs under `external/client-fork/app/docs/` must land on `PORTALapp/main`
+- keep the root workspace on local `master` as the clean baseline prospectively; treat `main`, `portal-app`, and `app-next` as optional local aliases rather than promotion truth
 - do not treat local feature branches, old redirect remotes, or the nested client workspace inside `portal/` as competing product truths once `portal/master` and `PORTALapp/main` are updated
+- treat `external/client-fork/app/` as the default legacy client workspace for shipping changes; treat `app-next` as a future lane only unless a later policy explicitly promotes it
 - if a task spans both repositories, update and push both canonical branches explicitly instead of assuming one repo transitively updates the other
 
 Not source of truth:
@@ -272,11 +294,22 @@ Not source of truth:
 - local temp DBs
 - archived audit snapshots
 - `.next/`, `.dart_tool/`, `node_modules/`, test caches
+- `.tmp/`, `.tmp-*`, and other repo-local scratch directories
 - old root guides moved into `docs/archive/`
+
+Formal retained evidence:
+
+- `ops-local/` local operator evidence, handoff state, and sensitive operational material that must be retained unless a deliberate evidence-management task says otherwise
+- `docs/audit-artifacts/` archived audit evidence that must be retained unless a deliberate archival policy says otherwise
+
+Out-of-repo scope:
+
+- machine-local Android and adb noise such as `C:\Windows\adb.exe`, `%TEMP%`, Android SDK directories, and `~/.android`
+- do not treat machine-global tooling state as repo cleanup unless the task explicitly targets machine maintenance
 
 Routine cleanup rule:
 
-- default cleanup should target repo-local generated caches, exported static builds, test artifacts, and temporary DBs
+- default cleanup should target repo-local generated caches, exported static builds, test artifacts, temporary DBs, and disposable scratch such as `.tmp/` and `.tmp-*`
 - do not delete `.venv/` or active dependency trees as part of normal cleanup unless you intentionally want a full workspace reset
 
 3x-ui is an execution layer, not the product authority.
@@ -291,6 +324,7 @@ Routine cleanup rule:
 | `.next/` | Next.js build cache |
 | `test-results/` | Generated test artifacts |
 | `*.tsbuildinfo` | TypeScript incremental cache |
+| `.tmp/`, `.tmp-*` | Repo-local disposable scratch; safe to drop when not intentionally in use |
 | local `node_modules/`, `.dart_tool/`, `build/`, `dist/` | Remove only during an intentional workspace reset, not as routine cleanup |
 | `webapp/out`, `marketing/out` | Generated static export outputs; safe to rebuild, must not be committed |
 
@@ -301,12 +335,15 @@ Do not delete, print into markdown, or commit secret material from:
 - `portal_bot/.env`
 - `VPN NODE SSH KEYS/`
 - `secrets for merchant/`
-- `ops-local/`
 - `external/client-fork/app/windows/`
 
 Do not remove release artifacts from client `out/` unless you know they are obsolete.
 
-Do not treat archived evidence under `docs/audit-artifacts/` as disposable by default.
+Retained evidence and out-of-scope reminder:
+
+- do not treat `ops-local/` as disposable scratch; it is retained local evidence and may also contain sensitive operational material
+- do not treat archived evidence under `docs/audit-artifacts/` as disposable by default
+- do not sweep machine-global Android or adb state such as `C:\Windows\adb.exe`, `%TEMP%`, SDK directories, or `~/.android` as part of repo cleanup
 
 ## Current Telegram Registry
 

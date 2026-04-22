@@ -141,6 +141,9 @@ Artifact-location note:
 - raw Android release outputs are expected under `external/client-fork/app/build/app/outputs/...`
 - the wrapper-based Android build commands also refresh the canonical copies in `external/client-fork/app/out/`
 - those raw outputs do not prove production readiness until the production key path is confirmed and the physical-device audit is complete
+- retain the formal Android localhost-audit evidence in `ops-local/android-localhost-audit*.json`, and keep any curated release evidence that must survive the handoff under `docs/audit-artifacts/`
+- treat repo-local screenshots, UI XML dumps, logcat captures, and ad hoc runtime snapshots from one Android validation pass as disposable scratch unless they are intentionally promoted into `docs/audit-artifacts/`
+- machine-local Android tooling noise such as `C:\Windows\adb.exe`, `%TEMP%`, SDK install directories, and `~/.android` is outside repo cleanup scope and is not release evidence
 
 Operator shortcut:
 

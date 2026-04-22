@@ -1,6 +1,6 @@
 # Deployment And Access
 
-Last updated: 2026-04-15
+Last updated: 2026-04-22
 
 ## Document Status
 
@@ -249,6 +249,9 @@ Current local-build notes:
 - raw Windows release outputs are produced under `external/client-fork/app/build/windows/x64/runner/Release/...`
 - client `out/` is the canonical local release bundle layout: Android copies are refreshed by `scripts/run_client_release_gate.py`, while Windows artifacts are canonicalized by `external/client-fork/app/scripts/package_windows.ps1`
 - after the final green rerun, retain the canonical packaged bundle in `external/client-fork/app/out/` and clean raw `build/` and `dist/` outputs as disposable local artifacts
+- Android validation evidence hygiene is stricter: retain formal evidence in `ops-local/android-localhost-audit*.json` and in any intentionally promoted records under `docs/audit-artifacts/`
+- repo-local Android screenshots, UI XML dumps, logcat captures, and ad hoc runtime snapshots created during one validation pass are disposable scratch unless they are intentionally promoted into `docs/audit-artifacts/`
+- machine-local Android tooling noise such as `C:\Windows\adb.exe`, `%TEMP%`, SDK install directories, and `~/.android` is outside repo cleanup scope and must not be treated as repo evidence or repo cleanup targets
 - the repo-local MSIX smoke path is intentionally unsigned by default through `sign_msix: false`; signing still belongs to the release handoff
 - public Windows and Android labels, Windows package identity, executable naming, installer names, and protocol activation must read as `POKROV` / `pokrov`
 - explicit legacy compatibility handlers such as hidden Android import continuity may remain only where separately documented and not as the Windows packaged identity truth

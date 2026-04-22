@@ -5,7 +5,86 @@ import fnmatch
 import os
 import re
 import sys
+from collections.abc import Iterator
 from pathlib import Path
+
+
+def _path_key(path: Path) -> str:
+    return os.path.normcase(os.path.normpath(str(path)))
+
+
+def _safe_resolve(path: Path) -> Path | None:
+    try:
+        return path.resolve(strict=False)
+    except (OSError, RuntimeError):
+        return None
+
+
+def _is_within_repo_root(path: Path, repo_root: Path) -> bool:
+    try:
+        return os.path.commonpath([_path_key(path), _path_key(repo_root)]) == _path_key(repo_root)
+    except ValueError:
+        return False
+
+
+def _iter_repo_tree(
+    start_dir: Path,
+    repo_root: Path,
+    *,
+    ignore_dirs: set[str] | None = None,
+) -> Iterator[tuple[Path, list[str], list[str]]]:
+    repo_root = repo_root.resolve()
+    ignore_dirs = ignore_dirs or set()
+    start_dir = start_dir.resolve()
+
+    start_resolved = _safe_resolve(start_dir)
+    if start_resolved is None or not _is_within_repo_root(start_resolved, repo_root):
+        return
+
+    visited_real_dirs = {_path_key(start_resolved)}
+    stack = [start_dir]
+
+    while stack:
+        current = stack.pop()
+        try:
+            with os.scandir(current) as entries:
+                ordered_entries = sorted(entries, key=lambda entry: (entry.name.lower(), entry.name))
+        except OSError:
+            continue
+
+        dir_names: list[str] = []
+        file_names: list[str] = []
+        children_to_scan: list[Path] = []
+
+        for entry in ordered_entries:
+            try:
+                if entry.is_dir(follow_symlinks=False):
+                    dir_names.append(entry.name)
+                    if entry.name in ignore_dirs:
+                        continue
+
+                    child = Path(entry.path)
+                    child_resolved = _safe_resolve(child)
+                    if child_resolved is None or not _is_within_repo_root(child_resolved, repo_root):
+                        continue
+
+                    child_key = _path_key(child_resolved)
+                    if child_key in visited_real_dirs:
+                        continue
+
+                    # Track real locations for every descended directory so junction aliases stay loop-free.
+                    visited_real_dirs.add(child_key)
+                    children_to_scan.append(child)
+                    continue
+
+                file_names.append(entry.name)
+            except OSError:
+                continue
+
+        yield current, dir_names, file_names
+
+        for child in reversed(children_to_scan):
+            stack.append(child)
 
 
 def _collect_artifact_violations(repo_root: Path) -> list[str]:
@@ -20,18 +99,16 @@ def _collect_artifact_violations(repo_root: Path) -> list[str]:
         ".tmp/bench",
     }
 
-    for root, dirs, files in os.walk(repo_root):
-        rel_root = Path(root).resolve().relative_to(repo_root.resolve()).as_posix()
+    for root, dirs, files in _iter_repo_tree(repo_root, repo_root, ignore_dirs=ignore_dirs):
+        rel_root = root.relative_to(repo_root).as_posix()
         rel_root = "." if rel_root == "." else rel_root
 
-        # Prune large/generated folders we never want to scan deeply.
-        dirs[:] = [d for d in dirs if d not in ignore_dirs]
-
-        if rel_root in forbidden_exact_dirs:
-            violations.append(f"Forbidden artifact directory exists: {rel_root}/")
-
-        if "__pycache__" in dirs:
-            violations.append(f"Forbidden artifact directory exists: {rel_root}/__pycache__/")
+        for dir_name in dirs:
+            rel_dir = (Path(rel_root) / dir_name).as_posix() if rel_root != "." else dir_name
+            if rel_dir in forbidden_exact_dirs:
+                violations.append(f"Forbidden artifact directory exists: {rel_dir}/")
+            if dir_name == "__pycache__":
+                violations.append(f"Forbidden artifact directory exists: {rel_dir}/")
 
         for name in files:
             rel = (Path(rel_root) / name).as_posix() if rel_root != "." else name
@@ -51,8 +128,14 @@ def _public_copy_files(repo_root: Path) -> list[Path]:
     for base in (repo_root / "webapp" / "src", repo_root / "marketing" / "src"):
         if not base.exists():
             continue
-        for ext in ("*.ts", "*.tsx", "*.js", "*.jsx", "*.html", "*.mdx"):
-            files.extend(base.rglob(ext))
+        for root, _, names in _iter_repo_tree(base, repo_root):
+            for name in names:
+                if fnmatch.fnmatch(name, "*.ts") or fnmatch.fnmatch(name, "*.tsx"):
+                    files.append(root / name)
+                elif fnmatch.fnmatch(name, "*.js") or fnmatch.fnmatch(name, "*.jsx"):
+                    files.append(root / name)
+                elif fnmatch.fnmatch(name, "*.html") or fnmatch.fnmatch(name, "*.mdx"):
+                    files.append(root / name)
     # Deduplicate while preserving stable order
     return sorted(set(files))
 
@@ -69,7 +152,7 @@ def _collect_copy_violations(repo_root: Path) -> list[str]:
         for idx, line in enumerate(text.splitlines(), start=1):
             for pattern in patterns:
                 if pattern.search(line):
-                    rel = path.resolve().relative_to(repo_root.resolve()).as_posix()
+                    rel = path.relative_to(repo_root).as_posix()
                     violations.append(f"Forbidden absolute claim found: {rel}:{idx}")
     return sorted(set(violations))
 

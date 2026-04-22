@@ -1,6 +1,6 @@
 # Repository Map
 
-Last updated: 2026-04-15
+Last updated: 2026-04-22
 
 ## Document Status
 
@@ -25,7 +25,7 @@ Legacy filename note:
 | `docs/developer/orchestration/` | canonical orchestration standard, role contracts, and reusable templates | `docs/developer/orchestration/orchestration-standard.md` |
 | `docs/developer/work-orders/` | living wave and work-order execution artifacts | `docs/developer/work-orders/README.md` |
 | `docs/` | canonical platform docs plus archive | `docs/README.md` |
-| `external/client-fork/app/` | Flutter client fork | `external/client-fork/app/docs/README.md`, `external/client-fork/app/scripts/package_windows.ps1`, release asset masters in `external/logogo.png`, `logo/logoclear.svg`, and `logo/logowithtext.svg` |
+| `external/client-fork/app/` | Flutter client fork and default legacy client workspace | `external/client-fork/app/docs/README.md`, `external/client-fork/app/scripts/package_windows.ps1`, release asset masters in `external/logogo.png`, `logo/logoclear.svg`, and `logo/logowithtext.svg` |
 
 ## Which Doc Is Authoritative
 
@@ -42,12 +42,15 @@ Legacy filename note:
 | User journey | [docs/user/portal-vpn-user-guide-ru.md](C:/Users/kiwun/Documents/ai/VPN/docs/user/portal-vpn-user-guide-ru.md) |
 | Client-specific contracts | [external/client-fork/app/docs/README.md](C:/Users/kiwun/Documents/ai/VPN/external/client-fork/app/docs/README.md) |
 
-## Canonical Branches
+## Branches, Worktrees, And Lanes
 
-- `portal/master` is the canonical branch for `portal_bot/`, `webapp/`, `marketing/`, `shared/`, `infra/`, root `docs/`, and root `scripts/`
-- `PORTALapp/main` is the canonical branch for `external/client-fork/app/`
-- root docs in this repository, including `AGENTS.md` and `docs/*`, land on `portal/master`; client docs under `external/client-fork/app/docs/` land on `PORTALapp/main`
-- treat the client checkout nested under the platform workspace as a separate repository with its own canonical branch, not as a subtree of `portal/master`
+- `portal/master` and `PORTALapp/main` are policy labels for the two canonical lanes; on the actual remotes they mean `origin/master` for the platform repo and `origin/main` for the nested client repo
+- keep the root workspace `C:/Users/kiwun/Documents/ai/VPN` on `master` as the clean prospective platform baseline for `portal_bot/`, `webapp/`, `marketing/`, `shared/`, `infra/`, root `docs/`, and root `scripts/`
+- treat `external/client-fork/app/` as the default legacy client workspace and promote that lane against `origin/main`
+- root docs in this repository, including `AGENTS.md` and `docs/*`, land on the platform lane; client docs under `external/client-fork/app/docs/` land on the client lane
+- `main`, `portal-app`, and `app-next` are optional machine-local alias names or worktrees only; they are convenience handles, not authoritative roots
+- if `app-next` exists, keep it as a separate future lane rather than a silent rename of the default legacy client workspace
+- treat the client checkout nested under the platform workspace as a separate repository with its own promotion path, not as a subtree of `portal/master`
 
 ## Current Runtime Contract Pointers
 
@@ -190,7 +193,7 @@ Marketing-specific release checks now live in:
 
 ## Generated Artifact Policy
 
-Treat these as disposable local output unless intentionally retained:
+Treat these as disposable repo-local scratch unless intentionally retained:
 
 - `__pycache__/`
 - `.pytest_cache/`
@@ -199,6 +202,7 @@ Treat these as disposable local output unless intentionally retained:
 - `*.tsbuildinfo`
 - `webapp/out`
 - `marketing/out`
+- `.tmp/`, `.tmp-*`, screenshots, logcat dumps, XML dumps, and temp runtime snapshots created during local diagnostics
 
 Treat these as workspace dependencies or intentional reset targets, not routine cleanup:
 
@@ -208,12 +212,16 @@ Treat these as workspace dependencies or intentional reset targets, not routine 
 - `dist/`
 - `.venv/`
 
-Treat these as retained assets and preserve them unless you have explicit reason:
+Treat these as retained evidence or release assets and preserve them unless you have explicit reason:
 
-- client `out/` packaged release bundle
+- `external/client-fork/app/out/` packaged release bundle
 - signing material in `external/client-fork/app/windows/`
-- ops snapshots in `ops-local/`
+- operator evidence in `ops-local/`
 - audit evidence in `docs/audit-artifacts/`
+
+Out of scope for repo cleanup:
+
+- Android Studio, adb, emulator, and other machine-local Android noise outside this repository
 
 Client artifact note:
 

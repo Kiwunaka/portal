@@ -1,6 +1,6 @@
 # Developer Guide
 
-Last updated: 2026-04-15
+Last updated: 2026-04-22
 
 ## Document Status
 
@@ -56,23 +56,37 @@ For orchestrated multi-step work, also read:
 
 Contains backend, bots, worker jobs, webapp, marketing site, ops scripts, and platform docs.
 
+Platform baseline note:
+
+- prospectively keep the root workspace on `master` as the clean platform baseline
+- use feature branches or extra worktrees for platform experiments instead of redefining the root workspace as a different authoritative lane
+
 ### Client workspace
 
 - [C:/Users/kiwun/Documents/ai/VPN/external/client-fork/app](C:/Users/kiwun/Documents/ai/VPN/external/client-fork/app)
 
 Contains the `POKROV` Flutter fork for Android and Windows. Legacy filenames remain in some canonical paths, but current Windows release identity, executable naming, and packaged artifact canon target `POKROV` / `pokrov`.
 
+Client lane note:
+
+- `external/client-fork/app` is the default legacy client workspace
+- `app-next` is a separate future lane only when explicitly created as its own machine-local worktree or alias; it does not replace the default client workspace in docs, cleanup, or handoffs
+
 Current scope note:
 
 - full public `v1` target is Android and Windows
 - `iOS` and `macOS` work in this wave is documentation, readiness, and packaging prep only
 
-## Canonical Git Truth
+## Branch, Worktree, And Promotion Policy
 
-- `portal/master` is the only canonical git truth for `backend`, `webapp`, `marketing`, root `docs`, `shared`, `infra`, and root `scripts`
-- `PORTALapp/main` is the only canonical git truth for the Flutter client under `external/client-fork/app/`
-- root docs in this workspace, including `AGENTS.md` and `docs/*`, always land on `portal/master`; only client docs under `external/client-fork/app/docs/` land on `PORTALapp/main`
-- the nested client workspace inside `portal/` is a convenience checkout, not a second authority for platform code
+- `portal/master` and `PORTALapp/main` are policy labels used in docs, work orders, and handoffs; the real upstream branches are `origin/master` for the platform repo and `origin/main` for the nested client repo
+- `portal/master` remains the only canonical git truth for `backend`, `webapp`, `marketing`, root `docs`, `shared`, `infra`, and root `scripts`
+- `PORTALapp/main` remains the only canonical git truth for the Flutter client under `external/client-fork/app/`
+- root docs in this workspace, including `AGENTS.md` and `docs/*`, always land on the platform lane; only client docs under `external/client-fork/app/docs/` land on the client lane
+- prospectively treat the root workspace on `master` as the clean platform baseline, and promote platform changes back to `origin/master`
+- treat `external/client-fork/app` as the default legacy client checkout, and promote client changes back to `origin/main`
+- `main`, `portal-app`, and `app-next` are optional machine-local aliases or worktree names only; they are convenience labels, not authoritative roots or promotion targets
+- if `app-next` exists, keep it as a separate future lane and do not treat it as a silent replacement for the default legacy client workspace
 - if a task changes both platform and client, push both canonical branches and report them separately
 
 Shell note:
@@ -95,8 +109,8 @@ Current rules:
 
 - the orchestrator owns WO routing, status, docs impact, and completion judgment
 - WOs route by `write-scope`, not by topic
-- `portal/master` remains the canonical truth for the platform lane
-- `PORTALapp/main` remains the canonical truth for the client lane
+- `portal/master` remains the canonical truth label for the platform lane and maps to `origin/master`
+- `PORTALapp/main` remains the canonical truth label for the client lane and maps to `origin/main`
 - mixed WOs must preserve separate git evidence for the platform and client lanes
 - the executor does not self-close the WO
 - reviewers should run with fresh context
@@ -331,7 +345,7 @@ Operational rules:
 
 ## Generated Artifact Policy
 
-Safe to remove when they are local-generated:
+Disposable repo-local scratch:
 
 - `__pycache__/`
 - `.pytest_cache/`
@@ -340,6 +354,7 @@ Safe to remove when they are local-generated:
 - `portal_api_test_*.db`
 - `*.tsbuildinfo`
 - `webapp/out`, `marketing/out` after rebuild or deploy
+- `.tmp/`, `.tmp-*`, screenshots, logcat dumps, XML dumps, and temp runtime snapshots created for local debugging or release checks
 
 Only remove these with explicit intent to reset a workspace:
 
@@ -349,14 +364,20 @@ Only remove these with explicit intent to reset a workspace:
 - `dist/`
 - `.venv/`
 
-Not safe to remove without intent:
+Retained evidence and release bundles:
 
+- `ops-local/` when it contains operator evidence or probe snapshots
+- `docs/audit-artifacts/`
+- `external/client-fork/app/out/`
 - `.env` files
 - signing materials
 - merchant secrets
 - SSH key packs
 - release artifacts still being distributed
-- archived evidence that operations still rely on
+
+Out of scope for routine repo cleanup:
+
+- Android Studio, adb, emulator, and other machine-local Android noise outside this repository
 
 ## Source Of Truth Rules
 
