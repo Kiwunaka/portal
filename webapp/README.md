@@ -1,6 +1,6 @@
 # POKROV WebApp
 
-Last updated: 2026-04-22
+Last updated: 2026-04-23
 
 ## Document Status
 
@@ -8,14 +8,15 @@ This file is the local authority for `webapp/` and the browser cabinet/admin sur
 
 ## Purpose
 
-`webapp/` is the continuation surface for:
+`webapp/` is the continuation-first cabinet and admin surface for:
 
-- browser entry and web-login continuation
-- personal cabinet flows for status, subscription, devices, downloads, and support
+- browser entry and web-login continuation from app handoff and Telegram today, with public email continuation marked `soon`
+- personal cabinet flows with top-level IA `Dashboard`, `Subscription`, `Devices`, `Statistics`, and `Support`
+- task routes for downloads, redeem, and hosted-checkout continuation inside that same cabinet model
 - hosted key-first checkout continuation
 - the primary admin operator surface
 
-It is not the public marketing or SEO surface. Public acquisition pages live in `marketing/` at `https://pokrov.space/`.
+It is not the public marketing or SEO surface, and it must not become a second landing page. Public acquisition pages live in `marketing/` at `https://pokrov.space/`.
 
 ## Current Surface Map
 
@@ -23,19 +24,22 @@ Current user-facing route families in `webapp/src/app/`:
 
 - `/` for browser entry, Telegram web-login, and bot handoff continuation
 - `/dashboard/` for the main cabinet snapshot
-- `/subscription/` for subscription state and renewal entry
-- `/subscription/checkout/` for renewal continuation into the hosted activation-key checkout flow
-- `/redeem/` for activation-key lookup and redeem inside the cabinet
+- `/subscription/` for subscription state, renewal entry, and the main `Тарифы и оплата` surface
 - `/devices/` for device visibility
-- `/dashboard/downloads/` for app-download continuation
+- `/statistics/` for usage and account visibility summaries inside the cabinet
+- `/downloads/` for app-download continuation and install handoff
 - `/support/` plus support thread/legal routes
-- `/pricing/` only as a compatibility continuation alias; it must not become a public pricing surface again
+- `/dashboard/downloads/` only as a compatibility redirect to `/downloads/`
+- `/redeem/` for activation-key lookup and redeem inside the cabinet
+- `/subscription/checkout/` for renewal continuation into the hosted activation-key checkout flow
+- `/pricing/` only as a compatibility continuation alias redirecting to `/subscription/`
 
 Current operator routes:
 
 - `/admin/`
 - `/admin/dashboard/`
 - `/admin/users/`
+- `/admin/network/`
 - `/admin/nodes/`
 - `/admin/tickets/`
 - `/admin/bonuses/`
@@ -48,7 +52,9 @@ Current operator routes:
 Keep the public/browser split explicit:
 
 - `marketing/` owns the homepage, public `/checkout/`, offer/privacy pages, and indexable SEO landing pages
-- `webapp/` starts when the user needs session continuation, cabinet actions, redeem, support, renewal, or admin tooling
+- `marketing/` keeps checkout-first CTA priority for public traffic; install help and cabinet-open links are secondary intent-driven exits
+- `webapp/` starts when the user needs session continuation, cabinet actions, redeem, support, renewal, statistics, or admin tooling
+- browser entry should route known or newly verified users into the same cabinet session model whether they arrived from app handoff, Telegram, or the future marked-`soon` email lane
 - public `Open cabinet` CTA should point to `https://app.pokrov.space/`
 - public pricing and acquisition belong to `marketing/`; cabinet checkout is continuation-only and should defer to the hosted key-first flow
 
@@ -64,10 +70,13 @@ Canonical browser/runtime wiring:
 Rules:
 
 - frontend must not treat `https://app.pokrov.space/api/*` HTML fallback as valid API success
+- cabinet entry is continuation-first and must not be documented or styled like a second acquisition surface
 - user-facing cabinet copy should show one public `ссылка подключения` and one QR built from the same URL
 - `?format=plain` remains hidden compatibility-only behavior and must stay out of normal cabinet UX
 - `connect.pokrov.space` is for config delivery, not for public acquisition or payment entry
 - cabinet checkout must not drift into a second public paywall or direct raw-link delivery story
+- public email continuation must stay explicitly marked `soon` until sender readiness, delivery confirmation, and public launch are live
+- marketing and cabinet copy should inherit governed text from `shared/copy.ts`, `copy/catalog.ru.json`, and `shared/design-tokens.json` instead of inventing separate public messaging
 
 ## Frontend Environment
 
@@ -104,6 +113,7 @@ Current supported auth paths:
 
 - inside Telegram: authorization through `initData`
 - in browser: Telegram Login Widget -> `POST /api/auth/telegram/web-login`
+- in browser: additive email continuation remains a marked-`soon` lane until delivery readiness and launch are live
 - from bot handoff: `web_session_token` should open the cabinet without manual token copy/paste
 
 ## Local Run

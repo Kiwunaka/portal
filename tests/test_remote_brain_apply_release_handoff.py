@@ -67,6 +67,68 @@ class RemoteBrainApplyReleaseHandoffTests(unittest.TestCase):
             ],
         )
 
+    def test_read_release_metadata_accepts_download_schema(self) -> None:
+        with tempfile.TemporaryDirectory() as td:
+            metadata_file = Path(td) / "release-handoff.json"
+            metadata_file.write_text(
+                """
+                {
+                  "schema_version": 1,
+                  "client_lane": "bridge",
+                  "release_version": "0.9.0-beta+20508",
+                  "downloads": {
+                    "android": {
+                      "apk_url": "https://downloads.example.com/pokrov-android.apk"
+                    },
+                    "windows": {
+                      "exe_url": "https://downloads.example.com/pokrov-windows.exe"
+                    },
+                    "docs_url": "https://pokrov.space/install/"
+                  }
+                }
+                """.strip(),
+                encoding="utf-8",
+            )
+
+            values = self.module._read_release_metadata(metadata_file)
+
+        self.assertEqual(values["APP_ANDROID_APK_URL"], "https://downloads.example.com/pokrov-android.apk")
+        self.assertEqual(values["APP_WINDOWS_EXE_URL"], "https://downloads.example.com/pokrov-windows.exe")
+        self.assertEqual(values["APP_DOCS_URL"], "https://pokrov.space/install/")
+
+    def test_resolve_release_values_prefers_metadata_before_legacy_env(self) -> None:
+        with tempfile.TemporaryDirectory() as td:
+            metadata_file = Path(td) / "release-handoff.json"
+            env_file = Path(td) / "release-links.env"
+            metadata_file.write_text(
+                """
+                {
+                  "runtime_env": {
+                    "APP_ANDROID_APK_URL": "https://metadata.example.com/pokrov-android.apk",
+                    "APP_WINDOWS_EXE_URL": "https://metadata.example.com/pokrov-windows.exe",
+                    "APP_DOCS_URL": "https://pokrov.space/install/"
+                  }
+                }
+                """.strip(),
+                encoding="utf-8",
+            )
+            env_file.write_text(
+                "\n".join(
+                    [
+                        "APP_ANDROID_APK_URL=https://env.example.com/pokrov-android.apk",
+                        "APP_WINDOWS_EXE_URL=https://env.example.com/pokrov-windows.exe",
+                        "APP_DOCS_URL=https://pokrov.space/install/",
+                    ]
+                )
+                + "\n",
+                encoding="utf-8",
+            )
+
+            values, source = self.module._resolve_release_values(str(metadata_file), str(env_file))
+
+        self.assertEqual(values["APP_ANDROID_APK_URL"], "https://metadata.example.com/pokrov-android.apk")
+        self.assertEqual(source, metadata_file)
+
     def test_rewrite_env_updates_existing_release_keys_and_adds_missing_ones(self) -> None:
         original = "\n".join(
             [

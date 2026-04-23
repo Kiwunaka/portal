@@ -1,0 +1,76 @@
+flowchart TD
+  U["Пользователь"]
+
+  subgraph ENTRY["Откуда пользователь приходит"]
+    E1["Поиск / SEO"]
+    E2["Реклама / промо-ссылка"]
+    E3["Прямой URL pokrov.space"]
+    E4["TikTok / YouTube лендинги"]
+    E5["Ссылка из Telegram"]
+    E6["Рекомендация / пересланная ссылка"]
+  end
+
+  HOME["Главная pokrov.space<br/>основной acquisition entry"]
+
+  subgraph HOMESECTIONS["Что видит на главной"]
+    H1["Hero: объяснение продукта"]
+    H2["Downloads: Android / Windows / Apple readiness"]
+    H3["Pricing: тарифы и CTA в checkout"]
+    H4["FAQ: ответы перед покупкой"]
+    H5["Secondary story: devices / telegram / legal"]
+  end
+
+  subgraph PUBLICPAGES["Куда может уйти с сайта"]
+    P1["/install/<br/>скачивание и инструкции"]
+    P2["/devices/<br/>страница устройств"]
+    P3["/mobile/<br/>мобильный сценарий"]
+    P4["/telegram/<br/>Telegram как recovery / support / bonus"]
+    P5["/checkout/<br/>public key-first checkout page"]
+    P6["app.pokrov.space<br/>вход в кабинет"]
+    P7["@pokrov_supportbot<br/>живая помощь"]
+    P8["@pokrov_vpnbot<br/>бот и handoff"]
+    P9["/offer/ и /privacy/<br/>легальные страницы"]
+  end
+
+  U --> E1
+  U --> E2
+  U --> E3
+  U --> E4
+  U --> E5
+  U --> E6
+
+  E1 --> HOME
+  E2 --> HOME
+  E3 --> HOME
+  E4 --> HOME
+  E5 --> HOME
+  E6 --> HOME
+
+  HOME --> H1
+  HOME --> H2
+  HOME --> H3
+  HOME --> H4
+  HOME --> H5
+
+  H1 --> P1
+  H1 --> P5
+  H1 --> P6
+  H1 --> P7
+
+  H2 --> P1
+  H2 --> P2
+  H2 --> P3
+
+  H3 --> P5
+  H3 --> P6
+
+  H4 --> P5
+  H4 --> P1
+  H4 --> P4
+
+  H5 --> P2
+  H5 --> P4
+  H5 --> P9
+
+  P4 --> P8
+  P4 --> P7

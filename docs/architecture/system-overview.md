@@ -1,6 +1,6 @@
 # POKROV System Overview
 
-Last updated: 2026-04-22
+Last updated: 2026-04-23
 
 ## Document Status
 
@@ -13,7 +13,9 @@ This file is living source of truth for the platform architecture map.
 - a Python backend and Telegram control plane
 - a user cabinet and admin web surface
 - a marketing and legal site
-- a dedicated new client repo at `C:/Users/kiwun/Documents/ai/POKROV-app`, a retained `app-next/` transition/bootstrap reference lane, and a retained legacy bridge client lane
+- a dedicated active client repo at `C:/Users/kiwun/Documents/ai/POKROV-app`
+- a retained `app-next/` bootstrap archive/reference lane
+- a retained legacy client rollback/archive reference lane
 - operational scripts for deployment, node management, and release flow
 
 ## Wave 0 Rework Target
@@ -21,19 +23,22 @@ This file is living source of truth for the platform architecture map.
 The new target architecture for the global rework freezes these boundaries before later code waves land:
 
 - platform truth remains in this root repository
-- new client development truth lives in `POKROV-app/main`, with local checkout path `C:/Users/kiwun/Documents/ai/POKROV-app`
-- `app-next/` is the retained bootstrap-source and transition/reference workspace for that repo after the initial local snapshot landed
-- `external/client-fork/app/` remains the bridge/hotfix lane and current public Android+Windows release/build/signing truth until formal cutover
+- `POKROV-app/main` is the only active client development and client-doc truth, with local checkout path `C:/Users/kiwun/Documents/ai/POKROV-app`
+- `app-next/` is the retired bootstrap-source archive/reference workspace for that repo after the initial local snapshot landed
+- `external/client-fork/app/` is the retired rollback/archive client reference workspace
+- the front-end rebuild is an atlas-driven shell reset: acquisition lives on `marketing/`, continuation lives on `webapp/`, and the app shell is locked to `Protection / Locations / Rules / Profile`
 - one app-first account becomes the identity root for `install_id`, email, Telegram, devices, and activation keys
-- public acquisition, pricing, and paywall move entirely onto `marketing/`, while `webapp/` becomes session-aware continuation, redeem, support, renewal continuation, and admin only
+- public acquisition, pricing, and paywall move entirely onto `marketing/`, with a checkout-first CTA strategy for public traffic, while `webapp/` becomes session-aware continuation, redeem, support, renewal continuation, and admin only
+- public browser copy and visual governance are centralized through `shared/copy.ts`, `copy/catalog.ru.json`, and `shared/design-tokens.json`, with locked host and product facts inherited from the shared fact files
+- user-facing cabinet IA is `Dashboard / Subscription / Devices / Statistics / Support`, with `downloads`, `redeem`, and hosted-checkout continuation treated as task routes rather than parallel acquisition surfaces
 - commerce moves to hosted checkout plus activation-key issuance and redemption instead of raw subscription-link-first UX
 - remote promo content is limited to approved first-party promo slots; third-party ad SDKs remain out of scope
 - the public location story collapses to one logical location per user, while the transport matrix stays hidden behind rollout, diagnostics, and admin controls
 
-Bridge-period note:
+Reference-lane note:
 
-- the detailed route inventory and build/signing procedures later in this document may still describe the retained bridge release lane where formal cutover has not yet happened
-- Wave 0 intentionally separates long-term development truth from current release truth so later implementation waves can migrate without ambiguity
+- `app-next/` and `external/client-fork/app/` may still be consulted for archived bootstrap or rollback evidence
+- those retained workspaces do not override the active architecture truth in `POKROV-app/main`
 
 ## Main Components
 
@@ -95,9 +100,11 @@ Node lifecycle rule:
 - `marketing/`
   public website, pricing, legal pages, and public conversion flows
 - `C:/Users/kiwun/Documents/ai/POKROV-app/`
-  canonical clean-room client repo for new Android and Windows product-direction work
+  canonical active client repo for new Android and Windows product-direction work
+- `app-next/`
+  retired bootstrap-source archive/reference workspace for the client migration
 - `external/client-fork/app/`
-  `POKROV` consumer client for Android and Windows, with some legacy `POKROV VPN` identifiers still present for compatibility
+  retired rollback/archive reference client, with some legacy `POKROV VPN` identifiers still present for compatibility
 - `shared/`
   shared public copy, canonical hostnames, product facts, and design tokens
 
@@ -105,8 +112,10 @@ Current public-surface split:
 
 - `marketing/` owns the homepage, public `/checkout/` pricing/paywall flow, offer/privacy pages, indexable SEO landings, and metadata assets such as `robots`, `sitemap`, `manifest`, Open Graph, Twitter, and JSON-LD
 - current canonical indexable entry routes are `/mobile/`, `/tiktok/`, `/youtube/`, `/devices/`, and `/telegram/`, with permanent redirects from the earlier legacy SEO slugs
-- `webapp/` owns browser entry, dashboard, subscription, hosted-checkout continuation, redeem, downloads, devices, support, and the primary admin operator surface
-- `/pricing/` in `webapp/` is compatibility-only continuation and must not drift back into a public acquisition surface
+- public marketing CTA priority is checkout-first; install help and cabinet-open flows remain secondary exits for known intent
+- `webapp/` owns browser entry, dashboard, subscription, devices, statistics, support, task routes such as downloads, redeem, and hosted-checkout continuation, compatibility redirects for older cabinet routes, and the primary admin operator surface
+- `webapp/` browser entry is a continuation router for app handoff and Telegram login today; public email continuation stays marked `soon` until the delivery and launch path are genuinely live
+- `/pricing/` in `webapp/` is compatibility-only continuation that now redirects to `/subscription/` and must not drift back into a public acquisition surface
 - `connect.pokrov.space` stays outside the marketing/cabinet storytelling layer and remains the config-delivery host for the one public connection link plus QR; it serves the rollout-selected app-managed profile, with `legacy_reality_fallback` as the baseline until canary cohorts flip to `grpc_443_primary`
 
 Client release safety rule:
@@ -148,6 +157,7 @@ Production source of truth:
   - `shared/product-facts.json`
   - `shared/public-urls.json`
   - `shared/design-tokens.json`
+- active client-repo truth from `POKROV-app/main`
 
 Not source of truth:
 
@@ -156,6 +166,7 @@ Not source of truth:
 - audit snapshots
 - generated frontend caches
 - stale root markdown notes
+- retired client-reference workspaces when treated as if they were active client canon
 
 ## Transport Rollout Control
 
@@ -204,15 +215,18 @@ Route-mode continuation note:
 ### Web Identity And Session Continuation Flow
 
 1. user opens marketing or cabinet in the browser
-2. browser continues from an app handoff, Telegram OIDC, or additive email auth
+2. browser continues from an app handoff or Telegram OIDC; public email continuation remains a marked-`soon` lane until launch
 3. backend issues a browser session with `auth_origin` and linked-identity summary
 4. cabinet, support, renewal, and checkout continue from that same session
 
 Architecture rule:
 
-- additive email auth extends the browser path without replacing app-first bootstrap or Telegram linking
+- additive email auth remains a planned continuation lane and must stay marked `soon` until sender identity, delivery confirmation, and the public launch path are genuinely live
+- app handoff and Telegram are the active browser-continuation entry families today
+- once launched, email must land in the same cabinet session and linked-identity model rather than becoming a separate account track
 - public email auth depends on external transactional mail delivery and verified sender identity
-- when mail delivery is not live, browser email entry must stay in a truthful unavailable state instead of promising working verify or reset mail
+- before that launch, browser email entry must stay in a truthful unavailable or `soon` state instead of promising working verify or reset mail
+- cabinet entry copy should continue the shared product story rather than re-pitching the product like another landing page
 - cabinet and admin shells must keep explicit navigation back to the marketing site and standard cabinet entry
 
 ### Telegram Linking And Reward Flow
@@ -242,16 +256,16 @@ Architecture rule:
 ### Public Web Journey
 
 1. user lands on `https://pokrov.space/` or an indexable marketing landing page
-2. marketing CTA routes into app download, `pokrov.space/checkout/`, or cabinet entry depending on user intent
+2. marketing CTA defaults into `pokrov.space/checkout/`, while install help and cabinet entry stay secondary intent-driven exits
 3. public checkout sells an activation key and sends the user toward redeem or install continuation
-4. a known browser session, verified email auth, or app/bot handoff continues in `https://app.pokrov.space/`
+4. a known browser session or app/bot handoff continues in `https://app.pokrov.space/`; public email continuation joins that path only after the marked-`soon` launch goes live
 5. `webapp` renders the relevant cabinet flow such as dashboard, subscription, redeem, downloads, devices, or support
 6. successful redeem or renewal returns the user to the active cabinet journey
 
 Public web rule:
 
 - `marketing/` is the indexable discovery layer
-- `webapp/` is the authenticated or session-aware continuation layer
+- `webapp/` is the authenticated or session-aware continuation layer, not a second public acquisition page
 - authenticated app, bot, and cabinet download payloads should resolve runtime `APP_*` values through `/api/client/apps`
 - marketing download CTA, metadata icons, favicon, and share-preview assets are build-time outputs and must be rebuilt or redeployed when public release URLs or derived brand assets change
 - public SEO pages may vary the entry copy, but they must not create separate product rules or bypass the canonical checkout/session model
@@ -330,8 +344,10 @@ Role split:
 
 Copy/config rule:
 
-- new public copy and CTA text must stay centralized through `shared/copy.ts` and `copy/catalog.ru.json`
+- new public and cabinet copy plus CTA text must stay centralized through `shared/copy.ts` and `copy/catalog.ru.json`; `webapp` should continue that shared story instead of inventing its own marketing voice
 - locked cross-surface facts such as trial length, Telegram reward, canonical hosts, and design direction must stay centralized through `shared/product-facts.json`, `shared/public-urls.json`, and `shared/design-tokens.json`
+- checkout-first marketing CTA priority, marked-`soon` email wording, and cabinet IA labels must resolve from those shared governance sources instead of drifting per surface
+- public-facing marketing and cabinet language should stay calm and human-readable instead of surfacing transport acronyms, raw profile terms, or operator-facing implementation jargon
 - bot, site, app, and checkout links should resolve from shared host config rather than hard-coded per surface
 
 ## Monitoring And Visibility Model

@@ -1,0 +1,67 @@
+flowchart LR
+  subgraph Public["Public and continuation surfaces"]
+    Marketing["Marketing site<br/>pokrov.space<br/>public discovery, install, checkout, legal"]
+    Webapp["Webapp<br/>app.pokrov.space<br/>session continuation, redeem, support, admin"]
+    App["Android and Windows app<br/>app-first trial and managed connect"]
+    Telegram["Telegram surfaces<br/>main bot, support bot, feedback bot, public channel"]
+    Connect["Connect host<br/>connect.pokrov.space<br/>manual or recovery delivery"]
+    Checkout["Hosted checkout<br/>pay.pokrov.space/checkout/"]
+  end
+
+  subgraph Platform["Platform control plane"]
+    API["portal_bot/api.py<br/>FastAPI contract hub"]
+    AppFirst["App-first services<br/>trial bootstrap, managed profile, route policy"]
+    WebAuth["Web auth services<br/>Telegram web login, email auth, browser session"]
+    Bonus["Telegram bonus services<br/>link, check, claim"]
+    Tickets["Support and feedback contracts<br/>tickets, reviews, feedback"]
+    Worker["Background jobs<br/>retention, free-cycle, bonus enforcement"]
+  end
+
+  subgraph Truth["Shared truth and state"]
+    Shared["Shared facts and URLs<br/>shared/public-urls.json and related shared canon"]
+    Postgres["Postgres<br/>production source of truth"]
+  end
+
+  subgraph Delivery["Delivery plane"]
+    Control["control_panel.py and panel_client.py"]
+    Nodes["Node inventory and transport catalogs"]
+    Panels["3x-ui panels<br/>execution layer only"]
+  end
+
+  subgraph Ops["Operator visibility"]
+    Admin["Web admin routes and /api/admin/*"]
+    Metrics["Metrics and observer-lite<br/>/api/admin/metrics/status<br/>/api/admin/nodes/health"]
+    Probe["External origin checks<br/>current-origin, brain-origin, RU-origin"]
+  end
+
+  Marketing --> App
+  Marketing --> Webapp
+  Marketing --> Checkout
+  Webapp --> API
+  App --> API
+  Telegram --> API
+  Connect --> API
+  Checkout --> API
+
+  API --> AppFirst
+  API --> WebAuth
+  API --> Bonus
+  API --> Tickets
+  API --> Worker
+
+  API --> Postgres
+  AppFirst --> Shared
+  WebAuth --> Shared
+  Bonus --> Shared
+  Marketing --> Shared
+  Webapp --> Shared
+
+  API --> Control
+  Control --> Nodes
+  Nodes --> Panels
+
+  Admin --> API
+  Metrics --> API
+  Probe --> Metrics
+  Metrics --> Nodes
+  Admin --> Metrics

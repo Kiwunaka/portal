@@ -2,7 +2,6 @@ import importlib.util
 import subprocess
 import sys
 import tempfile
-import unittest
 from pathlib import Path
 
 
@@ -17,175 +16,168 @@ def _load_module():
     return module
 
 
-class RunClientReleaseGateTests(unittest.TestCase):
-    @classmethod
-    def setUpClass(cls) -> None:
-        cls.module = _load_module()
-
-    def test_suite_command_uses_expected_flutter_args(self) -> None:
-        with tempfile.TemporaryDirectory() as tmp:
-            client_root = Path(tmp)
-
-            command = self.module._suite_command(client_root, suite="portal")
-
-        self.assertEqual(command.cwd, client_root)
-        self.assertEqual(command.command, ["flutter", "test", "test/features/portal"])
-
-    def test_windows_target_declares_expected_artifact(self) -> None:
-        with tempfile.TemporaryDirectory() as tmp:
-            client_root = Path(tmp)
-
-            command = self.module._build_target_command(client_root, target="windows")
-
-        self.assertEqual(command.command, ["flutter", "build", "windows", "--release"])
-        self.assertTrue(str(command.expected_artifact).endswith("build\\windows\\x64\\runner\\Release\\POKROV.exe"))
-
-    def test_android_apk_target_declares_canonical_out_artifact(self) -> None:
-        with tempfile.TemporaryDirectory() as tmp:
-            client_root = Path(tmp)
-
-            command = self.module._build_target_command(client_root, target="android-apk")
-
-        self.assertEqual(command.command, ["flutter", "build", "apk", "--release"])
-        self.assertTrue(str(command.expected_artifact).endswith("build\\app\\outputs\\flutter-apk\\app-release.apk"))
-        self.assertTrue(str(command.published_artifact).endswith("out\\pokrov-android-universal.apk"))
-
-    def test_run_publishes_android_artifact_to_canonical_out(self) -> None:
-        with tempfile.TemporaryDirectory() as tmp:
-            client_root = Path(tmp)
-            expected_artifact = (
-                client_root / "build" / "app" / "outputs" / "flutter-apk" / "app-release.apk"
-            )
-            expected_artifact.parent.mkdir(parents=True)
-            expected_artifact.write_bytes(b"apk-bytes")
-            command = self.module._build_target_command(client_root, target="android-apk")
-
-            original_run_step = self.module._run_step
-            original_ensure_codegen = self.module._ensure_codegen
-            original_resolve_flutter_executable = self.module._resolve_flutter_executable
-            original_libcore_preflight_status = self.module._libcore_preflight_status
-            try:
-                self.module._run_step = lambda *args, **kwargs: 0
-                self.module._ensure_codegen = lambda *args, **kwargs: 0
-                self.module._resolve_flutter_executable = lambda: "flutter"
-                self.module._libcore_preflight_status = lambda *args, **kwargs: (
-                    self.module.LibcorePreflightStatus(
-                        expected_sha="expectedsha",
-                        actual_sha="expectedsha",
-                        branch="main",
-                        dirty_lines=(),
-                    ),
-                    None,
-                )
-
-                rc = self.module._run(command)
-            finally:
-                self.module._run_step = original_run_step
-                self.module._ensure_codegen = original_ensure_codegen
-                self.module._resolve_flutter_executable = original_resolve_flutter_executable
-                self.module._libcore_preflight_status = original_libcore_preflight_status
-
-            self.assertEqual(rc, 0)
-            self.assertEqual(command.published_artifact.read_bytes(), b"apk-bytes")
-
-    def test_windows_sqlite_bootstrap_dir_prefers_runner_release(self) -> None:
-        with tempfile.TemporaryDirectory() as tmp:
-            client_root = Path(tmp)
-            runner_dir = client_root / "build" / "windows" / "x64" / "runner" / "Release"
-            runner_dir.mkdir(parents=True)
-            (runner_dir / "sqlite3.dll").write_text("dll", encoding="utf-8")
-
-            bootstrap_dir = self.module._windows_sqlite_bootstrap_dir(client_root)
-
-        self.assertEqual(bootstrap_dir, runner_dir)
-
-    def test_libcore_preflight_requires_clean_expected_sha(self) -> None:
-        client_root = Path("C:/fake/client")
-
-        def fake_run(command, **kwargs):
-            rendered = " ".join(str(part) for part in command)
-            if rendered.endswith("rev-parse HEAD:libcore"):
-                return subprocess.CompletedProcess(command, 0, stdout="expectedsha\n", stderr="")
-            if rendered.endswith("rev-parse HEAD"):
-                return subprocess.CompletedProcess(command, 0, stdout="expectedsha\n", stderr="")
-            if rendered.endswith("branch --show-current"):
-                return subprocess.CompletedProcess(command, 0, stdout="\n", stderr="")
-            if rendered.endswith("status --porcelain"):
-                return subprocess.CompletedProcess(command, 0, stdout="", stderr="")
-            raise AssertionError(f"unexpected command: {rendered}")
-
-        issue = self.module._libcore_preflight_issue(client_root, runner=fake_run)
-
-        self.assertIsNone(issue)
-
-    def test_libcore_preflight_reports_sha_drift(self) -> None:
-        client_root = Path("C:/fake/client")
-
-        def fake_run(command, **kwargs):
-            rendered = " ".join(str(part) for part in command)
-            if rendered.endswith("rev-parse HEAD:libcore"):
-                return subprocess.CompletedProcess(command, 0, stdout="expectedsha\n", stderr="")
-            if rendered.endswith("rev-parse HEAD"):
-                return subprocess.CompletedProcess(command, 0, stdout="actualsha\n", stderr="")
-            if rendered.endswith("branch --show-current"):
-                return subprocess.CompletedProcess(command, 0, stdout="release-branch\n", stderr="")
-            if rendered.endswith("status --porcelain"):
-                return subprocess.CompletedProcess(command, 0, stdout="", stderr="")
-            raise AssertionError(f"unexpected command: {rendered}")
-
-        issue = self.module._libcore_preflight_issue(client_root, runner=fake_run)
-
-        self.assertIn("expectedsha", issue or "")
-        self.assertIn("actualsha", issue or "")
-        self.assertIn("release-branch", issue or "")
-
-    def test_libcore_preflight_reports_dirty_submodule(self) -> None:
-        client_root = Path("C:/fake/client")
-
-        def fake_run(command, **kwargs):
-            rendered = " ".join(str(part) for part in command)
-            if rendered.endswith("rev-parse HEAD:libcore"):
-                return subprocess.CompletedProcess(command, 0, stdout="expectedsha\n", stderr="")
-            if rendered.endswith("rev-parse HEAD"):
-                return subprocess.CompletedProcess(command, 0, stdout="expectedsha\n", stderr="")
-            if rendered.endswith("branch --show-current"):
-                return subprocess.CompletedProcess(command, 0, stdout="\n", stderr="")
-            if rendered.endswith("status --porcelain"):
-                return subprocess.CompletedProcess(
-                    command,
-                    0,
-                    stdout=" M libcore/file.go\n?? libcore/new_file.go\n",
-                    stderr="",
-                )
-            raise AssertionError(f"unexpected command: {rendered}")
-
-        issue = self.module._libcore_preflight_issue(client_root, runner=fake_run)
-
-        self.assertIn("dirty", issue or "")
-        self.assertIn("expectedsha", issue or "")
-        self.assertIn("(detached HEAD)", issue or "")
-        self.assertIn("M libcore/file.go", issue or "")
-
-    def test_render_libcore_preflight_report_lists_status_context(self) -> None:
-        client_root = Path("C:/fake/client")
-        status = self.module.LibcorePreflightStatus(
-            expected_sha="expectedsha",
-            actual_sha="expectedsha",
-            branch="(detached HEAD)",
-            dirty_lines=("M file.go", "?? new.go"),
-        )
-
-        report = self.module._render_libcore_preflight_report(
-            client_root,
-            status=status,
-            issue="libcore worktree is dirty",
-        )
-
-        self.assertIn("pinned SHA: expectedsha", report)
-        self.assertIn("checked-out SHA: expectedsha", report)
-        self.assertIn("dirty: M file.go", report)
-        self.assertIn("[fail] libcore worktree is dirty", report)
+MODULE = _load_module()
 
 
-if __name__ == "__main__":
-    unittest.main()
+def _write(path: Path, content: str = "") -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(content, encoding="utf-8")
+
+
+def _prepare_client_root(root: Path) -> None:
+    _write(root / "scripts" / "validate-seed.ps1", "Write-Host validate")
+    _write(root / "scripts" / "bootstrap-workspace.ps1", "Write-Host bootstrap")
+    _write(root / "scripts" / "run-tests.ps1", "Write-Host tests")
+    _write(root / "scripts" / "fetch-libcore-assets.ps1", "Write-Host fetch")
+    _write(root / "scripts" / "build-windows-release.ps1", "Write-Host build")
+    _write(root / "config" / "product-contract.seed.json", "{}")
+    _write(root / "config" / "runtime-profile.seed.json", "{}")
+    _write(root / "config" / "runtime-artifacts.seed.json", "{}")
+    _write(
+        root / "config" / "windows-release.seed.json",
+        '{"artifact_root": "artifacts/releases/pokrov-app", "zip_name_template": "pokrov-app-windows-{version}.zip", "manifest_name_template": "pokrov-app-windows-{version}.json"}',
+    )
+    _write(root / "packages" / "app_shell" / "pubspec.yaml", "name: app_shell\n")
+    _write(root / "apps" / "android_shell" / "pubspec.yaml", "name: android_shell\n")
+    _write(root / "apps" / "windows_shell" / "pubspec.yaml", "name: windows_shell\nversion: 0.7.0+1\n")
+
+
+def _command_has_suffix(command: list[str], suffix: list[str]) -> bool:
+    return command[-len(suffix) :] == suffix
+
+
+def test_preflight_reports_missing_seed_workspace_paths() -> None:
+    with tempfile.TemporaryDirectory() as tmp:
+        client_root = Path(tmp)
+
+        status = MODULE._preflight_status(client_root)
+        issue = MODULE._preflight_issue_from_status(status)
+
+    assert status.client_root == client_root
+    assert status.validate_seed_script in status.missing_paths
+    assert status.bootstrap_script in status.missing_paths
+    assert issue is not None
+    assert "POKROV-app gate root is incomplete" in issue
+
+
+def test_portal_suite_command_targets_pokrov_app_shells() -> None:
+    with tempfile.TemporaryDirectory() as tmp:
+        client_root = Path(tmp)
+        _prepare_client_root(client_root)
+
+        command = MODULE._suite_command(client_root, suite="portal")
+
+    assert len(command.steps) == 4
+    assert str(command.steps[0].cwd) == str(client_root)
+    assert "bootstrap-workspace.ps1" in " ".join(command.steps[0].command)
+    assert command.steps[1].cwd == client_root / "packages" / "app_shell"
+    assert _command_has_suffix(command.steps[1].command, ["test"])
+    assert command.steps[2].cwd == client_root / "apps" / "android_shell"
+    assert _command_has_suffix(command.steps[2].command, ["test"])
+    assert command.steps[3].cwd == client_root / "apps" / "windows_shell"
+    assert _command_has_suffix(command.steps[3].command, ["test"])
+
+
+def test_windows_target_declares_expected_release_artifacts() -> None:
+    with tempfile.TemporaryDirectory() as tmp:
+        client_root = Path(tmp)
+        _prepare_client_root(client_root)
+
+        command = MODULE._build_target_command(client_root, target="windows")
+
+    assert len(command.steps) == 1
+    assert command.steps[0].cwd == client_root
+    assert "build-windows-release.ps1" in " ".join(command.steps[0].command)
+    assert "-SyncRuntime" in command.steps[0].command
+    assert "-SkipTests" in command.steps[0].command
+    assert "-SkipAnalyze" in command.steps[0].command
+    assert command.expected_artifacts == (
+        client_root / "artifacts" / "releases" / "pokrov-app" / "pokrov-app-windows-0.7.0+1.zip",
+        client_root / "artifacts" / "releases" / "pokrov-app" / "pokrov-app-windows-0.7.0+1.json",
+    )
+
+
+def test_android_apk_target_declares_android_shell_artifact() -> None:
+    with tempfile.TemporaryDirectory() as tmp:
+        client_root = Path(tmp)
+        _prepare_client_root(client_root)
+
+        command = MODULE._build_target_command(client_root, target="android-apk")
+
+    assert len(command.steps) == 3
+    assert "bootstrap-workspace.ps1" in " ".join(command.steps[0].command)
+    assert "fetch-libcore-assets.ps1" in " ".join(command.steps[1].command)
+    assert "-Platforms" in command.steps[1].command
+    assert "android" in command.steps[1].command
+    assert "-SyncToHosts" in command.steps[1].command
+    assert command.steps[2].cwd == client_root / "apps" / "android_shell"
+    assert _command_has_suffix(command.steps[2].command, ["build", "apk", "--release"])
+    assert command.expected_artifacts == (
+        client_root
+        / "apps"
+        / "android_shell"
+        / "build"
+        / "app"
+        / "outputs"
+        / "flutter-apk"
+        / "app-release.apk",
+    )
+
+
+def test_run_requires_declared_artifacts_to_exist() -> None:
+    with tempfile.TemporaryDirectory() as tmp:
+        client_root = Path(tmp)
+        _prepare_client_root(client_root)
+        command = MODULE._build_target_command(client_root, target="android-aab")
+
+        original_run_step = MODULE._run_step
+        try:
+            MODULE._run_step = lambda step: 0
+            rc = MODULE._run(command, client_root=client_root)
+        finally:
+            MODULE._run_step = original_run_step
+
+    assert rc == 2
+
+
+def test_run_succeeds_when_expected_artifacts_exist() -> None:
+    with tempfile.TemporaryDirectory() as tmp:
+        client_root = Path(tmp)
+        _prepare_client_root(client_root)
+        command = MODULE._build_target_command(client_root, target="android-aab")
+        artifact = command.expected_artifacts[0]
+        artifact.parent.mkdir(parents=True, exist_ok=True)
+        artifact.write_bytes(b"aab")
+
+        original_run_step = MODULE._run_step
+        try:
+            MODULE._run_step = lambda step: 0
+            rc = MODULE._run(command, client_root=client_root)
+        finally:
+            MODULE._run_step = original_run_step
+
+    assert rc == 0
+
+
+def test_preflight_report_lists_pokrov_app_context() -> None:
+    with tempfile.TemporaryDirectory() as tmp:
+        client_root = Path(tmp)
+        _prepare_client_root(client_root)
+        status = MODULE._preflight_status(client_root)
+
+        report = MODULE._render_preflight_report(status, issue=None)
+
+    assert f"[client-root] path: {client_root}" in report
+    assert "[client-root] android shell:" in report
+    assert "[client-root] windows shell:" in report
+    assert "[ok] POKROV-app gate root is present" in report
+
+
+def test_preflight_issue_clears_once_seed_workspace_exists() -> None:
+    with tempfile.TemporaryDirectory() as tmp:
+        client_root = Path(tmp)
+        _prepare_client_root(client_root)
+
+        issue = MODULE._preflight_issue_from_status(MODULE._preflight_status(client_root))
+
+    assert issue is None

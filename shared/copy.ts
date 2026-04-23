@@ -17,9 +17,56 @@ type CatalogShape = {
 };
 
 const typedCatalog = catalog as CatalogShape;
+const legacyPublicVpnAllowlist = [
+  /\bPOKROV VPN\b/gi,
+  /\b@pokrov_vpn\b/gi,
+  /\bt\.me\/pokrov_vpn\b/gi,
+  /\bpokrov_vpn\b/gi,
+];
+const directMeaningVpnPattern = /\bVPN\b/i;
+
+export type PublicCopyValidation = {
+  ok: boolean;
+  hasDirectMeaningVpnWording: boolean;
+  reason: string | null;
+};
+
+export type CatalogPublicCopyValidation = PublicCopyValidation & {
+  key: string;
+  exists: boolean;
+  allowedPublic: boolean;
+};
+
+function stripLegacyPublicVpnExceptions(text: string): string {
+  return legacyPublicVpnAllowlist.reduce((current, pattern) => current.replace(pattern, ""), text);
+}
+
+export function getCopyCatalog(): CatalogShape {
+  return typedCatalog;
+}
 
 export function getCatalogItem(key: string): CatalogItem | null {
   return typedCatalog.items[key] || null;
+}
+
+export function hasCatalogItem(key: string): boolean {
+  return key in typedCatalog.items;
+}
+
+export function listCatalogKeys(prefix?: string): string[] {
+  const keys = Object.keys(typedCatalog.items);
+  if (!prefix) {
+    return keys.sort();
+  }
+  return keys.filter((key) => key.startsWith(prefix)).sort();
+}
+
+export function getCatalogEntriesByPrefix(prefix: string): Array<[string, CatalogItem]> {
+  return listCatalogKeys(prefix).map((key) => [key, typedCatalog.items[key]] as [string, CatalogItem]);
+}
+
+export function getCatalogNamespaces(): string[] {
+  return Array.from(new Set(Object.keys(typedCatalog.items).map((key) => key.split(".")[0]))).sort();
 }
 
 export function getCopyText(
@@ -38,4 +85,46 @@ export function getCopyText(
 
 export function getCopyCatalogVersion(): string {
   return typedCatalog.catalog_version;
+}
+
+export function containsDirectMeaningVpnWording(text: string): boolean {
+  return directMeaningVpnPattern.test(stripLegacyPublicVpnExceptions(text));
+}
+
+export function validatePublicCopyText(text: string): PublicCopyValidation {
+  const hasDirectMeaningVpnWording = containsDirectMeaningVpnWording(text);
+  return {
+    ok: !hasDirectMeaningVpnWording,
+    hasDirectMeaningVpnWording,
+    reason: hasDirectMeaningVpnWording
+      ? "Direct-meaning VPN wording is not allowed for public-safe shared copy."
+      : null,
+  };
+}
+
+export function validateCatalogItemPublicCopy(key: string): CatalogPublicCopyValidation {
+  const item = getCatalogItem(key);
+  if (!item) {
+    return {
+      key,
+      exists: false,
+      allowedPublic: false,
+      ok: false,
+      hasDirectMeaningVpnWording: false,
+      reason: "Catalog item not found.",
+    };
+  }
+
+  const validation = validatePublicCopyText(item.ru);
+  return {
+    key,
+    exists: true,
+    allowedPublic: item.allowed_public,
+    ok: !item.allowed_public || validation.ok,
+    hasDirectMeaningVpnWording: validation.hasDirectMeaningVpnWording,
+    reason:
+      item.allowed_public && !validation.ok
+        ? validation.reason
+        : null,
+  };
 }

@@ -38,11 +38,11 @@ const PUBLIC_TARIFF_PLANS = getTariffPlans()
 const START_PLAN = PUBLIC_TARIFF_PLANS[0] || null;
 
 export const MARKETING_FEATURE_LIST = [
-  "Android и Windows как публичный app-first старт",
-  "5 дней premium trial внутри приложения",
-  "Free Monthly: NL-free, 5 GB / 30 days, 50 Mbps, 1 device",
-  "Buy key -> redeem key -> managed premium",
-  "Telegram как recovery, support и бонус +10 дней",
+  "Приложения для Android и Windows",
+  "Бесплатный 5-дневный старт в приложении",
+  "Один кабинет для доступа, устройств и продления",
+  "Поддержка и восстановление без лишней путаницы",
+  "Telegram как бонус и запасной путь связи",
 ] as const;
 
 export type MarketingRouteConfig = {
@@ -82,27 +82,27 @@ export const MARKETING_FAQ: MarketingFaqItem[] = [
   {
     question: "С чего начать?",
     answer:
-      "Скачайте приложение для Android или Windows. Первый валидный device получает 5 дней premium trial без обязательной регистрации.",
+      "Скачайте приложение для Android или Windows, откройте его и начните с бесплатных 5 дней. Никакой лишней переписки для старта не нужно.",
   },
   {
-    question: "Что будет после trial?",
+    question: "Что будет после бесплатных 5 дней?",
     answer:
-      "После окончания trial доступ автоматически переходит в Free Monthly: NL-free, 5 GB / 30 days, 50 Mbps per IP, 1 device с ежемесячным reset.",
+      "Вы сможете спокойно выбрать платный срок и продолжить в том же аккаунте. Если с продлением что-то не так, кабинет и поддержка помогут без ручной путаницы.",
   },
   {
-    question: "Как работает покупка?",
+    question: "Как устроено продление?",
     answer:
-      "Публичный сайт продаёт activation key. Дальше ключ погашается в приложении или cabinet continuation, а доступ становится managed premium.",
+      "Вы выбираете срок, переходите к оплате и продолжаете пользоваться тем же доступом. Все привязано к вашему приложению и кабинету, а не к случайным ручным настройкам.",
   },
   {
-    question: "Можно ли получить raw subscription link?",
+    question: "Нужен ли Telegram для старта?",
     answer:
-      "В default UX нет. Manual link остаётся только для explicit recovery или ручного support-сценария.",
+      "Нет. Основной старт идет через приложение. Telegram полезен для бонуса, восстановления доступа и быстрого контакта с поддержкой.",
   },
   {
-    question: "Зачем нужен Telegram?",
+    question: "Если что-то не получается, куда идти?",
     answer:
-      "Telegram не является основным paywall. Это канал для recovery, restore premium, бонуса +10 дней, community и support fallback.",
+      "Сначала откройте кабинет или раздел поддержки в приложении. Если нужен быстрый человеческий ответ, рядом остаются Telegram и почта поддержки.",
   },
 ];
 
@@ -130,7 +130,7 @@ export function buildOrganizationJsonLd() {
     url: `${CANONICAL_MARKETING_SITE_URL}/`,
     logo: buildMarketingUrl("/pokrov-logo.svg"),
     description:
-      "POKROV ведёт в приложение, даёт честный premium trial, а потом продолжает доступ через key-first managed premium модель.",
+      "POKROV помогает начать через приложение, спокойно проверить сервис и дальше управлять доступом без лишней технической путаницы.",
     email: CANONICAL_CONTACT_EMAIL,
     contactPoint: [
       {
@@ -211,7 +211,7 @@ export function buildSoftwareApplicationJsonLd(options?: {
     mainEntityOfPage: canonicalUrl,
     url: canonicalUrl,
     description:
-      "POKROV ведёт в приложение для Android и Windows, даёт 5 дней premium trial и переводит покупку в key-first managed premium flow.",
+      "POKROV помогает начать с приложения на Android или Windows, получить бесплатные 5 дней и дальше спокойно управлять доступом и устройствами.",
   };
 }
 

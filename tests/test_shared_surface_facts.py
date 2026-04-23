@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import importlib
+import importlib.util
 import sys
 from pathlib import Path
 
@@ -56,3 +57,30 @@ def test_public_url_helpers_use_shared_public_url_defaults(monkeypatch):
     assert public_urls.public_connect_base_url() == "https://connect.pokrov.space"
     assert public_urls.public_connect_host() == "connect.pokrov.space"
     assert public_urls.build_subscription_url("abc123") == "https://connect.pokrov.space/s8Kx2mP7qR4wT/abc123"
+
+
+def test_sync_shared_surface_facts_builds_pokrov_app_seed_updates_from_shared_truth():
+    module_path = REPO_ROOT / "scripts" / "sync_shared_surface_facts.py"
+    spec = importlib.util.spec_from_file_location("sync_shared_surface_facts", module_path)
+    assert spec is not None and spec.loader is not None
+    sync_shared_surface_facts = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(sync_shared_surface_facts)
+    product = sync_shared_surface_facts._read_json("product-facts.json")
+    public_urls = sync_shared_surface_facts._read_json("public-urls.json")
+
+    updates = sync_shared_surface_facts.build_pokrov_app_updates(product, public_urls)
+
+    assert updates["product_contract"]["brand"] == "POKROV"
+    assert updates["product_contract"]["public_product_line"] == "POKROV"
+    assert updates["product_contract"]["client_strategy"] == "consumer-first"
+    assert updates["product_contract"]["identity_model"] == "app-first"
+    assert updates["product_contract"]["default_runtime_core"] == "sing-box"
+    assert updates["product_contract"]["advanced_fallback_core"] == "xray"
+    assert updates["product_contract"]["trial_days"] == 5
+    assert updates["product_contract"]["telegram_bonus_days"] == 10
+    assert updates["product_contract"]["public_scope"] == ["android", "windows"]
+    assert updates["product_contract"]["readiness_only_scope"] == ["ios", "macos"]
+    assert updates["runtime_profile"]["official_surfaces"]["api"] == "https://api.pokrov.space/"
+    assert updates["runtime_profile"]["official_surfaces"]["checkout"] == "https://pay.pokrov.space/checkout/"
+    assert updates["platform_matrix"]["public_release_targets"] == ["android", "windows"]
+    assert updates["platform_matrix"]["readiness_only_targets"] == ["ios", "macos"]

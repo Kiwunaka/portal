@@ -1,0 +1,109 @@
+flowchart TD
+  classDef current fill:#eef4ff,stroke:#316dca,stroke-width:1.5px,color:#10284d;
+  classDef target fill:#eefbf0,stroke:#2f9e44,stroke-width:2px,color:#17351d;
+  classDef compat fill:#fff4df,stroke:#b7791f,stroke-width:1.5px,color:#5a3a00;
+  classDef operator fill:#fff0f6,stroke:#c2255c,stroke-width:1.5px,color:#4d1230;
+  classDef shared fill:#f4f4f5,stroke:#52525b,stroke-width:1px,color:#18181b;
+  classDef state fill:#eef2ff,stroke:#4f46e5,stroke-width:1px,color:#1e1b4b;
+
+  subgraph LEG["Легенда"]
+    LCUR["Текущий живой контур"]
+    LTAR["Целевой главный контур"]
+    LCOM["Совместимость и fallback"]
+    LSH["Общая поверхность"]
+    LCUR -->|"текущий переход"| LSH
+    LCUR ==>|"целевой переход"| LTAR
+    LCUR -. "совместимость" .-> LCOM
+  end
+
+  subgraph START["Запуск и bootstrap"]
+    A1["Первый запуск"]
+    A2["Локальный идентификатор сохранен"]
+    A3["Собран мягкий контекст устройства"]
+    A4["Запрошен пробный старт"]
+    A5["Анти-абьюз и создание аккаунта"]
+    A6["Реальная сессия выдана"]
+    A7["Управляемый профиль готов"]
+  end
+
+  subgraph MODE["Выбор режима устройства"]
+    M1["Вопрос о способе оптимизации"]
+    M2["Оптимизация всего устройства"]
+    M3["Оптимизация выбранных приложений"]
+    M4["Выбор пакетов или процессов"]
+    M5["Нужны повышенные права"]
+    M6["Сохраненная политика устройства"]
+  end
+
+  subgraph CONNECT["Ежедневное подключение"]
+    C1["Быстрое подключение"]
+    C2["Короткий список подходящих узлов"]
+    C3["Измерение отклика с устройства"]
+    C4["Удержание удачного маршрута"]
+    C5["Рабочий доступ"]
+  end
+
+  subgraph ACCESS["Состояния доступа"]
+    S1["Пробный премиум"]
+    S2["Бесплатный месячный режим"]
+    S3["Мягкий режим после квоты"]
+    S4["Управляемый премиум после оплаты"]
+    S5["Бонус плюс десять дней"]
+  end
+
+  subgraph SIDE["Боковые ответвления"]
+    X1["Привязка Telegram"]
+    X2["Проверка участия в канале"]
+    X3["Явное получение бонуса"]
+    X4["Продление через ключ и оплату"]
+    X5["Поддержка и восстановление"]
+    X6["Ручной recovery-контур"]
+  end
+
+  A1 ==> A2
+  A2 ==> A3
+  A3 ==> A4
+  A4 --> A5
+  A5 --> A6
+  A6 --> A7
+  A7 ==> M1
+  M1 ==> M2
+  M1 --> M3
+  M3 --> M4
+  M4 --> M5
+  M2 --> M6
+  M5 --> M6
+  M6 ==> C1
+  C1 --> C2
+  C2 --> C3
+  C3 --> C4
+  C4 ==> C5
+
+  C5 --> S1
+  S1 --> S2
+  S2 --> S3
+  X4 --> S4
+  S4 --> C5
+
+  C5 --> X1
+  X1 --> X2
+  X2 --> X3
+  X3 --> S5
+  S5 --> C5
+
+  S1 --> X4
+  S2 --> X4
+  S3 --> X4
+
+  A4 -.-> X5
+  A7 -.-> X5
+  C5 -.-> X5
+  X5 -.-> X6
+  X6 -.-> C5
+  X6 -.-> X4
+
+  class LCUR,C2,C3,C4,X1,X2,X3 current;
+  class LTAR,A1,A2,A3,M1,M2,M6,C1,C5 target;
+  class LCOM,X5,X6 compat;
+  class S1,S2,S3,S4,S5 state;
+  class LSH,A4,A5,A6,A7,M3,M4,M5,X4 shared;

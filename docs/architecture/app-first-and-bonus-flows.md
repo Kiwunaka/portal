@@ -1,6 +1,6 @@
 # App-First And Bonus Flows
 
-Last updated: 2026-04-22
+Last updated: 2026-04-23
 
 ## Document Status
 
@@ -8,25 +8,28 @@ This file is living source of truth for app-first identity, Telegram linking, an
 
 ## Goal
 
-Document the current app-first identity model, automatic username sync path, checkout continuation, node-pool assignment, and the live Telegram bonus flow used by the `POKROV` app line, including legacy `POKROV VPN`-labeled builds.
+Document the current app-first identity model, automatic username sync path, checkout continuation, node-pool assignment, and the live Telegram bonus flow used by the active `POKROV-app/main` client line, with legacy `POKROV VPN` labels treated as compatibility or archival leftovers only.
 
 ## Wave 0 Rework Target
 
 The rework canon now freezes the following target identity and access model for later code waves:
 
+- `POKROV-app/main` is the only active client lane expected to implement this contract family
+- `app-next/` and `external/client-fork/app/` are retired bootstrap or rollback references only and must not override the active contract
 - one canonical `app-first` account links `install_id`, email, Telegram, devices, and activation keys
 - store-app entry remains the premium-trial path: the first valid device gets `5 days` of premium trial without mandatory registration, then downgrades to `free_monthly`
-- site email signup becomes a browser continuation path that grants only `free_monthly`; it does not mint the premium trial
+- site email signup remains a planned browser continuation lane marked `soon`; until launch it must not be described as a live public parity path or a premium-trial path
+- browser continuation currently starts from app handoff or Telegram; email joins that same cabinet session family only after the marked-`soon` launch goes live
 - Telegram is recovery, linking, restore-premium, bonus, community, support fallback, and bot-side fallback commerce, not the primary login or commerce wall
 - commerce becomes `buy key -> redeem key -> managed premium`, with raw subscription links hidden from default UX and exposed only for explicit recovery/manual flows
 - free-tier policy is fixed to `NL-free`, `5 GB / 30 days`, `50 Mbps per IP`, `1 device`, with monthly reset
 - `GET /api/dashboard`, `GET /api/user/*`, `POST /api/client/session/start-trial`, and `GET /api/client/profile/managed` should converge on one linked-identity and access-state contract that also carries redeem eligibility, promo-slot payloads, and the hidden transport matrix
 - normal consumer UI shows one logical location; ordered transports such as `vless_reality -> vmess -> trojan -> xhttp` remain hidden rollout detail rather than mass-UI choice
 
-Bridge-period note:
+Client-canon note:
 
-- the concrete endpoint inventory below may still reflect the retained bridge release path while later code waves land
-- Wave 0 freezes the target access story first so backend, app, marketing, webapp, and admin work can converge on one contract family
+- this document describes the active contract that `POKROV-app/main` must implement
+- any retired bootstrap or rollback docs that still describe older surfaces are reference-only and must not override this contract
 
 ## App-First Trial Flow
 
@@ -196,9 +199,9 @@ Unified access-contract note:
 
 Web surfaces support app-first continuation through:
 
+- app or bot handoff into an existing cabinet session
 - Telegram widget or Telegram OIDC login in browser
-- additive email signup, verification, login, recovery, and reset on the site and cabinet
-- bot-issued `web_session_token` handoff into `app.pokrov.space`
+- additive email signup, verification, login, recovery, and reset as a marked-`soon` browser lane rather than a live public default
 - dashboard and checkout continuation from an existing web session
 
 Contract rule:
@@ -207,9 +210,12 @@ Contract rule:
 - canonical public config host is `https://connect.pokrov.space/`
 - HTML responses from `app.pokrov.space` must never be treated as valid API JSON
 - web login should continue the user into account or checkout, not into a dead-end landing
-- additive email auth must issue the same browser session family used by the cabinet, checkout, and support flows while exposing `auth_origin` and linked-identity summary for support/admin visibility
+- app handoff and Telegram are the active browser-continuation entry families today
+- additive email auth must stay marked `soon` until sender identity, delivery confirmation, and the public launch path are genuinely live
+- once launched, additive email auth must issue the same browser session family used by the cabinet, checkout, and support flows while exposing `auth_origin` and linked-identity summary for support/admin visibility
 - the additive email-auth rollout uses endpoint families under `/api/auth/email/*` for register, verify, login, recovery, and reset
-- public email register, verify, and recovery should remain enabled only while transactional sender identity and delivery-confirmation/webhook visibility are live; otherwise the web UI must show a truthful unavailable state
+- public email register, verify, and recovery should remain disabled or explicitly marked `soon` until transactional sender identity and delivery-confirmation/webhook visibility are live
+- browser entry screens in `webapp` are continuation-first and must not become a second landing-page pitch
 - new user-facing `subscription_url` values must point to `connect.pokrov.space`
 - legacy `api.pokrov.space/s8Kx2mP7qR4wT/...` remains compatibility-only for older imports and recovery cases
 - the same `client_policy` contract still flows through `start-trial`, `user`, and `dashboard`, but the rollout policy behind it can vary by cohort without introducing a new endpoint
@@ -224,7 +230,7 @@ Contract rule:
 
 Checkout rule:
 
-- public pricing can start the flow from `marketing`
+- public pricing starts from checkout-first marketing surfaces, with `pokrov.space/checkout/` as the primary public acquisition route
 - `webapp` renewal is continuation-only and should defer to the same hosted activation-key flow
 - Telegram bot billing remains valid as a secondary path
 - raw subscription links remain recovery/manual-request only and must stay hidden from the default commerce UX
@@ -332,7 +338,8 @@ Production environment should keep:
 
 Support direction should stay consistent across app, WebApp, and helpbot:
 
-- first-layer client IA should stay `VPN`, `Locations`, `Devices`, `Profile`, and `Support`
+- first-layer client IA should stay `Protection`, `Locations`, `Rules`, and `Profile`
+- `Support`, `Devices`, `Subscription`, and `Settings` should sit under `Profile`
 - renewal and subscription state should remain first-class inside `Profile`, not treated as an isolated side flow
 - legacy client route names such as `Logs`, `Config Options`, and `About` may survive only as compatibility redirects, not as the public IA
 - support messages should include device context
@@ -413,4 +420,4 @@ If a username is missing or unusable, the public display should fall back to a n
 - [portal_bot/api.py](C:/Users/kiwun/Documents/ai/VPN/portal_bot/api.py)
 - [portal_bot/bot.py](C:/Users/kiwun/Documents/ai/VPN/portal_bot/bot.py)
 - [portal_bot/worker.py](C:/Users/kiwun/Documents/ai/VPN/portal_bot/worker.py)
-- [client session flow doc](C:/Users/kiwun/Documents/ai/VPN/external/client-fork/app/docs/architecture/app-first-session-flow.md)
+- [POKROV App Docs Index](C:/Users/kiwun/Documents/ai/POKROV-app/docs/README.md)

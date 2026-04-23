@@ -1,6 +1,7 @@
 "use client";
 
 import type { Dispatch, SetStateAction } from "react";
+import { adminButtonClass, adminCheckboxLabelClass, adminFieldClass, adminInsetPanelClass } from "@/components/admin/admin-shell";
 import type { AdminUserKey } from "@/lib/api";
 import { fmtTraffic, parseNullableNumber, type KeyPolicyDraft } from "./admin-users-format";
 
@@ -30,44 +31,45 @@ export function AdminUserKeyPolicyEditor({
   setPolicyDrafts,
 }: AdminUserKeyPolicyEditorProps) {
   return (
-    <div className="rounded-xl bg-white/70 p-3 text-sm dark:bg-white/10">
-      <div className="mb-2 flex items-center justify-between gap-2">
-        <p className="font-semibold">Ключи и лимиты</p>
-        <button className="outline-btn rounded-xl px-3 py-1.5 text-xs font-semibold" type="button" onClick={onReload} disabled={busy || !!keyBusy || !!policyBusy}>
-          Обновить
+    <div className={`${adminInsetPanelClass} mt-3 text-sm`}>
+      <div className="mb-3 flex items-center justify-between gap-2">
+        <div>
+          <p className="text-sm font-semibold text-slate-50">Keys and per-node policy</p>
+          <p className="mt-1 text-xs leading-5 text-slate-400">Use this to toggle keys, reset traffic, resync sub IDs, and apply traffic policy without leaving the selected account.</p>
+        </div>
+        <button className={adminButtonClass("secondary", "xs")} type="button" onClick={onReload} disabled={busy || !!keyBusy || !!policyBusy}>
+          Reload
         </button>
       </div>
-      <p className="mb-3 text-xs text-slate-500">
-        Ключи на каждой ноде можно включать, отключать, синхронизировать и отдельно настраивать политику трафика.
-      </p>
+
       <div className="space-y-3">
         {keys.map((key) => {
           const draft = policyDrafts[key.node_code];
           if (!draft) return null;
 
           return (
-            <div key={key.node_code} className="rounded-xl border border-white/40 bg-white/70 p-3 dark:border-white/10 dark:bg-white/5">
+            <div key={key.node_code} className="rounded-xl border border-[#22303c] bg-[#0b1218] p-3">
               <div className="flex flex-wrap items-start justify-between gap-2">
                 <div>
-                  <p className="font-semibold">
+                  <p className="font-semibold text-slate-50">
                     {key.node_name || key.node_code}
                     <span className="ml-2 text-xs text-slate-500">{key.node_code}</span>
                   </p>
-                  <p className="text-xs text-slate-500">
+                  <p className="text-xs text-slate-400">
                     {key.exists ? "Ключ присутствует" : "Ключ отсутствует"} | {key.enabled ? "включён" : "выключен"} | {key.online ? "online" : "offline"}
                   </p>
-                  <p className="text-xs text-slate-500">
+                  <p className="text-xs text-slate-400">
                     Трафик: {fmtTraffic(key.total_bytes)} | current connections: {key.current_connections}
                   </p>
                 </div>
                 <div className="flex flex-wrap gap-2">
-                  <button className="outline-btn rounded-lg px-2 py-1 text-[11px] font-semibold" type="button" onClick={() => onRunKeyAction(key, "toggle")} disabled={busy || keyBusy === `${key.node_code}:toggle`}>
+                  <button className={adminButtonClass("ghost", "xs")} type="button" onClick={() => onRunKeyAction(key, "toggle")} disabled={busy || keyBusy === `${key.node_code}:toggle`}>
                     {key.enabled ? "Выключить" : "Включить"}
                   </button>
-                  <button className="outline-btn rounded-lg px-2 py-1 text-[11px] font-semibold" type="button" onClick={() => onRunKeyAction(key, "reset")} disabled={busy || keyBusy === `${key.node_code}:reset`}>
+                  <button className={adminButtonClass("ghost", "xs")} type="button" onClick={() => onRunKeyAction(key, "reset")} disabled={busy || keyBusy === `${key.node_code}:reset`}>
                     Сбросить трафик
                   </button>
-                  <button className="outline-btn rounded-lg px-2 py-1 text-[11px] font-semibold" type="button" onClick={() => onRunKeyAction(key, "resync")} disabled={busy || keyBusy === `${key.node_code}:resync`}>
+                  <button className={adminButtonClass("ghost", "xs")} type="button" onClick={() => onRunKeyAction(key, "resync")} disabled={busy || keyBusy === `${key.node_code}:resync`}>
                     Resync sub ID
                   </button>
                 </div>
@@ -77,70 +79,70 @@ export function AdminUserKeyPolicyEditor({
                 <input
                   value={draft.burst_mbps}
                   onChange={(event) => setPolicyDrafts((prev) => ({ ...prev, [key.node_code]: { ...draft, burst_mbps: event.target.value } }))}
-                  placeholder="Burst-лимит (Mbps)"
-                  className="rounded-lg border border-violet-200/50 bg-white px-2 py-1 text-xs outline-none dark:border-violet-500/30 dark:bg-slate-900/70"
+                  placeholder="Burst limit (Mbps)"
+                  className={adminFieldClass}
                 />
                 <input
                   value={draft.soft_cap_gb}
                   onChange={(event) => setPolicyDrafts((prev) => ({ ...prev, [key.node_code]: { ...draft, soft_cap_gb: event.target.value } }))}
-                  placeholder="Soft cap (ГБ)"
-                  className="rounded-lg border border-violet-200/50 bg-white px-2 py-1 text-xs outline-none dark:border-violet-500/30 dark:bg-slate-900/70"
+                  placeholder="Soft cap (GB)"
+                  className={adminFieldClass}
                 />
                 <input
                   value={draft.hard_cap_gb}
                   onChange={(event) => setPolicyDrafts((prev) => ({ ...prev, [key.node_code]: { ...draft, hard_cap_gb: event.target.value } }))}
-                  placeholder="Hard cap (ГБ)"
-                  className="rounded-lg border border-violet-200/50 bg-white px-2 py-1 text-xs outline-none dark:border-violet-500/30 dark:bg-slate-900/70"
+                  placeholder="Hard cap (GB)"
+                  className={adminFieldClass}
                 />
               </div>
-              <div className="mt-2 flex flex-wrap items-center gap-3">
-                <label className="inline-flex items-center gap-1 text-[11px]">
+
+              <div className="mt-3 flex flex-wrap items-center gap-3">
+                <label className={adminCheckboxLabelClass}>
                   <input
                     type="checkbox"
                     checked={draft.notify_soft}
                     onChange={(event) => setPolicyDrafts((prev) => ({ ...prev, [key.node_code]: { ...draft, notify_soft: event.target.checked } }))}
                   />
-                  Уведомлять на soft cap
+                  Notify on soft cap
                 </label>
-                <label className="inline-flex items-center gap-1 text-[11px]">
+                <label className={adminCheckboxLabelClass}>
                   <input
                     type="checkbox"
                     checked={draft.notify_hard}
                     onChange={(event) => setPolicyDrafts((prev) => ({ ...prev, [key.node_code]: { ...draft, notify_hard: event.target.checked } }))}
                   />
-                  Уведомлять на hard cap
+                  Notify on hard cap
                 </label>
-                <label className="inline-flex items-center gap-1 text-[11px]">
+                <label className={adminCheckboxLabelClass}>
                   <input
                     type="checkbox"
                     checked={draft.auto_disable_on_hard}
                     onChange={(event) => setPolicyDrafts((prev) => ({ ...prev, [key.node_code]: { ...draft, auto_disable_on_hard: event.target.checked } }))}
                   />
-                  Автоотключение на hard cap
+                  Auto-disable on hard cap
                 </label>
-                <label className="inline-flex items-center gap-1 text-[11px]">
+                <label className={adminCheckboxLabelClass}>
                   <input
                     type="checkbox"
                     checked={draft.apply_now}
                     onChange={(event) => setPolicyDrafts((prev) => ({ ...prev, [key.node_code]: { ...draft, apply_now: event.target.checked } }))}
                   />
-                  Применить сразу
+                  Apply now
                 </label>
-                <button className="outline-btn rounded-lg px-2 py-1 text-[11px] font-semibold" type="button" onClick={() => onSavePolicy(key.node_code)} disabled={policyBusy === key.node_code}>
-                  {policyBusy === key.node_code ? "..." : "Сохранить политику"}
+                <button className={adminButtonClass("secondary", "xs")} type="button" onClick={() => onSavePolicy(key.node_code)} disabled={policyBusy === key.node_code}>
+                  {policyBusy === key.node_code ? "..." : "Save policy"}
                 </button>
               </div>
 
-              <div className="mt-2 text-xs text-slate-500">
-                <span className="font-semibold text-slate-600 dark:text-slate-300">Текущие policy-значения:</span>{" "}
-                burst {parseNullableNumber(draft.burst_mbps) ?? "—"}, soft {parseNullableNumber(draft.soft_cap_gb) ?? "—"}, hard{" "}
-                {parseNullableNumber(draft.hard_cap_gb) ?? "—"}
+              <div className="mt-2 text-xs text-slate-400">
+                Current draft: burst {parseNullableNumber(draft.burst_mbps) ?? "—"}, soft {parseNullableNumber(draft.soft_cap_gb) ?? "—"}, hard {parseNullableNumber(draft.hard_cap_gb) ?? "—"}.
               </div>
             </div>
           );
         })}
       </div>
-      {!keys.length ? <p className="text-xs text-slate-500">Ключи для этого пользователя пока не созданы.</p> : null}
+
+      {!keys.length ? <p className="mt-3 text-xs text-slate-400">No keys have been provisioned for tg_id {selectedTgId} yet.</p> : null}
     </div>
   );
 }

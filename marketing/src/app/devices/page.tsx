@@ -21,36 +21,38 @@ export default function DevicesPage() {
           { name: "Устройства", path: MARKETING_CANONICAL_PATHS.devices },
         ])}
       />
-      <MarketingLanding
-        pagePath={MARKETING_CANONICAL_PATHS.devices}
-        heroKicker="Для всех основных устройств"
-        heroTitle="Android и Windows с одним понятным маршрутом"
-        heroSubtitle="Для Android и Windows основной путь уже идёт через приложение, тест, кабинет и продление. Для Apple мы честно держим readiness-статус без ложного обещания доступности."
-        scenarioTitle="Как устроен маршрут по устройствам"
-        scenarioBody="Страница не смешивает релизные обещания и readiness-статус: для Android и Windows путь публичный, для Apple — аккуратное ожидание и инструкции."
-        scenarioCards={[
-          {
-            eyebrow: "Android + Windows",
-            glyph: "window",
-            title: "Основной релизный путь уже готов",
-            desc: "Именно эти платформы входят в текущий public promise, поэтому старт и тест выстроены вокруг них.",
-          },
-          {
-            eyebrow: "Apple readiness",
-            glyph: "orbit",
-            title: "Работаем над iPhone и Mac",
-            desc: "Если устройство Apple важно уже сейчас, страница честно показывает статус готовности без ложных обещаний.",
-          },
-          {
-            eyebrow: "Один бренд-маршрут",
-            glyph: "route",
-            title: "Единая логика для всех устройств",
-            desc: "Сайт отвечает за старт, приложение — за первый опыт, кабинет — за управление вашим доступом.",
-          },
-        ]}
-        clusterTitle="Страница выбора устройства"
-        clusterBody="Эта страница ловит device-intent и помогает быстро перейти к нужному сценарию без дублирования главной."
-      />
+      <div className="lp-route-shell lp-route-shell--intent lp-route-shell--devices">
+        <MarketingLanding
+          pagePath={MARKETING_CANONICAL_PATHS.devices}
+          heroKicker="Для основных устройств"
+          heroTitle="Android и Windows без лишней суеты"
+          heroSubtitle="Для Android и Windows путь уже выстроен вокруг приложения, пробного периода и кабинета. Для Apple мы сохраняем спокойный readiness-статус без обещаний раньше времени."
+          scenarioTitle="Как устроен маршрут по устройствам"
+          scenarioBody="Эта страница помогает быстро понять, где путь уже готов, а где пока стоит честное ожидание без рекламного шума."
+          scenarioCards={[
+            {
+              eyebrow: "Android + Windows",
+              glyph: "window",
+              title: "Публичный старт уже собран",
+              desc: "Именно эти платформы входят в текущий public promise, поэтому старт, тест и продление выстроены вокруг них.",
+            },
+            {
+              eyebrow: "Apple readiness",
+              glyph: "orbit",
+              title: "iPhone и Mac остаются в спокойной готовности",
+              desc: "Если вам важно устройство Apple, страница честно показывает статус и не обещает больше, чем уже готово.",
+            },
+            {
+              eyebrow: "Одна логика",
+              glyph: "route",
+              title: "Один тон для всех устройств",
+              desc: "Сайт помогает начать, приложение даёт первый опыт, а кабинет берёт на себя управление доступом дальше.",
+            },
+          ]}
+          clusterTitle="Выбор устройства без перегруза"
+          clusterBody="Страница ловит device-intent и мягко переводит в нужный сценарий, не дублируя главную и не создавая лишний шум."
+        />
+      </div>
     </>
   );
 }

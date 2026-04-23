@@ -851,8 +851,8 @@ test.describe("Admin gate", () => {
     for (const section of sections) {
       await openRoute(page, section);
       await expect(page).toHaveURL(new RegExp(`/${section.replace(/\//g, "\\/")}$`));
-      await expect(page.getByRole("navigation")).toBeVisible();
-      await expect(page.locator("main h1, main h2").first()).toBeVisible();
+      await expect(page.getByRole("navigation", { name: "Admin sections" })).toBeVisible();
+      await expect(page.locator("h1, h2").first()).toBeVisible();
     }
   });
 
@@ -872,13 +872,13 @@ test.describe("Admin gate", () => {
 
     await openRoute(page, "admin/");
 
-    await expect(page.getByRole("heading", { name: "POKROV Admin" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Админка POKROV" })).toBeVisible();
     await expect(
-      page.getByText("Веб-админка — основной операторский интерфейс. Telegram используйте только для быстрых fallback-действий."),
+      page.getByText("Веб-админка — основной операторский интерфейс. Telegram используйте только для быстрых fallback-действий.").first(),
     ).toBeVisible();
 
-    for (const category of ["Diagnostics", "People", "Access", "Payments", "Network", "Messaging", "Feedback"]) {
-      await expect(page.getByRole("heading", { name: category })).toBeVisible();
+    for (const category of ["Диагностика", "Пользователи", "Доступ", "Оплата", "Сеть", "Сообщения", "Обращения"]) {
+      await expect(page.getByRole("heading", { name: category, level: 2 }).first()).toBeVisible();
     }
   });
 
@@ -910,8 +910,8 @@ test.describe("Admin gate", () => {
     await expect(page.getByRole("heading", { name: "Сводка ошибок и рисков" })).toBeVisible();
 
     await openRoute(page, "admin/users/");
-    await expect(page.getByRole("link", { name: "Сводка" })).toBeVisible();
-    await expect(page.getByRole("link", { name: "Пользователи" })).toBeVisible();
+    await expect(page.getByRole("link", { name: /Сводка/ }).first()).toBeVisible();
+    await expect(page.getByRole("link", { name: /Пользователи/ }).first()).toBeVisible();
     await expect(page.getByPlaceholder("Поиск по username, Telegram ID, имени или app install ID")).toBeVisible();
     await expect(page.getByRole("button", { name: "Создать manual/test пользователя" })).toBeVisible();
 
@@ -945,7 +945,7 @@ test.describe("Admin gate", () => {
     await page.locator("select").nth(3).selectOption("name_asc");
     await expect(page.locator("tbody tr").first()).toContainText("User 001");
 
-    await page.getByRole("button", { name: "Следующая" }).first().click();
+    await page.getByRole("button", { name: /Следующая|Дальше/ }).first().click();
     await expect(page.getByText("Показаны 81-81 из 81 пользователей.", { exact: true })).toBeVisible();
     await expect(page.locator("tbody tr").first()).toContainText("User 081");
 
@@ -1016,7 +1016,7 @@ test.describe("Admin gate", () => {
     await page.getByRole("button", { name: "Удалить пользователя" }).click();
 
     await expect(page.getByText("Manual/test пользователь удалён.")).toBeVisible();
-    await expect(page.getByText("По текущим фильтрам пользователей нет.")).toBeVisible();
+    await expect(page.getByText("По текущим фильтрам пользователей нет.").first()).toBeVisible();
   });
 
   test("shows observer-lite badges, filters, and detail diagnostics", async ({ page }) => {

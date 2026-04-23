@@ -1,112 +1,140 @@
-# Передача по финальным ссылкам и релизному handoff
+# Release Links And Final Handoff
 
-Last updated: 2026-04-15
+Last updated: 2026-04-23
 
-## Зачем нужен этот файл
+## Purpose
 
-Используйте эту инструкцию после публикации клиентских артефактов и до того, как объявлять релиз завершённым.
+Use this runbook after client artifacts are published and before calling a release handoff complete.
 
-Этот шаг нужен, чтобы приложение, бот, webapp и marketing указывали на одни и те же актуальные Android- и Windows-ссылки.
+This step exists so the app, bot, `webapp`, and `marketing` all resolve the same live Android and Windows URLs.
 
-## Когда сразу останавливаемся
+## Release Metadata Home
 
-Сразу считаем релиз заблокированным, если нет хотя бы одного пункта:
+Active release metadata now lives under the canonical client repo:
 
-- хотя бы одной рабочей Android release URL
-- хотя бы одной рабочей Windows release URL
+- bridge-period metadata and mirrored bundles: `C:/Users/kiwun/Documents/ai/POKROV-app/artifacts/releases/bridge/<version>/`
+- next-client metadata and direct `POKROV-app` bundles after cutover: `C:/Users/kiwun/Documents/ai/POKROV-app/artifacts/releases/pokrov-app/<version>/`
+
+Metadata rule:
+
+- keep `release-handoff.json` in that versioned folder as the preferred operator input
+- keep any compatibility `release-links.env` and the stamped JSON manifests produced by `release_handoff.ps1` beside it in the same versioned folder
+- keep the stable pointer at `C:/Users/kiwun/Documents/ai/POKROV-app/artifacts/releases/release-handoff.json` when you intentionally want one canonical handoff source
+
+## Stop Immediately If
+
+Treat the release as blocked if any of these are missing:
+
+- at least one working Android release URL
+- at least one working Windows release URL
 - `APP_DOCS_URL`
-- успешной проверки URL
-- синхронизации runtime env на `brain`
-- rebuild/redeploy статических страниц, если публичные ссылки менялись
+- a successful URL check run
+- runtime env sync on `brain`
+- static marketing rebuild and redeploy when public URLs changed
 
-## Что нужно получить от вас
+## Required Inputs
 
-Нужны финальные публичные ссылки для:
+You need final public URLs for:
 
-- `APP_ANDROID_PLAY_URL` или `APP_ANDROID_APK_URL` или `APP_ANDROID_MIRROR_URL`
-- `APP_WINDOWS_EXE_URL` или `APP_WINDOWS_MIRROR_URL`
+- `APP_ANDROID_PLAY_URL` or `APP_ANDROID_APK_URL` or `APP_ANDROID_MIRROR_URL`
+- `APP_WINDOWS_EXE_URL` or `APP_WINDOWS_MIRROR_URL`
 - `APP_DOCS_URL`
 
-Для проверки ссылок должно быть заполнено:
+Minimum valid handoff input:
 
-- хотя бы одна Android-ссылка
-- хотя бы одна Windows-ссылка
-- ссылка на docs/install
+- at least one Android URL
+- at least one Windows URL
+- docs or install URL
 
-## Что делать по шагам
+## Step By Step
 
-1. Опубликуйте финальные Android- и Windows-артефакты.
-2. Сформируйте файл релизных ссылок:
+1. Publish the final Android and Windows artifacts.
+2. Choose the versioned metadata home under `C:/Users/kiwun/Documents/ai/POKROV-app/artifacts/releases/...`.
+3. Generate `release-handoff.json`, then add any compatibility `release-links.env` and stamped manifest files in that versioned folder.
+
+Bridge-period example:
 
 ```powershell
+$version = "0.1.0-beta.3"
+$releaseRoot = "C:/Users/kiwun/Documents/ai/POKROV-app/artifacts/releases/bridge/$version"
+
 pwsh external/client-fork/scripts/release_handoff.ps1 `
   -AndroidApkUrl "https://github.com/<org>/<repo>/releases/download/<tag>/pokrov-android-universal.apk" `
   -WindowsExeUrl "https://github.com/<org>/<repo>/releases/download/<tag>/pokrov-windows-setup-x64.exe" `
-  -DocsUrl "https://pokrov.space/install/"
+  -DocsUrl "https://pokrov.space/install/" `
+  -OutEnvPath "$releaseRoot/release-links.env" `
+  -ManifestDir "$releaseRoot/release-manifests"
 ```
 
-3. Проверьте ссылки:
+4. Verify the URLs from that same metadata file:
 
 ```powershell
-python external/client-fork/scripts/check_release_urls.py --env-file external/client-fork/release-links.env
+python external/client-fork/scripts/check_release_urls.py --env-file "C:/Users/kiwun/Documents/ai/POKROV-app/artifacts/releases/bridge/<version>/release-links.env"
 ```
 
-4. Примените `APP_*` значения на `brain`:
+5. Apply the `APP_*` values to `brain` from that same metadata file:
 
 ```powershell
-python scripts/remote_brain_apply_release_handoff.py --brain-ip 82.21.114.104 --env-file external/client-fork/release-links.env
+python scripts/remote_brain_apply_release_handoff.py `
+  --brain-ip 82.21.114.104 `
+  --metadata-file "C:/Users/kiwun/Documents/ai/POKROV-app/artifacts/releases/pokrov-app/<version>/release-handoff.json"
 ```
 
-5. Если Android- или Windows-ссылки изменились, пересоберите и заново выкатите static marketing, чтобы `NEXT_PUBLIC_APP_*` тоже указывали на тот же релиз.
-6. После синхронизации перепроверьте download-поверхности, которые тянут ссылки из runtime.
-7. Только после этого пишите финальный release handoff.
+Compatibility note:
 
-Важно по поверхностям:
+- `remote_brain_apply_release_handoff.py` and `release_orchestrator.py` prefer the client-owned JSON handoff through `--metadata-file` / `--release-metadata-file`
+- `release-links.env` remains a compatibility fallback and URL-check input when needed
 
-- marketing прямые download CTA сейчас зависят именно от `APP_ANDROID_APK_URL` и `APP_WINDOWS_EXE_URL`; только `Play` или только mirror-ссылки не дают той же прямой кнопки на публичной landing/install-странице
-- sync `APP_*` на `brain` обновляет runtime app, bot и authenticated webapp, но сам по себе не перестраивает static marketing или его build-time fallback
-- brain-local verify после sync полезен, но он не заменяет отдельные `current-origin check` и `RU-origin check`
+6. If Android or Windows public URLs changed, rebuild and redeploy static `marketing` so `NEXT_PUBLIC_APP_*` matches the same release.
+7. Re-check the download surfaces that read runtime values.
+8. Only then write the final release handoff.
 
-## Что обязательно должно быть в финальном handoff
+## Surface Notes
 
-Финальное сообщение должно быть простым и прямым:
+- public `marketing` download CTA depends on `APP_ANDROID_APK_URL` and `APP_WINDOWS_EXE_URL` for direct buttons; `Play`-only or mirror-only values do not give the same direct install path
+- syncing `APP_*` on `brain` updates runtime app, bot, and authenticated `webapp`, but does not rebuild static `marketing`
+- brain-local verify is useful after sync, but it does not replace separate `current-origin check` or `RU-origin check`
 
-- что именно изменилось
-- что именно проверили
-- что ещё заблокировано, если не всё готово
-- находится ли система в rollback-safe состоянии
+## Required Final Handoff Content
 
-Если в этом же handoff фигурирует доступность из разных точек, обязательно отдельными строками:
+The final handoff should say:
+
+- what changed
+- what was verified
+- what remains blocked, if anything
+- whether the system is in a rollback-safe state
+
+If origin-sensitive reachability appears in the same handoff, keep these as separate lines:
 
 - `current-origin check`
 - `brain-origin check`
 - `RU-origin check`
 
-Не надо сливать их в одну общую строчку.
+Do not collapse them into one summary line.
 
-## Что нужно прислать мне обратно
+## What To Send Back
 
-Пришлите:
+Include:
 
-- какой именно `release-links.env` использовали
-- команду проверки URL и её exit code
-- команду sync на `brain` и её exit code
-- какие сервисы на `brain` перезапускались
-- был ли rebuild/redeploy marketing
-- доказательство, что app, bot, webapp и marketing теперь смотрят на одни и те же релизные ссылки
+- the exact `release-links.env` path used
+- the URL-check command and exit code
+- the `brain` sync command and exit code
+- which services on `brain` were restarted
+- whether `marketing` was rebuilt and redeployed
+- evidence that app, bot, `webapp`, and `marketing` now resolve the same release URLs
 
-## Частые причины блокировки
+## Common Blockers
 
-- ссылки есть, но checker падает
-- runtime env уже обновили, а marketing всё ещё показывает старые ссылки
-- обновили только одну поверхность
-- Android signing или Android physical-device audit ещё не закрыты
-- финальные signed Android или Windows artifacts ещё не подтверждены как production-ready
-- в handoff написано "готово", но нет доказательств по origin checks или release URLs
+- URLs exist but the checker fails
+- runtime env was updated but `marketing` still shows old links
+- only one surface was updated
+- Android signing or physical-device audit is still open
+- final signed Android or Windows artifacts are not yet confirmed as production-ready
+- the handoff says `ready` but does not include origin-matrix evidence or release-URL evidence
 
-## Связанные инструкции
+## Related Instructions
 
-- [Передача для production-подписи Android](C:/Users/kiwun/Documents/ai/VPN/docs/operations/android-production-signing-handoff.md)
-- [Передача для проверки Android на реальном устройстве](C:/Users/kiwun/Documents/ai/VPN/docs/operations/android-physical-device-audit-handoff.md)
-- [Передача для RU-origin probe](C:/Users/kiwun/Documents/ai/VPN/docs/operations/ru-origin-probe-handoff.md)
+- [Android Production Signing Handoff](C:/Users/kiwun/Documents/ai/VPN/docs/operations/android-production-signing-handoff.md)
+- [Android Physical Device Audit Handoff](C:/Users/kiwun/Documents/ai/VPN/docs/operations/android-physical-device-audit-handoff.md)
+- [RU Origin Probe Handoff](C:/Users/kiwun/Documents/ai/VPN/docs/operations/ru-origin-probe-handoff.md)
 - [Deployment And Access](C:/Users/kiwun/Documents/ai/VPN/docs/operations/deployment-and-access.md)

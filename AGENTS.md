@@ -1,6 +1,6 @@
 # Repository Agents
 
-Last updated: 2026-04-22
+Last updated: 2026-04-23
 
 This file is the working contract for any agent or developer operating inside `C:\Users\kiwun\Documents\ai\VPN`.
 
@@ -51,16 +51,16 @@ Before any substantial change, read these files in order:
 7. [Developer Guide](C:/Users/kiwun/Documents/ai/VPN/docs/developer/developer-guide.md)
 8. [Repository Map](C:/Users/kiwun/Documents/ai/VPN/docs/developer/repository-map.md)
 
-For client work, also read:
+For active client work, also read:
 
 - [POKROV App Docs Index](C:/Users/kiwun/Documents/ai/POKROV-app/docs/README.md)
 - [POKROV App Cutover Readiness](C:/Users/kiwun/Documents/ai/POKROV-app/docs/operations/cutover-readiness.md)
-- [App-Next Docs Index](C:/Users/kiwun/Documents/ai/VPN/app-next/docs/README.md)
-- [App-Next Cutover Readiness](C:/Users/kiwun/Documents/ai/VPN/app-next/docs/operations/cutover-readiness.md)
-- [Legacy Bridge Client Docs Index](C:/Users/kiwun/Documents/ai/VPN/external/client-fork/app/docs/README.md)
-- [Legacy Bridge Client Product Spec (legacy path)](C:/Users/kiwun/Documents/ai/VPN/external/client-fork/app/docs/product/portal-vpn-v1-spec.md)
-- [Legacy Bridge App-First Session Flow](C:/Users/kiwun/Documents/ai/VPN/external/client-fork/app/docs/architecture/app-first-session-flow.md)
 - [Publishing And Signing Guide](C:/Users/kiwun/Documents/ai/VPN/docs/operations/publishing-and-signing-guide.md)
+
+Archive summaries, consult only when a task explicitly needs bootstrap history, rollback planning, or archive verification:
+
+- [app-next Bootstrap Summary](C:/Users/kiwun/Documents/ai/VPN/docs/archive/client-lanes/app-next-bootstrap-summary.md)
+- [Legacy Bridge Retirement Summary](C:/Users/kiwun/Documents/ai/VPN/docs/archive/client-lanes/legacy-bridge-retirement-summary.md)
 
 ## Operator Access
 
@@ -86,9 +86,12 @@ Living documentation lives only in these areas:
 - `docs/operations/`
 - `docs/developer/`
 - `docs/user/`
-- `C:/Users/kiwun/Documents/ai/POKROV-app/docs/` as the live client-doc lane for the bootstrapped new client repo
-- `app-next/docs/` as retained bootstrap-source and transition/reference material inside the platform repo
-- `external/client-fork/app/docs/` only for legacy bridge/hotfix and current release-truth notes until formal cutover
+- `C:/Users/kiwun/Documents/ai/POKROV-app/docs/` as the only active client-doc lane
+
+Retained client archive material:
+
+- `docs/archive/client-lanes/` for short bootstrap and retirement summaries
+- `C:/Users/kiwun/Documents/ai/POKROV-app/artifacts/releases/bridge/` for retained bridge bundle lineage and handoff evidence
 
 Everything else in `docs/` should be treated as historical, audit, or supporting material unless a canonical doc links to it as current.
 
@@ -169,43 +172,19 @@ Start from:
 
 ### `C:/Users/kiwun/Documents/ai/POKROV-app`
 
-Contains the new canonical client repository target for `Android` and `Windows`.
+Contains the canonical active client repository target for `Android` and `Windows`.
 
 Workspace lane note:
 
-- `POKROV-app/main` is the new client development truth for this rework program
+- `POKROV-app/main` is the only active client development truth and client-doc canon
 - expected local checkout path after bootstrap: `C:/Users/kiwun/Documents/ai/POKROV-app`
-- that checkout is now bootstrapped locally from `C:/Users/kiwun/Documents/ai/VPN/app-next/`
-- new client product-direction work must now land here instead of treating `app-next/` or the legacy fork as parallel canon
+- the retired `app-next` bootstrap snapshot already landed here and was removed from the active workspace on `2026-04-23`
+- new client product-direction, active client-contract work, release metadata, and retained bridge bundle archives now live here
 
-### `app-next/`
+Retained archive references:
 
-Contains the retained in-repo bootstrap source workspace for the new client lane.
-
-Workspace lane note:
-
-- `app-next/` feeds the initial snapshot into `POKROV-app/main`
-- treat it as transition/reference and migration material, not as a permanent parallel canon
-- the initial bootstrap snapshot has already landed in `POKROV-app`, so keep `app-next/` only as transition/reference material unless a later policy explicitly reopens it
-
-Current local authority:
-
-- [App-Next Docs Index](C:/Users/kiwun/Documents/ai/VPN/app-next/docs/README.md)
-- [Cutover Readiness](C:/Users/kiwun/Documents/ai/VPN/app-next/docs/operations/cutover-readiness.md)
-
-### `external/client-fork/app/`
-
-Contains the consumer Flutter client fork for `Android` and `Windows`.
-
-Workspace lane note:
-
-- `external/client-fork/app/` is the retained legacy bridge/hotfix lane and the current public Android and Windows release-build/signing truth until formal cutover
-- do not start new product-direction work here when that work belongs to the new client lane
-- after formal cutover, this workspace becomes compatibility-only reference plus emergency rollback material
-
-Current local authority:
-
-- [Legacy Bridge Client Docs Index](C:/Users/kiwun/Documents/ai/VPN/external/client-fork/app/docs/README.md)
+- [app-next Bootstrap Summary](C:/Users/kiwun/Documents/ai/VPN/docs/archive/client-lanes/app-next-bootstrap-summary.md)
+- [Legacy Bridge Retirement Summary](C:/Users/kiwun/Documents/ai/VPN/docs/archive/client-lanes/legacy-bridge-retirement-summary.md)
 
 ## Change-Impact Matrix
 
@@ -220,7 +199,7 @@ When behavior changes, update the matching canonical docs in the same task.
 | Hostname policy, metrics freshness, node alerts, probe visibility, operator telemetry | `docs/operations/monitoring-and-visibility.md` |
 | Repository workflow, tests, local commands, script usage, cleanup policy | `docs/developer/developer-guide.md`, `docs/developer/repository-map.md` |
 | User-facing onboarding, support, trial, Telegram bonus, renewal | `docs/user/portal-vpn-user-guide-ru.md` |
-| Client UX, client contracts, client roadmap | `C:/Users/kiwun/Documents/ai/POKROV-app/docs/*` for the new client lane, plus `external/client-fork/app/docs/*` when legacy bridge or release-truth behavior changes |
+| Client UX, client contracts, client roadmap | `C:/Users/kiwun/Documents/ai/POKROV-app/docs/*` for the active client lane; update `docs/archive/client-lanes/*` only when archive-summary labels or evidence notes themselves change |
 
 ## Fast Paths
 
@@ -256,10 +235,10 @@ When behavior changes, update the matching canonical docs in the same task.
 ### Client task
 
 1. Read the must-read set plus the client docs.
-2. Inspect `C:/Users/kiwun/Documents/ai/POKROV-app/` for new client work; inspect `app-next/` only when transition/reference context matters, and inspect `external/client-fork/app/` only when the task is bridge, hotfix, compatibility, or release-truth work.
-3. Run targeted Flutter tests or build-smoke commands in the lane that actually changed.
+2. Inspect `C:/Users/kiwun/Documents/ai/POKROV-app/` for active client work; inspect `docs/archive/client-lanes/*` or `artifacts/releases/bridge/*` only when the task explicitly needs retired bootstrap, rollback, or archive context.
+3. Run targeted Flutter tests or build-smoke commands in the lane that actually changed; for active client work that should be `POKROV-app`.
 4. Treat Android release-build localhost/control-surface verification as a release gate, not an optional audit.
-5. Sync root canonical docs plus the correct client-doc lane: `POKROV-app/docs/*` for new client truth once bootstrapped, `external/client-fork/app/docs/*` when bridge release truth changed.
+5. Sync root canonical docs plus `POKROV-app/docs/*` for active client truth; touch retired client docs only when re-labeling archive or rollback material.
 
 ### Docs-only task
 
@@ -294,15 +273,15 @@ For node-access diagnostics and release handoffs, explicitly distinguish:
 - Keep the root workspace `C:\Users\kiwun\Documents\ai\VPN` on local `master` as the prospective clean baseline for root-repo work
 - Treat that root `master` baseline as the place you can resync from; do not turn it into a long-lived scratch branch
 - `portal/master` is the policy label for the promoted platform line and normally maps to real `origin/master`
-- `POKROV-app/main` is the policy label for the new client development line and should map to the real `main` branch in the dedicated `POKROV-app` repository
-- `external/client-fork/app` stays on its current `main` line as the bridge/hotfix lane and current public Android+Windows release/build/signing truth until formal cutover
+- `POKROV-app/main` is the policy label for the only active client development and promotion line and should map to the real `main` branch in the dedicated `POKROV-app` repository
+- archived bridge material is retained for rollback evidence only and must not be treated as an active promotion line
 - Do not assume a literal remote alias must exist locally for a policy label to apply
-- Local branch or worktree names such as `main`, `portal-app`, and `app-next` are optional machine-local aliases only
+- Local branch or worktree names such as `main` and `portal-app` are optional machine-local aliases only
 - If a local alias disagrees with the promotion target, the promotion target wins
 - Root-repo changes under `backend`, `webapp`, `marketing`, `shared`, `infra`, `scripts`, and root `docs` promote through the root repo `master` line
-- New client product-direction changes promote through `POKROV-app/main`
-- Bridge hotfix, compatibility, packaging, and release-runbook changes promote through `external/client-fork/app` on its existing `main` line until formal cutover
-- `app-next/` is the retained bootstrap-source workspace for `POKROV-app/main`, not the long-term promotion target now that the bootstrap snapshot has landed
+- New client product-direction changes and active client-doc changes promote through `POKROV-app/main`
+- retained bridge-bundle evidence under `POKROV-app/artifacts/releases/bridge/` is archive material, not a promotion target
+- if a deliberate rollback requires touching retired bootstrap or bridge material, document that exception explicitly and do not reinterpret archived inputs as product canon
 - When work needs isolation, create or use a dedicated feature branch or sibling worktree instead of reinterpreting baseline or alias branches as source of truth
 
 ## Source Of Truth Rules
@@ -316,12 +295,12 @@ Repository source-of-truth rule:
 
 - if you work on `backend`, `webapp`, `marketing`, root `docs`, `shared`, `infra`, or `scripts`, the canonical git truth is `portal/master`, which is the policy label for the promoted root-repo line and normally maps to real `origin/master`
 - if you work on new `Android` or `Windows` client direction, the canonical git truth is `POKROV-app/main`, with expected checkout path `C:/Users/kiwun/Documents/ai/POKROV-app`
-- if you work on `external/client-fork/app/`, treat that repository as bridge/hotfix and current release-truth only; do not silently use it as the future client canon
+- if you work from archived client evidence, treat it as retired bootstrap/archive or rollback/archive reference material only; do not silently use it as active client canon
 - root docs in this repository, including `AGENTS.md` and `docs/*`, must land on `portal/master`
-- new client docs land on `POKROV-app/docs/*`; keep `app-next/docs/*` only as retained bootstrap-source material and keep legacy bridge docs under `external/client-fork/app/docs/*` explicitly labeled as bridge truth
-- keep the root workspace on local `master` as the clean baseline prospectively; treat `main`, `portal-app`, and `app-next` as optional local aliases rather than promotion truth
-- do not treat local feature branches, old redirect remotes, or the nested legacy client workspace as competing product truths once `portal/master` and `POKROV-app/main` are updated
-- if a task spans the platform repo, the new client repo, and the legacy bridge lane, update and report each affected repo explicitly instead of assuming one repo transitively updates the others
+- new client docs land on `POKROV-app/docs/*`; keep only short archive summaries in `docs/archive/client-lanes/*` for retired client lanes
+- keep the root workspace on local `master` as the clean baseline prospectively; treat `main` and `portal-app` as optional local aliases rather than promotion truth
+- do not treat local feature branches, old redirect remotes, deleted bootstrap aliases, or retained bridge archives as competing product truths once `portal/master` and `POKROV-app/main` are updated
+- if a task spans the platform repo, the new client repo, and retained archive evidence, update and report each affected repo explicitly instead of assuming one repo transitively updates the others
 
 Not source of truth:
 

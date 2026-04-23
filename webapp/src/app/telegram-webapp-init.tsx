@@ -103,7 +103,17 @@ function resolveBackFallback(pathname: string, query: URLSearchParams): string |
     return "/subscription";
   }
 
-  if (pathname === "/subscription" || pathname === "/devices" || pathname === "/statistics" || pathname === "/support") {
+  if (pathname === "/downloads" || pathname.startsWith("/downloads/")) {
+    return "/dashboard";
+  }
+
+  if (
+    pathname === "/subscription" ||
+    pathname === "/devices" ||
+    pathname === "/statistics" ||
+    pathname === "/profile" ||
+    pathname === "/support"
+  ) {
     return "/dashboard";
   }
 

@@ -174,22 +174,22 @@ function buildRedeemHref(key: string): string {
 
 export function CheckoutLoadingFallback() {
   return (
-    <main className="checkout-shell">
+    <main className="checkout-shell lp-route-shell lp-route-shell--checkout">
       <section className="checkout-hero">
-        <div className="checkout-kicker">Key-first checkout</div>
-        <div className="checkout-status-chip checkout-status-chip--fallback">Собираем публичный catalog</div>
+        <div className="checkout-kicker">Спокойная касса</div>
+        <div className="checkout-status-chip checkout-status-chip--fallback">Собираем публичный каталог</div>
         <h1 className="checkout-title">
           <span>POKROV</span>
-          <span>Activation key flow</span>
+          <span>Маршрут покупки через activation key</span>
         </h1>
-        <p className="checkout-sub">Подгружаем тарифы, free-tier facts и следующий шаг для покупки и redeem.</p>
+        <p className="checkout-sub">Подгружаем тарифы, условия доступа и следующий шаг для покупки или погашения ключа.</p>
       </section>
       <section className="checkout-grid">
         <article className="glass-card">
-          <div className="checkout-helper">Готовим key-first pricing и checkout host…</div>
+          <div className="checkout-helper">Готовим тарифы и спокойный маршрут покупки…</div>
         </article>
         <article className="glass-card checkout-sticky">
-          <div className="checkout-helper">Проверяем public defaults и fallback paths…</div>
+          <div className="checkout-helper">Проверяем публичные условия и резервные шаги…</div>
         </article>
       </section>
     </main>
@@ -277,19 +277,39 @@ export default function CheckoutClient() {
     promoCatalog.slots.find((slot) => slot.id === "marketing.checkout.contextual")?.allowed_content_ids || [];
 
   return (
-    <main className="checkout-shell">
+    <main className="checkout-shell lp-route-shell lp-route-shell--checkout">
       <section className="checkout-hero">
-        <div className="checkout-kicker">Buy key {"->"} redeem key {"->"} managed premium</div>
+        <div className="checkout-kicker">Купить ключ {"->"} погасить {"->"} продолжить доступ</div>
         <div className="checkout-status-chip checkout-status-chip--ready">
-          {catalog?.public_surface_policy?.pricing_owner === "marketing" ? "Marketing owns pricing" : "Public checkout"}
+          {catalog?.public_surface_policy?.pricing_owner === "marketing" ? "Маркетинг ведёт в оплату" : "Публичный checkout"}
         </div>
         <h1 className="checkout-title">
           <span>POKROV</span>
-          <span>Публичный key-first checkout</span>
+          <span>Спокойная покупка через activation key</span>
         </h1>
         <p className="checkout-sub">
-          Эта страница продаёт activation key и не показывает raw subscription link. После покупки ключ погашается в приложении или cabinet continuation.
+          Эта страница ведёт к покупке activation key и не показывает сырой персональный маршрут. После оплаты ключ погашается в приложении или в кабинете, а доступ продолжается в том же app-first аккаунте.
         </p>
+      </section>
+
+      <section className="lp-info-band checkout-info-band">
+        <div className="lp-info-band__grid">
+          <article className="lp-info-card">
+            <span className="lp-info-card__eyebrow">Сначала попробовать</span>
+            <h3>Пробный период идёт до покупки</h3>
+            <p>Первый шаг остаётся за приложением: 5 дней теста помогают понять продукт до оплаты.</p>
+          </article>
+          <article className="lp-info-card">
+            <span className="lp-info-card__eyebrow">Потом оплатить</span>
+            <h3>Касса остаётся тихой и понятной</h3>
+            <p>Публичная оплата продаёт activation key и не уводит в сложные технические сценарии.</p>
+          </article>
+          <article className="lp-info-card">
+            <span className="lp-info-card__eyebrow">Если нужен fallback</span>
+            <h3>Кабинет и Telegram рядом</h3>
+            <p>Когда нужно восстановление или помощь, рядом остаются кабинет, поддержка и спокойный путь продолжения.</p>
+          </article>
+        </div>
       </section>
 
       <section className="checkout-grid">
@@ -317,12 +337,12 @@ export default function CheckoutClient() {
           <div className="checkout-trust">
             <strong>Как это работает</strong>
             <ul className="checkout-trust-list">
-              <li>В приложении первый валидный device получает 5 дней premium trial без обязательной регистрации.</li>
+              <li>В приложении первое валидное устройство получает 5 дней premium trial без обязательной регистрации.</li>
               <li>
-                После trial доступ падает в {catalog?.free_tier?.location_code || "NL-free"} с лимитом{" "}
-                {catalog?.free_tier?.traffic_limit_gb || 5} GB / {catalog?.free_tier?.cycle_days || 30} days.
+                После trial доступ переходит в {catalog?.free_tier?.location_code || "NL-free"} с лимитом{" "}
+                {catalog?.free_tier?.traffic_limit_gb || 5} GB / {catalog?.free_tier?.cycle_days || 30} дней.
               </li>
-              <li>Публичный routing story остаётся {catalog?.public_defaults?.routing_mode || "all_except_ru"}.</li>
+              <li>Публичный маршрут по умолчанию остаётся {catalog?.public_defaults?.routing_mode || "all_except_ru"}.</li>
               <li>Telegram нужен для recovery, restore premium, бонуса +10 дней и support fallback.</li>
             </ul>
           </div>
@@ -340,7 +360,7 @@ export default function CheckoutClient() {
             <p className="checkout-helper">
               {discountPercent > 0
                 ? `Скидка ${discountPercent}% уже заложена в итог для ${activePlan.label}.`
-                : "Промокод меняет только итог покупки activation key и не открывает raw manual route."}
+                : "Промокод меняет только итог покупки activation key и не открывает ручной технический маршрут."}
             </p>
           </div>
 
@@ -368,7 +388,7 @@ export default function CheckoutClient() {
         <article className="glass-card checkout-sticky">
           <h2>Итог</h2>
           <p className="checkout-note">
-            Покупка заканчивается activation key. Дальше тот же app-first аккаунт продолжает доступ как managed premium без повторной ручной настройки.
+            Покупка заканчивается activation key. Дальше тот же app-first аккаунт продолжает доступ как managed premium без повторной ручной настройки и без лишней суеты.
           </p>
 
           <div className="checkout-summary">

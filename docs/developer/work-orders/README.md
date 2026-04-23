@@ -1,6 +1,6 @@
 # POKROV Work Orders
 
-Last updated: 2026-04-15
+Last updated: 2026-04-23
 
 ## Document Status
 
@@ -30,10 +30,12 @@ Inside each wave folder:
 
 ## Storage Rules
 
-- keep only living execution artifacts here
+- keep only living execution artifacts or intentionally retained historical evidence here
 - keep one `INDEX.md` per wave
 - keep one bounded outcome per `WO`
-- do not replace canonical product or architecture docs with work-order notes
+- do not replace canonical product, architecture, operations, or active client docs with work-order notes
+- active client workflow truth lives in `C:/Users/kiwun/Documents/ai/POKROV-app/docs/`
+- use `docs/archive/client-lanes/*` only as historical bootstrap or rollback evidence when a wave needs that provenance
 - link to evidence under `docs/audit-artifacts/` rather than copying raw logs into the WO
 
 ## Continuity Rule
@@ -45,7 +47,7 @@ A new orchestrator should be able to resume from the wave folder alone:
 - see what was verified
 - see what is still partial or blocked
 
-If a wave touches the platform lane, the new client lane, and/or the legacy bridge lane, keep that evidence separated inside the relevant `WO` files instead of collapsing them into one generic client result.
+If a wave touches the platform lane, the active `POKROV-app` lane, and/or the bridge release lane, keep that evidence separated inside the relevant `WO` files instead of collapsing them into one generic client result.
 
 ## Historical Material
 

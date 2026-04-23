@@ -1,44 +1,53 @@
 from __future__ import annotations
 
 import argparse
+import json
 import os
+import re
 import shutil
 import subprocess
-import sys
 from dataclasses import dataclass
 from pathlib import Path
 
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
-CLIENT_ROOT = REPO_ROOT / "external" / "client-fork" / "app"
+DEFAULT_CLIENT_ROOT = Path("C:/Users/kiwun/Documents/ai/POKROV-app")
+CLIENT_ROOT = Path(os.getenv("POKROV_APP_ROOT", str(DEFAULT_CLIENT_ROOT)))
+
+
+@dataclass(frozen=True)
+class ClientGateStep:
+    command: list[str]
+    cwd: Path
 
 
 @dataclass(frozen=True)
 class ClientGateCommand:
-    command: list[str]
-    cwd: Path
-    expected_artifact: Path | None = None
-    published_artifact: Path | None = None
+    steps: tuple[ClientGateStep, ...]
+    expected_artifacts: tuple[Path, ...] = ()
 
 
 @dataclass(frozen=True)
-class LibcorePreflightStatus:
-    expected_sha: str
-    actual_sha: str
-    branch: str
-    dirty_lines: tuple[str, ...]
+class ClientGatePreflightStatus:
+    client_root: Path
+    missing_paths: tuple[Path, ...]
+    validate_seed_script: Path
+    bootstrap_script: Path
+    run_tests_script: Path
+    fetch_libcore_script: Path
+    build_windows_script: Path
+    android_shell_root: Path
+    windows_shell_root: Path
+    product_contract_path: Path
+    runtime_profile_path: Path
+    runtime_artifacts_path: Path
+    windows_release_config_path: Path
 
 
-GENERATED_MARKERS = (
-    Path("lib/gen/translations.g.dart"),
-    Path("lib/core/router/routes.g.dart"),
-    Path("lib/core/database/app_database.g.dart"),
-)
-
-
-def _run_captured(command: list[str], *, runner=subprocess.run) -> subprocess.CompletedProcess:
+def _run_captured(command: list[str], *, cwd: Path | None = None, runner=subprocess.run) -> subprocess.CompletedProcess:
     return runner(
         command,
+        cwd=str(cwd) if cwd is not None else None,
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
         text=True,
@@ -47,264 +56,253 @@ def _run_captured(command: list[str], *, runner=subprocess.run) -> subprocess.Co
     )
 
 
-def _libcore_preflight_status(
-    client_root: Path,
-    *,
-    runner=subprocess.run,
-) -> tuple[LibcorePreflightStatus | None, str | None]:
-    libcore_root = client_root / "libcore"
-    expected = _run_captured(
-        ["git", "-C", str(client_root), "rev-parse", "HEAD:libcore"],
-        runner=runner,
-    )
-    if expected.returncode != 0:
-        detail = (expected.stderr or expected.stdout or "").strip()
-        return None, f"unable to resolve pinned libcore SHA: {detail or expected.returncode}"
-    expected_sha = str(expected.stdout or "").strip()
-    if not expected_sha:
-        return None, "unable to resolve pinned libcore SHA: empty output"
-
-    actual = _run_captured(
-        ["git", "-C", str(libcore_root), "rev-parse", "HEAD"],
-        runner=runner,
-    )
-    if actual.returncode != 0:
-        if not libcore_root.exists():
-            return None, f"libcore checkout is missing: {libcore_root}"
-        detail = (actual.stderr or actual.stdout or "").strip()
-        return None, f"unable to resolve libcore HEAD SHA: {detail or actual.returncode}"
-    actual_sha = str(actual.stdout or "").strip()
-    if not actual_sha:
-        return None, "unable to resolve libcore HEAD SHA: empty output"
-
-    branch = _run_captured(
-        ["git", "-C", str(libcore_root), "branch", "--show-current"],
-        runner=runner,
-    )
-    if branch.returncode != 0:
-        detail = (branch.stderr or branch.stdout or "").strip()
-        return None, f"unable to resolve libcore branch: {detail or branch.returncode}"
-    branch_name = str(branch.stdout or "").strip() or "(detached HEAD)"
-
-    dirty = _run_captured(
-        ["git", "-C", str(libcore_root), "status", "--porcelain"],
-        runner=runner,
-    )
-    if dirty.returncode != 0:
-        detail = (dirty.stderr or dirty.stdout or "").strip()
-        return None, f"unable to inspect libcore worktree: {detail or dirty.returncode}"
-    dirty_lines = tuple(
-        line.strip() for line in str(dirty.stdout or "").splitlines() if line.strip()
-    )
-
-    status = LibcorePreflightStatus(
-        expected_sha=expected_sha,
-        actual_sha=actual_sha,
-        branch=branch_name,
-        dirty_lines=dirty_lines,
-    )
-    return status, None
+def _resolve_powershell_executable() -> str:
+    return shutil.which("pwsh") or shutil.which("powershell") or "powershell"
 
 
-def _libcore_preflight_issue(client_root: Path, *, runner=subprocess.run) -> str | None:
-    status, issue = _libcore_preflight_status(client_root, runner=runner)
-    if issue is not None:
-        return issue
-
-    assert status is not None
-
-    return _libcore_issue_from_status(status)
-
-
-def _libcore_issue_from_status(status: LibcorePreflightStatus) -> str | None:
-    if status.actual_sha != status.expected_sha:
-        return (
-            "libcore SHA drift: "
-            f"expected {status.expected_sha}, got {status.actual_sha} "
-            f"(branch {status.branch})"
-        )
-
-    if status.dirty_lines:
-        preview = ", ".join(status.dirty_lines[:3])
-        if len(status.dirty_lines) > 3:
-            preview = f"{preview} (+{len(status.dirty_lines) - 3} more)"
-        return (
-            "libcore worktree is dirty: "
-            f"pinned {status.expected_sha}, branch {status.branch}; "
-            f"changes: {preview}"
-        )
-
-    return None
-
-
-def _render_libcore_preflight_report(
-    client_root: Path,
-    *,
-    status: LibcorePreflightStatus | None,
-    issue: str | None,
-) -> str:
-    lines = [f"[libcore] path: {client_root / 'libcore'}"]
-    if status is not None:
-        lines.append(f"[libcore] pinned SHA: {status.expected_sha}")
-        lines.append(f"[libcore] checked-out SHA: {status.actual_sha}")
-        lines.append(f"[libcore] branch: {status.branch}")
-        if status.dirty_lines:
-            for dirty_line in status.dirty_lines[:10]:
-                lines.append(f"[libcore] dirty: {dirty_line}")
-            if len(status.dirty_lines) > 10:
-                lines.append(f"[libcore] dirty: ... (+{len(status.dirty_lines) - 10} more)")
-    lines.append(f"[{'fail' if issue else 'ok'}] {issue or 'libcore checkout is clean and pinned'}")
-    return "\n".join(lines)
-
-
-def _suite_command(client_root: Path, *, suite: str) -> ClientGateCommand:
-    suite_commands = {
-        "full": ["flutter", "test"],
-        "portal": ["flutter", "test", "test/features/portal"],
-    }
-    command = suite_commands.get(suite)
-    if command is None:
-        raise ValueError(f"unsupported suite: {suite}")
-    return ClientGateCommand(command=command, cwd=client_root)
-
-
-def _build_target_command(client_root: Path, *, target: str) -> ClientGateCommand:
-    commands = {
-        "windows": (
-            ["flutter", "build", "windows", "--release"],
-            client_root / "build" / "windows" / "x64" / "runner" / "Release" / "POKROV.exe",
-            None,
-        ),
-        "android-apk": (
-            ["flutter", "build", "apk", "--release"],
-            client_root / "build" / "app" / "outputs" / "flutter-apk" / "app-release.apk",
-            client_root / "out" / "pokrov-android-universal.apk",
-        ),
-        "android-aab": (
-            ["flutter", "build", "appbundle", "--release"],
-            client_root / "build" / "app" / "outputs" / "bundle" / "release" / "app-release.aab",
-            client_root / "out" / "pokrov-android-market.aab",
-        ),
-    }
-    try:
-        command, artifact, published_artifact = commands[target]
-    except KeyError as exc:
-        raise ValueError(f"unsupported target: {target}") from exc
-    return ClientGateCommand(
-        command=command,
-        cwd=client_root,
-        expected_artifact=artifact,
-        published_artifact=published_artifact,
-    )
-
-
-def _publish_artifact(source: Path, destination: Path) -> None:
-    destination.parent.mkdir(parents=True, exist_ok=True)
-    shutil.copy2(source, destination)
+def _powershell_file_command(script_path: Path, *arguments: str) -> list[str]:
+    return [
+        _resolve_powershell_executable(),
+        "-NoProfile",
+        "-ExecutionPolicy",
+        "Bypass",
+        "-File",
+        str(script_path),
+        *arguments,
+    ]
 
 
 def _resolve_flutter_executable() -> str:
     return shutil.which("flutter.bat") or shutil.which("flutter") or "flutter"
 
 
-def _run_step(command: list[str], *, cwd: Path, env: dict[str, str]) -> int:
-    print(f"[client-gate] {' '.join(command)} (cwd={cwd})")
-    proc = subprocess.run(command, cwd=str(cwd), env=env)
-    return int(proc.returncode)
-
-
-def _ensure_codegen(client_root: Path, *, env: dict[str, str], flutter_executable: str) -> int:
-    missing = [marker for marker in GENERATED_MARKERS if not (client_root / marker).exists()]
-    if not missing:
-        return 0
-
-    print("[client-gate] generated Dart files are missing; bootstrapping codegen")
-    for marker in missing:
-        print(f"[client-gate] missing generated file: {client_root / marker}")
-
-    steps = (
-        [flutter_executable, "pub", "get"],
-        [
-            flutter_executable,
-            "pub",
-            "run",
-            "build_runner",
-            "build",
-            "--delete-conflicting-outputs",
-        ],
+def _preflight_status(client_root: Path) -> ClientGatePreflightStatus:
+    validate_seed_script = client_root / "scripts" / "validate-seed.ps1"
+    bootstrap_script = client_root / "scripts" / "bootstrap-workspace.ps1"
+    run_tests_script = client_root / "scripts" / "run-tests.ps1"
+    fetch_libcore_script = client_root / "scripts" / "fetch-libcore-assets.ps1"
+    build_windows_script = client_root / "scripts" / "build-windows-release.ps1"
+    android_shell_root = client_root / "apps" / "android_shell"
+    windows_shell_root = client_root / "apps" / "windows_shell"
+    product_contract_path = client_root / "config" / "product-contract.seed.json"
+    runtime_profile_path = client_root / "config" / "runtime-profile.seed.json"
+    runtime_artifacts_path = client_root / "config" / "runtime-artifacts.seed.json"
+    windows_release_config_path = client_root / "config" / "windows-release.seed.json"
+    required_paths = (
+        client_root,
+        validate_seed_script,
+        bootstrap_script,
+        run_tests_script,
+        fetch_libcore_script,
+        build_windows_script,
+        android_shell_root,
+        windows_shell_root,
+        product_contract_path,
+        runtime_profile_path,
+        runtime_artifacts_path,
+        windows_release_config_path,
     )
-    for step in steps:
-        rc = _run_step(step, cwd=client_root, env=env)
-        if rc != 0:
-            return rc
-    return 0
+    missing_paths = tuple(path for path in required_paths if not path.exists())
+    return ClientGatePreflightStatus(
+        client_root=client_root,
+        missing_paths=missing_paths,
+        validate_seed_script=validate_seed_script,
+        bootstrap_script=bootstrap_script,
+        run_tests_script=run_tests_script,
+        fetch_libcore_script=fetch_libcore_script,
+        build_windows_script=build_windows_script,
+        android_shell_root=android_shell_root,
+        windows_shell_root=windows_shell_root,
+        product_contract_path=product_contract_path,
+        runtime_profile_path=runtime_profile_path,
+        runtime_artifacts_path=runtime_artifacts_path,
+        windows_release_config_path=windows_release_config_path,
+    )
 
 
-def _windows_sqlite_bootstrap_dir(client_root: Path) -> Path | None:
-    candidates = [
-        client_root / "build" / "windows" / "x64" / "runner" / "Release",
-        client_root / "build" / "windows" / "x64" / "plugins" / "sqlite3_flutter_libs" / "Release",
-    ]
-    for directory in candidates:
-        if (directory / "sqlite3.dll").exists():
-            return directory
+def _preflight_issue_from_status(status: ClientGatePreflightStatus) -> str | None:
+    if status.missing_paths:
+        rendered = ", ".join(str(path) for path in status.missing_paths[:4])
+        if len(status.missing_paths) > 4:
+            rendered = f"{rendered} (+{len(status.missing_paths) - 4} more)"
+        return f"POKROV-app gate root is incomplete: missing {rendered}"
     return None
 
 
-def _run(command: ClientGateCommand) -> int:
-    libcore_status, libcore_error = _libcore_preflight_status(command.cwd)
-    libcore_issue = libcore_error or (
-        _libcore_issue_from_status(libcore_status) if libcore_status is not None else None
-    )
-    if libcore_issue is not None:
-        print(
-            _render_libcore_preflight_report(
-                command.cwd,
-                status=libcore_status,
-                issue=libcore_error or libcore_issue,
+def _render_preflight_report(
+    status: ClientGatePreflightStatus,
+    *,
+    issue: str | None,
+) -> str:
+    lines = [
+        f"[client-root] path: {status.client_root}",
+        f"[client-root] android shell: {status.android_shell_root}",
+        f"[client-root] windows shell: {status.windows_shell_root}",
+        f"[client-root] validate seed: {status.validate_seed_script}",
+        f"[client-root] bootstrap workspace: {status.bootstrap_script}",
+        f"[client-root] run tests: {status.run_tests_script}",
+        f"[client-root] build windows release: {status.build_windows_script}",
+    ]
+    if status.missing_paths:
+        for missing_path in status.missing_paths[:10]:
+            lines.append(f"[client-root] missing: {missing_path}")
+        if len(status.missing_paths) > 10:
+            lines.append(f"[client-root] missing: ... (+{len(status.missing_paths) - 10} more)")
+    lines.append(f"[{'fail' if issue else 'ok'}] {issue or 'POKROV-app gate root is present'}")
+    return "\n".join(lines)
+
+
+def _load_json(path: Path) -> dict[str, object]:
+    return json.loads(path.read_text(encoding="utf-8"))
+
+
+def _read_pubspec_version(path: Path) -> str:
+    content = path.read_text(encoding="utf-8")
+    match = re.search(r"(?m)^version:\s*(.+)$", content)
+    if match is None:
+        raise ValueError(f"unable to resolve version from {path}")
+    version = match.group(1).strip()
+    if not version:
+        raise ValueError(f"unable to resolve version from {path}: empty value")
+    return version
+
+
+def _suite_command(client_root: Path, *, suite: str) -> ClientGateCommand:
+    status = _preflight_status(client_root)
+
+    if suite == "full":
+        return ClientGateCommand(
+            steps=(
+                ClientGateStep(
+                    command=_powershell_file_command(status.run_tests_script),
+                    cwd=client_root,
+                ),
             )
         )
+    if suite == "portal":
+        return ClientGateCommand(
+            steps=(
+                ClientGateStep(
+                    command=_powershell_file_command(status.bootstrap_script),
+                    cwd=client_root,
+                ),
+                ClientGateStep(
+                    command=["flutter", "test"],
+                    cwd=client_root / "packages" / "app_shell",
+                ),
+                ClientGateStep(
+                    command=["flutter", "test"],
+                    cwd=status.android_shell_root,
+                ),
+                ClientGateStep(
+                    command=["flutter", "test"],
+                    cwd=status.windows_shell_root,
+                ),
+            )
+        )
+    raise ValueError(f"unsupported suite: {suite}")
+
+
+def _android_target_command(client_root: Path, *, target: str) -> ClientGateCommand:
+    status = _preflight_status(client_root)
+    build_args = {
+        "android-apk": ["build", "apk", "--release"],
+        "android-aab": ["build", "appbundle", "--release"],
+    }
+    expected_artifacts = {
+        "android-apk": status.android_shell_root / "build" / "app" / "outputs" / "flutter-apk" / "app-release.apk",
+        "android-aab": status.android_shell_root / "build" / "app" / "outputs" / "bundle" / "release" / "app-release.aab",
+    }
+    return ClientGateCommand(
+        steps=(
+            ClientGateStep(
+                command=_powershell_file_command(status.bootstrap_script),
+                cwd=client_root,
+            ),
+            ClientGateStep(
+                command=_powershell_file_command(
+                    status.fetch_libcore_script,
+                    "-Platforms",
+                    "android",
+                    "-SyncToHosts",
+                ),
+                cwd=client_root,
+            ),
+            ClientGateStep(
+                command=["flutter", *build_args[target]],
+                cwd=status.android_shell_root,
+            ),
+        ),
+        expected_artifacts=(expected_artifacts[target],),
+    )
+
+
+def _windows_target_command(client_root: Path) -> ClientGateCommand:
+    status = _preflight_status(client_root)
+    release_config = _load_json(status.windows_release_config_path)
+    version = _read_pubspec_version(status.windows_shell_root / "pubspec.yaml")
+    artifact_root = client_root / str(release_config["artifact_root"])
+    zip_name = str(release_config["zip_name_template"]).replace("{version}", version)
+    manifest_name = str(release_config["manifest_name_template"]).replace("{version}", version)
+    return ClientGateCommand(
+        steps=(
+            ClientGateStep(
+                command=_powershell_file_command(
+                    status.build_windows_script,
+                    "-SyncRuntime",
+                    "-SkipTests",
+                    "-SkipAnalyze",
+                ),
+                cwd=client_root,
+            ),
+        ),
+        expected_artifacts=(
+            artifact_root / zip_name,
+            artifact_root / manifest_name,
+        ),
+    )
+
+
+def _build_target_command(client_root: Path, *, target: str) -> ClientGateCommand:
+    if target == "windows":
+        return _windows_target_command(client_root)
+    if target in {"android-apk", "android-aab"}:
+        return _android_target_command(client_root, target=target)
+    raise ValueError(f"unsupported target: {target}")
+
+
+def _run_step(step: ClientGateStep) -> int:
+    resolved_command = [
+        _resolve_flutter_executable() if index == 0 and value == "flutter" else value
+        for index, value in enumerate(step.command)
+    ]
+    print(f"[client-gate] {' '.join(resolved_command)} (cwd={step.cwd})")
+    proc = subprocess.run(resolved_command, cwd=str(step.cwd))
+    return int(proc.returncode)
+
+
+def _run(command: ClientGateCommand, *, client_root: Path) -> int:
+    status = _preflight_status(client_root)
+    issue = _preflight_issue_from_status(status)
+    if issue is not None:
+        print(_render_preflight_report(status, issue=issue))
         return 2
 
-    env = os.environ.copy()
-    executable = _resolve_flutter_executable()
-    resolved_command = [
-        executable if index == 0 and value == "flutter" else value
-        for index, value in enumerate(command.command)
-    ]
-
-    if command.command[:1] == ["flutter"]:
-        rc = _ensure_codegen(command.cwd, env=env, flutter_executable=executable)
+    for step in command.steps:
+        rc = _run_step(step)
         if rc != 0:
             return rc
 
-    if command.command[:2] == ["flutter", "test"] and os.name == "nt":
-        bootstrap_dir = _windows_sqlite_bootstrap_dir(command.cwd)
-        if bootstrap_dir is None:
-            bootstrap = _build_target_command(command.cwd, target="windows")
-            rc = _run(bootstrap)
-            if rc != 0:
-                return rc
-            bootstrap_dir = _windows_sqlite_bootstrap_dir(command.cwd)
-        if bootstrap_dir is not None:
-            env["PATH"] = f"{bootstrap_dir}{os.pathsep}{env.get('PATH', '')}"
-
-    rc = _run_step(resolved_command, cwd=command.cwd, env=env)
-    if rc != 0:
-        return rc
-
-    if command.expected_artifact is not None and not command.expected_artifact.exists():
-        print(f"[fail] expected artifact is missing: {command.expected_artifact}")
-        return 2
-
-    if command.expected_artifact is not None and command.published_artifact is not None:
-        _publish_artifact(command.expected_artifact, command.published_artifact)
+    for expected_artifact in command.expected_artifacts:
+        if not expected_artifact.exists():
+            print(f"[fail] expected artifact is missing: {expected_artifact}")
+            return 2
 
     return 0
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Run client Flutter release gates from the root repo.")
+    parser = argparse.ArgumentParser(description="Run POKROV-app release gates from the platform repo.")
     subparsers = parser.add_subparsers(dest="mode", required=True)
 
     subparsers.add_parser("preflight")
@@ -316,21 +314,23 @@ def main() -> int:
     build_parser.add_argument("--target", choices=["windows", "android-apk", "android-aab"], required=True)
 
     args = parser.parse_args()
-    if not CLIENT_ROOT.exists():
-        print(f"[fail] client root is missing: {CLIENT_ROOT}")
-        return 2
+    status = _preflight_status(CLIENT_ROOT)
+    issue = _preflight_issue_from_status(status)
 
     if args.mode == "preflight":
-        status, issue = _libcore_preflight_status(CLIENT_ROOT)
-        issue = issue or _libcore_preflight_issue(CLIENT_ROOT)
-        print(_render_libcore_preflight_report(CLIENT_ROOT, status=status, issue=issue))
+        print(_render_preflight_report(status, issue=issue))
         return 0 if issue is None else 2
+
+    if issue is not None:
+        print(_render_preflight_report(status, issue=issue))
+        return 2
+
     if args.mode == "test":
         command = _suite_command(CLIENT_ROOT, suite=args.suite)
     else:
         command = _build_target_command(CLIENT_ROOT, target=args.target)
 
-    return _run(command)
+    return _run(command, client_root=CLIENT_ROOT)
 
 
 if __name__ == "__main__":

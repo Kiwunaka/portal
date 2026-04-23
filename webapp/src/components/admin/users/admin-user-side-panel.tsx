@@ -1,6 +1,7 @@
 "use client";
 
 import type { Dispatch, SetStateAction } from "react";
+import { AdminEmptyState, adminButtonClass, adminFieldClass, adminInsetPanelClass, adminPanelClass } from "@/components/admin/admin-shell";
 import { fmtRuDate } from "@/app/(dashboard)/admin/nav";
 import type { AdminUserCard, AdminUserKey } from "@/lib/api";
 import {
@@ -65,12 +66,16 @@ export function AdminUserSidePanel({
   setPolicyDrafts,
 }: AdminUserSidePanelProps) {
   const tabButtonClass = (tab: DetailTab): string =>
-    `rounded-xl px-3 py-2 text-xs font-semibold uppercase tracking-[0.08em] transition ${
-      detailTab === tab ? "bg-violet-600 text-white shadow-lg shadow-violet-600/25" : "outline-btn"
-    }`;
+    detailTab === tab ? adminButtonClass("primary", "xs") : adminButtonClass("ghost", "xs");
 
   if (!selected) {
-    return <article className="glass-card min-w-0 p-4 text-sm text-slate-500">Выберите пользователя в таблице, чтобы открыть детали.</article>;
+    return (
+      <AdminEmptyState
+        className="min-h-[420px]"
+        title="Выберите пользователя"
+        description="Откройте строку из таблицы, чтобы посмотреть статус, ключи, observer-сигналы и операторские действия."
+      />
+    );
   }
 
   const { user, keys = [], key_history = [], admin_actions = [], risk, loyalty, observer } = selected;
@@ -84,136 +89,156 @@ export function AdminUserSidePanel({
           : "badge-success";
 
   return (
-    <article className="glass-card min-w-0 p-4">
-      <div className="mb-3 rounded-xl bg-white/70 p-3 text-sm dark:bg-white/10">
+    <article className={adminPanelClass("neutral")}>
+      <div className={adminInsetPanelClass}>
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
-            <h2 className="font-display text-2xl font-semibold">{user.display_name || user.username || `Пользователь #${user.tg_id}`}</h2>
-            <p className="text-xs text-slate-500">tg_id: {user.tg_id}</p>
-            <p className="text-xs text-slate-500">Создан: {fmtRuDate(user.created_at)}</p>
-            <p className="text-xs text-slate-500">Истекает: {fmtRuDate(user.expiry_at)}</p>
+            <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500">Выбранный пользователь</p>
+            <h2 className="mt-1 font-display text-2xl font-semibold text-slate-50">
+              {user.display_name || user.username || `Пользователь #${user.tg_id}`}
+            </h2>
+            <div className="mt-2 space-y-1 text-xs text-slate-400">
+              <p>tg_id: {user.tg_id}</p>
+              <p>Создан: {fmtRuDate(user.created_at)}</p>
+              <p>Истекает: {fmtRuDate(user.expiry_at)}</p>
+            </div>
           </div>
+
           <div className="space-y-2 text-right">
             <div className="flex flex-wrap items-center justify-end gap-2">
               <span className={`rounded-full px-2 py-1 text-xs ${userStatusBadgeClass(user.status)}`}>{userStatusLabel(user.status)}</span>
               <span className={`badge ${observerStateBadgeClass(user.observer_state)}`}>Observer {observerStateLabel(user.observer_state)}</span>
-              <span className="badge badge-violet">{originLabel(user.origin)}</span>
+              <span className="rounded-full border border-[#24313d] bg-[#0a1117] px-2 py-1 text-xs font-semibold text-slate-300">
+                {originLabel(user.origin)}
+              </span>
             </div>
-            <p className="text-xs text-slate-500">
-              Связанный Telegram: {user.linked_telegram_username ? `@${user.linked_telegram_username}` : user.linked_telegram_id || "нет"}
+            <p className="text-xs text-slate-400">
+              Linked Telegram: {user.linked_telegram_username ? `@${user.linked_telegram_username}` : user.linked_telegram_id || "нет"}
             </p>
-            <p className="text-xs text-slate-500">ID установки app: {user.app_install_id || "нет"}</p>
+            <p className="text-xs text-slate-400">App install ID: {user.app_install_id || "нет"}</p>
           </div>
         </div>
       </div>
 
-      <div className="mb-3 grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
-        <button className="outline-btn rounded-xl px-3 py-2 text-sm font-semibold" type="button" onClick={onMessage} disabled={busy}>
+      <div className="mt-3 grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
+        <button className={adminButtonClass("secondary", "sm")} type="button" onClick={onMessage} disabled={busy}>
           Написать пользователю
         </button>
-        <button className="outline-btn rounded-xl px-3 py-2 text-sm font-semibold" type="button" onClick={onExtend} disabled={busy}>
+        <button className={adminButtonClass("secondary", "sm")} type="button" onClick={onExtend} disabled={busy}>
           Продлить доступ
         </button>
-        <button className="outline-btn rounded-xl px-3 py-2 text-sm font-semibold" type="button" onClick={onRegenerateToken} disabled={busy}>
+        <button className={adminButtonClass("secondary", "sm")} type="button" onClick={onRegenerateToken} disabled={busy}>
           Обновить токен
         </button>
-        <button className="outline-btn rounded-xl px-3 py-2 text-sm font-semibold" type="button" onClick={onToggleBlock} disabled={busy}>
-          {user.status === "blocked" ? "Разблокировать пользователя" : "Заблокировать пользователя"}
+        <button className={adminButtonClass(user.status === "blocked" ? "primary" : "danger", "sm")} type="button" onClick={onToggleBlock} disabled={busy}>
+          {user.status === "blocked" ? "Разблокировать" : "Заблокировать"}
         </button>
-        {selectedCanDelete ? (
-          <button className="rounded-xl bg-rose-500/15 px-3 py-2 text-sm font-semibold text-rose-500" type="button" onClick={onDeleteTestUser} disabled={busy}>
-            Удалить manual/test пользователя
-          </button>
-        ) : null}
       </div>
 
       {selectedCanDelete ? (
-        <div className="mb-3 rounded-xl border border-rose-200/60 bg-rose-50/70 p-3 dark:border-rose-500/20 dark:bg-rose-500/10">
-          <div className="flex flex-wrap items-center justify-between gap-2">
+        <div className={`${adminInsetPanelClass} mt-3 border-rose-200/80 bg-rose-50/88 dark:border-rose-500/20 dark:bg-rose-500/10`}>
+          <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
-              <p className="text-sm font-semibold text-rose-600">Очистка manual/test</p>
-              <p className="text-xs text-slate-500">Из админки можно удалять только явных manual/test пользователей.</p>
+              <p className="text-sm font-semibold text-rose-200">Удаление только для manual/test</p>
+              <p className="mt-1 text-xs leading-5 text-slate-400">
+                Деструктивная очистка доступна только для аккаунтов, которые явно помечены как manual или test.
+              </p>
             </div>
-            <button className="rounded-xl bg-rose-500 px-3 py-2 text-xs font-semibold text-white disabled:opacity-60" type="button" onClick={onDeleteTestUser} disabled={busy}>
+            <button className={adminButtonClass("danger", "sm")} type="button" onClick={onDeleteTestUser} disabled={busy}>
               Удалить manual/test пользователя
             </button>
           </div>
         </div>
       ) : null}
 
-      <div className="mb-3 grid gap-2 sm:grid-cols-2">
-        <button className="outline-btn rounded-xl px-3 py-2 text-xs font-semibold" type="button" onClick={() => onRunPreset("reset_key")} disabled={busy}>
-          Пресет: сбросить ключ
-        </button>
-        <button className="outline-btn rounded-xl px-3 py-2 text-xs font-semibold" type="button" onClick={() => onRunPreset("rotate_link")} disabled={busy}>
-          Пресет: обновить ссылку
-        </button>
-        <button className="outline-btn rounded-xl px-3 py-2 text-xs font-semibold" type="button" onClick={() => onRunPreset("extend_1d")} disabled={busy}>
-          Пресет: +1 день
-        </button>
-        <button className="outline-btn rounded-xl px-3 py-2 text-xs font-semibold" type="button" onClick={() => onRunPreset("send_guide")} disabled={busy}>
-          Пресет: отправить инструкцию
-        </button>
-      </div>
-
-      <div className="mb-3 grid gap-3 xl:grid-cols-3">
-        <div className="rounded-xl bg-white/70 p-3 text-sm dark:bg-white/10">
-          <p>Тариф: <strong>{user.sub_type || "-"}</strong></p>
-          <p>Оплачено stars: <strong>{user.stars_paid}</strong></p>
-          <p>Рефералы: <strong>{user.referral_count}</strong></p>
-          <p>Серия: <strong>{loyalty?.streak_days ?? 0} дн.</strong></p>
-        </div>
-        <div className="rounded-xl bg-white/70 p-3 text-sm dark:bg-white/10">
-          <div className="mb-1 flex items-center gap-2">
-            <span className={`badge ${riskClass}`}>Риск {Math.round(risk?.score || 0)}</span>
-            <span className="text-xs text-slate-500">{riskLevelLabel(String(risk?.level || ""))}</span>
+      <div className="mt-3 grid gap-3 xl:grid-cols-3">
+        <div className={adminInsetPanelClass}>
+          <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500">Доступ</p>
+          <div className="mt-2 space-y-1 text-sm">
+            <p>Тариф: <strong>{user.sub_type || "-"}</strong></p>
+            <p>Оплачено stars: <strong>{user.stars_paid}</strong></p>
+            <p>Рефералы: <strong>{user.referral_count}</strong></p>
+            <p>Серия: <strong>{loyalty?.streak_days ?? 0} дн.</strong></p>
           </div>
-          <p className="text-xs">Ротации: <strong>{risk?.signals?.regen_count ?? 0}</strong></p>
-          <p className="text-xs">Операции админа с ключами: <strong>{risk?.signals?.admin_key_ops ?? 0}</strong></p>
-          <p className="text-xs">Уникальные IP: <strong>{risk?.signals?.unique_ips ?? 0}</strong></p>
-          <p className="text-xs">Трафик: <strong>{Number(risk?.signals?.traffic_gb || 0).toFixed(2)} GB</strong></p>
         </div>
-        <div className="rounded-xl bg-white/70 p-3 text-sm dark:bg-white/10">
-          <div className="mb-1 flex items-center gap-2">
+        <div className={adminInsetPanelClass}>
+          <div className="mb-2 flex items-center gap-2">
+            <span className={`badge ${riskClass}`}>Риск {Math.round(risk?.score || 0)}</span>
+            <span className="text-xs text-slate-400">{riskLevelLabel(String(risk?.level || ""))}</span>
+          </div>
+          <div className="space-y-1 text-xs text-slate-400">
+            <p>Ротации: <strong>{risk?.signals?.regen_count ?? 0}</strong></p>
+            <p>Админ-операции с ключами: <strong>{risk?.signals?.admin_key_ops ?? 0}</strong></p>
+            <p>Уникальные IP: <strong>{risk?.signals?.unique_ips ?? 0}</strong></p>
+            <p>Трафик: <strong>{Number(risk?.signals?.traffic_gb || 0).toFixed(2)} GB</strong></p>
+          </div>
+        </div>
+        <div className={adminInsetPanelClass}>
+          <div className="mb-2 flex items-center gap-2">
             <span className={`badge ${observerStateBadgeClass(observer?.state || user.observer_state)}`}>
               Observer {observerStateLabel(observer?.state || user.observer_state)}
             </span>
-            <span className="text-xs text-slate-500">{observer?.updated_at ? `updated ${fmtRuDate(observer.updated_at)}` : "updated: n/a"}</span>
           </div>
-          <p className="text-xs text-slate-500">{observer?.reasons?.length ? observer.reasons.join(", ") : "Observer пока не прислал наблюдений."}</p>
-          <p className="mt-1 text-xs text-slate-500">Panel state: <strong>{panelStateLabel(String(selected.summary?.panel_state || ""))}</strong></p>
+          <p className="text-xs leading-5 text-slate-400">
+            {observer?.reasons?.length ? observer.reasons.join(", ") : "Observer данных пока нет."}
+          </p>
+          <p className="mt-2 text-xs text-slate-400">
+            Panel state: <strong>{panelStateLabel(String(selected.summary?.panel_state || ""))}</strong>
+          </p>
         </div>
       </div>
 
-      <div className="mb-3 rounded-xl bg-white/70 p-3 text-sm dark:bg-white/10">
-        <p className="mb-1 font-semibold">Подписочный доступ</p>
-        <div className="flex items-start gap-2">
-          <input
-            value={String(user.subscription_url || "")}
-            readOnly
-            className="w-full rounded-xl border border-violet-200/50 bg-white/80 px-3 py-2 text-xs outline-none dark:border-violet-500/30 dark:bg-slate-900/70"
-          />
-          <button className="outline-btn rounded-xl px-3 py-2 text-xs font-semibold" type="button" onClick={() => onCopyText(String(user.subscription_url || ""))}>
-            Скопировать URL
+      <div className={`${adminInsetPanelClass} mt-3`}>
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <p className="text-sm font-semibold text-slate-50">Токены и ссылки</p>
+          <button className={adminButtonClass("ghost", "xs")} type="button" onClick={onReload} disabled={busy}>
+            Обновить
           </button>
         </div>
-        <div className="mt-2 flex items-start gap-2">
-          <input
-            value={String(user.subscription_token || "")}
-            readOnly
-            className="w-full rounded-xl border border-violet-200/50 bg-white/80 px-3 py-2 text-xs outline-none dark:border-violet-500/30 dark:bg-slate-900/70"
-          />
-          <button className="outline-btn rounded-xl px-3 py-2 text-xs font-semibold" type="button" onClick={() => onCopyText(String(user.subscription_token || ""))}>
-            Скопировать токен
-          </button>
+        <div className="mt-3 space-y-2">
+          <div className="flex items-start gap-2">
+            <input value={String(user.subscription_url || "")} readOnly className={adminFieldClass} />
+            <button className={adminButtonClass("secondary", "xs")} type="button" onClick={() => onCopyText(String(user.subscription_url || ""))}>
+              Копировать URL
+            </button>
+          </div>
+          <div className="flex items-start gap-2">
+            <input value={String(user.subscription_token || "")} readOnly className={adminFieldClass} />
+            <button className={adminButtonClass("secondary", "xs")} type="button" onClick={() => onCopyText(String(user.subscription_token || ""))}>
+              Копировать токен
+            </button>
+          </div>
         </div>
       </div>
 
-      <div className="mb-3 flex flex-wrap gap-2">
-        <button className={tabButtonClass("overview")} type="button" onClick={() => setDetailTab("overview")}>Обзор</button>
-        <button className={tabButtonClass("keys")} type="button" onClick={() => setDetailTab("keys")}>Ключи и лимиты</button>
-        <button className={tabButtonClass("history")} type="button" onClick={() => setDetailTab("history")}>История ключей</button>
-        <button className={tabButtonClass("audit")} type="button" onClick={() => setDetailTab("audit")}>Аудит</button>
+      <div className="mt-3 flex flex-wrap gap-2">
+        <button className={tabButtonClass("overview")} type="button" onClick={() => setDetailTab("overview")}>
+          Обзор
+        </button>
+        <button className={tabButtonClass("keys")} type="button" onClick={() => setDetailTab("keys")}>
+          Ключи и лимиты
+        </button>
+        <button className={tabButtonClass("history")} type="button" onClick={() => setDetailTab("history")}>
+          История ключей
+        </button>
+        <button className={tabButtonClass("audit")} type="button" onClick={() => setDetailTab("audit")}>
+          Аудит
+        </button>
+      </div>
+
+      <div className="mt-3 grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
+        <button className={adminButtonClass("ghost", "xs")} type="button" onClick={() => onRunPreset("reset_key")} disabled={busy}>
+          Пресет: сбросить ключ
+        </button>
+        <button className={adminButtonClass("ghost", "xs")} type="button" onClick={() => onRunPreset("rotate_link")} disabled={busy}>
+          Пресет: обновить ссылку
+        </button>
+        <button className={adminButtonClass("ghost", "xs")} type="button" onClick={() => onRunPreset("extend_1d")} disabled={busy}>
+          Пресет: +1 день
+        </button>
+        <button className={adminButtonClass("ghost", "xs")} type="button" onClick={() => onRunPreset("send_guide")} disabled={busy}>
+          Пресет: отправить инструкцию
+        </button>
       </div>
 
       {detailTab === "overview" ? (
@@ -236,7 +261,6 @@ export function AdminUserSidePanel({
       ) : null}
 
       {detailTab === "history" ? <AdminUserKeyHistoryView rows={key_history} busy={busy} onReload={onReload} /> : null}
-
       {detailTab === "audit" ? <AdminUserAuditView rows={admin_actions} busy={busy} onReload={onReload} /> : null}
     </article>
   );

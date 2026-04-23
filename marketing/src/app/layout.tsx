@@ -1,30 +1,31 @@
+import type { CSSProperties } from "react";
 import type { Metadata } from "next";
-import { JetBrains_Mono, Manrope, Playfair_Display } from "next/font/google";
+import { JetBrains_Mono, Manrope } from "next/font/google";
 
 import JsonLd from "../components/json-ld";
 import {
   buildOrganizationJsonLd,
   buildWebSiteJsonLd,
   DEFAULT_MARKETING_SHARE_IMAGE_HEIGHT,
-  DEFAULT_MARKETING_SHARE_IMAGE_WIDTH,
   DEFAULT_MARKETING_SHARE_IMAGE_PATH,
+  DEFAULT_MARKETING_SHARE_IMAGE_WIDTH,
   DEFAULT_MARKETING_TWITTER_IMAGE_PATH,
 } from "../lib/marketing-site";
-import { CANONICAL_MARKETING_SITE_URL, CANONICAL_PLATFORM_BRAND } from "../lib/pokrov";
+import { CANONICAL_MARKETING_SITE_URL, CANONICAL_PLATFORM_BRAND, getDesignTokenCssVariables } from "../lib/pokrov";
 import "./globals.css";
 
 const bodyFont = Manrope({ subsets: ["latin", "cyrillic"], variable: "--font-body" });
-const displayFont = Playfair_Display({ subsets: ["latin", "cyrillic"], variable: "--font-display" });
+const displayFont = Manrope({ subsets: ["latin", "cyrillic"], variable: "--font-display" });
 const monoFont = JetBrains_Mono({ subsets: ["latin", "cyrillic"], variable: "--font-mono" });
 
 export const metadata: Metadata = {
   metadataBase: new URL(CANONICAL_MARKETING_SITE_URL),
   title: {
-    default: "POKROV | Быстрый маршрут для интернета и низкого пинга",
+    default: "POKROV | Спокойный доступ и понятный старт",
     template: "%s",
   },
   description:
-    "POKROV помогает начать с приложения, спокойно проверить сервис 5 дней бесплатно и управлять своим маршрутом без путаницы.",
+    "POKROV помогает начать через приложение, попробовать сервис 5 дней бесплатно и дальше спокойно управлять доступом, устройствами и поддержкой.",
   applicationName: CANONICAL_PLATFORM_BRAND,
   alternates: {
     canonical: `${CANONICAL_MARKETING_SITE_URL}/`,
@@ -34,30 +35,28 @@ export const metadata: Metadata = {
     type: "website",
     locale: "ru_RU",
     siteName: CANONICAL_PLATFORM_BRAND,
-    title: "POKROV | Тихий premium-маршрут и стабильная связь",
-    description:
-      "Спокойный app-first сервис для ускорения сети с бесплатным 5-дневным тестом, понятным кабинетом и поддержкой без лишнего шума.",
+    title: "POKROV | Спокойный старт, стабильный доступ",
+    description: "Начните с приложения, получите бесплатные 5 дней и дальше управляйте доступом без лишнего шума.",
     url: `${CANONICAL_MARKETING_SITE_URL}/`,
     images: [
       {
         url: DEFAULT_MARKETING_SHARE_IMAGE_PATH,
         width: DEFAULT_MARKETING_SHARE_IMAGE_WIDTH,
         height: DEFAULT_MARKETING_SHARE_IMAGE_HEIGHT,
-        alt: `${CANONICAL_PLATFORM_BRAND} — Умный маршрут для интернета`,
+        alt: `${CANONICAL_PLATFORM_BRAND} — спокойный старт и понятный доступ`,
       },
     ],
   },
   twitter: {
     card: "summary_large_image",
-    title: "POKROV | Чистая скорость и стабильный пинг",
-    description:
-      "Скачайте приложение, включите 5 дней теста и наслаждайтесь скоростью. Переходите к кабинету только тогда, когда вам это действительно нужно.",
+    title: "POKROV | Приложение, доступ и помощь без лишнего шума",
+    description: "Скачайте приложение, начните с бесплатных 5 дней и при необходимости продолжайте через кабинет и поддержку.",
     images: [
       {
         url: DEFAULT_MARKETING_TWITTER_IMAGE_PATH,
         width: DEFAULT_MARKETING_SHARE_IMAGE_WIDTH,
         height: DEFAULT_MARKETING_SHARE_IMAGE_HEIGHT,
-        alt: `${CANONICAL_PLATFORM_BRAND} — Умная оптимизация интернета`,
+        alt: `${CANONICAL_PLATFORM_BRAND} — приложение, кабинет и поддержка`,
       },
     ],
   },
@@ -72,6 +71,8 @@ export const metadata: Metadata = {
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
+  const designTokenVars = getDesignTokenCssVariables("public") as CSSProperties;
+
   return (
     <html lang="ru" suppressHydrationWarning>
       <head>
@@ -82,7 +83,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           }}
         />
       </head>
-      <body className={`${bodyFont.variable} ${displayFont.variable} ${monoFont.variable}`}>
+      <body className={`${bodyFont.variable} ${displayFont.variable} ${monoFont.variable}`} style={designTokenVars}>
         <a href="#main-content" className="skip-link">
           Перейти к содержимому
         </a>

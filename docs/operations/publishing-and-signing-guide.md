@@ -1,6 +1,6 @@
 # Publishing And Signing Guide
 
-Last updated: 2026-04-22
+Last updated: 2026-04-23
 
 ## Document Status
 
@@ -8,12 +8,21 @@ This file is the canonical guide for `POKROV` client publishing, signing, store 
 
 ## Client Lane Distinction
 
-Wave 0 separates development truth from current release truth:
+Wave 0 separates active client truth from retained client evidence:
 
 - `POKROV-app/main` is the new client development target and is now bootstrapped locally at `C:/Users/kiwun/Documents/ai/POKROV-app`
-- `app-next/` is the retained bootstrap-source workspace inside this repository after that snapshot landed
-- `external/client-fork/app/` remains the bridge/hotfix and current public Android+Windows release/build/signing truth until formal cutover
-- the verification and packaging commands below therefore describe bridge-period release operations unless a later cutover wave rewrites them
+- retired bootstrap provenance is summarized in `docs/archive/client-lanes/app-next-bootstrap-summary.md`
+- retained bridge bundle lineage is archived under `C:/Users/kiwun/Documents/ai/POKROV-app/artifacts/releases/bridge/`
+- the verification and packaging commands below now describe the active `POKROV-app` lane, with archive notes called out explicitly when retained bridge evidence matters
+
+## Release Metadata Home
+
+Use the canonical client repo as the metadata home for every release handoff:
+
+- bridge-period metadata and mirrored bundles: `C:/Users/kiwun/Documents/ai/POKROV-app/artifacts/releases/bridge/<version>/`
+- post-cutover metadata and direct next-client bundles: `C:/Users/kiwun/Documents/ai/POKROV-app/artifacts/releases/pokrov-app/<version>/`
+
+Keep `release-handoff.json` plus any compatibility `release-links.env` and `release-manifests/` in that versioned folder.
 
 Focused release handoff runbooks:
 
@@ -47,6 +56,9 @@ All public download surfaces must be wired from the same release handoff values:
 - webapp
 - marketing site
 - Telegram bot
+- standard operator input: versioned `release-links.env` under `C:/Users/kiwun/Documents/ai/POKROV-app/artifacts/releases/...`
+- optional stable root-orchestrator metadata pointer: `C:/Users/kiwun/Documents/ai/POKROV-app/artifacts/releases/release-handoff.json`
+- schema reference for the JSON handoff: [release_handoff_metadata.schema.json](C:/Users/kiwun/Documents/ai/VPN/scripts/release_handoff_metadata.schema.json)
 
 Current release brand masters:
 
@@ -78,8 +90,9 @@ Current canonical release artifacts:
 Retention rule:
 
 - keep alpha, beta, release-candidate, and public-release artifacts inside the canonical repo-local artifact paths for the active release lane instead of treating desktop downloads or CI workspace leftovers as the only copy
-- during the current bridge period, `external/client-fork/app/out/` remains the canonical local build/signing working set, but the repo-backed retained archive must be mirrored into `C:/Users/kiwun/Documents/ai/POKROV-app/artifacts/releases/bridge/` because the public `Kiwunaka/PORTALapp` fork cannot accept new Git LFS release objects
-- once formal cutover moves release truth into `POKROV-app`, carry the same rule forward there instead of splitting artifact truth across ad hoc local folders
+- retained bridge bundles must stay mirrored in `C:/Users/kiwun/Documents/ai/POKROV-app/artifacts/releases/bridge/` as archive evidence; do not treat the retired bridge repo as the active artifact home
+- keep the matching `release-links.env` and generated `release-manifests/` beside that mirrored bridge bundle in the same versioned folder
+- keep active client-lane release truth in `POKROV-app` instead of splitting artifact truth across ad hoc local folders
 
 Current public-facing download buttons in shipped surfaces are limited to:
 
@@ -114,17 +127,17 @@ python scripts/release_gate_check.py --client-platform-gates windows,android-apk
 
 Notes:
 
-- `python scripts/run_client_release_gate.py preflight` is the fastest repo-local pin check for `external/client-fork/app/libcore`; it prints the pinned SHA, checked-out SHA, branch state, and dirty entries before any Flutter work starts.
+- `python scripts/run_client_release_gate.py preflight` is the fastest repo-local check that the `POKROV-app` seed workspace, host shells, and wrapper scripts are present before the platform-owned client gates run.
 - `release_gate_check.py` already includes `python scripts/run_client_release_gate.py test --suite full` by default.
 - `release_gate_check.py --quick` swaps that default client suite for `python scripts/run_client_release_gate.py test --suite portal`.
 - add `--client-platform-gates windows,android-apk,android-aab` or set `CLIENT_PLATFORM_GATES` when you want the gate report to include artifact-producing client builds.
 - once `CLIENT_PLATFORM_GATES` includes `android-apk` or `android-aab`, `release_gate_check.py` requires `ANDROID_AUDIT_SERIAL` to point to physical Android hardware; emulator serials stay useful only for adb rehearsal.
-- on Windows, the wrapper auto-runs `flutter build windows --release` before Flutter tests when the required `sqlite3.dll` bootstrap is missing.
-- test/build modes now auto-run `flutter pub get` plus `flutter pub run build_runner build --delete-conflicting-outputs` when generated Dart assets are missing, so a clean checkout can rebuild the ignored `*.g.dart` / `*.freezed.dart` surface before Flutter tests start.
-- `scripts/run_client_release_gate.py` now fails early if `external/client-fork/app/libcore` is dirty, missing, or not on the expected pinned SHA; release builds must start from a clean checkout with tracked `libcore` state.
-- Android build targets in `scripts/run_client_release_gate.py` now also refresh the canonical copies in `external/client-fork/app/out/` as `pokrov-android-universal.apk` and `pokrov-android-market.aab`, so operators do not need a separate manual copy step after a green local build.
-- after the final green rerun, mirror the handoff bundle from `external/client-fork/app/out/` into `C:/Users/kiwun/Documents/ai/POKROV-app/artifacts/releases/bridge/<version>/` so testers and operators can fetch the exact bridge-period alpha/beta bundle from a repo that accepts Git LFS uploads.
-- if the preflight fails, inspect the submodule directly with `git -C external/client-fork/app/libcore status --short` and `git -C external/client-fork/app/libcore diff --stat`; fixing those changes belongs in the canonical client repo, not as an ad hoc root-repo override.
+- the wrapper now targets `C:/Users/kiwun/Documents/ai/POKROV-app` by default and fails fast when that workspace is missing or incomplete.
+- `python scripts/run_client_release_gate.py test --suite full` delegates to `C:/Users/kiwun/Documents/ai/POKROV-app/scripts/run-tests.ps1`, while `--suite portal` bootstraps the workspace and runs the narrower Flutter lane in `packages/app_shell`, `apps/android_shell`, and `apps/windows_shell`.
+- `python scripts/run_client_release_gate.py build --target windows` delegates to `C:/Users/kiwun/Documents/ai/POKROV-app/scripts/build-windows-release.ps1 -SyncRuntime -SkipTests -SkipAnalyze` and verifies the unsigned zip plus manifest under `apps/windows_shell/build/release_bundle/`.
+- Android build targets in `scripts/run_client_release_gate.py` now build the `POKROV-app` Android shell and verify the raw outputs under `apps/android_shell/build/app/outputs/...`.
+- after the final green rerun, place the active handoff bundle under `C:/Users/kiwun/Documents/ai/POKROV-app/artifacts/releases/pokrov-app/<version>/`, keep `release-handoff.json` there, and only then hand the bundle to testers and operators.
+- if the preflight fails, inspect the `POKROV-app` seed workspace first; fixing those gaps belongs in the canonical client repo, not as an ad hoc root-repo override.
 - repo-local Windows MSIX smoke can also be produced with `dart pub global run msix:create --build-windows false`; that path intentionally keeps `sign_msix: false` for local verification and does not replace signed release handoff
 
 ## Android
@@ -143,7 +156,7 @@ Notes:
 
 ### Release steps
 
-1. Build release artifacts in `external/client-fork/app/`.
+1. Build release artifacts in `C:/Users/kiwun/Documents/ai/POKROV-app`.
 2. Run `python scripts/release_gate_check.py` and keep the default gate pack green; add `--client-platform-gates windows,android-apk,android-aab` when you want the same report to include release-build artifacts.
 3. If you include Android build gates in that report, export `ANDROID_AUDIT_SERIAL=<physical-device-serial>` first so the same report includes the mandatory physical-device localhost audit.
 4. Audit the release build for localhost listeners and local control surfaces before public publication.
@@ -154,9 +167,9 @@ Notes:
 
 Artifact-location note:
 
-- raw Android release outputs are expected under `external/client-fork/app/build/app/outputs/...`
-- the wrapper-based Android build commands also refresh the canonical copies in `external/client-fork/app/out/`
-- bridge-period repo-backed Android artifact retention lives in `C:/Users/kiwun/Documents/ai/POKROV-app/artifacts/releases/bridge/` after the local handoff bundle is refreshed
+- raw Android release outputs are expected under `C:/Users/kiwun/Documents/ai/POKROV-app/apps/android_shell/build/app/outputs/...`
+- the wrapper-based Android build commands verify those raw outputs directly
+- active client-lane artifact retention plus release metadata lives in `C:/Users/kiwun/Documents/ai/POKROV-app/artifacts/releases/pokrov-app/`
 - those raw outputs do not prove production readiness until the production key path is confirmed and the physical-device audit is complete
 - retain the formal Android localhost-audit evidence in `ops-local/android-localhost-audit*.json`, and keep any curated release evidence that must survive the handoff under `docs/audit-artifacts/`
 - treat repo-local screenshots, UI XML dumps, logcat captures, and ad hoc runtime snapshots from one Android validation pass as disposable scratch unless they are intentionally promoted into `docs/audit-artifacts/`
@@ -196,11 +209,11 @@ Operator shortcut:
 
 1. Build the Windows release, preferably via `python scripts/run_client_release_gate.py build --target windows`.
 2. For local MSIX smoke, run `dart pub global run msix:create --build-windows false` before the packaging step when you need a repo-local unsigned `MSIX`.
-3. Package the repo-local artifacts from the client root when you need the canonical `out/` bundle layout:
+3. Package the repo-local artifacts from the client root when you need the canonical Windows release-bundle layout:
 
 ```powershell
-Push-Location external/client-fork/app
-powershell -NoProfile -ExecutionPolicy Bypass -File ".\scripts\package_windows.ps1"
+Push-Location C:/Users/kiwun/Documents/ai/POKROV-app
+powershell -ExecutionPolicy Bypass -File ".\scripts\build-windows-release.ps1" -SyncRuntime -SkipTests -SkipAnalyze
 Pop-Location
 ```
 
@@ -214,9 +227,9 @@ Pop-Location
 
 Artifact-location note:
 
-- raw Windows build outputs are expected under `external/client-fork/app/build/windows/x64/runner/Release/...`
-- client `out/` stays empty until `external/client-fork/app/scripts/package_windows.ps1` canonicalizes the bundle; empty `out/` does not mean the raw `EXE` or `MSIX` are missing
-- after Windows packaging succeeds, mirror the bridge-period bundle into `C:/Users/kiwun/Documents/ai/POKROV-app/artifacts/releases/bridge/<version>/` because the bridge fork remote cannot serve as the long-term Git LFS artifact archive
+- raw Windows build outputs are expected under `C:/Users/kiwun/Documents/ai/POKROV-app/apps/windows_shell/build/windows/x64/runner/Release/...`
+- the canonical unsigned Windows bundle and manifest are written under `C:/Users/kiwun/Documents/ai/POKROV-app/apps/windows_shell/build/release_bundle/`
+- after Windows packaging succeeds, write the active bundle plus release metadata into `C:/Users/kiwun/Documents/ai/POKROV-app/artifacts/releases/pokrov-app/<version>/`
 
 Current runtime-surface note:
 
@@ -278,11 +291,12 @@ This keeps the real public ship on Android and Windows while avoiding an acciden
 After every client release:
 
 1. publish GitHub release artifacts
-2. run release handoff
-3. validate URLs with the release-link checker
-4. update runtime env for all Android and Windows download links
-5. verify the same links appear in app, bot, and authenticated WebApp surfaces
-6. rebuild and redeploy static marketing outputs if public download URLs changed
+2. write or update the versioned metadata under `C:/Users/kiwun/Documents/ai/POKROV-app/artifacts/releases/...`
+3. run release handoff
+4. validate URLs with the release-link checker
+5. update runtime env for all Android and Windows download links from the versioned `release-links.env`
+6. verify the same links appear in app, bot, and authenticated WebApp surfaces
+7. rebuild and redeploy static marketing outputs if public download URLs changed
 
 Operator shortcut:
 

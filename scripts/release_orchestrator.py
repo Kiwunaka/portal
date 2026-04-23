@@ -123,28 +123,30 @@ def _build_steps(args: argparse.Namespace, *, python: str) -> list[tuple[str, li
             gate_cmd.append("--quick")
         steps.append(("release gates", gate_cmd, REPO_ROOT))
 
+    release_metadata_file = str(getattr(args, "release_metadata_file", "") or "").strip()
     release_env_file = str(getattr(args, "release_env_file", "") or "").strip()
-    if release_env_file:
-        steps.append(
-            (
-                "release handoff sync",
-                [
-                    python,
-                    "scripts/remote_brain_apply_release_handoff.py",
-                    "--brain-ip",
-                    args.brain_ip,
-                    "--env-file",
-                    release_env_file,
-                    "--ssh-user",
-                    args.ssh_user,
-                    "--ssh-port",
-                    str(args.ssh_port),
-                    "--passwords",
-                    args.passwords,
-                ],
-                REPO_ROOT,
-            )
+    if release_metadata_file or release_env_file:
+        handoff_cmd = [
+            python,
+            "scripts/remote_brain_apply_release_handoff.py",
+            "--brain-ip",
+            args.brain_ip,
+        ]
+        if release_metadata_file:
+            handoff_cmd.extend(["--metadata-file", release_metadata_file])
+        if release_env_file:
+            handoff_cmd.extend(["--env-file", release_env_file])
+        handoff_cmd.extend(
+            [
+                "--ssh-user",
+                args.ssh_user,
+                "--ssh-port",
+                str(args.ssh_port),
+                "--passwords",
+                args.passwords,
+            ]
         )
+        steps.append(("release handoff sync", handoff_cmd, REPO_ROOT))
 
     if args.ensure_metrics_timer:
         steps.append(
@@ -311,13 +313,14 @@ def _build_steps(args: argparse.Namespace, *, python: str) -> list[tuple[str, li
     return steps
 
 
-def _has_remote_steps(args: argparse.Namespace, *, release_env_file: str) -> bool:
+def _has_remote_steps(args: argparse.Namespace, *, release_metadata_file: str, release_env_file: str) -> bool:
     return any(
         (
             not args.skip_backend,
             not args.skip_static,
             not args.skip_verify,
             bool(args.ensure_metrics_timer),
+            bool(release_metadata_file),
             bool(release_env_file),
             bool(getattr(args, "ensure_observer_node", [])),
             bool(getattr(args, "qdisc_node", [])),
@@ -348,9 +351,14 @@ def main() -> int:
     parser.add_argument("--gates-only", action="store_true", help="Run gates only (no remote deploy/verify)")
     parser.add_argument("--verify-only", action="store_true", help="Run only post-deploy verify")
     parser.add_argument(
+        "--release-metadata-file",
+        default="",
+        help="Client-owned POKROV-app release-handoff.json path to sync APP_* download URLs onto brain before deploy/verify.",
+    )
+    parser.add_argument(
         "--release-env-file",
         default="",
-        help="Local release-links.env path to sync APP_* download URLs onto brain before deploy/verify.",
+        help="Legacy release-links.env path to sync APP_* download URLs onto brain before deploy/verify.",
     )
     parser.add_argument("--dry-run", action="store_true", help="Print planned commands without executing them")
     parser.add_argument("--qdisc-node", action="append", default=[], help="Apply qdisc rollout steps for the given node code. Can be repeated.")
@@ -386,9 +394,10 @@ def main() -> int:
         args.qdisc_node = []
         args.qdisc_host = []
 
+    release_metadata_file = str(args.release_metadata_file or "").strip()
     release_env_file = str(args.release_env_file or "").strip()
-    if release_env_file and args.gates_only:
-        raise SystemExit("--release-env-file cannot be used with --gates-only")
+    if (release_metadata_file or release_env_file) and args.gates_only:
+        raise SystemExit("--release-metadata-file and --release-env-file cannot be used with --gates-only")
 
     python = sys.executable
     steps: list[tuple[str, list[str], Path]] = []
@@ -400,6 +409,7 @@ def main() -> int:
         gate_args.skip_verify = True
         gate_args.ensure_metrics_timer = False
         gate_args.ensure_observer_node = []
+        gate_args.release_metadata_file = ""
         gate_args.release_env_file = ""
         gate_args.qdisc_node = []
         gate_args.qdisc_host = []
@@ -416,7 +426,11 @@ def main() -> int:
         print("[done] gates-only mode finished")
         return 0
 
-    need_remote = _has_remote_steps(args, release_env_file=release_env_file)
+    need_remote = _has_remote_steps(
+        args,
+        release_metadata_file=release_metadata_file,
+        release_env_file=release_env_file,
+    )
     if need_remote and not args.brain_ip.strip():
         raise SystemExit("--brain-ip is required for deploy/verify steps")
     steps = _build_steps(args, python=python)

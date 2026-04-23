@@ -14,7 +14,7 @@
 | Strategy owner | `<role or name>` |
 | Status | `draft | recommended | approved | superseded` |
 | Candidate WO class | `platform-only | client-only | mixed` |
-| Primary repo lane | `portal/master | POKROV-app/main | legacy bridge main` |
+| Primary repo lane | `portal/master | POKROV-app/main | archive evidence only` |
 | Secondary repo lane | `<blank if not mixed>` |
 | Timestamp | `<timestamp>` |
 
@@ -85,7 +85,7 @@
 ### Docs and truth alignment
 
 - `<which canonical docs must be updated or explicitly left alone>`
-- `<if mixed, which root docs and which client docs must stay in sync>`
+- `<if mixed, which root docs and which POKROV-app docs must stay in sync, plus whether any archive evidence notes are still required>`
 
 ### Mixed-lane execution order
 
@@ -147,6 +147,11 @@ Copy only the surfaces that apply to the WO.
 - Valid partial outcome: `<what can be accepted without full closure>`
 - What still blocks full completion: `<remaining requirements>`
 - Stop conditions: `<what should pause the WO instead of forcing risky completion>`
+
+## Historical Reference Rule
+
+- retired bootstrap or bridge material may be cited only when provenance or rollback evidence matters
+- do not use archived material as the active completion lane for a new strategy
 
 ## Open Questions And Risks
 

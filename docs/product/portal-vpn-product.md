@@ -1,6 +1,6 @@
 # POKROV Product Overview
 
-Last updated: 2026-04-22
+Last updated: 2026-04-23
 
 ## Document Status
 
@@ -30,32 +30,39 @@ Primary user goal:
 
 Telegram is optional for first launch, free trial activation, and normal daily use.
 Telegram remains a secondary path for linking, bonus claim, recovery, support entrypoints, and bot-side purchase continuation.
+Browser continuation currently starts from app handoff and Telegram.
+Email browser continuation is planned `soon` and must stay explicitly labeled that way until sender readiness, delivery confirmation, and the public launch path are all green.
 
 ## Wave 0 Global Rework Decision Freeze
 
-The current program is locked around these target product decisions even where bridge-period release truth still trails behind implementation:
+The current program is locked around these target product decisions:
 
-- new client development truth now lives in the bootstrapped local repo `POKROV-app/main`; `app-next/` remains retained bootstrap/reference material, and `external/client-fork/app/` stays bridge/hotfix plus current release-build truth until formal cutover
+- `POKROV-app/main` is the only active client canon for product direction, client contracts, and client documentation
+- `app-next/` remains retained bootstrap archive/reference material only
+- `external/client-fork/app/` remains retained rollback/archive reference material only
+- the front-end rebuild is an atlas-driven shell reset: `marketing` acquires, `webapp` continues known-user work, and the app shell stays locked to the four-tab consumer layout
 - one canonical `app-first` account links `install_id`, email, Telegram, devices, and activation keys
 - public delivery scope for this wave remains `Android + Windows`; Apple hosts may remain in engineering lanes but are not part of public promise or release acceptance
 - commercial flow becomes `buy key -> redeem key -> managed premium`, with raw subscription links hidden from default site, webapp, and bot UX and exposed only for explicit recovery or manual-request paths
-- `marketing` is the only public acquisition, pricing, and paywall surface; `webapp` is session-aware continuation, support, redeem, renewal continuation, and admin only
+- `marketing` is the only public acquisition, pricing, and paywall surface, and its default public CTA set is checkout-first; `webapp` is session-aware continuation, support, redeem, renewal continuation, and admin only
+- public browser copy and visual governance are centralized through `shared/copy.ts`, `copy/catalog.ru.json`, and `shared/design-tokens.json`, with locked host and product facts inherited from the shared fact files
+- user-facing cabinet IA becomes `Dashboard / Subscription / Devices / Statistics / Support`, with entry, `downloads`, `redeem`, hosted-checkout continuation, and compatibility redirects treated as task routes rather than parallel public-entry surfaces
 - app surfaces must not use ad SDKs or third-party ads; only approved first-party promo slots may render remotely managed promo content
 - normal consumer UX should show one logical location, while transport variants `VLESS+REALITY`, `VMess`, `Trojan`, and `XHTTP` stay hidden behind auto, diagnostics, or admin controls
 - target client IA becomes `Protection / Locations / Rules / Profile`, with `Support`, `Devices`, `Subscription`, and `Settings` nested inside `Profile`
 - visible routing story becomes `All except RU`, `Full tunnel`, and `Selected apps`, with `Rules` owning split tunneling and bypass behavior
 - the public wording rule still forbids promoting the product through direct-meaning `VPN` wording on public surfaces
 
-Bridge-period note:
+Client-canon note:
 
-- the detailed surface descriptions later in this document may still describe the retained bridge release path where formal cutover has not yet happened
-- Wave 0 freezes the target world first so later code waves converge on one product story instead of preserving the old one by inertia
+- this document treats only `POKROV-app/main` as the active client lane
+- any surviving `app-next/` or legacy-fork references elsewhere are archival or rollback-only and must not override product truth
 
 ## Locked Product Rules
 
 - primary UX: `consumer-first`
 - primary identity model: `app-first`
-- browser identity continuation: additive `email` auth plus existing app and Telegram handoff paths
+- browser identity continuation: app handoff plus `Telegram` today, with additive `email` continuation marked `soon` until the public launch path is live
 - full public `v1` scope: `Android + Windows`
 - Apple scope in this wave: readiness, signing prep, and store prerequisites only
 - default runtime core: `sing-box`
@@ -147,10 +154,10 @@ First-run route-mode rule:
 
 Current public role:
 
-- `https://pokrov.space/` is the fresh-entry homepage for new users
-- `https://pokrov.space/install/` is the dedicated install-help surface used when a public download CTA cannot resolve directly to a real artifact
-- `https://pokrov.space/checkout/` is the public acquisition, pricing, paywall, and activation-key purchase surface
-- indexable landing pages can capture platform, use-case, or Telegram intent, but they must converge to the same product facts and CTA set
+- `https://pokrov.space/` is the public entry homepage for new users and should converge most acquisition traffic into the checkout-first marketing route
+- `https://pokrov.space/checkout/` is the primary public acquisition, pricing, paywall, and activation-key purchase surface
+- `https://pokrov.space/install/` is the dedicated install-help surface used after purchase, after known-user continuation, or when a public download CTA cannot resolve directly to a real artifact
+- indexable landing pages can capture platform, use-case, or Telegram intent, but they must converge to the same product facts and checkout-first CTA set
 - public legal pages also live on the marketing surface
 - the current canonical public route family is `/mobile/`, `/tiktok/`, `/youtube/`, `/devices/`, and `/telegram/`, with permanent redirects from the earlier legacy SEO paths
 
@@ -161,9 +168,12 @@ Current public role:
 Current cabinet role:
 
 - `https://app.pokrov.space/` continues an existing browser session or bot handoff
-- browser entry also supports additive email signup, login, verification, and recovery without replacing the app-first model
-- public email signup, verification, and recovery should remain truthfully unavailable if transactional sender identity or delivery-confirmation/webhook readiness is degraded
-- current route families include cabinet entry, dashboard, subscription, hosted-checkout continuation, redeem, devices, downloads, and support
+- browser entry currently supports app handoff plus Telegram continuation into the same cabinet session family without replacing the app-first model
+- public-facing email browser continuation must stay marked `soon` until sender readiness, delivery confirmation, and the public launch path are all green
+- cabinet is continuation-first; it must not become a second landing page or re-pitch the public marketing story
+- public email signup, verification, and recovery must not be documented as a live default path before that `soon` status is lifted
+- current top-level cabinet IA is `Dashboard`, `Subscription`, `Devices`, `Statistics`, and `Support`
+- task routes currently include cabinet entry, hosted-checkout continuation, redeem, downloads, and support threads
 - `/pricing/` remains only as a compatibility continuation alias and must not become a second public pricing surface
 - `webapp` is also the primary admin operator surface
 - site, cabinet, and admin must keep obvious navigation back to each other so no surface becomes a dead end
@@ -185,8 +195,8 @@ Telegram remains in the product for:
 
 Public funnel rule:
 
-- marketing introduces the product and captures public intent
-- `pokrov.space/checkout/` can show public pricing and sell activation keys through the hosted checkout flow
+- marketing introduces the product and captures public intent through a checkout-first acquisition path
+- `pokrov.space/checkout/` shows public pricing and sells activation keys through the hosted checkout flow
 - `app.pokrov.space` continues real account, renewal, redeem, support, and admin flows
 - cabinet checkout is continuation-only and should defer to the same hosted activation-key flow instead of inventing a second paywall
 - the default site, cabinet, and bot UX must not expose raw subscription links
@@ -198,10 +208,14 @@ Public funnel rule:
 
 Public-facing copy across marketing and webapp should follow one simple style:
 
-- calm, direct, and premium without fake urgency
+- calm, direct, and premium without fake urgency, countdown theater, or exaggerated rescue language
 - `app-first` in onboarding language, with Telegram framed as optional continuation or fallback
-- one product story across homepage, SEO landings, cabinet, and checkout
+- marketing and cabinet copy must stay governed through `shared/copy.ts`, `copy/catalog.ru.json`, and `shared/design-tokens.json` so both surfaces tell the same product story
+- email continuation copy must stay labeled `soon` until the live delivery path is truly ready
+- cabinet copy should focus on continuation, renewal, redeem, support, and recovery rather than acting like a second landing page
+- one product story across homepage, SEO landings, cabinet, and checkout, with checkout-first public CTA priority on marketing surfaces
 - avoid direct-meaning `VPN` wording on public surfaces; `POKROV VPN` survives only as a legacy identifier where removal is not yet feasible
+- public-facing wording should prefer user outcomes and next steps over transport acronyms, raw profile terminology, or operator jargon
 - explicit next-step CTA wording such as `download app`, `open cabinet`, `continue to checkout`, or `open Telegram` only when that is the real next step
 - no separate product variants or conflicting promises invented for SEO pages
 
@@ -400,6 +414,8 @@ Public review copy should stay:
 Current major product risks are:
 
 - app-first copy drifting back into Telegram-first wording
+- marketing and cabinet copy drifting apart or cabinet entry acting like a second landing page
+- retired client docs or old release notes being mistaken for active product truth
 - public pricing or checkout behaving like a decorative vitrine instead of a real continuation flow
 - Android and Windows release wiring drifting away from canonical artifact URLs
 - public download copy treating `AAB`, `MSIX`, or portable `ZIP` artifacts as first-layer user buttons before those surfaces are actually exposed

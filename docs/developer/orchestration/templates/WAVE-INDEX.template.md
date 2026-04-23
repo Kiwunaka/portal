@@ -13,7 +13,7 @@
 | Status | `draft | ready | active | blocked | partial | closed` |
 | Orchestrator | `<role name / chat / owner>` |
 | Execution model | `phase-first | dependency-first | mixed` |
-| Canonical repo lanes in scope | `portal/master` / `POKROV-app/main` / `<legacy bridge main if needed>` |
+| Canonical repo lanes in scope | `portal/master` / `POKROV-app/main` / `<archive evidence only if needed>` |
 | Primary scope roots | `<paths>` |
 | Start gate | `<what must be true before launch>` |
 | Closure gate | `<what must be true before the wave can close>` |
@@ -22,8 +22,8 @@
 ## Read Gate
 
 - [ ] Reviewed the mandatory root read order from `AGENTS.md`.
-- [ ] Added the new-client docs pack for `POKROV-app/main` or the `app-next/` bootstrap-source docs when the local bootstrap repo is still missing.
-- [ ] Added the legacy bridge docs pack when any WO touches `external/client-fork/app/**`.
+- [ ] Added the `POKROV-app` docs pack for active client scope.
+- [ ] Added the archive client-lane summaries only when historical bootstrap or rollback evidence matters.
 - [ ] Confirmed canonical write lanes before launching any executor.
 - [ ] Confirmed doc-impact expectations for every WO in this wave.
 - [ ] Confirmed no WO requires printing or committing material from never-touch zones.
@@ -88,7 +88,7 @@ Parallel-group note:
 ## Dependency And Routing Notes
 
 - `platform-only`: changes live only under root platform paths and land on `portal/master`.
-- `client-only`: changes live only under one client lane; default to `POKROV-app/main`, and call out `external/client-fork/app/**` explicitly when the WO is bridge or release-truth work.
+- `client-only`: changes live only under one client lane; default to `POKROV-app/main`, and call out archive evidence separately when retired bridge lineage matters.
 - `mixed`: one logical WO with multiple write lanes, separate git-evidence lanes, and one closure decision by the orchestrator.
 - If a WO changes `shared/*`, confirm whether the work stays platform-only or becomes mixed because client sync or adoption is required.
 
@@ -130,7 +130,7 @@ Parallel-group note:
 | --- | --- | --- | --- | --- |
 | `platform` | `portal/master` | `<sha(s)>` | `yes | no` | `<notes>` |
 | `client-dev` | `POKROV-app/main` | `<sha(s)>` | `yes | no` | `<notes>` |
-| `client-bridge` | `<legacy bridge main>` | `<sha(s)>` | `yes | no` | `<notes>` |
+| `archive-evidence` | `<n/a if unused>` | `<artifact version or summary>` | `n/a` | `<notes>` |
 
 ### Remaining Risk / Next Wave Seed
 

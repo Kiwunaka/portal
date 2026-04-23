@@ -39,7 +39,7 @@ export default function TelegramLoginWidget() {
   ).trim();
   const botName = resolveTelegramBotName(botSource);
   const [widgetHint, setWidgetHint] = useState(() =>
-    botName ? "" : "Не удалось подготовить Telegram-вход. Откройте кнопку ниже и продолжите вручную.",
+    botName ? "" : "Не удалось подготовить Telegram-вход. Кнопка ниже откроет тот же путь вручную.",
   );
   const { loginByWidget, startTelegramLogin, webLoginBusy } = usePortalSession();
 
@@ -71,13 +71,13 @@ export default function TelegramLoginWidget() {
     script.setAttribute("data-lang", "ru");
     script.setAttribute("data-onauth", "onTelegramAuth(user)");
     script.onerror = () => {
-      setWidgetHint("Telegram-виджет не загрузился. Нажмите кнопку ниже, это тот же вход.");
+      setWidgetHint("Виджет Telegram не загрузился. Кнопка выше запускает тот же вход.");
     };
     host.appendChild(script);
 
     const warnTimer = window.setTimeout(() => {
       if (authDoneRef.current) return;
-      setWidgetHint("Если Telegram не подхватился автоматически, просто нажмите кнопку ниже.");
+      setWidgetHint("Если виджет не сработал автоматически, просто нажмите кнопку выше.");
     }, 4500);
 
     return () => {
@@ -95,10 +95,10 @@ export default function TelegramLoginWidget() {
         onClick={() => void startTelegramLogin()}
         type="button"
       >
-        {webLoginBusy ? "Подключаем Telegram..." : "Продолжить через Telegram"}
+        {webLoginBusy ? "Открываем Telegram..." : "Открыть Telegram для входа"}
       </button>
       <p className="text-xs leading-5 text-slate-500 dark:text-slate-400">
-        Telegram подтвердит вход и вернёт вас обратно в кабинет без лишних экранов.
+        Telegram подтвердит вход и вернет вас обратно в кабинет без лишних экранов.
       </p>
       <div ref={hostRef} className="min-h-[56px]" id="tg-login-widget" />
       {widgetHint ? <p className="text-xs leading-5 text-amber-600 dark:text-amber-300">{widgetHint}</p> : null}

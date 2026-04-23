@@ -1,11 +1,17 @@
 # POKROV Documentation Index
 
-Last updated: 2026-04-15
+Last updated: 2026-04-23
 
 This directory is split into two classes of material:
 
 - living source-of-truth documentation
 - historical, audit, and forensic records
+
+Client-lane rule:
+
+- `C:/Users/kiwun/Documents/ai/POKROV-app/docs/` is the only active client-doc canon
+- `docs/archive/client-lanes/` keeps the short historical summaries for retired client lanes
+- retained bridge bundle lineage now lives under `C:/Users/kiwun/Documents/ai/POKROV-app/artifacts/releases/bridge/`
 
 Legacy filename note:
 
@@ -50,14 +56,11 @@ Use the role-based paths below first. If you need older context, go to the archi
 - canonical client repo: `C:/Users/kiwun/Documents/ai/POKROV-app`
 - [POKROV App Docs Index](C:/Users/kiwun/Documents/ai/POKROV-app/docs/README.md)
 - [POKROV App Cutover Readiness](C:/Users/kiwun/Documents/ai/POKROV-app/docs/operations/cutover-readiness.md)
-- [App-Next Docs Index](C:/Users/kiwun/Documents/ai/VPN/app-next/docs/README.md)
-- [App-Next Cutover Readiness](C:/Users/kiwun/Documents/ai/VPN/app-next/docs/operations/cutover-readiness.md)
 
-## Start Here For Legacy Bridge Client
+## Retired Client Summaries
 
-- [Legacy Bridge Client Docs Index](C:/Users/kiwun/Documents/ai/VPN/external/client-fork/app/docs/README.md)
-- [Legacy Bridge Client Product Spec](C:/Users/kiwun/Documents/ai/VPN/external/client-fork/app/docs/product/portal-vpn-v1-spec.md)
-- [Legacy Bridge Client App-First Session Flow](C:/Users/kiwun/Documents/ai/VPN/external/client-fork/app/docs/architecture/app-first-session-flow.md)
+- [app-next Bootstrap Summary](C:/Users/kiwun/Documents/ai/VPN/docs/archive/client-lanes/app-next-bootstrap-summary.md)
+- [Legacy Bridge Retirement Summary](C:/Users/kiwun/Documents/ai/VPN/docs/archive/client-lanes/legacy-bridge-retirement-summary.md)
 
 ## Living Source Of Truth
 
@@ -89,11 +92,9 @@ Use the role-based paths below first. If you need older context, go to the archi
 
 - [docs/user/portal-vpn-user-guide-ru.md](C:/Users/kiwun/Documents/ai/VPN/docs/user/portal-vpn-user-guide-ru.md)
 
-### Client Fork
+### Client
 
-- live new client canon: `C:/Users/kiwun/Documents/ai/POKROV-app/docs/`
-- [app-next/docs/README.md](C:/Users/kiwun/Documents/ai/VPN/app-next/docs/README.md) as retained bootstrap-source docs inside this repository
-- [external/client-fork/app/docs/README.md](C:/Users/kiwun/Documents/ai/VPN/external/client-fork/app/docs/README.md) for legacy bridge/hotfix and current release-truth notes until formal cutover
+- active client canon: `C:/Users/kiwun/Documents/ai/POKROV-app/docs/`
 
 ## Historical Records
 
@@ -101,5 +102,6 @@ Use the role-based paths below first. If you need older context, go to the archi
 - dated flat docs in `docs/archive/flat-docs/`
 - audit evidence in `docs/audit-artifacts/`
 - archived root guides in `docs/archive/root-guides/`
+- retired client summaries in `docs/archive/client-lanes/`
 
 If a historical file conflicts with a living source-of-truth doc, prefer the living doc and then relabel or archive the older note.

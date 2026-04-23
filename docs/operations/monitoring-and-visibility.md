@@ -1,6 +1,6 @@
 # Monitoring And Visibility
 
-Last updated: 2026-04-14
+Last updated: 2026-04-23
 
 ## Document Status
 
@@ -43,7 +43,7 @@ Compatibility rule for `kiwunaka.space`:
 Monitoring should cover four layers together:
 
 1. public entrypoints and hostname correctness
-2. app, webapp, and bot session health
+2. app, webapp, and bot session health, including Telegram and email browser-continuation parity
 3. node reachability and public egress
 4. support visibility for linked Telegram, device, and IP context
 5. per-node freshness, sustained resource alerts, and probe failure reasons
@@ -64,6 +64,7 @@ Required support and admin identity fields:
 Operational rule:
 
 - transactional sender health for `noreply@pokrov.space` should be monitored separately from node health and Telegram availability
+- Telegram and email are equal browser-continuation entry families into the same cabinet session model; investigate failures in either path as first-class auth incidents instead of assuming only one route is canonical
 - email verification or recovery incidents must not be misclassified as node or routing incidents
 - the latest local green release-gate report does not replace `current-origin`, `brain-origin`, or `RU-origin` evidence in a release handoff
 

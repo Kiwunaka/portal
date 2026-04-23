@@ -1,6 +1,7 @@
 "use client";
 
 import AppRouteLink from "@/components/app-route-link";
+import { CabinetActionList, CabinetFactGrid, CabinetPage, CabinetSection } from "@/components/cabinet-page";
 import { getAccessState, resolvePlanLabel } from "@/lib/access-policy";
 import { fetchAccessKeyStatus, redeemAccessKey, type AccessKeyStatusPayload } from "@/lib/api";
 import { usePortalSession } from "@/lib/session";
@@ -12,10 +13,15 @@ function normalizeKey(value: string): string {
 }
 
 function formatDate(value?: string | null): string {
-  if (!value) return "—";
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return value;
-  return date.toLocaleString("ru-RU");
+  if (!value) return "Уточним по мере обновления";
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) return "Уточним по мере обновления";
+  return new Intl.DateTimeFormat("ru-RU", {
+    day: "numeric",
+    month: "long",
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(parsed);
 }
 
 export default function RedeemPage() {
@@ -31,7 +37,7 @@ export default function RedeemPage() {
   const lookup = async (rawKey?: string): Promise<AccessKeyStatusPayload | null> => {
     const key = normalizeKey(rawKey ?? keyInput);
     if (!key) {
-      setError("Введите activation key, чтобы проверить его статус.");
+      setError("Введите ключ, чтобы мы могли его проверить.");
       return null;
     }
 
@@ -42,11 +48,11 @@ export default function RedeemPage() {
       const nextStatus = await fetchAccessKeyStatus(key);
       setStatus(nextStatus);
       if (!nextStatus.exists) {
-        setMessage("Ключ не найден. Проверьте написание или откройте support/recovery.");
+        setMessage("Такой ключ не найден. Проверьте, не потерялся ли символ.");
       } else if (nextStatus.redeemed) {
-        setMessage("Этот ключ уже был погашен. Для восстановления откройте support.");
+        setMessage("Этот ключ уже был использован. Если нужна помощь, лучше сразу открыть поддержку.");
       } else {
-        setMessage("Ключ найден и готов к redeem в текущем app-first аккаунте.");
+        setMessage("Ключ найден. Его можно применить к текущему профилю.");
       }
       return nextStatus;
     } catch (nextError) {
@@ -65,7 +71,7 @@ export default function RedeemPage() {
       return;
     }
     if (nextStatus.redeemed) {
-      setError("Ключ уже погашен. Для manual recovery используйте support.");
+      setError("Ключ уже был использован. Для восстановления лучше открыть поддержку.");
       return;
     }
 
@@ -76,11 +82,9 @@ export default function RedeemPage() {
       const payload = await redeemAccessKey(nextStatus.key);
       setStatus(payload.status);
       await refresh();
-      setMessage(
-        `Ключ ${payload.key} погашен. План ${payload.plan?.label || payload.status.plan?.label || "managed premium"} уже применён к текущему аккаунту.`,
-      );
+      setMessage(`Ключ ${payload.key} применен. Профиль уже обновлен.`);
     } catch (nextError) {
-      setError(String((nextError as { message?: string })?.message || nextError || "Не удалось погасить ключ."));
+      setError(String((nextError as { message?: string })?.message || nextError || "Не удалось применить ключ."));
     } finally {
       setRedeemBusy(false);
     }
@@ -91,111 +95,172 @@ export default function RedeemPage() {
     if (!nextKey) return;
     setKeyInput(nextKey);
     void lookup(nextKey);
-    // searchParams is stable enough for this route and we intentionally want to react to URL changes only
+    // searchParams is stable enough here and we only react to URL changes
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams]);
 
+  const facts = [
+    {
+      label: "Профиль",
+      value: resolvePlanLabel(dash, user),
+      hint: "Ключ применяется к текущему аккаунту.",
+      tone: "neutral" as const,
+    },
+    {
+      label: "Статус доступа",
+      value: dash?.is_active ? "Активен" : "Нужно продление",
+      hint: `Техническое состояние: ${getAccessState(dash, user) || "free_monthly"}.`,
+      tone: dash?.is_active ? ("success" as const) : ("warning" as const),
+    },
+    {
+      label: "Проверка ключа",
+      value: status ? (status.exists ? "Ключ найден" : "Не найден") : "Ждет проверки",
+      hint: status?.redeemed ? "Этот ключ уже был использован." : "Сначала проверьте ключ, потом применяйте.",
+      tone: status?.redeemed ? ("warning" as const) : status?.exists ? ("success" as const) : ("neutral" as const),
+    },
+    {
+      label: "Что дальше",
+      value: status?.redeemed ? "Открыть поддержку" : "Применить к профилю",
+      hint: "Если ключ уже использован или потерян, лучше не гадать, а написать нам.",
+      tone: "neutral" as const,
+    },
+  ];
+
+  const statusItems = status
+    ? [
+        {
+          key: "key",
+          title: "Ключ",
+          body: status.key,
+          badge: status.exists ? "Найден" : "Не найден",
+          tone: status.exists ? ("success" as const) : ("warning" as const),
+        },
+        {
+          key: "plan",
+          title: "Что даст этот ключ",
+          body: status.plan?.label || status.kind || "Уточним после проверки",
+          badge: `До ${status.device_limit || 1} устройств`,
+          tone: "neutral" as const,
+        },
+        {
+          key: "dates",
+          title: "Когда был выдан и использован",
+          body: `Выдан: ${formatDate(status.issued_at)}. Использован: ${formatDate(status.redeemed_at)}.`,
+          badge: status.redeemed ? "Уже использован" : "Готов к применению",
+          tone: status.redeemed ? ("warning" as const) : ("info" as const),
+        },
+      ]
+    : [];
+
+  const helpItems = [
+    {
+      key: "check",
+      title: "Сначала проверьте ключ",
+      body: "Так вы сразу увидите, существует ли он и не был ли уже использован раньше.",
+      badge: "Шаг 1",
+      tone: "neutral" as const,
+    },
+    {
+      key: "redeem",
+      title: "Если ключ найден, примените его",
+      body: "После этого профиль подтянется автоматически. Новый аккаунт создавать не нужно.",
+      badge: "Шаг 2",
+      tone: "neutral" as const,
+    },
+    {
+      key: "support",
+      title: "Если что-то не совпало, откройте поддержку",
+      body: "Это самый безопасный путь, если ключ уже использован или выглядит не так, как ожидалось.",
+      badge: "Шаг 3",
+      tone: "neutral" as const,
+      action: (
+        <AppRouteLink href="/support/" className="text-sm font-semibold text-emerald-800 dark:text-emerald-300">
+          Поддержка
+        </AppRouteLink>
+      ),
+    },
+  ];
+
   return (
-    <main className="space-y-6">
-      <section className="glass-card p-7">
-        <p className="font-mono text-xs uppercase tracking-[0.18em] text-emerald-500">redeem activation key</p>
-        <h1 className="mt-2 font-display text-4xl font-bold">Ключ привязывает paid access к app-first аккаунту</h1>
-        <p className="mt-3 max-w-3xl text-sm leading-7 text-slate-600 dark:text-slate-300">
-          В новой коммерческой модели покупка и выдача разделены: сначала пользователь получает activation key,
-          затем погашает его здесь или в приложении, после чего managed premium обновляется без raw subscription link
-          в обычном UX.
-        </p>
-        <div className="mt-5 flex flex-wrap gap-3">
-          <AppRouteLink href="/subscription/checkout/" className="btn-primary rounded-xl px-6 py-3 text-sm font-semibold uppercase tracking-[0.12em]">
+    <CabinetPage
+      eyebrow="Тарифы и оплата"
+      title="Применить ключ"
+      description="Если у вас уже есть ключ оплаты или подарка, примените его здесь к текущему профилю."
+      actions={
+        <>
+          <AppRouteLink href="/subscription/checkout/" className="outline-btn rounded-full px-5 py-3 text-sm font-semibold">
             Купить ключ
           </AppRouteLink>
-          <AppRouteLink href="/subscription/" className="outline-btn rounded-xl px-6 py-3 text-sm font-semibold uppercase tracking-[0.12em]">
-            Назад в доступ
+          <AppRouteLink href="/support/" className="outline-btn rounded-full px-5 py-3 text-sm font-semibold">
+            Поддержка
           </AppRouteLink>
-          <AppRouteLink href="/support/" className="outline-btn rounded-xl px-6 py-3 text-sm font-semibold uppercase tracking-[0.12em]">
-            Нужен recovery path
-          </AppRouteLink>
-        </div>
-      </section>
+        </>
+      }
+    >
+      <CabinetFactGrid facts={facts} />
 
-      <section className="grid gap-5 lg:grid-cols-[1.1fr,0.9fr]">
-        <article className="glass-card p-6">
-          <h2 className="font-display text-2xl font-semibold">Проверить и погасить ключ</h2>
-          <label className="mt-4 block text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">
-            Activation key
+      <div className="grid gap-6 xl:grid-cols-[1.04fr_0.96fr]">
+        <CabinetSection
+          eyebrow="Проверка"
+          title="Проверить и применить"
+          description="Лучше сначала проверить ключ, а потом уже применять его к профилю."
+        >
+          <label className="block text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500 dark:text-slate-400">
+            Ключ
           </label>
           <div className="mt-2 flex flex-col gap-3 md:flex-row">
             <input
               value={keyInput}
               onChange={(event) => setKeyInput(normalizeKey(event.target.value))}
               placeholder="Например: POKROV-XXXX-XXXX"
-              className="w-full rounded-2xl border border-white/45 bg-white/65 px-4 py-3 text-sm outline-none transition focus:border-emerald-400 dark:border-white/10 dark:bg-white/5"
+              className="w-full rounded-2xl border border-slate-200/80 bg-white px-4 py-3 text-sm outline-none transition focus:border-emerald-400 dark:border-white/10 dark:bg-white/[0.04]"
             />
             <button
               type="button"
-              onClick={() => void lookup()}
               disabled={lookupBusy}
+              onClick={() => void lookup()}
               className="outline-btn rounded-2xl px-5 py-3 text-sm font-semibold uppercase tracking-[0.12em] disabled:opacity-60"
             >
               {lookupBusy ? "Проверяем..." : "Проверить"}
             </button>
             <button
               type="button"
-              onClick={() => void onRedeem()}
               disabled={redeemBusy}
+              onClick={() => void onRedeem()}
               className="btn-primary rounded-2xl px-5 py-3 text-sm font-semibold uppercase tracking-[0.12em] disabled:opacity-60"
             >
-              {redeemBusy ? "Погашаем..." : "Redeem"}
+              {redeemBusy ? "Применяем..." : "Применить"}
             </button>
           </div>
 
           {message ? (
-            <div className="mt-4 rounded-2xl border border-emerald-300/35 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-900 dark:text-emerald-200">
+            <div className="mt-4 rounded-2xl border border-emerald-300/40 bg-emerald-50/80 px-4 py-3 text-sm leading-6 text-emerald-900 dark:border-emerald-400/20 dark:bg-emerald-400/10 dark:text-emerald-200">
               {message}
             </div>
           ) : null}
           {error ? (
-            <div className="mt-4 rounded-2xl border border-rose-300/35 bg-rose-500/10 px-4 py-3 text-sm text-rose-700 dark:text-rose-200">
+            <div className="mt-4 rounded-2xl border border-rose-300/40 bg-rose-50/80 px-4 py-3 text-sm leading-6 text-rose-700 dark:border-rose-400/20 dark:bg-rose-400/10 dark:text-rose-200">
               {error}
             </div>
           ) : null}
+        </CabinetSection>
 
-          <div className="mt-5 rounded-2xl border border-white/40 bg-white/55 p-4 text-sm leading-6 text-slate-700 dark:border-white/10 dark:bg-white/5 dark:text-slate-200">
-            <p>Текущий профиль: <strong>{resolvePlanLabel(dash, user)}</strong></p>
-            <p>Состояние доступа: <strong>{getAccessState(dash, user) || "free_monthly"}</strong></p>
-            <p>
-              Если ключ уже использован или потерян, normal path не покажет старую raw ссылку. Восстановление идёт
-              через support или Telegram continuation.
-            </p>
-          </div>
-        </article>
+        <CabinetSection
+          eyebrow="Подсказка"
+          title="Если ключ не проходит"
+          description="Обычно дальше нужен один из этих трех шагов."
+        >
+          <CabinetActionList items={helpItems} />
+        </CabinetSection>
+      </div>
 
-        <article className="glass-card p-6">
-          <h2 className="font-display text-2xl font-semibold">Статус ключа</h2>
-          {status ? (
-            <div className="mt-4 space-y-3 text-sm text-slate-600 dark:text-slate-300">
-              <p>Ключ: <strong>{status.key}</strong></p>
-              <p>Найден: <strong>{status.exists ? "да" : "нет"}</strong></p>
-              <p>Погашен: <strong>{status.redeemed ? "да" : "нет"}</strong></p>
-              <p>План: <strong>{status.plan?.label || status.kind || "—"}</strong></p>
-              <p>Лимит устройств: <strong>{status.device_limit || 1}</strong></p>
-              <p>Node policy: <strong>{status.node_policy || "managed_premium"}</strong></p>
-              <p>Выдан: <strong>{formatDate(status.issued_at)}</strong></p>
-              <p>Погашен: <strong>{formatDate(status.redeemed_at)}</strong></p>
-            </div>
-          ) : (
-            <p className="mt-4 text-sm text-slate-500">
-              Введите ключ и проверьте его перед redeem. Это безопаснее, чем показывать ручные ссылки или legacy delivery.
-            </p>
-          )}
-
-          <div className="mt-5 rounded-2xl border border-white/40 bg-white/55 p-4 text-sm leading-6 text-slate-700 dark:border-white/10 dark:bg-white/5 dark:text-slate-200">
-            <p>Site email signup даёт только Free Monthly.</p>
-            <p>5-дневный premium trial стартует в приложении и не зависит от этого web-маршрута.</p>
-            <p>Telegram нужен как recovery/link path, support fallback и бонус +10 дней, а не как primary commerce story.</p>
-          </div>
-        </article>
-      </section>
-    </main>
+      <CabinetSection
+        eyebrow="Статус"
+        title="Что удалось узнать по ключу"
+        description="После проверки или применения информация появится здесь."
+      >
+        <CabinetActionList items={statusItems} empty="Пока ничего не проверяли. Введите ключ, и здесь появится его статус." />
+      </CabinetSection>
+    </CabinetPage>
   );
 }

@@ -1,27 +1,27 @@
 "use client";
 
+import AppRouteLink from "@/components/app-route-link";
+import {
+  AdminBadge,
+  AdminMetricStrip,
+  AdminSurfaceHeader,
+  adminButtonClass,
+  adminPanelClass,
+} from "@/components/admin/admin-shell";
 import {
   adminMetricsStatus,
   adminMetricsTimeseries,
   adminSummary,
+  adminTickets,
+  adminUsers,
   type AdminMetricsPoint,
   type AdminMetricsStatus,
   type AdminSummaryPayload,
+  type AdminUserRow,
+  type TicketInfo,
 } from "@/lib/api";
 import { usePortalSession } from "@/lib/session";
-import {
-  Activity,
-  AlertTriangle,
-  ArrowDown,
-  ArrowUp,
-  Gift,
-  RefreshCw,
-  Server,
-  Ticket,
-  TrendingUp,
-  Users,
-} from "lucide-react";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 import { fmtRuDate } from "../nav";
 
 function lastDaysRange(days: number): { from: string; to: string } {
@@ -31,24 +31,39 @@ function lastDaysRange(days: number): { from: string; to: string } {
   return { from: from.toISOString().slice(0, 10), to: to.toISOString().slice(0, 10) };
 }
 
-function MiniBar({ values, color = "violet" }: { values: number[]; color?: string }) {
+function MiniBars({ values, tone = "emerald" }: { values: number[]; tone?: "emerald" | "slate" | "rose" }) {
   if (!values.length) return null;
   const max = Math.max(...values, 1);
-  const colorClass = color === "emerald" ? "bg-emerald-500" : color === "rose" ? "bg-rose-500" : "bg-violet-500";
+  const colorClass = tone === "rose" ? "bg-rose-500" : tone === "slate" ? "bg-slate-400" : "bg-emerald-500";
   return (
-    <div className="flex h-8 items-end gap-[3px]">
+    <div className="flex h-9 items-end gap-[4px]">
       {values.map((value, index) => (
         <div
           key={index}
-          className={`w-[5px] rounded-sm ${colorClass} transition-all duration-300`}
-          style={{ height: `${Math.max(8, (value / max) * 100)}%`, opacity: 0.4 + (value / max) * 0.6 }}
+          className={`w-[7px] rounded-sm ${colorClass}`}
+          style={{ height: `${Math.max(10, (Number(value || 0) / max) * 100)}%`, opacity: 0.38 + (Number(value || 0) / max) * 0.62 }}
         />
       ))}
     </div>
   );
 }
 
-function formatSecondsToShortAge(seconds?: number | null): string {
+function formatRub(value?: number | null): string {
+  if (value == null || Number.isNaN(Number(value))) return "0 ₽";
+  return `${new Intl.NumberFormat("ru-RU").format(Math.round(Number(value)))} ₽`;
+}
+
+function formatShortDate(value?: string | null): string {
+  if (!value) return "—";
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) return "—";
+  return new Intl.DateTimeFormat("ru-RU", {
+    day: "numeric",
+    month: "short",
+  }).format(parsed);
+}
+
+function formatShortAge(seconds?: number | null): string {
   if (seconds == null || Number.isNaN(Number(seconds))) return "нет данных";
   const total = Math.max(0, Math.round(Number(seconds)));
   if (total < 60) return `${total}с`;
@@ -57,42 +72,92 @@ function formatSecondsToShortAge(seconds?: number | null): string {
   return `${Math.round(total / 86400)}д`;
 }
 
-function metricsSummary(metrics: AdminMetricsStatus | null): { value: string; detail: string } {
-  if (!metrics) {
-    return {
-      value: "нет данных",
-      detail: "Сборщик метрик еще не отдал свежий срез. Обычно это бывает сразу после открытия страницы или при проблеме с таймером.",
-    };
-  }
-
-  const age = formatSecondsToShortAge(metrics.age_seconds);
-  const threshold = formatSecondsToShortAge(metrics.stale_after_seconds);
-  const sample = metrics.last_sample_at ? fmtRuDate(metrics.last_sample_at) : "нет данных";
-
-  if (metrics.status === "stale") {
-    return {
-      value: `устарели / ${age}`,
-      detail: `Последний срез получен ${sample}. Если возраст больше ${threshold}, нужно проверить сборщик и таймер метрик.`,
-    };
-  }
-
-  if (metrics.status === "missing") {
-    return {
-      value: "нет данных",
-      detail: "Метрики по нодам пока не пришли. Проверьте таймер и админ-API статуса.",
-    };
-  }
-
-  return {
-    value: `свежие / ${age}`,
-    detail: `Последний срез получен ${sample}. Пока возраст не превышает ${threshold}, данные по нодам считаются актуальными.`,
-  };
+function metricsLabel(metrics: AdminMetricsStatus | null): string {
+  if (!metrics) return "нет данных";
+  if (metrics.status === "fresh") return `свежо · ${formatShortAge(metrics.age_seconds)}`;
+  if (metrics.status === "stale") return `устарело · ${formatShortAge(metrics.age_seconds)}`;
+  return "нет среза";
 }
 
-function toneByScore(score: number): string {
-  if (score >= 8) return "badge-success";
-  if (score >= 5) return "badge-warning";
-  return "badge-danger";
+function userStatusLabel(status: AdminUserRow["status"]): string {
+  if (status === "active") return "Активен";
+  if (status === "expired") return "Истёк";
+  if (status === "blocked") return "Ограничен";
+  return "Проверка";
+}
+
+function observerLabel(state: AdminUserRow["observer_state"]): string {
+  if (state === "suspicious") return "Риск";
+  if (state === "watch") return "Наблюдение";
+  return "Ок";
+}
+
+function userStatusTone(row: AdminUserRow): "success" | "warning" | "danger" | "neutral" {
+  if (row.status === "active") return "success";
+  if (row.status === "expired") return "warning";
+  if (row.status === "blocked") return "danger";
+  return "neutral";
+}
+
+function observerTone(state: AdminUserRow["observer_state"]): "success" | "warning" | "danger" {
+  if (state === "suspicious") return "danger";
+  if (state === "watch") return "warning";
+  return "success";
+}
+
+function nodeScoreTone(score: number): "success" | "warning" | "danger" {
+  if (score >= 8) return "success";
+  if (score >= 5) return "warning";
+  return "danger";
+}
+
+function nodeScoreLabel(score: number): string {
+  if (score >= 8) return "стабильно";
+  if (score >= 5) return "проверить";
+  return "риск";
+}
+
+function DashboardCell({
+  title,
+  subtitle,
+  actions,
+  children,
+}: {
+  title: string;
+  subtitle?: string;
+  actions?: ReactNode;
+  children: ReactNode;
+}) {
+  return (
+    <article className={adminPanelClass("neutral")}>
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div className="min-w-0">
+          <h2 className="text-lg font-semibold text-slate-50">{title}</h2>
+          {subtitle ? <p className="mt-1 text-sm leading-6 text-slate-400">{subtitle}</p> : null}
+        </div>
+        {actions ? <div className="flex flex-wrap gap-2">{actions}</div> : null}
+      </div>
+      <div className="mt-4">{children}</div>
+    </article>
+  );
+}
+
+function AdminDashboardSkeleton() {
+  return (
+    <section className="space-y-4" aria-busy="true" aria-live="polite">
+      <div className="h-28 animate-pulse rounded-[1rem] bg-slate-200/80" />
+      <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+        {Array.from({ length: 4 }).map((_, index) => (
+          <div key={index} className="h-24 animate-pulse rounded-[1rem] bg-slate-200/80" />
+        ))}
+      </div>
+      <div className="grid gap-4 xl:grid-cols-3">
+        {Array.from({ length: 3 }).map((_, index) => (
+          <div key={index} className="h-72 animate-pulse rounded-[1rem] bg-slate-200/80" />
+        ))}
+      </div>
+    </section>
+  );
 }
 
 export default function AdminDashboardPage() {
@@ -100,6 +165,8 @@ export default function AdminDashboardPage() {
   const [summary, setSummary] = useState<AdminSummaryPayload | null>(null);
   const [metrics, setMetrics] = useState<AdminMetricsStatus | null>(null);
   const [series, setSeries] = useState<AdminMetricsPoint[]>([]);
+  const [users, setUsers] = useState<AdminUserRow[]>([]);
+  const [tickets, setTickets] = useState<TicketInfo[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -109,12 +176,21 @@ export default function AdminDashboardPage() {
     setError("");
     try {
       const range = lastDaysRange(7);
-      const [sum, status, ts] = await Promise.all([adminSummary(), adminMetricsStatus(), adminMetricsTimeseries(range)]);
-      setSummary(sum);
-      setMetrics(status);
-      setSeries(ts.points || []);
+      const [summaryPayload, metricsPayload, seriesPayload, usersPayload, ticketsPayload] = await Promise.all([
+        adminSummary(),
+        adminMetricsStatus(),
+        adminMetricsTimeseries(range),
+        adminUsers({ page_size: 7 }),
+        adminTickets("", 6),
+      ]);
+
+      setSummary(summaryPayload);
+      setMetrics(metricsPayload);
+      setSeries(seriesPayload.points || []);
+      setUsers(usersPayload.users || []);
+      setTickets(ticketsPayload || []);
     } catch (err) {
-      setError(String((err as { message?: string })?.message || err || "Не удалось загрузить сводку."));
+      setError(String((err as { message?: string })?.message || err || "Не удалось загрузить административную сводку."));
     } finally {
       setLoading(false);
     }
@@ -138,454 +214,384 @@ export default function AdminDashboardPage() {
     [series],
   );
 
-  const registrationValues = useMemo(() => series.map((point) => Number(point.registrations || 0)), [series]);
-  const revenueValues = useMemo(() => series.map((point) => Number(point.revenue_rub || 0)), [series]);
-  const health = useMemo(() => metricsSummary(metrics), [metrics]);
+  const alertItems = useMemo(() => {
+    if (!summary) return [];
 
-  const attentionItems = [
-    summary?.errors.stale_metrics
-      ? `Метрики устарели: последний срез ${metrics?.last_sample_at ? fmtRuDate(metrics.last_sample_at) : "неизвестно"}, возраст ${formatSecondsToShortAge(metrics?.age_seconds)}.`
-      : "",
-    Number(summary?.errors.unhealthy_nodes || 0) > 0
-      ? `Есть ноды с риском: ${summary?.errors.unhealthy_nodes}. Откройте раздел нод и проверьте задержку, error rate и свежесть метрик по каждой.`
-      : "",
-    Number(summary?.errors.payment_callback_failures_24h || 0) > 0
-      ? `Проблемные платежные callback за 24 часа: ${summary?.errors.payment_callback_failures_24h}. Проверьте прием платежей и логи кассы.`
-      : "",
-    Number(summary?.errors.subscription_numeric_fallbacks_24h || 0) > 0
-      ? `Сработал резервный поиск по старым подпискам: ${summary?.errors.subscription_numeric_fallbacks_24h}. Это сигнал проверить миграцию на токены.`
-      : "",
-    Number(summary?.errors.open_tickets || 0) > 0
-      ? `Открытых тикетов: ${summary?.errors.open_tickets}. Посмотрите очередь поддержки, чтобы не копить задержку ответов.`
-      : "",
-    Number(summary?.bonus_events_24h.channel_denied || 0) > Number(summary?.bonus_events_24h.channel_activated || 0)
-      ? `Отказов по бонусу за канал больше, чем выдач: ${summary?.bonus_events_24h.channel_denied} против ${summary?.bonus_events_24h.channel_activated}.`
-      : "",
-    summary?.resilience.single_point_risk ? "Есть риск единой точки отказа. Перед релизом проверьте резерв по нодам и управляющей панели." : "",
-  ].filter(Boolean);
+    const items = [
+      summary.errors.stale_metrics
+        ? {
+            title: "Срез по метрикам устарел",
+            body: metrics?.last_sample_at
+              ? `Последний срез: ${fmtRuDate(metrics.last_sample_at)}. Возраст: ${formatShortAge(metrics.age_seconds)}.`
+              : "Нужно проверить сборщик метрик и таймер.",
+            tone: "warning" as const,
+          }
+        : null,
+      Number(summary.errors.unhealthy_nodes || 0) > 0
+        ? {
+            title: "Есть ноды с риском",
+            body: `${summary.errors.unhealthy_nodes} нод требуют внимания по health score или свежести телеметрии.`,
+            tone: "danger" as const,
+          }
+        : null,
+      Number(summary.errors.payment_callback_failures_24h || 0) > 0
+        ? {
+            title: "Проблемы с платёжными callback",
+            body: `${summary.errors.payment_callback_failures_24h} сбоев за 24 часа.`,
+            tone: "warning" as const,
+          }
+        : null,
+      Number(summary.errors.subscription_numeric_fallbacks_24h || 0) > 0
+        ? {
+            title: "Срабатывал резервный lookup подписок",
+            body: `${summary.errors.subscription_numeric_fallbacks_24h} случаев за 24 часа. Проверьте миграцию на токены.`,
+            tone: "warning" as const,
+          }
+        : null,
+      summary.resilience.single_point_risk
+        ? {
+            title: "Есть риск единой точки отказа",
+            body: "Перед релизом проверьте резерв по нодам и устойчивость управляющей панели.",
+            tone: "danger" as const,
+          }
+        : null,
+      Number(summary.tickets.open || 0) > 0
+        ? {
+            title: "Очередь поддержки не пустая",
+            body: `${summary.tickets.open} открытых кейсов ждут реакции оператора.`,
+            tone: "accent" as const,
+          }
+        : null,
+    ].filter(Boolean) as Array<{ title: string; body: string; tone: "warning" | "danger" | "accent" }>;
 
-  const errorCards = [
-    {
-      label: "Метрики",
-      value: health.value,
-      tone: summary?.errors.stale_metrics ? "badge-warning" : "badge-success",
-      detail: health.detail,
-    },
-    {
-      label: "Ноды с риском",
-      value: summary?.errors.unhealthy_nodes ?? 0,
-      tone: Number(summary?.errors.unhealthy_nodes || 0) > 0 ? "badge-danger" : "badge-success",
-      detail: "Ноды, где ухудшились задержка, error rate, health score или свежесть метрик.",
-    },
-    {
-      label: "Ошибки платежей 24ч",
-      value: summary?.errors.payment_callback_failures_24h ?? 0,
-      tone: Number(summary?.errors.payment_callback_failures_24h || 0) > 0 ? "badge-warning" : "badge-success",
-      detail: "Платежные callback, которые не удалось принять или обработать.",
-    },
-    {
-      label: "Резервный поиск подписок 24ч",
-      value: summary?.errors.subscription_numeric_fallbacks_24h ?? 0,
-      tone: Number(summary?.errors.subscription_numeric_fallbacks_24h || 0) > 0 ? "badge-warning" : "badge-success",
-      detail: "Случаи, когда система искала доступ по старой числовой схеме вместо нормального токена.",
-    },
-    {
-      label: "Открытые тикеты",
-      value: summary?.errors.open_tickets ?? 0,
-      tone: Number(summary?.errors.open_tickets || 0) > 0 ? "badge-info" : "badge-success",
-      detail: "Текущая очередь поддержки, которая требует ответа оператора.",
-    },
-  ];
+    if (!items.length) {
+      return [
+        {
+          title: "Критичных сигналов сейчас нет",
+          body: "Можно спокойно пройтись по пользователям, нодам и очередям без пожарного режима.",
+          tone: "success" as const,
+        },
+      ];
+    }
 
-  const statCards = [
-    {
-      label: "Пользователи",
-      value: summary?.users.total ?? 0,
-      sub: `Активные: ${summary?.users.active ?? 0}`,
-      icon: Users,
-      iconClass: "stat-icon-violet",
-      sparkline: registrationValues,
-      sparkColor: "violet" as const,
-    },
-    {
-      label: "Тикеты",
-      value: summary?.tickets.open ?? 0,
-      sub: "Сколько диалогов ждут ответа оператора",
-      icon: Ticket,
-      iconClass: "stat-icon-amber",
-      sparkline: [] as number[],
-      sparkColor: "violet" as const,
-    },
-    {
-      label: "Ноды",
-      value: `${summary?.nodes.healthy ?? 0} / ${summary?.nodes.total ?? 0}`,
-      sub: metrics?.status === "fresh" ? `Метрики свежие (${formatSecondsToShortAge(metrics?.age_seconds)})` : `Проверьте свежесть (${formatSecondsToShortAge(metrics?.age_seconds)})`,
-      icon: Server,
-      iconClass: metrics?.status === "fresh" ? "stat-icon-emerald" : "stat-icon-amber",
-      sparkline: [] as number[],
-      sparkColor: "emerald" as const,
-    },
-    {
-      label: "Выручка (7д)",
-      value: `${Math.round(totals.revenueRub)} ₽`,
-      sub: "Сумма оплаченных событий за последние семь дней",
-      icon: TrendingUp,
-      iconClass: "stat-icon-emerald",
-      sparkline: revenueValues,
-      sparkColor: "emerald" as const,
-    },
-    {
-      label: "Observer watch",
-      value: summary?.observer.watch_users ?? 0,
-      sub: "Пользователи под наблюдением observer-lite",
-      icon: Activity,
-      iconClass: Number(summary?.observer.watch_users || 0) > 0 ? "stat-icon-amber" : "stat-icon-blue",
-      sparkline: [] as number[],
-      sparkColor: "violet" as const,
-    },
-    {
-      label: "Observer suspicious",
-      value: summary?.observer.suspicious_users ?? 0,
-      sub: "Консервативные подозрения без авто-блокировок",
-      icon: AlertTriangle,
-      iconClass: Number(summary?.observer.suspicious_users || 0) > 0 ? "stat-icon-rose" : "stat-icon-blue",
-      sparkline: [] as number[],
-      sparkColor: "rose" as const,
-    },
-  ];
+    return items.slice(0, 5);
+  }, [metrics, summary]);
 
-  const bonusCards = [
-    {
-      label: "Бонус за канал: выдан",
-      value: summary?.bonus_events_24h.channel_activated ?? 0,
-      tone: Number(summary?.bonus_events_24h.channel_activated || 0) > 0 ? "badge-success" : "badge-info",
-      detail: "Успешные выдачи бонуса за канал за 24 часа.",
-    },
-    {
-      label: "Бонус за канал: отказ",
-      value: summary?.bonus_events_24h.channel_denied ?? 0,
-      tone: Number(summary?.bonus_events_24h.channel_denied || 0) > 0 ? "badge-warning" : "badge-success",
-      detail: "Отказы из-за невыполненных условий, лимитов или ошибок проверки.",
-    },
-    {
-      label: "Промокоды: сработали",
-      value: summary?.bonus_events_24h.promo_redeemed ?? 0,
-      tone: Number(summary?.bonus_events_24h.promo_redeemed || 0) > 0 ? "badge-success" : "badge-info",
-      detail: "Успешные активации промокодов за 24 часа.",
-    },
-    {
-      label: "Промокоды: отказ",
-      value: summary?.bonus_events_24h.promo_denied ?? 0,
-      tone: Number(summary?.bonus_events_24h.promo_denied || 0) > 0 ? "badge-warning" : "badge-success",
-      detail: "Промокод истек, уже использован или не подходит под условия кампании.",
-    },
-    {
-      label: "Подарки: сработали",
-      value: summary?.bonus_events_24h.gift_redeemed ?? 0,
-      tone: Number(summary?.bonus_events_24h.gift_redeemed || 0) > 0 ? "badge-success" : "badge-info",
-      detail: "Успешные активации подарочных кодов за 24 часа.",
-    },
-    {
-      label: "Подарки: отказ",
-      value: summary?.bonus_events_24h.gift_denied ?? 0,
-      tone: Number(summary?.bonus_events_24h.gift_denied || 0) > 0 ? "badge-warning" : "badge-success",
-      detail: "Код уже использован, неверен или не соответствует текущей кампании.",
-    },
-  ];
+  const registrationsSeries = useMemo(() => series.map((point) => Number(point.registrations || 0)), [series]);
+  const churnSeries = useMemo(() => series.map((point) => Number(point.churn || 0)), [series]);
+  const revenueSeries = useMemo(() => series.map((point) => Number(point.revenue_rub || 0)), [series]);
 
-  const retentionCards = [
-    {
-      label: "Истекают за 3 дня",
-      value: summary?.retention.expiring_3d ?? 0,
-      tone: Number(summary?.retention.expiring_3d || 0) > 0 ? "badge-warning" : "badge-success",
-      detail: "Пользователи, которым пора напомнить о продлении.",
-    },
-    {
-      label: "Истекли за 7 дней",
-      value: summary?.retention.expired_7d ?? 0,
-      tone: Number(summary?.retention.expired_7d || 0) > 0 ? "badge-info" : "badge-success",
-      detail: "База для сценариев возврата и повторного предложения тарифа.",
-    },
-    {
-      label: "Кандидаты на возврат",
-      value: summary?.retention.reactivation_candidates ?? 0,
-      tone: Number(summary?.retention.reactivation_candidates || 0) > 0 ? "badge-info" : "badge-success",
-      detail: "Пользователи, которым можно отправить возвратное предложение.",
-    },
-    {
-      label: "Retention-сообщения 24ч",
-      value:
-        Number(summary?.retention.pings_24h.t3 || 0) +
-        Number(summary?.retention.pings_24h.t1 || 0) +
-        Number(summary?.retention.pings_24h.t0 || 0),
-      tone:
-        Number(summary?.retention.pings_24h.t3 || 0) +
-          Number(summary?.retention.pings_24h.t1 || 0) +
-          Number(summary?.retention.pings_24h.t0 || 0) >
-        0
-          ? "badge-success"
-          : "badge-warning",
-      detail: `Отправлено: за 3 дня — ${summary?.retention.pings_24h.t3 ?? 0}, за 1 день — ${summary?.retention.pings_24h.t1 ?? 0}, в день окончания — ${summary?.retention.pings_24h.t0 ?? 0}.`,
-    },
-    {
-      label: "Welcome-сообщения 24ч",
-      value: summary?.retention.pings_24h.welcome ?? 0,
-      tone: Number(summary?.retention.pings_24h.welcome || 0) > 0 ? "badge-success" : "badge-info",
-      detail: "Сколько новых пользователей получили приветственное сообщение.",
-    },
-    {
-      label: "Возврат / Start99 24ч",
-      value: `${summary?.retention.pings_24h.reactivation ?? 0} / ${summary?.retention.pings_24h.start99_offer ?? 0}`,
-      tone:
-        Number(summary?.retention.pings_24h.reactivation || 0) > 0 || Number(summary?.retention.pings_24h.start99_offer || 0) > 0
-          ? "badge-success"
-          : "badge-info",
-      detail: "Сколько человек получили предложение вернуться или попробовать стартовый тариф.",
-    },
-  ];
+  if (loading) {
+    return <AdminDashboardSkeleton />;
+  }
+
+  if (error) {
+    return (
+      <section className={adminPanelClass("danger")}>
+        <AdminSurfaceHeader
+          title="Не получилось собрать административную сводку"
+          description={error}
+          actions={
+            <button type="button" onClick={() => void refresh()} className={adminButtonClass("primary")}>
+              Повторить
+            </button>
+          }
+        />
+      </section>
+    );
+  }
+
+  if (!summary) {
+    return null;
+  }
 
   return (
-    <section className="space-y-5">
-      <div className="glass-card p-5">
-        <h2 className="font-display text-xl font-bold">Как читать эту страницу</h2>
-        <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">
-          Это короткая операционная сводка. Если времени мало, сначала смотрите блок «Сводка ошибок и рисков», затем
-          «Топ нод», и только потом переходите в детали по бонусам, удержанию и пользователям.
-        </p>
-      </div>
+    <section className="space-y-4">
+      <article className={adminPanelClass("neutral")}>
+        <AdminSurfaceHeader
+          title="Сводка"
+          description="Основной экран смены: очереди, риски, свежесть данных и ближайшие действия по пользователям и сети."
+          actions={
+            <>
+              <button type="button" onClick={() => void refresh()} className={adminButtonClass("secondary", "sm")}>
+                Обновить
+              </button>
+              <AppRouteLink href="/admin/users" className={adminButtonClass("secondary", "sm")}>
+                Пользователи
+              </AppRouteLink>
+              <AppRouteLink href="/admin/nodes" className={adminButtonClass("secondary", "sm")}>
+                Ноды
+              </AppRouteLink>
+              <AppRouteLink href="/admin/tickets" className={adminButtonClass("secondary", "sm")}>
+                Обращения
+              </AppRouteLink>
+            </>
+          }
+          meta={
+            <>
+              <AdminBadge tone={metrics?.status === "fresh" ? "success" : metrics?.status === "stale" ? "warning" : "danger"}>
+                Метрики: {metricsLabel(metrics)}
+              </AdminBadge>
+              <AdminBadge tone={summary.nodes.healthy === summary.nodes.total ? "success" : "warning"}>
+                Ноды: {summary.nodes.healthy} / {summary.nodes.total}
+              </AdminBadge>
+              <AdminBadge tone={summary.tickets.open > 0 ? "warning" : "success"}>Открытые тикеты: {summary.tickets.open}</AdminBadge>
+            </>
+          }
+        />
+      </article>
 
-      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-        {statCards.map((card) => {
-          const Icon = card.icon;
-          return (
-            <article key={card.label} className="stat-card p-5">
-              <div className="flex items-start justify-between gap-3">
-                <div className={`stat-icon ${card.iconClass}`}>
-                  <Icon size={20} />
+      <AdminMetricStrip
+        items={[
+          {
+            label: "Пользователи",
+            value: `${summary.users.active} / ${summary.users.total}`,
+            hint: `Платные: ${summary.users.paid} · Базовый режим: ${summary.users.free}`,
+          },
+          {
+            label: "Открытые тикеты",
+            value: String(summary.tickets.open),
+            hint: "Очередь, которую лучше не оставлять без ответа.",
+            tone: summary.tickets.open > 0 ? "warning" : "success",
+          },
+          {
+            label: "Ноды готовы",
+            value: `${summary.nodes.healthy} / ${summary.nodes.total}`,
+            hint: `Метрики: ${metricsLabel(metrics)}`,
+            tone: summary.errors.unhealthy_nodes > 0 ? "warning" : "success",
+          },
+          {
+            label: "Выручка за 7 дней",
+            value: formatRub(totals.revenueRub),
+            hint: `Регистрации: ${totals.registrations} · Отток: ${totals.churn}`,
+          },
+        ]}
+      />
+
+      <div className="grid gap-4 xl:grid-cols-[0.92fr_1.08fr_0.92fr]">
+        <DashboardCell
+          title="Как читать эту страницу"
+          subtitle="Сначала оцените свежесть метрик, затем очереди и только после этого переходите в глубину."
+        >
+          <div className="space-y-3 text-sm text-slate-400">
+            <div className="rounded-[0.9rem] border border-[#22303c] bg-[#111922] p-3">
+              <p className="font-semibold text-slate-100">1. Риски и ошибки</p>
+              <p className="mt-1 text-xs leading-5">Если здесь есть danger или warning, разберите их раньше ручных задач.</p>
+            </div>
+            <div className="rounded-[0.9rem] border border-[#22303c] bg-[#111922] p-3">
+              <p className="font-semibold text-slate-100">2. Открытые очереди</p>
+              <p className="mt-1 text-xs leading-5">Проверьте тикеты, пользователей под наблюдением и истекающие доступы.</p>
+            </div>
+            <div className="rounded-[0.9rem] border border-[#22303c] bg-[#111922] p-3">
+              <p className="font-semibold text-slate-100">3. Сеть и устойчивость</p>
+              <p className="mt-1 text-xs leading-5">Если телеметрия свежая, идите в ноды и rollout только по конкретным сигналам.</p>
+            </div>
+          </div>
+
+          <div className="mt-4 flex flex-wrap gap-2">
+            <AppRouteLink href="/admin/users" className={adminButtonClass("secondary", "xs")}>
+              Пользователи
+            </AppRouteLink>
+            <AppRouteLink href="/admin/tickets" className={adminButtonClass("secondary", "xs")}>
+              Очередь поддержки
+            </AppRouteLink>
+            <AppRouteLink href="/admin/nodes" className={adminButtonClass("secondary", "xs")}>
+              Состояние нод
+            </AppRouteLink>
+          </div>
+        </DashboardCell>
+
+        <DashboardCell
+          title="Сводка ошибок и рисков"
+          subtitle="Показывает только то, что требует решения или осознанного подтверждения."
+        >
+          <div className="space-y-3">
+            {alertItems.map((item) => (
+              <div key={item.title} className="rounded-[0.95rem] border border-[#22303c] bg-[#111922] p-3">
+                <div className="flex items-start justify-between gap-3">
+                  <p className="text-sm font-semibold text-slate-100">{item.title}</p>
+                  <AdminBadge tone={item.tone}>{item.tone === "danger" ? "Риск" : item.tone === "warning" ? "Проверить" : item.tone === "success" ? "Норма" : "Очередь"}</AdminBadge>
                 </div>
-                {card.sparkline.length > 0 ? <MiniBar values={card.sparkline} color={card.sparkColor} /> : null}
+                <p className="mt-2 text-xs leading-5 text-slate-400">{item.body}</p>
               </div>
-              <p className="mt-3 text-3xl font-bold gradient-text">{card.value}</p>
-              <p className="mt-1 text-xs uppercase tracking-[0.12em] text-slate-500">{card.label}</p>
-              <p className="mt-0.5 text-xs text-slate-500">{card.sub}</p>
-            </article>
-          );
-        })}
-      </div>
+            ))}
+          </div>
+        </DashboardCell>
 
-      <div className="glass-card p-5">
-        <div className="mb-4 flex items-center justify-between gap-3">
-          <div className="flex items-center gap-3">
-            <div className="stat-icon stat-icon-blue">
-              <Activity size={20} />
-            </div>
-            <div>
-              <h2 className="font-display text-xl font-bold">Дневные метрики</h2>
-              <p className="text-xs text-slate-500">Последние 7 дней</p>
-            </div>
-          </div>
-          <button
-            className="outline-btn inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold"
-            type="button"
-            onClick={() => void refresh()}
-          >
-            <RefreshCw size={14} className={loading ? "animate-spin" : ""} />
-            Обновить
-          </button>
-        </div>
-        {loading ? <p className="text-sm text-slate-500">Загружаю сводку...</p> : null}
-        {error ? <p className="text-sm text-rose-500">{error}</p> : null}
-        {!loading && !error ? (
-          <div className="overflow-x-auto">
-            <table className="min-w-full text-sm">
-              <thead>
-                <tr className="text-left text-xs uppercase tracking-[0.1em] text-slate-500">
-                  <th className="px-3 py-2.5">Дата</th>
-                  <th className="px-3 py-2.5">
-                    <span className="inline-flex items-center gap-1">
-                      <ArrowUp size={12} className="text-emerald-500" />
-                      Регистрации
-                    </span>
-                  </th>
-                  <th className="px-3 py-2.5">
-                    <span className="inline-flex items-center gap-1">
-                      <ArrowDown size={12} className="text-rose-500" />
-                      Отток
-                    </span>
-                  </th>
-                  <th className="px-3 py-2.5">RUB</th>
-                </tr>
-              </thead>
-              <tbody>
-                {series.map((point, index) => (
-                  <tr
-                    key={point.date}
-                    className={`border-t border-white/20 dark:border-white/5 ${index % 2 === 0 ? "bg-white/30 dark:bg-white/[0.02]" : ""}`}
-                  >
-                    <td className="px-3 py-2.5 font-medium">{fmtRuDate(point.date)}</td>
-                    <td className="px-3 py-2.5">
-                      {Number(point.registrations) > 0 ? <span className="badge badge-success">{point.registrations}</span> : <span className="text-slate-400">0</span>}
-                    </td>
-                    <td className="px-3 py-2.5">
-                      {Number(point.churn) > 0 ? <span className="badge badge-danger">{point.churn}</span> : <span className="text-slate-400">0</span>}
-                    </td>
-                    <td className="px-3 py-2.5 font-medium">{Math.round(point.revenue_rub || 0)} ₽</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        ) : null}
-      </div>
-
-      <div className="glass-card p-5">
-        <div className="mb-4 flex items-center gap-3">
-          <div className="stat-icon stat-icon-emerald">
-            <Server size={20} />
-          </div>
-          <div>
-            <h2 className="font-display text-xl font-bold">Топ нод</h2>
-            <p className="text-xs text-slate-500">Быстрый срез по health score, отклику и активным клиентам.</p>
-          </div>
-        </div>
-        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-          {(summary?.top_nodes || []).map((node) => {
-            const score = Number(node.health_score || 0);
-            const healthPct = Math.min(100, Math.max(0, score * 10));
-            const fillClass = score >= 8 ? "progress-fill-emerald" : score >= 5 ? "progress-fill-amber" : "progress-fill-rose";
-            return (
-              <article key={node.code} className="node-card">
-                <div className="flex items-center justify-between gap-2">
-                  <div className="flex items-center gap-2">
-                    <span className={`status-dot ${score >= 8 ? "status-dot-online" : score >= 5 ? "status-dot-warning" : "status-dot-offline"}`} />
-                    <strong className="text-sm font-bold">{node.code.toUpperCase()}</strong>
-                  </div>
-                  <span className={`badge ${toneByScore(score)}`}>{score.toFixed(1)}</span>
-                </div>
-                <div className="mt-3">
-                  <div className="progress-track">
-                    <div className={`progress-fill ${fillClass}`} style={{ width: `${healthPct}%` }} />
-                  </div>
-                </div>
-                <div className="mt-2 flex items-center justify-between text-xs text-slate-500">
-                  <span>Latency: {node.panel_latency_ms ?? "—"} ms</span>
-                  <span className="font-medium">{node.active_clients} клиентов</span>
-                </div>
-              </article>
-            );
-          })}
-          {(summary?.top_nodes || []).length === 0 && !loading ? (
-            <div className="empty-state col-span-full">
-              <Server size={32} />
-              <p className="text-sm">Нет данных о нодах</p>
-            </div>
-          ) : null}
-        </div>
-      </div>
-
-      <div className="glass-card p-5">
-        <div className="mb-4 flex items-center gap-3">
-          <div className="stat-icon stat-icon-amber">
-            <AlertTriangle size={20} />
-          </div>
-          <div>
-            <h2 className="font-display text-xl font-bold">Сводка ошибок и рисков</h2>
-            <p className="text-xs text-slate-500">То, что сейчас требует внимания оператора.</p>
-          </div>
-        </div>
-        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-5">
-          {errorCards.map((card) => (
-            <article key={card.label} className="node-card">
-              <p className="text-[10px] uppercase tracking-[0.1em] text-slate-500">{card.label}</p>
-              <div className="mt-2 flex items-center gap-2">
-                <span className={`badge ${card.tone}`}>{card.value}</span>
+        <DashboardCell
+          title="Открытые очереди"
+          subtitle="Срез по темам, которые обычно всплывают в начале смены."
+        >
+          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-1">
+            <div className="rounded-[0.95rem] border border-[#22303c] bg-[#111922] p-3">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">Observer</p>
+              <div className="mt-2 flex flex-wrap gap-2">
+                <AdminBadge tone={summary.observer.watch_users > 0 ? "warning" : "neutral"}>Observer watch</AdminBadge>
+                <AdminBadge tone={summary.observer.suspicious_users > 0 ? "danger" : "neutral"}>Observer suspicious</AdminBadge>
               </div>
-              <p className="mt-2 text-xs text-slate-500">{card.detail}</p>
-            </article>
-          ))}
-        </div>
-        {attentionItems.length ? (
-          <div className="mt-4 rounded-2xl border border-amber-500/20 bg-amber-500/10 p-4">
-            <p className="text-xs font-semibold uppercase tracking-[0.12em] text-amber-300">Что проверить сейчас</p>
-            <ul className="mt-2 space-y-2 text-sm text-slate-200">
-              {attentionItems.map((item) => (
-                <li key={item} className="flex items-start gap-2">
-                  <span className="mt-1 h-1.5 w-1.5 rounded-full bg-amber-300" />
-                  <span>{item}</span>
-                </li>
+              <p className="mt-2 text-xs leading-5 text-slate-400">
+                Watch: {summary.observer.watch_users} · Suspicious: {summary.observer.suspicious_users}
+              </p>
+            </div>
+            <div className="rounded-[0.95rem] border border-[#22303c] bg-[#111922] p-3">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">Поддержка</p>
+              <p className="mt-2 text-2xl font-semibold text-slate-50">{summary.tickets.open}</p>
+              <p className="mt-1 text-xs leading-5 text-slate-400">Открытые кейсы в очереди оператора.</p>
+            </div>
+            <div className="rounded-[0.95rem] border border-[#22303c] bg-[#111922] p-3">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">Удержание</p>
+              <p className="mt-2 text-lg font-semibold text-slate-50">{summary.retention.expiring_3d} / {summary.retention.expired_7d}</p>
+              <p className="mt-1 text-xs leading-5 text-slate-400">Истекают за 3 дня / истекли за 7 дней.</p>
+            </div>
+            <div className="rounded-[0.95rem] border border-[#22303c] bg-[#111922] p-3">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">Реактивация</p>
+              <p className="mt-2 text-2xl font-semibold text-slate-50">{summary.retention.reactivation_candidates}</p>
+              <p className="mt-1 text-xs leading-5 text-slate-400">Кандидаты на возврат без ручного поиска.</p>
+            </div>
+            <div className="rounded-[0.95rem] border border-[#22303c] bg-[#111922] p-3">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">Бонусы за 24ч</p>
+              <p className="mt-2 text-lg font-semibold text-slate-950 dark:text-slate-50">
+                {summary.bonus_events_24h.channel_activated} / {summary.bonus_events_24h.channel_denied}
+              </p>
+              <p className="mt-1 text-xs leading-5 text-slate-400">Выдано / отказано по бонусу за канал.</p>
+            </div>
+          </div>
+        </DashboardCell>
+      </div>
+
+      <div className="grid gap-4 xl:grid-cols-[1.08fr_0.92fr]">
+        <DashboardCell
+          title="Пользователи под разбор"
+          subtitle="Быстрый срез очереди по людям без перехода в полный users view."
+          actions={
+            <AppRouteLink href="/admin/users" className={adminButtonClass("secondary", "xs")}>
+              Открыть таблицу
+            </AppRouteLink>
+          }
+        >
+          <div className="overflow-hidden rounded-[1rem] border border-slate-200/80">
+            <div className="grid grid-cols-[minmax(0,1.35fr)_110px_120px_110px] gap-3 border-b border-[#22303c] bg-[#101821] px-3 py-2 text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-500">
+              <span>Пользователь</span>
+              <span>Статус</span>
+              <span>Observer</span>
+              <span>Срок</span>
+            </div>
+
+            <div className="divide-y divide-[#22303c] bg-[#0b1218]">
+              {users.map((row) => (
+                <div key={row.tg_id} className="grid grid-cols-[minmax(0,1.35fr)_110px_120px_110px] gap-3 px-3 py-3">
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-semibold text-slate-100">{row.display_name || row.username || `ID ${row.tg_id}`}</p>
+                    <p className="mt-1 truncate text-xs text-slate-500">
+                      {row.username ? `@${row.username}` : `ID ${row.tg_id}`} · {row.origin}
+                    </p>
+                  </div>
+                  <div>
+                    <AdminBadge tone={userStatusTone(row)}>{userStatusLabel(row.status)}</AdminBadge>
+                  </div>
+                  <div>
+                    <AdminBadge tone={observerTone(row.observer_state)}>{observerLabel(row.observer_state)}</AdminBadge>
+                  </div>
+                  <div className="text-sm font-medium text-slate-300">{formatShortDate(row.expiry_at)}</div>
+                </div>
               ))}
-            </ul>
+            </div>
           </div>
-        ) : (
-          <div className="mt-4 rounded-2xl border border-emerald-500/20 bg-emerald-500/10 p-4 text-sm text-emerald-200">
-            Критичных сигналов сейчас нет: метрики свежие, callback-ошибки и fallback по подпискам под контролем.
-          </div>
-        )}
-      </div>
+        </DashboardCell>
 
-      <div className="glass-card p-5">
-        <div className="mb-4 flex items-center gap-3">
-          <div className="stat-icon stat-icon-violet">
-            <Gift size={20} />
-          </div>
-          <div>
-            <h2 className="font-display text-xl font-bold">Бонусы и промо за 24 часа</h2>
-            <p className="text-xs text-slate-500">Показывает, сколько бонусов реально сработало и сколько было отказов.</p>
-          </div>
-        </div>
-        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-          {bonusCards.map((card) => (
-            <article key={card.label} className="node-card">
-              <p className="text-[10px] uppercase tracking-[0.1em] text-slate-500">{card.label}</p>
-              <div className="mt-2 flex items-center gap-2">
-                <span className={`badge ${card.tone}`}>{card.value}</span>
+        <DashboardCell
+          title="Очередь поддержки"
+          subtitle="Последние кейсы, чтобы быстро понять, что уже ждёт ответа."
+          actions={
+            <AppRouteLink href="/admin/tickets" className={adminButtonClass("secondary", "xs")}>
+              Открыть очередь
+            </AppRouteLink>
+          }
+        >
+          <div className="space-y-3">
+            {tickets.map((ticket) => (
+              <div key={ticket.id} className="rounded-[0.95rem] border border-[#22303c] bg-[#111922] p-3">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <p className="text-sm font-semibold text-slate-100">{ticket.subject || `Тикет #${ticket.id}`}</p>
+                  <AdminBadge>{ticket.status_title}</AdminBadge>
+                </div>
+                <p className="mt-2 text-xs leading-5 text-slate-400">{ticket.last_message_preview || "Без превью последнего сообщения."}</p>
+                <p className="mt-2 text-[11px] uppercase tracking-[0.14em] text-slate-400">Обновлён: {fmtRuDate(ticket.updated_at)}</p>
               </div>
-              <p className="mt-2 text-xs text-slate-500">{card.detail}</p>
-            </article>
-          ))}
-        </div>
+            ))}
+          </div>
+        </DashboardCell>
       </div>
 
-      <div className="glass-card p-5">
-        <div className="mb-4 flex items-center gap-3">
-          <div className="stat-icon stat-icon-blue">
-            <TrendingUp size={20} />
-          </div>
-          <div>
-            <h2 className="font-display text-xl font-bold">Удержание и реактивация</h2>
-            <p className="text-xs text-slate-500">Помогает понять, кому пора напомнить о продлении и кого уже стоит возвращать.</p>
-          </div>
-        </div>
-        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-          {retentionCards.map((card) => (
-            <article key={card.label} className="node-card">
-              <p className="text-[10px] uppercase tracking-[0.1em] text-slate-500">{card.label}</p>
-              <div className="mt-2 flex items-center gap-2">
-                <span className={`badge ${card.tone}`}>{card.value}</span>
+      <div className="grid gap-4 xl:grid-cols-[0.92fr_1.08fr]">
+        <DashboardCell title="Движение за 7 дней" subtitle="Компактный графический срез без перехода в отдельную аналитику.">
+          <div className="grid gap-3 md:grid-cols-3">
+            <div className="rounded-[0.95rem] border border-[#22303c] bg-[#111922] p-3">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">Регистрации</p>
+              <p className="mt-2 text-xl font-semibold text-slate-50">{totals.registrations}</p>
+              <div className="mt-4">
+                <MiniBars values={registrationsSeries} tone="emerald" />
               </div>
-              <p className="mt-2 text-xs text-slate-500">{card.detail}</p>
-            </article>
-          ))}
-        </div>
-      </div>
-
-      <div className="stat-card p-4">
-        <div className="flex items-center gap-3">
-          <div className="stat-icon stat-icon-violet">
-            <Activity size={18} />
+            </div>
+            <div className="rounded-[0.95rem] border border-[#22303c] bg-[#111922] p-3">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">Отток</p>
+              <p className="mt-2 text-xl font-semibold text-slate-50">{totals.churn}</p>
+              <div className="mt-4">
+                <MiniBars values={churnSeries} tone="rose" />
+              </div>
+            </div>
+            <div className="rounded-[0.95rem] border border-[#22303c] bg-[#111922] p-3">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">Выручка</p>
+              <p className="mt-2 text-xl font-semibold text-slate-50">{formatRub(totals.revenueRub)}</p>
+              <div className="mt-4">
+                <MiniBars values={revenueSeries} tone="slate" />
+              </div>
+            </div>
           </div>
-          <p className="text-sm text-slate-600 dark:text-slate-300">
-            Итого за 7 дней: <strong>{totals.registrations}</strong> регистраций, <strong>{totals.churn}</strong> отток,
-            выручка <strong>{Math.round(totals.revenueRub)} ₽</strong>.
-          </p>
-        </div>
-      </div>
+        </DashboardCell>
 
-      {summary?.errors.stale_metrics || Number(summary?.errors.unhealthy_nodes || 0) > 0 || summary?.resilience.single_point_risk ? (
-        <p className="text-xs text-amber-500">
-          Перед релизом или рассылкой проверьте таймер метрик, свежесть срезов и ноды с предупреждениями.
-        </p>
-      ) : null}
+        <DashboardCell title="Сеть и устойчивость" subtitle="Ноды, резерв и бонусные контуры, которые стоит проверить до ручных действий.">
+          <div className="space-y-3">
+            {summary.top_nodes.map((node) => (
+              <div key={node.code} className="rounded-[0.95rem] border border-[#22303c] bg-[#111922] p-3">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div>
+                    <p className="text-sm font-semibold text-slate-100">{node.code}</p>
+                    <p className="mt-1 text-xs text-slate-400">Клиенты: {node.active_clients} · задержка: {node.panel_latency_ms ?? "—"} мс</p>
+                  </div>
+                  <AdminBadge tone={nodeScoreTone(node.health_score)}>
+                    {nodeScoreLabel(node.health_score)} · {node.health_score}
+                  </AdminBadge>
+                </div>
+                <p className="mt-2 text-[11px] uppercase tracking-[0.14em] text-slate-400">Последняя проверка: {fmtRuDate(node.last_health_at)}</p>
+              </div>
+            ))}
+
+            <div className="grid gap-3 md:grid-cols-2">
+              <div className="rounded-[0.95rem] border border-[#22303c] bg-[#111922] p-3">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">Устойчивость</p>
+                <div className="mt-2 flex flex-wrap gap-2">
+                  <AdminBadge tone={summary.resilience.free_node_enabled ? "success" : "warning"}>
+                    бесплатный узел {summary.resilience.free_node_enabled ? "включён" : "выключен"}
+                  </AdminBadge>
+                  <AdminBadge tone={summary.resilience.single_point_risk ? "danger" : "success"}>
+                    {summary.resilience.single_point_risk ? "есть риск одной точки" : "резерв есть"}
+                  </AdminBadge>
+                </div>
+              </div>
+              <div className="rounded-[0.95rem] border border-[#22303c] bg-[#111922] p-3">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">Бонусы и промо</p>
+                <p className="mt-2 text-sm text-slate-100">
+                  Канал: <strong>{summary.bonus_events_24h.channel_activated}</strong> / отказов <strong>{summary.bonus_events_24h.channel_denied}</strong>
+                </p>
+                <p className="mt-1 text-sm text-slate-100">
+                  Промо: <strong>{summary.bonus_events_24h.promo_redeemed}</strong> / отказов <strong>{summary.bonus_events_24h.promo_denied}</strong>
+                </p>
+              </div>
+            </div>
+          </div>
+        </DashboardCell>
+      </div>
     </section>
   );
 }

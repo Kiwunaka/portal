@@ -1,0 +1,88 @@
+flowchart TD
+  SITE["Сайт pokrov.space"]
+
+  subgraph INSTALL["Страница /install/"]
+    I1["Скачать APK для Android"]
+    I2["Скачать EXE для Windows"]
+    I3["Открыть инструкцию / docs"]
+    I4["Открыть кабинет"]
+    I5["Написать в поддержку"]
+  end
+
+  subgraph DEVICES["Страница /devices/ и /mobile/"]
+    D1["Посмотреть поддерживаемые устройства"]
+    D2["Уточнить сценарий Android / Windows / phone"]
+    D3["Перейти к установке"]
+    D4["Вернуться к тарифам"]
+  end
+
+  subgraph TELEGRAM["Страница /telegram/"]
+    T1["Понять роль Telegram"]
+    T2["Открыть @pokrov_vpnbot"]
+    T3["Открыть @pokrov_supportbot"]
+    T4["Открыть канал @pokrov_vpn"]
+  end
+
+  subgraph CHECKOUT["Страница /checkout/"]
+    C1["Выбрать план"]
+    C2["Уйти на hosted checkout<br/>pay.pokrov.space/checkout/"]
+    C3["Проверить статус activation key"]
+    C4["Перейти в redeem в cabinet"]
+    C5["Открыть кабинет"]
+    C6["Продолжить в Telegram"]
+    C7["Вернуться к установке"]
+  end
+
+  subgraph LEGAL["Легальные страницы"]
+    L1["/offer/"]
+    L2["/privacy/"]
+    L3["Возврат на главную"]
+    L4["Открыть Telegram-бота"]
+  end
+
+  subgraph OUTCOMES["Фактические продуктовые поверхности"]
+    O1["POKROV-app на устройстве"]
+    O2["app.pokrov.space"]
+    O3["@pokrov_vpnbot"]
+    O4["@pokrov_supportbot"]
+    O5["Hosted checkout"]
+  end
+
+  SITE --> INSTALL
+  SITE --> DEVICES
+  SITE --> TELEGRAM
+  SITE --> CHECKOUT
+  SITE --> LEGAL
+
+  I1 --> O1
+  I2 --> O1
+  I3 --> O1
+  I4 --> O2
+  I5 --> O4
+
+  D1 --> I1
+  D1 --> I2
+  D2 --> I3
+  D3 --> O1
+  D4 --> CHECKOUT
+
+  T1 --> O2
+  T1 --> O1
+  T2 --> O3
+  T3 --> O4
+  T4 --> O3
+
+  C1 --> C2
+  C2 --> O5
+  C3 --> C4
+  C4 --> O2
+  C5 --> O2
+  C6 --> O3
+  C7 --> O1
+
+  L1 --> L3
+  L2 --> L3
+  L1 --> L4
+  L2 --> L4
+  L3 --> SITE
+  L4 --> O3

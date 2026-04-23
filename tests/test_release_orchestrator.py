@@ -40,6 +40,7 @@ class ReleaseOrchestratorTests(unittest.TestCase):
             gates_only=False,
             verify_only=True,
             dry_run=True,
+            release_metadata_file="C:/tmp/release-handoff.json",
             release_env_file="C:/tmp/release-links.env",
             qdisc_node=[],
             qdisc_host=[],
@@ -62,6 +63,8 @@ class ReleaseOrchestratorTests(unittest.TestCase):
         self.assertEqual(names[0], "release handoff sync")
         self.assertEqual(names[-1], "post-deploy verify")
         self.assertIn("scripts/remote_brain_apply_release_handoff.py", " ".join(steps[0][1]))
+        self.assertIn("--metadata-file", steps[0][1])
+        self.assertIn("C:/tmp/release-handoff.json", steps[0][1])
         self.assertIn("--env-file", steps[0][1])
         self.assertIn("C:/tmp/release-links.env", steps[0][1])
 
@@ -83,6 +86,7 @@ class ReleaseOrchestratorTests(unittest.TestCase):
             gates_only=True,
             verify_only=False,
             dry_run=False,
+            release_metadata_file="",
             release_env_file="",
             qdisc_node=[],
             qdisc_host=[],
@@ -127,6 +131,7 @@ class ReleaseOrchestratorTests(unittest.TestCase):
             gates_only=True,
             verify_only=False,
             dry_run=True,
+            release_metadata_file="",
             release_env_file="",
             qdisc_node=[],
             qdisc_host=[],
@@ -171,6 +176,7 @@ class ReleaseOrchestratorTests(unittest.TestCase):
             gates_only=False,
             verify_only=False,
             dry_run=True,
+            release_metadata_file="",
             release_env_file="",
             qdisc_node=["pl"],
             qdisc_host=["pl=203.0.113.10"],
@@ -219,6 +225,7 @@ class ReleaseOrchestratorTests(unittest.TestCase):
             gates_only=False,
             verify_only=False,
             dry_run=True,
+            release_metadata_file="",
             release_env_file="",
             qdisc_node=[],
             qdisc_host=[],
@@ -259,6 +266,7 @@ class ReleaseOrchestratorTests(unittest.TestCase):
             gates_only=False,
             verify_only=False,
             dry_run=False,
+            release_metadata_file="",
             release_env_file="",
             qdisc_node=["pl"],
             qdisc_host=["pl=203.0.113.10"],
@@ -304,6 +312,7 @@ class ReleaseOrchestratorTests(unittest.TestCase):
             gates_only=False,
             verify_only=False,
             dry_run=False,
+            release_metadata_file="",
             release_env_file="",
             qdisc_node=[],
             qdisc_host=[],

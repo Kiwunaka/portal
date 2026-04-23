@@ -37,6 +37,16 @@ on:
         required: true
         default: true
         type: boolean
+      release_metadata_file:
+        description: "Optional client-owned release-handoff.json path"
+        required: false
+        default: ""
+        type: string
+      release_env_file:
+        description: "Optional legacy release-links.env path"
+        required: false
+        default: ""
+        type: string
 
 jobs:
   orchestrate:
@@ -78,6 +88,8 @@ jobs:
           BRAIN_IP="${{ github.event.inputs.brain_ip }}"
           WEB_DOMAIN="${{ github.event.inputs.web_domain }}"
           API_DOMAIN="${{ github.event.inputs.api_domain }}"
+          RELEASE_METADATA_FILE="${{ github.event.inputs.release_metadata_file }}"
+          RELEASE_ENV_FILE="${{ github.event.inputs.release_env_file }}"
 
           CMD=(python scripts/release_orchestrator.py --brain-ip "$BRAIN_IP" --web-domain "$WEB_DOMAIN" --api-domain "$API_DOMAIN")
 
@@ -86,6 +98,12 @@ jobs:
           fi
           if [[ "${{ github.event.inputs.ensure_metrics_timer }}" == "true" ]]; then
             CMD+=(--ensure-metrics-timer)
+          fi
+          if [[ -n "$RELEASE_METADATA_FILE" ]]; then
+            CMD+=(--release-metadata-file "$RELEASE_METADATA_FILE")
+          fi
+          if [[ -n "$RELEASE_ENV_FILE" ]]; then
+            CMD+=(--release-env-file "$RELEASE_ENV_FILE")
           fi
 
           case "$MODE" in

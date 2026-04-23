@@ -14,7 +14,7 @@
 | Draft confidence | `grounded | candidate | unknown` |
 | Priority | `P0 | P1 | P2 | P3` |
 | WO class | `platform-only | client-only | mixed` |
-| Primary repo lane | `portal/master | POKROV-app/main | legacy bridge main` |
+| Primary repo lane | `portal/master | POKROV-app/main | archive evidence only` |
 | Secondary repo lane | `<blank if not mixed>` |
 | Primary write roots | `<paths>` |
 | Secondary write roots | `<blank if not mixed>` |
@@ -86,7 +86,7 @@ Update the canonical docs in the same task when behavior or contracts change.
 | `docs/developer/repository-map.md` | `<only if repo map or script inventory changes>` | `yes | no` | `pending` |
 | `docs/user/portal-vpn-user-guide-ru.md` | `<only if user-facing onboarding/support/trial behavior changes>` | `yes | no` | `pending` |
 | `C:/Users/kiwun/Documents/ai/POKROV-app/docs/...` | `<only if new client contract or UX changes>` | `yes | no` | `pending` |
-| `external/client-fork/app/docs/...` | `<only if bridge, hotfix, or current release truth changes>` | `yes | no` | `pending` |
+| `docs/archive/client-lanes/...` | `<only if archive summaries or retained evidence notes themselves change>` | `yes | no` | `pending` |
 
 ## Write Scope
 
@@ -111,8 +111,9 @@ Update the canonical docs in the same task when behavior or contracts change.
 - Classification reason: `<why this is the correct lane decision>`
 - Canonical landing rule:
 - `platform-only` lands on `portal/master`
-- `client-only` lands on `POKROV-app/main` by default, or on the legacy bridge lane only when the WO is explicitly marked bridge/hotfix
-- `mixed` requires separate platform, new-client, and bridge git evidence before closure when each lane is touched
+- `client-only` lands on `POKROV-app/main` by default
+- historical bootstrap or bridge archive notes may inform the WO, but they do not define the landing lane
+- `mixed` requires separate platform and new-client git evidence before closure when each lane is touched
 
 ## Execution Freedom
 
@@ -299,7 +300,7 @@ Record the exact repo lanes touched by this WO. For mixed WOs, fill both lanes a
 | --- | --- | --- | --- | --- | --- | --- |
 | `platform` | `portal/master` | `<branch>` | `<sha(s)>` | `yes | no` | `<url or blank>` | `<notes>` |
 | `client-dev` | `POKROV-app/main` | `<branch>` | `<sha(s)>` | `yes | no` | `<url or blank>` | `<notes>` |
-| `client-bridge` | `<legacy bridge main>` | `<branch>` | `<sha(s)>` | `yes | no` | `<url or blank>` | `<notes>` |
+| `client-bridge` | `<bridge main if used>` | `<branch>` | `<sha(s)>` | `yes | no` | `<url or blank>` | `<notes>` |
 
 ## Reviewer Findings
 

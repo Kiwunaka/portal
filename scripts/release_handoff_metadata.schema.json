@@ -1,0 +1,88 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://pokrov.space/schemas/release_handoff_metadata.schema.json",
+  "title": "POKROV Release Handoff Metadata",
+  "type": "object",
+  "additionalProperties": true,
+  "properties": {
+    "schema_version": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "client_lane": {
+      "type": "string",
+      "enum": [
+        "bridge",
+        "pokrov-app"
+      ]
+    },
+    "release_version": {
+      "type": "string",
+      "minLength": 1
+    },
+    "artifact_dir": {
+      "type": "string",
+      "minLength": 1
+    },
+    "downloads": {
+      "type": "object",
+      "additionalProperties": true,
+      "properties": {
+        "android": {
+          "type": "object",
+          "additionalProperties": true,
+          "properties": {
+            "play_url": {
+              "type": "string"
+            },
+            "apk_url": {
+              "type": "string"
+            },
+            "mirror_url": {
+              "type": "string"
+            }
+          }
+        },
+        "windows": {
+          "type": "object",
+          "additionalProperties": true,
+          "properties": {
+            "exe_url": {
+              "type": "string"
+            },
+            "mirror_url": {
+              "type": "string"
+            }
+          }
+        },
+        "docs_url": {
+          "type": "string"
+        }
+      }
+    },
+    "runtime_env": {
+      "type": "object",
+      "additionalProperties": true,
+      "properties": {
+        "APP_ANDROID_PLAY_URL": {
+          "type": "string"
+        },
+        "APP_ANDROID_APK_URL": {
+          "type": "string"
+        },
+        "APP_ANDROID_MIRROR_URL": {
+          "type": "string"
+        },
+        "APP_WINDOWS_EXE_URL": {
+          "type": "string"
+        },
+        "APP_WINDOWS_MIRROR_URL": {
+          "type": "string"
+        },
+        "APP_DOCS_URL": {
+          "type": "string"
+        }
+      }
+    }
+  }
+}

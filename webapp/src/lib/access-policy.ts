@@ -100,15 +100,15 @@ export function resolveTrafficStatusText(
   const limitGb = getTrafficLimitGb(dash, user);
 
   if (isPaidUnlimitedState(state) || isTrialPremiumState(state)) {
-    return "managed premium без лимита";
+    return "Безлимитный трафик";
   }
   if (isSoftModeState(state) && limitGb != null) {
-    return `базовый режим после ${formatTrafficGb(limitGb)}`;
+    return `Базовый режим после ${formatTrafficGb(limitGb)}`;
   }
   if (limitGb != null) {
-    return `${formatTrafficGb(limitGb)} / ${Number(FREE_TIER.cycle_days || 30)} дней`;
+    return `${formatTrafficGb(limitGb)} на ${Number(FREE_TIER.cycle_days || 30)} дней`;
   }
-  return "по текущей политике профиля";
+  return "По текущему режиму";
 }
 
 export function resolvePlanLabel(
@@ -119,11 +119,11 @@ export function resolvePlanLabel(
   const planCode = String(dash?.current_plan_code || user?.current_plan_code || dash?.sub_type || user?.sub_type || "").trim();
   const catalogLabel = getTariffPlan(planCode)?.label;
 
-  if (state === "paid_unlimited") return catalogLabel || "MANAGED PREMIUM";
-  if (state === "trial_premium") return "PREMIUM TRIAL";
-  if (state === "bonus_premium") return "TELEGRAM BONUS";
-  if (state === "free_monthly") return "FREE MONTHLY";
-  if (state === "free_soft_mode") return "FREE BASIC MODE";
+  if (state === "paid_unlimited") return catalogLabel || "Премиум";
+  if (state === "trial_premium") return "Пробный премиум";
+  if (state === "bonus_premium") return "Бонусный премиум";
+  if (state === "free_monthly") return "Базовый режим";
+  if (state === "free_soft_mode") return "Базовый режим";
   return catalogLabel || planCode || "—";
 }
 

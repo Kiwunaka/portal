@@ -43,13 +43,26 @@ Prepared by: `<orchestrator>`
 - pushed:
 - compare or PR:
 
-### Client Lane
+### Client Dev Lane
 
-- repo: `PORTALapp`
+- repo: `POKROV-app`
 - branch:
 - commit(s):
 - pushed:
 - compare or PR:
+
+### Archive Evidence
+
+- archive path or version:
+- why it mattered:
+- updated:
+- notes:
+
+## Release Metadata Home
+
+- bundle or metadata root:
+- `release-links.env` path:
+- manifest directory:
 
 ## Origin Checks
 

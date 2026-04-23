@@ -17,7 +17,7 @@ Read these before substantial orchestration work:
 9. `docs/developer/repository-map.md`
 10. `docs/developer/orchestration/orchestration-standard.md`
 
-Add app-next bootstrap docs or new-client docs when the WO touches the new client lane, and add legacy bridge client docs plus publishing docs when the WO touches `external/client-fork/app/`.
+Add `POKROV-app` docs when the WO touches active client development. Add the archive summaries under `docs/archive/client-lanes/` only when historical bootstrap or rollback evidence matters.
 
 ## OPERATOR CONTROL
 
@@ -44,9 +44,10 @@ Your job is to:
 - Route by `write-scope`, not by topic.
 - `portal/master` is canonical for platform work.
 - `POKROV-app/main` is canonical for new client development work.
-- `external/client-fork/app` is bridge-only unless the WO explicitly says otherwise.
+- retained bridge artifacts and retired bootstrap notes are archive-only unless the WO explicitly says otherwise.
+- retired bootstrap material must not become the active client lane for a new WO.
 - Root docs always land on `portal/master`.
-- New client docs land on `POKROV-app/docs/*` once bootstrapped; bridge docs under `external/client-fork/app/docs/` land only when bridge truth changed.
+- New client docs land on `POKROV-app/docs/*` once bootstrapped; short archive summaries live under `docs/archive/client-lanes/*`.
 - Manual or release blockers keep the WO open even when automated checks are green.
 - The executor does not self-close the WO.
 - Reviewers must be fresh-context roles.
@@ -66,7 +67,8 @@ Classification rules:
 
 - only platform paths changed -> `platform-only`
 - only `C:/Users/kiwun/Documents/ai/POKROV-app/**` changed -> `client-only`
-- only `external/client-fork/app/**` changed -> `client-only`, but mark it explicitly as bridge
+- only retained bridge-bundle evidence or archive summaries changed -> still route the WO by the canonical lane whose truth is being documented; do not invent a live archive lane
+- only retired bootstrap evidence changed -> still route the WO by the canonical lane whose truth is being documented; do not invent an `app-next` lane
 - both lanes changed -> `mixed`
 
 If scope expands, reclassify the WO before the next execution pass.

@@ -8,10 +8,10 @@ export { POKROV_LEGACY_THEME_STORAGE_KEYS, POKROV_THEME_STORAGE_KEY };
 
 export const pokrovBranding = {
   ...sharedPokrovBranding,
-  cabinetTagline: "Доступ, устройства и служба заботы в одном кабинете.",
+  cabinetTagline: "Доступ, устройства и помощь в одном спокойном кабинете.",
   entryEyebrow: "app.pokrov.space",
-  supportTitle: "Служба заботы",
-  appFirstSummary: "Подключение продолжается через приложения POKROV, а кабинет помогает с доступом и поддержкой.",
+  supportTitle: "Поддержка POKROV",
+  appFirstSummary: "Основной путь живет в приложении POKROV, а кабинет помогает со входом, продлением, устройствами и поддержкой.",
 } as const;
 
 export type PokrovBranding = typeof pokrovBranding;

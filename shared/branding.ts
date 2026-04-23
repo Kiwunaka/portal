@@ -19,7 +19,7 @@ export const pokrovBranding = {
   legacyThemeStorageKeys: POKROV_LEGACY_THEME_STORAGE_KEYS,
   metadataTitle: `${productFacts.brands.platform} - Личный кабинет`,
   metadataDescription:
-    "Управление скоростью в одном кабинете: статус, доступ, устройства, служба заботы и оплата в рублях.",
+    "Проверяйте доступ, управляйте устройствами и обращайтесь в поддержку из одного спокойного кабинета.",
 } as const;
 
 export type PokrovBranding = typeof pokrovBranding;

@@ -6,11 +6,11 @@ export default function manifest(): MetadataRoute.Manifest {
   return {
     name: CANONICAL_PLATFORM_BRAND,
     short_name: "POKROV",
-    description: "Умное ускорение интернета для Android и Windows с 5-дневным бесплатным тестом.",
+    description: "Приложение POKROV для Android и Windows с бесплатным стартом, понятным кабинетом и живой поддержкой.",
     start_url: "/",
     display: "standalone",
-    background_color: "#f5f1e8",
-    theme_color: "#143627",
+    background_color: "#f6f1e8",
+    theme_color: "#0b4832",
     lang: "ru-RU",
     categories: ["security", "utilities", "productivity"],
     icons: [

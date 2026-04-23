@@ -1,278 +1,225 @@
 from __future__ import annotations
 
+import json
+import os
 import re
 import sys
 from pathlib import Path
 
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
-CLIENT_ROOT = REPO_ROOT / "external" / "client-fork" / "app"
+DEFAULT_CLIENT_ROOT = Path("C:/Users/kiwun/Documents/ai/POKROV-app")
+CLIENT_ROOT = Path(os.getenv("POKROV_APP_ROOT", str(DEFAULT_CLIENT_ROOT)))
 
-CONFIG_OPTIONS_PATH = CLIENT_ROOT / "lib" / "features" / "config_option" / "data" / "config_option_repository.dart"
-CONFIG_OPTIONS_PAGE_PATH = CLIENT_ROOT / "lib" / "features" / "config_option" / "overview" / "config_options_page.dart"
-ROUTING_ENUM_PATH = CLIENT_ROOT / "lib" / "singbox" / "model" / "singbox_config_enum.dart"
-BOX_SERVICE_PATH = CLIENT_ROOT / "android" / "app" / "src" / "main" / "kotlin" / "com" / "hiddify" / "hiddify" / "bg" / "BoxService.kt"
-METHOD_HANDLER_PATH = CLIENT_ROOT / "android" / "app" / "src" / "main" / "kotlin" / "com" / "hiddify" / "hiddify" / "MethodHandler.kt"
-GO_DEFAULTS_PATH = CLIENT_ROOT / "libcore" / "config" / "hiddify_option.go"
-ANALYTICS_CONTROLLER_PATH = CLIENT_ROOT / "lib" / "core" / "analytics" / "analytics_controller.dart"
-APP_INFO_PATH = CLIENT_ROOT / "lib" / "core" / "model" / "app_info_entity.dart"
-PROFILE_REPOSITORY_PATH = CLIENT_ROOT / "lib" / "features" / "profile" / "data" / "profile_repository.dart"
-ANDROID_MANIFEST_PATH = CLIENT_ROOT / "android" / "app" / "src" / "main" / "AndroidManifest.xml"
-WINDOWS_EXE_CONFIG_PATH = CLIENT_ROOT / "windows" / "packaging" / "exe" / "make_config.yaml"
-WINDOWS_MSIX_CONFIG_PATH = CLIENT_ROOT / "windows" / "packaging" / "msix" / "make_config.yaml"
-WINDOWS_RUNNER_RC_PATH = CLIENT_ROOT / "windows" / "runner" / "Runner.rc"
-WINDOWS_MAIN_CPP_PATH = CLIENT_ROOT / "windows" / "runner" / "main.cpp"
+PRODUCT_CONTRACT_PATH = CLIENT_ROOT / "config" / "product-contract.seed.json"
+RUNTIME_PROFILE_PATH = CLIENT_ROOT / "config" / "runtime-profile.seed.json"
+RUNTIME_ARTIFACTS_PATH = CLIENT_ROOT / "config" / "runtime-artifacts.seed.json"
+WINDOWS_RELEASE_CONFIG_PATH = CLIENT_ROOT / "config" / "windows-release.seed.json"
+ANDROID_MANIFEST_PATH = CLIENT_ROOT / "apps" / "android_shell" / "android" / "app" / "src" / "main" / "AndroidManifest.xml"
+ANDROID_BUILD_GRADLE_PATH = CLIENT_ROOT / "apps" / "android_shell" / "android" / "app" / "build.gradle"
 
 
 def _read_text(path: Path) -> str:
     return path.read_text(encoding="utf-8")
 
 
-def _pref_default(config_text: str, key: str) -> str | None:
-    pattern = re.compile(
-        r'PreferencesNotifier\.create<[^>]+>\(\s*"' + re.escape(key) + r'"\s*,\s*([^,\n]+)',
-        re.MULTILINE,
-    )
-    match = pattern.search(config_text)
-    if match is None:
-        return None
-    return match.group(1).strip()
+def _read_json(path: Path) -> dict[str, object]:
+    return json.loads(_read_text(path))
 
 
-def _pref_block(config_text: str, key: str) -> str | None:
-    pattern = re.compile(
-        r'PreferencesNotifier\.create<[^>]+>\(\s*"'
-        + re.escape(key)
-        + r'"\s*,.*?\n\s*\);',
-        re.MULTILINE | re.DOTALL,
-    )
-    match = pattern.search(config_text)
-    if match is None:
-        return None
-    return match.group(0)
-
-
-def _security_default_failures(config_text: str, go_defaults_text: str) -> list[str]:
+def _product_contract_failures(contract: dict[str, object]) -> list[str]:
     failures: list[str] = []
 
-    enable_clash_api_default = _pref_default(config_text, "enable-clash-api")
-    if enable_clash_api_default is None:
-        failures.append("enable-clash-api preference is missing")
-    elif enable_clash_api_default != "false":
-        failures.append("enable-clash-api must default to false")
+    if contract.get("brand") != "POKROV":
+        failures.append("product contract must keep brand as POKROV")
+    if contract.get("client_strategy") != "consumer-first":
+        failures.append("product contract must keep client_strategy as consumer-first")
+    if contract.get("identity_model") != "app-first":
+        failures.append("product contract must keep identity_model as app-first")
+    if contract.get("default_runtime_core") != "sing-box":
+        failures.append("product contract must keep default_runtime_core as sing-box")
+    if contract.get("advanced_fallback_core") != "xray":
+        failures.append("product contract must keep advanced_fallback_core as xray")
+    if int(contract.get("trial_days", 0)) != 5:
+        failures.append("product contract must keep the trial at 5 days")
+    if int(contract.get("telegram_bonus_days", 0)) != 10:
+        failures.append("product contract must keep the Telegram bonus at 10 days")
 
-    allow_lan_default = _pref_default(config_text, "allow-connection-from-lan")
-    if allow_lan_default is None:
-        failures.append("allow-connection-from-lan preference is missing")
-    elif allow_lan_default != "false":
-        failures.append("allow-connection-from-lan must default to false")
+    public_scope = list(contract.get("public_scope") or [])
+    if public_scope != ["android", "windows"]:
+        failures.append("product contract must keep public_scope limited to android and windows")
 
-    if "applyReleaseLocalSurfacePolicy(" not in config_text:
-        failures.append("Android release config must apply local surface sanitization before startup")
+    readiness_only_scope = list(contract.get("readiness_only_scope") or [])
+    if readiness_only_scope != ["ios", "macos"]:
+        failures.append("product contract must keep readiness_only_scope limited to ios and macos")
 
-    go_expectations = {
-        "MixedPort:": "MixedPort:      0",
-        "TProxyPort:": "TProxyPort:     0",
-        "LocalDnsPort:": "LocalDnsPort:   0",
-        "EnableClashApi:": "EnableClashApi: false",
-    }
-    for label, snippet in go_expectations.items():
-        if snippet not in go_defaults_text:
-            failures.append(f"{label.rstrip(':')} must default to a release-safe value in libcore")
+    free_tier = dict(contract.get("free_tier") or {})
+    if free_tier.get("node_pool") != "NL-free":
+        failures.append("product contract must keep free_tier.node_pool as NL-free")
+    if int(free_tier.get("traffic_gb", 0)) != 5:
+        failures.append("product contract must keep free_tier.traffic_gb at 5")
+    if int(free_tier.get("speed_mbps", 0)) != 50:
+        failures.append("product contract must keep free_tier.speed_mbps at 50")
 
-    return failures
+    monetization = dict(contract.get("monetization") or {})
+    if monetization.get("in_app_purchases") is not False:
+        failures.append("product contract must keep monetization.in_app_purchases disabled")
+    if monetization.get("third_party_ads") is not False:
+        failures.append("product contract must keep monetization.third_party_ads disabled")
+    if monetization.get("first_party_promos_only") is not True:
+        failures.append("product contract must keep monetization.first_party_promos_only enabled")
 
-
-def _analytics_default_failures(analytics_text: str) -> list[str]:
-    failures: list[str] = []
-
-    if "getBool(enableAnalyticsPrefKey) ?? false" not in analytics_text:
-        failures.append("analytics must default to disabled until the user explicitly opts in")
-
-    return failures
-
-
-def _routing_default_failures(config_text: str) -> list[str]:
-    failures: list[str] = []
-
-    routing_mode_default = _pref_default(config_text, "routing-mode")
-    if routing_mode_default is None:
-        failures.append("routing-mode preference is missing")
-    elif routing_mode_default != "RoutingMode.allExceptRu":
-        failures.append("routing-mode must default to RoutingMode.allExceptRu for the consumer path")
-
-    remote_dns_default = _pref_default(config_text, "remote-dns-address")
-    if remote_dns_default is None:
-        failures.append("remote-dns-address preference is missing")
-    elif not remote_dns_default.startswith(('"https://', "'https://")):
-        failures.append("remote-dns-address must default to a tunneled DoH endpoint instead of udp://1.1.1.1")
-
-    direct_dns_block = _pref_block(config_text, "direct-dns-address")
-    if direct_dns_block is None:
-        failures.append("direct-dns-address preference is missing")
-    elif re.search(r'RoutingMode\.allExceptRu\s*=>\s*["\']local["\']', direct_dns_block) is None:
-        failures.append("direct-dns-address must default to local for split-direct routing")
-
-    return failures
-
-
-def _routing_preset_failures(enum_text: str, config_text: str) -> list[str]:
-    failures: list[str] = []
-
-    if "allExceptRu" not in enum_text:
-        failures.append("RoutingMode must include allExceptRu")
-    if "blockedOnly" not in enum_text:
-        failures.append("RoutingMode must include blockedOnly")
-
-    if "RoutingMode.allExceptRu" not in config_text:
-        failures.append("buildRoutingRules must handle RoutingMode.allExceptRu")
-    if "RoutingMode.blockedOnly" not in config_text:
-        failures.append("buildRoutingRules must handle RoutingMode.blockedOnly")
-
-    if "geoip:private" not in config_text:
-        failures.append("RoutingMode.allExceptRu must bypass geoip:private")
-
-    if "geoip:ru" not in config_text:
-        failures.append("RoutingMode.allExceptRu must bypass geoip:ru")
-
-    if "domain:.ru" not in config_text:
-        failures.append("RoutingMode.allExceptRu must bypass domain:.ru")
-
-    if "RuleOutbound.bypass" not in config_text:
-        failures.append("RoutingMode.allExceptRu must use RuleOutbound.bypass for direct traffic")
-
-    if "kBlockedOnlyRuleSetUrl" not in config_text:
-        failures.append("RoutingMode.blockedOnly must use a first-class blocked-destination ruleset")
-
-    if "ruleSetUrl: kBlockedOnlyRuleSetUrl" not in config_text:
-        failures.append("RoutingMode.blockedOnly must proxy through the blocked-destination ruleset")
-
-    return failures
-
-
-def _public_routing_surface_failures(config_page_text: str) -> list[str]:
-    failures: list[str] = []
-    uses_filtered_choices = (
-        ".visibleChoices(" in config_page_text
-        or "consumerRoutingChoices(" in config_page_text
-    )
-
-    if "RoutingMode.values" in config_page_text and not uses_filtered_choices:
+    public_routing_modes = list(contract.get("public_routing_modes") or [])
+    if public_routing_modes != ["all_except_ru", "full_tunnel", "selected_apps"]:
         failures.append(
-            "public routing picker must use RoutingMode.visibleChoices to keep blockedOnly internal by default"
+            "product contract must keep public_routing_modes as all_except_ru, full_tunnel, selected_apps"
         )
 
-    if not uses_filtered_choices:
-        failures.append("public routing picker must filter routing presets before rendering choices")
-
     return failures
 
 
-def _contains_legacy_identity(text: str) -> bool:
-    lowered = text.casefold()
-    return any(token in lowered for token in ("clash", "v2ray", "v2rayng", "sing-box", "singbox"))
-
-
-def _identity_failures(app_info_text: str, profile_text: str) -> list[str]:
+def _runtime_profile_failures(runtime_profile: dict[str, object]) -> list[str]:
     failures: list[str] = []
 
-    if _contains_legacy_identity(app_info_text):
-        failures.append("app user agent must not mention clash/v2ray/sing-box")
+    if runtime_profile.get("brand") != "POKROV":
+        failures.append("runtime profile must keep brand as POKROV")
+    if runtime_profile.get("default_runtime_core") != "sing-box":
+        failures.append("runtime profile must keep default_runtime_core as sing-box")
+    if runtime_profile.get("advanced_fallback_core") != "xray":
+        failures.append("runtime profile must keep advanced_fallback_core as xray")
 
-    profile_user_agent_match = re.search(
-        r'userAgent\s*:\s*configs\.useXrayCoreWhenPossible\s*\?\s*(.+?)\s*:\s*null',
-        profile_text,
-        re.MULTILINE | re.DOTALL,
-    )
-    if profile_user_agent_match is None:
-        return failures
+    free_tier = dict(runtime_profile.get("free_tier") or {})
+    if free_tier.get("node_pool") != "NL-free":
+        failures.append("runtime profile must keep free_tier.node_pool as NL-free")
+    if int(free_tier.get("traffic_gb", 0)) != 5:
+        failures.append("runtime profile must keep free_tier.traffic_gb at 5")
+    if int(free_tier.get("speed_mbps", 0)) != 50:
+        failures.append("runtime profile must keep free_tier.speed_mbps at 50")
 
-    profile_user_agent = profile_user_agent_match.group(1).strip()
-    if _contains_legacy_identity(profile_user_agent) or "pokrov" not in profile_user_agent.casefold():
-        failures.append("compatibility profile downloads must use a first-party user agent")
+    official_surfaces = dict(runtime_profile.get("official_surfaces") or {})
+    if official_surfaces.get("checkout") != "https://pay.pokrov.space/checkout/":
+        failures.append("runtime profile must keep checkout on https://pay.pokrov.space/checkout/")
+    if official_surfaces.get("api") != "https://api.pokrov.space/":
+        failures.append("runtime profile must keep api on https://api.pokrov.space/")
+    if official_surfaces.get("connect") != "https://connect.pokrov.space/":
+        failures.append("runtime profile must keep connect on https://connect.pokrov.space/")
 
     return failures
 
 
-def _packaging_branding_failures(
-    *,
-    manifest_text: str,
-    exe_config_text: str,
-    msix_text: str,
-    runner_rc_text: str,
-    main_cpp_text: str,
-) -> list[str]:
+def _runtime_artifact_failures(runtime_artifacts: dict[str, object]) -> list[str]:
+    failures: list[str] = []
+
+    libcore = dict(runtime_artifacts.get("libcore") or {})
+    if libcore.get("repository") != "hiddify/hiddify-core":
+        failures.append("runtime artifacts must stay pinned to hiddify/hiddify-core")
+    if libcore.get("release_tag") != "v3.1.8":
+        failures.append("runtime artifacts must stay pinned to libcore release v3.1.8")
+
+    assets = dict(libcore.get("assets") or {})
+    windows = dict(assets.get("windows") or {})
+    if windows.get("entry") != "libcore.dll":
+        failures.append("runtime artifacts must keep the Windows libcore entry on libcore.dll")
+    if "helper" in windows:
+        failures.append("runtime artifacts must not declare a Windows helper binary")
+    if windows.get("sync_destination") != "apps/windows_shell/windows/runner/resources/runtime":
+        failures.append(
+            "runtime artifacts must sync the Windows libcore payload into apps/windows_shell/windows/runner/resources/runtime"
+        )
+
+    android = dict(assets.get("android") or {})
+    if android.get("entry") != "libcore.aar":
+        failures.append("runtime artifacts must keep the Android libcore entry on libcore.aar")
+    if android.get("sync_destination") != "apps/android_shell/android/app/libs":
+        failures.append("runtime artifacts must sync the Android libcore payload into apps/android_shell/android/app/libs")
+
+    return failures
+
+
+def _android_host_failures(*, manifest_text: str, build_gradle_text: str) -> list[str]:
     failures: list[str] = []
 
     if 'android:label="POKROV"' not in manifest_text:
         failures.append("Android launcher label must be POKROV")
-    if 'android:scheme="pokrov"' not in manifest_text:
-        failures.append("Android manifest must register pokrov:// as the canonical app link scheme")
+    if 'android:name=".PokrovRuntimeVpnService"' not in manifest_text:
+        failures.append("Android manifest must declare PokrovRuntimeVpnService")
+    if 'android:exported="false"' not in manifest_text:
+        failures.append("Android VPN service must stay non-exported")
+    if 'android:permission="android.permission.BIND_VPN_SERVICE"' not in manifest_text:
+        failures.append("Android VPN service must require android.permission.BIND_VPN_SERVICE")
+    if "android.permission.FOREGROUND_SERVICE_SPECIAL_USE" not in manifest_text:
+        failures.append("Android manifest must keep the special-use foreground-service permission")
+    if 'android:foregroundServiceType="specialUse"' not in manifest_text:
+        failures.append("Android VPN service must keep foregroundServiceType as specialUse")
 
-    if re.search(r"^\s*display_name:\s*POKROV\s*$", exe_config_text, flags=re.MULTILINE) is None:
-        failures.append("Windows exe package display_name must be POKROV")
-    if "output_base_file_name: pokrov-windows-setup-x64" not in exe_config_text:
-        failures.append("Windows exe package output filename must drop vpn wording")
-
-    if re.search(r"^\s*display_name:\s*POKROV\s*$", msix_text, flags=re.MULTILINE) is None:
-        failures.append("Windows msix display_name must be POKROV")
-    if re.search(r"^\s*protocol_activation:\s*pokrov\s*$", msix_text, flags=re.MULTILINE) is None:
-        failures.append("Windows msix protocol activation must use pokrov")
-
-    required_runner_values = (
-        'VALUE "CompanyName", "POKROV"',
-        'VALUE "FileDescription", "POKROV"',
-        'VALUE "ProductName", "POKROV"',
-    )
-    if any(value not in runner_rc_text for value in required_runner_values):
-        failures.append("Windows runner resources must use POKROV for CompanyName/FileDescription/ProductName")
-
-    if 'window.Create(L"POKROV"' not in main_cpp_text:
-        failures.append("Windows main window title must be POKROV")
+    if re.search(r'applicationId\s*=\s*"space\.pokrov\.pokrov_android_shell"', build_gradle_text) is None:
+        failures.append("Android build.gradle must keep applicationId on space.pokrov.pokrov_android_shell")
+    if re.search(r'namespace\s*=\s*"space\.pokrov\.pokrov_android_shell"', build_gradle_text) is None:
+        failures.append("Android build.gradle must keep namespace on space.pokrov.pokrov_android_shell")
+    if 'signingConfig = signingConfigs.debug' not in build_gradle_text:
+        failures.append("Android release build.gradle must still make the debug-signing alpha state explicit")
 
     return failures
 
 
-def _control_surface_observations(
-    *,
-    box_service_text: str,
-    method_handler_text: str,
-) -> list[str]:
-    observations: list[str] = []
+def _windows_release_failures(windows_release: dict[str, object]) -> list[str]:
+    failures: list[str] = []
 
-    command_server_guarded = "CommandServer(" in box_service_text and "BuildConfig.DEBUG" in box_service_text
-    if "CommandServer(" in box_service_text and not command_server_guarded:
-        observations.append(
-            "android libbox CommandServer is present and requires release-build localhost audit"
+    if windows_release.get("display_name") != "POKROV":
+        failures.append("Windows release seed must keep display_name as POKROV")
+    if windows_release.get("binary_name") != "pokrov_windows_seed.exe":
+        failures.append("Windows release seed must keep binary_name as pokrov_windows_seed.exe")
+    if windows_release.get("bundle_root") != "apps/windows_shell/build/windows/x64/runner/Release":
+        failures.append("Windows release seed must keep bundle_root on apps/windows_shell/build/windows/x64/runner/Release")
+    if windows_release.get("artifact_root") != "apps/windows_shell/build/release_bundle":
+        failures.append("Windows release seed must keep artifact_root on apps/windows_shell/build/release_bundle")
+
+    required_files = list(windows_release.get("required_files") or [])
+    for required_path in (
+        "pokrov_windows_seed.exe",
+        "flutter_windows.dll",
+        "libcore.dll",
+        "data/app.so",
+        "data/icudtl.dat",
+    ):
+        if required_path not in required_files:
+            failures.append(f"Windows release seed must include required file {required_path}")
+
+    metadata = dict(windows_release.get("metadata") or {})
+    if metadata.get("file_description") != "POKROV":
+        failures.append("Windows release seed must keep metadata.file_description as POKROV")
+    if metadata.get("product_name") != "POKROV":
+        failures.append("Windows release seed must keep metadata.product_name as POKROV")
+    if metadata.get("company_name") != "space.pokrov":
+        failures.append("Windows release seed must keep metadata.company_name as space.pokrov")
+
+    runtime = dict(windows_release.get("runtime") or {})
+    if runtime.get("platform") != "windows":
+        failures.append("Windows release seed must keep runtime.platform as windows")
+    if runtime.get("artifact_directory") != "apps/windows_shell/windows/runner/resources/runtime":
+        failures.append(
+            "Windows release seed must keep runtime.artifact_directory on apps/windows_shell/windows/runner/resources/runtime"
         )
+    if runtime.get("core_binary") != "libcore.dll":
+        failures.append("Windows release seed must keep runtime.core_binary as libcore.dll")
+    if "helper_binary" in runtime:
+        failures.append("Windows release seed must not declare a Windows helper binary")
 
-    standalone_client_guarded = "newStandaloneCommandClient" in method_handler_text and "BuildConfig.DEBUG" in method_handler_text
-    if "newStandaloneCommandClient" in method_handler_text and not standalone_client_guarded:
-        observations.append("android/libbox standalone command client calls are present")
-
-    return observations
+    return failures
 
 
 def _check_required_files() -> list[str]:
     missing: list[str] = []
-    for path in [
-        CONFIG_OPTIONS_PATH,
-        CONFIG_OPTIONS_PAGE_PATH,
-        ROUTING_ENUM_PATH,
-        BOX_SERVICE_PATH,
-        METHOD_HANDLER_PATH,
-        GO_DEFAULTS_PATH,
-        ANALYTICS_CONTROLLER_PATH,
-        APP_INFO_PATH,
-        PROFILE_REPOSITORY_PATH,
+    for path in (
+        PRODUCT_CONTRACT_PATH,
+        RUNTIME_PROFILE_PATH,
+        RUNTIME_ARTIFACTS_PATH,
+        WINDOWS_RELEASE_CONFIG_PATH,
         ANDROID_MANIFEST_PATH,
-        WINDOWS_EXE_CONFIG_PATH,
-        WINDOWS_MSIX_CONFIG_PATH,
-        WINDOWS_RUNNER_RC_PATH,
-        WINDOWS_MAIN_CPP_PATH,
-    ]:
+        ANDROID_BUILD_GRADLE_PATH,
+    ):
         if not path.exists():
-            missing.append(f"required client file is missing: {path.relative_to(REPO_ROOT)}")
+            missing.append(f"required client file is missing: {path}")
     return missing
 
 
@@ -283,58 +230,30 @@ def main() -> int:
             print(f"[fail] {failure}")
         return 2
 
-    config_text = _read_text(CONFIG_OPTIONS_PATH)
-    enum_text = _read_text(ROUTING_ENUM_PATH)
-    config_page_text = _read_text(CONFIG_OPTIONS_PAGE_PATH)
-    box_service_text = _read_text(BOX_SERVICE_PATH)
-    method_handler_text = _read_text(METHOD_HANDLER_PATH)
-    go_defaults_text = _read_text(GO_DEFAULTS_PATH)
-    analytics_text = _read_text(ANALYTICS_CONTROLLER_PATH)
-    app_info_text = _read_text(APP_INFO_PATH)
-    profile_text = _read_text(PROFILE_REPOSITORY_PATH)
+    product_contract = _read_json(PRODUCT_CONTRACT_PATH)
+    runtime_profile = _read_json(RUNTIME_PROFILE_PATH)
+    runtime_artifacts = _read_json(RUNTIME_ARTIFACTS_PATH)
+    windows_release = _read_json(WINDOWS_RELEASE_CONFIG_PATH)
     manifest_text = _read_text(ANDROID_MANIFEST_PATH)
-    exe_config_text = _read_text(WINDOWS_EXE_CONFIG_PATH)
-    msix_text = _read_text(WINDOWS_MSIX_CONFIG_PATH)
-    runner_rc_text = _read_text(WINDOWS_RUNNER_RC_PATH)
-    main_cpp_text = _read_text(WINDOWS_MAIN_CPP_PATH)
+    build_gradle_text = _read_text(ANDROID_BUILD_GRADLE_PATH)
 
-    failures.extend(_security_default_failures(config_text, go_defaults_text))
-    failures.extend(_analytics_default_failures(analytics_text))
-    failures.extend(_routing_default_failures(config_text))
-    failures.extend(_routing_preset_failures(enum_text, config_text))
-    failures.extend(_public_routing_surface_failures(config_page_text))
-    failures.extend(_identity_failures(app_info_text, profile_text))
+    failures.extend(_product_contract_failures(product_contract))
+    failures.extend(_runtime_profile_failures(runtime_profile))
+    failures.extend(_runtime_artifact_failures(runtime_artifacts))
     failures.extend(
-        _packaging_branding_failures(
+        _android_host_failures(
             manifest_text=manifest_text,
-            exe_config_text=exe_config_text,
-            msix_text=msix_text,
-            runner_rc_text=runner_rc_text,
-            main_cpp_text=main_cpp_text,
+            build_gradle_text=build_gradle_text,
         )
     )
-    observations = _control_surface_observations(
-        box_service_text=box_service_text,
-        method_handler_text=method_handler_text,
-    )
+    failures.extend(_windows_release_failures(windows_release))
 
-    print(f"[check] config options: {CONFIG_OPTIONS_PATH.relative_to(REPO_ROOT)}")
-    print(f"[check] config options page: {CONFIG_OPTIONS_PAGE_PATH.relative_to(REPO_ROOT)}")
-    print(f"[check] routing enum: {ROUTING_ENUM_PATH.relative_to(REPO_ROOT)}")
-    print(f"[check] android control surfaces: {BOX_SERVICE_PATH.relative_to(REPO_ROOT)}")
-    print(f"[check] android method handler: {METHOD_HANDLER_PATH.relative_to(REPO_ROOT)}")
-    print(f"[check] libcore defaults: {GO_DEFAULTS_PATH.relative_to(REPO_ROOT)}")
-    print(f"[check] analytics defaults: {ANALYTICS_CONTROLLER_PATH.relative_to(REPO_ROOT)}")
-    print(f"[check] app identity: {APP_INFO_PATH.relative_to(REPO_ROOT)}")
-    print(f"[check] profile identity: {PROFILE_REPOSITORY_PATH.relative_to(REPO_ROOT)}")
-    print(f"[check] Android manifest: {ANDROID_MANIFEST_PATH.relative_to(REPO_ROOT)}")
-    print(f"[check] Windows exe package: {WINDOWS_EXE_CONFIG_PATH.relative_to(REPO_ROOT)}")
-    print(f"[check] Windows msix package: {WINDOWS_MSIX_CONFIG_PATH.relative_to(REPO_ROOT)}")
-    print(f"[check] Windows runner resources: {WINDOWS_RUNNER_RC_PATH.relative_to(REPO_ROOT)}")
-    print(f"[check] Windows main window: {WINDOWS_MAIN_CPP_PATH.relative_to(REPO_ROOT)}")
-
-    for observation in observations:
-        print(f"[observe] {observation}")
+    print(f"[check] product contract: {PRODUCT_CONTRACT_PATH}")
+    print(f"[check] runtime profile: {RUNTIME_PROFILE_PATH}")
+    print(f"[check] runtime artifacts: {RUNTIME_ARTIFACTS_PATH}")
+    print(f"[check] Android manifest: {ANDROID_MANIFEST_PATH}")
+    print(f"[check] Android build.gradle: {ANDROID_BUILD_GRADLE_PATH}")
+    print(f"[check] Windows release seed: {WINDOWS_RELEASE_CONFIG_PATH}")
 
     if failures:
         for failure in failures:

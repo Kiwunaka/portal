@@ -1,5 +1,6 @@
 "use client";
 
+import { adminButtonClass, adminPanelClass } from "@/components/admin/admin-shell";
 import { adminLoyaltyConfig, adminLoyaltyConfigUpdate, adminUserLoyaltyGrant, adminWheelConfig, adminWheelConfigUpdate, type AdminLoyaltyConfig, type AdminWheelConfig } from "@/lib/api";
 import { Dices, Loader2, RefreshCw, Save, Timer } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
@@ -152,7 +153,7 @@ export default function AdminBonusesPage() {
 
   return (
     <section className="space-y-5">
-      <article className="stat-card p-5 sm:p-6">
+      <article className={adminPanelClass("neutral")}>
         <div className="mb-1 flex flex-col gap-3 sm:flex-row sm:items-center">
           <div className="stat-icon stat-icon-amber">
             <Dices size={22} />
@@ -168,7 +169,7 @@ export default function AdminBonusesPage() {
       </article>
 
       <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr),minmax(280px,0.6fr)]">
-        <article className="glass-card p-5 space-y-4">
+        <article className={`${adminPanelClass("neutral")} space-y-4`}>
           {!config ? (
             <p className="text-sm text-slate-500">Загружаем настройки...</p>
           ) : (
@@ -181,9 +182,7 @@ export default function AdminBonusesPage() {
                       <button
                         key={preset.value}
                         type="button"
-                        className={`haptic-tap rounded-xl px-3 py-1.5 text-xs font-semibold transition-all ${
-                          config.preset === preset.value ? "bg-violet-600 text-white shadow-md shadow-violet-600/20" : "outline-btn"
-                        }`}
+                        className={`haptic-tap ${config.preset === preset.value ? adminButtonClass("primary", "xs") : adminButtonClass("ghost", "xs")} transition-all`}
                         onClick={() => setConfig((prev) => (prev ? { ...prev, preset: preset.value } : prev))}
                       >
                         {preset.label}
@@ -222,11 +221,11 @@ export default function AdminBonusesPage() {
               </div>
 
               <div className="flex flex-col gap-2 sm:flex-row">
-                <button className="btn-primary inline-flex items-center gap-2 rounded-xl px-5 py-2.5 text-sm font-semibold uppercase tracking-[0.12em]" type="button" onClick={() => void save()} disabled={busy}>
+                <button className={adminButtonClass("primary")} type="button" onClick={() => void save()} disabled={busy}>
                   {busy ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}
                   {busy ? "Сохраняем..." : "Сохранить"}
                 </button>
-                <button className="outline-btn inline-flex items-center gap-1.5 rounded-xl px-4 py-2 text-sm font-semibold" type="button" onClick={() => void load()}>
+                <button className={adminButtonClass("secondary")} type="button" onClick={() => void load()}>
                   <RefreshCw size={13} /> Перезагрузить
                 </button>
               </div>
@@ -247,7 +246,7 @@ export default function AdminBonusesPage() {
           ) : null}
         </article>
 
-        <article className="glass-card p-5">
+      <article className={adminPanelClass("neutral")}>
           <h3 className="mb-3 font-display text-lg font-bold">Распределение веса</h3>
           <p className="mb-3 text-xs text-slate-500">Сводка показывает, насколько часто выпадает каждый вариант в текущем наборе весов.</p>
           {weightBars.length === 0 ? (
@@ -301,7 +300,7 @@ export default function AdminBonusesPage() {
             className="w-full resize-none rounded-xl border border-violet-200/50 bg-white/80 px-3 py-2 font-mono text-xs outline-none dark:border-violet-500/30 dark:bg-slate-900/70"
             placeholder={"30:1:priority_support\n90:3:fast_resync\n180:7:vip_queue"}
           />
-          <button className="outline-btn inline-flex w-full items-center justify-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold sm:w-auto" type="button" onClick={() => void saveLoyalty()} disabled={busy}>
+            <button className={adminButtonClass("secondary")} type="button" onClick={() => void saveLoyalty()} disabled={busy}>
             Сохранить лояльность
           </button>
         </article>
@@ -321,7 +320,7 @@ export default function AdminBonusesPage() {
             placeholder="Дни уровня, например 30 / 90 / 180"
             className="w-full rounded-xl border border-violet-200/50 bg-white/80 px-3 py-2 text-sm outline-none dark:border-violet-500/30 dark:bg-slate-900/70"
           />
-          <button className="outline-btn inline-flex w-full items-center justify-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold" type="button" onClick={() => void grantLoyalty()} disabled={busy}>
+            <button className={adminButtonClass("secondary")} type="button" onClick={() => void grantLoyalty()} disabled={busy}>
             Выдать бонус
           </button>
         </article>

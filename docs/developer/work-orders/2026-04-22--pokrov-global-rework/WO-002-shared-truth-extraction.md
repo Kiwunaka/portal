@@ -1,5 +1,8 @@
 # WO-002 - Wave 1 Shared Truth Extraction
 
+> Retained as historical execution evidence for the 2026-04-22 rework wave.
+> Active client workflow truth now lives in `C:/Users/kiwun/Documents/ai/POKROV-app/`; bridge references remain evidence-only unless a current release-truth task says otherwise.
+
 ## WO Snapshot
 
 | Field | Value |
@@ -11,13 +14,13 @@
 | Priority | `P0` |
 | WO class | `mixed` |
 | Primary repo lane | `portal/master` |
-| Secondary repo lane | `legacy bridge main` |
+| Secondary repo lane | `bridge main (release evidence only)` |
 | Primary write roots | `shared/`, `copy/`, `portal_bot/`, `marketing/`, `webapp/` |
 | Secondary write roots | `external/client-fork/app/docs/` only if bridge docs need the new shared-truth note |
 | Dependencies | `WO-001` |
 | Orchestrator | `Codex in-session execution` |
 | Created | `2026-04-22` |
-| Last updated | `2026-04-22` |
+| Last updated | `2026-04-23` |
 
 ## Goal
 

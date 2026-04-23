@@ -1,5 +1,6 @@
 "use client";
 
+import { adminButtonClass, adminPanelClass } from "@/components/admin/admin-shell";
 import {
   adminAccessKeysIssue,
   adminPromoSlots,
@@ -86,7 +87,7 @@ function formatPlanMeta(days: number, deviceLimit: number): string {
 function StatusBanner({ tone, text }: { tone: "success" | "error"; text: string }) {
   const success = tone === "success";
   return (
-    <div className="stat-card flex items-center gap-3 p-4">
+    <div className={`${adminPanelClass(success ? "success" : "danger")} flex items-center gap-3`}>
       <div className={`stat-icon ${success ? "stat-icon-emerald" : "stat-icon-rose"}`}>
         {success ? <Check size={18} /> : <ShieldCheck size={18} />}
       </div>
@@ -243,7 +244,7 @@ export default function AdminPromosPage() {
 
   return (
     <section className="space-y-5">
-      <article className="glass-card p-5">
+      <article className={adminPanelClass("neutral")}>
         <h2 className="font-display text-xl font-bold">Access keys и promo slots</h2>
         <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">
           Эта панель больше не живёт в legacy gift/promo логике. Здесь оператор выпускает activation keys,
@@ -256,7 +257,7 @@ export default function AdminPromosPage() {
       {error ? <StatusBanner tone="error" text={error} /> : null}
 
       <div className="grid gap-5 md:grid-cols-3">
-        <article className="glass-card p-5">
+        <article className={adminPanelClass("neutral")}>
           <p className="text-[11px] uppercase tracking-[0.16em] text-slate-500">public scope</p>
           <h3 className="mt-2 font-display text-2xl font-semibold">Android + Windows</h3>
           <p className="mt-3 text-sm leading-6 text-slate-600 dark:text-slate-300">
@@ -265,7 +266,7 @@ export default function AdminPromosPage() {
           </p>
         </article>
 
-        <article className="glass-card p-5">
+        <article className={adminPanelClass("neutral")}>
           <p className="text-[11px] uppercase tracking-[0.16em] text-slate-500">free baseline</p>
           <h3 className="mt-2 font-display text-2xl font-semibold">
             {ACCESS_MATRIX.free_tier.location_code} • {ACCESS_MATRIX.free_tier.traffic_limit_gb} GB
@@ -276,7 +277,7 @@ export default function AdminPromosPage() {
           </p>
         </article>
 
-        <article className="glass-card p-5">
+        <article className={adminPanelClass("neutral")}>
           <p className="text-[11px] uppercase tracking-[0.16em] text-slate-500">hidden transport order</p>
           <h3 className="mt-2 font-display text-2xl font-semibold">VLESS → VMess → Trojan → XHTTP</h3>
           <p className="mt-3 text-sm leading-6 text-slate-600 dark:text-slate-300">
@@ -287,7 +288,7 @@ export default function AdminPromosPage() {
       </div>
 
       <div className="grid gap-5 xl:grid-cols-[1.05fr,0.95fr]">
-        <article className="glass-card p-5">
+        <article className={adminPanelClass("neutral")}>
           <div className="mb-4 flex items-center gap-3">
             <div className="stat-icon stat-icon-emerald">
               <KeyRound size={20} />
@@ -323,7 +324,7 @@ export default function AdminPromosPage() {
               type="button"
               onClick={() => void issueKeys()}
               disabled={issuing}
-              className="btn-primary rounded-xl px-4 py-3 text-sm font-semibold uppercase tracking-[0.12em] disabled:opacity-60"
+                    className={adminButtonClass("primary")}
             >
               {issuing ? "Выпускаем..." : "Issue"}
             </button>
@@ -342,7 +343,7 @@ export default function AdminPromosPage() {
                   <button
                     type="button"
                     onClick={() => void copyText(item.key)}
-                    className="outline-btn inline-flex items-center gap-2 rounded-xl px-3 py-2 text-xs font-semibold uppercase tracking-[0.12em]"
+                    className={adminButtonClass("secondary", "xs")}
                   >
                     <Copy size={14} />
                     Copy
@@ -380,7 +381,7 @@ export default function AdminPromosPage() {
               type="button"
               onClick={() => void lookupAccessKey()}
               disabled={lookupBusy}
-              className="outline-btn rounded-xl px-4 py-3 text-sm font-semibold uppercase tracking-[0.12em] disabled:opacity-60"
+                    className={adminButtonClass("secondary")}
             >
               {lookupBusy ? "Проверяем..." : "Lookup"}
             </button>
@@ -400,7 +401,7 @@ export default function AdminPromosPage() {
         </article>
       </div>
 
-      <article className="glass-card p-5">
+      <article className={adminPanelClass("neutral")}>
         <div className="mb-4 flex items-center gap-3">
           <div className="stat-icon stat-icon-amber">
             <ShieldCheck size={20} />
@@ -439,7 +440,7 @@ export default function AdminPromosPage() {
               type="button"
               onClick={() => void loadPromoSlots()}
               disabled={loading}
-              className="outline-btn inline-flex items-center gap-2 rounded-xl px-3 py-2 text-xs font-semibold uppercase tracking-[0.12em] disabled:opacity-60"
+                    className={adminButtonClass("secondary", "xs")}
             >
               <RefreshCw size={14} />
               Refresh
@@ -448,7 +449,7 @@ export default function AdminPromosPage() {
               type="button"
               onClick={() => void savePromoSlots()}
               disabled={saving}
-              className="btn-primary inline-flex items-center gap-2 rounded-xl px-3 py-2 text-xs font-semibold uppercase tracking-[0.12em] disabled:opacity-60"
+                    className={adminButtonClass("primary", "xs")}
             >
               <Save size={14} />
               {saving ? "Saving..." : "Save"}

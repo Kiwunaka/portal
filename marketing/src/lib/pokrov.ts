@@ -5,6 +5,7 @@ export type {
 } from "../../../shared/portal-config";
 
 export {
+  getDesignTokenCssVariables,
   getDesignTokens,
 } from "../../../shared/design-tokens";
 

@@ -1,6 +1,6 @@
 # POKROV Orchestration Standard
 
-Last updated: 2026-04-22
+Last updated: 2026-04-23
 
 ## Document Status
 
@@ -153,12 +153,12 @@ Fields that must stay provisional until discovery, review, or real execution evi
 - `portal/master` is the policy label for the platform repo and maps to promotion into `origin/master`.
 - `portal/master` is canonical for `portal_bot/`, `webapp/`, `marketing/`, `shared/`, `infra/`, root `docs/`, and root `scripts/`.
 - `POKROV-app/main` is canonical for new client development work once that dedicated repo is bootstrapped locally.
-- `external/client-fork/app/` remains the explicit bridge/hotfix and current public release-truth lane until formal cutover.
-- Root docs land on `portal/master`. New client docs land on `POKROV-app/main` once bootstrapped; bridge docs under `external/client-fork/app/docs/` land in the legacy bridge repo only when bridge or release truth changes.
+- retained bridge artifacts and retired bootstrap notes are archive evidence only, not active completion lanes.
+- root docs land on `portal/master`. New client docs land on `POKROV-app/main` once bootstrapped; short archive summaries live under `docs/archive/client-lanes/`.
 - The root platform checkout on `master` is the clean baseline prospectively, not the preferred place for active concurrent execution.
 - Active execution should prefer explicit `codex/*` branches in dedicated worktrees so orchestrated tasks do not trample each other.
-- Machine-local branch names such as `main`, `portal-app`, and `app-next` are aliases or convenience lanes only. They are never authoritative roots by themselves.
-- `app-next/` is the temporary bootstrap-source workspace for `POKROV-app/main`; once Wave 0 policy is in force it is not the canonical completion target by itself.
+- machine-local branch names such as `main` and `portal-app` are aliases or convenience lanes only. They are never authoritative roots by themselves.
+- retired `app-next` material is bootstrap provenance only; it is never a canonical completion target.
 - Production truth stays in Postgres plus the locked shared facts under `shared/`.
 - A green automated check does not close a WO if manual checks, release blockers, or missing docs updates remain open.
 - The executor never self-closes the WO.
@@ -186,7 +186,8 @@ Use when all edits stay under the platform lane:
 Use when all edits stay under one client lane:
 
 - `C:/Users/kiwun/Documents/ai/POKROV-app/**` for new client development truth
-- `external/client-fork/app/**` only when the WO is explicitly bridge, hotfix, compatibility, or release-truth work
+- `docs/archive/client-lanes/**` only when a WO updates short archive summaries or provenance notes
+- retained bridge-bundle evidence under `C:/Users/kiwun/Documents/ai/POKROV-app/artifacts/releases/bridge/**` only when a WO explicitly handles rollback or handoff archives
 
 ### Mixed
 
@@ -216,8 +217,8 @@ Branch and worktree policy for orchestrated execution:
 - prefer dedicated worktrees on explicit `codex/*` branches for execution, fix cycles, and review reproduction
 - record which worktree and branch carried each lane of work when a `WO` is mixed or when multiple executors run in parallel
 - machine-local names such as `main`, `portal-app`, and `app-next` may exist on one workstation for convenience, but they do not redefine lane ownership or promotion targets
-- `app-next/` may hold bootstrap-source material, but it is not the long-term client completion target once `POKROV-app` exists
-- record legacy bridge-lane work explicitly when a WO lands in `external/client-fork/app/` for release-truth reasons
+- retired bootstrap material may hold provenance notes, but it is not a client completion target once `POKROV-app` exists
+- record retained bridge evidence explicitly as archive evidence instead of inventing a live bridge lane
 
 ## Routing Policy
 
@@ -236,7 +237,8 @@ Routing guardrails:
 
 - if the write scope stays in root `docs/`, `portal_bot/`, `webapp/`, `marketing/`, `shared/`, `infra/`, or root `scripts/`, route to the platform lane even if a machine-local branch is named `main`
 - if the write scope stays under `C:/Users/kiwun/Documents/ai/POKROV-app/`, route to the new client lane
-- if the write scope stays under `external/client-fork/app/`, route to the bridge lane explicitly instead of pretending it is the future client canon
+- if the write scope stays under retired bridge material, escalate and decide whether the task is archive maintenance, rollback forensics, or an explicit exception; do not route it as a normal client lane
+- if the write scope references retired bootstrap material, decide whether it is historical evidence for platform docs or for the active `POKROV-app` lane; do not route it as an independent client truth
 - if multiple lanes change, require separate lane evidence and promotion notes instead of assuming one branch transitively updates the others
 
 ## WO Lifecycle
@@ -340,7 +342,7 @@ Promotion rule:
 - promotion for platform-scope work means `portal/master` policy alignment on `origin/master`
 - promotion for new-client work means `POKROV-app/main`
 - promotion for bridge work means the legacy bridge repo on its current `main` line
-- `app-next/` does not satisfy canonical client-lane completion by itself once Wave 0 policy is in force
+- retired bootstrap or bridge archives do not satisfy canonical client-lane completion by themselves
 
 ## Reporting Format
 

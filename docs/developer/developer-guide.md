@@ -1,6 +1,6 @@
 # Developer Guide
 
-Last updated: 2026-04-22
+Last updated: 2026-04-23
 
 ## Document Status
 
@@ -33,11 +33,13 @@ For client work, also read:
 
 - [C:/Users/kiwun/Documents/ai/POKROV-app/docs/README.md](C:/Users/kiwun/Documents/ai/POKROV-app/docs/README.md)
 - [C:/Users/kiwun/Documents/ai/POKROV-app/docs/operations/cutover-readiness.md](C:/Users/kiwun/Documents/ai/POKROV-app/docs/operations/cutover-readiness.md)
-- [app-next/docs/README.md](C:/Users/kiwun/Documents/ai/VPN/app-next/docs/README.md)
-- [app-next/docs/operations/cutover-readiness.md](C:/Users/kiwun/Documents/ai/VPN/app-next/docs/operations/cutover-readiness.md)
-- [external/client-fork/app/docs/README.md](C:/Users/kiwun/Documents/ai/VPN/external/client-fork/app/docs/README.md)
 - [Monitoring And Visibility](C:/Users/kiwun/Documents/ai/VPN/docs/operations/monitoring-and-visibility.md)
 - [Publishing And Signing Guide](C:/Users/kiwun/Documents/ai/VPN/docs/operations/publishing-and-signing-guide.md)
+
+Add these only when needed:
+
+- [app-next Bootstrap Summary](C:/Users/kiwun/Documents/ai/VPN/docs/archive/client-lanes/app-next-bootstrap-summary.md) for historical bootstrap evidence
+- [Legacy Bridge Retirement Summary](C:/Users/kiwun/Documents/ai/VPN/docs/archive/client-lanes/legacy-bridge-retirement-summary.md) for rollback or artifact-forensics context
 
 For web-admin or marketing work, also read:
 
@@ -74,29 +76,30 @@ Contains the new canonical client-repo target for `Android` and `Windows`.
 Client lane note:
 
 - `POKROV-app/main` is the new client development truth for this rework
-- that checkout is now bootstrapped locally from `app-next/`, so new client product-direction work should land here by default
+- the retired `app-next` bootstrap snapshot already landed here, so new client product-direction work should land here by default
 
-### App-next bootstrap source workspace
+### Historical bootstrap reference
 
-- [C:/Users/kiwun/Documents/ai/VPN/app-next](C:/Users/kiwun/Documents/ai/VPN/app-next)
+- [app-next Bootstrap Summary](C:/Users/kiwun/Documents/ai/VPN/docs/archive/client-lanes/app-next-bootstrap-summary.md)
 
-Contains the in-repo source workspace that feeds the initial `POKROV-app` bootstrap snapshot.
+Records the retired bootstrap lane that fed the initial `POKROV-app` snapshot.
 
-Bootstrap note:
+Reference note:
 
-- treat `app-next/` as retained migration source and validation material after the bootstrap
-- do not treat it as the long-term promotion target now that `POKROV-app/main` is live locally
+- treat `app-next` as historical provenance only
+- do not route new client product-direction work through the deleted alias or its old docs
 
-### Legacy bridge client workspace
+### Bridge archive summary
 
-- [C:/Users/kiwun/Documents/ai/VPN/external/client-fork/app](C:/Users/kiwun/Documents/ai/VPN/external/client-fork/app)
+- [Legacy Bridge Retirement Summary](C:/Users/kiwun/Documents/ai/VPN/docs/archive/client-lanes/legacy-bridge-retirement-summary.md)
 
-Contains the retained legacy Flutter fork for Android and Windows. Legacy filenames remain in some canonical paths, but current Windows release identity, executable naming, and packaged artifact canon target `POKROV` / `pokrov`.
+Tracks the retired bridge lane and the retained mirrored bundle lineage.
 
-Bridge lane note:
+Archive note:
 
-- `external/client-fork/app` is the bridge/hotfix workspace and current public Android+Windows release/build/signing truth until formal cutover
-- do not use it as the default destination for new product-direction client work
+- active workflow truth now lives in `POKROV-app`
+- use retained bridge artifacts only for rollback-safe evidence, checksum comparison, or release forensics
+- do not treat the old bridge repo as a normal completion lane
 
 Current scope note:
 
@@ -109,14 +112,12 @@ Current scope note:
 - `POKROV-app/main` is the policy label for the new client development lane and should map to the `main` branch of the dedicated `POKROV-app` repository
 - `portal/master` remains the only canonical git truth for `backend`, `webapp`, `marketing`, root `docs`, `shared`, `infra`, and root `scripts`
 - `POKROV-app/main` is the canonical git truth for new `Android` and `Windows` client development work
-- `external/client-fork/app` stays on its current `main` line as the explicit bridge/hotfix and release-truth lane until formal cutover
-- root docs in this workspace, including `AGENTS.md` and `docs/*`, always land on the platform lane; new client docs belong in `POKROV-app/docs/*`, while `external/client-fork/app/docs/*` are bridge docs only
+- root docs in this workspace, including `AGENTS.md` and `docs/*`, always land on the platform lane; new client docs belong in `POKROV-app/docs/*`
 - prospectively treat the root workspace on `master` as the clean platform baseline, and promote platform changes back to `origin/master`
 - promote new client development changes through `POKROV-app/main`
-- promote legacy bridge, hotfix, packaging, and release-runbook changes through `external/client-fork/app` on its current `main` line
-- `main`, `portal-app`, and `app-next` are optional machine-local aliases or worktree names only; they are convenience labels, not authoritative roots or promotion targets
-- if `app-next` exists, treat it as the temporary bootstrap-source workspace for `POKROV-app`, not as a silent replacement for either the new client repo or the bridge lane
-- if a task changes platform, the new client repo, and/or the legacy bridge repo, push and report each affected canonical branch separately
+- archived bridge material does not define a promotion lane
+- `main` and `portal-app` are optional machine-local aliases or worktree names only; they are convenience labels, not authoritative roots or promotion targets
+- if a task changes the platform repo and the new client repo, push and report each affected canonical branch separately
 
 Shell note:
 
@@ -140,8 +141,8 @@ Current rules:
 - WOs route by `write-scope`, not by topic
 - `portal/master` remains the canonical truth label for the platform lane and maps to `origin/master`
 - `POKROV-app/main` remains the canonical truth label for the new client development lane
-- the legacy bridge repo must be called out explicitly when a WO lands in `external/client-fork/app/` for release-truth or hotfix reasons
-- mixed WOs must preserve separate git evidence for the platform lane, the new client lane, and the bridge lane when each is touched
+- any retained bridge evidence must be called out explicitly as archive evidence rather than as a live repo lane
+- mixed WOs must preserve separate git evidence for the platform lane and the new client lane when each is touched
 - the executor does not self-close the WO
 - reviewers should run with fresh context
 - a green automated check does not close a WO when manual checks, deploy steps, Android localhost audit, or origin evidence still remain open
@@ -155,8 +156,8 @@ Current rules:
 - smart-connect shortlist selection stays inside those pool boundaries; premium profiles can expose up to `5` eligible non-free nodes, while free stays `NL-free` only
 - the client-side RTT upload contract is `POST /api/client/nodes/latency-samples`; it stores install-scoped diagnostic evidence and does not bypass `UserNode` pinning
 - the persisted split-tunnel contract is backend-owned through `route_mode`, `selected_apps`, `requires_elevated_privileges`, and mirrored `route_policy.*` fields; do not document it as client-only local state
-- additive browser email auth lives under `/api/auth/email/*` and should not be treated as release-ready unless transactional sender identity and delivery-confirmation/webhook visibility are live
-- if that delivery path is not live, web and cabinet should expose a truthful unavailable state instead of acting like verify or reset mail works
+- additive browser email auth lives under `/api/auth/email/*`, but public docs and entry copy must keep it marked `soon` until transactional sender identity, delivery confirmation, and the public launch path are live
+- before that launch, web and cabinet should expose a truthful unavailable or `soon` state instead of acting like verify or reset mail works
 - support is a real `/api/tickets*` contract, including `/api/tickets/uploads` for authenticated browser attachments; do not describe it as an imaginary live chat
 - transport rollout is additive: `legacy_reality_fallback` stays the baseline until the canary completes, while `grpc_443_primary` is the allowlisted app-first primary for rollout cohorts
 - `reserve_xhttp_cdn` is the dormant reserve transport profile; it stays disabled by default and is only for explicit allowlisted fallback
@@ -164,6 +165,8 @@ Current rules:
 - node shaping is repo-truth driven through `infra/node-qdisc-profiles.json` and the `remote_apply_node_qdisc.py` / `remote_node_qdisc_smoke.py` helpers, so treat qdisc changes as part of release verification instead of an informal operator tweak
 - public user-facing version labels across app, web, cabinet, and release notes must stay on `0.x.x-beta`; treat inherited strings like `2.5.7 dev` as regressions
 - when reporting node reachability during rollout work, keep `current-origin check`, `brain-origin check`, and `RU-origin check` separate instead of collapsing them into one status
+- versioned release metadata belongs under `C:/Users/kiwun/Documents/ai/POKROV-app/artifacts/releases/bridge/<version>/` for retained bridge lineage and under `.../artifacts/releases/pokrov-app/<version>/` for canonical client-lane bundles
+- the stable root-orchestrator pointer is `C:/Users/kiwun/Documents/ai/POKROV-app/artifacts/releases/release-handoff.json` when that file is maintained
 
 ## Backend Commands
 
@@ -199,8 +202,8 @@ Notes:
 - the full `scripts/release_orchestrator.py` path can chain local gates, optional `APP_*` sync, backend deploy, static deploy, optional rollout helpers, and brain-local verify, but it still does not publish binaries or replace separate external-origin evidence
 - latest verified local run: `python scripts/release_orchestrator.py --gates-only` exited `0` on `2026-04-13`; see `docs/audit-artifacts/release_gate_report.md` for the current local gate snapshot.
 - Add `--brain-ip 82.21.114.104` when you also want the predeploy node-readiness gate included in the same report.
-- `--release-env-file` cannot be combined with `--gates-only`; after client artifacts are published, use it with the full `release_orchestrator.py` flow to sync runtime download URLs before deploy or verify.
-- `scripts/client_security_smoke.py` is the repo-level static guardrail for default local-surface settings, RU preset groundwork, and known localhost control paths; it does not replace the required Android release-build reachability audit.
+- `--release-metadata-file` and `--release-env-file` cannot be combined with `--gates-only`; after client artifacts are published, use the full `release_orchestrator.py` flow to sync runtime download URLs before deploy or verify.
+- `scripts/client_security_smoke.py` is the repo-level static guardrail for the `POKROV-app` seed contract, Android host manifest, runtime-artifact pin, and Windows release-seed expectations; it does not replace the required Android release-build reachability audit.
 - set `ANDROID_AUDIT_SERIAL=<device-serial>` before `release_gate_check.py` when you want the opt-in adb runtime localhost audit folded into the same report
 - set `ANDROID_AUDIT_CONNECT_WAIT_SEC` and `ANDROID_AUDIT_DISCONNECT_WAIT_SEC` when that adb localhost audit needs non-default timing
 - without `ANDROID_AUDIT_SERIAL`, a green repo/static gate run still does not authorize Android public publication
@@ -251,44 +254,45 @@ python ..\scripts\ui_visual_smoke.py
 Marketing release rules:
 
 - public acquisition CTA must never route users into raw `connect.pokrov.space`
+- public acquisition CTA priority is checkout-first on marketing surfaces; install help and cabinet-open links are secondary intent-driven exits
 - authenticated WebApp download CTA should use `/api/client/apps` runtime URLs first, then the `APP_*` / docs fallback
 - marketing download CTA is build-time and must be rebuilt/redeployed when `NEXT_PUBLIC_APP_*` public URLs change
 - public `Открыть кабинет` CTA should point to `https://app.pokrov.space/`
 - pricing CTA should enter through public `/checkout/` with plan context, not directly through `pay.pokrov.space`
+- public-facing marketing and cabinet copy should stay in calm user language rather than transport jargon, raw profile labels, or operator shorthand
 - `robots.ts`, `sitemap.ts`, `manifest.ts`, favicon, apple icon, and share-preview assets are part of the release contract, not optional polish
 
 ## Frontend Surface Map
 
 After the current premium/SEO/copy pass, keep this split explicit:
 
-- `marketing/` owns the public homepage, `/checkout/`, offer/privacy pages, indexable SEO landings, and site metadata surfaces
-- `webapp/` owns `app.pokrov.space` entry, dashboard, pricing, subscription checkout continuation, downloads, devices, support, and admin
+- `marketing/` owns the public homepage, checkout-first `/checkout/`, install help, offer/privacy pages, indexable SEO landings, and site metadata surfaces
+- `webapp/` owns `app.pokrov.space` entry, dashboard, subscription, devices, statistics, support, downloads, redeem, checkout continuation, and admin
 - `connect.pokrov.space` is config delivery only and must not be treated as a public acquisition page
 - when a task spans both surfaces, verify the handoff `pokrov.space -> app.pokrov.space` instead of reviewing each side in isolation
 
-Current bridge-period client release verification from the repository root:
+Current platform-owned client gate verification from the repository root:
 
 ```powershell
+python scripts/run_client_release_gate.py preflight
 python scripts/run_client_release_gate.py test --suite portal
 python scripts/run_client_release_gate.py test --suite full
 python scripts/run_client_release_gate.py build --target windows
 python scripts/run_client_release_gate.py build --target android-apk
 python scripts/run_client_release_gate.py build --target android-aab
-dart pub global run msix:create --build-windows false
-Push-Location external/client-fork/app
-powershell -NoProfile -ExecutionPolicy Bypass -File ".\scripts\package_windows.ps1"
-Pop-Location
 ```
 
 Client release-gate note:
 
 - Android stays release-blocked until a release-build audit proves there is no unauthenticated localhost proxy, DNS, command, or admin/control surface exposed to other apps
-- run `python scripts/client_security_smoke.py` before broader client release verification so default local-surface settings and RU preset groundwork fail fast in CI or local gates
-- `run_client_release_gate.py` enters `external/client-fork/app` automatically; on Windows it bootstraps `flutter build windows --release` first when `sqlite3.dll` is missing for Flutter tests
-- raw Android outputs live under `external/client-fork/app/build/app/outputs/...`; raw Windows outputs live under `external/client-fork/app/build/windows/x64/runner/Release/...`
-- `python scripts/run_client_release_gate.py build --target android-apk` and `--target android-aab` also refresh the canonical Android copies in `external/client-fork/app/out/`
-- client `out/` is the canonical local release bundle: Android copies come from `run_client_release_gate.py`, Windows files from `external/client-fork/app/scripts/package_windows.ps1`
-- after the final green release rerun, keep `external/client-fork/app/out/` as the canonical local release bundle and treat raw client `build/` and `dist/` outputs as disposable local artifacts
+- run `python scripts/client_security_smoke.py` before broader client release verification so the `POKROV-app` seed contract, Android host manifest, runtime-artifact pin, and Windows release seed fail fast in CI or local gates
+- `run_client_release_gate.py` now targets `C:/Users/kiwun/Documents/ai/POKROV-app` by default and fails fast when that workspace is missing or incomplete
+- `python scripts/run_client_release_gate.py preflight` verifies the `POKROV-app` seed workspace layout, wrapper scripts, host shells, and seed configs before client gates run
+- `python scripts/run_client_release_gate.py test --suite full` delegates to `C:/Users/kiwun/Documents/ai/POKROV-app/scripts/run-tests.ps1`
+- `python scripts/run_client_release_gate.py test --suite portal` bootstraps the workspace and runs the narrower Flutter lane in `packages/app_shell`, `apps/android_shell`, and `apps/windows_shell`
+- raw Android outputs for the wrapper now live under `C:/Users/kiwun/Documents/ai/POKROV-app/apps/android_shell/build/app/outputs/...`
+- the Windows wrapper now delegates to `C:/Users/kiwun/Documents/ai/POKROV-app/scripts/build-windows-release.ps1 -SyncRuntime -SkipTests -SkipAnalyze` and expects the unsigned zip plus manifest under `C:/Users/kiwun/Documents/ai/POKROV-app/apps/windows_shell/build/release_bundle/`
+- retained bridge bundles live under `C:/Users/kiwun/Documents/ai/POKROV-app/artifacts/releases/bridge/`; they are archive evidence, not the active release lane
 - run `python scripts/android_localhost_audit.py --serial <device-serial> --connect-wait-sec 30 --disconnect-wait-sec 15` on a release-installed Android build for the manual-assisted localhost listener audit
 - if you fold Android build targets into `release_gate_check.py`, export `ANDROID_AUDIT_SERIAL=<physical-device-serial>` first or let the gate fail loudly instead of treating a repo/static-only run as release-ready
 - public client verification for this wave must cover routing presets `Global` and `All except RU`, plus DNS split and leak checks on Android and Windows
@@ -310,7 +314,7 @@ Windows packaging guardrails:
 
 ## Documentation Rules
 
-Whenever behavior, contracts, support flow, or release flow changes, update the canonical docs in the same task.
+Whenever behavior, contracts, support flow, release flow, cabinet IA, or public CTA priority changes, update the canonical docs in the same task.
 
 When a task touches transport catalog behavior, `network_rollout_config`, or node shaping, keep the rollout docs aligned in the same change set:
 
@@ -348,14 +352,16 @@ Minimum docs to touch when relevant:
 - client-specific contracts
 - publishing and signing guide when distribution, certificates, store status, or artifact names change
 - monitoring and visibility guide when hostname policy, probe expectations, support telemetry, or operator visibility changes
-- shared copy/catalog sources when public CTA text, checkout hosts, or cross-surface copy changes
+- shared copy/catalog sources when public CTA text, checkout hosts, cross-surface copy, or cabinet/nav labels change
 
 Shared-surface rule:
 
-- treat `shared/product-facts.json`, `shared/public-urls.json`, and `shared/design-tokens.json` as the only non-localized source for locked product, host, and design facts
+- treat `shared/copy.ts`, `copy/catalog.ru.json`, `shared/product-facts.json`, `shared/public-urls.json`, and `shared/design-tokens.json` as the only governed source set for cross-surface copy, host, product, and design facts
 - TypeScript reads those files directly through `shared/*.ts` adapters
 - Python reads those files through `portal_bot/shared_surface_facts.py`
-- Flutter currently syncs them through `scripts/sync_shared_surface_facts.py` into `external/client-fork/app/lib/features/portal/config/shared_surface_facts.dart` as bridge-period release truth; moving that sync target into `POKROV-app` is a later migration wave
+- `scripts/sync_shared_surface_facts.py` now syncs those facts into `C:/Users/kiwun/Documents/ai/POKROV-app/config/product-contract.seed.json`, `config/runtime-profile.seed.json`, and `config/platform-matrix.seed.json` by default
+- the legacy bridge Dart file remains compatibility-only through `scripts/sync_shared_surface_facts.py --target-lane bridge` or `--target-lane both`
+- release handoff metadata now belongs under `C:/Users/kiwun/Documents/ai/POKROV-app/artifacts/releases/`; the standard operator input is the versioned `release-links.env`, while stamped JSON manifests in `release-manifests/` remain supporting evidence unless a separate canonical metadata file is intentionally prepared
 
 ## RF Probe And Reserve Commands
 
@@ -401,7 +407,7 @@ Retained evidence and release bundles:
 
 - `ops-local/` when it contains operator evidence or probe snapshots
 - `docs/audit-artifacts/`
-- `external/client-fork/app/out/` bridge-period packaged release bundle
+- `C:/Users/kiwun/Documents/ai/POKROV-app/artifacts/releases/bridge/` retained bridge bundle archive
 - `.env` files
 - signing materials
 - merchant secrets

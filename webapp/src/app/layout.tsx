@@ -1,8 +1,9 @@
+import type { CSSProperties } from "react";
 import type { Metadata, Viewport } from "next";
-import { JetBrains_Mono, Manrope, Playfair_Display } from "next/font/google";
+import { JetBrains_Mono, Manrope } from "next/font/google";
 import Script from "next/script";
 
-import { CANONICAL_WEBAPP_URL } from "@/lib/portal";
+import { CANONICAL_WEBAPP_URL, getDesignTokenCssVariables } from "@/lib/portal";
 
 import { POKROV_LEGACY_THEME_STORAGE_KEYS, POKROV_THEME_STORAGE_KEY, pokrovBranding } from "./branding";
 import QaOverlayHost from "./qa-overlay-host";
@@ -10,7 +11,7 @@ import TelegramWebAppInit from "./telegram-webapp-init";
 import "./globals.css";
 
 const bodyFont = Manrope({ subsets: ["latin", "cyrillic"], variable: "--font-body" });
-const displayFont = Playfair_Display({ subsets: ["latin", "cyrillic"], variable: "--font-display" });
+const displayFont = Manrope({ subsets: ["latin", "cyrillic"], variable: "--font-display" });
 const mono = JetBrains_Mono({ subsets: ["latin", "cyrillic"], variable: "--font-mono" });
 
 export const metadata: Metadata = {
@@ -26,8 +27,8 @@ export const metadata: Metadata = {
 
 export const viewport: Viewport = {
   themeColor: [
-    { media: "(prefers-color-scheme: light)", color: "#f2ece1" },
-    { media: "(prefers-color-scheme: dark)", color: "#08110d" },
+    { media: "(prefers-color-scheme: light)", color: "#f7f3eb" },
+    { media: "(prefers-color-scheme: dark)", color: "#111715" },
   ],
 };
 
@@ -36,10 +37,13 @@ const THEME_STORAGE_KEYS = [POKROV_THEME_STORAGE_KEY, ...POKROV_LEGACY_THEME_STO
 const THEME_INIT_SCRIPT = `(function(){try{var keys=${JSON.stringify(THEME_STORAGE_KEYS)};var saved=null;for(var i=0;i<keys.length;i++){var value=window.localStorage.getItem(keys[i]);if(value==="light"||value==="dark"){saved=value;break;}}if(saved&&window.localStorage.getItem(keys[0])!==saved){window.localStorage.setItem(keys[0],saved);}var prefersDark=window.matchMedia("(prefers-color-scheme: dark)").matches;document.documentElement.classList.toggle("dark",saved?saved==="dark":prefersDark);}catch(e){}})();`;
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
+  const designTokenVars = getDesignTokenCssVariables("cabinet") as CSSProperties;
+
   return (
     <html lang="ru" className="scroll-smooth" suppressHydrationWarning>
       <body
-        className={`${bodyFont.variable} ${displayFont.variable} ${mono.variable} relative min-h-screen overflow-x-hidden bg-[#f2ece1] font-body text-slate-900 antialiased selection:bg-emerald-700/15 selection:text-slate-950 dark:bg-[#08110d] dark:text-slate-100 dark:selection:bg-emerald-300/20 dark:selection:text-slate-50`}
+        className={`${bodyFont.variable} ${displayFont.variable} ${mono.variable} relative min-h-screen overflow-x-hidden bg-[var(--bg)] font-body text-[var(--text)] antialiased selection:bg-emerald-700/12 selection:text-slate-950 dark:bg-[#111715] dark:text-[var(--text-dark)] dark:selection:bg-emerald-300/18 dark:selection:text-slate-50`}
+        style={designTokenVars}
         suppressHydrationWarning
       >
         <Script src="https://telegram.org/js/telegram-web-app.js" strategy="beforeInteractive" />
@@ -54,7 +58,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <TelegramWebAppInit />
         <QaOverlayHost enabled={QA_OVERLAY_ENABLED} />
         <div
-          className="pointer-events-none fixed inset-0 -z-20 bg-[radial-gradient(circle_at_top_left,_rgba(11,72,50,0.16),_transparent_33%),radial-gradient(circle_at_bottom_right,_rgba(197,138,42,0.14),_transparent_30%),linear-gradient(180deg,_rgba(255,255,255,0.48),_rgba(242,236,225,0.96))] dark:bg-[radial-gradient(circle_at_top_left,_rgba(36,117,82,0.18),_transparent_28%),radial-gradient(circle_at_bottom_right,_rgba(197,138,42,0.1),_transparent_24%),linear-gradient(180deg,_rgba(8,17,13,0.98),_rgba(7,14,11,1))]"
+          className="pointer-events-none fixed inset-0 -z-20 bg-[radial-gradient(circle_at_top_left,_rgba(32,103,79,0.05),_transparent_28%),linear-gradient(180deg,_rgba(255,255,255,0.34),_rgba(247,243,235,0.96))] dark:bg-[radial-gradient(circle_at_top_left,_rgba(45,129,101,0.1),_transparent_26%),linear-gradient(180deg,_rgba(17,23,21,0.98),_rgba(14,18,17,1))]"
           aria-hidden="true"
         />
         <div className="grain" aria-hidden="true" />

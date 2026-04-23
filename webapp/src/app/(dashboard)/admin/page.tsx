@@ -1,39 +1,30 @@
 "use client";
 
 import AppRouteLink from "@/components/app-route-link";
+import {
+  AdminBadge,
+  AdminEmptyState,
+  AdminMetricStrip,
+  AdminPanelHeader,
+  adminButtonClass,
+  adminInsetPanelClass,
+  adminPanelClass,
+} from "@/components/admin/admin-shell";
 import { usePortalSession } from "@/lib/session";
 import { ADMIN_NAV_GROUPS } from "./nav";
 
 function AdminHomeSkeleton() {
   return (
-    <section className="space-y-5" aria-busy="true" aria-live="polite">
-      {Array.from({ length: 3 }).map((_, groupIndex) => (
-        <section key={groupIndex} className="glass-card rounded-3xl p-5 sm:p-6">
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-            <div className="min-w-0 flex-1">
-              <div className="h-3 w-28 animate-pulse rounded-full bg-slate-200 dark:bg-white/10" />
-              <div className="mt-4 h-8 w-52 animate-pulse rounded-full bg-slate-200 dark:bg-white/10" />
-              <div className="mt-4 space-y-2">
-                <div className="h-4 w-full animate-pulse rounded-full bg-slate-200 dark:bg-white/10" />
-                <div className="h-4 w-5/6 animate-pulse rounded-full bg-slate-200 dark:bg-white/10" />
-              </div>
-            </div>
-            <div className="h-11 w-11 animate-pulse rounded-2xl bg-violet-600/10 dark:bg-violet-500/15" />
-          </div>
-
-          <div className="mt-5 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-            {Array.from({ length: 3 }).map((_, itemIndex) => (
-              <div key={itemIndex} className="glass-card h-28 rounded-2xl border border-white/40 px-4 py-4 dark:border-white/10">
-                <div className="h-5 w-32 animate-pulse rounded-full bg-slate-200 dark:bg-white/10" />
-                <div className="mt-4 space-y-2">
-                  <div className="h-4 w-full animate-pulse rounded-full bg-slate-200 dark:bg-white/10" />
-                  <div className="h-4 w-4/5 animate-pulse rounded-full bg-slate-200 dark:bg-white/10" />
-                </div>
-              </div>
-            ))}
-          </div>
-        </section>
-      ))}
+    <section className="space-y-4" aria-busy="true" aria-live="polite">
+      <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+        {Array.from({ length: 4 }).map((_, index) => (
+          <div key={index} className="h-24 animate-pulse rounded-[1rem] bg-[#111922]" />
+        ))}
+      </div>
+      <div className="grid gap-4 xl:grid-cols-[minmax(0,1.35fr),minmax(320px,0.65fr)]">
+        <article className="h-[420px] animate-pulse rounded-[1rem] border border-[#1f2c37] bg-[#0d141b]" />
+        <article className="h-[420px] animate-pulse rounded-[1rem] border border-[#1f2c37] bg-[#0d141b]" />
+      </div>
     </section>
   );
 }
@@ -45,40 +36,149 @@ export default function AdminHomePage() {
     return <AdminHomeSkeleton />;
   }
 
-  return (
-    <section className="space-y-5">
-      {ADMIN_NAV_GROUPS.map((group) => (
-        <section key={group.id} className="glass-card rounded-3xl p-5 sm:p-6">
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-            <div className="min-w-0">
-              <p className="font-mono text-xs uppercase tracking-[0.14em] text-violet-500 dark:text-violet-300">
-                {group.primaryHint}
-              </p>
-              <h2 className="mt-2 font-display text-2xl font-semibold">{group.label}</h2>
-              <p className="mt-2 max-w-3xl text-sm text-slate-600 dark:text-slate-300">{group.description}</p>
-            </div>
-            <div className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-violet-600/10 text-violet-600 dark:bg-violet-500/15 dark:text-violet-200">
-              <span className="material-symbols-rounded">{group.icon}</span>
-            </div>
-          </div>
+  const totalLanes = ADMIN_NAV_GROUPS.reduce((sum, group) => sum + group.items.length, 0);
 
-          <div className="mt-5 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-            {group.items.map((item) => (
-              <AppRouteLink
-                key={item.href}
-                href={item.href}
-                className="glass-card haptic-tap rounded-2xl border border-white/40 px-4 py-4 transition hover:scale-[1.01] hover:border-violet-200/70 dark:border-white/10 dark:hover:border-violet-500/30"
-              >
-                <div className="flex min-w-0 items-center gap-2">
-                  <span className="material-symbols-rounded text-violet-600 dark:text-violet-300">{item.icon}</span>
-                  <h3 className="min-w-0 truncate font-display text-lg font-semibold">{item.label}</h3>
+  return (
+    <section className="space-y-4">
+      <article className={adminPanelClass("neutral")}>
+        <AdminPanelHeader
+          eyebrow="операторская карта"
+          title="Оперативные категории"
+          description="Сводка по админке без лишнего шума: какие рабочие зоны открыты, куда идти первым экраном и где лежат очереди по смене."
+          actions={
+            <AppRouteLink href="/admin/dashboard" className={adminButtonClass("primary", "sm")}>
+              Открыть сводку
+            </AppRouteLink>
+          }
+        />
+        <div className="flex flex-wrap gap-2">
+          <AdminBadge tone="success">Веб-админка — основной операторский интерфейс. Telegram используйте только для быстрых fallback-действий.</AdminBadge>
+        </div>
+      </article>
+
+      <AdminMetricStrip
+        items={[
+          {
+            label: "Категории",
+            value: ADMIN_NAV_GROUPS.length,
+            hint: "Крупные рабочие области внутри админки.",
+          },
+          {
+            label: "Активные разделы",
+            value: totalLanes,
+            hint: "Маршруты, доступные оператору сейчас.",
+            tone: "accent",
+          },
+          {
+            label: "Первый экран",
+            value: "Сводка",
+            hint: "Используйте /admin/dashboard как основную точку входа в смену.",
+            tone: "success",
+          },
+          {
+            label: "Режим",
+            value: "Utility",
+            hint: "Только статусы, очереди, таблицы и действия.",
+          },
+        ]}
+      />
+
+      <div className="grid gap-4 xl:grid-cols-[minmax(0,1.35fr),minmax(320px,0.65fr)]">
+        <section className={adminPanelClass("neutral")}>
+          <AdminPanelHeader
+            eyebrow="категории"
+            title="Каталог рабочих зон"
+            description="Слева быстрый обзор по всем admin-направлениям. Открывайте раздел напрямую, если уже знаете тип задачи."
+          />
+
+          <div className="space-y-3">
+            {ADMIN_NAV_GROUPS.map((group) => (
+              <section key={group.id} className={adminInsetPanelClass}>
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <h2 className="text-sm font-semibold text-slate-50">{group.label}</h2>
+                    <p className="mt-1 text-xs leading-5 text-slate-400">{group.description}</p>
+                  </div>
+                  <AdminBadge tone="accent">{group.items.length} экр.</AdminBadge>
                 </div>
-                <p className="mt-2 text-sm leading-relaxed text-slate-600 dark:text-slate-300">{item.summary}</p>
-              </AppRouteLink>
+
+                {group.items.length ? (
+                  <div className="mt-3 overflow-hidden rounded-[0.9rem] border border-[#22303c]">
+                    {group.items.map((item, index) => (
+                      <AppRouteLink
+                        key={item.href}
+                        href={item.href}
+                        className={`block bg-[#0b1218] px-3 py-3 transition hover:bg-[#101821] ${index > 0 ? "border-t border-[#22303c]" : ""}`}
+                      >
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="min-w-0">
+                            <div className="flex items-center gap-2">
+                              <span className="material-symbols-rounded text-sm text-slate-300" style={{ fontSize: "16px" }}>
+                                {item.icon}
+                              </span>
+                              <h3 className="text-sm font-semibold text-slate-100">{item.label}</h3>
+                            </div>
+                            <p className="mt-1 text-xs leading-5 text-slate-500">{item.summary}</p>
+                          </div>
+                          <span className="text-[11px] font-semibold text-slate-500">Открыть</span>
+                        </div>
+                      </AppRouteLink>
+                    ))}
+                  </div>
+                ) : (
+                  <AdminEmptyState
+                    className="mt-3 min-h-[120px]"
+                    title="Разделы пока не настроены"
+                    description="Для этой категории ещё нет рабочих admin-маршрутов."
+                  />
+                )}
+              </section>
             ))}
           </div>
         </section>
-      ))}
+
+        <section className="space-y-4">
+          <article className={adminPanelClass("neutral")}>
+            <AdminPanelHeader
+              eyebrow="как заходить в смену"
+              title="Порядок просмотра"
+              description="Если нет срочного контекста, начинайте с одинаковой последовательности."
+            />
+            <div className="space-y-2 text-sm">
+              {[
+                "Сводка: очереди, ошибки, свежесть данных.",
+                "Пользователи: точечные кейсы, ручные действия, observer-сигналы.",
+                "Сеть: ноды, маршруты и инфраструктурные тревоги.",
+                "Обращения: открытые треды и статус ответа операторов.",
+              ].map((line) => (
+                <div key={line} className="rounded-[0.9rem] border border-[#22303c] bg-[#111922] px-3 py-2.5 text-slate-300">
+                  {line}
+                </div>
+              ))}
+            </div>
+          </article>
+
+          <article className={adminPanelClass("neutral")}>
+            <AdminPanelHeader
+              eyebrow="быстрые переходы"
+              title="Частые точки входа"
+              description="Переходы на рабочие экраны без лишнего клика через каталог."
+            />
+            <div className="grid gap-2">
+              {[
+                { href: "/admin/dashboard", label: "Сводка" },
+                { href: "/admin/users", label: "Пользователи" },
+                { href: "/admin/nodes", label: "Ноды" },
+                { href: "/admin/tickets", label: "Обращения" },
+              ].map((item) => (
+                <AppRouteLink key={item.href} href={item.href} className={adminButtonClass("secondary", "sm")}>
+                  {item.label}
+                </AppRouteLink>
+              ))}
+            </div>
+          </article>
+        </section>
+      </div>
     </section>
   );
 }

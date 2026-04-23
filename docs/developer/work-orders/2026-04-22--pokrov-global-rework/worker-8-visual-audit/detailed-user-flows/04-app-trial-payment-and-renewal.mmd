@@ -1,0 +1,80 @@
+flowchart TD
+  U["Пользователь хочет начать пользоваться"]
+
+  subgraph APPENTRY["Как попадает в приложение"]
+    S1["Скачал APK / EXE с /install/"]
+    S2["Скачал из /dashboard/downloads/"]
+    S3["Вернулся в приложение после оплаты"]
+  end
+
+  APP["POKROV-app"]
+
+  subgraph TRIAL["App-first старт"]
+    T1["Создаётся install_id"]
+    T2["Нажимает Try free"]
+    T3["POST /api/client/session/start-trial"]
+    T4["Получает session + client_policy + access + provisioning"]
+    T5["Выбирает route mode:<br/>Optimize everything / Only selected apps"]
+    T6["Quick Connect"]
+    T7["GET /api/client/profile/managed"]
+  end
+
+  subgraph ACCESS["Состояния доступа"]
+    A1["5-day premium trial"]
+    A2["Free Monthly"]
+    A3["Soft mode после исчерпания квоты"]
+    A4["Managed premium после оплаты"]
+  end
+
+  subgraph OPTIONAL["Что может сделать дополнительно"]
+    O1["Привязать Telegram"]
+    O2["Получить бонус +10 дней"]
+    O3["Открыть web cabinet"]
+    O4["Открыть support"]
+    O5["Открыть renewal / checkout"]
+  end
+
+  subgraph COMMERCE["Путь оплаты"]
+    C1["Сайт /checkout/ или cabinet renewal или Telegram"]
+    C2["Hosted checkout"]
+    C3["Activation key"]
+    C4["Redeem key в app / webapp"]
+    C5["Обновление unified access contract"]
+  end
+
+  U --> S1
+  U --> S2
+  U --> S3
+  S1 --> APP
+  S2 --> APP
+  S3 --> APP
+
+  APP --> T1
+  T1 --> T2
+  T2 --> T3
+  T3 --> T4
+  T4 --> T5
+  T5 --> T6
+  T6 --> T7
+
+  T4 --> A1
+  A1 --> A2
+  A2 --> A3
+
+  APP --> O1
+  O1 --> O2
+  APP --> O3
+  APP --> O4
+  APP --> O5
+
+  O5 --> C1
+  O3 --> C1
+  A2 --> C1
+  A3 --> C1
+  C1 --> C2
+  C2 --> C3
+  C3 --> C4
+  C4 --> C5
+  C5 --> A4
+  A4 --> T7
+  T7 --> T6

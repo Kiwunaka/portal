@@ -1,6 +1,6 @@
 # POKROV Workspace
 
-Last updated: 2026-04-15
+Last updated: 2026-04-23
 
 This repository is the main workspace for the `POKROV` platform:
 
@@ -9,7 +9,13 @@ This repository is the main workspace for the `POKROV` platform:
 - `marketing/` public site and legal pages
 - `scripts/` deploy, smoke, migration, and ops tooling
 - `docs/` canonical platform documentation
-- `external/client-fork/app/` `POKROV` Flutter client fork
+- dedicated client repo: `C:/Users/kiwun/Documents/ai/POKROV-app`
+
+Client lane note:
+
+- `C:/Users/kiwun/Documents/ai/POKROV-app` is the only active client development canon
+- `app-next/` in this workspace is retired local alias/bootstrap residue, not a real repo
+- legacy bridge material under `external/client-fork/app/` is retained only as historical rollback/evidence until cleanup completes; it is not active workflow truth
 
 ## Start Here
 
@@ -19,7 +25,7 @@ This repository is the main workspace for the `POKROV` platform:
 - Deployment and access: [docs/operations/deployment-and-access.md](C:/Users/kiwun/Documents/ai/VPN/docs/operations/deployment-and-access.md)
 - Developer workflow: [docs/developer/developer-guide.md](C:/Users/kiwun/Documents/ai/VPN/docs/developer/developer-guide.md)
 - User guide: [docs/user/portal-vpn-user-guide-ru.md](C:/Users/kiwun/Documents/ai/VPN/docs/user/portal-vpn-user-guide-ru.md)
-- Client docs: [external/client-fork/app/docs/README.md](C:/Users/kiwun/Documents/ai/VPN/external/client-fork/app/docs/README.md)
+- Client docs: [POKROV-app/docs/README.md](C:/Users/kiwun/Documents/ai/POKROV-app/docs/README.md)
 
 ## Current Product Facts
 
@@ -42,3 +48,4 @@ This repository is the main workspace for the `POKROV` platform:
 - Never commit secrets or private keys.
 - Production truth lives in Postgres from `DATABASE_URL`.
 - Root-level historical guides were moved under `docs/archive/`, and dated flat notes now live under `docs/archive/flat-docs/`; use the canonical docs above instead.
+- Retained operational evidence stays in `docs/audit-artifacts/` and `ops-local/`.

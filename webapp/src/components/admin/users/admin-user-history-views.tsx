@@ -1,5 +1,6 @@
 "use client";
 
+import { adminButtonClass, adminInsetPanelClass, adminTableShellClass } from "@/components/admin/admin-shell";
 import { fmtRuDate } from "@/app/(dashboard)/admin/nav";
 import type { AdminAuditRow, AdminUserKeyHistoryRow } from "@/lib/api";
 import { actionLabel, historyBadgeClass } from "./admin-users-format";
@@ -18,42 +19,45 @@ type AdminUserAuditViewProps = {
 
 export function AdminUserKeyHistoryView({ rows, busy, onReload }: AdminUserKeyHistoryViewProps) {
   return (
-    <div className="rounded-xl bg-white/70 p-3 text-sm dark:bg-white/10">
-      <div className="mb-2 flex items-center justify-between gap-2">
-        <p className="font-semibold">История ключей (сбросы / ротации / ресинк)</p>
-        <button className="outline-btn rounded-xl px-3 py-1.5 text-xs font-semibold" type="button" onClick={onReload} disabled={busy}>
-          Обновить
+    <div className={`${adminInsetPanelClass} mt-3 text-sm`}>
+      <div className="mb-3 flex items-center justify-between gap-2">
+        <div>
+          <p className="text-sm font-semibold text-slate-50">Key history</p>
+          <p className="mt-1 text-xs leading-5 text-slate-400">Low-level key operations, including resets, rotations, and resync actions across nodes.</p>
+        </div>
+        <button className={adminButtonClass("secondary", "xs")} type="button" onClick={onReload} disabled={busy}>
+          Reload
         </button>
       </div>
-      <p className="mb-3 text-xs text-slate-500">
-        Здесь видны низкоуровневые операции с ключами, чтобы быстро понять, когда доступ ротировали, сбрасывали, синхронизировали или переносили между нодами.
-      </p>
-      <div className="max-h-[44vh] overflow-auto">
-        <table className="min-w-full text-xs">
-          <thead>
-            <tr className="text-left text-slate-500">
-              <th className="px-2 py-2">Дата</th>
-              <th className="px-2 py-2">Действие</th>
-              <th className="px-2 py-2">Нода</th>
-              <th className="px-2 py-2">Актор</th>
-              <th className="px-2 py-2">Метаданные</th>
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map((row) => (
-              <tr key={row.id} className="border-t border-white/30 dark:border-white/10">
-                <td className="px-2 py-2 whitespace-nowrap">{fmtRuDate(row.created_at)}</td>
-                <td className="px-2 py-2">
-                  <span className={`badge ${historyBadgeClass(row.action)}`}>{actionLabel(row.action)}</span>
-                </td>
-                <td className="px-2 py-2">{row.node_code || "-"}</td>
-                <td className="px-2 py-2">{row.actor_tg_id || "-"}</td>
-                <td className="px-2 py-2 max-w-[260px] truncate">{row.meta ? JSON.stringify(row.meta) : ""}</td>
+
+      <div className={adminTableShellClass}>
+        <div className="max-h-[44vh] overflow-auto">
+          <table className="min-w-full text-xs">
+            <thead>
+              <tr className="border-b border-[#22303c] bg-[#101821] text-left text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500">
+                <th className="px-3 py-3">Date</th>
+                <th className="px-3 py-3">Action</th>
+                <th className="px-3 py-3">Node</th>
+                <th className="px-3 py-3">Actor</th>
+                <th className="px-3 py-3">Metadata</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
-        {!rows.length ? <p className="px-2 py-3 text-xs text-slate-500">История ключей пока пуста.</p> : null}
+            </thead>
+            <tbody>
+              {rows.map((row) => (
+                <tr key={row.id} className="border-t border-[#22303c]">
+                  <td className="px-3 py-3 whitespace-nowrap">{fmtRuDate(row.created_at)}</td>
+                  <td className="px-3 py-3">
+                    <span className={`badge ${historyBadgeClass(row.action)}`}>{actionLabel(row.action)}</span>
+                  </td>
+                  <td className="px-3 py-3">{row.node_code || "-"}</td>
+                  <td className="px-3 py-3">{row.actor_tg_id || "-"}</td>
+                  <td className="max-w-[260px] truncate px-3 py-3">{row.meta ? JSON.stringify(row.meta) : ""}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          {!rows.length ? <p className="px-3 py-4 text-xs text-slate-400">No key history yet.</p> : null}
+        </div>
       </div>
     </div>
   );
@@ -61,40 +65,43 @@ export function AdminUserKeyHistoryView({ rows, busy, onReload }: AdminUserKeyHi
 
 export function AdminUserAuditView({ rows, busy, onReload }: AdminUserAuditViewProps) {
   return (
-    <div className="rounded-xl bg-white/70 p-3 text-sm dark:bg-white/10">
-      <div className="mb-2 flex items-center justify-between gap-2">
-        <p className="font-semibold">Админ-аудит</p>
-        <button className="outline-btn rounded-xl px-3 py-1.5 text-xs font-semibold" type="button" onClick={onReload} disabled={busy}>
-          Обновить
+    <div className={`${adminInsetPanelClass} mt-3 text-sm`}>
+      <div className="mb-3 flex items-center justify-between gap-2">
+        <div>
+          <p className="text-sm font-semibold text-slate-50">Admin audit</p>
+          <p className="mt-1 text-xs leading-5 text-slate-400">Higher-level operator actions taken against the selected account inside admin surfaces.</p>
+        </div>
+        <button className={adminButtonClass("secondary", "xs")} type="button" onClick={onReload} disabled={busy}>
+          Reload
         </button>
       </div>
-      <p className="mb-3 text-xs text-slate-500">
-        В этой таблице записаны более высокоуровневые действия оператора над пользователем из admin-поверхностей.
-      </p>
-      <div className="max-h-[44vh] overflow-auto">
-        <table className="min-w-full text-xs">
-          <thead>
-            <tr className="text-left text-slate-500">
-              <th className="px-2 py-2">Дата</th>
-              <th className="px-2 py-2">Актор</th>
-              <th className="px-2 py-2">Действие</th>
-              <th className="px-2 py-2">Метаданные</th>
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map((row) => (
-              <tr key={row.id} className="border-t border-white/30 dark:border-white/10">
-                <td className="px-2 py-2 whitespace-nowrap">{fmtRuDate(row.created_at)}</td>
-                <td className="px-2 py-2">{row.actor_tg_id}</td>
-                <td className="px-2 py-2">
-                  <span className="badge badge-violet">{actionLabel(row.action)}</span>
-                </td>
-                <td className="px-2 py-2 max-w-[280px] truncate">{row.meta ? JSON.stringify(row.meta) : ""}</td>
+
+      <div className={adminTableShellClass}>
+        <div className="max-h-[44vh] overflow-auto">
+          <table className="min-w-full text-xs">
+            <thead>
+              <tr className="border-b border-[#22303c] bg-[#101821] text-left text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500">
+                <th className="px-3 py-3">Date</th>
+                <th className="px-3 py-3">Actor</th>
+                <th className="px-3 py-3">Action</th>
+                <th className="px-3 py-3">Metadata</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
-        {!rows.length ? <p className="px-2 py-3 text-xs text-slate-500">Записей аудита пока нет.</p> : null}
+            </thead>
+            <tbody>
+              {rows.map((row) => (
+                <tr key={row.id} className="border-t border-[#22303c]">
+                  <td className="px-3 py-3 whitespace-nowrap">{fmtRuDate(row.created_at)}</td>
+                  <td className="px-3 py-3">{row.actor_tg_id}</td>
+                  <td className="px-3 py-3">
+                    <span className="badge badge-violet">{actionLabel(row.action)}</span>
+                  </td>
+                  <td className="max-w-[280px] truncate px-3 py-3">{row.meta ? JSON.stringify(row.meta) : ""}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          {!rows.length ? <p className="px-3 py-4 text-xs text-slate-400">No audit records yet.</p> : null}
+        </div>
       </div>
     </div>
   );

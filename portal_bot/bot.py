@@ -307,8 +307,8 @@ FRIEND_GIFT_CAMPAIGN_KEY = (
 CHANNEL_PREMIUM_DAYS = max(1, int(os.getenv("CHANNEL_PREMIUM_DAYS", "10")))
 BOT_RUB_BUTTON_ENABLED = _env_bool("BOT_RUB_BUTTON_ENABLED", default=False)
 MAIN_CONNECT_CTA_LABELS = {
-    "a": "🚀 Запустить тест",
-    "b": "🚀 Запустить тест",
+    "a": "✨ Подобрать доступ",
+    "b": "✨ Подобрать доступ",
 }
 
 
@@ -1311,13 +1311,13 @@ def set_tos_accepted(tg_id: int) -> bool:
 
 def _tos_offer_text() -> str:
     return (
-        "📜 *Публичная оферта*\n\n"
-        "Перед использованием сервиса ознакомьтесь с условиями:\n\n"
+        "📜 *Условия использования*\n\n"
+        "Перед началом нужно принять простые условия:\n\n"
         "• Сервис предоставляется «как есть»\n"
         "• Пользователь сам несёт ответственность за соблюдение законов\n"
         "• Запрещено использование для противоправных действий\n"
         "• Возврат средств при блокировках не гарантируется\n\n"
-        "_Нажимая «Принимаю условия», вы соглашаетесь с полным текстом оферты._"
+        "_Нажимая «Принимаю условия», вы подтверждаете согласие с полным текстом оферты._"
     )
 
 
@@ -1838,10 +1838,10 @@ def _channel_bonus_offer_text() -> str:
     channel_name = _channel_name_for_url()
     channel_url = f"https://t.me/{channel_name}"
     return (
-        "🎁 *Бонус за подписку на канал*\n\n"
-        f"Подпишитесь на [КАНАЛ]({channel_url}) и получите *{CHANNEL_PREMIUM_DAYS} дней премиум-доступа*.\n"
-        "После подписки нажмите «Проверить и получить».\n\n"
-        "Если бонус не нужен, можно продолжить в бесплатном режиме."
+        "🎁 *Бонус за канал*\n\n"
+        f"Подпишитесь на [канал POKROV]({channel_url}) и получите *+{CHANNEL_PREMIUM_DAYS} дней полного доступа*.\n"
+        "Следующий шаг: после подписки нажмите «Проверить и получить».\n\n"
+        "Если не хотите делать это сейчас, можно продолжить без бонуса."
     )
 
 
@@ -2896,14 +2896,14 @@ async def check_subscription(user_id: int, bot: Bot) -> bool:
 
 TEXTS = {
     "welcome": (
-        "🛡 *POKROV VPN*\n\n"
-        f"{get_copy_text('bot.welcome', 'POKROV VPN помогает быстро начать работу через Telegram: понятный выбор плана, короткий путь к оплате и тёплая служба заботы рядом.')}\n\n"
-        "👇 *Нажмите кнопку ниже, чтобы продолжить:*"
+        "🛡 *POKROV*\n\n"
+        f"{get_copy_text('bot.welcome', 'Я помогу спокойно начать: открыть кабинет, взять 5 дней бесплатно или выбрать полный доступ, когда будете готовы.')}\n\n"
+        "👇 *Выберите следующий шаг:*"
     ),
     "choose_tariff": (
-        "💎 *Выберите уровень доступа*\n\n"
-        f"{get_copy_text('bot.choose_tariff', 'Выберите удобный план. В каждом уже видны срок доступа, лимит устройств и доступные страны.')}\n\n"
-        "👇 *Тарифные планы:*"
+        "💎 *Выберите удобный старт*\n\n"
+        f"{get_copy_text('bot.choose_tariff', 'Можно начать с 5 дней бесплатно или сразу открыть полный доступ. Я покажу сроки, цену и следующий шаг.')}\n\n"
+        "👇 *Доступные варианты:*"
     ),
     "pokrov_ready": (
         "✅ *Доступ разрешён*\n"
@@ -2911,36 +2911,35 @@ TEXTS = {
         "🔑 *Статус:* `АКТИВЕН`\n"
         "⏳ *Истекает:* `{expiry}`\n"
         "➖➖➖➖➖➖➖➖➖➖\n\n"
-        "Нажмите *«🌐 ОТКРЫТЬ POKROV VPN (WEB APP)»* для получения ключей доступа."
+        "Следующий шаг: откройте кабинет и возьмите ссылку для подключения."
     ),
     "already_active": (
-        "🛡 *Система активна*\n\n"
-        "Доступ уже активен и готов к работе.\n"
-        "📅 Действует до: `{expiry}`\n\n"
-        "Нужен ключ для нового устройства? Жми кнопку ниже."
+        "🛡 *Доступ уже готов*\n\n"
+        "Всё уже включено.\n"
+        "📅 До: `{expiry}`\n\n"
+        "Если подключаете новое устройство, откройте ссылку для подключения."
     ),
     "status": (
-        "👤 *Личный кабинет*\n"
+        "👤 *Ваш доступ*\n"
         "➖➖➖➖➖➖➖➖➖➖\n"
         "🆔 ID: `{tg_id}`\n"
         "🛡 Статус: {status_icon} *{status_text}*\n"
-        "📦 Подписка: `{plan_label}`\n"
-        "📅 Истекает: `{expiry}`\n"
+        "📦 Режим: `{plan_label}`\n"
+        "📅 До: `{expiry}`\n"
         "⭐ Оплачено: `{stars}` Stars\n"
         "➖➖➖➖➖➖➖➖➖➖"
     ),
     "no_subscription": (
-        "⛔️ *Доступ ограничен*\n\n"
-        "У вас нет активного периода доступа.\n"
-        "Подключите подходящий план, чтобы продолжить."
+        "⛔️ *Сейчас доступа нет*\n\n"
+        "Следующий шаг: запустите 5 дней бесплатно или выберите полный доступ."
     ),
     "instruction": (
-        "⚙️ *Быстрая настройка*\n\n"
-        "1️⃣ Нажмите кнопку *«🌐 ОТКРЫТЬ POKROV VPN (WEB APP)»*\n"
-        "2️⃣ Скопируйте ваш *Ключ доступа*\n"
-        "3️⃣ Выберите приложение под вашу платформу\n"
-        "4️⃣ Импортируйте ключ и нажмите «Подключить»\n\n"
-        "_Внутри WebApp есть подробные подсказки для каждой ОС._"
+        "📲 *Как начать*\n\n"
+        "1️⃣ Откройте кабинет или скачайте приложение\n"
+        "2️⃣ Возьмите ссылку для подключения\n"
+        "3️⃣ Откройте её в приложении\n"
+        "4️⃣ Если что-то не сработает, напишите в службу заботы\n\n"
+        "_Если нужен самый короткий путь, начните с кабинета._"
     ),
     "admin_stats": (
         "📊 *Центр управления*\n\n"
@@ -2948,8 +2947,8 @@ TEXTS = {
         "🟢 Активных: `{active}`\n"
         "💰 Оборот: `{stars}` Stars"
     ),
-    "trial_used": "❌ Бесплатный режим уже использован. Выберите подходящий платный план.",
-    "payment_success": "✅ *Оплата принята!* Обновляем статус доступа...",
+    "trial_used": "❌ 5 дней бесплатно уже были включены. Следующий шаг — выбрать полный доступ.",
+    "payment_success": "✅ *Оплата принята.* Сейчас подготовлю доступ...",
     "gift_success": "✅ Подписка выдана пользователю {tg_id} на {days} дней."
 }
 
@@ -3103,17 +3102,16 @@ def build_choose_tariff_text() -> str:
         savings.append(f"12 мес: -{s12}%")
     savings_line = (" (" + ", ".join(savings) + ")") if savings else ""
 
-    payment_hint = "_Сначала запустите тест или выберите тариф. Оплата откроется в рублях по персональной ссылке._"
+    payment_hint = "_Следующий шаг: выберите вариант ниже, и я открою нужный сценарий._"
 
     return (
-        "💎 *Выберите уровень доступа*\n\n"
-        f"🚀 *Тест 5 дней* — быстрый старт: {free_label}\n"
-        f"💠 *Премиум* — {paid_count} стран: {paid_list}\n\n"
-        f"Тест: 5 дней, до {TRIAL_LIMIT_GB} ГБ, до {FREE_LIMIT_IP} устройства, базовый профиль для знакомства с сервисом.\n"
-        "Тестовый тариф — идеальный способ познакомиться с сервисом. А для тяжелых видео и игр ждем вас на Премиуме!\n"
-        f"Премиум: все доступные страны, до {PAID_LIMIT_IP} устройств и комфортный запас по скорости.\n"
-        "Приветственный тариф за 99 ₽ остаётся как мягкий апгрейд после теста.\n\n"
-        f"💰 *Выгода при оплате на срок:*{savings_line}\n\n"
+        "💎 *С чего начнём?*\n\n"
+        f"🎁 *5 дней бесплатно* — спокойный старт на {free_label}\n"
+        f"⚡ *Полный доступ* — {paid_count} стран: {paid_list}\n\n"
+        f"Бесплатный старт: 5 дней, до {TRIAL_LIMIT_GB} ГБ и до {FREE_LIMIT_IP} устройства, чтобы спокойно проверить, подходит ли вам POKROV.\n"
+        f"Полный доступ: все доступные страны, до {PAID_LIMIT_IP} устройств и комфортный запас по скорости.\n"
+        "Если захотите перейти на полный доступ без паузы, есть приветственный вариант за 99 ₽.\n\n"
+        f"💰 *Чем длиннее срок, тем выгоднее:*{savings_line}\n\n"
         f"{payment_hint}"
     )
 
@@ -3194,13 +3192,13 @@ def _build_tariff_payment_choice_text(*, tariff_key: str, tg_id: int) -> str:
     return (
         f"💳 *{tariff.get('name', 'Тариф')}*\n\n"
         f"Срок: *{int(tariff.get('days', 0))} дней*\n"
-        f"Ваши устройства: *до {PAID_LIMIT_IP}*\n"
-        f"Страны: *все премиум-локации*\n\n"
+        f"Устройств: *до {PAID_LIMIT_IP}*\n"
+        "Локации: *все доступные платные*\n\n"
         f"Цена в ₽: *{rub_price} ₽*\n"
         "Откроем оплату в рублях без лишних шагов.\n\n"
         f"{discount_line}"
         f"{provider_line}"
-        "Сначала выберите удобную кассу. "
+        "Следующий шаг: выберите удобную кассу. "
         "После оплаты доступ обновится автоматически."
     )
 
@@ -3347,17 +3345,17 @@ def _dual_pay_text(*, show_trial: bool) -> str:
     rub_hint = f"В рублях доступны: {provider_names}." if provider_names else "В рублях доступны карта и СБП."
     if show_trial:
         return (
-            "🚀 *Как хотите продолжить?*\n\n"
-            "Сначала можно запустить тест на 5 дней и спокойно проверить сервис в реальном использовании.\n"
-            "Если нужен полный доступ, все страны и больше устройств — выберите тариф и оплату в рублях.\n"
+            "🚀 *Как удобнее начать?*\n\n"
+            "Можно спокойно взять 5 дней бесплатно и проверить всё в деле.\n"
+            "Если полный доступ нужен уже сейчас, выберите тариф и оплату в рублях.\n"
             f"{rub_hint}\n"
-            "После оплаты доступ обновится автоматически.\n\n"
-            "Выберите удобный вариант:"
+            "После оплаты всё включится автоматически.\n\n"
+            "Выберите следующий шаг:"
         )
     return (
         "💳 *Оплата в рублях*\n\n"
         f"{rub_hint}\n"
-        "После оплаты доступ обновится автоматически.\n\n"
+        "После оплаты всё включится автоматически.\n\n"
         "Выберите удобный способ:"
     )
 
@@ -3368,7 +3366,7 @@ def _dual_pay_keyboard(*, tg_id: int, show_trial: bool) -> InlineKeyboardMarkup:
         rows.append([InlineKeyboardButton(text="🚀 Запустить тест на 5 дней", callback_data="buy_trial")])
     rows.extend(
         [
-            [InlineKeyboardButton(text="💳 Перейти к тарифам и оплату в ₽", callback_data="charge")],
+            [InlineKeyboardButton(text="💳 Посмотреть тарифы и оплату в ₽", callback_data="charge")],
         ]
     )
     rows.append([InlineKeyboardButton(text="◀️ Назад", callback_data="back")])
@@ -3376,7 +3374,7 @@ def _dual_pay_keyboard(*, tg_id: int, show_trial: bool) -> InlineKeyboardMarkup:
 
 def main_keyboard_specs(tg_id: int = 0) -> list[list[dict[str, str]]]:
     rows = [
-        [_btn_spec(text="🌐 ОТКРЫТЬ КАБИНЕТ", web_app_url=WEBAPP_URL)],
+        [_btn_spec(text="🌐 Открыть кабинет", web_app_url=WEBAPP_URL)],
         [
             _btn_spec(
                 text=_main_connect_cta_text(tg_id),
@@ -3386,12 +3384,12 @@ def main_keyboard_specs(tg_id: int = 0) -> list[list[dict[str, str]]]:
             ),
         ],
         [
-            _btn_spec(text="📦 Статус доступа", callback_data="status"),
-            _btn_spec(text="📲 Как подключить", callback_data="instruction"),
+            _btn_spec(text="📦 Мой доступ", callback_data="status"),
+            _btn_spec(text="📲 Как начать", callback_data="instruction"),
         ],
         [
-            _btn_spec(text="🔑 Мой ключ", callback_data="show_key"),
-            _btn_spec(text="🆘 Служба заботы", callback_data="support"),
+            _btn_spec(text="🔗 Ссылка для подключения", callback_data="show_key"),
+            _btn_spec(text="🆘 Нужна помощь", callback_data="support"),
         ],
         [
             _btn_spec(text="🎁 Бонусы", callback_data="menu_bonuses"),
@@ -3420,7 +3418,7 @@ def tariff_keyboard(
         buttons.append(
             [
                 InlineKeyboardButton(
-                text=f"🚀 Тест 5 дней — {TRIAL_LIMIT_GB} ГБ, {FREE_LIMIT_IP} устройство, базовый профиль",
+                    text=f"🎁 5 дней бесплатно — {TRIAL_LIMIT_GB} ГБ, {FREE_LIMIT_IP} устройство",
                     callback_data="buy_trial",
                 )
             ]
@@ -3452,20 +3450,20 @@ def tariff_keyboard(
             icon = "🚀"
         elif key == "start_99":
             icon = "⚡"
-            marketing_badge = " (БЫСТРЫЙ СТАРТ)"
+            marketing_badge = " (спокойный старт)"
         elif key == "3_months":
             icon = "💠"
-            marketing_badge = " (СТАРТ)"
+            marketing_badge = " (удобно надолго)"
         elif key == "6_months":
             icon = "🎯"
-            marketing_badge = " (РЕКОМЕНДУЕМ)"
+            marketing_badge = " (рекомендуем)"
         elif key == "9_months":
             icon = "🧭"
-            marketing_badge = " (РАСШИРЕННЫЙ)"
+            marketing_badge = " (на дольше)"
         elif key == "12_months":
             icon = "👑"
             savings = _tariff_savings_pct(key) or 0
-            marketing_badge = f" (САМЫЙ ДОЛГИЙ СРОК, -{savings}%)" if savings > 0 else " (САМЫЙ ДОЛГИЙ СРОК)"
+            marketing_badge = f" (максимум выгоды, -{savings}%)" if savings > 0 else " (максимум выгоды)"
 
         savings = _tariff_savings_pct(key)
         savings_text = f" (-{savings}%)" if savings and key not in {"12_months"} else ""
@@ -3575,32 +3573,32 @@ async def cmd_start(message: Message):
         )
         messages = {
             "linked": (
-                "✅ *Telegram привязан к POKROV VPN.*\n\n"
-                "Теперь вернитесь в приложение и нажмите «Проверить подписку», чтобы получить бонус."
+                "✅ *Telegram уже привязан к POKROV.*\n\n"
+                "Следующий шаг: вернитесь в приложение и нажмите «Проверить подписку»."
             ),
             "already_linked": (
-                "✅ *Этот Telegram уже привязан к вашему аккаунту POKROV VPN.*\n\n"
-                "Вернитесь в приложение и нажмите «Проверить подписку»."
+                "✅ *Этот Telegram уже привязан к вашему аккаунту POKROV.*\n\n"
+                "Следующий шаг: вернитесь в приложение и нажмите «Проверить подписку»."
             ),
             "telegram_already_linked": (
-                "⚠️ Этот Telegram уже привязан к другому аккаунту POKROV VPN.\n\n"
-                "Если это ошибка, напишите в службу заботы."
+                "⚠️ Этот Telegram уже привязан к другому аккаунту POKROV.\n\n"
+                "Если это не ваш случай, следующий шаг — написать в поддержку."
             ),
             "account_linked_elsewhere": (
-                "⚠️ Этот аккаунт POKROV VPN уже привязан к другому Telegram.\n\n"
-                "Если нужно переназначить привязку, напишите в службу заботы."
+                "⚠️ Этот аккаунт POKROV уже привязан к другому Telegram.\n\n"
+                "Если нужно переназначить привязку, следующий шаг — написать в поддержку."
             ),
             "not_found": (
-                "⚠️ Не удалось найти аккаунт POKROV VPN для этой ссылки.\n\n"
-                "Откройте приложение и запросите новую ссылку привязки."
+                "⚠️ Не удалось найти аккаунт POKROV для этой ссылки.\n\n"
+                "Следующий шаг: откройте приложение и запросите новую ссылку привязки."
             ),
             "expired": (
                 "⌛ Ссылка привязки устарела.\n\n"
-                "Откройте приложение POKROV VPN и запросите новую ссылку."
+                "Следующий шаг: откройте приложение POKROV и запросите новую ссылку."
             ),
             "invalid": (
                 "⚠️ Ссылка привязки некорректна.\n\n"
-                "Откройте приложение POKROV VPN и создайте новую ссылку."
+                "Следующий шаг: откройте приложение POKROV и создайте новую ссылку."
             ),
             "error": (
                 "⚠️ Не удалось завершить привязку прямо сейчас.\n\n"
@@ -3610,7 +3608,7 @@ async def cmd_start(message: Message):
         await message.answer(
             messages.get(
                 str(bind_status or ""),
-                "⚠️ Не удалось обработать ссылку привязки.\n\nОткройте приложение POKROV VPN и запросите новую ссылку.",
+                "⚠️ Не удалось обработать ссылку привязки.\n\nСледующий шаг: откройте приложение POKROV и запросите новую ссылку.",
             ),
             reply_markup=InlineKeyboardMarkup(
                 inline_keyboard=[
@@ -3625,13 +3623,13 @@ async def cmd_start(message: Message):
         token = create_web_session_token(tg_id=int(tg_id), username=username)
         if not token:
             await message.answer(
-                "⚠️ Не удалось создать web-сессию. Попробуйте снова через минуту или откройте кабинет из меню бота.",
+                "⚠️ Не получилось открыть вход прямо сейчас. Попробуйте ещё раз через минуту или откройте кабинет из меню бота.",
                 reply_markup=main_keyboard(tg_id),
             )
             return
         login_url = _web_login_url_with_token(token)
         await message.answer(
-            "✅ Вход подтверждён.\n\nОткройте кабинет по кнопке ниже:",
+            "✅ Вход подтверждён.\n\nСледующий шаг: откройте кабинет по кнопке ниже.",
             reply_markup=InlineKeyboardMarkup(
                 inline_keyboard=[
                     [InlineKeyboardButton(text="🌐 Открыть кабинет", url=login_url)],
@@ -3665,21 +3663,21 @@ async def cmd_start(message: Message):
             return
         if reason == "already_claimed":
             await message.answer(
-                "🎁 Бонус по ссылке уже активирован для вашего аккаунта.\n\n"
-                "Открываю меню управления доступом.",
+                "🎁 Бонус по ссылке уже был активирован для вашего аккаунта.\n\n"
+                "Открываю главное меню.",
                 reply_markup=main_keyboard(tg_id),
             )
             return
         if reason == "already_paid_active":
             await message.answer(
-                "✅ У вас уже активен PREMIUM-доступ.\n\n"
-                "Открываю меню управления доступом.",
+                "✅ У вас уже есть полный доступ.\n\n"
+                "Открываю главное меню.",
                 reply_markup=main_keyboard(tg_id),
             )
             return
         if reason == "tos_required":
             await message.answer(
-                "⚠️ Перед активацией бонуса примите условия оферты.",
+                "⚠️ Сначала примите условия, и я сразу продолжу.",
                 reply_markup=_tos_offer_keyboard(back_callback="back"),
                 parse_mode=ParseMode.MARKDOWN,
             )
@@ -3696,21 +3694,21 @@ async def cmd_start(message: Message):
             )
             if activated:
                 await message.answer(
-                    f"🎁 Подарок из ссылки активирован: +{FRIEND_GIFT_DAYS} дня доступа.",
+                    f"🎁 Подарок активирован: +{FRIEND_GIFT_DAYS} дня доступа.",
                     parse_mode=ParseMode.MARKDOWN,
                 )
                 return
             if reason == "already_claimed":
                 await message.answer(
-                    "🎁 Подарок по ссылке уже активирован для вашего аккаунта.\n\n"
-                    "Открываю меню управления доступом.",
+                    "🎁 Этот подарок уже был активирован для вашего аккаунта.\n\n"
+                    "Открываю главное меню.",
                     reply_markup=main_keyboard(tg_id),
                 )
                 return
             if reason == "already_paid_active":
                 await message.answer(
-                    "✅ У вас уже активен платный доступ.\n\n"
-                    "Открываю меню управления доступом.",
+                    "✅ У вас уже есть полный доступ.\n\n"
+                    "Открываю главное меню.",
                     reply_markup=main_keyboard(tg_id),
                 )
                 return
@@ -3719,8 +3717,8 @@ async def cmd_start(message: Message):
         else:
             pending_auto_friend_gift_referrals[int(tg_id)] = str(friend_gift_referral_code).upper()[:10]
             await message.answer(
-                "🎁 Подарок из ссылки сохранён.\n"
-                "Сначала примите условия оферты, затем подарок активируется автоматически.",
+                "🎁 Подарок сохранён.\n"
+                "Сначала примите условия, затем я активирую его автоматически.",
                 parse_mode=ParseMode.MARKDOWN,
             )
 
@@ -3742,8 +3740,8 @@ async def cmd_start(message: Message):
         else:
             pending_auto_promo_codes[int(tg_id)] = str(deeplink_promo_code).upper()[:20]
             await message.answer(
-                "🎟️ Промокод из ссылки сохранён.\n"
-                "Сначала примите условия оферты, затем промокод применится автоматически.",
+                "🎟️ Промокод сохранён.\n"
+                "Сначала примите условия, затем я применю его автоматически.",
                 parse_mode=ParseMode.MARKDOWN,
             )
 
@@ -3751,30 +3749,30 @@ async def cmd_start(message: Message):
         ok = await _send_text_with_specs(
             bot=message.bot,
             chat_id=tg_id,
-            text="👋 *С возвращением в POKROV VPN!*",
+            text="👋 *С возвращением в POKROV!*",
             rows=main_keyboard_specs(tg_id),
             parse_mode=ParseMode.MARKDOWN,
         )
         if not ok:
             await message.answer(
-                "👋 *С возвращением в POKROV VPN!*",
+                "👋 *С возвращением в POKROV!*",
                 reply_markup=main_keyboard(tg_id),
                 parse_mode=ParseMode.MARKDOWN,
             )
         return
 
     text = (
-        "🛡 *Добро пожаловать в POKROV VPN*\n\n"
-        "Мы подготовили понятный путь запуска и подключения.\n"
-        "Как вы хотите настроить подключение?\n\n"
-        "🐣 *Новичок*\n"
-        "«Хочу быстро и просто, без технических деталей».\n\n"
-        "💀 *Профи*\n"
-        "«Нужен полный контроль и все инструменты сразу»."
+        "👋 *Добро пожаловать в POKROV*\n\n"
+        "Я помогу начать коротким и понятным путём.\n"
+        "Выберите, что вам сейчас ближе:\n\n"
+        "✨ *Помочь начать*\n"
+        "Если хотите без лишних настроек и с понятными шагами.\n\n"
+        "🔧 *Уже почти всё готово*\n"
+        "Если вам сразу нужно полное меню и все действия."
     )
     kb = InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text="🐣 Включить Автопилот (Просто)", callback_data="mode_simple")],
-        [InlineKeyboardButton(text="💀 Ручное управление (Профи)", callback_data="mode_pro")],
+        [InlineKeyboardButton(text="✨ Помочь начать", callback_data="mode_simple")],
+        [InlineKeyboardButton(text="🔧 Открыть полное меню", callback_data="mode_pro")],
     ])
     sent = await message.answer(text, reply_markup=kb, parse_mode=ParseMode.MARKDOWN)
     last_bot_message[tg_id] = sent.message_id
@@ -3862,8 +3860,8 @@ async def show_long_tariffs(callback: CallbackQuery):
         return
 
     await callback.message.edit_text(
-        "💎 *Долгие тарифы*\n\n"
-        "Для тех, кто хочет зафиксировать доступ на длительный срок с лучшей средней ценой в месяц.",
+        "💎 *Долгие планы*\n\n"
+        "Если хотите закрыть вопрос надолго и платить выгоднее в пересчёте на месяц, начните отсюда.",
         reply_markup=tariff_keyboard(tg_id, show_trial=False, show_gb_only=False, include_long_plans=True),
         parse_mode=ParseMode.MARKDOWN,
     )
@@ -3977,9 +3975,9 @@ async def show_status(callback: CallbackQuery):
             status_text += f"\n📊 Бесплатный остаток: `{remaining_gb}` из `{int(total_gb)}` ГБ"
         is_subscriber = await check_subscription(tg_id, callback.message.bot)
         if is_subscriber:
-            status_text += "\n📢 Канал: `подписка подтверждена` — профиль ускорен."
+            status_text += "\n📢 Канал: `подтверждён` — бонусный режим доступен."
         else:
-            status_text += "\n📢 Канал: `не подтверждена` — работает базовый профиль FREE."
+            status_text += "\n📢 Канал: `не подтверждён` — сейчас работает базовый бесплатный режим."
     panel_snapshot = await _panel_online_snapshot(tg_id)
     status_text += f"\n🌐 Онлайн: `{_panel_online_text(panel_snapshot)}`"
     status_text += f"\n🕓 Последний онлайн: `{_panel_last_online_text(panel_snapshot)}`"
@@ -4042,7 +4040,7 @@ async def show_key(callback: CallbackQuery):
             bot=callback.message.bot,
             chat_id=callback.message.chat.id,
             message_id=callback.message.message_id,
-            text="⚠️ *Ключ не найден*\n\nСначала подключите доступ, чтобы получить ключ.",
+            text="⚠️ *Ссылки для подключения пока нет.*\n\nСначала запустите доступ, и я сразу подготовлю её.",
             rows=rows,
             parse_mode=ParseMode.MARKDOWN,
         )
@@ -4052,7 +4050,7 @@ async def show_key(callback: CallbackQuery):
                 [InlineKeyboardButton(text="◀️ Назад", callback_data="back")]
             ])
             await callback.message.edit_text(
-                "⚠️ *Ключ не найден*\n\nСначала подключите доступ, чтобы получить ключ.",
+                "⚠️ *Ссылки для подключения пока нет.*\n\nСначала запустите доступ, и я сразу подготовлю её.",
                 reply_markup=kb,
                 parse_mode=ParseMode.MARKDOWN
             )
@@ -4075,17 +4073,17 @@ async def show_key(callback: CallbackQuery):
             bot=callback.message.bot,
             chat_id=callback.message.chat.id,
             message_id=callback.message.message_id,
-            text="⚠️ *Активного доступа пока нет.*\n\nВыберите тариф, чтобы получить новый ключ.",
+            text="⚠️ *Активного доступа пока нет.*\n\nВыберите вариант старта, и я подготовлю новую ссылку для подключения.",
             rows=rows,
             parse_mode=ParseMode.MARKDOWN,
         )
         return
 
-    msg = await callback.message.edit_text("🔄 `Подключаю защищённый узел...`", parse_mode=ParseMode.MARKDOWN)
+    msg = await callback.message.edit_text("🔄 `Собираю вашу ссылку для подключения...`", parse_mode=ParseMode.MARKDOWN)
     await asyncio.sleep(0.35)
-    await msg.edit_text("🔄 `Проверяю соединение (TLS 1.3)...`", parse_mode=ParseMode.MARKDOWN)
+    await msg.edit_text("🔄 `Проверяю, что всё готово...`", parse_mode=ParseMode.MARKDOWN)
     await asyncio.sleep(0.35)
-    await msg.edit_text("🔄 `Готовлю ключ доступа...`", parse_mode=ParseMode.MARKDOWN)
+    await msg.edit_text("🔄 `Формирую ссылку и QR...`", parse_mode=ParseMode.MARKDOWN)
     await asyncio.sleep(0.35)
 
     sub_link = build_subscription_link(tg_id)
@@ -4102,36 +4100,30 @@ async def show_key(callback: CallbackQuery):
             else ("—" if nodes else "—")
         )
         free_note = (
-            "\n\n🆓 *Тариф FREE*\n"
-            "• 1 бесплатная нода\n"
-            f"• Платные: {paid_count} стран ({paid_list})\n"
-            f"• Лимит трафика: до {FREE_TOTAL_GB} ГБ\n"
-            f"• Лимит устройств: до {FREE_LIMIT_IP} (по IP)\n"
-            f"• Лимит скорости: до {FREE_SPEED_MBIT} Мбит/с\n"
-            "• Ссылка подключения сама подберет совместимый профиль\n"
-            "• YouTube, Steam и торренты идут напрямую\n"
-            "• Для нового импорта достаточно одной ссылки или QR\n"
+            "\n\n🆓 *Сейчас у вас бесплатный режим*\n"
+            "• 1 бесплатная локация\n"
+            f"• До {FREE_TOTAL_GB} ГБ трафика\n"
+            f"• До {FREE_LIMIT_IP} устройства\n"
+            f"• До {FREE_SPEED_MBIT} Мбит/с\n"
+            f"• Полный доступ откроет {paid_count} стран: {paid_list}\n"
         )
     
     kb = InlineKeyboardMarkup(
         inline_keyboard=[
             [InlineKeyboardButton(text="📋 Скопировать ссылку", callback_data="copy_key")],
             [InlineKeyboardButton(text="📱 QR для подключения", callback_data="show_qr")],
-            [InlineKeyboardButton(text="👨‍👩‍👧‍👦 Поделиться с семьёй", callback_data="share_access")],
+            [InlineKeyboardButton(text="👨‍👩‍👧‍👦 Поделиться доступом", callback_data="share_access")],
             [InlineKeyboardButton(text="🚨 Panic Mode", callback_data="panic_menu")],
             [InlineKeyboardButton(text="◀️ Назад", callback_data="back")],
         ]
     )
     
     await msg.edit_text(
-        f"🔑 *Ваша ссылка подключения:*\n\n"
+        f"🔗 *Ссылка для подключения готова:*\n\n"
         f"`{sub_link}`\n\n"
-        f"📋 _Нажмите на ссылку, чтобы скопировать_\n\n"
-        "🧠 *Одна ссылка для подключения*\n"
-        "Откройте ее в POKROV VPN или в совместимом клиенте на sing-box. Профиль получит актуальные маршруты и настройки автоматически.\n\n"
-        "📱 *QR для подключения*\n"
-        "Если удобнее, откройте QR ниже и импортируйте доступ без ручных настроек.\n\n"
-        f"📱 Откройте приложение POKROV VPN или совместимый клиент и импортируйте доступ по ссылке."
+        "Следующий шаг: откройте её в приложении POKROV.\n"
+        "Если удобнее, используйте QR ниже.\n\n"
+        "Если приложения ещё нет, сначала откройте раздел «Как начать».\n"
         f"{free_note}",
         reply_markup=kb,
         parse_mode=ParseMode.MARKDOWN
@@ -4163,8 +4155,8 @@ async def show_qr_code(callback: CallbackQuery):
     await callback.message.answer_photo(
         photo=file,
         caption=(
-            "📱 *Ваш QR для подключения*\n\n"
-            "Отсканируйте в приложении POKROV VPN или совместимом клиенте."
+            "📱 *QR для подключения*\n\n"
+            "Следующий шаг: откройте приложение POKROV и отсканируйте код."
         ),
         parse_mode=ParseMode.MARKDOWN,
     )
@@ -4176,15 +4168,14 @@ async def share_family_access(callback: CallbackQuery):
     tg_id = callback.from_user.id
     sub_link = build_subscription_link(tg_id)
     share_text = (
-        "🔑 *Доступ к защищённой сети POKROV VPN*\n\n"
-        "Я делюсь с тобой своим приватным каналом связи.\n"
-        "1. Скачай приложение POKROV VPN или открой страницу загрузок\n"
-        "2. Скопируй ключ ниже и добавь его в приложение\n\n"
+        "🔗 *Доступ к POKROV*\n\n"
+        "1. Скачай приложение POKROV или открой страницу загрузок\n"
+        "2. Открой ссылку ниже в приложении\n\n"
         f"`{sub_link}`\n\n"
-        "🛡 *Быстро. Надёжно. Конфиденциально.*"
+        "Если что-то не получится, следующий шаг — открыть кабинет или написать в поддержку."
     )
     await callback.message.answer(
-        "📤 *Перешлите сообщение ниже*\n\nОтправьте его тому, с кем хотите поделиться доступом.",
+        "📤 *Перешлите сообщение ниже*\n\nСледующий шаг: отправьте его тому, с кем хотите поделиться доступом.",
         parse_mode=ParseMode.MARKDOWN,
     )
     await callback.message.answer(share_text, parse_mode=ParseMode.MARKDOWN)
@@ -4282,10 +4273,10 @@ async def panic_execute(callback: CallbackQuery, bot: Bot):
     await callback.message.edit_text(
         "✅ *Ключи сброшены.*\n\n"
         "Старый доступ заблокирован. Новый ключ уже выпущен.\n"
-        "Откройте раздел «Мой ключ», чтобы получить обновленную ссылку.",
+        "Откройте раздел «Ссылка для подключения», чтобы получить обновлённую ссылку.",
         parse_mode=ParseMode.MARKDOWN,
         reply_markup=InlineKeyboardMarkup(inline_keyboard=[
-            [InlineKeyboardButton(text="🔑 Мой ключ", callback_data="show_key")],
+            [InlineKeyboardButton(text="🔗 Ссылка для подключения", callback_data="show_key")],
             [InlineKeyboardButton(text="◀️ В меню", callback_data="back")],
         ]),
     )
@@ -4294,7 +4285,7 @@ async def panic_execute(callback: CallbackQuery, bot: Bot):
 @router.callback_query(F.data == "mtproto")
 async def show_mtproto(callback: CallbackQuery):
     await callback.message.edit_text(
-        "ℹ️ Этот раздел отключен.\n\nИспользуйте «🌐 ОТКРЫТЬ КАБИНЕТ» для подключения.",
+        "ℹ️ Этот раздел отключен.\n\nСледующий шаг: используйте «🌐 Открыть кабинет» для подключения.",
         reply_markup=InlineKeyboardMarkup(inline_keyboard=[[InlineKeyboardButton(text="◀️ Назад", callback_data="back")]]),
         parse_mode=ParseMode.MARKDOWN,
     )
@@ -4315,7 +4306,7 @@ async def show_instruction(callback: CallbackQuery):
         [InlineKeyboardButton(text="◀️ Назад", callback_data="back")],
     ])
     await callback.message.edit_text(
-        "📱 *Выберите ваше устройство:*",
+        "📱 *С какого устройства начинаем?*\n\nВыберите его, и я покажу короткий путь без лишних деталей.",
         reply_markup=kb,
         parse_mode=ParseMode.MARKDOWN,
     )
@@ -4325,16 +4316,17 @@ async def show_instruction(callback: CallbackQuery):
 @router.callback_query(F.data == "settings")
 async def show_settings(callback: CallbackQuery):
     kb = InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text="🔑 Мой ключ", callback_data="show_key")],
+        [InlineKeyboardButton(text="🔗 Ссылка для подключения", callback_data="show_key")],
         [InlineKeyboardButton(text="⚙️ Инструкции", callback_data="instruction")],
         [InlineKeyboardButton(text="🎫 Подарки и промокоды", callback_data="menu_more")],
         [InlineKeyboardButton(text=f"👨‍👩‍👧‍👦 Family +1 слот ({FAMILY_SLOT_STARS}⭐)", callback_data="buy_family_slot")],
-        [InlineKeyboardButton(text="🆘 Нужна помощь", callback_data="mode_simple")],
+        [InlineKeyboardButton(text="🆘 Помочь начать", callback_data="mode_simple")],
         [InlineKeyboardButton(text="◀️ Назад", callback_data="back")],
     ])
     await callback.message.edit_text(
         "⚙️ *Ещё*\n\n"
-        "Здесь собраны дополнительные действия: ключ для приложения, подарки, семейные слоты и быстрый доступ к помощи.",
+        "Здесь собраны дополнительные действия: ссылка для подключения, подарки, семейные слоты и быстрый доступ к поддержке.\n\n"
+        "Выберите следующий шаг:",
         reply_markup=kb,
         parse_mode=ParseMode.MARKDOWN,
     )
@@ -4345,42 +4337,42 @@ async def show_settings(callback: CallbackQuery):
 async def instruction_platform(callback: CallbackQuery):
     mapping = {
         "instr_ios": (
-            "🍏 *Подключение на iPhone*\n\n"
-            "1. Откройте страницу приложений POKROV VPN\n"
-            "2. Установите доступный клиент для iOS или откройте инструкцию ожидания релиза\n"
-            "3. Скопируйте ключ в боте и импортируйте его в приложение",
+            "🍏 *iPhone / iPad*\n\n"
+            "1. Откройте страницу приложений\n"
+            "2. Установите подходящее приложение для iPhone\n"
+            "3. Вернитесь сюда и откройте свою ссылку для подключения",
             IOS_APP_LINK,
-            "📥 Открыть инструкцию для iPhone",
+            "📥 Открыть страницу для iPhone",
         ),
         "instr_android": (
-            "🤖 *Подключение на Android*\n\n"
-            "1. Скачайте POKROV VPN для Android\n"
-            "2. Скопируйте ключ в боте\n"
-            "3. В приложении импортируйте ключ из буфера или откройте кабинет для быстрого старта",
+            "🤖 *Android*\n\n"
+            "1. Скачайте приложение POKROV для Android\n"
+            "2. Вернитесь сюда и откройте свою ссылку для подключения\n"
+            "3. Если удобнее, можно начать через кабинет",
             ANDROID_APP_LINK,
-            "📥 Скачать POKROV VPN",
+            "📥 Скачать POKROV",
         ),
         "instr_win": (
-            "💻 *Подключение на Windows*\n\n"
-            "1. Скачайте POKROV VPN для Windows\n"
-            "2. Скопируйте ключ доступа\n"
-            "3. Импортируйте ссылку подписки в приложение или завершите вход через кабинет",
+            "💻 *Windows*\n\n"
+            "1. Скачайте приложение POKROV для Windows\n"
+            "2. Вернитесь сюда и откройте свою ссылку для подключения\n"
+            "3. Если удобнее, завершите всё через кабинет",
             WINDOWS_APP_LINK,
-            "📥 Скачать POKROV VPN",
+            "📥 Скачать POKROV",
         ),
         "instr_mac": (
-            "🍎 *Подключение на macOS*\n\n"
-            "1. Откройте страницу приложений POKROV VPN\n"
-            "2. Посмотрите текущий статус macOS и доступные инструкции\n"
-            "3. Скопируйте ключ доступа и импортируйте его в совместимый клиент, если используете macOS уже сейчас",
+            "🍎 *macOS*\n\n"
+            "1. Откройте страницу приложений\n"
+            "2. Посмотрите актуальный статус macOS\n"
+            "3. Если подключаетесь уже сейчас, используйте свою ссылку в совместимом приложении",
             MAC_APP_LINK,
-            "📥 Открыть инструкцию для macOS",
+            "📥 Открыть страницу для macOS",
         ),
     }
     text, url, btn = mapping.get(callback.data or "", mapping["instr_android"])
     kb = InlineKeyboardMarkup(inline_keyboard=[
         [InlineKeyboardButton(text=btn, url=url)],
-        [InlineKeyboardButton(text="🔑 Мой ключ", callback_data="show_key")],
+        [InlineKeyboardButton(text="🔗 Ссылка для подключения", callback_data="show_key")],
         [InlineKeyboardButton(text="◀️ Устройства", callback_data="instruction")],
     ])
     await callback.message.edit_text(text, parse_mode=ParseMode.MARKDOWN, reply_markup=kb)
@@ -4402,8 +4394,9 @@ async def menu_bonuses(callback: CallbackQuery):
             [InlineKeyboardButton(text="◀️ Назад", callback_data="back")],
         ])
         await callback.message.edit_text(
-            "🎁 *Бонусный центр*\n\n"
-            "Можно забрать стартовый бонус за подписку на канал или перейти к тарифам.",
+            "🎁 *Бонусы*\n\n"
+            "Можно взять бонус за канал или сразу перейти к выбору доступа.\n\n"
+            "Выберите следующий шаг.",
             reply_markup=kb,
             parse_mode=ParseMode.MARKDOWN,
         )
@@ -4424,7 +4417,8 @@ async def menu_bonuses(callback: CallbackQuery):
     
     await callback.message.edit_text(
         "🎁 *Бонусы*\n\n"
-        "Реферальная программа, streak, рулетка и достижения.",
+        "Здесь собраны бонусы и полезные плюсы: друзья, streak, рулетка и достижения.\n\n"
+        "Выберите нужный раздел.",
         reply_markup=kb,
         parse_mode=ParseMode.MARKDOWN
     )
@@ -4451,7 +4445,8 @@ async def menu_more(callback: CallbackQuery):
     
     await callback.message.edit_text(
         "📦 *Ещё*\n\n"
-        "Дополнительные возможности для удобного старта:",
+        "Здесь собраны дополнительные действия: подарок, код или отзыв.\n\n"
+        "Выберите, что хотите сделать дальше:",
         reply_markup=kb,
         parse_mode=ParseMode.MARKDOWN
     )
@@ -4465,7 +4460,7 @@ async def promo_help(callback: CallbackQuery):
     ])
     await callback.message.edit_text(
         "🎟️ *Активация промокода*\n\n"
-        "Команда: `/promo КОД`\n\n"
+        "Следующий шаг: отправьте команду `/promo КОД`\n\n"
         "Пример: `/promo NEWYEAR`",
         reply_markup=kb,
         parse_mode=ParseMode.MARKDOWN
@@ -4481,8 +4476,8 @@ async def gift_redeem_prompt(callback: CallbackQuery):
     ])
     await callback.message.edit_text(
         "🎁 *Активация подарка*\n\n"
-        "Отправь код следующим сообщением.\n"
-        "_Если у тебя старый код `SWAZ-...`, он тоже пока принимается._",
+        "Отправьте код следующим сообщением.\n"
+        "_Если у вас старый код `SWAZ-...`, он тоже пока принимается._",
         reply_markup=kb,
         parse_mode=ParseMode.MARKDOWN,
     )
@@ -4497,7 +4492,7 @@ async def promo_activate_prompt(callback: CallbackQuery):
     ])
     await callback.message.edit_text(
         "🎟️ *Активация промокода*\n\n"
-        "Отправь код следующим сообщением (без `/promo`).\n"
+        "Отправьте код следующим сообщением, без `/promo`.\n"
         "Пример: `NEWYEAR`",
         reply_markup=kb,
         parse_mode=ParseMode.MARKDOWN,
@@ -4511,11 +4506,11 @@ async def review_start(callback: CallbackQuery):
     user = get_user(tg_id)
     
     if not user or not user.is_active:
-        await callback.answer("❌ Активируй подписку, чтобы оставить отзыв для главной", show_alert=True)
+        await callback.answer("❌ Сначала включите доступ, потом можно оставить отзыв для сайта.", show_alert=True)
         return
     
     if has_user_review(tg_id):
-        await callback.answer("❌ Ты уже оставил отзыв. Спасибо!", show_alert=True)
+        await callback.answer("❌ Отзыв уже сохранён. Спасибо!", show_alert=True)
         return
     
     kb = InlineKeyboardMarkup(inline_keyboard=[
@@ -4530,8 +4525,8 @@ async def review_start(callback: CallbackQuery):
     ])
     
     await callback.message.edit_text(
-        "⭐ *Поделись впечатлением*\n\n"
-        "Оцени сервис от 1 до 5 звёзд, а короткий текст поможет нам выбрать отзыв для главной страницы:",
+        "⭐ *Поделитесь впечатлением*\n\n"
+        "Поставьте оценку от 1 до 5 звёзд. Затем при желании можно добавить короткий текст для сайта.",
         reply_markup=kb,
         parse_mode=ParseMode.MARKDOWN
     )
@@ -4550,7 +4545,7 @@ async def show_referral(callback: CallbackQuery):
     ref_code = stats.get('code') or get_or_create_referral_code(tg_id)
     
     if not ref_code:
-        await callback.answer("⚠️ Сначала активируйте подписку", show_alert=True)
+        await callback.answer("⚠️ Сначала активируйте доступ", show_alert=True)
         return
     
     # Generate referral link with SWAZ code
@@ -4559,7 +4554,7 @@ async def show_referral(callback: CallbackQuery):
     bonus_earned = stats['bonus_earned']
     
     kb = InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text="📤 Поделиться реферальной ссылкой", url=f"https://t.me/share/url?url={invite_link}&text=🛡 POKROV VPN — приглашение в защищённую сеть")],
+        [InlineKeyboardButton(text="📤 Поделиться реферальной ссылкой", url=f"https://t.me/share/url?url={invite_link}&text=🛡 POKROV — приглашение в защищённую связь")],
         [InlineKeyboardButton(text="◀️ Назад", callback_data="back")]
     ])
     
@@ -4845,45 +4840,45 @@ async def buy_family_slot(callback: CallbackQuery, bot: Bot):
 
 FAQ_ANSWERS = {
     "connect": (
-        "📱 *Как подключить?*\n\n"
-        "1️⃣ Скачай приложение:\n"
+        "📱 *Как подключиться?*\n\n"
+        "1️⃣ Скачайте приложение:\n"
         f"• iPhone / iPad: [Инструкция и статус релиза]({IOS_APP_LINK})\n"
-        f"• Android: [POKROV VPN]({ANDROID_APP_LINK})\n"
-        f"• Windows: [POKROV VPN]({WINDOWS_APP_LINK})\n\n"
-        "2️⃣ Нажми *🔑 Мой ключ* в боте\n\n"
-        "3️⃣ Скопируй ссылку подписки\n\n"
-        "4️⃣ В приложении: ➕ → *Импорт из буфера*\n\n"
-        "5️⃣ Подключись! 🚀"
+        f"• Android: [POKROV]({ANDROID_APP_LINK})\n"
+        f"• Windows: [POKROV]({WINDOWS_APP_LINK})\n\n"
+        "2️⃣ Нажмите *🔗 Ссылка для подключения* в боте\n\n"
+        "3️⃣ Откройте ссылку в приложении POKROV\n\n"
+        "4️⃣ Нажмите «Подключить»\n\n"
+        "Если что-то не открылось, следующий шаг — написать в поддержку."
     ),
     "notwork": (
         "⚠️ *Не работает?*\n\n"
-        "Попробуй по порядку:\n\n"
-        "1. *Обнови подписку* — в приложении потяни вниз список серверов\n\n"
-        "2. *Перезапусти приложение*\n\n"
-        "3. *Проверь интернет* — отключи прокси, открой google.com\n\n"
-        "4. *Смени сервер* — если их несколько в списке\n\n"
-        "5. *Перезагрузи телефон*\n\n"
-        "Не помогло? Напиши в службу заботы 👇"
+        "Попробуйте по порядку:\n\n"
+        "1. Обновите доступ в приложении\n\n"
+        "2. Полностью перезапустите приложение\n\n"
+        "3. Проверьте обычный интернет без прокси\n\n"
+        "4. Если есть выбор, смените локацию\n\n"
+        "5. Перезагрузите устройство\n\n"
+        "Если не помогло, следующий шаг — написать в поддержку 👇"
     ),
     "renew": (
         "💳 *Как продлить доступ?*\n\n"
-        f"1️⃣ Открой бота @{BOT_USERNAME_MD}\n\n"
-        "2️⃣ Нажми *🛒 Тарифы*\n\n"
-        "3️⃣ Выбери нужный план\n\n"
-        "4️⃣ Открой оплату ₽ (карта/СБП) или Stars ⭐️\n\n"
-        "После успешной оплаты статус обновится автоматически."
+        f"1️⃣ Откройте бота @{BOT_USERNAME_MD}\n\n"
+        "2️⃣ Нажмите *✨ Подобрать доступ*\n\n"
+        "3️⃣ Выберите нужный план\n\n"
+        "4️⃣ Откройте оплату в ₽ или Stars ⭐️\n\n"
+        "После успешной оплаты доступ обновится автоматически."
     ),
     "referral": (
         "🎁 *Реферальная программа*\n\n"
         "• Пригласите друга по своей ссылке\n"
-        "• Друг получает понятный старт и быстрый путь к подключению\n"
-        f"• Вы получаете *+{REFERRAL_BONUS_DAYS} дней* к доступу после его активации\n\n"
-        "Свою ссылку найдёшь в меню → *🎁 Пригласить друга*"
+        "• Друг получает понятный и спокойный старт\n"
+        f"• Вы получаете *+{REFERRAL_BONUS_DAYS} дней* после его активации\n\n"
+        "Следующий шаг: откройте меню → *🎁 Пригласить друга*"
     ),
     "device": (
         "📲 *Смена устройства*\n\n"
-        "Просто скачай приложение на новый телефон и добавь ту же ссылку подписки.\n\n"
-        "Ссылка: *🔑 Мой ключ* → скопируй → вставь в новое приложение.\n\n"
+        "Скачайте приложение на новое устройство и откройте ту же ссылку для подключения.\n\n"
+        "Путь: *🔗 Ссылка для подключения* → открыть в новом приложении.\n\n"
         f"Лимит устройств зависит от плана: до *{PAID_LIMIT_IP}* в платных режимах."
     ),
 }
@@ -5056,11 +5051,11 @@ async def review_command(message: Message):
     # Check if can review (has active sub, used for 7+ days, no existing review)
     user = get_user(tg_id)
     if not user or not user.is_active:
-        await message.answer("❌ Активируй подписку, чтобы оставить отзыв для главной")
+        await message.answer("❌ Сначала включите доступ, потом можно оставить отзыв для сайта.")
         return
     
     if has_user_review(tg_id):
-        await message.answer("❌ Ты уже оставил отзыв. Спасибо!")
+        await message.answer("❌ Отзыв уже сохранён. Спасибо!")
         return
     
     kb = InlineKeyboardMarkup(inline_keyboard=[
@@ -5075,8 +5070,8 @@ async def review_command(message: Message):
     ])
     
     await message.answer(
-        "⭐ *Поделись впечатлением*\n\n"
-        "Оцени сервис от 1 до 5 звёзд, а короткий текст поможет нам выбрать отзыв для главной страницы:",
+        "⭐ *Поделитесь впечатлением*\n\n"
+        "Поставьте оценку от 1 до 5 звёзд. Затем при желании можно добавить короткий текст для сайта.",
         reply_markup=kb,
         parse_mode=ParseMode.MARKDOWN
     )
@@ -5097,8 +5092,8 @@ async def rate_review(callback: CallbackQuery):
     
     await callback.message.edit_text(
         f"Твоя оценка: {'⭐' * rating}\n\n"
-        "Напиши короткий отзыв (до 200 символов):\n\n"
-        "_Или нажми 'Пропустить', чтобы оставить только оценку_",
+        "Следующий шаг: напишите короткий отзыв (до 200 символов).\n\n"
+        "_Или нажмите «Пропустить», чтобы оставить только оценку._",
         reply_markup=kb,
         parse_mode=ParseMode.MARKDOWN
     )
@@ -5116,12 +5111,12 @@ async def skip_review_text(callback: CallbackQuery):
     if success:
         await callback.message.edit_text(
             f"✅ *Спасибо за отзыв!*\n\n"
-            f"Ты поставил: {'⭐' * rating}\n"
-            "Если отзыв подойдёт под главную, мы покажем его после модерации.",
+            f"Оценка: {'⭐' * rating}\n"
+            "Если отзыв подойдёт для сайта, мы покажем его после модерации.",
             parse_mode=ParseMode.MARKDOWN
         )
     else:
-        await callback.message.edit_text("❌ Ты уже оставлял отзыв")
+        await callback.message.edit_text("❌ Отзыв уже сохранён.")
     
     await callback.answer()
 
@@ -5756,12 +5751,13 @@ async def handle_text_input(message: Message):
         if success:
             await message.answer(
                 f"✅ *Спасибо за отзыв!*\n\n"
-                f"{'⭐' * rating}\n"
-                f"_{text}_",
+                f"Оценка: {'⭐' * rating}\n"
+                f"_{text}_\n\n"
+                "Если отзыв подойдёт для сайта, мы покажем его после модерации.",
                 parse_mode=ParseMode.MARKDOWN
             )
         else:
-            await message.answer("❌ Ты уже оставлял отзыв")
+            await message.answer("❌ Отзыв уже сохранён.")
 
 
 @router.callback_query(F.data == "network_status")
@@ -5836,10 +5832,10 @@ async def show_support(callback: CallbackQuery):
     ])
     
     await callback.message.edit_text(
-        "🤖 *Служба заботы POKROV VPN*\n\n"
-        "Если нужно помочь с подключением, оплатой или устройством, helpbot подхватит диалог и доведёт его до ответа.\n"
-        "А если хочется поделиться идеей или тёплым отзывом, открой feedback bot ниже.\n\n"
-        "Выбери вопрос или действие:",
+        "🤖 *Поддержка POKROV*\n\n"
+        "Если нужен совет по подключению, оплате или устройству, helpbot примет обращение и доведёт его до ответа.\n"
+        "Для идеи или отзыва ниже есть отдельная кнопка.\n\n"
+        "Выберите следующий шаг:",
         reply_markup=kb,
         parse_mode=ParseMode.MARKDOWN
     )
@@ -5872,8 +5868,8 @@ async def support_diagnose(callback: CallbackQuery):
     user = get_user(tg_id)
     
     if not user:
-        status = "❌ Подписка не найдена"
-        details = "Активируй подписку через *🛒 Тарифы*"
+        status = "❌ Доступ не найден"
+        details = "Запустите доступ через *✨ Подобрать доступ*"
     else:
         # Status
         if user.is_active and user.expiry_at and user.expiry_at > _utcnow():
@@ -5896,14 +5892,14 @@ async def support_diagnose(callback: CallbackQuery):
     server_status = "✅ Онлайн"  # Simplified - we're running so server is up
     
     kb = InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text="🔑 Моя ссылка", callback_data="show_key")],
+        [InlineKeyboardButton(text="🔗 Моя ссылка", callback_data="show_key")],
         [InlineKeyboardButton(text="◀️ Назад к поддержке", callback_data="support")],
         [InlineKeyboardButton(text="💬 Написать в службу заботы", url=f"https://t.me/{SUPPORT_USERNAME}?start=ticket_new")]
     ])
     
     await callback.message.edit_text(
         f"🔧 *Диагностика*\n\n"
-        f"*Твоя подписка:* {status}\n\n"
+        f"*Ваш доступ:* {status}\n\n"
         f"{details}\n\n"
         f"*Сервер:* {server_status}",
         reply_markup=kb,
@@ -8293,20 +8289,20 @@ async def mode_pro_start(callback: CallbackQuery):
         return
 
     await callback.message.edit_text(
-        "💀 *Ручной режим уже активен*\n\nОткрываю основное меню.",
+        "🔧 *Полное меню уже открыто*\n\nПерехожу к основным действиям.",
         reply_markup=main_keyboard(tg_id),
         parse_mode=ParseMode.MARKDOWN,
     )
-    await callback.answer("Вы уже в ручном режиме", show_alert=False)
+    await callback.answer("Открываю полное меню", show_alert=False)
 
 
 @router.callback_query(F.data == "mode_simple")
 async def mode_simple_start(callback: CallbackQuery):
     text = (
-        "🪄 *Магия Автопилота*\n\n"
-        "Вам не нужно разбираться в технологиях.\n"
-        "Мы всё сделаем за 3 шага.\n\n"
-        "👇 *Какое у вас устройство?*"
+        "✨ *Помогу начать*\n\n"
+        "Без лишних настроек и технических слов.\n"
+        "Сначала выберите устройство, а дальше я проведу по шагам.\n\n"
+        "👇 *С какого устройства начнём?*"
     )
     kb = InlineKeyboardMarkup(inline_keyboard=[
         [InlineKeyboardButton(text="🍏 iPhone / iPad", callback_data="simple_ios")],
@@ -8325,28 +8321,28 @@ async def mode_simple_step2(callback: CallbackQuery):
         app_name = "совместимый клиент для iPhone"
         app_link = IOS_APP_LINK
     elif mode == "simple_android":
-        app_name = "POKROV VPN"
+        app_name = "POKROV"
         app_link = ANDROID_APP_LINK
     else:
-        app_name = "POKROV VPN"
+        app_name = "POKROV"
         app_link = WINDOWS_APP_LINK
 
     text = (
-        f"1️⃣ *Шаг 1: Скачайте приложение*\n\n"
-        f"Для работы нужен клиент *{app_name}*.\n"
-        "Установите приложение и вернитесь в бот.\n\n"
+        f"1️⃣ *Шаг 1: Поставьте приложение*\n\n"
+        f"Сначала нужен *{app_name}*.\n"
+        "Установите приложение и вернитесь сюда.\n\n"
         "👇 Нажмите, чтобы скачать."
     )
     kb = InlineKeyboardMarkup(inline_keyboard=[
         [InlineKeyboardButton(text=f"📥 Скачать {app_name}", url=app_link)],
         [_button_from_spec(_btn_spec(
-            text="✅ Я установил(а), дальше",
+            text="✅ Приложение уже стоит",
             callback_data="simple_step3",
             style=BTN_STYLE_SUCCESS,
             icon_custom_emoji_id=BTN_EMOJI_SUCCESS_ID or None,
         ))],
         [_button_from_spec(_btn_spec(
-            text="⛔ Отмена",
+            text="◀️ Назад",
             callback_data="mode_simple",
             style=BTN_STYLE_DANGER,
             icon_custom_emoji_id=BTN_EMOJI_DANGER_ID or None,
@@ -8370,16 +8366,17 @@ async def _render_mode_simple_step3(callback: CallbackQuery) -> None:
     starter_price = int(TARIFFS["1_month"]["stars"])
     recommended_price = int(TARIFFS["6_months"]["stars"])
     text = (
-        "2️⃣ *Шаг 2: Активация*\n\n"
-        "Теперь нужно создать ваш ключ доступа.\n"
-        "Рекомендуем тариф на 6 месяцев: лучший баланс цены и срока.\n\n"
-        "Нажмите кнопку ниже."
+        "2️⃣ *Шаг 2: Выберите, как хотите начать*\n\n"
+        "Можно спокойно начать с 5 дней бесплатно.\n"
+        "Если полный доступ нужен сразу, сейчас самый спокойный баланс цены и срока у плана на 6 месяцев.\n\n"
+        "👇 Выберите следующий шаг."
     )
     kb = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="🎁 Начать с 5 дней бесплатно", callback_data="trial_direct")],
         [InlineKeyboardButton(text=f"⚡ Рекомендуем: 6 месяцев за {recommended_price} ⭐", callback_data="buy_6_months")],
-        [InlineKeyboardButton(text=f"🚀 Начать с 1 месяца за {starter_price} ⭐", callback_data="buy_1_month")],
-        [InlineKeyboardButton(text="🤔 Выбрать другой тариф", callback_data="charge")],
-        [InlineKeyboardButton(text=f"🎁 {CHANNEL_PREMIUM_DAYS} дней премиум за канал", callback_data="bonus_offer_trial")],
+        [InlineKeyboardButton(text=f"📅 Начать с 1 месяца за {starter_price} ⭐", callback_data="buy_1_month")],
+        [InlineKeyboardButton(text="💳 Посмотреть все планы", callback_data="charge")],
+        [InlineKeyboardButton(text=f"🎁 Забрать ещё {CHANNEL_PREMIUM_DAYS} дней за канал", callback_data="bonus_offer_trial")],
         [InlineKeyboardButton(text="◀️ Назад", callback_data="mode_simple")],
     ])
     await callback.message.edit_text(text, reply_markup=kb, parse_mode=ParseMode.MARKDOWN)
@@ -8400,8 +8397,8 @@ async def _activate_trial_tariff(
     if not is_subscribed:
         channel_name = _channel_name_for_url()
         await callback.message.answer(
-            "🚀 *Тестовый профиль активируется сразу.*\n\n"
-            "Если подпишетесь на канал, получите бонусные дни и более выгодный путь к апгрейду.\n"
+            "🎁 *5 дней бесплатно можно включить уже сейчас.*\n\n"
+            "Если подпишетесь на канал, потом сможете забрать ещё бонусные дни.\n"
             f"Канал: https://t.me/{channel_name}",
             parse_mode=ParseMode.MARKDOWN,
         )
@@ -8411,13 +8408,13 @@ async def _activate_trial_tariff(
     expiry = _naive_utc(user.expiry_at) if user else None
     has_active = bool(user and user.is_active and expiry and expiry > now)
     if has_active and _is_freemium_sub_type(current_sub):
-        await callback.answer("Тест уже активирован. Можно открыть ключ или выбрать апгрейд.", show_alert=True)
+        await callback.answer("5 дней бесплатно уже включены. Следующий шаг — открыть ссылку или выбрать полный доступ.", show_alert=True)
         return
     if has_active and not _is_freemium_sub_type(current_sub):
-        await callback.answer("У вас уже активирован полный доступ. Тест больше не нужен.", show_alert=True)
+        await callback.answer("Полный доступ уже активен. Следующий шаг — открыть ссылку для подключения.", show_alert=True)
         return
 
-    await callback.answer("⏳ Запускаю тест...")
+    await callback.answer("⏳ Включаю бесплатный старт...")
     await create_subscription(callback.message, tg_id, tariff, bot)
 
 
@@ -8438,7 +8435,7 @@ async def _resume_after_bonus_prompt(callback: CallbackQuery, bot: Bot, *, next_
         return
 
     await callback.message.edit_text(
-        "✅ Продолжаем без бонуса.\n\nОткрываю основное меню.",
+        "✅ Продолжаем без бонуса.\n\nСледующий шаг — выбрать действие в главном меню.",
         reply_markup=main_keyboard(tg_id),
         parse_mode=ParseMode.MARKDOWN,
     )
@@ -8473,12 +8470,12 @@ async def channel_bonus_claim(callback: CallbackQuery, bot: Bot):
     if activated:
         kb = InlineKeyboardMarkup(
             inline_keyboard=[
-                [InlineKeyboardButton(text="🔑 Мой ключ", callback_data="show_key")],
+                [InlineKeyboardButton(text="🔗 Ссылка для подключения", callback_data="show_key")],
                 [InlineKeyboardButton(text="🏠 Главное меню", callback_data="back")],
             ]
         )
         await callback.message.edit_text(
-            f"✅ *Бонус активирован*\n\nПремиум-доступ выдан на *{CHANNEL_PREMIUM_DAYS} дней*.",
+            f"✅ *Бонус включён*\n\nПолный доступ добавлен на *{CHANNEL_PREMIUM_DAYS} дней*.\n\nСледующий шаг — открыть ссылку для подключения.",
             reply_markup=kb,
             parse_mode=ParseMode.MARKDOWN,
         )
@@ -8495,14 +8492,14 @@ async def channel_bonus_claim(callback: CallbackQuery, bot: Bot):
         return
     if reason == "tos_required":
         await callback.message.edit_text(
-            "⚠️ Сначала примите условия оферты, затем активируйте бонус.",
+            "⚠️ Сначала примите условия, затем я активирую бонус.",
             reply_markup=_tos_offer_keyboard(back_callback=f"bonus_offer_{next_action}"),
             parse_mode=ParseMode.MARKDOWN,
         )
         await callback.answer()
         return
 
-    await callback.answer("Не удалось активировать бонус, продолжаем без него.", show_alert=True)
+    await callback.answer("Не удалось включить бонус. Продолжаю без него.", show_alert=True)
     await _resume_after_bonus_prompt(callback, bot, next_action=next_action)
 
 
@@ -8886,7 +8883,7 @@ async def process_buy_stars(callback: CallbackQuery, bot: Bot):
     )
     await bot.send_invoice(
         chat_id=tg_id,
-        title=f"POKROV VPN: {tariff['name']}",
+        title=f"POKROV: {tariff['name']}",
         description=description,
         payload=invoice_payload,
         provider_token="",
@@ -8894,8 +8891,8 @@ async def process_buy_stars(callback: CallbackQuery, bot: Bot):
         prices=prices
     )
     await callback.message.answer(
-        "💳 Счёт открыт. После оплаты я автоматически выдам доступ.\n\n"
-        "Если закрыли окно оплаты, нажмите «Проверить оплату».",
+        "💳 Счёт готов. После оплаты я автоматически включу доступ.\n\n"
+        "Если окно закрылось, нажмите «Проверить оплату».",
         reply_markup=InlineKeyboardMarkup(
             inline_keyboard=[
                 [InlineKeyboardButton(text="✅ Проверить оплату", callback_data="status")],
@@ -8932,8 +8929,8 @@ async def process_buy_rub(callback: CallbackQuery, bot: Bot):
     except Exception as exc:
         logger.warning("direct rub checkout failed provider=%s tg_id=%s plan=%s err=%s", provider_code, tg_id, tariff_key, exc)
         await callback.message.edit_text(
-            "⚠️ Не удалось сразу открыть платёжную страницу.\n\n"
-            "Попробуйте ещё раз через минуту или откройте путь через сайт из тарифа.",
+            "⚠️ Не получилось сразу открыть оплату.\n\n"
+            "Попробуйте ещё раз через минуту или откройте оплату через сайт из этого же тарифа.",
             reply_markup=_build_tariff_payment_choice_keyboard(tg_id=tg_id, tariff_key=tariff_key),
         )
         await callback.answer("Не удалось подготовить оплату", show_alert=True)
@@ -8957,11 +8954,11 @@ async def process_buy_rub(callback: CallbackQuery, bot: Bot):
     await callback.message.edit_text(
         f"💳 *{tariff['name']}*\n\n"
         f"Сумма: *{rub_price} ₽*\n"
-        "Ссылка на оплату уже готова.\n"
         f"Касса: *{provider_label}*.\n\n"
-        "Если окно банка не откроется внутри Telegram, используйте кнопку «Открыть через сайт» "
-        "или попробуйте открыть оплату в обычном браузере.\n\n"
-        "Ссылка на этот шаг действует около *15 минут*.",
+        "Следующий шаг: откройте оплату по кнопке ниже.\n"
+        "Если банк не откроется внутри Telegram, используйте кнопку «Открыть через сайт» "
+        "или обычный браузер.\n\n"
+        "Ссылка действует около *15 минут*.",
         reply_markup=_build_direct_rub_payment_keyboard(
             tg_id=tg_id,
             tariff_key=tariff_key,
@@ -8970,7 +8967,7 @@ async def process_buy_rub(callback: CallbackQuery, bot: Bot):
         ),
         parse_mode=ParseMode.MARKDOWN,
     )
-    await callback.answer("Платёжная ссылка готова")
+    await callback.answer("Ссылка на оплату готова")
 
 @router.pre_checkout_query()
 async def pre_checkout_handler(pre_checkout: PreCheckoutQuery, bot: Bot):
@@ -9137,7 +9134,7 @@ async def payment_success(message: Message, bot: Bot):
             )
             if not ok:
                 kb = InlineKeyboardMarkup(
-                    inline_keyboard=[[InlineKeyboardButton(text="🔑 Получить ключи", callback_data="show_key")]]
+                    inline_keyboard=[[InlineKeyboardButton(text="🔗 Открыть ссылку для подключения", callback_data="show_key")]]
                 )
                 await message.answer(receipt_text, reply_markup=kb, parse_mode=ParseMode.MARKDOWN)
         else:
@@ -9262,10 +9259,10 @@ async def create_subscription(
         
         if not success:
             kb = InlineKeyboardMarkup(inline_keyboard=[
-                [InlineKeyboardButton(text="💬 Написать в службу заботы", url=f"https://t.me/{SUPPORT_USERNAME}?start=ticket_new")],
+                [InlineKeyboardButton(text="💬 Написать в поддержку", url=f"https://t.me/{SUPPORT_USERNAME}?start=ticket_new")],
                 [InlineKeyboardButton(text="◀️ Назад", callback_data="back")]
             ])
-            await message.answer("❌ Не удалось активировать доступ.\n\nНажмите кнопку ниже для связи с поддержкой.", reply_markup=kb)
+            await message.answer("❌ Не получилось включить доступ.\n\nНажмите кнопку ниже, и поддержка подскажет следующий шаг.", reply_markup=kb)
             return
         
         # Create user in DB with the generated sub_token
@@ -9349,11 +9346,11 @@ async def create_subscription(
     ])
     
     await message.answer(
-        f"✅ *Доступ активирован!*\n\n"
-        f"🔋 Энергии хватит до: `{expiry}`\n\n"
-        f"🔗 *Ваша подписка:*\n"
+        f"✅ *Доступ готов!*\n\n"
+        f"📅 До: `{expiry}`\n\n"
+        f"🔗 *Ссылка для подключения:*\n"
         f"`{sub_link}`\n\n"
-        f"📋 _Добавьте ссылку как подписку в приложение_{free_note}",
+        f"Откройте её в приложении POKROV.{free_note}",
         reply_markup=kb,
         parse_mode=ParseMode.MARKDOWN
     )
@@ -10485,12 +10482,12 @@ async def admin_gift(message: Message, bot: Bot):
         sub_link = build_subscription_link(gift_tg_id)
         await bot.send_message(
             gift_tg_id,
-            f"🎁 *Вам подарили доступ к POKROV VPN!*\n\n"
+            f"🎁 *Вам подарили доступ к POKROV!*\n\n"
             f"📦 Тариф: {name}\n"
             f"📅 Дней: {days}\n"
             f"📡 Режим: полный доступ\n\n"
-            f"🔗 *Ваша подписка:*\n`{sub_link}`\n\n"
-            f"📋 _Добавьте ссылку как подписку в приложение_",
+            f"🔗 *Ссылка для подключения:*\n`{sub_link}`\n\n"
+            f"Следующий шаг: откройте её в приложении POKROV.",
             parse_mode=ParseMode.MARKDOWN
         )
     except:
@@ -10560,17 +10557,14 @@ async def monitor_expiry(bot: Bot) -> None:
                                 pass
 
                             if user.tg_id > 0 and user.tg_id not in PROTECTED_USERS:
-                                kb = InlineKeyboardMarkup(inline_keyboard=[[InlineKeyboardButton(text="⚡ Продлить доступ", callback_data="charge")]])
+                                kb = InlineKeyboardMarkup(inline_keyboard=[[InlineKeyboardButton(text="⚡ Вернуть полный доступ", callback_data="charge")]])
                                 try:
                                     await bot.send_message(
                                         chat_id=user.tg_id,
                                         text=(
-                                            "⌛️ *Премиум истёк*\n\n"
-                                            "Я переключил вас в *Бесплатный*:\n"
-                                            "• 1 бесплатная нода\n"
-                                            "• Соцсети + AI\n"
-                                            "• YouTube идёт напрямую (сервис не помогает)\n\n"
-                                            "Хотите все 4 страны и полный доступ, продлите подписку."
+                                            "⌛️ *Полный доступ закончился*\n\n"
+                                            "Но вы не остались без связи: я перевёл вас в бесплатный режим.\n"
+                                            "Если хотите вернуть все доступные локации и нормальный запас по устройствам, нажмите кнопку ниже."
                                         ),
                                         reply_markup=kb,
                                         parse_mode=ParseMode.MARKDOWN,

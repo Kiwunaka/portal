@@ -55,6 +55,13 @@ def _mask_username(username: str | None) -> str:
     return f"{raw[:4]}****"
 
 
+def _display_username(username: str | None) -> str:
+    masked = _mask_username(username)
+    if masked == "Пользователь":
+        return masked
+    return f"@{masked}"
+
+
 def upsert_feedback_entry(
     session,
     *,
@@ -152,7 +159,7 @@ def delete_feedback_entry(session, entry_id: int) -> bool:
 def _menu_markup(*, is_admin: bool = False) -> InlineKeyboardMarkup:
     rows = [
         [InlineKeyboardButton(text="✍️ Оставить отзыв", callback_data="fb_new")],
-        [InlineKeyboardButton(text="💬 В службу заботы", url=f"https://t.me/{SUPPORT_USERNAME}?start=ticket_new")],
+        [InlineKeyboardButton(text="💬 В поддержку", url=f"https://t.me/{SUPPORT_USERNAME}?start=ticket_new")],
     ]
     if is_admin:
         rows.append([InlineKeyboardButton(text="🧑‍💼 Очередь модерации", callback_data="fb_admin_queue")])
@@ -162,11 +169,11 @@ def _menu_markup(*, is_admin: bool = False) -> InlineKeyboardMarkup:
 def _welcome_text(is_admin: bool) -> str:
     headline = get_copy_text(
         "bot.feedback.welcome",
-        "Сюда можно отправить отзыв, идею или короткое замечание о POKROV VPN. Мы всё читаем и лучшие формулировки выносим на главную.",
+        "Сюда можно отправить отзыв, идею или короткое замечание о POKROV. Мы всё читаем и лучшие отзывы публикуем после модерации.",
     )
     prompt = get_copy_text(
         "bot.feedback.prompt",
-        "Напишите, что понравилось, что хочется улучшить или какой момент запомнился сильнее всего. Достаточно пары честных предложений.",
+        "Напишите, что понравилось, что хотелось бы улучшить или какой момент запомнился сильнее всего. Достаточно пары честных предложений.",
     )
     text = f"💌 *{headline}*\n\n{prompt}"
     if is_admin:
@@ -178,7 +185,7 @@ def _entry_keyboard(entry_id: int) -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(
         inline_keyboard=[
             [
-                InlineKeyboardButton(text="⭐ На главную", callback_data=f"fb_feature_{entry_id}"),
+                InlineKeyboardButton(text="⭐ На сайт", callback_data=f"fb_feature_{entry_id}"),
                 InlineKeyboardButton(text="🗑️ Удалить", callback_data=f"fb_delete_{entry_id}"),
             ],
             [InlineKeyboardButton(text="◀️ Назад", callback_data="fb_admin_queue")],
@@ -187,12 +194,11 @@ def _entry_keyboard(entry_id: int) -> InlineKeyboardMarkup:
 
 
 def _format_entry(entry: FeedbackEntry) -> str:
-    masked = _mask_username(entry.username)
     category = (entry.category or "general").strip()
     source = (entry.source or "feedbackbot").strip()
     return (
         f"💌 Отзыв #{entry.id}\n"
-        f"Пользователь: @{masked}\n"
+        f"Пользователь: {_display_username(entry.username)}\n"
         f"Категория: {category}\n"
         f"Источник: {source}\n\n"
         f"{entry.text or '—'}"
@@ -225,18 +231,18 @@ async def _notify_admin(bot: Bot, entry: FeedbackEntry) -> None:
 async def _show_queue(message: Message) -> None:
     entries = _list_pending_entries()
     if not entries:
-        await message.answer("Пока нет новых отзывов для модерации.", reply_markup=_menu_markup(is_admin=True))
+        await message.answer("Новых отзывов в очереди пока нет.", reply_markup=_menu_markup(is_admin=True))
         return
 
     rows: list[list[InlineKeyboardButton]] = []
     for entry in entries:
         masked = _mask_username(entry.username)
-        timestamp = entry.created_at.strftime("%d.%m %H:%M") if entry.created_at else "сейчас"
+        timestamp = entry.created_at.strftime("%d.%m %H:%M") if entry.created_at else "только что"
         rows.append([InlineKeyboardButton(text=f"{masked} • {timestamp}", callback_data=f"fb_review_{entry.id}")])
 
     rows.append([InlineKeyboardButton(text="◀️ Назад", callback_data="fb_back_home")])
     await message.answer(
-        f"Очередь модерации: {len(entries)}\nВыберите отзыв, который хотите проверить.",
+        f"Очередь модерации: {len(entries)}\nСледующий шаг: выберите отзыв, который хотите проверить.",
         reply_markup=InlineKeyboardMarkup(inline_keyboard=rows),
     )
 
@@ -256,7 +262,7 @@ async def fb_new(callback: CallbackQuery) -> None:
     pending_feedback.add(callback.from_user.id)
     await callback.message.edit_text(
         "💌 *Напишите отзыв одним сообщением*\n\n"
-        "Можно коротко: что понравилось, где было удобно, что хочется улучшить. Мы передадим текст на модерацию.",
+        "Коротко расскажите, что помогло, что было неудобно и что стоит улучшить. Затем мы передадим текст на модерацию.",
         reply_markup=InlineKeyboardMarkup(
             inline_keyboard=[[InlineKeyboardButton(text="◀️ Назад", callback_data="fb_back_home")]]
         ),
@@ -297,14 +303,14 @@ async def capture_feedback(message: Message) -> None:
             session.close()
     except ValueError:
         pending_feedback.add(tg_id)
-        await message.answer("Напишите хотя бы пару слов, чтобы мы поняли контекст и могли передать отзыв на модерацию.")
+        await message.answer("Напишите пару слов, чтобы мы поняли контекст и спокойно передали отзыв на модерацию.")
         return
 
     await _notify_admin(message.bot, entry)
     await message.answer(
         get_copy_text(
             "bot.feedback.thanks",
-            "Спасибо! Мы сохранили отзыв и передали его на модерацию. Если он подойдёт для главной, покажем его на сайте.",
+            "Спасибо! Мы сохранили отзыв и передали его на модерацию. Если он подойдёт для публикации, покажем его на сайте.",
         ),
         reply_markup=_menu_markup(),
     )
@@ -320,7 +326,7 @@ async def fb_review_open(callback: CallbackQuery) -> None:
         session.close()
 
     if not entry:
-        await callback.answer("Отзыв не найден", show_alert=True)
+        await callback.answer("Отзыв не найден.", show_alert=True)
         return
 
     await callback.message.edit_text(_format_entry(entry), reply_markup=_entry_keyboard(entry.id))
@@ -330,7 +336,7 @@ async def fb_review_open(callback: CallbackQuery) -> None:
 @router.callback_query(F.data == "fb_admin_queue")
 async def fb_admin_queue(callback: CallbackQuery) -> None:
     if callback.from_user.id != ADMIN_ID:
-        await callback.answer("Нет доступа", show_alert=True)
+        await callback.answer("Нет доступа.", show_alert=True)
         return
     await _show_queue(callback.message)
     await callback.answer()
@@ -339,7 +345,7 @@ async def fb_admin_queue(callback: CallbackQuery) -> None:
 @router.callback_query(F.data.startswith("fb_feature_"))
 async def fb_feature(callback: CallbackQuery) -> None:
     if callback.from_user.id != ADMIN_ID:
-        await callback.answer("Нет доступа", show_alert=True)
+        await callback.answer("Нет доступа.", show_alert=True)
         return
 
     entry_id = int(callback.data.replace("fb_feature_", ""))
@@ -352,25 +358,25 @@ async def fb_feature(callback: CallbackQuery) -> None:
         session.close()
 
     if entry is None:
-        await callback.answer("Не удалось опубликовать отзыв", show_alert=True)
+        await callback.answer("Не удалось опубликовать отзыв.", show_alert=True)
         return
 
     try:
         await callback.bot.send_message(
             int(entry.tg_id),
-            "✅ Спасибо! Твой отзыв прошёл модерацию и теперь виден на главной странице POKROV VPN.",
+            "✅ Спасибо. Отзыв прошёл модерацию и теперь опубликован на сайте POKROV.",
         )
     except Exception:
         pass
 
-    await callback.answer("Отзыв опубликован на главной")
+    await callback.answer("Отзыв опубликован.")
     await _show_queue(callback.message)
 
 
 @router.callback_query(F.data.startswith("fb_delete_"))
 async def fb_delete(callback: CallbackQuery) -> None:
     if callback.from_user.id != ADMIN_ID:
-        await callback.answer("Нет доступа", show_alert=True)
+        await callback.answer("Нет доступа.", show_alert=True)
         return
 
     entry_id = int(callback.data.replace("fb_delete_", ""))
@@ -381,10 +387,10 @@ async def fb_delete(callback: CallbackQuery) -> None:
         session.close()
 
     if not deleted:
-        await callback.answer("Отзыв уже удалён", show_alert=True)
+        await callback.answer("Отзыв уже удалён.", show_alert=True)
         return
 
-    await callback.answer("Отзыв удалён")
+    await callback.answer("Отзыв удалён.")
     await _show_queue(callback.message)
 
 

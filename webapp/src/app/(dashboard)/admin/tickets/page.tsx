@@ -1,5 +1,6 @@
 "use client";
 
+import { AdminEmptyState, adminButtonClass, adminFieldClass, adminInsetPanelClass, adminPanelClass } from "@/components/admin/admin-shell";
 import { adminTicketReply, adminTicketStatus, adminTickets, type TicketInfo } from "@/lib/api";
 import { CheckCircle, Clock, Inbox, Loader2, MessageCircle, RefreshCw, Send } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -86,41 +87,33 @@ export default function AdminTicketsPage() {
 
   return (
     <section className="grid gap-4 xl:grid-cols-[0.9fr,1.1fr]">
-      <article className="glass-card min-w-0 p-4">
-        <div className="mb-3 rounded-xl bg-white/60 p-3 text-xs text-slate-500 dark:bg-white/5 dark:text-slate-400">
-          Здесь собраны обращения пользователей. Слева список диалогов, справа переписка и быстрые статусы. Если нужно
-          быстро разобрать очередь, начните с фильтра и верхних карточек.
-        </div>
-        <div className="mb-3 flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
-          <div className="stat-icon stat-icon-amber">
-            <MessageCircle size={18} />
-          </div>
-          <select
-            value={statusFilter}
-            onChange={(event) => setStatusFilter(event.target.value)}
-            className="flex-1 rounded-xl border border-violet-200/50 bg-white/80 px-3 py-2 text-sm outline-none dark:border-violet-500/30 dark:bg-slate-900/70"
-          >
-            <option value="">Активные</option>
-            <option value="open">Открыт</option>
-            <option value="in_progress">В работе</option>
-            <option value="closed">Закрыт</option>
-          </select>
-          <button
-            className="outline-btn inline-flex items-center gap-1.5 rounded-xl px-3 py-2 text-sm font-semibold"
-            type="button"
-            onClick={() => void load()}
-          >
-            <RefreshCw size={13} />
-            Обновить
-          </button>
-        </div>
-        {error ? <p className="mb-2 text-sm text-rose-500">{error}</p> : null}
-        <div className="max-h-[64vh] space-y-1.5 overflow-auto">
-          {tickets.length === 0 ? (
-            <div className="empty-state">
-              <Inbox size={32} />
-              <p className="text-sm">Нет обращениеов</p>
+      <article className={adminPanelClass("neutral")}>
+        <div className={adminInsetPanelClass}>
+          <div className="mb-3 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
+            <div className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200/80 bg-white text-slate-700 dark:border-white/10 dark:bg-white/[0.05] dark:text-slate-100">
+              <MessageCircle size={16} />
             </div>
+            <select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)} className={`${adminFieldClass} flex-1`}>
+              <option value="">Активные</option>
+              <option value="open">Открыт</option>
+              <option value="in_progress">В работе</option>
+              <option value="closed">Закрыт</option>
+            </select>
+            <button className={adminButtonClass("secondary", "sm")} type="button" onClick={() => void load()}>
+              <RefreshCw size={13} />
+              Обновить
+            </button>
+          </div>
+          <p className="text-xs leading-5 text-slate-500 dark:text-slate-400">
+            Здесь собраны обращения пользователей. Слева очередь, справа переписка и быстрые смены статуса.
+          </p>
+        </div>
+
+        {error ? <p className="mt-3 text-sm text-rose-500">{error}</p> : null}
+
+        <div className="mt-3 max-h-[64vh] space-y-2 overflow-auto">
+          {tickets.length === 0 ? (
+            <AdminEmptyState title="Нет обращений" description="По текущему фильтру очередь пустая." />
           ) : null}
           {tickets.map((ticket) => {
             const meta = STATUS_META[normalizeTicketStatus(ticket)] || STATUS_META.open;
@@ -129,8 +122,8 @@ export default function AdminTicketsPage() {
                 key={ticket.id}
                 type="button"
                 onClick={() => setSelectedId(ticket.id)}
-                className={`haptic-tap w-full rounded-xl px-4 py-3 text-left transition-all ${
-                  selectedId === ticket.id ? "stat-card" : "bg-white/60 hover:bg-white/80 dark:bg-white/5 dark:hover:bg-white/10"
+                className={`${adminInsetPanelClass} w-full text-left transition ${
+                  selectedId === ticket.id ? "border-slate-950 bg-slate-950 text-white dark:border-white dark:bg-white dark:text-slate-950" : "hover:border-slate-300 hover:bg-white dark:hover:bg-white/[0.06]"
                 }`}
               >
                 <div className="flex items-center justify-between gap-2">
@@ -138,25 +131,25 @@ export default function AdminTicketsPage() {
                   <span className={`badge ${meta.color}`}>{meta.badge}</span>
                 </div>
                 <p className="mt-1.5 text-sm font-medium">{ticket.subject || "Новое обращение"}</p>
-                <p className="mt-1 text-xs text-slate-500 line-clamp-1">{ticket.last_message_preview || "Нет сообщений"}</p>
+                <p className={`mt-1 text-xs line-clamp-1 ${selectedId === ticket.id ? "text-white/70 dark:text-slate-700" : "text-slate-500 dark:text-slate-400"}`}>
+                  {ticket.last_message_preview || "Нет сообщений"}
+                </p>
               </button>
             );
           })}
         </div>
       </article>
 
-      <article className="glass-card min-w-0 p-4">
+      <article className={adminPanelClass("neutral")}>
         {!selected ? (
-          <div className="empty-state min-h-[300px]">
-            <MessageCircle size={36} />
-            <p className="text-sm">Выберите обращение в левом списке</p>
-          </div>
+          <AdminEmptyState className="min-h-[420px]" title="Выберите обращение" description="Откройте тред из очереди, чтобы ответить, сменить статус или просмотреть всю переписку." />
         ) : (
           <>
             <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
               <div>
-                <h2 className="font-display text-2xl font-bold">Обращение #{selected.id}</h2>
-                <p className="mt-0.5 text-xs text-slate-500">Последнее обновление: {fmtRuDate(selected.updated_at)}</p>
+                <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">Выбранный тред</p>
+                <h2 className="mt-1 font-display text-2xl font-semibold text-slate-950 dark:text-slate-50">Обращение #{selected.id}</h2>
+                <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">Последнее обновление: {fmtRuDate(selected.updated_at)}</p>
               </div>
               <div className="flex flex-wrap gap-1.5">
                 {Object.entries(STATUS_META).map(([key, meta]) => {
@@ -165,9 +158,11 @@ export default function AdminTicketsPage() {
                   return (
                     <button
                       key={key}
-                      className={`haptic-tap inline-flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-semibold transition-all ${
-                        isActive ? "bg-violet-600 text-white shadow-md shadow-violet-600/20" : "outline-btn"
-                      }`}
+                      className={
+                        isActive
+                          ? "inline-flex min-h-8 items-center justify-center gap-2 rounded-lg bg-violet-600 px-2.5 text-[11px] font-semibold text-white shadow-lg shadow-violet-600/25 transition disabled:cursor-not-allowed disabled:opacity-55"
+                          : adminButtonClass("ghost", "xs")
+                      }
                       type="button"
                       onClick={() => void updateStatus(key)}
                       disabled={busy}
@@ -180,12 +175,9 @@ export default function AdminTicketsPage() {
               </div>
             </div>
 
-            <div className="flex max-h-[42vh] flex-col gap-2 overflow-auto rounded-xl bg-white/40 p-3 dark:bg-white/[0.03]">
+            <div className="flex max-h-[42vh] flex-col gap-2 overflow-auto rounded-[1rem] border border-slate-200/75 bg-slate-50/75 p-3 dark:border-white/10 dark:bg-white/[0.03]">
               {(selected.messages || []).length === 0 ? (
-                <div className="empty-state py-8">
-                  <MessageCircle size={24} />
-                  <p className="text-xs">Нет сообщений</p>
-                </div>
+                <AdminEmptyState className="min-h-[180px]" title="Нет сообщений" description="В этом обращении пока нет переписки." />
               ) : null}
               {(selected.messages || []).map((message) => {
                 const isAdmin = message.sender_role === "admin";
@@ -210,7 +202,7 @@ export default function AdminTicketsPage() {
                 onChange={(event) => setReply(event.target.value)}
                 rows={3}
                 placeholder="Напишите ответ пользователю простыми словами"
-                className="w-full resize-none rounded-xl border border-violet-200/50 bg-white/80 px-3 py-2 text-sm outline-none dark:border-violet-500/30 dark:bg-slate-900/70"
+                className={`${adminFieldClass} min-h-[120px] resize-none py-3`}
                 onKeyDown={(event) => {
                   if (event.key === "Enter" && (event.metaKey || event.ctrlKey) && reply.trim()) {
                     void sendReply();
@@ -219,12 +211,7 @@ export default function AdminTicketsPage() {
               />
               <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <p className="text-[10px] text-slate-400">Подсказка: можно отправить быстрее через Ctrl/⌘ + Enter</p>
-                <button
-                  className="btn-primary inline-flex w-full items-center justify-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold uppercase tracking-[0.12em] sm:w-auto"
-                  type="button"
-                  onClick={() => void sendReply()}
-                  disabled={busy || !reply.trim()}
-                >
+                <button className={adminButtonClass("primary")} type="button" onClick={() => void sendReply()} disabled={busy || !reply.trim()}>
                   {busy ? <Loader2 size={14} className="animate-spin" /> : <Send size={14} />}
                   {busy ? "Отправка..." : "Отправить"}
                 </button>

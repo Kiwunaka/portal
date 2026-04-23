@@ -1,0 +1,72 @@
+flowchart TD
+  W0["Пользователь открывает app.pokrov.space"]
+
+  subgraph AUTH["Как пользователь попадает в кабинет"]
+    A1["Уже есть web session"]
+    A2["Вход через Telegram OIDC / widget"]
+    A3["Вход через email auth"]
+    A4["Handoff из Telegram по web_session_token"]
+    A5["Ошибка входа -> повторить / открыть Telegram / вернуться на сайт"]
+  end
+
+  ROOT["Корень кабинета /"]
+  DASH["/dashboard/<br/>главный snapshot"]
+
+  subgraph CABINET["Основные разделы кабинета"]
+    C1["/dashboard/downloads/<br/>скачать приложения"]
+    C2["/subscription/<br/>статус доступа и тарифы"]
+    C3["/subscription/checkout/<br/>продление"]
+    C4["/redeem/<br/>погашение activation key"]
+    C5["/devices/<br/>устройства"]
+    C6["/support/<br/>служба заботы"]
+    C7["/support/thread/<br/>продолжение обращения"]
+    C8["/support/legal/<br/>правила поддержки"]
+    C9["/pricing/<br/>compatibility alias"]
+  end
+
+  subgraph PRODUCT["Куда из кабинета уходит пользователь"]
+    P1["POKROV-app<br/>Android / Windows"]
+    P2["Hosted checkout<br/>pay.pokrov.space/checkout/"]
+    P3["@pokrov_supportbot"]
+    P4["Ticket API / thread continuation"]
+  end
+
+  W0 --> A1
+  W0 --> A2
+  W0 --> A3
+  W0 --> A4
+  W0 --> A5
+
+  A1 --> ROOT
+  A2 --> ROOT
+  A3 --> ROOT
+  A4 --> ROOT
+  ROOT --> DASH
+
+  DASH --> C1
+  DASH --> C2
+  DASH --> C5
+  DASH --> C6
+
+  C2 --> C3
+  C2 --> C4
+  C2 --> C6
+  C9 --> C2
+
+  C1 --> P1
+  C3 --> P2
+  P2 --> C4
+  C4 --> DASH
+
+  C5 --> C1
+  C5 --> C6
+  C5 --> P3
+
+  C6 --> C7
+  C6 --> C8
+  C6 --> P3
+  C6 --> P4
+  C7 --> P4
+
+  P3 --> C6
+  P1 --> DASH

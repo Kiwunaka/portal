@@ -1,0 +1,91 @@
+flowchart TD
+  classDef current fill:#eef4ff,stroke:#316dca,stroke-width:1.5px,color:#10284d;
+  classDef target fill:#eefbf0,stroke:#2f9e44,stroke-width:2px,color:#17351d;
+  classDef compat fill:#fff4df,stroke:#b7791f,stroke-width:1.5px,color:#5a3a00;
+  classDef operator fill:#fff0f6,stroke:#c2255c,stroke-width:1.5px,color:#4d1230;
+  classDef shared fill:#f4f4f5,stroke:#52525b,stroke-width:1px,color:#18181b;
+  classDef state fill:#eef2ff,stroke:#4f46e5,stroke-width:1px,color:#1e1b4b;
+
+  subgraph LEG["Легенда"]
+    LCUR["Текущий живой контур"]
+    LTAR["Целевой главный контур"]
+    LCOM["Совместимость и fallback"]
+    LSH["Общая поверхность"]
+    LCUR -->|"текущий переход"| LSH
+    LCUR ==>|"целевой переход"| LTAR
+    LCUR -. "совместимость" .-> LCOM
+  end
+
+  subgraph START["Что запускает контур совместимости"]
+    S1["Старая ссылка или старый профиль"]
+    S2["Ручной импорт нужен прямо сейчас"]
+    S3["Обычный вход не сработал"]
+    S4["Оплата или погашение застряли"]
+  end
+
+  subgraph COMP["Непубличные и совместимые пути"]
+    C1["Ручное восстановление"]
+    C2["Хост ручного подключения"]
+    C3["Одна публичная ссылка подключения"]
+    C4["Непубличный простой формат"]
+    C5["Старый совместимый адрес"]
+    C6["Устаревший алиас страницы тарифа"]
+    C7["Ручной импорт или копирование"]
+  end
+
+  subgraph RETURN["Возврат в основной маршрут"]
+    R1["Возврат в приложение"]
+    R2["Возврат в кабинет"]
+    R3["Возврат в оплату или погашение"]
+    R4["Возврат в поддержку"]
+    R5["Рабочий основной маршрут восстановлен"]
+  end
+
+  subgraph WARN["Почему путь не главный"]
+    W1["Не стартовый acquisition-контур"]
+    W2["Используется только для recovery и совместимости"]
+    W3["Должен вернуть пользователя в приложение или кабинет"]
+  end
+
+  subgraph LIVE["Живые seam-ветки"]
+    L1["Переход из Telegram в запасной маршрут"]
+    L2["Старый алиас страницы тарифа"]
+    L3["Вручную открытый хост подключения"]
+  end
+
+  S1 -.-> C1
+  S2 -.-> C1
+  S3 -.-> C1
+  S4 -.-> C1
+
+  C1 -.-> C2
+  C2 -.-> C3
+  C2 -.-> C4
+  C2 -.-> C5
+  C3 -.-> C7
+  C4 -.-> C7
+  C5 -.-> C7
+  C6 -.-> R3
+
+  L1 -.-> C1
+  L2 -.-> C6
+  L3 -.-> C2
+
+  C7 -.-> R1
+  C7 -.-> R2
+  C7 -.-> R4
+  R1 ==> R5
+  R2 ==> R5
+  R3 --> R2
+  R4 --> R2
+
+  C1 -.-> W1
+  C2 -.-> W2
+  C7 -.-> W3
+  W3 ==> R1
+  W3 ==> R2
+
+  class LCUR,S1,S2,S4,L1,L2,L3 current;
+  class LTAR,R1,R2,R5 target;
+  class LCOM,S3,C1,C2,C3,C4,C5,C6,C7,W1,W2,W3 compat;
+  class LSH,R3,R4 shared;

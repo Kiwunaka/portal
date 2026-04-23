@@ -42,5 +42,8 @@ jobs:
       - name: Validate generated artifacts and public wording
         run: python scripts/ci_check_artifacts.py --check-copy
 
+      - name: Validate shared-facts and release-handoff contracts
+        run: python -m unittest tests.test_shared_surface_facts tests.test_remote_brain_apply_release_handoff tests.test_release_orchestrator tests.test_smoke_client_apps
+
       - name: Quick release gate
         run: python scripts/release_gate_check.py --quick

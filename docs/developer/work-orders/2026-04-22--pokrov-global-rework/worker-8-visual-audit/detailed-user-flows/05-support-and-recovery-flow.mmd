@@ -1,0 +1,100 @@
+flowchart TD
+  ISSUE["У пользователя проблема"]
+
+  subgraph PROBLEMS["Типовые причины"]
+    P1["Не войти / не открывается кабинет"]
+    P2["Не подключается приложение"]
+    P3["Новый девайс / перенос доступа"]
+    P4["Проблема с оплатой / продлением"]
+    P5["Скорость / нестабильность"]
+    P6["Нужно восстановление доступа"]
+  end
+
+  subgraph ENTRY["Предпочтительный порядок recovery"]
+    E1["1. Сначала app"]
+    E2["2. Потом web cabinet"]
+    E3["3. Потом Telegram"]
+  end
+
+  subgraph APPPATH["Если начинает из приложения"]
+    A1["Повторить connect / refresh"]
+    A2["Открыть web cabinet"]
+    A3["Открыть support"]
+  end
+
+  subgraph WEBPATH["Если начинает из кабинета"]
+    W1["/support/"]
+    W2["Создать ticket"]
+    W3["/support/thread/"]
+    W4["/devices/"]
+    W5["/subscription/"]
+    W6["/dashboard/downloads/"]
+  end
+
+  subgraph TELEGRAMPATH["Если уходит в Telegram"]
+    T1["@pokrov_supportbot"]
+    T2["@pokrov_vpnbot"]
+    T3["Ручной recovery / restore premium / быстрый ответ"]
+  end
+
+  subgraph MANUAL["Compatibility-only ручной контур"]
+    M1["connect.pokrov.space"]
+    M2["Manual / recovery config path"]
+    M3["Не основной acquisition и не default UX"]
+  end
+
+  subgraph RETURN["Куда возвращается после решения"]
+    R1["Назад в приложение"]
+    R2["Назад в dashboard"]
+    R3["Назад в checkout / redeem"]
+    R4["Доступ восстановлен"]
+  end
+
+  ISSUE --> P1
+  ISSUE --> P2
+  ISSUE --> P3
+  ISSUE --> P4
+  ISSUE --> P5
+  ISSUE --> P6
+
+  P1 --> E1
+  P2 --> E1
+  P3 --> E2
+  P4 --> E2
+  P5 --> E1
+  P6 --> E3
+
+  E1 --> A1
+  E1 --> A2
+  E1 --> A3
+
+  E2 --> W1
+  E2 --> W4
+  E2 --> W5
+  E2 --> W6
+
+  W1 --> W2
+  W1 --> T1
+  W2 --> W3
+  W3 --> T1
+
+  E3 --> T1
+  E3 --> T2
+  T1 --> T3
+  T2 --> T3
+
+  T3 --> M1
+  M1 --> M2
+  M2 --> M3
+
+  A1 --> R1
+  A2 --> R2
+  A3 --> T1
+  W4 --> R1
+  W5 --> R3
+  W6 --> R1
+  W3 --> R2
+  T3 --> R4
+  R3 --> R4
+  R1 --> R4
+  R2 --> R4

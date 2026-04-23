@@ -16,12 +16,11 @@ import {
   adminUserMessage,
   adminUserPresetRun,
   adminUsers,
-  type AdminAuditRow,
   type AdminUserCard,
   type AdminUserKey,
-  type AdminUserKeyHistoryRow,
   type AdminUserRow,
 } from "@/lib/api";
+import { adminButtonClass, adminFieldClass, adminPanelClass, adminTextAreaClass } from "@/components/admin/admin-shell";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { AdminUsersQueryPanel } from "@/components/admin/users/admin-users-query-panel";
@@ -56,14 +55,11 @@ export default function AdminUsersPage() {
   const pathname = usePathname();
   const router = useRouter();
   const searchParams = useSearchParams();
-  const searchParamsKey = searchParams.toString();
-  const queryState = useMemo(() => readAdminUsersQueryState(searchParams), [searchParamsKey]);
+  const queryState = useMemo(() => readAdminUsersQueryState(searchParams), [searchParams]);
 
   const [rows, setRows] = useState<AdminUserRow[]>([]);
   const [totalRows, setTotalRows] = useState(0);
   const [selected, setSelected] = useState<AdminUserCard | null>(null);
-  const [keyHistoryRows, setKeyHistoryRows] = useState<AdminUserKeyHistoryRow[]>([]);
-  const [auditRows, setAuditRows] = useState<AdminAuditRow[]>([]);
   const [policyDrafts, setPolicyDrafts] = useState<Record<string, KeyPolicyDraft>>({});
   const [detailTab, setDetailTab] = useState<DetailTab>("overview");
   const [loading, setLoading] = useState(true);
@@ -102,8 +98,6 @@ export default function AdminUsersPage() {
   const loadCardDetails = useCallback(async (tgId: number): Promise<void> => {
     const card = await adminUserCard(tgId);
     setSelected(card);
-    setKeyHistoryRows(card.key_history || []);
-    setAuditRows(card.admin_actions || []);
   }, []);
 
   const loadUsers = useCallback(
@@ -130,8 +124,6 @@ export default function AdminUsersPage() {
 
         if (!result.users.length) {
           setSelected(null);
-          setKeyHistoryRows([]);
-          setAuditRows([]);
         } else {
           const nextId =
             selectedIdRef.current && result.users.some((item) => item.tg_id === selectedIdRef.current)
@@ -292,8 +284,6 @@ export default function AdminUsersPage() {
       setDialog(null);
       selectedIdRef.current = 0;
       setSelected(null);
-      setKeyHistoryRows([]);
-      setAuditRows([]);
       await loadUsers({ preserveNotice: true });
     } catch (err) {
       setError(errorMessage(err, "Не удалось удалить manual/test пользователя."));
@@ -535,8 +525,6 @@ export default function AdminUsersPage() {
     void loadUsers();
   }, [loadUsers]);
 
-  const keys = selected?.keys || [];
-
   return (
     <section className="space-y-4">
       <AdminUsersQueryPanel
@@ -564,7 +552,7 @@ export default function AdminUsersPage() {
         setBulkAction={setBulkAction}
       />
 
-      <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr),minmax(0,1fr)]">
+      <div className="grid gap-4 xl:grid-cols-[minmax(0,1.08fr),minmax(360px,0.92fr)]">
         <AdminUsersResultsTable
           rows={rows}
           loading={loading}
@@ -578,33 +566,35 @@ export default function AdminUsersPage() {
           onSelect={(tgId) => void handleSelectUser(tgId)}
         />
 
-        <AdminUserSidePanel
-          selected={selected}
-          detailTab={detailTab}
-          busy={busy}
-          keyBusy={keyBusy}
-          policyBusy={policyBusy}
-          policyDrafts={policyDrafts}
-          selectedCanDelete={selectedCanDelete}
-          onReload={() => void reloadSelected()}
-          onMessage={actionMessage}
-          onExtend={actionExtend}
-          onToggleBlock={() => void actionToggleBlock()}
-          onRegenerateToken={() => void actionRegenerateToken()}
-          onDeleteTestUser={actionDeleteTestUser}
-          onRunPreset={(preset) => void runPreset(preset)}
-          onGrantLoyalty={(tierDays) => void grantLoyaltyTier(tierDays)}
-          onRunKeyAction={(key, action) => void runKeyAction(key, action)}
-          onSavePolicy={(nodeCode) => void savePolicy(nodeCode)}
-          onCopyText={(text) => void copyText(text)}
-          setDetailTab={setDetailTab}
-          setPolicyDrafts={setPolicyDrafts}
-        />
+        <div className="xl:sticky xl:top-4 xl:self-start">
+          <AdminUserSidePanel
+            selected={selected}
+            detailTab={detailTab}
+            busy={busy}
+            keyBusy={keyBusy}
+            policyBusy={policyBusy}
+            policyDrafts={policyDrafts}
+            selectedCanDelete={selectedCanDelete}
+            onReload={() => void reloadSelected()}
+            onMessage={actionMessage}
+            onExtend={actionExtend}
+            onToggleBlock={() => void actionToggleBlock()}
+            onRegenerateToken={() => void actionRegenerateToken()}
+            onDeleteTestUser={actionDeleteTestUser}
+            onRunPreset={(preset) => void runPreset(preset)}
+            onGrantLoyalty={(tierDays) => void grantLoyaltyTier(tierDays)}
+            onRunKeyAction={(key, action) => void runKeyAction(key, action)}
+            onSavePolicy={(nodeCode) => void savePolicy(nodeCode)}
+            onCopyText={(text) => void copyText(text)}
+            setDetailTab={setDetailTab}
+            setPolicyDrafts={setPolicyDrafts}
+          />
+        </div>
       </div>
 
       {dialog ? (
         <div className="fixed inset-0 z-[260] flex items-center justify-center bg-slate-950/65 p-4">
-          <div className="glass-card max-h-[min(92vh,720px)] w-full max-w-lg overflow-auto p-5">
+          <div className={`${adminPanelClass("neutral")} max-h-[min(92vh,720px)] w-full max-w-lg overflow-auto`}>
             {dialog.kind === "message" ? (
               <>
                 <h3 className="font-display text-xl font-semibold">Сообщение пользователю</h3>
@@ -613,14 +603,14 @@ export default function AdminUsersPage() {
                   value={dialog.text}
                   onChange={(event) => setDialog({ kind: "message", text: event.target.value })}
                   rows={5}
-                  className="mt-4 w-full rounded-xl border border-violet-200/50 bg-white/80 px-3 py-3 text-sm outline-none dark:border-violet-500/30 dark:bg-slate-900/70"
+                  className={`mt-4 ${adminTextAreaClass}`}
                   placeholder="Введите текст сообщения"
                 />
                 <div className="mt-4 flex justify-end gap-2">
-                  <button className="outline-btn rounded-xl px-4 py-2 text-sm font-semibold" type="button" onClick={() => setDialog(null)}>
+                  <button className={adminButtonClass("secondary")} type="button" onClick={() => setDialog(null)}>
                     Отмена
                   </button>
-                  <button className="btn-primary rounded-xl px-4 py-2 text-sm font-semibold" type="button" disabled={busy || !dialog.text.trim()} onClick={() => void submitMessageDialog()}>
+                  <button className={adminButtonClass("primary")} type="button" disabled={busy || !dialog.text.trim()} onClick={() => void submitMessageDialog()}>
                     Отправить
                   </button>
                 </div>
@@ -636,14 +626,14 @@ export default function AdminUsersPage() {
                   onChange={(event) => setDialog({ kind: "extend", days: event.target.value })}
                   type="number"
                   min={1}
-                  className="mt-4 w-full rounded-xl border border-violet-200/50 bg-white/80 px-3 py-3 text-sm outline-none dark:border-violet-500/30 dark:bg-slate-900/70"
+                  className={`mt-4 ${adminFieldClass}`}
                   placeholder="Дней"
                 />
                 <div className="mt-4 flex justify-end gap-2">
-                  <button className="outline-btn rounded-xl px-4 py-2 text-sm font-semibold" type="button" onClick={() => setDialog(null)}>
+                  <button className={adminButtonClass("secondary")} type="button" onClick={() => setDialog(null)}>
                     Отмена
                   </button>
-                  <button className="btn-primary rounded-xl px-4 py-2 text-sm font-semibold" type="button" disabled={busy} onClick={() => void submitExtendDialog()}>
+                  <button className={adminButtonClass("primary")} type="button" disabled={busy} onClick={() => void submitExtendDialog()}>
                     Применить
                   </button>
                 </div>
@@ -657,7 +647,7 @@ export default function AdminUsersPage() {
                 <input
                   value={dialog.displayName}
                   onChange={(event) => setDialog({ kind: "create", displayName: event.target.value, days: dialog.days })}
-                  className="mt-4 w-full rounded-xl border border-violet-200/50 bg-white/80 px-3 py-3 text-sm outline-none dark:border-violet-500/30 dark:bg-slate-900/70"
+                  className={`mt-4 ${adminFieldClass}`}
                   placeholder="Имя пользователя"
                 />
                 <input
@@ -665,14 +655,14 @@ export default function AdminUsersPage() {
                   onChange={(event) => setDialog({ kind: "create", displayName: dialog.displayName, days: event.target.value })}
                   type="number"
                   min={1}
-                  className="mt-3 w-full rounded-xl border border-violet-200/50 bg-white/80 px-3 py-3 text-sm outline-none dark:border-violet-500/30 dark:bg-slate-900/70"
+                  className={`mt-3 ${adminFieldClass}`}
                   placeholder="Дней доступа"
                 />
                 <div className="mt-4 flex justify-end gap-2">
-                  <button className="outline-btn rounded-xl px-4 py-2 text-sm font-semibold" type="button" onClick={() => setDialog(null)}>
+                  <button className={adminButtonClass("secondary")} type="button" onClick={() => setDialog(null)}>
                     Отмена
                   </button>
-                  <button className="btn-primary rounded-xl px-4 py-2 text-sm font-semibold" type="button" disabled={busy} onClick={() => void submitCreateManualDialog()}>
+                  <button className={adminButtonClass("primary")} type="button" disabled={busy} onClick={() => void submitCreateManualDialog()}>
                     Создать
                   </button>
                 </div>
@@ -686,10 +676,10 @@ export default function AdminUsersPage() {
                   Вы собираетесь удалить <strong>{dialog.displayName}</strong> ({dialog.tgId}). Это действие необратимо и доступно только для явных manual/test аккаунтов.
                 </p>
                 <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:justify-end">
-                  <button className="outline-btn rounded-xl px-4 py-2 text-sm font-semibold" type="button" onClick={() => setDialog(null)}>
+                  <button className={adminButtonClass("secondary")} type="button" onClick={() => setDialog(null)}>
                     Отмена
                   </button>
-                  <button className="btn-primary rounded-xl px-4 py-2 text-sm font-semibold" type="button" disabled={busy} onClick={() => void submitDeleteTestUserDialog()}>
+                  <button className={adminButtonClass("danger")} type="button" disabled={busy} onClick={() => void submitDeleteTestUserDialog()}>
                     Удалить пользователя
                   </button>
                 </div>
@@ -706,10 +696,10 @@ export default function AdminUsersPage() {
                   Поиск: {bulkAction.q.trim() || "нет"} | Лимит: {bulkAction.limit} | Ноды: {bulkAction.nodeCodes.trim() || "все"}
                 </p>
                 <div className="mt-4 flex justify-end gap-2">
-                  <button className="outline-btn rounded-xl px-4 py-2 text-sm font-semibold" type="button" onClick={() => setDialog(null)}>
+                  <button className={adminButtonClass("secondary")} type="button" onClick={() => setDialog(null)}>
                     Отмена
                   </button>
-                  <button className="btn-primary rounded-xl px-4 py-2 text-sm font-semibold" type="button" disabled={busy} onClick={() => void runBulkAction(true)}>
+                  <button className={adminButtonClass("primary")} type="button" disabled={busy} onClick={() => void runBulkAction(true)}>
                     Запустить действие
                   </button>
                 </div>
@@ -725,13 +715,13 @@ export default function AdminUsersPage() {
                 <input
                   value={dialog.subscriptionUrl}
                   readOnly
-                  className="mt-4 w-full rounded-xl border border-violet-200/50 bg-white/80 px-3 py-3 text-xs outline-none dark:border-violet-500/30 dark:bg-slate-900/70"
+                  className={`mt-4 ${adminFieldClass} text-xs`}
                 />
                 <div className="mt-4 flex justify-end gap-2">
-                  <button className="outline-btn rounded-xl px-4 py-2 text-sm font-semibold" type="button" onClick={() => void copyText(dialog.subscriptionUrl)}>
+                  <button className={adminButtonClass("secondary")} type="button" onClick={() => void copyText(dialog.subscriptionUrl)}>
                     Скопировать
                   </button>
-                  <button className="btn-primary rounded-xl px-4 py-2 text-sm font-semibold" type="button" onClick={() => setDialog(null)}>
+                  <button className={adminButtonClass("primary")} type="button" onClick={() => setDialog(null)}>
                     Закрыть
                   </button>
                 </div>
