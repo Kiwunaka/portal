@@ -27,7 +27,7 @@
     "avoid": [
       "old dark/technical shell",
       "purple-blue gradients",
-      "VPN subtitle under brand",
+      "legacy subtitle under brand",
       "decorative clutter",
       "fake dashboard data"
     ]
@@ -97,13 +97,21 @@
     "workspace_target": "marketing/public/redesign/",
     "manifest": "shared/redesign-assets.json",
     "canonical_mark": "cloak-like POKROV mark",
-    "canonical_mark_source": "C:/Users/kiwun/Documents/ai/VPN/иконки лого и тд/logogo.png",
-    "subtitle_policy": "No PREMIUM VPN subtitle on public brand assets.",
+    "canonical_mark_source_id": "pokrov-vector-mark-2026-04-24",
+    "canonical_mark_provenance": {
+      "root_manifest": "shared/redesign-assets.json",
+      "vector_masters": ["logo/logoclear.svg", "logo/logowithtext.svg"],
+      "visible_export_master": "marketing/public/redesign/brand/pokrov-app-icon-1024.png"
+    },
+    "subtitle_policy": "No legacy subtitle text on public brand assets.",
     "brand_asset_root": "marketing/public/redesign/brand/",
     "brand_mark_svg": "marketing/public/redesign/brand/pokrov-mark.svg",
     "favicon_svg": "marketing/public/redesign/brand/pokrov-favicon.svg",
     "favicon": "marketing/public/favicon.ico",
-    "apple_touch_icon": "marketing/public/apple-icon.png",
+    "apple_touch_icon": "marketing/public/apple-touch-icon.png",
+    "pwa_icon_192": "marketing/public/redesign/brand/pokrov-app-icon-192.png",
+    "pwa_icon_512": "marketing/public/redesign/brand/pokrov-app-icon-512.png",
+    "pwa_maskable_512": "marketing/public/redesign/brand/pokrov-maskable-512.png",
     "app_icon_master": "marketing/public/redesign/brand/pokrov-app-icon-1024.png",
     "hero_product": "marketing/public/redesign/pokrov-hero-product.png"
   }

@@ -94,8 +94,8 @@ export default function SupportTicketThreadPage() {
       const data = await getTicket(ticketId);
       setTicket(data);
       setError("");
-    } catch (nextError) {
-      setError(String((nextError as { message?: string })?.message || nextError));
+    } catch {
+      setError("Не удалось открыть кейс. Вернитесь к списку обращений или создайте новый кейс.");
     } finally {
       setLoading(false);
     }
@@ -123,8 +123,8 @@ export default function SupportTicketThreadPage() {
       setTicket(updated);
       setMessage("");
       setAttachmentFile(null);
-    } catch (nextError) {
-      setReplyError(String((nextError as { message?: string })?.message || nextError));
+    } catch {
+      setReplyError("Не удалось отправить сообщение. Попробуйте еще раз.");
     } finally {
       setBusy(false);
     }
@@ -148,7 +148,7 @@ export default function SupportTicketThreadPage() {
       <CabinetRoute
         eyebrow="Поддержка"
         title="Не удалось открыть кейс"
-        description={error || "Кейс не найден. Возможно, ссылка устарела или номер был передан не полностью."}
+        description="Кейс не найден или временно не загрузился. Вернитесь к списку обращений или создайте новый кейс, если вопрос еще актуален."
         actions={
           <AppRouteLink href="/support/" className="outline-btn rounded-full px-5 py-3 text-sm font-semibold">
             К поддержке

@@ -134,6 +134,10 @@ class ApiPaymentCallbacksTests(unittest.TestCase):
         )
         return {"X-Telegram-Init-Data": init_data}
 
+    def _admin_web_headers(self) -> dict[str, str]:
+        token = self.api.create_web_session_token(tg_id=9999, username="admin", auth_type="telegram", auth_origin="telegram")
+        return {"Authorization": f"Bearer {token}"}
+
     def test_success_and_fail_landing_routes(self) -> None:
         client = TestClient(self.api.app)
         ok = client.get("/pay/success")
@@ -424,7 +428,7 @@ class ApiPaymentCallbacksTests(unittest.TestCase):
             self.assertEqual(get_order.status_code, 200, get_order.text)
             self.assertEqual(str(get_order.json().get("status_local") or ""), "pending")
 
-            admin_hdrs = self._auth_headers(9999, "admin")
+            admin_hdrs = self._admin_web_headers()
             refund = client.post(f"/api/payments/freekassa/orders/{order_id}/refund", headers=admin_hdrs)
             self.assertEqual(refund.status_code, 200, refund.text)
 
@@ -696,6 +700,11 @@ class ApiPaymentCallbacksTests(unittest.TestCase):
         self.assertEqual(body.get("provider"), "cardlink")
         self.assertEqual(body.get("provider_label"), "Cardlink")
         self.assertEqual(body.get("payment_url"), "https://checkout.cardlink.link/pay/test-order")
+        self.assertEqual(body["activation_handoff"]["mode"], "activation_key")
+        self.assertEqual(body["activation_handoff"]["status"], "pending_payment")
+        self.assertEqual(body["activation_handoff"]["preferred_action"], "redeem_after_payment")
+        self.assertEqual(body["activation_handoff"]["redeem_path"], "/redeem")
+        self.assertEqual(body["activation_handoff"]["logged_in_continuation"], "direct_apply_available")
 
         s = SessionLocal()
         try:
@@ -762,7 +771,7 @@ class ApiPaymentCallbacksTests(unittest.TestCase):
 
     def test_public_plans_and_admin_plans_crud(self) -> None:
         client = TestClient(self.api.app)
-        admin_hdrs = self._auth_headers(9999, "admin")
+        admin_hdrs = self._admin_web_headers()
 
         pub_before = client.get("/api/public/plans")
         self.assertEqual(pub_before.status_code, 200, pub_before.text)
@@ -802,7 +811,7 @@ class ApiPaymentCallbacksTests(unittest.TestCase):
 
     def test_public_live_updates_and_admin_live_updates_crud(self) -> None:
         client = TestClient(self.api.app)
-        admin_hdrs = self._auth_headers(9999, "admin")
+        admin_hdrs = self._admin_web_headers()
 
         public_rows = client.get("/api/public/live-updates")
         self.assertEqual(public_rows.status_code, 200, public_rows.text)

@@ -101,7 +101,7 @@ export default function InstallPage() {
                 <h2>Каждый шаг здесь либо доступен, либо честно объяснён.</h2>
                 <p>
                   Если файл уже опубликован, вы скачиваете его сразу. Если нет, страница остаётся полезной:
-                  показывает инструкцию, кабинет и живой канал помощи.
+                  показывает инструкцию, кабинет и прямой способ связаться с поддержкой.
                 </p>
                 <ol className="lp-stage-steps">
                   <li>
@@ -192,7 +192,7 @@ export default function InstallPage() {
                 <p>
                   {getCopyText(
                     "marketing.install.windows.desc",
-                    "Десктопный файл для спокойной ежедневной работы. Если релиз ещё в очереди, откройте помощь и не теряйте маршрут.",
+                    "Десктопный файл для спокойной ежедневной работы. Если релиз ещё в очереди, откройте помощь и вернитесь к понятному следующему шагу.",
                   )}
                 </p>
                 {windowsHasArtifact ? (
@@ -235,7 +235,7 @@ export default function InstallPage() {
               <article className="lp-info-card">
                 <span className="lp-info-card__eyebrow">Если нужен доступ</span>
                 <h3>Кабинет остаётся спокойной точкой продолжения</h3>
-                <p>Там можно продолжить маршрут, проверить доступ и вернуться к оплате только тогда, когда это действительно нужно.</p>
+                <p>Там можно проверить доступ и вернуться к оплате только тогда, когда это действительно нужно.</p>
               </article>
               <article className="lp-info-card">
                 <span className="lp-info-card__eyebrow">Если нужен человек</span>
@@ -248,7 +248,7 @@ export default function InstallPage() {
           <section className="lp-section">
             <div className="lp-footer-cta">
               <div className="lp-footer-copy">
-                <span>{getCopyText("marketing.install.help_eyebrow", "Если нужен живой маршрут")}</span>
+                <span>{getCopyText("marketing.install.help_eyebrow", "Если нужна помощь человека")}</span>
                 <h2>{getCopyText("marketing.install.help_title", "Кабинет, Telegram и помощь остаются рядом")}</h2>
                 <p>
                   {getCopyText(

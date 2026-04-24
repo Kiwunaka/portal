@@ -18,14 +18,14 @@ export default function DashboardError({ error, reset }: ErrorProps) {
     <ShellBoundary
       eyebrow="cabinet recovery"
       title="Кабинет не смог открыть этот экран"
-      description="Это сбой маршрута или временная проблема данных. Мы можем повторить запрос или вернуться в безопасную точку входа."
-      badgeLabel={error.digest ? `digest ${error.digest.slice(0, 8)}` : "dashboard error"}
+      description="Это временная проблема экрана или данных. Можно повторить запрос или вернуться в безопасную точку входа."
+      badgeLabel="ошибка экрана"
       badgeTone="warning"
       primaryAction={{ label: "Повторить", onClick: reset }}
       secondaryAction={{ label: "В кабинет", href: "/dashboard/" }}
       metrics={[
-        { label: "Область", value: "dashboard", hint: "Проблема возникла внутри кабинета." },
-        { label: "Следующий шаг", value: "retry", hint: "Повторный запрос часто возвращает страницу сразу." },
+        { label: "Область", value: "Кабинет", hint: "Проблема возникла внутри пользовательского кабинета." },
+        { label: "Следующий шаг", value: "Повторить", hint: "Повторный запрос часто возвращает страницу сразу." },
       ]}
       steps={[
         { title: "Нажмите повтор", description: "Это быстро пересоберёт страницу без полного выхода из кабинета.", tone: "info" },

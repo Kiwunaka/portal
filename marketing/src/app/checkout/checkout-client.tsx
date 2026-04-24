@@ -83,6 +83,22 @@ type AccessKeyStatusResponse = {
   } | null;
 };
 
+type PaymentProviderChoice = {
+  code: string;
+  label: string;
+  accent?: string;
+  checkout_hint?: string;
+  supports_public?: boolean;
+};
+
+type PaymentProvidersResponse = {
+  ok: boolean;
+  providers: PaymentProviderChoice[];
+  blocked?: boolean;
+  blocked_reason_texts?: string[];
+  telegram_fallback_available?: boolean;
+};
+
 const config = getPokrovPublicConfig(process.env as Record<string, string | undefined>);
 const promoCatalog = getPromoSlotsCatalog();
 
@@ -141,6 +157,19 @@ async function fetchAccessKeyStatus(key: string): Promise<AccessKeyStatusRespons
   throw new Error(lastError);
 }
 
+async function fetchPaymentProviders(): Promise<PaymentProvidersResponse | null> {
+  for (const base of candidateApiBases()) {
+    try {
+      const response = await fetch(`${base}/api/payments/providers`, { cache: "no-store" });
+      if (!response.ok) continue;
+      return (await response.json()) as PaymentProvidersResponse;
+    } catch {
+      // Try next base.
+    }
+  }
+  return null;
+}
+
 function describePromoContent(contentId: string): { title: string; body: string } {
   if (contentId === "redeem_key") {
     return {
@@ -174,7 +203,7 @@ function buildRedeemHref(key: string): string {
 
 function formatRoutingMode(mode?: string): string {
   if (mode === "all_except_ru") return "Все, кроме RU";
-  if (mode === "global") return "Полный маршрут";
+  if (mode === "global") return "Весь трафик через POKROV";
   return "спокойный режим по умолчанию";
 }
 
@@ -187,6 +216,92 @@ function formatPlatformScope(scope?: string[]): string {
       return item;
     })
     .join(" + ");
+}
+
+function isTrialKey(status: AccessKeyStatusResponse | null): boolean {
+  if (!status) return false;
+  const kind = String(status.kind || "").toLowerCase();
+  const planCode = String(status.plan?.code || "").toLowerCase();
+  return kind.includes("trial") || planCode === "trial" || Number(status.days || 0) <= 5;
+}
+
+function normalizeAccessKeyError(message: string): { tone: "limit" | "unavailable"; text: string } {
+  const raw = String(message || "").toLowerCase();
+  if (raw.includes("429") || raw.includes("limit") || raw.includes("too many") || raw.includes("soft")) {
+    return {
+      tone: "limit",
+      text:
+        "Похоже, публичная проверка временно ограничена. Продолжите в приложении: там видно, доступна ли бесплатная проверка для этой установки.",
+    };
+  }
+  return {
+    tone: "unavailable",
+    text:
+      "Сейчас не удалось связаться с сервисом проверки ключей. Деньги на этом шаге не списываются; попробуйте позже или продолжите через приложение.",
+  };
+}
+
+function describeTrialKeyState(options: {
+  keyInput: string;
+  keyBusy: boolean;
+  keyStatus: AccessKeyStatusResponse | null;
+  statusText: string;
+}): { title: string; body: string; tone: "empty" | "loading" | "issued" | "continue" | "limit" | "unavailable" } {
+  const { keyInput, keyBusy, keyStatus, statusText } = options;
+  if (keyBusy) {
+    return {
+      title: "Проверяем ключ",
+      body: "Смотрим, есть ли у ключа срок, план и свободная активация. Если сервис проверки не ответит, мы скажем об этом прямо.",
+      tone: "loading",
+    };
+  }
+  if (keyStatus?.exists && !keyStatus.redeemed) {
+    return {
+      title: isTrialKey(keyStatus) ? "Ключ на 5 дней готов" : "Ключ готов к активации",
+      body: "Активируйте его в приложении или кабинете. После активации доступ привяжется к вашему аккаунту.",
+      tone: "issued",
+    };
+  }
+  if (keyStatus?.redeemed) {
+    return {
+      title: "Ключ уже активирован",
+      body: "Продолжайте в приложении или кабинете: там видно текущий срок, устройства и следующий шаг.",
+      tone: "continue",
+    };
+  }
+  if (statusText) {
+    const normalized = normalizeAccessKeyError(statusText);
+    return {
+      title: normalized.tone === "limit" ? "Проверка временно ограничена" : "Проверка недоступна",
+      body: normalized.text,
+      tone: normalized.tone,
+    };
+  }
+  if (!keyInput) {
+    return {
+      title: "Ключа пока нет",
+      body: "Бесплатные 5 дней начинаются в приложении на новой установке. Если ключ уже выдан после оплаты или поддержки, вставьте его сюда.",
+      tone: "empty",
+    };
+  }
+  return {
+    title: "Введите ключ полностью",
+    body: "Когда в поле будет полный ключ, мы проверим его статус и подскажем, куда продолжить.",
+    tone: "empty",
+  };
+}
+
+function describePaymentProviders(providers: PaymentProviderChoice[]): string {
+  const publicProviders = providers.filter((provider) => provider.supports_public !== false);
+  if (!publicProviders.length) {
+    return "Доступные способы оплаты покажет платёжная страница, когда касса ответит.";
+  }
+  return publicProviders
+    .map((provider) => {
+      const accent = String(provider.accent || "").trim();
+      return accent ? `${provider.label}: ${accent}` : provider.label;
+    })
+    .join("; ");
 }
 
 export function CheckoutLoadingFallback() {
@@ -203,7 +318,7 @@ export function CheckoutLoadingFallback() {
       </section>
       <section className="checkout-grid">
         <article className="glass-card">
-          <div className="checkout-helper">Готовим тарифы и спокойный маршрут покупки…</div>
+          <div className="checkout-helper">Готовим тарифы и понятный путь покупки…</div>
         </article>
         <article className="glass-card checkout-sticky">
           <div className="checkout-helper">Проверяем условия и доступные шаги…</div>
@@ -224,6 +339,8 @@ export default function CheckoutClient() {
   const [keyStatus, setKeyStatus] = useState<AccessKeyStatusResponse | null>(null);
   const [statusText, setStatusText] = useState("");
   const [keyBusy, setKeyBusy] = useState(false);
+  const [providers, setProviders] = useState<PaymentProviderChoice[]>([]);
+  const [providersBlocked, setProvidersBlocked] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -259,6 +376,22 @@ export default function CheckoutClient() {
   }, [selectedPlan]);
 
   useEffect(() => {
+    let cancelled = false;
+
+    const load = async () => {
+      const payload = await fetchPaymentProviders();
+      if (!payload || cancelled) return;
+      setProviders(Array.isArray(payload.providers) ? payload.providers : []);
+      setProvidersBlocked(Boolean(payload.blocked || !payload.ok));
+    };
+
+    void load();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
     if (!keyInput) {
       setKeyStatus(null);
       return;
@@ -275,7 +408,7 @@ export default function CheckoutClient() {
       })
       .catch((error) => {
         setKeyStatus(null);
-        setStatusText(String((error as { message?: string })?.message || error || "Не удалось проверить ключ."));
+        setStatusText(String((error as { message?: string })?.message || error || "api unavailable"));
       })
       .finally(() => {
         setKeyBusy(false);
@@ -290,6 +423,7 @@ export default function CheckoutClient() {
   const discountPercent = getPricingPreviewDiscountPercent(promoCode);
   const checkoutHref = buildCheckoutHostHref(activePlan.code, promoCode || undefined);
   const redeemHref = keyStatus?.key ? buildRedeemHref(keyStatus.key) : buildRedeemHref(keyInput);
+  const trialKeyState = describeTrialKeyState({ keyInput, keyBusy, keyStatus, statusText });
   const marketingPromoIds =
     promoCatalog.slots.find((slot) => slot.id === "marketing.checkout.contextual")?.allowed_content_ids || [];
 
@@ -354,12 +488,12 @@ export default function CheckoutClient() {
           <div className="checkout-trust">
             <strong>Как это работает</strong>
             <ul className="checkout-trust-list">
-              <li>В приложении первое валидное устройство получает 5 дней проверки без обязательной регистрации в Telegram.</li>
+              <li>В приложении новая установка может получить 5 дней проверки без обязательной регистрации в Telegram.</li>
               <li>
                 После пробного срока остается бесплатный базовый режим: {catalog?.free_tier?.traffic_limit_gb || 5} ГБ на{" "}
                 {catalog?.free_tier?.cycle_days || 30} дней.
               </li>
-              <li>Публичный маршрут по умолчанию: {formatRoutingMode(catalog?.public_defaults?.routing_mode)}.</li>
+              <li>Режим по умолчанию: {formatRoutingMode(catalog?.public_defaults?.routing_mode)}.</li>
               <li>Telegram нужен для восстановления, бонуса +10 дней и связи с поддержкой.</li>
             </ul>
           </div>
@@ -382,7 +516,7 @@ export default function CheckoutClient() {
           </div>
 
           <div className="checkout-trust">
-            <strong>Уже есть ключ?</strong>
+            <strong>Ключ доступа или бесплатной проверки</strong>
             <div className="checkout-actions">
               <input
                 value={keyInput}
@@ -392,6 +526,10 @@ export default function CheckoutClient() {
               />
             </div>
             {keyBusy ? <p className="checkout-helper">Проверяем статус ключа доступа…</p> : null}
+            <div className={`checkout-empty checkout-empty--${trialKeyState.tone}`}>
+              <strong>{trialKeyState.title}</strong>
+              <p>{trialKeyState.body}</p>
+            </div>
             {keyStatus ? (
               <ul className="checkout-trust-list">
                 <li>Ключ: {keyStatus.key}</li>
@@ -405,7 +543,7 @@ export default function CheckoutClient() {
         <article className="glass-card checkout-sticky">
           <h2>Итог</h2>
           <p className="checkout-note">
-            Покупка заканчивается ключом доступа. Дальше тот же аккаунт продолжает платный доступ без повторной настройки и лишней суеты.
+            Покупка проходит на платёжной странице POKROV и заканчивается ключом доступа. Гость активирует ключ сам, а пользователь с кабинетом может продолжить или продлить доступ сразу в своём аккаунте.
           </p>
 
           <div className="checkout-summary">
@@ -427,7 +565,7 @@ export default function CheckoutClient() {
           </div>
 
           <a href={checkoutHref} target="_blank" rel="noreferrer" className="checkout-submit">
-            Перейти к оплате
+            Открыть платёжную страницу
           </a>
 
           <a href={redeemHref} target="_blank" rel="noreferrer" className="checkout-secondary checkout-secondary-button">
@@ -447,10 +585,19 @@ export default function CheckoutClient() {
           </Link>
 
           <p className="checkout-helper">
-            Полноценный вход по почте готовится. Бесплатная проверка начинается именно из приложения на первом валидном устройстве.
+            До открытия платёжной страницы деньги не списываются. Почтовый вход готовится; бесплатная проверка начинается из приложения на новой установке.
           </p>
 
-          {statusText ? <p className="checkout-status">{statusText}</p> : null}
+          {statusText ? <p className="checkout-status">{normalizeAccessKeyError(statusText).text}</p> : null}
+
+          <div className="checkout-trust">
+            <strong>Оплата и доверие</strong>
+            <ul className="checkout-trust-list">
+              <li>Платёж открывается отдельно на странице оплаты POKROV.</li>
+              <li>{providersBlocked ? "Сейчас касса не показывает доступные способы оплаты." : describePaymentProviders(providers)}</li>
+              <li>Ключ выдаётся после подтверждения платежа платёжным партнёром.</li>
+            </ul>
+          </div>
 
           <div className="checkout-trust">
             <strong>Полезно знать</strong>

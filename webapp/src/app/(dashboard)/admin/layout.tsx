@@ -10,7 +10,7 @@ import {
   adminShellFrameClass,
   adminTopbarClass,
 } from "@/components/admin/admin-shell";
-import { resolveApiUrl, setWebSessionToken } from "@/lib/api";
+import { hasWebSessionToken, resolveApiUrl, setWebSessionToken } from "@/lib/api";
 import { usePortalSession } from "@/lib/session";
 import { usePathname } from "next/navigation";
 import { useEffect, useMemo, useState, type FormEvent, type ReactNode } from "react";
@@ -22,34 +22,64 @@ const MARKETING_SITE_URL = pokrovBranding.marketingUrl;
 
 function isLocalDevHost(): boolean {
   if (typeof window === "undefined") return false;
-  return ["localhost", "127.0.0.1", "::1"].includes(window.location.hostname);
+  return isLoopbackHost(window.location.hostname);
+}
+
+function isLoopbackHost(hostname: string): boolean {
+  return ["localhost", "127.0.0.1", "::1", "[::1]"].includes(String(hostname || "").toLowerCase());
+}
+
+function resolvedDevLoginTarget(): { apiBase: string; apiLoopback: boolean; url: string } {
+  const url = resolveApiUrl("/api/auth/dev/web-login");
+  try {
+    const parsed = new URL(url);
+    return {
+      apiBase: parsed.origin,
+      apiLoopback: isLoopbackHost(parsed.hostname),
+      url,
+    };
+  } catch {
+    return { apiBase: url || "unknown", apiLoopback: false, url };
+  }
 }
 
 function LocalDevAdminLogin() {
-  const [available, setAvailable] = useState(false);
+  const [status, setStatus] = useState({
+    uiLoopback: false,
+    apiLoopback: false,
+    apiBase: "",
+    url: "",
+  });
   const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
 
   useEffect(() => {
-    setAvailable(isLocalDevHost());
+    const target = resolvedDevLoginTarget();
+    setStatus({
+      uiLoopback: isLocalDevHost(),
+      apiLoopback: target.apiLoopback,
+      apiBase: target.apiBase,
+      url: target.url,
+    });
   }, []);
 
-  if (!available) return null;
+  const available = status.uiLoopback && status.apiLoopback;
 
   const submit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    if (!available) return;
     setBusy(true);
     setError("");
     try {
-      const response = await fetch(resolveApiUrl("/api/auth/dev/web-login"), {
+      const response = await fetch(status.url || resolveApiUrl("/api/auth/dev/web-login"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ password }),
       });
       const payload = (await response.json().catch(() => ({}))) as { token?: string; detail?: string; message?: string };
       if (!response.ok || !payload.token) {
-        throw new Error(payload.detail || payload.message || "Локальный вход не настроен на API.");
+        throw new Error(payload.detail || payload.message || "Локальный вход сейчас не настроен.");
       }
       setWebSessionToken(payload.token);
       window.location.replace("/admin/dashboard/");
@@ -62,28 +92,36 @@ function LocalDevAdminLogin() {
 
   return (
     <form onSubmit={submit} className="mt-6 rounded-[0.9rem] border border-[#b8ded1] bg-[#f8fffc] p-4">
-      <p className="text-sm font-semibold text-slate-950">Вход без Telegram</p>
+      <p className="text-sm font-semibold text-slate-950">Локальный вход для разработки</p>
       <p className="mt-1 text-xs leading-5 text-slate-600">
-        Для локальной проверки админки. В обычном режиме этот способ выключен.
+        Работает только на этом компьютере и только если сервер разрешил локальный вход.
       </p>
-      <div className="mt-3 grid gap-2 sm:grid-cols-[minmax(0,1fr)_auto]">
-        <input
-          className={adminFieldClass}
-          type="password"
-          autoComplete="current-password"
-          value={password}
-          onChange={(event) => setPassword(event.target.value)}
-          placeholder="Введите локальный пароль"
-        />
-        <button type="submit" className={`${adminButtonClass("primary", "sm")} whitespace-nowrap`} disabled={busy || !password.trim()}>
-          {busy ? "Проверяем..." : "Войти в админку"}
-        </button>
-      </div>
+      <p className="mt-2 break-all text-xs leading-5 text-slate-600">Сервер: {status.apiBase || "проверяем..."}</p>
+      <p className={available ? "mt-2 text-xs leading-5 text-emerald-700" : "mt-2 text-xs leading-5 text-amber-700"}>
+        {available
+          ? "Локальный вход доступен для этого предпросмотра."
+          : "Локальный вход появится только рядом с локальным сервером."}
+      </p>
+      {available ? (
+        <div className="mt-3 grid gap-2 sm:grid-cols-[minmax(0,1fr)_auto]">
+          <input
+            aria-label="Локальный пароль"
+            className={adminFieldClass}
+            type="password"
+            autoComplete="current-password"
+            value={password}
+            onChange={(event) => setPassword(event.target.value)}
+            placeholder="Введите локальный пароль"
+          />
+          <button type="submit" className={`${adminButtonClass("primary", "sm")} whitespace-nowrap`} disabled={busy || !password.trim()}>
+            {busy ? "Проверяем..." : "Войти в админку"}
+          </button>
+        </div>
+      ) : null}
       {error ? <p className="mt-2 text-xs leading-5 text-rose-700">{error}</p> : null}
     </form>
   );
 }
-
 function AdminStateCard({
   eyebrow,
   title,
@@ -120,10 +158,15 @@ function AdminStateCard({
 export default function AdminLayout({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const { error, loading, logoutWebSession, user, webLoginRequired } = usePortalSession();
+  const [hasBrowserSession, setHasBrowserSession] = useState(() => hasWebSessionToken());
 
   const activeItem = useMemo(() => findAdminNavItem(pathname), [pathname]);
   const activeCategory = useMemo(() => findAdminNavCategory(pathname), [pathname]);
   const siblingItems = activeCategory.items.filter((item) => item.href !== activeItem.href);
+
+  useEffect(() => {
+    setHasBrowserSession(hasWebSessionToken());
+  }, [loading, user, webLoginRequired]);
 
   if (loading) {
     return (
@@ -140,12 +183,12 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
     );
   }
 
-  if (webLoginRequired) {
+  if (webLoginRequired || !hasBrowserSession) {
     return (
       <AdminStateCard
-        eyebrow="session required"
+        eyebrow="нужна сессия"
         title="Войдите снова, чтобы открыть админку"
-        description="Сессия браузера истекла. Откройте вход в кабинет или используйте локальный dev-вход, если он включен на API."
+        description="Сессия браузера истекла. Откройте вход в кабинет или используйте локальный вход, если он включен на этом компьютере."
         primaryHref="/"
         primaryLabel="Открыть вход"
       />
@@ -179,7 +222,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
           <div className="border-b border-[#b8ded1] pb-4">
             <div className="flex items-center justify-between gap-3">
               <div>
-                <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-emerald-700">operator console</p>
+                <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-emerald-700">рабочая панель</p>
                 <h1 className="mt-2 text-lg font-semibold text-slate-50">POKROV Ops</h1>
               </div>
               <AdminBadge tone="accent">Админ</AdminBadge>
@@ -230,7 +273,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
                 <div className="flex flex-wrap items-center gap-2">
                   <AdminBadge tone="accent">{activeCategory.label}</AdminBadge>
                   <AdminBadge>{activeItem.label}</AdminBadge>
-                  <AdminBadge tone="success">web admin primary</AdminBadge>
+                  <AdminBadge tone="success">основная админка</AdminBadge>
                 </div>
                 <h1 className="mt-3 text-[1.45rem] font-semibold text-slate-50">Админка POKROV</h1>
                 <p className="mt-2 max-w-4xl text-sm leading-6 text-slate-400">

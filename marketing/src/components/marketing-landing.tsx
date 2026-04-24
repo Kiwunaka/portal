@@ -42,7 +42,7 @@ type ScenarioCard = {
   desc: string;
 };
 
-type HeroSignal = {
+type HeroFact = {
   label: string;
   value: string;
   detail: string;
@@ -86,7 +86,7 @@ const DEFAULT_REVIEWS: MarketingReview[] = [
   },
 ];
 
-const HERO_SIGNALS: HeroSignal[] = [
+const HERO_FACTS: HeroFact[] = [
   {
     label: "Публично сейчас",
     value: "Android и Windows",
@@ -467,12 +467,12 @@ export default function MarketingLanding({
               </Link>
             </div>
             <dl className="lp-proof">
-              {HERO_SIGNALS.map((signal) => (
-                <div key={signal.label}>
-                  <dt>{signal.label}</dt>
+              {HERO_FACTS.map((fact) => (
+                <div key={fact.label}>
+                  <dt>{fact.label}</dt>
                   <dd>
-                    <span className="lp-proof-value">{signal.value}</span>
-                    <span className="lp-proof-detail">{signal.detail}</span>
+                    <span className="lp-proof-value">{fact.value}</span>
+                    <span className="lp-proof-detail">{fact.detail}</span>
                   </dd>
                 </div>
               ))}

@@ -34,11 +34,11 @@ export function AdminUserKeyPolicyEditor({
     <div className={`${adminInsetPanelClass} mt-3 text-sm`}>
       <div className="mb-3 flex items-center justify-between gap-2">
         <div>
-          <p className="text-sm font-semibold text-slate-50">Keys and per-node policy</p>
-          <p className="mt-1 text-xs leading-5 text-slate-400">Use this to toggle keys, reset traffic, resync sub IDs, and apply traffic policy without leaving the selected account.</p>
+          <p className="text-sm font-semibold text-slate-50">Ключи и policy по нодам</p>
+          <p className="mt-1 text-xs leading-5 text-slate-400">Live-действия с ключами, сброс трафика, resync sub ID и лимиты без выхода из карточки.</p>
         </div>
         <button className={adminButtonClass("secondary", "xs")} type="button" onClick={onReload} disabled={busy || !!keyBusy || !!policyBusy}>
-          Reload
+          Обновить
         </button>
       </div>
 
@@ -59,7 +59,7 @@ export function AdminUserKeyPolicyEditor({
                     {key.exists ? "Ключ присутствует" : "Ключ отсутствует"} | {key.enabled ? "включён" : "выключен"} | {key.online ? "online" : "offline"}
                   </p>
                   <p className="text-xs text-slate-400">
-                    Трафик: {fmtTraffic(key.total_bytes)} | current connections: {key.current_connections}
+                    Трафик: {fmtTraffic(key.total_bytes)} | текущие подключения: {key.current_connections}
                   </p>
                 </div>
                 <div className="flex flex-wrap gap-2">
@@ -103,7 +103,7 @@ export function AdminUserKeyPolicyEditor({
                     checked={draft.notify_soft}
                     onChange={(event) => setPolicyDrafts((prev) => ({ ...prev, [key.node_code]: { ...draft, notify_soft: event.target.checked } }))}
                   />
-                  Notify on soft cap
+                  Уведомить на soft cap
                 </label>
                 <label className={adminCheckboxLabelClass}>
                   <input
@@ -111,7 +111,7 @@ export function AdminUserKeyPolicyEditor({
                     checked={draft.notify_hard}
                     onChange={(event) => setPolicyDrafts((prev) => ({ ...prev, [key.node_code]: { ...draft, notify_hard: event.target.checked } }))}
                   />
-                  Notify on hard cap
+                  Уведомить на hard cap
                 </label>
                 <label className={adminCheckboxLabelClass}>
                   <input
@@ -119,7 +119,7 @@ export function AdminUserKeyPolicyEditor({
                     checked={draft.auto_disable_on_hard}
                     onChange={(event) => setPolicyDrafts((prev) => ({ ...prev, [key.node_code]: { ...draft, auto_disable_on_hard: event.target.checked } }))}
                   />
-                  Auto-disable on hard cap
+                  Автоотключение на hard cap
                 </label>
                 <label className={adminCheckboxLabelClass}>
                   <input
@@ -127,15 +127,15 @@ export function AdminUserKeyPolicyEditor({
                     checked={draft.apply_now}
                     onChange={(event) => setPolicyDrafts((prev) => ({ ...prev, [key.node_code]: { ...draft, apply_now: event.target.checked } }))}
                   />
-                  Apply now
+                  Применить сейчас
                 </label>
                 <button className={adminButtonClass("secondary", "xs")} type="button" onClick={() => onSavePolicy(key.node_code)} disabled={policyBusy === key.node_code}>
-                  {policyBusy === key.node_code ? "..." : "Save policy"}
+                  {policyBusy === key.node_code ? "..." : "Сохранить policy"}
                 </button>
               </div>
 
               <div className="mt-2 text-xs text-slate-400">
-                Current draft: burst {parseNullableNumber(draft.burst_mbps) ?? "—"}, soft {parseNullableNumber(draft.soft_cap_gb) ?? "—"}, hard {parseNullableNumber(draft.hard_cap_gb) ?? "—"}.
+                Черновик: burst {parseNullableNumber(draft.burst_mbps) ?? "—"}, soft {parseNullableNumber(draft.soft_cap_gb) ?? "—"}, hard {parseNullableNumber(draft.hard_cap_gb) ?? "—"}.
               </div>
             </div>
           );

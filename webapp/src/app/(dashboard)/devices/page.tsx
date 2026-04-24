@@ -24,6 +24,11 @@ function formatCount(value?: number | null): string {
   return new Intl.NumberFormat("ru-RU").format(Math.max(0, Math.round(Number(value))));
 }
 
+function formatLocationReadiness(active: number, known: number): string {
+  if (!Number.isFinite(known) || known <= 0) return "Проверим позже";
+  return `${formatCount(active)} из ${formatCount(known)}`;
+}
+
 function deviceTitle(name?: string | null, platform?: string | null): string {
   const cleanName = String(name || "").trim();
   const cleanPlatform = String(platform || "").trim();
@@ -143,8 +148,8 @@ export default function DevicesPage() {
       metrics={[
         {
           label: "Подключений сейчас",
-          value: `${formatCount(activeConnections)} из ${formatCount(deviceLimit)}`,
-          hint: "Это живые подключения по профилю прямо сейчас.",
+          value: formatCount(activeConnections),
+          hint: "Это живые подключения по профилю прямо сейчас. Лимит устройств показан отдельно.",
           tone: "neutral",
         },
         {
@@ -155,8 +160,8 @@ export default function DevicesPage() {
         },
         {
           label: "Маршрут",
-          value: `${formatCount(activeNodes)} из ${formatCount(knownNodes)}`,
-          hint: "Короткая сводка по доступным локациям.",
+          value: formatLocationReadiness(activeNodes, knownNodes),
+          hint: knownNodes > 0 ? "Короткая сводка по доступным локациям." : "Сводка появится после обновления телеметрии.",
           tone: "neutral",
         },
         {

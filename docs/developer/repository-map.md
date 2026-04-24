@@ -16,7 +16,7 @@ Legacy filename note:
 | Path | Purpose | Local authority |
 | --- | --- | --- |
 | `portal_bot/` | FastAPI backend, Telegram bots, worker, data model, panel sync | root canonical docs plus `portal_bot/api.py`, `portal_bot/app_first_service.py`, `portal_bot/channel_bonus_service.py`, and related tests |
-| `webapp/` | Next.js continuation-first cabinet with top-level IA `Dashboard / Subscription / Devices / Statistics / Support`, task routes for entry, downloads, redeem, and checkout continuation, plus the primary admin surface and compatibility aliases for older cabinet and pricing paths | `webapp/README.md`, `webapp/src/app/(dashboard)/admin/`, `webapp/src/components/admin/users/`, `webapp/src/lib/api.ts`, `webapp/e2e/`, `webapp/scripts/serve_export.py` |
+| `webapp/` | Next.js continuation-first cabinet with top-level IA `Главная / Тарифы и оплата / Устройства / Загрузки / Поддержка / Профиль / Настройки`, task routes for entry, redeem, and checkout continuation, plus the web-session-only admin surface and compatibility aliases for older cabinet and pricing paths | `webapp/README.md`, `webapp/src/app/(dashboard)/admin/`, `webapp/src/components/admin/users/`, `webapp/src/lib/api.ts`, `webapp/e2e/`, `webapp/scripts/serve_export.py` |
 | `marketing/` | checkout-first public website, legal pages, SEO routes, install help, and brand assets | root canonical docs plus `marketing/src/`, `marketing/src/app/install/`, `marketing/public/_redirects`, `shared/copy.ts`, `shared/product-facts.json`, `shared/public-urls.json`, `copy/catalog.ru.json` |
 | `shared/` | shared host config, locked product facts, design tokens, and governed public copy for bot/site/app | `shared/portal-config.ts`, `shared/product-facts.json`, `shared/public-urls.json`, `shared/design-tokens.json`, `shared/copy.ts` |
 | `infra/` | runtime units and infra assets | `infra/portal-node-metrics.service`, `infra/portal-node-metrics.timer`, `infra/portal-node-observer.service`, `infra/portal-node-observer.timer` |
@@ -176,17 +176,19 @@ Shared-facts and handoff note:
 - `tests/test_public_copy_guardrails.py`
 - `tests/test_tickets_repo.py`
 - `tests/test_reviews_username_masking.py`
-- redesign public-copy guardrails live in `tests/test_public_copy_guardrails.py`; they keep user-facing Russian copy human and policy-safe, reject stale longer-duration trial copy, reject old subtitle lines, and preserve legacy compatibility labels only where explicitly documented
+- redesign public-copy guardrails live in `tests/test_public_copy_guardrails.py`; they keep user-facing Russian copy human and policy-safe, reject stale longer-duration trial copy, reject old subtitle lines, cover cabinet/app/admin/backend public-copy surfaces, and preserve legacy compatibility labels only where explicitly documented
 
 ### Frontend and smoke
 
 - `tests/test_admin_webapp_smoke.py`
 - `tests/test_client_security_smoke.py`
 - `tests/test_public_copy_guardrails.py`
+- `tests/test_redesign_spine.py`
 - `tests/test_ui_visual_smoke.py`
 - `webapp/e2e/admin-gate.spec.ts`
 - `webapp/e2e/cabinet-flow.spec.ts`
 - `webapp/e2e/admin-gate.spec.ts` also guards local-dev admin auth by requiring a seeded cabinet session before `/admin/*` routes open in browser tests
+- the final polish guardrail pack is `tests/test_public_copy_guardrails.py`, `tests/test_redesign_spine.py`, and `tests/test_ui_visual_smoke.py`; use it before screenshots/final-gate handoff when a full deploy gate is intentionally out of scope
 
 ### Client release verification
 

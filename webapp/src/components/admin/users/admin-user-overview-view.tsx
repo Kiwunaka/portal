@@ -18,21 +18,21 @@ export function AdminUserOverviewView({ selected, busy, onGrantLoyalty }: AdminU
   return (
     <div className="mt-3 space-y-3">
       <div className={adminInsetPanelClass}>
-        <p className="text-sm font-semibold text-slate-50">Connection summary</p>
+        <p className="text-sm font-semibold text-slate-50">Сводка подключения</p>
         <p className="mt-1 text-xs leading-5 text-slate-400">
-          One place to compare runtime presence, panel state, billing context, and the current delivery footprint.
+          Runtime-присутствие, состояние панели, контекст оплаты и текущая доставка в одной плотной карточке.
         </p>
         {summary ? (
           <>
             <div className="mt-3 grid gap-2 text-xs sm:grid-cols-2">
-              <p>Nodes with client: <strong>{summary.nodes_with_client}/{summary.nodes_total}</strong></p>
-              <p>Nodes online: <strong>{summary.nodes_online}</strong></p>
-              <p>Online keys now: <strong>{summary.online_keys_now}</strong></p>
-              <p>Connections now: <strong>{summary.online_connections_now}</strong></p>
-              <p>Nodes enabled: <strong>{summary.nodes_enabled}</strong></p>
-              <p>Sub ID mismatches: <strong>{summary.subid_mismatch_count}</strong></p>
-              <p>Total traffic: <strong>{fmtTraffic(summary.traffic_total_bytes)}</strong></p>
-              <p>Panel state: <strong>{panelStateLabel(String(summary.panel_state || ""))}</strong></p>
+              <p>Ноды с клиентом: <strong>{summary.nodes_with_client}/{summary.nodes_total}</strong></p>
+              <p>Ноды онлайн: <strong>{summary.nodes_online}</strong></p>
+              <p>Ключи онлайн сейчас: <strong>{summary.online_keys_now}</strong></p>
+              <p>Подключения сейчас: <strong>{summary.online_connections_now}</strong></p>
+              <p>Ноды включены: <strong>{summary.nodes_enabled}</strong></p>
+              <p>Sub ID mismatch: <strong>{summary.subid_mismatch_count}</strong></p>
+              <p>Всего трафика: <strong>{fmtTraffic(summary.traffic_total_bytes)}</strong></p>
+              <p>Состояние панели: <strong>{panelStateLabel(String(summary.panel_state || ""))}</strong></p>
             </div>
             <div className="mt-3 rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-xs text-emerald-900">
               <p className="font-semibold">
@@ -42,14 +42,14 @@ export function AdminUserOverviewView({ selected, busy, onGrantLoyalty }: AdminU
             </div>
           </>
         ) : (
-          <p className="mt-3 text-xs text-slate-400">Summary data for this user is not available yet.</p>
+          <p className="mt-3 text-xs text-slate-400">Сводка по пользователю пока недоступна.</p>
         )}
         {summary?.online_node_codes_now?.length ? (
           <p className="mt-3 text-xs text-slate-400">
-            Online right now on: <strong>{summary.online_node_codes_now.map((code) => String(code || "").toUpperCase()).join(", ")}</strong>
+            Онлайн сейчас на: <strong>{summary.online_node_codes_now.map((code) => String(code || "").toUpperCase()).join(", ")}</strong>
           </p>
         ) : (
-          <p className="mt-3 text-xs text-slate-400">No live node footprint is visible right now.</p>
+          <p className="mt-3 text-xs text-slate-400">Live-след на нодах сейчас не виден.</p>
         )}
       </div>
 
@@ -69,11 +69,11 @@ export function AdminUserOverviewView({ selected, busy, onGrantLoyalty }: AdminU
               <p>Nodes: <strong>{observer?.observed_node_count_24h ?? 0}</strong> / 24h, <strong>{observer?.observed_node_count_7d ?? 0}</strong> / 7d, <strong>{observer?.observed_node_count_30d ?? 0}</strong> / 30d</p>
               <p>Overlap 24h: <strong>{observer?.overlap_count_24h ?? 0}</strong></p>
               <p>Last observed: <strong>{observer?.last_observed_at ? new Date(observer.last_observed_at).toLocaleString("ru-RU") : "-"}</strong></p>
-              <p>Reasons: <strong>{observer?.reasons?.length ? observer.reasons.join(", ") : "none"}</strong></p>
+              <p>Причины: <strong>{observer?.reasons?.length ? observer.reasons.join(", ") : "нет"}</strong></p>
             </div>
             <div className="grid gap-3 lg:grid-cols-2">
               <div>
-                <p className="mb-2 text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500">Recent IPs</p>
+                <p className="mb-2 text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500">Недавние IP</p>
                 <div className="space-y-2">
                   {(observer?.recent_ips || []).map((row) => (
                     <div key={`${row.node_code}:${row.source_ip_raw}:${row.last_seen_at}`} className="rounded-xl border border-[#b8ded1] bg-white px-3 py-2 text-xs">
@@ -86,24 +86,24 @@ export function AdminUserOverviewView({ selected, busy, onGrantLoyalty }: AdminU
                       </div>
                     </div>
                   ))}
-                  {!observer?.recent_ips?.length ? <p className="text-xs text-slate-400">No recent IPs.</p> : null}
+                  {!observer?.recent_ips?.length ? <p className="text-xs text-slate-400">Недавних IP нет.</p> : null}
                 </div>
               </div>
               <div>
-                <p className="mb-2 text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500">Recent nodes</p>
+                <p className="mb-2 text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500">Недавние ноды</p>
                 <div className="space-y-2">
                   {(observer?.recent_nodes || []).map((row) => (
                     <div key={`${row.node_id}:${row.last_seen_at}`} className="rounded-xl border border-[#b8ded1] bg-white px-3 py-2 text-xs">
                       <div className="flex items-center justify-between gap-2">
                         <span className="font-medium">{row.node_code || `node #${row.node_id}`}</span>
-                        <span className="text-slate-500">ip count {row.score_ip_count}</span>
+                        <span className="text-slate-500">IP count {row.score_ip_count}</span>
                       </div>
                       <div className="mt-1 text-[11px] text-slate-500">
                         {row.node_name || "node"} · {row.last_seen_at ? new Date(row.last_seen_at).toLocaleString("ru-RU") : "-"}
                       </div>
                     </div>
                   ))}
-                  {!observer?.recent_nodes?.length ? <p className="text-xs text-slate-400">No recent nodes.</p> : null}
+                  {!observer?.recent_nodes?.length ? <p className="text-xs text-slate-400">Недавних нод нет.</p> : null}
                 </div>
               </div>
             </div>
@@ -112,7 +112,7 @@ export function AdminUserOverviewView({ selected, busy, onGrantLoyalty }: AdminU
       </div>
 
       <div className={adminInsetPanelClass}>
-        <p className="text-sm font-semibold text-slate-50">Recent tickets</p>
+        <p className="text-sm font-semibold text-slate-50">Недавние обращения</p>
         {selected.tickets?.length ? (
           <div className="mt-3 space-y-2">
             {selected.tickets.map((ticket) => (

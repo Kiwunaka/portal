@@ -195,6 +195,106 @@ def test_app_route_policy_can_be_updated_and_reloaded(monkeypatch, tmp_path):
     dashboard_payload = dashboard_response.json()
     assert dashboard_payload["client_policy"]["route_mode"] == "selected_apps"
     assert dashboard_payload["client_policy"]["selected_apps"] == ["chrome.exe", "telegram.exe"]
+    selected_apps_capability = fetched_payload["capabilities"]["selected_apps"]
+    assert selected_apps_capability["supported"] is True
+    assert selected_apps_capability["scan_supported"] is True
+    assert selected_apps_capability["max_items"] == 128
+    assert selected_apps_capability["revision"]
+    assert selected_apps_capability["updated_at"].endswith("Z")
+
+
+def test_app_route_policy_rejects_invalid_route_mode(monkeypatch, tmp_path):
+    api = _load_api(monkeypatch, tmp_path)
+    client = TestClient(api.app)
+
+    trial_response = client.post(
+        "/api/client/session/start-trial",
+        json={
+            "install_id": "install-route-invalid",
+            "device_name": "Windows PC",
+            "platform": "windows",
+            "trial_days": 5,
+        },
+    )
+
+    assert trial_response.status_code == 200
+    token = trial_response.json()["session_token"]
+
+    update_response = client.post(
+        "/api/client/route-policy",
+        headers={"Authorization": f"Bearer {token}"},
+        json={
+            "route_mode": "raw_proxy",
+            "selected_apps": ["chrome.exe"],
+        },
+    )
+
+    assert update_response.status_code == 400
+    assert "route_mode" in update_response.text
+
+
+def test_public_trial_key_endpoint_issues_one_soft_limited_key(monkeypatch, tmp_path):
+    api = _load_api(monkeypatch, tmp_path)
+    client = TestClient(api.app)
+
+    first = client.post(
+        "/api/public/trial-key",
+        headers={"User-Agent": "POKROV browser smoke", "X-Forwarded-For": "203.0.113.10"},
+    )
+    second = client.post(
+        "/api/public/trial-key",
+        headers={"User-Agent": "POKROV browser smoke", "X-Forwarded-For": "203.0.113.10"},
+    )
+
+    assert first.status_code == 200, first.text
+    first_payload = first.json()
+    assert first_payload["ok"] is True
+    assert first_payload["status"] == "issued"
+    assert first_payload["activation_key"].startswith("POKROV-")
+    assert first_payload["capability"]["status"] == "available"
+    assert first_payload["capability"]["soft_limit"]["period_days"] >= 1
+    assert first_payload["key_status"]["kind"] == "trial_key"
+    assert first_payload["key_status"]["days"] == 5
+
+    assert second.status_code == 200, second.text
+    second_payload = second.json()
+    assert second_payload["status"] == "limited"
+    assert second_payload["activation_key"] == first_payload["activation_key"]
+    assert second_payload["capability"]["soft_limit"]["per_browser_ip"] == 1
+
+
+def test_user_payload_hides_raw_connection_details_for_consumer(monkeypatch, tmp_path):
+    api = _load_api(monkeypatch, tmp_path)
+    client = TestClient(api.app)
+
+    trial_response = client.post(
+        "/api/client/session/start-trial",
+        json={
+            "install_id": "install-safe-user",
+            "device_name": "Pixel 10",
+            "platform": "android",
+            "trial_days": 5,
+        },
+        headers={"X-Forwarded-For": "198.51.100.77"},
+    )
+
+    assert trial_response.status_code == 200
+    token = trial_response.json()["session_token"]
+    account_id = trial_response.json()["account_id"]
+
+    user_response = client.get(
+        f"/api/user/{account_id}",
+        headers={"Authorization": f"Bearer {token}"},
+    )
+
+    assert user_response.status_code == 200
+    payload = user_response.json()
+    assert payload["subscription_url"] == ""
+    assert payload["last_ip"] is None
+    assert payload["consumer_summary"]["connect_host"] == "connect.pokrov.space"
+    assert payload["consumer_summary"]["raw_details_visible"] is False
+    assert all("host" not in row and "port" not in row for row in payload["nodes"])
+    assert payload["client_policy"]["capabilities"]["selected_apps"]["max_items"] == 128
 
 
 def test_start_trial_reuses_existing_install_id(monkeypatch, tmp_path):

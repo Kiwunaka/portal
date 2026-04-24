@@ -4,11 +4,17 @@
   "brand": {
     "canonical_mark": {
       "name": "cloak-like POKROV mark",
-      "source_path": "C:/Users/kiwun/Documents/ai/VPN/иконки лого и тд/logogo.png",
-      "source_kind": "raster",
-      "source_usage": "canonical mark master from the icon folder",
+      "source_id": "pokrov-vector-mark-2026-04-24",
+      "source_kind": "vector-derived-brand-mark",
+      "source_usage": "canonical visible mark for public, cabinet, PWA, and client branding exports",
+      "provenance": {
+        "root_manifest": "shared/redesign-assets.json",
+        "vector_masters": ["logo/logoclear.svg", "logo/logowithtext.svg"],
+        "visible_export_master": "marketing/public/redesign/brand/pokrov-app-icon-1024.png",
+        "notes": "Derived files are checked-in release-facing exports. Regenerate them from the vector masters or a replacement approved brand master."
+      },
       "subtitle": "",
-      "subtitle_policy": "Do not publish the old PREMIUM VPN subtitle or any direct-meaning VPN product description."
+      "subtitle_policy": "Do not publish legacy subtitle text on public brand assets or in copy."
     },
     "optimized": {
       "mark_svg": {
@@ -16,7 +22,11 @@
         "role": "public-brand-mark",
         "workspace_path": "marketing/public/redesign/brand/pokrov-mark.svg",
         "public_path": "/redesign/brand/pokrov-mark.svg",
-        "source_path": "C:/Users/kiwun/Documents/ai/VPN/иконки лого и тд/logogo.png",
+        "source_id": "pokrov-vector-mark-2026-04-24",
+        "provenance": {
+          "derived_from": ["logo/logoclear.svg"],
+          "color_token": "theme.palette.emerald_strong"
+        },
         "text_embedded": false
       },
       "mark_png": {
@@ -24,7 +34,11 @@
         "role": "transparent-brand-mark",
         "workspace_path": "marketing/public/redesign/brand/pokrov-mark-1024.png",
         "public_path": "/redesign/brand/pokrov-mark-1024.png",
-        "source_path": "C:/Users/kiwun/Documents/ai/VPN/иконки лого и тд/logogo.png",
+        "source_id": "pokrov-vector-mark-2026-04-24",
+        "provenance": {
+          "derived_from": ["marketing/public/redesign/brand/pokrov-mark.svg"],
+          "color_token": "theme.palette.emerald_strong"
+        },
         "width": 1024,
         "height": 1024,
         "text_embedded": false
@@ -34,7 +48,10 @@
         "role": "transparent-brand-mark-compact",
         "workspace_path": "marketing/public/redesign/brand/pokrov-mark-512.png",
         "public_path": "/redesign/brand/pokrov-mark-512.png",
-        "source_path": "C:/Users/kiwun/Documents/ai/VPN/иконки лого и тд/logogo.png",
+        "source_id": "pokrov-vector-mark-2026-04-24",
+        "provenance": {
+          "derived_from": ["marketing/public/redesign/brand/pokrov-mark-1024.png"]
+        },
         "width": 512,
         "height": 512,
         "text_embedded": false
@@ -44,7 +61,10 @@
         "role": "favicon-png",
         "workspace_path": "marketing/public/redesign/brand/pokrov-favicon-32.png",
         "public_path": "/redesign/brand/pokrov-favicon-32.png",
-        "source_path": "C:/Users/kiwun/Documents/ai/VPN/иконки лого и тд/logogo.png",
+        "source_id": "pokrov-vector-mark-2026-04-24",
+        "provenance": {
+          "derived_from": ["marketing/public/redesign/brand/pokrov-favicon.svg"]
+        },
         "width": 32,
         "height": 32,
         "text_embedded": false
@@ -54,7 +74,12 @@
         "role": "favicon-svg",
         "workspace_path": "marketing/public/redesign/brand/pokrov-favicon.svg",
         "public_path": "/redesign/brand/pokrov-favicon.svg",
-        "source_path": "C:/Users/kiwun/Documents/ai/VPN/иконки лого и тд/logogo.png",
+        "source_id": "pokrov-vector-mark-2026-04-24",
+        "provenance": {
+          "derived_from": ["logo/logoclear.svg"],
+          "background_token": "theme.palette.canvas",
+          "mark_color_token": "theme.palette.emerald_strong"
+        },
         "text_embedded": false
       },
       "favicon_ico": {
@@ -62,18 +87,81 @@
         "role": "browser-favicon",
         "workspace_path": "marketing/public/favicon.ico",
         "public_path": "/favicon.ico",
-        "source_path": "C:/Users/kiwun/Documents/ai/VPN/иконки лого и тд/logogo.png",
+        "source_id": "pokrov-vector-mark-2026-04-24",
+        "provenance": {
+          "derived_from": ["marketing/public/redesign/brand/pokrov-favicon.svg"]
+        },
         "sizes": [16, 32, 48, 256],
         "text_embedded": false
       },
       "apple_touch_icon": {
         "kind": "raster",
         "role": "apple-touch-icon",
+        "workspace_path": "marketing/public/apple-touch-icon.png",
+        "public_path": "/apple-touch-icon.png",
+        "source_id": "pokrov-vector-mark-2026-04-24",
+        "provenance": {
+          "derived_from": ["marketing/public/redesign/brand/pokrov-app-icon-1024.png"]
+        },
+        "width": 180,
+        "height": 180,
+        "text_embedded": false
+      },
+      "apple_icon_legacy": {
+        "kind": "raster",
+        "role": "legacy-apple-icon-compat",
         "workspace_path": "marketing/public/apple-icon.png",
         "public_path": "/apple-icon.png",
-        "source_path": "C:/Users/kiwun/Documents/ai/VPN/иконки лого и тд/logogo.png",
+        "source_id": "pokrov-vector-mark-2026-04-24",
+        "provenance": {
+          "derived_from": ["marketing/public/redesign/brand/pokrov-app-icon-1024.png"],
+          "compatibility_note": "Kept for existing metadata consumers that already request /apple-icon.png."
+        },
         "width": 512,
         "height": 512,
+        "text_embedded": false
+      },
+      "pwa_icon_192": {
+        "kind": "raster",
+        "role": "pwa-icon",
+        "workspace_path": "marketing/public/redesign/brand/pokrov-app-icon-192.png",
+        "public_path": "/redesign/brand/pokrov-app-icon-192.png",
+        "source_id": "pokrov-vector-mark-2026-04-24",
+        "provenance": {
+          "derived_from": ["marketing/public/redesign/brand/pokrov-app-icon-1024.png"]
+        },
+        "width": 192,
+        "height": 192,
+        "purpose": "any",
+        "text_embedded": false
+      },
+      "pwa_icon_512": {
+        "kind": "raster",
+        "role": "pwa-icon",
+        "workspace_path": "marketing/public/redesign/brand/pokrov-app-icon-512.png",
+        "public_path": "/redesign/brand/pokrov-app-icon-512.png",
+        "source_id": "pokrov-vector-mark-2026-04-24",
+        "provenance": {
+          "derived_from": ["marketing/public/redesign/brand/pokrov-app-icon-1024.png"]
+        },
+        "width": 512,
+        "height": 512,
+        "purpose": "any",
+        "text_embedded": false
+      },
+      "pwa_maskable_512": {
+        "kind": "raster",
+        "role": "pwa-maskable-icon",
+        "workspace_path": "marketing/public/redesign/brand/pokrov-maskable-512.png",
+        "public_path": "/redesign/brand/pokrov-maskable-512.png",
+        "source_id": "pokrov-vector-mark-2026-04-24",
+        "provenance": {
+          "derived_from": ["marketing/public/redesign/brand/pokrov-app-icon-1024.png"],
+          "safe_area_note": "The checked-in app icon keeps the mark inside the maskable safe area."
+        },
+        "width": 512,
+        "height": 512,
+        "purpose": "maskable",
         "text_embedded": false
       },
       "android_icon": {
@@ -81,7 +169,10 @@
         "role": "android-app-icon-master",
         "workspace_path": "marketing/public/redesign/brand/pokrov-app-icon-1024.png",
         "public_path": "/redesign/brand/pokrov-app-icon-1024.png",
-        "source_path": "C:/Users/kiwun/Documents/ai/VPN/иконки лого и тд/logogo.png",
+        "source_id": "pokrov-vector-mark-2026-04-24",
+        "provenance": {
+          "derived_from": ["logo/logoclear.svg"]
+        },
         "width": 1024,
         "height": 1024,
         "text_embedded": false
@@ -91,7 +182,10 @@
         "role": "windows-app-icon-master",
         "workspace_path": "marketing/public/redesign/brand/pokrov-app-icon-512.png",
         "public_path": "/redesign/brand/pokrov-app-icon-512.png",
-        "source_path": "C:/Users/kiwun/Documents/ai/VPN/иконки лого и тд/logogo.png",
+        "source_id": "pokrov-vector-mark-2026-04-24",
+        "provenance": {
+          "derived_from": ["marketing/public/redesign/brand/pokrov-app-icon-1024.png"]
+        },
         "width": 512,
         "height": 512,
         "text_embedded": false
@@ -105,6 +199,11 @@
       "workspace_path": "marketing/public/redesign/pokrov-hero-product.png",
       "public_path": "/redesign/pokrov-hero-product.png",
       "source_path": "marketing/public/redesign/pokrov-hero-product-source.png",
+      "source_id": "pokrov-redesign-hero-product-2026-04-24",
+      "provenance": {
+        "derived_from": ["marketing/public/redesign/pokrov-hero-product-source.png"],
+        "generator": "ImageGen built-in path"
+      },
       "reusable": true,
       "generated": true,
       "text_embedded": false

@@ -340,8 +340,14 @@ test.describe("Cabinet flow", () => {
     await expect(page.getByLabel("POKROV logo").first()).toBeVisible();
     const sidebar = page.getByRole("complementary").first();
     await expect(sidebar).toContainText("Доступ, устройства и помощь в одном спокойном кабинете.");
-    await expect(sidebar.locator("nav")).toContainText("Главная");
-    await expect(sidebar.locator("nav")).toContainText("Аккаунт");
+    const nav = sidebar.locator("nav");
+    await expect(nav).toContainText("Главная");
+    await expect(nav).toContainText("Тарифы и оплата");
+    await expect(nav).toContainText("Устройства");
+    await expect(nav).toContainText("Загрузки");
+    await expect(nav).toContainText("Поддержка");
+    await expect(nav).toContainText("Профиль");
+    await expect(nav).toContainText("Настройки");
 
     const siteLink = page.getByRole("link", { name: /^На сайт/i });
     await expect(siteLink).toBeVisible();
@@ -459,6 +465,11 @@ test.describe("Cabinet flow", () => {
     await expect(page).toHaveURL(/\/downloads\/?$/);
     await expect(page.getByRole("heading", { name: "Все нужные загрузки под рукой" })).toBeVisible();
     await expect(page.locator("main")).toContainText("Google Play");
+    await expect(page.locator("main")).toContainText("Скачать APK");
+    await expect(page.locator("main")).toContainText("Скачать Windows");
+    await expect(page.locator("main")).toContainText("Готовится");
+    const staleDownloadCta = ["Открыть", "первую", "ссылку"].join(" ");
+    await expect(page.locator("main")).not.toContainText(staleDownloadCta);
 
     await page.locator("aside nav a[href='/subscription/']").click();
     await expect(page).toHaveURL(/\/subscription\/?$/);
@@ -475,6 +486,108 @@ test.describe("Cabinet flow", () => {
       publicPlans: 1,
       clientApps: 1,
     });
+  });
+
+  test("refreshes dashboard and user state after access-key redeem", async ({ page }) => {
+    let redeemed = false;
+    let dashboardCalls = 0;
+    let userCalls = 0;
+
+    await page.route("**/api/**", async (route) => {
+      const request = route.request();
+      const url = new URL(request.url());
+      const path = url.pathname;
+      const json = (payload: unknown, status = 200) =>
+        route.fulfill({
+          status,
+          contentType: "application/json",
+          body: JSON.stringify(payload),
+        });
+
+      if (path === "/api/dashboard") {
+        dashboardCalls += 1;
+        return json({
+          ...mockDashboard(),
+          is_active: redeemed,
+          current_plan_code: redeemed ? "1_month" : "free_monthly",
+          access_state: redeemed ? "paid_unlimited" : "expired_or_blocked",
+          sub_type: redeemed ? "PAID" : "FREE",
+          segment: redeemed ? "PAID" : "FREE",
+        });
+      }
+
+      if (path.startsWith("/api/user/")) {
+        userCalls += 1;
+        return json({
+          ...mockSessionUser(),
+          is_active: redeemed,
+          current_plan_code: redeemed ? "1_month" : "free_monthly",
+          access_state: redeemed ? "paid_unlimited" : "expired_or_blocked",
+          sub_type: redeemed ? "PAID" : "FREE",
+          segment: redeemed ? "PAID" : "FREE",
+        });
+      }
+
+      if (path === "/api/access-keys/status/POKROV-E2E-REFRESH") {
+        return json({
+          key: "POKROV-E2E-REFRESH",
+          exists: true,
+          redeemed,
+          redeemed_at: redeemed ? "2030-01-01T00:05:00" : null,
+          issued_at: "2030-01-01T00:00:00",
+          plan: { code: "1_month", label: "1 РјРµСЃСЏС†", days: 30, device_limit: 5 },
+          kind: "access_key",
+          days: 30,
+          device_limit: 5,
+          node_policy: "paid_pool",
+        });
+      }
+
+      if (path === "/api/access-keys/redeem" && request.method() === "POST") {
+        redeemed = true;
+        return json({
+          ok: true,
+          key: "POKROV-E2E-REFRESH",
+          status: {
+            key: "POKROV-E2E-REFRESH",
+            exists: true,
+            redeemed: true,
+            redeemed_at: "2030-01-01T00:05:00",
+            issued_at: "2030-01-01T00:00:00",
+            plan: { code: "1_month", label: "1 РјРµСЃСЏС†", days: 30, device_limit: 5 },
+            kind: "access_key",
+            days: 30,
+            device_limit: 5,
+            node_policy: "paid_pool",
+          },
+          access: { is_active: true, access_state: "paid_unlimited" },
+        });
+      }
+
+      return route.fallback();
+    });
+
+    await page.goto("/redeem/?key=POKROV-E2E-REFRESH");
+    await expect(page.locator("main")).toContainText("Нужно продление");
+
+    await page.getByRole("button", { name: "Применить" }).click();
+
+    await expect.poll(() => ({ dashboardCalls, userCalls })).toEqual({ dashboardCalls: 2, userCalls: 2 });
+    await expect(page.locator("main")).toContainText("Активен");
+  });
+
+  test("falls back quickly when the first API base stalls", async ({ page }) => {
+    test.setTimeout(8_000);
+
+    await page.route("https://api.pokrov.space/api/**", async () => new Promise(() => undefined));
+
+    const startedAt = Date.now();
+    await page.goto("/dashboard/");
+    await expect(page.getByRole("heading", { name: "Статус и следующий шаг" })).toBeVisible({
+      timeout: 4_000,
+    });
+
+    expect(Date.now() - startedAt).toBeLessThan(5_000);
   });
 
   test("shows branded root and cabinet not-found recovery screens", async ({ page }) => {
@@ -506,7 +619,7 @@ test.describe("Cabinet flow", () => {
 
     await expect(page.getByRole("heading", { name: "Что уже связано с профилем" })).toBeVisible();
     await expect(page.locator("main")).toContainText("Подключений сейчас");
-    await expect(page.locator("main")).toContainText("2 из 5");
+    await expect(page.locator("main")).toContainText("Лимит устройств показан отдельно");
     await expect(page.locator("main")).toContainText("Известных устройств");
     await expect(page.locator("main")).toContainText("Маршрут");
     await expect(page.locator("main")).toContainText("1 из 2");
@@ -557,8 +670,10 @@ test.describe("Cabinet flow", () => {
     await expect(page).toHaveURL(/\/downloads\/?$/);
     await expect(page.locator("main h1")).toBeVisible();
     await expect(page.locator("main")).toContainText("Google Play");
+    await expect(page.locator("main")).toContainText("Скачать APK");
     await expect(page.locator("main a[href*='play.google.com']").first()).toBeVisible();
     await expect(page.locator("main")).toContainText("Windows");
+    await expect(page.locator("main")).toContainText("Скачать Windows");
     await expect(page.locator("main a[href*='windows.exe']").first()).toBeVisible();
 
     await page.goto("/support/");
@@ -573,10 +688,29 @@ test.describe("Cabinet flow", () => {
     await expect(page.locator("main")).toContainText("Нужна помощь с импортом");
   });
 
+  test("keeps download API failures user-safe", async ({ page }) => {
+    const rawTraceText = ["Trace", "back: raw", "API failure from upstream"].join("");
+    const rawApiText = ["raw", "API failure"].join(" ");
+
+    await page.route("**/api/client/apps", async (route) => {
+      await route.fulfill({
+        status: 500,
+        contentType: "application/json",
+        body: JSON.stringify({ detail: rawTraceText }),
+      });
+    });
+
+    await page.goto("/downloads/");
+
+    await expect(page.locator("main")).toContainText("Не удалось обновить ссылки автоматически");
+    await expect(page.locator("main")).not.toContainText(rawTraceText.slice(0, 9));
+    await expect(page.locator("main")).not.toContainText(rawApiText);
+  });
+
   test("stays inside a narrow mobile viewport for core cabinet pages", async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 });
 
-    for (const route of ["/dashboard/", "/subscription/", "/devices/", "/support/"]) {
+    for (const route of ["/dashboard/", "/subscription/", "/devices/", "/downloads/", "/support/", "/profile/", "/redeem/"]) {
       await page.goto(route);
       await expect(page.locator("main")).toBeVisible();
       const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);

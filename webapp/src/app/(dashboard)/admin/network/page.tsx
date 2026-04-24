@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  AdminConfirmDialog,
   AdminBadge,
   AdminEmptyState,
   AdminInlineNote,
@@ -19,7 +20,7 @@ import {
   type AdminNetworkRolloutConfig,
   type AdminNetworkRolloutOverride,
 } from "@/lib/api";
-import { AlertTriangle, Loader2, RefreshCw, Route, Save, ShieldCheck } from "lucide-react";
+import { AlertTriangle, Loader2, RefreshCw, Save } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 
 function stringifyConfig(config: AdminNetworkRolloutConfig | null): string {
@@ -162,10 +163,10 @@ export default function AdminNetworkPage() {
     setError("");
     setNotice("");
     try {
-      const out = await adminNetworkRolloutConfigUpdate(parsed.value);
+      const out = await adminNetworkRolloutConfigUpdate(parsed.value, reason.trim());
       setConfig(out.network_rollout_config);
       setJsonText(stringifyConfig(out.network_rollout_config));
-      setNotice(`Network rollout config сохранен. Reason: ${reason.trim()}`);
+      setNotice(`Сетевой rollout сохранен. Причина: ${reason.trim()}`);
       setConfirmOpen(false);
       setReason("");
     } catch (err) {
@@ -178,7 +179,7 @@ export default function AdminNetworkPage() {
   return (
     <section className="space-y-5">
       <AdminSurfaceHeader
-        title="Network rollout"
+        title="Сетевой rollout"
         description="Плотная консоль сетевого rollout: путь подключения, группы пользователей, версии фидов и тестовые allowlist."
         meta={
           <>
@@ -189,7 +190,7 @@ export default function AdminNetworkPage() {
         actions={
           <>
             <button type="button" className={adminButtonClass("secondary", "sm")} onClick={load} disabled={loading || busy}>
-              <RefreshCw size={14} /> Refresh
+              <RefreshCw size={14} /> Обновить
             </button>
             <button
               type="button"
@@ -292,39 +293,17 @@ export default function AdminNetworkPage() {
         <OverrideCard title="Audience overrides" rows={cohortRows} />
       </div>
 
-      {confirmOpen ? (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/65 p-4">
-          <div className={`${adminPanelClass("warning")} w-full max-w-lg`}>
-            <div className="flex items-start gap-3">
-              <ShieldCheck className="mt-1 shrink-0 text-amber-200" size={20} />
-              <div>
-                <h2 className="text-lg font-semibold text-slate-50">Confirm network rollout save</h2>
-                <p className="mt-2 text-sm leading-6 text-slate-300">
-                  Это может изменить путь подключения у реальных пользователей. Добавьте причину перед сохранением.
-                </p>
-              </div>
-            </div>
-            <label className="mt-4 block text-xs font-semibold uppercase tracking-[0.16em] text-slate-500" htmlFor="network-save-reason">
-              Reason
-            </label>
-            <input
-              id="network-save-reason"
-              className={`${adminFieldClass} mt-2`}
-              value={reason}
-              onChange={(event) => setReason(event.target.value)}
-              placeholder="incident, rollout ticket, or rollback note"
-            />
-            <div className="mt-4 flex flex-wrap justify-end gap-2">
-              <button type="button" className={adminButtonClass("ghost", "sm")} onClick={() => setConfirmOpen(false)} disabled={busy}>
-                Cancel
-              </button>
-              <button type="button" className={adminButtonClass("primary", "sm")} onClick={save} disabled={busy || reason.trim().length < 8}>
-                {busy ? <Loader2 className="animate-spin" size={14} /> : <Route size={14} />} Save rollout
-              </button>
-            </div>
-          </div>
-        </div>
-      ) : null}
+      <AdminConfirmDialog
+        open={confirmOpen}
+        title="Подтвердить сохранение rollout"
+        description="Это может изменить путь подключения у реальных пользователей. Добавьте причину перед сохранением."
+        reason={reason}
+        onReasonChange={setReason}
+        onCancel={() => setConfirmOpen(false)}
+        onConfirm={() => void save()}
+        confirmLabel={busy ? "Сохраняем..." : "Сохранить"}
+        busy={busy}
+      />
     </section>
   );
 }

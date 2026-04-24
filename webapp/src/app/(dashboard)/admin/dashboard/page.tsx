@@ -301,7 +301,7 @@ export default function AdminDashboardPage() {
         </article>
 
         <article className={adminPanelClass("neutral")}>
-          <AdminPanelHeader eyebrow="network" title="Top nodes" actions={<AppRouteLink href="/admin/nodes" className={adminButtonClass("secondary", "xs")}>Open nodes</AppRouteLink>} />
+          <AdminPanelHeader eyebrow="сеть" title="Ключевые узлы" actions={<AppRouteLink href="/admin/nodes" className={adminButtonClass("secondary", "xs")}>Открыть узлы</AppRouteLink>} />
           <div className="grid gap-3 md:grid-cols-2">
             {summary.top_nodes.map((node) => (
               <div key={node.code} className={adminInsetPanelClass}>

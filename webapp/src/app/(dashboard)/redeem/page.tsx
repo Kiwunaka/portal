@@ -63,8 +63,8 @@ export default function RedeemPage() {
         setMessage("Ключ доступа найден. Его можно применить к текущему профилю.");
       }
       return nextStatus;
-    } catch (nextError) {
-      setError(String((nextError as { message?: string })?.message || nextError || "Не удалось проверить ключ доступа."));
+    } catch {
+      setError("Не удалось проверить ключ доступа. Попробуйте еще раз или откройте поддержку.");
       return null;
     } finally {
       setLookupBusy(false);
@@ -91,8 +91,8 @@ export default function RedeemPage() {
       setStatus(payload.status);
       await refresh();
       setMessage("Ключ доступа применен. Профиль уже обновлен.");
-    } catch (nextError) {
-      setError(String((nextError as { message?: string })?.message || nextError || "Не удалось применить ключ доступа."));
+    } catch {
+      setError("Не удалось применить ключ доступа. Попробуйте еще раз или откройте поддержку.");
     } finally {
       setRedeemBusy(false);
     }

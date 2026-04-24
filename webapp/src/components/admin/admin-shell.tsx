@@ -18,7 +18,7 @@ const PANEL_TONE_CLASSES: Record<AdminTone, string> = {
 
 const BUTTON_TONE_CLASSES: Record<AdminButtonTone, string> = {
   primary:
-    "border border-emerald-700 bg-emerald-700 text-white hover:border-emerald-800 hover:bg-emerald-800",
+    "border border-emerald-700 bg-emerald-700 !text-white hover:border-emerald-800 hover:bg-emerald-800",
   secondary:
     "border border-[#99cdbb] bg-white text-emerald-950 hover:border-[#68ad94] hover:bg-emerald-50",
   ghost:
@@ -242,6 +242,75 @@ export function AdminEmptyState({
     <div className={cn(adminPanelClass("neutral"), "flex min-h-[160px] flex-col items-center justify-center gap-2 border-dashed border-[#b8ded1] text-center", className)}>
       <p className="text-sm font-semibold text-slate-100">{title}</p>
       {description ? <p className="max-w-md text-xs leading-5 text-slate-400">{description}</p> : null}
+    </div>
+  );
+}
+
+export function AdminConfirmDialog({
+  open,
+  title,
+  description,
+  reason,
+  onReasonChange,
+  onCancel,
+  onConfirm,
+  confirmLabel = "Подтвердить",
+  cancelLabel = "Отмена",
+  busy = false,
+  danger = false,
+  minReasonLength = 8,
+  children,
+}: {
+  open: boolean;
+  title: ReactNode;
+  description?: ReactNode;
+  reason: string;
+  onReasonChange: (value: string) => void;
+  onCancel: () => void;
+  onConfirm: () => void;
+  confirmLabel?: ReactNode;
+  cancelLabel?: ReactNode;
+  busy?: boolean;
+  danger?: boolean;
+  minReasonLength?: number;
+  children?: ReactNode;
+}) {
+  if (!open) return null;
+  const reasonOk = reason.trim().length >= minReasonLength;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/55 p-4">
+      <div className="w-full max-w-lg rounded-[1rem] border border-[#b8ded1] bg-white p-5 text-slate-900 shadow-[0_28px_70px_-40px_rgba(10,92,67,0.45)]">
+        <h2 className="text-lg font-semibold text-slate-950">{title}</h2>
+        {description ? <p className="mt-2 text-sm leading-6 text-slate-600">{description}</p> : null}
+        {children ? <div className="mt-4">{children}</div> : null}
+        <label className="mt-4 block text-xs font-semibold uppercase tracking-[0.14em] text-slate-500" htmlFor="admin-confirm-reason">
+          Причина
+        </label>
+        <textarea
+          id="admin-confirm-reason"
+          className={`${adminTextAreaClass} mt-2 min-h-[88px]`}
+          value={reason}
+          onChange={(event) => onReasonChange(event.target.value)}
+          placeholder="Например: обращение пользователя, плановое окно, номер инцидента"
+        />
+        <p className={reasonOk ? "mt-2 text-xs text-emerald-700" : "mt-2 text-xs text-amber-700"}>
+          Укажите причину минимум {minReasonLength} символов.
+        </p>
+        <div className="mt-5 flex flex-wrap justify-end gap-2">
+          <button type="button" className={adminButtonClass("ghost", "sm")} onClick={onCancel} disabled={busy}>
+            {cancelLabel}
+          </button>
+          <button
+            type="button"
+            className={adminButtonClass(danger ? "danger" : "primary", "sm")}
+            onClick={onConfirm}
+            disabled={busy || !reasonOk}
+          >
+            {confirmLabel}
+          </button>
+        </div>
+      </div>
     </div>
   );
 }

@@ -20,7 +20,7 @@ import {
   type AdminUserKey,
   type AdminUserRow,
 } from "@/lib/api";
-import { adminButtonClass, adminFieldClass, adminPanelClass, adminTextAreaClass } from "@/components/admin/admin-shell";
+import { AdminConfirmDialog, adminButtonClass, adminFieldClass, adminPanelClass, adminTextAreaClass } from "@/components/admin/admin-shell";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { AdminUsersQueryPanel } from "@/components/admin/users/admin-users-query-panel";
@@ -47,6 +47,14 @@ type AdminActionDialog =
   | { kind: "token"; subscriptionUrl: string; syncOk: boolean }
   | null;
 
+type LiveConfirmDialog =
+  | { kind: "block"; blocked: boolean; reason: string }
+  | { kind: "token"; reason: string }
+  | { kind: "key"; key: AdminUserKey; action: "toggle" | "reset" | "resync"; reason: string }
+  | { kind: "preset"; preset: "reset_key" | "rotate_link" | "extend_1d" | "send_guide"; reason: string }
+  | { kind: "loyalty"; tierDays: number; reason: string }
+  | null;
+
 function errorMessage(err: unknown, fallback: string): string {
   return String((err as { message?: string })?.message || err || fallback);
 }
@@ -69,6 +77,7 @@ export default function AdminUsersPage() {
   const [error, setError] = useState("");
   const [okMessage, setOkMessage] = useState("");
   const [bulkResult, setBulkResult] = useState("");
+  const [liveConfirm, setLiveConfirm] = useState<LiveConfirmDialog>(null);
   const [dialog, setDialog] = useState<AdminActionDialog>(null);
   const [bulkAction, setBulkAction] = useState<AdminUsersBulkActionState>(createDefaultBulkActionState());
   const selectedIdRef = useRef<number>(0);
@@ -175,26 +184,26 @@ export default function AdminUsersPage() {
     if (!text.trim()) return;
     try {
       await navigator.clipboard.writeText(text.trim());
-      setOkMessage("Copied to clipboard.");
+      setOkMessage("Скопировано в буфер.");
     } catch {
-      setError("Clipboard copy failed.");
+      setError("Не удалось скопировать в буфер.");
     }
   }, []);
 
   const actionMessage = useCallback(() => selectedTgId && setDialog({ kind: "message", text: "" }), [selectedTgId]);
   const actionExtend = useCallback(() => selectedTgId && setDialog({ kind: "extend", days: "30", reason: "" }), [selectedTgId]);
-  const actionCreateManual = useCallback(() => setDialog({ kind: "create", displayName: "Manual test account", days: "30", reason: "" }), []);
+  const actionCreateManual = useCallback(() => setDialog({ kind: "create", displayName: "Ручной тестовый аккаунт", days: "30", reason: "" }), []);
 
   const submitMessageDialog = useCallback(async (): Promise<void> => {
     if (!selectedTgId || !dialog || dialog.kind !== "message" || !dialog.text.trim()) return;
     setBusy(true);
     try {
       await adminUserMessage(selectedTgId, dialog.text.trim());
-      setOkMessage("Message sent.");
+      setOkMessage("Сообщение отправлено.");
       setDialog(null);
       await reloadSelected();
     } catch (err) {
-      setError(errorMessage(err, "Could not send message."));
+      setError(errorMessage(err, "Не удалось отправить сообщение."));
     } finally {
       setBusy(false);
     }
@@ -204,49 +213,51 @@ export default function AdminUsersPage() {
     if (!selectedTgId || !dialog || dialog.kind !== "extend") return;
     const days = Number(dialog.days || 0);
     if (!Number.isFinite(days) || days === 0) {
-      setError("Enter a valid number of days.");
+      setError("Укажите корректное число дней.");
       return;
     }
     setBusy(true);
     try {
       await adminManualExtend(selectedTgId, days);
-      setOkMessage(`Access extended by ${days} days.`);
+      setOkMessage(`Доступ продлен на ${days} дн.`);
       setDialog(null);
       await reloadSelected();
       await loadUsers({ preserveNotice: true });
     } catch (err) {
-      setError(errorMessage(err, "Could not extend access."));
+      setError(errorMessage(err, "Не удалось продлить доступ."));
     } finally {
       setBusy(false);
     }
   }, [dialog, loadUsers, reloadSelected, selectedTgId]);
 
-  const actionToggleBlock = useCallback(async (): Promise<void> => {
+  const actionToggleBlock = useCallback(async (operatorReason: string): Promise<void> => {
     if (!selectedTgId) return;
     const blocked = Boolean(selected?.user.is_active);
     setBusy(true);
     try {
-      await adminManualBlock(selectedTgId, blocked);
-      setOkMessage(blocked ? "User blocked." : "User unblocked.");
+      await adminManualBlock(selectedTgId, blocked, operatorReason.trim());
+      setOkMessage(blocked ? "Пользователь заблокирован." : "Пользователь разблокирован.");
+      setLiveConfirm(null);
       await reloadSelected();
       await loadUsers({ preserveNotice: true });
     } catch (err) {
-      setError(errorMessage(err, "Could not change block state."));
+      setError(errorMessage(err, "Не удалось изменить блокировку."));
     } finally {
       setBusy(false);
     }
   }, [loadUsers, reloadSelected, selected?.user.is_active, selectedTgId]);
 
-  const actionRegenerateToken = useCallback(async (): Promise<void> => {
+  const actionRegenerateToken = useCallback(async (operatorReason: string): Promise<void> => {
     if (!selectedTgId) return;
     setBusy(true);
     try {
-      const out = await adminManualRegenerateToken(selectedTgId);
-      setOkMessage(`Token rotated (${out.sync_ok ? "panel synced" : "panel sync pending"}).`);
+      const out = await adminManualRegenerateToken(selectedTgId, operatorReason.trim());
+      setOkMessage(`Токен обновлен (${out.sync_ok ? "панель синхронизирована" : "синхронизация панели ожидает"}).`);
+      setLiveConfirm(null);
       setDialog({ kind: "token", subscriptionUrl: out.subscription_url, syncOk: Boolean(out.sync_ok) });
       await reloadSelected();
     } catch (err) {
-      setError(errorMessage(err, "Could not rotate token."));
+      setError(errorMessage(err, "Не удалось обновить токен."));
     } finally {
       setBusy(false);
     }
@@ -262,7 +273,7 @@ export default function AdminUsersPage() {
     if (!dialog || dialog.kind !== "deleteConfirm") return;
     const targetTgId = Number(dialog.tgId || 0);
     if (!targetTgId) {
-      setError("Delete target is missing.");
+      setError("Не выбран пользователь для удаления.");
       return;
     }
     setBusy(true);
@@ -274,7 +285,7 @@ export default function AdminUsersPage() {
       setSelected(null);
       await loadUsers({ preserveNotice: true });
     } catch (err) {
-      setError(errorMessage(err, "Could not delete manual/test user."));
+      setError(errorMessage(err, "Не удалось удалить ручного/тестового пользователя."));
     } finally {
       setBusy(false);
     }
@@ -285,34 +296,35 @@ export default function AdminUsersPage() {
     const displayName = dialog.displayName.trim();
     const days = Number(dialog.days || 0);
     if (!displayName || !Number.isFinite(days) || days <= 0 || !dialog.reason.trim()) {
-      setError("Enter name, positive days, and an operator reason.");
+      setError("Укажите имя, положительное число дней и причину действия.");
       return;
     }
     setBusy(true);
     try {
       await adminManualCreate({ display_name: displayName, days });
-      setOkMessage("Manual/test user created.");
+      setOkMessage("Ручной/тестовый пользователь создан.");
       setDialog(null);
       await loadUsers({ preserveNotice: true });
     } catch (err) {
-      setError(errorMessage(err, "Could not create manual/test user."));
+      setError(errorMessage(err, "Не удалось создать ручного/тестового пользователя."));
     } finally {
       setBusy(false);
     }
   }, [dialog, loadUsers]);
 
   const runKeyAction = useCallback(
-    async (key: AdminUserKey, action: "toggle" | "reset" | "resync"): Promise<void> => {
+    async (key: AdminUserKey, action: "toggle" | "reset" | "resync", operatorReason: string): Promise<void> => {
       if (!selectedTgId) return;
       const op = `${key.node_code}:${action}`;
       setKeyBusy(op);
       setError("");
       setOkMessage("");
       try {
-        if (action === "toggle") await adminUserKeyToggle(selectedTgId, key.node_code, !Boolean(key.enabled));
-        else if (action === "reset") await adminUserKeyResetTraffic(selectedTgId, key.node_code);
-        else await adminUserKeyResyncSubId(selectedTgId, key.node_code);
-        setOkMessage(`Key action ${action} completed for ${key.node_code}.`);
+        if (action === "toggle") await adminUserKeyToggle(selectedTgId, key.node_code, !Boolean(key.enabled), operatorReason.trim());
+        else if (action === "reset") await adminUserKeyResetTraffic(selectedTgId, key.node_code, operatorReason.trim());
+        else await adminUserKeyResyncSubId(selectedTgId, key.node_code, operatorReason.trim());
+        setOkMessage(`Действие ${action} выполнено для ${key.node_code}.`);
+        setLiveConfirm(null);
         await reloadSelected();
       } catch (err) {
         setError(errorMessage(err, "Could not run key action."));
@@ -324,14 +336,15 @@ export default function AdminUsersPage() {
   );
 
   const runPreset = useCallback(
-    async (preset: "reset_key" | "rotate_link" | "extend_1d" | "send_guide"): Promise<void> => {
+    async (preset: "reset_key" | "rotate_link" | "extend_1d" | "send_guide", operatorReason: string): Promise<void> => {
       if (!selectedTgId) return;
       setBusy(true);
       setError("");
       setOkMessage("");
       try {
-        const result = await adminUserPresetRun(selectedTgId, preset);
+        const result = await adminUserPresetRun(selectedTgId, preset, operatorReason.trim());
         setOkMessage(`Preset ${preset} completed (${result.changed ?? 0} changed, ${result.failed ?? 0} failed).`);
+        setLiveConfirm(null);
         if (result.subscription_url) setDialog({ kind: "token", subscriptionUrl: result.subscription_url, syncOk: true });
         await reloadSelected();
       } catch (err) {
@@ -380,7 +393,7 @@ export default function AdminUsersPage() {
         return;
       }
       if (!bulkAction.dryRun && confirmed && dialog?.kind === "bulkConfirm" && !dialog.reason.trim()) {
-        setError("Add an operator reason before running a live bulk action.");
+        setError("Укажите причину перед live-массовым действием.");
         return;
       }
       setBusy(true);
@@ -394,9 +407,10 @@ export default function AdminUsersPage() {
           limit: Math.max(1, Math.min(500, Number(bulkAction.limit || 50))),
           dry_run: bulkAction.dryRun,
           force: bulkAction.force,
+          operator_reason: dialog?.kind === "bulkConfirm" ? dialog.reason.trim() : undefined,
         });
         setDialog(null);
-        setBulkResult(`Bulk ${out.action || bulkAction.action}: matched ${out.matched ?? 0}, changed ${out.changed ?? 0}, failed ${out.failed ?? 0}${out.dry_run ? " (dry run)" : ""}.`);
+        setBulkResult(`Массовое действие ${out.action || bulkAction.action}: найдено ${out.matched ?? 0}, изменено ${out.changed ?? 0}, ошибок ${out.failed ?? 0}${out.dry_run ? " (dry run)" : ""}.`);
         if (!bulkAction.dryRun) await reloadSelected();
       } catch (err) {
         setError(errorMessage(err, "Could not run bulk action."));
@@ -408,12 +422,13 @@ export default function AdminUsersPage() {
   );
 
   const grantLoyaltyTier = useCallback(
-    async (tierDays: number): Promise<void> => {
+    async (tierDays: number, operatorReason: string): Promise<void> => {
       if (!selectedTgId) return;
       setBusy(true);
       try {
-        const out = await adminUserLoyaltyGrant(selectedTgId, tierDays);
-        setOkMessage(`Loyalty reward ${tierDays} days granted${out.sync_ok ? "" : " (panel sync may take time)"}.`);
+        const out = await adminUserLoyaltyGrant(selectedTgId, tierDays, operatorReason.trim());
+        setOkMessage(`Бонус лояльности ${tierDays} дн. выдан${out.sync_ok ? "" : " (синхронизация панели может занять время)"}.`);
+        setLiveConfirm(null);
         await reloadSelected();
       } catch (err) {
         setError(errorMessage(err, "Could not grant loyalty reward."));
@@ -433,7 +448,7 @@ export default function AdminUsersPage() {
         await loadCardDetails(tgId);
         setDetailTab("overview");
       } catch (err) {
-        setError(errorMessage(err, "Could not open user card."));
+        setError(errorMessage(err, "Не удалось открыть карточку пользователя."));
       } finally {
         setBusy(false);
       }
@@ -494,12 +509,12 @@ export default function AdminUsersPage() {
             onReload={() => void reloadSelected()}
             onMessage={actionMessage}
             onExtend={actionExtend}
-            onToggleBlock={() => void actionToggleBlock()}
-            onRegenerateToken={() => void actionRegenerateToken()}
+            onToggleBlock={() => setLiveConfirm({ kind: "block", blocked: Boolean(selected?.user.is_active), reason: "" })}
+            onRegenerateToken={() => setLiveConfirm({ kind: "token", reason: "" })}
             onDeleteTestUser={actionDeleteTestUser}
-            onRunPreset={(preset) => void runPreset(preset)}
-            onGrantLoyalty={(tierDays) => void grantLoyaltyTier(tierDays)}
-            onRunKeyAction={(key, action) => void runKeyAction(key, action)}
+            onRunPreset={(preset) => setLiveConfirm({ kind: "preset", preset, reason: "" })}
+            onGrantLoyalty={(tierDays) => setLiveConfirm({ kind: "loyalty", tierDays, reason: "" })}
+            onRunKeyAction={(key, action) => setLiveConfirm({ kind: "key", key, action, reason: "" })}
             onSavePolicy={(nodeCode) => void savePolicy(nodeCode)}
             onCopyText={(text) => void copyText(text)}
             setDetailTab={setDetailTab}
@@ -508,36 +523,67 @@ export default function AdminUsersPage() {
         </div>
       </div>
 
+      <AdminConfirmDialog
+        open={Boolean(liveConfirm)}
+        title={
+          liveConfirm?.kind === "block"
+            ? liveConfirm.blocked
+              ? "Подтвердить блокировку"
+              : "Подтвердить разблокировку"
+            : liveConfirm?.kind === "token"
+              ? "Подтвердить ротацию токена"
+              : liveConfirm?.kind === "key"
+                ? "Подтвердить действие с ключом"
+                : liveConfirm?.kind === "preset"
+                  ? "Подтвердить preset"
+                  : "Подтвердить бонус"
+        }
+        description="Действие меняет живой доступ или доставку ключа. Укажите причину для журнала аудита."
+        reason={liveConfirm?.reason || ""}
+        onReasonChange={(reason) => setLiveConfirm((current) => (current ? { ...current, reason } : current))}
+        onCancel={() => setLiveConfirm(null)}
+        onConfirm={() => {
+          if (!liveConfirm) return;
+          if (liveConfirm.kind === "block") void actionToggleBlock(liveConfirm.reason);
+          else if (liveConfirm.kind === "token") void actionRegenerateToken(liveConfirm.reason);
+          else if (liveConfirm.kind === "key") void runKeyAction(liveConfirm.key, liveConfirm.action, liveConfirm.reason);
+          else if (liveConfirm.kind === "preset") void runPreset(liveConfirm.preset, liveConfirm.reason);
+          else void grantLoyaltyTier(liveConfirm.tierDays, liveConfirm.reason);
+        }}
+        danger={liveConfirm?.kind === "block" && liveConfirm.blocked}
+        busy={busy || Boolean(keyBusy)}
+      />
+
       {dialog ? (
         <div className="fixed inset-0 z-[260] flex items-center justify-center bg-slate-950/70 p-4">
           <div className={`${adminPanelClass("neutral")} max-h-[min(92vh,720px)] w-full max-w-lg overflow-auto`}>
             {dialog.kind === "message" ? (
               <>
-                <h3 className="text-xl font-semibold">Message user</h3>
-                <p className="mt-1 text-xs text-slate-500">Sends an operator message through the existing Telegram path.</p>
-                <textarea value={dialog.text} onChange={(event) => setDialog({ kind: "message", text: event.target.value })} rows={5} className={`mt-4 ${adminTextAreaClass}`} placeholder="Message text" />
-                <DialogActions busy={busy} confirmDisabled={!dialog.text.trim()} confirmLabel="Send" onCancel={() => setDialog(null)} onConfirm={() => void submitMessageDialog()} />
+                <h3 className="text-xl font-semibold">Сообщение пользователю</h3>
+                <p className="mt-1 text-xs text-slate-500">Отправка через текущий Telegram-маршрут оператора.</p>
+                <textarea value={dialog.text} onChange={(event) => setDialog({ kind: "message", text: event.target.value })} rows={5} className={`mt-4 ${adminTextAreaClass}`} placeholder="Текст сообщения" />
+                <DialogActions busy={busy} confirmDisabled={!dialog.text.trim()} confirmLabel="Отправить" onCancel={() => setDialog(null)} onConfirm={() => void submitMessageDialog()} />
               </>
             ) : null}
 
             {dialog.kind === "extend" ? (
               <>
-                <h3 className="text-xl font-semibold">Extend access</h3>
-                <p className="mt-1 text-xs text-slate-500">Adds days to the selected subscription. Reason is required for operator discipline; current API stores the access change.</p>
-                <input value={dialog.days} onChange={(event) => setDialog({ ...dialog, days: event.target.value })} type="number" min={1} className={`mt-4 ${adminFieldClass}`} placeholder="Days" />
-                <input value={dialog.reason} onChange={(event) => setDialog({ ...dialog, reason: event.target.value })} className={`mt-3 ${adminFieldClass}`} placeholder="Operator reason" />
-                <DialogActions busy={busy} confirmDisabled={!dialog.reason.trim()} confirmLabel="Apply" onCancel={() => setDialog(null)} onConfirm={() => void submitExtendDialog()} />
+                <h3 className="text-xl font-semibold">Продлить доступ</h3>
+                <p className="mt-1 text-xs text-slate-500">Добавляет дни к выбранной подписке; причина нужна для операторского журнала.</p>
+                <input value={dialog.days} onChange={(event) => setDialog({ ...dialog, days: event.target.value })} type="number" min={1} className={`mt-4 ${adminFieldClass}`} placeholder="Дни" />
+                <input value={dialog.reason} onChange={(event) => setDialog({ ...dialog, reason: event.target.value })} className={`mt-3 ${adminFieldClass}`} placeholder="Причина действия" />
+                <DialogActions busy={busy} confirmDisabled={!dialog.reason.trim()} confirmLabel="Применить" onCancel={() => setDialog(null)} onConfirm={() => void submitExtendDialog()} />
               </>
             ) : null}
 
             {dialog.kind === "create" ? (
               <>
-                <h3 className="text-xl font-semibold">Create manual/test user</h3>
-                <p className="mt-1 text-xs text-slate-500">Manual accounts are for admin and test scenarios only.</p>
-                <input value={dialog.displayName} onChange={(event) => setDialog({ ...dialog, displayName: event.target.value })} className={`mt-4 ${adminFieldClass}`} placeholder="Display name" />
-                <input value={dialog.days} onChange={(event) => setDialog({ ...dialog, days: event.target.value })} type="number" min={1} className={`mt-3 ${adminFieldClass}`} placeholder="Access days" />
-                <input value={dialog.reason} onChange={(event) => setDialog({ ...dialog, reason: event.target.value })} className={`mt-3 ${adminFieldClass}`} placeholder="Operator reason" />
-                <DialogActions busy={busy} confirmDisabled={!dialog.reason.trim()} confirmLabel="Create" onCancel={() => setDialog(null)} onConfirm={() => void submitCreateManualDialog()} />
+                <h3 className="text-xl font-semibold">Создать ручного/тестового пользователя</h3>
+                <p className="mt-1 text-xs text-slate-500">Ручные аккаунты используются только для админских и тестовых сценариев.</p>
+                <input value={dialog.displayName} onChange={(event) => setDialog({ ...dialog, displayName: event.target.value })} className={`mt-4 ${adminFieldClass}`} placeholder="Отображаемое имя" />
+                <input value={dialog.days} onChange={(event) => setDialog({ ...dialog, days: event.target.value })} type="number" min={1} className={`mt-3 ${adminFieldClass}`} placeholder="Дней доступа" />
+                <input value={dialog.reason} onChange={(event) => setDialog({ ...dialog, reason: event.target.value })} className={`mt-3 ${adminFieldClass}`} placeholder="Причина действия" />
+                <DialogActions busy={busy} confirmDisabled={!dialog.reason.trim()} confirmLabel="Создать" onCancel={() => setDialog(null)} onConfirm={() => void submitCreateManualDialog()} />
               </>
             ) : null}
 
@@ -545,35 +591,35 @@ export default function AdminUsersPage() {
               <>
                 <h3 className="text-xl font-semibold">Удалить manual/test пользователя</h3>
                 <p className="mt-2 text-sm text-slate-400">
-                  You are deleting <strong>{dialog.displayName}</strong> ({dialog.tgId}). This action is irreversible and available only for explicit manual/test accounts.
+                  Удаляется <strong>{dialog.displayName}</strong> ({dialog.tgId}). Действие необратимо и доступно только для явных manual/test аккаунтов.
                 </p>
-                <input value={dialog.reason} onChange={(event) => setDialog({ ...dialog, reason: event.target.value })} className={`mt-4 ${adminFieldClass}`} placeholder="Operator reason, optional" />
+                <input value={dialog.reason} onChange={(event) => setDialog({ ...dialog, reason: event.target.value })} className={`mt-4 ${adminFieldClass}`} placeholder="Причина действия, необязательно" />
                 <DialogActions busy={busy} confirmLabel="Удалить пользователя" danger onCancel={() => setDialog(null)} onConfirm={() => void submitDeleteTestUserDialog()} />
               </>
             ) : null}
 
             {dialog.kind === "bulkConfirm" ? (
               <>
-                <h3 className="text-xl font-semibold">Confirm live bulk action</h3>
+                <h3 className="text-xl font-semibold">Подтвердить массовое live-действие</h3>
                 <p className="mt-2 text-sm text-slate-400">
-                  Action <strong>{bulkAction.action}</strong> will run for segment <strong>{bulkAction.segment}</strong>. Dry run is off.
+                  Действие <strong>{bulkAction.action}</strong> будет выполнено для сегмента <strong>{bulkAction.segment}</strong>. Dry run выключен.
                 </p>
                 <p className="mt-2 text-xs text-slate-500">
-                  Filter: {bulkAction.q.trim() || "none"} | Limit: {bulkAction.limit} | Nodes: {bulkAction.nodeCodes.trim() || "all"}
+                  Фильтр: {bulkAction.q.trim() || "нет"} | Лимит: {bulkAction.limit} | Ноды: {bulkAction.nodeCodes.trim() || "все"}
                 </p>
-                <input value={dialog.reason} onChange={(event) => setDialog({ ...dialog, reason: event.target.value })} className={`mt-4 ${adminFieldClass}`} placeholder="Operator reason, required" />
-                <DialogActions busy={busy} confirmDisabled={!dialog.reason.trim()} confirmLabel="Run live action" danger onCancel={() => setDialog(null)} onConfirm={() => void runBulkAction(true)} />
+                <input value={dialog.reason} onChange={(event) => setDialog({ ...dialog, reason: event.target.value })} className={`mt-4 ${adminFieldClass}`} placeholder="Причина действия, обязательно" />
+                <DialogActions busy={busy} confirmDisabled={!dialog.reason.trim()} confirmLabel="Выполнить live-действие" danger onCancel={() => setDialog(null)} onConfirm={() => void runBulkAction(true)} />
               </>
             ) : null}
 
             {dialog.kind === "token" ? (
               <>
                 <h3 className="text-xl font-semibold">Новая recovery-ссылка подключения</h3>
-                <p className="mt-1 text-xs text-slate-500">Panel sync: {dialog.syncOk ? "ok" : "pending or failed"}.</p>
+                <p className="mt-1 text-xs text-slate-500">Синхронизация панели: {dialog.syncOk ? "ok" : "ожидает или завершилась ошибкой"}.</p>
                 <input value={dialog.subscriptionUrl} readOnly className={`mt-4 ${adminFieldClass} text-xs`} />
                 <div className="mt-4 flex justify-end gap-2">
-                  <button className={adminButtonClass("secondary")} type="button" onClick={() => void copyText(dialog.subscriptionUrl)}>Copy</button>
-                  <button className={adminButtonClass("primary")} type="button" onClick={() => setDialog(null)}>Close</button>
+                  <button className={adminButtonClass("secondary")} type="button" onClick={() => void copyText(dialog.subscriptionUrl)}>Копировать</button>
+                  <button className={adminButtonClass("primary")} type="button" onClick={() => setDialog(null)}>Закрыть</button>
                 </div>
               </>
             ) : null}

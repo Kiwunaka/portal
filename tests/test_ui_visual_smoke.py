@@ -43,7 +43,7 @@ class UiVisualSmokeTests(unittest.TestCase):
 
         layout_check = checks["marketing-layout-seo"]
         self.assertIn("metadataBase", layout_check.must_contain)
-        self.assertIn("apple-icon.png", layout_check.must_contain)
+        self.assertIn("/apple-icon.png", layout_check.must_contain)
 
         offer_check = checks["marketing-offer-flow"]
         self.assertIn("Открыть Telegram-бота", offer_check.must_contain)
@@ -57,8 +57,9 @@ class UiVisualSmokeTests(unittest.TestCase):
         self.assertIn("config.connectUrl", checkout_check.must_not_contain)
 
         webapp_entry = checks["webapp-entry"]
-        self.assertIn("Личный кабинет POKROV VPN", webapp_entry.must_contain)
-        self.assertIn("secure Telegram login", webapp_entry.must_contain)
+        self.assertIn("POKROV", webapp_entry.must_contain)
+        self.assertIn("POKROV VPN", webapp_entry.must_not_contain)
+        self.assertIn("dev-indicator", webapp_entry.must_not_contain)
 
 
 if __name__ == "__main__":

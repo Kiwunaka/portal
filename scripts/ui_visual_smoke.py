@@ -80,8 +80,8 @@ def _default_checks() -> list[Check]:
         Check(
             name="webapp-entry",
             path=REPO_ROOT / "webapp" / "src" / "app" / "page.tsx",
-            must_contain=("личный кабинет", "Telegram работает", "Подтвердите аккаунт и продолжайте"),
-            must_not_contain=("Продолжить вход в PORTAL", "POKROV Network"),
+            must_contain=("POKROV", "личный кабинет", "Telegram работает", "Подтвердите аккаунт и продолжайте"),
+            must_not_contain=("Продолжить вход в PORTAL", "POKROV VPN", "POKROV Network", "dev-indicator"),
         ),
         Check(
             name="webapp-local-qr",

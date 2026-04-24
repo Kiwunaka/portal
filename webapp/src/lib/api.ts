@@ -5,6 +5,8 @@ import { getInitData } from "./telegram";
 const WEB_SESSION_TOKEN_KEY = "portal_web_session_token";
 const DIRECT_API_BASE = "https://api.pokrov.space";
 const DEFAULT_API_TIMEOUT_MS = 15000;
+const API_FALLBACK_DELAY_MS = 1200;
+const API_BASE_HEALTH_TTL_MS = 30000;
 const STABLE_API_CACHE_TTL_MS = 30000;
 const NODE_STATUS_CACHE_TTL_MS = 30000;
 let authSessionCacheKey = "";
@@ -15,6 +17,11 @@ type StableApiCacheEntry<T> = {
   data: T | null;
   expiresAt: number;
   promise: Promise<T> | null;
+};
+
+type ApiBaseHealth = {
+  healthyUntil: number;
+  unhealthyUntil: number;
 };
 
 function createStableApiCache<T>(): StableApiCacheEntry<T> {
@@ -30,6 +37,7 @@ const publicPlansCache = createStableApiCache<PublicPlansPayload>();
 const publicCatalogCache = createStableApiCache<PublicCatalogPayload>();
 const clientAppsCache = createStableApiCache<ClientAppsPayload>();
 const userPayloadCaches = new Map<string, StableApiCacheEntry<UserPayload>>();
+const apiBaseHealth = new Map<string, ApiBaseHealth>();
 
 export type NodeInfo = {
   code: string;
@@ -1264,10 +1272,169 @@ function clearAuthSessionCache(): void {
   authSessionCacheKey = "";
   authSessionCacheValue = null;
   authSessionCachePromise = null;
-  dashboardCache.data = null;
-  dashboardCache.expiresAt = 0;
-  dashboardCache.promise = null;
-  userPayloadCaches.clear();
+  invalidateStableDashboardCaches();
+}
+
+function clearStableApiCache<T>(cache: StableApiCacheEntry<T>): void {
+  cache.data = null;
+  cache.expiresAt = 0;
+  cache.promise = null;
+}
+
+export function invalidateStableDashboardCaches(tgId?: number | string): void {
+  clearStableApiCache(dashboardCache);
+  if (tgId == null || String(tgId).trim() === "") {
+    userPayloadCaches.clear();
+    return;
+  }
+  userPayloadCaches.delete(String(tgId));
+}
+
+function invalidateAccessChangingCaches(): void {
+  invalidateStableDashboardCaches();
+}
+
+async function withAccessCacheInvalidation<T>(request: Promise<T>): Promise<T> {
+  const payload = await request;
+  invalidateAccessChangingCaches();
+  return payload;
+}
+
+function isRetryableApiError(error: unknown): boolean {
+  const name = String((error as { name?: string })?.name || "");
+  const msg = String((error as { message?: string })?.message || error || "");
+  return (
+    name === "AbortError" ||
+    name === "TimeoutError" ||
+    msg.includes("Failed to fetch") ||
+    msg.includes("NetworkError") ||
+    msg.includes("fetch") ||
+    msg.includes("Received app shell instead of API response")
+  );
+}
+
+function markApiBaseHealthy(base: string): void {
+  apiBaseHealth.set(base, {
+    healthyUntil: Date.now() + API_BASE_HEALTH_TTL_MS,
+    unhealthyUntil: 0,
+  });
+}
+
+function markApiBaseUnhealthy(base: string): void {
+  const current = apiBaseHealth.get(base);
+  apiBaseHealth.set(base, {
+    healthyUntil: current?.healthyUntil || 0,
+    unhealthyUntil: Date.now() + API_BASE_HEALTH_TTL_MS,
+  });
+}
+
+function rankCandidateApiBases(bases: string[]): string[] {
+  const now = Date.now();
+  return [...bases].sort((left, right) => {
+    const leftHealth = apiBaseHealth.get(left);
+    const rightHealth = apiBaseHealth.get(right);
+    const leftScore = leftHealth?.healthyUntil && leftHealth.healthyUntil > now ? 2 : leftHealth?.unhealthyUntil && leftHealth.unhealthyUntil > now ? 0 : 1;
+    const rightScore = rightHealth?.healthyUntil && rightHealth.healthyUntil > now ? 2 : rightHealth?.unhealthyUntil && rightHealth.unhealthyUntil > now ? 0 : 1;
+    return rightScore - leftScore;
+  });
+}
+
+function activeCandidateApiBases(): string[] {
+  return rankCandidateApiBases(candidateApiBases());
+}
+
+function raceApiBases<T>(
+  init: ApiRequestInit | undefined,
+  run: (base: string, signal: AbortSignal, requestInit: RequestInit) => Promise<T>,
+): Promise<T> {
+  const bases = activeCandidateApiBases();
+  if (!bases.length) return Promise.reject(new Error("API base is not configured"));
+
+  const { timeoutMs = DEFAULT_API_TIMEOUT_MS, signal, ...requestInit } = init || {};
+  if (signal?.aborted) {
+    return Promise.reject(createAbortError(signal.reason));
+  }
+
+  return new Promise<T>((resolve, reject) => {
+    let settled = false;
+    let completed = 0;
+    let lastErr: unknown = null;
+    const timers: Array<ReturnType<typeof setTimeout>> = [];
+    const managedRequests: Array<ReturnType<typeof createManagedRequestSignal>> = [];
+
+    const cleanup = (abortPending: boolean) => {
+      while (timers.length) {
+        const timer = timers.pop();
+        if (timer) clearTimeout(timer);
+      }
+      if (signal) {
+        signal.removeEventListener("abort", onCallerAbort);
+      }
+      for (const managed of managedRequests) {
+        if (abortPending && !managed.signal.aborted) {
+          managed.abort(createAbortError());
+        }
+        managed.cleanup();
+      }
+    };
+
+    const rejectIfComplete = () => {
+      if (settled || completed < bases.length) return;
+      settled = true;
+      cleanup(false);
+      reject(lastErr || new Error("API error"));
+    };
+
+    const onCallerAbort = () => {
+      if (settled) return;
+      settled = true;
+      cleanup(true);
+      reject(createAbortError(signal?.reason));
+    };
+
+    if (signal) {
+      signal.addEventListener("abort", onCallerAbort, { once: true });
+    }
+
+    bases.forEach((base, index) => {
+      const timer = setTimeout(() => {
+        if (settled) return;
+        const managedSignal = createManagedRequestSignal(signal, timeoutMs);
+        managedRequests.push(managedSignal);
+
+        run(base, managedSignal.signal, requestInit)
+          .then((payload) => {
+            if (settled) return;
+            settled = true;
+            markApiBaseHealthy(base);
+            cleanup(true);
+            resolve(payload);
+          })
+          .catch((error: unknown) => {
+            if (settled) return;
+            const nextErr = managedSignal.abortedByTimeout() ? createTimeoutError(timeoutMs) : error;
+            if (managedSignal.abortedByCaller()) {
+              onCallerAbort();
+              return;
+            }
+            lastErr = nextErr;
+            completed += 1;
+            if (isRetryableApiError(nextErr)) {
+              markApiBaseUnhealthy(base);
+              rejectIfComplete();
+              return;
+            }
+            settled = true;
+            cleanup(true);
+            reject(nextErr);
+          })
+          .finally(() => {
+            managedSignal.cleanup();
+          });
+      }, index * API_FALLBACK_DELAY_MS);
+      timers.push(timer);
+    });
+  });
 }
 
 function getAuthSessionCacheKey(): string {
@@ -1282,16 +1449,24 @@ function getAuthSessionCacheKey(): string {
   return "";
 }
 
-function applyAuthHeaders(headers: Headers): void {
-  const initData = getInitData();
+function applyAuthHeaders(headers: Headers, options?: { webSessionOnly?: boolean }): void {
   const token = getWebSessionToken();
   if (token) {
     headers.set("Authorization", `Bearer ${token}`);
     headers.set("X-Web-Auth-Token", token);
   }
+  if (options?.webSessionOnly) {
+    headers.delete("X-Telegram-Init-Data");
+    return;
+  }
+  const initData = getInitData();
   if (initData) {
     headers.set("X-Telegram-Init-Data", initData);
   }
+}
+
+function isAdminApiPath(path: string): boolean {
+  return String(path || "").startsWith("/api/admin/");
 }
 
 export function hasWebSessionToken(): boolean {
@@ -1455,6 +1630,7 @@ function createManagedRequestSignal(signal: AbortSignal | null | undefined, time
 
   return {
     signal: controller.signal,
+    abort: (reason?: unknown) => controller.abort(reason),
     abortedByCaller: () => abortedByCaller,
     abortedByTimeout: () => abortedByTimeout,
     cleanup: () => {
@@ -1540,12 +1716,7 @@ const nodeStatusCache: {
 };
 
 async function unauthenticatedJsonPost<T>(path: string, payload: unknown, init?: ApiRequestInit): Promise<T> {
-  const bases = candidateApiBases();
-  let lastErr: any = null;
-  const { timeoutMs = DEFAULT_API_TIMEOUT_MS, signal, ...requestInit } = init || {};
-  for (const base of bases) {
-    const managedSignal = createManagedRequestSignal(signal, timeoutMs);
-    try {
+  return raceApiBases<T>(init, async (base, signal, requestInit) => {
       const headers = new Headers({ "Content-Type": "application/json" });
       applyAuthHeaders(headers);
       const response = await fetch(`${base}${path}`, {
@@ -1554,46 +1725,21 @@ async function unauthenticatedJsonPost<T>(path: string, payload: unknown, init?:
         headers,
         body: JSON.stringify(payload),
         cache: "no-store",
-        signal: managedSignal.signal,
+        signal,
       });
       if (!response.ok) {
         const text = await readApiError(response);
         throw new Error(text || `API error: ${response.status}`);
       }
       return await parseJsonResponse<T>(response);
-    } catch (error: any) {
-      lastErr = managedSignal.abortedByTimeout() ? createTimeoutError(timeoutMs) : error;
-      if (managedSignal.abortedByCaller()) {
-        throw createAbortError(signal?.reason);
-      }
-      const msg = String(lastErr?.message || lastErr);
-      if (
-        managedSignal.abortedByTimeout() ||
-        msg.includes("Failed to fetch") ||
-        msg.includes("NetworkError") ||
-        msg.includes("fetch") ||
-        msg.includes("Received app shell instead of API response")
-      ) {
-        continue;
-      }
-      break;
-    } finally {
-      managedSignal.cleanup();
-    }
-  }
-  throw lastErr || new Error("API error");
+  });
 }
 
 async function apiFetch<T>(path: string, init?: ApiRequestInit): Promise<T> {
-  const bases = candidateApiBases();
-  let lastErr: any = null;
-  const { timeoutMs = DEFAULT_API_TIMEOUT_MS, signal, ...requestInit } = init || {};
-  for (const base of bases) {
-    const managedSignal = createManagedRequestSignal(signal, timeoutMs);
-    try {
+  return raceApiBases<T>(init, async (base, signal, requestInit) => {
       const headers = new Headers(requestInit.headers || {});
-      applyAuthHeaders(headers);
-      const r = await fetch(`${base}${path}`, { ...requestInit, headers, signal: managedSignal.signal });
+      applyAuthHeaders(headers, { webSessionOnly: isAdminApiPath(path) });
+      const r = await fetch(`${base}${path}`, { ...requestInit, headers, signal });
       if (!r.ok) {
         const text = await readApiError(r);
         if (r.status === 401) {
@@ -1604,27 +1750,7 @@ async function apiFetch<T>(path: string, init?: ApiRequestInit): Promise<T> {
       }
       if (r.status === 204) return {} as T;
       return await parseJsonResponse<T>(r);
-    } catch (e: any) {
-      lastErr = managedSignal.abortedByTimeout() ? createTimeoutError(timeoutMs) : e;
-      if (managedSignal.abortedByCaller()) {
-        throw createAbortError(signal?.reason);
-      }
-      const msg = String(lastErr?.message || lastErr);
-      if (
-        managedSignal.abortedByTimeout() ||
-        msg.includes("Failed to fetch") ||
-        msg.includes("NetworkError") ||
-        msg.includes("fetch") ||
-        msg.includes("Received app shell instead of API response")
-      ) {
-        continue;
-      }
-      break;
-    } finally {
-      managedSignal.cleanup();
-    }
-  }
-  throw lastErr || new Error("API error");
+  });
 }
 
 export function fetchUser(tgId: number, init?: StableCacheRequestInit): Promise<UserPayload> {
@@ -1722,23 +1848,27 @@ export function claimChannelBonus(): Promise<{
   channel?: string;
   sync_ok?: boolean;
 }> {
-  return apiFetch("/api/bonuses/channel/claim", { method: "POST" });
+  return withAccessCacheInvalidation(apiFetch("/api/bonuses/channel/claim", { method: "POST" }));
 }
 
 export function redeemPromo(code: string): Promise<any> {
-  return apiFetch<any>("/api/promo/redeem", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ code }),
-  });
+  return withAccessCacheInvalidation(
+    apiFetch<any>("/api/promo/redeem", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ code }),
+    }),
+  );
 }
 
 export function redeemGiftCode(code: string): Promise<any> {
-  return apiFetch<any>("/api/gift/redeem", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ code }),
-  });
+  return withAccessCacheInvalidation(
+    apiFetch<any>("/api/gift/redeem", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ code }),
+    }),
+  );
 }
 
 export function fetchAccessKeyStatus(key: string): Promise<AccessKeyStatusPayload> {
@@ -1746,11 +1876,13 @@ export function fetchAccessKeyStatus(key: string): Promise<AccessKeyStatusPayloa
 }
 
 export function redeemAccessKey(key: string): Promise<AccessKeyRedeemPayload> {
-  return apiFetch<AccessKeyRedeemPayload>("/api/access-keys/redeem", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ key }),
-  });
+  return withAccessCacheInvalidation(
+    apiFetch<AccessKeyRedeemPayload>("/api/access-keys/redeem", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ key }),
+    }),
+  );
 }
 
 export async function authByTelegramWebLogin(payload: TelegramWebLoginPayload): Promise<WebLoginResult> {
@@ -2521,6 +2653,7 @@ export function adminBulkKeyAction(payload: {
   limit?: number;
   dry_run?: boolean;
   force?: boolean;
+  operator_reason?: string;
 }): Promise<any> {
   return apiFetch("/api/admin/users/keys/bulk-action", {
     method: "POST",
@@ -2537,22 +2670,23 @@ export function adminUserLoyalty(tgId: number): Promise<{ loyalty: AdminUserLoya
   return apiFetch(`/api/admin/users/${tgId}/loyalty`);
 }
 
-export function adminUserLoyaltyGrant(tgId: number, tierDays: number): Promise<{ ok: boolean; tier_days: number; expiry_at?: string | null; sync_ok?: boolean }> {
+export function adminUserLoyaltyGrant(tgId: number, tierDays: number, operatorReason: string): Promise<{ ok: boolean; tier_days: number; expiry_at?: string | null; sync_ok?: boolean }> {
   return apiFetch(`/api/admin/users/${tgId}/loyalty/grant`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ tier_days: tierDays }),
+    body: JSON.stringify({ tier_days: tierDays, operator_reason: operatorReason }),
   });
 }
 
 export function adminUserPresetRun(
   tgId: number,
   preset: "reset_key" | "rotate_link" | "extend_1d" | "send_guide",
+  operatorReason: string,
 ): Promise<{ ok: boolean; preset: string; changed?: number; failed?: number; subscription_url?: string }> {
   return apiFetch(`/api/admin/users/${tgId}/presets/run`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ preset }),
+    body: JSON.stringify({ preset, operator_reason: operatorReason }),
   });
 }
 
@@ -2584,11 +2718,11 @@ export function adminLoyaltyConfig(): Promise<{ loyalty_config: AdminLoyaltyConf
   return apiFetch("/api/admin/loyalty-config");
 }
 
-export function adminLoyaltyConfigUpdate(payload: AdminLoyaltyConfig): Promise<{ ok: boolean; loyalty_config: AdminLoyaltyConfig }> {
+export function adminLoyaltyConfigUpdate(payload: AdminLoyaltyConfig, operatorReason: string): Promise<{ ok: boolean; loyalty_config: AdminLoyaltyConfig }> {
   return apiFetch("/api/admin/loyalty-config", {
     method: "PUT",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(payload),
+    body: JSON.stringify({ ...payload, operator_reason: operatorReason }),
   });
 }
 
@@ -2601,11 +2735,12 @@ export async function adminNetworkRolloutConfig(): Promise<{ network_rollout_con
 
 export function adminNetworkRolloutConfigUpdate(
   payload: AdminNetworkRolloutConfig,
+  operatorReason: string,
 ) : Promise<{ ok: boolean; network_rollout_config: AdminNetworkRolloutConfig }> {
   return apiFetch<Partial<{ ok: boolean; network_rollout_config: AdminNetworkRolloutConfig }>>("/api/admin/network-rollout-config", {
     method: "PUT",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(payload),
+    body: JSON.stringify({ ...payload, operator_reason: operatorReason }),
   }).then((data) => ({
     ok: Boolean(data.ok),
     network_rollout_config: normalizeAdminNetworkRolloutConfig(data.network_rollout_config),
@@ -2660,26 +2795,31 @@ export function adminCampaignDelete(campaignId: number): Promise<{ ok: boolean }
   return apiFetch(`/api/admin/campaigns/${campaignId}`, { method: "DELETE" });
 }
 
-export function adminUserKeyToggle(tgId: number, nodeCode: string, enable: boolean): Promise<{ ok: boolean; enabled: boolean }> {
+export function adminUserKeyToggle(tgId: number, nodeCode: string, enable: boolean, operatorReason: string): Promise<{ ok: boolean; enabled: boolean }> {
   return apiFetch(`/api/admin/users/${tgId}/keys/${encodeURIComponent(nodeCode)}/toggle`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ enable }),
+    body: JSON.stringify({ enable, operator_reason: operatorReason }),
   });
 }
 
-export function adminUserKeyResetTraffic(tgId: number, nodeCode: string): Promise<{ ok: boolean }> {
+export function adminUserKeyResetTraffic(tgId: number, nodeCode: string, operatorReason: string): Promise<{ ok: boolean }> {
   return apiFetch(`/api/admin/users/${tgId}/keys/${encodeURIComponent(nodeCode)}/reset-traffic`, {
     method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ operator_reason: operatorReason }),
   });
 }
 
 export function adminUserKeyResyncSubId(
   tgId: number,
   nodeCode: string,
+  operatorReason: string,
 ): Promise<{ ok: boolean; expected_sub_id?: string }> {
   return apiFetch(`/api/admin/users/${tgId}/keys/${encodeURIComponent(nodeCode)}/resync-subid`, {
     method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ operator_reason: operatorReason }),
   });
 }
 
@@ -2711,16 +2851,20 @@ export function adminManualExtend(tgId: number, days: number): Promise<{ ok: boo
   });
 }
 
-export function adminManualBlock(tgId: number, blocked: boolean): Promise<{ ok: boolean; is_active: boolean }> {
+export function adminManualBlock(tgId: number, blocked: boolean, operatorReason: string): Promise<{ ok: boolean; is_active: boolean }> {
   return apiFetch(`/api/admin/users/${tgId}/manual/block`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ blocked }),
+    body: JSON.stringify({ blocked, operator_reason: operatorReason }),
   });
 }
 
-export function adminManualRegenerateToken(tgId: number): Promise<{ ok: boolean; subscription_url: string; sync_ok?: boolean }> {
-  return apiFetch(`/api/admin/users/${tgId}/manual/regenerate-token`, { method: "POST" });
+export function adminManualRegenerateToken(tgId: number, operatorReason: string): Promise<{ ok: boolean; subscription_url: string; sync_ok?: boolean }> {
+  return apiFetch(`/api/admin/users/${tgId}/manual/regenerate-token`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ operator_reason: operatorReason }),
+  });
 }
 
 export function adminDeleteTestUser(tgId: number): Promise<{ ok: boolean; tg_id: number; panel_deleted?: boolean }> {
@@ -2736,6 +2880,7 @@ export function adminBroadcast(payload: {
   segment: string;
   limit: number;
   tg_ids?: number[];
+  operator_reason: string;
 }): Promise<any> {
   return apiFetch<any>("/api/admin/broadcast", {
     method: "POST",
@@ -2759,11 +2904,11 @@ export async function adminTicketReply(ticketId: number, body: string): Promise<
   return data.ticket;
 }
 
-export async function adminTicketStatus(ticketId: number, status: string): Promise<TicketInfo> {
+export async function adminTicketStatus(ticketId: number, status: string, operatorReason?: string): Promise<TicketInfo> {
   const data = await apiFetch<{ ticket: TicketInfo }>(`/api/admin/tickets/${ticketId}/status`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ status }),
+    body: JSON.stringify({ status, ...(operatorReason ? { operator_reason: operatorReason } : {}) }),
   });
   return data.ticket;
 }
@@ -2793,23 +2938,23 @@ export function adminNodesDrift(only?: string[]): Promise<AdminNodeDriftReport> 
   return apiFetch<AdminNodeDriftReport>(`/api/admin/nodes/drift${suffix}`);
 }
 
-export function adminNodeDrain(code: string): Promise<{ ok: boolean; node: AdminNodeHealthRow }> {
+export function adminNodeDrain(code: string, operatorReason: string): Promise<{ ok: boolean; node: AdminNodeHealthRow }> {
   return apiFetch(`/api/admin/nodes/${encodeURIComponent(code)}/drain`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({}),
+    body: JSON.stringify({ operator_reason: operatorReason }),
   });
 }
 
-export function adminNodeEnable(code: string): Promise<{ ok: boolean; node: AdminNodeHealthRow }> {
+export function adminNodeEnable(code: string, operatorReason: string): Promise<{ ok: boolean; node: AdminNodeHealthRow }> {
   return apiFetch(`/api/admin/nodes/${encodeURIComponent(code)}/enable`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({}),
+    body: JSON.stringify({ operator_reason: operatorReason }),
   });
 }
 
-export function adminNodeDisable(code: string, payload?: { force?: boolean }): Promise<{ ok: boolean; node: AdminNodeHealthRow }> {
+export function adminNodeDisable(code: string, payload?: { force?: boolean; operator_reason?: string }): Promise<{ ok: boolean; node: AdminNodeHealthRow }> {
   return apiFetch(`/api/admin/nodes/${encodeURIComponent(code)}/disable`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -2819,7 +2964,7 @@ export function adminNodeDisable(code: string, payload?: { force?: boolean }): P
 
 export function adminNodeResync(
   code: string,
-  payload?: { limit?: number; dry_run?: boolean },
+  payload?: { limit?: number; dry_run?: boolean; operator_reason?: string },
 ): Promise<{ ok: boolean; node_code: string; count: number; migrated: number; failed: number; skipped: number; dry_run: boolean; details: Array<Record<string, unknown>> }> {
   return apiFetch(`/api/admin/nodes/${encodeURIComponent(code)}/resync`, {
     method: "POST",
@@ -2911,6 +3056,7 @@ export function adminGiftCodeCreate(card_type: "mini" | "standard" | "premium"):
 export function adminAccessKeysIssue(payload: {
   plan_code: string;
   quantity?: number;
+  operator_reason: string;
 }): Promise<{
   ok: boolean;
   plan: PlanCatalogRow;
@@ -2933,6 +3079,7 @@ export function adminPromoSlots(): Promise<AdminPromoSlotsPayload> {
 
 export function adminPromoSlotsUpdate(payload: {
   assignments: PromoSlotAssignmentPayload[];
+  operator_reason: string;
 }): Promise<{
   ok: boolean;
   promo_slots: {
@@ -3111,10 +3258,10 @@ export async function adminWheelConfig(): Promise<AdminWheelConfig> {
   return data.wheel_config;
 }
 
-export function adminWheelConfigUpdate(payload: AdminWheelConfig): Promise<{ ok: boolean; wheel_config: AdminWheelConfig }> {
+export function adminWheelConfigUpdate(payload: AdminWheelConfig, operatorReason: string): Promise<{ ok: boolean; wheel_config: AdminWheelConfig }> {
   return apiFetch("/api/admin/wheel-config", {
     method: "PUT",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(payload),
+    body: JSON.stringify({ ...payload, operator_reason: operatorReason }),
   });
 }

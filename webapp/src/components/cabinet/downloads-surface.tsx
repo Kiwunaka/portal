@@ -51,7 +51,7 @@ function buildCards(payload: ClientAppsPayload | null): DownloadCard[] {
           badge: "Рекомендуем",
           tone: "success",
           href: androidPlay,
-          action: externalAction(androidPlay, "Открыть"),
+          action: externalAction(androidPlay, "Открыть Google Play"),
         }
       : null,
     androidApk
@@ -62,7 +62,7 @@ function buildCards(payload: ClientAppsPayload | null): DownloadCard[] {
           badge: "Дополнительная ссылка",
           tone: "neutral",
           href: androidApk,
-          action: externalAction(androidApk, "Скачать"),
+          action: externalAction(androidApk, "Скачать APK"),
         }
       : null,
     androidMirror
@@ -73,7 +73,7 @@ function buildCards(payload: ClientAppsPayload | null): DownloadCard[] {
           badge: "На всякий случай",
           tone: "info",
           href: androidMirror,
-          action: externalAction(androidMirror, "Открыть"),
+          action: externalAction(androidMirror, "Скачать APK (зеркало)"),
         }
       : null,
     windowsExe
@@ -84,7 +84,7 @@ function buildCards(payload: ClientAppsPayload | null): DownloadCard[] {
           badge: "Основная ссылка",
           tone: "success",
           href: windowsExe,
-          action: externalAction(windowsExe, "Скачать"),
+          action: externalAction(windowsExe, "Скачать Windows"),
         }
       : null,
     windowsMirror
@@ -95,7 +95,7 @@ function buildCards(payload: ClientAppsPayload | null): DownloadCard[] {
           badge: "Дополнительная ссылка",
           tone: "info",
           href: windowsMirror,
-          action: externalAction(windowsMirror, "Открыть"),
+          action: externalAction(windowsMirror, "Скачать Windows (зеркало)"),
         }
       : null,
     docsUrl
@@ -106,7 +106,7 @@ function buildCards(payload: ClientAppsPayload | null): DownloadCard[] {
           badge: "Подсказка",
           tone: "neutral",
           href: docsUrl,
-          action: externalAction(docsUrl, "Открыть"),
+          action: externalAction(docsUrl, "Открыть инструкцию"),
         }
       : null,
     {
@@ -133,9 +133,9 @@ export function CabinetDownloadsSurface() {
           setPayload(next);
           setError("");
         }
-      } catch (nextError) {
+      } catch {
         if (!cancelled) {
-          setError(String((nextError as { message?: string })?.message || nextError || ""));
+          setError("Не удалось обновить ссылки автоматически.");
         }
       }
     };
@@ -149,7 +149,8 @@ export function CabinetDownloadsSurface() {
   const cards = useMemo(() => buildCards(payload), [payload]);
   const hasAndroid = cards.some((item) => item.key.startsWith("android"));
   const hasWindows = cards.some((item) => item.key.startsWith("windows"));
-  const hasDocs = cards.some((item) => item.key === "docs");
+  const hasInstallable = hasAndroid || hasWindows;
+  const primaryInstall = cards.find((item) => item.key === "android-play" || item.key === "android-apk" || item.key === "windows-exe");
 
   const helperCards: CabinetListItem[] = [
     {
@@ -201,20 +202,20 @@ export function CabinetDownloadsSurface() {
       metrics={[
         {
           label: "Android",
-          value: hasAndroid ? "Ссылки готовы" : "Подтянем позже",
+          value: hasAndroid ? "Можно установить" : "Ссылки появятся позже",
           hint: "Play для обычного старта, APK как дополнительная ссылка.",
           tone: hasAndroid ? "success" : "neutral",
         },
         {
           label: "Windows",
-          value: hasWindows ? "Ссылка готова" : "Подтянем позже",
+          value: hasWindows ? "Можно установить" : "Ссылка появится позже",
           hint: "Обычная установка без ручной сборки профиля.",
           tone: hasWindows ? "success" : "neutral",
         },
         {
-          label: "Инструкция",
-          value: hasDocs ? "Под рукой" : "Не обязательна",
-          hint: "Короткий ориентир, если нужен спокойный старт.",
+          label: "Apple",
+          value: "Готовится",
+          hint: "Apple-платформы сейчас только в подготовке, без публичной установки.",
           tone: "neutral",
         },
         {
@@ -227,19 +228,19 @@ export function CabinetDownloadsSurface() {
     >
       <CabinetHero
         eyebrow="Что делать сейчас"
-        badge={cards.length ? "Можно ставить приложение" : "Ссылки подтягиваются"}
-        badgeTone={cards.length ? "success" : "info"}
-        title={cards.length ? "Сначала загрузка, потом вход" : "Часть ссылок подтянем позже"}
+        badge={hasInstallable ? "Можно ставить приложение" : "Ссылки подтягиваются"}
+        badgeTone={hasInstallable ? "success" : "info"}
+        title={hasInstallable ? "Сначала загрузка, потом вход" : "Установочные ссылки подтянем позже"}
         description={
-          cards.length
+          hasInstallable
             ? "Для нового экрана обычно хватает двух шагов: открыть нужную загрузку и войти в тот же аккаунт. Всё остальное уже догружается само."
             : "Кабинет продолжает работать. Если нужной ссылки нет прямо сейчас, лучше открыть поддержку."
         }
         actions={
           <>
-            {cards[0]?.href ? (
-              <a href={cards[0].href} target="_blank" rel="noreferrer" className="btn-primary rounded-full px-5 py-3 text-sm font-semibold">
-                Открыть первую ссылку
+            {primaryInstall?.href ? (
+              <a href={primaryInstall.href} target="_blank" rel="noreferrer" className="btn-primary rounded-full px-5 py-3 text-sm font-semibold">
+                {primaryInstall.key === "android-play" ? "Открыть Google Play" : primaryInstall.key === "android-apk" ? "Скачать APK" : "Скачать Windows"}
               </a>
             ) : null}
             <AppRouteLink href="/support/" className="outline-btn rounded-full px-5 py-3 text-sm font-semibold">
@@ -250,7 +251,7 @@ export function CabinetDownloadsSurface() {
         details={[
           {
             label: "Лучший путь",
-            value: hasAndroid ? "Android через Play" : hasWindows ? "Windows installer" : "Поддержка",
+            value: hasAndroid ? "Android через Play или APK" : hasWindows ? "Установщик Windows" : "Поддержка",
             hint: "Берите обычный путь первым. Дополнительные ссылки нужны редко.",
             tone: "neutral",
           },

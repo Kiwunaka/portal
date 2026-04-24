@@ -44,13 +44,14 @@ The current program is locked around these target product decisions:
 - one canonical `app-first` account links `install_id`, email, Telegram, devices, and activation keys
 - public delivery scope for this wave remains `Android + Windows`; Apple hosts may remain in engineering lanes but are not part of public promise or release acceptance
 - commercial flow becomes `buy key -> redeem key -> managed premium`, with raw subscription links hidden from default site, webapp, and bot UX and exposed only for explicit recovery or manual-request paths
+- key-first trial starts from the site, bot, or app; all three entrypoints must create or continue the same app-first account instead of minting separate public identities
 - `marketing` is the only public acquisition, pricing, and paywall surface, and its default public CTA set is checkout-first; `webapp` is session-aware continuation, support, redeem, renewal continuation, and admin only
 - public browser copy and visual governance are centralized through `shared/copy.ts`, `copy/catalog.ru.json`, and `shared/design-tokens.json`, with locked host and product facts inherited from the shared fact files
-- user-facing cabinet IA becomes `Dashboard / Subscription / Devices / Statistics / Support`, with entry, `downloads`, `redeem`, hosted-checkout continuation, and compatibility redirects treated as task routes rather than parallel public-entry surfaces
+- user-facing cabinet IA becomes `Главная / Тарифы и оплата / Устройства / Загрузки / Поддержка / Профиль / Настройки`, with entry, `redeem`, hosted-checkout continuation, and compatibility redirects treated as task routes rather than parallel public-entry surfaces
 - app surfaces must not use ad SDKs or third-party ads; only approved first-party promo slots may render remotely managed promo content
 - normal consumer UX should show one logical location, while transport variants `VLESS+REALITY`, `VMess`, `Trojan`, and `XHTTP` stay hidden behind auto, diagnostics, or admin controls
-- target client IA becomes `Protection / Locations / Rules / Profile`, with `Support`, `Devices`, `Subscription`, and `Settings` nested inside `Profile`
-- visible routing story becomes `All except RU`, `Full tunnel`, and `Selected apps`, with `Rules` owning split tunneling and bypass behavior
+- target client IA becomes `Подключение / Локации / Правила / Профиль`, with `Поддержка`, `Устройства`, `Тарифы`, and `Настройки` nested inside `Профиль`
+- visible routing story becomes `Все, кроме РФ`, `Полный туннель`, and `Только выбранные приложения`, with `Правила` owning route-mode choice and the selected-app scan MVP
 - the public wording rule still forbids promoting the product through direct-meaning `VPN` wording on public surfaces
 
 Client-canon note:
@@ -114,17 +115,17 @@ Current truth:
 
 Primary navigation:
 
-1. `Protection`
-2. `Locations`
-3. `Rules`
-4. `Profile`
+1. `Подключение`
+2. `Локации`
+3. `Правила`
+4. `Профиль`
 
-Nested under `Profile`:
+Nested under `Профиль`:
 
-- `Support`
-- `Devices`
-- `Subscription`
-- `Settings`
+- `Поддержка`
+- `Устройства`
+- `Тарифы`
+- `Настройки`
 
 Legacy `/config-options`, `/about`, and `/logs` may remain as compatibility redirects only. Public IA is the four-tab shell above.
 
@@ -199,6 +200,7 @@ Public funnel rule:
 - `pokrov.space/checkout/` shows public pricing and sells activation keys through the hosted checkout flow
 - `app.pokrov.space` continues real account, renewal, redeem, support, and admin flows
 - cabinet checkout is continuation-only and should defer to the same hosted activation-key flow instead of inventing a second paywall
+- hybrid paid flow means hosted checkout is the public purchase lane, cabinet is renewal/redeem continuation, and Telegram bot billing remains a secondary compatibility path
 - the default site, cabinet, and bot UX must not expose raw subscription links
 - Telegram bot purchase flow remains available, but it is not the default public story
 - `connect.pokrov.space` remains the delivery surface for the one public connection link and matching QR, not a fresh-entry marketing surface
@@ -232,8 +234,12 @@ Guardrails for this redesign:
 - keep trial copy on `5 days`; older longer-duration trial copy is stale
 - first-layer app copy must not expose protocol, runtime, local-control, raw profile, hostname, or port terms
 - public browser copy must keep `marketing` as acquisition, `webapp` as continuation, and `connect.pokrov.space` as delivery only
+- app, cabinet, admin, and backend public copy must stay POKROV-only and avoid fake live-chat promises, raw first-layer profile/config terms, old subtitle lines, and stale longer trial claims
+- bot, backend, checkout, and cabinet first-layer copy should speak in access-key, app, cabinet, renewal, and support terms; raw personal links, protocol details, node host/port, and public IP belong only in explicit recovery, compatibility, admin, or diagnostic contexts
 
 This redesign direction is not a release-readiness claim. Android remains blocked until the documented release-build localhost/control-surface audit is complete, Windows still needs its normal release evidence, and Apple platforms remain preparation-only in this wave.
+
+No deploy is part of this polish wave. The output is documentation, guardrails, visual-smoke alignment, screenshots/final-gate preparation, and an orchestrator checklist.
 
 ## Official Hostnames
 
@@ -274,6 +280,7 @@ Product wording rule:
 ### Free Trial
 
 - every valid first device account can receive `5 days`
+- public site and bot surfaces may offer a `5-day` trial-key start without registration, with a soft browser/IP period limit and user-safe `issued`, `limited`, or `unavailable` status
 - trial must create a real backend account, device, session, and working subscription source
 - trial must never be decorative UI-only state
 - trial is premium-grade access during those `5 days`
@@ -332,6 +339,8 @@ Visible in advanced:
 All public and client-facing surfaces must be branded as `POKROV`.
 
 `POKROV VPN` may remain only as a legacy compatibility token in old filenames, package/store identifiers, bot handles, migration notes, or other surfaces that cannot yet be renamed safely.
+
+temporary visible logo asset exception: current screenshots and manifests may reference the retained logo master while replacement assets are being normalized, but no UI text, subtitle, CTA, or metadata copy may reintroduce direct-meaning `VPN` product wording.
 
 Replace or remove:
 

@@ -76,10 +76,10 @@ export default function SubscriptionPage() {
           setPlans(rows.length ? rows : fallbackPlans());
           setError("");
         }
-      } catch (nextError) {
+      } catch {
         if (!cancelled) {
           setPlans(fallbackPlans());
-          setError(String((nextError as { message?: string })?.message || nextError || ""));
+          setError("Не удалось обновить тарифы автоматически.");
         }
       }
     };
@@ -285,7 +285,7 @@ export default function SubscriptionPage() {
           description="Показываем только рабочие варианты продления, без маркетингового шума."
         >
           <CabinetCardGrid items={planCards} className="xl:grid-cols-2" />
-          {error ? <p className="mt-4 text-sm text-amber-700 dark:text-amber-200">Часть данных не обновилась автоматически: {error}</p> : null}
+          {error ? <p className="mt-4 text-sm text-amber-700 dark:text-amber-200">{error} Показываем сохраненные варианты.</p> : null}
         </CabinetSection>
 
         <CabinetSection

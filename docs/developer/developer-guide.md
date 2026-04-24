@@ -349,15 +349,30 @@ Current redesign guardrails:
 - governed catalog copy must not reintroduce old network or premium subtitle lines
 - trial copy must stay on `5 days`; older longer-duration trial copy is stale
 - first-layer app copy must stay consumer-language only and hide transport, runtime, local-control, hostname, port, and raw subscription terms
-- local dev admin checks may seed `portal_web_session_token` in Playwright, but production UI must still require a real cabinet session before `/admin/*` opens
+- app tabs are `Подключение`, `Локации`, `Правила`, and `Профиль`; stale English IA labels are compatibility notes only
+- cabinet IA is `Главная`, `Тарифы и оплата`, `Устройства`, `Загрузки`, `Поддержка`, `Профиль`, and `Настройки`
+- web-session-only admin is mandatory: local dev admin checks may seed `portal_web_session_token` in Playwright, but production UI must still require a real cabinet session before `/admin/*` opens
+- selected-app scan MVP belongs under `Правила` and must not reveal raw profile/config controls in the first layer
+- no deploy in this wave; final polish work stops at docs, guardrails, visual smoke, screenshots, and handoff preparation
 
 Focused redesign guardrail checks:
 
 ```powershell
 python -m pytest tests/test_public_copy_guardrails.py tests/test_redesign_spine.py -q
+python -m pytest tests/test_ui_visual_smoke.py -q
 cd webapp; npm.cmd run test:e2e:admin -- --grep "requires a real cabinet session"
 cd C:/Users/kiwun/Documents/ai/POKROV-app/packages/app_shell; flutter test test/pokrov_seed_app_test.dart --plain-name "first-layer app shell copy hides transport and control terms"
 ```
+
+Final polish QA checklist:
+
+- run `python -m pytest tests/test_public_copy_guardrails.py tests/test_redesign_spine.py tests/test_ui_visual_smoke.py -q`
+- capture final marketing, cabinet, admin gate, and app-shell screenshots without any `dev-indicator`
+- verify key-first trial starts from site, bot, and app into the same app-first state
+- verify the hybrid paid flow: hosted checkout purchase, activation-key redeem, cabinet renewal continuation, and Telegram billing as secondary fallback
+- verify app tabs and cabinet navigation use the current Russian labels
+- verify web-session-only admin by opening `/admin/*` without a seeded cabinet session
+- record that no deploy happened in this wave and list any remaining release blockers for the orchestrator
 
 Minimum docs to touch when relevant:
 

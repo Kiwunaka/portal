@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  AdminConfirmDialog,
   AdminBadge,
   AdminEmptyState,
   AdminInlineNote,
@@ -8,7 +9,6 @@ import {
   AdminPanelHeader,
   AdminSurfaceHeader,
   adminButtonClass,
-  adminFieldClass,
   adminInsetPanelClass,
   adminPanelClass,
   adminTableShellClass,
@@ -28,7 +28,7 @@ import {
   type AdminNodeHealthRow,
   type AdminNodeTrafficRow,
 } from "@/lib/api";
-import { Activity, AlertTriangle, GitCompare, Loader2, RefreshCw, Server, ShieldAlert } from "lucide-react";
+import { Activity, GitCompare, Loader2, RefreshCw, Server } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 
 type PendingAction =
@@ -213,19 +213,19 @@ export default function AdminNodesPage() {
     try {
       if (pending.kind === "segment") {
         await adminNodesSync({ segment: pending.segment, limit: 200 });
-        setNotice(`Segment ${pending.segment} resynced. Reason: ${reason.trim()}`);
+        setNotice(`Сегмент ${pending.segment} синхронизирован. Причина: ${reason.trim()}`);
       } else if (pending.kind === "drain") {
-        await adminNodeDrain(pending.node.code);
-        setNotice(`${pending.node.code.toUpperCase()} is draining. Reason: ${reason.trim()}`);
+        await adminNodeDrain(pending.node.code, reason.trim());
+        setNotice(`${pending.node.code.toUpperCase()} переведен в drain. Причина: ${reason.trim()}`);
       } else if (pending.kind === "enable") {
-        await adminNodeEnable(pending.node.code);
-        setNotice(`${pending.node.code.toUpperCase()} enabled. Reason: ${reason.trim()}`);
+        await adminNodeEnable(pending.node.code, reason.trim());
+        setNotice(`${pending.node.code.toUpperCase()} включен. Причина: ${reason.trim()}`);
       } else if (pending.kind === "disable") {
-        await adminNodeDisable(pending.node.code, {});
-        setNotice(`${pending.node.code.toUpperCase()} disabled. Reason: ${reason.trim()}`);
+        await adminNodeDisable(pending.node.code, { operator_reason: reason.trim() });
+        setNotice(`${pending.node.code.toUpperCase()} выключен. Причина: ${reason.trim()}`);
       } else {
-        const result = await adminNodeResync(pending.node.code, { limit: 200 });
-        setNotice(`${pending.node.code.toUpperCase()} resync: migrated ${result.migrated}, skipped ${result.skipped}, failed ${result.failed}. Reason: ${reason.trim()}`);
+        const result = await adminNodeResync(pending.node.code, { limit: 200, operator_reason: reason.trim() });
+        setNotice(`${pending.node.code.toUpperCase()} resync: перенесено ${result.migrated}, пропущено ${result.skipped}, ошибок ${result.failed}. Причина: ${reason.trim()}`);
       }
       setPending(null);
       setReason("");
@@ -252,7 +252,7 @@ export default function AdminNodesPage() {
         actions={
           <>
             <button type="button" className={adminButtonClass("secondary", "sm")} onClick={load} disabled={busy}>
-              <RefreshCw size={14} /> Refresh
+              <RefreshCw size={14} /> Обновить
             </button>
             <button type="button" className={adminButtonClass("secondary", "sm")} onClick={loadDrift} disabled={driftBusy || busy}>
               {driftBusy ? <Loader2 className="animate-spin" size={14} /> : <GitCompare size={14} />} Проверить расхождения
@@ -265,24 +265,24 @@ export default function AdminNodesPage() {
       {notice ? <AdminInlineNote tone="success">{notice}</AdminInlineNote> : null}
 
       <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-        <AdminKpiCard label="Healthy nodes" value={`${totals.healthy}/${nodes.length}`} hint="Enabled and passing latest health checks." tone={totals.healthy === nodes.length ? "success" : "warning"} />
-        <AdminKpiCard label="Online connections" value={totals.online} hint={`${totals.clients} active clients reported by nodes.`} />
-        <AdminKpiCard label="Traffic 7d" value={fmtGb(totals.traffic7d)} hint="From existing node traffic API range." />
-        <AdminKpiCard label="Active alerts" value={status?.active_alerts?.length || 0} hint="No synthetic realtime data is generated here." tone={status?.active_alerts?.length ? "danger" : "success"} />
+        <AdminKpiCard label="Здоровые ноды" value={`${totals.healthy}/${nodes.length}`} hint="Включены и проходят последнюю проверку." tone={totals.healthy === nodes.length ? "success" : "warning"} />
+        <AdminKpiCard label="Онлайн-сессии" value={totals.online} hint={`${totals.clients} активных клиентов по отчетам нод.`} />
+        <AdminKpiCard label="Трафик 7д" value={fmtGb(totals.traffic7d)} hint="По текущему диапазону API трафика нод." />
+        <AdminKpiCard label="Активные алерты" value={status?.active_alerts?.length || 0} hint="Синтетические realtime-данные здесь не создаются." tone={status?.active_alerts?.length ? "danger" : "success"} />
       </div>
 
       <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_360px]">
         <article className={adminPanelClass("neutral")}>
           <AdminPanelHeader
-            eyebrow="Fleet status"
-            title="Node table"
+            eyebrow="флот"
+            title="Таблица нод"
             description="Плотная таблица здоровья, свежести, runtime, емкости, пути подключения и observer-состояния."
             actions={
               <>
-                <button type="button" className={adminButtonClass("ghost", "xs")} onClick={() => setPending({ kind: "segment", segment: "free", label: "Resync free segment", tone: "warning" })}>
+                <button type="button" className={adminButtonClass("ghost", "xs")} onClick={() => setPending({ kind: "segment", segment: "free", label: "Синхронизировать free-сегмент", tone: "warning" })}>
                   Resync free
                 </button>
-                <button type="button" className={adminButtonClass("ghost", "xs")} onClick={() => setPending({ kind: "segment", segment: "premium", label: "Resync premium segment", tone: "warning" })}>
+                <button type="button" className={adminButtonClass("ghost", "xs")} onClick={() => setPending({ kind: "segment", segment: "premium", label: "Синхронизировать premium-сегмент", tone: "warning" })}>
                   Resync premium
                 </button>
               </>
@@ -294,14 +294,14 @@ export default function AdminNodesPage() {
                 <table className="min-w-[960px] w-full text-left text-xs">
                   <thead className="border-b border-[#c6e6db] bg-[#f8fffc] text-[10px] uppercase tracking-[0.16em] text-slate-500">
                     <tr>
-                      <th className="px-3 py-3">Node</th>
-                      <th className="px-3 py-3">Health</th>
-                      <th className="px-3 py-3">Freshness</th>
+                      <th className="px-3 py-3">Нода</th>
+                      <th className="px-3 py-3">Здоровье</th>
+                      <th className="px-3 py-3">Свежесть</th>
                       <th className="px-3 py-3">Runtime</th>
-                      <th className="px-3 py-3">Capacity</th>
-                      <th className="px-3 py-3">Path</th>
+                      <th className="px-3 py-3">Емкость</th>
+                      <th className="px-3 py-3">Путь</th>
                       <th className="px-3 py-3">Observer</th>
-                      <th className="px-3 py-3 text-right">Actions</th>
+                      <th className="px-3 py-3 text-right">Действия</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-[#c6e6db]">
@@ -363,13 +363,13 @@ export default function AdminNodesPage() {
               </div>
             </div>
           ) : (
-            <AdminEmptyState title="No nodes loaded" description="The health API returned an empty node list." />
+            <AdminEmptyState title="Ноды не загружены" description="Health API вернул пустой список нод." />
           )}
         </article>
 
         <div className="space-y-4">
           <article className={adminPanelClass(status?.active_alerts?.length ? "danger" : "success")}>
-            <AdminPanelHeader eyebrow="Alerts" title="Active alerts" description="Freshness indicators and node-level alert labels." />
+            <AdminPanelHeader eyebrow="алерты" title="Активные алерты" description="Свежесть метрик и node-level метки алертов." />
             {status?.active_alerts?.length ? (
               <div className="space-y-2">
                 {status.active_alerts.map((alert, index) => (
@@ -378,18 +378,18 @@ export default function AdminNodesPage() {
                       <AdminBadge tone="danger">{alert.node_code.toUpperCase()}: {alertKindLabel(alert.kind)}</AdminBadge>
                       <span className="text-[11px] text-slate-500">{freshnessLabel(alert.status)}</span>
                     </div>
-                    <p className="mt-2 text-xs text-slate-400">last sample {fmtIso(alert.last_sample_at)} · age {alert.age_seconds ?? "unknown"}s</p>
+                    <p className="mt-2 text-xs text-slate-400">последний срез {fmtIso(alert.last_sample_at)} · возраст {alert.age_seconds ?? "unknown"}s</p>
                   </div>
                 ))}
               </div>
             ) : (
-              <AdminEmptyState title="No active alerts" description="Metrics status currently reports no active node alerts." />
+              <AdminEmptyState title="Активных алертов нет" description="Metrics status сейчас не показывает активных алертов нод." />
             )}
           </article>
 
           {drift ? (
             <article className={adminPanelClass(drift.summary.drift ? "warning" : "success")}>
-              <AdminPanelHeader eyebrow="Drift" title="Runtime config drift" description={`${drift.summary.ok}/${drift.summary.total} nodes match expected inbound state.`} />
+              <AdminPanelHeader eyebrow="drift" title="Drift runtime-конфига" description={`${drift.summary.ok}/${drift.summary.total} нод совпадают с ожидаемым inbound-состоянием.`} />
               <div className="space-y-2">
                 {drift.results.map((row) => (
                   <div key={row.node_code} className={adminInsetPanelClass}>
@@ -448,27 +448,21 @@ export default function AdminNodesPage() {
         })}
       </div>
 
-      {pending ? (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/65 p-4">
-          <div className={`${adminPanelClass(pending.tone)} w-full max-w-lg`}>
-            <div className="flex items-start gap-3">
-              <ShieldAlert className="mt-1 shrink-0" size={20} />
-              <div>
-                <h2 className="text-lg font-semibold text-slate-50">{pending.label}</h2>
-                <p className="mt-2 text-sm leading-6 text-slate-300">This action changes live assignment or node state. Add an operator reason before proceeding.</p>
-              </div>
-            </div>
-            <label className="mt-4 block text-xs font-semibold uppercase tracking-[0.16em] text-slate-500" htmlFor="node-action-reason">Reason</label>
-            <input id="node-action-reason" className={`${adminFieldClass} mt-2`} value={reason} onChange={(event) => setReason(event.target.value)} placeholder="incident, maintenance window, or rollback note" />
-            <div className="mt-4 flex justify-end gap-2">
-              <button type="button" className={adminButtonClass("ghost", "sm")} onClick={() => setPending(null)} disabled={busy}>Cancel</button>
-              <button type="button" className={adminButtonClass(pending.tone === "danger" ? "danger" : "primary", "sm")} onClick={runPending} disabled={busy || reason.trim().length < 8}>
-                {busy ? <Loader2 className="animate-spin" size={14} /> : <AlertTriangle size={14} />} Confirm
-              </button>
-            </div>
-          </div>
-        </div>
-      ) : null}
+      <AdminConfirmDialog
+        open={Boolean(pending)}
+        title={pending?.label || "Подтвердить действие с нодой"}
+        description="Действие меняет live-назначения или состояние ноды. Укажите причину для аудита перед выполнением."
+        reason={reason}
+        onReasonChange={setReason}
+        onCancel={() => {
+          setPending(null);
+          setReason("");
+        }}
+        onConfirm={() => void runPending()}
+        confirmLabel={busy ? <><Loader2 className="animate-spin" size={14} /> Выполняется</> : "Подтвердить"}
+        danger={pending?.tone === "danger"}
+        busy={busy}
+      />
     </section>
   );
 }

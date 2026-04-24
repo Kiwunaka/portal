@@ -30,7 +30,7 @@
   box-sizing: border-box;
 }
 
-.page a {
+.page :where(a) {
   color: inherit;
   text-decoration: none;
 }
@@ -188,7 +188,6 @@
 }
 
 .hero,
-.section,
 .supportBand,
 .finalCta {
   position: relative;
@@ -201,11 +200,11 @@
 
 .hero {
   display: grid;
-  grid-template-columns: minmax(0, 1.05fr) minmax(0, 0.95fr);
+  grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr);
   align-items: center;
-  gap: clamp(1.5rem, 3vw, 3.2rem);
-  min-height: clamp(500px, calc(100vh - 205px), 590px);
-  padding: clamp(1.35rem, 3vw, 2.2rem);
+  gap: clamp(1.4rem, 3vw, 3rem);
+  min-height: clamp(540px, calc(100vh - 175px), 660px);
+  padding: clamp(1.4rem, 3vw, 2.4rem) clamp(1.35rem, 3.4vw, 2.8rem);
   background:
     linear-gradient(115deg, rgba(255, 255, 255, 0.96), rgba(234, 246, 239, 0.68)),
     var(--surface-strong);
@@ -294,24 +293,6 @@
   margin-top: 22px;
 }
 
-.heroNotes {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px 14px;
-  margin: 18px 0 0;
-  padding: 0;
-  list-style: none;
-}
-
-.heroNotes li {
-  position: relative;
-  padding-left: 18px;
-  color: var(--muted);
-  font-size: 0.92rem;
-  line-height: 1.45;
-}
-
-.heroNotes li::before,
 .featureCard::before,
 .useCaseCard::before {
   content: "";
@@ -322,99 +303,61 @@
   background: var(--emerald);
 }
 
-.heroNotes li::before {
-  left: 0;
-  top: 0.62em;
-}
-
 .heroMedia {
   position: relative;
   display: grid;
   place-items: center;
   min-width: 0;
-  min-height: min(50vw, 470px);
+  min-height: min(58vw, 560px);
 }
 
 .heroImage {
   position: relative;
   z-index: 2;
-  width: min(100%, 640px);
+  width: min(112%, 760px);
   height: auto;
   object-fit: contain;
-  filter: drop-shadow(0 26px 36px rgba(32, 49, 65, 0.14));
+  filter: drop-shadow(0 30px 42px rgba(32, 49, 65, 0.15));
 }
 
-.mapPanel {
-  position: absolute;
-  inset: 9% 4% 8% 13%;
-  z-index: 1;
-  overflow: hidden;
-  border: 1px solid rgba(31, 106, 82, 0.08);
-  border-radius: 18px;
-  background:
-    linear-gradient(0deg, rgba(31, 106, 82, 0.045) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(31, 106, 82, 0.04) 1px, transparent 1px),
-    rgba(255, 255, 255, 0.34);
-  background-size: 42px 42px;
-}
-
-.mapPanel span {
-  position: absolute;
-  width: 10px;
-  height: 10px;
-  border-radius: 999px;
-  background: var(--emerald);
-  box-shadow: 0 0 0 8px rgba(23, 109, 77, 0.09);
-}
-
-.mapPanel span:nth-child(1) {
-  left: 18%;
-  top: 28%;
-}
-
-.mapPanel span:nth-child(2) {
-  right: 26%;
-  top: 42%;
-}
-
-.mapPanel span:nth-child(3) {
-  left: 42%;
-  bottom: 22%;
-  background: var(--brass);
-  box-shadow: 0 0 0 8px rgba(181, 140, 79, 0.1);
-}
-
-.heroHintRail {
-  position: absolute;
+.productStatusRail {
+  position: relative;
   z-index: 3;
-  right: 0;
-  bottom: 3%;
   display: grid;
-  gap: 10px;
-  width: min(236px, 44%);
-}
-
-.heroHint {
-  display: grid;
-  gap: 4px;
-  padding: 12px 14px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  width: min(100%, 620px);
+  margin-top: -26px;
+  padding: 8px;
   border: 1px solid rgba(31, 106, 82, 0.12);
   border-radius: 14px;
-  background: var(--surface-frost);
+  background: rgba(255, 255, 255, 0.76);
   box-shadow: var(--shadow-soft);
-  backdrop-filter: blur(14px);
+  backdrop-filter: blur(16px);
 }
 
-.heroHint span {
+.productStatusItem {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+  padding: 10px 12px;
+  border-right: 1px solid rgba(31, 38, 54, 0.08);
+}
+
+.productStatusItem:last-child {
+  border-right: 0;
+}
+
+.productStatusItem span {
   color: var(--muted);
   font-size: 0.72rem;
   font-weight: 800;
   letter-spacing: 0;
 }
 
-.heroHint strong {
+.productStatusItem strong {
   color: var(--text);
-  font-size: 0.94rem;
+  font-size: 0.92rem;
   line-height: 1.2;
 }
 
@@ -423,12 +366,12 @@
   grid-template-columns: repeat(4, minmax(0, 1fr));
   overflow: hidden;
   border: 1px solid var(--line);
-  border-radius: 16px;
-  background: rgba(255, 255, 255, 0.78);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.7);
 }
 
 .proofItem {
-  padding: 22px;
+  padding: 15px 18px;
   border-right: 1px solid var(--line);
 }
 
@@ -439,19 +382,20 @@
 .proofItem strong {
   display: block;
   color: var(--text);
-  font-size: 1.35rem;
+  font-size: 1.06rem;
   line-height: 1;
 }
 
 .proofItem span {
   display: block;
-  margin-top: 8px;
+  margin-top: 6px;
   color: var(--muted);
+  font-size: 0.9rem;
   line-height: 1.5;
 }
 
 .section {
-  padding: clamp(1.5rem, 3vw, 2.5rem);
+  padding: clamp(1.6rem, 3vw, 2.7rem) clamp(0.15rem, 1.4vw, 1rem);
 }
 
 .sectionHead {
@@ -661,23 +605,26 @@
   }
 
   .hero h1 {
-    font-size: clamp(2.35rem, 13vw, 4rem);
+    font-size: clamp(2.2rem, 10.6vw, 3.05rem);
+    line-height: 1.04;
   }
 
   .heroMedia {
     min-height: 330px;
   }
 
-  .heroHintRail {
-    position: relative;
-    right: auto;
-    bottom: auto;
-    width: 100%;
-    margin-top: -18px;
+  .productStatusRail {
+    grid-template-columns: 1fr;
+    margin-top: -12px;
   }
 
-  .mapPanel {
-    inset: 8% 0 18% 0;
+  .productStatusItem {
+    border-right: 0;
+    border-bottom: 1px solid rgba(31, 38, 54, 0.08);
+  }
+
+  .productStatusItem:last-child {
+    border-bottom: 0;
   }
 
   .featureGrid,

@@ -1,4 +1,4 @@
-﻿# -*- coding: utf-8 -*-
+# -*- coding: utf-8 -*-
 """
 POKROV API for app-first sessions, cabinet continuation, Telegram, and connection delivery.
 
@@ -287,6 +287,10 @@ WEBAPP_ENABLE_LOTTIE = env_bool("WEBAPP_ENABLE_LOTTIE", default=True)
 WEBAPP_DEV_AUTH = env_bool("WEBAPP_DEV_AUTH", default=False)
 WEBAPP_DEV_TG_ID = env_int("WEBAPP_DEV_TG_ID", 0)
 WEBAPP_DEV_AUTH_PASSWORD = (os.getenv("WEBAPP_DEV_AUTH_PASSWORD") or "").strip()
+EMAIL_AUTH_PUBLIC_ENABLED = env_bool("EMAIL_AUTH_PUBLIC_ENABLED", default=False)
+PUBLIC_TRIAL_KEY_ENABLED = env_bool("PUBLIC_TRIAL_KEY_ENABLED", default=True)
+PUBLIC_TRIAL_KEY_PERIOD_DAYS = max(1, env_int("PUBLIC_TRIAL_KEY_PERIOD_DAYS", 30))
+PUBLIC_TRIAL_KEY_CARD_TYPE = "trial"
 PROFILE_UPDATE_INTERVAL_HOURS = max(1, env_int("PROFILE_UPDATE_INTERVAL_HOURS", 6))
 PAYMENT_CALLBACK_TOLERANT_MODE = env_bool("PAYMENT_CALLBACK_TOLERANT_MODE", default=False)
 SUBSCRIPTION_NUMERIC_FALLBACK_ENABLED = env_bool("SUBSCRIPTION_NUMERIC_FALLBACK_ENABLED", default=True)
@@ -776,6 +780,7 @@ class AdminBroadcastIn(BaseModel):
     segment: str = Field(default="all_active")
     limit: int = Field(default=500, ge=1, le=1000)
     tg_ids: list[int] = Field(default_factory=list)
+    operator_reason: str | None = Field(default=None, max_length=500)
 
 
 class AdminTicketReplyIn(TicketMessageIn):
@@ -784,6 +789,7 @@ class AdminTicketReplyIn(TicketMessageIn):
 
 class AdminTicketStatusIn(BaseModel):
     status: str = Field(min_length=2, max_length=20)
+    operator_reason: str | None = Field(default=None, max_length=500)
 
 
 class AdminNodeSyncIn(BaseModel):
@@ -794,11 +800,13 @@ class AdminNodeSyncIn(BaseModel):
 
 class AdminNodeLifecycleIn(BaseModel):
     force: bool = False
+    operator_reason: str | None = Field(default=None, max_length=500)
 
 
 class AdminNodeResyncIn(BaseModel):
     limit: int = Field(default=100, ge=1, le=1000)
     dry_run: bool = False
+    operator_reason: str | None = Field(default=None, max_length=500)
 
 
 class AdminPromoCreateIn(BaseModel):
@@ -834,6 +842,7 @@ class AdminGiftCodeCreateIn(BaseModel):
 class AdminAccessKeyIssueIn(BaseModel):
     plan_code: str = Field(min_length=2, max_length=32)
     quantity: int = Field(default=1, ge=1, le=200)
+    operator_reason: str | None = Field(default=None, max_length=500)
 
 
 class AdminPromoSlotAssignmentIn(BaseModel):
@@ -850,6 +859,7 @@ class AdminPromoSlotAssignmentIn(BaseModel):
 
 class AdminPromoSlotsPutIn(BaseModel):
     assignments: list[AdminPromoSlotAssignmentIn] = Field(default_factory=list, max_length=128)
+    operator_reason: str | None = Field(default=None, max_length=500)
 
 
 class EventIn(BaseModel):
@@ -908,6 +918,7 @@ class FreekassaOrderActionOut(BaseModel):
     discount_applied: bool = False
     base_amount_rub: float | None = None
     discount_pct: int = 0
+    activation_handoff: dict[str, Any] | None = None
 
 
 class RubProviderChoiceOut(BaseModel):
@@ -1021,6 +1032,7 @@ class AdminWheelConfigIn(BaseModel):
     preset: str = Field(default="balanced", min_length=2, max_length=32)
     weights: list[AdminWheelWeightIn] = Field(default_factory=list, min_length=1, max_length=20)
     cooldown_hours: int = Field(default=168, ge=1, le=2160)
+    operator_reason: str | None = Field(default=None, max_length=500)
 
 
 class AdminCampaignLinksBuildIn(BaseModel):
@@ -1090,11 +1102,21 @@ class ClientAndroidApps(BaseModel):
     play_url: str = ""
     apk_url: str = ""
     mirror_url: str = ""
+    status: str = "blocked"
+    version_label: str = "0.x.x-beta"
+    preferred_action: str = "install_help"
+    artifact_updated_at: str | None = None
+    release_blockers: list[str] = Field(default_factory=list)
 
 
 class ClientWindowsApps(BaseModel):
     exe_url: str = ""
     mirror_url: str = ""
+    status: str = "blocked"
+    version_label: str = "0.x.x-beta"
+    preferred_action: str = "install_help"
+    artifact_updated_at: str | None = None
+    release_blockers: list[str] = Field(default_factory=list)
 
 
 class ClientAppsResponse(BaseModel):
@@ -1113,10 +1135,16 @@ class ManualUserExtendRequest(BaseModel):
     days: int | None = Field(default=30, ge=1, le=3650)
     delta_days: int | None = Field(default=None, ge=-3650, le=3650)
     allow_deactivate: bool = False
+    operator_reason: str | None = Field(default=None, max_length=500)
 
 
 class ManualUserBlockRequest(BaseModel):
     blocked: bool = True
+    operator_reason: str | None = Field(default=None, max_length=500)
+
+
+class AdminOperatorReasonIn(BaseModel):
+    operator_reason: str | None = Field(default=None, max_length=500)
 
 
 class AdminUserSafeDeleteIn(BaseModel):
@@ -1125,6 +1153,7 @@ class AdminUserSafeDeleteIn(BaseModel):
 
 class AdminUserKeyToggleIn(BaseModel):
     enable: bool
+    operator_reason: str | None = Field(default=None, max_length=500)
 
 
 class AdminUserKeysBulkActionIn(BaseModel):
@@ -1136,6 +1165,7 @@ class AdminUserKeysBulkActionIn(BaseModel):
     limit: int = Field(default=100, ge=1, le=500)
     dry_run: bool = False
     force: bool = False
+    operator_reason: str | None = Field(default=None, max_length=500)
 
 
 class AdminUserKeyLimitsIn(BaseModel):
@@ -1150,10 +1180,12 @@ class AdminUserKeyLimitsIn(BaseModel):
 
 class AdminUserPresetRunIn(BaseModel):
     preset: str = Field(min_length=2, max_length=64)  # reset_key|rotate_link|extend_1d|send_guide
+    operator_reason: str | None = Field(default=None, max_length=500)
 
 
 class AdminLoyaltyGrantIn(BaseModel):
     tier_days: int = Field(ge=1, le=3650)
+    operator_reason: str | None = Field(default=None, max_length=500)
 
 
 class AdminReferralQueueProcessIn(BaseModel):
@@ -1525,10 +1557,35 @@ def _normalized_plan_payload(plan: dict[str, Any] | None, *, fallback_code: str 
     }
 
 
+def _trial_key_plan_payload() -> dict[str, Any]:
+    return {
+        "code": PUBLIC_TRIAL_KEY_CARD_TYPE,
+        "label": "5 days",
+        "amount_rub": 0,
+        "amount_stars": 0,
+        "days": int(APP_TRIAL_DEFAULT_DAYS),
+        "device_limit": 1,
+        "node_policy": "paid_pool",
+        "badge": "Trial",
+        "comparison_group": "trial",
+    }
+
+
 def _access_key_meta_from_card_type(*, s, card_type: str) -> dict[str, Any] | None:
     normalized = str(card_type or "").strip().lower()
     if not normalized:
         return None
+
+    if normalized == PUBLIC_TRIAL_KEY_CARD_TYPE:
+        plan = _trial_key_plan_payload()
+        return {
+            "kind": "trial_key",
+            "plan_code": plan["code"],
+            "plan": plan,
+            "days": int(plan["days"]),
+            "device_limit": int(plan["device_limit"]),
+            "node_policy": plan["node_policy"],
+        }
 
     plan = _resolve_plan_config(s=s, code=normalized)
     normalized_plan = _normalized_plan_payload(plan, fallback_code=normalized)
@@ -1593,13 +1650,17 @@ def _apply_access_key_to_user(*, user: User, meta: dict[str, Any], now: datetime
         user.sub_token = secrets.token_urlsafe(32)
 
     user.expiry_at = current_expiry + timedelta(days=days)
-    user.sub_type = "PAID"
+    if str(meta.get("kind") or "") == "trial_key":
+        user.sub_type = "FREE"
+        user.current_plan_code = "trial"
+        user.trial_used = True
+    else:
+        user.sub_type = "PAID"
+        plan_code = str(meta.get("plan_code") or "").strip().lower()
+        if plan_code:
+            user.current_plan_code = plan_code
+        user.first_purchase_done = True
     user.is_active = True
-    user.first_purchase_done = True
-
-    plan_code = str(meta.get("plan_code") or "").strip().lower()
-    if plan_code:
-        user.current_plan_code = plan_code
 
     return {
         "expiry_at": _safe_iso(getattr(user, "expiry_at", None)),
@@ -1910,7 +1971,122 @@ def _public_catalog_payload(*, s) -> dict[str, Any]:
             "fallback_behavior": str(_PROMO_SLOTS.get("fallback_behavior") or "contextual_only_when_remote_unavailable"),
             "slot_ids": [str(slot.get("id") or "").strip() for slot in list(_PROMO_SLOTS.get("slots") or []) if str(slot.get("id") or "").strip()],
         },
+        "capabilities": {
+            "email_auth": _email_auth_capability_payload(),
+            "trial_key": _public_trial_key_capability_payload(),
+        },
     }
+
+
+def _email_auth_capability_payload() -> dict[str, Any]:
+    status = "available" if EMAIL_AUTH_PUBLIC_ENABLED else "soon"
+    return {
+        "status": status,
+        "available": bool(EMAIL_AUTH_PUBLIC_ENABLED),
+        "register": status,
+        "login": status,
+        "recovery": status,
+        "delivery": "transactional_ready" if EMAIL_AUTH_PUBLIC_ENABLED else "suppressed_until_sender_ready",
+    }
+
+
+def _public_trial_key_capability_payload(*, status: str | None = None) -> dict[str, Any]:
+    effective_status = str(status or ("available" if PUBLIC_TRIAL_KEY_ENABLED else "unavailable")).strip()
+    return {
+        "status": effective_status,
+        "available": bool(PUBLIC_TRIAL_KEY_ENABLED),
+        "trial_days": int(APP_TRIAL_DEFAULT_DAYS),
+        "redeem_path": "/redeem",
+        "status_path": "/api/access-keys/status/{key}",
+        "soft_limit": {
+            "per_browser_ip": 1,
+            "period_days": int(PUBLIC_TRIAL_KEY_PERIOD_DAYS),
+            "scope": "browser_ip",
+        },
+    }
+
+
+def _public_trial_key_fingerprint(request: Request) -> int:
+    client_ip = _request_client_ip(request)
+    user_agent = str(request.headers.get("User-Agent") or "").strip().lower()[:240]
+    seed = f"{client_ip}|{user_agent}|public-trial-key-v1".encode("utf-8", errors="ignore")
+    digest = hashlib.sha256(seed).hexdigest()[:15]
+    return -int(digest, 16)
+
+
+def _generate_public_trial_key_code(s) -> str:
+    for _ in range(30):
+        token = secrets.token_hex(5).upper()
+        code = f"POKROV-{token[:5]}-{token[5:]}"
+        exists = s.query(GiftCard.id).filter(GiftCard.code == code).first()
+        if not exists:
+            return code
+    raise HTTPException(status_code=500, detail="Unable to issue trial key")
+
+
+def _issue_public_trial_key(*, request: Request) -> dict[str, Any]:
+    if not PUBLIC_TRIAL_KEY_ENABLED:
+        return {
+            "ok": False,
+            "status": "unavailable",
+            "activation_key": None,
+            "capability": _public_trial_key_capability_payload(status="unavailable"),
+            "key_status": None,
+        }
+
+    now = _utcnow()
+    cutoff = now - timedelta(days=int(PUBLIC_TRIAL_KEY_PERIOD_DAYS))
+    fingerprint = _public_trial_key_fingerprint(request)
+    s = SessionLocal()
+    try:
+        existing = (
+            s.query(GiftCard)
+            .filter(GiftCard.created_by == fingerprint)
+            .filter(GiftCard.card_type == PUBLIC_TRIAL_KEY_CARD_TYPE)
+            .filter(GiftCard.created_at >= cutoff)
+            .order_by(GiftCard.created_at.desc(), GiftCard.id.desc())
+            .first()
+        )
+        if existing:
+            key_status = _access_key_status_payload(s=s, card=existing)
+            return {
+                "ok": True,
+                "status": "limited",
+                "activation_key": str(existing.code or "").strip() if existing.redeemed_by is None else None,
+                "capability": _public_trial_key_capability_payload(status="limited"),
+                "key_status": key_status,
+                "retry_after_at": _safe_iso((existing.created_at or now) + timedelta(days=int(PUBLIC_TRIAL_KEY_PERIOD_DAYS))),
+            }
+
+        card = GiftCard(
+            code=_generate_public_trial_key_code(s),
+            card_type=PUBLIC_TRIAL_KEY_CARD_TYPE,
+            created_by=fingerprint,
+            created_at=now,
+        )
+        s.add(card)
+        s.commit()
+        s.refresh(card)
+        return {
+            "ok": True,
+            "status": "issued",
+            "activation_key": str(card.code or "").strip(),
+            "capability": _public_trial_key_capability_payload(status="available"),
+            "key_status": _access_key_status_payload(s=s, card=card),
+            "retry_after_at": _safe_iso(now + timedelta(days=int(PUBLIC_TRIAL_KEY_PERIOD_DAYS))),
+        }
+    except Exception:
+        s.rollback()
+        logger.exception("public trial key issue failed")
+        return {
+            "ok": False,
+            "status": "unavailable",
+            "activation_key": None,
+            "capability": _public_trial_key_capability_payload(status="unavailable"),
+            "key_status": None,
+        }
+    finally:
+        s.close()
 
 
 def _price_with_pending_discount(*, amount_rub: int, pending_pct: int | None) -> tuple[int, int]:
@@ -1920,6 +2096,17 @@ def _price_with_pending_discount(*, amount_rub: int, pending_pct: int | None) ->
         return base, 0
     discounted = int(round(base * (1.0 - (pct / 100.0))))
     return max(1, discounted), pct
+
+
+def _activation_handoff_payload(*, status: str = "pending_payment") -> dict[str, Any]:
+    return {
+        "mode": "activation_key",
+        "status": status,
+        "preferred_action": "redeem_after_payment",
+        "redeem_path": "/redeem",
+        "status_path": "/api/access-keys/status/{key}",
+        "logged_in_continuation": "direct_apply_available",
+    }
 
 
 def _generate_gift_code_for_admin(s) -> str:
@@ -2037,6 +2224,8 @@ def _is_local_request(request: Request | None) -> bool:
 
     origin = request.headers.get("origin", "")
     referer = request.headers.get("referer", "")
+    if not origin and not referer:
+        return False
     if origin and not _is_allowed_dev_origin(origin):
         return False
     if referer and not _is_allowed_dev_origin(referer):
@@ -2483,7 +2672,16 @@ def _require_user_access(*, target_tg_id: int, x_telegram_init_data: str, reques
 
 
 def _require_admin(x_telegram_init_data: str, request: Request | None = None) -> dict[str, Any]:
-    user_data = _require_auth_user(x_telegram_init_data, request=request)
+    return _require_admin_web_session(request=request)
+
+
+def _require_admin_web_session(request: Request | None = None) -> dict[str, Any]:
+    web_token = _extract_web_session_token(request)
+    if not web_token:
+        raise HTTPException(status_code=401, detail="Web session required")
+    user_data = verify_web_session_token(web_token)
+    if not user_data:
+        raise HTTPException(status_code=401, detail="Invalid web session")
     actor_id = int(user_data.get("id", 0))
     if not _is_admin_tg(actor_id):
         raise HTTPException(status_code=403, detail="Admin access required")
@@ -2492,6 +2690,42 @@ def _require_admin(x_telegram_init_data: str, request: Request | None = None) ->
 
 def _safe_public_url(value: str) -> str:
     return str(value or "").strip()
+
+
+def _safe_app_artifact_url(value: str) -> str:
+    text = str(value or "").strip()
+    if not text:
+        return ""
+    parsed = urlparse(text)
+    if parsed.scheme.lower() not in {"http", "https"} or not parsed.netloc:
+        return ""
+    return text
+
+
+def _app_artifact_updated_at(platform: str) -> str | None:
+    key = f"APP_{str(platform or '').strip().upper()}_ARTIFACT_UPDATED_AT"
+    text = str(os.getenv(key) or "").strip()
+    return text or None
+
+
+def _client_app_platform_meta(*, platform: str, primary_urls: list[str]) -> dict[str, Any]:
+    urls_present = any(bool(url) for url in primary_urls)
+    blockers: list[str] = []
+    if not urls_present:
+        blockers.append("release_url_missing")
+    if platform == "android":
+        blockers.append("physical_device_audit_required")
+    status = "available" if not blockers else "blocked"
+    preferred_action = "install_help"
+    if status == "available":
+        preferred_action = "open_store" if platform == "android" and primary_urls[0] else "download"
+    return {
+        "status": status,
+        "version_label": "0.x.x-beta",
+        "preferred_action": preferred_action,
+        "artifact_updated_at": _app_artifact_updated_at(platform),
+        "release_blockers": blockers,
+    }
 
 
 def _public_webapp_url() -> str:
@@ -3397,6 +3631,22 @@ def _audit_admin(*, actor_tg_id: int, action: str, target_tg_id: int | None = No
         s.close()
 
 
+def _admin_operator_reason(payload: Any, *, required: bool = True) -> str:
+    raw = ""
+    if isinstance(payload, dict):
+        raw = str(payload.get("operator_reason") or "")
+    else:
+        raw = str(getattr(payload, "operator_reason", "") or "")
+    reason = raw.strip()
+    if not reason:
+        if required:
+            raise HTTPException(status_code=400, detail="Укажите причину действия оператора.")
+        return ""
+    if len(reason) < 8:
+        raise HTTPException(status_code=400, detail="Укажите причину действия оператора: минимум 8 символов.")
+    return reason[:500]
+
+
 def _sanitize_ticket_upload_name(filename: str | None) -> str:
     raw = Path(str(filename or "").strip()).name
     cleaned = re.sub(r"[^A-Za-z0-9._ -]+", "_", raw).strip(" ._")
@@ -4178,6 +4428,17 @@ async def public_catalog(response: Response) -> dict:
         s.close()
 
 
+@app.get("/api/public/trial-key")
+async def public_trial_key_capability(response: Response) -> dict[str, Any]:
+    response.headers["Cache-Control"] = "public, max-age=60"
+    return {"ok": True, "capability": _public_trial_key_capability_payload()}
+
+
+@app.post("/api/public/trial-key")
+async def public_trial_key_issue(request: Request) -> dict[str, Any]:
+    return _issue_public_trial_key(request=request)
+
+
 @app.get("/api/public/live-updates")
 async def public_live_updates(response: Response, limit: int = Query(default=3, ge=1, le=10)) -> dict:
     s = SessionLocal()
@@ -4596,6 +4857,9 @@ async def auth_session(request: Request, x_telegram_init_data: str = Header(defa
                 else None,
                 "email": linked_email,
             },
+            "capabilities": {
+                "email_auth": _email_auth_capability_payload(),
+            },
         },
     }
 
@@ -4736,6 +5000,8 @@ async def client_update_route_policy(
         user = s.query(User).filter(User.tg_id == tg_id).first()
         if not user:
             raise HTTPException(status_code=404, detail="User not found")
+        if not app_first_service.is_valid_route_mode(payload.route_mode):
+            raise HTTPException(status_code=400, detail="Invalid route_mode")
         app_first_service.persist_route_policy(
             user,
             route_mode=payload.route_mode,
@@ -5397,6 +5663,7 @@ async def _rub_create_order_internal(
         discount_applied=bool(discount_applied),
         base_amount_rub=float(base_amount),
         discount_pct=int(discount_pct),
+        activation_handoff=_activation_handoff_payload(status="pending_payment"),
     )
 
 
@@ -5467,6 +5734,44 @@ async def rub_order_create_public(
         currency=(payload.currency or "RUB").strip().upper(),
         consume_pending_discount=False,
     )
+
+
+@app.get("/api/payments/orders/status-public")
+async def rub_order_status_public(
+    order_id: str = Query(min_length=3, max_length=128),
+    provider: str = Query(default="freekassa", min_length=2, max_length=32),
+    checkout_ticket: str = Query(min_length=16, max_length=1200),
+) -> dict[str, Any]:
+    ticket_payload = _parse_checkout_ticket(checkout_ticket)
+    if not ticket_payload:
+        raise HTTPException(status_code=401, detail="Invalid or expired checkout ticket")
+    provider_code = _normalize_provider(provider)
+    if provider_code not in PAYMENT_PROVIDER_WHITELIST:
+        raise HTTPException(status_code=400, detail="Unsupported payment provider")
+    ticket_tg_id = int(ticket_payload.get("tg_id") or 0)
+    s = SessionLocal()
+    try:
+        row = (
+            s.query(ExternalOrder)
+            .filter(ExternalOrder.provider == provider_code, ExternalOrder.order_id == str(order_id))
+            .first()
+        )
+        if not row:
+            raise HTTPException(status_code=404, detail="Order not found")
+        if int(row.tg_id or 0) != ticket_tg_id:
+            raise HTTPException(status_code=403, detail="Access denied")
+        status = str(row.status or "pending").strip().lower() or "pending"
+        return {
+            "ok": True,
+            "provider": provider_code,
+            "order_id": str(row.order_id or order_id),
+            "status": status,
+            "activation_handoff": _activation_handoff_payload(
+                status="applied_to_account" if status == "paid" else "pending_payment"
+            ),
+        }
+    finally:
+        s.close()
 
 
 @app.post("/api/payments/freekassa/orders/create", response_model=RubOrderActionOut)
@@ -5898,11 +6203,11 @@ def _quality_badge(status: str) -> str:
 
 @app.get("/api/admin/nodes/traffic")
 async def admin_nodes_traffic(
-    x_telegram_init_data: str = Header(default=""),
+    request: Request, x_telegram_init_data: str = Header(default=""),
     from_: str = Query(default="", alias="from"),
     to: str = Query(default="", alias="to"),
 ) -> dict:
-    _require_admin(x_telegram_init_data)
+    _require_admin(x_telegram_init_data, request=request)
     from_dt, to_dt = _admin_metrics_range(from_, to)
     s = SessionLocal()
     try:
@@ -5947,11 +6252,11 @@ async def admin_nodes_traffic(
 
 @app.get("/api/admin/metrics/timeseries")
 async def admin_metrics_timeseries(
-    x_telegram_init_data: str = Header(default=""),
+    request: Request, x_telegram_init_data: str = Header(default=""),
     from_: str = Query(default="", alias="from"),
     to: str = Query(default="", alias="to"),
 ) -> dict:
-    _require_admin(x_telegram_init_data)
+    _require_admin(x_telegram_init_data, request=request)
     from_dt, to_dt = _admin_metrics_range(from_, to)
 
     days: list[str] = []
@@ -6268,6 +6573,8 @@ async def user_data(
         referral_code = (user.referral_code or "").strip()
         channel_link = f"https://t.me/{PUBLIC_CHANNEL}" if PUBLIC_CHANNEL else ""
         support_link = f"https://t.me/{SUPPORT_USERNAME}" if SUPPORT_USERNAME else ""
+        actor_tg_id = int(auth_user.get("id", 0) or 0)
+        raw_details_visible = bool(_is_admin_tg(actor_tg_id))
         role_admin = _is_admin_tg(tg_id)
         channel_claimed_at = _safe_iso(getattr(user, "channel_bonus_claimed_at", None))
         opening_bonus_claimed = _has_campaign_mark(
@@ -6304,7 +6611,7 @@ async def user_data(
             "device_name": _normalize_app_device_name(
                 getattr(user, "app_device_name", None) or getattr(user, "display_name", None),
             ),
-            "subscription_url": subscription_url,
+            "subscription_url": subscription_url if raw_details_visible else "",
             "is_active": is_active,
             "is_admin": role_admin,
             "sub_type": user.sub_type,
@@ -6324,11 +6631,22 @@ async def user_data(
             },
             "family_slots": int(family_slots),
             "nodes": [
-                {"code": n.code, "name": n.name, "host": n.host, "port": n.vless_port, "enabled": True}
+                (
+                    {"code": n.code, "name": n.name, "host": n.host, "port": n.vless_port, "enabled": True}
+                    if raw_details_visible
+                    else {"code": n.code, "name": n.name, "enabled": True, "route_category": "managed"}
+                )
                 for n in nodes_for_user
             ],
             "devices": devices_payload,
-            "last_ip": str(getattr(user, "app_last_ip", "") or "").strip() or None,
+            "last_ip": (str(getattr(user, "app_last_ip", "") or "").strip() or None) if raw_details_visible else None,
+            "consumer_summary": {
+                "connect_host": public_connect_host(),
+                "route_category": "selected_apps"
+                if str(client_policy.get("route_mode") or "") == app_first_service.ROUTE_MODE_SELECTED_APPS
+                else "all_except_ru",
+                "raw_details_visible": raw_details_visible,
+            },
             "linked_telegram": {
                 "id": _linked_telegram_id(user) or None,
                 "username": str(getattr(user, "linked_telegram_username", "") or "").strip() or None,
@@ -6552,17 +6870,31 @@ async def dashboard_snapshot(
 @app.get("/api/client/apps")
 async def client_apps(request: Request, x_telegram_init_data: str = Header(default="")) -> ClientAppsResponse:
     _require_auth_user(x_telegram_init_data, request=request)
+    android_play_url = _safe_app_artifact_url(Settings.APP_ANDROID_PLAY_URL)
+    android_apk_url = _safe_app_artifact_url(Settings.APP_ANDROID_APK_URL)
+    android_mirror_url = _safe_app_artifact_url(Settings.APP_ANDROID_MIRROR_URL)
+    windows_exe_url = _safe_app_artifact_url(Settings.APP_WINDOWS_EXE_URL)
+    windows_mirror_url = _safe_app_artifact_url(Settings.APP_WINDOWS_MIRROR_URL)
+    docs_url = _safe_app_artifact_url(Settings.APP_DOCS_URL)
     return ClientAppsResponse(
         android=ClientAndroidApps(
-            play_url=_safe_public_url(Settings.APP_ANDROID_PLAY_URL),
-            apk_url=_safe_public_url(Settings.APP_ANDROID_APK_URL),
-            mirror_url=_safe_public_url(Settings.APP_ANDROID_MIRROR_URL),
+            play_url=android_play_url,
+            apk_url=android_apk_url,
+            mirror_url=android_mirror_url,
+            **_client_app_platform_meta(
+                platform="android",
+                primary_urls=[android_play_url, android_apk_url, android_mirror_url],
+            ),
         ),
         windows=ClientWindowsApps(
-            exe_url=_safe_public_url(Settings.APP_WINDOWS_EXE_URL),
-            mirror_url=_safe_public_url(Settings.APP_WINDOWS_MIRROR_URL),
+            exe_url=windows_exe_url,
+            mirror_url=windows_mirror_url,
+            **_client_app_platform_meta(
+                platform="windows",
+                primary_urls=[windows_exe_url, windows_mirror_url],
+            ),
         ),
-        docs_url=_safe_public_url(Settings.APP_DOCS_URL),
+        docs_url=docs_url,
         updated_at=f"{_utcnow().replace(microsecond=0).isoformat()}Z",
     )
 
@@ -7224,8 +7556,8 @@ async def add_ticket_user_message(ticket_id: int, payload: TicketMessageIn, requ
 
 
 @app.get("/api/admin/summary")
-async def admin_summary(x_telegram_init_data: str = Header(default="")) -> dict:
-    actor = int(_require_admin(x_telegram_init_data).get("id", 0))
+async def admin_summary(request: Request, x_telegram_init_data: str = Header(default="")) -> dict:
+    actor = int(_require_admin(x_telegram_init_data, request=request).get("id", 0))
     stale_after_seconds = max(300, int(os.getenv("NODE_METRICS_STALE_AFTER_SECONDS", "900")))
     now = _utcnow()
     since_24h = now - timedelta(hours=24)
@@ -7528,7 +7860,7 @@ async def admin_summary(x_telegram_init_data: str = Header(default="")) -> dict:
 
 @app.get("/api/admin/users")
 async def admin_users(
-    x_telegram_init_data: str = Header(default=""),
+    request: Request, x_telegram_init_data: str = Header(default=""),
     q: str = "",
     status: str = "",
     origin: str = "",
@@ -7539,7 +7871,7 @@ async def admin_users(
     page: int = 0,
     page_size: int = 0,
 ) -> dict:
-    _require_admin(x_telegram_init_data)
+    _require_admin(x_telegram_init_data, request=request)
     now = _utcnow()
     page_size_value = max(1, min(int(page_size or limit or 50), 200))
     if int(page or 0) > 0:
@@ -7837,8 +8169,8 @@ async def _admin_user_keys_state(user: User, *, nodes: list) -> dict[str, Any]:
 
 
 @app.get("/api/admin/users/{tg_id}")
-async def admin_user_card(tg_id: int, x_telegram_init_data: str = Header(default="")) -> dict:
-    _require_admin(x_telegram_init_data)
+async def admin_user_card(tg_id: int, request: Request, x_telegram_init_data: str = Header(default="")) -> dict:
+    _require_admin(x_telegram_init_data, request=request)
     s = SessionLocal()
     try:
         user = s.query(User).filter_by(tg_id=tg_id).first()
@@ -7946,8 +8278,8 @@ async def admin_user_card(tg_id: int, x_telegram_init_data: str = Header(default
 
 
 @app.post("/api/admin/users/manual")
-async def admin_create_manual_user(payload: ManualUserCreateRequest, x_telegram_init_data: str = Header(default="")) -> dict:
-    actor = int(_require_admin(x_telegram_init_data).get("id", 0))
+async def admin_create_manual_user(payload: ManualUserCreateRequest, request: Request, x_telegram_init_data: str = Header(default="")) -> dict:
+    actor = int(_require_admin(x_telegram_init_data, request=request).get("id", 0))
     s = SessionLocal()
     try:
         tg_id = _next_manual_tg_id(s)
@@ -8032,8 +8364,8 @@ async def admin_create_manual_user(payload: ManualUserCreateRequest, x_telegram_
 
 @app.post("/api/admin/users/{tg_id}/manual/extend")
 @app.post("/api/admin/users/{tg_id}/manual-extend")
-async def admin_extend_manual_user(tg_id: int, payload: ManualUserExtendRequest, x_telegram_init_data: str = Header(default="")) -> dict:
-    actor = int(_require_admin(x_telegram_init_data).get("id", 0))
+async def admin_extend_manual_user(tg_id: int, payload: ManualUserExtendRequest, request: Request, x_telegram_init_data: str = Header(default="")) -> dict:
+    actor = int(_require_admin(x_telegram_init_data, request=request).get("id", 0))
     delta_days = int(payload.delta_days if payload.delta_days is not None else (payload.days or 0))
     if delta_days == 0:
         raise HTTPException(status_code=400, detail="delta_days must be non-zero")
@@ -8072,8 +8404,9 @@ async def admin_extend_manual_user(tg_id: int, payload: ManualUserExtendRequest,
 
 
 @app.post("/api/admin/users/{tg_id}/manual/block")
-async def admin_block_manual_user(tg_id: int, payload: ManualUserBlockRequest, x_telegram_init_data: str = Header(default="")) -> dict:
-    actor = int(_require_admin(x_telegram_init_data).get("id", 0))
+async def admin_block_manual_user(tg_id: int, payload: ManualUserBlockRequest, request: Request, x_telegram_init_data: str = Header(default="")) -> dict:
+    actor = int(_require_admin(x_telegram_init_data, request=request).get("id", 0))
+    operator_reason = _admin_operator_reason(payload)
     s = SessionLocal()
     try:
         user = s.query(User).filter_by(tg_id=tg_id).first()
@@ -8093,20 +8426,31 @@ async def admin_block_manual_user(tg_id: int, payload: ManualUserBlockRequest, x
     finally:
         await panel.close()
 
-    _audit_admin(actor_tg_id=actor, action="admin_manual_block", target_tg_id=tg_id, meta={"blocked": bool(payload.blocked)})
+    _audit_admin(
+        actor_tg_id=actor,
+        action="admin_manual_block",
+        target_tg_id=tg_id,
+        meta={"blocked": bool(payload.blocked), "operator_reason": operator_reason},
+    )
     _key_history_log(
         tg_id=int(tg_id),
         action="manual_block" if bool(payload.blocked) else "manual_unblock",
         node_code=None,
         actor_tg_id=actor,
-        meta={"blocked": bool(payload.blocked)},
+        meta={"blocked": bool(payload.blocked), "operator_reason": operator_reason},
     )
     return {"ok": True, "is_active": active}
 
 
 @app.post("/api/admin/users/{tg_id}/manual/regenerate-token")
-async def admin_regenerate_manual_token(tg_id: int, x_telegram_init_data: str = Header(default="")) -> dict:
-    actor = int(_require_admin(x_telegram_init_data).get("id", 0))
+async def admin_regenerate_manual_token(
+    tg_id: int,
+    request: Request,
+    payload: AdminOperatorReasonIn | None = None,
+    x_telegram_init_data: str = Header(default=""),
+) -> dict:
+    actor = int(_require_admin(x_telegram_init_data, request=request).get("id", 0))
+    operator_reason = _admin_operator_reason(payload)
     s = SessionLocal()
     try:
         user = s.query(User).filter_by(tg_id=tg_id).first()
@@ -8130,13 +8474,18 @@ async def admin_regenerate_manual_token(tg_id: int, x_telegram_init_data: str = 
             sync_ok = bool(await panel.enable_client(user_uuid, enable=is_active))
         finally:
             await panel.close()
-    _audit_admin(actor_tg_id=actor, action="admin_manual_regen_token", target_tg_id=tg_id)
+    _audit_admin(
+        actor_tg_id=actor,
+        action="admin_manual_regen_token",
+        target_tg_id=tg_id,
+        meta={"operator_reason": operator_reason},
+    )
     _key_history_log(
         tg_id=int(tg_id),
         action="token_regenerate",
         node_code=None,
         actor_tg_id=actor,
-        meta={"sync_ok": bool(sync_ok)},
+        meta={"sync_ok": bool(sync_ok), "operator_reason": operator_reason},
     )
     return {
         "ok": True,
@@ -8149,9 +8498,9 @@ async def admin_regenerate_manual_token(tg_id: int, x_telegram_init_data: str = 
 async def admin_safe_delete_test_user(
     tg_id: int,
     payload: AdminUserSafeDeleteIn,
-    x_telegram_init_data: str = Header(default=""),
+    request: Request, x_telegram_init_data: str = Header(default=""),
 ) -> dict:
-    actor = int(_require_admin(x_telegram_init_data).get("id", 0))
+    actor = int(_require_admin(x_telegram_init_data, request=request).get("id", 0))
     if not bool(payload.confirm):
         raise HTTPException(status_code=400, detail="confirm=true is required")
 
@@ -8198,11 +8547,12 @@ async def admin_safe_delete_test_user(
 @app.post("/api/admin/users/{tg_id}/delete-test-user")
 async def admin_delete_test_user_compat(
     tg_id: int,
-    x_telegram_init_data: str = Header(default=""),
+    request: Request, x_telegram_init_data: str = Header(default=""),
 ) -> dict:
     return await admin_safe_delete_test_user(
         tg_id=tg_id,
         payload=AdminUserSafeDeleteIn(confirm=True),
+        request=request,
         x_telegram_init_data=x_telegram_init_data,
     )
 
@@ -8212,9 +8562,11 @@ async def admin_user_key_toggle(
     tg_id: int,
     node_code: str,
     payload: AdminUserKeyToggleIn,
+    request: Request,
     x_telegram_init_data: str = Header(default=""),
 ) -> dict:
-    actor = int(_require_admin(x_telegram_init_data).get("id", 0))
+    actor = int(_require_admin(x_telegram_init_data, request=request).get("id", 0))
+    operator_reason = _admin_operator_reason(payload)
     s = SessionLocal()
     try:
         user = s.query(User).filter(User.tg_id == int(tg_id)).first()
@@ -8247,14 +8599,14 @@ async def admin_user_key_toggle(
         actor_tg_id=actor,
         action="admin_user_key_toggle",
         target_tg_id=int(tg_id),
-        meta={"node_code": str(node_code or ""), "enable": bool(payload.enable)},
+        meta={"node_code": str(node_code or ""), "enable": bool(payload.enable), "operator_reason": operator_reason},
     )
     _key_history_log(
         tg_id=int(tg_id),
         action="key_enable" if bool(payload.enable) else "key_disable",
         node_code=str(node_code or ""),
         actor_tg_id=actor,
-        meta={"enabled": bool(payload.enable)},
+        meta={"enabled": bool(payload.enable), "operator_reason": operator_reason},
     )
     return {"ok": True, "tg_id": int(tg_id), "node_code": str(node_code or ""), "enabled": bool(payload.enable)}
 
@@ -8263,9 +8615,12 @@ async def admin_user_key_toggle(
 async def admin_user_key_reset_traffic(
     tg_id: int,
     node_code: str,
+    request: Request,
+    payload: AdminOperatorReasonIn | None = None,
     x_telegram_init_data: str = Header(default=""),
 ) -> dict:
-    actor = int(_require_admin(x_telegram_init_data).get("id", 0))
+    actor = int(_require_admin(x_telegram_init_data, request=request).get("id", 0))
+    operator_reason = _admin_operator_reason(payload)
     s = SessionLocal()
     try:
         user = s.query(User).filter(User.tg_id == int(tg_id)).first()
@@ -8290,7 +8645,7 @@ async def admin_user_key_reset_traffic(
         actor_tg_id=actor,
         action="admin_user_key_reset_traffic",
         target_tg_id=int(tg_id),
-        meta={"node_code": str(node_code or "")},
+        meta={"node_code": str(node_code or ""), "operator_reason": operator_reason},
     )
     _key_history_log(
         tg_id=int(tg_id),
@@ -8305,9 +8660,12 @@ async def admin_user_key_reset_traffic(
 async def admin_user_key_resync_subid(
     tg_id: int,
     node_code: str,
+    request: Request,
+    payload: AdminOperatorReasonIn | None = None,
     x_telegram_init_data: str = Header(default=""),
 ) -> dict:
-    actor = int(_require_admin(x_telegram_init_data).get("id", 0))
+    actor = int(_require_admin(x_telegram_init_data, request=request).get("id", 0))
+    operator_reason = _admin_operator_reason(payload)
     s = SessionLocal()
     try:
         user = s.query(User).filter(User.tg_id == int(tg_id)).first()
@@ -8339,7 +8697,7 @@ async def admin_user_key_resync_subid(
         actor_tg_id=actor,
         action="admin_user_key_resync_subid",
         target_tg_id=int(tg_id),
-        meta={"node_code": str(node_code or "")},
+        meta={"node_code": str(node_code or ""), "operator_reason": operator_reason},
     )
     _key_history_log(
         tg_id=int(tg_id),
@@ -8356,8 +8714,8 @@ async def admin_user_key_resync_subid(
 
 
 @app.get("/api/admin/users/{tg_id}/key-history")
-async def admin_user_key_history(tg_id: int, x_telegram_init_data: str = Header(default=""), limit: int = 100) -> dict:
-    _require_admin(x_telegram_init_data)
+async def admin_user_key_history(tg_id: int, request: Request, x_telegram_init_data: str = Header(default=""), limit: int = 100) -> dict:
+    _require_admin(x_telegram_init_data, request=request)
     s = SessionLocal()
     try:
         rows = (
@@ -8387,8 +8745,8 @@ async def admin_user_key_history(tg_id: int, x_telegram_init_data: str = Header(
 
 
 @app.get("/api/admin/users/{tg_id}/key-limits")
-async def admin_user_key_limits_get(tg_id: int, x_telegram_init_data: str = Header(default="")) -> dict:
-    _require_admin(x_telegram_init_data)
+async def admin_user_key_limits_get(tg_id: int, request: Request, x_telegram_init_data: str = Header(default="")) -> dict:
+    _require_admin(x_telegram_init_data, request=request)
     s = SessionLocal()
     try:
         rows = (
@@ -8407,9 +8765,9 @@ async def admin_user_key_limits_put(
     tg_id: int,
     node_code: str,
     payload: AdminUserKeyLimitsIn,
-    x_telegram_init_data: str = Header(default=""),
+    request: Request, x_telegram_init_data: str = Header(default=""),
 ) -> dict:
-    actor = int(_require_admin(x_telegram_init_data).get("id", 0))
+    actor = int(_require_admin(x_telegram_init_data, request=request).get("id", 0))
     node = str(node_code or "").strip().lower()
     if not node:
         raise HTTPException(status_code=400, detail="node_code is required")
@@ -8480,8 +8838,8 @@ async def admin_user_key_limits_put(
 
 
 @app.get("/api/admin/users/{tg_id}/risk")
-async def admin_user_risk_get(tg_id: int, x_telegram_init_data: str = Header(default="")) -> dict:
-    _require_admin(x_telegram_init_data)
+async def admin_user_risk_get(tg_id: int, request: Request, x_telegram_init_data: str = Header(default="")) -> dict:
+    _require_admin(x_telegram_init_data, request=request)
     s = SessionLocal()
     try:
         user = s.query(User).filter(User.tg_id == int(tg_id)).first()
@@ -8500,8 +8858,8 @@ async def admin_user_risk_get(tg_id: int, x_telegram_init_data: str = Header(def
 
 
 @app.get("/api/admin/users/{tg_id}/loyalty")
-async def admin_user_loyalty_get(tg_id: int, x_telegram_init_data: str = Header(default="")) -> dict:
-    _require_admin(x_telegram_init_data)
+async def admin_user_loyalty_get(tg_id: int, request: Request, x_telegram_init_data: str = Header(default="")) -> dict:
+    _require_admin(x_telegram_init_data, request=request)
     s = SessionLocal()
     try:
         user = s.query(User).filter(User.tg_id == int(tg_id)).first()
@@ -8516,9 +8874,11 @@ async def admin_user_loyalty_get(tg_id: int, x_telegram_init_data: str = Header(
 async def admin_user_loyalty_grant(
     tg_id: int,
     payload: AdminLoyaltyGrantIn,
+    request: Request,
     x_telegram_init_data: str = Header(default=""),
 ) -> dict:
-    actor = int(_require_admin(x_telegram_init_data).get("id", 0))
+    actor = int(_require_admin(x_telegram_init_data, request=request).get("id", 0))
+    operator_reason = _admin_operator_reason(payload)
     s = SessionLocal()
     try:
         user = s.query(User).filter(User.tg_id == int(tg_id)).first()
@@ -8555,7 +8915,7 @@ async def admin_user_loyalty_grant(
         actor_tg_id=actor,
         action="admin_user_loyalty_grant",
         target_tg_id=int(tg_id),
-        meta={"tier_days": int(payload.tier_days), "sync_ok": bool(sync_ok)},
+        meta={"tier_days": int(payload.tier_days), "sync_ok": bool(sync_ok), "operator_reason": operator_reason},
     )
     return {"ok": True, "tier_days": int(payload.tier_days), "expiry_at": expiry_at, "sync_ok": bool(sync_ok)}
 
@@ -8564,9 +8924,11 @@ async def admin_user_loyalty_grant(
 async def admin_user_preset_run(
     tg_id: int,
     payload: AdminUserPresetRunIn,
+    request: Request,
     x_telegram_init_data: str = Header(default=""),
 ) -> dict:
-    actor = int(_require_admin(x_telegram_init_data).get("id", 0))
+    actor = int(_require_admin(x_telegram_init_data, request=request).get("id", 0))
+    operator_reason = _admin_operator_reason(payload)
     preset = str(payload.preset or "").strip().lower()
     if preset not in {"reset_key", "rotate_link", "extend_1d", "send_guide"}:
         raise HTTPException(status_code=400, detail="Unsupported preset")
@@ -8585,7 +8947,12 @@ async def admin_user_preset_run(
             expiry_at = _safe_iso(user.expiry_at)
         finally:
             s.close()
-        _audit_admin(actor_tg_id=actor, action="admin_operator_extend_1d", target_tg_id=int(tg_id))
+        _audit_admin(
+            actor_tg_id=actor,
+            action="admin_operator_extend_1d",
+            target_tg_id=int(tg_id),
+            meta={"operator_reason": operator_reason},
+        )
         return {"ok": True, "preset": preset, "expiry_at": expiry_at}
 
     if preset == "send_guide":
@@ -8596,7 +8963,12 @@ async def admin_user_preset_run(
             "3) Проверьте статус и перезапустите приложение."
         )
         ok = await _telegram_send_message(int(tg_id), text)
-        _audit_admin(actor_tg_id=actor, action="admin_operator_send_guide", target_tg_id=int(tg_id), meta={"ok": bool(ok)})
+        _audit_admin(
+            actor_tg_id=actor,
+            action="admin_operator_send_guide",
+            target_tg_id=int(tg_id),
+            meta={"ok": bool(ok), "operator_reason": operator_reason},
+        )
         if not ok:
             raise HTTPException(status_code=502, detail="Telegram send failed")
         return {"ok": True, "preset": preset}
@@ -8668,7 +9040,12 @@ async def admin_user_preset_run(
             _key_history_log(tg_id=int(tg_id), action="token_regenerate", actor_tg_id=actor, source="preset")
     finally:
         await panel.close()
-    _audit_admin(actor_tg_id=actor, action=f"admin_operator_{preset}", target_tg_id=int(tg_id), meta={"changed": changed, "failed": failed})
+    _audit_admin(
+        actor_tg_id=actor,
+        action=f"admin_operator_{preset}",
+        target_tg_id=int(tg_id),
+        meta={"changed": changed, "failed": failed, "operator_reason": operator_reason},
+    )
     return {
         "ok": True,
         "preset": preset,
@@ -8679,11 +9056,12 @@ async def admin_user_preset_run(
 
 
 @app.post("/api/admin/users/keys/bulk-action")
-async def admin_users_keys_bulk_action(payload: AdminUserKeysBulkActionIn, x_telegram_init_data: str = Header(default="")) -> dict:
-    actor = int(_require_admin(x_telegram_init_data).get("id", 0))
+async def admin_users_keys_bulk_action(payload: AdminUserKeysBulkActionIn, request: Request, x_telegram_init_data: str = Header(default="")) -> dict:
+    actor = int(_require_admin(x_telegram_init_data, request=request).get("id", 0))
     action = str(payload.action or "").strip().lower()
     if action not in {"disable", "enable", "reset", "resync"}:
         raise HTTPException(status_code=400, detail="Unsupported action")
+    operator_reason = _admin_operator_reason(payload, required=not bool(payload.dry_run))
 
     s = SessionLocal()
     try:
@@ -8776,6 +9154,7 @@ async def admin_users_keys_bulk_action(payload: AdminUserKeysBulkActionIn, x_tel
             "changed": changed,
             "failed": failed,
             "forced": bool(payload.force),
+            "operator_reason": operator_reason,
         },
     )
     return {"ok": True, "action": action, "users": int(len(users)), "changed": int(changed), "failed": int(failed), "details": details}
@@ -8783,13 +9162,13 @@ async def admin_users_keys_bulk_action(payload: AdminUserKeysBulkActionIn, x_tel
 
 @app.get("/api/admin/audit")
 async def admin_audit_log(
-    x_telegram_init_data: str = Header(default=""),
+    request: Request, x_telegram_init_data: str = Header(default=""),
     limit: int = 200,
     offset: int = 0,
     action: str = "",
     target_tg_id: int | None = None,
 ) -> dict:
-    _require_admin(x_telegram_init_data)
+    _require_admin(x_telegram_init_data, request=request)
     s = SessionLocal()
     try:
         q = s.query(AdminAudit)
@@ -8822,8 +9201,8 @@ async def admin_audit_log(
 
 
 @app.post("/api/admin/users/{tg_id}/message")
-async def admin_user_message(tg_id: int, payload: AdminMessageIn, x_telegram_init_data: str = Header(default="")) -> dict:
-    actor = int(_require_admin(x_telegram_init_data).get("id", 0))
+async def admin_user_message(tg_id: int, payload: AdminMessageIn, request: Request, x_telegram_init_data: str = Header(default="")) -> dict:
+    actor = int(_require_admin(x_telegram_init_data, request=request).get("id", 0))
     ok = await _telegram_send_message(tg_id, payload.text)
     _audit_admin(
         actor_tg_id=actor,
@@ -8837,8 +9216,9 @@ async def admin_user_message(tg_id: int, payload: AdminMessageIn, x_telegram_ini
 
 
 @app.post("/api/admin/broadcast")
-async def admin_broadcast(payload: AdminBroadcastIn, x_telegram_init_data: str = Header(default="")) -> dict:
-    actor = int(_require_admin(x_telegram_init_data).get("id", 0))
+async def admin_broadcast(payload: AdminBroadcastIn, request: Request, x_telegram_init_data: str = Header(default="")) -> dict:
+    actor = int(_require_admin(x_telegram_init_data, request=request).get("id", 0))
+    operator_reason = _admin_operator_reason(payload)
     segment = (payload.segment or "all_active").strip().lower()
     limit = max(1, min(int(payload.limit), MAX_BROADCAST_LIMIT))
 
@@ -8880,14 +9260,20 @@ async def admin_broadcast(payload: AdminBroadcastIn, x_telegram_init_data: str =
     _audit_admin(
         actor_tg_id=actor,
         action="admin_broadcast",
-        meta={"segment": segment, "sent": sent, "failed": failed, "attempted": min(len(target_ids), limit)},
+        meta={
+            "segment": segment,
+            "sent": sent,
+            "failed": failed,
+            "attempted": min(len(target_ids), limit),
+            "operator_reason": operator_reason,
+        },
     )
     return {"ok": True, "segment": segment, "attempted": min(len(target_ids), limit), "sent": sent, "failed": failed, "failed_ids": errors}
 
 
 @app.get("/api/admin/promos")
-async def admin_promos(x_telegram_init_data: str = Header(default=""), limit: int = 200) -> dict:
-    _require_admin(x_telegram_init_data)
+async def admin_promos(request: Request, x_telegram_init_data: str = Header(default=""), limit: int = 200) -> dict:
+    _require_admin(x_telegram_init_data, request=request)
     lim = max(1, min(int(limit), 500))
     s = SessionLocal()
     try:
@@ -8917,8 +9303,8 @@ async def admin_promos(x_telegram_init_data: str = Header(default=""), limit: in
 
 
 @app.post("/api/admin/promos")
-async def admin_promos_create(payload: AdminPromoCreateIn, x_telegram_init_data: str = Header(default="")) -> dict:
-    actor = int(_require_admin(x_telegram_init_data).get("id", 0))
+async def admin_promos_create(payload: AdminPromoCreateIn, request: Request, x_telegram_init_data: str = Header(default="")) -> dict:
+    actor = int(_require_admin(x_telegram_init_data, request=request).get("id", 0))
     code = (payload.code or "").strip().upper()
     promo_type = (payload.promo_type or "").strip().lower()
     if promo_type not in {"discount", "days"}:
@@ -8945,8 +9331,8 @@ async def admin_promos_create(payload: AdminPromoCreateIn, x_telegram_init_data:
 
 
 @app.patch("/api/admin/promos/{code}")
-async def admin_promos_update(code: str, payload: AdminPromoUpdateIn, x_telegram_init_data: str = Header(default="")) -> dict:
-    actor = int(_require_admin(x_telegram_init_data).get("id", 0))
+async def admin_promos_update(code: str, payload: AdminPromoUpdateIn, request: Request, x_telegram_init_data: str = Header(default="")) -> dict:
+    actor = int(_require_admin(x_telegram_init_data, request=request).get("id", 0))
     src_code = (code or "").strip().upper()
     s = SessionLocal()
     try:
@@ -8984,8 +9370,8 @@ async def admin_promos_update(code: str, payload: AdminPromoUpdateIn, x_telegram
 
 
 @app.delete("/api/admin/promos/{code}")
-async def admin_promos_delete(code: str, x_telegram_init_data: str = Header(default="")) -> dict:
-    actor = int(_require_admin(x_telegram_init_data).get("id", 0))
+async def admin_promos_delete(code: str, request: Request, x_telegram_init_data: str = Header(default="")) -> dict:
+    actor = int(_require_admin(x_telegram_init_data, request=request).get("id", 0))
     src_code = (code or "").strip().upper()
     s = SessionLocal()
     try:
@@ -9001,8 +9387,8 @@ async def admin_promos_delete(code: str, x_telegram_init_data: str = Header(defa
 
 
 @app.get("/api/admin/plans")
-async def admin_plans(x_telegram_init_data: str = Header(default=""), include_inactive: bool = True) -> dict:
-    _require_admin(x_telegram_init_data)
+async def admin_plans(request: Request, x_telegram_init_data: str = Header(default=""), include_inactive: bool = True) -> dict:
+    _require_admin(x_telegram_init_data, request=request)
     s = SessionLocal()
     try:
         rows = _plan_catalog_payload(s=s, only_active=not bool(include_inactive))
@@ -9012,8 +9398,8 @@ async def admin_plans(x_telegram_init_data: str = Header(default=""), include_in
 
 
 @app.post("/api/admin/plans")
-async def admin_plans_create(payload: AdminPlanCreateIn, x_telegram_init_data: str = Header(default="")) -> dict:
-    actor = int(_require_admin(x_telegram_init_data).get("id", 0))
+async def admin_plans_create(payload: AdminPlanCreateIn, request: Request, x_telegram_init_data: str = Header(default="")) -> dict:
+    actor = int(_require_admin(x_telegram_init_data, request=request).get("id", 0))
     code = (payload.code or "").strip().lower()
     s = SessionLocal()
     try:
@@ -9044,8 +9430,8 @@ async def admin_plans_create(payload: AdminPlanCreateIn, x_telegram_init_data: s
 
 
 @app.patch("/api/admin/plans/{code}")
-async def admin_plans_update(code: str, payload: AdminPlanUpdateIn, x_telegram_init_data: str = Header(default="")) -> dict:
-    actor = int(_require_admin(x_telegram_init_data).get("id", 0))
+async def admin_plans_update(code: str, payload: AdminPlanUpdateIn, request: Request, x_telegram_init_data: str = Header(default="")) -> dict:
+    actor = int(_require_admin(x_telegram_init_data, request=request).get("id", 0))
     target = (code or "").strip().lower()
     s = SessionLocal()
     try:
@@ -9079,8 +9465,8 @@ async def admin_plans_update(code: str, payload: AdminPlanUpdateIn, x_telegram_i
 
 
 @app.delete("/api/admin/plans/{code}")
-async def admin_plans_delete(code: str, x_telegram_init_data: str = Header(default="")) -> dict:
-    actor = int(_require_admin(x_telegram_init_data).get("id", 0))
+async def admin_plans_delete(code: str, request: Request, x_telegram_init_data: str = Header(default="")) -> dict:
+    actor = int(_require_admin(x_telegram_init_data, request=request).get("id", 0))
     target = (code or "").strip().lower()
     s = SessionLocal()
     try:
@@ -9096,8 +9482,8 @@ async def admin_plans_delete(code: str, x_telegram_init_data: str = Header(defau
 
 
 @app.get("/api/admin/live-updates")
-async def admin_live_updates(x_telegram_init_data: str = Header(default=""), include_inactive: bool = True) -> dict:
-    _require_admin(x_telegram_init_data)
+async def admin_live_updates(request: Request, x_telegram_init_data: str = Header(default=""), include_inactive: bool = True) -> dict:
+    _require_admin(x_telegram_init_data, request=request)
     s = SessionLocal()
     try:
         q = s.query(LiveUpdate)
@@ -9132,8 +9518,8 @@ async def admin_live_updates(x_telegram_init_data: str = Header(default=""), inc
 
 
 @app.post("/api/admin/live-updates")
-async def admin_live_updates_create(payload: AdminLiveUpdateCreateIn, x_telegram_init_data: str = Header(default="")) -> dict:
-    actor = int(_require_admin(x_telegram_init_data).get("id", 0))
+async def admin_live_updates_create(payload: AdminLiveUpdateCreateIn, request: Request, x_telegram_init_data: str = Header(default="")) -> dict:
+    actor = int(_require_admin(x_telegram_init_data, request=request).get("id", 0))
     channel_username = _normalize_channel_username(payload.channel_username) if payload.channel_username else None
     post_id = int(payload.post_id or 0) if payload.post_id is not None else None
     if post_id is not None and not channel_username:
@@ -9171,8 +9557,8 @@ async def admin_live_updates_create(payload: AdminLiveUpdateCreateIn, x_telegram
 
 
 @app.patch("/api/admin/live-updates/{update_id}")
-async def admin_live_updates_update(update_id: int, payload: AdminLiveUpdateUpdateIn, x_telegram_init_data: str = Header(default="")) -> dict:
-    actor = int(_require_admin(x_telegram_init_data).get("id", 0))
+async def admin_live_updates_update(update_id: int, payload: AdminLiveUpdateUpdateIn, request: Request, x_telegram_init_data: str = Header(default="")) -> dict:
+    actor = int(_require_admin(x_telegram_init_data, request=request).get("id", 0))
     s = SessionLocal()
     try:
         row = s.query(LiveUpdate).filter(LiveUpdate.id == int(update_id)).first()
@@ -9210,8 +9596,8 @@ async def admin_live_updates_update(update_id: int, payload: AdminLiveUpdateUpda
 
 
 @app.delete("/api/admin/live-updates/{update_id}")
-async def admin_live_updates_delete(update_id: int, x_telegram_init_data: str = Header(default="")) -> dict:
-    actor = int(_require_admin(x_telegram_init_data).get("id", 0))
+async def admin_live_updates_delete(update_id: int, request: Request, x_telegram_init_data: str = Header(default="")) -> dict:
+    actor = int(_require_admin(x_telegram_init_data, request=request).get("id", 0))
     s = SessionLocal()
     try:
         row = s.query(LiveUpdate).filter(LiveUpdate.id == int(update_id)).first()
@@ -9226,8 +9612,8 @@ async def admin_live_updates_delete(update_id: int, x_telegram_init_data: str = 
 
 
 @app.get("/api/admin/start-links")
-async def admin_start_links(x_telegram_init_data: str = Header(default=""), include_inactive: bool = True) -> dict:
-    _require_admin(x_telegram_init_data)
+async def admin_start_links(request: Request, x_telegram_init_data: str = Header(default=""), include_inactive: bool = True) -> dict:
+    _require_admin(x_telegram_init_data, request=request)
     s = SessionLocal()
     try:
         q = s.query(StartLink)
@@ -9255,8 +9641,8 @@ async def admin_start_links(x_telegram_init_data: str = Header(default=""), incl
 
 
 @app.post("/api/admin/start-links")
-async def admin_start_links_create(payload: AdminStartLinkCreateIn, x_telegram_init_data: str = Header(default="")) -> dict:
-    actor = int(_require_admin(x_telegram_init_data).get("id", 0))
+async def admin_start_links_create(payload: AdminStartLinkCreateIn, request: Request, x_telegram_init_data: str = Header(default="")) -> dict:
+    actor = int(_require_admin(x_telegram_init_data, request=request).get("id", 0))
     code = re.sub(r"[^a-z0-9_-]+", "", str(payload.code or "").strip().lower())[:64]
     if len(code) < 2:
         raise HTTPException(status_code=400, detail="Invalid code")
@@ -9285,8 +9671,8 @@ async def admin_start_links_create(payload: AdminStartLinkCreateIn, x_telegram_i
 
 
 @app.patch("/api/admin/start-links/{link_id}")
-async def admin_start_links_update(link_id: int, payload: AdminStartLinkUpdateIn, x_telegram_init_data: str = Header(default="")) -> dict:
-    actor = int(_require_admin(x_telegram_init_data).get("id", 0))
+async def admin_start_links_update(link_id: int, payload: AdminStartLinkUpdateIn, request: Request, x_telegram_init_data: str = Header(default="")) -> dict:
+    actor = int(_require_admin(x_telegram_init_data, request=request).get("id", 0))
     s = SessionLocal()
     try:
         row = s.query(StartLink).filter(StartLink.id == int(link_id)).first()
@@ -9317,8 +9703,8 @@ async def admin_start_links_update(link_id: int, payload: AdminStartLinkUpdateIn
 
 
 @app.delete("/api/admin/start-links/{link_id}")
-async def admin_start_links_delete(link_id: int, x_telegram_init_data: str = Header(default="")) -> dict:
-    actor = int(_require_admin(x_telegram_init_data).get("id", 0))
+async def admin_start_links_delete(link_id: int, request: Request, x_telegram_init_data: str = Header(default="")) -> dict:
+    actor = int(_require_admin(x_telegram_init_data, request=request).get("id", 0))
     s = SessionLocal()
     try:
         row = s.query(StartLink).filter(StartLink.id == int(link_id)).first()
@@ -9334,8 +9720,8 @@ async def admin_start_links_delete(link_id: int, x_telegram_init_data: str = Hea
 
 
 @app.get("/api/admin/wheel-config")
-async def admin_wheel_config_get(x_telegram_init_data: str = Header(default="")) -> dict:
-    _require_admin(x_telegram_init_data)
+async def admin_wheel_config_get(request: Request, x_telegram_init_data: str = Header(default="")) -> dict:
+    _require_admin(x_telegram_init_data, request=request)
     s = SessionLocal()
     try:
         cfg = _normalized_wheel_config(_get_app_setting_json(s=s, key="wheel_config", default=DEFAULT_WHEEL_CONFIG))
@@ -9345,8 +9731,9 @@ async def admin_wheel_config_get(x_telegram_init_data: str = Header(default=""))
 
 
 @app.put("/api/admin/wheel-config")
-async def admin_wheel_config_put(payload: AdminWheelConfigIn, x_telegram_init_data: str = Header(default="")) -> dict:
-    actor = int(_require_admin(x_telegram_init_data).get("id", 0))
+async def admin_wheel_config_put(payload: AdminWheelConfigIn, request: Request, x_telegram_init_data: str = Header(default="")) -> dict:
+    actor = int(_require_admin(x_telegram_init_data, request=request).get("id", 0))
+    operator_reason = _admin_operator_reason(payload)
     normalized = _normalized_wheel_config(payload.model_dump())
     s = SessionLocal()
     try:
@@ -9357,14 +9744,18 @@ async def admin_wheel_config_put(payload: AdminWheelConfigIn, x_telegram_init_da
     _audit_admin(
         actor_tg_id=actor,
         action="admin_wheel_config_update",
-        meta={"preset": normalized.get("preset"), "cooldown_hours": normalized.get("cooldown_hours")},
+        meta={
+            "preset": normalized.get("preset"),
+            "cooldown_hours": normalized.get("cooldown_hours"),
+            "operator_reason": operator_reason,
+        },
     )
     return {"ok": True, "wheel_config": normalized}
 
 
 @app.get("/api/admin/network-rollout-config")
-async def admin_network_rollout_config_get(x_telegram_init_data: str = Header(default="")) -> dict:
-    _require_admin(x_telegram_init_data)
+async def admin_network_rollout_config_get(request: Request, x_telegram_init_data: str = Header(default="")) -> dict:
+    _require_admin(x_telegram_init_data, request=request)
     s = SessionLocal()
     try:
         return {"network_rollout_config": load_network_rollout_config(session=s)}
@@ -9373,9 +9764,11 @@ async def admin_network_rollout_config_get(x_telegram_init_data: str = Header(de
 
 
 @app.put("/api/admin/network-rollout-config")
-async def admin_network_rollout_config_put(payload: dict[str, Any], x_telegram_init_data: str = Header(default="")) -> dict:
-    actor = int(_require_admin(x_telegram_init_data).get("id", 0))
-    normalized = normalized_network_rollout_config(payload if isinstance(payload, dict) else {})
+async def admin_network_rollout_config_put(payload: dict[str, Any], request: Request, x_telegram_init_data: str = Header(default="")) -> dict:
+    actor = int(_require_admin(x_telegram_init_data, request=request).get("id", 0))
+    operator_reason = _admin_operator_reason(payload)
+    config_payload = {k: v for k, v in (payload if isinstance(payload, dict) else {}).items() if k != "operator_reason"}
+    normalized = normalized_network_rollout_config(config_payload)
     s = SessionLocal()
     try:
         _set_app_setting_json(s=s, key=NETWORK_ROLLOUT_CONFIG_KEY, value=normalized)
@@ -9388,14 +9781,15 @@ async def admin_network_rollout_config_put(payload: dict[str, Any], x_telegram_i
         meta={
             "version": normalized.get("version"),
             "default_transport_profile": ((normalized.get("defaults") or {}).get("transport_profile")),
+            "operator_reason": operator_reason,
         },
     )
     return {"ok": True, "network_rollout_config": normalized}
 
 
 @app.get("/api/admin/promo-slots")
-async def admin_promo_slots_get(x_telegram_init_data: str = Header(default="")) -> dict[str, Any]:
-    _require_admin(x_telegram_init_data)
+async def admin_promo_slots_get(request: Request, x_telegram_init_data: str = Header(default="")) -> dict[str, Any]:
+    _require_admin(x_telegram_init_data, request=request)
     s = SessionLocal()
     try:
         config = _normalized_promo_slots_config(
@@ -9420,8 +9814,9 @@ async def admin_promo_slots_get(x_telegram_init_data: str = Header(default="")) 
 
 
 @app.put("/api/admin/promo-slots")
-async def admin_promo_slots_put(payload: AdminPromoSlotsPutIn, x_telegram_init_data: str = Header(default="")) -> dict[str, Any]:
-    actor = int(_require_admin(x_telegram_init_data).get("id", 0))
+async def admin_promo_slots_put(payload: AdminPromoSlotsPutIn, request: Request, x_telegram_init_data: str = Header(default="")) -> dict[str, Any]:
+    actor = int(_require_admin(x_telegram_init_data, request=request).get("id", 0))
+    operator_reason = _admin_operator_reason(payload)
     normalized = _normalized_promo_slots_config({"assignments": payload.model_dump().get("assignments") or []}, strict=True)
     s = SessionLocal()
     try:
@@ -9433,14 +9828,14 @@ async def admin_promo_slots_put(payload: AdminPromoSlotsPutIn, x_telegram_init_d
     _audit_admin(
         actor_tg_id=actor,
         action="admin_promo_slots_put",
-        meta={"assignments": len(list(normalized.get("assignments") or []))},
+        meta={"assignments": len(list(normalized.get("assignments") or [])), "operator_reason": operator_reason},
     )
     return {"ok": True, "promo_slots": normalized}
 
 
 @app.post("/api/admin/campaign-links/build")
-async def admin_campaign_links_build(payload: AdminCampaignLinksBuildIn, x_telegram_init_data: str = Header(default="")) -> dict:
-    _require_admin(x_telegram_init_data)
+async def admin_campaign_links_build(payload: AdminCampaignLinksBuildIn, request: Request, x_telegram_init_data: str = Header(default="")) -> dict:
+    _require_admin(x_telegram_init_data, request=request)
     promo = _sanitize_deeplink_token(payload.promo_code, max_len=20, uppercase=True)
     campaign = _sanitize_deeplink_token(payload.campaign_key, max_len=64, uppercase=False)
     plan = (payload.plan_code or "").strip().lower()[:32]
@@ -9493,11 +9888,11 @@ async def admin_campaign_links_build(payload: AdminCampaignLinksBuildIn, x_teleg
 
 @app.get("/api/admin/referrals/pending")
 async def admin_referrals_pending(
-    x_telegram_init_data: str = Header(default=""),
+    request: Request, x_telegram_init_data: str = Header(default=""),
     limit: int = 200,
     status: str = "",
 ) -> dict:
-    _require_admin(x_telegram_init_data)
+    _require_admin(x_telegram_init_data, request=request)
     s = SessionLocal()
     try:
         q = s.query(ReferralBonusQueue)
@@ -9526,8 +9921,8 @@ async def admin_referrals_pending(
 
 
 @app.post("/api/admin/referrals/process")
-async def admin_referrals_process(payload: AdminReferralQueueProcessIn, x_telegram_init_data: str = Header(default="")) -> dict:
-    actor = int(_require_admin(x_telegram_init_data).get("id", 0))
+async def admin_referrals_process(payload: AdminReferralQueueProcessIn, request: Request, x_telegram_init_data: str = Header(default="")) -> dict:
+    actor = int(_require_admin(x_telegram_init_data, request=request).get("id", 0))
     out = _process_referral_bonus_queue(limit=int(payload.limit), force_without_activity=bool(payload.force_without_activity))
     _audit_admin(
         actor_tg_id=actor,
@@ -9538,8 +9933,8 @@ async def admin_referrals_process(payload: AdminReferralQueueProcessIn, x_telegr
 
 
 @app.get("/api/admin/loyalty-config")
-async def admin_loyalty_config_get(x_telegram_init_data: str = Header(default="")) -> dict:
-    _require_admin(x_telegram_init_data)
+async def admin_loyalty_config_get(request: Request, x_telegram_init_data: str = Header(default="")) -> dict:
+    _require_admin(x_telegram_init_data, request=request)
     s = SessionLocal()
     try:
         return {"loyalty_config": _loyalty_config(s=s)}
@@ -9548,22 +9943,24 @@ async def admin_loyalty_config_get(x_telegram_init_data: str = Header(default=""
 
 
 @app.put("/api/admin/loyalty-config")
-async def admin_loyalty_config_put(payload: dict[str, Any], x_telegram_init_data: str = Header(default="")) -> dict:
-    actor = int(_require_admin(x_telegram_init_data).get("id", 0))
-    normalized = _normalized_loyalty_config(payload if isinstance(payload, dict) else {})
+async def admin_loyalty_config_put(payload: dict[str, Any], request: Request, x_telegram_init_data: str = Header(default="")) -> dict:
+    actor = int(_require_admin(x_telegram_init_data, request=request).get("id", 0))
+    operator_reason = _admin_operator_reason(payload)
+    config_payload = {k: v for k, v in (payload if isinstance(payload, dict) else {}).items() if k != "operator_reason"}
+    normalized = _normalized_loyalty_config(config_payload)
     s = SessionLocal()
     try:
         _set_app_setting_json(s=s, key="loyalty_config", value=normalized)
         s.commit()
     finally:
         s.close()
-    _audit_admin(actor_tg_id=actor, action="admin_loyalty_config_put", meta=normalized)
+    _audit_admin(actor_tg_id=actor, action="admin_loyalty_config_put", meta={**normalized, "operator_reason": operator_reason})
     return {"ok": True, "loyalty_config": normalized}
 
 
 @app.get("/api/admin/campaigns")
-async def admin_campaigns_get(x_telegram_init_data: str = Header(default=""), limit: int = 200) -> dict:
-    _require_admin(x_telegram_init_data)
+async def admin_campaigns_get(request: Request, x_telegram_init_data: str = Header(default=""), limit: int = 200) -> dict:
+    _require_admin(x_telegram_init_data, request=request)
     s = SessionLocal()
     try:
         rows = (
@@ -9599,8 +9996,8 @@ async def admin_campaigns_get(x_telegram_init_data: str = Header(default=""), li
 
 
 @app.post("/api/admin/campaigns")
-async def admin_campaigns_create(payload: AdminCampaignCreateIn, x_telegram_init_data: str = Header(default="")) -> dict:
-    actor = int(_require_admin(x_telegram_init_data).get("id", 0))
+async def admin_campaigns_create(payload: AdminCampaignCreateIn, request: Request, x_telegram_init_data: str = Header(default="")) -> dict:
+    actor = int(_require_admin(x_telegram_init_data, request=request).get("id", 0))
     ctype = str(payload.campaign_type or "").strip().lower()
     if ctype not in {"promo", "gift"}:
         raise HTTPException(status_code=400, detail="campaign_type must be promo or gift")
@@ -9641,9 +10038,9 @@ async def admin_campaigns_create(payload: AdminCampaignCreateIn, x_telegram_init
 async def admin_campaigns_patch(
     campaign_id: int,
     payload: AdminCampaignUpdateIn,
-    x_telegram_init_data: str = Header(default=""),
+    request: Request, x_telegram_init_data: str = Header(default=""),
 ) -> dict:
-    actor = int(_require_admin(x_telegram_init_data).get("id", 0))
+    actor = int(_require_admin(x_telegram_init_data, request=request).get("id", 0))
     s = SessionLocal()
     try:
         row = s.query(IncentiveCampaign).filter(IncentiveCampaign.id == int(campaign_id)).first()
@@ -9676,8 +10073,8 @@ async def admin_campaigns_patch(
 
 
 @app.delete("/api/admin/campaigns/{campaign_id}")
-async def admin_campaigns_delete(campaign_id: int, x_telegram_init_data: str = Header(default="")) -> dict:
-    actor = int(_require_admin(x_telegram_init_data).get("id", 0))
+async def admin_campaigns_delete(campaign_id: int, request: Request, x_telegram_init_data: str = Header(default="")) -> dict:
+    actor = int(_require_admin(x_telegram_init_data, request=request).get("id", 0))
     s = SessionLocal()
     try:
         row = s.query(IncentiveCampaign).filter(IncentiveCampaign.id == int(campaign_id)).first()
@@ -9693,8 +10090,8 @@ async def admin_campaigns_delete(campaign_id: int, x_telegram_init_data: str = H
 
 
 @app.get("/api/admin/templates")
-async def admin_templates(x_telegram_init_data: str = Header(default=""), limit: int = 200) -> dict:
-    _require_admin(x_telegram_init_data)
+async def admin_templates(request: Request, x_telegram_init_data: str = Header(default=""), limit: int = 200) -> dict:
+    _require_admin(x_telegram_init_data, request=request)
     lim = max(1, min(int(limit), 500))
     s = SessionLocal()
     try:
@@ -9710,8 +10107,8 @@ async def admin_templates(x_telegram_init_data: str = Header(default=""), limit:
 
 
 @app.post("/api/admin/templates")
-async def admin_templates_create(payload: AdminTemplateCreateIn, x_telegram_init_data: str = Header(default="")) -> dict:
-    actor = int(_require_admin(x_telegram_init_data).get("id", 0))
+async def admin_templates_create(payload: AdminTemplateCreateIn, request: Request, x_telegram_init_data: str = Header(default="")) -> dict:
+    actor = int(_require_admin(x_telegram_init_data, request=request).get("id", 0))
     key = (payload.key or "").strip().lower()
     text_val = (payload.text or "").strip()
     s = SessionLocal()
@@ -9729,8 +10126,8 @@ async def admin_templates_create(payload: AdminTemplateCreateIn, x_telegram_init
 
 
 @app.patch("/api/admin/templates/{key}")
-async def admin_templates_update(key: str, payload: AdminTemplateUpdateIn, x_telegram_init_data: str = Header(default="")) -> dict:
-    actor = int(_require_admin(x_telegram_init_data).get("id", 0))
+async def admin_templates_update(key: str, payload: AdminTemplateUpdateIn, request: Request, x_telegram_init_data: str = Header(default="")) -> dict:
+    actor = int(_require_admin(x_telegram_init_data, request=request).get("id", 0))
     src_key = (key or "").strip().lower()
     s = SessionLocal()
     try:
@@ -9755,8 +10152,8 @@ async def admin_templates_update(key: str, payload: AdminTemplateUpdateIn, x_tel
 
 
 @app.delete("/api/admin/templates/{key}")
-async def admin_templates_delete(key: str, x_telegram_init_data: str = Header(default="")) -> dict:
-    actor = int(_require_admin(x_telegram_init_data).get("id", 0))
+async def admin_templates_delete(key: str, request: Request, x_telegram_init_data: str = Header(default="")) -> dict:
+    actor = int(_require_admin(x_telegram_init_data, request=request).get("id", 0))
     src_key = (key or "").strip().lower()
     s = SessionLocal()
     try:
@@ -9772,8 +10169,8 @@ async def admin_templates_delete(key: str, x_telegram_init_data: str = Header(de
 
 
 @app.get("/api/admin/gift-codes")
-async def admin_gift_codes(x_telegram_init_data: str = Header(default=""), limit: int = 100) -> dict:
-    _require_admin(x_telegram_init_data)
+async def admin_gift_codes(request: Request, x_telegram_init_data: str = Header(default=""), limit: int = 100) -> dict:
+    _require_admin(x_telegram_init_data, request=request)
     lim = max(1, min(int(limit), 500))
     s = SessionLocal()
     try:
@@ -9798,8 +10195,9 @@ async def admin_gift_codes(x_telegram_init_data: str = Header(default=""), limit
 
 
 @app.post("/api/admin/access-keys/issue")
-async def admin_access_keys_issue(payload: AdminAccessKeyIssueIn, x_telegram_init_data: str = Header(default="")) -> dict[str, Any]:
-    actor = int(_require_admin(x_telegram_init_data).get("id", 0))
+async def admin_access_keys_issue(payload: AdminAccessKeyIssueIn, request: Request, x_telegram_init_data: str = Header(default="")) -> dict[str, Any]:
+    actor = int(_require_admin(x_telegram_init_data, request=request).get("id", 0))
+    operator_reason = _admin_operator_reason(payload)
     plan_code = str(payload.plan_code or "").strip().lower()
     s = SessionLocal()
     try:
@@ -9827,7 +10225,7 @@ async def admin_access_keys_issue(payload: AdminAccessKeyIssueIn, x_telegram_ini
     _audit_admin(
         actor_tg_id=actor,
         action="admin_access_keys_issue",
-        meta={"plan_code": plan_code, "quantity": int(payload.quantity or 1)},
+        meta={"plan_code": plan_code, "quantity": int(payload.quantity or 1), "operator_reason": operator_reason},
     )
     return {
         "ok": True,
@@ -9837,8 +10235,8 @@ async def admin_access_keys_issue(payload: AdminAccessKeyIssueIn, x_telegram_ini
 
 
 @app.post("/api/admin/gift-codes")
-async def admin_gift_codes_create(payload: AdminGiftCodeCreateIn, x_telegram_init_data: str = Header(default="")) -> dict:
-    actor = int(_require_admin(x_telegram_init_data).get("id", 0))
+async def admin_gift_codes_create(payload: AdminGiftCodeCreateIn, request: Request, x_telegram_init_data: str = Header(default="")) -> dict:
+    actor = int(_require_admin(x_telegram_init_data, request=request).get("id", 0))
     card_type = (payload.card_type or "").strip().lower()
     card = GIFT_CARD_TYPES.get(card_type)
     if not card:
@@ -9864,8 +10262,8 @@ async def admin_gift_codes_create(payload: AdminGiftCodeCreateIn, x_telegram_ini
 
 
 @app.get("/api/admin/tickets")
-async def admin_tickets(x_telegram_init_data: str = Header(default=""), status: str = "", limit: int = 30) -> dict:
-    _require_admin(x_telegram_init_data)
+async def admin_tickets(request: Request, x_telegram_init_data: str = Header(default=""), status: str = "", limit: int = 30) -> dict:
+    _require_admin(x_telegram_init_data, request=request)
     s = SessionLocal()
     try:
         lim = max(1, min(int(limit), 100))
@@ -9886,8 +10284,8 @@ async def admin_tickets(x_telegram_init_data: str = Header(default=""), status: 
 
 
 @app.post("/api/admin/tickets/{ticket_id}/reply")
-async def admin_ticket_reply(ticket_id: int, payload: AdminTicketReplyIn, x_telegram_init_data: str = Header(default="")) -> dict:
-    actor = int(_require_admin(x_telegram_init_data).get("id", 0))
+async def admin_ticket_reply(ticket_id: int, payload: AdminTicketReplyIn, request: Request, x_telegram_init_data: str = Header(default="")) -> dict:
+    actor = int(_require_admin(x_telegram_init_data, request=request).get("id", 0))
     s = SessionLocal()
     try:
         ticket = get_ticket_by_id(s, ticket_id)
@@ -9915,11 +10313,12 @@ async def admin_ticket_reply(ticket_id: int, payload: AdminTicketReplyIn, x_tele
 
 
 @app.post("/api/admin/tickets/{ticket_id}/status")
-async def admin_ticket_status(ticket_id: int, payload: AdminTicketStatusIn, x_telegram_init_data: str = Header(default="")) -> dict:
-    actor = int(_require_admin(x_telegram_init_data).get("id", 0))
+async def admin_ticket_status(ticket_id: int, payload: AdminTicketStatusIn, request: Request, x_telegram_init_data: str = Header(default="")) -> dict:
+    actor = int(_require_admin(x_telegram_init_data, request=request).get("id", 0))
     new_status = (payload.status or "").strip().lower()
     if new_status not in {STATUS_OPEN, STATUS_IN_PROGRESS, STATUS_CLOSED}:
         raise HTTPException(status_code=400, detail="Unsupported status")
+    operator_reason = _admin_operator_reason(payload, required=new_status == STATUS_CLOSED)
     s = SessionLocal()
     try:
         ticket = get_ticket_by_id(s, ticket_id)
@@ -9931,15 +10330,20 @@ async def admin_ticket_status(ticket_id: int, payload: AdminTicketStatusIn, x_te
     finally:
         s.close()
 
-    _audit_admin(actor_tg_id=actor, action="admin_ticket_status", target_tg_id=int(ticket.user_tg_id), meta={"ticket_id": ticket.id, "status": new_status})
+    _audit_admin(
+        actor_tg_id=actor,
+        action="admin_ticket_status",
+        target_tg_id=int(ticket.user_tg_id),
+        meta={"ticket_id": ticket.id, "status": new_status, "operator_reason": operator_reason},
+    )
     if new_status == STATUS_CLOSED:
         await _telegram_send_message(int(ticket.user_tg_id), f"✅ Обращение #{ticket.id} закрыто оператором.")
     return {"ticket": _ticket_row(ticket, msgs)}
 
 
 @app.get("/api/admin/nodes/health")
-async def admin_nodes_health(x_telegram_init_data: str = Header(default="")) -> dict:
-    _require_admin(x_telegram_init_data)
+async def admin_nodes_health(request: Request, x_telegram_init_data: str = Header(default="")) -> dict:
+    _require_admin(x_telegram_init_data, request=request)
     s = SessionLocal()
     try:
         rows = s.query(Node).order_by(Node.enabled.desc(), Node.health_score.desc(), Node.weight.desc(), Node.code.asc()).all()
@@ -10004,10 +10408,10 @@ async def _build_admin_node_drift_report(*, only_codes: list[str] | None = None)
 
 @app.get("/api/admin/nodes/drift")
 async def admin_nodes_drift(
-    x_telegram_init_data: str = Header(default=""),
+    request: Request, x_telegram_init_data: str = Header(default=""),
     only: str = Query(default=""),
 ) -> dict:
-    _require_admin(x_telegram_init_data)
+    _require_admin(x_telegram_init_data, request=request)
     only_codes = [part.strip().lower() for part in str(only or "").split(",") if part.strip()]
     result = _build_admin_node_drift_report(only_codes=only_codes)
     if inspect.isawaitable(result):
@@ -10016,8 +10420,8 @@ async def admin_nodes_drift(
 
 
 @app.post("/api/admin/nodes/sync")
-async def admin_nodes_sync(payload: AdminNodeSyncIn, x_telegram_init_data: str = Header(default="")) -> dict:
-    actor = int(_require_admin(x_telegram_init_data).get("id", 0))
+async def admin_nodes_sync(payload: AdminNodeSyncIn, request: Request, x_telegram_init_data: str = Header(default="")) -> dict:
+    actor = int(_require_admin(x_telegram_init_data, request=request).get("id", 0))
     s = SessionLocal()
     try:
         if payload.tg_id:
@@ -10060,8 +10464,9 @@ async def admin_nodes_sync(payload: AdminNodeSyncIn, x_telegram_init_data: str =
 
 
 @app.post("/api/admin/nodes/{node_code}/drain")
-async def admin_node_drain(node_code: str, payload: AdminNodeLifecycleIn, x_telegram_init_data: str = Header(default="")) -> dict:
-    actor = int(_require_admin(x_telegram_init_data).get("id", 0))
+async def admin_node_drain(node_code: str, payload: AdminNodeLifecycleIn, request: Request, x_telegram_init_data: str = Header(default="")) -> dict:
+    actor = int(_require_admin(x_telegram_init_data, request=request).get("id", 0))
+    operator_reason = _admin_operator_reason(payload)
     wanted = str(node_code or "").strip().lower()
     s = SessionLocal()
     try:
@@ -10083,13 +10488,18 @@ async def admin_node_drain(node_code: str, payload: AdminNodeLifecycleIn, x_tele
     finally:
         s.close()
 
-    _audit_admin(actor_tg_id=actor, action="admin_node_drain", meta={"node_code": wanted, "mapped_users": int(mapped_users)})
+    _audit_admin(
+        actor_tg_id=actor,
+        action="admin_node_drain",
+        meta={"node_code": wanted, "mapped_users": int(mapped_users), "operator_reason": operator_reason},
+    )
     return {"ok": True, "node": payload_node}
 
 
 @app.post("/api/admin/nodes/{node_code}/enable")
-async def admin_node_enable(node_code: str, payload: AdminNodeLifecycleIn, x_telegram_init_data: str = Header(default="")) -> dict:
-    actor = int(_require_admin(x_telegram_init_data).get("id", 0))
+async def admin_node_enable(node_code: str, payload: AdminNodeLifecycleIn, request: Request, x_telegram_init_data: str = Header(default="")) -> dict:
+    actor = int(_require_admin(x_telegram_init_data, request=request).get("id", 0))
+    operator_reason = _admin_operator_reason(payload)
     wanted = str(node_code or "").strip().lower()
     s = SessionLocal()
     try:
@@ -10111,13 +10521,18 @@ async def admin_node_enable(node_code: str, payload: AdminNodeLifecycleIn, x_tel
     finally:
         s.close()
 
-    _audit_admin(actor_tg_id=actor, action="admin_node_enable", meta={"node_code": wanted, "mapped_users": int(mapped_users)})
+    _audit_admin(
+        actor_tg_id=actor,
+        action="admin_node_enable",
+        meta={"node_code": wanted, "mapped_users": int(mapped_users), "operator_reason": operator_reason},
+    )
     return {"ok": True, "node": payload_node}
 
 
 @app.post("/api/admin/nodes/{node_code}/disable")
-async def admin_node_disable(node_code: str, payload: AdminNodeLifecycleIn, x_telegram_init_data: str = Header(default="")) -> dict:
-    actor = int(_require_admin(x_telegram_init_data).get("id", 0))
+async def admin_node_disable(node_code: str, payload: AdminNodeLifecycleIn, request: Request, x_telegram_init_data: str = Header(default="")) -> dict:
+    actor = int(_require_admin(x_telegram_init_data, request=request).get("id", 0))
+    operator_reason = _admin_operator_reason(payload)
     wanted = str(node_code or "").strip().lower()
     s = SessionLocal()
     try:
@@ -10144,14 +10559,20 @@ async def admin_node_disable(node_code: str, payload: AdminNodeLifecycleIn, x_te
     _audit_admin(
         actor_tg_id=actor,
         action="admin_node_disable",
-        meta={"node_code": wanted, "mapped_users": int(mapped_users), "forced": bool(payload.force)},
+        meta={
+            "node_code": wanted,
+            "mapped_users": int(mapped_users),
+            "forced": bool(payload.force),
+            "operator_reason": operator_reason,
+        },
     )
     return {"ok": True, "node": payload_node}
 
 
 @app.post("/api/admin/nodes/{node_code}/resync")
-async def admin_node_resync(node_code: str, payload: AdminNodeResyncIn, x_telegram_init_data: str = Header(default="")) -> dict:
-    actor = int(_require_admin(x_telegram_init_data).get("id", 0))
+async def admin_node_resync(node_code: str, payload: AdminNodeResyncIn, request: Request, x_telegram_init_data: str = Header(default="")) -> dict:
+    actor = int(_require_admin(x_telegram_init_data, request=request).get("id", 0))
+    operator_reason = _admin_operator_reason(payload, required=not bool(payload.dry_run))
     wanted = str(node_code or "").strip().lower()
     s = SessionLocal()
     try:
@@ -10283,6 +10704,7 @@ async def admin_node_resync(node_code: str, payload: AdminNodeResyncIn, x_telegr
             "failed": failed,
             "skipped": skipped,
             "dry_run": bool(payload.dry_run),
+            "operator_reason": operator_reason,
         },
     )
     return {

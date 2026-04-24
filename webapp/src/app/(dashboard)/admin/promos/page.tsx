@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  AdminConfirmDialog,
   AdminBadge,
   AdminMetricStrip,
   AdminPanelHeader,
@@ -52,6 +53,8 @@ const SHARED_PLANS = getTariffPlans()
     note: plan.cabinet_note || plan.marketing_note || plan.label,
   }));
 
+type ConfirmState = { kind: "issue" | "slots"; reason: string } | null;
+
 function normalizeKey(value: string): string {
   return String(value || "").trim().toUpperCase();
 }
@@ -97,6 +100,7 @@ export default function AdminPromosPage() {
   const [saving, setSaving] = useState(false);
   const [statusText, setStatusText] = useState("");
   const [error, setError] = useState("");
+  const [confirm, setConfirm] = useState<ConfirmState>(null);
 
   const contentById = useMemo(() => new Map(contentCatalog.map((item) => [item.id, item])), [contentCatalog]);
 
@@ -131,19 +135,20 @@ export default function AdminPromosPage() {
     void loadPromoSlots();
   }, []);
 
-  const issueKeys = async (): Promise<void> => {
+  const issueKeys = async (operatorReason: string): Promise<void> => {
     const nextQuantity = Math.max(1, Math.min(50, Number(quantity || 1)));
     setIssuing(true);
     setError("");
     setStatusText("");
     try {
-      const payload = await adminAccessKeysIssue({ plan_code: selectedPlan, quantity: nextQuantity });
+      const payload = await adminAccessKeysIssue({ plan_code: selectedPlan, quantity: nextQuantity, operator_reason: operatorReason.trim() });
       setIssuedKeys((payload.issued || []).map((item) => ({
         key: item.key,
         planLabel: item.plan?.label || payload.plan?.label || selectedPlan,
         issuedAt: item.issued_at,
       })));
-      setStatusText(`Issued ${payload.issued?.length || 0} access keys for ${payload.plan?.label || selectedPlan}.`);
+      setStatusText(`Выдано ключей: ${payload.issued?.length || 0}. Причина: ${operatorReason.trim()}`);
+      setConfirm(null);
     } catch (nextError) {
       setError(String((nextError as { message?: string })?.message || nextError || "Could not issue access keys."));
     } finally {
@@ -171,17 +176,18 @@ export default function AdminPromosPage() {
     }
   };
 
-  const savePromoSlots = async (): Promise<void> => {
+  const savePromoSlots = async (operatorReason: string): Promise<void> => {
     setSaving(true);
     setError("");
     setStatusText("");
     try {
-      const payload = await adminPromoSlotsUpdate({ assignments });
+      const payload = await adminPromoSlotsUpdate({ assignments, operator_reason: operatorReason.trim() });
       setAssignments(createAssignmentState(payload.promo_slots.assignments || [], slotCatalog, contentCatalog));
       setRemoteMode(String(payload.promo_slots.mode || remoteMode));
       setRemoteAvailable(Boolean(payload.promo_slots.remote_available));
       setFallbackBehavior(String(payload.promo_slots.fallback_behavior || fallbackBehavior));
-      setStatusText("Promo-slot config saved.");
+      setStatusText(`Слоты сохранены. Причина: ${operatorReason.trim()}`);
+      setConfirm(null);
     } catch (nextError) {
       setError(String((nextError as { message?: string })?.message || nextError || "Could not save promo slots."));
     } finally {
@@ -196,10 +202,10 @@ export default function AdminPromosPage() {
   const copyText = async (text: string): Promise<void> => {
     try {
       await navigator.clipboard.writeText(text);
-      setStatusText("Copied.");
+      setStatusText("Скопировано.");
       setError("");
     } catch {
-      setError("Clipboard copy failed.");
+      setError("Не удалось скопировать в буфер.");
     }
   };
 
@@ -207,29 +213,29 @@ export default function AdminPromosPage() {
     <section className="space-y-4">
       <article className={adminPanelClass("neutral")}>
         <AdminPanelHeader
-          eyebrow="payments"
-          title="Access keys and promo slots"
-          description="Issue paid access keys, inspect recovery keys, and control whitelisted first-party promo slots without exposing public pricing."
+          eyebrow="платежи"
+          title="Ключи доступа и promo-слоты"
+          description="Выдача платных ключей, recovery-проверки и управление whitelisted promo-слотами без раскрытия публичных цен."
           actions={
             <button className={adminButtonClass("secondary", "sm")} type="button" onClick={() => void loadPromoSlots()} disabled={loading}>
-              Reload slots
+              Обновить слоты
             </button>
           }
         />
         <div className="flex flex-wrap gap-2">
-          <AdminBadge tone="accent">remote {remoteAvailable ? "available" : "local catalog"}</AdminBadge>
+          <AdminBadge tone="accent">remote {remoteAvailable ? "доступен" : "локальный каталог"}</AdminBadge>
           <AdminBadge>version {remoteVersion}</AdminBadge>
           <AdminBadge>mode {remoteMode}</AdminBadge>
-          <AdminBadge tone="warning">empty-state mode: {fallbackBehavior}</AdminBadge>
+          <AdminBadge tone="warning">empty-state: {fallbackBehavior}</AdminBadge>
         </div>
       </article>
 
       <AdminMetricStrip
         items={[
-          { label: "plans", value: SHARED_PLANS.length, hint: "Active paid tariff plans." },
-          { label: "slots", value: assignments.length, hint: "Whitelisted promo slot assignments.", tone: "accent" },
+          { label: "тарифы", value: SHARED_PLANS.length, hint: "Активные платные тарифы." },
+          { label: "слоты", value: assignments.length, hint: "Назначения whitelisted promo-слотов.", tone: "accent" },
           { label: "free baseline", value: `${ACCESS_MATRIX.free_tier.location_code} · ${ACCESS_MATRIX.free_tier.traffic_limit_gb} GB`, hint: `${ACCESS_MATRIX.free_tier.speed_limit_mbps} Mbps, ${ACCESS_MATRIX.free_tier.device_limit} device(s).` },
-          { label: "issued now", value: issuedKeys.length, hint: "Keys issued in this session.", tone: issuedKeys.length ? "success" : "neutral" },
+          { label: "выдано сейчас", value: issuedKeys.length, hint: "Ключи, выданные в этой сессии.", tone: issuedKeys.length ? "success" : "neutral" },
         ]}
       />
 
@@ -238,7 +244,7 @@ export default function AdminPromosPage() {
 
       <div className="grid gap-4 xl:grid-cols-[1fr,0.9fr]">
         <article className={adminPanelClass("neutral")}>
-          <AdminPanelHeader eyebrow="issuance" title="Issue access keys" />
+          <AdminPanelHeader eyebrow="ключи" title="Выдача ключей доступа" />
           <div className="grid gap-3 md:grid-cols-[1fr,120px,auto]">
             <select value={selectedPlan} onChange={(event) => setSelectedPlan(event.target.value)} className={adminFieldClass}>
               {SHARED_PLANS.map((plan) => (
@@ -246,8 +252,8 @@ export default function AdminPromosPage() {
               ))}
             </select>
             <input value={quantity} onChange={(event) => setQuantity(event.target.value)} type="number" min={1} max={50} className={adminFieldClass} />
-            <button type="button" onClick={() => void issueKeys()} disabled={issuing} className={adminButtonClass("primary")}>
-              {issuing ? "Issuing..." : "Issue"}
+            <button type="button" onClick={() => setConfirm({ kind: "issue", reason: "" })} disabled={issuing} className={adminButtonClass("primary")}>
+              {issuing ? "Выдаем..." : "Выдать ключи"}
             </button>
           </div>
           <div className="mt-4 space-y-2">
@@ -258,49 +264,49 @@ export default function AdminPromosPage() {
                     <p className="font-mono text-sm font-semibold text-slate-100">{item.key}</p>
                     <p className="mt-1 text-xs text-slate-500">{item.planLabel} · {fmtRuDate(item.issuedAt)}</p>
                   </div>
-                  <button type="button" onClick={() => void copyText(item.key)} className={adminButtonClass("secondary", "xs")}>Copy</button>
+                  <button type="button" onClick={() => void copyText(item.key)} className={adminButtonClass("secondary", "xs")}>Копировать</button>
                 </div>
               </div>
             ))}
-            {!issuedKeys.length ? <p className="text-xs text-slate-500">Issued keys will appear here.</p> : null}
+            {!issuedKeys.length ? <p className="text-xs text-slate-500">Выданные ключи появятся здесь.</p> : null}
           </div>
         </article>
 
         <article className={adminPanelClass("neutral")}>
-          <AdminPanelHeader eyebrow="recovery" title="Access key lookup" description="Use for recovery and fraud checks without exposing raw connection links." />
+          <AdminPanelHeader eyebrow="recovery" title="Проверка ключа доступа" description="Для recovery и fraud-проверок без раскрытия raw-ссылок подключения." />
           <div className="flex flex-col gap-3 sm:flex-row">
             <input value={lookupKey} onChange={(event) => setLookupKey(normalizeKey(event.target.value))} placeholder="POKROV-XXXX-XXXX" className={adminFieldClass} />
             <button type="button" onClick={() => void lookupAccessKey()} disabled={lookupBusy} className={adminButtonClass("secondary")}>
-              {lookupBusy ? "Checking..." : "Lookup"}
+              {lookupBusy ? "Проверяем..." : "Проверить"}
             </button>
           </div>
           {lookupResult ? (
             <div className={`${adminInsetPanelClass} mt-4 space-y-1 text-sm text-slate-300`}>
-              <p>Key: <strong>{lookupResult.key}</strong></p>
-              <p>Exists: <strong>{lookupResult.exists ? "yes" : "no"}</strong></p>
-              <p>Redeemed: <strong>{lookupResult.redeemed ? "yes" : "no"}</strong></p>
-              <p>Plan: <strong>{lookupResult.plan?.label || lookupResult.kind || "-"}</strong></p>
-              <p>Device limit: <strong>{lookupResult.device_limit}</strong></p>
-              <p>Issued: <strong>{fmtRuDate(lookupResult.issued_at)}</strong></p>
-              <p>Redeemed at: <strong>{fmtRuDate(lookupResult.redeemed_at)}</strong></p>
+              <p>Ключ: <strong>{lookupResult.key}</strong></p>
+              <p>Существует: <strong>{lookupResult.exists ? "да" : "нет"}</strong></p>
+              <p>Погашен: <strong>{lookupResult.redeemed ? "да" : "нет"}</strong></p>
+              <p>Тариф: <strong>{lookupResult.plan?.label || lookupResult.kind || "-"}</strong></p>
+              <p>Лимит устройств: <strong>{lookupResult.device_limit}</strong></p>
+              <p>Выдан: <strong>{fmtRuDate(lookupResult.issued_at)}</strong></p>
+              <p>Погашен в: <strong>{fmtRuDate(lookupResult.redeemed_at)}</strong></p>
             </div>
           ) : null}
         </article>
       </div>
 
       <article className={adminPanelClass("neutral")}>
-        <AdminPanelHeader eyebrow="tariffs" title="Compatibility tariff catalog" description="Admin-facing reference only; public pricing route remains a compatibility continuation surface." />
+        <AdminPanelHeader eyebrow="тарифы" title="Каталог совместимости тарифов" description="Только операторский справочник; публичный pricing-роут остается compatibility-поверхностью." />
         <div className={adminTableShellClass}>
           <div className="overflow-auto">
             <table className="min-w-full text-sm">
               <thead>
                 <tr className="border-b border-[#c6e6db] bg-[#f8fffc] text-left text-[11px] uppercase tracking-[0.14em] text-slate-500">
                   <th className="px-3 py-3">Code</th>
-                  <th className="px-3 py-3">Plan</th>
-                  <th className="px-3 py-3">Price</th>
-                  <th className="px-3 py-3">Days</th>
-                  <th className="px-3 py-3">Devices</th>
-                  <th className="px-3 py-3">Note</th>
+                  <th className="px-3 py-3">Тариф</th>
+                  <th className="px-3 py-3">Цена</th>
+                  <th className="px-3 py-3">Дни</th>
+                  <th className="px-3 py-3">Устройства</th>
+                  <th className="px-3 py-3">Примечание</th>
                 </tr>
               </thead>
               <tbody>
@@ -325,7 +331,7 @@ export default function AdminPromosPage() {
           eyebrow="promo slots"
           title="Slot assignments"
           description="Only whitelisted slots and first-party content IDs can be saved."
-          actions={<button type="button" onClick={() => void savePromoSlots()} disabled={saving} className={adminButtonClass("primary", "sm")}>{saving ? "Saving..." : "Save slots"}</button>}
+          actions={<button type="button" onClick={() => setConfirm({ kind: "slots", reason: "" })} disabled={saving} className={adminButtonClass("primary", "sm")}>{saving ? "Сохраняем..." : "Сохранить слоты"}</button>}
         />
         <div className="space-y-3">
           {assignments.map((assignment) => {
@@ -363,6 +369,25 @@ export default function AdminPromosPage() {
           })}
         </div>
       </article>
+
+      <AdminConfirmDialog
+        open={Boolean(confirm)}
+        title={confirm?.kind === "issue" ? "Подтвердить выпуск ключей" : "Подтвердить сохранение слотов"}
+        description={
+          confirm?.kind === "issue"
+            ? "Ключи дают платный доступ. Укажите понятную причину для журнала аудита."
+            : "Сохранение меняет промо-разметку. Укажите причину для журнала аудита."
+        }
+        reason={confirm?.reason || ""}
+        onReasonChange={(reason) => setConfirm((current) => (current ? { ...current, reason } : current))}
+        onCancel={() => setConfirm(null)}
+        onConfirm={() => {
+          if (!confirm) return;
+          if (confirm.kind === "issue") void issueKeys(confirm.reason);
+          else void savePromoSlots(confirm.reason);
+        }}
+        busy={issuing || saving}
+      />
     </section>
   );
 }

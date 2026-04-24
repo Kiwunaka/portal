@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  AdminConfirmDialog,
   AdminBadge,
   AdminEmptyState,
   AdminInlineNote,
@@ -14,7 +15,7 @@ import {
   adminTextAreaClass,
 } from "@/components/admin/admin-shell";
 import { adminTicketReply, adminTicketStatus, adminTickets, type TicketInfo } from "@/lib/api";
-import { CheckCircle, Clock3, Inbox, Loader2, MessageCircle, RefreshCw, Send, ShieldCheck } from "lucide-react";
+import { CheckCircle, Clock3, Inbox, Loader2, MessageCircle, RefreshCw, Send } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { fmtRuDate } from "../nav";
 
@@ -144,8 +145,8 @@ export default function AdminTicketsPage() {
     setError("");
     setNotice("");
     try {
-      replaceTicket(await adminTicketStatus(selected.id, "closed"));
-      setNotice(`Ticket #${selected.id} closed. Reason: ${closeReason.trim()}`);
+      replaceTicket(await adminTicketStatus(selected.id, "closed", closeReason.trim()));
+      setNotice(`Обращение #${selected.id} закрыто. Причина: ${closeReason.trim()}`);
       setConfirmClose(false);
       setCloseReason("");
     } catch (err) {
@@ -190,7 +191,7 @@ export default function AdminTicketsPage() {
               ))}
             </select>
             <button type="button" className={adminButtonClass("secondary", "sm")} onClick={load} disabled={loading || busy}>
-              <RefreshCw size={14} /> Refresh
+              <RefreshCw size={14} /> Обновить
             </button>
           </>
         }
@@ -200,15 +201,15 @@ export default function AdminTicketsPage() {
       {notice ? <AdminInlineNote tone="success">{notice}</AdminInlineNote> : null}
 
       <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-        <AdminKpiCard label="Open" value={totals.open} hint="Waiting for first operator response." tone={totals.open ? "warning" : "success"} />
-        <AdminKpiCard label="In work" value={totals.inWork} hint="Owned by support flow." tone="accent" />
-        <AdminKpiCard label="Urgent" value={totals.urgent} hint="SLA age crossed 24 hours." tone={totals.urgent ? "danger" : "success"} />
-        <AdminKpiCard label="Closed loaded" value={totals.closed} hint="Within current filter result." />
+        <AdminKpiCard label="Открыто" value={totals.open} hint="Ждет первого ответа оператора." tone={totals.open ? "warning" : "success"} />
+        <AdminKpiCard label="В работе" value={totals.inWork} hint="Ведется через support-flow." tone="accent" />
+        <AdminKpiCard label="Срочно" value={totals.urgent} hint="SLA старше 24 часов." tone={totals.urgent ? "danger" : "success"} />
+        <AdminKpiCard label="Закрыто в выборке" value={totals.closed} hint="В текущем фильтре." />
       </div>
 
       <div className="grid gap-4 xl:grid-cols-[420px_minmax(0,1fr)]">
         <article className={adminPanelClass("neutral")}>
-          <AdminPanelHeader eyebrow="Queue" title="Ticket queue" description="Sorted by SLA rank, then most recent activity." />
+          <AdminPanelHeader eyebrow="очередь" title="Очередь обращений" description="Сортировка по SLA, затем по последней активности." />
           {orderedTickets.length ? (
             <div className="space-y-2">
               {orderedTickets.map((ticket) => {
@@ -331,27 +332,17 @@ export default function AdminTicketsPage() {
         </article>
       </div>
 
-      {confirmClose && selected ? (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/65 p-4">
-          <div className={`${adminPanelClass("warning")} w-full max-w-lg`}>
-            <div className="flex items-start gap-3">
-              <ShieldCheck className="mt-1 shrink-0" size={20} />
-              <div>
-                <h2 className="text-lg font-semibold text-slate-50">Close ticket #{selected.id}</h2>
-                <p className="mt-2 text-sm leading-6 text-slate-300">Closing is visible to the support workflow. Add the resolution reason.</p>
-              </div>
-            </div>
-            <label className="mt-4 block text-xs font-semibold uppercase tracking-[0.16em] text-slate-500" htmlFor="ticket-close-reason">Reason</label>
-            <input id="ticket-close-reason" className={`${adminFieldClass} mt-2`} value={closeReason} onChange={(event) => setCloseReason(event.target.value)} placeholder="resolved, duplicate, or user confirmed" />
-            <div className="mt-4 flex justify-end gap-2">
-              <button type="button" className={adminButtonClass("ghost", "sm")} onClick={() => setConfirmClose(false)} disabled={busy}>Cancel</button>
-              <button type="button" className={adminButtonClass("primary", "sm")} onClick={closeTicket} disabled={busy || closeReason.trim().length < 6}>
-                {busy ? <Loader2 className="animate-spin" size={14} /> : <Clock3 size={14} />} Close ticket
-              </button>
-            </div>
-          </div>
-        </div>
-      ) : null}
+      <AdminConfirmDialog
+        open={confirmClose && Boolean(selected)}
+        title={selected ? `Закрыть обращение #${selected.id}` : "Закрыть обращение"}
+        description="Закрытие видно в поддержке. Укажите причину или итог решения."
+        reason={closeReason}
+        onReasonChange={setCloseReason}
+        onCancel={() => setConfirmClose(false)}
+        onConfirm={() => void closeTicket()}
+        confirmLabel={busy ? "Закрываем..." : "Закрыть"}
+        busy={busy}
+      />
     </section>
   );
 }

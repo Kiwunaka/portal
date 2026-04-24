@@ -29,6 +29,7 @@ type MockOptions = {
   nodeHealth?: unknown;
   networkRolloutConfig?: unknown;
   tickets?: TicketMock[];
+  captureApiRequest?: (path: string, headers: Record<string, string>) => void;
 };
 
 type TicketMessageMock = {
@@ -659,6 +660,7 @@ async function registerApiMocks(page: Page, opts: MockOptions): Promise<void> {
     const request = route.request();
     const url = new URL(request.url());
     const path = url.pathname;
+    opts.captureApiRequest?.(path, request.headers());
     const json = (payload: unknown, status = 200) =>
       route.fulfill({
         status,
@@ -676,7 +678,9 @@ async function registerApiMocks(page: Page, opts: MockOptions): Promise<void> {
     if (path === "/api/admin/nodes/traffic") return json({ rows: [] });
     if (path === "/api/admin/network-rollout-config") {
       if (request.method() === "PUT") {
-        networkRolloutConfig = cloneJson(JSON.parse(request.postData() || "{}"));
+        const payload = JSON.parse(request.postData() || "{}");
+        delete payload.operator_reason;
+        networkRolloutConfig = cloneJson(payload);
         return json({ ok: true, network_rollout_config: networkRolloutConfig });
       }
       return json({ network_rollout_config: networkRolloutConfig });
@@ -836,9 +840,34 @@ test.describe("Admin gate", () => {
 
     await expect(page).toHaveURL(/\/admin\/dashboard\/?$/);
     await expect(page.getByRole("heading", { name: "Войдите снова, чтобы открыть админку" })).toBeVisible();
-    await expect(page.getByRole("textbox", { name: "Введите локальный пароль" })).toBeVisible();
-    await expect(page.getByRole("button", { name: "Войти в админку" })).toBeVisible();
+    await expect(page.getByText(/Сервер:/)).toBeVisible();
+    await expect(page.getByText(/Локальный вход появится только рядом/)).toBeVisible();
+    await expect(page.getByRole("textbox", { name: "Локальный пароль" })).toBeHidden();
     await expect(page.getByRole("navigation", { name: "Admin sections" })).toBeHidden();
+  });
+
+  test("sends only web session auth headers to admin APIs", async ({ page }) => {
+    const adminSummaryHeaders: Record<string, string>[] = [];
+    await page.addInitScript(() => {
+      (window as Window & { Telegram?: unknown }).Telegram = {
+        WebApp: {
+          initData: "forged-admin-init-data",
+          initDataUnsafe: { user: { id: 9999, username: "admin" } },
+        },
+      };
+    });
+    await registerApiMocks(page, {
+      isAdmin: true,
+      captureApiRequest: (path, headers) => {
+        if (path === "/api/admin/summary") adminSummaryHeaders.push(headers);
+      },
+    });
+
+    await openRoute(page, "admin/dashboard/");
+    await expect(page.getByRole("navigation", { name: "Admin sections" })).toBeVisible();
+    expect(adminSummaryHeaders.length).toBeGreaterThan(0);
+    expect(adminSummaryHeaders.every((headers) => headers.authorization === "Bearer e2e_mock_token")).toBe(true);
+    expect(adminSummaryHeaders.every((headers) => !("x-telegram-init-data" in headers))).toBe(true);
   });
 
   test("redirects non-admin from /admin/* to /dashboard", async ({ page }) => {
@@ -1385,10 +1414,10 @@ test.describe("Admin gate", () => {
       .replace('"version": "package-feed-v2"', '"version": "package-feed-v3"');
     await textarea.fill(nextJson);
     await page.getByRole("button", { name: /Сохранить/i }).click();
-    await expect(page.getByRole("heading", { name: "Confirm network rollout save" })).toBeVisible();
-    await page.getByLabel("Reason").fill("redesign e2e save");
-    await page.getByRole("button", { name: "Save rollout" }).click();
-    await expect(page.getByText(/Network rollout config/i)).toContainText(/сохран/i);
+    await expect(page.getByRole("heading", { name: "Подтвердить сохранение rollout" })).toBeVisible();
+    await page.getByLabel("Причина").fill("redesign e2e save");
+    await page.getByRole("button", { name: "Сохранить" }).last().click();
+    await expect(page.getByText(/Сетевой rollout сохран/i)).toContainText(/сохран/i);
 
     await page.reload({ waitUntil: "domcontentloaded" });
     await expect(textarea).toHaveValue(/"version": "2026-04-13-rollout"/);
@@ -1399,6 +1428,31 @@ test.describe("Admin gate", () => {
     await expect(textarea).toHaveValue(/"version": "package-feed-v3"/);
     await expect(targetingCard.getByText("install-default-windows")).toBeVisible();
     await expect(feedsCard.getByText("rules-feed-v7", { exact: true })).toBeVisible();
+  });
+
+  test("requires Russian confirmation reason before issuing access keys", async ({ page }) => {
+    let issuePayload: Record<string, unknown> | null = null;
+    page.on("request", (request) => {
+      const url = new URL(request.url());
+      if (url.pathname === "/api/admin/access-keys/issue" && request.method() === "POST") {
+        issuePayload = JSON.parse(request.postData() || "{}");
+      }
+    });
+
+    await registerApiMocks(page, { isAdmin: true });
+    await openRoute(page, "admin/promos/");
+
+    await page.getByRole("button", { name: "Выдать ключи" }).click();
+    await expect(page.getByRole("heading", { name: "Подтвердить выпуск ключей" })).toBeVisible();
+    await expect(page.getByText("Укажите причину минимум 8 символов.")).toBeVisible();
+    await expect(issuePayload).toBeNull();
+
+    await page.getByLabel("Причина").fill("ручная выдача после оплаты");
+    await page.getByRole("button", { name: "Подтвердить" }).click();
+
+    await expect.poll(() => issuePayload).toMatchObject({
+      operator_reason: "ручная выдача после оплаты",
+    });
   });
 
   test("lets admin triage a ticket and send a reply using stable status codes", async ({ page }) => {

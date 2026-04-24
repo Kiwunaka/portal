@@ -115,6 +115,19 @@
       "panel": "1.75rem",
       "pill": "999px"
     },
+    "brand_assets": {
+      "mark_color": "theme.palette.emerald_strong",
+      "icon_background": "theme.palette.canvas",
+      "icon_border": "theme.modes.light.border.strong",
+      "preferred_mark_asset": "marketing/public/redesign/brand/pokrov-mark.svg",
+      "preferred_app_icon": "marketing/public/redesign/brand/pokrov-app-icon-1024.png",
+      "pwa_icons": {
+        "any_192": "marketing/public/redesign/brand/pokrov-app-icon-192.png",
+        "any_512": "marketing/public/redesign/brand/pokrov-app-icon-512.png",
+        "maskable_512": "marketing/public/redesign/brand/pokrov-maskable-512.png",
+        "apple_180": "marketing/public/apple-touch-icon.png"
+      }
+    },
     "shadow": {
       "soft": "0 10px 28px rgba(32, 49, 65, 0.06)",
       "medium": "0 18px 52px rgba(32, 49, 65, 0.08)",

@@ -205,23 +205,23 @@ export function AdminUserSidePanel({
           <div className="flex items-start gap-2">
             <input value={String(user.subscription_url || "")} readOnly className={adminFieldClass} />
             <button className={adminButtonClass("secondary", "xs")} type="button" onClick={() => onCopyText(String(user.subscription_url || ""))}>
-              Copy URL
+              Копировать URL
             </button>
           </div>
           <div className="flex items-start gap-2">
             <input value={String(user.subscription_token || "")} readOnly className={adminFieldClass} />
             <button className={adminButtonClass("secondary", "xs")} type="button" onClick={() => onCopyText(String(user.subscription_token || ""))}>
-              Copy token
+              Копировать token
             </button>
           </div>
         </div>
       </details>
 
       <div className="mt-3 flex flex-wrap gap-2">
-        <button className={tabButtonClass("overview")} type="button" onClick={() => setDetailTab("overview")}>Overview</button>
-        <button className={tabButtonClass("keys")} type="button" onClick={() => setDetailTab("keys")}>Keys & limits</button>
-        <button className={tabButtonClass("history")} type="button" onClick={() => setDetailTab("history")}>Key history</button>
-        <button className={tabButtonClass("audit")} type="button" onClick={() => setDetailTab("audit")}>Audit</button>
+        <button className={tabButtonClass("overview")} type="button" onClick={() => setDetailTab("overview")}>Сводка</button>
+        <button className={tabButtonClass("keys")} type="button" onClick={() => setDetailTab("keys")}>Ключи и лимиты</button>
+        <button className={tabButtonClass("history")} type="button" onClick={() => setDetailTab("history")}>История ключей</button>
+        <button className={tabButtonClass("audit")} type="button" onClick={() => setDetailTab("audit")}>Аудит</button>
       </div>
 
       <div className="mt-3 grid gap-2 sm:grid-cols-2 xl:grid-cols-4">

@@ -17,6 +17,10 @@ ROUTE_MODE_ALL_TRAFFIC = "all_traffic"
 ROUTE_MODE_SELECTED_APPS = "selected_apps"
 _ROUTE_MODE_VALUES = {ROUTE_MODE_ALL_TRAFFIC, ROUTE_MODE_SELECTED_APPS}
 _DESKTOP_ROUTE_PLATFORMS = {"windows", "linux", "macos", "darwin"}
+ROUTE_POLICY_CAPABILITY_REVISION = "route-policy-v1"
+ROUTE_POLICY_CAPABILITY_UPDATED_AT = "2026-04-24T00:00:00Z"
+SELECTED_APPS_LIMIT = 128
+SELECTED_APP_IDENTIFIER_MAX_LENGTH = 260
 
 
 def normalize_app_device_name(value: str | None, *, fallback: str = "Current device") -> str:
@@ -33,7 +37,11 @@ def normalize_route_mode(value: str | None, *, fallback: str = ROUTE_MODE_ALL_TR
     return fallback
 
 
-def normalize_selected_apps(value: Any, *, limit: int = 128) -> list[str]:
+def is_valid_route_mode(value: str | None) -> bool:
+    return str(value or "").strip().lower() in _ROUTE_MODE_VALUES
+
+
+def normalize_selected_apps(value: Any, *, limit: int = SELECTED_APPS_LIMIT) -> list[str]:
     source = value
     if isinstance(source, str):
         text = source.strip()
@@ -55,7 +63,7 @@ def normalize_selected_apps(value: Any, *, limit: int = 128) -> list[str]:
         text = str(raw or "").strip()
         if not text:
             continue
-        item = text[:260]
+        item = text[:SELECTED_APP_IDENTIFIER_MAX_LENGTH]
         dedupe_key = item.lower()
         if dedupe_key in seen:
             continue
@@ -73,6 +81,25 @@ def _default_route_requires_elevated_privileges(user: User | None) -> bool:
         or ""
     ).strip().lower()
     return platform in _DESKTOP_ROUTE_PLATFORMS
+
+
+def route_policy_capabilities(user: User | None) -> dict[str, Any]:
+    platform = str(
+        (getattr(user, "app_platform", None) if user is not None else "")
+        or (getattr(user, "platform", None) if user is not None else "")
+        or ""
+    ).strip().lower()
+    scan_supported = platform in {"android", "windows"} or not platform
+    return {
+        "selected_apps": {
+            "supported": True,
+            "scan_supported": bool(scan_supported),
+            "max_items": int(SELECTED_APPS_LIMIT),
+            "max_identifier_length": int(SELECTED_APP_IDENTIFIER_MAX_LENGTH),
+            "revision": ROUTE_POLICY_CAPABILITY_REVISION,
+            "updated_at": ROUTE_POLICY_CAPABILITY_UPDATED_AT,
+        }
+    }
 
 
 def _default_route_requires_for_platform(platform: str | None) -> bool:
@@ -113,6 +140,7 @@ def resolve_route_policy(
             "selected_apps": apps,
             "requires_elevated_privileges": required,
         },
+        "capabilities": route_policy_capabilities(user),
     }
 
 

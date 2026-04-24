@@ -77,8 +77,19 @@ export default function CheckoutPage() {
   const [selectedCode, setSelectedCode] = useState(() => normalizePlanCode(searchParams.get("plan"), "1_month"));
 
   useEffect(() => {
-    setSelectedCode(normalizePlanCode(searchParams.get("plan"), "1_month"));
-    setPromoInput(normalizePromo(searchParams.get("promo") || ""));
+    let cancelled = false;
+    const nextSelectedCode = normalizePlanCode(searchParams.get("plan"), "1_month");
+    const nextPromoInput = normalizePromo(searchParams.get("promo") || "");
+
+    queueMicrotask(() => {
+      if (cancelled) return;
+      setSelectedCode(nextSelectedCode);
+      setPromoInput(nextPromoInput);
+    });
+
+    return () => {
+      cancelled = true;
+    };
   }, [searchParams]);
 
   useEffect(() => {
@@ -104,10 +115,10 @@ export default function CheckoutPage() {
           setPlans(nextPlans.length ? nextPlans : SHARED_PLANS);
           setCatalogError("");
         }
-      } catch (nextError) {
+      } catch {
         if (!cancelled) {
           setPlans(SHARED_PLANS);
-          setCatalogError(String((nextError as { message?: string })?.message || nextError || ""));
+          setCatalogError("Не удалось обновить каталог автоматически.");
         }
       }
     };
@@ -241,7 +252,7 @@ export default function CheckoutPage() {
 
           {catalogError ? (
             <p className="mt-4 text-xs text-amber-600 dark:text-amber-300">
-              Часть данных не обновилась автоматически, поэтому показаны последние доступные варианты: {catalogError}
+              {catalogError} Показываем последние доступные варианты.
             </p>
           ) : null}
         </article>

@@ -26,33 +26,33 @@ const NAV_ITEMS = [
 ];
 
 const PROOF_ITEMS = [
-  { value: "5 дней", label: "на спокойную проверку в приложении" },
-  { value: "+10 дней", label: "за подписку на Telegram-канал" },
-  { value: "Android и Windows", label: "главные платформы для старта" },
-  { value: "До 5 устройств", label: "для телефона, ноутбука и дома" },
+  { value: "5 дней", label: "ключ доступа выдается в приложении" },
+  { value: "Android и Windows", label: "основные платформы текущего запуска" },
+  { value: "+10 дней", label: "после связи с Telegram-каналом" },
+  { value: "До 5 устройств", label: "после продления на платном сроке" },
 ];
 
-const HERO_HINTS = [
-  { label: "Маршрут", value: "Все, кроме RU" },
-  { label: "Ключ", value: "активация в приложении" },
-  { label: "Поддержка", value: "кабинет и Telegram" },
+const PRODUCT_STATUS_ITEMS = [
+  { label: "Ключ", value: "5 дней для проверки" },
+  { label: "После ключа", value: "скачать и активировать" },
+  { label: "Помощь", value: "кабинет и Telegram" },
 ];
 
 const FEATURES = [
   {
     eyebrow: "Приложение",
-    title: "Главный экран без лишней сложности",
-    text: "Открываете приложение, видите понятный статус и выбираете локацию без технической путаницы.",
+    title: "Ключ появляется там, где он нужен",
+    text: "Открываете приложение, получаете 5 дней доступа и видите понятный статус подключения.",
   },
   {
     eyebrow: "Кабинет",
-    title: "Срок, устройства и продление рядом",
-    text: "Кабинет помогает проверить доступ, скачать сборки и продолжить срок без нового старта.",
+    title: "Срок и устройства под рукой",
+    text: "Кабинет помогает проверить доступ, скачать сборки и продлить срок без новой настройки.",
   },
   {
-    eyebrow: "Маршрут",
-    title: "Мягкие настройки на каждый день",
-    text: "Базовый путь подходит обычному сценарию, а расширенные параметры остаются там, где они действительно нужны.",
+    eyebrow: "Правила",
+    title: "Настройки остаются понятными",
+    text: "Повседневный режим включается быстро, а дополнительные параметры не мешают первому запуску.",
   },
 ];
 
@@ -63,7 +63,7 @@ const USE_CASES = [
   },
   {
     title: "Для ноутбука",
-    text: "Оставить стабильный рабочий маршрут на Windows и управлять сроком из кабинета.",
+    text: "Оставить стабильное подключение на Windows и управлять сроком из кабинета.",
   },
   {
     title: "Для семьи",
@@ -73,30 +73,30 @@ const USE_CASES = [
 
 const STEPS = [
   {
+    title: "Получите ключ на 5 дней",
+    text: "Первый ключ выдается в приложении для нового устройства. Регистрация в Telegram для этого не обязательна.",
+  },
+  {
     title: "Скачайте приложение",
-    text: "Начните с Android или Windows. На первом шаге не нужно выбирать сложные режимы.",
+    text: "Установите POKROV на Android или Windows и активируйте ключ без сложных режимов на первом экране.",
   },
   {
-    title: "Попробуйте 5 дней",
-    text: "Проверьте сервис в привычных местах: дома, на работе, в дороге и на своих устройствах.",
-  },
-  {
-    title: "Продолжайте спокойно",
-    text: "Если всё подходит, выберите срок, оплатите и управляйте доступом в кабинете.",
+    title: "Продлите, если подходит",
+    text: "После проверки выберите срок и управляйте доступом в кабинете. Лишних действий с подключением не потребуется.",
   },
 ];
 
 const PLATFORMS = [
   {
     name: "Android",
-    status: "Основной путь",
-    text: "Главная мобильная платформа для старта, проверки и обычного ежедневного сценария.",
+    status: "Основной запуск",
+    text: "Главная мобильная платформа для старта, проверки и обычного ежедневного подключения.",
     action: "Установить приложение",
     primary: true,
   },
   {
     name: "Windows",
-    status: "Основной путь",
+    status: "Основной запуск",
     text: "Рабочий и домашний компьютер остаются в том же понятном контуре POKROV.",
     action: "Скачать для Windows",
     primary: true,
@@ -138,7 +138,6 @@ export default function MarketingHomePage() {
   const planCards = buildPlanCards();
   const defaultPlanCode = planCards[1]?.code || planCards[0]?.code || "1_month";
   const featuredCode = planCards[1]?.code || defaultPlanCode;
-  const checkoutHref = buildCheckoutHref(defaultPlanCode);
   const installHref = MARKETING_CANONICAL_PATHS.install;
   const supportHref = config.contactFormUrl || config.supportTelegramUrl || config.helpbotUrl;
   const channelHref = config.newsChannelUrl;
@@ -168,7 +167,7 @@ export default function MarketingHomePage() {
               Кабинет
             </a>
             <Link href={installHref} className={styles.primaryButton}>
-              Попробовать 5 дней
+              Получить ключ на 5 дней
             </Link>
           </div>
         </header>
@@ -176,38 +175,33 @@ export default function MarketingHomePage() {
         <main id="main-content" className={styles.main}>
           <section className={styles.hero}>
             <div className={styles.heroCopy}>
-              <span className={styles.kicker}>приложение, кабинет и поддержка в одном спокойном пути</span>
-              <h1>POKROV: доступ на каждый день без лишних настроек.</h1>
+              <span className={styles.kicker}>ключ доступа, приложение и поддержка рядом</span>
+              <h1>POKROV: сначала 5-дневный ключ, потом приложение и активация.</h1>
               <p>
-                Начните с приложения, проверьте сервис 5 дней бесплатно и продолжайте только если он правда подходит
-                вашему телефону, компьютеру и обычному ритму.
+                Получите ключ для проверки, скачайте POKROV на Android или Windows и включите доступ в приложении.
+                Если всё подходит, продлите срок в кабинете или на странице тарифов.
               </p>
               <div className={styles.heroActions}>
                 <Link href={installHref} className={styles.primaryButton}>
-                  Попробовать 5 дней
+                  Получить ключ на 5 дней
                 </Link>
-                <a href={cabinetHref} className={styles.secondaryButton}>
-                  Открыть кабинет
-                </a>
+                <Link href={installHref} className={styles.secondaryButton}>
+                  Скачать приложение
+                </Link>
               </div>
             </div>
 
             <div className={styles.heroMedia} aria-label="Визуальный обзор POKROV">
-              <div className={styles.mapPanel} aria-hidden="true">
-                <span />
-                <span />
-                <span />
-              </div>
               <img
                 src="/redesign/pokrov-hero-product.png"
-                alt="Экраны POKROV с приложением, кабинетом и маршрутами"
+                alt="Экраны POKROV с приложением, кабинетом и подключением"
                 className={styles.heroImage}
               />
-              <div className={styles.heroHintRail} aria-hidden="true">
-                {HERO_HINTS.map((hint) => (
-                  <div key={hint.label} className={styles.heroHint}>
-                    <span>{hint.label}</span>
-                    <strong>{hint.value}</strong>
+              <div className={styles.productStatusRail} aria-hidden="true">
+                {PRODUCT_STATUS_ITEMS.map((item) => (
+                  <div key={item.label} className={styles.productStatusItem}>
+                    <span>{item.label}</span>
+                    <strong>{item.value}</strong>
                   </div>
                 ))}
               </div>
@@ -226,9 +220,9 @@ export default function MarketingHomePage() {
           <section id="features" className={styles.section}>
             <div className={styles.sectionHead}>
               <span>возможности</span>
-              <h2>Не нужно понимать инфраструктуру, чтобы начать пользоваться.</h2>
+              <h2>Не нужно разбираться в сетевых деталях, чтобы начать пользоваться.</h2>
               <p>
-                В публичной части POKROV говорит простым языком: где скачать, как попробовать, где продлить и куда
+                В публичной части POKROV говорит простым языком: где получить ключ, как скачать, где продлить и куда
                 написать, если нужна помощь.
               </p>
             </div>
@@ -263,7 +257,7 @@ export default function MarketingHomePage() {
           <section id="steps" className={styles.section}>
             <div className={styles.sectionHead}>
               <span>как начать</span>
-              <h2>Три шага: установить, проверить, продолжить.</h2>
+              <h2>Три шага: получить ключ, скачать приложение, активировать.</h2>
             </div>
 
             <div className={styles.stepsGrid}>
@@ -326,7 +320,7 @@ export default function MarketingHomePage() {
             <div className={styles.sectionHead}>
               <span>тарифы</span>
               <h2>После пробного периода можно выбрать срок без нового старта.</h2>
-              <p>Тарифы нужны только после проверки. Доступ продолжает тот же путь: приложение, кабинет, поддержка.</p>
+              <p>Тарифы нужны только после проверки. Доступ продолжает тот же порядок: приложение, кабинет, поддержка.</p>
             </div>
 
             <div className={styles.pricingGrid}>
@@ -355,17 +349,17 @@ export default function MarketingHomePage() {
           <section id="final-cta" className={styles.finalCta}>
             <div>
               <span className={styles.kicker}>готовы начать?</span>
-              <h2>Попробуйте POKROV 5 дней и решите без спешки.</h2>
+              <h2>Получите ключ на 5 дней и активируйте его в приложении.</h2>
               <p>
-                Если сервис подойдёт, вы сможете выбрать срок, открыть кабинет и продолжить пользоваться тем же доступом.
+                Первый шаг не ведет к покупке. Сначала проверьте POKROV на своем устройстве, а продление оставьте на потом.
               </p>
             </div>
             <div className={styles.finalActions}>
               <Link href={installHref} className={styles.lightButton}>
-                Попробовать 5 дней
+                Получить ключ на 5 дней
               </Link>
-              <Link href={checkoutHref} className={styles.outlineButton}>
-                Посмотреть тарифы
+              <Link href={installHref} className={styles.outlineButton}>
+                Скачать приложение
               </Link>
             </div>
           </section>

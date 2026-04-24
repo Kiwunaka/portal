@@ -69,7 +69,7 @@ export default function AdminReferralsPage() {
       setLinks(rows);
       setQueueRows(queue);
     } catch (err) {
-      setError(String((err as { message?: string })?.message || err || "Could not load referral data."));
+      setError(String((err as { message?: string })?.message || err || "Не удалось загрузить referral-данные."));
     }
   }, [queueStatus]);
 
@@ -80,7 +80,7 @@ export default function AdminReferralsPage() {
   const submitLinkDialog = async (): Promise<void> => {
     if (!linkDialog) return;
     if (!linkDialog.reason.trim()) {
-      setError("Operator reason is required.");
+      setError("Укажите причину действия оператора.");
       return;
     }
     setBusy(true);
@@ -93,7 +93,7 @@ export default function AdminReferralsPage() {
           target_action: linkDialog.targetAction.trim(),
           is_active: true,
         });
-        setResult("Start link created.");
+        setResult("Start-ссылка создана.");
       } else if (linkDialog.kind === "edit") {
         await adminStartLinkUpdate(linkDialog.id, {
           code: linkDialog.code.trim(),
@@ -101,15 +101,15 @@ export default function AdminReferralsPage() {
           target_action: linkDialog.targetAction.trim(),
           is_active: linkDialog.isActive,
         });
-        setResult(`Start link #${linkDialog.id} updated.`);
+        setResult(`Start-ссылка #${linkDialog.id} обновлена.`);
       } else {
         await adminStartLinkDelete(linkDialog.id);
-        setResult(`Start link #${linkDialog.id} deleted.`);
+        setResult(`Start-ссылка #${linkDialog.id} удалена.`);
       }
       setLinkDialog(null);
       await load();
     } catch (err) {
-      setError(String((err as { message?: string })?.message || err || "Could not save start link."));
+      setError(String((err as { message?: string })?.message || err || "Не удалось сохранить start-ссылку."));
     } finally {
       setBusy(false);
     }
@@ -127,7 +127,7 @@ export default function AdminReferralsPage() {
         source: "bot",
       }));
     } catch (err) {
-      setError(String((err as { message?: string })?.message || err || "Could not build campaign links."));
+      setError(String((err as { message?: string })?.message || err || "Не удалось собрать ссылки кампании."));
     } finally {
       setBusy(false);
     }
@@ -136,9 +136,9 @@ export default function AdminReferralsPage() {
   const copyText = async (text: string): Promise<void> => {
     try {
       await navigator.clipboard.writeText(text);
-      setResult("Copied.");
+      setResult("Скопировано.");
     } catch {
-      setError("Clipboard copy failed.");
+      setError("Не удалось скопировать в буфер.");
     }
   };
 
@@ -148,10 +148,10 @@ export default function AdminReferralsPage() {
     setResult("");
     try {
       const out = await adminReferralProcess({ limit: 120, force_without_activity: forceWithoutActivity });
-      setResult(`Queue processed: rewarded ${out.rewarded}, waiting ${out.waiting}, rejected ${out.rejected}, total ${out.processed}.`);
+      setResult(`Очередь обработана: награждено ${out.rewarded}, ожидают ${out.waiting}, отклонено ${out.rejected}, всего ${out.processed}.`);
       await load();
     } catch (err) {
-      setError(String((err as { message?: string })?.message || err || "Could not process queue."));
+      setError(String((err as { message?: string })?.message || err || "Не удалось обработать очередь."));
     } finally {
       setBusy(false);
     }
@@ -161,24 +161,24 @@ export default function AdminReferralsPage() {
     <section className="space-y-4">
       <article className={adminPanelClass("neutral")}>
         <AdminPanelHeader
-          eyebrow="access"
-          title="Referrals and campaign links"
-          description="Manage start links, build campaign URLs, and process the referral reward queue from one operator surface."
+          eyebrow="доступ"
+          title="Рефералы и campaign-ссылки"
+          description="Start-ссылки, campaign URL и очередь реферальных бонусов в одной операторской поверхности."
           actions={
             <>
               <button className={adminButtonClass("secondary", "sm")} type="button" onClick={() => void load()} disabled={busy}>
-                Reload
+                Обновить
               </button>
               <button className={adminButtonClass("primary", "sm")} type="button" onClick={() => setLinkDialog({ kind: "create", code: "launch14", description: "Campaign start link", targetAction: "campaign", reason: "" })} disabled={busy}>
-                New start link
+                Новая start-ссылка
               </button>
             </>
           }
         />
         <div className="flex flex-wrap gap-2">
-          <AdminBadge tone="accent">{links.length} start links</AdminBadge>
-          <AdminBadge tone="accent">{queueRows.length} queue rows</AdminBadge>
-          <AdminBadge tone="warning">delete requires reason</AdminBadge>
+          <AdminBadge tone="accent">{links.length} start-ссылок</AdminBadge>
+          <AdminBadge tone="accent">{queueRows.length} строк очереди</AdminBadge>
+          <AdminBadge tone="warning">удаление требует причину</AdminBadge>
         </div>
       </article>
 
@@ -187,47 +187,47 @@ export default function AdminReferralsPage() {
 
       <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr),minmax(360px,0.75fr)]">
         <article className={adminPanelClass("neutral")}>
-          <AdminPanelHeader eyebrow="start links" title="Entry links" />
+          <AdminPanelHeader eyebrow="start-ссылки" title="Входные ссылки" />
           <div className="space-y-3">
             {links.map((link) => (
               <div key={link.id} className={adminInsetPanelClass}>
                 <div className="flex flex-wrap items-start justify-between gap-3">
                   <div className="min-w-0">
                     <div className="flex flex-wrap items-center gap-2">
-                      <AdminBadge tone={link.is_active ? "success" : "warning"}>{link.is_active ? "active" : "inactive"}</AdminBadge>
+                      <AdminBadge tone={link.is_active ? "success" : "warning"}>{link.is_active ? "активна" : "выключена"}</AdminBadge>
                       <span className="font-mono text-sm font-semibold text-slate-100">{link.code}</span>
                     </div>
-                    <p className="mt-2 text-xs leading-5 text-slate-400">{link.description || "No description"}</p>
-                    <p className="mt-1 text-[11px] text-slate-500">Updated: {fmtRuDate(link.updated_at)}</p>
+                    <p className="mt-2 text-xs leading-5 text-slate-400">{link.description || "Без описания"}</p>
+                    <p className="mt-1 text-[11px] text-slate-500">Обновлено: {fmtRuDate(link.updated_at)}</p>
                     <p className="mt-1 truncate text-xs text-emerald-300">{link.bot_start_link}</p>
                   </div>
                   <div className="flex flex-wrap gap-2">
-                    <button className={adminButtonClass("secondary", "xs")} type="button" onClick={() => void copyText(link.bot_start_link)}>Copy</button>
-                    <button className={adminButtonClass("secondary", "xs")} type="button" onClick={() => setLinkDialog({ kind: "edit", id: link.id, code: link.code || "", description: link.description || "", targetAction: link.target_action || "campaign", isActive: Boolean(link.is_active), reason: "" })}>Edit</button>
+                    <button className={adminButtonClass("secondary", "xs")} type="button" onClick={() => void copyText(link.bot_start_link)}>Копировать</button>
+                    <button className={adminButtonClass("secondary", "xs")} type="button" onClick={() => setLinkDialog({ kind: "edit", id: link.id, code: link.code || "", description: link.description || "", targetAction: link.target_action || "campaign", isActive: Boolean(link.is_active), reason: "" })}>Изменить</button>
                     {link.is_active ? (
-                      <button className={adminButtonClass("danger", "xs")} type="button" onClick={() => setLinkDialog({ kind: "delete", id: link.id, reason: "" })}>Delete</button>
+                      <button className={adminButtonClass("danger", "xs")} type="button" onClick={() => setLinkDialog({ kind: "delete", id: link.id, reason: "" })}>Удалить</button>
                     ) : null}
                   </div>
                 </div>
               </div>
             ))}
-            {!links.length ? <p className="text-xs text-slate-500">No start links yet.</p> : null}
+            {!links.length ? <p className="text-xs text-slate-500">Start-ссылок пока нет.</p> : null}
           </div>
         </article>
 
         <article className={adminPanelClass("neutral")}>
-          <AdminPanelHeader eyebrow="campaign builder" title="Build links" description="Generate bot, checkout, and webapp links for a campaign tuple." />
+          <AdminPanelHeader eyebrow="campaign builder" title="Собрать ссылки" description="Генерация bot, checkout и webapp ссылок для campaign tuple." />
           <div className="grid gap-3">
-            <input value={promoCode} onChange={(event) => setPromoCode(event.target.value)} placeholder="Promo code, optional" className={adminFieldClass} />
-            <input value={campaignKey} onChange={(event) => setCampaignKey(event.target.value)} placeholder="Campaign key, optional" className={adminFieldClass} />
-            <input value={planCode} onChange={(event) => setPlanCode(event.target.value)} placeholder="Plan code, optional" className={adminFieldClass} />
+            <input value={promoCode} onChange={(event) => setPromoCode(event.target.value)} placeholder="Promo code, необязательно" className={adminFieldClass} />
+            <input value={campaignKey} onChange={(event) => setCampaignKey(event.target.value)} placeholder="Campaign key, необязательно" className={adminFieldClass} />
+            <input value={planCode} onChange={(event) => setPlanCode(event.target.value)} placeholder="Plan code, необязательно" className={adminFieldClass} />
             <button className={adminButtonClass("primary")} type="button" onClick={() => void buildLinks()} disabled={busy}>
-              Build links
+              Собрать ссылки
             </button>
           </div>
           {built ? (
             <div className="mt-4 space-y-2">
-              {built.checkout_mode === "bot_fallback" ? <AdminBadge tone="warning">checkout uses bot reserve path</AdminBadge> : null}
+              {built.checkout_mode === "bot_fallback" ? <AdminBadge tone="warning">checkout использует reserve-путь бота</AdminBadge> : null}
               {[
                 { label: "Bot", value: built.bot_start_link },
                 { label: "Checkout", value: built.checkout_link },
@@ -237,7 +237,7 @@ export default function AdminReferralsPage() {
                   <p className="text-[10px] uppercase tracking-[0.12em] text-slate-500">{item.label}</p>
                   <p className="mt-1 truncate font-mono text-xs text-slate-300">{item.value}</p>
                   <button className={`${adminButtonClass("secondary", "xs")} mt-2`} type="button" onClick={() => void copyText(item.value)}>
-                    Copy
+                    Копировать
                   </button>
                 </div>
               ))}
@@ -248,19 +248,19 @@ export default function AdminReferralsPage() {
 
       <article className={adminPanelClass("neutral")}>
         <AdminPanelHeader
-          eyebrow="queue"
-          title="Referral processing queue"
+          eyebrow="очередь"
+          title="Очередь реферальной обработки"
           actions={
             <div className="flex flex-wrap gap-2">
               <select value={queueStatus} onChange={(event) => setQueueStatus(event.target.value)} className={adminFieldClass}>
-                <option value="">All statuses</option>
+                <option value="">Все статусы</option>
                 <option value="pending">Pending</option>
                 <option value="rewarded">Rewarded</option>
                 <option value="rejected">Rejected</option>
                 <option value="waiting_activity">Waiting activity</option>
               </select>
-              <button className={adminButtonClass("secondary", "sm")} type="button" onClick={() => void processQueue(false)} disabled={busy}>Process</button>
-              <button className={adminButtonClass("danger", "sm")} type="button" onClick={() => void processQueue(true)} disabled={busy}>Force process</button>
+              <button className={adminButtonClass("secondary", "sm")} type="button" onClick={() => void processQueue(false)} disabled={busy}>Обработать</button>
+              <button className={adminButtonClass("danger", "sm")} type="button" onClick={() => void processQueue(true)} disabled={busy}>Force обработка</button>
             </div>
           }
         />
@@ -269,10 +269,10 @@ export default function AdminReferralsPage() {
             <table className="min-w-full text-xs">
               <thead>
                 <tr className="border-b border-[#c6e6db] bg-[#f8fffc] text-left text-[11px] uppercase tracking-[0.14em] text-slate-500">
-                  <th className="px-3 py-3">Order</th>
+                  <th className="px-3 py-3">Заказ</th>
                   <th className="px-3 py-3">Referrer</th>
                   <th className="px-3 py-3">Referred</th>
-                  <th className="px-3 py-3">Ready</th>
+                  <th className="px-3 py-3">Готовность</th>
                   <th className="px-3 py-3">Status</th>
                 </tr>
               </thead>
@@ -288,7 +288,7 @@ export default function AdminReferralsPage() {
                 ))}
               </tbody>
             </table>
-            {!queueRows.length ? <p className="px-3 py-4 text-xs text-slate-500">Queue is empty.</p> : null}
+            {!queueRows.length ? <p className="px-3 py-4 text-xs text-slate-500">Очередь пуста.</p> : null}
           </div>
         </div>
       </article>
@@ -298,28 +298,28 @@ export default function AdminReferralsPage() {
           <div className={`${adminPanelClass("neutral")} w-full max-w-xl`}>
             {linkDialog.kind === "delete" ? (
               <>
-                <h3 className="text-xl font-semibold">Delete start link #{linkDialog.id}</h3>
-                <p className="mt-2 text-sm text-slate-400">Campaign and welcome scenarios will no longer use this link.</p>
+                <h3 className="text-xl font-semibold">Удалить start-ссылку #{linkDialog.id}</h3>
+                <p className="mt-2 text-sm text-slate-400">Campaign и welcome-сценарии больше не будут использовать эту ссылку.</p>
               </>
             ) : (
               <>
-                <h3 className="text-xl font-semibold">{linkDialog.kind === "create" ? "New start link" : `Start link #${linkDialog.id}`}</h3>
+                <h3 className="text-xl font-semibold">{linkDialog.kind === "create" ? "Новая start-ссылка" : `Start-ссылка #${linkDialog.id}`}</h3>
                 <input value={linkDialog.code} onChange={(event) => setLinkDialog({ ...linkDialog, code: event.target.value })} className={`mt-4 ${adminFieldClass}`} placeholder="Code" />
-                <textarea value={linkDialog.description} onChange={(event) => setLinkDialog({ ...linkDialog, description: event.target.value })} rows={3} className={`mt-3 ${adminTextAreaClass}`} placeholder="Description" />
+                <textarea value={linkDialog.description} onChange={(event) => setLinkDialog({ ...linkDialog, description: event.target.value })} rows={3} className={`mt-3 ${adminTextAreaClass}`} placeholder="Описание" />
                 <input value={linkDialog.targetAction} onChange={(event) => setLinkDialog({ ...linkDialog, targetAction: event.target.value })} className={`mt-3 ${adminFieldClass}`} placeholder="Target action" />
                 {linkDialog.kind === "edit" ? (
                   <label className="mt-3 inline-flex items-center gap-2 text-sm text-slate-400">
                     <input type="checkbox" checked={linkDialog.isActive} onChange={(event) => setLinkDialog({ ...linkDialog, isActive: event.target.checked })} />
-                    Active
+                    Активна
                   </label>
                 ) : null}
               </>
             )}
-            <input value={linkDialog.reason} onChange={(event) => setLinkDialog({ ...linkDialog, reason: event.target.value })} className={`mt-4 ${adminFieldClass}`} placeholder="Operator reason" />
+            <input value={linkDialog.reason} onChange={(event) => setLinkDialog({ ...linkDialog, reason: event.target.value })} className={`mt-4 ${adminFieldClass}`} placeholder="Причина действия" />
             <div className="mt-4 flex justify-end gap-2">
-              <button className={adminButtonClass("secondary")} type="button" onClick={() => setLinkDialog(null)}>Cancel</button>
+              <button className={adminButtonClass("secondary")} type="button" onClick={() => setLinkDialog(null)}>Отмена</button>
               <button className={adminButtonClass(linkDialog.kind === "delete" ? "danger" : "primary")} type="button" disabled={busy || !linkDialog.reason.trim()} onClick={() => void submitLinkDialog()}>
-                {linkDialog.kind === "delete" ? "Delete" : "Save"}
+                {linkDialog.kind === "delete" ? "Удалить" : "Сохранить"}
               </button>
             </div>
           </div>

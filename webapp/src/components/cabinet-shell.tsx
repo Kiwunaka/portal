@@ -66,13 +66,13 @@ const NAV_ITEMS: NavItem[] = [
     href: "/support",
     icon: "support_agent",
     label: "Поддержка",
-    description: "Тикеты и живой диалог",
+    description: "Кейсы и история обращений",
     match: (pathname) => pathname.startsWith("/support"),
   },
   {
     href: "/profile",
     icon: "account_circle",
-    label: "Аккаунт",
+    label: "Профиль",
     description: "Вход, тема и связанные каналы",
     match: (pathname) => pathname.startsWith("/profile"),
   },
@@ -108,11 +108,11 @@ const ROUTE_META: Array<{ match: (pathname: string) => boolean; meta: RouteMeta 
   },
   {
     match: (pathname) => pathname.startsWith("/support"),
-    meta: { title: "Поддержка", subtitle: "Один разговор на весь кейс, без потери контекста." },
+    meta: { title: "Поддержка", subtitle: "Асинхронные кейсы, вложения и история обращений без потери контекста." },
   },
   {
     match: (pathname) => pathname.startsWith("/profile"),
-    meta: { title: "Аккаунт", subtitle: "Вход, тема, связанные каналы и безопасные способы вернуться в доступ." },
+    meta: { title: "Профиль", subtitle: "Вход, тема, связанные каналы и безопасные способы вернуться в доступ." },
   },
   {
     match: (pathname) => pathname.startsWith("/settings"),
@@ -130,7 +130,7 @@ function formatExpiry(value?: string | null): string {
 function profileLabel(username?: string | null, tgId?: number | null): string {
   if (username) return `@${username}`;
   if (tgId) return `ID ${tgId}`;
-  return "Аккаунт POKROV";
+  return "Профиль POKROV";
 }
 
 function profileMark(username?: string | null, tgId?: number | null): string {
@@ -187,10 +187,6 @@ export default function CabinetShell({ children }: { children: ReactNode }) {
     return () => document.body.classList.remove("modal-open");
   }, [drawerOpen]);
 
-  useEffect(() => {
-    setDrawerOpen(false);
-  }, [pathname]);
-
   if (loading) {
     return (
       <ShellState title="Подтягиваем кабинет" description="Проверяем сессию и собираем ваши данные, чтобы открыть нужный экран без лишних шагов.">
@@ -216,7 +212,7 @@ export default function CabinetShell({ children }: { children: ReactNode }) {
     return (
       <ShellState
         title="Не получилось открыть кабинет"
-        description={error || "Данные аккаунта сейчас не загрузились. Можно повторить попытку или быстро перейти в поддержку."}
+        description="Данные аккаунта сейчас не загрузились. Можно повторить попытку или перейти в поддержку, если проблема повторяется."
         actions={
           <>
             <button className="btn-primary rounded-full px-5 py-3 text-sm font-semibold" type="button" onClick={() => void refresh()}>
@@ -302,7 +298,7 @@ export default function CabinetShell({ children }: { children: ReactNode }) {
           </div>
 
           <div className="rounded-[1.4rem] border border-slate-200/80 bg-white/90 p-4 dark:border-white/10 dark:bg-white/[0.04]">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500 dark:text-slate-400">Аккаунт</p>
+            <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500 dark:text-slate-400">Профиль</p>
             <div className="mt-3 flex items-center gap-3">
               <span className="grid h-11 w-11 place-items-center rounded-full bg-emerald-900 text-sm font-semibold uppercase text-white dark:bg-emerald-700">
                 {profileMark(user.username, user.tg_id)}
@@ -353,6 +349,7 @@ export default function CabinetShell({ children }: { children: ReactNode }) {
               <AppRouteLink
                 key={item.href}
                 href={item.href}
+                onClick={() => setDrawerOpen(false)}
                 className={`block rounded-[1.15rem] px-4 py-3 ${
                   active
                     ? "bg-emerald-900 text-white dark:bg-emerald-700"

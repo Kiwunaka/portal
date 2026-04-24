@@ -105,8 +105,8 @@ export default function SupportPage() {
       const rows = await fetchTickets(30);
       setTickets(rows);
       setError("");
-    } catch (nextError) {
-      setError(String((nextError as { message?: string })?.message || nextError || ""));
+    } catch {
+      setError("Не удалось обновить историю обращений. Попробуйте еще раз или напишите в Telegram.");
     } finally {
       setLoadingTickets(false);
     }
@@ -218,8 +218,8 @@ export default function SupportPage() {
       setAttachmentFile(null);
       await loadTickets();
       setMessage(`Кейс #${created.id} создан. Его можно продолжить из списка.`);
-    } catch (nextError) {
-      setError(String((nextError as { message?: string })?.message || nextError || ""));
+    } catch {
+      setError("Не удалось создать кейс. Попробуйте еще раз или напишите в Telegram.");
     } finally {
       setBusy(false);
     }

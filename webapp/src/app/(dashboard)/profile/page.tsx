@@ -21,7 +21,7 @@ function formatDate(value?: string | null): string {
 function profileLabel(username?: string | null, tgId?: number | null): string {
   if (username) return `@${username}`;
   if (tgId) return `ID ${tgId}`;
-  return "Аккаунт POKROV";
+  return "Профиль POKROV";
 }
 
 function channelStatusLabel(subscriber?: boolean): string {
@@ -158,12 +158,12 @@ export default function ProfilePage() {
 
   return (
     <CabinetRoute
-      eyebrow="Аккаунт"
-      title="Вход, тема и связанные каналы"
+      eyebrow="Профиль"
+      title="Профиль, тема и связанные каналы"
       description="Здесь собраны только практичные вещи: кто вы, какой режим действует сейчас и через какие каналы удобно продолжать доступ."
       metrics={[
         {
-          label: "Аккаунт",
+          label: "Профиль",
           value: profileLabel(user?.username, user?.tg_id),
           hint: "Это тот же аккаунт, который используют ваши устройства.",
           tone: "neutral",
@@ -189,8 +189,8 @@ export default function ProfilePage() {
       ]}
     >
       <CabinetHero
-        eyebrow="Главное по аккаунту"
-        badge={dash?.is_active ? "Аккаунт в порядке" : "Аккаунту нужен следующий шаг"}
+        eyebrow="Главное по профилю"
+        badge={dash?.is_active ? "Профиль в порядке" : "Профилю нужен следующий шаг"}
         badgeTone={dash?.is_active ? "success" : "warning"}
         title={profileLabel(user?.username, user?.tg_id)}
         description={
@@ -260,7 +260,7 @@ export default function ProfilePage() {
 
       <CabinetSection
         eyebrow="Бонусы и ссылки"
-        title="Что еще есть у аккаунта"
+      title="Что еще есть у профиля"
         description="Дополнительные вещи под рукой, если они вам нужны. Длинные личные ссылки открываются отдельным действием."
       >
         <CabinetCardGrid items={bonusCards} />

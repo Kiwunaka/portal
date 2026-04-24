@@ -32,7 +32,7 @@ type PortalSessionContextValue = {
   user: UserPayload | null;
   dash: DashboardSnapshot | null;
   tgUser: TgUser | null;
-  refresh: () => Promise<void>;
+  refresh: (options?: PortalSessionRefreshOptions) => Promise<void>;
   startTelegramLogin: () => Promise<void>;
   loginByWidget: (payload: TelegramWebLoginPayload) => Promise<void>;
   logoutWebSession: () => void;
@@ -53,6 +53,10 @@ function parseErrorMessage(error: unknown): string {
 type PortalSessionProviderProps = {
   children: React.ReactNode;
   mode?: "entry" | "dashboard";
+};
+
+type PortalSessionRefreshOptions = {
+  forceRefresh?: boolean;
 };
 
 export function PortalSessionProvider({ children, mode = "dashboard" }: PortalSessionProviderProps) {
@@ -98,7 +102,9 @@ export function PortalSessionProvider({ children, mode = "dashboard" }: PortalSe
     }
   }, []);
 
-  const refresh = useCallback(async () => {
+  const refresh = useCallback(async (options?: PortalSessionRefreshOptions) => {
+    const forceRefresh = Boolean(options?.forceRefresh);
+
     if (typeof window !== "undefined") {
       try {
         const current = new URL(window.location.href);
@@ -141,10 +147,13 @@ export function PortalSessionProvider({ children, mode = "dashboard" }: PortalSe
       let dashboard: DashboardSnapshot;
       let profile: UserPayload;
       if (authTgId > 0) {
-        [dashboard, profile] = await Promise.all([fetchDashboard(), fetchUser(authTgId)]);
+        [dashboard, profile] = await Promise.all([
+          fetchDashboard({ forceRefresh }),
+          fetchUser(authTgId, { forceRefresh }),
+        ]);
       } else {
-        dashboard = await fetchDashboard();
-        profile = await fetchUser(Number(dashboard.tg_id));
+        dashboard = await fetchDashboard({ forceRefresh });
+        profile = await fetchUser(Number(dashboard.tg_id), { forceRefresh });
       }
       setDash(dashboard);
       setUser(profile);

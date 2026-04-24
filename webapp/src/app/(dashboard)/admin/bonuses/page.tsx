@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  AdminConfirmDialog,
   AdminBadge,
   AdminMetricStrip,
   AdminPanelHeader,
@@ -20,6 +21,8 @@ import {
   type AdminWheelConfig,
 } from "@/lib/api";
 import { useEffect, useMemo, useState } from "react";
+
+type ConfirmState = { kind: "wheel" | "loyalty" | "grant"; reason: string } | null;
 
 function parseWeights(input: string): Array<{ days: number; weight: number }> {
   const parsed = input
@@ -53,6 +56,7 @@ export default function AdminBonusesPage() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [result, setResult] = useState("");
+  const [confirm, setConfirm] = useState<ConfirmState>(null);
 
   const load = async (): Promise<void> => {
     setError("");
@@ -72,7 +76,7 @@ export default function AdminBonusesPage() {
     void load();
   }, []);
 
-  const saveWheel = async (): Promise<void> => {
+  const saveWheel = async (operatorReason: string): Promise<void> => {
     if (!config) return;
     setBusy(true);
     setError("");
@@ -83,10 +87,11 @@ export default function AdminBonusesPage() {
         cooldown_hours: Math.max(1, Math.min(2160, Number(config.cooldown_hours || 168))),
         weights: parseWeights(weightsText),
       };
-      const out = await adminWheelConfigUpdate(payload);
+      const out = await adminWheelConfigUpdate(payload, operatorReason.trim());
       setConfig(out.wheel_config);
       setWeightsText(weightsToText(out.wheel_config.weights || []));
-      setResult("Wheel settings saved.");
+      setResult(`Колесо бонусов сохранено. Причина: ${operatorReason.trim()}`);
+      setConfirm(null);
     } catch (err) {
       setError(String((err as { message?: string })?.message || err || "Could not save wheel settings."));
     } finally {
@@ -94,7 +99,7 @@ export default function AdminBonusesPage() {
     }
   };
 
-  const saveLoyalty = async (): Promise<void> => {
+  const saveLoyalty = async (operatorReason: string): Promise<void> => {
     if (!loyaltyConfig) return;
     setBusy(true);
     setError("");
@@ -114,10 +119,11 @@ export default function AdminBonusesPage() {
           }
           return { days: Math.floor(days), bonus_days: Math.floor(bonusDays), perk };
         });
-      const out = await adminLoyaltyConfigUpdate({ enabled: loyaltyConfig.enabled, tiers });
+      const out = await adminLoyaltyConfigUpdate({ enabled: loyaltyConfig.enabled, tiers }, operatorReason.trim());
       setLoyaltyConfig(out.loyalty_config);
       setLoyaltyText((out.loyalty_config.tiers || []).map((row) => `${row.days}:${row.bonus_days}:${row.perk}`).join("\n"));
-      setResult("Loyalty settings saved.");
+      setResult(`Настройки лояльности сохранены. Причина: ${operatorReason.trim()}`);
+      setConfirm(null);
     } catch (err) {
       setError(String((err as { message?: string })?.message || err || "Could not save loyalty settings."));
     } finally {
@@ -125,7 +131,7 @@ export default function AdminBonusesPage() {
     }
   };
 
-  const grantLoyalty = async (): Promise<void> => {
+  const grantLoyalty = async (operatorReason: string): Promise<void> => {
     const tgId = Number(loyaltyGrantUser || 0);
     const tierDays = Number(loyaltyGrantTier || 0);
     if (!Number.isFinite(tgId) || tgId <= 0 || !Number.isFinite(tierDays) || tierDays <= 0) {
@@ -136,8 +142,9 @@ export default function AdminBonusesPage() {
     setError("");
     setResult("");
     try {
-      const out = await adminUserLoyaltyGrant(tgId, tierDays);
-      setResult(`Loyalty granted: ${out.tier_days} days for ${tgId} (${out.sync_ok ? "panel synced" : "sync pending"}).`);
+      const out = await adminUserLoyaltyGrant(tgId, tierDays, operatorReason.trim());
+      setResult(`Бонус выдан: ${out.tier_days} дн. для ${tgId} (${out.sync_ok ? "панель синхронизирована" : "синхронизация ожидает"}).`);
+      setConfirm(null);
     } catch (err) {
       setError(String((err as { message?: string })?.message || err || "Could not grant loyalty bonus."));
     } finally {
@@ -164,7 +171,7 @@ export default function AdminBonusesPage() {
           description="Control bonus wheel probabilities, loyalty tiers, and scoped manual grants from one auditable operator surface."
           actions={
             <button className={adminButtonClass("secondary", "sm")} type="button" onClick={() => void load()} disabled={busy}>
-              Reload
+              Обновить
             </button>
           }
         />
@@ -213,8 +220,8 @@ export default function AdminBonusesPage() {
                 Weights (days:weight)
                 <textarea rows={7} value={weightsText} onChange={(event) => setWeightsText(event.target.value)} className={`mt-1 font-mono text-xs ${adminTextAreaClass}`} placeholder={"1:45\n3:35\n7:15\n30:5"} />
               </label>
-              <button className={adminButtonClass("primary")} type="button" onClick={() => void saveWheel()} disabled={busy}>
-                Save wheel
+              <button className={adminButtonClass("primary")} type="button" onClick={() => setConfirm({ kind: "wheel", reason: "" })} disabled={busy}>
+                Сохранить колесо
               </button>
             </div>
           )}
@@ -252,8 +259,8 @@ export default function AdminBonusesPage() {
           </label>
           <p className="mb-2 text-xs text-slate-500">Format: days:bonus_days:perk</p>
           <textarea rows={7} value={loyaltyText} onChange={(event) => setLoyaltyText(event.target.value)} className={`font-mono text-xs ${adminTextAreaClass}`} placeholder={"30:1:priority_support\n90:3:fast_resync\n180:7:vip_queue"} />
-          <button className={`${adminButtonClass("secondary")} mt-3`} type="button" onClick={() => void saveLoyalty()} disabled={busy}>
-            Save loyalty
+          <button className={`${adminButtonClass("secondary")} mt-3`} type="button" onClick={() => setConfirm({ kind: "loyalty", reason: "" })} disabled={busy}>
+            Сохранить лояльность
           </button>
         </article>
 
@@ -262,12 +269,27 @@ export default function AdminBonusesPage() {
           <div className="space-y-3">
             <input value={loyaltyGrantUser} onChange={(event) => setLoyaltyGrantUser(event.target.value)} placeholder="Telegram ID" className={adminFieldClass} />
             <input value={loyaltyGrantTier} onChange={(event) => setLoyaltyGrantTier(event.target.value)} placeholder="Tier days, for example 30" className={adminFieldClass} />
-            <button className={adminButtonClass("secondary")} type="button" onClick={() => void grantLoyalty()} disabled={busy}>
-              Grant bonus
+            <button className={adminButtonClass("secondary")} type="button" onClick={() => setConfirm({ kind: "grant", reason: "" })} disabled={busy}>
+              Выдать бонус
             </button>
           </div>
         </article>
       </div>
+      <AdminConfirmDialog
+        open={Boolean(confirm)}
+        title={confirm?.kind === "grant" ? "Подтвердить выдачу бонуса" : "Подтвердить сохранение бонусов"}
+        description="Действие влияет на правила бонусов или живой доступ. Укажите причину для журнала аудита."
+        reason={confirm?.reason || ""}
+        onReasonChange={(reason) => setConfirm((current) => (current ? { ...current, reason } : current))}
+        onCancel={() => setConfirm(null)}
+        onConfirm={() => {
+          if (!confirm) return;
+          if (confirm.kind === "wheel") void saveWheel(confirm.reason);
+          else if (confirm.kind === "loyalty") void saveLoyalty(confirm.reason);
+          else void grantLoyalty(confirm.reason);
+        }}
+        busy={busy}
+      />
     </section>
   );
 }

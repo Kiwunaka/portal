@@ -68,6 +68,10 @@ def _load_api(monkeypatch, tmp_path: Path):
 
 
 def _admin_headers() -> dict[str, str]:
+    api = sys.modules.get("api")
+    if api is not None and hasattr(api, "create_web_session_token"):
+        token = api.create_web_session_token(tg_id=9999, username="admin", auth_type="telegram", auth_origin="telegram")
+        return {"Authorization": f"Bearer {token}"}
     init_data = _sign_telegram_init_data(
         bot_token=os.environ["BOT_TOKEN"],
         params={
@@ -276,6 +280,7 @@ def test_admin_network_rollout_config_roundtrip_if_route_is_exposed(monkeypatch,
         pytest.skip("backend admin rollout route is not exposed in the current workspace")
 
     rollout_payload = _rollout_payload()
+    rollout_payload["operator_reason"] = "проверка сохранения rollout"
     get_before = client.get("/api/admin/network-rollout-config", headers=admin_hdrs)
     assert get_before.status_code == 200, get_before.text
 
@@ -290,6 +295,74 @@ def test_admin_network_rollout_config_roundtrip_if_route_is_exposed(monkeypatch,
     get_after = client.get("/api/admin/network-rollout-config", headers=admin_hdrs)
     assert get_after.status_code == 200, get_after.text
     assert get_after.json()["network_rollout_config"]["cohort_overrides"]["ru-risk-canary"]["install_ids"] == ["install-canary"]
+
+
+def test_live_admin_mutations_require_operator_reason(monkeypatch, tmp_path) -> None:
+    api = _load_api(monkeypatch, tmp_path)
+    client = TestClient(api.app)
+    admin_hdrs = _admin_headers()
+
+    no_reason = client.put(
+        "/api/admin/network-rollout-config",
+        headers=admin_hdrs,
+        json=_rollout_payload(),
+    )
+    assert no_reason.status_code == 400, no_reason.text
+    assert "Укажите причину" in str(no_reason.json().get("detail") or "")
+
+    short_reason_payload = _rollout_payload()
+    short_reason_payload["operator_reason"] = "fix"
+    short_reason = client.put(
+        "/api/admin/network-rollout-config",
+        headers=admin_hdrs,
+        json=short_reason_payload,
+    )
+    assert short_reason.status_code == 400, short_reason.text
+    assert "минимум" in str(short_reason.json().get("detail") or "")
+
+    missing_key_reason = client.post(
+        "/api/admin/access-keys/issue",
+        headers=admin_hdrs,
+        json={"plan_code": "1_month", "quantity": 1},
+    )
+    assert missing_key_reason.status_code == 400, missing_key_reason.text
+    assert "Укажите причину" in str(missing_key_reason.json().get("detail") or "")
+
+    missing_ticket_reason = client.post(
+        "/api/admin/tickets/1/status",
+        headers=admin_hdrs,
+        json={"status": "closed"},
+    )
+    assert missing_ticket_reason.status_code == 400, missing_ticket_reason.text
+    assert "Укажите причину" in str(missing_ticket_reason.json().get("detail") or "")
+
+
+def test_admin_operator_reason_is_persisted_in_audit_meta(monkeypatch, tmp_path) -> None:
+    api = _load_api(monkeypatch, tmp_path)
+    client = TestClient(api.app)
+    admin_hdrs = _admin_headers()
+    reason = "Плановое включение grpc для canary"
+    payload = _rollout_payload()
+    payload["operator_reason"] = reason
+
+    response = client.put(
+        "/api/admin/network-rollout-config",
+        headers=admin_hdrs,
+        json=payload,
+    )
+    assert response.status_code == 200, response.text
+
+    from db import SessionLocal
+    from models import AdminAudit
+
+    session = SessionLocal()
+    try:
+        row = session.query(AdminAudit).filter(AdminAudit.action == "admin_network_rollout_config_put").one()
+        meta = json.loads(row.meta or "{}")
+    finally:
+        session.close()
+
+    assert meta["operator_reason"] == reason
 
 
 def test_reserve_xhttp_rollout_stays_opt_in_and_emits_xray_manifest_only_when_enabled(monkeypatch, tmp_path) -> None:

@@ -1,7 +1,7 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 
 import AppRouteLink from "@/components/app-route-link";
 import { CabinetCardGrid, CabinetHero, CabinetList, CabinetRoute, CabinetSection } from "@/components/cabinet/surface";
@@ -32,6 +32,16 @@ function formatDate(value?: string | null): string {
 function formatCount(value?: number | null): string {
   if (value == null || !Number.isFinite(Number(value))) return "0";
   return new Intl.NumberFormat("ru-RU").format(Math.max(0, Math.round(Number(value))));
+}
+
+function formatLocationReadiness(ready: number, total: number): string {
+  if (!Number.isFinite(total) || total <= 0) return "Проверим позже";
+  return `${formatCount(ready)} из ${formatCount(total)}`;
+}
+
+function locationReadinessTone(ready: number, total: number): "success" | "warning" | "neutral" {
+  if (!Number.isFinite(total) || total <= 0) return "neutral";
+  return ready < total ? "warning" : "success";
 }
 
 function deviceTitle(name?: string | null, platform?: string | null): string {
@@ -69,7 +79,7 @@ export default function DashboardPage() {
         setNodesError("");
       } catch (error) {
         if (controller.signal.aborted || (error as { name?: string } | null)?.name === "AbortError") return;
-        setNodesError(String((error as { message?: string })?.message || error || ""));
+        setNodesError("node_status_unavailable");
       }
     };
 
@@ -89,7 +99,7 @@ export default function DashboardPage() {
   const healthyNodes = nodes.filter((node) => node.is_healthy).length;
   const routeSummary = routeLabel(dash, user);
 
-  const attentionItems = useMemo(() => {
+  const attentionItems = (() => {
     const items: Array<{
       key: string;
       title: string;
@@ -201,7 +211,7 @@ export default function DashboardPage() {
     }
 
     return items.slice(0, 4);
-  }, [activeConnections, dash?.expiry_at, dash?.is_active, healthyNodes, knownNodes, nextResetAt, nodesError, softMode, trialMode]);
+  })();
 
   const nextSteps = [
     {
@@ -265,9 +275,11 @@ export default function DashboardPage() {
       title: "Сеть сейчас",
       body: nodesError
         ? "Статус сети подтянем позже. Если проблема видна в приложении, лучше сразу открыть поддержку."
-        : `${formatCount(healthyNodes || activeNodes)} из ${formatCount(knownNodes)} локаций сейчас выглядят готовыми.`,
-      badge: nodesError ? "Проверка позже" : `${formatCount(healthyNodes || activeNodes)}/${formatCount(knownNodes)}`,
-      tone: nodesError ? ("info" as const) : healthyNodes < knownNodes ? ("warning" as const) : ("success" as const),
+        : knownNodes > 0
+          ? `${formatLocationReadiness(healthyNodes || activeNodes, knownNodes)} локаций сейчас выглядят готовыми.`
+          : "Сводка по локациям появится после обновления телеметрии.",
+      badge: nodesError || knownNodes <= 0 ? "Проверка позже" : `${formatCount(healthyNodes || activeNodes)}/${formatCount(knownNodes)}`,
+      tone: nodesError ? ("info" as const) : locationReadinessTone(healthyNodes || activeNodes, knownNodes),
     },
     {
       key: "devices",
@@ -368,7 +380,7 @@ export default function DashboardPage() {
           {
             label: "Активных подключений",
             value: formatCount(activeConnections),
-            hint: activeConnections > 0 ? "Приложение сейчас где-то открыто." : "Если нужен доступ сейчас, откройте приложение.",
+            hint: activeConnections > 0 ? "Есть активное подключение по профилю." : "Если нужен доступ сейчас, откройте приложение.",
             tone: activeConnections > 0 ? "success" : "neutral",
           },
           {
@@ -379,9 +391,9 @@ export default function DashboardPage() {
           },
           {
             label: "Локации",
-            value: nodesError ? "Проверим позже" : `${formatCount(healthyNodes || activeNodes)} из ${formatCount(knownNodes)}`,
-            hint: nodesError ? "Если доступ ведет себя неровно, напишите нам." : "Короткая сводка по доступным направлениям.",
-            tone: nodesError ? "info" : healthyNodes < knownNodes ? "warning" : "success",
+            value: nodesError ? "Проверим позже" : formatLocationReadiness(healthyNodes || activeNodes, knownNodes),
+            hint: nodesError || knownNodes <= 0 ? "Если доступ ведет себя неровно, напишите нам." : "Короткая сводка по доступным направлениям.",
+            tone: nodesError ? "info" : locationReadinessTone(healthyNodes || activeNodes, knownNodes),
           },
         ]}
         footer={

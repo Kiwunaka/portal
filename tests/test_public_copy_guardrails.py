@@ -20,6 +20,26 @@ FRONTEND_COPY_FILES = [
     ROOT / "copy/catalog.ru.json",
     ROOT / "shared/redesign-spine.json",
 ]
+SHARED_MANIFEST_FILES = [
+    ROOT / "shared/redesign-spine.json",
+    ROOT / "shared/redesign-assets.json",
+]
+
+WEBAPP_PUBLIC_COPY_FILES = [
+    ROOT / "webapp/src/app/page.tsx",
+    ROOT / "webapp/src/app/(dashboard)/dashboard/page.tsx",
+    ROOT / "webapp/src/app/(dashboard)/subscription/page.tsx",
+    ROOT / "webapp/src/app/(dashboard)/devices/page.tsx",
+    ROOT / "webapp/src/app/(dashboard)/downloads/page.tsx",
+    ROOT / "webapp/src/app/(dashboard)/support/page.tsx",
+    ROOT / "webapp/src/app/(dashboard)/profile/page.tsx",
+]
+
+WEBAPP_ADMIN_COPY_FILES = [
+    ROOT / "webapp/src/app/(dashboard)/admin/page.tsx",
+    ROOT / "webapp/src/app/(dashboard)/admin/users/page.tsx",
+    ROOT / "webapp/src/components/admin/users/admin-user-side-panel.tsx",
+]
 
 WORKER3_MARKETING_COPY_FILES = [
     ROOT / "marketing/src/app/checkout/page.tsx",
@@ -48,7 +68,7 @@ BACKEND_PUBLIC_COPY_FILES = [
     ROOT / "portal_bot/worker.py",
 ]
 
-CURRENT_COPY_CONTRACT_FILES = PUBLIC_COPY_FILES + FRONTEND_COPY_FILES
+CURRENT_COPY_CONTRACT_FILES = PUBLIC_COPY_FILES + FRONTEND_COPY_FILES + WEBAPP_PUBLIC_COPY_FILES + WEBAPP_ADMIN_COPY_FILES
 
 FIRST_LAYER_APP_CATALOG_PREFIXES = (
     "app.nav.",
@@ -134,6 +154,8 @@ PUBLIC_MARKETING_SOURCE_FORBIDDEN_PATTERNS = [
 STALE_TRIAL_LENGTH_PATTERNS = [
     re.compile(r"\b7\s*days?\b", re.IGNORECASE),
     re.compile(r"\b7[-\s]?day\b", re.IGNORECASE),
+    re.compile(r"\b14\s*days?\b", re.IGNORECASE),
+    re.compile(r"\b14[-\s]?day\b", re.IGNORECASE),
     re.compile(r"\b7\s*РґРЅ", re.IGNORECASE),
     re.compile(r"\b7\s*дн", re.IGNORECASE),
 ]
@@ -157,6 +179,14 @@ FIRST_LAYER_APP_TECH_PATTERNS = [
     re.compile(r"\bservice\s+mode\b", re.IGNORECASE),
     re.compile(r"\bsubscription_url\b", re.IGNORECASE),
     re.compile(r"\bhost:port\b", re.IGNORECASE),
+    re.compile(r"raw\s+(?:profile|config)", re.IGNORECASE),
+    re.compile(r"(?:profile|config)\s+editor", re.IGNORECASE),
+]
+
+FAKE_SUPPORT_PATTERNS = [
+    re.compile(r"fake\s+live\s+chat", re.IGNORECASE),
+    re.compile(r"imaginary\s+live\s+chat", re.IGNORECASE),
+    re.compile(r"realtime\s+in-app\s+chat", re.IGNORECASE),
 ]
 
 
@@ -217,6 +247,22 @@ def _catalog_items() -> dict[str, dict]:
 
 def _catalog_ru_values() -> list[tuple[str, str]]:
     return [(key, str((item or {}).get("ru") or "")) for key, item in _catalog_items().items()]
+
+
+def _walk_json_strings(value: object, path: str = "$") -> list[tuple[str, str]]:
+    if isinstance(value, str):
+        return [(path, value)]
+    if isinstance(value, list):
+        strings: list[tuple[str, str]] = []
+        for index, item in enumerate(value):
+            strings.extend(_walk_json_strings(item, f"{path}[{index}]"))
+        return strings
+    if isinstance(value, dict):
+        strings: list[tuple[str, str]] = []
+        for key, item in value.items():
+            strings.extend(_walk_json_strings(item, f"{path}.{key}"))
+        return strings
+    return []
 
 
 def test_public_copy_has_no_banned_claims() -> None:
@@ -363,6 +409,48 @@ def test_governed_copy_has_no_old_subtitle_or_stale_seven_day_trial() -> None:
     assert not violations, "\n".join(violations)
 
 
+def test_webapp_and_admin_copy_avoid_fake_support_promises() -> None:
+    violations: list[str] = []
+
+    for path in WEBAPP_PUBLIC_COPY_FILES + WEBAPP_ADMIN_COPY_FILES + BACKEND_PUBLIC_COPY_FILES:
+        text = path.read_text(encoding="utf-8")
+        for pattern in FAKE_SUPPORT_PATTERNS:
+            for match in pattern.finditer(text):
+                snippet = text[max(0, match.start() - 30):match.end() + 30].replace("\n", " ")
+                violations.append(f"{path.relative_to(ROOT)}: fake support promise /{pattern.pattern}/ -> {snippet}")
+
+    assert not violations, "\n".join(violations)
+
+
+def test_shared_manifests_have_no_workstation_paths_outside_temporary_logo_exception() -> None:
+    violations: list[str] = []
+    absolute_workstation_path = re.compile(r"\b[A-Za-z]:[\\/](?:Users|Documents)[\\/]", re.IGNORECASE)
+    allowed_temporary_logo_keys = (
+        "$.asset_policy.canonical_mark_source",
+        "$.brand.canonical_mark.source_path",
+        "$.brand.optimized.mark_svg.source_path",
+        "$.brand.optimized.mark_png.source_path",
+        "$.brand.optimized.mark_png_compact.source_path",
+        "$.brand.optimized.favicon_png.source_path",
+        "$.brand.optimized.favicon_svg.source_path",
+        "$.brand.optimized.favicon_ico.source_path",
+        "$.brand.optimized.apple_touch_icon.source_path",
+        "$.brand.optimized.android_icon.source_path",
+        "$.brand.optimized.windows_icon.source_path",
+    )
+
+    for path in SHARED_MANIFEST_FILES:
+        payload = json.loads(path.read_text(encoding="utf-8"))
+        for key_path, value in _walk_json_strings(payload):
+            if not absolute_workstation_path.search(value):
+                continue
+            if key_path in allowed_temporary_logo_keys and "logogo.png" in value.replace("\\", "/"):
+                continue
+            violations.append(f"{path.relative_to(ROOT)}:{key_path}: {value}")
+
+    assert not violations, "\n".join(violations)
+
+
 def test_public_catalog_items_have_no_direct_vpn_wording() -> None:
     violations: list[str] = []
 
@@ -411,6 +499,62 @@ def test_backend_and_bot_public_copy_stays_pokrov_app_first() -> None:
     assert not violations, "\n".join(violations)
 
 
+def test_backend_and_bot_first_layer_copy_hides_raw_networking_and_keeps_key_first_language() -> None:
+    allowed_fragments = (
+        "legacy",
+        "compat",
+        "manual",
+        "recovery",
+        "admin",
+        "diagnostic",
+        "operator",
+        "advanced",
+        "оплат",
+        "привяз",
+        "реферал",
+        "подароч",
+        "launch",
+        "show_key",
+        "copy_key",
+        "восстанов",
+        "сброс",
+        "vless://uuid@host:port",
+        "subscription_url",
+    )
+    direct_vpn = re.compile(r"\bVPN\b", re.IGNORECASE)
+    raw_first_layer_patterns = (
+        re.compile(r"raw\s+(?:profile|config)", re.IGNORECASE),
+        re.compile(r"(?:profile|config)\s+editor", re.IGNORECASE),
+        re.compile(r"JSON/profile\s+editor", re.IGNORECASE),
+        re.compile(r"\bsystem\s+proxy\b", re.IGNORECASE),
+        re.compile(r"\bservice\s+mode\b", re.IGNORECASE),
+        re.compile(r"\braw\s+node\b", re.IGNORECASE),
+        re.compile(r"ссылк[ауи] для подключения", re.IGNORECASE),
+        re.compile(r"скопируйте ссылку", re.IGNORECASE),
+        re.compile(r"личн\w+\s+ссылк\w+\s+доступ", re.IGNORECASE),
+    )
+    key_language = re.compile(r"ключ (?:доступа|активации)|activation[- ]key", re.IGNORECASE)
+    violations: list[str] = []
+    key_language_hits = 0
+
+    for path in BACKEND_PUBLIC_COPY_FILES:
+        lines = path.read_text(encoding="utf-8").splitlines()
+        for line_no, line in enumerate(lines, start=1):
+            lowered = line.lower()
+            context = "\n".join(lines[max(0, line_no - 8):line_no + 1]).lower()
+            is_allowed_context = any(fragment in lowered or fragment in context for fragment in allowed_fragments)
+            if direct_vpn.search(line) and not is_allowed_context:
+                violations.append(f"{path.relative_to(ROOT)}:{line_no}: direct VPN wording -> {line.strip()}")
+            for pattern in raw_first_layer_patterns:
+                if pattern.search(line) and not is_allowed_context:
+                    violations.append(f"{path.relative_to(ROOT)}:{line_no}: raw first-layer copy /{pattern.pattern}/ -> {line.strip()}")
+            if key_language.search(line):
+                key_language_hits += 1
+
+    assert key_language_hits >= 1
+    assert not violations, "\n".join(violations)
+
+
 def test_first_layer_app_catalog_copy_avoids_technical_terms() -> None:
     violations: list[str] = []
 
@@ -442,14 +586,31 @@ def test_public_copy_pack_is_present_on_canonical_docs() -> None:
             "POKROV VPN",
             "@pokrov_feedbackbot",
             "mikh****",
+            "key-first trial starts from the site, bot, or app",
+            "hybrid paid flow",
+            "temporary visible logo asset exception",
         ],
         ROOT / "docs/architecture/system-overview.md": [
             "GET /api/reviews",
             "visible nicknames are masked in a friendly format such as `mikh****`",
+            "web-session-only admin",
+            "no deploy is part of this polish wave",
         ],
         ROOT / "docs/architecture/app-first-and-bonus-flows.md": [
             "operator approves selected reviews for public display",
             "mikh****",
+            "selected-app scan MVP",
+            "hybrid paid flow",
+        ],
+        ROOT / "docs/developer/developer-guide.md": [
+            "Final polish QA checklist",
+            "web-session-only admin",
+            "no deploy in this wave",
+        ],
+        ROOT / "docs/developer/repository-map.md": [
+            "tests/test_redesign_spine.py",
+            "tests/test_ui_visual_smoke.py",
+            "final polish guardrail pack",
         ],
         ROOT / "docs/operations/deployment-and-access.md": [
             "@pokrov_feedbackbot",

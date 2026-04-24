@@ -35,7 +35,7 @@ const PANEL_TONE_CLASSES: Record<CabinetTone, string> = {
   warning: "border-amber-200/70 bg-amber-50/90 dark:border-amber-400/25 dark:bg-amber-400/10",
   danger: "border-rose-200/70 bg-rose-50/90 dark:border-rose-400/25 dark:bg-rose-400/10",
   info: "border-teal-200/70 bg-teal-50/90 dark:border-teal-400/25 dark:bg-teal-400/10",
-  neutral: "border-slate-200/80 bg-white dark:border-white/10 dark:bg-[#101713]/88",
+  neutral: "border-slate-200/80 bg-white/88 dark:border-emerald-300/12 dark:bg-[#132019]/82",
 };
 
 const SUBTLE_TONE_CLASSES: Record<CabinetTone, string> = {
@@ -43,7 +43,7 @@ const SUBTLE_TONE_CLASSES: Record<CabinetTone, string> = {
   warning: "border-amber-200/70 bg-amber-50/85 dark:border-amber-400/25 dark:bg-amber-400/10",
   danger: "border-rose-200/70 bg-rose-50/85 dark:border-rose-400/25 dark:bg-rose-400/10",
   info: "border-teal-200/70 bg-teal-50/85 dark:border-teal-400/25 dark:bg-teal-400/10",
-  neutral: "border-slate-200/80 bg-white dark:border-white/10 dark:bg-white/[0.04]",
+  neutral: "border-slate-200/80 bg-white/82 dark:border-emerald-300/12 dark:bg-emerald-50/[0.045]",
 };
 
 type CabinetRouteProps = {
@@ -58,7 +58,7 @@ type CabinetRouteProps = {
 export function CabinetRoute({ eyebrow, title, description, actions, metrics, children }: CabinetRouteProps) {
   return (
     <main className="space-y-6">
-      <section className="rounded-[1.35rem] border border-slate-200/80 bg-white px-5 py-4 shadow-[0_20px_55px_-45px_rgba(15,23,42,0.2)] dark:border-white/10 dark:bg-[#101713]/88 sm:px-6">
+      <section className="rounded-2xl border border-slate-200/80 bg-white/86 px-5 py-4 shadow-[0_16px_45px_-40px_rgba(15,23,42,0.18)] dark:border-emerald-300/12 dark:bg-[#132019]/82 sm:px-6">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div className="min-w-0">
             {eyebrow ? (
@@ -91,7 +91,7 @@ export function CabinetKpiRow({ items, className }: CabinetKpiRowProps) {
       {items.map((item) => (
         <article
           key={String(item.label)}
-          className={cn("rounded-[1.25rem] border px-4 py-4 text-slate-950 shadow-[0_20px_50px_-44px_rgba(15,23,42,0.16)] dark:text-slate-50", SUBTLE_TONE_CLASSES[item.tone || "neutral"])}
+          className={cn("rounded-xl border px-4 py-4 text-slate-950 shadow-[0_14px_36px_-34px_rgba(15,23,42,0.14)] dark:text-slate-50", SUBTLE_TONE_CLASSES[item.tone || "neutral"])}
         >
           <p className="text-[11px] uppercase tracking-[0.16em] text-slate-500 dark:text-slate-400">{item.label}</p>
           <p className="mt-2 text-xl font-semibold leading-6">{item.value}</p>
@@ -128,7 +128,7 @@ export function CabinetHero({
   return (
     <section
       className={cn(
-        "rounded-[1.9rem] border border-slate-200/80 bg-white p-5 shadow-[0_28px_80px_-50px_rgba(15,23,42,0.22)] dark:border-white/10 dark:bg-[#101713]/92 sm:p-6",
+        "rounded-2xl border border-slate-200/80 bg-white/90 p-5 shadow-[0_18px_60px_-48px_rgba(15,23,42,0.2)] dark:border-emerald-300/12 dark:bg-[#132019]/86 sm:p-6",
         className,
       )}
     >
@@ -151,7 +151,7 @@ export function CabinetHero({
               <article
                 key={index}
                 className={cn(
-                  "rounded-[1.3rem] border px-4 py-4 text-slate-950 dark:text-slate-50",
+                  "rounded-xl border px-4 py-4 text-slate-950 dark:text-slate-50",
                   SUBTLE_TONE_CLASSES[detail.tone || "neutral"],
                 )}
               >
@@ -183,7 +183,7 @@ export function CabinetSection({ eyebrow, title, description, actions, children,
   return (
     <section
       className={cn(
-        "rounded-[1.6rem] border p-5 shadow-[0_24px_60px_-46px_rgba(15,23,42,0.18)] sm:p-6",
+        "rounded-2xl border p-5 shadow-none sm:p-6",
         PANEL_TONE_CLASSES[tone],
         className,
       )}
@@ -215,7 +215,7 @@ type CabinetListProps = {
 export function CabinetList({ items, empty, className }: CabinetListProps) {
   if (!items.length) {
     return empty ? (
-      <div className={cn("rounded-[1.3rem] border border-dashed border-slate-200/80 px-4 py-4 text-sm leading-6 text-slate-500 dark:border-white/10 dark:text-slate-400", className)}>
+      <div className={cn("rounded-xl border border-dashed border-slate-200/80 px-4 py-4 text-sm leading-6 text-slate-500 dark:border-emerald-300/12 dark:text-slate-400", className)}>
         {empty}
       </div>
     ) : null;
@@ -224,7 +224,7 @@ export function CabinetList({ items, empty, className }: CabinetListProps) {
   return (
     <div className={cn("space-y-3", className)}>
       {items.map((item, index) => (
-        <article key={item.key} className={cn("rounded-[1.3rem] border px-4 py-4", SUBTLE_TONE_CLASSES[item.tone || "neutral"])}>
+        <article key={item.key} className={cn("rounded-xl border px-4 py-4", SUBTLE_TONE_CLASSES[item.tone || "neutral"])}>
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div className="min-w-0">
               <div className="flex flex-wrap items-center gap-2">
@@ -250,7 +250,7 @@ export function CabinetCardGrid({ items, className }: CabinetCardGridProps) {
   return (
     <div className={cn("grid gap-3 md:grid-cols-2 xl:grid-cols-3", className)}>
       {items.map((item) => (
-        <article key={item.key} className={cn("rounded-[1.3rem] border px-4 py-4", SUBTLE_TONE_CLASSES[item.tone || "neutral"])}>
+        <article key={item.key} className={cn("rounded-xl border px-4 py-4", SUBTLE_TONE_CLASSES[item.tone || "neutral"])}>
           <StatusBadge tone={item.tone || "neutral"}>{item.badge || "Далее"}</StatusBadge>
           <h3 className="mt-3 text-sm font-semibold text-slate-950 dark:text-slate-50">{item.title}</h3>
           {item.body ? <p className="mt-2 text-sm leading-6 text-slate-600 dark:text-slate-300">{item.body}</p> : null}

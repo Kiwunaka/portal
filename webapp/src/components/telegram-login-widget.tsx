@@ -32,6 +32,12 @@ function resolveTelegramBotName(raw: string): string {
   return value.replace(/^@+/, "").split(/[/?#]/)[0].toLowerCase();
 }
 
+function isLocalPreviewHost(): boolean {
+  if (typeof window === "undefined") return false;
+  const host = window.location.hostname.toLowerCase();
+  return host === "localhost" || host === "127.0.0.1" || host === "::1";
+}
+
 export default function TelegramLoginWidget() {
   const hostRef = useRef<HTMLDivElement | null>(null);
   const authDoneRef = useRef(false);
@@ -50,6 +56,11 @@ export default function TelegramLoginWidget() {
     host.innerHTML = "";
     if (!botName) {
       delete window.onTelegramAuth;
+      return;
+    }
+    if (isLocalPreviewHost()) {
+      delete window.onTelegramAuth;
+      setWidgetHint("В локальном предпросмотре используйте основную кнопку входа выше.");
       return;
     }
 

@@ -181,9 +181,27 @@ class ApiAuthAndTicketsTests(unittest.TestCase):
         self.api.WEBAPP_DEV_AUTH_PASSWORD = password
         return TestClient(self.api.app, base_url="http://localhost")
 
+    def _admin_web_headers(self) -> dict[str, str]:
+        token = self.api.create_web_session_token(tg_id=9999, username="admin", auth_type="telegram", auth_origin="telegram")
+        return {"Authorization": f"Bearer {token}"}
+
     def test_admin_endpoint_requires_admin_guard(self) -> None:
         hdrs = {"X-Telegram-Init-Data": self._init_data(1001, "alice")}
         r = self.client.get("/api/admin/summary", headers=hdrs)
+        self.assertEqual(r.status_code, 401)
+
+    def test_admin_endpoint_rejects_raw_telegram_init_data_even_for_admin(self) -> None:
+        hdrs = {"X-Telegram-Init-Data": self._init_data(9999, "admin")}
+        r = self.client.get("/api/admin/summary", headers=hdrs)
+        self.assertEqual(r.status_code, 401)
+
+    def test_admin_endpoint_accepts_admin_web_session_token(self) -> None:
+        r = self.client.get("/api/admin/summary", headers=self._admin_web_headers())
+        self.assertEqual(r.status_code, 200, r.text)
+
+    def test_admin_endpoint_rejects_non_admin_web_session_token(self) -> None:
+        token = self.api.create_web_session_token(tg_id=1001, username="alice", auth_type="telegram", auth_origin="telegram")
+        r = self.client.get("/api/admin/summary", headers={"Authorization": f"Bearer {token}"})
         self.assertEqual(r.status_code, 403)
 
     def test_dev_web_login_is_disabled_by_default(self) -> None:
@@ -199,10 +217,60 @@ class ApiAuthAndTicketsTests(unittest.TestCase):
 
         self.assertIn(r.status_code, {403, 404})
 
+    def test_dev_web_login_rejects_local_request_without_browser_origin(self) -> None:
+        local_client = self._enable_dev_auth(password="local-admin-pass")
+
+        r = local_client.post("/api/auth/dev/web-login", json={"password": "local-admin-pass"})
+
+        self.assertEqual(r.status_code, 403)
+
+    def test_dev_web_login_rejects_bad_referer(self) -> None:
+        local_client = self._enable_dev_auth(password="local-admin-pass")
+
+        r = local_client.post(
+            "/api/auth/dev/web-login",
+            headers={"Origin": "http://localhost", "Referer": "https://evil.example/admin"},
+            json={"password": "local-admin-pass"},
+        )
+
+        self.assertEqual(r.status_code, 403)
+
+    def test_dev_web_login_rejects_missing_password(self) -> None:
+        local_client = self._enable_dev_auth(password="local-admin-pass")
+
+        r = local_client.post(
+            "/api/auth/dev/web-login",
+            headers={"Origin": "http://localhost"},
+            json={},
+        )
+
+        self.assertEqual(r.status_code, 422)
+
+    def test_dev_web_login_rejects_forged_proxy_loopback_headers(self) -> None:
+        self._enable_dev_auth(password="local-admin-pass")
+        remote_client = TestClient(self.api.app, base_url="https://api.pokrov.space")
+
+        r = remote_client.post(
+            "/api/auth/dev/web-login",
+            headers={
+                "Origin": "http://localhost",
+                "X-Forwarded-Host": "localhost",
+                "X-Forwarded-Proto": "http",
+                "X-Real-IP": "127.0.0.1",
+            },
+            json={"password": "local-admin-pass"},
+        )
+
+        self.assertEqual(r.status_code, 403)
+
     def test_dev_web_login_rejects_wrong_password_without_leaking_secret(self) -> None:
         local_client = self._enable_dev_auth(password="local-admin-pass")
 
-        r = local_client.post("/api/auth/dev/web-login", json={"password": "wrong-pass"})
+        r = local_client.post(
+            "/api/auth/dev/web-login",
+            headers={"Origin": "http://localhost"},
+            json={"password": "wrong-pass"},
+        )
 
         self.assertEqual(r.status_code, 401)
         self.assertNotIn("local-admin-pass", r.text)
@@ -218,14 +286,22 @@ class ApiAuthAndTicketsTests(unittest.TestCase):
     def test_dev_web_login_requires_configured_admin_tg_id(self) -> None:
         local_client = self._enable_dev_auth(tg_id=1001, password="local-admin-pass")
 
-        r = local_client.post("/api/auth/dev/web-login", json={"password": "local-admin-pass"})
+        r = local_client.post(
+            "/api/auth/dev/web-login",
+            headers={"Origin": "http://localhost"},
+            json={"password": "local-admin-pass"},
+        )
 
         self.assertEqual(r.status_code, 403)
 
     def test_dev_web_login_issues_admin_web_session_token(self) -> None:
         local_client = self._enable_dev_auth(password="local-admin-pass")
 
-        login = local_client.post("/api/auth/dev/web-login", json={"password": "local-admin-pass"})
+        login = local_client.post(
+            "/api/auth/dev/web-login",
+            headers={"Origin": "http://localhost"},
+            json={"password": "local-admin-pass"},
+        )
 
         self.assertEqual(login.status_code, 200, login.text)
         body = login.json()
@@ -308,7 +384,7 @@ class ApiAuthAndTicketsTests(unittest.TestCase):
         finally:
             s.close()
 
-        admin_hdrs = {"X-Telegram-Init-Data": self._init_data(9999, "admin")}
+        admin_hdrs = self._admin_web_headers()
 
         manual = self.client.get(
             "/api/admin/users",
@@ -386,7 +462,7 @@ class ApiAuthAndTicketsTests(unittest.TestCase):
         original_panel = self.api.ControlPanel
         self.api.ControlPanel = FakePanel
         try:
-            admin_hdrs = {"X-Telegram-Init-Data": self._init_data(9999, "admin")}
+            admin_hdrs = self._admin_web_headers()
 
             real = self.client.post("/api/admin/users/1001/delete-test-user", headers=admin_hdrs)
             self.assertEqual(real.status_code, 400, real.text)
@@ -407,7 +483,7 @@ class ApiAuthAndTicketsTests(unittest.TestCase):
             s.close()
 
     def test_admin_nodes_drift_returns_summary(self) -> None:
-        admin_hdrs = {"X-Telegram-Init-Data": self._init_data(9999, "admin")}
+        admin_hdrs = self._admin_web_headers()
 
         fake_payload = {
             "summary": {"total": 2, "ok": 1, "drift": 1},
@@ -962,8 +1038,12 @@ class ApiAuthAndTicketsTests(unittest.TestCase):
         finally:
             s.close()
 
-        admin_hdrs = {"X-Telegram-Init-Data": self._init_data(9999, "admin")}
-        r = self.client.post("/api/admin/nodes/pl/disable", headers=admin_hdrs, json={})
+        admin_hdrs = self._admin_web_headers()
+        r = self.client.post(
+            "/api/admin/nodes/pl/disable",
+            headers=admin_hdrs,
+            json={"operator_reason": "Проверка защиты узла с активными пользователями"},
+        )
         self.assertEqual(r.status_code, 409, r.text)
         self.assertIn("resync", r.text.lower())
 
@@ -1033,10 +1113,18 @@ class ApiAuthAndTicketsTests(unittest.TestCase):
         original_panel = self.api.ControlPanel
         self.api.ControlPanel = FakePanel
         try:
-            admin_hdrs = {"X-Telegram-Init-Data": self._init_data(9999, "admin")}
-            drained = self.client.post("/api/admin/nodes/pl/drain", headers=admin_hdrs, json={})
+            admin_hdrs = self._admin_web_headers()
+            drained = self.client.post(
+                "/api/admin/nodes/pl/drain",
+                headers=admin_hdrs,
+                json={"operator_reason": "Проверка перевода узла в обслуживание"},
+            )
             self.assertEqual(drained.status_code, 200, drained.text)
-            resync = self.client.post("/api/admin/nodes/pl/resync", headers=admin_hdrs, json={"limit": 50})
+            resync = self.client.post(
+                "/api/admin/nodes/pl/resync",
+                headers=admin_hdrs,
+                json={"limit": 50, "operator_reason": "Проверка переноса ключей на живой узел"},
+            )
             self.assertEqual(resync.status_code, 200, resync.text)
             self.assertEqual(int(resync.json().get("migrated") or 0), 1)
         finally:
@@ -1100,7 +1188,7 @@ class ApiAuthAndTicketsTests(unittest.TestCase):
         finally:
             s.close()
 
-        admin_hdrs = {"X-Telegram-Init-Data": self._init_data(9999, "admin")}
+        admin_hdrs = self._admin_web_headers()
         r = self.client.get("/api/admin/nodes/health", headers=admin_hdrs)
         self.assertEqual(r.status_code, 200, r.text)
         rows = r.json()["nodes"]
@@ -1168,7 +1256,7 @@ class ApiAuthAndTicketsTests(unittest.TestCase):
         finally:
             s.close()
 
-        admin_hdrs = {"X-Telegram-Init-Data": self._init_data(9999, "admin")}
+        admin_hdrs = self._admin_web_headers()
         r = self.client.get("/api/admin/nodes/health", headers=admin_hdrs)
         self.assertEqual(r.status_code, 200, r.text)
         item = next(row for row in r.json()["nodes"] if row["code"] == "de")
@@ -1246,7 +1334,7 @@ class ApiAuthAndTicketsTests(unittest.TestCase):
         finally:
             s.close()
 
-        admin_hdrs = {"X-Telegram-Init-Data": self._init_data(9999, "admin")}
+        admin_hdrs = self._admin_web_headers()
         r = self.client.get("/api/admin/metrics/status", headers=admin_hdrs)
         self.assertEqual(r.status_code, 200, r.text)
         body = r.json()
@@ -1299,7 +1387,7 @@ class ApiAuthAndTicketsTests(unittest.TestCase):
 
     def test_ticket_lifecycle_with_media_metadata(self) -> None:
         user_hdrs = {"X-Telegram-Init-Data": self._init_data(1001, "alice")}
-        admin_hdrs = {"X-Telegram-Init-Data": self._init_data(9999, "admin")}
+        admin_hdrs = self._admin_web_headers()
 
         create = self.client.post(
             "/api/tickets",
@@ -1500,7 +1588,7 @@ class ApiAuthAndTicketsTests(unittest.TestCase):
         self.assertEqual(r2.status_code, 429, r2.text)
 
     def test_admin_manual_user_crud_flow(self) -> None:
-        admin_hdrs = {"X-Telegram-Init-Data": self._init_data(9999, "admin")}
+        admin_hdrs = self._admin_web_headers()
 
         class FakePanel:
             async def login(self):
@@ -1574,7 +1662,7 @@ class ApiAuthAndTicketsTests(unittest.TestCase):
         block = self.client.post(
             f"/api/admin/users/{manual_tg_id}/manual/block",
             headers=admin_hdrs,
-            json={"blocked": True},
+            json={"blocked": True, "operator_reason": "ручная блокировка теста"},
         )
         self.assertEqual(block.status_code, 200, block.text)
         self.assertTrue(block.json()["ok"])
@@ -1583,7 +1671,7 @@ class ApiAuthAndTicketsTests(unittest.TestCase):
         regen = self.client.post(
             f"/api/admin/users/{manual_tg_id}/manual/regenerate-token",
             headers=admin_hdrs,
-            json={},
+            json={"operator_reason": "ротация токена тест"},
         )
         self.assertEqual(regen.status_code, 200, regen.text)
         self.assertTrue(regen.json()["ok"])
@@ -1676,7 +1764,7 @@ class ApiAuthAndTicketsTests(unittest.TestCase):
         finally:
             s.close()
 
-        admin_hdrs = {"X-Telegram-Init-Data": self._init_data(9999, "admin")}
+        admin_hdrs = self._admin_web_headers()
 
         inactive_resp = self.client.get(
             "/api/admin/users?status=inactive&sort=created_desc&page=1&page_size=20",
@@ -1748,7 +1836,7 @@ class ApiAuthAndTicketsTests(unittest.TestCase):
         finally:
             s.close()
 
-        admin_hdrs = {"X-Telegram-Init-Data": self._init_data(9999, "admin")}
+        admin_hdrs = self._admin_web_headers()
 
         inactive_resp = self.client.post(
             "/api/admin/users/keys/bulk-action",
@@ -1804,7 +1892,7 @@ class ApiAuthAndTicketsTests(unittest.TestCase):
         finally:
             s.close()
 
-        admin_hdrs = {"X-Telegram-Init-Data": self._init_data(9999, "admin")}
+        admin_hdrs = self._admin_web_headers()
 
         reject_real = self.client.post(
             "/api/admin/users/1001/safe-delete",
@@ -1829,7 +1917,7 @@ class ApiAuthAndTicketsTests(unittest.TestCase):
             s.close()
 
     def test_admin_promos_templates_and_gift_codes_crud(self) -> None:
-        admin_hdrs = {"X-Telegram-Init-Data": self._init_data(9999, "admin")}
+        admin_hdrs = self._admin_web_headers()
         user_hdrs = {"X-Telegram-Init-Data": self._init_data(1001, "alice")}
 
         created_promo = self.client.post(
@@ -1896,7 +1984,7 @@ class ApiAuthAndTicketsTests(unittest.TestCase):
         self.assertEqual(redeemed_twice.status_code, 400, redeemed_twice.text)
 
     def test_admin_loyalty_grant_syncs_panel_and_returns_sync_flag(self) -> None:
-        admin_hdrs = {"X-Telegram-Init-Data": self._init_data(9999, "admin")}
+        admin_hdrs = self._admin_web_headers()
         from db import SessionLocal
         from models import User
 
@@ -1912,7 +2000,11 @@ class ApiAuthAndTicketsTests(unittest.TestCase):
         cfg = self.client.put(
             "/api/admin/loyalty-config",
             headers=admin_hdrs,
-            json={"enabled": True, "tiers": [{"days": 30, "bonus_days": 5, "perk": "loyal_30"}]},
+            json={
+                "enabled": True,
+                "tiers": [{"days": 30, "bonus_days": 5, "perk": "loyal_30"}],
+                "operator_reason": "Проверка начисления бонуса лояльности",
+            },
         )
         self.assertEqual(cfg.status_code, 200, cfg.text)
 
@@ -1927,7 +2019,7 @@ class ApiAuthAndTicketsTests(unittest.TestCase):
         granted = self.client.post(
             "/api/admin/users/1001/loyalty/grant",
             headers=admin_hdrs,
-            json={"tier_days": 30},
+            json={"tier_days": 30, "operator_reason": "Проверка ручного начисления бонуса"},
         )
         self.assertEqual(granted.status_code, 200, granted.text)
         self.assertTrue(granted.json().get("ok"))
@@ -1935,7 +2027,7 @@ class ApiAuthAndTicketsTests(unittest.TestCase):
         self.assertEqual(seen, [1001])
 
     def test_gift_redeem_tracks_denied_attempt(self) -> None:
-        admin_hdrs = {"X-Telegram-Init-Data": self._init_data(9999, "admin")}
+        admin_hdrs = self._admin_web_headers()
         user_hdrs = {"X-Telegram-Init-Data": self._init_data(1001, "alice")}
 
         created = self.client.post(
@@ -1959,7 +2051,7 @@ class ApiAuthAndTicketsTests(unittest.TestCase):
         self.assertEqual(str(denied[0]["meta"].get("reason") or ""), "already_redeemed")
 
     def test_promo_redeem_supports_unlimited_uses_flag(self) -> None:
-        admin_hdrs = {"X-Telegram-Init-Data": self._init_data(9999, "admin")}
+        admin_hdrs = self._admin_web_headers()
         user_hdrs = {"X-Telegram-Init-Data": self._init_data(1001, "alice")}
 
         created = self.client.post(
@@ -2190,7 +2282,9 @@ class ApiAuthAndTicketsTests(unittest.TestCase):
 
         profile = self.client.get("/api/user/1001", headers=headers)
         self.assertEqual(profile.status_code, 200, profile.text)
-        self.assertTrue(str(profile.json().get("subscription_url") or "").startswith("https://connect.pokrov.space/s8Kx2mP7qR4wT/"))
+        profile_body = profile.json()
+        self.assertEqual(str(profile_body.get("subscription_url") or ""), "")
+        self.assertEqual(str((profile_body.get("consumer_summary") or {}).get("connect_host") or ""), "connect.pokrov.space")
 
     def test_admin_metrics_timeseries_and_nodes_traffic_endpoints(self) -> None:
         from db import SessionLocal
@@ -2198,7 +2292,7 @@ class ApiAuthAndTicketsTests(unittest.TestCase):
 
         now = _utcnow().replace(microsecond=0)
         day_start = now.replace(hour=0, minute=0, second=0)
-        admin_hdrs = {"X-Telegram-Init-Data": self._init_data(9999, "admin")}
+        admin_hdrs = self._admin_web_headers()
 
         s = SessionLocal()
         try:
@@ -2303,7 +2397,7 @@ class ApiAuthAndTicketsTests(unittest.TestCase):
         from models import Event
 
         now = _utcnow().replace(microsecond=0)
-        admin_hdrs = {"X-Telegram-Init-Data": self._init_data(9999, "admin")}
+        admin_hdrs = self._admin_web_headers()
 
         s = SessionLocal()
         try:
@@ -2336,7 +2430,7 @@ class ApiAuthAndTicketsTests(unittest.TestCase):
         from models import User
 
         now = _utcnow().replace(microsecond=0)
-        admin_hdrs = {"X-Telegram-Init-Data": self._init_data(9999, "admin")}
+        admin_hdrs = self._admin_web_headers()
 
         s = SessionLocal()
         try:
@@ -2390,7 +2484,7 @@ class ApiAuthAndTicketsTests(unittest.TestCase):
         from models import Node, NodeHealthSample, ObserverUserState, User
 
         now = _utcnow().replace(microsecond=0)
-        admin_hdrs = {"X-Telegram-Init-Data": self._init_data(9999, "admin")}
+        admin_hdrs = self._admin_web_headers()
 
         s = SessionLocal()
         try:
@@ -2529,7 +2623,7 @@ class ApiAuthAndTicketsTests(unittest.TestCase):
         self.assertEqual((quality.get("observer") or {}).get("badge"), "good")
 
     def test_admin_summary_marks_missing_truth_data_sources(self) -> None:
-        admin_hdrs = {"X-Telegram-Init-Data": self._init_data(9999, "admin")}
+        admin_hdrs = self._admin_web_headers()
 
         summary_resp = self.client.get("/api/admin/summary", headers=admin_hdrs)
         self.assertEqual(summary_resp.status_code, 200, summary_resp.text)
@@ -2552,7 +2646,7 @@ class ApiAuthAndTicketsTests(unittest.TestCase):
         from models import Event, User
 
         now = _utcnow().replace(microsecond=0)
-        admin_hdrs = {"X-Telegram-Init-Data": self._init_data(9999, "admin")}
+        admin_hdrs = self._admin_web_headers()
 
         s = SessionLocal()
         try:
@@ -2624,7 +2718,7 @@ class ApiAuthAndTicketsTests(unittest.TestCase):
         from models import Node, NodeHealthSample
 
         now = _utcnow().replace(microsecond=0)
-        admin_hdrs = {"X-Telegram-Init-Data": self._init_data(9999, "admin")}
+        admin_hdrs = self._admin_web_headers()
 
         s = SessionLocal()
         try:
@@ -2733,7 +2827,7 @@ class ApiAuthAndTicketsTests(unittest.TestCase):
         from db import SessionLocal
         from models import Node
 
-        admin_hdrs = {"X-Telegram-Init-Data": self._init_data(9999, "admin")}
+        admin_hdrs = self._admin_web_headers()
 
         s = SessionLocal()
         try:
@@ -2777,7 +2871,7 @@ class ApiAuthAndTicketsTests(unittest.TestCase):
         from db import SessionLocal
         from models import Node, NodeHealthSample
 
-        admin_hdrs = {"X-Telegram-Init-Data": self._init_data(9999, "admin")}
+        admin_hdrs = self._admin_web_headers()
         now = _utcnow().replace(microsecond=0)
 
         s = SessionLocal()
@@ -2835,7 +2929,7 @@ class ApiAuthAndTicketsTests(unittest.TestCase):
         from db import SessionLocal
         from models import Node
 
-        admin_hdrs = {"X-Telegram-Init-Data": self._init_data(9999, "admin")}
+        admin_hdrs = self._admin_web_headers()
 
         s = SessionLocal()
         try:
@@ -2892,7 +2986,7 @@ class ApiAuthAndTicketsTests(unittest.TestCase):
         from db import SessionLocal
         from models import Node, ObserverUserState, User, UserNode
 
-        admin_hdrs = {"X-Telegram-Init-Data": self._init_data(9999, "admin")}
+        admin_hdrs = self._admin_web_headers()
 
         s = SessionLocal()
         try:
@@ -3079,7 +3173,7 @@ class ApiAuthAndTicketsTests(unittest.TestCase):
         self.assertEqual(fail_rows[0]["meta"].get("reason"), "timeout")
 
     def test_admin_start_links_and_wheel_config(self) -> None:
-        admin_hdrs = {"X-Telegram-Init-Data": self._init_data(9999, "admin")}
+        admin_hdrs = self._admin_web_headers()
 
         created = self.client.post(
             "/api/admin/start-links",
@@ -3125,6 +3219,7 @@ class ApiAuthAndTicketsTests(unittest.TestCase):
                     {"days": 30, "weight": 5},
                 ],
                 "cooldown_hours": 96,
+                "operator_reason": "Проверка настройки колеса бонусов",
             },
         )
         self.assertEqual(cfg_put.status_code, 200, cfg_put.text)
@@ -3132,7 +3227,7 @@ class ApiAuthAndTicketsTests(unittest.TestCase):
         self.assertEqual(int(body.get("cooldown_hours") or 0), 96)
 
     def test_admin_campaign_links_respect_telegram_start_payload_limit(self) -> None:
-        admin_hdrs = {"X-Telegram-Init-Data": self._init_data(9999, "admin")}
+        admin_hdrs = self._admin_web_headers()
 
         ok = self.client.post(
             "/api/admin/campaign-links/build",
