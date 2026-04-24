@@ -9,7 +9,7 @@ const config = getPokrovPublicConfig(process.env as Record<string, string | unde
 
 export const metadata = buildMarketingMetadata(
   "Политика конфиденциальности | POKROV",
-  "Какие данные использует POKROV для работы аккаунта, поддержки и платежей, и как связаться со службой заботы.",
+  "Какие данные использует POKROV для работы доступа, поддержки и платежей, и как связаться с поддержкой.",
   {
     path: "/privacy/",
     keywords: ["политика конфиденциальности", "privacy pokrov", "данные pokrov"],
@@ -30,8 +30,8 @@ export default function PrivacyPage() {
           <span className="lp-legal-banner__eyebrow">Данные и поддержка</span>
           <h1>Политика конфиденциальности</h1>
           <p>
-            POKROV использует только те данные, которые нужны для работы аккаунта, поддержки, защиты сервиса и
-            проведения платежей. Здесь — короткая и спокойная версия того, что именно мы храним и зачем.
+            POKROV использует только те данные, которые нужны для работы доступа, поддержки, защиты сервиса и
+            проведения платежей. Здесь короткая и спокойная версия того, что именно мы храним и зачем.
           </p>
         </section>
 
@@ -40,14 +40,15 @@ export default function PrivacyPage() {
             <h2>Какие данные используются</h2>
             <ul className="lp-legal-list">
               <li>Данные аккаунта: идентификатор, срок доступа, активный план и служебные метки для работы продукта.</li>
-              <li>Технические события: ошибки оплаты, события авторизации, обращения в поддержку и сигналы стабильности сервиса.</li>
-              <li>Сообщения и файлы, которые пользователь сам отправляет в службу заботы.</li>
+              <li>Данные устройств: тип платформы, версия приложения и контекст, который помогает поддержке разобраться в обращении.</li>
+              <li>События сервиса: ошибки оплаты, вход в кабинет, обращения в поддержку и сигналы стабильности.</li>
+              <li>Сообщения и файлы, которые пользователь сам отправляет в поддержку.</li>
             </ul>
           </article>
 
           <article className="lp-legal-panel">
             <h2>Как мы с этим обращаемся</h2>
-            <p>Мы не продаём персональные данные и используем их только там, где это нужно для работы сервиса и обязательных расчётов.</p>
+            <p>Мы не продаём персональные данные и используем их только там, где это нужно для работы POKROV, поддержки, безопасности и обязательных расчётов.</p>
             <p className="lp-legal-inline-links">
               Полезные страницы: <Link href="/">главная POKROV</Link>,{" "}
               <Link href={MARKETING_CANONICAL_PATHS.youtube}>YouTube</Link> и{" "}
@@ -60,7 +61,7 @@ export default function PrivacyPage() {
           <h2>Контакты</h2>
           <ul className="lp-legal-list lp-legal-list--contacts">
             <li>
-              Support: <a href={`mailto:${config.contactEmail}`}>{config.contactEmail}</a>
+              Поддержка: <a href={`mailto:${config.contactEmail}`}>{config.contactEmail}</a>
             </li>
             <li>
               Enterprise: <a href={`mailto:${config.enterpriseEmail}`}>{config.enterpriseEmail}</a>
@@ -82,7 +83,10 @@ export default function PrivacyPage() {
             <Link className="btn btn-ghost" href="/">
               На главную POKROV
             </Link>
-            <a className="btn btn-primary" href={config.botUrl} target="_blank" rel="noreferrer">
+            <Link className="btn btn-primary" href={MARKETING_CANONICAL_PATHS.install}>
+              Попробовать 5 дней
+            </Link>
+            <a className="btn btn-ghost" href={config.botUrl} target="_blank" rel="noreferrer">
               Открыть Telegram-бота
             </a>
           </div>

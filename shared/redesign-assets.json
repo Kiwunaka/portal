@@ -1,0 +1,113 @@
+{
+  "version": "2026-04-24-full-redesign-assets",
+  "workspace_target": "marketing/public/redesign/",
+  "brand": {
+    "canonical_mark": {
+      "name": "cloak-like POKROV mark",
+      "source_path": "C:/Users/kiwun/Documents/ai/VPN/иконки лого и тд/logogo.png",
+      "source_kind": "raster",
+      "source_usage": "canonical mark master from the icon folder",
+      "subtitle": "",
+      "subtitle_policy": "Do not publish the old PREMIUM VPN subtitle or any direct-meaning VPN product description."
+    },
+    "optimized": {
+      "mark_svg": {
+        "kind": "vector",
+        "role": "public-brand-mark",
+        "workspace_path": "marketing/public/redesign/brand/pokrov-mark.svg",
+        "public_path": "/redesign/brand/pokrov-mark.svg",
+        "source_path": "C:/Users/kiwun/Documents/ai/VPN/иконки лого и тд/logogo.png",
+        "text_embedded": false
+      },
+      "mark_png": {
+        "kind": "raster",
+        "role": "transparent-brand-mark",
+        "workspace_path": "marketing/public/redesign/brand/pokrov-mark-1024.png",
+        "public_path": "/redesign/brand/pokrov-mark-1024.png",
+        "source_path": "C:/Users/kiwun/Documents/ai/VPN/иконки лого и тд/logogo.png",
+        "width": 1024,
+        "height": 1024,
+        "text_embedded": false
+      },
+      "mark_png_compact": {
+        "kind": "raster",
+        "role": "transparent-brand-mark-compact",
+        "workspace_path": "marketing/public/redesign/brand/pokrov-mark-512.png",
+        "public_path": "/redesign/brand/pokrov-mark-512.png",
+        "source_path": "C:/Users/kiwun/Documents/ai/VPN/иконки лого и тд/logogo.png",
+        "width": 512,
+        "height": 512,
+        "text_embedded": false
+      },
+      "favicon_png": {
+        "kind": "raster",
+        "role": "favicon-png",
+        "workspace_path": "marketing/public/redesign/brand/pokrov-favicon-32.png",
+        "public_path": "/redesign/brand/pokrov-favicon-32.png",
+        "source_path": "C:/Users/kiwun/Documents/ai/VPN/иконки лого и тд/logogo.png",
+        "width": 32,
+        "height": 32,
+        "text_embedded": false
+      },
+      "favicon_svg": {
+        "kind": "vector",
+        "role": "favicon-svg",
+        "workspace_path": "marketing/public/redesign/brand/pokrov-favicon.svg",
+        "public_path": "/redesign/brand/pokrov-favicon.svg",
+        "source_path": "C:/Users/kiwun/Documents/ai/VPN/иконки лого и тд/logogo.png",
+        "text_embedded": false
+      },
+      "favicon_ico": {
+        "kind": "raster",
+        "role": "browser-favicon",
+        "workspace_path": "marketing/public/favicon.ico",
+        "public_path": "/favicon.ico",
+        "source_path": "C:/Users/kiwun/Documents/ai/VPN/иконки лого и тд/logogo.png",
+        "sizes": [16, 32, 48, 256],
+        "text_embedded": false
+      },
+      "apple_touch_icon": {
+        "kind": "raster",
+        "role": "apple-touch-icon",
+        "workspace_path": "marketing/public/apple-icon.png",
+        "public_path": "/apple-icon.png",
+        "source_path": "C:/Users/kiwun/Documents/ai/VPN/иконки лого и тд/logogo.png",
+        "width": 512,
+        "height": 512,
+        "text_embedded": false
+      },
+      "android_icon": {
+        "kind": "raster",
+        "role": "android-app-icon-master",
+        "workspace_path": "marketing/public/redesign/brand/pokrov-app-icon-1024.png",
+        "public_path": "/redesign/brand/pokrov-app-icon-1024.png",
+        "source_path": "C:/Users/kiwun/Documents/ai/VPN/иконки лого и тд/logogo.png",
+        "width": 1024,
+        "height": 1024,
+        "text_embedded": false
+      },
+      "windows_icon": {
+        "kind": "raster",
+        "role": "windows-app-icon-master",
+        "workspace_path": "marketing/public/redesign/brand/pokrov-app-icon-512.png",
+        "public_path": "/redesign/brand/pokrov-app-icon-512.png",
+        "source_path": "C:/Users/kiwun/Documents/ai/VPN/иконки лого и тд/logogo.png",
+        "width": 512,
+        "height": 512,
+        "text_embedded": false
+      }
+    }
+  },
+  "assets": {
+    "hero_product": {
+      "kind": "raster",
+      "role": "public-hero-product-mockup",
+      "workspace_path": "marketing/public/redesign/pokrov-hero-product.png",
+      "public_path": "/redesign/pokrov-hero-product.png",
+      "source_path": "marketing/public/redesign/pokrov-hero-product-source.png",
+      "reusable": true,
+      "generated": true,
+      "text_embedded": false
+    }
+  }
+}

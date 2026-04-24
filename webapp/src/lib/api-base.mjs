@@ -22,9 +22,11 @@ export function resolveCandidateApiBases({
   const configured = normalizeBase(envBase);
   const canonical = normalizeBase(directApiBase);
   const appOrigin = normalizeBase(origin);
+  const configuredIsAppOrigin = Boolean(configured && appOrigin && configured === appOrigin);
 
-  if (configured) push(configured);
+  if (configured && !configuredIsAppOrigin) push(configured);
   if (canonical) push(canonical);
+  if (configuredIsAppOrigin) push(configured);
   if (appOrigin) push(appOrigin);
 
   if (enableLegacyPortFallback && appOrigin) {

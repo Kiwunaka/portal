@@ -9,7 +9,7 @@ const config = getPokrovPublicConfig(process.env as Record<string, string | unde
 
 export const metadata = buildMarketingMetadata(
   "Публичная оферта | POKROV",
-  "Базовые условия цифровой подписки POKROV, порядок продления и контакты поддержки.",
+  "Понятные условия POKROV: доступ, 5 дней проверки, ключи доступа, продление и контакты поддержки.",
   {
     path: "/offer/",
     keywords: ["оферта pokrov", "условия подписки", "pokrov offer"],
@@ -30,25 +30,26 @@ export default function OfferPage() {
           <span className="lp-legal-banner__eyebrow">Юридическая информация</span>
           <h1>Публичная оферта</h1>
           <p>
-            Здесь собраны базовые условия доступа к цифровым услугам POKROV, порядок продления и спокойный способ
-            связаться с командой, если нужен разбор спорной ситуации.
+            Здесь собраны базовые условия POKROV: как работает доступ, как купить и активировать ключ, как продлить срок
+            и куда обратиться, если нужна помощь.
           </p>
         </section>
 
         <section className="lp-legal-grid">
           <article className="lp-legal-panel">
-            <h2>Основные условия</h2>
+            <h2>Основные условия простыми словами</h2>
             <ul className="lp-legal-list">
-              <li>Сервис предоставляется как цифровая подписка на выбранный срок.</li>
-              <li>Бесплатный тест и отдельные сценарии доступа могут иметь свои ограничения по устройствам и функциям.</li>
-              <li>Продление и оплата запускаются через интерфейсы POKROV или через Telegram-бота, если это предусмотрено текущим маршрутом.</li>
-              <li>Возвраты и спорные случаи рассматриваются индивидуально через службу заботы.</li>
+              <li>POKROV предоставляет цифровой доступ на выбранный срок.</li>
+              <li>Первое валидное устройство может начать с 5 дней проверки в приложении.</li>
+              <li>Продление и оплата проходят через сайт, приложение, кабинет или Telegram-бота, если такой путь доступен пользователю.</li>
+              <li>После оплаты пользователь получает ключ доступа и активирует его в приложении или кабинете.</li>
+              <li>Возвраты и спорные случаи разбираются индивидуально через поддержку.</li>
             </ul>
           </article>
 
           <article className="lp-legal-panel">
             <h2>Где смотреть актуальную версию</h2>
-            <p>Актуальные версии документов доступны на сайте, в кабинете и по запросу в службу заботы.</p>
+            <p>Актуальные версии документов доступны на сайте, в кабинете и по запросу в поддержку.</p>
             <p className="lp-legal-inline-links">
               Полезные страницы: <Link href="/">главная POKROV</Link>,{" "}
               <Link href={MARKETING_CANONICAL_PATHS.mobile}>мобильный старт</Link> и{" "}
@@ -61,7 +62,7 @@ export default function OfferPage() {
           <h2>Контакты</h2>
           <ul className="lp-legal-list lp-legal-list--contacts">
             <li>
-              Support: <a href={`mailto:${config.contactEmail}`}>{config.contactEmail}</a>
+              Поддержка: <a href={`mailto:${config.contactEmail}`}>{config.contactEmail}</a>
             </li>
             <li>
               Enterprise: <a href={`mailto:${config.enterpriseEmail}`}>{config.enterpriseEmail}</a>
@@ -83,7 +84,10 @@ export default function OfferPage() {
             <Link className="btn btn-ghost" href="/">
               На главную POKROV
             </Link>
-            <a className="btn btn-primary" href={config.botUrl} target="_blank" rel="noreferrer">
+            <Link className="btn btn-primary" href={MARKETING_CANONICAL_PATHS.install}>
+              Попробовать 5 дней
+            </Link>
+            <a className="btn btn-ghost" href={config.botUrl} target="_blank" rel="noreferrer">
               Открыть Telegram-бота
             </a>
           </div>

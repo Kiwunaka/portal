@@ -1,6 +1,6 @@
 # POKROV System Overview
 
-Last updated: 2026-04-23
+Last updated: 2026-04-24
 
 ## Document Status
 
@@ -30,6 +30,7 @@ The new target architecture for the global rework freezes these boundaries befor
 - one app-first account becomes the identity root for `install_id`, email, Telegram, devices, and activation keys
 - public acquisition, pricing, and paywall move entirely onto `marketing/`, with a checkout-first CTA strategy for public traffic, while `webapp/` becomes session-aware continuation, redeem, support, renewal continuation, and admin only
 - public browser copy and visual governance are centralized through `shared/copy.ts`, `copy/catalog.ru.json`, and `shared/design-tokens.json`, with locked host and product facts inherited from the shared fact files
+- `shared/redesign-spine.json` records the current white/mint redesign spine for cross-worker alignment; it is a design/copy contract, not a runtime release signal
 - user-facing cabinet IA is `Dashboard / Subscription / Devices / Statistics / Support`, with `downloads`, `redeem`, and hosted-checkout continuation treated as task routes rather than parallel acquisition surfaces
 - commerce moves to hosted checkout plus activation-key issuance and redemption instead of raw subscription-link-first UX
 - remote promo content is limited to approved first-party promo slots; third-party ad SDKs remain out of scope
@@ -128,6 +129,7 @@ Admin ownership rule:
 - `webapp` is the primary admin surface for user, node, ticket, and metrics work
 - Telegram admin in `portal_bot/bot.py` is fallback/emergency tooling and must follow the same user-status semantics as web admin
 - `/api/admin/summary` is the operator truth snapshot for entitlement counts, install-backed activity, observer-backed activity, and data-quality status badges
+- local development admin access must still start from a real browser session token; mock admin data in Playwright may seed that token, but UI code must not add a bypass route that opens `/admin/*` without the normal cabinet session check
 
 Public connection delivery rule:
 
@@ -440,6 +442,8 @@ Major currently live public and app-first routes in `portal_bot/api.py` include:
 - `GET /api/health`
 - `GET /api/public/plans`
 - `GET /api/public/catalog`
+- `GET /api/public/live-updates`
+- `GET /api/public/social-proof`
 - `POST /api/auth/telegram/web-login`
 - additive email-auth rollout endpoints under `/api/auth/email/*` for register, verify, login, recovery, and reset
 - `POST /api/client/session/start-trial`
@@ -462,6 +466,11 @@ Major currently live public and app-first routes in `portal_bot/api.py` include:
 - tickets and admin APIs under `/api/tickets` and `/api/admin/*`
 
 The backend exposes both public/app-first surfaces and a broader Telegram/admin-oriented API set. Keep docs aligned with the actual route inventory in `portal_bot/api.py`.
+
+Public feed and proof payload rule:
+
+- `/api/public/live-updates` may provide default feed items when no operator-authored rows exist, but those defaults must use calm consumer copy and avoid raw node, transport, checkout, or direct-meaning `VPN` wording
+- `/api/public/social-proof` exposes aggregate account counters only; additive `summary.source=backend_account_rows` and `summary.precision=aggregate` help UI describe the data truthfully without implying a live people counter or personal tracking
 
 Current release-gate smoke focus should cover:
 

@@ -3,6 +3,7 @@
 import type { Dispatch, SetStateAction } from "react";
 import {
   AdminBadge,
+  AdminPanelHeader,
   adminButtonClass,
   adminFieldClass,
   adminInsetPanelClass,
@@ -70,27 +71,26 @@ export function AdminUsersQueryPanel({
 }: AdminUsersQueryPanelProps) {
   return (
     <article className={adminPanelClass("neutral")}>
-      <div className="mb-4 flex flex-col gap-3 xl:flex-row xl:items-end xl:justify-between">
-        <div className="min-w-0">
-          <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500">Раздел пользователей</p>
-          <h2 className="mt-1 text-lg font-semibold text-slate-50">Поиск аккаунтов и операторские действия</h2>
-          <p className="mt-1 text-sm leading-6 text-slate-400">
-            Держите список плотным: фильтры сверху, таблица слева, карточка пользователя справа. Удаление оставляйте только для явных manual/test аккаунтов.
-          </p>
-          <div className="mt-3 flex flex-wrap gap-2">
-            <AdminBadge tone="accent">Показаны {pageStart}-{pageEnd || 0} из {totalRows}</AdminBadge>
-            <AdminBadge>Страница {page} / {totalPages}</AdminBadge>
-            <AdminBadge tone="warning">Bulk actions запускайте через dry run</AdminBadge>
-          </div>
-        </div>
-        <div className="flex flex-wrap gap-2">
-          <button className={adminButtonClass("secondary", "sm")} type="button" onClick={onRefresh} disabled={loading || busy}>
-            Обновить
-          </button>
-          <button className={adminButtonClass("primary", "sm")} type="button" onClick={onCreateManual} disabled={busy}>
-            Создать manual/test пользователя
-          </button>
-        </div>
+      <AdminPanelHeader
+        eyebrow="people"
+        title="User search and access operations"
+        description="Filters stay at the top, results stay left, and the selected account opens in the right detail panel."
+        actions={
+          <>
+            <button className={adminButtonClass("secondary", "sm")} type="button" onClick={onRefresh} disabled={loading || busy}>
+              Обновить
+            </button>
+            <button className={adminButtonClass("primary", "sm")} type="button" onClick={onCreateManual} disabled={busy}>
+              Создать manual/test пользователя
+            </button>
+          </>
+        }
+      />
+
+      <div className="mb-3 flex flex-wrap gap-2">
+        <AdminBadge tone="accent">Диапазон {pageStart}-{pageEnd || 0} / {totalRows}</AdminBadge>
+        <AdminBadge>Страница {page} / {totalPages}</AdminBadge>
+        <AdminBadge tone="warning">bulk actions default to dry run</AdminBadge>
       </div>
 
       <div className="grid gap-2 sm:grid-cols-2 2xl:grid-cols-[minmax(0,1.8fr),repeat(4,minmax(0,0.88fr))]">
@@ -102,36 +102,28 @@ export function AdminUsersQueryPanel({
         />
         <select value={filters.status} onChange={(event) => onStatusChange(event.target.value)} className={adminFieldClass}>
           {ADMIN_USERS_STATUS_OPTIONS.map((option) => (
-            <option key={option.value} value={option.value}>
-              {option.label}
-            </option>
+            <option key={option.value} value={option.value}>{option.label}</option>
           ))}
         </select>
         <select value={filters.origin} onChange={(event) => onOriginChange(event.target.value)} className={adminFieldClass}>
           {ADMIN_USERS_ORIGIN_OPTIONS.map((option) => (
-            <option key={option.value} value={option.value}>
-              {option.label}
-            </option>
+            <option key={option.value} value={option.value}>{option.label}</option>
           ))}
         </select>
         <select value={filters.observerState} onChange={(event) => onObserverChange(event.target.value)} className={adminFieldClass}>
           {ADMIN_USERS_OBSERVER_OPTIONS.map((option) => (
-            <option key={option.value} value={option.value}>
-              {option.label}
-            </option>
+            <option key={option.value} value={option.value}>{option.label}</option>
           ))}
         </select>
         <select value={filters.sort} onChange={(event) => onSortChange(event.target.value)} className={adminFieldClass}>
           {ADMIN_USERS_SORT_OPTIONS.map((option) => (
-            <option key={option.value} value={option.value}>
-              {option.label}
-            </option>
+            <option key={option.value} value={option.value}>{option.label}</option>
           ))}
         </select>
       </div>
 
       <div className={`${adminInsetPanelClass} mt-3 flex flex-wrap items-center justify-between gap-3 text-xs text-slate-400`}>
-        <div>Показаны {pageStart}-{pageEnd || 0} из {totalRows} пользователей. Эффективный статус общий для web и bot admin.</div>
+        <div>Effective status is shared by web admin and bot admin. Deletion remains limited to explicit manual/test accounts.</div>
         <div className="flex items-center gap-2">
           <button className={adminButtonClass("ghost", "xs")} type="button" disabled={page <= 1 || loading} onClick={onPrevPage}>
             Назад
@@ -146,12 +138,12 @@ export function AdminUsersQueryPanel({
       <div className={`${adminInsetPanelClass} mt-3`}>
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
-            <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500">Массовое действие</p>
+            <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500">bulk key action</p>
             <p className="mt-1 text-xs leading-5 text-slate-400">
-              Начинайте с dry run, если изменение затрагивает широкий сегмент или сразу несколько нод.
+              Use dry run first for any segment wider than one account. Turn off dry run only after reviewing matched and changed counts.
             </p>
           </div>
-          <AdminBadge tone="warning">Bulk</AdminBadge>
+          <AdminBadge tone={bulkAction.dryRun ? "success" : "warning"}>{bulkAction.dryRun ? "dry run" : "live action"}</AdminBadge>
         </div>
 
         <div className="mt-3 grid gap-2 sm:grid-cols-2">
@@ -161,9 +153,7 @@ export function AdminUsersQueryPanel({
             className={adminFieldClass}
           >
             {ADMIN_USERS_BULK_ACTION_OPTIONS.map((option) => (
-              <option key={option.value} value={option.value}>
-                {option.label}
-              </option>
+              <option key={option.value} value={option.value}>{option.label}</option>
             ))}
           </select>
           <select
@@ -172,35 +162,33 @@ export function AdminUsersQueryPanel({
             className={adminFieldClass}
           >
             {ADMIN_USERS_BULK_SEGMENT_OPTIONS.map((option) => (
-              <option key={option.value} value={option.value}>
-                {option.label}
-              </option>
+              <option key={option.value} value={option.value}>{option.label}</option>
             ))}
           </select>
           <input
             value={bulkAction.q}
             onChange={(event) => setBulkAction((prev) => ({ ...prev, q: event.target.value }))}
-            placeholder="Дополнительный фильтр внутри выбранного сегмента"
+            placeholder="Optional filter inside selected segment"
             className={adminFieldClass}
           />
           <input
             value={bulkAction.nodeCodes}
             onChange={(event) => setBulkAction((prev) => ({ ...prev, nodeCodes: event.target.value }))}
-            placeholder="Коды нод через запятую"
+            placeholder="Node codes, comma-separated"
             className={adminFieldClass}
           />
         </div>
 
         <div className="mt-3 flex flex-wrap items-center gap-3">
           <label className="text-xs text-slate-400">
-            Лимит:
+            Limit
             <input
               type="number"
               min={1}
               max={500}
               value={bulkAction.limit}
               onChange={(event) => setBulkAction((prev) => ({ ...prev, limit: Number(event.target.value || 50) }))}
-              className="ml-2 h-8 w-20 rounded-lg border border-[#24313d] bg-[#0a1117] px-2 text-xs text-slate-100 outline-none"
+              className="ml-2 h-8 w-20 rounded-lg border border-[#c6e6db] bg-[#ffffff] px-2 text-xs text-slate-100 outline-none"
             />
           </label>
           <label className="inline-flex items-center gap-2 text-xs text-slate-400">
@@ -220,7 +208,7 @@ export function AdminUsersQueryPanel({
             Force
           </label>
           <button className={adminButtonClass("secondary", "sm")} type="button" onClick={onRunBulkAction} disabled={busy}>
-            Запустить
+            Run bulk action
           </button>
         </div>
 

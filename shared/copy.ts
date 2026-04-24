@@ -17,6 +17,30 @@ type CatalogShape = {
 };
 
 const typedCatalog = catalog as CatalogShape;
+export const GLOBAL_CTA_COPY_KEYS = {
+  primary: "marketing.hero.primary_cta",
+  secondary: "marketing.hero.secondary_cta",
+  checkout: "marketing.checkout.primary_cta",
+  install: "marketing.install.primary_cta",
+  support: "bot.shared.support_cta",
+} as const;
+
+export const GLOBAL_GLOSSARY_COPY_KEYS = {
+  brandSubtitle: "brand.subtitle",
+  appConnection: "app.nav.protection",
+  appLocations: "app.nav.locations",
+  appRules: "app.nav.rules",
+  appProfile: "app.nav.profile",
+  cabinetHome: "cabinet.nav.home",
+  cabinetBilling: "cabinet.nav.billing",
+  cabinetDevices: "cabinet.nav.devices",
+  cabinetDownloads: "cabinet.nav.downloads",
+  cabinetSupport: "cabinet.nav.support",
+  cabinetProfile: "cabinet.nav.profile",
+  cabinetSettings: "cabinet.nav.settings",
+  appleBadge: "platform.apple.badge",
+} as const;
+
 const legacyPublicVpnAllowlist = [
   /\bPOKROV VPN\b/gi,
   /\b@pokrov_vpn\b/gi,

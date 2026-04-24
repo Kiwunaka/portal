@@ -168,7 +168,10 @@ function mockTickets(): TicketMock[] {
   ];
 }
 
-async function registerCabinetMocks(page: Page): Promise<void> {
+async function registerCabinetMocks(
+  page: Page,
+  options: { emptyDevices?: boolean; emptyTickets?: boolean } = {},
+): Promise<void> {
   await page.addInitScript(() => {
     window.localStorage.setItem("portal_web_session_token", "e2e_mock_token");
     Object.defineProperty(window.navigator, "clipboard", {
@@ -180,8 +183,19 @@ async function registerCabinetMocks(page: Page): Promise<void> {
   });
 
   const sessionUser = mockSessionUser();
+  if (options.emptyDevices) {
+    sessionUser.devices = [];
+    sessionUser.sync.device_count = 0;
+    sessionUser.connections.active_connections = 0;
+    sessionUser.connections.active_nodes = 0;
+  }
   const dashboard = mockDashboard();
-  let tickets = [...mockTickets()];
+  if (options.emptyDevices) {
+    dashboard.active_sessions = 0;
+    dashboard.connection_snapshot.active_connections = 0;
+    dashboard.connection_snapshot.active_nodes = 0;
+  }
+  let tickets = options.emptyTickets ? [] : [...mockTickets()];
 
   await page.route("**/api/**", async (route) => {
     const request = route.request();
@@ -327,11 +341,37 @@ test.describe("Cabinet flow", () => {
     const sidebar = page.getByRole("complementary").first();
     await expect(sidebar).toContainText("Доступ, устройства и помощь в одном спокойном кабинете.");
     await expect(sidebar.locator("nav")).toContainText("Главная");
-    await expect(sidebar.locator("nav")).toContainText("Профиль");
+    await expect(sidebar.locator("nav")).toContainText("Аккаунт");
 
     const siteLink = page.getByRole("link", { name: /^На сайт/i });
     await expect(siteLink).toBeVisible();
     await expect(siteLink).toHaveAttribute("href", /https:\/\/pokrov\.space\/?$/);
+  });
+
+  test("exposes system light and dark theme controls in the shell and profile settings", async ({ page }) => {
+    await page.addInitScript(() => {
+      window.localStorage.removeItem("pokrov-theme");
+      window.localStorage.removeItem("portal-theme");
+      window.localStorage.removeItem("theme");
+    });
+
+    await page.goto("/profile/");
+
+    const headerTheme = page.getByRole("banner").getByRole("button", { name: /Тема: системная/i });
+    await expect(headerTheme).toBeVisible();
+
+    const settings = page.getByRole("region", { name: "Настройки кабинета" });
+    await expect(settings).toContainText("Системная");
+    await expect(settings).toContainText("Светлая");
+    await expect(settings).toContainText("Темная");
+
+    await settings.getByRole("button", { name: "Темная тема", exact: true }).click();
+    await expect(page.locator("html")).toHaveClass(/dark/);
+    await expect.poll(() => page.evaluate(() => window.localStorage.getItem("pokrov-theme"))).toBe("dark");
+
+    await settings.getByRole("button", { name: "Системная тема", exact: true }).click();
+    await expect.poll(() => page.evaluate(() => window.localStorage.getItem("pokrov-theme"))).toBe("system");
+    await expect(headerTheme).toBeVisible();
   });
 
   test("shows an honest email-soon state on the root auth entry", async ({ page }) => {
@@ -344,7 +384,7 @@ test.describe("Cabinet flow", () => {
     await expect(page.getByRole("heading", { name: "Telegram уже работает" })).toBeVisible();
     await expect(page.getByRole("heading", { name: "Скоро подключим" })).toBeVisible();
     await expect(page.locator("main")).toContainText(
-      "Email-вход для кабинета еще не открыт. Если нужен вход или восстановление уже сейчас, используйте Telegram.",
+      "Email-вход для кабинета еще не открыт. Когда он будет готов, он попадет в тот же кабинетный сценарий. Сейчас используйте Telegram.",
     );
     await expect(page.getByRole("button", { name: /Продолжить через email/i })).toHaveCount(0);
   });
@@ -377,8 +417,8 @@ test.describe("Cabinet flow", () => {
     await page.goto("/dashboard/");
 
     await expect(page.getByRole("heading", { name: "Статус и следующий шаг" })).toBeVisible();
-    await expect(page.locator("main")).toContainText("Людей онлайн");
-    await expect(page.getByRole("heading", { name: "Быстрые разделы" })).toBeVisible();
+    await expect(page.locator("main")).toContainText("Активных подключений");
+    await expect(page.locator("main")).toContainText("Шаг 1");
     await expect(page.getByRole("link", { name: "Загрузки" }).first()).toBeVisible();
     await expect(page.getByRole("link", { name: "Поддержка", exact: true }).first()).toBeVisible();
     await expect(page.locator("main")).not.toContainText("QR");
@@ -390,6 +430,22 @@ test.describe("Cabinet flow", () => {
   });
 
   test("keeps cabinet navigation on native Next.js routing", async ({ page }) => {
+    const stableRequests: Record<string, number> = {
+      authSession: 0,
+      dashboard: 0,
+      user: 0,
+      publicPlans: 0,
+      clientApps: 0,
+    };
+    page.on("request", (request) => {
+      const url = new URL(request.url());
+      if (url.pathname === "/api/auth/session") stableRequests.authSession += 1;
+      if (url.pathname === "/api/dashboard") stableRequests.dashboard += 1;
+      if (url.pathname.startsWith("/api/user/")) stableRequests.user += 1;
+      if (url.pathname === "/api/public/plans") stableRequests.publicPlans += 1;
+      if (url.pathname === "/api/client/apps") stableRequests.clientApps += 1;
+    });
+
     await page.goto("/dashboard/");
     await page.evaluate(() => {
       (window as Window & { __routeMarker?: string }).__routeMarker = "persist-me";
@@ -401,32 +457,43 @@ test.describe("Cabinet flow", () => {
 
     await page.locator("aside nav a[href='/downloads/']").click();
     await expect(page).toHaveURL(/\/downloads\/?$/);
-    await expect(page.locator("main h1")).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Все нужные загрузки под рукой" })).toBeVisible();
     await expect(page.locator("main")).toContainText("Google Play");
+
+    await page.locator("aside nav a[href='/subscription/']").click();
+    await expect(page).toHaveURL(/\/subscription\/?$/);
+    await expect(page.getByRole("heading", { name: "Продление и режимы" })).toBeVisible();
 
     const markerPersisted = await page.evaluate(
       () => Boolean((window as Window & { __routeMarker?: string }).__routeMarker),
     );
     expect(markerPersisted).toBe(true);
+    expect(stableRequests).toMatchObject({
+      authSession: 1,
+      dashboard: 1,
+      user: 1,
+      publicPlans: 1,
+      clientApps: 1,
+    });
   });
 
   test("shows branded root and cabinet not-found recovery screens", async ({ page }) => {
     await page.goto("/no-such-route/");
-    await expect(page.getByRole("heading", { name: /Страница не найдена/i })).toBeVisible();
-    await expect(page.getByRole("link", { name: /В кабинет/i })).toBeVisible();
-    await expect(page.getByRole("link", { name: /В поддержку/i })).toBeVisible();
+    await expect(page.getByRole("heading", { name: /Такой страницы .* нет/i })).toBeVisible();
+    await expect(page.getByRole("link", { name: "Главная", exact: true }).first()).toBeVisible();
+    await expect(page.getByRole("link", { name: "Поддержка", exact: true }).first()).toBeVisible();
 
     await page.goto("/dashboard/no-such-route/");
-    await expect(page.getByRole("heading", { name: /Страница не найдена/i })).toBeVisible();
-    await expect(page.getByRole("link", { name: /В кабинет/i })).toBeVisible();
-    await expect(page.getByRole("link", { name: /В поддержку/i })).toBeVisible();
+    await expect(page.getByRole("heading", { name: /Такой страницы .* нет/i })).toBeVisible();
+    await expect(page.getByRole("link", { name: "Главная", exact: true }).first()).toBeVisible();
+    await expect(page.getByRole("link", { name: "Поддержка", exact: true }).first()).toBeVisible();
   });
 
   test("keeps the subscription page on renewal and support instead of raw connection sharing", async ({ page }) => {
     await page.goto("/subscription/");
 
     await expect(page.getByRole("heading", { name: "Продление и режимы" })).toBeVisible();
-    await expect(page.getByRole("link", { name: "Открыть checkout" }).first()).toBeVisible();
+    await expect(page.getByRole("link", { name: "Перейти к оплате" }).first()).toBeVisible();
     await expect(page.getByRole("link", { name: "Поддержка", exact: true }).first()).toBeVisible();
     await expect(page.locator("main")).not.toContainText("?format=plain");
     await expect(page.locator("main")).not.toContainText("mock_token");
@@ -440,8 +507,8 @@ test.describe("Cabinet flow", () => {
     await expect(page.getByRole("heading", { name: "Что уже связано с профилем" })).toBeVisible();
     await expect(page.locator("main")).toContainText("Подключений сейчас");
     await expect(page.locator("main")).toContainText("2 из 5");
-    await expect(page.locator("main")).toContainText("Людей онлайн");
-    await expect(page.locator("main")).toContainText("Точек доступа");
+    await expect(page.locator("main")).toContainText("Известных устройств");
+    await expect(page.locator("main")).toContainText("Маршрут");
     await expect(page.locator("main")).toContainText("1 из 2");
 
     await page.goto("/statistics/").catch(async () => {
@@ -450,21 +517,38 @@ test.describe("Cabinet flow", () => {
     });
     await expect(page).toHaveURL(/\/dashboard\/?$/);
     await expect(page.getByRole("heading", { name: "Статус и следующий шаг" })).toBeVisible();
-    await expect(page.locator("main")).toContainText("Людей онлайн");
+    await expect(page.locator("main")).toContainText("Активных подключений");
+  });
+
+  test("uses honest empty states when devices or support tickets are not loaded yet", async ({ page }) => {
+    await registerCabinetMocks(page, { emptyDevices: true, emptyTickets: true });
+
+    await page.goto("/devices/");
+    await expect(page.locator("main")).toContainText("Пока устройств нет");
+    await expect(page.locator("main")).toContainText("Скачать приложение");
+    await expect(page.locator("main")).toContainText("Поддержка");
+
+    await page.goto("/support/");
+    await expect(page.locator("main")).toContainText("Пока обращений нет");
+    await expect(page.locator("main")).toContainText("Создать кейс");
+    await expect(page.locator("main")).toContainText("Telegram");
   });
 
   test("keeps cabinet copy human and hides node internals", async ({ page }) => {
     await page.goto("/devices/");
-    await expect(page.locator("main")).not.toContainText("pl.pokrov.space");
-    await expect(page.locator("main")).not.toContainText("us.pokrov.space");
-    await expect(page.locator("main")).not.toContainText(":443");
-    await expect(page.locator("main")).not.toContainText("IP");
+    await expect(page.getByRole("heading", { name: "Что уже связано с профилем" })).toBeVisible();
+    await expect(page.getByRole("main")).not.toContainText("pl.pokrov.space");
+    await expect(page.getByRole("main")).not.toContainText("us.pokrov.space");
+    await expect(page.getByRole("main")).not.toContainText(":443");
+    await expect(page.getByRole("main")).not.toContainText("IP");
 
     await page.goto("/subscription/");
-    await expect(page.locator("main")).not.toContainText("mock_token");
+    await expect(page.getByRole("heading", { name: "Продление и режимы" })).toBeVisible();
+    await expect(page.getByRole("main")).not.toContainText("mock_token");
 
     await page.goto("/support/");
-    await expect(page.locator("main")).not.toContainText("Network");
+    await expect(page.getByRole("heading", { name: "Один кейс на весь вопрос" })).toBeVisible();
+    await expect(page.getByRole("main")).not.toContainText("Network");
   });
 
   test("keeps downloads and support flows usable without the app", async ({ page }) => {

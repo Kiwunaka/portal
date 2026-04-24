@@ -144,19 +144,19 @@ async function fetchAccessKeyStatus(key: string): Promise<AccessKeyStatusRespons
 function describePromoContent(contentId: string): { title: string; body: string } {
   if (contentId === "redeem_key") {
     return {
-      title: "Уже есть activation key?",
-      body: "Проверьте его статус ниже и сразу переходите к redeem в приложении или cabinet continuation.",
+      title: "Уже есть ключ доступа?",
+      body: "Проверьте его статус ниже и сразу переходите к активации в приложении или кабинете.",
     };
   }
   if (contentId === "telegram_bonus") {
     return {
-      title: "Telegram остаётся вторичным бонусом",
-      body: "После привязки аккаунта Telegram может дать +10 дней, но не заменяет app-first старт.",
+      title: "Telegram даёт +10 дней",
+      body: "После привязки Telegram можно забрать бонус, если вы подписаны на канал POKROV.",
     };
   }
   return {
-    title: "Support и manual recovery",
-    body: "Если hosted checkout или redeem path недоступен, support проводит в ручной recovery без показа raw link в обычном UX.",
+    title: "Поддержка рядом",
+    body: "Если оплата или активация не прошли с первого раза, поддержка поможет спокойно продолжить.",
   };
 }
 
@@ -172,24 +172,41 @@ function buildRedeemHref(key: string): string {
   return url.toString();
 }
 
+function formatRoutingMode(mode?: string): string {
+  if (mode === "all_except_ru") return "Все, кроме RU";
+  if (mode === "global") return "Полный маршрут";
+  return "спокойный режим по умолчанию";
+}
+
+function formatPlatformScope(scope?: string[]): string {
+  const values = scope?.length ? scope : ["android", "windows"];
+  return values
+    .map((item) => {
+      if (item === "android") return "Android";
+      if (item === "windows") return "Windows";
+      return item;
+    })
+    .join(" + ");
+}
+
 export function CheckoutLoadingFallback() {
   return (
     <main className="checkout-shell lp-route-shell lp-route-shell--checkout">
       <section className="checkout-hero">
         <div className="checkout-kicker">Спокойная касса</div>
-        <div className="checkout-status-chip checkout-status-chip--fallback">Собираем публичный каталог</div>
+        <div className="checkout-status-chip checkout-status-chip--fallback">Готовим варианты доступа</div>
         <h1 className="checkout-title">
           <span>POKROV</span>
-          <span>Маршрут покупки через activation key</span>
+          <span>Покупка и активация ключа доступа</span>
         </h1>
-        <p className="checkout-sub">Подгружаем тарифы, условия доступа и следующий шаг для покупки или погашения ключа.</p>
+        <p className="checkout-sub">Подгружаем сроки, условия доступа и следующий шаг для оплаты или активации ключа.</p>
       </section>
       <section className="checkout-grid">
         <article className="glass-card">
           <div className="checkout-helper">Готовим тарифы и спокойный маршрут покупки…</div>
         </article>
         <article className="glass-card checkout-sticky">
-          <div className="checkout-helper">Проверяем публичные условия и резервные шаги…</div>
+          <div className="checkout-helper">Проверяем условия и доступные шаги…</div>
         </article>
       </section>
     </main>
@@ -279,16 +296,16 @@ export default function CheckoutClient() {
   return (
     <main className="checkout-shell lp-route-shell lp-route-shell--checkout">
       <section className="checkout-hero">
-        <div className="checkout-kicker">Купить ключ {"->"} погасить {"->"} продолжить доступ</div>
+        <div className="checkout-kicker">Оплатить ключ {"->"} активировать {"->"} продолжить доступ</div>
         <div className="checkout-status-chip checkout-status-chip--ready">
-          {catalog?.public_surface_policy?.pricing_owner === "marketing" ? "Маркетинг ведёт в оплату" : "Публичный checkout"}
+          {catalog?.public_surface_policy?.pricing_owner === "marketing" ? "Оплата на сайте" : "Ключ доступа"}
         </div>
         <h1 className="checkout-title">
           <span>POKROV</span>
-          <span>Спокойная покупка через activation key</span>
+          <span>Ключ доступа без лишней настройки</span>
         </h1>
         <p className="checkout-sub">
-          Эта страница ведёт к покупке activation key и не показывает сырой персональный маршрут. После оплаты ключ погашается в приложении или в кабинете, а доступ продолжается в том же app-first аккаунте.
+          Выберите срок, оплатите ключ доступа и активируйте его в приложении или кабинете. Доступ продолжится в том же аккаунте, без ручной настройки на старте.
         </p>
       </section>
 
@@ -296,18 +313,18 @@ export default function CheckoutClient() {
         <div className="lp-info-band__grid">
           <article className="lp-info-card">
             <span className="lp-info-card__eyebrow">Сначала попробовать</span>
-            <h3>Пробный период идёт до покупки</h3>
-            <p>Первый шаг остаётся за приложением: 5 дней теста помогают понять продукт до оплаты.</p>
+            <h3>5 дней идут до покупки</h3>
+            <p>Первый шаг остаётся за приложением: вы проверяете POKROV до оплаты.</p>
           </article>
           <article className="lp-info-card">
             <span className="lp-info-card__eyebrow">Потом оплатить</span>
-            <h3>Касса остаётся тихой и понятной</h3>
-            <p>Публичная оплата продаёт activation key и не уводит в сложные технические сценарии.</p>
+            <h3>Оплата остаётся понятной</h3>
+            <p>Вы покупаете ключ доступа, а не разбираетесь в сетевых терминах.</p>
           </article>
           <article className="lp-info-card">
-            <span className="lp-info-card__eyebrow">Если нужен fallback</span>
+            <span className="lp-info-card__eyebrow">Если нужна помощь</span>
             <h3>Кабинет и Telegram рядом</h3>
-            <p>Когда нужно восстановление или помощь, рядом остаются кабинет, поддержка и спокойный путь продолжения.</p>
+            <p>Если нужна помощь, рядом остаются кабинет, поддержка и Telegram.</p>
           </article>
         </div>
       </section>
@@ -337,13 +354,13 @@ export default function CheckoutClient() {
           <div className="checkout-trust">
             <strong>Как это работает</strong>
             <ul className="checkout-trust-list">
-              <li>В приложении первое валидное устройство получает 5 дней premium trial без обязательной регистрации.</li>
+              <li>В приложении первое валидное устройство получает 5 дней проверки без обязательной регистрации в Telegram.</li>
               <li>
-                После trial доступ переходит в {catalog?.free_tier?.location_code || "NL-free"} с лимитом{" "}
-                {catalog?.free_tier?.traffic_limit_gb || 5} GB / {catalog?.free_tier?.cycle_days || 30} дней.
+                После пробного срока остается бесплатный базовый режим: {catalog?.free_tier?.traffic_limit_gb || 5} ГБ на{" "}
+                {catalog?.free_tier?.cycle_days || 30} дней.
               </li>
-              <li>Публичный маршрут по умолчанию остаётся {catalog?.public_defaults?.routing_mode || "all_except_ru"}.</li>
-              <li>Telegram нужен для recovery, restore premium, бонуса +10 дней и support fallback.</li>
+              <li>Публичный маршрут по умолчанию: {formatRoutingMode(catalog?.public_defaults?.routing_mode)}.</li>
+              <li>Telegram нужен для восстановления, бонуса +10 дней и связи с поддержкой.</li>
             </ul>
           </div>
 
@@ -360,12 +377,12 @@ export default function CheckoutClient() {
             <p className="checkout-helper">
               {discountPercent > 0
                 ? `Скидка ${discountPercent}% уже заложена в итог для ${activePlan.label}.`
-                : "Промокод меняет только итог покупки activation key и не открывает ручной технический маршрут."}
+                : "Промокод меняет только сумму покупки ключа доступа."}
             </p>
           </div>
 
           <div className="checkout-trust">
-            <strong>Уже есть key?</strong>
+            <strong>Уже есть ключ?</strong>
             <div className="checkout-actions">
               <input
                 value={keyInput}
@@ -374,12 +391,12 @@ export default function CheckoutClient() {
                 className="checkout-secondary"
               />
             </div>
-            {keyBusy ? <p className="checkout-helper">Проверяем статус activation key…</p> : null}
+            {keyBusy ? <p className="checkout-helper">Проверяем статус ключа доступа…</p> : null}
             {keyStatus ? (
               <ul className="checkout-trust-list">
                 <li>Ключ: {keyStatus.key}</li>
                 <li>План: {keyStatus.plan?.label || `${keyStatus.days} дней`}</li>
-                <li>Статус: {keyStatus.redeemed ? "уже погашен" : "готов к redeem"}</li>
+                <li>Статус: {keyStatus.redeemed ? "уже активирован" : "готов к активации"}</li>
               </ul>
             ) : null}
           </div>
@@ -388,7 +405,7 @@ export default function CheckoutClient() {
         <article className="glass-card checkout-sticky">
           <h2>Итог</h2>
           <p className="checkout-note">
-            Покупка заканчивается activation key. Дальше тот же app-first аккаунт продолжает доступ как managed premium без повторной ручной настройки и без лишней суеты.
+            Покупка заканчивается ключом доступа. Дальше тот же аккаунт продолжает платный доступ без повторной настройки и лишней суеты.
           </p>
 
           <div className="checkout-summary">
@@ -402,7 +419,7 @@ export default function CheckoutClient() {
               Устройства: <strong>до {activePlan.device_limit}</strong>
             </p>
             <p>
-              Публичный scope: <strong>{(catalog?.public_surface_policy?.public_platform_scope || ["android", "windows"]).join(" + ")}</strong>
+              Платформы: <strong>{formatPlatformScope(catalog?.public_surface_policy?.public_platform_scope)}</strong>
             </p>
             <p className="checkout-summary-total">
               Сумма: <strong>{formatPrice(activePlan.amount_rub, discountPercent)}</strong>
@@ -410,11 +427,11 @@ export default function CheckoutClient() {
           </div>
 
           <a href={checkoutHref} target="_blank" rel="noreferrer" className="checkout-submit">
-            Купить activation key
+            Перейти к оплате
           </a>
 
           <a href={redeemHref} target="_blank" rel="noreferrer" className="checkout-secondary checkout-secondary-button">
-            Погасить key в cabinet
+            Активировать ключ в кабинете
           </a>
 
           <a href={config.webappUrl} target="_blank" rel="noreferrer" className="checkout-secondary checkout-secondary-button">
@@ -430,13 +447,13 @@ export default function CheckoutClient() {
           </Link>
 
           <p className="checkout-helper">
-            Email signup на сайте даёт только Free Monthly. Premium trial начинается именно из приложения на первом валидном устройстве.
+            Полноценный вход по почте готовится. Бесплатная проверка начинается именно из приложения на первом валидном устройстве.
           </p>
 
           {statusText ? <p className="checkout-status">{statusText}</p> : null}
 
           <div className="checkout-trust">
-            <strong>First-party promo slots</strong>
+            <strong>Полезно знать</strong>
             <ul className="checkout-trust-list">
               {marketingPromoIds.map((contentId) => {
                 const content = describePromoContent(contentId);

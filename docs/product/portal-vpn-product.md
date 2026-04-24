@@ -1,6 +1,6 @@
 # POKROV Product Overview
 
-Last updated: 2026-04-23
+Last updated: 2026-04-24
 
 ## Document Status
 
@@ -218,6 +218,22 @@ Public-facing copy across marketing and webapp should follow one simple style:
 - public-facing wording should prefer user outcomes and next steps over transport acronyms, raw profile terminology, or operator jargon
 - explicit next-step CTA wording such as `download app`, `open cabinet`, `continue to checkout`, or `open Telegram` only when that is the real next step
 - no separate product variants or conflicting promises invented for SEO pages
+
+## Redesign Direction
+
+The current full-redesign lane moves public and cabinet surfaces toward a white/mint premium utility style: light canvas, restrained mint and emerald accents, thin borders, soft shadows, and real product or trust assets instead of decorative fake dashboards.
+
+Copy in this lane must stay calm, human, and exact. Public Russian copy should prefer words such as `приложение`, `подключение`, `доступ`, `локации`, `правила`, `кабинет`, `ключ доступа`, and `поддержка`. Avoid direct-meaning `VPN` wording, raw transport labels, fear-based privacy claims, fake operational counters, and public jargon such as `trial`, `managed premium`, `fallback`, or `scope`.
+
+Guardrails for this redesign:
+
+- use one current visual/copy path from `shared/redesign-spine.json`; do not preserve parallel old/new redesign promises
+- keep the brand as `POKROV` without old network or premium subtitle lines
+- keep trial copy on `5 days`; older longer-duration trial copy is stale
+- first-layer app copy must not expose protocol, runtime, local-control, raw profile, hostname, or port terms
+- public browser copy must keep `marketing` as acquisition, `webapp` as continuation, and `connect.pokrov.space` as delivery only
+
+This redesign direction is not a release-readiness claim. Android remains blocked until the documented release-build localhost/control-surface audit is complete, Windows still needs its normal release evidence, and Apple platforms remain preparation-only in this wave.
 
 ## Official Hostnames
 

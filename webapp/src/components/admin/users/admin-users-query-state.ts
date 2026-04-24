@@ -31,18 +31,18 @@ export const DEFAULT_ADMIN_USERS_QUERY_STATE: AdminUsersQueryState = {
 };
 
 export const ADMIN_USERS_STATUS_OPTIONS = [
-  { value: "all", label: "Все статусы" },
-  { value: "active", label: "Активные" },
-  { value: "expired", label: "Истёкшие" },
-  { value: "blocked", label: "Заблокированные" },
+  { value: "all", label: "All statuses" },
+  { value: "active", label: "Active" },
+  { value: "expired", label: "Expired" },
+  { value: "blocked", label: "Blocked" },
   { value: "manual_test", label: "Manual/Test" },
 ];
 
 export const ADMIN_USERS_ORIGIN_OPTIONS = [
-  { value: "all", label: "Все источники" },
+  { value: "all", label: "All origins" },
   { value: "telegram", label: "Telegram" },
-  { value: "app", label: "Приложение" },
-  { value: "hybrid", label: "Приложение + Telegram" },
+  { value: "app", label: "App" },
+  { value: "hybrid", label: "App + Telegram" },
   { value: "manual_test", label: "Manual/Test" },
 ];
 
@@ -54,28 +54,28 @@ export const ADMIN_USERS_OBSERVER_OPTIONS = [
 ];
 
 export const ADMIN_USERS_SORT_OPTIONS = [
-  { value: "created_desc", label: "Сначала новые" },
-  { value: "created_asc", label: "Сначала старые" },
-  { value: "expiry_asc", label: "Скоро истекают" },
-  { value: "expiry_desc", label: "Истекают позже" },
-  { value: "name_asc", label: "Имя A-Я" },
+  { value: "created_desc", label: "Newest first" },
+  { value: "created_asc", label: "Oldest first" },
+  { value: "expiry_asc", label: "Expiry soon" },
+  { value: "expiry_desc", label: "Expiry later" },
+  { value: "name_asc", label: "Name A-Z" },
 ];
 
 export const ADMIN_USERS_BULK_ACTION_OPTIONS = [
-  { value: "disable", label: "Отключить ключи" },
-  { value: "enable", label: "Включить ключи" },
-  { value: "reset", label: "Сбросить трафик" },
-  { value: "resync", label: "Синхронизировать subId" },
+  { value: "disable", label: "Disable keys" },
+  { value: "enable", label: "Enable keys" },
+  { value: "reset", label: "Reset traffic" },
+  { value: "resync", label: "Resync subId" },
 ] as const;
 
 export const ADMIN_USERS_BULK_SEGMENT_OPTIONS = [
-  { value: "all", label: "Все пользователи" },
-  { value: "active", label: "Активные" },
-  { value: "inactive", label: "Неактивные" },
-  { value: "expired", label: "Истёкшие" },
-  { value: "blocked", label: "Заблокированные" },
-  { value: "paid", label: "Платные" },
-  { value: "free", label: "Бесплатные" },
+  { value: "all", label: "All users" },
+  { value: "active", label: "Active" },
+  { value: "inactive", label: "Inactive" },
+  { value: "expired", label: "Expired" },
+  { value: "blocked", label: "Blocked" },
+  { value: "paid", label: "Paid" },
+  { value: "free", label: "Free" },
   { value: "manual_test", label: "Manual/Test" },
 ] as const;
 

@@ -4,13 +4,14 @@ import type { ReactNode } from "react";
 
 import AppRouteLink from "@/components/app-route-link";
 import CabinetEntryAuth from "@/components/cabinet-entry-auth";
+import { CabinetThemeToggle } from "@/components/cabinet/theme-control";
 import { resolvePlanLabel, resolveTrafficStatusText } from "@/lib/access-policy";
 import { usePortalSession } from "@/lib/session";
 import { getTgUser } from "@/lib/telegram";
 import { usePathname } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 
-import { POKROV_LEGACY_THEME_STORAGE_KEYS, POKROV_THEME_STORAGE_KEY, pokrovBranding } from "@/app/branding";
+import { pokrovBranding } from "@/app/branding";
 import PokrovLogo from "@/app/pokrov-logo";
 
 type NavItem = {
@@ -71,9 +72,16 @@ const NAV_ITEMS: NavItem[] = [
   {
     href: "/profile",
     icon: "account_circle",
-    label: "Профиль",
-    description: "Аккаунт и связанные каналы",
+    label: "Аккаунт",
+    description: "Вход, тема и связанные каналы",
     match: (pathname) => pathname.startsWith("/profile"),
+  },
+  {
+    href: "/profile/#settings",
+    icon: "settings",
+    label: "Настройки",
+    description: "Тема, вход и безопасные действия",
+    match: () => false,
   },
 ];
 
@@ -104,23 +112,13 @@ const ROUTE_META: Array<{ match: (pathname: string) => boolean; meta: RouteMeta 
   },
   {
     match: (pathname) => pathname.startsWith("/profile"),
-    meta: { title: "Профиль", subtitle: "Аккаунт, связанные каналы и безопасные способы вернуться в доступ." },
+    meta: { title: "Аккаунт", subtitle: "Вход, тема, связанные каналы и безопасные способы вернуться в доступ." },
+  },
+  {
+    match: (pathname) => pathname.startsWith("/settings"),
+    meta: { title: "Настройки", subtitle: "Тема, вход и безопасные действия кабинета." },
   },
 ];
-
-function readStoredThemePreference(): "light" | "dark" | null {
-  if (typeof window === "undefined") return null;
-  for (const key of [POKROV_THEME_STORAGE_KEY, ...POKROV_LEGACY_THEME_STORAGE_KEYS]) {
-    const value = window.localStorage.getItem(key);
-    if (value === "light" || value === "dark") {
-      if (key !== POKROV_THEME_STORAGE_KEY) {
-        window.localStorage.setItem(POKROV_THEME_STORAGE_KEY, value);
-      }
-      return value;
-    }
-  }
-  return null;
-}
 
 function formatExpiry(value?: string | null): string {
   if (!value) return "срок уточняется";
@@ -164,7 +162,7 @@ function ShellState({
           className="inline-flex items-center gap-3"
           markClassName="h-12 w-12 rounded-[18px] bg-white/80 p-2.5 ring-1 ring-emerald-900/10 dark:bg-white/[0.08] dark:ring-white/10"
           caption={pokrovBranding.cabinetName}
-          label="POKROV cabinet"
+          label="Кабинет POKROV"
         />
         <p className="mt-6 text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">{pokrovBranding.entryEyebrow}</p>
         <h1 className="mt-2 font-display text-[clamp(1.9rem,5vw,2.8rem)] font-semibold leading-[0.98] tracking-[-0.04em] text-slate-950 dark:text-slate-50">
@@ -181,18 +179,8 @@ function ShellState({
 export default function CabinetShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const { loading, error, webLoginRequired, user, dash, logoutWebSession, refresh } = usePortalSession();
-  const [dark, setDark] = useState(() => {
-    if (typeof window === "undefined") return false;
-    const saved = readStoredThemePreference();
-    return saved ? saved === "dark" : window.matchMedia("(prefers-color-scheme: dark)").matches;
-  });
   const [drawerOpen, setDrawerOpen] = useState(false);
   const inTelegramContext = useMemo(() => Boolean(getTgUser()), []);
-
-  useEffect(() => {
-    document.documentElement.classList.toggle("dark", dark);
-    localStorage.setItem(POKROV_THEME_STORAGE_KEY, dark ? "dark" : "light");
-  }, [dark]);
 
   useEffect(() => {
     document.body.classList.toggle("modal-open", drawerOpen);
@@ -228,7 +216,7 @@ export default function CabinetShell({ children }: { children: ReactNode }) {
     return (
       <ShellState
         title="Не получилось открыть кабинет"
-        description={error || "Данные профиля сейчас не загрузились. Можно повторить попытку или быстро перейти в поддержку."}
+        description={error || "Данные аккаунта сейчас не загрузились. Можно повторить попытку или быстро перейти в поддержку."}
         actions={
           <>
             <button className="btn-primary rounded-full px-5 py-3 text-sm font-semibold" type="button" onClick={() => void refresh()}>
@@ -266,7 +254,7 @@ export default function CabinetShell({ children }: { children: ReactNode }) {
               className="inline-flex items-center gap-3"
               markClassName="h-12 w-12 rounded-[18px] bg-white/90 p-2.5 ring-1 ring-emerald-900/10 dark:bg-white/[0.08] dark:ring-white/10"
               caption={pokrovBranding.cabinetName}
-              label="POKROV cabinet navigation"
+              label="Навигация кабинета POKROV"
             />
             <p className="mt-4 text-sm leading-6 text-slate-600 dark:text-slate-300">{pokrovBranding.cabinetTagline}</p>
           </div>
@@ -314,7 +302,7 @@ export default function CabinetShell({ children }: { children: ReactNode }) {
           </div>
 
           <div className="rounded-[1.4rem] border border-slate-200/80 bg-white/90 p-4 dark:border-white/10 dark:bg-white/[0.04]">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500 dark:text-slate-400">Профиль</p>
+            <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500 dark:text-slate-400">Аккаунт</p>
             <div className="mt-3 flex items-center gap-3">
               <span className="grid h-11 w-11 place-items-center rounded-full bg-emerald-900 text-sm font-semibold uppercase text-white dark:bg-emerald-700">
                 {profileMark(user.username, user.tg_id)}
@@ -325,6 +313,7 @@ export default function CabinetShell({ children }: { children: ReactNode }) {
               </div>
             </div>
             <div className="mt-4 flex flex-wrap gap-2">
+              <CabinetThemeToggle className="rounded-full px-4 py-2 text-xs uppercase tracking-[0.12em]" />
               <AppRouteLink href={CABINET_SITE_URL} hardNavigate className="outline-btn rounded-full px-4 py-2 text-xs font-semibold uppercase tracking-[0.12em]">
                 На сайт
               </AppRouteLink>
@@ -350,7 +339,7 @@ export default function CabinetShell({ children }: { children: ReactNode }) {
             className="inline-flex items-center gap-3"
             markClassName="h-11 w-11 rounded-[16px] bg-white/90 p-2.5 ring-1 ring-emerald-900/10 dark:bg-white/[0.08] dark:ring-white/10"
             caption={pokrovBranding.cabinetName}
-            label="POKROV cabinet mobile menu"
+            label="Мобильное меню кабинета POKROV"
           />
           <button type="button" onClick={() => setDrawerOpen(false)} className="outline-btn rounded-xl p-2" aria-label="Закрыть меню">
             <span className="material-symbols-rounded">close</span>
@@ -386,6 +375,7 @@ export default function CabinetShell({ children }: { children: ReactNode }) {
           <p className="text-sm font-semibold text-slate-950 dark:text-slate-50">{accountLabel}</p>
           <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">{planLabel}</p>
           <div className="mt-4 flex flex-wrap gap-2">
+            <CabinetThemeToggle className="rounded-full px-4 py-2 text-xs uppercase tracking-[0.12em]" />
             <AppRouteLink href={CABINET_SITE_URL} hardNavigate className="outline-btn rounded-full px-4 py-2 text-xs font-semibold uppercase tracking-[0.12em]">
               На сайт
             </AppRouteLink>
@@ -400,7 +390,7 @@ export default function CabinetShell({ children }: { children: ReactNode }) {
 
   return (
     <div className="relative min-h-screen overflow-x-hidden" style={{ minHeight: "var(--tg-viewport-height, 100dvh)" }}>
-      <div className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(circle_at_top_left,_rgba(11,72,50,0.06),_transparent_30%),radial-gradient(circle_at_bottom_right,_rgba(197,138,42,0.06),_transparent_28%)]" />
+      <div className="pointer-events-none absolute inset-0 -z-10 bg-[linear-gradient(180deg,_#f8faf7_0%,_#ffffff_42%,_#eef8f2_100%)] dark:bg-[linear-gradient(180deg,_#0f1714_0%,_#101713_100%)]" />
       <div className="mx-auto flex min-h-screen max-w-[1500px] gap-4 px-3 py-4 sm:px-4 lg:px-5">
         {sidebar}
 
@@ -429,9 +419,7 @@ export default function CabinetShell({ children }: { children: ReactNode }) {
                 <span className={`rounded-full px-3 py-2 text-xs font-semibold uppercase tracking-[0.14em] ${dash.is_active ? "bg-emerald-50 text-emerald-800 dark:bg-emerald-400/10 dark:text-emerald-200" : "bg-amber-50 text-amber-800 dark:bg-amber-400/10 dark:text-amber-200"}`}>
                   {statusLabel}
                 </span>
-                <button type="button" onClick={() => setDark((value) => !value)} className="outline-btn inline-flex h-11 w-11 items-center justify-center rounded-2xl" aria-label="Переключить тему">
-                  <span className="material-symbols-rounded">{dark ? "light_mode" : "dark_mode"}</span>
-                </button>
+                <CabinetThemeToggle className="min-w-11" />
                 <AppRouteLink href="/profile/" className="inline-flex items-center gap-3 rounded-full border border-slate-200/80 bg-white px-2 py-2 text-sm shadow-sm dark:border-white/10 dark:bg-white/[0.04]">
                   <span className="grid h-9 w-9 place-items-center rounded-full bg-emerald-900 text-sm font-semibold uppercase text-white dark:bg-emerald-700">
                     {profileMark(user.username, user.tg_id)}

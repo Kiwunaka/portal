@@ -1,8 +1,9 @@
 "use client";
 
+import { useEffect, useRef, useState } from "react";
+
 import type { TelegramWebLoginPayload } from "@/lib/api";
 import { usePortalSession } from "@/lib/session";
-import { useEffect, useRef, useState } from "react";
 
 declare global {
   interface Window {
@@ -39,7 +40,7 @@ export default function TelegramLoginWidget() {
   ).trim();
   const botName = resolveTelegramBotName(botSource);
   const [widgetHint, setWidgetHint] = useState(() =>
-    botName ? "" : "Не удалось подготовить Telegram-вход. Кнопка ниже откроет тот же путь вручную.",
+    botName ? "" : "Не удалось подготовить Telegram-вход. Основная кнопка откроет тот же путь вручную.",
   );
   const { loginByWidget, startTelegramLogin, webLoginBusy } = usePortalSession();
 
@@ -71,13 +72,13 @@ export default function TelegramLoginWidget() {
     script.setAttribute("data-lang", "ru");
     script.setAttribute("data-onauth", "onTelegramAuth(user)");
     script.onerror = () => {
-      setWidgetHint("Виджет Telegram не загрузился. Кнопка выше запускает тот же вход.");
+      setWidgetHint("Виджет Telegram не загрузился. Основная кнопка запускает тот же вход.");
     };
     host.appendChild(script);
 
     const warnTimer = window.setTimeout(() => {
       if (authDoneRef.current) return;
-      setWidgetHint("Если виджет не сработал автоматически, просто нажмите кнопку выше.");
+      setWidgetHint("Если виджет не сработал автоматически, используйте основную кнопку входа.");
     }, 4500);
 
     return () => {

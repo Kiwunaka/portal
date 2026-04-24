@@ -34,16 +34,16 @@ const PANEL_TONE_CLASSES: Record<CabinetTone, string> = {
   success: "border-emerald-200/70 bg-emerald-50/90 dark:border-emerald-400/25 dark:bg-emerald-400/10",
   warning: "border-amber-200/70 bg-amber-50/90 dark:border-amber-400/25 dark:bg-amber-400/10",
   danger: "border-rose-200/70 bg-rose-50/90 dark:border-rose-400/25 dark:bg-rose-400/10",
-  info: "border-sky-200/70 bg-sky-50/90 dark:border-sky-400/25 dark:bg-sky-400/10",
-  neutral: "border-slate-200/80 bg-white/88 dark:border-white/10 dark:bg-[#101713]/88",
+  info: "border-teal-200/70 bg-teal-50/90 dark:border-teal-400/25 dark:bg-teal-400/10",
+  neutral: "border-slate-200/80 bg-white dark:border-white/10 dark:bg-[#101713]/88",
 };
 
 const SUBTLE_TONE_CLASSES: Record<CabinetTone, string> = {
   success: "border-emerald-200/70 bg-emerald-50/85 dark:border-emerald-400/25 dark:bg-emerald-400/10",
   warning: "border-amber-200/70 bg-amber-50/85 dark:border-amber-400/25 dark:bg-amber-400/10",
   danger: "border-rose-200/70 bg-rose-50/85 dark:border-rose-400/25 dark:bg-rose-400/10",
-  info: "border-sky-200/70 bg-sky-50/85 dark:border-sky-400/25 dark:bg-sky-400/10",
-  neutral: "border-slate-200/80 bg-slate-50/85 dark:border-white/10 dark:bg-white/[0.04]",
+  info: "border-teal-200/70 bg-teal-50/85 dark:border-teal-400/25 dark:bg-teal-400/10",
+  neutral: "border-slate-200/80 bg-white dark:border-white/10 dark:bg-white/[0.04]",
 };
 
 type CabinetRouteProps = {
@@ -58,7 +58,7 @@ type CabinetRouteProps = {
 export function CabinetRoute({ eyebrow, title, description, actions, metrics, children }: CabinetRouteProps) {
   return (
     <main className="space-y-6">
-      <section className="rounded-[1.35rem] border border-slate-200/80 bg-white/88 px-5 py-4 shadow-[0_20px_55px_-45px_rgba(15,23,42,0.2)] dark:border-white/10 dark:bg-[#101713]/88 sm:px-6">
+      <section className="rounded-[1.35rem] border border-slate-200/80 bg-white px-5 py-4 shadow-[0_20px_55px_-45px_rgba(15,23,42,0.2)] dark:border-white/10 dark:bg-[#101713]/88 sm:px-6">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div className="min-w-0">
             {eyebrow ? (
@@ -128,7 +128,7 @@ export function CabinetHero({
   return (
     <section
       className={cn(
-        "rounded-[1.9rem] border border-slate-200/80 bg-white/92 p-5 shadow-[0_28px_80px_-50px_rgba(15,23,42,0.22)] dark:border-white/10 dark:bg-[#101713]/92 sm:p-6",
+        "rounded-[1.9rem] border border-slate-200/80 bg-white p-5 shadow-[0_28px_80px_-50px_rgba(15,23,42,0.22)] dark:border-white/10 dark:bg-[#101713]/92 sm:p-6",
         className,
       )}
     >

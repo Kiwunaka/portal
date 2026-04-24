@@ -34,7 +34,7 @@ export function AdminUserOverviewView({ selected, busy, onGrantLoyalty }: AdminU
               <p>Total traffic: <strong>{fmtTraffic(summary.traffic_total_bytes)}</strong></p>
               <p>Panel state: <strong>{panelStateLabel(String(summary.panel_state || ""))}</strong></p>
             </div>
-            <div className="mt-3 rounded-xl border border-emerald-900/60 bg-emerald-950/35 p-3 text-xs text-emerald-100">
+            <div className="mt-3 rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-xs text-emerald-900">
               <p className="font-semibold">
                 {ACTIVE_USERS_LABEL}: {summary.active_users_estimate}
               </p>
@@ -76,7 +76,7 @@ export function AdminUserOverviewView({ selected, busy, onGrantLoyalty }: AdminU
                 <p className="mb-2 text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500">Recent IPs</p>
                 <div className="space-y-2">
                   {(observer?.recent_ips || []).map((row) => (
-                    <div key={`${row.node_code}:${row.source_ip_raw}:${row.last_seen_at}`} className="rounded-xl border border-[#22303c] bg-[#0b1218] px-3 py-2 text-xs">
+                    <div key={`${row.node_code}:${row.source_ip_raw}:${row.last_seen_at}`} className="rounded-xl border border-[#b8ded1] bg-white px-3 py-2 text-xs">
                       <div className="flex items-center justify-between gap-2">
                         <span className="font-medium">{row.source_ip_raw}</span>
                         <span className="text-slate-500">{row.node_code || "-"}</span>
@@ -93,7 +93,7 @@ export function AdminUserOverviewView({ selected, busy, onGrantLoyalty }: AdminU
                 <p className="mb-2 text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500">Recent nodes</p>
                 <div className="space-y-2">
                   {(observer?.recent_nodes || []).map((row) => (
-                    <div key={`${row.node_id}:${row.last_seen_at}`} className="rounded-xl border border-[#22303c] bg-[#0b1218] px-3 py-2 text-xs">
+                    <div key={`${row.node_id}:${row.last_seen_at}`} className="rounded-xl border border-[#b8ded1] bg-white px-3 py-2 text-xs">
                       <div className="flex items-center justify-between gap-2">
                         <span className="font-medium">{row.node_code || `node #${row.node_id}`}</span>
                         <span className="text-slate-500">ip count {row.score_ip_count}</span>
@@ -116,7 +116,7 @@ export function AdminUserOverviewView({ selected, busy, onGrantLoyalty }: AdminU
         {selected.tickets?.length ? (
           <div className="mt-3 space-y-2">
             {selected.tickets.map((ticket) => (
-              <div key={ticket.id} className="rounded-xl border border-[#22303c] bg-[#0b1218] px-3 py-2 text-xs">
+              <div key={ticket.id} className="rounded-xl border border-[#b8ded1] bg-white px-3 py-2 text-xs">
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <p className="font-semibold">{ticket.subject || `Ticket #${ticket.id}`}</p>
                   <span className="badge badge-violet">{ticketStatusLabel(ticket.status)}</span>
@@ -135,7 +135,7 @@ export function AdminUserOverviewView({ selected, busy, onGrantLoyalty }: AdminU
           <p className="text-sm font-semibold text-slate-50">Loyalty rewards</p>
           <div className="mt-3 grid gap-2 sm:grid-cols-3">
             {loyalty.tiers.map((tier) => (
-              <div key={tier.reward_key} className="rounded-xl border border-[#22303c] bg-[#0b1218] p-3 text-xs">
+              <div key={tier.reward_key} className="rounded-xl border border-[#b8ded1] bg-white p-3 text-xs">
                 <p className="font-semibold">{tier.days} дн.</p>
                 <p>Бонус: {tier.bonus_days} дн.</p>
                 <p>Перк: {tier.perk}</p>

@@ -41,7 +41,6 @@ export default function DevicesPage() {
   const deviceLimit = getDeviceLimit(dash, user);
   const freeLimitGb = getTrafficLimitGb(dash, user);
   const activeConnections = dash?.connection_snapshot?.active_connections ?? dash?.active_sessions ?? 0;
-  const activeUsersEstimate = dash?.connection_snapshot?.active_users_estimate ?? user?.connections?.active_users_estimate ?? 0;
   const activeNodes = dash?.connection_snapshot?.active_nodes ?? 0;
   const knownNodes = dash?.connection_snapshot?.known_nodes ?? user?.nodes?.length ?? 0;
   const knownAppDevices = user?.sync?.device_count ?? user?.devices?.length ?? 0;
@@ -85,7 +84,7 @@ export default function DevicesPage() {
     {
       key: "support",
       title: "Если что-то не появилось, открыть поддержку",
-      body: "Один кейс лучше любого обходного пути. Так весь контекст уже будет рядом.",
+      body: "Один кейс лучше ручных попыток с настройками. Так весь контекст уже будет рядом.",
       badge: "Шаг 3",
       tone: "neutral" as const,
       action: (
@@ -99,7 +98,7 @@ export default function DevicesPage() {
   const modeCards = [
     {
       key: "paid",
-      title: paidMode ? "Сейчас полный режим" : "Полный режим дает больше запаса",
+      title: paidMode ? "Сейчас доступ без месячного лимита" : "Доступ без месячного лимита дает больше запаса",
       body: paidMode
         ? "У профиля есть спокойный запас по устройствам и нет месячного лимита трафика."
         : "Если устройств становится больше и не хочется думать о лимитах, смотреть стоит туда.",
@@ -121,7 +120,7 @@ export default function DevicesPage() {
       body: freeMode
         ? `Сейчас ориентир до ${deviceLimit} устройств и около ${freeLimitGb || 5} ГБ в месяц.`
         : "Он подходит для спокойного повседневного использования, но может быть теснее по лимитам.",
-      badge: freeMode ? "Сейчас так" : "Запасной путь",
+      badge: freeMode ? "Сейчас так" : "Базовый режим",
       tone: freeMode ? ("info" as const) : ("neutral" as const),
     },
   ];
@@ -155,15 +154,15 @@ export default function DevicesPage() {
           tone: "neutral",
         },
         {
-          label: "Точек доступа",
+          label: "Маршрут",
           value: `${formatCount(activeNodes)} из ${formatCount(knownNodes)}`,
-          hint: "Короткая сводка по текущему маршруту.",
+          hint: "Короткая сводка по доступным локациям.",
           tone: "neutral",
         },
         {
-          label: "Людей онлайн",
-          value: formatCount(activeUsersEstimate),
-          hint: "Это ориентир по живой активности сети.",
+          label: "Перенос",
+          value: "Через приложение",
+          hint: "Скрытые ключи и ручные параметры не нужны на первом шаге.",
           tone: "neutral",
         },
       ]}
@@ -204,7 +203,7 @@ export default function DevicesPage() {
           {
             label: "Если нужно больше запаса",
             value: paidMode ? "Он уже есть" : "Смотреть в оплате",
-            hint: paidMode ? "Полный режим уже активен." : "Полный режим обычно спокойнее, если устройств становится больше.",
+            hint: paidMode ? "Доступ без месячного лимита уже активен." : "Так обычно спокойнее, если устройств становится больше.",
             tone: paidMode ? "success" : "neutral",
           },
         ]}
@@ -222,7 +221,7 @@ export default function DevicesPage() {
         <CabinetSection
           eyebrow="Перенос"
           title="Как добавить еще одно устройство"
-          description="Лучше идти коротким и безопасным путем, а не искать скрытые ссылки вручную."
+          description="Лучше идти коротким и безопасным путем, а не искать скрытые параметры вручную."
         >
           <CabinetCardGrid items={transferCards} className="xl:grid-cols-1" />
         </CabinetSection>

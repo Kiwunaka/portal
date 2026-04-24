@@ -1,0 +1,110 @@
+{
+  "version": "2026-04-23-full-redesign",
+  "brand": {
+    "name": "POKROV",
+    "subtitle": "",
+    "public_wording_rule": "Do not use VPN as a direct public product description. Keep it only for legacy names, handles, compatibility labels, and unavoidable technical identifiers."
+  },
+  "visual_direction": {
+    "name": "white-mint premium utility",
+    "palette": {
+      "canvas": "#f8faf7",
+      "mint": "#eaf6ef",
+      "mint_strong": "#dff2e8",
+      "emerald": "#176d4d",
+      "emerald_strong": "#0f5f43",
+      "text": "#20292d",
+      "muted": "#778187",
+      "line": "#dfe8e2"
+    },
+    "materials": [
+      "white and mint cards with thin borders",
+      "soft shadows",
+      "rounded panels",
+      "restrained glass surfaces",
+      "real product mockups and simple 3D trust assets"
+    ],
+    "avoid": [
+      "old dark/technical shell",
+      "purple-blue gradients",
+      "VPN subtitle under brand",
+      "decorative clutter",
+      "fake dashboard data"
+    ]
+  },
+  "theme_contract": {
+    "source": "shared/design-tokens.json",
+    "default_mode": "system",
+    "modes": ["system", "light", "dark"],
+    "mode_rule": "System follows the host OS/browser preference; Light and Dark are explicit user-selectable modes.",
+    "light_rule": "White and mint utility surfaces, thin emerald borders, soft shadows, and restrained premium contrast.",
+    "dark_rule": "Low-glare forest canvas, mint focus accents, thin translucent borders, and soft black shadows.",
+    "shape_rule": "Use moderate radii, stable component dimensions, and no nested-card page sections."
+  },
+  "public_cta": {
+    "primary": "Попробовать 5 дней",
+    "secondary": "Открыть кабинет",
+    "checkout": "Купить ключ доступа",
+    "install": "Установить приложение",
+    "support": "Написать в поддержку"
+  },
+  "voice": {
+    "locale": "ru",
+    "tone": "friendly, calm, exact, human",
+    "prefer": [
+      "приложение",
+      "подключение",
+      "доступ",
+      "локации",
+      "правила",
+      "кабинет",
+      "ключ доступа",
+      "поддержка"
+    ],
+    "avoid": [
+      "trial",
+      "managed premium",
+      "fallback",
+      "scope",
+      "checkout",
+      "узлы on consumer surfaces",
+      "SNI/DNS internals on consumer surfaces",
+      "fear-based privacy promises"
+    ]
+  },
+  "app_navigation": ["Подключение", "Локации", "Правила", "Профиль"],
+  "cabinet_navigation": [
+    "Главная",
+    "Тарифы и оплата",
+    "Устройства",
+    "Загрузки",
+    "Поддержка",
+    "Профиль",
+    "Настройки"
+  ],
+  "platform_policy": {
+    "primary": ["Android", "Windows"],
+    "apple_badge": "Готовится",
+    "apple_rule": "Show Apple as preparing only; do not add dates or primary CTAs."
+  },
+  "data_policy": {
+    "backend_extensions": "Allowed when useful for truthful UI, but prefer additive fields and preserve existing clients.",
+    "empty_states": "Use honest empty states when live data is unavailable. Do not invent decorative fake operational data."
+  },
+  "asset_policy": {
+    "generator": "ImageGen built-in path",
+    "text_rule": "Keep UI text in code, not baked into raster images.",
+    "workspace_target": "marketing/public/redesign/",
+    "manifest": "shared/redesign-assets.json",
+    "canonical_mark": "cloak-like POKROV mark",
+    "canonical_mark_source": "C:/Users/kiwun/Documents/ai/VPN/иконки лого и тд/logogo.png",
+    "subtitle_policy": "No PREMIUM VPN subtitle on public brand assets.",
+    "brand_asset_root": "marketing/public/redesign/brand/",
+    "brand_mark_svg": "marketing/public/redesign/brand/pokrov-mark.svg",
+    "favicon_svg": "marketing/public/redesign/brand/pokrov-favicon.svg",
+    "favicon": "marketing/public/favicon.ico",
+    "apple_touch_icon": "marketing/public/apple-icon.png",
+    "app_icon_master": "marketing/public/redesign/brand/pokrov-app-icon-1024.png",
+    "hero_product": "marketing/public/redesign/pokrov-hero-product.png"
+  }
+}

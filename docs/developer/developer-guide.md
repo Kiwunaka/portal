@@ -1,6 +1,6 @@
 # Developer Guide
 
-Last updated: 2026-04-23
+Last updated: 2026-04-24
 
 ## Document Status
 
@@ -340,6 +340,24 @@ When public copy, review moderation, or nickname masking changes, also update:
 
 - [tests/test_public_copy_guardrails.py](C:/Users/kiwun/Documents/ai/VPN/tests/test_public_copy_guardrails.py)
 - [tests/test_reviews_username_masking.py](C:/Users/kiwun/Documents/ai/VPN/tests/test_reviews_username_masking.py)
+
+Current redesign guardrails:
+
+- public feed defaults in `portal_bot/api.py` should use human Russian copy and avoid raw node, transport, checkout, and direct-meaning `VPN` wording
+- public aggregate counters should expose additive truth metadata instead of forcing UI to invent whether the number is live, estimated, or account-derived
+- user-facing Russian docs should avoid public jargon such as direct-meaning `VPN`, `checkout`, `fallback`, `managed premium`, `trial`, `scope`, raw `SNI`/`DNS`, and consumer-facing `узлы`
+- governed catalog copy must not reintroduce old network or premium subtitle lines
+- trial copy must stay on `5 days`; older longer-duration trial copy is stale
+- first-layer app copy must stay consumer-language only and hide transport, runtime, local-control, hostname, port, and raw subscription terms
+- local dev admin checks may seed `portal_web_session_token` in Playwright, but production UI must still require a real cabinet session before `/admin/*` opens
+
+Focused redesign guardrail checks:
+
+```powershell
+python -m pytest tests/test_public_copy_guardrails.py tests/test_redesign_spine.py -q
+cd webapp; npm.cmd run test:e2e:admin -- --grep "requires a real cabinet session"
+cd C:/Users/kiwun/Documents/ai/POKROV-app/packages/app_shell; flutter test test/pokrov_seed_app_test.dart --plain-name "first-layer app shell copy hides transport and control terms"
+```
 
 Minimum docs to touch when relevant:
 

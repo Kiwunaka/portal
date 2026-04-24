@@ -416,6 +416,7 @@ class BotPaywallTests(unittest.TestCase):
         label2 = self.bot_module._main_connect_cta_text(1001)
         self.assertEqual(label1, label2)
         self.assertIn(label1, set(self.bot_module.MAIN_CONNECT_CTA_LABELS.values()))
+        self.assertEqual(set(self.bot_module.MAIN_CONNECT_CTA_LABELS.values()), {"✨ Попробовать 5 дней"})
 
     def test_friend_gift_activation_is_one_time(self) -> None:
         self.bot_module.FRIEND_GIFT_ENABLED = True
@@ -605,7 +606,9 @@ class BotPaywallTests(unittest.TestCase):
         self.assertIn("Цена в ₽: *249 ₽*", text)
         self.assertNotIn("Stars", text)
         self.assertNotIn("⭐", text)
-        self.assertIn("Откроем оплату в рублях", text)
+        self.assertIn("Ключ доступа", text)
+        self.assertIn("После оплаты ключ активируется автоматически", text)
+        self.assertNotIn("касс", text.lower())
 
     def test_tariff_payment_choice_keyboard_keeps_plan_in_checkout_url(self) -> None:
         self.bot_module.PAY_CHECKOUT_URL = "https://portal-privacy.online/checkout?from=bot"
@@ -671,10 +674,11 @@ class BotPaywallTests(unittest.TestCase):
             self.bot_module.enabled_provider_catalog = old_catalog
 
         self.assertTrue(callback.message.edits)
-        self.assertIn("Ссылка на оплату уже готова", callback.message.edits[-1])
+        self.assertIn("Ключ доступа", callback.message.edits[-1])
+        self.assertIn("Следующий шаг: откройте оплату", callback.message.edits[-1])
         reply_markup = callback.message.edit_kwargs[-1]["reply_markup"]
         self.assertEqual(reply_markup.inline_keyboard[0][0].url, "https://checkout.cardlink.link/pay/test")
-        self.assertEqual(callback.answers[-1], ("Платёжная ссылка готова", False))
+        self.assertEqual(callback.answers[-1], ("Оплата готова", False))
 
     def test_tariff_payment_choice_keyboard_lists_enabled_rub_providers(self) -> None:
         old_catalog = self.bot_module.enabled_provider_catalog
@@ -718,7 +722,8 @@ class BotPaywallTests(unittest.TestCase):
     def test_choose_tariff_text_is_trial_first_and_no_stars(self) -> None:
         text = self.bot_module.build_choose_tariff_text()
         self.assertIn("5 дней", text)
-        self.assertIn("тест", text.lower())
+        self.assertIn("попробовать", text.lower())
+        self.assertIn("ключ доступа", text.lower())
         self.assertIn("5 ГБ", text)
         self.assertNotIn("Stars", text)
         self.assertNotIn("⭐", text)
@@ -728,10 +733,15 @@ class BotPaywallTests(unittest.TestCase):
         self.assertIn("5 дней", text)
         self.assertNotIn("3 дня", text)
 
+        keyboard = self.bot_module._dual_pay_keyboard(tg_id=1001, show_trial=True)
+        labels = [button.text for row in keyboard.inline_keyboard for button in row]
+        self.assertIn("🚀 Попробовать 5 дней", labels)
+        self.assertIn("💳 Купить ключ доступа", labels)
+
     def test_main_keyboard_uses_kabinet_label_instead_of_portal(self) -> None:
         rows = self.bot_module.main_keyboard_specs(1001)
         labels = [str(button.get("text") or "") for row in rows for button in row]
-        self.assertTrue(any("КАБИНЕТ" in label for label in labels))
+        self.assertTrue(any("кабинет" in label.lower() for label in labels))
         self.assertFalse(any("ПОРТАЛ" in label for label in labels))
 
     def test_activate_promo_code_rejects_expired_promo(self) -> None:

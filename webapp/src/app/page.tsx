@@ -1,18 +1,19 @@
 "use client";
 
+import { useEffect } from "react";
+import { useRouter } from "next/navigation";
+
 import AppRouteLink from "@/components/app-route-link";
 import CabinetEntryAuth from "@/components/cabinet-entry-auth";
 import { PortalSessionProvider, usePortalSession } from "@/lib/session";
-import { useRouter } from "next/navigation";
-import { useEffect } from "react";
 
 import { pokrovBranding } from "./branding";
 import PokrovLogo from "./pokrov-logo";
 
 const ENTRY_STEPS = [
-  "Проверить, всё ли в порядке со сроком и доступом.",
-  "Открыть тарифы, загрузки или поддержку без нового старта.",
-  "Вернуться к своим устройствам и продолжить тем же профилем.",
+  "Проверить срок доступа и быстро вернуться в кабинет.",
+  "Открыть продление, загрузки, ключ доступа или поддержку без нового старта.",
+  "Продолжить с тем же профилем, который уже связан с приложением POKROV.",
 ] as const;
 
 function EntryBody() {
@@ -93,7 +94,6 @@ function EntryBody() {
 
   return (
     <main className="relative mx-auto flex min-h-[100dvh] w-full max-w-[1240px] items-center px-4 py-8 sm:px-6">
-      <div className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(circle_at_top_left,_rgba(11,72,50,0.05),_transparent_30%),radial-gradient(circle_at_bottom_right,_rgba(197,138,42,0.05),_transparent_28%)]" />
       <section className="grid w-full gap-5 rounded-[2rem] border border-slate-200/80 bg-white/94 p-6 shadow-[0_28px_80px_-54px_rgba(15,23,42,0.22)] dark:border-white/10 dark:bg-[#101713]/92 lg:grid-cols-[1.02fr_0.98fr] lg:p-8">
         <div className="space-y-6">
           <div className="flex flex-wrap items-center justify-between gap-4">
@@ -118,11 +118,11 @@ function EntryBody() {
               {pokrovBranding.entryEyebrow}
             </p>
             <h1 className="font-display text-[clamp(2.2rem,5vw,4rem)] font-semibold leading-[0.94] tracking-[-0.05em] text-slate-950 dark:text-slate-50">
-              Здесь только статус, оплата и поддержка
+              Продолжите с того места, где остановились
             </h1>
             <p className="max-w-2xl text-sm leading-7 text-slate-600 dark:text-slate-300">
-              Основной путь остаётся в приложении POKROV. Кабинет в браузере нужен рядом: посмотреть срок, открыть загрузки,
-              продлить доступ и быстро написать в поддержку, если что-то пошло не так.
+              Это не вторая витрина POKROV. Здесь открывается личный кабинет: срок доступа, устройства, ключи доступа, загрузки и поддержка.
+              Подключение и ежедневный выбор режима остаются в приложении.
             </p>
           </div>
 
@@ -156,11 +156,11 @@ function EntryBody() {
             Вход в браузере
           </p>
           <h2 className="mt-2 font-display text-[2rem] font-semibold leading-[0.96] tracking-[-0.04em] text-slate-950 dark:text-slate-50">
-            Подтвердите вход и продолжайте
+            Подтвердите аккаунт и продолжайте
           </h2>
           <p className="mt-3 text-sm leading-7 text-slate-600 dark:text-slate-300">
-            Telegram уже работает. Email-вход скоро подключим, а пока вход и восстановление держим через Telegram, чтобы не
-            обещать то, чего ещё нет на бэке.
+            Telegram работает как текущий путь подтверждения. Мы не просим заново знакомиться с продуктом:
+            вход нужен только чтобы показать именно ваш доступ, обращения и устройства.
           </p>
           <div className="mt-6">
             <CabinetEntryAuth siteUrl={pokrovBranding.marketingUrl} />

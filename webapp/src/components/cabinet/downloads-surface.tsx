@@ -59,7 +59,7 @@ function buildCards(payload: ClientAppsPayload | null): DownloadCard[] {
           key: "android-apk",
           title: "Android через APK",
           body: "Подходит, если Play недоступен или удобнее поставить файл вручную.",
-          badge: "Запасной путь",
+          badge: "Дополнительная ссылка",
           tone: "neutral",
           href: androidApk,
           action: externalAction(androidApk, "Скачать"),
@@ -92,7 +92,7 @@ function buildCards(payload: ClientAppsPayload | null): DownloadCard[] {
           key: "windows-mirror",
           title: "Резервная ссылка для Windows",
           body: "Нужна только если обычная загрузка временно не открывается.",
-          badge: "Запасной путь",
+          badge: "Дополнительная ссылка",
           tone: "info",
           href: windowsMirror,
           action: externalAction(windowsMirror, "Открыть"),
@@ -109,6 +109,13 @@ function buildCards(payload: ClientAppsPayload | null): DownloadCard[] {
           action: externalAction(docsUrl, "Открыть"),
         }
       : null,
+    {
+      key: "apple-soon",
+      title: "Apple",
+      body: "Версия для Apple готовится. Сейчас основной путь — Android и Windows.",
+      badge: "Готовится",
+      tone: "neutral",
+    },
   ].filter(Boolean) as DownloadCard[];
 }
 
@@ -180,7 +187,7 @@ export function CabinetDownloadsSurface() {
     <CabinetRoute
       eyebrow="Загрузки"
       title="Все нужные загрузки под рукой"
-      description="Только рабочие ссылки и короткие подсказки. Без лишнего текста и обходных сценариев."
+      description="Только рабочие ссылки и короткие подсказки. Без лишнего текста и ручной настройки на первом шаге."
       actions={
         <>
           <AppRouteLink href="/devices/" className="outline-btn rounded-full px-5 py-3 text-sm font-semibold">
@@ -195,7 +202,7 @@ export function CabinetDownloadsSurface() {
         {
           label: "Android",
           value: hasAndroid ? "Ссылки готовы" : "Подтянем позже",
-          hint: "Play для обычного старта, APK как запасной путь.",
+          hint: "Play для обычного старта, APK как дополнительная ссылка.",
           tone: hasAndroid ? "success" : "neutral",
         },
         {
@@ -226,7 +233,7 @@ export function CabinetDownloadsSurface() {
         description={
           cards.length
             ? "Для нового экрана обычно хватает двух шагов: открыть нужную загрузку и войти в тот же аккаунт. Всё остальное уже догружается само."
-            : "Кабинет продолжает работать. Если нужной ссылки нет прямо сейчас, лучше не искать обходной путь, а открыть поддержку."
+            : "Кабинет продолжает работать. Если нужной ссылки нет прямо сейчас, лучше открыть поддержку."
         }
         actions={
           <>
@@ -244,7 +251,7 @@ export function CabinetDownloadsSurface() {
           {
             label: "Лучший путь",
             value: hasAndroid ? "Android через Play" : hasWindows ? "Windows installer" : "Поддержка",
-            hint: "Берите обычный путь первым. Запасные ссылки нужны редко.",
+            hint: "Берите обычный путь первым. Дополнительные ссылки нужны редко.",
             tone: "neutral",
           },
           {
@@ -255,7 +262,7 @@ export function CabinetDownloadsSurface() {
           },
           {
             label: "Если что-то не открылось",
-            value: "Не искать обходы",
+            value: "Открыть поддержку",
             hint: "Быстрее сразу продолжить один кейс в поддержке.",
             tone: error ? "warning" : "neutral",
           },

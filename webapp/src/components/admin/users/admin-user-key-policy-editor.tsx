@@ -48,7 +48,7 @@ export function AdminUserKeyPolicyEditor({
           if (!draft) return null;
 
           return (
-            <div key={key.node_code} className="rounded-xl border border-[#22303c] bg-[#0b1218] p-3">
+            <div key={key.node_code} className="rounded-xl border border-[#b8ded1] bg-white p-3">
               <div className="flex flex-wrap items-start justify-between gap-2">
                 <div>
                   <p className="font-semibold text-slate-50">
@@ -142,7 +142,7 @@ export function AdminUserKeyPolicyEditor({
         })}
       </div>
 
-      {!keys.length ? <p className="mt-3 text-xs text-slate-400">No keys have been provisioned for tg_id {selectedTgId} yet.</p> : null}
+      {!keys.length ? <p className="mt-3 text-xs text-slate-400">Ключи для Telegram ID {selectedTgId} пока не созданы.</p> : null}
     </div>
   );
 }

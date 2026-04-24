@@ -76,6 +76,7 @@ class ApiP0ExtensionsTests(unittest.TestCase):
             "PUBLIC_CHANNEL",
             "WEBAPP_DEV_AUTH",
             "WEBAPP_DEV_TG_ID",
+            "WEBAPP_DEV_AUTH_PASSWORD",
             "APP_ANDROID_PLAY_URL",
             "APP_ANDROID_APK_URL",
             "APP_ANDROID_MIRROR_URL",
@@ -92,7 +93,8 @@ class ApiP0ExtensionsTests(unittest.TestCase):
         os.environ["SUPPORT_USERNAME"] = "pokrov_supportbot"
         os.environ["PUBLIC_CHANNEL"] = "pokrov_vpn"
         os.environ["WEBAPP_DEV_AUTH"] = "true"
-        os.environ["WEBAPP_DEV_TG_ID"] = "1001"
+        os.environ["WEBAPP_DEV_TG_ID"] = "9999"
+        os.environ["WEBAPP_DEV_AUTH_PASSWORD"] = "local-admin-pass"
         os.environ["APP_ANDROID_PLAY_URL"] = ""
         os.environ["APP_ANDROID_APK_URL"] = ""
         os.environ["APP_ANDROID_MIRROR_URL"] = ""
@@ -178,11 +180,21 @@ class ApiP0ExtensionsTests(unittest.TestCase):
             },
         )
 
-    def test_dev_auth_allows_localhost_without_header(self) -> None:
+    def _dev_auth_headers(self, *, origin: str | None = None) -> dict[str, str]:
+        client = TestClient(self.api.app, base_url="http://localhost")
+        headers = {"Origin": origin} if origin else None
+        r = client.post("/api/auth/dev/web-login", headers=headers, json={"password": "local-admin-pass"})
+        self.assertEqual(r.status_code, 200, r.text)
+        return {"Authorization": f"Bearer {r.json()['token']}"}
+
+    def test_dev_auth_requires_password_session_on_localhost(self) -> None:
         client = TestClient(self.api.app, base_url="http://localhost")
         r = client.get("/api/dashboard")
-        self.assertEqual(r.status_code, 200, r.text)
-        self.assertEqual(r.json()["tg_id"], 1001)
+        self.assertEqual(r.status_code, 401, r.text)
+
+        authed = client.get("/api/dashboard", headers=self._dev_auth_headers())
+        self.assertEqual(authed.status_code, 200, authed.text)
+        self.assertEqual(authed.json()["tg_id"], 9999)
 
     def test_dev_auth_denies_non_localhost_without_header(self) -> None:
         client = TestClient(self.api.app, base_url="http://example.com")
@@ -196,7 +208,9 @@ class ApiP0ExtensionsTests(unittest.TestCase):
 
     def test_dev_auth_allows_localhost_origin(self) -> None:
         client = TestClient(self.api.app, base_url="http://localhost")
-        r = client.get("/api/dashboard", headers={"Origin": "http://localhost:3000"})
+        headers = self._dev_auth_headers(origin="http://localhost:3000")
+        headers["Origin"] = "http://localhost:3000"
+        r = client.get("/api/dashboard", headers=headers)
         self.assertEqual(r.status_code, 200, r.text)
 
     def test_events_whitelist_and_reject_unknown(self) -> None:
@@ -263,7 +277,27 @@ class ApiP0ExtensionsTests(unittest.TestCase):
         body = r.json()
         self.assertGreaterEqual(int(body.get("connected_users", 0)), 1)
         self.assertIn("updated_at", body)
+        self.assertEqual(body.get("summary", {}).get("source"), "backend_account_rows")
+        self.assertEqual(body.get("summary", {}).get("precision"), "aggregate")
+        self.assertIn("без персональных данных", body.get("summary", {}).get("description", ""))
         self.assertEqual(r.headers.get("cache-control"), "public, max-age=60")
+
+    def test_public_live_updates_default_copy_is_human_and_policy_safe(self) -> None:
+        client = TestClient(self.api.app)
+        r = client.get("/api/public/live-updates")
+        self.assertEqual(r.status_code, 200, r.text)
+        body = r.json()
+        updates = body.get("updates", [])
+        self.assertEqual(len(updates), 3)
+        rendered = " ".join(
+            f"{row.get('title', '')} {row.get('summary', '')}"
+            for row in updates
+        ).lower()
+        self.assertNotIn("checkout", rendered)
+        self.assertNotIn("deep link", rendered)
+        self.assertNotIn("vpn", rendered)
+        self.assertNotRegex(rendered, r"\bузл\w*")
+        self.assertIn("точки подключения", rendered)
 
     def test_featured_reviews_mask_username_in_api_response(self) -> None:
         from db import SessionLocal

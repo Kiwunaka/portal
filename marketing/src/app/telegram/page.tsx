@@ -4,8 +4,8 @@ import { buildBreadcrumbJsonLd, MARKETING_CANONICAL_PATHS } from "../../lib/mark
 import { CANONICAL_PLATFORM_BRAND } from "../../lib/pokrov";
 
 export const metadata = buildMarketingMetadata(
-  "Telegram и забота | POKROV",
-  "Telegram как быстрый помощник, бонус и канал поддержки, пока основной опыт остаётся внутри приложения и кабинета.",
+  "Telegram +10 дней | POKROV",
+  "Как Telegram помогает в POKROV: бонус +10 дней, поддержка, новости и восстановление доступа без замены приложения.",
   {
     path: MARKETING_CANONICAL_PATHS.telegram,
     keywords: ["telegram pokrov", "поддержка pokrov", "бонус telegram", "служба заботы"],
@@ -24,33 +24,33 @@ export default function TelegramPage() {
       <div className="lp-route-shell lp-route-shell--intent lp-route-shell--telegram">
         <MarketingLanding
           pagePath={MARKETING_CANONICAL_PATHS.telegram}
-          heroKicker="Telegram как забота, а не замена"
-          heroTitle="Telegram остаётся рядом, когда нужен человек"
-          heroSubtitle="Бот помогает быстро вернуться к кабинету, бонусу или поддержке. Основной опыт по-прежнему живёт внутри приложения и личного кабинета."
-          scenarioTitle="Почему Telegram удобен для помощи"
-          scenarioBody="Мы используем Telegram только там, где он действительно полезен: для бонусов, спокойной поддержки и восстановления доступа."
+          heroKicker="Telegram +10 дней"
+          heroTitle="Telegram рядом для бонуса, поддержки и восстановления"
+          heroSubtitle="Основной старт остаётся в приложении. Telegram помогает забрать +10 дней, перейти к поддержке, увидеть новости и вернуться к доступу, если что-то пошло не так."
+          scenarioTitle="Когда нужен Telegram"
+          scenarioBody="Telegram полезен там, где нужен человек, короткое уведомление или бонус за участие в канале. Для первого запуска он не обязателен."
           scenarioCards={[
             {
-              eyebrow: "Бонус за канал",
+              eyebrow: "+10 дней",
               glyph: "signal",
-              title: "Плюс 10 дней за участие в сообществе",
-              desc: "После привязки аккаунта можно получить +10 дней — тихая благодарность тем, кто остаётся рядом с POKROV.",
+              title: "Бонус за канал",
+              desc: "После привязки Telegram и подписки на канал можно забрать +10 дней к доступу.",
             },
             {
-              eyebrow: "Служба заботы",
+              eyebrow: "Поддержка",
               glyph: "shield",
-              title: "Человеческий ответ без лишнего пути",
+              title: "Человеческий ответ без лишнего круга",
               desc: "Если появились вопросы по скорости, доступу или оплате, Telegram остаётся самым быстрым способом поговорить с командой.",
             },
             {
-              eyebrow: "Продолжение сценария",
+              eyebrow: "Восстановление",
               glyph: "route",
               title: "Бот помогает только по делу",
-              desc: "Например, когда вы возвращаетесь к покупке, восстанавливаете доступ или хотите быстро перейти к нужному шагу.",
+              desc: "Например, когда нужно вернуться к кабинету, восстановить доступ или быстро перейти к нужному шагу.",
             },
           ]}
-          clusterTitle="Похожие сценарии"
-          clusterBody="Узнайте больше о том, как POKROV помогает в ежедневных задачах на телефоне и компьютере, не меняя app-first логику."
+          clusterTitle="Рядом с Telegram"
+          clusterBody="Посмотрите страницы про телефон, устройства и видео, если хотите начать с приложения, а не с чата."
         />
       </div>
     </>

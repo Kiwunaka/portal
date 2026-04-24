@@ -1,50 +1,111 @@
 "use client";
 
-import { AdminEmptyState, adminButtonClass, adminFieldClass, adminInsetPanelClass, adminPanelClass } from "@/components/admin/admin-shell";
+import {
+  AdminBadge,
+  AdminEmptyState,
+  AdminInlineNote,
+  AdminKpiCard,
+  AdminPanelHeader,
+  AdminSurfaceHeader,
+  adminButtonClass,
+  adminFieldClass,
+  adminInsetPanelClass,
+  adminPanelClass,
+  adminTextAreaClass,
+} from "@/components/admin/admin-shell";
 import { adminTicketReply, adminTicketStatus, adminTickets, type TicketInfo } from "@/lib/api";
-import { CheckCircle, Clock, Inbox, Loader2, MessageCircle, RefreshCw, Send } from "lucide-react";
+import { CheckCircle, Clock3, Inbox, Loader2, MessageCircle, RefreshCw, Send, ShieldCheck } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { fmtRuDate } from "../nav";
 
-const STATUS_META: Record<string, { color: string; badge: string; icon: typeof Clock }> = {
-  open: { color: "badge-info", badge: "Открыт", icon: Inbox },
-  in_progress: { color: "badge-warning", badge: "В работе", icon: Clock },
-  closed: { color: "badge-success", badge: "Закрыт", icon: CheckCircle },
-};
+type TicketStatus = "open" | "in_progress" | "closed";
+type SlaTone = "success" | "warning" | "danger" | "accent" | "neutral";
 
-function normalizeTicketStatus(ticket: Pick<TicketInfo, "status" | "status_title"> | null | undefined): keyof typeof STATUS_META {
+const STATUSES: Array<{ key: TicketStatus; label: string }> = [
+  { key: "open", label: "Открыт" },
+  { key: "in_progress", label: "В работе" },
+  { key: "closed", label: "Закрыт" },
+];
+
+function normalizeStatus(ticket: Pick<TicketInfo, "status" | "status_title"> | null | undefined): TicketStatus {
   const raw = String(ticket?.status || "").toLowerCase().replace(/\s+/g, "_");
-  if (raw in STATUS_META) return raw as keyof typeof STATUS_META;
-
-  const title = String(ticket?.status_title || "").toLowerCase().replace(/\s+/g, "_");
-  if (title === "в_работе") return "in_progress";
-  if (title === "закрыт") return "closed";
+  if (raw === "in_progress" || raw === "closed" || raw === "open") return raw;
+  const title = String(ticket?.status_title || "").toLowerCase();
+  if (title.includes("работ")) return "in_progress";
+  if (title.includes("закры")) return "closed";
   return "open";
+}
+
+function ticketAgeHours(ticket: TicketInfo): number {
+  const value = ticket.updated_at || ticket.created_at;
+  if (!value) return 0;
+  const time = new Date(value).getTime();
+  if (Number.isNaN(time)) return 0;
+  return Math.max(0, (Date.now() - time) / 36e5);
+}
+
+function slaMeta(ticket: TicketInfo): { label: string; tone: SlaTone; rank: number } {
+  if (normalizeStatus(ticket) === "closed") return { label: "done", tone: "success", rank: 0 };
+  const hours = ticketAgeHours(ticket);
+  if (hours >= 24) return { label: "urgent 24h+", tone: "danger", rank: 4 };
+  if (hours >= 8) return { label: "high 8h+", tone: "warning", rank: 3 };
+  if (hours >= 3) return { label: "watch 3h+", tone: "accent", rank: 2 };
+  return { label: "normal", tone: "success", rank: 1 };
+}
+
+function statusLabel(status: TicketStatus): string {
+  return STATUSES.find((row) => row.key === status)?.label || status;
+}
+
+function preview(ticket: TicketInfo): string {
+  return ticket.last_message_preview || ticket.messages.at(-1)?.body || "Нет сообщений";
 }
 
 export default function AdminTicketsPage() {
   const [statusFilter, setStatusFilter] = useState("");
   const [tickets, setTickets] = useState<TicketInfo[]>([]);
-  const [selectedId, setSelectedId] = useState<number>(0);
+  const [selectedId, setSelectedId] = useState(0);
   const [reply, setReply] = useState("");
   const [busy, setBusy] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [notice, setNotice] = useState("");
+  const [closeReason, setCloseReason] = useState("");
+  const [confirmClose, setConfirmClose] = useState(false);
   const messagesEnd = useRef<HTMLDivElement>(null);
 
   const selected = useMemo(() => tickets.find((ticket) => ticket.id === selectedId) || null, [selectedId, tickets]);
+  const selectedStatus = normalizeStatus(selected);
+
+  const orderedTickets = useMemo(
+    () =>
+      [...tickets].sort((a, b) => {
+        const slaDelta = slaMeta(b).rank - slaMeta(a).rank;
+        if (slaDelta) return slaDelta;
+        return new Date(b.updated_at || b.created_at || 0).getTime() - new Date(a.updated_at || a.created_at || 0).getTime();
+      }),
+    [tickets],
+  );
+
+  const totals = useMemo(() => {
+    const open = tickets.filter((ticket) => normalizeStatus(ticket) === "open").length;
+    const inWork = tickets.filter((ticket) => normalizeStatus(ticket) === "in_progress").length;
+    const closed = tickets.filter((ticket) => normalizeStatus(ticket) === "closed").length;
+    const urgent = tickets.filter((ticket) => slaMeta(ticket).rank >= 4).length;
+    return { open, inWork, closed, urgent };
+  }, [tickets]);
 
   const load = useCallback(async (): Promise<void> => {
+    setLoading(true);
     setError("");
     try {
       const rows = await adminTickets(statusFilter, 80);
       setTickets(rows);
-      if (rows[0]?.id) {
-        setSelectedId((prev) => (rows.some((ticket) => ticket.id === prev) ? prev : rows[0].id));
-      } else {
-        setSelectedId(0);
-      }
+      setSelectedId((prev) => (rows.some((ticket) => ticket.id === prev) ? prev : rows[0]?.id || 0));
     } catch (err) {
       setError(String((err as { message?: string })?.message || err || "Не удалось загрузить обращения."));
+    } finally {
+      setLoading(false);
     }
   }, [statusFilter]);
 
@@ -56,26 +117,20 @@ export default function AdminTicketsPage() {
     messagesEnd.current?.scrollIntoView({ behavior: "smooth" });
   }, [selected?.messages]);
 
-  const sendReply = async (): Promise<void> => {
-    if (!selected || !reply.trim()) return;
-    setBusy(true);
-    try {
-      const updated = await adminTicketReply(selected.id, reply.trim());
-      setReply("");
-      setTickets((prev) => prev.map((row) => (row.id === updated.id ? updated : row)));
-    } catch (err) {
-      setError(String((err as { message?: string })?.message || err || "Не удалось отправить ответ."));
-    } finally {
-      setBusy(false);
-    }
+  const replaceTicket = (updated: TicketInfo): void => {
+    setTickets((prev) => prev.map((row) => (row.id === updated.id ? updated : row)));
   };
 
-  const updateStatus = async (nextStatus: string): Promise<void> => {
+  const changeStatus = async (nextStatus: TicketStatus): Promise<void> => {
     if (!selected) return;
+    if (nextStatus === "closed") {
+      setConfirmClose(true);
+      return;
+    }
     setBusy(true);
+    setError("");
     try {
-      const updated = await adminTicketStatus(selected.id, nextStatus);
-      setTickets((prev) => prev.map((row) => (row.id === updated.id ? updated : row)));
+      replaceTicket(await adminTicketStatus(selected.id, nextStatus));
     } catch (err) {
       setError(String((err as { message?: string })?.message || err || "Не удалось обновить статус обращения."));
     } finally {
@@ -83,143 +138,220 @@ export default function AdminTicketsPage() {
     }
   };
 
-  const selectedStatus = normalizeTicketStatus(selected);
+  const closeTicket = async (): Promise<void> => {
+    if (!selected) return;
+    setBusy(true);
+    setError("");
+    setNotice("");
+    try {
+      replaceTicket(await adminTicketStatus(selected.id, "closed"));
+      setNotice(`Ticket #${selected.id} closed. Reason: ${closeReason.trim()}`);
+      setConfirmClose(false);
+      setCloseReason("");
+    } catch (err) {
+      setError(String((err as { message?: string })?.message || err || "Не удалось закрыть обращение."));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const sendReply = async (): Promise<void> => {
+    if (!selected || !reply.trim()) return;
+    setBusy(true);
+    setError("");
+    try {
+      const updated = await adminTicketReply(selected.id, reply.trim());
+      replaceTicket(updated);
+      setReply("");
+    } catch (err) {
+      setError(String((err as { message?: string })?.message || err || "Не удалось отправить ответ."));
+    } finally {
+      setBusy(false);
+    }
+  };
 
   return (
-    <section className="grid gap-4 xl:grid-cols-[0.9fr,1.1fr]">
-      <article className={adminPanelClass("neutral")}>
-        <div className={adminInsetPanelClass}>
-          <div className="mb-3 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
-            <div className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200/80 bg-white text-slate-700 dark:border-white/10 dark:bg-white/[0.05] dark:text-slate-100">
-              <MessageCircle size={16} />
-            </div>
-            <select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)} className={`${adminFieldClass} flex-1`}>
-              <option value="">Активные</option>
-              <option value="open">Открыт</option>
-              <option value="in_progress">В работе</option>
-              <option value="closed">Закрыт</option>
-            </select>
-            <button className={adminButtonClass("secondary", "sm")} type="button" onClick={() => void load()}>
-              <RefreshCw size={13} />
-              Обновить
-            </button>
-          </div>
-          <p className="text-xs leading-5 text-slate-500 dark:text-slate-400">
-            Здесь собраны обращения пользователей. Слева очередь, справа переписка и быстрые смены статуса.
-          </p>
-        </div>
-
-        {error ? <p className="mt-3 text-sm text-rose-500">{error}</p> : null}
-
-        <div className="mt-3 max-h-[64vh] space-y-2 overflow-auto">
-          {tickets.length === 0 ? (
-            <AdminEmptyState title="Нет обращений" description="По текущему фильтру очередь пустая." />
-          ) : null}
-          {tickets.map((ticket) => {
-            const meta = STATUS_META[normalizeTicketStatus(ticket)] || STATUS_META.open;
-            return (
-              <button
-                key={ticket.id}
-                type="button"
-                onClick={() => setSelectedId(ticket.id)}
-                className={`${adminInsetPanelClass} w-full text-left transition ${
-                  selectedId === ticket.id ? "border-slate-950 bg-slate-950 text-white dark:border-white dark:bg-white dark:text-slate-950" : "hover:border-slate-300 hover:bg-white dark:hover:bg-white/[0.06]"
-                }`}
-              >
-                <div className="flex items-center justify-between gap-2">
-                  <span className="text-sm font-bold">#{ticket.id}</span>
-                  <span className={`badge ${meta.color}`}>{meta.badge}</span>
-                </div>
-                <p className="mt-1.5 text-sm font-medium">{ticket.subject || "Новое обращение"}</p>
-                <p className={`mt-1 text-xs line-clamp-1 ${selectedId === ticket.id ? "text-white/70 dark:text-slate-700" : "text-slate-500 dark:text-slate-400"}`}>
-                  {ticket.last_message_preview || "Нет сообщений"}
-                </p>
-              </button>
-            );
-          })}
-        </div>
-      </article>
-
-      <article className={adminPanelClass("neutral")}>
-        {!selected ? (
-          <AdminEmptyState className="min-h-[420px]" title="Выберите обращение" description="Откройте тред из очереди, чтобы ответить, сменить статус или просмотреть всю переписку." />
-        ) : (
+    <section className="space-y-5">
+      <AdminSurfaceHeader
+        title="Ticket operations"
+        description="Здесь собраны обращения пользователей. Queue, SLA priority, safe status changes, and compact conversation view for support operators."
+        meta={
           <>
-            <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
-              <div>
-                <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">Выбранный тред</p>
-                <h2 className="mt-1 font-display text-2xl font-semibold text-slate-950 dark:text-slate-50">Обращение #{selected.id}</h2>
-                <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">Последнее обновление: {fmtRuDate(selected.updated_at)}</p>
-              </div>
-              <div className="flex flex-wrap gap-1.5">
-                {Object.entries(STATUS_META).map(([key, meta]) => {
-                  const Icon = meta.icon;
-                  const isActive = selectedStatus === key;
-                  return (
-                    <button
-                      key={key}
-                      className={
-                        isActive
-                          ? "inline-flex min-h-8 items-center justify-center gap-2 rounded-lg bg-violet-600 px-2.5 text-[11px] font-semibold text-white shadow-lg shadow-violet-600/25 transition disabled:cursor-not-allowed disabled:opacity-55"
-                          : adminButtonClass("ghost", "xs")
-                      }
-                      type="button"
-                      onClick={() => void updateStatus(key)}
-                      disabled={busy}
-                    >
-                      <Icon size={12} />
-                      {meta.badge}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
+            <AdminBadge tone="neutral">{tickets.length} loaded</AdminBadge>
+            <AdminBadge tone={totals.urgent ? "danger" : "success"}>{totals.urgent} urgent</AdminBadge>
+          </>
+        }
+        actions={
+          <>
+            <select className={`${adminFieldClass} w-auto min-w-[150px]`} value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)}>
+              <option value="">All statuses</option>
+              {STATUSES.map((row) => (
+                <option key={row.key} value={row.key}>{row.label}</option>
+              ))}
+            </select>
+            <button type="button" className={adminButtonClass("secondary", "sm")} onClick={load} disabled={loading || busy}>
+              <RefreshCw size={14} /> Refresh
+            </button>
+          </>
+        }
+      />
 
-            <div className="flex max-h-[42vh] flex-col gap-2 overflow-auto rounded-[1rem] border border-slate-200/75 bg-slate-50/75 p-3 dark:border-white/10 dark:bg-white/[0.03]">
-              {(selected.messages || []).length === 0 ? (
-                <AdminEmptyState className="min-h-[180px]" title="Нет сообщений" description="В этом обращении пока нет переписки." />
-              ) : null}
-              {(selected.messages || []).map((message) => {
-                const isAdmin = message.sender_role === "admin";
+      {error ? <AdminInlineNote tone="danger">{error}</AdminInlineNote> : null}
+      {notice ? <AdminInlineNote tone="success">{notice}</AdminInlineNote> : null}
+
+      <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+        <AdminKpiCard label="Open" value={totals.open} hint="Waiting for first operator response." tone={totals.open ? "warning" : "success"} />
+        <AdminKpiCard label="In work" value={totals.inWork} hint="Owned by support flow." tone="accent" />
+        <AdminKpiCard label="Urgent" value={totals.urgent} hint="SLA age crossed 24 hours." tone={totals.urgent ? "danger" : "success"} />
+        <AdminKpiCard label="Closed loaded" value={totals.closed} hint="Within current filter result." />
+      </div>
+
+      <div className="grid gap-4 xl:grid-cols-[420px_minmax(0,1fr)]">
+        <article className={adminPanelClass("neutral")}>
+          <AdminPanelHeader eyebrow="Queue" title="Ticket queue" description="Sorted by SLA rank, then most recent activity." />
+          {orderedTickets.length ? (
+            <div className="space-y-2">
+              {orderedTickets.map((ticket) => {
+                const sla = slaMeta(ticket);
+                const status = normalizeStatus(ticket);
+                const active = ticket.id === selectedId;
                 return (
-                  <div key={message.id} className={`flex ${isAdmin ? "justify-end" : "justify-start"}`}>
-                    <div className={`chat-bubble text-sm ${isAdmin ? "chat-bubble-admin" : "chat-bubble-user"}`}>
-                      <p className="mb-1 text-[10px] uppercase tracking-[0.12em] text-slate-500">
-                        {isAdmin ? "Оператор" : "Пользователь"}
-                      </p>
-                      <p className="whitespace-pre-line">{message.body}</p>
-                      <p className="mt-1.5 text-right text-[10px] text-slate-400">{fmtRuDate(message.created_at)}</p>
+                  <button
+                    key={ticket.id}
+                    type="button"
+                    className={`w-full rounded-xl border p-3 text-left transition ${
+                      active ? "border-emerald-500 bg-emerald-100" : "border-[#c6e6db] bg-[#f8fffc] hover:border-[#426c5f]"
+                    }`}
+                    onClick={() => setSelectedId(ticket.id)}
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <p className="truncate text-sm font-semibold text-slate-100">{ticket.subject || `Ticket #${ticket.id}`}</p>
+                        <p className="mt-1 line-clamp-2 text-xs leading-5 text-slate-400">{preview(ticket)}</p>
+                      </div>
+                      <AdminBadge tone={sla.tone}>{sla.label}</AdminBadge>
                     </div>
-                  </div>
+                    <div className="mt-3 flex flex-wrap items-center gap-2 text-[11px] text-slate-500">
+                      <AdminBadge tone={status === "closed" ? "success" : status === "in_progress" ? "accent" : "warning"}>{statusLabel(status)}</AdminBadge>
+                      <span>#{ticket.id}</span>
+                      <span>Telegram ID {ticket.user_tg_id}</span>
+                      <span>{fmtRuDate(ticket.updated_at || ticket.created_at)}</span>
+                    </div>
+                  </button>
                 );
               })}
-              <div ref={messagesEnd} />
             </div>
+          ) : (
+            <AdminEmptyState title="No tickets in this filter" description="The API returned an empty queue." />
+          )}
+        </article>
 
-            <div className="mt-3 space-y-2">
-              <textarea
-                value={reply}
-                onChange={(event) => setReply(event.target.value)}
-                rows={3}
-                placeholder="Напишите ответ пользователю простыми словами"
-                className={`${adminFieldClass} min-h-[120px] resize-none py-3`}
-                onKeyDown={(event) => {
-                  if (event.key === "Enter" && (event.metaKey || event.ctrlKey) && reply.trim()) {
-                    void sendReply();
-                  }
-                }}
+        <article className={adminPanelClass("neutral")}>
+          {selected ? (
+            <>
+              <AdminPanelHeader
+                eyebrow={`Ticket #${selected.id}`}
+                title="Thread detail"
+                description={`Telegram ID ${selected.user_tg_id} · updated ${fmtRuDate(selected.updated_at || selected.created_at)}`}
+                actions={
+                  <div className="flex flex-wrap gap-2">
+                    {STATUSES.map((row) => {
+                      const active = selectedStatus === row.key;
+                      return (
+                        <button
+                          key={row.key}
+                          type="button"
+                          className={`inline-flex min-h-9 items-center justify-center rounded-lg px-3 text-xs font-semibold transition ${
+                            active ? "bg-emerald-700 text-white" : "border border-[#99cdbb] bg-[#ffffff] text-slate-900 hover:bg-[#dff3eb]"
+                          }`}
+                          onClick={() => changeStatus(row.key)}
+                          disabled={busy}
+                        >
+                          {row.label}
+                        </button>
+                      );
+                    })}
+                  </div>
+                }
               />
-              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                <p className="text-[10px] text-slate-400">Подсказка: можно отправить быстрее через Ctrl/⌘ + Enter</p>
-                <button className={adminButtonClass("primary")} type="button" onClick={() => void sendReply()} disabled={busy || !reply.trim()}>
-                  {busy ? <Loader2 size={14} className="animate-spin" /> : <Send size={14} />}
-                  {busy ? "Отправка..." : "Отправить"}
-                </button>
+
+              <div className="mb-4 grid gap-3 md:grid-cols-3">
+                <div className={adminInsetPanelClass}><p className="text-[11px] text-slate-500">SLA</p><p className="mt-1 font-semibold text-slate-100">{slaMeta(selected).label}</p></div>
+                <div className={adminInsetPanelClass}><p className="text-[11px] text-slate-500">Priority</p><p className="mt-1 font-semibold text-slate-100">{slaMeta(selected).rank >= 4 ? "urgent" : "normal"}</p></div>
+                <div className={adminInsetPanelClass}><p className="text-[11px] text-slate-500">Messages</p><p className="mt-1 font-semibold text-slate-100">{selected.messages.length}</p></div>
+              </div>
+
+              <div className="max-h-[520px] space-y-3 overflow-y-auto rounded-xl border border-[#c6e6db] bg-[#ffffff] p-3">
+                {selected.messages.length ? (
+                  selected.messages.map((message) => {
+                    const isAdmin = message.sender_role === "admin";
+                    return (
+                      <div key={message.id} className={`flex ${isAdmin ? "justify-end" : "justify-start"}`}>
+                        <div
+                          className={`max-w-[78%] rounded-2xl px-3 py-2 text-sm leading-6 ${
+                            isAdmin ? "chat-bubble-admin bg-emerald-100 text-emerald-950" : "bg-[#eef8f3] text-slate-900"
+                          }`}
+                        >
+                          <div className="mb-1 flex items-center gap-2 text-[10px] uppercase tracking-[0.14em] text-slate-500">
+                            {isAdmin ? <CheckCircle size={12} /> : <MessageCircle size={12} />}
+                            {isAdmin ? "Admin" : "User"} · {fmtRuDate(message.created_at)}
+                          </div>
+                          <p>{message.body}</p>
+                        </div>
+                      </div>
+                    );
+                  })
+                ) : (
+                  <AdminEmptyState title="No messages" description="This ticket has no message history in the current response." />
+                )}
+                <div ref={messagesEnd} />
+              </div>
+
+              <div className="mt-4 rounded-xl border border-[#c6e6db] bg-[#f8fffc] p-3">
+                <label className="mb-2 flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">
+                  <Inbox size={14} /> Reply
+                </label>
+                <textarea
+                  className={`${adminTextAreaClass} min-h-[110px]`}
+                  value={reply}
+                  onChange={(event) => setReply(event.target.value)}
+                  placeholder="Напишите ответ пользователю простыми словами"
+                />
+                <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
+                  <p className="text-xs leading-5 text-slate-500">Do not expose internal node names, topology, tokens, or operator-only diagnostics.</p>
+                  <button type="button" className={adminButtonClass("primary", "sm")} onClick={sendReply} disabled={busy || !reply.trim()}>
+                    {busy ? <Loader2 className="animate-spin" size={14} /> : <Send size={14} />} Отправить
+                  </button>
+                </div>
+              </div>
+            </>
+          ) : (
+            <AdminEmptyState title="Select a ticket" description="Pick a queue item to inspect the thread and change status." />
+          )}
+        </article>
+      </div>
+
+      {confirmClose && selected ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/65 p-4">
+          <div className={`${adminPanelClass("warning")} w-full max-w-lg`}>
+            <div className="flex items-start gap-3">
+              <ShieldCheck className="mt-1 shrink-0" size={20} />
+              <div>
+                <h2 className="text-lg font-semibold text-slate-50">Close ticket #{selected.id}</h2>
+                <p className="mt-2 text-sm leading-6 text-slate-300">Closing is visible to the support workflow. Add the resolution reason.</p>
               </div>
             </div>
-          </>
-        )}
-      </article>
+            <label className="mt-4 block text-xs font-semibold uppercase tracking-[0.16em] text-slate-500" htmlFor="ticket-close-reason">Reason</label>
+            <input id="ticket-close-reason" className={`${adminFieldClass} mt-2`} value={closeReason} onChange={(event) => setCloseReason(event.target.value)} placeholder="resolved, duplicate, or user confirmed" />
+            <div className="mt-4 flex justify-end gap-2">
+              <button type="button" className={adminButtonClass("ghost", "sm")} onClick={() => setConfirmClose(false)} disabled={busy}>Cancel</button>
+              <button type="button" className={adminButtonClass("primary", "sm")} onClick={closeTicket} disabled={busy || closeReason.trim().length < 6}>
+                {busy ? <Loader2 className="animate-spin" size={14} /> : <Clock3 size={14} />} Close ticket
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </section>
   );
 }

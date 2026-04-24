@@ -41,6 +41,18 @@ function deviceTitle(name?: string | null, platform?: string | null): string {
   return cleanName || cleanPlatform || "Устройство";
 }
 
+function routeLabel(dash: unknown, user: unknown): string {
+  const dashboard = dash as { location_matrix?: { locations?: Array<{ label?: string | null }> } | null; hidden_transport_matrix?: { logical_location_count?: number | null } | null } | null;
+  const profile = user as { location_matrix?: { locations?: Array<{ label?: string | null }> } | null; hidden_transport_matrix?: { logical_location_count?: number | null } | null } | null;
+  const locations = dashboard?.location_matrix?.locations || profile?.location_matrix?.locations || [];
+  const firstLabel = locations.find((item) => String(item.label || "").trim())?.label;
+  const count = dashboard?.hidden_transport_matrix?.logical_location_count ?? profile?.hidden_transport_matrix?.logical_location_count ?? locations.length;
+
+  if (firstLabel && count <= 1) return firstLabel;
+  if (count > 1) return `${formatCount(count)} локации`;
+  return "Автоматически";
+}
+
 export default function DashboardPage() {
   const { user, dash } = usePortalSession();
   const [nodes, setNodes] = useState<NodeStatus[]>([]);
@@ -72,10 +84,10 @@ export default function DashboardPage() {
   const deviceLimit = getDeviceLimit(dash, user);
   const deviceCount = user?.sync?.device_count ?? user?.devices?.length ?? 0;
   const activeConnections = dash?.connection_snapshot?.active_connections ?? dash?.active_sessions ?? 0;
-  const activeUsersEstimate = dash?.connection_snapshot?.active_users_estimate ?? user?.connections?.active_users_estimate ?? 0;
   const activeNodes = dash?.connection_snapshot?.active_nodes ?? user?.connections?.active_nodes ?? 0;
   const knownNodes = dash?.connection_snapshot?.known_nodes ?? user?.connections?.known_nodes ?? nodes.length;
   const healthyNodes = nodes.filter((node) => node.is_healthy).length;
+  const routeSummary = routeLabel(dash, user);
 
   const attentionItems = useMemo(() => {
     const items: Array<{
@@ -116,15 +128,15 @@ export default function DashboardPage() {
     } else if (softMode) {
       items.push({
         key: "soft",
-        title: "Сейчас мягкий режим",
+        title: "Сейчас режим с ограничениями",
         body: nextResetAt
-          ? `Полный режим вернется после сброса ${formatDate(nextResetAt)}. Если не хочется ждать, откройте оплату.`
+          ? `Доступ без месячного лимита вернется после сброса ${formatDate(nextResetAt)}. Если не хочется ждать, откройте оплату.`
           : "Если не хочется ждать следующего цикла, можно сразу открыть оплату.",
         tone: "warning",
         badge: "Стоит проверить",
         action: (
           <AppRouteLink href="/subscription/checkout/" className="text-sm font-semibold text-emerald-800 dark:text-emerald-300">
-            Вернуть полный режим
+            Вернуть доступ без лимита
           </AppRouteLink>
         ),
       });
@@ -161,7 +173,7 @@ export default function DashboardPage() {
     } else if (knownNodes > 0 && healthyNodes < knownNodes) {
       items.push({
         key: "nodes-attention",
-        title: "Часть точек доступа требует внимания",
+        title: "Часть локаций требует внимания",
         body: `Сейчас готовы ${healthyNodes} из ${knownNodes}. Если это уже заметно по качеству доступа, лучше написать нам.`,
         tone: "warning",
         badge: "Стоит проверить",
@@ -212,7 +224,7 @@ export default function DashboardPage() {
     {
       key: "subscription",
       title: "Проверить тариф и срок",
-      body: "Там видны режим, дата окончания и понятные варианты продления без витрины.",
+      body: "Там видны режим, дата окончания и понятные варианты продления без лишних переходов.",
       badge: "Шаг 2",
       tone: "neutral" as const,
       action: (
@@ -253,7 +265,7 @@ export default function DashboardPage() {
       title: "Сеть сейчас",
       body: nodesError
         ? "Статус сети подтянем позже. Если проблема видна в приложении, лучше сразу открыть поддержку."
-        : `${formatCount(healthyNodes || activeNodes)} из ${formatCount(knownNodes)} точек сейчас выглядят готовыми.`,
+        : `${formatCount(healthyNodes || activeNodes)} из ${formatCount(knownNodes)} локаций сейчас выглядят готовыми.`,
       badge: nodesError ? "Проверка позже" : `${formatCount(healthyNodes || activeNodes)}/${formatCount(knownNodes)}`,
       tone: nodesError ? ("info" as const) : healthyNodes < knownNodes ? ("warning" as const) : ("success" as const),
     },
@@ -330,6 +342,12 @@ export default function DashboardPage() {
           hint: "Сколько экранов уже связано с профилем.",
           tone: "neutral",
         },
+        {
+          label: "Маршрут",
+          value: routeSummary,
+          hint: "Приложение выбирает рабочий путь без ручных настроек.",
+          tone: "neutral",
+        },
       ]}
     >
       <CabinetHero
@@ -354,15 +372,15 @@ export default function DashboardPage() {
             tone: activeConnections > 0 ? "success" : "neutral",
           },
           {
-            label: "Людей онлайн",
-            value: formatCount(activeUsersEstimate),
-            hint: "Это ориентир по живой активности сети.",
+            label: "Маршрут",
+            value: routeSummary,
+            hint: "Показываем понятную сводку, без технических деталей.",
             tone: "neutral",
           },
           {
-            label: "Точки доступа",
+            label: "Локации",
             value: nodesError ? "Проверим позже" : `${formatCount(healthyNodes || activeNodes)} из ${formatCount(knownNodes)}`,
-            hint: nodesError ? "Если доступ ведет себя неровно, напишите нам." : "Короткая сводка по сети на сейчас.",
+            hint: nodesError ? "Если доступ ведет себя неровно, напишите нам." : "Короткая сводка по доступным направлениям.",
             tone: nodesError ? "info" : healthyNodes < knownNodes ? "warning" : "success",
           },
         ]}

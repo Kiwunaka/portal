@@ -18,7 +18,44 @@ FRONTEND_COPY_FILES = [
     ROOT / "shared/public-urls.json",
     ROOT / "shared/product-facts.json",
     ROOT / "copy/catalog.ru.json",
+    ROOT / "shared/redesign-spine.json",
 ]
+
+WORKER3_MARKETING_COPY_FILES = [
+    ROOT / "marketing/src/app/checkout/page.tsx",
+    ROOT / "marketing/src/app/checkout/checkout-client.tsx",
+    ROOT / "marketing/src/app/install/page.tsx",
+    ROOT / "marketing/src/app/mobile/page.tsx",
+    ROOT / "marketing/src/app/tiktok/page.tsx",
+    ROOT / "marketing/src/app/youtube/page.tsx",
+    ROOT / "marketing/src/app/devices/page.tsx",
+    ROOT / "marketing/src/app/telegram/page.tsx",
+    ROOT / "marketing/src/app/offer/page.tsx",
+    ROOT / "marketing/src/app/privacy/page.tsx",
+    ROOT / "marketing/src/components/marketing-landing.tsx",
+    ROOT / "marketing/src/lib/marketing-site.ts",
+]
+
+USER_FACING_COPY_FILES = [
+    ROOT / "docs/user/portal-vpn-user-guide-ru.md",
+]
+
+BACKEND_PUBLIC_COPY_FILES = [
+    ROOT / "portal_bot/api.py",
+    ROOT / "portal_bot/bot.py",
+    ROOT / "portal_bot/helpbot.py",
+    ROOT / "portal_bot/feedbackbot.py",
+    ROOT / "portal_bot/worker.py",
+]
+
+CURRENT_COPY_CONTRACT_FILES = PUBLIC_COPY_FILES + FRONTEND_COPY_FILES
+
+FIRST_LAYER_APP_CATALOG_PREFIXES = (
+    "app.nav.",
+    "app.route_mode.",
+    "app.connection.",
+    "app.trial.",
+)
 
 BANNED_PATTERNS = [
     re.compile(r"\b100%\b", re.IGNORECASE),
@@ -40,6 +77,88 @@ PUBLIC_FORBIDDEN_PATTERNS = [
 
 MOJIBAKE_MARKERS = ["Р РЋ", "Р Сџ", "РЎРѓ", "РІР‚", "СЂСџ", "РІС™", "РІСљ", "�"]
 
+PUBLIC_HUMAN_COPY_FORBIDDEN_PATTERNS = [
+    re.compile(r"\bVPN\b", re.IGNORECASE),
+    re.compile(r"\bcheckout\b", re.IGNORECASE),
+    re.compile(r"\bfallback\b", re.IGNORECASE),
+    re.compile(r"\bmanaged premium\b", re.IGNORECASE),
+    re.compile(r"\btrial\b", re.IGNORECASE),
+    re.compile(r"\bscope\b", re.IGNORECASE),
+    re.compile(r"\bSNI\b", re.IGNORECASE),
+    re.compile(r"\bDNS\b", re.IGNORECASE),
+    re.compile(r"\bузл\w*", re.IGNORECASE),
+]
+
+PUBLIC_MARKETING_FORBIDDEN_PATTERNS = [
+    re.compile(r"\?{3,}"),
+    re.compile(r"\bVPN\b", re.IGNORECASE),
+    re.compile(r"\bcheckout\b", re.IGNORECASE),
+    re.compile(r"\bfallback\b", re.IGNORECASE),
+    re.compile(r"\bmanaged premium\b", re.IGNORECASE),
+    re.compile(r"\btrial\b", re.IGNORECASE),
+    re.compile(r"\bscope\b", re.IGNORECASE),
+    re.compile(r"\bSNI\b", re.IGNORECASE),
+    re.compile(r"\bDNS\b", re.IGNORECASE),
+    re.compile(r"публичн\w+\s+каталог\w*", re.IGNORECASE),
+    re.compile(r"raw\s+links?", re.IGNORECASE),
+    re.compile(r"техническ\w+\s+ссыл", re.IGNORECASE),
+    re.compile(r"техническ\w+\s+сценари", re.IGNORECASE),
+    re.compile(r"ручн\w+\s+профил", re.IGNORECASE),
+    re.compile(r"сыры\w+\s+персональн\w+\s+ссыл", re.IGNORECASE),
+    re.compile(r"continuation", re.IGNORECASE),
+    re.compile(r"trust-сценари", re.IGNORECASE),
+    re.compile(r"checkout\s+покажет", re.IGNORECASE),
+    re.compile(r"ускор\w*", re.IGNORECASE),
+    re.compile(r"пинг\w*", re.IGNORECASE),
+    re.compile(r"без\s+границ", re.IGNORECASE),
+]
+
+PUBLIC_MARKETING_SOURCE_FORBIDDEN_PATTERNS = [
+    re.compile(r"\?{3,}"),
+    re.compile(r"\bVPN\b", re.IGNORECASE),
+    re.compile(r"\bmanaged premium\b", re.IGNORECASE),
+    re.compile(r"публичн\w+\s+каталог\w*", re.IGNORECASE),
+    re.compile(r"raw\s+links?", re.IGNORECASE),
+    re.compile(r"техническ\w+\s+ссыл", re.IGNORECASE),
+    re.compile(r"техническ\w+\s+сценари", re.IGNORECASE),
+    re.compile(r"ручн\w+\s+профил", re.IGNORECASE),
+    re.compile(r"сыры\w+\s+персональн\w+\s+ссыл", re.IGNORECASE),
+    re.compile(r"continuation", re.IGNORECASE),
+    re.compile(r"trust-сценари", re.IGNORECASE),
+    re.compile(r"First-party promo slots", re.IGNORECASE),
+    re.compile(r"checkout\s+покажет", re.IGNORECASE),
+    re.compile(r"ускор\w*", re.IGNORECASE),
+    re.compile(r"пинг\w*", re.IGNORECASE),
+    re.compile(r"без\s+границ", re.IGNORECASE),
+]
+STALE_TRIAL_LENGTH_PATTERNS = [
+    re.compile(r"\b7\s*days?\b", re.IGNORECASE),
+    re.compile(r"\b7[-\s]?day\b", re.IGNORECASE),
+    re.compile(r"\b7\s*РґРЅ", re.IGNORECASE),
+    re.compile(r"\b7\s*дн", re.IGNORECASE),
+]
+
+OLD_SUBTITLE_PATTERNS = [
+    re.compile(r"\bPOKROV\s+Network\b", re.IGNORECASE),
+    re.compile(r"\bPREMIUM\s+VPN\b", re.IGNORECASE),
+]
+
+FIRST_LAYER_APP_TECH_PATTERNS = [
+    re.compile(r"\bVPN\b", re.IGNORECASE),
+    re.compile(r"\bSNI\b", re.IGNORECASE),
+    re.compile(r"\bDNS\b", re.IGNORECASE),
+    re.compile(r"\bVLESS\b", re.IGNORECASE),
+    re.compile(r"\bVMess\b", re.IGNORECASE),
+    re.compile(r"\bTrojan\b", re.IGNORECASE),
+    re.compile(r"\bXHTTP\b", re.IGNORECASE),
+    re.compile(r"\bxray\b", re.IGNORECASE),
+    re.compile(r"\bsing-box\b", re.IGNORECASE),
+    re.compile(r"\bsystem\s+proxy\b", re.IGNORECASE),
+    re.compile(r"\bservice\s+mode\b", re.IGNORECASE),
+    re.compile(r"\bsubscription_url\b", re.IGNORECASE),
+    re.compile(r"\bhost:port\b", re.IGNORECASE),
+]
+
 
 def _public_text(path: Path) -> str:
     if path.suffix.lower() == ".json":
@@ -60,6 +179,44 @@ def _frontend_text_without_legacy_catalog(path: Path) -> str:
     if path.suffix.lower() == ".ts":
         text = re.sub(r"export const LEGACY_PUBLIC_MARKERS = \[(?:.|\n)*?\] as const;\n?", "", text)
     return text
+
+
+def _public_human_copy_text(path: Path) -> str:
+    text = _frontend_text_without_legacy_catalog(path)
+    text = re.sub(r"https?://\S+", "", text)
+    if path.name == "portal-vpn-user-guide-ru.md":
+        kept_lines = []
+        for line in text.splitlines():
+            lowered = line.lower()
+            if (
+                "legacy" in lowered
+                or "историчес" in lowered
+                or "portal-vpn-user-guide-ru.md" in lowered
+                or "старых названиях" in lowered
+            ):
+                continue
+            kept_lines.append(line)
+        return "\n".join(kept_lines)
+    return text
+
+
+def _catalog_allowed_public_ru_text(path: Path) -> str:
+    payload = json.loads(path.read_text(encoding="utf-8"))
+    items = payload.get("items") or {}
+    return "\n".join(
+        str((item or {}).get("ru") or "")
+        for item in items.values()
+        if (item or {}).get("allowed_public") is True
+    )
+
+
+def _catalog_items() -> dict[str, dict]:
+    payload = json.loads((ROOT / "copy/catalog.ru.json").read_text(encoding="utf-8"))
+    return payload.get("items") or {}
+
+
+def _catalog_ru_values() -> list[tuple[str, str]]:
+    return [(key, str((item or {}).get("ru") or "")) for key, item in _catalog_items().items()]
 
 
 def test_public_copy_has_no_banned_claims() -> None:
@@ -94,6 +251,36 @@ def test_public_copy_has_no_mojibake_markers() -> None:
     assert not violations, "\n".join(violations)
 
 
+def test_user_facing_copy_avoids_public_jargon_and_direct_vpn_wording() -> None:
+    violations: list[str] = []
+    for path in USER_FACING_COPY_FILES:
+        text = _public_human_copy_text(path)
+        for pattern in PUBLIC_HUMAN_COPY_FORBIDDEN_PATTERNS:
+            for match in pattern.finditer(text):
+                snippet = text[max(0, match.start() - 30):match.end() + 30].replace("\n", " ")
+                violations.append(f"{path.relative_to(ROOT)}: /{pattern.pattern}/ -> {snippet}")
+    assert not violations, "\n".join(violations)
+
+
+def test_worker3_public_marketing_copy_stays_human_and_policy_safe() -> None:
+    violations: list[str] = []
+    catalog_text = _catalog_allowed_public_ru_text(ROOT / "copy/catalog.ru.json")
+
+    for pattern in PUBLIC_MARKETING_FORBIDDEN_PATTERNS:
+        for match in pattern.finditer(catalog_text):
+            snippet = catalog_text[max(0, match.start() - 30):match.end() + 30].replace("\n", " ")
+            violations.append(f"copy/catalog.ru.json: /{pattern.pattern}/ -> {snippet}")
+
+    for path in WORKER3_MARKETING_COPY_FILES:
+        text = path.read_text(encoding="utf-8")
+        for pattern in PUBLIC_MARKETING_SOURCE_FORBIDDEN_PATTERNS:
+            for match in pattern.finditer(text):
+                snippet = text[max(0, match.start() - 30):match.end() + 30].replace("\n", " ")
+                violations.append(f"{path.relative_to(ROOT)}: /{pattern.pattern}/ -> {snippet}")
+
+    assert not violations, "\n".join(violations)
+
+
 def test_frontend_public_copy_catalogs_stay_pokrov_only() -> None:
     violations: list[str] = []
     portal_config_required_snippets = (
@@ -120,7 +307,8 @@ def test_frontend_public_copy_catalogs_stay_pokrov_only() -> None:
         "https://t.me/pokrov_vpn",
     )
     product_facts_required_snippets = (
-        "POKROV Network",
+        '"platform": "POKROV"',
+        '"client": "POKROV"',
     )
     forbidden_markers = (
         "portal-privacy.online",
@@ -154,6 +342,98 @@ def test_frontend_public_copy_catalogs_stay_pokrov_only() -> None:
                     violations.append(f"{path.relative_to(ROOT)}: found forbidden legacy marker {marker}")
 
     assert not violations, "\n".join(violations)
+
+
+def test_governed_copy_has_no_old_subtitle_or_stale_seven_day_trial() -> None:
+    violations: list[str] = []
+
+    for path in CURRENT_COPY_CONTRACT_FILES:
+        text = _frontend_text_without_legacy_catalog(path) if path in FRONTEND_COPY_FILES else _public_text(path)
+        for pattern in STALE_TRIAL_LENGTH_PATTERNS:
+            for match in pattern.finditer(text):
+                snippet = text[max(0, match.start() - 30):match.end() + 30].replace("\n", " ")
+                violations.append(f"{path.relative_to(ROOT)}: stale trial length /{pattern.pattern}/ -> {snippet}")
+
+    for key, text in _catalog_ru_values():
+        for pattern in OLD_SUBTITLE_PATTERNS:
+            for match in pattern.finditer(text):
+                snippet = text[max(0, match.start() - 30):match.end() + 30].replace("\n", " ")
+                violations.append(f"copy/catalog.ru.json:{key}: old subtitle /{pattern.pattern}/ -> {snippet}")
+
+    assert not violations, "\n".join(violations)
+
+
+def test_public_catalog_items_have_no_direct_vpn_wording() -> None:
+    violations: list[str] = []
+
+    skipped_jargon_patterns = {
+        r"\bcheckout\b",
+        r"\bfallback\b",
+        r"\bmanaged premium\b",
+        r"\btrial\b",
+        r"\bscope\b",
+    }
+    for key, item in _catalog_items().items():
+        if not (item or {}).get("allowed_public"):
+            continue
+        text = str((item or {}).get("ru") or "")
+        for pattern in PUBLIC_HUMAN_COPY_FORBIDDEN_PATTERNS:
+            if pattern.pattern in skipped_jargon_patterns:
+                continue
+            for match in pattern.finditer(text):
+                snippet = text[max(0, match.start() - 30):match.end() + 30].replace("\n", " ")
+                violations.append(f"copy/catalog.ru.json:{key}: /{pattern.pattern}/ -> {snippet}")
+
+    assert not violations, "\n".join(violations)
+
+
+def test_backend_and_bot_public_copy_stays_pokrov_app_first() -> None:
+    forbidden_literals = (
+        "POKROV VPN",
+        "TRIAL_10GB_7",
+    )
+    stale_public_trial_patterns = (
+        re.compile(r"/gift\s+\[tg_id\]\s+trial.*7", re.IGNORECASE),
+        re.compile(r'"trial"\s*:\s*\{\s*"days"\s*:\s*7', re.IGNORECASE),
+    )
+    violations: list[str] = []
+
+    for path in BACKEND_PUBLIC_COPY_FILES:
+        text = path.read_text(encoding="utf-8")
+        for literal in forbidden_literals:
+            if literal in text:
+                violations.append(f"{path.relative_to(ROOT)}: found forbidden backend copy {literal!r}")
+        for pattern in stale_public_trial_patterns:
+            for match in pattern.finditer(text):
+                snippet = text[max(0, match.start() - 30):match.end() + 30].replace("\n", " ")
+                violations.append(f"{path.relative_to(ROOT)}: stale backend trial copy /{pattern.pattern}/ -> {snippet}")
+
+    assert not violations, "\n".join(violations)
+
+
+def test_first_layer_app_catalog_copy_avoids_technical_terms() -> None:
+    violations: list[str] = []
+
+    for key, text in _catalog_ru_values():
+        if not key.startswith(FIRST_LAYER_APP_CATALOG_PREFIXES):
+            continue
+        for pattern in FIRST_LAYER_APP_TECH_PATTERNS:
+            for match in pattern.finditer(text):
+                snippet = text[max(0, match.start() - 30):match.end() + 30].replace("\n", " ")
+                violations.append(f"copy/catalog.ru.json:{key}: /{pattern.pattern}/ -> {snippet}")
+
+    assert not violations, "\n".join(violations)
+
+
+def test_redesign_spine_uses_one_current_contract_path() -> None:
+    spine = json.loads((ROOT / "shared/redesign-spine.json").read_text(encoding="utf-8"))
+
+    assert spine["version"] == "2026-04-23-full-redesign"
+    assert spine["visual_direction"]["name"] == "white-mint premium utility"
+    assert spine["brand"]["subtitle"] == ""
+    assert "legacy_path" not in spine
+    assert "dual_path" not in spine
+    assert "old_redesign" not in spine
 
 
 def test_public_copy_pack_is_present_on_canonical_docs() -> None:

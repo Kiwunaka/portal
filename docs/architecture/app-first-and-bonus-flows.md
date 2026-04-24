@@ -1,6 +1,6 @@
 # App-First And Bonus Flows
 
-Last updated: 2026-04-23
+Last updated: 2026-04-24
 
 ## Document Status
 
@@ -88,6 +88,7 @@ First-run route-mode choice:
 - the chosen mode must round-trip through backend-owned `route_mode`, `selected_apps`, and `route_policy.*` fields so `start-trial`, `dashboard`, and recovery flows all agree on the live device state
 - Windows should use a known-app or executable picker; Android should use an installed-package picker
 - the saved route-mode choice must remain editable later from a dedicated route-mode screen rather than only through hidden advanced settings
+- the first layer must stay free of raw protocol, runtime-core, local-control, hostname, port, and subscription-internal terms; these details belong in diagnostics, advanced settings, or admin/support context
 
 Rollout note:
 
@@ -157,6 +158,15 @@ Visibility rule:
 - once linked, Telegram identity becomes part of the support and recovery context
 - device and IP context should be used for diagnosis and abuse control, not as a public-facing marketing message
 - install-scoped latency samples, carrier labels, and platform labels are operator-visible diagnostics for route quality and must not surface as raw telemetry in normal consumer UI
+
+## Redesign-Safe Public Payloads
+
+App, cabinet, and marketing UI may use additive backend summaries when they need truthful copy around public feeds or aggregate proof:
+
+- `GET /api/public/live-updates` supplies short consumer-readable update cards and uses default copy only as a real empty-state substitute when no active update rows exist
+- `GET /api/public/social-proof` returns existing aggregate counters plus `summary.source=backend_account_rows`, `summary.precision=aggregate`, and a Russian description that says the data is aggregate and personal data is not exposed
+
+These fields preserve existing clients because they are additive. They do not change entitlement, subscription delivery, support, or Telegram reward behavior.
 
 ## Live App-First Endpoints
 

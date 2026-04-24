@@ -30,25 +30,25 @@ PROVIDER_META: dict[str, PaymentProviderMeta] = {
         code="cardlink",
         label="Cardlink",
         accent="Карты и СБП",
-        checkout_hint="Прямой платёжный линк без FKWallet.",
+        checkout_hint="Прямая страница оплаты картой или СБП.",
     ),
     "pally": PaymentProviderMeta(
         code="pally",
         label="Paypalich",
         accent="Карты и СБП",
-        checkout_hint="Резервная касса для быстрой оплаты.",
+        checkout_hint="Запасной способ оплаты.",
     ),
     "platima": PaymentProviderMeta(
         code="platima",
         label="Platima",
         accent="Карты и СБП",
-        checkout_hint="Отдельный проект со своим callback-контуром.",
+        checkout_hint="Отдельный платёжный контур.",
     ),
     "freekassa": PaymentProviderMeta(
         code="freekassa",
         label="FreeKassa",
-        accent="Legacy fallback",
-        checkout_hint="Оставлено как обратная совместимость.",
+        accent="Совместимость",
+        checkout_hint="Оставлено для старых сценариев оплаты.",
     ),
 }
 

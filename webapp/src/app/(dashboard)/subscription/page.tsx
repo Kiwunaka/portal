@@ -52,9 +52,9 @@ function formatDate(value?: string | null): string {
 
 function nodePolicyLabel(value?: string | null): string {
   const normalized = String(value || "").trim().toLowerCase();
-  if (normalized === "free_single_location" || normalized === "nl_only") return "NL-free";
-  if (normalized === "managed_premium" || normalized === "paid_pool") return "Полный пул";
-  return "По профилю";
+  if (normalized === "free_single_location" || normalized === "nl_only") return "базовая локация";
+  if (normalized === "managed_premium" || normalized === "paid_pool") return "без месячного лимита";
+  return "по текущему профилю";
 }
 
 export default function SubscriptionPage() {
@@ -126,25 +126,25 @@ export default function SubscriptionPage() {
   const paymentCards = [
     {
       key: "checkout",
-      title: "Открыть оплату",
+      title: "Перейти к оплате",
       body: "Самый прямой путь, если нужно продлить срок без лишних переходов.",
       badge: "Основной путь",
       tone: "neutral" as const,
       action: (
         <AppRouteLink href="/subscription/checkout/" className="text-sm font-semibold text-emerald-800 dark:text-emerald-300">
-          Открыть checkout
+          Перейти к оплате
         </AppRouteLink>
       ),
     },
     {
       key: "redeem",
-      title: "Применить ключ",
-      body: "Если у вас уже есть подарок или оплаченный ключ, можно использовать его здесь.",
+      title: "Применить ключ доступа",
+      body: "Если у вас уже есть подарочный или оплаченный ключ доступа, можно использовать его здесь.",
       badge: "Если ключ уже есть",
       tone: "neutral" as const,
       action: (
         <AppRouteLink href="/redeem/" className="text-sm font-semibold text-emerald-800 dark:text-emerald-300">
-          Открыть redeem
+          Применить ключ
         </AppRouteLink>
       ),
     },
@@ -165,17 +165,17 @@ export default function SubscriptionPage() {
   const modeCards = [
     {
       key: "paid",
-      title: paidMode ? "Полный режим уже активен" : "Полный режим — самый спокойный вариант",
+      title: paidMode ? "Доступ без месячного лимита уже активен" : "Доступ без месячного лимита — самый спокойный вариант",
       body: paidMode
-        ? "Сейчас профиль работает без месячного лимита трафика."
+        ? "Сейчас аккаунт работает без месячного лимита трафика."
         : "Если не хочется думать о месячных ограничениях, смотреть стоит в эту сторону.",
       badge: paidMode ? "Сейчас так" : "Вариант",
       tone: paidMode ? ("success" as const) : ("neutral" as const),
     },
     {
       key: "trial",
-      title: trialMode ? "Пробный период уже идет" : "Пробный период показывает сервис в полном режиме",
-      body: trialMode ? `Он действует до ${formatDate(dash?.expiry_at)}.` : "После него можно спокойно решить, нужен ли вам платный режим дальше.",
+      title: trialMode ? "Пробные 5 дней уже идут" : "Попробовать 5 дней можно в полном режиме",
+      body: trialMode ? `Период действует до ${formatDate(dash?.expiry_at)}.` : "После него можно спокойно решить, нужен ли вам платный режим дальше.",
       badge: trialMode ? "Активен" : "Как это работает",
       tone: trialMode ? ("warning" as const) : ("neutral" as const),
     },
@@ -202,10 +202,10 @@ export default function SubscriptionPage() {
       actions={
         <>
           <AppRouteLink href="/subscription/checkout/" className="btn-primary rounded-full px-5 py-3 text-sm font-semibold">
-            Открыть оплату
+            Перейти к оплате
           </AppRouteLink>
           <AppRouteLink href="/redeem/" className="outline-btn rounded-full px-5 py-3 text-sm font-semibold">
-            У меня есть ключ
+            У меня есть ключ доступа
           </AppRouteLink>
         </>
       }
@@ -219,7 +219,7 @@ export default function SubscriptionPage() {
         {
           label: "Срок",
           value: formatDate(dash?.expiry_at || user?.expiry_at),
-          hint: trialMode ? "Сейчас действует пробный период." : "Это ближайшая важная дата по доступу.",
+          hint: trialMode ? "Сейчас действуют пробные 5 дней." : "Это ближайшая важная дата по доступу.",
           tone: "neutral",
         },
         {
@@ -243,16 +243,16 @@ export default function SubscriptionPage() {
         title={dash?.is_active ? "Выберите удобный способ продлить" : "Сначала верните срок действия"}
         description={
           dash?.is_active
-            ? "Кабинет не пытается продавать лишнее. Показываем только рабочие варианты и самый прямой путь к оплате."
+            ? "Показываем только рабочие варианты и самый прямой путь к оплате."
             : "Как только срок снова станет активным, устройства и история останутся на месте."
         }
         actions={
           <>
             <AppRouteLink href="/subscription/checkout/" className="btn-primary rounded-full px-5 py-3 text-sm font-semibold">
-              Открыть checkout
+              Перейти к оплате
             </AppRouteLink>
             <AppRouteLink href="/redeem/" className="outline-btn rounded-full px-5 py-3 text-sm font-semibold">
-              Применить ключ
+              Применить ключ доступа
             </AppRouteLink>
           </>
         }
@@ -264,14 +264,14 @@ export default function SubscriptionPage() {
             tone: "neutral",
           },
           {
-            label: "Полный режим",
+            label: "Без месячного лимита",
             value: paidMode ? "Активен" : "Можно включить",
             hint: paidMode ? "Без месячного лимита трафика." : "Подходит, если хочется меньше думать об ограничениях.",
             tone: paidMode ? "success" : "neutral",
           },
           {
             label: "Если оплата уже была",
-            value: "Не искать обходы",
+            value: "Открыть поддержку",
             hint: "Если статус не обновился, лучше сразу продолжить кейс в поддержке.",
             tone: "neutral",
           },

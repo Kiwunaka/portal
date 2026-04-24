@@ -1,6 +1,6 @@
 # Repository Map
 
-Last updated: 2026-04-23
+Last updated: 2026-04-24
 
 ## Document Status
 
@@ -150,6 +150,7 @@ Shared-facts and handoff note:
 - `tests/test_api_p0_extensions.py`
 - `tests/test_smart_connect_api.py`
 - `tests/test_network_rollout_api.py`
+- public feed and social-proof API copy/summary checks live in `tests/test_api_p0_extensions.py`
 
 ### Worker and retention
 
@@ -175,6 +176,7 @@ Shared-facts and handoff note:
 - `tests/test_public_copy_guardrails.py`
 - `tests/test_tickets_repo.py`
 - `tests/test_reviews_username_masking.py`
+- redesign public-copy guardrails live in `tests/test_public_copy_guardrails.py`; they keep user-facing Russian copy human and policy-safe, reject stale longer-duration trial copy, reject old subtitle lines, and preserve legacy compatibility labels only where explicitly documented
 
 ### Frontend and smoke
 
@@ -184,6 +186,7 @@ Shared-facts and handoff note:
 - `tests/test_ui_visual_smoke.py`
 - `webapp/e2e/admin-gate.spec.ts`
 - `webapp/e2e/cabinet-flow.spec.ts`
+- `webapp/e2e/admin-gate.spec.ts` also guards local-dev admin auth by requiring a seeded cabinet session before `/admin/*` routes open in browser tests
 
 ### Client release verification
 

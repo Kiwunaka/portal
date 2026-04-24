@@ -2,7 +2,8 @@
 
 import AppRouteLink from "@/components/app-route-link";
 import { CabinetCardGrid, CabinetHero, CabinetList, CabinetRoute, CabinetSection } from "@/components/cabinet/surface";
-import { getAccessState, getDeviceLimit, resolvePlanLabel, resolveTrafficStatusText } from "@/lib/access-policy";
+import { CabinetThemeControl } from "@/components/cabinet/theme-control";
+import { getDeviceLimit, resolvePlanLabel, resolveTrafficStatusText } from "@/lib/access-policy";
 import { usePortalSession } from "@/lib/session";
 
 function formatDate(value?: string | null): string {
@@ -33,8 +34,8 @@ export default function ProfilePage() {
   const linked = user?.linked_identities || dash?.linked_identities || null;
   const telegramName = linked?.telegram?.username ? `@${linked.telegram.username}` : profileLabel(user?.username, user?.tg_id);
   const linkedEmail = linked?.email?.email || "";
-  const accessState = getAccessState(dash, user);
   const deviceLimit = getDeviceLimit(dash, user);
+  const planLabel = resolvePlanLabel(dash, user);
   const referralLink = user?.referral?.link || "";
   const supportLink = user?.support?.link || "/support/";
   const channelLink = user?.channel?.link || "";
@@ -46,11 +47,11 @@ export default function ProfilePage() {
     {
       key: "telegram",
       title: "Telegram",
-      body: "Используется для входа в браузере, бонуса и редких сценариев восстановления.",
+      body: "Сейчас это основной рабочий способ подтвердить аккаунт в браузере, забрать бонус и восстановить доступ через поддержку.",
       badge: telegramName,
       tone: "success" as const,
       action: (
-        <AppRouteLink href={supportLink} className="text-sm font-semibold text-emerald-800 dark:text-emerald-300">
+        <AppRouteLink href={supportLink} target={supportLink.startsWith("http") ? "_blank" : undefined} hardNavigate={false} className="text-sm font-semibold text-emerald-800 dark:text-emerald-300">
           Поддержка
         </AppRouteLink>
       ),
@@ -58,7 +59,7 @@ export default function ProfilePage() {
     {
       key: "email",
       title: "Email",
-      body: linkedEmail ? "Email уже привязан к аккаунту." : "Скоро подключим. Пока не показываем недоделанный сценарий входа.",
+      body: linkedEmail ? "Email уже привязан к аккаунту." : "Email-вход еще не открыт. Мы честно держим этот сценарий выключенным, пока он не готов.",
       badge: linkedEmail || "Скоро подключим",
       tone: linkedEmail ? ("info" as const) : ("neutral" as const),
     },
@@ -66,9 +67,9 @@ export default function ProfilePage() {
       key: "access",
       title: "Статус доступа",
       body: dash?.is_active
-        ? "Профиль готов для приложений и продления без нового старта."
+        ? "Аккаунт готов для приложений, продления и поддержки без нового старта."
         : "Доступ можно вернуть в пару шагов через раздел оплаты.",
-      badge: accessState || "free_monthly",
+      badge: planLabel,
       tone: dash?.is_active ? ("success" as const) : ("warning" as const),
       action: (
         <AppRouteLink href="/subscription/" className="text-sm font-semibold text-emerald-800 dark:text-emerald-300">
@@ -81,7 +82,7 @@ export default function ProfilePage() {
   const quickActions = [
     {
       key: "support",
-      title: "Продолжить разговор с поддержкой",
+      title: "Продолжить кейс поддержки",
       body: "Если вопрос уже был, удобнее продолжать тот же кейс и не терять контекст.",
       badge: "Поддержка",
       tone: "neutral" as const,
@@ -94,7 +95,7 @@ export default function ProfilePage() {
     {
       key: "devices",
       title: "Проверить устройства",
-      body: "Если переносите доступ на новый экран, сначала посмотрите, что уже связано с профилем.",
+      body: "Перед переносом доступа на новый экран удобно посмотреть, что уже связано с профилем.",
       badge: "Устройства",
       tone: "neutral" as const,
       action: (
@@ -106,7 +107,7 @@ export default function ProfilePage() {
     {
       key: "downloads",
       title: "Открыть загрузки",
-      body: "Все нужные ссылки на приложения лежат здесь, без поиска по чатам и истории.",
+      body: "Приложения и инструкции лежат в одном разделе, без поиска по старым сообщениям.",
       badge: "Загрузки",
       tone: "neutral" as const,
       action: (
@@ -137,7 +138,7 @@ export default function ProfilePage() {
     {
       key: "referral-link",
       title: referralLink ? "Личная ссылка готова" : "Личная ссылка уточняется",
-      body: referralLink || "Когда ссылка появится, ее можно будет использовать как есть.",
+      body: referralLink ? "Ссылка не показывается на первом экране целиком. Откройте ее отдельной кнопкой, когда нужно поделиться." : "Когда ссылка появится, ее можно будет использовать как есть.",
       badge: `+${user?.referral?.bonus_days || 10} дней`,
       tone: referralLink ? ("success" as const) : ("neutral" as const),
       action: referralLink ? (
@@ -150,26 +151,26 @@ export default function ProfilePage() {
       key: "referral-count",
       title: "Сколько уже сработало",
       body: `Подтверждено приглашений: ${user?.bonuses?.referral_count || 0}.`,
-      badge: user?.referral?.code || "Код уточняется",
+      badge: user?.referral?.code ? "Код готов" : "Код уточняется",
       tone: "neutral" as const,
     },
   ];
 
   return (
     <CabinetRoute
-      eyebrow="Профиль"
-      title="Аккаунт и связанные каналы"
-      description="Здесь собраны только практичные вещи: кто вы, какой режим сейчас действует и через какие каналы удобно продолжать доступ."
+      eyebrow="Аккаунт"
+      title="Вход, тема и связанные каналы"
+      description="Здесь собраны только практичные вещи: кто вы, какой режим действует сейчас и через какие каналы удобно продолжать доступ."
       metrics={[
         {
-          label: "Профиль",
+          label: "Аккаунт",
           value: profileLabel(user?.username, user?.tg_id),
           hint: "Это тот же аккаунт, который используют ваши устройства.",
           tone: "neutral",
         },
         {
           label: "Текущий режим",
-          value: resolvePlanLabel(dash, user),
+          value: planLabel,
           hint: resolveTrafficStatusText(dash, user),
           tone: dash?.is_active ? "success" : "warning",
         },
@@ -189,7 +190,7 @@ export default function ProfilePage() {
     >
       <CabinetHero
         eyebrow="Главное по аккаунту"
-        badge={dash?.is_active ? "Профиль в порядке" : "Профилю нужен следующий шаг"}
+        badge={dash?.is_active ? "Аккаунт в порядке" : "Аккаунту нужен следующий шаг"}
         badgeTone={dash?.is_active ? "success" : "warning"}
         title={profileLabel(user?.username, user?.tg_id)}
         description={
@@ -211,7 +212,7 @@ export default function ProfilePage() {
           {
             label: "Telegram",
             value: telegramName,
-            hint: "Это основной рабочий канал входа в браузере.",
+            hint: "Основной рабочий канал входа в браузере.",
             tone: "success",
           },
           {
@@ -228,6 +229,16 @@ export default function ProfilePage() {
           },
         ]}
       />
+
+      <section id="settings" aria-label="Настройки кабинета">
+        <CabinetSection
+          eyebrow="Настройки"
+          title="Тема кабинета"
+          description="Выберите системную, светлую или темную тему. Выбор сохранится для этого браузера."
+        >
+          <CabinetThemeControl />
+        </CabinetSection>
+      </section>
 
       <div className="grid gap-6 xl:grid-cols-[1.08fr_0.92fr]">
         <CabinetSection
@@ -249,8 +260,8 @@ export default function ProfilePage() {
 
       <CabinetSection
         eyebrow="Бонусы и ссылки"
-        title="Что еще есть у профиля"
-        description="Дополнительные вещи под рукой, если они вам нужны."
+        title="Что еще есть у аккаунта"
+        description="Дополнительные вещи под рукой, если они вам нужны. Длинные личные ссылки открываются отдельным действием."
       >
         <CabinetCardGrid items={bonusCards} />
       </CabinetSection>

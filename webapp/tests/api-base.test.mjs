@@ -41,6 +41,18 @@ test("resolveCandidateApiBases keeps canonical api first when session exists", (
   assert.deepEqual(bases, ["https://api.pokrov.space", "https://app.pokrov.space"]);
 });
 
+test("resolveCandidateApiBases skips app-origin env before canonical api", () => {
+  const bases = resolveCandidateApiBases({
+    envBase: "https://app.pokrov.space/",
+    origin: "https://app.pokrov.space",
+    directApiBase: "https://api.pokrov.space",
+    hasSessionToken: true,
+    enableLegacyPortFallback: false,
+  });
+
+  assert.deepEqual(bases, ["https://api.pokrov.space", "https://app.pokrov.space"]);
+});
+
 test("classifyApiPayload rejects html masquerading as successful api response", () => {
   const kind = classifyApiPayload({
     bodyText: "<!DOCTYPE html><html><body>app shell</body></html>",

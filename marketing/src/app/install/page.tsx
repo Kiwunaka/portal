@@ -23,7 +23,7 @@ export const metadata = buildMarketingMetadata(
   getCopyText("marketing.install.meta.title", "Установка и помощь | POKROV"),
   getCopyText(
     "marketing.install.meta.description",
-    "Как скачать приложение для Android и Windows, что делать если файл недоступен, и куда перейти за помощью.",
+    "Как установить POKROV на Android и Windows, что делать если файл недоступен, и куда обратиться за помощью.",
   ),
   {
     path: "/install/",
@@ -77,17 +77,17 @@ export default function InstallPage() {
           <section className="lp-hero">
             <div className="lp-hero-copy">
               <div className="lp-kicker">{getCopyText("marketing.install.kicker", "Установка и настройка POKROV")}</div>
-              <p className="lp-overline">Спокойная страница помощи: без пустых кнопок, без ложной загрузки и без тупиков.</p>
+              <p className="lp-overline">Спокойная страница установки: без пустых кнопок, ложной загрузки и тупиков.</p>
               <h1>{getCopyText("marketing.install.title", "Установка без тупиков")}</h1>
               <p className="lp-hero-lead">
                 {getCopyText(
                   "marketing.install.subtitle",
-                  "Кнопки ведут либо к актуальному релизному файлу, либо к понятному сценарию помощи. Если файла пока нет, вы всё равно не теряете маршрут.",
+                  "Кнопки ведут либо к актуальному файлу, либо к понятной инструкции. Если файла пока нет, вы всё равно не теряете следующий шаг.",
                 )}
               </p>
               <div className="lp-hero-actions">
-                <a href={config.webappUrl} target="_blank" rel="noreferrer" className="lp-btn lp-btn--primary">
-                  {getCopyText("marketing.install.primary_cta", "Открыть кабинет")}
+                <a href="#downloads" className="lp-btn lp-btn--primary">
+                  {getCopyText("marketing.install.primary_cta", "Попробовать 5 дней")}
                 </a>
                 <a href={config.supportTelegramUrl} target="_blank" rel="noreferrer" className="lp-btn lp-btn--ghost">
                   {getCopyText("marketing.install.secondary_cta", "Написать в поддержку")}
@@ -97,10 +97,10 @@ export default function InstallPage() {
 
             <div className="lp-hero-stage">
               <article className="lp-stage-card lp-stage-card--primary">
-                <div className="lp-stage-label">Сначала файл, потом кабинет</div>
+                <div className="lp-stage-label">Сначала приложение, потом проверка</div>
                 <h2>Каждый шаг здесь либо доступен, либо честно объяснён.</h2>
                 <p>
-                  Если релизный файл уже опубликован, вы скачиваете его сразу. Если нет, страница остаётся полезной:
+                  Если файл уже опубликован, вы скачиваете его сразу. Если нет, страница остаётся полезной:
                   показывает инструкцию, кабинет и живой канал помощи.
                 </p>
                 <ol className="lp-stage-steps">
@@ -108,14 +108,14 @@ export default function InstallPage() {
                     <span>01</span>
                     <div>
                       <strong>Android</strong>
-                      <p>Сначала APK, а если файла нет, откройте спокойный сценарий помощи.</p>
+                      <p>Скачайте APK, а если файла нет, откройте инструкцию и поддержку.</p>
                     </div>
                   </li>
                   <li>
                     <span>02</span>
                     <div>
                       <strong>Windows</strong>
-                      <p>Скачайте EXE или вернитесь за понятной инструкцией установки.</p>
+                      <p>Скачайте установщик или вернитесь за понятной инструкцией.</p>
                     </div>
                   </li>
                   <li>
@@ -131,7 +131,7 @@ export default function InstallPage() {
               <article className="lp-stage-card">
                 <div className="lp-stage-label">Что делать, если файла нет</div>
                 <p>
-                  Эта страница не притворяется загрузкой. Если релиз ещё не выложен, мы показываем актуальные ссылки,
+                  Эта страница не притворяется загрузкой. Если файл ещё не выложен, мы показываем актуальные ссылки,
                   понятный следующий шаг и помощь человека там, где она действительно нужна.
                 </p>
                 <div className="lp-stage-links">
@@ -147,14 +147,14 @@ export default function InstallPage() {
             </div>
           </section>
 
-          <section className="lp-section">
+          <section id="downloads" className="lp-section">
             <div className="lp-section-head">
               <span>Скачивание</span>
               <h2>{getCopyText("marketing.install.downloads.title", "Выберите релизный файл или откройте помощь")}</h2>
               <p>
                 {getCopyText(
                   "marketing.install.downloads.subtitle",
-                  "Каждая карточка ведёт к актуальному файлу или к живому help-сценарию, который объясняет следующий шаг без пустого ожидания.",
+                  "Каждая карточка ведёт к актуальному файлу или к короткой инструкции, которая объясняет следующий шаг без пустого ожидания.",
                 )}
               </p>
             </div>
@@ -209,17 +209,17 @@ export default function InstallPage() {
               <article className="lp-platform-card">
                 <div className="lp-stage-label">
                   <span aria-hidden="true">◎</span>
-                  {getCopyText("marketing.install.apple.status", "Apple readiness")}
+                  {getCopyText("marketing.install.apple.status", "Готовится")}
                 </div>
                 <h3>{getCopyText("marketing.install.apple.title", "iPhone и Mac")}</h3>
                 <p>
                   {getCopyText(
                     "marketing.install.apple.desc",
-                    "Apple-линейка пока остаётся в readiness-режиме. Здесь нет ложной загрузки, только честная инструкция и актуальный статус.",
+                    "Apple-линейка пока готовится. Здесь нет ложной загрузки, только честный статус и актуальный следующий шаг.",
                   )}
                 </p>
                 <a href={appleHref} target="_blank" rel="noreferrer" className="lp-btn lp-btn--ghost">
-                  {getCopyText("marketing.download.apple.cta", "Открыть инструкцию")}
+                  {getCopyText("marketing.download.apple.cta", "Что готовится")}
                 </a>
               </article>
             </div>
@@ -230,7 +230,7 @@ export default function InstallPage() {
               <article className="lp-info-card">
                 <span className="lp-info-card__eyebrow">Если файла пока нет</span>
                 <h3>Переходите к инструкции, а не в пустоту</h3>
-                <p>Мы оставляем рядом понятный help-сценарий, чтобы вы не теряли следующий шаг и не гадали, что делать дальше.</p>
+                <p>Мы оставляем рядом понятную инструкцию, чтобы вы не теряли следующий шаг и не гадали, что делать дальше.</p>
               </article>
               <article className="lp-info-card">
                 <span className="lp-info-card__eyebrow">Если нужен доступ</span>
@@ -258,8 +258,8 @@ export default function InstallPage() {
                 </p>
               </div>
               <div className="lp-footer-actions">
-                <a href={config.webappUrl} target="_blank" rel="noreferrer" className="lp-btn lp-btn--primary">
-                  {getCopyText("marketing.install.primary_cta", "Открыть кабинет")}
+                <a href="#downloads" className="lp-btn lp-btn--primary">
+                  {getCopyText("marketing.install.primary_cta", "Попробовать 5 дней")}
                 </a>
                 <a href={config.supportTelegramUrl} target="_blank" rel="noreferrer" className="lp-btn lp-btn--ghost">
                   {getCopyText("marketing.install.secondary_cta", "Написать в поддержку")}

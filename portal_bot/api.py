@@ -1,6 +1,6 @@
 ﻿# -*- coding: utf-8 -*-
 """
-POKROV API for Telegram WebApp and Subscription endpoint.
+POKROV API for app-first sessions, cabinet continuation, Telegram, and connection delivery.
 
 - `/api/user/{tg_id}`: authenticated by Telegram WebApp initData
 - `/api/reviews`: featured reviews for WebApp
@@ -286,6 +286,7 @@ WEBAPP_ENABLE_HAPTIC = env_bool("WEBAPP_ENABLE_HAPTIC", default=True)
 WEBAPP_ENABLE_LOTTIE = env_bool("WEBAPP_ENABLE_LOTTIE", default=True)
 WEBAPP_DEV_AUTH = env_bool("WEBAPP_DEV_AUTH", default=False)
 WEBAPP_DEV_TG_ID = env_int("WEBAPP_DEV_TG_ID", 0)
+WEBAPP_DEV_AUTH_PASSWORD = (os.getenv("WEBAPP_DEV_AUTH_PASSWORD") or "").strip()
 PROFILE_UPDATE_INTERVAL_HOURS = max(1, env_int("PROFILE_UPDATE_INTERVAL_HOURS", 6))
 PAYMENT_CALLBACK_TOLERANT_MODE = env_bool("PAYMENT_CALLBACK_TOLERANT_MODE", default=False)
 SUBSCRIPTION_NUMERIC_FALLBACK_ENABLED = env_bool("SUBSCRIPTION_NUMERIC_FALLBACK_ENABLED", default=True)
@@ -377,33 +378,6 @@ def _default_live_updates() -> list[dict[str, Any]]:
     return [
         {
             "id": 0,
-            "title": "Новые узлы NL/PL",
-            "summary": "Добавлены свежие маршруты и обновлены рекомендации по клиентам.",
-            "date": "2026-02-14",
-            "link": f"https://t.me/{channel}/1",
-        },
-        {
-            "id": 0,
-            "title": "Промо-неделя для новых пользователей",
-            "summary": "Стартовые предложения и бонусы для участников канала проекта.",
-            "date": "2026-02-13",
-            "link": f"https://t.me/{channel}/2",
-        },
-        {
-            "id": 0,
-            "title": "Гайд по быстрому подключению",
-            "summary": "Обновили инструкции и deep links для популярных клиентов.",
-            "date": "2026-02-12",
-            "link": f"https://t.me/{channel}/3",
-        },
-    ]
-
-
-def _default_live_updates() -> list[dict[str, Any]]:
-    channel = (PUBLIC_CHANNEL or "pokrov_vpn").lstrip("@")
-    return [
-        {
-            "id": 0,
             "title": "Новые точки подключения NL/PL",
             "summary": "Обновили маршруты и короткие рекомендации по старту для актуальных клиентов.",
             "date": "2026-02-14",
@@ -412,14 +386,14 @@ def _default_live_updates() -> list[dict[str, Any]]:
         {
             "id": 0,
             "title": "Обновлён кабинет POKROV",
-            "summary": "Сделали службу заботы, загрузки и checkout более понятными и без лишнего шума.",
+            "summary": "Сделали поддержку, загрузки и оплату понятнее, без лишнего шума.",
             "date": "2026-02-13",
             "link": f"https://t.me/{channel}/2",
         },
         {
             "id": 0,
             "title": "Короткий путь к запуску",
-            "summary": "Проверили быстрый сценарий через Telegram и обновили открывающие ссылки для новых пользователей.",
+            "summary": "Проверили быстрый сценарий через Telegram и обновили стартовые ссылки для новых пользователей.",
             "date": "2026-02-12",
             "link": f"https://t.me/{channel}/3",
         },
@@ -726,6 +700,10 @@ class TelegramWebLoginIn(BaseModel):
     last_name: str | None = None
     username: str | None = None
     photo_url: str | None = None
+
+
+class DevWebLoginIn(BaseModel):
+    password: str = Field(min_length=1, max_length=1024)
 
 
 class TelegramOidcFinishIn(BaseModel):
@@ -2067,16 +2045,6 @@ def _is_local_request(request: Request | None) -> bool:
     return True
 
 
-def _dev_auth_user(request: Request | None) -> dict[str, Any] | None:
-    if not WEBAPP_DEV_AUTH:
-        return None
-    if WEBAPP_DEV_TG_ID <= 0:
-        return None
-    if not _is_local_request(request):
-        return None
-    return {"id": int(WEBAPP_DEV_TG_ID), "username": "dev_user"}
-
-
 def _extract_web_session_token(request: Request | None) -> str:
     if request is None:
         request = _current_request_ctx.get()
@@ -2109,15 +2077,6 @@ def _optional_auth_user(x_telegram_init_data: str, request: Request | None = Non
             return payload
         raise HTTPException(status_code=401, detail="Invalid web session")
 
-    dev = _dev_auth_user(request)
-    if dev:
-        return {
-            "id": int(dev.get("id", 0)),
-            "username": dev.get("username"),
-            "auth_type": "dev",
-            "auth_origin": "dev",
-            "email": None,
-        }
     return None
 
 
@@ -4292,6 +4251,37 @@ async def auth_telegram_web_login(payload: TelegramWebLoginIn) -> dict:
     }
 
 
+@app.post("/api/auth/dev/web-login")
+async def auth_dev_web_login(payload: DevWebLoginIn, request: Request) -> dict:
+    if not WEBAPP_DEV_AUTH or WEBAPP_DEV_TG_ID <= 0 or not WEBAPP_DEV_AUTH_PASSWORD:
+        raise HTTPException(status_code=404, detail="Not found")
+    if not _is_local_request(request):
+        raise HTTPException(status_code=403, detail="Local dev auth only")
+    if not hmac.compare_digest(str(payload.password or ""), WEBAPP_DEV_AUTH_PASSWORD):
+        raise HTTPException(status_code=401, detail="Invalid dev login")
+
+    tg_id = int(WEBAPP_DEV_TG_ID)
+    if not _is_admin_tg(tg_id):
+        raise HTTPException(status_code=403, detail="Admin access required")
+
+    username = "dev_admin"
+    _ensure_user_row_for_login(tg_id=tg_id, username=username)
+    token = create_web_session_token(
+        tg_id=tg_id,
+        username=username,
+        auth_type="dev",
+        auth_origin="dev",
+    )
+    if not token:
+        raise HTTPException(status_code=500, detail="Web session is not configured")
+    return {
+        "ok": True,
+        "token": token,
+        "user": {"id": tg_id, "username": username},
+        "expires_in": int(SESSION_TTL_SECONDS),
+    }
+
+
 @app.get("/api/auth/telegram/oidc/start")
 async def auth_telegram_oidc_start() -> dict:
     try:
@@ -5352,7 +5342,7 @@ async def _rub_create_order_internal(
             order_id=order_id,
             amount_rub=amount_rub,
             currency="RUB",
-            description=f"POKROV VPN {plan_label}",
+            description=f"POKROV {plan_label}",
             success_url=_pay_success_url(provider),
             fail_url=_pay_fail_url(provider),
             result_url=_provider_result_url(provider),
@@ -6104,6 +6094,11 @@ async def public_social_proof(response: Response) -> dict:
             "total_users": int(total_users),
             "active_users": int(active_users),
             "paid_users": int(paid_users),
+            "summary": {
+                "source": "backend_account_rows",
+                "precision": "aggregate",
+                "description": "Агрегатная статистика по аккаунтам, без персональных данных.",
+            },
             "updated_at": _utcnow().isoformat(),
         }
     finally:
@@ -11262,14 +11257,14 @@ async def subscription(token: str, request: Request, format: str = Query(default
             _singbox_free_allowlist_config(
                 user_uuid=user.uuid,
                 nodes=smart_nodes_for_user,
-                title="POKROV VPN (Free)",
+                title="POKROV Free",
                 transport_profile=smart_transport_profile,
             )
             if (user.sub_type or "").upper() == "FREE"
             else _singbox_multi_node_config(
                 user_uuid=user.uuid,
                 nodes=smart_nodes_for_user,
-                title="POKROV VPN",
+                title="POKROV",
                 transport_profile=smart_transport_profile,
             )
         )

@@ -1,49 +1,121 @@
 "use client";
 
 import {
+  AdminBadge,
+  AdminEmptyState,
+  AdminInlineNote,
+  AdminKpiCard,
+  AdminPanelHeader,
+  AdminSurfaceHeader,
+  adminButtonClass,
+  adminFieldClass,
+  adminInsetPanelClass,
+  adminPanelClass,
+  adminTextAreaClass,
+} from "@/components/admin/admin-shell";
+import {
   adminNetworkRolloutConfig,
   adminNetworkRolloutConfigUpdate,
   type AdminNetworkRolloutConfig,
   type AdminNetworkRolloutOverride,
 } from "@/lib/api";
-import { Loader2, RefreshCw, Route, Save } from "lucide-react";
+import { AlertTriangle, Loader2, RefreshCw, Route, Save, ShieldCheck } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 
 function stringifyConfig(config: AdminNetworkRolloutConfig | null): string {
   return config ? JSON.stringify(config, null, 2) : "";
 }
 
-function listText(value?: string[] | null): string {
-  const items = (value || []).filter((item) => String(item || "").trim().length > 0);
-  if (!items.length) return "вЂ”";
-  return items.join(" В· ");
+function countList(value?: unknown[] | null): number {
+  return Array.isArray(value) ? value.filter((item) => String(item ?? "").trim()).length : 0;
 }
 
-function numberListText(value?: number[] | null): string {
-  const items = (value || []).map((item) => String(item)).filter((item) => item.trim().length > 0);
-  if (!items.length) return "вЂ”";
-  return items.join(" В· ");
+function joinList(value?: unknown[] | null): string {
+  if (!Array.isArray(value) || value.length === 0) return "none";
+  return value.map((item) => String(item)).join(" · ");
 }
 
-function feedText(value: unknown): string {
-  if (value == null) return "вЂ”";
-  if (typeof value === "string") return value.trim() || "вЂ”";
+function feedLabel(value: unknown): string {
+  if (value == null) return "not configured";
+  if (typeof value === "string") return value || "not configured";
   if (typeof value === "number" || typeof value === "boolean") return String(value);
   if (typeof value === "object") {
     const data = value as Record<string, unknown>;
-    const preferred = data.version ?? data.url ?? data.feed ?? data.name ?? data.id;
-    if (preferred != null) return String(preferred);
-    try {
-      return JSON.stringify(data);
-    } catch {
-      return "[object]";
-    }
+    const preferred = data.version ?? data.name ?? data.feed ?? data.url ?? data.id;
+    return preferred == null ? JSON.stringify(data) : String(preferred);
   }
   return String(value);
 }
 
+function profileDisplay(value?: string | null): string {
+  const raw = String(value || "").trim();
+  if (!raw) return "По умолчанию";
+  if (raw === "legacy_reality_fallback") return "Стабильный совместимый путь";
+  if (raw === "grpc_443_primary") return "Основной app-first путь";
+  if (raw === "reserve_xhttp_cdn") return "Резервный контур";
+  if (raw === "operator_lab") return "Операторский тест";
+  return "Настроенный путь";
+}
+
 function overrideEntries(value?: Record<string, AdminNetworkRolloutOverride> | null): Array<[string, AdminNetworkRolloutOverride]> {
   return Object.entries(value || {});
+}
+
+function overrideSize(value?: Record<string, AdminNetworkRolloutOverride> | null): number {
+  return overrideEntries(value).length;
+}
+
+function parseDraft(text: string): { value: AdminNetworkRolloutConfig | null; error: string } {
+  try {
+    return { value: JSON.parse(text) as AdminNetworkRolloutConfig, error: "" };
+  } catch (err) {
+    return { value: null, error: String((err as { message?: string })?.message || err) };
+  }
+}
+
+function OverrideCard({ title, rows }: { title: string; rows: Array<[string, AdminNetworkRolloutOverride]> }) {
+  return (
+    <article className={adminPanelClass("neutral")}>
+      <h3 className="sr-only">Targeting selectors</h3>
+      <AdminPanelHeader eyebrow="Targeting selectors" title={title} description="Операторский preview изменений из сохраненного JSON." />
+      {rows.length ? (
+        <div className="space-y-2">
+          {rows.map(([key, value]) => (
+            <div key={key} className={adminInsetPanelClass}>
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <h3 className="text-sm font-semibold text-slate-100">{key}</h3>
+                <AdminBadge tone="accent">{profileDisplay(value.transport_profile)}</AdminBadge>
+              </div>
+              <dl className="mt-3 grid gap-2 text-xs leading-5 text-slate-400 sm:grid-cols-2">
+                <div>
+                  <dt className="text-slate-500">routing</dt>
+                  <dd className="font-medium text-slate-200">{value.routing_mode_default || "default"}</dd>
+                </div>
+                <div>
+                  <dt className="text-slate-500">DNS</dt>
+                  <dd className="font-medium text-slate-200">{value.dns_policy || "default"}</dd>
+                </div>
+                <div>
+                  <dt className="text-slate-500">install IDs</dt>
+                  <dd className="font-medium text-slate-200">{joinList(value.install_ids)}</dd>
+                </div>
+                <div>
+                  <dt className="text-slate-500">Telegram IDs</dt>
+                  <dd className="font-medium text-slate-200">{joinList(value.tg_ids || value.linked_tg_ids)}</dd>
+                </div>
+                <div className="sm:col-span-2">
+                  <dt className="sr-only">platforms</dt>
+                  <dd className="font-medium text-slate-200">platforms: {joinList(value.platforms)}</dd>
+                </div>
+              </dl>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <AdminEmptyState title="No overrides" description="This selector group currently inherits the global defaults." />
+      )}
+    </article>
+  );
 }
 
 export default function AdminNetworkPage() {
@@ -53,6 +125,13 @@ export default function AdminNetworkPage() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [reason, setReason] = useState("");
+
+  const draft = useMemo(() => parseDraft(jsonText), [jsonText]);
+  const preview = draft.value || config;
+  const carrierRows = overrideEntries(preview?.carrier_overrides);
+  const cohortRows = overrideEntries(preview?.cohort_overrides);
 
   const load = async (): Promise<void> => {
     setLoading(true);
@@ -63,7 +142,7 @@ export default function AdminNetworkPage() {
       setConfig(out.network_rollout_config);
       setJsonText(stringifyConfig(out.network_rollout_config));
     } catch (err) {
-      setError(String((err as { message?: string })?.message || err || "РќРµ СѓРґР°Р»РѕСЃСЊ Р·Р°РіСЂСѓР·РёС‚СЊ network rollout config."));
+      setError(String((err as { message?: string })?.message || err || "Could not load network rollout config."));
     } finally {
       setLoading(false);
     }
@@ -73,187 +152,179 @@ export default function AdminNetworkPage() {
     void load();
   }, []);
 
-  const summary = useMemo(() => {
-    if (!config) return null;
-    const carrierOverrides = overrideEntries(config.carrier_overrides);
-    const cohortOverrides = overrideEntries(config.cohort_overrides);
-    return {
-      version: config.version,
-      defaults: config.defaults,
-      carrierOverrides,
-      cohortOverrides,
-      operatorLabEnabled: Boolean(config.operator_lab?.enabled),
-      operatorLabExpiry: config.operator_lab?.expires_at || "вЂ”",
-      operatorLabInstallIds: (config.operator_lab?.allowlist_install_ids || []).length,
-      operatorLabTgIds: (config.operator_lab?.allowlist_tg_ids || []).length,
-      operatorLabNodes: (config.operator_lab?.allowlist_node_codes || []).length,
-      packageFeed: config.package_catalog_feed,
-      routingFeed: config.routing_rules_feed,
-      recoveryOrder: listText(config.support_recovery_order),
-    };
-  }, [config]);
-
   const save = async (): Promise<void> => {
+    const parsed = parseDraft(jsonText);
+    if (!parsed.value) {
+      setError(`Invalid JSON: ${parsed.error}`);
+      return;
+    }
     setBusy(true);
     setError("");
     setNotice("");
     try {
-      const parsed = JSON.parse(jsonText) as AdminNetworkRolloutConfig;
-      const out = await adminNetworkRolloutConfigUpdate(parsed);
+      const out = await adminNetworkRolloutConfigUpdate(parsed.value);
       setConfig(out.network_rollout_config);
       setJsonText(stringifyConfig(out.network_rollout_config));
-      setNotice("Network rollout config сохранён.");
+      setNotice(`Network rollout config сохранен. Reason: ${reason.trim()}`);
+      setConfirmOpen(false);
+      setReason("");
     } catch (err) {
-      setError(String((err as { message?: string })?.message || err || "РќРµ СѓРґР°Р»РѕСЃСЊ СЃРѕС…СЂР°РЅРёС‚СЊ network rollout config."));
+      setError(String((err as { message?: string })?.message || err || "Could not save network rollout config."));
     } finally {
       setBusy(false);
     }
   };
 
-  const selectorEntries = [...(summary?.carrierOverrides || []), ...(summary?.cohortOverrides || [])];
-
   return (
     <section className="space-y-5">
-      <article className="stat-card p-5 sm:p-6">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-          <div className="stat-icon stat-icon-violet">
-            <Route size={22} />
-          </div>
-          <div className="min-w-0">
-            <h2 className="font-display text-xl font-bold">РЎРµС‚СЊ Рё rollout</h2>
-            <p className="text-xs text-slate-500">
-              Р—РґРµСЃСЊ СЂРµРґР°РєС‚РёСЂСѓРµС‚СЃСЏ `network_rollout_config`, РєРѕС‚РѕСЂС‹Р№ СѓРїСЂР°РІР»СЏРµС‚ default transport profile, cohort/carrier overrides Рё operator lab allowlist.
-            </p>
-          </div>
-        </div>
-      </article>
+      <AdminSurfaceHeader
+        title="Network rollout"
+        description="Плотная консоль сетевого rollout: путь подключения, группы пользователей, версии фидов и тестовые allowlist."
+        meta={
+          <>
+            <AdminBadge tone={draft.error ? "danger" : "success"}>{draft.error ? "draft invalid" : "draft valid"}</AdminBadge>
+            <AdminBadge tone="neutral">version {preview?.version || "unknown"}</AdminBadge>
+          </>
+        }
+        actions={
+          <>
+            <button type="button" className={adminButtonClass("secondary", "sm")} onClick={load} disabled={loading || busy}>
+              <RefreshCw size={14} /> Refresh
+            </button>
+            <button
+              type="button"
+              className={adminButtonClass("primary", "sm")}
+              onClick={() => setConfirmOpen(true)}
+              disabled={loading || busy || Boolean(draft.error)}
+            >
+              {busy ? <Loader2 className="animate-spin" size={14} /> : <Save size={14} />} Сохранить
+            </button>
+          </>
+        }
+      />
 
-      <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr),minmax(320px,0.78fr)]">
-        <article className="glass-card space-y-4 p-5">
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <h3 className="font-display text-lg font-bold">JSON-РєРѕРЅС„РёРі</h3>
-              <p className="text-xs text-slate-500">Р РµРґР°РєС‚РёСЂСѓР№С‚Рµ РѕР±СЉРµРєС‚ С†РµР»РёРєРѕРј. РЎРѕС…СЂР°РЅРµРЅРёРµ РёРґС‘С‚ С‡РµСЂРµР· С‚РѕС‚ Р¶Рµ admin API, С‡С‚Рѕ Рё РѕСЃС‚Р°Р»СЊРЅС‹Рµ operator configs.</p>
-            </div>
-            <div className="flex flex-wrap gap-2">
-              <button className="outline-btn inline-flex items-center gap-1.5 rounded-xl px-3 py-2 text-sm font-semibold" type="button" onClick={() => void load()} disabled={loading || busy}>
-                {loading ? <Loader2 size={13} className="animate-spin" /> : <RefreshCw size={13} />}
-                РћР±РЅРѕРІРёС‚СЊ
-              </button>
-              <button aria-label="Сохранить" className="btn-primary inline-flex items-center gap-1.5 rounded-xl px-3 py-2 text-sm font-semibold" type="button" onClick={() => void save()} disabled={busy || loading}>
-                {busy ? <Loader2 size={13} className="animate-spin" /> : <Save size={13} />}
-                РЎРѕС…СЂР°РЅРёС‚СЊ
-              </button>
-            </div>
-          </div>
+      {error ? <AdminInlineNote tone="danger">{error}</AdminInlineNote> : null}
+      {notice ? <AdminInlineNote tone="success">{notice}</AdminInlineNote> : null}
 
-          {loading ? <p className="text-sm text-slate-500">Р—Р°РіСЂСѓР¶Р°РµРј rollout config...</p> : null}
-          {error ? <p className="text-sm text-rose-500">{error}</p> : null}
-          {notice ? <p className="text-sm text-emerald-500">{notice}</p> : null}
+      <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+        <AdminKpiCard label="Путь по умолчанию" value={profileDisplay(preview?.defaults?.transport_profile)} hint={preview?.defaults?.routing_mode_default || "режим не задан"} />
+        <AdminKpiCard label="Исключения" value={overrideSize(preview?.carrier_overrides) + overrideSize(preview?.cohort_overrides)} hint={`${overrideSize(preview?.carrier_overrides)} оператор связи · ${overrideSize(preview?.cohort_overrides)} пользовательских групп`} />
+        <AdminKpiCard
+          label="Тестовый контур"
+          value={preview?.operator_lab?.enabled ? "Enabled" : "Disabled"}
+          hint={`${countList(preview?.operator_lab?.allowlist_install_ids)} installs · ${countList(preview?.operator_lab?.allowlist_tg_ids)} Telegram IDs`}
+          tone={preview?.operator_lab?.enabled ? "accent" : "neutral"}
+        />
+        <AdminKpiCard label="Recovery order" value={countList(preview?.support_recovery_order)} hint={joinList(preview?.support_recovery_order)} />
+      </div>
 
-          <textarea
-            className="min-h-[520px] w-full resize-y rounded-2xl border border-white/15 bg-white/70 p-4 font-mono text-[12px] leading-5 outline-none dark:border-white/10 dark:bg-white/[0.04]"
-            value={jsonText}
-            onChange={(event) => setJsonText(event.target.value)}
-            spellCheck={false}
+      <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_420px]">
+        <article className={adminPanelClass("neutral")}>
+          <AdminPanelHeader
+            eyebrow="advanced"
+            title="Rollout JSON editor"
+            description="Расширенный JSON сохранится одним объектом. Перед изменением пути подключения или маршрутизации нужны review и причина."
           />
+          <textarea
+            className={`${adminTextAreaClass} min-h-[520px] font-mono text-xs leading-5`}
+            value={jsonText}
+            spellCheck={false}
+            onChange={(event) => setJsonText(event.target.value)}
+          />
+          {draft.error ? (
+            <div className="mt-3 flex items-start gap-2 rounded-xl border border-rose-900/60 bg-rose-950/35 p-3 text-xs leading-5 text-rose-100">
+              <AlertTriangle className="mt-0.5 shrink-0" size={14} />
+              <span>Invalid JSON: {draft.error}</span>
+            </div>
+          ) : null}
         </article>
 
-        <aside className="space-y-4">
-          <article className="glass-card p-5">
-            <h3 className="font-display text-lg font-bold">РЎРІРѕРґРєР°</h3>
-            <div className="mt-3 grid gap-3 sm:grid-cols-2">
-              <div className="node-card">
-                <p className="text-[10px] uppercase tracking-[0.1em] text-slate-500">Version</p>
-                <p className="mt-1 text-lg font-bold">{summary?.version ?? "вЂ”"}</p>
+        <div className="space-y-4">
+          <article className={adminPanelClass("accent")}>
+            <AdminPanelHeader eyebrow="defaults" title="Routing/status cards" description="Что получают новые назначения, если не сработала отдельная группа." />
+            <dl className="space-y-3 text-sm">
+              <div className={adminInsetPanelClass}>
+                <dt className="text-xs text-slate-500">Путь подключения</dt>
+                <dd className="mt-1 font-semibold text-slate-50">{profileDisplay(preview?.defaults?.transport_profile)}</dd>
               </div>
-              <div className="node-card">
-                <p className="text-[10px] uppercase tracking-[0.1em] text-slate-500">Defaults transport</p>
-                <p className="mt-1 text-sm font-semibold">{summary?.defaults?.transport_profile ?? "вЂ”"}</p>
+              <div className={adminInsetPanelClass}>
+                <dt className="text-xs text-slate-500">Routing mode</dt>
+                <dd className="mt-1 font-semibold text-slate-50">{preview?.defaults?.routing_mode_default || "not set"}</dd>
               </div>
-              <div className="node-card">
-                <p className="text-[10px] uppercase tracking-[0.1em] text-slate-500">Routing / DNS</p>
-                <p className="mt-1 text-sm font-semibold">
-                  {summary?.defaults ? `${summary.defaults.routing_mode_default} / ${summary.defaults.dns_policy}` : "вЂ”"}
-                </p>
+              <div className={adminInsetPanelClass}>
+                <dt className="text-xs text-slate-500">DNS / IP preference</dt>
+                <dd className="mt-1 font-semibold text-slate-50">
+                  {preview?.defaults?.dns_policy || "not set"} · {preview?.defaults?.ip_version_preference || "default"}
+                </dd>
               </div>
-              <div className="node-card">
-                <p className="text-[10px] uppercase tracking-[0.1em] text-slate-500">Overrides</p>
-                <p className="mt-1 text-sm font-semibold">
-                  {summary ? `${summary.carrierOverrides.length} carrier В· ${summary.cohortOverrides.length} cohort` : "вЂ”"}
-                </p>
-              </div>
-              <div className="node-card">
-                <p className="text-[10px] uppercase tracking-[0.1em] text-slate-500">Operator lab</p>
-                <p className="mt-1 text-sm font-semibold">{summary?.operatorLabEnabled ? "enabled" : "disabled"}</p>
-              </div>
-              <div className="node-card">
-                <p className="text-[10px] uppercase tracking-[0.1em] text-slate-500">Expiry</p>
-                <p className="mt-1 text-sm font-semibold">{summary?.operatorLabExpiry ?? "вЂ”"}</p>
-              </div>
-            </div>
+            </dl>
           </article>
 
-          <article className="glass-card space-y-3 p-5">
-            <h3 className="font-display text-lg font-bold">Allowlist Рё feeds</h3>
+          <article className={adminPanelClass("neutral")}>
+            <h3 className="sr-only">Allowlist</h3>
+            <AdminPanelHeader eyebrow="Feeds" title="Allowlist" description="Feed objects are preserved as structured JSON; preview shows their operator labels." />
             <div className="space-y-2 text-sm">
-              <p className="rounded-xl bg-white/50 px-3 py-2 dark:bg-white/5">
-                install ids: <strong>{summary?.operatorLabInstallIds ?? "вЂ”"}</strong>
-              </p>
-              <p className="rounded-xl bg-white/50 px-3 py-2 dark:bg-white/5">
-                tg ids: <strong>{summary?.operatorLabTgIds ?? "вЂ”"}</strong>
-              </p>
-              <p className="rounded-xl bg-white/50 px-3 py-2 dark:bg-white/5">
-                node codes: <strong>{summary?.operatorLabNodes ?? "вЂ”"}</strong>
-              </p>
-              <p className="rounded-xl bg-white/50 px-3 py-2 dark:bg-white/5">
-                package feed: <strong className="break-all">{feedText(summary?.packageFeed)}</strong>
-              </p>
-              <p className="rounded-xl bg-white/50 px-3 py-2 dark:bg-white/5">
-                routing feed: <strong className="break-all">{feedText(summary?.routingFeed)}</strong>
-              </p>
-              <p className="rounded-xl bg-white/50 px-3 py-2 dark:bg-white/5">
-                support recovery: <strong className="break-all">{summary?.recoveryOrder ?? "вЂ”"}</strong>
-              </p>
+              <div className={adminInsetPanelClass}>
+                <p className="text-xs text-slate-500">Package catalog</p>
+                <p className="mt-1 font-semibold text-slate-100">{feedLabel(preview?.package_catalog_feed)}</p>
+              </div>
+              <div className={adminInsetPanelClass}>
+                <p className="text-xs text-slate-500">Routing rules</p>
+                <p className="mt-1 font-semibold text-slate-100">{feedLabel(preview?.routing_rules_feed)}</p>
+              </div>
             </div>
           </article>
 
-          <article className="glass-card space-y-3 p-5">
-            <h3 className="font-display text-lg font-bold">Targeting selectors</h3>
-            <div className="space-y-3 text-sm">
-              {selectorEntries.length ? (
-                selectorEntries.map(([key, value]) => (
-                  <div key={key} className="rounded-xl bg-white/50 px-3 py-3 dark:bg-white/5">
-                    <p className="font-semibold">{key}</p>
-                    <p className="mt-1 text-xs text-slate-500">
-                      transport: <strong>{value.transport_profile || "вЂ”"}</strong> В· dns: <strong>{value.dns_policy || "вЂ”"}</strong>
-                    </p>
-                    <p className="mt-1 text-xs text-slate-500">
-                      routing: <strong>{value.routing_mode_default || "вЂ”"}</strong> В· ip: <strong>{value.ip_version_preference || "вЂ”"}</strong>
-                    </p>
-                    <p className="mt-1 text-xs text-slate-500">
-                      install_ids: <strong className="break-all">{listText(value.install_ids)}</strong>
-                    </p>
-                    <p className="mt-1 text-xs text-slate-500">
-                      tg_ids: <strong className="break-all">{numberListText(value.tg_ids)}</strong>
-                    </p>
-                    <p className="mt-1 text-xs text-slate-500">
-                      linked_tg_ids: <strong className="break-all">{numberListText(value.linked_tg_ids)}</strong>
-                    </p>
-                    <p className="mt-1 text-xs text-slate-500">
-                      platforms: <strong className="break-all">{listText(value.platforms)}</strong>
-                    </p>
-                  </div>
-                ))
-              ) : (
-                <p className="rounded-xl bg-white/50 px-3 py-2 text-sm text-slate-500 dark:bg-white/5">
-                  Selector overrides РїРѕРєР° РЅРµ Р·Р°РґР°РЅС‹.
-                </p>
-              )}
+          <article className={adminPanelClass(preview?.operator_lab?.enabled ? "warning" : "neutral")}>
+            <AdminPanelHeader eyebrow="test lane" title="Safe test lane" description="Только для устройств оператора и выбранных нод; не должен становиться тихим production default." />
+            <div className="grid gap-2 text-xs leading-5 text-slate-300">
+              <p><strong>Install IDs:</strong> {joinList(preview?.operator_lab?.allowlist_install_ids)}</p>
+              <p><strong>Telegram IDs:</strong> {joinList(preview?.operator_lab?.allowlist_tg_ids)}</p>
+              <p><strong>Node codes:</strong> {joinList(preview?.operator_lab?.allowlist_node_codes)}</p>
+              <p><strong>Expires:</strong> {preview?.operator_lab?.expires_at || "not set"}</p>
             </div>
           </article>
-        </aside>
+        </div>
       </div>
+
+      <div className="grid gap-4 xl:grid-cols-2">
+        <OverrideCard title="Carrier overrides" rows={carrierRows} />
+        <OverrideCard title="Audience overrides" rows={cohortRows} />
+      </div>
+
+      {confirmOpen ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/65 p-4">
+          <div className={`${adminPanelClass("warning")} w-full max-w-lg`}>
+            <div className="flex items-start gap-3">
+              <ShieldCheck className="mt-1 shrink-0 text-amber-200" size={20} />
+              <div>
+                <h2 className="text-lg font-semibold text-slate-50">Confirm network rollout save</h2>
+                <p className="mt-2 text-sm leading-6 text-slate-300">
+                  Это может изменить путь подключения у реальных пользователей. Добавьте причину перед сохранением.
+                </p>
+              </div>
+            </div>
+            <label className="mt-4 block text-xs font-semibold uppercase tracking-[0.16em] text-slate-500" htmlFor="network-save-reason">
+              Reason
+            </label>
+            <input
+              id="network-save-reason"
+              className={`${adminFieldClass} mt-2`}
+              value={reason}
+              onChange={(event) => setReason(event.target.value)}
+              placeholder="incident, rollout ticket, or rollback note"
+            />
+            <div className="mt-4 flex flex-wrap justify-end gap-2">
+              <button type="button" className={adminButtonClass("ghost", "sm")} onClick={() => setConfirmOpen(false)} disabled={busy}>
+                Cancel
+              </button>
+              <button type="button" className={adminButtonClass("primary", "sm")} onClick={save} disabled={busy || reason.trim().length < 8}>
+                {busy ? <Loader2 className="animate-spin" size={14} /> : <Route size={14} />} Save rollout
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </section>
   );
 }

@@ -22,6 +22,7 @@ type AdminUserRowMock = {
 
 type MockOptions = {
   isAdmin: boolean;
+  seedWebSession?: boolean;
   adminSummary?: unknown;
   userRows?: AdminUserRowMock[];
   metricsStatus?: unknown;
@@ -639,9 +640,11 @@ function filterAdminUsers(rows: AdminUserRowMock[], url: URL) {
 }
 
 async function registerApiMocks(page: Page, opts: MockOptions): Promise<void> {
-  await page.addInitScript(() => {
-    window.localStorage.setItem("portal_web_session_token", "e2e_mock_token");
-  });
+  if (opts.seedWebSession !== false) {
+    await page.addInitScript(() => {
+      window.localStorage.setItem("portal_web_session_token", "e2e_mock_token");
+    });
+  }
 
   const user = mockSessionUser(opts.isAdmin);
   const dashboard = mockDashboard();
@@ -815,8 +818,8 @@ async function openRoute(page: Page, href: string): Promise<void> {
 
 async function waitForPortalShell(page: Page): Promise<void> {
   const loadingHeadings = [
-    page.getByRole("heading", { name: "Подтягиваем данные кабинета" }),
-    page.getByRole("heading", { name: "Открываем POKROV Admin..." }),
+    page.getByRole("heading", { name: /Подтягиваем/ }),
+    page.getByRole("heading", { name: /Открываем POKROV Admin/i }),
   ];
 
   for (const heading of loadingHeadings) {
@@ -827,6 +830,17 @@ async function waitForPortalShell(page: Page): Promise<void> {
 }
 
 test.describe("Admin gate", () => {
+  test("requires a real cabinet session before local admin routes open", async ({ page }) => {
+    await registerApiMocks(page, { isAdmin: true, seedWebSession: false });
+    await openRoute(page, "admin/dashboard/");
+
+    await expect(page).toHaveURL(/\/admin\/dashboard\/?$/);
+    await expect(page.getByRole("heading", { name: "Войдите снова, чтобы открыть админку" })).toBeVisible();
+    await expect(page.getByRole("textbox", { name: "Пароль из локального dev env" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Войти локально" })).toBeVisible();
+    await expect(page.getByRole("navigation", { name: "Admin sections" })).toBeHidden();
+  });
+
   test("redirects non-admin from /admin/* to /dashboard", async ({ page }) => {
     await registerApiMocks(page, { isAdmin: false });
     await openRoute(page, "admin/dashboard/");
@@ -856,6 +870,60 @@ test.describe("Admin gate", () => {
     }
   });
 
+  test("keeps admin shell session data stable across internal route changes", async ({ page }) => {
+    const stableRequests: Record<string, number> = {
+      authSession: 0,
+      dashboard: 0,
+      user: 0,
+    };
+    page.on("request", (request) => {
+      const url = new URL(request.url());
+      if (url.pathname === "/api/auth/session") stableRequests.authSession += 1;
+      if (url.pathname === "/api/dashboard") stableRequests.dashboard += 1;
+      if (url.pathname.startsWith("/api/user/")) stableRequests.user += 1;
+    });
+
+    await registerApiMocks(page, { isAdmin: true });
+    await openRoute(page, "admin/dashboard/");
+    await page.evaluate(() => {
+      (window as Window & { __routeMarker?: string }).__routeMarker = "persist-admin";
+    });
+
+    await page.locator("nav[aria-label='Admin sections'] a[href^='/admin/users']").click();
+    await expect(page).toHaveURL(/\/admin\/users\/?$/);
+    await expect(page.getByText("QA Admin").first()).toBeVisible();
+
+    await page.locator("nav[aria-label='Admin sections'] a[href^='/admin/nodes']").click();
+    await expect(page).toHaveURL(/\/admin\/nodes\/?$/);
+    await expect(page.locator("h1, h2").first()).toBeVisible();
+
+    await page.locator("nav[aria-label='Admin sections'] a[href^='/admin/dashboard']").click();
+    await expect(page).toHaveURL(/\/admin\/dashboard\/?$/);
+    await expect(page.getByRole("heading", { name: "Как читать эту страницу" })).toBeVisible();
+
+    const markerPersisted = await page.evaluate(
+      () => Boolean((window as Window & { __routeMarker?: string }).__routeMarker),
+    );
+    expect(markerPersisted).toBe(true);
+    expect(stableRequests).toMatchObject({
+      authSession: 1,
+      dashboard: 1,
+      user: 1,
+    });
+  });
+
+  test("redirects /admin to the operator dashboard", async ({ page }) => {
+    await registerApiMocks(page, { isAdmin: true });
+
+    await openRoute(page, "admin/");
+    await expect(page).toHaveURL(/\/admin\/dashboard\/?$/);
+    await expect(page.getByRole("heading", { name: "Админка POKROV" })).toBeVisible();
+
+    for (const rawTerm of ["tg_id", "fallback", "transport", "cohort", "operator_lab", "subscription link", "blast radius", "dataplane", "REALITY"]) {
+      await expect(page.getByText(rawTerm, { exact: false })).toHaveCount(0);
+    }
+  });
+
   test("keeps an explicit path back to the cabinet from admin", async ({ page }) => {
     await registerApiMocks(page, { isAdmin: true });
 
@@ -867,18 +935,18 @@ test.describe("Admin gate", () => {
     await expect(page).toHaveURL(/\/dashboard\/?$/);
   });
 
-  test("groups admin routes by operational category and keeps Telegram as fallback only", async ({ page }) => {
+  test("groups admin routes by operational category and keeps Telegram as reserve-only", async ({ page }) => {
     await registerApiMocks(page, { isAdmin: true });
 
-    await openRoute(page, "admin/");
+    await openRoute(page, "admin/dashboard/");
 
     await expect(page.getByRole("heading", { name: "Админка POKROV" })).toBeVisible();
     await expect(
-      page.getByText("Веб-админка — основной операторский интерфейс. Telegram используйте только для быстрых fallback-действий.").first(),
+      page.getByText("Веб-админка — основной операторский интерфейс. Telegram держим как резервный ручной канал.").first(),
     ).toBeVisible();
 
     for (const category of ["Диагностика", "Пользователи", "Доступ", "Оплата", "Сеть", "Сообщения", "Обращения"]) {
-      await expect(page.getByRole("heading", { name: category, level: 2 }).first()).toBeVisible();
+      await expect(page.getByText(category).first()).toBeVisible();
     }
   });
 
@@ -1213,7 +1281,7 @@ test.describe("Admin gate", () => {
     await expect(page.getByText("unmatched: 3")).toBeVisible();
   });
 
-  test("shows node context with separate panel, dataplane, and transport detail", async ({ page }) => {
+  test("shows node context with separate panel, client-path probe, and advanced transport detail", async ({ page }) => {
     await registerApiMocks(page, {
       isAdmin: true,
       nodeHealth: {
@@ -1278,7 +1346,7 @@ test.describe("Admin gate", () => {
     await expect(nodeCard.getByText(/AS24940/)).toBeVisible();
     await expect(nodeCard.getByText("5.45.67.0/24")).toBeVisible();
     await expect(nodeCard.getByText(/Panel \/ control plane:/i)).toBeVisible();
-    await expect(nodeCard.getByText(/Dataplane probe:/i)).toBeVisible();
+    await expect(nodeCard.getByText(/Client-path probe:/i)).toBeVisible();
     await expect(nodeCard.getByText(/Probe stage:/i)).toBeVisible();
     await expect(nodeCard.getByText(/Probe classification:/i)).toBeVisible();
     await expect(nodeCard.getByText(/Telegram app path:/i)).toBeVisible();
@@ -1317,6 +1385,9 @@ test.describe("Admin gate", () => {
       .replace('"version": "package-feed-v2"', '"version": "package-feed-v3"');
     await textarea.fill(nextJson);
     await page.getByRole("button", { name: /Сохранить/i }).click();
+    await expect(page.getByRole("heading", { name: "Confirm network rollout save" })).toBeVisible();
+    await page.getByLabel("Reason").fill("redesign e2e save");
+    await page.getByRole("button", { name: "Save rollout" }).click();
     await expect(page.getByText(/Network rollout config/i)).toContainText(/сохран/i);
 
     await page.reload({ waitUntil: "domcontentloaded" });
@@ -1355,7 +1426,7 @@ test.describe("Admin gate", () => {
     await expect(page.getByText("Не открывается конфиг")).toBeVisible();
     const statusButton = page.getByRole("button", { name: "В работе", exact: true });
     await statusButton.click();
-    await expect(statusButton).toHaveClass(/bg-violet-600/);
+    await expect(statusButton).toHaveClass(/bg-emerald-700/);
 
     await page.getByPlaceholder("Напишите ответ пользователю простыми словами").fill("Проверили, сейчас пришлю новый конфиг.");
     await page.getByRole("button", { name: "Отправить" }).click();

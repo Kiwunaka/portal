@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 
 import AppRouteLink from "@/components/app-route-link";
 import { CabinetCardGrid, CabinetHero, CabinetList, CabinetRoute, CabinetSection } from "@/components/cabinet/surface";
+import { resolvePlanLabel } from "@/lib/access-policy";
 import {
   createTicket,
   fetchTickets,
@@ -16,18 +17,17 @@ import { usePortalSession } from "@/lib/session";
 
 type TicketCategory = "Подключение" | "Оплата" | "Скорость" | "Другой вопрос";
 
+type CategoryPreset = {
+  intro: string;
+  subject: string;
+  body: string;
+  checklist: string[];
+};
+
 const config = getPortalPublicConfig(process.env as Record<string, string | undefined>);
 const CATEGORIES: TicketCategory[] = ["Подключение", "Оплата", "Скорость", "Другой вопрос"];
 
-const CATEGORY_PRESETS: Record<
-  TicketCategory,
-  {
-    intro: string;
-    subject: string;
-    body: string;
-    checklist: string[];
-  }
-> = {
+const CATEGORY_PRESETS: Record<TicketCategory, CategoryPreset> = {
   Подключение: {
     intro: "Подходит, если приложение не подключается, профиль не подтягивается или новое устройство не появляется в кабинете.",
     subject: "Не получается подключить устройство",
@@ -59,7 +59,7 @@ function statusLabel(status: string): string {
   if (normalized === "open") return "Открыт";
   if (normalized === "in_progress") return "В работе";
   if (normalized === "closed") return "Закрыт";
-  return normalized || "Неизвестно";
+  return normalized || "Уточняется";
 }
 
 function formatDate(value?: string | null): string {
@@ -120,7 +120,7 @@ export default function SupportPage() {
     () =>
       tickets.map((ticket) => ({
         key: String(ticket.id),
-        title: ticket.subject || `Обращение #${ticket.id}`,
+        title: ticket.subject || `Кейс #${ticket.id}`,
         body: ticket.last_message_preview || "Сообщений пока нет.",
         badge: `${statusLabel(ticket.status)} · #${ticket.id}`,
         tone:
@@ -141,7 +141,7 @@ export default function SupportPage() {
   const helpCards = [
     {
       key: "continue",
-      title: latestTicket ? "Лучше продолжать уже открытый кейс" : "Если вопрос уже понятен, можно сразу открыть кейс",
+      title: latestTicket ? "Лучше продолжить уже открытый кейс" : "Если вопрос понятен, можно сразу открыть кейс",
       body: latestTicket
         ? "Так не теряется история, вложения и то, что вы уже успели объяснить."
         : "Особенно если нужен скриншот, видео или понятная история переписки.",
@@ -159,9 +159,9 @@ export default function SupportPage() {
     },
     {
       key: "telegram",
-      title: "Telegram удобен для быстрого живого ответа",
-      body: "Если нужен короткий человеческий контакт без вложений, это обычно самый быстрый путь.",
-      badge: "Telegram",
+      title: "Telegram удобен для короткого вопроса",
+      body: "Если не нужны вложения и длинная история, можно написать туда. Для развернутой проверки лучше оставить кейс в кабинете.",
+      badge: "Внешний контакт",
       tone: "neutral" as const,
       action: (
         <AppRouteLink href={supportLink} target="_blank" hardNavigate={false} className="text-sm font-semibold text-emerald-800 dark:text-emerald-300">
@@ -171,8 +171,8 @@ export default function SupportPage() {
     },
     {
       key: "legal",
-      title: "Юридические документы тоже под рукой",
-      body: "Если вопрос касается оплаты или формальных условий, не нужно искать ссылки вручную.",
+      title: "Документы тоже под рукой",
+      body: "Если вопрос касается оплаты или формальных условий, оферта и политика открываются отсюда без поиска по старым сообщениям.",
       badge: "Документы",
       tone: "neutral" as const,
       action: (
@@ -208,7 +208,7 @@ export default function SupportPage() {
         attachment = uploaded.attachment;
       }
 
-      const nextSubject = normalizedSubject ? `[${category}] ${normalizedSubject}` : `[${category}] Обращение из кабинета`;
+      const nextSubject = normalizedSubject ? `[${category}] ${normalizedSubject}` : `[${category}] Кейс из кабинета`;
       const created = await createTicket(nextSubject, normalizedBody, attachment || undefined);
 
       setComposeOpen(false);
@@ -244,8 +244,8 @@ export default function SupportPage() {
         metrics={[
           {
             label: "Профиль",
-            value: user?.username ? `@${user.username}` : `ID ${user?.tg_id || "—"}`,
-            hint: "Поддержка увидит тот же профиль, что и ваши устройства.",
+            value: user?.username ? `@${user.username}` : user?.tg_id ? `ID ${user.tg_id}` : "POKROV",
+            hint: "Поддержка видит тот же профиль, что и ваши устройства.",
             tone: "neutral",
           },
           {
@@ -256,14 +256,14 @@ export default function SupportPage() {
           },
           {
             label: "Текущий режим",
-            value: dash?.current_plan_code || dash?.sub_type || "Уточняется",
-            hint: "Это помогает нам быстрее понять контекст.",
+            value: resolvePlanLabel(dash, user),
+            hint: "Это помогает быстрее понять контекст без технических деталей на экране.",
             tone: "neutral",
           },
           {
-            label: "Быстрый путь",
-            value: "Telegram",
-            hint: "Подходит для живого диалога и коротких уточнений.",
+            label: "Диагностика",
+            value: "Кейс + вложения",
+            hint: "Для скриншотов, видео и длинного описания используйте кейс в кабинете.",
             tone: "neutral",
           },
         ]}
@@ -272,11 +272,11 @@ export default function SupportPage() {
           eyebrow="Что делать сейчас"
           badge={latestTicket ? "Есть кейс, который можно продолжить" : "Можно открыть первый кейс"}
           badgeTone={latestTicket ? "success" : "info"}
-          title={latestTicket ? latestTicket.subject || `Обращение #${latestTicket.id}` : "Не нужно начинать заново каждый раз"}
+          title={latestTicket ? latestTicket.subject || `Кейс #${latestTicket.id}` : "Не нужно начинать заново каждый раз"}
           description={
             latestTicket
               ? latestTicket.last_message_preview || "Если вопрос еще не решен, удобнее продолжить именно этот кейс."
-              : "Если вопрос уже понятен, откройте один кейс и продолжайте его дальше. Так поддержка видит всю историю рядом."
+              : "Откройте один кейс и продолжайте его дальше. Так поддержка видит всю историю рядом, а вы не пересказываете одно и то же."
           }
           actions={
             <>
@@ -296,21 +296,21 @@ export default function SupportPage() {
           }
           details={[
             {
-              label: "Статус последнего кейса",
-              value: latestTicket ? statusLabel(latestTicket.status) : "Пока нет",
-              hint: latestTicket ? `#${latestTicket.id}` : "Первый кейс можно открыть отсюда.",
+              label: "Состояние поддержки",
+              value: latestTicket ? statusLabel(latestTicket.status) : "Готовы принять",
+              hint: latestTicket ? `Кейс #${latestTicket.id}` : "Первый кейс можно открыть отсюда.",
               tone: latestTicket ? "success" : "neutral",
             },
             {
-              label: "Открытых кейсов",
-              value: String(openCount),
-              hint: "Если вопрос один, лучше держать его в одном месте.",
-              tone: openCount ? "warning" : "neutral",
+              label: "Что помогает диагностике",
+              value: "Короткое описание",
+              hint: "Добавьте устройство, шаг и что уже пробовали. Этого обычно хватает для старта.",
+              tone: "neutral",
             },
             {
-              label: "Если нужен быстрый ответ",
+              label: "Если нужен быстрый контакт",
               value: "Telegram",
-              hint: "Подходит для коротких уточнений и живого контакта.",
+              hint: "Подходит для коротких уточнений без вложений и длинной истории.",
               tone: "neutral",
             },
           ]}
@@ -319,7 +319,7 @@ export default function SupportPage() {
         <div className="grid gap-6 xl:grid-cols-[1.08fr_0.92fr]">
           <CabinetSection
             eyebrow="История"
-            title="Ваши обращения"
+            title="Ваши кейсы"
             description="Если вопрос уже был, лучше продолжать тот же кейс. Так быстрее и спокойнее."
             actions={
               <button type="button" onClick={() => setComposeOpen(true)} className="outline-btn rounded-full px-4 py-2 text-xs font-semibold uppercase tracking-[0.12em]">
@@ -332,7 +332,7 @@ export default function SupportPage() {
                 Загружаем историю обращений...
               </div>
             ) : (
-              <CabinetList items={ticketItems} empty="Пока обращений нет. Если что-то пошло не так, просто откройте первый кейс отсюда." />
+              <CabinetList items={ticketItems} empty="Пока обращений нет. Если что-то пошло не так, откройте первый кейс отсюда." />
             )}
             {error ? <p className="mt-4 text-sm text-rose-600 dark:text-rose-300">{error}</p> : null}
           </CabinetSection>

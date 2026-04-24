@@ -9,22 +9,22 @@ type AdminButtonTone = "primary" | "secondary" | "ghost" | "danger";
 type AdminButtonSize = "sm" | "md" | "xs";
 
 const PANEL_TONE_CLASSES: Record<AdminTone, string> = {
-  neutral: "border-[#1e2a35] bg-[#0d141b] text-slate-200 shadow-[0_18px_40px_-32px_rgba(2,6,23,0.92)]",
-  success: "border-emerald-900/60 bg-[rgba(7,32,24,0.95)] text-emerald-100 shadow-[0_18px_40px_-32px_rgba(5,46,22,0.9)]",
-  warning: "border-amber-900/60 bg-[rgba(41,26,8,0.95)] text-amber-100 shadow-[0_18px_40px_-32px_rgba(69,26,3,0.9)]",
-  danger: "border-rose-950/65 bg-[rgba(44,12,21,0.95)] text-rose-100 shadow-[0_18px_40px_-32px_rgba(76,5,25,0.92)]",
-  accent: "border-sky-900/60 bg-[rgba(10,28,45,0.95)] text-sky-100 shadow-[0_18px_40px_-32px_rgba(7,23,48,0.92)]",
+  neutral: "border-[#b8ded1] bg-white text-slate-900 shadow-[0_18px_42px_-34px_rgba(10,92,67,0.34)]",
+  success: "border-emerald-200 bg-emerald-50 text-emerald-950 shadow-[0_18px_42px_-34px_rgba(10,92,67,0.34)]",
+  warning: "border-amber-200 bg-amber-50 text-amber-950 shadow-[0_18px_42px_-34px_rgba(146,64,14,0.22)]",
+  danger: "border-rose-300 bg-rose-50 text-rose-950 shadow-[0_18px_42px_-34px_rgba(159,18,57,0.22)]",
+  accent: "border-teal-200 bg-teal-50 text-teal-950 shadow-[0_18px_42px_-34px_rgba(15,118,110,0.24)]",
 };
 
 const BUTTON_TONE_CLASSES: Record<AdminButtonTone, string> = {
   primary:
-    "border border-slate-100 bg-slate-100 text-slate-950 hover:bg-white hover:text-slate-950",
+    "border border-emerald-700 bg-emerald-700 text-white hover:border-emerald-800 hover:bg-emerald-800",
   secondary:
-    "border border-[#2a3945] bg-[#111922] text-slate-100 hover:border-[#364958] hover:bg-[#16212b]",
+    "border border-[#99cdbb] bg-white text-emerald-950 hover:border-[#68ad94] hover:bg-emerald-50",
   ghost:
-    "border border-transparent bg-[#16212b] text-slate-300 hover:bg-[#1b2934] hover:text-slate-100",
+    "border border-transparent bg-emerald-50 text-emerald-950 hover:bg-emerald-100",
   danger:
-    "border border-rose-900/60 bg-rose-950/40 text-rose-200 hover:bg-rose-900/35 hover:text-rose-100",
+    "border border-rose-300 bg-rose-50 text-rose-800 hover:bg-rose-100",
 };
 
 const BUTTON_SIZE_CLASSES: Record<AdminButtonSize, string> = {
@@ -34,33 +34,33 @@ const BUTTON_SIZE_CLASSES: Record<AdminButtonSize, string> = {
 };
 
 export const adminShellFrameClass =
-  "rounded-[1.3rem] border border-[#17212b] bg-[#070d13] text-slate-200 shadow-[0_36px_80px_-54px_rgba(2,6,23,0.95)]";
+  "rounded-[1.3rem] border border-[#b8ded1] bg-[#f2fbf7] text-slate-900 shadow-[0_36px_80px_-54px_rgba(10,92,67,0.34)] [&_.text-slate-50]:text-slate-950 [&_.text-slate-100]:text-slate-900 [&_.text-slate-200]:text-slate-800 [&_.text-slate-300]:text-slate-700 [&_.text-slate-400]:text-slate-600 [&_.text-slate-500]:text-slate-500";
 
 export const adminSidebarClass =
-  "rounded-[1.25rem] border border-[#17212b] bg-[#0a1117] text-slate-200 shadow-[0_24px_60px_-44px_rgba(2,6,23,0.95)]";
+  "rounded-[1.25rem] border border-[#b8ded1] bg-[#e8f7f0] text-slate-900 shadow-[0_24px_60px_-44px_rgba(10,92,67,0.3)]";
 
 export const adminTopbarClass =
-  "rounded-[1.15rem] border border-[#1b2732] bg-[#0c131a] text-slate-200 shadow-[0_22px_48px_-38px_rgba(2,6,23,0.92)]";
+  "rounded-[1.15rem] border border-[#b8ded1] bg-white text-slate-900 shadow-[0_22px_48px_-38px_rgba(10,92,67,0.24)]";
 
 export const adminRailCardClass =
-  "rounded-[1rem] border border-[#202d38] bg-[#101821] p-4 text-slate-200 shadow-[0_18px_36px_-32px_rgba(2,6,23,0.88)]";
+  "rounded-[1rem] border border-[#b8ded1] bg-white p-4 text-slate-900 shadow-[0_18px_36px_-32px_rgba(10,92,67,0.24)]";
 
 export function adminPanelClass(tone: AdminTone = "neutral"): string {
   return cn("overflow-hidden rounded-[1.05rem] border p-4", PANEL_TONE_CLASSES[tone]);
 }
 
 export const adminInsetPanelClass =
-  "rounded-[0.95rem] border border-[#24313d] bg-[#111922] p-3";
+  "rounded-[0.75rem] border border-[#c6e6db] bg-[#f8fffc] p-3";
 
 export const adminFieldClass =
-  "min-h-10 w-full rounded-[0.9rem] border border-[#24313d] bg-[#0a1117] px-3 py-2 text-sm text-slate-100 outline-none transition placeholder:text-slate-500 focus:border-[#4d6375] focus:ring-2 focus:ring-slate-200/5";
+  "min-h-10 w-full rounded-[0.75rem] border border-[#b8ded1] bg-white px-3 py-2 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-[#2f8f70] focus:ring-2 focus:ring-emerald-200";
 
 export const adminTextAreaClass = cn(adminFieldClass, "min-h-[120px] resize-y py-3");
 
-export const adminCheckboxLabelClass = "inline-flex items-center gap-2 text-[11px] font-medium text-slate-400";
+export const adminCheckboxLabelClass = "inline-flex items-center gap-2 text-[11px] font-medium text-slate-600";
 
 export const adminTableShellClass =
-  "overflow-hidden rounded-[1rem] border border-[#22303c] bg-[#0b1218]";
+  "overflow-hidden rounded-[0.85rem] border border-[#b8ded1] bg-white";
 
 export function adminButtonClass(tone: AdminButtonTone = "secondary", size: AdminButtonSize = "md"): string {
   return cn(
@@ -72,11 +72,11 @@ export function adminButtonClass(tone: AdminButtonTone = "secondary", size: Admi
 
 export function adminBadgeClass(tone: AdminTone = "neutral"): string {
   const palette: Record<AdminTone, string> = {
-    neutral: "border-[#2c3b47] bg-[#141d25] text-slate-300",
-    success: "border-emerald-900/70 bg-emerald-950/45 text-emerald-200",
-    warning: "border-amber-900/70 bg-amber-950/45 text-amber-200",
-    danger: "border-rose-900/70 bg-rose-950/45 text-rose-200",
-    accent: "border-sky-900/70 bg-sky-950/45 text-sky-200",
+    neutral: "border-[#b8ded1] bg-white text-slate-700",
+    success: "border-emerald-200 bg-emerald-50 text-emerald-800",
+    warning: "border-amber-200 bg-amber-50 text-amber-800",
+    danger: "border-rose-200 bg-rose-50 text-rose-800",
+    accent: "border-teal-200 bg-teal-50 text-teal-800",
   };
 
   return cn("inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-[11px] font-semibold", palette[tone]);
@@ -239,7 +239,7 @@ export function AdminEmptyState({
   className?: string;
 }) {
   return (
-    <div className={cn(adminPanelClass("neutral"), "flex min-h-[160px] flex-col items-center justify-center gap-2 border-dashed border-[#2a3945] text-center", className)}>
+    <div className={cn(adminPanelClass("neutral"), "flex min-h-[160px] flex-col items-center justify-center gap-2 border-dashed border-[#b8ded1] text-center", className)}>
       <p className="text-sm font-semibold text-slate-100">{title}</p>
       {description ? <p className="max-w-md text-xs leading-5 text-slate-400">{description}</p> : null}
     </div>

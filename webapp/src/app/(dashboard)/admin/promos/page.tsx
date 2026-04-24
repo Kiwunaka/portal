@@ -1,6 +1,15 @@
 "use client";
 
-import { adminButtonClass, adminPanelClass } from "@/components/admin/admin-shell";
+import {
+  AdminBadge,
+  AdminMetricStrip,
+  AdminPanelHeader,
+  adminButtonClass,
+  adminFieldClass,
+  adminInsetPanelClass,
+  adminPanelClass,
+  adminTableShellClass,
+} from "@/components/admin/admin-shell";
 import {
   adminAccessKeysIssue,
   adminPromoSlots,
@@ -12,7 +21,6 @@ import {
   type PromoSlotCatalogSlot,
 } from "@/lib/api";
 import { getAccessMatrix, getPromoSlotsCatalog, getTariffPlans } from "@/lib/portal";
-import { Check, Copy, KeyRound, LayoutTemplate, RefreshCw, Save, Search, ShieldCheck } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { fmtRuDate } from "../nav";
 
@@ -48,20 +56,14 @@ function normalizeKey(value: string): string {
   return String(value || "").trim().toUpperCase();
 }
 
-function createAssignmentState(
-  assignments: PromoSlotAssignmentPayload[],
-  slots: PromoSlotCatalogSlot[],
-  contentCatalog: PromoSlotCatalogContent[],
-): PromoSlotAssignmentPayload[] {
+function createAssignmentState(assignments: PromoSlotAssignmentPayload[], slots: PromoSlotCatalogSlot[], contentCatalog: PromoSlotCatalogContent[]): PromoSlotAssignmentPayload[] {
   const assignmentMap = new Map(assignments.map((item) => [item.slot_id, item]));
   const contentMap = new Map(contentCatalog.map((item) => [item.id, item]));
 
   return slots.map((slot, index) => {
     const existing = assignmentMap.get(slot.id);
     const fallbackContent = slot.allowed_content_ids.find((contentId) => contentMap.has(contentId)) || slot.allowed_content_ids[0] || "";
-    const nextContentId =
-      existing && slot.allowed_content_ids.includes(existing.content_id) ? existing.content_id : fallbackContent;
-
+    const nextContentId = existing && slot.allowed_content_ids.includes(existing.content_id) ? existing.content_id : fallbackContent;
     return {
       slot_id: slot.id,
       content_id: nextContentId,
@@ -76,45 +78,15 @@ function createAssignmentState(
   });
 }
 
-function formatContexts(values: string[]): string {
-  return values.join(" • ");
-}
-
-function formatPlanMeta(days: number, deviceLimit: number): string {
-  return `${days} days • up to ${deviceLimit} devices`;
-}
-
-function StatusBanner({ tone, text }: { tone: "success" | "error"; text: string }) {
-  const success = tone === "success";
-  return (
-    <div className={`${adminPanelClass(success ? "success" : "danger")} flex items-center gap-3`}>
-      <div className={`stat-icon ${success ? "stat-icon-emerald" : "stat-icon-rose"}`}>
-        {success ? <Check size={18} /> : <ShieldCheck size={18} />}
-      </div>
-      <p className={`text-sm font-medium ${success ? "text-emerald-600 dark:text-emerald-300" : "text-rose-500"}`}>
-        {text}
-      </p>
-    </div>
-  );
-}
-
 export default function AdminPromosPage() {
   const [selectedPlan, setSelectedPlan] = useState(SHARED_PLANS[0]?.code || "1_month");
   const [quantity, setQuantity] = useState("5");
-  const [issuedKeys, setIssuedKeys] = useState<
-    Array<{
-      key: string;
-      planLabel: string;
-      issuedAt?: string | null;
-    }>
-  >([]);
+  const [issuedKeys, setIssuedKeys] = useState<Array<{ key: string; planLabel: string; issuedAt?: string | null }>>([]);
   const [lookupKey, setLookupKey] = useState("");
   const [lookupResult, setLookupResult] = useState<AccessKeyStatusPayload | null>(null);
   const [slotCatalog, setSlotCatalog] = useState<PromoSlotCatalogSlot[]>(DEFAULT_PROMO_SLOTS);
   const [contentCatalog, setContentCatalog] = useState<PromoSlotCatalogContent[]>(DEFAULT_PROMO_CONTENT);
-  const [assignments, setAssignments] = useState<PromoSlotAssignmentPayload[]>(
-    createAssignmentState([], DEFAULT_PROMO_SLOTS, DEFAULT_PROMO_CONTENT),
-  );
+  const [assignments, setAssignments] = useState<PromoSlotAssignmentPayload[]>(createAssignmentState([], DEFAULT_PROMO_SLOTS, DEFAULT_PROMO_CONTENT));
   const [remoteVersion, setRemoteVersion] = useState(PROMO_CATALOG.version);
   const [remoteMode, setRemoteMode] = useState(PROMO_CATALOG.mode);
   const [remoteAvailable, setRemoteAvailable] = useState(false);
@@ -126,10 +98,7 @@ export default function AdminPromosPage() {
   const [statusText, setStatusText] = useState("");
   const [error, setError] = useState("");
 
-  const contentById = useMemo(
-    () => new Map(contentCatalog.map((item) => [item.id, item])),
-    [contentCatalog],
-  );
+  const contentById = useMemo(() => new Map(contentCatalog.map((item) => [item.id, item])), [contentCatalog]);
 
   const loadPromoSlots = async (): Promise<void> => {
     setLoading(true);
@@ -140,7 +109,6 @@ export default function AdminPromosPage() {
       const remoteCatalog = remote.catalog;
       const nextSlots = remoteCatalog?.slots?.length ? remoteCatalog.slots : DEFAULT_PROMO_SLOTS;
       const nextContent = remoteCatalog?.content_catalog?.length ? remoteCatalog.content_catalog : DEFAULT_PROMO_CONTENT;
-
       setSlotCatalog(nextSlots);
       setContentCatalog(nextContent);
       setAssignments(createAssignmentState(remote.assignments || [], nextSlots, nextContent));
@@ -148,12 +116,12 @@ export default function AdminPromosPage() {
       setRemoteMode(String(remote.mode || remoteCatalog?.mode || PROMO_CATALOG.mode));
       setRemoteAvailable(Boolean(remote.remote_available));
       setFallbackBehavior(String(remote.fallback_behavior || remoteCatalog?.fallback_behavior || PROMO_CATALOG.fallback_behavior));
-      setStatusText("Promo-slot config загружен из backend.");
+      setStatusText("Promo-slot config loaded.");
     } catch (nextError) {
       setSlotCatalog(DEFAULT_PROMO_SLOTS);
       setContentCatalog(DEFAULT_PROMO_CONTENT);
       setAssignments(createAssignmentState([], DEFAULT_PROMO_SLOTS, DEFAULT_PROMO_CONTENT));
-      setError(String((nextError as { message?: string })?.message || nextError || "Не удалось загрузить promo slots."));
+      setError(String((nextError as { message?: string })?.message || nextError || "Could not load promo slots."));
     } finally {
       setLoading(false);
     }
@@ -169,20 +137,15 @@ export default function AdminPromosPage() {
     setError("");
     setStatusText("");
     try {
-      const payload = await adminAccessKeysIssue({
-        plan_code: selectedPlan,
-        quantity: nextQuantity,
-      });
-      setIssuedKeys(
-        (payload.issued || []).map((item) => ({
-          key: item.key,
-          planLabel: item.plan?.label || payload.plan?.label || selectedPlan,
-          issuedAt: item.issued_at,
-        })),
-      );
-      setStatusText(`Выпущено ${payload.issued?.length || 0} access keys для плана ${payload.plan?.label || selectedPlan}.`);
+      const payload = await adminAccessKeysIssue({ plan_code: selectedPlan, quantity: nextQuantity });
+      setIssuedKeys((payload.issued || []).map((item) => ({
+        key: item.key,
+        planLabel: item.plan?.label || payload.plan?.label || selectedPlan,
+        issuedAt: item.issued_at,
+      })));
+      setStatusText(`Issued ${payload.issued?.length || 0} access keys for ${payload.plan?.label || selectedPlan}.`);
     } catch (nextError) {
-      setError(String((nextError as { message?: string })?.message || nextError || "Не удалось выпустить ключи."));
+      setError(String((nextError as { message?: string })?.message || nextError || "Could not issue access keys."));
     } finally {
       setIssuing(false);
     }
@@ -191,7 +154,7 @@ export default function AdminPromosPage() {
   const lookupAccessKey = async (): Promise<void> => {
     const key = normalizeKey(lookupKey);
     if (!key) {
-      setError("Введите access key для проверки.");
+      setError("Enter an access key to look up.");
       return;
     }
     setLookupBusy(true);
@@ -200,9 +163,9 @@ export default function AdminPromosPage() {
     try {
       const payload = await fetchAccessKeyStatus(key);
       setLookupResult(payload);
-      setStatusText(payload.exists ? "Статус ключа загружен." : "Ключ не найден.");
+      setStatusText(payload.exists ? "Access key status loaded." : "Access key not found.");
     } catch (nextError) {
-      setError(String((nextError as { message?: string })?.message || nextError || "Не удалось получить статус ключа."));
+      setError(String((nextError as { message?: string })?.message || nextError || "Could not load access key status."));
     } finally {
       setLookupBusy(false);
     }
@@ -218,354 +181,181 @@ export default function AdminPromosPage() {
       setRemoteMode(String(payload.promo_slots.mode || remoteMode));
       setRemoteAvailable(Boolean(payload.promo_slots.remote_available));
       setFallbackBehavior(String(payload.promo_slots.fallback_behavior || fallbackBehavior));
-      setStatusText("Promo-slot config сохранён.");
+      setStatusText("Promo-slot config saved.");
     } catch (nextError) {
-      setError(String((nextError as { message?: string })?.message || nextError || "Не удалось сохранить promo slots."));
+      setError(String((nextError as { message?: string })?.message || nextError || "Could not save promo slots."));
     } finally {
       setSaving(false);
     }
   };
 
   const updateAssignment = (slotId: string, patch: Partial<PromoSlotAssignmentPayload>) => {
-    setAssignments((current) =>
-      current.map((item) => (item.slot_id === slotId ? { ...item, ...patch } : item)),
-    );
+    setAssignments((current) => current.map((item) => (item.slot_id === slotId ? { ...item, ...patch } : item)));
   };
 
   const copyText = async (text: string): Promise<void> => {
     try {
       await navigator.clipboard.writeText(text);
-      setStatusText("Скопировано в буфер.");
+      setStatusText("Copied.");
       setError("");
     } catch {
-      setError("Не удалось скопировать значение.");
+      setError("Clipboard copy failed.");
     }
   };
 
   return (
-    <section className="space-y-5">
+    <section className="space-y-4">
       <article className={adminPanelClass("neutral")}>
-        <h2 className="font-display text-xl font-bold">Access keys и promo slots</h2>
-        <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">
-          Эта панель больше не живёт в legacy gift/promo логике. Здесь оператор выпускает activation keys,
-          проверяет recovery-кейсы, держит единый tariff catalog перед глазами и управляет только first-party
-          promo slots из approved whitelist.
-        </p>
+        <AdminPanelHeader
+          eyebrow="payments"
+          title="Access keys and promo slots"
+          description="Issue paid access keys, inspect recovery keys, and control whitelisted first-party promo slots without exposing public pricing."
+          actions={
+            <button className={adminButtonClass("secondary", "sm")} type="button" onClick={() => void loadPromoSlots()} disabled={loading}>
+              Reload slots
+            </button>
+          }
+        />
+        <div className="flex flex-wrap gap-2">
+          <AdminBadge tone="accent">remote {remoteAvailable ? "available" : "local catalog"}</AdminBadge>
+          <AdminBadge>version {remoteVersion}</AdminBadge>
+          <AdminBadge>mode {remoteMode}</AdminBadge>
+          <AdminBadge tone="warning">empty-state mode: {fallbackBehavior}</AdminBadge>
+        </div>
       </article>
 
-      {statusText ? <StatusBanner tone="success" text={statusText} /> : null}
-      {error ? <StatusBanner tone="error" text={error} /> : null}
+      <AdminMetricStrip
+        items={[
+          { label: "plans", value: SHARED_PLANS.length, hint: "Active paid tariff plans." },
+          { label: "slots", value: assignments.length, hint: "Whitelisted promo slot assignments.", tone: "accent" },
+          { label: "free baseline", value: `${ACCESS_MATRIX.free_tier.location_code} · ${ACCESS_MATRIX.free_tier.traffic_limit_gb} GB`, hint: `${ACCESS_MATRIX.free_tier.speed_limit_mbps} Mbps, ${ACCESS_MATRIX.free_tier.device_limit} device(s).` },
+          { label: "issued now", value: issuedKeys.length, hint: "Keys issued in this session.", tone: issuedKeys.length ? "success" : "neutral" },
+        ]}
+      />
 
-      <div className="grid gap-5 md:grid-cols-3">
+      {statusText ? <div className={adminPanelClass("success")}>{statusText}</div> : null}
+      {error ? <div className={adminPanelClass("danger")}>{error}</div> : null}
+
+      <div className="grid gap-4 xl:grid-cols-[1fr,0.9fr]">
         <article className={adminPanelClass("neutral")}>
-          <p className="text-[11px] uppercase tracking-[0.16em] text-slate-500">public scope</p>
-          <h3 className="mt-2 font-display text-2xl font-semibold">Android + Windows</h3>
-          <p className="mt-3 text-sm leading-6 text-slate-600 dark:text-slate-300">
-            Публичный promise этой волны держим только на этих платформах. Apple host shells остаются
-            engineering lane, но не входят в release acceptance.
-          </p>
-        </article>
-
-        <article className={adminPanelClass("neutral")}>
-          <p className="text-[11px] uppercase tracking-[0.16em] text-slate-500">free baseline</p>
-          <h3 className="mt-2 font-display text-2xl font-semibold">
-            {ACCESS_MATRIX.free_tier.location_code} • {ACCESS_MATRIX.free_tier.traffic_limit_gb} GB
-          </h3>
-          <p className="mt-3 text-sm leading-6 text-slate-600 dark:text-slate-300">
-            Monthly reset, {ACCESS_MATRIX.free_tier.speed_limit_mbps} Mbps per IP, до{" "}
-            {ACCESS_MATRIX.free_tier.device_limit} устройства. После trial сюда падает default downgrade.
-          </p>
-        </article>
-
-        <article className={adminPanelClass("neutral")}>
-          <p className="text-[11px] uppercase tracking-[0.16em] text-slate-500">hidden transport order</p>
-          <h3 className="mt-2 font-display text-2xl font-semibold">VLESS → VMess → Trojan → XHTTP</h3>
-          <p className="mt-3 text-sm leading-6 text-slate-600 dark:text-slate-300">
-            Операторская видимость сохраняется, но массовый UI видит одну логическую локацию. XHTTP допускается
-            только при готовом CDN/static prerequisite.
-          </p>
-        </article>
-      </div>
-
-      <div className="grid gap-5 xl:grid-cols-[1.05fr,0.95fr]">
-        <article className={adminPanelClass("neutral")}>
-          <div className="mb-4 flex items-center gap-3">
-            <div className="stat-icon stat-icon-emerald">
-              <KeyRound size={20} />
-            </div>
-            <h2 className="font-display text-xl font-bold">Issue access keys</h2>
-          </div>
-          <p className="mb-4 text-sm text-slate-600 dark:text-slate-300">
-            Key-first commerce начинается здесь: оператор выпускает ключи по canonical plan codes, а не через
-            legacy gift-code типы.
-          </p>
-
+          <AdminPanelHeader eyebrow="issuance" title="Issue access keys" />
           <div className="grid gap-3 md:grid-cols-[1fr,120px,auto]">
-            <select
-              value={selectedPlan}
-              onChange={(event) => setSelectedPlan(event.target.value)}
-              className="rounded-xl border border-white/45 bg-white/65 px-3 py-3 text-sm outline-none dark:border-white/10 dark:bg-white/5"
-            >
+            <select value={selectedPlan} onChange={(event) => setSelectedPlan(event.target.value)} className={adminFieldClass}>
               {SHARED_PLANS.map((plan) => (
-                <option key={plan.code} value={plan.code}>
-                  {plan.label} • {plan.amountRub} ₽
-                </option>
+                <option key={plan.code} value={plan.code}>{plan.label} · {plan.amountRub} RUB</option>
               ))}
             </select>
-            <input
-              value={quantity}
-              onChange={(event) => setQuantity(event.target.value)}
-              type="number"
-              min={1}
-              max={50}
-              className="rounded-xl border border-white/45 bg-white/65 px-3 py-3 text-sm outline-none dark:border-white/10 dark:bg-white/5"
-            />
-            <button
-              type="button"
-              onClick={() => void issueKeys()}
-              disabled={issuing}
-                    className={adminButtonClass("primary")}
-            >
-              {issuing ? "Выпускаем..." : "Issue"}
+            <input value={quantity} onChange={(event) => setQuantity(event.target.value)} type="number" min={1} max={50} className={adminFieldClass} />
+            <button type="button" onClick={() => void issueKeys()} disabled={issuing} className={adminButtonClass("primary")}>
+              {issuing ? "Issuing..." : "Issue"}
             </button>
           </div>
-
-          <div className="mt-5 space-y-2">
-            {issuedKeys.length ? (
-              issuedKeys.map((item) => (
-                <div key={item.key} className="node-card flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="mt-4 space-y-2">
+            {issuedKeys.map((item) => (
+              <div key={item.key} className={adminInsetPanelClass}>
+                <div className="flex flex-wrap items-center justify-between gap-3">
                   <div className="min-w-0">
-                    <p className="badge badge-violet font-mono">{item.key}</p>
-                    <p className="mt-2 text-xs text-slate-500">
-                      {item.planLabel} • {fmtRuDate(item.issuedAt)}
-                    </p>
+                    <p className="font-mono text-sm font-semibold text-slate-100">{item.key}</p>
+                    <p className="mt-1 text-xs text-slate-500">{item.planLabel} · {fmtRuDate(item.issuedAt)}</p>
                   </div>
-                  <button
-                    type="button"
-                    onClick={() => void copyText(item.key)}
-                    className={adminButtonClass("secondary", "xs")}
-                  >
-                    <Copy size={14} />
-                    Copy
-                  </button>
+                  <button type="button" onClick={() => void copyText(item.key)} className={adminButtonClass("secondary", "xs")}>Copy</button>
                 </div>
-              ))
-            ) : (
-              <div className="empty-state">
-                <KeyRound size={24} />
-                <p className="text-xs">Новые access keys появятся здесь после выпуска.</p>
               </div>
-            )}
+            ))}
+            {!issuedKeys.length ? <p className="text-xs text-slate-500">Issued keys will appear here.</p> : null}
           </div>
         </article>
 
-        <article className="glass-card p-5">
-          <div className="mb-4 flex items-center gap-3">
-            <div className="stat-icon stat-icon-blue">
-              <Search size={20} />
-            </div>
-            <h2 className="font-display text-xl font-bold">Recovery lookup</h2>
-          </div>
-          <p className="mb-4 text-sm text-slate-600 dark:text-slate-300">
-            Для ручных recovery-кейсов оператор может проверить конкретный key status без показа raw subscription link.
-          </p>
-
+        <article className={adminPanelClass("neutral")}>
+          <AdminPanelHeader eyebrow="recovery" title="Access key lookup" description="Use for recovery and fraud checks without exposing raw connection links." />
           <div className="flex flex-col gap-3 sm:flex-row">
-            <input
-              value={lookupKey}
-              onChange={(event) => setLookupKey(normalizeKey(event.target.value))}
-              placeholder="POKROV-XXXX-XXXX"
-              className="w-full rounded-xl border border-white/45 bg-white/65 px-3 py-3 text-sm outline-none dark:border-white/10 dark:bg-white/5"
-            />
-            <button
-              type="button"
-              onClick={() => void lookupAccessKey()}
-              disabled={lookupBusy}
-                    className={adminButtonClass("secondary")}
-            >
-              {lookupBusy ? "Проверяем..." : "Lookup"}
+            <input value={lookupKey} onChange={(event) => setLookupKey(normalizeKey(event.target.value))} placeholder="POKROV-XXXX-XXXX" className={adminFieldClass} />
+            <button type="button" onClick={() => void lookupAccessKey()} disabled={lookupBusy} className={adminButtonClass("secondary")}>
+              {lookupBusy ? "Checking..." : "Lookup"}
             </button>
           </div>
-
           {lookupResult ? (
-            <div className="mt-5 space-y-2 rounded-2xl border border-white/40 bg-white/55 p-4 text-sm text-slate-700 dark:border-white/10 dark:bg-white/5 dark:text-slate-200">
-              <p>Ключ: <strong>{lookupResult.key}</strong></p>
-              <p>Найден: <strong>{lookupResult.exists ? "да" : "нет"}</strong></p>
-              <p>Погашен: <strong>{lookupResult.redeemed ? "да" : "нет"}</strong></p>
-              <p>План: <strong>{lookupResult.plan?.label || lookupResult.kind || "—"}</strong></p>
-              <p>Лимит устройств: <strong>{lookupResult.device_limit}</strong></p>
-              <p>Выдан: <strong>{fmtRuDate(lookupResult.issued_at)}</strong></p>
-              <p>Погашен: <strong>{fmtRuDate(lookupResult.redeemed_at)}</strong></p>
+            <div className={`${adminInsetPanelClass} mt-4 space-y-1 text-sm text-slate-300`}>
+              <p>Key: <strong>{lookupResult.key}</strong></p>
+              <p>Exists: <strong>{lookupResult.exists ? "yes" : "no"}</strong></p>
+              <p>Redeemed: <strong>{lookupResult.redeemed ? "yes" : "no"}</strong></p>
+              <p>Plan: <strong>{lookupResult.plan?.label || lookupResult.kind || "-"}</strong></p>
+              <p>Device limit: <strong>{lookupResult.device_limit}</strong></p>
+              <p>Issued: <strong>{fmtRuDate(lookupResult.issued_at)}</strong></p>
+              <p>Redeemed at: <strong>{fmtRuDate(lookupResult.redeemed_at)}</strong></p>
             </div>
           ) : null}
         </article>
       </div>
 
       <article className={adminPanelClass("neutral")}>
-        <div className="mb-4 flex items-center gap-3">
-          <div className="stat-icon stat-icon-amber">
-            <ShieldCheck size={20} />
+        <AdminPanelHeader eyebrow="tariffs" title="Compatibility tariff catalog" description="Admin-facing reference only; public pricing route remains a compatibility continuation surface." />
+        <div className={adminTableShellClass}>
+          <div className="overflow-auto">
+            <table className="min-w-full text-sm">
+              <thead>
+                <tr className="border-b border-[#c6e6db] bg-[#f8fffc] text-left text-[11px] uppercase tracking-[0.14em] text-slate-500">
+                  <th className="px-3 py-3">Code</th>
+                  <th className="px-3 py-3">Plan</th>
+                  <th className="px-3 py-3">Price</th>
+                  <th className="px-3 py-3">Days</th>
+                  <th className="px-3 py-3">Devices</th>
+                  <th className="px-3 py-3">Note</th>
+                </tr>
+              </thead>
+              <tbody>
+                {SHARED_PLANS.map((plan) => (
+                  <tr key={plan.code} className="border-t border-[#c6e6db]">
+                    <td className="px-3 py-3 font-mono text-xs">{plan.code}</td>
+                    <td className="px-3 py-3">{plan.label}</td>
+                    <td className="px-3 py-3">{plan.amountRub} RUB</td>
+                    <td className="px-3 py-3">{plan.days}</td>
+                    <td className="px-3 py-3">{plan.deviceLimit}</td>
+                    <td className="px-3 py-3 text-xs text-slate-400">{plan.note}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
-          <h2 className="font-display text-xl font-bold">Tariff catalog</h2>
-        </div>
-        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-          {SHARED_PLANS.map((plan) => (
-            <div key={plan.code} className="stat-card p-4">
-              <div className="mb-3 flex items-center justify-between gap-2">
-                <span className="badge badge-violet font-mono">{plan.code}</span>
-                <span className="badge badge-success">{plan.badge || "active"}</span>
-              </div>
-              <p className="text-lg font-bold">{plan.label}</p>
-              <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">{plan.amountRub} ₽</p>
-              <p className="mt-1 text-xs text-slate-500">{formatPlanMeta(plan.days, plan.deviceLimit)}</p>
-              <p className="mt-3 text-xs leading-6 text-slate-500">{plan.note}</p>
-            </div>
-          ))}
         </div>
       </article>
 
-      <article className="glass-card p-5">
-        <div className="mb-4 flex items-center gap-3">
-          <div className="stat-icon stat-icon-violet">
-            <LayoutTemplate size={20} />
-          </div>
-          <div>
-            <h2 className="font-display text-xl font-bold">Promo slot scheduling</h2>
-            <p className="text-xs text-slate-500">
-              version {remoteVersion} • mode {remoteMode} • remote {remoteAvailable ? "available" : "fallback"}
-            </p>
-          </div>
-          <div className="ml-auto flex gap-2">
-            <button
-              type="button"
-              onClick={() => void loadPromoSlots()}
-              disabled={loading}
-                    className={adminButtonClass("secondary", "xs")}
-            >
-              <RefreshCw size={14} />
-              Refresh
-            </button>
-            <button
-              type="button"
-              onClick={() => void savePromoSlots()}
-              disabled={saving}
-                    className={adminButtonClass("primary", "xs")}
-            >
-              <Save size={14} />
-              {saving ? "Saving..." : "Save"}
-            </button>
-          </div>
-        </div>
-
-        <p className="mb-4 text-sm text-slate-600 dark:text-slate-300">
-          Разрешены только whitelist slots и first-party promo content. Если remote config недоступен, surface
-          падает в <strong>{fallbackBehavior}</strong>.
-        </p>
-
-        <div className="space-y-4">
+      <article className={adminPanelClass("neutral")}>
+        <AdminPanelHeader
+          eyebrow="promo slots"
+          title="Slot assignments"
+          description="Only whitelisted slots and first-party content IDs can be saved."
+          actions={<button type="button" onClick={() => void savePromoSlots()} disabled={saving} className={adminButtonClass("primary", "sm")}>{saving ? "Saving..." : "Save slots"}</button>}
+        />
+        <div className="space-y-3">
           {assignments.map((assignment) => {
             const slot = slotCatalog.find((item) => item.id === assignment.slot_id);
             const allowedContentIds = slot?.allowed_content_ids || [];
-
             return (
-              <div key={assignment.slot_id} className="node-card space-y-4 p-4">
-                <div className="flex flex-wrap items-center gap-2">
-                  <span className="badge badge-violet font-mono">{assignment.slot_id}</span>
-                  <span className="badge badge-info">{slot?.surface || "surface"}</span>
-                  <span className="text-xs text-slate-500">{formatContexts(slot?.contexts || assignment.contexts || [])}</span>
+              <div key={assignment.slot_id} className={adminInsetPanelClass}>
+                <div className="mb-3 flex flex-wrap items-center gap-2">
+                  <AdminBadge tone={assignment.enabled ? "success" : "warning"}>{assignment.enabled ? "enabled" : "disabled"}</AdminBadge>
+                  <span className="font-mono text-sm font-semibold text-slate-100">{assignment.slot_id}</span>
+                  <span className="text-xs text-slate-500">{slot?.surface || "surface"} · {(slot?.contexts || assignment.contexts || []).join(", ")}</span>
                 </div>
-
                 <div className="grid gap-3 lg:grid-cols-[1fr,1fr,120px]">
-                  <label className="text-sm">
-                    <span className="mb-1 block text-xs uppercase tracking-[0.12em] text-slate-500">content</span>
-                    <select
-                      value={assignment.content_id}
-                      onChange={(event) => updateAssignment(assignment.slot_id, { content_id: event.target.value })}
-                      className="w-full rounded-xl border border-white/45 bg-white/65 px-3 py-3 text-sm outline-none dark:border-white/10 dark:bg-white/5"
-                    >
-                      {allowedContentIds.map((contentId) => {
-                        const content = contentById.get(contentId);
-                        return (
-                          <option key={contentId} value={contentId}>
-                            {content?.goal || contentId}
-                          </option>
-                        );
-                      })}
-                    </select>
-                  </label>
-
-                  <label className="text-sm">
-                    <span className="mb-1 block text-xs uppercase tracking-[0.12em] text-slate-500">contexts</span>
-                    <input
-                      value={(assignment.contexts || []).join(", ")}
-                      onChange={(event) =>
-                        updateAssignment(assignment.slot_id, {
-                          contexts: event.target.value
-                            .split(",")
-                            .map((item) => item.trim())
-                            .filter(Boolean),
-                        })
-                      }
-                      className="w-full rounded-xl border border-white/45 bg-white/65 px-3 py-3 text-sm outline-none dark:border-white/10 dark:bg-white/5"
-                    />
-                  </label>
-
-                  <label className="text-sm">
-                    <span className="mb-1 block text-xs uppercase tracking-[0.12em] text-slate-500">sort</span>
-                    <input
-                      value={assignment.sort_order}
-                      onChange={(event) => updateAssignment(assignment.slot_id, { sort_order: Math.max(0, Number(event.target.value || 0)) })}
-                      type="number"
-                      min={0}
-                      className="w-full rounded-xl border border-white/45 bg-white/65 px-3 py-3 text-sm outline-none dark:border-white/10 dark:bg-white/5"
-                    />
-                  </label>
+                  <select value={assignment.content_id} onChange={(event) => updateAssignment(assignment.slot_id, { content_id: event.target.value })} className={adminFieldClass}>
+                    {allowedContentIds.map((contentId) => {
+                      const content = contentById.get(contentId);
+                      return <option key={contentId} value={contentId}>{content?.goal || contentId}</option>;
+                    })}
+                  </select>
+                  <input value={(assignment.contexts || []).join(", ")} onChange={(event) => updateAssignment(assignment.slot_id, { contexts: event.target.value.split(",").map((item) => item.trim()).filter(Boolean) })} className={adminFieldClass} placeholder="Contexts" />
+                  <input value={assignment.sort_order} onChange={(event) => updateAssignment(assignment.slot_id, { sort_order: Math.max(0, Number(event.target.value || 0)) })} type="number" className={adminFieldClass} />
                 </div>
-
-                <div className="grid gap-3 lg:grid-cols-2">
-                  <label className="text-sm">
-                    <span className="mb-1 block text-xs uppercase tracking-[0.12em] text-slate-500">title override</span>
-                    <input
-                      value={assignment.title || ""}
-                      onChange={(event) => updateAssignment(assignment.slot_id, { title: event.target.value })}
-                      className="w-full rounded-xl border border-white/45 bg-white/65 px-3 py-3 text-sm outline-none dark:border-white/10 dark:bg-white/5"
-                    />
-                  </label>
-
-                  <label className="text-sm">
-                    <span className="mb-1 block text-xs uppercase tracking-[0.12em] text-slate-500">body override</span>
-                    <input
-                      value={assignment.body || ""}
-                      onChange={(event) => updateAssignment(assignment.slot_id, { body: event.target.value })}
-                      className="w-full rounded-xl border border-white/45 bg-white/65 px-3 py-3 text-sm outline-none dark:border-white/10 dark:bg-white/5"
-                    />
-                  </label>
-
-                  <label className="text-sm">
-                    <span className="mb-1 block text-xs uppercase tracking-[0.12em] text-slate-500">cta label</span>
-                    <input
-                      value={assignment.cta_label || ""}
-                      onChange={(event) => updateAssignment(assignment.slot_id, { cta_label: event.target.value })}
-                      className="w-full rounded-xl border border-white/45 bg-white/65 px-3 py-3 text-sm outline-none dark:border-white/10 dark:bg-white/5"
-                    />
-                  </label>
-
-                  <label className="text-sm">
-                    <span className="mb-1 block text-xs uppercase tracking-[0.12em] text-slate-500">cta href</span>
-                    <input
-                      value={assignment.cta_href || ""}
-                      onChange={(event) => updateAssignment(assignment.slot_id, { cta_href: event.target.value })}
-                      className="w-full rounded-xl border border-white/45 bg-white/65 px-3 py-3 text-sm outline-none dark:border-white/10 dark:bg-white/5"
-                    />
-                  </label>
+                <div className="mt-3 grid gap-3 lg:grid-cols-2">
+                  <input value={assignment.title || ""} onChange={(event) => updateAssignment(assignment.slot_id, { title: event.target.value })} className={adminFieldClass} placeholder="Title override" />
+                  <input value={assignment.body || ""} onChange={(event) => updateAssignment(assignment.slot_id, { body: event.target.value })} className={adminFieldClass} placeholder="Body override" />
+                  <input value={assignment.cta_label || ""} onChange={(event) => updateAssignment(assignment.slot_id, { cta_label: event.target.value })} className={adminFieldClass} placeholder="CTA label" />
+                  <input value={assignment.cta_href || ""} onChange={(event) => updateAssignment(assignment.slot_id, { cta_href: event.target.value })} className={adminFieldClass} placeholder="CTA href" />
                 </div>
-
-                <label className="inline-flex items-center gap-2 text-sm text-slate-600 dark:text-slate-300">
-                  <input
-                    type="checkbox"
-                    checked={assignment.enabled}
-                    onChange={(event) => updateAssignment(assignment.slot_id, { enabled: event.target.checked })}
-                  />
+                <label className="mt-3 inline-flex items-center gap-2 text-sm text-slate-400">
+                  <input type="checkbox" checked={assignment.enabled} onChange={(event) => updateAssignment(assignment.slot_id, { enabled: event.target.checked })} />
                   Slot enabled
                 </label>
               </div>

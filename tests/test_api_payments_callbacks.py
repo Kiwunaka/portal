@@ -675,7 +675,7 @@ class ApiPaymentCallbacksTests(unittest.TestCase):
 
         async def _fake_create_rub_payment(**kwargs):
             self.assertEqual(kwargs["provider"], "cardlink")
-            self.assertEqual(kwargs["description"], "POKROV VPN Приветственный 30 дней")
+            self.assertEqual(kwargs["description"], "POKROV Старт на 30 дней")
             return {
                 "payment_url": "https://checkout.cardlink.link/pay/test-order",
                 "remote": {"payment_url": "https://checkout.cardlink.link/pay/test-order"},

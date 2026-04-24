@@ -2,11 +2,11 @@ import MarketingHomePage from "../components/home/homepage";
 import { buildMarketingMetadata } from "../components/marketing-landing";
 
 export const metadata = buildMarketingMetadata(
-  "POKROV | Спокойный старт, понятная оплата и кабинет рядом",
-  "POKROV помогает сначала спокойно попробовать сервис в приложении, а потом без лишнего шума перейти к оплате, кабинету и поддержке.",
+  "POKROV | Попробовать 5 дней",
+  "Начните с приложения POKROV, проверьте сервис 5 дней бесплатно и продолжайте через кабинет, тарифы и поддержку без лишней сложности.",
   {
     path: "/",
-    keywords: ["pokrov", "android", "windows", "оплата pokrov", "кабинет pokrov", "поддержка pokrov"],
+    keywords: ["pokrov", "android", "windows", "попробовать pokrov", "кабинет pokrov", "поддержка pokrov"],
   },
 );
 

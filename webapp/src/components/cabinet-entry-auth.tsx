@@ -1,11 +1,10 @@
 "use client";
 
+import { pokrovBranding } from "@/app/branding";
 import AppRouteLink from "@/components/app-route-link";
 import TelegramLoginWidget from "@/components/telegram-login-widget";
 import { getPortalPublicConfig } from "@/lib/portal";
 import { usePortalSession } from "@/lib/session";
-
-import { pokrovBranding } from "@/app/branding";
 
 const config = getPortalPublicConfig(process.env as Record<string, string | undefined>);
 
@@ -20,7 +19,7 @@ export default function CabinetEntryAuth({ siteUrl }: { siteUrl: string }) {
         </p>
         <h3 className="mt-2 text-xl font-semibold text-slate-950 dark:text-slate-50">Telegram уже работает</h3>
         <p className="mt-2 text-sm leading-6 text-slate-700 dark:text-slate-200">
-          Это самый короткий путь в кабинет. Подтвердите вход в Telegram, и мы вернем вас обратно сюда без лишних шагов.
+          Это текущий рабочий путь в кабинет. Подтвердите вход в Telegram, и мы вернем вас обратно сюда без лишних шагов.
         </p>
         <div className="mt-4">
           <TelegramLoginWidget />
@@ -45,7 +44,7 @@ export default function CabinetEntryAuth({ siteUrl }: { siteUrl: string }) {
           </span>
         </div>
         <p className="mt-3 text-sm leading-6 text-slate-600 dark:text-slate-300">
-          Email-вход для кабинета еще не открыт. Если нужен вход или восстановление уже сейчас, используйте Telegram.
+          Email-вход для кабинета еще не открыт. Когда он будет готов, он попадет в тот же кабинетный сценарий. Сейчас используйте Telegram.
         </p>
       </div>
 

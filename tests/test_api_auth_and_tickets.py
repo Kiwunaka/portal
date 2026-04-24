@@ -57,6 +57,9 @@ class ApiAuthAndTicketsTests(unittest.TestCase):
             "OPENING_PREMIUM_CAMPAIGN_KEY",
             "SUBSCRIPTION_NUMERIC_FALLBACK_ENABLED",
             "SUPPORT_UPLOAD_DIR",
+            "WEBAPP_DEV_AUTH",
+            "WEBAPP_DEV_TG_ID",
+            "WEBAPP_DEV_AUTH_PASSWORD",
         ):
             self._saved_env[k] = os.environ.get(k)
 
@@ -72,6 +75,9 @@ class ApiAuthAndTicketsTests(unittest.TestCase):
         os.environ["OPENING_PREMIUM_CAMPAIGN_KEY"] = "opening_premium_14d"
         os.environ["SUBSCRIPTION_NUMERIC_FALLBACK_ENABLED"] = "true"
         os.environ["SUPPORT_UPLOAD_DIR"] = str((Path(self._tmp.name) / "support_uploads").resolve())
+        os.environ["WEBAPP_DEV_AUTH"] = "false"
+        os.environ["WEBAPP_DEV_TG_ID"] = ""
+        os.environ["WEBAPP_DEV_AUTH_PASSWORD"] = ""
 
         if "config" in sys.modules:
             importlib.reload(sys.modules["config"])
@@ -169,10 +175,75 @@ class ApiAuthAndTicketsTests(unittest.TestCase):
         finally:
             s.close()
 
+    def _enable_dev_auth(self, *, tg_id: int = 9999, password: str = "local-admin-pass") -> TestClient:
+        self.api.WEBAPP_DEV_AUTH = True
+        self.api.WEBAPP_DEV_TG_ID = int(tg_id)
+        self.api.WEBAPP_DEV_AUTH_PASSWORD = password
+        return TestClient(self.api.app, base_url="http://localhost")
+
     def test_admin_endpoint_requires_admin_guard(self) -> None:
         hdrs = {"X-Telegram-Init-Data": self._init_data(1001, "alice")}
         r = self.client.get("/api/admin/summary", headers=hdrs)
         self.assertEqual(r.status_code, 403)
+
+    def test_dev_web_login_is_disabled_by_default(self) -> None:
+        local_client = TestClient(self.api.app, base_url="http://localhost")
+        r = local_client.post("/api/auth/dev/web-login", json={"password": "local-admin-pass"})
+        self.assertIn(r.status_code, {403, 404})
+
+    def test_dev_web_login_rejects_non_local_requests(self) -> None:
+        self._enable_dev_auth()
+        remote_client = TestClient(self.api.app, base_url="https://api.pokrov.space")
+
+        r = remote_client.post("/api/auth/dev/web-login", json={"password": "local-admin-pass"})
+
+        self.assertIn(r.status_code, {403, 404})
+
+    def test_dev_web_login_rejects_wrong_password_without_leaking_secret(self) -> None:
+        local_client = self._enable_dev_auth(password="local-admin-pass")
+
+        r = local_client.post("/api/auth/dev/web-login", json={"password": "wrong-pass"})
+
+        self.assertEqual(r.status_code, 401)
+        self.assertNotIn("local-admin-pass", r.text)
+        self.assertNotIn("wrong-pass", r.text)
+
+    def test_dev_auth_does_not_create_passwordless_local_session(self) -> None:
+        local_client = self._enable_dev_auth(password="local-admin-pass")
+
+        r = local_client.get("/api/auth/session")
+
+        self.assertEqual(r.status_code, 401)
+
+    def test_dev_web_login_requires_configured_admin_tg_id(self) -> None:
+        local_client = self._enable_dev_auth(tg_id=1001, password="local-admin-pass")
+
+        r = local_client.post("/api/auth/dev/web-login", json={"password": "local-admin-pass"})
+
+        self.assertEqual(r.status_code, 403)
+
+    def test_dev_web_login_issues_admin_web_session_token(self) -> None:
+        local_client = self._enable_dev_auth(password="local-admin-pass")
+
+        login = local_client.post("/api/auth/dev/web-login", json={"password": "local-admin-pass"})
+
+        self.assertEqual(login.status_code, 200, login.text)
+        body = login.json()
+        self.assertEqual(body["ok"], True)
+        self.assertIsInstance(body["token"], str)
+        self.assertGreater(len(body["token"]), 40)
+        self.assertEqual(body["user"], {"id": 9999, "username": "dev_admin"})
+        self.assertEqual(int(body["expires_in"]), int(self.api.SESSION_TTL_SECONDS))
+
+        session = local_client.get("/api/auth/session", headers={"Authorization": f"Bearer {body['token']}"})
+        self.assertEqual(session.status_code, 200, session.text)
+        session_user = session.json()["user"]
+        self.assertEqual(session_user["id"], 9999)
+        self.assertEqual(session_user["auth_type"], "dev")
+        self.assertEqual(session_user["auth_origin"], "dev")
+
+        admin = local_client.get("/api/admin/summary", headers={"Authorization": f"Bearer {body['token']}"})
+        self.assertEqual(admin.status_code, 200, admin.text)
 
     def test_admin_users_supports_effective_status_origin_and_extended_search(self) -> None:
         from db import SessionLocal

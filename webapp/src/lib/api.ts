@@ -5,10 +5,31 @@ import { getInitData } from "./telegram";
 const WEB_SESSION_TOKEN_KEY = "portal_web_session_token";
 const DIRECT_API_BASE = "https://api.pokrov.space";
 const DEFAULT_API_TIMEOUT_MS = 15000;
+const STABLE_API_CACHE_TTL_MS = 30000;
 const NODE_STATUS_CACHE_TTL_MS = 30000;
 let authSessionCacheKey = "";
 let authSessionCacheValue: AuthSessionPayload | null = null;
 let authSessionCachePromise: Promise<AuthSessionPayload> | null = null;
+
+type StableApiCacheEntry<T> = {
+  data: T | null;
+  expiresAt: number;
+  promise: Promise<T> | null;
+};
+
+function createStableApiCache<T>(): StableApiCacheEntry<T> {
+  return {
+    data: null,
+    expiresAt: 0,
+    promise: null,
+  };
+}
+
+const dashboardCache = createStableApiCache<DashboardSnapshot>();
+const publicPlansCache = createStableApiCache<PublicPlansPayload>();
+const publicCatalogCache = createStableApiCache<PublicCatalogPayload>();
+const clientAppsCache = createStableApiCache<ClientAppsPayload>();
+const userPayloadCaches = new Map<string, StableApiCacheEntry<UserPayload>>();
 
 export type NodeInfo = {
   code: string;
@@ -924,6 +945,11 @@ type ApiRequestInit = RequestInit & {
   timeoutMs?: number;
 };
 
+type StableCacheRequestInit = ApiRequestInit & {
+  cacheTtlMs?: number;
+  forceRefresh?: boolean;
+};
+
 type NodeStatusRequestInit = ApiRequestInit & {
   cacheTtlMs?: number;
   forceRefresh?: boolean;
@@ -1238,6 +1264,10 @@ function clearAuthSessionCache(): void {
   authSessionCacheKey = "";
   authSessionCacheValue = null;
   authSessionCachePromise = null;
+  dashboardCache.data = null;
+  dashboardCache.expiresAt = 0;
+  dashboardCache.promise = null;
+  userPayloadCaches.clear();
 }
 
 function getAuthSessionCacheKey(): string {
@@ -1465,6 +1495,40 @@ function withAbortSignal<T>(promise: Promise<T>, signal?: AbortSignal | null): P
   });
 }
 
+function readStableApiCache<T>(
+  cache: StableApiCacheEntry<T>,
+  loader: () => Promise<T>,
+  init?: StableCacheRequestInit,
+): Promise<T> {
+  const { cacheTtlMs = STABLE_API_CACHE_TTL_MS, forceRefresh = false, signal } = init || {};
+  const now = Date.now();
+  if (!forceRefresh && cache.data && cache.expiresAt > now) {
+    return Promise.resolve(cache.data);
+  }
+  if (!forceRefresh && cache.promise) {
+    return withAbortSignal(cache.promise, signal);
+  }
+  const request = loader()
+    .then((data) => {
+      cache.data = data;
+      cache.expiresAt = Date.now() + Math.max(0, cacheTtlMs);
+      return data;
+    })
+    .finally(() => {
+      if (cache.promise === request) {
+        cache.promise = null;
+      }
+    });
+  cache.promise = request;
+  return withAbortSignal(request, signal);
+}
+
+function stableCacheApiInit(init?: StableCacheRequestInit): ApiRequestInit | undefined {
+  if (!init) return undefined;
+  const { cacheTtlMs: _cacheTtlMs, forceRefresh: _forceRefresh, ...requestInit } = init;
+  return requestInit;
+}
+
 const nodeStatusCache: {
   data: NodeStatus[] | null;
   expiresAt: number;
@@ -1563,16 +1627,22 @@ async function apiFetch<T>(path: string, init?: ApiRequestInit): Promise<T> {
   throw lastErr || new Error("API error");
 }
 
-export function fetchUser(tgId: number): Promise<UserPayload> {
-  return apiFetch<UserPayload>(`/api/user/${tgId}`);
+export function fetchUser(tgId: number, init?: StableCacheRequestInit): Promise<UserPayload> {
+  const cacheKey = String(tgId);
+  let cache = userPayloadCaches.get(cacheKey);
+  if (!cache) {
+    cache = createStableApiCache<UserPayload>();
+    userPayloadCaches.set(cacheKey, cache);
+  }
+  return readStableApiCache(cache, () => apiFetch<UserPayload>(`/api/user/${tgId}`, stableCacheApiInit(init)), init);
 }
 
-export function fetchPublicPlans(): Promise<PublicPlansPayload> {
-  return apiFetch<PublicPlansPayload>("/api/public/plans");
+export function fetchPublicPlans(init?: StableCacheRequestInit): Promise<PublicPlansPayload> {
+  return readStableApiCache(publicPlansCache, () => apiFetch<PublicPlansPayload>("/api/public/plans", stableCacheApiInit(init)), init);
 }
 
-export function fetchPublicCatalog(): Promise<PublicCatalogPayload> {
-  return apiFetch<PublicCatalogPayload>("/api/public/catalog");
+export function fetchPublicCatalog(init?: StableCacheRequestInit): Promise<PublicCatalogPayload> {
+  return readStableApiCache(publicCatalogCache, () => apiFetch<PublicCatalogPayload>("/api/public/catalog", stableCacheApiInit(init)), init);
 }
 
 export async function fetchPublicLiveUpdates(limit = 3): Promise<LiveUpdateRow[]> {
@@ -1580,8 +1650,8 @@ export async function fetchPublicLiveUpdates(limit = 3): Promise<LiveUpdateRow[]
   return data.updates || [];
 }
 
-export function fetchDashboard(): Promise<DashboardSnapshot> {
-  return apiFetch<DashboardSnapshot>("/api/dashboard");
+export function fetchDashboard(init?: StableCacheRequestInit): Promise<DashboardSnapshot> {
+  return readStableApiCache(dashboardCache, () => apiFetch<DashboardSnapshot>("/api/dashboard", stableCacheApiInit(init)), init);
 }
 
 export async function fetchNodeStatus(init?: NodeStatusRequestInit): Promise<NodeStatus[]> {
@@ -1611,8 +1681,8 @@ export async function fetchNodeStatus(init?: NodeStatusRequestInit): Promise<Nod
   return withAbortSignal(requestPromise, signal);
 }
 
-export function fetchClientApps(): Promise<ClientAppsPayload> {
-  return apiFetch<ClientAppsPayload>("/api/client/apps");
+export function fetchClientApps(init?: StableCacheRequestInit): Promise<ClientAppsPayload> {
+  return readStableApiCache(clientAppsCache, () => apiFetch<ClientAppsPayload>("/api/client/apps", stableCacheApiInit(init)), init);
 }
 
 export function runNodeDiagnostics(): Promise<{
