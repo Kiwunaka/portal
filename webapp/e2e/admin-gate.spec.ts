@@ -836,8 +836,8 @@ test.describe("Admin gate", () => {
 
     await expect(page).toHaveURL(/\/admin\/dashboard\/?$/);
     await expect(page.getByRole("heading", { name: "Войдите снова, чтобы открыть админку" })).toBeVisible();
-    await expect(page.getByRole("textbox", { name: "Пароль из локального dev env" })).toBeVisible();
-    await expect(page.getByRole("button", { name: "Войти локально" })).toBeVisible();
+    await expect(page.getByRole("textbox", { name: "Введите локальный пароль" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Войти в админку" })).toBeVisible();
     await expect(page.getByRole("navigation", { name: "Admin sections" })).toBeHidden();
   });
 

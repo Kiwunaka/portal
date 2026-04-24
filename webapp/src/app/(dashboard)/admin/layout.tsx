@@ -62,21 +62,21 @@ function LocalDevAdminLogin() {
 
   return (
     <form onSubmit={submit} className="mt-6 rounded-[0.9rem] border border-[#b8ded1] bg-[#f8fffc] p-4">
-      <p className="text-sm font-semibold text-slate-950">Локальный вход для разработки</p>
+      <p className="text-sm font-semibold text-slate-950">Вход без Telegram</p>
       <p className="mt-1 text-xs leading-5 text-slate-600">
-        Работает только на локальном API, если включен пароль оператора. Без ответа API сессия не создается.
+        Для локальной проверки админки. В обычном режиме этот способ выключен.
       </p>
-      <div className="mt-3 flex flex-col gap-2 sm:flex-row">
+      <div className="mt-3 grid gap-2 sm:grid-cols-[minmax(0,1fr)_auto]">
         <input
           className={adminFieldClass}
           type="password"
           autoComplete="current-password"
           value={password}
           onChange={(event) => setPassword(event.target.value)}
-          placeholder="Пароль из локального dev env"
+          placeholder="Введите локальный пароль"
         />
-        <button type="submit" className={adminButtonClass("primary", "sm")} disabled={busy || !password.trim()}>
-          {busy ? "Проверяем..." : "Войти локально"}
+        <button type="submit" className={`${adminButtonClass("primary", "sm")} whitespace-nowrap`} disabled={busy || !password.trim()}>
+          {busy ? "Проверяем..." : "Войти в админку"}
         </button>
       </div>
       {error ? <p className="mt-2 text-xs leading-5 text-rose-700">{error}</p> : null}
