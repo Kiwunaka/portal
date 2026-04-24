@@ -36,6 +36,7 @@ const dashboardCache = createStableApiCache<DashboardSnapshot>();
 const publicPlansCache = createStableApiCache<PublicPlansPayload>();
 const publicCatalogCache = createStableApiCache<PublicCatalogPayload>();
 const clientAppsCache = createStableApiCache<ClientAppsPayload>();
+const adminSummaryCache = createStableApiCache<AdminSummaryPayload>();
 const userPayloadCaches = new Map<string, StableApiCacheEntry<UserPayload>>();
 const apiBaseHealth = new Map<string, ApiBaseHealth>();
 
@@ -1681,9 +1682,24 @@ function readStableApiCache<T>(
   if (!forceRefresh && cache.data && cache.expiresAt > now) {
     return Promise.resolve(cache.data);
   }
+  if (!forceRefresh && cache.data) {
+    if (!cache.promise) {
+      void refreshStableApiCache(cache, loader, cacheTtlMs).catch(() => undefined);
+    }
+    return Promise.resolve(cache.data);
+  }
   if (!forceRefresh && cache.promise) {
     return withAbortSignal(cache.promise, signal);
   }
+  const request = refreshStableApiCache(cache, loader, cacheTtlMs);
+  return withAbortSignal(request, signal);
+}
+
+function refreshStableApiCache<T>(
+  cache: StableApiCacheEntry<T>,
+  loader: () => Promise<T>,
+  cacheTtlMs: number,
+): Promise<T> {
   const request = loader()
     .then((data) => {
       cache.data = data;
@@ -1696,7 +1712,7 @@ function readStableApiCache<T>(
       }
     });
   cache.promise = request;
-  return withAbortSignal(request, signal);
+  return request;
 }
 
 function stableCacheApiInit(init?: StableCacheRequestInit): ApiRequestInit | undefined {
@@ -2591,8 +2607,11 @@ function normalizeAdminUserCard(payload: Partial<AdminUserCard> | null | undefin
 }
 
 export async function adminSummary(): Promise<AdminSummaryPayload> {
-  const data = await apiFetch<Partial<AdminSummaryPayload>>("/api/admin/summary");
-  return normalizeAdminSummaryPayload(data);
+  return readStableApiCache(
+    adminSummaryCache,
+    () => apiFetch<Partial<AdminSummaryPayload>>("/api/admin/summary").then((data) => normalizeAdminSummaryPayload(data)),
+    { cacheTtlMs: 10000 },
+  );
 }
 
 export async function adminUsers(params: AdminUsersQuery = {}): Promise<AdminUsersResponse> {

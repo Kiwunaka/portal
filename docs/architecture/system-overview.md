@@ -50,6 +50,8 @@ Reference-lane note:
   FastAPI backend for health checks, app-first session bootstrap, payments, bonuses, tickets, public data, public reviews, and admin APIs.
 - `portal_bot/app_first_service.py`
   Bounded app-first/session helper used by the API for trial bootstrap, session payload shaping, and Telegram link start context.
+- `portal_bot/device_service.py`
+  Bounded multi-device helper for install-scoped device rows, legacy app-field backfill, safe device payloads, rename/revoke operations, current-device markers, and device-limit status.
 - `portal_bot/web_auth_service.py`
   Bounded browser-auth helper used for Telegram web login, additive email verification/recovery, session issuance, and checkout handoff tokens.
 - `portal_bot/channel_bonus_service.py`
@@ -131,6 +133,19 @@ Admin ownership rule:
 - Telegram admin in `portal_bot/bot.py` is fallback/emergency tooling and must follow the same user-status semantics as web admin
 - `/api/admin/summary` is the operator truth snapshot for entitlement counts, install-backed activity, observer-backed activity, and data-quality status badges
 - web-session-only admin is the rule for production UI: local development admin access must still start from a real browser session token; mock admin data in Playwright may seed that token, but UI code must not add a bypass route that opens `/admin/*` without the normal cabinet session check
+
+Admin API truth as of `2026-04-24` is the route inventory in `portal_bot/api.py`, not a separate admin spreadsheet or Telegram-only command list.
+The authenticated web admin should group those routes into these operator areas:
+
+- `People`: `/api/admin/summary`, `/api/admin/users`, user detail, manual test-user creation, manual extend/block, safe manual/test deletion, key history, key limits, risk, loyalty, presets, and bulk key actions
+- `Access`: `/api/admin/access-keys/issue`, `/api/admin/gift-codes`, `/api/admin/promos`, `/api/admin/plans`, wheel config, campaign links, campaigns, templates, and start links
+- `Payments`: checkout-provider readiness and payment state remain exposed through the payment/order API family, while admin-visible plan, promo, and access-key routes remain under `/api/admin/*`
+- `Network`: `/api/admin/nodes/health`, `/api/admin/nodes/drift`, node sync, drain, enable, disable, resync, per-user key toggles, traffic reset, and transport rollout config
+- `Diagnostics`: `/api/admin/metrics/status`, `/api/admin/nodes/traffic`, `/api/admin/metrics/timeseries`, audit log, observer-derived status, and data-quality badges
+- `Messaging`: user message, broadcast, live updates, templates, campaigns, referrals, and public start-link generation
+- `Feedback`: `/api/admin/tickets`, ticket reply/status, public review moderation, promo slots, and feedback/review publication controls
+
+Admin routes may expose raw identifiers, node fields, personal connection URLs, transport names, and diagnostic errors only inside authenticated operator context. Those same terms must not leak into marketing, cabinet first layer, app first layer, bot onboarding, or public support copy.
 
 Final-polish release boundary:
 
@@ -482,10 +497,11 @@ Current public payload rules:
 
 - `/api/public/catalog` exposes capability status for email auth and trial-key readiness so UI can show `soon`, `available`, or disabled states without guessing
 - public trial-key issue returns user-safe statuses only: `issued`, `limited`, or `unavailable`; the soft limit is one practical key per browser/IP period and it uses the same access-key machinery as paid activation keys
-- `/api/payments/orders/status-public` is a guest-safe checkout continuation surface and exposes activation-key handoff after payment without changing provider callback contracts
+- `/api/payments/orders/status-public` is a guest-safe checkout continuation surface and exposes `fulfillment_mode`, `issued_key_state`, `redeem_state`, `next_action`, and activation-key handoff after payment without changing provider callback contracts
+- `GET /api/access-keys/status/{key}` is public-safe and must not expose internal creator or redeemer identifiers; authenticated admin key-status endpoints may expose those identifiers for operator diagnosis
 - `/api/client/apps` must report platform `status`, `version_label`, `preferred_action`, `artifact_updated_at`, and `release_blockers`; missing or blocked artifacts stay explicit and must not be replaced by fake URLs
 - `/api/client/route-policy` exposes selected-app scan capabilities and rejects invalid `route_mode` values with `400` instead of silently normalizing them
-- consumer `/api/user/*` payloads should expose safe summaries and avoid raw `host`, `port`, `last_ip`, and personal `subscription_url` leakage; admin diagnostics may still receive those raw fields through authenticated admin context
+- consumer `/api/user/*` and `/api/nodes/status` payloads should expose safe summaries and avoid raw `host`, `port`, `last_ip`, public IP, and personal `subscription_url` leakage; admin diagnostics may still receive those raw fields through authenticated admin context
 
 Public feed and proof payload rule:
 

@@ -46,6 +46,25 @@ function weightsToText(weights: Array<{ days: number; weight: number }>): string
   return (weights || []).map((row) => `${row.days}:${row.weight}`).join("\n");
 }
 
+function parseLoyaltyRows(input: string): Array<{ days: number; bonus_days: number; perk: string }> {
+  return input
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .map((line) => {
+      const [daysRaw, bonusRaw, ...perkRaw] = line.split(":");
+      return {
+        days: Number(daysRaw || 0),
+        bonus_days: Number(bonusRaw || 0),
+        perk: perkRaw.join(":").trim(),
+      };
+    });
+}
+
+function loyaltyRowsToText(rows: Array<{ days: number; bonus_days: number; perk: string }>): string {
+  return rows.map((row) => `${row.days}:${row.bonus_days}:${row.perk}`).join("\n");
+}
+
 export default function AdminBonusesPage() {
   const [config, setConfig] = useState<AdminWheelConfig | null>(null);
   const [loyaltyConfig, setLoyaltyConfig] = useState<AdminLoyaltyConfig | null>(null);
@@ -162,6 +181,18 @@ export default function AdminBonusesPage() {
     }
   }, [weightsText]);
 
+  const loyaltyRows = useMemo(() => parseLoyaltyRows(loyaltyText), [loyaltyText]);
+  const updateWeightRow = (index: number, patch: Partial<{ days: number; weight: number }>) => {
+    const rows = weightBars.length ? weightBars.map(({ days, weight }) => ({ days, weight })) : [{ days: 1, weight: 1 }];
+    rows[index] = { ...rows[index], ...patch };
+    setWeightsText(weightsToText(rows));
+  };
+  const updateLoyaltyRow = (index: number, patch: Partial<{ days: number; bonus_days: number; perk: string }>) => {
+    const rows = loyaltyRows.length ? [...loyaltyRows] : [{ days: 30, bonus_days: 1, perk: "priority_support" }];
+    rows[index] = { ...rows[index], ...patch };
+    setLoyaltyText(loyaltyRowsToText(rows));
+  };
+
   return (
     <section className="space-y-4">
       <article className={adminPanelClass("neutral")}>
@@ -216,10 +247,29 @@ export default function AdminBonusesPage() {
                   />
                 </label>
               </div>
-              <label className="block text-xs text-slate-400">
-                Weights (days:weight)
-                <textarea rows={7} value={weightsText} onChange={(event) => setWeightsText(event.target.value)} className={`mt-1 font-mono text-xs ${adminTextAreaClass}`} placeholder={"1:45\n3:35\n7:15\n30:5"} />
-              </label>
+              <div className="space-y-2">
+                <div className="grid grid-cols-[0.7fr,0.7fr,auto] gap-2 text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-500">
+                  <span>Дней</span>
+                  <span>Вес</span>
+                  <span />
+                </div>
+                {(weightBars.length ? weightBars : [{ days: 1, weight: 1, pct: 100 }]).map((row, index) => (
+                  <div key={`${row.days}:${index}`} className="grid grid-cols-[0.7fr,0.7fr,auto] gap-2">
+                    <input type="number" min={1} value={row.days} onChange={(event) => updateWeightRow(index, { days: Number(event.target.value || 1) })} className={adminFieldClass} />
+                    <input type="number" min={1} value={row.weight} onChange={(event) => updateWeightRow(index, { weight: Number(event.target.value || 1) })} className={adminFieldClass} />
+                    <button className={adminButtonClass("ghost", "xs")} type="button" onClick={() => setWeightsText(weightsToText(weightBars.filter((_, itemIndex) => itemIndex !== index)))} disabled={weightBars.length <= 1}>
+                      Убрать
+                    </button>
+                  </div>
+                ))}
+                <button className={adminButtonClass("secondary", "xs")} type="button" onClick={() => setWeightsText(weightsToText([...(weightBars.length ? weightBars : []), { days: 14, weight: 10 }]))}>
+                  Добавить строку
+                </button>
+              </div>
+              <details className="rounded-xl border border-[#c6e6db] bg-[#f8fffc] p-3">
+                <summary className="cursor-pointer text-xs font-semibold text-slate-600">Исходные строки wheel</summary>
+                <textarea rows={5} value={weightsText} onChange={(event) => setWeightsText(event.target.value)} className={`mt-2 font-mono text-xs ${adminTextAreaClass}`} placeholder={"1:45\n3:35\n7:15\n30:5"} />
+              </details>
               <button className={adminButtonClass("primary")} type="button" onClick={() => setConfirm({ kind: "wheel", reason: "" })} disabled={busy}>
                 Сохранить колесо
               </button>
@@ -257,8 +307,31 @@ export default function AdminBonusesPage() {
             />
             Enabled
           </label>
-          <p className="mb-2 text-xs text-slate-500">Format: days:bonus_days:perk</p>
-          <textarea rows={7} value={loyaltyText} onChange={(event) => setLoyaltyText(event.target.value)} className={`font-mono text-xs ${adminTextAreaClass}`} placeholder={"30:1:priority_support\n90:3:fast_resync\n180:7:vip_queue"} />
+          <div className="space-y-2">
+            <div className="grid grid-cols-[0.6fr,0.6fr,minmax(0,1fr),auto] gap-2 text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-500">
+              <span>Дней</span>
+              <span>Бонус</span>
+              <span>Перк</span>
+              <span />
+            </div>
+            {(loyaltyRows.length ? loyaltyRows : [{ days: 30, bonus_days: 1, perk: "priority_support" }]).map((row, index) => (
+              <div key={`${row.days}:${index}`} className="grid grid-cols-[0.6fr,0.6fr,minmax(0,1fr),auto] gap-2">
+                <input type="number" min={1} value={row.days} onChange={(event) => updateLoyaltyRow(index, { days: Number(event.target.value || 1) })} className={adminFieldClass} />
+                <input type="number" min={0} value={row.bonus_days} onChange={(event) => updateLoyaltyRow(index, { bonus_days: Number(event.target.value || 0) })} className={adminFieldClass} />
+                <input value={row.perk} onChange={(event) => updateLoyaltyRow(index, { perk: event.target.value })} className={adminFieldClass} />
+                <button className={adminButtonClass("ghost", "xs")} type="button" onClick={() => setLoyaltyText(loyaltyRowsToText(loyaltyRows.filter((_, itemIndex) => itemIndex !== index)))} disabled={loyaltyRows.length <= 1}>
+                  Убрать
+                </button>
+              </div>
+            ))}
+            <button className={adminButtonClass("secondary", "xs")} type="button" onClick={() => setLoyaltyText(loyaltyRowsToText([...(loyaltyRows.length ? loyaltyRows : []), { days: 180, bonus_days: 7, perk: "vip_queue" }]))}>
+              Добавить уровень
+            </button>
+          </div>
+          <details className="mt-3 rounded-xl border border-[#c6e6db] bg-[#f8fffc] p-3">
+            <summary className="cursor-pointer text-xs font-semibold text-slate-600">Исходные строки loyalty</summary>
+            <textarea rows={5} value={loyaltyText} onChange={(event) => setLoyaltyText(event.target.value)} className={`mt-2 font-mono text-xs ${adminTextAreaClass}`} placeholder={"30:1:priority_support\n90:3:fast_resync\n180:7:vip_queue"} />
+          </details>
           <button className={`${adminButtonClass("secondary")} mt-3`} type="button" onClick={() => setConfirm({ kind: "loyalty", reason: "" })} disabled={busy}>
             Сохранить лояльность
           </button>

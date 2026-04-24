@@ -12,6 +12,7 @@ from free_cycle_service import mark_user_became_free
 from models import StartLink, User
 from network_rollout import resolved_client_policy
 from public_urls import build_subscription_url
+import device_service
 
 ROUTE_MODE_ALL_TRAFFIC = "all_traffic"
 ROUTE_MODE_SELECTED_APPS = "selected_apps"
@@ -317,6 +318,13 @@ def upsert_app_trial_user(
             user.route_requires_elevated_privileges = _default_route_requires_elevated_privileges(user)
         s.flush()
 
+    device_service.upsert_current_device(
+        s,
+        user=user,
+        payload=payload,
+        now=now,
+        request_client_ip=client_ip,
+    )
     return user, created
 
 

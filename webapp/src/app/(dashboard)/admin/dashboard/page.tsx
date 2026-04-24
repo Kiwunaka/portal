@@ -75,6 +75,15 @@ function nodeScoreTone(score: number): "success" | "warning" | "danger" {
   return "danger";
 }
 
+function actionHref(title: string): string {
+  const value = title.toLowerCase();
+  if (value.includes("node") || value.includes("узл") || value.includes("metrics")) return "/admin/nodes";
+  if (value.includes("payment")) return "/admin/promos";
+  if (value.includes("support")) return "/admin/tickets";
+  if (value.includes("recovery") || value.includes("восстанов")) return "/admin/users";
+  return "/admin/dashboard";
+}
+
 function MiniBars({ values, tone = "emerald" }: { values: number[]; tone?: "emerald" | "rose" | "slate" }) {
   if (!values.length) return null;
   const max = Math.max(...values, 1);
@@ -141,9 +150,9 @@ export default function AdminDashboardPage() {
     if (!summary) return [];
     const next = [
       summary.errors.stale_metrics ? { title: "Metrics are stale", body: `Last sample: ${fmtRuDate(metrics?.last_sample_at)} · age ${formatShortAge(metrics?.age_seconds)}.`, tone: "warning" as const } : null,
-      Number(summary.errors.unhealthy_nodes || 0) > 0 ? { title: "Node health risk", body: `${summary.errors.unhealthy_nodes} node(s) require review.`, tone: "danger" as const } : null,
+      Number(summary.errors.unhealthy_nodes || 0) > 0 ? { title: "Риск по узлам", body: `${summary.errors.unhealthy_nodes} узл. требуют проверки.`, tone: "danger" as const } : null,
       Number(summary.errors.payment_callback_failures_24h || 0) > 0 ? { title: "Payment callback failures", body: `${summary.errors.payment_callback_failures_24h} failure(s) in 24h.`, tone: "warning" as const } : null,
-      Number(summary.errors.subscription_numeric_fallbacks_24h || 0) > 0 ? { title: "Проверка ссылки подключения", body: `${summary.errors.subscription_numeric_fallbacks_24h} recovery lookup(s) за 24 часа.`, tone: "warning" as const } : null,
+      Number(summary.errors.subscription_numeric_fallbacks_24h || 0) > 0 ? { title: "Проверки восстановления", body: `${summary.errors.subscription_numeric_fallbacks_24h} проверок восстановления за 24 часа.`, tone: "warning" as const } : null,
       summary.resilience.single_point_risk ? { title: "Single point risk", body: "Review node reserve and control-plane resilience before release work.", tone: "danger" as const } : null,
       Number(summary.tickets.open || 0) > 0 ? { title: "Support queue is not empty", body: `${summary.tickets.open} open ticket(s) need operator attention.`, tone: "accent" as const } : null,
     ].filter(Boolean) as Array<{ title: string; body: string; tone: "warning" | "danger" | "accent" }>;
@@ -180,7 +189,7 @@ export default function AdminDashboardPage() {
       <article className={adminPanelClass("neutral")}>
         <AdminSurfaceHeader
           title="Операторская сводка"
-          description="Старт смены: свежесть метрик, очереди, здоровье нод, последние пользователи и нагрузка поддержки."
+          description="Старт смены: свежесть метрик, очереди, здоровье узлов, последние пользователи и нагрузка поддержки."
           actions={
             <>
               <button type="button" onClick={() => void refresh()} className={adminButtonClass("secondary", "sm")}>Обновить</button>
@@ -191,7 +200,7 @@ export default function AdminDashboardPage() {
           meta={
             <>
               <AdminBadge tone={metrics?.status === "fresh" ? "success" : metrics?.status === "stale" ? "warning" : "danger"}>Метрики: {metricsLabel(metrics)}</AdminBadge>
-              <AdminBadge tone={summary.nodes.healthy === summary.nodes.total ? "success" : "warning"}>Ноды: {summary.nodes.healthy} / {summary.nodes.total}</AdminBadge>
+              <AdminBadge tone={summary.nodes.healthy === summary.nodes.total ? "success" : "warning"}>Узлы: {summary.nodes.healthy} / {summary.nodes.total}</AdminBadge>
               <AdminBadge tone={summary.tickets.open > 0 ? "warning" : "success"}>Открытые обращения: {summary.tickets.open}</AdminBadge>
             </>
           }
@@ -202,7 +211,7 @@ export default function AdminDashboardPage() {
         items={[
           { label: "пользователи", value: `${summary.users.active} / ${summary.users.total}`, hint: `Платные ${summary.users.paid} · бесплатные ${summary.users.free}` },
           { label: "обращения", value: summary.tickets.open, hint: "Открытые кейсы поддержки.", tone: summary.tickets.open ? "warning" : "success" },
-          { label: "здоровые ноды", value: `${summary.nodes.healthy} / ${summary.nodes.total}`, hint: metricsLabel(metrics), tone: summary.errors.unhealthy_nodes ? "warning" : "success" },
+          { label: "здоровые узлы", value: `${summary.nodes.healthy} / ${summary.nodes.total}`, hint: metricsLabel(metrics), tone: summary.errors.unhealthy_nodes ? "warning" : "success" },
           { label: "доход 7 дней", value: formatRub(totals.revenueRub), hint: `Регистрации ${totals.registrations} · отток ${totals.churn}` },
         ]}
       />
@@ -212,7 +221,7 @@ export default function AdminDashboardPage() {
           <AdminPanelHeader eyebrow="как читать" title="Как читать эту страницу" />
           <div className="space-y-2 text-sm text-slate-400">
             <div className={adminInsetPanelClass}>Сначала проверьте свежесть метрик и ошибки.</div>
-            <div className={adminInsetPanelClass}>Затем разберите пользователей, обращения и ноды с риском.</div>
+            <div className={adminInsetPanelClass}>Затем разберите пользователей, обращения и узлы с риском.</div>
             <div className={adminInsetPanelClass}>Ручные действия запускайте только после оценки затронутых пользователей.</div>
           </div>
         </article>
@@ -227,6 +236,26 @@ export default function AdminDashboardPage() {
                   <AdminBadge tone={item.tone}>{item.tone}</AdminBadge>
                 </div>
                 <p className="mt-2 text-xs leading-5 text-slate-400">{item.body}</p>
+              </div>
+            ))}
+          </div>
+        </article>
+
+        <article className={adminPanelClass("accent")}>
+          <AdminPanelHeader eyebrow="action queue" title="Очередь действий смены" />
+          <div className="space-y-2">
+            {alerts.map((item, index) => (
+              <div key={`${item.title}-${index}`} className={adminInsetPanelClass}>
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="text-sm font-semibold text-slate-100">{item.title}</p>
+                    <p className="mt-1 text-xs leading-5 text-slate-400">{item.body}</p>
+                  </div>
+                  <AdminBadge tone={item.tone}>{index + 1}</AdminBadge>
+                </div>
+                <AppRouteLink href={actionHref(item.title)} className={`${adminButtonClass("secondary", "xs")} mt-2`}>
+                  Открыть рабочий раздел
+                </AppRouteLink>
               </div>
             ))}
           </div>

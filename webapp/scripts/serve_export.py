@@ -9,6 +9,16 @@ from pathlib import Path
 from urllib.parse import unquote, urlsplit
 
 
+STATIC_REDIRECTS = {
+    "/dashboard/downloads": "/downloads/",
+    "/dashboard/downloads/": "/downloads/",
+    "/pricing": "/subscription/",
+    "/pricing/": "/subscription/",
+    "/statistics": "/dashboard/",
+    "/statistics/": "/dashboard/",
+}
+
+
 class ExportStaticHandler(SimpleHTTPRequestHandler):
     def __init__(self, *args, directory: str, **kwargs):
         self._export_directory = Path(directory).resolve()
@@ -52,6 +62,15 @@ class ExportStaticHandler(SimpleHTTPRequestHandler):
         return full_path.open("rb")
 
     def send_head(self):  # type: ignore[override]
+        request_path = unquote(urlsplit(self.path).path)
+        redirect_target = STATIC_REDIRECTS.get(request_path)
+        if redirect_target:
+            self.send_response(HTTPStatus.FOUND)
+            self.send_header("Location", redirect_target)
+            self.send_header("Content-Length", "0")
+            self.end_headers()
+            return None
+
         for candidate in self._normalized_candidates(self.path):
             handle = self._open_candidate(candidate)
             if handle is None:

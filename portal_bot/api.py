@@ -383,7 +383,7 @@ def _default_live_updates() -> list[dict[str, Any]]:
         {
             "id": 0,
             "title": "Новые точки подключения NL/PL",
-            "summary": "Обновили маршруты и короткие рекомендации по старту для актуальных клиентов.",
+            "summary": "Обновили стартовые шаги и короткие рекомендации для актуальных клиентов.",
             "date": "2026-02-14",
             "link": f"https://t.me/{channel}/1",
         },
@@ -614,6 +614,7 @@ def _build_freekassa_payment_url(
     plan_code: str,
     campaign: str,
     promo_code: str,
+    fulfillment_mode: str = "activation_key",
 ) -> str:
     shop = _fk_shop_by_source(source)
     merchant_id = str(shop.get("shop_id") or "").strip()
@@ -639,6 +640,7 @@ def _build_freekassa_payment_url(
         "us_tg_id": str(int(tg_id)),
         "us_plan_code": str(plan_code or "").strip().lower()[:32],
         "us_source": str(source or "site").strip().lower()[:16],
+        "us_fulfillment_mode": _order_fulfillment_mode(payload={"us_fulfillment_mode": fulfillment_mode}),
     }
     if campaign:
         params["us_campaign"] = _sanitize_deeplink_token(campaign, max_len=64, uppercase=False)
@@ -918,6 +920,10 @@ class FreekassaOrderActionOut(BaseModel):
     discount_applied: bool = False
     base_amount_rub: float | None = None
     discount_pct: int = 0
+    fulfillment_mode: str | None = None
+    issued_key_state: str | None = None
+    redeem_state: str | None = None
+    next_action: str | None = None
     activation_handoff: dict[str, Any] | None = None
 
 
@@ -1082,7 +1088,9 @@ class DashboardResponse(BaseModel):
 class NodeStatusResponse(BaseModel):
     code: str
     country: str
-    host: str
+    connect_host: str
+    location_label: str | None = None
+    route_category: str | None = None
     ping_ms: int | None
     port_open: bool
     dns_sni_status: str
@@ -1617,12 +1625,13 @@ def _access_key_meta_from_card_type(*, s, card_type: str) -> dict[str, Any] | No
     }
 
 
-def _access_key_status_payload(*, s, card: GiftCard) -> dict[str, Any]:
+def _access_key_status_payload(*, s, card: GiftCard, public_safe: bool = True) -> dict[str, Any]:
     meta = _access_key_meta_from_card_type(s=s, card_type=str(card.card_type or ""))
-    return {
+    redeemed = bool(card.redeemed_by is not None)
+    payload = {
         "key": str(card.code or "").strip(),
         "exists": True,
-        "redeemed": bool(card.redeemed_by is not None),
+        "redeemed": redeemed,
         "redeemed_at": _safe_iso(getattr(card, "redeemed_at", None)),
         "issued_at": _safe_iso(getattr(card, "created_at", None)),
         "plan": meta.get("plan") if meta else None,
@@ -1631,9 +1640,14 @@ def _access_key_status_payload(*, s, card: GiftCard) -> dict[str, Any]:
         "days": int(meta.get("days") or 0) if meta else 0,
         "device_limit": int(meta.get("device_limit") or 0) if meta else 0,
         "node_policy": meta.get("node_policy") if meta else None,
-        "created_by": int(card.created_by or 0) if getattr(card, "created_by", None) is not None else None,
-        "redeemed_by": int(card.redeemed_by or 0) if getattr(card, "redeemed_by", None) is not None else None,
+        "issued_key_state": "redeemed" if redeemed else "issued",
+        "redeem_state": "already_redeemed" if redeemed else "ready",
+        "next_action": "open_cabinet" if redeemed else "redeem_key",
     }
+    if not public_safe:
+        payload["created_by"] = int(card.created_by or 0) if getattr(card, "created_by", None) is not None else None
+        payload["redeemed_by"] = int(card.redeemed_by or 0) if getattr(card, "redeemed_by", None) is not None else None
+    return payload
 
 
 def _apply_access_key_to_user(*, user: User, meta: dict[str, Any], now: datetime) -> dict[str, Any]:
@@ -2098,7 +2112,21 @@ def _price_with_pending_discount(*, amount_rub: int, pending_pct: int | None) ->
     return max(1, discounted), pct
 
 
-def _activation_handoff_payload(*, status: str = "pending_payment") -> dict[str, Any]:
+def _activation_handoff_payload(
+    *,
+    status: str = "pending_payment",
+    mode: str = "activation_key",
+    activation_key: str | None = None,
+) -> dict[str, Any]:
+    normalized_mode = str(mode or "activation_key").strip().lower()
+    if normalized_mode == "direct_apply":
+        return {
+            "mode": "direct_apply",
+            "status": status,
+            "preferred_action": "open_cabinet" if status == "applied_to_account" else "wait_for_payment",
+            "dashboard_path": "/dashboard",
+            "logged_in_continuation": "direct_apply",
+        }
     return {
         "mode": "activation_key",
         "status": status,
@@ -2106,7 +2134,87 @@ def _activation_handoff_payload(*, status: str = "pending_payment") -> dict[str,
         "redeem_path": "/redeem",
         "status_path": "/api/access-keys/status/{key}",
         "logged_in_continuation": "direct_apply_available",
+        **({"activation_key": str(activation_key)} if activation_key else {}),
     }
+
+
+def _order_meta_json(row: ExternalOrder | None) -> dict[str, Any]:
+    if not row:
+        return {}
+    return _json_obj(getattr(row, "meta_json", None))
+
+
+def _order_request_meta(row: ExternalOrder | None) -> dict[str, Any]:
+    meta = _order_meta_json(row)
+    request_meta = meta.get("request") if isinstance(meta.get("request"), dict) else meta
+    return dict(request_meta or {})
+
+
+def _order_fulfillment_mode(*, row: ExternalOrder | None = None, payload: dict[str, Any] | None = None) -> str:
+    raw = _payload_value(payload or {}, "fulfillment_mode", "us_fulfillment_mode")
+    if not raw:
+        raw = str(_order_request_meta(row).get("fulfillment_mode") or "").strip()
+    if str(raw or "").strip().lower() == "direct_apply":
+        return "direct_apply"
+    if str(raw or "").strip().lower() == "activation_key":
+        return "activation_key"
+    if not row:
+        return "direct_apply"
+    if not _order_meta_json(row):
+        return "direct_apply"
+    return "activation_key"
+
+
+def _merge_order_meta(row: ExternalOrder | None, *, callback_payload: dict[str, Any] | None = None, updates: dict[str, Any] | None = None) -> str:
+    meta = _order_meta_json(row)
+    if callback_payload is not None:
+        meta["callback"] = callback_payload
+    if updates:
+        meta.update(updates)
+    return json.dumps(meta, ensure_ascii=False, separators=(",", ":"))[:4000]
+
+
+def _ensure_order_activation_key(
+    *,
+    s,
+    row: ExternalOrder,
+    plan_code: str,
+    actor_tg_id: int | None = None,
+) -> tuple[GiftCard | None, str]:
+    meta = _order_meta_json(row)
+    issued_meta = meta.get("issued_key") if isinstance(meta.get("issued_key"), dict) else {}
+    existing_code = str((issued_meta or {}).get("code") or "").strip().upper()
+    if existing_code:
+        existing = s.query(GiftCard).filter(func.upper(GiftCard.code) == existing_code).first()
+        if existing:
+            return existing, "issued"
+
+    normalized_plan = str(plan_code or getattr(row, "plan_code", "") or "1_month").strip().lower() or "1_month"
+    plan = _resolve_plan_config(s=s, code=normalized_plan)
+    if not plan:
+        normalized_plan = "1_month"
+    code = _generate_gift_code_for_admin(s)
+    card = GiftCard(
+        code=code,
+        card_type=normalized_plan,
+        created_by=int(actor_tg_id or 0),
+        created_at=_utcnow(),
+    )
+    s.add(card)
+    s.flush()
+    row.meta_json = _merge_order_meta(
+        row,
+        updates={
+            "fulfillment_mode": "activation_key",
+            "issued_key": {
+                "code": code,
+                "state": "issued",
+                "issued_at": _safe_iso(getattr(card, "created_at", None)),
+                "plan_code": normalized_plan,
+            },
+        },
+    )
+    return card, "issued"
 
 
 def _generate_gift_code_for_admin(s) -> str:
@@ -2562,11 +2670,17 @@ def _serialize_admin_user_row(
     status = _user_effective_status(user, now=current_now)
     origin = _user_origin(user)
     observer = _observer_snapshot_or_default(observer_snapshot)
+    access_policy = _build_access_policy(user=user, used_bytes=0, now=current_now)
+    app_last_seen = getattr(user, "app_last_seen_at", None)
+    app_quality = "ok" if app_last_seen and app_last_seen >= current_now - timedelta(days=7) else ("stale" if app_last_seen else "missing")
+    observer_quality = "ok" if observer.get("updated_at") else "missing"
     return {
         "tg_id": int(user.tg_id),
         "username": user.username,
         "display_name": getattr(user, "display_name", None),
         "sub_type": user.sub_type,
+        "current_plan_code": str(getattr(user, "current_plan_code", "") or "").strip() or None,
+        "access_state": str(access_policy.get("access_state") or ""),
         "is_active": bool(user.is_active),
         "effective_active": bool(status == "active"),
         "status": status,
@@ -2578,8 +2692,15 @@ def _serialize_admin_user_row(
         "linked_telegram_id": int(user.linked_telegram_id) if getattr(user, "linked_telegram_id", None) is not None else None,
         "linked_telegram_username": getattr(user, "linked_telegram_username", None),
         "app_install_id": getattr(user, "app_install_id", None),
+        "app_platform": getattr(user, "app_platform", None),
+        "app_version": getattr(user, "app_version", None),
+        "app_last_seen_at": _safe_iso(app_last_seen),
         "observer_state": observer["state"],
         "observer_updated_at": observer["updated_at"],
+        "data_quality": {
+            "app_install": app_quality,
+            "observer": observer_quality,
+        },
     }
 
 
@@ -3116,13 +3237,19 @@ def _upsert_external_order(
         row = ExternalOrder(provider=provider, order_id=order_id, created_at=_utcnow())
         s.add(row)
     row.tg_id = _safe_int(_payload_value(payload, "tg_id", "telegram_id", "user_id", "us_tg_id")) or row.tg_id
-    row.plan_code = _payload_value(payload, "plan_code", "tariff", "plan", "us_plan_code")
-    row.source = _payload_value(payload, "source", "checkout_source", "us_source")
-    row.campaign = _payload_value(payload, "campaign", "utm_campaign")
-    row.promo_code = _payload_value(payload, "promo_code", "coupon")
-    row.meta_json = json.dumps(payload, ensure_ascii=False, separators=(",", ":"))[:4000]
-    row.amount = _safe_float(_payload_value(payload, "amount", "sum", "amount_paid", "OutSum"))
-    row.currency = _payload_value(payload, "currency", "cur", "ccy") or "RUB"
+    row.plan_code = _payload_value(payload, "plan_code", "tariff", "plan", "us_plan_code") or row.plan_code
+    row.source = _payload_value(payload, "source", "checkout_source", "us_source") or row.source
+    row.campaign = _payload_value(payload, "campaign", "utm_campaign") or row.campaign
+    row.promo_code = _payload_value(payload, "promo_code", "coupon", "us_promo_code") or row.promo_code
+    row.meta_json = _merge_order_meta(
+        row,
+        callback_payload=payload,
+        updates={"fulfillment_mode": _order_fulfillment_mode(row=row, payload=payload)},
+    )
+    amount = _safe_float(_payload_value(payload, "amount", "sum", "amount_paid", "OutSum"))
+    if amount > 0:
+        row.amount = amount
+    row.currency = _payload_value(payload, "currency", "cur", "ccy") or row.currency or "RUB"
     row.status = status
     if mark_paid and not row.paid_at:
         row.paid_at = _utcnow()
@@ -3252,6 +3379,34 @@ def _apply_external_paid_order(*, provider: str, order_id: str, payload: dict[st
         if not plan_cfg:
             plan_code = "1_month"
         days = _rub_plan_days(plan_code)
+        fulfillment_mode = _order_fulfillment_mode(row=ext_order, payload=payload)
+        if fulfillment_mode == "activation_key":
+            if not ext_order:
+                ext_order = ExternalOrder(
+                    provider=str(provider),
+                    order_id=str(order_id or f"{provider}:key:{int(_utcnow().timestamp())}"),
+                    tg_id=tg_id,
+                    plan_code=plan_code,
+                    source=_payload_value(payload, "source", "checkout_source", "us_source") or "site",
+                    amount=_safe_float(_payload_value(payload, "amount", "sum", "amount_paid", "OutSum")),
+                    currency=_payload_value(payload, "currency", "cur", "ccy") or "RUB",
+                    status="paid",
+                    created_at=_utcnow(),
+                )
+                s.add(ext_order)
+                s.flush()
+            card, key_state = _ensure_order_activation_key(
+                s=s,
+                row=ext_order,
+                plan_code=plan_code,
+                actor_tg_id=0,
+            )
+            ext_order.status = "paid"
+            ext_order.paid_at = ext_order.paid_at or _utcnow()
+            ext_order.tg_id = ext_order.tg_id or tg_id
+            ext_order.plan_code = plan_code
+            s.commit()
+            return True, f"activation_key_{key_state}" if card else "activation_key_unavailable"
 
         user = s.query(User).filter(User.tg_id == int(tg_id)).first()
         if not user:
@@ -3596,7 +3751,68 @@ def _ticket_message_row(msg) -> dict[str, Any]:
     }
 
 
-def _ticket_row(ticket, messages: list | None = None) -> dict[str, Any]:
+def _mask_ip_hint(value: str | None) -> str | None:
+    raw = str(value or "").strip()
+    if not raw:
+        return None
+    try:
+        ip = ipaddress.ip_address(raw)
+        if ip.version == 4:
+            parts = raw.split(".")
+            if len(parts) == 4:
+                return ".".join(parts[:2] + ["x", "x"])
+        return f"{str(ip)[:8]}..."
+    except Exception:
+        return raw[:6] + "..." if len(raw) > 6 else raw
+
+
+def _safe_support_diagnostic_context(*, user: User | None) -> dict[str, Any]:
+    if not user:
+        return {}
+    selected_apps = app_first_service.normalize_selected_apps(getattr(user, "route_selected_apps_json", None))
+    access_policy = _build_access_policy(user=user, used_bytes=0)
+    return {
+        "app": {
+            "install_present": bool(str(getattr(user, "app_install_id", "") or "").strip()),
+            "device_name": str(getattr(user, "app_device_name", "") or "").strip() or None,
+            "platform": str(getattr(user, "app_platform", "") or "").strip() or None,
+            "app_version": str(getattr(user, "app_version", "") or "").strip() or None,
+            "last_seen_at": _safe_iso(getattr(user, "app_last_seen_at", None)),
+        },
+        "route": {
+            "mode": str(getattr(user, "route_mode", "") or "").strip() or app_first_service.ROUTE_MODE_ALL_TRAFFIC,
+            "selected_apps_count": int(len(selected_apps)),
+            "requires_elevated_privileges": bool(getattr(user, "route_requires_elevated_privileges", False)),
+        },
+        "access": {
+            "status": _user_effective_status(user),
+            "access_state": str(access_policy.get("access_state") or ""),
+            "sub_type": str(getattr(user, "sub_type", "") or "").strip() or None,
+            "current_plan_code": str(getattr(user, "current_plan_code", "") or "").strip() or None,
+            "expiry_at": _safe_iso(getattr(user, "expiry_at", None)),
+        },
+        "telegram": {
+            "linked": bool(getattr(user, "linked_telegram_id", None)),
+            "username": str(getattr(user, "linked_telegram_username", "") or "").strip() or None,
+        },
+        "network": {
+            "last_ip_hint": _mask_ip_hint(getattr(user, "app_last_ip", None)),
+        },
+    }
+
+
+def _support_diagnostic_context_for_ticket(ticket, *, s=None) -> dict[str, Any]:
+    own_session = s is None
+    session = s or SessionLocal()
+    try:
+        user = session.query(User).filter(User.tg_id == int(getattr(ticket, "user_tg_id", 0) or 0)).first()
+        return _safe_support_diagnostic_context(user=user)
+    finally:
+        if own_session:
+            session.close()
+
+
+def _ticket_row(ticket, messages: list | None = None, *, s=None) -> dict[str, Any]:
     rows = messages if messages is not None else []
     last_message = rows[-1] if rows else None
     return {
@@ -3609,6 +3825,7 @@ def _ticket_row(ticket, messages: list | None = None) -> dict[str, Any]:
         "created_at": _safe_iso(ticket.created_at),
         "updated_at": _safe_iso(ticket.updated_at),
         "closed_at": _safe_iso(ticket.closed_at),
+        "diagnostic_context": _support_diagnostic_context_for_ticket(ticket, s=s),
         "messages": [_ticket_message_row(m) for m in rows],
         "last_message_preview": ((last_message.body or "").strip()[:200] if last_message else ""),
     }
@@ -5486,6 +5703,7 @@ async def _rub_create_order_internal(
     promo_code: str = "",
     currency: str = "RUB",
     consume_pending_discount: bool = False,
+    fulfillment_mode: str = "activation_key",
 ) -> RubOrderActionOut:
     _ensure_checkout_runtime_ready()
     provider = _normalize_provider(provider)
@@ -5498,6 +5716,7 @@ async def _rub_create_order_internal(
         raise HTTPException(status_code=400, detail="Unsupported payment provider")
     if provider != "freekassa" and not provider_is_configured(provider):
         raise HTTPException(status_code=503, detail=f"{provider} is not configured")
+    fulfillment_mode = _order_fulfillment_mode(payload={"fulfillment_mode": fulfillment_mode})
     s = SessionLocal()
     try:
         plan = _resolve_plan_config(s=s, code=plan_code)
@@ -5548,6 +5767,7 @@ async def _rub_create_order_internal(
                     "plan_code": str(plan.get("code") or plan_code).strip().lower(),
                     "provider": provider,
                     "plan_label": plan_label,
+                    "fulfillment_mode": fulfillment_mode,
                     "pricing": {
                         "base_amount_rub": int(base_amount),
                         "final_amount_rub": int(final_amount),
@@ -5584,6 +5804,7 @@ async def _rub_create_order_internal(
         "campaign": campaign or "",
         "promo_code": effective_promo or "",
         "source": source,
+        "fulfillment_mode": fulfillment_mode,
         "discount_pct": int(discount_pct),
         "base_amount_rub": int(base_amount),
         "final_amount_rub": int(final_amount),
@@ -5600,6 +5821,7 @@ async def _rub_create_order_internal(
             plan_code=str(plan.get("code") or plan_code).strip().lower(),
             campaign=campaign or "",
             promo_code=effective_promo or "",
+            fulfillment_mode=fulfillment_mode,
         )
         remote_response: dict[str, Any] = {"payment_url": payment_url}
     else:
@@ -5622,6 +5844,7 @@ async def _rub_create_order_internal(
                 "source": source,
                 "campaign": campaign or "",
                 "promo_code": effective_promo or "",
+                "fulfillment_mode": fulfillment_mode,
             },
         )
         payment_url = str(payment.get("payment_url") or "").strip()
@@ -5636,6 +5859,7 @@ async def _rub_create_order_internal(
                 {
                     "request": req_data,
                     "response": {"payment_url": payment_url, "remote": remote_response},
+                    "fulfillment_mode": fulfillment_mode,
                     "pricing": {
                         "base_amount_rub": int(base_amount),
                         "final_amount_rub": int(final_amount),
@@ -5663,7 +5887,11 @@ async def _rub_create_order_internal(
         discount_applied=bool(discount_applied),
         base_amount_rub=float(base_amount),
         discount_pct=int(discount_pct),
-        activation_handoff=_activation_handoff_payload(status="pending_payment"),
+        fulfillment_mode=fulfillment_mode,
+        issued_key_state="pending_payment" if fulfillment_mode == "activation_key" else "not_applicable",
+        redeem_state="pending_payment" if fulfillment_mode == "activation_key" else "not_applicable",
+        next_action="wait_for_payment",
+        activation_handoff=_activation_handoff_payload(status="pending_payment", mode=fulfillment_mode),
     )
 
 
@@ -5698,6 +5926,7 @@ async def rub_order_create(
         promo_code=_sanitize_deeplink_token(payload.promo_code, max_len=20, uppercase=True),
         currency=(payload.currency or "RUB").strip().upper(),
         consume_pending_discount=False,
+        fulfillment_mode="direct_apply",
     )
 
 
@@ -5733,6 +5962,7 @@ async def rub_order_create_public(
         promo_code=promo_code,
         currency=(payload.currency or "RUB").strip().upper(),
         consume_pending_discount=False,
+        fulfillment_mode="activation_key",
     )
 
 
@@ -5761,13 +5991,62 @@ async def rub_order_status_public(
         if int(row.tg_id or 0) != ticket_tg_id:
             raise HTTPException(status_code=403, detail="Access denied")
         status = str(row.status or "pending").strip().lower() or "pending"
+        fulfillment_mode = _order_fulfillment_mode(row=row)
+        issued_key_state = "not_applicable"
+        redeem_state = "not_applicable"
+        next_action = "open_cabinet" if status == "paid" else "wait_for_payment"
+        activation_key = ""
+        handoff_status = "applied_to_account" if status == "paid" else "pending_payment"
+        if fulfillment_mode == "activation_key":
+            if status == "paid":
+                card, issued_key_state = _ensure_order_activation_key(
+                    s=s,
+                    row=row,
+                    plan_code=str(row.plan_code or "1_month"),
+                    actor_tg_id=0,
+                )
+                if card:
+                    activation_key = str(card.code or "").strip()
+                    redeemed = bool(card.redeemed_by is not None)
+                    redeem_state = "already_redeemed" if redeemed else "ready"
+                    next_action = "open_cabinet" if redeemed else "redeem_key"
+                    handoff_status = "key_redeemed" if redeemed else "key_issued"
+                    row.meta_json = _merge_order_meta(
+                        row,
+                        updates={
+                            "fulfillment_mode": "activation_key",
+                            "issued_key": {
+                                "code": activation_key,
+                                "state": issued_key_state,
+                                "issued_at": _safe_iso(getattr(card, "created_at", None)),
+                                "plan_code": str(row.plan_code or "1_month"),
+                            },
+                        },
+                    )
+                    s.commit()
+                else:
+                    issued_key_state = "unavailable"
+                    redeem_state = "unavailable"
+                    next_action = "contact_support"
+                    handoff_status = "key_unavailable"
+            else:
+                issued_key_state = "pending_payment"
+                redeem_state = "pending_payment"
+                next_action = "wait_for_payment"
+                handoff_status = "pending_payment"
         return {
             "ok": True,
             "provider": provider_code,
             "order_id": str(row.order_id or order_id),
             "status": status,
+            "fulfillment_mode": fulfillment_mode,
+            "issued_key_state": issued_key_state,
+            "redeem_state": redeem_state,
+            "next_action": next_action,
             "activation_handoff": _activation_handoff_payload(
-                status="applied_to_account" if status == "paid" else "pending_payment"
+                status=handoff_status,
+                mode=fulfillment_mode,
+                activation_key=activation_key or None,
             ),
         }
     finally:
@@ -6105,6 +6384,7 @@ def _build_admin_metrics_status_snapshot(*, s, now: datetime, stale_after_second
             "network_utilization_percent": _network_utilization_percent(
                 getattr(latest, "network_total_mbps", getattr(node, "network_total_mbps", 0.0))
             ),
+            "panel_latency_ms": getattr(latest, "panel_latency_ms", getattr(node, "panel_latency_ms", None)),
             "active_clients": int(getattr(latest, "active_clients", getattr(node, "active_clients", 0)) or 0),
             "observer_last_push_at": _safe_iso(getattr(node, "observer_last_push_at", None)),
             "observer_is_stale": bool(_observer_is_stale(node, now=now)),
@@ -6909,6 +7189,11 @@ async def nodes_status(request: Request, x_telegram_init_data: str = Header(defa
         if not user:
             raise HTTPException(status_code=404, detail="User not found")
         rows = _nodes_for_user(user, enabled_nodes(s), session=s)
+        client_policy = app_first_service.build_client_policy(
+            session=s,
+            user=user,
+            install_id=str(getattr(user, "app_install_id", "") or "").strip() or None,
+        )
         payload: list[dict[str, Any]] = []
         for n in rows:
             ping = _safe_ping(n)
@@ -6916,7 +7201,13 @@ async def nodes_status(request: Request, x_telegram_init_data: str = Header(defa
                 NodeStatusResponse(
                     code=str(getattr(n, "code", "")),
                     country=_node_country_name(str(getattr(n, "code", ""))),
-                    host=str(getattr(n, "host", "")),
+                    connect_host=public_connect_host(),
+                    location_label=_node_country_name(str(getattr(n, "code", ""))),
+                    route_category=(
+                        "selected_apps"
+                        if str(client_policy.get("route_mode") or "") == app_first_service.ROUTE_MODE_SELECTED_APPS
+                        else str(client_policy.get("routing_mode_default") or "all_except_ru")
+                    ),
                     ping_ms=ping,
                     port_open=bool(getattr(n, "is_healthy", True)),
                     dns_sni_status="ok" if bool(getattr(n, "is_healthy", True)) else "degraded",
@@ -7767,6 +8058,19 @@ async def admin_summary(request: Request, x_telegram_init_data: str = Header(def
             .limit(10)
             .all()
         )
+        metrics_nodes = list(metrics_status.get("nodes") or [])
+        stale_metrics_nodes = sum(1 for row in metrics_nodes if str(row.get("freshness_status") or row.get("status") or "") == "stale")
+        panel_latency_values = [
+            int(row.get("panel_latency_ms"))
+            for row in metrics_nodes
+            if row.get("panel_latency_ms") is not None
+        ]
+        avg_panel_latency_ms = (
+            int(round(sum(panel_latency_values) / len(panel_latency_values)))
+            if panel_latency_values
+            else None
+        )
+        paid_accounts = max(0, int(active_nonfree_accounts) - int(trial_accounts) - int(bonus_accounts))
         return {
             "actor_tg_id": actor,
             "users": {
@@ -7842,6 +8146,35 @@ async def admin_summary(request: Request, x_telegram_init_data: str = Header(def
                 "promo_denied": int(bonus_event_map.get("promo_redeem_denied", 0)),
                 "gift_redeemed": int(bonus_event_map.get("gift_redeemed", 0)),
                 "gift_denied": int(bonus_event_map.get("gift_redeem_denied", 0)),
+            },
+            "shift_cockpit": {
+                "paid_accounts": int(paid_accounts),
+                "trial_accounts": int(trial_accounts),
+                "bonus_accounts": int(bonus_accounts),
+                "open_tickets": int(open_tickets),
+                "installs": {
+                    "unique_24h": int(unique_install_ids_24h),
+                    "unique_7d": int(unique_install_ids_7d),
+                },
+                "observer": {
+                    "seen_accounts_24h": int(observer_seen_accounts_24h),
+                    "watch_users": int(observer_watch_users),
+                    "suspicious_users": int(observer_suspicious_users),
+                },
+                "data_quality": {
+                    "metrics": metrics_quality_status,
+                    "app_installs": app_installs_quality_status,
+                    "observer": observer_quality_status,
+                },
+                "node_health": {
+                    "total": int(total_nodes),
+                    "healthy": int(healthy_nodes),
+                    "unhealthy": max(0, int(total_nodes) - int(healthy_nodes)),
+                    "stale_metrics": int(stale_metrics_nodes),
+                },
+                "rtt": {
+                    "avg_panel_latency_ms": avg_panel_latency_ms,
+                },
             },
             "top_nodes": [
                 {
@@ -10234,6 +10567,25 @@ async def admin_access_keys_issue(payload: AdminAccessKeyIssueIn, request: Reque
     }
 
 
+@app.get("/api/admin/access-keys/status/{key}")
+async def admin_access_key_status(key: str, request: Request, x_telegram_init_data: str = Header(default="")) -> dict[str, Any]:
+    _require_admin(x_telegram_init_data, request=request)
+    code = str(key or "").strip().upper()
+    if not code:
+        raise HTTPException(status_code=400, detail="Access key is required")
+    s = SessionLocal()
+    try:
+        card = s.query(GiftCard).filter(func.upper(GiftCard.code) == code).first()
+        if not card:
+            raise HTTPException(status_code=404, detail="Access key not found")
+        payload = _access_key_status_payload(s=s, card=card, public_safe=False)
+        if payload.get("kind") == "unknown":
+            raise HTTPException(status_code=400, detail="Access key type is not supported")
+        return payload
+    finally:
+        s.close()
+
+
 @app.post("/api/admin/gift-codes")
 async def admin_gift_codes_create(payload: AdminGiftCodeCreateIn, request: Request, x_telegram_init_data: str = Header(default="")) -> dict:
     actor = int(_require_admin(x_telegram_init_data, request=request).get("id", 0))
@@ -11452,6 +11804,10 @@ def _serialize_admin_node(
     return {
         "code": n.code,
         "name": n.name,
+        "host": str(getattr(n, "host", "") or "") or None,
+        "vless_port": int(getattr(n, "vless_port", 0) or 0) or None,
+        "panel_base_url": str(getattr(n, "panel_base_url", "") or "") or None,
+        "panel_path": str(getattr(n, "panel_path", "") or "") or None,
         "enabled": bool(n.enabled),
         "accepting_new_clients": bool(getattr(n, "accepting_new_clients", True)),
         "is_draining": bool(getattr(n, "is_draining", False)),
@@ -11715,7 +12071,3 @@ if __name__ == "__main__":
     import uvicorn
 
     uvicorn.run(app, host="0.0.0.0", port=int(os.getenv("PORT", "2096")))
-
-
-
-

@@ -94,6 +94,15 @@ First-run route-mode choice:
 - the saved route-mode choice must remain editable later from a dedicated route-mode screen rather than only through hidden advanced settings
 - the first layer must stay free of raw protocol, runtime-core, local-control, hostname, port, and subscription-internal terms; these details belong in diagnostics, advanced settings, or admin/support context
 
+Final client MVP contract for the premium polish gate:
+
+- app entry: `Try free` calls `POST /api/client/session/start-trial`, receives the unified session/access/policy family, and then moves the user to route-mode choice before the first live connect
+- site or bot entry: trial-key issue and hosted checkout still redeem into the same app-first account model, not a parallel browser-only identity
+- device state: `install_id`, friendly device name, platform, app version, route mode, selected apps, and elevation requirement are the shared support model across app, cabinet, and admin
+- app IA: first layer remains `Подключение`, `Локации`, `Правила`, and `Профиль`; support, devices, tariffs, and settings stay nested under profile
+- selected-app scan MVP: Android stores package identifiers, Windows stores executable/process identifiers, and both round-trip through `route_mode`, `selected_apps`, and `route_policy.*`
+- public copy: app, cabinet, bot, and backend user-facing strings should say access key, app, cabinet, renewal, support, route mode, and location; raw profile/config, host, port, public IP, direct product `VPN` wording, and local-control terms are admin or diagnostics only
+
 Rollout note:
 
 - `AppSetting.network_rollout_config` resolves the transport profile for app-managed session and profile payloads
@@ -126,6 +135,8 @@ Important concepts:
 - device context supports diagnostics and abuse control
 - app session token is used for subsequent app API calls
 - Telegram is optional and not required for account creation
+- backend device truth lives in `app_devices`, with one row per `install_id` linked to the app-first account
+- legacy `users.app_*` fields remain only as a compatibility snapshot of the latest/current app device until every caller moves to the device service
 
 ## Preferred Device Identity Inputs
 
@@ -138,6 +149,16 @@ Important concepts:
 - `last_ip`
 
 This supports a friendlier device model than a Telegram-only account design.
+
+Multi-device contract:
+
+- `portal_bot/device_service.py` owns device upsert, list, rename, revoke, legacy backfill, and device-limit status helpers
+- public device rows use the client-owned `install_id` as the external device identifier and must not expose database row IDs, `tg_id`, `sub_token`, raw config data, or `last_ip`
+- public device rows may expose safe diagnostics: display name, reported device name, platform, OS version, app version, last seen time, route mode, selected-app identifiers, elevated-rights requirement, revoked state, and current-device marker
+- `is_current` is request-scoped and resolved from the caller's current `install_id`; it is not a global account flag
+- `display_name` is the user-editable label; `device_name` remains the last reported client device name
+- revocation marks a device row revoked without deleting retained support context
+- free, trial, and bonus access use the single-device policy; paid access resolves the active plan device limit and defaults to `5` when no plan row is available
 
 ## Username Sync Semantics
 
@@ -259,6 +280,8 @@ Checkout rule:
 - Telegram bot billing remains valid as a secondary path
 - hybrid paid flow means hosted checkout sells activation keys, cabinet/app redeem refreshes the same account, and Telegram billing stays a secondary compatibility lane
 - payment provider callbacks remain the source of payment truth; public status endpoints only summarize safe continuation state and activation handoff
+- public order status carries `fulfillment_mode`, `issued_key_state`, `redeem_state`, and `next_action`; public guest success issues an activation key, while logged-in renewal can still use `direct_apply`
+- public access-key status hides internal `created_by` and `redeemed_by` identifiers; admin key-status views can show those IDs after admin authentication
 - raw subscription links remain recovery/manual-request only and must stay hidden from the default commerce UX
 
 ## Subscription Delivery Semantics
@@ -291,6 +314,7 @@ Contract rule:
 - app-first support may start from prepared context even before a live thread exists
 - web and cabinet support must be documented as a real ticket lifecycle, not as decorative form state
 - attachment-capable ticket flows belong to authenticated browser and admin paths today
+- ticket rows include safe diagnostic context such as app platform/version, route mode, selected-app count, access state, Telegram-link presence, and masked recent-IP hints; they must not include subscription tokens, raw configs, or personal connection URLs
 - client UX must not promise a realtime in-app chat when the backed contract is asynchronous ticketing
 
 ## Telegram Linking Flow

@@ -273,7 +273,7 @@ export default function AdminPromosPage() {
         </article>
 
         <article className={adminPanelClass("neutral")}>
-          <AdminPanelHeader eyebrow="recovery" title="Проверка ключа доступа" description="Для recovery и fraud-проверок без раскрытия raw-ссылок подключения." />
+          <AdminPanelHeader eyebrow="recovery" title="Проверка ключа доступа" description="Для проверок восстановления и fraud-проверок без раскрытия исходных ссылок подключения." />
           <div className="flex flex-col gap-3 sm:flex-row">
             <input value={lookupKey} onChange={(event) => setLookupKey(normalizeKey(event.target.value))} placeholder="POKROV-XXXX-XXXX" className={adminFieldClass} />
             <button type="button" onClick={() => void lookupAccessKey()} disabled={lookupBusy} className={adminButtonClass("secondary")}>

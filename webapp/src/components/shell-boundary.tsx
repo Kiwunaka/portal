@@ -94,7 +94,7 @@ export function ShellBoundary({
               <SectionHeader
                 eyebrow="recovery"
                 title="Что делать дальше"
-                description="Эти шаги помогут вернуться в рабочий маршрут без лишней суеты."
+                description="Эти шаги помогут вернуться к рабочему подключению без лишней суеты."
               />
               <Timeline
                 className="mt-5"

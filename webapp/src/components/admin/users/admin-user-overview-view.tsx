@@ -25,11 +25,11 @@ export function AdminUserOverviewView({ selected, busy, onGrantLoyalty }: AdminU
         {summary ? (
           <>
             <div className="mt-3 grid gap-2 text-xs sm:grid-cols-2">
-              <p>Ноды с клиентом: <strong>{summary.nodes_with_client}/{summary.nodes_total}</strong></p>
-              <p>Ноды онлайн: <strong>{summary.nodes_online}</strong></p>
+              <p>Узлы с клиентом: <strong>{summary.nodes_with_client}/{summary.nodes_total}</strong></p>
+              <p>Узлы онлайн: <strong>{summary.nodes_online}</strong></p>
               <p>Ключи онлайн сейчас: <strong>{summary.online_keys_now}</strong></p>
               <p>Подключения сейчас: <strong>{summary.online_connections_now}</strong></p>
-              <p>Ноды включены: <strong>{summary.nodes_enabled}</strong></p>
+              <p>Узлы включены: <strong>{summary.nodes_enabled}</strong></p>
               <p>Sub ID mismatch: <strong>{summary.subid_mismatch_count}</strong></p>
               <p>Всего трафика: <strong>{fmtTraffic(summary.traffic_total_bytes)}</strong></p>
               <p>Состояние панели: <strong>{panelStateLabel(String(summary.panel_state || ""))}</strong></p>
@@ -49,7 +49,7 @@ export function AdminUserOverviewView({ selected, busy, onGrantLoyalty }: AdminU
             Онлайн сейчас на: <strong>{summary.online_node_codes_now.map((code) => String(code || "").toUpperCase()).join(", ")}</strong>
           </p>
         ) : (
-          <p className="mt-3 text-xs text-slate-400">Live-след на нодах сейчас не виден.</p>
+          <p className="mt-3 text-xs text-slate-400">Live-след на узлах сейчас не виден.</p>
         )}
       </div>
 
@@ -90,7 +90,7 @@ export function AdminUserOverviewView({ selected, busy, onGrantLoyalty }: AdminU
                 </div>
               </div>
               <div>
-                <p className="mb-2 text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500">Недавние ноды</p>
+                <p className="mb-2 text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500">Недавние узлы</p>
                 <div className="space-y-2">
                   {(observer?.recent_nodes || []).map((row) => (
                     <div key={`${row.node_id}:${row.last_seen_at}`} className="rounded-xl border border-[#b8ded1] bg-white px-3 py-2 text-xs">
@@ -103,7 +103,7 @@ export function AdminUserOverviewView({ selected, busy, onGrantLoyalty }: AdminU
                       </div>
                     </div>
                   ))}
-                  {!observer?.recent_nodes?.length ? <p className="text-xs text-slate-400">Недавних нод нет.</p> : null}
+                  {!observer?.recent_nodes?.length ? <p className="text-xs text-slate-400">Недавних узлов нет.</p> : null}
                 </div>
               </div>
             </div>

@@ -1,4 +1,5 @@
 import json
+import os
 import re
 from pathlib import Path
 
@@ -188,6 +189,79 @@ FAKE_SUPPORT_PATTERNS = [
     re.compile(r"imaginary\s+live\s+chat", re.IGNORECASE),
     re.compile(r"realtime\s+in-app\s+chat", re.IGNORECASE),
 ]
+
+FINAL_POLISH_USER_FACING_FORBIDDEN_PATTERNS = [
+    re.compile(r"\bPOKROV\s+VPN\b", re.IGNORECASE),
+    re.compile(r"\bPOKROV\s+Network\b", re.IGNORECASE),
+    re.compile(r"\bPREMIUM\s+VPN\b", re.IGNORECASE),
+    re.compile(r"\bVPN\b", re.IGNORECASE),
+    re.compile(r"dev-indicator", re.IGNORECASE),
+    re.compile(r"api\.qrserver\.com", re.IGNORECASE),
+    re.compile(r"\?format=plain", re.IGNORECASE),
+    re.compile(r"\bsubscription_url\b", re.IGNORECASE),
+    re.compile(r"\bhost:port\b", re.IGNORECASE),
+    re.compile(r"\bpublic\s+IP\b", re.IGNORECASE),
+    re.compile(r"\bvless://", re.IGNORECASE),
+    re.compile(r"\bvmess://", re.IGNORECASE),
+    re.compile(r"\btrojan://", re.IGNORECASE),
+    re.compile(r"\braw\s+(?:profile|config|subscription|link)", re.IGNORECASE),
+    re.compile(r"(?:profile|config|JSON/profile)\s+editor", re.IGNORECASE),
+    *FAKE_SUPPORT_PATTERNS,
+]
+
+FINAL_POLISH_ADMIN_BACKEND_FORBIDDEN_PATTERNS = [
+    re.compile(r"\bPOKROV\s+VPN\b", re.IGNORECASE),
+    re.compile(r"\bPOKROV\s+Network\b", re.IGNORECASE),
+    re.compile(r"\bPREMIUM\s+VPN\b", re.IGNORECASE),
+    re.compile(r"dev-indicator", re.IGNORECASE),
+    *FAKE_SUPPORT_PATTERNS,
+]
+
+FINAL_POLISH_CODE_CONTEXT_ALLOWLIST = (
+    "android.permission.bind_vpn_service",
+    "permissionrequirement.vpnprofile",
+    "override_android_vpn",
+    "vpn service",
+    "pokrovruntimevpnservice",
+)
+
+
+def _resolve_client_app_root() -> Path:
+    configured = os.getenv("POKROV_APP_ROOT")
+    if configured:
+        return Path(configured)
+
+    sibling_worktree = ROOT.parent.parent / "POKROV-app" / ROOT.name
+    if sibling_worktree.exists():
+        return sibling_worktree
+
+    return Path("C:/Users/kiwun/Documents/ai/POKROV-app")
+
+
+def _existing(paths: tuple[Path, ...]) -> tuple[Path, ...]:
+    return tuple(path for path in paths if path.exists())
+
+
+def _final_polish_public_surface_groups() -> dict[str, tuple[Path, ...]]:
+    client_root = _resolve_client_app_root()
+    return {
+        "marketing": _existing(tuple(WORKER3_MARKETING_COPY_FILES)),
+        "cabinet": _existing(tuple(WEBAPP_PUBLIC_COPY_FILES)),
+        "admin": _existing(tuple(WEBAPP_ADMIN_COPY_FILES)),
+        "backend": _existing(tuple(BACKEND_PUBLIC_COPY_FILES)),
+        "client_app": _existing(
+            (
+                client_root / "packages" / "app_shell" / "lib" / "app_shell.dart",
+                client_root / "apps" / "android_shell" / "lib" / "main.dart",
+                client_root / "apps" / "windows_shell" / "lib" / "main.dart",
+            )
+        ),
+    }
+
+
+def _line_has_final_polish_code_exception(line: str) -> bool:
+    lowered = line.lower()
+    return any(fragment in lowered for fragment in FINAL_POLISH_CODE_CONTEXT_ALLOWLIST)
 
 
 def _public_text(path: Path) -> str:
@@ -629,3 +703,35 @@ def test_public_copy_pack_is_present_on_canonical_docs() -> None:
                 missing.append(f"{path.relative_to(ROOT)} missing: {snippet}")
 
     assert not missing, "\n".join(missing)
+
+
+def test_final_polish_public_surfaces_have_guardrail_inventory() -> None:
+    surface_groups = _final_polish_public_surface_groups()
+
+    assert {"marketing", "cabinet", "admin", "backend", "client_app"} <= set(surface_groups)
+    for group_name, paths in surface_groups.items():
+        assert paths, f"{group_name} has no guardrail files"
+
+
+def test_final_polish_public_surfaces_avoid_banned_user_facing_wording() -> None:
+    violations: list[str] = []
+
+    surface_groups = _final_polish_public_surface_groups()
+    for group_name, paths in surface_groups.items():
+        patterns = (
+            FINAL_POLISH_ADMIN_BACKEND_FORBIDDEN_PATTERNS
+            if group_name in {"admin", "backend"}
+            else FINAL_POLISH_USER_FACING_FORBIDDEN_PATTERNS
+        )
+        for path in paths:
+            for line_no, line in enumerate(path.read_text(encoding="utf-8", errors="replace").splitlines(), start=1):
+                if _line_has_final_polish_code_exception(line):
+                    continue
+                for pattern in patterns:
+                    if pattern.search(line):
+                        violations.append(
+                            f"{group_name}:{path.relative_to(ROOT) if path.is_relative_to(ROOT) else path}:{line_no}: "
+                            f"/{pattern.pattern}/ -> {line.strip()}"
+                        )
+
+    assert not violations, "\n".join(violations)

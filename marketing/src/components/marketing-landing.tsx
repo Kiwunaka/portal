@@ -365,6 +365,7 @@ type MarketingLandingProps = {
   clusterTitle?: string;
   clusterBody?: string;
   featuredReviews?: MarketingReview[];
+  checkoutCtaLabel?: string;
 };
 
 export default function MarketingLanding({
@@ -378,6 +379,7 @@ export default function MarketingLanding({
   clusterTitle,
   clusterBody,
   featuredReviews,
+  checkoutCtaLabel,
 }: MarketingLandingProps) {
   const reviews = featuredReviews?.length ? featuredReviews : DEFAULT_REVIEWS;
   const spotlightReview = reviews[0] || DEFAULT_REVIEWS[0];
@@ -386,6 +388,7 @@ export default function MarketingLanding({
   const relatedPages = RELATED_PAGES.filter((item) => item.href !== pagePath);
   const currentScenarios = scenarioCards?.length ? scenarioCards : DEFAULT_SCENARIOS;
   const defaultCheckoutHref = buildCheckoutHref(plans[0]?.code || "1_month");
+  const resolvedCheckoutCtaLabel = checkoutCtaLabel || (pagePath === "/" ? "Выбрать срок" : "Купить ключ доступа");
   const softwareApplicationJsonLd = buildSoftwareApplicationJsonLd({
     pagePath,
     reviews: buildReviewJsonLdInput(reviews),
@@ -463,7 +466,7 @@ export default function MarketingLanding({
                 Попробовать 5 дней
               </Link>
               <Link href={defaultCheckoutHref} className="lp-btn lp-btn--ghost">
-                Выбрать срок
+                {resolvedCheckoutCtaLabel}
               </Link>
             </div>
             <dl className="lp-proof">
@@ -620,7 +623,7 @@ export default function MarketingLanding({
                     <li>{plan.devices}</li>
                   </ul>
                   <Link href={buildCheckoutHref(plan.code)} className="lp-btn lp-btn--ghost">
-                    Выбрать срок
+                    {resolvedCheckoutCtaLabel}
                   </Link>
                 </article>
               ))}
@@ -731,7 +734,7 @@ export default function MarketingLanding({
                 Попробовать 5 дней
               </Link>
               <Link href={defaultCheckoutHref} className="lp-btn lp-btn--ghost">
-                Выбрать срок
+                {resolvedCheckoutCtaLabel}
               </Link>
               <a href={config.webappUrl} target="_blank" rel="noreferrer" className="lp-btn lp-btn--ghost">
                 Открыть кабинет

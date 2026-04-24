@@ -2481,7 +2481,7 @@ class ApiAuthAndTicketsTests(unittest.TestCase):
 
     def test_admin_summary_exposes_truth_metrics_and_quality_status(self) -> None:
         from db import SessionLocal
-        from models import Node, NodeHealthSample, ObserverUserState, User
+        from models import Node, NodeHealthSample, ObserverUserState, SupportTicket, User
 
         now = _utcnow().replace(microsecond=0)
         admin_hdrs = self._admin_web_headers()
@@ -2533,6 +2533,7 @@ class ApiAuthAndTicketsTests(unittest.TestCase):
                         uuid="00000000-0000-0000-0000-000000003301",
                         email="paid_truth_3301",
                         sub_type="PAID",
+                        current_plan_code="1_month",
                         is_active=True,
                         expiry_at=now + timedelta(days=15),
                         tos_accepted=True,
@@ -2599,6 +2600,7 @@ class ApiAuthAndTicketsTests(unittest.TestCase):
                     ),
                 ]
             )
+            s.add(SupportTicket(user_tg_id=3301, status="open", subject="Needs help", created_at=now, updated_at=now))
             s.commit()
         finally:
             s.close()
@@ -2621,6 +2623,26 @@ class ApiAuthAndTicketsTests(unittest.TestCase):
         self.assertEqual((quality.get("app_installs") or {}).get("badge"), "good")
         self.assertEqual((quality.get("observer") or {}).get("status"), "ok")
         self.assertEqual((quality.get("observer") or {}).get("badge"), "good")
+        cockpit = payload.get("shift_cockpit") or {}
+        self.assertEqual(int(cockpit.get("paid_accounts") or 0), 1)
+        self.assertEqual(int(cockpit.get("trial_accounts") or 0), 1)
+        self.assertEqual(int(cockpit.get("bonus_accounts") or 0), 1)
+        self.assertEqual(int(cockpit.get("open_tickets") or 0), 1)
+        self.assertEqual(int((cockpit.get("installs") or {}).get("unique_24h") or 0), 2)
+        self.assertEqual(int((cockpit.get("observer") or {}).get("seen_accounts_24h") or 0), 2)
+        self.assertEqual((cockpit.get("data_quality") or {}).get("metrics"), "fresh")
+        self.assertEqual((cockpit.get("node_health") or {}).get("healthy"), 1)
+        self.assertEqual((cockpit.get("rtt") or {}).get("avg_panel_latency_ms"), 90)
+
+        users_resp = self.client.get("/api/admin/users?q=paid_truth", headers=admin_hdrs)
+        self.assertEqual(users_resp.status_code, 200, users_resp.text)
+        rows = users_resp.json().get("users") or []
+        self.assertEqual(len(rows), 1)
+        row = rows[0]
+        self.assertEqual(row.get("current_plan_code"), "1_month")
+        self.assertEqual(row.get("access_state"), "paid_unlimited")
+        self.assertEqual(row.get("app_platform"), None)
+        self.assertIn("data_quality", row)
 
     def test_admin_summary_marks_missing_truth_data_sources(self) -> None:
         admin_hdrs = self._admin_web_headers()
@@ -2640,6 +2662,100 @@ class ApiAuthAndTicketsTests(unittest.TestCase):
         self.assertEqual((quality.get("observer") or {}).get("status"), "missing")
         self.assertEqual((quality.get("observer") or {}).get("badge"), "bad")
         self.assertTrue(bool((quality.get("observer") or {}).get("missing")))
+
+    def test_nodes_status_hides_raw_endpoint_but_admin_health_keeps_it(self) -> None:
+        from db import SessionLocal
+        from models import Node, User
+
+        now = _utcnow().replace(microsecond=0)
+        s = SessionLocal()
+        try:
+            user = s.query(User).filter(User.tg_id == 1001).first()
+            self.assertIsNotNone(user)
+            user.sub_type = "PAID"
+            user.expiry_at = now + timedelta(days=10)
+            s.add(
+                Node(
+                    code="pl",
+                    name="Poland",
+                    host="pl.internal.example",
+                    vless_port=443,
+                    reality_sni="www.orange.pl",
+                    reality_pbk="pbk-pl",
+                    reality_sid="sid-pl",
+                    panel_base_url="https://pl.internal.example:8444",
+                    panel_path="/panel",
+                    panel_user="admin",
+                    panel_pass="pass",
+                    inbound_id=7,
+                    enabled=True,
+                    is_healthy=True,
+                    last_health_at=now,
+                )
+            )
+            s.commit()
+        finally:
+            s.close()
+
+        token = self.api.create_web_session_token(tg_id=1001, username="alice", auth_type="telegram", auth_origin="telegram")
+        public_resp = self.client.get("/api/nodes/status", headers={"Authorization": f"Bearer {token}"})
+        self.assertEqual(public_resp.status_code, 200, public_resp.text)
+        public_node = (public_resp.json().get("nodes") or [])[0]
+        self.assertNotIn("host", public_node)
+        self.assertNotIn("port", public_node)
+        self.assertNotIn("ip", json.dumps(public_node).lower())
+        self.assertEqual(public_node.get("connect_host"), "connect.pokrov.space")
+
+        admin_resp = self.client.get("/api/admin/nodes/health", headers=self._admin_web_headers())
+        self.assertEqual(admin_resp.status_code, 200, admin_resp.text)
+        admin_node = next(row for row in admin_resp.json().get("nodes", []) if row.get("code") == "pl")
+        self.assertEqual(admin_node.get("host"), "pl.internal.example")
+        self.assertEqual(admin_node.get("vless_port"), 443)
+
+    def test_support_ticket_includes_safe_diagnostics_without_secrets(self) -> None:
+        from db import SessionLocal
+        from models import User
+
+        now = _utcnow().replace(microsecond=0)
+        s = SessionLocal()
+        try:
+            user = s.query(User).filter(User.tg_id == 1001).first()
+            self.assertIsNotNone(user)
+            user.sub_token = "secret-sub-token"
+            user.app_install_id = "install-safe-ticket"
+            user.app_device_name = "Pixel 10"
+            user.app_platform = "android"
+            user.app_version = "0.5.0-beta"
+            user.app_last_ip = "198.51.100.77"
+            user.app_last_seen_at = now
+            user.route_mode = "selected_apps"
+            user.route_selected_apps_json = json.dumps(["org.telegram.messenger", "com.google.android.youtube"])
+            user.route_requires_elevated_privileges = False
+            user.linked_telegram_id = 1001
+            user.linked_telegram_username = "alice"
+            s.commit()
+        finally:
+            s.close()
+
+        token = self.api.create_web_session_token(tg_id=1001, username="alice", auth_type="telegram", auth_origin="telegram")
+        resp = self.client.post(
+            "/api/tickets",
+            headers={"Authorization": f"Bearer {token}"},
+            json={"subject": "Cannot connect", "body": "Connection fails after update"},
+        )
+        self.assertEqual(resp.status_code, 200, resp.text)
+        ticket = resp.json().get("ticket") or {}
+        diagnostics = ticket.get("diagnostic_context") or {}
+        self.assertEqual((diagnostics.get("app") or {}).get("platform"), "android")
+        self.assertEqual((diagnostics.get("app") or {}).get("app_version"), "0.5.0-beta")
+        self.assertEqual((diagnostics.get("route") or {}).get("mode"), "selected_apps")
+        self.assertEqual((diagnostics.get("route") or {}).get("selected_apps_count"), 2)
+        self.assertEqual((diagnostics.get("telegram") or {}).get("linked"), True)
+        self.assertNotEqual((diagnostics.get("network") or {}).get("last_ip_hint"), "198.51.100.77")
+        serialized = json.dumps(diagnostics)
+        self.assertNotIn("secret-sub-token", serialized)
+        self.assertNotIn("subscription_url", serialized)
+        self.assertNotIn("sub_token", serialized)
 
     def test_admin_summary_includes_retention_cohorts_and_pings(self) -> None:
         from db import SessionLocal

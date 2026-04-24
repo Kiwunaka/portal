@@ -34,7 +34,7 @@ export function AdminUserKeyPolicyEditor({
     <div className={`${adminInsetPanelClass} mt-3 text-sm`}>
       <div className="mb-3 flex items-center justify-between gap-2">
         <div>
-          <p className="text-sm font-semibold text-slate-50">Ключи и policy по нодам</p>
+          <p className="text-sm font-semibold text-slate-50">Ключи и policy по узлам</p>
           <p className="mt-1 text-xs leading-5 text-slate-400">Live-действия с ключами, сброс трафика, resync sub ID и лимиты без выхода из карточки.</p>
         </div>
         <button className={adminButtonClass("secondary", "xs")} type="button" onClick={onReload} disabled={busy || !!keyBusy || !!policyBusy}>

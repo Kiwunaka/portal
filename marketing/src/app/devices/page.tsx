@@ -4,7 +4,7 @@ import { buildBreadcrumbJsonLd, MARKETING_CANONICAL_PATHS } from "../../lib/mark
 import { CANONICAL_PLATFORM_BRAND } from "../../lib/pokrov";
 
 export const metadata = buildMarketingMetadata(
-  "Android и Windows | POKROV без возни",
+  "Android и Windows | POKROV",
   "Где POKROV уже доступен публично: Android и Windows, 5 дней проверки, кабинет и честный статус Apple.",
   {
     path: MARKETING_CANONICAL_PATHS.devices,
@@ -25,10 +25,10 @@ export default function DevicesPage() {
         <MarketingLanding
           pagePath={MARKETING_CANONICAL_PATHS.devices}
           heroKicker="Для основных устройств"
-          heroTitle="Android и Windows уже в публичном пути"
+          heroTitle="Android и Windows: приложение, 5 дней проверки и ключ доступа"
           heroSubtitle="На этих устройствах можно установить приложение, нажать «Попробовать 5 дней» и дальше продлить доступ через ключ. Apple честно остаётся в подготовке."
           scenarioTitle="Как выбрать устройство"
-          scenarioBody="Эта страница помогает быстро понять, где POKROV уже готов для публичного старта, а где пока стоит честное ожидание без рекламного шума."
+          scenarioBody="Здесь видно, где POKROV уже готов для публичного старта, а где пока стоит честное ожидание без рекламного шума."
           scenarioCards={[
             {
               eyebrow: "Android + Windows",
@@ -46,11 +46,11 @@ export default function DevicesPage() {
               eyebrow: "Одна логика",
               glyph: "route",
               title: "Одна логика для всех устройств",
-              desc: "Сайт помогает начать, приложение даёт первый опыт, а кабинет берёт на себя управление доступом дальше.",
+              desc: "Сайт помогает начать, приложение даёт первый опыт, а кабинет берёт на себя продление и поддержку дальше.",
             },
           ]}
           clusterTitle="Выбор устройства без перегруза"
-          clusterBody="Страница помогает выбрать устройство и мягко ведёт к установке, не дублируя главную и не создавая лишний шум."
+          clusterBody="Выберите устройство и переходите к установке, просмотру видео или Telegram-бонусу без лишнего шума."
         />
       </div>
     </>

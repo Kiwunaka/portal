@@ -9,9 +9,9 @@
       "source_usage": "canonical visible mark for public, cabinet, PWA, and client branding exports",
       "provenance": {
         "root_manifest": "shared/redesign-assets.json",
-        "vector_masters": ["logo/logoclear.svg", "logo/logowithtext.svg"],
+        "vector_masters": ["logo/logoclear.svg"],
         "visible_export_master": "marketing/public/redesign/brand/pokrov-app-icon-1024.png",
-        "notes": "Derived files are checked-in release-facing exports. Regenerate them from the vector masters or a replacement approved brand master."
+        "notes": "Derived files are checked-in release-facing exports. Regenerate them from the clear mark vector master or a replacement approved brand master."
       },
       "subtitle": "",
       "subtitle_policy": "Do not publish legacy subtitle text on public brand assets or in copy."

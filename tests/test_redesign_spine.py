@@ -69,3 +69,37 @@ def test_redesign_asset_manifest_locks_reusable_hero_asset() -> None:
     assert hero["source_path"] == "marketing/public/redesign/pokrov-hero-product-source.png"
     assert hero["text_embedded"] is False
     assert (ROOT / hero["workspace_path"]).is_file()
+
+
+def test_brand_assets_use_canonical_mark_without_legacy_or_stock_exports() -> None:
+    tokens = _load_json("shared/design-tokens.json")
+    spine = _load_json("shared/redesign-spine.json")
+    manifest = _load_json("shared/redesign-assets.json")
+
+    expected_mark = "marketing/public/redesign/brand/pokrov-mark.svg"
+    expected_icon = "marketing/public/redesign/brand/pokrov-app-icon-1024.png"
+    expected_pwa_icons = {
+        "any_192": "marketing/public/redesign/brand/pokrov-app-icon-192.png",
+        "any_512": "marketing/public/redesign/brand/pokrov-app-icon-512.png",
+        "maskable_512": "marketing/public/redesign/brand/pokrov-maskable-512.png",
+        "apple_180": "marketing/public/apple-touch-icon.png",
+    }
+
+    brand_assets = tokens["theme"]["brand_assets"]
+    assert brand_assets["preferred_mark_asset"] == expected_mark
+    assert brand_assets["preferred_app_icon"] == expected_icon
+    assert brand_assets["pwa_icons"] == expected_pwa_icons
+    assert spine["asset_policy"]["brand_mark_svg"] == expected_mark
+    assert spine["asset_policy"]["app_icon_master"] == expected_icon
+
+    vector_masters = manifest["brand"]["canonical_mark"]["provenance"]["vector_masters"]
+    spine_vector_masters = spine["asset_policy"]["canonical_mark_provenance"]["vector_masters"]
+    assert vector_masters == ["logo/logoclear.svg"]
+    assert spine_vector_masters == ["logo/logoclear.svg"]
+
+    forbidden_asset_text = json.dumps([tokens, spine, manifest], ensure_ascii=False).lower()
+    assert "logowithtext" not in forbidden_asset_text
+    assert "premium vpn" not in forbidden_asset_text
+
+    for stock_asset in ("file.svg", "globe.svg", "next.svg", "vercel.svg", "window.svg"):
+        assert not (ROOT / "webapp" / "public" / stock_asset).exists()

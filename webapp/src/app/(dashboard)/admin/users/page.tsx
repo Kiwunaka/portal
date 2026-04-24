@@ -560,7 +560,7 @@ export default function AdminUsersPage() {
             {dialog.kind === "message" ? (
               <>
                 <h3 className="text-xl font-semibold">Сообщение пользователю</h3>
-                <p className="mt-1 text-xs text-slate-500">Отправка через текущий Telegram-маршрут оператора.</p>
+                <p className="mt-1 text-xs text-slate-500">Отправка через текущий Telegram-канал оператора.</p>
                 <textarea value={dialog.text} onChange={(event) => setDialog({ kind: "message", text: event.target.value })} rows={5} className={`mt-4 ${adminTextAreaClass}`} placeholder="Текст сообщения" />
                 <DialogActions busy={busy} confirmDisabled={!dialog.text.trim()} confirmLabel="Отправить" onCancel={() => setDialog(null)} onConfirm={() => void submitMessageDialog()} />
               </>
@@ -605,7 +605,7 @@ export default function AdminUsersPage() {
                   Действие <strong>{bulkAction.action}</strong> будет выполнено для сегмента <strong>{bulkAction.segment}</strong>. Dry run выключен.
                 </p>
                 <p className="mt-2 text-xs text-slate-500">
-                  Фильтр: {bulkAction.q.trim() || "нет"} | Лимит: {bulkAction.limit} | Ноды: {bulkAction.nodeCodes.trim() || "все"}
+                  Фильтр: {bulkAction.q.trim() || "нет"} | Лимит: {bulkAction.limit} | Узлы: {bulkAction.nodeCodes.trim() || "все"}
                 </p>
                 <input value={dialog.reason} onChange={(event) => setDialog({ ...dialog, reason: event.target.value })} className={`mt-4 ${adminFieldClass}`} placeholder="Причина действия, обязательно" />
                 <DialogActions busy={busy} confirmDisabled={!dialog.reason.trim()} confirmLabel="Выполнить live-действие" danger onCancel={() => setDialog(null)} onConfirm={() => void runBulkAction(true)} />

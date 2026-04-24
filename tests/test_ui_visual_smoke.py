@@ -53,13 +53,19 @@ class UiVisualSmokeTests(unittest.TestCase):
 
         checkout_check = checks["marketing-checkout-gateway"]
         self.assertIn("config.webappUrl", checkout_check.must_contain)
-        self.assertIn("Продолжить в Telegram", checkout_check.must_contain)
+        self.assertIn("Активировать ключ в кабинете", checkout_check.must_contain)
         self.assertIn("config.connectUrl", checkout_check.must_not_contain)
 
         webapp_entry = checks["webapp-entry"]
         self.assertIn("POKROV", webapp_entry.must_contain)
         self.assertIn("POKROV VPN", webapp_entry.must_not_contain)
         self.assertIn("dev-indicator", webapp_entry.must_not_contain)
+
+        admin_gate = checks["webapp-admin-gate-e2e"]
+        self.assertTrue(str(admin_gate.path).endswith("webapp\\e2e\\admin-gate.spec.ts"))
+        self.assertIn("requires a real cabinet session", admin_gate.must_contain)
+        self.assertIn("keeps admin pages clickable and inside the viewport on mobile", admin_gate.must_contain)
+        self.assertIn("dev-indicator", admin_gate.must_not_contain)
 
 
 if __name__ == "__main__":

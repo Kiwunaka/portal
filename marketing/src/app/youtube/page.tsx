@@ -4,7 +4,7 @@ import { buildBreadcrumbJsonLd, MARKETING_CANONICAL_PATHS } from "../../lib/mark
 import { CANONICAL_PLATFORM_BRAND } from "../../lib/pokrov";
 
 export const metadata = buildMarketingMetadata(
-  "Длинные видео без возни | POKROV",
+  "Длинные видео | POKROV",
   "Попробуйте POKROV 5 дней и проверьте длинные ролики, стримы и обучение без лишней настройки.",
   {
     path: MARKETING_CANONICAL_PATHS.youtube,
@@ -25,8 +25,8 @@ export default function YoutubePage() {
         <MarketingLanding
           pagePath={MARKETING_CANONICAL_PATHS.youtube}
           heroKicker="Длинные видео"
-          heroTitle="Длинные ролики, стримы и обучение без нервного ожидания"
-          heroSubtitle="Сначала проверьте просмотр в приложении 5 дней. Если POKROV подошёл, кабинет поможет продлить доступ тем же аккаунтом."
+          heroTitle="Длинные ролики, стримы и обучение: сначала проверьте 5 дней"
+          heroSubtitle="Сначала проверьте просмотр в приложении 5 дней. Если POKROV подошёл, купите ключ доступа и активируйте его в том же аккаунте."
           scenarioTitle="Что важно для длинных видео"
           scenarioBody="Для длинного просмотра важны ровная загрузка, понятное подключение и отсутствие лишних действий перед первым запуском."
           scenarioCards={[
@@ -45,7 +45,7 @@ export default function YoutubePage() {
             {
               eyebrow: "Продление потом",
               glyph: "route",
-              title: "Продление только по вашему решению",
+              title: "Ключ доступа только по вашему решению",
               desc: "Сначала личный опыт, затем спокойное решение о ключе доступа.",
             },
           ]}

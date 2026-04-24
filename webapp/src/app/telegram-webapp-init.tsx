@@ -31,6 +31,7 @@ type TelegramBackButton = {
 
 type TelegramWebApp = {
   initData?: string;
+  initDataUnsafe?: unknown;
   platform?: string;
   colorScheme?: "light" | "dark";
   themeParams?: TelegramThemeParams;
@@ -39,13 +40,13 @@ type TelegramWebApp = {
   safeAreaInset?: TelegramInsets;
   contentSafeAreaInset?: TelegramInsets;
   BackButton?: TelegramBackButton;
-  ready: () => void;
-  expand: () => void;
+  ready?: () => void;
+  expand?: () => void;
   disableVerticalSwipes?: () => void;
   setHeaderColor?: (color: string) => void;
   setBackgroundColor?: (color: string) => void;
   enableClosingConfirmation?: () => void;
-  onEvent: (eventType: string, handler: () => void) => void;
+  onEvent?: (eventType: string, handler: () => void) => void;
   offEvent?: (eventType: string, handler: () => void) => void;
   HapticFeedback?: {
     impactOccurred: (style: "light" | "medium" | "heavy" | "rigid" | "soft") => void;
@@ -160,9 +161,9 @@ export default function TelegramWebAppInit() {
       document.body.classList.add("tg-webapp");
     }
 
-    webApp.ready();
+    webApp.ready?.();
     if (inTelegramContext) {
-      webApp.expand();
+      webApp.expand?.();
       webApp.disableVerticalSwipes?.();
       webApp.enableClosingConfirmation?.();
     }
@@ -188,8 +189,8 @@ export default function TelegramWebAppInit() {
       applyViewport(webApp);
     };
 
-    webApp.onEvent("themeChanged", onThemeChanged);
-    webApp.onEvent("viewportChanged", onViewportChanged);
+    webApp.onEvent?.("themeChanged", onThemeChanged);
+    webApp.onEvent?.("viewportChanged", onViewportChanged);
 
     const onKeyboardResize = (): void => {
       const vv = window.visualViewport;

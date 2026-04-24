@@ -76,13 +76,13 @@ export default function InstallPage() {
         <main id="main-content" className="lp-main lp-route-main lp-route-main--install">
           <section className="lp-hero">
             <div className="lp-hero-copy">
-              <div className="lp-kicker">{getCopyText("marketing.install.kicker", "Установка и настройка POKROV")}</div>
-              <p className="lp-overline">Спокойная страница установки: без пустых кнопок, ложной загрузки и тупиков.</p>
-              <h1>{getCopyText("marketing.install.title", "Установка без тупиков")}</h1>
+              <div className="lp-kicker">{getCopyText("marketing.install.kicker", "Установка POKROV")}</div>
+              <p className="lp-overline">Android и Windows ведут к приложению, 5 дням проверки и понятному продолжению.</p>
+              <h1>{getCopyText("marketing.install.title", "Скачайте приложение POKROV")}</h1>
               <p className="lp-hero-lead">
                 {getCopyText(
                   "marketing.install.subtitle",
-                  "Кнопки ведут либо к актуальному файлу, либо к понятной инструкции. Если файла пока нет, вы всё равно не теряете следующий шаг.",
+                  "Начните с приложения: так проще включить доступ, получить 5 дней проверки и подключиться без лишних шагов. Если нужной платформы пока нет, мы честно покажем текущий статус.",
                 )}
               </p>
               <div className="lp-hero-actions">
@@ -98,24 +98,24 @@ export default function InstallPage() {
             <div className="lp-hero-stage">
               <article className="lp-stage-card lp-stage-card--primary">
                 <div className="lp-stage-label">Сначала приложение, потом проверка</div>
-                <h2>Каждый шаг здесь либо доступен, либо честно объяснён.</h2>
+                <h2>Скачайте приложение, проверьте 5 дней и продолжайте через ключ доступа.</h2>
                 <p>
-                  Если файл уже опубликован, вы скачиваете его сразу. Если нет, страница остаётся полезной:
-                  показывает инструкцию, кабинет и прямой способ связаться с поддержкой.
+                  Если файл уже опубликован, скачивание откроется сразу. Если релизный файл ещё готовится,
+                  рядом остаются инструкция, кабинет и поддержка.
                 </p>
                 <ol className="lp-stage-steps">
                   <li>
                     <span>01</span>
                     <div>
                       <strong>Android</strong>
-                      <p>Скачайте APK, а если файла нет, откройте инструкцию и поддержку.</p>
+                      <p>Скачайте приложение, а если файла нет, откройте инструкцию и поддержку.</p>
                     </div>
                   </li>
                   <li>
                     <span>02</span>
                     <div>
                       <strong>Windows</strong>
-                      <p>Скачайте установщик или вернитесь за понятной инструкцией.</p>
+                      <p>Скачайте приложение или откройте короткую инструкцию.</p>
                     </div>
                   </li>
                   <li>
@@ -129,10 +129,10 @@ export default function InstallPage() {
               </article>
 
               <article className="lp-stage-card">
-                <div className="lp-stage-label">Что делать, если файла нет</div>
+                <div className="lp-stage-label">Если файл ещё готовится</div>
                 <p>
-                  Эта страница не притворяется загрузкой. Если файл ещё не выложен, мы показываем актуальные ссылки,
-                  понятный следующий шаг и помощь человека там, где она действительно нужна.
+                  Откройте инструкцию, кабинет или поддержку. Так вы сохраните следующий шаг без пустого ожидания
+                  и сможете вернуться к установке, когда файл будет доступен.
                 </p>
                 <div className="lp-stage-links">
                   <a href={helpHref}>Открыть инструкцию</a>
@@ -149,12 +149,12 @@ export default function InstallPage() {
 
           <section id="downloads" className="lp-section">
             <div className="lp-section-head">
-              <span>Скачивание</span>
-              <h2>{getCopyText("marketing.install.downloads.title", "Выберите релизный файл или откройте помощь")}</h2>
+              <span>Приложение</span>
+              <h2>{getCopyText("marketing.install.downloads.title", "Скачайте приложение или откройте инструкцию")}</h2>
               <p>
                 {getCopyText(
                   "marketing.install.downloads.subtitle",
-                  "Каждая карточка ведёт к актуальному файлу или к короткой инструкции, которая объясняет следующий шаг без пустого ожидания.",
+                  "Карточки ведут к актуальному файлу для Android или Windows. Если файл ещё не опубликован, рядом остаётся понятная инструкция.",
                 )}
               </p>
             </div>
@@ -169,12 +169,12 @@ export default function InstallPage() {
                 <p>
                   {getCopyText(
                     "marketing.install.android.desc",
-                    "Скачайте актуальный файл или откройте инструкцию по установке, если релизный пакет ещё не опубликован.",
+                    "Скачайте приложение для Android или откройте инструкцию, если релизный файл ещё не опубликован.",
                   )}
                 </p>
                 {androidHasArtifact ? (
                   <a href={androidHref} target="_blank" rel="noreferrer" className="lp-btn lp-btn--primary">
-                    {getCopyText("marketing.download.android.cta", "Скачать APK")}
+                    {getCopyText("marketing.download.android.cta", "Скачать приложение")}
                   </a>
                 ) : (
                   <a href={helpHref} className="lp-btn lp-btn--primary">
@@ -188,16 +188,16 @@ export default function InstallPage() {
                   <span aria-hidden="true">■</span>
                   {getCopyText("marketing.install.windows.status", "Windows")}
                 </div>
-                <h3>{getCopyText("marketing.install.windows.title", "EXE для Windows")}</h3>
+                <h3>{getCopyText("marketing.install.windows.title", "Установщик для Windows")}</h3>
                 <p>
                   {getCopyText(
                     "marketing.install.windows.desc",
-                    "Десктопный файл для спокойной ежедневной работы. Если релиз ещё в очереди, откройте помощь и вернитесь к понятному следующему шагу.",
+                    "Скачайте приложение для Windows или откройте инструкцию, если релизный файл ещё не опубликован.",
                   )}
                 </p>
                 {windowsHasArtifact ? (
                   <a href={windowsHref} target="_blank" rel="noreferrer" className="lp-btn lp-btn--primary">
-                    {getCopyText("marketing.download.windows.cta", "Скачать для Windows")}
+                    {getCopyText("marketing.download.windows.cta", "Скачать приложение")}
                   </a>
                 ) : (
                   <a href={helpHref} className="lp-btn lp-btn--primary">
@@ -215,7 +215,7 @@ export default function InstallPage() {
                 <p>
                   {getCopyText(
                     "marketing.install.apple.desc",
-                    "Apple-линейка пока готовится. Здесь нет ложной загрузки, только честный статус и актуальный следующий шаг.",
+                    "Apple-линейка пока готовится. Сейчас можно открыть кабинет или поддержку, чтобы уточнить статус.",
                   )}
                 </p>
                 <a href={appleHref} target="_blank" rel="noreferrer" className="lp-btn lp-btn--ghost">
@@ -229,18 +229,18 @@ export default function InstallPage() {
             <div className="lp-info-band__grid">
               <article className="lp-info-card">
                 <span className="lp-info-card__eyebrow">Если файла пока нет</span>
-                <h3>Переходите к инструкции, а не в пустоту</h3>
-                <p>Мы оставляем рядом понятную инструкцию, чтобы вы не теряли следующий шаг и не гадали, что делать дальше.</p>
+                <h3>Инструкция остаётся рядом</h3>
+                <p>Откройте короткие шаги установки и вернитесь к скачиванию, когда релизный файл будет доступен.</p>
               </article>
               <article className="lp-info-card">
                 <span className="lp-info-card__eyebrow">Если нужен доступ</span>
-                <h3>Кабинет остаётся спокойной точкой продолжения</h3>
+                <h3>Кабинет остаётся точкой продолжения</h3>
                 <p>Там можно проверить доступ и вернуться к оплате только тогда, когда это действительно нужно.</p>
               </article>
               <article className="lp-info-card">
                 <span className="lp-info-card__eyebrow">Если нужен человек</span>
                 <h3>Служба заботы отвечает без лишнего формализма</h3>
-                <p>Telegram и почта остаются рядом, чтобы быстро закрыть вопрос по установке, доступу или восстановлению.</p>
+                <p>Telegram и почта остаются рядом для вопросов по установке, доступу или восстановлению.</p>
               </article>
             </div>
           </section>
@@ -253,7 +253,7 @@ export default function InstallPage() {
                 <p>
                   {getCopyText(
                     "marketing.install.help_body",
-                    "Если файл не находится, откройте кабинет или напишите в поддержку. Мы не оставляем вас на пустой странице и не прячем следующий шаг.",
+                    "Если файл не находится, откройте кабинет или напишите в поддержку. Мы подскажем следующий шаг по установке, доступу или восстановлению.",
                   )}
                 </p>
               </div>

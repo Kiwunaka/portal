@@ -65,7 +65,7 @@ function accessHint(accessState: string): string {
   if (accessState.includes("trial")) return "Сейчас действуют пробные 5 дней.";
   if (accessState.includes("paid")) return "Текущий доступ активен, можно продлить заранее.";
   if (accessState.includes("free")) return "Можно перейти на полный режим или остаться в базовом.";
-  return "После оплаты или применения ключа статус обновится в этом же профиле.";
+  return "После оплаты или применения ключа статус обновится в этом же аккаунте.";
 }
 
 export default function CheckoutPage() {
@@ -149,7 +149,7 @@ export default function CheckoutPage() {
         <p className="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-700 dark:text-emerald-300">Оплата и ключ доступа</p>
         <h1 className="mt-2 font-display text-4xl font-bold">Продлите доступ или примените готовый ключ</h1>
         <p className="mt-3 max-w-3xl text-sm leading-7 text-slate-600 dark:text-slate-300">
-          Кабинет помогает выбрать срок и передает оплату на защищенную страницу. После оплаты вы получите ключ доступа, который активирует выбранный срок в текущем профиле.
+          Кабинет помогает выбрать срок и передает оплату на защищенную страницу. После оплаты вы получите ключ доступа, который активирует выбранный срок в текущем аккаунте.
         </p>
         <div className="mt-5 flex flex-wrap gap-3">
           <a href={checkoutHref} className="btn-primary rounded-xl px-6 py-3 text-sm font-semibold uppercase tracking-[0.12em]">

@@ -241,6 +241,22 @@ This redesign direction is not a release-readiness claim. Android remains blocke
 
 No deploy is part of this polish wave. The output is documentation, guardrails, visual-smoke alignment, screenshots/final-gate preparation, and an orchestrator checklist.
 
+Final premium polish acceptance keeps the user story deliberately small:
+
+- key-first entry means site, bot, and app trial starts all end in one app-first account with an activation key or managed access state, not separate identities
+- the first usable client MVP is `Android + Windows` with the four-tab app IA, quick connect, route-mode choice, selected-app scan MVP, support, redeem, and download continuation
+- the device model is visible as friendly device names, platform, app version, route mode, selected-app state, and support context; raw local-control, profile, host, port, and public-IP details stay out of the first layer
+- the cabinet remains continuation-first with the Russian IA listed above; public pricing and acquisition stay on `marketing`
+- admin truth lives in the authenticated web admin and `/api/admin/*`; Telegram admin remains fallback and should not define a separate product policy
+- copy guardrails must cover marketing, cabinet, app, admin, backend, and bot-facing public strings, while allowing admin and backend diagnostic fields where they are explicitly technical
+
+Known final-polish blockers for release promotion:
+
+- physical Android release-build localhost/control-surface audit is still missing
+- trusted Android and Windows signing evidence is still missing
+- final screenshots and browser/app visual QA still need a dev-indicator-free pass
+- live deploy, live node enablement, and `current-origin`, `brain-origin`, `RU-origin` evidence are outside this no-deploy polish wave
+
 ## Official Hostnames
 
 Canonical public hostnames:

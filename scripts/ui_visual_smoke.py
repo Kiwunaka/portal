@@ -62,7 +62,7 @@ def _default_checks() -> list[Check]:
         Check(
             name="marketing-checkout-gateway",
             path=REPO_ROOT / "marketing" / "src" / "app" / "checkout" / "checkout-client.tsx",
-            must_contain=("config.webappUrl", "Продолжить в Telegram", "Открыть кабинет"),
+            must_contain=("config.webappUrl", "Активировать ключ в кабинете", "Открыть кабинет"),
             must_not_contain=("config.connectUrl", "PORTALcheckout"),
         ),
         Check(
@@ -93,6 +93,17 @@ def _default_checks() -> list[Check]:
             path=REPO_ROOT / "webapp" / "src" / "app" / "(dashboard)" / "dashboard" / "page.tsx",
             must_contain=("Открыть приложение", "Загрузки", "Поддержка", "Активных подключений"),
             must_not_contain=("SubscriptionQrCard", "api.qrserver.com", "?format=plain"),
+        ),
+        Check(
+            name="webapp-admin-gate-e2e",
+            path=REPO_ROOT / "webapp" / "e2e" / "admin-gate.spec.ts",
+            must_contain=(
+                "requires a real cabinet session",
+                "keeps admin pages clickable and inside the viewport on mobile",
+                "adminSummary",
+                "networkRolloutConfig",
+            ),
+            must_not_contain=("dev-indicator", "POKROV VPN", "POKROV Network"),
         ),
     ]
 

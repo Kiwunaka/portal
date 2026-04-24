@@ -88,6 +88,32 @@ class User(Base):
     linked_telegram_linked_at = Column(DateTime, nullable=True)
 
 
+class AppDevice(Base):
+    __tablename__ = "app_devices"
+    __table_args__ = (UniqueConstraint("install_id", name="uq_app_devices_install_id"),)
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    tg_id = Column(BigInteger, index=True, nullable=False)
+    install_id = Column(String(128), index=True, nullable=False)
+    device_name = Column(String(120), nullable=True)
+    display_name = Column(String(120), nullable=True)
+    platform = Column(String(32), nullable=True)
+    model = Column(String(120), nullable=True)
+    os_version = Column(String(64), nullable=True)
+    app_version = Column(String(32), nullable=True)
+    locale = Column(String(32), nullable=True)
+    timezone = Column(String(64), nullable=True)
+    last_seen_at = Column(DateTime, nullable=True)
+    last_ip = Column(String(64), nullable=True)
+    route_mode = Column(String(32), nullable=True)
+    route_selected_apps_json = Column(Text, nullable=True)
+    route_requires_elevated_privileges = Column(Boolean, nullable=True)
+    revoked_at = Column(DateTime, nullable=True)
+    revoked_reason = Column(String(200), nullable=True)
+    created_at = Column(DateTime, default=_utcnow, nullable=False)
+    updated_at = Column(DateTime, default=_utcnow, nullable=False)
+
+
 class WebEmailIdentity(Base):
     __tablename__ = "web_email_identities"
 

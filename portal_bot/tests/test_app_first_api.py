@@ -27,6 +27,7 @@ def _load_api(monkeypatch, tmp_path: Path):
         "api",
         "config",
         "db",
+        "device_service",
         "migrations",
         "models",
         "web_auth_service",

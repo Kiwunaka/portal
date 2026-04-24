@@ -853,6 +853,10 @@ test.describe("Admin gate", () => {
         WebApp: {
           initData: "forged-admin-init-data",
           initDataUnsafe: { user: { id: 9999, username: "admin" } },
+          ready: () => undefined,
+          expand: () => undefined,
+          setHeaderColor: () => undefined,
+          setBackgroundColor: () => undefined,
         },
       };
     });
@@ -941,6 +945,48 @@ test.describe("Admin gate", () => {
     });
   });
 
+  test("debounces admin user search requests", async ({ page }) => {
+    const userSearches: string[] = [];
+    page.on("request", (request) => {
+      const url = new URL(request.url());
+      if (url.pathname === "/api/admin/users") {
+        userSearches.push(url.searchParams.get("q") || "");
+      }
+    });
+
+    await registerApiMocks(page, {
+      isAdmin: true,
+      userRows: [
+        makeAdminUserRow(),
+        makeAdminUserRow({
+          tg_id: -7001,
+          username: null,
+          display_name: "Router Lab",
+          sub_type: "MANUAL",
+          is_active: true,
+          effective_active: false,
+          status: "manual_test",
+          origin: "manual_test",
+          is_manual: true,
+          linked_telegram_id: null,
+          linked_telegram_username: null,
+          app_install_id: "router-lab",
+          created_at: "2030-01-02T00:00:00",
+        }),
+      ],
+    });
+    await openRoute(page, "admin/users/");
+    await expect(page.getByText("QA Admin").first()).toBeVisible();
+    userSearches.length = 0;
+
+    const search = page.getByPlaceholder(/username, Telegram ID/i);
+    await search.pressSequentially("router", { delay: 40 });
+
+    await expect(page).toHaveURL(/q=router/);
+    await expect(page.locator("tbody tr").first()).toContainText("Router Lab");
+    expect(userSearches.filter(Boolean)).toEqual(["router"]);
+  });
+
   test("redirects /admin to the operator dashboard", async ({ page }) => {
     await registerApiMocks(page, { isAdmin: true });
 
@@ -1013,7 +1059,7 @@ test.describe("Admin gate", () => {
     await expect(page.getByRole("button", { name: "Создать manual/test пользователя" })).toBeVisible();
 
     await openRoute(page, "admin/nodes/");
-    await expect(page.getByRole("heading", { name: "Ноды и состояние инфраструктуры" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Узлы и состояние узлов" })).toBeVisible();
     await expect(page.getByRole("button", { name: "Проверить расхождения" })).toBeVisible();
 
     await openRoute(page, "admin/tickets/");
@@ -1370,7 +1416,7 @@ test.describe("Admin gate", () => {
     });
 
     await openRoute(page, "admin/nodes/");
-    const nodeCard = page.locator("article").filter({ hasText: "Hoster context" }).first();
+    const nodeCard = page.locator("article").filter({ hasText: "контекст хостинга" }).first();
     await expect(nodeCard.getByText(/Hetzner/i)).toBeVisible();
     await expect(nodeCard.getByText(/AS24940/)).toBeVisible();
     await expect(nodeCard.getByText("5.45.67.0/24")).toBeVisible();
@@ -1395,7 +1441,7 @@ test.describe("Admin gate", () => {
 
     await openRoute(page, "admin/network/");
 
-    const textarea = page.locator("textarea");
+    const textarea = page.getByTestId("network-source-json");
     const feedsCard = page.locator("article").filter({ has: page.locator("h3", { hasText: "Allowlist" }) });
     const targetingCard = page.locator("article").filter({ has: page.locator("h3", { hasText: "Targeting selectors" }) });
     await expect(textarea).toHaveValue(/"version": "2026-04-13-rollout"/);
@@ -1428,6 +1474,42 @@ test.describe("Admin gate", () => {
     await expect(textarea).toHaveValue(/"version": "package-feed-v3"/);
     await expect(targetingCard.getByText("install-default-windows")).toBeVisible();
     await expect(feedsCard.getByText("rules-feed-v7", { exact: true })).toBeVisible();
+  });
+
+  test("edits network rollout through structured controls with an operator reason", async ({ page }) => {
+    let savedPayload: Record<string, unknown> | null = null;
+    page.on("request", (request) => {
+      const url = new URL(request.url());
+      if (url.pathname === "/api/admin/network-rollout-config" && request.method() === "PUT") {
+        savedPayload = JSON.parse(request.postData() || "{}");
+      }
+    });
+
+    await registerApiMocks(page, {
+      isAdmin: true,
+      networkRolloutConfig: mockNetworkRolloutConfig(),
+    });
+
+    await openRoute(page, "admin/network/");
+
+    await page.getByTestId("network-default-transport").selectOption("grpc_443_primary");
+    await page.getByTestId("network-default-routing").selectOption("full_tunnel");
+    await page.getByTestId("network-default-dns").selectOption("remote_only");
+    await page.getByTestId("network-recovery-order").fill("app\nweb\ntelegram\nsupport");
+
+    await page.getByTestId("network-save").click();
+    await page.locator("#admin-confirm-reason").fill("canary rollout after health review");
+    await page.getByTestId("admin-confirm-accept").click();
+
+    await expect.poll(() => savedPayload).toMatchObject({
+      defaults: {
+        transport_profile: "grpc_443_primary",
+        routing_mode_default: "full_tunnel",
+        dns_policy: "remote_only",
+      },
+      support_recovery_order: ["app", "web", "telegram", "support"],
+      operator_reason: "canary rollout after health review",
+    });
   });
 
   test("requires Russian confirmation reason before issuing access keys", async ({ page }) => {

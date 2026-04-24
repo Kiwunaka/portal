@@ -95,7 +95,7 @@ export default function ProfilePage() {
     {
       key: "devices",
       title: "Проверить устройства",
-      body: "Перед переносом доступа на новый экран удобно посмотреть, что уже связано с профилем.",
+      body: "Перед переносом доступа на новый экран удобно посмотреть, что уже связано с аккаунтом.",
       badge: "Устройства",
       tone: "neutral" as const,
       action: (
@@ -183,14 +183,14 @@ export default function ProfilePage() {
         {
           label: "Устройства",
           value: `До ${deviceLimit}`,
-          hint: "Лимит относится ко всему профилю, а не к одному экрану.",
+          hint: "Лимит относится ко всему аккаунту, а не к одному экрану.",
           tone: "neutral",
         },
       ]}
     >
       <CabinetHero
-        eyebrow="Главное по профилю"
-        badge={dash?.is_active ? "Профиль в порядке" : "Профилю нужен следующий шаг"}
+        eyebrow="Главное об аккаунте"
+        badge={dash?.is_active ? "Аккаунт в порядке" : "Аккаунту нужен следующий шаг"}
         badgeTone={dash?.is_active ? "success" : "warning"}
         title={profileLabel(user?.username, user?.tg_id)}
         description={
@@ -260,7 +260,7 @@ export default function ProfilePage() {
 
       <CabinetSection
         eyebrow="Бонусы и ссылки"
-      title="Что еще есть у профиля"
+        title="Что еще есть у аккаунта"
         description="Дополнительные вещи под рукой, если они вам нужны. Длинные личные ссылки открываются отдельным действием."
       >
         <CabinetCardGrid items={bonusCards} />

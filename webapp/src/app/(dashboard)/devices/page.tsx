@@ -1,5 +1,6 @@
 "use client";
 
+import type { ReactNode } from "react";
 import { useMemo } from "react";
 
 import AppRouteLink from "@/components/app-route-link";
@@ -22,6 +23,10 @@ function formatDate(value?: string | null): string {
 function formatCount(value?: number | null): string {
   if (value == null || !Number.isFinite(Number(value))) return "0";
   return new Intl.NumberFormat("ru-RU").format(Math.max(0, Math.round(Number(value))));
+}
+
+function cabinetIcon(name: string): ReactNode {
+  return <span className="material-symbols-rounded text-[21px]">{name}</span>;
 }
 
 function formatLocationReadiness(active: number, known: number): string {
@@ -62,6 +67,7 @@ export default function DevicesPage() {
             : "Появится здесь после первого входа в приложение.",
         badge: device.is_current ? "Сейчас здесь" : device.is_active ? "Связано" : "Без активности",
         tone: device.is_current || device.is_active ? ("success" as const) : ("neutral" as const),
+        icon: cabinetIcon(device.platform?.toLowerCase().includes("android") ? "android" : device.platform?.toLowerCase().includes("windows") ? "desktop_windows" : "devices"),
       })),
     [user?.devices],
   );
@@ -73,6 +79,7 @@ export default function DevicesPage() {
       body: "Сначала просто откройте загрузки и поставьте нужную версию для Android или Windows.",
       badge: "Шаг 1",
       tone: "neutral" as const,
+      icon: cabinetIcon("download"),
       action: (
         <AppRouteLink href="/downloads/" className="text-sm font-semibold text-emerald-800 dark:text-emerald-300">
           Загрузки
@@ -82,9 +89,10 @@ export default function DevicesPage() {
     {
       key: "login",
       title: "Войти в тот же аккаунт",
-      body: "Так профиль подтянется сам, без ручной раздачи скрытых данных.",
+      body: "Так доступ подтянется сам, без ручной раздачи скрытых данных.",
       badge: "Шаг 2",
       tone: "neutral" as const,
+      icon: cabinetIcon("login"),
     },
     {
       key: "support",
@@ -92,6 +100,7 @@ export default function DevicesPage() {
       body: "Один кейс лучше ручных попыток с настройками. Так весь контекст уже будет рядом.",
       badge: "Шаг 3",
       tone: "neutral" as const,
+      icon: cabinetIcon("support_agent"),
       action: (
         <AppRouteLink href="/support/" className="text-sm font-semibold text-emerald-800 dark:text-emerald-300">
           Поддержка
@@ -105,10 +114,11 @@ export default function DevicesPage() {
       key: "paid",
       title: paidMode ? "Сейчас доступ без месячного лимита" : "Доступ без месячного лимита дает больше запаса",
       body: paidMode
-        ? "У профиля есть спокойный запас по устройствам и нет месячного лимита трафика."
+        ? "У аккаунта есть спокойный запас по устройствам и нет месячного лимита трафика."
         : "Если устройств становится больше и не хочется думать о лимитах, смотреть стоит туда.",
       badge: paidMode ? "Сейчас так" : "Если нужно",
       tone: paidMode ? ("success" as const) : ("neutral" as const),
+      icon: cabinetIcon("all_inclusive"),
     },
     {
       key: "trial",
@@ -118,6 +128,7 @@ export default function DevicesPage() {
         : "Если он у вас активируется, используйте это время для спокойной проверки.",
       badge: trialMode ? "Активен" : "Как это работает",
       tone: trialMode ? ("warning" as const) : ("neutral" as const),
+      icon: cabinetIcon("workspace_premium"),
     },
     {
       key: "free",
@@ -127,14 +138,15 @@ export default function DevicesPage() {
         : "Он подходит для спокойного повседневного использования, но может быть теснее по лимитам.",
       badge: freeMode ? "Сейчас так" : "Базовый режим",
       tone: freeMode ? ("info" as const) : ("neutral" as const),
+      icon: cabinetIcon("eco"),
     },
   ];
 
   return (
     <CabinetRoute
       eyebrow="Устройства"
-      title="Что уже связано с профилем"
-      description="Здесь видно, какие устройства уже появились в кабинете и как спокойнее перенести доступ на новый экран."
+      title="Что уже связано с аккаунтом"
+      description="Здесь видно, какие устройства уже появились в кабинете и как спокойнее перенести подключение на новый экран."
       actions={
         <>
           <AppRouteLink href="/downloads/" className="btn-primary rounded-full px-5 py-3 text-sm font-semibold">
@@ -149,7 +161,7 @@ export default function DevicesPage() {
         {
           label: "Подключений сейчас",
           value: formatCount(activeConnections),
-          hint: "Это живые подключения по профилю прямо сейчас. Лимит устройств показан отдельно.",
+          hint: "Это живые подключения по аккаунту прямо сейчас. Лимит устройств показан отдельно.",
           tone: "neutral",
         },
         {
@@ -159,7 +171,7 @@ export default function DevicesPage() {
           tone: "neutral",
         },
         {
-          label: "Маршрут",
+          label: "Путь доступа",
           value: formatLocationReadiness(activeNodes, knownNodes),
           hint: knownNodes > 0 ? "Короткая сводка по доступным локациям." : "Сводка появится после обновления телеметрии.",
           tone: "neutral",
@@ -174,12 +186,12 @@ export default function DevicesPage() {
     >
       <CabinetHero
         eyebrow="Главное сейчас"
-        badge={devices.length ? "Профиль уже связан с устройствами" : "Новый экран можно добавить"}
+        badge={devices.length ? "Аккаунт уже связан с устройствами" : "Новый экран можно добавить"}
         badgeTone={devices.length ? "success" : "info"}
         title={devices.length ? "Сначала смотрим список, потом переносим доступ" : "Новый экран начинается с загрузки"}
         description={
           devices.length
-            ? "Если хотите перенести доступ на новый экран, сначала проверьте, что уже связано с профилем. Так спокойнее не потерять лишнее."
+            ? "Если хотите перенести доступ на новый экран, сначала проверьте, что уже связано с аккаунтом. Так спокойнее не потерять лишнее."
             : "Когда в списке пока пусто, почти всегда достаточно просто поставить приложение и войти в тот же аккаунт."
         }
         actions={
@@ -194,9 +206,9 @@ export default function DevicesPage() {
         }
         details={[
           {
-            label: "Лимит профиля",
+            label: "Лимит аккаунта",
             value: `До ${deviceLimit} устройств`,
-            hint: "Лимит относится ко всему профилю, а не к одному экрану.",
+            hint: "Лимит относится ко всему аккаунту, а не к одному экрану.",
             tone: "neutral",
           },
           {

@@ -26,6 +26,10 @@ function formatDate(value?: string | null): string {
   }).format(parsed);
 }
 
+function cabinetIcon(name: string): ReactNode {
+  return <span className="material-symbols-rounded text-[21px]">{name}</span>;
+}
+
 function externalAction(href: string, label: string): ReactNode {
   return (
     <a href={href} target="_blank" rel="noreferrer" className="text-sm font-semibold text-emerald-800 dark:text-emerald-300">
@@ -50,6 +54,7 @@ function buildCards(payload: ClientAppsPayload | null): DownloadCard[] {
           body: "Самый прямой путь, если нужен обычный старт без ручной настройки.",
           badge: "Рекомендуем",
           tone: "success",
+          icon: cabinetIcon("android"),
           href: androidPlay,
           action: externalAction(androidPlay, "Открыть Google Play"),
         }
@@ -61,6 +66,7 @@ function buildCards(payload: ClientAppsPayload | null): DownloadCard[] {
           body: "Подходит, если Play недоступен или удобнее поставить файл вручную.",
           badge: "Дополнительная ссылка",
           tone: "neutral",
+          icon: cabinetIcon("apk_install"),
           href: androidApk,
           action: externalAction(androidApk, "Скачать APK"),
         }
@@ -72,6 +78,7 @@ function buildCards(payload: ClientAppsPayload | null): DownloadCard[] {
           body: "Оставили на случай, если основные ссылки сегодня ведут себя неровно.",
           badge: "На всякий случай",
           tone: "info",
+          icon: cabinetIcon("backup"),
           href: androidMirror,
           action: externalAction(androidMirror, "Скачать APK (зеркало)"),
         }
@@ -83,6 +90,7 @@ function buildCards(payload: ClientAppsPayload | null): DownloadCard[] {
           body: "Обычная установка для Windows без лишних шагов в кабинете.",
           badge: "Основная ссылка",
           tone: "success",
+          icon: cabinetIcon("desktop_windows"),
           href: windowsExe,
           action: externalAction(windowsExe, "Скачать Windows"),
         }
@@ -94,6 +102,7 @@ function buildCards(payload: ClientAppsPayload | null): DownloadCard[] {
           body: "Нужна только если обычная загрузка временно не открывается.",
           badge: "Дополнительная ссылка",
           tone: "info",
+          icon: cabinetIcon("backup"),
           href: windowsMirror,
           action: externalAction(windowsMirror, "Скачать Windows (зеркало)"),
         }
@@ -105,6 +114,7 @@ function buildCards(payload: ClientAppsPayload | null): DownloadCard[] {
           body: "Если нужен быстрый ориентир по установке и первым шагам, он здесь.",
           badge: "Подсказка",
           tone: "neutral",
+          icon: cabinetIcon("menu_book"),
           href: docsUrl,
           action: externalAction(docsUrl, "Открыть инструкцию"),
         }
@@ -115,6 +125,7 @@ function buildCards(payload: ClientAppsPayload | null): DownloadCard[] {
       body: "Версия для Apple готовится. Сейчас основной путь — Android и Windows.",
       badge: "Готовится",
       tone: "neutral",
+      icon: cabinetIcon("devices_other"),
     },
   ].filter(Boolean) as DownloadCard[];
 }
@@ -159,6 +170,7 @@ export function CabinetDownloadsSurface() {
       body: "Сначала просто откройте нужную ссылку. Кабинет не должен мешать этому шагу.",
       badge: "Шаг 1",
       tone: "neutral",
+      icon: cabinetIcon("download"),
       action: hasAndroid || hasWindows ? null : (
         <span className="text-sm font-semibold text-slate-500 dark:text-slate-400">Ссылки появятся</span>
       ),
@@ -166,9 +178,10 @@ export function CabinetDownloadsSurface() {
     {
       key: "step-login",
       title: "Войдите в тот же аккаунт",
-      body: "Профиль подтянется сам. Ключи и скрытые настройки вручную искать не нужно.",
+      body: "Доступ подтянется сам. Ключи и скрытые настройки вручную искать не нужно.",
       badge: "Шаг 2",
       tone: "neutral",
+      icon: cabinetIcon("login"),
     },
     {
       key: "step-help",
@@ -176,6 +189,7 @@ export function CabinetDownloadsSurface() {
       body: "Так быстрее и для вас, и для поддержки: весь контекст уже будет рядом.",
       badge: "Шаг 3",
       tone: "neutral",
+      icon: cabinetIcon("support_agent"),
       action: (
         <AppRouteLink href="/support/" className="text-sm font-semibold text-emerald-800 dark:text-emerald-300">
           Поддержка
@@ -209,7 +223,7 @@ export function CabinetDownloadsSurface() {
         {
           label: "Windows",
           value: hasWindows ? "Можно установить" : "Ссылка появится позже",
-          hint: "Обычная установка без ручной сборки профиля.",
+          hint: "Обычная установка без ручной сборки доступа.",
           tone: hasWindows ? "success" : "neutral",
         },
         {
@@ -258,7 +272,7 @@ export function CabinetDownloadsSurface() {
           {
             label: "После установки",
             value: "Войти в тот же аккаунт",
-            hint: "Профиль, режим и история подтянутся сами.",
+            hint: "Доступ, режим и история подтянутся сами.",
             tone: "neutral",
           },
           {

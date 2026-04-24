@@ -34,6 +34,10 @@ function formatCount(value?: number | null): string {
   return new Intl.NumberFormat("ru-RU").format(Math.max(0, Math.round(Number(value))));
 }
 
+function cabinetIcon(name: string): ReactNode {
+  return <span className="material-symbols-rounded text-[21px]">{name}</span>;
+}
+
 function formatLocationReadiness(ready: number, total: number): string {
   if (!Number.isFinite(total) || total <= 0) return "Проверим позже";
   return `${formatCount(ready)} из ${formatCount(total)}`;
@@ -106,6 +110,7 @@ export default function DashboardPage() {
       body: string;
       tone: "success" | "warning" | "danger" | "info" | "neutral";
       badge?: string;
+      icon?: ReactNode;
       action?: ReactNode;
     }> = [];
 
@@ -113,9 +118,10 @@ export default function DashboardPage() {
       items.push({
         key: "inactive",
         title: "Доступу нужно продление",
-        body: "Профиль и устройства останутся теми же. Нужно только вернуть срок действия.",
+        body: "Аккаунт и устройства останутся теми же. Нужно только вернуть срок действия.",
         tone: "danger",
         badge: "Сейчас важно",
+        icon: cabinetIcon("priority_high"),
         action: (
           <AppRouteLink href="/subscription/checkout/" className="text-sm font-semibold text-emerald-800 dark:text-emerald-300">
             Продлить
@@ -129,6 +135,7 @@ export default function DashboardPage() {
         body: `Он действует до ${formatDate(dash.expiry_at)}. Если сервис подходит, можно выбрать продление заранее.`,
         tone: "warning",
         badge: "Можно заранее",
+        icon: cabinetIcon("calendar_clock"),
         action: (
           <AppRouteLink href="/subscription/" className="text-sm font-semibold text-emerald-800 dark:text-emerald-300">
             Посмотреть варианты
@@ -144,6 +151,7 @@ export default function DashboardPage() {
           : "Если не хочется ждать следующего цикла, можно сразу открыть оплату.",
         tone: "warning",
         badge: "Стоит проверить",
+        icon: cabinetIcon("hourglass_top"),
         action: (
           <AppRouteLink href="/subscription/checkout/" className="text-sm font-semibold text-emerald-800 dark:text-emerald-300">
             Вернуть доступ без лимита
@@ -159,6 +167,7 @@ export default function DashboardPage() {
         body: "Обычно это значит, что приложение просто не открыто на устройстве. Сам доступ при этом может быть в порядке.",
         tone: "neutral",
         badge: "На заметку",
+        icon: cabinetIcon("power_settings_new"),
         action: (
           <AppRouteLink href="/downloads/" className="text-sm font-semibold text-emerald-800 dark:text-emerald-300">
             Открыть загрузки
@@ -174,6 +183,7 @@ export default function DashboardPage() {
         body: "Кабинет продолжает работать. Если само подключение ведет себя неровно, лучше сразу открыть поддержку.",
         tone: "info",
         badge: "Проверка позже",
+        icon: cabinetIcon("sync_problem"),
         action: (
           <AppRouteLink href="/support/" className="text-sm font-semibold text-emerald-800 dark:text-emerald-300">
             Поддержка
@@ -187,6 +197,7 @@ export default function DashboardPage() {
         body: `Сейчас готовы ${healthyNodes} из ${knownNodes}. Если это уже заметно по качеству доступа, лучше написать нам.`,
         tone: "warning",
         badge: "Стоит проверить",
+        icon: cabinetIcon("travel_explore"),
         action: (
           <AppRouteLink href="/support/" className="text-sm font-semibold text-emerald-800 dark:text-emerald-300">
             Сообщить
@@ -202,6 +213,7 @@ export default function DashboardPage() {
         body: "Статус ровный. Кабинет нужен только чтобы иногда проверить детали и быстро перейти дальше.",
         tone: "success",
         badge: "Все в порядке",
+        icon: cabinetIcon("verified"),
         action: (
           <AppRouteLink href="/devices/" className="text-sm font-semibold text-emerald-800 dark:text-emerald-300">
             Проверить устройства
@@ -219,8 +231,9 @@ export default function DashboardPage() {
       title: dash?.is_active ? "Открыть приложение" : "Вернуть доступ",
       body: dash?.is_active
         ? "Если хотите подключиться на новом экране, начните с загрузок."
-        : "Сначала верните срок действия, потом продолжайте тем же профилем.",
+        : "Сначала верните срок действия, потом продолжайте с тем же аккаунтом.",
       badge: "Шаг 1",
+      icon: cabinetIcon(dash?.is_active ? "download" : "payments"),
       tone: dash?.is_active ? ("neutral" as const) : ("warning" as const),
       action: (
         <AppRouteLink
@@ -236,6 +249,7 @@ export default function DashboardPage() {
       title: "Проверить тариф и срок",
       body: "Там видны режим, дата окончания и понятные варианты продления без лишних переходов.",
       badge: "Шаг 2",
+      icon: cabinetIcon("receipt_long"),
       tone: "neutral" as const,
       action: (
         <AppRouteLink href="/subscription/" className="text-sm font-semibold text-emerald-800 dark:text-emerald-300">
@@ -248,6 +262,7 @@ export default function DashboardPage() {
       title: "Если что-то не так, продолжить один кейс",
       body: "Так не теряется история и не нужно заново объяснять всю ситуацию.",
       badge: "Шаг 3",
+      icon: cabinetIcon("support_agent"),
       tone: "neutral" as const,
       action: (
         <AppRouteLink href="/support/" className="text-sm font-semibold text-emerald-800 dark:text-emerald-300">
@@ -267,6 +282,7 @@ export default function DashboardPage() {
         : "Появится здесь после первого входа в приложение.",
     badge: device.is_current ? "Сейчас здесь" : device.is_active ? "Связано" : "Без активности",
     tone: device.is_current || device.is_active ? ("success" as const) : ("neutral" as const),
+    icon: cabinetIcon(device.platform?.toLowerCase().includes("android") ? "android" : device.platform?.toLowerCase().includes("windows") ? "desktop_windows" : "devices"),
   }));
 
   const utilityCards = [
@@ -280,13 +296,15 @@ export default function DashboardPage() {
           : "Сводка по локациям появится после обновления телеметрии.",
       badge: nodesError || knownNodes <= 0 ? "Проверка позже" : `${formatCount(healthyNodes || activeNodes)}/${formatCount(knownNodes)}`,
       tone: nodesError ? ("info" as const) : locationReadinessTone(healthyNodes || activeNodes, knownNodes),
+      icon: cabinetIcon("location_on"),
     },
     {
       key: "devices",
       title: "Устройства",
-      body: `${formatCount(deviceCount)} из ${formatCount(deviceLimit)} уже связаны с профилем.`,
-      badge: "Профиль",
+      body: `${formatCount(deviceCount)} из ${formatCount(deviceLimit)} уже связаны с аккаунтом.`,
+      badge: "Аккаунт",
       tone: "neutral" as const,
+      icon: cabinetIcon("devices"),
       action: (
         <AppRouteLink href="/devices/" className="text-sm font-semibold text-emerald-800 dark:text-emerald-300">
           Открыть
@@ -299,6 +317,7 @@ export default function DashboardPage() {
       body: "Если вопрос уже был, удобнее продолжать один кейс и не терять контекст.",
       badge: "Если понадобится",
       tone: "neutral" as const,
+      icon: cabinetIcon("support_agent"),
       action: (
         <AppRouteLink href="/support/" className="text-sm font-semibold text-emerald-800 dark:text-emerald-300">
           Перейти
@@ -314,7 +333,7 @@ export default function DashboardPage() {
       description={
         dash?.is_active
           ? "Здесь только главное: что сейчас с доступом, что стоит проверить и куда идти дальше."
-          : "Сначала верните спокойный рабочий статус, потом продолжайте тем же профилем."
+          : "Сначала верните спокойный рабочий статус, потом продолжайте с тем же аккаунтом."
       }
       actions={
         <>
@@ -333,7 +352,7 @@ export default function DashboardPage() {
         {
           label: "Статус",
           value: dash?.is_active ? "Доступ активен" : "Нужно продление",
-          hint: dash?.is_active ? "Профиль уже работает." : "Возвращается из раздела оплаты.",
+          hint: dash?.is_active ? "Доступ уже работает." : "Возвращается из раздела оплаты.",
           tone: dash?.is_active ? "success" : "warning",
         },
         {
@@ -351,11 +370,11 @@ export default function DashboardPage() {
         {
           label: "Устройства",
           value: `${formatCount(deviceCount)} из ${formatCount(deviceLimit)}`,
-          hint: "Сколько экранов уже связано с профилем.",
+          hint: "Сколько экранов уже связано с аккаунтом.",
           tone: "neutral",
         },
         {
-          label: "Маршрут",
+          label: "Путь доступа",
           value: routeSummary,
           hint: "Приложение выбирает рабочий путь без ручных настроек.",
           tone: "neutral",
@@ -380,11 +399,11 @@ export default function DashboardPage() {
           {
             label: "Активных подключений",
             value: formatCount(activeConnections),
-            hint: activeConnections > 0 ? "Есть активное подключение по профилю." : "Если нужен доступ сейчас, откройте приложение.",
+            hint: activeConnections > 0 ? "Есть активное подключение по аккаунту." : "Если нужен доступ сейчас, откройте приложение.",
             tone: activeConnections > 0 ? "success" : "neutral",
           },
           {
-            label: "Маршрут",
+            label: "Путь доступа",
             value: routeSummary,
             hint: "Показываем понятную сводку, без технических деталей.",
             tone: "neutral",
@@ -421,7 +440,7 @@ export default function DashboardPage() {
 
         <CabinetSection
           eyebrow="Ваши устройства"
-          title="Что уже связано с профилем"
+          title="Что уже связано с аккаунтом"
           description="Удобно проверить перед переносом доступа на новый экран."
           actions={
             <AppRouteLink href="/devices/" className="outline-btn rounded-full px-4 py-2 text-xs font-semibold uppercase tracking-[0.12em]">

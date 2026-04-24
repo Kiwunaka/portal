@@ -74,6 +74,17 @@ function parseDraft(text: string): { value: AdminNetworkRolloutConfig | null; er
   }
 }
 
+function linesToList(value: string): string[] {
+  return value
+    .split(/\r?\n|,/)
+    .map((item) => item.trim())
+    .filter(Boolean);
+}
+
+function listToLines(value?: unknown[] | null): string {
+  return Array.isArray(value) ? value.map((item) => String(item)).join("\n") : "";
+}
+
 function OverrideCard({ title, rows }: { title: string; rows: Array<[string, AdminNetworkRolloutOverride]> }) {
   return (
     <article className={adminPanelClass("neutral")}>
@@ -133,6 +144,27 @@ export default function AdminNetworkPage() {
   const preview = draft.value || config;
   const carrierRows = overrideEntries(preview?.carrier_overrides);
   const cohortRows = overrideEntries(preview?.cohort_overrides);
+
+  const updateDraft = (mutate: (draft: AdminNetworkRolloutConfig) => void): void => {
+    const base = draft.value || preview || config;
+    if (!base) return;
+    const next = JSON.parse(JSON.stringify(base)) as AdminNetworkRolloutConfig;
+    next.defaults = next.defaults || {
+      routing_mode_default: "all_except_ru",
+      transport_profile: "legacy_reality_fallback",
+      dns_policy: "ru_direct_split",
+      ip_version_preference: "ipv4_only",
+    };
+    next.operator_lab = next.operator_lab || {
+      enabled: false,
+      allowlist_install_ids: [],
+      allowlist_tg_ids: [],
+      allowlist_node_codes: [],
+      expires_at: null,
+    };
+    mutate(next);
+    setJsonText(stringifyConfig(next));
+  };
 
   const load = async (): Promise<void> => {
     setLoading(true);
@@ -194,6 +226,7 @@ export default function AdminNetworkPage() {
             </button>
             <button
               type="button"
+              data-testid="network-save"
               className={adminButtonClass("primary", "sm")}
               onClick={() => setConfirmOpen(true)}
               disabled={loading || busy || Boolean(draft.error)}
@@ -219,14 +252,109 @@ export default function AdminNetworkPage() {
         <AdminKpiCard label="Recovery order" value={countList(preview?.support_recovery_order)} hint={joinList(preview?.support_recovery_order)} />
       </div>
 
+      <article className={adminPanelClass("neutral")}>
+        <AdminPanelHeader
+          eyebrow="structured editor"
+          title="Структурированный редактор сети"
+          description="Быстрые поля меняют тот же rollout-объект, который ниже остается доступен как исходный JSON для проверки и редких полей."
+        />
+        <div className="grid gap-3 xl:grid-cols-[1fr,1fr,1fr,1fr]">
+          <label className="text-xs font-semibold text-slate-500">
+            Транспорт по умолчанию
+            <select
+              data-testid="network-default-transport"
+              value={preview?.defaults?.transport_profile || "legacy_reality_fallback"}
+              onChange={(event) => updateDraft((next) => { next.defaults.transport_profile = event.target.value; })}
+              className={`mt-1 ${adminFieldClass}`}
+            >
+              <option value="legacy_reality_fallback">legacy_reality_fallback</option>
+              <option value="grpc_443_primary">grpc_443_primary</option>
+              <option value="reserve_xhttp_cdn">reserve_xhttp_cdn</option>
+              <option value="operator_lab">operator_lab</option>
+            </select>
+          </label>
+          <label className="text-xs font-semibold text-slate-500">
+            Маршрутизация
+            <select
+              data-testid="network-default-routing"
+              value={preview?.defaults?.routing_mode_default || "all_except_ru"}
+              onChange={(event) => updateDraft((next) => { next.defaults.routing_mode_default = event.target.value; })}
+              className={`mt-1 ${adminFieldClass}`}
+            >
+              <option value="all_except_ru">all_except_ru</option>
+              <option value="full_tunnel">full_tunnel</option>
+              <option value="global">global</option>
+              <option value="blocked_only">blocked_only</option>
+            </select>
+          </label>
+          <label className="text-xs font-semibold text-slate-500">
+            DNS policy
+            <select
+              data-testid="network-default-dns"
+              value={preview?.defaults?.dns_policy || "ru_direct_split"}
+              onChange={(event) => updateDraft((next) => { next.defaults.dns_policy = event.target.value; })}
+              className={`mt-1 ${adminFieldClass}`}
+            >
+              <option value="ru_direct_split">ru_direct_split</option>
+              <option value="remote_only">remote_only</option>
+              <option value="system_direct">system_direct</option>
+            </select>
+          </label>
+          <label className="text-xs font-semibold text-slate-500">
+            IP preference
+            <select
+              value={preview?.defaults?.ip_version_preference || "ipv4_only"}
+              onChange={(event) => updateDraft((next) => { next.defaults.ip_version_preference = event.target.value; })}
+              className={`mt-1 ${adminFieldClass}`}
+            >
+              <option value="ipv4_only">ipv4_only</option>
+              <option value="prefer_ipv6">prefer_ipv6</option>
+              <option value="dual_stack">dual_stack</option>
+            </select>
+          </label>
+        </div>
+
+        <div className="mt-3 grid gap-3 xl:grid-cols-[1fr,1fr,1fr]">
+          <label className="text-xs font-semibold text-slate-500">
+            Порядок проверок восстановления
+            <textarea
+              data-testid="network-recovery-order"
+              rows={5}
+              value={listToLines(preview?.support_recovery_order)}
+              onChange={(event) => updateDraft((next) => { next.support_recovery_order = linesToList(event.target.value); })}
+              className={`mt-1 ${adminTextAreaClass} min-h-[128px] font-mono text-xs`}
+            />
+          </label>
+          <label className="text-xs font-semibold text-slate-500">
+            Operator lab install IDs
+            <textarea
+              rows={5}
+              value={listToLines(preview?.operator_lab?.allowlist_install_ids)}
+              onChange={(event) => updateDraft((next) => { next.operator_lab.allowlist_install_ids = linesToList(event.target.value); })}
+              className={`mt-1 ${adminTextAreaClass} min-h-[128px] font-mono text-xs`}
+            />
+          </label>
+          <label className="text-xs font-semibold text-slate-500">
+            Operator lab node codes
+            <textarea
+              rows={5}
+              value={listToLines(preview?.operator_lab?.allowlist_node_codes)}
+              onChange={(event) => updateDraft((next) => { next.operator_lab.allowlist_node_codes = linesToList(event.target.value); })}
+              className={`mt-1 ${adminTextAreaClass} min-h-[128px] font-mono text-xs`}
+            />
+          </label>
+        </div>
+      </article>
+
       <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_420px]">
         <article className={adminPanelClass("neutral")}>
           <AdminPanelHeader
-            eyebrow="advanced"
-            title="Rollout JSON editor"
-            description="Расширенный JSON сохранится одним объектом. Перед изменением пути подключения или маршрутизации нужны review и причина."
+            eyebrow="source"
+            title="Исходный JSON"
+            description="Оставлен для проверки и редких полей; обычные изменения пути подключения, DNS, транспорта и allowlist делайте через структурированный редактор выше."
           />
           <textarea
+            data-testid="network-source-json"
             className={`${adminTextAreaClass} min-h-[520px] font-mono text-xs leading-5`}
             value={jsonText}
             spellCheck={false}
@@ -277,7 +405,7 @@ export default function AdminNetworkPage() {
           </article>
 
           <article className={adminPanelClass(preview?.operator_lab?.enabled ? "warning" : "neutral")}>
-            <AdminPanelHeader eyebrow="test lane" title="Safe test lane" description="Только для устройств оператора и выбранных нод; не должен становиться тихим production default." />
+            <AdminPanelHeader eyebrow="test lane" title="Safe test lane" description="Только для устройств оператора и выбранных узлов; не должен становиться тихим production default." />
             <div className="grid gap-2 text-xs leading-5 text-slate-300">
               <p><strong>Install IDs:</strong> {joinList(preview?.operator_lab?.allowlist_install_ids)}</p>
               <p><strong>Telegram IDs:</strong> {joinList(preview?.operator_lab?.allowlist_tg_ids)}</p>

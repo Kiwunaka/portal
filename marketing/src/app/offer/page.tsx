@@ -3,7 +3,7 @@ import Link from "next/link";
 import JsonLd from "../../components/json-ld";
 import { buildMarketingMetadata } from "../../components/marketing-landing";
 import { buildBreadcrumbJsonLd, MARKETING_CANONICAL_PATHS } from "../../lib/marketing-site";
-import { CANONICAL_PLATFORM_BRAND, getPokrovPublicConfig } from "../../lib/pokrov";
+import { CANONICAL_PLATFORM_BRAND, getCopyText, getPokrovPublicConfig } from "../../lib/pokrov";
 
 const config = getPokrovPublicConfig(process.env as Record<string, string | undefined>);
 
@@ -30,8 +30,10 @@ export default function OfferPage() {
           <span className="lp-legal-banner__eyebrow">Юридическая информация</span>
           <h1>Публичная оферта</h1>
           <p>
-            Здесь собраны базовые условия POKROV: как работает доступ, как купить и активировать ключ, как продлить срок
-            и куда обратиться, если нужна помощь.
+            {getCopyText(
+              "marketing.legal.offer.intro",
+              "Понятные условия POKROV: доступ, 5 дней проверки, ключи доступа, продление и контакты поддержки.",
+            )}
           </p>
         </section>
 

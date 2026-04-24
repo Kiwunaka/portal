@@ -355,6 +355,108 @@ def run_migrations(engine: Engine) -> None:
         conn.execute(
             text(
                 """
+                CREATE TABLE IF NOT EXISTS app_devices (
+                  id INTEGER PRIMARY KEY AUTOINCREMENT,
+                  tg_id BIGINT NOT NULL,
+                  install_id VARCHAR(128) NOT NULL,
+                  device_name VARCHAR(120),
+                  display_name VARCHAR(120),
+                  platform VARCHAR(32),
+                  model VARCHAR(120),
+                  os_version VARCHAR(64),
+                  app_version VARCHAR(32),
+                  locale VARCHAR(32),
+                  timezone VARCHAR(64),
+                  last_seen_at DATETIME,
+                  last_ip VARCHAR(64),
+                  route_mode VARCHAR(32),
+                  route_selected_apps_json TEXT,
+                  route_requires_elevated_privileges BOOLEAN,
+                  revoked_at DATETIME,
+                  revoked_reason VARCHAR(200),
+                  created_at DATETIME NOT NULL,
+                  updated_at DATETIME NOT NULL
+                );
+                """
+            )
+        )
+        if conn.execute(text("SELECT name FROM sqlite_master WHERE type='table' AND name='app_devices';")).fetchone():
+            wanted_cols = [
+                ("tg_id", "BIGINT NOT NULL DEFAULT 0"),
+                ("install_id", "VARCHAR(128)"),
+                ("device_name", "VARCHAR(120)"),
+                ("display_name", "VARCHAR(120)"),
+                ("platform", "VARCHAR(32)"),
+                ("model", "VARCHAR(120)"),
+                ("os_version", "VARCHAR(64)"),
+                ("app_version", "VARCHAR(32)"),
+                ("locale", "VARCHAR(32)"),
+                ("timezone", "VARCHAR(64)"),
+                ("last_seen_at", "DATETIME"),
+                ("last_ip", "VARCHAR(64)"),
+                ("route_mode", "VARCHAR(32)"),
+                ("route_selected_apps_json", "TEXT"),
+                ("route_requires_elevated_privileges", "BOOLEAN"),
+                ("revoked_at", "DATETIME"),
+                ("revoked_reason", "VARCHAR(200)"),
+                ("created_at", "DATETIME"),
+                ("updated_at", "DATETIME"),
+            ]
+            for col, ddl in wanted_cols:
+                if not _sqlite_column_exists(conn, "app_devices", col):
+                    conn.execute(text(f"ALTER TABLE app_devices ADD COLUMN {col} {ddl};"))
+        conn.execute(text("CREATE UNIQUE INDEX IF NOT EXISTS uq_app_devices_install_id ON app_devices(install_id);"))
+        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_app_devices_tg_id ON app_devices(tg_id);"))
+        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_app_devices_tg_revoked ON app_devices(tg_id, revoked_at);"))
+        now_param = _datetime_sql_param(_utcnow(), dialect="sqlite")
+        conn.execute(
+            text(
+                """
+                INSERT INTO app_devices (
+                  tg_id, install_id, device_name, display_name, platform, os_version,
+                  app_version, locale, timezone, last_seen_at, last_ip, route_mode,
+                  route_selected_apps_json, route_requires_elevated_privileges,
+                  created_at, updated_at
+                )
+                SELECT
+                  u.tg_id,
+                  substr(trim(u.app_install_id), 1, 128),
+                  nullif(trim(coalesce(u.app_device_name, '')), ''),
+                  coalesce(
+                    nullif(trim(coalesce(u.app_device_name, '')), ''),
+                    nullif(trim(coalesce(u.display_name, '')), ''),
+                    'Current device'
+                  ),
+                  nullif(trim(coalesce(u.app_platform, '')), ''),
+                  nullif(trim(coalesce(u.app_os_version, '')), ''),
+                  nullif(trim(coalesce(u.app_version, '')), ''),
+                  nullif(trim(coalesce(u.app_locale, '')), ''),
+                  nullif(trim(coalesce(u.app_timezone, '')), ''),
+                  coalesce(u.app_last_seen_at, u.created_at, :now),
+                  nullif(trim(coalesce(u.app_last_ip, '')), ''),
+                  coalesce(nullif(trim(coalesce(u.route_mode, '')), ''), 'all_traffic'),
+                  coalesce(u.route_selected_apps_json, '[]'),
+                  coalesce(
+                    u.route_requires_elevated_privileges,
+                    CASE WHEN lower(coalesce(u.app_platform, '')) IN ('windows','linux','macos','darwin') THEN 1 ELSE 0 END
+                  ),
+                  coalesce(u.app_last_seen_at, u.created_at, :now),
+                  :now
+                FROM users u
+                WHERE u.app_install_id IS NOT NULL
+                  AND trim(u.app_install_id) <> ''
+                  AND NOT EXISTS (
+                    SELECT 1 FROM app_devices d
+                    WHERE d.install_id = substr(trim(u.app_install_id), 1, 128)
+                  );
+                """
+            ),
+            {"now": now_param},
+        )
+
+        conn.execute(
+            text(
+                """
                 CREATE TABLE IF NOT EXISTS web_email_identities (
                   id INTEGER PRIMARY KEY AUTOINCREMENT,
                   email VARCHAR(200) NOT NULL,
@@ -1271,6 +1373,103 @@ def _run_postgres_migrations(engine: Engine) -> None:
         conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS linked_telegram_linked_at TIMESTAMP;"))
         conn.execute(text("CREATE UNIQUE INDEX IF NOT EXISTS uq_users_app_install_id ON users(app_install_id) WHERE app_install_id IS NOT NULL;"))
         conn.execute(text("CREATE UNIQUE INDEX IF NOT EXISTS uq_users_linked_telegram_id ON users(linked_telegram_id) WHERE linked_telegram_id IS NOT NULL;"))
+
+        conn.execute(
+            text(
+                """
+                CREATE TABLE IF NOT EXISTS app_devices (
+                  id SERIAL PRIMARY KEY,
+                  tg_id BIGINT NOT NULL,
+                  install_id VARCHAR(128) NOT NULL,
+                  device_name VARCHAR(120),
+                  display_name VARCHAR(120),
+                  platform VARCHAR(32),
+                  model VARCHAR(120),
+                  os_version VARCHAR(64),
+                  app_version VARCHAR(32),
+                  locale VARCHAR(32),
+                  timezone VARCHAR(64),
+                  last_seen_at TIMESTAMP,
+                  last_ip VARCHAR(64),
+                  route_mode VARCHAR(32),
+                  route_selected_apps_json TEXT,
+                  route_requires_elevated_privileges BOOLEAN,
+                  revoked_at TIMESTAMP,
+                  revoked_reason VARCHAR(200),
+                  created_at TIMESTAMP NOT NULL,
+                  updated_at TIMESTAMP NOT NULL
+                );
+                """
+            )
+        )
+        conn.execute(text("ALTER TABLE app_devices ADD COLUMN IF NOT EXISTS tg_id BIGINT;"))
+        conn.execute(text("ALTER TABLE app_devices ADD COLUMN IF NOT EXISTS install_id VARCHAR(128);"))
+        conn.execute(text("ALTER TABLE app_devices ADD COLUMN IF NOT EXISTS device_name VARCHAR(120);"))
+        conn.execute(text("ALTER TABLE app_devices ADD COLUMN IF NOT EXISTS display_name VARCHAR(120);"))
+        conn.execute(text("ALTER TABLE app_devices ADD COLUMN IF NOT EXISTS platform VARCHAR(32);"))
+        conn.execute(text("ALTER TABLE app_devices ADD COLUMN IF NOT EXISTS model VARCHAR(120);"))
+        conn.execute(text("ALTER TABLE app_devices ADD COLUMN IF NOT EXISTS os_version VARCHAR(64);"))
+        conn.execute(text("ALTER TABLE app_devices ADD COLUMN IF NOT EXISTS app_version VARCHAR(32);"))
+        conn.execute(text("ALTER TABLE app_devices ADD COLUMN IF NOT EXISTS locale VARCHAR(32);"))
+        conn.execute(text("ALTER TABLE app_devices ADD COLUMN IF NOT EXISTS timezone VARCHAR(64);"))
+        conn.execute(text("ALTER TABLE app_devices ADD COLUMN IF NOT EXISTS last_seen_at TIMESTAMP;"))
+        conn.execute(text("ALTER TABLE app_devices ADD COLUMN IF NOT EXISTS last_ip VARCHAR(64);"))
+        conn.execute(text("ALTER TABLE app_devices ADD COLUMN IF NOT EXISTS route_mode VARCHAR(32);"))
+        conn.execute(text("ALTER TABLE app_devices ADD COLUMN IF NOT EXISTS route_selected_apps_json TEXT;"))
+        conn.execute(text("ALTER TABLE app_devices ADD COLUMN IF NOT EXISTS route_requires_elevated_privileges BOOLEAN;"))
+        conn.execute(text("ALTER TABLE app_devices ADD COLUMN IF NOT EXISTS revoked_at TIMESTAMP;"))
+        conn.execute(text("ALTER TABLE app_devices ADD COLUMN IF NOT EXISTS revoked_reason VARCHAR(200);"))
+        conn.execute(text("ALTER TABLE app_devices ADD COLUMN IF NOT EXISTS created_at TIMESTAMP;"))
+        conn.execute(text("ALTER TABLE app_devices ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP;"))
+        conn.execute(text("CREATE UNIQUE INDEX IF NOT EXISTS uq_app_devices_install_id ON app_devices(install_id);"))
+        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_app_devices_tg_id ON app_devices(tg_id);"))
+        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_app_devices_tg_revoked ON app_devices(tg_id, revoked_at);"))
+        now_param = _datetime_sql_param(_utcnow(), dialect="postgresql")
+        conn.execute(
+            text(
+                """
+                INSERT INTO app_devices (
+                  tg_id, install_id, device_name, display_name, platform, os_version,
+                  app_version, locale, timezone, last_seen_at, last_ip, route_mode,
+                  route_selected_apps_json, route_requires_elevated_privileges,
+                  created_at, updated_at
+                )
+                SELECT
+                  u.tg_id,
+                  substring(trim(u.app_install_id) from 1 for 128),
+                  nullif(trim(coalesce(u.app_device_name, '')), ''),
+                  coalesce(
+                    nullif(trim(coalesce(u.app_device_name, '')), ''),
+                    nullif(trim(coalesce(u.display_name, '')), ''),
+                    'Current device'
+                  ),
+                  nullif(trim(coalesce(u.app_platform, '')), ''),
+                  nullif(trim(coalesce(u.app_os_version, '')), ''),
+                  nullif(trim(coalesce(u.app_version, '')), ''),
+                  nullif(trim(coalesce(u.app_locale, '')), ''),
+                  nullif(trim(coalesce(u.app_timezone, '')), ''),
+                  coalesce(u.app_last_seen_at, u.created_at, :now),
+                  nullif(trim(coalesce(u.app_last_ip, '')), ''),
+                  coalesce(nullif(trim(coalesce(u.route_mode, '')), ''), 'all_traffic'),
+                  coalesce(u.route_selected_apps_json, '[]'),
+                  coalesce(
+                    u.route_requires_elevated_privileges,
+                    CASE WHEN lower(coalesce(u.app_platform, '')) IN ('windows','linux','macos','darwin') THEN TRUE ELSE FALSE END
+                  ),
+                  coalesce(u.app_last_seen_at, u.created_at, :now),
+                  :now
+                FROM users u
+                WHERE u.app_install_id IS NOT NULL
+                  AND trim(u.app_install_id) <> ''
+                  AND NOT EXISTS (
+                    SELECT 1 FROM app_devices d
+                    WHERE d.install_id = substring(trim(u.app_install_id) from 1 for 128)
+                  );
+                """
+            ),
+            {"now": now_param},
+        )
+
         conn.execute(text("ALTER TABLE nodes ADD COLUMN IF NOT EXISTS accepting_new_clients BOOLEAN DEFAULT TRUE;"))
         conn.execute(text("ALTER TABLE nodes ADD COLUMN IF NOT EXISTS is_draining BOOLEAN DEFAULT FALSE;"))
         conn.execute(text("ALTER TABLE nodes ADD COLUMN IF NOT EXISTS cpu_percent DOUBLE PRECISION DEFAULT 0;"))

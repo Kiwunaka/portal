@@ -1,6 +1,6 @@
 "use client";
 
-import type { Dispatch, SetStateAction } from "react";
+import { useEffect, useState, type Dispatch, type SetStateAction } from "react";
 import {
   AdminBadge,
   AdminPanelHeader,
@@ -19,6 +19,8 @@ import {
   type AdminUsersBulkActionState,
   type AdminUsersQueryState,
 } from "./admin-users-query-state";
+
+const ADMIN_USERS_SEARCH_DEBOUNCE_MS = 350;
 
 type AdminUsersQueryPanelProps = {
   filters: AdminUsersQueryState;
@@ -69,6 +71,20 @@ export function AdminUsersQueryPanel({
   onRunBulkAction,
   setBulkAction,
 }: AdminUsersQueryPanelProps) {
+  const [draftQuery, setDraftQuery] = useState(filters.q);
+
+  useEffect(() => {
+    setDraftQuery(filters.q);
+  }, [filters.q]);
+
+  useEffect(() => {
+    if (draftQuery === filters.q) return;
+    const timer = window.setTimeout(() => {
+      onQueryChange(draftQuery);
+    }, ADMIN_USERS_SEARCH_DEBOUNCE_MS);
+    return () => window.clearTimeout(timer);
+  }, [draftQuery, filters.q, onQueryChange]);
+
   return (
     <article className={adminPanelClass("neutral")}>
       <AdminPanelHeader
@@ -95,8 +111,8 @@ export function AdminUsersQueryPanel({
 
       <div className="grid gap-2 sm:grid-cols-2 2xl:grid-cols-[minmax(0,1.8fr),repeat(4,minmax(0,0.88fr))]">
         <input
-          value={filters.q}
-          onChange={(event) => onQueryChange(event.target.value)}
+          value={draftQuery}
+          onChange={(event) => setDraftQuery(event.target.value)}
           placeholder="Поиск по username, Telegram ID, имени или app install ID"
           className={adminFieldClass}
         />

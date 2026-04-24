@@ -100,7 +100,7 @@
     "canonical_mark_source_id": "pokrov-vector-mark-2026-04-24",
     "canonical_mark_provenance": {
       "root_manifest": "shared/redesign-assets.json",
-      "vector_masters": ["logo/logoclear.svg", "logo/logowithtext.svg"],
+      "vector_masters": ["logo/logoclear.svg"],
       "visible_export_master": "marketing/public/redesign/brand/pokrov-app-icon-1024.png"
     },
     "subtitle_policy": "No legacy subtitle text on public brand assets.",

@@ -28,6 +28,7 @@ def _load_api_and_service(monkeypatch, tmp_path: Path):
         "app_first_service",
         "config",
         "db",
+        "device_service",
         "migrations",
         "models",
         "web_auth_service",

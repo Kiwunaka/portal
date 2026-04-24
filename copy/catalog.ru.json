@@ -157,7 +157,7 @@
     },
     "marketing.checkout.title": {
       "surface": "marketing.checkout",
-      "ru": "Ключ доступа",
+      "ru": "Ключ доступа для POKROV",
       "variables": [],
       "tone": "calm",
       "allowed_public": true,
@@ -166,7 +166,7 @@
     },
     "marketing.checkout.subtitle": {
       "surface": "marketing.checkout",
-      "ru": "Выберите срок, оплатите ключ и активируйте его в приложении или кабинете.",
+      "ru": "Сначала можно попробовать 5 дней в приложении. Если POKROV подходит, купите ключ доступа и активируйте его в приложении или кабинете. Если вы уже вошли, продление продолжит доступ в том же аккаунте.",
       "variables": [],
       "tone": "calm",
       "allowed_public": true,
@@ -182,6 +182,15 @@
       "compliance_notes": "Sales-oriented friendly format.",
       "ab_variant": "control"
     },
+    "marketing.checkout.purchase_cta": {
+      "surface": "marketing.checkout",
+      "ru": "Купить ключ доступа",
+      "variables": [],
+      "tone": "calm",
+      "allowed_public": true,
+      "compliance_notes": "Primary purchase CTA for key-first checkout.",
+      "ab_variant": "control"
+    },
     "marketing.checkout.meta.title": {
       "surface": "marketing.checkout",
       "ru": "Ключ доступа | POKROV",
@@ -193,7 +202,7 @@
     },
     "marketing.checkout.meta.description": {
       "surface": "marketing.checkout",
-      "ru": "Выберите срок, оплатите ключ доступа и активируйте его в приложении или кабинете POKROV.",
+      "ru": "Попробуйте POKROV 5 дней или купите ключ доступа и активируйте его в приложении или кабинете.",
       "variables": [],
       "tone": "calm",
       "allowed_public": true,
@@ -445,7 +454,7 @@
     },
     "marketing.download.android.cta": {
       "surface": "marketing.home.downloads",
-      "ru": "Скачать APK",
+      "ru": "Скачать приложение",
       "variables": [],
       "tone": "calm",
       "allowed_public": true,
@@ -454,7 +463,7 @@
     },
     "marketing.download.windows.cta": {
       "surface": "marketing.home.downloads",
-      "ru": "Скачать для Windows",
+      "ru": "Скачать приложение",
       "variables": [],
       "tone": "calm",
       "allowed_public": true,
@@ -499,7 +508,7 @@
     },
     "marketing.install.title": {
       "surface": "marketing.install",
-      "ru": "Скачайте приложение",
+      "ru": "Скачайте приложение POKROV",
       "variables": [],
       "tone": "calm",
       "allowed_public": true,
@@ -508,7 +517,7 @@
     },
     "marketing.install.subtitle": {
       "surface": "marketing.install",
-      "ru": "Начните с приложения: так проще включить доступ и подключиться без лишних шагов. Если нужной платформы пока нет, мы честно покажем текущий статус.",
+      "ru": "Начните с приложения: так проще включить доступ, получить 5 дней проверки и подключиться без лишних шагов. Если нужной платформы пока нет, мы честно покажем текущий статус.",
       "variables": [],
       "tone": "calm",
       "allowed_public": true,
@@ -535,7 +544,7 @@
     },
     "marketing.install.help_cta": {
       "surface": "marketing.install",
-      "ru": "Нужна помощь",
+      "ru": "Открыть инструкцию",
       "variables": [],
       "tone": "calm",
       "allowed_public": true,
@@ -697,7 +706,7 @@
     },
     "marketing.legal.offer.intro": {
       "surface": "marketing.legal.offer",
-      "ru": "Понятные правила использования POKROV: доступ, ключи, продление и поддержка без лишнего языка.",
+      "ru": "Понятные условия POKROV: доступ, 5 дней проверки, ключи доступа, продление и контакты поддержки.",
       "variables": [],
       "tone": "calm",
       "allowed_public": true,
@@ -1030,7 +1039,7 @@
     },
     "retention.welcome": {
       "surface": "bot.retention",
-      "ru": "Ваш профиль полностью готов! Установите наше приложение, подключитесь в один клик и наслаждайтесь свободным интернетом без границ.",
+      "ru": "Доступ готов. Установите приложение, включите подключение в один клик и спокойно проверьте POKROV в обычном дне.",
       "variables": [],
       "tone": "premium",
       "allowed_public": false,
@@ -1048,7 +1057,7 @@
     },
     "retention.t1": {
       "surface": "bot.retention",
-      "ru": "Срок вашей подписки подходит к концу! Оформите продление прямо сейчас, чтобы ваш интернет летал быстро и без пауз.",
+      "ru": "Срок доступа подходит к концу. Продлите сейчас, чтобы подключение не оборвалось в самый неудобный момент.",
       "variables": [],
       "tone": "premium",
       "allowed_public": false,
@@ -1057,7 +1066,7 @@
     },
     "retention.t0": {
       "surface": "bot.retention",
-      "ru": "Ваша подписка истекает уже сегодня. Скорее перейдите к продлению, чтобы мы и дальше оставались вашим любимым помощником в мире интернета!",
+      "ru": "Доступ заканчивается сегодня. Откройте продление заранее, и POKROV продолжит работать без нового старта.",
       "variables": [],
       "tone": "premium",
       "allowed_public": false,
@@ -1066,7 +1075,7 @@
     },
     "retention.reactivation": {
       "surface": "bot.retention",
-      "ru": "Мы скучали! Восстановите подписку в пару кликов и продолжайте пользоваться быстрым интернетом вместе с POKROV.",
+      "ru": "Можно вернуться без лишней возни. Откройте продление, и POKROV снова подхватит ваш доступ.",
       "variables": [],
       "tone": "premium",
       "allowed_public": false,
@@ -1086,7 +1095,7 @@
     },
     "marketing.install.downloads.title": {
       "surface": "marketing.install.downloads",
-      "ru": "Готовые загрузки",
+      "ru": "Скачайте приложение или откройте инструкцию",
       "variables": [],
       "tone": "calm",
       "allowed_public": true,
@@ -1095,7 +1104,7 @@
     },
     "marketing.install.downloads.subtitle": {
       "surface": "marketing.install.downloads",
-      "ru": "Здесь собраны прямые загрузки и запасные шаги, если нужный файл не открылся сразу.",
+      "ru": "Карточки ведут к актуальному файлу для Android или Windows. Если файл ещё не опубликован, рядом остаётся понятная инструкция.",
       "variables": [],
       "tone": "calm",
       "allowed_public": true,
@@ -1122,7 +1131,7 @@
     },
     "marketing.install.android.desc": {
       "surface": "marketing.install.android",
-      "ru": "Скачайте APK, если нужен прямой файл для установки на Android.",
+      "ru": "Скачайте приложение для Android или откройте инструкцию, если релизный файл ещё не опубликован.",
       "variables": [],
       "tone": "calm",
       "allowed_public": true,
@@ -1149,7 +1158,7 @@
     },
     "marketing.install.windows.desc": {
       "surface": "marketing.install.windows",
-      "ru": "Скачайте установщик для Windows и пройдите короткую установку.",
+      "ru": "Скачайте приложение для Windows или откройте инструкцию, если релизный файл ещё не опубликован.",
       "variables": [],
       "tone": "calm",
       "allowed_public": true,
@@ -1158,7 +1167,7 @@
     },
     "marketing.install.apple.status": {
       "surface": "marketing.install.apple",
-      "ru": "Apple",
+      "ru": "Готовится",
       "variables": [],
       "tone": "calm",
       "allowed_public": true,

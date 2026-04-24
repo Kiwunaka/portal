@@ -617,11 +617,11 @@ test.describe("Cabinet flow", () => {
   test("renders runtime connections on devices and redirects statistics into the dashboard", async ({ page }) => {
     await page.goto("/devices/");
 
-    await expect(page.getByRole("heading", { name: "Что уже связано с профилем" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Что уже связано с аккаунтом" })).toBeVisible();
     await expect(page.locator("main")).toContainText("Подключений сейчас");
     await expect(page.locator("main")).toContainText("Лимит устройств показан отдельно");
     await expect(page.locator("main")).toContainText("Известных устройств");
-    await expect(page.locator("main")).toContainText("Маршрут");
+    await expect(page.locator("main")).toContainText("Путь доступа");
     await expect(page.locator("main")).toContainText("1 из 2");
 
     await page.goto("/statistics/").catch(async () => {
@@ -649,7 +649,7 @@ test.describe("Cabinet flow", () => {
 
   test("keeps cabinet copy human and hides node internals", async ({ page }) => {
     await page.goto("/devices/");
-    await expect(page.getByRole("heading", { name: "Что уже связано с профилем" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Что уже связано с аккаунтом" })).toBeVisible();
     await expect(page.getByRole("main")).not.toContainText("pl.pokrov.space");
     await expect(page.getByRole("main")).not.toContainText("us.pokrov.space");
     await expect(page.getByRole("main")).not.toContainText(":443");

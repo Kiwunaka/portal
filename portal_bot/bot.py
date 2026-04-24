@@ -808,7 +808,7 @@ def _mark_stars_payment_processed(*, payment_fingerprint: str, invoice_payload: 
 ACHIEVEMENTS = {
     "first_sub": {
         "name": "🟢 Inception",
-        "desc": "Первая активация личного маршрута",
+        "desc": "Первая активация личного доступа",
         "days": 0,
         "icon": "🟢"
     },
@@ -6599,7 +6599,7 @@ async def admin_nodes(callback: CallbackQuery):
     finally:
         s.close()
 
-    lines = ["🗺 *Ноды (enabled)*\n"]
+    lines = ["🗺 *Узлы (enabled)*\n"]
     for n in nodes:
         code = (getattr(n, "code", "") or "").strip()
         name = (getattr(n, "name", "") or "").strip()
@@ -6646,7 +6646,7 @@ async def admin_sync_free_pl(callback: CallbackQuery):
         free_codes = [((getattr(n, "code", "") or "").strip()) for n in nodes if "free" in (getattr(n, "code", "") or "").lower()]
         if not free_codes:
             await callback.message.edit_text(
-                "🆓 *Sync Free pool*\n\n❌ Free-ноды не найдены в `nodes`.\nДобавь отдельную free-ноду (code с `free`).",
+                "🆓 *Sync Free pool*\n\n❌ Free-узлы не найдены в `nodes`.\nДобавь отдельный free-узел (code с `free`).",
                 reply_markup=InlineKeyboardMarkup(inline_keyboard=[[InlineKeyboardButton(text="◀️ Назад", callback_data="admin")]]),
                 parse_mode=ParseMode.MARKDOWN,
             )
@@ -7646,7 +7646,7 @@ async def mass_promo_14_run(callback: CallbackQuery):
     await callback.answer("🎁 Выполняю...")
     await callback.message.edit_text(
         "🎁 *Промо: +14 дней сегменту*\n\n"
-        "Обновляю БД и синхронизирую пользователей на ноды. Это может занять 10–60 секунд.",
+        "Обновляю БД и синхронизирую пользователей на узлы. Это может занять 10–60 секунд.",
         reply_markup=InlineKeyboardMarkup(inline_keyboard=[[InlineKeyboardButton(text="◀️ Назад", callback_data="admin_mass")]]),
         parse_mode=ParseMode.MARKDOWN,
     )
@@ -8582,7 +8582,7 @@ async def render_admin_user_view(callback: CallbackQuery, tg_id: int):
             InlineKeyboardButton(text="➖ 7 дней", callback_data=f"adm_add_days_{tg_id}_-7"),
             InlineKeyboardButton(text="➖ 30 дней", callback_data=f"adm_add_days_{tg_id}_-30"),
         ],
-        [InlineKeyboardButton(text="🔁 Sync на ноды", callback_data=f"adm_sync_nodes_{tg_id}")],
+        [InlineKeyboardButton(text="🔁 Sync на узлы", callback_data=f"adm_sync_nodes_{tg_id}")],
         [
             InlineKeyboardButton(text="📨 Отправить ссылку", callback_data=f"adm_send_link_{tg_id}"),
             InlineKeyboardButton(text="✉️ Сообщение", callback_data=f"adm_msg_user_{tg_id}"),

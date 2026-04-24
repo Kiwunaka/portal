@@ -60,7 +60,7 @@ export default function RedeemPage() {
       } else if (nextStatus.redeemed) {
         setMessage("Этот ключ доступа уже был использован. Если нужна помощь, лучше открыть поддержку.");
       } else {
-        setMessage("Ключ доступа найден. Его можно применить к текущему профилю.");
+        setMessage("Ключ доступа найден. Его можно применить к текущему аккаунту.");
       }
       return nextStatus;
     } catch {
@@ -90,7 +90,7 @@ export default function RedeemPage() {
       const payload = await redeemAccessKey(nextStatus.key);
       setStatus(payload.status);
       await refresh();
-      setMessage("Ключ доступа применен. Профиль уже обновлен.");
+      setMessage("Ключ доступа применен. Доступ уже обновлен.");
     } catch {
       setError("Не удалось применить ключ доступа. Попробуйте еще раз или откройте поддержку.");
     } finally {
@@ -109,7 +109,7 @@ export default function RedeemPage() {
 
   const facts = [
     {
-      label: "Профиль",
+      label: "Аккаунт",
       value: resolvePlanLabel(dash, user),
       hint: "Ключ доступа применяется к текущему аккаунту.",
       tone: "neutral" as const,
@@ -117,7 +117,7 @@ export default function RedeemPage() {
     {
       label: "Статус доступа",
       value: dash?.is_active ? "Активен" : "Нужно продление",
-      hint: dash?.is_active ? "Профиль уже готов к работе." : "Ключ доступа или продление вернут рабочий статус.",
+      hint: dash?.is_active ? "Доступ уже готов к работе." : "Ключ доступа или продление вернут рабочий статус.",
       tone: dash?.is_active ? ("success" as const) : ("warning" as const),
     },
     {
@@ -128,7 +128,7 @@ export default function RedeemPage() {
     },
     {
       label: "Что дальше",
-      value: status?.redeemed ? "Открыть поддержку" : "Применить к профилю",
+      value: status?.redeemed ? "Открыть поддержку" : "Применить к аккаунту",
       hint: "Если ключ потерян или уже использован, лучше не гадать, а написать нам.",
       tone: "neutral" as const,
     },
@@ -171,7 +171,7 @@ export default function RedeemPage() {
     {
       key: "redeem",
       title: "Если ключ найден, примените его",
-      body: "После этого профиль подтянется автоматически. Новый аккаунт создавать не нужно.",
+      body: "После этого доступ подтянется автоматически. Новый аккаунт создавать не нужно.",
       badge: "Шаг 2",
       tone: "neutral" as const,
     },
@@ -193,7 +193,7 @@ export default function RedeemPage() {
     <CabinetRoute
       eyebrow="Тарифы и оплата"
       title="Применить ключ доступа"
-      description="Если у вас уже есть ключ доступа, примените его здесь к текущему профилю. Новый аккаунт создавать не нужно."
+      description="Если у вас уже есть ключ доступа, примените его здесь к текущему аккаунту. Новый аккаунт создавать не нужно."
       actions={
         <>
           <AppRouteLink href="/subscription/checkout/" className="outline-btn rounded-full px-5 py-3 text-sm font-semibold">
@@ -210,7 +210,7 @@ export default function RedeemPage() {
         <CabinetSection
           eyebrow="Проверка"
           title="Проверить и применить"
-          description="Лучше сначала проверить ключ доступа, а потом уже применять его к профилю."
+          description="Лучше сначала проверить ключ доступа, а потом уже применять его к аккаунту."
         >
           <label className="block text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500 dark:text-slate-400">
             Ключ доступа

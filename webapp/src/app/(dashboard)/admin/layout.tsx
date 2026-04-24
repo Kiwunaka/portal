@@ -3,6 +3,8 @@
 import AppRouteLink from "@/components/app-route-link";
 import {
   AdminBadge,
+  AdminIcon,
+  PokrovAdminMark,
   adminButtonClass,
   adminFieldClass,
   adminRailCardClass,
@@ -10,7 +12,7 @@ import {
   adminShellFrameClass,
   adminTopbarClass,
 } from "@/components/admin/admin-shell";
-import { hasWebSessionToken, resolveApiUrl, setWebSessionToken } from "@/lib/api";
+import { adminMetricsStatus, hasWebSessionToken, resolveApiUrl, setWebSessionToken, type AdminMetricsStatus } from "@/lib/api";
 import { usePortalSession } from "@/lib/session";
 import { usePathname } from "next/navigation";
 import { useEffect, useMemo, useState, type FormEvent, type ReactNode } from "react";
@@ -155,6 +157,66 @@ function AdminStateCard({
   );
 }
 
+function AdminLiveStatusRail() {
+  const [status, setStatus] = useState<AdminMetricsStatus | null>(null);
+  const [loadedAt, setLoadedAt] = useState("");
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    let mounted = true;
+    const load = async () => {
+      try {
+        const next = await adminMetricsStatus();
+        if (!mounted) return;
+        setStatus(next);
+        setLoadedAt(new Date().toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" }));
+        setError("");
+      } catch (err) {
+        if (!mounted) return;
+        setError(String((err as { message?: string })?.message || err || "status unavailable"));
+      }
+    };
+    void load();
+    const timer = window.setInterval(() => void load(), 60000);
+    return () => {
+      mounted = false;
+      window.clearInterval(timer);
+    };
+  }, []);
+
+  const nodes = status?.nodes || [];
+  const stale = nodes.filter((node) => node.status !== "fresh").length;
+  const alerts = status?.active_alerts?.length || 0;
+  const tone = error || status?.status === "missing" || alerts ? "danger" : status?.status === "stale" || stale ? "warning" : "success";
+
+  return (
+    <section className={adminRailCardClass} aria-live="polite">
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-emerald-300">live status</p>
+          <h2 className="mt-2 text-lg font-semibold text-slate-50">Состояние узлов</h2>
+        </div>
+        <AdminBadge tone={tone}>{error ? "ошибка" : status?.status || "loading"}</AdminBadge>
+      </div>
+      <div className="mt-3 grid gap-2 text-xs leading-5 text-slate-400">
+        <div className="flex items-center justify-between gap-2 rounded-[0.75rem] border border-[#1d5d49] bg-[#07251d] px-3 py-2">
+          <span>Срез метрик</span>
+          <strong className="text-slate-100">{loadedAt || "..."}</strong>
+        </div>
+        <div className="flex items-center justify-between gap-2 rounded-[0.75rem] border border-[#1d5d49] bg-[#07251d] px-3 py-2">
+          <span>Узлы в статусе stale/missing</span>
+          <strong className="text-slate-100">{stale}</strong>
+        </div>
+        <div className="flex items-center justify-between gap-2 rounded-[0.75rem] border border-[#1d5d49] bg-[#07251d] px-3 py-2">
+          <span>Активные алерты</span>
+          <strong className="text-slate-100">{alerts}</strong>
+        </div>
+      </div>
+      {error ? <p className="mt-3 text-xs leading-5 text-rose-200">{error}</p> : null}
+    </section>
+  );
+}
+
 export default function AdminLayout({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const { error, loading, logoutWebSession, user, webLoginRequired } = usePortalSession();
@@ -221,9 +283,12 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
         <aside className={`${adminSidebarClass} p-3 xl:sticky xl:top-4 xl:self-start`}>
           <div className="border-b border-[#b8ded1] pb-4">
             <div className="flex items-center justify-between gap-3">
-              <div>
+              <div className="flex min-w-0 items-center gap-3">
+                <PokrovAdminMark />
+                <div className="min-w-0">
                 <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-emerald-700">рабочая панель</p>
                 <h1 className="mt-2 text-lg font-semibold text-slate-50">POKROV Ops</h1>
+                </div>
               </div>
               <AdminBadge tone="accent">Админ</AdminBadge>
             </div>
@@ -249,13 +314,16 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
                         aria-current={selected ? "page" : undefined}
                         className={
                           selected
-                            ? "block rounded-[0.85rem] border border-[#2f8f70] bg-[#dff3eb] px-3 py-2.5 text-slate-50"
-                            : "block rounded-[0.85rem] border border-transparent bg-transparent px-3 py-2.5 text-slate-300 transition hover:border-[#99cdbb] hover:bg-[#f8fffc] hover:text-slate-100"
+                            ? "flex gap-2 rounded-[0.85rem] border border-emerald-300/40 bg-emerald-300/12 px-3 py-2.5 text-slate-50"
+                            : "flex gap-2 rounded-[0.85rem] border border-transparent bg-transparent px-3 py-2.5 text-slate-300 transition hover:border-emerald-300/25 hover:bg-emerald-100/10 hover:text-slate-100"
                         }
                       >
-                        <span className="block text-sm font-semibold">{item.label}</span>
-                        <span className={selected ? "mt-1 block text-xs leading-5 text-slate-300" : "mt-1 block text-xs leading-5 text-slate-500"}>
-                          {item.summary}
+                        <AdminIcon name={item.icon as never} className="mt-0.5 shrink-0 text-emerald-200" />
+                        <span className="min-w-0">
+                          <span className="block text-sm font-semibold">{item.label}</span>
+                          <span className={selected ? "mt-1 block text-xs leading-5 text-slate-300" : "mt-1 block text-xs leading-5 text-slate-500"}>
+                            {item.summary}
+                          </span>
                         </span>
                       </AppRouteLink>
                     );
@@ -304,10 +372,11 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
                     aria-label={`Open ${group.label}`}
                     className={
                       selected
-                        ? "inline-flex min-h-8 items-center rounded-full border border-[#2f8f70] bg-[#dff3eb] px-3 text-[11px] font-semibold text-emerald-100"
-                        : "inline-flex min-h-8 items-center rounded-full border border-[#c6e6db] bg-[#f8fffc] px-3 text-[11px] font-semibold text-slate-400 transition hover:border-[#2f8f70] hover:text-slate-200"
+                        ? "inline-flex min-h-8 items-center gap-1.5 rounded-full border border-emerald-300/40 bg-emerald-300/12 px-3 text-[11px] font-semibold text-emerald-100"
+                        : "inline-flex min-h-8 items-center gap-1.5 rounded-full border border-[#1d5d49] bg-[#07251d] px-3 text-[11px] font-semibold text-slate-400 transition hover:border-emerald-300/40 hover:text-slate-200"
                     }
                   >
+                    <AdminIcon name={group.icon as never} size={13} />
                     {group.label}
                   </AppRouteLink>
                 );
@@ -319,6 +388,8 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
         </section>
 
         <aside className="space-y-4 xl:sticky xl:top-4 xl:self-start">
+          <AdminLiveStatusRail />
+
           <section className={adminRailCardClass}>
             <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-emerald-700">текущий контекст</p>
             <h2 className="mt-2 text-lg font-semibold text-slate-50">{activeItem.label}</h2>

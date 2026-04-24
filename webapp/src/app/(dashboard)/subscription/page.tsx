@@ -54,7 +54,7 @@ function nodePolicyLabel(value?: string | null): string {
   const normalized = String(value || "").trim().toLowerCase();
   if (normalized === "free_single_location" || normalized === "nl_only") return "базовая локация";
   if (normalized === "managed_premium" || normalized === "paid_pool") return "без месячного лимита";
-  return "по текущему профилю";
+  return "по текущему доступу";
 }
 
 export default function SubscriptionPage() {
@@ -197,7 +197,7 @@ export default function SubscriptionPage() {
       description={
         dash?.is_active
           ? "Здесь только практичные вещи: текущий режим, понятные варианты продления и работа с ключом."
-          : "Если срок закончился, отсюда проще всего вернуть доступ и продолжить тем же профилем."
+          : "Если срок закончился, отсюда проще всего вернуть доступ и продолжить с тем же аккаунтом."
       }
       actions={
         <>
@@ -213,7 +213,7 @@ export default function SubscriptionPage() {
         {
           label: "Текущий режим",
           value: resolvePlanLabel(dash, user),
-          hint: dash?.is_active ? "Профиль уже активен." : "Если срок закончился, вернуть его можно отсюда.",
+          hint: dash?.is_active ? "Доступ уже активен." : "Если срок закончился, вернуть его можно отсюда.",
           tone: dash?.is_active ? "success" : "warning",
         },
         {
@@ -231,13 +231,13 @@ export default function SubscriptionPage() {
         {
           label: "Устройства",
           value: `До ${deviceLimit}`,
-          hint: freeMode ? `В базовом режиме ориентир до ${freeLimitGb || 5} ГБ.` : "Лимит действует на весь профиль.",
+          hint: freeMode ? `В базовом режиме ориентир до ${freeLimitGb || 5} ГБ.` : "Лимит действует на весь аккаунт.",
           tone: "neutral",
         },
       ]}
     >
       <CabinetHero
-        eyebrow="Сейчас по профилю"
+        eyebrow="Сейчас по доступу"
         badge={dash?.is_active ? "Можно продлить спокойно" : "Нужен следующий шаг"}
         badgeTone={dash?.is_active ? "success" : "warning"}
         title={dash?.is_active ? "Выберите удобный способ продлить" : "Сначала верните срок действия"}

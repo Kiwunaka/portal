@@ -241,8 +241,8 @@ export default function AdminNodesPage() {
   return (
     <section className="space-y-5">
       <AdminSurfaceHeader
-        title="Ноды и состояние инфраструктуры"
-        description="Операторская консоль флота: свежесть, риск маршрутизации, предупреждения и безопасные действия с нодами."
+        title="Узлы и состояние узлов"
+        description="Операторская консоль сети: свежесть, риск маршрутизации, предупреждения и безопасные действия с узлами."
         meta={
           <>
             <AdminBadge tone={freshnessTone(status?.status)} className="badge">{freshnessLabel(status?.status)}</AdminBadge>
@@ -265,9 +265,9 @@ export default function AdminNodesPage() {
       {notice ? <AdminInlineNote tone="success">{notice}</AdminInlineNote> : null}
 
       <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-        <AdminKpiCard label="Здоровые ноды" value={`${totals.healthy}/${nodes.length}`} hint="Включены и проходят последнюю проверку." tone={totals.healthy === nodes.length ? "success" : "warning"} />
-        <AdminKpiCard label="Онлайн-сессии" value={totals.online} hint={`${totals.clients} активных клиентов по отчетам нод.`} />
-        <AdminKpiCard label="Трафик 7д" value={fmtGb(totals.traffic7d)} hint="По текущему диапазону API трафика нод." />
+        <AdminKpiCard label="Здоровые узлы" value={`${totals.healthy}/${nodes.length}`} hint="Включены и проходят последнюю проверку." tone={totals.healthy === nodes.length ? "success" : "warning"} />
+        <AdminKpiCard label="Онлайн-сессии" value={totals.online} hint={`${totals.clients} активных клиентов по отчетам узлов.`} />
+        <AdminKpiCard label="Трафик 7д" value={fmtGb(totals.traffic7d)} hint="По текущему диапазону API трафика узлов." />
         <AdminKpiCard label="Активные алерты" value={status?.active_alerts?.length || 0} hint="Синтетические realtime-данные здесь не создаются." tone={status?.active_alerts?.length ? "danger" : "success"} />
       </div>
 
@@ -275,7 +275,7 @@ export default function AdminNodesPage() {
         <article className={adminPanelClass("neutral")}>
           <AdminPanelHeader
             eyebrow="флот"
-            title="Таблица нод"
+            title="Таблица узлов"
             description="Плотная таблица здоровья, свежести, runtime, емкости, пути подключения и observer-состояния."
             actions={
               <>
@@ -294,7 +294,7 @@ export default function AdminNodesPage() {
                 <table className="min-w-[960px] w-full text-left text-xs">
                   <thead className="border-b border-[#c6e6db] bg-[#f8fffc] text-[10px] uppercase tracking-[0.16em] text-slate-500">
                     <tr>
-                      <th className="px-3 py-3">Нода</th>
+                      <th className="px-3 py-3">Узел</th>
                       <th className="px-3 py-3">Здоровье</th>
                       <th className="px-3 py-3">Свежесть</th>
                       <th className="px-3 py-3">Runtime</th>
@@ -363,13 +363,13 @@ export default function AdminNodesPage() {
               </div>
             </div>
           ) : (
-            <AdminEmptyState title="Ноды не загружены" description="Health API вернул пустой список нод." />
+            <AdminEmptyState title="Узлы не загружены" description="Health API вернул пустой список узлов." />
           )}
         </article>
 
         <div className="space-y-4">
           <article className={adminPanelClass(status?.active_alerts?.length ? "danger" : "success")}>
-            <AdminPanelHeader eyebrow="алерты" title="Активные алерты" description="Свежесть метрик и node-level метки алертов." />
+            <AdminPanelHeader eyebrow="алерты" title="Активные алерты" description="Свежесть метрик и метки алертов по узлам." />
             {status?.active_alerts?.length ? (
               <div className="space-y-2">
                 {status.active_alerts.map((alert, index) => (
@@ -383,13 +383,13 @@ export default function AdminNodesPage() {
                 ))}
               </div>
             ) : (
-              <AdminEmptyState title="Активных алертов нет" description="Metrics status сейчас не показывает активных алертов нод." />
+              <AdminEmptyState title="Активных алертов нет" description="Metrics status сейчас не показывает активных алертов узлов." />
             )}
           </article>
 
           {drift ? (
             <article className={adminPanelClass(drift.summary.drift ? "warning" : "success")}>
-              <AdminPanelHeader eyebrow="drift" title="Drift runtime-конфига" description={`${drift.summary.ok}/${drift.summary.total} нод совпадают с ожидаемым inbound-состоянием.`} />
+              <AdminPanelHeader eyebrow="drift" title="Drift runtime-конфига" description={`${drift.summary.ok}/${drift.summary.total} узл. совпадают с ожидаемым inbound-состоянием.`} />
               <div className="space-y-2">
                 {drift.results.map((row) => (
                   <div key={row.node_code} className={adminInsetPanelClass}>
@@ -414,7 +414,7 @@ export default function AdminNodesPage() {
           const profiles = Object.entries(node.transport_profiles || {});
           return (
             <article key={`context-${node.code}`} className={adminPanelClass("neutral")}>
-              <AdminPanelHeader eyebrow="advanced diagnostics" title={`${node.code.toUpperCase()} hoster context`} description="Расширенные детали панели, client-path probe и transport-профилей для сетевых инцидентов." />
+              <AdminPanelHeader eyebrow="инспектор узла" title={`${node.code.toUpperCase()} контекст хостинга`} description="Расширенные детали панели, client-path probe и transport-профилей для сетевых инцидентов." />
               <div className="grid gap-3 text-xs leading-5 text-slate-300 sm:grid-cols-2">
                 <div className={adminInsetPanelClass}><strong>Hoster:</strong> {node.hoster_family || "missing"} · {node.hoster_asn || "missing"}</div>
                 <div className={adminInsetPanelClass}><strong>Subnet:</strong> {node.subnet || "missing"}</div>
@@ -450,8 +450,8 @@ export default function AdminNodesPage() {
 
       <AdminConfirmDialog
         open={Boolean(pending)}
-        title={pending?.label || "Подтвердить действие с нодой"}
-        description="Действие меняет live-назначения или состояние ноды. Укажите причину для аудита перед выполнением."
+        title={pending?.label || "Подтвердить действие с узлом"}
+        description="Действие меняет live-назначения или состояние узла. Укажите причину для аудита перед выполнением."
         reason={reason}
         onReasonChange={setReason}
         onCancel={() => {

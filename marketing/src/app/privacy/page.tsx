@@ -3,7 +3,7 @@ import Link from "next/link";
 import JsonLd from "../../components/json-ld";
 import { buildMarketingMetadata } from "../../components/marketing-landing";
 import { buildBreadcrumbJsonLd, MARKETING_CANONICAL_PATHS } from "../../lib/marketing-site";
-import { CANONICAL_PLATFORM_BRAND, getPokrovPublicConfig } from "../../lib/pokrov";
+import { CANONICAL_PLATFORM_BRAND, getCopyText, getPokrovPublicConfig } from "../../lib/pokrov";
 
 const config = getPokrovPublicConfig(process.env as Record<string, string | undefined>);
 
@@ -30,8 +30,10 @@ export default function PrivacyPage() {
           <span className="lp-legal-banner__eyebrow">Данные и поддержка</span>
           <h1>Политика конфиденциальности</h1>
           <p>
-            POKROV использует только те данные, которые нужны для работы доступа, поддержки, защиты сервиса и
-            проведения платежей. Здесь короткая и спокойная версия того, что именно мы храним и зачем.
+            {getCopyText(
+              "marketing.legal.privacy.intro",
+              "POKROV использует только те данные, которые нужны для работы доступа, поддержки, защиты сервиса и проведения платежей.",
+            )}
           </p>
         </section>
 

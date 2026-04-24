@@ -8,12 +8,12 @@ export default function DashboardRouteNotFound() {
       <section className="glass-card w-full overflow-hidden border border-white/70 p-6 dark:border-[#243129]/80 sm:p-8">
         <EmptyState
           icon={<span className="material-symbols-rounded text-3xl">explore_off</span>}
-          title="Маршрут дашборда не найден"
-          description="Такой путь не существует внутри главного кабинета. Вернитесь на старт или откройте поддержку, если пришли по старой ссылке."
+          title="Экран главной не найден"
+          description="Такого экрана нет внутри главного кабинета. Вернитесь на старт или откройте поддержку, если пришли по старой ссылке."
           actions={
             <>
               <AppRouteLink href="/dashboard/" className="btn-primary rounded-2xl px-5 py-3 text-sm font-semibold uppercase tracking-[0.12em]">
-                В дашборд
+                На главную
               </AppRouteLink>
               <AppRouteLink href="/support/" className="outline-btn rounded-2xl px-5 py-3 text-sm font-semibold uppercase tracking-[0.12em]">
                 В поддержку
@@ -25,9 +25,9 @@ export default function DashboardRouteNotFound() {
         <div className="mt-6 rounded-[1.5rem] border border-white/70 bg-white/62 p-5 dark:border-white/10 dark:bg-white/[0.04]">
           <Timeline
             items={[
-              { title: "Откройте дашборд", description: "Главная страница показывает активный доступ, срок и быстрые действия.", tone: "success" },
-              { title: "Проверьте путь", description: "Возможно, ссылка в закладке устарела после обновления кабинета.", tone: "warning" },
-              { title: "Попросите помощь", description: "Если экран нужен срочно, поддержка подскажет точный маршрут.", tone: "info" },
+              { title: "Откройте главную", description: "Главная страница показывает активный доступ, срок и быстрые действия.", tone: "success" },
+              { title: "Проверьте ссылку", description: "Возможно, закладка устарела после обновления кабинета.", tone: "warning" },
+              { title: "Попросите помощь", description: "Если экран нужен срочно, поддержка подскажет точный раздел.", tone: "info" },
             ]}
           />
         </div>

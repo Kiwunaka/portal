@@ -46,11 +46,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         style={designTokenVars}
         suppressHydrationWarning
       >
-        <Script src="https://telegram.org/js/telegram-web-app.js" strategy="beforeInteractive" />
         <Script id="pokrov-theme-init" strategy="beforeInteractive" dangerouslySetInnerHTML={{ __html: THEME_INIT_SCRIPT }} />
+        <Script src="https://telegram.org/js/telegram-web-app.js" strategy="afterInteractive" />
         <Script
           id="material-symbols-fonts"
-          strategy="beforeInteractive"
+          strategy="afterInteractive"
           dangerouslySetInnerHTML={{
             __html: `(function(){var hrefs=["https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap","https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@24,400,1,0&display=swap"];for(var i=0;i<hrefs.length;i++){if(!document.querySelector('link[href="'+hrefs[i]+'"]')){var l=document.createElement('link');l.rel='stylesheet';l.href=hrefs[i];document.head.appendChild(l);}}})();`,
           }}

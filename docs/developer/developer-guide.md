@@ -364,6 +364,38 @@ cd webapp; npm.cmd run test:e2e:admin -- --grep "requires a real cabinet session
 cd C:/Users/kiwun/Documents/ai/POKROV-app/packages/app_shell; flutter test test/pokrov_seed_app_test.dart --plain-name "first-layer app shell copy hides transport and control terms"
 ```
 
+When working from the paired Superpowers polish worktrees, point client-aware root checks at the matching app worktree:
+
+```powershell
+$env:POKROV_APP_ROOT="C:/Users/kiwun/.config/superpowers/worktrees/POKROV-app/pokrov-full-redesign"
+python -m pytest tests/test_public_copy_guardrails.py -q
+python scripts/client_security_smoke.py
+python scripts/run_client_release_gate.py preflight
+```
+
+Final premium polish command checklist for the orchestrator:
+
+```powershell
+python -m pytest tests/test_public_copy_guardrails.py tests/test_redesign_spine.py tests/test_ui_visual_smoke.py -q
+python scripts/ui_visual_smoke.py --report docs/audit-artifacts/ui-visual-smoke-report.md
+python scripts/check-links.py
+python scripts/client_security_smoke.py
+python scripts/run_client_release_gate.py preflight
+python scripts/run_client_release_gate.py test --suite portal
+npm.cmd run build
+npm.cmd run test:e2e:admin
+```
+
+Run the `npm.cmd` commands inside `webapp/` when the admin/cabinet browser shell changed, and run marketing `npm.cmd run build` plus `npm.cmd run check:seo` inside `marketing/` when marketing routes, metadata, or public CTA copy changed. Do not run deploy commands in the final-polish no-deploy wave.
+
+Likely blockers to call out instead of hiding:
+
+- `rg` may be unavailable on some Windows shells; use `Get-ChildItem` and `Select-String` fallback
+- browser E2E can fail when export-server ports are held by another process; rerun from a clean shell or use the scripted Playwright command that clears stale port owners
+- `python scripts/run_client_release_gate.py test --suite portal` depends on Flutter and the `POKROV-app` worktree being complete
+- Android public release remains blocked without `ANDROID_AUDIT_SERIAL` pointing to physical hardware for the release-build localhost/control-surface audit
+- production signing, release artifact URLs, live deploy, live node enablement, and origin evidence are outside this polish task unless the orchestrator opens a release handoff
+
 Final polish QA checklist:
 
 - run `python -m pytest tests/test_public_copy_guardrails.py tests/test_redesign_spine.py tests/test_ui_visual_smoke.py -q`

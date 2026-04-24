@@ -1,12 +1,52 @@
 "use client";
 
 import type { HTMLAttributes, ReactNode } from "react";
+import {
+  Activity,
+  Bell,
+  Gift,
+  KeyRound,
+  LayoutDashboard,
+  Megaphone,
+  MessageSquareText,
+  Network,
+  Route,
+  ShieldCheck,
+  UsersRound,
+  type LucideIcon,
+} from "lucide-react";
 
 import { cn } from "@/components/utils";
 
 type AdminTone = "neutral" | "success" | "warning" | "danger" | "accent";
 type AdminButtonTone = "primary" | "secondary" | "ghost" | "danger";
 type AdminButtonSize = "sm" | "md" | "xs";
+type AdminIconName =
+  | "dashboard"
+  | "users"
+  | "gift"
+  | "key"
+  | "network"
+  | "route"
+  | "broadcast"
+  | "tickets"
+  | "activity"
+  | "shield"
+  | "bell";
+
+const ADMIN_ICONS: Record<AdminIconName, LucideIcon> = {
+  dashboard: LayoutDashboard,
+  users: UsersRound,
+  gift: Gift,
+  key: KeyRound,
+  network: Network,
+  route: Route,
+  broadcast: Megaphone,
+  tickets: MessageSquareText,
+  activity: Activity,
+  shield: ShieldCheck,
+  bell: Bell,
+};
 
 const PANEL_TONE_CLASSES: Record<AdminTone, string> = {
   neutral: "border-[#b8ded1] bg-white text-slate-900 shadow-[0_18px_42px_-34px_rgba(10,92,67,0.34)]",
@@ -34,16 +74,16 @@ const BUTTON_SIZE_CLASSES: Record<AdminButtonSize, string> = {
 };
 
 export const adminShellFrameClass =
-  "rounded-[1.3rem] border border-[#b8ded1] bg-[#f2fbf7] text-slate-900 shadow-[0_36px_80px_-54px_rgba(10,92,67,0.34)] [&_.text-slate-50]:text-slate-950 [&_.text-slate-100]:text-slate-900 [&_.text-slate-200]:text-slate-800 [&_.text-slate-300]:text-slate-700 [&_.text-slate-400]:text-slate-600 [&_.text-slate-500]:text-slate-500";
+  "rounded-[1.3rem] border border-[#174d3c] bg-[#071f19] text-slate-100 shadow-[0_36px_80px_-54px_rgba(10,92,67,0.72)]";
 
 export const adminSidebarClass =
-  "rounded-[1.25rem] border border-[#b8ded1] bg-[#e8f7f0] text-slate-900 shadow-[0_24px_60px_-44px_rgba(10,92,67,0.3)]";
+  "rounded-[1.25rem] border border-[#1d5d49] bg-[#0b2d24] text-slate-100 shadow-[0_24px_60px_-44px_rgba(0,0,0,0.46)]";
 
 export const adminTopbarClass =
-  "rounded-[1.15rem] border border-[#b8ded1] bg-white text-slate-900 shadow-[0_22px_48px_-38px_rgba(10,92,67,0.24)]";
+  "rounded-[1.15rem] border border-[#1d5d49] bg-[#0b2d24] text-slate-100 shadow-[0_22px_48px_-38px_rgba(0,0,0,0.36)]";
 
 export const adminRailCardClass =
-  "rounded-[1rem] border border-[#b8ded1] bg-white p-4 text-slate-900 shadow-[0_18px_36px_-32px_rgba(10,92,67,0.24)]";
+  "rounded-[1rem] border border-[#1d5d49] bg-[#0b2d24] p-4 text-slate-100 shadow-[0_18px_36px_-32px_rgba(0,0,0,0.38)]";
 
 export function adminPanelClass(tone: AdminTone = "neutral"): string {
   return cn("overflow-hidden rounded-[1.05rem] border p-4", PANEL_TONE_CLASSES[tone]);
@@ -246,6 +286,38 @@ export function AdminEmptyState({
   );
 }
 
+export function AdminIcon({
+  name,
+  size = 16,
+  className,
+}: {
+  name: AdminIconName;
+  size?: number;
+  className?: string;
+}) {
+  const Icon = ADMIN_ICONS[name];
+  return <Icon aria-hidden="true" size={size} className={className} />;
+}
+
+export function PokrovAdminMark({ className }: { className?: string }) {
+  return (
+    <span
+      aria-hidden="true"
+      className={cn(
+        "inline-grid h-10 w-10 place-items-center rounded-[0.9rem] border border-emerald-300/35 bg-emerald-100 text-emerald-950 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.35)]",
+        className,
+      )}
+    >
+      <svg viewBox="0 0 200 200" className="h-7 w-7" fill="none">
+        <path
+          d="m177.6 97.19-.2-.43-.38-.25c-16.16-10.8-31.64-29.44-36.79-55.6-4.06-20.3-18.51-38.88-40.17-38.88h-.69c-20.32-.05-37.34 16.94-40.12 36.53-4.17 28.63-19.76 47.56-37.31 58.2l-.36.43c2.32 8.64 16.5 29.7 41.56 33.68 10.48 1.73 20.43-.66 28.44-2.61 2.64 1.45 5.46 2.58 7.97 3.36 6.28-2.34 11.44-5.12 16.21-7.83 6.61 3.63 13.65 5.59 21.07 5.48 19.38-.3 37.6-22.18 40.77-32.08zM99.59 127.88c-14.53-5.11-33.62-19.2-39.62-38.56 4.1-11.05 7.35-21.06 9.25-36.16 4.34 26.62 14.48 46.58 42.95 68.55-4.03 2.75-7.56 4.37-12.58 6.17zm17.74-11.95c3.74-10.64-1.73-19.64-12.86-27.87-16.72-13.05-32.59-26.75-32.59-52.28 0-9.44 4.56-21.67 15.59-27.99-10.48 8.94-11.66 20.4-9.88 30.13 3.21 17.27 15.28 30.29 30 41.27 9.4 6.88 18.06 14.2 18.06 24.39 0 5.22-2.4 9.63-8.32 12.35z"
+          fill="currentColor"
+        />
+      </svg>
+    </span>
+  );
+}
+
 export function AdminConfirmDialog({
   open,
   title,
@@ -303,6 +375,7 @@ export function AdminConfirmDialog({
           </button>
           <button
             type="button"
+            data-testid="admin-confirm-accept"
             className={adminButtonClass(danger ? "danger" : "primary", "sm")}
             onClick={onConfirm}
             disabled={busy || !reasonOk}

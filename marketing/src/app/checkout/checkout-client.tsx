@@ -7,6 +7,7 @@ import { useEffect, useMemo, useState } from "react";
 import { buildCheckoutHostHref, MARKETING_CANONICAL_PATHS } from "../../lib/marketing-site";
 import {
   getPricingPreviewDiscountPercent,
+  getCopyText,
   getPokrovPublicConfig,
   getPromoSlotsCatalog,
   getTariffPlans,
@@ -308,13 +309,13 @@ export function CheckoutLoadingFallback() {
   return (
     <main className="checkout-shell lp-route-shell lp-route-shell--checkout">
       <section className="checkout-hero">
-        <div className="checkout-kicker">Спокойная касса</div>
+        <div className="checkout-kicker">Попробовать {"->"} купить ключ {"->"} активировать</div>
         <div className="checkout-status-chip checkout-status-chip--fallback">Готовим варианты доступа</div>
         <h1 className="checkout-title">
           <span>POKROV</span>
-          <span>Покупка и активация ключа доступа</span>
+          <span>Ключ доступа без лишних шагов</span>
         </h1>
-        <p className="checkout-sub">Подгружаем сроки, условия доступа и следующий шаг для оплаты или активации ключа.</p>
+        <p className="checkout-sub">Подгружаем сроки, покупку ключа и честный следующий шаг для активации.</p>
       </section>
       <section className="checkout-grid">
         <article className="glass-card">
@@ -430,17 +431,28 @@ export default function CheckoutClient() {
   return (
     <main className="checkout-shell lp-route-shell lp-route-shell--checkout">
       <section className="checkout-hero">
-        <div className="checkout-kicker">Оплатить ключ {"->"} активировать {"->"} продолжить доступ</div>
+        <div className="checkout-kicker">Попробовать 5 дней {"->"} купить ключ {"->"} активировать</div>
         <div className="checkout-status-chip checkout-status-chip--ready">
           {catalog?.public_surface_policy?.pricing_owner === "marketing" ? "Оплата на сайте" : "Ключ доступа"}
         </div>
         <h1 className="checkout-title">
           <span>POKROV</span>
-          <span>Ключ доступа без лишней настройки</span>
+          <span>{getCopyText("marketing.checkout.title", "Ключ доступа для POKROV")}</span>
         </h1>
         <p className="checkout-sub">
-          Выберите срок, оплатите ключ доступа и активируйте его в приложении или кабинете. Доступ продолжится в том же аккаунте, без ручной настройки на старте.
+          {getCopyText(
+            "marketing.checkout.subtitle",
+            "Сначала можно попробовать 5 дней в приложении. Если POKROV подходит, купите ключ доступа и активируйте его в приложении или кабинете. Если вы уже вошли, продление продолжит доступ в том же аккаунте.",
+          )}
         </p>
+        <div className="lp-hero-actions">
+          <Link href={MARKETING_CANONICAL_PATHS.install} className="lp-btn lp-btn--primary">
+            {getCopyText("marketing.checkout.primary_cta", "Попробовать 5 дней")}
+          </Link>
+          <a href={checkoutHref} target="_blank" rel="noreferrer" className="lp-btn lp-btn--ghost">
+            {getCopyText("marketing.checkout.purchase_cta", "Купить ключ доступа")}
+          </a>
+        </div>
       </section>
 
       <section className="lp-info-band checkout-info-band">
@@ -448,17 +460,17 @@ export default function CheckoutClient() {
           <article className="lp-info-card">
             <span className="lp-info-card__eyebrow">Сначала попробовать</span>
             <h3>5 дней идут до покупки</h3>
-            <p>Первый шаг остаётся за приложением: вы проверяете POKROV до оплаты.</p>
+            <p>Новая установка может начать в приложении и проверить POKROV до оплаты.</p>
           </article>
           <article className="lp-info-card">
             <span className="lp-info-card__eyebrow">Потом оплатить</span>
-            <h3>Оплата остаётся понятной</h3>
-            <p>Вы покупаете ключ доступа, а не разбираетесь в сетевых терминах.</p>
+            <h3>Покупка заканчивается ключом</h3>
+            <p>После оплаты вы получаете ключ доступа и активируете его там, где удобнее продолжить.</p>
           </article>
           <article className="lp-info-card">
-            <span className="lp-info-card__eyebrow">Если нужна помощь</span>
-            <h3>Кабинет и Telegram рядом</h3>
-            <p>Если нужна помощь, рядом остаются кабинет, поддержка и Telegram.</p>
+            <span className="lp-info-card__eyebrow">Если вы уже вошли</span>
+            <h3>Продление идёт в тот же аккаунт</h3>
+            <p>Кабинет честно продолжает текущий доступ, а не создаёт отдельную покупку в стороне.</p>
           </article>
         </div>
       </section>
@@ -488,7 +500,7 @@ export default function CheckoutClient() {
           <div className="checkout-trust">
             <strong>Как это работает</strong>
             <ul className="checkout-trust-list">
-              <li>В приложении новая установка может получить 5 дней проверки без обязательной регистрации в Telegram.</li>
+              <li>В приложении новая установка может получить 5 дней проверки без обязательного Telegram.</li>
               <li>
                 После пробного срока остается бесплатный базовый режим: {catalog?.free_tier?.traffic_limit_gb || 5} ГБ на{" "}
                 {catalog?.free_tier?.cycle_days || 30} дней.
@@ -543,7 +555,7 @@ export default function CheckoutClient() {
         <article className="glass-card checkout-sticky">
           <h2>Итог</h2>
           <p className="checkout-note">
-            Покупка проходит на платёжной странице POKROV и заканчивается ключом доступа. Гость активирует ключ сам, а пользователь с кабинетом может продолжить или продлить доступ сразу в своём аккаунте.
+            Покупка проходит на платёжной странице POKROV и заканчивается ключом доступа. Новый пользователь активирует ключ в приложении или кабинете. Пользователь с открытым кабинетом может продлить текущий доступ в том же аккаунте.
           </p>
 
           <div className="checkout-summary">
@@ -565,7 +577,7 @@ export default function CheckoutClient() {
           </div>
 
           <a href={checkoutHref} target="_blank" rel="noreferrer" className="checkout-submit">
-            Открыть платёжную страницу
+            {getCopyText("marketing.checkout.purchase_cta", "Купить ключ доступа")}
           </a>
 
           <a href={redeemHref} target="_blank" rel="noreferrer" className="checkout-secondary checkout-secondary-button">
@@ -576,16 +588,12 @@ export default function CheckoutClient() {
             Открыть кабинет
           </a>
 
-          <a href={config.botUrl} target="_blank" rel="noreferrer" className="checkout-secondary checkout-secondary-button">
-            Продолжить в Telegram
-          </a>
-
           <Link href={MARKETING_CANONICAL_PATHS.install} className="checkout-secondary checkout-secondary-button">
-            Сначала установить приложение
+            Скачать приложение
           </Link>
 
           <p className="checkout-helper">
-            До открытия платёжной страницы деньги не списываются. Почтовый вход готовится; бесплатная проверка начинается из приложения на новой установке.
+            До открытия платёжной страницы деньги не списываются. Почтовый вход готовится; бесплатные 5 дней начинаются из приложения на новой установке.
           </p>
 
           {statusText ? <p className="checkout-status">{normalizeAccessKeyError(statusText).text}</p> : null}
