@@ -1,0 +1,16 @@
+﻿artifacts/releases/bridge/0.9.0-beta+20508/pokrov-windows-portable-x64/pokrov/POKROV.exe
+artifacts/releases/bridge/0.9.0-beta+20508/pokrov-windows-portable-x64/pokrov/dynamic_color_plugin.dll
+artifacts/releases/bridge/0.9.0-beta+20508/pokrov-windows-portable-x64/pokrov/flutter_windows.dll
+artifacts/releases/bridge/0.9.0-beta+20508/pokrov-windows-portable-x64/pokrov/libcore.dll
+artifacts/releases/bridge/0.9.0-beta+20508/pokrov-windows-portable-x64/pokrov/protocol_handler_windows_plugin.dll
+artifacts/releases/bridge/0.9.0-beta+20508/pokrov-windows-portable-x64/pokrov/screen_retriever_plugin.dll
+artifacts/releases/bridge/0.9.0-beta+20508/pokrov-windows-portable-x64/pokrov/sentry_flutter_plugin.dll
+artifacts/releases/bridge/0.9.0-beta+20508/pokrov-windows-portable-x64/pokrov/share_plus_plugin.dll
+artifacts/releases/bridge/0.9.0-beta+20508/pokrov-windows-portable-x64/pokrov/sqlite3.dll
+artifacts/releases/bridge/0.9.0-beta+20508/pokrov-windows-portable-x64/pokrov/sqlite3_flutter_libs_plugin.dll
+artifacts/releases/bridge/0.9.0-beta+20508/pokrov-windows-portable-x64/pokrov/tray_manager_plugin.dll
+artifacts/releases/bridge/0.9.0-beta+20508/pokrov-windows-portable-x64/pokrov/url_launcher_windows_plugin.dll
+artifacts/releases/bridge/0.9.0-beta+20508/pokrov-windows-portable-x64/pokrov/vclibs_plugin.dll
+artifacts/releases/bridge/0.9.0-beta+20508/pokrov-windows-portable-x64/pokrov/window_manager_plugin.dll
+artifacts/releases/pokrov-app/0.1.0-seed.1+20260423/release-handoff.json
+artifacts/releases/release-handoff.json

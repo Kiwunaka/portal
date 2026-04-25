@@ -1,0 +1,5 @@
+﻿18141d5 portal: checkpoint atlas-driven surface rebuild
+990b99c Fix marketing verify probes and record green deploy
+a03bab7 Make marketing home exportable
+edc1de0 Harden predeploy drift inspection
+f18d973 Fix node metrics runtime adapter

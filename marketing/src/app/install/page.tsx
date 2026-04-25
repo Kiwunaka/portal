@@ -15,8 +15,11 @@ function buildHelpHref(): string {
   return firstNonEmpty(config.docsUrl, config.supportTelegramUrl, config.webappUrl, "/");
 }
 
-function buildArtifactHref(primary: string, fallback: string): string {
-  return firstNonEmpty(primary, fallback);
+function buildCabinetDownloadsHref(platform: "android" | "windows"): string {
+  const url = new URL(config.webappUrl);
+  url.pathname = "/downloads/";
+  url.searchParams.set("platform", platform);
+  return url.toString();
 }
 
 export const metadata = buildMarketingMetadata(
@@ -34,8 +37,8 @@ export const metadata = buildMarketingMetadata(
 
 export default function InstallPage() {
   const helpHref = buildHelpHref();
-  const androidHref = buildArtifactHref(config.androidApkUrl, helpHref);
-  const windowsHref = buildArtifactHref(config.windowsExeUrl, helpHref);
+  const androidHref = buildCabinetDownloadsHref("android");
+  const windowsHref = buildCabinetDownloadsHref("windows");
   const appleHref = buildHelpHref();
   const androidHasArtifact = Boolean(String(config.androidApkUrl || "").trim());
   const windowsHasArtifact = Boolean(String(config.windowsExeUrl || "").trim());
@@ -82,7 +85,7 @@ export default function InstallPage() {
               <p className="lp-hero-lead">
                 {getCopyText(
                   "marketing.install.subtitle",
-                  "Кнопки ведут либо к актуальному релизному файлу, либо к понятному сценарию помощи. Если файла пока нет, вы всё равно не теряете маршрут.",
+                  "Бета-сборки выдаются через кабинет или поддержку. Если файл пока не доступен вашему аккаунту, вы всё равно не теряете маршрут.",
                 )}
               </p>
               <div className="lp-hero-actions">
@@ -97,25 +100,25 @@ export default function InstallPage() {
 
             <div className="lp-hero-stage">
               <article className="lp-stage-card lp-stage-card--primary">
-                <div className="lp-stage-label">Сначала файл, потом кабинет</div>
+                <div className="lp-stage-label">Сначала кабинет, потом файл</div>
                 <h2>Каждый шаг здесь либо доступен, либо честно объяснён.</h2>
                 <p>
-                  Если релизный файл уже опубликован, вы скачиваете его сразу. Если нет, страница остаётся полезной:
-                  показывает инструкцию, кабинет и живой канал помощи.
+                  Если бета-сборка уже доступна вашему аккаунту, кабинет покажет актуальный файл. Если нет, страница остаётся полезной:
+                  показывает инструкцию, текущий статус и канал помощи.
                 </p>
                 <ol className="lp-stage-steps">
                   <li>
                     <span>01</span>
                     <div>
                       <strong>Android</strong>
-                      <p>Сначала APK, а если файла нет, откройте спокойный сценарий помощи.</p>
+                      <p>Внутренний APK доступен только для одобренных бета-пользователей через кабинет или поддержку.</p>
                     </div>
                   </li>
                   <li>
                     <span>02</span>
                     <div>
                       <strong>Windows</strong>
-                      <p>Скачайте EXE или вернитесь за понятной инструкцией установки.</p>
+                      <p>Бета-сборка может быть неподписанной; предупреждение показывается до установки.</p>
                     </div>
                   </li>
                   <li>
@@ -129,9 +132,9 @@ export default function InstallPage() {
               </article>
 
               <article className="lp-stage-card">
-                <div className="lp-stage-label">Что делать, если файла нет</div>
+                <div className="lp-stage-label">Что делать, если доступа к файлу нет</div>
                 <p>
-                  Эта страница не притворяется загрузкой. Если релиз ещё не выложен, мы показываем актуальные ссылки,
+                  Эта страница не притворяется загрузкой. Если релиз ещё не выдан вашему аккаунту, мы показываем кабинет,
                   понятный следующий шаг и помощь человека там, где она действительно нужна.
                 </p>
                 <div className="lp-stage-links">
@@ -149,12 +152,12 @@ export default function InstallPage() {
 
           <section className="lp-section">
             <div className="lp-section-head">
-              <span>Скачивание</span>
-              <h2>{getCopyText("marketing.install.downloads.title", "Выберите релизный файл или откройте помощь")}</h2>
+              <span>Бета-сборки</span>
+              <h2>{getCopyText("marketing.install.downloads.title", "Откройте кабинет для бета-файлов")}</h2>
               <p>
                 {getCopyText(
                   "marketing.install.downloads.subtitle",
-                  "Каждая карточка ведёт к актуальному файлу или к живому help-сценарию, который объясняет следующий шаг без пустого ожидания.",
+                  "Публичная страница не выдаёт прямые загрузки. Если сборка доступна вашему аккаунту, она откроется в кабинете; если нет, рядом остаётся помощь.",
                 )}
               </p>
             </div>
@@ -163,18 +166,18 @@ export default function InstallPage() {
               <article className="lp-platform-card lp-platform-card--featured">
                 <div className="lp-stage-label">
                   <span aria-hidden="true">●</span>
-                  {getCopyText("marketing.install.android.status", "Android")}
+                  {getCopyText("marketing.install.android.status", androidHasArtifact ? "Android beta в кабинете" : "Android beta не выдана")}
                 </div>
-                <h3>{getCopyText("marketing.install.android.title", "APK для Android")}</h3>
+                <h3>{getCopyText("marketing.install.android.title", "Внутренний APK для Android")}</h3>
                 <p>
                   {getCopyText(
                     "marketing.install.android.desc",
-                    "Скачайте актуальный файл или откройте инструкцию по установке, если релизный пакет ещё не опубликован.",
+                    "Android APK доступен только как внутренняя бета для одобренных пользователей. Публичная публикация остаётся заблокированной до signing и физического аудита.",
                   )}
                 </p>
                 {androidHasArtifact ? (
                   <a href={androidHref} target="_blank" rel="noreferrer" className="lp-btn lp-btn--primary">
-                    {getCopyText("marketing.download.android.cta", "Скачать APK")}
+                    {getCopyText("marketing.download.android.cta", "Открыть кабинет")}
                   </a>
                 ) : (
                   <a href={helpHref} className="lp-btn lp-btn--primary">
@@ -186,18 +189,18 @@ export default function InstallPage() {
               <article className="lp-platform-card">
                 <div className="lp-stage-label">
                   <span aria-hidden="true">■</span>
-                  {getCopyText("marketing.install.windows.status", "Windows")}
+                  {getCopyText("marketing.install.windows.status", windowsHasArtifact ? "Windows beta в кабинете" : "Windows beta не выдана")}
                 </div>
-                <h3>{getCopyText("marketing.install.windows.title", "EXE для Windows")}</h3>
+                <h3>{getCopyText("marketing.install.windows.title", "Бета-сборка для Windows")}</h3>
                 <p>
                   {getCopyText(
                     "marketing.install.windows.desc",
-                    "Десктопный файл для спокойной ежедневной работы. Если релиз ещё в очереди, откройте помощь и не теряйте маршрут.",
+                    "Windows-сборка для беты может быть неподписанной. Перед установкой пользователь должен увидеть предупреждение о неизвестном издателе.",
                   )}
                 </p>
                 {windowsHasArtifact ? (
                   <a href={windowsHref} target="_blank" rel="noreferrer" className="lp-btn lp-btn--primary">
-                    {getCopyText("marketing.download.windows.cta", "Скачать для Windows")}
+                    {getCopyText("marketing.download.windows.cta", "Открыть кабинет")}
                   </a>
                 ) : (
                   <a href={helpHref} className="lp-btn lp-btn--primary">
@@ -228,7 +231,7 @@ export default function InstallPage() {
           <section className="lp-section lp-info-band">
             <div className="lp-info-band__grid">
               <article className="lp-info-card">
-                <span className="lp-info-card__eyebrow">Если файла пока нет</span>
+                <span className="lp-info-card__eyebrow">Если файла пока нет в кабинете</span>
                 <h3>Переходите к инструкции, а не в пустоту</h3>
                 <p>Мы оставляем рядом понятный help-сценарий, чтобы вы не теряли следующий шаг и не гадали, что делать дальше.</p>
               </article>

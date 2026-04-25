@@ -80,7 +80,13 @@ def _default_checks() -> list[Check]:
         Check(
             name="webapp-entry",
             path=REPO_ROOT / "webapp" / "src" / "app" / "page.tsx",
-            must_contain=("Личный кабинет POKROV", "Открыть Telegram", "secure sign-in"),
+            must_contain=(
+                "PokrovLogo",
+                "POKROV cabinet",
+                "pokrovBranding.entryEyebrow",
+                "CabinetEntryAuth",
+                "href={pokrovBranding.marketingUrl}",
+            ),
             must_not_contain=("Продолжить вход в PORTAL", "POKROV Network"),
         ),
         Check(
@@ -91,7 +97,13 @@ def _default_checks() -> list[Check]:
         Check(
             name="webapp-dashboard-app-first",
             path=REPO_ROOT / "webapp" / "src" / "app" / "(dashboard)" / "dashboard" / "page.tsx",
-            must_contain=("Мои приложения", "Открыть приложения", "Нужна помощь с подключением"),
+            must_contain=(
+                "fetchNodeStatus",
+                "resolveTrafficStatusText",
+                "CabinetHero",
+                'href="/downloads/"',
+                'href="/support/"',
+            ),
             must_not_contain=("SubscriptionQrCard", "api.qrserver.com", "?format=plain"),
         ),
     ]

@@ -44,8 +44,8 @@ const HERO_FACTS = [
     label: "один доступ для телефона, ноутбука и домашнего ритма",
   },
   {
-    value: "Поддержка 24/7",
-    label: "когда нужен быстрый человеческий ответ",
+    value: "Ответ до 24 часов",
+    label: "лучшее усилие команды поддержки в бета-волне",
   },
 ];
 
@@ -91,7 +91,7 @@ const SURFACE_PANELS = [
     eyebrow: "Поддержка",
     title: "Если что-то не срослось, разговор не начинается заново",
     text: "Поддержка, кабинет и канал остаются рядом как одна связная система, а не как разбросанные ссылки.",
-    bullets: ["Человеческий ответ в любое время", "Видно срок и устройства", "Telegram остается как бонус и запасной путь"],
+    bullets: ["Ответ в бете: лучшее усилие до 24 часов", "Видно срок и устройства", "Telegram остается как бонус и запасной путь"],
     tone: "support" as const,
   },
 ];
@@ -193,8 +193,8 @@ function ProductVisual() {
             <div className={styles.workspaceStage}>
               <div className={styles.stageMap} />
               <div className={styles.centerCard}>
-                <small>Подключено</small>
-                <strong>00:12:34</strong>
+                <small>Пример состояния</small>
+                <strong>POKROV beta</strong>
                 <div className={styles.powerRing}>
                   <div className={styles.powerCore} />
                 </div>
@@ -205,13 +205,13 @@ function ProductVisual() {
               </div>
 
               <div className={styles.metricCard}>
-                <small>Защита включена</small>
-                <strong>AES-256 / WireGuard</strong>
+                <small>Режим включен</small>
+                <strong>Маршрут POKROV</strong>
               </div>
 
               <div className={styles.locationCard}>
                 <small>Текущий маршрут</small>
-                <strong>Германия, Франкфурт</strong>
+                <strong>Автовыбор POKROV</strong>
               </div>
             </div>
 
@@ -362,7 +362,7 @@ export default function MarketingHomePage() {
               </div>
 
               <ul className={styles.heroNotes}>
-                <li>Публичный путь уже собран вокруг {buildPlatformLabel()} без лишних развилок.</li>
+                <li>Бета-путь уже собран вокруг {buildPlatformLabel()} без лишних развилок.</li>
                 <li>Более полный маршрут можно включить позже, когда он действительно нужен.</li>
                 <li>Кабинет и поддержка продолжают ту же историю, а не отправляют начинать заново.</li>
               </ul>

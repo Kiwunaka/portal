@@ -34,6 +34,7 @@ def main() -> int:
     ap.add_argument("--brain-ip", required=True)
     ap.add_argument("--ssh-user", default="root")
     ap.add_argument("--ssh-port", type=int, default=29374)
+    ap.add_argument("--passwords", default="", help="Optional PASSWORDS.txt path for worktree-local node access.")
     ap.add_argument("--source", default="bot", choices=["bot", "site"])
     ap.add_argument("--method", default="orders/create")
     ap.add_argument("--amount", type=float, default=99.0)
@@ -65,6 +66,7 @@ def main() -> int:
         host=args.brain_ip,
         user=args.ssh_user,
         port=args.ssh_port,
+        passwords_path=Path(args.passwords) if str(args.passwords or "").strip() else None,
     )
     try:
         print(f"brain auth: {auth_method}", file=sys.stderr)

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -40,6 +41,32 @@ class GateResult:
     returncode: int
     duration_sec: float
     output_tail: str
+
+
+@dataclass
+class ReportContext:
+    quick: bool
+    brain_ip: str
+    client_platform_gates: list[str]
+    runtime_smoke_requested: bool
+    android_audit_requested: bool
+    android_audit_required: bool
+
+
+_SECRET_OPTION_RE = re.compile(
+    r"(?i)(--(?:token|secret|password|passwd|api-key|auth|authorization|client-secret))\s+([^\s`]+)"
+)
+_SECRET_ASSIGNMENT_RE = re.compile(
+    r"(?i)\b((?:secret|secret[_-]?key|token|password|passwd|api[_-]?key|client[_-]?secret)\s*[:=]\s*)([^\s`]+)"
+)
+_BEARER_RE = re.compile(r"(?i)\bBearer\s+([A-Za-z0-9._~+/=-]+)")
+
+
+def _redact_text(text: str) -> str:
+    redacted = _SECRET_OPTION_RE.sub(r"\1 <redacted>", str(text or ""))
+    redacted = _BEARER_RE.sub("Bearer <redacted>", redacted)
+    redacted = _SECRET_ASSIGNMENT_RE.sub(r"\1<redacted>", redacted)
+    return redacted
 
 
 def _is_frontend_build(command: list[str], cwd: Path) -> bool:
@@ -145,14 +172,99 @@ def _run_cmd(*, name: str, command: list[str], cwd: Path) -> GateResult:
     )
 
 
-def _render_markdown(results: list[GateResult]) -> str:
+def _status_for_gate(results: list[GateResult], gate_name: str) -> str:
+    for result in results:
+        if result.name == gate_name:
+            return "PASS" if result.returncode == 0 else "FAIL"
+    return "NOT_RUN"
+
+
+def _render_evidence_classification(results: list[GateResult], context: ReportContext) -> list[str]:
+    gate_set = "quick" if context.quick else "default"
+    if not results:
+        current_status = "NOT_RUN"
+    else:
+        current_status = "PASS" if all(r.returncode == 0 for r in results) else "FAIL"
+
+    brain_status = (
+        _status_for_gate(results, "Node predeploy readiness")
+        if str(context.brain_ip or "").strip()
+        else "BLOCKED_BY_ACCESS"
+    )
+    ru_status = "BLOCKED_BY_ACCESS"
+
+    if context.android_audit_requested:
+        android_status = _status_for_gate(results, "Android localhost audit")
+    else:
+        android_status = "BLOCKED_BY_ACCESS"
+
+    runtime_status = (
+        _status_for_gate(results, "Client apps runtime smoke")
+        if context.runtime_smoke_requested
+        else "SKIPPED_NO_LIVE_TOKEN"
+    )
+    platform_status = "NOT_REQUESTED"
+    if context.client_platform_gates:
+        platform_results = [
+            _status_for_gate(results, _client_build_gate(target=target)[0])
+            for target in context.client_platform_gates
+        ]
+        platform_status = "PASS" if all(status == "PASS" for status in platform_results) else "FAIL"
+
+    lines = [
+        "## Evidence Classification",
+        "",
+        "| Evidence | Scope | Status | Notes |",
+        "|---|---|---|---|",
+        (
+            f"| current-origin check | local {gate_set} gate set | {current_status} | "
+            "Runs on the operator workstation; does not prove brain-origin or RU-origin reachability. |"
+        ),
+        (
+            f"| brain-origin check | `scripts/verify_brain_ready.py` / predeploy readiness | {brain_status} | "
+            "Requires `--brain-ip` and live SSH/API access; keep separate from current-origin results. |"
+        ),
+        (
+            f"| RU-origin check | external RU probe (`mini` or replacement) | {ru_status} | "
+            "Not run by this local gate; requires an external RU probe host and redacted report. |"
+        ),
+        (
+            f"| Android physical audit | release-build localhost/control-surface audit | {android_status} | "
+            "Public Android remains blocked unless this is run on physical hardware with the release build. |"
+        ),
+        (
+            f"| Runtime app-download smoke | `/api/client/apps` and provider checks | {runtime_status} | "
+            "Requires `TELEGRAM_INIT_DATA`; omit raw token values from evidence. |"
+        ),
+        (
+            f"| Client platform builds | {', '.join(context.client_platform_gates) or 'none requested'} | {platform_status} | "
+            "Repo/static gates alone do not create Android or Windows beta artifacts. |"
+        ),
+    ]
+    lines.append("")
+    return lines
+
+
+def _render_markdown(results: list[GateResult], *, context: ReportContext | None = None) -> str:
     created_at = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     ok = all(r.returncode == 0 for r in results)
+    context = context or ReportContext(
+        quick=False,
+        brain_ip="",
+        client_platform_gates=[],
+        runtime_smoke_requested=False,
+        android_audit_requested=False,
+        android_audit_required=False,
+    )
     lines: list[str] = []
     lines.append("# Release Gate Report")
     lines.append("")
     lines.append(f"- Generated at: `{created_at}`")
     lines.append(f"- Status: `{'PASS' if ok else 'FAIL'}`")
+    lines.append(f"- Gate set: `{'quick' if context.quick else 'default'}`")
+    lines.append(f"- Brain IP supplied: `{'yes' if str(context.brain_ip or '').strip() else 'no'}`")
+    lines.append(f"- Client platform gates: `{', '.join(context.client_platform_gates) or 'none'}`")
+    lines.append(f"- Android audit required by selected gates: `{'yes' if context.android_audit_required else 'no'}`")
     lines.append("")
     lines.append("## Summary")
     lines.append("")
@@ -161,16 +273,17 @@ def _render_markdown(results: list[GateResult]) -> str:
     for r in results:
         lines.append(f"| {r.name} | {r.returncode} | {r.duration_sec:.2f} |")
     lines.append("")
+    lines.extend(_render_evidence_classification(results, context))
     lines.append("## Command Tails")
     lines.append("")
     for r in results:
         lines.append(f"### {r.name}")
         lines.append("")
-        lines.append(f"- Command: `{r.command}`")
+        lines.append(f"- Command: `{_redact_text(r.command)}`")
         lines.append(f"- Exit: `{r.returncode}`")
         lines.append("")
         lines.append("```text")
-        lines.append(r.output_tail or "<no output>")
+        lines.append(_redact_text(r.output_tail) if r.output_tail else "<no output>")
         lines.append("```")
         lines.append("")
     return "\n".join(lines)
@@ -444,7 +557,15 @@ def main() -> int:
 
     output_path = (REPO_ROOT / args.output).resolve()
     output_path.parent.mkdir(parents=True, exist_ok=True)
-    output_path.write_text(_render_markdown(results), encoding="utf-8")
+    context = ReportContext(
+        quick=bool(args.quick),
+        brain_ip=str(args.brain_ip or "").strip(),
+        client_platform_gates=client_platform_gates,
+        runtime_smoke_requested=runtime_smoke_gate is not None,
+        android_audit_requested=android_localhost_audit_gate is not None,
+        android_audit_required=any(target in {"android-apk", "android-aab"} for target in client_platform_gates),
+    )
+    output_path.write_text(_render_markdown(results, context=context), encoding="utf-8")
 
     print(f"[report] {output_path}")
     for r in results:

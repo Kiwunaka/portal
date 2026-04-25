@@ -236,6 +236,182 @@ class ApiPaymentCallbacksTests(unittest.TestCase):
         finally:
             s.close()
 
+    def test_signed_failed_result_records_order_without_activation(self) -> None:
+        client = TestClient(self.api.app)
+
+        from db import SessionLocal
+        from models import ExternalOrder, User
+
+        s = SessionLocal()
+        try:
+            s.add(
+                User(
+                    tg_id=2401,
+                    username="failedpay",
+                    uuid=str(uuid.uuid4()),
+                    email="user_2401",
+                    sub_type="FREE",
+                    is_active=True,
+                    tos_accepted=True,
+                )
+            )
+            s.add(
+                ExternalOrder(
+                    order_id="order-failed-2401",
+                    provider="freekassa",
+                    tg_id=2401,
+                    plan_code="1_month",
+                    source="site",
+                    amount=249.0,
+                    currency="RUB",
+                    status="pending",
+                    created_at=self.api._utcnow(),
+                )
+            )
+            s.commit()
+        finally:
+            s.close()
+
+        payload = {
+            "order_id": "order-failed-2401",
+            "external_tx_id": "tx-failed-2401",
+            "status": "failed",
+            "tg_id": "2401",
+            "plan_code": "1_month",
+        }
+        raw = json.dumps(payload, separators=(",", ":"), ensure_ascii=True).encode("utf-8")
+        sig = self._hmac_sha256("test_fk_secret", raw)
+
+        response = client.post(
+            "/api/payments/result/freekassa",
+            data=raw,
+            headers={"Content-Type": "application/json", "X-Signature": sig},
+        )
+        self.assertEqual(response.status_code, 200, response.text)
+        body = response.json()
+        self.assertTrue(body.get("ok"))
+        self.assertEqual(body.get("status"), "failed")
+        self.assertFalse(body.get("activated"))
+
+        s = SessionLocal()
+        try:
+            user = s.query(User).filter(User.tg_id == 2401).first()
+            row = s.query(ExternalOrder).filter(ExternalOrder.order_id == "order-failed-2401").first()
+            self.assertIsNotNone(user)
+            self.assertIsNotNone(row)
+            self.assertEqual(str(user.sub_type or ""), "FREE")
+            self.assertEqual(str(row.status or ""), "failed")
+            self.assertIsNone(row.paid_at)
+        finally:
+            s.close()
+
+    def test_signed_cancelled_result_records_cancelled_without_activation(self) -> None:
+        client = TestClient(self.api.app)
+
+        from db import SessionLocal
+        from models import ExternalOrder, User
+
+        s = SessionLocal()
+        try:
+            s.add(
+                User(
+                    tg_id=2402,
+                    username="cancelpay",
+                    uuid=str(uuid.uuid4()),
+                    email="user_2402",
+                    sub_type="FREE",
+                    is_active=True,
+                    tos_accepted=True,
+                )
+            )
+            s.add(
+                ExternalOrder(
+                    order_id="order-cancelled-2402",
+                    provider="freekassa",
+                    tg_id=2402,
+                    plan_code="1_month",
+                    source="site",
+                    amount=249.0,
+                    currency="RUB",
+                    status="pending",
+                    created_at=self.api._utcnow(),
+                )
+            )
+            s.commit()
+        finally:
+            s.close()
+
+        payload = {
+            "order_id": "order-cancelled-2402",
+            "external_tx_id": "tx-cancelled-2402",
+            "status": "cancelled",
+            "tg_id": "2402",
+            "plan_code": "1_month",
+        }
+        raw = json.dumps(payload, separators=(",", ":"), ensure_ascii=True).encode("utf-8")
+        sig = self._hmac_sha256("test_fk_secret", raw)
+
+        response = client.post(
+            "/api/payments/result/freekassa",
+            data=raw,
+            headers={"Content-Type": "application/json", "X-Signature": sig},
+        )
+        self.assertEqual(response.status_code, 200, response.text)
+        self.assertEqual(response.json().get("status"), "cancelled")
+        self.assertFalse(response.json().get("activated"))
+
+        s = SessionLocal()
+        try:
+            user = s.query(User).filter(User.tg_id == 2402).first()
+            row = s.query(ExternalOrder).filter(ExternalOrder.order_id == "order-cancelled-2402").first()
+            self.assertIsNotNone(user)
+            self.assertIsNotNone(row)
+            self.assertEqual(str(user.sub_type or ""), "FREE")
+            self.assertEqual(str(row.status or ""), "cancelled")
+            self.assertIsNone(row.paid_at)
+        finally:
+            s.close()
+
+    def test_unknown_signed_result_goes_to_manual_review(self) -> None:
+        client = TestClient(self.api.app)
+
+        payload = {
+            "order_id": "order-review-2403",
+            "external_tx_id": "tx-review-2403",
+            "status": "needs_operator",
+            "tg_id": "2403",
+            "plan_code": "1_month",
+        }
+        raw = json.dumps(payload, separators=(",", ":"), ensure_ascii=True).encode("utf-8")
+        sig = self._hmac_sha256("test_fk_secret", raw)
+
+        response = client.post(
+            "/api/payments/result/freekassa",
+            data=raw,
+            headers={"Content-Type": "application/json", "X-Signature": sig},
+        )
+        self.assertEqual(response.status_code, 200, response.text)
+        body = response.json()
+        self.assertTrue(body.get("ok"))
+        self.assertEqual(body.get("status"), "manual_review")
+        self.assertFalse(body.get("activated"))
+
+        from db import SessionLocal
+        from models import ExternalOrder, ExternalPaymentEvent
+
+        s = SessionLocal()
+        try:
+            event = s.query(ExternalPaymentEvent).filter(ExternalPaymentEvent.external_id == "tx-review-2403").first()
+            row = s.query(ExternalOrder).filter(ExternalOrder.order_id == "order-review-2403").first()
+            self.assertIsNotNone(event)
+            self.assertIsNotNone(row)
+            self.assertTrue(bool(event.signature_ok))
+            self.assertFalse(bool(event.processed_ok))
+            self.assertEqual(str(row.status or ""), "manual_review")
+            self.assertIsNone(row.paid_at)
+        finally:
+            s.close()
+
     def test_freekassa_notify_alias_returns_yes_for_valid_sci(self) -> None:
         client = TestClient(self.api.app)
         merchant_id = "69962"
@@ -675,7 +851,7 @@ class ApiPaymentCallbacksTests(unittest.TestCase):
 
         async def _fake_create_rub_payment(**kwargs):
             self.assertEqual(kwargs["provider"], "cardlink")
-            self.assertEqual(kwargs["description"], "POKROV VPN Приветственный 30 дней")
+            self.assertEqual(kwargs["description"], "POKROV Старт на 30 дней")
             return {
                 "payment_url": "https://checkout.cardlink.link/pay/test-order",
                 "remote": {"payment_url": "https://checkout.cardlink.link/pay/test-order"},

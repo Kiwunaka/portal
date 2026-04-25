@@ -2,7 +2,7 @@
 
 import AppRouteLink from "@/components/app-route-link";
 import { CabinetActionList, CabinetFactGrid, CabinetPage, CabinetSection } from "@/components/cabinet-page";
-import { getAccessState, resolvePlanLabel } from "@/lib/access-policy";
+import { resolvePlanLabel } from "@/lib/access-policy";
 import { fetchAccessKeyStatus, redeemAccessKey, type AccessKeyStatusPayload } from "@/lib/api";
 import { usePortalSession } from "@/lib/session";
 import { useSearchParams } from "next/navigation";
@@ -109,7 +109,7 @@ export default function RedeemPage() {
     {
       label: "Статус доступа",
       value: dash?.is_active ? "Активен" : "Нужно продление",
-      hint: `Техническое состояние: ${getAccessState(dash, user) || "free_monthly"}.`,
+      hint: dash?.is_active ? "Ключ применится к текущему активному профилю." : "Если срок закончился, ключ поможет вернуть доступ.",
       tone: dash?.is_active ? ("success" as const) : ("warning" as const),
     },
     {

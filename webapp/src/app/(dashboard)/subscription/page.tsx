@@ -132,7 +132,7 @@ export default function SubscriptionPage() {
       tone: "neutral" as const,
       action: (
         <AppRouteLink href="/subscription/checkout/" className="text-sm font-semibold text-emerald-800 dark:text-emerald-300">
-          Открыть checkout
+          Открыть оплату
         </AppRouteLink>
       ),
     },
@@ -144,7 +144,7 @@ export default function SubscriptionPage() {
       tone: "neutral" as const,
       action: (
         <AppRouteLink href="/redeem/" className="text-sm font-semibold text-emerald-800 dark:text-emerald-300">
-          Открыть redeem
+          Применить ключ
         </AppRouteLink>
       ),
     },
@@ -249,7 +249,7 @@ export default function SubscriptionPage() {
         actions={
           <>
             <AppRouteLink href="/subscription/checkout/" className="btn-primary rounded-full px-5 py-3 text-sm font-semibold">
-              Открыть checkout
+              Открыть оплату
             </AppRouteLink>
             <AppRouteLink href="/redeem/" className="outline-btn rounded-full px-5 py-3 text-sm font-semibold">
               Применить ключ
@@ -296,6 +296,26 @@ export default function SubscriptionPage() {
           <CabinetCardGrid items={paymentCards} className="xl:grid-cols-1" />
         </CabinetSection>
       </div>
+
+      <CabinetSection
+        eyebrow="История"
+        title="История оплат"
+        description="Платежная история появится здесь, когда backend отдаст безопасную пользовательскую выписку."
+        actions={
+          <AppRouteLink href="/support/" className="outline-btn rounded-full px-4 py-2 text-xs font-semibold uppercase tracking-[0.12em]">
+            Поддержка
+          </AppRouteLink>
+        }
+        tone="info"
+      >
+        <div className="rounded-[1.3rem] border border-dashed border-sky-200/80 bg-white/72 px-4 py-4 text-sm leading-6 text-slate-600 dark:border-sky-400/20 dark:bg-white/[0.04] dark:text-slate-300">
+          <p className="font-semibold text-slate-950 dark:text-slate-50">История оплат пока не подключена.</p>
+          <p className="mt-2">
+            Мы не показываем декоративные строки и не придумываем квитанции. Если оплата уже была, а срок не обновился,
+            откройте поддержку: оператор проверит платеж по безопасным данным и продолжит тот же кейс.
+          </p>
+        </div>
+      </CabinetSection>
 
       <CabinetSection
         eyebrow="Коротко о режимах"

@@ -94,6 +94,27 @@ class RuProbeRunnerTests(unittest.TestCase):
 
         self.assertEqual(classifications[0], "probe_host_problem")
 
+    def test_classify_probe_report_flags_telegram_reachability_problem(self) -> None:
+        classifications = self.module._classify_probe_report(
+            {
+                "google_reachable": True,
+                "targets": [
+                    {"name": "api-telegram", "kind": "telegram", "ok": False},
+                    {"name": "telegram-web", "kind": "telegram", "ok": False},
+                    {"name": "pokrov-space", "kind": "canonical", "ok": True},
+                    {"name": "node-pl", "kind": "foreign_node", "ok": True},
+                ],
+                "reserve": {
+                    "xhttp_alive": False,
+                    "hysteria_alive": False,
+                },
+            }
+        )
+
+        self.assertIn("telegram_reachability_problem", classifications)
+        self.assertNotIn("canonical_host_problem", classifications)
+        self.assertNotIn("foreign_edge_problem", classifications)
+
     def test_build_probe_notes_match_origin_label(self) -> None:
         current_notes = self.module._build_probe_notes(probe_host="current")
         brain_notes = self.module._build_probe_notes(probe_host="brain")

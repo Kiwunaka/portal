@@ -1,6 +1,6 @@
 # App-First And Bonus Flows
 
-Last updated: 2026-04-23
+Last updated: 2026-04-25
 
 ## Document Status
 
@@ -195,6 +195,13 @@ Unified access-contract note:
 - `GET /api/dashboard`, `GET /api/user/{tg_id}`, and `GET /api/client/profile/managed` now carry the same identity/access family additions: `linked_identities`, `free_caps`, `redeem_eligibility`, `promo_slots`, `hidden_transport_matrix`, and `location_matrix`
 - the access-key redeem path returns the same access-state family so app, cabinet, and admin can refresh off one canonical contract
 
+Beta rate-limit contract:
+
+- externally reachable beta surfaces for fresh trial creation, Telegram/email auth, access-key status/redeem, and support ticket create/upload apply backend-owned per-minute throttles
+- `POST /api/client/session/start-trial` throttles only fresh installs from the same origin; retries for an existing `install_id` remain idempotent and should continue to return the existing app-first account
+- throttled requests return HTTP `429` with a `Retry-After` header and structured detail containing `code=rate_limited`, `scope`, and `retry_after_seconds`
+- rate-limit counters store hashed in-process fingerprints and can be tuned with `API_RATE_LIMIT_<SCOPE>_PER_MINUTE` environment variables; they are beta abuse guardrails, not a durable cross-process quota ledger
+
 ## Web Login, Email Auth, And Session Continuation
 
 Web surfaces support app-first continuation through:
@@ -234,6 +241,7 @@ Checkout rule:
 - `webapp` renewal is continuation-only and should defer to the same hosted activation-key flow
 - Telegram bot billing remains valid as a secondary path
 - raw subscription links remain recovery/manual-request only and must stay hidden from the default commerce UX
+- signed payment callbacks must not grant access unless the normalized local status is `paid`; failed, cancelled, refunded, chargeback, invalid-signature, and unknown/manual-review states are recorded for operator reconciliation instead of extending the account
 
 ## Subscription Delivery Semantics
 

@@ -671,10 +671,10 @@ class BotPaywallTests(unittest.TestCase):
             self.bot_module.enabled_provider_catalog = old_catalog
 
         self.assertTrue(callback.message.edits)
-        self.assertIn("Ссылка на оплату уже готова", callback.message.edits[-1])
+        self.assertIn("Следующий шаг: откройте оплату", callback.message.edits[-1])
         reply_markup = callback.message.edit_kwargs[-1]["reply_markup"]
         self.assertEqual(reply_markup.inline_keyboard[0][0].url, "https://checkout.cardlink.link/pay/test")
-        self.assertEqual(callback.answers[-1], ("Платёжная ссылка готова", False))
+        self.assertEqual(callback.answers[-1], ("Ссылка на оплату готова", False))
 
     def test_tariff_payment_choice_keyboard_lists_enabled_rub_providers(self) -> None:
         old_catalog = self.bot_module.enabled_provider_catalog
@@ -718,7 +718,7 @@ class BotPaywallTests(unittest.TestCase):
     def test_choose_tariff_text_is_trial_first_and_no_stars(self) -> None:
         text = self.bot_module.build_choose_tariff_text()
         self.assertIn("5 дней", text)
-        self.assertIn("тест", text.lower())
+        self.assertIn("бесплатно", text.lower())
         self.assertIn("5 ГБ", text)
         self.assertNotIn("Stars", text)
         self.assertNotIn("⭐", text)
@@ -731,8 +731,9 @@ class BotPaywallTests(unittest.TestCase):
     def test_main_keyboard_uses_kabinet_label_instead_of_portal(self) -> None:
         rows = self.bot_module.main_keyboard_specs(1001)
         labels = [str(button.get("text") or "") for row in rows for button in row]
-        self.assertTrue(any("КАБИНЕТ" in label for label in labels))
-        self.assertFalse(any("ПОРТАЛ" in label for label in labels))
+        upper_labels = [label.upper() for label in labels]
+        self.assertTrue(any("КАБИНЕТ" in label for label in upper_labels))
+        self.assertFalse(any("ПОРТАЛ" in label for label in upper_labels))
 
     def test_activate_promo_code_rejects_expired_promo(self) -> None:
         self.bot_module.ensure_pending_user(1001, username="alice")

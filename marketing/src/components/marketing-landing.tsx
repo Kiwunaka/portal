@@ -69,29 +69,11 @@ type PlanCard = {
 
 type GlyphName = "route" | "shield" | "signal" | "window" | "orbit" | "arc";
 
-const DEFAULT_REVIEWS: MarketingReview[] = [
-  {
-    name: "mikh****",
-    role: "ANDROID • 28.12.2025",
-    text: "Поставил приложение, получил 5 дней trial без суеты и уже потом спокойно решил вопрос с платным доступом через key-first сценарий.",
-  },
-  {
-    name: "anna****",
-    role: "WINDOWS • 17.01.2026",
-    text: "Нравится, что здесь не заставляют идти в чат ради старта. Сначала приложение и проверка, потом уже продление и cabinet continuation.",
-  },
-  {
-    name: "twst****",
-    role: "TELEGRAM • 07.01.2026",
-    text: "Telegram здесь реально вторичный: помог восстановить доступ и забрать бонус, но сам основной путь живёт внутри приложения.",
-  },
-];
-
 const HERO_SIGNALS: HeroSignal[] = [
   {
-    label: "Публичный scope",
+    label: "Бета scope",
     value: "Android + Windows",
-    detail: "Apple hosts остаются в кодовой базе, но не входят в публичное promise этой волны.",
+    detail: "Android — внутренний APK, Windows — бета-сборка; Apple остается readiness-направлением без публичного promise.",
   },
   {
     label: "Стартовый доступ",
@@ -141,10 +123,6 @@ const RELATED_PAGES = [
   { href: MARKETING_CANONICAL_PATHS.tiktok, label: "TikTok" },
 ];
 
-function firstNonEmpty(...values: Array<string | undefined>): string {
-  return values.find((value) => Boolean(String(value || "").trim()))?.trim() || "";
-}
-
 function buildInstallHref(): string {
   return buildMarketingUrl(MARKETING_CANONICAL_PATHS.install);
 }
@@ -159,22 +137,22 @@ function buildDownloadCards(): DownloadCard[] {
   return [
     {
       title: "Android",
-      status: "Public release",
-      desc: "Основной мобильный путь этой волны: установить приложение, получить trial и дальше продолжать доступ в app-first аккаунте.",
-      href: firstNonEmpty(config.androidApkUrl, config.androidPlayUrl, installHref),
-      cta: "Скачать для Android",
+      status: "Внутренняя бета",
+      desc: "Android доступен как внутренний APK для одобренных бета-пользователей. Публичная публикация остается заблокированной до signing и физического аудита.",
+      href: installHref,
+      cta: "Открыть установку",
     },
     {
       title: "Windows",
-      status: "Public release",
-      desc: "Desktop lane для публичной поставки этой волны: тот же managed profile и тот же key-first сценарий.",
-      href: firstNonEmpty(config.windowsExeUrl, installHref),
-      cta: "Скачать для Windows",
+      status: "Закрытая бета",
+      desc: "Windows можно выдавать как кабинет-гейтированную бета-сборку. Если сборка не подписана, пользователь должен увидеть предупреждение до установки.",
+      href: installHref,
+      cta: "Открыть установку",
     },
     {
       title: "Apple hosts",
       status: "Engineering lane",
-      desc: "iPhone и Mac остаются в кодовой базе и readiness notes, но не входят в public promise и release acceptance этой волны.",
+      desc: "iPhone и Mac остаются в кодовой базе и readiness notes, но не входят в публичное обещание этой волны.",
       href: installHref,
       cta: "Смотреть readiness notes",
     },
@@ -380,8 +358,7 @@ export default function MarketingLanding({
   clusterBody,
   featuredReviews,
 }: MarketingLandingProps) {
-  const reviews = featuredReviews?.length ? featuredReviews : DEFAULT_REVIEWS;
-  const spotlightReview = reviews[0] || DEFAULT_REVIEWS[0];
+  const reviews = featuredReviews?.length ? featuredReviews : [];
   const plans = buildPlanCards();
   const downloadCards = buildDownloadCards();
   const relatedPages = RELATED_PAGES.filter((item) => item.href !== pagePath);
@@ -450,7 +427,7 @@ export default function MarketingLanding({
           <div className="lp-hero-copy">
             <div className="lp-kicker">{heroKicker || "POKROV • Android + Windows"}</div>
             <p className="lp-overline">
-              Публичный старт этой волны идёт через приложение. Маркетинг объясняет следующий шаг, а cabinet остаётся continuation слоем.
+              Эта волна — публичная бета с честными ограничениями. Маркетинг объясняет следующий шаг, а cabinet остаётся continuation слоем.
             </p>
             <h1>{heroTitle || "Один спокойный путь: установить приложение, проверить trial и только потом покупать managed premium"}</h1>
             <p className="lp-hero-lead">
@@ -482,11 +459,11 @@ export default function MarketingLanding({
             <article className="lp-stage-card lp-stage-card--primary">
               <div className="lp-stage-label">
                 <LandingGlyph name="route" />
-                Public defaults
+                Beta defaults
               </div>
               <h2>Одна логическая локация и один понятный маршрут.</h2>
               <p>
-                В public surfaces пользователь видит один managed location, default route mode <strong>{CANONICAL_PUBLIC_DEFAULT_ROUTE_MODE}</strong> и только релизный scope <strong>{CANONICAL_PUBLIC_PLATFORM_SCOPE.join(" + ")}</strong>.
+                В пользовательских surfaces виден один managed location, default route mode <strong>{CANONICAL_PUBLIC_DEFAULT_ROUTE_MODE}</strong> и только beta scope <strong>{CANONICAL_PUBLIC_PLATFORM_SCOPE.join(" + ")}</strong>.
               </p>
               <ol className="lp-stage-steps">
                 {KEY_FLOW_STEPS.map((step, index) => (
@@ -524,12 +501,10 @@ export default function MarketingLanding({
             <article className="lp-stage-card lp-stage-card--quote">
               <div className="lp-stage-label">
                 <LandingGlyph name="arc" />
-                Trust signal
+                Beta status
               </div>
-              <blockquote>{spotlightReview.text}</blockquote>
-              <span>
-                {spotlightReview.name} • {spotlightReview.role}
-              </span>
+              <blockquote>Доступ открыт как публичная бета для проверенных Android/Windows путей; downloads остаются в кабинете, а поддержка работает как best-effort до 24 часов.</blockquote>
+              <span>Public beta • Android + Windows beta path</span>
             </article>
           </div>
         </section>
@@ -539,7 +514,7 @@ export default function MarketingLanding({
             <span>Обещание</span>
             <h2>Маркетинг владеет acquisition и pricing, а не тащит пользователя в legacy-полумеры.</h2>
             <p>
-              Сайт не обещает больше, чем реально публично релизится. Android и Windows ведут в продукт, Apple hosts остаются engineering-only, а raw subscription link скрыт из default UX.
+              Сайт не обещает публичный стабильный релиз. Android и Windows ведут в beta path, Apple hosts остаются engineering-only, а raw subscription link скрыт из default UX.
             </p>
           </div>
           <div className="lp-trust-grid">
@@ -559,9 +534,9 @@ export default function MarketingLanding({
         <section id="downloads" className="lp-section">
           <div className="lp-section-head">
             <span>Приложение</span>
-            <h2>Публичный вход начинается с установки, а не с технических ссылок.</h2>
+            <h2>Бета-вход начинается с установки, а не с технических ссылок.</h2>
             <p>
-              Android и Windows уже составляют публичный delivery scope. Apple shells остаются в кодовой базе, но эта волна не обещает их как публичный релиз.
+              Android и Windows составляют beta delivery scope. Apple shells остаются в кодовой базе, но эта волна не обещает их как публичный релиз.
             </p>
           </div>
           <div className="lp-download-grid">
@@ -586,7 +561,7 @@ export default function MarketingLanding({
             <span>Тарифы</span>
             <h2>Тарифы теперь ведут к activation key, а не к raw personal link.</h2>
             <p>
-              Публичный pricing принадлежит только маркетингу. Дальше покупка продолжается через hosted checkout и заканчивается issuance activation key для managed premium.
+              Публичный pricing принадлежит маркетингу. Дальше покупка продолжается через hosted checkout и заканчивается issuance activation key для managed premium.
             </p>
           </div>
           <div className="lp-pricing-shell">
@@ -597,7 +572,7 @@ export default function MarketingLanding({
               </div>
               <h3>Buy key, redeem key, keep the same app-first account.</h3>
               <p>
-                Cabinet и приложение работают как continuation surfaces. Сайт показывает только честный pricing, public defaults и следующий шаг без pricing drift и без manual config story.
+                Cabinet и приложение работают как continuation surfaces. Сайт показывает только честный pricing, beta defaults и следующий шаг без pricing drift и без manual config story.
               </p>
               <ul className="lp-pricing-points">
                 <li>Free Monthly остаётся видимым fallback после trial.</li>
@@ -637,17 +612,31 @@ export default function MarketingLanding({
                     "Сначала trial, потом честный free tier, затем key-first upgrade. Это тот же продуктовый маршрут, который должны видеть сайт, webapp и bot без противоречий."}
                 </p>
               </div>
-              <div className="lp-review-list">
-                {reviews.map((item) => (
-                  <article key={`${item.name}-${item.role}`} className="lp-review-card">
-                    <p className="lp-review-text">{item.text}</p>
+              {reviews.length ? (
+                <div className="lp-review-list">
+                  {reviews.map((item) => (
+                    <article key={`${item.name}-${item.role}`} className="lp-review-card">
+                      <p className="lp-review-text">{item.text}</p>
+                      <div className="lp-review-meta">
+                        <strong>{item.name}</strong>
+                        <span>{item.role}</span>
+                      </div>
+                    </article>
+                  ))}
+                </div>
+              ) : (
+                <div className="lp-review-list">
+                  <article className="lp-review-card">
+                    <p className="lp-review-text">
+                      Публичные отзывы появятся только после модерации через официальный канал обратной связи.
+                    </p>
                     <div className="lp-review-meta">
-                      <strong>{item.name}</strong>
-                      <span>{item.role}</span>
+                      <strong>POKROV</strong>
+                      <span>только проверенная обратная связь</span>
                     </div>
                   </article>
-                ))}
-              </div>
+                </div>
+              )}
             </div>
 
             <div id="faq">
@@ -707,13 +696,13 @@ export default function MarketingLanding({
               <span>Финальный шаг</span>
               <h2>POKROV: сначала приложение, потом key-first managed premium.</h2>
               <p>
-                Если нужен public start, идите в приложение. Если нужен upgrade, выбирайте срок, покупайте activation key и погашайте его в том же app-first аккаунте.
+                Если нужен beta start, идите в приложение. Если нужен upgrade, выбирайте срок, покупайте activation key и погашайте его в том же app-first аккаунте.
               </p>
             </div>
             <div className="lp-footer-rail">
               <div>
                 <strong>Android + Windows</strong>
-                <span>публичный release scope</span>
+                <span>beta scope с ограничениями</span>
               </div>
               <div>
                 <strong>5 дней</strong>

@@ -4,7 +4,7 @@
   "items": {
     "marketing.meta.title": {
       "surface": "marketing.meta",
-      "ru": "POKROV — умный маршрут для скорости и низкого пинга",
+      "ru": "POKROV — спокойный цифровой маршрут в платной бете",
       "variables": [],
       "tone": "premium",
       "allowed_public": true,
@@ -13,7 +13,7 @@
     },
     "marketing.meta.description": {
       "surface": "marketing.meta",
-      "ru": "Попробуйте 5 дней бесплатного ускорения. Оптимизируйте пинг и скорость интернета в один клик.",
+      "ru": "Попробуйте 5 дней бесплатно, затем продолжайте доступ через понятную оплату и тот же app-first аккаунт.",
       "variables": [],
       "tone": "premium",
       "allowed_public": true,
@@ -31,7 +31,7 @@
     },
     "marketing.hero.title": {
       "surface": "marketing.home.hero",
-      "ru": "Начните с приложения, чтобы сразу почувствовать ускорение",
+      "ru": "Начните с приложения, спокойно проверьте и только потом решайте про оплату",
       "variables": [],
       "tone": "premium",
       "allowed_public": true,
@@ -40,7 +40,7 @@
     },
     "marketing.hero.subtitle": {
       "surface": "marketing.home.hero",
-      "ru": "Скачайте оптимизатор для Android или Windows, включите 5 дней теста и наслаждайтесь стабильной связью в играх и приложениях.",
+      "ru": "Откройте POKROV на Android или Windows, включите 5 дней теста и продолжайте доступ только если сервис подошёл в обычной жизни.",
       "variables": [],
       "tone": "premium",
       "allowed_public": true,
@@ -49,7 +49,7 @@
     },
     "marketing.hero.primary_cta": {
       "surface": "marketing.home.hero",
-      "ru": "Ускорить интернет сейчас",
+      "ru": "Начать с приложения",
       "variables": [],
       "tone": "premium",
       "allowed_public": true,
@@ -67,7 +67,7 @@
     },
     "marketing.hero.overline": {
       "surface": "marketing.home.hero",
-      "ru": "Премиальный оптимизатор маршрутов для Android и Windows.",
+      "ru": "Платная бета POKROV для Android и Windows.",
       "variables": [],
       "tone": "premium",
       "allowed_public": true,
@@ -121,7 +121,7 @@
     },
     "marketing.hero.proof_3.text": {
       "surface": "marketing.home.hero",
-      "ru": "команда заботы всегда рядом в Telegram",
+      "ru": "ответ в бете — best-effort до 24 часов",
       "variables": [],
       "tone": "premium",
       "allowed_public": true,
@@ -175,7 +175,7 @@
     },
     "marketing.checkout.meta.title": {
       "surface": "marketing.checkout",
-      "ru": "Выбор доступа | POKROV",
+      "ru": "Оплата бета-доступа | POKROV",
       "variables": [],
       "tone": "calm",
       "allowed_public": true,
@@ -184,7 +184,7 @@
     },
     "marketing.checkout.meta.description": {
       "surface": "marketing.checkout",
-      "ru": "Откройте кабинет, чтобы выбрать подходящий вариант и перейти к персональной оплате без лишних шагов.",
+      "ru": "Страница checkout объясняет оплату бета-доступа, покупку activation key, ручную помощь при спорных платежах и следующий шаг без сырых технических ссылок.",
       "variables": [],
       "tone": "calm",
       "allowed_public": true,
@@ -301,7 +301,7 @@
     },
     "marketing.checkout.helper.ticket": {
       "surface": "marketing.checkout",
-      "ru": "Если возник вопрос по оплате, поддержка в Telegram быстро подскажет следующий шаг.",
+      "ru": "Если возник вопрос по оплате, поддержка поможет сверить статус и подскажет следующий шаг.",
       "variables": [],
       "tone": "premium",
       "allowed_public": true,
@@ -310,7 +310,7 @@
     },
     "marketing.promise.title": {
       "surface": "marketing.home.promise",
-      "ru": "Почему интернет с POKROV лучше",
+      "ru": "Почему старт с POKROV спокойнее",
       "variables": [],
       "tone": "premium",
       "allowed_public": true,
@@ -319,7 +319,7 @@
     },
     "marketing.promise.subtitle": {
       "surface": "marketing.home.promise",
-      "ru": "Всё устроено очень просто: скачиваете приложение, чувствуете магию скорости и только потом принимаете решение.",
+      "ru": "Всё устроено просто: открываете приложение, проверяете сервис 5 дней и только потом принимаете решение об оплате.",
       "variables": [],
       "tone": "premium",
       "allowed_public": true,
@@ -337,7 +337,7 @@
     },
     "marketing.downloads.subtitle": {
       "surface": "marketing.home.downloads",
-      "ru": "Кнопки ведут либо к актуальному релизному файлу, либо на страницу помощи с понятным маршрутом установки.",
+      "ru": "Публичные кнопки ведут в кабинет или помощь. Бета-файлы выдаются только там, где доступ уже разрешён.",
       "variables": [],
       "tone": "premium",
       "allowed_public": true,
@@ -355,7 +355,7 @@
     },
     "marketing.steps.subtitle": {
       "surface": "marketing.home.steps",
-      "ru": "Мы ценим простоту: один раз скачали, один раз попробовали и пользуетесь интернетом без границ.",
+      "ru": "Мы ценим простоту: один раз начали в приложении, спокойно проверили сервис и продолжили только при понятной пользе.",
       "variables": [],
       "tone": "premium",
       "allowed_public": true,
@@ -436,7 +436,7 @@
     },
     "marketing.download.android.cta": {
       "surface": "marketing.home.downloads",
-      "ru": "Скачать APK",
+      "ru": "Открыть кабинет",
       "variables": [],
       "tone": "calm",
       "allowed_public": true,
@@ -445,7 +445,7 @@
     },
     "marketing.download.windows.cta": {
       "surface": "marketing.home.downloads",
-      "ru": "Скачать для Windows",
+      "ru": "Открыть кабинет",
       "variables": [],
       "tone": "calm",
       "allowed_public": true,
@@ -472,7 +472,7 @@
     },
     "marketing.install.meta.description": {
       "surface": "marketing.install",
-      "ru": "Скачайте приложение для Android или Windows. Если платформа ещё в подготовке, мы честно покажем текущий статус.",
+      "ru": "Откройте кабинет для Android или Windows. Если сборка ещё не выдана вашему аккаунту, мы честно покажем следующий шаг.",
       "variables": [],
       "tone": "calm",
       "allowed_public": true,
@@ -490,7 +490,7 @@
     },
     "marketing.install.title": {
       "surface": "marketing.install",
-      "ru": "Скачайте приложение",
+      "ru": "Установка без тупиков",
       "variables": [],
       "tone": "calm",
       "allowed_public": true,
@@ -499,7 +499,7 @@
     },
     "marketing.install.subtitle": {
       "surface": "marketing.install",
-      "ru": "Начните с приложения: так проще включить доступ и подключиться без лишних шагов. Если нужной платформы пока нет, мы честно покажем текущий статус.",
+      "ru": "Бета-сборки выдаются через кабинет или поддержку. Если файл пока не доступен вашему аккаунту, вы всё равно не теряете маршрут.",
       "variables": [],
       "tone": "calm",
       "allowed_public": true,
@@ -508,7 +508,7 @@
     },
     "marketing.install.primary_cta": {
       "surface": "marketing.install",
-      "ru": "Скачать приложение",
+      "ru": "Открыть кабинет",
       "variables": [],
       "tone": "calm",
       "allowed_public": true,
@@ -526,7 +526,7 @@
     },
     "marketing.install.help_cta": {
       "surface": "marketing.install",
-      "ru": "Нужна помощь",
+      "ru": "Открыть инструкцию",
       "variables": [],
       "tone": "calm",
       "allowed_public": true,
@@ -553,7 +553,7 @@
     },
     "marketing.install.help_body": {
       "surface": "marketing.install",
-      "ru": "Если загрузка не открылась, перейдите в кабинет или напишите в Telegram. Мы подскажем следующий шаг и не будем обещать лишнего.",
+      "ru": "Если файла нет в кабинете, откройте инструкцию или напишите в поддержку. Мы подскажем следующий шаг и не будем обещать лишнего.",
       "variables": [],
       "tone": "calm",
       "allowed_public": true,
@@ -1077,7 +1077,7 @@
     },
     "marketing.install.downloads.title": {
       "surface": "marketing.install.downloads",
-      "ru": "Готовые загрузки",
+      "ru": "Бета-сборки в кабинете",
       "variables": [],
       "tone": "calm",
       "allowed_public": true,
@@ -1086,7 +1086,7 @@
     },
     "marketing.install.downloads.subtitle": {
       "surface": "marketing.install.downloads",
-      "ru": "Здесь собраны прямые загрузки и запасные маршруты, если нужный файл не открылся сразу.",
+      "ru": "Публичная страница не выдаёт прямые загрузки. Если сборка доступна вашему аккаунту, она откроется в кабинете; если нет, рядом остаётся помощь.",
       "variables": [],
       "tone": "calm",
       "allowed_public": true,
@@ -1095,7 +1095,7 @@
     },
     "marketing.install.android.status": {
       "surface": "marketing.install.android",
-      "ru": "Android",
+      "ru": "Android beta в кабинете",
       "variables": [],
       "tone": "calm",
       "allowed_public": true,
@@ -1104,7 +1104,7 @@
     },
     "marketing.install.android.title": {
       "surface": "marketing.install.android",
-      "ru": "APK для Android",
+      "ru": "Внутренний APK для Android",
       "variables": [],
       "tone": "calm",
       "allowed_public": true,
@@ -1113,7 +1113,7 @@
     },
     "marketing.install.android.desc": {
       "surface": "marketing.install.android",
-      "ru": "Скачайте APK, если нужен прямой файл для установки на Android.",
+      "ru": "Android APK доступен только как внутренняя бета для одобренных пользователей. Публичная публикация остаётся заблокированной до signing и физического аудита.",
       "variables": [],
       "tone": "calm",
       "allowed_public": true,
@@ -1122,7 +1122,7 @@
     },
     "marketing.install.windows.status": {
       "surface": "marketing.install.windows",
-      "ru": "Windows",
+      "ru": "Windows beta в кабинете",
       "variables": [],
       "tone": "calm",
       "allowed_public": true,
@@ -1131,7 +1131,7 @@
     },
     "marketing.install.windows.title": {
       "surface": "marketing.install.windows",
-      "ru": "Установщик для Windows",
+      "ru": "Бета-сборка для Windows",
       "variables": [],
       "tone": "calm",
       "allowed_public": true,
@@ -1140,7 +1140,7 @@
     },
     "marketing.install.windows.desc": {
       "surface": "marketing.install.windows",
-      "ru": "Скачайте установщик для Windows и пройдите короткую установку.",
+      "ru": "Windows-сборка для беты может быть неподписанной. Перед установкой пользователь должен увидеть предупреждение о неизвестном издателе.",
       "variables": [],
       "tone": "calm",
       "allowed_public": true,

@@ -3,7 +3,7 @@
 import type { Dispatch, SetStateAction } from "react";
 import { AdminEmptyState, adminButtonClass, adminFieldClass, adminInsetPanelClass, adminPanelClass } from "@/components/admin/admin-shell";
 import { fmtRuDate } from "@/app/(dashboard)/admin/nav";
-import type { AdminUserCard, AdminUserKey } from "@/lib/api";
+import type { AdminPaymentOrder, AdminUserCard, AdminUserKey } from "@/lib/api";
 import {
   observerStateBadgeClass,
   observerStateLabel,
@@ -43,6 +43,18 @@ type AdminUserSidePanelProps = {
   setPolicyDrafts: Dispatch<SetStateAction<Record<string, KeyPolicyDraft>>>;
 };
 
+function paymentStatusTone(status: string): string {
+  const value = String(status || "").toLowerCase();
+  if (value === "paid") return "badge-success";
+  if (["failed", "cancelled", "refunded", "chargeback"].includes(value)) return "badge-danger";
+  if (["manual_review", "pending_verification"].includes(value)) return "badge-warning";
+  return "badge-info";
+}
+
+function formatPaymentAmount(order: AdminPaymentOrder): string {
+  return `${Number(order.amount || 0).toLocaleString("ru-RU")} ${order.currency || "RUB"}`;
+}
+
 export function AdminUserSidePanel({
   selected,
   detailTab,
@@ -78,7 +90,7 @@ export function AdminUserSidePanel({
     );
   }
 
-  const { user, keys = [], key_history = [], admin_actions = [], risk, loyalty, observer } = selected;
+  const { user, keys = [], key_history = [], admin_actions = [], payment_orders = [], risk, loyalty, observer } = selected;
   const riskClass =
     String(risk?.level || "").toLowerCase() === "critical"
       ? "badge-danger"
@@ -185,6 +197,45 @@ export function AdminUserSidePanel({
           <p className="mt-2 text-xs text-slate-400">
             Panel state: <strong>{panelStateLabel(String(selected.summary?.panel_state || ""))}</strong>
           </p>
+        </div>
+      </div>
+
+      <div className="mt-3 grid gap-3 xl:grid-cols-2">
+        <div className={adminInsetPanelClass}>
+          <p className="text-sm font-semibold text-slate-50">Device context</p>
+          <div className="mt-3 space-y-1 text-xs text-slate-400">
+            <p>Install ID: <strong>{user.app_install_id || "not linked"}</strong></p>
+            <p>Platform: <strong>{user.app_platform || "unknown"}</strong></p>
+            <p>Last seen: <strong>{fmtRuDate(user.app_last_seen_at)}</strong></p>
+            <p>Telegram: <strong>{user.linked_telegram_username ? `@${user.linked_telegram_username}` : user.linked_telegram_id || "not linked"}</strong></p>
+          </div>
+        </div>
+        <div className={adminInsetPanelClass}>
+          <p className="text-sm font-semibold text-slate-50">Recent payment orders</p>
+          {payment_orders.length ? (
+            <div className="mt-3 space-y-2">
+              {payment_orders.slice(0, 4).map((order) => (
+                <div key={`${order.provider}:${order.order_id}`} className="rounded-xl border border-[#22303c] bg-[#0b1218] px-3 py-2 text-xs">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <p className="font-mono text-slate-100">{order.order_id}</p>
+                    <span className={`badge ${paymentStatusTone(order.status)}`}>{order.status}</span>
+                  </div>
+                  <p className="mt-1 text-slate-400">
+                    {order.provider} · {order.plan_code || "-"} · {formatPaymentAmount(order)}
+                  </p>
+                  {order.last_event ? (
+                    <p className="mt-1 text-slate-500">
+                      callback {order.last_event.event_type}: {order.last_event.processed_ok ? "processed" : "needs review"}
+                    </p>
+                  ) : (
+                    <p className="mt-1 text-slate-500">No provider callback yet.</p>
+                  )}
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="mt-2 text-xs text-slate-400">No payment orders found for this account.</p>
+          )}
         </div>
       </div>
 

@@ -7,14 +7,14 @@ import { CANONICAL_PLATFORM_BRAND, getCopyText } from "../../lib/pokrov";
 import CheckoutClient, { CheckoutLoadingFallback } from "./checkout-client";
 
 export const metadata = buildMarketingMetadata(
-  getCopyText("marketing.checkout.meta.title", "Личный маршрут оплаты | POKROV"),
+  getCopyText("marketing.checkout.meta.title", "Оплата бета-доступа | POKROV"),
   getCopyText(
     "marketing.checkout.meta.description",
-    "Публичная страница checkout объясняет следующий шаг, но сама касса открывается только после личного входа в кабинет или по персональной ссылке из Telegram.",
+    "Страница checkout объясняет оплату бета-доступа, покупку activation key, ручную помощь при спорных платежах и следующий шаг без сырых технических ссылок.",
   ),
   {
     path: "/checkout/",
-    noIndex: true,
+    noIndex: false,
     keywords: ["оплата pokrov", "продление pokrov", "личный маршрут оплаты", "checkout pokrov"],
   },
 );

@@ -1,0 +1,477 @@
+﻿diff --git a/docs/architecture/system-overview.md b/docs/architecture/system-overview.md
+index 6393701..52149db 100644
+--- a/docs/architecture/system-overview.md
++++ b/docs/architecture/system-overview.md
+@@ -1,6 +1,6 @@
+ # POKROV System Overview
+ 
+-Last updated: 2026-04-23
++Last updated: 2026-04-24
+ 
+ ## Document Status
+ 
+@@ -325,6 +325,7 @@ RF host rule:
+ - keep `rf1` outside the default runtime delivery pool in phase 1
+ - RU ingress / RF reserve experiments are currently in backlog
+ - do not spend implementation time on `mini` ingress variants or `rf1` promotion until the product owner explicitly requests a return to this work
++- owner-approved exception on `2026-04-24`: the dedicated free node (`151.245.217.23`) runs `portal-mtproto.service` as a Telegram-only MTProto proxy on `tcp/9443`; it is not a new generic delivery role and must not displace the node's normal `x-ui` listener on `tcp/443`
+ 
+ ## Public Hostnames And Migration Roles
+ 
+diff --git a/docs/developer/developer-guide.md b/docs/developer/developer-guide.md
+index 9b37324..cccf395 100644
+--- a/docs/developer/developer-guide.md
++++ b/docs/developer/developer-guide.md
+@@ -1,6 +1,6 @@
+ # Developer Guide
+ 
+-Last updated: 2026-04-23
++Last updated: 2026-04-24
+ 
+ ## Document Status
+ 
+@@ -372,12 +372,20 @@ python scripts/ru_probe_runner.py --reserve-host rf1.pokrov.space --probe-host m
+ python scripts/render_ru_probe_report.py --input ops-local/ru-probe.json
+ ```
+ 
++Telegram MTProto proxy exception on the free node:
++
++```powershell
++python scripts/remote_install_mtproto_proxy.py --node-code free --node-host 151.245.217.23 --ssh-port 29374 --listen-port 9443 --enable-refresh-timer
++python -m unittest tests.test_remote_install_mtproto_proxy -v
++```
++
+ Operational rules:
+ 
+ - `mini` is probe-only for current work
+ - `mini` may be unavailable; RU probe readiness is its own tracked operational dependency
+ - RU ingress / RF reserve experiments are backlog-only
+ - do not resume `mini` canary work, evolve the transport matrix, or provision `rf1` unless the product owner explicitly asks to return to that track
++- the `2026-04-24` MTProto proxy on the free node is an owner-approved Telegram-only exception; it must not displace the node's normal `x-ui` listener on `tcp/443`, and its secret link must stay out of docs and reports
+ - `rf1` is reserve-only for operator and VIP/manual use in phase 1
+ - keep `rf1` outside the default runtime delivery pool until repeated RU probes confirm stable behavior
+ - observer-lite phase 1 stays observe-only; do not add throttle or block actions without an explicit product decision
+diff --git a/docs/developer/repository-map.md b/docs/developer/repository-map.md
+index 89d352a..2d05d05 100644
+--- a/docs/developer/repository-map.md
++++ b/docs/developer/repository-map.md
+@@ -1,6 +1,6 @@
+ # Repository Map
+ 
+-Last updated: 2026-04-23
++Last updated: 2026-04-24
+ 
+ ## Document Status
+ 
+@@ -82,6 +82,7 @@ Legacy filename note:
+ - `remote_brain_apply_release_handoff.py`
+ - `remote_apply_transport_front.py`
+ - `remote_install_mini_canary_stack.py`
++- `remote_install_mtproto_proxy.py`
+ - `remote_switch_bot_tokens.py`
+ - `release_orchestrator.py`
+ 
+diff --git a/docs/operations/deployment-and-access.md b/docs/operations/deployment-and-access.md
+index 66c355b..bc94f8d 100644
+--- a/docs/operations/deployment-and-access.md
++++ b/docs/operations/deployment-and-access.md
+@@ -1,6 +1,6 @@
+ # Deployment And Access
+ 
+-Last updated: 2026-04-23
++Last updated: 2026-04-24
+ 
+ ## Document Status
+ 
+@@ -54,6 +54,7 @@ RF access rule:
+ - keep a hard kill switch for the `rf1` VIP/manual contour so it can be withdrawn without touching the standard consumer path
+ - RU ingress / RF reserve work is currently backlog-only
+ - do not resume `mini` ingress experiments, do not provision `rf1`, and do not treat this contour as active work unless the product owner explicitly asks to return to it
++- owner-approved exception on `2026-04-24`: the live Telegram-only MTProto proxy runs on the dedicated free node (`151.245.217.23:9443`) through `portal-mtproto.service`; this is not a control-plane service and must not displace the free pool's existing `x-ui` listener on `tcp/443`
+ - `mini` may be unavailable and must not be treated as a guaranteed RU probe origin
+ - RU probe readiness itself is a tracked operational dependency for release confidence
+ 
+@@ -171,6 +172,27 @@ Status:
+ - keep the script as historical/operator tooling only
+ - do not run this script, do not continue the experiment, and do not evolve the contour unless the product owner explicitly requests a return to this work
+ 
++### Telegram MTProto proxy on free node
++
++- [remote_install_mtproto_proxy.py](C:/Users/kiwun/Documents/ai/VPN/scripts/remote_install_mtproto_proxy.py)
++
++Current state:
++
++- the dedicated free node (`151.245.217.23`) hosts `portal-mtproto.service` on `tcp/9443`
++- `x-ui.service` continues to own `tcp/443` on the free node for normal free-pool delivery
++- the previous `mini:443` MTProto attempt is disabled because `mini` cannot reliably reach Telegram hostnames and reached only one checked Telegram DC endpoint
++- the MTProto secret and share links live only in `/etc/portal-mtproto.env` on the free node; do not copy them into docs, commits, or handoff reports
++- `portal-mtproto-config-refresh.timer` is enabled on the free node because it can reach `core.telegram.org`
++- the official Telegram MTProxy source currently needs a PID namespace workaround on this host, so the systemd unit starts it through `unshare --fork --pid --mount-proc`
++
++Typical install or refresh from the repository root:
++
++```powershell
++python scripts/remote_install_mtproto_proxy.py --node-code free --node-host 151.245.217.23 --ssh-port 29374 --listen-port 9443 --enable-refresh-timer
++```
++
++If the endpoint must be registered with Telegram, send `151.245.217.23:9443` or an approved DNS name that resolves to `151.245.217.23` and still uses port `9443`.
++
+ ### Feedback bot service install
+ 
+ - [remote_install_feedbackbot_service.py](C:/Users/kiwun/Documents/ai/VPN/scripts/remote_install_feedbackbot_service.py)
+diff --git a/docs/operations/monitoring-and-visibility.md b/docs/operations/monitoring-and-visibility.md
+index 8e59385..d542c11 100644
+--- a/docs/operations/monitoring-and-visibility.md
++++ b/docs/operations/monitoring-and-visibility.md
+@@ -1,6 +1,6 @@
+ # Monitoring And Visibility
+ 
+-Last updated: 2026-04-23
++Last updated: 2026-04-24
+ 
+ ## Document Status
+ 
+@@ -298,12 +298,14 @@ RF role split:
+ - `rf1` is the reserve ingress for operator and VIP/manual access
+ - do not use `mini` for general user traffic
+ - do not treat `rf1` as a general delivery node until repeated RU probes prove stability
++- owner-approved exception on `2026-04-24`: the dedicated free node (`151.245.217.23`) also runs the Telegram-only `portal-mtproto.service` on `tcp/9443`; monitor it separately from POKROV delivery-node health and do not count it as normal subscription traffic
+ 
+ Current backlog note:
+ 
+ - RU ingress / RF reserve experiments are paused
+ - keep using `mini` only as the RU probe origin
+ - do not resume `mini` canary work or `rf1` promotion until the product owner explicitly requests it
++- the Telegram MTProto exception does not reopen the paused RF reserve canary; the earlier `mini:443` attempt is disabled because Telegram reachability from `mini` is degraded
+ 
+ Interpretation note:
+ 
+@@ -322,6 +324,14 @@ Reserve interpretation:
+ - if `xhttp_alive=true` while canonical hosts fail, preserve the reserve contour and keep the default consumer path unchanged
+ - while the RF reserve idea is in backlog, keep collecting probe evidence but do not treat reserve-path improvements as active roadmap work
+ 
++Telegram MTProto proxy interpretation:
++
++- `portal-mtproto.service active` proves the Telegram proxy daemon is running on the free node
++- `current-origin check` and `brain-origin check` should verify `151.245.217.23:9443/tcp` separately from HTTPS checks because MTProto is not an HTTP service
++- free-node reachability to `core.telegram.org` controls whether the daily config refresh timer can stay enabled
++- if `mini` is considered again, a fresh RU-origin check must prove Telegram hostname and DC reachability first; the 2026-04-24 result is degraded and should not be treated as a healthy endpoint
++- the MTProto link and secret are operational secret material and should stay in `/etc/portal-mtproto.env`, not in docs or incident reports
++
+ ## App, Bot, Device, And IP Visibility
+ 
+ The support and operator stack should be able to correlate these domains of information for one user/account journey:
+diff --git a/scripts/manifest.yaml b/scripts/manifest.yaml
+index 4e3ed1a..f227cd1 100644
+--- a/scripts/manifest.yaml
++++ b/scripts/manifest.yaml
+@@ -62,6 +62,7 @@
+     "scripts/remote_inspect_brain_subscription_hosts.py",
+     "scripts/remote_install_feedbackbot_service.py",
+     "scripts/remote_install_free_per_ip_limiter.py",
++    "scripts/remote_install_mtproto_proxy.py",
+     "scripts/remote_install_mini_canary_stack.py",
+     "scripts/remote_install_node_metrics_timer.py",
+     "scripts/remote_install_node_observer.py",
+diff --git a/webapp/src/app/globals.css b/webapp/src/app/globals.css
+index 9b7bf15..df0cdac 100644
+--- a/webapp/src/app/globals.css
++++ b/webapp/src/app/globals.css
+@@ -2,14 +2,14 @@
+ 
+ 
+ :root {
+-  --bg: var(--pokrov-bg, #f6f1e8);
++  --bg: var(--pokrov-bg, #f8faf7);
+   --bg-dark: #0f1714;
+-  --text: var(--pokrov-text, #15211c);
++  --text: var(--pokrov-text, #20292d);
+   --text-dark: var(--pokrov-text-inverse, #edf4ef);
+-  --primary: var(--pokrov-emerald-strong, #0b4832);
+-  --primary-2: var(--pokrov-emerald, #0f5a3d);
+-  --accent: var(--pokrov-gold-soft, #c58a2a);
+-  --line: var(--pokrov-line, rgba(11, 72, 50, 0.14));
++  --primary: var(--pokrov-emerald-strong, #0f5f43);
++  --primary-2: var(--pokrov-emerald, #176d4d);
++  --accent: var(--pokrov-mint-strong, #dff2e8);
++  --line: var(--pokrov-line, #dfe8e2);
+   --line-dark: var(--pokrov-line-dark, rgba(202, 215, 206, 0.1));
+   --glass: var(--pokrov-surface, rgba(255, 255, 255, 0.76));
+   --glass-dark: var(--pokrov-surface-dark, rgba(15, 22, 18, 0.84));
+@@ -37,10 +37,8 @@ body {
+   margin: 0;
+   color: var(--text);
+   background:
+-    radial-gradient(circle at 8% 10%, color-mix(in srgb, var(--primary) 14%, transparent), transparent 42%),
+-    radial-gradient(circle at 88% 4%, color-mix(in srgb, var(--accent) 14%, transparent), transparent 36%),
+-    radial-gradient(circle at 55% 95%, rgba(52, 121, 92, 0.12), transparent 45%),
+-    linear-gradient(140deg, color-mix(in srgb, var(--bg) 72%, #ffffff) 0%, color-mix(in srgb, var(--bg) 84%, var(--pokrov-bg-alt, #ece5d8)) 48%, color-mix(in srgb, var(--bg) 68%, #edf4ef) 100%);
++    linear-gradient(180deg, rgba(255, 255, 255, 0.82), rgba(255, 255, 255, 0.42)),
++    linear-gradient(180deg, var(--bg) 0%, #eef7f2 100%);
+   transition: background 0.35s ease;
+   transform: translateZ(0);
+ }
+@@ -596,7 +594,7 @@ body.tg-keyboard-open .tg-bottom-nav {
+ 
+ .node-card:hover {
+   transform: translateY(-1px);
+-  box-shadow: 0 8px 24px -8px rgba(124, 44, 191, 0.2);
++  box-shadow: 0 8px 24px -8px rgba(23, 109, 77, 0.2);
+ }
+ 
+ .dark .node-card {
+@@ -666,14 +664,14 @@ body.tg-keyboard-open .tg-bottom-nav {
+ /* Atlas flattening overrides */
+ 
+ :root {
+-  --bg: var(--pokrov-bg, #f7f3eb);
++  --bg: var(--pokrov-bg, #f8faf7);
+   --bg-dark: #111715;
+-  --text: var(--pokrov-text, #1f2636);
++  --text: var(--pokrov-text, #20292d);
+   --text-dark: var(--pokrov-text-inverse, #f7f5ef);
+-  --primary: var(--pokrov-emerald, #20674f);
+-  --primary-2: var(--pokrov-emerald-strong, #1b5a45);
+-  --accent: #d7c7aa;
+-  --line: var(--pokrov-line, rgba(31, 38, 54, 0.1));
++  --primary: var(--pokrov-emerald, #176d4d);
++  --primary-2: var(--pokrov-emerald-strong, #0f5f43);
++  --accent: var(--pokrov-mint-strong, #dff2e8);
++  --line: var(--pokrov-line, #dfe8e2);
+   --line-dark: var(--pokrov-line-dark, rgba(239, 243, 241, 0.12));
+   --glass: var(--pokrov-surface-strong, rgba(252, 251, 247, 0.96));
+   --glass-dark: var(--pokrov-surface-dark-strong, rgba(17, 23, 21, 0.96));
+@@ -683,8 +681,8 @@ body.tg-keyboard-open .tg-bottom-nav {
+ 
+ body {
+   background:
+-    linear-gradient(180deg, rgba(255, 255, 255, 0.32), rgba(255, 255, 255, 0)),
+-    linear-gradient(180deg, var(--bg) 0%, color-mix(in srgb, var(--bg) 88%, var(--pokrov-bg-alt, #efe9df)) 100%);
++    linear-gradient(180deg, rgba(255, 255, 255, 0.86), rgba(255, 255, 255, 0.52)),
++    linear-gradient(180deg, var(--bg) 0%, color-mix(in srgb, var(--bg) 86%, #eaf6ef) 100%);
+ }
+ 
+ .dark body {
+diff --git a/webapp/src/app/page.tsx b/webapp/src/app/page.tsx
+index 382787f..8720c1c 100644
+--- a/webapp/src/app/page.tsx
++++ b/webapp/src/app/page.tsx
+@@ -10,11 +10,31 @@ import { pokrovBranding } from "./branding";
+ import PokrovLogo from "./pokrov-logo";
+ 
+ const ENTRY_STEPS = [
+-  "Проверить, всё ли в порядке со сроком и доступом.",
+-  "Открыть тарифы, загрузки или поддержку без нового старта.",
+-  "Вернуться к своим устройствам и продолжить тем же профилем.",
++  "Проверить срок доступа и быстро вернуться в рабочий кабинет.",
++  "Открыть продление, загрузки, ключ доступа или поддержку без нового старта.",
++  "Продолжить с тем же профилем, который уже связан с приложением POKROV.",
+ ] as const;
+ 
++function EntrySkeleton() {
++  return (
++    <main className="mx-auto flex min-h-[100dvh] w-full max-w-[1180px] items-center px-4 py-8 sm:px-6">
++      <section className="grid w-full gap-5 rounded-[2rem] border border-slate-200/80 bg-white/94 p-6 shadow-[0_28px_80px_-54px_rgba(15,23,42,0.22)] dark:border-white/10 dark:bg-[#101713]/92 lg:grid-cols-[1.02fr_0.98fr] lg:p-8">
++        <div className="space-y-5">
++          <div className="h-12 w-52 animate-pulse rounded-2xl bg-slate-200 dark:bg-slate-800" />
++          <div className="h-4 w-28 animate-pulse rounded-full bg-slate-200 dark:bg-slate-800" />
++          <div className="h-14 w-full max-w-2xl animate-pulse rounded-[1.4rem] bg-slate-200 dark:bg-slate-800" />
++          <div className="h-24 w-full max-w-2xl animate-pulse rounded-[1.4rem] bg-slate-200 dark:bg-slate-800" />
++        </div>
++        <div className="rounded-[1.7rem] border border-slate-200/80 bg-slate-50/90 p-5 dark:border-white/10 dark:bg-white/[0.04]">
++          <div className="h-4 w-32 animate-pulse rounded-full bg-slate-200 dark:bg-slate-800" />
++          <div className="mt-4 h-11 w-full animate-pulse rounded-2xl bg-slate-200 dark:bg-slate-800" />
++          <div className="mt-4 h-28 w-full animate-pulse rounded-[1.4rem] bg-slate-200 dark:bg-slate-800" />
++        </div>
++      </section>
++    </main>
++  );
++}
++
+ function EntryBody() {
+   const router = useRouter();
+   const { loading, error, webLoginRequired, refresh, logoutWebSession } = usePortalSession();
+@@ -26,23 +46,7 @@ function EntryBody() {
+   }, [loading, router, webLoginRequired]);
+ 
+   if (loading) {
+-    return (
+-      <main className="mx-auto flex min-h-[100dvh] w-full max-w-[1180px] items-center px-4 py-8 sm:px-6">
+-        <section className="grid w-full gap-5 rounded-[2rem] border border-slate-200/80 bg-white/94 p-6 shadow-[0_28px_80px_-54px_rgba(15,23,42,0.22)] dark:border-white/10 dark:bg-[#101713]/92 lg:grid-cols-[1.02fr_0.98fr] lg:p-8">
+-          <div className="space-y-5">
+-            <div className="h-12 w-52 animate-pulse rounded-2xl bg-slate-200 dark:bg-slate-800" />
+-            <div className="h-4 w-28 animate-pulse rounded-full bg-slate-200 dark:bg-slate-800" />
+-            <div className="h-14 w-full max-w-2xl animate-pulse rounded-[1.4rem] bg-slate-200 dark:bg-slate-800" />
+-            <div className="h-20 w-full max-w-2xl animate-pulse rounded-[1.4rem] bg-slate-200 dark:bg-slate-800" />
+-          </div>
+-          <div className="rounded-[1.7rem] border border-slate-200/80 bg-slate-50/90 p-5 dark:border-white/10 dark:bg-white/[0.04]">
+-            <div className="h-4 w-32 animate-pulse rounded-full bg-slate-200 dark:bg-slate-800" />
+-            <div className="mt-4 h-11 w-full animate-pulse rounded-2xl bg-slate-200 dark:bg-slate-800" />
+-            <div className="mt-4 h-28 w-full animate-pulse rounded-[1.4rem] bg-slate-200 dark:bg-slate-800" />
+-          </div>
+-        </section>
+-      </main>
+-    );
++    return <EntrySkeleton />;
+   }
+ 
+   if (error) {
+@@ -57,12 +61,14 @@ function EntryBody() {
+             label="POKROV cabinet"
+           />
+           <p className="mt-6 text-[11px] font-semibold uppercase tracking-[0.18em] text-rose-600 dark:text-rose-300">
+-            Нужно повторить вход
++            Нужен повторный вход
+           </p>
+           <h1 className="mt-2 font-display text-[clamp(2rem,5vw,3rem)] font-semibold leading-[0.98] tracking-[-0.04em] text-slate-950 dark:text-slate-50">
+             Кабинет сейчас не открылся
+           </h1>
+-          <p className="mt-3 text-sm leading-7 text-slate-600 dark:text-slate-300">{error}</p>
++          <p className="mt-3 text-sm leading-7 text-slate-600 dark:text-slate-300">
++            {error}
++          </p>
+           <div className="mt-6 flex flex-wrap gap-3">
+             <button
+               type="button"
+@@ -79,11 +85,10 @@ function EntryBody() {
+               Сменить аккаунт
+             </button>
+             <AppRouteLink
+-              href={pokrovBranding.marketingUrl}
+-              hardNavigate
++              href="/support/"
+               className="outline-btn rounded-2xl px-5 py-3 text-sm font-semibold uppercase tracking-[0.12em]"
+             >
+-              {pokrovBranding.siteLinkLabel}
++              Поддержка
+             </AppRouteLink>
+           </div>
+         </section>
+@@ -93,7 +98,7 @@ function EntryBody() {
+ 
+   return (
+     <main className="relative mx-auto flex min-h-[100dvh] w-full max-w-[1240px] items-center px-4 py-8 sm:px-6">
+-      <div className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(circle_at_top_left,_rgba(11,72,50,0.05),_transparent_30%),radial-gradient(circle_at_bottom_right,_rgba(197,138,42,0.05),_transparent_28%)]" />
++      <div className="pointer-events-none absolute inset-0 -z-10 bg-[linear-gradient(135deg,rgba(234,246,239,0.72),rgba(248,250,247,0.2)_42%,rgba(255,255,255,0.86))]" />
+       <section className="grid w-full gap-5 rounded-[2rem] border border-slate-200/80 bg-white/94 p-6 shadow-[0_28px_80px_-54px_rgba(15,23,42,0.22)] dark:border-white/10 dark:bg-[#101713]/92 lg:grid-cols-[1.02fr_0.98fr] lg:p-8">
+         <div className="space-y-6">
+           <div className="flex flex-wrap items-center justify-between gap-4">
+@@ -118,36 +123,36 @@ function EntryBody() {
+               {pokrovBranding.entryEyebrow}
+             </p>
+             <h1 className="font-display text-[clamp(2.2rem,5vw,4rem)] font-semibold leading-[0.94] tracking-[-0.05em] text-slate-950 dark:text-slate-50">
+-              Здесь только статус, оплата и поддержка
++              Продолжите с того места, где остановились
+             </h1>
+             <p className="max-w-2xl text-sm leading-7 text-slate-600 dark:text-slate-300">
+-              Основной путь остаётся в приложении POKROV. Кабинет в браузере нужен рядом: посмотреть срок, открыть загрузки,
+-              продлить доступ и быстро написать в поддержку, если что-то пошло не так.
++              Это не вторая витрина POKROV. Здесь открывается личный кабинет: срок доступа, устройства,
++              ключи доступа, загрузки и поддержка. Подключение и ежедневный выбор режима остаются в приложении.
+             </p>
+           </div>
+ 
+-          <div className="rounded-[1.7rem] border border-emerald-200/70 bg-emerald-50/90 p-5 dark:border-emerald-400/20 dark:bg-emerald-400/10">
+-            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-emerald-800 dark:text-emerald-200">
+-              Спокойный сценарий
+-            </p>
+-            <p className="mt-2 text-sm leading-6 text-slate-700 dark:text-slate-200">
+-              Подключение и выбор режима по-прежнему живут в приложении. Кабинет не подменяет его, а просто продолжает историю:
+-              статус, срок, устройства, загрузки и поддержка в одном месте.
+-            </p>
++          <div className="grid gap-3 sm:grid-cols-3">
++            {ENTRY_STEPS.map((step, index) => (
++              <article
++                key={step}
++                className="rounded-[1.35rem] border border-emerald-200/70 bg-emerald-50/82 p-4 dark:border-emerald-400/20 dark:bg-emerald-400/10"
++              >
++                <span className="text-[11px] font-semibold uppercase tracking-[0.16em] text-emerald-800 dark:text-emerald-200">
++                  {String(index + 1).padStart(2, "0")}
++                </span>
++                <p className="mt-2 text-sm leading-6 text-slate-700 dark:text-slate-200">{step}</p>
++              </article>
++            ))}
+           </div>
+ 
+           <div className="rounded-[1.7rem] border border-slate-200/80 bg-slate-50/90 p-5 dark:border-white/10 dark:bg-white/[0.04]">
+             <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">
+-              Что можно сделать здесь
++              Спокойная логика входа
++            </p>
++            <p className="mt-2 text-sm leading-6 text-slate-700 dark:text-slate-200">
++              Если браузер уже знает вашу сессию, мы сразу переведем вас в кабинет. Если нет, подтвердите вход
++              через Telegram. Email-продолжение пока честно помечено как готовящееся.
+             </p>
+-            <ul className="mt-4 space-y-3">
+-              {ENTRY_STEPS.map((step) => (
+-                <li key={step} className="flex items-start gap-3 text-sm leading-6 text-slate-700 dark:text-slate-200">
+-                  <span className="mt-2 h-2 w-2 rounded-full bg-emerald-700 dark:bg-emerald-400" />
+-                  <span>{step}</span>
+-                </li>
+-              ))}
+-            </ul>
+           </div>
+         </div>
+ 
+@@ -156,11 +161,11 @@ function EntryBody() {
+             Вход в браузере
+           </p>
+           <h2 className="mt-2 font-display text-[2rem] font-semibold leading-[0.96] tracking-[-0.04em] text-slate-950 dark:text-slate-50">
+-            Подтвердите вход и продолжайте
++            Подтвердите аккаунт и продолжайте
+           </h2>
+           <p className="mt-3 text-sm leading-7 text-slate-600 dark:text-slate-300">
+-            Telegram уже работает. Email-вход скоро подключим, а пока вход и восстановление держим через Telegram, чтобы не
+-            обещать то, чего ещё нет на бэке.
++            Telegram работает как текущий путь подтверждения. Мы не просим заново знакомиться с продуктом:
++            вход нужен только чтобы показать именно ваш доступ, обращения и устройства.
+           </p>
+           <div className="mt-6">
+             <CabinetEntryAuth siteUrl={pokrovBranding.marketingUrl} />
+diff --git a/webapp/src/components/cabinet-entry-auth.tsx b/webapp/src/components/cabinet-entry-auth.tsx
+index 6780024..dac3010 100644
+--- a/webapp/src/components/cabinet-entry-auth.tsx
++++ b/webapp/src/components/cabinet-entry-auth.tsx
+@@ -18,9 +18,12 @@ export default function CabinetEntryAuth({ siteUrl }: { siteUrl: string }) {
+         <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-emerald-800 dark:text-emerald-200">
+           Основной вход
+         </p>
+-        <h3 className="mt-2 text-xl font-semibold text-slate-950 dark:text-slate-50">Telegram уже работает</h3>
++        <h3 className="mt-2 text-xl font-semibold text-slate-950 dark:text-slate-50">
++          Telegram подтверждает кабинет
++        </h3>
+         <p className="mt-2 text-sm leading-6 text-slate-700 dark:text-slate-200">
+-          Это самый короткий путь в кабинет. Подтвердите вход в Telegram, и мы вернем вас обратно сюда без лишних шагов.
++          Нажмите кнопку, подтвердите вход в Telegram, и мы вернем вас сюда с тем же профилем. Это путь
++          продолжения, а не новая регистрация.
+         </p>
+         <div className="mt-4">
+           <TelegramLoginWidget />
+@@ -38,20 +41,23 @@ export default function CabinetEntryAuth({ siteUrl }: { siteUrl: string }) {
+             <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500 dark:text-slate-400">
+               Email
+             </p>
+-            <h3 className="mt-2 text-xl font-semibold text-slate-950 dark:text-slate-50">Скоро подключим</h3>
++            <h3 className="mt-2 text-xl font-semibold text-slate-950 dark:text-slate-50">
++              Готовим аккуратно
++            </h3>
+           </div>
+           <span className="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-semibold text-slate-600 dark:border-white/10 dark:bg-white/[0.05] dark:text-slate-300">
+-            Пока недоступно
++            Скоро
+           </span>
+         </div>
+         <p className="mt-3 text-sm leading-6 text-slate-600 dark:text-slate-300">
+-          Email-вход для кабинета еще не открыт. Если нужен вход или восстановление уже сейчас, используйте Telegram.
++          Email-вход появится после готовности доставки писем. Сейчас для браузера используйте Telegram
++          или напишите в поддержку, если доступ нужно восстановить вручную.
+         </p>
+       </div>
+ 
+       {webLoginBusy ? (
+         <p className="text-xs leading-5 text-slate-500 dark:text-slate-400">
+-          Открываем Telegram. Если окно уже появилось, просто завершите вход там.
++          Открываем Telegram. Если окно уже появилось, завершите вход там и вернитесь в эту вкладку.
+         </p>
+       ) : null}
+ 

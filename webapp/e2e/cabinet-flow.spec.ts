@@ -84,7 +84,7 @@ function mockSessionUser() {
     bonuses: {
       wheel: { last_spin_at: null, streak_months: 2 },
       referral_count: 1,
-      channel_bonus: { premium_days: 10, claimed_at: "2030-01-01T00:00:00", can_claim: false },
+      channel_bonus: { premium_days: 10, claimed_at: null, can_claim: true },
     },
     referral: { code: "mock", link: "https://t.me/pokrov_vpnbot?start=ref_mock", bonus_days: 10 },
     channel: { username: "pokrov_vpn", link: "https://t.me/pokrov_vpn", subscriber: true, speed_bump_active: true },
@@ -240,6 +240,30 @@ async function registerCabinetMocks(page: Page): Promise<void> {
         updated_at: "2030-01-01T00:00:00",
       });
     }
+    if (path === "/api/channel/subscriber/check") {
+      return json({
+        ok: true,
+        subscriber: true,
+        claim_required: true,
+        already_claimed: false,
+        bonus_days: 10,
+      });
+    }
+    if (path === "/api/bonuses/channel/claim") {
+      sessionUser.bonuses.channel_bonus = {
+        premium_days: 10,
+        claimed_at: "2030-01-01T00:10:00",
+        can_claim: false,
+      };
+      sessionUser.channel.subscriber = true;
+      return json({
+        ok: true,
+        already_claimed: false,
+        premium_days: 10,
+        claimed_at: "2030-01-01T00:10:00",
+        expiry_at: "2030-01-11T00:00:00",
+      });
+    }
     if (path === "/api/public/plans") {
       return json({
         widget_enabled: true,
@@ -327,7 +351,8 @@ test.describe("Cabinet flow", () => {
     const sidebar = page.getByRole("complementary").first();
     await expect(sidebar).toContainText("Доступ, устройства и помощь в одном спокойном кабинете.");
     await expect(sidebar.locator("nav")).toContainText("Главная");
-    await expect(sidebar.locator("nav")).toContainText("Профиль");
+    await expect(sidebar.locator("nav")).toContainText("Статистика");
+    await expect(sidebar.locator("nav")).toContainText("Настройки");
 
     const siteLink = page.getByRole("link", { name: /^На сайт/i });
     await expect(siteLink).toBeVisible();
@@ -341,10 +366,10 @@ test.describe("Cabinet flow", () => {
 
     await page.goto("/");
 
-    await expect(page.getByRole("heading", { name: "Telegram уже работает" })).toBeVisible();
-    await expect(page.getByRole("heading", { name: "Скоро подключим" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Telegram подтверждает кабинет" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Готовим аккуратно" })).toBeVisible();
     await expect(page.locator("main")).toContainText(
-      "Email-вход для кабинета еще не открыт. Если нужен вход или восстановление уже сейчас, используйте Telegram.",
+      "Email-вход появится после готовности доставки писем. Сейчас для браузера используйте Telegram",
     );
     await expect(page.getByRole("button", { name: /Продолжить через email/i })).toHaveCount(0);
   });
@@ -356,8 +381,8 @@ test.describe("Cabinet flow", () => {
 
     await page.goto("/");
 
-    await expect(page.getByRole("heading", { name: "Скоро подключим" })).toBeVisible();
-    await expect(page.locator("main")).toContainText("Пока недоступно");
+    await expect(page.getByRole("heading", { name: "Готовим аккуратно" })).toBeVisible();
+    await expect(page.locator("main")).toContainText("Скоро");
     await expect(page.locator("main")).toContainText("используйте Telegram");
     await expect(page.getByRole("button", { name: /^Email$/i })).toHaveCount(0);
     await expect(page.getByRole("button", { name: /Регистрация/i })).toHaveCount(0);
@@ -369,8 +394,8 @@ test.describe("Cabinet flow", () => {
 
     await expect(page).toHaveURL(/\/dashboard\/?$/);
     await expect(page.getByRole("heading", { name: "Статус и следующий шаг" })).toBeVisible();
-    await expect(page.getByRole("heading", { name: "Telegram уже работает" })).toHaveCount(0);
-    await expect(page.getByRole("heading", { name: "Скоро подключим" })).toHaveCount(0);
+    await expect(page.getByRole("heading", { name: "Telegram подтверждает кабинет" })).toHaveCount(0);
+    await expect(page.getByRole("heading", { name: "Готовим аккуратно" })).toHaveCount(0);
   });
 
   test("keeps the dashboard on consumer-safe access actions", async ({ page }) => {
@@ -426,7 +451,7 @@ test.describe("Cabinet flow", () => {
     await page.goto("/subscription/");
 
     await expect(page.getByRole("heading", { name: "Продление и режимы" })).toBeVisible();
-    await expect(page.getByRole("link", { name: "Открыть checkout" }).first()).toBeVisible();
+    await expect(page.getByRole("link", { name: "Открыть оплату" }).first()).toBeVisible();
     await expect(page.getByRole("link", { name: "Поддержка", exact: true }).first()).toBeVisible();
     await expect(page.locator("main")).not.toContainText("?format=plain");
     await expect(page.locator("main")).not.toContainText("mock_token");
@@ -434,7 +459,7 @@ test.describe("Cabinet flow", () => {
     await expect(page.getByRole("button", { name: "Скопировать" })).toHaveCount(0);
   });
 
-  test("renders runtime connections on devices and redirects statistics into the dashboard", async ({ page }) => {
+  test("renders runtime connections on devices and keeps statistics as its own safe-summary page", async ({ page }) => {
     await page.goto("/devices/");
 
     await expect(page.getByRole("heading", { name: "Что уже связано с профилем" })).toBeVisible();
@@ -444,13 +469,12 @@ test.describe("Cabinet flow", () => {
     await expect(page.locator("main")).toContainText("Точек доступа");
     await expect(page.locator("main")).toContainText("1 из 2");
 
-    await page.goto("/statistics/").catch(async () => {
-      await page.waitForTimeout(300);
-      await page.goto("/statistics/");
-    });
-    await expect(page).toHaveURL(/\/dashboard\/?$/);
-    await expect(page.getByRole("heading", { name: "Статус и следующий шаг" })).toBeVisible();
+    await page.goto("/statistics/");
+    await expect(page).toHaveURL(/\/statistics\/?$/);
+    await expect(page.getByRole("heading", { name: "Статистика без лишних деталей" })).toBeVisible();
     await expect(page.locator("main")).toContainText("Людей онлайн");
+    await expect(page.locator("main")).not.toContainText("pl.pokrov.space");
+    await expect(page.locator("main")).not.toContainText("mock_token");
   });
 
   test("keeps cabinet copy human and hides node internals", async ({ page }) => {
@@ -467,18 +491,55 @@ test.describe("Cabinet flow", () => {
     await expect(page.locator("main")).not.toContainText("Network");
   });
 
+  test("settings exposes clear Telegram bonus actions without raw account details", async ({ page }) => {
+    await page.goto("/settings/");
+
+    await expect(page.getByRole("heading", { name: "Настройки и бонусы" })).toBeVisible();
+    await expect(page.locator("main")).toContainText("Telegram-бонус");
+    await page.getByRole("button", { name: /Проверить подписку/i }).click();
+    await expect(page.locator("main")).toContainText("Подписка подтверждена");
+    await page.getByRole("button", { name: /Забрать \+10 дней/i }).click();
+    await expect(page.locator("main")).toContainText("Бонус +10 дней добавлен");
+    await expect(page.locator("main")).not.toContainText("mock_token");
+
+    await page.goto("/profile/");
+    await expect(page).toHaveURL(/\/settings\/?$/);
+  });
+
+  test("shows honest payment history and Russian checkout continuation copy", async ({ page }) => {
+    await page.goto("/subscription/");
+    await expect(page.getByRole("heading", { name: "История оплат" })).toBeVisible();
+    await expect(page.locator("main")).toContainText("История оплат пока не подключена");
+
+    await page.goto("/subscription/checkout/?plan=1_month&promo=POKROV10");
+    await expect(page.getByRole("heading", { name: "Продлить доступ" })).toBeVisible();
+    await expect(page.locator("main")).toContainText("Перейти к оплате");
+    await expect(page.locator("main")).not.toContainText("Hosted checkout");
+    await expect(page.locator("main")).not.toContainText("activation key");
+    await expect(page.locator("main")).not.toContainText("Free fallback");
+    await expect(page.locator("main")).not.toContainText("accessState");
+    await expect(page.locator("main")).not.toContainText("managed profile");
+    await expect(page.locator("main")).not.toContainText("premium trial");
+    await expect(page.locator("main")).not.toContainText("Email signup");
+  });
+
   test("keeps downloads and support flows usable without the app", async ({ page }) => {
     await page.goto("/dashboard/downloads/");
 
     await expect(page).toHaveURL(/\/downloads\/?$/);
     await expect(page.locator("main h1")).toBeVisible();
+    await expect(page.locator("main")).toContainText("Бета-доступ");
     await expect(page.locator("main")).toContainText("Google Play");
     await expect(page.locator("main a[href*='play.google.com']").first()).toBeVisible();
     await expect(page.locator("main")).toContainText("Windows");
+    await expect(page.locator("main")).toContainText("неподписанный");
     await expect(page.locator("main a[href*='windows.exe']").first()).toBeVisible();
 
     await page.goto("/support/");
     await expect(page.getByRole("heading", { name: "Один кейс на весь вопрос" })).toBeVisible();
+    await expect(page.locator("main")).toContainText("Безопасная диагностика");
+    await expect(page.locator("main")).not.toContainText("public IP");
+    await expect(page.locator("main")).not.toContainText("subscription_url");
     await page.getByRole("button", { name: "Новый кейс" }).first().click();
     await page.getByPlaceholder("Коротко: что случилось").fill("Нужна помощь с импортом");
     await page

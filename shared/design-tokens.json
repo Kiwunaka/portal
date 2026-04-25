@@ -1,70 +1,182 @@
 {
   "theme": {
-    "name": "pokrov-calm-premium",
+    "name": "quiet-core-luminous-edge",
+    "version": "2026-04-beta-w01",
     "palette": {
       "canvas": "#f7f3eb",
-      "canvas_alt": "#efe9df",
-      "surface": "rgba(255, 255, 255, 0.82)",
-      "surface_strong": "rgba(252, 251, 247, 0.96)",
-      "surface_dark": "rgba(20, 27, 24, 0.9)",
-      "surface_dark_strong": "rgba(17, 23, 21, 0.96)",
+      "canvas_alt": "#f0eadf",
+      "surface": "rgba(255, 255, 255, 0.86)",
+      "surface_strong": "rgba(253, 252, 248, 0.98)",
+      "surface_subtle": "#f9f6ef",
+      "surface_muted": "#edf4ee",
+      "surface_dark": "rgba(18, 29, 24, 0.92)",
+      "surface_dark_strong": "rgba(14, 23, 19, 0.98)",
       "text": "#1f2636",
       "text_soft": "#667081",
-      "text_inverse": "#f7f5ef",
+      "text_muted": "#8a9287",
+      "text_inverse": "#f8f5ef",
       "emerald": "#20674f",
-      "emerald_strong": "#1b5a45",
-      "emerald_soft": "#eaf3ee",
-      "emerald_dark": "#163d31",
-      "gold_soft": "#d7c7aa",
+      "emerald_strong": "#174f3d",
+      "emerald_soft": "#e7f2ec",
+      "emerald_dark": "#123d31",
+      "mint": "#dcefe5",
+      "mint_strong": "#a9d5bf",
+      "sage": "#9cab90",
+      "gold_soft": "#d8c8a8",
       "line": "rgba(31, 38, 54, 0.1)",
-      "line_strong": "rgba(31, 106, 82, 0.18)",
+      "line_strong": "rgba(31, 106, 82, 0.2)",
       "line_dark": "rgba(239, 243, 241, 0.12)",
       "focus_ring": "#20674f"
     },
+    "semantic": {
+      "success": {
+        "bg": "#e7f2ec",
+        "text": "#174f3d",
+        "line": "rgba(32, 103, 79, 0.22)"
+      },
+      "warning": {
+        "bg": "#f7efd9",
+        "text": "#765d23",
+        "line": "rgba(145, 111, 39, 0.22)"
+      },
+      "danger": {
+        "bg": "#f8e7e3",
+        "text": "#8d352e",
+        "line": "rgba(141, 53, 46, 0.22)"
+      },
+      "info": {
+        "bg": "#e7eef2",
+        "text": "#315c70",
+        "line": "rgba(49, 92, 112, 0.2)"
+      }
+    },
     "radius": {
-      "card": "1.25rem",
-      "panel": "1.75rem",
-      "pill": "999px"
+      "card": "1rem",
+      "panel": "1.375rem",
+      "modal": "1.125rem",
+      "control": "0.875rem",
+      "tile": "0.875rem",
+      "pill": "999px",
+      "app_connect": "999px"
     },
     "shadow": {
       "soft": "0 10px 28px rgba(32, 49, 65, 0.06)",
       "medium": "0 18px 52px rgba(32, 49, 65, 0.08)",
-      "strong": "0 24px 80px rgba(32, 49, 65, 0.12)"
+      "strong": "0 24px 80px rgba(32, 49, 65, 0.12)",
+      "focus": "0 0 0 3px rgba(32, 103, 79, 0.22)"
+    },
+    "typography": {
+      "body_family": "Manrope",
+      "display_family": "Manrope",
+      "mono_family": "JetBrains Mono",
+      "letter_spacing": "0",
+      "compact_line_height": "1.2",
+      "body_line_height": "1.55"
     }
+  },
+  "brand": {
+    "public_name": "POKROV",
+    "approved_assets": {
+      "mark_svg": "logo/logoclear.svg",
+      "wordmark_svg": "logo/pokrov-wordmark.svg",
+      "raster_master": "external/logogo.png"
+    },
+    "legacy_reference_assets": {
+      "subtitle_wordmark_svg": "logo/logowithtext.svg"
+    },
+    "asset_policy": {
+      "public_surfaces": "Use the mark-only asset or subtitle-free wordmark.",
+      "release_derivatives": "Regenerate favicon, launcher, splash, tray, installer, and share-preview exports from approved masters before publication.",
+      "blocked_public_usage": "Do not ship legacy subtitle lockups as visible product branding."
+    }
+  },
+  "glass": {
+    "content_planes": "solid",
+    "overlay_planes": "translucent",
+    "max_blur": "16px",
+    "border_alpha": "0.1"
   },
   "density": {
     "public": {
       "card_padding": "1.5rem",
       "panel_padding": "1.75rem",
       "grid_gap": "1.125rem",
-      "section_gap": "clamp(3.75rem, 8vw, 6.75rem)"
+      "section_gap": "clamp(3.75rem, 8vw, 6.75rem)",
+      "radius_card": "1.125rem",
+      "radius_panel": "1.375rem"
     },
     "cabinet": {
       "card_padding": "1.125rem",
       "panel_padding": "1.375rem",
       "grid_gap": "0.875rem",
-      "section_gap": "clamp(2.75rem, 6vw, 4.75rem)"
+      "section_gap": "clamp(2.75rem, 6vw, 4.75rem)",
+      "radius_card": "0.875rem",
+      "radius_panel": "1rem"
     },
     "admin": {
       "card_padding": "0.9375rem",
       "panel_padding": "1.125rem",
       "grid_gap": "0.75rem",
-      "section_gap": "clamp(2.25rem, 5vw, 4rem)"
+      "section_gap": "clamp(2.25rem, 5vw, 4rem)",
+      "radius_card": "0.5rem",
+      "radius_panel": "0.75rem"
     },
     "product": {
-      "card_padding": "1.5rem",
-      "panel_padding": "1.75rem",
-      "grid_gap": "1.125rem",
-      "section_gap": "clamp(3.75rem, 8vw, 6.75rem)"
+      "card_padding": "1.25rem",
+      "panel_padding": "1.5rem",
+      "grid_gap": "1rem",
+      "section_gap": "clamp(3rem, 7vw, 5.5rem)",
+      "radius_card": "1rem",
+      "radius_panel": "1.25rem"
     }
+  },
+  "component": {
+    "button": {
+      "height": "2.75rem",
+      "compact_height": "2.25rem",
+      "radius": "0.875rem",
+      "icon_size": "1.125rem"
+    },
+    "nav": {
+      "item_min_height": "2.5rem",
+      "icon_size": "1.125rem",
+      "active_bg": "#e7f2ec"
+    },
+    "card": {
+      "border": "1px solid rgba(31, 38, 54, 0.1)",
+      "background": "rgba(255, 255, 255, 0.86)"
+    },
+    "table": {
+      "row_height": "3rem",
+      "header_bg": "#edf4ee",
+      "divider": "rgba(31, 38, 54, 0.08)"
+    },
+    "app_connect": {
+      "size_mobile": "9rem",
+      "size_desktop": "11rem",
+      "ring": "rgba(32, 103, 79, 0.18)"
+    }
+  },
+  "iconography": {
+    "web_default": "lucide-react",
+    "web_shell_legacy": "material-symbols",
+    "client_default": "flutter-material",
+    "line_weight": "1.75",
+    "policy": "Use one icon family per surface; reserve custom SVG for the POKROV mark and product graphics."
   },
   "motion": {
     "section_narrative": "gentle",
     "surface_hover": "subtle-lift",
+    "duration_fast": "120ms",
+    "duration_base": "180ms",
+    "duration_slow": "280ms",
+    "easing": "cubic-bezier(0.2, 0.7, 0.2, 1)",
     "reduced_motion_fallback": "fade-only"
   },
   "accessibility": {
     "focus_visible": "high-contrast-ring",
-    "browser_checks": ["a11y", "performance"]
+    "min_touch_target": "44px",
+    "browser_checks": ["a11y", "performance"],
+    "contrast_floor": "WCAG AA"
   }
 }

@@ -1,6 +1,6 @@
 # POKROV WebApp
 
-Last updated: 2026-04-23
+Last updated: 2026-04-25
 
 ## Document Status
 
@@ -29,6 +29,8 @@ Current user-facing route families in `webapp/src/app/`:
 - `/statistics/` for usage and account visibility summaries inside the cabinet
 - `/downloads/` for app-download continuation and install handoff
 - `/support/` plus support thread/legal routes
+- `/settings/` for account links, Telegram bonus actions, and safe continuation settings
+- `/profile/` only as a compatibility redirect to `/settings/`
 - `/dashboard/downloads/` only as a compatibility redirect to `/downloads/`
 - `/redeem/` for activation-key lookup and redeem inside the cabinet
 - `/subscription/checkout/` for renewal continuation into the hosted activation-key checkout flow

@@ -167,8 +167,8 @@ def _windows_release_failures(windows_release: dict[str, object]) -> list[str]:
 
     if windows_release.get("display_name") != "POKROV":
         failures.append("Windows release seed must keep display_name as POKROV")
-    if windows_release.get("binary_name") != "pokrov_windows_seed.exe":
-        failures.append("Windows release seed must keep binary_name as pokrov_windows_seed.exe")
+    if windows_release.get("binary_name") != "pokrov_windows_beta.exe":
+        failures.append("Windows release seed must keep binary_name as pokrov_windows_beta.exe")
     if windows_release.get("bundle_root") != "apps/windows_shell/build/windows/x64/runner/Release":
         failures.append("Windows release seed must keep bundle_root on apps/windows_shell/build/windows/x64/runner/Release")
     if windows_release.get("artifact_root") != "apps/windows_shell/build/release_bundle":
@@ -176,7 +176,7 @@ def _windows_release_failures(windows_release: dict[str, object]) -> list[str]:
 
     required_files = list(windows_release.get("required_files") or [])
     for required_path in (
-        "pokrov_windows_seed.exe",
+        "pokrov_windows_beta.exe",
         "flutter_windows.dll",
         "libcore.dll",
         "data/app.so",

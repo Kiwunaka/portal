@@ -156,7 +156,7 @@ function describePromoContent(contentId: string): { title: string; body: string 
   }
   return {
     title: "Support и manual recovery",
-    body: "Если hosted checkout или redeem path недоступен, support проводит в ручной recovery без показа raw link в обычном UX.",
+    body: "Если hosted checkout или redeem path недоступен, support помогает вручную и фиксирует спорный платеж без показа raw link в обычном UX.",
   };
 }
 
@@ -170,6 +170,12 @@ function buildRedeemHref(key: string): string {
   url.pathname = "/redeem/";
   url.searchParams.set("key", key);
   return url.toString();
+}
+
+function maskAccessKey(key: string): string {
+  const normalized = key.trim().toUpperCase();
+  if (normalized.length <= 8) return "ключ скрыт";
+  return `${normalized.slice(0, 6)}…${normalized.slice(-4)}`;
 }
 
 export function CheckoutLoadingFallback() {
@@ -279,7 +285,7 @@ export default function CheckoutClient() {
   return (
     <main className="checkout-shell lp-route-shell lp-route-shell--checkout">
       <section className="checkout-hero">
-        <div className="checkout-kicker">Купить ключ {"->"} погасить {"->"} продолжить доступ</div>
+        <div className="checkout-kicker">Публичная бета: купить ключ {"->"} погасить {"->"} продолжить доступ</div>
         <div className="checkout-status-chip checkout-status-chip--ready">
           {catalog?.public_surface_policy?.pricing_owner === "marketing" ? "Маркетинг ведёт в оплату" : "Публичный checkout"}
         </div>
@@ -288,7 +294,7 @@ export default function CheckoutClient() {
           <span>Спокойная покупка через activation key</span>
         </h1>
         <p className="checkout-sub">
-          Эта страница ведёт к покупке activation key и не показывает сырой персональный маршрут. После оплаты ключ погашается в приложении или в кабинете, а доступ продолжается в том же app-first аккаунте.
+          Эта страница ведёт к покупке activation key для бета-доступа и не показывает сырой персональный маршрут. После оплаты ключ погашается в приложении или в кабинете, а доступ продолжается в том же app-first аккаунте. Если провайдер оплаты вернул спорный или неясный статус, поддержка помогает вручную.
         </p>
       </section>
 
@@ -302,7 +308,7 @@ export default function CheckoutClient() {
           <article className="lp-info-card">
             <span className="lp-info-card__eyebrow">Потом оплатить</span>
             <h3>Касса остаётся тихой и понятной</h3>
-            <p>Публичная оплата продаёт activation key и не уводит в сложные технические сценарии.</p>
+            <p>Публичная оплата продаёт activation key для беты и не уводит в сложные технические сценарии.</p>
           </article>
           <article className="lp-info-card">
             <span className="lp-info-card__eyebrow">Если нужен fallback</span>
@@ -377,7 +383,7 @@ export default function CheckoutClient() {
             {keyBusy ? <p className="checkout-helper">Проверяем статус activation key…</p> : null}
             {keyStatus ? (
               <ul className="checkout-trust-list">
-                <li>Ключ: {keyStatus.key}</li>
+                <li>Ключ: {maskAccessKey(keyStatus.key)}</li>
                 <li>План: {keyStatus.plan?.label || `${keyStatus.days} дней`}</li>
                 <li>Статус: {keyStatus.redeemed ? "уже погашен" : "готов к redeem"}</li>
               </ul>
@@ -388,7 +394,7 @@ export default function CheckoutClient() {
         <article className="glass-card checkout-sticky">
           <h2>Итог</h2>
           <p className="checkout-note">
-            Покупка заканчивается activation key. Дальше тот же app-first аккаунт продолжает доступ как managed premium без повторной ручной настройки и без лишней суеты.
+            Покупка заканчивается activation key. Дальше тот же app-first аккаунт продолжает доступ как managed premium без повторной ручной настройки и без лишней суеты. На время беты спорные платежи разбираются через поддержку и ручную сверку.
           </p>
 
           <div className="checkout-summary">
@@ -430,7 +436,7 @@ export default function CheckoutClient() {
           </Link>
 
           <p className="checkout-helper">
-            Email signup на сайте даёт только Free Monthly. Premium trial начинается именно из приложения на первом валидном устройстве.
+            Email-вход на сайте ещё помечен как soon. Premium trial начинается из приложения на первом валидном устройстве, а купленный activation key можно погасить в приложении или кабинете.
           </p>
 
           {statusText ? <p className="checkout-status">{statusText}</p> : null}

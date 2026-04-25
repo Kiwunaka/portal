@@ -10,10 +10,30 @@ import { pokrovBranding } from "./branding";
 import PokrovLogo from "./pokrov-logo";
 
 const ENTRY_STEPS = [
-  "Проверить, всё ли в порядке со сроком и доступом.",
-  "Открыть тарифы, загрузки или поддержку без нового старта.",
-  "Вернуться к своим устройствам и продолжить тем же профилем.",
+  "Проверить срок доступа и быстро вернуться в рабочий кабинет.",
+  "Открыть продление, загрузки, ключ доступа или поддержку без нового старта.",
+  "Продолжить с тем же профилем, который уже связан с приложением POKROV.",
 ] as const;
+
+function EntrySkeleton() {
+  return (
+    <main className="mx-auto flex min-h-[100dvh] w-full max-w-[1180px] items-center px-4 py-8 sm:px-6">
+      <section className="grid w-full gap-5 rounded-[2rem] border border-slate-200/80 bg-white/94 p-6 shadow-[0_28px_80px_-54px_rgba(15,23,42,0.22)] dark:border-white/10 dark:bg-[#101713]/92 lg:grid-cols-[1.02fr_0.98fr] lg:p-8">
+        <div className="space-y-5">
+          <div className="h-12 w-52 animate-pulse rounded-2xl bg-slate-200 dark:bg-slate-800" />
+          <div className="h-4 w-28 animate-pulse rounded-full bg-slate-200 dark:bg-slate-800" />
+          <div className="h-14 w-full max-w-2xl animate-pulse rounded-[1.4rem] bg-slate-200 dark:bg-slate-800" />
+          <div className="h-24 w-full max-w-2xl animate-pulse rounded-[1.4rem] bg-slate-200 dark:bg-slate-800" />
+        </div>
+        <div className="rounded-[1.7rem] border border-slate-200/80 bg-slate-50/90 p-5 dark:border-white/10 dark:bg-white/[0.04]">
+          <div className="h-4 w-32 animate-pulse rounded-full bg-slate-200 dark:bg-slate-800" />
+          <div className="mt-4 h-11 w-full animate-pulse rounded-2xl bg-slate-200 dark:bg-slate-800" />
+          <div className="mt-4 h-28 w-full animate-pulse rounded-[1.4rem] bg-slate-200 dark:bg-slate-800" />
+        </div>
+      </section>
+    </main>
+  );
+}
 
 function EntryBody() {
   const router = useRouter();
@@ -26,23 +46,7 @@ function EntryBody() {
   }, [loading, router, webLoginRequired]);
 
   if (loading) {
-    return (
-      <main className="mx-auto flex min-h-[100dvh] w-full max-w-[1180px] items-center px-4 py-8 sm:px-6">
-        <section className="grid w-full gap-5 rounded-[2rem] border border-slate-200/80 bg-white/94 p-6 shadow-[0_28px_80px_-54px_rgba(15,23,42,0.22)] dark:border-white/10 dark:bg-[#101713]/92 lg:grid-cols-[1.02fr_0.98fr] lg:p-8">
-          <div className="space-y-5">
-            <div className="h-12 w-52 animate-pulse rounded-2xl bg-slate-200 dark:bg-slate-800" />
-            <div className="h-4 w-28 animate-pulse rounded-full bg-slate-200 dark:bg-slate-800" />
-            <div className="h-14 w-full max-w-2xl animate-pulse rounded-[1.4rem] bg-slate-200 dark:bg-slate-800" />
-            <div className="h-20 w-full max-w-2xl animate-pulse rounded-[1.4rem] bg-slate-200 dark:bg-slate-800" />
-          </div>
-          <div className="rounded-[1.7rem] border border-slate-200/80 bg-slate-50/90 p-5 dark:border-white/10 dark:bg-white/[0.04]">
-            <div className="h-4 w-32 animate-pulse rounded-full bg-slate-200 dark:bg-slate-800" />
-            <div className="mt-4 h-11 w-full animate-pulse rounded-2xl bg-slate-200 dark:bg-slate-800" />
-            <div className="mt-4 h-28 w-full animate-pulse rounded-[1.4rem] bg-slate-200 dark:bg-slate-800" />
-          </div>
-        </section>
-      </main>
-    );
+    return <EntrySkeleton />;
   }
 
   if (error) {
@@ -57,12 +61,14 @@ function EntryBody() {
             label="POKROV cabinet"
           />
           <p className="mt-6 text-[11px] font-semibold uppercase tracking-[0.18em] text-rose-600 dark:text-rose-300">
-            Нужно повторить вход
+            Нужен повторный вход
           </p>
           <h1 className="mt-2 font-display text-[clamp(2rem,5vw,3rem)] font-semibold leading-[0.98] tracking-[-0.04em] text-slate-950 dark:text-slate-50">
             Кабинет сейчас не открылся
           </h1>
-          <p className="mt-3 text-sm leading-7 text-slate-600 dark:text-slate-300">{error}</p>
+          <p className="mt-3 text-sm leading-7 text-slate-600 dark:text-slate-300">
+            {error}
+          </p>
           <div className="mt-6 flex flex-wrap gap-3">
             <button
               type="button"
@@ -79,11 +85,10 @@ function EntryBody() {
               Сменить аккаунт
             </button>
             <AppRouteLink
-              href={pokrovBranding.marketingUrl}
-              hardNavigate
+              href="/support/"
               className="outline-btn rounded-2xl px-5 py-3 text-sm font-semibold uppercase tracking-[0.12em]"
             >
-              {pokrovBranding.siteLinkLabel}
+              Поддержка
             </AppRouteLink>
           </div>
         </section>
@@ -93,7 +98,7 @@ function EntryBody() {
 
   return (
     <main className="relative mx-auto flex min-h-[100dvh] w-full max-w-[1240px] items-center px-4 py-8 sm:px-6">
-      <div className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(circle_at_top_left,_rgba(11,72,50,0.05),_transparent_30%),radial-gradient(circle_at_bottom_right,_rgba(197,138,42,0.05),_transparent_28%)]" />
+      <div className="pointer-events-none absolute inset-0 -z-10 bg-[linear-gradient(135deg,rgba(234,246,239,0.72),rgba(248,250,247,0.2)_42%,rgba(255,255,255,0.86))]" />
       <section className="grid w-full gap-5 rounded-[2rem] border border-slate-200/80 bg-white/94 p-6 shadow-[0_28px_80px_-54px_rgba(15,23,42,0.22)] dark:border-white/10 dark:bg-[#101713]/92 lg:grid-cols-[1.02fr_0.98fr] lg:p-8">
         <div className="space-y-6">
           <div className="flex flex-wrap items-center justify-between gap-4">
@@ -118,36 +123,36 @@ function EntryBody() {
               {pokrovBranding.entryEyebrow}
             </p>
             <h1 className="font-display text-[clamp(2.2rem,5vw,4rem)] font-semibold leading-[0.94] tracking-[-0.05em] text-slate-950 dark:text-slate-50">
-              Здесь только статус, оплата и поддержка
+              Продолжите с того места, где остановились
             </h1>
             <p className="max-w-2xl text-sm leading-7 text-slate-600 dark:text-slate-300">
-              Основной путь остаётся в приложении POKROV. Кабинет в браузере нужен рядом: посмотреть срок, открыть загрузки,
-              продлить доступ и быстро написать в поддержку, если что-то пошло не так.
+              Это не вторая витрина POKROV. Здесь открывается личный кабинет: срок доступа, устройства,
+              ключи доступа, загрузки и поддержка. Подключение и ежедневный выбор режима остаются в приложении.
             </p>
           </div>
 
-          <div className="rounded-[1.7rem] border border-emerald-200/70 bg-emerald-50/90 p-5 dark:border-emerald-400/20 dark:bg-emerald-400/10">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-emerald-800 dark:text-emerald-200">
-              Спокойный сценарий
-            </p>
-            <p className="mt-2 text-sm leading-6 text-slate-700 dark:text-slate-200">
-              Подключение и выбор режима по-прежнему живут в приложении. Кабинет не подменяет его, а просто продолжает историю:
-              статус, срок, устройства, загрузки и поддержка в одном месте.
-            </p>
+          <div className="grid gap-3 sm:grid-cols-3">
+            {ENTRY_STEPS.map((step, index) => (
+              <article
+                key={step}
+                className="rounded-[1.35rem] border border-emerald-200/70 bg-emerald-50/82 p-4 dark:border-emerald-400/20 dark:bg-emerald-400/10"
+              >
+                <span className="text-[11px] font-semibold uppercase tracking-[0.16em] text-emerald-800 dark:text-emerald-200">
+                  {String(index + 1).padStart(2, "0")}
+                </span>
+                <p className="mt-2 text-sm leading-6 text-slate-700 dark:text-slate-200">{step}</p>
+              </article>
+            ))}
           </div>
 
           <div className="rounded-[1.7rem] border border-slate-200/80 bg-slate-50/90 p-5 dark:border-white/10 dark:bg-white/[0.04]">
             <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">
-              Что можно сделать здесь
+              Спокойная логика входа
             </p>
-            <ul className="mt-4 space-y-3">
-              {ENTRY_STEPS.map((step) => (
-                <li key={step} className="flex items-start gap-3 text-sm leading-6 text-slate-700 dark:text-slate-200">
-                  <span className="mt-2 h-2 w-2 rounded-full bg-emerald-700 dark:bg-emerald-400" />
-                  <span>{step}</span>
-                </li>
-              ))}
-            </ul>
+            <p className="mt-2 text-sm leading-6 text-slate-700 dark:text-slate-200">
+              Если браузер уже знает вашу сессию, мы сразу переведем вас в кабинет. Если нет, подтвердите вход
+              через Telegram. Email-продолжение пока честно помечено как готовящееся.
+            </p>
           </div>
         </div>
 
@@ -156,11 +161,11 @@ function EntryBody() {
             Вход в браузере
           </p>
           <h2 className="mt-2 font-display text-[2rem] font-semibold leading-[0.96] tracking-[-0.04em] text-slate-950 dark:text-slate-50">
-            Подтвердите вход и продолжайте
+            Подтвердите аккаунт и продолжайте
           </h2>
           <p className="mt-3 text-sm leading-7 text-slate-600 dark:text-slate-300">
-            Telegram уже работает. Email-вход скоро подключим, а пока вход и восстановление держим через Telegram, чтобы не
-            обещать то, чего ещё нет на бэке.
+            Telegram работает как текущий путь подтверждения. Мы не просим заново знакомиться с продуктом:
+            вход нужен только чтобы показать именно ваш доступ, обращения и устройства.
           </p>
           <div className="mt-6">
             <CabinetEntryAuth siteUrl={pokrovBranding.marketingUrl} />

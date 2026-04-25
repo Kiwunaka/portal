@@ -22,8 +22,8 @@ FRONTEND_COPY_FILES = [
 
 BANNED_PATTERNS = [
     re.compile(r"\b100%\b", re.IGNORECASE),
-    re.compile(r"РіР°СЂР°РЅС‚РёСЂРѕРІР°РЅ\w*", re.IGNORECASE),
-    re.compile(r"Р±РµР·\s+РѕРіСЂР°РЅРёС‡РµРЅРёР№", re.IGNORECASE),
+    re.compile(r"гарантирован\w*", re.IGNORECASE),
+    re.compile(r"без\s+ограничений", re.IGNORECASE),
 ]
 
 PUBLIC_FORBIDDEN_PATTERNS = [
@@ -39,6 +39,24 @@ PUBLIC_FORBIDDEN_PATTERNS = [
 ]
 
 MOJIBAKE_MARKERS = ["Р РЋ", "Р Сџ", "РЎРѓ", "РІР‚", "СЂСџ", "РІС™", "РІСљ", "�"]
+
+PUBLIC_BETA_SURFACE_FILES = [
+    ROOT / "marketing/src/components/marketing-landing.tsx",
+    ROOT / "marketing/src/app/checkout/page.tsx",
+    ROOT / "marketing/src/app/checkout/checkout-client.tsx",
+    ROOT / "marketing/src/components/home/homepage.tsx",
+    ROOT / "webapp/src/app/loading.tsx",
+    ROOT / "webapp/src/components/cabinet/downloads-surface.tsx",
+]
+
+PUBLIC_BETA_SURFACE_FORBIDDEN_PATTERNS = [
+    re.compile(r"Paid beta", re.IGNORECASE),
+    re.compile(r"оплачиваемая\s+бета", re.IGNORECASE),
+    re.compile(r"ограничен[а-яё\s]+приглаш", re.IGNORECASE),
+    re.compile(r"до\s+25\s+активн", re.IGNORECASE),
+    re.compile(r"00:12:34"),
+    re.compile(r"Email signup\s+на\s+сайте\s+да[её]т", re.IGNORECASE),
+]
 
 
 def _public_text(path: Path) -> str:
@@ -91,6 +109,22 @@ def test_public_copy_has_no_mojibake_markers() -> None:
         for marker in MOJIBAKE_MARKERS:
             if marker in text:
                 violations.append(f"{path.relative_to(ROOT)}: found mojibake marker {marker!r}")
+    assert not violations, "\n".join(violations)
+
+
+def test_public_beta_surfaces_do_not_expose_stale_limited_beta_copy() -> None:
+    violations: list[str] = []
+    for path in PUBLIC_BETA_SURFACE_FILES:
+        text = path.read_text(encoding="utf-8")
+        for pattern in PUBLIC_BETA_SURFACE_FORBIDDEN_PATTERNS:
+            for match in pattern.finditer(text):
+                snippet = text[max(0, match.start() - 30):match.end() + 30].replace("\n", " ")
+                violations.append(f"{path.relative_to(ROOT)}: /{pattern.pattern}/ -> {snippet}")
+
+    checkout_page = (ROOT / "marketing/src/app/checkout/page.tsx").read_text(encoding="utf-8")
+    if "noIndex: true" in checkout_page:
+        violations.append("marketing/src/app/checkout/page.tsx: checkout route must not be noindexed for public beta")
+
     assert not violations, "\n".join(violations)
 
 

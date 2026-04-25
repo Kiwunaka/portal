@@ -1,0 +1,4 @@
+﻿f254751 client: checkpoint atlas-driven app shell rewrite
+ad0320f Build and archive POKROV-app alpha bundles
+b641a98 Archive bridge beta release bundle
+23e65c8 Bootstrap canonical POKROV app repo

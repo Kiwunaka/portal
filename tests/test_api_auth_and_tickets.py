@@ -1283,6 +1283,38 @@ class ApiAuthAndTicketsTests(unittest.TestCase):
         self.assertEqual(fetched.headers.get("content-type"), "image/png")
         self.assertEqual(fetched.content, b"\x89PNG\r\n\x1a\nbinary-test")
 
+    def test_cors_credentials_do_not_use_wildcard_origin(self) -> None:
+        cors_middleware = next(
+            middleware
+            for middleware in self.api.app.user_middleware
+            if getattr(middleware.cls, "__name__", "") == "CORSMiddleware"
+        )
+
+        middleware_options = getattr(cors_middleware, "kwargs", {})
+        allow_origins = middleware_options.get("allow_origins") or []
+        self.assertNotIn("*", allow_origins)
+        self.assertIn("https://app.pokrov.space", allow_origins)
+        self.assertTrue(middleware_options.get("allow_credentials"))
+
+        allowed = self.client.options(
+            "/api/me",
+            headers={
+                "Origin": "https://app.pokrov.space",
+                "Access-Control-Request-Method": "GET",
+            },
+        )
+        self.assertEqual(allowed.headers.get("access-control-allow-origin"), "https://app.pokrov.space")
+        self.assertEqual(allowed.headers.get("access-control-allow-credentials"), "true")
+
+        blocked = self.client.options(
+            "/api/me",
+            headers={
+                "Origin": "https://evil.example",
+                "Access-Control-Request-Method": "GET",
+            },
+        )
+        self.assertNotEqual(blocked.headers.get("access-control-allow-origin"), "https://evil.example")
+
     def test_channel_bonus_claim_upgrades_free_to_paid(self) -> None:
         user_hdrs = {"X-Telegram-Init-Data": self._init_data(1001, "alice")}
 

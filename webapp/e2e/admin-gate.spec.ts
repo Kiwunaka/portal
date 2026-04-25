@@ -24,6 +24,7 @@ type MockOptions = {
   isAdmin: boolean;
   adminSummary?: unknown;
   userRows?: AdminUserRowMock[];
+  paymentOrders?: PaymentOrderMock[];
   metricsStatus?: unknown;
   nodeHealth?: unknown;
   networkRolloutConfig?: unknown;
@@ -46,6 +47,30 @@ type TicketMock = {
   updated_at?: string | null;
   last_message_preview?: string | null;
   messages: TicketMessageMock[];
+};
+
+type PaymentOrderMock = {
+  id: number;
+  order_id: string;
+  provider: string;
+  tg_id?: number | null;
+  plan_code?: string | null;
+  amount: number;
+  currency: string;
+  status: string;
+  source?: string | null;
+  campaign?: string | null;
+  promo_code?: string | null;
+  created_at?: string | null;
+  paid_at?: string | null;
+  event_count: number;
+  last_event?: {
+    event_type: string;
+    external_id: string;
+    signature_ok: boolean;
+    processed_ok: boolean;
+    created_at?: string | null;
+  } | null;
 };
 
 function mockSessionUser(isAdmin: boolean) {
@@ -564,6 +589,33 @@ function makeTicket(overrides: Partial<TicketMock> = {}): TicketMock {
   };
 }
 
+function makePaymentOrder(overrides: Partial<PaymentOrderMock> = {}): PaymentOrderMock {
+  return {
+    id: 1,
+    order_id: "order-review-2403",
+    provider: "freekassa",
+    tg_id: 2403,
+    plan_code: "start_99",
+    amount: 99,
+    currency: "RUB",
+    status: "manual_review",
+    source: "checkout",
+    campaign: "beta",
+    promo_code: "WELCOME20",
+    created_at: "2030-01-01T00:00:00",
+    paid_at: null,
+    event_count: 1,
+    last_event: {
+      event_type: "result",
+      external_id: "tx-review-2403",
+      signature_ok: true,
+      processed_ok: false,
+      created_at: "2030-01-01T00:03:00",
+    },
+    ...overrides,
+  };
+}
+
 function normalizeDate(value?: string | null): number {
   if (!value) return 0;
   const timestamp = Date.parse(value);
@@ -651,6 +703,7 @@ async function registerApiMocks(page: Page, opts: MockOptions): Promise<void> {
   let networkRolloutConfig = cloneJson(opts.networkRolloutConfig ?? mockNetworkRolloutConfig());
   let userRows = [...(opts.userRows || mockAdminUsers().users)];
   let tickets = [...(opts.tickets || [makeTicket()])];
+  let paymentOrders = [...(opts.paymentOrders || [makePaymentOrder()])];
 
   await page.route("**/api/**", async (route) => {
     const request = route.request();
@@ -720,6 +773,23 @@ async function registerApiMocks(page: Page, opts: MockOptions): Promise<void> {
       return json({ ok: true });
     }
     if (path === "/api/admin/audit") return json({ rows: [] });
+    if (path === "/api/admin/payments/orders") {
+      return json({ orders: paymentOrders, total: paymentOrders.length, limit: 100, offset: 0 });
+    }
+    if (path.startsWith("/api/admin/payments/orders/") && path.endsWith("/reconcile") && request.method() === "POST") {
+      const match = path.match(/^\/api\/admin\/payments\/orders\/([^/]+)\/([^/]+)\/reconcile$/);
+      const provider = decodeURIComponent(String(match?.[1] || ""));
+      const orderId = decodeURIComponent(String(match?.[2] || ""));
+      const payload = JSON.parse(request.postData() || "{}");
+      const note = String(payload.note || "").trim();
+      if (!note) return json({ detail: "note is required" }, 422);
+      const nextStatus = String(payload.status || "manual_review");
+      const row = paymentOrders.find((order) => order.provider === provider && order.order_id === orderId);
+      if (!row) return json({ detail: "Order not found" }, 404);
+      const updated = { ...row, status: nextStatus };
+      paymentOrders = paymentOrders.map((order) => (order.provider === provider && order.order_id === orderId ? updated : order));
+      return json({ ok: true, order: updated });
+    }
     if (path === "/api/admin/tickets") {
       const statusFilter = String(url.searchParams.get("status") || "").trim();
       return json({ tickets: statusFilter ? tickets.filter((ticket) => ticket.status === statusFilter) : tickets });
@@ -843,6 +913,7 @@ test.describe("Admin gate", () => {
       "admin/nodes/",
       "admin/tickets/",
       "admin/promos/",
+      "admin/payments/",
       "admin/broadcast/",
       "admin/referrals/",
       "admin/bonuses/",
@@ -1362,5 +1433,40 @@ test.describe("Admin gate", () => {
 
     await expect(page.locator(".chat-bubble-admin").getByText("Проверили, сейчас пришлю новый конфиг.")).toBeVisible();
     await expect(statusButton).toBeVisible();
+  });
+
+  test("shows payment ledger and requires an audit note for manual reconciliation", async ({ page }) => {
+    await registerApiMocks(page, {
+      isAdmin: true,
+      paymentOrders: [
+        makePaymentOrder({
+          order_id: "order-review-2403",
+          status: "manual_review",
+          last_event: {
+            event_type: "result",
+            external_id: "tx-review-2403",
+            signature_ok: true,
+            processed_ok: false,
+            created_at: "2030-01-01T00:03:00",
+          },
+        }),
+      ],
+    });
+
+    await openRoute(page, "admin/payments/");
+    await expect(page.getByRole("heading", { name: /Payment ledger/i }).first()).toBeVisible();
+    const reviewOrderRow = page.getByRole("row").filter({ hasText: "order-review-2403" });
+    await expect(reviewOrderRow).toBeVisible();
+    await expect(reviewOrderRow.getByText("manual_review")).toBeVisible();
+    await expect(reviewOrderRow.getByText("tx-review-2403")).toBeVisible();
+    await expect(page.getByText(/raw-provider-token/i)).not.toBeVisible();
+
+    await page.getByRole("button", { name: /Reconcile/i }).first().click();
+    await page.getByRole("button", { name: /Save reconciliation/i }).click();
+    await expect(page.getByText(/Audit note is required/i)).toBeVisible();
+
+    await page.getByPlaceholder(/Provider dashboard/i).fill("Provider dashboard confirms paid result; no automatic access change.");
+    await page.getByRole("button", { name: /Save reconciliation/i }).click();
+    await expect(page.getByText(/Reconciliation note saved/i)).toBeVisible();
   });
 });

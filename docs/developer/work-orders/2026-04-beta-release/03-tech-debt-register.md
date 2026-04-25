@@ -1,0 +1,52 @@
+# Tech Debt Register
+
+| ID | Area | Debt | Evidence | Severity | Beta impact | Proposed fix | Owner WO | Decision |
+|---|---|---|---|---|---|---|---|---|
+| TD-001 | marketing/copy | Public marketing contains unsafe claims and stale availability: Android public release, 24/7 support, `AES-256 / WireGuard`, hardcoded reviews. | `research/R02-design-system.md`, `research/R03-marketing-checkout.md` | P0 | Paid beta could mislead users and violate product guardrails. | Replace with beta-safe copy, remove unsupported claims, prove review provenance or remove JSON-LD. | WO-002 | fix |
+| TD-002 | payments | No selected provider has confirmed category acceptance plus signed webhook behavior for paid beta. W10 local payment/auth regressions passed, but no live provider proof or manual-risk acceptance exists. | `research/R07-payments-telegram-support.md`, `evidence/release-gates/W10-final-gate-summary.md` | P0 | Cannot safely take paid beta payments through live checkout. | Complete Lava.top/Tribute/Kassa.ai decision, run controlled signed-webhook proof, or record explicit manual-risk acceptance before onboarding. | WO-006, WO-010 | blocker |
+| TD-003 | payments/backend | Provider events are not normalized into the required internal model with all paid beta states and admin-visible audit. | `research/R07-payments-telegram-support.md` | P0 | Wrong or double access can be granted. | Add provider-agnostic event model, idempotency, signature status, raw hash, manual_review. | WO-006, WO-005 | fix |
+| TD-004 | payments/access | Current callback path appears to directly activate access; refund/cancel events do not revoke or queue reconciliation. | `research/R07-payments-telegram-support.md` | P0 | Paid access state can diverge from payment truth. | Define fulfillment policy and refund/manual review behavior. | WO-006 | fix |
+| TD-005 | webapp | Cabinet missing `/settings/`, weak `/statistics/` compatibility, inactive Telegram bonus, checkout internal/English copy. W03 added pages/actions and Russian-first continuation copy; payment history is honest unavailable pending backend endpoint. | `research/R04-webapp-cabinet.md`, `evidence/logs/WO-003-user-cabinet.md` | P0/P1 | Cabinet was not continuation-first for paid beta. | Keep W03 fix, decide whether unavailable payment history is accepted beta limitation or add backend endpoint. | WO-003, WO-010 | fixed first pass / accept limitation |
+| TD-006 | admin | Admin lacked payment/order ledger and manual reconciliation UI. W04 added real payment ledger, note-required reconciliation, user payment/device context, and tests. | `research/R05-admin-console.md`, `evidence/logs/WO-004-admin-console.md` | P0 | Operators could not support paid beta safely. | Keep W04 fix; W10 must verify final admin gate and accept reconciliation as ledger-only. | WO-004, WO-010 | fixed first pass |
+| TD-007 | admin | Plan/promo/device modules are incomplete or not first-class in web admin. | `research/R05-admin-console.md` | P1 | Operators may need bot/database fallback. | Expose real backend data/actions or mark outside beta gates. | WO-004 | fix/accept |
+| TD-008 | client/android | Android signing, release handoff, and physical localhost/control-surface audit are missing. | `research/R08-client-android-windows.md`, `research/R09-infra-observability-security.md` | P0 | Public Android release blocked. | Keep internal APK only until audit/signing pass. | WO-007, WO-009 | accept as gated beta limitation |
+| TD-009 | client/windows | Windows build is unsigned seed lane, not trusted public artifact. | `research/R08-client-android-windows.md` | P0/P1 | Public Windows cutover blocked; beta users need warning. | Produce gated beta artifact metadata and warning; defer public approval. | WO-007 | accept as gated beta limitation |
+| TD-010 | client/backend contract | Client sends `trial_days`, which conflicts with backend-owned trial authority. | `research/R08-client-android-windows.md` | P0/P1 | Trial policy can drift. | Remove client-controlled trial length from beta path. | WO-007, WO-005 | fix |
+| TD-011 | client/UX | Selected apps MVP, Try free, redeem, checkout, support, route-mode choice, and beta labels are incomplete. | `research/R08-client-android-windows.md` | P1 | Beta onboarding may fail or overpromise. | Finish or hide incomplete UX surfaces. | WO-007 | fix/accept |
+| TD-012 | backend/data | Live Postgres schema, migrations, control-panel sync, and managed profile smoke are not verified. | `research/R06-backend-api-data.md` | P0 | Core account/profile path unproven. | Run migration and profile delivery gates with redacted evidence. | WO-005, WO-010 | fix |
+| TD-013 | backend/abuse | Fresh `install_id` cycles likely allow repeated trial abuse. | `research/R06-backend-api-data.md` | P1 | Paid beta capacity and abuse risk. | Add beta invite/trial guard or explicitly accept for 25-user beta. | WO-005, WO-009 | fix/accept |
+| TD-014 | security/privacy | Support uploads, diagnostics, admin subscription URLs, and activation key URL flows can expose sensitive data. | `research/R03-marketing-checkout.md`, `research/R05-admin-console.md`, `research/R06-backend-api-data.md`, `research/R09-infra-observability-security.md` | P0/P1 | Evidence/user UI may leak private data. | Redact, gate, avoid query-string secrets, protect uploads, split admin-only details. | WO-003, WO-004, WO-005, WO-009 | fix |
+| TD-015 | release/QA | W10 initially found red quick/default reports. Post-W10 follow-up reconciled stale Windows metadata and UI visual-smoke expectations; quick and default local reports now pass. | `research/R10-qa-release-docs.md`, `docs/audit-artifacts/release_gate_report.md`, `docs/audit-artifacts/release_gate_quick_report.md`, `evidence/release-gates/W10-final-gate-summary.md` | P0 | Local QA gate no longer blocks; paid beta still blocked by live/operator evidence gaps. | Keep green local reports attached to signoff and collect live/provider/deploy evidence before onboarding. | WO-010 | local fixed / live blocker remains |
+| TD-016 | infra/ops | Live metrics, brain/RU origin checks, backup/restore, deploy, and rollback evidence remain missing or blocked by access. W10 current-origin public host checks passed only from the operator workstation. | `research/R09-infra-observability-security.md`, `research/R10-qa-release-docs.md`, `evidence/release-gates/W10-final-gate-summary.md` | P0/P1 | Deploy/onboarding unsafe. | Collect approved brain-origin, RU-origin, backup, rollback, and emergency-switch evidence before deploy or paid onboarding. | WO-008, WO-010 | blocker |
+| TD-017 | design system | Tokens and surfaces drift from attached light/mint/emerald references; legacy `Premium VPN` subtitle must not ship. | `research/R02-design-system.md` | P1 | Visual inconsistency and copy drift. | Normalize tokens/assets, screenshot visual pack. | WO-001 | fix |
+| TD-018 | client/archive residue | Seed/Hiddify/engineering-alpha labels and artifacts remain visible in client lane. | `research/R08-client-android-windows.md` | P1 | Users may see dev/legacy branding. | Rename/label beta artifacts or hide from cabinet. | WO-007 | fix |
+| TD-019 | docs/product | Stale 7-day gift trial and live `POKROV VPN` canon notes contradict current facts. | `research/R01-product-scope.md` | P1 | Operator/user communication drift. | Update canonical docs and bot/operator copy. | WO-002, WO-006, WO-010 | fix |
+| TD-020 | branch/baseline | Dirty baseline and behind-origin state require careful promotion strategy. | `evidence/logs/*-before.txt`, `research/R10-qa-release-docs.md` | P1 | Push/deploy can overwrite remote or mix untracked work. | Capture local/remote heads and exact patch state before promotion. | WO-010 | fix |
+| TD-021 | shared facts/tests | `tests/test_shared_surface_facts.py` expects `POKROV Network` while current product guardrails say public brand/client is `POKROV`. | `evidence/visual-audit/WO-001-design-system-brand-assets.md` | P1 | Gate failure can block beta unless test or product fact is reconciled. | Decide canonical client brand and update stale test/fact without reintroducing public `VPN` wording. | WO-002, WO-010 | fix |
+| TD-022 | visual QA | `scripts/ui_visual_smoke.py` had stale webapp entry/dashboard copy expectations; post-W10 follow-up updated it to check the current cabinet structure and it now passes. | `evidence/visual-audit/WO-001-design-system-brand-assets.md`, `docs/audit-artifacts/ui-visual-smoke-report.md` | P1 | Static visual gate no longer blocks, but manual screenshot parity evidence is still required before final paid-beta signoff. | Keep current visual-smoke expectations and collect protected screenshot evidence. | WO-003, WO-002, WO-010 | local fixed |
+| TD-023 | payments/copy | `tests/test_api_payments_callbacks.py` expected stale `POKROV VPN Приветственный 30 дней`; W06 changed provider descriptions to `POKROV {plan_label}` and payment tests now pass. | `evidence/logs/WO-005-backend-contract-hardening.md`, `evidence/security-audit/WO-009-security-baseline.md`, `evidence/logs/WO-006-payments-keys-bonuses-support.md` | P0/P1 | Payment gate was red and stale public wording could leak into paid beta evidence. | Keep W06 fix, rerun full release gate in W10. | WO-006, WO-010 | fixed first pass |
+| TD-024 | client/release tooling | W07 renamed Windows metadata to `pokrov_windows_beta.exe`; post-W10 follow-up updated platform `client_security_smoke.py` and client `validate-seed.ps1` to accept beta metadata. Windows build now stages the beta artifact. | `evidence/logs/WO-007-client-android-windows-beta.md`, `docs/audit-artifacts/release_gate_report.md`, `evidence/release-gates/W10-final-gate-summary.md` | P0/P1 | Local release tooling no longer blocks Windows beta artifact creation. Public Windows cutover remains blocked by trusted signing/handoff evidence. | Keep archived seed evidence separate and require unsigned beta warning for gated distribution. | WO-007, WO-010 | fixed post-W10 |
+
+Severity:
+
+- P0: beta blocker.
+- P1: serious beta risk, fix before beta unless explicitly accepted.
+- P2: defer after beta.
+- P3: cleanup.
+
+Debt categories:
+
+- Product/copy drift
+- Design inconsistency
+- Backend state machine risk
+- Auth/security
+- Payments/idempotency
+- Data migrations
+- Runtime/client
+- Infra/observability
+- Test coverage
+- Docs contradiction
+- Archive/legacy confusion
+- Build/release tooling
+- Dependency/CI
+- UX/accessibility/performance
