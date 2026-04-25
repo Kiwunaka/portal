@@ -1,0 +1,334 @@
+# Internal Commit Ledger
+
+Status: active
+
+## IC-001 - Public beta wave setup
+
+- Date/time: 2026-04-25
+- Agent: orchestrator
+- WO: wave setup
+- Iteration: 1
+- Lane: mixed
+- Branch/worktree: codex/public-beta-release-wave at C:/Users/kiwun/.config/superpowers/worktrees/VPN/public-beta-release-wave
+- Base local HEAD: see `evidence/logs/platform/platform-local-head-before.txt`
+- Base remote HEAD: see `evidence/logs/platform/platform-origin-master-head-before.txt`
+- Files changed:
+  - `docs/developer/work-orders/2026-04-public-beta-release/**`
+- Files already dirty before wave:
+  - see `evidence/logs/platform/platform-git-status-before.txt`
+  - see `evidence/logs/client/client-git-status-before.txt`
+- Lock files touched:
+  - `12-file-locks.md`
+- Summary: Added public beta orchestration artifacts and captured starting evidence.
+- User-visible behavior changed: no
+- Backend/API contract changed: no
+- Docs changed: yes, work-order docs only
+- Tests/checks run: baseline evidence capture only
+- Test result: not yet run for this wave
+- Screenshots/evidence: `evidence/logs/*`
+- Reviewer findings linked: none
+- Residual risk: inherited dirty platform/client candidates need review before promotion
+- Rollback note: remove this wave folder from the feature branch
+- Next step: R01-R10 research wave
+
+## IC-002 - Public beta research synthesis
+
+- Date/time: 2026-04-25
+- Agent: orchestrator
+- WO: synthesis
+- Iteration: 1
+- Lane: platform
+- Branch/worktree: codex/public-beta-release-wave at C:/Users/kiwun/.config/superpowers/worktrees/VPN/public-beta-release-wave
+- Base local HEAD: see `evidence/logs/platform/platform-local-head-before.txt`
+- Base remote HEAD: see `evidence/logs/platform/platform-origin-master-head-before.txt`
+- Files changed:
+  - `docs/developer/work-orders/2026-04-public-beta-release/01-research-synthesis.md`
+  - `docs/developer/work-orders/2026-04-public-beta-release/INDEX.md`
+  - `docs/developer/work-orders/2026-04-public-beta-release/09-agent-iteration-ledger.md`
+  - `docs/developer/work-orders/2026-04-public-beta-release/10-internal-commit-ledger.md`
+- Files already dirty before wave:
+  - see `evidence/logs/platform/platform-git-status-before.txt`
+- Lock files touched:
+  - none
+- Summary: Synthesized R01-R10 into public-beta blocker and routing evidence.
+- User-visible behavior changed: no
+- Backend/API contract changed: no
+- Docs changed: yes, work-order evidence only
+- Tests/checks run: `python -m pytest tests/test_public_copy_guardrails.py -q`
+- Test result: `5 passed in 0.19s`
+- Screenshots/evidence: research files under `research/`
+- Reviewer findings linked: none
+- Residual risk: final signoff remains blocked by live/payment/artifact/origin/manual gates
+- Rollback note: remove or update this wave folder on the feature branch
+- Next step: targeted W01-W10 implementation deltas
+
+## IC-003 - Public surface beta-copy and gate hardening
+
+- Date/time: 2026-04-25
+- Agent: orchestrator
+- WO: WO-002, WO-003, WO-010
+- Iteration: 2
+- Lane: platform
+- Branch/worktree: codex/public-beta-release-wave at C:/Users/kiwun/.config/superpowers/worktrees/VPN/public-beta-release-wave
+- Base local HEAD: see `evidence/logs/platform/platform-local-head-before.txt`
+- Base remote HEAD: see `evidence/logs/platform/platform-origin-master-head-before.txt`
+- Files changed:
+  - `tests/test_public_copy_guardrails.py`
+  - `marketing/src/components/marketing-landing.tsx`
+  - `marketing/src/app/checkout/page.tsx`
+  - `marketing/src/app/checkout/checkout-client.tsx`
+  - `marketing/src/components/home/homepage.tsx`
+  - `webapp/src/components/cabinet/downloads-surface.tsx`
+  - `docs/developer/work-orders/2026-04-public-beta-release/INDEX.md`
+  - `docs/developer/work-orders/2026-04-public-beta-release/10-internal-commit-ledger.md`
+  - `docs/developer/work-orders/2026-04-public-beta-release/11-fix-cycle-ledger.md`
+  - `docs/developer/work-orders/2026-04-public-beta-release/13-final-git-promotion-record.md`
+- Files already dirty before wave:
+  - see `evidence/logs/platform/platform-git-status-before.txt`
+- Lock files touched:
+  - none
+- Summary: Added regression guardrails, removed stale paid/invite beta public copy, made checkout indexable, replaced the homepage fake connected timer with a beta preview label, and made downloads copy explicit about Android release-build audit and unsigned Windows posture.
+- User-visible behavior changed: yes, public marketing, checkout, homepage mock, and cabinet downloads copy.
+- Backend/API contract changed: no
+- Docs changed: yes, work-order ledgers only
+- Tests/checks run:
+  - `python -m pytest tests/test_public_copy_guardrails.py -q`
+  - `npm.cmd run check:seo` in `marketing/`
+  - `npm.cmd run build` in `marketing/`
+  - `npm.cmd run build` in `webapp/`
+  - `npm.cmd run test:e2e` in `webapp/`
+- Test result:
+  - copy guardrails: `6 passed in 0.10s`
+  - marketing SEO: passed
+  - marketing build: passed
+  - webapp build: passed
+  - webapp E2E: `31 passed`
+- Screenshots/evidence: Playwright retained normal artifacts only on failure; final E2E pass produced no retained failure artifact.
+- Reviewer findings linked: none
+- Residual risk: public beta release remains blocked by live payment proof, Android physical release-build localhost/control-surface audit, Windows trusted signing/handoff posture, deploy/rollback, brain-origin, and RU-origin checks.
+- Rollback note: revert the listed files on `codex/public-beta-release-wave`; no schema or live config change was made in this commit slice.
+- Next step: close P0 live/artifact/origin gates or explicitly narrow launch scope before promotion.
+
+## IC-004 - Credentialed CORS allowlist hardening
+
+- Date/time: 2026-04-25
+- Agent: orchestrator
+- WO: WO-005, WO-009
+- Iteration: 3
+- Lane: platform
+- Branch/worktree: codex/public-beta-release-wave at C:/Users/kiwun/.config/superpowers/worktrees/VPN/public-beta-release-wave
+- Base local HEAD: see `evidence/logs/platform/platform-local-head-before.txt`
+- Base remote HEAD: see `evidence/logs/platform/platform-origin-master-head-before.txt`
+- Files changed:
+  - `portal_bot/api.py`
+  - `tests/test_api_auth_and_tickets.py`
+  - `docs/developer/work-orders/2026-04-public-beta-release/INDEX.md`
+  - `docs/developer/work-orders/2026-04-public-beta-release/01-research-synthesis.md`
+  - `docs/developer/work-orders/2026-04-public-beta-release/10-internal-commit-ledger.md`
+  - `docs/developer/work-orders/2026-04-public-beta-release/11-fix-cycle-ledger.md`
+  - `docs/developer/work-orders/2026-04-public-beta-release/13-final-git-promotion-record.md`
+- Files already dirty before wave:
+  - see `evidence/logs/platform/platform-git-status-before.txt`
+- Lock files touched:
+  - none
+- Summary: Replaced `allow_origins=["*"]` with an explicit API CORS allowlist while keeping credentials enabled for known production and local-dev origins.
+- User-visible behavior changed: no normal UX change; browser requests from unlisted origins no longer receive credentialed CORS approval.
+- Backend/API contract changed: yes, CORS policy is now explicit allowlist-based.
+- Docs changed: yes, work-order ledgers only
+- Tests/checks run:
+  - `python -m pytest tests/test_api_auth_and_tickets.py::ApiAuthAndTicketsTests::test_cors_credentials_do_not_use_wildcard_origin -q`
+  - `python -m pytest tests/test_api_auth_and_tickets.py -q`
+  - `python -m pytest tests/test_public_copy_guardrails.py -q`
+- Test result:
+  - focused CORS test: passed
+  - auth/tickets API tests: `58 passed in 63.04s`
+  - copy guardrails: `6 passed in 0.08s`
+- Screenshots/evidence: none
+- Reviewer findings linked: none
+- Residual risk: remaining security/privacy P1s still include `localStorage` bearer sessions, bearerless support-upload URLs, and SSH `AutoAddPolicy()` in operational scripts.
+- Rollback note: revert `API_CORS_ALLOWED_ORIGINS` helper and middleware options if a known origin is accidentally omitted; prefer adding the origin through `API_CORS_ALLOWED_ORIGINS`.
+- Next step: close remaining security P1s or classify them explicitly before promotion.
+
+## IC-005 - Default release gate report and blocked signoff
+
+- Date/time: 2026-04-25
+- Agent: orchestrator
+- WO: WO-010
+- Iteration: 4
+- Lane: mixed
+- Branch/worktree: codex/public-beta-release-wave at C:/Users/kiwun/.config/superpowers/worktrees/VPN/public-beta-release-wave
+- Base local HEAD: see `evidence/logs/platform/platform-local-head-before.txt`
+- Base remote HEAD: see `evidence/logs/platform/platform-origin-master-head-before.txt`
+- Files changed:
+  - `docs/audit-artifacts/public_beta_release_gate_report.md`
+  - `docs/developer/work-orders/2026-04-public-beta-release/INDEX.md`
+  - `docs/developer/work-orders/2026-04-public-beta-release/01-research-synthesis.md`
+  - `docs/developer/work-orders/2026-04-public-beta-release/10-internal-commit-ledger.md`
+  - `docs/developer/work-orders/2026-04-public-beta-release/13-final-git-promotion-record.md`
+- Files already dirty before wave:
+  - see `evidence/logs/platform/platform-git-status-before.txt`
+- Lock files touched:
+  - none
+- Summary: Ran the default release-gate reporter and recorded a blocked public-beta signoff despite local current-origin gate success.
+- User-visible behavior changed: no
+- Backend/API contract changed: no
+- Docs changed: yes, release gate report and work-order ledgers
+- Tests/checks run:
+  - `python scripts/release_gate_check.py --output docs/audit-artifacts/public_beta_release_gate_report.md`
+- Test result:
+  - report status: `PASS` for local default gate set
+  - evidence classification: `BLOCKED_BY_ACCESS` for brain-origin, RU-origin, and Android physical audit; `SKIPPED_NO_LIVE_TOKEN` for runtime app-download smoke; `NOT_REQUESTED` for client platform builds
+- Screenshots/evidence: `docs/audit-artifacts/public_beta_release_gate_report.md`
+- Reviewer findings linked: none
+- Residual risk: local gate success is not a deploy/go decision until blocked evidence rows are closed.
+- Rollback note: remove or regenerate `docs/audit-artifacts/public_beta_release_gate_report.md`
+- Next step: run live/origin/artifact gates with credentials/hardware or narrow public scope.
+
+## IC-006 - Brain-origin gate closure and node-access worktree fix
+
+- Date/time: 2026-04-26
+- Agent: orchestrator
+- WO: WO-008, WO-010
+- Iteration: 5
+- Lane: platform
+- Branch/worktree: codex/public-beta-release-wave at C:/Users/kiwun/.config/superpowers/worktrees/VPN/public-beta-release-wave
+- Files changed:
+  - `scripts/node_access.py`
+  - `tests/test_node_access.py`
+  - `docs/audit-artifacts/public_beta_release_gate_report_brain.md`
+  - `docs/developer/work-orders/2026-04-public-beta-release/**`
+- Summary: Fixed node SSH key lookup when a sibling worktree uses the root repo password bundle, then ran the brain-origin quick gate set against `82.21.114.104`.
+- User-visible behavior changed: no
+- Backend/API contract changed: no
+- Docs changed: yes, release evidence and work-order ledgers
+- Tests/checks run:
+  - `python -m pytest tests/test_node_access.py -q`
+  - `python -m pytest tests/test_predeploy_node_readiness.py -q`
+  - `python scripts/release_gate_check.py --quick --brain-ip 82.21.114.104 --web-domain pokrov.space --passwords <root PASSWORDS.txt> --output docs/audit-artifacts/public_beta_release_gate_report_brain.md`
+- Test result:
+  - node access tests: `3 passed`
+  - predeploy readiness tests: `5 passed`
+  - brain-origin quick release gate: `PASS`
+- Screenshots/evidence: `docs/audit-artifacts/public_beta_release_gate_report_brain.md`
+- Residual risk: report still does not prove RU-origin, Android physical audit, runtime app download token smoke, payment provider activation, or deploy/rollback.
+- Rollback note: revert `scripts/node_access.py` and the added test if a different key-dir policy is required.
+- Next step: run RU-origin, payment, and client gates.
+
+## IC-007 - RU-origin probe evidence and Telegram classification
+
+- Date/time: 2026-04-26
+- Agent: orchestrator
+- WO: WO-008, WO-010
+- Iteration: 6
+- Lane: platform
+- Branch/worktree: codex/public-beta-release-wave at C:/Users/kiwun/.config/superpowers/worktrees/VPN/public-beta-release-wave
+- Files changed:
+  - `scripts/ru_probe_runner.py`
+  - `tests/test_ru_probe_runner.py`
+  - `docs/audit-artifacts/ru_probe_2026-04-26.json`
+  - `docs/audit-artifacts/ru_probe_2026-04-26.md`
+  - `docs/developer/work-orders/2026-04-public-beta-release/**`
+- Summary: Added explicit `telegram_reachability_problem` classification and reran the RU probe from `mini`.
+- User-visible behavior changed: no
+- Backend/API contract changed: no
+- Docs changed: yes, RU-origin evidence and work-order ledgers
+- Tests/checks run:
+  - `python -m pytest tests/test_ru_probe_runner.py tests/test_render_ru_probe_report.py -q`
+  - remote RU probe from `mini` using `scripts/ru_probe_runner.py`
+  - `python scripts/render_ru_probe_report.py --input docs/audit-artifacts/ru_probe_2026-04-26.json --output docs/audit-artifacts/ru_probe_2026-04-26.md`
+- Test result:
+  - RU probe unit/render tests: `7 passed`
+  - RU canonical hosts: pass
+  - RU foreign delivery node TCP reachability: pass
+  - RU Telegram targets: fail with network unreachable from `mini`
+- Screenshots/evidence: `docs/audit-artifacts/ru_probe_2026-04-26.md`
+- Residual risk: `mini` is an operational probe host, not a guarantee for every RU network; Telegram reachability needs fallback/exception handling before go.
+- Rollback note: revert the classification addition if Telegram is intentionally out-of-scope for this report, but keep the raw probe evidence.
+- Next step: close or explicitly accept RU Telegram reachability risk.
+
+## IC-008 - Payment provider live probe and API coverage
+
+- Date/time: 2026-04-26
+- Agent: orchestrator
+- WO: WO-006, WO-010
+- Iteration: 7
+- Lane: platform
+- Branch/worktree: codex/public-beta-release-wave at C:/Users/kiwun/.config/superpowers/worktrees/VPN/public-beta-release-wave
+- Files changed:
+  - `scripts/freekassa_api_probe.py`
+  - `tests/test_freekassa_api_probe.py`
+  - `docs/audit-artifacts/payment_provider_probe_2026-04-26.md`
+  - `docs/developer/work-orders/2026-04-public-beta-release/**`
+- Summary: Made the FreeKassa API probe worktree-safe by accepting an explicit password bundle, then ran live provider probes from brain for `site` and `bot`.
+- User-visible behavior changed: no
+- Backend/API contract changed: no
+- Docs changed: yes, payment provider evidence and work-order ledgers
+- Tests/checks run:
+  - `python -m pytest tests/test_api_payments_callbacks.py tests/test_admin_payments_api.py tests/test_freekassa_api_probe.py -q`
+  - `python scripts/freekassa_api_probe.py --brain-ip 82.21.114.104 --passwords <root PASSWORDS.txt> --source site ...`
+  - `python scripts/freekassa_api_probe.py --brain-ip 82.21.114.104 --passwords <root PASSWORDS.txt> --source bot ...`
+- Test result:
+  - payment/admin/probe tests: `25 passed`
+  - live provider probe: both sources reached FreeKassa and returned HTTP `401` / `Merchant not activated`
+- Screenshots/evidence: `docs/audit-artifacts/payment_provider_probe_2026-04-26.md`
+- Residual risk: public paid checkout remains blocked until the merchant is activated or an approved active provider is configured.
+- Rollback note: revert `scripts/freekassa_api_probe.py` and `tests/test_freekassa_api_probe.py`; no live DB change or payment completion occurred.
+- Next step: activate merchant/provider, then rerun low-value checkout and webhook proof.
+
+## IC-009 - Client platform builds and remaining runtime/audit blockers
+
+- Date/time: 2026-04-26
+- Agent: orchestrator
+- WO: WO-007, WO-010
+- Iteration: 8
+- Lane: mixed
+- Branch/worktree: platform `codex/public-beta-release-wave`; client `codex/beta-release-client`
+- Files changed:
+  - `docs/audit-artifacts/client_platform_builds_2026-04-26.md`
+  - `docs/audit-artifacts/runtime_app_download_smoke_2026-04-26.md`
+  - `docs/audit-artifacts/android_physical_audit_2026-04-26.md`
+  - `docs/developer/work-orders/2026-04-public-beta-release/**`
+- Summary: Built Windows beta zip/manifest, Android release APK, and Android release AAB; classified Android physical audit and runtime app-download smoke as access-token/hardware blocked.
+- User-visible behavior changed: no live public surface change
+- Backend/API contract changed: no
+- Docs changed: yes, build/audit evidence and work-order ledgers
+- Tests/checks run:
+  - `python scripts/run_client_release_gate.py build --target windows`
+  - `python scripts/run_client_release_gate.py build --target android-apk`
+  - `python scripts/run_client_release_gate.py build --target android-aab`
+  - `python scripts/smoke_client_apps.py --base-url https://api.pokrov.space --check-providers --require-release-handoff`
+  - `python scripts/release_gate_check.py --client-platform-gates android-apk --output docs/audit-artifacts/public_beta_release_gate_android_required.md`
+- Test result:
+  - client platform builds: pass
+  - runtime app-download smoke: blocked by missing `TELEGRAM_INIT_DATA` after `/api/health` returned `200`
+  - Android physical audit: blocked by missing physical `ANDROID_AUDIT_SERIAL`
+- Screenshots/evidence:
+  - `docs/audit-artifacts/client_platform_builds_2026-04-26.md`
+  - `docs/audit-artifacts/runtime_app_download_smoke_2026-04-26.md`
+  - `docs/audit-artifacts/android_physical_audit_2026-04-26.md`
+- Residual risk: client repo remains on `codex/beta-release-client` with inherited dirty changes; do not promote without reviewing and merging to `main`.
+- Rollback note: generated client build outputs can be rebuilt; do not delete retained release evidence without an evidence-management task.
+- Next step: run physical-device audit and app-download smoke with a live token.
+
+## IC-010 - Master/main promotion plan
+
+- Date/time: 2026-04-26
+- Agent: orchestrator
+- WO: WO-010
+- Iteration: 9
+- Lane: mixed
+- Branch/worktree: codex/public-beta-release-wave at C:/Users/kiwun/.config/superpowers/worktrees/VPN/public-beta-release-wave
+- Files changed:
+  - `docs/developer/work-orders/2026-04-public-beta-release/14-master-main-promotion-plan.md`
+  - `docs/developer/work-orders/2026-04-public-beta-release/13-final-git-promotion-record.md`
+  - `docs/developer/work-orders/2026-04-public-beta-release/INDEX.md`
+- Summary: Documented the safe route back to canonical `master` and `main` after gates close, without staging inherited dirty work or pushing a blocked release.
+- User-visible behavior changed: no
+- Backend/API contract changed: no
+- Docs changed: yes, promotion/runbook evidence only
+- Tests/checks run: documentation consistency only in this slice
+- Test result: not applicable
+- Screenshots/evidence: `docs/developer/work-orders/2026-04-public-beta-release/14-master-main-promotion-plan.md`
+- Residual risk: promotion remains blocked until external gates are closed and dirty candidate changes are reviewed.
+- Rollback note: remove or revise the promotion plan when the release decision changes.
+- Next step: final verification and no-go handoff.

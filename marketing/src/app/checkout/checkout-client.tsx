@@ -185,8 +185,8 @@ function describePromoContent(contentId: string): { title: string; body: string 
     };
   }
   return {
-    title: "Поддержка рядом",
-    body: "Если оплата или активация не прошли с первого раза, поддержка поможет спокойно продолжить.",
+    title: "Support и manual recovery",
+    body: "Если hosted checkout или redeem path недоступен, support помогает вручную и фиксирует спорный платеж без показа raw link в обычном UX.",
   };
 }
 
@@ -202,107 +202,10 @@ function buildRedeemHref(key: string): string {
   return url.toString();
 }
 
-function formatRoutingMode(mode?: string): string {
-  if (mode === "all_except_ru") return "Все, кроме RU";
-  if (mode === "global") return "Весь трафик через POKROV";
-  return "спокойный режим по умолчанию";
-}
-
-function formatPlatformScope(scope?: string[]): string {
-  const values = scope?.length ? scope : ["android", "windows"];
-  return values
-    .map((item) => {
-      if (item === "android") return "Android";
-      if (item === "windows") return "Windows";
-      return item;
-    })
-    .join(" + ");
-}
-
-function isTrialKey(status: AccessKeyStatusResponse | null): boolean {
-  if (!status) return false;
-  const kind = String(status.kind || "").toLowerCase();
-  const planCode = String(status.plan?.code || "").toLowerCase();
-  return kind.includes("trial") || planCode === "trial" || Number(status.days || 0) <= 5;
-}
-
-function normalizeAccessKeyError(message: string): { tone: "limit" | "unavailable"; text: string } {
-  const raw = String(message || "").toLowerCase();
-  if (raw.includes("429") || raw.includes("limit") || raw.includes("too many") || raw.includes("soft")) {
-    return {
-      tone: "limit",
-      text:
-        "Похоже, публичная проверка временно ограничена. Продолжите в приложении: там видно, доступна ли бесплатная проверка для этой установки.",
-    };
-  }
-  return {
-    tone: "unavailable",
-    text:
-      "Сейчас не удалось связаться с сервисом проверки ключей. Деньги на этом шаге не списываются; попробуйте позже или продолжите через приложение.",
-  };
-}
-
-function describeTrialKeyState(options: {
-  keyInput: string;
-  keyBusy: boolean;
-  keyStatus: AccessKeyStatusResponse | null;
-  statusText: string;
-}): { title: string; body: string; tone: "empty" | "loading" | "issued" | "continue" | "limit" | "unavailable" } {
-  const { keyInput, keyBusy, keyStatus, statusText } = options;
-  if (keyBusy) {
-    return {
-      title: "Проверяем ключ",
-      body: "Смотрим, есть ли у ключа срок, план и свободная активация. Если сервис проверки не ответит, мы скажем об этом прямо.",
-      tone: "loading",
-    };
-  }
-  if (keyStatus?.exists && !keyStatus.redeemed) {
-    return {
-      title: isTrialKey(keyStatus) ? "Ключ на 5 дней готов" : "Ключ готов к активации",
-      body: "Активируйте его в приложении или кабинете. После активации доступ привяжется к вашему аккаунту.",
-      tone: "issued",
-    };
-  }
-  if (keyStatus?.redeemed) {
-    return {
-      title: "Ключ уже активирован",
-      body: "Продолжайте в приложении или кабинете: там видно текущий срок, устройства и следующий шаг.",
-      tone: "continue",
-    };
-  }
-  if (statusText) {
-    const normalized = normalizeAccessKeyError(statusText);
-    return {
-      title: normalized.tone === "limit" ? "Проверка временно ограничена" : "Проверка недоступна",
-      body: normalized.text,
-      tone: normalized.tone,
-    };
-  }
-  if (!keyInput) {
-    return {
-      title: "Ключа пока нет",
-      body: "Бесплатные 5 дней начинаются в приложении на новой установке. Если ключ уже выдан после оплаты или поддержки, вставьте его сюда.",
-      tone: "empty",
-    };
-  }
-  return {
-    title: "Введите ключ полностью",
-    body: "Когда в поле будет полный ключ, мы проверим его статус и подскажем, куда продолжить.",
-    tone: "empty",
-  };
-}
-
-function describePaymentProviders(providers: PaymentProviderChoice[]): string {
-  const publicProviders = providers.filter((provider) => provider.supports_public !== false);
-  if (!publicProviders.length) {
-    return "Доступные способы оплаты покажет платёжная страница, когда касса ответит.";
-  }
-  return publicProviders
-    .map((provider) => {
-      const accent = String(provider.accent || "").trim();
-      return accent ? `${provider.label}: ${accent}` : provider.label;
-    })
-    .join("; ");
+function maskAccessKey(key: string): string {
+  const normalized = key.trim().toUpperCase();
+  if (normalized.length <= 8) return "ключ скрыт";
+  return `${normalized.slice(0, 6)}…${normalized.slice(-4)}`;
 }
 
 export function CheckoutLoadingFallback() {
@@ -431,7 +334,7 @@ export default function CheckoutClient() {
   return (
     <main className="checkout-shell lp-route-shell lp-route-shell--checkout">
       <section className="checkout-hero">
-        <div className="checkout-kicker">Попробовать 5 дней {"->"} купить ключ {"->"} активировать</div>
+        <div className="checkout-kicker">Публичная бета: купить ключ {"->"} погасить {"->"} продолжить доступ</div>
         <div className="checkout-status-chip checkout-status-chip--ready">
           {catalog?.public_surface_policy?.pricing_owner === "marketing" ? "Оплата на сайте" : "Ключ доступа"}
         </div>
@@ -440,10 +343,7 @@ export default function CheckoutClient() {
           <span>{getCopyText("marketing.checkout.title", "Ключ доступа для POKROV")}</span>
         </h1>
         <p className="checkout-sub">
-          {getCopyText(
-            "marketing.checkout.subtitle",
-            "Сначала можно попробовать 5 дней в приложении. Если POKROV подходит, купите ключ доступа и активируйте его в приложении или кабинете. Если вы уже вошли, продление продолжит доступ в том же аккаунте.",
-          )}
+          Эта страница ведёт к покупке activation key для бета-доступа и не показывает сырой персональный маршрут. После оплаты ключ погашается в приложении или в кабинете, а доступ продолжается в том же app-first аккаунте. Если провайдер оплаты вернул спорный или неясный статус, поддержка помогает вручную.
         </p>
         <div className="lp-hero-actions">
           <Link href={MARKETING_CANONICAL_PATHS.install} className="lp-btn lp-btn--primary">
@@ -464,8 +364,8 @@ export default function CheckoutClient() {
           </article>
           <article className="lp-info-card">
             <span className="lp-info-card__eyebrow">Потом оплатить</span>
-            <h3>Покупка заканчивается ключом</h3>
-            <p>После оплаты вы получаете ключ доступа и активируете его там, где удобнее продолжить.</p>
+            <h3>Касса остаётся тихой и понятной</h3>
+            <p>Публичная оплата продаёт activation key для беты и не уводит в сложные технические сценарии.</p>
           </article>
           <article className="lp-info-card">
             <span className="lp-info-card__eyebrow">Если вы уже вошли</span>
@@ -544,7 +444,7 @@ export default function CheckoutClient() {
             </div>
             {keyStatus ? (
               <ul className="checkout-trust-list">
-                <li>Ключ: {keyStatus.key}</li>
+                <li>Ключ: {maskAccessKey(keyStatus.key)}</li>
                 <li>План: {keyStatus.plan?.label || `${keyStatus.days} дней`}</li>
                 <li>Статус: {keyStatus.redeemed ? "уже активирован" : "готов к активации"}</li>
               </ul>
@@ -555,7 +455,7 @@ export default function CheckoutClient() {
         <article className="glass-card checkout-sticky">
           <h2>Итог</h2>
           <p className="checkout-note">
-            Покупка проходит на платёжной странице POKROV и заканчивается ключом доступа. Новый пользователь активирует ключ в приложении или кабинете. Пользователь с открытым кабинетом может продлить текущий доступ в том же аккаунте.
+            Покупка заканчивается activation key. Дальше тот же app-first аккаунт продолжает доступ как managed premium без повторной ручной настройки и без лишней суеты. На время беты спорные платежи разбираются через поддержку и ручную сверку.
           </p>
 
           <div className="checkout-summary">
@@ -593,7 +493,7 @@ export default function CheckoutClient() {
           </Link>
 
           <p className="checkout-helper">
-            До открытия платёжной страницы деньги не списываются. Почтовый вход готовится; бесплатные 5 дней начинаются из приложения на новой установке.
+            Email-вход на сайте ещё помечен как soon. Premium trial начинается из приложения на первом валидном устройстве, а купленный activation key можно погасить в приложении или кабинете.
           </p>
 
           {statusText ? <p className="checkout-status">{normalizeAccessKeyError(statusText).text}</p> : null}

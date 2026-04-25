@@ -331,6 +331,86 @@ def test_start_trial_reuses_existing_install_id(monkeypatch, tmp_path):
     assert first_session.json()["user"]["account_id"] == second_session.json()["user"]["account_id"]
 
 
+def test_start_trial_rate_limits_fresh_installs_by_origin(monkeypatch, tmp_path):
+    monkeypatch.setenv("API_RATE_LIMIT_START_TRIAL_PER_MINUTE", "1")
+    api = _load_api(monkeypatch, tmp_path)
+    client = TestClient(api.app)
+    headers = {"X-Real-IP": "198.51.100.44"}
+
+    class FakePanel:
+        async def add_client(self, **_kwargs):
+            return True
+
+        async def close(self):
+            return None
+
+    old_panel = api.ControlPanel
+    try:
+        api.ControlPanel = FakePanel
+        first = client.post(
+            "/api/client/session/start-trial",
+            headers=headers,
+            json={
+                "install_id": "install-rate-one",
+                "device_name": "Pixel 10",
+                "platform": "android",
+            },
+        )
+        repeated_same_install = client.post(
+            "/api/client/session/start-trial",
+            headers=headers,
+            json={
+                "install_id": "install-rate-one",
+                "device_name": "Pixel 10",
+                "platform": "android",
+            },
+        )
+        blocked_new_install = client.post(
+            "/api/client/session/start-trial",
+            headers=headers,
+            json={
+                "install_id": "install-rate-two",
+                "device_name": "Pixel 10",
+                "platform": "android",
+            },
+        )
+    finally:
+        api.ControlPanel = old_panel
+
+    assert first.status_code == 200, first.text
+    assert repeated_same_install.status_code == 200, repeated_same_install.text
+    assert repeated_same_install.json()["account_id"] == first.json()["account_id"]
+    assert blocked_new_install.status_code == 429
+    assert blocked_new_install.headers["retry-after"]
+    assert blocked_new_install.json()["detail"]["code"] == "rate_limited"
+    assert blocked_new_install.json()["detail"]["scope"] == "start_trial"
+
+
+def test_access_key_status_rate_limit_returns_retry_contract(monkeypatch, tmp_path):
+    monkeypatch.setenv("API_RATE_LIMIT_ACCESS_KEY_STATUS_PER_MINUTE", "1")
+    api = _load_api(monkeypatch, tmp_path)
+    client = TestClient(api.app)
+
+    db = api.SessionLocal()
+    try:
+        db.add(api.GiftCard(code="BETAKEY1", card_type="standard", created_by=9999))
+        db.commit()
+    finally:
+        db.close()
+
+    headers = {"X-Real-IP": "198.51.100.45"}
+    first = client.get("/api/access-keys/status/BETAKEY1", headers=headers)
+    blocked = client.get("/api/access-keys/status/BETAKEY1", headers=headers)
+
+    assert first.status_code == 200, first.text
+    assert blocked.status_code == 429
+    assert blocked.headers["retry-after"]
+    detail = blocked.json()["detail"]
+    assert detail["code"] == "rate_limited"
+    assert detail["scope"] == "access_key_status"
+    assert detail["retry_after_seconds"] >= 1
+
+
 def test_app_session_can_create_support_ticket(monkeypatch, tmp_path):
     api = _load_api(monkeypatch, tmp_path)
     client = TestClient(api.app)

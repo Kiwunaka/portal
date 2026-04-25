@@ -120,6 +120,14 @@ export const ADMIN_NAV_ITEMS: AdminNavItem[] = [
     match: (path) => path.startsWith("/admin/promos"),
   },
   {
+    href: "/admin/payments",
+    label: "Payment ledger",
+    icon: "receipt_long",
+    summary: "Orders, provider callbacks, manual-review states, and reconciliation notes.",
+    categoryId: "payments",
+    match: (path) => path.startsWith("/admin/payments"),
+  },
+  {
     href: "/admin/nodes",
     label: "Узлы",
     icon: "network",

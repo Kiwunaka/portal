@@ -83,6 +83,7 @@ Legacy filename note:
 - `remote_brain_apply_release_handoff.py`
 - `remote_apply_transport_front.py`
 - `remote_install_mini_canary_stack.py`
+- `remote_install_mtproto_proxy.py`
 - `remote_switch_bot_tokens.py`
 - `release_orchestrator.py`
 

@@ -17,9 +17,12 @@ export default function CabinetEntryAuth({ siteUrl }: { siteUrl: string }) {
         <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-emerald-800 dark:text-emerald-200">
           Основной вход
         </p>
-        <h3 className="mt-2 text-xl font-semibold text-slate-950 dark:text-slate-50">Telegram уже работает</h3>
+        <h3 className="mt-2 text-xl font-semibold text-slate-950 dark:text-slate-50">
+          Telegram подтверждает кабинет
+        </h3>
         <p className="mt-2 text-sm leading-6 text-slate-700 dark:text-slate-200">
-          Это текущий рабочий путь в кабинет. Подтвердите вход в Telegram, и мы вернем вас обратно сюда без лишних шагов.
+          Нажмите кнопку, подтвердите вход в Telegram, и мы вернем вас сюда с тем же профилем. Это путь
+          продолжения, а не новая регистрация.
         </p>
         <div className="mt-4">
           <TelegramLoginWidget />
@@ -37,20 +40,23 @@ export default function CabinetEntryAuth({ siteUrl }: { siteUrl: string }) {
             <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500 dark:text-slate-400">
               Email
             </p>
-            <h3 className="mt-2 text-xl font-semibold text-slate-950 dark:text-slate-50">Скоро подключим</h3>
+            <h3 className="mt-2 text-xl font-semibold text-slate-950 dark:text-slate-50">
+              Готовим аккуратно
+            </h3>
           </div>
           <span className="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-semibold text-slate-600 dark:border-white/10 dark:bg-white/[0.05] dark:text-slate-300">
-            Пока недоступно
+            Скоро
           </span>
         </div>
         <p className="mt-3 text-sm leading-6 text-slate-600 dark:text-slate-300">
-          Email-вход для кабинета еще не открыт. Когда он будет готов, он попадет в тот же кабинетный сценарий. Сейчас используйте Telegram.
+          Email-вход появится после готовности доставки писем. Сейчас для браузера используйте Telegram
+          или напишите в поддержку, если доступ нужно восстановить вручную.
         </p>
       </div>
 
       {webLoginBusy ? (
         <p className="text-xs leading-5 text-slate-500 dark:text-slate-400">
-          Открываем Telegram. Если окно уже появилось, просто завершите вход там.
+          Открываем Telegram. Если окно уже появилось, завершите вход там и вернитесь в эту вкладку.
         </p>
       ) : null}
 

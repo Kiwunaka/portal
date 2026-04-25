@@ -384,9 +384,12 @@ def _classify_probe_report(payload: dict[str, Any]) -> list[str]:
         classifications.append("probe_host_problem")
 
     canonical_failed = any(str(item.get("kind") or "") == "canonical" and not bool(item.get("ok")) for item in targets)
+    telegram_failed = any(str(item.get("kind") or "") == "telegram" and not bool(item.get("ok")) for item in targets)
     foreign_failed = any(str(item.get("kind") or "") == "foreign_node" and not bool(item.get("ok")) for item in targets)
     if canonical_failed:
         classifications.append("canonical_host_problem")
+    if telegram_failed:
+        classifications.append("telegram_reachability_problem")
     if foreign_failed:
         classifications.append("foreign_edge_problem")
         classifications.append("eu_node_problem")

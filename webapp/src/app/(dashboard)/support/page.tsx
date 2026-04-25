@@ -12,6 +12,7 @@ import {
   type TicketAttachmentInput,
   type TicketInfo,
 } from "@/lib/api";
+import { getDeviceLimit, resolvePlanLabel } from "@/lib/access-policy";
 import { getPortalPublicConfig } from "@/lib/portal";
 import { usePortalSession } from "@/lib/session";
 
@@ -98,6 +99,9 @@ export default function SupportPage() {
   const latestTicket = tickets[0] || null;
   const openCount = tickets.filter((ticket) => String(ticket.status || "").toLowerCase() !== "closed").length;
   const preset = CATEGORY_PRESETS[category];
+  const activeConnections = dash?.connection_snapshot?.active_connections ?? dash?.active_sessions ?? 0;
+  const deviceCount = user?.sync?.device_count ?? user?.devices?.length ?? 0;
+  const deviceLimit = getDeviceLimit(dash, user);
 
   const loadTickets = async (): Promise<void> => {
     setLoadingTickets(true);
@@ -257,7 +261,7 @@ export default function SupportPage() {
           {
             label: "Текущий режим",
             value: resolvePlanLabel(dash, user),
-            hint: "Это помогает быстрее понять контекст без технических деталей на экране.",
+            hint: "Это помогает нам быстрее понять контекст.",
             tone: "neutral",
           },
           {
@@ -345,6 +349,38 @@ export default function SupportPage() {
             <CabinetCardGrid items={helpCards} className="xl:grid-cols-1" />
           </CabinetSection>
         </div>
+
+        <CabinetSection
+          eyebrow="Безопасная диагностика"
+          title="Что мы можем передать в кейс"
+          description="Только полезный контекст из кабинета. Личные ссылки, ключи, адреса точек доступа и публичный адрес устройства не показываем и не просим присылать."
+        >
+          <CabinetCardGrid
+            items={[
+              {
+                key: "access",
+                title: "Режим доступа",
+                body: resolvePlanLabel(dash, user),
+                badge: dash?.is_active ? "Активен" : "Нужен следующий шаг",
+                tone: dash?.is_active ? ("success" as const) : ("warning" as const),
+              },
+              {
+                key: "devices",
+                title: "Устройства",
+                body: `${deviceCount} из ${deviceLimit} уже связаны с профилем.`,
+                badge: "Профиль",
+                tone: "neutral" as const,
+              },
+              {
+                key: "connections",
+                title: "Подключения сейчас",
+                body: `${activeConnections} активных подключений по профилю.`,
+                badge: "Сводка",
+                tone: activeConnections > 0 ? ("success" as const) : ("neutral" as const),
+              },
+            ]}
+          />
+        </CabinetSection>
 
         <CabinetSection
           eyebrow="Что помогает нам ответить быстрее"

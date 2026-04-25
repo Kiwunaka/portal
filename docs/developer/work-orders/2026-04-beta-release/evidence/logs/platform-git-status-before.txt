@@ -1,0 +1,32 @@
+﻿## master...origin/master [behind 4]
+ M docs/architecture/system-overview.md
+ M docs/developer/developer-guide.md
+ M docs/developer/repository-map.md
+ M docs/operations/deployment-and-access.md
+ M docs/operations/monitoring-and-visibility.md
+ M scripts/manifest.yaml
+ M tests/test_public_copy_guardrails.py
+ M webapp/src/app/(dashboard)/dashboard/page.tsx
+ M webapp/src/app/(dashboard)/devices/page.tsx
+ M webapp/src/app/(dashboard)/subscription/checkout/page.tsx
+ M webapp/src/app/(dashboard)/subscription/page.tsx
+ M webapp/src/app/globals.css
+ M webapp/src/app/page.tsx
+ M webapp/src/components/cabinet-downloads-page.tsx
+ M webapp/src/components/cabinet-entry-auth.tsx
+ M webapp/src/components/cabinet-shell.tsx
+ M webapp/src/components/cabinet/downloads-surface.tsx
+ M webapp/src/components/cabinet/surface.tsx
+?? .playwright-mcp/
+?? "lava api.txt"
+?? pokrov-admin-dev-login-desktop-polished.png
+?? pokrov-admin-dev-login-desktop.png
+?? pokrov-marketing-home-desktop.png
+?? pokrov-marketing-home-mobile-polished.png
+?? pokrov-marketing-home-mobile.png
+?? pokrov-webapp-entry-desktop-polished.png
+?? pokrov-webapp-entry-desktop.png
+?? scripts/remote_install_mtproto_proxy.py
+?? tests/test_remote_install_mtproto_proxy.py
+?? "\320\237\320\240\320\230\320\234\320\225\320\240\320\253 \320\224\320\230\320\227\320\220\320\231\320\235\320\220 \320\237\320\240\320\230\320\233\320\236\320\226\320\225\320\235\320\230\320\257 \320\230 \320\233\320\232/"
+?? "\320\270\320\272\320\276\320\275\320\272\320\270 \320\273\320\276\320\263\320\276 \320\270 \321\202\320\264/"

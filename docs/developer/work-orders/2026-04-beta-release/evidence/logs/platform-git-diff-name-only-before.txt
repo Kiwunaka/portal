@@ -1,0 +1,9 @@
+﻿docs/architecture/system-overview.md
+docs/developer/developer-guide.md
+docs/developer/repository-map.md
+docs/operations/deployment-and-access.md
+docs/operations/monitoring-and-visibility.md
+scripts/manifest.yaml
+webapp/src/app/globals.css
+webapp/src/app/page.tsx
+webapp/src/components/cabinet-entry-auth.tsx

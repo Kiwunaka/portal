@@ -437,12 +437,20 @@ python scripts/ru_probe_runner.py --reserve-host rf1.pokrov.space --probe-host m
 python scripts/render_ru_probe_report.py --input ops-local/ru-probe.json
 ```
 
+Telegram MTProto proxy exception on the free node:
+
+```powershell
+python scripts/remote_install_mtproto_proxy.py --node-code free --node-host 151.245.217.23 --ssh-port 29374 --listen-port 9443 --enable-refresh-timer
+python -m unittest tests.test_remote_install_mtproto_proxy -v
+```
+
 Operational rules:
 
 - `mini` is probe-only for current work
 - `mini` may be unavailable; RU probe readiness is its own tracked operational dependency
 - RU ingress / RF reserve experiments are backlog-only
 - do not resume `mini` canary work, evolve the transport matrix, or provision `rf1` unless the product owner explicitly asks to return to that track
+- the `2026-04-24` MTProto proxy on the free node is an owner-approved Telegram-only exception; it must not displace the node's normal `x-ui` listener on `tcp/443`, and its secret link must stay out of docs and reports
 - `rf1` is reserve-only for operator and VIP/manual use in phase 1
 - keep `rf1` outside the default runtime delivery pool until repeated RU probes confirm stable behavior
 - observer-lite phase 1 stays observe-only; do not add throttle or block actions without an explicit product decision

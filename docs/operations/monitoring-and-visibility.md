@@ -1,6 +1,6 @@
 # Monitoring And Visibility
 
-Last updated: 2026-04-23
+Last updated: 2026-04-25
 
 ## Document Status
 
@@ -193,6 +193,8 @@ Vantage-point reporting rule:
 - `RU-origin check` means the probe ran from `mini` or a replacement external RU host
 - do not collapse these into one status line because each origin answers a different question
 - do not call a node RU-broken until an `RU-origin check` actually fails from a working RU probe host
+- if SSH, admin auth, provider dashboard, physical device, or RU probe access is missing, report the affected origin as `BLOCKED_BY_ACCESS` and name the missing dependency instead of treating the check as passed or failed
+- `current-origin check` is allowed to use local repo/static gates, browser/API probes, and non-secret public endpoints; it does not prove what `brain` or a Russian network can reach
 
 ## Node Metrics Freshness And Alerts
 
@@ -221,6 +223,16 @@ Required node-level visibility:
 - `ipv4_health`
 - `ipv6_health`
 - `transport_health`
+
+Metrics freshness state rules:
+
+- `ok`: the node has a recent metrics sample, expected numeric totals are present, dataplane probe fields are present, and observer freshness is inside the configured window when observer-lite is enabled
+- `stale`: the last metrics or observer sample exists but is older than the freshness window; show the last timestamp and age rather than zeroing values
+- `missing`: no usable sample exists for the node or a required counter family is absent; render the field as missing/unavailable, not as `0`
+- `unavailable`: the metrics collector, admin metrics endpoint, panel runtime, or probe path could not be reached from the checking origin; show the failed origin and blocker, such as `brain-origin BLOCKED_BY_ACCESS` or `panel unavailable`
+- `failed`: the collector or probe ran and returned an explicit failure classification, such as DNS, TCP, TLS, HTTP body, transport, packet loss, high latency, overload, high CPU, or offline
+- per-node cards must keep `panel_state`, `dataplane_state`, metrics freshness, observer freshness, and RU-origin evidence separate so one unavailable layer does not hide useful evidence from another layer
+- high CPU, high RAM, high disk, high latency, high packet loss, high client density, overload, stale metrics, missing observer data, and offline states must be operator-visible as alert reasons, not folded into a generic red status
 
 Operator-facing rendering rule:
 
@@ -300,12 +312,14 @@ RF role split:
 - `rf1` is the reserve ingress for operator and VIP/manual access
 - do not use `mini` for general user traffic
 - do not treat `rf1` as a general delivery node until repeated RU probes prove stability
+- owner-approved exception on `2026-04-24`: the dedicated free node (`151.245.217.23`) also runs the Telegram-only `portal-mtproto.service` on `tcp/9443`; monitor it separately from POKROV delivery-node health and do not count it as normal subscription traffic
 
 Current backlog note:
 
 - RU ingress / RF reserve experiments are paused
 - keep using `mini` only as the RU probe origin
 - do not resume `mini` canary work or `rf1` promotion until the product owner explicitly requests it
+- the Telegram MTProto exception does not reopen the paused RF reserve canary; the earlier `mini:443` attempt is disabled because Telegram reachability from `mini` is degraded
 
 Interpretation note:
 
@@ -323,6 +337,14 @@ Reserve interpretation:
 - `hysteria_alive=true` is still best-effort and should be treated as a UDP viability signal until repeated RU checks confirm it
 - if `xhttp_alive=true` while canonical hosts fail, preserve the reserve contour and keep the default consumer path unchanged
 - while the RF reserve idea is in backlog, keep collecting probe evidence but do not treat reserve-path improvements as active roadmap work
+
+Telegram MTProto proxy interpretation:
+
+- `portal-mtproto.service active` proves the Telegram proxy daemon is running on the free node
+- `current-origin check` and `brain-origin check` should verify `151.245.217.23:9443/tcp` separately from HTTPS checks because MTProto is not an HTTP service
+- free-node reachability to `core.telegram.org` controls whether the daily config refresh timer can stay enabled
+- if `mini` is considered again, a fresh RU-origin check must prove Telegram hostname and DC reachability first; the 2026-04-24 result is degraded and should not be treated as a healthy endpoint
+- the MTProto link and secret are operational secret material and should stay in `/etc/portal-mtproto.env`, not in docs or incident reports
 
 ## App, Bot, Device, And IP Visibility
 

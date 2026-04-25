@@ -50,11 +50,10 @@ function buildCards(payload: ClientAppsPayload | null): DownloadCard[] {
     androidPlay
       ? {
           key: "android-play",
-          title: "Android через Google Play",
-          body: "Самый прямой путь, если нужен обычный старт без ручной настройки.",
-          badge: "Рекомендуем",
-          tone: "success",
-          icon: cabinetIcon("android"),
+          title: "Android бета через Google Play",
+          body: "Показываем только если ссылка реально пришла от backend. Публичный Android-релиз закрыт до production signing и физического аудита release-сборки.",
+          badge: "Android beta",
+          tone: "warning",
           href: androidPlay,
           action: externalAction(androidPlay, "Открыть Google Play"),
         }
@@ -62,11 +61,10 @@ function buildCards(payload: ClientAppsPayload | null): DownloadCard[] {
     androidApk
       ? {
           key: "android-apk",
-          title: "Android через APK",
-          body: "Подходит, если Play недоступен или удобнее поставить файл вручную.",
-          badge: "Дополнительная ссылка",
-          tone: "neutral",
-          icon: cabinetIcon("apk_install"),
+          title: "Android бета через APK",
+          body: "Внутренний beta-файл для тестеров. Не публикуем его как массовый путь до production signing и физического аудита release-сборки.",
+          badge: "Internal beta",
+          tone: "warning",
           href: androidApk,
           action: externalAction(androidApk, "Скачать APK"),
         }
@@ -75,10 +73,9 @@ function buildCards(payload: ClientAppsPayload | null): DownloadCard[] {
       ? {
           key: "android-mirror",
           title: "Резервная ссылка для Android",
-          body: "Оставили на случай, если основные ссылки сегодня ведут себя неровно.",
-          badge: "На всякий случай",
-          tone: "info",
-          icon: cabinetIcon("backup"),
+          body: "Резерв той же beta-сборки. Если обычная ссылка не открывается, лучше написать в поддержку, а не обходить release-gate.",
+          badge: "Резерв beta",
+          tone: "warning",
           href: androidMirror,
           action: externalAction(androidMirror, "Скачать APK (зеркало)"),
         }
@@ -86,11 +83,10 @@ function buildCards(payload: ClientAppsPayload | null): DownloadCard[] {
     windowsExe
       ? {
           key: "windows-exe",
-          title: "Windows",
-          body: "Обычная установка для Windows без лишних шагов в кабинете.",
-          badge: "Основная ссылка",
-          tone: "success",
-          icon: cabinetIcon("desktop_windows"),
+          title: "Windows бета",
+          body: "Бета-сборка для Windows. Установщик может быть неподписанный, поэтому SmartScreen или системное предупреждение ожидаемы.",
+          badge: "Unsigned beta",
+          tone: "warning",
           href: windowsExe,
           action: externalAction(windowsExe, "Скачать Windows"),
         }
@@ -99,10 +95,9 @@ function buildCards(payload: ClientAppsPayload | null): DownloadCard[] {
       ? {
           key: "windows-mirror",
           title: "Резервная ссылка для Windows",
-          body: "Нужна только если обычная загрузка временно не открывается.",
-          badge: "Дополнительная ссылка",
-          tone: "info",
-          icon: cabinetIcon("backup"),
+          body: "Резерв той же beta-сборки. Если Windows предупреждает о неподписанном файле, это известное ограничение публичной беты.",
+          badge: "Резерв beta",
+          tone: "warning",
           href: windowsMirror,
           action: externalAction(windowsMirror, "Скачать Windows (зеркало)"),
         }
@@ -202,7 +197,7 @@ export function CabinetDownloadsSurface() {
     <CabinetRoute
       eyebrow="Загрузки"
       title="Все нужные загрузки под рукой"
-      description="Только рабочие ссылки и короткие подсказки. Без лишнего текста и ручной настройки на первом шаге."
+      description="Бета-доступ открыт только из кабинета. Показываем реальные ссылки из backend или честно говорим, что их нет."
       actions={
         <>
           <AppRouteLink href="/devices/" className="outline-btn rounded-full px-5 py-3 text-sm font-semibold">
@@ -216,15 +211,15 @@ export function CabinetDownloadsSurface() {
       metrics={[
         {
           label: "Android",
-          value: hasAndroid ? "Можно установить" : "Ссылки появятся позже",
-          hint: "Play для обычного старта, APK как дополнительная ссылка.",
-          tone: hasAndroid ? "success" : "neutral",
+          value: hasAndroid ? "Ссылки готовы" : "Подтянем позже",
+          hint: "Android остается закрыт до production signing и физического release-build audit.",
+          tone: hasAndroid ? "warning" : "neutral",
         },
         {
           label: "Windows",
-          value: hasWindows ? "Можно установить" : "Ссылка появится позже",
-          hint: "Обычная установка без ручной сборки доступа.",
-          tone: hasWindows ? "success" : "neutral",
+          value: hasWindows ? "Ссылка готова" : "Подтянем позже",
+          hint: "Beta-сборка может содержать неподписанный артефакт и вызвать системное предупреждение.",
+          tone: hasWindows ? "warning" : "neutral",
         },
         {
           label: "Apple",
@@ -242,13 +237,13 @@ export function CabinetDownloadsSurface() {
     >
       <CabinetHero
         eyebrow="Что делать сейчас"
-        badge={hasInstallable ? "Можно ставить приложение" : "Ссылки подтягиваются"}
-        badgeTone={hasInstallable ? "success" : "info"}
-        title={hasInstallable ? "Сначала загрузка, потом вход" : "Установочные ссылки подтянем позже"}
+        badge={cards.length ? "Бета-доступ" : "Ссылки подтягиваются"}
+        badgeTone={cards.length ? "success" : "info"}
+        title={cards.length ? "Сначала загрузка, потом вход" : "Часть ссылок подтянем позже"}
         description={
-          hasInstallable
-            ? "Для нового экрана обычно хватает двух шагов: открыть нужную загрузку и войти в тот же аккаунт. Всё остальное уже догружается само."
-            : "Кабинет продолжает работать. Если нужной ссылки нет прямо сейчас, лучше открыть поддержку."
+          cards.length
+            ? "Для нового экрана обычно хватает двух шагов: открыть нужную бета-загрузку и войти в тот же аккаунт. Всё остальное уже догружается само."
+            : "Кабинет продолжает работать. Если нужной ссылки нет прямо сейчас, лучше не искать обходной путь, а открыть поддержку."
         }
         actions={
           <>
@@ -265,8 +260,8 @@ export function CabinetDownloadsSurface() {
         details={[
           {
             label: "Лучший путь",
-            value: hasAndroid ? "Android через Play или APK" : hasWindows ? "Установщик Windows" : "Поддержка",
-            hint: "Берите обычный путь первым. Дополнительные ссылки нужны редко.",
+            value: hasAndroid ? "Android через Play" : hasWindows ? "Установщик Windows" : "Поддержка",
+            hint: "Берите обычный путь первым. Запасные ссылки нужны редко.",
             tone: "neutral",
           },
           {
@@ -288,7 +283,7 @@ export function CabinetDownloadsSurface() {
         <CabinetSection
           eyebrow="Платформы"
           title="Куда можно перейти сейчас"
-          description="Оставили только то, что реально помогает поставить приложение без шума."
+          description="Оставили только реальные бета-ссылки и честные состояния артефактов."
         >
           <CabinetCardGrid items={cards} className="xl:grid-cols-2" />
           {error ? <p className="mt-4 text-sm text-amber-700 dark:text-amber-200">Часть ссылок не удалось обновить автоматически: {error}</p> : null}

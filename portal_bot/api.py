@@ -320,6 +320,46 @@ WEBAPP_DEV_ALLOWED_ORIGINS = {
     ).split(",")
     if x.strip()
 }
+
+
+def _normalize_cors_origin(raw: str) -> str:
+    value = str(raw or "").strip().rstrip("/")
+    if not value or value == "*":
+        return ""
+    try:
+        parsed = urlparse(value)
+        if parsed.scheme and parsed.netloc:
+            return f"{parsed.scheme.lower()}://{parsed.netloc.lower()}"
+    except Exception:
+        pass
+    return value.lower()
+
+
+def _build_cors_allowed_origins() -> list[str]:
+    configured = [
+        "https://pokrov.space",
+        "https://www.pokrov.space",
+        "https://app.pokrov.space",
+        "https://pay.pokrov.space",
+    ]
+    for attr in ("WEBAPP_URL", "PAY_CHECKOUT_URL", "API_BASE_URL"):
+        configured.append(str(getattr(Settings, attr, "") or ""))
+    configured.extend(WEBAPP_DEV_ALLOWED_ORIGINS)
+    configured.extend((os.getenv("API_CORS_ALLOWED_ORIGINS") or "").split(","))
+
+    origins: list[str] = []
+    for value in configured:
+        origin = _normalize_cors_origin(value)
+        if origin and origin not in origins:
+            origins.append(origin)
+    if not origins:
+        origins.append("https://app.pokrov.space")
+    if "*" in configured:
+        logger.warning("Ignoring wildcard API_CORS_ALLOWED_ORIGINS because credentials are enabled")
+    return origins
+
+
+API_CORS_ALLOWED_ORIGINS = _build_cors_allowed_origins()
 API_PLAN_PRICES = {
     "trial": 0,
     **{
@@ -920,11 +960,6 @@ class FreekassaOrderActionOut(BaseModel):
     discount_applied: bool = False
     base_amount_rub: float | None = None
     discount_pct: int = 0
-    fulfillment_mode: str | None = None
-    issued_key_state: str | None = None
-    redeem_state: str | None = None
-    next_action: str | None = None
-    activation_handoff: dict[str, Any] | None = None
 
 
 class RubProviderChoiceOut(BaseModel):
@@ -966,6 +1001,11 @@ class RubPublicOrderCreateIn(BaseModel):
 
 class RubOrderActionOut(FreekassaOrderActionOut):
     provider_label: str | None = None
+
+
+class AdminPaymentReconcileIn(BaseModel):
+    note: str = Field(min_length=8, max_length=1000)
+    status: str | None = Field(default=None, min_length=3, max_length=24)
 
 
 class AdminPlanCreateIn(BaseModel):
@@ -1038,7 +1078,6 @@ class AdminWheelConfigIn(BaseModel):
     preset: str = Field(default="balanced", min_length=2, max_length=32)
     weights: list[AdminWheelWeightIn] = Field(default_factory=list, min_length=1, max_length=20)
     cooldown_hours: int = Field(default=168, ge=1, le=2160)
-    operator_reason: str | None = Field(default=None, max_length=500)
 
 
 class AdminCampaignLinksBuildIn(BaseModel):
@@ -1383,7 +1422,7 @@ async def bind_current_request(request: Request, call_next):
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=API_CORS_ALLOWED_ORIGINS,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -2395,6 +2434,58 @@ def _request_client_ip(request: Request | None) -> str:
     return str(host or "").strip()[:64]
 
 
+_BETA_RATE_LIMIT_DEFAULTS_PER_MINUTE = {
+    "start_trial": 12,
+    "access_key_status": 60,
+    "access_key_redeem": 20,
+    "telegram_auth": 30,
+    "email_auth": 20,
+    "ticket_create": 20,
+    "ticket_upload": 30,
+}
+_beta_rate_limit_state: dict[tuple[str, str], list[float]] = {}
+
+
+def _beta_rate_limit_per_minute(scope: str) -> int:
+    normalized = str(scope or "").strip().upper().replace("-", "_")
+    default = int(_BETA_RATE_LIMIT_DEFAULTS_PER_MINUTE.get(str(scope or "").strip().lower(), 0) or 0)
+    return max(0, env_int(f"API_RATE_LIMIT_{normalized}_PER_MINUTE", default))
+
+
+def _beta_rate_limit_fingerprint(scope: str, request: Request | None, *, identity: str | None = None) -> str:
+    client_ip = _request_client_ip(request) or "unknown"
+    subject = f"{client_ip}|{str(identity or '').strip()}"
+    return hashlib.sha256(f"{scope}|{subject}".encode("utf-8")).hexdigest()[:32]
+
+
+def _enforce_beta_rate_limit(scope: str, request: Request | None, *, identity: str | None = None) -> None:
+    normalized_scope = str(scope or "").strip().lower()
+    limit = _beta_rate_limit_per_minute(normalized_scope)
+    if limit <= 0:
+        return
+
+    now = time.monotonic()
+    window_seconds = 60.0
+    key = (normalized_scope, _beta_rate_limit_fingerprint(normalized_scope, request, identity=identity))
+    hits = [ts for ts in _beta_rate_limit_state.get(key, []) if now - ts < window_seconds]
+    if len(hits) >= limit:
+        retry_after = max(1, int(window_seconds - (now - hits[0])) + 1)
+        _beta_rate_limit_state[key] = hits
+        raise HTTPException(
+            status_code=429,
+            detail={
+                "code": "rate_limited",
+                "message": "Too many requests. Please retry later.",
+                "scope": normalized_scope,
+                "retry_after_seconds": retry_after,
+            },
+            headers={"Retry-After": str(retry_after)},
+        )
+
+    hits.append(now)
+    _beta_rate_limit_state[key] = hits
+
+
 def _normalize_app_device_name(value: str | None, *, fallback: str = "Current device") -> str:
     text = str(value or "").strip()
     if not text:
@@ -3200,21 +3291,31 @@ def _safe_float(value: Any) -> float:
 
 def _status_from_event(event_type: str, payload: dict[str, Any], signature_ok: bool, provider: str = "") -> str:
     event = (event_type or "").strip().lower()
+    if not signature_ok:
+        return "pending_verification"
     if event == "refund":
         return "refunded"
     if event == "chargeback":
         return "chargeback"
-    if _normalize_provider(provider) == "freekassa" and event == "result" and signature_ok:
-        return "paid"
+
     provider_state = payment_callback_status(provider, payload)
-    if provider_state in {"paid", "success", "succeeded", "approved", "completed"} and signature_ok:
-        return "paid"
-    if provider_state in {"failed", "fail", "cancelled", "canceled", "rejected", "declined"}:
-        return "failed"
     status_raw = _payload_value(payload, "status", "payment_status", "state").lower()
-    if status_raw in {"paid", "success", "succeeded", "approved"} and signature_ok:
+    state = (provider_state or status_raw).strip().lower()
+    if state in {"paid", "success", "succeeded", "approved", "completed"}:
         return "paid"
-    return "pending_verification" if not signature_ok else "processing"
+    if state in {"cancelled", "canceled", "cancel"}:
+        return "cancelled"
+    if state in {"refunded", "refund"}:
+        return "refunded"
+    if state in {"failed", "fail", "rejected", "declined", "error"}:
+        return "failed"
+    if state in {"manual_review", "review", "needs_review", "needs_operator", "requires_action"}:
+        return "manual_review"
+    if state in {"created", "pending", "processing", "new", "waiting"}:
+        return "pending"
+    if _normalize_provider(provider) == "freekassa" and event == "result" and not state:
+        return "paid"
+    return "manual_review"
 
 
 def _upsert_external_order(
@@ -3237,19 +3338,13 @@ def _upsert_external_order(
         row = ExternalOrder(provider=provider, order_id=order_id, created_at=_utcnow())
         s.add(row)
     row.tg_id = _safe_int(_payload_value(payload, "tg_id", "telegram_id", "user_id", "us_tg_id")) or row.tg_id
-    row.plan_code = _payload_value(payload, "plan_code", "tariff", "plan", "us_plan_code") or row.plan_code
-    row.source = _payload_value(payload, "source", "checkout_source", "us_source") or row.source
-    row.campaign = _payload_value(payload, "campaign", "utm_campaign") or row.campaign
-    row.promo_code = _payload_value(payload, "promo_code", "coupon", "us_promo_code") or row.promo_code
-    row.meta_json = _merge_order_meta(
-        row,
-        callback_payload=payload,
-        updates={"fulfillment_mode": _order_fulfillment_mode(row=row, payload=payload)},
-    )
-    amount = _safe_float(_payload_value(payload, "amount", "sum", "amount_paid", "OutSum"))
-    if amount > 0:
-        row.amount = amount
-    row.currency = _payload_value(payload, "currency", "cur", "ccy") or row.currency or "RUB"
+    row.plan_code = _payload_value(payload, "plan_code", "tariff", "plan", "us_plan_code")
+    row.source = _payload_value(payload, "source", "checkout_source", "us_source")
+    row.campaign = _payload_value(payload, "campaign", "utm_campaign")
+    row.promo_code = _payload_value(payload, "promo_code", "coupon")
+    row.meta_json = json.dumps(payload, ensure_ascii=False, separators=(",", ":"))[:4000]
+    row.amount = _safe_float(_payload_value(payload, "amount", "sum", "amount_paid", "OutSum"))
+    row.currency = _payload_value(payload, "currency", "cur", "ccy") or "RUB"
     row.status = status
     if mark_paid and not row.paid_at:
         row.paid_at = _utcnow()
@@ -3264,6 +3359,7 @@ def _record_external_payment_event(
     payload: dict[str, Any],
     signature_ok: bool,
     processed_ok: bool,
+    status: str | None = None,
 ) -> tuple[bool, bool]:
     s = SessionLocal()
     try:
@@ -3285,14 +3381,14 @@ def _record_external_payment_event(
             exists.payload_json = json.dumps(payload, ensure_ascii=False, separators=(",", ":"))[:16000]
             exists.signature_ok = True
             exists.processed_ok = bool(processed_ok)
-            status = _status_from_event(event_type, payload, signature_ok=True, provider=provider)
+            event_status = status or _status_from_event(event_type, payload, signature_ok=True, provider=provider)
             _upsert_external_order(
                 s,
                 provider=provider,
                 order_id=order_id,
                 payload=payload,
-                status=status,
-                mark_paid=status == "paid",
+                status=event_status,
+                mark_paid=event_status == "paid",
             )
             s.commit()
             return False, True
@@ -3309,14 +3405,14 @@ def _record_external_payment_event(
         )
         s.add(event)
 
-        status = _status_from_event(event_type, payload, signature_ok=signature_ok, provider=provider)
+        event_status = status or _status_from_event(event_type, payload, signature_ok=signature_ok, provider=provider)
         _upsert_external_order(
             s,
             provider=provider,
             order_id=order_id,
             payload=payload,
-            status=status,
-            mark_paid=status == "paid",
+            status=event_status,
+            mark_paid=event_status == "paid",
         )
         s.commit()
         return False, True
@@ -3379,34 +3475,6 @@ def _apply_external_paid_order(*, provider: str, order_id: str, payload: dict[st
         if not plan_cfg:
             plan_code = "1_month"
         days = _rub_plan_days(plan_code)
-        fulfillment_mode = _order_fulfillment_mode(row=ext_order, payload=payload)
-        if fulfillment_mode == "activation_key":
-            if not ext_order:
-                ext_order = ExternalOrder(
-                    provider=str(provider),
-                    order_id=str(order_id or f"{provider}:key:{int(_utcnow().timestamp())}"),
-                    tg_id=tg_id,
-                    plan_code=plan_code,
-                    source=_payload_value(payload, "source", "checkout_source", "us_source") or "site",
-                    amount=_safe_float(_payload_value(payload, "amount", "sum", "amount_paid", "OutSum")),
-                    currency=_payload_value(payload, "currency", "cur", "ccy") or "RUB",
-                    status="paid",
-                    created_at=_utcnow(),
-                )
-                s.add(ext_order)
-                s.flush()
-            card, key_state = _ensure_order_activation_key(
-                s=s,
-                row=ext_order,
-                plan_code=plan_code,
-                actor_tg_id=0,
-            )
-            ext_order.status = "paid"
-            ext_order.paid_at = ext_order.paid_at or _utcnow()
-            ext_order.tg_id = ext_order.tg_id or tg_id
-            ext_order.plan_code = plan_code
-            s.commit()
-            return True, f"activation_key_{key_state}" if card else "activation_key_unavailable"
 
         user = s.query(User).filter(User.tg_id == int(tg_id)).first()
         if not user:
@@ -3499,7 +3567,8 @@ async def _handle_payment_callback(*, provider: str, event_type: str, request: R
             raise HTTPException(status_code=403, detail="Callback IP is not allowed")
     order_id, external_id = _callback_ids(p, payload, raw)
     signature_ok, signature_reason = _verify_callback_signature(provider=p, payload=payload, raw=raw, request=request)
-    processed_ok = bool(signature_ok)
+    callback_status = _status_from_event(et, payload, signature_ok=signature_ok, provider=p)
+    processed_ok = bool(signature_ok and callback_status not in {"manual_review", "pending_verification"})
     duplicate, persist_ok = _record_external_payment_event(
         provider=p,
         event_type=et,
@@ -3508,6 +3577,7 @@ async def _handle_payment_callback(*, provider: str, event_type: str, request: R
         payload=payload,
         signature_ok=signature_ok,
         processed_ok=processed_ok,
+        status=callback_status,
     )
 
     if not signature_ok:
@@ -3525,7 +3595,7 @@ async def _handle_payment_callback(*, provider: str, event_type: str, request: R
     activated = False
     activation_reason = ""
     sync_ok = None
-    if (not duplicate) and signature_ok and et == "result":
+    if (not duplicate) and signature_ok and et == "result" and callback_status == "paid":
         activated, activation_reason = _apply_external_paid_order(provider=p, order_id=order_id, payload=payload)
         if activated:
             tg_id = _safe_int(_payload_value(payload, "tg_id", "telegram_id", "user_id"))
@@ -3534,6 +3604,8 @@ async def _handle_payment_callback(*, provider: str, event_type: str, request: R
                     sync_ok = bool(await _sync_user_after_paid_purchase(int(tg_id)))
                 except Exception:
                     sync_ok = False
+    elif (not duplicate) and signature_ok and et == "result":
+        activation_reason = callback_status
 
     return {
         "ok": bool(signature_ok and persist_ok),
@@ -3541,6 +3613,7 @@ async def _handle_payment_callback(*, provider: str, event_type: str, request: R
         "event_type": et,
         "order_id": order_id or None,
         "external_id": external_id,
+        "status": callback_status,
         "signature_ok": bool(signature_ok),
         "duplicate": bool(duplicate),
         "activated": bool(activated),
@@ -4699,7 +4772,8 @@ async def public_live_updates(response: Response, limit: int = Query(default=3, 
 
 
 @app.post("/api/auth/telegram/web-login")
-async def auth_telegram_web_login(payload: TelegramWebLoginIn) -> dict:
+async def auth_telegram_web_login(payload: TelegramWebLoginIn, request: Request) -> dict:
+    _enforce_beta_rate_limit("telegram_auth", request)
     verified = verify_telegram_login_payload(
         payload=payload.model_dump(),
         bot_token=_current_bot_token(),
@@ -4815,6 +4889,7 @@ async def auth_email_register(
     request: Request,
     x_telegram_init_data: str = Header(default=""),
 ) -> dict:
+    _enforce_beta_rate_limit("email_auth", request, identity=str(payload.email or "").strip().lower())
     auth_user = _optional_auth_user(x_telegram_init_data, request=request)
     linked_tg_id = int((auth_user or {}).get("id") or 0) or None
     s = SessionLocal()
@@ -4858,7 +4933,8 @@ async def auth_email_register(
 
 
 @app.post("/api/auth/email/verify")
-async def auth_email_verify(payload: EmailVerifyIn) -> dict:
+async def auth_email_verify(payload: EmailVerifyIn, request: Request) -> dict:
+    _enforce_beta_rate_limit("email_auth", request)
     s = SessionLocal()
     try:
         try:
@@ -4899,7 +4975,8 @@ async def auth_email_verify(payload: EmailVerifyIn) -> dict:
 
 
 @app.post("/api/auth/email/login")
-async def auth_email_login(payload: EmailLoginIn) -> dict:
+async def auth_email_login(payload: EmailLoginIn, request: Request) -> dict:
+    _enforce_beta_rate_limit("email_auth", request, identity=str(payload.email or "").strip().lower())
     s = SessionLocal()
     try:
         try:
@@ -4944,7 +5021,8 @@ async def auth_email_login(payload: EmailLoginIn) -> dict:
 
 
 @app.post("/api/auth/email/recovery/start")
-async def auth_email_recovery_start(payload: EmailRecoveryStartIn) -> dict:
+async def auth_email_recovery_start(payload: EmailRecoveryStartIn, request: Request) -> dict:
+    _enforce_beta_rate_limit("email_auth", request, identity=str(payload.email or "").strip().lower())
     s = SessionLocal()
     try:
         try:
@@ -4978,7 +5056,8 @@ async def auth_email_recovery_start(payload: EmailRecoveryStartIn) -> dict:
 
 
 @app.post("/api/auth/email/recovery/finish")
-async def auth_email_recovery_finish(payload: EmailRecoveryFinishIn) -> dict:
+async def auth_email_recovery_finish(payload: EmailRecoveryFinishIn, request: Request) -> dict:
+    _enforce_beta_rate_limit("email_auth", request)
     s = SessionLocal()
     try:
         try:
@@ -5086,6 +5165,10 @@ async def client_start_trial(payload: AppStartTrialIn, request: Request) -> dict
     client_policy: dict[str, Any] | None = None
     s = SessionLocal()
     try:
+        install_id = str(payload.install_id or "").strip()[:128]
+        existing_app_account = s.query(User.tg_id).filter(User.app_install_id == install_id).first()
+        if not existing_app_account:
+            _enforce_beta_rate_limit("start_trial", request)
         user, created = app_first_service.upsert_app_trial_user(
             s=s,
             payload=payload,
@@ -5703,7 +5786,6 @@ async def _rub_create_order_internal(
     promo_code: str = "",
     currency: str = "RUB",
     consume_pending_discount: bool = False,
-    fulfillment_mode: str = "activation_key",
 ) -> RubOrderActionOut:
     _ensure_checkout_runtime_ready()
     provider = _normalize_provider(provider)
@@ -5716,7 +5798,6 @@ async def _rub_create_order_internal(
         raise HTTPException(status_code=400, detail="Unsupported payment provider")
     if provider != "freekassa" and not provider_is_configured(provider):
         raise HTTPException(status_code=503, detail=f"{provider} is not configured")
-    fulfillment_mode = _order_fulfillment_mode(payload={"fulfillment_mode": fulfillment_mode})
     s = SessionLocal()
     try:
         plan = _resolve_plan_config(s=s, code=plan_code)
@@ -5767,7 +5848,6 @@ async def _rub_create_order_internal(
                     "plan_code": str(plan.get("code") or plan_code).strip().lower(),
                     "provider": provider,
                     "plan_label": plan_label,
-                    "fulfillment_mode": fulfillment_mode,
                     "pricing": {
                         "base_amount_rub": int(base_amount),
                         "final_amount_rub": int(final_amount),
@@ -5804,7 +5884,6 @@ async def _rub_create_order_internal(
         "campaign": campaign or "",
         "promo_code": effective_promo or "",
         "source": source,
-        "fulfillment_mode": fulfillment_mode,
         "discount_pct": int(discount_pct),
         "base_amount_rub": int(base_amount),
         "final_amount_rub": int(final_amount),
@@ -5821,7 +5900,6 @@ async def _rub_create_order_internal(
             plan_code=str(plan.get("code") or plan_code).strip().lower(),
             campaign=campaign or "",
             promo_code=effective_promo or "",
-            fulfillment_mode=fulfillment_mode,
         )
         remote_response: dict[str, Any] = {"payment_url": payment_url}
     else:
@@ -5844,7 +5922,6 @@ async def _rub_create_order_internal(
                 "source": source,
                 "campaign": campaign or "",
                 "promo_code": effective_promo or "",
-                "fulfillment_mode": fulfillment_mode,
             },
         )
         payment_url = str(payment.get("payment_url") or "").strip()
@@ -5859,7 +5936,6 @@ async def _rub_create_order_internal(
                 {
                     "request": req_data,
                     "response": {"payment_url": payment_url, "remote": remote_response},
-                    "fulfillment_mode": fulfillment_mode,
                     "pricing": {
                         "base_amount_rub": int(base_amount),
                         "final_amount_rub": int(final_amount),
@@ -5887,11 +5963,6 @@ async def _rub_create_order_internal(
         discount_applied=bool(discount_applied),
         base_amount_rub=float(base_amount),
         discount_pct=int(discount_pct),
-        fulfillment_mode=fulfillment_mode,
-        issued_key_state="pending_payment" if fulfillment_mode == "activation_key" else "not_applicable",
-        redeem_state="pending_payment" if fulfillment_mode == "activation_key" else "not_applicable",
-        next_action="wait_for_payment",
-        activation_handoff=_activation_handoff_payload(status="pending_payment", mode=fulfillment_mode),
     )
 
 
@@ -5926,7 +5997,6 @@ async def rub_order_create(
         promo_code=_sanitize_deeplink_token(payload.promo_code, max_len=20, uppercase=True),
         currency=(payload.currency or "RUB").strip().upper(),
         consume_pending_discount=False,
-        fulfillment_mode="direct_apply",
     )
 
 
@@ -5962,95 +6032,7 @@ async def rub_order_create_public(
         promo_code=promo_code,
         currency=(payload.currency or "RUB").strip().upper(),
         consume_pending_discount=False,
-        fulfillment_mode="activation_key",
     )
-
-
-@app.get("/api/payments/orders/status-public")
-async def rub_order_status_public(
-    order_id: str = Query(min_length=3, max_length=128),
-    provider: str = Query(default="freekassa", min_length=2, max_length=32),
-    checkout_ticket: str = Query(min_length=16, max_length=1200),
-) -> dict[str, Any]:
-    ticket_payload = _parse_checkout_ticket(checkout_ticket)
-    if not ticket_payload:
-        raise HTTPException(status_code=401, detail="Invalid or expired checkout ticket")
-    provider_code = _normalize_provider(provider)
-    if provider_code not in PAYMENT_PROVIDER_WHITELIST:
-        raise HTTPException(status_code=400, detail="Unsupported payment provider")
-    ticket_tg_id = int(ticket_payload.get("tg_id") or 0)
-    s = SessionLocal()
-    try:
-        row = (
-            s.query(ExternalOrder)
-            .filter(ExternalOrder.provider == provider_code, ExternalOrder.order_id == str(order_id))
-            .first()
-        )
-        if not row:
-            raise HTTPException(status_code=404, detail="Order not found")
-        if int(row.tg_id or 0) != ticket_tg_id:
-            raise HTTPException(status_code=403, detail="Access denied")
-        status = str(row.status or "pending").strip().lower() or "pending"
-        fulfillment_mode = _order_fulfillment_mode(row=row)
-        issued_key_state = "not_applicable"
-        redeem_state = "not_applicable"
-        next_action = "open_cabinet" if status == "paid" else "wait_for_payment"
-        activation_key = ""
-        handoff_status = "applied_to_account" if status == "paid" else "pending_payment"
-        if fulfillment_mode == "activation_key":
-            if status == "paid":
-                card, issued_key_state = _ensure_order_activation_key(
-                    s=s,
-                    row=row,
-                    plan_code=str(row.plan_code or "1_month"),
-                    actor_tg_id=0,
-                )
-                if card:
-                    activation_key = str(card.code or "").strip()
-                    redeemed = bool(card.redeemed_by is not None)
-                    redeem_state = "already_redeemed" if redeemed else "ready"
-                    next_action = "open_cabinet" if redeemed else "redeem_key"
-                    handoff_status = "key_redeemed" if redeemed else "key_issued"
-                    row.meta_json = _merge_order_meta(
-                        row,
-                        updates={
-                            "fulfillment_mode": "activation_key",
-                            "issued_key": {
-                                "code": activation_key,
-                                "state": issued_key_state,
-                                "issued_at": _safe_iso(getattr(card, "created_at", None)),
-                                "plan_code": str(row.plan_code or "1_month"),
-                            },
-                        },
-                    )
-                    s.commit()
-                else:
-                    issued_key_state = "unavailable"
-                    redeem_state = "unavailable"
-                    next_action = "contact_support"
-                    handoff_status = "key_unavailable"
-            else:
-                issued_key_state = "pending_payment"
-                redeem_state = "pending_payment"
-                next_action = "wait_for_payment"
-                handoff_status = "pending_payment"
-        return {
-            "ok": True,
-            "provider": provider_code,
-            "order_id": str(row.order_id or order_id),
-            "status": status,
-            "fulfillment_mode": fulfillment_mode,
-            "issued_key_state": issued_key_state,
-            "redeem_state": redeem_state,
-            "next_action": next_action,
-            "activation_handoff": _activation_handoff_payload(
-                status=handoff_status,
-                mode=fulfillment_mode,
-                activation_key=activation_key or None,
-            ),
-        }
-    finally:
-        s.close()
 
 
 @app.post("/api/payments/freekassa/orders/create", response_model=RubOrderActionOut)
@@ -7526,7 +7508,8 @@ async def gift_redeem(payload: GiftRedeemIn, request: Request, x_telegram_init_d
 
 
 @app.get("/api/access-keys/status/{key}")
-async def access_key_status(key: str) -> dict[str, Any]:
+async def access_key_status(key: str, request: Request) -> dict[str, Any]:
+    _enforce_beta_rate_limit("access_key_status", request)
     code = str(key or "").strip().upper()
     if not code:
         raise HTTPException(status_code=400, detail="Access key is required")
@@ -7551,6 +7534,7 @@ async def access_key_redeem(
 ) -> dict[str, Any]:
     auth_user = _require_auth_user(x_telegram_init_data, request=request)
     tg_id = int(auth_user.get("id", 0))
+    _enforce_beta_rate_limit("access_key_redeem", request, identity=f"tg:{tg_id}")
     code = str(payload.key or "").strip().upper()
     if not code:
         raise HTTPException(status_code=400, detail="Access key is required")
@@ -7740,6 +7724,7 @@ async def upload_ticket_attachment(
 ) -> dict:
     auth_user = _require_auth_user(x_telegram_init_data, request=request)
     tg_id = int(auth_user.get("id", 0))
+    _enforce_beta_rate_limit("ticket_upload", request, identity=f"tg:{tg_id}")
     raw_bytes = await request.body()
     uploaded = _store_support_upload(
         filename=x_upload_filename,
@@ -7762,6 +7747,7 @@ async def upload_ticket_attachment(
 async def create_user_ticket(payload: TicketCreateIn, request: Request, x_telegram_init_data: str = Header(default="")) -> dict:
     auth_user = _require_auth_user(x_telegram_init_data, request=request)
     tg_id = int(auth_user.get("id", 0))
+    _enforce_beta_rate_limit("ticket_create", request, identity=f"tg:{tg_id}")
     s = SessionLocal()
     try:
         ticket = get_user_active_ticket(s, tg_id)
@@ -8147,35 +8133,6 @@ async def admin_summary(request: Request, x_telegram_init_data: str = Header(def
                 "gift_redeemed": int(bonus_event_map.get("gift_redeemed", 0)),
                 "gift_denied": int(bonus_event_map.get("gift_redeem_denied", 0)),
             },
-            "shift_cockpit": {
-                "paid_accounts": int(paid_accounts),
-                "trial_accounts": int(trial_accounts),
-                "bonus_accounts": int(bonus_accounts),
-                "open_tickets": int(open_tickets),
-                "installs": {
-                    "unique_24h": int(unique_install_ids_24h),
-                    "unique_7d": int(unique_install_ids_7d),
-                },
-                "observer": {
-                    "seen_accounts_24h": int(observer_seen_accounts_24h),
-                    "watch_users": int(observer_watch_users),
-                    "suspicious_users": int(observer_suspicious_users),
-                },
-                "data_quality": {
-                    "metrics": metrics_quality_status,
-                    "app_installs": app_installs_quality_status,
-                    "observer": observer_quality_status,
-                },
-                "node_health": {
-                    "total": int(total_nodes),
-                    "healthy": int(healthy_nodes),
-                    "unhealthy": max(0, int(total_nodes) - int(healthy_nodes)),
-                    "stale_metrics": int(stale_metrics_nodes),
-                },
-                "rtt": {
-                    "avg_panel_latency_ms": avg_panel_latency_ms,
-                },
-            },
             "top_nodes": [
                 {
                     "code": n.code,
@@ -8189,6 +8146,168 @@ async def admin_summary(request: Request, x_telegram_init_data: str = Header(def
         }
     finally:
         s.close()
+
+
+ADMIN_PAYMENT_RECONCILE_STATUSES = {
+    "created",
+    "pending",
+    "paid",
+    "failed",
+    "cancelled",
+    "refunded",
+    "chargeback",
+    "manual_review",
+    "pending_verification",
+}
+
+
+def _admin_payment_event_payload(event: ExternalPaymentEvent | None) -> dict[str, Any] | None:
+    if not event:
+        return None
+    return {
+        "id": int(event.id),
+        "provider": str(event.provider or ""),
+        "event_type": str(event.event_type or ""),
+        "external_id": str(event.external_id or ""),
+        "order_id": str(event.order_id or "") or None,
+        "signature_ok": bool(event.signature_ok),
+        "processed_ok": bool(event.processed_ok),
+        "created_at": _safe_iso(event.created_at),
+    }
+
+
+def _admin_payment_order_payload(*, s, order: ExternalOrder) -> dict[str, Any]:
+    events_q = s.query(ExternalPaymentEvent).filter(
+        ExternalPaymentEvent.provider == str(order.provider or ""),
+        ExternalPaymentEvent.order_id == str(order.order_id or ""),
+    )
+    last_event = events_q.order_by(ExternalPaymentEvent.created_at.desc(), ExternalPaymentEvent.id.desc()).first()
+    event_count = events_q.count()
+    user = None
+    if getattr(order, "tg_id", None) is not None:
+        user = s.query(User).filter(User.tg_id == int(order.tg_id)).first()
+    return {
+        "id": int(order.id),
+        "order_id": str(order.order_id or ""),
+        "provider": str(order.provider or ""),
+        "tg_id": int(order.tg_id) if getattr(order, "tg_id", None) is not None else None,
+        "user": {
+            "tg_id": int(user.tg_id),
+            "username": user.username,
+            "display_name": getattr(user, "display_name", None),
+            "status": _user_effective_status(user),
+        }
+        if user
+        else None,
+        "plan_code": str(order.plan_code or "") or None,
+        "amount": float(order.amount or 0),
+        "currency": str(order.currency or "RUB"),
+        "status": str(order.status or "created"),
+        "source": str(order.source or "") or None,
+        "campaign": str(order.campaign or "") or None,
+        "promo_code": str(order.promo_code or "") or None,
+        "created_at": _safe_iso(order.created_at),
+        "paid_at": _safe_iso(order.paid_at),
+        "event_count": int(event_count or 0),
+        "last_event": _admin_payment_event_payload(last_event),
+    }
+
+
+@app.get("/api/admin/payments/orders")
+async def admin_payment_orders(
+    x_telegram_init_data: str = Header(default=""),
+    status: str = "",
+    provider: str = "",
+    q: str = "",
+    limit: int = 100,
+    offset: int = 0,
+) -> dict[str, Any]:
+    _require_admin(x_telegram_init_data)
+    lim = max(1, min(int(limit), 250))
+    off = max(0, int(offset))
+    status_norm = str(status or "").strip().lower()
+    provider_norm = _normalize_provider(provider) if provider else ""
+    q_norm = str(q or "").strip()
+    s = SessionLocal()
+    try:
+        query = s.query(ExternalOrder)
+        if status_norm:
+            query = query.filter(func.lower(func.coalesce(ExternalOrder.status, "")) == status_norm)
+        if provider_norm:
+            query = query.filter(func.lower(func.coalesce(ExternalOrder.provider, "")) == provider_norm)
+        if q_norm:
+            filters = [
+                ExternalOrder.order_id.ilike(f"%{q_norm}%"),
+                ExternalOrder.provider.ilike(f"%{q_norm}%"),
+                ExternalOrder.plan_code.ilike(f"%{q_norm}%"),
+                ExternalOrder.source.ilike(f"%{q_norm}%"),
+                ExternalOrder.campaign.ilike(f"%{q_norm}%"),
+                ExternalOrder.promo_code.ilike(f"%{q_norm}%"),
+            ]
+            if q_norm.lstrip("-").isdigit():
+                filters.append(ExternalOrder.tg_id == int(q_norm))
+            query = query.filter(or_(*filters))
+        total = query.count()
+        rows = query.order_by(ExternalOrder.created_at.desc(), ExternalOrder.id.desc()).offset(off).limit(lim).all()
+        return {
+            "orders": [_admin_payment_order_payload(s=s, order=row) for row in rows],
+            "total": int(total or 0),
+            "limit": lim,
+            "offset": off,
+        }
+    finally:
+        s.close()
+
+
+@app.post("/api/admin/payments/orders/{provider}/{order_id}/reconcile")
+async def admin_payment_order_reconcile(
+    provider: str,
+    order_id: str,
+    payload: AdminPaymentReconcileIn,
+    x_telegram_init_data: str = Header(default=""),
+) -> dict[str, Any]:
+    actor = int(_require_admin(x_telegram_init_data).get("id", 0))
+    provider_norm = _normalize_provider(provider)
+    order_norm = str(order_id or "").strip()
+    if not provider_norm or not order_norm:
+        raise HTTPException(status_code=400, detail="Provider and order_id are required")
+    status_norm = str(payload.status or "").strip().lower()
+    if status_norm and status_norm not in ADMIN_PAYMENT_RECONCILE_STATUSES:
+        raise HTTPException(status_code=400, detail="Unsupported payment status")
+    note = str(payload.note or "").strip()
+    s = SessionLocal()
+    try:
+        order = (
+            s.query(ExternalOrder)
+            .filter(ExternalOrder.provider == provider_norm, ExternalOrder.order_id == order_norm)
+            .first()
+        )
+        if not order:
+            raise HTTPException(status_code=404, detail="Order not found")
+        from_status = str(order.status or "created")
+        if status_norm:
+            order.status = status_norm
+            if status_norm == "paid" and not order.paid_at:
+                order.paid_at = _utcnow()
+        s.commit()
+        s.refresh(order)
+        order_payload = _admin_payment_order_payload(s=s, order=order)
+    finally:
+        s.close()
+
+    _audit_admin(
+        actor_tg_id=actor,
+        action="admin_payment_reconcile",
+        target_tg_id=int(order_payload["tg_id"]) if order_payload.get("tg_id") is not None else None,
+        meta={
+            "provider": provider_norm,
+            "order_id": order_norm,
+            "from_status": from_status,
+            "to_status": status_norm or from_status,
+            "note": note,
+        },
+    )
+    return {"ok": True, "order": order_payload}
 
 
 @app.get("/api/admin/users")
@@ -8531,6 +8650,13 @@ async def admin_user_card(tg_id: int, request: Request, x_telegram_init_data: st
             .limit(100)
             .all()
         )
+        payment_order_rows = (
+            s.query(ExternalOrder)
+            .filter(ExternalOrder.tg_id == int(tg_id))
+            .order_by(ExternalOrder.created_at.desc(), ExternalOrder.id.desc())
+            .limit(20)
+            .all()
+        )
         loyalty_snapshot = _user_loyalty_snapshot(s=s, user=user)
         observer_payload = build_admin_observer_block(s=s, tg_id=int(tg_id))
         sub_token = str(getattr(user, "sub_token", "") or "").strip()
@@ -8588,6 +8714,7 @@ async def admin_user_card(tg_id: int, request: Request, x_telegram_init_data: st
             }
             for row in recent_admin_rows
         ]
+        payment_order_payload = [_admin_payment_order_payload(s=s, order=row) for row in payment_order_rows]
     finally:
         s.close()
 
@@ -8603,6 +8730,7 @@ async def admin_user_card(tg_id: int, request: Request, x_telegram_init_data: st
         "key_policies": policy_payload,
         "key_history": history_payload,
         "admin_actions": recent_admin_payload,
+        "payment_orders": payment_order_payload,
         "risk": risk,
         "observer": observer_payload,
         "loyalty": loyalty_snapshot,

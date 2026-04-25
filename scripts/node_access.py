@@ -95,7 +95,7 @@ def connect_node(
     passwords_path = passwords_path or DEFAULT_PASSWORDS
     pw_map = parse_passwords(passwords_path, requested_codes=[code])
     password = os.getenv(f"NODE_PASS_{str(code or '').upper()}", "").strip() or pw_map.get(str(code or "").lower(), "").strip()
-    pkey = load_private_key(str(code or ""), key_dir=key_dir or DEFAULT_KEY_DIR)
+    pkey = load_private_key(str(code or ""), key_dir=key_dir or passwords_path.parent)
 
     attempts: list[tuple[str, dict[str, object]]] = []
     if pkey is not None:

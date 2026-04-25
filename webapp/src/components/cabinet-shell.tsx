@@ -52,6 +52,13 @@ const NAV_ITEMS: NavItem[] = [
     match: (pathname) => pathname.startsWith("/devices"),
   },
   {
+    href: "/statistics",
+    icon: "query_stats",
+    label: "Статистика",
+    description: "Безопасные сводки",
+    match: (pathname) => pathname.startsWith("/statistics"),
+  },
+  {
     href: "/downloads",
     icon: "download",
     label: "Загрузки",
@@ -70,11 +77,11 @@ const NAV_ITEMS: NavItem[] = [
     match: (pathname) => pathname.startsWith("/support"),
   },
   {
-    href: "/profile",
+    href: "/settings",
     icon: "account_circle",
-    label: "Профиль",
-    description: "Вход, тема и связанные каналы",
-    match: (pathname) => pathname.startsWith("/profile"),
+    label: "Настройки",
+    description: "Аккаунт и бонусы",
+    match: (pathname) => pathname.startsWith("/settings") || pathname.startsWith("/profile"),
   },
   {
     href: "/profile/#settings",
@@ -107,16 +114,16 @@ const ROUTE_META: Array<{ match: (pathname: string) => boolean; meta: RouteMeta 
     meta: { title: "Устройства", subtitle: "Что уже связано с аккаунтом и как спокойно перенести доступ." },
   },
   {
+    match: (pathname) => pathname.startsWith("/statistics"),
+    meta: { title: "Статистика", subtitle: "Безопасные сводки без личных ссылок и технических деталей." },
+  },
+  {
     match: (pathname) => pathname.startsWith("/support"),
     meta: { title: "Поддержка", subtitle: "Асинхронные кейсы, вложения и история обращений без потери контекста." },
   },
   {
-    match: (pathname) => pathname.startsWith("/profile"),
-    meta: { title: "Профиль", subtitle: "Вход, тема, связанные каналы и безопасные способы вернуться в доступ." },
-  },
-  {
-    match: (pathname) => pathname.startsWith("/settings"),
-    meta: { title: "Настройки", subtitle: "Тема, вход и безопасные действия кабинета." },
+    match: (pathname) => pathname.startsWith("/settings") || pathname.startsWith("/profile"),
+    meta: { title: "Настройки", subtitle: "Аккаунт, связанные каналы и понятные бонусные действия." },
   },
 ];
 
@@ -416,8 +423,10 @@ export default function CabinetShell({ children }: { children: ReactNode }) {
                 <span className={`rounded-full px-3 py-2 text-xs font-semibold uppercase tracking-[0.14em] ${dash.is_active ? "bg-emerald-50 text-emerald-800 dark:bg-emerald-400/10 dark:text-emerald-200" : "bg-amber-50 text-amber-800 dark:bg-amber-400/10 dark:text-amber-200"}`}>
                   {statusLabel}
                 </span>
-                <CabinetThemeToggle className="min-w-11" />
-                <AppRouteLink href="/profile/" className="inline-flex items-center gap-3 rounded-full border border-slate-200/80 bg-white px-2 py-2 text-sm shadow-sm dark:border-white/10 dark:bg-white/[0.04]">
+                <button type="button" onClick={() => setDark((value) => !value)} className="outline-btn inline-flex h-11 w-11 items-center justify-center rounded-2xl" aria-label="Переключить тему">
+                  <span className="material-symbols-rounded">{dark ? "light_mode" : "dark_mode"}</span>
+                </button>
+                <AppRouteLink href="/settings/" className="inline-flex items-center gap-3 rounded-full border border-slate-200/80 bg-white px-2 py-2 text-sm shadow-sm dark:border-white/10 dark:bg-white/[0.04]">
                   <span className="grid h-9 w-9 place-items-center rounded-full bg-emerald-900 text-sm font-semibold uppercase text-white dark:bg-emerald-700">
                     {profileMark(user.username, user.tg_id)}
                   </span>

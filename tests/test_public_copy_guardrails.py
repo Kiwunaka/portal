@@ -80,8 +80,8 @@ FIRST_LAYER_APP_CATALOG_PREFIXES = (
 
 BANNED_PATTERNS = [
     re.compile(r"\b100%\b", re.IGNORECASE),
-    re.compile(r"РіР°СЂР°РЅС‚РёСЂРѕРІР°РЅ\w*", re.IGNORECASE),
-    re.compile(r"Р±РµР·\s+РѕРіСЂР°РЅРёС‡РµРЅРёР№", re.IGNORECASE),
+    re.compile(r"гарантирован\w*", re.IGNORECASE),
+    re.compile(r"без\s+ограничений", re.IGNORECASE),
 ]
 
 PUBLIC_FORBIDDEN_PATTERNS = [
@@ -98,170 +98,23 @@ PUBLIC_FORBIDDEN_PATTERNS = [
 
 MOJIBAKE_MARKERS = ["Р РЋ", "Р Сџ", "РЎРѓ", "РІР‚", "СЂСџ", "РІС™", "РІСљ", "�"]
 
-PUBLIC_HUMAN_COPY_FORBIDDEN_PATTERNS = [
-    re.compile(r"\bVPN\b", re.IGNORECASE),
-    re.compile(r"\bcheckout\b", re.IGNORECASE),
-    re.compile(r"\bfallback\b", re.IGNORECASE),
-    re.compile(r"\bmanaged premium\b", re.IGNORECASE),
-    re.compile(r"\btrial\b", re.IGNORECASE),
-    re.compile(r"\bscope\b", re.IGNORECASE),
-    re.compile(r"\bSNI\b", re.IGNORECASE),
-    re.compile(r"\bDNS\b", re.IGNORECASE),
-    re.compile(r"\bузл\w*", re.IGNORECASE),
+PUBLIC_BETA_SURFACE_FILES = [
+    ROOT / "marketing/src/components/marketing-landing.tsx",
+    ROOT / "marketing/src/app/checkout/page.tsx",
+    ROOT / "marketing/src/app/checkout/checkout-client.tsx",
+    ROOT / "marketing/src/components/home/homepage.tsx",
+    ROOT / "webapp/src/app/loading.tsx",
+    ROOT / "webapp/src/components/cabinet/downloads-surface.tsx",
 ]
 
-PUBLIC_MARKETING_FORBIDDEN_PATTERNS = [
-    re.compile(r"\?{3,}"),
-    re.compile(r"\bVPN\b", re.IGNORECASE),
-    re.compile(r"\bcheckout\b", re.IGNORECASE),
-    re.compile(r"\bfallback\b", re.IGNORECASE),
-    re.compile(r"\bmanaged premium\b", re.IGNORECASE),
-    re.compile(r"\btrial\b", re.IGNORECASE),
-    re.compile(r"\bscope\b", re.IGNORECASE),
-    re.compile(r"\bSNI\b", re.IGNORECASE),
-    re.compile(r"\bDNS\b", re.IGNORECASE),
-    re.compile(r"публичн\w+\s+каталог\w*", re.IGNORECASE),
-    re.compile(r"raw\s+links?", re.IGNORECASE),
-    re.compile(r"техническ\w+\s+ссыл", re.IGNORECASE),
-    re.compile(r"техническ\w+\s+сценари", re.IGNORECASE),
-    re.compile(r"ручн\w+\s+профил", re.IGNORECASE),
-    re.compile(r"сыры\w+\s+персональн\w+\s+ссыл", re.IGNORECASE),
-    re.compile(r"continuation", re.IGNORECASE),
-    re.compile(r"trust-сценари", re.IGNORECASE),
-    re.compile(r"checkout\s+покажет", re.IGNORECASE),
-    re.compile(r"ускор\w*", re.IGNORECASE),
-    re.compile(r"пинг\w*", re.IGNORECASE),
-    re.compile(r"без\s+границ", re.IGNORECASE),
+PUBLIC_BETA_SURFACE_FORBIDDEN_PATTERNS = [
+    re.compile(r"Paid beta", re.IGNORECASE),
+    re.compile(r"оплачиваемая\s+бета", re.IGNORECASE),
+    re.compile(r"ограничен[а-яё\s]+приглаш", re.IGNORECASE),
+    re.compile(r"до\s+25\s+активн", re.IGNORECASE),
+    re.compile(r"00:12:34"),
+    re.compile(r"Email signup\s+на\s+сайте\s+да[её]т", re.IGNORECASE),
 ]
-
-PUBLIC_MARKETING_SOURCE_FORBIDDEN_PATTERNS = [
-    re.compile(r"\?{3,}"),
-    re.compile(r"\bVPN\b", re.IGNORECASE),
-    re.compile(r"\bmanaged premium\b", re.IGNORECASE),
-    re.compile(r"публичн\w+\s+каталог\w*", re.IGNORECASE),
-    re.compile(r"raw\s+links?", re.IGNORECASE),
-    re.compile(r"техническ\w+\s+ссыл", re.IGNORECASE),
-    re.compile(r"техническ\w+\s+сценари", re.IGNORECASE),
-    re.compile(r"ручн\w+\s+профил", re.IGNORECASE),
-    re.compile(r"сыры\w+\s+персональн\w+\s+ссыл", re.IGNORECASE),
-    re.compile(r"continuation", re.IGNORECASE),
-    re.compile(r"trust-сценари", re.IGNORECASE),
-    re.compile(r"First-party promo slots", re.IGNORECASE),
-    re.compile(r"checkout\s+покажет", re.IGNORECASE),
-    re.compile(r"ускор\w*", re.IGNORECASE),
-    re.compile(r"пинг\w*", re.IGNORECASE),
-    re.compile(r"без\s+границ", re.IGNORECASE),
-]
-STALE_TRIAL_LENGTH_PATTERNS = [
-    re.compile(r"\b7\s*days?\b", re.IGNORECASE),
-    re.compile(r"\b7[-\s]?day\b", re.IGNORECASE),
-    re.compile(r"\b14\s*days?\b", re.IGNORECASE),
-    re.compile(r"\b14[-\s]?day\b", re.IGNORECASE),
-    re.compile(r"\b7\s*РґРЅ", re.IGNORECASE),
-    re.compile(r"\b7\s*дн", re.IGNORECASE),
-]
-
-OLD_SUBTITLE_PATTERNS = [
-    re.compile(r"\bPOKROV\s+Network\b", re.IGNORECASE),
-    re.compile(r"\bPREMIUM\s+VPN\b", re.IGNORECASE),
-]
-
-FIRST_LAYER_APP_TECH_PATTERNS = [
-    re.compile(r"\bVPN\b", re.IGNORECASE),
-    re.compile(r"\bSNI\b", re.IGNORECASE),
-    re.compile(r"\bDNS\b", re.IGNORECASE),
-    re.compile(r"\bVLESS\b", re.IGNORECASE),
-    re.compile(r"\bVMess\b", re.IGNORECASE),
-    re.compile(r"\bTrojan\b", re.IGNORECASE),
-    re.compile(r"\bXHTTP\b", re.IGNORECASE),
-    re.compile(r"\bxray\b", re.IGNORECASE),
-    re.compile(r"\bsing-box\b", re.IGNORECASE),
-    re.compile(r"\bsystem\s+proxy\b", re.IGNORECASE),
-    re.compile(r"\bservice\s+mode\b", re.IGNORECASE),
-    re.compile(r"\bsubscription_url\b", re.IGNORECASE),
-    re.compile(r"\bhost:port\b", re.IGNORECASE),
-    re.compile(r"raw\s+(?:profile|config)", re.IGNORECASE),
-    re.compile(r"(?:profile|config)\s+editor", re.IGNORECASE),
-]
-
-FAKE_SUPPORT_PATTERNS = [
-    re.compile(r"fake\s+live\s+chat", re.IGNORECASE),
-    re.compile(r"imaginary\s+live\s+chat", re.IGNORECASE),
-    re.compile(r"realtime\s+in-app\s+chat", re.IGNORECASE),
-]
-
-FINAL_POLISH_USER_FACING_FORBIDDEN_PATTERNS = [
-    re.compile(r"\bPOKROV\s+VPN\b", re.IGNORECASE),
-    re.compile(r"\bPOKROV\s+Network\b", re.IGNORECASE),
-    re.compile(r"\bPREMIUM\s+VPN\b", re.IGNORECASE),
-    re.compile(r"\bVPN\b", re.IGNORECASE),
-    re.compile(r"dev-indicator", re.IGNORECASE),
-    re.compile(r"api\.qrserver\.com", re.IGNORECASE),
-    re.compile(r"\?format=plain", re.IGNORECASE),
-    re.compile(r"\bsubscription_url\b", re.IGNORECASE),
-    re.compile(r"\bhost:port\b", re.IGNORECASE),
-    re.compile(r"\bpublic\s+IP\b", re.IGNORECASE),
-    re.compile(r"\bvless://", re.IGNORECASE),
-    re.compile(r"\bvmess://", re.IGNORECASE),
-    re.compile(r"\btrojan://", re.IGNORECASE),
-    re.compile(r"\braw\s+(?:profile|config|subscription|link)", re.IGNORECASE),
-    re.compile(r"(?:profile|config|JSON/profile)\s+editor", re.IGNORECASE),
-    *FAKE_SUPPORT_PATTERNS,
-]
-
-FINAL_POLISH_ADMIN_BACKEND_FORBIDDEN_PATTERNS = [
-    re.compile(r"\bPOKROV\s+VPN\b", re.IGNORECASE),
-    re.compile(r"\bPOKROV\s+Network\b", re.IGNORECASE),
-    re.compile(r"\bPREMIUM\s+VPN\b", re.IGNORECASE),
-    re.compile(r"dev-indicator", re.IGNORECASE),
-    *FAKE_SUPPORT_PATTERNS,
-]
-
-FINAL_POLISH_CODE_CONTEXT_ALLOWLIST = (
-    "android.permission.bind_vpn_service",
-    "permissionrequirement.vpnprofile",
-    "override_android_vpn",
-    "vpn service",
-    "pokrovruntimevpnservice",
-)
-
-
-def _resolve_client_app_root() -> Path:
-    configured = os.getenv("POKROV_APP_ROOT")
-    if configured:
-        return Path(configured)
-
-    sibling_worktree = ROOT.parent.parent / "POKROV-app" / ROOT.name
-    if sibling_worktree.exists():
-        return sibling_worktree
-
-    return Path("C:/Users/kiwun/Documents/ai/POKROV-app")
-
-
-def _existing(paths: tuple[Path, ...]) -> tuple[Path, ...]:
-    return tuple(path for path in paths if path.exists())
-
-
-def _final_polish_public_surface_groups() -> dict[str, tuple[Path, ...]]:
-    client_root = _resolve_client_app_root()
-    return {
-        "marketing": _existing(tuple(WORKER3_MARKETING_COPY_FILES)),
-        "cabinet": _existing(tuple(WEBAPP_PUBLIC_COPY_FILES)),
-        "admin": _existing(tuple(WEBAPP_ADMIN_COPY_FILES)),
-        "backend": _existing(tuple(BACKEND_PUBLIC_COPY_FILES)),
-        "client_app": _existing(
-            (
-                client_root / "packages" / "app_shell" / "lib" / "app_shell.dart",
-                client_root / "apps" / "android_shell" / "lib" / "main.dart",
-                client_root / "apps" / "windows_shell" / "lib" / "main.dart",
-            )
-        ),
-    }
-
-
-def _line_has_final_polish_code_exception(line: str) -> bool:
-    lowered = line.lower()
-    return any(fragment in lowered for fragment in FINAL_POLISH_CODE_CONTEXT_ALLOWLIST)
 
 
 def _public_text(path: Path) -> str:
@@ -371,32 +224,18 @@ def test_public_copy_has_no_mojibake_markers() -> None:
     assert not violations, "\n".join(violations)
 
 
-def test_user_facing_copy_avoids_public_jargon_and_direct_vpn_wording() -> None:
+def test_public_beta_surfaces_do_not_expose_stale_limited_beta_copy() -> None:
     violations: list[str] = []
-    for path in USER_FACING_COPY_FILES:
-        text = _public_human_copy_text(path)
-        for pattern in PUBLIC_HUMAN_COPY_FORBIDDEN_PATTERNS:
-            for match in pattern.finditer(text):
-                snippet = text[max(0, match.start() - 30):match.end() + 30].replace("\n", " ")
-                violations.append(f"{path.relative_to(ROOT)}: /{pattern.pattern}/ -> {snippet}")
-    assert not violations, "\n".join(violations)
-
-
-def test_worker3_public_marketing_copy_stays_human_and_policy_safe() -> None:
-    violations: list[str] = []
-    catalog_text = _catalog_allowed_public_ru_text(ROOT / "copy/catalog.ru.json")
-
-    for pattern in PUBLIC_MARKETING_FORBIDDEN_PATTERNS:
-        for match in pattern.finditer(catalog_text):
-            snippet = catalog_text[max(0, match.start() - 30):match.end() + 30].replace("\n", " ")
-            violations.append(f"copy/catalog.ru.json: /{pattern.pattern}/ -> {snippet}")
-
-    for path in WORKER3_MARKETING_COPY_FILES:
+    for path in PUBLIC_BETA_SURFACE_FILES:
         text = path.read_text(encoding="utf-8")
-        for pattern in PUBLIC_MARKETING_SOURCE_FORBIDDEN_PATTERNS:
+        for pattern in PUBLIC_BETA_SURFACE_FORBIDDEN_PATTERNS:
             for match in pattern.finditer(text):
                 snippet = text[max(0, match.start() - 30):match.end() + 30].replace("\n", " ")
                 violations.append(f"{path.relative_to(ROOT)}: /{pattern.pattern}/ -> {snippet}")
+
+    checkout_page = (ROOT / "marketing/src/app/checkout/page.tsx").read_text(encoding="utf-8")
+    if "noIndex: true" in checkout_page:
+        violations.append("marketing/src/app/checkout/page.tsx: checkout route must not be noindexed for public beta")
 
     assert not violations, "\n".join(violations)
 

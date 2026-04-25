@@ -4,14 +4,14 @@
 @custom-variant dark (&:where(.dark, .dark *));
 
 :root {
-  --bg: var(--pokrov-bg, #f6f1e8);
+  --bg: var(--pokrov-bg, #f8faf7);
   --bg-dark: #0f1714;
-  --text: var(--pokrov-text, #15211c);
+  --text: var(--pokrov-text, #20292d);
   --text-dark: var(--pokrov-text-inverse, #edf4ef);
-  --primary: var(--pokrov-emerald-strong, #0b4832);
-  --primary-2: var(--pokrov-emerald, #0f5a3d);
-  --accent: var(--pokrov-gold-soft, #c58a2a);
-  --line: var(--pokrov-line, rgba(11, 72, 50, 0.14));
+  --primary: var(--pokrov-emerald-strong, #0f5f43);
+  --primary-2: var(--pokrov-emerald, #176d4d);
+  --accent: var(--pokrov-mint-strong, #dff2e8);
+  --line: var(--pokrov-line, #dfe8e2);
   --line-dark: var(--pokrov-line-dark, rgba(202, 215, 206, 0.1));
   --glass: var(--pokrov-surface, rgba(255, 255, 255, 0.76));
   --glass-dark: var(--pokrov-surface-dark, rgba(15, 22, 18, 0.84));
@@ -39,10 +39,8 @@ body {
   margin: 0;
   color: var(--text);
   background:
-    radial-gradient(circle at 8% 10%, color-mix(in srgb, var(--primary) 14%, transparent), transparent 42%),
-    radial-gradient(circle at 88% 4%, color-mix(in srgb, var(--accent) 14%, transparent), transparent 36%),
-    radial-gradient(circle at 55% 95%, rgba(52, 121, 92, 0.12), transparent 45%),
-    linear-gradient(140deg, color-mix(in srgb, var(--bg) 72%, #ffffff) 0%, color-mix(in srgb, var(--bg) 84%, var(--pokrov-bg-alt, #ece5d8)) 48%, color-mix(in srgb, var(--bg) 68%, #edf4ef) 100%);
+    linear-gradient(180deg, rgba(255, 255, 255, 0.82), rgba(255, 255, 255, 0.42)),
+    linear-gradient(180deg, var(--bg) 0%, #eef7f2 100%);
   transition: background 0.35s ease;
   transform: translateZ(0);
 }
@@ -598,7 +596,7 @@ body.tg-keyboard-open .tg-bottom-nav {
 
 .node-card:hover {
   transform: translateY(-1px);
-  box-shadow: 0 8px 24px -8px rgba(124, 44, 191, 0.2);
+  box-shadow: 0 8px 24px -8px rgba(23, 109, 77, 0.2);
 }
 
 .dark .node-card {
@@ -671,11 +669,11 @@ body.tg-keyboard-open .tg-bottom-nav {
   --bg: var(--pokrov-bg, #f8faf7);
   --bg-dark: #111715;
   --text: var(--pokrov-text, #20292d);
-  --text-dark: var(--pokrov-text-inverse, #f7fbf8);
+  --text-dark: var(--pokrov-text-inverse, #f7f5ef);
   --primary: var(--pokrov-emerald, #176d4d);
-  --primary-2: var(--pokrov-emerald-strong, #10563d);
-  --accent: #dfe8e2;
-  --line: var(--pokrov-line, rgba(32, 41, 45, 0.11));
+  --primary-2: var(--pokrov-emerald-strong, #0f5f43);
+  --accent: var(--pokrov-mint-strong, #dff2e8);
+  --line: var(--pokrov-line, #dfe8e2);
   --line-dark: var(--pokrov-line-dark, rgba(239, 243, 241, 0.12));
   --glass: var(--pokrov-surface-strong, rgba(255, 255, 255, 0.98));
   --glass-dark: var(--pokrov-surface-dark-strong, rgba(17, 23, 21, 0.96));
@@ -685,7 +683,8 @@ body.tg-keyboard-open .tg-bottom-nav {
 
 body {
   background:
-    linear-gradient(180deg, #f8faf7 0%, #ffffff 44%, #eef8f2 100%);
+    linear-gradient(180deg, rgba(255, 255, 255, 0.86), rgba(255, 255, 255, 0.52)),
+    linear-gradient(180deg, var(--bg) 0%, color-mix(in srgb, var(--bg) 86%, #eaf6ef) 100%);
 }
 
 .dark body {

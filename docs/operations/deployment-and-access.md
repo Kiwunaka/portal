@@ -1,6 +1,6 @@
 # Deployment And Access
 
-Last updated: 2026-04-23
+Last updated: 2026-04-25
 
 ## Document Status
 
@@ -54,6 +54,7 @@ RF access rule:
 - keep a hard kill switch for the `rf1` VIP/manual contour so it can be withdrawn without touching the standard consumer path
 - RU ingress / RF reserve work is currently backlog-only
 - do not resume `mini` ingress experiments, do not provision `rf1`, and do not treat this contour as active work unless the product owner explicitly asks to return to it
+- owner-approved exception on `2026-04-24`: the live Telegram-only MTProto proxy runs on the dedicated free node (`151.245.217.23:9443`) through `portal-mtproto.service`; this is not a control-plane service and must not displace the free pool's existing `x-ui` listener on `tcp/443`
 - `mini` may be unavailable and must not be treated as a guaranteed RU probe origin
 - RU probe readiness itself is a tracked operational dependency for release confidence
 
@@ -79,6 +80,8 @@ Rules:
 - do not duplicate secret values into documentation
 - do not print raw secrets into commit messages or reports
 - document locations and usage only
+- release gate and deploy handoffs may name secret locations, environment variable names, and redacted command shapes, but must not include raw token values, webhook payloads, subscription links, MTProto links, payment identifiers, Telegram IDs, or private keys
+- if a command tail or remote log contains a bearer token, callback signature, provider payload, personal connection URL, or full user identifier, redact the value before moving it into `docs/`, work-order evidence, screenshots, or release-captain handoff
 
 ## Canonical Deploy Scripts
 
@@ -170,6 +173,27 @@ Status:
 - previous `mini` canary experiments and the `rf1` reserve-bridge idea are now in backlog
 - keep the script as historical/operator tooling only
 - do not run this script, do not continue the experiment, and do not evolve the contour unless the product owner explicitly requests a return to this work
+
+### Telegram MTProto proxy on free node
+
+- [remote_install_mtproto_proxy.py](C:/Users/kiwun/Documents/ai/VPN/scripts/remote_install_mtproto_proxy.py)
+
+Current state:
+
+- the dedicated free node (`151.245.217.23`) hosts `portal-mtproto.service` on `tcp/9443`
+- `x-ui.service` continues to own `tcp/443` on the free node for normal free-pool delivery
+- the previous `mini:443` MTProto attempt is disabled because `mini` cannot reliably reach Telegram hostnames and reached only one checked Telegram DC endpoint
+- the MTProto secret and share links live only in `/etc/portal-mtproto.env` on the free node; do not copy them into docs, commits, or handoff reports
+- `portal-mtproto-config-refresh.timer` is enabled on the free node because it can reach `core.telegram.org`
+- the official Telegram MTProxy source currently needs a PID namespace workaround on this host, so the systemd unit starts it through `unshare --fork --pid --mount-proc`
+
+Typical install or refresh from the repository root:
+
+```powershell
+python scripts/remote_install_mtproto_proxy.py --node-code free --node-host 151.245.217.23 --ssh-port 29374 --listen-port 9443 --enable-refresh-timer
+```
+
+If the endpoint must be registered with Telegram, send `151.245.217.23:9443` or an approved DNS name that resolves to `151.245.217.23` and still uses port `9443`.
 
 ### Feedback bot service install
 
@@ -328,6 +352,31 @@ If deploy is blocked, record:
 - what remains blocked
 - rollback-safe state
 
+## Paid Beta Deploy And Rollback Checklist
+
+Before any paid beta deploy, capture:
+
+- local platform branch, local HEAD, `origin/master` HEAD, and whether the branch is behind the promoted platform line
+- if a client artifact or handoff is part of the deploy, local client branch, local HEAD, `origin/main` HEAD, and the exact `POKROV-app` release metadata path
+- exact dirty patch state for any local dirty beta candidate, including generated report path and changed-file list
+- selected gate scope: full or quick, client platform build gates included or not included, Android physical audit included or blocked, and payment callback suite status
+- production database backup proof before migrations or data-shaping changes, plus the restore or rollback confidence level
+- deployed version or commit before change, new version or commit after change, static artifact identifiers, and release-handoff file or env source if used
+- emergency switch evidence for checkout disable, trial disable, download disable, Telegram bonus pause, payment webhook fulfillment pause, and manual access extension/revoke
+- current deployed runtime state for `portal-api`, `portal-bot`, `portal-helpbot`, `portal-feedbackbot`, `caddy`, `x-ui`, metrics timers, and observer timers when they are in scope
+
+Rollback is acceptable only when the handoff states:
+
+- backend rollback command or previous deployed commit/package path
+- static rollback source, including the preserved static backup directory when static surfaces changed
+- release-handoff rollback source for `APP_*` download URLs when artifact links changed
+- node rollout rollback path, including `remote_apply_node_qdisc.py disable` and `remote_apply_node_qdisc.py rollback` when qdisc was touched
+- transport rollback path, including restoring `defaults.transport_profile=legacy_reality_fallback` and leaving dormant node catalog metadata intact
+- database rollback position, restore source, or explicit no-migration/no-DB-change statement
+- verification commands to rerun after rollback from `current-origin`, `brain-origin`, and RU-origin where access allows
+
+If any live check is blocked by access, label it as `BLOCKED_BY_ACCESS` instead of implying a pass. If a check is intentionally skipped because it is outside the selected gate scope, label it as `NOT_REQUESTED` or `SKIPPED` and explain why it is still required before public or paid-beta signoff.
+
 ## Current Deploy Contour
 
 The documented full release wrapper can currently chain:
@@ -377,6 +426,7 @@ At minimum, verify:
 Release gate rule:
 
 - full `release_gate_check.py` should stay green; by default that means the release `pytest` matrix, admin/auth regression, `client_security_smoke.py`, `python scripts/run_client_release_gate.py test --suite full`, `api_lifecycle_smoke.py`, link checks, marketing/webapp production builds, admin webapp smoke, browser E2E from `webapp/e2e/`, and `ui_visual_smoke.py`
+- the release gate report must classify what the run actually proved: `current-origin check`, `brain-origin check`, `RU-origin check`, Android physical audit, runtime app-download smoke, and client platform builds must show `PASS`, `FAIL`, `BLOCKED_BY_ACCESS`, `SKIPPED`, or `NOT_REQUESTED` rather than relying on one global pass/fail line
 - `python scripts/run_client_release_gate.py preflight` should be green before trusting any wrapper-driven client gate result; a missing or incomplete `POKROV-app` seed workspace is a release blocker even if other repo-local tests happen to pass
 - marketing release readiness also requires `python scripts/check-links.py` and `python scripts/ui_visual_smoke.py` to stay green after every CTA, legal, SEO, or branding change
 - `verify_brain_ready.py` should validate both the canonical connect host and the legacy API compatibility path before a release is considered healthy

@@ -62,6 +62,49 @@ class NodeAccessTests(unittest.TestCase):
         self.assertIn("RUSSIA_private.ppk", names)
         self.assertIn("RUSSIA.ppk", names)
 
+    def test_connect_node_uses_password_file_parent_as_default_key_dir(self) -> None:
+        import node_access
+
+        seen_key_dirs: list[Path] = []
+
+        class FakeTransport:
+            def set_keepalive(self, _seconds: int) -> None:
+                return None
+
+        class FakeClient:
+            def set_missing_host_key_policy(self, _policy) -> None:
+                return None
+
+            def connect(self, host, port, username, timeout, banner_timeout, auth_timeout, allow_agent, look_for_keys, **auth):
+                if not auth.get("pkey"):
+                    raise RuntimeError("expected key auth")
+                return None
+
+            def get_transport(self):
+                return FakeTransport()
+
+            def close(self) -> None:
+                return None
+
+        def fake_load_private_key(code: str, *, key_dir: Path | None = None):
+            seen_key_dirs.append(Path(key_dir or ""))
+            return object()
+
+        with tempfile.TemporaryDirectory() as tmp:
+            passwords_path = Path(tmp) / "PASSWORDS.txt"
+            passwords_path.write_text("", encoding="utf-8")
+            with patch.object(node_access, "load_private_key", side_effect=fake_load_private_key), patch.object(
+                node_access, "parse_passwords", return_value={}
+            ), patch.object(node_access.paramiko, "SSHClient", side_effect=lambda: FakeClient()):
+                _ssh, method = node_access.connect_node(
+                    code="free",
+                    host="151.245.217.23",
+                    passwords_path=passwords_path,
+                )
+
+        self.assertEqual(method, "key")
+        self.assertEqual(seen_key_dirs, [passwords_path.parent])
+
 
 if __name__ == "__main__":
     unittest.main()

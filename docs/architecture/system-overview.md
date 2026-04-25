@@ -1,6 +1,6 @@
 # POKROV System Overview
 
-Last updated: 2026-04-24
+Last updated: 2026-04-25
 
 ## Document Status
 
@@ -275,6 +275,7 @@ Architecture rule:
 - `webapp` renewal remains continuation-only and should defer to the same hosted key-first flow
 - bot purchase flow remains valid, but it does not replace app-first public onboarding
 - raw subscription links stay manual-recovery-only and must not reappear as the default commerce story
+- payment callbacks normalize signed provider events into local statuses before fulfillment; only `paid` result events can extend access, while `failed`, `cancelled`, `refunded`, `chargeback`, `pending_verification`, and `manual_review` remain admin-visible reconciliation records without automatic access extension
 
 ### Public Web Journey
 
@@ -348,6 +349,7 @@ RF host rule:
 - keep `rf1` outside the default runtime delivery pool in phase 1
 - RU ingress / RF reserve experiments are currently in backlog
 - do not spend implementation time on `mini` ingress variants or `rf1` promotion until the product owner explicitly requests a return to this work
+- owner-approved exception on `2026-04-24`: the dedicated free node (`151.245.217.23`) runs `portal-mtproto.service` as a Telegram-only MTProto proxy on `tcp/9443`; it is not a new generic delivery role and must not displace the node's normal `x-ui` listener on `tcp/443`
 
 ## Public Hostnames And Migration Roles
 

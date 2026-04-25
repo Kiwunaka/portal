@@ -1,0 +1,10 @@
+﻿ docs/architecture/system-overview.md         |   3 +-
+ docs/developer/developer-guide.md            |  10 ++-
+ docs/developer/repository-map.md             |   3 +-
+ docs/operations/deployment-and-access.md     |  24 ++++++-
+ docs/operations/monitoring-and-visibility.md |  12 +++-
+ scripts/manifest.yaml                        |   1 +
+ webapp/src/app/globals.css                   |  36 +++++-----
+ webapp/src/app/page.tsx                      | 103 ++++++++++++++-------------
+ webapp/src/components/cabinet-entry-auth.tsx |  18 +++--
+ 9 files changed, 131 insertions(+), 79 deletions(-)

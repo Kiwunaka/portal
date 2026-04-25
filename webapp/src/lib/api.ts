@@ -681,6 +681,48 @@ export type AdminUserRow = {
   observer_updated_at?: string | null;
 };
 
+export type AdminPaymentEvent = {
+  id: number;
+  provider: string;
+  event_type: string;
+  external_id: string;
+  order_id?: string | null;
+  signature_ok: boolean;
+  processed_ok: boolean;
+  created_at?: string | null;
+};
+
+export type AdminPaymentOrder = {
+  id: number;
+  order_id: string;
+  provider: string;
+  tg_id?: number | null;
+  user?: {
+    tg_id: number;
+    username?: string | null;
+    display_name?: string | null;
+    status?: string | null;
+  } | null;
+  plan_code?: string | null;
+  amount: number;
+  currency: string;
+  status: string;
+  source?: string | null;
+  campaign?: string | null;
+  promo_code?: string | null;
+  created_at?: string | null;
+  paid_at?: string | null;
+  event_count: number;
+  last_event?: AdminPaymentEvent | null;
+};
+
+export type AdminPaymentOrdersResponse = {
+  orders: AdminPaymentOrder[];
+  total: number;
+  limit: number;
+  offset: number;
+};
+
 export type AdminUserCard = {
   user: {
     tg_id: number;
@@ -714,6 +756,7 @@ export type AdminUserCard = {
   key_history?: AdminUserKeyHistoryRow[];
   key_policies?: AdminUserKeyPolicy[];
   admin_actions?: AdminAuditRow[];
+  payment_orders?: AdminPaymentOrder[];
   risk?: AdminUserRisk;
   loyalty?: AdminUserLoyalty;
   observer: AdminObserverBlock;
@@ -2519,6 +2562,60 @@ function normalizeAdminNetworkRolloutConfig(payload: Partial<AdminNetworkRollout
   };
 }
 
+function normalizeAdminPaymentEvent(payload: Partial<AdminPaymentEvent> | null | undefined): AdminPaymentEvent | null {
+  if (!payload) return null;
+  return {
+    id: Number(payload.id || 0),
+    provider: String(payload.provider || ""),
+    event_type: String(payload.event_type || ""),
+    external_id: String(payload.external_id || ""),
+    order_id: payload.order_id ?? null,
+    signature_ok: Boolean(payload.signature_ok),
+    processed_ok: Boolean(payload.processed_ok),
+    created_at: payload.created_at ?? null,
+  };
+}
+
+function normalizeAdminPaymentOrder(payload: Partial<AdminPaymentOrder> | null | undefined): AdminPaymentOrder {
+  const data = payload || {};
+  const user = data.user || null;
+  return {
+    id: Number(data.id || 0),
+    order_id: String(data.order_id || ""),
+    provider: String(data.provider || ""),
+    tg_id: data.tg_id == null ? null : Number(data.tg_id),
+    user: user
+      ? {
+          tg_id: Number(user.tg_id || 0),
+          username: user.username ?? null,
+          display_name: user.display_name ?? null,
+          status: user.status ?? null,
+        }
+      : null,
+    plan_code: data.plan_code ?? null,
+    amount: Number(data.amount || 0),
+    currency: String(data.currency || "RUB"),
+    status: String(data.status || "created"),
+    source: data.source ?? null,
+    campaign: data.campaign ?? null,
+    promo_code: data.promo_code ?? null,
+    created_at: data.created_at ?? null,
+    paid_at: data.paid_at ?? null,
+    event_count: Number(data.event_count || 0),
+    last_event: normalizeAdminPaymentEvent(data.last_event),
+  };
+}
+
+function normalizeAdminPaymentOrdersResponse(payload: Partial<AdminPaymentOrdersResponse> | null | undefined): AdminPaymentOrdersResponse {
+  const data = payload || {};
+  return {
+    orders: Array.isArray(data.orders) ? data.orders.map((row) => normalizeAdminPaymentOrder(row)) : [],
+    total: Number(data.total || 0),
+    limit: Number(data.limit || 0),
+    offset: Number(data.offset || 0),
+  };
+}
+
 function normalizeAdminUserCard(payload: Partial<AdminUserCard> | null | undefined): AdminUserCard {
   const data = payload || {};
   const user = data.user || ({} as AdminUserCard["user"]);
@@ -2580,6 +2677,7 @@ function normalizeAdminUserCard(payload: Partial<AdminUserCard> | null | undefin
     key_history: Array.isArray(data.key_history) ? data.key_history : [],
     key_policies: Array.isArray(data.key_policies) ? data.key_policies : [],
     admin_actions: Array.isArray(data.admin_actions) ? data.admin_actions : [],
+    payment_orders: Array.isArray(data.payment_orders) ? data.payment_orders.map((row) => normalizeAdminPaymentOrder(row)) : [],
     summary: data.summary
       ? {
           nodes_total: Number(data.summary.nodes_total || 0),
@@ -2631,6 +2729,41 @@ export async function adminUsers(params: AdminUsersQuery = {}): Promise<AdminUse
 export async function adminUserCard(tgId: number): Promise<AdminUserCard> {
   const data = await apiFetch<Partial<AdminUserCard>>(`/api/admin/users/${tgId}`);
   return normalizeAdminUserCard(data);
+}
+
+export async function adminPaymentOrders(params: {
+  status?: string;
+  provider?: string;
+  q?: string;
+  limit?: number;
+  offset?: number;
+} = {}): Promise<AdminPaymentOrdersResponse> {
+  const qs = new URLSearchParams();
+  if (params.status) qs.set("status", params.status);
+  if (params.provider) qs.set("provider", params.provider);
+  if (params.q) qs.set("q", params.q);
+  if (params.limit != null) qs.set("limit", String(params.limit));
+  if (params.offset != null) qs.set("offset", String(params.offset));
+  const suffix = qs.toString() ? `?${qs.toString()}` : "";
+  const data = await apiFetch<Partial<AdminPaymentOrdersResponse>>(`/api/admin/payments/orders${suffix}`);
+  return normalizeAdminPaymentOrdersResponse(data);
+}
+
+export async function adminPaymentReconcile(payload: {
+  provider: string;
+  order_id: string;
+  status?: string;
+  note: string;
+}): Promise<{ ok: boolean; order: AdminPaymentOrder }> {
+  const data = await apiFetch<{ ok: boolean; order: Partial<AdminPaymentOrder> }>(
+    `/api/admin/payments/orders/${encodeURIComponent(payload.provider)}/${encodeURIComponent(payload.order_id)}/reconcile`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ status: payload.status, note: payload.note }),
+    },
+  );
+  return { ok: Boolean(data.ok), order: normalizeAdminPaymentOrder(data.order) };
 }
 
 export async function adminUserKeyHistory(tgId: number, limit = 100): Promise<AdminUserKeyHistoryRow[]> {
