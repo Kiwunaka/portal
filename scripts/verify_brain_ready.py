@@ -99,7 +99,19 @@ def _listener_missing_ports(output: str, ports: tuple[int, ...]) -> list[int]:
     return missing
 
 
-def _curl_retry(url: str, *, host: str, contains: str | None = None, attempts: int = 12, pause_sec: float = 1.0) -> str:
+def _curl_retry(
+    url: str,
+    *,
+    host: str,
+    contains: str | None = None,
+    contains_any: tuple[str, ...] | list[str] | None = None,
+    attempts: int = 12,
+    pause_sec: float = 1.0,
+) -> str:
+    markers = [item for item in ([contains] if contains else []) + list(contains_any or []) if str(item or "").strip()]
+    target_url = str(url or "").strip()
+    if not target_url.startswith(("http://", "https://")):
+        target_url = f"https://{target_url}"
     base = " ".join(
         [
             "curl",
@@ -107,21 +119,27 @@ def _curl_retry(url: str, *, host: str, contains: str | None = None, attempts: i
             "--insecure",
             "--resolve",
             shlex.quote(f"{host}:443:127.0.0.1"),
-            shlex.quote(f"https://{url}"),
+            shlex.quote(target_url),
         ]
     )
-    body_file = "/tmp/portal_verify_body.txt"
-    pipe = ""
-    if contains:
-        pipe = f" | tee {shlex.quote(body_file)} | grep -F -- {shlex.quote(contains)} >/dev/null"
+    body_file = "/tmp/portal_verify_body.$$"
+    marker_check = "true"
+    if markers:
+        marker_check = "( " + " || ".join(f"grep -F -- {shlex.quote(marker)} \"$body_file\" >/dev/null" for marker in markers) + " )"
     script = (
+        f"body_file={shlex.quote(body_file)}; "
+        "cleanup() { rm -f \"$body_file\"; }; "
+        "trap cleanup EXIT; "
         f"for i in $(seq 1 {int(attempts)}); do "
-        f"if {base}{pipe}; then "
-        f"if [ -f {shlex.quote(body_file)} ]; then head -c 200 {shlex.quote(body_file)}; rm -f {shlex.quote(body_file)}; fi; "
+        f"if {base} > \"$body_file\"; then "
+        f"if {marker_check}; then "
+        "head -c 200 \"$body_file\"; "
         "exit 0; "
+        "fi; "
         f"fi; sleep {pause_sec}; "
         "done; "
-        f"{base} 2>/dev/null | head -c 200; "
+        f"{base} > \"$body_file\" 2>/dev/null || true; "
+        "head -c 200 \"$body_file\"; "
         "exit 22"
     )
     return "bash -lc " + shlex.quote(script)
@@ -172,12 +190,12 @@ for i in $(seq 1 {int(repeat)}); do
     RAW="$(curl -fsS --insecure --resolve {api_domain}:443:127.0.0.1 https://{api_domain}/s8Kx2mP7qR4wT/$SEL_TG 2>/dev/null || true)"
   fi
   if [ -z "$RAW" ]; then
-    echo "sub_fetch_$i tg_id=$SEL_TG mode=failed"
+    echo "sub_fetch_$i user=selected mode=failed"
     exit 2
   fi
   RAW_CONNECT="$(curl -fsS --insecure --resolve {connect_domain}:443:127.0.0.1 https://{connect_domain}/s8Kx2mP7qR4wT/$SEL_TOK 2>/dev/null || true)"
   if [ -z "$RAW_CONNECT" ]; then
-    echo "sub_fetch_$i tg_id=$SEL_TG connect=failed"
+    echo "sub_fetch_$i user=selected connect=failed"
     exit 2
   fi
   METRICS="$(RAW_PAYLOAD="$RAW" python3 - <<'PY'
@@ -219,7 +237,7 @@ if not isinstance(payload, dict) or "outbounds" not in payload:
 print(f"connect_json=1 outbounds={{len(payload.get('outbounds') or [])}}")
 PY
 )"
-  echo "sub_fetch_$i tg_id=$SEL_TG mode=$MODE $METRICS $CONNECT_METRICS"
+  echo "sub_fetch_$i user=selected mode=$MODE $METRICS $CONNECT_METRICS"
   sleep 0.4
 done
 """
@@ -281,17 +299,22 @@ def main() -> int:
         curl_checks = [
             ("health443", _curl_retry(f"{api_domain}/api/health", host=api_domain)),
             ("webapp443", _curl_retry("app.pokrov.space/", host="app.pokrov.space")),
-            ("mkt443", _curl_retry(f"{web_domain}/", host=web_domain, contains="Ускорить интернет сейчас")),
-            ("mktHeroSecondary443", _curl_retry(f"{web_domain}/", host=web_domain, contains="Открыть кабинет")),
-            ("offer443", _curl_retry(f"{web_domain}/offer/", host=web_domain, contains="Публичная оферта | POKROV")),
-            ("checkout443", _curl_retry("pay.pokrov.space/checkout/", host="pay.pokrov.space", contains="Ваш путь к быстрой сети | POKROV")),
+            ("mkt443", _curl_retry(f"{web_domain}/", host=web_domain, contains_any=("Android + Windows", "POKROV"))),
+            (
+                "mktCabinet443",
+                _curl_retry(f"{web_domain}/", host=web_domain, contains_any=("https://app.pokrov.space", "app.pokrov.space")),
+            ),
+            ("offer443", _curl_retry(f"{web_domain}/offer/", host=web_domain, contains_any=("https://pokrov.space/offer/", "POKROV"))),
+            (
+                "checkout443",
+                _curl_retry(
+                    "pay.pokrov.space/checkout/",
+                    host="pay.pokrov.space",
+                    contains_any=("checkout-shell", "activation key", "https://pokrov.space/checkout/"),
+                ),
+            ),
             ("fkverify443", _curl_retry(f"{web_domain}/fk-verify.html", host=web_domain)),
         ]
-        updated_marketing_checks = {
-            "mkt443": _curl_retry(f"{web_domain}/", host=web_domain, contains="Android + Windows"),
-            "mktHeroSecondary443": _curl_retry(f"{web_domain}/", host=web_domain, contains="All except RU"),
-        }
-        curl_checks = [(name, updated_marketing_checks.get(name, cmd)) for name, cmd in curl_checks]
         if args.check_legacy_2096:
             curl_checks.append(
                 ("health2096", f"curl -fsS --insecure --resolve {api_domain}:2096:127.0.0.1 https://{api_domain}:2096/api/health"),

@@ -4,6 +4,7 @@ import argparse
 import os
 import posixpath
 import sys
+import time
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -46,8 +47,32 @@ def _sftp_mkdir_p(sftp: paramiko.SFTPClient, remote_dir: str) -> None:
                 pass
 
 
-def _upload_dir_recursive(sftp: paramiko.SFTPClient, local_dir: Path, remote_dir: str) -> None:
+def _dir_stats(local_dir: Path) -> tuple[int, int]:
+    files = 0
+    total_bytes = 0
     for p in local_dir.rglob("*"):
+        if p.is_file():
+            files += 1
+            total_bytes += p.stat().st_size
+    return files, total_bytes
+
+
+def _format_bytes(value: int) -> str:
+    amount = float(value)
+    for unit in ("B", "KiB", "MiB", "GiB"):
+        if amount < 1024 or unit == "GiB":
+            return f"{amount:.1f} {unit}" if unit != "B" else f"{int(amount)} B"
+        amount /= 1024
+    return f"{int(value)} B"
+
+
+def _upload_dir_recursive(sftp: paramiko.SFTPClient, local_dir: Path, remote_dir: str, *, label: str) -> None:
+    total_files, total_bytes = _dir_stats(local_dir)
+    started = time.monotonic()
+    _safe_print(f"[upload] {label}: {total_files} files, {_format_bytes(total_bytes)} -> {remote_dir}")
+    uploaded_files = 0
+    uploaded_bytes = 0
+    for p in sorted(local_dir.rglob("*")):
         rel = p.relative_to(local_dir).as_posix()
         rp = f"{remote_dir.rstrip('/')}/{rel}"
         if p.is_dir():
@@ -55,6 +80,15 @@ def _upload_dir_recursive(sftp: paramiko.SFTPClient, local_dir: Path, remote_dir
         else:
             _sftp_mkdir_p(sftp, posixpath.dirname(rp))
             sftp.put(str(p), rp)
+            uploaded_files += 1
+            uploaded_bytes += p.stat().st_size
+            if uploaded_files == total_files or uploaded_files % 100 == 0:
+                _safe_print(
+                    f"[upload] {label}: {uploaded_files}/{total_files} files "
+                    f"({_format_bytes(uploaded_bytes)}/{_format_bytes(total_bytes)})"
+                )
+    elapsed = int(time.monotonic() - started)
+    _safe_print(f"[upload] {label}: complete in {elapsed}s")
 
 
 def _run(ssh: paramiko.SSHClient, cmd: str, *, timeout: int = 300) -> tuple[int, str, str]:
@@ -141,8 +175,8 @@ def main() -> int:
 
         sftp = ssh.open_sftp()
         try:
-            _upload_dir_recursive(sftp, local_webapp, remote_webapp)
-            _upload_dir_recursive(sftp, local_mkt, remote_marketing)
+            _upload_dir_recursive(sftp, local_webapp, remote_webapp, label="webapp")
+            _upload_dir_recursive(sftp, local_mkt, remote_marketing, label="marketing")
         finally:
             sftp.close()
 

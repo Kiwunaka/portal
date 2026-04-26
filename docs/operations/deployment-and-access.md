@@ -110,6 +110,7 @@ python scripts/remote_install_node_observer.py --brain-ip 82.21.114.104 --node-c
 ### Static sites deploy
 
 - [remote_deploy_brain_static_sites.py](C:/Users/kiwun/Documents/ai/VPN/scripts/remote_deploy_brain_static_sites.py)
+- static deploy uploads `marketing/out` and `webapp/out` into a versioned release directory, prints SFTP progress by file count and bytes, validates required files, then atomically switches `/var/www/portal/{marketing,webapp}` symlinks
 
 ### Bot token / username switch
 
@@ -118,6 +119,13 @@ python scripts/remote_install_node_observer.py --brain-ip 82.21.114.104 --node-c
 ### Release orchestration
 
 - [release_orchestrator.py](C:/Users/kiwun/Documents/ai/VPN/scripts/release_orchestrator.py)
+- staged shortcuts:
+  - `python scripts/release_orchestrator.py --stage gates`
+  - `python scripts/release_orchestrator.py --brain-ip 82.21.114.104 --stage backend`
+  - `python scripts/release_orchestrator.py --brain-ip 82.21.114.104 --stage static`
+  - `python scripts/release_orchestrator.py --brain-ip 82.21.114.104 --stage deploy`
+  - `python scripts/release_orchestrator.py --brain-ip 82.21.114.104 --stage verify`
+- wrapper steps stream child output, print heartbeat lines during quiet long-running steps, and enforce per-step timeouts unless the matching `--*-timeout-sec 0` option is used
 
 ### Release handoff sync
 
@@ -423,6 +431,7 @@ At minimum, verify:
 - `portal-api`, `portal-bot`, and `portal-helpbot` service status
 - `portal-feedbackbot` service status
 - `verify_brain_ready.py` should fail the repo-side handoff if any required control-plane unit is inactive, if required listeners on `443` or `8444` are missing, or if the built-in HTTP and subscription probes fail
+- marketing and checkout probes should use route/function markers such as `Android + Windows`, `app.pokrov.space`, `checkout-shell`, `activation key`, and canonical URLs, not old hero copy that can change without a deploy failure
 - transport rollout verification on the canary node with `scripts/remote_apply_node_qdisc.py show`
 - transport front verification with `scripts/remote_transport_front_smoke.py`
 - `tc -s qdisc` on the shaped interface
@@ -464,6 +473,8 @@ Notes:
 - `release_gate_check.py --quick` swaps the default full client Flutter suite for `python scripts/run_client_release_gate.py test --suite portal`.
 - on Windows, `release_gate_check.py` injects a repo-local disposable `--basetemp` for its `python -m pytest ...` gates so a broken workstation-level `%TEMP%\\pytest-of-<user>\\pytest-current` symlink does not pollute the release handoff tail.
 - `release_orchestrator.py --gates-only` is the one-command wrapper for the same gate pack, but it intentionally exits before release handoff sync, backend deploy, static deploy, and post-deploy verify.
+- `release_orchestrator.py --stage backend|static|deploy|verify` is the preferred recovery path when a previous full run timed out after a known completed phase; `deploy` means backend plus static, with gates and verify skipped.
+- `release_orchestrator.py` streams child output and emits quiet-step heartbeats; tune `--gate-timeout-sec`, `--backend-timeout-sec`, `--static-timeout-sec`, `--verify-timeout-sec`, or `--step-timeout-sec` when a release lane is expected to exceed the default timeout.
 - latest verified local run: `python scripts/release_orchestrator.py --gates-only` exited `0` on `2026-04-13`; see `docs/audit-artifacts/release_gate_report.md` for the current local gate snapshot
 - pass `--brain-ip 82.21.114.104` to either command when you also want `predeploy_node_readiness.py` folded into the same run.
 - `--release-metadata-file` and `--release-env-file` cannot be combined with `--gates-only`; use the full `release_orchestrator.py` flow when you need runtime `APP_*` download URLs synced onto brain before deploy or verify.

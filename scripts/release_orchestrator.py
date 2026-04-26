@@ -1,11 +1,14 @@
 ﻿from __future__ import annotations
 
 import argparse
+import queue
 import re
 import subprocess
 import sys
+import time
 from copy import copy
 from pathlib import Path
+from threading import Thread
 
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
@@ -31,18 +34,84 @@ def _parse_qdisc_hosts(values: list[str] | None) -> dict[str, str]:
     return mapping
 
 
-def _run(name: str, cmd: list[str], cwd: Path = REPO_ROOT) -> int:
-    print(f"[step] {name}: {' '.join(cmd)}")
-    proc = subprocess.run(cmd, cwd=str(cwd))
+def _stream_pipe(pipe, output: "queue.Queue[str]") -> None:
+    try:
+        for line in iter(pipe.readline, ""):
+            output.put(line)
+    finally:
+        try:
+            pipe.close()
+        except Exception:
+            pass
+
+
+def _run(name: str, cmd: list[str], cwd: Path = REPO_ROOT, *, timeout_sec: int | None = None, heartbeat_sec: int = 30) -> int:
+    started = time.monotonic()
+    timeout_label = f" timeout={timeout_sec}s" if timeout_sec else ""
+    print(f"[step] {name}: {' '.join(cmd)}{timeout_label}", flush=True)
+    try:
+        proc = subprocess.Popen(
+            cmd,
+            cwd=str(cwd),
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            bufsize=1,
+        )
+    except OSError as exc:
+        print(f"[fail] {name} start failed: {exc}", flush=True)
+        return 127
+
+    output: "queue.Queue[str]" = queue.Queue()
+    if proc.stdout is not None:
+        Thread(target=_stream_pipe, args=(proc.stdout, output), daemon=True).start()
+
+    last_heartbeat = started
+    while True:
+        try:
+            line = output.get(timeout=1)
+        except queue.Empty:
+            line = ""
+        if line:
+            sys.stdout.write(line)
+            sys.stdout.flush()
+
+        now = time.monotonic()
+        if proc.poll() is not None:
+            while True:
+                try:
+                    line = output.get_nowait()
+                except queue.Empty:
+                    break
+                sys.stdout.write(line)
+            sys.stdout.flush()
+            break
+
+        elapsed = now - started
+        if timeout_sec and elapsed >= timeout_sec:
+            proc.kill()
+            try:
+                proc.wait(timeout=10)
+            except subprocess.TimeoutExpired:
+                pass
+            print(f"[fail] {name} timed out after {int(elapsed)}s", flush=True)
+            return 124
+        if heartbeat_sec > 0 and now - last_heartbeat >= heartbeat_sec:
+            print(f"[step] {name}: still running ({int(elapsed)}s elapsed)", flush=True)
+            last_heartbeat = now
+
+    elapsed = time.monotonic() - started
     if proc.returncode != 0:
-        print(f"[fail] {name} exit={proc.returncode}")
+        print(f"[fail] {name} exit={proc.returncode} duration={int(elapsed)}s", flush=True)
         return int(proc.returncode)
-    print(f"[ok] {name}")
+    print(f"[ok] {name} duration={int(elapsed)}s", flush=True)
     return 0
 
 
 def _dry_run(name: str, cmd: list[str], cwd: Path = REPO_ROOT) -> None:
-    print(f"[dry-run] {name}: {' '.join(cmd)} (cwd={cwd})")
+    print(f"[dry-run] {name}: {' '.join(cmd)} (cwd={cwd})", flush=True)
 
 
 def _build_qdisc_base_cmd(args: argparse.Namespace, node_code: str) -> list[str]:
@@ -99,6 +168,55 @@ def _build_qdisc_failure_cleanup_steps(
             REPO_ROOT,
         ),
     ]
+
+
+def _apply_stage(args: argparse.Namespace) -> None:
+    stage = str(getattr(args, "stage", "all") or "all").strip().lower()
+    if stage == "all":
+        return
+    if stage == "gates":
+        args.gates_only = True
+        return
+    if stage == "verify":
+        args.verify_only = True
+        return
+
+    args.skip_gates = True
+    args.skip_verify = True
+    args.ensure_metrics_timer = False
+    args.ensure_observer_node = []
+    args.qdisc_node = []
+    args.qdisc_host = []
+    if stage == "backend":
+        args.skip_backend = False
+        args.skip_static = True
+    elif stage == "static":
+        args.skip_backend = True
+        args.skip_static = False
+    elif stage == "deploy":
+        args.skip_backend = False
+        args.skip_static = False
+    else:
+        raise SystemExit(f"unknown --stage value: {stage}")
+
+
+def _step_timeout_sec(args: argparse.Namespace, step_name: str) -> int | None:
+    name = str(step_name or "").strip().lower()
+    if name == "release gates":
+        value = getattr(args, "gate_timeout_sec", None)
+    elif name == "backend deploy":
+        value = getattr(args, "backend_timeout_sec", None)
+    elif name == "static deploy":
+        value = getattr(args, "static_timeout_sec", None)
+    elif name == "post-deploy verify":
+        value = getattr(args, "verify_timeout_sec", None)
+    else:
+        value = getattr(args, "step_timeout_sec", None)
+    try:
+        timeout = int(value or 0)
+    except (TypeError, ValueError):
+        timeout = 0
+    return timeout if timeout > 0 else None
 
 
 def _build_steps(args: argparse.Namespace, *, python: str) -> list[tuple[str, list[str], Path]]:
@@ -337,6 +455,12 @@ def main() -> int:
     parser.add_argument("--ssh-port", type=int, default=29374)
     parser.add_argument("--passwords", default=str(REPO_ROOT / "VPN NODE SSH KEYS" / "PASSWORDS.txt"))
     parser.add_argument("--quick-gate", action="store_true", help="Run quick release gates")
+    parser.add_argument(
+        "--stage",
+        choices=("all", "gates", "deploy", "backend", "static", "verify"),
+        default="all",
+        help="Shortcut for common partial runs: gates, backend, static, deploy (backend+static), or verify.",
+    )
     parser.add_argument("--skip-gates", action="store_true")
     parser.add_argument("--skip-backend", action="store_true")
     parser.add_argument("--skip-static", action="store_true")
@@ -361,6 +485,11 @@ def main() -> int:
         help="Legacy release-links.env path to sync APP_* download URLs onto brain before deploy/verify.",
     )
     parser.add_argument("--dry-run", action="store_true", help="Print planned commands without executing them")
+    parser.add_argument("--step-timeout-sec", type=int, default=3600, help="Default timeout for uncategorized steps; 0 disables it")
+    parser.add_argument("--gate-timeout-sec", type=int, default=7200, help="Timeout for release gates; 0 disables it")
+    parser.add_argument("--backend-timeout-sec", type=int, default=2400, help="Timeout for backend deploy; 0 disables it")
+    parser.add_argument("--static-timeout-sec", type=int, default=3600, help="Timeout for static deploy; 0 disables it")
+    parser.add_argument("--verify-timeout-sec", type=int, default=900, help="Timeout for post-deploy verify; 0 disables it")
     parser.add_argument("--qdisc-node", action="append", default=[], help="Apply qdisc rollout steps for the given node code. Can be repeated.")
     parser.add_argument(
         "--qdisc-host",
@@ -380,6 +509,7 @@ def main() -> int:
     parser.add_argument("--qdisc-max-probe-ttfb-p95-seconds", type=float, default=1.0)
     parser.add_argument("--qdisc-max-probe-total-p95-seconds", type=float, default=2.0)
     args = parser.parse_args()
+    _apply_stage(args)
 
     if args.gates_only and args.verify_only:
         raise SystemExit("--gates-only and --verify-only are mutually exclusive")
@@ -420,7 +550,7 @@ def main() -> int:
             print("[done] gates-only dry-run finished")
             return 0
         for name, cmd, cwd in steps:
-            rc = _run(name, cmd, cwd)
+            rc = _run(name, cmd, cwd, timeout_sec=_step_timeout_sec(args, name))
             if rc != 0:
                 return rc
         print("[done] gates-only mode finished")
@@ -442,10 +572,10 @@ def main() -> int:
         return 0
 
     for name, cmd, cwd in steps:
-        rc = _run(name, cmd, cwd)
+        rc = _run(name, cmd, cwd, timeout_sec=_step_timeout_sec(args, name))
         if rc != 0:
             for cleanup_name, cleanup_cmd, cleanup_cwd in _build_qdisc_failure_cleanup_steps(args, step_name=name, python=python):
-                cleanup_rc = _run(cleanup_name, cleanup_cmd, cleanup_cwd)
+                cleanup_rc = _run(cleanup_name, cleanup_cmd, cleanup_cwd, timeout_sec=_step_timeout_sec(args, cleanup_name))
                 if cleanup_rc != 0:
                     print(f"[warn] {cleanup_name} exit={cleanup_rc}")
             return rc

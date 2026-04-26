@@ -210,6 +210,7 @@ Notes:
 - when `TELEGRAM_INIT_DATA` is present, `release_gate_check.py` runs `scripts/runtime_app_download_smoke.py --redact` so retained command tails do not expose raw Telegram init data.
 - `scripts/release_orchestrator.py --gates-only` is the one-command entrypoint when you want the documented gate flow without remote deploy, release handoff sync, or post-deploy verify steps.
 - the full `scripts/release_orchestrator.py` path can chain local gates, optional `APP_*` sync, backend deploy, static deploy, optional rollout helpers, and brain-local verify, but it still does not publish binaries or replace separate external-origin evidence
+- use `scripts/release_orchestrator.py --stage backend|static|deploy|verify` for partial recovery runs after a timed-out or already-completed phase; the wrapper streams child output, prints quiet-step heartbeats, and has per-step timeout knobs.
 - latest verified local run: `python scripts/release_orchestrator.py --gates-only` exited `0` on `2026-04-13`; see `docs/audit-artifacts/release_gate_report.md` for the current local gate snapshot.
 - Add `--brain-ip 82.21.114.104` when you also want the predeploy node-readiness gate included in the same report.
 - `--release-metadata-file` and `--release-env-file` cannot be combined with `--gates-only`; after client artifacts are published, use the full `release_orchestrator.py` flow to sync runtime download URLs before deploy or verify.
