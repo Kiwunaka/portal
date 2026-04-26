@@ -3,7 +3,10 @@ from __future__ import annotations
 import argparse
 import os
 import posixpath
+import shlex
 import sys
+import tarfile
+import tempfile
 import time
 from datetime import datetime, timezone
 from pathlib import Path
@@ -66,29 +69,44 @@ def _format_bytes(value: int) -> str:
     return f"{int(value)} B"
 
 
-def _upload_dir_recursive(sftp: paramiko.SFTPClient, local_dir: Path, remote_dir: str, *, label: str) -> None:
+def _build_static_bundle(local_dir: Path, bundle_path: Path, *, label: str) -> None:
     total_files, total_bytes = _dir_stats(local_dir)
     started = time.monotonic()
-    _safe_print(f"[upload] {label}: {total_files} files, {_format_bytes(total_bytes)} -> {remote_dir}")
-    uploaded_files = 0
-    uploaded_bytes = 0
-    for p in sorted(local_dir.rglob("*")):
-        rel = p.relative_to(local_dir).as_posix()
-        rp = f"{remote_dir.rstrip('/')}/{rel}"
-        if p.is_dir():
-            _sftp_mkdir_p(sftp, rp)
-        else:
-            _sftp_mkdir_p(sftp, posixpath.dirname(rp))
-            sftp.put(str(p), rp)
-            uploaded_files += 1
-            uploaded_bytes += p.stat().st_size
-            if uploaded_files == total_files or uploaded_files % 100 == 0:
-                _safe_print(
-                    f"[upload] {label}: {uploaded_files}/{total_files} files "
-                    f"({_format_bytes(uploaded_bytes)}/{_format_bytes(total_bytes)})"
-                )
+    _safe_print(f"[bundle] {label}: {total_files} files, {_format_bytes(total_bytes)}")
+    with tarfile.open(bundle_path, "w:gz") as tar:
+        for p in sorted(local_dir.rglob("*")):
+            arcname = p.relative_to(local_dir).as_posix()
+            tar.add(str(p), arcname=arcname, recursive=False)
     elapsed = int(time.monotonic() - started)
-    _safe_print(f"[upload] {label}: complete in {elapsed}s")
+    _safe_print(f"[bundle] {label}: {_format_bytes(bundle_path.stat().st_size)} in {elapsed}s")
+
+
+def _deploy_static_bundle(
+    ssh: paramiko.SSHClient,
+    sftp: paramiko.SFTPClient,
+    bundle_path: Path,
+    *,
+    label: str,
+    remote_dir: str,
+    release_id: str,
+) -> None:
+    started = time.monotonic()
+    remote_tar = f"/tmp/portal-static-{release_id}-{label}.tar.gz"
+    _safe_print(f"[upload] {label}: {_format_bytes(bundle_path.stat().st_size)} -> {remote_tar}")
+    sftp.put(str(bundle_path), remote_tar)
+    _safe_print(f"[extract] {label}: {remote_dir}")
+    cmd = (
+        "set -euo pipefail; "
+        f"rm -rf {shlex.quote(remote_dir)}; "
+        f"mkdir -p {shlex.quote(remote_dir)}; "
+        f"tar -xzf {shlex.quote(remote_tar)} -C {shlex.quote(remote_dir)}; "
+        f"rm -f {shlex.quote(remote_tar)}"
+    )
+    code, out, err = _run(ssh, cmd, timeout=600)
+    if code != 0:
+        raise SystemExit(f"Failed to extract {label} bundle:\n{out}\n{err}")
+    elapsed = int(time.monotonic() - started)
+    _safe_print(f"[deploy] {label}: complete in {elapsed}s")
 
 
 def _run(ssh: paramiko.SSHClient, cmd: str, *, timeout: int = 300) -> tuple[int, str, str]:
@@ -174,12 +192,19 @@ def main() -> int:
         # Upload into a versioned release directory first, then switch symlinks.
         _run(ssh, f"mkdir -p {remote_webapp} {remote_marketing}", timeout=60)
 
-        sftp = ssh.open_sftp()
-        try:
-            _upload_dir_recursive(sftp, local_webapp, remote_webapp, label="webapp")
-            _upload_dir_recursive(sftp, local_mkt, remote_marketing, label="marketing")
-        finally:
-            sftp.close()
+        with tempfile.TemporaryDirectory(prefix="pokrov-static-") as temp_root:
+            temp_dir = Path(temp_root)
+            webapp_bundle = temp_dir / f"webapp-{release_id}.tar.gz"
+            marketing_bundle = temp_dir / f"marketing-{release_id}.tar.gz"
+            _build_static_bundle(local_webapp, webapp_bundle, label="webapp")
+            _build_static_bundle(local_mkt, marketing_bundle, label="marketing")
+
+            sftp = ssh.open_sftp()
+            try:
+                _deploy_static_bundle(ssh, sftp, webapp_bundle, label="webapp", remote_dir=remote_webapp, release_id=release_id)
+                _deploy_static_bundle(ssh, sftp, marketing_bundle, label="marketing", remote_dir=remote_marketing, release_id=release_id)
+            finally:
+                sftp.close()
 
         # Validate release payload before switching public paths.
         checks = [

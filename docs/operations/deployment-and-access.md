@@ -110,7 +110,7 @@ python scripts/remote_install_node_observer.py --brain-ip 82.21.114.104 --node-c
 ### Static sites deploy
 
 - [remote_deploy_brain_static_sites.py](C:/Users/kiwun/Documents/ai/VPN/scripts/remote_deploy_brain_static_sites.py)
-- static deploy uploads `marketing/out` and `webapp/out` into a versioned release directory, prints SFTP progress by file count and bytes, validates required files, then atomically switches `/var/www/portal/{marketing,webapp}` symlinks
+- static deploy packages `marketing/out` and `webapp/out` as local `tar.gz` bundles, uploads one archive per surface, extracts them into a versioned release directory, validates required files, then atomically switches `/var/www/portal/{marketing,webapp}` symlinks
 
 ### Bot token / username switch
 
