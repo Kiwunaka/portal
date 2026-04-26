@@ -1,8 +1,12 @@
 import sys
 import unittest
+import base64
+import struct
 from pathlib import Path
 from unittest.mock import patch
 import tempfile
+
+from cryptography.hazmat.primitives.asymmetric import rsa
 
 
 class NodeAccessTests(unittest.TestCase):
@@ -61,6 +65,52 @@ class NodeAccessTests(unittest.TestCase):
         names = [path.name for path in candidates]
         self.assertIn("RUSSIA_private.ppk", names)
         self.assertIn("RUSSIA.ppk", names)
+
+    def test_load_unencrypted_putty_rsa_v2_key(self) -> None:
+        import node_access
+
+        def ssh_string(value: bytes) -> bytes:
+            return struct.pack(">I", len(value)) + value
+
+        def mpint(value: int) -> bytes:
+            raw = value.to_bytes((value.bit_length() + 7) // 8, "big") or b"\x00"
+            if raw[0] & 0x80:
+                raw = b"\x00" + raw
+            return raw
+
+        key = rsa.generate_private_key(public_exponent=65537, key_size=1024)
+        numbers = key.private_numbers()
+        public_blob = b"".join(
+            [
+                ssh_string(b"ssh-rsa"),
+                ssh_string(mpint(numbers.public_numbers.e)),
+                ssh_string(mpint(numbers.public_numbers.n)),
+            ]
+        )
+        private_blob = b"".join(
+            [
+                ssh_string(mpint(numbers.d)),
+                ssh_string(mpint(numbers.p)),
+                ssh_string(mpint(numbers.q)),
+                ssh_string(mpint(pow(numbers.q, -1, numbers.p))),
+            ]
+        )
+        ppk = "\n".join(
+            [
+                "PuTTY-User-Key-File-2: ssh-rsa",
+                "Encryption: none",
+                'Comment: "test"',
+                "Public-Lines: 1",
+                base64.b64encode(public_blob).decode("ascii"),
+                "Private-Lines: 1",
+                base64.b64encode(private_blob).decode("ascii"),
+                "Private-MAC: unused",
+            ]
+        )
+
+        loaded = node_access._load_putty_rsa_v2(ppk)
+
+        self.assertIsNotNone(loaded)
 
     def test_connect_node_uses_password_file_parent_as_default_key_dir(self) -> None:
         import node_access

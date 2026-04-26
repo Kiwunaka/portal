@@ -2,9 +2,13 @@ from __future__ import annotations
 
 import io
 import os
+import base64
+import struct
 from pathlib import Path
 
 import paramiko
+from cryptography.hazmat.primitives import serialization
+from cryptography.hazmat.primitives.asymmetric import rsa
 from puttykeys import ppkraw_to_openssh
 
 from node_passwords import parse_passwords
@@ -56,6 +60,94 @@ def _load_key_from_text(text: str) -> paramiko.PKey | None:
     return None
 
 
+def _read_ppk_string(blob: bytes, offset: int) -> tuple[bytes, int]:
+    if offset + 4 > len(blob):
+        raise ValueError("truncated PPK string")
+    size = struct.unpack(">I", blob[offset : offset + 4])[0]
+    offset += 4
+    if offset + size > len(blob):
+        raise ValueError("truncated PPK string payload")
+    return blob[offset : offset + size], offset + size
+
+
+def _mpint_to_int(value: bytes) -> int:
+    return int.from_bytes(value or b"\x00", "big", signed=False)
+
+
+def _load_putty_rsa_v2(raw: str) -> paramiko.PKey | None:
+    lines = [line.strip() for line in str(raw or "").strip().splitlines()]
+    if not lines or not lines[0].startswith("PuTTY-User-Key-File-2: ssh-rsa"):
+        return None
+
+    public_lines = private_lines = 0
+    public_start = private_start = -1
+    encryption = ""
+    for idx, line in enumerate(lines):
+        if line.startswith("Encryption:"):
+            encryption = line.split(":", 1)[1].strip().lower()
+        elif line.startswith("Public-Lines:"):
+            public_lines = int(line.split(":", 1)[1].strip())
+            public_start = idx + 1
+        elif line.startswith("Private-Lines:"):
+            private_lines = int(line.split(":", 1)[1].strip())
+            private_start = idx + 1
+
+    if encryption not in {"", "none"}:
+        return None
+    if public_start < 0 or private_start < 0 or public_lines <= 0 or private_lines <= 0:
+        return None
+
+    public_blob = base64.b64decode("".join(lines[public_start : public_start + public_lines]))
+    private_blob = base64.b64decode("".join(lines[private_start : private_start + private_lines]))
+
+    offset = 0
+    key_type, offset = _read_ppk_string(public_blob, offset)
+    if key_type != b"ssh-rsa":
+        return None
+    public_e, offset = _read_ppk_string(public_blob, offset)
+    public_n, offset = _read_ppk_string(public_blob, offset)
+
+    private_offset = 0
+    private_d, private_offset = _read_ppk_string(private_blob, private_offset)
+    private_p, private_offset = _read_ppk_string(private_blob, private_offset)
+    private_q, private_offset = _read_ppk_string(private_blob, private_offset)
+    private_iqmp, private_offset = _read_ppk_string(private_blob, private_offset)
+
+    p = _mpint_to_int(private_p)
+    q = _mpint_to_int(private_q)
+    d = _mpint_to_int(private_d)
+    e = _mpint_to_int(public_e)
+    n = _mpint_to_int(public_n)
+    numbers = rsa.RSAPrivateNumbers(
+        p=p,
+        q=q,
+        d=d,
+        dmp1=d % (p - 1),
+        dmq1=d % (q - 1),
+        iqmp=_mpint_to_int(private_iqmp),
+        public_numbers=rsa.RSAPublicNumbers(e=e, n=n),
+    )
+    pem = numbers.private_key().private_bytes(
+        encoding=serialization.Encoding.PEM,
+        format=serialization.PrivateFormat.TraditionalOpenSSL,
+        encryption_algorithm=serialization.NoEncryption(),
+    )
+    return paramiko.RSAKey.from_private_key(io.StringIO(pem.decode("ascii")))
+
+
+def _load_putty_key_from_text(raw: str) -> paramiko.PKey | None:
+    try:
+        key = _load_key_from_text(ppkraw_to_openssh(raw))
+        if key:
+            return key
+    except Exception:
+        pass
+    try:
+        return _load_putty_rsa_v2(raw)
+    except Exception:
+        return None
+
+
 def load_private_key(code: str, *, key_dir: Path | None = None) -> paramiko.PKey | None:
     key_dir = key_dir or DEFAULT_KEY_DIR
     env_path = os.getenv(f"NODE_KEY_{str(code or '').upper()}", "").strip()
@@ -73,10 +165,10 @@ def load_private_key(code: str, *, key_dir: Path | None = None) -> paramiko.PKey
             continue
         text = raw
         if raw.lstrip().startswith("PuTTY-User-Key-File-"):
-            try:
-                text = ppkraw_to_openssh(raw)
-            except Exception:
-                continue
+            key = _load_putty_key_from_text(raw)
+            if key:
+                return key
+            continue
         key = _load_key_from_text(text)
         if key:
             return key

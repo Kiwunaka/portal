@@ -43,7 +43,7 @@ Key services expected there:
 RF auxiliary hosts:
 
 - `mini`
-  dedicated external RU probe origin
+  dedicated external RU probe origin and universal operator sandbox
 - `rf1`
   reserve RF ingress for operator and VIP/manual access
 
@@ -55,7 +55,7 @@ RF access rule:
 - RU ingress / RF reserve work is currently backlog-only
 - do not resume `mini` ingress experiments, do not provision `rf1`, and do not treat this contour as active work unless the product owner explicitly asks to return to it
 - owner-approved exception on `2026-04-24`: the live Telegram-only MTProto proxy runs on the dedicated free node (`151.245.217.23:9443`) through `portal-mtproto.service`; this is not a control-plane service and must not displace the free pool's existing `x-ui` listener on `tcp/443`
-- `mini` may be unavailable and must not be treated as a guaranteed RU probe origin
+- `mini` / `RFMINI` is the canonical RU-origin sandbox when SSH credentials are current; if access is blocked, label the release evidence as `RU-origin check: BLOCKED_BY_ACCESS`
 - RU probe readiness itself is a tracked operational dependency for release confidence
 
 ## Operator Shell Policy

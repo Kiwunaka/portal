@@ -131,9 +131,9 @@ Required probe origin:
 
 Availability rule:
 
-- `mini` is the preferred RU probe host when healthy
-- `mini` is not guaranteed to be available
-- if `mini` is down, treat RU-origin observability as degraded until a replacement external RU host is ready
+- `mini` / `RFMINI` is the canonical RU-origin operator sandbox and preferred RU probe host
+- if `mini` TCP reachability is present but SSH auth fails, treat the run as `RU-origin check: BLOCKED_BY_ACCESS`, not as proof that RU visibility is absent
+- if `mini` is actually down, treat RU-origin observability as degraded until a replacement external RU host is ready
 
 Required checks on each run:
 
@@ -306,7 +306,7 @@ python scripts/render_ru_probe_report.py --input scripts/ru_probe_sample.json
 
 RF role split:
 
-- `mini` is the canonical RU probe origin
+- `mini` / `RFMINI` is the canonical RU probe origin and universal operator sandbox
 - `rf1` is the reserve ingress for operator and VIP/manual access
 - do not use `mini` for general user traffic
 - do not treat `rf1` as a general delivery node until repeated RU probes prove stability
@@ -315,7 +315,7 @@ RF role split:
 Current backlog note:
 
 - RU ingress / RF reserve experiments are paused
-- keep using `mini` only as the RU probe origin
+- keep using `mini` only as the RU probe origin and operator sandbox
 - do not resume `mini` canary work or `rf1` promotion until the product owner explicitly requests it
 - the Telegram MTProto exception does not reopen the paused RF reserve canary; the earlier `mini:443` attempt is disabled because Telegram reachability from `mini` is degraded
 

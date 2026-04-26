@@ -6,7 +6,7 @@ Last updated: 2026-04-15
 
 Используйте эту инструкцию, когда для релиза или разбора инцидента нужно реальное подтверждение доступности из RU-origin.
 
-Предпочтительный RU probe host сейчас `mini`, но он не гарантирован. Если нет рабочего RU-host, выводы по российскому происхождению трафика считаются недоказанными.
+Предпочтительный RU probe host сейчас `mini` / `RFMINI`: это канонический RU-origin operator sandbox. Если TCP до `mini` есть, но SSH auth не проходит, фиксируйте `RU-origin check: BLOCKED_BY_ACCESS`, а не отсутствие RU-origin.
 
 ## Когда сразу останавливаемся
 
@@ -30,9 +30,10 @@ Last updated: 2026-04-15
 
 ## Что делать по шагам
 
-1. Проверьте, жив ли `mini`.
-2. Если `mini` недоступен, сразу зафиксируйте, что RU-origin observability degraded, и укажите replacement host, если он есть.
-3. Запустите probe:
+1. Проверьте, жив ли `mini` / `RFMINI`.
+2. Если TCP до `mini` есть, но SSH auth не проходит, зафиксируйте `RU-origin check: BLOCKED_BY_ACCESS` и обновите credential/authorized_keys.
+3. Если `mini` недоступен, сразу зафиксируйте, что RU-origin observability degraded, и укажите replacement host, если он есть.
+4. Запустите probe:
 
 ```powershell
 python scripts/ru_probe_runner.py --reserve-host rf1.pokrov.space --probe-host mini --out ops-local/ru-probe.json
