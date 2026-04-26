@@ -45,6 +45,18 @@ def _stream_pipe(pipe, output: "queue.Queue[str]") -> None:
             pass
 
 
+def _write_stdout(text: str) -> None:
+    if not text:
+        return
+    try:
+        sys.stdout.write(text)
+        sys.stdout.flush()
+    except UnicodeEncodeError:
+        encoding = getattr(sys.stdout, "encoding", None) or "utf-8"
+        sys.stdout.buffer.write(str(text).encode(encoding, errors="replace"))
+        sys.stdout.flush()
+
+
 def _run(name: str, cmd: list[str], cwd: Path = REPO_ROOT, *, timeout_sec: int | None = None, heartbeat_sec: int = 30) -> int:
     started = time.monotonic()
     timeout_label = f" timeout={timeout_sec}s" if timeout_sec else ""
@@ -75,8 +87,7 @@ def _run(name: str, cmd: list[str], cwd: Path = REPO_ROOT, *, timeout_sec: int |
         except queue.Empty:
             line = ""
         if line:
-            sys.stdout.write(line)
-            sys.stdout.flush()
+            _write_stdout(line)
 
         now = time.monotonic()
         if proc.poll() is not None:
@@ -85,8 +96,7 @@ def _run(name: str, cmd: list[str], cwd: Path = REPO_ROOT, *, timeout_sec: int |
                     line = output.get_nowait()
                 except queue.Empty:
                     break
-                sys.stdout.write(line)
-            sys.stdout.flush()
+                _write_stdout(line)
             break
 
         elapsed = now - started
