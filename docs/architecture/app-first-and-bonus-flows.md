@@ -18,7 +18,6 @@ The rework canon now freezes the following target identity and access model for 
 - `app-next/` and `external/client-fork/app/` are retired bootstrap or rollback references only and must not override the active contract
 - one canonical `app-first` account links `install_id`, email, Telegram, devices, and activation keys
 - store-app entry remains the premium-trial path: the first valid device gets `5 days` of premium trial without mandatory registration, then downgrades to `free_monthly`
-- public site/bot trial-key entry may issue one practical `5-day` activation key per browser/IP period without registration; user-facing status is limited to `issued`, `limited`, or `unavailable`
 - site email signup remains a planned browser continuation lane marked `soon`; until launch it must not be described as a live public parity path or a premium-trial path
 - browser continuation currently starts from app handoff or Telegram; email joins that same cabinet session family only after the marked-`soon` launch goes live
 - Telegram is recovery, linking, restore-premium, bonus, community, support fallback, and bot-side fallback commerce, not the primary login or commerce wall
@@ -56,7 +55,6 @@ Contract rule:
 
 - caller-controlled `trial_days` is no longer part of the canonical client contract; the backend always enforces the fixed `5-day` trial from shared truth
 - the backend must return the same `client_policy` contract from `start-trial`, `user`, and `dashboard` flows so the app can reconcile defaults without guessing
-- key-first trial starts from the site, bot, or app; all entrypoints must converge on the same app-first session, device, and access state before showing a working profile
 
 Current `client_policy` contract:
 
@@ -75,7 +73,6 @@ Current `client_policy` contract:
 - `route_policy.mode`: normalized mirror of the current `route_mode`
 - `route_policy.selected_apps`: normalized mirror of the current `selected_apps`
 - `route_policy.requires_elevated_privileges`: normalized mirror of the current elevation requirement
-- `route_policy.capabilities.selected_apps`: scan support, max selected-app count, max identifier length, capability revision, and updated timestamp
 - `package_catalog_version`: versioned Android direct-app catalog stamp from shared facts
 - `ruleset_version`: versioned routing/ruleset stamp from shared facts
 - `support_context.transport`: `legacy_reality_fallback`
@@ -85,23 +82,12 @@ Current `client_policy` contract:
 
 First-run route-mode choice:
 
-- the client must show exactly two first-layer consumer choices: `Оптимизировать всё на устройстве` and `Только выбранные приложения`
-- `Оптимизировать всё на устройстве` is the default public path and stays `TUN`-first
-- `Только выбранные приложения` is the selected-app scan MVP and must write per-device app/process selection state instead of revealing raw proxy or service controls
+- the client must show exactly two first-layer consumer choices: `Optimize everything on this device` and `Only selected apps`
+- `Optimize everything on this device` is the default public path and stays `TUN`-first
+- `Only selected apps` is the split-tunneling path and must write per-device app/process selection state instead of revealing raw proxy or service controls
 - the chosen mode must round-trip through backend-owned `route_mode`, `selected_apps`, and `route_policy.*` fields so `start-trial`, `dashboard`, and recovery flows all agree on the live device state
-- invalid route modes must return `400` from `/api/client/route-policy` rather than being normalized to a default value
 - Windows should use a known-app or executable picker; Android should use an installed-package picker
 - the saved route-mode choice must remain editable later from a dedicated route-mode screen rather than only through hidden advanced settings
-- the first layer must stay free of raw protocol, runtime-core, local-control, hostname, port, and subscription-internal terms; these details belong in diagnostics, advanced settings, or admin/support context
-
-Final client MVP contract for the premium polish gate:
-
-- app entry: `Try free` calls `POST /api/client/session/start-trial`, receives the unified session/access/policy family, and then moves the user to route-mode choice before the first live connect
-- site or bot entry: trial-key issue and hosted checkout still redeem into the same app-first account model, not a parallel browser-only identity
-- device state: `install_id`, friendly device name, platform, app version, route mode, selected apps, and elevation requirement are the shared support model across app, cabinet, and admin
-- app IA: first layer remains `Подключение`, `Локации`, `Правила`, and `Профиль`; support, devices, tariffs, and settings stay nested under profile
-- selected-app scan MVP: Android stores package identifiers, Windows stores executable/process identifiers, and both round-trip through `route_mode`, `selected_apps`, and `route_policy.*`
-- public copy: app, cabinet, bot, and backend user-facing strings should say access key, app, cabinet, renewal, support, route mode, and location; raw profile/config, host, port, public IP, direct product `VPN` wording, and local-control terms are admin or diagnostics only
 
 Rollout note:
 
@@ -135,8 +121,6 @@ Important concepts:
 - device context supports diagnostics and abuse control
 - app session token is used for subsequent app API calls
 - Telegram is optional and not required for account creation
-- backend device truth lives in `app_devices`, with one row per `install_id` linked to the app-first account
-- legacy `users.app_*` fields remain only as a compatibility snapshot of the latest/current app device until every caller moves to the device service
 
 ## Preferred Device Identity Inputs
 
@@ -149,16 +133,6 @@ Important concepts:
 - `last_ip`
 
 This supports a friendlier device model than a Telegram-only account design.
-
-Multi-device contract:
-
-- `portal_bot/device_service.py` owns device upsert, list, rename, revoke, legacy backfill, and device-limit status helpers
-- public device rows use the client-owned `install_id` as the external device identifier and must not expose database row IDs, `tg_id`, `sub_token`, raw config data, or `last_ip`
-- public device rows may expose safe diagnostics: display name, reported device name, platform, OS version, app version, last seen time, route mode, selected-app identifiers, elevated-rights requirement, revoked state, and current-device marker
-- `is_current` is request-scoped and resolved from the caller's current `install_id`; it is not a global account flag
-- `display_name` is the user-editable label; `device_name` remains the last reported client device name
-- revocation marks a device row revoked without deleting retained support context
-- free, trial, and bonus access use the single-device policy; paid access resolves the active plan device limit and defaults to `5` when no plan row is available
 
 ## Username Sync Semantics
 
@@ -184,15 +158,6 @@ Visibility rule:
 - device and IP context should be used for diagnosis and abuse control, not as a public-facing marketing message
 - install-scoped latency samples, carrier labels, and platform labels are operator-visible diagnostics for route quality and must not surface as raw telemetry in normal consumer UI
 
-## Redesign-Safe Public Payloads
-
-App, cabinet, and marketing UI may use additive backend summaries when they need truthful copy around public feeds or aggregate proof:
-
-- `GET /api/public/live-updates` supplies short consumer-readable update cards and uses default copy only as a real empty-state substitute when no active update rows exist
-- `GET /api/public/social-proof` returns existing aggregate counters plus `summary.source=backend_account_rows`, `summary.precision=aggregate`, and a Russian description that says the data is aggregate and personal data is not exposed
-
-These fields preserve existing clients because they are additive. They do not change entitlement, subscription delivery, support, or Telegram reward behavior.
-
 ## Live App-First Endpoints
 
 Current live backend contract:
@@ -201,13 +166,9 @@ Current live backend contract:
 - `GET /api/client/profile/managed`
 - `POST /api/client/nodes/latency-samples`
 - `GET /api/public/catalog`
-- `GET /api/public/trial-key`
-- `POST /api/public/trial-key`
 - `GET /api/access-keys/status/{key}`
 - `POST /api/access-keys/redeem`
 - `POST /api/admin/access-keys/issue`
-- `GET /api/client/route-policy`
-- `POST /api/client/route-policy`
 - `GET /api/client/promo-slots`
 - `GET /api/admin/promo-slots`
 - `PUT /api/admin/promo-slots`
@@ -225,7 +186,6 @@ Related live surfaces also exposed by the backend:
 - `GET /api/dashboard`
 - `GET /api/user/{tg_id}`
 - `GET /api/client/apps`
-- `GET /api/payments/orders/status-public`
 - `GET /api/nodes/status`
 - `GET /api/bonuses`
 - ticket endpoints under `/api/tickets`
@@ -234,7 +194,6 @@ Unified access-contract note:
 
 - `GET /api/dashboard`, `GET /api/user/{tg_id}`, and `GET /api/client/profile/managed` now carry the same identity/access family additions: `linked_identities`, `free_caps`, `redeem_eligibility`, `promo_slots`, `hidden_transport_matrix`, and `location_matrix`
 - the access-key redeem path returns the same access-state family so app, cabinet, and admin can refresh off one canonical contract
-- consumer `/api/user/{tg_id}` callers should receive a safe `consumer_summary` plus route category and connect host while raw `subscription_url`, node `host:port`, and `last_ip` stay admin-diagnostic only
 
 Beta rate-limit contract:
 
@@ -263,7 +222,6 @@ Contract rule:
 - once launched, additive email auth must issue the same browser session family used by the cabinet, checkout, and support flows while exposing `auth_origin` and linked-identity summary for support/admin visibility
 - the additive email-auth rollout uses endpoint families under `/api/auth/email/*` for register, verify, login, recovery, and reset
 - public email register, verify, and recovery should remain disabled or explicitly marked `soon` until transactional sender identity and delivery-confirmation/webhook visibility are live
-- `/api/public/catalog` and session payloads should expose email-auth capability status so UI can render readiness without implying email login is already public
 - browser entry screens in `webapp` are continuation-first and must not become a second landing-page pitch
 - new user-facing `subscription_url` values must point to `connect.pokrov.space`
 - legacy `api.pokrov.space/s8Kx2mP7qR4wT/...` remains compatibility-only for older imports and recovery cases
@@ -273,22 +231,15 @@ Contract rule:
 
 1. user opens public pricing, renewal continuation, or bot-side purchase
 2. hosted checkout sells an activation key against the canonical catalog
-3. guest order status can be checked through `GET /api/payments/orders/status-public`
-4. paid guest success exposes an activation-key handoff for app or cabinet redeem
-5. logged-in continuation may still direct-renew or apply access without breaking provider callback handling
-6. the key is checked with `GET /api/access-keys/status/{key}` and then redeemed through `POST /api/access-keys/redeem`
-7. the backend refreshes managed access on the same app-first account
-8. app and web surfaces reload their unified access contract from the same identity root
+3. the key is checked with `GET /api/access-keys/status/{key}` and then redeemed through `POST /api/access-keys/redeem`
+4. the backend refreshes managed access on the same app-first account
+5. app and web surfaces reload their unified access contract from the same identity root
 
 Checkout rule:
 
 - public pricing starts from checkout-first marketing surfaces, with `pokrov.space/checkout/` as the primary public acquisition route
 - `webapp` renewal is continuation-only and should defer to the same hosted activation-key flow
 - Telegram bot billing remains valid as a secondary path
-- hybrid paid flow means hosted checkout sells activation keys, cabinet/app redeem refreshes the same account, and Telegram billing stays a secondary compatibility lane
-- payment provider callbacks remain the source of payment truth; public status endpoints only summarize safe continuation state and activation handoff
-- public order status carries `fulfillment_mode`, `issued_key_state`, `redeem_state`, and `next_action`; public guest success issues an activation key, while logged-in renewal can still use `direct_apply`
-- public access-key status hides internal `created_by` and `redeemed_by` identifiers; admin key-status views can show those IDs after admin authentication
 - raw subscription links remain recovery/manual-request only and must stay hidden from the default commerce UX
 - signed payment callbacks must not grant access unless the normalized local status is `paid`; failed, cancelled, refunded, chargeback, invalid-signature, and unknown/manual-review states are recorded for operator reconciliation instead of extending the account
 
@@ -322,7 +273,6 @@ Contract rule:
 - app-first support may start from prepared context even before a live thread exists
 - web and cabinet support must be documented as a real ticket lifecycle, not as decorative form state
 - attachment-capable ticket flows belong to authenticated browser and admin paths today
-- ticket rows include safe diagnostic context such as app platform/version, route mode, selected-app count, access state, Telegram-link presence, and masked recent-IP hints; they must not include subscription tokens, raw configs, or personal connection URLs
 - client UX must not promise a realtime in-app chat when the backed contract is asynchronous ticketing
 
 ## Telegram Linking Flow
@@ -396,9 +346,9 @@ Production environment should keep:
 
 Support direction should stay consistent across app, WebApp, and helpbot:
 
-- first-layer client IA should stay `Подключение`, `Локации`, `Правила`, and `Профиль`
-- `Поддержка`, `Устройства`, `Тарифы`, and `Настройки` should sit under `Профиль`
-- renewal and subscription state should remain first-class inside `Профиль`, not treated as an isolated side flow
+- first-layer client IA should stay `Protection`, `Locations`, `Rules`, and `Profile`
+- `Support`, `Devices`, `Subscription`, and `Settings` should sit under `Profile`
+- renewal and subscription state should remain first-class inside `Profile`, not treated as an isolated side flow
 - legacy client route names such as `Logs`, `Config Options`, and `About` may survive only as compatibility redirects, not as the public IA
 - support messages should include device context
 - users should be able to start support from inside the app

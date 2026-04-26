@@ -26,14 +26,12 @@ The new target architecture for the global rework freezes these boundaries befor
 - `POKROV-app/main` is the only active client development and client-doc truth, with local checkout path `C:/Users/kiwun/Documents/ai/POKROV-app`
 - `app-next/` is the retired bootstrap-source archive/reference workspace for that repo after the initial local snapshot landed
 - `external/client-fork/app/` is the retired rollback/archive client reference workspace
-- the front-end rebuild is an atlas-driven shell reset: acquisition lives on `marketing/`, continuation lives on `webapp/`, and the app shell is locked to `Подключение / Локации / Правила / Профиль`
+- the front-end rebuild is an atlas-driven shell reset: acquisition lives on `marketing/`, continuation lives on `webapp/`, and the app shell is locked to `Protection / Locations / Rules / Profile`
 - one app-first account becomes the identity root for `install_id`, email, Telegram, devices, and activation keys
 - public acquisition, pricing, and paywall move entirely onto `marketing/`, with a checkout-first CTA strategy for public traffic, while `webapp/` becomes session-aware continuation, redeem, support, renewal continuation, and admin only
 - public browser copy and visual governance are centralized through `shared/copy.ts`, `copy/catalog.ru.json`, and `shared/design-tokens.json`, with locked host and product facts inherited from the shared fact files
-- `shared/redesign-spine.json` records the current white/mint redesign spine for cross-worker alignment; it is a design/copy contract, not a runtime release signal
-- user-facing cabinet IA is `Главная / Тарифы и оплата / Устройства / Загрузки / Поддержка / Профиль / Настройки`, with `redeem` and hosted-checkout continuation treated as task routes rather than parallel acquisition surfaces
+- user-facing cabinet IA is `Dashboard / Subscription / Devices / Statistics / Support`, with `downloads`, `redeem`, and hosted-checkout continuation treated as task routes rather than parallel acquisition surfaces
 - commerce moves to hosted checkout plus activation-key issuance and redemption instead of raw subscription-link-first UX
-- key-first trial can start from the site, bot, or app and must land on the same app-first session/access contract
 - remote promo content is limited to approved first-party promo slots; third-party ad SDKs remain out of scope
 - the public location story collapses to one logical location per user, while the transport matrix stays hidden behind rollout, diagnostics, and admin controls
 
@@ -50,8 +48,6 @@ Reference-lane note:
   FastAPI backend for health checks, app-first session bootstrap, payments, bonuses, tickets, public data, public reviews, and admin APIs.
 - `portal_bot/app_first_service.py`
   Bounded app-first/session helper used by the API for trial bootstrap, session payload shaping, and Telegram link start context.
-- `portal_bot/device_service.py`
-  Bounded multi-device helper for install-scoped device rows, legacy app-field backfill, safe device payloads, rename/revoke operations, current-device markers, and device-limit status.
 - `portal_bot/web_auth_service.py`
   Bounded browser-auth helper used for Telegram web login, additive email verification/recovery, session issuance, and checkout handoff tokens.
 - `portal_bot/channel_bonus_service.py`
@@ -132,25 +128,6 @@ Admin ownership rule:
 - `webapp` is the primary admin surface for user, node, ticket, and metrics work
 - Telegram admin in `portal_bot/bot.py` is fallback/emergency tooling and must follow the same user-status semantics as web admin
 - `/api/admin/summary` is the operator truth snapshot for entitlement counts, install-backed activity, observer-backed activity, and data-quality status badges
-- web-session-only admin is the rule for production UI: local development admin access must still start from a real browser session token; mock admin data in Playwright may seed that token, but UI code must not add a bypass route that opens `/admin/*` without the normal cabinet session check
-
-Admin API truth as of `2026-04-24` is the route inventory in `portal_bot/api.py`, not a separate admin spreadsheet or Telegram-only command list.
-The authenticated web admin should group those routes into these operator areas:
-
-- `People`: `/api/admin/summary`, `/api/admin/users`, user detail, manual test-user creation, manual extend/block, safe manual/test deletion, key history, key limits, risk, loyalty, presets, and bulk key actions
-- `Access`: `/api/admin/access-keys/issue`, `/api/admin/gift-codes`, `/api/admin/promos`, `/api/admin/plans`, wheel config, campaign links, campaigns, templates, and start links
-- `Payments`: checkout-provider readiness and payment state remain exposed through the payment/order API family, while admin-visible plan, promo, and access-key routes remain under `/api/admin/*`
-- `Network`: `/api/admin/nodes/health`, `/api/admin/nodes/drift`, node sync, drain, enable, disable, resync, per-user key toggles, traffic reset, and transport rollout config
-- `Diagnostics`: `/api/admin/metrics/status`, `/api/admin/nodes/traffic`, `/api/admin/metrics/timeseries`, audit log, observer-derived status, and data-quality badges
-- `Messaging`: user message, broadcast, live updates, templates, campaigns, referrals, and public start-link generation
-- `Feedback`: `/api/admin/tickets`, ticket reply/status, public review moderation, promo slots, and feedback/review publication controls
-
-Admin routes may expose raw identifiers, node fields, personal connection URLs, transport names, and diagnostic errors only inside authenticated operator context. Those same terms must not leak into marketing, cabinet first layer, app first layer, bot onboarding, or public support copy.
-
-Final-polish release boundary:
-
-- no deploy is part of this polish wave
-- final gate preparation covers docs, guardrails, visual smoke expectations, screenshots, and explicit residual-risk notes for the orchestrator
 
 Public connection delivery rule:
 
@@ -465,15 +442,9 @@ Major currently live public and app-first routes in `portal_bot/api.py` include:
 - `GET /api/health`
 - `GET /api/public/plans`
 - `GET /api/public/catalog`
-- `GET /api/public/trial-key`
-- `POST /api/public/trial-key`
-- `GET /api/public/live-updates`
-- `GET /api/public/social-proof`
 - `POST /api/auth/telegram/web-login`
 - additive email-auth rollout endpoints under `/api/auth/email/*` for register, verify, login, recovery, and reset
 - `POST /api/client/session/start-trial`
-- `GET /api/client/route-policy`
-- `POST /api/client/route-policy`
 - `GET /api/access-keys/status/{key}`
 - `POST /api/access-keys/redeem`
 - `POST /api/admin/access-keys/issue`
@@ -484,7 +455,6 @@ Major currently live public and app-first routes in `portal_bot/api.py` include:
 - `GET /api/payments/providers`
 - `POST /api/payments/orders/create`
 - `POST /api/payments/orders/create-public`
-- `GET /api/payments/orders/status-public`
 - `GET /api/dashboard`
 - `GET /api/client/apps`
 - `GET /api/nodes/status`
@@ -494,21 +464,6 @@ Major currently live public and app-first routes in `portal_bot/api.py` include:
 - tickets and admin APIs under `/api/tickets` and `/api/admin/*`
 
 The backend exposes both public/app-first surfaces and a broader Telegram/admin-oriented API set. Keep docs aligned with the actual route inventory in `portal_bot/api.py`.
-
-Current public payload rules:
-
-- `/api/public/catalog` exposes capability status for email auth and trial-key readiness so UI can show `soon`, `available`, or disabled states without guessing
-- public trial-key issue returns user-safe statuses only: `issued`, `limited`, or `unavailable`; the soft limit is one practical key per browser/IP period and it uses the same access-key machinery as paid activation keys
-- `/api/payments/orders/status-public` is a guest-safe checkout continuation surface and exposes `fulfillment_mode`, `issued_key_state`, `redeem_state`, `next_action`, and activation-key handoff after payment without changing provider callback contracts
-- `GET /api/access-keys/status/{key}` is public-safe and must not expose internal creator or redeemer identifiers; authenticated admin key-status endpoints may expose those identifiers for operator diagnosis
-- `/api/client/apps` must report platform `status`, `version_label`, `preferred_action`, `artifact_updated_at`, and `release_blockers`; missing or blocked artifacts stay explicit and must not be replaced by fake URLs
-- `/api/client/route-policy` exposes selected-app scan capabilities and rejects invalid `route_mode` values with `400` instead of silently normalizing them
-- consumer `/api/user/*` and `/api/nodes/status` payloads should expose safe summaries and avoid raw `host`, `port`, `last_ip`, public IP, and personal `subscription_url` leakage; admin diagnostics may still receive those raw fields through authenticated admin context
-
-Public feed and proof payload rule:
-
-- `/api/public/live-updates` may provide default feed items when no operator-authored rows exist, but those defaults must use calm consumer copy and avoid raw node, transport, checkout, or direct-meaning `VPN` wording
-- `/api/public/social-proof` exposes aggregate account counters only; additive `summary.source=backend_account_rows` and `summary.precision=aggregate` help UI describe the data truthfully without implying a live people counter or personal tracking
 
 Current release-gate smoke focus should cover:
 

@@ -34,7 +34,7 @@ export function AdminUserKeyHistoryView({ rows, busy, onReload }: AdminUserKeyHi
         <div className="max-h-[44vh] overflow-auto">
           <table className="min-w-full text-xs">
             <thead>
-              <tr className="border-b border-[#b8ded1] bg-[#eef8f3] text-left text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500">
+              <tr className="border-b border-[#22303c] bg-[#101821] text-left text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500">
                 <th className="px-3 py-3">Date</th>
                 <th className="px-3 py-3">Action</th>
                 <th className="px-3 py-3">Node</th>
@@ -44,7 +44,7 @@ export function AdminUserKeyHistoryView({ rows, busy, onReload }: AdminUserKeyHi
             </thead>
             <tbody>
               {rows.map((row) => (
-                <tr key={row.id} className="border-t border-[#b8ded1]">
+                <tr key={row.id} className="border-t border-[#22303c]">
                   <td className="px-3 py-3 whitespace-nowrap">{fmtRuDate(row.created_at)}</td>
                   <td className="px-3 py-3">
                     <span className={`badge ${historyBadgeClass(row.action)}`}>{actionLabel(row.action)}</span>
@@ -80,7 +80,7 @@ export function AdminUserAuditView({ rows, busy, onReload }: AdminUserAuditViewP
         <div className="max-h-[44vh] overflow-auto">
           <table className="min-w-full text-xs">
             <thead>
-              <tr className="border-b border-[#b8ded1] bg-[#eef8f3] text-left text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500">
+              <tr className="border-b border-[#22303c] bg-[#101821] text-left text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500">
                 <th className="px-3 py-3">Date</th>
                 <th className="px-3 py-3">Actor</th>
                 <th className="px-3 py-3">Action</th>
@@ -89,7 +89,7 @@ export function AdminUserAuditView({ rows, busy, onReload }: AdminUserAuditViewP
             </thead>
             <tbody>
               {rows.map((row) => (
-                <tr key={row.id} className="border-t border-[#b8ded1]">
+                <tr key={row.id} className="border-t border-[#22303c]">
                   <td className="px-3 py-3 whitespace-nowrap">{fmtRuDate(row.created_at)}</td>
                   <td className="px-3 py-3">{row.actor_tg_id}</td>
                   <td className="px-3 py-3">

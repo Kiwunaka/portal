@@ -25,7 +25,7 @@ export default function CheckoutPage() {
       <JsonLd
         data={buildBreadcrumbJsonLd([
           { name: CANONICAL_PLATFORM_BRAND, path: "/" },
-          { name: getCopyText("marketing.checkout.breadcrumb", "Ключ доступа"), path: "/checkout/" },
+          { name: getCopyText("marketing.checkout.breadcrumb", "Личный маршрут оплаты"), path: "/checkout/" },
         ])}
       />
       <Suspense fallback={<CheckoutLoadingFallback />}>

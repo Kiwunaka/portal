@@ -3,7 +3,12 @@ import Link from "next/link";
 import JsonLd from "../json-ld";
 import styles from "./homepage.module.css";
 import { buildSoftwareApplicationJsonLd, MARKETING_CANONICAL_PATHS } from "../../lib/marketing-site";
-import { getPokrovPublicConfig, getTariffPlans } from "../../lib/pokrov";
+import {
+  CANONICAL_PUBLIC_DEFAULT_ROUTE_MODE,
+  CANONICAL_PUBLIC_PLATFORM_SCOPE,
+  getPokrovPublicConfig,
+  getTariffPlans,
+} from "../../lib/pokrov";
 
 const config = getPokrovPublicConfig(process.env as Record<string, string | undefined>);
 
@@ -17,35 +22,26 @@ type PlanCard = {
   badge: string | null;
 };
 
-const NAV_ITEMS = [
-  { href: "#path", label: "Путь" },
-  { href: "#surface", label: "Приложение" },
-  { href: "#pricing", label: "Тарифы" },
-  { href: "#support", label: "Поддержка" },
-];
+type HomeLinks = {
+  checkoutHref: string;
+  installHref: string;
+  cabinetHref: string;
+  supportHref: string;
+  channelHref: string;
+};
 
-const STATUS_RAIL = [
-  { value: "5 дней", label: "проверка в приложении" },
-  { value: "Android + Windows", label: "публичный запуск" },
-  { value: "+10 дней", label: "за связь с Telegram" },
-  { value: "до 5 устройств", label: "после продления" },
-];
-
-const PATH_STEPS = [
+const HERO_FACTS = [
   {
-    index: "01",
-    title: "5 дней",
-    text: "Получите первый ключ для нового устройства.",
+    value: "5 дней",
+    label: "чтобы спокойно проверить сервис в обычной жизни",
   },
   {
-    index: "02",
-    title: "Приложение",
-    text: "Откройте POKROV на Android или Windows.",
+    value: "Android + Windows",
+    label: "основной путь уже собран без лишних развилок",
   },
   {
-    index: "03",
-    title: "Активация",
-    text: "Включите доступ без сетевых деталей на первом экране.",
+    value: "До 5 устройств",
+    label: "один доступ для телефона, ноутбука и домашнего ритма",
   },
   {
     value: "Ответ до 24 часов",
@@ -53,34 +49,43 @@ const PATH_STEPS = [
   },
 ];
 
-const SURFACE_ROWS = [
+const HOW_IT_WORKS = [
   {
-    icon: "5",
-    title: "Старт без лишней регистрации",
-    text: "Первый шаг идет через приложение. Telegram остается рядом для бонуса, восстановления и помощи.",
+    step: "1",
+    title: "Открываете приложение",
+    text: "Старт начинается с нормального экрана, а не с набора технических решений.",
   },
   {
-    icon: "A",
-    title: "Один понятный статус доступа",
-    text: "Пользователь видит срок, устройство и следующий шаг, а технические детали не мешают ежедневному подключению.",
+    step: "2",
+    title: "Проверяете в своём ритме",
+    text: "Пять дней хватает, чтобы понять ощущение дома, в поездках и на рабочем ноутбуке.",
   },
   {
-    icon: "K",
-    title: "Ключ доступа вместо ручной возни",
-    text: "После оплаты ключ активируется в приложении или кабинете и продолжает тот же аккаунт.",
+    step: "3",
+    title: "Оставляете нужный режим",
+    text: "Более полный маршрут можно включить позже, не ломая привычный сценарий.",
+  },
+  {
+    step: "4",
+    title: "Продолжаете тем же доступом",
+    text: "Если всё подошло, выбираете срок и переходите к оплате без нового старта.",
   },
 ];
 
-const PLATFORM_ROWS = [
+const SURFACE_PANELS = [
   {
-    title: "Android",
-    status: "основной запуск",
-    text: "Мобильный старт, проверка 5 дней и обычное ежедневное подключение.",
+    eyebrow: "Устройства",
+    title: "Один спокойный вход для телефона и компьютера",
+    text: "Сайт подводит к установке, приложение становится главным опытом, а кабинет продолжает ту же историю.",
+    bullets: ["Android и Windows в одном понятном пути", "Тот же доступ на нескольких устройствах", "Кабинет для срока и списка устройств"],
+    tone: "devices" as const,
   },
   {
-    title: "Windows",
-    status: "основной запуск",
-    text: "Тот же доступ на рабочем или домашнем компьютере.",
+    eyebrow: "Маршрут",
+    title: "По умолчанию всё выглядит мягко и понятно",
+    text: "Сначала остаётся режим на каждый день. Более полный вариант подключается только тогда, когда он правда нужен.",
+    bullets: ["Спокойный маршрут на старте", "Отдельный переключатель для более полного сценария", "Без технического шума на первом экране"],
+    tone: "routing" as const,
   },
   {
     eyebrow: "Поддержка",
@@ -110,7 +115,7 @@ function buildPlanCards(): PlanCard[] {
       note:
         plan.marketing_note ||
         plan.cabinet_note ||
-        "Продление добавляется к текущему доступу без новой настройки и лишних шагов.",
+        "Продление продолжается поверх того же доступа, без ручного перезапуска.",
       badge: plan.badge || null,
     }));
 }
@@ -303,37 +308,35 @@ export default function MarketingHomePage() {
   const planCards = buildPlanCards();
   const defaultPlanCode = planCards[1]?.code || planCards[0]?.code || "1_month";
   const featuredCode = planCards[1]?.code || defaultPlanCode;
-  const checkoutHref = buildCheckoutHref(defaultPlanCode);
-  const installHref = MARKETING_CANONICAL_PATHS.install;
-  const supportHref = config.contactFormUrl || config.supportTelegramUrl || config.helpbotUrl;
-  const channelHref = config.newsChannelUrl;
-  const cabinetHref = config.webappUrl;
+  const links = buildLinks(defaultPlanCode);
 
   return (
     <>
       <JsonLd data={buildSoftwareApplicationJsonLd({ pagePath: "/" })} />
 
       <div className={styles.page}>
-        <header className={styles.header}>
-          <Link href="/" className={styles.brand} aria-label="POKROV">
-            <img src="/redesign/brand/pokrov-mark.svg" alt="" className={styles.logoMark} aria-hidden="true" />
-            <span className={styles.logoText}>POKROV</span>
+        <header className={styles.topbar}>
+          <Link href="/" className={styles.brand}>
+            <span className={styles.brandMark} aria-hidden="true" />
+            <span className={styles.brandText}>
+              <strong>POKROV</strong>
+              <small>спокойный цифровой маршрут на каждый день</small>
+            </span>
           </Link>
 
-          <nav className={styles.nav} aria-label="Навигация по главной странице">
-            {NAV_ITEMS.map((item) => (
-              <a key={item.href} href={item.href}>
-                {item.label}
-              </a>
-            ))}
+          <nav className={styles.nav} aria-label="Навигация по главной">
+            <a href="#proof">Почему это спокойно</a>
+            <a href="#how-it-works">Как это работает</a>
+            <a href="#pricing">Сроки и цены</a>
+            <a href="#final-cta">Следующий шаг</a>
           </nav>
 
-          <div className={styles.headerActions}>
-            <a href={cabinetHref} className={styles.linkButton}>
+          <div className={styles.topbarActions}>
+            <a href={links.cabinetHref} className={styles.ghostButton}>
               Кабинет
             </a>
-            <Link href={installHref} className={styles.primaryButton}>
-              Попробовать 5 дней
+            <Link href={links.checkoutHref} className={styles.primaryButton}>
+              Перейти к оплате
             </Link>
           </div>
         </header>
@@ -341,26 +344,21 @@ export default function MarketingHomePage() {
         <main id="main-content" className={styles.main}>
           <section className={styles.hero}>
             <div className={styles.heroCopy}>
-              <div className={styles.heroBrand} aria-hidden="true">
-                <img src="/redesign/brand/pokrov-mark.svg" alt="" />
-                <span>POKROV</span>
-              </div>
-              <span className={styles.kicker}>спокойный доступ для Android и Windows</span>
-              <h1>5 дней в приложении, ключ доступа и кабинет рядом.</h1>
-              <p>
-                POKROV ведет по одному понятному пути: сначала проверка на устройстве, затем активация ключа,
-                продление в кабинете и поддержка без лишней сетевой терминологии.
+              <span className={styles.eyebrow}>спокойный старт без нового квеста</span>
+              <h1 className={styles.heroTitle}>Сначала понятный старт. Потом спокойное решение об оплате.</h1>
+              <p className={styles.heroText}>
+                POKROV нужен не для того, чтобы заставлять разбираться в настройках. Он нужен, чтобы открыть
+                приложение, пожить с ним несколько дней на своих устройствах и только потом решить, хочется ли
+                продолжать доступ дальше.
               </p>
+
               <div className={styles.heroActions}>
-                <Link href={installHref} className={styles.primaryButton}>
-                  Попробовать 5 дней
+                <Link href={links.checkoutHref} className={styles.primaryButton}>
+                  Перейти к оплате
                 </Link>
-                <Link href={checkoutHref} className={styles.secondaryButton}>
-                  Купить ключ доступа
+                <Link href={links.installHref} className={styles.secondaryButton}>
+                  Посмотреть установку
                 </Link>
-                <a href={cabinetHref} className={styles.textButton}>
-                  Открыть кабинет
-                </a>
               </div>
 
               <ul className={styles.heroNotes}>
@@ -370,144 +368,148 @@ export default function MarketingHomePage() {
               </ul>
             </div>
 
-            <div className={styles.heroScene} aria-label="Визуальный обзор POKROV">
-              <div className={styles.sceneStatus} aria-hidden="true">
-                <span>Статус</span>
-                <strong>Готово к проверке</strong>
-              </div>
-              <img
-                src="/redesign/pokrov-hero-product.png"
-                alt="Экраны POKROV с приложением, кабинетом и подключением"
-                className={styles.heroImage}
-              />
-              <div className={styles.sceneRail} aria-hidden="true">
-                <span>5 дней</span>
-                <span>Приложение</span>
-                <span>Ключ</span>
-                <span>Поддержка</span>
-              </div>
-            </div>
+            <ProductVisual />
           </section>
 
-          <section className={styles.statusRail} aria-label="Ключевые факты">
-            {STATUS_RAIL.map((item) => (
-              <article key={item.value} className={styles.statusItem}>
-                <strong>{item.value}</strong>
-                <span>{item.label}</span>
+          <section id="proof" className={styles.proofStrip} aria-label="Ключевые факты">
+            {HERO_FACTS.map((fact) => (
+              <article key={fact.value} className={styles.proofItem}>
+                <strong>{fact.value}</strong>
+                <span>{fact.label}</span>
               </article>
             ))}
           </section>
 
-          <section id="path" className={styles.pathBand}>
+          <section id="how-it-works" className={styles.section}>
             <div className={styles.sectionHead}>
-              <span>путь</span>
-              <h2>Один понятный путь: 5 дней → приложение → активировать ключ → кабинет и поддержка.</h2>
+              <span className={styles.eyebrow}>как это работает</span>
+              <h2>Короткий путь без рекламного шума и без технической тяжести.</h2>
+              <p>Всё построено вокруг нескольких ясных шагов: открыть, проверить, оставить нужный режим и продолжить тем же доступом.</p>
             </div>
 
-            <div className={styles.pathLine}>
-              {PATH_STEPS.map((step) => (
-                <article key={step.index} className={styles.pathStep}>
-                  <span>{step.index}</span>
-                  <h3>{step.title}</h3>
-                  <p>{step.text}</p>
-                </article>
-              ))}
-            </div>
-          </section>
-
-          <section id="surface" className={styles.surfaceSection}>
-            <div className={styles.surfaceIntro}>
-              <span className={styles.kicker}>повседневный контур</span>
-              <h2>Главная говорит как продукт, а не как витрина с карточками.</h2>
-              <p>
-                Акцент остается на уверенном первом запуске, понятном сроке доступа и живой поддержке. Технические
-                режимы остаются там, где они действительно нужны.
-              </p>
-            </div>
-
-            <div className={styles.surfaceRows}>
-              {SURFACE_ROWS.map((row) => (
-                <article key={row.title} className={styles.surfaceRow}>
-                  <span className={styles.rowIcon}>{row.icon}</span>
-                  <div>
-                    <h3>{row.title}</h3>
-                    <p>{row.text}</p>
+            <div className={styles.steps}>
+              {HOW_IT_WORKS.map((item, index) => (
+                <article key={item.step} className={styles.stepCard}>
+                  <div className={styles.stepTop}>
+                    <span className={styles.stepIndex}>{item.step}</span>
+                    {index < HOW_IT_WORKS.length - 1 ? <span className={styles.stepLine} aria-hidden="true" /> : null}
                   </div>
+                  <h3>{item.title}</h3>
+                  <p>{item.text}</p>
                 </article>
               ))}
             </div>
           </section>
 
-          <section className={styles.platformBand}>
-            <div className={styles.platformCopy}>
-              <span className={styles.kicker}>платформы</span>
-              <h2>Сейчас публично: Android и Windows. Apple аккуратно готовится.</h2>
-            </div>
-            <div className={styles.platformRows}>
-              {PLATFORM_ROWS.map((platform) => (
-                <article key={platform.title} className={styles.platformRow}>
-                  <strong>{platform.title}</strong>
-                  <span>{platform.status}</span>
-                  <p>{platform.text}</p>
-                </article>
-              ))}
-            </div>
-          </section>
-
-          <section id="pricing" className={styles.pricingSection}>
-            <div className={styles.pricingIntro}>
-              <span className={styles.kicker}>тарифы</span>
-              <h2>После проверки выберите срок и активируйте ключ в том же аккаунте.</h2>
-              <p>
-                Тарифы не создают новый путь. Они продолжают тот же порядок: приложение, ключ доступа, кабинет и
-                поддержка.
-              </p>
-              <Link href={checkoutHref} className={styles.primaryButton}>
-                Перейти к тарифам
-              </Link>
+          <section className={styles.section}>
+            <div className={styles.sectionHead}>
+              <span className={styles.eyebrow}>устройства, маршрут и поддержка</span>
+              <h2>Все важные поверхности говорят об одном и мягко ведут к следующему шагу.</h2>
+              <p>Сайт помогает начать, приложение становится главным опытом, кабинет продолжает историю, а поддержка не ломает ритм.</p>
             </div>
 
-            <div className={styles.planRows}>
-              {planCards.map((plan) => {
-                const featured = plan.code === featuredCode;
-
-                return (
-                  <article key={plan.code} className={`${styles.planRow} ${featured ? styles.planRowFeatured : ""}`.trim()}>
+            <div className={styles.surfaceGrid}>
+              {SURFACE_PANELS.map((panel) => (
+                <article key={panel.title} className={styles.surfaceCard}>
+                  <div className={styles.surfaceCardTop}>
                     <div>
-                      <span>{plan.badge || (featured ? "частый выбор" : "продление")}</span>
-                      <h3>{plan.label}</h3>
-                      <p>{plan.note}</p>
+                      <span className={styles.surfaceEyebrow}>{panel.eyebrow}</span>
+                      <h3>{panel.title}</h3>
                     </div>
-                    <div className={styles.planSide}>
-                      <strong>{plan.price}</strong>
-                      <small>
-                        {plan.duration} · {plan.devices}
-                      </small>
-                      <Link href={buildCheckoutHref(plan.code)} className={featured ? styles.primaryButton : styles.secondaryButton}>
-                        Выбрать
-                      </Link>
-                    </div>
-                  </article>
-                );
-              })}
+                    <SurfaceMock tone={panel.tone} />
+                  </div>
+                  <p>{panel.text}</p>
+                  <ul className={styles.surfaceBullets}>
+                    {panel.bullets.map((bullet) => (
+                      <li key={bullet}>{bullet}</li>
+                    ))}
+                  </ul>
+                </article>
+              ))}
+            </div>
+
+            <div className={styles.inlineActions}>
+              <Link href={links.installHref} className={styles.inlineLink}>
+                Открыть установку
+              </Link>
+              <a href={links.supportHref} className={styles.inlineLink}>
+                Поддержка
+              </a>
+              <a href={links.channelHref} className={styles.inlineLink}>
+                Канал POKROV
+              </a>
             </div>
           </section>
 
-          <section id="support" className={styles.supportBand}>
-            <div>
-              <span className={styles.kicker}>поддержка и бонус</span>
-              <h2>Telegram рядом, но не стоит на входе.</h2>
+          <section id="pricing" className={styles.section}>
+            <div className={styles.sectionHead}>
+              <span className={styles.eyebrow}>сроки и цены</span>
+              <h2>Сначала проба, потом короткий выбор срока без нового старта.</h2>
+              <p>Публичная оплата остаётся простой: выбрать срок, перейти к checkout и продолжить тем же доступом.</p>
+            </div>
+
+            <div className={styles.pricingLayout}>
+              <article className={styles.pricingIntro}>
+                <span className={styles.pricingBadge}>старт</span>
+                <h3>Первые 5 дней бесплатно</h3>
+                <p>
+                  Этого хватает, чтобы понять, подходит ли сервис в обычной жизни. Если да, дальше нужен только спокойный
+                  checkout без нового круга действий.
+                </p>
+                <Link href={links.checkoutHref} className={styles.primaryButton}>
+                  Перейти к оплате
+                </Link>
+              </article>
+
+              <div className={styles.planGrid}>
+                {planCards.map((plan) => {
+                  const isFeatured = plan.code === featuredCode;
+
+                  return (
+                    <article key={plan.code} className={`${styles.planCard} ${isFeatured ? styles.planCardFeatured : ""}`.trim()}>
+                      <span className={styles.planBadge}>{plan.badge || (isFeatured ? "выгодно" : "продление")}</span>
+                      <h3>{plan.label}</h3>
+                      <div className={styles.planPrice}>{plan.price}</div>
+                      <div className={styles.planMeta}>
+                        <span>{plan.duration}</span>
+                        <span>{plan.devices}</span>
+                      </div>
+                      <p>{plan.note}</p>
+                      <Link
+                        href={buildCheckoutHref(plan.code)}
+                        className={isFeatured ? styles.primaryButton : styles.secondaryButton}
+                      >
+                        Выбрать срок
+                      </Link>
+                    </article>
+                  );
+                })}
+              </div>
+            </div>
+          </section>
+
+          <section id="final-cta" className={styles.finalCta}>
+            <div className={styles.finalCopy}>
+              <span className={styles.finalEyebrow}>следующий шаг</span>
+              <h2>Если уже хочется продолжить, дальше нужен только спокойный checkout.</h2>
               <p>
-                Канал помогает получать новости и бонус +10 дней, а поддержка остается доступной через кабинет,
-                приложение и Telegram, если что-то пошло не по плану.
+                Приложение остаётся главным опытом. Сайт помогает выбрать срок и перейти к оплате, кабинет остаётся для
+                устройств и срока, а поддержка помогает, если что-то пошло не так.
               </p>
             </div>
-            <div className={styles.supportActions}>
-              <a href={channelHref} className={styles.lightButton}>
-                Открыть канал
+
+            <div className={styles.finalActions}>
+              <Link href={links.checkoutHref} className={styles.lightButton}>
+                Перейти к оплате
+              </Link>
+              <Link href={links.installHref} className={styles.outlineButton}>
+                Установка
+              </Link>
+              <a href={links.cabinetHref} className={styles.outlineButton}>
+                Кабинет
               </a>
-              <a href={supportHref} className={styles.outlineButton}>
-                Написать в поддержку
+              <a href={links.supportHref} className={styles.outlineButton}>
+                Поддержка
               </a>
             </div>
           </section>

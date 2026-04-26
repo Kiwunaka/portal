@@ -1,70 +1,30 @@
 "use client";
 
 import type { HTMLAttributes, ReactNode } from "react";
-import {
-  Activity,
-  Bell,
-  Gift,
-  KeyRound,
-  LayoutDashboard,
-  Megaphone,
-  MessageSquareText,
-  Network,
-  Route,
-  ShieldCheck,
-  UsersRound,
-  type LucideIcon,
-} from "lucide-react";
 
 import { cn } from "@/components/utils";
 
 type AdminTone = "neutral" | "success" | "warning" | "danger" | "accent";
 type AdminButtonTone = "primary" | "secondary" | "ghost" | "danger";
 type AdminButtonSize = "sm" | "md" | "xs";
-type AdminIconName =
-  | "dashboard"
-  | "users"
-  | "gift"
-  | "key"
-  | "network"
-  | "route"
-  | "broadcast"
-  | "tickets"
-  | "activity"
-  | "shield"
-  | "bell";
-
-const ADMIN_ICONS: Record<AdminIconName, LucideIcon> = {
-  dashboard: LayoutDashboard,
-  users: UsersRound,
-  gift: Gift,
-  key: KeyRound,
-  network: Network,
-  route: Route,
-  broadcast: Megaphone,
-  tickets: MessageSquareText,
-  activity: Activity,
-  shield: ShieldCheck,
-  bell: Bell,
-};
 
 const PANEL_TONE_CLASSES: Record<AdminTone, string> = {
-  neutral: "border-[#b8ded1] bg-white text-slate-900 shadow-[0_18px_42px_-34px_rgba(10,92,67,0.34)]",
-  success: "border-emerald-200 bg-emerald-50 text-emerald-950 shadow-[0_18px_42px_-34px_rgba(10,92,67,0.34)]",
-  warning: "border-amber-200 bg-amber-50 text-amber-950 shadow-[0_18px_42px_-34px_rgba(146,64,14,0.22)]",
-  danger: "border-rose-300 bg-rose-50 text-rose-950 shadow-[0_18px_42px_-34px_rgba(159,18,57,0.22)]",
-  accent: "border-teal-200 bg-teal-50 text-teal-950 shadow-[0_18px_42px_-34px_rgba(15,118,110,0.24)]",
+  neutral: "border-[#1e2a35] bg-[#0d141b] text-slate-200 shadow-[0_18px_40px_-32px_rgba(2,6,23,0.92)]",
+  success: "border-emerald-900/60 bg-[rgba(7,32,24,0.95)] text-emerald-100 shadow-[0_18px_40px_-32px_rgba(5,46,22,0.9)]",
+  warning: "border-amber-900/60 bg-[rgba(41,26,8,0.95)] text-amber-100 shadow-[0_18px_40px_-32px_rgba(69,26,3,0.9)]",
+  danger: "border-rose-950/65 bg-[rgba(44,12,21,0.95)] text-rose-100 shadow-[0_18px_40px_-32px_rgba(76,5,25,0.92)]",
+  accent: "border-sky-900/60 bg-[rgba(10,28,45,0.95)] text-sky-100 shadow-[0_18px_40px_-32px_rgba(7,23,48,0.92)]",
 };
 
 const BUTTON_TONE_CLASSES: Record<AdminButtonTone, string> = {
   primary:
-    "border border-emerald-700 bg-emerald-700 !text-white hover:border-emerald-800 hover:bg-emerald-800",
+    "border border-slate-100 bg-slate-100 text-slate-950 hover:bg-white hover:text-slate-950",
   secondary:
-    "border border-[#99cdbb] bg-white text-emerald-950 hover:border-[#68ad94] hover:bg-emerald-50",
+    "border border-[#2a3945] bg-[#111922] text-slate-100 hover:border-[#364958] hover:bg-[#16212b]",
   ghost:
-    "border border-transparent bg-emerald-50 text-emerald-950 hover:bg-emerald-100",
+    "border border-transparent bg-[#16212b] text-slate-300 hover:bg-[#1b2934] hover:text-slate-100",
   danger:
-    "border border-rose-300 bg-rose-50 text-rose-800 hover:bg-rose-100",
+    "border border-rose-900/60 bg-rose-950/40 text-rose-200 hover:bg-rose-900/35 hover:text-rose-100",
 };
 
 const BUTTON_SIZE_CLASSES: Record<AdminButtonSize, string> = {
@@ -74,33 +34,33 @@ const BUTTON_SIZE_CLASSES: Record<AdminButtonSize, string> = {
 };
 
 export const adminShellFrameClass =
-  "rounded-[1.3rem] border border-[#174d3c] bg-[#071f19] text-slate-100 shadow-[0_36px_80px_-54px_rgba(10,92,67,0.72)]";
+  "rounded-[1.3rem] border border-[#17212b] bg-[#070d13] text-slate-200 shadow-[0_36px_80px_-54px_rgba(2,6,23,0.95)]";
 
 export const adminSidebarClass =
-  "rounded-[1.25rem] border border-[#1d5d49] bg-[#0b2d24] text-slate-100 shadow-[0_24px_60px_-44px_rgba(0,0,0,0.46)]";
+  "rounded-[1.25rem] border border-[#17212b] bg-[#0a1117] text-slate-200 shadow-[0_24px_60px_-44px_rgba(2,6,23,0.95)]";
 
 export const adminTopbarClass =
-  "rounded-[1.15rem] border border-[#1d5d49] bg-[#0b2d24] text-slate-100 shadow-[0_22px_48px_-38px_rgba(0,0,0,0.36)]";
+  "rounded-[1.15rem] border border-[#1b2732] bg-[#0c131a] text-slate-200 shadow-[0_22px_48px_-38px_rgba(2,6,23,0.92)]";
 
 export const adminRailCardClass =
-  "rounded-[1rem] border border-[#1d5d49] bg-[#0b2d24] p-4 text-slate-100 shadow-[0_18px_36px_-32px_rgba(0,0,0,0.38)]";
+  "rounded-[1rem] border border-[#202d38] bg-[#101821] p-4 text-slate-200 shadow-[0_18px_36px_-32px_rgba(2,6,23,0.88)]";
 
 export function adminPanelClass(tone: AdminTone = "neutral"): string {
   return cn("overflow-hidden rounded-[1.05rem] border p-4", PANEL_TONE_CLASSES[tone]);
 }
 
 export const adminInsetPanelClass =
-  "rounded-[0.75rem] border border-[#c6e6db] bg-[#f8fffc] p-3";
+  "rounded-[0.95rem] border border-[#24313d] bg-[#111922] p-3";
 
 export const adminFieldClass =
-  "min-h-10 w-full rounded-[0.75rem] border border-[#b8ded1] bg-white px-3 py-2 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-[#2f8f70] focus:ring-2 focus:ring-emerald-200";
+  "min-h-10 w-full rounded-[0.9rem] border border-[#24313d] bg-[#0a1117] px-3 py-2 text-sm text-slate-100 outline-none transition placeholder:text-slate-500 focus:border-[#4d6375] focus:ring-2 focus:ring-slate-200/5";
 
 export const adminTextAreaClass = cn(adminFieldClass, "min-h-[120px] resize-y py-3");
 
-export const adminCheckboxLabelClass = "inline-flex items-center gap-2 text-[11px] font-medium text-slate-600";
+export const adminCheckboxLabelClass = "inline-flex items-center gap-2 text-[11px] font-medium text-slate-400";
 
 export const adminTableShellClass =
-  "overflow-hidden rounded-[0.85rem] border border-[#b8ded1] bg-white";
+  "overflow-hidden rounded-[1rem] border border-[#22303c] bg-[#0b1218]";
 
 export function adminButtonClass(tone: AdminButtonTone = "secondary", size: AdminButtonSize = "md"): string {
   return cn(
@@ -112,11 +72,11 @@ export function adminButtonClass(tone: AdminButtonTone = "secondary", size: Admi
 
 export function adminBadgeClass(tone: AdminTone = "neutral"): string {
   const palette: Record<AdminTone, string> = {
-    neutral: "border-[#b8ded1] bg-white text-slate-700",
-    success: "border-emerald-200 bg-emerald-50 text-emerald-800",
-    warning: "border-amber-200 bg-amber-50 text-amber-800",
-    danger: "border-rose-200 bg-rose-50 text-rose-800",
-    accent: "border-teal-200 bg-teal-50 text-teal-800",
+    neutral: "border-[#2c3b47] bg-[#141d25] text-slate-300",
+    success: "border-emerald-900/70 bg-emerald-950/45 text-emerald-200",
+    warning: "border-amber-900/70 bg-amber-950/45 text-amber-200",
+    danger: "border-rose-900/70 bg-rose-950/45 text-rose-200",
+    accent: "border-sky-900/70 bg-sky-950/45 text-sky-200",
   };
 
   return cn("inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-[11px] font-semibold", palette[tone]);
@@ -279,111 +239,9 @@ export function AdminEmptyState({
   className?: string;
 }) {
   return (
-    <div className={cn(adminPanelClass("neutral"), "flex min-h-[160px] flex-col items-center justify-center gap-2 border-dashed border-[#b8ded1] text-center", className)}>
+    <div className={cn(adminPanelClass("neutral"), "flex min-h-[160px] flex-col items-center justify-center gap-2 border-dashed border-[#2a3945] text-center", className)}>
       <p className="text-sm font-semibold text-slate-100">{title}</p>
       {description ? <p className="max-w-md text-xs leading-5 text-slate-400">{description}</p> : null}
-    </div>
-  );
-}
-
-export function AdminIcon({
-  name,
-  size = 16,
-  className,
-}: {
-  name: AdminIconName;
-  size?: number;
-  className?: string;
-}) {
-  const Icon = ADMIN_ICONS[name];
-  return <Icon aria-hidden="true" size={size} className={className} />;
-}
-
-export function PokrovAdminMark({ className }: { className?: string }) {
-  return (
-    <span
-      aria-hidden="true"
-      className={cn(
-        "inline-grid h-10 w-10 place-items-center rounded-[0.9rem] border border-emerald-300/35 bg-emerald-100 text-emerald-950 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.35)]",
-        className,
-      )}
-    >
-      <svg viewBox="0 0 200 200" className="h-7 w-7" fill="none">
-        <path
-          d="m177.6 97.19-.2-.43-.38-.25c-16.16-10.8-31.64-29.44-36.79-55.6-4.06-20.3-18.51-38.88-40.17-38.88h-.69c-20.32-.05-37.34 16.94-40.12 36.53-4.17 28.63-19.76 47.56-37.31 58.2l-.36.43c2.32 8.64 16.5 29.7 41.56 33.68 10.48 1.73 20.43-.66 28.44-2.61 2.64 1.45 5.46 2.58 7.97 3.36 6.28-2.34 11.44-5.12 16.21-7.83 6.61 3.63 13.65 5.59 21.07 5.48 19.38-.3 37.6-22.18 40.77-32.08zM99.59 127.88c-14.53-5.11-33.62-19.2-39.62-38.56 4.1-11.05 7.35-21.06 9.25-36.16 4.34 26.62 14.48 46.58 42.95 68.55-4.03 2.75-7.56 4.37-12.58 6.17zm17.74-11.95c3.74-10.64-1.73-19.64-12.86-27.87-16.72-13.05-32.59-26.75-32.59-52.28 0-9.44 4.56-21.67 15.59-27.99-10.48 8.94-11.66 20.4-9.88 30.13 3.21 17.27 15.28 30.29 30 41.27 9.4 6.88 18.06 14.2 18.06 24.39 0 5.22-2.4 9.63-8.32 12.35z"
-          fill="currentColor"
-        />
-      </svg>
-    </span>
-  );
-}
-
-export function AdminConfirmDialog({
-  open,
-  title,
-  description,
-  reason,
-  onReasonChange,
-  onCancel,
-  onConfirm,
-  confirmLabel = "Подтвердить",
-  cancelLabel = "Отмена",
-  busy = false,
-  danger = false,
-  minReasonLength = 8,
-  children,
-}: {
-  open: boolean;
-  title: ReactNode;
-  description?: ReactNode;
-  reason: string;
-  onReasonChange: (value: string) => void;
-  onCancel: () => void;
-  onConfirm: () => void;
-  confirmLabel?: ReactNode;
-  cancelLabel?: ReactNode;
-  busy?: boolean;
-  danger?: boolean;
-  minReasonLength?: number;
-  children?: ReactNode;
-}) {
-  if (!open) return null;
-  const reasonOk = reason.trim().length >= minReasonLength;
-
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/55 p-4">
-      <div className="w-full max-w-lg rounded-[1rem] border border-[#b8ded1] bg-white p-5 text-slate-900 shadow-[0_28px_70px_-40px_rgba(10,92,67,0.45)]">
-        <h2 className="text-lg font-semibold text-slate-950">{title}</h2>
-        {description ? <p className="mt-2 text-sm leading-6 text-slate-600">{description}</p> : null}
-        {children ? <div className="mt-4">{children}</div> : null}
-        <label className="mt-4 block text-xs font-semibold uppercase tracking-[0.14em] text-slate-500" htmlFor="admin-confirm-reason">
-          Причина
-        </label>
-        <textarea
-          id="admin-confirm-reason"
-          className={`${adminTextAreaClass} mt-2 min-h-[88px]`}
-          value={reason}
-          onChange={(event) => onReasonChange(event.target.value)}
-          placeholder="Например: обращение пользователя, плановое окно, номер инцидента"
-        />
-        <p className={reasonOk ? "mt-2 text-xs text-emerald-700" : "mt-2 text-xs text-amber-700"}>
-          Укажите причину минимум {minReasonLength} символов.
-        </p>
-        <div className="mt-5 flex flex-wrap justify-end gap-2">
-          <button type="button" className={adminButtonClass("ghost", "sm")} onClick={onCancel} disabled={busy}>
-            {cancelLabel}
-          </button>
-          <button
-            type="button"
-            data-testid="admin-confirm-accept"
-            className={adminButtonClass(danger ? "danger" : "primary", "sm")}
-            onClick={onConfirm}
-            disabled={busy || !reasonOk}
-          >
-            {confirmLabel}
-          </button>
-        </div>
-      </div>
     </div>
   );
 }

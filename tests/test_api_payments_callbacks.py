@@ -7,7 +7,6 @@ import sys
 import tempfile
 import unittest
 import uuid
-from datetime import timedelta
 from pathlib import Path
 from urllib.parse import parse_qs, urlencode, urlparse
 
@@ -134,10 +133,6 @@ class ApiPaymentCallbacksTests(unittest.TestCase):
             username=username,
         )
         return {"X-Telegram-Init-Data": init_data}
-
-    def _admin_web_headers(self) -> dict[str, str]:
-        token = self.api.create_web_session_token(tg_id=9999, username="admin", auth_type="telegram", auth_origin="telegram")
-        return {"Authorization": f"Bearer {token}"}
 
     def test_success_and_fail_landing_routes(self) -> None:
         client = TestClient(self.api.app)
@@ -605,7 +600,7 @@ class ApiPaymentCallbacksTests(unittest.TestCase):
             self.assertEqual(get_order.status_code, 200, get_order.text)
             self.assertEqual(str(get_order.json().get("status_local") or ""), "pending")
 
-            admin_hdrs = self._admin_web_headers()
+            admin_hdrs = self._auth_headers(9999, "admin")
             refund = client.post(f"/api/payments/freekassa/orders/{order_id}/refund", headers=admin_hdrs)
             self.assertEqual(refund.status_code, 200, refund.text)
 
@@ -686,163 +681,6 @@ class ApiPaymentCallbacksTests(unittest.TestCase):
             self.assertIsNotNone(row)
             self.assertIn("\"discount_pct\":20", str(row.meta_json or ""))
             self.assertIn("\"payment_url\":\"https://pay.fk.money/", str(row.meta_json or ""))
-        finally:
-            s.close()
-
-    def test_public_paid_order_issues_activation_key_without_applying_account(self) -> None:
-        client = TestClient(self.api.app)
-
-        from db import SessionLocal
-        from models import GiftCard, User
-
-        s = SessionLocal()
-        try:
-            s.add(
-                User(
-                    tg_id=6101,
-                    username="guest_buyer",
-                    uuid=str(uuid.uuid4()),
-                    email="user_6101",
-                    sub_type="FREE",
-                    current_plan_code="free_monthly",
-                    is_active=True,
-                    tos_accepted=True,
-                )
-            )
-            s.commit()
-        finally:
-            s.close()
-
-        ticket = self.api._create_checkout_ticket(
-            tg_id=6101,
-            plan_code="1_month",
-            promo_code="",
-            campaign_key="guest_key",
-            source="site",
-        )
-        create = client.post(
-            "/api/payments/freekassa/orders/create-public",
-            json={"plan_code": "1_month", "checkout_ticket": ticket, "currency": "RUB"},
-        )
-        self.assertEqual(create.status_code, 200, create.text)
-        order_id = str(create.json().get("order_id") or "")
-        self.assertTrue(order_id)
-
-        amount = "249.00"
-        sig = self._fk_sci_signature(
-            merchant_id="69962",
-            amount=amount,
-            order_id=order_id,
-            secret_word_2="fk_sw2_test",
-        )
-        callback = client.post(
-            "/api/payments/freekassa/notify",
-            params={
-                "MERCHANT_ID": "69962",
-                "AMOUNT": amount,
-                "MERCHANT_ORDER_ID": order_id,
-                "SIGN": sig,
-                "us_tg_id": "6101",
-                "us_plan_code": "1_month",
-                "intid": "tx-guest-key-6101",
-            },
-        )
-        self.assertEqual(callback.status_code, 200, callback.text)
-
-        status = client.get(
-            "/api/payments/orders/status-public",
-            params={"provider": "freekassa", "order_id": order_id, "checkout_ticket": ticket},
-        )
-        self.assertEqual(status.status_code, 200, status.text)
-        body = status.json()
-        self.assertEqual(body.get("fulfillment_mode"), "activation_key")
-        self.assertEqual(body.get("issued_key_state"), "issued")
-        self.assertEqual(body.get("redeem_state"), "ready")
-        self.assertEqual(body.get("next_action"), "redeem_key")
-        key = str((body.get("activation_handoff") or {}).get("activation_key") or "")
-        self.assertTrue(key.startswith("POKROV-"), body)
-
-        key_status = client.get(f"/api/access-keys/status/{key}")
-        self.assertEqual(key_status.status_code, 200, key_status.text)
-        public_status = key_status.json()
-        self.assertNotIn("created_by", public_status)
-        self.assertNotIn("redeemed_by", public_status)
-
-        s = SessionLocal()
-        try:
-            user = s.query(User).filter(User.tg_id == 6101).first()
-            self.assertIsNotNone(user)
-            self.assertEqual(str(user.sub_type or ""), "FREE")
-            issued = s.query(GiftCard).filter(GiftCard.code == key).first()
-            self.assertIsNotNone(issued)
-            self.assertIsNone(issued.redeemed_by)
-        finally:
-            s.close()
-
-    def test_logged_in_paid_order_extends_account_directly(self) -> None:
-        client = TestClient(self.api.app)
-
-        from db import SessionLocal
-        from models import GiftCard, User
-
-        s = SessionLocal()
-        try:
-            s.add(
-                User(
-                    tg_id=6102,
-                    username="renewal",
-                    uuid=str(uuid.uuid4()),
-                    email="user_6102",
-                    sub_type="PAID",
-                    current_plan_code="1_month",
-                    is_active=True,
-                    expiry_at=self.api._utcnow() + timedelta(days=3),
-                    tos_accepted=True,
-                )
-            )
-            s.commit()
-        finally:
-            s.close()
-
-        create = client.post(
-            "/api/payments/freekassa/orders/create",
-            headers=self._auth_headers(6102, "renewal"),
-            json={"plan_code": "1_month", "source": "site", "tg_id": 6102, "currency": "RUB"},
-        )
-        self.assertEqual(create.status_code, 200, create.text)
-        order_id = str(create.json().get("order_id") or "")
-        self.assertEqual((create.json().get("activation_handoff") or {}).get("mode"), "direct_apply")
-
-        amount = "249.00"
-        sig = self._fk_sci_signature(
-            merchant_id="69962",
-            amount=amount,
-            order_id=order_id,
-            secret_word_2="fk_sw2_test",
-        )
-        callback = client.post(
-            "/api/payments/freekassa/notify",
-            params={
-                "MERCHANT_ID": "69962",
-                "AMOUNT": amount,
-                "MERCHANT_ORDER_ID": order_id,
-                "SIGN": sig,
-                "us_tg_id": "6102",
-                "us_plan_code": "1_month",
-                "intid": "tx-renewal-6102",
-            },
-        )
-        self.assertEqual(callback.status_code, 200, callback.text)
-
-        s = SessionLocal()
-        try:
-            user = s.query(User).filter(User.tg_id == 6102).first()
-            self.assertIsNotNone(user)
-            self.assertEqual(str(user.sub_type or ""), "PAID")
-            self.assertEqual(str(user.current_plan_code or ""), "1_month")
-            self.assertTrue(user.expiry_at and user.expiry_at > self.api._utcnow() + timedelta(days=20))
-            issued_count = s.query(GiftCard).filter(GiftCard.created_by == 6102).count()
-            self.assertEqual(int(issued_count), 0)
         finally:
             s.close()
 
@@ -1034,11 +872,6 @@ class ApiPaymentCallbacksTests(unittest.TestCase):
         self.assertEqual(body.get("provider"), "cardlink")
         self.assertEqual(body.get("provider_label"), "Cardlink")
         self.assertEqual(body.get("payment_url"), "https://checkout.cardlink.link/pay/test-order")
-        self.assertEqual(body["activation_handoff"]["mode"], "activation_key")
-        self.assertEqual(body["activation_handoff"]["status"], "pending_payment")
-        self.assertEqual(body["activation_handoff"]["preferred_action"], "redeem_after_payment")
-        self.assertEqual(body["activation_handoff"]["redeem_path"], "/redeem")
-        self.assertEqual(body["activation_handoff"]["logged_in_continuation"], "direct_apply_available")
 
         s = SessionLocal()
         try:
@@ -1105,7 +938,7 @@ class ApiPaymentCallbacksTests(unittest.TestCase):
 
     def test_public_plans_and_admin_plans_crud(self) -> None:
         client = TestClient(self.api.app)
-        admin_hdrs = self._admin_web_headers()
+        admin_hdrs = self._auth_headers(9999, "admin")
 
         pub_before = client.get("/api/public/plans")
         self.assertEqual(pub_before.status_code, 200, pub_before.text)
@@ -1145,7 +978,7 @@ class ApiPaymentCallbacksTests(unittest.TestCase):
 
     def test_public_live_updates_and_admin_live_updates_crud(self) -> None:
         client = TestClient(self.api.app)
-        admin_hdrs = self._admin_web_headers()
+        admin_hdrs = self._auth_headers(9999, "admin")
 
         public_rows = client.get("/api/public/live-updates")
         self.assertEqual(public_rows.status_code, 200, public_rows.text)

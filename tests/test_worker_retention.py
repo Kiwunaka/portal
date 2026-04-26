@@ -94,21 +94,6 @@ class WorkerRetentionTests(unittest.TestCase):
         self.assertGreaterEqual(len(buttons), 2)
         self.assertIn("t.me/pokrov_vpn", str(buttons[1][0].get("url") or ""))
 
-    def test_retention_copy_uses_human_action_words(self) -> None:
-        text = self.worker._retention_text(flow="welcome", variant="a")
-        start_offer_text = self.worker._retention_text(flow="start99_offer", variant="b", context={"discount_pct": "15"})
-        button_labels = [
-            str(button.get("text") or "")
-            for flow in ("welcome", "t3", "t1", "t0", "reactivation", "start99_offer")
-            for row in self.worker._retention_buttons(flow=flow, variant="b")
-            for button in row
-        ]
-
-        self.assertIn("Откройте приложение", text)
-        self.assertIn("подключение", text.lower())
-        self.assertIn("ключ доступа", start_offer_text.lower())
-        self.assertFalse(any("апгрейд" in label.lower() for label in button_labels))
-
     def test_channel_membership_reason_normalization(self) -> None:
         self.assertEqual(self.worker._normalize_channel_membership_reason("left"), "not_member")
         self.assertEqual(self.worker._normalize_channel_membership_reason("kicked"), "not_member")

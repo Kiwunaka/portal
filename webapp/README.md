@@ -26,7 +26,7 @@ Current user-facing route families in `webapp/src/app/`:
 - `/dashboard/` for the main cabinet snapshot
 - `/subscription/` for subscription state, renewal entry, and the main `Тарифы и оплата` surface
 - `/devices/` for device visibility
-- `/statistics/` only as a compatibility redirect to `/dashboard/`, where usage and account visibility summaries now live
+- `/statistics/` for usage and account visibility summaries inside the cabinet
 - `/downloads/` for app-download continuation and install handoff
 - `/support/` plus support thread/legal routes
 - `/settings/` for account links, Telegram bonus actions, and safe continuation settings
@@ -108,7 +108,6 @@ Current Next.js export expectations:
 - `basePath` is not used
 - `assetPrefix` is not used
 - generated static files are emitted to `webapp/out`
-- compatibility aliases such as `/pricing/`, `/statistics/`, and `/dashboard/downloads/` should resolve through a server redirect when the export server supports it, with fast client-side `router.replace` fallback pages for plain static hosting
 
 ## Auth Continuation
 

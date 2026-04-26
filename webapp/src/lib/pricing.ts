@@ -27,7 +27,7 @@ function toPricingPlan(rawCode: string): PricingPlan {
       days: 30,
       deviceLimit: 5,
       badge: "Базовый",
-      note: "Ежемесячный доступ без длинных обязательств.",
+      note: "Ежемесячный managed premium без длинных обязательств.",
     };
   }
 

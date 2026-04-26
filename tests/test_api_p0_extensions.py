@@ -76,7 +76,6 @@ class ApiP0ExtensionsTests(unittest.TestCase):
             "PUBLIC_CHANNEL",
             "WEBAPP_DEV_AUTH",
             "WEBAPP_DEV_TG_ID",
-            "WEBAPP_DEV_AUTH_PASSWORD",
             "APP_ANDROID_PLAY_URL",
             "APP_ANDROID_APK_URL",
             "APP_ANDROID_MIRROR_URL",
@@ -93,8 +92,7 @@ class ApiP0ExtensionsTests(unittest.TestCase):
         os.environ["SUPPORT_USERNAME"] = "pokrov_supportbot"
         os.environ["PUBLIC_CHANNEL"] = "pokrov_vpn"
         os.environ["WEBAPP_DEV_AUTH"] = "true"
-        os.environ["WEBAPP_DEV_TG_ID"] = "9999"
-        os.environ["WEBAPP_DEV_AUTH_PASSWORD"] = "local-admin-pass"
+        os.environ["WEBAPP_DEV_TG_ID"] = "1001"
         os.environ["APP_ANDROID_PLAY_URL"] = ""
         os.environ["APP_ANDROID_APK_URL"] = ""
         os.environ["APP_ANDROID_MIRROR_URL"] = ""
@@ -180,26 +178,11 @@ class ApiP0ExtensionsTests(unittest.TestCase):
             },
         )
 
-    def _dev_auth_headers(self, *, origin: str | None = None) -> dict[str, str]:
-        client = TestClient(self.api.app, base_url="http://localhost")
-        safe_origin = origin or "http://localhost:3000"
-        headers = {"Origin": safe_origin, "Referer": f"{safe_origin}/admin/"}
-        r = client.post("/api/auth/dev/web-login", headers=headers, json={"password": "local-admin-pass"})
-        self.assertEqual(r.status_code, 200, r.text)
-        return {"Authorization": f"Bearer {r.json()['token']}"}
-
-    def _admin_web_headers(self) -> dict[str, str]:
-        token = self.api.create_web_session_token(tg_id=9999, username="admin", auth_type="telegram", auth_origin="telegram")
-        return {"Authorization": f"Bearer {token}"}
-
-    def test_dev_auth_requires_password_session_on_localhost(self) -> None:
+    def test_dev_auth_allows_localhost_without_header(self) -> None:
         client = TestClient(self.api.app, base_url="http://localhost")
         r = client.get("/api/dashboard")
-        self.assertEqual(r.status_code, 401, r.text)
-
-        authed = client.get("/api/dashboard", headers=self._dev_auth_headers())
-        self.assertEqual(authed.status_code, 200, authed.text)
-        self.assertEqual(authed.json()["tg_id"], 9999)
+        self.assertEqual(r.status_code, 200, r.text)
+        self.assertEqual(r.json()["tg_id"], 1001)
 
     def test_dev_auth_denies_non_localhost_without_header(self) -> None:
         client = TestClient(self.api.app, base_url="http://example.com")
@@ -213,9 +196,7 @@ class ApiP0ExtensionsTests(unittest.TestCase):
 
     def test_dev_auth_allows_localhost_origin(self) -> None:
         client = TestClient(self.api.app, base_url="http://localhost")
-        headers = self._dev_auth_headers(origin="http://localhost:3000")
-        headers["Origin"] = "http://localhost:3000"
-        r = client.get("/api/dashboard", headers=headers)
+        r = client.get("/api/dashboard", headers={"Origin": "http://localhost:3000"})
         self.assertEqual(r.status_code, 200, r.text)
 
     def test_events_whitelist_and_reject_unknown(self) -> None:
@@ -282,27 +263,7 @@ class ApiP0ExtensionsTests(unittest.TestCase):
         body = r.json()
         self.assertGreaterEqual(int(body.get("connected_users", 0)), 1)
         self.assertIn("updated_at", body)
-        self.assertEqual(body.get("summary", {}).get("source"), "backend_account_rows")
-        self.assertEqual(body.get("summary", {}).get("precision"), "aggregate")
-        self.assertIn("без персональных данных", body.get("summary", {}).get("description", ""))
         self.assertEqual(r.headers.get("cache-control"), "public, max-age=60")
-
-    def test_public_live_updates_default_copy_is_human_and_policy_safe(self) -> None:
-        client = TestClient(self.api.app)
-        r = client.get("/api/public/live-updates")
-        self.assertEqual(r.status_code, 200, r.text)
-        body = r.json()
-        updates = body.get("updates", [])
-        self.assertEqual(len(updates), 3)
-        rendered = " ".join(
-            f"{row.get('title', '')} {row.get('summary', '')}"
-            for row in updates
-        ).lower()
-        self.assertNotIn("checkout", rendered)
-        self.assertNotIn("deep link", rendered)
-        self.assertNotIn("vpn", rendered)
-        self.assertNotRegex(rendered, r"\bузл\w*")
-        self.assertIn("точки подключения", rendered)
 
     def test_featured_reviews_mask_username_in_api_response(self) -> None:
         from db import SessionLocal
@@ -370,7 +331,7 @@ class ApiP0ExtensionsTests(unittest.TestCase):
 
     def test_admin_metrics_status_endpoint(self) -> None:
         client = TestClient(self.api.app)
-        hdrs = self._admin_web_headers()
+        hdrs = {"X-Telegram-Init-Data": self._init_data(9999, "admin")}
         r = client.get("/api/admin/metrics/status", headers=hdrs)
         self.assertEqual(r.status_code, 200, r.text)
         body = r.json()
@@ -389,16 +350,6 @@ class ApiP0ExtensionsTests(unittest.TestCase):
         self.assertEqual(body["windows"]["exe_url"], "")
         self.assertEqual(body["windows"]["mirror_url"], "")
         self.assertEqual(body["docs_url"], "")
-        self.assertEqual(body["android"]["status"], "blocked")
-        self.assertEqual(body["android"]["version_label"], "0.x.x-beta")
-        self.assertEqual(body["android"]["preferred_action"], "install_help")
-        self.assertIsNone(body["android"]["artifact_updated_at"])
-        self.assertIn("release_url_missing", body["android"]["release_blockers"])
-        self.assertEqual(body["windows"]["status"], "blocked")
-        self.assertEqual(body["windows"]["version_label"], "0.x.x-beta")
-        self.assertEqual(body["windows"]["preferred_action"], "install_help")
-        self.assertIsNone(body["windows"]["artifact_updated_at"])
-        self.assertIn("release_url_missing", body["windows"]["release_blockers"])
         self.assertRegex(body["updated_at"], r"^\d{4}-\d{2}-\d{2}T")
         self.assertTrue(body["updated_at"].endswith("Z"))
 
@@ -421,11 +372,6 @@ class ApiP0ExtensionsTests(unittest.TestCase):
         self.assertEqual(body["windows"]["exe_url"], self.api.Settings.APP_WINDOWS_EXE_URL)
         self.assertEqual(body["windows"]["mirror_url"], self.api.Settings.APP_WINDOWS_MIRROR_URL)
         self.assertEqual(body["docs_url"], self.api.Settings.APP_DOCS_URL)
-        self.assertEqual(body["android"]["status"], "blocked")
-        self.assertEqual(body["android"]["preferred_action"], "install_help")
-        self.assertIn("physical_device_audit_required", body["android"]["release_blockers"])
-        self.assertEqual(body["windows"]["status"], "available")
-        self.assertEqual(body["windows"]["preferred_action"], "download")
 
     def test_start_trial_returns_session_and_subscription_url(self) -> None:
         calls: list[dict[str, object]] = []
@@ -526,8 +472,7 @@ class ApiP0ExtensionsTests(unittest.TestCase):
         r = client.get("/api/user/1001", headers=hdrs)
         self.assertEqual(r.status_code, 200, r.text)
         body = r.json()
-        self.assertIsNone(body.get("last_ip"))
-        self.assertEqual(body.get("consumer_summary", {}).get("raw_details_visible"), False)
+        self.assertEqual(body.get("last_ip"), "203.0.113.10")
         self.assertEqual(body.get("linked_telegram", {}).get("id"), 777001)
         self.assertEqual(body.get("linked_telegram", {}).get("username"), "alice_linked")
         self.assertEqual(body.get("client_policy", {}).get("routing_mode_default"), "all_except_ru")

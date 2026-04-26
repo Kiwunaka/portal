@@ -7,7 +7,6 @@ import { useEffect, useMemo, useState } from "react";
 import { buildCheckoutHostHref, MARKETING_CANONICAL_PATHS } from "../../lib/marketing-site";
 import {
   getPricingPreviewDiscountPercent,
-  getCopyText,
   getPokrovPublicConfig,
   getPromoSlotsCatalog,
   getTariffPlans,
@@ -84,22 +83,6 @@ type AccessKeyStatusResponse = {
   } | null;
 };
 
-type PaymentProviderChoice = {
-  code: string;
-  label: string;
-  accent?: string;
-  checkout_hint?: string;
-  supports_public?: boolean;
-};
-
-type PaymentProvidersResponse = {
-  ok: boolean;
-  providers: PaymentProviderChoice[];
-  blocked?: boolean;
-  blocked_reason_texts?: string[];
-  telegram_fallback_available?: boolean;
-};
-
 const config = getPokrovPublicConfig(process.env as Record<string, string | undefined>);
 const promoCatalog = getPromoSlotsCatalog();
 
@@ -158,30 +141,17 @@ async function fetchAccessKeyStatus(key: string): Promise<AccessKeyStatusRespons
   throw new Error(lastError);
 }
 
-async function fetchPaymentProviders(): Promise<PaymentProvidersResponse | null> {
-  for (const base of candidateApiBases()) {
-    try {
-      const response = await fetch(`${base}/api/payments/providers`, { cache: "no-store" });
-      if (!response.ok) continue;
-      return (await response.json()) as PaymentProvidersResponse;
-    } catch {
-      // Try next base.
-    }
-  }
-  return null;
-}
-
 function describePromoContent(contentId: string): { title: string; body: string } {
   if (contentId === "redeem_key") {
     return {
-      title: "Уже есть ключ доступа?",
-      body: "Проверьте его статус ниже и сразу переходите к активации в приложении или кабинете.",
+      title: "Уже есть activation key?",
+      body: "Проверьте его статус ниже и сразу переходите к redeem в приложении или cabinet continuation.",
     };
   }
   if (contentId === "telegram_bonus") {
     return {
-      title: "Telegram даёт +10 дней",
-      body: "После привязки Telegram можно забрать бонус, если вы подписаны на канал POKROV.",
+      title: "Telegram остаётся вторичным бонусом",
+      body: "После привязки аккаунта Telegram может дать +10 дней, но не заменяет app-first старт.",
     };
   }
   return {
@@ -212,20 +182,20 @@ export function CheckoutLoadingFallback() {
   return (
     <main className="checkout-shell lp-route-shell lp-route-shell--checkout">
       <section className="checkout-hero">
-        <div className="checkout-kicker">Попробовать {"->"} купить ключ {"->"} активировать</div>
-        <div className="checkout-status-chip checkout-status-chip--fallback">Готовим варианты доступа</div>
+        <div className="checkout-kicker">Спокойная касса</div>
+        <div className="checkout-status-chip checkout-status-chip--fallback">Собираем публичный каталог</div>
         <h1 className="checkout-title">
           <span>POKROV</span>
-          <span>Ключ доступа без лишних шагов</span>
+          <span>Маршрут покупки через activation key</span>
         </h1>
-        <p className="checkout-sub">Подгружаем сроки, покупку ключа и честный следующий шаг для активации.</p>
+        <p className="checkout-sub">Подгружаем тарифы, условия доступа и следующий шаг для покупки или погашения ключа.</p>
       </section>
       <section className="checkout-grid">
         <article className="glass-card">
-          <div className="checkout-helper">Готовим тарифы и понятный путь покупки…</div>
+          <div className="checkout-helper">Готовим тарифы и спокойный маршрут покупки…</div>
         </article>
         <article className="glass-card checkout-sticky">
-          <div className="checkout-helper">Проверяем условия и доступные шаги…</div>
+          <div className="checkout-helper">Проверяем публичные условия и резервные шаги…</div>
         </article>
       </section>
     </main>
@@ -243,8 +213,6 @@ export default function CheckoutClient() {
   const [keyStatus, setKeyStatus] = useState<AccessKeyStatusResponse | null>(null);
   const [statusText, setStatusText] = useState("");
   const [keyBusy, setKeyBusy] = useState(false);
-  const [providers, setProviders] = useState<PaymentProviderChoice[]>([]);
-  const [providersBlocked, setProvidersBlocked] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -280,22 +248,6 @@ export default function CheckoutClient() {
   }, [selectedPlan]);
 
   useEffect(() => {
-    let cancelled = false;
-
-    const load = async () => {
-      const payload = await fetchPaymentProviders();
-      if (!payload || cancelled) return;
-      setProviders(Array.isArray(payload.providers) ? payload.providers : []);
-      setProvidersBlocked(Boolean(payload.blocked || !payload.ok));
-    };
-
-    void load();
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
-  useEffect(() => {
     if (!keyInput) {
       setKeyStatus(null);
       return;
@@ -312,7 +264,7 @@ export default function CheckoutClient() {
       })
       .catch((error) => {
         setKeyStatus(null);
-        setStatusText(String((error as { message?: string })?.message || error || "api unavailable"));
+        setStatusText(String((error as { message?: string })?.message || error || "Не удалось проверить ключ."));
       })
       .finally(() => {
         setKeyBusy(false);
@@ -327,7 +279,6 @@ export default function CheckoutClient() {
   const discountPercent = getPricingPreviewDiscountPercent(promoCode);
   const checkoutHref = buildCheckoutHostHref(activePlan.code, promoCode || undefined);
   const redeemHref = keyStatus?.key ? buildRedeemHref(keyStatus.key) : buildRedeemHref(keyInput);
-  const trialKeyState = describeTrialKeyState({ keyInput, keyBusy, keyStatus, statusText });
   const marketingPromoIds =
     promoCatalog.slots.find((slot) => slot.id === "marketing.checkout.contextual")?.allowed_content_ids || [];
 
@@ -336,31 +287,23 @@ export default function CheckoutClient() {
       <section className="checkout-hero">
         <div className="checkout-kicker">Публичная бета: купить ключ {"->"} погасить {"->"} продолжить доступ</div>
         <div className="checkout-status-chip checkout-status-chip--ready">
-          {catalog?.public_surface_policy?.pricing_owner === "marketing" ? "Оплата на сайте" : "Ключ доступа"}
+          {catalog?.public_surface_policy?.pricing_owner === "marketing" ? "Маркетинг ведёт в оплату" : "Публичный checkout"}
         </div>
         <h1 className="checkout-title">
           <span>POKROV</span>
-          <span>{getCopyText("marketing.checkout.title", "Ключ доступа для POKROV")}</span>
+          <span>Спокойная покупка через activation key</span>
         </h1>
         <p className="checkout-sub">
           Эта страница ведёт к покупке activation key для бета-доступа и не показывает сырой персональный маршрут. После оплаты ключ погашается в приложении или в кабинете, а доступ продолжается в том же app-first аккаунте. Если провайдер оплаты вернул спорный или неясный статус, поддержка помогает вручную.
         </p>
-        <div className="lp-hero-actions">
-          <Link href={MARKETING_CANONICAL_PATHS.install} className="lp-btn lp-btn--primary">
-            {getCopyText("marketing.checkout.primary_cta", "Попробовать 5 дней")}
-          </Link>
-          <a href={checkoutHref} target="_blank" rel="noreferrer" className="lp-btn lp-btn--ghost">
-            {getCopyText("marketing.checkout.purchase_cta", "Купить ключ доступа")}
-          </a>
-        </div>
       </section>
 
       <section className="lp-info-band checkout-info-band">
         <div className="lp-info-band__grid">
           <article className="lp-info-card">
             <span className="lp-info-card__eyebrow">Сначала попробовать</span>
-            <h3>5 дней идут до покупки</h3>
-            <p>Новая установка может начать в приложении и проверить POKROV до оплаты.</p>
+            <h3>Пробный период идёт до покупки</h3>
+            <p>Первый шаг остаётся за приложением: 5 дней теста помогают понять продукт до оплаты.</p>
           </article>
           <article className="lp-info-card">
             <span className="lp-info-card__eyebrow">Потом оплатить</span>
@@ -368,9 +311,9 @@ export default function CheckoutClient() {
             <p>Публичная оплата продаёт activation key для беты и не уводит в сложные технические сценарии.</p>
           </article>
           <article className="lp-info-card">
-            <span className="lp-info-card__eyebrow">Если вы уже вошли</span>
-            <h3>Продление идёт в тот же аккаунт</h3>
-            <p>Кабинет честно продолжает текущий доступ, а не создаёт отдельную покупку в стороне.</p>
+            <span className="lp-info-card__eyebrow">Если нужен fallback</span>
+            <h3>Кабинет и Telegram рядом</h3>
+            <p>Когда нужно восстановление или помощь, рядом остаются кабинет, поддержка и спокойный путь продолжения.</p>
           </article>
         </div>
       </section>
@@ -400,13 +343,13 @@ export default function CheckoutClient() {
           <div className="checkout-trust">
             <strong>Как это работает</strong>
             <ul className="checkout-trust-list">
-              <li>В приложении новая установка может получить 5 дней проверки без обязательного Telegram.</li>
+              <li>В приложении первое валидное устройство получает 5 дней premium trial без обязательной регистрации.</li>
               <li>
-                После пробного срока остается бесплатный базовый режим: {catalog?.free_tier?.traffic_limit_gb || 5} ГБ на{" "}
-                {catalog?.free_tier?.cycle_days || 30} дней.
+                После trial доступ переходит в {catalog?.free_tier?.location_code || "NL-free"} с лимитом{" "}
+                {catalog?.free_tier?.traffic_limit_gb || 5} GB / {catalog?.free_tier?.cycle_days || 30} дней.
               </li>
-              <li>Режим по умолчанию: {formatRoutingMode(catalog?.public_defaults?.routing_mode)}.</li>
-              <li>Telegram нужен для восстановления, бонуса +10 дней и связи с поддержкой.</li>
+              <li>Публичный маршрут по умолчанию остаётся {catalog?.public_defaults?.routing_mode || "all_except_ru"}.</li>
+              <li>Telegram нужен для recovery, restore premium, бонуса +10 дней и support fallback.</li>
             </ul>
           </div>
 
@@ -423,12 +366,12 @@ export default function CheckoutClient() {
             <p className="checkout-helper">
               {discountPercent > 0
                 ? `Скидка ${discountPercent}% уже заложена в итог для ${activePlan.label}.`
-                : "Промокод меняет только сумму покупки ключа доступа."}
+                : "Промокод меняет только итог покупки activation key и не открывает ручной технический маршрут."}
             </p>
           </div>
 
           <div className="checkout-trust">
-            <strong>Ключ доступа или бесплатной проверки</strong>
+            <strong>Уже есть key?</strong>
             <div className="checkout-actions">
               <input
                 value={keyInput}
@@ -437,16 +380,12 @@ export default function CheckoutClient() {
                 className="checkout-secondary"
               />
             </div>
-            {keyBusy ? <p className="checkout-helper">Проверяем статус ключа доступа…</p> : null}
-            <div className={`checkout-empty checkout-empty--${trialKeyState.tone}`}>
-              <strong>{trialKeyState.title}</strong>
-              <p>{trialKeyState.body}</p>
-            </div>
+            {keyBusy ? <p className="checkout-helper">Проверяем статус activation key…</p> : null}
             {keyStatus ? (
               <ul className="checkout-trust-list">
                 <li>Ключ: {maskAccessKey(keyStatus.key)}</li>
                 <li>План: {keyStatus.plan?.label || `${keyStatus.days} дней`}</li>
-                <li>Статус: {keyStatus.redeemed ? "уже активирован" : "готов к активации"}</li>
+                <li>Статус: {keyStatus.redeemed ? "уже погашен" : "готов к redeem"}</li>
               </ul>
             ) : null}
           </div>
@@ -469,7 +408,7 @@ export default function CheckoutClient() {
               Устройства: <strong>до {activePlan.device_limit}</strong>
             </p>
             <p>
-              Платформы: <strong>{formatPlatformScope(catalog?.public_surface_policy?.public_platform_scope)}</strong>
+              Публичный scope: <strong>{(catalog?.public_surface_policy?.public_platform_scope || ["android", "windows"]).join(" + ")}</strong>
             </p>
             <p className="checkout-summary-total">
               Сумма: <strong>{formatPrice(activePlan.amount_rub, discountPercent)}</strong>
@@ -477,38 +416,33 @@ export default function CheckoutClient() {
           </div>
 
           <a href={checkoutHref} target="_blank" rel="noreferrer" className="checkout-submit">
-            {getCopyText("marketing.checkout.purchase_cta", "Купить ключ доступа")}
+            Купить activation key
           </a>
 
           <a href={redeemHref} target="_blank" rel="noreferrer" className="checkout-secondary checkout-secondary-button">
-            Активировать ключ в кабинете
+            Погасить key в cabinet
           </a>
 
           <a href={config.webappUrl} target="_blank" rel="noreferrer" className="checkout-secondary checkout-secondary-button">
             Открыть кабинет
           </a>
 
+          <a href={config.botUrl} target="_blank" rel="noreferrer" className="checkout-secondary checkout-secondary-button">
+            Продолжить в Telegram
+          </a>
+
           <Link href={MARKETING_CANONICAL_PATHS.install} className="checkout-secondary checkout-secondary-button">
-            Скачать приложение
+            Сначала установить приложение
           </Link>
 
           <p className="checkout-helper">
             Email-вход на сайте ещё помечен как soon. Premium trial начинается из приложения на первом валидном устройстве, а купленный activation key можно погасить в приложении или кабинете.
           </p>
 
-          {statusText ? <p className="checkout-status">{normalizeAccessKeyError(statusText).text}</p> : null}
+          {statusText ? <p className="checkout-status">{statusText}</p> : null}
 
           <div className="checkout-trust">
-            <strong>Оплата и доверие</strong>
-            <ul className="checkout-trust-list">
-              <li>Платёж открывается отдельно на странице оплаты POKROV.</li>
-              <li>{providersBlocked ? "Сейчас касса не показывает доступные способы оплаты." : describePaymentProviders(providers)}</li>
-              <li>Ключ выдаётся после подтверждения платежа платёжным партнёром.</li>
-            </ul>
-          </div>
-
-          <div className="checkout-trust">
-            <strong>Полезно знать</strong>
+            <strong>First-party promo slots</strong>
             <ul className="checkout-trust-list">
               {marketingPromoIds.map((contentId) => {
                 const content = describePromoContent(contentId);

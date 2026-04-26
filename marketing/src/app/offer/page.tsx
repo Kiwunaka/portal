@@ -3,13 +3,13 @@ import Link from "next/link";
 import JsonLd from "../../components/json-ld";
 import { buildMarketingMetadata } from "../../components/marketing-landing";
 import { buildBreadcrumbJsonLd, MARKETING_CANONICAL_PATHS } from "../../lib/marketing-site";
-import { CANONICAL_PLATFORM_BRAND, getCopyText, getPokrovPublicConfig } from "../../lib/pokrov";
+import { CANONICAL_PLATFORM_BRAND, getPokrovPublicConfig } from "../../lib/pokrov";
 
 const config = getPokrovPublicConfig(process.env as Record<string, string | undefined>);
 
 export const metadata = buildMarketingMetadata(
   "Публичная оферта | POKROV",
-  "Понятные условия POKROV: доступ, 5 дней проверки, ключи доступа, продление и контакты поддержки.",
+  "Базовые условия цифровой подписки POKROV, порядок продления и контакты поддержки.",
   {
     path: "/offer/",
     keywords: ["оферта pokrov", "условия подписки", "pokrov offer"],
@@ -30,16 +30,14 @@ export default function OfferPage() {
           <span className="lp-legal-banner__eyebrow">Юридическая информация</span>
           <h1>Публичная оферта</h1>
           <p>
-            {getCopyText(
-              "marketing.legal.offer.intro",
-              "Понятные условия POKROV: доступ, 5 дней проверки, ключи доступа, продление и контакты поддержки.",
-            )}
+            Здесь собраны базовые условия доступа к цифровым услугам POKROV, порядок продления и спокойный способ
+            связаться с командой, если нужен разбор спорной ситуации.
           </p>
         </section>
 
         <section className="lp-legal-grid">
           <article className="lp-legal-panel">
-            <h2>Основные условия простыми словами</h2>
+            <h2>Основные условия</h2>
             <ul className="lp-legal-list">
               <li>Текущая волна — оплачиваемая бета с ограниченным доступом по приглашениям, а не публичный стабильный запуск.</li>
               <li>Сервис предоставляется как цифровой доступ на выбранный срок; автоматическое списание не включается без отдельного явного согласия пользователя.</li>
@@ -61,7 +59,7 @@ export default function OfferPage() {
 
           <article className="lp-legal-panel">
             <h2>Где смотреть актуальную версию</h2>
-            <p>Актуальные версии документов доступны на сайте, в кабинете и по запросу в поддержку.</p>
+            <p>Актуальные версии документов доступны на сайте, в кабинете и по запросу в службу заботы.</p>
             <p className="lp-legal-inline-links">
               Полезные страницы: <Link href="/">главная POKROV</Link>,{" "}
               <Link href={MARKETING_CANONICAL_PATHS.mobile}>мобильный старт</Link> и{" "}
@@ -74,7 +72,7 @@ export default function OfferPage() {
           <h2>Контакты</h2>
           <ul className="lp-legal-list lp-legal-list--contacts">
             <li>
-              Поддержка: <a href={`mailto:${config.contactEmail}`}>{config.contactEmail}</a>
+              Support: <a href={`mailto:${config.contactEmail}`}>{config.contactEmail}</a>
             </li>
             <li>
               Enterprise: <a href={`mailto:${config.enterpriseEmail}`}>{config.enterpriseEmail}</a>
@@ -96,10 +94,7 @@ export default function OfferPage() {
             <Link className="btn btn-ghost" href="/">
               На главную POKROV
             </Link>
-            <Link className="btn btn-primary" href={MARKETING_CANONICAL_PATHS.install}>
-              Попробовать 5 дней
-            </Link>
-            <a className="btn btn-ghost" href={config.botUrl} target="_blank" rel="noreferrer">
+            <a className="btn btn-primary" href={config.botUrl} target="_blank" rel="noreferrer">
               Открыть Telegram-бота
             </a>
           </div>

@@ -1,6 +1,6 @@
 # POKROV Product Overview
 
-Last updated: 2026-04-24
+Last updated: 2026-04-23
 
 ## Document Status
 
@@ -44,14 +44,13 @@ The current program is locked around these target product decisions:
 - one canonical `app-first` account links `install_id`, email, Telegram, devices, and activation keys
 - public delivery scope for this wave remains `Android + Windows`; Apple hosts may remain in engineering lanes but are not part of public promise or release acceptance
 - commercial flow becomes `buy key -> redeem key -> managed premium`, with raw subscription links hidden from default site, webapp, and bot UX and exposed only for explicit recovery or manual-request paths
-- key-first trial starts from the site, bot, or app; all three entrypoints must create or continue the same app-first account instead of minting separate public identities
 - `marketing` is the only public acquisition, pricing, and paywall surface, and its default public CTA set is checkout-first; `webapp` is session-aware continuation, support, redeem, renewal continuation, and admin only
 - public browser copy and visual governance are centralized through `shared/copy.ts`, `copy/catalog.ru.json`, and `shared/design-tokens.json`, with locked host and product facts inherited from the shared fact files
-- user-facing cabinet IA becomes `Главная / Тарифы и оплата / Устройства / Загрузки / Поддержка / Профиль / Настройки`, with entry, `redeem`, hosted-checkout continuation, and compatibility redirects treated as task routes rather than parallel public-entry surfaces
+- user-facing cabinet IA becomes `Dashboard / Subscription / Devices / Statistics / Support`, with entry, `downloads`, `redeem`, hosted-checkout continuation, and compatibility redirects treated as task routes rather than parallel public-entry surfaces
 - app surfaces must not use ad SDKs or third-party ads; only approved first-party promo slots may render remotely managed promo content
 - normal consumer UX should show one logical location, while transport variants `VLESS+REALITY`, `VMess`, `Trojan`, and `XHTTP` stay hidden behind auto, diagnostics, or admin controls
-- target client IA becomes `Подключение / Локации / Правила / Профиль`, with `Поддержка`, `Устройства`, `Тарифы`, and `Настройки` nested inside `Профиль`
-- visible routing story becomes `Все, кроме РФ`, `Полный туннель`, and `Только выбранные приложения`, with `Правила` owning route-mode choice and the selected-app scan MVP
+- target client IA becomes `Protection / Locations / Rules / Profile`, with `Support`, `Devices`, `Subscription`, and `Settings` nested inside `Profile`
+- visible routing story becomes `All except RU`, `Full tunnel`, and `Selected apps`, with `Rules` owning split tunneling and bypass behavior
 - the public wording rule still forbids promoting the product through direct-meaning `VPN` wording on public surfaces
 
 Client-canon note:
@@ -115,17 +114,17 @@ Current truth:
 
 Primary navigation:
 
-1. `Подключение`
-2. `Локации`
-3. `Правила`
-4. `Профиль`
+1. `Protection`
+2. `Locations`
+3. `Rules`
+4. `Profile`
 
-Nested under `Профиль`:
+Nested under `Profile`:
 
-- `Поддержка`
-- `Устройства`
-- `Тарифы`
-- `Настройки`
+- `Support`
+- `Devices`
+- `Subscription`
+- `Settings`
 
 Legacy `/config-options`, `/about`, and `/logs` may remain as compatibility redirects only. Public IA is the four-tab shell above.
 
@@ -200,7 +199,6 @@ Public funnel rule:
 - `pokrov.space/checkout/` shows public pricing and sells activation keys through the hosted checkout flow
 - `app.pokrov.space` continues real account, renewal, redeem, support, and admin flows
 - cabinet checkout is continuation-only and should defer to the same hosted activation-key flow instead of inventing a second paywall
-- hybrid paid flow means hosted checkout is the public purchase lane, cabinet is renewal/redeem continuation, and Telegram bot billing remains a secondary compatibility path
 - the default site, cabinet, and bot UX must not expose raw subscription links
 - Telegram bot purchase flow remains available, but it is not the default public story
 - `connect.pokrov.space` remains the delivery surface for the one public connection link and matching QR, not a fresh-entry marketing surface
@@ -220,42 +218,6 @@ Public-facing copy across marketing and webapp should follow one simple style:
 - public-facing wording should prefer user outcomes and next steps over transport acronyms, raw profile terminology, or operator jargon
 - explicit next-step CTA wording such as `download app`, `open cabinet`, `continue to checkout`, or `open Telegram` only when that is the real next step
 - no separate product variants or conflicting promises invented for SEO pages
-
-## Redesign Direction
-
-The current full-redesign lane moves public and cabinet surfaces toward a white/mint premium utility style: light canvas, restrained mint and emerald accents, thin borders, soft shadows, and real product or trust assets instead of decorative fake dashboards.
-
-Copy in this lane must stay calm, human, and exact. Public Russian copy should prefer words such as `приложение`, `подключение`, `доступ`, `локации`, `правила`, `кабинет`, `ключ доступа`, and `поддержка`. Avoid direct-meaning `VPN` wording, raw transport labels, fear-based privacy claims, fake operational counters, and public jargon such as `trial`, `managed premium`, `fallback`, or `scope`.
-
-Guardrails for this redesign:
-
-- use one current visual/copy path from `shared/redesign-spine.json`; do not preserve parallel old/new redesign promises
-- keep the brand as `POKROV` without old network or premium subtitle lines
-- keep trial copy on `5 days`; older longer-duration trial copy is stale
-- first-layer app copy must not expose protocol, runtime, local-control, raw profile, hostname, or port terms
-- public browser copy must keep `marketing` as acquisition, `webapp` as continuation, and `connect.pokrov.space` as delivery only
-- app, cabinet, admin, and backend public copy must stay POKROV-only and avoid fake live-chat promises, raw first-layer profile/config terms, old subtitle lines, and stale longer trial claims
-- bot, backend, checkout, and cabinet first-layer copy should speak in access-key, app, cabinet, renewal, and support terms; raw personal links, protocol details, node host/port, and public IP belong only in explicit recovery, compatibility, admin, or diagnostic contexts
-
-This redesign direction is not a release-readiness claim. Android remains blocked until the documented release-build localhost/control-surface audit is complete, Windows still needs its normal release evidence, and Apple platforms remain preparation-only in this wave.
-
-No deploy is part of this polish wave. The output is documentation, guardrails, visual-smoke alignment, screenshots/final-gate preparation, and an orchestrator checklist.
-
-Final premium polish acceptance keeps the user story deliberately small:
-
-- key-first entry means site, bot, and app trial starts all end in one app-first account with an activation key or managed access state, not separate identities
-- the first usable client MVP is `Android + Windows` with the four-tab app IA, quick connect, route-mode choice, selected-app scan MVP, support, redeem, and download continuation
-- the device model is visible as friendly device names, platform, app version, route mode, selected-app state, and support context; raw local-control, profile, host, port, and public-IP details stay out of the first layer
-- the cabinet remains continuation-first with the Russian IA listed above; public pricing and acquisition stay on `marketing`
-- admin truth lives in the authenticated web admin and `/api/admin/*`; Telegram admin remains fallback and should not define a separate product policy
-- copy guardrails must cover marketing, cabinet, app, admin, backend, and bot-facing public strings, while allowing admin and backend diagnostic fields where they are explicitly technical
-
-Known final-polish blockers for release promotion:
-
-- physical Android release-build localhost/control-surface audit is still missing
-- trusted Android and Windows signing evidence is still missing
-- final screenshots and browser/app visual QA still need a dev-indicator-free pass
-- live deploy, live node enablement, and `current-origin`, `brain-origin`, `RU-origin` evidence are outside this no-deploy polish wave
 
 ## Official Hostnames
 
@@ -296,7 +258,6 @@ Product wording rule:
 ### Free Trial
 
 - every valid first device account can receive `5 days`
-- public site and bot surfaces may offer a `5-day` trial-key start without registration, with a soft browser/IP period limit and user-safe `issued`, `limited`, or `unavailable` status
 - trial must create a real backend account, device, session, and working subscription source
 - trial must never be decorative UI-only state
 - trial is premium-grade access during those `5 days`
@@ -355,8 +316,6 @@ Visible in advanced:
 All public and client-facing surfaces must be branded as `POKROV`.
 
 `POKROV VPN` may remain only as a legacy compatibility token in old filenames, package/store identifiers, bot handles, migration notes, or other surfaces that cannot yet be renamed safely.
-
-temporary visible logo asset exception: current screenshots and manifests may reference the retained logo master while replacement assets are being normalized, but no UI text, subtitle, CTA, or metadata copy may reintroduce direct-meaning `VPN` product wording.
 
 Replace or remove:
 

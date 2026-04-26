@@ -20,7 +20,7 @@ import {
   type AdminUserKey,
   type AdminUserRow,
 } from "@/lib/api";
-import { AdminConfirmDialog, adminButtonClass, adminFieldClass, adminPanelClass, adminTextAreaClass } from "@/components/admin/admin-shell";
+import { adminButtonClass, adminFieldClass, adminPanelClass, adminTextAreaClass } from "@/components/admin/admin-shell";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { AdminUsersQueryPanel } from "@/components/admin/users/admin-users-query-panel";
@@ -40,19 +40,11 @@ type DetailTab = "overview" | "keys" | "history" | "audit";
 
 type AdminActionDialog =
   | { kind: "message"; text: string }
-  | { kind: "extend"; days: string; reason: string }
-  | { kind: "create"; displayName: string; days: string; reason: string }
-  | { kind: "deleteConfirm"; tgId: number; displayName: string; reason: string }
-  | { kind: "bulkConfirm"; reason: string }
+  | { kind: "extend"; days: string }
+  | { kind: "create"; displayName: string; days: string }
+  | { kind: "deleteConfirm"; tgId: number; displayName: string }
+  | { kind: "bulkConfirm" }
   | { kind: "token"; subscriptionUrl: string; syncOk: boolean }
-  | null;
-
-type LiveConfirmDialog =
-  | { kind: "block"; blocked: boolean; reason: string }
-  | { kind: "token"; reason: string }
-  | { kind: "key"; key: AdminUserKey; action: "toggle" | "reset" | "resync"; reason: string }
-  | { kind: "preset"; preset: "reset_key" | "rotate_link" | "extend_1d" | "send_guide"; reason: string }
-  | { kind: "loyalty"; tierDays: number; reason: string }
   | null;
 
 function errorMessage(err: unknown, fallback: string): string {
@@ -77,7 +69,6 @@ export default function AdminUsersPage() {
   const [error, setError] = useState("");
   const [okMessage, setOkMessage] = useState("");
   const [bulkResult, setBulkResult] = useState("");
-  const [liveConfirm, setLiveConfirm] = useState<LiveConfirmDialog>(null);
   const [dialog, setDialog] = useState<AdminActionDialog>(null);
   const [bulkAction, setBulkAction] = useState<AdminUsersBulkActionState>(createDefaultBulkActionState());
   const selectedIdRef = useRef<number>(0);
@@ -98,7 +89,9 @@ export default function AdminUsersPage() {
   );
 
   const updatePage = useCallback(
-    (page: number) => syncQueryState({ ...queryState, page: Math.max(1, page) }),
+    (page: number) => {
+      syncQueryState({ ...queryState, page: Math.max(1, page) });
+    },
     [queryState, syncQueryState],
   );
 
@@ -111,7 +104,9 @@ export default function AdminUsersPage() {
     async (options?: { preserveNotice?: boolean }): Promise<void> => {
       setLoading(true);
       setError("");
-      if (!options?.preserveNotice) setOkMessage("");
+      if (!options?.preserveNotice) {
+        setOkMessage("");
+      }
 
       try {
         const result = await adminUsers({
@@ -134,10 +129,12 @@ export default function AdminUsersPage() {
             selectedIdRef.current && result.users.some((item) => item.tg_id === selectedIdRef.current)
               ? selectedIdRef.current
               : result.users[0]?.tg_id;
-          if (nextId) await loadCardDetails(nextId);
+          if (nextId) {
+            await loadCardDetails(nextId);
+          }
         }
       } catch (err) {
-        setError(errorMessage(err, "Could not load users."));
+        setError(errorMessage(err, "Не удалось загрузить пользователей."));
       } finally {
         setLoading(false);
       }
@@ -177,7 +174,8 @@ export default function AdminUsersPage() {
   const pageEnd = rows.length ? pageStart + rows.length - 1 : 0;
 
   const reloadSelected = useCallback(async (): Promise<void> => {
-    if (selectedTgId) await loadCardDetails(selectedTgId);
+    if (!selectedTgId) return;
+    await loadCardDetails(selectedTgId);
   }, [loadCardDetails, selectedTgId]);
 
   const copyText = useCallback(async (text: string): Promise<void> => {
@@ -186,13 +184,14 @@ export default function AdminUsersPage() {
       await navigator.clipboard.writeText(text.trim());
       setOkMessage("Скопировано в буфер.");
     } catch {
-      setError("Не удалось скопировать в буфер.");
+      setError("Не удалось скопировать значение.");
     }
   }, []);
 
-  const actionMessage = useCallback(() => selectedTgId && setDialog({ kind: "message", text: "" }), [selectedTgId]);
-  const actionExtend = useCallback(() => selectedTgId && setDialog({ kind: "extend", days: "30", reason: "" }), [selectedTgId]);
-  const actionCreateManual = useCallback(() => setDialog({ kind: "create", displayName: "Ручной тестовый аккаунт", days: "30", reason: "" }), []);
+  const actionMessage = useCallback((): void => {
+    if (!selectedTgId) return;
+    setDialog({ kind: "message", text: "" });
+  }, [selectedTgId]);
 
   const submitMessageDialog = useCallback(async (): Promise<void> => {
     if (!selectedTgId || !dialog || dialog.kind !== "message" || !dialog.text.trim()) return;
@@ -209,6 +208,11 @@ export default function AdminUsersPage() {
     }
   }, [dialog, reloadSelected, selectedTgId]);
 
+  const actionExtend = useCallback((): void => {
+    if (!selectedTgId) return;
+    setDialog({ kind: "extend", days: "30" });
+  }, [selectedTgId]);
+
   const submitExtendDialog = useCallback(async (): Promise<void> => {
     if (!selectedTgId || !dialog || dialog.kind !== "extend") return;
     const days = Number(dialog.days || 0);
@@ -216,10 +220,11 @@ export default function AdminUsersPage() {
       setError("Укажите корректное число дней.");
       return;
     }
+
     setBusy(true);
     try {
       await adminManualExtend(selectedTgId, days);
-      setOkMessage(`Доступ продлен на ${days} дн.`);
+      setOkMessage(`Доступ продлён на ${days} дн.`);
       setDialog(null);
       await reloadSelected();
       await loadUsers({ preserveNotice: true });
@@ -230,14 +235,13 @@ export default function AdminUsersPage() {
     }
   }, [dialog, loadUsers, reloadSelected, selectedTgId]);
 
-  const actionToggleBlock = useCallback(async (operatorReason: string): Promise<void> => {
+  const actionToggleBlock = useCallback(async (): Promise<void> => {
     if (!selectedTgId) return;
     const blocked = Boolean(selected?.user.is_active);
     setBusy(true);
     try {
-      await adminManualBlock(selectedTgId, blocked, operatorReason.trim());
+      await adminManualBlock(selectedTgId, blocked);
       setOkMessage(blocked ? "Пользователь заблокирован." : "Пользователь разблокирован.");
-      setLiveConfirm(null);
       await reloadSelected();
       await loadUsers({ preserveNotice: true });
     } catch (err) {
@@ -247,13 +251,12 @@ export default function AdminUsersPage() {
     }
   }, [loadUsers, reloadSelected, selected?.user.is_active, selectedTgId]);
 
-  const actionRegenerateToken = useCallback(async (operatorReason: string): Promise<void> => {
+  const actionRegenerateToken = useCallback(async (): Promise<void> => {
     if (!selectedTgId) return;
     setBusy(true);
     try {
-      const out = await adminManualRegenerateToken(selectedTgId, operatorReason.trim());
-      setOkMessage(`Токен обновлен (${out.sync_ok ? "панель синхронизирована" : "синхронизация панели ожидает"}).`);
-      setLiveConfirm(null);
+      const out = await adminManualRegenerateToken(selectedTgId);
+      setOkMessage(`Токен обновлён (${out.sync_ok ? "панель синхронизирована" : "синхронизация панели ожидается"}).`);
       setDialog({ kind: "token", subscriptionUrl: out.subscription_url, syncOk: Boolean(out.sync_ok) });
       await reloadSelected();
     } catch (err) {
@@ -266,16 +269,14 @@ export default function AdminUsersPage() {
   const actionDeleteTestUser = useCallback((): void => {
     if (!selectedTgId || !selectedCanDelete) return;
     const displayName = String(selected?.user.display_name || selected?.user.username || `#${selectedTgId}`);
-    setDialog({ kind: "deleteConfirm", tgId: selectedTgId, displayName, reason: "" });
+    setDialog({ kind: "deleteConfirm", tgId: selectedTgId, displayName });
   }, [selected?.user.display_name, selected?.user.username, selectedCanDelete, selectedTgId]);
 
   const submitDeleteTestUserDialog = useCallback(async (): Promise<void> => {
     if (!dialog || dialog.kind !== "deleteConfirm") return;
     const targetTgId = Number(dialog.tgId || 0);
-    if (!targetTgId) {
-      setError("Не выбран пользователь для удаления.");
-      return;
-    }
+    if (!targetTgId) return;
+
     setBusy(true);
     try {
       await adminDeleteTestUser(targetTgId);
@@ -285,49 +286,65 @@ export default function AdminUsersPage() {
       setSelected(null);
       await loadUsers({ preserveNotice: true });
     } catch (err) {
-      setError(errorMessage(err, "Не удалось удалить ручного/тестового пользователя."));
+      setError(errorMessage(err, "Не удалось удалить manual/test пользователя."));
     } finally {
       setBusy(false);
     }
   }, [dialog, loadUsers]);
 
+  const actionCreateManual = useCallback((): void => {
+    setDialog({ kind: "create", displayName: "Тестовый аккаунт", days: "30" });
+  }, []);
+
   const submitCreateManualDialog = useCallback(async (): Promise<void> => {
     if (!dialog || dialog.kind !== "create") return;
     const displayName = dialog.displayName.trim();
     const days = Number(dialog.days || 0);
-    if (!displayName || !Number.isFinite(days) || days <= 0 || !dialog.reason.trim()) {
-      setError("Укажите имя, положительное число дней и причину действия.");
+    if (!displayName || !Number.isFinite(days) || days <= 0) {
+      setError("Укажите имя и положительное число дней.");
       return;
     }
+
     setBusy(true);
     try {
       await adminManualCreate({ display_name: displayName, days });
-      setOkMessage("Ручной/тестовый пользователь создан.");
+      setOkMessage("Manual/test пользователь создан.");
       setDialog(null);
       await loadUsers({ preserveNotice: true });
     } catch (err) {
-      setError(errorMessage(err, "Не удалось создать ручного/тестового пользователя."));
+      setError(errorMessage(err, "Не удалось создать manual/test пользователя."));
     } finally {
       setBusy(false);
     }
   }, [dialog, loadUsers]);
 
   const runKeyAction = useCallback(
-    async (key: AdminUserKey, action: "toggle" | "reset" | "resync", operatorReason: string): Promise<void> => {
+    async (key: AdminUserKey, action: "toggle" | "reset" | "resync"): Promise<void> => {
       if (!selectedTgId) return;
       const op = `${key.node_code}:${action}`;
       setKeyBusy(op);
       setError("");
       setOkMessage("");
       try {
-        if (action === "toggle") await adminUserKeyToggle(selectedTgId, key.node_code, !Boolean(key.enabled), operatorReason.trim());
-        else if (action === "reset") await adminUserKeyResetTraffic(selectedTgId, key.node_code, operatorReason.trim());
-        else await adminUserKeyResyncSubId(selectedTgId, key.node_code, operatorReason.trim());
-        setOkMessage(`Действие ${action} выполнено для ${key.node_code}.`);
-        setLiveConfirm(null);
+        if (action === "toggle") {
+          await adminUserKeyToggle(selectedTgId, key.node_code, !Boolean(key.enabled));
+        } else if (action === "reset") {
+          await adminUserKeyResetTraffic(selectedTgId, key.node_code);
+        } else {
+          await adminUserKeyResyncSubId(selectedTgId, key.node_code);
+        }
+        const actionText =
+          action === "toggle"
+            ? key.enabled
+              ? "Ключ отключён"
+              : "Ключ включён"
+            : action === "reset"
+              ? "Трафик сброшен"
+              : "Sub ID синхронизирован";
+        setOkMessage(`${actionText} для ноды ${key.node_code}.`);
         await reloadSelected();
       } catch (err) {
-        setError(errorMessage(err, "Could not run key action."));
+        setError(errorMessage(err, "Не удалось выполнить действие с ключом."));
       } finally {
         setKeyBusy("");
       }
@@ -336,19 +353,20 @@ export default function AdminUsersPage() {
   );
 
   const runPreset = useCallback(
-    async (preset: "reset_key" | "rotate_link" | "extend_1d" | "send_guide", operatorReason: string): Promise<void> => {
+    async (preset: "reset_key" | "rotate_link" | "extend_1d" | "send_guide"): Promise<void> => {
       if (!selectedTgId) return;
       setBusy(true);
       setError("");
       setOkMessage("");
       try {
-        const result = await adminUserPresetRun(selectedTgId, preset, operatorReason.trim());
-        setOkMessage(`Preset ${preset} completed (${result.changed ?? 0} changed, ${result.failed ?? 0} failed).`);
-        setLiveConfirm(null);
-        if (result.subscription_url) setDialog({ kind: "token", subscriptionUrl: result.subscription_url, syncOk: true });
+        const result = await adminUserPresetRun(selectedTgId, preset);
+        setOkMessage(`Пресет ${preset} выполнен (${result.changed ?? 0} изменений, ${result.failed ?? 0} ошибок).`);
+        if (result.subscription_url) {
+          setDialog({ kind: "token", subscriptionUrl: result.subscription_url, syncOk: true });
+        }
         await reloadSelected();
       } catch (err) {
-        setError(errorMessage(err, "Could not run preset."));
+        setError(errorMessage(err, "Не удалось выполнить пресет."));
       } finally {
         setBusy(false);
       }
@@ -373,10 +391,10 @@ export default function AdminUsersPage() {
           auto_disable_on_hard: draft.auto_disable_on_hard,
           apply_now: draft.apply_now,
         });
-        setOkMessage(`Policy updated for ${nodeCode}.`);
+        setOkMessage(`Политика для ${nodeCode} обновлена.`);
         await reloadSelected();
       } catch (err) {
-        setError(errorMessage(err, "Could not save policy."));
+        setError(errorMessage(err, "Не удалось сохранить политику."));
       } finally {
         setPolicyBusy("");
       }
@@ -386,19 +404,20 @@ export default function AdminUsersPage() {
 
   const runBulkAction = useCallback(
     async (confirmed = false): Promise<void> => {
+      if (!selectedTgId) return;
+      setBusy(true);
       setError("");
       setOkMessage("");
-      if (!bulkAction.dryRun && !confirmed) {
-        setDialog({ kind: "bulkConfirm", reason: "" });
-        return;
-      }
-      if (!bulkAction.dryRun && confirmed && dialog?.kind === "bulkConfirm" && !dialog.reason.trim()) {
-        setError("Укажите причину перед live-массовым действием.");
-        return;
-      }
-      setBusy(true);
       try {
-        const nodeCodes = bulkAction.nodeCodes.split(",").map((item) => item.trim()).filter(Boolean);
+        if (!bulkAction.dryRun && !confirmed) {
+          setDialog({ kind: "bulkConfirm" });
+          return;
+        }
+
+        const nodeCodes = bulkAction.nodeCodes
+          .split(",")
+          .map((item) => item.trim())
+          .filter(Boolean);
         const out = await adminBulkKeyAction({
           action: bulkAction.action,
           segment: bulkAction.segment,
@@ -407,31 +426,34 @@ export default function AdminUsersPage() {
           limit: Math.max(1, Math.min(500, Number(bulkAction.limit || 50))),
           dry_run: bulkAction.dryRun,
           force: bulkAction.force,
-          operator_reason: dialog?.kind === "bulkConfirm" ? dialog.reason.trim() : undefined,
         });
+
         setDialog(null);
-        setBulkResult(`Массовое действие ${out.action || bulkAction.action}: найдено ${out.matched ?? 0}, изменено ${out.changed ?? 0}, ошибок ${out.failed ?? 0}${out.dry_run ? " (dry run)" : ""}.`);
-        if (!bulkAction.dryRun) await reloadSelected();
+        setBulkResult(
+          `Bulk ${out.action || bulkAction.action}: matched ${out.matched ?? 0}, changed ${out.changed ?? 0}, failed ${out.failed ?? 0}${out.dry_run ? " (dry-run)" : ""}.`,
+        );
+        if (!bulkAction.dryRun) {
+          await reloadSelected();
+        }
       } catch (err) {
-        setError(errorMessage(err, "Could not run bulk action."));
+        setError(errorMessage(err, "Не удалось запустить массовое действие."));
       } finally {
         setBusy(false);
       }
     },
-    [bulkAction, dialog, reloadSelected],
+    [bulkAction, reloadSelected, selectedTgId],
   );
 
   const grantLoyaltyTier = useCallback(
-    async (tierDays: number, operatorReason: string): Promise<void> => {
+    async (tierDays: number): Promise<void> => {
       if (!selectedTgId) return;
       setBusy(true);
       try {
-        const out = await adminUserLoyaltyGrant(selectedTgId, tierDays, operatorReason.trim());
-        setOkMessage(`Бонус лояльности ${tierDays} дн. выдан${out.sync_ok ? "" : " (синхронизация панели может занять время)"}.`);
-        setLiveConfirm(null);
+        const out = await adminUserLoyaltyGrant(selectedTgId, tierDays);
+        setOkMessage(`Loyalty-награда ${tierDays} дн. выдана${out.sync_ok ? "" : " (синхронизация панели может занять время)"}.`);
         await reloadSelected();
       } catch (err) {
-        setError(errorMessage(err, "Could not grant loyalty reward."));
+        setError(errorMessage(err, "Не удалось выдать loyalty-награду."));
       } finally {
         setBusy(false);
       }
@@ -456,6 +478,53 @@ export default function AdminUsersPage() {
     [loadCardDetails],
   );
 
+  const onQueryChange = useCallback(
+    (value: string) => {
+      updateFilters({ q: value });
+    },
+    [updateFilters],
+  );
+
+  const onStatusChange = useCallback(
+    (value: string) => {
+      updateFilters({ status: value });
+    },
+    [updateFilters],
+  );
+
+  const onOriginChange = useCallback(
+    (value: string) => {
+      updateFilters({ origin: value });
+    },
+    [updateFilters],
+  );
+
+  const onObserverChange = useCallback(
+    (value: string) => {
+      updateFilters({ observerState: value });
+    },
+    [updateFilters],
+  );
+
+  const onSortChange = useCallback(
+    (value: string) => {
+      updateFilters({ sort: value });
+    },
+    [updateFilters],
+  );
+
+  const onPrevPage = useCallback(() => {
+    updatePage(Math.max(1, queryState.page - 1));
+  }, [queryState.page, updatePage]);
+
+  const onNextPage = useCallback(() => {
+    updatePage(Math.min(totalPages, queryState.page + 1));
+  }, [queryState.page, totalPages, updatePage]);
+
+  const onRefresh = useCallback(() => {
+    void loadUsers();
+  }, [loadUsers]);
+
   return (
     <section className="space-y-4">
       <AdminUsersQueryPanel
@@ -470,15 +539,15 @@ export default function AdminUsersPage() {
         totalRows={totalRows}
         page={queryState.page}
         totalPages={totalPages}
-        onQueryChange={(value) => updateFilters({ q: value })}
-        onStatusChange={(value) => updateFilters({ status: value })}
-        onOriginChange={(value) => updateFilters({ origin: value })}
-        onObserverChange={(value) => updateFilters({ observerState: value })}
-        onSortChange={(value) => updateFilters({ sort: value })}
-        onRefresh={() => void loadUsers()}
+        onQueryChange={onQueryChange}
+        onStatusChange={onStatusChange}
+        onOriginChange={onOriginChange}
+        onObserverChange={onObserverChange}
+        onSortChange={onSortChange}
+        onRefresh={onRefresh}
         onCreateManual={actionCreateManual}
-        onPrevPage={() => updatePage(Math.max(1, queryState.page - 1))}
-        onNextPage={() => updatePage(Math.min(totalPages, queryState.page + 1))}
+        onPrevPage={onPrevPage}
+        onNextPage={onNextPage}
         onRunBulkAction={() => void runBulkAction()}
         setBulkAction={setBulkAction}
       />
@@ -509,12 +578,12 @@ export default function AdminUsersPage() {
             onReload={() => void reloadSelected()}
             onMessage={actionMessage}
             onExtend={actionExtend}
-            onToggleBlock={() => setLiveConfirm({ kind: "block", blocked: Boolean(selected?.user.is_active), reason: "" })}
-            onRegenerateToken={() => setLiveConfirm({ kind: "token", reason: "" })}
+            onToggleBlock={() => void actionToggleBlock()}
+            onRegenerateToken={() => void actionRegenerateToken()}
             onDeleteTestUser={actionDeleteTestUser}
-            onRunPreset={(preset) => setLiveConfirm({ kind: "preset", preset, reason: "" })}
-            onGrantLoyalty={(tierDays) => setLiveConfirm({ kind: "loyalty", tierDays, reason: "" })}
-            onRunKeyAction={(key, action) => setLiveConfirm({ kind: "key", key, action, reason: "" })}
+            onRunPreset={(preset) => void runPreset(preset)}
+            onGrantLoyalty={(tierDays) => void grantLoyaltyTier(tierDays)}
+            onRunKeyAction={(key, action) => void runKeyAction(key, action)}
             onSavePolicy={(nodeCode) => void savePolicy(nodeCode)}
             onCopyText={(text) => void copyText(text)}
             setDetailTab={setDetailTab}
@@ -523,103 +592,138 @@ export default function AdminUsersPage() {
         </div>
       </div>
 
-      <AdminConfirmDialog
-        open={Boolean(liveConfirm)}
-        title={
-          liveConfirm?.kind === "block"
-            ? liveConfirm.blocked
-              ? "Подтвердить блокировку"
-              : "Подтвердить разблокировку"
-            : liveConfirm?.kind === "token"
-              ? "Подтвердить ротацию токена"
-              : liveConfirm?.kind === "key"
-                ? "Подтвердить действие с ключом"
-                : liveConfirm?.kind === "preset"
-                  ? "Подтвердить preset"
-                  : "Подтвердить бонус"
-        }
-        description="Действие меняет живой доступ или доставку ключа. Укажите причину для журнала аудита."
-        reason={liveConfirm?.reason || ""}
-        onReasonChange={(reason) => setLiveConfirm((current) => (current ? { ...current, reason } : current))}
-        onCancel={() => setLiveConfirm(null)}
-        onConfirm={() => {
-          if (!liveConfirm) return;
-          if (liveConfirm.kind === "block") void actionToggleBlock(liveConfirm.reason);
-          else if (liveConfirm.kind === "token") void actionRegenerateToken(liveConfirm.reason);
-          else if (liveConfirm.kind === "key") void runKeyAction(liveConfirm.key, liveConfirm.action, liveConfirm.reason);
-          else if (liveConfirm.kind === "preset") void runPreset(liveConfirm.preset, liveConfirm.reason);
-          else void grantLoyaltyTier(liveConfirm.tierDays, liveConfirm.reason);
-        }}
-        danger={liveConfirm?.kind === "block" && liveConfirm.blocked}
-        busy={busy || Boolean(keyBusy)}
-      />
-
       {dialog ? (
-        <div className="fixed inset-0 z-[260] flex items-center justify-center bg-slate-950/70 p-4">
+        <div className="fixed inset-0 z-[260] flex items-center justify-center bg-slate-950/65 p-4">
           <div className={`${adminPanelClass("neutral")} max-h-[min(92vh,720px)] w-full max-w-lg overflow-auto`}>
             {dialog.kind === "message" ? (
               <>
-                <h3 className="text-xl font-semibold">Сообщение пользователю</h3>
-                <p className="mt-1 text-xs text-slate-500">Отправка через текущий Telegram-канал оператора.</p>
-                <textarea value={dialog.text} onChange={(event) => setDialog({ kind: "message", text: event.target.value })} rows={5} className={`mt-4 ${adminTextAreaClass}`} placeholder="Текст сообщения" />
-                <DialogActions busy={busy} confirmDisabled={!dialog.text.trim()} confirmLabel="Отправить" onCancel={() => setDialog(null)} onConfirm={() => void submitMessageDialog()} />
+                <h3 className="font-display text-xl font-semibold">Сообщение пользователю</h3>
+                <p className="mt-1 text-xs text-slate-500">Это отправит прямое сообщение оператором в Telegram.</p>
+                <textarea
+                  value={dialog.text}
+                  onChange={(event) => setDialog({ kind: "message", text: event.target.value })}
+                  rows={5}
+                  className={`mt-4 ${adminTextAreaClass}`}
+                  placeholder="Введите текст сообщения"
+                />
+                <div className="mt-4 flex justify-end gap-2">
+                  <button className={adminButtonClass("secondary")} type="button" onClick={() => setDialog(null)}>
+                    Отмена
+                  </button>
+                  <button className={adminButtonClass("primary")} type="button" disabled={busy || !dialog.text.trim()} onClick={() => void submitMessageDialog()}>
+                    Отправить
+                  </button>
+                </div>
               </>
             ) : null}
 
             {dialog.kind === "extend" ? (
               <>
-                <h3 className="text-xl font-semibold">Продлить доступ</h3>
-                <p className="mt-1 text-xs text-slate-500">Добавляет дни к выбранной подписке; причина нужна для операторского журнала.</p>
-                <input value={dialog.days} onChange={(event) => setDialog({ ...dialog, days: event.target.value })} type="number" min={1} className={`mt-4 ${adminFieldClass}`} placeholder="Дни" />
-                <input value={dialog.reason} onChange={(event) => setDialog({ ...dialog, reason: event.target.value })} className={`mt-3 ${adminFieldClass}`} placeholder="Причина действия" />
-                <DialogActions busy={busy} confirmDisabled={!dialog.reason.trim()} confirmLabel="Применить" onCancel={() => setDialog(null)} onConfirm={() => void submitExtendDialog()} />
+                <h3 className="font-display text-xl font-semibold">Продлить доступ</h3>
+                <p className="mt-1 text-xs text-slate-500">Добавьте оплаченные дни к текущей подписке пользователя.</p>
+                <input
+                  value={dialog.days}
+                  onChange={(event) => setDialog({ kind: "extend", days: event.target.value })}
+                  type="number"
+                  min={1}
+                  className={`mt-4 ${adminFieldClass}`}
+                  placeholder="Дней"
+                />
+                <div className="mt-4 flex justify-end gap-2">
+                  <button className={adminButtonClass("secondary")} type="button" onClick={() => setDialog(null)}>
+                    Отмена
+                  </button>
+                  <button className={adminButtonClass("primary")} type="button" disabled={busy} onClick={() => void submitExtendDialog()}>
+                    Применить
+                  </button>
+                </div>
               </>
             ) : null}
 
             {dialog.kind === "create" ? (
               <>
-                <h3 className="text-xl font-semibold">Создать ручного/тестового пользователя</h3>
-                <p className="mt-1 text-xs text-slate-500">Ручные аккаунты используются только для админских и тестовых сценариев.</p>
-                <input value={dialog.displayName} onChange={(event) => setDialog({ ...dialog, displayName: event.target.value })} className={`mt-4 ${adminFieldClass}`} placeholder="Отображаемое имя" />
-                <input value={dialog.days} onChange={(event) => setDialog({ ...dialog, days: event.target.value })} type="number" min={1} className={`mt-3 ${adminFieldClass}`} placeholder="Дней доступа" />
-                <input value={dialog.reason} onChange={(event) => setDialog({ ...dialog, reason: event.target.value })} className={`mt-3 ${adminFieldClass}`} placeholder="Причина действия" />
-                <DialogActions busy={busy} confirmDisabled={!dialog.reason.trim()} confirmLabel="Создать" onCancel={() => setDialog(null)} onConfirm={() => void submitCreateManualDialog()} />
+                <h3 className="font-display text-xl font-semibold">Создать manual/test пользователя</h3>
+                <p className="mt-1 text-xs text-slate-500">Manual-аккаунты допустимы только для админских и тестовых сценариев.</p>
+                <input
+                  value={dialog.displayName}
+                  onChange={(event) => setDialog({ kind: "create", displayName: event.target.value, days: dialog.days })}
+                  className={`mt-4 ${adminFieldClass}`}
+                  placeholder="Имя пользователя"
+                />
+                <input
+                  value={dialog.days}
+                  onChange={(event) => setDialog({ kind: "create", displayName: dialog.displayName, days: event.target.value })}
+                  type="number"
+                  min={1}
+                  className={`mt-3 ${adminFieldClass}`}
+                  placeholder="Дней доступа"
+                />
+                <div className="mt-4 flex justify-end gap-2">
+                  <button className={adminButtonClass("secondary")} type="button" onClick={() => setDialog(null)}>
+                    Отмена
+                  </button>
+                  <button className={adminButtonClass("primary")} type="button" disabled={busy} onClick={() => void submitCreateManualDialog()}>
+                    Создать
+                  </button>
+                </div>
               </>
             ) : null}
 
             {dialog.kind === "deleteConfirm" ? (
               <>
-                <h3 className="text-xl font-semibold">Удалить manual/test пользователя</h3>
-                <p className="mt-2 text-sm text-slate-400">
-                  Удаляется <strong>{dialog.displayName}</strong> ({dialog.tgId}). Действие необратимо и доступно только для явных manual/test аккаунтов.
+                <h3 className="font-display text-xl font-semibold">Удалить manual/test пользователя</h3>
+                <p className="mt-2 text-sm text-slate-500">
+                  Вы собираетесь удалить <strong>{dialog.displayName}</strong> ({dialog.tgId}). Это действие необратимо и доступно только для явных manual/test аккаунтов.
                 </p>
-                <input value={dialog.reason} onChange={(event) => setDialog({ ...dialog, reason: event.target.value })} className={`mt-4 ${adminFieldClass}`} placeholder="Причина действия, необязательно" />
-                <DialogActions busy={busy} confirmLabel="Удалить пользователя" danger onCancel={() => setDialog(null)} onConfirm={() => void submitDeleteTestUserDialog()} />
+                <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:justify-end">
+                  <button className={adminButtonClass("secondary")} type="button" onClick={() => setDialog(null)}>
+                    Отмена
+                  </button>
+                  <button className={adminButtonClass("danger")} type="button" disabled={busy} onClick={() => void submitDeleteTestUserDialog()}>
+                    Удалить пользователя
+                  </button>
+                </div>
               </>
             ) : null}
 
             {dialog.kind === "bulkConfirm" ? (
               <>
-                <h3 className="text-xl font-semibold">Подтвердить массовое live-действие</h3>
-                <p className="mt-2 text-sm text-slate-400">
-                  Действие <strong>{bulkAction.action}</strong> будет выполнено для сегмента <strong>{bulkAction.segment}</strong>. Dry run выключен.
+                <h3 className="font-display text-xl font-semibold">Подтвердить массовое действие</h3>
+                <p className="mt-2 text-sm text-slate-500">
+                  Вы собираетесь запустить <strong>{bulkAction.action}</strong> для сегмента <strong>{bulkAction.segment}</strong>.
                 </p>
                 <p className="mt-2 text-xs text-slate-500">
-                  Фильтр: {bulkAction.q.trim() || "нет"} | Лимит: {bulkAction.limit} | Узлы: {bulkAction.nodeCodes.trim() || "все"}
+                  Поиск: {bulkAction.q.trim() || "нет"} | Лимит: {bulkAction.limit} | Ноды: {bulkAction.nodeCodes.trim() || "все"}
                 </p>
-                <input value={dialog.reason} onChange={(event) => setDialog({ ...dialog, reason: event.target.value })} className={`mt-4 ${adminFieldClass}`} placeholder="Причина действия, обязательно" />
-                <DialogActions busy={busy} confirmDisabled={!dialog.reason.trim()} confirmLabel="Выполнить live-действие" danger onCancel={() => setDialog(null)} onConfirm={() => void runBulkAction(true)} />
+                <div className="mt-4 flex justify-end gap-2">
+                  <button className={adminButtonClass("secondary")} type="button" onClick={() => setDialog(null)}>
+                    Отмена
+                  </button>
+                  <button className={adminButtonClass("primary")} type="button" disabled={busy} onClick={() => void runBulkAction(true)}>
+                    Запустить действие
+                  </button>
+                </div>
               </>
             ) : null}
 
             {dialog.kind === "token" ? (
               <>
-                <h3 className="text-xl font-semibold">Новая recovery-ссылка подключения</h3>
-                <p className="mt-1 text-xs text-slate-500">Синхронизация панели: {dialog.syncOk ? "ok" : "ожидает или завершилась ошибкой"}.</p>
-                <input value={dialog.subscriptionUrl} readOnly className={`mt-4 ${adminFieldClass} text-xs`} />
+                <h3 className="font-display text-xl font-semibold">Новая подписочная ссылка</h3>
+                <p className="mt-1 text-xs text-slate-500">
+                  Синхронизация панели: {dialog.syncOk ? "успешна" : "в ожидании или с ошибкой"}.
+                </p>
+                <input
+                  value={dialog.subscriptionUrl}
+                  readOnly
+                  className={`mt-4 ${adminFieldClass} text-xs`}
+                />
                 <div className="mt-4 flex justify-end gap-2">
-                  <button className={adminButtonClass("secondary")} type="button" onClick={() => void copyText(dialog.subscriptionUrl)}>Копировать</button>
-                  <button className={adminButtonClass("primary")} type="button" onClick={() => setDialog(null)}>Закрыть</button>
+                  <button className={adminButtonClass("secondary")} type="button" onClick={() => void copyText(dialog.subscriptionUrl)}>
+                    Скопировать
+                  </button>
+                  <button className={adminButtonClass("primary")} type="button" onClick={() => setDialog(null)}>
+                    Закрыть
+                  </button>
                 </div>
               </>
             ) : null}
@@ -627,30 +731,5 @@ export default function AdminUsersPage() {
         </div>
       ) : null}
     </section>
-  );
-}
-
-function DialogActions({
-  busy,
-  confirmDisabled,
-  confirmLabel,
-  danger,
-  onCancel,
-  onConfirm,
-}: {
-  busy: boolean;
-  confirmDisabled?: boolean;
-  confirmLabel: string;
-  danger?: boolean;
-  onCancel: () => void;
-  onConfirm: () => void;
-}) {
-  return (
-    <div className="mt-4 flex justify-end gap-2">
-      <button className={adminButtonClass("secondary")} type="button" onClick={onCancel}>Отмена</button>
-      <button className={adminButtonClass(danger ? "danger" : "primary")} type="button" disabled={busy || confirmDisabled} onClick={onConfirm}>
-        {confirmLabel}
-      </button>
-    </div>
   );
 }

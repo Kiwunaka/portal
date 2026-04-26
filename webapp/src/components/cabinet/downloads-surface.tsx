@@ -26,10 +26,6 @@ function formatDate(value?: string | null): string {
   }).format(parsed);
 }
 
-function cabinetIcon(name: string): ReactNode {
-  return <span className="material-symbols-rounded text-[21px]">{name}</span>;
-}
-
 function externalAction(href: string, label: string): ReactNode {
   return (
     <a href={href} target="_blank" rel="noreferrer" className="text-sm font-semibold text-emerald-800 dark:text-emerald-300">
@@ -55,7 +51,7 @@ function buildCards(payload: ClientAppsPayload | null): DownloadCard[] {
           badge: "Android beta",
           tone: "warning",
           href: androidPlay,
-          action: externalAction(androidPlay, "Открыть Google Play"),
+          action: externalAction(androidPlay, "Открыть"),
         }
       : null,
     androidApk
@@ -66,7 +62,7 @@ function buildCards(payload: ClientAppsPayload | null): DownloadCard[] {
           badge: "Internal beta",
           tone: "warning",
           href: androidApk,
-          action: externalAction(androidApk, "Скачать APK"),
+          action: externalAction(androidApk, "Скачать"),
         }
       : null,
     androidMirror
@@ -77,7 +73,7 @@ function buildCards(payload: ClientAppsPayload | null): DownloadCard[] {
           badge: "Резерв beta",
           tone: "warning",
           href: androidMirror,
-          action: externalAction(androidMirror, "Скачать APK (зеркало)"),
+          action: externalAction(androidMirror, "Открыть"),
         }
       : null,
     windowsExe
@@ -88,7 +84,7 @@ function buildCards(payload: ClientAppsPayload | null): DownloadCard[] {
           badge: "Unsigned beta",
           tone: "warning",
           href: windowsExe,
-          action: externalAction(windowsExe, "Скачать Windows"),
+          action: externalAction(windowsExe, "Скачать"),
         }
       : null,
     windowsMirror
@@ -99,7 +95,7 @@ function buildCards(payload: ClientAppsPayload | null): DownloadCard[] {
           badge: "Резерв beta",
           tone: "warning",
           href: windowsMirror,
-          action: externalAction(windowsMirror, "Скачать Windows (зеркало)"),
+          action: externalAction(windowsMirror, "Открыть"),
         }
       : null,
     docsUrl
@@ -109,19 +105,10 @@ function buildCards(payload: ClientAppsPayload | null): DownloadCard[] {
           body: "Если нужен быстрый ориентир по установке и первым шагам, он здесь.",
           badge: "Подсказка",
           tone: "neutral",
-          icon: cabinetIcon("menu_book"),
           href: docsUrl,
-          action: externalAction(docsUrl, "Открыть инструкцию"),
+          action: externalAction(docsUrl, "Открыть"),
         }
       : null,
-    {
-      key: "apple-soon",
-      title: "Apple",
-      body: "Версия для Apple готовится. Сейчас основной путь — Android и Windows.",
-      badge: "Готовится",
-      tone: "neutral",
-      icon: cabinetIcon("devices_other"),
-    },
   ].filter(Boolean) as DownloadCard[];
 }
 
@@ -139,9 +126,9 @@ export function CabinetDownloadsSurface() {
           setPayload(next);
           setError("");
         }
-      } catch {
+      } catch (nextError) {
         if (!cancelled) {
-          setError("Не удалось обновить ссылки автоматически.");
+          setError(String((nextError as { message?: string })?.message || nextError || ""));
         }
       }
     };
@@ -155,8 +142,7 @@ export function CabinetDownloadsSurface() {
   const cards = useMemo(() => buildCards(payload), [payload]);
   const hasAndroid = cards.some((item) => item.key.startsWith("android"));
   const hasWindows = cards.some((item) => item.key.startsWith("windows"));
-  const hasInstallable = hasAndroid || hasWindows;
-  const primaryInstall = cards.find((item) => item.key === "android-play" || item.key === "android-apk" || item.key === "windows-exe");
+  const hasDocs = cards.some((item) => item.key === "docs");
 
   const helperCards: CabinetListItem[] = [
     {
@@ -165,7 +151,6 @@ export function CabinetDownloadsSurface() {
       body: "Сначала просто откройте нужную ссылку. Кабинет не должен мешать этому шагу.",
       badge: "Шаг 1",
       tone: "neutral",
-      icon: cabinetIcon("download"),
       action: hasAndroid || hasWindows ? null : (
         <span className="text-sm font-semibold text-slate-500 dark:text-slate-400">Ссылки появятся</span>
       ),
@@ -173,10 +158,9 @@ export function CabinetDownloadsSurface() {
     {
       key: "step-login",
       title: "Войдите в тот же аккаунт",
-      body: "Доступ подтянется сам. Ключи и скрытые настройки вручную искать не нужно.",
+      body: "Профиль подтянется сам. Ключи и скрытые настройки вручную искать не нужно.",
       badge: "Шаг 2",
       tone: "neutral",
-      icon: cabinetIcon("login"),
     },
     {
       key: "step-help",
@@ -184,7 +168,6 @@ export function CabinetDownloadsSurface() {
       body: "Так быстрее и для вас, и для поддержки: весь контекст уже будет рядом.",
       badge: "Шаг 3",
       tone: "neutral",
-      icon: cabinetIcon("support_agent"),
       action: (
         <AppRouteLink href="/support/" className="text-sm font-semibold text-emerald-800 dark:text-emerald-300">
           Поддержка
@@ -222,9 +205,9 @@ export function CabinetDownloadsSurface() {
           tone: hasWindows ? "warning" : "neutral",
         },
         {
-          label: "Apple",
-          value: "Готовится",
-          hint: "Apple-платформы сейчас только в подготовке, без публичной установки.",
+          label: "Инструкция",
+          value: hasDocs ? "Под рукой" : "Не обязательна",
+          hint: "Короткий ориентир, если нужен спокойный старт.",
           tone: "neutral",
         },
         {
@@ -247,9 +230,9 @@ export function CabinetDownloadsSurface() {
         }
         actions={
           <>
-            {primaryInstall?.href ? (
-              <a href={primaryInstall.href} target="_blank" rel="noreferrer" className="btn-primary rounded-full px-5 py-3 text-sm font-semibold">
-                {primaryInstall.key === "android-play" ? "Открыть Google Play" : primaryInstall.key === "android-apk" ? "Скачать APK" : "Скачать Windows"}
+            {cards[0]?.href ? (
+              <a href={cards[0].href} target="_blank" rel="noreferrer" className="btn-primary rounded-full px-5 py-3 text-sm font-semibold">
+                Открыть первую ссылку
               </a>
             ) : null}
             <AppRouteLink href="/support/" className="outline-btn rounded-full px-5 py-3 text-sm font-semibold">
@@ -267,12 +250,12 @@ export function CabinetDownloadsSurface() {
           {
             label: "После установки",
             value: "Войти в тот же аккаунт",
-            hint: "Доступ, режим и история подтянутся сами.",
+            hint: "Профиль, режим и история подтянутся сами.",
             tone: "neutral",
           },
           {
             label: "Если что-то не открылось",
-            value: "Открыть поддержку",
+            value: "Не искать обходы",
             hint: "Быстрее сразу продолжить один кейс в поддержке.",
             tone: error ? "warning" : "neutral",
           },

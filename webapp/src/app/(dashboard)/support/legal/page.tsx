@@ -1,6 +1,5 @@
-import AppRouteLink from "@/components/app-route-link";
-import { CabinetCardGrid, CabinetRoute, CabinetSection } from "@/components/cabinet/surface";
 import { CANONICAL_MARKETING_SITE_URL } from "@/lib/portal";
+import Link from "next/link";
 
 function marketingDocumentUrl(pathname: "/offer/" | "/privacy/"): string {
   const marketingSiteUrl = String(CANONICAL_MARKETING_SITE_URL || "").trim();
@@ -12,10 +11,10 @@ function marketingDocumentUrl(pathname: "/offer/" | "/privacy/"): string {
       url.hash = "";
       return url.toString();
     } catch {
-      return `${CANONICAL_MARKETING_SITE_URL}${pathname}`;
+      // Fall through to domain fallback below.
     }
   }
-  return pathname;
+  return `${CANONICAL_MARKETING_SITE_URL}${pathname}`;
 }
 
 export default function SupportLegalPage() {
@@ -23,57 +22,57 @@ export default function SupportLegalPage() {
   const privacyUrl = marketingDocumentUrl("/privacy/");
 
   return (
-    <CabinetRoute
-      eyebrow="Поддержка"
-      title="Документы и условия"
-      description="Здесь собраны публичная оферта и политика конфиденциальности. Ссылки открываются отдельно, а вернуться в поддержку можно в один шаг."
-      actions={
-        <AppRouteLink href="/support/" className="outline-btn rounded-full px-5 py-3 text-sm font-semibold">
-          К поддержке
-        </AppRouteLink>
-      }
-    >
-      <CabinetSection eyebrow="Документы" title="Открыть нужный документ" description="Мы не показываем технические адреса на первом экране: просто выберите документ по смыслу.">
-        <CabinetCardGrid
-          items={[
-            {
-              key: "offer",
-              title: "Публичная оферта",
-              body: "Условия предоставления доступа, оплаты, продления и ответственности сторон.",
-              badge: "Условия",
-              tone: "neutral",
-              action: (
-                <a href={offerUrl} target="_blank" rel="noreferrer" className="text-sm font-semibold text-emerald-800 dark:text-emerald-300">
-                  Открыть
-                </a>
-              ),
-            },
-            {
-              key: "privacy",
-              title: "Политика конфиденциальности",
-              body: "Какие данные используются для работы аккаунта, оплаты и поддержки.",
-              badge: "Данные",
-              tone: "neutral",
-              action: (
-                <a href={privacyUrl} target="_blank" rel="noreferrer" className="text-sm font-semibold text-emerald-800 dark:text-emerald-300">
-                  Открыть
-                </a>
-              ),
-            },
-          ]}
-          className="xl:grid-cols-2"
-        />
-      </CabinetSection>
+    <main className="space-y-6">
+      <section className="glass-card p-7">
+        <Link href="/support" className="inline-flex items-center gap-2 text-xs uppercase tracking-[0.16em] text-slate-500">
+          <span className="material-symbols-rounded">arrow_back</span>
+          Назад в службу заботы
+        </Link>
+        <h1 className="mt-3 font-display text-4xl font-bold">Юридическая информация</h1>
+        <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">
+          Ниже находятся актуальные публичные документы POKROV: оферта и политика конфиденциальности.
+        </p>
+      </section>
 
-      <CabinetSection
-        eyebrow="Если вопрос не про документ"
-        title="Лучше открыть кейс"
-        description="Если нужно разобраться с оплатой, доступом или конкретной ситуацией в аккаунте, создайте кейс в поддержке и укажите тему."
-      >
-        <AppRouteLink href="/support/" className="btn-primary inline-flex rounded-2xl px-5 py-3 text-sm font-semibold">
-          Открыть поддержку
-        </AppRouteLink>
-      </CabinetSection>
-    </CabinetRoute>
+      <section className="grid gap-5 lg:grid-cols-2">
+        <article className="glass-card p-6">
+          <h2 className="font-display text-2xl font-semibold">Публичная оферта</h2>
+          <p className="mt-3 text-sm leading-6 text-slate-600 dark:text-slate-300">
+            Документ описывает условия предоставления доступа, оплаты, продления и ответственности сторон.
+          </p>
+          <a
+            href={offerUrl}
+            target="_blank"
+            rel="noreferrer"
+            className="btn-primary mt-5 inline-flex rounded-xl px-5 py-2.5 text-sm font-semibold uppercase tracking-[0.12em]"
+          >
+            Открыть оферту
+          </a>
+        </article>
+
+        <article className="glass-card p-6">
+          <h2 className="font-display text-2xl font-semibold">Политика конфиденциальности</h2>
+          <p className="mt-3 text-sm leading-6 text-slate-600 dark:text-slate-300">
+            Документ описывает, какие данные используются для работы аккаунта, оплаты и поддержки.
+          </p>
+          <a
+            href={privacyUrl}
+            target="_blank"
+            rel="noreferrer"
+            className="outline-btn mt-5 inline-flex rounded-xl px-5 py-2.5 text-sm font-semibold uppercase tracking-[0.12em]"
+          >
+            Открыть политику
+          </a>
+        </article>
+      </section>
+
+      <section className="glass-card p-6">
+        <p className="font-mono text-xs uppercase tracking-[0.16em] text-slate-500">Важно</p>
+        <p className="mt-2 text-sm leading-6 text-slate-600 dark:text-slate-300">
+          Если у вас есть юридический или финансовый вопрос по оплате, создайте обращение в поддержке и укажите тему обращения.
+          Так запрос быстрее попадёт к нужному специалисту.
+        </p>
+      </section>
+    </main>
   );
 }

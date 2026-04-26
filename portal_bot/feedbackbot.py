@@ -159,7 +159,7 @@ def delete_feedback_entry(session, entry_id: int) -> bool:
 def _menu_markup(*, is_admin: bool = False) -> InlineKeyboardMarkup:
     rows = [
         [InlineKeyboardButton(text="✍️ Оставить отзыв", callback_data="fb_new")],
-        [InlineKeyboardButton(text="💬 Написать в поддержку", url=f"https://t.me/{SUPPORT_USERNAME}?start=ticket_new")],
+        [InlineKeyboardButton(text="💬 В поддержку", url=f"https://t.me/{SUPPORT_USERNAME}?start=ticket_new")],
     ]
     if is_admin:
         rows.append([InlineKeyboardButton(text="🧑‍💼 Очередь модерации", callback_data="fb_admin_queue")])
@@ -169,7 +169,7 @@ def _menu_markup(*, is_admin: bool = False) -> InlineKeyboardMarkup:
 def _welcome_text(is_admin: bool) -> str:
     headline = get_copy_text(
         "bot.feedback.welcome",
-        "Сюда можно отправить отзыв, идею или короткое замечание о POKROV. Мы всё читаем и публикуем только то, что прошло модерацию.",
+        "Сюда можно отправить отзыв, идею или короткое замечание о POKROV. Мы всё читаем и лучшие отзывы публикуем после модерации.",
     )
     prompt = get_copy_text(
         "bot.feedback.prompt",
@@ -262,7 +262,7 @@ async def fb_new(callback: CallbackQuery) -> None:
     pending_feedback.add(callback.from_user.id)
     await callback.message.edit_text(
         "💌 *Напишите отзыв одним сообщением*\n\n"
-        "Коротко расскажите, что помогло: открыть приложение, подключиться, попробовать 5 дней или активировать ключ. Затем мы передадим текст на модерацию.",
+        "Коротко расскажите, что помогло, что было неудобно и что стоит улучшить. Затем мы передадим текст на модерацию.",
         reply_markup=InlineKeyboardMarkup(
             inline_keyboard=[[InlineKeyboardButton(text="◀️ Назад", callback_data="fb_back_home")]]
         ),

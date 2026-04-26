@@ -1,68 +1,31 @@
 "use client";
 
-import {
-  AdminConfirmDialog,
-  AdminBadge,
-  AdminMetricStrip,
-  AdminPanelHeader,
-  adminButtonClass,
-  adminFieldClass,
-  adminInsetPanelClass,
-  adminPanelClass,
-  adminTextAreaClass,
-} from "@/components/admin/admin-shell";
-import {
-  adminLoyaltyConfig,
-  adminLoyaltyConfigUpdate,
-  adminUserLoyaltyGrant,
-  adminWheelConfig,
-  adminWheelConfigUpdate,
-  type AdminLoyaltyConfig,
-  type AdminWheelConfig,
-} from "@/lib/api";
+import { adminButtonClass, adminPanelClass } from "@/components/admin/admin-shell";
+import { adminLoyaltyConfig, adminLoyaltyConfigUpdate, adminUserLoyaltyGrant, adminWheelConfig, adminWheelConfigUpdate, type AdminLoyaltyConfig, type AdminWheelConfig } from "@/lib/api";
+import { Dices, Loader2, RefreshCw, Save, Timer } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 
-type ConfirmState = { kind: "wheel" | "loyalty" | "grant"; reason: string } | null;
-
 function parseWeights(input: string): Array<{ days: number; weight: number }> {
-  const parsed = input
+  const rows = input
     .split(/\r?\n/)
     .map((line) => line.trim())
     .filter(Boolean)
-    .map((line) => {
-      const [daysRaw, weightRaw] = line.replace(/\s+/g, "").split(":");
-      const days = Number(daysRaw || 0);
-      const weight = Number(weightRaw || 0);
-      if (!Number.isFinite(days) || !Number.isFinite(weight) || days <= 0 || weight <= 0) {
-        throw new Error(`Invalid wheel row: ${line}`);
-      }
-      return { days: Math.floor(days), weight: Math.floor(weight) };
-    });
-  if (!parsed.length) throw new Error("Add at least one days:weight row.");
+    .map((line) => line.replace(/\s+/g, ""));
+  const parsed = rows.map((line) => {
+    const [daysRaw, weightRaw] = line.split(":");
+    const days = Number(daysRaw || 0);
+    const weight = Number(weightRaw || 0);
+    if (!Number.isFinite(days) || !Number.isFinite(weight) || days <= 0 || weight <= 0) {
+      throw new Error(`Некорректная строка веса: ${line}`);
+    }
+    return { days: Math.floor(days), weight: Math.floor(weight) };
+  });
+  if (parsed.length === 0) throw new Error("Добавьте хотя бы одну строку с весом.");
   return parsed;
 }
 
 function weightsToText(weights: Array<{ days: number; weight: number }>): string {
   return (weights || []).map((row) => `${row.days}:${row.weight}`).join("\n");
-}
-
-function parseLoyaltyRows(input: string): Array<{ days: number; bonus_days: number; perk: string }> {
-  return input
-    .split(/\r?\n/)
-    .map((line) => line.trim())
-    .filter(Boolean)
-    .map((line) => {
-      const [daysRaw, bonusRaw, ...perkRaw] = line.split(":");
-      return {
-        days: Number(daysRaw || 0),
-        bonus_days: Number(bonusRaw || 0),
-        perk: perkRaw.join(":").trim(),
-      };
-    });
-}
-
-function loyaltyRowsToText(rows: Array<{ days: number; bonus_days: number; perk: string }>): string {
-  return rows.map((row) => `${row.days}:${row.bonus_days}:${row.perk}`).join("\n");
 }
 
 export default function AdminBonusesPage() {
@@ -75,7 +38,6 @@ export default function AdminBonusesPage() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [result, setResult] = useState("");
-  const [confirm, setConfirm] = useState<ConfirmState>(null);
 
   const load = async (): Promise<void> => {
     setError("");
@@ -87,7 +49,7 @@ export default function AdminBonusesPage() {
       setLoyaltyConfig(loyalty.loyalty_config);
       setLoyaltyText((loyalty.loyalty_config.tiers || []).map((row) => `${row.days}:${row.bonus_days}:${row.perk}`).join("\n"));
     } catch (err) {
-      setError(String((err as { message?: string })?.message || err || "Could not load bonus settings."));
+      setError(String((err as { message?: string })?.message || err || "Не удалось загрузить бонусы."));
     }
   };
 
@@ -95,7 +57,7 @@ export default function AdminBonusesPage() {
     void load();
   }, []);
 
-  const saveWheel = async (operatorReason: string): Promise<void> => {
+  const save = async (): Promise<void> => {
     if (!config) return;
     setBusy(true);
     setError("");
@@ -106,19 +68,18 @@ export default function AdminBonusesPage() {
         cooldown_hours: Math.max(1, Math.min(2160, Number(config.cooldown_hours || 168))),
         weights: parseWeights(weightsText),
       };
-      const out = await adminWheelConfigUpdate(payload, operatorReason.trim());
+      const out = await adminWheelConfigUpdate(payload);
       setConfig(out.wheel_config);
       setWeightsText(weightsToText(out.wheel_config.weights || []));
-      setResult(`Колесо бонусов сохранено. Причина: ${operatorReason.trim()}`);
-      setConfirm(null);
+      setResult("Настройки колеса сохранены.");
     } catch (err) {
-      setError(String((err as { message?: string })?.message || err || "Could not save wheel settings."));
+      setError(String((err as { message?: string })?.message || err || "Не удалось сохранить настройки колеса."));
     } finally {
       setBusy(false);
     }
   };
 
-  const saveLoyalty = async (operatorReason: string): Promise<void> => {
+  const saveLoyalty = async (): Promise<void> => {
     if (!loyaltyConfig) return;
     setBusy(true);
     setError("");
@@ -134,38 +95,40 @@ export default function AdminBonusesPage() {
           const bonusDays = Number(bonusRaw || 0);
           const perk = perkRaw.join(":").trim();
           if (!Number.isFinite(days) || !Number.isFinite(bonusDays) || days <= 0 || bonusDays < 0 || !perk) {
-            throw new Error(`Invalid loyalty row: ${line}`);
+            throw new Error(`Некорректная строка уровня лояльности: ${line}`);
           }
           return { days: Math.floor(days), bonus_days: Math.floor(bonusDays), perk };
         });
-      const out = await adminLoyaltyConfigUpdate({ enabled: loyaltyConfig.enabled, tiers }, operatorReason.trim());
+      const payload: AdminLoyaltyConfig = {
+        enabled: loyaltyConfig.enabled,
+        tiers,
+      };
+      const out = await adminLoyaltyConfigUpdate(payload);
       setLoyaltyConfig(out.loyalty_config);
       setLoyaltyText((out.loyalty_config.tiers || []).map((row) => `${row.days}:${row.bonus_days}:${row.perk}`).join("\n"));
-      setResult(`Настройки лояльности сохранены. Причина: ${operatorReason.trim()}`);
-      setConfirm(null);
+      setResult("Настройки лояльности сохранены.");
     } catch (err) {
-      setError(String((err as { message?: string })?.message || err || "Could not save loyalty settings."));
+      setError(String((err as { message?: string })?.message || err || "Не удалось сохранить лояльность."));
     } finally {
       setBusy(false);
     }
   };
 
-  const grantLoyalty = async (operatorReason: string): Promise<void> => {
+  const grantLoyalty = async (): Promise<void> => {
     const tgId = Number(loyaltyGrantUser || 0);
     const tierDays = Number(loyaltyGrantTier || 0);
     if (!Number.isFinite(tgId) || tgId <= 0 || !Number.isFinite(tierDays) || tierDays <= 0) {
-      setError("Enter Telegram ID and tier days.");
+      setError("Укажите Telegram ID пользователя и длину уровня.");
       return;
     }
     setBusy(true);
     setError("");
     setResult("");
     try {
-      const out = await adminUserLoyaltyGrant(tgId, tierDays, operatorReason.trim());
-      setResult(`Бонус выдан: ${out.tier_days} дн. для ${tgId} (${out.sync_ok ? "панель синхронизирована" : "синхронизация ожидает"}).`);
-      setConfirm(null);
+      const out = await adminUserLoyaltyGrant(tgId, tierDays);
+      setResult(`Лояльность выдана: ${out.tier_days} дней пользователю ${tgId} (${out.sync_ok ? "синхронизация успешна" : "есть рассинхрон"}).`);
     } catch (err) {
-      setError(String((err as { message?: string })?.message || err || "Could not grant loyalty bonus."));
+      setError(String((err as { message?: string })?.message || err || "Не удалось выдать бонус."));
     } finally {
       setBusy(false);
     }
@@ -174,195 +137,194 @@ export default function AdminBonusesPage() {
   const weightBars = useMemo(() => {
     try {
       const parsed = parseWeights(weightsText);
-      const totalWeight = parsed.reduce((sum, row) => sum + row.weight, 0);
-      return parsed.map((row) => ({ ...row, pct: Math.round((row.weight / totalWeight) * 100) }));
+      const totalWeight = parsed.reduce((sum, w) => sum + w.weight, 0);
+      return parsed.map((w) => ({ ...w, pct: Math.round((w.weight / totalWeight) * 100) }));
     } catch {
       return [];
     }
   }, [weightsText]);
 
-  const loyaltyRows = useMemo(() => parseLoyaltyRows(loyaltyText), [loyaltyText]);
-  const updateWeightRow = (index: number, patch: Partial<{ days: number; weight: number }>) => {
-    const rows = weightBars.length ? weightBars.map(({ days, weight }) => ({ days, weight })) : [{ days: 1, weight: 1 }];
-    rows[index] = { ...rows[index], ...patch };
-    setWeightsText(weightsToText(rows));
-  };
-  const updateLoyaltyRow = (index: number, patch: Partial<{ days: number; bonus_days: number; perk: string }>) => {
-    const rows = loyaltyRows.length ? [...loyaltyRows] : [{ days: 30, bonus_days: 1, perk: "priority_support" }];
-    rows[index] = { ...rows[index], ...patch };
-    setLoyaltyText(loyaltyRowsToText(rows));
-  };
+  const PRESET_OPTIONS = [
+    { value: "balanced", label: "Сбалансированный" },
+    { value: "generous", label: "Щедрый" },
+    { value: "conservative", label: "Осторожный" },
+    { value: "jackpot", label: "Джекпот" },
+  ];
 
   return (
-    <section className="space-y-4">
+    <section className="space-y-5">
       <article className={adminPanelClass("neutral")}>
-        <AdminPanelHeader
-          eyebrow="access"
-          title="Bonuses and loyalty"
-          description="Control bonus wheel probabilities, loyalty tiers, and scoped manual grants from one auditable operator surface."
-          actions={
-            <button className={adminButtonClass("secondary", "sm")} type="button" onClick={() => void load()} disabled={busy}>
-              Обновить
-            </button>
-          }
-        />
-        <div className="flex flex-wrap gap-2">
-          <AdminBadge tone="accent">wheel</AdminBadge>
-          <AdminBadge tone="accent">loyalty</AdminBadge>
-          <AdminBadge tone="warning">ручные начисления требуют Telegram ID</AdminBadge>
+        <div className="mb-1 flex flex-col gap-3 sm:flex-row sm:items-center">
+          <div className="stat-icon stat-icon-amber">
+            <Dices size={22} />
+          </div>
+          <div className="min-w-0">
+            <h2 className="font-display text-xl font-bold">Бонусы и лояльность</h2>
+            <p className="text-xs text-slate-500">Колесо бонусов, ручная выдача уровней и настройка сценариев удержания.</p>
+          </div>
         </div>
+        <p className="mt-3 text-sm text-slate-600 dark:text-slate-300">
+          Используйте этот раздел, чтобы управлять вероятностями, паузой между попытками и правилами начисления лояльности.
+        </p>
       </article>
 
-      <AdminMetricStrip
-        items={[
-          { label: "preset", value: config?.preset || "-", hint: "Active wheel preset." },
-          { label: "cooldown", value: `${config?.cooldown_hours ?? "-"}h`, hint: "Minimum pause between wheel runs." },
-          { label: "weights", value: weightBars.length, hint: "Configured wheel outcomes.", tone: "accent" },
-          { label: "loyalty", value: loyaltyConfig?.enabled ? "on" : "off", hint: "Retention tier automation.", tone: loyaltyConfig?.enabled ? "success" : "warning" },
-        ]}
-      />
-
-      {result ? <div className={adminPanelClass("success")}>{result}</div> : null}
-      {error ? <div className={adminPanelClass("danger")}>{error}</div> : null}
-
-      <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr),minmax(300px,0.7fr)]">
-        <article className={adminPanelClass("neutral")}>
-          <AdminPanelHeader eyebrow="wheel" title="Bonus wheel configuration" />
+      <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr),minmax(280px,0.6fr)]">
+        <article className={`${adminPanelClass("neutral")} space-y-4`}>
           {!config ? (
-            <p className="text-sm text-slate-400">Loading settings...</p>
+            <p className="text-sm text-slate-500">Загружаем настройки...</p>
           ) : (
-            <div className="space-y-3">
-              <div className="grid gap-3 md:grid-cols-2">
-                <label className="text-xs text-slate-400">
-                  Preset
-                  <input value={config.preset || ""} onChange={(event) => setConfig((prev) => (prev ? { ...prev, preset: event.target.value } : prev))} className={`mt-1 ${adminFieldClass}`} />
-                </label>
-                <label className="text-xs text-slate-400">
-                  Cooldown hours
+            <>
+              <div className="grid gap-4 md:grid-cols-2">
+                <div>
+                  <label className="mb-1.5 block text-[10px] uppercase tracking-[0.1em] text-slate-500">Пресет</label>
+                  <div className="flex flex-wrap gap-1.5">
+                    {PRESET_OPTIONS.map((preset) => (
+                      <button
+                        key={preset.value}
+                        type="button"
+                        className={`haptic-tap ${config.preset === preset.value ? adminButtonClass("primary", "xs") : adminButtonClass("ghost", "xs")} transition-all`}
+                        onClick={() => setConfig((prev) => (prev ? { ...prev, preset: preset.value } : prev))}
+                      >
+                        {preset.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <div>
+                  <label className="mb-1.5 flex items-center gap-1 text-[10px] uppercase tracking-[0.1em] text-slate-500">
+                    <Timer size={10} /> Охлаждение (часы)
+                  </label>
                   <input
                     type="number"
                     value={config.cooldown_hours}
-                    onChange={(event) => setConfig((prev) => (prev ? { ...prev, cooldown_hours: Math.max(1, Math.min(2160, Number(event.target.value || 1))) } : prev))}
-                    className={`mt-1 ${adminFieldClass}`}
+                    onChange={(event) =>
+                      setConfig((prev) =>
+                        prev ? { ...prev, cooldown_hours: Math.max(1, Math.min(2160, Number(event.target.value || 1))) } : prev,
+                      )
+                    }
+                    className="w-full rounded-xl border border-violet-200/50 bg-white/80 px-3 py-2 text-sm outline-none dark:border-violet-500/30 dark:bg-slate-900/70"
                   />
-                </label>
-              </div>
-              <div className="space-y-2">
-                <div className="grid grid-cols-[0.7fr,0.7fr,auto] gap-2 text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-500">
-                  <span>Дней</span>
-                  <span>Вес</span>
-                  <span />
+                  <p className="mt-1 text-[10px] text-slate-400">{Math.round((config.cooldown_hours || 168) / 24)} дней до следующего запуска</p>
                 </div>
-                {(weightBars.length ? weightBars : [{ days: 1, weight: 1, pct: 100 }]).map((row, index) => (
-                  <div key={`${row.days}:${index}`} className="grid grid-cols-[0.7fr,0.7fr,auto] gap-2">
-                    <input type="number" min={1} value={row.days} onChange={(event) => updateWeightRow(index, { days: Number(event.target.value || 1) })} className={adminFieldClass} />
-                    <input type="number" min={1} value={row.weight} onChange={(event) => updateWeightRow(index, { weight: Number(event.target.value || 1) })} className={adminFieldClass} />
-                    <button className={adminButtonClass("ghost", "xs")} type="button" onClick={() => setWeightsText(weightsToText(weightBars.filter((_, itemIndex) => itemIndex !== index)))} disabled={weightBars.length <= 1}>
-                      Убрать
-                    </button>
-                  </div>
-                ))}
-                <button className={adminButtonClass("secondary", "xs")} type="button" onClick={() => setWeightsText(weightsToText([...(weightBars.length ? weightBars : []), { days: 14, weight: 10 }]))}>
-                  Добавить строку
+              </div>
+
+              <div>
+                <label className="mb-1.5 block text-[10px] uppercase tracking-[0.1em] text-slate-500">Весы колеса (days:weight, по одной строке)</label>
+                <p className="mb-2 text-xs text-slate-500">Чем выше weight, тем чаще выпадает бонус с указанной длительностью. Формат строки: <code className="rounded bg-white/70 px-1 py-0.5 dark:bg-white/10">дни:вес</code>.</p>
+                <textarea
+                  rows={7}
+                  value={weightsText}
+                  onChange={(event) => setWeightsText(event.target.value)}
+                  className="w-full resize-none rounded-xl border border-violet-200/50 bg-white/80 px-3 py-2 font-mono text-xs outline-none dark:border-violet-500/30 dark:bg-slate-900/70"
+                  placeholder={"1:45\n3:35\n7:15\n30:5"}
+                />
+              </div>
+
+              <div className="flex flex-col gap-2 sm:flex-row">
+                <button className={adminButtonClass("primary")} type="button" onClick={() => void save()} disabled={busy}>
+                  {busy ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}
+                  {busy ? "Сохраняем..." : "Сохранить"}
+                </button>
+                <button className={adminButtonClass("secondary")} type="button" onClick={() => void load()}>
+                  <RefreshCw size={13} /> Перезагрузить
                 </button>
               </div>
-              <details className="rounded-xl border border-[#c6e6db] bg-[#f8fffc] p-3">
-                <summary className="cursor-pointer text-xs font-semibold text-slate-600">Исходные строки wheel</summary>
-                <textarea rows={5} value={weightsText} onChange={(event) => setWeightsText(event.target.value)} className={`mt-2 font-mono text-xs ${adminTextAreaClass}`} placeholder={"1:45\n3:35\n7:15\n30:5"} />
-              </details>
-              <button className={adminButtonClass("primary")} type="button" onClick={() => setConfirm({ kind: "wheel", reason: "" })} disabled={busy}>
-                Сохранить колесо
-              </button>
+            </>
+          )}
+
+          {result ? (
+            <div className="flex items-center gap-2 rounded-xl bg-emerald-500/10 p-3">
+              <span className="status-dot status-dot-online" />
+              <p className="text-sm font-medium text-emerald-600 dark:text-emerald-300">{result}</p>
+            </div>
+          ) : null}
+          {error ? (
+            <div className="flex items-center gap-2 rounded-xl bg-rose-500/10 p-3">
+              <span className="status-dot status-dot-offline" />
+              <p className="text-sm font-medium text-rose-500">{error}</p>
+            </div>
+          ) : null}
+        </article>
+
+      <article className={adminPanelClass("neutral")}>
+          <h3 className="mb-3 font-display text-lg font-bold">Распределение веса</h3>
+          <p className="mb-3 text-xs text-slate-500">Сводка показывает, насколько часто выпадает каждый вариант в текущем наборе весов.</p>
+          {weightBars.length === 0 ? (
+            <div className="empty-state py-6">
+              <Dices size={24} />
+              <p className="text-xs">Сначала задайте весы колеса</p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {weightBars.map((bar, idx) => {
+                const colors = ["progress-fill-emerald", "progress-fill", "progress-fill-amber", "progress-fill-rose"];
+                const fillClass = colors[idx % colors.length];
+                return (
+                  <div key={`${bar.days}-${idx}`}>
+                    <div className="mb-1 flex items-center justify-between text-xs">
+                      <span className="flex items-center gap-1.5">
+                        <span className="badge badge-violet">{bar.days}d</span>
+                        <span className="text-slate-500">weight: {bar.weight}</span>
+                      </span>
+                      <strong className="gradient-text">{bar.pct}%</strong>
+                    </div>
+                    <div className="progress-track">
+                      <div className={`progress-fill ${fillClass}`} style={{ width: `${bar.pct}%` }} />
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           )}
         </article>
-
-        <article className={adminPanelClass("neutral")}>
-          <AdminPanelHeader eyebrow="distribution" title="Weight preview" />
-          <div className="space-y-3">
-            {weightBars.map((bar) => (
-              <div key={`${bar.days}:${bar.weight}`}>
-                <div className="mb-1 flex justify-between text-xs">
-                  <span>{bar.days} days · weight {bar.weight}</span>
-                  <strong>{bar.pct}%</strong>
-                </div>
-                <div className="h-2 rounded-full bg-[#ffffff]">
-                  <div className="h-full rounded-full bg-emerald-300" style={{ width: `${bar.pct}%` }} />
-                </div>
-              </div>
-            ))}
-            {!weightBars.length ? <p className="text-xs text-slate-500">Enter valid rows to preview probability.</p> : null}
-          </div>
-        </article>
       </div>
 
-      <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr),minmax(300px,0.7fr)]">
-        <article className={adminPanelClass("neutral")}>
-          <AdminPanelHeader eyebrow="loyalty" title="Loyalty tiers" />
-          <label className="mb-3 inline-flex items-center gap-2 text-xs text-slate-400">
-            <input
-              type="checkbox"
-              checked={Boolean(loyaltyConfig?.enabled)}
-              onChange={(event) => setLoyaltyConfig((prev) => (prev ? { ...prev, enabled: event.target.checked } : prev))}
-            />
-            Enabled
-          </label>
-          <div className="space-y-2">
-            <div className="grid grid-cols-[0.6fr,0.6fr,minmax(0,1fr),auto] gap-2 text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-500">
-              <span>Дней</span>
-              <span>Бонус</span>
-              <span>Перк</span>
-              <span />
-            </div>
-            {(loyaltyRows.length ? loyaltyRows : [{ days: 30, bonus_days: 1, perk: "priority_support" }]).map((row, index) => (
-              <div key={`${row.days}:${index}`} className="grid grid-cols-[0.6fr,0.6fr,minmax(0,1fr),auto] gap-2">
-                <input type="number" min={1} value={row.days} onChange={(event) => updateLoyaltyRow(index, { days: Number(event.target.value || 1) })} className={adminFieldClass} />
-                <input type="number" min={0} value={row.bonus_days} onChange={(event) => updateLoyaltyRow(index, { bonus_days: Number(event.target.value || 0) })} className={adminFieldClass} />
-                <input value={row.perk} onChange={(event) => updateLoyaltyRow(index, { perk: event.target.value })} className={adminFieldClass} />
-                <button className={adminButtonClass("ghost", "xs")} type="button" onClick={() => setLoyaltyText(loyaltyRowsToText(loyaltyRows.filter((_, itemIndex) => itemIndex !== index)))} disabled={loyaltyRows.length <= 1}>
-                  Убрать
-                </button>
-              </div>
-            ))}
-            <button className={adminButtonClass("secondary", "xs")} type="button" onClick={() => setLoyaltyText(loyaltyRowsToText([...(loyaltyRows.length ? loyaltyRows : []), { days: 180, bonus_days: 7, perk: "vip_queue" }]))}>
-              Добавить уровень
-            </button>
+      <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr),minmax(320px,0.8fr)]">
+        <article className="glass-card space-y-4 p-5">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <h3 className="font-display text-lg font-bold">Настройки лояльности</h3>
+            <label className="inline-flex items-center gap-2 text-xs">
+              <input
+                type="checkbox"
+                checked={Boolean(loyaltyConfig?.enabled)}
+                onChange={(event) => setLoyaltyConfig((prev) => (prev ? { ...prev, enabled: event.target.checked } : prev))}
+              />
+              Включено
+            </label>
           </div>
-          <details className="mt-3 rounded-xl border border-[#c6e6db] bg-[#f8fffc] p-3">
-            <summary className="cursor-pointer text-xs font-semibold text-slate-600">Исходные строки loyalty</summary>
-            <textarea rows={5} value={loyaltyText} onChange={(event) => setLoyaltyText(event.target.value)} className={`mt-2 font-mono text-xs ${adminTextAreaClass}`} placeholder={"30:1:priority_support\n90:3:fast_resync\n180:7:vip_queue"} />
-          </details>
-          <button className={`${adminButtonClass("secondary")} mt-3`} type="button" onClick={() => setConfirm({ kind: "loyalty", reason: "" })} disabled={busy}>
+          <p className="text-xs text-slate-500">Формат строки: <code className="rounded bg-white/70 px-1 py-0.5 dark:bg-white/10">days:bonus_days:perk</code>. Один уровень на строку.</p>
+          <textarea
+            rows={6}
+            value={loyaltyText}
+            onChange={(event) => setLoyaltyText(event.target.value)}
+            className="w-full resize-none rounded-xl border border-violet-200/50 bg-white/80 px-3 py-2 font-mono text-xs outline-none dark:border-violet-500/30 dark:bg-slate-900/70"
+            placeholder={"30:1:priority_support\n90:3:fast_resync\n180:7:vip_queue"}
+          />
+            <button className={adminButtonClass("secondary")} type="button" onClick={() => void saveLoyalty()} disabled={busy}>
             Сохранить лояльность
           </button>
         </article>
 
-        <article className={adminPanelClass("neutral")}>
-          <AdminPanelHeader eyebrow="manual grant" title="Grant loyalty tier" description="Use only for a specific operator-reviewed case." />
-          <div className="space-y-3">
-            <input value={loyaltyGrantUser} onChange={(event) => setLoyaltyGrantUser(event.target.value)} placeholder="Telegram ID" className={adminFieldClass} />
-            <input value={loyaltyGrantTier} onChange={(event) => setLoyaltyGrantTier(event.target.value)} placeholder="Tier days, for example 30" className={adminFieldClass} />
-            <button className={adminButtonClass("secondary")} type="button" onClick={() => setConfirm({ kind: "grant", reason: "" })} disabled={busy}>
-              Выдать бонус
-            </button>
-          </div>
+        <article className="glass-card space-y-3 p-5">
+          <h3 className="font-display text-lg font-bold">Выдать уровень вручную</h3>
+          <p className="text-xs text-slate-500">Быстрая ручная выдача бонуса по Telegram ID.</p>
+          <input
+            value={loyaltyGrantUser}
+            onChange={(event) => setLoyaltyGrantUser(event.target.value)}
+            placeholder="Telegram ID пользователя"
+            className="w-full rounded-xl border border-violet-200/50 bg-white/80 px-3 py-2 text-sm outline-none dark:border-violet-500/30 dark:bg-slate-900/70"
+          />
+          <input
+            value={loyaltyGrantTier}
+            onChange={(event) => setLoyaltyGrantTier(event.target.value)}
+            placeholder="Дни уровня, например 30 / 90 / 180"
+            className="w-full rounded-xl border border-violet-200/50 bg-white/80 px-3 py-2 text-sm outline-none dark:border-violet-500/30 dark:bg-slate-900/70"
+          />
+            <button className={adminButtonClass("secondary")} type="button" onClick={() => void grantLoyalty()} disabled={busy}>
+            Выдать бонус
+          </button>
         </article>
       </div>
-      <AdminConfirmDialog
-        open={Boolean(confirm)}
-        title={confirm?.kind === "grant" ? "Подтвердить выдачу бонуса" : "Подтвердить сохранение бонусов"}
-        description="Действие влияет на правила бонусов или живой доступ. Укажите причину для журнала аудита."
-        reason={confirm?.reason || ""}
-        onReasonChange={(reason) => setConfirm((current) => (current ? { ...current, reason } : current))}
-        onCancel={() => setConfirm(null)}
-        onConfirm={() => {
-          if (!confirm) return;
-          if (confirm.kind === "wheel") void saveWheel(confirm.reason);
-          else if (confirm.kind === "loyalty") void saveLoyalty(confirm.reason);
-          else void grantLoyalty(confirm.reason);
-        }}
-        busy={busy}
-      />
     </section>
   );
 }

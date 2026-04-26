@@ -1,9 +1,8 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
-
 import type { TelegramWebLoginPayload } from "@/lib/api";
 import { usePortalSession } from "@/lib/session";
+import { useEffect, useRef, useState } from "react";
 
 declare global {
   interface Window {
@@ -32,12 +31,6 @@ function resolveTelegramBotName(raw: string): string {
   return value.replace(/^@+/, "").split(/[/?#]/)[0].toLowerCase();
 }
 
-function isLocalPreviewHost(): boolean {
-  if (typeof window === "undefined") return false;
-  const host = window.location.hostname.toLowerCase();
-  return host === "localhost" || host === "127.0.0.1" || host === "::1";
-}
-
 export default function TelegramLoginWidget() {
   const hostRef = useRef<HTMLDivElement | null>(null);
   const authDoneRef = useRef(false);
@@ -46,7 +39,7 @@ export default function TelegramLoginWidget() {
   ).trim();
   const botName = resolveTelegramBotName(botSource);
   const [widgetHint, setWidgetHint] = useState(() =>
-    botName ? "" : "Не удалось подготовить Telegram-вход. Основная кнопка откроет тот же путь вручную.",
+    botName ? "" : "Не удалось подготовить Telegram-вход. Кнопка ниже откроет тот же путь вручную.",
   );
   const { loginByWidget, startTelegramLogin, webLoginBusy } = usePortalSession();
 
@@ -56,11 +49,6 @@ export default function TelegramLoginWidget() {
     host.innerHTML = "";
     if (!botName) {
       delete window.onTelegramAuth;
-      return;
-    }
-    if (isLocalPreviewHost()) {
-      delete window.onTelegramAuth;
-      setWidgetHint("В локальном предпросмотре используйте основную кнопку входа выше.");
       return;
     }
 
@@ -83,13 +71,13 @@ export default function TelegramLoginWidget() {
     script.setAttribute("data-lang", "ru");
     script.setAttribute("data-onauth", "onTelegramAuth(user)");
     script.onerror = () => {
-      setWidgetHint("Виджет Telegram не загрузился. Основная кнопка запускает тот же вход.");
+      setWidgetHint("Виджет Telegram не загрузился. Кнопка выше запускает тот же вход.");
     };
     host.appendChild(script);
 
     const warnTimer = window.setTimeout(() => {
       if (authDoneRef.current) return;
-      setWidgetHint("Если виджет не сработал автоматически, используйте основную кнопку входа.");
+      setWidgetHint("Если виджет не сработал автоматически, просто нажмите кнопку выше.");
     }, 4500);
 
     return () => {

@@ -1,19 +1,6 @@
 "use client";
 
 import {
-  AdminConfirmDialog,
-  AdminBadge,
-  AdminEmptyState,
-  AdminInlineNote,
-  AdminKpiCard,
-  AdminPanelHeader,
-  AdminSurfaceHeader,
-  adminButtonClass,
-  adminInsetPanelClass,
-  adminPanelClass,
-  adminTableShellClass,
-} from "@/components/admin/admin-shell";
-import {
   adminMetricsStatus,
   adminNodeDisable,
   adminNodeDrain,
@@ -28,12 +15,18 @@ import {
   type AdminNodeHealthRow,
   type AdminNodeTrafficRow,
 } from "@/lib/api";
-import { Activity, GitCompare, Loader2, RefreshCw, Server } from "lucide-react";
+import { Activity, Loader2, RefreshCw, Server, Wifi } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 
-type PendingAction =
-  | { kind: "drain" | "enable" | "disable" | "resync"; node: AdminNodeHealthRow; label: string; tone: "warning" | "danger" | "accent" }
-  | { kind: "segment"; segment: string; label: string; tone: "warning" };
+const COUNTRY_FLAGS: Record<string, string> = {
+  us: "🇺🇸",
+  pl: "🇵🇱",
+  it: "🇮🇹",
+  nl: "🇳🇱",
+  de: "🇩🇪",
+  free: "🆓",
+  brain: "🧠",
+};
 
 function range7d(): { from: string; to: string } {
   const to = new Date();
@@ -42,100 +35,163 @@ function range7d(): { from: string; to: string } {
   return { from: from.toISOString().slice(0, 10), to: to.toISOString().slice(0, 10) };
 }
 
-function fmtIso(value?: string | null): string {
-  if (!value) return "no data";
+function formatFreshness(value?: string | null): string {
+  const normalized = String(value || "").toLowerCase();
+  if (normalized === "fresh") return "Метрики свежие";
+  if (normalized === "stale") return "Нужно проверить данные";
+  if (normalized === "missing") return "Нет данных по метрикам";
+  return "Состояние метрик неизвестно";
+}
+
+function formatIso(value?: string | null): string {
+  if (!value) return "нет данных";
   try {
-    return new Intl.DateTimeFormat("ru-RU", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" }).format(new Date(value));
+    return new Intl.DateTimeFormat("ru-RU", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    }).format(new Date(value));
   } catch {
     return value;
   }
 }
 
-function fmtPct(value?: number | null, digits = 0): string {
-  return value == null || Number.isNaN(Number(value)) ? "missing" : `${Number(value).toFixed(digits)}%`;
+function formatPercent(value?: number | null, digits = 0): string {
+  if (value == null || Number.isNaN(Number(value))) return "метрики не поступили";
+  return `${Number(value).toFixed(digits)}%`;
 }
 
-function fmtGb(value?: number | null, digits = 1): string {
-  return value == null || Number.isNaN(Number(value)) ? "missing" : `${Number(value).toFixed(digits)} GB`;
+function formatMbPair(used?: number | null, total?: number | null): string {
+  if (used == null || total == null) return "метрики не поступили";
+  const usedGb = Number((Number(used || 0) / 1024).toFixed(1));
+  const totalGb = Number((Number(total || 0) / 1024).toFixed(1));
+  return `${usedGb} / ${totalGb} ГБ`;
 }
 
-function fmtMbps(value?: number | null, digits = 1): string {
-  return value == null || Number.isNaN(Number(value)) ? "missing" : `${Number(value).toFixed(digits)} Mbps`;
+function formatGbPair(used?: number | null, total?: number | null): string {
+  if (used == null || total == null) return "метрики не поступили";
+  return `${Number(used || 0).toFixed(1)} / ${Number(total || 0).toFixed(1)} ГБ`;
 }
 
-function nodeKey(value: string): string {
-  return String(value || "").trim().toLowerCase();
+function formatDiskFree(value?: number | null): string {
+  if (value == null || Number.isNaN(Number(value))) return "метрики не поступили";
+  return `${Number(value).toFixed(1)} ГБ`;
 }
 
-function freshnessLabel(value?: string | null): string {
-  if (value === "fresh") return "Метрики свежие";
-  if (value === "stale") return "Нужно проверить данные";
-  if (value === "missing") return "Нет данных по метрикам";
-  return "Freshness unknown";
+function formatMbps(value?: number | null, digits = 1): string {
+  if (value == null || Number.isNaN(Number(value))) return "нет данных";
+  return `${Number(value).toFixed(digits)} Mbps`;
 }
 
-function freshnessTone(value?: string | null): "success" | "warning" | "danger" | "neutral" {
-  if (value === "fresh") return "success";
-  if (value === "stale") return "warning";
-  if (value === "missing") return "danger";
-  return "neutral";
+function scoreTone(score: number): { dotClass: string; badgeClass: string } {
+  if (score >= 8) return { dotClass: "status-dot-online", badgeClass: "badge-success" };
+  if (score >= 5) return { dotClass: "status-dot-warning", badgeClass: "badge-warning" };
+  return { dotClass: "status-dot-offline", badgeClass: "badge-danger" };
 }
 
 function alertKindLabel(kind: string): string {
   const value = String(kind || "").toLowerCase();
   if (value === "cpu_high") return "CPU";
   if (value === "memory_high") return "RAM";
-  if (value === "disk_high") return "Disk";
-  if (value === "latency_high") return "Latency";
-  if (value === "error_rate_high") return "Errors";
+  if (value === "disk_high") return "Диск";
+  if (value === "latency_high") return "Задержка";
+  if (value === "error_rate_high") return "Ошибки";
   if (value === "active_clients_high" || value === "client_density_high") return "Клиенты";
   if (value === "observer_push_stale") return "Observer";
   if (value === "network_high") return "Ethernet";
   return kind;
 }
 
-function healthTone(node: AdminNodeHealthRow): "success" | "warning" | "danger" {
-  if (!node.enabled || !node.is_healthy || node.health_score < 5) return "danger";
-  if (node.is_draining || node.health_score < 8) return "warning";
-  return "success";
+function nodeCodeKey(value: string): string {
+  return String(value || "").trim().toLowerCase();
 }
 
-function transportRecord(value: unknown): Record<string, unknown> {
-  return value && typeof value === "object" && !Array.isArray(value) ? (value as Record<string, unknown>) : {};
+function transportHealthLabel(value?: unknown): { label: string; detail?: string } {
+  if (value == null) return { label: "нет данных" };
+  if (typeof value === "string") return { label: value };
+  if (Array.isArray(value)) return { label: `список: ${value.length}` };
+  if (typeof value === "object") {
+    const data = value as Record<string, unknown>;
+    const panelState = String(data.panel_state || "").trim();
+    const dataplaneState = String(data.dataplane_state || "").trim();
+    if (panelState || dataplaneState) {
+      let label = "degraded";
+      if (panelState === "healthy" && dataplaneState === "healthy") {
+        label = "healthy";
+      } else if (panelState !== "healthy" && dataplaneState === "healthy") {
+        label = "panel failed / dataplane healthy";
+      } else if (panelState === "healthy" && dataplaneState !== "healthy") {
+        label = "panel healthy / dataplane failed";
+      }
+      const detail =
+        data.root_cause_summary != null
+          ? String(data.root_cause_summary)
+          : data.root_cause_detail != null
+            ? String(data.root_cause_detail)
+            : undefined;
+      return { label, detail };
+    }
+    const primary = data.status ?? data.state ?? data.kind ?? data.label ?? data.transport_profile;
+    const label = primary != null ? String(primary) : `${Object.keys(data).length} полей`;
+    const detail =
+      data.message != null
+        ? String(data.message)
+        : data.detail != null
+          ? String(data.detail)
+          : data.enabled === false
+            ? "disabled"
+            : undefined;
+    return { label, detail };
+  }
+  return { label: String(value) };
 }
 
-function textValue(value: unknown): string {
-  if (value == null || value === "") return "missing";
-  if (typeof value === "string" || typeof value === "number" || typeof value === "boolean") return String(value);
+function transportHealthRecord(value?: unknown): Record<string, unknown> | null {
+  return value && typeof value === "object" && !Array.isArray(value) ? (value as Record<string, unknown>) : null;
+}
+
+function transportHealthValueText(value: unknown): string {
+  if (value == null) return "нет данных";
+  if (typeof value === "string") return value || "нет данных";
+  if (typeof value === "number" || typeof value === "boolean") return String(value);
   return JSON.stringify(value);
 }
 
-function profileLabel(profile: Record<string, unknown>): string {
-  const kind = textValue(profile.kind);
-  const port = profile.port == null ? "" : `:${profile.port}`;
-  const inbound = profile.inbound_id == null ? "" : ` #${profile.inbound_id}`;
-  const host = profile.host == null ? "" : ` @ ${profile.host}`;
-  const sni = profile.tls_server_name == null ? "" : ` / ${profile.tls_server_name}`;
-  return `${profile.enabled === false ? "off" : "on"} ${kind}${port}${inbound}${host}${sni}`;
+function transportProfileLabel(profile: {
+  name?: string | null;
+  kind?: string | null;
+  enabled?: boolean | null;
+  inbound_id?: number | null;
+  host?: string | null;
+  port?: number | null;
+  tls_server_name?: string | null;
+}): string {
+  const parts = [profile.name, profile.kind, profile.port != null ? `:${profile.port}` : null].filter(Boolean);
+  const prefix = profile.enabled === false ? "off" : "on";
+  const suffix = [profile.inbound_id != null ? `#${profile.inbound_id}` : null, profile.tls_server_name ? profile.tls_server_name : null]
+    .filter(Boolean)
+    .join(" · ");
+  const hostPart = profile.host ? ` @ ${profile.host}` : "";
+  return `${prefix} ${parts.join(" / ") || "profile"}${suffix ? ` · ${suffix}` : ""}${hostPart}`;
 }
 
-function trafficForNode(rows: AdminNodeTrafficRow[], code: string): number {
-  return rows.filter((row) => nodeKey(row.node_code) === nodeKey(code)).reduce((sum, row) => sum + Number(row.traffic_gb || 0), 0);
-}
-
-function probeFailure(node: AdminNodeHealthRow): { title: string; detail: string } | null {
-  const kind = String(node.last_probe_error_kind || "").trim();
-  const message = String(node.last_probe_error_message || "").trim();
-  if (!kind && !message) return null;
-  if (kind === "reality_target_mismatch") {
+function probeFailureCopy(kind?: string | null, stage?: string | null, message?: string | null): { title: string; detail?: string; raw?: string } | null {
+  const rawKind = String(kind || "").trim();
+  const rawMessage = String(message || "").trim();
+  if (!rawKind && !rawMessage) return null;
+  if (rawKind === "reality_target_mismatch") {
     return {
-      title: `REALITY target mismatch${node.last_probe_stage ? ` at ${node.last_probe_stage}` : ""}`,
-      detail: message || "Certificate names do not match expected reality target.",
+      title: `REALITY target mismatch${stage ? ` на этапе ${stage}` : ""}`,
+      detail: "Ожидаемое имя REALITY target не совпало с сертификатом или SNI, который вернул узел.",
+      raw: rawKind,
     };
   }
   return {
-    title: `Сбой проверки${node.last_probe_stage ? ` на этапе ${node.last_probe_stage}` : ""}`,
-    detail: message || kind,
+    title: `Сбой проверки${stage ? ` на этапе ${stage}` : ""}`,
+    detail: rawMessage || undefined,
+    raw: rawKind || undefined,
   };
 }
 
@@ -145,47 +201,43 @@ export default function AdminNodesPage() {
   const [status, setStatus] = useState<AdminMetricsStatus | null>(null);
   const [drift, setDrift] = useState<AdminNodeDriftReport | null>(null);
   const [busy, setBusy] = useState(false);
+  const [syncTarget, setSyncTarget] = useState("");
   const [driftBusy, setDriftBusy] = useState(false);
-  const [pending, setPending] = useState<PendingAction | null>(null);
-  const [reason, setReason] = useState("");
-  const [notice, setNotice] = useState("");
+  const [nodeActionBusy, setNodeActionBusy] = useState("");
+  const [nodeActionNote, setNodeActionNote] = useState("");
   const [error, setError] = useState("");
 
-  const metricsByNode = useMemo(
+  const freshnessByNode = useMemo(
     () =>
       new Map(
         (status?.nodes || []).map((row) => [
-          nodeKey(row.node_code),
+          nodeCodeKey(row.node_code),
           {
             freshness: row.status,
+            alertKinds: row.alert_kinds || [],
             lastSampleAt: row.last_sample_at,
             observerLastPushAt: row.observer_last_push_at ?? null,
             observerIsStale: Boolean(row.observer_is_stale),
-            alertKinds: row.alert_kinds || [],
           },
         ]),
       ),
     [status?.nodes],
   );
 
-  const totals = useMemo(() => {
-    const healthy = nodes.filter((node) => node.enabled && node.is_healthy).length;
-    const online = nodes.reduce((sum, node) => sum + Number(node.online_connections_now || 0), 0);
-    const clients = nodes.reduce((sum, node) => sum + Number(node.active_clients || 0), 0);
-    const traffic7d = traffic.reduce((sum, row) => sum + Number(row.traffic_gb || 0), 0);
-    return { healthy, online, clients, traffic7d };
-  }, [nodes, traffic]);
-
   const load = async (): Promise<void> => {
     setError("");
     try {
       const range = range7d();
-      const [healthRows, metricsStatus, trafficRows] = await Promise.all([adminNodesHealth(), adminMetricsStatus(), adminNodesTraffic(range)]);
+      const [healthRows, metricsStatus, trafficRows] = await Promise.all([
+        adminNodesHealth(),
+        adminMetricsStatus(),
+        adminNodesTraffic(range),
+      ]);
       setNodes(healthRows);
       setStatus(metricsStatus);
       setTraffic(trafficRows);
     } catch (err) {
-      setError(String((err as { message?: string })?.message || err || "Could not load node telemetry."));
+      setError(String((err as { message?: string })?.message || err || "Не удалось загрузить данные по нодам."));
     }
   };
 
@@ -197,272 +249,449 @@ export default function AdminNodesPage() {
     setDriftBusy(true);
     setError("");
     try {
-      setDrift(await adminNodesDrift());
+      const report = await adminNodesDrift();
+      setDrift(report);
     } catch (err) {
-      setError(String((err as { message?: string })?.message || err || "Could not load drift report."));
+      setError(String((err as { message?: string })?.message || err || "Не удалось проверить расхождения."));
     } finally {
       setDriftBusy(false);
     }
   };
 
-  const runPending = async (): Promise<void> => {
-    if (!pending) return;
-    setBusy(true);
+  const runNodeAction = async (node: AdminNodeHealthRow, action: "drain" | "enable" | "disable" | "resync"): Promise<void> => {
+    setNodeActionBusy(`${action}:${node.code}`);
+    setNodeActionNote("");
     setError("");
-    setNotice("");
     try {
-      if (pending.kind === "segment") {
-        await adminNodesSync({ segment: pending.segment, limit: 200 });
-        setNotice(`Сегмент ${pending.segment} синхронизирован. Причина: ${reason.trim()}`);
-      } else if (pending.kind === "drain") {
-        await adminNodeDrain(pending.node.code, reason.trim());
-        setNotice(`${pending.node.code.toUpperCase()} переведен в drain. Причина: ${reason.trim()}`);
-      } else if (pending.kind === "enable") {
-        await adminNodeEnable(pending.node.code, reason.trim());
-        setNotice(`${pending.node.code.toUpperCase()} включен. Причина: ${reason.trim()}`);
-      } else if (pending.kind === "disable") {
-        await adminNodeDisable(pending.node.code, { operator_reason: reason.trim() });
-        setNotice(`${pending.node.code.toUpperCase()} выключен. Причина: ${reason.trim()}`);
+      if (action === "drain") {
+        await adminNodeDrain(node.code);
+        setNodeActionNote(`Нода ${node.code.toUpperCase()} больше не принимает новые назначения.`);
+      } else if (action === "enable") {
+        await adminNodeEnable(node.code);
+        setNodeActionNote(`Нода ${node.code.toUpperCase()} снова участвует в выдаче.`);
+      } else if (action === "disable") {
+        await adminNodeDisable(node.code, {});
+        setNodeActionNote(`Нода ${node.code.toUpperCase()} выключена из выдачи.`);
       } else {
-        const result = await adminNodeResync(pending.node.code, { limit: 200, operator_reason: reason.trim() });
-        setNotice(`${pending.node.code.toUpperCase()} resync: перенесено ${result.migrated}, пропущено ${result.skipped}, ошибок ${result.failed}. Причина: ${reason.trim()}`);
+        const result = await adminNodeResync(node.code, { limit: 200 });
+        setNodeActionNote(`Пересборка ${node.code.toUpperCase()}: перенесено ${result.migrated}, пропущено ${result.skipped}, ошибок ${result.failed}.`);
       }
-      setPending(null);
-      setReason("");
       await load();
       if (drift) await loadDrift();
     } catch (err) {
-      setError(String((err as { message?: string })?.message || err || "Node action failed."));
+      setError(String((err as { message?: string })?.message || err || "Не удалось выполнить действие с нодой."));
+    } finally {
+      setNodeActionBusy("");
+    }
+  };
+
+  const runSync = async (segment: string): Promise<void> => {
+    setBusy(true);
+    setSyncTarget(segment);
+    setError("");
+    try {
+      await adminNodesSync({ segment, limit: 200 });
+      await load();
+      setNodeActionNote(`Сегмент ${segment} пересобран и синхронизирован.`);
+    } catch (err) {
+      setError(String((err as { message?: string })?.message || err || "Не удалось пересобрать назначения."));
     } finally {
       setBusy(false);
+      setSyncTarget("");
     }
   };
 
   return (
     <section className="space-y-5">
-      <AdminSurfaceHeader
-        title="Узлы и состояние узлов"
-        description="Операторская консоль сети: свежесть, риск маршрутизации, предупреждения и безопасные действия с узлами."
-        meta={
-          <>
-            <AdminBadge tone={freshnessTone(status?.status)} className="badge">{freshnessLabel(status?.status)}</AdminBadge>
-            <AdminBadge tone="neutral">last sample {fmtIso(status?.last_sample_at)}</AdminBadge>
-          </>
-        }
-        actions={
-          <>
-            <button type="button" className={adminButtonClass("secondary", "sm")} onClick={load} disabled={busy}>
-              <RefreshCw size={14} /> Обновить
-            </button>
-            <button type="button" className={adminButtonClass("secondary", "sm")} onClick={loadDrift} disabled={driftBusy || busy}>
-              {driftBusy ? <Loader2 className="animate-spin" size={14} /> : <GitCompare size={14} />} Проверить расхождения
-            </button>
-          </>
-        }
-      />
-
-      {error ? <AdminInlineNote tone="danger">{error}</AdminInlineNote> : null}
-      {notice ? <AdminInlineNote tone="success">{notice}</AdminInlineNote> : null}
-
-      <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-        <AdminKpiCard label="Здоровые узлы" value={`${totals.healthy}/${nodes.length}`} hint="Включены и проходят последнюю проверку." tone={totals.healthy === nodes.length ? "success" : "warning"} />
-        <AdminKpiCard label="Онлайн-сессии" value={totals.online} hint={`${totals.clients} активных клиентов по отчетам узлов.`} />
-        <AdminKpiCard label="Трафик 7д" value={fmtGb(totals.traffic7d)} hint="По текущему диапазону API трафика узлов." />
-        <AdminKpiCard label="Активные алерты" value={status?.active_alerts?.length || 0} hint="Синтетические realtime-данные здесь не создаются." tone={status?.active_alerts?.length ? "danger" : "success"} />
-      </div>
-
-      <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_360px]">
-        <article className={adminPanelClass("neutral")}>
-          <AdminPanelHeader
-            eyebrow="флот"
-            title="Таблица узлов"
-            description="Плотная таблица здоровья, свежести, runtime, емкости, пути подключения и observer-состояния."
-            actions={
-              <>
-                <button type="button" className={adminButtonClass("ghost", "xs")} onClick={() => setPending({ kind: "segment", segment: "free", label: "Синхронизировать free-сегмент", tone: "warning" })}>
-                  Resync free
-                </button>
-                <button type="button" className={adminButtonClass("ghost", "xs")} onClick={() => setPending({ kind: "segment", segment: "premium", label: "Синхронизировать premium-сегмент", tone: "warning" })}>
-                  Resync premium
-                </button>
-              </>
-            }
-          />
-          {nodes.length ? (
-            <div className={adminTableShellClass}>
-              <div className="overflow-x-auto">
-                <table className="min-w-[960px] w-full text-left text-xs">
-                  <thead className="border-b border-[#c6e6db] bg-[#f8fffc] text-[10px] uppercase tracking-[0.16em] text-slate-500">
-                    <tr>
-                      <th className="px-3 py-3">Узел</th>
-                      <th className="px-3 py-3">Здоровье</th>
-                      <th className="px-3 py-3">Свежесть</th>
-                      <th className="px-3 py-3">Runtime</th>
-                      <th className="px-3 py-3">Емкость</th>
-                      <th className="px-3 py-3">Путь</th>
-                      <th className="px-3 py-3">Observer</th>
-                      <th className="px-3 py-3 text-right">Действия</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-[#c6e6db]">
-                    {nodes.map((node) => {
-                      const metric = metricsByNode.get(nodeKey(node.code));
-                      const probe = probeFailure(node);
-                      return (
-                        <tr key={node.code} className="align-top">
-                          <td className="px-3 py-3">
-                            <div className="flex items-center gap-2">
-                              <Server size={14} className="text-emerald-200" />
-                              <div>
-                                <p className="font-semibold text-slate-100">{node.code.toUpperCase()}</p>
-                                <p className="text-[11px] text-slate-500">{node.name}</p>
-                              </div>
-                            </div>
-                          </td>
-                          <td className="px-3 py-3">
-                            <AdminBadge tone={healthTone(node)}>{node.enabled ? (node.is_draining ? "draining" : "enabled") : "disabled"}</AdminBadge>
-                            <p className="mt-1 text-[11px] text-slate-500">score {node.health_score}</p>
-                          </td>
-                          <td className="px-3 py-3">
-                            <AdminBadge tone={freshnessTone(metric?.freshness)} className="badge">{freshnessLabel(metric?.freshness)}</AdminBadge>
-                            <p className="mt-1 text-[11px] text-slate-500">{fmtIso(metric?.lastSampleAt || node.last_health_at)}</p>
-                          </td>
-                          <td className="px-3 py-3 text-slate-300">
-                            <p><Activity className="mr-1 inline" size={12} /> {node.online_connections_now} conn</p>
-                            <p className="text-[11px] text-slate-500">{node.mapped_users} mapped · {node.active_clients} active</p>
-                          </td>
-                          <td className="px-3 py-3 text-slate-300">
-                            <p>CPU {fmtPct(node.cpu_percent)} · RAM {node.memory_total_mb ? fmtPct((Number(node.memory_used_mb || 0) / Number(node.memory_total_mb)) * 100) : "missing"}</p>
-                            <p className="text-[11px] text-slate-500">disk {fmtGb(node.disk_free_gb)} free · eth {fmtMbps(node.network_total_mbps)}</p>
-                            <p className="text-[11px] text-slate-500">7d {fmtGb(trafficForNode(traffic, node.code))}</p>
-                          </td>
-                          <td className="px-3 py-3 text-slate-300">
-                            <p>{textValue(transportRecord(node.transport_health).panel_state || transportRecord(node.transport_health).status || node.probe_classification)}</p>
-                            {probe ? <p className="mt-1 text-[11px] text-amber-200">probe detail in context</p> : null}
-                          </td>
-                          <td className="px-3 py-3 text-slate-300">
-                            <p>Observer collector</p>
-                            <p className="text-[11px] text-slate-500">parse: {node.observer_parse_error_count} · unmatched: {node.observer_unmatched_count}</p>
-                          </td>
-                          <td className="px-3 py-3">
-                            <div className="flex flex-wrap justify-end gap-1.5">
-                              <button type="button" className={adminButtonClass("ghost", "xs")} onClick={() => setPending({ kind: "resync", node, label: `Resync ${node.code.toUpperCase()}`, tone: "accent" })}>Resync</button>
-                              <button type="button" className={adminButtonClass("ghost", "xs")} onClick={() => setPending({ kind: "drain", node, label: `Drain ${node.code.toUpperCase()}`, tone: "warning" })}>Drain</button>
-                              {node.enabled ? (
-                                <button type="button" className={adminButtonClass("danger", "xs")} onClick={() => setPending({ kind: "disable", node, label: `Disable ${node.code.toUpperCase()}`, tone: "danger" })}>Disable</button>
-                              ) : (
-                                <button type="button" className={adminButtonClass("secondary", "xs")} onClick={() => setPending({ kind: "enable", node, label: `Enable ${node.code.toUpperCase()}`, tone: "accent" })}>Enable</button>
-                              )}
-                            </div>
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
+      <div className="glass-card p-5">
+        <div className="flex flex-wrap items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <div className={`stat-icon ${status?.status === "fresh" ? "stat-icon-emerald" : "stat-icon-amber"}`}>
+              <Server size={20} />
             </div>
-          ) : (
-            <AdminEmptyState title="Узлы не загружены" description="Health API вернул пустой список узлов." />
-          )}
-        </article>
-
-        <div className="space-y-4">
-          <article className={adminPanelClass(status?.active_alerts?.length ? "danger" : "success")}>
-            <AdminPanelHeader eyebrow="алерты" title="Активные алерты" description="Свежесть метрик и метки алертов по узлам." />
-            {status?.active_alerts?.length ? (
-              <div className="space-y-2">
-                {status.active_alerts.map((alert, index) => (
-                  <div key={`${alert.node_code}-${alert.kind}-${index}`} className={adminInsetPanelClass}>
-                    <div className="flex flex-wrap items-center justify-between gap-2">
-                      <AdminBadge tone="danger">{alert.node_code.toUpperCase()}: {alertKindLabel(alert.kind)}</AdminBadge>
-                      <span className="text-[11px] text-slate-500">{freshnessLabel(alert.status)}</span>
-                    </div>
-                    <p className="mt-2 text-xs text-slate-400">последний срез {fmtIso(alert.last_sample_at)} · возраст {alert.age_seconds ?? "unknown"}s</p>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <AdminEmptyState title="Активных алертов нет" description="Metrics status сейчас не показывает активных алертов узлов." />
-            )}
-          </article>
-
-          {drift ? (
-            <article className={adminPanelClass(drift.summary.drift ? "warning" : "success")}>
-              <AdminPanelHeader eyebrow="drift" title="Drift runtime-конфига" description={`${drift.summary.ok}/${drift.summary.total} узл. совпадают с ожидаемым inbound-состоянием.`} />
-              <div className="space-y-2">
-                {drift.results.map((row) => (
-                  <div key={row.node_code} className={adminInsetPanelClass}>
-                    <div className="flex items-center justify-between gap-2">
-                      <p className="font-semibold text-slate-100">{row.node_code.toUpperCase()}</p>
-                      <AdminBadge tone={row.status === "ok" ? "success" : "warning"}>{row.status}</AdminBadge>
-                    </div>
-                    {row.mismatches.length ? <p className="mt-2 text-xs text-amber-100">{row.mismatches.join(", ")}</p> : null}
-                    {row.error ? <p className="mt-2 text-xs text-rose-100">{row.error}</p> : null}
-                  </div>
-                ))}
-              </div>
-            </article>
-          ) : null}
+            <div>
+              <h2 className="font-display text-xl font-bold">Ноды и состояние инфраструктуры</h2>
+              <p className="mt-0.5 text-xs text-slate-500">
+                <strong>{formatFreshness(status?.status)}</strong>. Последний срез: {formatIso(status?.last_sample_at)}.
+              </p>
+              <p className="mt-0.5 text-xs text-slate-500">
+                Отклик и dataplane-check здесь идут с control plane `brain`; внешний RU probe живёт отдельно.
+              </p>
+            </div>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {[
+              { code: "active", label: "Пересобрать активных" },
+              { code: "paid", label: "Пересобрать paid" },
+              { code: "free", label: "Пересобрать free" },
+            ].map((segment) => (
+              <button
+                key={segment.code}
+                className="outline-btn inline-flex items-center gap-1.5 rounded-xl px-3 py-2 text-xs font-semibold"
+                type="button"
+                onClick={() => void runSync(segment.code)}
+                disabled={busy}
+              >
+                {busy && syncTarget === segment.code ? <Loader2 size={12} className="animate-spin" /> : <RefreshCw size={12} />}
+                {segment.label}
+              </button>
+            ))}
+            <button
+              className="outline-btn inline-flex items-center gap-1.5 rounded-xl px-3 py-2 text-xs font-semibold"
+              type="button"
+              onClick={() => void loadDrift()}
+              disabled={driftBusy}
+            >
+              {driftBusy ? <Loader2 size={12} className="animate-spin" /> : <Server size={12} />}
+              Проверить расхождения
+            </button>
+            <button className="btn-primary inline-flex items-center gap-1.5 rounded-xl px-4 py-2 text-xs font-semibold" type="button" onClick={() => void load()}>
+              <Activity size={14} />
+              Обновить
+            </button>
+          </div>
         </div>
+        {error ? <p className="mt-3 text-sm text-rose-500">{error}</p> : null}
+        {nodeActionNote ? <p className="mt-2 text-sm text-emerald-500">{nodeActionNote}</p> : null}
+        {status?.active_alerts?.length ? (
+          <div className="mt-3 flex flex-wrap gap-2">
+            {status.active_alerts.map((alert) => (
+              <span key={`${alert.node_code}-${alert.kind}`} className="badge badge-warning">
+                {alert.node_code.toUpperCase()}: {alertKindLabel(alert.kind)}
+              </span>
+            ))}
+          </div>
+        ) : null}
       </div>
 
-      <div className="grid gap-4 xl:grid-cols-2">
-        {nodes.map((node) => {
-          const record = transportRecord(node.transport_health);
-          const probe = probeFailure(node);
-          const profiles = Object.entries(node.transport_profiles || {});
-          return (
-            <article key={`context-${node.code}`} className={adminPanelClass("neutral")}>
-              <AdminPanelHeader eyebrow="инспектор узла" title={`${node.code.toUpperCase()} контекст хостинга`} description="Расширенные детали панели, client-path probe и transport-профилей для сетевых инцидентов." />
-              <div className="grid gap-3 text-xs leading-5 text-slate-300 sm:grid-cols-2">
-                <div className={adminInsetPanelClass}><strong>Hoster:</strong> {node.hoster_family || "missing"} · {node.hoster_asn || "missing"}</div>
-                <div className={adminInsetPanelClass}><strong>Subnet:</strong> {node.subnet || "missing"}</div>
-                <div className={adminInsetPanelClass}><strong>Panel / control plane:</strong> {textValue(record.panel_state || record.panel_stage)}</div>
-                <div className={adminInsetPanelClass}><strong>Client-path probe:</strong> {textValue(record.dataplane_state || record.dataplane_stage)}</div>
-                <div className={adminInsetPanelClass}><strong>Probe stage:</strong> {node.last_probe_stage || textValue(record.dataplane_stage)}</div>
-                <div className={adminInsetPanelClass}><strong>Probe classification:</strong> {node.probe_classification || "missing"}</div>
-                <div className={adminInsetPanelClass}><strong>Telegram app path:</strong> {textValue(record.telegram_app_path)}</div>
-                <div className={adminInsetPanelClass}><strong>Telegram web path:</strong> {textValue(record.telegram_web_path)}</div>
-                <div className={adminInsetPanelClass}><strong>TLS handshake:</strong> {textValue(record.tls_handshake)}</div>
-                <div className={adminInsetPanelClass}><strong>REALITY target:</strong> {textValue(record.reality_target)}</div>
-              </div>
-              {record.root_cause_summary || record.root_cause_detail || probe ? (
-                <div className="mt-3 rounded-xl border border-amber-900/60 bg-amber-950/35 p-3 text-xs leading-5 text-amber-100">
-                  <p className="font-semibold">{textValue(record.root_cause_summary || probe?.title)}</p>
-                  <p className="mt-1">{textValue(record.root_cause_detail || probe?.detail)}</p>
-                </div>
-              ) : null}
-              {profiles.length ? (
-                <div className="mt-3 grid gap-2">
-                  {profiles.map(([name, profile]) => (
-                    <div key={name} className={adminInsetPanelClass}>
-                      <p className="font-semibold text-slate-100">{name}</p>
-                      <p className="mt-1 text-xs text-slate-400">{profileLabel(profile as Record<string, unknown>)}</p>
+      {drift ? (
+        <div className="glass-card p-5">
+          <div className="mb-4 flex items-center justify-between gap-3">
+            <div>
+              <h3 className="font-display text-xl font-bold">Сверка POKROV и панели</h3>
+              <p className="text-xs text-slate-500">Показывает, совпадают ли ожидания контрольной плоскости с фактической конфигурацией узлов.</p>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="badge badge-success">совпали: {drift.summary.ok}</span>
+              <span className={`badge ${drift.summary.drift > 0 ? "badge-warning" : "badge-success"}`}>расхождения: {drift.summary.drift}</span>
+            </div>
+          </div>
+          <div className="space-y-3">
+            {drift.results.map((row) => (
+              <div key={row.node_code} className="rounded-2xl border border-white/15 bg-white/30 p-4 dark:border-white/10 dark:bg-white/[0.03]">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <strong className="text-base">{row.node_code.toUpperCase()}</strong>
+                      <span className={`badge ${row.status === "ok" ? "badge-success" : "badge-warning"}`}>
+                        {row.status === "ok" ? "Совпало" : "Расхождение"}
+                      </span>
                     </div>
-                  ))}
+                    <p className="mt-1 text-xs text-slate-500">{row.node_host || "нет данных о хосте"}</p>
+                  </div>
+                  <div className="text-right text-xs text-slate-500">
+                    <div>Порт: <strong>{row.runtime?.port ?? "—"}</strong></div>
+                    <div>Security: <strong>{row.runtime?.security || "—"}</strong></div>
+                  </div>
+                </div>
+                {row.mismatches.length > 0 ? (
+                  <p className="mt-3 text-sm text-amber-500">Не совпадает: {row.mismatches.join(", ")}</p>
+                ) : (
+                  <p className="mt-3 text-sm text-emerald-500">Конфигурация ноды совпадает с тем, что ожидает POKROV.</p>
+                )}
+                {row.error ? <p className="mt-2 text-xs text-rose-500">Ошибка проверки: {row.error}</p> : null}
+              </div>
+            ))}
+          </div>
+        </div>
+      ) : null}
+
+      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+        {nodes.map((node) => {
+          const score = Number(node.health_score || 0);
+          const tone = scoreTone(score);
+          const flag = COUNTRY_FLAGS[nodeCodeKey(node.code)] || "🌐";
+          const memoryPercent = node.memory_used_mb != null && node.memory_total_mb && node.memory_total_mb > 0
+            ? (node.memory_used_mb / node.memory_total_mb) * 100
+            : null;
+          const diskPercent = node.disk_used_gb != null && node.disk_total_gb && node.disk_total_gb > 0
+            ? (node.disk_used_gb / node.disk_total_gb) * 100
+            : null;
+          const nodeFreshness = freshnessByNode.get(nodeCodeKey(node.code));
+          const probeFailure = probeFailureCopy(node.last_probe_error_kind, node.last_probe_stage, node.last_probe_error_message);
+          const networkPercent = node.network_utilization_percent;
+          const networkPeakPercent = node.network_peak_utilization_percent_24h;
+          const transportHealth = transportHealthLabel(node.transport_health);
+          const transportHealthData = transportHealthRecord(node.transport_health);
+          const transportProfiles = Object.values(node.transport_profiles || {}).filter(Boolean);
+          const panelState = transportHealthValueText(transportHealthData?.panel_state);
+          const dataplaneState = transportHealthValueText(transportHealthData?.dataplane_state);
+          const probeStage = transportHealthValueText(
+            transportHealthData?.dataplane_stage ?? transportHealthData?.panel_stage ?? node.last_probe_stage,
+          );
+          const probeClassification = transportHealthValueText(node.probe_classification);
+          const telegramAppPath = transportHealthValueText(transportHealthData?.telegram_app_path);
+          const telegramWebPath = transportHealthValueText(transportHealthData?.telegram_web_path);
+          const tlsHandshake = transportHealthValueText(transportHealthData?.tls_handshake);
+          const realityTarget = transportHealthValueText(transportHealthData?.reality_target);
+          const rootCauseSummary = transportHealthData?.root_cause_summary ? String(transportHealthData.root_cause_summary) : "";
+          const rootCauseDetail = transportHealthData?.root_cause_detail ? String(transportHealthData.root_cause_detail) : "";
+
+          return (
+            <article key={node.code} className="stat-card min-w-0 p-5">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <span className="text-2xl">{flag}</span>
+                  <div>
+                    <p className="text-lg font-bold">{node.code.toUpperCase()}</p>
+                    <div className="mt-0.5 flex items-center gap-1.5">
+                      <span className={`status-dot ${node.is_healthy ? tone.dotClass : "status-dot-offline"}`} />
+                      <span className={`badge ${node.is_healthy ? "badge-success" : "badge-danger"}`}>
+                        {node.is_healthy ? "Стабильно" : "Нужна проверка"}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+                <div className="text-right">
+                  <p className="text-2xl font-bold gradient-text">{score.toFixed(1)}</p>
+                  <p className="text-[10px] uppercase tracking-[0.1em] text-slate-500">оценка</p>
+                </div>
+              </div>
+
+              <div className="mt-4 grid grid-cols-1 gap-2 text-center sm:grid-cols-3">
+                <div className="rounded-lg bg-white/50 p-2 dark:bg-white/5">
+                  <p className="text-xs text-slate-500">Отклик с brain</p>
+                  <p className="text-sm font-bold">{node.panel_latency_ms ?? "нет данных"}{node.panel_latency_ms != null ? <span className="text-[10px] text-slate-400"> ms</span> : null}</p>
+                </div>
+                <div className="rounded-lg bg-white/50 p-2 dark:bg-white/5">
+                  <p className="text-xs text-slate-500">Ошибки</p>
+                  <p className="text-sm font-bold">{formatPercent(node.panel_error_rate * 100, 1)}</p>
+                </div>
+                <div className="rounded-lg bg-white/50 p-2 dark:bg-white/5">
+                  <p className="text-xs text-slate-500">Клиенты в панели</p>
+                  <p className="text-sm font-bold">{node.active_clients}</p>
+                </div>
+              </div>
+
+              <div className="mt-3 grid grid-cols-1 gap-2 text-center sm:grid-cols-4">
+                <div className="rounded-lg bg-white/50 p-2 dark:bg-white/5">
+                  <p className="text-xs text-slate-500">Назначено в POKROV</p>
+                  <p className="text-sm font-bold">{node.mapped_users}</p>
+                </div>
+                <div className="rounded-lg bg-white/50 p-2 dark:bg-white/5">
+                  <p className="text-xs text-slate-500">Ключей online сейчас</p>
+                  <p className="text-sm font-bold">{node.online_keys_now}</p>
+                </div>
+                <div className="rounded-lg bg-white/50 p-2 dark:bg-white/5">
+                  <p className="text-xs text-slate-500">Подключений сейчас</p>
+                  <p className="text-sm font-bold">{node.online_connections_now}</p>
+                </div>
+                <div className="rounded-lg bg-white/50 p-2 dark:bg-white/5">
+                  <p className="text-xs text-slate-500">CPU</p>
+                  <p className="text-sm font-bold">{formatPercent(node.cpu_percent, 0)}</p>
+                </div>
+              </div>
+
+              <div className="mt-3 grid grid-cols-1 gap-2 text-center sm:grid-cols-1">
+                <div className="rounded-lg bg-white/50 p-2 dark:bg-white/5">
+                  <p className="text-xs text-slate-500">RAM</p>
+                  <p className="text-sm font-bold">{formatMbPair(node.memory_used_mb, node.memory_total_mb)}</p>
+                </div>
+              </div>
+
+              <div className="mt-3 rounded-xl border border-white/15 bg-white/35 p-3 dark:border-white/10 dark:bg-white/[0.04]">
+                <div className="mb-2 flex items-center justify-between gap-2 text-sm font-semibold">
+                  <span>Диск</span>
+                  <span>{diskPercent == null ? "нет данных" : formatPercent(diskPercent, 0)}</span>
+                </div>
+                <div className="flex items-center justify-between text-xs text-slate-500">
+                  <span>Занято / всего</span>
+                  <span>{formatGbPair(node.disk_used_gb, node.disk_total_gb)}</span>
+                </div>
+                <div className="mt-1 flex items-center justify-between text-xs text-slate-500">
+                  <span>Свободно</span>
+                  <span>{formatDiskFree(node.disk_free_gb)}</span>
+                </div>
+              </div>
+
+              <div className="mt-3 rounded-xl border border-white/15 bg-white/35 p-3 dark:border-white/10 dark:bg-white/[0.04]">
+                <div className="mb-2 flex items-center justify-between gap-2 text-sm font-semibold">
+                  <span>Ethernet</span>
+                  <span>{networkPercent == null ? "нет данных" : formatPercent(networkPercent, 0)}</span>
+                </div>
+                <div className="flex items-center justify-between text-xs text-slate-500">
+                  <span>Сейчас RX / TX</span>
+                  <span>{formatMbps(node.network_rx_mbps)} / {formatMbps(node.network_tx_mbps)}</span>
+                </div>
+                <div className="mt-1 flex items-center justify-between text-xs text-slate-500">
+                  <span>Суммарно сейчас</span>
+                  <span>{formatMbps(node.network_total_mbps)}</span>
+                </div>
+                <div className="mt-1 flex items-center justify-between text-xs text-slate-500">
+                  <span>Пик за 24 часа</span>
+                  <span>{formatMbps(node.network_peak_mbps_24h)}{networkPeakPercent == null ? "" : ` (${formatPercent(networkPeakPercent, 0)})`}</span>
+                </div>
+                <div className="mt-1 flex items-center justify-between text-xs text-slate-500">
+                  <span>Лимит порта</span>
+                  <span>{formatMbps(node.network_port_capacity_mbps, 0)}</span>
+                </div>
+              </div>
+
+              <div className="mt-4 flex flex-wrap gap-2">
+                <span className={`badge ${node.enabled ? "badge-success" : "badge-danger"}`}>{node.enabled ? "В выдаче" : "Выключена"}</span>
+                <span className={`badge ${node.accepting_new_clients ? "badge-info" : "badge-warning"}`}>{node.accepting_new_clients ? "Принимает новых" : "Только текущие"}</span>
+                {node.is_draining ? <span className="badge badge-warning">В процессе разгрузки</span> : null}
+                {nodeFreshness ? <span className={`badge ${nodeFreshness.freshness === "fresh" ? "badge-success" : "badge-warning"}`}>{formatFreshness(nodeFreshness.freshness)}</span> : null}
+                {node.probe_classification ? <span className="badge badge-info">probe: {node.probe_classification}</span> : null}
+                {node.ipv4_health ? <span className="badge badge-violet">ipv4: {node.ipv4_health}</span> : null}
+                {node.ipv6_health ? <span className="badge badge-violet">ipv6: {node.ipv6_health}</span> : null}
+                {(nodeFreshness?.alertKinds || []).map((kind) => (
+                  <span key={`${node.code}-${kind}`} className="badge badge-warning">
+                    {alertKindLabel(kind)}
+                  </span>
+                ))}
+              </div>
+
+              {(node.hoster_family || node.hoster_asn || node.subnet) ? (
+                <div className="mt-3 rounded-xl border border-white/15 bg-white/35 p-3 dark:border-white/10 dark:bg-white/[0.04]">
+                  <div className="mb-2 text-sm font-semibold">Hoster context</div>
+                  <div className="grid gap-2 text-xs sm:grid-cols-3">
+                    <p>Hoster: <strong>{node.hoster_family || "нет данных"}</strong></p>
+                    <p>ASN: <strong>{node.hoster_asn || "нет данных"}</strong></p>
+                    <p>Subnet: <strong>{node.subnet || "нет данных"}</strong></p>
+                  </div>
                 </div>
               ) : null}
+
+              <div className="mt-3 rounded-xl border border-white/15 bg-white/35 p-3 dark:border-white/10 dark:bg-white/[0.04]">
+                <div className="mb-2 flex items-center justify-between gap-2 text-sm font-semibold">
+                  <span>Transport</span>
+                  <span className={`badge ${transportHealth.label === "ok" || transportHealth.label === "healthy" ? "badge-success" : "badge-info"}`}>
+                    {transportHealth.label}
+                  </span>
+                </div>
+                {transportHealth.detail ? <p className="text-xs text-slate-500">{transportHealth.detail}</p> : null}
+                {rootCauseSummary ? <p className="mt-2 text-xs text-slate-600 dark:text-slate-300">{rootCauseSummary}</p> : null}
+                {rootCauseDetail ? <p className="mt-1 text-xs text-slate-500">{rootCauseDetail}</p> : null}
+                <div className="mt-3 grid gap-2 text-xs sm:grid-cols-2">
+                  <p>Panel / control plane: <strong>{panelState}</strong></p>
+                  <p>Dataplane probe: <strong>{dataplaneState}</strong></p>
+                  <p>Probe stage: <strong>{probeStage}</strong></p>
+                  <p>Probe classification: <strong>{probeClassification}</strong></p>
+                  <p>Telegram app path: <strong>{telegramAppPath}</strong></p>
+                  <p>Telegram web path: <strong>{telegramWebPath}</strong></p>
+                  <p>TLS handshake: <strong>{tlsHandshake}</strong></p>
+                  <p>REALITY target: <strong>{realityTarget}</strong></p>
+                </div>
+                <div className="mt-2 flex flex-wrap gap-2">
+                  {transportProfiles.length ? (
+                    transportProfiles.map((profile, index) => (
+                      <span key={`${node.code}-transport-${index}`} className={`badge ${profile.enabled === false ? "badge-warning" : "badge-success"}`}>
+                        {transportProfileLabel(profile)}
+                      </span>
+                    ))
+                  ) : (
+                    <span className="text-xs text-slate-500">Каталог transport-профилей не пришёл, используем legacy only view.</span>
+                  )}
+                </div>
+              </div>
+
+              <div className="mt-4 grid grid-cols-1 gap-2 sm:grid-cols-2">
+                {node.enabled && !node.is_draining ? (
+                  <button type="button" className="outline-btn rounded-xl px-3 py-2 text-xs font-semibold" disabled={!!nodeActionBusy} onClick={() => void runNodeAction(node, "drain")}>
+                    {nodeActionBusy === `drain:${node.code}` ? "..." : "Остановить новые"}
+                  </button>
+                ) : (
+                  <button type="button" className="outline-btn rounded-xl px-3 py-2 text-xs font-semibold" disabled={!!nodeActionBusy} onClick={() => void runNodeAction(node, "enable")}>
+                    {nodeActionBusy === `enable:${node.code}` ? "..." : "Вернуть в выдачу"}
+                  </button>
+                )}
+                <button type="button" className="outline-btn rounded-xl px-3 py-2 text-xs font-semibold" disabled={!!nodeActionBusy || !node.enabled} onClick={() => void runNodeAction(node, "resync")}>
+                  {nodeActionBusy === `resync:${node.code}` ? "..." : "Пересобрать назначения"}
+                </button>
+                <button type="button" className="outline-btn rounded-xl px-3 py-2 text-xs font-semibold sm:col-span-2" disabled={!!nodeActionBusy || !node.enabled} onClick={() => void runNodeAction(node, "disable")}>
+                  {nodeActionBusy === `disable:${node.code}` ? "..." : "Выключить ноду"}
+                </button>
+              </div>
+
+              {probeFailure ? (
+                <div className="mt-3 rounded-xl border border-rose-200/50 bg-rose-50/70 p-3 text-xs text-rose-600 dark:border-rose-500/20 dark:bg-rose-500/10">
+                  <div className="font-semibold">{probeFailure.title}</div>
+                  {probeFailure.detail ? <div className="mt-1 text-slate-600 dark:text-slate-300">{probeFailure.detail}</div> : null}
+                  {probeFailure.raw ? <div className="mt-1 text-slate-500">raw error_kind: {probeFailure.raw}</div> : null}
+                </div>
+              ) : null}
+
+              <div className="mt-3 rounded-xl border border-white/15 bg-white/35 p-3 dark:border-white/10 dark:bg-white/[0.04]">
+                <div className="mb-2 flex items-center justify-between gap-2 text-sm font-semibold">
+                  <span>Observer collector</span>
+                  <span className={`badge ${node.observer_is_stale || nodeFreshness?.observerIsStale ? "badge-warning" : "badge-success"}`}>
+                    {node.observer_is_stale || nodeFreshness?.observerIsStale ? "stale" : "fresh"}
+                  </span>
+                </div>
+                <div className="grid gap-2 text-xs sm:grid-cols-2">
+                  <p>last push: <strong>{formatIso(node.observer_last_push_at || nodeFreshness?.observerLastPushAt || null)}</strong></p>
+                  <p>parse: <strong>{node.observer_parse_error_count}</strong></p>
+                  <p>unmatched: <strong>{node.observer_unmatched_count}</strong></p>
+                  <p>collector: <strong>{node.observer_is_stale || nodeFreshness?.observerIsStale ? "needs check" : "ok"}</strong></p>
+                </div>
+              </div>
+
+              <p className="mt-3 text-[11px] text-slate-500">
+                Последняя проверка: {formatIso(node.last_health_at)}.
+                {nodeFreshness?.lastSampleAt ? ` Срез метрик: ${formatIso(nodeFreshness.lastSampleAt)}.` : ""}
+                {memoryPercent != null ? ` RAM: ${formatPercent(memoryPercent, 0)}.` : " RAM: нет данных."}
+              </p>
             </article>
           );
         })}
+        {nodes.length === 0 ? (
+          <div className="empty-state col-span-full">
+            <Server size={36} />
+            <p className="text-sm">Данных по нодам пока нет</p>
+          </div>
+        ) : null}
       </div>
 
-      <AdminConfirmDialog
-        open={Boolean(pending)}
-        title={pending?.label || "Подтвердить действие с узлом"}
-        description="Действие меняет live-назначения или состояние узла. Укажите причину для аудита перед выполнением."
-        reason={reason}
-        onReasonChange={setReason}
-        onCancel={() => {
-          setPending(null);
-          setReason("");
-        }}
-        onConfirm={() => void runPending()}
-        confirmLabel={busy ? <><Loader2 className="animate-spin" size={14} /> Выполняется</> : "Подтвердить"}
-        danger={pending?.tone === "danger"}
-        busy={busy}
-      />
+      <div className="glass-card p-5">
+        <div className="mb-4 flex items-center gap-3">
+          <div className="stat-icon stat-icon-blue">
+            <Wifi size={20} />
+          </div>
+          <div>
+            <h3 className="font-display text-xl font-bold">Трафик по дням</h3>
+            <p className="text-xs text-slate-500">Сколько устройств и трафика пришло на каждую ноду за последние 7 дней.</p>
+          </div>
+        </div>
+        <div className="overflow-x-auto">
+          <table className="min-w-full text-sm">
+            <thead>
+              <tr className="text-left text-xs uppercase tracking-[0.1em] text-slate-500">
+                <th className="px-3 py-2.5">Дата</th>
+                <th className="px-3 py-2.5">Нода</th>
+                <th className="px-3 py-2.5">Устройств</th>
+                <th className="px-3 py-2.5">Трафик, ГБ</th>
+              </tr>
+            </thead>
+            <tbody>
+              {traffic.map((row, index) => {
+                const flag = COUNTRY_FLAGS[nodeCodeKey(row.node_code)] || "🌐";
+                return (
+                  <tr key={`${row.date}:${row.node_code}`} className={`border-t border-white/20 dark:border-white/5 ${index % 2 === 0 ? "bg-white/30 dark:bg-white/[0.02]" : ""}`}>
+                    <td className="px-3 py-2.5 font-medium">{row.date}</td>
+                    <td className="px-3 py-2.5">
+                      <span className="mr-2">{flag}</span>
+                      {row.node_code.toUpperCase()}
+                    </td>
+                    <td className="px-3 py-2.5">{row.devices}</td>
+                    <td className="px-3 py-2.5">{row.traffic_gb.toFixed(2)}</td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      </div>
     </section>
   );
 }

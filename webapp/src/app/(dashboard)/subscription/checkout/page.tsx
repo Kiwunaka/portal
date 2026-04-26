@@ -1,8 +1,5 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import { useSearchParams } from "next/navigation";
-
 import AppRouteLink from "@/components/app-route-link";
 import { CabinetCardGrid, CabinetHero, CabinetRoute, CabinetSection } from "@/components/cabinet/surface";
 import { resolvePlanLabel } from "@/lib/access-policy";
@@ -14,6 +11,8 @@ import {
   normalizePlanCode,
 } from "@/lib/portal";
 import { usePortalSession } from "@/lib/session";
+import { useSearchParams } from "next/navigation";
+import { useEffect, useMemo, useState } from "react";
 
 type DisplayPlan = {
   code: string;
@@ -60,13 +59,6 @@ function formatDuration(days: number): string {
   return `${days} дней`;
 }
 
-function accessHint(accessState: string): string {
-  if (accessState.includes("trial")) return "Сейчас действуют пробные 5 дней.";
-  if (accessState.includes("paid")) return "Текущий доступ активен, можно продлить заранее.";
-  if (accessState.includes("free")) return "Можно перейти на полный режим или остаться в базовом.";
-  return "После оплаты или применения ключа статус обновится в этом же аккаунте.";
-}
-
 export default function CheckoutPage() {
   const searchParams = useSearchParams();
   const { user, dash } = usePortalSession();
@@ -76,19 +68,8 @@ export default function CheckoutPage() {
   const [selectedCode, setSelectedCode] = useState(() => normalizePlanCode(searchParams.get("plan"), "1_month"));
 
   useEffect(() => {
-    let cancelled = false;
-    const nextSelectedCode = normalizePlanCode(searchParams.get("plan"), "1_month");
-    const nextPromoInput = normalizePromo(searchParams.get("promo") || "");
-
-    queueMicrotask(() => {
-      if (cancelled) return;
-      setSelectedCode(nextSelectedCode);
-      setPromoInput(nextPromoInput);
-    });
-
-    return () => {
-      cancelled = true;
-    };
+    setSelectedCode(normalizePlanCode(searchParams.get("plan"), "1_month"));
+    setPromoInput(normalizePromo(searchParams.get("promo") || ""));
   }, [searchParams]);
 
   useEffect(() => {
@@ -114,10 +95,10 @@ export default function CheckoutPage() {
           setPlans(nextPlans.length ? nextPlans : SHARED_PLANS);
           setCatalogError("");
         }
-      } catch {
+      } catch (nextError) {
         if (!cancelled) {
           setPlans(SHARED_PLANS);
-          setCatalogError("Не удалось обновить каталог автоматически.");
+          setCatalogError(String((nextError as { message?: string })?.message || nextError || ""));
         }
       }
     };

@@ -8,21 +8,8 @@ import { usePortalSession } from "@/lib/session";
 import { useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 
-import AppRouteLink from "@/components/app-route-link";
-import { CabinetCardGrid, CabinetList, CabinetRoute, CabinetSection } from "@/components/cabinet/surface";
-import { resolvePlanLabel } from "@/lib/access-policy";
-import { fetchAccessKeyStatus, redeemAccessKey, type AccessKeyStatusPayload } from "@/lib/api";
-import { usePortalSession } from "@/lib/session";
-
 function normalizeKey(value: string): string {
   return String(value || "").trim().toUpperCase();
-}
-
-function maskAccessKey(value?: string | null): string {
-  const key = String(value || "").trim();
-  if (!key) return "Ключ не введен";
-  if (key.length <= 8) return "Ключ скрыт";
-  return `${key.slice(0, 6)}...${key.slice(-4)}`;
 }
 
 function formatDate(value?: string | null): string {
@@ -50,7 +37,7 @@ export default function RedeemPage() {
   const lookup = async (rawKey?: string): Promise<AccessKeyStatusPayload | null> => {
     const key = normalizeKey(rawKey ?? keyInput);
     if (!key) {
-      setError("Введите ключ доступа, чтобы мы могли его проверить.");
+      setError("Введите ключ, чтобы мы могли его проверить.");
       return null;
     }
 
@@ -61,15 +48,15 @@ export default function RedeemPage() {
       const nextStatus = await fetchAccessKeyStatus(key);
       setStatus(nextStatus);
       if (!nextStatus.exists) {
-        setMessage("Такой ключ доступа не найден. Проверьте, не потерялся ли символ.");
+        setMessage("Такой ключ не найден. Проверьте, не потерялся ли символ.");
       } else if (nextStatus.redeemed) {
-        setMessage("Этот ключ доступа уже был использован. Если нужна помощь, лучше открыть поддержку.");
+        setMessage("Этот ключ уже был использован. Если нужна помощь, лучше сразу открыть поддержку.");
       } else {
-        setMessage("Ключ доступа найден. Его можно применить к текущему аккаунту.");
+        setMessage("Ключ найден. Его можно применить к текущему профилю.");
       }
       return nextStatus;
-    } catch {
-      setError("Не удалось проверить ключ доступа. Попробуйте еще раз или откройте поддержку.");
+    } catch (nextError) {
+      setError(String((nextError as { message?: string })?.message || nextError || "Не удалось проверить ключ."));
       return null;
     } finally {
       setLookupBusy(false);
@@ -80,11 +67,11 @@ export default function RedeemPage() {
     const nextStatus = status || (await lookup());
     if (!nextStatus) return;
     if (!nextStatus.exists) {
-      setError("Такой ключ доступа не найден.");
+      setError("Такой ключ не найден.");
       return;
     }
     if (nextStatus.redeemed) {
-      setError("Ключ доступа уже был использован. Для восстановления лучше открыть поддержку.");
+      setError("Ключ уже был использован. Для восстановления лучше открыть поддержку.");
       return;
     }
 
@@ -95,9 +82,9 @@ export default function RedeemPage() {
       const payload = await redeemAccessKey(nextStatus.key);
       setStatus(payload.status);
       await refresh();
-      setMessage("Ключ доступа применен. Доступ уже обновлен.");
-    } catch {
-      setError("Не удалось применить ключ доступа. Попробуйте еще раз или откройте поддержку.");
+      setMessage(`Ключ ${payload.key} применен. Профиль уже обновлен.`);
+    } catch (nextError) {
+      setError(String((nextError as { message?: string })?.message || nextError || "Не удалось применить ключ."));
     } finally {
       setRedeemBusy(false);
     }
@@ -108,15 +95,15 @@ export default function RedeemPage() {
     if (!nextKey) return;
     setKeyInput(nextKey);
     void lookup(nextKey);
-    // searchParams is stable enough here and we only react to URL changes.
+    // searchParams is stable enough here and we only react to URL changes
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams]);
 
   const facts = [
     {
-      label: "Аккаунт",
+      label: "Профиль",
       value: resolvePlanLabel(dash, user),
-      hint: "Ключ доступа применяется к текущему аккаунту.",
+      hint: "Ключ применяется к текущему аккаунту.",
       tone: "neutral" as const,
     },
     {
@@ -128,13 +115,13 @@ export default function RedeemPage() {
     {
       label: "Проверка ключа",
       value: status ? (status.exists ? "Ключ найден" : "Не найден") : "Ждет проверки",
-      hint: status?.redeemed ? "Этот ключ доступа уже был использован." : "Сначала проверьте ключ, потом применяйте.",
+      hint: status?.redeemed ? "Этот ключ уже был использован." : "Сначала проверьте ключ, потом применяйте.",
       tone: status?.redeemed ? ("warning" as const) : status?.exists ? ("success" as const) : ("neutral" as const),
     },
     {
       label: "Что дальше",
-      value: status?.redeemed ? "Открыть поддержку" : "Применить к аккаунту",
-      hint: "Если ключ потерян или уже использован, лучше не гадать, а написать нам.",
+      value: status?.redeemed ? "Открыть поддержку" : "Применить к профилю",
+      hint: "Если ключ уже использован или потерян, лучше не гадать, а написать нам.",
       tone: "neutral" as const,
     },
   ];
@@ -143,15 +130,15 @@ export default function RedeemPage() {
     ? [
         {
           key: "key",
-          title: "Ключ доступа",
-          body: maskAccessKey(status.key),
+          title: "Ключ",
+          body: status.key,
           badge: status.exists ? "Найден" : "Не найден",
           tone: status.exists ? ("success" as const) : ("warning" as const),
         },
         {
           key: "plan",
           title: "Что даст этот ключ",
-          body: status.plan?.label || "Доступ по ключу",
+          body: status.plan?.label || status.kind || "Уточним после проверки",
           badge: `До ${status.device_limit || 1} устройств`,
           tone: "neutral" as const,
         },
@@ -168,22 +155,22 @@ export default function RedeemPage() {
   const helpItems = [
     {
       key: "check",
-      title: "Сначала проверьте ключ доступа",
-      body: "Так вы сразу увидите, существует ли он и не был ли использован раньше.",
+      title: "Сначала проверьте ключ",
+      body: "Так вы сразу увидите, существует ли он и не был ли уже использован раньше.",
       badge: "Шаг 1",
       tone: "neutral" as const,
     },
     {
       key: "redeem",
       title: "Если ключ найден, примените его",
-      body: "После этого доступ подтянется автоматически. Новый аккаунт создавать не нужно.",
+      body: "После этого профиль подтянется автоматически. Новый аккаунт создавать не нужно.",
       badge: "Шаг 2",
       tone: "neutral" as const,
     },
     {
       key: "support",
       title: "Если что-то не совпало, откройте поддержку",
-      body: "Это самый спокойный путь, если ключ уже использован или выглядит не так, как ожидалось.",
+      body: "Это самый безопасный путь, если ключ уже использован или выглядит не так, как ожидалось.",
       badge: "Шаг 3",
       tone: "neutral" as const,
       action: (
@@ -195,30 +182,31 @@ export default function RedeemPage() {
   ];
 
   return (
-    <CabinetRoute
+    <CabinetPage
       eyebrow="Тарифы и оплата"
-      title="Применить ключ доступа"
-      description="Если у вас уже есть ключ доступа, примените его здесь к текущему аккаунту. Новый аккаунт создавать не нужно."
+      title="Применить ключ"
+      description="Если у вас уже есть ключ оплаты или подарка, примените его здесь к текущему профилю."
       actions={
         <>
           <AppRouteLink href="/subscription/checkout/" className="outline-btn rounded-full px-5 py-3 text-sm font-semibold">
-            Купить ключ доступа
+            Купить ключ
           </AppRouteLink>
           <AppRouteLink href="/support/" className="outline-btn rounded-full px-5 py-3 text-sm font-semibold">
             Поддержка
           </AppRouteLink>
         </>
       }
-      metrics={facts}
     >
+      <CabinetFactGrid facts={facts} />
+
       <div className="grid gap-6 xl:grid-cols-[1.04fr_0.96fr]">
         <CabinetSection
           eyebrow="Проверка"
           title="Проверить и применить"
-          description="Лучше сначала проверить ключ доступа, а потом уже применять его к аккаунту."
+          description="Лучше сначала проверить ключ, а потом уже применять его к профилю."
         >
           <label className="block text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500 dark:text-slate-400">
-            Ключ доступа
+            Ключ
           </label>
           <div className="mt-2 flex flex-col gap-3 md:flex-row">
             <input
@@ -262,17 +250,17 @@ export default function RedeemPage() {
           title="Если ключ не проходит"
           description="Обычно дальше нужен один из этих трех шагов."
         >
-          <CabinetCardGrid items={helpItems} className="xl:grid-cols-1" />
+          <CabinetActionList items={helpItems} />
         </CabinetSection>
       </div>
 
       <CabinetSection
         eyebrow="Статус"
         title="Что удалось узнать по ключу"
-        description="После проверки или применения информация появится здесь. Сам ключ скрываем на первом слое."
+        description="После проверки или применения информация появится здесь."
       >
-        <CabinetList items={statusItems} empty="Пока ничего не проверяли. Введите ключ доступа, и здесь появится его статус." />
+        <CabinetActionList items={statusItems} empty="Пока ничего не проверяли. Введите ключ, и здесь появится его статус." />
       </CabinetSection>
-    </CabinetRoute>
+    </CabinetPage>
   );
 }

@@ -3,13 +3,13 @@ import Link from "next/link";
 import JsonLd from "../../components/json-ld";
 import { buildMarketingMetadata } from "../../components/marketing-landing";
 import { buildBreadcrumbJsonLd, MARKETING_CANONICAL_PATHS } from "../../lib/marketing-site";
-import { CANONICAL_PLATFORM_BRAND, getCopyText, getPokrovPublicConfig } from "../../lib/pokrov";
+import { CANONICAL_PLATFORM_BRAND, getPokrovPublicConfig } from "../../lib/pokrov";
 
 const config = getPokrovPublicConfig(process.env as Record<string, string | undefined>);
 
 export const metadata = buildMarketingMetadata(
   "Политика конфиденциальности | POKROV",
-  "Какие данные использует POKROV для работы доступа, поддержки и платежей, и как связаться с поддержкой.",
+  "Какие данные использует POKROV для работы аккаунта, поддержки и платежей, и как связаться со службой заботы.",
   {
     path: "/privacy/",
     keywords: ["политика конфиденциальности", "privacy pokrov", "данные pokrov"],
@@ -30,10 +30,8 @@ export default function PrivacyPage() {
           <span className="lp-legal-banner__eyebrow">Данные и поддержка</span>
           <h1>Политика конфиденциальности</h1>
           <p>
-            {getCopyText(
-              "marketing.legal.privacy.intro",
-              "POKROV использует только те данные, которые нужны для работы доступа, поддержки, защиты сервиса и проведения платежей.",
-            )}
+            POKROV использует только те данные, которые нужны для работы аккаунта, поддержки, защиты сервиса и
+            проведения платежей. Здесь — короткая и спокойная версия того, что именно мы храним и зачем.
           </p>
         </section>
 
@@ -64,7 +62,7 @@ export default function PrivacyPage() {
           <h2>Контакты</h2>
           <ul className="lp-legal-list lp-legal-list--contacts">
             <li>
-              Поддержка: <a href={`mailto:${config.contactEmail}`}>{config.contactEmail}</a>
+              Support: <a href={`mailto:${config.contactEmail}`}>{config.contactEmail}</a>
             </li>
             <li>
               Enterprise: <a href={`mailto:${config.enterpriseEmail}`}>{config.enterpriseEmail}</a>
@@ -86,10 +84,7 @@ export default function PrivacyPage() {
             <Link className="btn btn-ghost" href="/">
               На главную POKROV
             </Link>
-            <Link className="btn btn-primary" href={MARKETING_CANONICAL_PATHS.install}>
-              Попробовать 5 дней
-            </Link>
-            <a className="btn btn-ghost" href={config.botUrl} target="_blank" rel="noreferrer">
+            <a className="btn btn-primary" href={config.botUrl} target="_blank" rel="noreferrer">
               Открыть Telegram-бота
             </a>
           </div>

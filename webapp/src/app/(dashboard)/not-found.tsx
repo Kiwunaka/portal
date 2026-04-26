@@ -8,12 +8,12 @@ export default function DashboardNotFound() {
       <section className="glass-card w-full overflow-hidden border border-white/70 p-6 dark:border-[#243129]/80 sm:p-8">
         <EmptyState
           icon={<span className="material-symbols-rounded text-3xl">explore_off</span>}
-          title="Экран кабинета не найден"
-          description="Такого экрана нет внутри кабинета. Вернитесь в основную точку входа или сразу откройте поддержку."
+          title="Маршрут кабинета не найден"
+          description="Этот экран не существует внутри кабинета. Вернитесь в основную точку входа или сразу откройте поддержку."
           actions={
             <>
               <AppRouteLink href="/dashboard/" className="btn-primary rounded-2xl px-5 py-3 text-sm font-semibold uppercase tracking-[0.12em]">
-                На главную
+                В дашборд
               </AppRouteLink>
               <AppRouteLink href="/support/" className="outline-btn rounded-2xl px-5 py-3 text-sm font-semibold uppercase tracking-[0.12em]">
                 В поддержку
@@ -25,8 +25,8 @@ export default function DashboardNotFound() {
         <div className="mt-6 rounded-[1.5rem] border border-white/70 bg-white/62 p-5 dark:border-white/10 dark:bg-white/[0.04]">
           <Timeline
             items={[
-              { title: "Вернитесь на старт", description: "Главная показывает рабочие данные и все быстрые действия.", tone: "success" },
-              { title: "Проверьте ссылку", description: "Если вы пришли по старой закладке, экран мог быть переименован.", tone: "warning" },
+              { title: "Вернитесь на старт", description: "Дашборд показывает рабочие данные и все быстрые действия.", tone: "success" },
+              { title: "Проверьте ссылку", description: "Если вы пришли по старой закладке, маршрут мог быть переименован.", tone: "warning" },
               { title: "Спросите поддержку", description: "Команда поможет найти правильный экран и не потерять контекст.", tone: "info" },
             ]}
           />

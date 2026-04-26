@@ -416,7 +416,6 @@ class BotPaywallTests(unittest.TestCase):
         label2 = self.bot_module._main_connect_cta_text(1001)
         self.assertEqual(label1, label2)
         self.assertIn(label1, set(self.bot_module.MAIN_CONNECT_CTA_LABELS.values()))
-        self.assertEqual(set(self.bot_module.MAIN_CONNECT_CTA_LABELS.values()), {"✨ Попробовать 5 дней"})
 
     def test_friend_gift_activation_is_one_time(self) -> None:
         self.bot_module.FRIEND_GIFT_ENABLED = True

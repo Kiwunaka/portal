@@ -63,15 +63,10 @@ export const metadata: Metadata = {
   icons: {
     icon: [
       { url: "/favicon.ico", sizes: "any" },
-      { url: "/redesign/brand/pokrov-favicon.svg", type: "image/svg+xml", sizes: "any" },
-      { url: "/redesign/brand/pokrov-app-icon-192.png", type: "image/png", sizes: "192x192" },
-      { url: "/redesign/brand/pokrov-app-icon-512.png", type: "image/png", sizes: "512x512" },
+      { url: "/pokrov-logo.svg", type: "image/svg+xml", sizes: "any" },
     ],
     shortcut: [{ url: "/favicon.ico", sizes: "any" }],
-    apple: [
-      { url: "/apple-icon.png", type: "image/png", sizes: "180x180" },
-      { url: "/apple-touch-icon.png", type: "image/png", sizes: "180x180" },
-    ],
+    apple: [{ url: "/apple-icon.png", type: "image/png", sizes: "512x512" }],
   },
 };
 

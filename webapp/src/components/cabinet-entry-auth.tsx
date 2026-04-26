@@ -1,10 +1,11 @@
 "use client";
 
-import { pokrovBranding } from "@/app/branding";
 import AppRouteLink from "@/components/app-route-link";
 import TelegramLoginWidget from "@/components/telegram-login-widget";
 import { getPortalPublicConfig } from "@/lib/portal";
 import { usePortalSession } from "@/lib/session";
+
+import { pokrovBranding } from "@/app/branding";
 
 const config = getPortalPublicConfig(process.env as Record<string, string | undefined>);
 

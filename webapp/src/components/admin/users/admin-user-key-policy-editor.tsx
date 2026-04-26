@@ -34,11 +34,11 @@ export function AdminUserKeyPolicyEditor({
     <div className={`${adminInsetPanelClass} mt-3 text-sm`}>
       <div className="mb-3 flex items-center justify-between gap-2">
         <div>
-          <p className="text-sm font-semibold text-slate-50">Ключи и policy по узлам</p>
-          <p className="mt-1 text-xs leading-5 text-slate-400">Live-действия с ключами, сброс трафика, resync sub ID и лимиты без выхода из карточки.</p>
+          <p className="text-sm font-semibold text-slate-50">Keys and per-node policy</p>
+          <p className="mt-1 text-xs leading-5 text-slate-400">Use this to toggle keys, reset traffic, resync sub IDs, and apply traffic policy without leaving the selected account.</p>
         </div>
         <button className={adminButtonClass("secondary", "xs")} type="button" onClick={onReload} disabled={busy || !!keyBusy || !!policyBusy}>
-          Обновить
+          Reload
         </button>
       </div>
 
@@ -48,7 +48,7 @@ export function AdminUserKeyPolicyEditor({
           if (!draft) return null;
 
           return (
-            <div key={key.node_code} className="rounded-xl border border-[#b8ded1] bg-white p-3">
+            <div key={key.node_code} className="rounded-xl border border-[#22303c] bg-[#0b1218] p-3">
               <div className="flex flex-wrap items-start justify-between gap-2">
                 <div>
                   <p className="font-semibold text-slate-50">
@@ -59,7 +59,7 @@ export function AdminUserKeyPolicyEditor({
                     {key.exists ? "Ключ присутствует" : "Ключ отсутствует"} | {key.enabled ? "включён" : "выключен"} | {key.online ? "online" : "offline"}
                   </p>
                   <p className="text-xs text-slate-400">
-                    Трафик: {fmtTraffic(key.total_bytes)} | текущие подключения: {key.current_connections}
+                    Трафик: {fmtTraffic(key.total_bytes)} | current connections: {key.current_connections}
                   </p>
                 </div>
                 <div className="flex flex-wrap gap-2">
@@ -103,7 +103,7 @@ export function AdminUserKeyPolicyEditor({
                     checked={draft.notify_soft}
                     onChange={(event) => setPolicyDrafts((prev) => ({ ...prev, [key.node_code]: { ...draft, notify_soft: event.target.checked } }))}
                   />
-                  Уведомить на soft cap
+                  Notify on soft cap
                 </label>
                 <label className={adminCheckboxLabelClass}>
                   <input
@@ -111,7 +111,7 @@ export function AdminUserKeyPolicyEditor({
                     checked={draft.notify_hard}
                     onChange={(event) => setPolicyDrafts((prev) => ({ ...prev, [key.node_code]: { ...draft, notify_hard: event.target.checked } }))}
                   />
-                  Уведомить на hard cap
+                  Notify on hard cap
                 </label>
                 <label className={adminCheckboxLabelClass}>
                   <input
@@ -119,7 +119,7 @@ export function AdminUserKeyPolicyEditor({
                     checked={draft.auto_disable_on_hard}
                     onChange={(event) => setPolicyDrafts((prev) => ({ ...prev, [key.node_code]: { ...draft, auto_disable_on_hard: event.target.checked } }))}
                   />
-                  Автоотключение на hard cap
+                  Auto-disable on hard cap
                 </label>
                 <label className={adminCheckboxLabelClass}>
                   <input
@@ -127,22 +127,22 @@ export function AdminUserKeyPolicyEditor({
                     checked={draft.apply_now}
                     onChange={(event) => setPolicyDrafts((prev) => ({ ...prev, [key.node_code]: { ...draft, apply_now: event.target.checked } }))}
                   />
-                  Применить сейчас
+                  Apply now
                 </label>
                 <button className={adminButtonClass("secondary", "xs")} type="button" onClick={() => onSavePolicy(key.node_code)} disabled={policyBusy === key.node_code}>
-                  {policyBusy === key.node_code ? "..." : "Сохранить policy"}
+                  {policyBusy === key.node_code ? "..." : "Save policy"}
                 </button>
               </div>
 
               <div className="mt-2 text-xs text-slate-400">
-                Черновик: burst {parseNullableNumber(draft.burst_mbps) ?? "—"}, soft {parseNullableNumber(draft.soft_cap_gb) ?? "—"}, hard {parseNullableNumber(draft.hard_cap_gb) ?? "—"}.
+                Current draft: burst {parseNullableNumber(draft.burst_mbps) ?? "—"}, soft {parseNullableNumber(draft.soft_cap_gb) ?? "—"}, hard {parseNullableNumber(draft.hard_cap_gb) ?? "—"}.
               </div>
             </div>
           );
         })}
       </div>
 
-      {!keys.length ? <p className="mt-3 text-xs text-slate-400">Ключи для Telegram ID {selectedTgId} пока не созданы.</p> : null}
+      {!keys.length ? <p className="mt-3 text-xs text-slate-400">No keys have been provisioned for tg_id {selectedTgId} yet.</p> : null}
     </div>
   );
 }

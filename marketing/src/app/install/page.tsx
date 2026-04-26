@@ -26,7 +26,7 @@ export const metadata = buildMarketingMetadata(
   getCopyText("marketing.install.meta.title", "Установка и помощь | POKROV"),
   getCopyText(
     "marketing.install.meta.description",
-    "Как установить POKROV на Android и Windows, что делать если файл недоступен, и куда обратиться за помощью.",
+    "Как скачать приложение для Android и Windows, что делать если файл недоступен, и куда перейти за помощью.",
   ),
   {
     path: "/install/",
@@ -79,9 +79,9 @@ export default function InstallPage() {
         <main id="main-content" className="lp-main lp-route-main lp-route-main--install">
           <section className="lp-hero">
             <div className="lp-hero-copy">
-              <div className="lp-kicker">{getCopyText("marketing.install.kicker", "Установка POKROV")}</div>
-              <p className="lp-overline">Android и Windows ведут к приложению, 5 дням проверки и понятному продолжению.</p>
-              <h1>{getCopyText("marketing.install.title", "Скачайте приложение POKROV")}</h1>
+              <div className="lp-kicker">{getCopyText("marketing.install.kicker", "Установка и настройка POKROV")}</div>
+              <p className="lp-overline">Спокойная страница помощи: без пустых кнопок, без ложной загрузки и без тупиков.</p>
+              <h1>{getCopyText("marketing.install.title", "Установка без тупиков")}</h1>
               <p className="lp-hero-lead">
                 {getCopyText(
                   "marketing.install.subtitle",
@@ -89,8 +89,8 @@ export default function InstallPage() {
                 )}
               </p>
               <div className="lp-hero-actions">
-                <a href="#downloads" className="lp-btn lp-btn--primary">
-                  {getCopyText("marketing.install.primary_cta", "Попробовать 5 дней")}
+                <a href={config.webappUrl} target="_blank" rel="noreferrer" className="lp-btn lp-btn--primary">
+                  {getCopyText("marketing.install.primary_cta", "Открыть кабинет")}
                 </a>
                 <a href={config.supportTelegramUrl} target="_blank" rel="noreferrer" className="lp-btn lp-btn--ghost">
                   {getCopyText("marketing.install.secondary_cta", "Написать в поддержку")}
@@ -150,7 +150,7 @@ export default function InstallPage() {
             </div>
           </section>
 
-          <section id="downloads" className="lp-section">
+          <section className="lp-section">
             <div className="lp-section-head">
               <span>Бета-сборки</span>
               <h2>{getCopyText("marketing.install.downloads.title", "Откройте кабинет для бета-файлов")}</h2>
@@ -212,17 +212,17 @@ export default function InstallPage() {
               <article className="lp-platform-card">
                 <div className="lp-stage-label">
                   <span aria-hidden="true">◎</span>
-                  {getCopyText("marketing.install.apple.status", "Готовится")}
+                  {getCopyText("marketing.install.apple.status", "Apple readiness")}
                 </div>
                 <h3>{getCopyText("marketing.install.apple.title", "iPhone и Mac")}</h3>
                 <p>
                   {getCopyText(
                     "marketing.install.apple.desc",
-                    "Apple-линейка пока готовится. Сейчас можно открыть кабинет или поддержку, чтобы уточнить статус.",
+                    "Apple-линейка пока остаётся в readiness-режиме. Здесь нет ложной загрузки, только честная инструкция и актуальный статус.",
                   )}
                 </p>
                 <a href={appleHref} target="_blank" rel="noreferrer" className="lp-btn lp-btn--ghost">
-                  {getCopyText("marketing.download.apple.cta", "Что готовится")}
+                  {getCopyText("marketing.download.apple.cta", "Открыть инструкцию")}
                 </a>
               </article>
             </div>
@@ -237,13 +237,13 @@ export default function InstallPage() {
               </article>
               <article className="lp-info-card">
                 <span className="lp-info-card__eyebrow">Если нужен доступ</span>
-                <h3>Кабинет остаётся точкой продолжения</h3>
-                <p>Там можно проверить доступ и вернуться к оплате только тогда, когда это действительно нужно.</p>
+                <h3>Кабинет остаётся спокойной точкой продолжения</h3>
+                <p>Там можно продолжить маршрут, проверить доступ и вернуться к оплате только тогда, когда это действительно нужно.</p>
               </article>
               <article className="lp-info-card">
                 <span className="lp-info-card__eyebrow">Если нужен человек</span>
                 <h3>Служба заботы отвечает без лишнего формализма</h3>
-                <p>Telegram и почта остаются рядом для вопросов по установке, доступу или восстановлению.</p>
+                <p>Telegram и почта остаются рядом, чтобы быстро закрыть вопрос по установке, доступу или восстановлению.</p>
               </article>
             </div>
           </section>
@@ -251,18 +251,18 @@ export default function InstallPage() {
           <section className="lp-section">
             <div className="lp-footer-cta">
               <div className="lp-footer-copy">
-                <span>{getCopyText("marketing.install.help_eyebrow", "Если нужна помощь человека")}</span>
+                <span>{getCopyText("marketing.install.help_eyebrow", "Если нужен живой маршрут")}</span>
                 <h2>{getCopyText("marketing.install.help_title", "Кабинет, Telegram и помощь остаются рядом")}</h2>
                 <p>
                   {getCopyText(
                     "marketing.install.help_body",
-                    "Если файл не находится, откройте кабинет или напишите в поддержку. Мы подскажем следующий шаг по установке, доступу или восстановлению.",
+                    "Если файл не находится, откройте кабинет или напишите в поддержку. Мы не оставляем вас на пустой странице и не прячем следующий шаг.",
                   )}
                 </p>
               </div>
               <div className="lp-footer-actions">
-                <a href="#downloads" className="lp-btn lp-btn--primary">
-                  {getCopyText("marketing.install.primary_cta", "Попробовать 5 дней")}
+                <a href={config.webappUrl} target="_blank" rel="noreferrer" className="lp-btn lp-btn--primary">
+                  {getCopyText("marketing.install.primary_cta", "Открыть кабинет")}
                 </a>
                 <a href={config.supportTelegramUrl} target="_blank" rel="noreferrer" className="lp-btn lp-btn--ghost">
                   {getCopyText("marketing.install.secondary_cta", "Написать в поддержку")}

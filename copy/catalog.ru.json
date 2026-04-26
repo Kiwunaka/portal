@@ -2,20 +2,11 @@
   "catalog_version": "2026-04-23-governance",
   "locale": "ru",
   "items": {
-    "brand.subtitle": {
-      "surface": "brand.identity",
-      "ru": "",
-      "variables": [],
-      "tone": "calm",
-      "allowed_public": true,
-      "compliance_notes": "POKROV wordmark ships without a subtitle; do not reintroduce old premium-style labels.",
-      "ab_variant": "control"
-    },
     "marketing.meta.title": {
       "surface": "marketing.meta",
       "ru": "POKROV — спокойный цифровой маршрут в платной бете",
       "variables": [],
-      "tone": "calm",
+      "tone": "premium",
       "allowed_public": true,
       "compliance_notes": "Rebranded title.",
       "ab_variant": "control"
@@ -24,16 +15,16 @@
       "surface": "marketing.meta",
       "ru": "Попробуйте 5 дней бесплатно, затем продолжайте доступ через понятную оплату и тот же app-first аккаунт.",
       "variables": [],
-      "tone": "calm",
+      "tone": "premium",
       "allowed_public": true,
       "compliance_notes": "Rebranded description.",
       "ab_variant": "control"
     },
     "marketing.hero.kicker": {
       "surface": "marketing.home.hero",
-      "ru": "POKROV • 5 дней спокойной проверки",
+      "ru": "POKROV • 5 дней заботы о вашем интернете",
       "variables": [],
-      "tone": "calm",
+      "tone": "premium",
       "allowed_public": true,
       "compliance_notes": "Rebranded kicker.",
       "ab_variant": "control"
@@ -42,7 +33,7 @@
       "surface": "marketing.home.hero",
       "ru": "Начните с приложения, спокойно проверьте и только потом решайте про оплату",
       "variables": [],
-      "tone": "calm",
+      "tone": "premium",
       "allowed_public": true,
       "compliance_notes": "Rebranded title.",
       "ab_variant": "control"
@@ -51,7 +42,7 @@
       "surface": "marketing.home.hero",
       "ru": "Откройте POKROV на Android или Windows, включите 5 дней теста и продолжайте доступ только если сервис подошёл в обычной жизни.",
       "variables": [],
-      "tone": "calm",
+      "tone": "premium",
       "allowed_public": true,
       "compliance_notes": "Rebranded subtitle.",
       "ab_variant": "control"
@@ -78,7 +69,7 @@
       "surface": "marketing.home.hero",
       "ru": "Платная бета POKROV для Android и Windows.",
       "variables": [],
-      "tone": "calm",
+      "tone": "premium",
       "allowed_public": true,
       "compliance_notes": "Rebranded overline.",
       "ab_variant": "control"
@@ -94,9 +85,9 @@
     },
     "marketing.hero.proof_1.text": {
       "surface": "marketing.home.hero",
-      "ru": "проверки в приложении",
+      "ru": "бесплатного тест-драйва сети",
       "variables": [],
-      "tone": "calm",
+      "tone": "premium",
       "allowed_public": true,
       "compliance_notes": "Rebranded proof point.",
       "ab_variant": "control"
@@ -139,56 +130,47 @@
     },
     "marketing.support.title": {
       "surface": "marketing.home.support",
-      "ru": "Помогаем спокойно разобраться",
+      "ru": "Помогаем настроить идеальную связь",
       "variables": [],
-      "tone": "calm",
+      "tone": "premium",
       "allowed_public": true,
       "compliance_notes": "Rebranded support title.",
       "ab_variant": "control"
     },
     "marketing.support.subtitle": {
       "surface": "marketing.home.support",
-      "ru": "Если нужен совет по оплате, установке или доступу, поддержка подскажет простой следующий шаг.",
+      "ru": "Если нужен совет по скорости, пингу или оплате, наши эксперты подскажут простой следующий шаг.",
       "variables": [],
-      "tone": "calm",
+      "tone": "premium",
       "allowed_public": true,
       "compliance_notes": "Rebranded support subtitle.",
       "ab_variant": "control"
     },
     "marketing.checkout.title": {
       "surface": "marketing.checkout",
-      "ru": "Ключ доступа для POKROV",
+      "ru": "Выберите доступ",
       "variables": [],
-      "tone": "calm",
+      "tone": "premium",
       "allowed_public": true,
       "compliance_notes": "Rebranded checkout title.",
       "ab_variant": "control"
     },
     "marketing.checkout.subtitle": {
       "surface": "marketing.checkout",
-      "ru": "Сначала можно попробовать 5 дней в приложении. Если POKROV подходит, купите ключ доступа и активируйте его в приложении или кабинете. Если вы уже вошли, продление продолжит доступ в том же аккаунте.",
+      "ru": "Здесь можно выбрать подходящий вариант. Полный доступ и оплата открываются в кабинете.",
       "variables": [],
-      "tone": "calm",
+      "tone": "premium",
       "allowed_public": true,
       "compliance_notes": "Rebranded checkout subtitle.",
       "ab_variant": "control"
     },
     "marketing.checkout.primary_cta": {
       "surface": "marketing.checkout",
-      "ru": "Попробовать 5 дней",
+      "ru": "Выбрать план",
       "variables": [],
-      "tone": "calm",
+      "tone": "premium",
       "allowed_public": true,
       "compliance_notes": "Sales-oriented friendly format.",
-      "ab_variant": "control"
-    },
-    "marketing.checkout.purchase_cta": {
-      "surface": "marketing.checkout",
-      "ru": "Купить ключ доступа",
-      "variables": [],
-      "tone": "calm",
-      "allowed_public": true,
-      "compliance_notes": "Primary purchase CTA for key-first checkout.",
       "ab_variant": "control"
     },
     "marketing.checkout.meta.title": {
@@ -211,7 +193,7 @@
     },
     "marketing.checkout.breadcrumb": {
       "surface": "marketing.checkout",
-      "ru": "Ключ доступа",
+      "ru": "Выбор доступа",
       "variables": [],
       "tone": "calm",
       "allowed_public": true,
@@ -240,7 +222,7 @@
       "surface": "marketing.checkout",
       "ru": "Чтобы продолжить оплату и привязать доступ к себе, войдите через кабинет или Telegram.",
       "variables": [],
-      "tone": "calm",
+      "tone": "premium",
       "allowed_public": true,
       "compliance_notes": "Rebranded subtitle.",
       "ab_variant": "control"
@@ -265,18 +247,18 @@
     },
     "marketing.checkout.session.subtitle": {
       "surface": "marketing.checkout",
-      "ru": "Вы уже вошли в кабинет. Здесь можно спокойно выбрать срок и перейти к оплате.",
+      "ru": "Вы уже вошли в кабинет. Здесь можно спокойно выбрать план и перейти к оплате.",
       "variables": [],
-      "tone": "calm",
+      "tone": "premium",
       "allowed_public": true,
       "compliance_notes": "Subtitle for web-session checkout state.",
       "ab_variant": "control"
     },
     "marketing.checkout.ticket.status": {
       "surface": "marketing.checkout",
-      "ru": "Персональная оплата активна",
+      "ru": "Персональная ссылка активна",
       "variables": [],
-      "tone": "calm",
+      "tone": "premium",
       "allowed_public": true,
       "compliance_notes": "Status label for ticketed checkout state.",
       "ab_variant": "control"
@@ -292,27 +274,27 @@
     },
     "marketing.checkout.ticket.subtitle": {
       "surface": "marketing.checkout",
-      "ru": "Вы открыли персональный путь оплаты. Выберите срок, проверьте сумму и переходите к оплате.",
+      "ru": "Вы открыли персональную ссылку. Выберите срок, проверьте платёжный маршрут и переходите к оплате.",
       "variables": [],
-      "tone": "calm",
+      "tone": "premium",
       "allowed_public": true,
       "compliance_notes": "Subtitle for ticketed checkout state.",
       "ab_variant": "control"
     },
     "marketing.checkout.helper.anonymous": {
       "surface": "marketing.checkout",
-      "ru": "Сначала войдите в кабинет или продолжите через Telegram. После этого откроется персональная оплата.",
+      "ru": "Сначала войдите в кабинет или продолжите через Telegram. После этого откроется персональный сценарий оплаты.",
       "variables": [],
-      "tone": "calm",
+      "tone": "premium",
       "allowed_public": true,
       "compliance_notes": "Helper copy for anonymous checkout state.",
       "ab_variant": "control"
     },
     "marketing.checkout.helper.session": {
       "surface": "marketing.checkout",
-      "ru": "Вы уже в кабинете. Следующий шаг — выбрать срок и продолжить оплату.",
+      "ru": "Вы уже в кабинете. Следующий шаг — выбрать план и продолжить оплату.",
       "variables": [],
-      "tone": "calm",
+      "tone": "premium",
       "allowed_public": true,
       "compliance_notes": "Helper copy for web-session checkout state.",
       "ab_variant": "control"
@@ -330,7 +312,7 @@
       "surface": "marketing.home.promise",
       "ru": "Почему старт с POKROV спокойнее",
       "variables": [],
-      "tone": "calm",
+      "tone": "premium",
       "allowed_public": true,
       "compliance_notes": "Rebranded title.",
       "ab_variant": "control"
@@ -339,7 +321,7 @@
       "surface": "marketing.home.promise",
       "ru": "Всё устроено просто: открываете приложение, проверяете сервис 5 дней и только потом принимаете решение об оплате.",
       "variables": [],
-      "tone": "calm",
+      "tone": "premium",
       "allowed_public": true,
       "compliance_notes": "Rebranded subtitle.",
       "ab_variant": "control"
@@ -375,7 +357,7 @@
       "surface": "marketing.home.steps",
       "ru": "Мы ценим простоту: один раз начали в приложении, спокойно проверили сервис и продолжили только при понятной пользе.",
       "variables": [],
-      "tone": "calm",
+      "tone": "premium",
       "allowed_public": true,
       "compliance_notes": "Rebranded subtitle.",
       "ab_variant": "control"
@@ -391,9 +373,9 @@
     },
     "marketing.pricing.subtitle": {
       "surface": "marketing.home.pricing",
-      "ru": "На сайте видны сроки и следующий шаг. Оплата ведёт к ключу доступа, который активируется в приложении или кабинете.",
+      "ru": "На сайте вы видите планы и следующий шаг. Оплата открывается уже в личном сценарии, где доступны актуальные способы и честная сумма.",
       "variables": [],
-      "tone": "calm",
+      "tone": "premium",
       "allowed_public": true,
       "compliance_notes": "Section subtitle for pricing block.",
       "ab_variant": "control"
@@ -427,7 +409,7 @@
     },
     "marketing.plan.half.note": {
       "surface": "marketing.home.pricing",
-      "ru": "Оптимальный выбор тех, кто ценит качество и спокойную ежедневную работу.",
+      "ru": "Оптимальный выбор тех, кто ценит качество и стабильность во всем.",
       "variables": [],
       "tone": "premium",
       "allowed_public": true,
@@ -445,9 +427,9 @@
     },
     "marketing.plan.cta": {
       "surface": "marketing.home.pricing",
-      "ru": "Выбрать срок",
+      "ru": "Выбрать план и продолжить",
       "variables": [],
-      "tone": "calm",
+      "tone": "premium",
       "allowed_public": true,
       "compliance_notes": "CTA for pricing cards on the landing page.",
       "ab_variant": "control"
@@ -535,7 +517,7 @@
     },
     "marketing.install.secondary_cta": {
       "surface": "marketing.install",
-      "ru": "Написать в поддержку",
+      "ru": "Открыть кабинет",
       "variables": [],
       "tone": "calm",
       "allowed_public": true,
@@ -562,7 +544,7 @@
     },
     "marketing.install.help_title": {
       "surface": "marketing.install",
-      "ru": "Кабинет, Telegram и поддержка рядом",
+      "ru": "Кабинет, Telegram и короткий путь",
       "variables": [],
       "tone": "calm",
       "allowed_public": true,
@@ -598,9 +580,9 @@
     },
     "marketing.reviews.subtitle": {
       "surface": "marketing.home.reviews",
-      "ru": "Честные отзывы о том, как POKROV помогает без лишней настройки.",
+      "ru": "Честные отзывы о том, как интернет меняется к лучшему с POKROV.",
       "variables": [],
-      "tone": "calm",
+      "tone": "premium",
       "allowed_public": true,
       "compliance_notes": "Rebranded subtitle.",
       "ab_variant": "control"
@@ -616,18 +598,18 @@
     },
     "marketing.faq.1.q": {
       "surface": "marketing.home.faq",
-      "ru": "Как начать с POKROV?",
+      "ru": "Как ускорить интернет с POKROV?",
       "variables": [],
-      "tone": "calm",
+      "tone": "premium",
       "allowed_public": true,
       "compliance_notes": "Rebranded FAQ question.",
       "ab_variant": "control"
     },
     "marketing.faq.1.a": {
       "surface": "marketing.home.faq",
-      "ru": "Скачайте приложение для Android или Windows, нажмите «Попробовать 5 дней» и проверьте доступ в привычных задачах.",
+      "ru": "Просто установите наше приложение, запустите тест-драйв на 5 дней и наслаждайтесь магией скорости.",
       "variables": [],
-      "tone": "calm",
+      "tone": "premium",
       "allowed_public": true,
       "compliance_notes": "Rebranded FAQ answer.",
       "ab_variant": "control"
@@ -643,27 +625,27 @@
     },
     "marketing.faq.2.a": {
       "surface": "marketing.home.faq",
-      "ru": "Это полноценный доступ на 5 дней: можно спокойно проверить качество и удобство сервиса перед продолжением.",
+      "ru": "Это полноценный премиум-доступ на 5 дней: можно спокойно проверить скорость, стабильность и удобство сервиса перед продолжением.",
       "variables": [],
-      "tone": "calm",
+      "tone": "premium",
       "allowed_public": true,
       "compliance_notes": "FAQ answer for trial details.",
       "ab_variant": "control"
     },
     "marketing.faq.3.q": {
       "surface": "marketing.home.faq",
-      "ru": "Как продолжить после проверки?",
+      "ru": "Как оформить подписку после теста?",
       "variables": [],
-      "tone": "calm",
+      "tone": "premium",
       "allowed_public": true,
       "compliance_notes": "FAQ item for paid subscription flow.",
       "ab_variant": "control"
     },
     "marketing.faq.3.a": {
       "surface": "marketing.home.faq",
-      "ru": "Выберите срок, оплатите ключ доступа и активируйте его в приложении или кабинете. Сумма и срок видны заранее.",
+      "ru": "Сначала откройте личный кабинет или персональную ссылку из Telegram. После этого checkout покажет только подходящие способы оплаты и честную сумму.",
       "variables": [],
-      "tone": "calm",
+      "tone": "premium",
       "allowed_public": true,
       "compliance_notes": "FAQ answer for paid subscription flow.",
       "ab_variant": "control"
@@ -679,7 +661,7 @@
     },
     "marketing.faq.4.a": {
       "surface": "marketing.home.faq",
-      "ru": "Напишите в @pokrov_supportbot или на support@pokrov.space. Если нужно, поддержка подскажет следующий шаг.",
+      "ru": "Напишите в @pokrov_supportbot или на support@pokrov.space. Если нужно, поддержка переведёт вас в нужный маршрут.",
       "variables": [],
       "tone": "premium",
       "allowed_public": true,
@@ -697,27 +679,27 @@
     },
     "marketing.footer.body": {
       "surface": "marketing.home.footer",
-      "ru": "Установите приложение, проверьте сервис 5 дней и только потом переходите к кабинету, продлению и поддержке.",
+      "ru": "Установите приложение, проверьте сервис бесплатно и только потом переходите к кабинету, продлению и поддержке. Это честный и безопасный путь для публичного запуска.",
       "variables": [],
-      "tone": "calm",
+      "tone": "premium",
       "allowed_public": true,
       "compliance_notes": "Footer body for the landing page.",
       "ab_variant": "control"
     },
     "marketing.legal.offer.intro": {
       "surface": "marketing.legal.offer",
-      "ru": "Понятные условия POKROV: доступ, 5 дней проверки, ключи доступа, продление и контакты поддержки.",
+      "ru": "Понятные правила использования POKROV. Мы объясняем условия сервиса спокойно, прозрачно и без скрытого смысла.",
       "variables": [],
-      "tone": "calm",
+      "tone": "premium",
       "allowed_public": true,
       "compliance_notes": "Sales-oriented friendly format.",
       "ab_variant": "control"
     },
     "marketing.legal.privacy.intro": {
       "surface": "marketing.legal.privacy",
-      "ru": "POKROV бережно относится к данным и использует их только для работы доступа, поддержки, безопасности и платежей.",
+      "ru": "Ваша приватность — наш приоритет. POKROV бережно относится к вашим данным и обеспечивает стабильность вашего соединения.",
       "variables": [],
-      "tone": "calm",
+      "tone": "premium",
       "allowed_public": true,
       "compliance_notes": "Rebranded legal intro.",
       "ab_variant": "control"
@@ -760,9 +742,9 @@
     },
     "webapp.entry.step_2.title": {
       "surface": "webapp.entry",
-      "ru": "Откройте кабинет",
+      "ru": "Откройте свой профиль",
       "variables": [],
-      "tone": "calm",
+      "tone": "premium",
       "allowed_public": true,
       "compliance_notes": "Step title for webapp entry page.",
       "ab_variant": "control"
@@ -895,9 +877,9 @@
     },
     "webapp.checkout.subtitle": {
       "surface": "webapp.checkout",
-      "ru": "Выберите тариф и оплатите ключ доступа. Сумма и срок видны заранее, а если нужна помощь, можно продолжить через Telegram.",
+      "ru": "Выберите тариф и оплатите его в понятном персональном сценарии. Сумма и срок видны заранее, а если нужна помощь, можно продолжить через Telegram.",
       "variables": [],
-      "tone": "calm",
+      "tone": "premium",
       "allowed_public": true,
       "compliance_notes": "Sales-oriented friendly format.",
       "ab_variant": "control"
@@ -1039,7 +1021,7 @@
     },
     "retention.welcome": {
       "surface": "bot.retention",
-      "ru": "Доступ готов. Установите приложение, включите подключение в один клик и спокойно проверьте POKROV в обычном дне.",
+      "ru": "Ваш профиль полностью готов! Установите наше приложение, подключитесь в один клик и наслаждайтесь свободным интернетом без границ.",
       "variables": [],
       "tone": "premium",
       "allowed_public": false,
@@ -1048,7 +1030,7 @@
     },
     "retention.t3": {
       "surface": "bot.retention",
-      "ru": "Напоминаем, что ваш платный доступ завершается через три дня. Продлите его заранее, если хотите продолжить без перерыва.",
+      "ru": "Напоминаем, что ваша премиум-подписка завершается через три дня. Продлите её заранее, чтобы наслаждаться стабильным безлимитным интернетом!",
       "variables": [],
       "tone": "premium",
       "allowed_public": false,
@@ -1057,7 +1039,7 @@
     },
     "retention.t1": {
       "surface": "bot.retention",
-      "ru": "Срок доступа подходит к концу. Продлите сейчас, чтобы подключение не оборвалось в самый неудобный момент.",
+      "ru": "Срок вашей подписки подходит к концу! Оформите продление прямо сейчас, чтобы ваш интернет летал быстро и без пауз.",
       "variables": [],
       "tone": "premium",
       "allowed_public": false,
@@ -1066,7 +1048,7 @@
     },
     "retention.t0": {
       "surface": "bot.retention",
-      "ru": "Доступ заканчивается сегодня. Откройте продление заранее, и POKROV продолжит работать без нового старта.",
+      "ru": "Ваша подписка истекает уже сегодня. Скорее перейдите к продлению, чтобы мы и дальше оставались вашим любимым помощником в мире интернета!",
       "variables": [],
       "tone": "premium",
       "allowed_public": false,
@@ -1075,7 +1057,7 @@
     },
     "retention.reactivation": {
       "surface": "bot.retention",
-      "ru": "Можно вернуться без лишней возни. Откройте продление, и POKROV снова подхватит ваш доступ.",
+      "ru": "Мы скучали! Восстановите подписку в пару кликов и продолжайте пользоваться быстрым интернетом вместе с POKROV Network.",
       "variables": [],
       "tone": "premium",
       "allowed_public": false,
@@ -1084,7 +1066,7 @@
     },
     "retention.start99_offer": {
       "surface": "bot.retention",
-      "ru": "Понравился бесплатный доступ? Специально для вас мы сохранили скидку {discount_pct}% на первую оплату: пользуйтесь POKROV с отличной скидкой!",
+      "ru": "Понравился бесплатный доступ? Специально для вас мы сохранили скидку {discount_pct}% на первую оплату: пользуйтесь POKROV Network с отличной скидкой!",
       "variables": [
         "discount_pct"
       ],
@@ -1167,7 +1149,7 @@
     },
     "marketing.install.apple.status": {
       "surface": "marketing.install.apple",
-      "ru": "Готовится",
+      "ru": "Apple",
       "variables": [],
       "tone": "calm",
       "allowed_public": true,
@@ -1298,69 +1280,6 @@
       "tone": "calm",
       "allowed_public": false,
       "compliance_notes": "Shared cabinet baseline for rebuild routes.",
-      "ab_variant": "control"
-    },
-    "cabinet.nav.home": {
-      "surface": "cabinet.nav",
-      "ru": "Главная",
-      "variables": [],
-      "tone": "calm",
-      "allowed_public": false,
-      "compliance_notes": "Shared cabinet IA label for continuation surfaces.",
-      "ab_variant": "control"
-    },
-    "cabinet.nav.billing": {
-      "surface": "cabinet.nav",
-      "ru": "Тарифы и оплата",
-      "variables": [],
-      "tone": "calm",
-      "allowed_public": false,
-      "compliance_notes": "Shared cabinet IA label for continuation surfaces.",
-      "ab_variant": "control"
-    },
-    "cabinet.nav.devices": {
-      "surface": "cabinet.nav",
-      "ru": "Устройства",
-      "variables": [],
-      "tone": "calm",
-      "allowed_public": false,
-      "compliance_notes": "Shared cabinet IA label for continuation surfaces.",
-      "ab_variant": "control"
-    },
-    "cabinet.nav.downloads": {
-      "surface": "cabinet.nav",
-      "ru": "Загрузки",
-      "variables": [],
-      "tone": "calm",
-      "allowed_public": false,
-      "compliance_notes": "Shared cabinet IA label for continuation surfaces.",
-      "ab_variant": "control"
-    },
-    "cabinet.nav.support": {
-      "surface": "cabinet.nav",
-      "ru": "Поддержка",
-      "variables": [],
-      "tone": "calm",
-      "allowed_public": false,
-      "compliance_notes": "Shared cabinet IA label for continuation surfaces.",
-      "ab_variant": "control"
-    },
-    "cabinet.nav.profile": {
-      "surface": "cabinet.nav",
-      "ru": "Профиль",
-      "variables": [],
-      "tone": "calm",
-      "allowed_public": false,
-      "compliance_notes": "Shared cabinet IA label for continuation surfaces.",
-      "ab_variant": "control"
-    },
-    "cabinet.nav.settings": {
-      "surface": "cabinet.nav",
-      "ru": "Настройки",
-      "variables": [],
-      "tone": "calm",
-      "allowed_public": false,
-      "compliance_notes": "Shared cabinet IA label for continuation surfaces.",
       "ab_variant": "control"
     },
     "cabinet.support.title": {
@@ -1572,7 +1491,7 @@
     },
     "app.nav.protection": {
       "surface": "app.nav",
-      "ru": "Подключение",
+      "ru": "Защита",
       "variables": [],
       "tone": "calm",
       "allowed_public": false,
@@ -1658,15 +1577,6 @@
       "tone": "calm",
       "allowed_public": false,
       "compliance_notes": "Shared app baseline for profile and continuation surfaces.",
-      "ab_variant": "control"
-    },
-    "platform.apple.badge": {
-      "surface": "platform.apple",
-      "ru": "Готовится",
-      "variables": [],
-      "tone": "calm",
-      "allowed_public": true,
-      "compliance_notes": "Apple platforms are readiness-only in this wave; do not add launch dates or primary CTAs.",
       "ab_variant": "control"
     }
   }

@@ -1,51 +1,35 @@
 import AppRouteLink from "@/components/app-route-link";
+import { EmptyState, Timeline } from "@/components/shell-primitives";
 
 export default function NotFound() {
   return (
-    <main className="mx-auto flex min-h-[100dvh] w-full max-w-5xl items-center px-4 py-8 sm:px-6">
-      <section className="w-full rounded-[2rem] border border-slate-200/80 bg-white/94 p-6 shadow-[0_28px_80px_-54px_rgba(15,23,42,0.22)] dark:border-white/10 dark:bg-[#101713]/92 sm:p-8">
-        <div className="grid gap-6 lg:grid-cols-[1.08fr_0.92fr]">
-          <div>
-            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">
-              Адрес не найден
-            </p>
-            <h1 className="mt-2 font-display text-[clamp(2rem,5vw,3.2rem)] font-semibold leading-[0.96] tracking-[-0.04em] text-slate-950 dark:text-slate-50">
-              Такой страницы в кабинете нет
-            </h1>
-            <p className="mt-3 max-w-2xl text-sm leading-7 text-slate-600 dark:text-slate-300">
-              Возможно, ссылка устарела или в адрес попал лишний символ. Начните с главной кабинета, а если ссылка пришла от нас и все равно не открывается, напишите в поддержку.
-            </p>
-            <div className="mt-6 flex flex-wrap gap-3">
-              <AppRouteLink href="/dashboard/" className="btn-primary rounded-full px-5 py-3 text-sm font-semibold">
-                Главная
+    <main className="relative mx-auto flex min-h-[calc(100vh-2rem)] w-[min(96vw,1060px)] items-center justify-center px-4 py-8 sm:px-6 lg:py-10">
+      <div className="absolute inset-0 -z-10 bg-[radial-gradient(circle_at_top_left,_rgba(11,72,50,0.12),_transparent_34%),radial-gradient(circle_at_bottom_right,_rgba(197,138,42,0.1),_transparent_30%)]" />
+      <section className="glass-card w-full overflow-hidden border border-white/70 p-6 dark:border-[#243129]/80 sm:p-8">
+        <EmptyState
+          icon={<span className="material-symbols-rounded text-3xl">travel_explore</span>}
+          title="Страница не найдена"
+          description="Похоже, этот адрес не относится к активным маршрутам кабинета. Вернитесь в рабочую зону или откройте поддержку."
+          actions={
+            <>
+              <AppRouteLink href="/dashboard/" className="btn-primary rounded-2xl px-5 py-3 text-sm font-semibold uppercase tracking-[0.12em]">
+                В кабинет
               </AppRouteLink>
-              <AppRouteLink href="/support/" className="outline-btn rounded-full px-5 py-3 text-sm font-semibold">
-                Поддержка
+              <AppRouteLink href="/support/" className="outline-btn rounded-2xl px-5 py-3 text-sm font-semibold uppercase tracking-[0.12em]">
+                В поддержку
               </AppRouteLink>
-            </div>
-          </div>
+            </>
+          }
+        />
 
-          <aside className="rounded-[1.6rem] border border-slate-200/80 bg-slate-50/90 p-5 dark:border-white/10 dark:bg-white/[0.04]">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500 dark:text-slate-400">
-              Рабочие разделы
-            </p>
-            <div className="mt-4 grid gap-3">
-              {[
-                { href: "/dashboard/", label: "Главная", body: "Статус, срок и быстрые действия." },
-                { href: "/subscription/", label: "Тарифы и оплата", body: "Продление и ключи доступа." },
-                { href: "/support/", label: "Поддержка", body: "Один кейс на весь вопрос." },
-              ].map((item) => (
-                <AppRouteLink
-                  key={item.href}
-                  href={item.href}
-                  className="block rounded-[1.2rem] border border-slate-200/80 bg-white/85 px-4 py-4 dark:border-white/10 dark:bg-white/[0.04]"
-                >
-                  <span className="block text-sm font-semibold text-slate-950 dark:text-slate-50">{item.label}</span>
-                  <span className="mt-1 block text-sm leading-6 text-slate-600 dark:text-slate-300">{item.body}</span>
-                </AppRouteLink>
-              ))}
-            </div>
-          </aside>
+        <div className="mt-6 rounded-[1.5rem] border border-white/70 bg-white/62 p-5 dark:border-white/10 dark:bg-white/[0.04]">
+          <Timeline
+            items={[
+              { title: "Проверьте адрес", description: "Иногда проблема только в лишнем символе или устаревшей закладке.", tone: "info" },
+              { title: "Откройте кабинет", description: "Главный маршрут доступен без лишних шагов на /dashboard/.", tone: "success" },
+              { title: "Попросите помощь", description: "Если ссылка пришла извне, поддержку можно открыть сразу отсюда.", tone: "warning" },
+            ]}
+          />
         </div>
       </section>
     </main>
