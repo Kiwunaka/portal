@@ -110,8 +110,9 @@ def _safe_print(text: str) -> None:
     encoding = getattr(sys.stdout, "encoding", None) or "utf-8"
     try:
         sys.stdout.buffer.write((line + "\n").encode(encoding, errors="replace"))
+        sys.stdout.flush()
     except Exception:
-        print(line.encode("utf-8", errors="replace").decode("utf-8", errors="replace"))
+        print(line.encode("utf-8", errors="replace").decode("utf-8", errors="replace"), flush=True)
 
 
 def _release_id() -> str:
