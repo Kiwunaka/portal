@@ -1,6 +1,6 @@
 # Repository Map
 
-Last updated: 2026-04-24
+Last updated: 2026-04-26
 
 ## Document Status
 
@@ -18,7 +18,7 @@ Legacy filename note:
 | `portal_bot/` | FastAPI backend, Telegram bots, worker, data model, panel sync | root canonical docs plus `portal_bot/api.py`, `portal_bot/app_first_service.py`, `portal_bot/channel_bonus_service.py`, and related tests |
 | `webapp/` | Next.js continuation-first cabinet with top-level IA `Dashboard / Subscription / Devices / Statistics / Support`, task routes for entry, downloads, redeem, and checkout continuation, plus the primary admin surface and compatibility aliases for older cabinet and pricing paths | `webapp/README.md`, `webapp/src/app/(dashboard)/admin/`, `webapp/src/components/admin/users/`, `webapp/src/lib/api.ts`, `webapp/e2e/`, `webapp/scripts/serve_export.py` |
 | `marketing/` | checkout-first public website, legal pages, SEO routes, install help, and brand assets | root canonical docs plus `marketing/src/`, `marketing/src/app/install/`, `marketing/public/_redirects`, `shared/copy.ts`, `shared/product-facts.json`, `shared/public-urls.json`, `copy/catalog.ru.json` |
-| `shared/` | shared host config, locked product facts, design tokens, and governed public copy for bot/site/app | `shared/portal-config.ts`, `shared/product-facts.json`, `shared/public-urls.json`, `shared/design-tokens.json`, `shared/copy.ts` |
+| `shared/` | shared host config, locked product facts, design tokens, token schema, and governed public copy for bot/site/app | `shared/portal-config.ts`, `shared/product-facts.json`, `shared/public-urls.json`, `shared/design-tokens.json`, `shared/design-tokens.schema.json`, `shared/copy.ts` |
 | `infra/` | runtime units and infra assets | `infra/portal-node-metrics.service`, `infra/portal-node-metrics.timer`, `infra/portal-node-observer.service`, `infra/portal-node-observer.timer` |
 | `scripts/` | deploy, smoke, node, release, audit, migration scripts | this file and `docs/operations/deployment-and-access.md` |
 | `docs/operations/publishing-and-signing-guide.md` | canonical store, certificate, and release artifact guidance | this file and the operations guide itself |
@@ -48,6 +48,9 @@ Legacy filename note:
 | Developer workflow | [docs/developer/developer-guide.md](C:/Users/kiwun/Documents/ai/VPN/docs/developer/developer-guide.md) |
 | Orchestrated work-order process | [docs/developer/orchestration/orchestration-standard.md](C:/Users/kiwun/Documents/ai/VPN/docs/developer/orchestration/orchestration-standard.md) |
 | User journey | [docs/user/portal-vpn-user-guide-ru.md](C:/Users/kiwun/Documents/ai/VPN/docs/user/portal-vpn-user-guide-ru.md) |
+| Design system | [DESIGN.md](C:/Users/kiwun/Documents/ai/VPN/DESIGN.md) and [docs/design/design-system-sync.md](C:/Users/kiwun/Documents/ai/VPN/docs/design/design-system-sync.md) |
+| Open Beta v4 release scope | [docs/product/public-beta-prd.md](C:/Users/kiwun/Documents/ai/VPN/docs/product/public-beta-prd.md) and [docs/operations/public-beta-release-runbook.md](C:/Users/kiwun/Documents/ai/VPN/docs/operations/public-beta-release-runbook.md) |
+| Payment provider readiness | [docs/product/payment-and-access-key-contract.md](C:/Users/kiwun/Documents/ai/VPN/docs/product/payment-and-access-key-contract.md) and [docs/operations/lavatop-payment-operations.md](C:/Users/kiwun/Documents/ai/VPN/docs/operations/lavatop-payment-operations.md) |
 | Client-specific contracts | [C:/Users/kiwun/Documents/ai/POKROV-app/docs/README.md](C:/Users/kiwun/Documents/ai/POKROV-app/docs/README.md) for the live new client lane, plus [app-next Bootstrap Summary](C:/Users/kiwun/Documents/ai/VPN/docs/archive/client-lanes/app-next-bootstrap-summary.md) and [Legacy Bridge Retirement Summary](C:/Users/kiwun/Documents/ai/VPN/docs/archive/client-lanes/legacy-bridge-retirement-summary.md) for archive evidence only |
 
 ## Branches, Worktrees, And Lanes
@@ -98,6 +101,7 @@ Legacy filename note:
 - `ru_probe_runner.py`
 - `remote_transport_front_smoke.py`
 - `smoke_client_apps.py`
+- `runtime_app_download_smoke.py`
 - `ui_visual_smoke.py`
 - `verify_brain_ready.py`
 - `check-links.py`
@@ -148,6 +152,7 @@ Shared-facts and handoff note:
 - `tests/test_portal_api.py`
 - `tests/test_api_auth_and_tickets.py`
 - `tests/test_api_payments_callbacks.py`
+- `tests/test_lavatop_payment_providers.py`
 - `tests/test_api_p0_extensions.py`
 - `tests/test_smart_connect_api.py`
 - `tests/test_network_rollout_api.py`
@@ -183,6 +188,8 @@ Shared-facts and handoff note:
 - `tests/test_client_security_smoke.py`
 - `tests/test_public_copy_guardrails.py`
 - `tests/test_ui_visual_smoke.py`
+- `tests/test_release_gate_check.py`
+- `tests/test_runtime_app_download_smoke.py`
 - `webapp/e2e/admin-gate.spec.ts`
 - `webapp/e2e/cabinet-flow.spec.ts`
 
@@ -200,6 +207,8 @@ Shared-facts and handoff note:
 - `client_security_smoke.py` now validates the `POKROV-app` seed/runtime contract, Android host manifest, and Windows release-seed expectations instead of bridge-fork file paths
 - retained bridge-period bundles and manifests should be stored with the mirrored archive under `C:/Users/kiwun/Documents/ai/POKROV-app/artifacts/releases/bridge/<version>/`
 - `release_gate_check.py` requires `ANDROID_AUDIT_SERIAL=<physical-device-serial>` when Android build gates are requested and rejects emulator serials for that public-release path
+- `release_gate_check.py` passes `ANDROID_AUDIT_PACKAGE` to `android_localhost_audit.py`; default package is `space.pokrov.pokrov_android_shell`
+- `runtime_app_download_smoke.py --redact` is the retained-evidence-safe wrapper around `smoke_client_apps.py`
 - Android release-build localhost-listener audit before connect, after connect, and after disconnect
 - unauthorized local-client attempt against any proxy, DNS, Clash API, or command surface
 - public routing preset smoke for `Global` and `All except RU`

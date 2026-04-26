@@ -14,7 +14,7 @@ from pathlib import Path
 
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
-DEFAULT_PACKAGE = "space.pokrov.vpn"
+DEFAULT_PACKAGE = "space.pokrov.pokrov_android_shell"
 LOCALHOST_HOSTS = {"127.0.0.1", "::1", "[::1]"}
 
 
@@ -37,6 +37,17 @@ class PortProbeResult:
     reachable: bool
     stdout: str
     stderr: str
+
+
+@dataclass(frozen=True)
+class PackageEvidence:
+    package_name: str
+    version_name: str
+    version_code: str
+    installer_package_name: str
+    code_path: str
+    debuggable: bool
+    release_evidence: str
 
 
 def _sdk_root_candidates() -> list[Path]:
@@ -109,6 +120,63 @@ def _is_recoverable_adb_error(output: str) -> bool:
         "no devices/emulators found",
     )
     return any(snippet in normalized for snippet in recoverable_snippets)
+
+
+def _parse_package_evidence(
+    raw: str,
+    *,
+    package_name: str,
+    release_evidence: str = "",
+) -> PackageEvidence:
+    def _first(pattern: str) -> str:
+        match = re.search(pattern, raw)
+        return match.group(1).strip() if match is not None else ""
+
+    flags_blob = _first(r"(?m)^\s*flags=\[([^\]]*)\]")
+    return PackageEvidence(
+        package_name=package_name,
+        version_name=_first(r"\bversionName=([^\s]+)"),
+        version_code=_first(r"\bversionCode=([^\s]+)"),
+        installer_package_name=_first(r"\binstallerPackageName=([^\s]+)"),
+        code_path=_first(r"\bcodePath=([^\s]+)"),
+        debuggable="DEBUGGABLE" in flags_blob.upper() or bool(re.search(r"\bdebuggable=true\b", raw, flags=re.I)),
+        release_evidence=str(release_evidence or "").strip(),
+    )
+
+
+def _collect_package_evidence(
+    *,
+    serial: str,
+    package_name: str,
+    release_evidence: str,
+) -> PackageEvidence:
+    proc = _run_adb_shell(serial, f"dumpsys package {package_name}")
+    if proc.returncode != 0 or package_name not in (proc.stdout or ""):
+        raise RuntimeError((proc.stderr or proc.stdout or f"package {package_name} was not found").strip())
+    return _parse_package_evidence(proc.stdout, package_name=package_name, release_evidence=release_evidence)
+
+
+def _package_evidence_failures(
+    evidence: PackageEvidence,
+    *,
+    require_release_build: bool,
+    expected_version_name: str,
+    expected_version_code: str,
+) -> list[str]:
+    failures: list[str] = []
+    if require_release_build and not evidence.release_evidence:
+        failures.append("release-installed artifact evidence is missing")
+    if require_release_build and evidence.debuggable:
+        failures.append("installed package is debuggable while release build was required")
+    if expected_version_name and evidence.version_name != expected_version_name:
+        failures.append(
+            f"installed versionName {evidence.version_name or '<missing>'} does not match expected {expected_version_name}"
+        )
+    if expected_version_code and evidence.version_code != expected_version_code:
+        failures.append(
+            f"installed versionCode {evidence.version_code or '<missing>'} does not match expected {expected_version_code}"
+        )
+    return failures
 
 
 def _ensure_device_ready(serial: str) -> None:
@@ -337,6 +405,7 @@ def _write_report(
     after_disconnect: list[Listener],
     probes: list[PortProbeResult],
     failures: list[str],
+    package_evidence: PackageEvidence | None = None,
 ) -> None:
     if output_path is None:
         return
@@ -350,6 +419,7 @@ def _write_report(
         "after_disconnect": [asdict(item) for item in after_disconnect],
         "probes": [asdict(item) for item in probes],
         "failures": failures,
+        "package_evidence": asdict(package_evidence) if package_evidence is not None else None,
     }
     output_path.write_text(json.dumps(payload, ensure_ascii=True, indent=2), encoding="utf-8")
 
@@ -358,6 +428,10 @@ def main() -> int:
     parser = argparse.ArgumentParser(description="Audit Android localhost listeners over adb.")
     parser.add_argument("--serial", default="")
     parser.add_argument("--package", default=DEFAULT_PACKAGE)
+    parser.add_argument("--release-evidence", default="")
+    parser.add_argument("--require-release-build", action="store_true")
+    parser.add_argument("--expected-version-name", default="")
+    parser.add_argument("--expected-version-code", default="")
     parser.add_argument("--launch-wait-sec", type=int, default=5)
     parser.add_argument("--connect-wait-sec", type=int, default=0)
     parser.add_argument("--disconnect-wait-sec", type=int, default=0)
@@ -367,6 +441,32 @@ def main() -> int:
     try:
         serial = _select_serial(args.serial.strip() or None)
         _ensure_device_ready(serial)
+        package_evidence: PackageEvidence | None = None
+        package_failures: list[str] = []
+        if (
+            args.require_release_build
+            or str(args.release_evidence or "").strip()
+            or str(args.expected_version_name or "").strip()
+            or str(args.expected_version_code or "").strip()
+        ):
+            package_evidence = _collect_package_evidence(
+                serial=serial,
+                package_name=args.package,
+                release_evidence=args.release_evidence,
+            )
+            package_failures = _package_evidence_failures(
+                package_evidence,
+                require_release_build=bool(args.require_release_build),
+                expected_version_name=str(args.expected_version_name or "").strip(),
+                expected_version_code=str(args.expected_version_code or "").strip(),
+            )
+            print(
+                "[package] "
+                f"{package_evidence.package_name} "
+                f"versionName={package_evidence.version_name or '<missing>'} "
+                f"versionCode={package_evidence.version_code or '<missing>'} "
+                f"debuggable={'yes' if package_evidence.debuggable else 'no'}"
+            )
         baseline = _collect_listeners(serial)
         print(f"[device] {serial}")
         print(f"[phase] baseline listeners: {len(baseline)}")
@@ -405,6 +505,7 @@ def main() -> int:
             after_disconnect=after_disconnect,
             probes=probes,
         )
+        failures.extend(package_failures)
         output = Path(args.output).resolve() if args.output else None
         _write_report(
             output_path=output,
@@ -416,6 +517,7 @@ def main() -> int:
             after_disconnect=after_disconnect,
             probes=probes,
             failures=failures,
+            package_evidence=package_evidence,
         )
         if output is not None:
             print(f"[report] {output}")

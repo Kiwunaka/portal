@@ -378,7 +378,7 @@ GIFT_CARD_TYPES = {
     "standard": {"days": 30, "stars": 249, "name": "Standard"},
     "premium": {"days": 90, "stars": 699, "name": "Premium"},
 }
-PAYMENT_PROVIDER_WHITELIST = {"cardlink", "freekassa", "pally", "platima"}
+PAYMENT_PROVIDER_WHITELIST = {"cardlink", "freekassa", "lavatop", "pally", "platima"}
 FK_NOTIFY_IP_ALLOWLIST = [
     x.strip()
     for x in (os.getenv("FK_NOTIFY_IP_ALLOWLIST") or "").split(",")
@@ -2800,6 +2800,15 @@ def _payload_value(payload: dict[str, Any], *keys: str) -> str:
     return ""
 
 
+def _payload_nested_value(payload: dict[str, Any], *path: str) -> str:
+    current: Any = payload
+    for key in path:
+        if not isinstance(current, dict):
+            return ""
+        current = current.get(key)
+    return str(current or "").strip()
+
+
 def _hmac_sha256_hex(secret: str, data: bytes) -> str:
     return hmac.new(secret.encode("utf-8"), data, hashlib.sha256).hexdigest()
 
@@ -2865,6 +2874,34 @@ async def _read_callback_payload(request: Request) -> tuple[dict[str, Any], byte
     return payload, raw
 
 
+def _verify_lavatop_callback_auth(request: Request) -> tuple[bool, str]:
+    expected_api_key = (os.getenv("LAVATOP_WEBHOOK_API_KEY") or "").strip()
+    expected_basic_user = (os.getenv("LAVATOP_WEBHOOK_BASIC_USERNAME") or "").strip()
+    expected_basic_password = (os.getenv("LAVATOP_WEBHOOK_BASIC_PASSWORD") or "").strip()
+    if not expected_api_key and not (expected_basic_user and expected_basic_password):
+        return False, "missing_lavatop_webhook_secret"
+
+    provided_api_key = str(request.headers.get("X-Api-Key") or request.headers.get("x-api-key") or "").strip()
+    if expected_api_key and provided_api_key:
+        if hmac.compare_digest(provided_api_key, expected_api_key):
+            return True, "ok"
+        return False, "invalid_lavatop_webhook_api_key"
+
+    auth_header = str(request.headers.get("Authorization") or "").strip()
+    if expected_basic_user and expected_basic_password and auth_header.lower().startswith("basic "):
+        token = auth_header.split(" ", 1)[1].strip()
+        try:
+            decoded = base64.b64decode(token.encode("ascii"), validate=True).decode("utf-8")
+        except Exception:
+            return False, "invalid_lavatop_basic_auth"
+        username, sep, password = decoded.partition(":")
+        if sep and hmac.compare_digest(username, expected_basic_user) and hmac.compare_digest(password, expected_basic_password):
+            return True, "ok"
+        return False, "invalid_lavatop_basic_auth"
+
+    return False, "missing_lavatop_webhook_auth"
+
+
 def _verify_callback_signature(*, provider: str, payload: dict[str, Any], raw: bytes, request: Request) -> tuple[bool, str]:
     p = _normalize_provider(provider)
     # Freekassa SCI notify signature:
@@ -2888,6 +2925,8 @@ def _verify_callback_signature(*, provider: str, payload: dict[str, Any], raw: b
             if hmac.compare_digest(str(provided).lower(), expected.lower()):
                 return True, "ok"
             return False, "invalid_signature"
+    if p == "lavatop":
+        return _verify_lavatop_callback_auth(request)
     if p in {"cardlink", "pally", "platima"}:
         return (True, "ok") if verify_provider_callback_signature(p, payload) else (False, "invalid_signature")
 
@@ -2934,7 +2973,7 @@ def _verify_callback_signature(*, provider: str, payload: dict[str, Any], raw: b
 
 def _callback_ids(provider: str, payload: dict[str, Any], raw: bytes) -> tuple[str, str]:
     p = _normalize_provider(provider)
-    if p in {"cardlink", "pally", "platima"}:
+    if p in {"cardlink", "lavatop", "pally", "platima"}:
         order_id, external_id = payment_callback_ids(p, payload)
         if order_id or external_id:
             return order_id, external_id or order_id or hashlib.sha256(raw or b"").hexdigest()[:40]
@@ -3030,10 +3069,22 @@ def _upsert_external_order(
         row = ExternalOrder(provider=provider, order_id=order_id, created_at=_utcnow())
         s.add(row)
     row.tg_id = _safe_int(_payload_value(payload, "tg_id", "telegram_id", "user_id", "us_tg_id")) or row.tg_id
-    row.plan_code = _payload_value(payload, "plan_code", "tariff", "plan", "us_plan_code")
-    row.source = _payload_value(payload, "source", "checkout_source", "us_source")
-    row.campaign = _payload_value(payload, "campaign", "utm_campaign")
-    row.promo_code = _payload_value(payload, "promo_code", "coupon")
+    row.plan_code = (
+        _payload_value(payload, "plan_code", "tariff", "plan", "us_plan_code")
+        or _payload_nested_value(payload, "clientUtm", "utm_term")
+        or row.plan_code
+    )
+    row.source = (
+        _payload_value(payload, "source", "checkout_source", "us_source")
+        or _payload_nested_value(payload, "clientUtm", "utm_medium")
+        or row.source
+    )
+    row.campaign = (
+        _payload_value(payload, "campaign", "utm_campaign")
+        or _payload_nested_value(payload, "clientUtm", "utm_campaign")
+        or row.campaign
+    )
+    row.promo_code = _payload_value(payload, "promo_code", "coupon") or row.promo_code
     row.meta_json = json.dumps(payload, ensure_ascii=False, separators=(",", ":"))[:4000]
     row.amount = _safe_float(_payload_value(payload, "amount", "sum", "amount_paid", "OutSum"))
     row.currency = _payload_value(payload, "currency", "cur", "ccy") or "RUB"
@@ -3159,7 +3210,9 @@ def _apply_external_paid_order(*, provider: str, order_id: str, payload: dict[st
         if tg_id is None:
             return False, "missing_tg_id"
 
-        plan_code = _payload_value(payload, "plan_code", "tariff", "plan", "us_plan_code")
+        plan_code = _payload_value(payload, "plan_code", "tariff", "plan", "us_plan_code") or _payload_nested_value(
+            payload, "clientUtm", "utm_term"
+        )
         if not plan_code and ext_order and ext_order.plan_code:
             plan_code = str(ext_order.plan_code)
         plan_code = (plan_code or "1_month").strip().lower()

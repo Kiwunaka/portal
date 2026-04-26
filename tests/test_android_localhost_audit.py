@@ -177,6 +177,51 @@ udp    UNCONN     0      0      127.0.0.1:9001               0.0.0.0:*
         self.assertTrue(self.module._is_recoverable_adb_error("error: device still authorizing"))
         self.assertFalse(self.module._is_recoverable_adb_error("permission denied"))
 
+    def test_parse_package_evidence_detects_debuggable_and_version(self) -> None:
+        raw = """
+Package [space.pokrov.pokrov_android_shell] (abc):
+  versionCode=42 minSdk=23 targetSdk=35
+  versionName=0.4.0-beta.4
+  installerPackageName=com.android.packageinstaller
+  codePath=/data/app/~~abc/base.apk
+  flags=[ HAS_CODE DEBUGGABLE ALLOW_CLEAR_USER_DATA ]
+"""
+
+        evidence = self.module._parse_package_evidence(
+            raw,
+            package_name="space.pokrov.pokrov_android_shell",
+            release_evidence="apk sha256 abc123",
+        )
+
+        self.assertEqual(evidence.package_name, "space.pokrov.pokrov_android_shell")
+        self.assertEqual(evidence.version_name, "0.4.0-beta.4")
+        self.assertEqual(evidence.version_code, "42")
+        self.assertEqual(evidence.installer_package_name, "com.android.packageinstaller")
+        self.assertTrue(evidence.debuggable)
+        self.assertEqual(evidence.release_evidence, "apk sha256 abc123")
+
+    def test_package_evidence_failures_require_release_build_and_version(self) -> None:
+        evidence = self.module.PackageEvidence(
+            package_name="space.pokrov.pokrov_android_shell",
+            version_name="0.4.0-beta.4",
+            version_code="42",
+            installer_package_name="",
+            code_path="/data/app/base.apk",
+            debuggable=True,
+            release_evidence="apk sha256 abc123",
+        )
+
+        failures = self.module._package_evidence_failures(
+            evidence,
+            require_release_build=True,
+            expected_version_name="0.4.0-beta.5",
+            expected_version_code="43",
+        )
+
+        self.assertIn("installed package is debuggable while release build was required", failures)
+        self.assertIn("installed versionName 0.4.0-beta.4 does not match expected 0.4.0-beta.5", failures)
+        self.assertIn("installed versionCode 42 does not match expected 43", failures)
+
     def test_collect_listeners_recovers_after_transient_adb_failure(self) -> None:
         failure = CompletedProcess(
             args=["adb", "shell", "ss -ltnup"],

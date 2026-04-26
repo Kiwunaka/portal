@@ -26,12 +26,12 @@ Last updated: 2026-04-15
 
 - serial устройства из `adb devices`
 - подтверждение, что на устройстве стоит именно release-сборка
-- имя пакета, если оно отличается от `space.pokrov.vpn`
+- имя пакета, если оно отличается от `space.pokrov.pokrov_android_shell`
 - другое время ожидания, если стандартного не хватает
 
 Значения по умолчанию:
 
-- package: `space.pokrov.vpn`
+- package: `space.pokrov.pokrov_android_shell`
 - `--launch-wait-sec 5`
 - `--connect-wait-sec 30`
 - `--disconnect-wait-sec 15`
@@ -43,7 +43,7 @@ Last updated: 2026-04-15
 3. Из корня репозитория запустите проверку:
 
 ```powershell
-python scripts/android_localhost_audit.py --serial <device-serial> --connect-wait-sec 30 --disconnect-wait-sec 15
+python scripts/android_localhost_audit.py --serial <device-serial> --package space.pokrov.pokrov_android_shell --release-evidence "<artifact/version/checksum>" --require-release-build --connect-wait-sec 30 --disconnect-wait-sec 15
 ```
 
 4. Если имя пакета другое, добавьте:
@@ -75,6 +75,8 @@ ops-local/android-localhost-audit.json
 
 ```powershell
 $env:ANDROID_AUDIT_SERIAL="<device-serial>"
+$env:ANDROID_AUDIT_PACKAGE="space.pokrov.pokrov_android_shell"
+$env:ANDROID_AUDIT_RELEASE_EVIDENCE="<artifact/version/checksum>"
 python scripts/release_gate_check.py --client-platform-gates windows,android-apk,android-aab
 ```
 

@@ -56,16 +56,27 @@ class ReportContext:
 _SECRET_OPTION_RE = re.compile(
     r"(?i)(--(?:token|secret|password|passwd|api-key|auth|authorization|client-secret))\s+([^\s`]+)"
 )
+_TELEGRAM_INIT_OPTION_RE = re.compile(r"(?i)(--init-data)(?:=|\s+)([^\s`]+)")
+_TELEGRAM_INIT_ENV_RE = re.compile(r"(?i)\b(TELEGRAM_INIT_DATA\s*[:=]\s*)([^\s`]+)")
+_TELEGRAM_INIT_HEADER_RE = re.compile(r"(?i)\b(X-Telegram-Init-Data\s*:\s*)([^\r\n`]+)")
+_TELEGRAM_INIT_FIELD_RE = re.compile(
+    r"(?i)\b(query_id|user|auth_date|hash|signature|chat_instance|start_param|can_send_after)=([^&\s`]+)"
+)
 _SECRET_ASSIGNMENT_RE = re.compile(
     r"(?i)\b((?:secret|secret[_-]?key|token|password|passwd|api[_-]?key|client[_-]?secret)\s*[:=]\s*)([^\s`]+)"
 )
 _BEARER_RE = re.compile(r"(?i)\bBearer\s+([A-Za-z0-9._~+/=-]+)")
+DEFAULT_ANDROID_AUDIT_PACKAGE = "space.pokrov.pokrov_android_shell"
 
 
 def _redact_text(text: str) -> str:
     redacted = _SECRET_OPTION_RE.sub(r"\1 <redacted>", str(text or ""))
+    redacted = _TELEGRAM_INIT_OPTION_RE.sub(r"\1 <redacted>", redacted)
+    redacted = _TELEGRAM_INIT_ENV_RE.sub(r"\1<redacted>", redacted)
+    redacted = _TELEGRAM_INIT_HEADER_RE.sub(r"\1<redacted>", redacted)
     redacted = _BEARER_RE.sub("Bearer <redacted>", redacted)
     redacted = _SECRET_ASSIGNMENT_RE.sub(r"\1<redacted>", redacted)
+    redacted = _TELEGRAM_INIT_FIELD_RE.sub(r"\1=<redacted>", redacted)
     return redacted
 
 
@@ -297,7 +308,8 @@ def _optional_runtime_smoke_gate() -> tuple[str, list[str], Path] | None:
         "Client apps runtime smoke",
         [
             sys.executable,
-            "scripts/smoke_client_apps.py",
+            "scripts/runtime_app_download_smoke.py",
+            "--redact",
             "--check-providers",
             "--require-release-handoff",
         ],
@@ -309,22 +321,31 @@ def _optional_android_localhost_audit_gate() -> tuple[str, list[str], Path] | No
     serial = str(os.getenv("ANDROID_AUDIT_SERIAL", "") or "").strip()
     if not serial:
         return None
+    package_name = str(os.getenv("ANDROID_AUDIT_PACKAGE", "") or "").strip() or DEFAULT_ANDROID_AUDIT_PACKAGE
+    release_evidence = str(os.getenv("ANDROID_AUDIT_RELEASE_EVIDENCE", "") or "").strip()
+    expected_version_name = str(os.getenv("ANDROID_AUDIT_EXPECTED_VERSION_NAME", "") or "").strip()
+    expected_version_code = str(os.getenv("ANDROID_AUDIT_EXPECTED_VERSION_CODE", "") or "").strip()
     connect_wait_sec = str(os.getenv("ANDROID_AUDIT_CONNECT_WAIT_SEC", "30") or "30").strip()
     disconnect_wait_sec = str(os.getenv("ANDROID_AUDIT_DISCONNECT_WAIT_SEC", "15") or "15").strip()
-    return (
-        "Android localhost audit",
-        [
-            sys.executable,
-            "scripts/android_localhost_audit.py",
-            "--serial",
-            serial,
-            "--connect-wait-sec",
-            connect_wait_sec,
-            "--disconnect-wait-sec",
-            disconnect_wait_sec,
-        ],
-        REPO_ROOT,
-    )
+    command = [
+        sys.executable,
+        "scripts/android_localhost_audit.py",
+        "--serial",
+        serial,
+        "--package",
+        package_name,
+        "--connect-wait-sec",
+        connect_wait_sec,
+        "--disconnect-wait-sec",
+        disconnect_wait_sec,
+    ]
+    if release_evidence:
+        command.extend(["--release-evidence", release_evidence, "--require-release-build"])
+    if expected_version_name:
+        command.extend(["--expected-version-name", expected_version_name])
+    if expected_version_code:
+        command.extend(["--expected-version-code", expected_version_code])
+    return ("Android localhost audit", command, REPO_ROOT)
 
 
 def _required_android_localhost_audit_gate() -> tuple[str, list[str], Path]:
@@ -337,6 +358,11 @@ def _required_android_localhost_audit_gate() -> tuple[str, list[str], Path]:
     if serial.startswith("emulator-"):
         raise ValueError(
             "ANDROID_AUDIT_SERIAL must reference physical hardware, not an emulator, when Android client build gates are requested"
+        )
+    if not str(os.getenv("ANDROID_AUDIT_RELEASE_EVIDENCE", "") or "").strip():
+        raise ValueError(
+            "ANDROID_AUDIT_RELEASE_EVIDENCE must identify the release-installed artifact, checksum, or handoff record "
+            "when Android client build gates are requested"
         )
     return gate
 

@@ -1,6 +1,6 @@
 # App-First And Bonus Flows
 
-Last updated: 2026-04-25
+Last updated: 2026-04-26
 
 ## Document Status
 
@@ -238,6 +238,7 @@ Contract rule:
 Checkout rule:
 
 - public pricing starts from checkout-first marketing surfaces, with `pokrov.space/checkout/` as the primary public acquisition route
+- payment provider readiness is contractually separate from app-first access; public checkout must remain unavailable or degraded until `docs/product/payment-and-access-key-contract.md` and provider evidence are satisfied
 - `webapp` renewal is continuation-only and should defer to the same hosted activation-key flow
 - Telegram bot billing remains valid as a secondary path
 - raw subscription links remain recovery/manual-request only and must stay hidden from the default commerce UX
@@ -428,4 +429,7 @@ If a username is missing or unusable, the public display should fall back to a n
 - [portal_bot/api.py](C:/Users/kiwun/Documents/ai/VPN/portal_bot/api.py)
 - [portal_bot/bot.py](C:/Users/kiwun/Documents/ai/VPN/portal_bot/bot.py)
 - [portal_bot/worker.py](C:/Users/kiwun/Documents/ai/VPN/portal_bot/worker.py)
+- [docs/architecture/client-downloads-flow.md](C:/Users/kiwun/Documents/ai/VPN/docs/architecture/client-downloads-flow.md)
+- [docs/architecture/payment-state-machine.md](C:/Users/kiwun/Documents/ai/VPN/docs/architecture/payment-state-machine.md)
+- [docs/architecture/support-feedback-flow.md](C:/Users/kiwun/Documents/ai/VPN/docs/architecture/support-feedback-flow.md)
 - [POKROV App Docs Index](C:/Users/kiwun/Documents/ai/POKROV-app/docs/README.md)

@@ -1,6 +1,6 @@
 # Developer Guide
 
-Last updated: 2026-04-24
+Last updated: 2026-04-26
 
 ## Document Status
 
@@ -53,6 +53,14 @@ For orchestrated multi-step work, also read:
 - [docs/developer/orchestration/orchestration-standard.md](C:/Users/kiwun/Documents/ai/VPN/docs/developer/orchestration/orchestration-standard.md)
 - [docs/developer/orchestration/README.md](C:/Users/kiwun/Documents/ai/VPN/docs/developer/orchestration/README.md)
 - [docs/developer/work-orders/README.md](C:/Users/kiwun/Documents/ai/VPN/docs/developer/work-orders/README.md)
+
+For Open Beta v4 release work, also read:
+
+- [docs/product/public-beta-prd.md](C:/Users/kiwun/Documents/ai/VPN/docs/product/public-beta-prd.md)
+- [docs/operations/public-beta-release-runbook.md](C:/Users/kiwun/Documents/ai/VPN/docs/operations/public-beta-release-runbook.md)
+- [docs/operations/runtime-app-download-smoke.md](C:/Users/kiwun/Documents/ai/VPN/docs/operations/runtime-app-download-smoke.md)
+- [docs/operations/android-release-audit.md](C:/Users/kiwun/Documents/ai/VPN/docs/operations/android-release-audit.md)
+- [DESIGN.md](C:/Users/kiwun/Documents/ai/VPN/DESIGN.md)
 
 ## Main Workspaces
 
@@ -198,6 +206,8 @@ Notes:
 - on Windows, `release_gate_check.py` injects a repo-local disposable `--basetemp` for every `python -m pytest ...` subprocess so release gates do not inherit a broken global `%TEMP%\\pytest-of-<user>\\pytest-current` cleanup tail from the workstation.
 - add `--client-platform-gates windows,android-apk,android-aab` or set `CLIENT_PLATFORM_GATES` when you want the same report to include artifact-producing client builds.
 - once `CLIENT_PLATFORM_GATES` includes `android-apk` or `android-aab`, `release_gate_check.py` requires `ANDROID_AUDIT_SERIAL` and treats emulator serials as preflight-only, not as a valid public-release audit.
+- set `ANDROID_AUDIT_PACKAGE` when the physical audit must target a non-default app id; the current default is `space.pokrov.pokrov_android_shell`.
+- when `TELEGRAM_INIT_DATA` is present, `release_gate_check.py` runs `scripts/runtime_app_download_smoke.py --redact` so retained command tails do not expose raw Telegram init data.
 - `scripts/release_orchestrator.py --gates-only` is the one-command entrypoint when you want the documented gate flow without remote deploy, release handoff sync, or post-deploy verify steps.
 - the full `scripts/release_orchestrator.py` path can chain local gates, optional `APP_*` sync, backend deploy, static deploy, optional rollout helpers, and brain-local verify, but it still does not publish binaries or replace separate external-origin evidence
 - latest verified local run: `python scripts/release_orchestrator.py --gates-only` exited `0` on `2026-04-13`; see `docs/audit-artifacts/release_gate_report.md` for the current local gate snapshot.
@@ -205,6 +215,7 @@ Notes:
 - `--release-metadata-file` and `--release-env-file` cannot be combined with `--gates-only`; after client artifacts are published, use the full `release_orchestrator.py` flow to sync runtime download URLs before deploy or verify.
 - `scripts/client_security_smoke.py` is the repo-level static guardrail for the `POKROV-app` seed contract, Android host manifest, runtime-artifact pin, and Windows release-seed expectations; it does not replace the required Android release-build reachability audit.
 - set `ANDROID_AUDIT_SERIAL=<device-serial>` before `release_gate_check.py` when you want the opt-in adb runtime localhost audit folded into the same report
+- set `ANDROID_AUDIT_PACKAGE=space.pokrov.pokrov_android_shell` explicitly in release handoffs when recording Android physical-audit evidence
 - set `ANDROID_AUDIT_CONNECT_WAIT_SEC` and `ANDROID_AUDIT_DISCONNECT_WAIT_SEC` when that adb localhost audit needs non-default timing
 - without `ANDROID_AUDIT_SERIAL`, a green repo/static gate run still does not authorize Android public publication
 - an emulator-backed `ANDROID_AUDIT_SERIAL` run is useful for adb preflight, but the final Android public-release gate still requires `python scripts/android_localhost_audit.py` on physical hardware
@@ -261,6 +272,7 @@ Marketing release rules:
 - pricing CTA should enter through public `/checkout/` with plan context, not directly through `pay.pokrov.space`
 - public-facing marketing and cabinet copy should stay in calm user language rather than transport jargon, raw profile labels, or operator shorthand
 - `robots.ts`, `sitemap.ts`, `manifest.ts`, favicon, apple icon, and share-preview assets are part of the release contract, not optional polish
+- `/checkout/` is part of the canonical marketing sitemap while `/install/` remains a gated/help surface unless public artifact URLs are approved.
 
 ## Frontend Surface Map
 
@@ -356,7 +368,7 @@ Minimum docs to touch when relevant:
 
 Shared-surface rule:
 
-- treat `shared/copy.ts`, `copy/catalog.ru.json`, `shared/product-facts.json`, `shared/public-urls.json`, and `shared/design-tokens.json` as the only governed source set for cross-surface copy, host, product, and design facts
+- treat `shared/copy.ts`, `copy/catalog.ru.json`, `shared/product-facts.json`, `shared/public-urls.json`, `shared/design-tokens.json`, and `shared/design-tokens.schema.json` as the only governed source set for cross-surface copy, host, product, and design facts
 - TypeScript reads those files directly through `shared/*.ts` adapters
 - Python reads those files through `portal_bot/shared_surface_facts.py`
 - `scripts/sync_shared_surface_facts.py` now syncs those facts into `C:/Users/kiwun/Documents/ai/POKROV-app/config/product-contract.seed.json`, `config/runtime-profile.seed.json`, and `config/platform-matrix.seed.json` by default

@@ -45,3 +45,13 @@ def test_marketing_landing_has_quiet_luxury_structure() -> None:
     assert "lp-pricing-shell" in landing
     assert "lp-footer-cta" in landing
     assert '<details className="lp-faq-item">' in landing
+
+
+def test_marketing_sitemap_includes_checkout_route() -> None:
+    marketing_site = _read("lib", "marketing-site.ts")
+    sitemap_block = marketing_site.split(
+        "export const MARKETING_SITEMAP_ROUTES: MarketingRouteConfig[] = [",
+        1,
+    )[1].split("];", 1)[0]
+
+    assert "MARKETING_CANONICAL_PATHS.checkout" in sitemap_block

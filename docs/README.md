@@ -1,6 +1,6 @@
 # POKROV Documentation Index
 
-Last updated: 2026-04-23
+Last updated: 2026-04-26
 
 This directory is split into two classes of material:
 
@@ -67,18 +67,47 @@ Use the role-based paths below first. If you need older context, go to the archi
 ### Product
 
 - [docs/product/portal-vpn-product.md](C:/Users/kiwun/Documents/ai/VPN/docs/product/portal-vpn-product.md)
+- [docs/product/public-beta-prd.md](C:/Users/kiwun/Documents/ai/VPN/docs/product/public-beta-prd.md)
+- [docs/product/payment-and-access-key-contract.md](C:/Users/kiwun/Documents/ai/VPN/docs/product/payment-and-access-key-contract.md)
+- [docs/product/platform-availability.md](C:/Users/kiwun/Documents/ai/VPN/docs/product/platform-availability.md)
+- [docs/product/beta-known-limitations.md](C:/Users/kiwun/Documents/ai/VPN/docs/product/beta-known-limitations.md)
 - [docs/product/pokrov-growth-and-competitor-notes.md](C:/Users/kiwun/Documents/ai/VPN/docs/product/pokrov-growth-and-competitor-notes.md)
 
 ### Architecture
 
 - [docs/architecture/system-overview.md](C:/Users/kiwun/Documents/ai/VPN/docs/architecture/system-overview.md)
 - [docs/architecture/app-first-and-bonus-flows.md](C:/Users/kiwun/Documents/ai/VPN/docs/architecture/app-first-and-bonus-flows.md)
+- [docs/architecture/api-contracts.md](C:/Users/kiwun/Documents/ai/VPN/docs/architecture/api-contracts.md)
+- [docs/architecture/payment-state-machine.md](C:/Users/kiwun/Documents/ai/VPN/docs/architecture/payment-state-machine.md)
+- [docs/architecture/support-feedback-flow.md](C:/Users/kiwun/Documents/ai/VPN/docs/architecture/support-feedback-flow.md)
+- [docs/architecture/client-downloads-flow.md](C:/Users/kiwun/Documents/ai/VPN/docs/architecture/client-downloads-flow.md)
 
 ### Operations
 
 - [docs/operations/deployment-and-access.md](C:/Users/kiwun/Documents/ai/VPN/docs/operations/deployment-and-access.md)
 - [docs/operations/monitoring-and-visibility.md](C:/Users/kiwun/Documents/ai/VPN/docs/operations/monitoring-and-visibility.md)
 - [docs/operations/publishing-and-signing-guide.md](C:/Users/kiwun/Documents/ai/VPN/docs/operations/publishing-and-signing-guide.md)
+- [docs/operations/public-beta-release-runbook.md](C:/Users/kiwun/Documents/ai/VPN/docs/operations/public-beta-release-runbook.md)
+- [docs/operations/lavatop-payment-operations.md](C:/Users/kiwun/Documents/ai/VPN/docs/operations/lavatop-payment-operations.md)
+- [docs/operations/payment-reconciliation.md](C:/Users/kiwun/Documents/ai/VPN/docs/operations/payment-reconciliation.md)
+- [docs/operations/android-release-audit.md](C:/Users/kiwun/Documents/ai/VPN/docs/operations/android-release-audit.md)
+- [docs/operations/runtime-app-download-smoke.md](C:/Users/kiwun/Documents/ai/VPN/docs/operations/runtime-app-download-smoke.md)
+- [docs/operations/ru-origin-probe.md](C:/Users/kiwun/Documents/ai/VPN/docs/operations/ru-origin-probe.md)
+- [docs/operations/rollback-runbook.md](C:/Users/kiwun/Documents/ai/VPN/docs/operations/rollback-runbook.md)
+
+### Design
+
+- [DESIGN.md](C:/Users/kiwun/Documents/ai/VPN/DESIGN.md)
+- [docs/design/design-system-sync.md](C:/Users/kiwun/Documents/ai/VPN/docs/design/design-system-sync.md)
+- [docs/design/generated-assets-policy.md](C:/Users/kiwun/Documents/ai/VPN/docs/design/generated-assets-policy.md)
+
+### Launch
+
+- [docs/launch/open-beta-release-notes.md](C:/Users/kiwun/Documents/ai/VPN/docs/launch/open-beta-release-notes.md)
+- [docs/launch/telegram-announcement.md](C:/Users/kiwun/Documents/ai/VPN/docs/launch/telegram-announcement.md)
+- [docs/launch/support-macros.md](C:/Users/kiwun/Documents/ai/VPN/docs/launch/support-macros.md)
+- [docs/launch/known-issues.md](C:/Users/kiwun/Documents/ai/VPN/docs/launch/known-issues.md)
+- [docs/launch/post-release-monitoring.md](C:/Users/kiwun/Documents/ai/VPN/docs/launch/post-release-monitoring.md)
 
 ### Developer
 
@@ -87,6 +116,8 @@ Use the role-based paths below first. If you need older context, go to the archi
 - [docs/developer/orchestration/README.md](C:/Users/kiwun/Documents/ai/VPN/docs/developer/orchestration/README.md)
 - [docs/developer/orchestration/orchestration-standard.md](C:/Users/kiwun/Documents/ai/VPN/docs/developer/orchestration/orchestration-standard.md)
 - [docs/developer/work-orders/README.md](C:/Users/kiwun/Documents/ai/VPN/docs/developer/work-orders/README.md)
+- [docs/developer/work-orders/2026-04-open-beta-v4/INDEX.md](C:/Users/kiwun/Documents/ai/VPN/docs/developer/work-orders/2026-04-open-beta-v4/INDEX.md)
+- [docs/developer/work-orders/2026-04-open-beta-v4/13-launch-decision.md](C:/Users/kiwun/Documents/ai/VPN/docs/developer/work-orders/2026-04-open-beta-v4/13-launch-decision.md)
 
 ### User
 

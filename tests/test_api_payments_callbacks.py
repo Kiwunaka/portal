@@ -47,6 +47,9 @@ class ApiPaymentCallbacksTests(unittest.TestCase):
             "PALLY_SHOP_ID",
             "PLATIMA_PROJECT_ID",
             "PLATIMA_API_KEY_PROJECT",
+            "LAVATOP_API_KEY",
+            "LAVATOP_OFFER_ID",
+            "LAVATOP_WEBHOOK_API_KEY",
             "RUB_CHECKOUT_ENABLED",
             "ADMIN_ID",
         ):
@@ -65,14 +68,17 @@ class ApiPaymentCallbacksTests(unittest.TestCase):
         os.environ["FK_BOT_API_KEY"] = "fk_api_key_bot_test"
         os.environ["FK_BOT_SECRET_WORD_1"] = "fk_sw1_bot_test"
         os.environ["FK_BOT_SECRET_WORD_2"] = "fk_sw2_bot_test"
-        os.environ["RUB_PAYMENT_PROVIDER_ENABLED"] = "cardlink,pally,platima,freekassa"
-        os.environ["RUB_PAYMENT_PROVIDER_ORDER"] = "cardlink,pally,platima,freekassa"
+        os.environ["RUB_PAYMENT_PROVIDER_ENABLED"] = "lavatop,cardlink,pally,platima,freekassa"
+        os.environ["RUB_PAYMENT_PROVIDER_ORDER"] = "lavatop,cardlink,pally,platima,freekassa"
         os.environ["CARDLINK_API_TOKEN"] = "cardlink_token_test"
         os.environ["CARDLINK_SHOP_ID"] = "cardlink_shop_test"
         os.environ["PALLY_API_TOKEN"] = "pally_token_test"
         os.environ["PALLY_SHOP_ID"] = "pally_shop_test"
         os.environ["PLATIMA_PROJECT_ID"] = "platima_project_test"
         os.environ["PLATIMA_API_KEY_PROJECT"] = "platima_key_project_test"
+        os.environ["LAVATOP_API_KEY"] = "lavatop_api_key_test"
+        os.environ["LAVATOP_OFFER_ID"] = "836b9fc5-7ae9-4a27-9642-592bc44072b7"
+        os.environ["LAVATOP_WEBHOOK_API_KEY"] = "lavatop_webhook_key_test"
         os.environ["RUB_CHECKOUT_ENABLED"] = "true"
         os.environ["ADMIN_ID"] = "9999"
 
@@ -788,6 +794,7 @@ class ApiPaymentCallbacksTests(unittest.TestCase):
         self.assertFalse(body.get("blocked"))
         self.assertEqual(body.get("checkout_mode"), "account_session_first")
         rows = body.get("providers", [])
+        self.assertTrue(any((row.get("code") == "lavatop") for row in rows))
         self.assertTrue(any((row.get("code") == "cardlink") for row in rows))
         self.assertTrue(any((row.get("code") == "pally") for row in rows))
         self.assertTrue(any((row.get("code") == "platima") for row in rows))
@@ -880,6 +887,99 @@ class ApiPaymentCallbacksTests(unittest.TestCase):
             self.assertEqual(str(row.plan_code or ""), "start_99")
         finally:
             s.close()
+
+    def test_lavatop_callback_marks_order_paid_with_api_key_header(self) -> None:
+        client = TestClient(self.api.app)
+
+        from db import SessionLocal
+        from models import ExternalOrder, ExternalPaymentEvent, User
+
+        s = SessionLocal()
+        try:
+            s.add(
+                User(
+                    tg_id=6666,
+                    username="lavatop_user",
+                    uuid=str(uuid.uuid4()),
+                    email="user_6666",
+                    sub_type="FREE",
+                    is_active=True,
+                    tos_accepted=True,
+                )
+            )
+            s.add(
+                ExternalOrder(
+                    order_id="lavatop_bot_6666_test",
+                    provider="lavatop",
+                    tg_id=6666,
+                    plan_code="start_99",
+                    source="bot",
+                    amount=99.0,
+                    currency="RUB",
+                    status="pending",
+                    created_at=self.api._utcnow(),
+                )
+            )
+            s.commit()
+        finally:
+            s.close()
+
+        payload = {
+            "eventType": "payment.success",
+            "contractId": "7ea82675-4ded-4133-95a7-a6efbaf165cc",
+            "amount": 99,
+            "currency": "RUB",
+            "status": "completed",
+            "timestamp": "2026-04-26T10:00:00Z",
+            "clientUtm": {
+                "utm_content": "lavatop_bot_6666_test",
+                "utm_medium": "bot",
+                "utm_campaign": "open_beta",
+                "utm_term": "start_99",
+            },
+            "tg_id": "6666",
+            "plan_code": "start_99",
+            "source": "bot",
+        }
+        response = client.post(
+            "/api/payments/result/lavatop",
+            json=payload,
+            headers={"X-Api-Key": "lavatop_webhook_key_test"},
+        )
+        self.assertEqual(response.status_code, 200, response.text)
+        self.assertTrue(response.json().get("ok"))
+        self.assertTrue(response.json().get("activated"))
+
+        s = SessionLocal()
+        try:
+            row = s.query(ExternalOrder).filter(ExternalOrder.provider == "lavatop", ExternalOrder.order_id == "lavatop_bot_6666_test").first()
+            event = s.query(ExternalPaymentEvent).filter(ExternalPaymentEvent.provider == "lavatop").first()
+            user = s.query(User).filter(User.tg_id == 6666).first()
+            self.assertIsNotNone(row)
+            self.assertIsNotNone(event)
+            self.assertIsNotNone(user)
+            self.assertEqual(str(row.status or ""), "paid")
+            self.assertEqual(str(event.external_id or ""), "7ea82675-4ded-4133-95a7-a6efbaf165cc")
+            self.assertTrue(bool(event.signature_ok))
+            self.assertEqual(str(user.sub_type or ""), "PAID")
+        finally:
+            s.close()
+
+    def test_lavatop_callback_rejects_invalid_webhook_api_key(self) -> None:
+        client = TestClient(self.api.app)
+        payload = {
+            "eventType": "payment.success",
+            "contractId": "0ea82675-4ded-4133-95a7-a6efbaf165cc",
+            "status": "completed",
+            "clientUtm": {"utm_content": "lavatop_bot_bad_key"},
+        }
+        response = client.post(
+            "/api/payments/result/lavatop",
+            json=payload,
+            headers={"X-Api-Key": "wrong_key"},
+        )
+        self.assertEqual(response.status_code, 400, response.text)
+        self.assertIn("Invalid signature", response.text)
 
     def test_pally_callback_marks_order_paid(self) -> None:
         client = TestClient(self.api.app)

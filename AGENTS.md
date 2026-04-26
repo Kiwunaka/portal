@@ -1,6 +1,6 @@
 # Repository Agents
 
-Last updated: 2026-04-23
+Last updated: 2026-04-26
 
 This file is the working contract for any agent or developer operating inside `C:\Users\kiwun\Documents\ai\VPN`.
 
@@ -37,6 +37,33 @@ Use it to answer four questions before touching code:
 - Canonical control-plane host: `82.21.114.104`
 - Android public release is blocked until the repo/static gate pack is green and a physical-device release-build localhost/control-surface audit proves the client is safe
 - RU-origin probe readiness is an operational dependency, not a guaranteed property of `mini`
+- Payment provider launch truth: paid checkout must stay unavailable or clearly degraded until Lava.top credentials, order creation, webhook auth, replay/idempotency, failed-payment, and reconciliation evidence are attached with secrets redacted
+- Current release gate snapshot: Open Beta v4 preparation is allowed; broad public release and `1.0.0` labeling are blocked until all P0 gates are green
+- Design source of truth: root `DESIGN.md` plus `shared/design-tokens.json` and `shared/design-tokens.schema.json`
+
+## Current Release Gate Snapshot
+
+As of `2026-04-26`, Open Beta v4 is a preparation branch, not a public-release authorization.
+
+Blocked P0 gates:
+
+- Lava.top provider proof
+- runtime app-download smoke with env-only Telegram init data
+- Android physical release-build localhost/control-surface audit
+- public Android/Windows handoff URLs
+- RU-origin probe evidence
+- deploy/brain-origin evidence for the exact release candidate
+
+Do not change public copy, deploy notes, or launch announcements to imply broad public availability until these gates have current, redacted evidence.
+
+## Design And Generated Asset Truth
+
+- Root design contract: [DESIGN.md](C:/Users/kiwun/Documents/ai/VPN/DESIGN.md)
+- Token source: [shared/design-tokens.json](C:/Users/kiwun/Documents/ai/VPN/shared/design-tokens.json)
+- Token schema: [shared/design-tokens.schema.json](C:/Users/kiwun/Documents/ai/VPN/shared/design-tokens.schema.json)
+- Generated asset policy: [docs/design/generated-assets-policy.md](C:/Users/kiwun/Documents/ai/VPN/docs/design/generated-assets-policy.md)
+
+Generated assets for public, client, store, support, or release use must include source prompt/reference, source master, final dimensions, intended surface, review note, and release-scope note before shipping.
 
 ## Must-Read Order
 
@@ -85,6 +112,8 @@ Living documentation lives only in these areas:
 - `docs/architecture/`
 - `docs/operations/`
 - `docs/developer/`
+- `docs/design/`
+- `docs/launch/`
 - `docs/user/`
 - `C:/Users/kiwun/Documents/ai/POKROV-app/docs/` as the only active client-doc lane
 
@@ -149,6 +178,7 @@ Current local authority:
 - [shared/product-facts.json](C:/Users/kiwun/Documents/ai/VPN/shared/product-facts.json)
 - [shared/public-urls.json](C:/Users/kiwun/Documents/ai/VPN/shared/public-urls.json)
 - [shared/design-tokens.json](C:/Users/kiwun/Documents/ai/VPN/shared/design-tokens.json)
+- [shared/design-tokens.schema.json](C:/Users/kiwun/Documents/ai/VPN/shared/design-tokens.schema.json)
 
 ### `infra/`
 
@@ -289,7 +319,7 @@ For node-access diagnostics and release handoffs, explicitly distinguish:
 Production source of truth:
 
 - Postgres from `DATABASE_URL`
-- shared hostnames, public copy, and locked cross-surface facts from `shared/portal-config.ts`, `shared/copy.ts`, `shared/product-facts.json`, `shared/public-urls.json`, and `shared/design-tokens.json`
+- shared hostnames, public copy, locked cross-surface facts, and design contracts from `shared/portal-config.ts`, `shared/copy.ts`, `shared/product-facts.json`, `shared/public-urls.json`, `shared/design-tokens.json`, and `shared/design-tokens.schema.json`
 
 Repository source-of-truth rule:
 

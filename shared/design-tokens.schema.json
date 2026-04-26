@@ -1,0 +1,156 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://pokrov.space/schemas/design-tokens.schema.json",
+  "title": "POKROV Design Tokens",
+  "type": "object",
+  "required": ["theme", "brand", "glass", "density", "component", "iconography", "motion", "accessibility"],
+  "additionalProperties": false,
+  "properties": {
+    "theme": {
+      "type": "object",
+      "required": ["name", "version", "palette", "semantic", "radius", "shadow", "typography"],
+      "additionalProperties": false,
+      "properties": {
+        "name": { "type": "string", "minLength": 1 },
+        "version": { "type": "string", "minLength": 1 },
+        "palette": {
+          "type": "object",
+          "required": [
+            "canvas",
+            "canvas_alt",
+            "surface",
+            "surface_strong",
+            "surface_subtle",
+            "surface_muted",
+            "surface_dark",
+            "surface_dark_strong",
+            "text",
+            "text_soft",
+            "text_muted",
+            "text_inverse",
+            "emerald",
+            "emerald_strong",
+            "emerald_soft",
+            "emerald_dark",
+            "mint",
+            "mint_strong",
+            "sage",
+            "gold_soft",
+            "line",
+            "line_strong",
+            "line_dark",
+            "focus_ring"
+          ],
+          "additionalProperties": { "type": "string", "minLength": 1 }
+        },
+        "semantic": {
+          "type": "object",
+          "required": ["success", "warning", "danger", "info"],
+          "additionalProperties": false,
+          "properties": {
+            "success": { "$ref": "#/$defs/statusToken" },
+            "warning": { "$ref": "#/$defs/statusToken" },
+            "danger": { "$ref": "#/$defs/statusToken" },
+            "info": { "$ref": "#/$defs/statusToken" }
+          }
+        },
+        "radius": {
+          "type": "object",
+          "required": ["card", "panel", "modal", "control", "tile", "pill", "app_connect"],
+          "additionalProperties": { "type": "string", "minLength": 1 }
+        },
+        "shadow": {
+          "type": "object",
+          "required": ["soft", "medium", "strong", "focus"],
+          "additionalProperties": { "type": "string", "minLength": 1 }
+        },
+        "typography": {
+          "type": "object",
+          "required": [
+            "body_family",
+            "display_family",
+            "mono_family",
+            "letter_spacing",
+            "compact_line_height",
+            "body_line_height"
+          ],
+          "additionalProperties": { "type": "string", "minLength": 1 }
+        }
+      }
+    },
+    "brand": {
+      "type": "object",
+      "required": ["public_name", "approved_assets", "legacy_reference_assets", "asset_policy"],
+      "additionalProperties": true
+    },
+    "glass": {
+      "type": "object",
+      "required": ["content_planes", "overlay_planes", "max_blur", "border_alpha"],
+      "additionalProperties": { "type": "string", "minLength": 1 }
+    },
+    "density": {
+      "type": "object",
+      "required": ["public", "cabinet", "admin", "product"],
+      "additionalProperties": false,
+      "properties": {
+        "public": { "$ref": "#/$defs/densityToken" },
+        "cabinet": { "$ref": "#/$defs/densityToken" },
+        "admin": { "$ref": "#/$defs/densityToken" },
+        "product": { "$ref": "#/$defs/densityToken" }
+      }
+    },
+    "component": {
+      "type": "object",
+      "required": ["button", "nav", "card", "table", "app_connect"],
+      "additionalProperties": true
+    },
+    "iconography": {
+      "type": "object",
+      "required": ["web_default", "web_shell_legacy", "client_default", "line_weight", "policy"],
+      "additionalProperties": { "type": "string", "minLength": 1 }
+    },
+    "motion": {
+      "type": "object",
+      "required": [
+        "section_narrative",
+        "surface_hover",
+        "duration_fast",
+        "duration_base",
+        "duration_slow",
+        "easing",
+        "reduced_motion_fallback"
+      ],
+      "additionalProperties": { "type": "string", "minLength": 1 }
+    },
+    "accessibility": {
+      "type": "object",
+      "required": ["focus_visible", "min_touch_target", "browser_checks", "contrast_floor"],
+      "additionalProperties": true
+    }
+  },
+  "$defs": {
+    "statusToken": {
+      "type": "object",
+      "required": ["bg", "text", "line"],
+      "additionalProperties": false,
+      "properties": {
+        "bg": { "type": "string", "minLength": 1 },
+        "text": { "type": "string", "minLength": 1 },
+        "line": { "type": "string", "minLength": 1 }
+      }
+    },
+    "densityToken": {
+      "type": "object",
+      "required": ["card_padding", "panel_padding", "grid_gap", "section_gap", "radius_card", "radius_panel"],
+      "additionalProperties": false,
+      "properties": {
+        "card_padding": { "type": "string", "minLength": 1 },
+        "panel_padding": { "type": "string", "minLength": 1 },
+        "grid_gap": { "type": "string", "minLength": 1 },
+        "section_gap": { "type": "string", "minLength": 1 },
+        "radius_card": { "type": "string", "minLength": 1 },
+        "radius_panel": { "type": "string", "minLength": 1 }
+      }
+    }
+  }
+}

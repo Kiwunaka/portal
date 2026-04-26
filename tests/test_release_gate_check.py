@@ -54,13 +54,34 @@ class ReleaseGateCheckTests(unittest.TestCase):
         self.assertIsNone(gate)
 
     def test_android_localhost_audit_gate_uses_configured_serial(self) -> None:
-        with patch.dict(self.module.os.environ, {"ANDROID_AUDIT_SERIAL": "emulator-5554"}, clear=True):
+        env = {
+            "ANDROID_AUDIT_SERIAL": "emulator-5554",
+            "ANDROID_AUDIT_RELEASE_EVIDENCE": "apk sha256 abc123",
+        }
+        with patch.dict(self.module.os.environ, env, clear=True):
             name, cmd, cwd = self.module._optional_android_localhost_audit_gate()
 
         self.assertEqual(name, "Android localhost audit")
         self.assertEqual(cmd[:3], [sys.executable, "scripts/android_localhost_audit.py", "--serial"])
         self.assertIn("emulator-5554", cmd)
+        self.assertIn("--package", cmd)
+        self.assertIn("space.pokrov.pokrov_android_shell", cmd)
+        self.assertIn("--release-evidence", cmd)
+        self.assertIn("apk sha256 abc123", cmd)
+        self.assertIn("--require-release-build", cmd)
         self.assertEqual(cwd, self.module.REPO_ROOT)
+
+    def test_android_localhost_audit_gate_uses_configured_package(self) -> None:
+        env = {
+            "ANDROID_AUDIT_SERIAL": "R58N12345AB",
+            "ANDROID_AUDIT_PACKAGE": "space.pokrov.custom",
+            "ANDROID_AUDIT_RELEASE_EVIDENCE": "apk sha256 abc123",
+        }
+        with patch.dict(self.module.os.environ, env, clear=True):
+            _name, cmd, _cwd = self.module._optional_android_localhost_audit_gate()
+
+        package_index = cmd.index("--package") + 1
+        self.assertEqual(cmd[package_index], "space.pokrov.custom")
 
     def test_required_android_localhost_audit_gate_requires_serial(self) -> None:
         with patch.dict(self.module.os.environ, {}, clear=True):
@@ -72,12 +93,22 @@ class ReleaseGateCheckTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, "physical hardware"):
                 self.module._required_android_localhost_audit_gate()
 
-    def test_required_android_localhost_audit_gate_accepts_physical_serial(self) -> None:
+    def test_required_android_localhost_audit_gate_requires_release_evidence(self) -> None:
         with patch.dict(self.module.os.environ, {"ANDROID_AUDIT_SERIAL": "R58N12345AB"}, clear=True):
+            with self.assertRaisesRegex(ValueError, "ANDROID_AUDIT_RELEASE_EVIDENCE"):
+                self.module._required_android_localhost_audit_gate()
+
+    def test_required_android_localhost_audit_gate_accepts_physical_serial(self) -> None:
+        env = {
+            "ANDROID_AUDIT_SERIAL": "R58N12345AB",
+            "ANDROID_AUDIT_RELEASE_EVIDENCE": "apk sha256 abc123",
+        }
+        with patch.dict(self.module.os.environ, env, clear=True):
             name, cmd, cwd = self.module._required_android_localhost_audit_gate()
 
         self.assertEqual(name, "Android localhost audit")
         self.assertIn("R58N12345AB", cmd)
+        self.assertIn("--require-release-build", cmd)
         self.assertEqual(cwd, self.module.REPO_ROOT)
 
     def test_select_android_localhost_audit_gate_is_optional_without_android_builds(self) -> None:
@@ -99,6 +130,40 @@ class ReleaseGateCheckTests(unittest.TestCase):
             self.module._parse_client_platform_gates("android-apk"),
             ["android-apk"],
         )
+
+    def test_runtime_smoke_gate_uses_redacting_wrapper(self) -> None:
+        with patch.dict(self.module.os.environ, {"TELEGRAM_INIT_DATA": "query_id=AAA&hash=secret"}, clear=True):
+            name, cmd, cwd = self.module._optional_runtime_smoke_gate()
+
+        self.assertEqual(name, "Client apps runtime smoke")
+        self.assertIn("scripts/runtime_app_download_smoke.py", cmd)
+        self.assertIn("--redact", cmd)
+        self.assertNotIn("scripts/smoke_client_apps.py", cmd)
+        self.assertEqual(cwd, self.module.REPO_ROOT)
+
+    def test_redact_text_covers_telegram_init_data_and_query_fields(self) -> None:
+        raw = (
+            "python scripts/smoke_client_apps.py --init-data query_id=AAH&user=%7B%22id%22%3A1%7D"
+            "&auth_date=1710000000&hash=supersecret "
+            "--init-data=query_id=DDD&signature=sig&chat_instance=chat&hash=equalform "
+            "TELEGRAM_INIT_DATA=query_id=BBB&hash=hidden "
+            "X-Telegram-Init-Data: query_id=CCC&user={id:2}&signature=abc&chat_instance=123&hash=def"
+        )
+
+        redacted = self.module._redact_text(raw)
+
+        self.assertNotIn("supersecret", redacted)
+        self.assertNotIn("hidden", redacted)
+        self.assertNotIn("equalform", redacted)
+        self.assertNotIn("signature=sig", redacted)
+        self.assertNotIn("chat_instance=chat", redacted)
+        self.assertNotIn("query_id=AAH", redacted)
+        self.assertNotIn("query_id=BBB", redacted)
+        self.assertNotIn("query_id=CCC", redacted)
+        self.assertNotIn("query_id=DDD", redacted)
+        self.assertIn("--init-data <redacted>", redacted)
+        self.assertIn("TELEGRAM_INIT_DATA=<redacted>", redacted)
+        self.assertIn("X-Telegram-Init-Data: <redacted>", redacted)
 
 
 if __name__ == "__main__":

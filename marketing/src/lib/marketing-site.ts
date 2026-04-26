@@ -58,6 +58,7 @@ export const MARKETING_SITEMAP_ROUTES: MarketingRouteConfig[] = [
   { path: MARKETING_CANONICAL_PATHS.youtube, changeFrequency: "weekly", priority: 0.82 },
   { path: MARKETING_CANONICAL_PATHS.tiktok, changeFrequency: "weekly", priority: 0.82 },
   { path: MARKETING_CANONICAL_PATHS.telegram, changeFrequency: "weekly", priority: 0.78 },
+  { path: MARKETING_CANONICAL_PATHS.checkout, changeFrequency: "weekly", priority: 0.76 },
   { path: MARKETING_CANONICAL_PATHS.offer, changeFrequency: "monthly", priority: 0.36 },
   { path: MARKETING_CANONICAL_PATHS.privacy, changeFrequency: "monthly", priority: 0.34 },
 ];

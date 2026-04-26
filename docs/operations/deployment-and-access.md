@@ -1,6 +1,6 @@
 # Deployment And Access
 
-Last updated: 2026-04-25
+Last updated: 2026-04-26
 
 ## Document Status
 
@@ -152,6 +152,13 @@ Use these when the release is blocked on one narrow operational step and the nex
 - [Email Delivery Webhook Handoff](C:/Users/kiwun/Documents/ai/VPN/docs/operations/email-delivery-webhook-handoff.md)
 - [Release Links And Final Handoff](C:/Users/kiwun/Documents/ai/VPN/docs/operations/release-links-and-final-handoff.md)
 - [RU Origin Probe Handoff](C:/Users/kiwun/Documents/ai/VPN/docs/operations/ru-origin-probe-handoff.md)
+- [Public Beta Release Runbook](C:/Users/kiwun/Documents/ai/VPN/docs/operations/public-beta-release-runbook.md)
+- [Runtime App Download Smoke](C:/Users/kiwun/Documents/ai/VPN/docs/operations/runtime-app-download-smoke.md)
+- [Lava.top Payment Operations](C:/Users/kiwun/Documents/ai/VPN/docs/operations/lavatop-payment-operations.md)
+
+### Lava.top Checkout Enablement
+
+The backend supports `lavatop` as a RUB provider, but it must stay out of `RUB_PAYMENT_PROVIDER_ENABLED` until provider evidence is attached. Required env is documented in [Lava.top Payment Operations](C:/Users/kiwun/Documents/ai/VPN/docs/operations/lavatop-payment-operations.md): `LAVATOP_API_KEY`, `LAVATOP_OFFER_ID` or per-plan `LAVATOP_OFFER_ID_<PLAN_CODE>`, and either `LAVATOP_WEBHOOK_API_KEY` or Basic webhook credentials.
 
 ### External RU probe runner
 
@@ -434,6 +441,8 @@ Release gate rule:
 - `client_security_smoke.py` is the static repo-level gate for default local-surface settings, routing preset groundwork, and known localhost control paths; it does not replace the Android release-build port and reachability audit
 - set `ANDROID_AUDIT_SERIAL=<device-serial>` when running `release_gate_check.py` if you want the opt-in adb localhost audit folded into the same markdown report
 - set `ANDROID_AUDIT_CONNECT_WAIT_SEC` and `ANDROID_AUDIT_DISCONNECT_WAIT_SEC` when the adb localhost audit needs non-default timing in the same report
+- set `ANDROID_AUDIT_PACKAGE=space.pokrov.pokrov_android_shell` for the active Android shell unless a release candidate deliberately changes the package id
+- when `TELEGRAM_INIT_DATA` is available, retain evidence through `python scripts/runtime_app_download_smoke.py --redact --check-providers --require-release-handoff`
 - add `--client-platform-gates windows,android-apk,android-aab` or set `CLIENT_PLATFORM_GATES` when you want the same markdown report to include artifact-producing client builds
 - the latest documented `release_orchestrator.py --gates-only` success is a local-only proof and does not replace live deploy, live node enablement, or three-origin network evidence
 - Android public release must also include a release-build localhost-listener audit covering proxy, DNS, command-server, and admin/control surfaces before connect, after connect, and after disconnect; green repo/static gates are necessary but not sufficient
@@ -586,7 +595,7 @@ Signed release path:
 - Android signing requires `ANDROID_SIGNING_KEY`, `ANDROID_SIGNING_STORE_PASSWORD`, `ANDROID_SIGNING_KEY_PASSWORD`, `ANDROID_SIGNING_KEY_ALIAS`
 - Windows signing requires `WINDOWS_SIGNING_KEY`, `WINDOWS_SIGNING_PASSWORD`
 - without those secrets, local builds are valid only as unsigned smoke artifacts
-- keep Android `applicationId` on `space.pokrov.vpn`, but keep Gradle `namespace` on `com.hiddify.hiddify` until the Kotlin package tree is migrated too
+- current `POKROV-app` Android shell package and namespace are `space.pokrov.pokrov_android_shell`; set `ANDROID_AUDIT_PACKAGE` to that value unless a release candidate intentionally changes package identity
 
 Android release-block rule:
 
