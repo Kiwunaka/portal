@@ -27,10 +27,10 @@ SMTP_FROM = str(os.getenv("EMAIL_RELAY_FROM") or "POKROV <noreply@pokrov.space>"
 SMTP_USE_TLS = str(os.getenv("EMAIL_RELAY_SMTP_TLS") or "true").strip().lower() in {"1", "true", "yes", "on"}
 RELAY_SECRET = str(os.getenv("EMAIL_DELIVERY_WEBHOOK_SECRET") or "").strip()
 PUBLIC_APP_URL = str(os.getenv("WEBAPP_URL") or "https://app.pokrov.space/").strip()
-LOGO_URL = str(os.getenv("EMAIL_RELAY_LOGO_URL") or "https://pokrov.space/pokrov-logo.svg").strip()
+LOGO_URL = str(os.getenv("EMAIL_RELAY_LOGO_URL") or "https://pokrov.space/logowithtext-email.png").strip()
 LOGO_PATH = str(
     os.getenv("EMAIL_RELAY_LOGO_PATH")
-    or Path(__file__).resolve().parents[1] / "logo" / "logowithtext.svg"
+    or Path(__file__).resolve().parents[1] / "logo" / "logowithtext-email.png"
 ).strip()
 LOGO_CID = "pokrov-logo@pokrov.space"
 COLOR_BACKGROUND = "#F6FAF7"
@@ -81,9 +81,17 @@ def _app_url(path: str) -> str:
 
 def _logo_available() -> bool:
     try:
-        return bool(LOGO_PATH and Path(LOGO_PATH).is_file())
+        path = Path(LOGO_PATH)
+        return bool(path.is_file() and path.suffix.lower() in {".png", ".jpg", ".jpeg"})
     except Exception:
         return False
+
+
+def _logo_mime_subtype() -> str:
+    suffix = Path(LOGO_PATH).suffix.lower()
+    if suffix in {".jpg", ".jpeg"}:
+        return "jpeg"
+    return "png"
 
 
 def _logo_src() -> str:
@@ -106,9 +114,8 @@ def _attach_logo(message: EmailMessage) -> None:
     html_part.add_related(
         logo_bytes,
         maintype="image",
-        subtype="svg+xml",
+        subtype=_logo_mime_subtype(),
         cid=f"<{LOGO_CID}>",
-        filename="logowithtext.svg",
     )
 
 
@@ -129,7 +136,7 @@ def _email_html(*, title: str, intro: str, code_label: str, code: str, action_la
           <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width:560px;background:#ffffff;border:1px solid #dce9df;border-radius:16px;overflow:hidden;">
             <tr>
               <td style="padding:28px 28px 10px 28px;">
-                <img src="{safe_logo_url}" width="156" alt="POKROV" style="display:block;border:0;margin-bottom:18px;max-width:156px;height:auto;" />
+                <img src="{safe_logo_url}" width="132" alt="POKROV VPN" style="display:block;border:0;margin-bottom:18px;max-width:132px;height:auto;" />
                 <div style="font-size:13px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:{COLOR_ACCENT};margin-bottom:12px;">POKROV VPN</div>
                 <h1 style="font-size:22px;line-height:1.25;margin:0 0 12px 0;color:{COLOR_TEXT};">{safe_title}</h1>
                 <p style="font-size:15px;line-height:1.6;margin:0;color:{COLOR_TEXT};opacity:0.82;">{safe_intro}</p>
