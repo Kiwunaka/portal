@@ -5,6 +5,7 @@ import html
 import os
 import smtplib
 from email.message import EmailMessage
+from pathlib import Path
 from typing import Any
 from urllib.parse import quote
 
@@ -27,6 +28,14 @@ SMTP_USE_TLS = str(os.getenv("EMAIL_RELAY_SMTP_TLS") or "true").strip().lower() 
 RELAY_SECRET = str(os.getenv("EMAIL_DELIVERY_WEBHOOK_SECRET") or "").strip()
 PUBLIC_APP_URL = str(os.getenv("WEBAPP_URL") or "https://app.pokrov.space/").strip()
 LOGO_URL = str(os.getenv("EMAIL_RELAY_LOGO_URL") or "https://pokrov.space/pokrov-logo.svg").strip()
+LOGO_PATH = str(
+    os.getenv("EMAIL_RELAY_LOGO_PATH")
+    or Path(__file__).resolve().parents[1] / "logo" / "logowithtext.svg"
+).strip()
+LOGO_CID = "pokrov-logo@pokrov.space"
+COLOR_BACKGROUND = "#F6FAF7"
+COLOR_TEXT = "#14211A"
+COLOR_ACCENT = "#0F7A4F"
 
 
 class EmailDeliveryIn(BaseModel):
@@ -70,6 +79,39 @@ def _app_url(path: str) -> str:
     return f"{base}/{path.lstrip('/')}"
 
 
+def _logo_available() -> bool:
+    try:
+        return bool(LOGO_PATH and Path(LOGO_PATH).is_file())
+    except Exception:
+        return False
+
+
+def _logo_src() -> str:
+    if _logo_available():
+        return f"cid:{LOGO_CID}"
+    return LOGO_URL
+
+
+def _attach_logo(message: EmailMessage) -> None:
+    if not _logo_available():
+        return
+    try:
+        logo_bytes = Path(LOGO_PATH).read_bytes()
+    except Exception:
+        return
+    payload = message.get_payload()
+    html_part = payload[-1] if isinstance(payload, list) and payload else None
+    if not isinstance(html_part, EmailMessage):
+        return
+    html_part.add_related(
+        logo_bytes,
+        maintype="image",
+        subtype="svg+xml",
+        cid=f"<{LOGO_CID}>",
+        filename="logowithtext.svg",
+    )
+
+
 def _email_html(*, title: str, intro: str, code_label: str, code: str, action_label: str, action_url: str) -> str:
     safe_title = html.escape(title)
     safe_intro = html.escape(intro)
@@ -77,31 +119,32 @@ def _email_html(*, title: str, intro: str, code_label: str, code: str, action_la
     safe_code = html.escape(code)
     safe_action_label = html.escape(action_label)
     safe_action_url = html.escape(action_url, quote=True)
-    safe_logo_url = html.escape(LOGO_URL, quote=True)
+    safe_logo_url = html.escape(_logo_src(), quote=True)
     return f"""<!doctype html>
 <html lang="ru">
-  <body style="margin:0;background:#f5f7fb;font-family:Arial,Helvetica,sans-serif;color:#142236;">
-    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background:#f5f7fb;padding:28px 12px;">
+  <body style="margin:0;background:{COLOR_BACKGROUND};font-family:Arial,Helvetica,sans-serif;color:{COLOR_TEXT};">
+    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background:{COLOR_BACKGROUND};padding:28px 12px;">
       <tr>
         <td align="center">
-          <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width:560px;background:#ffffff;border:1px solid #e5ebf3;border-radius:16px;overflow:hidden;">
+          <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width:560px;background:#ffffff;border:1px solid #dce9df;border-radius:16px;overflow:hidden;">
             <tr>
               <td style="padding:28px 28px 10px 28px;">
-                <img src="{safe_logo_url}" width="52" height="52" alt="POKROV" style="display:block;border:0;margin-bottom:18px;" />
-                <h1 style="font-size:22px;line-height:1.25;margin:0 0 12px 0;color:#102033;">{safe_title}</h1>
-                <p style="font-size:15px;line-height:1.6;margin:0;color:#46566b;">{safe_intro}</p>
+                <img src="{safe_logo_url}" width="156" alt="POKROV" style="display:block;border:0;margin-bottom:18px;max-width:156px;height:auto;" />
+                <div style="font-size:13px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:{COLOR_ACCENT};margin-bottom:12px;">POKROV VPN</div>
+                <h1 style="font-size:22px;line-height:1.25;margin:0 0 12px 0;color:{COLOR_TEXT};">{safe_title}</h1>
+                <p style="font-size:15px;line-height:1.6;margin:0;color:{COLOR_TEXT};opacity:0.82;">{safe_intro}</p>
               </td>
             </tr>
             <tr>
               <td style="padding:18px 28px;">
-                <div style="font-size:13px;color:#7a8798;margin-bottom:8px;">{safe_code_label}</div>
-                <div style="font-size:22px;line-height:1.35;letter-spacing:0.02em;font-weight:700;color:#102033;background:#f2f6fb;border:1px solid #dfe8f2;border-radius:10px;padding:14px 16px;word-break:break-all;">{safe_code}</div>
+                <div style="font-size:13px;color:{COLOR_TEXT};opacity:0.62;margin-bottom:8px;">{safe_code_label}</div>
+                <div style="font-size:22px;line-height:1.35;letter-spacing:0.02em;font-weight:700;color:{COLOR_TEXT};background:{COLOR_BACKGROUND};border:1px solid #cfe3d5;border-radius:10px;padding:14px 16px;word-break:break-all;">{safe_code}</div>
               </td>
             </tr>
             <tr>
               <td style="padding:4px 28px 30px 28px;">
-                <a href="{safe_action_url}" style="display:inline-block;background:#1565c0;color:#ffffff;text-decoration:none;font-weight:700;font-size:15px;border-radius:10px;padding:13px 18px;">{safe_action_label}</a>
-                <p style="font-size:12px;line-height:1.55;margin:18px 0 0 0;color:#7a8798;">Если кнопка не открывается, скопируйте ссылку: <br><span style="word-break:break-all;">{safe_action_url}</span></p>
+                <a href="{safe_action_url}" style="display:inline-block;background:{COLOR_ACCENT};color:#ffffff;text-decoration:none;font-weight:700;font-size:15px;border-radius:10px;padding:13px 18px;">{safe_action_label}</a>
+                <p style="font-size:12px;line-height:1.55;margin:18px 0 0 0;color:{COLOR_TEXT};opacity:0.62;">Если кнопка не открывается, скопируйте ссылку: <br><span style="word-break:break-all;">{safe_action_url}</span></p>
               </td>
             </tr>
           </table>
@@ -194,6 +237,7 @@ def _send_email(*, to_email: str, subject: str, body: str, html_body: str) -> No
     message["Subject"] = subject
     message.set_content(body)
     message.add_alternative(html_body, subtype="html")
+    _attach_logo(message)
     with smtplib.SMTP(SMTP_HOST, SMTP_PORT, timeout=20) as smtp:
         if SMTP_USE_TLS:
             smtp.starttls()
