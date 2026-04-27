@@ -49,11 +49,11 @@ class VerifyBrainReadyTests(unittest.TestCase):
         cmd = self.module._curl_retry(
             "pay.pokrov.space/checkout/",
             host="pay.pokrov.space",
-            contains_any=("checkout-shell", "activation key"),
+            contains_any=("checkout-shell", "ключ доступа"),
         )
 
         self.assertIn("checkout-shell", cmd)
-        self.assertIn("activation key", cmd)
+        self.assertIn("ключ доступа", cmd)
         self.assertIn("||", cmd)
         self.assertIn("head -c 200", cmd)
 

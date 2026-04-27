@@ -310,7 +310,7 @@ def main() -> int:
                 _curl_retry(
                     "pay.pokrov.space/checkout/",
                     host="pay.pokrov.space",
-                    contains_any=("checkout-shell", "activation key", "https://pokrov.space/checkout/"),
+                    contains_any=("checkout-shell", "ключ доступа", "https://pokrov.space/checkout/"),
                 ),
             ),
             ("fkverify443", _curl_retry(f"{web_domain}/fk-verify.html", host=web_domain)),

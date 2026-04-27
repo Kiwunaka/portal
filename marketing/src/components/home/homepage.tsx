@@ -162,7 +162,7 @@ function ProductVisual() {
         <div className={styles.desktopBody}>
           <aside className={styles.sidebar}>
             <div className={styles.brandMini}>
-              <div className={styles.brandMarkMini} />
+              <img className={styles.brandMarkMini} src="/pokrov-logo.svg" alt="" aria-hidden="true" />
               <div>
                 <strong>POKROV</strong>
                 <small>спокойный доступ</small>
@@ -317,7 +317,7 @@ export default function MarketingHomePage() {
       <div className={styles.page}>
         <header className={styles.topbar}>
           <Link href="/" className={styles.brand}>
-            <span className={styles.brandMark} aria-hidden="true" />
+            <img className={styles.brandMark} src="/pokrov-logo.svg" alt="" aria-hidden="true" />
             <span className={styles.brandText}>
               <strong>POKROV</strong>
               <small>спокойный цифровой маршрут на каждый день</small>

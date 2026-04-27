@@ -51,6 +51,18 @@ PUBLIC_BETA_SURFACE_FILES = [
 
 PUBLIC_BETA_SURFACE_FORBIDDEN_PATTERNS = [
     re.compile(r"Paid beta", re.IGNORECASE),
+    re.compile(r"All except RU", re.IGNORECASE),
+    re.compile(r"premium trial", re.IGNORECASE),
+    re.compile(r"raw subscription link", re.IGNORECASE),
+    re.compile(r"managed premium", re.IGNORECASE),
+    re.compile(r"activation key", re.IGNORECASE),
+    re.compile(r"First-party promo slots", re.IGNORECASE),
+    re.compile(r"Support and manual recovery", re.IGNORECASE),
+    re.compile(r"consumer path", re.IGNORECASE),
+    re.compile(r"Default route", re.IGNORECASE),
+    re.compile(r"hosted checkout", re.IGNORECASE),
+    re.compile(r"app-first", re.IGNORECASE),
+    re.compile(r"key-first", re.IGNORECASE),
     re.compile(r"оплачиваемая\s+бета", re.IGNORECASE),
     re.compile(r"ограничен[а-яё\s]+приглаш", re.IGNORECASE),
     re.compile(r"до\s+25\s+активн", re.IGNORECASE),

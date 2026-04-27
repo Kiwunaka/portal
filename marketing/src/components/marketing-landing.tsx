@@ -71,54 +71,54 @@ type GlyphName = "route" | "shield" | "signal" | "window" | "orbit" | "arc";
 
 const HERO_SIGNALS: HeroSignal[] = [
   {
-    label: "Бета scope",
+    label: "Платформы",
     value: "Android + Windows",
-    detail: "Android — внутренний APK, Windows — бета-сборка; Apple остается readiness-направлением без публичного promise.",
+    detail: "Основной путь сейчас собран для телефона и компьютера. Apple-направление остается в подготовке.",
   },
   {
     label: "Стартовый доступ",
-    value: "5 дней trial",
-    detail: "Первый валидный device получает premium trial без обязательной регистрации.",
+    value: "5 дней бесплатно",
+    detail: "Сначала можно спокойно проверить сервис на своем устройстве без обязательной регистрации.",
   },
   {
-    label: "Default route",
-    value: "All except RU",
-    detail: "Одна логическая локация POKROV, а transport variants скрыты в auto/diagnostics/admin.",
+    label: "Маршрут",
+    value: "Все, кроме RU",
+    detail: "На первом экране остается понятный повседневный режим без технических вариантов.",
   },
 ];
 
 const DEFAULT_SCENARIOS: ScenarioCard[] = [
   {
-    eyebrow: "App-first",
+    eyebrow: "Приложение сначала",
     glyph: "route",
-    title: "Один спокойный consumer path",
-    desc: "Сайт ведёт в приложение, приложение даёт trial, а cabinet остаётся continuation слоем для доступа, support и redeem.",
+    title: "Один спокойный путь",
+    desc: "Сайт помогает начать, приложение дает первый опыт, а кабинет остается рядом для срока доступа, поддержки и продления.",
   },
   {
-    eyebrow: "Key-first commerce",
+    eyebrow: "Продление",
     glyph: "shield",
-    title: "Buy key -> redeem key -> managed premium",
-    desc: "Публичные страницы больше не ведут к raw subscription link. Покупка заканчивается activation key, который потом погашается в app или cabinet.",
+    title: "Ключ доступа без технических ссылок",
+    desc: "Оплата заканчивается ключом доступа. Его можно погасить в приложении или кабинете и продолжить тот же аккаунт.",
   },
   {
     eyebrow: "Telegram по делу",
     glyph: "signal",
-    title: "Recovery, support и бонус +10 дней",
-    desc: "Telegram нужен для continuation и ручных recovery-сценариев, а не как primary wall или основная коммерческая история.",
+    title: "Восстановление, поддержка и бонус +10 дней",
+    desc: "Telegram остается запасным путем для помощи, бонуса и восстановления, но не заменяет основной старт в приложении.",
   },
 ];
 
 const KEY_FLOW_STEPS = [
   "Установите приложение для Android или Windows.",
-  "Запустите 5-дневный premium trial на первом валидном устройстве.",
-  "Если trial закончился, продолжайте на Free Monthly: NL-free, 5 GB / 30 days, 50 Mbps, 1 device.",
-  "Выберите срок, купите activation key и погасите его в app или cabinet.",
+  "Запустите 5 дней бесплатного доступа на первом устройстве.",
+  "Если бесплатный период закончился, остается базовый режим с лимитом на месяц.",
+  "Выберите срок, получите ключ доступа и погасите его в приложении или кабинете.",
 ];
 
 const RELATED_PAGES = [
   { href: MARKETING_CANONICAL_PATHS.mobile, label: "Мобильный старт" },
   { href: MARKETING_CANONICAL_PATHS.devices, label: "Android и Windows" },
-  { href: MARKETING_CANONICAL_PATHS.telegram, label: "Telegram и recovery" },
+  { href: MARKETING_CANONICAL_PATHS.telegram, label: "Telegram и поддержка" },
   { href: MARKETING_CANONICAL_PATHS.youtube, label: "YouTube" },
   { href: MARKETING_CANONICAL_PATHS.tiktok, label: "TikTok" },
 ];
@@ -129,6 +129,24 @@ function buildInstallHref(): string {
 
 function buildCheckoutHref(planCode: string): string {
   return `/checkout/?plan=${encodeURIComponent(planCode)}`;
+}
+
+function buildPlatformLabel(): string {
+  return CANONICAL_PUBLIC_PLATFORM_SCOPE.map((item) => {
+    if (item === "android") return "Android";
+    if (item === "windows") return "Windows";
+    return item;
+  }).join(" + ");
+}
+
+function buildRouteLabel(): string {
+  if (CANONICAL_PUBLIC_DEFAULT_ROUTE_MODE === "all_except_ru") {
+    return "Все, кроме RU";
+  }
+  if (CANONICAL_PUBLIC_DEFAULT_ROUTE_MODE === "global") {
+    return "Полный маршрут";
+  }
+  return "Спокойный маршрут";
 }
 
 function buildDownloadCards(): DownloadCard[] {
@@ -176,9 +194,9 @@ function buildPlanCards(): PlanCard[] {
 }
 
 export function buildMarketingMetadata(
-  title = "POKROV | App-first доступ без лишнего шума",
+  title = "POKROV | Спокойный доступ без лишнего шума",
   description =
-    "Скачайте приложение для Android или Windows, получите 5 дней premium trial и продолжайте доступ через key-first managed premium flow.",
+    "Скачайте приложение для Android или Windows, получите 5 дней бесплатного доступа и продолжайте тот же путь через кабинет.",
   options: MarketingMetadataOptions = {},
 ): Metadata {
   const canonical = buildMarketingUrl(options.path || "/");
@@ -379,7 +397,7 @@ export default function MarketingLanding({
         <div className="lp-header-shell">
           <div className="lp-brand">
             <Link href="/">POKROV</Link>
-            <span>App-first access</span>
+            <span>спокойный цифровой маршрут</span>
           </div>
           <div className="lp-theme-toggle-wrap">
             <button
@@ -415,7 +433,7 @@ export default function MarketingLanding({
                 Кабинет
               </a>
               <a href={config.supportTelegramUrl} target="_blank" rel="noreferrer" className="lp-chip lp-chip--primary">
-                Support
+                Поддержка
               </a>
             </div>
           </nav>
@@ -427,19 +445,19 @@ export default function MarketingLanding({
           <div className="lp-hero-copy">
             <div className="lp-kicker">{heroKicker || "POKROV • Android + Windows"}</div>
             <p className="lp-overline">
-              Эта волна — публичная бета с честными ограничениями. Маркетинг объясняет следующий шаг, а cabinet остаётся continuation слоем.
+              Эта волна — публичная бета с честными ограничениями. Сайт объясняет следующий шаг, а кабинет помогает продолжить путь.
             </p>
-            <h1>{heroTitle || "Один спокойный путь: установить приложение, проверить trial и только потом покупать managed premium"}</h1>
+            <h1>{heroTitle || "Один спокойный путь: установить приложение, проверить сервис и только потом продлевать доступ"}</h1>
             <p className="lp-hero-lead">
               {heroSubtitle ||
-                "POKROV не раскладывает массовый UX по десяткам технических решений. Сначала приложение для Android или Windows, затем 5 дней premium trial, потом Free Monthly или покупка activation key с погашением в app-first аккаунте."}
+                "POKROV не отправляет вас разбираться в настройках с первого экрана. Сначала приложение для Android или Windows, затем 5 дней бесплатного доступа, потом базовый режим или продление через ключ доступа."}
             </p>
             <div className="lp-hero-actions">
               <Link href={MARKETING_CANONICAL_PATHS.install} className="lp-btn lp-btn--primary">
                 Установить приложение
               </Link>
               <Link href={defaultCheckoutHref} className="lp-btn lp-btn--ghost">
-                Выбрать key-first план
+                Выбрать срок
               </Link>
             </div>
             <dl className="lp-proof">
@@ -459,11 +477,11 @@ export default function MarketingLanding({
             <article className="lp-stage-card lp-stage-card--primary">
               <div className="lp-stage-label">
                 <LandingGlyph name="route" />
-                Beta defaults
+                Бета-настройка
               </div>
               <h2>Одна логическая локация и один понятный маршрут.</h2>
               <p>
-                В пользовательских surfaces виден один managed location, default route mode <strong>{CANONICAL_PUBLIC_DEFAULT_ROUTE_MODE}</strong> и только beta scope <strong>{CANONICAL_PUBLIC_PLATFORM_SCOPE.join(" + ")}</strong>.
+                На пользовательских экранах виден один понятный маршрут <strong>{buildRouteLabel()}</strong> и текущая платформа <strong>{buildPlatformLabel()}</strong>.
               </p>
               <ol className="lp-stage-steps">
                 {KEY_FLOW_STEPS.map((step, index) => (
@@ -480,20 +498,20 @@ export default function MarketingLanding({
             <article className="lp-stage-card">
               <div className="lp-stage-label">
                 <LandingGlyph name="signal" />
-                Telegram remains secondary
+                Telegram остается рядом
               </div>
               <p>
-                Telegram остаётся для recovery, restore premium, бонуса +10 дней, community и support fallback. Он не подменяет основной app-first старт и не является primary commerce wall.
+                Telegram помогает с восстановлением, бонусом +10 дней, новостями и поддержкой. Основной старт все равно начинается в приложении.
               </p>
               <div className="lp-stage-links">
                 <a href={config.newsChannelUrl} target="_blank" rel="noreferrer">
                   Канал
                 </a>
                 <a href={config.supportTelegramUrl} target="_blank" rel="noreferrer">
-                  Support
+                  Поддержка
                 </a>
                 <a href={config.webappUrl} target="_blank" rel="noreferrer">
-                  Cabinet
+                  Кабинет
                 </a>
               </div>
             </article>
@@ -501,10 +519,10 @@ export default function MarketingLanding({
             <article className="lp-stage-card lp-stage-card--quote">
               <div className="lp-stage-label">
                 <LandingGlyph name="arc" />
-                Beta status
+                Статус беты
               </div>
-              <blockquote>Доступ открыт как публичная бета для проверенных Android/Windows путей; downloads остаются в кабинете, а поддержка работает как best-effort до 24 часов.</blockquote>
-              <span>Public beta • Android + Windows beta path</span>
+              <blockquote>Доступ открыт как публичная бета для Android и Windows; загрузки остаются в кабинете, а поддержка отвечает по мере возможностей до 24 часов.</blockquote>
+              <span>Публичная бета • Android + Windows</span>
             </article>
           </div>
         </section>
@@ -512,9 +530,9 @@ export default function MarketingLanding({
         <section className="lp-section">
           <div className="lp-section-head">
             <span>Обещание</span>
-            <h2>Маркетинг владеет acquisition и pricing, а не тащит пользователя в legacy-полумеры.</h2>
+            <h2>Сайт помогает выбрать следующий шаг, не раскрывая техническую кухню.</h2>
             <p>
-              Сайт не обещает публичный стабильный релиз. Android и Windows ведут в beta path, Apple hosts остаются engineering-only, а raw subscription link скрыт из default UX.
+              Мы не обещаем стабильный публичный релиз раньше времени. Android и Windows уже ведут в бета-путь, Apple остается в подготовке, а технические ссылки не показываются в обычном сценарии.
             </p>
           </div>
           <div className="lp-trust-grid">
@@ -536,7 +554,7 @@ export default function MarketingLanding({
             <span>Приложение</span>
             <h2>Бета-вход начинается с установки, а не с технических ссылок.</h2>
             <p>
-              Android и Windows составляют beta delivery scope. Apple shells остаются в кодовой базе, но эта волна не обещает их как публичный релиз.
+              Android и Windows составляют текущий публичный путь. Apple-сборки остаются в подготовке и не обещаются как готовый релиз этой волны.
             </p>
           </div>
           <div className="lp-download-grid">
@@ -559,25 +577,25 @@ export default function MarketingLanding({
         <section id="pricing" className="lp-section">
           <div className="lp-section-head">
             <span>Тарифы</span>
-            <h2>Тарифы теперь ведут к activation key, а не к raw personal link.</h2>
+            <h2>Тарифы ведут к ключу доступа, а не к технической ссылке.</h2>
             <p>
-              Публичный pricing принадлежит маркетингу. Дальше покупка продолжается через hosted checkout и заканчивается issuance activation key для managed premium.
+              Вы выбираете срок, переходите к спокойной оплате и затем погашаете ключ в приложении или кабинете, когда касса доступна.
             </p>
           </div>
           <div className="lp-pricing-shell">
             <aside className="lp-pricing-intro">
               <div className="lp-stage-label">
                 <LandingGlyph name="shield" />
-                Key-first model
+                Ключ доступа
               </div>
-              <h3>Buy key, redeem key, keep the same app-first account.</h3>
+              <h3>Выберите срок, получите ключ, продолжайте тот же доступ.</h3>
               <p>
-                Cabinet и приложение работают как continuation surfaces. Сайт показывает только честный pricing, beta defaults и следующий шаг без pricing drift и без manual config story.
+                Приложение и кабинет продолжают одну историю. Сайт показывает цену, ограничения беты и следующий шаг без ручных настроек.
               </p>
               <ul className="lp-pricing-points">
-                <li>Free Monthly остаётся видимым fallback после trial.</li>
-                <li>Telegram используется только по необходимости: recovery, support и бонус.</li>
-                <li>Промо в приложении и cabinet остаются first-party only.</li>
+                <li>После бесплатного периода остается базовый режим с месячным лимитом.</li>
+                <li>Telegram используется для восстановления, поддержки и бонуса.</li>
+                <li>Промо остаются собственными и не превращаются в стороннюю рекламу.</li>
               </ul>
             </aside>
 
@@ -593,7 +611,7 @@ export default function MarketingLanding({
                     <li>{plan.devices}</li>
                   </ul>
                   <Link href={buildCheckoutHref(plan.code)} className="lp-btn lp-btn--ghost">
-                    Купить activation key
+                    Выбрать срок
                   </Link>
                 </article>
               ))}
@@ -606,10 +624,10 @@ export default function MarketingLanding({
             <div>
               <div className="lp-section-head">
                 <span>Сценарий</span>
-                <h2>{scenarioTitle || "Проверка, fallback и погашение ключа собираются в один спокойный опыт"}</h2>
+                <h2>{scenarioTitle || "Проверка, помощь и продление собираются в один спокойный опыт"}</h2>
                 <p>
                   {scenarioBody ||
-                    "Сначала trial, потом честный free tier, затем key-first upgrade. Это тот же продуктовый маршрут, который должны видеть сайт, webapp и bot без противоречий."}
+                    "Сначала бесплатная проверка, потом базовый режим, затем продление через ключ доступа. Это один маршрут для сайта, кабинета и Telegram без противоречий."}
                 </p>
               </div>
               {reviews.length ? (
@@ -642,8 +660,8 @@ export default function MarketingLanding({
             <div id="faq">
               <div className="lp-section-head">
                 <span>FAQ</span>
-                <h2>Короткие ответы для public surfaces</h2>
-                <p>Ниже только те ответы, которые помогают выбрать следующий шаг без marketing drift и без лишнего техно-языка.</p>
+                <h2>Короткие ответы для выбора следующего шага</h2>
+                <p>Ниже только то, что помогает начать, установить приложение, открыть кабинет или обратиться в поддержку.</p>
               </div>
               <div className="lp-faq-list">
                 {MARKETING_FAQ.map((item) => (
@@ -667,10 +685,10 @@ export default function MarketingLanding({
         <section className="lp-section">
           <div className="lp-section-head">
             <span>Рядом</span>
-            <h2>{clusterTitle || "Отдельные страницы под конкретные continuation и trust-сценарии"}</h2>
+            <h2>{clusterTitle || "Отдельные страницы под конкретные сценарии"}</h2>
             <p>
               {clusterBody ||
-                "Эти страницы помогают раскрыть install, devices, Telegram и social contexts без того, чтобы расползался базовый acquisition path."}
+                "Эти страницы раскрывают установку, устройства, Telegram и видеосценарии без смешивания ролей сайта, приложения и кабинета."}
             </p>
           </div>
           <div className="lp-related-grid">
@@ -678,10 +696,10 @@ export default function MarketingLanding({
               <article key={item.href} className="lp-related-card">
                 <div className="lp-stage-label">
                   <LandingGlyph name="route" />
-                  Related surface
+                  Соседний сценарий
                 </div>
                 <h3>{item.label}</h3>
-                <p>Тот же канон: marketing владеет public story, а cabinet и Telegram остаются continuation/recovery слоями.</p>
+                <p>Та же логика: сайт объясняет, приложение дает первый опыт, кабинет и Telegram помогают продолжить или восстановить доступ.</p>
                 <Link href={item.href} className="lp-btn lp-btn--ghost">
                   Открыть страницу
                 </Link>
@@ -694,19 +712,19 @@ export default function MarketingLanding({
           <div className="lp-footer-cta">
             <div className="lp-footer-copy">
               <span>Финальный шаг</span>
-              <h2>POKROV: сначала приложение, потом key-first managed premium.</h2>
+              <h2>POKROV: сначала приложение, потом спокойное продление.</h2>
               <p>
-                Если нужен beta start, идите в приложение. Если нужен upgrade, выбирайте срок, покупайте activation key и погашайте его в том же app-first аккаунте.
+                Если нужен первый старт, идите в приложение. Если сервис подошел, выбирайте срок и продолжайте тот же доступ через ключ в кабинете.
               </p>
             </div>
             <div className="lp-footer-rail">
               <div>
                 <strong>Android + Windows</strong>
-                <span>beta scope с ограничениями</span>
+                <span>бета-путь с честными ограничениями</span>
               </div>
               <div>
                 <strong>5 дней</strong>
-                <span>premium trial в приложении</span>
+                <span>бесплатно в приложении</span>
               </div>
               <div>
                 <strong>+10 дней</strong>
@@ -718,13 +736,13 @@ export default function MarketingLanding({
                 Установить приложение
               </Link>
               <Link href={defaultCheckoutHref} className="lp-btn lp-btn--ghost">
-                Купить activation key
+                Выбрать срок
               </Link>
               <a href={config.webappUrl} target="_blank" rel="noreferrer" className="lp-btn lp-btn--ghost">
-                Открыть cabinet
+                Открыть кабинет
               </a>
               <a href={config.supportTelegramUrl} target="_blank" rel="noreferrer" className="lp-btn lp-btn--ghost">
-                Support
+                Поддержка
               </a>
               <Link href={MARKETING_CANONICAL_PATHS.offer} className="lp-btn lp-btn--ghost">
                 Оферта

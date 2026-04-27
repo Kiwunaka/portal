@@ -34,16 +34,18 @@ class UiVisualSmokeTests(unittest.TestCase):
         self.assertIn("config.webappUrl", hero_check.must_contain)
         self.assertIn("config.newsChannelUrl", hero_check.must_contain)
         self.assertIn("/checkout/?plan=", hero_check.must_contain)
+        self.assertIn("Один спокойный путь", hero_check.must_contain)
         self.assertIn("lp-hero-stage", hero_check.must_contain)
         self.assertIn("lp-trust-grid", hero_check.must_contain)
         self.assertIn("lp-pricing-shell", hero_check.must_contain)
         self.assertIn("lp-footer-cta", hero_check.must_contain)
         self.assertIn('<details className="lp-faq-item">', hero_check.must_contain)
         self.assertIn("href={config.connectUrl}", hero_check.must_not_contain)
+        self.assertIn("managed premium", hero_check.must_not_contain)
 
         layout_check = checks["marketing-layout-seo"]
         self.assertIn("metadataBase", layout_check.must_contain)
-        self.assertIn("apple-icon.png", layout_check.must_contain)
+        self.assertIn("/apple-icon.png", layout_check.must_contain)
 
         offer_check = checks["marketing-offer-flow"]
         self.assertIn("Открыть Telegram-бота", offer_check.must_contain)
@@ -53,12 +55,17 @@ class UiVisualSmokeTests(unittest.TestCase):
 
         checkout_check = checks["marketing-checkout-gateway"]
         self.assertIn("config.webappUrl", checkout_check.must_contain)
+        self.assertIn("fetchPaymentProviderState", checkout_check.must_contain)
+        self.assertIn("/api/payments/providers", checkout_check.must_contain)
+        self.assertIn("Оплата временно недоступна", checkout_check.must_contain)
+        self.assertIn("ключ доступа", checkout_check.must_contain)
         self.assertIn("Продолжить в Telegram", checkout_check.must_contain)
         self.assertIn("config.connectUrl", checkout_check.must_not_contain)
+        self.assertIn("activation key", checkout_check.must_not_contain)
 
         webapp_entry = checks["webapp-entry"]
-        self.assertIn("Личный кабинет POKROV VPN", webapp_entry.must_contain)
-        self.assertIn("secure Telegram login", webapp_entry.must_contain)
+        self.assertIn("POKROV cabinet", webapp_entry.must_contain)
+        self.assertIn("pokrovBranding.entryEyebrow", webapp_entry.must_contain)
 
 
 if __name__ == "__main__":

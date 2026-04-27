@@ -1147,6 +1147,8 @@ svg {
 .lp-legal-panel h2 {
   font-size: clamp(36px, 4vw, 56px);
   font-weight: 600;
+  overflow-wrap: anywhere;
+  text-wrap: balance;
 }
 
 .lp-legal-grid {
@@ -1199,6 +1201,28 @@ svg {
   border-radius: 34px;
 }
 
+.checkout-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 18px;
+  color: var(--lp-text);
+  font-weight: 800;
+  letter-spacing: 0;
+}
+
+.checkout-brand img {
+  width: 44px;
+  height: 44px;
+  flex: none;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.9);
+  padding: 6px;
+  box-shadow:
+    inset 0 0 0 1px rgba(18, 55, 45, 0.08),
+    0 16px 30px -24px rgba(18, 55, 45, 0.55);
+}
+
 .checkout-kicker {
   display: inline-flex;
   align-items: center;
@@ -1212,6 +1236,9 @@ svg {
 
 .checkout-title {
   font-size: clamp(48px, 6vw, 86px);
+  max-width: 980px;
+  overflow-wrap: anywhere;
+  text-wrap: balance;
 }
 
 .checkout-sub {
@@ -1354,6 +1381,21 @@ svg {
 .checkout-submit:disabled {
   cursor: progress;
   opacity: 0.76;
+}
+
+.checkout-submit--disabled {
+  cursor: not-allowed;
+  border: 1px solid rgba(18, 55, 45, 0.12);
+  background: rgba(18, 55, 45, 0.08);
+  color: rgba(18, 55, 45, 0.62);
+  box-shadow: none;
+}
+
+.checkout-helper--warning {
+  border: 1px solid rgba(184, 160, 119, 0.22);
+  border-radius: 18px;
+  background: rgba(184, 160, 119, 0.1);
+  padding: 12px 14px;
 }
 
 .checkout-secondary {
@@ -1500,6 +1542,21 @@ input.checkout-secondary:focus-visible,
   color: rgba(245, 239, 228, 0.74);
 }
 
+[data-theme="dark"] .checkout-brand img {
+  background: rgba(245, 239, 228, 0.9);
+}
+
+[data-theme="dark"] .checkout-submit--disabled {
+  border-color: rgba(245, 239, 228, 0.12);
+  background: rgba(245, 239, 228, 0.08);
+  color: rgba(237, 243, 238, 0.66);
+}
+
+[data-theme="dark"] .checkout-helper--warning {
+  border-color: rgba(190, 163, 125, 0.28);
+  background: rgba(190, 163, 125, 0.1);
+}
+
 [data-theme="dark"] .lp-stage-steps li {
   border-top-color: rgba(255, 255, 255, 0.08);
 }
@@ -1576,7 +1633,7 @@ input.checkout-secondary:focus-visible,
 
   .lp-btn:hover,
   .btn:hover,
-  .checkout-submit:hover:not(:disabled),
+  .checkout-submit:hover:not(:disabled):not(.checkout-submit--disabled),
   .checkout-secondary:hover,
   .lp-stage-card:hover,
   .lp-trust-card:hover,
@@ -1779,9 +1836,19 @@ input.checkout-secondary:focus-visible,
   }
 
   .lp-section-head h2,
-  .lp-footer-copy h2,
-  .checkout-title {
+  .lp-footer-copy h2 {
     font-size: clamp(36px, 12vw, 60px);
+  }
+
+  .checkout-title {
+    font-size: 2.7rem;
+    line-height: 0.98;
+  }
+
+  .lp-legal-banner h1,
+  .legal-page h1 {
+    font-size: 2.1rem;
+    line-height: 1;
   }
 
   .lp-footer-actions .lp-btn,

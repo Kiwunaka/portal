@@ -10,7 +10,7 @@ export const metadata = buildMarketingMetadata(
   getCopyText("marketing.checkout.meta.title", "Оплата бета-доступа | POKROV"),
   getCopyText(
     "marketing.checkout.meta.description",
-    "Страница checkout объясняет оплату бета-доступа, покупку activation key, ручную помощь при спорных платежах и следующий шаг без сырых технических ссылок.",
+    "Страница оплаты объясняет продление бета-доступа, получение ключа доступа, ручную помощь при спорных платежах и следующий шаг без сырых технических ссылок.",
   ),
   {
     path: "/checkout/",

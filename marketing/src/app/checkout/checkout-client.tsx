@@ -83,6 +83,14 @@ type AccessKeyStatusResponse = {
   } | null;
 };
 
+type PaymentProviderState = {
+  ok: boolean;
+  providers: Array<{ code?: string; title?: string; label?: string }>;
+  blocked?: boolean;
+  blocked_reasons?: string[];
+  blocked_reason_texts?: string[];
+};
+
 const config = getPokrovPublicConfig(process.env as Record<string, string | undefined>);
 const promoCatalog = getPromoSlotsCatalog();
 
@@ -141,22 +149,35 @@ async function fetchAccessKeyStatus(key: string): Promise<AccessKeyStatusRespons
   throw new Error(lastError);
 }
 
+async function fetchPaymentProviderState(): Promise<PaymentProviderState | null> {
+  for (const base of candidateApiBases()) {
+    try {
+      const response = await fetch(`${base}/api/payments/providers`, { cache: "no-store" });
+      if (!response.ok) continue;
+      return (await response.json()) as PaymentProviderState;
+    } catch {
+      // Try next base.
+    }
+  }
+  return null;
+}
+
 function describePromoContent(contentId: string): { title: string; body: string } {
   if (contentId === "redeem_key") {
     return {
-      title: "Уже есть activation key?",
-      body: "Проверьте его статус ниже и сразу переходите к redeem в приложении или cabinet continuation.",
+      title: "Уже есть ключ доступа?",
+      body: "Проверьте его статус ниже и переходите к погашению в приложении или кабинете.",
     };
   }
   if (contentId === "telegram_bonus") {
     return {
-      title: "Telegram остаётся вторичным бонусом",
-      body: "После привязки аккаунта Telegram может дать +10 дней, но не заменяет app-first старт.",
+      title: "Telegram остаётся бонусом и запасным путем",
+      body: "После привязки аккаунта Telegram может дать +10 дней, но первый старт остается в приложении.",
     };
   }
   return {
-    title: "Support и manual recovery",
-    body: "Если hosted checkout или redeem path недоступен, support помогает вручную и фиксирует спорный платеж без показа raw link в обычном UX.",
+    title: "Поддержка при спорной оплате",
+    body: "Если касса или погашение ключа недоступны, поддержка поможет вручную и не попросит открывать технические ссылки.",
   };
 }
 
@@ -172,6 +193,16 @@ function buildRedeemHref(key: string): string {
   return url.toString();
 }
 
+function formatPlatformScope(items: string[] | undefined): string {
+  return (items?.length ? items : ["android", "windows"])
+    .map((item) => {
+      if (item === "android") return "Android";
+      if (item === "windows") return "Windows";
+      return item;
+    })
+    .join(" + ");
+}
+
 function maskAccessKey(key: string): string {
   const normalized = key.trim().toUpperCase();
   if (normalized.length <= 8) return "ключ скрыт";
@@ -182,12 +213,13 @@ export function CheckoutLoadingFallback() {
   return (
     <main className="checkout-shell lp-route-shell lp-route-shell--checkout">
       <section className="checkout-hero">
+        <div className="checkout-brand" aria-label="POKROV">
+          <img src="/pokrov-logo.svg" alt="" aria-hidden="true" />
+          <span>POKROV</span>
+        </div>
         <div className="checkout-kicker">Спокойная касса</div>
         <div className="checkout-status-chip checkout-status-chip--fallback">Собираем публичный каталог</div>
-        <h1 className="checkout-title">
-          <span>POKROV</span>
-          <span>Маршрут покупки через activation key</span>
-        </h1>
+        <h1 className="checkout-title">Маршрут оплаты через ключ доступа</h1>
         <p className="checkout-sub">Подгружаем тарифы, условия доступа и следующий шаг для покупки или погашения ключа.</p>
       </section>
       <section className="checkout-grid">
@@ -211,6 +243,7 @@ export default function CheckoutClient() {
   const [promoCode, setPromoCode] = useState((searchParams.get("promo") || "").trim().toUpperCase());
   const [keyInput, setKeyInput] = useState((searchParams.get("key") || "").trim().toUpperCase());
   const [keyStatus, setKeyStatus] = useState<AccessKeyStatusResponse | null>(null);
+  const [providerState, setProviderState] = useState<PaymentProviderState | null>(null);
   const [statusText, setStatusText] = useState("");
   const [keyBusy, setKeyBusy] = useState(false);
 
@@ -248,6 +281,20 @@ export default function CheckoutClient() {
   }, [selectedPlan]);
 
   useEffect(() => {
+    let cancelled = false;
+
+    void fetchPaymentProviderState().then((payload) => {
+      if (!cancelled) {
+        setProviderState(payload);
+      }
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
     if (!keyInput) {
       setKeyStatus(null);
       return;
@@ -281,20 +328,25 @@ export default function CheckoutClient() {
   const redeemHref = keyStatus?.key ? buildRedeemHref(keyStatus.key) : buildRedeemHref(keyInput);
   const marketingPromoIds =
     promoCatalog.slots.find((slot) => slot.id === "marketing.checkout.contextual")?.allowed_content_ids || [];
+  const checkoutReady = Boolean(providerState?.ok && !providerState?.blocked && providerState.providers?.length);
+  const checkoutBlockedReasons = providerState?.blocked_reason_texts?.length
+    ? providerState.blocked_reason_texts
+    : providerState?.blocked_reasons || [];
 
   return (
     <main className="checkout-shell lp-route-shell lp-route-shell--checkout">
       <section className="checkout-hero">
-        <div className="checkout-kicker">Публичная бета: купить ключ {"->"} погасить {"->"} продолжить доступ</div>
-        <div className="checkout-status-chip checkout-status-chip--ready">
-          {catalog?.public_surface_policy?.pricing_owner === "marketing" ? "Маркетинг ведёт в оплату" : "Публичный checkout"}
-        </div>
-        <h1 className="checkout-title">
+        <div className="checkout-brand" aria-label="POKROV">
+          <img src="/pokrov-logo.svg" alt="" aria-hidden="true" />
           <span>POKROV</span>
-          <span>Спокойная покупка через activation key</span>
-        </h1>
+        </div>
+        <div className="checkout-kicker">Публичная бета: выбрать срок, получить ключ и продолжить доступ</div>
+        <div className={`checkout-status-chip ${checkoutReady ? "checkout-status-chip--ready" : "checkout-status-chip--fallback"}`}>
+          {checkoutReady ? "Касса доступна" : "Оплата пока в ручной проверке"}
+        </div>
+        <h1 className="checkout-title">Спокойная оплата без технических ссылок</h1>
         <p className="checkout-sub">
-          Эта страница ведёт к покупке activation key для бета-доступа и не показывает сырой персональный маршрут. После оплаты ключ погашается в приложении или в кабинете, а доступ продолжается в том же app-first аккаунте. Если провайдер оплаты вернул спорный или неясный статус, поддержка помогает вручную.
+          Эта страница помогает выбрать срок для бета-доступа. После оплаты ключ доступа погашается в приложении или кабинете, а если касса временно недоступна, поддержка подскажет ручной следующий шаг.
         </p>
       </section>
 
@@ -308,10 +360,10 @@ export default function CheckoutClient() {
           <article className="lp-info-card">
             <span className="lp-info-card__eyebrow">Потом оплатить</span>
             <h3>Касса остаётся тихой и понятной</h3>
-            <p>Публичная оплата продаёт activation key для беты и не уводит в сложные технические сценарии.</p>
+            <p>Публичная оплата должна выдавать ключ доступа для беты и не уводить в сложные технические сценарии.</p>
           </article>
           <article className="lp-info-card">
-            <span className="lp-info-card__eyebrow">Если нужен fallback</span>
+            <span className="lp-info-card__eyebrow">Если нужна помощь</span>
             <h3>Кабинет и Telegram рядом</h3>
             <p>Когда нужно восстановление или помощь, рядом остаются кабинет, поддержка и спокойный путь продолжения.</p>
           </article>
@@ -343,13 +395,12 @@ export default function CheckoutClient() {
           <div className="checkout-trust">
             <strong>Как это работает</strong>
             <ul className="checkout-trust-list">
-              <li>В приложении первое валидное устройство получает 5 дней premium trial без обязательной регистрации.</li>
+              <li>В приложении первое валидное устройство получает 5 дней бесплатного доступа без обязательной регистрации.</li>
               <li>
-                После trial доступ переходит в {catalog?.free_tier?.location_code || "NL-free"} с лимитом{" "}
-                {catalog?.free_tier?.traffic_limit_gb || 5} GB / {catalog?.free_tier?.cycle_days || 30} дней.
+                После бесплатного периода остается базовый режим: {catalog?.free_tier?.traffic_limit_gb || 5} ГБ на {catalog?.free_tier?.cycle_days || 30} дней.
               </li>
-              <li>Публичный маршрут по умолчанию остаётся {catalog?.public_defaults?.routing_mode || "all_except_ru"}.</li>
-              <li>Telegram нужен для recovery, restore premium, бонуса +10 дней и support fallback.</li>
+              <li>На первом экране остается понятный маршрут без ручных технических настроек.</li>
+              <li>Telegram нужен для бонуса +10 дней, восстановления и связи с поддержкой.</li>
             </ul>
           </div>
 
@@ -366,12 +417,12 @@ export default function CheckoutClient() {
             <p className="checkout-helper">
               {discountPercent > 0
                 ? `Скидка ${discountPercent}% уже заложена в итог для ${activePlan.label}.`
-                : "Промокод меняет только итог покупки activation key и не открывает ручной технический маршрут."}
+                : "Промокод меняет только итоговую сумму и не открывает ручные технические сценарии."}
             </p>
           </div>
 
           <div className="checkout-trust">
-            <strong>Уже есть key?</strong>
+            <strong>Уже есть ключ?</strong>
             <div className="checkout-actions">
               <input
                 value={keyInput}
@@ -380,12 +431,12 @@ export default function CheckoutClient() {
                 className="checkout-secondary"
               />
             </div>
-            {keyBusy ? <p className="checkout-helper">Проверяем статус activation key…</p> : null}
+            {keyBusy ? <p className="checkout-helper">Проверяем статус ключа…</p> : null}
             {keyStatus ? (
               <ul className="checkout-trust-list">
                 <li>Ключ: {maskAccessKey(keyStatus.key)}</li>
                 <li>План: {keyStatus.plan?.label || `${keyStatus.days} дней`}</li>
-                <li>Статус: {keyStatus.redeemed ? "уже погашен" : "готов к redeem"}</li>
+                <li>Статус: {keyStatus.redeemed ? "уже погашен" : "готов к погашению"}</li>
               </ul>
             ) : null}
           </div>
@@ -394,7 +445,7 @@ export default function CheckoutClient() {
         <article className="glass-card checkout-sticky">
           <h2>Итог</h2>
           <p className="checkout-note">
-            Покупка заканчивается activation key. Дальше тот же app-first аккаунт продолжает доступ как managed premium без повторной ручной настройки и без лишней суеты. На время беты спорные платежи разбираются через поддержку и ручную сверку.
+            Продление должно заканчиваться ключом доступа. Дальше тот же аккаунт продолжает работу без повторной ручной настройки. Пока касса не готова, спорные платежи и ручные заявки разбираются через поддержку.
           </p>
 
           <div className="checkout-summary">
@@ -408,19 +459,33 @@ export default function CheckoutClient() {
               Устройства: <strong>до {activePlan.device_limit}</strong>
             </p>
             <p>
-              Публичный scope: <strong>{(catalog?.public_surface_policy?.public_platform_scope || ["android", "windows"]).join(" + ")}</strong>
+              Платформы: <strong>{formatPlatformScope(catalog?.public_surface_policy?.public_platform_scope)}</strong>
             </p>
             <p className="checkout-summary-total">
               Сумма: <strong>{formatPrice(activePlan.amount_rub, discountPercent)}</strong>
             </p>
           </div>
 
-          <a href={checkoutHref} target="_blank" rel="noreferrer" className="checkout-submit">
-            Купить activation key
-          </a>
+          {checkoutReady ? (
+            <a href={checkoutHref} target="_blank" rel="noreferrer" className="checkout-submit">
+              Перейти к оплате
+            </a>
+          ) : (
+            <span className="checkout-submit checkout-submit--disabled" aria-disabled="true">
+              Оплата временно недоступна
+            </span>
+          )}
+
+          {!checkoutReady ? (
+            <p className="checkout-helper checkout-helper--warning">
+              {checkoutBlockedReasons.length
+                ? "Касса ждет включения провайдера оплаты. Пока продолжайте через поддержку или кабинет."
+                : "Проверяем доступность кассы. Если кнопка не появится, продолжайте через поддержку или кабинет."}
+            </p>
+          ) : null}
 
           <a href={redeemHref} target="_blank" rel="noreferrer" className="checkout-secondary checkout-secondary-button">
-            Погасить key в cabinet
+            Погасить ключ в кабинете
           </a>
 
           <a href={config.webappUrl} target="_blank" rel="noreferrer" className="checkout-secondary checkout-secondary-button">
@@ -436,13 +501,13 @@ export default function CheckoutClient() {
           </Link>
 
           <p className="checkout-helper">
-            Email-вход на сайте ещё помечен как soon. Premium trial начинается из приложения на первом валидном устройстве, а купленный activation key можно погасить в приложении или кабинете.
+            Email-вход на сайте пока готовится. Бесплатный период начинается из приложения на первом валидном устройстве, а купленный ключ можно погасить в приложении или кабинете.
           </p>
 
           {statusText ? <p className="checkout-status">{statusText}</p> : null}
 
           <div className="checkout-trust">
-            <strong>First-party promo slots</strong>
+            <strong>Подсказки рядом с оплатой</strong>
             <ul className="checkout-trust-list">
               {marketingPromoIds.map((contentId) => {
                 const content = describePromoContent(contentId);

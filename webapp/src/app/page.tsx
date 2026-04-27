@@ -56,7 +56,7 @@ function EntryBody() {
           <PokrovLogo
             showWordmark
             className="inline-flex items-center gap-3"
-            markClassName="h-12 w-12 rounded-[18px] bg-white/90 p-2.5 ring-1 ring-emerald-900/10 dark:bg-white/[0.08] dark:ring-white/10"
+            markClassName="h-12 w-12 rounded-full bg-white/90 p-2.5 ring-1 ring-emerald-900/10 dark:bg-white/[0.08] dark:ring-white/10"
             caption={pokrovBranding.cabinetName}
             label="POKROV cabinet"
           />
@@ -105,7 +105,7 @@ function EntryBody() {
             <PokrovLogo
               showWordmark
               className="inline-flex items-center gap-3"
-              markClassName="h-12 w-12 rounded-[18px] bg-white/90 p-2.5 ring-1 ring-emerald-900/10 dark:bg-white/[0.08] dark:ring-white/10"
+              markClassName="h-12 w-12 rounded-full bg-white/90 p-2.5 ring-1 ring-emerald-900/10 dark:bg-white/[0.08] dark:ring-white/10"
               caption={pokrovBranding.cabinetName}
               label="POKROV cabinet"
             />
