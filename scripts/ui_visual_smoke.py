@@ -101,7 +101,16 @@ def _default_checks() -> list[Check]:
             name="marketing-offer-flow",
             path=REPO_ROOT / "marketing" / "src" / "app" / "offer" / "page.tsx",
             must_contain=("Открыть Telegram-бота", "Публичная оферта"),
-            must_not_contain=("/checkout/", "PORTAL"),
+            must_not_contain=(
+                "/checkout/",
+                "PORTAL",
+                "activation key",
+                "managed-доступ",
+                "app-first",
+                "best-effort",
+                "production SLA",
+                "localhost/control-surface",
+            ),
         ),
         Check(
             name="marketing-privacy-flow",
