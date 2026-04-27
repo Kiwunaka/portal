@@ -167,9 +167,9 @@ def _message_for(payload: EmailDeliveryIn) -> tuple[str, str, str]:
     if kind == "verify":
         token = str(payload.token or "").strip()
         action_url = _public_url("email_token", token)
-        subject = "Подтверждение email в POKROV"
+        subject = "Подтверждение email в POKROV VPN"
         body = (
-            "Подтвердите email для входа в POKROV.\n\n"
+            "Подтвердите email для входа в POKROV VPN.\n\n"
             f"Код подтверждения:\n{token}\n\n"
             f"Открыть кабинет: {action_url}\n\n"
             "Если вы не запрашивали это письмо, просто проигнорируйте его.\n"
@@ -189,9 +189,9 @@ def _message_for(payload: EmailDeliveryIn) -> tuple[str, str, str]:
     if kind == "reset":
         token = str(payload.token or "").strip()
         action_url = _public_url("email_reset_token", token)
-        subject = "Сброс пароля в POKROV"
+        subject = "Сброс пароля в POKROV VPN"
         body = (
-            "Вы запросили сброс пароля для POKROV.\n\n"
+            "Вы запросили сброс пароля для POKROV VPN.\n\n"
             f"Код сброса:\n{token}\n\n"
             f"Открыть кабинет: {action_url}\n\n"
             "Если вы не запрашивали сброс, просто проигнорируйте это письмо.\n"
@@ -211,11 +211,11 @@ def _message_for(payload: EmailDeliveryIn) -> tuple[str, str, str]:
     if kind == "payment_access_key":
         access_key = str(payload.access_key or "").strip()
         action_url = _app_url("redeem/")
-        subject = "Ключ доступа POKROV"
+        subject = "Ключ доступа POKROV VPN"
         body = (
             "Ваш ключ доступа готов.\n\n"
             f"Ключ доступа:\n{access_key}\n\n"
-            f"Тариф: {payload.plan_label or payload.plan_code or 'POKROV'}\n"
+            f"Тариф: {payload.plan_label or payload.plan_code or 'POKROV VPN'}\n"
             f"Дней: {int(payload.days or 0)}\n"
             f"Заказ: {payload.order_id or ''}\n\n"
             f"Активировать ключ в кабинете: {action_url}\n"
