@@ -9,10 +9,10 @@ import uuid
 from datetime import datetime, timedelta, timezone
 from typing import Any
 
-import aiohttp
 from sqlalchemy import func
 
 from config import env_bool, env_int
+from email_delivery_service import deliver_auth_message as deliver_email_auth_message
 from free_cycle_service import mark_user_became_free
 from models import User, WebEmailIdentity, WebEmailToken
 
@@ -24,8 +24,6 @@ EMAIL_AUTH_RESET_TTL_SECONDS = max(300, env_int("EMAIL_AUTH_RESET_TTL_SECONDS", 
 EMAIL_AUTH_PASSWORD_HASH_ITERATIONS = max(100_000, env_int("EMAIL_AUTH_PASSWORD_HASH_ITERATIONS", 600_000))
 WEB_EMAIL_ACCOUNT_TG_ID_BASE = max(8_000_000_000_000, env_int("WEB_EMAIL_ACCOUNT_TG_ID_BASE", 8_000_000_000_000))
 APP_ACCOUNT_TG_ID_BASE = max(9_000_000_000_000, env_int("APP_ACCOUNT_TG_ID_BASE", 9_000_000_000_000))
-EMAIL_AUTH_WEBHOOK_URL = str(os.getenv("EMAIL_AUTH_WEBHOOK_URL") or "").strip()
-EMAIL_AUTH_WEBHOOK_TIMEOUT_SECONDS = max(3, env_int("EMAIL_AUTH_WEBHOOK_TIMEOUT_SECONDS", 10))
 FREE_ACCOUNT_LIFETIME_DAYS = max(3650, env_int("AUTO_FREE_DAYS", 3650))
 
 EMAIL_TOKEN_KIND_VERIFY = "verify"
@@ -353,35 +351,9 @@ async def deliver_auth_message(
     token: str,
     linked_tg_id: int | None = None,
 ) -> dict[str, Any]:
-    if EMAIL_AUTH_DEBUG_ECHO:
-        return {"status": "debug_echo", "kind": str(kind), "email": str(email)}
-    if not EMAIL_AUTH_WEBHOOK_URL:
-        return {"status": "not_configured", "kind": str(kind), "email": str(email)}
-
-    payload = {
-        "kind": str(kind),
-        "email": str(email),
-        "token": str(token),
-        "linked_tg_id": int(linked_tg_id or 0) or None,
-    }
-    timeout = aiohttp.ClientTimeout(total=EMAIL_AUTH_WEBHOOK_TIMEOUT_SECONDS)
-    try:
-        async with aiohttp.ClientSession(timeout=timeout) as client:
-            async with client.post(EMAIL_AUTH_WEBHOOK_URL, json=payload) as response:
-                text = (await response.text()).strip()
-                if response.status >= 400:
-                    return {
-                        "status": "delivery_error",
-                        "kind": str(kind),
-                        "email": str(email),
-                        "http_status": int(response.status),
-                        "detail": text[:300] or None,
-                    }
-    except Exception as exc:
-        return {
-            "status": "delivery_error",
-            "kind": str(kind),
-            "email": str(email),
-            "detail": str(exc)[:300],
-        }
-    return {"status": "sent", "kind": str(kind), "email": str(email), "mode": "webhook"}
+    return await deliver_email_auth_message(
+        kind=kind,
+        email=email,
+        token=token,
+        linked_tg_id=linked_tg_id,
+    )

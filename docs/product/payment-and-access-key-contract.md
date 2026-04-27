@@ -23,3 +23,10 @@ Paid checkout must not be presented as production-ready until provider evidence 
 Lava.top is the active provider candidate. The code path now supports Lava.top invoice creation and authenticated webhooks, but the provider remains blocked for public use until redacted live or sandbox proof is attached under the release work-order evidence folder.
 
 Public checkout must keep paid purchase CTAs disabled or degraded when Lava.top credentials, per-plan offers, webhook auth, replay evidence, or reconciliation evidence are incomplete.
+
+Current fulfillment contract:
+
+- authenticated cabinet and bot payments extend the linked account after a valid paid callback;
+- anonymous public checkout requires buyer email and issues one access key through email delivery after a valid paid callback;
+- amount, currency, plan, provider auth, local order binding, replay idempotency, and failed/cancelled events are mandatory gate checks before access changes;
+- access keys must not be returned in public payment API responses or URLs after payment.

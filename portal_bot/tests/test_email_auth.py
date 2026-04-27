@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import importlib
 import sys
 from pathlib import Path
@@ -29,6 +30,7 @@ def _load_api(monkeypatch, tmp_path: Path):
         "config",
         "db",
         "email_auth_service",
+        "email_delivery_service",
         "migrations",
         "models",
         "web_auth_service",
@@ -132,6 +134,73 @@ def test_email_register_verify_login_and_session(monkeypatch, tmp_path):
     login_body = login.json()
     assert login_body["ok"] is True
     assert login_body["user"]["email"] == "reader@pokrov.test"
+
+
+def test_email_status_stays_disabled_in_debug_mode(monkeypatch, tmp_path):
+    api = _load_api(monkeypatch, tmp_path)
+    client = TestClient(api.app)
+
+    status = client.get("/api/auth/email/status")
+
+    assert status.status_code == 200, status.text
+    body = status.json()
+    assert body["ok"] is True
+    assert body["enabled"] is False
+    assert "debug_echo_enabled" in body["blocked_reasons"]
+
+
+def test_email_delivery_posts_secret_header(monkeypatch):
+    monkeypatch.setenv("EMAIL_AUTH_DEBUG_ECHO", "false")
+    monkeypatch.setenv("EMAIL_DELIVERY_WEBHOOK_URL", "https://relay.pokrov.test/email/deliver")
+    monkeypatch.setenv("EMAIL_DELIVERY_WEBHOOK_SECRET", "relay-secret")
+    sys.modules.pop("email_delivery_service", None)
+    service = importlib.import_module("email_delivery_service")
+    capture: dict[str, object] = {}
+
+    class FakeResponse:
+        status = 202
+
+        async def text(self) -> str:
+            return "ok"
+
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, exc_type, exc, tb) -> None:
+            return None
+
+    class FakeSession:
+        def __init__(self, *args, **kwargs) -> None:
+            pass
+
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, exc_type, exc, tb) -> None:
+            return None
+
+        def post(self, url: str, *, json: dict | None = None, headers: dict | None = None):
+            capture["url"] = url
+            capture["json"] = dict(json or {})
+            capture["headers"] = dict(headers or {})
+            return FakeResponse()
+
+    monkeypatch.setattr(service.aiohttp, "ClientSession", FakeSession)
+
+    result = asyncio.run(
+        service.deliver_auth_message(
+            kind="verify",
+            email="reader@pokrov.test",
+            token="verify-token",
+            linked_tg_id=8000000000000,
+        )
+    )
+
+    assert result["status"] == "sent"
+    assert capture["url"] == "https://relay.pokrov.test/email/deliver"
+    assert capture["json"]["token"] == "verify-token"
+    assert capture["headers"]["X-Pokrov-Email-Secret"] == "relay-secret"
+    assert capture["headers"]["Authorization"] == "Bearer relay-secret"
 
 
 def test_email_register_can_link_to_existing_user(monkeypatch, tmp_path):

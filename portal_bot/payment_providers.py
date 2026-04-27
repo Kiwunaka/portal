@@ -139,6 +139,14 @@ def _env_bool(name: str, default: bool = False) -> bool:
     return raw in {"1", "true", "yes", "on"}
 
 
+def _env_int(name: str, default: int) -> int:
+    try:
+        raw = str(os.getenv(name) or "").strip()
+        return int(raw) if raw else int(default)
+    except Exception:
+        return int(default)
+
+
 def _nested_value(payload: dict[str, Any], *path: str) -> str:
     current: Any = payload
     for key in path:
@@ -243,7 +251,8 @@ async def _lavatop_create(
         payload["clientUtm"]["utm_campaign"] = payload["clientUtm"]["utm_campaign"] or promo_code
 
     headers = {"Accept": "application/json", "Content-Type": "application/json", "X-Api-Key": api_key}
-    async with aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=30)) as session:
+    request_timeout = max(3, _env_int("LAVATOP_REQUEST_TIMEOUT_SECONDS", 30))
+    async with aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=request_timeout)) as session:
         async with session.post(f"{_lavatop_base()}/api/v3/invoice", headers=headers, json=payload) as resp:
             raw = await resp.text()
             try:

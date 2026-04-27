@@ -138,9 +138,11 @@ from email_auth_service import (
     get_verified_identity_for_user,
     register_email_identity,
     start_password_reset,
+    validate_email_input,
     verify_email_identity,
     finish_password_reset,
 )
+from email_delivery_service import deliver_payment_access_key, email_delivery_runtime_status
 import app_first_service
 import channel_bonus_service
 from gift_cards_service import redeem_gift_card as redeem_gift_card_service
@@ -1005,7 +1007,11 @@ class RubOrderCreateIn(BaseModel):
 class RubPublicOrderCreateIn(BaseModel):
     provider: str = Field(min_length=2, max_length=32)
     plan_code: str = Field(min_length=2, max_length=32)
-    checkout_ticket: str = Field(min_length=16, max_length=1200)
+    checkout_ticket: str | None = Field(default=None, min_length=16, max_length=1200)
+    buyer_email: str | None = Field(default=None, min_length=5, max_length=200)
+    source: str = Field(default="site", max_length=16)
+    campaign: str | None = Field(default=None, max_length=64)
+    promo_code: str | None = Field(default=None, max_length=32)
     currency: str = Field(default="RUB", max_length=8)
 
 
@@ -3020,6 +3026,46 @@ def _safe_float(value: Any) -> float:
         return 0.0
 
 
+def _external_order_meta(row: ExternalOrder | None) -> dict[str, Any]:
+    if not row:
+        return {}
+    try:
+        payload = json.loads(str(getattr(row, "meta_json", "") or "{}"))
+        return payload if isinstance(payload, dict) else {}
+    except Exception:
+        return {}
+
+
+def _set_external_order_meta(row: ExternalOrder, meta: dict[str, Any]) -> None:
+    row.meta_json = json.dumps(dict(meta or {}), ensure_ascii=False, separators=(",", ":"))[:4000]
+
+
+def _payload_amount(payload: dict[str, Any]) -> float:
+    return _safe_float(
+        _payload_value(payload, "amount", "sum", "amount_paid", "OutSum")
+        or _payload_nested_value(payload, "contract", "amount")
+        or _payload_nested_value(payload, "invoice", "amount")
+        or _payload_nested_value(payload, "payment", "amount")
+    )
+
+
+def _payload_currency(payload: dict[str, Any]) -> str:
+    return (
+        _payload_value(payload, "currency", "cur", "ccy")
+        or _payload_nested_value(payload, "contract", "currency")
+        or _payload_nested_value(payload, "invoice", "currency")
+        or _payload_nested_value(payload, "payment", "currency")
+        or ""
+    ).strip().upper()
+
+
+def _payload_plan_code(payload: dict[str, Any]) -> str:
+    return (
+        _payload_value(payload, "plan_code", "tariff", "plan", "us_plan_code")
+        or _payload_nested_value(payload, "clientUtm", "utm_term")
+    ).strip().lower()
+
+
 def _status_from_event(event_type: str, payload: dict[str, Any], signature_ok: bool, provider: str = "") -> str:
     event = (event_type or "").strip().lower()
     if not signature_ok:
@@ -3069,11 +3115,7 @@ def _upsert_external_order(
         row = ExternalOrder(provider=provider, order_id=order_id, created_at=_utcnow())
         s.add(row)
     row.tg_id = _safe_int(_payload_value(payload, "tg_id", "telegram_id", "user_id", "us_tg_id")) or row.tg_id
-    row.plan_code = (
-        _payload_value(payload, "plan_code", "tariff", "plan", "us_plan_code")
-        or _payload_nested_value(payload, "clientUtm", "utm_term")
-        or row.plan_code
-    )
+    row.plan_code = _payload_plan_code(payload) or row.plan_code
     row.source = (
         _payload_value(payload, "source", "checkout_source", "us_source")
         or _payload_nested_value(payload, "clientUtm", "utm_medium")
@@ -3085,9 +3127,13 @@ def _upsert_external_order(
         or row.campaign
     )
     row.promo_code = _payload_value(payload, "promo_code", "coupon") or row.promo_code
-    row.meta_json = json.dumps(payload, ensure_ascii=False, separators=(",", ":"))[:4000]
-    row.amount = _safe_float(_payload_value(payload, "amount", "sum", "amount_paid", "OutSum"))
-    row.currency = _payload_value(payload, "currency", "cur", "ccy") or "RUB"
+    meta = _external_order_meta(row)
+    meta["callback"] = payload
+    _set_external_order_meta(row, meta)
+    callback_amount = _payload_amount(payload)
+    if callback_amount > 0 and float(row.amount or 0) <= 0:
+        row.amount = callback_amount
+    row.currency = _payload_currency(payload) or row.currency or "RUB"
     row.status = status
     if mark_paid and not row.paid_at:
         row.paid_at = _utcnow()
@@ -3163,6 +3209,43 @@ def _record_external_payment_event(
         s.rollback()
         logger.exception("payment callback persistence failed: provider=%s event=%s err=%s", provider, event_type, exc)
         return False, False
+    finally:
+        s.close()
+
+
+def _validate_paid_callback_against_order(*, provider: str, order_id: str, payload: dict[str, Any]) -> tuple[bool, str]:
+    if _normalize_provider(provider) != "lavatop":
+        return True, "ok"
+    if not order_id:
+        return False, "missing_order_id"
+    s = SessionLocal()
+    try:
+        row = (
+            s.query(ExternalOrder)
+            .filter(ExternalOrder.provider == str(provider), ExternalOrder.order_id == str(order_id))
+            .first()
+        )
+        if not row:
+            return False, "unknown_order"
+        if str(row.provider or "").strip().lower() != str(provider).strip().lower():
+            return False, "provider_mismatch"
+        expected_amount = float(row.amount or 0)
+        actual_amount = _payload_amount(payload)
+        if expected_amount > 0 and actual_amount <= 0:
+            return False, "missing_amount"
+        if expected_amount > 0 and abs(expected_amount - actual_amount) > 0.01:
+            return False, "amount_mismatch"
+        expected_currency = str(row.currency or "RUB").strip().upper() or "RUB"
+        actual_currency = _payload_currency(payload)
+        if not actual_currency:
+            return False, "missing_currency"
+        if actual_currency != expected_currency:
+            return False, "currency_mismatch"
+        expected_plan = str(row.plan_code or "").strip().lower()
+        actual_plan = _payload_plan_code(payload)
+        if expected_plan and actual_plan and actual_plan != expected_plan:
+            return False, "plan_mismatch"
+        return True, "ok"
     finally:
         s.close()
 
@@ -3296,6 +3379,129 @@ def _apply_external_paid_order(*, provider: str, order_id: str, payload: dict[st
     return True, "ok"
 
 
+def _issue_payment_access_key_for_order(*, provider: str, order_id: str, payload: dict[str, Any]) -> tuple[bool, str, dict[str, Any]]:
+    s = SessionLocal()
+    try:
+        row = (
+            s.query(ExternalOrder)
+            .filter(ExternalOrder.provider == str(provider), ExternalOrder.order_id == str(order_id))
+            .first()
+        )
+        if not row:
+            return False, "order_not_found", {}
+        meta = _external_order_meta(row)
+        fulfillment = dict(meta.get("fulfillment") or {})
+        buyer_email = str(
+            fulfillment.get("buyer_email")
+            or meta.get("buyer_email")
+            or _payload_value(payload, "buyer_email", "email", "buyerEmail")
+            or ""
+        ).strip()
+        try:
+            buyer_email = validate_email_input(buyer_email)
+        except InvalidEmailInputError:
+            return False, "missing_buyer_email", {}
+
+        plan_code = str(row.plan_code or _payload_plan_code(payload) or "").strip().lower()
+        plan = _resolve_plan_config(s=s, code=plan_code)
+        normalized_plan = _normalized_plan_payload(plan, fallback_code=plan_code)
+        if not normalized_plan:
+            return False, "unsupported_plan", {}
+
+        existing_key = str(fulfillment.get("access_key") or "").strip().upper()
+        if existing_key:
+            key_code = existing_key
+            reason = "access_key_already_issued"
+        else:
+            key_code = _generate_gift_code_for_admin(s)
+            s.add(GiftCard(code=key_code, card_type=str(normalized_plan["code"]), created_by=0))
+            reason = "access_key_issued"
+
+        now = _utcnow()
+        row.status = "paid"
+        row.paid_at = row.paid_at or now
+        row.plan_code = str(normalized_plan["code"])
+        fulfillment.update(
+            {
+                "mode": "access_key_email",
+                "status": "email_pending",
+                "buyer_email": buyer_email,
+                "access_key": key_code,
+                "access_key_issued_at": _safe_iso(now),
+            }
+        )
+        meta["fulfillment"] = fulfillment
+        _set_external_order_meta(row, meta)
+        s.commit()
+        return True, reason, {
+            "buyer_email": buyer_email,
+            "access_key": key_code,
+            "order_id": str(row.order_id),
+            "plan_code": str(normalized_plan["code"]),
+            "plan_label": str(normalized_plan.get("label") or normalized_plan["code"]),
+            "days": int(normalized_plan.get("days") or 0),
+        }
+    except Exception as exc:
+        s.rollback()
+        logger.exception("payment access key issue failed: provider=%s order_id=%s err=%s", provider, order_id, exc)
+        return False, "access_key_issue_failed", {}
+    finally:
+        s.close()
+
+
+def _record_access_key_delivery_result(*, provider: str, order_id: str, delivery: dict[str, Any]) -> None:
+    s = SessionLocal()
+    try:
+        row = (
+            s.query(ExternalOrder)
+            .filter(ExternalOrder.provider == str(provider), ExternalOrder.order_id == str(order_id))
+            .first()
+        )
+        if not row:
+            return
+        meta = _external_order_meta(row)
+        fulfillment = dict(meta.get("fulfillment") or {})
+        delivery_status = str((delivery or {}).get("status") or "").strip()
+        fulfillment["email_delivery"] = {
+            "status": delivery_status,
+            "mode": str((delivery or {}).get("mode") or "").strip() or None,
+            "http_status": (delivery or {}).get("http_status"),
+            "detail": (delivery or {}).get("detail"),
+        }
+        if delivery_status == "sent":
+            fulfillment["status"] = "email_sent"
+        elif delivery_status:
+            fulfillment["status"] = "email_delivery_error"
+        meta["fulfillment"] = fulfillment
+        _set_external_order_meta(row, meta)
+        s.commit()
+    except Exception:
+        s.rollback()
+        logger.exception("failed to record access key email delivery provider=%s order_id=%s", provider, order_id)
+    finally:
+        s.close()
+
+
+def _fulfill_external_paid_order(*, provider: str, order_id: str, payload: dict[str, Any]) -> tuple[bool, str, dict[str, Any]]:
+    s = SessionLocal()
+    try:
+        ext_order = (
+            s.query(ExternalOrder)
+            .filter(ExternalOrder.provider == str(provider), ExternalOrder.order_id == str(order_id))
+            .first()
+        ) if order_id else None
+        tg_id = _safe_int(_payload_value(payload, "tg_id", "telegram_id", "user_id", "us_tg_id"))
+        if tg_id is None and ext_order and ext_order.tg_id is not None:
+            tg_id = int(ext_order.tg_id)
+    finally:
+        s.close()
+
+    if tg_id is not None and int(tg_id) > 0:
+        activated, reason = _apply_external_paid_order(provider=provider, order_id=order_id, payload=payload)
+        return activated, reason, {"tg_id": int(tg_id)} if activated else {}
+    return _issue_payment_access_key_for_order(provider=provider, order_id=order_id, payload=payload)
+
+
 async def _handle_payment_callback(*, provider: str, event_type: str, request: Request) -> dict[str, Any]:
     p = _normalize_provider(provider)
     et = re.sub(r"[^a-z_]", "", str(event_type or "").strip().lower())
@@ -3310,9 +3516,22 @@ async def _handle_payment_callback(*, provider: str, event_type: str, request: R
         if not _is_ip_allowed(client_ip, FK_NOTIFY_IP_ALLOWLIST):
             logger.warning("freekassa callback blocked by ip allowlist: ip=%s", client_ip)
             raise HTTPException(status_code=403, detail="Callback IP is not allowed")
+    if p == "lavatop":
+        allowlist = [item.strip() for item in (os.getenv("LAVATOP_WEBHOOK_IP_ALLOWLIST") or "").split(",") if item.strip()]
+        client_ip = _request_client_ip(request)
+        if allowlist and not _is_ip_allowed(client_ip, allowlist):
+            logger.warning("lavatop callback blocked by ip allowlist: ip=%s", client_ip)
+            raise HTTPException(status_code=403, detail="Callback IP is not allowed")
     order_id, external_id = _callback_ids(p, payload, raw)
     signature_ok, signature_reason = _verify_callback_signature(provider=p, payload=payload, raw=raw, request=request)
     callback_status = _status_from_event(et, payload, signature_ok=signature_ok, provider=p)
+    validation_reason = ""
+    if signature_ok and et == "result" and callback_status == "paid":
+        callback_valid, validation_reason = _validate_paid_callback_against_order(provider=p, order_id=order_id, payload=payload)
+        if not callback_valid:
+            payload = dict(payload)
+            payload["_pokrov_validation_error"] = validation_reason
+            callback_status = "manual_review"
     processed_ok = bool(signature_ok and callback_status not in {"manual_review", "pending_verification"})
     duplicate, persist_ok = _record_external_payment_event(
         provider=p,
@@ -3341,16 +3560,28 @@ async def _handle_payment_callback(*, provider: str, event_type: str, request: R
     activation_reason = ""
     sync_ok = None
     if (not duplicate) and signature_ok and et == "result" and callback_status == "paid":
-        activated, activation_reason = _apply_external_paid_order(provider=p, order_id=order_id, payload=payload)
+        activated, activation_reason, fulfillment = _fulfill_external_paid_order(provider=p, order_id=order_id, payload=payload)
         if activated:
-            tg_id = _safe_int(_payload_value(payload, "tg_id", "telegram_id", "user_id"))
+            if fulfillment.get("access_key") and fulfillment.get("buyer_email"):
+                delivery = await deliver_payment_access_key(
+                    email=str(fulfillment["buyer_email"]),
+                    access_key=str(fulfillment["access_key"]),
+                    order_id=str(fulfillment.get("order_id") or order_id),
+                    plan_code=str(fulfillment.get("plan_code") or ""),
+                    plan_label=str(fulfillment.get("plan_label") or ""),
+                    days=int(fulfillment.get("days") or 0),
+                )
+                _record_access_key_delivery_result(provider=p, order_id=order_id, delivery=delivery)
+                if str(delivery.get("status") or "") != "sent":
+                    activation_reason = "access_key_email_delivery_error"
+            tg_id = _safe_int(_payload_value(payload, "tg_id", "telegram_id", "user_id")) or fulfillment.get("tg_id")
             if tg_id is not None:
                 try:
                     sync_ok = bool(await _sync_user_after_paid_purchase(int(tg_id)))
                 except Exception:
                     sync_ok = False
     elif (not duplicate) and signature_ok and et == "result":
-        activation_reason = callback_status
+        activation_reason = validation_reason or callback_status
 
     return {
         "ok": bool(signature_ok and persist_ok),
@@ -4508,6 +4739,11 @@ async def auth_telegram_oidc_finish(payload: TelegramOidcFinishIn) -> dict:
     }
 
 
+@app.get("/api/auth/email/status")
+async def auth_email_status() -> dict[str, Any]:
+    return email_delivery_runtime_status()
+
+
 @app.post("/api/auth/email/register")
 async def auth_email_register(
     payload: EmailRegisterIn,
@@ -5399,12 +5635,13 @@ async def _rub_create_order_internal(
     *,
     request: Request,
     provider: str,
-    tg_id: int,
+    tg_id: int | None,
     source: str,
     plan_code: str,
     campaign: str = "",
     promo_code: str = "",
     currency: str = "RUB",
+    buyer_email: str | None = None,
     consume_pending_discount: bool = False,
 ) -> RubOrderActionOut:
     _ensure_checkout_runtime_ready()
@@ -5418,22 +5655,33 @@ async def _rub_create_order_internal(
         raise HTTPException(status_code=400, detail="Unsupported payment provider")
     if provider != "freekassa" and not provider_is_configured(provider):
         raise HTTPException(status_code=503, detail=f"{provider} is not configured")
+    normalized_tg_id = int(tg_id or 0)
+    buyer_email_norm = ""
+    if normalized_tg_id <= 0:
+        try:
+            buyer_email_norm = validate_email_input(str(buyer_email or ""))
+        except InvalidEmailInputError as exc:
+            raise HTTPException(status_code=400, detail="Valid buyer_email is required") from exc
     s = SessionLocal()
     try:
         plan = _resolve_plan_config(s=s, code=plan_code)
         if not plan:
             raise HTTPException(status_code=400, detail="Unknown plan for RUB checkout")
-        user = s.query(User).filter(User.tg_id == int(tg_id)).first()
-        if not user:
+        user = None
+        if normalized_tg_id > 0:
+            user = s.query(User).filter(User.tg_id == int(normalized_tg_id)).first()
+        if normalized_tg_id > 0 and not user:
             raise HTTPException(status_code=404, detail="User not found")
         base_amount = max(0, int(plan.get("amount_rub") or 0))
         final_amount = base_amount
         discount_pct = 0
         discount_applied = False
         effective_promo = (promo_code or "").strip().upper()[:32]
-        pending_code = (getattr(user, "pending_discount_code", "") or "").strip().upper()[:20]
-        pending_pct = int(getattr(user, "pending_discount_pct", 0) or 0)
-        referral_discount_eligible = bool(getattr(user, "referrer_id", None) and not bool(getattr(user, "first_purchase_done", False)))
+        pending_code = (getattr(user, "pending_discount_code", "") or "").strip().upper()[:20] if user else ""
+        pending_pct = int(getattr(user, "pending_discount_pct", 0) or 0) if user else 0
+        referral_discount_eligible = bool(
+            user and getattr(user, "referrer_id", None) and not bool(getattr(user, "first_purchase_done", False))
+        )
         working_amount = int(base_amount)
         if referral_discount_eligible and working_amount > 0:
             working_amount = max(1, int(round(working_amount * 0.8)))
@@ -5446,11 +5694,13 @@ async def _rub_create_order_internal(
         discount_pct = int(round((1.0 - (float(final_amount) / float(base_amount))) * 100)) if discount_applied else 0
         amount_rub = float(final_amount)
         order_prefix = "fk" if provider == "freekassa" else provider[:12]
-        order_id = f"{order_prefix}_{source}_{tg_id}_{int(time.time())}_{secrets.token_hex(4)}"
+        order_subject = str(normalized_tg_id if normalized_tg_id > 0 else "public")
+        order_id = f"{order_prefix}_{source}_{order_subject}_{int(time.time())}_{secrets.token_hex(4)}"
         plan_label = str(plan.get("label") or RUB_PLAN_LABELS.get(plan_code) or plan_code).strip()
+        fulfillment_mode = "account_extend" if normalized_tg_id > 0 else "access_key_email"
         ext = ExternalOrder(
             order_id=order_id,
-            tg_id=int(tg_id),
+            tg_id=int(normalized_tg_id) if normalized_tg_id > 0 else None,
             provider=provider,
             plan_code=str(plan.get("code") or plan_code).strip().lower(),
             source=source,
@@ -5464,10 +5714,15 @@ async def _rub_create_order_internal(
                     "source": source,
                     "campaign": campaign,
                     "promo_code": effective_promo,
-                    "tg_id": int(tg_id),
+                    "tg_id": int(normalized_tg_id) if normalized_tg_id > 0 else None,
+                    "buyer_email": buyer_email_norm or None,
                     "plan_code": str(plan.get("code") or plan_code).strip().lower(),
                     "provider": provider,
                     "plan_label": plan_label,
+                    "fulfillment": {
+                        "mode": fulfillment_mode,
+                        "status": "pending_payment",
+                    },
                     "pricing": {
                         "base_amount_rub": int(base_amount),
                         "final_amount_rub": int(final_amount),
@@ -5483,7 +5738,7 @@ async def _rub_create_order_internal(
             created_at=_utcnow(),
         )
         s.add(ext)
-        if consume_pending_discount and discount_applied:
+        if user and consume_pending_discount and discount_applied:
             user.pending_discount_pct = None
             user.pending_discount_code = None
             user.pending_discount_set_at = None
@@ -5498,7 +5753,8 @@ async def _rub_create_order_internal(
         "provider": provider,
         "amount": float(amount_rub),
         "currency": "RUB",
-        "tg_id": int(tg_id),
+        "tg_id": int(normalized_tg_id) if normalized_tg_id > 0 else None,
+        "buyer_email": buyer_email_norm or None,
         "plan_code": str(plan.get("code") or plan_code).strip().lower(),
         "plan_label": plan_label,
         "campaign": campaign or "",
@@ -5516,7 +5772,7 @@ async def _rub_create_order_internal(
             order_id=order_id,
             amount_rub=amount_rub,
             currency="RUB",
-            tg_id=int(tg_id),
+            tg_id=int(normalized_tg_id),
             plan_code=str(plan.get("code") or plan_code).strip().lower(),
             campaign=campaign or "",
             promo_code=effective_promo or "",
@@ -5536,7 +5792,8 @@ async def _rub_create_order_internal(
             chargeback_url=_provider_chargeback_url(provider),
             logo_url=(os.getenv("PAYMENT_LOGO_URL") or "").strip(),
             custom={
-                "tg_id": int(tg_id),
+                **({"tg_id": int(normalized_tg_id)} if normalized_tg_id > 0 else {}),
+                **({"email": buyer_email_norm} if buyer_email_norm else {}),
                 "plan_code": str(plan.get("code") or plan_code).strip().lower(),
                 "provider": provider,
                 "source": source,
@@ -5561,6 +5818,11 @@ async def _rub_create_order_internal(
                         "final_amount_rub": int(final_amount),
                         "discount_pct": int(discount_pct),
                         "discount_applied": bool(discount_applied),
+                    },
+                    "fulfillment": {
+                        "mode": fulfillment_mode,
+                        "status": "pending_payment",
+                        "buyer_email": buyer_email_norm or None,
                     },
                 },
                 ensure_ascii=False,
@@ -5626,22 +5888,36 @@ async def rub_order_create_public(
     request: Request,
 ) -> RubOrderActionOut:
     _ensure_checkout_runtime_ready()
-    ticket_payload = _parse_checkout_ticket(payload.checkout_ticket)
-    if not ticket_payload:
-        raise HTTPException(status_code=401, detail="Invalid or expired checkout ticket")
-    tg_id = int(ticket_payload.get("tg_id") or 0)
-    if tg_id <= 0:
-        raise HTTPException(status_code=400, detail="Checkout ticket has no user binding")
-    source = str(ticket_payload.get("source") or "bot").strip().lower()
-    if source not in {"site", "bot"}:
-        source = "bot"
-    ticket_plan_code = str(ticket_payload.get("plan_code") or "").strip().lower()
+    ticket_raw = str(payload.checkout_ticket or "").strip()
+    ticket_payload = _parse_checkout_ticket(ticket_raw) if ticket_raw else None
     request_plan_code = (payload.plan_code or "").strip().lower()
-    if ticket_plan_code and request_plan_code and request_plan_code != ticket_plan_code:
-        raise HTTPException(status_code=400, detail="Plan code does not match checkout ticket")
-    plan_code = (ticket_plan_code or request_plan_code or "").strip().lower()
-    campaign = _sanitize_deeplink_token(str(ticket_payload.get("campaign_key") or ""), max_len=64, uppercase=False)
-    promo_code = _sanitize_deeplink_token(str(ticket_payload.get("promo_code") or ""), max_len=20, uppercase=True)
+    if ticket_raw and not ticket_payload:
+        raise HTTPException(status_code=401, detail="Invalid or expired checkout ticket")
+
+    if ticket_payload:
+        tg_id = int(ticket_payload.get("tg_id") or 0)
+        if tg_id <= 0:
+            raise HTTPException(status_code=400, detail="Checkout ticket has no user binding")
+        source = str(ticket_payload.get("source") or "bot").strip().lower()
+        if source not in {"site", "bot"}:
+            source = "bot"
+        ticket_plan_code = str(ticket_payload.get("plan_code") or "").strip().lower()
+        if ticket_plan_code and request_plan_code and request_plan_code != ticket_plan_code:
+            raise HTTPException(status_code=400, detail="Plan code does not match checkout ticket")
+        plan_code = (ticket_plan_code or request_plan_code or "").strip().lower()
+        campaign = _sanitize_deeplink_token(str(ticket_payload.get("campaign_key") or ""), max_len=64, uppercase=False)
+        promo_code = _sanitize_deeplink_token(str(ticket_payload.get("promo_code") or ""), max_len=20, uppercase=True)
+        buyer_email = None
+    else:
+        tg_id = None
+        source = str(payload.source or "site").strip().lower()
+        if source not in {"site"}:
+            source = "site"
+        plan_code = request_plan_code
+        campaign = _sanitize_deeplink_token(payload.campaign, max_len=64, uppercase=False)
+        promo_code = _sanitize_deeplink_token(payload.promo_code, max_len=20, uppercase=True)
+        buyer_email = str(payload.buyer_email or "").strip()
+
     return await _rub_create_order_internal(
         request=request,
         provider=_normalize_provider(payload.provider),
@@ -5651,6 +5927,7 @@ async def rub_order_create_public(
         campaign=campaign,
         promo_code=promo_code,
         currency=(payload.currency or "RUB").strip().upper(),
+        buyer_email=buyer_email,
         consume_pending_discount=False,
     )
 

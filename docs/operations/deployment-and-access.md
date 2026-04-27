@@ -166,7 +166,7 @@ Use these when the release is blocked on one narrow operational step and the nex
 
 ### Lava.top Checkout Enablement
 
-The backend supports `lavatop` as a RUB provider, but it must stay out of `RUB_PAYMENT_PROVIDER_ENABLED` until provider evidence is attached. Required env is documented in [Lava.top Payment Operations](C:/Users/kiwun/Documents/ai/VPN/docs/operations/lavatop-payment-operations.md): `LAVATOP_API_KEY`, `LAVATOP_OFFER_ID` or per-plan `LAVATOP_OFFER_ID_<PLAN_CODE>`, and either `LAVATOP_WEBHOOK_API_KEY` or Basic webhook credentials.
+The backend supports `lavatop` as a RUB provider, but it must stay out of `RUB_PAYMENT_PROVIDER_ENABLED` until provider evidence is attached. Required env is documented in [Lava.top Payment Operations](C:/Users/kiwun/Documents/ai/VPN/docs/operations/lavatop-payment-operations.md): `LAVATOP_API_KEY`, `LAVATOP_OFFER_ID` or per-plan `LAVATOP_OFFER_ID_<PLAN_CODE>`, and either `LAVATOP_WEBHOOK_API_KEY` or Basic webhook credentials. Anonymous public checkout also requires configured email delivery (`EMAIL_DELIVERY_WEBHOOK_URL` plus relay secret/SMTP env) before it can safely issue paid access keys.
 
 ### External RU probe runner
 

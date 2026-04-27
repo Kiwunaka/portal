@@ -172,6 +172,7 @@ Current cabinet role:
 - public-facing email browser continuation must stay marked `soon` until sender readiness, delivery confirmation, and the public launch path are all green
 - cabinet is continuation-first; it must not become a second landing page or re-pitch the public marketing story
 - public email signup, verification, and recovery must not be documented as a live default path before that `soon` status is lifted
+- email forms are gated by `/api/auth/email/status`; the default remains unavailable unless public enablement, delivery configuration, and non-debug runtime state are all green
 - current top-level cabinet IA is `Dashboard`, `Subscription`, `Devices`, `Statistics`, and `Support`
 - task routes currently include cabinet entry, hosted-checkout continuation, redeem, downloads, and support threads
 - `/pricing/` remains only as a compatibility continuation alias and must not become a second public pricing surface
@@ -198,7 +199,7 @@ Public funnel rule:
 - marketing introduces the product and captures public intent through a checkout-first acquisition path
 - `pokrov.space/checkout/` shows public pricing and sells activation keys through the hosted checkout flow
 - `app.pokrov.space` continues real account, renewal, redeem, support, and admin flows
-- cabinet checkout is continuation-only and should defer to the same hosted activation-key flow instead of inventing a second paywall
+- cabinet checkout is continuation-only and creates an authenticated provider order that renews the current account; anonymous public checkout remains key-first by email
 - the default site, cabinet, and bot UX must not expose raw subscription links
 - Telegram bot purchase flow remains available, but it is not the default public story
 - `connect.pokrov.space` remains the delivery surface for the one public connection link and matching QR, not a fresh-entry marketing surface
