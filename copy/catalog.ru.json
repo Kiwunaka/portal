@@ -517,7 +517,7 @@
     },
     "marketing.install.secondary_cta": {
       "surface": "marketing.install",
-      "ru": "Открыть кабинет",
+      "ru": "Написать в поддержку",
       "variables": [],
       "tone": "calm",
       "allowed_public": true,

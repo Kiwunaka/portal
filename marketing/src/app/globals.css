@@ -1698,6 +1698,24 @@ input.checkout-secondary:focus-visible,
   }
 }
 
+@media (prefers-reduced-motion: no-preference) {
+  .lp-route-shell--install .lp-hero-copy > *,
+  .lp-route-shell--install .lp-hero-stage > * {
+    opacity: 1;
+    animation-name: lp-rise-motion;
+  }
+}
+
+@keyframes lp-rise-motion {
+  from {
+    transform: translateY(18px);
+  }
+
+  to {
+    transform: translateY(0);
+  }
+}
+
 @media (max-width: 1180px) {
   .lp-nav-shell,
   .lp-header-shell {

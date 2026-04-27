@@ -55,7 +55,7 @@ export default function InstallPage() {
         <header className="lp-nav">
           <div className="lp-nav-shell">
             <Link href="/" className="lp-brand">
-              <img src="/pokrov-logo.svg" alt={CANONICAL_PLATFORM_BRAND} className="lp-brand-logo" />
+              <img src="/pokrov-logo.svg" alt="" aria-hidden="true" className="lp-brand-logo" />
               <span>{CANONICAL_PLATFORM_BRAND}</span>
             </Link>
             <nav className="lp-menu" aria-label="Главная навигация">
