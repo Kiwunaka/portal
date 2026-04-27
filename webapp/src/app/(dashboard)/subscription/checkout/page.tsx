@@ -3,9 +3,8 @@
 import AppRouteLink from "@/components/app-route-link";
 import { CabinetCardGrid, CabinetHero, CabinetRoute, CabinetSection } from "@/components/cabinet/surface";
 import { resolvePlanLabel } from "@/lib/access-policy";
-import { fetchPublicCatalog } from "@/lib/api";
+import { createRubCheckoutOrder, fetchPublicCatalog, getRubPaymentProviders } from "@/lib/api";
 import {
-  getPortalPublicConfig,
   getPricingPreviewDiscountPercent,
   getTariffPlans,
   normalizePlanCode,
@@ -24,7 +23,6 @@ type DisplayPlan = {
   note: string;
 };
 
-const config = getPortalPublicConfig(process.env as Record<string, string | undefined>);
 const SHARED_PLANS: DisplayPlan[] = getTariffPlans()
   .slice()
   .filter((plan) => Boolean(plan.is_active) && Number(plan.amount_rub || 0) > 0)
@@ -43,16 +41,6 @@ function normalizePromo(raw: string): string {
   return String(raw || "").trim().toUpperCase();
 }
 
-function buildHostedCheckoutHref(planCode: string, promoCode?: string): string {
-  const url = new URL(config.checkoutUrl);
-  url.searchParams.set("plan", planCode);
-  url.searchParams.set("from", "webapp");
-  if (promoCode) {
-    url.searchParams.set("promo", promoCode);
-  }
-  return url.toString();
-}
-
 function formatDuration(days: number): string {
   if (days >= 365) return `${Math.round(days / 30)} мес.`;
   if (days > 90) return `${Math.round(days / 30)} мес.`;
@@ -66,6 +54,9 @@ export default function CheckoutPage() {
   const [promoInput, setPromoInput] = useState(() => normalizePromo(searchParams.get("promo") || ""));
   const [catalogError, setCatalogError] = useState("");
   const [selectedCode, setSelectedCode] = useState(() => normalizePlanCode(searchParams.get("plan"), "1_month"));
+  const [providerCode, setProviderCode] = useState("");
+  const [checkoutBusy, setCheckoutBusy] = useState(false);
+  const [checkoutError, setCheckoutError] = useState("");
 
   useEffect(() => {
     setSelectedCode(normalizePlanCode(searchParams.get("plan"), "1_month"));
@@ -110,6 +101,24 @@ export default function CheckoutPage() {
     };
   }, []);
 
+  useEffect(() => {
+    let cancelled = false;
+    void getRubPaymentProviders()
+      .then((payload) => {
+        if (!cancelled) {
+          setProviderCode(String(payload.providers?.[0]?.code || ""));
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setProviderCode("");
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   const activePlan = useMemo(
     () => plans.find((plan) => plan.code === selectedCode) || plans[0] || SHARED_PLANS[0],
     [plans, selectedCode],
@@ -118,7 +127,31 @@ export default function CheckoutPage() {
   const discountPercent = getPricingPreviewDiscountPercent(promoCode);
   const discountAmount = Math.round((Number(activePlan?.amountRub || 0) * discountPercent) / 100);
   const totalAmount = Math.max(0, Number(activePlan?.amountRub || 0) - discountAmount);
-  const checkoutHref = buildHostedCheckoutHref(activePlan?.code || "1_month", discountPercent > 0 ? promoCode : undefined);
+  const checkoutReady = Boolean(providerCode);
+
+  const startCheckout = async (): Promise<void> => {
+    if (!activePlan?.code || !providerCode) return;
+    setCheckoutBusy(true);
+    setCheckoutError("");
+    try {
+      const order = await createRubCheckoutOrder({
+        provider: providerCode,
+        plan_code: activePlan.code,
+        source: "site",
+        promo_code: discountPercent > 0 ? promoCode : undefined,
+        currency: "RUB",
+      });
+      const paymentUrl = String(order.payment_url || "").trim();
+      if (!paymentUrl) {
+        throw new Error("Payment URL is missing.");
+      }
+      window.location.assign(paymentUrl);
+    } catch (error) {
+      setCheckoutError(String((error as { message?: string })?.message || error || "Checkout is not available."));
+    } finally {
+      setCheckoutBusy(false);
+    }
+  };
 
   const selectedPlanCards = plans.map((plan) => {
     const selected = plan.code === activePlan?.code;
@@ -147,9 +180,9 @@ export default function CheckoutPage() {
       description="Выберите срок, проверьте сумму и перейдите на защищенную страницу оплаты. После оплаты ключ можно применить в приложении или в кабинете."
       actions={
         <>
-          <a href={checkoutHref} className="btn-primary rounded-full px-5 py-3 text-sm font-semibold">
+          <button type="button" onClick={startCheckout} disabled={!checkoutReady || checkoutBusy} className="btn-primary rounded-full px-5 py-3 text-sm font-semibold disabled:opacity-60">
             Перейти к оплате
-          </a>
+          </button>
           <AppRouteLink href="/redeem/" className="outline-btn rounded-full px-5 py-3 text-sm font-semibold">
             У меня уже есть ключ
           </AppRouteLink>
@@ -190,9 +223,9 @@ export default function CheckoutPage() {
         description="Кабинет помогает выбрать срок и возвращает вас к текущему профилю. Личные ссылки и ручные настройки здесь не показываются."
         actions={
           <>
-            <a href={checkoutHref} className="btn-primary rounded-full px-5 py-3 text-sm font-semibold">
+            <button type="button" onClick={startCheckout} disabled={!checkoutReady || checkoutBusy} className="btn-primary rounded-full px-5 py-3 text-sm font-semibold disabled:opacity-60">
               Перейти к оплате
-            </a>
+            </button>
             <AppRouteLink href="/subscription/" className="outline-btn rounded-full px-5 py-3 text-sm font-semibold">
               Назад к тарифам
             </AppRouteLink>
@@ -260,13 +293,16 @@ export default function CheckoutPage() {
           </div>
 
           <div className="mt-5 grid gap-3">
-            <a href={checkoutHref} className="btn-primary block rounded-2xl py-3 text-center text-sm font-semibold">
+            <button type="button" onClick={startCheckout} disabled={!checkoutReady || checkoutBusy} className="btn-primary block rounded-2xl py-3 text-center text-sm font-semibold disabled:opacity-60">
               Перейти к оплате
-            </a>
+            </button>
             <AppRouteLink href="/redeem/" className="outline-btn block rounded-2xl py-3 text-center text-sm font-semibold">
               Применить уже купленный ключ
             </AppRouteLink>
           </div>
+
+          {checkoutError ? <p className="mt-4 text-sm text-rose-700 dark:text-rose-200">{checkoutError}</p> : null}
+          {!checkoutReady ? <p className="mt-4 text-sm text-amber-700 dark:text-amber-200">Payment provider is not enabled yet.</p> : null}
 
           <div className="mt-5 rounded-[1.3rem] border border-slate-200/80 bg-white/72 px-4 py-4 text-sm leading-6 text-slate-600 dark:border-white/10 dark:bg-white/[0.04] dark:text-slate-300">
             <p>Пробный период начинается в приложении на первом подходящем устройстве.</p>

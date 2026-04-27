@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 
-import { buildCheckoutHostHref, MARKETING_CANONICAL_PATHS } from "../../lib/marketing-site";
+import { MARKETING_CANONICAL_PATHS } from "../../lib/marketing-site";
 import {
   getPricingPreviewDiscountPercent,
   getPokrovPublicConfig,
@@ -91,6 +91,14 @@ type PaymentProviderState = {
   blocked_reason_texts?: string[];
 };
 
+type PublicRubOrderResponse = {
+  ok: boolean;
+  provider?: string;
+  order_id: string;
+  payment_url?: string | null;
+  status: string;
+};
+
 const config = getPokrovPublicConfig(process.env as Record<string, string | undefined>);
 const promoCatalog = getPromoSlotsCatalog();
 
@@ -160,6 +168,40 @@ async function fetchPaymentProviderState(): Promise<PaymentProviderState | null>
     }
   }
   return null;
+}
+
+async function createPublicRubOrder(payload: {
+  provider: string;
+  plan_code: string;
+  buyer_email: string;
+  promo_code?: string;
+  currency?: string;
+}): Promise<PublicRubOrderResponse> {
+  let lastError = "Не удалось создать платеж.";
+  for (const base of candidateApiBases()) {
+    try {
+      const response = await fetch(`${base}/api/payments/orders/create-public`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          provider: payload.provider,
+          plan_code: payload.plan_code,
+          buyer_email: payload.buyer_email,
+          source: "site",
+          promo_code: payload.promo_code || undefined,
+          currency: payload.currency || "RUB",
+        }),
+      });
+      if (!response.ok) {
+        lastError = (await response.text()) || `HTTP ${response.status}`;
+        continue;
+      }
+      return (await response.json()) as PublicRubOrderResponse;
+    } catch (error) {
+      lastError = String((error as { message?: string })?.message || error || lastError);
+    }
+  }
+  throw new Error(lastError);
 }
 
 function describePromoContent(contentId: string): { title: string; body: string } {
@@ -246,6 +288,8 @@ export default function CheckoutClient() {
   const [providerState, setProviderState] = useState<PaymentProviderState | null>(null);
   const [statusText, setStatusText] = useState("");
   const [keyBusy, setKeyBusy] = useState(false);
+  const [buyerEmail, setBuyerEmail] = useState("");
+  const [checkoutBusy, setCheckoutBusy] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -324,14 +368,43 @@ export default function CheckoutClient() {
   );
 
   const discountPercent = getPricingPreviewDiscountPercent(promoCode);
-  const checkoutHref = buildCheckoutHostHref(activePlan.code, promoCode || undefined);
   const redeemHref = keyStatus?.key ? buildRedeemHref(keyStatus.key) : buildRedeemHref(keyInput);
   const marketingPromoIds =
     promoCatalog.slots.find((slot) => slot.id === "marketing.checkout.contextual")?.allowed_content_ids || [];
   const checkoutReady = Boolean(providerState?.ok && !providerState?.blocked && providerState.providers?.length);
+  const activeProviderCode = String(providerState?.providers?.[0]?.code || "").trim();
   const checkoutBlockedReasons = providerState?.blocked_reason_texts?.length
     ? providerState.blocked_reason_texts
     : providerState?.blocked_reasons || [];
+
+  const startPublicCheckout = async (): Promise<void> => {
+    if (!checkoutReady || !activeProviderCode) return;
+    const email = buyerEmail.trim().toLowerCase();
+    if (!email) {
+      setStatusText("Укажите email для доставки ключа после оплаты.");
+      return;
+    }
+    setCheckoutBusy(true);
+    setStatusText("");
+    try {
+      const order = await createPublicRubOrder({
+        provider: activeProviderCode,
+        plan_code: activePlan.code,
+        buyer_email: email,
+        promo_code: promoCode || undefined,
+        currency: "RUB",
+      });
+      const paymentUrl = String(order.payment_url || "").trim();
+      if (!paymentUrl) {
+        throw new Error("Платежная ссылка не получена.");
+      }
+      window.location.assign(paymentUrl);
+    } catch (error) {
+      setStatusText(String((error as { message?: string })?.message || error || "Не удалось создать платеж."));
+    } finally {
+      setCheckoutBusy(false);
+    }
+  };
 
   return (
     <main className="checkout-shell lp-route-shell lp-route-shell--checkout">
@@ -467,9 +540,24 @@ export default function CheckoutClient() {
           </div>
 
           {checkoutReady ? (
-            <a href={checkoutHref} target="_blank" rel="noreferrer" className="checkout-submit">
+            <label className="checkout-helper" htmlFor="checkout-buyer-email">
+              Email для доставки ключа
+              <input
+                id="checkout-buyer-email"
+                type="email"
+                value={buyerEmail}
+                onChange={(event) => setBuyerEmail(event.target.value)}
+                placeholder="email@example.com"
+                className="checkout-secondary"
+                required
+              />
+            </label>
+          ) : null}
+
+          {checkoutReady ? (
+            <button type="button" onClick={startPublicCheckout} disabled={checkoutBusy} className="checkout-submit">
               Перейти к оплате
-            </a>
+            </button>
           ) : (
             <span className="checkout-submit checkout-submit--disabled" aria-disabled="true">
               Оплата временно недоступна

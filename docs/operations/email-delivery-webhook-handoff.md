@@ -1,6 +1,6 @@
 # Передача для настройки email-доставки через webhook
 
-Last updated: 2026-04-15
+Last updated: 2026-04-27
 
 ## Зачем нужен этот файл
 
@@ -20,6 +20,9 @@ Last updated: 2026-04-15
 
 - `EMAIL_AUTH_WEBHOOK_URL`
 - `EMAIL_AUTH_WEBHOOK_TIMEOUT_SECONDS`
+- `EMAIL_DELIVERY_WEBHOOK_URL` as the preferred replacement for `EMAIL_AUTH_WEBHOOK_URL`
+- `EMAIL_DELIVERY_WEBHOOK_SECRET` for `X-Pokrov-Email-Secret` and `Authorization: Bearer ...` relay auth
+- `EMAIL_AUTH_PUBLIC_ENABLED=false` by default; public email UI can render forms only when this is true, delivery is configured, and debug echo is off
 - `EMAIL_AUTH_TOKEN_SECRET`
 - `EMAIL_AUTH_DEBUG_ECHO`
 
@@ -33,11 +36,33 @@ Last updated: 2026-04-15
 - `email`
 - `token`
 - `linked_tg_id`
+- for `payment_access_key`: `access_key`, `order_id`, `plan_code`, `plan_label`, `days`
 
 Типы писем сейчас:
 
 - `verify`
 - `reset`
+- `payment_access_key`
+
+## Repo-owned SMTP relay
+
+`portal_bot/email_relay_app.py` is the internal webhook-to-SMTP bridge. Run it behind the private control surface and point `EMAIL_DELIVERY_WEBHOOK_URL` at `/email/deliver`.
+
+Relay env:
+
+- `EMAIL_RELAY_SMTP_HOST`
+- `EMAIL_RELAY_SMTP_PORT`
+- `EMAIL_RELAY_SMTP_USERNAME`
+- `EMAIL_RELAY_SMTP_PASSWORD`
+- `EMAIL_RELAY_SMTP_TLS`
+- `EMAIL_RELAY_FROM`
+- `EMAIL_DELIVERY_WEBHOOK_SECRET`
+
+Smoke commands:
+
+- Dry run: `python scripts/email_delivery_probe.py --kind verify`
+- Live verify probe: `python scripts/email_delivery_probe.py --kind verify --email operator@example.com --live`
+- Live paid-key probe: `python scripts/email_delivery_probe.py --kind payment_access_key --email operator@example.com --live`
 
 ## Когда сразу останавливаемся
 

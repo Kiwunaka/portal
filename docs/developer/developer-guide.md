@@ -165,6 +165,9 @@ Current rules:
 - the client-side RTT upload contract is `POST /api/client/nodes/latency-samples`; it stores install-scoped diagnostic evidence and does not bypass `UserNode` pinning
 - the persisted split-tunnel contract is backend-owned through `route_mode`, `selected_apps`, `requires_elevated_privileges`, and mirrored `route_policy.*` fields; do not document it as client-only local state
 - additive browser email auth lives under `/api/auth/email/*`, but public docs and entry copy must keep it marked `soon` until transactional sender identity, delivery confirmation, and the public launch path are live
+- `/api/auth/email/status` is the frontend gate; it enables email forms only when `EMAIL_AUTH_PUBLIC_ENABLED=true`, delivery is configured, and `EMAIL_AUTH_DEBUG_ECHO=false`
+- email delivery uses `portal_bot/email_delivery_service.py`; the repo-owned SMTP bridge is `portal_bot/email_relay_app.py`
+- payment smoke helpers: `scripts/lavatop_invoice_probe.py`, `scripts/lavatop_webhook_replay_smoke.py`, and `scripts/email_delivery_probe.py`
 - before that launch, web and cabinet should expose a truthful unavailable or `soon` state instead of acting like verify or reset mail works
 - support is a real `/api/tickets*` contract, including `/api/tickets/uploads` for authenticated browser attachments; do not describe it as an imaginary live chat
 - transport rollout is additive: `legacy_reality_fallback` stays the baseline until the canary completes, while `grpc_443_primary` is the allowlisted app-first primary for rollout cohorts

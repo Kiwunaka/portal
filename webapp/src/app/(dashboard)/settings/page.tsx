@@ -1,11 +1,11 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import AppRouteLink from "@/components/app-route-link";
 import { CabinetCardGrid, CabinetHero, CabinetList, CabinetRoute, CabinetSection } from "@/components/cabinet/surface";
 import { getDeviceLimit, resolvePlanLabel, resolveTrafficStatusText } from "@/lib/access-policy";
-import { checkChannelSubscriberStatus, claimChannelBonus } from "@/lib/api";
+import { checkChannelSubscriberStatus, claimChannelBonus, getEmailAuthStatus } from "@/lib/api";
 import { usePortalSession } from "@/lib/session";
 
 function formatDate(value?: string | null): string {
@@ -41,6 +41,7 @@ export default function SettingsPage() {
   const [bonusMessage, setBonusMessage] = useState("");
   const [bonusError, setBonusError] = useState("");
   const [bonusBusy, setBonusBusy] = useState<"check" | "claim" | "">("");
+  const [emailReady, setEmailReady] = useState(false);
 
   const linked = user?.linked_identities || dash?.linked_identities || null;
   const telegramName = linked?.telegram?.username ? `@${linked.telegram.username}` : profileLabel(user?.username, user?.tg_id);
@@ -52,6 +53,20 @@ export default function SettingsPage() {
   const channelBonusClaimedAt = user?.bonuses?.channel_bonus?.claimed_at || null;
   const channelBonusReady = Boolean(user?.bonuses?.channel_bonus?.can_claim);
   const canClaimBonus = !channelBonusClaimedAt && (channelBonusReady || Boolean(bonusCheck?.subscriber && !bonusCheck.alreadyClaimed));
+
+  useEffect(() => {
+    let cancelled = false;
+    void getEmailAuthStatus()
+      .then((payload) => {
+        if (!cancelled) setEmailReady(Boolean(payload.enabled));
+      })
+      .catch(() => {
+        if (!cancelled) setEmailReady(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const linkedItems = [
     {
@@ -69,9 +84,18 @@ export default function SettingsPage() {
     {
       key: "email",
       title: "Email",
-      body: linkedEmail ? "Email уже привязан к аккаунту." : "Email-вход готовим отдельно. Пока не показываем недоделанный сценарий.",
-      badge: linkedEmail || "Скоро",
+      body: linkedEmail
+        ? "Email уже привязан к аккаунту."
+        : emailReady
+          ? "Email-вход включен на экране входа."
+          : "Email-вход готовим отдельно. Пока не показываем недоделанный сценарий.",
+      badge: linkedEmail || (emailReady ? "Доступен" : "Скоро"),
       tone: linkedEmail ? ("info" as const) : ("neutral" as const),
+      action: emailReady ? (
+        <AppRouteLink href="/" className="text-sm font-semibold text-emerald-800 dark:text-emerald-300">
+          Email
+        </AppRouteLink>
+      ) : undefined,
     },
     {
       key: "access",
@@ -239,8 +263,8 @@ export default function SettingsPage() {
           },
           {
             label: "Email",
-            value: linkedEmail || "Скоро",
-            hint: linkedEmail ? "Связка уже есть." : "Пока честно держим этот вход выключенным.",
+            value: linkedEmail || (emailReady ? "Доступен" : "Скоро"),
+            hint: linkedEmail ? "Связка уже есть." : emailReady ? "Email-вход включен на экране входа." : "Пока честно держим этот вход выключенным.",
             tone: linkedEmail ? "info" : "neutral",
           },
           {

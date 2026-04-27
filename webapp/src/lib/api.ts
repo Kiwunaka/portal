@@ -1183,6 +1183,16 @@ export type EmailDeliveryPayload = {
   http_status?: number | null;
 };
 
+export type EmailAuthStatusResult = {
+  ok: boolean;
+  enabled: boolean;
+  public_enabled?: boolean;
+  delivery_configured?: boolean;
+  debug_echo?: boolean;
+  mode?: string;
+  blocked_reasons?: string[];
+};
+
 export type EmailIdentityPayload = {
   email: string;
   verified?: boolean;
@@ -1829,6 +1839,10 @@ export function registerByEmail(payload: EmailRegisterPayload): Promise<EmailReg
   return unauthenticatedJsonPost<EmailRegisterResult>("/api/auth/email/register", payload);
 }
 
+export function getEmailAuthStatus(): Promise<EmailAuthStatusResult> {
+  return apiFetch<EmailAuthStatusResult>("/api/auth/email/status");
+}
+
 export function verifyEmailToken(payload: EmailVerifyPayload): Promise<WebLoginResult> {
   return unauthenticatedJsonPost<WebLoginResult>("/api/auth/email/verify", payload);
 }
@@ -1930,7 +1944,11 @@ export function createRubCheckoutOrder(payload: {
 export function createPublicRubCheckoutOrder(payload: {
   provider: string;
   plan_code: string;
-  checkout_ticket: string;
+  checkout_ticket?: string;
+  buyer_email?: string;
+  source?: "site";
+  campaign?: string;
+  promo_code?: string;
   currency?: string;
 }): Promise<RubCheckoutStartResult> {
   return apiFetch("/api/payments/orders/create-public", {
