@@ -23,6 +23,25 @@ function shouldUseBrowserNavigation(event: MouseEvent<HTMLAnchorElement>): boole
   );
 }
 
+function normalizeAppPath(pathname: string): string {
+  if (pathname.length <= 1) return "/";
+  return pathname.replace(/\/+$/, "");
+}
+
+function dispatchRouteActivity(href: string): void {
+  if (typeof window === "undefined") return;
+  try {
+    const targetUrl = new URL(href, window.location.href);
+    const currentPath = `${normalizeAppPath(window.location.pathname)}${window.location.search}${window.location.hash}`;
+    const targetPath = `${normalizeAppPath(targetUrl.pathname)}${targetUrl.search}${targetUrl.hash}`;
+    if (targetUrl.origin === window.location.origin && targetPath !== currentPath) {
+      window.dispatchEvent(new CustomEvent("pokrov-route-activity", { detail: { href: targetUrl.href } }));
+    }
+  } catch {
+    // Ignore unusual href values and let Next handle the click.
+  }
+}
+
 const AppRouteLink = forwardRef<HTMLAnchorElement, AppRouteLinkProps>(function AppRouteLink(
   { hardNavigate = false, onClick, target, rel, className, href, ...props },
   ref,
@@ -40,6 +59,9 @@ const AppRouteLink = forwardRef<HTMLAnchorElement, AppRouteLinkProps>(function A
       onClick={(event) => {
         onClick?.(event);
         if (!hardNavigate || target === "_blank" || !shouldUseBrowserNavigation(event)) {
+          if (!hardNavigate && target !== "_blank" && shouldUseBrowserNavigation(event)) {
+            dispatchRouteActivity(event.currentTarget.href);
+          }
           return;
         }
         event.preventDefault();

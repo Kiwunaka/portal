@@ -659,6 +659,21 @@ body.tg-keyboard-open .tg-bottom-nav {
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
   }
+
+  .skeleton::after,
+  .atlas-skeleton::after {
+    animation: none !important;
+    transform: none !important;
+  }
+
+  .haptic-tap:active,
+  .btn-primary:hover,
+  .btn-primary:active,
+  .outline-btn:active,
+  .stat-card:hover,
+  .node-card:hover {
+    transform: none !important;
+  }
 }
 
 /* Atlas flattening overrides */
@@ -862,3 +877,121 @@ body.tg-webapp .grain,
   border-color: rgba(128, 180, 160, 0.12);
 }
 
+body {
+  --atlas-canvas: var(--pokrov-bg, #f7f3eb);
+  --atlas-canvas-alt: var(--pokrov-bg-alt, #f0eadf);
+  --atlas-surface: var(--pokrov-surface-raised, rgba(255, 255, 255, 0.94));
+  --atlas-glass: var(--pokrov-surface-glass, rgba(255, 255, 255, 0.72));
+  --atlas-glass-strong: var(--pokrov-surface-glass-strong, rgba(255, 255, 255, 0.88));
+  --atlas-text: var(--pokrov-text, #1f2636);
+  --atlas-text-soft: var(--pokrov-text-soft, #667081);
+  --atlas-text-muted: var(--pokrov-text-muted, #8a9287);
+  --atlas-border: var(--pokrov-line, rgba(31, 38, 54, 0.1));
+  --atlas-border-strong: var(--pokrov-line-strong, rgba(31, 106, 82, 0.2));
+  --atlas-focus: var(--pokrov-focus-ring, #20674f);
+  --atlas-primary: var(--pokrov-button-bg, #20674f);
+  --atlas-primary-hover: var(--pokrov-button-bg-hover, #174f3d);
+  --atlas-primary-text: var(--pokrov-button-text, #fff);
+  --atlas-secondary: var(--pokrov-button-secondary-bg, rgba(255, 255, 255, 0.86));
+  --atlas-nav-active: var(--pokrov-nav-active-bg, #e7f2ec);
+  --atlas-nav-hover: var(--pokrov-nav-hover-bg, rgba(255, 255, 255, 0.68));
+  --atlas-table-header: var(--pokrov-table-header-bg, #edf4ee);
+  --atlas-table-divider: var(--pokrov-table-divider, rgba(31, 38, 54, 0.08));
+  --atlas-table-row-hover: var(--pokrov-table-row-hover-bg, rgba(32, 103, 79, 0.05));
+  --atlas-skeleton-base: var(--pokrov-skeleton-base, rgba(31, 38, 54, 0.08));
+  --atlas-skeleton-highlight: var(--pokrov-skeleton-highlight, rgba(255, 255, 255, 0.72));
+  --atlas-progress-track: var(--pokrov-progress-track, rgba(31, 38, 54, 0.08));
+  --atlas-progress-fill: var(--pokrov-progress-fill, linear-gradient(90deg, #20674f, #174f3d));
+  --atlas-progress-warning-fill: var(--pokrov-progress-warning-fill, linear-gradient(90deg, #b68b47, #cfab76));
+  --atlas-progress-danger-fill: var(--pokrov-progress-danger-fill, linear-gradient(90deg, #bf6d72, #d78d92));
+  --atlas-status-success-bg: var(--pokrov-status-success-bg, #e7f2ec);
+  --atlas-status-success-text: var(--pokrov-status-success-text, #174f3d);
+  --atlas-status-success-line: var(--pokrov-status-success-line, rgba(32, 103, 79, 0.22));
+  --atlas-status-warning-bg: var(--pokrov-status-warning-bg, #f7efd9);
+  --atlas-status-warning-text: var(--pokrov-status-warning-text, #765d23);
+  --atlas-status-warning-line: var(--pokrov-status-warning-line, rgba(145, 111, 39, 0.22));
+  --atlas-status-danger-bg: var(--pokrov-status-danger-bg, #f8e7e3);
+  --atlas-status-danger-text: var(--pokrov-status-danger-text, #8d352e);
+  --atlas-status-danger-line: var(--pokrov-status-danger-line, rgba(141, 53, 46, 0.22));
+  --atlas-status-info-bg: var(--pokrov-status-info-bg, #e7eef2);
+  --atlas-status-info-text: var(--pokrov-status-info-text, #315c70);
+  --atlas-status-info-line: var(--pokrov-status-info-line, rgba(49, 92, 112, 0.2));
+  --atlas-status-neutral-bg: var(--pokrov-status-neutral-bg, rgba(31, 38, 54, 0.055));
+  --atlas-status-neutral-text: var(--pokrov-status-neutral-text, #4f5868);
+  --atlas-status-neutral-line: var(--pokrov-status-neutral-line, rgba(31, 38, 54, 0.12));
+  --atlas-shadow-soft: var(--pokrov-shadow-soft, 0 10px 28px rgba(32, 49, 65, 0.06));
+  --atlas-shadow-medium: var(--pokrov-shadow-medium, 0 18px 52px rgba(32, 49, 65, 0.08));
+  --atlas-inner-edge: var(--pokrov-card-inner-edge, inset 0 1px 0 rgba(255, 255, 255, 0.62));
+  --bg: var(--atlas-canvas);
+  --text: var(--atlas-text);
+  --line: var(--atlas-border);
+  --glass: var(--atlas-glass-strong);
+  --surface-panel: var(--atlas-surface);
+}
+
+.dark body {
+  --atlas-canvas: var(--pokrov-bg-dark, #111715);
+  --atlas-canvas-alt: var(--pokrov-bg-dark-alt, #151c19);
+  --atlas-surface: var(--pokrov-surface-raised-dark, rgba(20, 27, 24, 0.94));
+  --atlas-glass: var(--pokrov-surface-glass-dark, rgba(18, 25, 22, 0.72));
+  --atlas-glass-strong: var(--pokrov-surface-glass-dark-strong, rgba(17, 23, 21, 0.88));
+  --atlas-text: var(--pokrov-text-dark, #f3f2ec);
+  --atlas-text-soft: var(--pokrov-text-dark-soft, #abb6ae);
+  --atlas-text-muted: var(--pokrov-text-dark-muted, #78857e);
+  --atlas-border: var(--pokrov-line-dark, rgba(239, 243, 241, 0.12));
+  --atlas-border-strong: var(--pokrov-line-dark-strong, rgba(142, 190, 168, 0.22));
+  --atlas-focus: var(--pokrov-focus-ring-dark, #8ac4ab);
+  --atlas-primary: var(--pokrov-button-bg-dark, #8ac4ab);
+  --atlas-primary-hover: var(--pokrov-button-bg-dark-hover, #a5d3bf);
+  --atlas-primary-text: var(--pokrov-button-text-dark, #101713);
+  --atlas-secondary: var(--pokrov-button-secondary-bg-dark, rgba(239, 243, 241, 0.08));
+  --atlas-nav-active: var(--pokrov-nav-active-bg-dark, rgba(74, 155, 122, 0.16));
+  --atlas-nav-hover: var(--pokrov-nav-hover-bg-dark, rgba(239, 243, 241, 0.07));
+  --atlas-table-header: var(--pokrov-table-header-bg-dark, rgba(239, 243, 241, 0.06));
+  --atlas-table-divider: var(--pokrov-table-divider-dark, rgba(239, 243, 241, 0.1));
+  --atlas-table-row-hover: var(--pokrov-table-row-hover-bg-dark, rgba(142, 190, 168, 0.07));
+  --atlas-skeleton-base: var(--pokrov-skeleton-base-dark, rgba(239, 243, 241, 0.09));
+  --atlas-skeleton-highlight: var(--pokrov-skeleton-highlight-dark, rgba(239, 243, 241, 0.18));
+  --atlas-progress-track: var(--pokrov-progress-track-dark, rgba(239, 243, 241, 0.1));
+  --atlas-progress-fill: var(--pokrov-progress-fill-dark, linear-gradient(90deg, #74b99a, #a5d3bf));
+  --atlas-status-success-bg: var(--pokrov-status-success-bg-dark, rgba(74, 155, 122, 0.16));
+  --atlas-status-success-text: var(--pokrov-status-success-text-dark, #b8e5d0);
+  --atlas-status-success-line: var(--pokrov-status-success-line-dark, rgba(120, 202, 164, 0.28));
+  --atlas-status-warning-bg: var(--pokrov-status-warning-bg-dark, rgba(201, 171, 112, 0.14));
+  --atlas-status-warning-text: var(--pokrov-status-warning-text-dark, #e8d19a);
+  --atlas-status-warning-line: var(--pokrov-status-warning-line-dark, rgba(232, 209, 154, 0.24));
+  --atlas-status-danger-bg: var(--pokrov-status-danger-bg-dark, rgba(209, 113, 104, 0.14));
+  --atlas-status-danger-text: var(--pokrov-status-danger-text-dark, #f0b8b1);
+  --atlas-status-danger-line: var(--pokrov-status-danger-line-dark, rgba(240, 184, 177, 0.24));
+  --atlas-status-info-bg: var(--pokrov-status-info-bg-dark, rgba(94, 142, 164, 0.14));
+  --atlas-status-info-text: var(--pokrov-status-info-text-dark, #bdd8e4);
+  --atlas-status-info-line: var(--pokrov-status-info-line-dark, rgba(189, 216, 228, 0.22));
+  --atlas-status-neutral-bg: var(--pokrov-status-neutral-bg-dark, rgba(239, 243, 241, 0.08));
+  --atlas-status-neutral-text: var(--pokrov-status-neutral-text-dark, #d8ded9);
+  --atlas-status-neutral-line: var(--pokrov-status-neutral-line-dark, rgba(239, 243, 241, 0.14));
+  --atlas-shadow-soft: var(--pokrov-shadow-soft-dark, 0 12px 30px rgba(0, 0, 0, 0.2));
+  --atlas-shadow-medium: var(--pokrov-shadow-medium-dark, 0 20px 56px rgba(0, 0, 0, 0.28));
+  --atlas-inner-edge: var(--pokrov-card-inner-edge-dark, inset 0 1px 0 rgba(255, 255, 255, 0.08));
+  --bg: var(--atlas-canvas);
+  --text: var(--atlas-text);
+  --text-dark: var(--atlas-text);
+  --line: var(--atlas-border);
+  --line-dark: var(--atlas-border);
+  --glass-dark: var(--atlas-glass-strong);
+  --surface-panel-dark: var(--atlas-surface);
+}
+
+.atlas-skeleton {
+  position: relative;
+  overflow: hidden;
+  background: var(--atlas-skeleton-base);
+}
+
+.atlas-skeleton::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  transform: translateX(-100%);
+  background: linear-gradient(90deg, transparent, var(--atlas-skeleton-highlight), transparent);
+  animation: shimmer 1.6s infinite;
+}

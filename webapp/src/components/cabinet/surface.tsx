@@ -2,7 +2,7 @@
 
 import type { ReactNode } from "react";
 
-import { StatusBadge } from "@/components/shell-primitives";
+import { StatusBadge } from "@/components/atlas";
 import { cn } from "@/components/utils";
 
 export type CabinetTone = "success" | "warning" | "danger" | "info" | "neutral";
@@ -31,20 +31,27 @@ export type CabinetDetail = {
 };
 
 const PANEL_TONE_CLASSES: Record<CabinetTone, string> = {
-  success: "border-emerald-200/70 bg-emerald-50/90 dark:border-emerald-400/25 dark:bg-emerald-400/10",
-  warning: "border-amber-200/70 bg-amber-50/90 dark:border-amber-400/25 dark:bg-amber-400/10",
-  danger: "border-rose-200/70 bg-rose-50/90 dark:border-rose-400/25 dark:bg-rose-400/10",
-  info: "border-sky-200/70 bg-sky-50/90 dark:border-sky-400/25 dark:bg-sky-400/10",
-  neutral: "border-slate-200/80 bg-white/88 dark:border-white/10 dark:bg-[#101713]/88",
+  success: "border-[color:var(--atlas-status-success-line)] bg-[var(--atlas-status-success-bg)]",
+  warning: "border-[color:var(--atlas-status-warning-line)] bg-[var(--atlas-status-warning-bg)]",
+  danger: "border-[color:var(--atlas-status-danger-line)] bg-[var(--atlas-status-danger-bg)]",
+  info: "border-[color:var(--atlas-status-info-line)] bg-[var(--atlas-status-info-bg)]",
+  neutral: "border-[color:var(--atlas-border)] bg-[var(--atlas-glass)]",
 };
 
 const SUBTLE_TONE_CLASSES: Record<CabinetTone, string> = {
-  success: "border-emerald-200/70 bg-emerald-50/85 dark:border-emerald-400/25 dark:bg-emerald-400/10",
-  warning: "border-amber-200/70 bg-amber-50/85 dark:border-amber-400/25 dark:bg-amber-400/10",
-  danger: "border-rose-200/70 bg-rose-50/85 dark:border-rose-400/25 dark:bg-rose-400/10",
-  info: "border-sky-200/70 bg-sky-50/85 dark:border-sky-400/25 dark:bg-sky-400/10",
-  neutral: "border-slate-200/80 bg-slate-50/85 dark:border-white/10 dark:bg-white/[0.04]",
+  success: "border-[color:var(--atlas-status-success-line)] bg-[var(--atlas-status-success-bg)]",
+  warning: "border-[color:var(--atlas-status-warning-line)] bg-[var(--atlas-status-warning-bg)]",
+  danger: "border-[color:var(--atlas-status-danger-line)] bg-[var(--atlas-status-danger-bg)]",
+  info: "border-[color:var(--atlas-status-info-line)] bg-[var(--atlas-status-info-bg)]",
+  neutral: "border-[color:var(--atlas-border)] bg-[var(--atlas-surface)]",
 };
+
+const PANEL_BASE =
+  "border text-[var(--atlas-text)] backdrop-blur-[var(--pokrov-glass-max-blur,16px)] [box-shadow:var(--atlas-shadow-soft),var(--atlas-inner-edge)]";
+const LABEL_CLASS = "text-xs font-semibold leading-5 text-[var(--atlas-text-muted)]";
+const TEXT_SOFT = "text-[var(--atlas-text-soft)]";
+const FOCUS_CLASS =
+  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--atlas-focus)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--atlas-canvas)]";
 
 type CabinetRouteProps = {
   eyebrow?: ReactNode;
@@ -58,16 +65,16 @@ type CabinetRouteProps = {
 export function CabinetRoute({ eyebrow, title, description, actions, metrics, children }: CabinetRouteProps) {
   return (
     <main className="space-y-6">
-      <section className="rounded-[1.35rem] border border-slate-200/80 bg-white/88 px-5 py-4 shadow-[0_20px_55px_-45px_rgba(15,23,42,0.2)] dark:border-white/10 dark:bg-[#101713]/88 sm:px-6">
+      <section className={cn(PANEL_BASE, "rounded-[var(--pokrov-radius-panel,1rem)] border-[color:var(--atlas-border)] bg-[var(--atlas-glass)] px-5 py-4 sm:px-6")}>
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div className="min-w-0">
             {eyebrow ? (
-              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">{eyebrow}</p>
+              <p className={LABEL_CLASS}>{eyebrow}</p>
             ) : null}
-            <h1 className="mt-2 font-display text-[clamp(1.7rem,2.4vw,2.35rem)] font-semibold leading-[0.96] tracking-[-0.04em] text-slate-950 dark:text-slate-50">
+            <h1 className="mt-2 font-display text-[clamp(1.7rem,2.4vw,2.35rem)] font-semibold leading-tight text-[var(--atlas-text)]">
               {title}
             </h1>
-            {description ? <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-600 dark:text-slate-300">{description}</p> : null}
+            {description ? <p className={cn("mt-2 max-w-3xl text-sm leading-6", TEXT_SOFT)}>{description}</p> : null}
           </div>
           {actions ? <div className="flex flex-wrap gap-3">{actions}</div> : null}
         </div>
@@ -91,11 +98,11 @@ export function CabinetKpiRow({ items, className }: CabinetKpiRowProps) {
       {items.map((item) => (
         <article
           key={String(item.label)}
-          className={cn("rounded-[1.25rem] border px-4 py-4 text-slate-950 shadow-[0_20px_50px_-44px_rgba(15,23,42,0.16)] dark:text-slate-50", SUBTLE_TONE_CLASSES[item.tone || "neutral"])}
+          className={cn(PANEL_BASE, "rounded-[var(--pokrov-radius-card,0.875rem)] px-4 py-4", SUBTLE_TONE_CLASSES[item.tone || "neutral"])}
         >
-          <p className="text-[11px] uppercase tracking-[0.16em] text-slate-500 dark:text-slate-400">{item.label}</p>
-          <p className="mt-2 text-xl font-semibold leading-6">{item.value}</p>
-          {item.hint ? <p className="mt-2 text-sm leading-6 text-slate-600 dark:text-slate-300">{item.hint}</p> : null}
+          <p className={LABEL_CLASS}>{item.label}</p>
+          <p className="mt-2 font-mono text-xl font-semibold leading-6 text-[var(--atlas-text)]">{item.value}</p>
+          {item.hint ? <p className={cn("mt-2 text-sm leading-6", TEXT_SOFT)}>{item.hint}</p> : null}
         </article>
       ))}
     </div>
@@ -128,20 +135,21 @@ export function CabinetHero({
   return (
     <section
       className={cn(
-        "rounded-[1.9rem] border border-slate-200/80 bg-white/92 p-5 shadow-[0_28px_80px_-50px_rgba(15,23,42,0.22)] dark:border-white/10 dark:bg-[#101713]/92 sm:p-6",
+        PANEL_BASE,
+        "rounded-[var(--pokrov-radius-panel,1rem)] border-[color:var(--atlas-border)] bg-[var(--atlas-glass)] p-5 sm:p-6",
         className,
       )}
     >
       <div className="grid gap-5 xl:grid-cols-[1.16fr_0.84fr]">
         <div className="min-w-0">
           {eyebrow ? (
-            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">{eyebrow}</p>
+            <p className={LABEL_CLASS}>{eyebrow}</p>
           ) : null}
           {badge ? <StatusBadge tone={badgeTone} className={eyebrow ? "mt-3" : ""}>{badge}</StatusBadge> : null}
-          <h2 className="mt-3 font-display text-[clamp(2rem,3vw,3rem)] font-semibold leading-[0.95] tracking-[-0.05em] text-slate-950 dark:text-slate-50">
+          <h2 className="mt-3 font-display text-[clamp(2rem,3vw,3rem)] font-semibold leading-tight text-[var(--atlas-text)]">
             {title}
           </h2>
-          {description ? <p className="mt-3 max-w-3xl text-sm leading-7 text-slate-600 dark:text-slate-300">{description}</p> : null}
+          {description ? <p className={cn("mt-3 max-w-3xl text-sm leading-7", TEXT_SOFT)}>{description}</p> : null}
           {actions ? <div className="mt-5 flex flex-wrap gap-3">{actions}</div> : null}
         </div>
 
@@ -151,20 +159,21 @@ export function CabinetHero({
               <article
                 key={index}
                 className={cn(
-                  "rounded-[1.3rem] border px-4 py-4 text-slate-950 dark:text-slate-50",
+                  PANEL_BASE,
+                  "rounded-[var(--pokrov-radius-card,0.875rem)] px-4 py-4",
                   SUBTLE_TONE_CLASSES[detail.tone || "neutral"],
                 )}
               >
-                <p className="text-[11px] uppercase tracking-[0.16em] text-slate-500 dark:text-slate-400">{detail.label}</p>
-                <p className="mt-2 text-lg font-semibold leading-6">{detail.value}</p>
-                {detail.hint ? <p className="mt-2 text-sm leading-6 text-slate-600 dark:text-slate-300">{detail.hint}</p> : null}
+                <p className={LABEL_CLASS}>{detail.label}</p>
+                <p className="mt-2 text-lg font-semibold leading-6 text-[var(--atlas-text)]">{detail.value}</p>
+                {detail.hint ? <p className={cn("mt-2 text-sm leading-6", TEXT_SOFT)}>{detail.hint}</p> : null}
               </article>
             ))}
           </aside>
         ) : null}
       </div>
 
-      {footer ? <div className="mt-5 border-t border-slate-200/80 pt-5 dark:border-white/10">{footer}</div> : null}
+      {footer ? <div className="mt-5 border-t border-[color:var(--atlas-border)] pt-5">{footer}</div> : null}
     </section>
   );
 }
@@ -183,7 +192,8 @@ export function CabinetSection({ eyebrow, title, description, actions, children,
   return (
     <section
       className={cn(
-        "rounded-[1.6rem] border p-5 shadow-[0_24px_60px_-46px_rgba(15,23,42,0.18)] sm:p-6",
+        PANEL_BASE,
+        "rounded-[var(--pokrov-radius-panel,1rem)] p-5 sm:p-6",
         PANEL_TONE_CLASSES[tone],
         className,
       )}
@@ -191,12 +201,12 @@ export function CabinetSection({ eyebrow, title, description, actions, children,
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div className="min-w-0">
           {eyebrow ? (
-            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">{eyebrow}</p>
+            <p className={LABEL_CLASS}>{eyebrow}</p>
           ) : null}
-          <h2 className="mt-2 font-display text-[1.55rem] font-semibold leading-[1] tracking-[-0.03em] text-slate-950 dark:text-slate-50">
+          <h2 className="mt-2 font-display text-[1.55rem] font-semibold leading-tight text-[var(--atlas-text)]">
             {title}
           </h2>
-          {description ? <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-600 dark:text-slate-300">{description}</p> : null}
+          {description ? <p className={cn("mt-2 max-w-3xl text-sm leading-6", TEXT_SOFT)}>{description}</p> : null}
         </div>
         {actions ? <div className="flex flex-wrap gap-3">{actions}</div> : null}
       </div>
@@ -215,7 +225,7 @@ type CabinetListProps = {
 export function CabinetList({ items, empty, className }: CabinetListProps) {
   if (!items.length) {
     return empty ? (
-      <div className={cn("rounded-[1.3rem] border border-dashed border-slate-200/80 px-4 py-4 text-sm leading-6 text-slate-500 dark:border-white/10 dark:text-slate-400", className)}>
+      <div className={cn("rounded-[var(--pokrov-radius-card,0.875rem)] border border-dashed border-[color:var(--atlas-border)] bg-[var(--atlas-glass)] px-4 py-4 text-sm leading-6 text-[var(--atlas-text-soft)]", className)}>
         {empty}
       </div>
     ) : null;
@@ -224,14 +234,14 @@ export function CabinetList({ items, empty, className }: CabinetListProps) {
   return (
     <div className={cn("space-y-3", className)}>
       {items.map((item, index) => (
-        <article key={item.key} className={cn("rounded-[1.3rem] border px-4 py-4", SUBTLE_TONE_CLASSES[item.tone || "neutral"])}>
+        <article key={item.key} className={cn(PANEL_BASE, "rounded-[var(--pokrov-radius-card,0.875rem)] px-4 py-4", SUBTLE_TONE_CLASSES[item.tone || "neutral"])}>
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div className="min-w-0">
               <div className="flex flex-wrap items-center gap-2">
                 <StatusBadge tone={item.tone || "neutral"}>{item.badge || String(index + 1).padStart(2, "0")}</StatusBadge>
-                <h3 className="text-sm font-semibold text-slate-950 dark:text-slate-50">{item.title}</h3>
+                <h3 className="text-sm font-semibold text-[var(--atlas-text)]">{item.title}</h3>
               </div>
-              {item.body ? <p className="mt-2 text-sm leading-6 text-slate-600 dark:text-slate-300">{item.body}</p> : null}
+              {item.body ? <p className={cn("mt-2 text-sm leading-6", TEXT_SOFT)}>{item.body}</p> : null}
             </div>
             {item.action ? <div className="shrink-0">{item.action}</div> : null}
           </div>
@@ -250,10 +260,18 @@ export function CabinetCardGrid({ items, className }: CabinetCardGridProps) {
   return (
     <div className={cn("grid gap-3 md:grid-cols-2 xl:grid-cols-3", className)}>
       {items.map((item) => (
-        <article key={item.key} className={cn("rounded-[1.3rem] border px-4 py-4", SUBTLE_TONE_CLASSES[item.tone || "neutral"])}>
+        <article
+          key={item.key}
+          className={cn(
+            PANEL_BASE,
+            FOCUS_CLASS,
+            "flex min-h-44 flex-col rounded-[var(--pokrov-radius-card,0.875rem)] px-4 py-4 transition duration-[var(--pokrov-duration-base,180ms)] motion-safe:hover:-translate-y-0.5",
+            SUBTLE_TONE_CLASSES[item.tone || "neutral"],
+          )}
+        >
           <StatusBadge tone={item.tone || "neutral"}>{item.badge || "Далее"}</StatusBadge>
-          <h3 className="mt-3 text-sm font-semibold text-slate-950 dark:text-slate-50">{item.title}</h3>
-          {item.body ? <p className="mt-2 text-sm leading-6 text-slate-600 dark:text-slate-300">{item.body}</p> : null}
+          <h3 className="mt-3 text-sm font-semibold text-[var(--atlas-text)]">{item.title}</h3>
+          {item.body ? <p className={cn("mt-2 text-sm leading-6", TEXT_SOFT)}>{item.body}</p> : null}
           {item.action ? <div className="mt-4">{item.action}</div> : null}
         </article>
       ))}

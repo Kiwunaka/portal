@@ -4,11 +4,11 @@ import type { ReactNode } from "react";
 
 import AppRouteLink from "@/components/app-route-link";
 import CabinetEntryAuth from "@/components/cabinet-entry-auth";
+import RouteTransition from "@/components/route-transition";
 import { resolvePlanLabel, resolveTrafficStatusText } from "@/lib/access-policy";
 import { usePortalSession } from "@/lib/session";
-import { getTgUser } from "@/lib/telegram";
 import { usePathname } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 
 import { POKROV_LEGACY_THEME_STORAGE_KEYS, POKROV_THEME_STORAGE_KEY, pokrovBranding } from "@/app/branding";
 import PokrovLogo from "@/app/pokrov-logo";
@@ -83,6 +83,10 @@ const NAV_ITEMS: NavItem[] = [
     match: (pathname) => pathname.startsWith("/settings") || pathname.startsWith("/profile"),
   },
 ];
+
+const MOBILE_NAV_ITEMS = NAV_ITEMS.filter((item) =>
+  ["/dashboard", "/subscription", "/devices", "/statistics", "/support"].includes(item.href),
+);
 
 const ROUTE_META: Array<{ match: (pathname: string) => boolean; meta: RouteMeta }> = [
   {
@@ -189,16 +193,92 @@ function ShellState({
   );
 }
 
+function SkeletonLine({ className }: { className: string }) {
+  return <div className={`motion-safe:animate-pulse rounded-full bg-slate-200/90 dark:bg-white/10 ${className}`} aria-hidden="true" />;
+}
+
+function SkeletonPanel({ className }: { className: string }) {
+  return (
+    <div
+      className={`motion-safe:animate-pulse rounded-[1.35rem] border border-slate-200/80 bg-white/70 dark:border-white/10 dark:bg-white/[0.05] ${className}`}
+      aria-hidden="true"
+    />
+  );
+}
+
+function InitialCabinetSkeleton() {
+  return (
+    <main
+      className="mx-auto w-full max-w-[1500px] px-3 py-4 sm:px-4 lg:px-5"
+      style={{ minHeight: "var(--tg-viewport-height, 100dvh)" }}
+      aria-busy="true"
+      aria-live="polite"
+    >
+      <div className="grid min-h-[calc(100dvh-2rem)] gap-4 xl:grid-cols-[292px,1fr]">
+        <aside className="hidden rounded-[1.9rem] border border-slate-200/80 bg-[#fbfaf7]/96 p-4 shadow-[0_28px_70px_-48px_rgba(15,23,42,0.18)] dark:border-white/10 dark:bg-[#101713]/92 xl:block">
+          <div className="rounded-[1.5rem] border border-slate-200/80 bg-white/90 p-4 dark:border-white/10 dark:bg-white/[0.04]">
+            <SkeletonLine className="h-11 w-36" />
+            <SkeletonLine className="mt-4 h-3 w-full" />
+            <SkeletonLine className="mt-2 h-3 w-4/5" />
+          </div>
+          <div className="mt-5 space-y-2">
+            {Array.from({ length: 6 }).map((_, index) => (
+              <SkeletonPanel key={index} className="h-[68px]" />
+            ))}
+          </div>
+        </aside>
+
+        <section className="min-w-0 pb-24 xl:pb-8" aria-label="Открываем кабинет POKROV">
+          <header className="mb-5 rounded-[1.5rem] border border-slate-200/80 bg-white/90 px-4 py-4 shadow-[0_18px_48px_-36px_rgba(15,23,42,0.18)] dark:border-white/10 dark:bg-[#101713]/88 sm:px-5">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">POKROV</p>
+            <h1 className="mt-2 font-display text-[1.6rem] font-semibold leading-none tracking-[-0.03em] text-slate-950 dark:text-slate-50">
+              Открываем кабинет
+            </h1>
+            <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-600 dark:text-slate-300">
+              Готовим оболочку и последние данные аккаунта.
+            </p>
+          </header>
+
+          <div className="grid gap-4 lg:grid-cols-[1.25fr_0.75fr]">
+            <section className="rounded-[1.6rem] border border-slate-200/80 bg-white/90 p-5 shadow-[0_18px_48px_-36px_rgba(15,23,42,0.18)] dark:border-white/10 dark:bg-[#101713]/88">
+              <SkeletonLine className="h-3 w-28" />
+              <SkeletonLine className="mt-4 h-12 w-3/4 max-w-xl" />
+              <SkeletonLine className="mt-4 h-4 w-full max-w-2xl" />
+              <SkeletonLine className="mt-2 h-4 w-5/6 max-w-xl" />
+              <div className="mt-6 grid gap-3 sm:grid-cols-2">
+                <SkeletonPanel className="h-28" />
+                <SkeletonPanel className="h-28" />
+              </div>
+            </section>
+            <div className="grid gap-4">
+              <SkeletonPanel className="h-40" />
+              <SkeletonPanel className="h-40" />
+            </div>
+          </div>
+
+          <div className="mt-4 grid gap-3 md:grid-cols-3">
+            {Array.from({ length: 3 }).map((_, index) => (
+              <SkeletonPanel key={index} className="h-28" />
+            ))}
+          </div>
+        </section>
+      </div>
+    </main>
+  );
+}
+
 export default function CabinetShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
-  const { loading, error, webLoginRequired, user, dash, logoutWebSession, refresh } = usePortalSession();
+  const { loading, refreshing, error, webLoginRequired, user, dash, logoutWebSession, refresh } = usePortalSession();
   const [dark, setDark] = useState(() => {
     if (typeof window === "undefined") return false;
     const saved = readStoredThemePreference();
     return saved ? saved === "dark" : window.matchMedia("(prefers-color-scheme: dark)").matches;
   });
   const [drawerOpen, setDrawerOpen] = useState(false);
-  const inTelegramContext = useMemo(() => Boolean(getTgUser()), []);
+  const [routeActivity, setRouteActivity] = useState(false);
+  const isAdminRoute = pathname.startsWith("/admin");
+  const showActivity = refreshing || routeActivity;
 
   useEffect(() => {
     document.documentElement.classList.toggle("dark", dark);
@@ -212,16 +292,26 @@ export default function CabinetShell({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     setDrawerOpen(false);
+    setRouteActivity(false);
   }, [pathname]);
 
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    let clearTimer: number | undefined;
+    const onRouteActivity = () => {
+      setRouteActivity(true);
+      if (clearTimer) window.clearTimeout(clearTimer);
+      clearTimer = window.setTimeout(() => setRouteActivity(false), 3500);
+    };
+    window.addEventListener("pokrov-route-activity", onRouteActivity as EventListener);
+    return () => {
+      if (clearTimer) window.clearTimeout(clearTimer);
+      window.removeEventListener("pokrov-route-activity", onRouteActivity as EventListener);
+    };
+  }, []);
+
   if (loading) {
-    return (
-      <ShellState title="Подтягиваем кабинет" description="Проверяем сессию и собираем ваши данные, чтобы открыть нужный экран без лишних шагов.">
-        <div className="h-2 rounded-full bg-slate-200 dark:bg-slate-800">
-          <div className="h-full w-1/3 animate-pulse rounded-full bg-emerald-700 dark:bg-emerald-400" />
-        </div>
-      </ShellState>
-    );
+    return <InitialCabinetSkeleton />;
   }
 
   if (webLoginRequired) {
@@ -451,26 +541,31 @@ export default function CabinetShell({ children }: { children: ReactNode }) {
                 </AppRouteLink>
               </div>
             </div>
+            {showActivity ? (
+              <div className="mt-4 h-1 overflow-hidden rounded-full bg-slate-200/70 dark:bg-white/10" role="status" aria-label={refreshing ? "Обновляем данные кабинета" : "Открываем раздел"}>
+                <div className="h-full w-1/3 rounded-full bg-emerald-700 motion-safe:animate-pulse dark:bg-emerald-300" />
+              </div>
+            ) : null}
           </header>
 
-          {children}
+          <RouteTransition>{children}</RouteTransition>
         </div>
       </div>
 
       {drawerOpen ? mobileMenu : null}
 
-      {inTelegramContext ? (
+      {!isAdminRoute ? (
         <nav
-          className="fixed bottom-[calc(1rem+var(--tg-safe-area-bottom,0px))] left-1/2 z-40 flex w-[min(94vw,620px)] -translate-x-1/2 items-center justify-between gap-2 rounded-[1.6rem] border border-slate-200/80 bg-white/94 px-3 py-2 shadow-[0_26px_60px_-36px_rgba(15,23,42,0.25)] backdrop-blur xl:hidden dark:border-white/10 dark:bg-[#101713]/92"
+          className="fixed bottom-[calc(1rem+var(--tg-safe-area-bottom,0px))] left-3 right-3 z-40 flex max-w-[calc(100vw-1.5rem)] items-center justify-between gap-2 overflow-hidden rounded-[1.6rem] border border-slate-200/80 bg-white/94 px-3 py-2 shadow-[0_26px_60px_-36px_rgba(15,23,42,0.25)] backdrop-blur xl:hidden dark:border-white/10 dark:bg-[#101713]/92"
           aria-label="Навигация кабинета"
         >
-          {NAV_ITEMS.map((item) => {
+          {MOBILE_NAV_ITEMS.map((item) => {
             const active = item.href === activeNav.href;
             return (
               <AppRouteLink
                 key={item.href}
                 href={item.href}
-                className={`flex min-w-0 flex-1 flex-col items-center gap-1 rounded-[1rem] px-2 py-2 text-[10px] font-medium ${
+                className={`flex min-w-0 flex-1 flex-col items-center gap-1 overflow-hidden rounded-[1rem] px-2 py-2 text-[10px] font-medium ${
                   active ? "bg-emerald-900 text-white dark:bg-emerald-700" : "text-slate-600 dark:text-slate-300"
                 }`}
               >

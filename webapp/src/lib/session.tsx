@@ -21,10 +21,12 @@ import {
   readTelegramOidcCallback,
 } from "@/lib/telegram-oidc";
 import { getTgUser, type TgUser } from "@/lib/telegram";
-import { createContext, useCallback, useContext, useEffect, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
 
 type PortalSessionContextValue = {
   loading: boolean;
+  coldStart: boolean;
+  refreshing: boolean;
   error: string;
   webLoginRequired: boolean;
   webLoginBusy: boolean;
@@ -58,12 +60,14 @@ type PortalSessionProviderProps = {
 export function PortalSessionProvider({ children, mode = "dashboard" }: PortalSessionProviderProps) {
   const [tgUser] = useState<TgUser | null>(() => getTgUser());
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState("");
   const [webLoginRequired, setWebLoginRequired] = useState(false);
   const [webLoginBusy, setWebLoginBusy] = useState(false);
   const [webLoginError, setWebLoginError] = useState("");
   const [user, setUser] = useState<UserPayload | null>(null);
   const [dash, setDash] = useState<DashboardSnapshot | null>(null);
+  const lastGoodRef = useRef<{ user: UserPayload; dash: DashboardSnapshot } | null>(null);
 
   const consumeTelegramOidcRedirect = useCallback(async (): Promise<boolean> => {
     const callback = readTelegramOidcCallback();
@@ -88,6 +92,7 @@ export function PortalSessionProvider({ children, mode = "dashboard" }: PortalSe
       clearWebSessionToken();
       setUser(null);
       setDash(null);
+      lastGoodRef.current = null;
       setError("");
       setWebLoginRequired(true);
       setWebLoginError(parseErrorMessage(error));
@@ -116,14 +121,20 @@ export function PortalSessionProvider({ children, mode = "dashboard" }: PortalSe
     const consumedFromUrl = consumeWebSessionTokenFromUrl();
     const hasSession = hasWebSessionToken() || completedOidcFromUrl || consumedFromUrl;
     if (!tgUser && !hasSession) {
+      lastGoodRef.current = null;
+      setUser(null);
+      setDash(null);
       setLoading(false);
+      setRefreshing(false);
       setWebLoginBusy(false);
       setError("");
       setWebLoginRequired(true);
       return;
     }
 
-    setLoading(true);
+    const hasWarmSnapshot = mode !== "entry" && Boolean(lastGoodRef.current?.user && lastGoodRef.current?.dash);
+    setLoading(!hasWarmSnapshot);
+    setRefreshing(hasWarmSnapshot);
     setError("");
     setWebLoginRequired(false);
     setWebLoginError("");
@@ -135,6 +146,7 @@ export function PortalSessionProvider({ children, mode = "dashboard" }: PortalSe
       if (mode === "entry") {
         setUser(null);
         setDash(null);
+        lastGoodRef.current = null;
         return;
       }
 
@@ -148,6 +160,7 @@ export function PortalSessionProvider({ children, mode = "dashboard" }: PortalSe
       }
       setDash(dashboard);
       setUser(profile);
+      lastGoodRef.current = { user: profile, dash: dashboard };
     } catch (error) {
       const message = parseErrorMessage(error);
       const lowered = message.toLowerCase();
@@ -160,6 +173,7 @@ export function PortalSessionProvider({ children, mode = "dashboard" }: PortalSe
         clearWebSessionToken();
         setUser(null);
         setDash(null);
+        lastGoodRef.current = null;
         setWebLoginRequired(true);
         setWebLoginBusy(false);
         setError("");
@@ -168,6 +182,7 @@ export function PortalSessionProvider({ children, mode = "dashboard" }: PortalSe
       }
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
   }, [consumeTelegramOidcRedirect, mode, tgUser]);
 
@@ -181,10 +196,12 @@ export function PortalSessionProvider({ children, mode = "dashboard" }: PortalSe
       clearWebSessionToken();
       setUser(null);
       setDash(null);
+      lastGoodRef.current = null;
       setError("");
       setWebLoginError("");
       setWebLoginRequired(true);
       setLoading(false);
+      setRefreshing(false);
     };
     window.addEventListener("portal-auth-required", onAuthRequired as EventListener);
     return () => window.removeEventListener("portal-auth-required", onAuthRequired as EventListener);
@@ -236,9 +253,11 @@ export function PortalSessionProvider({ children, mode = "dashboard" }: PortalSe
     clearWebSessionToken();
     setUser(null);
     setDash(null);
+    lastGoodRef.current = null;
     setError("");
     setWebLoginError("");
     setWebLoginBusy(false);
+    setRefreshing(false);
     setWebLoginRequired(true);
     if (typeof window !== "undefined") {
       window.location.assign("/");
@@ -249,6 +268,8 @@ export function PortalSessionProvider({ children, mode = "dashboard" }: PortalSe
     <PortalSessionContext.Provider
       value={{
         loading,
+        coldStart: loading,
+        refreshing,
         error,
         webLoginRequired,
         webLoginBusy,
