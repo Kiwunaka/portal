@@ -58,6 +58,9 @@ const AppRouteLink = forwardRef<HTMLAnchorElement, AppRouteLinkProps>(function A
       target={target}
       onClick={(event) => {
         onClick?.(event);
+        if (event.defaultPrevented) {
+          return;
+        }
         if (!hardNavigate || target === "_blank" || !shouldUseBrowserNavigation(event)) {
           if (!hardNavigate && target !== "_blank" && shouldUseBrowserNavigation(event)) {
             dispatchRouteActivity(event.currentTarget.href);

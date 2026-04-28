@@ -1,6 +1,6 @@
 # POKROV Product Overview
 
-Last updated: 2026-04-23
+Last updated: 2026-04-28
 
 ## Document Status
 
@@ -44,7 +44,7 @@ The current program is locked around these target product decisions:
 - one canonical `app-first` account links `install_id`, email, Telegram, devices, and activation keys
 - public delivery scope for this wave remains `Android + Windows`; Apple hosts may remain in engineering lanes but are not part of public promise or release acceptance
 - commercial flow becomes `buy key -> redeem key -> managed premium`, with raw subscription links hidden from default site, webapp, and bot UX and exposed only for explicit recovery or manual-request paths
-- `marketing` is the only public acquisition, pricing, and paywall surface, and its default public CTA set is checkout-first; `webapp` is session-aware continuation, support, redeem, renewal continuation, and admin only
+- `marketing` is the only public acquisition, pricing, and paywall surface, and its default public path is `trial -> install -> first connection`; checkout remains an honest continuation after product check or explicit plan intent. `webapp` is session-aware continuation, support, redeem, renewal continuation, and admin only
 - public browser copy and visual governance are centralized through `shared/copy.ts`, `copy/catalog.ru.json`, and `shared/design-tokens.json`, with locked host and product facts inherited from the shared fact files
 - user-facing cabinet IA becomes `Dashboard / Subscription / Devices / Statistics / Support`, with entry, `downloads`, `redeem`, hosted-checkout continuation, and compatibility redirects treated as task routes rather than parallel public-entry surfaces
 - app surfaces must not use ad SDKs or third-party ads; only approved first-party promo slots may render remotely managed promo content
@@ -154,10 +154,10 @@ First-run route-mode rule:
 
 Current public role:
 
-- `https://pokrov.space/` is the public entry homepage for new users and should converge most acquisition traffic into the checkout-first marketing route
-- `https://pokrov.space/checkout/` is the primary public acquisition, pricing, paywall, and activation-key purchase surface
+- `https://pokrov.space/` is the public entry homepage for new users and should converge most acquisition traffic into app-first trial, install, and first-connection guidance
+- `https://pokrov.space/checkout/` is the public pricing, paywall, and activation-key purchase continuation surface when the user has plan intent or returns after checking the product
 - `https://pokrov.space/install/` is the dedicated install-help surface used after purchase, after known-user continuation, or when a public download CTA cannot resolve directly to a real artifact
-- indexable landing pages can capture platform, use-case, or Telegram intent, but they must converge to the same product facts and checkout-first CTA set
+- indexable landing pages can capture platform, use-case, or Telegram intent, but they must converge to the same product facts and the same app-first trial/install/first-connection CTA set
 - public legal pages also live on the marketing surface
 - the current canonical public route family is `/mobile/`, `/tiktok/`, `/youtube/`, `/devices/`, and `/telegram/`, with permanent redirects from the earlier legacy SEO paths
 
@@ -196,13 +196,13 @@ Telegram remains in the product for:
 
 Public funnel rule:
 
-- marketing introduces the product and captures public intent through a checkout-first acquisition path
-- `pokrov.space/checkout/` shows public pricing and sells activation keys through the hosted checkout flow
+- marketing introduces the product and captures public intent through trial, install, and first connection before payment pressure
+- `pokrov.space/checkout/` shows public pricing and sells activation keys through the hosted checkout flow when plan intent is explicit
 - `app.pokrov.space` continues real account, renewal, redeem, support, and admin flows
 - cabinet checkout is continuation-only and creates an authenticated provider order that renews the current account; anonymous public checkout remains key-first by email
 - the default site, cabinet, and bot UX must not expose raw subscription links
 - Telegram bot purchase flow remains available, but it is not the default public story
-- `connect.pokrov.space` remains the delivery surface for the one public connection link and matching QR, not a fresh-entry marketing surface
+- `connect.pokrov.space` remains the delivery surface for the one public connection link and matching QR when explicit manual import is needed, not a fresh-entry marketing surface or first-layer consumer story
 - if Telegram is degraded, recovery should continue through the app and `app.pokrov.space` before falling back to Telegram
 
 ## Unified Public Copy Direction
@@ -214,7 +214,7 @@ Public-facing copy across marketing and webapp should follow one simple style:
 - marketing and cabinet copy must stay governed through `shared/copy.ts`, `copy/catalog.ru.json`, and `shared/design-tokens.json` so both surfaces tell the same product story
 - email continuation copy must stay labeled `soon` until the live delivery path is truly ready
 - cabinet copy should focus on continuation, renewal, redeem, support, and recovery rather than acting like a second landing page
-- one product story across homepage, SEO landings, cabinet, and checkout, with checkout-first public CTA priority on marketing surfaces
+- one product story across homepage, SEO landings, cabinet, and checkout, with trial, install, and first connection as the primary public CTA path
 - avoid direct-meaning `VPN` wording on public surfaces; `POKROV VPN` survives only as a legacy identifier where removal is not yet feasible
 - public-facing wording should prefer user outcomes and next steps over transport acronyms, raw profile terminology, or operator jargon
 - explicit next-step CTA wording such as `download app`, `open cabinet`, `continue to checkout`, or `open Telegram` only when that is the real next step
@@ -242,15 +242,16 @@ Hostname policy:
 
 ## Connection Link Policy
 
-Public connection delivery now follows one simple rule:
+Public connection delivery now follows one simple rule when manual import is explicitly needed:
 
 - one public connection link
 - one QR based on that same link
 - one canonical host: `connect.pokrov.space`
+- no first-layer consumer screen should lead with QR, raw token, raw config, or transport settings
 
 Product wording rule:
 
-- user-facing copy should say `ссылка подключения` and `QR для подключения`
+- explicit fallback copy may say `ссылка подключения` and `QR для подключения`
 - do not describe separate public `умный` and `обычный` keys
 - `?format=plain` remains backend compatibility-only and must stay hidden from normal site, bot, and webapp flows
 

@@ -1,6 +1,6 @@
 # App-First And Bonus Flows
 
-Last updated: 2026-04-26
+Last updated: 2026-04-28
 
 ## Document Status
 
@@ -237,19 +237,19 @@ Contract rule:
 
 Checkout rule:
 
-- public pricing starts from checkout-first marketing surfaces, with `pokrov.space/checkout/` as the primary public acquisition route
+- public pricing starts from app-first marketing surfaces; `pokrov.space/checkout/` is the public plan and activation-key continuation route, not the first-pressure onboarding step
 - payment provider readiness is contractually separate from app-first access; public checkout must remain unavailable or degraded until `docs/product/payment-and-access-key-contract.md` and provider evidence are satisfied
 - `webapp` renewal is continuation-only and should defer to the same hosted activation-key flow
 - Telegram bot billing remains valid as a secondary path; bot orders are Telegram-ticket-bound and do not collect buyer email
-- raw subscription links remain hidden from default public commerce, but the authenticated cabinet and paid Telegram bot flow may show the single `connect.pokrov.space` link after fulfillment as a beta-stage manual import fallback while still preferring the POKROV app and cabinet
+- raw subscription links remain hidden from default public commerce and first-layer cabinet UI, but the authenticated cabinet and paid Telegram bot flow may show the single `connect.pokrov.space` link after fulfillment as an explicit beta-stage manual import fallback while still preferring the POKROV app and cabinet
 - signed payment callbacks must not grant access unless the normalized local status is `paid`; failed, cancelled, refunded, chargeback, invalid-signature, and unknown/manual-review states are recorded for operator reconciliation instead of extending the account
 
 ## Subscription Delivery Semantics
 
 Current user-facing delivery semantics:
 
-- one public `ссылка подключения`
-- one QR built from the same URL
+- one public `ссылка подключения` only in explicit manual/recovery fallback
+- one QR built from the same URL only when that fallback is intentionally revealed
 - one key-first commerce path: buy key -> redeem key -> managed premium
 - no public smart/plain split in bot, site, or webapp wording
 - consumer client and cabinet flows should prefer reconnect, refresh, route-mode change, checkout, and support over raw subscription copy/edit surfaces

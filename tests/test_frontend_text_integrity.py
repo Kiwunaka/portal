@@ -35,6 +35,17 @@ def test_mojibake_scanner_detects_active_text(tmp_path: Path) -> None:
     assert issues[0].path == source
 
 
+def test_mojibake_scanner_detects_common_cp1251_artifacts(tmp_path: Path) -> None:
+    source = tmp_path / "active" / "loading.tsx"
+    source.parent.mkdir()
+    source.write_text("const label = 'РџРѕРґС‚СЏРіРёРІР°РµРј РєР°Р±РёРЅРµС‚';\n", encoding="utf-8")
+
+    issues = scan_mojibake([tmp_path / "active"])
+
+    assert len(issues) == 1
+    assert issues[0].path == source
+
+
 def test_mojibake_scanner_ignores_archives(tmp_path: Path) -> None:
     archived = tmp_path / "docs" / "archive" / "old.md"
     archived.parent.mkdir(parents=True)

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import re
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Iterable
@@ -31,6 +32,12 @@ MOJIBAKE_MARKERS = (
     "Гђ",
     "Г‘",
     "пїЅ",
+)
+
+MOJIBAKE_PATTERNS = (
+    # UTF-8 Russian decoded through a single-byte codepage often appears as
+    # long alternating Р*/С* fragments, for example "РџРѕРґ...".
+    re.compile(r"(?:Р.|С.|вЂ|В·){4,}"),
 )
 
 SKIP_PARTS = {
@@ -101,6 +108,18 @@ def scan_mojibake(paths: Iterable[Path]) -> list[TextIntegrityIssue]:
                         )
                     )
                     break
+            else:
+                for pattern in MOJIBAKE_PATTERNS:
+                    if pattern.search(line):
+                        issues.append(
+                            TextIntegrityIssue(
+                                path=path,
+                                marker=pattern.pattern,
+                                line=line_number,
+                                snippet=line.strip()[:180],
+                            )
+                        )
+                        break
     return issues
 
 

@@ -453,10 +453,11 @@ test.describe("Cabinet flow", () => {
     await expect(page.getByRole("heading", { name: "Продление и режимы" })).toBeVisible();
     await expect(page.getByRole("link", { name: "Открыть оплату" }).first()).toBeVisible();
     await expect(page.getByRole("link", { name: "Поддержка", exact: true }).first()).toBeVisible();
-    await expect(page.getByRole("heading", { name: "Подключиться вручную" })).toBeVisible();
-    const manualConnection = page.locator("section").filter({ has: page.getByRole("heading", { name: "Подключиться вручную" }) });
-    await expect(manualConnection).toContainText("Happ");
-    await expect(manualConnection).toContainText("Hiddify");
+    await expect(page.getByRole("heading", { name: "Ручное подключение только как запасной путь" })).toBeVisible();
+    const manualConnection = page.locator("section").filter({ has: page.getByRole("heading", { name: "Ручное подключение только как запасной путь" }) });
+    await expect(manualConnection).toContainText("не показываем ее первой");
+    await expect(manualConnection).not.toContainText("mock_token");
+    await manualConnection.getByRole("button", { name: "Показать ручной вариант" }).click();
     await expect(manualConnection).toContainText("mock_token");
     await expect(manualConnection.getByRole("button", { name: "Скопировать ссылку" })).toBeVisible();
     await expect(manualConnection.getByRole("link", { name: "Открыть ссылку" })).toBeVisible();

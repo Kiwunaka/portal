@@ -302,7 +302,11 @@ export default function CheckoutPage() {
           </div>
 
           {checkoutError ? <p className="mt-4 text-sm text-rose-700 dark:text-rose-200">{checkoutError}</p> : null}
-          {!checkoutReady ? <p className="mt-4 text-sm text-amber-700 dark:text-amber-200">Payment provider is not enabled yet.</p> : null}
+          {!checkoutReady ? (
+            <p className="mt-4 text-sm text-amber-700 dark:text-amber-200">
+              Платежный провайдер пока не включен. Продление останется недоступным, пока backend не вернет рабочий способ оплаты.
+            </p>
+          ) : null}
 
           <div className="mt-5 rounded-[1.3rem] border border-slate-200/80 bg-white/72 px-4 py-4 text-sm leading-6 text-slate-600 dark:border-white/10 dark:bg-white/[0.04] dark:text-slate-300">
             <p>Пробный период начинается в приложении на первом подходящем устройстве.</p>

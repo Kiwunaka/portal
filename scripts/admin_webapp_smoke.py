@@ -6,6 +6,8 @@ import subprocess
 import sys
 from pathlib import Path
 
+from text_integrity import scan_mojibake
+
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 WEBAPP_ROOT = REPO_ROOT / "webapp"
@@ -36,15 +38,6 @@ REQUIRED_API_EXPORTS = [
     "adminWheelConfig",
     "adminMetricsTimeseries",
     "adminNodesTraffic",
-]
-
-# Keep this list focused on real mojibake patterns. An em dash can be misread
-# as a short mojibake-like sequence, so we avoid matching that false positive.
-MOJIBAKE_MARKERS = [
-    "ÐŸÐ",
-    "ÐžÑ",
-    "Ð°Ð",
-    "ÑÑ",
 ]
 
 
@@ -94,14 +87,7 @@ def _check_legacy_bot_links() -> list[str]:
 
 
 def _check_mojibake() -> list[str]:
-    issues: list[str] = []
-    for path in _collect_admin_files():
-        text = _read(path)
-        for marker in MOJIBAKE_MARKERS:
-            if marker in text:
-                issues.append(f"possible mojibake marker `{marker}` in {path}")
-                break
-    return issues
+    return [issue.format(REPO_ROOT) for issue in scan_mojibake(_collect_admin_files())]
 
 
 def _run_webapp_build() -> tuple[int, str]:

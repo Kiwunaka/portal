@@ -1,6 +1,6 @@
 # Repository Map
 
-Last updated: 2026-04-26
+Last updated: 2026-04-28
 
 ## Document Status
 
@@ -17,7 +17,7 @@ Legacy filename note:
 | --- | --- | --- |
 | `portal_bot/` | FastAPI backend, Telegram bots, worker, data model, panel sync | root canonical docs plus `portal_bot/api.py`, `portal_bot/app_first_service.py`, `portal_bot/channel_bonus_service.py`, and related tests |
 | `webapp/` | Next.js continuation-first cabinet with top-level IA `Dashboard / Subscription / Devices / Statistics / Support`, task routes for entry, downloads, redeem, and checkout continuation, plus the primary admin surface and compatibility aliases for older cabinet and pricing paths | `webapp/README.md`, `webapp/src/app/(dashboard)/admin/`, `webapp/src/components/admin/users/`, `webapp/src/lib/api.ts`, `webapp/e2e/`, `webapp/scripts/serve_export.py` |
-| `marketing/` | checkout-first public website, legal pages, SEO routes, install help, and brand assets | root canonical docs plus `marketing/src/`, `marketing/src/app/install/`, `marketing/public/_redirects`, `shared/copy.ts`, `shared/product-facts.json`, `shared/public-urls.json`, `copy/catalog.ru.json` |
+| `marketing/` | app-first public website, checkout continuation, legal pages, SEO routes, install help, and brand assets | root canonical docs plus `marketing/src/`, `marketing/src/app/install/`, `marketing/public/_redirects`, `shared/copy.ts`, `shared/product-facts.json`, `shared/public-urls.json`, `copy/catalog.ru.json` |
 | `shared/` | shared host config, locked product facts, design tokens, token schema, and governed public copy for bot/site/app | `shared/portal-config.ts`, `shared/product-facts.json`, `shared/public-urls.json`, `shared/design-tokens.json`, `shared/design-tokens.schema.json`, `shared/copy.ts` |
 | `infra/` | runtime units and infra assets | `infra/portal-node-metrics.service`, `infra/portal-node-metrics.timer`, `infra/portal-node-observer.service`, `infra/portal-node-observer.timer` |
 | `scripts/` | deploy, smoke, node, release, audit, migration scripts | this file and `docs/operations/deployment-and-access.md` |
@@ -48,7 +48,7 @@ Legacy filename note:
 | Developer workflow | [docs/developer/developer-guide.md](C:/Users/kiwun/Documents/ai/VPN/docs/developer/developer-guide.md) |
 | Orchestrated work-order process | [docs/developer/orchestration/orchestration-standard.md](C:/Users/kiwun/Documents/ai/VPN/docs/developer/orchestration/orchestration-standard.md) |
 | User journey | [docs/user/portal-vpn-user-guide-ru.md](C:/Users/kiwun/Documents/ai/VPN/docs/user/portal-vpn-user-guide-ru.md) |
-| Design system | [DESIGN.md](C:/Users/kiwun/Documents/ai/VPN/DESIGN.md) and [docs/design/design-system-sync.md](C:/Users/kiwun/Documents/ai/VPN/docs/design/design-system-sync.md) |
+| Design system | [DESIGN.md](C:/Users/kiwun/Documents/ai/VPN/DESIGN.md), [docs/design/design-system-sync.md](C:/Users/kiwun/Documents/ai/VPN/docs/design/design-system-sync.md), and [docs/design/atlas-glass/](C:/Users/kiwun/Documents/ai/VPN/docs/design/atlas-glass/) |
 | Open Beta v4 release scope | [docs/product/public-beta-prd.md](C:/Users/kiwun/Documents/ai/VPN/docs/product/public-beta-prd.md) and [docs/operations/public-beta-release-runbook.md](C:/Users/kiwun/Documents/ai/VPN/docs/operations/public-beta-release-runbook.md) |
 | Payment provider readiness | [docs/product/payment-and-access-key-contract.md](C:/Users/kiwun/Documents/ai/VPN/docs/product/payment-and-access-key-contract.md) and [docs/operations/lavatop-payment-operations.md](C:/Users/kiwun/Documents/ai/VPN/docs/operations/lavatop-payment-operations.md) |
 | Client-specific contracts | [C:/Users/kiwun/Documents/ai/POKROV-app/docs/README.md](C:/Users/kiwun/Documents/ai/POKROV-app/docs/README.md) for the live new client lane, plus [app-next Bootstrap Summary](C:/Users/kiwun/Documents/ai/VPN/docs/archive/client-lanes/app-next-bootstrap-summary.md) and [Legacy Bridge Retirement Summary](C:/Users/kiwun/Documents/ai/VPN/docs/archive/client-lanes/legacy-bridge-retirement-summary.md) for archive evidence only |
@@ -72,7 +72,7 @@ Legacy filename note:
 - split-tunnel persistence is part of that same contract through `route_mode`, `selected_apps`, `requires_elevated_privileges`, and mirrored `route_policy.*` fields
 - additive browser email auth lives under `/api/auth/email/*`, but current canon keeps it marked `soon` until transactional sender identity plus delivery-confirmation/webhook readiness and the public launch path are live
 - support tickets live under `/api/tickets`, `/api/tickets/uploads`, and `/api/tickets/{ticket_id}/messages`; cabinet and admin continue real ticket threads instead of fake live-chat state
-- checkout-first marketing ownership and cabinet top-level IA belong in the same canonical contract family as hostnames, support, and shared copy governance
+- app-first marketing ownership, checkout continuation, and cabinet top-level IA belong in the same canonical contract family as hostnames, support, and shared copy governance
 - public user-facing version labels stay on `0.x.x-beta`; inherited strings like `2.5.7 dev` are release regressions
 - versioned release metadata belongs under `C:/Users/kiwun/Documents/ai/POKROV-app/artifacts/releases/bridge/<version>/` during the bridge period and under `.../artifacts/releases/pokrov-app/<version>/` after cutover
 
@@ -102,6 +102,7 @@ Legacy filename note:
 - `remote_transport_front_smoke.py`
 - `smoke_client_apps.py`
 - `runtime_app_download_smoke.py`
+- `text_integrity.py`
 - `ui_visual_smoke.py`
 - `verify_brain_ready.py`
 - `check-links.py`
@@ -186,6 +187,7 @@ Shared-facts and handoff note:
 
 - `tests/test_admin_webapp_smoke.py`
 - `tests/test_client_security_smoke.py`
+- `tests/test_frontend_text_integrity.py`
 - `tests/test_public_copy_guardrails.py`
 - `tests/test_ui_visual_smoke.py`
 - `tests/test_release_gate_check.py`

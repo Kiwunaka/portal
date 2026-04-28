@@ -1,5 +1,8 @@
+"use client";
+
+import AppRouteLink from "@/components/app-route-link";
+import { CabinetCardGrid, CabinetHero, CabinetRoute, CabinetSection } from "@/components/cabinet/surface";
 import { CANONICAL_MARKETING_SITE_URL } from "@/lib/portal";
-import Link from "next/link";
 
 function marketingDocumentUrl(pathname: "/offer/" | "/privacy/"): string {
   const marketingSiteUrl = String(CANONICAL_MARKETING_SITE_URL || "").trim();
@@ -22,57 +25,126 @@ export default function SupportLegalPage() {
   const privacyUrl = marketingDocumentUrl("/privacy/");
 
   return (
-    <main className="space-y-6">
-      <section className="glass-card p-7">
-        <Link href="/support" className="inline-flex items-center gap-2 text-xs uppercase tracking-[0.16em] text-slate-500">
-          <span className="material-symbols-rounded">arrow_back</span>
-          Назад в службу заботы
-        </Link>
-        <h1 className="mt-3 font-display text-4xl font-bold">Юридическая информация</h1>
-        <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">
-          Ниже находятся актуальные публичные документы POKROV: оферта и политика конфиденциальности.
-        </p>
-      </section>
+    <CabinetRoute
+      eyebrow="Документы"
+      title="Юридическая информация"
+      description="Актуальные публичные документы POKROV: оферта и политика конфиденциальности. Кабинет только ведет к ним, не дублируя отдельную версию текста."
+      actions={
+        <AppRouteLink href="/support/" className="outline-btn rounded-full px-5 py-3 text-sm font-semibold">
+          Назад в поддержку
+        </AppRouteLink>
+      }
+      metrics={[
+        {
+          label: "Оферта",
+          value: "Публичный документ",
+          hint: "Условия доступа, оплаты, продления и ответственности сторон.",
+          tone: "neutral",
+        },
+        {
+          label: "Конфиденциальность",
+          value: "Публичный документ",
+          hint: "Как используются данные аккаунта, оплаты и поддержки.",
+          tone: "neutral",
+        },
+        {
+          label: "Где открывается",
+          value: "pokrov.space",
+          hint: "Юридические документы живут на публичной поверхности.",
+          tone: "neutral",
+        },
+        {
+          label: "Если есть вопрос",
+          value: "Один кейс",
+          hint: "Поддержка быстрее передаст запрос нужному специалисту.",
+          tone: "info",
+        },
+      ]}
+    >
+      <CabinetHero
+        eyebrow="Коротко"
+        badge="Документы на публичном сайте"
+        badgeTone="info"
+        title="Откройте нужный документ или вернитесь в поддержку"
+        description="Если вопрос касается оплаты, условий или данных аккаунта, создайте обращение в кабинете и укажите тему. Так запрос не потеряется."
+        actions={
+          <>
+            <a href={offerUrl} target="_blank" rel="noreferrer" className="btn-primary rounded-full px-5 py-3 text-sm font-semibold">
+              Открыть оферту
+            </a>
+            <a href={privacyUrl} target="_blank" rel="noreferrer" className="outline-btn rounded-full px-5 py-3 text-sm font-semibold">
+              Открыть политику
+            </a>
+          </>
+        }
+        details={[
+          {
+            label: "Оплата и продление",
+            value: "Оферта",
+            hint: "Начните с нее, если вопрос финансовый.",
+            tone: "neutral",
+          },
+          {
+            label: "Данные аккаунта",
+            value: "Политика",
+            hint: "Там описана работа с данными.",
+            tone: "neutral",
+          },
+          {
+            label: "Спорный случай",
+            value: "Поддержка",
+            hint: "Лучше открыть один кейс с коротким описанием.",
+            tone: "info",
+          },
+        ]}
+      />
 
-      <section className="grid gap-5 lg:grid-cols-2">
-        <article className="glass-card p-6">
-          <h2 className="font-display text-2xl font-semibold">Публичная оферта</h2>
-          <p className="mt-3 text-sm leading-6 text-slate-600 dark:text-slate-300">
-            Документ описывает условия предоставления доступа, оплаты, продления и ответственности сторон.
-          </p>
-          <a
-            href={offerUrl}
-            target="_blank"
-            rel="noreferrer"
-            className="btn-primary mt-5 inline-flex rounded-xl px-5 py-2.5 text-sm font-semibold uppercase tracking-[0.12em]"
-          >
-            Открыть оферту
-          </a>
-        </article>
-
-        <article className="glass-card p-6">
-          <h2 className="font-display text-2xl font-semibold">Политика конфиденциальности</h2>
-          <p className="mt-3 text-sm leading-6 text-slate-600 dark:text-slate-300">
-            Документ описывает, какие данные используются для работы аккаунта, оплаты и поддержки.
-          </p>
-          <a
-            href={privacyUrl}
-            target="_blank"
-            rel="noreferrer"
-            className="outline-btn mt-5 inline-flex rounded-xl px-5 py-2.5 text-sm font-semibold uppercase tracking-[0.12em]"
-          >
-            Открыть политику
-          </a>
-        </article>
-      </section>
-
-      <section className="glass-card p-6">
-        <p className="font-mono text-xs uppercase tracking-[0.16em] text-slate-500">Важно</p>
-        <p className="mt-2 text-sm leading-6 text-slate-600 dark:text-slate-300">
-          Если у вас есть юридический или финансовый вопрос по оплате, создайте обращение в поддержке и укажите тему обращения.
-          Так запрос быстрее попадёт к нужному специалисту.
-        </p>
-      </section>
-    </main>
+      <CabinetSection
+        eyebrow="Документы"
+        title="Что можно открыть"
+        description="Обе ссылки ведут на публичную поверхность POKROV."
+      >
+        <CabinetCardGrid
+          items={[
+            {
+              key: "offer",
+              title: "Публичная оферта",
+              body: "Условия предоставления доступа, оплаты, продления и ответственности сторон.",
+              badge: "Оферта",
+              tone: "neutral",
+              action: (
+                <a href={offerUrl} target="_blank" rel="noreferrer" className="text-sm font-semibold text-emerald-800 dark:text-emerald-300">
+                  Открыть
+                </a>
+              ),
+            },
+            {
+              key: "privacy",
+              title: "Политика конфиденциальности",
+              body: "Какие данные используются для работы аккаунта, оплаты и поддержки.",
+              badge: "Данные",
+              tone: "neutral",
+              action: (
+                <a href={privacyUrl} target="_blank" rel="noreferrer" className="text-sm font-semibold text-emerald-800 dark:text-emerald-300">
+                  Открыть
+                </a>
+              ),
+            },
+            {
+              key: "support",
+              title: "Вопрос по документам",
+              body: "Создайте обращение и укажите, какой документ или платежный случай нужно проверить.",
+              badge: "Кейс",
+              tone: "info",
+              action: (
+                <AppRouteLink href="/support/" className="text-sm font-semibold text-emerald-800 dark:text-emerald-300">
+                  Поддержка
+                </AppRouteLink>
+              ),
+            },
+          ]}
+        />
+      </CabinetSection>
+    </CabinetRoute>
   );
 }

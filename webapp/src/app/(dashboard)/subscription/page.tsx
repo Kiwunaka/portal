@@ -63,6 +63,7 @@ export default function SubscriptionPage() {
   const [plans, setPlans] = useState<PlanCatalogRow[]>(() => fallbackPlans());
   const [error, setError] = useState("");
   const [copyStatus, setCopyStatus] = useState("");
+  const [manualAccessOpen, setManualAccessOpen] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -306,53 +307,68 @@ export default function SubscriptionPage() {
         </CabinetSection>
 
         <CabinetSection
-          eyebrow="Подключение"
-          title="Подключиться вручную"
-          description="Лучше открыть POKROV и обновить доступ в кабинете. Пока приложения в бете, ссылку можно импортировать в Happ, Hiddify или другой совместимый клиент."
-          tone={manualAccessReady ? "success" : "warning"}
+          eyebrow="Восстановление"
+          title="Ручное подключение только как запасной путь"
+          description="Основной сценарий: откройте POKROV, войдите в тот же аккаунт и дайте приложению подтянуть профиль. QR и личная ссылка нужны только для совместимого клиента или восстановления."
+          tone={manualAccessReady ? "info" : "warning"}
           actions={
             <AppRouteLink href="/downloads/" className="outline-btn rounded-full px-4 py-2 text-xs font-semibold uppercase tracking-[0.12em]">
               Загрузки
             </AppRouteLink>
           }
         >
-          <div className="grid gap-5 lg:grid-cols-[240px_minmax(0,1fr)]">
-            <div className="min-w-0">
-              <SubscriptionQrCard value={subscriptionUrl} active={manualAccessReady} />
+          <div className="rounded-[1.3rem] border border-[color:var(--atlas-border)] bg-[var(--atlas-surface)] p-4">
+            <p className="text-sm leading-6 text-[var(--atlas-text-soft)]">
+              {manualAccessReady
+                ? "Личная ссылка готова, но мы не показываем ее первой. Используйте ее только если приложение POKROV сейчас недоступно или поддержка попросила открыть ручной вариант."
+                : "После оплаты или активации ключа запасной ручной вариант станет доступен здесь."}
+            </p>
+            <div className="mt-4 flex flex-wrap gap-3">
+              <button
+                type="button"
+                onClick={() => setManualAccessOpen((value) => !value)}
+                disabled={!manualAccessReady}
+                className="outline-btn rounded-full px-5 py-3 text-sm font-semibold disabled:opacity-60"
+              >
+                {manualAccessOpen ? "Скрыть ручной вариант" : "Показать ручной вариант"}
+              </button>
+              {!manualAccessReady ? (
+                <AppRouteLink href="/subscription/checkout/" className="btn-primary rounded-full px-5 py-3 text-sm font-semibold">
+                  Открыть оплату
+                </AppRouteLink>
+              ) : null}
             </div>
-            <div className="min-w-0">
-              <p className="text-sm leading-6 text-slate-600 dark:text-slate-300">
-                {manualAccessReady
-                  ? "Скопируйте ссылку или отсканируйте QR-код на устройстве, где хотите подключиться."
-                  : "После оплаты или активации ключа здесь появятся ссылка и QR-код для подключения."}
-              </p>
-              <div className="mt-4 rounded-[1.1rem] border border-slate-200/80 bg-white/72 px-3 py-3 dark:border-white/10 dark:bg-white/[0.04]">
-                <p className="break-all font-mono text-xs leading-6 text-slate-700 dark:text-slate-200">
-                  {manualAccessReady ? subscriptionUrl : "Ссылка появится после активации доступа"}
-                </p>
+          </div>
+
+          {manualAccessOpen ? (
+            <div className="mt-5 grid gap-5 lg:grid-cols-[240px_minmax(0,1fr)]">
+              <div className="min-w-0">
+                <SubscriptionQrCard value={subscriptionUrl} active={manualAccessReady} />
               </div>
-              <div className="mt-4 flex flex-wrap gap-3">
-                <button
-                  type="button"
-                  onClick={() => void copySubscriptionUrl()}
-                  disabled={!manualAccessReady}
-                  className="btn-primary rounded-full px-5 py-3 text-sm font-semibold disabled:opacity-60"
-                >
-                  Скопировать ссылку
-                </button>
-                {manualAccessReady ? (
+              <div className="min-w-0">
+                <p className="text-sm leading-6 text-[var(--atlas-text-soft)]">
+                  Скопируйте ссылку или отсканируйте QR-код только на устройстве, которому доверяете.
+                </p>
+                <div className="mt-4 rounded-[1.1rem] border border-[color:var(--atlas-border)] bg-[var(--atlas-glass)] px-3 py-3">
+                  <p className="break-all font-mono text-xs leading-6 text-[var(--atlas-text)]">{subscriptionUrl}</p>
+                </div>
+                <div className="mt-4 flex flex-wrap gap-3">
+                  <button
+                    type="button"
+                    onClick={() => void copySubscriptionUrl()}
+                    disabled={!manualAccessReady}
+                    className="btn-primary rounded-full px-5 py-3 text-sm font-semibold disabled:opacity-60"
+                  >
+                    Скопировать ссылку
+                  </button>
                   <a href={subscriptionUrl} target="_blank" rel="noreferrer" className="outline-btn rounded-full px-5 py-3 text-sm font-semibold">
                     Открыть ссылку
                   </a>
-                ) : (
-                  <AppRouteLink href="/subscription/checkout/" className="outline-btn rounded-full px-5 py-3 text-sm font-semibold">
-                    Открыть оплату
-                  </AppRouteLink>
-                )}
+                </div>
+                {copyStatus ? <p className="mt-3 text-sm font-semibold text-emerald-800 dark:text-emerald-300">{copyStatus}</p> : null}
               </div>
-              {copyStatus ? <p className="mt-3 text-sm font-semibold text-emerald-800 dark:text-emerald-300">{copyStatus}</p> : null}
             </div>
-          </div>
+          ) : null}
         </CabinetSection>
 
         <CabinetSection

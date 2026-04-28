@@ -1,7 +1,7 @@
 "use client";
 
 import AppRouteLink from "@/components/app-route-link";
-import { CabinetActionList, CabinetFactGrid, CabinetPage, CabinetSection } from "@/components/cabinet-page";
+import { CabinetCardGrid, CabinetHero, CabinetList, CabinetRoute, CabinetSection } from "@/components/cabinet/surface";
 import { resolvePlanLabel } from "@/lib/access-policy";
 import { fetchAccessKeyStatus, redeemAccessKey, type AccessKeyStatusPayload } from "@/lib/api";
 import { usePortalSession } from "@/lib/session";
@@ -182,7 +182,7 @@ export default function RedeemPage() {
   ];
 
   return (
-    <CabinetPage
+    <CabinetRoute
       eyebrow="Тарифы и оплата"
       title="Применить ключ"
       description="Если у вас уже есть ключ оплаты или подарка, примените его здесь к текущему профилю."
@@ -196,8 +196,55 @@ export default function RedeemPage() {
           </AppRouteLink>
         </>
       }
+      metrics={facts}
     >
-      <CabinetFactGrid facts={facts} />
+      <CabinetHero
+        eyebrow="Что делать сейчас"
+        badge={status?.exists && !status.redeemed ? "Ключ можно применить" : status?.redeemed ? "Нужна проверка" : "Сначала проверка"}
+        badgeTone={status?.exists && !status.redeemed ? "success" : status?.redeemed ? "warning" : "neutral"}
+        title={status?.exists && !status.redeemed ? "Ключ найден, примените его к профилю" : "Проверьте ключ перед применением"}
+        description="Ключ применяется к текущему аккаунту POKROV. Новый профиль создавать не нужно, а личные ссылки и ручные параметры здесь не показываются."
+        actions={
+          <>
+            <button
+              type="button"
+              disabled={lookupBusy}
+              onClick={() => void lookup()}
+              className="outline-btn rounded-full px-5 py-3 text-sm font-semibold disabled:opacity-60"
+            >
+              {lookupBusy ? "Проверяем..." : "Проверить ключ"}
+            </button>
+            <button
+              type="button"
+              disabled={redeemBusy}
+              onClick={() => void onRedeem()}
+              className="btn-primary rounded-full px-5 py-3 text-sm font-semibold disabled:opacity-60"
+            >
+              {redeemBusy ? "Применяем..." : "Применить"}
+            </button>
+          </>
+        }
+        details={[
+          {
+            label: "Профиль",
+            value: resolvePlanLabel(dash, user),
+            hint: "Ключ добавит срок к текущему аккаунту.",
+            tone: dash?.is_active ? "success" : "neutral",
+          },
+          {
+            label: "Проверка",
+            value: status ? (status.exists ? "Найден" : "Не найден") : "Не запускалась",
+            hint: status?.redeemed ? "Этот ключ уже был использован." : "Сначала проверьте, затем применяйте.",
+            tone: status?.redeemed ? "warning" : status?.exists ? "success" : "neutral",
+          },
+          {
+            label: "Если не сходится",
+            value: "Поддержка",
+            hint: "Один кейс быстрее ручных попыток.",
+            tone: "neutral",
+          },
+        ]}
+      />
 
       <div className="grid gap-6 xl:grid-cols-[1.04fr_0.96fr]">
         <CabinetSection
@@ -205,7 +252,7 @@ export default function RedeemPage() {
           title="Проверить и применить"
           description="Лучше сначала проверить ключ, а потом уже применять его к профилю."
         >
-          <label className="block text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500 dark:text-slate-400">
+          <label className="block text-xs font-semibold text-[var(--atlas-text-muted)]">
             Ключ
           </label>
           <div className="mt-2 flex flex-col gap-3 md:flex-row">
@@ -219,7 +266,7 @@ export default function RedeemPage() {
               type="button"
               disabled={lookupBusy}
               onClick={() => void lookup()}
-              className="outline-btn rounded-2xl px-5 py-3 text-sm font-semibold uppercase tracking-[0.12em] disabled:opacity-60"
+              className="outline-btn rounded-2xl px-5 py-3 text-sm font-semibold disabled:opacity-60"
             >
               {lookupBusy ? "Проверяем..." : "Проверить"}
             </button>
@@ -227,7 +274,7 @@ export default function RedeemPage() {
               type="button"
               disabled={redeemBusy}
               onClick={() => void onRedeem()}
-              className="btn-primary rounded-2xl px-5 py-3 text-sm font-semibold uppercase tracking-[0.12em] disabled:opacity-60"
+              className="btn-primary rounded-2xl px-5 py-3 text-sm font-semibold disabled:opacity-60"
             >
               {redeemBusy ? "Применяем..." : "Применить"}
             </button>
@@ -250,7 +297,7 @@ export default function RedeemPage() {
           title="Если ключ не проходит"
           description="Обычно дальше нужен один из этих трех шагов."
         >
-          <CabinetActionList items={helpItems} />
+          <CabinetCardGrid items={helpItems} className="xl:grid-cols-1" />
         </CabinetSection>
       </div>
 
@@ -259,8 +306,8 @@ export default function RedeemPage() {
         title="Что удалось узнать по ключу"
         description="После проверки или применения информация появится здесь."
       >
-        <CabinetActionList items={statusItems} empty="Пока ничего не проверяли. Введите ключ, и здесь появится его статус." />
+        <CabinetList items={statusItems} empty="Пока ничего не проверяли. Введите ключ, и здесь появится его статус." />
       </CabinetSection>
-    </CabinetPage>
+    </CabinetRoute>
   );
 }

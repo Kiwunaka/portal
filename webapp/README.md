@@ -1,6 +1,6 @@
 # POKROV WebApp
 
-Last updated: 2026-04-25
+Last updated: 2026-04-28
 
 ## Document Status
 
@@ -54,7 +54,7 @@ Current operator routes:
 Keep the public/browser split explicit:
 
 - `marketing/` owns the homepage, public `/checkout/`, offer/privacy pages, and indexable SEO landing pages
-- `marketing/` keeps checkout-first CTA priority for public traffic; install help and cabinet-open links are secondary intent-driven exits
+- `marketing/` keeps trial, install, and first connection as the primary public path; checkout stays an honest continuation after the user has checked the product or when plan context is explicit
 - `webapp/` starts when the user needs session continuation, cabinet actions, redeem, support, renewal, statistics, or admin tooling
 - browser entry should route known or newly verified users into the same cabinet session model whether they arrived from app handoff, Telegram, or the future marked-`soon` email lane
 - public `Open cabinet` CTA should point to `https://app.pokrov.space/`
@@ -73,12 +73,21 @@ Rules:
 
 - frontend must not treat `https://app.pokrov.space/api/*` HTML fallback as valid API success
 - cabinet entry is continuation-first and must not be documented or styled like a second acquisition surface
-- user-facing cabinet copy should show one public `ссылка подключения` and one QR built from the same URL
+- first-layer cabinet UI should guide users through app install, device connection, renewal, and support before exposing manual connection details
+- the single public `ссылка подключения` and matching QR may appear only behind an explicit manual/recovery fallback or after a fulfilled commerce/support path that truly needs manual import
 - `?format=plain` remains hidden compatibility-only behavior and must stay out of normal cabinet UX
 - `connect.pokrov.space` is for config delivery, not for public acquisition or payment entry
 - cabinet checkout must not drift into a second public paywall or direct raw-link delivery story
 - public email continuation must stay explicitly marked `soon` until sender readiness, delivery confirmation, and public launch are live
 - marketing and cabinet copy should inherit governed text from `shared/copy.ts`, `copy/catalog.ru.json`, and `shared/design-tokens.json` instead of inventing separate public messaging
+
+## Shell, Theme, And Loading
+
+- Full-screen loading is reserved for true cold start when no useful session state exists.
+- Internal cabinet navigation keeps the shell mounted, shows page-shaped skeleton or route activity feedback, and must not reset the product frame.
+- Dashboard and user snapshots may be kept only in React memory as last-good state during warm refresh; do not persist dashboard cache to browser storage.
+- Theme follows the system preference by default. Manual light/dark choice is a browser UI preference and should not store account or dashboard data.
+- Mobile cabinet navigation keeps bottom tabs stable on non-admin routes.
 
 ## Frontend Environment
 
@@ -129,16 +138,26 @@ npm.cmd run dev
 
 ```powershell
 npm.cmd run build
+npm.cmd run test:e2e:cabinet
 npm.cmd run test:e2e
 npm.cmd run test:e2e:admin
+```
+
+From the repository root, run the shared text guard when visible copy changes:
+
+```powershell
+python -m pytest tests/test_frontend_text_integrity.py tests/test_public_copy_guardrails.py -q
 ```
 
 Verification rule:
 
 - run `npm.cmd run build` on every webapp task
+- run `python -m pytest tests/test_frontend_text_integrity.py tests/test_public_copy_guardrails.py -q` from the repository root when Russian copy, shared copy, or visible frontend text changes
+- run `npm.cmd run test:e2e:cabinet` for focused cabinet route work
 - run `npm.cmd run test:e2e` when cabinet, pricing, renewal, downloads, support, or login flows change
 - run `npm.cmd run test:e2e:admin` when admin routes, permissions, dashboards, or operator actions change
 - `npm.cmd run test:e2e` now builds the static export and serves `webapp/out` on port `3102` through `webapp/scripts/serve_export.py`, so the full browser pack runs against the same export-style surface that deploy uses
+- `npm.cmd run test:e2e:cabinet` uses the same build-plus-export-server flow on port `3103` for the focused cabinet spec
 - `npm.cmd run test:e2e:admin` uses the same build-plus-export-server flow on port `3101`, which removes the standalone admin flake that came from `next dev` cold-start and HMR reload noise
 - both release-style Playwright scripts clear a stale port owner first and disable server reuse so local browser checks do not inherit an old process or stale session bootstrap
 

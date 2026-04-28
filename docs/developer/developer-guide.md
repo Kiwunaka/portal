@@ -1,6 +1,6 @@
 # Developer Guide
 
-Last updated: 2026-04-26
+Last updated: 2026-04-28
 
 ## Document Status
 
@@ -239,6 +239,7 @@ Run inside `webapp/`:
 npm install
 npm.cmd run dev
 npm.cmd run build
+npm.cmd run test:e2e:cabinet
 npm.cmd run test:e2e
 npm.cmd run test:e2e:admin
 ```
@@ -248,14 +249,15 @@ Notes:
 - `webapp` owns the primary admin surface.
 - Real browser checks live under `webapp/e2e/`.
 - `tests/test_admin_webapp_smoke.py` is a structure/build smoke, not a replacement for Playwright browser coverage.
+- `tests/test_frontend_text_integrity.py` runs the shared mojibake scanner over active frontend and copy sources.
 - `webapp/e2e/cabinet-flow.spec.ts` covers the non-app user cabinet flow with mocked API contracts.
 - `npm.cmd run test:e2e` now builds the static export, then serves `webapp/out` through `webapp/scripts/serve_export.py` on port `3102`, so the main browser gate matches the export-style deploy surface instead of `next dev`.
 - `npm.cmd run test:e2e:admin` uses the same build-plus-export-server flow on port `3101`, which removes the standalone admin timeout that came from cold `next dev` bootstrap and HMR reload churn.
-- `npm.cmd run test:e2e:cabinet` remains the quicker inner-loop command when you only want that spec and do not need the full release-style export gate.
+- `npm.cmd run test:e2e:cabinet` runs the focused cabinet spec against the same build-plus-export-server contour as the release-style browser checks.
 - the release-style Playwright scripts still clear a stale port owner first and disable server reuse so local browser checks do not inherit a leftover export server or stale HMR session.
 - admin browser checks should include a narrow mobile or Telegram WebView-like viewport so tap targets, overflow, and modal actions stay usable inside the embedded webapp.
 - observer-lite admin checks should cover dashboard summary counts, users-table filter parity, detail diagnostics, and node collector health rendering.
-- user-facing config delivery should expose one public `ссылка подключения` via `connect.pokrov.space`; hidden `?format=plain` compatibility must stay out of normal copy and browser flows.
+- user-facing config delivery should expose the single public `ссылка подключения` via `connect.pokrov.space` only in explicit manual/recovery fallback; hidden `?format=plain` compatibility must stay out of normal copy and browser flows.
 
 Run inside `marketing/`:
 
@@ -269,7 +271,7 @@ python ..\scripts\ui_visual_smoke.py
 Marketing release rules:
 
 - public acquisition CTA must never route users into raw `connect.pokrov.space`
-- public acquisition CTA priority is checkout-first on marketing surfaces; install help and cabinet-open links are secondary intent-driven exits
+- public acquisition CTA priority is trial, install, and first connection on marketing surfaces; checkout, install help, and cabinet-open links are explicit intent-driven exits
 - authenticated WebApp download CTA should use `/api/client/apps` runtime URLs first, then the `APP_*` / docs fallback
 - marketing download CTA is build-time and must be rebuilt/redeployed when `NEXT_PUBLIC_APP_*` public URLs change
 - public `Открыть кабинет` CTA should point to `https://app.pokrov.space/`
@@ -282,7 +284,7 @@ Marketing release rules:
 
 After the current premium/SEO/copy pass, keep this split explicit:
 
-- `marketing/` owns the public homepage, checkout-first `/checkout/`, install help, offer/privacy pages, indexable SEO landings, and site metadata surfaces
+- `marketing/` owns the public homepage, app-first trial/install path, public `/checkout/` continuation, install help, offer/privacy pages, indexable SEO landings, and site metadata surfaces
 - `webapp/` owns `app.pokrov.space` entry, dashboard, subscription, devices, statistics, support, downloads, redeem, checkout continuation, and admin
 - `connect.pokrov.space` is config delivery only and must not be treated as a public acquisition page
 - when a task spans both surfaces, verify the handoff `pokrov.space -> app.pokrov.space` instead of reviewing each side in isolation
