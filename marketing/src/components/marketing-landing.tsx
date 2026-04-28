@@ -67,7 +67,7 @@ type PlanCard = {
   devices: string;
 };
 
-type GlyphName = "route" | "shield" | "signal" | "window" | "orbit" | "arc";
+type GlyphName = "route" | "shield" | "signal" | "window" | "readiness" | "arc";
 
 const HERO_SIGNALS: HeroSignal[] = [
   {
@@ -168,11 +168,11 @@ function buildDownloadCards(): DownloadCard[] {
       cta: "Открыть установку",
     },
     {
-      title: "Apple hosts",
-      status: "Engineering lane",
-      desc: "iPhone и Mac остаются в кодовой базе и readiness notes, но не входят в публичное обещание этой волны.",
+      title: "iPhone и Mac",
+      status: "В подготовке",
+      desc: "Apple-направление остается в инженерной подготовке и не входит в обещание этой волны.",
       href: installHref,
-      cta: "Смотреть readiness notes",
+      cta: "Открыть статус",
     },
   ];
 }
@@ -324,7 +324,7 @@ function LandingGlyph({ name }: { name: GlyphName }) {
     );
   }
 
-  if (name === "orbit") {
+  if (name === "readiness") {
     return (
       <svg viewBox="0 0 24 24" aria-hidden="true">
         <circle cx="12" cy="12" r="2.2" />
@@ -445,7 +445,7 @@ export default function MarketingLanding({
           <div className="lp-hero-copy">
             <div className="lp-kicker">{heroKicker || "POKROV • Android + Windows"}</div>
             <p className="lp-overline">
-              Эта волна — публичная бета с честными ограничениями. Сайт объясняет следующий шаг, а кабинет помогает продолжить путь.
+              Эта волна — бета-контур с честными ограничениями. Сайт объясняет следующий шаг, а кабинет помогает продолжить путь.
             </p>
             <h1>{heroTitle || "Один спокойный путь: установить приложение, проверить сервис и только потом продлевать доступ"}</h1>
             <p className="lp-hero-lead">
@@ -521,8 +521,8 @@ export default function MarketingLanding({
                 <LandingGlyph name="arc" />
                 Статус беты
               </div>
-              <blockquote>Доступ открыт как публичная бета для Android и Windows; загрузки остаются в кабинете, а поддержка отвечает по мере возможностей до 24 часов.</blockquote>
-              <span>Публичная бета • Android + Windows</span>
+              <blockquote>Доступ работает в бета-контуре для Android и Windows; загрузки остаются в кабинете, а поддержка отвечает без декоративных обещаний.</blockquote>
+              <span>Бета-контур • Android + Windows</span>
             </article>
           </div>
         </section>
@@ -554,14 +554,14 @@ export default function MarketingLanding({
             <span>Приложение</span>
             <h2>Бета-вход начинается с установки, а не с технических ссылок.</h2>
             <p>
-              Android и Windows составляют текущий публичный путь. Apple-сборки остаются в подготовке и не обещаются как готовый релиз этой волны.
+              Android и Windows составляют текущий пользовательский путь. Apple-сборки остаются в подготовке и не обещаются как готовый релиз этой волны.
             </p>
           </div>
           <div className="lp-download-grid">
             {downloadCards.map((card, index) => (
               <article key={card.title} className={`lp-platform-card${index === 0 ? " lp-platform-card--featured" : ""}`}>
                 <div className="lp-stage-label">
-                  <LandingGlyph name={card.title === "Android" ? "arc" : card.title === "Windows" ? "window" : "orbit"} />
+                  <LandingGlyph name={card.title === "Android" ? "arc" : card.title === "Windows" ? "window" : "readiness"} />
                   {card.status}
                 </div>
                 <h3>{card.title}</h3>

@@ -253,7 +253,7 @@ function maskAccessKey(key: string): string {
 
 export function CheckoutLoadingFallback() {
   return (
-    <main className="checkout-shell lp-route-shell lp-route-shell--checkout">
+    <main id="main-content" className="checkout-shell lp-route-shell lp-route-shell--checkout">
       <section className="checkout-hero">
         <div className="checkout-brand" aria-label="POKROV">
           <img src="/pokrov-logo.svg" alt="" aria-hidden="true" />
@@ -407,19 +407,19 @@ export default function CheckoutClient() {
   };
 
   return (
-    <main className="checkout-shell lp-route-shell lp-route-shell--checkout">
+    <main id="main-content" className="checkout-shell lp-route-shell lp-route-shell--checkout">
       <section className="checkout-hero">
         <div className="checkout-brand" aria-label="POKROV">
           <img src="/pokrov-logo.svg" alt="" aria-hidden="true" />
           <span>POKROV</span>
         </div>
-        <div className="checkout-kicker">Публичная бета: выбрать срок, получить ключ и продолжить доступ</div>
+        <div className="checkout-kicker">Бета-контур: после пробного подключения выбрать срок и продолжить доступ</div>
         <div className={`checkout-status-chip ${checkoutReady ? "checkout-status-chip--ready" : "checkout-status-chip--fallback"}`}>
           {checkoutReady ? "Касса доступна" : "Оплата пока в ручной проверке"}
         </div>
         <h1 className="checkout-title">Спокойная оплата без технических ссылок</h1>
         <p className="checkout-sub">
-          Эта страница помогает выбрать срок для бета-доступа. После оплаты ключ доступа погашается в приложении или кабинете, а если касса временно недоступна, поддержка подскажет ручной следующий шаг.
+          Эта страница помогает выбрать срок после личной проверки в приложении. После оплаты ключ доступа погашается в приложении или кабинете, а если касса временно недоступна, поддержка подскажет ручной следующий шаг.
         </p>
       </section>
 
@@ -427,13 +427,13 @@ export default function CheckoutClient() {
         <div className="lp-info-band__grid">
           <article className="lp-info-card">
             <span className="lp-info-card__eyebrow">Сначала попробовать</span>
-            <h3>Пробный период идёт до покупки</h3>
-            <p>Первый шаг остаётся за приложением: 5 дней теста помогают понять продукт до оплаты.</p>
+            <h3>Установка и пробный период идут до покупки</h3>
+            <p>Первый шаг остаётся за приложением: 5 дней теста и первое подключение помогают понять продукт до оплаты.</p>
           </article>
           <article className="lp-info-card">
             <span className="lp-info-card__eyebrow">Потом оплатить</span>
             <h3>Касса остаётся тихой и понятной</h3>
-            <p>Публичная оплата должна выдавать ключ доступа для беты и не уводить в сложные технические сценарии.</p>
+            <p>Оплата должна выдавать ключ доступа для беты и не уводить в сложные технические сценарии.</p>
           </article>
           <article className="lp-info-card">
             <span className="lp-info-card__eyebrow">Если нужна помощь</span>

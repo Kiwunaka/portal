@@ -4,11 +4,11 @@ import { buildBreadcrumbJsonLd, MARKETING_CANONICAL_PATHS } from "../../lib/mark
 import { CANONICAL_PLATFORM_BRAND } from "../../lib/pokrov";
 
 export const metadata = buildMarketingMetadata(
-  "YouTube без пауз | POKROV",
-  "Приложение, 5 дней теста и спокойный маршрут к длинным видео и предсказуемой загрузке без лишних шагов.",
+  "YouTube: спокойная проверка | POKROV",
+  "Приложение, 5 дней теста и спокойный маршрут для проверки длинных видео без лишних шагов.",
   {
     path: MARKETING_CANONICAL_PATHS.youtube,
-    keywords: ["youtube без пауз", "стабильный youtube", "ускорение youtube", "pokrov youtube"],
+    keywords: ["проверка youtube", "длинные видео", "pokrov youtube", "маршрут для видео"],
   },
 );
 
@@ -25,10 +25,10 @@ export default function YoutubePage() {
         <MarketingLanding
           pagePath={MARKETING_CANONICAL_PATHS.youtube}
           heroKicker="Для YouTube и длинных видео"
-          heroTitle="YouTube без пауз и нервного ожидания"
+          heroTitle="YouTube без лишних шагов до проверки"
           heroSubtitle="Сначала спокойно проверьте качество видео в приложении и только потом переходите к кабинету и продлению, если сервис действительно подошёл."
-          scenarioTitle="Почему YouTube идёт стабильно"
-          scenarioBody="Здесь особенно важны устойчивый маршрут, предсказуемое подключение и отсутствие лишних шагов перед первым запуском."
+          scenarioTitle="Как проверить YouTube в понятном маршруте"
+          scenarioBody="Здесь особенно важны устойчивый маршрут, предсказуемый первый запуск и отсутствие лишних шагов перед проверкой."
           scenarioCards={[
             {
               eyebrow: "Длинные видео",
@@ -40,7 +40,7 @@ export default function YoutubePage() {
               eyebrow: "Приложение сначала",
               glyph: "window",
               title: "Продукт говорит тише рекламы",
-              desc: "Первый шаг прозрачен: приложение, тест и только потом кабинет, если скорость и стабильность вас устраивают.",
+              desc: "Первый шаг прозрачен: приложение, тест и только потом кабинет, если качество связи вас устраивает.",
             },
             {
               eyebrow: "Продление потом",

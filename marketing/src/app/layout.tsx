@@ -35,7 +35,7 @@ export const metadata: Metadata = {
     type: "website",
     locale: "ru_RU",
     siteName: CANONICAL_PLATFORM_BRAND,
-    title: "POKROV | Спокойный старт, стабильный доступ",
+    title: "POKROV | Спокойный старт и понятный доступ",
     description: "Начните с приложения, получите бесплатные 5 дней и дальше управляйте доступом без лишнего шума.",
     url: `${CANONICAL_MARKETING_SITE_URL}/`,
     images: [

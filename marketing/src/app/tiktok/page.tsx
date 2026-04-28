@@ -4,11 +4,11 @@ import { buildBreadcrumbJsonLd, MARKETING_CANONICAL_PATHS } from "../../lib/mark
 import { CANONICAL_PLATFORM_BRAND } from "../../lib/pokrov";
 
 export const metadata = buildMarketingMetadata(
-  "TikTok без пауз | POKROV",
-  "Приложение, 5 дней теста и спокойный маршрут к стабильной ленте и коротким видео без лишней настройки.",
+  "TikTok: спокойная проверка | POKROV",
+  "Приложение, 5 дней теста и спокойный маршрут для проверки коротких видео без лишней настройки.",
   {
     path: MARKETING_CANONICAL_PATHS.tiktok,
-    keywords: ["tiktok без пауз", "стабильный tiktok", "ускорение tiktok", "pokrov tiktok"],
+    keywords: ["проверка tiktok", "короткие видео", "pokrov tiktok", "мобильный старт"],
   },
 );
 
@@ -25,10 +25,10 @@ export default function TiktokPage() {
         <MarketingLanding
           pagePath={MARKETING_CANONICAL_PATHS.tiktok}
           heroKicker="Для TikTok и коротких видео"
-          heroTitle="TikTok с быстрым стартом и ровной лентой"
+          heroTitle="TikTok с быстрым стартом для проверки"
           heroSubtitle="Страница помогает спокойно проверить качество связи под TikTok, а уже потом решить в кабинете, хотите ли вы продолжать."
-          scenarioTitle="Почему TikTok идёт ровно"
-          scenarioBody="Когда вы смотрите короткие видео, важны быстрый старт, стабильная связь и минимум действий до первого просмотра."
+          scenarioTitle="Как проверить TikTok без лишнего шума"
+          scenarioBody="Когда вы смотрите короткие видео, важны быстрый старт, понятная проверка и минимум действий до первого просмотра."
           scenarioCards={[
             {
               eyebrow: "Мгновенный старт",

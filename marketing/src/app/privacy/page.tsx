@@ -25,15 +25,40 @@ export default function PrivacyPage() {
           { name: "Политика конфиденциальности", path: "/privacy/" },
         ])}
       />
-      <main className="legal-page lp-legal-shell">
-        <section className="lp-legal-banner">
-          <span className="lp-legal-banner__eyebrow">Данные и поддержка</span>
-          <h1>Политика конфиденциальности</h1>
-          <p>
-            POKROV использует только те данные, которые нужны для работы аккаунта, поддержки, защиты сервиса и
-            проведения платежей. Здесь — короткая и спокойная версия того, что именно мы храним и зачем.
-          </p>
-        </section>
+      <div className="lp-route-shell lp-route-shell--legal">
+        <header className="lp-nav">
+          <div className="lp-nav-shell">
+            <Link href="/" className="lp-brand">
+              <img src="/pokrov-logo.svg" alt="" aria-hidden="true" className="lp-brand-logo" />
+              <span>{CANONICAL_PLATFORM_BRAND}</span>
+            </Link>
+            <nav className="lp-menu" aria-label="Навигация по юридическим страницам">
+              <div className="lp-nav-links">
+                <Link href="/">Главная</Link>
+                <Link href={MARKETING_CANONICAL_PATHS.install}>Установка</Link>
+                <Link href={MARKETING_CANONICAL_PATHS.offer}>Оферта</Link>
+              </div>
+              <div className="lp-nav-actions">
+                <a href={config.webappUrl} target="_blank" rel="noreferrer" className="lp-chip">
+                  Кабинет
+                </a>
+                <a href={config.supportTelegramUrl} target="_blank" rel="noreferrer" className="lp-chip lp-chip--primary">
+                  Поддержка
+                </a>
+              </div>
+            </nav>
+          </div>
+        </header>
+
+        <main id="main-content" className="legal-page lp-legal-shell">
+          <section className="lp-legal-banner">
+            <span className="lp-legal-banner__eyebrow">Данные и поддержка</span>
+            <h1>Политика конфиденциальности</h1>
+            <p>
+              POKROV использует только те данные, которые нужны для работы аккаунта, поддержки, защиты сервиса и
+              проведения платежей. Здесь — короткая и спокойная версия того, что именно мы храним и зачем.
+            </p>
+          </section>
 
         <section className="lp-legal-grid">
           <article className="lp-legal-panel">
@@ -81,15 +106,16 @@ export default function PrivacyPage() {
             </li>
           </ul>
           <div className="legal-actions">
-            <Link className="btn btn-ghost" href="/">
+            <Link className="lp-btn lp-btn--ghost" href="/">
               На главную POKROV
             </Link>
-            <a className="btn btn-primary" href={config.botUrl} target="_blank" rel="noreferrer">
+            <a className="lp-btn lp-btn--primary" href={config.botUrl} target="_blank" rel="noreferrer">
               Открыть Telegram-бота
             </a>
           </div>
         </section>
-      </main>
+        </main>
+      </div>
     </>
   );
 }

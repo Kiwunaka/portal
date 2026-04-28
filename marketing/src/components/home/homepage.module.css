@@ -1,9 +1,9 @@
 .page {
-  --bg: #f5f1e8;
-  --bg-2: #efe9dd;
+  --bg: #f6f8f4;
+  --bg-2: #edf3ee;
   --panel: rgba(255, 255, 255, 0.9);
   --panel-solid: #ffffff;
-  --panel-soft: #f7f4ec;
+  --panel-soft: #f4f8f3;
   --line: rgba(28, 51, 42, 0.1);
   --line-strong: rgba(28, 87, 63, 0.2);
   --text: #17261f;
@@ -18,12 +18,12 @@
   --radius-md: 22px;
   --radius-sm: 18px;
   position: relative;
-  min-height: 100vh;
+  min-height: 100dvh;
   padding: 24px 24px 48px;
   background:
     radial-gradient(circle at 0% 0%, rgba(28, 90, 67, 0.06), transparent 22%),
     radial-gradient(circle at 100% 0%, rgba(28, 90, 67, 0.08), transparent 28%),
-    linear-gradient(180deg, #faf7f1 0%, var(--bg) 54%, var(--bg-2) 100%);
+    linear-gradient(180deg, #fbfcf8 0%, var(--bg) 54%, var(--bg-2) 100%);
   color: var(--text);
 }
 
@@ -388,45 +388,142 @@
 
 .visual {
   position: relative;
-  min-height: 700px;
+  min-height: 620px;
   padding: 10px 0 20px;
 }
 
-.visualGlow,
-.visualOrbit {
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
+.ghostButton:active,
+.primaryButton:active,
+.secondaryButton:active,
+.lightButton:active,
+.outlineButton:active,
+.inlineLink:active {
+  transform: translateY(0);
 }
 
-.visualGlow {
+.atlasDeck {
+  position: relative;
+  z-index: 2;
+  display: grid;
+  gap: 16px;
+  width: min(100%, 760px);
+  margin-left: auto;
+}
+
+.atlasPanelPrimary,
+.atlasPanel {
+  border: 1px solid var(--line);
   background:
-    radial-gradient(circle at 62% 28%, rgba(34, 104, 79, 0.16), transparent 18%),
-    radial-gradient(circle at 66% 52%, rgba(34, 104, 79, 0.1), transparent 28%),
-    radial-gradient(circle at 74% 74%, rgba(34, 104, 79, 0.08), transparent 24%);
-  filter: blur(22px);
+    linear-gradient(180deg, rgba(255, 255, 255, 0.92), rgba(247, 251, 248, 0.78)),
+    rgba(255, 255, 255, 0.74);
+  box-shadow: var(--shadow);
+  backdrop-filter: blur(18px);
 }
 
-.visualOrbit::before,
-.visualOrbit::after {
-  content: "";
-  position: absolute;
-  right: 68px;
-  border-radius: 999px;
-  border: 1px solid rgba(28, 90, 67, 0.12);
+.atlasPanelPrimary {
+  display: grid;
+  gap: 22px;
+  min-height: 390px;
+  padding: clamp(1.4rem, 3vw, 2.4rem);
+  border-radius: 34px;
 }
 
-.visualOrbit::before {
-  top: 52px;
-  width: 420px;
-  height: 420px;
+.atlasPanelHeader,
+.atlasConnection {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
 }
 
-.visualOrbit::after {
-  top: 102px;
-  right: 110px;
-  width: 320px;
-  height: 320px;
+.atlasPanelPrimary h2 {
+  max-width: 11ch;
+  margin: 0;
+  font-family: var(--font-body), sans-serif;
+  font-size: clamp(2.7rem, 5vw, 5.05rem);
+  line-height: 0.9;
+  letter-spacing: -0.06em;
+}
+
+.atlasFlow {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.atlasFlow span,
+.atlasConnection > div {
+  border: 1px solid rgba(28, 51, 42, 0.08);
+  background: rgba(255, 255, 255, 0.76);
+}
+
+.atlasFlow span {
+  display: grid;
+  min-height: 82px;
+  place-items: center;
+  padding: 14px;
+  border-radius: 18px;
+  color: var(--emerald-strong);
+  font-weight: 800;
+  line-height: 1.2;
+  text-align: center;
+}
+
+.atlasConnection {
+  align-items: stretch;
+}
+
+.atlasConnection > div {
+  flex: 1 1 0;
+  display: grid;
+  gap: 6px;
+  padding: 16px;
+  border-radius: 20px;
+}
+
+.atlasConnection small,
+.atlasPanel p {
+  color: var(--muted);
+}
+
+.atlasConnection small {
+  font-size: 0.78rem;
+}
+
+.atlasConnection strong,
+.atlasPanel strong {
+  font-family: var(--font-body), sans-serif;
+  letter-spacing: -0.03em;
+}
+
+.atlasConnection strong {
+  font-size: 1.05rem;
+}
+
+.atlasPanel {
+  display: grid;
+  gap: 10px;
+  width: min(100% - 28px, 520px);
+  padding: 20px;
+  border-radius: 26px;
+}
+
+.atlasPanel:nth-child(2) {
+  margin-left: 70px;
+}
+
+.atlasPanel:nth-child(3) {
+  margin-left: auto;
+}
+
+.atlasPanel strong {
+  font-size: 1.28rem;
+}
+
+.atlasPanel p {
+  margin: 0;
+  font-size: 0.98rem;
+  line-height: 1.58;
 }
 
 .desktop {
@@ -1139,10 +1236,11 @@
   }
 
   .visual {
-    min-height: 640px;
+    min-height: 560px;
   }
 
-  .desktop {
+  .desktop,
+  .atlasDeck {
     margin: 0 auto;
   }
 }
@@ -1188,7 +1286,30 @@
 
   .visual {
     min-height: 0;
-    padding-bottom: 220px;
+    padding-bottom: 0;
+  }
+
+  .atlasDeck {
+    width: 100%;
+  }
+
+  .atlasPanelPrimary h2 {
+    max-width: none;
+  }
+
+  .atlasFlow,
+  .atlasConnection {
+    grid-template-columns: 1fr;
+    flex-direction: column;
+  }
+
+  .atlasPanel {
+    width: 100%;
+  }
+
+  .atlasPanel:nth-child(2),
+  .atlasPanel:nth-child(3) {
+    margin-left: 0;
   }
 
   .phone {

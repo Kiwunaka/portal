@@ -25,21 +25,46 @@ export default function OfferPage() {
           { name: "Публичная оферта", path: "/offer/" },
         ])}
       />
-      <main className="legal-page lp-legal-shell">
-        <section className="lp-legal-banner">
-          <span className="lp-legal-banner__eyebrow">Юридическая информация</span>
-          <h1>Публичная оферта</h1>
-          <p>
-            Здесь собраны базовые условия доступа к цифровым услугам POKROV, порядок продления и спокойный способ
-            связаться с командой, если нужен разбор спорной ситуации.
-          </p>
-        </section>
+      <div className="lp-route-shell lp-route-shell--legal">
+        <header className="lp-nav">
+          <div className="lp-nav-shell">
+            <Link href="/" className="lp-brand">
+              <img src="/pokrov-logo.svg" alt="" aria-hidden="true" className="lp-brand-logo" />
+              <span>{CANONICAL_PLATFORM_BRAND}</span>
+            </Link>
+            <nav className="lp-menu" aria-label="Навигация по юридическим страницам">
+              <div className="lp-nav-links">
+                <Link href="/">Главная</Link>
+                <Link href={MARKETING_CANONICAL_PATHS.install}>Установка</Link>
+                <Link href={MARKETING_CANONICAL_PATHS.privacy}>Политика</Link>
+              </div>
+              <div className="lp-nav-actions">
+                <a href={config.webappUrl} target="_blank" rel="noreferrer" className="lp-chip">
+                  Кабинет
+                </a>
+                <a href={config.supportTelegramUrl} target="_blank" rel="noreferrer" className="lp-chip lp-chip--primary">
+                  Поддержка
+                </a>
+              </div>
+            </nav>
+          </div>
+        </header>
+
+        <main id="main-content" className="legal-page lp-legal-shell">
+          <section className="lp-legal-banner">
+            <span className="lp-legal-banner__eyebrow">Юридическая информация</span>
+            <h1>Публичная оферта</h1>
+            <p>
+              Здесь собраны базовые условия доступа к цифровым услугам POKROV, порядок продления и спокойный способ
+              связаться с командой, если нужен разбор спорной ситуации.
+            </p>
+          </section>
 
         <section className="lp-legal-grid">
           <article className="lp-legal-panel">
             <h2>Основные условия</h2>
             <ul className="lp-legal-list">
-              <li>Текущая волна — публичная бета с честными ограничениями, а не обещание широкого стабильного запуска.</li>
+              <li>Текущая волна — бета-контур с честными ограничениями, а не обещание широкого стабильного запуска.</li>
               <li>Сервис предоставляется как цифровой доступ на выбранный срок; автоматическое списание не включается без отдельного явного согласия пользователя.</li>
               <li>Бесплатный тест длится 5 дней, а отдельные сценарии доступа могут иметь ограничения по устройствам, функциям и доступным сборкам.</li>
               <li>Продление должно заканчиваться ключом доступа. Ключ нужно погасить в приложении или кабинете, чтобы продолжить тот же аккаунт без ручной настройки.</li>
@@ -52,7 +77,7 @@ export default function OfferPage() {
             <ul className="lp-legal-list">
               <li>Android-сборка может быть доступна как бета-установка до завершения публикации и финальной проверки.</li>
               <li>Windows-сборка в бете может быть неподписанной; перед установкой пользователь должен учитывать предупреждение о неизвестном издателе.</li>
-              <li>Поддержка отвечает по мере возможности с ориентиром до 24 часов, без обещания круглосуточного ответа.</li>
+              <li>Поддержка отвечает по мере возможности без обещания круглосуточного ответа или фиксированного SLA.</li>
               <li>Если оплата, загрузка или погашение ключа временно остановлены, команда показывает доступный следующий шаг вместо имитации успешной загрузки или оплаты.</li>
             </ul>
           </article>
@@ -91,15 +116,16 @@ export default function OfferPage() {
             </li>
           </ul>
           <div className="legal-actions">
-            <Link className="btn btn-ghost" href="/">
+            <Link className="lp-btn lp-btn--ghost" href="/">
               На главную POKROV
             </Link>
-            <a className="btn btn-primary" href={config.botUrl} target="_blank" rel="noreferrer">
+            <a className="lp-btn lp-btn--primary" href={config.botUrl} target="_blank" rel="noreferrer">
               Открыть Telegram-бота
             </a>
           </div>
         </section>
-      </main>
+        </main>
+      </div>
     </>
   );
 }

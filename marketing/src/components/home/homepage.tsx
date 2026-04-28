@@ -44,8 +44,8 @@ const HERO_FACTS = [
     label: "один доступ для телефона, ноутбука и домашнего ритма",
   },
   {
-    value: "Ответ до 24 часов",
-    label: "лучшее усилие команды поддержки в бета-волне",
+    value: "Без SLA",
+    label: "поддержка отвечает без декоративных обещаний",
   },
 ];
 
@@ -68,7 +68,7 @@ const HOW_IT_WORKS = [
   {
     step: "4",
     title: "Продолжаете тем же доступом",
-    text: "Если всё подошло, выбираете срок и переходите к оплате без нового старта.",
+    text: "Если всё подошло после пробного подключения, выбираете срок и продолжаете тот же доступ без нового старта.",
   },
 ];
 
@@ -91,7 +91,7 @@ const SURFACE_PANELS = [
     eyebrow: "Поддержка",
     title: "Если что-то не срослось, разговор не начинается заново",
     text: "Поддержка, кабинет и канал остаются рядом как одна связная система, а не как разбросанные ссылки.",
-    bullets: ["Ответ в бете: лучшее усилие до 24 часов", "Видно срок и устройства", "Telegram остается как бонус и запасной путь"],
+    bullets: ["Ответ в бете: без декоративного SLA", "Видно срок и устройства", "Telegram остается как бонус и запасной путь"],
     tone: "support" as const,
   },
 ];
@@ -151,101 +151,47 @@ function buildRouteLabel(): string {
 function ProductVisual() {
   return (
     <div className={styles.visual} aria-hidden="true">
-      <div className={styles.visualGlow} />
-      <div className={styles.visualOrbit} />
-      <div className={styles.desktop}>
-        <div className={styles.desktopTop}>
-          <span />
-          <span />
-          <span />
-        </div>
-        <div className={styles.desktopBody}>
-          <aside className={styles.sidebar}>
+      <div className={styles.atlasDeck}>
+        <article className={styles.atlasPanelPrimary}>
+          <div className={styles.atlasPanelHeader}>
             <div className={styles.brandMini}>
               <img className={styles.brandMarkMini} src="/pokrov-logo.svg" alt="" aria-hidden="true" />
               <div>
                 <strong>POKROV</strong>
-                <small>спокойный доступ</small>
+                <small>приложение сначала</small>
               </div>
             </div>
-            <div className={styles.sideNav}>
-              <span className={styles.sideNavActive}>Главная</span>
-              <span>Локации</span>
-              <span>Маршрут</span>
-              <span>Поддержка</span>
-            </div>
-            <div className={styles.sideCard}>
-              <small>Маршрут по умолчанию</small>
+            <span className={styles.workspaceBadge}>5 дней</span>
+          </div>
+          <h2>Установите приложение, запустите пробный доступ и сделайте первое подключение.</h2>
+          <div className={styles.atlasFlow}>
+            <span>Установка</span>
+            <span>Пробный доступ</span>
+            <span>Первое подключение</span>
+          </div>
+          <div className={styles.atlasConnection}>
+            <div>
+              <small>Маршрут</small>
               <strong>{buildRouteLabel()}</strong>
-              <span>Без лишнего шума на первом шаге.</span>
             </div>
-          </aside>
-
-          <div className={styles.workspace}>
-            <div className={styles.workspaceTop}>
-              <div>
-                <small>Главный экран</small>
-                <strong>Подключение без лишней тяжести</strong>
-              </div>
-              <span className={styles.workspaceBadge}>5 дней бесплатно</span>
-            </div>
-
-            <div className={styles.workspaceStage}>
-              <div className={styles.stageMap} />
-              <div className={styles.centerCard}>
-                <small>Пример состояния</small>
-                <strong>POKROV beta</strong>
-                <div className={styles.powerRing}>
-                  <div className={styles.powerCore} />
-                </div>
-                <div className={styles.routeRow}>
-                  <span>Автовыбор</span>
-                  <strong>Оптимальный маршрут</strong>
-                </div>
-              </div>
-
-              <div className={styles.metricCard}>
-                <small>Режим включен</small>
-                <strong>Маршрут POKROV</strong>
-              </div>
-
-              <div className={styles.locationCard}>
-                <small>Текущий маршрут</small>
-                <strong>Автовыбор POKROV</strong>
-              </div>
-            </div>
-
-            <div className={styles.workspaceStrip}>
-              <article>
-                <strong>Один аккаунт</strong>
-                <span>срок, устройства и поддержка рядом</span>
-              </article>
-              <article>
-                <strong>{buildPlatformLabel()}</strong>
-                <span>основной путь уже собран</span>
-              </article>
-              <article>
-                <strong>Спокойный checkout</strong>
-                <span>когда уже понятно, что хочется продолжать</span>
-              </article>
+            <div>
+              <small>Платформы</small>
+              <strong>{buildPlatformLabel()}</strong>
             </div>
           </div>
-        </div>
-      </div>
+        </article>
 
-      <div className={styles.phone}>
-        <div className={styles.phoneNotch} />
-        <div className={styles.phoneScreen}>
-          <span className={styles.phonePill}>Все готово</span>
-          <div className={styles.phonePower}>
-            <div className={styles.phonePowerCore} />
-          </div>
-          <div className={styles.phoneRows}>
-            <span />
-            <span />
-            <span />
-          </div>
-        </div>
+        <article className={styles.atlasPanel}>
+          <span className={styles.surfaceEyebrow}>после проверки</span>
+          <strong>Продление через ключ доступа</strong>
+          <p>Оплата нужна только после личной проверки. Ключ погашается в приложении или кабинете.</p>
+        </article>
+
+        <article className={styles.atlasPanel}>
+          <span className={styles.surfaceEyebrow}>рядом</span>
+          <strong>Кабинет и поддержка</strong>
+          <p>Срок, устройства, восстановление и помощь остаются в одном понятном маршруте.</p>
+        </article>
       </div>
     </div>
   );
@@ -335,8 +281,8 @@ export default function MarketingHomePage() {
             <a href={links.cabinetHref} className={styles.ghostButton}>
               Кабинет
             </a>
-            <Link href={links.checkoutHref} className={styles.primaryButton}>
-              Перейти к оплате
+            <Link href={links.installHref} className={styles.primaryButton}>
+              Установить приложение
             </Link>
           </div>
         </header>
@@ -345,7 +291,7 @@ export default function MarketingHomePage() {
           <section className={styles.hero}>
             <div className={styles.heroCopy}>
               <span className={styles.eyebrow}>спокойный старт без нового квеста</span>
-              <h1 className={styles.heroTitle}>Сначала понятный старт. Потом спокойное решение об оплате.</h1>
+              <h1 className={styles.heroTitle}>Сначала приложение и пробное подключение. Потом спокойное продление.</h1>
               <p className={styles.heroText}>
                 POKROV нужен не для того, чтобы заставлять разбираться в настройках. Он нужен, чтобы открыть
                 приложение, пожить с ним несколько дней на своих устройствах и только потом решить, хочется ли
@@ -353,11 +299,11 @@ export default function MarketingHomePage() {
               </p>
 
               <div className={styles.heroActions}>
-                <Link href={links.checkoutHref} className={styles.primaryButton}>
-                  Перейти к оплате
+                <Link href={links.installHref} className={styles.primaryButton}>
+                  Установить приложение
                 </Link>
-                <Link href={links.installHref} className={styles.secondaryButton}>
-                  Посмотреть установку
+                <Link href={links.checkoutHref} className={styles.secondaryButton}>
+                  Выбрать срок
                 </Link>
               </div>
 
@@ -445,7 +391,7 @@ export default function MarketingHomePage() {
             <div className={styles.sectionHead}>
               <span className={styles.eyebrow}>сроки и цены</span>
               <h2>Сначала проба, потом короткий выбор срока без нового старта.</h2>
-              <p>Публичная оплата остаётся простой: выбрать срок, перейти к checkout и продолжить тем же доступом.</p>
+              <p>Оплата остаётся простой: выбрать срок, перейти к checkout и продолжить тем же доступом.</p>
             </div>
 
             <div className={styles.pricingLayout}>
@@ -457,7 +403,7 @@ export default function MarketingHomePage() {
                   checkout без нового круга действий.
                 </p>
                 <Link href={links.checkoutHref} className={styles.primaryButton}>
-                  Перейти к оплате
+                  Выбрать срок
                 </Link>
               </article>
 
@@ -500,10 +446,10 @@ export default function MarketingHomePage() {
 
             <div className={styles.finalActions}>
               <Link href={links.checkoutHref} className={styles.lightButton}>
-                Перейти к оплате
+                Выбрать срок
               </Link>
               <Link href={links.installHref} className={styles.outlineButton}>
-                Установка
+                Установить приложение
               </Link>
               <a href={links.cabinetHref} className={styles.outlineButton}>
                 Кабинет
