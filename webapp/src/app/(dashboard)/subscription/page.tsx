@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 
 import AppRouteLink from "@/components/app-route-link";
 import { CabinetCardGrid, CabinetHero, CabinetRoute, CabinetSection } from "@/components/cabinet/surface";
+import SubscriptionQrCard from "@/components/subscription-qr-card";
 import {
   getAccessState,
   getDeviceLimit,
@@ -61,6 +62,7 @@ export default function SubscriptionPage() {
   const { user, dash } = usePortalSession();
   const [plans, setPlans] = useState<PlanCatalogRow[]>(() => fallbackPlans());
   const [error, setError] = useState("");
+  const [copyStatus, setCopyStatus] = useState("");
 
   useEffect(() => {
     let cancelled = false;
@@ -99,6 +101,21 @@ export default function SubscriptionPage() {
   const deviceLimit = getDeviceLimit(dash, user);
   const freeLimitGb = getTrafficLimitGb(dash, user);
   const currentPlanCode = normalizePlanCode(dash?.current_plan_code || dash?.sub_type || "");
+  const subscriptionUrl = String(user?.subscription_url || dash?.subscription_url || "").trim();
+  const manualAccessReady = Boolean(subscriptionUrl && (dash?.is_active || user?.is_active));
+
+  const copySubscriptionUrl = async () => {
+    if (!manualAccessReady) {
+      setCopyStatus("Ссылка появится после активации доступа.");
+      return;
+    }
+    try {
+      await navigator.clipboard.writeText(subscriptionUrl);
+      setCopyStatus("Ссылка скопирована.");
+    } catch {
+      setCopyStatus("Не удалось скопировать автоматически. Выделите ссылку вручную.");
+    }
+  };
 
   const planCards = plans.slice(0, 4).map((plan) => {
     const normalizedCode = normalizePlanCode(plan.code);
@@ -286,6 +303,56 @@ export default function SubscriptionPage() {
         >
           <CabinetCardGrid items={planCards} className="xl:grid-cols-2" />
           {error ? <p className="mt-4 text-sm text-amber-700 dark:text-amber-200">Часть данных не обновилась автоматически: {error}</p> : null}
+        </CabinetSection>
+
+        <CabinetSection
+          eyebrow="Подключение"
+          title="Подключиться вручную"
+          description="Лучше открыть POKROV и обновить доступ в кабинете. Пока приложения в бете, ссылку можно импортировать в Happ, Hiddify или другой совместимый клиент."
+          tone={manualAccessReady ? "success" : "warning"}
+          actions={
+            <AppRouteLink href="/downloads/" className="outline-btn rounded-full px-4 py-2 text-xs font-semibold uppercase tracking-[0.12em]">
+              Загрузки
+            </AppRouteLink>
+          }
+        >
+          <div className="grid gap-5 lg:grid-cols-[240px_minmax(0,1fr)]">
+            <div className="min-w-0">
+              <SubscriptionQrCard value={subscriptionUrl} active={manualAccessReady} />
+            </div>
+            <div className="min-w-0">
+              <p className="text-sm leading-6 text-slate-600 dark:text-slate-300">
+                {manualAccessReady
+                  ? "Скопируйте ссылку или отсканируйте QR-код на устройстве, где хотите подключиться."
+                  : "После оплаты или активации ключа здесь появятся ссылка и QR-код для подключения."}
+              </p>
+              <div className="mt-4 rounded-[1.1rem] border border-slate-200/80 bg-white/72 px-3 py-3 dark:border-white/10 dark:bg-white/[0.04]">
+                <p className="break-all font-mono text-xs leading-6 text-slate-700 dark:text-slate-200">
+                  {manualAccessReady ? subscriptionUrl : "Ссылка появится после активации доступа"}
+                </p>
+              </div>
+              <div className="mt-4 flex flex-wrap gap-3">
+                <button
+                  type="button"
+                  onClick={() => void copySubscriptionUrl()}
+                  disabled={!manualAccessReady}
+                  className="btn-primary rounded-full px-5 py-3 text-sm font-semibold disabled:opacity-60"
+                >
+                  Скопировать ссылку
+                </button>
+                {manualAccessReady ? (
+                  <a href={subscriptionUrl} target="_blank" rel="noreferrer" className="outline-btn rounded-full px-5 py-3 text-sm font-semibold">
+                    Открыть ссылку
+                  </a>
+                ) : (
+                  <AppRouteLink href="/subscription/checkout/" className="outline-btn rounded-full px-5 py-3 text-sm font-semibold">
+                    Открыть оплату
+                  </AppRouteLink>
+                )}
+              </div>
+              {copyStatus ? <p className="mt-3 text-sm font-semibold text-emerald-800 dark:text-emerald-300">{copyStatus}</p> : null}
+            </div>
+          </div>
         </CabinetSection>
 
         <CabinetSection

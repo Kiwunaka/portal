@@ -24,6 +24,8 @@ Incoming Lava.top result webhooks must pass `X-Api-Key` or Basic webhook authent
 
 Before any Lava.top paid callback fulfills, the backend validates local order binding, amount, currency, and plan. Any missing local order, amount mismatch, currency mismatch, or plan mismatch becomes `manual_review` and does not grant access.
 
+For authenticated cabinet and Telegram-bound orders, fulfillment extends the linked account. The cabinet can show the single `connect.pokrov.space` subscription link and QR after access is active; the bot also sends that link after a paid Telegram-bound callback as a beta-stage manual import fallback. Anonymous public orders do not receive links in API responses; they receive one emailed access key after fulfillment.
+
 Fulfillment is split by local order identity:
 
 - `tg_id` present: extend the existing account and sync the control-plane access.

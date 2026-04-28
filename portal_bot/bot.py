@@ -3198,6 +3198,8 @@ def _build_tariff_payment_choice_text(*, tariff_key: str, tg_id: int) -> str:
         "Откроем оплату в рублях без лишних шагов.\n\n"
         f"{discount_line}"
         f"{provider_line}"
+        "В боте email не нужен: оплата привяжется к вашему Telegram.\n"
+        "\n"
         "Следующий шаг: выберите удобную кассу. "
         "После оплаты доступ обновится автоматически."
     )
@@ -3272,7 +3274,7 @@ def _parse_pay_rub_callback(data: str) -> tuple[str, str]:
     return "", ""
 
 
-async def _create_rub_payment_link_for_bot(*, provider: str, tg_id: int, tariff_key: str) -> dict[str, object]:
+def _bot_rub_order_payload(*, provider: str, tg_id: int, tariff_key: str) -> tuple[dict[str, object], str]:
     ctx = checkout_context_by_user.get(int(tg_id), {}) if checkout_context_by_user else {}
     promo_code = str(ctx.get("promo_code") or "")
     campaign_key = str(ctx.get("campaign_key") or "")
@@ -3292,6 +3294,11 @@ async def _create_rub_payment_link_for_bot(*, provider: str, tg_id: int, tariff_
         "checkout_ticket": checkout_ticket,
         "currency": "RUB",
     }
+    return payload, checkout_ticket
+
+
+async def _create_rub_payment_link_for_bot(*, provider: str, tg_id: int, tariff_key: str) -> dict[str, object]:
+    payload, checkout_ticket = _bot_rub_order_payload(provider=provider, tg_id=tg_id, tariff_key=tariff_key)
     timeout = aiohttp.ClientTimeout(total=25)
     last_error = "Не удалось открыть оплату."
     for base in _bot_api_base_candidates():
@@ -4865,7 +4872,7 @@ FAQ_ANSWERS = {
         f"1️⃣ Откройте бота @{BOT_USERNAME_MD}\n\n"
         "2️⃣ Нажмите *✨ Подобрать доступ*\n\n"
         "3️⃣ Выберите нужный план\n\n"
-        "4️⃣ Откройте оплату в ₽ или Stars ⭐️\n\n"
+        "4️⃣ Откройте оплату в ₽\n\n"
         "После успешной оплаты доступ обновится автоматически."
     ),
     "referral": (
@@ -8373,8 +8380,8 @@ async def _render_mode_simple_step3(callback: CallbackQuery) -> None:
     )
     kb = InlineKeyboardMarkup(inline_keyboard=[
         [InlineKeyboardButton(text="🎁 Начать с 5 дней бесплатно", callback_data="trial_direct")],
-        [InlineKeyboardButton(text=f"⚡ Рекомендуем: 6 месяцев за {recommended_price} ⭐", callback_data="buy_6_months")],
-        [InlineKeyboardButton(text=f"📅 Начать с 1 месяца за {starter_price} ⭐", callback_data="buy_1_month")],
+        [InlineKeyboardButton(text=f"⚡ Рекомендуем: 6 месяцев за {recommended_price} ₽", callback_data="buy_6_months")],
+        [InlineKeyboardButton(text=f"📅 Начать с 1 месяца за {starter_price} ₽", callback_data="buy_1_month")],
         [InlineKeyboardButton(text="💳 Посмотреть все планы", callback_data="charge")],
         [InlineKeyboardButton(text=f"🎁 Забрать ещё {CHANNEL_PREMIUM_DAYS} дней за канал", callback_data="bonus_offer_trial")],
         [InlineKeyboardButton(text="◀️ Назад", callback_data="mode_simple")],
@@ -9341,16 +9348,20 @@ async def create_subscription(
     sub_link = build_subscription_link(tg_id)
     
     kb = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="📲 Установить POKROV", callback_data="instruction")],
         [InlineKeyboardButton(text="🌐 Открыть кабинет", web_app=WebAppInfo(url=WEBAPP_URL))],
+        [InlineKeyboardButton(text="🔗 Ссылка и QR для подключения", callback_data="show_key")],
         [InlineKeyboardButton(text="◀️ В меню", callback_data="back")]
     ])
-    
+
     await message.answer(
         f"✅ *Доступ готов!*\n\n"
         f"📅 До: `{expiry}`\n\n"
         f"🔗 *Ссылка для подключения:*\n"
         f"`{sub_link}`\n\n"
-        f"Откройте её в приложении POKROV.{free_note}",
+        "Лучший путь: откройте POKROV и обновите доступ в кабинете.\n"
+        "Пока приложения в бете, мы не ограничиваем ручное подключение: "
+        f"если POKROV ещё не установлен, скопируйте ссылку и импортируйте её в Happ, Hiddify или другой совместимый клиент.{free_note}",
         reply_markup=kb,
         parse_mode=ParseMode.MARKDOWN
     )
@@ -9820,7 +9831,7 @@ def activate_promo_code_for_user(tg_id: int, code: str) -> tuple[bool, str]:
                 user.pending_discount_set_at = _utcnow()
             result_text = (
                 f"🎉 Скидка *{promo_value}%* активирована.\n"
-                "Она применится к следующей оплате в ₽ или Stars."
+                "Она применится к следующей оплате в ₽."
             )
         else:
             result_text = f"🎉 Скидка *{promo_value}%* будет применена к следующей покупке!"

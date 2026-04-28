@@ -627,6 +627,25 @@ class BotPaywallTests(unittest.TestCase):
         self.assertIn("📚 Посмотреть долгие тарифы", flat_rows)
         self.assertIn("◀️ К тарифам", flat_rows)
 
+    def test_bot_rub_order_payload_uses_ticket_without_email(self) -> None:
+        self.bot_module.checkout_context_by_user[1001] = {
+            "promo_code": "WELCOME14",
+            "campaign_key": "launch_week_1",
+        }
+
+        payload, ticket = self.bot_module._bot_rub_order_payload(
+            provider="lavatop",
+            tg_id=1001,
+            tariff_key="start_99",
+        )
+
+        self.assertTrue(ticket)
+        self.assertEqual(payload["provider"], "lavatop")
+        self.assertEqual(payload["plan_code"], "start_99")
+        self.assertEqual(payload["checkout_ticket"], ticket)
+        self.assertEqual(payload["currency"], "RUB")
+        self.assertNotIn("buyer_email", payload)
+
     def test_direct_rub_payment_keyboard_keeps_site_fallback(self) -> None:
         self.bot_module.PAY_CHECKOUT_URL = "https://portal-privacy.online/checkout?from=bot"
         self.bot_module.checkout_context_by_user[1001] = {

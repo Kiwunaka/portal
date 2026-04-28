@@ -447,16 +447,20 @@ test.describe("Cabinet flow", () => {
     await expect(page.getByRole("link", { name: /В поддержку/i })).toBeVisible();
   });
 
-  test("keeps the subscription page on renewal and support instead of raw connection sharing", async ({ page }) => {
+  test("shows subscription manual connection only as an explicit fallback", async ({ page }) => {
     await page.goto("/subscription/");
 
     await expect(page.getByRole("heading", { name: "Продление и режимы" })).toBeVisible();
     await expect(page.getByRole("link", { name: "Открыть оплату" }).first()).toBeVisible();
     await expect(page.getByRole("link", { name: "Поддержка", exact: true }).first()).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Подключиться вручную" })).toBeVisible();
+    const manualConnection = page.locator("section").filter({ has: page.getByRole("heading", { name: "Подключиться вручную" }) });
+    await expect(manualConnection).toContainText("Happ");
+    await expect(manualConnection).toContainText("Hiddify");
+    await expect(manualConnection).toContainText("mock_token");
+    await expect(manualConnection.getByRole("button", { name: "Скопировать ссылку" })).toBeVisible();
+    await expect(manualConnection.getByRole("link", { name: "Открыть ссылку" })).toBeVisible();
     await expect(page.locator("main")).not.toContainText("?format=plain");
-    await expect(page.locator("main")).not.toContainText("mock_token");
-    await expect(page.locator("main")).not.toContainText("QR");
-    await expect(page.getByRole("button", { name: "Скопировать" })).toHaveCount(0);
   });
 
   test("renders runtime connections on devices and keeps statistics as its own safe-summary page", async ({ page }) => {
@@ -485,7 +489,7 @@ test.describe("Cabinet flow", () => {
     await expect(page.locator("main")).not.toContainText("IP");
 
     await page.goto("/subscription/");
-    await expect(page.locator("main")).not.toContainText("mock_token");
+    await expect(page.locator("main")).not.toContainText("?format=plain");
 
     await page.goto("/support/");
     await expect(page.locator("main")).not.toContainText("Network");

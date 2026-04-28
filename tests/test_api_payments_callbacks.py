@@ -90,8 +90,26 @@ class ApiPaymentCallbacksTests(unittest.TestCase):
         importlib.import_module("db")
         self.api = importlib.import_module("api")
         importlib.reload(self.api)
+        self.telegram_messages: list[dict[str, object]] = []
+
+        async def _fake_sync_user_after_paid_purchase(tg_id: int) -> bool:
+            return True
+
+        async def _fake_telegram_send_message(chat_id: int, text: str, **kwargs) -> bool:
+            self.telegram_messages.append({"chat_id": int(chat_id), "text": str(text), "kwargs": dict(kwargs)})
+            return True
+
+        self._old_sync_user_after_paid_purchase = self.api._sync_user_after_paid_purchase
+        self._old_telegram_send_message = self.api._telegram_send_message
+        self.api._sync_user_after_paid_purchase = _fake_sync_user_after_paid_purchase
+        self.api._telegram_send_message = _fake_telegram_send_message
 
     def tearDown(self) -> None:
+        try:
+            self.api._sync_user_after_paid_purchase = self._old_sync_user_after_paid_purchase
+            self.api._telegram_send_message = self._old_telegram_send_message
+        except Exception:
+            pass
         try:
             from db import engine
 
@@ -1011,6 +1029,21 @@ class ApiPaymentCallbacksTests(unittest.TestCase):
             self.assertEqual(str(user.sub_type or ""), "PAID")
         finally:
             s.close()
+
+        self.assertEqual(len(self.telegram_messages), 1)
+        sent = self.telegram_messages[0]
+        self.assertEqual(sent["chat_id"], 6666)
+        self.assertIn("Оплата прошла", str(sent["text"]))
+        self.assertIn("Happ", str(sent["text"]))
+        self.assertIn("Hiddify", str(sent["text"]))
+        self.assertIn("connect.pokrov.space", str(sent["text"]))
+        kwargs = sent["kwargs"]
+        self.assertEqual(kwargs.get("parse_mode"), "Markdown")
+        keyboard = kwargs.get("reply_markup")
+        self.assertIsInstance(keyboard, dict)
+        flat_buttons = [button for row in keyboard["inline_keyboard"] for button in row]
+        self.assertTrue(any(button.get("callback_data") == "show_key" for button in flat_buttons))
+        self.assertTrue(any(button.get("web_app") for button in flat_buttons))
 
     def test_lavatop_callback_issues_public_access_key_once_and_emails_it(self) -> None:
         client = TestClient(self.api.app)

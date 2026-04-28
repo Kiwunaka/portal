@@ -28,8 +28,8 @@ export default function SubscriptionQrCard({ value, active = true }: Props) {
           width: 220,
           margin: 1,
           color: {
-            dark: "#1f1634",
-            light: "#ffffff",
+            dark: "#14211A",
+            light: "#F6FAF7",
           },
         });
         if (!cancelled) {

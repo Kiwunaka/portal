@@ -26,7 +26,9 @@ Public checkout must keep paid purchase CTAs disabled or degraded when Lava.top 
 
 Current fulfillment contract:
 
-- authenticated cabinet and bot payments extend the linked account after a valid paid callback;
+- authenticated cabinet and bot payments extend the linked account after a valid paid callback; bot payments are ticket-bound to Telegram and do not require buyer email;
+- after a paid bot callback, the user receives a Telegram handoff that prefers the POKROV app/cabinet and also includes the single `connect.pokrov.space` subscription link for beta-stage manual import;
+- the authenticated cabinet may show the same `connect.pokrov.space` subscription link and QR after access is active, so beta users can connect manually while native apps are still gated;
 - anonymous public checkout requires buyer email and issues one access key through email delivery after a valid paid callback;
 - amount, currency, plan, provider auth, local order binding, replay idempotency, and failed/cancelled events are mandatory gate checks before access changes;
 - access keys must not be returned in public payment API responses or URLs after payment.

@@ -3580,6 +3580,19 @@ async def _handle_payment_callback(*, provider: str, event_type: str, request: R
                     sync_ok = bool(await _sync_user_after_paid_purchase(int(tg_id)))
                 except Exception:
                     sync_ok = False
+                try:
+                    await _notify_telegram_paid_access_ready(
+                        tg_id=int(tg_id),
+                        sync_ok=bool(sync_ok),
+                    )
+                except Exception:
+                    logger.warning(
+                        "telegram paid access notification failed: provider=%s order_id=%s tg_id=%s",
+                        p,
+                        order_id,
+                        tg_id,
+                        exc_info=True,
+                    )
     elif (not duplicate) and signature_ok and et == "result":
         activation_reason = validation_reason or callback_status
 
@@ -3683,12 +3696,25 @@ async def _freekassa_api_request(*, source: str, method: str, data: dict[str, An
             return body if isinstance(body, dict) else {"data": body}
 
 
-async def _telegram_send_message(chat_id: int, text: str) -> bool:
+async def _telegram_send_message(
+    chat_id: int,
+    text: str,
+    *,
+    parse_mode: str | None = None,
+    reply_markup: dict[str, Any] | None = None,
+    disable_web_page_preview: bool | None = None,
+) -> bool:
     token = _current_bot_token()
     if not token:
         return False
     endpoint = f"https://api.telegram.org/bot{token}/sendMessage"
     payload = {"chat_id": int(chat_id), "text": text}
+    if parse_mode:
+        payload["parse_mode"] = parse_mode
+    if reply_markup:
+        payload["reply_markup"] = reply_markup
+    if disable_web_page_preview is not None:
+        payload["disable_web_page_preview"] = bool(disable_web_page_preview)
     try:
         async with aiohttp.ClientSession() as session:
             async with session.post(endpoint, json=payload, timeout=aiohttp.ClientTimeout(total=15)) as resp:
@@ -3698,6 +3724,60 @@ async def _telegram_send_message(chat_id: int, text: str) -> bool:
                 return bool(body.get("ok"))
     except Exception:
         return False
+
+
+def _telegram_paid_access_keyboard() -> dict[str, Any]:
+    rows: list[list[dict[str, Any]]] = [
+        [{"text": "📲 Установить POKROV", "callback_data": "instruction"}],
+        [{"text": "🌐 Открыть кабинет", "web_app": {"url": _public_webapp_url()}}],
+        [{"text": "🔗 Ссылка и QR для подключения", "callback_data": "show_key"}],
+    ]
+    if SUPPORT_USERNAME:
+        rows.append([{"text": "💬 Поддержка", "url": f"https://t.me/{SUPPORT_USERNAME}?start=ticket_new"}])
+    return {"inline_keyboard": rows}
+
+
+async def _notify_telegram_paid_access_ready(*, tg_id: int, sync_ok: bool) -> bool:
+    s = SessionLocal()
+    try:
+        user = s.query(User).filter(User.tg_id == int(tg_id)).first()
+        if not user:
+            return False
+        if not str(getattr(user, "sub_token", "") or "").strip():
+            user.sub_token = _generate_sub_token()
+            s.commit()
+            s.refresh(user)
+        expiry = user.expiry_at.strftime("%d.%m.%Y") if user.expiry_at else "—"
+        sub_link = build_subscription_url(str(user.sub_token or ""))
+    finally:
+        s.close()
+
+    if sync_ok:
+        text = (
+            "✅ *Оплата прошла, доступ готов.*\n\n"
+            f"📅 До: `{expiry}`\n\n"
+            "Лучший путь: откройте POKROV и обновите доступ в кабинете.\n"
+            "Пока приложения в бете, мы не ограничиваем ручное подключение: "
+            "если POKROV ещё не установлен, скопируйте ссылку и импортируйте её в Happ, Hiddify или другой совместимый клиент.\n\n"
+            "🔗 *Ссылка для подключения:*\n"
+            f"`{sub_link}`"
+        )
+    else:
+        text = (
+            "✅ *Оплата прошла.*\n\n"
+            f"📅 До: `{expiry}`\n\n"
+            "Доступ записан в системе, но авто-синхронизация с узлами заняла больше обычного. "
+            "Попробуйте открыть POKROV или кабинет через минуту; если подключение не заработает, напишите в поддержку.\n\n"
+            "🔗 *Ссылка для подключения:*\n"
+            f"`{sub_link}`"
+        )
+    return await _telegram_send_message(
+        int(tg_id),
+        text,
+        parse_mode="Markdown",
+        reply_markup=_telegram_paid_access_keyboard(),
+        disable_web_page_preview=True,
+    )
 
 
 async def _telegram_get_chat_member(chat_id: str, user_id: int) -> dict[str, Any] | None:

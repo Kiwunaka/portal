@@ -240,8 +240,8 @@ Checkout rule:
 - public pricing starts from checkout-first marketing surfaces, with `pokrov.space/checkout/` as the primary public acquisition route
 - payment provider readiness is contractually separate from app-first access; public checkout must remain unavailable or degraded until `docs/product/payment-and-access-key-contract.md` and provider evidence are satisfied
 - `webapp` renewal is continuation-only and should defer to the same hosted activation-key flow
-- Telegram bot billing remains valid as a secondary path
-- raw subscription links remain recovery/manual-request only and must stay hidden from the default commerce UX
+- Telegram bot billing remains valid as a secondary path; bot orders are Telegram-ticket-bound and do not collect buyer email
+- raw subscription links remain hidden from default public commerce, but the authenticated cabinet and paid Telegram bot flow may show the single `connect.pokrov.space` link after fulfillment as a beta-stage manual import fallback while still preferring the POKROV app and cabinet
 - signed payment callbacks must not grant access unless the normalized local status is `paid`; failed, cancelled, refunded, chargeback, invalid-signature, and unknown/manual-review states are recorded for operator reconciliation instead of extending the account
 
 ## Subscription Delivery Semantics
