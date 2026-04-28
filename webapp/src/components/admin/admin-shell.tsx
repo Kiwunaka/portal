@@ -62,6 +62,35 @@ export const adminCheckboxLabelClass = "inline-flex items-center gap-2 text-[11p
 export const adminTableShellClass =
   "overflow-hidden rounded-[1rem] border border-[#22303c] bg-[#0b1218]";
 
+export const adminCompactCardClass =
+  "rounded-[0.9rem] border border-[#24313d] bg-[#111922] p-3 text-slate-200";
+
+export function adminIconFrameClass(tone: AdminTone = "neutral"): string {
+  const palette: Record<AdminTone, string> = {
+    neutral: "border-[#2c3b47] bg-[#141d25] text-slate-300",
+    success: "border-emerald-900/65 bg-emerald-950/45 text-emerald-200",
+    warning: "border-amber-900/65 bg-amber-950/45 text-amber-200",
+    danger: "border-rose-900/65 bg-rose-950/45 text-rose-200",
+    accent: "border-sky-900/65 bg-sky-950/45 text-sky-200",
+  };
+
+  return cn("inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-[0.8rem] border", palette[tone]);
+}
+
+export const adminProgressTrackClass = "h-2 overflow-hidden rounded-full bg-slate-800";
+
+export function adminProgressFillClass(tone: AdminTone = "accent"): string {
+  const palette: Record<AdminTone, string> = {
+    neutral: "bg-slate-400",
+    success: "bg-emerald-400",
+    warning: "bg-amber-400",
+    danger: "bg-rose-400",
+    accent: "bg-sky-400",
+  };
+
+  return cn("h-full rounded-full", palette[tone]);
+}
+
 export function adminButtonClass(tone: AdminButtonTone = "secondary", size: AdminButtonSize = "md"): string {
   return cn(
     "inline-flex items-center justify-center gap-2 font-semibold tracking-[0.01em] transition disabled:cursor-not-allowed disabled:opacity-55",

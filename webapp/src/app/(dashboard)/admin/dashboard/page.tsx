@@ -3,6 +3,7 @@
 import AppRouteLink from "@/components/app-route-link";
 import {
   AdminBadge,
+  AdminEmptyState,
   AdminMetricStrip,
   AdminSurfaceHeader,
   adminButtonClass,
@@ -450,7 +451,7 @@ export default function AdminDashboardPage() {
             </div>
             <div className="rounded-[0.95rem] border border-[#22303c] bg-[#111922] p-3">
               <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">Бонусы за 24ч</p>
-              <p className="mt-2 text-lg font-semibold text-slate-950 dark:text-slate-50">
+              <p className="mt-2 text-lg font-semibold text-slate-50">
                 {summary.bonus_events_24h.channel_activated} / {summary.bonus_events_24h.channel_denied}
               </p>
               <p className="mt-1 text-xs leading-5 text-slate-400">Выдано / отказано по бонусу за канал.</p>
@@ -469,32 +470,40 @@ export default function AdminDashboardPage() {
             </AppRouteLink>
           }
         >
-          <div className="overflow-hidden rounded-[1rem] border border-slate-200/80">
-            <div className="grid grid-cols-[minmax(0,1.35fr)_110px_120px_110px] gap-3 border-b border-[#22303c] bg-[#101821] px-3 py-2 text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-500">
-              <span>Пользователь</span>
-              <span>Статус</span>
-              <span>Observer</span>
-              <span>Срок</span>
-            </div>
-
-            <div className="divide-y divide-[#22303c] bg-[#0b1218]">
-              {users.map((row) => (
-                <div key={row.tg_id} className="grid grid-cols-[minmax(0,1.35fr)_110px_120px_110px] gap-3 px-3 py-3">
-                  <div className="min-w-0">
-                    <p className="truncate text-sm font-semibold text-slate-100">{row.display_name || row.username || `ID ${row.tg_id}`}</p>
-                    <p className="mt-1 truncate text-xs text-slate-500">
-                      {row.username ? `@${row.username}` : `ID ${row.tg_id}`} · {row.origin}
-                    </p>
-                  </div>
-                  <div>
-                    <AdminBadge tone={userStatusTone(row)}>{userStatusLabel(row.status)}</AdminBadge>
-                  </div>
-                  <div>
-                    <AdminBadge tone={observerTone(row.observer_state)}>{observerLabel(row.observer_state)}</AdminBadge>
-                  </div>
-                  <div className="text-sm font-medium text-slate-300">{formatShortDate(row.expiry_at)}</div>
+          <div className="overflow-hidden rounded-[1rem] border border-[#22303c]">
+            <div className="overflow-x-auto">
+              <div className="min-w-[620px]">
+                <div className="sticky top-0 grid grid-cols-[minmax(0,1.35fr)_110px_120px_110px] gap-3 border-b border-[#22303c] bg-[#101821] px-3 py-2 text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-500">
+                  <span>Пользователь</span>
+                  <span>Статус</span>
+                  <span>Observer</span>
+                  <span>Срок</span>
                 </div>
-              ))}
+
+                <div className="divide-y divide-[#22303c] bg-[#0b1218]">
+                  {users.length ? (
+                    users.map((row) => (
+                      <div key={row.tg_id} className="grid grid-cols-[minmax(0,1.35fr)_110px_120px_110px] gap-3 px-3 py-3">
+                        <div className="min-w-0">
+                          <p className="truncate text-sm font-semibold text-slate-100">{row.display_name || row.username || `ID ${row.tg_id}`}</p>
+                          <p className="mt-1 truncate text-xs text-slate-500">
+                            {row.username ? `@${row.username}` : `ID ${row.tg_id}`} · {row.origin}
+                          </p>
+                        </div>
+                        <div>
+                          <AdminBadge tone={userStatusTone(row)}>{userStatusLabel(row.status)}</AdminBadge>
+                        </div>
+                        <div>
+                          <AdminBadge tone={observerTone(row.observer_state)}>{observerLabel(row.observer_state)}</AdminBadge>
+                        </div>
+                        <div className="text-sm font-medium text-slate-300">{formatShortDate(row.expiry_at)}</div>
+                      </div>
+                    ))
+                  ) : (
+                    <AdminEmptyState className="m-3 min-h-[150px]" title="Пользователей под разбор сейчас нет." />
+                  )}
+                </div>
+              </div>
             </div>
           </div>
         </DashboardCell>
@@ -509,16 +518,20 @@ export default function AdminDashboardPage() {
           }
         >
           <div className="space-y-3">
-            {tickets.map((ticket) => (
-              <div key={ticket.id} className="rounded-[0.95rem] border border-[#22303c] bg-[#111922] p-3">
-                <div className="flex flex-wrap items-center justify-between gap-3">
-                  <p className="text-sm font-semibold text-slate-100">{ticket.subject || `Тикет #${ticket.id}`}</p>
-                  <AdminBadge>{ticket.status_title}</AdminBadge>
+            {tickets.length ? (
+              tickets.map((ticket) => (
+                <div key={ticket.id} className="rounded-[0.95rem] border border-[#22303c] bg-[#111922] p-3">
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <p className="text-sm font-semibold text-slate-100">{ticket.subject || `Тикет #${ticket.id}`}</p>
+                    <AdminBadge>{ticket.status_title}</AdminBadge>
+                  </div>
+                  <p className="mt-2 text-xs leading-5 text-slate-400">{ticket.last_message_preview || "Без превью последнего сообщения."}</p>
+                  <p className="mt-2 text-[11px] uppercase tracking-[0.14em] text-slate-400">Обновлён: {fmtRuDate(ticket.updated_at)}</p>
                 </div>
-                <p className="mt-2 text-xs leading-5 text-slate-400">{ticket.last_message_preview || "Без превью последнего сообщения."}</p>
-                <p className="mt-2 text-[11px] uppercase tracking-[0.14em] text-slate-400">Обновлён: {fmtRuDate(ticket.updated_at)}</p>
-              </div>
-            ))}
+              ))
+            ) : (
+              <AdminEmptyState className="min-h-[180px]" title="Очередь поддержки пуста." />
+            )}
           </div>
         </DashboardCell>
       </div>
