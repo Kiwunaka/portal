@@ -2,19 +2,16 @@ import designTokensJson from "./design-tokens.json";
 
 export type DesignTokens = typeof designTokensJson;
 export type DesignDensity = keyof DesignTokens["density"];
-export type DesignDensityInput = DesignDensity | "product";
+export type DesignDensityInput = DesignDensity;
 
 export const designTokens: DesignTokens = designTokensJson;
-const legacyDensityAliases: Partial<Record<DesignDensityInput, DesignDensity>> = {
-  product: "public",
-};
 
 export function getDesignTokens(): DesignTokens {
   return designTokens;
 }
 
 export function normalizeDesignDensity(density: DesignDensityInput = "public"): DesignDensity {
-  return legacyDensityAliases[density] || density;
+  return density;
 }
 
 export function getDesignDensityTokens(density: DesignDensityInput = "public") {
@@ -23,19 +20,32 @@ export function getDesignDensityTokens(density: DesignDensityInput = "public") {
 
 export function getDesignTokenCssVariables(density: DesignDensityInput = "public"): Record<string, string> {
   const { palette, radius, semantic, shadow, typography } = designTokens.theme;
-  const { component, glass } = designTokens;
+  const { component, glass, motion } = designTokens;
   const densityTokens = getDesignDensityTokens(density);
 
   return {
     "--pokrov-bg": palette.canvas,
     "--pokrov-bg-alt": palette.canvas_alt,
+    "--pokrov-bg-dark": palette.canvas_dark,
+    "--pokrov-bg-dark-alt": palette.canvas_dark_alt,
     "--pokrov-surface": palette.surface,
     "--pokrov-surface-strong": palette.surface_strong,
+    "--pokrov-surface-subtle": palette.surface_subtle,
+    "--pokrov-surface-muted": palette.surface_muted,
     "--pokrov-surface-dark": palette.surface_dark,
     "--pokrov-surface-dark-strong": palette.surface_dark_strong,
+    "--pokrov-surface-glass": palette.surface_glass,
+    "--pokrov-surface-glass-strong": palette.surface_glass_strong,
+    "--pokrov-surface-glass-dark": palette.surface_glass_dark,
+    "--pokrov-surface-glass-dark-strong": palette.surface_glass_dark_strong,
+    "--pokrov-surface-raised": palette.surface_raised,
+    "--pokrov-surface-raised-dark": palette.surface_raised_dark,
     "--pokrov-text": palette.text,
     "--pokrov-text-soft": palette.text_soft,
     "--pokrov-text-muted": palette.text_muted,
+    "--pokrov-text-dark": palette.text_dark,
+    "--pokrov-text-dark-soft": palette.text_dark_soft,
+    "--pokrov-text-dark-muted": palette.text_dark_muted,
     "--pokrov-text-inverse": palette.text_inverse,
     "--pokrov-emerald": palette.emerald,
     "--pokrov-emerald-strong": palette.emerald_strong,
@@ -48,19 +58,39 @@ export function getDesignTokenCssVariables(density: DesignDensityInput = "public
     "--pokrov-line": palette.line,
     "--pokrov-line-strong": palette.line_strong,
     "--pokrov-line-dark": palette.line_dark,
+    "--pokrov-line-dark-strong": palette.line_dark_strong,
     "--pokrov-focus-ring": palette.focus_ring,
+    "--pokrov-focus-ring-dark": palette.focus_ring_dark,
     "--pokrov-status-success-bg": semantic.success.bg,
     "--pokrov-status-success-text": semantic.success.text,
     "--pokrov-status-success-line": semantic.success.line,
+    "--pokrov-status-success-bg-dark": semantic.success.bg_dark,
+    "--pokrov-status-success-text-dark": semantic.success.text_dark,
+    "--pokrov-status-success-line-dark": semantic.success.line_dark,
     "--pokrov-status-warning-bg": semantic.warning.bg,
     "--pokrov-status-warning-text": semantic.warning.text,
     "--pokrov-status-warning-line": semantic.warning.line,
+    "--pokrov-status-warning-bg-dark": semantic.warning.bg_dark,
+    "--pokrov-status-warning-text-dark": semantic.warning.text_dark,
+    "--pokrov-status-warning-line-dark": semantic.warning.line_dark,
     "--pokrov-status-danger-bg": semantic.danger.bg,
     "--pokrov-status-danger-text": semantic.danger.text,
     "--pokrov-status-danger-line": semantic.danger.line,
+    "--pokrov-status-danger-bg-dark": semantic.danger.bg_dark,
+    "--pokrov-status-danger-text-dark": semantic.danger.text_dark,
+    "--pokrov-status-danger-line-dark": semantic.danger.line_dark,
     "--pokrov-status-info-bg": semantic.info.bg,
     "--pokrov-status-info-text": semantic.info.text,
     "--pokrov-status-info-line": semantic.info.line,
+    "--pokrov-status-info-bg-dark": semantic.info.bg_dark,
+    "--pokrov-status-info-text-dark": semantic.info.text_dark,
+    "--pokrov-status-info-line-dark": semantic.info.line_dark,
+    "--pokrov-status-neutral-bg": semantic.neutral.bg,
+    "--pokrov-status-neutral-text": semantic.neutral.text,
+    "--pokrov-status-neutral-line": semantic.neutral.line,
+    "--pokrov-status-neutral-bg-dark": semantic.neutral.bg_dark,
+    "--pokrov-status-neutral-text-dark": semantic.neutral.text_dark,
+    "--pokrov-status-neutral-line-dark": semantic.neutral.line_dark,
     "--pokrov-radius-card": densityTokens.radius_card || radius.card,
     "--pokrov-radius-panel": densityTokens.radius_panel || radius.panel,
     "--pokrov-radius-modal": radius.modal,
@@ -71,6 +101,9 @@ export function getDesignTokenCssVariables(density: DesignDensityInput = "public
     "--pokrov-shadow-soft": shadow.soft,
     "--pokrov-shadow-medium": shadow.medium,
     "--pokrov-shadow-strong": shadow.strong,
+    "--pokrov-shadow-soft-dark": shadow.soft_dark,
+    "--pokrov-shadow-medium-dark": shadow.medium_dark,
+    "--pokrov-shadow-strong-dark": shadow.strong_dark,
     "--pokrov-shadow-focus": shadow.focus,
     "--pokrov-card-padding": densityTokens.card_padding,
     "--pokrov-panel-padding": densityTokens.panel_padding,
@@ -80,14 +113,56 @@ export function getDesignTokenCssVariables(density: DesignDensityInput = "public
     "--pokrov-button-compact-height": component.button.compact_height,
     "--pokrov-button-radius": component.button.radius,
     "--pokrov-button-icon-size": component.button.icon_size,
+    "--pokrov-button-bg": component.button.background,
+    "--pokrov-button-bg-hover": component.button.background_hover,
+    "--pokrov-button-bg-dark": component.button.background_dark,
+    "--pokrov-button-bg-dark-hover": component.button.background_dark_hover,
+    "--pokrov-button-text": component.button.text,
+    "--pokrov-button-text-dark": component.button.text_dark,
+    "--pokrov-button-secondary-bg": component.button.secondary_background,
+    "--pokrov-button-secondary-bg-dark": component.button.secondary_background_dark,
+    "--pokrov-button-border": component.button.border,
+    "--pokrov-button-border-dark": component.button.border_dark,
     "--pokrov-nav-item-min-height": component.nav.item_min_height,
     "--pokrov-nav-icon-size": component.nav.icon_size,
     "--pokrov-nav-active-bg": component.nav.active_bg,
+    "--pokrov-nav-active-bg-dark": component.nav.active_bg_dark,
+    "--pokrov-nav-hover-bg": component.nav.hover_bg,
+    "--pokrov-nav-hover-bg-dark": component.nav.hover_bg_dark,
+    "--pokrov-nav-text": component.nav.text,
+    "--pokrov-nav-text-dark": component.nav.text_dark,
+    "--pokrov-card-bg": component.card.background,
+    "--pokrov-card-bg-dark": component.card.background_dark,
+    "--pokrov-card-border": component.card.border,
+    "--pokrov-card-border-dark": component.card.border_dark,
+    "--pokrov-card-inner-edge": component.card.inner_edge,
+    "--pokrov-card-inner-edge-dark": component.card.inner_edge_dark,
     "--pokrov-table-row-height": component.table.row_height,
     "--pokrov-table-header-bg": component.table.header_bg,
+    "--pokrov-table-header-bg-dark": component.table.header_bg_dark,
     "--pokrov-table-divider": component.table.divider,
+    "--pokrov-table-divider-dark": component.table.divider_dark,
+    "--pokrov-table-row-hover-bg": component.table.row_hover_bg,
+    "--pokrov-table-row-hover-bg-dark": component.table.row_hover_bg_dark,
+    "--pokrov-skeleton-base": component.skeleton.base,
+    "--pokrov-skeleton-highlight": component.skeleton.highlight,
+    "--pokrov-skeleton-base-dark": component.skeleton.base_dark,
+    "--pokrov-skeleton-highlight-dark": component.skeleton.highlight_dark,
+    "--pokrov-progress-track": component.progress.track,
+    "--pokrov-progress-track-dark": component.progress.track_dark,
+    "--pokrov-progress-fill": component.progress.fill,
+    "--pokrov-progress-fill-dark": component.progress.fill_dark,
+    "--pokrov-progress-warning-fill": component.progress.warning_fill,
+    "--pokrov-progress-danger-fill": component.progress.danger_fill,
+    "--pokrov-app-connect-size-mobile": component.app_connect.size_mobile,
+    "--pokrov-app-connect-size-desktop": component.app_connect.size_desktop,
+    "--pokrov-app-connect-ring": component.app_connect.ring,
     "--pokrov-glass-max-blur": glass.max_blur,
     "--pokrov-glass-border-alpha": glass.border_alpha,
+    "--pokrov-duration-fast": motion.duration_fast,
+    "--pokrov-duration-base": motion.duration_base,
+    "--pokrov-duration-slow": motion.duration_slow,
+    "--pokrov-easing": motion.easing,
     "--pokrov-font-body": typography.body_family,
     "--pokrov-font-display": typography.display_family,
     "--pokrov-font-mono": typography.mono_family,

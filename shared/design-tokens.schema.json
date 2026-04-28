@@ -18,15 +18,26 @@
           "required": [
             "canvas",
             "canvas_alt",
+            "canvas_dark",
+            "canvas_dark_alt",
             "surface",
             "surface_strong",
             "surface_subtle",
             "surface_muted",
             "surface_dark",
             "surface_dark_strong",
+            "surface_glass",
+            "surface_glass_strong",
+            "surface_glass_dark",
+            "surface_glass_dark_strong",
+            "surface_raised",
+            "surface_raised_dark",
             "text",
             "text_soft",
             "text_muted",
+            "text_dark",
+            "text_dark_soft",
+            "text_dark_muted",
             "text_inverse",
             "emerald",
             "emerald_strong",
@@ -39,19 +50,22 @@
             "line",
             "line_strong",
             "line_dark",
-            "focus_ring"
+            "line_dark_strong",
+            "focus_ring",
+            "focus_ring_dark"
           ],
           "additionalProperties": { "type": "string", "minLength": 1 }
         },
         "semantic": {
           "type": "object",
-          "required": ["success", "warning", "danger", "info"],
+          "required": ["success", "warning", "danger", "info", "neutral"],
           "additionalProperties": false,
           "properties": {
             "success": { "$ref": "#/$defs/statusToken" },
             "warning": { "$ref": "#/$defs/statusToken" },
             "danger": { "$ref": "#/$defs/statusToken" },
-            "info": { "$ref": "#/$defs/statusToken" }
+            "info": { "$ref": "#/$defs/statusToken" },
+            "neutral": { "$ref": "#/$defs/statusToken" }
           }
         },
         "radius": {
@@ -61,7 +75,7 @@
         },
         "shadow": {
           "type": "object",
-          "required": ["soft", "medium", "strong", "focus"],
+          "required": ["soft", "medium", "strong", "soft_dark", "medium_dark", "strong_dark", "focus"],
           "additionalProperties": { "type": "string", "minLength": 1 }
         },
         "typography": {
@@ -101,8 +115,17 @@
     },
     "component": {
       "type": "object",
-      "required": ["button", "nav", "card", "table", "app_connect"],
-      "additionalProperties": true
+      "required": ["button", "nav", "card", "table", "skeleton", "progress", "app_connect"],
+      "additionalProperties": false,
+      "properties": {
+        "button": { "$ref": "#/$defs/buttonToken" },
+        "nav": { "$ref": "#/$defs/navToken" },
+        "card": { "$ref": "#/$defs/cardToken" },
+        "table": { "$ref": "#/$defs/tableToken" },
+        "skeleton": { "$ref": "#/$defs/skeletonToken" },
+        "progress": { "$ref": "#/$defs/progressToken" },
+        "app_connect": { "$ref": "#/$defs/appConnectToken" }
+      }
     },
     "iconography": {
       "type": "object",
@@ -131,12 +154,151 @@
   "$defs": {
     "statusToken": {
       "type": "object",
-      "required": ["bg", "text", "line"],
+      "required": ["bg", "text", "line", "bg_dark", "text_dark", "line_dark"],
       "additionalProperties": false,
       "properties": {
         "bg": { "type": "string", "minLength": 1 },
         "text": { "type": "string", "minLength": 1 },
-        "line": { "type": "string", "minLength": 1 }
+        "line": { "type": "string", "minLength": 1 },
+        "bg_dark": { "type": "string", "minLength": 1 },
+        "text_dark": { "type": "string", "minLength": 1 },
+        "line_dark": { "type": "string", "minLength": 1 }
+      }
+    },
+    "buttonToken": {
+      "type": "object",
+      "required": [
+        "height",
+        "compact_height",
+        "radius",
+        "icon_size",
+        "background",
+        "background_hover",
+        "background_dark",
+        "background_dark_hover",
+        "text",
+        "text_dark",
+        "secondary_background",
+        "secondary_background_dark",
+        "border",
+        "border_dark"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "height": { "type": "string", "minLength": 1 },
+        "compact_height": { "type": "string", "minLength": 1 },
+        "radius": { "type": "string", "minLength": 1 },
+        "icon_size": { "type": "string", "minLength": 1 },
+        "background": { "type": "string", "minLength": 1 },
+        "background_hover": { "type": "string", "minLength": 1 },
+        "background_dark": { "type": "string", "minLength": 1 },
+        "background_dark_hover": { "type": "string", "minLength": 1 },
+        "text": { "type": "string", "minLength": 1 },
+        "text_dark": { "type": "string", "minLength": 1 },
+        "secondary_background": { "type": "string", "minLength": 1 },
+        "secondary_background_dark": { "type": "string", "minLength": 1 },
+        "border": { "type": "string", "minLength": 1 },
+        "border_dark": { "type": "string", "minLength": 1 }
+      }
+    },
+    "navToken": {
+      "type": "object",
+      "required": [
+        "item_min_height",
+        "icon_size",
+        "active_bg",
+        "active_bg_dark",
+        "hover_bg",
+        "hover_bg_dark",
+        "text",
+        "text_dark"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "item_min_height": { "type": "string", "minLength": 1 },
+        "icon_size": { "type": "string", "minLength": 1 },
+        "active_bg": { "type": "string", "minLength": 1 },
+        "active_bg_dark": { "type": "string", "minLength": 1 },
+        "hover_bg": { "type": "string", "minLength": 1 },
+        "hover_bg_dark": { "type": "string", "minLength": 1 },
+        "text": { "type": "string", "minLength": 1 },
+        "text_dark": { "type": "string", "minLength": 1 }
+      }
+    },
+    "cardToken": {
+      "type": "object",
+      "required": [
+        "border",
+        "border_dark",
+        "background",
+        "background_dark",
+        "inner_edge",
+        "inner_edge_dark"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "border": { "type": "string", "minLength": 1 },
+        "border_dark": { "type": "string", "minLength": 1 },
+        "background": { "type": "string", "minLength": 1 },
+        "background_dark": { "type": "string", "minLength": 1 },
+        "inner_edge": { "type": "string", "minLength": 1 },
+        "inner_edge_dark": { "type": "string", "minLength": 1 }
+      }
+    },
+    "tableToken": {
+      "type": "object",
+      "required": [
+        "row_height",
+        "header_bg",
+        "header_bg_dark",
+        "divider",
+        "divider_dark",
+        "row_hover_bg",
+        "row_hover_bg_dark"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "row_height": { "type": "string", "minLength": 1 },
+        "header_bg": { "type": "string", "minLength": 1 },
+        "header_bg_dark": { "type": "string", "minLength": 1 },
+        "divider": { "type": "string", "minLength": 1 },
+        "divider_dark": { "type": "string", "minLength": 1 },
+        "row_hover_bg": { "type": "string", "minLength": 1 },
+        "row_hover_bg_dark": { "type": "string", "minLength": 1 }
+      }
+    },
+    "skeletonToken": {
+      "type": "object",
+      "required": ["base", "highlight", "base_dark", "highlight_dark"],
+      "additionalProperties": false,
+      "properties": {
+        "base": { "type": "string", "minLength": 1 },
+        "highlight": { "type": "string", "minLength": 1 },
+        "base_dark": { "type": "string", "minLength": 1 },
+        "highlight_dark": { "type": "string", "minLength": 1 }
+      }
+    },
+    "progressToken": {
+      "type": "object",
+      "required": ["track", "track_dark", "fill", "fill_dark", "warning_fill", "danger_fill"],
+      "additionalProperties": false,
+      "properties": {
+        "track": { "type": "string", "minLength": 1 },
+        "track_dark": { "type": "string", "minLength": 1 },
+        "fill": { "type": "string", "minLength": 1 },
+        "fill_dark": { "type": "string", "minLength": 1 },
+        "warning_fill": { "type": "string", "minLength": 1 },
+        "danger_fill": { "type": "string", "minLength": 1 }
+      }
+    },
+    "appConnectToken": {
+      "type": "object",
+      "required": ["size_mobile", "size_desktop", "ring"],
+      "additionalProperties": false,
+      "properties": {
+        "size_mobile": { "type": "string", "minLength": 1 },
+        "size_desktop": { "type": "string", "minLength": 1 },
+        "ring": { "type": "string", "minLength": 1 }
       }
     },
     "densityToken": {
