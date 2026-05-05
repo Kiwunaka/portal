@@ -56,6 +56,7 @@ Relay env:
 - `EMAIL_RELAY_SMTP_PASSWORD`
 - `EMAIL_RELAY_SMTP_TLS`
 - `EMAIL_RELAY_FROM`
+- `EMAIL_RELAY_RESEND_API_KEY` and optional `EMAIL_RELAY_RESEND_API_URL` when SMTP ports are blocked and the relay should send through Resend's HTTPS API
 - `EMAIL_DELIVERY_WEBHOOK_SECRET`
 
 Smoke commands:

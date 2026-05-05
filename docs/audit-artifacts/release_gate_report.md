@@ -1,8 +1,8 @@
-# Release Gate Report
+﻿# Release Gate Report
 
-- Generated at: `2026-04-25 02:12:51`
+- Generated at: `2026-05-05 02:36:13`
 - Status: `PASS`
-- Gate set: `default`
+- Gate set: `quick`
 - Brain IP supplied: `no`
 - Client platform gates: `none`
 - Android audit required by selected gates: `no`
@@ -11,23 +11,22 @@
 
 | Gate | Exit code | Duration (s) |
 |---|---:|---:|
-| Release pytest matrix | 0 | 148.80 |
-| Admin/auth regressions | 0 | 66.10 |
-| Client security smoke | 0 | 0.10 |
-| Client Flutter tests | 0 | 50.97 |
-| API lifecycle smoke | 0 | 8.03 |
-| Public link checks | 0 | 0.13 |
-| Marketing production build | 0 | 67.64 |
-| Admin webapp smoke | 0 | 0.12 |
-| WebApp production build | 0 | 43.04 |
-| WebApp Playwright E2E | 0 | 94.26 |
+| Critical worker regression | 0 | 6.50 |
+| Client security smoke | 0 | 0.07 |
+| Client portal Flutter tests | 0 | 34.74 |
+| API lifecycle smoke | 0 | 8.56 |
+| Public link checks | 0 | 0.15 |
+| Marketing production build | 0 | 35.35 |
+| Admin webapp smoke | 0 | 0.96 |
+| WebApp production build | 0 | 23.04 |
+| WebApp Playwright E2E | 0 | 77.02 |
 | UI visual smoke | 0 | 0.09 |
 
 ## Evidence Classification
 
 | Evidence | Scope | Status | Notes |
 |---|---|---|---|
-| current-origin check | local default gate set | PASS | Runs on the operator workstation; does not prove brain-origin or RU-origin reachability. |
+| current-origin check | local quick gate set | PASS | Runs on the operator workstation; does not prove brain-origin or RU-origin reachability. |
 | brain-origin check | `scripts/verify_brain_ready.py` / predeploy readiness | BLOCKED_BY_ACCESS | Requires `--brain-ip` and live SSH/API access; keep separate from current-origin results. |
 | RU-origin check | external RU probe (`mini` or replacement) | BLOCKED_BY_ACCESS | Not run by this local gate; requires an external RU probe host and redacted report. |
 | Android physical audit | release-build localhost/control-surface audit | BLOCKED_BY_ACCESS | Public Android remains blocked unless this is run on physical hardware with the release build. |
@@ -36,24 +35,14 @@
 
 ## Command Tails
 
-### Release pytest matrix
+### Critical worker regression
 
-- Command: `C:\Users\kiwun\AppData\Local\Programs\Python\Python312\python.exe -m pytest portal_bot/tests/test_app_first_api.py tests/test_portal_api.py tests/test_worker_retention.py tests/test_observer_service.py tests/test_observer_api.py tests/test_collect_xray_observer.py tests/test_predeploy_node_readiness.py tests/test_admin_webapp_smoke.py tests/test_public_copy_guardrails.py tests/test_reviews_username_masking.py -q --basetemp C:\Users\kiwun\Documents\ai\VPN\.tmp\pytest-basetemp\release-gate-3_ldt1hi`
+- Command: `C:\Users\kiwun\AppData\Local\Programs\Python\Python312\python.exe -m pytest tests/test_worker_retention.py -q --basetemp C:\Users\kiwun\Documents\ai\VPN\.tmp\pytest-basetemp\release-gate-x7z9w5ke`
 - Exit: `0`
 
 ```text
-....................................................                     [100%]
-52 passed in 147.34s (0:02:27)
-```
-
-### Admin/auth regressions
-
-- Command: `C:\Users\kiwun\AppData\Local\Programs\Python\Python312\python.exe -m pytest tests/test_api_auth_and_tickets.py -q --basetemp C:\Users\kiwun\Documents\ai\VPN\.tmp\pytest-basetemp\release-gate-caucbrwh`
-- Exit: `0`
-
-```text
-.........................................................                [100%]
-57 passed in 65.16s (0:01:05)
+.........                                                                [100%]
+9 passed in 5.79s
 ```
 
 ### Client security smoke
@@ -71,52 +60,52 @@
 [pass] client security smoke checks passed
 ```
 
-### Client Flutter tests
+### Client portal Flutter tests
 
-- Command: `C:\Users\kiwun\AppData\Local\Programs\Python\Python312\python.exe scripts/run_client_release_gate.py test --suite full`
+- Command: `C:\Users\kiwun\AppData\Local\Programs\Python\Python312\python.exe scripts/run_client_release_gate.py test --suite portal`
 - Exit: `0`
 
 ```text
-io.flutter.plugins.urllauncher.UrlLauncherTest > canLaunch_createsIntentWithPassedUrl PASSED
-
-io.flutter.plugins.urllauncher.UrlLauncherTest > launch_returnsTrue PASSED
-
-io.flutter.plugins.urllauncher.UrlLauncherTest > openWebView_handlesEnableDomStorage PASSED
-
-io.flutter.plugins.urllauncher.UrlLauncherTest > openWebView_handlesEnableShowTitle PASSED
-
-io.flutter.plugins.urllauncher.UrlLauncherTest > canLaunch_returnsFalse PASSED
-
-io.flutter.plugins.urllauncher.UrlLauncherTest > launch_throwsForNoCurrentActivity PASSED
-
-io.flutter.plugins.urllauncher.UrlLauncherTest > openWebView_returnsFalse PASSED
-
-io.flutter.plugins.urllauncher.UrlLauncherTest > closeWebView_closes PASSED
-
-io.flutter.plugins.urllauncher.UrlLauncherTest > canLaunch_returnsTrue PASSED
-
-io.flutter.plugins.urllauncher.UrlLauncherTest > openWebView_handlesHeaders PASSED
-
-io.flutter.plugins.urllauncher.UrlLauncherTest > openWebView_opensUrlInCustomTabsWithCORSAllowedHeader PASSED
-
-io.flutter.plugins.urllauncher.UrlLauncherTest > launch_returnsFalse PASSED
-
-io.flutter.plugins.urllauncher.UrlLauncherTest > openWebView_opensUrlInWebViewIfRequested PASSED
-
-io.flutter.plugins.urllauncher.UrlLauncherTest > launch_createsIntentWithPassedUrl PASSED
-
-io.flutter.plugins.urllauncher.WebViewActivityTest > extractHeaders_returnsEmptyMapWhenHeadersBundleNull PASSED
-
-Deprecated Gradle features were used in this build, making it incompatible with Gradle 9.0.
-
-You can use '--warning-mode all' to show the individual deprecation warnings and determine if they come from your own scripts or plugins.
-
-For more on this, please refer to https://docs.gradle.org/8.3/userguide/command_line_interface.html#sec:command_line_warnings in the Gradle documentation.
-
-BUILD SUCCESSFUL in 17s
-87 actionable tasks: 10 executed, 77 up-to-date
-Workspace Flutter and Android unit tests passed.
-[client-gate] C:\Windows\System32\WindowsPowerShell\v1.0\powershell.EXE -NoProfile -ExecutionPolicy Bypass -File C:\Users\kiwun\Documents\ai\POKROV-app\scripts\run-tests.ps1 (cwd=C:\Users\kiwun\Documents\ai\POKROV-app)
+00:00 +4: C:/Users/kiwun/Documents/ai/POKROV-app/packages/app_shell/test/pokrov_seed_app_test.dart: renders app-first protection shell with redeem actions
+00:00 +5: C:/Users/kiwun/Documents/ai/POKROV-app/packages/app_shell/test/pokrov_seed_app_test.dart: renders app-first protection shell with redeem actions
+00:00 +6: C:/Users/kiwun/Documents/ai/POKROV-app/packages/app_shell/test/pokrov_seed_app_test.dart: renders app-first protection shell with redeem actions
+00:00 +7: C:/Users/kiwun/Documents/ai/POKROV-app/packages/app_shell/test/pokrov_seed_app_test.dart: renders app-first protection shell with redeem actions
+00:00 +8: C:/Users/kiwun/Documents/ai/POKROV-app/packages/app_shell/test/pokrov_seed_app_test.dart: renders app-first protection shell with redeem actions
+00:00 +9: C:/Users/kiwun/Documents/ai/POKROV-app/packages/app_shell/test/pokrov_seed_app_test.dart: renders app-first protection shell with redeem actions
+00:00 +10: C:/Users/kiwun/Documents/ai/POKROV-app/packages/app_shell/test/pokrov_seed_app_test.dart: renders app-first protection shell with redeem actions
+00:00 +11: C:/Users/kiwun/Documents/ai/POKROV-app/packages/app_shell/test/pokrov_seed_app_test.dart: renders app-first protection shell with redeem actions
+00:00 +12: C:/Users/kiwun/Documents/ai/POKROV-app/packages/app_shell/test/pokrov_seed_app_test.dart: renders app-first protection shell with redeem actions
+00:00 +13: C:/Users/kiwun/Documents/ai/POKROV-app/packages/app_shell/test/pokrov_seed_app_test.dart: renders app-first protection shell with redeem actions
+00:00 +14: C:/Users/kiwun/Documents/ai/POKROV-app/packages/app_shell/test/pokrov_seed_app_test.dart: renders app-first protection shell with redeem actions
+00:00 +15: C:/Users/kiwun/Documents/ai/POKROV-app/packages/app_shell/test/pokrov_seed_app_test.dart: renders app-first protection shell with redeem actions
+00:00 +16: C:/Users/kiwun/Documents/ai/POKROV-app/packages/app_shell/test/pokrov_seed_app_test.dart: renders app-first protection shell with redeem actions
+00:01 +17: C:/Users/kiwun/Documents/ai/POKROV-app/packages/app_shell/test/pokrov_seed_app_test.dart: profile handoffs open safe external destinations
+00:01 +18: C:/Users/kiwun/Documents/ai/POKROV-app/packages/app_shell/test/pokrov_seed_app_test.dart: selected apps status is explicit beta MVP copy
+00:01 +19: C:/Users/kiwun/Documents/ai/POKROV-app/packages/app_shell/test/pokrov_seed_app_test.dart: android protection surface keeps degraded runtime messaging consumer friendly
+00:01 +20: C:/Users/kiwun/Documents/ai/POKROV-app/packages/app_shell/test/pokrov_seed_app_test.dart: android protection surface hides raw top-level host diagnostics
+00:01 +21: C:/Users/kiwun/Documents/ai/POKROV-app/packages/app_shell/test/pokrov_seed_app_test.dart: shows a single logical location in locations
+00:01 +22: C:/Users/kiwun/Documents/ai/POKROV-app/packages/app_shell/test/pokrov_seed_app_test.dart: primary connect action auto-prepares and starts host runtime
+00:01 +23: C:/Users/kiwun/Documents/ai/POKROV-app/packages/app_shell/test/pokrov_seed_app_test.dart: android reconnect refreshes the managed profile even when one is already staged
+00:02 +24: C:/Users/kiwun/Documents/ai/POKROV-app/packages/app_shell/test/pokrov_seed_app_test.dart: primary connect action is disabled when live connect is unavailable
+00:02 +25: C:/Users/kiwun/Documents/ai/POKROV-app/packages/app_shell/test/pokrov_seed_app_test.dart: primary connect action keeps the host bridge message until runtime is running
+00:02 +26: C:/Users/kiwun/Documents/ai/POKROV-app/packages/app_shell/test/pokrov_seed_app_test.dart: primary connect action polls the host bridge until runtime is running
+00:02 +27: C:/Users/kiwun/Documents/ai/POKROV-app/packages/app_shell/test/pokrov_seed_app_test.dart: android shell refreshes runtime snapshot when the app resumes
+00:02 +28: C:/Users/kiwun/Documents/ai/POKROV-app/packages/app_shell/test/pokrov_seed_app_test.dart: builds seed app context for public and readiness-only host lanes
+00:02 +29: All tests passed!
+00:00 +0: loading C:/Users/kiwun/Documents/ai/POKROV-app/apps/android_shell/test/android_manifest_test.dart
+00:00 +0: C:/Users/kiwun/Documents/ai/POKROV-app/apps/android_shell/test/android_manifest_test.dart: android manifest declares special-use foreground service permission
+00:00 +1: C:/Users/kiwun/Documents/ai/POKROV-app/apps/android_shell/test/android_manifest_test.dart: android runtime service source hardens foreground start failures
+00:00 +2: C:/Users/kiwun/Documents/ai/POKROV-app/apps/android_shell/test/widget_test.dart: android shell boots the shared protection surface
+00:00 +3: C:/Users/kiwun/Documents/ai/POKROV-app/apps/android_shell/test/widget_test.dart: android shell keeps raw runtime diagnostics out of first layer
+00:00 +4: All tests passed!
+00:00 +0: loading C:/Users/kiwun/Documents/ai/POKROV-app/apps/windows_shell/test/widget_test.dart
+00:00 +0: C:/Users/kiwun/Documents/ai/POKROV-app/apps/windows_shell/test/widget_test.dart: windows shell boots the shared protection surface
+00:00 +1: C:/Users/kiwun/Documents/ai/POKROV-app/apps/windows_shell/test/widget_test.dart: windows shell boots the shared protection surface
+00:00 +2: All tests passed!
+[client-gate] C:\Windows\System32\WindowsPowerShell\v1.0\powershell.EXE -NoProfile -ExecutionPolicy Bypass -File C:\Users\kiwun\Documents\ai\POKROV-app\scripts\bootstrap-workspace.ps1 (cwd=C:\Users\kiwun\Documents\ai\POKROV-app)
+[client-gate] C:\Users\kiwun\tools\flutter\git-3.24.3\bin\flutter.bat test (cwd=C:\Users\kiwun\Documents\ai\POKROV-app\packages\app_shell)
+[client-gate] C:\Users\kiwun\tools\flutter\git-3.24.3\bin\flutter.bat test (cwd=C:\Users\kiwun\Documents\ai\POKROV-app\apps\android_shell)
+[client-gate] C:\Users\kiwun\tools\flutter\git-3.24.3\bin\flutter.bat test (cwd=C:\Users\kiwun\Documents\ai\POKROV-app\apps\windows_shell)
 ```
 
 ### API lifecycle smoke
@@ -127,7 +116,7 @@ Workspace Flutter and Android unit tests passed.
 ```text
 .
 ----------------------------------------------------------------------
-Ran 1 test in 7.112s
+Ran 1 test in 7.772s
 
 OK
 ```
@@ -179,7 +168,7 @@ Link check passed.
   в–І Next.js 14.2.35
 
    Creating an optimized production build ...
-request to https://fonts.gstatic.com/s/manrope/v20/xn7gYHE41ni1AdIRggSxSvfedN62Zw.woff2 failed, reason: connect ETIMEDOUT 142.250.130.94:443
+request to https://fonts.gstatic.com/s/manrope/v20/xn7gYHE41ni1AdIRggmxSvfedN62Zw.woff2 failed, reason: connect ETIMEDOUT 142.250.109.94:443
 
 Retrying 1/3...
  вњ“ Compiled successfully
@@ -194,9 +183,9 @@ Retrying 1/3...
    Collecting build traces ...
 
 Route (app)                              Size     First Load JS
-в”Њ в—‹ /                                    1.52 kB        97.7 kB
+в”Њ в—‹ /                                    1.58 kB        97.7 kB
 в”њ в—‹ /_not-found                          873 B          88.3 kB
-в”њ в—‹ /checkout                            8.05 kB         104 kB
+в”њ в—‹ /checkout                            8.71 kB         105 kB
 в”њ в—‹ /devices                             193 B          96.4 kB
 в”њ в—‹ /install                             193 B          96.4 kB
 в”њ в—‹ /manifest.webmanifest                0 B                0 B
@@ -237,7 +226,7 @@ Admin WebApp smoke passed.
   Generating static pages using 19 workers (7/30)
   Generating static pages using 19 workers (14/30)
   Generating static pages using 19 workers (22/30)
-вњ“ Generating static pages using 19 workers (30/30) in 455.3ms
+вњ“ Generating static pages using 19 workers (30/30) in 383.3ms
   Finalizing page optimization ...
 
 Route (app)
@@ -287,39 +276,39 @@ Route (app)
 
 Running 31 tests using 1 worker
 
-  ok  1 e2e\admin-gate.spec.ts:900:7 вЂє Admin gate вЂє redirects non-admin from /admin/* to /dashboard (499ms)
-  ok  2 e2e\admin-gate.spec.ts:906:7 вЂє Admin gate вЂє allows admin to open all admin sections (4.2s)
-  ok  3 e2e\admin-gate.spec.ts:930:7 вЂє Admin gate вЂє keeps an explicit path back to the cabinet from admin (1.1s)
-  ok  4 e2e\admin-gate.spec.ts:941:7 вЂє Admin gate вЂє groups admin routes by operational category and keeps Telegram as fallback only (1.3s)
-  ok  5 e2e\admin-gate.spec.ts:956:7 вЂє Admin gate вЂє keeps admin dashboard stable when summary omits optional blocks (814ms)
-  ok  6 e2e\admin-gate.spec.ts:976:7 вЂє Admin gate вЂє shows clean Russian copy across admin surfaces (2.3s)
-  ok  7 e2e\admin-gate.spec.ts:998:7 вЂє Admin gate вЂє lets admin search, sort, and paginate the users table (2.6s)
-  ok  8 e2e\admin-gate.spec.ts:1028:7 вЂє Admin gate вЂє keeps the users filters synced into the URL and restores them on reload (1.5s)
-  ok  9 e2e\admin-gate.spec.ts:1055:7 вЂє Admin gate вЂє lets admin safely delete only manual or test users (3.1s)
-  ok 10 e2e\admin-gate.spec.ts:1093:7 вЂє Admin gate вЂє shows observer-lite badges, filters, and detail diagnostics (1.7s)
-  ok 11 e2e\admin-gate.spec.ts:1134:7 вЂє Admin gate вЂє shows observer-lite empty state instead of misleading zero-only activity (1.7s)
+  ok  1 e2e\admin-gate.spec.ts:900:7 вЂє Admin gate вЂє redirects non-admin from /admin/* to /dashboard (662ms)
+  ok  2 e2e\admin-gate.spec.ts:906:7 вЂє Admin gate вЂє allows admin to open all admin sections (4.1s)
+  ok  3 e2e\admin-gate.spec.ts:930:7 вЂє Admin gate вЂє keeps an explicit path back to the cabinet from admin (1.8s)
+  ok  4 e2e\admin-gate.spec.ts:941:7 вЂє Admin gate вЂє groups admin routes by operational category and keeps Telegram as fallback only (1.4s)
+  ok  5 e2e\admin-gate.spec.ts:956:7 вЂє Admin gate вЂє keeps admin dashboard stable when summary omits optional blocks (1.3s)
+  ok  6 e2e\admin-gate.spec.ts:976:7 вЂє Admin gate вЂє shows clean Russian copy across admin surfaces (2.5s)
+  ok  7 e2e\admin-gate.spec.ts:998:7 вЂє Admin gate вЂє lets admin search, sort, and paginate the users table (2.7s)
+  ok  8 e2e\admin-gate.spec.ts:1028:7 вЂє Admin gate вЂє keeps the users filters synced into the URL and restores them on reload (1.4s)
+  ok  9 e2e\admin-gate.spec.ts:1055:7 вЂє Admin gate вЂє lets admin safely delete only manual or test users (5.0s)
+  ok 10 e2e\admin-gate.spec.ts:1093:7 вЂє Admin gate вЂє shows observer-lite badges, filters, and detail diagnostics (1.8s)
+  ok 11 e2e\admin-gate.spec.ts:1134:7 вЂє Admin gate вЂє shows observer-lite empty state instead of misleading zero-only activity (1.3s)
   ok 12 e2e\admin-gate.spec.ts:1150:7 вЂє Admin gate вЂє keeps admin pages clickable and inside the viewport on mobile (3.6s)
   ok 13 e2e\admin-gate.spec.ts:1207:7 вЂє Admin gate вЂє shows node alert labels and probe failure details (1.3s)
   ok 14 e2e\admin-gate.spec.ts:1287:7 вЂє Admin gate вЂє shows node context with separate panel, dataplane, and transport detail (1.3s)
   ok 15 e2e\admin-gate.spec.ts:1364:7 вЂє Admin gate вЂє keeps rollout targeting fields and feed objects intact across save and reload (2.6s)
   ok 16 e2e\admin-gate.spec.ts:1404:7 вЂє Admin gate вЂє lets admin triage a ticket and send a reply using stable status codes (3.1s)
-  ok 17 e2e\admin-gate.spec.ts:1438:7 вЂє Admin gate вЂє shows payment ledger and requires an audit note for manual reconciliation (1.1s)
-  ok 18 e2e\cabinet-flow.spec.ts:347:7 вЂє Cabinet flow вЂє shows shared POKROV cabinet branding and a site return link (1.1s)
-  ok 19 e2e\cabinet-flow.spec.ts:362:7 вЂє Cabinet flow вЂє shows an honest email-soon state on the root auth entry (836ms)
-  ok 20 e2e\cabinet-flow.spec.ts:377:7 вЂє Cabinet flow вЂє keeps the email entry truthful when live delivery is not configured (873ms)
-  ok 21 e2e\cabinet-flow.spec.ts:392:7 вЂє Cabinet flow вЂє reuses an existing web session and lands in the cabinet without showing auth entry again (1.1s)
-  ok 22 e2e\cabinet-flow.spec.ts:401:7 вЂє Cabinet flow вЂє keeps the dashboard on consumer-safe access actions (1.1s)
-  ok 23 e2e\cabinet-flow.spec.ts:417:7 вЂє Cabinet flow вЂє keeps cabinet navigation on native Next.js routing (1.8s)
-  ok 24 e2e\cabinet-flow.spec.ts:438:7 вЂє Cabinet flow вЂє shows branded root and cabinet not-found recovery screens (1.1s)
-  ok 25 e2e\cabinet-flow.spec.ts:450:7 вЂє Cabinet flow вЂє keeps the subscription page on renewal and support instead of raw connection sharing (1.1s)
-  ok 26 e2e\cabinet-flow.spec.ts:462:7 вЂє Cabinet flow вЂє renders runtime connections on devices and keeps statistics as its own safe-summary page (1.3s)
-  ok 27 e2e\cabinet-flow.spec.ts:480:7 вЂє Cabinet flow вЂє keeps cabinet copy human and hides node internals (1.5s)
-  ok 28 e2e\cabinet-flow.spec.ts:494:7 вЂє Cabinet flow вЂє settings exposes clear Telegram bonus actions without raw account details (1.9s)
-  ok 29 e2e\cabinet-flow.spec.ts:509:7 вЂє Cabinet flow вЂє shows honest payment history and Russian checkout continuation copy (1.2s)
-  ok 30 e2e\cabinet-flow.spec.ts:526:7 вЂє Cabinet flow вЂє keeps downloads and support flows usable without the app (1.6s)
-  ok 31 e2e\cabinet-flow.spec.ts:553:7 вЂє Cabinet flow вЂє stays inside a narrow mobile viewport for core cabinet pages (1.7s)
+  ok 17 e2e\admin-gate.spec.ts:1438:7 вЂє Admin gate вЂє shows payment ledger and requires an audit note for manual reconciliation (2.0s)
+  ok 18 e2e\cabinet-flow.spec.ts:347:7 вЂє Cabinet flow вЂє shows shared POKROV cabinet branding and a site return link (1.2s)
+  ok 19 e2e\cabinet-flow.spec.ts:362:7 вЂє Cabinet flow вЂє shows an honest email-soon state on the root auth entry (912ms)
+  ok 20 e2e\cabinet-flow.spec.ts:377:7 вЂє Cabinet flow вЂє keeps the email entry truthful when live delivery is not configured (810ms)
+  ok 21 e2e\cabinet-flow.spec.ts:392:7 вЂє Cabinet flow вЂє reuses an existing web session and lands in the cabinet without showing auth entry again (1.2s)
+  ok 22 e2e\cabinet-flow.spec.ts:401:7 вЂє Cabinet flow вЂє keeps the dashboard on consumer-safe access actions (1.2s)
+  ok 23 e2e\cabinet-flow.spec.ts:417:7 вЂє Cabinet flow вЂє keeps cabinet navigation on native Next.js routing (1.3s)
+  ok 24 e2e\cabinet-flow.spec.ts:438:7 вЂє Cabinet flow вЂє shows branded root and cabinet not-found recovery screens (1.5s)
+  ok 25 e2e\cabinet-flow.spec.ts:450:7 вЂє Cabinet flow вЂє shows subscription manual connection only as an explicit fallback (1.3s)
+  ok 26 e2e\cabinet-flow.spec.ts:467:7 вЂє Cabinet flow вЂє renders runtime connections on devices and keeps statistics as its own safe-summary page (1.5s)
+  ok 27 e2e\cabinet-flow.spec.ts:485:7 вЂє Cabinet flow вЂє keeps cabinet copy human and hides node internals (1.7s)
+  ok 28 e2e\cabinet-flow.spec.ts:499:7 вЂє Cabinet flow вЂє settings exposes clear Telegram bonus actions without raw account details (2.8s)
+  ok 29 e2e\cabinet-flow.spec.ts:514:7 вЂє Cabinet flow вЂє shows honest payment history and Russian checkout continuation copy (1.4s)
+  ok 30 e2e\cabinet-flow.spec.ts:531:7 вЂє Cabinet flow вЂє keeps downloads and support flows usable without the app (1.9s)
+  ok 31 e2e\cabinet-flow.spec.ts:558:7 вЂє Cabinet flow вЂє stays inside a narrow mobile viewport for core cabinet pages (1.7s)
 
-  31 passed (55.0s)
+  31 passed (1.0m)
 ```
 
 ### UI visual smoke

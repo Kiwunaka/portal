@@ -2,8 +2,11 @@ from __future__ import annotations
 
 import hmac
 import html
+import json
 import os
 import smtplib
+import urllib.error
+import urllib.request
 from email.message import EmailMessage
 from pathlib import Path
 from typing import Any
@@ -25,6 +28,8 @@ SMTP_USERNAME = str(os.getenv("EMAIL_RELAY_SMTP_USERNAME") or "").strip()
 SMTP_PASSWORD = str(os.getenv("EMAIL_RELAY_SMTP_PASSWORD") or "").strip()
 SMTP_FROM = str(os.getenv("EMAIL_RELAY_FROM") or "POKROV <noreply@pokrov.space>").strip()
 SMTP_USE_TLS = str(os.getenv("EMAIL_RELAY_SMTP_TLS") or "true").strip().lower() in {"1", "true", "yes", "on"}
+RESEND_API_KEY = str(os.getenv("EMAIL_RELAY_RESEND_API_KEY") or os.getenv("RESEND_API_KEY") or "").strip()
+RESEND_API_URL = str(os.getenv("EMAIL_RELAY_RESEND_API_URL") or "https://api.resend.com/emails").strip()
 RELAY_SECRET = str(os.getenv("EMAIL_DELIVERY_WEBHOOK_SECRET") or "").strip()
 PUBLIC_APP_URL = str(os.getenv("WEBAPP_URL") or "https://app.pokrov.space/").strip()
 LOGO_URL = str(os.getenv("EMAIL_RELAY_LOGO_URL") or "https://pokrov.space/logowithtext-email.png").strip()
@@ -54,7 +59,7 @@ app = FastAPI(title="POKROV email relay", version="1.0")
 
 
 def _configured() -> bool:
-    return bool(SMTP_HOST and SMTP_PORT and SMTP_FROM)
+    return bool((RESEND_API_KEY and SMTP_FROM) or (SMTP_HOST and SMTP_PORT and SMTP_FROM))
 
 
 def _secret_ok(header_secret: str, authorization: str) -> bool:
@@ -237,7 +242,37 @@ def _message_for(payload: EmailDeliveryIn) -> tuple[str, str, str]:
 
 def _send_email(*, to_email: str, subject: str, body: str, html_body: str) -> None:
     if not _configured():
-        raise HTTPException(status_code=503, detail="SMTP relay is not configured")
+        raise HTTPException(status_code=503, detail="Email relay is not configured")
+    if RESEND_API_KEY:
+        payload = {
+            "from": SMTP_FROM,
+            "to": [to_email],
+            "subject": subject,
+            "text": body,
+            "html": html_body,
+        }
+        request = urllib.request.Request(
+            RESEND_API_URL,
+            data=json.dumps(payload, ensure_ascii=False).encode("utf-8"),
+            headers={
+                "Authorization": f"Bearer {RESEND_API_KEY}",
+                "Content-Type": "application/json",
+                "Accept": "application/json",
+                "User-Agent": "POKROV-email-relay/1.0",
+            },
+            method="POST",
+        )
+        try:
+            with urllib.request.urlopen(request, timeout=20) as response:
+                if response.status >= 400:
+                    raise HTTPException(status_code=502, detail=f"Resend API error: {response.status}")
+        except urllib.error.HTTPError as exc:
+            detail = exc.read().decode("utf-8", errors="replace")[:300]
+            raise HTTPException(status_code=502, detail=detail or f"Resend API error: {exc.code}") from exc
+        except Exception as exc:
+            raise HTTPException(status_code=502, detail=str(exc)[:300]) from exc
+        return
+
     message = EmailMessage()
     message["From"] = SMTP_FROM
     message["To"] = to_email
