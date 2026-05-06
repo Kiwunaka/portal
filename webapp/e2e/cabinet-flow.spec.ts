@@ -393,7 +393,7 @@ test.describe("Cabinet flow", () => {
     await page.goto("/");
 
     await expect(page).toHaveURL(/\/dashboard\/?$/);
-    await expect(page.getByRole("heading", { name: "Статус и следующий шаг" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Ваш трафик защищён" })).toBeVisible();
     await expect(page.getByRole("heading", { name: "Telegram подтверждает кабинет" })).toHaveCount(0);
     await expect(page.getByRole("heading", { name: "Готовим аккуратно" })).toHaveCount(0);
   });
@@ -401,10 +401,10 @@ test.describe("Cabinet flow", () => {
   test("keeps the dashboard on consumer-safe access actions", async ({ page }) => {
     await page.goto("/dashboard/");
 
-    await expect(page.getByRole("heading", { name: "Статус и следующий шаг" })).toBeVisible();
-    await expect(page.locator("main")).toContainText("Людей онлайн");
-    await expect(page.getByRole("heading", { name: "Быстрые разделы" })).toBeVisible();
-    await expect(page.getByRole("link", { name: "Загрузки" }).first()).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Ваш трафик защищён" })).toBeVisible();
+    await expect(page.locator("main")).toContainText("Приложение");
+    await expect(page.getByRole("heading", { name: "Что нужно сделать?" })).toBeVisible();
+    await expect(page.getByRole("link", { name: "Скачать приложение" }).first()).toBeVisible();
     await expect(page.getByRole("link", { name: "Поддержка", exact: true }).first()).toBeVisible();
     await expect(page.locator("main")).not.toContainText("QR");
     await expect(page.locator("main")).not.toContainText("?format=plain");

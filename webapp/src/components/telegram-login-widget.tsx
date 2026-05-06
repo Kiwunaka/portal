@@ -47,6 +47,12 @@ export default function TelegramLoginWidget() {
     const host = hostRef.current;
     if (!host) return;
     host.innerHTML = "";
+    const isLocalHost = ["localhost", "127.0.0.1", "::1"].includes(window.location.hostname);
+    if (isLocalHost) {
+      setWidgetHint("В локальной сборке Telegram-виджет не показываем: домен localhost не привязан к BotFather. Используйте кнопку выше или передайте web_session_token в URL.");
+      delete window.onTelegramAuth;
+      return;
+    }
     if (!botName) {
       delete window.onTelegramAuth;
       return;

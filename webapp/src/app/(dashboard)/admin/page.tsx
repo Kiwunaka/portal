@@ -18,12 +18,12 @@ function AdminHomeSkeleton() {
     <section className="space-y-4" aria-busy="true" aria-live="polite">
       <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
         {Array.from({ length: 4 }).map((_, index) => (
-          <div key={index} className="h-24 animate-pulse rounded-[1rem] bg-[#111922]" />
+          <div key={index} className="h-24 animate-pulse rounded-[1rem] bg-slate-200" />
         ))}
       </div>
       <div className="grid gap-4 xl:grid-cols-[minmax(0,1.35fr),minmax(320px,0.65fr)]">
-        <article className="h-[420px] animate-pulse rounded-[1rem] border border-[#1f2c37] bg-[#0d141b]" />
-        <article className="h-[420px] animate-pulse rounded-[1rem] border border-[#1f2c37] bg-[#0d141b]" />
+        <article className="h-[420px] animate-pulse rounded-[1rem] border border-slate-200 bg-white" />
+        <article className="h-[420px] animate-pulse rounded-[1rem] border border-slate-200 bg-white" />
       </div>
     </section>
   );
@@ -96,31 +96,31 @@ export default function AdminHomePage() {
               <section key={group.id} className={adminInsetPanelClass}>
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
-                    <h2 className="text-sm font-semibold text-slate-50">{group.label}</h2>
-                    <p className="mt-1 text-xs leading-5 text-slate-400">{group.description}</p>
+                    <h2 className="text-sm font-semibold text-slate-900">{group.label}</h2>
+                    <p className="mt-1 text-xs leading-5 text-slate-500">{group.description}</p>
                   </div>
                   <AdminBadge tone="accent">{group.items.length} экр.</AdminBadge>
                 </div>
 
                 {group.items.length ? (
-                  <div className="mt-3 overflow-hidden rounded-[0.9rem] border border-[#22303c]">
+                  <div className="mt-3 overflow-hidden rounded-[0.9rem] border border-slate-200/60">
                     {group.items.map((item, index) => (
                       <AppRouteLink
                         key={item.href}
                         href={item.href}
-                        className={`block bg-[#0b1218] px-3 py-3 transition hover:bg-[#101821] ${index > 0 ? "border-t border-[#22303c]" : ""}`}
+                        className={`block bg-white/60 px-3 py-3 transition hover:bg-emerald-50/40 ${index > 0 ? "border-t border-slate-200/60" : ""}`}
                       >
                         <div className="flex items-start justify-between gap-3">
                           <div className="min-w-0">
                             <div className="flex items-center gap-2">
-                              <span className="material-symbols-rounded text-sm text-slate-300" style={{ fontSize: "16px" }}>
+                              <span className="material-symbols-rounded text-sm text-slate-500" style={{ fontSize: "16px" }}>
                                 {item.icon}
                               </span>
-                              <h3 className="text-sm font-semibold text-slate-100">{item.label}</h3>
+                              <h3 className="text-sm font-semibold text-slate-800">{item.label}</h3>
                             </div>
                             <p className="mt-1 text-xs leading-5 text-slate-500">{item.summary}</p>
                           </div>
-                          <span className="text-[11px] font-semibold text-slate-500">Открыть</span>
+                          <span className="text-[11px] font-semibold text-slate-400">Открыть</span>
                         </div>
                       </AppRouteLink>
                     ))}
@@ -151,7 +151,7 @@ export default function AdminHomePage() {
                 "Сеть: ноды, маршруты и инфраструктурные тревоги.",
                 "Обращения: открытые треды и статус ответа операторов.",
               ].map((line) => (
-                <div key={line} className="rounded-[0.9rem] border border-[#22303c] bg-[#111922] px-3 py-2.5 text-slate-300">
+                <div key={line} className="rounded-[0.9rem] border border-slate-200/60 bg-white/60 px-3 py-2.5 text-slate-700">
                   {line}
                 </div>
               ))}

@@ -9,22 +9,22 @@ type AdminButtonTone = "primary" | "secondary" | "ghost" | "danger";
 type AdminButtonSize = "sm" | "md" | "xs";
 
 const PANEL_TONE_CLASSES: Record<AdminTone, string> = {
-  neutral: "border-[#1e2a35] bg-[#0d141b] text-slate-200 shadow-[0_18px_40px_-32px_rgba(2,6,23,0.92)]",
-  success: "border-emerald-900/60 bg-[rgba(7,32,24,0.95)] text-emerald-100 shadow-[0_18px_40px_-32px_rgba(5,46,22,0.9)]",
-  warning: "border-amber-900/60 bg-[rgba(41,26,8,0.95)] text-amber-100 shadow-[0_18px_40px_-32px_rgba(69,26,3,0.9)]",
-  danger: "border-rose-950/65 bg-[rgba(44,12,21,0.95)] text-rose-100 shadow-[0_18px_40px_-32px_rgba(76,5,25,0.92)]",
-  accent: "border-sky-900/60 bg-[rgba(10,28,45,0.95)] text-sky-100 shadow-[0_18px_40px_-32px_rgba(7,23,48,0.92)]",
+  neutral: "border-slate-200/60 bg-white/80 text-slate-800 shadow-[0_18px_40px_-32px_rgba(15,23,42,0.08)]",
+  success: "border-emerald-200/50 bg-emerald-50/40 text-emerald-900 shadow-[0_18px_40px_-32px_rgba(5,46,22,0.08)]",
+  warning: "border-amber-200/50 bg-amber-50/40 text-amber-900 shadow-[0_18px_40px_-32px_rgba(69,26,3,0.08)]",
+  danger: "border-rose-200/50 bg-rose-50/40 text-rose-900 shadow-[0_18px_40px_-32px_rgba(76,5,25,0.08)]",
+  accent: "border-sky-200/50 bg-sky-50/40 text-sky-900 shadow-[0_18px_40px_-32px_rgba(7,23,48,0.08)]",
 };
 
 const BUTTON_TONE_CLASSES: Record<AdminButtonTone, string> = {
   primary:
-    "border border-slate-100 bg-slate-100 text-slate-950 hover:bg-white hover:text-slate-950",
+    "border border-emerald-700 bg-emerald-700 text-white hover:bg-emerald-800 hover:border-emerald-800",
   secondary:
-    "border border-[#2a3945] bg-[#111922] text-slate-100 hover:border-[#364958] hover:bg-[#16212b]",
+    "border border-slate-200 bg-white text-slate-800 hover:border-slate-300 hover:bg-slate-50",
   ghost:
-    "border border-transparent bg-[#16212b] text-slate-300 hover:bg-[#1b2934] hover:text-slate-100",
+    "border border-transparent bg-slate-100 text-slate-700 hover:bg-slate-200 hover:text-slate-900",
   danger:
-    "border border-rose-900/60 bg-rose-950/40 text-rose-200 hover:bg-rose-900/35 hover:text-rose-100",
+    "border border-rose-300 bg-rose-50 text-rose-700 hover:bg-rose-100 hover:text-rose-800",
 };
 
 const BUTTON_SIZE_CLASSES: Record<AdminButtonSize, string> = {
@@ -34,58 +34,58 @@ const BUTTON_SIZE_CLASSES: Record<AdminButtonSize, string> = {
 };
 
 export const adminShellFrameClass =
-  "rounded-[1.3rem] border border-[#17212b] bg-[#070d13] text-slate-200 shadow-[0_36px_80px_-54px_rgba(2,6,23,0.95)]";
+  "rounded-[1.3rem] border border-slate-200/60 bg-slate-50/60 text-slate-800 shadow-[0_36px_80px_-54px_rgba(15,23,42,0.10)]";
 
 export const adminSidebarClass =
-  "rounded-[1.25rem] border border-[#17212b] bg-[#0a1117] text-slate-200 shadow-[0_24px_60px_-44px_rgba(2,6,23,0.95)]";
+  "rounded-[1.25rem] border border-slate-200/60 bg-white/80 text-slate-800 shadow-[0_24px_60px_-44px_rgba(15,23,42,0.10)] backdrop-blur-xl";
 
 export const adminTopbarClass =
-  "rounded-[1.15rem] border border-[#1b2732] bg-[#0c131a] text-slate-200 shadow-[0_22px_48px_-38px_rgba(2,6,23,0.92)]";
+  "rounded-[1.15rem] border border-slate-200/60 bg-white/80 text-slate-800 shadow-[0_22px_48px_-38px_rgba(15,23,42,0.08)] backdrop-blur-xl";
 
 export const adminRailCardClass =
-  "rounded-[1rem] border border-[#202d38] bg-[#101821] p-4 text-slate-200 shadow-[0_18px_36px_-32px_rgba(2,6,23,0.88)]";
+  "rounded-[1rem] border border-slate-200/60 bg-white/70 p-4 text-slate-800 shadow-[0_18px_36px_-32px_rgba(15,23,42,0.08)] backdrop-blur-xl";
 
 export function adminPanelClass(tone: AdminTone = "neutral"): string {
-  return cn("overflow-hidden rounded-[1.05rem] border p-4", PANEL_TONE_CLASSES[tone]);
+  return cn("overflow-hidden rounded-[1.05rem] border p-4 backdrop-blur-sm", PANEL_TONE_CLASSES[tone]);
 }
 
 export const adminInsetPanelClass =
-  "rounded-[0.95rem] border border-[#24313d] bg-[#111922] p-3";
+  "rounded-[0.95rem] border border-slate-200/50 bg-white/60 p-3 backdrop-blur-sm";
 
 export const adminFieldClass =
-  "min-h-10 w-full rounded-[0.9rem] border border-[#24313d] bg-[#0a1117] px-3 py-2 text-sm text-slate-100 outline-none transition placeholder:text-slate-500 focus:border-[#4d6375] focus:ring-2 focus:ring-slate-200/5";
+  "min-h-10 w-full rounded-[0.9rem] border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800 outline-none transition placeholder:text-slate-400 focus:border-emerald-400 focus:ring-2 focus:ring-emerald-200/30";
 
 export const adminTextAreaClass = cn(adminFieldClass, "min-h-[120px] resize-y py-3");
 
-export const adminCheckboxLabelClass = "inline-flex items-center gap-2 text-[11px] font-medium text-slate-400";
+export const adminCheckboxLabelClass = "inline-flex items-center gap-2 text-[11px] font-medium text-slate-500";
 
 export const adminTableShellClass =
-  "overflow-hidden rounded-[1rem] border border-[#22303c] bg-[#0b1218]";
+  "overflow-hidden rounded-[1rem] border border-slate-200/60 bg-white/80 backdrop-blur-sm";
 
 export const adminCompactCardClass =
-  "rounded-[0.9rem] border border-[#24313d] bg-[#111922] p-3 text-slate-200";
+  "rounded-[0.9rem] border border-slate-200/50 bg-white/60 p-3 text-slate-800 backdrop-blur-sm";
 
 export function adminIconFrameClass(tone: AdminTone = "neutral"): string {
   const palette: Record<AdminTone, string> = {
-    neutral: "border-[#2c3b47] bg-[#141d25] text-slate-300",
-    success: "border-emerald-900/65 bg-emerald-950/45 text-emerald-200",
-    warning: "border-amber-900/65 bg-amber-950/45 text-amber-200",
-    danger: "border-rose-900/65 bg-rose-950/45 text-rose-200",
-    accent: "border-sky-900/65 bg-sky-950/45 text-sky-200",
+    neutral: "border-slate-200 bg-slate-100 text-slate-600",
+    success: "border-emerald-200 bg-emerald-100 text-emerald-700",
+    warning: "border-amber-200 bg-amber-100 text-amber-700",
+    danger: "border-rose-200 bg-rose-100 text-rose-700",
+    accent: "border-sky-200 bg-sky-100 text-sky-700",
   };
 
   return cn("inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-[0.8rem] border", palette[tone]);
 }
 
-export const adminProgressTrackClass = "h-2 overflow-hidden rounded-full bg-slate-800";
+export const adminProgressTrackClass = "h-2 overflow-hidden rounded-full bg-slate-200";
 
 export function adminProgressFillClass(tone: AdminTone = "accent"): string {
   const palette: Record<AdminTone, string> = {
     neutral: "bg-slate-400",
-    success: "bg-emerald-400",
-    warning: "bg-amber-400",
-    danger: "bg-rose-400",
-    accent: "bg-sky-400",
+    success: "bg-emerald-500",
+    warning: "bg-amber-500",
+    danger: "bg-rose-500",
+    accent: "bg-sky-500",
   };
 
   return cn("h-full rounded-full", palette[tone]);
@@ -101,11 +101,11 @@ export function adminButtonClass(tone: AdminButtonTone = "secondary", size: Admi
 
 export function adminBadgeClass(tone: AdminTone = "neutral"): string {
   const palette: Record<AdminTone, string> = {
-    neutral: "border-[#2c3b47] bg-[#141d25] text-slate-300",
-    success: "border-emerald-900/70 bg-emerald-950/45 text-emerald-200",
-    warning: "border-amber-900/70 bg-amber-950/45 text-amber-200",
-    danger: "border-rose-900/70 bg-rose-950/45 text-rose-200",
-    accent: "border-sky-900/70 bg-sky-950/45 text-sky-200",
+    neutral: "border-slate-200 bg-slate-100 text-slate-600",
+    success: "border-emerald-200 bg-emerald-100 text-emerald-700",
+    warning: "border-amber-200 bg-amber-100 text-amber-700",
+    danger: "border-rose-200 bg-rose-100 text-rose-700",
+    accent: "border-sky-200 bg-sky-100 text-sky-700",
   };
 
   return cn("inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-[11px] font-semibold", palette[tone]);
@@ -137,8 +137,8 @@ export function AdminSurfaceHeader({
   return (
     <div className="flex flex-col gap-3 xl:flex-row xl:items-start xl:justify-between">
       <div className="min-w-0">
-        <h1 className="text-[1.52rem] font-semibold leading-tight tracking-[-0.04em] text-slate-50">{title}</h1>
-        {description ? <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-400">{description}</p> : null}
+        <h1 className="text-[1.52rem] font-semibold leading-tight tracking-[-0.04em] text-slate-900">{title}</h1>
+        {description ? <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-500">{description}</p> : null}
         {meta ? <div className="mt-3 flex flex-wrap gap-2">{meta}</div> : null}
       </div>
       {actions ? <div className="flex flex-wrap gap-2">{actions}</div> : null}
@@ -161,8 +161,8 @@ export function AdminMetricStrip({
       {items.map((item) => (
         <article key={String(item.label)} className={cn(adminPanelClass(item.tone || "neutral"), "p-3.5")}>
           <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500">{item.label}</p>
-          <p className="mt-2 text-xl font-semibold leading-none text-slate-50">{item.value}</p>
-          {item.hint ? <p className="mt-2 text-xs leading-5 text-slate-400">{item.hint}</p> : null}
+          <p className="mt-2 text-xl font-semibold leading-none text-slate-900">{item.value}</p>
+          {item.hint ? <p className="mt-2 text-xs leading-5 text-slate-500">{item.hint}</p> : null}
         </article>
       ))}
     </div>
@@ -186,8 +186,8 @@ export function AdminPageHeader({
     <div className={cn("flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between", className)}>
       <div className="min-w-0">
         {eyebrow ? <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500">{eyebrow}</p> : null}
-        <h1 className="mt-1 font-display text-[1.78rem] font-semibold leading-none text-slate-50">{title}</h1>
-        {description ? <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-400">{description}</p> : null}
+        <h1 className="mt-1 font-display text-[1.78rem] font-semibold leading-none text-slate-900">{title}</h1>
+        {description ? <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-500">{description}</p> : null}
       </div>
       {actions ? <div className="flex flex-wrap gap-2">{actions}</div> : null}
     </div>
@@ -209,8 +209,8 @@ export function AdminPanelHeader({
     <div className="mb-4 flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
       <div className="min-w-0">
         {eyebrow ? <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500">{eyebrow}</p> : null}
-        <h2 className="mt-1 text-lg font-semibold text-slate-50">{title}</h2>
-        {description ? <p className="mt-1 max-w-3xl text-sm leading-6 text-slate-400">{description}</p> : null}
+        <h2 className="mt-1 text-lg font-semibold text-slate-900">{title}</h2>
+        {description ? <p className="mt-1 max-w-3xl text-sm leading-6 text-slate-500">{description}</p> : null}
       </div>
       {actions ? <div className="flex flex-wrap gap-2">{actions}</div> : null}
     </div>
@@ -237,11 +237,11 @@ export function AdminKpiCard({
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500">{label}</p>
-          <p className="mt-2 text-2xl font-semibold leading-none text-slate-50">{value}</p>
+          <p className="mt-2 text-2xl font-semibold leading-none text-slate-900">{value}</p>
         </div>
         {meta ? <div className="shrink-0 text-right text-[11px] text-slate-500">{meta}</div> : null}
       </div>
-      {hint ? <p className="mt-2 text-xs leading-5 text-slate-400">{hint}</p> : null}
+      {hint ? <p className="mt-2 text-xs leading-5 text-slate-500">{hint}</p> : null}
     </article>
   );
 }
@@ -268,9 +268,9 @@ export function AdminEmptyState({
   className?: string;
 }) {
   return (
-    <div className={cn(adminPanelClass("neutral"), "flex min-h-[160px] flex-col items-center justify-center gap-2 border-dashed border-[#2a3945] text-center", className)}>
-      <p className="text-sm font-semibold text-slate-100">{title}</p>
-      {description ? <p className="max-w-md text-xs leading-5 text-slate-400">{description}</p> : null}
+    <div className={cn(adminPanelClass("neutral"), "flex min-h-[160px] flex-col items-center justify-center gap-2 border-dashed border-slate-300 text-center", className)}>
+      <p className="text-sm font-semibold text-slate-700">{title}</p>
+      {description ? <p className="max-w-md text-xs leading-5 text-slate-500">{description}</p> : null}
     </div>
   );
 }

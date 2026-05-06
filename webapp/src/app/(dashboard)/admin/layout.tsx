@@ -33,10 +33,10 @@ function AdminStateCard({
 }) {
   return (
     <main className="grid min-h-[72vh] place-items-center">
-      <section className="w-full max-w-[760px] rounded-[1.35rem] border border-[#1a2732] bg-[#0b1218] p-8 text-slate-200 shadow-[0_34px_90px_-56px_rgba(2,6,23,0.94)]">
+      <section className="w-full max-w-[760px] rounded-[1.35rem] border border-slate-200/60 bg-white/90 p-8 text-slate-800 shadow-[0_34px_90px_-56px_rgba(15,23,42,0.10)] backdrop-blur-xl">
         <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">{eyebrow}</p>
-        <h1 className="mt-3 text-[clamp(1.8rem,4vw,2.5rem)] font-semibold leading-tight tracking-[-0.05em] text-slate-50">{title}</h1>
-        <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-400">{description}</p>
+        <h1 className="mt-3 text-[clamp(1.8rem,4vw,2.5rem)] font-semibold leading-tight tracking-[-0.05em] text-slate-900">{title}</h1>
+        <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-500">{description}</p>
         <div className="mt-6 flex flex-wrap gap-3">
           <AppRouteLink href={primaryHref} className={adminButtonClass("primary")}>
             {primaryLabel}
@@ -61,12 +61,12 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
   if (loading) {
     return (
       <main className="grid min-h-[72vh] place-items-center">
-        <section className="w-full rounded-[1.35rem] border border-[#1a2732] bg-[#0b1218] p-8 text-slate-200 shadow-[0_34px_90px_-56px_rgba(2,6,23,0.94)]">
+        <section className="w-full rounded-[1.35rem] border border-slate-200/60 bg-white/90 p-8 text-slate-800 shadow-[0_34px_90px_-56px_rgba(15,23,42,0.10)] backdrop-blur-xl">
           <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">admin / pokrov</p>
-          <h1 className="mt-3 text-[clamp(1.8rem,4vw,2.5rem)] font-semibold tracking-[-0.05em] text-slate-50">Открываем POKROV Admin...</h1>
-          <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-400">Проверяем права доступа, текущую сессию и рабочую область оператора.</p>
-          <div className="mt-6 h-2 overflow-hidden rounded-full bg-[#111922]">
-            <div className="h-full w-1/3 animate-pulse rounded-full bg-slate-200" />
+          <h1 className="mt-3 text-[clamp(1.8rem,4vw,2.5rem)] font-semibold tracking-[-0.05em] text-slate-900">Открываем POKROV Admin...</h1>
+          <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-500">Проверяем права доступа, текущую сессию и рабочую область оператора.</p>
+          <div className="mt-6 h-2 overflow-hidden rounded-full bg-slate-200">
+            <div className="h-full w-1/3 animate-pulse rounded-full bg-emerald-500" />
           </div>
         </section>
       </main>
@@ -109,11 +109,11 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
     <div className={adminShellFrameClass}>
       <div className="grid gap-4 p-4 2xl:grid-cols-[252px_minmax(0,1fr)_292px]">
         <aside className={`${adminSidebarClass} p-4 2xl:sticky 2xl:top-4 2xl:self-start`}>
-          <div className="flex items-start justify-between gap-3 border-b border-[#17212b] pb-4">
+          <div className="flex items-start justify-between gap-3 border-b border-slate-200/60 pb-4">
             <div>
               <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-500">admin shell</p>
-              <h1 className="mt-2 text-lg font-semibold tracking-[-0.04em] text-slate-50">POKROV Ops</h1>
-              <p className="mt-2 text-xs leading-5 text-slate-400">Строгая навигация по смене: разделы, очереди, доступ, сеть и рабочие сообщения.</p>
+              <h1 className="mt-2 text-lg font-semibold tracking-[-0.04em] text-slate-900">POKROV Ops</h1>
+              <p className="mt-2 text-xs leading-5 text-slate-500">Операторский интерфейс: разделы, очереди, доступ, сеть и рабочие сообщения.</p>
             </div>
             <AdminBadge tone="accent">v2</AdminBadge>
           </div>
@@ -135,12 +135,12 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
                         aria-current={selected ? "page" : undefined}
                         className={
                           selected
-                            ? "block rounded-[0.95rem] border border-[#3a4b58] bg-[#151f28] px-3 py-2.5 text-slate-50"
-                            : "block rounded-[0.95rem] border border-transparent bg-transparent px-3 py-2.5 text-slate-300 transition hover:border-[#21303b] hover:bg-[#111922] hover:text-slate-100"
+                            ? "block rounded-[0.95rem] border border-emerald-300 bg-emerald-50/60 px-3 py-2.5 text-emerald-900 font-semibold"
+                            : "block rounded-[0.95rem] border border-transparent bg-transparent px-3 py-2.5 text-slate-600 transition hover:border-slate-200 hover:bg-slate-50/60 hover:text-slate-900"
                         }
                       >
                         <span className="block text-sm font-semibold">{item.label}</span>
-                        <span className={selected ? "mt-1 block text-xs leading-5 text-slate-400" : "mt-1 block text-xs leading-5 text-slate-500"}>
+                        <span className={selected ? "mt-1 block text-xs leading-5 text-emerald-700" : "mt-1 block text-xs leading-5 text-slate-500"}>
                           {item.summary}
                         </span>
                       </AppRouteLink>
@@ -161,8 +161,8 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
                   <AdminBadge>{activeItem.label}</AdminBadge>
                   <AdminBadge tone="success">Веб-админка — основной путь</AdminBadge>
                 </div>
-                <h1 className="mt-3 text-[1.55rem] font-semibold tracking-[-0.04em] text-slate-50">Админка POKROV</h1>
-                <p className="mt-2 max-w-4xl text-sm leading-6 text-slate-400">
+                <h1 className="mt-3 text-[1.55rem] font-semibold tracking-[-0.04em] text-slate-900">Админка POKROV</h1>
+                <p className="mt-2 max-w-4xl text-sm leading-6 text-slate-500">
                   Веб-админка — основной операторский интерфейс. Telegram используйте только для быстрых fallback-действий.
                 </p>
               </div>
@@ -180,7 +180,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
               </div>
             </div>
 
-            <div className="mt-4 flex flex-wrap gap-2 border-t border-[#17212b] pt-4">
+            <div className="mt-4 flex flex-wrap gap-2 border-t border-slate-200/60 pt-4">
               {ADMIN_NAV_GROUPS.map((group) => {
                 const selected = group.id === activeCategory.id;
                 return (
@@ -190,8 +190,8 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
                     aria-label={`Категория ${group.label}`}
                     className={
                       selected
-                        ? "inline-flex min-h-8 items-center rounded-full border border-[#415362] bg-[#18232c] px-3 text-[11px] font-semibold text-slate-100"
-                        : "inline-flex min-h-8 items-center rounded-full border border-[#23313d] bg-[#0f171f] px-3 text-[11px] font-semibold text-slate-400 transition hover:border-[#314251] hover:text-slate-200"
+                        ? "inline-flex min-h-8 items-center rounded-full border border-emerald-300 bg-emerald-50/80 px-3 text-[11px] font-semibold text-emerald-800"
+                        : "inline-flex min-h-8 items-center rounded-full border border-slate-200 bg-white/80 px-3 text-[11px] font-semibold text-slate-500 transition hover:border-slate-300 hover:text-slate-700"
                     }
                   >
                     {group.label}
@@ -207,8 +207,8 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
         <aside className="space-y-4 2xl:sticky 2xl:top-4 2xl:self-start">
           <section className={adminRailCardClass}>
             <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500">Текущий контекст</p>
-            <h2 className="mt-2 text-lg font-semibold text-slate-50">{activeItem.label}</h2>
-            <p className="mt-2 text-sm leading-6 text-slate-400">{activeItem.summary}</p>
+            <h2 className="mt-2 text-lg font-semibold text-slate-900">{activeItem.label}</h2>
+            <p className="mt-2 text-sm leading-6 text-slate-500">{activeItem.summary}</p>
             <div className="mt-3 flex flex-wrap gap-2">
               <AdminBadge tone="accent">{activeCategory.label}</AdminBadge>
               <AdminBadge>{activeCategory.primaryHint}</AdminBadge>
@@ -223,9 +223,9 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
                   <AppRouteLink
                     key={item.href}
                     href={item.href}
-                    className="block rounded-[0.95rem] border border-[#22303c] bg-[#0c131a] px-3 py-2.5 transition hover:border-[#304251] hover:bg-[#111922]"
+                    className="block rounded-[0.95rem] border border-slate-200/60 bg-white/60 px-3 py-2.5 transition hover:border-emerald-300 hover:bg-emerald-50/40"
                   >
-                    <span className="block text-sm font-semibold text-slate-100">{item.label}</span>
+                    <span className="block text-sm font-semibold text-slate-800">{item.label}</span>
                     <span className="mt-1 block text-xs leading-5 text-slate-500">{item.summary}</span>
                   </AppRouteLink>
                 ))
@@ -237,7 +237,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
 
           <section className={adminRailCardClass}>
             <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500">Операторский режим</p>
-            <div className="mt-3 space-y-2 text-xs leading-5 text-slate-400">
+            <div className="mt-3 space-y-2 text-xs leading-5 text-slate-500">
               <p>Сначала смотрите очередь, свежесть данных и тревоги. Потом переходите к точечным действиям.</p>
               <p>Не растаскивайте смену по чатам: рабочая навигация, таблицы и карточки должны жить здесь.</p>
               <p>Telegram оставляйте только как запасной канал, когда нужно быстро добить уже понятный кейс.</p>

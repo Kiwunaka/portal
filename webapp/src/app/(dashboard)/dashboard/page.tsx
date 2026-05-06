@@ -4,7 +4,8 @@ import type { ReactNode } from "react";
 import { useEffect, useMemo, useState } from "react";
 
 import AppRouteLink from "@/components/app-route-link";
-import { CabinetCardGrid, CabinetHero, CabinetList, CabinetRoute, CabinetSection } from "@/components/cabinet/surface";
+import { CabinetList, CabinetRoute, CabinetSection } from "@/components/cabinet/surface";
+import { StatusBadge } from "@/components/atlas";
 import {
   getAccessState,
   getDeviceLimit,
@@ -18,9 +19,19 @@ import { fetchNodeStatus, type NodeStatus } from "@/lib/api";
 import { usePortalSession } from "@/lib/session";
 
 function formatDate(value?: string | null): string {
-  if (!value) return "Уточним позже";
+  if (!value) return "—";
   const parsed = new Date(value);
-  if (Number.isNaN(parsed.getTime())) return "Уточним позже";
+  if (Number.isNaN(parsed.getTime())) return "—";
+  return new Intl.DateTimeFormat("ru-RU", {
+    day: "numeric",
+    month: "long",
+  }).format(parsed);
+}
+
+function formatDateTime(value?: string | null): string {
+  if (!value) return "—";
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) return "—";
   return new Intl.DateTimeFormat("ru-RU", {
     day: "numeric",
     month: "long",
@@ -41,6 +52,56 @@ function deviceTitle(name?: string | null, platform?: string | null): string {
   return cleanName || cleanPlatform || "Устройство";
 }
 
+function getDaysRemaining(expiryAt?: string | null): number | null {
+  if (!expiryAt) return null;
+  const expiry = new Date(expiryAt);
+  if (Number.isNaN(expiry.getTime())) return null;
+  const diff = expiry.getTime() - Date.now();
+  return Math.max(0, Math.ceil(diff / (1000 * 60 * 60 * 24)));
+}
+
+/* ── Components ── */
+
+function StatCard({ label, value, hint, tone = "neutral" }: { label: string; value: ReactNode; hint?: ReactNode; tone?: "success" | "warning" | "danger" | "neutral" }) {
+  const toneClasses = {
+    success: "border-emerald-200/50 bg-emerald-50/50 dark:bg-emerald-950/20 dark:border-emerald-800/40",
+    warning: "border-amber-200/50 bg-amber-50/50 dark:bg-amber-950/20 dark:border-amber-800/40",
+    danger: "border-rose-200/50 bg-rose-50/50 dark:bg-rose-950/20 dark:border-rose-800/40",
+    neutral: "border-slate-200/50 bg-white/70 dark:bg-slate-900/40 dark:border-slate-700/40",
+  };
+
+  return (
+    <div className={`bento-card ${toneClasses[tone]}`}>
+      <p className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">{label}</p>
+      <div className="stat-value-lg mt-1">{value}</div>
+      {hint ? <div className="mt-1 text-xs text-slate-500 dark:text-slate-400">{hint}</div> : null}
+    </div>
+  );
+}
+
+function QuickAction({ icon, label, href, primary = false }: { icon: string; label: string; href: string; primary?: boolean }) {
+  return (
+    <AppRouteLink href={href} className={`quick-action-btn ${primary ? "primary" : ""}`}>
+      <span className="material-symbols-rounded text-[20px]">{icon}</span>
+      {label}
+    </AppRouteLink>
+  );
+}
+
+function AlertBanner({ tone, icon, title, children }: { tone: "success" | "warning" | "danger" | "info"; icon: string; title: string; children: ReactNode }) {
+  return (
+    <div className={`alert-card ${tone}`}>
+      <span className="material-symbols-rounded text-[20px] shrink-0 mt-0.5">{icon}</span>
+      <div>
+        <p className="font-semibold">{title}</p>
+        <div className="mt-0.5 opacity-90">{children}</div>
+      </div>
+    </div>
+  );
+}
+
+/* ── Main Page ── */
+
 export default function DashboardPage() {
   const { user, dash } = usePortalSession();
   const [nodes, setNodes] = useState<NodeStatus[]>([]);
@@ -48,7 +109,6 @@ export default function DashboardPage() {
 
   useEffect(() => {
     const controller = new AbortController();
-
     const load = async () => {
       try {
         const rows = await fetchNodeStatus({ signal: controller.signal });
@@ -60,7 +120,6 @@ export default function DashboardPage() {
         setNodesError(String((error as { message?: string })?.message || error || ""));
       }
     };
-
     void load();
     return () => controller.abort();
   }, []);
@@ -72,343 +131,241 @@ export default function DashboardPage() {
   const deviceLimit = getDeviceLimit(dash, user);
   const deviceCount = user?.sync?.device_count ?? user?.devices?.length ?? 0;
   const activeConnections = dash?.connection_snapshot?.active_connections ?? dash?.active_sessions ?? 0;
-  const activeUsersEstimate = dash?.connection_snapshot?.active_users_estimate ?? user?.connections?.active_users_estimate ?? 0;
-  const activeNodes = dash?.connection_snapshot?.active_nodes ?? user?.connections?.active_nodes ?? 0;
   const knownNodes = dash?.connection_snapshot?.known_nodes ?? user?.connections?.known_nodes ?? nodes.length;
   const healthyNodes = nodes.filter((node) => node.is_healthy).length;
+  const daysRemaining = getDaysRemaining(dash?.expiry_at);
 
-  const attentionItems = useMemo(() => {
-    const items: Array<{
-      key: string;
-      title: string;
-      body: string;
-      tone: "success" | "warning" | "danger" | "info" | "neutral";
-      badge?: string;
-      action?: ReactNode;
-    }> = [];
+  /* ── Alerts ── */
+  const alerts = useMemo(() => {
+    const items: Array<ReactNode> = [];
 
     if (!dash?.is_active) {
-      items.push({
-        key: "inactive",
-        title: "Доступу нужно продление",
-        body: "Профиль и устройства останутся теми же. Нужно только вернуть срок действия.",
-        tone: "danger",
-        badge: "Сейчас важно",
-        action: (
-          <AppRouteLink href="/subscription/checkout/" className="text-sm font-semibold text-emerald-800 dark:text-emerald-300">
-            Продлить
-          </AppRouteLink>
-        ),
-      });
+      items.push(
+        <AlertBanner key="inactive" tone="danger" icon="error" title="Доступ закончился">
+          <AppRouteLink href="/subscription/checkout/" className="underline font-semibold">Продлите подписку</AppRouteLink>, чтобы вернуть защиту.
+        </AlertBanner>
+      );
     } else if (trialMode) {
-      items.push({
-        key: "trial",
-        title: "Сейчас идет пробный период",
-        body: `Он действует до ${formatDate(dash.expiry_at)}. Если сервис подходит, можно выбрать продление заранее.`,
-        tone: "warning",
-        badge: "Можно заранее",
-        action: (
-          <AppRouteLink href="/subscription/" className="text-sm font-semibold text-emerald-800 dark:text-emerald-300">
-            Посмотреть варианты
-          </AppRouteLink>
-        ),
-      });
+      items.push(
+        <AlertBanner key="trial" tone="warning" icon="schedule" title="Пробный период">
+          Осталось {daysRemaining ?? "—"} дней. Если всё подходит — <AppRouteLink href="/subscription/" className="underline font-semibold">выберите тариф</AppRouteLink> заранее.
+        </AlertBanner>
+      );
     } else if (softMode) {
-      items.push({
-        key: "soft",
-        title: "Сейчас мягкий режим",
-        body: nextResetAt
-          ? `Полный режим вернется после сброса ${formatDate(nextResetAt)}. Если не хочется ждать, откройте оплату.`
-          : "Если не хочется ждать следующего цикла, можно сразу открыть оплату.",
-        tone: "warning",
-        badge: "Стоит проверить",
-        action: (
-          <AppRouteLink href="/subscription/checkout/" className="text-sm font-semibold text-emerald-800 dark:text-emerald-300">
-            Вернуть полный режим
-          </AppRouteLink>
-        ),
-      });
+      items.push(
+        <AlertBanner key="soft" tone="warning" icon="speed" title="Трафик закончился">
+          Скорость снижена. Полный доступ вернётся {nextResetAt ? formatDate(nextResetAt) : "скоро"}. <AppRouteLink href="/subscription/checkout/" className="underline font-semibold">Продлите сейчас</AppRouteLink>.
+        </AlertBanner>
+      );
     }
 
     if (dash?.is_active && activeConnections === 0) {
-      items.push({
-        key: "no-connections",
-        title: "Сейчас нет активного подключения",
-        body: "Обычно это значит, что приложение просто не открыто на устройстве. Сам доступ при этом может быть в порядке.",
-        tone: "neutral",
-        badge: "На заметку",
-        action: (
-          <AppRouteLink href="/downloads/" className="text-sm font-semibold text-emerald-800 dark:text-emerald-300">
-            Открыть загрузки
-          </AppRouteLink>
-        ),
-      });
+      items.push(
+        <AlertBanner key="no-conn" tone="info" icon="info" title="Нет активного подключения">
+          Откройте приложение POKROV и нажмите <strong>Подключить</strong>. <AppRouteLink href="/downloads/" className="underline font-semibold">Скачать приложение</AppRouteLink>
+        </AlertBanner>
+      );
     }
 
     if (nodesError) {
-      items.push({
-        key: "nodes-error",
-        title: "Статус сети обновим позже",
-        body: "Кабинет продолжает работать. Если само подключение ведет себя неровно, лучше сразу открыть поддержку.",
-        tone: "info",
-        badge: "Проверка позже",
-        action: (
-          <AppRouteLink href="/support/" className="text-sm font-semibold text-emerald-800 dark:text-emerald-300">
-            Поддержка
-          </AppRouteLink>
-        ),
-      });
+      items.push(
+        <AlertBanner key="nodes" tone="info" icon="network_check" title="Статус сети обновим позже">
+          Кабинет работает. Если подключение нестабильно — <AppRouteLink href="/support/" className="underline font-semibold">напишите в поддержку</AppRouteLink>.
+        </AlertBanner>
+      );
     } else if (knownNodes > 0 && healthyNodes < knownNodes) {
-      items.push({
-        key: "nodes-attention",
-        title: "Часть точек доступа требует внимания",
-        body: `Сейчас готовы ${healthyNodes} из ${knownNodes}. Если это уже заметно по качеству доступа, лучше написать нам.`,
-        tone: "warning",
-        badge: "Стоит проверить",
-        action: (
-          <AppRouteLink href="/support/" className="text-sm font-semibold text-emerald-800 dark:text-emerald-300">
-            Сообщить
-          </AppRouteLink>
-        ),
-      });
+      items.push(
+        <AlertBanner key="nodes-attention" tone="warning" icon="network_check" title="Часть серверов на обслуживании">
+          Готовы {healthyNodes} из {knownNodes} серверов. Если заметили сбои — <AppRouteLink href="/support/" className="underline font-semibold">сообщите нам</AppRouteLink>.
+        </AlertBanner>
+      );
     }
 
-    if (!items.length) {
-      items.push({
-        key: "all-good",
-        title: "Сейчас все спокойно",
-        body: "Статус ровный. Кабинет нужен только чтобы иногда проверить детали и быстро перейти дальше.",
-        tone: "success",
-        badge: "Все в порядке",
-        action: (
-          <AppRouteLink href="/devices/" className="text-sm font-semibold text-emerald-800 dark:text-emerald-300">
-            Проверить устройства
-          </AppRouteLink>
-        ),
-      });
+    if (items.length === 0) {
+      items.push(
+        <AlertBanner key="all-good" tone="success" icon="check_circle" title="Всё работает отлично">
+          Ваш трафик защищён. Наслаждайтесь безопасным интернетом.
+        </AlertBanner>
+      );
     }
 
-    return items.slice(0, 4);
-  }, [activeConnections, dash?.expiry_at, dash?.is_active, healthyNodes, knownNodes, nextResetAt, nodesError, softMode, trialMode]);
+    return items.slice(0, 3);
+  }, [activeConnections, dash?.expiry_at, dash?.is_active, healthyNodes, knownNodes, daysRemaining, nextResetAt, nodesError, softMode, trialMode]);
 
-  const nextSteps = [
-    {
-      key: "downloads",
-      title: dash?.is_active ? "Открыть приложение" : "Вернуть доступ",
-      body: dash?.is_active
-        ? "Если хотите подключиться на новом экране, начните с загрузок."
-        : "Сначала верните срок действия, потом продолжайте тем же профилем.",
-      badge: "Шаг 1",
-      tone: dash?.is_active ? ("neutral" as const) : ("warning" as const),
-      action: (
-        <AppRouteLink
-          href={dash?.is_active ? "/downloads/" : "/subscription/checkout/"}
-          className="text-sm font-semibold text-emerald-800 dark:text-emerald-300"
-        >
-          {dash?.is_active ? "Загрузки" : "Продлить"}
-        </AppRouteLink>
-      ),
-    },
-    {
-      key: "subscription",
-      title: "Проверить тариф и срок",
-      body: "Там видны режим, дата окончания и понятные варианты продления без витрины.",
-      badge: "Шаг 2",
-      tone: "neutral" as const,
-      action: (
-        <AppRouteLink href="/subscription/" className="text-sm font-semibold text-emerald-800 dark:text-emerald-300">
-          Тарифы и оплата
-        </AppRouteLink>
-      ),
-    },
-    {
-      key: "support",
-      title: "Если что-то не так, продолжить один кейс",
-      body: "Так не теряется история и не нужно заново объяснять всю ситуацию.",
-      badge: "Шаг 3",
-      tone: "neutral" as const,
-      action: (
-        <AppRouteLink href="/support/" className="text-sm font-semibold text-emerald-800 dark:text-emerald-300">
-          Поддержка
-        </AppRouteLink>
-      ),
-    },
-  ];
-
+  /* ── Device items ── */
   const deviceItems = (user?.devices || []).slice(0, 3).map((device) => ({
     key: device.id,
     title: deviceTitle(device.name, device.platform),
     body: device.is_current
-      ? "Это устройство, с которого кабинет открыт сейчас."
+      ? "Это устройство, с которого открыт кабинет"
       : device.last_seen_at
-        ? `Последний раз было в сети ${formatDate(device.last_seen_at)}.`
-        : "Появится здесь после первого входа в приложение.",
-    badge: device.is_current ? "Сейчас здесь" : device.is_active ? "Связано" : "Без активности",
+        ? `Было в сети ${formatDateTime(device.last_seen_at)}`
+        : "Появится после первого входа в приложение",
+    badge: device.is_current ? "Сейчас" : device.is_active ? "Активно" : "Не в сети",
     tone: device.is_current || device.is_active ? ("success" as const) : ("neutral" as const),
   }));
 
-  const utilityCards = [
-    {
-      key: "network",
-      title: "Сеть сейчас",
-      body: nodesError
-        ? "Статус сети подтянем позже. Если проблема видна в приложении, лучше сразу открыть поддержку."
-        : `${formatCount(healthyNodes || activeNodes)} из ${formatCount(knownNodes)} точек сейчас выглядят готовыми.`,
-      badge: nodesError ? "Проверка позже" : `${formatCount(healthyNodes || activeNodes)}/${formatCount(knownNodes)}`,
-      tone: nodesError ? ("info" as const) : healthyNodes < knownNodes ? ("warning" as const) : ("success" as const),
-    },
-    {
-      key: "devices",
-      title: "Устройства",
-      body: `${formatCount(deviceCount)} из ${formatCount(deviceLimit)} уже связаны с профилем.`,
-      badge: "Профиль",
-      tone: "neutral" as const,
-      action: (
-        <AppRouteLink href="/devices/" className="text-sm font-semibold text-emerald-800 dark:text-emerald-300">
-          Открыть
-        </AppRouteLink>
-      ),
-    },
-    {
-      key: "support",
-      title: "Поддержка",
-      body: "Если вопрос уже был, удобнее продолжать один кейс и не терять контекст.",
-      badge: "Если понадобится",
-      tone: "neutral" as const,
-      action: (
-        <AppRouteLink href="/support/" className="text-sm font-semibold text-emerald-800 dark:text-emerald-300">
-          Перейти
-        </AppRouteLink>
-      ),
-    },
-  ];
+  /* ── Traffic calculation ── */
+  const trafficText = resolveTrafficStatusText(dash, user);
+  const trafficPercent = useMemo(() => {
+    if (dash?.used_gb == null || dash?.total_gb == null) return null;
+    const used = Number(dash.used_gb);
+    const total = Number(dash.total_gb);
+    if (!Number.isFinite(used) || !Number.isFinite(total) || total <= 0) return null;
+    return Math.min(100, Math.round((used / total) * 100));
+  }, [dash?.used_gb, dash?.total_gb]);
 
   return (
     <CabinetRoute
       eyebrow="Главная"
-      title={dash?.is_active ? "Статус и следующий шаг" : "Доступу нужно внимание"}
+      title={dash?.is_active ? "Ваш трафик защищён" : "Продлите доступ"}
       description={
         dash?.is_active
-          ? "Здесь только главное: что сейчас с доступом, что стоит проверить и куда идти дальше."
-          : "Сначала верните спокойный рабочий статус, потом продолжайте тем же профилем."
+          ? "Здесь всё, что нужно знать о вашей подписке: статус, трафик, устройства и быстрые действия."
+          : "Доступ закончился. Продлите подписку, чтобы вернуть защиту."
       }
       actions={
         <>
           <AppRouteLink
-            href={dash?.is_active ? "/downloads/" : "/subscription/checkout/"}
+            href={dash?.is_active ? "/subscription/" : "/subscription/checkout/"}
             className="btn-primary rounded-full px-5 py-3 text-sm font-semibold"
           >
-            {dash?.is_active ? "Загрузки" : "Вернуть доступ"}
+            {dash?.is_active ? "Продлить подписку" : "Продлить доступ"}
           </AppRouteLink>
           <AppRouteLink href="/support/" className="outline-btn rounded-full px-5 py-3 text-sm font-semibold">
             Поддержка
           </AppRouteLink>
         </>
       }
-      metrics={[
-        {
-          label: "Статус",
-          value: dash?.is_active ? "Доступ активен" : "Нужно продление",
-          hint: dash?.is_active ? "Профиль уже работает." : "Возвращается из раздела оплаты.",
-          tone: dash?.is_active ? "success" : "warning",
-        },
-        {
-          label: "План",
-          value: resolvePlanLabel(dash, user),
-          hint: dash?.expiry_at ? `До ${formatDate(dash.expiry_at)}` : "Дату уточним после синхронизации",
-          tone: "neutral",
-        },
-        {
-          label: "Трафик",
-          value: resolveTrafficStatusText(dash, user),
-          hint: nextResetAt ? `Следующий сброс ${formatDate(nextResetAt)}` : "Без отдельного сброса",
-          tone: softMode ? "warning" : "neutral",
-        },
-        {
-          label: "Устройства",
-          value: `${formatCount(deviceCount)} из ${formatCount(deviceLimit)}`,
-          hint: "Сколько экранов уже связано с профилем.",
-          tone: "neutral",
-        },
-      ]}
     >
-      <CabinetHero
-        eyebrow="Что происходит"
-        badge={dash?.is_active ? "Кабинет в спокойном режиме" : "Нужен следующий шаг"}
-        badgeTone={dash?.is_active ? "success" : "warning"}
-        title={attentionItems[0]?.title || "Все спокойно"}
-        description={attentionItems[0]?.body || "Если что-то изменится, это сразу появится здесь."}
-        actions={
-          <>
-            {attentionItems[0]?.action}
-            <AppRouteLink href="/devices/" className="outline-btn rounded-full px-5 py-3 text-sm font-semibold">
-              Устройства
-            </AppRouteLink>
-          </>
-        }
-        details={[
-          {
-            label: "Активных подключений",
-            value: formatCount(activeConnections),
-            hint: activeConnections > 0 ? "Приложение сейчас где-то открыто." : "Если нужен доступ сейчас, откройте приложение.",
-            tone: activeConnections > 0 ? "success" : "neutral",
-          },
-          {
-            label: "Людей онлайн",
-            value: formatCount(activeUsersEstimate),
-            hint: "Это ориентир по живой активности сети.",
-            tone: "neutral",
-          },
-          {
-            label: "Точки доступа",
-            value: nodesError ? "Проверим позже" : `${formatCount(healthyNodes || activeNodes)} из ${formatCount(knownNodes)}`,
-            hint: nodesError ? "Если доступ ведет себя неровно, напишите нам." : "Короткая сводка по сети на сейчас.",
-            tone: nodesError ? "info" : healthyNodes < knownNodes ? "warning" : "success",
-          },
-        ]}
-        footer={
-          <div className="grid gap-3 md:grid-cols-3">
-            {nextSteps.map((item) => (
-              <div key={item.key} className="rounded-[1.2rem] border border-slate-200/80 bg-slate-50/85 px-4 py-4 dark:border-white/10 dark:bg-white/[0.04]">
-                <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500 dark:text-slate-400">{item.badge}</p>
-                <h3 className="mt-2 text-sm font-semibold text-slate-950 dark:text-slate-50">{item.title}</h3>
-                <p className="mt-2 text-sm leading-6 text-slate-600 dark:text-slate-300">{item.body}</p>
-                <div className="mt-4">{item.action}</div>
-              </div>
-            ))}
-          </div>
-        }
-      />
-
-      <div className="grid gap-6 xl:grid-cols-[1.06fr_0.94fr]">
-        <CabinetSection
-          eyebrow="Что требует внимания"
-          title="Только важное"
-          description="Если что-то поменялось, вы увидите это здесь. Если всё спокойно, это тоже сразу видно."
-        >
-          <CabinetList items={attentionItems.slice(1)} empty="Прямо сейчас ничего дополнительного проверять не нужно." />
-        </CabinetSection>
-
-        <CabinetSection
-          eyebrow="Ваши устройства"
-          title="Что уже связано с профилем"
-          description="Удобно проверить перед переносом доступа на новый экран."
-          actions={
-            <AppRouteLink href="/devices/" className="outline-btn rounded-full px-4 py-2 text-xs font-semibold uppercase tracking-[0.12em]">
-              Все устройства
-            </AppRouteLink>
-          }
-        >
-          <CabinetList items={deviceItems} empty="Устройства появятся здесь после первого входа в приложение на Android или Windows." />
-        </CabinetSection>
+      {/* ── Alerts ── */}
+      <div className="grid gap-3">
+        {alerts}
       </div>
 
+      {/* ── Stats Bento ── */}
+      <div className="bento-grid bento-grid-2 md:bento-grid-2 lg:grid-cols-4">
+        <StatCard
+          label="Тариф"
+          value={
+            <div className="flex items-center gap-2">
+              {resolvePlanLabel(dash, user)}
+              <StatusBadge tone={dash?.is_active ? "success" : "warning"}>{dash?.is_active ? "Активен" : "Закончился"}</StatusBadge>
+            </div>
+          }
+          hint={dash?.expiry_at ? `До ${formatDate(dash.expiry_at)}` : null}
+          tone={dash?.is_active ? "success" : "warning"}
+        />
+        <StatCard
+          label="Осталось дней"
+          value={daysRemaining ?? "—"}
+          hint={daysRemaining !== null && daysRemaining <= 5 ? "Скоро продлите" : null}
+          tone={daysRemaining !== null && daysRemaining <= 5 ? "warning" : "neutral"}
+        />
+        <StatCard
+          label="Трафик"
+          value={trafficText}
+          hint={trafficPercent !== null ? `${trafficPercent}% использовано` : null}
+          tone={trafficPercent !== null && trafficPercent >= 90 ? "warning" : "neutral"}
+        />
+        <StatCard label="Устройства" value={`${formatCount(deviceCount)} / ${formatCount(deviceLimit)}`} />
+      </div>
+
+      {/* ── App Download Block ── */}
       <CabinetSection
-        eyebrow="Полезное рядом"
-        title="Быстрые разделы"
-        description="Ниже только те места, куда чаще всего действительно стоит перейти."
+        eyebrow="Приложение"
+        title="POKROV на ваших устройствах"
+        description="Установите приложение, чтобы подключаться в один клик. Кабинет помогает скачать приложение и продолжить доступ без ручных ссылок."
       >
-        <CabinetCardGrid items={utilityCards} />
+        <div className="grid gap-6 lg:grid-cols-[0.82fr_1.18fr] items-start">
+          <div className="rounded-[1.5rem] border border-emerald-200/60 bg-emerald-50/60 p-5 dark:border-emerald-800/40 dark:bg-emerald-950/20">
+            <div className="flex items-center gap-3">
+              <span className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-emerald-700 text-white">
+                <span className="material-symbols-rounded text-[24px]">bolt</span>
+              </span>
+              <div>
+                <p className="text-sm font-semibold text-slate-900 dark:text-slate-100">Быстрый старт</p>
+                <p className="mt-1 text-xs leading-5 text-slate-600 dark:text-slate-300">Откройте приложение, выберите режим и нажмите Подключить.</p>
+              </div>
+            </div>
+            <div className="mt-4 grid gap-2 text-sm text-slate-700 dark:text-slate-300">
+              <div className="flex items-center gap-2">
+                <span className="material-symbols-rounded text-[18px] text-emerald-700 dark:text-emerald-300">download</span>
+                Скачать Android или Windows
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="material-symbols-rounded text-[18px] text-emerald-700 dark:text-emerald-300">sync</span>
+                Доступ подтянется автоматически
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="material-symbols-rounded text-[18px] text-emerald-700 dark:text-emerald-300">support_agent</span>
+                Если что-то не так, поддержка рядом
+              </div>
+            </div>
+          </div>
+          <div className="space-y-4">
+            <div className="grid gap-3 sm:grid-cols-2">
+              <a
+                href="https://pokrov.space/#download"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-3 rounded-xl border border-slate-200/60 bg-white/80 p-4 hover:border-emerald-300 hover:bg-emerald-50/40 transition dark:bg-slate-900/40 dark:border-slate-700/40 dark:hover:border-emerald-700"
+              >
+                <span className="material-symbols-rounded text-[28px] text-emerald-700 dark:text-emerald-400">android</span>
+                <div>
+                  <p className="text-sm font-semibold text-slate-900 dark:text-slate-100">Android</p>
+                  <p className="text-xs text-slate-500">APK и Google Play</p>
+                </div>
+              </a>
+              <a
+                href="https://pokrov.space/#download"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-3 rounded-xl border border-slate-200/60 bg-white/80 p-4 hover:border-emerald-300 hover:bg-emerald-50/40 transition dark:bg-slate-900/40 dark:border-slate-700/40 dark:hover:border-emerald-700"
+              >
+                <span className="material-symbols-rounded text-[28px] text-emerald-700 dark:text-emerald-400">desktop_windows</span>
+                <div>
+                  <p className="text-sm font-semibold text-slate-900 dark:text-slate-100">Windows</p>
+                  <p className="text-xs text-slate-500">Установщик и портативная</p>
+                </div>
+              </a>
+            </div>
+            <div className="rounded-xl border border-slate-200/60 bg-white/60 p-4 dark:bg-slate-900/30 dark:border-slate-700/30">
+              <p className="text-sm text-slate-700 dark:text-slate-300 leading-relaxed">
+                <strong>Как подключиться:</strong> установите приложение, продолжите текущий доступ и нажмите <strong>Подключить</strong>.
+                Telegram остается запасным способом входа и восстановления, если приложение или кабинет не помогли.
+              </p>
+            </div>
+          </div>
+        </div>
+      </CabinetSection>
+
+      {/* ── Quick Actions ── */}
+      <CabinetSection
+        eyebrow="Быстрые действия"
+        title="Что нужно сделать?"
+        description="Самые частые действия всегда под рукой."
+      >
+        <div className="quick-action-grid">
+          <QuickAction icon="payments" label="Продлить доступ" href="/subscription/checkout/" primary />
+          <QuickAction icon="devices" label="Мои устройства" href="/devices/" />
+          <QuickAction icon="download" label="Скачать приложение" href="https://pokrov.space/#download" />
+          <QuickAction icon="support_agent" label="Написать в поддержку" href="/support/" />
+        </div>
+      </CabinetSection>
+
+      {/* ── Devices ── */}
+      <CabinetSection
+        eyebrow="Устройства"
+        title="Что подключено"
+        description="Устройства, привязанные к вашему аккаунту."
+        actions={
+          <AppRouteLink href="/devices/" className="outline-btn rounded-full px-4 py-2 text-xs font-semibold uppercase tracking-[0.12em]">
+            Все устройства
+          </AppRouteLink>
+        }
+      >
+        <CabinetList items={deviceItems} empty="Устройства появятся после первого входа в приложение на Android или Windows." />
       </CabinetSection>
     </CabinetRoute>
   );

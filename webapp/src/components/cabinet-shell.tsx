@@ -84,9 +84,13 @@ const NAV_ITEMS: NavItem[] = [
   },
 ];
 
-const MOBILE_NAV_ITEMS = NAV_ITEMS.filter((item) =>
-  ["/dashboard", "/subscription", "/devices", "/statistics", "/support"].includes(item.href),
-);
+const MOBILE_NAV_ITEMS: Array<{ href: string; icon: string; label: string; match: (pathname: string) => boolean }> = [
+  { href: "/dashboard", icon: "shield", label: "Главная", match: (p) => p === "/dashboard" || (p.startsWith("/dashboard/") && !p.startsWith("/dashboard/downloads")) },
+  { href: "/subscription", icon: "payments", label: "Тариф", match: (p) => p.startsWith("/subscription") || p.startsWith("/redeem") },
+  { href: "/devices", icon: "devices", label: "Устройства", match: (p) => p.startsWith("/devices") },
+  { href: "/statistics", icon: "query_stats", label: "Статистика", match: (p) => p.startsWith("/statistics") },
+  { href: "/support", icon: "support_agent", label: "Поддержка", match: (p) => p.startsWith("/support") },
+];
 
 const ROUTE_META: Array<{ match: (pathname: string) => boolean; meta: RouteMeta }> = [
   {
@@ -347,8 +351,17 @@ export default function CabinetShell({ children }: { children: ReactNode }) {
     );
   }
 
+  const isAdmin = Boolean(user?.is_admin);
+  const adminNavItem: NavItem = {
+    href: "/admin/dashboard",
+    icon: "admin_panel_settings",
+    label: "Управление",
+    description: "Админ-панель оператора",
+    match: (pathname) => pathname.startsWith("/admin"),
+  };
+  const allNavItems = isAdmin ? [...NAV_ITEMS, adminNavItem] : NAV_ITEMS;
   const meta = routeMetaFor(pathname);
-  const activeNav = NAV_ITEMS.find((item) => item.match(pathname)) || NAV_ITEMS[0];
+  const activeNav = allNavItems.find((item) => item.match(pathname)) || allNavItems[0];
   const accountLabel = profileLabel(user.username, user.tg_id);
   const planLabel = resolvePlanLabel(dash, user);
   const trafficLabel = resolveTrafficStatusText(dash, user);
@@ -372,65 +385,63 @@ export default function CabinetShell({ children }: { children: ReactNode }) {
             <p className="mt-4 text-sm leading-6 text-slate-600 dark:text-slate-300">{pokrovBranding.cabinetTagline}</p>
           </div>
 
-          <nav className="mt-5 space-y-2">
-            {NAV_ITEMS.map((item) => {
+          <nav className="mt-4 space-y-1">
+            {allNavItems.map((item) => {
               const active = item.href === activeNav.href;
+              const isAdminItem = item.href.startsWith("/admin");
               return (
                 <AppRouteLink
                   key={item.href}
                   href={item.href}
-                  className={`flex items-start gap-3 rounded-[1.2rem] px-3 py-3 transition ${
+                  className={`flex items-center gap-3 rounded-[1rem] px-3 py-2.5 text-sm font-semibold transition ${
                     active
-                      ? "border border-emerald-200/80 bg-emerald-50 text-emerald-950 dark:border-emerald-400/20 dark:bg-emerald-400/10 dark:text-emerald-100"
-                      : "border border-transparent text-slate-600 hover:border-slate-200 hover:bg-white dark:text-slate-300 dark:hover:border-white/10 dark:hover:bg-white/[0.04]"
+                      ? isAdminItem
+                        ? "bg-slate-800 text-white dark:bg-slate-700"
+                        : "bg-emerald-800 text-white dark:bg-emerald-700"
+                      : isAdminItem
+                        ? "text-slate-600 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-white/[0.04]"
+                        : "text-slate-600 hover:bg-white dark:text-slate-300 dark:hover:bg-white/[0.04]"
                   }`}
                   aria-current={active ? "page" : undefined}
                 >
-                  <span className="material-symbols-rounded pt-0.5 text-[21px]">{item.icon}</span>
-                  <span className="min-w-0">
-                    <span className="block text-sm font-semibold">{item.label}</span>
-                    <span className="block text-xs leading-5 text-slate-500 dark:text-slate-400">{item.description}</span>
-                  </span>
+                  <span className="material-symbols-rounded text-[20px]">{item.icon}</span>
+                  <span className="min-w-0">{item.label}</span>
+                  {isAdminItem ? (
+                    <span className="ml-auto inline-flex items-center rounded-full bg-slate-200 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-slate-700 dark:bg-slate-700 dark:text-slate-300">
+                      admin
+                    </span>
+                  ) : null}
                 </AppRouteLink>
               );
             })}
           </nav>
         </div>
 
-        <div className="mt-5 space-y-3">
-          <div className="rounded-[1.4rem] border border-slate-200/80 bg-white/90 p-4 dark:border-white/10 dark:bg-white/[0.04]">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500 dark:text-slate-400">Сейчас</p>
-            <p className="mt-2 text-sm font-semibold text-slate-950 dark:text-slate-50">{statusLabel}</p>
-            <p className="mt-2 text-sm leading-6 text-slate-600 dark:text-slate-300">{sidebarSummary}</p>
-            <dl className="mt-4 space-y-2 text-sm">
-              <div className="flex items-start justify-between gap-3">
-                <dt className="text-slate-500 dark:text-slate-400">Трафик</dt>
-                <dd className="text-right font-medium text-slate-900 dark:text-slate-100">{trafficLabel}</dd>
-              </div>
-              <div className="flex items-start justify-between gap-3">
-                <dt className="text-slate-500 dark:text-slate-400">Устройств</dt>
-                <dd className="text-right font-medium text-slate-900 dark:text-slate-100">до {dash.device_limit}</dd>
-              </div>
-            </dl>
+        <div className="mt-auto space-y-3">
+          <div className="rounded-[1.25rem] border border-slate-200/80 bg-white/90 p-3 dark:border-white/10 dark:bg-white/[0.04]">
+            <div className="flex items-center justify-between gap-2">
+              <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold ${dash.is_active ? "bg-emerald-50 text-emerald-800 dark:bg-emerald-400/10 dark:text-emerald-200" : "bg-amber-50 text-amber-800 dark:bg-amber-400/10 dark:text-amber-200"}`}>
+                <span className="material-symbols-rounded text-[14px]">{dash.is_active ? "shield" : "warning"}</span>
+                {statusLabel}
+              </span>
+              <span className="text-xs text-slate-500 dark:text-slate-400">{planLabel}</span>
+            </div>
+            <p className="mt-2 text-xs leading-5 text-slate-500 dark:text-slate-400">{sidebarSummary}</p>
           </div>
 
-          <div className="rounded-[1.4rem] border border-slate-200/80 bg-white/90 p-4 dark:border-white/10 dark:bg-white/[0.04]">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500 dark:text-slate-400">Профиль</p>
-            <div className="mt-3 flex items-center gap-3">
-              <span className="grid h-11 w-11 place-items-center rounded-full bg-emerald-900 text-sm font-semibold uppercase text-white dark:bg-emerald-700">
-                {profileMark(user.username, user.tg_id)}
-              </span>
-              <div className="min-w-0">
-                <p className="truncate text-sm font-semibold text-slate-950 dark:text-slate-50">{accountLabel}</p>
-                <p className="truncate text-xs text-slate-500 dark:text-slate-400">{planLabel}</p>
-              </div>
+          <div className="flex items-center gap-3 rounded-[1.25rem] border border-slate-200/80 bg-white/90 p-3 dark:border-white/10 dark:bg-white/[0.04]">
+            <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-emerald-900 text-xs font-semibold uppercase text-white dark:bg-emerald-700">
+              {profileMark(user.username, user.tg_id)}
+            </span>
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-sm font-semibold text-slate-950 dark:text-slate-50">{accountLabel}</p>
             </div>
-            <div className="mt-4 flex flex-wrap gap-2">
-              <AppRouteLink href={CABINET_SITE_URL} hardNavigate className="outline-btn rounded-full px-4 py-2 text-xs font-semibold uppercase tracking-[0.12em]">
-                На сайт
+            <div className="flex gap-1">
+              <AppRouteLink href={CABINET_SITE_URL} hardNavigate className="inline-flex h-8 w-8 items-center justify-center rounded-full text-slate-500 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-white/[0.04]" aria-label="На сайт">
+                <span className="material-symbols-rounded text-[18px]">open_in_new</span>
               </AppRouteLink>
-              <button type="button" onClick={logoutWebSession} className="outline-btn rounded-full px-4 py-2 text-xs font-semibold uppercase tracking-[0.12em]">
-                Выйти
+              <button type="button" onClick={logoutWebSession} className="inline-flex h-8 w-8 items-center justify-center rounded-full text-slate-500 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-white/[0.04]" aria-label="Выйти">
+                <span className="material-symbols-rounded text-[18px]">logout</span>
               </button>
             </div>
           </div>
@@ -459,23 +470,35 @@ export default function CabinetShell({ children }: { children: ReactNode }) {
         </div>
 
         <div className="mt-5 space-y-2">
-          {NAV_ITEMS.map((item) => {
+          {allNavItems.map((item) => {
             const active = item.href === activeNav.href;
+            const isAdminItem = item.href.startsWith("/admin");
             return (
               <AppRouteLink
                 key={item.href}
                 href={item.href}
                 className={`block rounded-[1.15rem] px-4 py-3 ${
                   active
-                    ? "bg-emerald-900 text-white dark:bg-emerald-700"
-                    : "border border-slate-200/80 bg-white/90 text-slate-700 dark:border-white/10 dark:bg-white/[0.04] dark:text-slate-200"
+                    ? isAdminItem
+                      ? "bg-slate-800 text-white dark:bg-slate-700"
+                      : "bg-emerald-900 text-white dark:bg-emerald-700"
+                    : isAdminItem
+                      ? "border border-slate-200/80 bg-slate-50/80 text-slate-800 dark:border-white/10 dark:bg-slate-800/40 dark:text-slate-200"
+                      : "border border-slate-200/80 bg-white/90 text-slate-700 dark:border-white/10 dark:bg-white/[0.04] dark:text-slate-200"
                 }`}
               >
                 <div className="flex items-start gap-3">
                   <span className="material-symbols-rounded pt-0.5 text-[20px]">{item.icon}</span>
-                  <span className="min-w-0">
-                    <span className="block text-sm font-semibold">{item.label}</span>
-                    <span className={`block text-xs leading-5 ${active ? "text-white/80" : "text-slate-500 dark:text-slate-400"}`}>{item.description}</span>
+                  <span className="min-w-0 flex-1">
+                    <span className="flex items-center gap-2">
+                      <span className="block text-sm font-semibold">{item.label}</span>
+                      {isAdminItem ? (
+                        <span className="inline-flex items-center rounded bg-slate-200 px-1 py-0.5 text-[10px] font-bold uppercase text-slate-600 dark:bg-slate-600 dark:text-slate-300">
+                          admin
+                        </span>
+                      ) : null}
+                    </span>
+                    <span className={`block text-xs leading-5 ${active ? "text-white/80" : isAdminItem ? "text-slate-500 dark:text-slate-400" : "text-slate-500 dark:text-slate-400"}`}>{item.description}</span>
                   </span>
                 </div>
               </AppRouteLink>
@@ -506,38 +529,35 @@ export default function CabinetShell({ children }: { children: ReactNode }) {
         {sidebar}
 
         <div className="min-w-0 flex-1 pb-24 xl:pb-8" style={{ paddingTop: "max(0.5rem, var(--tg-safe-area-top, 0px))" }}>
-          <header className="mb-5 rounded-[1.5rem] border border-slate-200/80 bg-white/90 px-4 py-4 shadow-[0_18px_48px_-36px_rgba(15,23,42,0.18)] dark:border-white/10 dark:bg-[#101713]/88 sm:px-5">
-            <div className="flex flex-wrap items-start justify-between gap-4">
-              <div className="flex min-w-0 items-start gap-3">
+          <header className="mb-4 rounded-[1.25rem] border border-slate-200/80 bg-white/90 px-4 py-3 shadow-[0_12px_36px_-24px_rgba(15,23,42,0.15)] dark:border-white/10 dark:bg-[#101713]/88 sm:px-5">
+            <div className="flex items-center justify-between gap-3">
+              <div className="flex min-w-0 items-center gap-3">
                 <button
                   type="button"
                   onClick={() => setDrawerOpen(true)}
-                  className="outline-btn inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl xl:hidden"
+                  className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-slate-600 hover:bg-slate-100 xl:hidden dark:text-slate-300 dark:hover:bg-white/[0.04]"
                   aria-label="Открыть меню"
                 >
                   <span className="material-symbols-rounded">menu</span>
                 </button>
-                <div className="min-w-0">
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">{pokrovBranding.entryEyebrow}</p>
-                  <h1 className="mt-1 truncate font-display text-[1.6rem] font-semibold leading-none tracking-[-0.03em] text-slate-950 dark:text-slate-50">
-                    {meta.title}
-                  </h1>
-                  <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-600 dark:text-slate-300">{meta.subtitle}</p>
-                </div>
+                <h1 className="truncate font-display text-[1.4rem] font-semibold leading-none tracking-[-0.02em] text-slate-950 dark:text-slate-50">
+                  {meta.title}
+                </h1>
               </div>
 
-              <div className="flex flex-wrap items-center justify-end gap-2">
-                <span className={`rounded-full px-3 py-2 text-xs font-semibold uppercase tracking-[0.14em] ${dash.is_active ? "bg-emerald-50 text-emerald-800 dark:bg-emerald-400/10 dark:text-emerald-200" : "bg-amber-50 text-amber-800 dark:bg-amber-400/10 dark:text-amber-200"}`}>
-                  {statusLabel}
+              <div className="flex items-center gap-2">
+                <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1.5 text-xs font-semibold ${dash.is_active ? "bg-emerald-50 text-emerald-800 dark:bg-emerald-400/10 dark:text-emerald-200" : "bg-amber-50 text-amber-800 dark:bg-amber-400/10 dark:text-amber-200"}`}>
+                  <span className="material-symbols-rounded text-[14px]">{dash.is_active ? "shield" : "warning"}</span>
+                  <span className="hidden sm:inline">{statusLabel}</span>
                 </span>
-                <button type="button" onClick={() => setDark((value) => !value)} className="outline-btn inline-flex h-11 w-11 items-center justify-center rounded-2xl" aria-label="Переключить тему">
+                <button type="button" onClick={() => setDark((value) => !value)} className="inline-flex h-10 w-10 items-center justify-center rounded-xl text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-white/[0.04]" aria-label="Переключить тему">
                   <span className="material-symbols-rounded">{dark ? "light_mode" : "dark_mode"}</span>
                 </button>
-                <AppRouteLink href="/settings/" className="inline-flex items-center gap-3 rounded-full border border-slate-200/80 bg-white px-2 py-2 text-sm shadow-sm dark:border-white/10 dark:bg-white/[0.04]">
-                  <span className="grid h-9 w-9 place-items-center rounded-full bg-emerald-900 text-sm font-semibold uppercase text-white dark:bg-emerald-700">
+                <AppRouteLink href="/settings/" className="inline-flex items-center gap-2 rounded-full border border-slate-200/80 bg-white px-1.5 py-1 text-sm shadow-sm dark:border-white/10 dark:bg-white/[0.04]">
+                  <span className="grid h-8 w-8 place-items-center rounded-full bg-emerald-900 text-xs font-semibold uppercase text-white dark:bg-emerald-700">
                     {profileMark(user.username, user.tg_id)}
                   </span>
-                  <span className="hidden max-w-[170px] truncate pr-2 font-medium text-slate-900 dark:text-slate-100 sm:block">{accountLabel}</span>
+                  <span className="hidden max-w-[140px] truncate pr-1.5 font-medium text-slate-900 dark:text-slate-100 sm:block">{accountLabel}</span>
                 </AppRouteLink>
               </div>
             </div>
@@ -556,20 +576,18 @@ export default function CabinetShell({ children }: { children: ReactNode }) {
 
       {!isAdminRoute ? (
         <nav
-          className="fixed bottom-[calc(1rem+var(--tg-safe-area-bottom,0px))] left-3 right-3 z-40 flex max-w-[calc(100vw-1.5rem)] items-center justify-between gap-2 overflow-hidden rounded-[1.6rem] border border-slate-200/80 bg-white/94 px-3 py-2 shadow-[0_26px_60px_-36px_rgba(15,23,42,0.25)] backdrop-blur xl:hidden dark:border-white/10 dark:bg-[#101713]/92"
+          className="mobile-nav-root xl:hidden"
           aria-label="Навигация кабинета"
         >
           {MOBILE_NAV_ITEMS.map((item) => {
-            const active = item.href === activeNav.href;
+            const active = item.match(pathname);
             return (
               <AppRouteLink
                 key={item.href}
                 href={item.href}
-                className={`flex min-w-0 flex-1 flex-col items-center gap-1 overflow-hidden rounded-[1rem] px-2 py-2 text-[10px] font-medium ${
-                  active ? "bg-emerald-900 text-white dark:bg-emerald-700" : "text-slate-600 dark:text-slate-300"
-                }`}
+                className={`mobile-nav-item ${active ? "active" : ""}`}
               >
-                <span className="material-symbols-rounded text-[19px]">{item.icon}</span>
+                <span className="material-symbols-rounded text-[22px]">{item.icon}</span>
                 <span className="truncate">{item.label}</span>
               </AppRouteLink>
             );

@@ -141,7 +141,8 @@ def _default_checks() -> list[Check]:
             must_contain=(
                 "fetchNodeStatus",
                 "resolveTrafficStatusText",
-                "CabinetHero",
+                "CabinetSection",
+                "Что нужно сделать?",
                 'href="/downloads/"',
                 'href="/support/"',
             ),
