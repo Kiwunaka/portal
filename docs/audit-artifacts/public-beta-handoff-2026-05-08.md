@@ -2,6 +2,8 @@
 
 Generated: 2026-05-08 21:22 MSK
 
+Refreshed: 2026-05-09 after portal commit `23e894e` and client commit `c5f40a6`.
+
 ## Verdict
 
 `NO-GO` for broad public beta publication.
@@ -22,7 +24,7 @@ The release is prepared as far as current access allows: GitHub prerelease APK/E
 ## What Changed Since The Previous Handoff
 
 - Client release metadata now points to the staged GitHub APK/EXE while keeping runtime sync, public announcement, and paid checkout blocked without explicit evidence.
-- `POKROV-app/main` is pushed through commit `8a14d7b` (`Stage public beta client handoff`) with stable handoff `C:/Users/kiwun/Documents/ai/POKROV-app/artifacts/releases/release-handoff.json` and versioned handoff `C:/Users/kiwun/Documents/ai/POKROV-app/artifacts/releases/pokrov-app/0.2.0-beta.1+20260508/release-handoff.json`.
+- `POKROV-app/main` is pushed through commit `c5f40a6` (`Align client beta handoff posture`) with stable handoff `C:/Users/kiwun/Documents/ai/POKROV-app/artifacts/releases/release-handoff.json`, versioned handoff `C:/Users/kiwun/Documents/ai/POKROV-app/artifacts/releases/pokrov-app/0.2.0-beta.1+20260508/release-handoff.json`, and retained `README.md` / `SHA256SUMS.txt`.
 - GitHub prerelease notes for `v0.2.0-beta.1` were refreshed on 2026-05-08 to state `NO-GO`, runtime links closed, email proof pending, Lava.top proof pending, and no RU-origin readiness claim.
 - Admin release cockpit no longer has a permanent static runtime-download blocker; it reads the live `/api/client/apps` gate.
 - Admin release cockpit now shows the exact operator inputs needed next: runtime-link GO markers, `EMAIL_PROBE_TO`, and `LAVATOP_PROBE_EMAIL`.
@@ -35,8 +37,13 @@ The release is prepared as far as current access allows: GitHub prerelease APK/E
 - Machine-readable launch decision now emits Russian safe/unsafe public claims.
 - Admin release cockpit now has copy buttons for the runtime-link GO text, email probe command, and Lava.top probe command.
 - Public beta post-deploy probe and launch decision JSON were refreshed after the latest deploy/probe checks.
-- GitHub Actions Guardrails are green on portal `master` at commit `ac5ad12`; this is CI-safe repo evidence, not public-release authorization.
-- Support/admin/redeem/promo/payment/email surfaces have the focused fixes and tests described in the current workspace diff.
+- GitHub Actions Guardrails are green on portal `master` at commit `23e894e`; this is CI-safe repo evidence, not public-release authorization.
+- Support/admin/redeem/promo/payment/email surfaces have the focused fixes and tests described below; platform tracked files are clean on `master`.
+- Access-key and gift-card entry now tolerates common pasted separators (`U+2010..U+2014`, `U+2212`, underscores, and whitespace) across API, bot, cabinet redeem, admin promo lookup, and marketing checkout.
+- Telegram OIDC finish now classifies `expired/deprecated` provider responses as refreshable auth errors instead of raw provider failures.
+- Client cutover docs and seed metadata now reflect the accepted beta posture: Android `OPERATOR_ATTESTED`, Windows `UNSIGNED_BETA_RISK_ACCEPTED`, runtime sync still pending.
+- Bot RUB payment buttons now follow the same paid-checkout launch evidence/email delivery gate as the API provider catalog: Lava.top is not rendered as `pay_rub:lavatop` until the shared gate is green.
+- Bot paywall tests now reset DB/model-bound service modules between API and bot suites, preventing stale admin-test module state from breaking gift-card redemption coverage.
 
 ## Verification Snapshot
 
@@ -76,6 +83,16 @@ The release is prepared as far as current access allows: GitHub prerelease APK/E
 - Admin release cockpit operator command copy buttons: RED then GREEN `npx.cmd playwright test admin-gate.spec.ts --grep "release cockpit no-go" --reporter=line`; focused `npx.cmd playwright test admin-gate.spec.ts --grep "release cockpit" --reporter=line` -> PASS, 3 tests; `npm.cmd run build` in `webapp/` -> PASS.
 - `python scripts\remote_deploy_brain_static_sites.py --brain-ip 82.21.114.104 --ssh-user root --ssh-port 29374` -> PASS, static release id `20260508195049`; `python scripts\verify_brain_ready.py --brain-ip 82.21.114.104 --ssh-user root --ssh-port 29374` -> PASS; live browser check of `https://app.pokrov.space/admin/release/` had 0 console errors/warnings and no horizontal overflow on the unauthenticated entry.
 - GitHub Actions Guardrails run `25576322253` on commit `ac5ad12f62d7e772e9eba893a685e920603d159e` -> PASS; CI release guardrails remain scoped and are not public-release authorization.
+- `python -m pytest tests\test_api_auth_and_tickets.py -q -k "access_key_status_and_redeem_normalize"` -> PASS, 1 test; `python -m pytest tests\test_bot_paywall.py -q -k "redeem_gift_card_normalizes_human_key_input or redeem_gift_card_respects_campaign_segment_restrictions"` -> PASS, 2 tests; `npx.cmd playwright test cabinet-flow.spec.ts --grep "access keys" --reporter=line` -> PASS, 1 test; `npm.cmd run build` in `webapp/` and `marketing/` -> PASS.
+- `python -m pytest portal_bot\tests\test_telegram_oidc_auth.py -q` -> PASS, 5 tests; `npx.cmd playwright test telegram-login-refresh.spec.ts oidc-fallback.spec.ts --reporter=line` -> PASS, 7 tests; `python -m pytest tests\test_api_auth_and_tickets.py -q -k "web_login_rejects_expired_payload or auth_session_prefers_valid_web_session or auth_session_uses_telegram_init_data_when_web_session_is_expired or auth_session_rejects_stale_signed_telegram_init_data or auth_session_rejects_expired_web_session"` -> PASS, 5 tests.
+- `python scripts\remote_deploy_brain_portal_code.py --brain-ip 82.21.114.104 --ssh-user root --ssh-port 29374 --restart portal-api,portal-bot` -> PASS after access-key separator normalization; `python scripts\remote_deploy_brain_static_sites.py --brain-ip 82.21.114.104 --ssh-user root --ssh-port 29374` -> PASS, static release id `20260508220115`; `python scripts\verify_brain_ready.py --brain-ip 82.21.114.104 --ssh-user root --ssh-port 29374` -> PASS.
+- `python scripts\remote_deploy_brain_portal_code.py --brain-ip 82.21.114.104 --ssh-user root --ssh-port 29374 --restart portal-api` -> PASS after Telegram OIDC classification; `python scripts\verify_brain_ready.py --brain-ip 82.21.114.104 --ssh-user root --ssh-port 29374` -> PASS.
+- `python -m pytest tests\test_bot_paywall.py -q -k "hides_lavatop_until_checkout_gate_is_green"` -> RED then PASS, 1 regression test proving the bot hides Lava.top while checkout evidence/email delivery gate is not green.
+- `python -m pytest tests\test_bot_paywall.py -q` -> PASS, 88 tests after bot checkout-gate and module-isolation updates.
+- `python -m pytest tests\test_lavatop_payment_providers.py tests\test_paid_checkout_launch_evidence_check.py tests\test_payment_email_readiness_smoke.py tests\test_api_payments_callbacks.py -q` -> PASS, 42 tests.
+- `python -m pytest portal_bot\tests\test_telegram_oidc_auth.py portal_bot\tests\test_email_auth.py tests\test_api_auth_and_tickets.py tests\test_api_payments_callbacks.py tests\test_admin_payments_api.py tests\test_bot_paywall.py tests\test_lavatop_payment_providers.py tests\test_payment_email_readiness_smoke.py tests\test_paid_checkout_launch_evidence_check.py tests\test_public_beta_external_access_preflight.py tests\test_public_beta_post_deploy_probe.py tests\test_public_beta_launch_decision.py -q` -> PASS, 257 tests; 11 existing deprecation warnings and a non-fatal Windows pytest temp cleanup warning.
+- GitHub Actions Guardrails run `25581649885` on portal commit `479dd1b` -> PASS; run `25581858872` on portal commit `23e894e` -> PASS.
+- `powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\validate-seed.ps1` in `C:/Users/kiwun/Documents/ai/POKROV-app` -> PASS after client posture metadata refresh; `python -m json.tool` on `config/release-handoff.seed.json` and `config/cutover-readiness.seed.json` -> PASS; `c5f40a6` pushed to `POKROV-app/main`.
 - Telegram fallback-admin bot labels were kept RU-facing while preserving callback payloads; `python -m pytest tests\test_bot_paywall.py -q` -> PASS, 83 tests; helpbot/feedbackbot/menu tests -> PASS, 15 tests.
 - `python scripts\remote_deploy_brain_portal_code.py --brain-ip 82.21.114.104 --restart portal-api,portal-bot,portal-helpbot,portal-feedbackbot` -> PASS; all requested services active.
 - `python scripts\brain_telegram_bot_menu_check.py --brain-ip 82.21.114.104 --ssh-user root --ssh-port 29374 --output docs\audit-artifacts\telegram-bot-command-menu-brain-2026-05-08.json` -> PASS.
@@ -92,12 +109,12 @@ The release is prepared as far as current access allows: GitHub prerelease APK/E
 ## Live Status
 
 - API health: PASS, `200`, status `ok`.
-- GitHub Actions Guardrails: PASS, run `25576322253`, commit `ac5ad12f62d7e772e9eba893a685e920603d159e`.
-- Backend deploy: latest portal code deploy restarted `portal-api`, `portal-bot`, `portal-helpbot`, and `portal-feedbackbot`; all are active.
+- GitHub Actions Guardrails: PASS, latest portal run `25581858872`, commit `23e894e`.
+- Backend deploy: latest portal code deploy restarted `portal-api` after Telegram OIDC classification; previous access-key separator deploy restarted `portal-api` and `portal-bot`; all services are active in brain readiness.
 - Email runtime status: PASS, public mode enabled, delivery URL and secret configured, debug echo off, no blocked reasons.
-- Payment provider status: `BLOCKED_BY_ACCESS`; `/api/payments/providers` returns `blocked=true`, no providers, reason `paid_checkout_launch_evidence_missing`.
+- Payment provider status: `BLOCKED_BY_ACCESS`; `/api/payments/providers` returns `blocked=true`, no providers, reason `paid_checkout_launch_evidence_missing`; the Telegram bot also hides Lava.top RUB payment CTAs behind the same gate.
 - GitHub release: published prerelease, not draft. APK and EXE assets are uploaded; release notes now explicitly say `NO-GO` and keep runtime links/payment/public announcement closed.
-- Static deploy: latest static release id `20260508195049`; `https://app.pokrov.space/admin/release/`, `https://app.pokrov.space/`, and `https://pokrov.space/checkout/` return `200`.
+- Static deploy: latest static release id `20260508220115`; `https://app.pokrov.space/admin/release/`, `https://app.pokrov.space/`, and `https://pokrov.space/checkout/` return `200`.
 
 ## Remaining Blockers
 

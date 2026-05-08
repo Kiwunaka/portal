@@ -85,6 +85,8 @@ from payment_providers import (
     enabled_provider_catalog,
     enabled_rub_provider_codes,
     normalize_provider as _normalize_checkout_provider,
+    paid_checkout_launch_evidence_issues as provider_paid_checkout_launch_evidence_issues,
+    paid_checkout_launch_evidence_path as provider_paid_checkout_launch_evidence_path,
     provider_is_configured,
     verify_callback_signature as verify_provider_callback_signature,
 )
@@ -2789,64 +2791,11 @@ def _checkout_runtime_errors() -> list[str]:
 
 
 def _paid_checkout_launch_evidence_path() -> Path:
-    configured = (
-        os.getenv("PAID_CHECKOUT_LAUNCH_EVIDENCE_PATH")
-        or os.getenv("PAID_CHECKOUT_LAUNCH_EVIDENCE_FILE")
-        or ""
-    ).strip()
-    if configured:
-        candidate = Path(configured).expanduser()
-        if not candidate.is_absolute():
-            candidate = Path(__file__).resolve().parents[1] / candidate
-        return candidate
-    return Path(__file__).resolve().parents[1] / "docs" / "audit-artifacts" / "paid-checkout-launch-evidence-2026-05-07.json"
+    return provider_paid_checkout_launch_evidence_path()
 
 
 def _paid_checkout_launch_evidence_issues() -> list[tuple[str, str]]:
-    if not env_bool("PAID_CHECKOUT_LAUNCH_EVIDENCE_REQUIRED", default=True):
-        return []
-
-    path = _paid_checkout_launch_evidence_path()
-    try:
-        payload = json.loads(path.read_text(encoding="utf-8"))
-    except FileNotFoundError:
-        return [
-            (
-                "paid_checkout_launch_evidence_missing",
-                "Paid checkout launch evidence is missing; keep RUB checkout unavailable until redacted evidence is attached",
-            )
-        ]
-    except Exception:
-        return [
-            (
-                "paid_checkout_launch_evidence_invalid",
-                "Paid checkout launch evidence is invalid; keep RUB checkout unavailable until redacted evidence is attached",
-            )
-        ]
-
-    safe = bool(payload.get("safe_to_enable_paid_checkout"))
-    ok = bool(payload.get("ok"))
-    if safe and ok:
-        return []
-
-    classification = str(payload.get("classification") or "not_ready").strip() or "not_ready"
-    pending_checks: list[str] = []
-    for item in payload.get("checks") or []:
-        if not isinstance(item, dict):
-            continue
-        status = str(item.get("status") or "").strip().upper()
-        if status in {"PASS", "OK", "GREEN"}:
-            continue
-        name = re.sub(r"[^a-zA-Z0-9_.-]+", "_", str(item.get("name") or "evidence")).strip("_")
-        if name:
-            pending_checks.append(name[:80])
-    suffix = f": {', '.join(pending_checks[:6])}" if pending_checks else ""
-    return [
-        (
-            "paid_checkout_launch_evidence_not_green",
-            f"Paid checkout launch evidence is not green ({classification}){suffix}",
-        )
-    ]
+    return provider_paid_checkout_launch_evidence_issues()
 
 
 def _public_checkout_provider_state() -> RubProvidersOut:

@@ -1,4 +1,5 @@
 import asyncio
+from contextlib import contextmanager
 import importlib
 import os
 import sys
@@ -146,14 +147,33 @@ class BotPaywallTests(unittest.TestCase):
         os.environ["SUPPORT_BOT_USERNAME"] = "pokrov_supportbot"
         os.environ["FEEDBACK_USERNAME"] = "pokrov_feedbackbot"
 
-        if "config" in sys.modules:
-            importlib.reload(sys.modules["config"])
-        if "db" in sys.modules:
-            importlib.reload(sys.modules["db"])
-        if "bot" in sys.modules:
-            importlib.reload(sys.modules["bot"])
+        for module_name in (
+            "bot",
+            "payment_providers",
+            "email_delivery_service",
+            "gift_cards_service",
+            "events_service",
+            "free_cycle_service",
+            "pay_attempts_service",
+            "points_service",
+            "tickets_repo",
+            "web_auth_service",
+            "nodes_repo",
+            "models",
+            "db",
+            "config",
+        ):
+            sys.modules.pop(module_name, None)
         self.bot_module = importlib.import_module("bot")
-        importlib.reload(self.bot_module)
+
+    @contextmanager
+    def _checkout_gate_green(self):
+        old_gate = self.bot_module._bot_checkout_runtime_issues
+        self.bot_module._bot_checkout_runtime_issues = lambda: []
+        try:
+            yield
+        finally:
+            self.bot_module._bot_checkout_runtime_issues = old_gate
 
     def _make_paid_user(self, tg_id: int = 1001) -> None:
         self.bot_module.ensure_pending_user(tg_id, username="alice")
@@ -1156,7 +1176,8 @@ class BotPaywallTests(unittest.TestCase):
             self.bot_module.enabled_provider_catalog = lambda: [
                 {"code": "lavatop", "label": "Lava.top", "supports_bot": True},
             ]
-            text = self.bot_module._build_tariff_payment_choice_text(tariff_key="1_month", tg_id=1001)
+            with self._checkout_gate_green():
+                text = self.bot_module._build_tariff_payment_choice_text(tariff_key="1_month", tg_id=1001)
         finally:
             self.bot_module.enabled_provider_catalog = old_catalog
         self.assertIn("Цена в ₽: *249 ₽*", text)
@@ -1195,6 +1216,44 @@ class BotPaywallTests(unittest.TestCase):
         self.assertTrue(any("plan=1_month" in value for value in urls))
         self.assertIn("support", callback_data)
 
+    def test_tariff_payment_choice_keyboard_hides_lavatop_until_checkout_gate_is_green(self) -> None:
+        self.bot_module.PAY_CHECKOUT_URL = "https://pay.pokrov.space/checkout/?from=bot"
+        missing_evidence = Path(self._tmp.name) / "missing-paid-checkout-evidence.json"
+        with patch.dict(
+            os.environ,
+            {
+                "RUB_CHECKOUT_ENABLED": "true",
+                "PUBLIC_API_BASE_URL": "https://api.pokrov.space",
+                "PAY_CHECKOUT_URL": "https://pay.pokrov.space/checkout/",
+                "PAY_SUCCESS_URL": "https://api.pokrov.space/pay/success",
+                "PAY_FAIL_URL": "https://api.pokrov.space/pay/fail",
+                "RUB_PAYMENT_PROVIDER_ORDER": "lavatop",
+                "RUB_PAYMENT_PROVIDER_ENABLED": "lavatop",
+                "LAVATOP_API_KEY": "lava_api_test",
+                "LAVATOP_OFFER_ID": "offer_test",
+                "LAVATOP_WEBHOOK_API_KEY": "lava_webhook_test",
+                "EMAIL_AUTH_PUBLIC_ENABLED": "false",
+                "EMAIL_DELIVERY_WEBHOOK_URL": "",
+                "EMAIL_AUTH_WEBHOOK_URL": "",
+                "EMAIL_DELIVERY_WEBHOOK_SECRET": "",
+                "EMAIL_AUTH_DEBUG_ECHO": "false",
+                "PAID_CHECKOUT_LAUNCH_EVIDENCE_REQUIRED": "true",
+                "PAID_CHECKOUT_LAUNCH_EVIDENCE_PATH": missing_evidence.as_posix(),
+            },
+            clear=False,
+        ):
+            email_delivery_service = importlib.import_module("email_delivery_service")
+            importlib.reload(email_delivery_service)
+            rows = self.bot_module._tariff_payment_choice_keyboard_specs(tg_id=1001, tariff_key="1_month")
+
+        flat_buttons = [button for row in rows for button in row]
+        callback_data = [str(button.get("callback_data") or "") for button in flat_buttons]
+        urls = [str(button.get("url") or "") for button in flat_buttons]
+        self.assertFalse(any(value.startswith("pay_rub:") for value in callback_data))
+        self.assertTrue(any("pay.pokrov.space/checkout/" in value for value in urls))
+        self.assertTrue(any("plan=1_month" in value for value in urls))
+        self.assertIn("support", callback_data)
+
     def test_tariff_payment_choice_keyboard_keeps_plan_in_checkout_url(self) -> None:
         self.bot_module.PAY_CHECKOUT_URL = "https://portal-privacy.online/checkout?from=bot"
         self.bot_module.checkout_context_by_user[1001] = {
@@ -1208,7 +1267,8 @@ class BotPaywallTests(unittest.TestCase):
                 {"code": "lavatop", "label": "Lava.top", "supports_bot": True},
                 {"code": "pally", "label": "Paypalich", "supports_bot": True},
             ]
-            keyboard = self.bot_module._build_tariff_payment_choice_keyboard(tg_id=1001, tariff_key="3_months")
+            with self._checkout_gate_green():
+                keyboard = self.bot_module._build_tariff_payment_choice_keyboard(tg_id=1001, tariff_key="3_months")
         finally:
             self.bot_module.enabled_provider_catalog = old_catalog
         self.assertEqual(keyboard.inline_keyboard[0][0].callback_data, "pay_rub:lavatop:3_months")
@@ -1286,7 +1346,8 @@ class BotPaywallTests(unittest.TestCase):
                 {"code": "lavatop", "label": "Lava.top", "supports_bot": True},
             ]
             self.bot_module._create_rub_payment_link_for_bot = _fake_create_payment_link
-            asyncio.run(self.bot_module.process_buy_rub(callback, _FakeBot(status="member")))
+            with self._checkout_gate_green():
+                asyncio.run(self.bot_module.process_buy_rub(callback, _FakeBot(status="member")))
         finally:
             self.bot_module._create_rub_payment_link_for_bot = old_create
             self.bot_module.enabled_provider_catalog = old_catalog
@@ -1311,7 +1372,8 @@ class BotPaywallTests(unittest.TestCase):
                 {"code": "lavatop", "label": "Lava.top", "supports_bot": True},
             ]
             self.bot_module._create_rub_payment_link_for_bot = _fake_create_payment_link
-            asyncio.run(self.bot_module.process_buy_rub(callback, _FakeBot(status="member")))
+            with self._checkout_gate_green():
+                asyncio.run(self.bot_module.process_buy_rub(callback, _FakeBot(status="member")))
         finally:
             self.bot_module._create_rub_payment_link_for_bot = old_create
             self.bot_module.enabled_provider_catalog = old_catalog
@@ -1327,7 +1389,8 @@ class BotPaywallTests(unittest.TestCase):
                 {"code": "lavatop", "label": "Lava.top", "supports_bot": True},
                 {"code": "pally", "label": "Paypalich", "supports_bot": True},
             ]
-            keyboard = self.bot_module._build_tariff_payment_choice_keyboard(tg_id=1001, tariff_key="1_month")
+            with self._checkout_gate_green():
+                keyboard = self.bot_module._build_tariff_payment_choice_keyboard(tg_id=1001, tariff_key="1_month")
         finally:
             self.bot_module.enabled_provider_catalog = old_catalog
 
@@ -1345,7 +1408,8 @@ class BotPaywallTests(unittest.TestCase):
             self.bot_module.enabled_provider_catalog = lambda: [
                 {"code": "lavatop", "label": "Lava.top", "supports_bot": True},
             ]
-            rows = self.bot_module._tariff_payment_choice_keyboard_specs(tg_id=1001, tariff_key="1_month")
+            with self._checkout_gate_green():
+                rows = self.bot_module._tariff_payment_choice_keyboard_specs(tg_id=1001, tariff_key="1_month")
         finally:
             self.bot_module.enabled_provider_catalog = old_catalog
 

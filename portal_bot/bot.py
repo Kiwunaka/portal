@@ -26,7 +26,11 @@ import qrcode
 from sqlalchemy.exc import IntegrityError
 from copy_catalog import get_copy_text
 from node_policy import canonical_free_node_code, free_pool_node_codes
-from payment_providers import enabled_provider_catalog, normalize_provider as normalize_payment_provider
+from payment_providers import (
+    enabled_provider_catalog,
+    normalize_provider as normalize_payment_provider,
+    paid_checkout_launch_evidence_issues,
+)
 from public_urls import build_subscription_url as build_public_subscription_url
 try:
     from aiogram import Bot, Dispatcher, F, Router, BaseMiddleware
@@ -3450,12 +3454,57 @@ def _bot_api_base_candidates() -> list[str]:
 
 
 def _enabled_bot_rub_providers() -> list[dict[str, Any]]:
+    if _bot_checkout_runtime_issues():
+        return []
     rows: list[dict[str, Any]] = []
     for row in enabled_provider_catalog():
         code = normalize_payment_provider(str(row.get("code") or ""))
         if code == BOT_PUBLIC_RUB_PROVIDER_CODE and bool(row.get("supports_bot")):
             rows.append(row)
     return rows
+
+
+def _safe_public_http_url(value: str | None) -> bool:
+    raw = str(value or "").strip()
+    if not raw:
+        return False
+    try:
+        parsed = urlsplit(raw)
+    except Exception:
+        return False
+    return parsed.scheme in {"http", "https"} and bool(parsed.netloc)
+
+
+def _bot_checkout_runtime_issues() -> list[tuple[str, str]]:
+    issues: list[tuple[str, str]] = []
+    if not _env_bool("RUB_CHECKOUT_ENABLED", default=False):
+        issues.append(("checkout_disabled", "RUB checkout is disabled"))
+    if not CHECKOUT_TICKET_SECRET:
+        issues.append(("missing_checkout_ticket_secret", "CHECKOUT_TICKET_SECRET is empty"))
+    if not str(PAY_CHECKOUT_URL or "").strip():
+        issues.append(("missing_checkout_url", "PAY_CHECKOUT_URL is not configured"))
+    if not _safe_public_http_url(PUBLIC_API_BASE_URL):
+        issues.append(("missing_public_api_base_url", "PUBLIC_API_BASE_URL is empty"))
+    if not enabled_provider_catalog():
+        issues.append(("no_enabled_providers", "No RUB payment providers are configured"))
+
+    try:
+        from email_delivery_service import email_delivery_runtime_status
+
+        email_status = email_delivery_runtime_status()
+        if not bool(email_status.get("enabled")):
+            reasons = ", ".join(str(item) for item in (email_status.get("blocked_reasons") or []) if item) or "not_ready"
+            issues.append(
+                (
+                    "email_delivery_not_ready",
+                    f"Email delivery is not ready for paid access keys: {reasons}",
+                )
+            )
+    except Exception as exc:
+        issues.append(("email_delivery_not_ready", f"Email delivery readiness check failed: {exc}"))
+
+    issues.extend(paid_checkout_launch_evidence_issues())
+    return issues
 
 
 def _rub_provider_by_code(provider_code: str) -> dict[str, Any] | None:

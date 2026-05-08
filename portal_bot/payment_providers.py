@@ -6,6 +6,7 @@ import logging
 import os
 import re
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Any
 
 import aiohttp
@@ -137,6 +138,67 @@ def _env_bool(name: str, default: bool = False) -> bool:
     if not raw:
         return bool(default)
     return raw in {"1", "true", "yes", "on"}
+
+
+def paid_checkout_launch_evidence_path() -> Path:
+    configured = (
+        os.getenv("PAID_CHECKOUT_LAUNCH_EVIDENCE_PATH")
+        or os.getenv("PAID_CHECKOUT_LAUNCH_EVIDENCE_FILE")
+        or ""
+    ).strip()
+    if configured:
+        candidate = Path(configured).expanduser()
+        if not candidate.is_absolute():
+            candidate = Path(__file__).resolve().parents[1] / candidate
+        return candidate
+    return Path(__file__).resolve().parents[1] / "docs" / "audit-artifacts" / "paid-checkout-launch-evidence-2026-05-07.json"
+
+
+def paid_checkout_launch_evidence_issues() -> list[tuple[str, str]]:
+    if not _env_bool("PAID_CHECKOUT_LAUNCH_EVIDENCE_REQUIRED", default=True):
+        return []
+
+    path = paid_checkout_launch_evidence_path()
+    try:
+        payload = json.loads(path.read_text(encoding="utf-8"))
+    except FileNotFoundError:
+        return [
+            (
+                "paid_checkout_launch_evidence_missing",
+                "Paid checkout launch evidence is missing; keep RUB checkout unavailable until redacted evidence is attached",
+            )
+        ]
+    except Exception:
+        return [
+            (
+                "paid_checkout_launch_evidence_invalid",
+                "Paid checkout launch evidence is invalid; keep RUB checkout unavailable until redacted evidence is attached",
+            )
+        ]
+
+    safe = bool(payload.get("safe_to_enable_paid_checkout"))
+    ok = bool(payload.get("ok"))
+    if safe and ok:
+        return []
+
+    classification = str(payload.get("classification") or "not_ready").strip() or "not_ready"
+    pending_checks: list[str] = []
+    for item in payload.get("checks") or []:
+        if not isinstance(item, dict):
+            continue
+        status = str(item.get("status") or "").strip().upper()
+        if status in {"PASS", "OK", "GREEN"}:
+            continue
+        name = re.sub(r"[^a-zA-Z0-9_.-]+", "_", str(item.get("name") or "evidence")).strip("_")
+        if name:
+            pending_checks.append(name[:80])
+    suffix = f": {', '.join(pending_checks[:6])}" if pending_checks else ""
+    return [
+        (
+            "paid_checkout_launch_evidence_not_green",
+            f"Paid checkout launch evidence is not green ({classification}){suffix}",
+        )
+    ]
 
 
 def _env_int(name: str, default: int) -> int:
