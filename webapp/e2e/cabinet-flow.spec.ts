@@ -564,10 +564,12 @@ test.describe("Cabinet flow", () => {
 
     await expect(page.getByRole("heading", { name: "Email-вход" })).toBeVisible();
     await expect(page.locator("main")).not.toContainText("Email-продолжение пока честно помечено как готовящееся");
+    await expect(page.getByPlaceholder("Пароль")).toHaveAttribute("autocomplete", "current-password");
 
     await page.getByRole("button", { name: "Создать аккаунт" }).first().click();
     await page.getByPlaceholder("email@example.com").fill("reader@pokrov.test");
     await page.getByPlaceholder("Имя").fill("Reader");
+    await expect(page.getByPlaceholder("Пароль")).toHaveAttribute("autocomplete", "new-password");
     await page.getByPlaceholder("Пароль").fill("StrongPass123!");
     await page.getByRole("button", { name: "Создать аккаунт" }).last().click();
 
@@ -603,6 +605,7 @@ test.describe("Cabinet flow", () => {
     expect(requests.recoveryStart).toEqual([{ email: "reader@pokrov.test" }]);
 
     await page.getByPlaceholder("Код восстановления").fill("  reset-token  ");
+    await expect(page.getByPlaceholder("Новый пароль")).toHaveAttribute("autocomplete", "new-password");
     await page.getByPlaceholder("Новый пароль").fill("FreshPass456!");
     await page.getByRole("button", { name: "Сбросить пароль и войти" }).click();
     await expect(page).toHaveURL(/\/dashboard\/?$/);

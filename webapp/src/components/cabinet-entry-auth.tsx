@@ -208,8 +208,8 @@ export default function CabinetEntryAuth({ siteUrl }: { siteUrl: string }) {
 
             {emailMode === "login" ? (
               <form className="space-y-3" onSubmit={submitLogin}>
-                <input className={inputClass} value={email} onChange={(event) => setEmail(event.target.value)} type="email" placeholder="email@example.com" required />
-                <input className={inputClass} value={password} onChange={(event) => setPassword(event.target.value)} type="password" placeholder="Пароль" required />
+                <input className={inputClass} value={email} onChange={(event) => setEmail(event.target.value)} type="email" autoComplete="email" placeholder="email@example.com" required />
+                <input className={inputClass} value={password} onChange={(event) => setPassword(event.target.value)} type="password" autoComplete="current-password" placeholder="Пароль" required />
                 <button type="submit" disabled={emailBusy} className="btn-primary rounded-2xl px-5 py-3 text-sm font-semibold disabled:opacity-60">
                   Войти
                 </button>
@@ -218,9 +218,9 @@ export default function CabinetEntryAuth({ siteUrl }: { siteUrl: string }) {
 
             {emailMode === "register" ? (
               <form className="space-y-3" onSubmit={submitRegister}>
-                <input className={inputClass} value={email} onChange={(event) => setEmail(event.target.value)} type="email" placeholder="email@example.com" required />
-                <input className={inputClass} value={displayName} onChange={(event) => setDisplayName(event.target.value)} placeholder="Имя" />
-                <input className={inputClass} value={password} onChange={(event) => setPassword(event.target.value)} type="password" placeholder="Пароль" required />
+                <input className={inputClass} value={email} onChange={(event) => setEmail(event.target.value)} type="email" autoComplete="email" placeholder="email@example.com" required />
+                <input className={inputClass} value={displayName} onChange={(event) => setDisplayName(event.target.value)} autoComplete="name" placeholder="Имя" />
+                <input className={inputClass} value={password} onChange={(event) => setPassword(event.target.value)} type="password" autoComplete="new-password" placeholder="Пароль" required />
                 <button type="submit" disabled={emailBusy} className="btn-primary rounded-2xl px-5 py-3 text-sm font-semibold disabled:opacity-60">
                   Создать аккаунт
                 </button>
@@ -238,9 +238,9 @@ export default function CabinetEntryAuth({ siteUrl }: { siteUrl: string }) {
 
             {emailMode === "recover" ? (
               <form className="space-y-3" onSubmit={submitRecovery}>
-                <input className={inputClass} value={email} onChange={(event) => setEmail(event.target.value)} type="email" placeholder="email@example.com" required />
+                <input className={inputClass} value={email} onChange={(event) => setEmail(event.target.value)} type="email" autoComplete="email" placeholder="email@example.com" required />
                 <input className={inputClass} value={recoveryToken} onChange={(event) => setRecoveryToken(event.target.value)} placeholder="Код восстановления" />
-                <input className={inputClass} value={newPassword} onChange={(event) => setNewPassword(event.target.value)} type="password" placeholder="Новый пароль" required={Boolean(recoveryToken)} />
+                <input className={inputClass} value={newPassword} onChange={(event) => setNewPassword(event.target.value)} type="password" autoComplete="new-password" placeholder="Новый пароль" required={Boolean(recoveryToken)} />
                 <button type="submit" disabled={emailBusy} className="btn-primary rounded-2xl px-5 py-3 text-sm font-semibold disabled:opacity-60">
                   {recoveryToken ? "Сбросить пароль и войти" : "Отправить письмо"}
                 </button>
