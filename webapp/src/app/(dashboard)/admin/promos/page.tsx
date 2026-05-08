@@ -53,7 +53,13 @@ const LEGACY_GIFT_TYPES: Array<{ value: "mini" | "standard" | "premium"; label: 
 ];
 
 function normalizeKey(value: string): string {
-  return String(value || "").trim().toUpperCase();
+  return String(value || "")
+    .trim()
+    .replace(/[\u2010\u2011\u2012\u2013\u2014\u2212_]+/g, "-")
+    .replace(/\s+/g, "-")
+    .replace(/-+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .toUpperCase();
 }
 
 function createAssignmentState(

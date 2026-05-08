@@ -37,12 +37,16 @@ def _generate_gift_code() -> str:
     return f"POKROV-{token[:4]}-{token[4:]}"
 
 
-def _normalize_gift_code(value: str) -> str:
+def normalize_gift_code(value: str) -> str:
     code = str(value or "").strip().upper()
-    code = re.sub(r"[\u2013\u2014_]+", "-", code)
+    code = re.sub(r"[\u2010\u2011\u2012\u2013\u2014\u2212_]+", "-", code)
     code = re.sub(r"\s+", "-", code)
     code = re.sub(r"-+", "-", code)
     return code.strip("-")
+
+
+def _normalize_gift_code(value: str) -> str:
+    return normalize_gift_code(value)
 
 
 def _plan_info_from_card_type(s, card_type: str) -> dict[str, Any] | None:

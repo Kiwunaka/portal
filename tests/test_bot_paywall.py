@@ -840,7 +840,7 @@ class BotPaywallTests(unittest.TestCase):
 
         gift_code = self.bot_module.create_gift_card(2002, "standard")
         self.assertTrue(gift_code)
-        human_code = str(gift_code).replace("-", " ")
+        human_code = str(gift_code).replace("-", "\u2011", 1).replace("-", "\u2212", 1)
 
         ok, _msg = asyncio.run(self.bot_module.redeem_gift_card(human_code.lower(), 1001, _FakeBot(status="member")))
 

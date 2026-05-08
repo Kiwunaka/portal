@@ -843,6 +843,7 @@ from free_cycle_service import mark_user_became_free
 from gift_cards_service import (
     create_gift_card as create_gift_card_service,
     get_gift_card as get_gift_card_service,
+    normalize_gift_code as normalize_gift_code_service,
     redeem_gift_card as redeem_gift_card_service,
 )
 from pay_attempts_service import (
@@ -2554,7 +2555,7 @@ def get_gift_card(code: str) -> dict | None:
 
 async def redeem_gift_card(code: str, recipient_tg_id: int, bot) -> tuple[bool, str]:
     """Redeem a gift card. Returns (success, message)."""
-    norm_code = str(code or "").strip().upper()
+    norm_code = normalize_gift_code_service(str(code or ""))
     if not norm_code:
         _track_bonus_event(tg_id=int(recipient_tg_id), event_name="gift_redeem_denied", meta={"reason": "invalid_code"})
     if norm_code:

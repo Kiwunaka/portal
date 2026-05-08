@@ -205,7 +205,7 @@ function publicCheckoutExceptionMessage(error: unknown, fallback: string): strin
 function normalizeAccessKey(value: string): string {
   return String(value || "")
     .trim()
-    .replace(/[\u2013\u2014_]+/g, "-")
+    .replace(/[\u2010\u2011\u2012\u2013\u2014\u2212_]+/g, "-")
     .replace(/\s+/g, "-")
     .replace(/-+/g, "-")
     .replace(/^-+|-+$/g, "")

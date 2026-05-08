@@ -12,7 +12,7 @@ import { useEffect, useState } from "react";
 function normalizeKey(value: string): string {
   return String(value || "")
     .trim()
-    .replace(/[–—_]+/g, "-")
+    .replace(/[\u2010\u2011\u2012\u2013\u2014\u2212_]+/g, "-")
     .replace(/\s+/g, "-")
     .replace(/-+/g, "-")
     .replace(/^-+|-+$/g, "")

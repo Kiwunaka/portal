@@ -452,6 +452,7 @@ def test_marketing_checkout_normalizes_access_keys_like_cabinet_redeem() -> None
     checkout_client = _read("app", "checkout", "checkout-client.tsx")
 
     assert "function normalizeAccessKey" in checkout_client
+    assert r"[\u2010\u2011\u2012\u2013\u2014\u2212_]+" in checkout_client
     assert 'normalizeAccessKey(searchParams.get("key") || "")' in checkout_client
     assert "const normalized = normalizeAccessKey(keyInput);" in checkout_client
     assert "fetchAccessKeyStatus(normalized)" in checkout_client

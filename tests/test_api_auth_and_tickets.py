@@ -1999,7 +1999,7 @@ class ApiAuthAndTicketsTests(unittest.TestCase):
         finally:
             s.close()
 
-        status = self.client.get("/api/access-keys/status/pokrov%20gift%202026")
+        status = self.client.get("/api/access-keys/status/pokrov\u2011gift\u22122026")
         self.assertEqual(status.status_code, 200, status.text)
         status_body = status.json()
         self.assertTrue(status_body.get("exists"))

@@ -1002,7 +1002,7 @@ test.describe("Cabinet flow", () => {
       });
     });
 
-    await page.goto("/redeem/?key=pokrov%20gift%202026");
+    await page.goto("/redeem/?key=pokrov%E2%80%91gift%E2%88%922026");
 
     await expect(page.getByRole("heading", { name: "Применить ключ" })).toBeVisible();
     await expect(page.locator("main")).toContainText("Ключ найден");
