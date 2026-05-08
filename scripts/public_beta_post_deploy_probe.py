@@ -221,12 +221,12 @@ def _provider_name(provider: Mapping[str, Any]) -> str:
     return ""
 
 
-def _provider_enabled(provider: Mapping[str, Any]) -> bool:
+def _provider_enabled(provider: Mapping[str, Any], *, catalog_enabled: bool = False) -> bool:
     if "enabled" in provider:
         return _truthy(provider.get("enabled"))
     if "available" in provider:
         return _truthy(provider.get("available"))
-    return False
+    return bool(catalog_enabled)
 
 
 def _payment_provider_check(payload: Mapping[str, Any], *, source: str) -> dict[str, Any]:
@@ -241,8 +241,9 @@ def _payment_provider_check(payload: Mapping[str, Any], *, source: str) -> dict[
 
     raw_providers = payload.get("providers")
     providers = [item for item in raw_providers if isinstance(item, dict)] if isinstance(raw_providers, list) else []
-    lava_enabled = any("lava" in _provider_name(item) and _provider_enabled(item) for item in providers)
-    freekassa_enabled = any("freekassa" in _provider_name(item) and _provider_enabled(item) for item in providers)
+    catalog_enabled = payload.get("ok") is True and payload.get("blocked") is not True
+    lava_enabled = any("lava" in _provider_name(item) and _provider_enabled(item, catalog_enabled=catalog_enabled) for item in providers)
+    freekassa_enabled = any("freekassa" in _provider_name(item) and _provider_enabled(item, catalog_enabled=catalog_enabled) for item in providers)
 
     if freekassa_enabled:
         return _check(

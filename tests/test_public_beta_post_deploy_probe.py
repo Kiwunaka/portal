@@ -133,6 +133,48 @@ def test_live_mode_runs_email_and_invoice_probes_when_access_inputs_exist() -> N
     assert "offer-secret" not in json.dumps(report, ensure_ascii=False)
 
 
+def test_payment_provider_catalog_accepts_live_api_provider_shape_without_enabled_flag() -> None:
+    module = _load_module()
+
+    report = module.build_report(
+        api_base_url="https://api.pokrov.space",
+        env={},
+        live=False,
+        runtime_fetcher=lambda path: {
+            "/api/auth/email/status": {
+                "enabled": True,
+                "public_enabled": True,
+                "delivery_url_configured": True,
+                "delivery_secret_configured": True,
+                "debug_echo": False,
+            },
+            "/api/payments/providers": {
+                "ok": True,
+                "blocked": False,
+                "providers": [{"code": "lavatop", "label": "Lava.top"}],
+            },
+        }[path],
+        command_runner=lambda *_args, **_kwargs: (_ for _ in ()).throw(AssertionError("unexpected command")),
+        brain_live_probe_report={
+            "checks": [
+                {"name": "email_delivery_verify", "status": "PASS", "missing": [], "source": "brain:portal-api"},
+                {"name": "email_delivery_reset", "status": "PASS", "missing": [], "source": "brain:portal-api"},
+                {"name": "email_delivery_payment_access_key", "status": "PASS", "missing": [], "source": "brain:portal-api"},
+                {"name": "lavatop_live_invoice_creation", "status": "PASS", "missing": [], "source": "brain:portal-api"},
+            ]
+        },
+        paid_evidence_report={
+            "classification": module.PASS,
+            "safe_to_enable_paid_checkout": True,
+            "checks": [],
+        },
+    )
+
+    checks = {check["name"]: check for check in report["checks"]}
+    assert checks["payment_provider_catalog"]["status"] == module.PASS
+    assert report["safe_to_enable_paid_checkout"] is True
+
+
 def test_brain_live_probe_report_can_prove_email_without_local_secrets() -> None:
     module = _load_module()
 
