@@ -1,6 +1,6 @@
 # Public Beta Completion Audit 2026-05-08
 
-Generated: 2026-05-08, after `docs/audit-artifacts/public-beta-handoff-2026-05-08.md`.
+Generated: 2026-05-08, refreshed after `docs/audit-artifacts/public-beta-handoff-2026-05-08.md`.
 
 ## Objective Restated
 
@@ -28,7 +28,7 @@ The workspace is prepared as far as current access allows, but final publication
 | Site and install page deployed | `https://pokrov.space/`, `https://pokrov.space/install/`, static release `20260508165715` | PASS | Runtime app links still not live. |
 | WebApp cabinet and admin deployed | `https://app.pokrov.space/`, `https://app.pokrov.space/admin/release/`, static smoke `200` | PASS | Admin auth screen rendered without Next overlay in unauthenticated browser check. |
 | Backend API live | `https://api.pokrov.space/api/health` returned `200` / `{"status":"ok"}` | PASS | Does not prove runtime app links or paid checkout. |
-| GitHub Releases APK/EXE distribution | `v0.2.0-beta.1` prerelease, APK SHA256 `1A369891641964A9A30A296E7D47111A07B6DDAAD5ABC293F7EF938A654DADB0`, EXE SHA256 `E340F36EC10149649373E0E7816C81B8C6873E9B95C7A85DC0F6AD708DB2C70D` | STAGED_PASS | Published as prerelease staging, not final runtime download path. |
+| GitHub Releases APK/EXE distribution | `v0.2.0-beta.1` prerelease, APK SHA256 `1A369891641964A9A30A296E7D47111A07B6DDAAD5ABC293F7EF938A654DADB0`, EXE SHA256 `E340F36EC10149649373E0E7816C81B8C6873E9B95C7A85DC0F6AD708DB2C70D`, `POKROV-app/main` commit `8a14d7b` | STAGED_PASS | Published as prerelease staging, not final runtime download path; GitHub release notes now explicitly say `NO-GO`. |
 | Exclude stores, Apple release, appcast, MSIX/ZIP first-layer public distribution | Handoff and launch copy keep outside-store APK/EXE path only | PASS | Windows EXE remains unsigned; do not claim trusted signing. |
 | Runtime `/api/client/apps` exposes release APK/EXE/docs | `docs/audit-artifacts/runtime-app-download-smoke-brain-2026-05-08-post-handoff.json` | BLOCKED_BY_ACCESS | Live payload still has empty Android/Windows/docs URLs. |
 | Runtime link sync guarded | `docs/audit-artifacts/runtime-link-sync-guard-2026-05-08.md`; dry-run passes, mutation requires GO evidence | PASS_AS_GUARD | Guard is green; sync itself is not authorized. |
@@ -46,10 +46,10 @@ The workspace is prepared as far as current access allows, but final publication
 | Backend/payment/email focused verification | Latest handoff lists email/payment/access-key pytest passes | PASS | Pytest Windows atexit cleanup warning was non-fatal. |
 | Web admin/browser verification | `npm.cmd run test:e2e:admin -- --grep "release cockpit"` passed 3 tests | PASS | Full broad rerun was avoided to reduce churn. |
 | Marketing/copy checks | `scripts/text_integrity.py docs/launch/telegram-announcement.md`; launch handoff text integrity | PASS | Public copy remains RU/release-honest. |
-| Client build/preflight evidence | Client handoff metadata and GitHub release assets in `POKROV-app` | STAGED_PASS | Physical Android audit is operator-attested; Windows unsigned risk accepted. |
+| Client build/preflight evidence | `C:/Users/kiwun/Documents/ai/POKROV-app/artifacts/releases/release-handoff.json`, versioned handoff `0.2.0-beta.1+20260508`, Windows packaging smoke with `-OfflinePubGet`, and GitHub release assets | STAGED_PASS | Physical Android audit is operator-attested; Windows unsigned risk accepted. |
 | Visual QA | Prior release gate/e2e/visual smoke artifacts referenced by handoff and launch decision | PARTIAL_PASS | No new broad visual sweep after the latest small static deploy. |
 | Current-origin and brain-origin gates | Launch decision reads current full/quick and brain quick gate artifacts | PASS_WITH_SCOPE_LIMITS | Green gates do not cover missing runtime links, Lava proof, or live inbox delivery. |
-| GitHub Actions repo guardrails | Guardrails run `25570326956` on portal commit `417f418b89a85c3894e0e2a2aa4948d555c9fb93` | PASS_WITH_SCOPE_LIMITS | CI guardrails are green, but skip operator-only client/browser gates as `SKIPPED_CI_UNAVAILABLE` and are not public-release authorization. |
+| GitHub Actions repo guardrails | Guardrails run `25571494051` on portal commit `62da31eed21feaafaf1dc1c580be70d274b5f4d3` | PASS_WITH_SCOPE_LIMITS | CI guardrails are green on the forced Node 24 actions runtime, but skip operator-only client/browser gates as `SKIPPED_CI_UNAVAILABLE` and are not public-release authorization. |
 | Static/backend deploy | Static release `20260508165715`; backend services active from earlier deploy | PASS | Runtime env link sync intentionally not applied. |
 | RU-origin | `docs/audit-artifacts/ru-origin-skip-accepted-2026-05-08.md` | SKIPPED_BY_OPERATOR | Do not claim RU-origin Telegram readiness. |
 | Release handoff | `docs/audit-artifacts/public-beta-handoff-2026-05-08.md` | PASS_NO_GO | Final output exists but says `NO-GO`. |

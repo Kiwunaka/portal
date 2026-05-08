@@ -1,6 +1,6 @@
 # Public Beta Handoff 2026-05-08
 
-Generated: 2026-05-08 19:10 MSK
+Generated: 2026-05-08 21:22 MSK
 
 ## Verdict
 
@@ -22,6 +22,8 @@ The release is prepared as far as current access allows: GitHub prerelease APK/E
 ## What Changed Since The Previous Handoff
 
 - Client release metadata now points to the staged GitHub APK/EXE while keeping runtime sync, public announcement, and paid checkout blocked without explicit evidence.
+- `POKROV-app/main` is pushed through commit `8a14d7b` (`Stage public beta client handoff`) with stable handoff `C:/Users/kiwun/Documents/ai/POKROV-app/artifacts/releases/release-handoff.json` and versioned handoff `C:/Users/kiwun/Documents/ai/POKROV-app/artifacts/releases/pokrov-app/0.2.0-beta.1+20260508/release-handoff.json`.
+- GitHub prerelease notes for `v0.2.0-beta.1` were refreshed on 2026-05-08 to state `NO-GO`, runtime links closed, email proof pending, Lava.top proof pending, and no RU-origin readiness claim.
 - Admin release cockpit no longer has a permanent static runtime-download blocker; it reads the live `/api/client/apps` gate.
 - Admin release cockpit now shows the exact operator inputs needed next: runtime-link GO markers, `EMAIL_PROBE_TO`, and `LAVATOP_PROBE_EMAIL`.
 - Operator unblock packet: `docs/audit-artifacts/public-beta-unblock-packet-2026-05-08.md`.
@@ -32,7 +34,7 @@ The release is prepared as far as current access allows: GitHub prerelease APK/E
 - External access preflight public-claim guardrails now emit Russian operator text.
 - Machine-readable launch decision now emits Russian safe/unsafe public claims.
 - Public beta post-deploy probe and launch decision JSON were refreshed after the latest deploy/probe checks.
-- GitHub Actions Guardrails are green on portal `master` at commit `417f418`; this is CI-safe repo evidence, not public-release authorization.
+- GitHub Actions Guardrails are green on portal `master` at commit `62da31e`; this is CI-safe repo evidence, not public-release authorization.
 - Support/admin/redeem/promo/payment/email surfaces have the focused fixes and tests described in the current workspace diff.
 
 ## Verification Snapshot
@@ -71,16 +73,20 @@ The release is prepared as far as current access allows: GitHub prerelease APK/E
 - `python scripts\text_integrity.py docs\audit-artifacts\public-beta-completion-audit-2026-05-08.md scripts\public_beta_launch_decision.py` -> PASS.
 - `python scripts\text_integrity.py docs\launch\telegram-announcement.md` -> PASS.
 - `python -m json.tool` on refreshed decision/probe JSON artifacts -> PASS.
-- GitHub Actions Guardrails run `25570326956` on commit `417f418b89a85c3894e0e2a2aa4948d555c9fb93` -> PASS; CI release guardrails are scoped and skip operator-only client/browser gates as `SKIPPED_CI_UNAVAILABLE`.
+- `powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\validate-seed.ps1` in `C:/Users/kiwun/Documents/ai/POKROV-app` -> PASS.
+- `powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\bootstrap-workspace.ps1 -OfflinePubGet` in `C:/Users/kiwun/Documents/ai/POKROV-app` -> PASS.
+- `powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\build-windows-release.ps1 -SkipAnalyze -SkipTests -SkipBuild -OfflinePubGet` in `C:/Users/kiwun/Documents/ai/POKROV-app` -> PASS, unsigned setup EXE and portable ZIP staged locally.
+- `python scripts\remote_brain_apply_release_handoff.py --brain-ip 82.21.114.104 --metadata-file ..\POKROV-app\artifacts\releases\release-handoff.json --dry-run` -> PASS, validates staged `APP_*` values without SSH write or restart.
+- GitHub Actions Guardrails run `25571494051` on commit `62da31eed21feaafaf1dc1c580be70d274b5f4d3` -> PASS; CI release guardrails are scoped, force the Node 24 actions runtime, and skip operator-only client/browser gates as `SKIPPED_CI_UNAVAILABLE`.
 
 ## Live Status
 
 - API health: PASS, `200`, status `ok`.
-- GitHub Actions Guardrails: PASS, run `25570326956`, commit `417f418b89a85c3894e0e2a2aa4948d555c9fb93`.
+- GitHub Actions Guardrails: PASS, run `25571494051`, commit `62da31eed21feaafaf1dc1c580be70d274b5f4d3`.
 - Backend deploy: latest portal code deploy restarted `portal-api`, `portal-bot`, `portal-helpbot`, and `portal-feedbackbot`; all are active.
 - Email runtime status: PASS, public mode enabled, delivery URL and secret configured, debug echo off, no blocked reasons.
 - Payment provider status: `BLOCKED_BY_ACCESS`; `/api/payments/providers` returns `blocked=true`, no providers, reason `paid_checkout_launch_evidence_missing`.
-- GitHub release: published prerelease, not draft. APK and EXE assets are uploaded.
+- GitHub release: published prerelease, not draft. APK and EXE assets are uploaded; release notes now explicitly say `NO-GO` and keep runtime links/payment/public announcement closed.
 - Static deploy: latest static release id `20260508165715`; `https://app.pokrov.space/admin/release/` and `https://pokrov.space/install/` return `200`.
 
 ## Remaining Blockers
