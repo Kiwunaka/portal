@@ -128,6 +128,54 @@ class ReleaseGateCheckTests(unittest.TestCase):
         self.assertIn("tests/test_public_beta_external_access_preflight.py", commands["External access preflight tooling"])
         self.assertIn("tests/test_public_beta_launch_decision.py", commands["External access preflight tooling"])
 
+    def test_ci_quick_gate_keeps_repo_checks_but_skips_operator_client_gates(self) -> None:
+        gates = self.module._ci_quick_gates()
+
+        names = [name for name, _cmd, _cwd in gates]
+
+        self.assertIn("Critical worker regression", names)
+        self.assertIn("Payment and marketing release honesty", names)
+        self.assertIn("Paid checkout launch evidence tooling", names)
+        self.assertIn("GitHub release tooling", names)
+        self.assertIn("External access preflight tooling", names)
+        self.assertIn("Marketing production build", names)
+        self.assertIn("WebApp production build", names)
+        self.assertNotIn("Client preflight", names)
+        self.assertNotIn("Client security smoke", names)
+        self.assertNotIn("Client portal Flutter tests", names)
+        self.assertNotIn("WebApp Playwright E2E", names)
+
+    def test_ci_skipped_operator_gates_are_not_rendered_as_release_passes(self) -> None:
+        skipped = self.module._ci_skipped_operator_gates()
+
+        self.assertEqual(
+            {self.module._result_status(result) for result in skipped},
+            {"SKIPPED_CI_UNAVAILABLE"},
+        )
+        self.assertTrue(all("SKIPPED_CI_UNAVAILABLE" in result.output_tail for result in skipped))
+
+    def test_ci_guardrail_report_marks_current_origin_as_ci_only(self) -> None:
+        results = [
+            self.module.GateResult("Critical worker regression", "pytest", 0, 0.1, "ok"),
+            *self.module._ci_skipped_operator_gates(),
+        ]
+        context = self.module.ReportContext(
+            quick=True,
+            brain_ip="",
+            client_platform_gates=[],
+            runtime_smoke_requested=False,
+            android_audit_requested=False,
+            android_audit_required=False,
+            ci_guardrails=True,
+        )
+
+        report = self.module._render_markdown(results, context=context)
+
+        self.assertIn("- Status: `CI_GUARDRAILS_PASS_WITH_SKIPS`", report)
+        self.assertIn("- Gate set: `ci-guardrails`", report)
+        self.assertIn("| current-origin check | local ci-guardrails gate set | CI_GUARDRAILS_ONLY |", report)
+        self.assertIn("| Client preflight | SKIPPED_CI_UNAVAILABLE | 0 |", report)
+
     def test_brain_ip_adds_runtime_static_verify_and_node_readiness_gates(self) -> None:
         gates = self.module._brain_origin_gates(
             brain_ip="82.21.114.104",

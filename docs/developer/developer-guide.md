@@ -208,6 +208,7 @@ Notes:
 
 - `release_gate_check.py` now runs the canonical public-v1 `pytest` matrix plus admin/auth regression, client security smoke, `python scripts/run_client_release_gate.py test --suite full`, lifecycle smoke, link checks, marketing/webapp production builds, admin webapp smoke, Playwright browser E2E, and UI visual smoke.
 - `release_gate_check.py --quick` swaps the default full client Flutter suite for `python scripts/run_client_release_gate.py test --suite portal`.
+- GitHub Actions uses `release_gate_check.py --quick --ci-guardrails`; this is a CI-safe repository guardrail subset and reports operator-only client/browser gates as `SKIPPED_CI_UNAVAILABLE`, not as public-beta release authorization.
 - on Windows, `release_gate_check.py` injects a repo-local disposable `--basetemp` for every `python -m pytest ...` subprocess so release gates do not inherit a broken global `%TEMP%\\pytest-of-<user>\\pytest-current` cleanup tail from the workstation.
 - add `--client-platform-gates windows,android-apk,android-aab` or set `CLIENT_PLATFORM_GATES` when you want the same report to include artifact-producing client builds.
 - once `CLIENT_PLATFORM_GATES` includes `android-apk` or `android-aab`, `release_gate_check.py` requires `ANDROID_AUDIT_SERIAL` or `ANDROID_AUDIT_EVIDENCE_JSON`; emulator serials stay preflight-only and imported evidence must validate to a physical release-build audit `PASS`.

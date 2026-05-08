@@ -59,6 +59,7 @@ class GateResult:
     returncode: int
     duration_sec: float
     output_tail: str
+    status: str = ""
 
 
 @dataclass
@@ -69,6 +70,7 @@ class ReportContext:
     runtime_smoke_requested: bool
     android_audit_requested: bool
     android_audit_required: bool
+    ci_guardrails: bool = False
 
 
 _SECRET_OPTION_RE = re.compile(
@@ -210,10 +212,35 @@ def _run_cmd(*, name: str, command: list[str], cwd: Path) -> GateResult:
     )
 
 
+def _ci_skipped_result(*, name: str, command: str, reason: str) -> GateResult:
+    return GateResult(
+        name=name,
+        command=command,
+        returncode=0,
+        duration_sec=0.0,
+        output_tail=f"SKIPPED_CI_UNAVAILABLE: {reason}",
+        status="SKIPPED_CI_UNAVAILABLE",
+    )
+
+
+def _result_status(result: GateResult) -> str:
+    if result.status:
+        return result.status
+    return "PASS" if result.returncode == 0 else "FAIL"
+
+
+def _overall_status(results: list[GateResult], context: ReportContext) -> str:
+    if any(result.returncode != 0 for result in results):
+        return "FAIL"
+    if context.ci_guardrails and any(_result_status(result).startswith("SKIPPED_") for result in results):
+        return "CI_GUARDRAILS_PASS_WITH_SKIPS"
+    return "PASS"
+
+
 def _status_for_gate(results: list[GateResult], gate_name: str) -> str:
     for result in results:
         if result.name == gate_name:
-            return "PASS" if result.returncode == 0 else "FAIL"
+            return _result_status(result)
     return "NOT_RUN"
 
 
@@ -248,8 +275,13 @@ def _ru_origin_status(skip_evidence_path: Path = DEFAULT_RU_ORIGIN_SKIP_EVIDENCE
 
 
 def _render_evidence_classification(results: list[GateResult], context: ReportContext) -> list[str]:
-    gate_set = "quick" if context.quick else "default"
-    current_status = _current_origin_status(results)
+    gate_set = "ci-guardrails" if context.ci_guardrails else ("quick" if context.quick else "default")
+    current_status = "CI_GUARDRAILS_ONLY" if context.ci_guardrails else _current_origin_status(results)
+    current_notes = (
+        "GitHub Actions repo guardrails only; not operator-workstation release evidence."
+        if context.ci_guardrails
+        else "Runs on the operator workstation; does not prove brain-origin or RU-origin reachability."
+    )
 
     brain_status = (
         _combined_status_for_gates(results, ["Brain-origin runtime/static verify", "Node predeploy readiness"])
@@ -283,7 +315,7 @@ def _render_evidence_classification(results: list[GateResult], context: ReportCo
         "|---|---|---|---|",
         (
             f"| current-origin check | local {gate_set} gate set | {current_status} | "
-            "Runs on the operator workstation; does not prove brain-origin or RU-origin reachability. |"
+            f"{current_notes} |"
         ),
         (
             f"| brain-origin check | `scripts/verify_brain_ready.py` plus node predeploy readiness | {brain_status} | "
@@ -312,7 +344,6 @@ def _render_evidence_classification(results: list[GateResult], context: ReportCo
 
 def _render_markdown(results: list[GateResult], *, context: ReportContext | None = None) -> str:
     created_at = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    ok = all(r.returncode == 0 for r in results)
     context = context or ReportContext(
         quick=False,
         brain_ip="",
@@ -321,22 +352,25 @@ def _render_markdown(results: list[GateResult], *, context: ReportContext | None
         android_audit_requested=False,
         android_audit_required=False,
     )
+    overall_status = _overall_status(results, context)
+    gate_set = "ci-guardrails" if context.ci_guardrails else ("quick" if context.quick else "default")
     lines: list[str] = []
     lines.append("# Release Gate Report")
     lines.append("")
     lines.append(f"- Generated at: `{created_at}`")
-    lines.append(f"- Status: `{'PASS' if ok else 'FAIL'}`")
-    lines.append(f"- Gate set: `{'quick' if context.quick else 'default'}`")
+    lines.append(f"- Status: `{overall_status}`")
+    lines.append(f"- Gate set: `{gate_set}`")
+    lines.append(f"- CI guardrail mode: `{'yes' if context.ci_guardrails else 'no'}`")
     lines.append(f"- Brain IP supplied: `{'yes' if str(context.brain_ip or '').strip() else 'no'}`")
     lines.append(f"- Client platform gates: `{', '.join(context.client_platform_gates) or 'none'}`")
     lines.append(f"- Android audit required by selected gates: `{'yes' if context.android_audit_required else 'no'}`")
     lines.append("")
     lines.append("## Summary")
     lines.append("")
-    lines.append("| Gate | Exit code | Duration (s) |")
-    lines.append("|---|---:|---:|")
+    lines.append("| Gate | Status | Exit code | Duration (s) |")
+    lines.append("|---|---|---:|---:|")
     for r in results:
-        lines.append(f"| {r.name} | {r.returncode} | {r.duration_sec:.2f} |")
+        lines.append(f"| {r.name} | {_result_status(r)} | {r.returncode} | {r.duration_sec:.2f} |")
     lines.append("")
     lines.extend(_render_evidence_classification(results, context))
     lines.append("## Command Tails")
@@ -724,6 +758,47 @@ def _quick_gates(*, client_platform_gates: list[str] | None = None) -> list[tupl
     return gates
 
 
+def _ci_quick_gates() -> list[tuple[str, list[str], Path]]:
+    return [
+        ("Critical worker regression", [sys.executable, "-m", "pytest", "tests/test_worker_retention.py", "-q"], REPO_ROOT),
+        _payment_marketing_release_honesty_gate(),
+        _paid_checkout_launch_evidence_tooling_gate(),
+        _github_release_tooling_gate(),
+        _external_access_preflight_tooling_gate(),
+        _api_lifecycle_smoke_gate(),
+        ("Public link checks", [sys.executable, "scripts/check-links.py"], REPO_ROOT),
+        ("Marketing production build", [_npm_exec(), "run", "build"], REPO_ROOT / "marketing"),
+        ("Admin webapp smoke", [sys.executable, "scripts/admin_webapp_smoke.py"], REPO_ROOT),
+        ("WebApp production build", [_npm_exec(), "run", "build"], REPO_ROOT / "webapp"),
+        ("UI visual smoke", [sys.executable, "scripts/ui_visual_smoke.py"], REPO_ROOT),
+    ]
+
+
+def _ci_skipped_operator_gates() -> list[GateResult]:
+    return [
+        _ci_skipped_result(
+            name="Client preflight",
+            command=f"{sys.executable} scripts/run_client_release_gate.py preflight",
+            reason="POKROV-app is a separate operator/client workspace and is not checked out in portal GitHub Actions.",
+        ),
+        _ci_skipped_result(
+            name="Client security smoke",
+            command=f"{sys.executable} scripts/client_security_smoke.py",
+            reason="requires the active POKROV-app client workspace.",
+        ),
+        _ci_skipped_result(
+            name="Client portal Flutter tests",
+            command=f"{sys.executable} scripts/run_client_release_gate.py test --suite portal",
+            reason="requires Flutter plus the active POKROV-app client workspace.",
+        ),
+        _ci_skipped_result(
+            name="WebApp Playwright E2E",
+            command=f"{_npm_exec()} run test:e2e",
+            reason="browser E2E remains an operator release gate; the npm script is workstation-oriented.",
+        ),
+    ]
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description="Run local release gates and save markdown report.")
     parser.add_argument(
@@ -735,6 +810,14 @@ def main() -> int:
         "--quick",
         action="store_true",
         help="Run a shorter gate set.",
+    )
+    parser.add_argument(
+        "--ci-guardrails",
+        action="store_true",
+        help=(
+            "Run the GitHub Actions-safe repo guardrail subset and record operator-only gates as "
+            "SKIPPED_CI_UNAVAILABLE. This is not release authorization."
+        ),
     )
     parser.add_argument("--brain-ip", default="")
     parser.add_argument("--web-domain", default="pokrov.space")
@@ -752,6 +835,10 @@ def main() -> int:
 
     try:
         client_platform_gates = _parse_client_platform_gates(args.client_platform_gates)
+        if args.ci_guardrails and client_platform_gates:
+            raise ValueError("--ci-guardrails cannot include client platform build gates")
+        if args.ci_guardrails and str(args.brain_ip or "").strip():
+            raise ValueError("--ci-guardrails cannot include brain-origin gates")
         android_localhost_audit_gate = _select_android_localhost_audit_gate(
             client_platform_gates=client_platform_gates
         )
@@ -760,7 +847,11 @@ def main() -> int:
         return 2
 
     gates: list[tuple[str, list[str], Path]] = []
-    if str(args.brain_ip or "").strip():
+    ci_skipped_results: list[GateResult] = []
+    if args.ci_guardrails:
+        gates.extend(_ci_quick_gates())
+        ci_skipped_results = _ci_skipped_operator_gates()
+    elif str(args.brain_ip or "").strip():
         gates.extend(
             _brain_origin_gates(
                 brain_ip=str(args.brain_ip).strip(),
@@ -773,8 +864,9 @@ def main() -> int:
             )
         )
 
-    gates.extend(_default_gates(client_platform_gates=client_platform_gates))
-    if args.quick:
+    if not args.ci_guardrails:
+        gates.extend(_default_gates(client_platform_gates=client_platform_gates))
+    if args.quick and not args.ci_guardrails:
         gates = []
         if str(args.brain_ip or "").strip():
             gates.extend(
@@ -790,17 +882,18 @@ def main() -> int:
             )
         gates.extend(_quick_gates(client_platform_gates=client_platform_gates))
 
-    runtime_smoke_gate = _optional_runtime_smoke_gate()
+    runtime_smoke_gate = None if args.ci_guardrails else _optional_runtime_smoke_gate()
     if runtime_smoke_gate is not None:
         gates.append(runtime_smoke_gate)
 
-    if android_localhost_audit_gate is not None:
+    if android_localhost_audit_gate is not None and not args.ci_guardrails:
         gates.append(android_localhost_audit_gate)
 
     results: list[GateResult] = []
     for name, cmd, cwd in gates:
         print(f"[gate] {name}: {' '.join(cmd)}")
         results.append(_run_cmd(name=name, command=cmd, cwd=cwd))
+    results.extend(ci_skipped_results)
 
     output_path = (REPO_ROOT / args.output).resolve()
     output_path.parent.mkdir(parents=True, exist_ok=True)
@@ -809,14 +902,15 @@ def main() -> int:
         brain_ip=str(args.brain_ip or "").strip(),
         client_platform_gates=client_platform_gates,
         runtime_smoke_requested=runtime_smoke_gate is not None,
-        android_audit_requested=android_localhost_audit_gate is not None,
+        android_audit_requested=android_localhost_audit_gate is not None and not args.ci_guardrails,
         android_audit_required=any(target in {"android-apk", "android-aab"} for target in client_platform_gates),
+        ci_guardrails=bool(args.ci_guardrails),
     )
     output_path.write_text(_render_markdown(results, context=context), encoding="utf-8")
 
     print(f"[report] {output_path}")
     for r in results:
-        print(f"[result] {r.name}: exit={r.returncode} duration={r.duration_sec:.2f}s")
+        print(f"[result] {r.name}: status={_result_status(r)} exit={r.returncode} duration={r.duration_sec:.2f}s")
 
     return 0 if all(r.returncode == 0 for r in results) else 2
 

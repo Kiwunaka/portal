@@ -491,6 +491,7 @@ Notes:
 
 - `release_gate_check.py` is the canonical local report generator for the public-v1 gate set.
 - `release_gate_check.py --quick` swaps the default full client Flutter suite for `python scripts/run_client_release_gate.py test --suite portal` and includes the focused payment/marketing release-honesty pytest gate for Lava-only bot payment exposure, public checkout structured data, and homepage CTA honesty.
+- `release_gate_check.py --quick --ci-guardrails` is only for GitHub Actions repository guardrails; it skips operator-only client/browser gates as `SKIPPED_CI_UNAVAILABLE` and must not be cited as a release-go decision.
 - on Windows, `release_gate_check.py` injects a repo-local disposable `--basetemp` for its `python -m pytest ...` gates so a broken workstation-level `%TEMP%\\pytest-of-<user>\\pytest-current` symlink does not pollute the release handoff tail.
 - `release_orchestrator.py --gates-only` is the one-command wrapper for the same gate pack, but it intentionally exits before release handoff sync, backend deploy, static deploy, and post-deploy verify.
 - `release_orchestrator.py --stage backend|static|deploy|verify` is the preferred recovery path when a previous full run timed out after a known completed phase; `deploy` means backend plus static, with gates and verify skipped.
