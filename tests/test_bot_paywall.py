@@ -390,6 +390,15 @@ class BotPaywallTests(unittest.TestCase):
         self.assertNotIn("APP_ANDROID_APK_URL", connect)
         self.assertNotIn("github.com", connect)
 
+    def test_support_renew_faq_is_honest_while_lavatop_checkout_is_closed(self) -> None:
+        renew = self.bot_module._support_faq_answer("renew")
+
+        self.assertIn("Оплата временно недоступна", renew)
+        self.assertIn("Lava.top", renew)
+        self.assertIn("Проверить статус продления", renew)
+        self.assertNotIn("Откройте оплату в ₽", renew)
+        self.assertNotIn("После успешной оплаты доступ обновится автоматически", renew)
+
     def test_webapp_route_url_keeps_legacy_base_path_and_drops_query(self) -> None:
         self.bot_module.WEBAPP_URL = "https://kiwunaka.space:8444/webapp/?v=20260320"
 
