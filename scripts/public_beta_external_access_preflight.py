@@ -19,7 +19,8 @@ SKIPPED_BY_OPERATOR = "SKIPPED_BY_OPERATOR"
 OPERATOR_ATTESTED = "OPERATOR_ATTESTED"
 
 DEFAULT_HANDOFF = Path("docs/audit-artifacts/public-beta-handoff-2026-05-08.md")
-DEFAULT_STAGED_APPS_JSON = Path("docs/audit-artifacts/staged-client-apps-2026-05-07.json")
+DEFAULT_CLIENT_RELEASE_HANDOFF = Path("../POKROV-app/artifacts/releases/release-handoff.json")
+DEFAULT_STAGED_APPS_JSON = DEFAULT_CLIENT_RELEASE_HANDOFF
 DEFAULT_RU_ORIGIN_JSON = Path("docs/audit-artifacts/ru-origin-mini-2026-05-07.json")
 DEFAULT_RU_ORIGIN_SKIP_EVIDENCE = Path("docs/audit-artifacts/ru-origin-skip-accepted-2026-05-08.md")
 DEFAULT_CLIENT_BUILD_EVIDENCE = Path("docs/audit-artifacts/client-build-evidence-2026-05-07.md")

@@ -27,7 +27,7 @@
   ],
   "inputs": {
     "handoff_path": "docs\\audit-artifacts\\public-beta-handoff-2026-05-08.md",
-    "staged_apps_json": "docs\\audit-artifacts\\staged-client-apps-2026-05-07.json",
+    "staged_apps_json": "..\\POKROV-app\\artifacts\\releases\\release-handoff.json",
     "ru_origin_json": "docs\\audit-artifacts\\ru-origin-mini-2026-05-07.json",
     "ru_origin_skip_evidence": "docs\\audit-artifacts\\ru-origin-skip-accepted-2026-05-08.md",
     "client_build_evidence": "docs\\audit-artifacts\\client-build-evidence-2026-05-07.md",
@@ -100,7 +100,7 @@
       "status": "PASS",
       "missing": [],
       "note": "Validates candidate /api/client/apps shape without probing URL reachability.",
-      "source": "docs\\audit-artifacts\\staged-client-apps-2026-05-07.json"
+      "source": "..\\POKROV-app\\artifacts\\releases\\release-handoff.json"
     },
     {
       "name": "public_beta_handoff_policy",

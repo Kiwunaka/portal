@@ -60,7 +60,7 @@ The workspace is prepared as far as current access allows, but final publication
 
 - Passing local or brain gates does not prove runtime `APP_*` links, live email inbox delivery, Lava.top payment evidence, RU-origin Telegram reachability, or final public authorization.
 - Passing GitHub Actions repo guardrails does not prove operator-only client/browser gates or authorize public publication.
-- GitHub prerelease asset reachability does not prove those links are live inside `/api/client/apps`.
+- GitHub prerelease asset reachability through the client handoff does not prove those links are live inside `/api/client/apps`.
 - Email runtime config being green does not prove a real verify/reset/access-key message reached an inbox.
 - A blocked payment provider catalog is correct launch honesty, not a paid-checkout launch.
 - Admin release cockpit being deployed proves visibility, not operator approval.

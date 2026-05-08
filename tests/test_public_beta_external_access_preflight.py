@@ -181,6 +181,12 @@ class PublicBetaExternalAccessPreflightTests(unittest.TestCase):
             "docs/audit-artifacts/runtime-app-download-smoke-brain-2026-05-08-post-handoff.json",
         )
 
+    def test_default_staged_apps_points_to_client_release_handoff(self) -> None:
+        self.assertEqual(
+            Path(self.module.DEFAULT_STAGED_APPS_JSON).as_posix(),
+            "../POKROV-app/artifacts/releases/release-handoff.json",
+        )
+
     def test_staged_apps_check_accepts_client_release_handoff_payload(self) -> None:
         with tempfile.TemporaryDirectory() as temp_root:
             handoff = Path(temp_root) / "release-handoff.json"

@@ -74,7 +74,7 @@ The current post-handoff brain-local signed smoke artifact is:
 
 It proves brain-local signed auth reaches `/api/client/apps`, but it remains blocked because live Android/Windows/docs URLs are empty.
 
-Before runtime sync, revalidate the staged payload:
+Before runtime sync, revalidate the client-owned handoff:
 
 ```powershell
 python scripts\runtime_app_download_smoke.py `
