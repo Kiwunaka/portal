@@ -238,6 +238,7 @@ def test_telegram_announcement_draft_stays_release_honest_and_readable() -> None
     assert "beta-" not in text
     assert "beta-сбор" not in text
     assert "релизный handoff" not in text
+    assert "Публиковать, если финальный пакет остается `NO-GO`" not in text
 
 
 def test_launch_pack_stays_ru_only_and_release_honest() -> None:
