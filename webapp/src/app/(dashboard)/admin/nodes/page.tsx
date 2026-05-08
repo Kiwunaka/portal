@@ -565,7 +565,7 @@ export default function AdminNodesPage() {
 
               <div className="mt-3 rounded-xl border border-white/15 bg-white/35 p-3 dark:border-white/10 dark:bg-white/[0.04]">
                 <div className="mb-2 flex items-center justify-between gap-2 text-sm font-semibold">
-                  <span>Transport</span>
+                  <span>Транспорт</span>
                   <span className={`badge ${transportHealth.label === "ok" || transportHealth.label === "healthy" ? "badge-success" : "badge-info"}`}>
                     {transportHealth.label}
                   </span>
@@ -574,12 +574,12 @@ export default function AdminNodesPage() {
                 {rootCauseSummary ? <p className="mt-2 text-xs text-slate-600 dark:text-slate-300">{rootCauseSummary}</p> : null}
                 {rootCauseDetail ? <p className="mt-1 text-xs text-slate-500">{rootCauseDetail}</p> : null}
                 <div className="mt-3 grid gap-2 text-xs sm:grid-cols-2">
-                  <p>Panel / control plane: <strong>{panelState}</strong></p>
-                  <p>Dataplane probe: <strong>{dataplaneState}</strong></p>
-                  <p>Probe stage: <strong>{probeStage}</strong></p>
-                  <p>Probe classification: <strong>{probeClassification}</strong></p>
-                  <p>Telegram app path: <strong>{telegramAppPath}</strong></p>
-                  <p>Telegram web path: <strong>{telegramWebPath}</strong></p>
+                  <p>Панель / control plane: <strong>{panelState}</strong></p>
+                  <p>Проба dataplane: <strong>{dataplaneState}</strong></p>
+                  <p>Этап пробы: <strong>{probeStage}</strong></p>
+                  <p>Классификация пробы: <strong>{probeClassification}</strong></p>
+                  <p>Путь Telegram app: <strong>{telegramAppPath}</strong></p>
+                  <p>Путь Telegram web: <strong>{telegramWebPath}</strong></p>
                   <p>TLS handshake: <strong>{tlsHandshake}</strong></p>
                   <p>REALITY target: <strong>{realityTarget}</strong></p>
                 </div>

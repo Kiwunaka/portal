@@ -34,11 +34,11 @@ export function AdminUserKeyPolicyEditor({
     <div className={`${adminInsetPanelClass} mt-3 text-sm`}>
       <div className="mb-3 flex items-center justify-between gap-2">
         <div>
-          <p className="text-sm font-semibold text-slate-50">Keys and per-node policy</p>
-          <p className="mt-1 text-xs leading-5 text-slate-400">Use this to toggle keys, reset traffic, resync sub IDs, and apply traffic policy without leaving the selected account.</p>
+          <p className="text-sm font-semibold text-slate-50">Ключи и политика по нодам</p>
+          <p className="mt-1 text-xs leading-5 text-slate-400">Управляйте ключами, сбросом трафика, синхронизацией sub ID и лимитами без выхода из аккаунта.</p>
         </div>
         <button className={adminButtonClass("secondary", "xs")} type="button" onClick={onReload} disabled={busy || !!keyBusy || !!policyBusy}>
-          Reload
+          Обновить
         </button>
       </div>
 
@@ -59,7 +59,7 @@ export function AdminUserKeyPolicyEditor({
                     {key.exists ? "Ключ присутствует" : "Ключ отсутствует"} | {key.enabled ? "включён" : "выключен"} | {key.online ? "online" : "offline"}
                   </p>
                   <p className="text-xs text-slate-400">
-                    Трафик: {fmtTraffic(key.total_bytes)} | current connections: {key.current_connections}
+                    Трафик: {fmtTraffic(key.total_bytes)} | соединений сейчас: {key.current_connections}
                   </p>
                 </div>
                 <div className="flex flex-wrap gap-2">
@@ -70,7 +70,7 @@ export function AdminUserKeyPolicyEditor({
                     Сбросить трафик
                   </button>
                   <button className={adminButtonClass("ghost", "xs")} type="button" onClick={() => onRunKeyAction(key, "resync")} disabled={busy || keyBusy === `${key.node_code}:resync`}>
-                    Resync sub ID
+                    Синхронизировать sub ID
                   </button>
                 </div>
               </div>
@@ -79,19 +79,19 @@ export function AdminUserKeyPolicyEditor({
                 <input
                   value={draft.burst_mbps}
                   onChange={(event) => setPolicyDrafts((prev) => ({ ...prev, [key.node_code]: { ...draft, burst_mbps: event.target.value } }))}
-                  placeholder="Burst limit (Mbps)"
+                  placeholder="Burst-лимит, Мбит/с"
                   className={adminFieldClass}
                 />
                 <input
                   value={draft.soft_cap_gb}
                   onChange={(event) => setPolicyDrafts((prev) => ({ ...prev, [key.node_code]: { ...draft, soft_cap_gb: event.target.value } }))}
-                  placeholder="Soft cap (GB)"
+                  placeholder="Мягкий лимит, ГБ"
                   className={adminFieldClass}
                 />
                 <input
                   value={draft.hard_cap_gb}
                   onChange={(event) => setPolicyDrafts((prev) => ({ ...prev, [key.node_code]: { ...draft, hard_cap_gb: event.target.value } }))}
-                  placeholder="Hard cap (GB)"
+                  placeholder="Жесткий лимит, ГБ"
                   className={adminFieldClass}
                 />
               </div>
@@ -103,7 +103,7 @@ export function AdminUserKeyPolicyEditor({
                     checked={draft.notify_soft}
                     onChange={(event) => setPolicyDrafts((prev) => ({ ...prev, [key.node_code]: { ...draft, notify_soft: event.target.checked } }))}
                   />
-                  Notify on soft cap
+                  Уведомить на мягком лимите
                 </label>
                 <label className={adminCheckboxLabelClass}>
                   <input
@@ -111,7 +111,7 @@ export function AdminUserKeyPolicyEditor({
                     checked={draft.notify_hard}
                     onChange={(event) => setPolicyDrafts((prev) => ({ ...prev, [key.node_code]: { ...draft, notify_hard: event.target.checked } }))}
                   />
-                  Notify on hard cap
+                  Уведомить на жестком лимите
                 </label>
                 <label className={adminCheckboxLabelClass}>
                   <input
@@ -119,7 +119,7 @@ export function AdminUserKeyPolicyEditor({
                     checked={draft.auto_disable_on_hard}
                     onChange={(event) => setPolicyDrafts((prev) => ({ ...prev, [key.node_code]: { ...draft, auto_disable_on_hard: event.target.checked } }))}
                   />
-                  Auto-disable on hard cap
+                  Автоотключение на жестком лимите
                 </label>
                 <label className={adminCheckboxLabelClass}>
                   <input
@@ -127,22 +127,22 @@ export function AdminUserKeyPolicyEditor({
                     checked={draft.apply_now}
                     onChange={(event) => setPolicyDrafts((prev) => ({ ...prev, [key.node_code]: { ...draft, apply_now: event.target.checked } }))}
                   />
-                  Apply now
+                  Применить сейчас
                 </label>
                 <button className={adminButtonClass("secondary", "xs")} type="button" onClick={() => onSavePolicy(key.node_code)} disabled={policyBusy === key.node_code}>
-                  {policyBusy === key.node_code ? "..." : "Save policy"}
+                  {policyBusy === key.node_code ? "..." : "Сохранить политику"}
                 </button>
               </div>
 
               <div className="mt-2 text-xs text-slate-400">
-                Current draft: burst {parseNullableNumber(draft.burst_mbps) ?? "—"}, soft {parseNullableNumber(draft.soft_cap_gb) ?? "—"}, hard {parseNullableNumber(draft.hard_cap_gb) ?? "—"}.
+                Черновик: burst {parseNullableNumber(draft.burst_mbps) ?? "нет"}, мягкий {parseNullableNumber(draft.soft_cap_gb) ?? "нет"}, жесткий {parseNullableNumber(draft.hard_cap_gb) ?? "нет"}.
               </div>
             </div>
           );
         })}
       </div>
 
-      {!keys.length ? <p className="mt-3 text-xs text-slate-400">No keys have been provisioned for tg_id {selectedTgId} yet.</p> : null}
+      {!keys.length ? <p className="mt-3 text-xs text-slate-400">Для tg_id {selectedTgId} ключи пока не созданы.</p> : null}
     </div>
   );
 }
