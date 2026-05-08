@@ -1,5 +1,6 @@
 import asyncio
 import importlib
+import json
 import os
 import sys
 import tempfile
@@ -18,6 +19,7 @@ class _FakeUser:
 class _FakeBot:
     def __init__(self):
         self.messages: list[dict] = []
+        self.copies: list[dict] = []
 
     async def send_message(self, chat_id, text, **kwargs):
         self.messages.append({"chat_id": int(chat_id), "text": str(text), **dict(kwargs)})
@@ -25,9 +27,23 @@ class _FakeBot:
 
 
 class _FakeMessage:
-    def __init__(self, tg_id: int, text: str = "", bot: _FakeBot | None = None):
+    def __init__(
+        self,
+        tg_id: int,
+        text: str = "",
+        bot: _FakeBot | None = None,
+        *,
+        caption: str = "",
+        photo: list | None = None,
+        document=None,
+        video=None,
+    ):
         self.from_user = _FakeUser(tg_id)
         self.text = text
+        self.caption = caption
+        self.photo = photo or []
+        self.document = document
+        self.video = video
         self.bot = bot or _FakeBot()
         self.answers: list[tuple[str, dict]] = []
         self.edits: list[str] = []
@@ -42,6 +58,10 @@ class _FakeMessage:
         self.edit_kwargs.append(dict(kwargs))
         return None
 
+    async def copy_to(self, chat_id, **kwargs):
+        self.bot.copies.append({"chat_id": int(chat_id), **dict(kwargs)})
+        return None
+
 
 class _FakeCallback:
     def __init__(self, tg_id: int, data: str, bot: _FakeBot | None = None):
@@ -54,6 +74,14 @@ class _FakeCallback:
     async def answer(self, text="", show_alert=False):
         self.answers.append((str(text), bool(show_alert)))
         return None
+
+
+class _FakeTelegramFile:
+    def __init__(self, file_id: str, **kwargs):
+        self.file_id = file_id
+        self.file_unique_id = kwargs.pop("file_unique_id", f"unique-{file_id}")
+        for key, value in kwargs.items():
+            setattr(self, key, value)
 
 
 class HelpbotLifecycleTests(unittest.TestCase):
@@ -143,6 +171,55 @@ class HelpbotLifecycleTests(unittest.TestCase):
         self.assertEqual([message.sender_role for message in messages], ["user", "admin"])
         self.assertEqual([message.body for message in messages], ["First launch does not connect", "Please refresh the profile and try again."])
         self.assertTrue(any(message["chat_id"] == 1001 for message in bot.messages))
+
+    def test_helpbot_captures_telegram_photo_and_document_attachments(self) -> None:
+        bot = _FakeBot()
+
+        start = _FakeMessage(1001, "/start ticket_new", bot=bot)
+        asyncio.run(self.helpbot.start(start))
+        ticket_id = self.helpbot.pending_ticket_replies[1001]
+
+        user_photo = _FakeMessage(
+            1001,
+            bot=bot,
+            caption="Экран ошибки после входа",
+            photo=[_FakeTelegramFile("photo-file-id", width=1280, height=720, file_size=4096)],
+        )
+        asyncio.run(self.helpbot.capture_ticket_attachment(user_photo))
+        self.assertNotIn(1001, self.helpbot.pending_ticket_replies)
+
+        ticket, messages = self._ticket_messages(ticket_id)
+        self.assertEqual(ticket.status, self.helpbot.STATUS_OPEN)
+        self.assertEqual(messages[0].sender_role, "user")
+        self.assertEqual(messages[0].body, "Экран ошибки после входа")
+        self.assertEqual(messages[0].media_type, "photo")
+        self.assertEqual(messages[0].media_file_id, "photo-file-id")
+        user_payload = json.loads(messages[0].media_payload)
+        self.assertEqual(user_payload["source"], "telegram")
+        self.assertEqual(user_payload["kind"], "photo")
+        self.assertEqual(user_payload["name"], "Скриншот из Telegram")
+        self.assertTrue(any(row["chat_id"] == 9999 for row in bot.copies))
+
+        admin_open = _FakeCallback(9999, f"hb_ticket_reply_{ticket_id}", bot=bot)
+        asyncio.run(self.helpbot.ticket_reply(admin_open))
+
+        admin_document = _FakeMessage(
+            9999,
+            bot=bot,
+            caption="Посмотрите лог, пожалуйста",
+            document=_FakeTelegramFile("document-file-id", file_name="pokrov.log", mime_type="text/plain", file_size=2048),
+        )
+        asyncio.run(self.helpbot.capture_ticket_attachment(admin_document))
+
+        ticket, messages = self._ticket_messages(ticket_id)
+        self.assertEqual(ticket.status, self.helpbot.STATUS_IN_PROGRESS)
+        self.assertEqual([message.sender_role for message in messages], ["user", "admin"])
+        self.assertEqual(messages[1].media_type, "file")
+        self.assertEqual(messages[1].media_file_id, "document-file-id")
+        admin_payload = json.loads(messages[1].media_payload)
+        self.assertEqual(admin_payload["name"], "pokrov.log")
+        self.assertEqual(admin_payload["content_type"], "text/plain")
+        self.assertTrue(any(row["chat_id"] == 1001 and "Новый ответ команды POKROV" in row.get("caption", "") for row in bot.copies))
 
     def test_helpbot_denies_other_user_ticket_view(self) -> None:
         bot = _FakeBot()
