@@ -508,6 +508,19 @@ test.describe("Cabinet flow", () => {
     await expect(siteLink).toHaveAttribute("href", /https:\/\/pokrov\.space\/?$/);
   });
 
+  test("keeps mobile cabinet navigation focused on beta downloads", async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.goto("/dashboard/");
+
+    const mobileNav = page.getByRole("navigation", { name: "Навигация кабинета" });
+    await expect(mobileNav).toBeVisible();
+    await expect(mobileNav).toContainText("Загрузки");
+    await expect(mobileNav).not.toContainText("Статистика");
+
+    await mobileNav.getByRole("link", { name: /Загрузки/i }).click();
+    await expect(page).toHaveURL(/\/downloads\/?$/);
+  });
+
   test("shows an honest email-unavailable state on the root auth entry", async ({ page }) => {
     await forceNoWebSession(page);
 
