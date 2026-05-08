@@ -287,7 +287,8 @@ export function PortalSessionProvider({ children, mode = "dashboard" }: PortalSe
       }
       await refresh();
     } catch (error) {
-      setWebLoginError(parseErrorMessage(error));
+      const message = parseErrorMessage(error);
+      setWebLoginError(isTelegramAuthRefreshRequired(message) ? telegramAuthRefreshMessage(message) : message);
       throw error;
     } finally {
       setWebLoginBusy(false);

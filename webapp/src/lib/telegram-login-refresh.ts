@@ -28,10 +28,16 @@ export function isTelegramWebLoginRefreshError(error: unknown): boolean {
     message.includes("telegram_login_expired") ||
     message.includes("telegram login expired") ||
     message.includes("telegram_login_deprecated") ||
+    message.includes("telegram_login_invalid") ||
     message.includes("telegram token is deprecated") ||
     message.includes("token is deprecated") ||
     message.includes("deprecated token") ||
-    message.includes("сессия telegram устарела")
+    message.includes("сессия telegram устарела") ||
+    (message.includes("telegram") &&
+      (message.includes("deprecated") ||
+        message.includes("expired") ||
+        message.includes("устарел") ||
+        message.includes("повторите вход")))
   );
 }
 

@@ -44,6 +44,8 @@ test("keeps fresh Telegram widget payloads on the direct widget login path", () 
 test("treats expired or deprecated Telegram widget errors as refreshable auth", () => {
   expect(isTelegramWebLoginRefreshError("Сессия Telegram устарела. Нажмите вход через Telegram еще раз.")).toBe(true);
   expect(isTelegramWebLoginRefreshError("telegram login token is deprecated")).toBe(true);
+  expect(isTelegramWebLoginRefreshError("Telegram login token has been deprecated")).toBe(true);
+  expect(isTelegramWebLoginRefreshError("telegram_login_invalid")).toBe(true);
   expect(isTelegramWebLoginRefreshError("Invalid password")).toBe(false);
 });
 
