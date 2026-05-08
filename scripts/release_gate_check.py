@@ -911,6 +911,10 @@ def main() -> int:
     print(f"[report] {output_path}")
     for r in results:
         print(f"[result] {r.name}: status={_result_status(r)} exit={r.returncode} duration={r.duration_sec:.2f}s")
+    failed_results = [result for result in results if result.returncode != 0]
+    for result in failed_results:
+        print(f"[failure-tail] {result.name}")
+        print(_redact_text(result.output_tail) if result.output_tail else "<no output>")
 
     return 0 if all(r.returncode == 0 for r in results) else 2
 
