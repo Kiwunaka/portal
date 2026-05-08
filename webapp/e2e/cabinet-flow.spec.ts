@@ -651,6 +651,33 @@ test.describe("Cabinet flow", () => {
     expect(requests.recoveryFinish).toEqual([]);
   });
 
+  test("prefills email tokens from relay links without leaving them in the URL", async ({ page }) => {
+    const requests = await registerEmailAuthMocks(page);
+
+    await page.goto("/?clear_web_session=1&email_token=verify-from-link");
+
+    await expect(page.getByPlaceholder("Код подтверждения")).toHaveValue("verify-from-link");
+    await expect(page.locator("main")).toContainText("Код подтверждения из письма уже подставлен.");
+    await expect(page).not.toHaveURL(/email_token=/);
+
+    await page.getByRole("button", { name: "Подтвердить" }).last().click();
+    await expect(page).toHaveURL(/\/dashboard\/?$/);
+    expect(requests.verify).toEqual([{ token: "verify-from-link" }]);
+
+    await page.goto("/?clear_web_session=1&email_reset_token=reset-from-link");
+
+    await expect(page.getByPlaceholder("Код восстановления")).toHaveValue("reset-from-link");
+    await expect(page.locator("main")).toContainText("Код восстановления из письма уже подставлен.");
+    await expect(page).not.toHaveURL(/email_reset_token=/);
+
+    await page.getByPlaceholder("email@example.com").fill("reader@pokrov.test");
+    await page.getByPlaceholder("Новый пароль").fill("FreshPass456!");
+    await page.getByRole("button", { name: "Сбросить пароль и войти" }).click();
+    await expect(page).toHaveURL(/\/dashboard\/?$/);
+    expect(requests.recoveryFinish).toEqual([{ token: "reset-from-link", password: "FreshPass456!" }]);
+    expect(requests.recoveryStart).toEqual([]);
+  });
+
   test("reuses an existing web session and lands in the cabinet without showing auth entry again", async ({ page }) => {
     await page.goto("/");
 

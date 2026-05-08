@@ -34,6 +34,8 @@ const EMAIL_MODE_LABELS = {
   recover: "Восстановить доступ",
 } as const;
 
+const PASSWORD_HINT = "Минимум 10 символов.";
+
 export default function CabinetEntryAuth({ siteUrl }: { siteUrl: string }) {
   const { logoutWebSession, webLoginBusy, webLoginError } = usePortalSession();
   const [emailReady, setEmailReady] = useState(false);
@@ -60,6 +62,33 @@ export default function CabinetEntryAuth({ siteUrl }: { siteUrl: string }) {
     return () => {
       cancelled = true;
     };
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    const url = new URL(window.location.href);
+    const nextVerifyToken = String(url.searchParams.get("email_token") || url.searchParams.get("verify_token") || "").trim();
+    const nextRecoveryToken = String(url.searchParams.get("email_reset_token") || url.searchParams.get("reset_token") || "").trim();
+    if (!nextVerifyToken && !nextRecoveryToken) return;
+
+    if (nextVerifyToken) {
+      setVerifyToken(nextVerifyToken);
+      setRecoveryToken("");
+      setEmailMode("verify");
+      setEmailMessage("Код подтверждения из письма уже подставлен. Осталось нажать «Подтвердить».");
+    } else {
+      setRecoveryToken(nextRecoveryToken);
+      setVerifyToken("");
+      setEmailMode("recover");
+      setEmailMessage("Код восстановления из письма уже подставлен. Введите новый пароль.");
+    }
+    setEmailError("");
+
+    for (const key of ["email_token", "verify_token", "email_reset_token", "reset_token"]) {
+      url.searchParams.delete(key);
+    }
+    window.history.replaceState({}, "", `${url.pathname}${url.search}${url.hash}` || "/");
   }, []);
 
   const completeEmailLogin = (nextToken?: string | null): void => {
@@ -220,7 +249,8 @@ export default function CabinetEntryAuth({ siteUrl }: { siteUrl: string }) {
               <form className="space-y-3" onSubmit={submitRegister}>
                 <input className={inputClass} value={email} onChange={(event) => setEmail(event.target.value)} type="email" autoComplete="email" placeholder="email@example.com" required />
                 <input className={inputClass} value={displayName} onChange={(event) => setDisplayName(event.target.value)} autoComplete="name" placeholder="Имя" />
-                <input className={inputClass} value={password} onChange={(event) => setPassword(event.target.value)} type="password" autoComplete="new-password" placeholder="Пароль" required />
+                <input className={inputClass} value={password} onChange={(event) => setPassword(event.target.value)} type="password" autoComplete="new-password" placeholder="Пароль" minLength={10} required />
+                <p className="text-xs leading-5 text-slate-500 dark:text-slate-400">{PASSWORD_HINT}</p>
                 <button type="submit" disabled={emailBusy} className="btn-primary rounded-2xl px-5 py-3 text-sm font-semibold disabled:opacity-60">
                   Создать аккаунт
                 </button>
@@ -240,7 +270,8 @@ export default function CabinetEntryAuth({ siteUrl }: { siteUrl: string }) {
               <form className="space-y-3" onSubmit={submitRecovery}>
                 <input className={inputClass} value={email} onChange={(event) => setEmail(event.target.value)} type="email" autoComplete="email" placeholder="email@example.com" required />
                 <input className={inputClass} value={recoveryToken} onChange={(event) => setRecoveryToken(event.target.value)} placeholder="Код восстановления" />
-                <input className={inputClass} value={newPassword} onChange={(event) => setNewPassword(event.target.value)} type="password" autoComplete="new-password" placeholder="Новый пароль" required={Boolean(recoveryToken)} />
+                <input className={inputClass} value={newPassword} onChange={(event) => setNewPassword(event.target.value)} type="password" autoComplete="new-password" placeholder="Новый пароль" minLength={10} required={Boolean(recoveryToken)} />
+                <p className="text-xs leading-5 text-slate-500 dark:text-slate-400">{PASSWORD_HINT}</p>
                 <button type="submit" disabled={emailBusy} className="btn-primary rounded-2xl px-5 py-3 text-sm font-semibold disabled:opacity-60">
                   {recoveryToken ? "Сбросить пароль и войти" : "Отправить письмо"}
                 </button>
