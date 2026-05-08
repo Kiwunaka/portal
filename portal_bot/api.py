@@ -1144,6 +1144,23 @@ class DashboardResponse(BaseModel):
     active_offer: dict[str, Any] | None
     points: dict[str, Any]
     features: dict[str, bool]
+    payment_orders: list[dict[str, Any]] = Field(default_factory=list)
+
+
+def _user_payment_order_payload(order: ExternalOrder) -> dict[str, Any]:
+    status = str(order.status or "created").strip().lower() or "created"
+    return {
+        "order_id": str(order.order_id or ""),
+        "provider": str(order.provider or ""),
+        "plan_code": str(order.plan_code or "") or None,
+        "amount": float(order.amount or 0),
+        "currency": str(order.currency or "RUB"),
+        "status": status,
+        "source": str(order.source or "") or None,
+        "created_at": _safe_iso(order.created_at),
+        "paid_at": _safe_iso(order.paid_at),
+        "attention_required": status in {"manual_review", "pending_verification"},
+    }
 
 
 class NodeStatusResponse(BaseModel):
@@ -7234,6 +7251,13 @@ async def dashboard_snapshot(
         sub_url = ""
         if user.sub_token:
             sub_url = build_subscription_url(str(user.sub_token or ""))
+        payment_orders = (
+            s.query(ExternalOrder)
+            .filter(ExternalOrder.tg_id == int(tg_id))
+            .order_by(ExternalOrder.created_at.desc(), ExternalOrder.id.desc())
+            .limit(10)
+            .all()
+        )
         client_policy = app_first_service.build_client_policy(
             session=s,
             user=user,
@@ -7304,6 +7328,7 @@ async def dashboard_snapshot(
                 "expires_days": 90,
             },
             features={"haptic": bool(WEBAPP_ENABLE_HAPTIC), "lottie": bool(WEBAPP_ENABLE_LOTTIE)},
+            payment_orders=[_user_payment_order_payload(row) for row in payment_orders],
         )
     finally:
         s.close()

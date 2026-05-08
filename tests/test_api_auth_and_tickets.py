@@ -2343,6 +2343,80 @@ class ApiAuthAndTicketsTests(unittest.TestCase):
         self.assertEqual(profile.status_code, 200, profile.text)
         self.assertTrue(str(profile.json().get("subscription_url") or "").startswith("https://connect.pokrov.space/s8Kx2mP7qR4wT/"))
 
+    def test_dashboard_includes_safe_user_payment_history(self) -> None:
+        from db import SessionLocal
+        from models import ExternalOrder, ExternalPaymentEvent
+
+        now = _utcnow().replace(microsecond=0)
+        s = SessionLocal()
+        try:
+            s.add(
+                ExternalOrder(
+                    order_id="lavatop_1001_safe",
+                    tg_id=1001,
+                    provider="lavatop",
+                    plan_code="standard",
+                    source="webapp",
+                    amount=199.0,
+                    currency="RUB",
+                    status="paid",
+                    created_at=now,
+                    paid_at=now,
+                    meta_json=json.dumps({"fulfillment": {"access_key": "POKROV-SECRET-KEY"}}),
+                )
+            )
+            s.add(
+                ExternalOrder(
+                    order_id="lavatop_2002_hidden",
+                    tg_id=2002,
+                    provider="lavatop",
+                    plan_code="premium",
+                    source="webapp",
+                    amount=499.0,
+                    currency="RUB",
+                    status="paid",
+                    created_at=now,
+                    paid_at=now,
+                )
+            )
+            s.add(
+                ExternalPaymentEvent(
+                    provider="lavatop",
+                    event_type="payment.success",
+                    external_id="evt-safe-history",
+                    order_id="lavatop_1001_safe",
+                    payload_json=json.dumps({"secret": "raw-provider-payload"}),
+                    signature_ok=True,
+                    processed_ok=True,
+                    created_at=now,
+                )
+            )
+            s.commit()
+        finally:
+            s.close()
+
+        headers = {"Authorization": "Bearer " + self.api.create_web_session_token(tg_id=1001, username="alice")}
+        dashboard = self.client.get("/api/dashboard", headers=headers)
+
+        self.assertEqual(dashboard.status_code, 200, dashboard.text)
+        orders = dashboard.json().get("payment_orders") or []
+        self.assertEqual(len(orders), 1)
+        row = orders[0]
+        self.assertEqual(row["order_id"], "lavatop_1001_safe")
+        self.assertEqual(row["provider"], "lavatop")
+        self.assertEqual(row["plan_code"], "standard")
+        self.assertEqual(row["amount"], 199.0)
+        self.assertEqual(row["currency"], "RUB")
+        self.assertEqual(row["status"], "paid")
+        self.assertTrue(row.get("paid_at"))
+        self.assertNotIn("user", row)
+        self.assertNotIn("last_event", row)
+        self.assertNotIn("fulfillment", row)
+        response_dump = json.dumps(dashboard.json(), ensure_ascii=False)
+        self.assertNotIn("lavatop_2002_hidden", response_dump)
+        self.assertNotIn("POKROV-SECRET-KEY", response_dump)
+        self.assertNotIn("raw-provider-payload", response_dump)
+
     def test_admin_metrics_timeseries_and_nodes_traffic_endpoints(self) -> None:
         from db import SessionLocal
         from models import Event, ExternalOrder, ExternalPaymentEvent, NodeHealthSample, PayAttempt

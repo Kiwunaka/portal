@@ -59,6 +59,19 @@ export type ClientRoutePolicyPayload = {
   } | null;
 };
 
+export type UserPaymentOrder = {
+  order_id: string;
+  provider: string;
+  plan_code?: string | null;
+  amount: number;
+  currency: string;
+  status: string;
+  source?: string | null;
+  created_at?: string | null;
+  paid_at?: string | null;
+  attention_required?: boolean;
+};
+
 export type DashboardSnapshot = {
   tg_id: number;
   sub_type: string;
@@ -118,6 +131,7 @@ export type DashboardSnapshot = {
     haptic: boolean;
     lottie: boolean;
   };
+  payment_orders?: UserPaymentOrder[];
   linked_identities?: LinkedIdentityPayload | null;
   free_caps?: {
     location_code?: string | null;

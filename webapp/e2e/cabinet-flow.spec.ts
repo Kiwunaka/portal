@@ -23,6 +23,7 @@ type TicketMock = {
 
 type CabinetMockOptions = {
   authSession?: unknown;
+  dashboard?: Record<string, unknown>;
   paymentProviders?: unknown;
   checkoutOrderResponse?: unknown;
   checkoutRequests?: unknown[];
@@ -153,6 +154,7 @@ function mockDashboard() {
     active_offer: null,
     points: { available: 90, expiring_soon: 0, monthly_cap: 300, expires_days: 90 },
     features: { haptic: true, lottie: true },
+    payment_orders: [],
   };
 }
 
@@ -200,7 +202,7 @@ async function registerCabinetMocks(page: Page, options: CabinetMockOptions = {}
   });
 
   const sessionUser = mockSessionUser();
-  const dashboard = mockDashboard();
+  const dashboard = { ...mockDashboard(), ...(options.dashboard || {}) };
   let tickets = [...mockTickets()];
 
   await page.route("**/api/**", async (route) => {
@@ -801,7 +803,7 @@ test.describe("Cabinet flow", () => {
   test("shows honest payment history and Russian checkout continuation copy", async ({ page }) => {
     await page.goto("/subscription/");
     await expect(page.getByRole("heading", { name: "История оплат" })).toBeVisible();
-    await expect(page.locator("main")).toContainText("История оплат пока не подключена");
+    await expect(page.locator("main")).toContainText("Истории оплат пока нет");
 
     await page.goto("/subscription/checkout/?plan=1_month&promo=POKROV10");
     await expect(page.getByRole("heading", { name: "Оплата временно недоступна" })).toBeVisible();
@@ -814,6 +816,36 @@ test.describe("Cabinet flow", () => {
     await expect(page.locator("main")).not.toContainText("managed profile");
     await expect(page.locator("main")).not.toContainText("premium trial");
     await expect(page.locator("main")).not.toContainText("Email signup");
+  });
+
+  test("renders safe user payment history from dashboard orders", async ({ page }) => {
+    await page.unroute("**/api/**");
+    await registerCabinetMocks(page, {
+      dashboard: {
+        payment_orders: [
+          {
+            order_id: "lavatop_1001_safe",
+            provider: "lavatop",
+            plan_code: "standard",
+            amount: 199,
+            currency: "RUB",
+            status: "paid",
+            source: "webapp",
+            created_at: "2030-01-01T00:00:00",
+            paid_at: "2030-01-01T00:00:00",
+          },
+        ],
+      },
+    });
+
+    await page.goto("/subscription/");
+
+    await expect(page.getByRole("heading", { name: "История оплат" })).toBeVisible();
+    await expect(page.locator("main")).toContainText("lavatop_1001_safe");
+    await expect(page.locator("main")).toContainText("199");
+    await expect(page.locator("main")).toContainText("Оплачено");
+    await expect(page.locator("main")).not.toContainText("raw-provider-payload");
+    await expect(page.locator("main")).not.toContainText("POKROV-SECRET-KEY");
   });
 
   test("keeps checkout disabled when payment providers are configured but launch evidence is blocked", async ({ page }) => {

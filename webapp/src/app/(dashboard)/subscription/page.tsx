@@ -17,7 +17,7 @@ import {
   resolvePlanLabel,
   resolveTrafficStatusText,
 } from "@/lib/access-policy";
-import { fetchPublicPlans, type PlanCatalogRow } from "@/lib/api";
+import { fetchPublicPlans, type PlanCatalogRow, type UserPaymentOrder } from "@/lib/api";
 import { getTariffPlans, normalizePlanCode } from "@/lib/portal";
 import { userFacingErrorMessage } from "@/lib/public-error-messages";
 import { usePortalSession } from "@/lib/session";
@@ -50,6 +50,44 @@ function formatDate(value?: string | null): string {
     hour: "2-digit",
     minute: "2-digit",
   }).format(parsed);
+}
+
+function formatPaymentAmount(order: UserPaymentOrder): string {
+  const currency = String(order.currency || "RUB").toUpperCase();
+  try {
+    return new Intl.NumberFormat("ru-RU", {
+      style: "currency",
+      currency,
+      maximumFractionDigits: 0,
+    }).format(Number(order.amount || 0));
+  } catch {
+    return `${Number(order.amount || 0).toLocaleString("ru-RU")} ${currency}`;
+  }
+}
+
+function paymentStatusLabel(value?: string | null): string {
+  const status = String(value || "").trim().toLowerCase();
+  if (status === "paid") return "Оплачено";
+  if (status === "failed") return "Не прошло";
+  if (status === "cancelled") return "Отменено";
+  if (status === "refunded") return "Возврат";
+  if (status === "chargeback") return "Спор";
+  if (status === "manual_review") return "Проверяем вручную";
+  if (status === "pending_verification") return "Ждет проверки";
+  if (status === "pending") return "В обработке";
+  return "Создано";
+}
+
+function paymentStatusClass(value?: string | null): string {
+  const status = String(value || "").trim().toLowerCase();
+  if (status === "paid") return "bg-emerald-50 text-emerald-800 dark:bg-emerald-400/10 dark:text-emerald-200";
+  if (["failed", "cancelled", "refunded", "chargeback"].includes(status)) {
+    return "bg-rose-50 text-rose-800 dark:bg-rose-400/10 dark:text-rose-200";
+  }
+  if (["manual_review", "pending_verification"].includes(status)) {
+    return "bg-amber-50 text-amber-800 dark:bg-amber-400/10 dark:text-amber-200";
+  }
+  return "bg-slate-100 text-slate-700 dark:bg-white/10 dark:text-slate-200";
 }
 
 function nodePolicyLabel(value?: string | null): string {
@@ -105,6 +143,7 @@ export default function SubscriptionPage() {
   const currentPlanCode = normalizePlanCode(dash?.current_plan_code || dash?.sub_type || "");
   const subscriptionUrl = String(user?.subscription_url || dash?.subscription_url || "").trim();
   const manualAccessReady = Boolean(subscriptionUrl && (dash?.is_active || user?.is_active));
+  const paymentOrders = (dash?.payment_orders || []).slice(0, 5);
 
   const copySubscriptionUrl = async () => {
     if (!manualAccessReady) {
@@ -384,7 +423,11 @@ export default function SubscriptionPage() {
       <CabinetSection
         eyebrow="История"
         title="История оплат"
-        description="Платежная история появится здесь, когда backend отдаст безопасную пользовательскую выписку."
+        description={
+          paymentOrders.length
+            ? "Показываем только ваши заказы из backend: сумму, статус и дату без служебных webhook-данных."
+            : "Платежная история появится здесь после первого созданного заказа."
+        }
         actions={
           <AppRouteLink href="/support/" className="outline-btn rounded-full px-4 py-2 text-xs font-semibold uppercase tracking-[0.12em]">
             Поддержка
@@ -392,13 +435,37 @@ export default function SubscriptionPage() {
         }
         tone="info"
       >
-        <div className="rounded-[1.3rem] border border-dashed border-sky-200/80 bg-white/72 px-4 py-4 text-sm leading-6 text-slate-600 dark:border-sky-400/20 dark:bg-white/[0.04] dark:text-slate-300">
-          <p className="font-semibold text-slate-950 dark:text-slate-50">История оплат пока не подключена.</p>
-          <p className="mt-2">
-            Мы не показываем декоративные строки и не придумываем квитанции. Если оплата уже была, а срок не обновился,
-            откройте поддержку: оператор проверит платеж по безопасным данным и продолжит тот же кейс.
-          </p>
-        </div>
+        {paymentOrders.length ? (
+          <div className="overflow-hidden rounded-[1.3rem] border border-[color:var(--atlas-border)] bg-white/72 dark:bg-white/[0.04]">
+            <div className="grid grid-cols-[minmax(0,1fr)_auto] gap-3 border-b border-[color:var(--atlas-border)] px-4 py-3 text-xs font-semibold uppercase tracking-[0.12em] text-[var(--atlas-text-muted)]">
+              <span>Заказ</span>
+              <span>Статус</span>
+            </div>
+            {paymentOrders.map((order) => (
+              <div key={`${order.provider}-${order.order_id}`} className="grid gap-3 border-b border-[color:var(--atlas-border)] px-4 py-4 last:border-b-0 md:grid-cols-[minmax(0,1fr)_auto]">
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-semibold text-[var(--atlas-text)]">
+                    {formatPaymentAmount(order)} · {order.plan_code || "тариф"}
+                  </p>
+                  <p className="mt-1 truncate text-xs text-[var(--atlas-text-soft)]">
+                    {order.provider} · {formatDate(order.paid_at || order.created_at)} · {order.order_id}
+                  </p>
+                </div>
+                <span className={`h-fit rounded-full px-3 py-1 text-xs font-semibold ${paymentStatusClass(order.status)}`}>
+                  {paymentStatusLabel(order.status)}
+                </span>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="rounded-[1.3rem] border border-dashed border-sky-200/80 bg-white/72 px-4 py-4 text-sm leading-6 text-slate-600 dark:border-sky-400/20 dark:bg-white/[0.04] dark:text-slate-300">
+            <p className="font-semibold text-slate-950 dark:text-slate-50">Истории оплат пока нет.</p>
+            <p className="mt-2">
+              Мы не показываем декоративные строки и не придумываем квитанции. Если оплата уже была, а срок не обновился,
+              откройте поддержку: оператор проверит платеж по безопасным данным и продолжит тот же кейс.
+            </p>
+          </div>
+        )}
       </CabinetSection>
 
       <CabinetSection
