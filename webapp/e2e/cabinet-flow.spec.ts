@@ -1171,4 +1171,77 @@ test.describe("Cabinet flow", () => {
       expect(overflow).toBeLessThanOrEqual(1);
     }
   });
+
+  test("opens cabinet settings from the Telegram Mini App SettingsButton", async ({ page }) => {
+    await page.route("https://telegram.org/js/telegram-web-app.js", async (route) =>
+      route.fulfill({ status: 200, contentType: "application/javascript", body: "" }),
+    );
+    await page.addInitScript(() => {
+      const state = {
+        hidden: 0,
+        impact: "",
+        settingsHandler: null as null | (() => void),
+        shown: 0,
+      };
+      (window as Window & { __pokrovTgSettingsButton?: typeof state }).__pokrovTgSettingsButton = state;
+      (window as Window & { Telegram?: unknown }).Telegram = {
+        WebApp: {
+          initData: "query_id=mock&user=%7B%22id%22%3A1001%7D&auth_date=1800000&hash=mock",
+          initDataUnsafe: { user: { id: 1001, username: "qa_user" } },
+          platform: "android",
+          colorScheme: "light",
+          themeParams: {
+            bg_color: "#ffffff",
+            secondary_bg_color: "#f5f5f5",
+            text_color: "#111111",
+            button_color: "#20845f",
+            button_text_color: "#ffffff",
+          },
+          viewportHeight: 844,
+          viewportStableHeight: 844,
+          safeAreaInset: { top: 0, right: 0, bottom: 16, left: 0 },
+          BackButton: { show: () => undefined, hide: () => undefined, onClick: () => undefined, offClick: () => undefined },
+          SettingsButton: {
+            show: () => {
+              state.shown += 1;
+            },
+            hide: () => {
+              state.hidden += 1;
+            },
+            onClick: (handler: () => void) => {
+              state.settingsHandler = handler;
+            },
+            offClick: () => {
+              state.settingsHandler = null;
+            },
+          },
+          HapticFeedback: {
+            impactOccurred: (style: string) => {
+              state.impact = style;
+            },
+          },
+          ready: () => undefined,
+          expand: () => undefined,
+          disableVerticalSwipes: () => undefined,
+          enableClosingConfirmation: () => undefined,
+          setHeaderColor: () => undefined,
+          setBackgroundColor: () => undefined,
+          onEvent: () => undefined,
+          offEvent: () => undefined,
+        },
+      };
+    });
+
+    await page.goto("/dashboard/");
+    await expect(page.locator("main h1").first()).toBeVisible();
+    await expect
+      .poll(() => page.evaluate(() => (window as Window & { __pokrovTgSettingsButton?: { shown: number } }).__pokrovTgSettingsButton?.shown || 0))
+      .toBeGreaterThan(0);
+
+    await page.evaluate(() => (window as Window & { __pokrovTgSettingsButton?: { settingsHandler: null | (() => void) } }).__pokrovTgSettingsButton?.settingsHandler?.());
+
+    await expect(page).toHaveURL(/\/settings\/?$/);
+    await expect(page.locator("main h1").first()).toBeVisible();
+    await expect(page.evaluate(() => (window as Window & { __pokrovTgSettingsButton?: { impact: string } }).__pokrovTgSettingsButton?.impact)).resolves.toBe("light");
+  });
 });
