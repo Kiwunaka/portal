@@ -93,16 +93,16 @@ pwsh external/client-fork/scripts/release_handoff.ps1 `
 python external/client-fork/scripts/check_release_urls.py --env-file "C:/Users/kiwun/Documents/ai/POKROV-app/artifacts/releases/bridge/<version>/release-links.env"
 ```
 
-7. Before applying `APP_*`, build a staged `/api/client/apps` shaped JSON with the exact candidate APK/EXE/docs URLs and run policy-only smoke. This validates shape and URL policy only; it does not prove the artifacts are reachable:
+7. Before applying `APP_*`, validate the exact client-owned handoff JSON. This validates shape and URL policy only; it does not prove the artifacts are reachable:
 
 ```powershell
-python scripts/runtime_app_download_smoke.py --redact --apps-json docs/audit-artifacts/staged-client-apps-2026-05-07.json --require-release-handoff --policy-only
+python scripts/runtime_app_download_smoke.py --redact --apps-json "C:/Users/kiwun/Documents/ai/POKROV-app/artifacts/releases/release-handoff.json" --require-release-handoff --policy-only
 ```
 
-After artifact-staging is authorized and the GitHub APK/EXE URLs are reachable, repeat the same staged payload check without `--policy-only` before syncing runtime env:
+After artifact-staging is authorized and the GitHub APK/EXE URLs are reachable, repeat the same handoff check without `--policy-only` before syncing runtime env:
 
 ```powershell
-python scripts/runtime_app_download_smoke.py --redact --apps-json docs/audit-artifacts/staged-client-apps-2026-05-07.json --require-release-handoff
+python scripts/runtime_app_download_smoke.py --redact --apps-json "C:/Users/kiwun/Documents/ai/POKROV-app/artifacts/releases/release-handoff.json" --require-release-handoff
 ```
 
 8. Apply the `APP_*` values to `brain` from that same metadata file:
@@ -110,7 +110,7 @@ python scripts/runtime_app_download_smoke.py --redact --apps-json docs/audit-art
 ```powershell
 python scripts/remote_brain_apply_release_handoff.py `
   --brain-ip 82.21.114.104 `
-  --metadata-file "C:/Users/kiwun/Documents/ai/POKROV-app/artifacts/releases/pokrov-app/<version>/release-handoff.json"
+  --metadata-file "C:/Users/kiwun/Documents/ai/POKROV-app/artifacts/releases/release-handoff.json"
 ```
 
 Compatibility note:

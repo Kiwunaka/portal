@@ -181,6 +181,39 @@ class PublicBetaExternalAccessPreflightTests(unittest.TestCase):
             "docs/audit-artifacts/runtime-app-download-smoke-brain-2026-05-08-post-handoff.json",
         )
 
+    def test_staged_apps_check_accepts_client_release_handoff_payload(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_root:
+            handoff = Path(temp_root) / "release-handoff.json"
+            handoff.write_text(
+                json.dumps(
+                    {
+                        "downloads": {
+                            "android": {
+                                "play_url": "",
+                                "apk_url": "https://github.com/Kiwunaka/POKROV-app/releases/download/v0.2.0-beta.1/pokrov-android-universal.apk",
+                            },
+                            "windows": {
+                                "exe_url": "https://github.com/Kiwunaka/POKROV-app/releases/download/v0.2.0-beta.1/pokrov-windows-setup-x64.exe",
+                            },
+                            "docs_url": "https://pokrov.space/install/",
+                        },
+                        "runtime_env": {
+                            "APP_ANDROID_APK_URL": "https://github.com/Kiwunaka/POKROV-app/releases/download/v0.2.0-beta.1/pokrov-android-universal.apk",
+                            "APP_WINDOWS_EXE_URL": "https://github.com/Kiwunaka/POKROV-app/releases/download/v0.2.0-beta.1/pokrov-windows-setup-x64.exe",
+                            "APP_DOCS_URL": "https://pokrov.space/install/",
+                        },
+                    },
+                    ensure_ascii=False,
+                    indent=2,
+                ),
+                encoding="utf-8",
+            )
+
+            check = self.module._staged_apps_check(handoff)
+
+        self.assertEqual(check["status"], "PASS")
+        self.assertEqual(check["missing"], [])
+
     def test_public_claim_guardrails_are_russian(self) -> None:
         report = self.module.build_report(env={})
 

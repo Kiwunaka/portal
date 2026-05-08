@@ -200,7 +200,7 @@ def test_public_beta_docs_pin_current_brain_truth_and_unblock_packet() -> None:
     assert "ARTIFACT STAGING GO FOR RUNTIME SMOKE" in unblock_packet
     assert "python scripts\\public_beta_external_access_preflight.py" in unblock_packet
     assert "ready_to_run_access_gated_smokes=true" in unblock_packet
-    assert "--apps-json docs\\audit-artifacts\\staged-client-apps-2026-05-07.json" in unblock_packet
+    assert "--apps-json ..\\POKROV-app\\artifacts\\releases\\release-handoff.json" in unblock_packet
     assert "--policy-only" in unblock_packet
     assert "Stop and keep the release `NO-GO` if any of these happens:" in unblock_packet
     for release_text in [handoff, completion_audit, unblock_packet]:

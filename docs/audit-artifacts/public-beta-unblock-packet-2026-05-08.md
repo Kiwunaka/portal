@@ -79,7 +79,7 @@ Before runtime sync, revalidate the staged payload:
 ```powershell
 python scripts\runtime_app_download_smoke.py `
   --redact `
-  --apps-json docs\audit-artifacts\staged-client-apps-2026-05-07.json `
+  --apps-json ..\POKROV-app\artifacts\releases\release-handoff.json `
   --require-release-handoff `
   --policy-only
 ```
@@ -89,7 +89,7 @@ Then verify reachability:
 ```powershell
 python scripts\runtime_app_download_smoke.py `
   --redact `
-  --apps-json docs\audit-artifacts\staged-client-apps-2026-05-07.json `
+  --apps-json ..\POKROV-app\artifacts\releases\release-handoff.json `
   --require-release-handoff
 ```
 
@@ -98,7 +98,7 @@ Dry-run the exact brain values without mutation:
 ```powershell
 python scripts\remote_brain_apply_release_handoff.py `
   --brain-ip 82.21.114.104 `
-  --metadata-file docs\audit-artifacts\staged-client-apps-2026-05-07.json `
+  --metadata-file ..\POKROV-app\artifacts\releases\release-handoff.json `
   --dry-run
 ```
 
@@ -117,7 +117,7 @@ After that file exists:
 ```powershell
 python scripts\remote_brain_apply_release_handoff.py `
   --brain-ip 82.21.114.104 `
-  --metadata-file docs\audit-artifacts\staged-client-apps-2026-05-07.json `
+  --metadata-file ..\POKROV-app\artifacts\releases\release-handoff.json `
   --go-evidence-file docs\audit-artifacts\public-beta-runtime-link-sync-authorization-2026-05-08.md
 ```
 

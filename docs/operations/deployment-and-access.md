@@ -666,14 +666,14 @@ Preferred automation path:
 ```powershell
 python scripts/remote_brain_apply_release_handoff.py `
   --brain-ip 82.21.114.104 `
-  --metadata-file docs/audit-artifacts/staged-client-apps-2026-05-07.json `
+  --metadata-file ..\POKROV-app\artifacts\releases\release-handoff.json `
   --dry-run
 ```
 
 ```powershell
 python scripts/remote_brain_apply_release_handoff.py `
   --brain-ip 82.21.114.104 `
-  --metadata-file docs/audit-artifacts/staged-client-apps-2026-05-07.json `
+  --metadata-file ..\POKROV-app\artifacts\releases\release-handoff.json `
   --go-evidence-file docs/audit-artifacts/public-beta-runtime-link-sync-authorization-2026-05-08.md
 ```
 
@@ -682,7 +682,7 @@ Or as part of the main rollout:
 ```powershell
 python scripts/release_orchestrator.py `
   --brain-ip 82.21.114.104 `
-  --release-metadata-file docs/audit-artifacts/staged-client-apps-2026-05-07.json `
+  --release-metadata-file ..\POKROV-app\artifacts\releases\release-handoff.json `
   --release-go-evidence-file docs/audit-artifacts/public-beta-runtime-link-sync-authorization-2026-05-08.md
 ```
 
@@ -690,7 +690,7 @@ Distribution rule until store URLs are live:
 
 - GitHub release artifacts are the canonical Android and Windows binary source
 - runtime app, bot, and authenticated WebApp download surfaces must read from the same release handoff URLs
-- the versioned `release-links.env` under `C:/Users/kiwun/Documents/ai/POKROV-app/artifacts/releases/...` is the canonical metadata input for that sync
+- the client-owned `C:/Users/kiwun/Documents/ai/POKROV-app/artifacts/releases/release-handoff.json` is the canonical metadata input for that sync when maintained; versioned handoff files live beside the retained release evidence
 - non-dry-run runtime sync requires either a public `GO for public beta publication` handoff or a narrow runtime-link sync authorization created after explicit operator approval and containing `RUNTIME LINK SYNC GO FOR APP-DOWNLOAD SMOKE`, `OPERATOR_APPROVED_RUNTIME_LINK_SYNC=true`, `STAGED GITHUB ASSET REACHABILITY GREEN`, `NO PUBLIC ANNOUNCEMENT`, and `PAID CHECKOUT REMAINS CLOSED`
 - `remote_brain_apply_release_handoff.py` does not rebuild static exports by itself
 - if public Android or Windows URLs changed, rebuild and redeploy static marketing outputs so `NEXT_PUBLIC_APP_*` stays aligned with the same release handoff values

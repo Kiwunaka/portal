@@ -250,8 +250,38 @@ def _load_json(path: Path) -> dict[str, Any]:
     return payload if isinstance(payload, dict) else {}
 
 
+def _normalize_staged_apps_payload(payload: Mapping[str, Any]) -> dict[str, Any]:
+    if "downloads" not in payload and "runtime_env" not in payload:
+        return dict(payload)
+
+    downloads = payload.get("downloads", {}) if isinstance(payload.get("downloads"), Mapping) else {}
+    android = downloads.get("android", {}) if isinstance(downloads.get("android"), Mapping) else {}
+    windows = downloads.get("windows", {}) if isinstance(downloads.get("windows"), Mapping) else {}
+    runtime_env = payload.get("runtime_env", {}) if isinstance(payload.get("runtime_env"), Mapping) else {}
+
+    def _first(*values: object) -> str:
+        for value in values:
+            text = str(value or "").strip()
+            if text:
+                return text
+        return ""
+
+    return {
+        "android": {
+            "play_url": _first(android.get("play_url"), runtime_env.get("APP_ANDROID_PLAY_URL")),
+            "apk_url": _first(android.get("apk_url"), runtime_env.get("APP_ANDROID_APK_URL")),
+            "mirror_url": _first(android.get("mirror_url"), runtime_env.get("APP_ANDROID_MIRROR_URL")),
+        },
+        "windows": {
+            "exe_url": _first(windows.get("exe_url"), runtime_env.get("APP_WINDOWS_EXE_URL")),
+            "mirror_url": _first(windows.get("mirror_url"), runtime_env.get("APP_WINDOWS_MIRROR_URL")),
+        },
+        "docs_url": _first(downloads.get("docs_url"), payload.get("docs_url"), runtime_env.get("APP_DOCS_URL")),
+    }
+
+
 def _staged_apps_check(path: Path) -> dict[str, Any]:
-    payload = _load_json(path)
+    payload = _normalize_staged_apps_payload(_load_json(path))
     if not payload:
         return _check(
             "staged_client_apps_payload",

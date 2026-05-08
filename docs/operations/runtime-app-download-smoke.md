@@ -2,17 +2,17 @@
 
 Last updated: 2026-05-08
 
-Before runtime links are synced, a staged `/api/client/apps` shaped payload can be checked for URL policy only:
+Before runtime links are synced, check the client-owned `release-handoff.json` for URL policy only:
 
 ```powershell
 python scripts/runtime_app_download_smoke.py `
   --redact `
-  --apps-json docs/audit-artifacts/staged-client-apps-2026-05-07.json `
+  --apps-json ..\POKROV-app\artifacts\releases\release-handoff.json `
   --require-release-handoff `
   --policy-only
 ```
 
-This confirms outside-store beta URL shape: no Play URL, GitHub Releases `.apk` / `.exe` links, and install docs under `https://pokrov.space/install/`. It deliberately skips URL reachability and does not replace live smoke.
+This confirms outside-store beta URL shape: no Play URL, GitHub Releases `.apk` / `.exe` links, and install docs under `https://pokrov.space/install/`. It deliberately skips URL reachability and does not replace live smoke. Older staged `/api/client/apps` JSON payloads still work, but the client-owned handoff is the preferred source once it exists.
 
 Use the wrapper script so retained evidence is redacted:
 

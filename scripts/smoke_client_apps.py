@@ -189,7 +189,37 @@ def _load_apps_json(path: str) -> dict:
         raise ValueError(f"{payload_path} contains invalid JSON: {exc}") from exc
     if not isinstance(payload, dict):
         raise ValueError(f"{payload_path} must contain a JSON object shaped like /api/client/apps")
-    return payload
+    return _normalize_apps_payload(payload)
+
+
+def _normalize_apps_payload(payload: dict) -> dict:
+    if "downloads" not in payload and "runtime_env" not in payload:
+        return payload
+
+    downloads = payload.get("downloads", {}) if isinstance(payload.get("downloads"), dict) else {}
+    android = downloads.get("android", {}) if isinstance(downloads.get("android"), dict) else {}
+    windows = downloads.get("windows", {}) if isinstance(downloads.get("windows"), dict) else {}
+    runtime_env = payload.get("runtime_env", {}) if isinstance(payload.get("runtime_env"), dict) else {}
+
+    def _first(*values: object) -> str:
+        for value in values:
+            text = str(value or "").strip()
+            if text:
+                return text
+        return ""
+
+    return {
+        "android": {
+            "play_url": _first(android.get("play_url"), runtime_env.get("APP_ANDROID_PLAY_URL")),
+            "apk_url": _first(android.get("apk_url"), runtime_env.get("APP_ANDROID_APK_URL")),
+            "mirror_url": _first(android.get("mirror_url"), runtime_env.get("APP_ANDROID_MIRROR_URL")),
+        },
+        "windows": {
+            "exe_url": _first(windows.get("exe_url"), runtime_env.get("APP_WINDOWS_EXE_URL")),
+            "mirror_url": _first(windows.get("mirror_url"), runtime_env.get("APP_WINDOWS_MIRROR_URL")),
+        },
+        "docs_url": _first(downloads.get("docs_url"), payload.get("docs_url"), runtime_env.get("APP_DOCS_URL")),
+    }
 
 
 def main() -> int:

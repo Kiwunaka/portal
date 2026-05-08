@@ -72,6 +72,38 @@ class SmokeClientAppsTests(unittest.TestCase):
         self.assertEqual(payload["android"]["play_url"], "")
         self.assertEqual(self.module._release_handoff_failures(payload), [])
 
+    def test_load_apps_json_accepts_client_release_handoff_payload(self) -> None:
+        payload_path = Path(self.id().replace(".", "_") + ".json")
+        try:
+            payload_path.write_text(
+                """
+{
+  "downloads": {
+    "android": {"play_url": "", "apk_url": "https://github.com/pokrov-space/pokrov-app/releases/download/v0.3.0/pokrov.apk"},
+    "windows": {"exe_url": "https://github.com/pokrov-space/pokrov-app/releases/download/v0.3.0/pokrov.exe"},
+    "docs_url": "https://pokrov.space/install/"
+  },
+  "runtime_env": {
+    "APP_ANDROID_PLAY_URL": "",
+    "APP_ANDROID_APK_URL": "https://github.com/pokrov-space/pokrov-app/releases/download/v0.3.0/pokrov.apk",
+    "APP_ANDROID_MIRROR_URL": "",
+    "APP_WINDOWS_EXE_URL": "https://github.com/pokrov-space/pokrov-app/releases/download/v0.3.0/pokrov.exe",
+    "APP_WINDOWS_MIRROR_URL": "",
+    "APP_DOCS_URL": "https://pokrov.space/install/"
+  }
+}
+""".strip(),
+                encoding="utf-8",
+            )
+
+            payload = self.module._load_apps_json(str(payload_path))
+        finally:
+            payload_path.unlink(missing_ok=True)
+
+        self.assertEqual(payload["android"]["apk_url"], "https://github.com/pokrov-space/pokrov-app/releases/download/v0.3.0/pokrov.apk")
+        self.assertEqual(payload["windows"]["exe_url"], "https://github.com/pokrov-space/pokrov-app/releases/download/v0.3.0/pokrov.exe")
+        self.assertEqual(self.module._release_handoff_failures(payload), [])
+
     def test_load_apps_json_rejects_non_object_payload(self) -> None:
         payload_path = Path(self.id().replace(".", "_") + ".json")
         try:
