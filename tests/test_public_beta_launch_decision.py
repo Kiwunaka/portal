@@ -443,6 +443,48 @@ class PublicBetaLaunchDecisionTests(unittest.TestCase):
         self.assertNotIn("provider_count must be 1", checks["live_payment_provider_status"]["missing"])
         self.assertIn("email live delivery proof", checks["post_deploy_payment_email_probe"]["missing"])
 
+    def test_live_payment_status_accepts_raw_provider_catalog_shape(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "handoff.md").write_text("GO for public beta publication.\n", encoding="utf-8")
+            (root / "completion.md").write_text("GOAL COMPLETE. Public beta publication is GO.\n", encoding="utf-8")
+            _write_gate(root / "full.md", gate_set="default")
+            _write_gate(root / "quick.md", gate_set="quick")
+            _write_gate(root / "brain.md", gate_set="quick", brain=True)
+            _write_json(root / "external.json", {"ok": True, "classification": "PASS", "safe_to_publish_public_beta": True})
+            _write_json(root / "paid.json", {"ok": True, "classification": "PASS", "safe_to_enable_paid_checkout": True})
+            _write_json(
+                root / "email.json",
+                {"enabled": True, "public_enabled": True, "delivery_configured": True, "delivery_secret_configured": True, "debug_echo": False},
+            )
+            _write_json(
+                root / "payment.json",
+                {
+                    "ok": True,
+                    "blocked": False,
+                    "providers": [{"code": "lavatop", "title": "Lava.top"}],
+                },
+            )
+
+            report = self.module.build_report(
+                handoff=root / "handoff.md",
+                completion_audit=root / "completion.md",
+                external_preflight_json=root / "external.json",
+                full_gate=root / "full.md",
+                quick_gate=root / "quick.md",
+                brain_gate=root / "brain.md",
+                paid_checkout_evidence=root / "paid.json",
+                live_email_status=root / "email.json",
+                live_payment_status=root / "payment.json",
+                post_deploy_probe=_write_post_deploy_probe(root / "post.json"),
+                staged_reachability=_write_reachability(root / "reachability.md"),
+                runtime_sync_guard=_write_runtime_sync_guard(root / "runtime-sync-guard.md"),
+            )
+
+        checks = {check["name"]: check for check in report["checks"]}
+        self.assertEqual(checks["live_payment_provider_status"]["status"], "PASS")
+        self.assertNotIn("provider_count must be 1", checks["live_payment_provider_status"]["missing"])
+
     def test_safe_claim_describes_runtime_sync_before_live_smoke(self) -> None:
         report = self.module.build_report()
 

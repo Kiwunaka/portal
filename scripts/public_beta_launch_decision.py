@@ -86,6 +86,32 @@ def _int_value(value: object) -> int:
         return 0
 
 
+def _provider_codes_from_payment_payload(payload: dict[str, Any]) -> list[str]:
+    explicit_codes = payload.get("provider_codes")
+    if isinstance(explicit_codes, list):
+        return [str(value).strip().lower() for value in explicit_codes if str(value).strip()]
+
+    raw_providers = payload.get("providers")
+    if not isinstance(raw_providers, list):
+        return []
+
+    codes: list[str] = []
+    for item in raw_providers:
+        if isinstance(item, dict):
+            code = str(item.get("code") or item.get("provider") or "").strip().lower()
+        else:
+            code = str(item or "").strip().lower()
+        if code:
+            codes.append(code)
+    return codes
+
+
+def _provider_count_from_payment_payload(payload: dict[str, Any], provider_codes: list[str]) -> int:
+    if "provider_count" in payload:
+        return _int_value(payload.get("provider_count"))
+    return len(provider_codes)
+
+
 def _check(
     name: str,
     status: str,
@@ -376,19 +402,20 @@ def _live_payment_status_check(path: Path) -> dict[str, Any]:
             missing=[str(path)],
             note="Live payment provider status is missing.",
         )
-    provider_codes = [str(value).strip().lower() for value in payload.get("provider_codes", []) if str(value).strip()]
+    provider_codes = _provider_codes_from_payment_payload(payload)
+    provider_count = _provider_count_from_payment_payload(payload, provider_codes)
     if (
         payload.get("ok") is True
         and payload.get("blocked") is False
         and provider_codes == ["lavatop"]
-        and _int_value(payload.get("provider_count")) == 1
+        and provider_count == 1
     ):
         return _check("live_payment_provider_status", PASS, source=path, note="Live provider catalog exposes Lava.top only.")
 
     missing = [str(value) for value in payload.get("blocked_reasons", []) if str(value or "").strip()]
     if provider_codes and provider_codes != ["lavatop"]:
         missing.append(f"expected only lavatop, got {', '.join(provider_codes)}")
-    if payload.get("blocked") is not True and _int_value(payload.get("provider_count")) != 1:
+    if payload.get("blocked") is not True and provider_count != 1:
         missing.append("provider_count must be 1")
     status = (
         FAIL
