@@ -325,10 +325,9 @@ class BotPaywallTests(unittest.TestCase):
         ]
         callback_data = {getattr(button, "callback_data", "") for button in buttons}
         self.assertIn(self.bot_module.WEBAPP_URL, web_app_urls)
-        cabinet_base = self.bot_module.WEBAPP_URL.rstrip("/")
-        self.assertIn(f"{cabinet_base}/redeem/", web_app_urls)
-        self.assertIn(f"{cabinet_base}/subscription/", web_app_urls)
-        self.assertIn(f"{cabinet_base}/downloads/", web_app_urls)
+        self.assertIn(self.bot_module._webapp_route_url("redeem"), web_app_urls)
+        self.assertIn(self.bot_module._webapp_route_url("subscription"), web_app_urls)
+        self.assertIn(self.bot_module._webapp_route_url("downloads"), web_app_urls)
         self.assertIn("support", callback_data)
         cabinet_button = next(button for button in buttons if getattr(button, "web_app", None) is not None)
         support_button = next(button for button in buttons if getattr(button, "callback_data", "") == "support")
