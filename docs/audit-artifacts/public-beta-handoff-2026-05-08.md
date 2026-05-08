@@ -32,6 +32,7 @@ The release is prepared as far as current access allows: GitHub prerelease APK/E
 - External access preflight public-claim guardrails now emit Russian operator text.
 - Machine-readable launch decision now emits Russian safe/unsafe public claims.
 - Public beta post-deploy probe and launch decision JSON were refreshed after the latest deploy/probe checks.
+- GitHub Actions Guardrails are green on portal `master` at commit `417f418`; this is CI-safe repo evidence, not public-release authorization.
 - Support/admin/redeem/promo/payment/email surfaces have the focused fixes and tests described in the current workspace diff.
 
 ## Verification Snapshot
@@ -70,10 +71,12 @@ The release is prepared as far as current access allows: GitHub prerelease APK/E
 - `python scripts\text_integrity.py docs\audit-artifacts\public-beta-completion-audit-2026-05-08.md scripts\public_beta_launch_decision.py` -> PASS.
 - `python scripts\text_integrity.py docs\launch\telegram-announcement.md` -> PASS.
 - `python -m json.tool` on refreshed decision/probe JSON artifacts -> PASS.
+- GitHub Actions Guardrails run `25570326956` on commit `417f418b89a85c3894e0e2a2aa4948d555c9fb93` -> PASS; CI release guardrails are scoped and skip operator-only client/browser gates as `SKIPPED_CI_UNAVAILABLE`.
 
 ## Live Status
 
 - API health: PASS, `200`, status `ok`.
+- GitHub Actions Guardrails: PASS, run `25570326956`, commit `417f418b89a85c3894e0e2a2aa4948d555c9fb93`.
 - Backend deploy: latest portal code deploy restarted `portal-api`, `portal-bot`, `portal-helpbot`, and `portal-feedbackbot`; all are active.
 - Email runtime status: PASS, public mode enabled, delivery URL and secret configured, debug echo off, no blocked reasons.
 - Payment provider status: `BLOCKED_BY_ACCESS`; `/api/payments/providers` returns `blocked=true`, no providers, reason `paid_checkout_launch_evidence_missing`.

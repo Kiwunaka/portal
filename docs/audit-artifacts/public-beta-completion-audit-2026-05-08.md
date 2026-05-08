@@ -49,6 +49,7 @@ The workspace is prepared as far as current access allows, but final publication
 | Client build/preflight evidence | Client handoff metadata and GitHub release assets in `POKROV-app` | STAGED_PASS | Physical Android audit is operator-attested; Windows unsigned risk accepted. |
 | Visual QA | Prior release gate/e2e/visual smoke artifacts referenced by handoff and launch decision | PARTIAL_PASS | No new broad visual sweep after the latest small static deploy. |
 | Current-origin and brain-origin gates | Launch decision reads current full/quick and brain quick gate artifacts | PASS_WITH_SCOPE_LIMITS | Green gates do not cover missing runtime links, Lava proof, or live inbox delivery. |
+| GitHub Actions repo guardrails | Guardrails run `25570326956` on portal commit `417f418b89a85c3894e0e2a2aa4948d555c9fb93` | PASS_WITH_SCOPE_LIMITS | CI guardrails are green, but skip operator-only client/browser gates as `SKIPPED_CI_UNAVAILABLE` and are not public-release authorization. |
 | Static/backend deploy | Static release `20260508160515`; backend services active from earlier deploy | PASS | Runtime env link sync intentionally not applied. |
 | RU-origin | `docs/audit-artifacts/ru-origin-skip-accepted-2026-05-08.md` | SKIPPED_BY_OPERATOR | Do not claim RU-origin Telegram readiness. |
 | Release handoff | `docs/audit-artifacts/public-beta-handoff-2026-05-08.md` | PASS_NO_GO | Final output exists but says `NO-GO`. |
@@ -58,6 +59,7 @@ The workspace is prepared as far as current access allows, but final publication
 ## Proxy Signal Limits
 
 - Passing local or brain gates does not prove runtime `APP_*` links, live email inbox delivery, Lava.top payment evidence, RU-origin Telegram reachability, or final public authorization.
+- Passing GitHub Actions repo guardrails does not prove operator-only client/browser gates or authorize public publication.
 - GitHub prerelease asset reachability does not prove those links are live inside `/api/client/apps`.
 - Email runtime config being green does not prove a real verify/reset/access-key message reached an inbox.
 - A blocked payment provider catalog is correct launch honesty, not a paid-checkout launch.
