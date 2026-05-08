@@ -164,6 +164,8 @@ export function CabinetDownloadsSurface() {
   const hasAndroid = cards.some((item) => item.key.startsWith("android"));
   const hasWindows = cards.some((item) => item.key.startsWith("windows"));
   const hasDocs = cards.some((item) => item.key === "docs");
+  const hasDownloadLinks = hasAndroid || hasWindows;
+  const firstDownload = cards.find((item) => cardPlatform(item));
 
   const helperCards: CabinetListItem[] = [
     {
@@ -200,8 +202,12 @@ export function CabinetDownloadsSurface() {
   return (
     <CabinetRoute
       eyebrow="Загрузки"
-      title="Все нужные загрузки под рукой"
-      description="Бета-доступ открыт только из кабинета. Показываем реальные рабочие ссылки или честно говорим, что их нет."
+      title={hasDownloadLinks ? "Все нужные загрузки под рукой" : "Загрузки появятся после финального разрешения"}
+      description={
+        hasDownloadLinks
+          ? "Бета-доступ открыт только из кабинета. Показываем реальные рабочие ссылки или честно говорим, что их нет."
+          : "APK и EXE пока не включены в runtime-ссылки. Это нормальный закрытый статус до явного GO на публикацию загрузок."
+      }
       actions={
         <>
           <AppRouteLink href="/devices/" className="outline-btn rounded-full px-5 py-3 text-sm font-semibold">
@@ -241,18 +247,18 @@ export function CabinetDownloadsSurface() {
     >
       <CabinetHero
         eyebrow="Что делать сейчас"
-        badge={cards.length ? "Бета-доступ" : "Ссылки подтягиваются"}
-        badgeTone={cards.length ? "success" : "info"}
-        title={cards.length ? "Сначала загрузка, потом вход" : "Часть ссылок подтянем позже"}
+        badge={hasDownloadLinks ? "Бета-доступ" : "Ссылки не включены"}
+        badgeTone={hasDownloadLinks ? "success" : "info"}
+        title={hasDownloadLinks ? "Сначала загрузка, потом вход" : "Часть ссылок подтянем позже"}
         description={
-          cards.length
+          hasDownloadLinks
             ? "Для нового экрана обычно хватает двух шагов: открыть нужную бета-загрузку и войти в тот же аккаунт. Всё остальное уже догружается само."
             : "Кабинет продолжает работать. Если нужной ссылки нет прямо сейчас, лучше не искать обходной путь, а открыть поддержку."
         }
         actions={
           <>
-            {cards[0]?.href ? (
-              <a href={cards[0].href} target="_blank" rel="noreferrer" className="btn-primary rounded-full px-5 py-3 text-sm font-semibold">
+            {firstDownload?.href ? (
+              <a href={firstDownload.href} target="_blank" rel="noreferrer" className="btn-primary rounded-full px-5 py-3 text-sm font-semibold">
                 Открыть первую ссылку
               </a>
             ) : null}
@@ -287,7 +293,11 @@ export function CabinetDownloadsSurface() {
         <CabinetSection
           eyebrow="Платформы"
           title="Куда можно перейти сейчас"
-          description="Оставили только реальные бета-ссылки и честные состояния артефактов."
+          description={
+            hasDownloadLinks
+              ? "Оставили только реальные бета-ссылки и честные состояния артефактов."
+              : "Пока доступны только инструкции и поддержка; публичные файлы не подменяем запасными ссылками."
+          }
         >
           <CabinetCardGrid items={cards} className="xl:grid-cols-2" />
           {error ? <p className="mt-4 text-sm text-amber-700 dark:text-amber-200">Часть ссылок не удалось обновить автоматически: {error}</p> : null}

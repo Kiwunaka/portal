@@ -23,6 +23,7 @@ type TicketMock = {
 
 type CabinetMockOptions = {
   authSession?: unknown;
+  clientApps?: unknown;
   dashboard?: Record<string, unknown>;
   paymentProviders?: unknown;
   checkoutOrderResponse?: unknown;
@@ -248,7 +249,7 @@ async function registerCabinetMocks(page: Page, options: CabinetMockOptions = {}
       });
     }
     if (path === "/api/client/apps") {
-      return json({
+      return json(options.clientApps || {
         android: {
           play_url: "",
           apk_url: "https://github.com/Kiwunaka/POKROV-app/releases/download/v0.2.0-beta.1/pokrov-android-universal.apk",
@@ -1156,6 +1157,29 @@ test.describe("Cabinet flow", () => {
     await page.getByRole("button", { name: "Создать кейс" }).click();
     await expect(page.locator("main")).toContainText("Открыт · #");
     await expect(page.locator("main")).toContainText("Нужна помощь с импортом");
+  });
+
+  test("keeps downloads honest when runtime app links are not enabled yet", async ({ page }) => {
+    await page.unroute("**/api/**");
+    await registerCabinetMocks(page, {
+      clientApps: {
+        android: { play_url: "", apk_url: "", mirror_url: "" },
+        windows: { exe_url: "", mirror_url: "" },
+        docs_url: "https://pokrov.space/install/",
+        updated_at: "2030-01-01T00:00:00",
+      },
+    });
+
+    await page.goto("/downloads/?platform=android");
+
+    await expect(page.locator("main h1")).toContainText("Загрузки появятся после финального разрешения");
+    await expect(page.locator("main h2").filter({ hasText: "Часть ссылок подтянем позже" })).toBeVisible();
+    await expect(page.locator("main")).toContainText("Ссылки появятся");
+    await expect(page.locator("main")).toContainText("Короткая инструкция");
+    await expect(page.locator("main a[href='https://pokrov.space/install/']").first()).toBeVisible();
+    await expect(page.locator("main a[href*='pokrov-android-universal.apk']")).toHaveCount(0);
+    await expect(page.locator("main a[href*='pokrov-windows-setup-x64.exe']")).toHaveCount(0);
+    await expect(page.locator("main")).not.toContainText("Открыть первую ссылку");
   });
 
   test("honors platform query when opening cabinet downloads", async ({ page }) => {
