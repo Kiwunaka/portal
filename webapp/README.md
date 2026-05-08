@@ -132,7 +132,7 @@ Current supported auth paths:
 - in browser: additive email continuation uses `/api/auth/email/*` only while `/api/auth/email/status` is green
 - from bot handoff: `web_session_token` should open the cabinet without manual token copy/paste
 - session refresh: `GET /api/auth/session` may return a fresh `session_token` when fresh, signed Telegram `initData` recovers a missing or expired browser session; `fetchAuthSession()` must store it silently before loading cabinet data
-- Telegram Login Widget freshness: stale widget `auth_date` or backend expired/deprecated widget errors should immediately fall forward to Telegram OIDC instead of leaving the user on a raw token error
+- Telegram Login Widget freshness: stale widget `auth_date`, deprecated OAuth callback tokens, or backend expired/deprecated widget errors should immediately fall forward to one fresh Telegram OIDC attempt instead of leaving the user on a raw token error
 - reauth UX: a valid browser token wins over stale Telegram headers, but if every auth source is invalid the cabinet must clear the stale token and show a human Telegram/email reauth CTA
 
 ## Local Run

@@ -24,6 +24,9 @@ import { isTelegramAuthRefreshRequired, telegramAuthRefreshMessage } from "@/lib
 import { getTgUser, type TgUser } from "@/lib/telegram";
 import { createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
 
+const TELEGRAM_OIDC_RESTART_KEY = "portal_telegram_oidc_restart_attempted";
+const TELEGRAM_OIDC_RESTART_MESSAGE = "Telegram попросил обновить вход. Сейчас откроем свежий безопасный вход.";
+
 type PortalSessionContextValue = {
   loading: boolean;
   coldStart: boolean;
@@ -66,6 +69,26 @@ function isReauthMessage(message: string): boolean {
   );
 }
 
+function takeTelegramOidcRestartSlot(): boolean {
+  if (typeof window === "undefined") return false;
+  try {
+    if (window.sessionStorage.getItem(TELEGRAM_OIDC_RESTART_KEY) === "1") return false;
+    window.sessionStorage.setItem(TELEGRAM_OIDC_RESTART_KEY, "1");
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function clearTelegramOidcRestartSlot(): void {
+  if (typeof window === "undefined") return;
+  try {
+    window.sessionStorage.removeItem(TELEGRAM_OIDC_RESTART_KEY);
+  } catch {
+    // ignore unavailable sessionStorage
+  }
+}
+
 type PortalSessionProviderProps = {
   children: React.ReactNode;
   mode?: "entry" | "dashboard";
@@ -82,6 +105,26 @@ export function PortalSessionProvider({ children, mode = "dashboard" }: PortalSe
   const [user, setUser] = useState<UserPayload | null>(null);
   const [dash, setDash] = useState<DashboardSnapshot | null>(null);
   const lastGoodRef = useRef<{ user: UserPayload; dash: DashboardSnapshot } | null>(null);
+
+  const startTelegramLogin = useCallback(async () => {
+    setWebLoginBusy(true);
+    setWebLoginError("");
+    try {
+      const auth = await startTelegramOidcLogin();
+      const authUrl = String(auth?.auth_url || "").trim();
+      if (!authUrl) {
+        throw new Error("Telegram OAuth URL is missing");
+      }
+      if (typeof window !== "undefined") {
+        window.location.assign(authUrl);
+        return;
+      }
+    } catch (error) {
+      setWebLoginError(parseErrorMessage(error));
+      setWebLoginBusy(false);
+      throw error;
+    }
+  }, []);
 
   const consumeTelegramOidcRedirect = useCallback(async (): Promise<boolean> => {
     const callback = readTelegramOidcCallback();
@@ -101,21 +144,32 @@ export function PortalSessionProvider({ children, mode = "dashboard" }: PortalSe
         throw new Error("Не получен web session token");
       }
       setWebSessionToken(auth.token);
+      clearTelegramOidcRestartSlot();
       return true;
     } catch (error) {
+      const message = parseErrorMessage(error);
       clearWebSessionToken();
       setUser(null);
       setDash(null);
       lastGoodRef.current = null;
       setError("");
       setWebLoginRequired(true);
-      setWebLoginError(parseErrorMessage(error));
+      if (isTelegramAuthRefreshRequired(message) && takeTelegramOidcRestartSlot()) {
+        setWebLoginError(TELEGRAM_OIDC_RESTART_MESSAGE);
+        try {
+          await startTelegramLogin();
+        } catch (retryError) {
+          setWebLoginError(telegramAuthRefreshMessage(parseErrorMessage(retryError)));
+        }
+        return false;
+      }
+      setWebLoginError(telegramAuthRefreshMessage(message));
       return false;
     } finally {
       clearTelegramOidcCallback();
       setWebLoginBusy(false);
     }
-  }, []);
+  }, [startTelegramLogin]);
 
   const refresh = useCallback(async () => {
     if (typeof window !== "undefined") {
@@ -239,26 +293,6 @@ export function PortalSessionProvider({ children, mode = "dashboard" }: PortalSe
       setWebLoginBusy(false);
     }
   }, [refresh]);
-
-  const startTelegramLogin = useCallback(async () => {
-    setWebLoginBusy(true);
-    setWebLoginError("");
-    try {
-      const auth = await startTelegramOidcLogin();
-      const authUrl = String(auth?.auth_url || "").trim();
-      if (!authUrl) {
-        throw new Error("Telegram OAuth URL is missing");
-      }
-      if (typeof window !== "undefined") {
-        window.location.assign(authUrl);
-        return;
-      }
-    } catch (error) {
-      setWebLoginError(parseErrorMessage(error));
-      setWebLoginBusy(false);
-      throw error;
-    }
-  }, []);
 
   const logoutWebSession = useCallback(() => {
     clearWebSessionToken();

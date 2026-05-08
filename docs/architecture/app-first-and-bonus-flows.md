@@ -225,7 +225,7 @@ Contract rule:
 - app handoff and Telegram are the active browser-continuation entry families today
 - `GET /api/auth/session` must prefer a valid browser web-session token over stale Telegram headers, but fresh, signed Telegram `initData` may safely recover a missing, invalid, or expired browser session by returning a fresh `session_token` and `expires_in`; the WebApp stores that token silently
 - Telegram WebApp `initData` freshness is bounded by `TELEGRAM_WEBAPP_INIT_MAX_AGE_SECONDS`; stale signed `initData` must return a human `telegram_init_invalid` reauth state instead of refreshing the browser session forever
-- Telegram Login Widget payloads with stale `auth_date`, expired/deprecated backend responses, or equivalent widget-token freshness failures should fall forward to Telegram OIDC instead of showing raw token language to the user
+- Telegram Login Widget payloads with stale `auth_date`, deprecated OAuth callback tokens, expired/deprecated backend responses, or equivalent widget-token freshness failures should fall forward to one fresh Telegram OIDC attempt instead of showing raw token language to the user
 - if neither the browser token nor Telegram `initData` is valid, the API returns a human reauth error code such as `web_session_expired` or `telegram_init_invalid` instead of exposing raw token/debug wording
 - additive email auth must stay hidden or unavailable unless public mode, delivery webhook URL, delivery relay secret, and non-debug runtime state are green
 - additive email auth must issue the same browser session family used by the cabinet, checkout, and support flows while exposing `auth_origin` and linked-identity summary for support/admin visibility
