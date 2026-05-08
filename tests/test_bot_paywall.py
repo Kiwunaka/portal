@@ -1881,6 +1881,12 @@ class BotPaywallTests(unittest.TestCase):
         self.assertEqual(getattr(open_link, "style", None), self.bot_module.BTN_STYLE_PRIMARY)
         self.assertEqual(getattr(open_link, "icon_custom_emoji_id", None), "5368324170671202286")
 
+    def test_env_example_documents_telegram_button_custom_emoji_ids(self) -> None:
+        env_example = (Path(__file__).resolve().parents[1] / "portal_bot" / ".env.example").read_text(encoding="utf-8")
+
+        for name in ("TG_BTN_EMOJI_PRIMARY_ID", "TG_BTN_EMOJI_SUCCESS_ID", "TG_BTN_EMOJI_DANGER_ID"):
+            self.assertIn(f"{name}=", env_example)
+
     def test_web_login_receipt_and_payment_keyboards_use_modern_fields(self) -> None:
         login_keyboard = self.bot_module._web_login_issued_keyboard("https://app.pokrov.space/?web_session_token=test")
         login_buttons = {

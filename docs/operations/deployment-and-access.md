@@ -178,6 +178,10 @@ Use these when the release is blocked on one narrow operational step and the nex
 
 The backend supports `lavatop` as the active RUB provider for public beta; public provider env must stay Lava-only (`RUB_PAYMENT_PROVIDER_ENABLED=lavatop`, `RUB_PAYMENT_PROVIDER_ORDER=lavatop`) and must remain disabled until provider evidence is attached. Telegram in-app invoice flows are not a public beta paid lane and must stay off with `BOT_STARS_PAYMENTS_ENABLED=false` unless a separate compatibility rollback is explicitly approved. Required Lava.top env is documented in [Lava.top Payment Operations](C:/Users/kiwun/Documents/ai/VPN/docs/operations/lavatop-payment-operations.md): `LAVATOP_API_KEY`, `LAVATOP_OFFER_ID` or per-plan `LAVATOP_OFFER_ID_<PLAN_CODE>`, and either `LAVATOP_WEBHOOK_API_KEY` or Basic webhook credentials. Anonymous public checkout also requires configured email delivery (`EMAIL_DELIVERY_WEBHOOK_URL` plus `EMAIL_DELIVERY_WEBHOOK_SECRET`, and relay SMTP/Resend env) before it can safely issue paid access keys.
 
+### Telegram Bot Button Theme
+
+The main, support, feedback, and legacy redirect bots use current Telegram Bot API button fields when the installed Telegram library exposes them: `style`, `icon_custom_emoji_id`, and `copy_text`. Configure optional custom emoji document IDs with `TG_BTN_EMOJI_PRIMARY_ID`, `TG_BTN_EMOJI_SUCCESS_ID`, and `TG_BTN_EMOJI_DANGER_ID`; leave them blank if the bot or Telegram account is not eligible for custom emoji. These values are Telegram custom emoji document IDs, not Material icon pack names or image assets, and missing IDs must not block the release because the buttons remain text-compatible.
+
 ### External RU probe runner
 
 - [ru_probe_runner.py](C:/Users/kiwun/Documents/ai/VPN/scripts/ru_probe_runner.py)
