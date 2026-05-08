@@ -25,7 +25,7 @@ The workspace is prepared as far as current access allows, but final publication
 | Use local canon first | `AGENTS.md`, `DESIGN.md`, `shared/*`, canonical docs, active `POKROV-app/docs/*` | PASS | Public claims remain release-honest and RU-first. |
 | Use lane subagents where useful | Lane read-only audits returned backend/web/support/release findings | PASS | Remaining actionable findings were either already fixed in current code or not launch-blocking. |
 | External DeepSeek/Kimi design/copy critique where useful | Earlier handoff/audit record Kimi copy critique of launch/payment ambiguity | PASS | External output treated as draft only; local canon won. |
-| Site and install page deployed | `https://pokrov.space/`, `https://pokrov.space/install/`, static release `20260508160515` | PASS | Runtime app links still not live. |
+| Site and install page deployed | `https://pokrov.space/`, `https://pokrov.space/install/`, static release `20260508165715` | PASS | Runtime app links still not live. |
 | WebApp cabinet and admin deployed | `https://app.pokrov.space/`, `https://app.pokrov.space/admin/release/`, static smoke `200` | PASS | Admin auth screen rendered without Next overlay in unauthenticated browser check. |
 | Backend API live | `https://api.pokrov.space/api/health` returned `200` / `{"status":"ok"}` | PASS | Does not prove runtime app links or paid checkout. |
 | GitHub Releases APK/EXE distribution | `v0.2.0-beta.1` prerelease, APK SHA256 `1A369891641964A9A30A296E7D47111A07B6DDAAD5ABC293F7EF938A654DADB0`, EXE SHA256 `E340F36EC10149649373E0E7816C81B8C6873E9B95C7A85DC0F6AD708DB2C70D` | STAGED_PASS | Published as prerelease staging, not final runtime download path. |
@@ -50,7 +50,7 @@ The workspace is prepared as far as current access allows, but final publication
 | Visual QA | Prior release gate/e2e/visual smoke artifacts referenced by handoff and launch decision | PARTIAL_PASS | No new broad visual sweep after the latest small static deploy. |
 | Current-origin and brain-origin gates | Launch decision reads current full/quick and brain quick gate artifacts | PASS_WITH_SCOPE_LIMITS | Green gates do not cover missing runtime links, Lava proof, or live inbox delivery. |
 | GitHub Actions repo guardrails | Guardrails run `25570326956` on portal commit `417f418b89a85c3894e0e2a2aa4948d555c9fb93` | PASS_WITH_SCOPE_LIMITS | CI guardrails are green, but skip operator-only client/browser gates as `SKIPPED_CI_UNAVAILABLE` and are not public-release authorization. |
-| Static/backend deploy | Static release `20260508160515`; backend services active from earlier deploy | PASS | Runtime env link sync intentionally not applied. |
+| Static/backend deploy | Static release `20260508165715`; backend services active from earlier deploy | PASS | Runtime env link sync intentionally not applied. |
 | RU-origin | `docs/audit-artifacts/ru-origin-skip-accepted-2026-05-08.md` | SKIPPED_BY_OPERATOR | Do not claim RU-origin Telegram readiness. |
 | Release handoff | `docs/audit-artifacts/public-beta-handoff-2026-05-08.md` | PASS_NO_GO | Final output exists but says `NO-GO`. |
 | External unblock packet | `docs/audit-artifacts/public-beta-unblock-packet-2026-05-08.md` | PASS | Current operator runbook points to 2026-05-08 handoff/completion audit and the post-handoff runtime smoke artifact. |
