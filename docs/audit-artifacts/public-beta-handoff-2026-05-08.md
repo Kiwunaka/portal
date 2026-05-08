@@ -66,6 +66,8 @@ The release is prepared as far as current access allows: GitHub prerelease APK/E
 - `python scripts\remote_deploy_brain_static_sites.py --brain-ip 82.21.114.104 --ssh-user root --ssh-port 29374` -> PASS, static release id `20260508165406`.
 - Admin release cockpit operator blocker copy was kept RU-facing; `npm.cmd run test:e2e:admin -- --grep "release cockpit no-go"` -> PASS, 1 test.
 - `python scripts\remote_deploy_brain_static_sites.py --brain-ip 82.21.114.104 --ssh-user root --ssh-port 29374` -> PASS, static release id `20260508165715`.
+- Telegram deprecated OAuth callback now auto-restarts one fresh Telegram OIDC attempt instead of exposing raw `deprecated_token`; `npx.cmd playwright test oidc-fallback.spec.ts telegram-login-refresh.spec.ts --reporter=line` -> PASS, 7 tests; `npm.cmd run build` in `webapp/` -> PASS; GitHub Actions Guardrails run `25573819924` on commit `56f13c7152651b20e0403bdd0ace680854174bed` -> PASS.
+- `python scripts\remote_deploy_brain_static_sites.py --brain-ip 82.21.114.104` -> PASS, static release id `20260508190122`; post-deploy static smoke and `python scripts\verify_brain_ready.py --brain-ip 82.21.114.104` -> PASS.
 - Telegram fallback-admin bot labels were kept RU-facing while preserving callback payloads; `python -m pytest tests\test_bot_paywall.py -q` -> PASS, 83 tests; helpbot/feedbackbot/menu tests -> PASS, 15 tests.
 - `python scripts\remote_deploy_brain_portal_code.py --brain-ip 82.21.114.104 --restart portal-api,portal-bot,portal-helpbot,portal-feedbackbot` -> PASS; all requested services active.
 - `python scripts\brain_telegram_bot_menu_check.py --brain-ip 82.21.114.104 --ssh-user root --ssh-port 29374 --output docs\audit-artifacts\telegram-bot-command-menu-brain-2026-05-08.json` -> PASS.
@@ -82,12 +84,12 @@ The release is prepared as far as current access allows: GitHub prerelease APK/E
 ## Live Status
 
 - API health: PASS, `200`, status `ok`.
-- GitHub Actions Guardrails: PASS, run `25571494051`, commit `62da31eed21feaafaf1dc1c580be70d274b5f4d3`.
+- GitHub Actions Guardrails: PASS, run `25573819924`, commit `56f13c7152651b20e0403bdd0ace680854174bed`.
 - Backend deploy: latest portal code deploy restarted `portal-api`, `portal-bot`, `portal-helpbot`, and `portal-feedbackbot`; all are active.
 - Email runtime status: PASS, public mode enabled, delivery URL and secret configured, debug echo off, no blocked reasons.
 - Payment provider status: `BLOCKED_BY_ACCESS`; `/api/payments/providers` returns `blocked=true`, no providers, reason `paid_checkout_launch_evidence_missing`.
 - GitHub release: published prerelease, not draft. APK and EXE assets are uploaded; release notes now explicitly say `NO-GO` and keep runtime links/payment/public announcement closed.
-- Static deploy: latest static release id `20260508165715`; `https://app.pokrov.space/admin/release/` and `https://pokrov.space/install/` return `200`.
+- Static deploy: latest static release id `20260508190122`; `https://app.pokrov.space/` and `https://pokrov.space/install/` return `200`.
 
 ## Remaining Blockers
 
