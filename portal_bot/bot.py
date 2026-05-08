@@ -4669,7 +4669,7 @@ async def show_settings(callback: CallbackQuery):
     kb = _keyboard_from_specs(rows)
     await callback.message.edit_text(
         "⚙️ *Ещё*\n\n"
-        "Здесь собраны дополнительные действия: ссылка для подключения, подарки, семейные слоты и быстрый доступ к поддержке.\n\n"
+        "Здесь собраны дополнительные действия: ссылка для подключения, инструкции, подарки и быстрый следующий шаг.\n\n"
         "Выберите следующий шаг:",
         reply_markup=kb,
         parse_mode=ParseMode.MARKDOWN,
@@ -6585,6 +6585,14 @@ def _cabinet_command_keyboard() -> InlineKeyboardMarkup:
                 _btn_spec(
                     text="📅 Статус продления",
                     web_app_url=_webapp_route_url("subscription"),
+                    style=BTN_STYLE_PRIMARY,
+                    icon_custom_emoji_id=BTN_EMOJI_PRIMARY_ID or None,
+                )
+            ],
+            [
+                _btn_spec(
+                    text="⚙️ Аккаунт и бонусы",
+                    web_app_url=_webapp_route_url("settings"),
                     style=BTN_STYLE_PRIMARY,
                     icon_custom_emoji_id=BTN_EMOJI_PRIMARY_ID or None,
                 )
