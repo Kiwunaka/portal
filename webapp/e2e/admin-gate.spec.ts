@@ -1193,9 +1193,9 @@ test.describe("Admin gate", () => {
     await openRoute(page, "admin/release/");
 
     await expect(page.getByRole("heading", { name: "Публичная бета: NO-GO" })).toBeVisible();
-    await expect(page.getByText("локальные блокеры: 0")).toBeVisible();
+    await expect(page.getByText("локальные блокеры: 2")).toBeVisible();
     await expect(page.getByText(/внешние блокеры:/)).toBeVisible();
-    await expect(page.getByText("Runtime-ссылки активны", { exact: true })).toBeVisible();
+    await expect(page.getByText("Runtime-ссылки требуют GO-аудит", { exact: true })).toBeVisible();
     await expect(page.getByText("Runtime-ссылки не синкать")).not.toBeVisible();
     await expect(page.getByRole("heading", { name: "Что нужно от оператора" })).toBeVisible();
     await expect(page.getByRole("button", { name: "Скопировать Runtime APP-ссылки" })).toBeVisible();
@@ -1204,24 +1204,26 @@ test.describe("Admin gate", () => {
     await page.getByRole("button", { name: "Скопировать Runtime APP-ссылки" }).click();
     await expect(page.getByRole("button", { name: "Скопировать Runtime APP-ссылки" })).toContainText("Скопировано");
     await expect(page.getByText("Runtime APP-ссылки").first()).toBeVisible();
-    await expect(page.getByText("ДЕЙСТВИЙ НЕ НУЖНО: runtime-ссылки уже активны для текущего релиз-кандидата.")).toBeVisible();
+    await expect(page.getByText("RUNTIME LINK SYNC AUDIT BEFORE ANNOUNCEMENT")).toBeVisible();
+    await expect(page.getByText(/ROLL BACK RUNTIME APP_\* LINKS/)).toBeVisible();
     await expect(page.getByText("Email-доставка")).toBeVisible();
     await expect(page.getByRole("article").filter({ hasText: "Email-доставка" }).getByText(/--email-probe-to <probe-email>/)).toBeVisible();
     await expect(page.getByText("Lava.top", { exact: true })).toBeVisible();
     await expect(page.getByRole("article").filter({ hasText: "Lava.top" }).getByText(/--lavatop-probe-email <buyer-email>/)).toBeVisible();
-    await expect(page.getByRole("heading", { name: "Lava.top в каталоге" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "каталог найден; checkout закрыт" })).toBeVisible();
     await expect(page.getByText("Агрегированный гейт оплаты")).toBeVisible();
-    await expect(page.getByText("paid-checkout-launch-evidence-brain-2026-05-08.json")).toBeVisible();
+    await expect(page.getByText(/Последний retained paid-checkout evidence/)).toBeVisible();
     await expect(page.getByText("Машинный launch decision")).toBeVisible();
-    await expect(page.getByText("public-beta-launch-decision-2026-05-08.json")).toBeVisible();
+    await expect(page.getByText(/Последний retained launch decision/)).toBeVisible();
     await expect(page.getByText(/safe_to_publish_public_beta=false/)).toBeVisible();
     await expect(page.getByText(/post_deploy_payment_email_probe=BLOCKED_BY_ACCESS/)).toBeVisible();
     await expect(page.getByText("Brain-local email/Lava.top probe")).toBeVisible();
-    await expect(page.getByText(/brain-post-deploy-live-probe-2026-05-08\.json дошел/)).toBeVisible();
+    await expect(page.getByText(/Последний retained brain-local probe дошел/)).toBeVisible();
+    await expect(page.getByText(/brain-post-deploy-live-probe-<YYYY-MM-DD>\.json/).first()).toBeVisible();
     await expect(page.getByText(/email_probe_to.*lavatop_probe_email/)).toBeVisible();
     await expect(page.getByText(/явного разрешения на runtime sync/).first()).toBeVisible();
     await expect(page.getByText(/runtime APP_\* links are still empty/)).not.toBeVisible();
-    await expect(page.getByText("GitHub Releases APK/EXE доступны в runtime /api/client/apps; публичный анонс все еще ждет финальный GO.")).toBeVisible();
+    await expect(page.getByText("GitHub Releases APK/EXE обнаружены в runtime /api/client/apps; публичный анонс все еще ждет подтвержденный runtime-sync GO и финальный GO.")).toBeVisible();
     await expect(page.getByText("Telegram Stars")).toBeVisible();
     await expect(page.getByText("выключено по политике")).toBeVisible();
     await expect(page.getByText("Физический аудит Android-сборки")).toBeVisible();
@@ -1231,7 +1233,7 @@ test.describe("Admin gate", () => {
     await expect(page.getByRole("heading", { name: "SKIPPED_BY_OPERATOR" })).toBeVisible();
     await expect(page.getByText("RU-origin проверка пропущена оператором")).toBeVisible();
     await expect(page.getByText("POKROV готовит ограниченную Android и Windows бета вне магазинов.")).toBeVisible();
-    await expect(page.getByText("GitHub Releases APK/EXE доступны в runtime /api/client/apps; публичный анонс все еще ждет финальный GO.")).toBeVisible();
+    await expect(page.getByText("GitHub Releases APK/EXE обнаружены в runtime /api/client/apps; публичный анонс все еще ждет подтвержденный runtime-sync GO и финальный GO.")).toBeVisible();
     await expect(page.getByText("Публичная бета уже запущена.")).toBeVisible();
   });
 
@@ -1255,7 +1257,7 @@ test.describe("Admin gate", () => {
 
     await openRoute(page, "admin/release/");
 
-    await expect(page.getByText("локальные блокеры: 1")).toBeVisible();
+    await expect(page.getByText("локальные блокеры: 2")).toBeVisible();
     await expect(page.getByText("RUNTIME LINK SYNC GO FOR APP-DOWNLOAD SMOKE")).toBeVisible();
     await expect(page.getByText(/Нужны GitHub Releases APK\/EXE/)).toBeVisible();
     await expect(page.getByText("Android Play URL должен оставаться пустым для беты вне магазинов.")).toBeVisible();

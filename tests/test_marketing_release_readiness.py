@@ -144,7 +144,8 @@ def test_public_beta_docs_pin_current_brain_truth_and_unblock_packet() -> None:
     assert "--brain-live-probe-json" in unblock_packet
     assert 'brain_live_probe_json=""' not in handoff
     release_cockpit = _read_webapp("app", "(dashboard)", "admin", "release", "page.tsx")
-    assert "brain-post-deploy-live-probe-2026-05-08.json" in release_cockpit
+    assert "brain-post-deploy-live-probe-<YYYY-MM-DD>.json" in release_cockpit
+    assert "Последний retained brain-local probe" in release_cockpit
     assert "--post-deploy-live" in unblock_packet
     assert "email_public_runtime_config_passed=true" in handoff
     assert "safe_to_keep_email_public=true" in unblock_packet

@@ -50,12 +50,20 @@ const RUNTIME_SYNC_GO_TEXT = [
   "PAID CHECKOUT REMAINS CLOSED",
 ].join("\n");
 
+const RUNTIME_SYNC_AUDIT_TEXT = [
+  "RUNTIME LINK SYNC AUDIT BEFORE ANNOUNCEMENT",
+  "CONFIRM_OPERATOR_GO_WAS_EXACT=true",
+  "CONFIRM_NO_PUBLIC_ANNOUNCEMENT_YET=true",
+  "CONFIRM_PAID_CHECKOUT_REMAINS_CLOSED=true",
+  "IF GO IS MISSING: DO NOT ANNOUNCE; ROLL BACK RUNTIME APP_* LINKS",
+].join("\n");
+
 const EMAIL_PROBE_COMMAND = [
-  "python scripts\\brain_payment_email_readiness.py --brain-ip 82.21.114.104 --ssh-user root --ssh-port 29374 --post-deploy-live --email-probe-to <probe-email> --output docs\\audit-artifacts\\brain-post-deploy-live-probe-2026-05-08.json",
+  "python scripts\\brain_payment_email_readiness.py --brain-ip 82.21.114.104 --ssh-user root --ssh-port 29374 --post-deploy-live --email-probe-to <probe-email> --output docs\\audit-artifacts\\brain-post-deploy-live-probe-<YYYY-MM-DD>.json",
 ].join("\n");
 
 const LAVATOP_PROBE_COMMAND = [
-  "python scripts\\brain_payment_email_readiness.py --brain-ip 82.21.114.104 --ssh-user root --ssh-port 29374 --post-deploy-live --email-probe-to <probe-email> --lavatop-probe-email <buyer-email> --output docs\\audit-artifacts\\brain-post-deploy-live-probe-2026-05-08.json",
+  "python scripts\\brain_payment_email_readiness.py --brain-ip 82.21.114.104 --ssh-user root --ssh-port 29374 --post-deploy-live --email-probe-to <probe-email> --lavatop-probe-email <buyer-email> --output docs\\audit-artifacts\\brain-post-deploy-live-probe-<YYYY-MM-DD>.json",
 ].join("\n");
 
 function firstUrl(...values: Array<string | null | undefined>): string {
@@ -165,22 +173,22 @@ function buildRuntimeGates({
     {
       key: "apps",
       label: "Android и Windows ссылки",
-      value: yesNo(appLinksReady),
+      value: appLinksReady ? "ссылки обнаружены; нужен GO-аудит" : "нет подтверждения",
       detail: appLinksReady
-        ? "Backend отдает GitHub Releases APK/EXE, install docs URL, Android Play URL пустой."
+        ? "Backend отдает GitHub Releases APK/EXE, install docs URL, Android Play URL пустой. Наличие ссылок не доказывает, что был явный runtime-sync GO; перед анонсом нужен audit handoff."
         : "Нужны GitHub Releases APK/EXE, docs URL https://pokrov.space/install/ и пустой Android Play URL в /api/client/apps.",
-      tone: appLinksReady ? "success" : "danger",
+      tone: appLinksReady ? "warning" : "danger",
     },
     {
       key: "payments",
       label: "Гейт оплаты Lava.top",
-      value: lavaOnly ? "Lava.top в каталоге" : payments?.blocked ? "закрыто" : "проверить",
+      value: lavaOnly ? "каталог найден; checkout закрыт" : payments?.blocked ? "закрыто" : "проверить",
       detail: lavaOnly
-        ? "Каталог оплаты показывает только Lava.top; боевые подтверждения оплаты все еще проверяются ниже."
+        ? "Каталог оплаты показывает только Lava.top, но это не live payment proof. Checkout остается закрытым до invoice/webhook/replay/failure/manual-review/reconciliation и email-key evidence."
         : payments?.blocked
           ? reasonList(payments.blocked_reason_texts || payments.blocked_reasons)
           : "Каталог оплаты не доказывает готовность режима только Lava.top.",
-      tone: lavaOnly ? "success" : payments?.blocked ? "warning" : "danger",
+      tone: lavaOnly ? "warning" : payments?.blocked ? "warning" : "danger",
     },
     {
       key: "email",
@@ -224,7 +232,7 @@ const EXTERNAL_GATES: GateItem[] = [
     label: "Агрегированный гейт оплаты",
     value: "BLOCKED_BY_ACCESS",
     detail:
-      "paid-checkout-launch-evidence-brain-2026-05-08.json держит оплату закрытой: нет полного redacted evidence по invoice, success webhook, replay, failure/manual-review, reconciliation и email-доставке ключа.",
+      "Последний retained paid-checkout evidence держит оплату закрытой: нет полного redacted evidence по invoice, success webhook, replay, failure/manual-review, reconciliation и email-доставке ключа. При новой проверке нужен свежий датированный artifact.",
     tone: "danger",
   },
   {
@@ -232,7 +240,7 @@ const EXTERNAL_GATES: GateItem[] = [
     label: "Машинный launch decision",
     value: "NO_GO",
     detail:
-      "public-beta-launch-decision-2026-05-08.json: safe_to_publish_public_beta=false, post_deploy_payment_email_probe=BLOCKED_BY_ACCESS. Зеленый email runtime не заменяет inbox proof, Lava.top invoice proof и финальный GO.",
+      "Последний retained launch decision: safe_to_publish_public_beta=false, post_deploy_payment_email_probe=BLOCKED_BY_ACCESS. Зеленый email runtime не заменяет inbox proof, Lava.top invoice proof и финальный GO; после новых probes нужен новый decision artifact.",
     tone: "danger",
   },
   {
@@ -240,7 +248,7 @@ const EXTERNAL_GATES: GateItem[] = [
     label: "Brain-local email/Lava.top probe",
     value: "BLOCKED_BY_ACCESS",
     detail:
-      "brain-post-deploy-live-probe-2026-05-08.json дошел до brain и runtime env, но остановился без отправки писем и invoice: нужны безопасные email_probe_to и lavatop_probe_email. Секреты остаются на brain, наружу должен идти только redacted HTTP-status.",
+      "Последний retained brain-local probe дошел до brain и runtime env, но остановился без отправки писем и invoice: нужны безопасные email_probe_to и lavatop_probe_email. Секреты остаются на brain, наружу должен идти только redacted HTTP-status.",
     tone: "danger",
   },
   {
@@ -262,7 +270,7 @@ const EXTERNAL_GATES: GateItem[] = [
     label: "Доверенная подпись Windows",
     value: "UNSIGNED_BETA_RISK_ACCEPTED",
     detail:
-      "Подпись не требуется для этой волны вне магазинов по операторскому решению 2026-05-08. EXE может показывать предупреждение Windows о неизвестном издателе или SmartScreen; нельзя называть его доверенно подписанным.",
+      "Подпись не требуется для этой волны вне магазинов по текущему операторскому решению. EXE может показывать предупреждение Windows о неизвестном издателе или SmartScreen; нельзя называть его доверенно подписанным.",
     tone: "warning",
   },
   {
@@ -373,7 +381,7 @@ export default function AdminReleasePage() {
   }, [emailRaw]);
   const runtimeGates = useMemo(() => buildRuntimeGates({ apps, email, metrics, payments }), [apps, email, metrics, payments]);
   const runtimeBlocks = runtimeGates.filter((gate) => gate.tone !== "success").length;
-  const runtimeLinksReady = runtimeGates.find((gate) => gate.key === "apps")?.tone === "success";
+  const runtimeLinksDetected = runtimeGates.find((gate) => gate.key === "apps")?.value.startsWith("ссылки обнаружены") || false;
   const externalBlocks = EXTERNAL_GATES.filter((gate) => gate.tone === "danger").length;
   const publicGo = runtimeBlocks === 0 && externalBlocks === 0;
   const androidUrl = firstUrl(apps?.android?.apk_url, apps?.android?.mirror_url);
@@ -383,15 +391,15 @@ export default function AdminReleasePage() {
   const windowsUrlReady = isGithubReleaseArtifactUrl(windowsUrl, ".exe");
   const emailPublicReady = isEmailPublicReady(email);
   const operatorActions: OperatorAction[] = [
-    runtimeLinksReady
+    runtimeLinksDetected
       ? {
-          key: "runtime-links-live",
+          key: "runtime-links-detected",
           title: "Runtime APP-ссылки",
-          status: "уже live",
+          status: "обнаружены; проверьте GO",
           detail:
-            "Backend уже отдает GitHub APK/EXE и install docs. Новый sync нужен только при смене release-кандидата.",
-          command: "ДЕЙСТВИЙ НЕ НУЖНО: runtime-ссылки уже активны для текущего релиз-кандидата.",
-          tone: "success",
+            "Backend уже отдает GitHub APK/EXE и install docs, но WebApp не может доказать, что sync был разрешен. Перед анонсом проверьте exact runtime-link GO в handoff; если GO нет, не анонсируйте и откатите APP_* ссылки.",
+          command: RUNTIME_SYNC_AUDIT_TEXT,
+          tone: "warning",
         }
       : {
           key: "runtime-link-go",
@@ -451,8 +459,8 @@ export default function AdminReleasePage() {
         <div className="flex flex-wrap gap-2">
           <AdminBadge tone={runtimeBlocks ? "warning" : "success"}>локальные блокеры: {runtimeBlocks}</AdminBadge>
           <AdminBadge tone={externalBlocks ? "danger" : "success"}>внешние блокеры: {externalBlocks}</AdminBadge>
-          <AdminBadge tone={runtimeLinksReady ? "success" : "warning"}>
-            {runtimeLinksReady ? "Runtime-ссылки активны" : "Runtime-ссылки не синкать"}
+          <AdminBadge tone="warning">
+            {runtimeLinksDetected ? "Runtime-ссылки требуют GO-аудит" : "Runtime-ссылки не синкать"}
           </AdminBadge>
           <AdminBadge tone="warning">Telegram пост не отправлять</AdminBadge>
         </div>
@@ -487,8 +495,8 @@ export default function AdminReleasePage() {
           },
           {
             label: "Оплата",
-            value: payments?.ok ? "локально проверено" : "закрыто",
-            hint: payments?.ok ? `провайдеры: ${(payments.providers || []).map((provider) => provider.code).join(", ")}; боевой гейт ниже остается закрыт до подтверждений Lava.top.` : reasonList(payments?.blocked_reasons),
+            value: payments?.ok ? "каталог найден" : "закрыто",
+            hint: payments?.ok ? `провайдеры: ${(payments.providers || []).map((provider) => provider.code).join(", ")}; checkout закрыт до боевых подтверждений Lava.top.` : reasonList(payments?.blocked_reasons),
             tone: payments?.ok ? "warning" : "warning",
           },
           {
@@ -557,8 +565,8 @@ export default function AdminReleasePage() {
           <div className="space-y-2">
             {[
               "POKROV готовит ограниченную Android и Windows бета вне магазинов.",
-              runtimeLinksReady
-                ? "GitHub Releases APK/EXE доступны в runtime /api/client/apps; публичный анонс все еще ждет финальный GO."
+              runtimeLinksDetected
+                ? "GitHub Releases APK/EXE обнаружены в runtime /api/client/apps; публичный анонс все еще ждет подтвержденный runtime-sync GO и финальный GO."
                 : "GitHub prerelease assets подготовлены для проверки; runtime-ссылки пока не активны.",
               "Android-кандидат принят как операторски подтвержденный, Windows EXE остается неподписанной бета-сборкой.",
               "Оплата остается закрытой до подтверждений Lava.top и доставки ключей по email.",
@@ -581,8 +589,8 @@ export default function AdminReleasePage() {
               "Оплата Lava.top работает в бою.",
               "Android raw repo validation green или магазинная публикация уже разрешена.",
               "Windows подписан доверенным сертификатом.",
-              runtimeLinksReady
-                ? "Runtime-ссылки активны, значит можно отправлять публичный анонс без финального GO."
+              runtimeLinksDetected
+                ? "Runtime-ссылки обнаружены, значит можно отправлять публичный анонс без подтвержденного sync GO и финального GO."
                 : "GitHub Releases уже являются рабочим путем загрузки в приложении или кабинете.",
             ].map((claim) => (
               <p key={claim} className={adminInsetPanelClass}>{claim}</p>
