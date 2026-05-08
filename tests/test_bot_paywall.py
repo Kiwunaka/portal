@@ -350,10 +350,14 @@ class BotPaywallTests(unittest.TestCase):
             for button in row
         ]
         android_button = next(button for button in buttons if getattr(button, "callback_data", "") == "instr_android")
+        apple_button = next(button for button in buttons if getattr(button, "callback_data", "") == "instr_ios")
         cabinet_button = next(button for button in buttons if getattr(button, "web_app", None) is not None)
         back_button = next(button for button in buttons if getattr(button, "callback_data", "") == "back")
+        callback_data = {getattr(button, "callback_data", "") for button in buttons}
         self.assertEqual(getattr(android_button, "style", None), self.bot_module.BTN_STYLE_PRIMARY)
         self.assertEqual(getattr(android_button, "icon_custom_emoji_id", None), "5368324170671202286")
+        self.assertIn("статус", str(getattr(apple_button, "text", "")).lower())
+        self.assertNotIn("instr_mac", callback_data)
         self.assertEqual(getattr(cabinet_button, "style", None), self.bot_module.BTN_STYLE_PRIMARY)
         self.assertEqual(getattr(back_button, "style", None), self.bot_module.BTN_STYLE_DANGER)
         self.assertEqual(getattr(back_button, "icon_custom_emoji_id", None), "5368324170671202299")
@@ -381,12 +385,34 @@ class BotPaywallTests(unittest.TestCase):
         self.assertEqual(getattr(show_key_button, "style", None), self.bot_module.BTN_STYLE_PRIMARY)
         self.assertEqual(getattr(devices_button, "style", None), self.bot_module.BTN_STYLE_DANGER)
 
+    def test_apple_instruction_is_status_only_not_install_flow(self) -> None:
+        callback = _FakeCallback(1001, data="instr_ios")
+
+        asyncio.run(self.bot_module.instruction_platform(callback))
+
+        text = callback.message.edits[-1]
+        buttons = [
+            button
+            for row in callback.message.edit_kwargs[-1]["reply_markup"].inline_keyboard
+            for button in row
+        ]
+        callback_data = {getattr(button, "callback_data", "") for button in buttons}
+        url_button = next(button for button in buttons if getattr(button, "url", None))
+
+        self.assertIn("статус подготовки", text)
+        self.assertIn("не входят", text)
+        self.assertNotIn("Установите подходящее приложение", text)
+        self.assertNotIn("show_key", callback_data)
+        self.assertIn("статус", str(getattr(url_button, "text", "")).lower())
+
     def test_support_connect_faq_routes_public_downloads_through_cabinet(self) -> None:
         self.bot_module.WEBAPP_URL = "https://app.pokrov.space/"
         connect = self.bot_module._support_faq_answer("connect")
 
         self.assertIn("https://app.pokrov.space/downloads/?platform=android", connect)
         self.assertIn("https://app.pokrov.space/downloads/?platform=windows", connect)
+        self.assertIn("Apple пока в подготовке", connect)
+        self.assertNotIn("iPhone / iPad:", connect)
         self.assertNotIn("APP_ANDROID_APK_URL", connect)
         self.assertNotIn("github.com", connect)
 
@@ -1680,6 +1706,24 @@ class BotPaywallTests(unittest.TestCase):
         self.assertEqual(windows_url, "https://app.pokrov.space/downloads/?platform=windows")
         self.assertNotIn("github.com", android_url)
         self.assertNotIn("github.com", windows_url)
+
+    def test_simple_onboarding_apple_is_status_only(self) -> None:
+        callback = _FakeCallback(1001, data="simple_ios")
+
+        asyncio.run(self.bot_module.mode_simple_step2(callback))
+
+        text = callback.message.edits[-1]
+        buttons = [
+            button
+            for row in callback.message.edit_kwargs[-1]["reply_markup"].inline_keyboard
+            for button in row
+        ]
+        callback_data = {getattr(button, "callback_data", "") for button in buttons}
+
+        self.assertIn("Apple пока в подготовке", text)
+        self.assertIn("Android и Windows", text)
+        self.assertNotIn("👇 Нажмите, чтобы скачать", text)
+        self.assertNotIn("simple_step3", callback_data)
 
     def test_main_keyboard_uses_kabinet_label_instead_of_portal(self) -> None:
         rows = self.bot_module.main_keyboard_specs(1001)

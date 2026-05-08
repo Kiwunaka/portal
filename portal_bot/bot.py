@@ -4681,12 +4681,11 @@ async def show_settings(callback: CallbackQuery):
 async def instruction_platform(callback: CallbackQuery):
     mapping = {
         "instr_ios": (
-            "🍏 *iPhone / iPad*\n\n"
-            "1. Откройте страницу приложений\n"
-            "2. Установите подходящее приложение для iPhone\n"
-            "3. Вернитесь сюда и откройте свою ссылку для подключения",
+            "🍏 *Apple: статус подготовки*\n\n"
+            "iPhone и iPad пока не входят в текущую бета-волну POKROV.\n\n"
+            "Ничего скачивать с бота сейчас не нужно. Можно открыть статус и вернуться к Android или Windows, если хотите начать уже сегодня.",
             IOS_APP_LINK,
-            "📥 Открыть страницу для iPhone",
+            "Открыть статус Apple",
         ),
         "instr_android": (
             "🤖 *Android*\n\n"
@@ -4705,29 +4704,30 @@ async def instruction_platform(callback: CallbackQuery):
             "📥 Скачать POKROV",
         ),
         "instr_mac": (
-            "🍎 *macOS*\n\n"
-            "1. Откройте страницу приложений\n"
-            "2. Посмотрите актуальный статус macOS\n"
-            "3. Если подключаетесь уже сейчас, используйте свою ссылку в совместимом приложении",
+            "🍎 *macOS: статус подготовки*\n\n"
+            "macOS пока не входит в текущую бета-волну POKROV.\n\n"
+            "Ничего скачивать с бота сейчас не нужно. Можно открыть статус и вернуться к Android или Windows, если хотите начать уже сегодня.",
             MAC_APP_LINK,
-            "📥 Открыть страницу для macOS",
+            "Открыть статус Apple",
         ),
     }
     text, url, btn = mapping.get(callback.data or "", mapping["instr_android"])
-    kb = _keyboard_from_specs(
+    rows = [
         [
-            [
-                _btn_spec(
-                    text=btn,
-                    url=url,
-                    style=BTN_STYLE_PRIMARY,
-                    icon_custom_emoji_id=BTN_EMOJI_PRIMARY_ID or None,
-                )
-            ],
-            [_btn_spec(text="🔗 Ссылка для подключения", callback_data="show_key", style=BTN_STYLE_PRIMARY)],
-            [_btn_spec(text="◀️ Устройства", callback_data="instruction", style=BTN_STYLE_DANGER)],
-        ]
-    )
+            _btn_spec(
+                text=btn,
+                url=url,
+                style=BTN_STYLE_PRIMARY,
+                icon_custom_emoji_id=BTN_EMOJI_PRIMARY_ID or None,
+            )
+        ],
+    ]
+    if callback.data in {"instr_android", "instr_win"}:
+        rows.append([_btn_spec(text="🔗 Ссылка для подключения", callback_data="show_key", style=BTN_STYLE_PRIMARY)])
+    else:
+        rows.append([_btn_spec(text="🆘 Поддержка", callback_data="support", style=BTN_STYLE_PRIMARY)])
+    rows.append([_btn_spec(text="◀️ Устройства", callback_data="instruction", style=BTN_STYLE_DANGER)])
+    kb = _keyboard_from_specs(rows)
     await callback.message.edit_text(text, parse_mode=ParseMode.MARKDOWN, reply_markup=kb)
     await callback.answer()
 
@@ -5368,10 +5368,10 @@ async def buy_family_slot(callback: CallbackQuery, bot: Bot):
 FAQ_ANSWERS = {
     "connect": (
         "📱 *Как подключиться?*\n\n"
-        "1️⃣ Скачайте приложение:\n"
-        f"• iPhone / iPad: [Инструкция и статус релиза]({IOS_APP_LINK})\n"
+        "1️⃣ Откройте загрузку текущей беты:\n"
         f"• Android: [POKROV]({_webapp_downloads_url('android')})\n"
         f"• Windows: [POKROV]({_webapp_downloads_url('windows')})\n\n"
+        f"Apple пока в подготовке: [статус релиза]({IOS_APP_LINK})\n\n"
         "2️⃣ Нажмите *🔗 Ссылка для подключения* в боте\n\n"
         "3️⃣ Откройте ссылку в приложении POKROV\n\n"
         "4️⃣ Нажмите «Подключить»\n\n"
@@ -5415,10 +5415,10 @@ def _support_faq_answer(faq_key: str) -> str:
     if str(faq_key or "").strip() == "connect":
         return (
             "📱 *Как подключиться?*\n\n"
-            "1️⃣ Скачайте приложение:\n"
-            f"• iPhone / iPad: [Инструкция и статус релиза]({IOS_APP_LINK})\n"
+            "1️⃣ Откройте загрузку текущей беты:\n"
             f"• Android: [POKROV]({_webapp_downloads_url('android')})\n"
             f"• Windows: [POKROV]({_webapp_downloads_url('windows')})\n\n"
+            f"Apple пока в подготовке: [статус релиза]({IOS_APP_LINK})\n\n"
             "2️⃣ Нажмите *🔗 Ссылка для подключения* в боте\n\n"
             "3️⃣ Откройте ссылку в приложении POKROV\n\n"
             "4️⃣ Нажмите «Подключить»\n\n"
@@ -6622,28 +6622,22 @@ def _instruction_device_keyboard() -> InlineKeyboardMarkup:
         [
             [
                 _btn_spec(
-                    text="🍏 iOS (iPhone)",
-                    callback_data="instr_ios",
-                    style=BTN_STYLE_PRIMARY,
-                    icon_custom_emoji_id=BTN_EMOJI_PRIMARY_ID or None,
-                ),
-                _btn_spec(
                     text="🤖 Android",
                     callback_data="instr_android",
                     style=BTN_STYLE_PRIMARY,
                     icon_custom_emoji_id=BTN_EMOJI_PRIMARY_ID or None,
                 ),
-            ],
-            [
                 _btn_spec(
                     text="💻 Windows",
                     callback_data="instr_win",
                     style=BTN_STYLE_PRIMARY,
                     icon_custom_emoji_id=BTN_EMOJI_PRIMARY_ID or None,
                 ),
+            ],
+            [
                 _btn_spec(
-                    text="🍎 macOS",
-                    callback_data="instr_mac",
+                    text="🍏 Apple: статус подготовки",
+                    callback_data="instr_ios",
                     style=BTN_STYLE_PRIMARY,
                     icon_custom_emoji_id=BTN_EMOJI_PRIMARY_ID or None,
                 ),
@@ -9669,14 +9663,6 @@ def _mode_simple_device_keyboard() -> InlineKeyboardMarkup:
         [
             [
                 _btn_spec(
-                    text="🍏 iPhone / iPad",
-                    callback_data="simple_ios",
-                    style=BTN_STYLE_PRIMARY,
-                    icon_custom_emoji_id=BTN_EMOJI_PRIMARY_ID or None,
-                )
-            ],
-            [
-                _btn_spec(
                     text="🤖 Android",
                     callback_data="simple_android",
                     style=BTN_STYLE_PRIMARY,
@@ -9687,6 +9673,14 @@ def _mode_simple_device_keyboard() -> InlineKeyboardMarkup:
                 _btn_spec(
                     text="💻 Компьютер",
                     callback_data="simple_pc",
+                    style=BTN_STYLE_PRIMARY,
+                    icon_custom_emoji_id=BTN_EMOJI_PRIMARY_ID or None,
+                )
+            ],
+            [
+                _btn_spec(
+                    text="🍏 Apple: статус подготовки",
+                    callback_data="simple_ios",
                     style=BTN_STYLE_PRIMARY,
                     icon_custom_emoji_id=BTN_EMOJI_PRIMARY_ID or None,
                 )
@@ -9806,8 +9800,34 @@ async def mode_simple_start(callback: CallbackQuery):
 async def mode_simple_step2(callback: CallbackQuery):
     mode = callback.data or ""
     if mode == "simple_ios":
-        app_name = "совместимый клиент для iPhone"
-        app_link = IOS_APP_LINK
+        text = (
+            "🍏 *Apple пока в подготовке*\n\n"
+            "Текущая бета POKROV рассчитана на Android и Windows.\n"
+            "Для iPhone, iPad и macOS мы показываем только статус, без обещания готовой установки."
+        )
+        kb = _keyboard_from_specs(
+            [
+                [
+                    _btn_spec(
+                        text="Открыть статус Apple",
+                        url=IOS_APP_LINK,
+                        style=BTN_STYLE_PRIMARY,
+                        icon_custom_emoji_id=BTN_EMOJI_PRIMARY_ID or None,
+                    )
+                ],
+                [
+                    _btn_spec(
+                        text="◀️ Назад",
+                        callback_data="mode_simple",
+                        style=BTN_STYLE_DANGER,
+                        icon_custom_emoji_id=BTN_EMOJI_DANGER_ID or None,
+                    )
+                ],
+            ]
+        )
+        await callback.message.edit_text(text, reply_markup=kb, parse_mode=ParseMode.MARKDOWN)
+        await callback.answer()
+        return
     elif mode == "simple_android":
         app_name = "POKROV"
         app_link = _webapp_downloads_url("android")
