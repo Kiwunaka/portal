@@ -4993,19 +4993,44 @@ async def auth_telegram_oidc_start() -> dict:
     }
 
 
+def _telegram_oidc_refresh_error_code(message: str) -> str:
+    normalized = str(message or "").strip().lower()
+    if "deprecated" in normalized or "deprecated_token" in normalized:
+        return "telegram_login_deprecated"
+    if "expired" in normalized or "invalid_grant" in normalized:
+        return "telegram_login_expired"
+    if "state" in normalized and "invalid" in normalized:
+        return "telegram_oidc_state_expired"
+    return "telegram_login_invalid"
+
+
 @app.post("/api/auth/telegram/oidc/finish")
 async def auth_telegram_oidc_finish(payload: TelegramOidcFinishIn) -> dict:
     if not verify_telegram_oidc_state_token(payload.state):
-        raise HTTPException(status_code=401, detail="Invalid Telegram OAuth state")
+        raise _auth_http_exception(
+            detail="Invalid Telegram OAuth state",
+            code="telegram_oidc_state_expired",
+        )
     try:
         verified = await exchange_telegram_oidc_code(
             code=payload.code,
             state_token=payload.state,
         )
     except ValueError as exc:
-        raise HTTPException(status_code=401, detail=str(exc)) from exc
+        message = str(exc)
+        raise _auth_http_exception(
+            detail=message,
+            code=_telegram_oidc_refresh_error_code(message),
+        ) from exc
     except RuntimeError as exc:
-        raise HTTPException(status_code=502, detail=str(exc)) from exc
+        message = str(exc)
+        lowered = message.lower()
+        if "deprecated" in lowered or "expired" in lowered or "invalid_grant" in lowered:
+            raise _auth_http_exception(
+                detail=message,
+                code=_telegram_oidc_refresh_error_code(message),
+            ) from exc
+        raise HTTPException(status_code=502, detail=message) from exc
 
     tg_id = int(verified.get("id") or 0)
     if tg_id <= 0:
