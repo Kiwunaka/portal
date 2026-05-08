@@ -2,6 +2,7 @@ import importlib
 import os
 import sys
 import tempfile
+import time
 import unittest
 import uuid
 from datetime import datetime, timedelta
@@ -172,7 +173,7 @@ class ApiP0ExtensionsTests(unittest.TestCase):
         return _sign_telegram_init_data(
             bot_token=self.bot_token,
             params={
-                "auth_date": "1700000000",
+                "auth_date": str(int(time.time())),
                 "query_id": "AAEAAAE",
                 "user": f'{{"id":{tg_id},"first_name":"Test","username":"{username}"}}',
             },

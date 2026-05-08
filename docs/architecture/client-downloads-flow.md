@@ -1,6 +1,6 @@
 # Client Downloads Flow
 
-Last updated: 2026-04-26
+Last updated: 2026-05-08
 
 ## Runtime Source
 
@@ -20,3 +20,5 @@ python scripts/runtime_app_download_smoke.py --redact --check-providers --requir
 ```
 
 Do not pass raw init data directly on the command line in retained evidence.
+
+With `--check-providers`, the smoke checks payment policy as context for launch readiness: a blocked `/api/payments/providers` response must include blocked reasons, and any green provider catalog must expose exactly one enabled Lava.top row, with no disabled legacy provider rows.

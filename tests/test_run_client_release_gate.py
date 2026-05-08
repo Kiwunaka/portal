@@ -35,7 +35,7 @@ def _prepare_client_root(root: Path) -> None:
     _write(root / "config" / "runtime-artifacts.seed.json", "{}")
     _write(
         root / "config" / "windows-release.seed.json",
-        '{"artifact_root": "artifacts/releases/pokrov-app", "zip_name_template": "pokrov-app-windows-{version}.zip", "manifest_name_template": "pokrov-app-windows-{version}.json"}',
+        '{"artifact_root": "artifacts/releases/pokrov-app", "zip_name_template": "pokrov-app-windows-{version}.zip", "installer_name_template": "pokrov-app-windows-{version}-setup.exe", "manifest_name_template": "pokrov-app-windows-{version}.json"}',
     )
     _write(root / "packages" / "app_shell" / "pubspec.yaml", "name: app_shell\n")
     _write(root / "apps" / "android_shell" / "pubspec.yaml", "name: android_shell\n")
@@ -93,6 +93,7 @@ def test_windows_target_declares_expected_release_artifacts() -> None:
     assert "-SkipAnalyze" in command.steps[0].command
     assert command.expected_artifacts == (
         client_root / "artifacts" / "releases" / "pokrov-app" / "pokrov-app-windows-0.7.0+1.zip",
+        client_root / "artifacts" / "releases" / "pokrov-app" / "pokrov-app-windows-0.7.0+1-setup.exe",
         client_root / "artifacts" / "releases" / "pokrov-app" / "pokrov-app-windows-0.7.0+1.json",
     )
 

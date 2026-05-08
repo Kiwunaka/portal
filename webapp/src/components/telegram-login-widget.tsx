@@ -2,7 +2,11 @@
 
 import type { TelegramWebLoginPayload } from "@/lib/api";
 import { usePortalSession } from "@/lib/session";
-import { useEffect, useRef, useState } from "react";
+import {
+  isTelegramWebLoginRefreshError,
+  shouldRefreshTelegramWebLoginPayload,
+} from "@/lib/telegram-login-refresh";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 declare global {
   interface Window {
@@ -43,6 +47,27 @@ export default function TelegramLoginWidget() {
   );
   const { loginByWidget, startTelegramLogin, webLoginBusy } = usePortalSession();
 
+  const handleWidgetAuth = useCallback(async (user: TelegramWebLoginPayload) => {
+    authDoneRef.current = true;
+    setWidgetHint("");
+    if (shouldRefreshTelegramWebLoginPayload(user)) {
+      setWidgetHint("Telegram вернул устаревшее подтверждение. Сейчас откроем свежий вход и вернем вас в кабинет.");
+      await startTelegramLogin();
+      return;
+    }
+
+    try {
+      await loginByWidget(user);
+    } catch (error) {
+      if (isTelegramWebLoginRefreshError(error)) {
+        setWidgetHint("Telegram попросил обновить вход. Сейчас откроем свежий безопасный вход.");
+        await startTelegramLogin();
+        return;
+      }
+      throw error;
+    }
+  }, [loginByWidget, startTelegramLogin]);
+
   useEffect(() => {
     const host = hostRef.current;
     if (!host) return;
@@ -61,9 +86,7 @@ export default function TelegramLoginWidget() {
     authDoneRef.current = false;
 
     window.onTelegramAuth = (user: TelegramWebLoginPayload) => {
-      authDoneRef.current = true;
-      setWidgetHint("");
-      void loginByWidget(user);
+      void handleWidgetAuth(user);
     };
 
     const script = document.createElement("script");
@@ -91,7 +114,7 @@ export default function TelegramLoginWidget() {
       host.innerHTML = "";
       delete window.onTelegramAuth;
     };
-  }, [botName, loginByWidget]);
+  }, [botName, handleWidgetAuth]);
 
   return (
     <div className="space-y-2">

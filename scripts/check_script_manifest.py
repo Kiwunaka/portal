@@ -9,6 +9,9 @@ from pathlib import Path
 
 RE_SCRIPT = re.compile(r"(?<![A-Za-z0-9_./-])(?:python\s+)?(scripts/[A-Za-z0-9_.\-]+\.py)")
 RE_LEGACY_ENTRY = re.compile(r"\b(deploy_all_fixes\.py)\b")
+RETAINED_EVIDENCE_DOC_PREFIXES = (
+    "docs/developer/work-orders/",
+)
 
 
 def _load_manifest(path: Path) -> dict:
@@ -29,7 +32,15 @@ def _collect_doc_files(repo_root: Path) -> list[Path]:
         "docs/user",
     ):
         files.extend(sorted((repo_root / relative_root).glob("**/*.md")))
-    return [p for p in files if p.exists()]
+    return [
+        path
+        for path in files
+        if path.exists()
+        and not any(
+            path.relative_to(repo_root).as_posix().startswith(prefix)
+            for prefix in RETAINED_EVIDENCE_DOC_PREFIXES
+        )
+    ]
 
 
 def _iter_refs(path: Path) -> list[str]:

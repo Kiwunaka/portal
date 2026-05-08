@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import io
+import logging
 import os
 import base64
 import struct
@@ -28,6 +29,13 @@ KEY_STEMS: dict[str, list[str]] = {
     "mini": ["RUSSIA", "Russia", "RFMINI"],
     "rf1": ["RFRESERVE1", "rf1"],
 }
+
+
+def _quiet_paramiko_transport_logger() -> None:
+    logging.getLogger("paramiko.transport").setLevel(logging.CRITICAL)
+
+
+_quiet_paramiko_transport_logger()
 
 
 def _private_key_candidates(code: str, key_dir: Path) -> list[Path]:

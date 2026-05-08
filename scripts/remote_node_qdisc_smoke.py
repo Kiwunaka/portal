@@ -172,7 +172,10 @@ def run_smoke(
         heavy_handle = str(heavy_proc.pid)
         heavy_running = lambda: heavy_proc.poll() is None
         heavy_stop = lambda: heavy_proc.terminate()
-        heavy_collect = lambda: heavy_proc.communicate(timeout=10)
+
+        def heavy_collect() -> tuple[str, str, int | None]:
+            stdout_text, stderr_text = heavy_proc.communicate(timeout=10)
+            return stdout_text, stderr_text, heavy_proc.returncode
     else:
         heavy_out_path = "/tmp/portal-qdisc-heavy.out"
         heavy_err_path = "/tmp/portal-qdisc-heavy.err"
@@ -183,43 +186,63 @@ def run_smoke(
             ">/dev/null 2>&1 & echo $!"
         )
         heavy_handle = (heavy_stdout.strip() or heavy_stderr.strip() or "").splitlines()[-1].strip()
-        heavy_running = lambda: True
+
+        def heavy_running() -> bool:
+            if not heavy_handle.isdigit():
+                return False
+            code, _out, _err = executor(f"kill -0 {heavy_handle} >/dev/null 2>&1")
+            return code == 0
 
         def heavy_stop() -> None:
             if heavy_handle.isdigit():
                 executor(f"kill {heavy_handle} >/dev/null 2>&1 || true")
 
-        def heavy_collect() -> tuple[str, str]:
+        def heavy_collect() -> tuple[str, str, int | None]:
             _code, out, err = executor(
                 "cat /tmp/portal-qdisc-heavy.out 2>/dev/null || true; "
                 "printf '\\n__ERR__\\n'; "
-                "cat /tmp/portal-qdisc-heavy.err 2>/dev/null || true"
+                "cat /tmp/portal-qdisc-heavy.err 2>/dev/null || true; "
+                "printf '\\n__RC__\\n'; "
+                "cat /tmp/portal-qdisc-heavy.rc 2>/dev/null || true"
             )
             if "\n__ERR__\n" in out:
-                stdout_text, stderr_text = out.split("\n__ERR__\n", 1)
-                return stdout_text, stderr_text
-            return out, err
+                stdout_text, rest = out.split("\n__ERR__\n", 1)
+                if "\n__RC__\n" in rest:
+                    stderr_text, rc_text = rest.split("\n__RC__\n", 1)
+                    try:
+                        return stdout_text, stderr_text, int(str(rc_text).strip())
+                    except Exception:
+                        return stdout_text, stderr_text, None
+                return stdout_text, rest, None
+            return out, err, None
 
     probe_cmd = _build_probe_command(probe_url, probe_attempts, probe_pause_seconds)
     probe_code, probe_out, probe_err = executor(probe_cmd)
 
+    heavy_was_running = bool(heavy_running())
     if executor is _run_local:
-        if heavy_running():
+        if heavy_was_running:
             heavy_stop()
         try:
-            heavy_stdout_text, heavy_stderr_text = heavy_collect()
+            heavy_stdout_text, heavy_stderr_text, heavy_return_code = heavy_collect()
         except Exception:
-            heavy_stdout_text, heavy_stderr_text = "", ""
+            heavy_stdout_text, heavy_stderr_text, heavy_return_code = "", "", None
     else:
-        heavy_stop()
-        heavy_stdout_text, heavy_stderr_text = heavy_collect()
+        if heavy_was_running:
+            heavy_stop()
+        heavy_stdout_text, heavy_stderr_text, heavy_return_code = heavy_collect()
 
     code, out, err = executor(f"tc -s qdisc show dev {shlex.quote(iface)} || true")
     snapshots.append(_format_snapshot("tc_after", out or err))
 
     connect, ttfb, total = _parse_probe_rows(probe_out)
     heavy_bytes_downloaded, heavy_elapsed_seconds = _parse_heavy_metrics(heavy_stdout_text)
-    heavy_exit_code = 0 if heavy_bytes_downloaded > 0 else 0
+    if heavy_was_running and heavy_bytes_downloaded > 0:
+        heavy_exit_code = 0
+    elif heavy_return_code is None:
+        heavy_exit_code = 0 if heavy_bytes_downloaded > 0 else 1
+    else:
+        heavy_exit_code = int(heavy_return_code)
     report = {
         "node_code": profile.get("node_code"),
         "iface": iface,

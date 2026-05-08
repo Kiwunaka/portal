@@ -10,13 +10,25 @@ import {
   adminTableShellClass,
   adminTextAreaClass,
 } from "@/components/admin/admin-shell";
-import { adminPaymentOrders, adminPaymentReconcile, type AdminPaymentOrder } from "@/lib/api";
-import { RefreshCw, Search } from "lucide-react";
+import { adminPaymentOrders, adminPaymentReconcile, adminPaymentResendAccessKeyEmail, type AdminPaymentOrder } from "@/lib/api";
+import { RefreshCw, Search, Send } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { fmtRuDate } from "../nav";
 
 const STATUS_OPTIONS = ["", "created", "pending", "paid", "failed", "cancelled", "refunded", "chargeback", "manual_review", "pending_verification"];
 const RECONCILE_STATUSES = ["manual_review", "pending", "paid", "failed", "cancelled", "refunded", "chargeback"];
+const STATUS_LABELS: Record<string, string> = {
+  "": "все статусы",
+  created: "создан",
+  pending: "ожидает",
+  paid: "оплачен",
+  failed: "ошибка",
+  cancelled: "отменен",
+  refunded: "возврат",
+  chargeback: "чарджбек",
+  manual_review: "ручная проверка",
+  pending_verification: "ждет подтверждения",
+};
 
 function errorMessage(err: unknown, fallback: string): string {
   return String((err as { message?: string })?.message || err || fallback);
@@ -31,13 +43,32 @@ function statusTone(status: string): "neutral" | "success" | "warning" | "danger
   return "neutral";
 }
 
+function fulfillmentTone(status?: string | null): "neutral" | "success" | "warning" | "danger" | "accent" {
+  const value = String(status || "").toLowerCase();
+  if (["email_sent", "sent", "access_granted", "redeemed"].includes(value)) return "success";
+  if (value.includes("error") || value.includes("failed") || value.includes("rejected")) return "danger";
+  if (value.includes("pending") || value.includes("review") || value.includes("queued")) return "warning";
+  if (value.includes("created") || value.includes("issued")) return "accent";
+  return "neutral";
+}
+
 function money(order: AdminPaymentOrder): string {
   return `${Number(order.amount || 0).toLocaleString("ru-RU")} ${order.currency || "RUB"}`;
+}
+
+function statusLabel(value?: string | null): string {
+  const key = String(value || "").toLowerCase();
+  return STATUS_LABELS[key] || key || "не задан";
 }
 
 type ReconcileDialog = {
   order: AdminPaymentOrder;
   status: string;
+  note: string;
+} | null;
+
+type ResendDialog = {
+  order: AdminPaymentOrder;
   note: string;
 } | null;
 
@@ -52,6 +83,7 @@ export default function AdminPaymentsPage() {
   const [error, setError] = useState("");
   const [okMessage, setOkMessage] = useState("");
   const [dialog, setDialog] = useState<ReconcileDialog>(null);
+  const [resendDialog, setResendDialog] = useState<ResendDialog>(null);
 
   const providers = useMemo(() => Array.from(new Set(orders.map((order) => order.provider).filter(Boolean))).sort(), [orders]);
 
@@ -68,7 +100,7 @@ export default function AdminPaymentsPage() {
       setOrders(payload.orders);
       setTotal(payload.total);
     } catch (err) {
-      setError(errorMessage(err, "Payment ledger is unavailable."));
+      setError(errorMessage(err, "Платежный журнал сейчас недоступен."));
     } finally {
       setLoading(false);
     }
@@ -80,6 +112,14 @@ export default function AdminPaymentsPage() {
 
   const openReconcile = (order: AdminPaymentOrder): void => {
     setDialog({ order, status: order.status || "manual_review", note: "" });
+    setResendDialog(null);
+    setError("");
+    setOkMessage("");
+  };
+
+  const openResend = (order: AdminPaymentOrder): void => {
+    setResendDialog({ order, note: "" });
+    setDialog(null);
     setError("");
     setOkMessage("");
   };
@@ -88,7 +128,7 @@ export default function AdminPaymentsPage() {
     if (!dialog) return;
     const note = dialog.note.trim();
     if (!note) {
-      setError("Audit note is required for manual reconciliation.");
+      setError("Для ручной сверки нужна аудиторская заметка.");
       return;
     }
     setBusy(true);
@@ -107,9 +147,39 @@ export default function AdminPaymentsPage() {
         ),
       );
       setDialog(null);
-      setOkMessage("Reconciliation note saved. No access was changed automatically.");
+      setOkMessage("Заметка сверки сохранена. Доступ автоматически не менялся.");
     } catch (err) {
-      setError(errorMessage(err, "Could not save reconciliation note."));
+      setError(errorMessage(err, "Не удалось сохранить заметку сверки."));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const saveResend = async (): Promise<void> => {
+    if (!resendDialog) return;
+    const note = resendDialog.note.trim();
+    if (note.length < 8) {
+      setError("Аудиторская заметка должна быть не короче 8 символов.");
+      return;
+    }
+    setBusy(true);
+    setError("");
+    setOkMessage("");
+    try {
+      const payload = await adminPaymentResendAccessKeyEmail({
+        provider: resendDialog.order.provider,
+        order_id: resendDialog.order.order_id,
+        note,
+      });
+      setOrders((current) =>
+        current.map((order) =>
+          order.provider === payload.order.provider && order.order_id === payload.order.order_id ? payload.order : order,
+        ),
+      );
+      setResendDialog(null);
+      setOkMessage(`Повторная отправка ключа на email записана: ${payload.delivery.status || "статус неизвестен"}.`);
+    } catch (err) {
+      setError(errorMessage(err, "Не удалось повторно отправить ключ на email."));
     } finally {
       setBusy(false);
     }
@@ -119,34 +189,35 @@ export default function AdminPaymentsPage() {
     <section className="space-y-4">
       <article className={adminPanelClass("neutral")}>
         <AdminPanelHeader
-          eyebrow="paid beta finance"
-          title="Payment ledger"
-          description="Real backend order and callback records. Manual reconciliation requires an audit note and does not silently change user access."
+          eyebrow="платежи беты"
+          title="Платежный журнал"
+          description="Реальные заказы и callback-записи. Ручная сверка требует аудиторскую заметку и не меняет доступ пользователя молча."
           actions={
             <button type="button" className={adminButtonClass("secondary", "sm")} onClick={() => void loadOrders()} disabled={loading}>
               <RefreshCw size={14} />
-              Refresh
+              Обновить
             </button>
           }
         />
         <div className="flex flex-wrap gap-2">
-          <AdminBadge tone="accent">orders: {total}</AdminBadge>
-          <AdminBadge tone="warning">manual review stays visible</AdminBadge>
-          <AdminBadge>no raw provider payloads</AdminBadge>
+          <AdminBadge tone="accent">заказов: {total}</AdminBadge>
+          <AdminBadge tone="warning">ручная проверка видна</AdminBadge>
+          <AdminBadge>без сырых payload провайдера</AdminBadge>
+          <AdminBadge>статус email с ключом</AdminBadge>
         </div>
       </article>
 
       <article className={adminPanelClass("neutral")}>
         <div className="grid gap-3 lg:grid-cols-[minmax(180px,0.8fr),minmax(180px,0.8fr),minmax(220px,1fr),auto]">
-          <select value={status} onChange={(event) => setStatus(event.target.value)} className={adminFieldClass} aria-label="Payment status">
+          <select value={status} onChange={(event) => setStatus(event.target.value)} className={adminFieldClass} aria-label="Статус платежа">
             {STATUS_OPTIONS.map((item) => (
               <option key={item || "all"} value={item}>
-                {item || "all statuses"}
+                {statusLabel(item)}
               </option>
             ))}
           </select>
-          <select value={provider} onChange={(event) => setProvider(event.target.value)} className={adminFieldClass} aria-label="Provider">
-            <option value="">all providers</option>
+          <select value={provider} onChange={(event) => setProvider(event.target.value)} className={adminFieldClass} aria-label="Провайдер">
+            <option value="">все провайдеры</option>
             {providers.map((item) => (
               <option key={item} value={item}>
                 {item}
@@ -159,11 +230,11 @@ export default function AdminPaymentsPage() {
               value={query}
               onChange={(event) => setQuery(event.target.value)}
               className={`${adminFieldClass} pl-9`}
-              placeholder="order, provider, plan, campaign, Telegram ID"
+              placeholder="заказ, провайдер, план, кампания, Telegram ID"
             />
           </label>
           <button type="button" className={adminButtonClass("primary")} onClick={() => void loadOrders()} disabled={loading}>
-            Search
+            Найти
           </button>
         </div>
       </article>
@@ -173,9 +244,9 @@ export default function AdminPaymentsPage() {
 
       <article className={adminPanelClass("neutral")}>
         <AdminPanelHeader
-          eyebrow="orders and callbacks"
-          title="Provider order records"
-          description="Rows come from backend payment tables. Callback payloads are intentionally summarized, not printed."
+          eyebrow="заказы и callback"
+          title="Записи заказов провайдера"
+          description="Строки приходят из платежных таблиц. Callback payload намеренно показан только в кратком виде, без сырого тела."
         />
 
         {loading ? (
@@ -187,16 +258,17 @@ export default function AdminPaymentsPage() {
         ) : orders.length ? (
           <div className={adminTableShellClass}>
             <div className="overflow-auto">
-              <table className="min-w-[980px] text-left text-xs">
+              <table className="min-w-[1180px] text-left text-xs">
                 <thead>
                   <tr className="border-b border-[#22303c] bg-[#101821] text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500">
-                    <th className="px-3 py-3">Order</th>
-                    <th className="px-3 py-3">User</th>
-                    <th className="px-3 py-3">Plan</th>
-                    <th className="px-3 py-3">Amount</th>
-                    <th className="px-3 py-3">Status</th>
+                    <th className="px-3 py-3">Заказ</th>
+                    <th className="px-3 py-3">Пользователь</th>
+                    <th className="px-3 py-3">План</th>
+                    <th className="px-3 py-3">Сумма</th>
+                    <th className="px-3 py-3">Статус</th>
+                    <th className="px-3 py-3">Выдача</th>
                     <th className="px-3 py-3">Callback</th>
-                    <th className="px-3 py-3">Created</th>
+                    <th className="px-3 py-3">Создан</th>
                     <th className="px-3 py-3" />
                   </tr>
                 </thead>
@@ -206,7 +278,7 @@ export default function AdminPaymentsPage() {
                       <td className="px-3 py-3">
                         <p className="font-mono text-slate-100">{order.order_id}</p>
                         <p className="mt-1 text-slate-500">{order.provider}</p>
-                        {order.source ? <p className="mt-1 text-slate-500">source: {order.source}</p> : null}
+                        {order.source ? <p className="mt-1 text-slate-500">источник: {order.source}</p> : null}
                       </td>
                       <td className="px-3 py-3">
                         <p>{order.user?.display_name || order.user?.username || (order.tg_id ? `#${order.tg_id}` : "-")}</p>
@@ -214,13 +286,48 @@ export default function AdminPaymentsPage() {
                       </td>
                       <td className="px-3 py-3">
                         <p>{order.plan_code || "-"}</p>
-                        {order.promo_code ? <p className="mt-1 text-slate-500">promo: {order.promo_code}</p> : null}
-                        {order.campaign ? <p className="mt-1 text-slate-500">campaign: {order.campaign}</p> : null}
+                        {order.promo_code ? <p className="mt-1 text-slate-500">промо: {order.promo_code}</p> : null}
+                        {order.campaign ? <p className="mt-1 text-slate-500">кампания: {order.campaign}</p> : null}
                       </td>
                       <td className="px-3 py-3">{money(order)}</td>
                       <td className="px-3 py-3">
-                        <AdminBadge tone={statusTone(order.status)}>{order.status}</AdminBadge>
-                        {order.paid_at ? <p className="mt-2 text-slate-500">paid: {fmtRuDate(order.paid_at)}</p> : null}
+                        <AdminBadge tone={statusTone(order.status)}>{statusLabel(order.status)}</AdminBadge>
+                        {order.paid_at ? <p className="mt-2 text-slate-500">оплачен: {fmtRuDate(order.paid_at)}</p> : null}
+                      </td>
+                      <td className="px-3 py-3">
+                        {order.fulfillment ? (
+                          <div className="space-y-1.5">
+                            <AdminBadge tone={fulfillmentTone(order.fulfillment.status)}>
+                              {order.fulfillment.status || order.fulfillment.mode || "выдача"}
+                            </AdminBadge>
+                            {order.fulfillment.buyer_email ? (
+                              <p className="break-all text-slate-400">{order.fulfillment.buyer_email}</p>
+                            ) : null}
+                            {order.fulfillment.access_key_preview ? (
+                              <p className="font-mono text-slate-500">ключ {order.fulfillment.access_key_preview}</p>
+                            ) : null}
+                            {order.fulfillment.email_delivery?.status ? (
+                              <p className="text-slate-500">
+                                {order.fulfillment.email_delivery.status}
+                                {order.fulfillment.email_delivery.mode ? ` через ${order.fulfillment.email_delivery.mode}` : ""}
+                                {order.fulfillment.email_delivery.http_status ? ` (${order.fulfillment.email_delivery.http_status})` : ""}
+                              </p>
+                            ) : null}
+                            {order.fulfillment.can_retry_email ? (
+                              <button
+                                type="button"
+                                className={adminButtonClass("secondary", "xs")}
+                                onClick={() => openResend(order)}
+                                disabled={busy}
+                              >
+                                <Send size={13} />
+                                Отправить email снова
+                              </button>
+                            ) : null}
+                          </div>
+                        ) : (
+                          <span className="text-slate-500">не требуется</span>
+                        )}
                       </td>
                       <td className="px-3 py-3">
                         {order.last_event ? (
@@ -228,21 +335,21 @@ export default function AdminPaymentsPage() {
                             <p>{order.last_event.event_type}</p>
                             <p className="font-mono text-slate-400">{order.last_event.external_id}</p>
                             <p className={order.last_event.signature_ok ? "text-emerald-300" : "text-rose-300"}>
-                              signature {order.last_event.signature_ok ? "ok" : "bad"}
+                              подпись {order.last_event.signature_ok ? "ок" : "ошибка"}
                             </p>
                             <p className={order.last_event.processed_ok ? "text-emerald-300" : "text-amber-300"}>
-                              processed {order.last_event.processed_ok ? "ok" : "needs review"}
+                              обработка {order.last_event.processed_ok ? "ок" : "нужна проверка"}
                             </p>
-                            <p className="text-slate-500">events: {order.event_count}</p>
+                            <p className="text-slate-500">событий: {order.event_count}</p>
                           </div>
                         ) : (
-                          <span className="text-slate-500">no callbacks</span>
+                          <span className="text-slate-500">callback нет</span>
                         )}
                       </td>
                       <td className="px-3 py-3 whitespace-nowrap">{fmtRuDate(order.created_at)}</td>
                       <td className="px-3 py-3">
                         <button type="button" className={adminButtonClass("secondary", "xs")} onClick={() => openReconcile(order)}>
-                          Reconcile
+                          Сверить
                         </button>
                       </td>
                     </tr>
@@ -253,8 +360,8 @@ export default function AdminPaymentsPage() {
           </div>
         ) : (
           <AdminEmptyState
-            title="No payment orders returned by the backend"
-            description="This is an explicit empty state. It is not a revenue counter and not a fake success screen."
+            title="Платежных заказов пока нет"
+            description="Это честное пустое состояние. Оно не заменяет счетчик выручки и не выглядит как фиктивный успех."
           />
         )}
       </article>
@@ -263,36 +370,75 @@ export default function AdminPaymentsPage() {
         <div className="fixed inset-0 z-[260] flex items-center justify-center bg-slate-950/70 p-4">
           <div className={`${adminPanelClass("neutral")} w-full max-w-xl`}>
             <AdminPanelHeader
-              eyebrow="manual reconciliation"
-              title={`Order ${dialog.order.order_id}`}
-              description="Record what the operator verified. This action updates the ledger state and writes admin audit metadata; it does not grant access by itself."
+              eyebrow="ручная сверка"
+              title={`Заказ ${dialog.order.order_id}`}
+              description="Запишите, что именно проверил оператор. Действие обновляет состояние журнала и пишет audit metadata, но само по себе не выдает доступ."
             />
             <label className="block text-sm">
-              <span className="mb-1 block text-xs uppercase tracking-[0.12em] text-slate-500">status</span>
+              <span className="mb-1 block text-xs uppercase tracking-[0.12em] text-slate-500">статус</span>
               <select value={dialog.status} onChange={(event) => setDialog({ ...dialog, status: event.target.value })} className={adminFieldClass}>
                 {RECONCILE_STATUSES.map((item) => (
                   <option key={item} value={item}>
-                    {item}
+                    {statusLabel(item)}
                   </option>
                 ))}
               </select>
             </label>
             <label className="mt-3 block text-sm">
-              <span className="mb-1 block text-xs uppercase tracking-[0.12em] text-slate-500">audit note</span>
+              <span className="mb-1 block text-xs uppercase tracking-[0.12em] text-slate-500">аудиторская заметка</span>
               <textarea
                 value={dialog.note}
                 onChange={(event) => setDialog({ ...dialog, note: event.target.value })}
                 className={adminTextAreaClass}
-                placeholder="Provider dashboard result, user/ticket context, and why this state is correct."
+                placeholder="Что видно в кабинете провайдера, контекст пользователя или тикета, и почему этот статус корректен."
                 rows={5}
               />
             </label>
             <div className="mt-4 flex flex-wrap justify-end gap-2">
               <button type="button" className={adminButtonClass("secondary")} onClick={() => setDialog(null)} disabled={busy}>
-                Cancel
+                Отмена
               </button>
               <button type="button" className={adminButtonClass("primary")} onClick={() => void saveReconcile()} disabled={busy}>
-                Save reconciliation
+                Сохранить сверку
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {resendDialog ? (
+        <div className="fixed inset-0 z-[260] flex items-center justify-center bg-slate-950/70 p-4">
+          <div className={`${adminPanelClass("neutral")} w-full max-w-xl`}>
+            <AdminPanelHeader
+              eyebrow="email с ключом доступа"
+              title={`Повторная отправка ${resendDialog.order.order_id}`}
+              description="Повторите письмо с оплаченным ключом только после проверки заказа и контекста клиента. Действие аудируется и не показывает сырой ключ в интерфейсе."
+            />
+            <div className="space-y-2 text-xs text-slate-400">
+              <p>
+                Получатель: <strong className="text-slate-200">{resendDialog.order.fulfillment?.buyer_email || "неизвестен"}</strong>
+              </p>
+              <p>
+                Превью ключа: <strong className="font-mono text-slate-200">{resendDialog.order.fulfillment?.access_key_preview || "скрыто"}</strong>
+              </p>
+            </div>
+            <label className="mt-3 block text-sm">
+              <span className="mb-1 block text-xs uppercase tracking-[0.12em] text-slate-500">аудиторская заметка</span>
+              <textarea
+                value={resendDialog.note}
+                onChange={(event) => setResendDialog({ ...resendDialog, note: event.target.value })}
+                className={adminTextAreaClass}
+                placeholder="Почему повторная отправка безопасна: оплаченный статус, запрос пользователя, тикет поддержки, контекст кабинета провайдера."
+                rows={5}
+              />
+            </label>
+            <div className="mt-4 flex flex-wrap justify-end gap-2">
+              <button type="button" className={adminButtonClass("secondary")} onClick={() => setResendDialog(null)} disabled={busy}>
+                Отмена
+              </button>
+              <button type="button" className={adminButtonClass("primary")} onClick={() => void saveResend()} disabled={busy}>
+                <Send size={14} />
+                Отправить ключ на email
               </button>
             </div>
           </div>

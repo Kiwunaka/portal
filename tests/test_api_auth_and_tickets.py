@@ -127,17 +127,17 @@ class ApiAuthAndTicketsTests(unittest.TestCase):
             pass
         self._tmp.cleanup()
 
-    def _init_data(self, tg_id: int, username: str) -> str:
+    def _init_data(self, tg_id: int, username: str, *, auth_date: int | None = None) -> str:
         return _sign_telegram_init_data(
             bot_token=self.bot_token,
             params={
-                "auth_date": "1700000000",
+                "auth_date": str(int(auth_date if auth_date is not None else time.time())),
                 "query_id": "AAEAAAE",
                 "user": f'{{"id":{tg_id},"first_name":"Test","username":"{username}"}}',
             },
         )
 
-    def _telegram_login_payload(self, tg_id: int, username: str) -> dict:
+    def _telegram_login_payload(self, tg_id: int, username: str, *, auth_date: int | None = None) -> dict:
         import hashlib
         import hmac
 
@@ -145,7 +145,7 @@ class ApiAuthAndTicketsTests(unittest.TestCase):
             "id": int(tg_id),
             "first_name": "Test",
             "username": username,
-            "auth_date": int(time.time()),
+            "auth_date": int(auth_date if auth_date is not None else time.time()),
         }
         data_check = "\n".join([f"{k}={payload[k]}" for k in sorted(payload.keys())])
         secret_key = hashlib.sha256(self.bot_token.encode("utf-8")).digest()
@@ -1226,6 +1226,87 @@ class ApiAuthAndTicketsTests(unittest.TestCase):
         r = self.client.post("/api/auth/telegram/web-login", json=bad)
         self.assertEqual(r.status_code, 401, r.text)
 
+    def test_web_login_rejects_expired_payload_with_reauth_message(self) -> None:
+        payload = self._telegram_login_payload(
+            1001,
+            "alice",
+            auth_date=int(time.time()) - int(self.api.TELEGRAM_WEB_LOGIN_MAX_AGE_SECONDS) - 5,
+        )
+
+        r = self.client.post("/api/auth/telegram/web-login", json=payload)
+
+        self.assertEqual(r.status_code, 401, r.text)
+        self.assertEqual(r.headers.get("x-pokrov-auth-error"), "telegram_login_expired")
+        self.assertIn("Сессия Telegram устарела", str(r.json().get("detail") or ""))
+
+    def test_auth_session_prefers_valid_web_session_when_telegram_header_is_stale(self) -> None:
+        token = self.api.create_web_session_token(tg_id=1001, username="alice")
+
+        r = self.client.get(
+            "/api/auth/session",
+            headers={
+                "Authorization": f"Bearer {token}",
+                "X-Telegram-Init-Data": "deprecated=1&hash=bad",
+            },
+        )
+
+        self.assertEqual(r.status_code, 200, r.text)
+        self.assertEqual(int(r.json().get("user", {}).get("id", 0)), 1001)
+        self.assertNotIn("session_token", r.json())
+
+    def test_auth_session_uses_telegram_init_data_when_web_session_is_expired(self) -> None:
+        token = self.api.create_web_session_token(tg_id=1001, username="alice")
+
+        with patch("web_auth_service.time.time", return_value=time.time() + int(self.api.SESSION_TTL_SECONDS) + 5):
+            r = self.client.get(
+                "/api/auth/session",
+                headers={
+                    "Authorization": f"Bearer {token}",
+                    "X-Telegram-Init-Data": self._init_data(1001, "alice"),
+                },
+            )
+
+        self.assertEqual(r.status_code, 200, r.text)
+        self.assertEqual(int(r.json().get("user", {}).get("id", 0)), 1001)
+        refreshed_token = str(r.json().get("session_token") or "")
+        self.assertTrue(refreshed_token)
+        self.assertNotEqual(refreshed_token, token)
+        self.assertEqual(int(r.json().get("expires_in") or 0), int(self.api.SESSION_TTL_SECONDS))
+
+    def test_auth_session_issues_web_session_from_valid_telegram_init_data(self) -> None:
+        r = self.client.get(
+            "/api/auth/session",
+            headers={"X-Telegram-Init-Data": self._init_data(1001, "alice")},
+        )
+
+        self.assertEqual(r.status_code, 200, r.text)
+        self.assertEqual(int(r.json().get("user", {}).get("id", 0)), 1001)
+        refreshed_token = str(r.json().get("session_token") or "")
+        self.assertTrue(refreshed_token)
+        self.assertEqual(int(r.json().get("expires_in") or 0), int(self.api.SESSION_TTL_SECONDS))
+
+    def test_auth_session_rejects_stale_signed_telegram_init_data_with_reauth_message(self) -> None:
+        stale_auth_date = int(time.time()) - int(self.api.TELEGRAM_WEBAPP_INIT_MAX_AGE_SECONDS) - 5
+
+        r = self.client.get(
+            "/api/auth/session",
+            headers={"X-Telegram-Init-Data": self._init_data(1001, "alice", auth_date=stale_auth_date)},
+        )
+
+        self.assertEqual(r.status_code, 401, r.text)
+        self.assertEqual(r.headers.get("x-pokrov-auth-error"), "telegram_init_invalid")
+        self.assertIn("Сессия Telegram устарела", str(r.json().get("detail") or ""))
+
+    def test_auth_session_rejects_expired_web_session_with_reauth_message(self) -> None:
+        token = self.api.create_web_session_token(tg_id=1001, username="alice")
+
+        with patch("web_auth_service.time.time", return_value=time.time() + int(self.api.SESSION_TTL_SECONDS) + 5):
+            r = self.client.get("/api/auth/session", headers={"Authorization": f"Bearer {token}"})
+
+        self.assertEqual(r.status_code, 401, r.text)
+        self.assertEqual(r.headers.get("x-pokrov-auth-error"), "web_session_expired")
+        self.assertIn("Сессия в браузере устарела", str(r.json().get("detail") or ""))
+
     def test_ticket_lifecycle_with_media_metadata(self) -> None:
         user_hdrs = {"X-Telegram-Init-Data": self._init_data(1001, "alice")}
         admin_hdrs = {"X-Telegram-Init-Data": self._init_data(9999, "admin")}
@@ -1255,8 +1336,18 @@ class ApiAuthAndTicketsTests(unittest.TestCase):
         self.assertEqual(reply.status_code, 200, reply.text)
         self.assertEqual(reply.json()["ticket"]["status"], "in_progress")
 
-    def test_ticket_upload_returns_attachment_metadata_and_serves_file(self) -> None:
+        detail = self.client.get(f"/api/admin/tickets/{ticket_id}", headers=admin_hdrs)
+        self.assertEqual(detail.status_code, 200, detail.text)
+        messages = detail.json()["ticket"]["messages"]
+        self.assertEqual(len(messages), 2)
+        self.assertEqual(messages[0]["body"], "Не подключается из приложения")
+        self.assertEqual(messages[1]["body"], "Проверили, уже исправлено")
+        self.assertEqual(self.client.get(f"/api/admin/tickets/{ticket_id}", headers=user_hdrs).status_code, 403)
+
+    def test_ticket_upload_returns_attachment_metadata_and_serves_file_only_for_ticket_participants(self) -> None:
         user_hdrs = {"X-Telegram-Init-Data": self._init_data(1001, "alice")}
+        admin_hdrs = {"X-Telegram-Init-Data": self._init_data(9999, "admin")}
+        other_hdrs = {"X-Telegram-Init-Data": self._init_data(1002, "bob")}
 
         uploaded = self.client.post(
             "/api/tickets/uploads",
@@ -1278,10 +1369,26 @@ class ApiAuthAndTicketsTests(unittest.TestCase):
         file_url = str(payload["url"] or "")
         self.assertTrue(file_url.startswith("/uploads/support/"))
 
-        fetched = self.client.get(file_url)
+        self.assertEqual(self.client.get(file_url).status_code, 401)
+        self.assertEqual(self.client.get(file_url, headers=user_hdrs).status_code, 403)
+
+        created = self.client.post(
+            "/api/tickets",
+            headers=user_hdrs,
+            json={
+                "subject": "Attachment privacy",
+                "body": "Please check the screenshot",
+                **body["attachment"],
+            },
+        )
+        self.assertEqual(created.status_code, 200, created.text)
+
+        fetched = self.client.get(file_url, headers=user_hdrs)
         self.assertEqual(fetched.status_code, 200, fetched.text)
         self.assertEqual(fetched.headers.get("content-type"), "image/png")
         self.assertEqual(fetched.content, b"\x89PNG\r\n\x1a\nbinary-test")
+        self.assertEqual(self.client.get(file_url, headers=admin_hdrs).status_code, 200)
+        self.assertEqual(self.client.get(file_url, headers=other_hdrs).status_code, 403)
 
     def test_cors_credentials_do_not_use_wildcard_origin(self) -> None:
         cors_middleware = next(
@@ -1844,6 +1951,22 @@ class ApiAuthAndTicketsTests(unittest.TestCase):
         code = gift_created.json().get("gift_code", {}).get("code")
         self.assertTrue(code)
 
+        public_status = self.client.get(f"/api/access-keys/status/{code}")
+        self.assertEqual(public_status.status_code, 200, public_status.text)
+        public_status_body = public_status.json()
+        self.assertTrue(public_status_body.get("exists"))
+        self.assertNotIn("created_by", public_status_body)
+        self.assertNotIn("redeemed_by", public_status_body)
+
+        missing_status = self.client.get("/api/access-keys/status/POKROV-NOT-FOUND")
+        self.assertEqual(missing_status.status_code, 200, missing_status.text)
+        missing_status_body = missing_status.json()
+        self.assertFalse(missing_status_body.get("exists"))
+        self.assertFalse(missing_status_body.get("redeemed"))
+        self.assertEqual(str(missing_status_body.get("key") or ""), "POKROV-NOT-FOUND")
+        self.assertNotIn("created_by", missing_status_body)
+        self.assertNotIn("redeemed_by", missing_status_body)
+
         gift_list = self.client.get("/api/admin/gift-codes?limit=20", headers=admin_hdrs)
         self.assertEqual(gift_list.status_code, 200, gift_list.text)
         self.assertTrue(any((g.get("code") or "") == code for g in gift_list.json().get("gift_codes", [])))
@@ -1853,7 +1976,74 @@ class ApiAuthAndTicketsTests(unittest.TestCase):
         self.assertTrue(redeemed.json().get("ok"))
         self.assertEqual(str(redeemed.json().get("card_type") or ""), "standard")
 
+        redeemed_status = self.client.get(f"/api/access-keys/status/{code}")
+        self.assertEqual(redeemed_status.status_code, 200, redeemed_status.text)
+        redeemed_status_body = redeemed_status.json()
+        self.assertTrue(redeemed_status_body.get("redeemed"))
+        self.assertNotIn("created_by", redeemed_status_body)
+        self.assertNotIn("redeemed_by", redeemed_status_body)
+
         redeemed_twice = self.client.post("/api/gift/redeem", headers=user_hdrs, json={"code": code})
+        self.assertEqual(redeemed_twice.status_code, 400, redeemed_twice.text)
+
+    def test_access_key_status_and_redeem_normalize_human_key_input(self) -> None:
+        user_hdrs = {"X-Telegram-Init-Data": self._init_data(1001, "alice")}
+
+        from db import SessionLocal
+        from models import GiftCard, User
+
+        s = SessionLocal()
+        try:
+            s.add(GiftCard(code="POKROV-GIFT-2026", card_type="standard", created_by=9999))
+            s.commit()
+        finally:
+            s.close()
+
+        status = self.client.get("/api/access-keys/status/pokrov%20gift%202026")
+        self.assertEqual(status.status_code, 200, status.text)
+        status_body = status.json()
+        self.assertTrue(status_body.get("exists"))
+        self.assertEqual(status_body.get("key"), "POKROV-GIFT-2026")
+        self.assertNotIn("created_by", status_body)
+        self.assertNotIn("redeemed_by", status_body)
+
+        async def fake_sync_control_panel_access(*, user):
+            return True
+
+        with patch.object(self.api, "_sync_control_panel_access", fake_sync_control_panel_access):
+            redeemed = self.client.post(
+                "/api/access-keys/redeem",
+                headers=user_hdrs,
+                json={"key": "pokrov_gift_2026"},
+            )
+        self.assertEqual(redeemed.status_code, 200, redeemed.text)
+        redeemed_body = redeemed.json()
+        self.assertTrue(redeemed_body.get("ok"))
+        self.assertEqual(redeemed_body.get("key"), "POKROV-GIFT-2026")
+        self.assertTrue(redeemed_body.get("status", {}).get("redeemed"))
+        self.assertEqual(redeemed_body.get("access", {}).get("sub_type"), "PAID")
+        self.assertEqual(redeemed_body.get("provisioning", {}).get("sync_ok"), True)
+        response_dump = json.dumps(redeemed_body, ensure_ascii=False)
+        self.assertNotIn("created_by", response_dump)
+        self.assertNotIn("redeemed_by", response_dump)
+
+        s = SessionLocal()
+        try:
+            user = s.query(User).filter(User.tg_id == 1001).first()
+            self.assertIsNotNone(user)
+            self.assertEqual(str(user.sub_type or ""), "PAID")
+            self.assertEqual(str(user.current_plan_code or ""), "1_month")
+            card = s.query(GiftCard).filter(GiftCard.code == "POKROV-GIFT-2026").first()
+            self.assertIsNotNone(card)
+            self.assertEqual(int(card.redeemed_by or 0), 1001)
+        finally:
+            s.close()
+
+        redeemed_twice = self.client.post(
+            "/api/access-keys/redeem",
+            headers=user_hdrs,
+            json={"key": "POKROV\u2014GIFT\u20142026"},
+        )
         self.assertEqual(redeemed_twice.status_code, 400, redeemed_twice.text)
 
     def test_admin_loyalty_grant_syncs_panel_and_returns_sync_flag(self) -> None:
@@ -2190,6 +2380,18 @@ class ApiAuthAndTicketsTests(unittest.TestCase):
                 )
             )
             s.add(
+                ExternalOrder(
+                    order_id="lavatop_test_1",
+                    tg_id=1001,
+                    provider="lavatop",
+                    amount=199.0,
+                    currency="RUB",
+                    status="paid",
+                    created_at=now,
+                    paid_at=now,
+                )
+            )
+            s.add(
                 ExternalPaymentEvent(
                     provider="freekassa",
                     event_type="result",
@@ -2243,7 +2445,7 @@ class ApiAuthAndTicketsTests(unittest.TestCase):
         self.assertGreaterEqual(len(points), 1)
         today = points[0]
         self.assertGreaterEqual(int(today.get("revenue_stars") or 0), 299)
-        self.assertGreaterEqual(float(today.get("revenue_rub") or 0), 299.0)
+        self.assertGreaterEqual(float(today.get("revenue_rub") or 0), 498.0)
         self.assertIn("pl", (today.get("nodes") or {}))
 
         traffic_resp = self.client.get(f"/api/admin/nodes/traffic?{qs}", headers=admin_hdrs)

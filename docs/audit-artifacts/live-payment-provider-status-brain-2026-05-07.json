@@ -1,0 +1,17 @@
+﻿{
+    "ok":  false,
+    "providers":  [
+
+                  ],
+    "blocked":  true,
+    "blocked_reasons":  [
+                            "email_delivery_not_ready",
+                            "paid_checkout_launch_evidence_missing"
+                        ],
+    "blocked_reason_texts":  [
+                                 "Email delivery is not ready for paid access keys: public_email_disabled",
+                                 "Paid checkout launch evidence is missing; keep RUB checkout unavailable until redacted evidence is attached"
+                             ],
+    "checkout_mode":  "account_session_first",
+    "telegram_fallback_available":  true
+}

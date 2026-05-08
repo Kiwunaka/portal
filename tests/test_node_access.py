@@ -1,6 +1,7 @@
 import sys
 import unittest
 import base64
+import logging
 import struct
 from pathlib import Path
 from unittest.mock import patch
@@ -54,6 +55,11 @@ class NodeAccessTests(unittest.TestCase):
 
         self.assertEqual(method, "password")
         self.assertEqual(attempts, [(29374, True), (22, True)])
+
+    def test_paramiko_transport_tracebacks_are_quiet_for_release_reports(self) -> None:
+        import node_access  # noqa: F401
+
+        self.assertEqual(logging.getLogger("paramiko.transport").getEffectiveLevel(), logging.CRITICAL)
 
     def test_private_key_candidates_support_mini_russia_key_names(self) -> None:
         import node_access

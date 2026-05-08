@@ -64,7 +64,7 @@ def _configured() -> bool:
 
 def _secret_ok(header_secret: str, authorization: str) -> bool:
     if not RELAY_SECRET:
-        return True
+        return False
     if header_secret and hmac.compare_digest(header_secret, RELAY_SECRET):
         return True
     prefix = "bearer "
@@ -141,8 +141,8 @@ def _email_html(*, title: str, intro: str, code_label: str, code: str, action_la
           <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width:560px;background:#ffffff;border:1px solid #dce9df;border-radius:16px;overflow:hidden;">
             <tr>
               <td style="padding:28px 28px 10px 28px;">
-                <img src="{safe_logo_url}" width="132" alt="POKROV VPN" style="display:block;border:0;margin-bottom:18px;max-width:132px;height:auto;" />
-                <div style="font-size:13px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:{COLOR_ACCENT};margin-bottom:12px;">POKROV VPN</div>
+                <img src="{safe_logo_url}" width="132" alt="POKROV" style="display:block;border:0;margin-bottom:18px;max-width:132px;height:auto;" />
+                <div style="font-size:13px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:{COLOR_ACCENT};margin-bottom:12px;">POKROV</div>
                 <h1 style="font-size:22px;line-height:1.25;margin:0 0 12px 0;color:{COLOR_TEXT};">{safe_title}</h1>
                 <p style="font-size:15px;line-height:1.6;margin:0;color:{COLOR_TEXT};opacity:0.82;">{safe_intro}</p>
               </td>
@@ -172,9 +172,9 @@ def _message_for(payload: EmailDeliveryIn) -> tuple[str, str, str]:
     if kind == "verify":
         token = str(payload.token or "").strip()
         action_url = _public_url("email_token", token)
-        subject = "Подтверждение email в POKROV VPN"
+        subject = "Подтверждение email в POKROV"
         body = (
-            "Подтвердите email для входа в POKROV VPN.\n\n"
+            "Подтвердите email для входа в POKROV.\n\n"
             f"Код подтверждения:\n{token}\n\n"
             f"Открыть кабинет: {action_url}\n\n"
             "Если вы не запрашивали это письмо, просто проигнорируйте его.\n"
@@ -194,9 +194,9 @@ def _message_for(payload: EmailDeliveryIn) -> tuple[str, str, str]:
     if kind == "reset":
         token = str(payload.token or "").strip()
         action_url = _public_url("email_reset_token", token)
-        subject = "Сброс пароля в POKROV VPN"
+        subject = "Сброс пароля в POKROV"
         body = (
-            "Вы запросили сброс пароля для POKROV VPN.\n\n"
+            "Вы запросили сброс пароля для POKROV.\n\n"
             f"Код сброса:\n{token}\n\n"
             f"Открыть кабинет: {action_url}\n\n"
             "Если вы не запрашивали сброс, просто проигнорируйте это письмо.\n"
@@ -216,11 +216,11 @@ def _message_for(payload: EmailDeliveryIn) -> tuple[str, str, str]:
     if kind == "payment_access_key":
         access_key = str(payload.access_key or "").strip()
         action_url = _app_url("redeem/")
-        subject = "Ключ доступа POKROV VPN"
+        subject = "Ключ доступа POKROV"
         body = (
             "Ваш ключ доступа готов.\n\n"
             f"Ключ доступа:\n{access_key}\n\n"
-            f"Тариф: {payload.plan_label or payload.plan_code or 'POKROV VPN'}\n"
+            f"Тариф: {payload.plan_label or payload.plan_code or 'POKROV'}\n"
             f"Дней: {int(payload.days or 0)}\n"
             f"Заказ: {payload.order_id or ''}\n\n"
             f"Активировать ключ в кабинете: {action_url}\n"

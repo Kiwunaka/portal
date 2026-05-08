@@ -1,6 +1,6 @@
 # Передача для настройки email-доставки через webhook
 
-Last updated: 2026-04-27
+Last updated: 2026-05-08
 
 ## Зачем нужен этот файл
 
@@ -11,6 +11,8 @@ Last updated: 2026-04-27
 Правдивое UI-правило:
 
 - пока delivery не подтверждена, web и cabinet должны показывать email auth как unavailable или blocked state, а не обещать рабочие verify или reset письма
+- backend жёстко блокирует публичные `register` и `recovery/start` с HTTP `503`, если `EMAIL_AUTH_PUBLIC_ENABLED` не включён, delivery URL или relay secret не настроены, или `EMAIL_AUTH_DEBUG_ECHO=true`
+- платный public checkout тоже остаётся заблокированным, пока delivery не готова: после оплаты публичному покупателю должен уйти access key по email
 - backend-статусы `not_configured` и `delivery_error` считаются блокировкой для публичного email auth
 - `EMAIL_AUTH_DEBUG_ECHO=true` допустим только для локального теста и не считается живой доставкой
 
@@ -61,16 +63,26 @@ Relay env:
 
 Smoke commands:
 
+- Local/env Lava.top/email readiness classification: `python scripts/payment_email_readiness_smoke.py --plan-code start_99`
+- Brain runtime Lava.top/email readiness classification without printing secrets: `python scripts/brain_payment_email_readiness.py --brain-ip 82.21.114.104 --plan-code start_99 --output docs/audit-artifacts/payment-email-readiness-brain-2026-05-08.json`
+- Paid-checkout launch evidence aggregation: `python scripts/paid_checkout_launch_evidence_check.py --readiness-json docs/audit-artifacts/payment-email-readiness-2026-05-07.json`
 - Dry run: `python scripts/email_delivery_probe.py --kind verify`
 - Live verify probe: `python scripts/email_delivery_probe.py --kind verify --email operator@example.com --live`
 - Live paid-key probe: `python scripts/email_delivery_probe.py --kind payment_access_key --email operator@example.com --live`
+
+The combined readiness smoke is non-mutating and redacted. It is the quick local check for whether paid checkout can even be considered: Lava.top invoice credentials, Lava.top webhook auth, provider acceptance evidence, public email mode, and email delivery webhook URL plus relay-secret presence must all report `PASS`. Any `BLOCKED_BY_ACCESS` or `EXTERNAL_DEPENDENCY` result keeps paid checkout unavailable.
+
+The paid-checkout launch evidence aggregation is stricter than env readiness: it also requires redacted proof that a paid access key was actually delivered by email after a paid callback, plus the payment replay/failure/manual-review/reconciliation evidence listed in the Lava.top operations doc.
+
+Public email and payment-key delivery can only be verified meaningfully after deploy against the live relay/provider path. If a paid public access-key email fails after a valid paid order, the admin payment ledger exposes sanitized fulfillment state and `resend-access-key-email` can retry delivery with an audit note; this is recovery evidence, not permission to enable checkout without the full Lava.top evidence pack.
 
 ## Когда сразу останавливаемся
 
 Сразу считаем email auth заблокированным, если нет хотя бы одного пункта:
 
 - реального отправителя для `noreply@pokrov.space`
-- рабочего `EMAIL_AUTH_WEBHOOK_URL`
+- рабочего `EMAIL_DELIVERY_WEBHOOK_URL` or legacy `EMAIL_AUTH_WEBHOOK_URL`
+- рабочего `EMAIL_DELIVERY_WEBHOOK_SECRET`
 - webhook-обработчика, который принимает JSON и реально отправляет письмо
 - живого почтового ящика для теста
 - подтверждения, что и verify, и reset письма доходят
@@ -90,13 +102,14 @@ Smoke commands:
 ## Что делать по шагам
 
 1. Проверьте, что отправитель `noreply@pokrov.space` реально подтверждён у почтового провайдера.
-2. Проверьте, что `EMAIL_AUTH_WEBHOOK_URL` прописан в runtime env на `brain`.
-3. Проверьте, что `EMAIL_AUTH_DEBUG_ECHO` выключен.
-4. Проверьте, что `EMAIL_AUTH_TOKEN_SECRET` существует.
-5. Запустите живой сценарий отправки verify-письма.
-6. Запустите живой сценарий отправки reset-письма.
-7. Убедитесь, что webhook отвечает успешно и оба письма реально приходят во входящий ящик.
-8. Если письма не доходят, сразу отмечайте email auth как blocked. Не называйте релиз готовым.
+2. Проверьте, что `EMAIL_DELIVERY_WEBHOOK_URL` или legacy `EMAIL_AUTH_WEBHOOK_URL` прописан в runtime env на `brain`.
+3. Проверьте, что `EMAIL_DELIVERY_WEBHOOK_SECRET` прописан в runtime env на `brain` и совпадает с relay.
+4. Проверьте, что `EMAIL_AUTH_DEBUG_ECHO` выключен.
+5. Проверьте, что `EMAIL_AUTH_TOKEN_SECRET` существует.
+6. Запустите живой сценарий отправки verify-письма.
+7. Запустите живой сценарий отправки reset-письма.
+8. Убедитесь, что webhook отвечает успешно и оба письма реально приходят во входящий ящик.
+9. Если письма не доходят, сразу отмечайте email auth как blocked. Не называйте релиз готовым.
 
 ## Что обязательно нужно доказать
 

@@ -26,12 +26,16 @@ EMAIL_DELIVERY_SECRET_HEADER = "X-Pokrov-Email-Secret"
 
 
 def email_delivery_runtime_status() -> dict[str, Any]:
-    delivery_configured = bool(EMAIL_DELIVERY_WEBHOOK_URL)
+    delivery_url_configured = bool(EMAIL_DELIVERY_WEBHOOK_URL)
+    delivery_secret_configured = bool(EMAIL_DELIVERY_WEBHOOK_SECRET)
+    delivery_configured = bool(delivery_url_configured and delivery_secret_configured)
     blocked_reasons: list[str] = []
     if not EMAIL_AUTH_PUBLIC_ENABLED:
         blocked_reasons.append("public_email_disabled")
-    if not delivery_configured:
+    if not delivery_url_configured:
         blocked_reasons.append("delivery_webhook_missing")
+    if delivery_url_configured and not delivery_secret_configured:
+        blocked_reasons.append("delivery_webhook_secret_missing")
     if EMAIL_AUTH_DEBUG_ECHO:
         blocked_reasons.append("debug_echo_enabled")
 
@@ -41,6 +45,8 @@ def email_delivery_runtime_status() -> dict[str, Any]:
         "enabled": enabled,
         "public_enabled": bool(EMAIL_AUTH_PUBLIC_ENABLED),
         "delivery_configured": delivery_configured,
+        "delivery_url_configured": delivery_url_configured,
+        "delivery_secret_configured": delivery_secret_configured,
         "debug_echo": bool(EMAIL_AUTH_DEBUG_ECHO),
         "mode": "webhook" if delivery_configured else "not_configured",
         "blocked_reasons": blocked_reasons,
@@ -62,6 +68,8 @@ async def deliver_email_message(payload: dict[str, Any]) -> dict[str, Any]:
         return {"status": "debug_echo", "kind": kind, "email": email}
     if not EMAIL_DELIVERY_WEBHOOK_URL:
         return {"status": "not_configured", "kind": kind, "email": email}
+    if not EMAIL_DELIVERY_WEBHOOK_SECRET:
+        return {"status": "delivery_secret_missing", "kind": kind, "email": email}
 
     timeout = aiohttp.ClientTimeout(total=EMAIL_DELIVERY_WEBHOOK_TIMEOUT_SECONDS)
     try:

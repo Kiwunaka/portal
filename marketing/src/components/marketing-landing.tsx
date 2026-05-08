@@ -127,10 +127,6 @@ function buildInstallHref(): string {
   return buildMarketingUrl(MARKETING_CANONICAL_PATHS.install);
 }
 
-function buildCheckoutHref(planCode: string): string {
-  return `/checkout/?plan=${encodeURIComponent(planCode)}`;
-}
-
 function buildPlatformLabel(): string {
   return CANONICAL_PUBLIC_PLATFORM_SCOPE.map((item) => {
     if (item === "android") return "Android";
@@ -156,7 +152,7 @@ function buildDownloadCards(): DownloadCard[] {
     {
       title: "Android",
       status: "Внутренняя бета",
-      desc: "Android доступен как внутренний APK для одобренных бета-пользователей. Публичная публикация остается заблокированной до signing и физического аудита.",
+      desc: "Android доступен как внутренний APK для одобренных бета-пользователей. Публичная публикация остается заблокированной до доверенной подписи и физического аудита.",
       href: installHref,
       cta: "Открыть установку",
     },
@@ -381,7 +377,7 @@ export default function MarketingLanding({
   const downloadCards = buildDownloadCards();
   const relatedPages = RELATED_PAGES.filter((item) => item.href !== pagePath);
   const currentScenarios = scenarioCards?.length ? scenarioCards : DEFAULT_SCENARIOS;
-  const defaultCheckoutHref = buildCheckoutHref(plans[0]?.code || "1_month");
+  const paidBetaHref = MARKETING_CANONICAL_PATHS.install;
   const softwareApplicationJsonLd = buildSoftwareApplicationJsonLd({
     pagePath,
     reviews: buildReviewJsonLdInput(reviews),
@@ -456,7 +452,7 @@ export default function MarketingLanding({
               <Link href={MARKETING_CANONICAL_PATHS.install} className="lp-btn lp-btn--primary">
                 Установить приложение
               </Link>
-              <Link href={defaultCheckoutHref} className="lp-btn lp-btn--ghost">
+              <Link href={paidBetaHref} className="lp-btn lp-btn--ghost">
                 Выбрать срок
               </Link>
             </div>
@@ -579,7 +575,7 @@ export default function MarketingLanding({
             <span>Тарифы</span>
             <h2>Тарифы ведут к ключу доступа, а не к технической ссылке.</h2>
             <p>
-              Вы выбираете срок, переходите к спокойной оплате и затем погашаете ключ в приложении или кабинете, когда касса доступна.
+              Вы выбираете срок, смотрите честный статус кассы и погашаете ключ в приложении или кабинете, когда маршрут оплаты прошел проверку.
             </p>
           </div>
           <div className="lp-pricing-shell">
@@ -610,7 +606,7 @@ export default function MarketingLanding({
                     <li>{plan.duration}</li>
                     <li>{plan.devices}</li>
                   </ul>
-                  <Link href={buildCheckoutHref(plan.code)} className="lp-btn lp-btn--ghost">
+                  <Link href={paidBetaHref} className="lp-btn lp-btn--ghost">
                     Выбрать срок
                   </Link>
                 </article>
@@ -735,7 +731,7 @@ export default function MarketingLanding({
               <Link href={MARKETING_CANONICAL_PATHS.install} className="lp-btn lp-btn--primary">
                 Установить приложение
               </Link>
-              <Link href={defaultCheckoutHref} className="lp-btn lp-btn--ghost">
+              <Link href={paidBetaHref} className="lp-btn lp-btn--ghost">
                 Выбрать срок
               </Link>
               <a href={config.webappUrl} target="_blank" rel="noreferrer" className="lp-btn lp-btn--ghost">

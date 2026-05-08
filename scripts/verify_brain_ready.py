@@ -145,6 +145,34 @@ def _curl_retry(
     return "bash -lc " + shlex.quote(script)
 
 
+def _curl_expect_missing(url: str, *, host: str, label: str) -> str:
+    target_url = str(url or "").strip()
+    if not target_url.startswith(("http://", "https://")):
+        target_url = f"https://{target_url}"
+    script = (
+        "body_file=/tmp/portal_missing_check.$$; "
+        "cleanup() { rm -f \"$body_file\"; }; "
+        "trap cleanup EXIT; "
+        "code=$(curl -k -sS -o \"$body_file\" -w \"%{http_code}\" "
+        f"--resolve {shlex.quote(f'{host}:443:127.0.0.1')} {shlex.quote(target_url)} 2>/dev/null || true); "
+        "case \"$code\" in "
+        "404|410) "
+        f"echo {shlex.quote(label + ' absent status=')}\"$code\"; exit 0 ;; "
+        "000) "
+        f"echo {shlex.quote(label + ' probe_failed status=')}\"$code\"; exit 22 ;; "
+        "esac; "
+        "if grep -Eiq 'FreeKassa|freekassa|payment-page-global|fk-payment-theme' \"$body_file\"; then "
+        f"echo {shlex.quote(label + ' legacy_static_present status=')}\"$code marker=legacy_text\"; exit 23; "
+        "fi; "
+        "body_compact=$(tr -d '\\r\\n\\t ' < \"$body_file\"); "
+        "if printf '%s' \"$body_compact\" | grep -Eq '^[0-9a-fA-F]{32,128}$'; then "
+        f"echo {shlex.quote(label + ' legacy_static_present status=')}\"$code marker=hex_verify\"; exit 23; "
+        "fi; "
+        f"echo {shlex.quote(label + ' absent_or_fallback status=')}\"$code\"; exit 0"
+    )
+    return "bash -lc " + shlex.quote(script)
+
+
 def _build_subscription_check_script(*, api_domain: str, connect_domain: str, repeat: int) -> str:
     return f"""#!/usr/bin/env bash
 set -euo pipefail
@@ -313,7 +341,14 @@ def main() -> int:
                     contains_any=("checkout-shell", "ключ доступа", "https://pokrov.space/checkout/"),
                 ),
             ),
-            ("fkverify443", _curl_retry(f"{web_domain}/fk-verify.html", host=web_domain)),
+            (
+                "legacyPaymentVerifyAbsent443",
+                _curl_expect_missing(f"{web_domain}/fk-verify.html", host=web_domain, label="/fk-verify.html"),
+            ),
+            (
+                "legacyPaymentThemeAbsent443",
+                _curl_expect_missing(f"{web_domain}/fk-payment-theme.css", host=web_domain, label="/fk-payment-theme.css"),
+            ),
         ]
         if args.check_legacy_2096:
             curl_checks.append(

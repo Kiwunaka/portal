@@ -30,8 +30,8 @@ PROVIDER_META: dict[str, PaymentProviderMeta] = {
     "lavatop": PaymentProviderMeta(
         code="lavatop",
         label="Lava.top",
-        accent="Cards and SBP",
-        checkout_hint="Primary Open Beta checkout candidate; requires authenticated webhooks.",
+        accent="Карты и СБП",
+        checkout_hint="Основная касса Open Beta; требует подтвержденных вебхуков.",
     ),
     "cardlink": PaymentProviderMeta(
         code="cardlink",
@@ -95,7 +95,7 @@ def provider_is_configured(code: str) -> bool:
 
 
 def enabled_rub_provider_codes() -> list[str]:
-    preferred = _csv_env("RUB_PAYMENT_PROVIDER_ORDER", "lavatop,cardlink,pally,platima")
+    preferred = _csv_env("RUB_PAYMENT_PROVIDER_ORDER", "lavatop")
     allowed = set(_csv_env("RUB_PAYMENT_PROVIDER_ENABLED", ",".join(preferred)))
     out: list[str] = []
     for code in preferred:

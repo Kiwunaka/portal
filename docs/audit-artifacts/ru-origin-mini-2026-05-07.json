@@ -1,0 +1,27 @@
+{
+  "timestamp_utc": "2026-05-06T23:53:28Z",
+  "origin": "mini",
+  "host": "176.123.166.119",
+  "status": "FAIL",
+  "classification": "RU_ORIGIN_TELEGRAM_DEGRADED",
+  "summary": "Canonical POKROV web/API surfaces and delivery node TCP checks passed from mini, but Telegram timed out from the RU-origin host.",
+  "exit": 0,
+  "stdout": [
+    "probe_host=cinema",
+    "public_ip=176.123.166.119",
+    "http https://pokrov.space/ 200",
+    "http https://app.pokrov.space/ 200",
+    "http https://api.pokrov.space/api/health 200",
+    "http https://t.me/pokrov_vpn/10 000",
+    "http https://api.telegram.org/ 000",
+    "tcp 82.40.38.84:443 tcp_ok",
+    "tcp 151.241.215.84:443 tcp_ok",
+    "tcp 82.21.92.142:443 tcp_ok",
+    "tcp 82.24.195.93:443 tcp_ok",
+    "tcp 151.245.217.23:443 tcp_ok"
+  ],
+  "stderr_tail": [
+    "curl: (28) Failed to connect to t.me port 443 after 10010 ms: Connection timed out",
+    "curl: (28) Failed to connect to api.telegram.org port 443 after 10010 ms: Connection timed out"
+  ]
+}

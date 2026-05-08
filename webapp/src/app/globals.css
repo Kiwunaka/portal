@@ -19,6 +19,9 @@
   --tg-safe-area-right: 0px;
   --tg-viewport-height: 100dvh;
   --ease-apple: cubic-bezier(0.22, 1, 0.36, 1);
+  --font-body: "Manrope", "Inter", "Segoe UI", system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-display: "Manrope", "Inter", "Segoe UI", system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-mono: "JetBrains Mono", "SFMono-Regular", Consolas, "Liberation Mono", monospace;
 }
 
 * {

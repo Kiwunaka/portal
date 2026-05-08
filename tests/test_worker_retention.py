@@ -20,7 +20,15 @@ class WorkerRetentionTests(unittest.TestCase):
             sys.path.insert(0, portal_dir)
 
         self._saved_env: dict[str, str | None] = {}
-        for key in ("DATABASE_URL", "BOT_TOKEN", "PUBLIC_CHANNEL"):
+        for key in (
+            "DATABASE_URL",
+            "BOT_TOKEN",
+            "PUBLIC_CHANNEL",
+            "BOT_STARS_PAYMENTS_ENABLED",
+            "START99_WELCOME_ENABLED",
+            "START99_WELCOME_MIN_HOURS",
+            "START99_WELCOME_MAX_HOURS",
+        ):
             self._saved_env[key] = os.environ.get(key)
 
         self._tmp = tempfile.TemporaryDirectory()
@@ -28,6 +36,10 @@ class WorkerRetentionTests(unittest.TestCase):
         os.environ["DATABASE_URL"] = f"sqlite:///{self.db_path.as_posix()}"
         os.environ["BOT_TOKEN"] = "test_bot_token_123"
         os.environ["PUBLIC_CHANNEL"] = "pokrov_vpn"
+        os.environ["BOT_STARS_PAYMENTS_ENABLED"] = "false"
+        os.environ["START99_WELCOME_ENABLED"] = "1"
+        os.environ["START99_WELCOME_MIN_HOURS"] = "24"
+        os.environ["START99_WELCOME_MAX_HOURS"] = "48"
 
         for mod_name in ("config", "db", "worker"):
             if mod_name in sys.modules:
@@ -93,6 +105,121 @@ class WorkerRetentionTests(unittest.TestCase):
         buttons = self.worker._retention_buttons(flow="welcome", variant="a")
         self.assertGreaterEqual(len(buttons), 2)
         self.assertIn("t.me/pokrov_vpn", str(buttons[1][0].get("url") or ""))
+
+    def test_retention_public_copy_does_not_promise_live_payment(self) -> None:
+        source = (Path(__file__).resolve().parents[1] / "portal_bot" / "worker.py").read_text(encoding="utf-8")
+
+        for phrase in (
+            "Открыть оплату",
+            "Откройте оплату",
+            "Оплатить / Продлить",
+            "Слот оплаты",
+            "checkout",
+            "следующий платёж",
+        ):
+            self.assertNotIn(phrase, source)
+
+    def test_oto_free_job_skips_stars_offer_when_stars_disabled(self) -> None:
+        from models import Offer, User
+
+        now = self.worker._utcnow()
+        s = self.db.SessionLocal()
+        try:
+            s.add(
+                User(
+                    tg_id=3001,
+                    username="free_near_expiry",
+                    uuid=str(uuid.uuid4()),
+                    email="free_3001",
+                    sub_type="FREE",
+                    is_active=True,
+                    expiry_at=now + timedelta(hours=1),
+                    tos_accepted=True,
+                )
+            )
+            s.commit()
+        finally:
+            s.close()
+
+        sent: list[dict] = []
+
+        async def _stop_after_first_sleep(_seconds: float) -> None:
+            raise asyncio.CancelledError()
+
+        async def _send(**kwargs):
+            sent.append(kwargs)
+            return True
+
+        with mock.patch.object(self.worker, "_legacy_usage_bytes", return_value=0), \
+             mock.patch.object(self.worker, "_telegram_send_message", side_effect=_send), \
+             mock.patch.object(self.worker.asyncio, "sleep", side_effect=_stop_after_first_sleep):
+            with self.assertRaises(asyncio.CancelledError):
+                self.worker.asyncio.run(self.worker.oto_free_job())
+
+        s = self.db.SessionLocal()
+        try:
+            self.assertEqual(s.query(Offer).filter_by(tg_id=3001, offer_type="trial_oto").count(), 0)
+        finally:
+            s.close()
+        self.assertEqual(sent, [])
+
+    def test_start99_welcome_offer_accepts_lavatop_paid_orders(self) -> None:
+        from models import ExternalOrder, User
+
+        now = self.worker._utcnow()
+        s = self.db.SessionLocal()
+        try:
+            s.add(
+                User(
+                    tg_id=3002,
+                    username="lavatop_start_user",
+                    uuid=str(uuid.uuid4()),
+                    email="lavatop_3002",
+                    sub_type="PAID",
+                    is_active=True,
+                    expiry_at=now + timedelta(days=30),
+                    tos_accepted=True,
+                )
+            )
+            s.add(
+                ExternalOrder(
+                    order_id="lava-start-3002",
+                    tg_id=3002,
+                    provider="lavatop",
+                    plan_code="start_99",
+                    amount=99,
+                    currency="RUB",
+                    status="paid",
+                    paid_at=now - timedelta(hours=30),
+                )
+            )
+            s.commit()
+        finally:
+            s.close()
+
+        sent: list[dict] = []
+
+        async def _stop_after_first_sleep(_seconds: float) -> None:
+            raise asyncio.CancelledError()
+
+        async def _send(**kwargs):
+            sent.append(kwargs)
+            return True
+
+        with mock.patch.object(self.worker, "_telegram_send_message", side_effect=_send), \
+             mock.patch.object(self.worker.asyncio, "sleep", side_effect=_stop_after_first_sleep):
+            with self.assertRaises(asyncio.CancelledError):
+                self.worker.asyncio.run(self.worker.start99_welcome_offer_job())
+
+        s = self.db.SessionLocal()
+        try:
+            user = s.query(User).filter_by(tg_id=3002).first()
+            self.assertIsNotNone(user)
+            self.assertEqual(int(user.pending_discount_pct or 0), 15)
+        finally:
+            s.close()
+        self.assertEqual(len(sent), 1)
+        self.assertIn("buttons", sent[0])
 
     def test_channel_membership_reason_normalization(self) -> None:
         self.assertEqual(self.worker._normalize_channel_membership_reason("left"), "not_member")

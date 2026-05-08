@@ -1,6 +1,6 @@
 # Repository Map
 
-Last updated: 2026-04-28
+Last updated: 2026-05-07
 
 ## Document Status
 
@@ -24,6 +24,8 @@ Legacy filename note:
 | `docs/operations/publishing-and-signing-guide.md` | canonical store, certificate, and release artifact guidance | this file and the operations guide itself |
 | `docs/developer/orchestration/` | canonical orchestration standard, role contracts, and reusable templates | `docs/developer/orchestration/orchestration-standard.md` |
 | `docs/developer/work-orders/` | living wave and work-order execution artifacts | `docs/developer/work-orders/README.md` |
+| `docs/superpowers/specs/` | retained implementation specs and planning packets | historical/reference only unless copied into a current WO or canonical doc |
+| `reference-atlas/` | retained local design reference atlas | design-reference history only; not a production surface |
 | `docs/` | canonical platform docs plus archive | `docs/README.md` |
 | `docs/archive/client-lanes/` | short historical summaries for retired client lanes | `docs/archive/client-lanes/README.md` |
 | `C:/Users/kiwun/Documents/ai/POKROV-app/artifacts/releases/bridge/` | retained bridge bundle lineage and handoff evidence archive | versioned bundle folders plus `release-manifests/` when present |
@@ -70,7 +72,8 @@ Legacy filename note:
 - free-tier access states `free_monthly` and `free_soft_mode` target only the dedicated `NL-free` node
 - smart-connect shortlist logic, RTT upload, and stickiness are part of that same app-first contract and must not be documented separately from the pool rule
 - split-tunnel persistence is part of that same contract through `route_mode`, `selected_apps`, `requires_elevated_privileges`, and mirrored `route_policy.*` fields
-- additive browser email auth lives under `/api/auth/email/*`, but current canon keeps it marked `soon` until transactional sender identity plus delivery-confirmation/webhook readiness and the public launch path are live
+- additive browser email auth lives under `/api/auth/email/*` and is runtime-gated by `/api/auth/email/status`; public UI may show it only when public mode, delivery webhook URL, relay secret, and non-debug state are green
+- admin payment fulfillment visibility lives under `/api/admin/payments/orders`; paid public access-key email resend uses `/api/admin/payments/orders/{provider}/{order_id}/resend-access-key-email` and always requires an audit note
 - support tickets live under `/api/tickets`, `/api/tickets/uploads`, and `/api/tickets/{ticket_id}/messages`; cabinet and admin continue real ticket threads instead of fake live-chat state
 - app-first marketing ownership, checkout continuation, and cabinet top-level IA belong in the same canonical contract family as hostnames, support, and shared copy governance
 - public user-facing version labels stay on `0.x.x-beta`; inherited strings like `2.5.7 dev` are release regressions
@@ -83,6 +86,8 @@ Legacy filename note:
 - `remote_deploy_brain_portal_code.py`
 - `remote_deploy_brain_static_sites.py`
 - `remote_brain_apply_release_handoff.py`
+- `prepare_github_release_plan.py`
+- `publish_github_release_assets.py`
 - `remote_apply_transport_front.py`
 - `remote_install_mini_canary_stack.py`
 - `remote_install_mtproto_proxy.py`
@@ -93,8 +98,16 @@ Legacy filename note:
 
 - `admin_webapp_smoke.py`
 - `android_localhost_audit.py`
+- `validate_android_physical_audit_evidence.py`
 - `api_lifecycle_smoke.py`
 - `client_security_smoke.py`
+- `email_delivery_probe.py`
+- `lavatop_invoice_probe.py`
+- `lavatop_webhook_replay_smoke.py`
+- `paid_checkout_launch_evidence_check.py`
+- `payment_email_readiness_smoke.py`
+- `public_beta_post_deploy_probe.py`
+- `public_beta_launch_decision.py`
 - `release_gate_check.py`
 - `run_client_release_gate.py`
 - `render_ru_probe_report.py`
@@ -208,7 +221,7 @@ Shared-facts and handoff note:
 - `run_client_release_gate.py` targets `C:/Users/kiwun/Documents/ai/POKROV-app` by default for the platform-owned gate lane and fails fast when that workspace is missing or incomplete
 - `client_security_smoke.py` now validates the `POKROV-app` seed/runtime contract, Android host manifest, and Windows release-seed expectations instead of bridge-fork file paths
 - retained bridge-period bundles and manifests should be stored with the mirrored archive under `C:/Users/kiwun/Documents/ai/POKROV-app/artifacts/releases/bridge/<version>/`
-- `release_gate_check.py` requires `ANDROID_AUDIT_SERIAL=<physical-device-serial>` when Android build gates are requested and rejects emulator serials for that public-release path
+- `release_gate_check.py` requires `ANDROID_AUDIT_SERIAL=<physical-device-serial>` or `ANDROID_AUDIT_EVIDENCE_JSON=<path-to-raw-physical-audit-json>` when Android build gates are requested; emulator serials and failed validation reports do not clear that public-release path
 - `release_gate_check.py` passes `ANDROID_AUDIT_PACKAGE` to `android_localhost_audit.py`; default package is `space.pokrov.pokrov_android_shell`
 - `runtime_app_download_smoke.py --redact` is the retained-evidence-safe wrapper around `smoke_client_apps.py`
 - Android release-build localhost-listener audit before connect, after connect, and after disconnect
@@ -231,6 +244,8 @@ Treat these as disposable repo-local scratch unless intentionally retained:
 - `marketing/out`
 - `.tmp/`, `.tmp-*`, screenshots, logcat dumps, XML dumps, and temp runtime snapshots created during local diagnostics
 
+Use `python scripts/cleanup_inventory.py --class all --dry-run` as the source-of-truth inventory before removing these. Use `--apply` only for `safe` or explicitly approved `intentional-reset` classes.
+
 Treat these as workspace dependencies or intentional reset targets, not routine cleanup:
 
 - `node_modules/`
@@ -245,6 +260,7 @@ Treat these as retained evidence or release assets and preserve them unless you 
 - signing material in `external/client-fork/app/windows/`
 - operator evidence in `ops-local/`
 - audit evidence in `docs/audit-artifacts/`
+- old work orders, specs, visual audit renders, and local design atlas material unless a separate archival policy says to compress them
 
 Out of scope for repo cleanup:
 

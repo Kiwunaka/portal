@@ -9,7 +9,6 @@ import {
   CANONICAL_PLATFORM_BRAND,
   CANONICAL_PUBLIC_PLATFORM_SCOPE,
   CANONICAL_SUPPORT_BOT_URL,
-  getTariffPlans,
 } from "./pokrov";
 
 export const DEFAULT_MARKETING_SHARE_IMAGE_PATH = "/opengraph-image.png";
@@ -29,13 +28,6 @@ export const MARKETING_CANONICAL_PATHS = {
   offer: "/offer/",
   privacy: "/privacy/",
 } as const;
-
-const PUBLIC_TARIFF_PLANS = getTariffPlans()
-  .slice()
-  .filter((plan) => Boolean(plan.is_active))
-  .sort((left, right) => Number(left.sort_order || 0) - Number(right.sort_order || 0));
-
-const START_PLAN = PUBLIC_TARIFF_PLANS[0] || null;
 
 export const MARKETING_FEATURE_LIST = [
   "Приложения для Android и Windows",
@@ -93,7 +85,7 @@ export const MARKETING_FAQ: MarketingFaqItem[] = [
   {
     question: "Как устроено продление?",
     answer:
-      "Вы выбираете срок, переходите к оплате и продолжаете пользоваться тем же доступом. Все привязано к вашему приложению и кабинету, а не к случайным ручным настройкам.",
+      "Вы выбираете срок, проверяете статус платежного маршрута и продолжаете пользоваться тем же доступом после подтвержденного продления. Все привязано к вашему приложению и кабинету, а не к случайным ручным настройкам.",
   },
   {
     question: "Нужен ли Telegram для старта?",
@@ -103,7 +95,7 @@ export const MARKETING_FAQ: MarketingFaqItem[] = [
   {
     question: "Если что-то не получается, куда идти?",
     answer:
-      "Сначала откройте кабинет или раздел поддержки в приложении. В бета-волне команда отвечает в формате best-effort, без декоративного SLA.",
+      "Сначала откройте кабинет или раздел поддержки в приложении. В бета-волне команда отвечает по мере возможности, без обещания круглосуточной реакции.",
   },
 ];
 
@@ -200,13 +192,6 @@ export function buildSoftwareApplicationJsonLd(options?: {
       email: CANONICAL_CONTACT_EMAIL,
       url: CANONICAL_SUPPORT_BOT_URL,
       availableLanguage: ["ru"],
-    },
-    offers: {
-      "@type": "Offer",
-      price: String(START_PLAN?.amount_rub || 0),
-      priceCurrency: "RUB",
-      availability: "https://schema.org/InStock",
-      url: buildMarketingUrl(MARKETING_CANONICAL_PATHS.checkout),
     },
     downloadUrl: buildMarketingUrl(MARKETING_CANONICAL_PATHS.install),
     mainEntityOfPage: canonicalUrl,

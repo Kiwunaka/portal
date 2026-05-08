@@ -410,7 +410,20 @@ def _inspect_runtime_inbound(row: NodeReadinessRow, *, ssh_user: str, ssh_port: 
 def _collect_drift_payload(rows: list[NodeReadinessRow], *, ssh_user: str, ssh_port: int, passwords: Path) -> dict:
     results: list[dict] = []
     for row in rows:
-        inspected = _inspect_runtime_inbound(row, ssh_user=ssh_user, ssh_port=ssh_port, passwords=passwords)
+        try:
+            inspected = _inspect_runtime_inbound(row, ssh_user=ssh_user, ssh_port=ssh_port, passwords=passwords)
+        except Exception as exc:
+            results.append(
+                {
+                    "node_code": row.code,
+                    "node_host": row.host,
+                    "status": "blocked_by_access",
+                    "mismatches": ["blocked_by_access"],
+                    "checks": {"node_access": False},
+                    "access_error": str(exc)[:240],
+                }
+            )
+            continue
         server_names = [str(item or "").strip() for item in inspected.get("server_names", [])]
         dest = str(inspected.get("dest") or "").strip()
         checks = {
@@ -439,6 +452,7 @@ def _collect_drift_payload(rows: list[NodeReadinessRow], *, ssh_user: str, ssh_p
             "total": len(results),
             "ok": sum(1 for row in results if row["status"] == "ok"),
             "drift": sum(1 for row in results if row["status"] != "ok"),
+            "blocked_by_access": sum(1 for row in results if row["status"] == "blocked_by_access"),
         },
         "results": results,
     }

@@ -1,0 +1,119 @@
+{
+  "ok": false,
+  "classification": "BLOCKED_BY_ACCESS",
+  "safe_to_enable_paid_checkout": false,
+  "mode": "paid_checkout_launch_evidence",
+  "inputs": {
+    "readiness_json": "docs\\audit-artifacts\\payment-email-readiness-brain-2026-05-08.json",
+    "evidence_json": ""
+  },
+  "checks": [
+    {
+      "name": "payment_email_readiness",
+      "status": "EXTERNAL_DEPENDENCY",
+      "missing": [],
+      "source": "docs\\audit-artifacts\\payment-email-readiness-brain-2026-05-08.json",
+      "note": "Aggregate classification from payment_email_readiness_smoke.py."
+    },
+    {
+      "name": "lavatop_invoice_credentials",
+      "status": "PASS",
+      "missing": [],
+      "source": "docs\\audit-artifacts\\payment-email-readiness-brain-2026-05-08.json",
+      "note": ""
+    },
+    {
+      "name": "lavatop_webhook_auth",
+      "status": "PASS",
+      "missing": [],
+      "source": "docs\\audit-artifacts\\payment-email-readiness-brain-2026-05-08.json",
+      "note": ""
+    },
+    {
+      "name": "lavatop_provider_acceptance",
+      "status": "EXTERNAL_DEPENDENCY",
+      "missing": [
+        "LAVATOP_PROVIDER_ACCEPTANCE_CONFIRMED=true"
+      ],
+      "source": "docs\\audit-artifacts\\payment-email-readiness-brain-2026-05-08.json",
+      "note": ""
+    },
+    {
+      "name": "email_public_mode",
+      "status": "PASS",
+      "missing": [],
+      "source": "docs\\audit-artifacts\\payment-email-readiness-brain-2026-05-08.json",
+      "note": ""
+    },
+    {
+      "name": "email_delivery_webhook",
+      "status": "PASS",
+      "missing": [],
+      "source": "docs\\audit-artifacts\\payment-email-readiness-brain-2026-05-08.json",
+      "note": ""
+    },
+    {
+      "name": "lavatop_live_invoice_creation",
+      "status": "BLOCKED_BY_ACCESS",
+      "missing": [
+        "lavatop_live_invoice_creation evidence"
+      ],
+      "source": "",
+      "note": "Attach redacted live/sandbox evidence before enabling paid checkout."
+    },
+    {
+      "name": "lavatop_authenticated_success_webhook",
+      "status": "BLOCKED_BY_ACCESS",
+      "missing": [
+        "lavatop_authenticated_success_webhook evidence"
+      ],
+      "source": "",
+      "note": "Attach redacted live/sandbox evidence before enabling paid checkout."
+    },
+    {
+      "name": "lavatop_webhook_replay_idempotency",
+      "status": "BLOCKED_BY_ACCESS",
+      "missing": [
+        "lavatop_webhook_replay_idempotency evidence"
+      ],
+      "source": "",
+      "note": "Attach redacted live/sandbox evidence before enabling paid checkout."
+    },
+    {
+      "name": "lavatop_failed_payment_no_fulfillment",
+      "status": "BLOCKED_BY_ACCESS",
+      "missing": [
+        "lavatop_failed_payment_no_fulfillment evidence"
+      ],
+      "source": "",
+      "note": "Attach redacted live/sandbox evidence before enabling paid checkout."
+    },
+    {
+      "name": "lavatop_manual_review_mismatch",
+      "status": "BLOCKED_BY_ACCESS",
+      "missing": [
+        "lavatop_manual_review_mismatch evidence"
+      ],
+      "source": "",
+      "note": "Attach redacted live/sandbox evidence before enabling paid checkout."
+    },
+    {
+      "name": "lavatop_reconciliation_procedure",
+      "status": "BLOCKED_BY_ACCESS",
+      "missing": [
+        "lavatop_reconciliation_procedure evidence"
+      ],
+      "source": "",
+      "note": "Attach redacted live/sandbox evidence before enabling paid checkout."
+    },
+    {
+      "name": "paid_access_key_email_delivery",
+      "status": "BLOCKED_BY_ACCESS",
+      "missing": [
+        "paid_access_key_email_delivery evidence"
+      ],
+      "source": "",
+      "note": "Attach redacted live/sandbox evidence before enabling paid checkout."
+    }
+  ]
+}

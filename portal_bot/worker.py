@@ -42,6 +42,7 @@ START99_WELCOME_MIN_HOURS = max(1, int(os.getenv("START99_WELCOME_MIN_HOURS", "2
 START99_WELCOME_MAX_HOURS = max(START99_WELCOME_MIN_HOURS + 1, int(os.getenv("START99_WELCOME_MAX_HOURS", "48")))
 START99_WELCOME_DISCOUNT_PCT = max(1, min(95, int(os.getenv("START99_WELCOME_DISCOUNT_PCT", "15"))))
 START99_WELCOME_DISCOUNT_CODE = (os.getenv("START99_WELCOME_DISCOUNT_CODE") or "STARTBOOST").strip().upper()[:20]
+BOT_STARS_PAYMENTS_ENABLED = os.getenv("BOT_STARS_PAYMENTS_ENABLED", "false").strip().lower() in {"1", "true", "yes", "on", "y"}
 REFERRAL_BONUS_DAYS = max(1, int(os.getenv("REFERRAL_BONUS_DAYS", "15")))
 REFERRAL_ANTIFRAUD_MAX_WAIT_HOURS = max(1, int(os.getenv("REFERRAL_ANTIFRAUD_MAX_WAIT_HOURS", "168")))
 
@@ -104,17 +105,17 @@ RETENTION_DEFAULT_COPY: dict[str, dict[str, str]] = {
         ),
         "b": (
             "🧭 Доступ завершился, но подключение можно восстановить за минуту.\n\n"
-            "Откройте оплату и вернитесь в рабочий режим."
+            "Откройте продление и вернитесь в рабочий режим."
         ),
     },
     "start99_offer": {
         "a": (
             "🎁 Вы уже проверили Start в реальном трафике.\n\n"
-            "Мы закрепили персональную скидку {discount_pct}% на следующий платёж."
+            "Мы закрепили персональную скидку {discount_pct}% на следующее продление."
         ),
         "b": (
             "⚡ Start активирован, можно переходить на полный режим.\n\n"
-            "Скидка {discount_pct}% уже ждёт в следующем checkout."
+            "Скидка {discount_pct}% уже ждёт в следующем шаге продления."
         ),
     },
 }
@@ -123,7 +124,7 @@ RETENTION_BUTTONS: dict[str, dict[str, str]] = {
     "welcome": {"a": "🟦 Открыть кабинет", "b": "🟦 Перейти к подключению"},
     "t3": {"a": "🟦 Продлить заранее", "b": "🟦 Сохранить доступ"},
     "t1": {"a": "🟦 Продлить сейчас", "b": "🟦 Избежать паузы"},
-    "t0": {"a": "🟦 Открыть оплату", "b": "🟦 Оставить доступ активным"},
+    "t0": {"a": "🟦 Открыть продление", "b": "🟦 Оставить доступ активным"},
     "reactivation": {"a": "🟦 Вернуться в POKROV", "b": "🟦 Проверить подключение"},
     "start99_offer": {"a": "🟦 Продлить со скидкой", "b": "🟦 Зафиксировать доступ"},
 }
@@ -671,10 +672,10 @@ async def abandoned_cart_job() -> None:
     while True:
         rows = find_abandoned_candidates(older_than_minutes=60, limit=200)
         for row in rows:
-            text = "⏳ Слот оплаты всё ещё зарезервирован.\n\nНужна помощь с оплатой или подключением?"
+            text = "⏳ Статус продления сохранён.\n\nЕсли нужен доступ без пауз, проверьте следующий шаг в кабинете или напишите в поддержку."
             buttons = [
-                [{"text": "🟦 Оплатить / Продлить", "url": _bot_pay_url()}],
-                [{"text": "🆘 Помощь с оплатой", "url": _support_url()}],
+                [{"text": "🟦 Проверить статус продления", "url": _bot_pay_url()}],
+                [{"text": "🆘 Написать в поддержку", "url": _support_url()}],
             ]
             ok = await _telegram_send_message(chat_id=int(row.tg_id), text=text, buttons=buttons)
             if ok:
@@ -791,7 +792,7 @@ async def start99_welcome_offer_job() -> None:
                 .filter(ExternalOrder.paid_at.isnot(None))
                 .filter(ExternalOrder.paid_at >= newer_than)
                 .filter(ExternalOrder.paid_at <= older_than)
-                .filter(func.lower(func.coalesce(ExternalOrder.provider, "")) == "freekassa")
+                .filter(func.lower(func.coalesce(ExternalOrder.provider, "")).in_(["lavatop", "freekassa"]))
                 .filter(func.lower(func.coalesce(ExternalOrder.status, "")) == "paid")
                 .filter(func.lower(func.coalesce(ExternalOrder.plan_code, "")) == "start_99")
                 .order_by(ExternalOrder.paid_at.desc())
@@ -882,6 +883,9 @@ async def _legacy_usage_bytes(*, tg_id: int) -> int:
 async def oto_free_job() -> None:
     while True:
         expire_stale_offers()
+        if not BOT_STARS_PAYMENTS_ENABLED:
+            await asyncio.sleep(900)
+            continue
         now = _utcnow()
         s = SessionLocal()
         try:

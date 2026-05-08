@@ -10,6 +10,7 @@ import subprocess
 import sys
 import time
 from dataclasses import asdict, dataclass
+from datetime import datetime, timezone
 from pathlib import Path
 
 
@@ -406,6 +407,7 @@ def _write_report(
     probes: list[PortProbeResult],
     failures: list[str],
     package_evidence: PackageEvidence | None = None,
+    audit_metadata: dict[str, object] | None = None,
 ) -> None:
     if output_path is None:
         return
@@ -420,6 +422,7 @@ def _write_report(
         "probes": [asdict(item) for item in probes],
         "failures": failures,
         "package_evidence": asdict(package_evidence) if package_evidence is not None else None,
+        "audit_metadata": audit_metadata or {},
     }
     output_path.write_text(json.dumps(payload, ensure_ascii=True, indent=2), encoding="utf-8")
 
@@ -518,6 +521,18 @@ def main() -> int:
             probes=probes,
             failures=failures,
             package_evidence=package_evidence,
+            audit_metadata={
+                "created_at_utc": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
+                "require_release_build": bool(args.require_release_build),
+                "release_evidence_present": bool(str(args.release_evidence or "").strip()),
+                "expected_version_name": str(args.expected_version_name or "").strip(),
+                "expected_version_code": str(args.expected_version_code or "").strip(),
+                "launch_wait_sec": args.launch_wait_sec,
+                "connect_wait_sec": args.connect_wait_sec,
+                "disconnect_wait_sec": args.disconnect_wait_sec,
+                "after_connect_observed": args.connect_wait_sec > 0,
+                "after_disconnect_observed": args.disconnect_wait_sec > 0,
+            },
         )
         if output is not None:
             print(f"[report] {output}")

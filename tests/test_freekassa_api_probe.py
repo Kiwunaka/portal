@@ -57,6 +57,9 @@ class FreekassaApiProbeTests(unittest.TestCase):
             "82.21.114.104",
             "--passwords",
             str(passwords),
+            "--legacy-reconciliation",
+            "--order-id",
+            "fk_site_1001_legacy",
         ]
 
         with mock.patch.object(sys, "argv", argv), mock.patch.object(
@@ -69,6 +72,51 @@ class FreekassaApiProbeTests(unittest.TestCase):
         connect.assert_called_once()
         self.assertEqual(connect.call_args.kwargs["code"], "brain")
         self.assertEqual(connect.call_args.kwargs["passwords_path"], passwords)
+        self.assertIn("method='orders'", ssh.commands[0])
+        self.assertIn('"orderId": "fk_site_1001_legacy"', ssh.commands[0])
+
+    def test_main_refuses_without_legacy_reconciliation_ack(self) -> None:
+        argv = [
+            "freekassa_api_probe.py",
+            "--brain-ip",
+            "82.21.114.104",
+        ]
+
+        with mock.patch.object(sys, "argv", argv), mock.patch.object(self.module, "connect_node") as connect:
+            code = self.module.main()
+
+        self.assertEqual(code, 2)
+        connect.assert_not_called()
+
+    def test_main_refuses_legacy_create_even_with_ack(self) -> None:
+        argv = [
+            "freekassa_api_probe.py",
+            "--brain-ip",
+            "82.21.114.104",
+            "--legacy-reconciliation",
+            "--method",
+            "orders/create",
+        ]
+
+        with mock.patch.object(sys, "argv", argv), mock.patch.object(self.module, "connect_node") as connect:
+            code = self.module.main()
+
+        self.assertEqual(code, 2)
+        connect.assert_not_called()
+
+    def test_main_requires_order_id_for_default_reconciliation_read(self) -> None:
+        argv = [
+            "freekassa_api_probe.py",
+            "--brain-ip",
+            "82.21.114.104",
+            "--legacy-reconciliation",
+        ]
+
+        with mock.patch.object(sys, "argv", argv), mock.patch.object(self.module, "connect_node") as connect:
+            code = self.module.main()
+
+        self.assertEqual(code, 2)
+        connect.assert_not_called()
 
 
 if __name__ == "__main__":

@@ -68,7 +68,9 @@ class PlanPolicyTests(unittest.TestCase):
             panel_latency_ms=100,
             panel_error_rate=0.0,
             active_clients=0,
+            cpu_percent=0.0,
             last_ok_at=None,
+            last_probe_at=None,
         )
 
     def test_panel_policy_defaults(self) -> None:

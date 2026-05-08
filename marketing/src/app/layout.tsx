@@ -1,6 +1,5 @@
 import type { CSSProperties } from "react";
 import type { Metadata } from "next";
-import { JetBrains_Mono, Manrope } from "next/font/google";
 
 import JsonLd from "../components/json-ld";
 import {
@@ -13,10 +12,6 @@ import {
 } from "../lib/marketing-site";
 import { CANONICAL_MARKETING_SITE_URL, CANONICAL_PLATFORM_BRAND, getDesignTokenCssVariables } from "../lib/pokrov";
 import "./globals.css";
-
-const bodyFont = Manrope({ subsets: ["latin", "cyrillic"], variable: "--font-body" });
-const displayFont = Manrope({ subsets: ["latin", "cyrillic"], variable: "--font-display" });
-const monoFont = JetBrains_Mono({ subsets: ["latin", "cyrillic"], variable: "--font-mono" });
 
 export const metadata: Metadata = {
   metadataBase: new URL(CANONICAL_MARKETING_SITE_URL),
@@ -83,7 +78,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           }}
         />
       </head>
-      <body className={`${bodyFont.variable} ${displayFont.variable} ${monoFont.variable}`} style={designTokenVars}>
+      <body style={designTokenVars}>
         <a href="#main-content" className="skip-link">
           Перейти к содержимому
         </a>

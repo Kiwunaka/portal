@@ -1,6 +1,6 @@
 # POKROV Documentation Index
 
-Last updated: 2026-04-26
+Last updated: 2026-05-07
 
 This directory is split into two classes of material:
 
@@ -20,6 +20,13 @@ Legacy filename note:
 - legacy `POKROV VPN` labels in filenames or old identifiers do not authorize new direct-meaning `VPN` copy
 
 Use the role-based paths below first. If you need older context, go to the archive sections afterward.
+
+Current-vs-history boundary:
+
+- canonical docs in the sections below define current product, platform, operations, design, and developer truth
+- `docs/developer/work-orders/**` is execution evidence; use wave indexes for context, not as product authority
+- `docs/superpowers/specs/**`, `reference-atlas/`, rendered route maps, and old visual mockups are retained planning/reference history unless a current design doc explicitly links them as active
+- do not delete retained historical trees during routine cleanup; relabel or index them when their status is unclear
 
 ## Start Here As Agent
 
@@ -134,5 +141,8 @@ Use the role-based paths below first. If you need older context, go to the archi
 - audit evidence in `docs/audit-artifacts/`
 - archived root guides in `docs/archive/root-guides/`
 - retired client summaries in `docs/archive/client-lanes/`
+- work-order and rendered visual-audit evidence in `docs/developer/work-orders/`
+- older implementation specs in `docs/superpowers/specs/`
+- local design reference atlas in `reference-atlas/`
 
 If a historical file conflicts with a living source-of-truth doc, prefer the living doc and then relabel or archive the older note.

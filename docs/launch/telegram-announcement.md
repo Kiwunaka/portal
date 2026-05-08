@@ -1,24 +1,63 @@
-# Telegram Announcement Drafts
+# Черновики Telegram-объявлений
 
-Last updated: 2026-04-26
+Обновлено: 2026-05-08
 
-## Limited/Gated Beta
+Статус: только черновики. Не публиковать, пока финальный релизный пакет не говорит `GO`.
 
-POKROV is in a gated beta stage.
+## Ограниченная бета с загрузками
 
-We are testing Android and Windows carefully before broad public release. If you have beta access, open the cabinet and check Downloads. If a file is not visible, write to support instead of using unofficial mirrors.
+Публиковать только после `GO` и live runtime APP-ссылок.
 
-Cabinet: https://app.pokrov.space/  
-Install help: https://pokrov.space/install/  
-Support: @pokrov_supportbot
+POKROV открывает аккуратную бета-проверку для Android и Windows.
 
-Android is not public-ready until signing and the physical release-build audit are complete. Windows beta builds may show an unknown-publisher warning until trusted signing is finished.
+Сейчас это не широкий релиз и не публикация в магазинах. Мы выдаем сборки только через официальный кабинет и проверяем установку, вход, поддержку и внутренние сценарии оплаты.
 
-## Downloads Paused
+Если у вас есть доступ к бете:
 
-POKROV beta downloads are temporarily paused while we verify the release handoff.
+1. Откройте кабинет: https://app.pokrov.space/
+2. Перейдите в раздел загрузок.
+3. Устанавливайте приложение только по официальной ссылке.
 
-Use the app or cabinet first, and contact support if you need recovery.
+Если ссылка не появилась или что-то пошло не так, напишите в поддержку: @pokrov_supportbot
 
-Support: @pokrov_supportbot  
-Cabinet: https://app.pokrov.space/
+Что уже можно ожидать:
+
+- 5 дней пробного доступа;
+- бонус +10 дней за Telegram-канал;
+- вход через Telegram;
+- email-вход включаем только после подтвержденной доставки писем;
+- оплата остается закрытой, пока Lava.top и доставка ключей доступа не пройдут финальную проверку.
+
+Физическая проверка Android для этого кандидата отмечена оператором как пройденная; не называем это магазинной публикацией или широкой доступностью. Windows-сборка может показывать предупреждение неизвестного издателя, потому что доверенная подпись не входит в эту волну.
+
+Официальные страницы:
+
+https://pokrov.space/
+
+https://app.pokrov.space/
+
+## Короткая версия для запуска
+
+Публиковать только после `GO` и live runtime APP-ссылок.
+
+POKROV готовит ограниченную бета-проверку для Android и Windows.
+
+После финального GO сборки будут доступны только через официальный кабинет: https://app.pokrov.space/
+
+Это еще не широкий публичный релиз. Мы постепенно проверяем установку, вход, доступ и поддержку. Оплата пока закрыта до финальной проверки Lava.top и доставки ключей доступа.
+
+Если у вас нет ссылки в кабинете, не используйте зеркала и напишите в поддержку: @pokrov_supportbot
+
+## Загрузки временно закрыты
+
+Публиковать, если финальный пакет остается `NO-GO` или runtime APP-ссылки еще не live.
+
+POKROV бета-сборки временно не выдаются.
+
+Мы продолжаем проверять релизный пакет: живые ссылки загрузки, оплату Lava.top, доставку ключей доступа на почту и доступность из разных сетей. Android отмечен как operator-attested для этой волны, а Windows выходит без доверенной подписи и может показывать предупреждение неизвестного издателя.
+
+Пожалуйста, не используйте неофициальные зеркала. Если нужен доступ или восстановление, откройте кабинет или напишите в поддержку.
+
+Поддержка: @pokrov_supportbot
+
+Кабинет: https://app.pokrov.space/

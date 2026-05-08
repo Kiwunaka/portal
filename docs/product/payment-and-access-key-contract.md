@@ -1,6 +1,6 @@
 # Payment And Access-Key Contract
 
-Last updated: 2026-04-26
+Last updated: 2026-05-08
 
 ## Current Rule
 
@@ -17,18 +17,23 @@ Paid checkout must not be presented as production-ready until provider evidence 
 | Fulfillment | Only normalized paid events can grant access or issue activation-key state. |
 | Failure | Failed, cancelled, refunded, chargeback, and manual-review states do not fulfill access. |
 | Reconciliation | Operators can review provider state without relying on undocumented refund webhooks. |
+| Operator recovery | Paid public access-key email delivery can be retried from admin only with sanitized state and an audit note. |
 
 ## Open Beta v4 Position
 
 Lava.top is the active provider candidate. The code path now supports Lava.top invoice creation and authenticated webhooks, but the provider remains blocked for public use until redacted live or sandbox proof is attached under the release work-order evidence folder.
 
-Public checkout must keep paid purchase CTAs disabled or degraded when Lava.top credentials, per-plan offers, webhook auth, replay evidence, or reconciliation evidence are incomplete.
+Public checkout must keep paid purchase CTAs disabled or degraded when Lava.top credentials, per-plan offers, webhook auth, replay evidence, reconciliation evidence, or email access-key delivery are incomplete. The active public provider configuration is Lava.top-only.
+
+Runtime checkout availability is gated by the aggregate paid-checkout launch evidence report, not only by provider env. `/api/payments/providers` returns a blocked state and order-create endpoints return `503` when `safe_to_enable_paid_checkout` is not true in the configured redacted evidence file.
 
 Current fulfillment contract:
 
 - authenticated cabinet and bot payments extend the linked account after a valid paid callback; bot payments are ticket-bound to Telegram and do not require buyer email;
+- Telegram Stars purchase surfaces are off by default for public beta (`BOT_STARS_PAYMENTS_ENABLED=false`); Stars handlers are legacy compatibility only and must not be used as a public paid lane while Lava.top is the launch provider;
 - after a paid bot callback, the user receives a Telegram handoff that prefers the POKROV app/cabinet and also includes the single `connect.pokrov.space` subscription link for beta-stage manual import;
 - the authenticated cabinet may show the same `connect.pokrov.space` subscription link and QR after access is active, so beta users can connect manually while native apps are still gated;
 - anonymous public checkout requires buyer email and issues one access key through email delivery after a valid paid callback;
+- admin payment surfaces must show sanitized fulfillment/email-delivery state and may retry paid public access-key email delivery only with an operator audit note;
 - amount, currency, plan, provider auth, local order binding, replay idempotency, and failed/cancelled events are mandatory gate checks before access changes;
 - access keys must not be returned in public payment API responses or URLs after payment.

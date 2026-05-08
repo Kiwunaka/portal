@@ -9,7 +9,7 @@ from pathlib import Path
 
 from aiogram import Bot, Dispatcher, F, Router
 from aiogram.filters import CommandStart
-from aiogram.types import CallbackQuery, InlineKeyboardButton, InlineKeyboardMarkup, Message
+from aiogram.types import CallbackQuery, InlineKeyboardMarkup, Message
 from dotenv import load_dotenv
 
 load_dotenv(dotenv_path=Path(__file__).resolve().with_name(".env"))
@@ -18,6 +18,7 @@ load_dotenv()
 from copy_catalog import get_copy_text
 from db import SessionLocal, init_db
 from models import FeedbackEntry, Review
+from telegram_buttons import modern_inline_button as InlineKeyboardButton
 
 
 FEEDBACK_BOT_TOKEN = (os.getenv("FEEDBACK_BOT_TOKEN") or "").strip()

@@ -13,12 +13,14 @@ import {
 } from "@/lib/api";
 import { getDeviceLimit, resolvePlanLabel } from "@/lib/access-policy";
 import { getPortalPublicConfig } from "@/lib/portal";
+import { userFacingErrorMessage } from "@/lib/public-error-messages";
 import { usePortalSession } from "@/lib/session";
 
 type TicketCategory = "Подключение" | "Оплата" | "Скорость" | "Другой вопрос";
 
 const config = getPortalPublicConfig(process.env as Record<string, string | undefined>);
 const CATEGORIES: TicketCategory[] = ["Подключение", "Оплата", "Скорость", "Другой вопрос"];
+const MAX_TICKET_ATTACHMENT_BYTES = 20 * 1024 * 1024;
 
 const CATEGORY_PRESETS: Record<
   TicketCategory,
@@ -110,7 +112,7 @@ export default function SupportPage() {
       setTickets(rows);
       setError("");
     } catch (nextError) {
-      setError(String((nextError as { message?: string })?.message || nextError || ""));
+      setError(userFacingErrorMessage(nextError, "Не удалось загрузить обращения. Можно открыть Telegram-поддержку."));
     } finally {
       setLoadingTickets(false);
     }
@@ -200,6 +202,10 @@ export default function SupportPage() {
       setMessage("Добавьте пару строк, чтобы нам было понятно, с чего начать.");
       return;
     }
+    if (attachmentFile && attachmentFile.size > MAX_TICKET_ATTACHMENT_BYTES) {
+      setError("Файл больше 20 МБ. Уменьшите вложение или отправьте его в Telegram-поддержку.");
+      return;
+    }
 
     setBusy(true);
     setError("");
@@ -223,7 +229,7 @@ export default function SupportPage() {
       await loadTickets();
       setMessage(`Кейс #${created.id} создан. Его можно продолжить из списка.`);
     } catch (nextError) {
-      setError(String((nextError as { message?: string })?.message || nextError || ""));
+      setError(userFacingErrorMessage(nextError, "Не удалось создать кейс. Попробуйте еще раз или откройте Telegram-поддержку."));
     } finally {
       setBusy(false);
     }

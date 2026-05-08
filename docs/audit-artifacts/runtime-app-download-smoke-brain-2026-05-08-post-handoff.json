@@ -1,0 +1,75 @@
+{
+  "ok": false,
+  "classification": "BLOCKED_BY_ACCESS",
+  "mode": "brain_runtime_app_download_smoke",
+  "signed_init_data_origin": "brain_runtime_bot_token",
+  "source_unit": "portal-bot",
+  "api_base_url": "https://api.pokrov.space",
+  "tg_id": 900000001,
+  "runtime_app_download_smoke_passed": false,
+  "note": "This proves backend auth and runtime link policy using synthetic signed initData generated on brain; it is not proof that a real user opened Telegram WebApp.",
+  "client_apps": {
+    "android": {
+      "play_url": "",
+      "apk_url": "",
+      "mirror_url": ""
+    },
+    "windows": {
+      "exe_url": "",
+      "mirror_url": ""
+    },
+    "docs_url": "",
+    "updated_at": "2026-05-08T15:55:04Z"
+  },
+  "checks": [
+    {
+      "note": "Token presence is read on brain and never returned.",
+      "missing": [],
+      "status": "PASS",
+      "source": "brain:portal-bot",
+      "name": "brain_bot_runtime_token"
+    },
+    {
+      "note": "Brain-origin API health request.",
+      "http_status": 200,
+      "missing": [],
+      "status": "PASS",
+      "source": "https://api.pokrov.space/api/health",
+      "name": "api_health"
+    },
+    {
+      "note": "Uses synthetic signed initData generated on brain from the runtime BOT_TOKEN; neither token nor initData is returned.",
+      "http_status": 200,
+      "missing": [],
+      "status": "PASS",
+      "source": "https://api.pokrov.space/api/client/apps",
+      "name": "api_client_apps_signed_init_data"
+    },
+    {
+      "note": "Live provider catalog request; policy validation happens locally after redaction.",
+      "http_status": 200,
+      "missing": [],
+      "status": "PASS",
+      "source": "https://api.pokrov.space/api/payments/providers",
+      "name": "api_payment_providers"
+    },
+    {
+      "name": "runtime_client_apps_release_handoff",
+      "status": "BLOCKED_BY_ACCESS",
+      "missing": [
+        "android release URL is missing",
+        "windows release URL is missing",
+        "docs_url is missing"
+      ],
+      "note": "Live /api/client/apps must expose GitHub Releases APK/EXE and install docs before runtime link launch.",
+      "source": "/api/client/apps"
+    },
+    {
+      "name": "runtime_payment_provider_policy",
+      "status": "PASS",
+      "missing": [],
+      "note": "Blocked provider catalog with reasons is acceptable while paid checkout evidence is not green; green catalog must be Lava.top-only.",
+      "source": "/api/payments/providers"
+    }
+  ]
+}

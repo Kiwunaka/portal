@@ -243,7 +243,13 @@ def _windows_target_command(client_root: Path) -> ClientGateCommand:
     version = _read_pubspec_version(status.windows_shell_root / "pubspec.yaml")
     artifact_root = client_root / str(release_config["artifact_root"])
     zip_name = str(release_config["zip_name_template"]).replace("{version}", version)
+    installer_template = str(release_config.get("installer_name_template", "") or "").strip()
+    installer_name = installer_template.replace("{version}", version) if installer_template else ""
     manifest_name = str(release_config["manifest_name_template"]).replace("{version}", version)
+    expected = [artifact_root / zip_name]
+    if installer_name:
+        expected.append(artifact_root / installer_name)
+    expected.append(artifact_root / manifest_name)
     return ClientGateCommand(
         steps=(
             ClientGateStep(
@@ -256,10 +262,7 @@ def _windows_target_command(client_root: Path) -> ClientGateCommand:
                 cwd=client_root,
             ),
         ),
-        expected_artifacts=(
-            artifact_root / zip_name,
-            artifact_root / manifest_name,
-        ),
+        expected_artifacts=tuple(expected),
     )
 
 

@@ -39,6 +39,7 @@ def test_package_windows_script_builds_versioned_release_bundle() -> None:
     assert '$windowsReleaseConfigPath = Join-Path $root "config\\\\windows-release.seed.json"' in script
     assert '$bundleFolderName = $windowsReleaseConfig.bundle_folder_template.Replace("{version}", $version)' in script
     assert '$zipName = $windowsReleaseConfig.zip_name_template.Replace("{version}", $version)' in script
+    assert '$installerName = $windowsReleaseConfig.installer_name_template.Replace("{version}", $version)' in script
     assert '$manifestName = $windowsReleaseConfig.manifest_name_template.Replace("{version}", $version)' in script
 
 
@@ -55,8 +56,19 @@ def test_package_windows_script_writes_bundle_manifest() -> None:
     script = SCRIPT_PATH.read_text(encoding="utf-8")
 
     assert "New-ReleaseManifestFileList" in script
+    assert "installer_path" in script
+    assert "installer_sha256" in script
     assert "ConvertTo-Json -Depth 6" in script
     assert 'Write-Host "Windows bundle ready."' in script
+
+
+def test_package_windows_script_builds_unsigned_installer_exe_with_iexpress() -> None:
+    script = SCRIPT_PATH.read_text(encoding="utf-8")
+
+    assert "iexpress.exe" in script
+    assert "install-pokrov.ps1" in script
+    assert "Expand-Archive -Path `$zipPath" in script
+    assert "Programs\\\\POKROV" in script
 
 
 def test_package_windows_script_is_documented_as_active_client_release_step() -> None:
@@ -66,7 +78,7 @@ def test_package_windows_script_is_documented_as_active_client_release_step() ->
 
     assert "python scripts/run_client_release_gate.py build --target windows" in deployment_text
     assert "apps/windows_shell/build/release_bundle/" in developer_text
-    assert "Windows release state: `local unsigned bundle only`" in cutover_text
+    assert "Windows release state: `gated unsigned beta artifact only`" in cutover_text
     assert "public cutover approval: `not allowed`" in cutover_text
     assert "public Windows release approval: `blocked`" in cutover_text
     assert "repo-backed alpha or beta archive: `allowed`" in cutover_text

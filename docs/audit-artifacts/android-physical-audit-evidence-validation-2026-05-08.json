@@ -1,0 +1,27 @@
+{
+  "ok": false,
+  "classification": "BLOCKED_BY_ACCESS",
+  "mode": "android_physical_audit_evidence_validation",
+  "expected_package": "space.pokrov.pokrov_android_shell",
+  "serial": "emulator-5554",
+  "missing": [
+    "physical adb serial (not emulator-*, localhost, or tcpip serial)",
+    "package_name=space.pokrov.pokrov_android_shell",
+    "package_evidence from --require-release-build",
+    "audit_metadata from current android_localhost_audit.py"
+  ],
+  "warnings": [],
+  "summary": {
+    "package_name": "space.pokrov.vpn",
+    "version_name": "",
+    "version_code": "",
+    "debuggable": null,
+    "failures_count": 0,
+    "baseline_listeners": 1,
+    "after_launch_listeners": 1,
+    "after_connect_listeners": 1,
+    "after_disconnect_listeners": 1,
+    "probes": 0
+  },
+  "source": "ops-local\\android-localhost-audit.json"
+}

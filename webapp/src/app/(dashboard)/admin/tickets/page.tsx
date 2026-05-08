@@ -1,7 +1,7 @@
 "use client";
 
 import { AdminEmptyState, adminButtonClass, adminFieldClass, adminInsetPanelClass, adminPanelClass } from "@/components/admin/admin-shell";
-import { adminTicketReply, adminTicketStatus, adminTickets, type TicketInfo } from "@/lib/api";
+import { adminTicket, adminTicketReply, adminTicketStatus, adminTickets, fetchTicketAttachmentBlob, uploadTicketAttachment, type TicketAttachmentInput, type TicketInfo, type TicketMessage } from "@/lib/api";
 import { CheckCircle, Clock, Inbox, Loader2, MessageCircle, RefreshCw, Send } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { fmtRuDate } from "../nav";
@@ -22,11 +22,133 @@ function normalizeTicketStatus(ticket: Pick<TicketInfo, "status" | "status_title
   return "open";
 }
 
+type ParsedTicketAttachment = {
+  kind: "image" | "video" | "file" | "link";
+  url: string;
+  name: string;
+  size: number;
+};
+const MAX_TICKET_ATTACHMENT_BYTES = 20 * 1024 * 1024;
+
+function formatFileSize(bytes: number): string {
+  if (!Number.isFinite(bytes) || bytes <= 0) return "0 Б";
+  if (bytes < 1024) return `${bytes} Б`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} КБ`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} МБ`;
+}
+
+function parseTicketAttachment(message: TicketMessage): ParsedTicketAttachment | null {
+  try {
+    const payload = JSON.parse(String(message.media_payload || "{}"));
+    const rawUrl = String(payload?.url || "").trim();
+    if (!rawUrl) return null;
+
+    const rawKind = String(message.media_type || "").toLowerCase();
+    const kind: ParsedTicketAttachment["kind"] =
+      rawKind === "video" ? "video" : rawKind === "image" || rawKind === "photo" ? "image" : rawKind === "link" ? "link" : "file";
+    const common: ParsedTicketAttachment = {
+      kind,
+      url: rawUrl,
+      name: String(payload?.name || "Вложение"),
+      size: Number(payload?.size || 0),
+    };
+
+    if (rawUrl.startsWith("/uploads/support/")) {
+      return common;
+    }
+
+    const parsed = new URL(rawUrl);
+    if (!["http:", "https:"].includes(parsed.protocol)) return null;
+    return { ...common, url: parsed.toString() };
+  } catch {
+    return null;
+  }
+}
+
+function AdminTicketAttachmentView({ message }: { message: TicketMessage }) {
+  const attachment = useMemo(() => parseTicketAttachment(message), [message]);
+  const [objectUrl, setObjectUrl] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+
+  const protectedUrl = Boolean(attachment?.url.startsWith("/uploads/support/"));
+
+  useEffect(() => {
+    if (!attachment || !protectedUrl) {
+      setObjectUrl("");
+      setLoading(false);
+      setError("");
+      return;
+    }
+
+    let active = true;
+    let createdUrl = "";
+    setObjectUrl("");
+    setLoading(true);
+    setError("");
+
+    fetchTicketAttachmentBlob(attachment.url)
+      .then((blob) => {
+        if (!active) return;
+        createdUrl = URL.createObjectURL(blob);
+        setObjectUrl(createdUrl);
+      })
+      .catch(() => {
+        if (active) setError("Не удалось открыть вложение");
+      })
+      .finally(() => {
+        if (active) setLoading(false);
+      });
+
+    return () => {
+      active = false;
+      if (createdUrl) URL.revokeObjectURL(createdUrl);
+    };
+  }, [attachment, protectedUrl]);
+
+  if (!attachment) return null;
+  if (loading) {
+    return <div className="mt-2 rounded-xl border border-slate-200/75 bg-slate-50 px-3 py-2 text-xs text-slate-500 dark:border-white/10 dark:bg-white/[0.04] dark:text-slate-400">Загружаем вложение...</div>;
+  }
+  if (error) {
+    return <div className="mt-2 rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-700 dark:border-rose-400/20 dark:bg-rose-500/10 dark:text-rose-200">{error}</div>;
+  }
+
+  const displayUrl = protectedUrl ? objectUrl : attachment.url;
+  if (!displayUrl) return null;
+
+  if (attachment.kind === "image") {
+    return (
+      <a href={displayUrl} target="_blank" rel="noreferrer" className="mt-2 block overflow-hidden rounded-xl border border-slate-200/75 bg-slate-100 dark:border-white/10 dark:bg-slate-950/60">
+        <img src={displayUrl} alt={attachment.name || "Вложение"} className="max-h-56 w-full object-cover" />
+      </a>
+    );
+  }
+
+  if (attachment.kind === "video") {
+    return <video src={displayUrl} controls className="mt-2 max-h-56 w-full rounded-xl border border-slate-200/75 bg-slate-950/60 dark:border-white/10" />;
+  }
+
+  return (
+    <a
+      href={displayUrl}
+      target={protectedUrl ? undefined : "_blank"}
+      rel={protectedUrl ? undefined : "noreferrer"}
+      download={protectedUrl ? attachment.name || "attachment" : undefined}
+      className="mt-2 flex items-center justify-between gap-3 rounded-xl border border-slate-200/75 bg-slate-50 px-3 py-2 text-xs dark:border-white/10 dark:bg-white/[0.04]"
+    >
+      <span className="truncate">{attachment.name || "Вложение"}</span>
+      <span className="shrink-0 text-slate-500 dark:text-slate-400">{attachment.size ? formatFileSize(attachment.size) : "Открыть"}</span>
+    </a>
+  );
+}
+
 export default function AdminTicketsPage() {
   const [statusFilter, setStatusFilter] = useState("");
   const [tickets, setTickets] = useState<TicketInfo[]>([]);
   const [selectedId, setSelectedId] = useState<number>(0);
   const [reply, setReply] = useState("");
+  const [replyAttachmentFile, setReplyAttachmentFile] = useState<File | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const messagesEnd = useRef<HTMLDivElement>(null);
@@ -53,15 +175,45 @@ export default function AdminTicketsPage() {
   }, [load]);
 
   useEffect(() => {
+    if (!selectedId) return;
+    let active = true;
+
+    adminTicket(selectedId)
+      .then((updated) => {
+        if (!active) return;
+        setTickets((prev) => prev.map((row) => (row.id === updated.id ? updated : row)));
+        setError("");
+      })
+      .catch((err) => {
+        if (!active) return;
+        setError(String((err as { message?: string })?.message || err || "Не удалось загрузить историю обращения."));
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [selectedId]);
+
+  useEffect(() => {
     messagesEnd.current?.scrollIntoView({ behavior: "smooth" });
   }, [selected?.messages]);
 
   const sendReply = async (): Promise<void> => {
     if (!selected || !reply.trim()) return;
+    if (replyAttachmentFile && replyAttachmentFile.size > MAX_TICKET_ATTACHMENT_BYTES) {
+      setError("Файл больше 20 МБ. Уменьшите вложение или отправьте ответ без файла.");
+      return;
+    }
     setBusy(true);
     try {
-      const updated = await adminTicketReply(selected.id, reply.trim());
+      let attachment: TicketAttachmentInput | undefined;
+      if (replyAttachmentFile) {
+        const uploaded = await uploadTicketAttachment(replyAttachmentFile);
+        attachment = uploaded.attachment;
+      }
+      const updated = await adminTicketReply(selected.id, reply.trim(), attachment);
       setReply("");
+      setReplyAttachmentFile(null);
       setTickets((prev) => prev.map((row) => (row.id === updated.id ? updated : row)));
     } catch (err) {
       setError(String((err as { message?: string })?.message || err || "Не удалось отправить ответ."));
@@ -188,6 +340,7 @@ export default function AdminTicketsPage() {
                         {isAdmin ? "Оператор" : "Пользователь"}
                       </p>
                       <p className="whitespace-pre-line">{message.body}</p>
+                      <AdminTicketAttachmentView message={message} />
                       <p className="mt-1.5 text-right text-[10px] text-slate-400">{fmtRuDate(message.created_at)}</p>
                     </div>
                   </div>
@@ -209,6 +362,24 @@ export default function AdminTicketsPage() {
                   }
                 }}
               />
+              <label className="block rounded-xl border border-dashed border-slate-200/80 bg-slate-50/75 px-3 py-3 text-xs text-slate-600 dark:border-white/10 dark:bg-white/[0.03] dark:text-slate-300">
+                <span className="block font-semibold">Добавить вложение к ответу</span>
+                <input
+                  type="file"
+                  accept="image/*,video/*,.pdf,.txt,.log,application/pdf,text/plain"
+                  className="mt-2 block w-full cursor-pointer text-xs file:mr-3 file:rounded-lg file:border-0 file:bg-violet-600/10 file:px-3 file:py-1.5 file:font-semibold file:text-violet-700 dark:file:bg-violet-400/15 dark:file:text-violet-200"
+                  onChange={(event) => setReplyAttachmentFile(event.target.files?.[0] ?? null)}
+                />
+                {replyAttachmentFile ? (
+                  <div className="mt-2 flex items-center justify-between gap-3 rounded-lg bg-white px-3 py-2 dark:bg-white/[0.05]">
+                    <span className="truncate">{replyAttachmentFile.name}</span>
+                    <span className="shrink-0 text-slate-500 dark:text-slate-400">{formatFileSize(replyAttachmentFile.size)}</span>
+                    <button type="button" onClick={() => setReplyAttachmentFile(null)} className="shrink-0 font-semibold text-rose-500">
+                      Убрать
+                    </button>
+                  </div>
+                ) : null}
+              </label>
               <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <p className="text-[10px] text-slate-400">Подсказка: можно отправить быстрее через Ctrl/⌘ + Enter</p>
                 <button className={adminButtonClass("primary")} type="button" onClick={() => void sendReply()} disabled={busy || !reply.trim()}>

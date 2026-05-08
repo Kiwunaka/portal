@@ -15,6 +15,7 @@ from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 PYTEST_BASETEMP_ROOT = REPO_ROOT / ".tmp" / "pytest-basetemp"
+DEFAULT_RU_ORIGIN_SKIP_EVIDENCE = REPO_ROOT / "docs" / "audit-artifacts" / "ru-origin-skip-accepted-2026-05-08.md"
 RELEASE_PYTEST_ARGS = [
     "portal_bot/tests/test_app_first_api.py",
     "tests/test_portal_api.py",
@@ -23,7 +24,24 @@ RELEASE_PYTEST_ARGS = [
     "tests/test_observer_api.py",
     "tests/test_collect_xray_observer.py",
     "tests/test_predeploy_node_readiness.py",
+    "tests/test_smart_connect_api.py",
+    "tests/test_network_rollout_api.py",
+    "tests/test_client_security_smoke.py",
+    "tests/test_smoke_client_apps.py",
+    "tests/test_brain_runtime_app_download_smoke.py",
     "tests/test_admin_webapp_smoke.py",
+    "tests/test_bot_paywall.py",
+    "tests/test_marketing_release_readiness.py",
+    "tests/test_live_probe_scripts.py",
+    "tests/test_public_beta_post_deploy_probe.py",
+    "tests/test_public_beta_external_access_preflight.py",
+    "tests/test_validate_android_physical_audit_evidence.py",
+    "tests/test_paid_checkout_launch_evidence_check.py",
+    "tests/test_freekassa_api_probe.py",
+    "tests/test_freekassa_staging_smoke.py",
+    "tests/test_prepare_github_release_plan.py",
+    "tests/test_publish_github_release_assets.py",
+    "tests/test_public_beta_launch_decision.py",
     "tests/test_public_copy_guardrails.py",
     "tests/test_reviews_username_masking.py",
     "-q",
@@ -54,8 +72,9 @@ class ReportContext:
 
 
 _SECRET_OPTION_RE = re.compile(
-    r"(?i)(--(?:token|secret|password|passwd|api-key|auth|authorization|client-secret))\s+([^\s`]+)"
+    r"(?i)(--(?:token|secret|password|passwords|passwd|api-key|auth|authorization|client-secret))\s+([^\s`]+)"
 )
+_PASSWORDS_FILE_OPTION_RE = re.compile(r"(?i)(--passwords)\s+([^\r\n`]+?PASSWORDS\.txt)")
 _TELEGRAM_INIT_OPTION_RE = re.compile(r"(?i)(--init-data)(?:=|\s+)([^\s`]+)")
 _TELEGRAM_INIT_ENV_RE = re.compile(r"(?i)\b(TELEGRAM_INIT_DATA\s*[:=]\s*)([^\s`]+)")
 _TELEGRAM_INIT_HEADER_RE = re.compile(r"(?i)\b(X-Telegram-Init-Data\s*:\s*)([^\r\n`]+)")
@@ -67,10 +86,13 @@ _SECRET_ASSIGNMENT_RE = re.compile(
 )
 _BEARER_RE = re.compile(r"(?i)\bBearer\s+([A-Za-z0-9._~+/=-]+)")
 DEFAULT_ANDROID_AUDIT_PACKAGE = "space.pokrov.pokrov_android_shell"
+DEFAULT_ANDROID_AUDIT_VALIDATION_OUTPUT = "docs/audit-artifacts/android-physical-audit-evidence-validation-2026-05-08.json"
+BRAIN_ORIGIN_GATE_NAMES = {"Brain-origin runtime/static verify", "Node predeploy readiness"}
 
 
 def _redact_text(text: str) -> str:
-    redacted = _SECRET_OPTION_RE.sub(r"\1 <redacted>", str(text or ""))
+    redacted = _PASSWORDS_FILE_OPTION_RE.sub(r"\1 <redacted>", str(text or ""))
+    redacted = _SECRET_OPTION_RE.sub(r"\1 <redacted>", redacted)
     redacted = _TELEGRAM_INIT_OPTION_RE.sub(r"\1 <redacted>", redacted)
     redacted = _TELEGRAM_INIT_ENV_RE.sub(r"\1<redacted>", redacted)
     redacted = _TELEGRAM_INIT_HEADER_RE.sub(r"\1<redacted>", redacted)
@@ -82,6 +104,11 @@ def _redact_text(text: str) -> str:
 
 def _is_frontend_build(command: list[str], cwd: Path) -> bool:
     return len(command) >= 3 and command[0] == _npm_exec() and command[1:3] == ["run", "build"] and (cwd / "package.json").exists()
+
+
+def _frontend_build_copy_enabled() -> bool:
+    value = str(os.getenv("RELEASE_GATE_BUILD_IN_PLACE") or "").strip().lower()
+    return value not in {"1", "true", "yes", "on"}
 
 
 def _prepare_frontend_build_copy(cwd: Path) -> Path:
@@ -151,7 +178,7 @@ def _run_cmd(*, name: str, command: list[str], cwd: Path) -> GateResult:
     run_cwd = cwd
     cleanup_paths: list[Path] = []
     prepared_command = command
-    if _is_frontend_build(command, cwd):
+    if _is_frontend_build(command, cwd) and _frontend_build_copy_enabled():
         run_cwd = _prepare_frontend_build_copy(cwd)
         cleanup_paths.append(run_cwd.parent)
     prepared_command, pytest_basetemp = _prepare_pytest_command(prepared_command)
@@ -190,19 +217,46 @@ def _status_for_gate(results: list[GateResult], gate_name: str) -> str:
     return "NOT_RUN"
 
 
+def _combined_status_for_gates(results: list[GateResult], gate_names: list[str]) -> str:
+    statuses = [_status_for_gate(results, gate_name) for gate_name in gate_names]
+    present = [status for status in statuses if status != "NOT_RUN"]
+    if not present:
+        return "NOT_RUN"
+    if any(status == "FAIL" for status in present):
+        return "FAIL"
+    return "PASS"
+
+
+def _current_origin_status(results: list[GateResult]) -> str:
+    current_results = [result for result in results if result.name not in BRAIN_ORIGIN_GATE_NAMES]
+    if not current_results:
+        return "NOT_RUN"
+    return "PASS" if all(result.returncode == 0 for result in current_results) else "FAIL"
+
+
+def _ru_origin_status(skip_evidence_path: Path = DEFAULT_RU_ORIGIN_SKIP_EVIDENCE) -> str:
+    try:
+        text = Path(skip_evidence_path).read_text(encoding="utf-8", errors="replace")
+    except FileNotFoundError:
+        return "BLOCKED_BY_ACCESS"
+    if (
+        "RU_ORIGIN_SKIP_ACCEPTED=true" in text
+        and "RU_ORIGIN_PUBLIC_CLAIMS_MUST_STATE_UNVERIFIED=true" in text
+    ):
+        return "SKIPPED_BY_OPERATOR"
+    return "BLOCKED_BY_ACCESS"
+
+
 def _render_evidence_classification(results: list[GateResult], context: ReportContext) -> list[str]:
     gate_set = "quick" if context.quick else "default"
-    if not results:
-        current_status = "NOT_RUN"
-    else:
-        current_status = "PASS" if all(r.returncode == 0 for r in results) else "FAIL"
+    current_status = _current_origin_status(results)
 
     brain_status = (
-        _status_for_gate(results, "Node predeploy readiness")
+        _combined_status_for_gates(results, ["Brain-origin runtime/static verify", "Node predeploy readiness"])
         if str(context.brain_ip or "").strip()
         else "BLOCKED_BY_ACCESS"
     )
-    ru_status = "BLOCKED_BY_ACCESS"
+    ru_status = _ru_origin_status()
 
     if context.android_audit_requested:
         android_status = _status_for_gate(results, "Android localhost audit")
@@ -232,12 +286,12 @@ def _render_evidence_classification(results: list[GateResult], context: ReportCo
             "Runs on the operator workstation; does not prove brain-origin or RU-origin reachability. |"
         ),
         (
-            f"| brain-origin check | `scripts/verify_brain_ready.py` / predeploy readiness | {brain_status} | "
-            "Requires `--brain-ip` and live SSH/API access; keep separate from current-origin results. |"
+            f"| brain-origin check | `scripts/verify_brain_ready.py` plus node predeploy readiness | {brain_status} | "
+            "Requires `--brain-ip` and live SSH/API access; includes control-plane/static probes and node readiness. |"
         ),
         (
             f"| RU-origin check | external RU probe (`mini` or replacement) | {ru_status} | "
-            "Not run by this local gate; requires an external RU probe host and redacted report. |"
+            "Not run by this local gate; requires an external RU probe host and redacted report unless explicitly skipped by operator. |"
         ),
         (
             f"| Android physical audit | release-build localhost/control-surface audit | {android_status} | "
@@ -320,7 +374,24 @@ def _optional_runtime_smoke_gate() -> tuple[str, list[str], Path] | None:
 def _optional_android_localhost_audit_gate() -> tuple[str, list[str], Path] | None:
     serial = str(os.getenv("ANDROID_AUDIT_SERIAL", "") or "").strip()
     if not serial:
-        return None
+        evidence_json = str(os.getenv("ANDROID_AUDIT_EVIDENCE_JSON", "") or "").strip()
+        if not evidence_json:
+            return None
+        output_json = str(os.getenv("ANDROID_AUDIT_VALIDATION_OUTPUT", "") or "").strip() or DEFAULT_ANDROID_AUDIT_VALIDATION_OUTPUT
+        package_name = str(os.getenv("ANDROID_AUDIT_PACKAGE", "") or "").strip() or DEFAULT_ANDROID_AUDIT_PACKAGE
+        return (
+            "Android physical audit evidence validation",
+            [
+                sys.executable,
+                "scripts/validate_android_physical_audit_evidence.py",
+                evidence_json,
+                "--expected-package",
+                package_name,
+                "--output",
+                output_json,
+            ],
+            REPO_ROOT,
+        )
     package_name = str(os.getenv("ANDROID_AUDIT_PACKAGE", "") or "").strip() or DEFAULT_ANDROID_AUDIT_PACKAGE
     release_evidence = str(os.getenv("ANDROID_AUDIT_RELEASE_EVIDENCE", "") or "").strip()
     expected_version_name = str(os.getenv("ANDROID_AUDIT_EXPECTED_VERSION_NAME", "") or "").strip()
@@ -352,8 +423,11 @@ def _required_android_localhost_audit_gate() -> tuple[str, list[str], Path]:
     gate = _optional_android_localhost_audit_gate()
     if gate is None:
         raise ValueError(
-            "ANDROID_AUDIT_SERIAL must reference a physical Android device when Android client build gates are requested"
+            "ANDROID_AUDIT_SERIAL must reference a physical Android device, or ANDROID_AUDIT_EVIDENCE_JSON must point "
+            "to raw physical audit evidence for validation, when Android client build gates are requested"
         )
+    if gate[0] == "Android physical audit evidence validation":
+        return gate
     serial = str(os.getenv("ANDROID_AUDIT_SERIAL", "") or "").strip().lower()
     if serial.startswith("emulator-"):
         raise ValueError(
@@ -399,10 +473,81 @@ def _release_pytest_gate() -> tuple[str, list[str], Path]:
     )
 
 
+def _payment_marketing_release_honesty_gate() -> tuple[str, list[str], Path]:
+    return (
+        "Payment and marketing release honesty",
+        [
+            sys.executable,
+            "-m",
+            "pytest",
+            "tests/test_bot_paywall.py",
+            "tests/test_marketing_release_readiness.py",
+            "-q",
+        ],
+        REPO_ROOT,
+    )
+
+
+def _github_release_tooling_gate() -> tuple[str, list[str], Path]:
+    return (
+        "GitHub release tooling",
+        [
+            sys.executable,
+            "-m",
+            "pytest",
+            "tests/test_prepare_github_release_plan.py",
+            "tests/test_publish_github_release_assets.py",
+            "-q",
+        ],
+        REPO_ROOT,
+    )
+
+
+def _external_access_preflight_tooling_gate() -> tuple[str, list[str], Path]:
+    return (
+        "External access preflight tooling",
+        [
+            sys.executable,
+            "-m",
+            "pytest",
+            "tests/test_public_beta_external_access_preflight.py",
+            "tests/test_public_beta_launch_decision.py",
+            "-q",
+        ],
+        REPO_ROOT,
+    )
+
+
+def _paid_checkout_launch_evidence_tooling_gate() -> tuple[str, list[str], Path]:
+    return (
+        "Paid checkout launch evidence tooling",
+        [
+            sys.executable,
+            "-m",
+            "pytest",
+            "tests/test_paid_checkout_launch_evidence_check.py",
+            "tests/test_live_probe_scripts.py",
+            "tests/test_public_beta_post_deploy_probe.py",
+            "tests/test_freekassa_api_probe.py",
+            "tests/test_freekassa_staging_smoke.py",
+            "-q",
+        ],
+        REPO_ROOT,
+    )
+
+
 def _client_security_smoke_gate() -> tuple[str, list[str], Path]:
     return (
         "Client security smoke",
         [sys.executable, "scripts/client_security_smoke.py"],
+        REPO_ROOT,
+    )
+
+
+def _client_preflight_gate() -> tuple[str, list[str], Path]:
+    return (
+        "Client preflight",
+        [sys.executable, "scripts/run_client_release_gate.py", "preflight"],
         REPO_ROOT,
     )
 
@@ -460,6 +605,70 @@ def _predeploy_node_readiness_gate(
     )
 
 
+def _brain_origin_verify_gate(
+    *,
+    brain_ip: str,
+    web_domain: str,
+    api_domain: str,
+    connect_domain: str,
+    ssh_user: str,
+    ssh_port: int,
+    passwords: str,
+) -> tuple[str, list[str], Path]:
+    return (
+        "Brain-origin runtime/static verify",
+        [
+            sys.executable,
+            "scripts/verify_brain_ready.py",
+            "--brain-ip",
+            brain_ip,
+            "--web-domain",
+            web_domain,
+            "--api-domain",
+            api_domain,
+            "--connect-domain",
+            connect_domain,
+            "--ssh-user",
+            ssh_user,
+            "--ssh-port",
+            str(ssh_port),
+            "--passwords",
+            passwords,
+        ],
+        REPO_ROOT,
+    )
+
+
+def _brain_origin_gates(
+    *,
+    brain_ip: str,
+    web_domain: str,
+    api_domain: str,
+    connect_domain: str,
+    ssh_user: str,
+    ssh_port: int,
+    passwords: str,
+) -> list[tuple[str, list[str], Path]]:
+    return [
+        _brain_origin_verify_gate(
+            brain_ip=brain_ip,
+            web_domain=web_domain,
+            api_domain=api_domain,
+            connect_domain=connect_domain,
+            ssh_user=ssh_user,
+            ssh_port=ssh_port,
+            passwords=passwords,
+        ),
+        _predeploy_node_readiness_gate(
+            brain_ip=brain_ip,
+            domain=web_domain,
+            ssh_user=ssh_user,
+            ssh_port=ssh_port,
+            passwords=passwords,
+        ),
+    ]
+
+
 def _parse_client_platform_gates(raw_value: str) -> list[str]:
     source = str(raw_value or "").strip() or str(os.getenv("CLIENT_PLATFORM_GATES", "") or "").strip()
     if not source:
@@ -476,6 +685,7 @@ def _default_gates(*, client_platform_gates: list[str] | None = None) -> list[tu
     gates = [
         _release_pytest_gate(),
         ("Admin/auth regressions", [sys.executable, "-m", "pytest", "tests/test_api_auth_and_tickets.py", "-q"], REPO_ROOT),
+        _client_preflight_gate(),
         _client_security_smoke_gate(),
         _client_flutter_test_gate(suite="full"),
         _api_lifecycle_smoke_gate(),
@@ -494,6 +704,11 @@ def _default_gates(*, client_platform_gates: list[str] | None = None) -> list[tu
 def _quick_gates(*, client_platform_gates: list[str] | None = None) -> list[tuple[str, list[str], Path]]:
     gates = [
         ("Critical worker regression", [sys.executable, "-m", "pytest", "tests/test_worker_retention.py", "-q"], REPO_ROOT),
+        _payment_marketing_release_honesty_gate(),
+        _paid_checkout_launch_evidence_tooling_gate(),
+        _github_release_tooling_gate(),
+        _external_access_preflight_tooling_gate(),
+        _client_preflight_gate(),
         _client_security_smoke_gate(),
         _client_flutter_test_gate(suite="portal"),
         _api_lifecycle_smoke_gate(),
@@ -523,6 +738,8 @@ def main() -> int:
     )
     parser.add_argument("--brain-ip", default="")
     parser.add_argument("--web-domain", default="pokrov.space")
+    parser.add_argument("--api-domain", default="api.pokrov.space")
+    parser.add_argument("--connect-domain", default="connect.pokrov.space")
     parser.add_argument("--ssh-user", default="root")
     parser.add_argument("--ssh-port", type=int, default=29374)
     parser.add_argument("--passwords", default=str(REPO_ROOT / "VPN NODE SSH KEYS" / "PASSWORDS.txt"))
@@ -544,10 +761,12 @@ def main() -> int:
 
     gates: list[tuple[str, list[str], Path]] = []
     if str(args.brain_ip or "").strip():
-        gates.append(
-            _predeploy_node_readiness_gate(
+        gates.extend(
+            _brain_origin_gates(
                 brain_ip=str(args.brain_ip).strip(),
-                domain=args.web_domain,
+                web_domain=args.web_domain,
+                api_domain=args.api_domain,
+                connect_domain=args.connect_domain,
                 ssh_user=args.ssh_user,
                 ssh_port=int(args.ssh_port),
                 passwords=args.passwords,
@@ -558,10 +777,12 @@ def main() -> int:
     if args.quick:
         gates = []
         if str(args.brain_ip or "").strip():
-            gates.append(
-                _predeploy_node_readiness_gate(
+            gates.extend(
+                _brain_origin_gates(
                     brain_ip=str(args.brain_ip).strip(),
-                    domain=args.web_domain,
+                    web_domain=args.web_domain,
+                    api_domain=args.api_domain,
+                    connect_domain=args.connect_domain,
                     ssh_user=args.ssh_user,
                     ssh_port=int(args.ssh_port),
                     passwords=args.passwords,

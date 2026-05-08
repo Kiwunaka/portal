@@ -125,9 +125,9 @@ export function AdminUserSidePanel({
               </span>
             </div>
             <p className="text-xs text-slate-400">
-              Linked Telegram: {user.linked_telegram_username ? `@${user.linked_telegram_username}` : user.linked_telegram_id || "нет"}
+              Telegram-связка: {user.linked_telegram_username ? `@${user.linked_telegram_username}` : user.linked_telegram_id || "нет"}
             </p>
-            <p className="text-xs text-slate-400">App install ID: {user.app_install_id || "нет"}</p>
+            <p className="text-xs text-slate-400">ID установки: {user.app_install_id || "нет"}</p>
           </div>
         </div>
       </div>
@@ -195,23 +195,23 @@ export function AdminUserSidePanel({
             {observer?.reasons?.length ? observer.reasons.join(", ") : "Observer данных пока нет."}
           </p>
           <p className="mt-2 text-xs text-slate-400">
-            Panel state: <strong>{panelStateLabel(String(selected.summary?.panel_state || ""))}</strong>
+            Состояние панели: <strong>{panelStateLabel(String(selected.summary?.panel_state || ""))}</strong>
           </p>
         </div>
       </div>
 
       <div className="mt-3 grid gap-3 xl:grid-cols-2">
         <div className={adminInsetPanelClass}>
-          <p className="text-sm font-semibold text-slate-50">Device context</p>
+          <p className="text-sm font-semibold text-slate-50">Контекст устройства</p>
           <div className="mt-3 space-y-1 text-xs text-slate-400">
-            <p>Install ID: <strong>{user.app_install_id || "not linked"}</strong></p>
-            <p>Platform: <strong>{user.app_platform || "unknown"}</strong></p>
-            <p>Last seen: <strong>{fmtRuDate(user.app_last_seen_at)}</strong></p>
-            <p>Telegram: <strong>{user.linked_telegram_username ? `@${user.linked_telegram_username}` : user.linked_telegram_id || "not linked"}</strong></p>
+            <p>ID установки: <strong>{user.app_install_id || "нет связи"}</strong></p>
+            <p>Платформа: <strong>{user.app_platform || "неизвестно"}</strong></p>
+            <p>Последняя активность: <strong>{fmtRuDate(user.app_last_seen_at)}</strong></p>
+            <p>Telegram: <strong>{user.linked_telegram_username ? `@${user.linked_telegram_username}` : user.linked_telegram_id || "нет связи"}</strong></p>
           </div>
         </div>
         <div className={adminInsetPanelClass}>
-          <p className="text-sm font-semibold text-slate-50">Recent payment orders</p>
+          <p className="text-sm font-semibold text-slate-50">Последние платежные заказы</p>
           {payment_orders.length ? (
             <div className="mt-3 space-y-2">
               {payment_orders.slice(0, 4).map((order) => (
@@ -225,16 +225,16 @@ export function AdminUserSidePanel({
                   </p>
                   {order.last_event ? (
                     <p className="mt-1 text-slate-500">
-                      callback {order.last_event.event_type}: {order.last_event.processed_ok ? "processed" : "needs review"}
+                      callback {order.last_event.event_type}: {order.last_event.processed_ok ? "обработан" : "нужна проверка"}
                     </p>
                   ) : (
-                    <p className="mt-1 text-slate-500">No provider callback yet.</p>
+                    <p className="mt-1 text-slate-500">Callback от провайдера пока не приходил.</p>
                   )}
                 </div>
               ))}
             </div>
           ) : (
-            <p className="mt-2 text-xs text-slate-400">No payment orders found for this account.</p>
+            <p className="mt-2 text-xs text-slate-400">Платежных заказов по аккаунту не найдено.</p>
           )}
         </div>
       </div>

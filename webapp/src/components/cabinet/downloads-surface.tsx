@@ -7,12 +7,38 @@ import AppRouteLink from "@/components/app-route-link";
 import { CabinetCardGrid, CabinetHero, CabinetRoute, CabinetSection, type CabinetListItem } from "@/components/cabinet/surface";
 import { fetchClientApps, type ClientAppsPayload } from "@/lib/api";
 import { getPortalPublicConfig } from "@/lib/portal";
+import { userFacingErrorMessage } from "@/lib/public-error-messages";
 
 const config = getPortalPublicConfig(process.env as Record<string, string | undefined>);
 
 type DownloadCard = CabinetListItem & {
   href?: string;
 };
+
+type DownloadPlatform = "android" | "windows" | null;
+
+function normalizeDownloadPlatform(value?: string | null): DownloadPlatform {
+  const normalized = String(value || "").trim().toLowerCase();
+  if (normalized === "android" || normalized === "apk") return "android";
+  if (normalized === "windows" || normalized === "win" || normalized === "exe") return "windows";
+  return null;
+}
+
+function cardPlatform(card: DownloadCard): DownloadPlatform {
+  if (card.key.startsWith("android")) return "android";
+  if (card.key.startsWith("windows")) return "windows";
+  return null;
+}
+
+function prioritizeCards(cards: DownloadCard[], platform: DownloadPlatform): DownloadCard[] {
+  if (!platform) return cards;
+  return [...cards].sort((left, right) => {
+    const leftMatches = cardPlatform(left) === platform;
+    const rightMatches = cardPlatform(right) === platform;
+    if (leftMatches === rightMatches) return 0;
+    return leftMatches ? -1 : 1;
+  });
+}
 
 function formatDate(value?: string | null): string {
   if (!value) return "Обновим позже";
@@ -35,7 +61,6 @@ function externalAction(href: string, label: string): ReactNode {
 }
 
 function buildCards(payload: ClientAppsPayload | null): DownloadCard[] {
-  const androidPlay = payload?.android?.play_url || config.androidPlayUrl;
   const androidApk = payload?.android?.apk_url || config.androidApkUrl;
   const androidMirror = payload?.android?.mirror_url || config.androidMirrorUrl;
   const windowsExe = payload?.windows?.exe_url || config.windowsExeUrl;
@@ -43,22 +68,11 @@ function buildCards(payload: ClientAppsPayload | null): DownloadCard[] {
   const docsUrl = payload?.docs_url || config.docsUrl;
 
   return [
-    androidPlay
-      ? {
-          key: "android-play",
-          title: "Android бета через Google Play",
-          body: "Показываем только если ссылка реально пришла от backend. Публичный Android-релиз закрыт до production signing и физического аудита release-сборки.",
-          badge: "Android бета",
-          tone: "warning",
-          href: androidPlay,
-          action: externalAction(androidPlay, "Открыть"),
-        }
-      : null,
     androidApk
       ? {
           key: "android-apk",
           title: "Android бета через APK",
-          body: "Внутренний beta-файл для тестеров. Не публикуем его как массовый путь до production signing и физического аудита release-сборки.",
+          body: "Внутренний бета-файл для тестеров. Не публикуем его как массовый путь до доверенной подписи и физической проверки сборки.",
           badge: "Внутренняя бета",
           tone: "warning",
           href: androidApk,
@@ -69,8 +83,8 @@ function buildCards(payload: ClientAppsPayload | null): DownloadCard[] {
       ? {
           key: "android-mirror",
           title: "Резервная ссылка для Android",
-          body: "Резерв той же beta-сборки. Если обычная ссылка не открывается, лучше написать в поддержку, а не искать обходной путь.",
-          badge: "Резерв beta",
+          body: "Резерв той же бета-сборки. Если обычная ссылка не открывается, лучше написать в поддержку, а не искать обходной путь.",
+          badge: "Резерв беты",
           tone: "warning",
           href: androidMirror,
           action: externalAction(androidMirror, "Открыть"),
@@ -91,8 +105,8 @@ function buildCards(payload: ClientAppsPayload | null): DownloadCard[] {
       ? {
           key: "windows-mirror",
           title: "Резервная ссылка для Windows",
-          body: "Резерв той же beta-сборки. Если Windows предупреждает о неподписанном файле, это известное ограничение публичной беты.",
-          badge: "Резерв beta",
+          body: "Резерв той же бета-сборки. Если Windows предупреждает о неподписанном файле, это известное ограничение публичной беты.",
+          badge: "Резерв беты",
           tone: "warning",
           href: windowsMirror,
           action: externalAction(windowsMirror, "Открыть"),
@@ -115,6 +129,13 @@ function buildCards(payload: ClientAppsPayload | null): DownloadCard[] {
 export function CabinetDownloadsSurface() {
   const [payload, setPayload] = useState<ClientAppsPayload | null>(null);
   const [error, setError] = useState("");
+  const [preferredPlatform, setPreferredPlatform] = useState<DownloadPlatform>(null);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const params = new URLSearchParams(window.location.search);
+    setPreferredPlatform(normalizeDownloadPlatform(params.get("platform")));
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -128,7 +149,7 @@ export function CabinetDownloadsSurface() {
         }
       } catch (nextError) {
         if (!cancelled) {
-          setError(String((nextError as { message?: string })?.message || nextError || ""));
+          setError(userFacingErrorMessage(nextError, "Не удалось обновить ссылки загрузки, показываем сохраненные варианты."));
         }
       }
     };
@@ -139,7 +160,7 @@ export function CabinetDownloadsSurface() {
     };
   }, []);
 
-  const cards = useMemo(() => buildCards(payload), [payload]);
+  const cards = useMemo(() => prioritizeCards(buildCards(payload), preferredPlatform), [payload, preferredPlatform]);
   const hasAndroid = cards.some((item) => item.key.startsWith("android"));
   const hasWindows = cards.some((item) => item.key.startsWith("windows"));
   const hasDocs = cards.some((item) => item.key === "docs");
@@ -180,7 +201,7 @@ export function CabinetDownloadsSurface() {
     <CabinetRoute
       eyebrow="Загрузки"
       title="Все нужные загрузки под рукой"
-      description="Бета-доступ открыт только из кабинета. Показываем реальные ссылки из backend или честно говорим, что их нет."
+      description="Бета-доступ открыт только из кабинета. Показываем реальные рабочие ссылки или честно говорим, что их нет."
       actions={
         <>
           <AppRouteLink href="/devices/" className="outline-btn rounded-full px-5 py-3 text-sm font-semibold">
@@ -195,13 +216,13 @@ export function CabinetDownloadsSurface() {
         {
           label: "Android",
           value: hasAndroid ? "Ссылки готовы" : "Подтянем позже",
-          hint: "Android остается закрыт до production signing и физического release-build audit.",
+          hint: "Android остается закрыт до доверенной подписи и физической проверки сборки.",
           tone: hasAndroid ? "warning" : "neutral",
         },
         {
           label: "Windows",
           value: hasWindows ? "Ссылка готова" : "Подтянем позже",
-          hint: "Beta-сборка может содержать неподписанный артефакт и вызвать системное предупреждение.",
+          hint: "Бета-сборка может содержать неподписанный артефакт и вызвать системное предупреждение.",
           tone: hasWindows ? "warning" : "neutral",
         },
         {
@@ -243,7 +264,7 @@ export function CabinetDownloadsSurface() {
         details={[
           {
             label: "Лучший путь",
-            value: hasAndroid ? "Android через Play" : hasWindows ? "Установщик Windows" : "Поддержка",
+            value: hasAndroid ? "Android APK" : hasWindows ? "Установщик Windows" : "Поддержка",
             hint: "Берите обычный путь первым. Запасные ссылки нужны редко.",
             tone: "neutral",
           },

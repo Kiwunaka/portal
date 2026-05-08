@@ -24,7 +24,6 @@ type PlanCard = {
 };
 
 type HomeLinks = {
-  checkoutHref: string;
   installHref: string;
   cabinetHref: string;
   supportHref: string;
@@ -47,7 +46,7 @@ const HOW_IT_WORKS = [
   {
     step: "2",
     title: "Попробуйте 5 дней бесплатно",
-    text: "Полный доступ ко всем серверам, без ограничений скорости и трафика. Достаточно, чтобы понять, подходит ли вам сервис.",
+    text: "Доступ ко всем доступным серверам на время пробы. Достаточно, чтобы понять, подходит ли вам сервис.",
   },
   {
     step: "3",
@@ -80,14 +79,10 @@ const SURFACE_PANELS = [
     eyebrow: "Поддержка",
     title: "Если что-то не так — мы рядом",
     text: "Напишите в поддержку прямо из приложения или кабинета. Один тикет, полная история, не нужно объяснять всё заново.",
-    bullets: ["Без декоративного SLA", "Видна история обращений", "Telegram-канал с обновлениями"],
+    bullets: ["Ответ по мере возможности", "Видна история обращений", "Telegram-канал с обновлениями"],
     tone: "support" as const,
   },
 ];
-
-function buildCheckoutHref(planCode: string): string {
-  return `${MARKETING_CANONICAL_PATHS.checkout}?plan=${encodeURIComponent(planCode)}`;
-}
 
 function buildPlanCards(): PlanCard[] {
   return getTariffPlans()
@@ -109,9 +104,8 @@ function buildPlanCards(): PlanCard[] {
     }));
 }
 
-function buildLinks(defaultPlanCode: string): HomeLinks {
+function buildLinks(): HomeLinks {
   return {
-    checkoutHref: buildCheckoutHref(defaultPlanCode),
     installHref: MARKETING_CANONICAL_PATHS.install,
     cabinetHref: config.webappUrl,
     supportHref: config.contactFormUrl || config.supportTelegramUrl || config.helpbotUrl,
@@ -246,24 +240,24 @@ function Hero({ links }: { links: HomeLinks }) {
           <div className={styles.heroCopy}>
             <div className={styles.eyebrow}>
               <UiIcon name="verified_user" size={18} />
-              Премиум-доступ
+              Статус беты
             </div>
             <h1 className={styles.heroTitle}>
-              Интернет
+              POKROV
               <br />
-              без границ
+              готовит бету
             </h1>
             <p className={styles.heroSubtitle}>
-              Спокойный защищенный маршрут для Android и Windows. 5 дней бесплатно, без привязки карты и без технической рутины на старте.
+              Android и Windows готовятся к ограниченной бете вне магазинов. Откройте статус установки, проверьте доступность и запросите помощь, если вам нужен ранний вход.
             </p>
             <div className={styles.heroActions}>
-              <Link href={links.checkoutHref} className={`${styles.btnPrimary} ${styles.btnPill}`}>
+              <Link href={links.installHref} className={`${styles.btnPrimary} ${styles.btnPill}`}>
                 <UiIcon name="shield_lock" size={22} />
-                Попробовать бесплатно
+                Открыть статус установки
               </Link>
-              <a href="#how-it-works" className={`${styles.btnSecondary} ${styles.btnPill}`}>
+              <a href={links.supportHref} className={`${styles.btnSecondary} ${styles.btnPill}`}>
                 <UiIcon name="play_circle" size={20} />
-                Как это работает
+                Запросить доступ
               </a>
             </div>
             <ul className={styles.heroNotes}>
@@ -311,7 +305,7 @@ function ProofStrip() {
   ];
 
   return (
-    <FadeUp delay={0.2} as="section" className={styles.container}>
+    <FadeUp delay={0.2} as="section" className={styles.container} id="proof">
       <div className={styles.proofStrip}>
         {items.map((item) => (
           <div key={item.value} className={styles.proofCard}>
@@ -327,7 +321,7 @@ function ProofStrip() {
       </div>
       <div className={styles.proofFooter}>
         <UiIcon name="lock" size={16} />
-        Ваши данные под защитой. Конфиденциально. Без ограничений. Всегда на вашей стороне.
+        Ваши данные под защитой. Конфиденциально. С понятными условиями. Всегда на вашей стороне.
       </div>
     </FadeUp>
   );
@@ -462,8 +456,8 @@ function Pricing({ links }: { links: HomeLinks }) {
 
   const freeFeatures = [
     "Полный доступ на 5 дней",
-    "Все серверы без ограничений",
-    "Максимальная скорость",
+    "Все доступные серверы в пробе",
+    "Высокая скорость",
     "Без привязки карты",
   ];
 
@@ -488,7 +482,7 @@ function Pricing({ links }: { links: HomeLinks }) {
             <div className={`${styles.badge} ${styles.badgeEmerald}`}>старт</div>
             <h3>5 дней бесплатно</h3>
             <p>
-              Достаточно, чтобы проверить скорость, стабильность и удобство. Все серверы, без ограничений, без карты.
+              Достаточно, чтобы проверить скорость, стабильность и удобство. Серверы премиум-пула, без карты.
             </p>
             <ul className={styles.planFeatures}>
               {freeFeatures.map((f) => (
@@ -498,7 +492,7 @@ function Pricing({ links }: { links: HomeLinks }) {
                 </li>
               ))}
             </ul>
-            <Link href={links.checkoutHref} className={`${styles.btnPrimary} ${styles.btnPill}`} style={{ marginTop: "auto" }}>
+            <Link href={links.installHref} className={`${styles.btnPrimary} ${styles.btnPill}`} style={{ marginTop: "auto" }}>
               Начать бесплатно
             </Link>
           </div>
@@ -529,11 +523,11 @@ function Pricing({ links }: { links: HomeLinks }) {
                     ))}
                   </ul>
                   <Link
-                    href={buildCheckoutHref(plan.code)}
+                    href={links.installHref}
                     className={isFeatured ? styles.btnPrimary : styles.btnSecondary}
                     style={{ marginTop: "auto", borderRadius: "var(--radius-pill)" }}
                   >
-                    {isFeatured ? "Выбрать этот" : "Выбрать"}
+                    {isFeatured ? "Проверить доступ" : "Статус беты"}
                   </Link>
                 </article>
               );
@@ -553,17 +547,17 @@ function FinalCta({ links }: { links: HomeLinks }) {
           <span className={styles.eyebrow} style={{ borderColor: "rgba(255,255,255,0.2)", background: "rgba(255,255,255,0.08)", color: "#fff" }}>
             готовы начать?
           </span>
-          <h2>Попробуйте 5 дней бесплатно</h2>
+          <h2>Откройте статус установки и доступа</h2>
           <p>
-            Никаких обязательств. Просто установите приложение, нажмите Подключить и убедитесь сами, что интернет может быть безопасным и свободным.
+            Сейчас это кандидат на ограниченную бету: проверьте статус установки, откройте кабинет или напишите в поддержку перед ранним входом.
           </p>
         </div>
         <div className={styles.finalActions}>
-          <Link href={links.checkoutHref} className={`${styles.btnPrimary} ${styles.btnPill}`}>
-            Выбрать тариф
+          <Link href={links.installHref} className={`${styles.btnPrimary} ${styles.btnPill}`}>
+            Открыть статус установки
           </Link>
           <Link href={links.installHref} className={styles.btnOutline}>
-            Установить приложение
+            Статус доступа
           </Link>
           <a href={links.cabinetHref} className={styles.btnOutline}>
             Кабинет
@@ -580,9 +574,7 @@ function FinalCta({ links }: { links: HomeLinks }) {
 /* ── Main Page ── */
 
 export default function MarketingHomePage() {
-  const planCards = buildPlanCards();
-  const defaultPlanCode = planCards[1]?.code || planCards[0]?.code || "1_month";
-  const links = buildLinks(defaultPlanCode);
+  const links = buildLinks();
 
   return (
     <>

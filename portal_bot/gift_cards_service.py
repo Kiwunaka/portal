@@ -2,11 +2,13 @@
 
 import secrets
 import uuid
+import re
 from datetime import datetime, timedelta, timezone
 from typing import Any
 
 import db
-from models import GiftCard, User
+from models import GiftCard, PlanCatalog, User
+from shared_surface_facts import get_tariff_catalog
 
 
 GIFT_CARD_TYPES: dict[str, dict[str, Any]] = {
@@ -33,6 +35,52 @@ def _generate_gift_code() -> str:
     alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
     token = "".join(secrets.choice(alphabet) for _ in range(8))
     return f"POKROV-{token[:4]}-{token[4:]}"
+
+
+def _normalize_gift_code(value: str) -> str:
+    code = str(value or "").strip().upper()
+    code = re.sub(r"[\u2013\u2014_]+", "-", code)
+    code = re.sub(r"\s+", "-", code)
+    code = re.sub(r"-+", "-", code)
+    return code.strip("-")
+
+
+def _plan_info_from_card_type(s, card_type: str) -> dict[str, Any] | None:
+    target = str(card_type or "").strip().lower()
+    if not target:
+        return None
+
+    row = s.query(PlanCatalog).filter(PlanCatalog.code == target).first()
+    if row:
+        return {
+            "kind": "plan",
+            "days": max(1, int(row.days or 0)),
+            "plan_code": target,
+            "name": str(row.label or target),
+        }
+
+    try:
+        for plan in list(get_tariff_catalog().get("plans") or []):
+            if str(plan.get("code") or "").strip().lower() != target:
+                continue
+            return {
+                "kind": "plan",
+                "days": max(1, int(plan.get("duration_days") or plan.get("days") or 0)),
+                "plan_code": target,
+                "name": str(plan.get("label") or target),
+            }
+    except Exception:
+        pass
+
+    legacy = GIFT_CARD_TYPES.get(target)
+    if legacy:
+        return {
+            "kind": "legacy_gift",
+            "days": max(1, int(legacy.get("days") or 0)),
+            "plan_code": None,
+            "name": str(legacy.get("name") or target),
+        }
+    return None
 
 
 def create_gift_card(*, buyer_tg_id: int, card_type: str) -> str | None:
@@ -64,7 +112,7 @@ def create_gift_card(*, buyer_tg_id: int, card_type: str) -> str | None:
 
 
 def get_gift_card(code: str) -> dict[str, Any] | None:
-    norm = (code or "").strip().upper()
+    norm = _normalize_gift_code(code)
     if not norm:
         return None
 
@@ -89,7 +137,7 @@ def get_gift_card(code: str) -> dict[str, Any] | None:
 
 
 async def redeem_gift_card(*, code: str, recipient_tg_id: int, require_tos: bool = True) -> dict[str, Any]:
-    norm = (code or "").strip().upper()
+    norm = _normalize_gift_code(code)
     if not norm:
         return {"ok": False, "error": "invalid_code", "message": "Код не указан"}
 
@@ -103,7 +151,7 @@ async def redeem_gift_card(*, code: str, recipient_tg_id: int, require_tos: bool
         if int(card.created_by or 0) == int(recipient_tg_id):
             return {"ok": False, "error": "self_redeem", "message": "Нельзя активировать собственный код"}
 
-        card_info = GIFT_CARD_TYPES.get((card.card_type or "").lower())
+        card_info = _plan_info_from_card_type(s, str(card.card_type or ""))
         if not card_info:
             return {"ok": False, "error": "unknown_type", "message": "Тип кода не поддерживается"}
 
@@ -142,6 +190,10 @@ async def redeem_gift_card(*, code: str, recipient_tg_id: int, require_tos: bool
         user.expiry_at = current_expiry + timedelta(days=days)
         user.sub_type = "PAID"
         user.is_active = True
+        user.first_purchase_done = True
+        plan_code = str(card_info.get("plan_code") or "").strip().lower()
+        if plan_code:
+            user.current_plan_code = plan_code
         if not user.sub_token:
             user.sub_token = _generate_sub_token()
 
@@ -199,8 +251,9 @@ async def redeem_gift_card(*, code: str, recipient_tg_id: int, require_tos: bool
     return {
         "ok": True,
         "code": norm,
-        "days": int(GIFT_CARD_TYPES.get(redeemed_card_type.lower(), {}).get("days") or 0),
+        "days": days,
         "card_type": redeemed_card_type,
+        "plan_code": plan_code or None,
         "expiry_at": expiry_at_iso,
         "sync_ok": bool(sync_ok),
     }

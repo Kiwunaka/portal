@@ -45,7 +45,7 @@ def _default_checks() -> list[Check]:
                 "POKROV",
                 "config.webappUrl",
                 "config.newsChannelUrl",
-                "/checkout/?plan=",
+                "href={paidBetaHref}",
                 "Один спокойный путь",
                 "lp-hero-stage",
                 "lp-trust-grid",
@@ -55,6 +55,7 @@ def _default_checks() -> list[Check]:
             ),
             must_not_contain=(
                 "href={config.connectUrl}",
+                "/checkout/?plan=",
                 "POKROV Network",
                 "All except RU",
                 "premium trial",

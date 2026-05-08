@@ -1,0 +1,43 @@
+{
+  "ok": false,
+  "classification": "EXTERNAL_DEPENDENCY",
+  "safe_to_enable_paid_checkout": false,
+  "mode": "brain_proc_env_readiness",
+  "plan_code": "start_99",
+  "checks": [
+    {
+      "name": "lavatop_invoice_credentials",
+      "status": "PASS",
+      "missing": [],
+      "note": "Required before creating Lava.top invoices."
+    },
+    {
+      "name": "lavatop_webhook_auth",
+      "status": "PASS",
+      "missing": [],
+      "note": "Required before accepting paid callbacks."
+    },
+    {
+      "name": "lavatop_provider_acceptance",
+      "status": "EXTERNAL_DEPENDENCY",
+      "missing": [
+        "LAVATOP_PROVIDER_ACCEPTANCE_CONFIRMED=true"
+      ],
+      "note": "Operator/provider acceptance evidence is external to local code."
+    },
+    {
+      "name": "email_public_mode",
+      "status": "PASS",
+      "missing": [],
+      "note": "Public email auth must not launch in debug/disabled mode."
+    },
+    {
+      "name": "email_delivery_webhook",
+      "status": "PASS",
+      "missing": [],
+      "note": "Required before auth emails and paid access keys can be delivered."
+    }
+  ],
+  "source_unit": "portal-api",
+  "pid_present": true
+}

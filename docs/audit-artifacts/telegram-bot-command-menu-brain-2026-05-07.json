@@ -1,0 +1,100 @@
+{
+  "ok": true,
+  "classification": "PASS",
+  "mode": "brain_telegram_bot_menu",
+  "source_unit": "portal-bot",
+  "pid_present": true,
+  "token_present": true,
+  "applied": false,
+  "checks": [
+    {
+      "name": "brain_bot_runtime_token",
+      "status": "PASS",
+      "missing": [],
+      "note": "Token presence is read from the live brain process and never written to the report."
+    },
+    {
+      "name": "telegram_get_my_commands",
+      "status": "PASS",
+      "missing": [],
+      "error_code": null,
+      "description": ""
+    },
+    {
+      "name": "public_command_menu",
+      "status": "PASS",
+      "missing": [],
+      "expected": [
+        "start",
+        "cabinet",
+        "support",
+        "promo",
+        "redeem"
+      ],
+      "actual": [
+        "start",
+        "cabinet",
+        "support",
+        "promo",
+        "redeem"
+      ]
+    },
+    {
+      "name": "public_command_descriptions",
+      "status": "PASS",
+      "missing": [],
+      "expected": [
+        {
+          "command": "start",
+          "description": "Открыть главное меню"
+        },
+        {
+          "command": "cabinet",
+          "description": "Открыть кабинет"
+        },
+        {
+          "command": "support",
+          "description": "Написать в поддержку"
+        },
+        {
+          "command": "promo",
+          "description": "Активировать промокод"
+        },
+        {
+          "command": "redeem",
+          "description": "Активировать gift-код"
+        }
+      ],
+      "actual": [
+        {
+          "command": "start",
+          "description": "Открыть главное меню"
+        },
+        {
+          "command": "cabinet",
+          "description": "Открыть кабинет"
+        },
+        {
+          "command": "support",
+          "description": "Написать в поддержку"
+        },
+        {
+          "command": "promo",
+          "description": "Активировать промокод"
+        },
+        {
+          "command": "redeem",
+          "description": "Активировать gift-код"
+        }
+      ]
+    },
+    {
+      "name": "telegram_chat_menu_button",
+      "status": "PASS",
+      "missing": [],
+      "actual_type": "commands",
+      "error_code": null,
+      "description": ""
+    }
+  ]
+}

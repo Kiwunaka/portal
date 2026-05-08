@@ -3,8 +3,6 @@ from __future__ import annotations
 import argparse
 import json
 import sys
-import time
-import uuid
 from pathlib import Path
 
 if str(Path(__file__).resolve().parent) not in sys.path:
@@ -30,13 +28,19 @@ def _remote_python(source: str, method: str, payload: dict[str, object]) -> str:
 
 
 def main() -> int:
-    ap = argparse.ArgumentParser(description="Probe live FreeKassa orders/create from the brain host.")
+    ap = argparse.ArgumentParser(description="Legacy reconciliation-only probe for live FreeKassa read/status methods from the brain host.")
     ap.add_argument("--brain-ip", required=True)
     ap.add_argument("--ssh-user", default="root")
     ap.add_argument("--ssh-port", type=int, default=29374)
     ap.add_argument("--passwords", default="", help="Optional PASSWORDS.txt path for worktree-local node access.")
+    ap.add_argument(
+        "--legacy-reconciliation",
+        action="store_true",
+        help="Required explicit acknowledgement: FreeKassa is legacy reconciliation tooling, not the public-beta checkout path.",
+    )
     ap.add_argument("--source", default="bot", choices=["bot", "site"])
-    ap.add_argument("--method", default="orders/create")
+    ap.add_argument("--method", default="orders")
+    ap.add_argument("--order-id", default="", help="Existing legacy FreeKassa order id for read/reconciliation methods.")
     ap.add_argument("--amount", type=float, default=99.0)
     ap.add_argument("--currency", default="RUB")
     ap.add_argument("--description", default="PORTAL Start 30 days")
@@ -46,20 +50,43 @@ def main() -> int:
     ap.add_argument("--data-json", default="")
     args = ap.parse_args()
 
+    if not args.legacy_reconciliation:
+        print(
+            "[FAIL] FreeKassa live probe is legacy reconciliation-only. "
+            "Use Lava.top probe tooling for public-beta paid checkout evidence, "
+            "or pass --legacy-reconciliation for an intentional legacy check.",
+            file=sys.stderr,
+        )
+        return 2
+    if str(args.method or "").strip().lower() == "orders/create":
+        print(
+            "[FAIL] FreeKassa orders/create is not a reconciliation probe and must not be used for public-beta evidence. "
+            "Use Lava.top invoice tooling for paid checkout checks.",
+            file=sys.stderr,
+        )
+        return 2
+
     if args.data_json.strip():
         payload = json.loads(args.data_json)
     else:
-        payload = {
-            "paymentId": f"codex_api_{int(time.time())}_{uuid.uuid4().hex[:6]}",
-            "amount": float(args.amount),
-            "currency": str(args.currency or "RUB").strip().upper(),
-            "description": args.description,
-            "email": args.email,
-        }
-        if int(args.payment_system_id or 0) > 0:
-            payload["i"] = int(args.payment_system_id)
-        if str(args.ip or "").strip():
-            payload["ip"] = str(args.ip).strip()
+        method = str(args.method or "").strip().lower()
+        if method == "orders":
+            if not str(args.order_id or "").strip():
+                print("[FAIL] --order-id is required for FreeKassa orders reconciliation.", file=sys.stderr)
+                return 2
+            payload = {"orderId": str(args.order_id).strip()}
+        elif method == "currencies":
+            payload = {}
+        elif method == "currencies/status":
+            payload = {"currency": str(args.currency or "RUB").strip().upper()}
+        elif method == "orders/refund":
+            if not str(args.order_id or "").strip():
+                print("[FAIL] --order-id is required for FreeKassa refund reconciliation.", file=sys.stderr)
+                return 2
+            payload = {"orderId": str(args.order_id).strip(), "amount": float(args.amount)}
+        else:
+            print(f"[FAIL] Unsupported FreeKassa reconciliation method: {args.method}", file=sys.stderr)
+            return 2
 
     ssh, auth_method = connect_node(
         code="brain",

@@ -99,7 +99,7 @@ export function userStatusLabel(status: string): string {
   const value = String(status || "").toLowerCase();
   if (value === "active") return "Активен";
   if (value === "blocked") return "Заблокирован";
-  if (value === "manual_test") return "Manual/Test";
+  if (value === "manual_test") return "Ручной/тестовый";
   return "Истёк";
 }
 
@@ -115,7 +115,7 @@ export function originLabel(origin: string): string {
   const value = String(origin || "").toLowerCase();
   if (value === "app") return "Приложение";
   if (value === "hybrid") return "Приложение + Telegram";
-  if (value === "manual_test") return "Manual/Test";
+  if (value === "manual_test") return "Ручной/тестовый";
   return "Telegram";
 }
 

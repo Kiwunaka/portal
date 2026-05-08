@@ -1,0 +1,128 @@
+{
+  "ok": false,
+  "classification": "BLOCKED_BY_ACCESS",
+  "safe_to_enable_paid_checkout": false,
+  "mode": "paid_checkout_launch_evidence",
+  "inputs": {
+    "readiness_json": "docs\\audit-artifacts\\payment-email-readiness-2026-05-07.json",
+    "evidence_json": ""
+  },
+  "checks": [
+    {
+      "name": "payment_email_readiness",
+      "status": "BLOCKED_BY_ACCESS",
+      "missing": [],
+      "source": "docs\\audit-artifacts\\payment-email-readiness-2026-05-07.json",
+      "note": "Aggregate classification from payment_email_readiness_smoke.py."
+    },
+    {
+      "name": "lavatop_invoice_credentials",
+      "status": "BLOCKED_BY_ACCESS",
+      "missing": [
+        "LAVATOP_API_KEY",
+        "LAVATOP_OFFER_ID_START_99 or LAVATOP_OFFER_ID"
+      ],
+      "source": "docs\\audit-artifacts\\payment-email-readiness-2026-05-07.json",
+      "note": ""
+    },
+    {
+      "name": "lavatop_webhook_auth",
+      "status": "BLOCKED_BY_ACCESS",
+      "missing": [
+        "LAVATOP_WEBHOOK_API_KEY or LAVATOP_WEBHOOK_BASIC_USERNAME+LAVATOP_WEBHOOK_BASIC_PASSWORD"
+      ],
+      "source": "docs\\audit-artifacts\\payment-email-readiness-2026-05-07.json",
+      "note": ""
+    },
+    {
+      "name": "lavatop_provider_acceptance",
+      "status": "EXTERNAL_DEPENDENCY",
+      "missing": [
+        "LAVATOP_PROVIDER_ACCEPTANCE_CONFIRMED=true"
+      ],
+      "source": "docs\\audit-artifacts\\payment-email-readiness-2026-05-07.json",
+      "note": ""
+    },
+    {
+      "name": "email_public_mode",
+      "status": "BLOCKED_BY_ACCESS",
+      "missing": [
+        "EMAIL_AUTH_PUBLIC_ENABLED=true"
+      ],
+      "source": "docs\\audit-artifacts\\payment-email-readiness-2026-05-07.json",
+      "note": ""
+    },
+    {
+      "name": "email_delivery_webhook",
+      "status": "BLOCKED_BY_ACCESS",
+      "missing": [
+        "EMAIL_DELIVERY_WEBHOOK_URL or EMAIL_AUTH_WEBHOOK_URL"
+      ],
+      "source": "docs\\audit-artifacts\\payment-email-readiness-2026-05-07.json",
+      "note": ""
+    },
+    {
+      "name": "lavatop_live_invoice_creation",
+      "status": "BLOCKED_BY_ACCESS",
+      "missing": [
+        "lavatop_live_invoice_creation evidence"
+      ],
+      "source": "",
+      "note": "Attach redacted live/sandbox evidence before enabling paid checkout."
+    },
+    {
+      "name": "lavatop_authenticated_success_webhook",
+      "status": "BLOCKED_BY_ACCESS",
+      "missing": [
+        "lavatop_authenticated_success_webhook evidence"
+      ],
+      "source": "",
+      "note": "Attach redacted live/sandbox evidence before enabling paid checkout."
+    },
+    {
+      "name": "lavatop_webhook_replay_idempotency",
+      "status": "BLOCKED_BY_ACCESS",
+      "missing": [
+        "lavatop_webhook_replay_idempotency evidence"
+      ],
+      "source": "",
+      "note": "Attach redacted live/sandbox evidence before enabling paid checkout."
+    },
+    {
+      "name": "lavatop_failed_payment_no_fulfillment",
+      "status": "BLOCKED_BY_ACCESS",
+      "missing": [
+        "lavatop_failed_payment_no_fulfillment evidence"
+      ],
+      "source": "",
+      "note": "Attach redacted live/sandbox evidence before enabling paid checkout."
+    },
+    {
+      "name": "lavatop_manual_review_mismatch",
+      "status": "BLOCKED_BY_ACCESS",
+      "missing": [
+        "lavatop_manual_review_mismatch evidence"
+      ],
+      "source": "",
+      "note": "Attach redacted live/sandbox evidence before enabling paid checkout."
+    },
+    {
+      "name": "lavatop_reconciliation_procedure",
+      "status": "BLOCKED_BY_ACCESS",
+      "missing": [
+        "lavatop_reconciliation_procedure evidence"
+      ],
+      "source": "",
+      "note": "Attach redacted live/sandbox evidence before enabling paid checkout."
+    },
+    {
+      "name": "paid_access_key_email_delivery",
+      "status": "BLOCKED_BY_ACCESS",
+      "missing": [
+        "paid_access_key_email_delivery evidence"
+      ],
+      "source": "",
+      "note": "Attach redacted live/sandbox evidence before enabling paid checkout."
+    }
+  ]
+}

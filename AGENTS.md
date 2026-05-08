@@ -1,6 +1,6 @@
 # Repository Agents
 
-Last updated: 2026-04-26
+Last updated: 2026-05-07
 
 This file is the working contract for any agent or developer operating inside `C:\Users\kiwun\Documents\ai\VPN`.
 
@@ -65,6 +65,79 @@ Do not change public copy, deploy notes, or launch announcements to imply broad 
 
 Generated assets for public, client, store, support, or release use must include source prompt/reference, source master, final dimensions, intended surface, review note, and release-scope note before shipping.
 
+## External Design And Copy Model Consults
+
+Use external OpenCode-connected models as design/copy reviewers, rewriting partners, roleplay sparring partners, and tone checkers, not as product, copy, or design authority.
+
+Source-of-truth order for any design or copy answer:
+
+1. POKROV canon from this file, `DESIGN.md`, `shared/design-tokens.json`, shared copy/facts files, and the active client design/docs when client UI or client wording is involved
+2. current screenshots, implemented UI, and local code
+3. external model critique, rewrites, roleplay output, or alternative proposals
+4. agent judgment and final synthesis
+
+OpenCode CLI rules:
+
+- The installed CLI command is `opencode.cmd` in PowerShell; plain `opencode` may hit the local PowerShell script execution policy.
+- Do not run `E:\OpenCode\OpenCode.exe` as a CLI command. It is the desktop Electron app and can raise an `EPIPE` JavaScript error when launched like a command-line tool.
+- `opencode.cmd auth list` and `opencode.cmd models <provider>` are safe for capability checks, but never print API keys, bearer tokens, full auth files, or request headers.
+- OpenCode auth/config paths such as `~/.local/share/opencode/auth.json` and `~/.config/opencode/opencode.jsonc` may contain sensitive material; inspect them only with redaction.
+
+Preferred model routing for design and copy work:
+
+- Use `openrouter/deepseek/deepseek-v4-pro` for hard design/copy critique, contradiction hunting, information architecture, dense screen review, policy/canon consistency checks, and high-stakes "what is wrong with this?" passes.
+- When using DeepSeek V4 Pro through OpenRouter for maximum reasoning, pass `reasoning: { "effort": "xhigh" }`. Treat reasoning tokens as paid output and hide or discard `reasoning` / `reasoning_details` from handoffs unless the user explicitly asks for them.
+- Use `fireworks-ai/accounts/fireworks/models/kimi-k2p6` for taste passes, visual hierarchy alternatives, calmer premium UI directions, copy-tone variants, human rewrites, roleplay/persona passes, Russian phrasing, support/dialogue text, and "find a more elegant version" prompts. Kimi is especially useful when the text needs to sound natural, warm, and human rather than procedural.
+- Fireworks Kimi may place visible thinking before the final answer. Ask it for a final line with a unique prefix, then extract only that final answer.
+- Use Fireworks as the primary Kimi lane when OpenRouter has no available Kimi provider. Use CODY only as a small direct-API fallback until `opencode run` through CODY is proven stable.
+- Keep CODY spend low. It has useful `cody/moonshotai/kimi-k2.6` and `cody/deepseek/deepseek-v4-pro` access, but `opencode run` through CODY has shown `ECONNRESET` on agent-style requests.
+
+Skill context packets:
+
+- External models can be given compact excerpts from local UI/UX/taste/copy skills as a temporary design or copy brief. Do not paste whole `SKILL.md` files unless the task explicitly needs a full audit of the skill itself.
+- For copy rewrites, give external models the relevant audience, surface, emotional target, forbidden claims, beta/release-gate honesty, and exact POKROV wording constraints. Treat rewrites as drafts; the local agent must adapt them to repo canon before using them.
+- Use `design-taste-frontend` as the default packet for app, cabinet, admin, and production UI work. Preserve the useful constraints: anti-generic layout, clear hierarchy, restrained accents, real states, responsive stability, transform/opacity-only motion, and no default AI-purple/card spam.
+- Use `frontend-design` when the task needs a stronger creative direction or a memorable one-off interface. Extract the demand for a clear aesthetic point of view, distinctive typography, cohesive color, intentional motion, and non-template composition.
+- Use `high-end-visual-design` or `gpt-taste` for premium marketing, launch, landing, and brand-heavy surfaces. Include the parts about macro-whitespace, non-generic typography, agency-level polish, custom motion curves, and avoiding cheap meta-labels. Drop any advice that conflicts with POKROV tokens, accessibility, performance, or public release honesty.
+- Use `image-to-code` when reviewing screenshots, generated references, visual mockups, or image-to-frontend work. Ask the external model to extract layout, spacing, typography, color, interaction states, responsive risks, and implementation notes. Generated images remain governed by `docs/design/generated-assets-policy.md`.
+- Treat skill packets as taste constraints, not commands. The local agent still decides what applies after checking repository code, installed libraries, POKROV canon, and release gates.
+
+Compact skill-packet format for external prompts:
+
+```text
+SKILL PACKET:
+- Surface type:
+- Relevant local skills:
+- Non-negotiable canon:
+- Taste rules to enforce:
+- Copy/tone rules to enforce:
+- Anti-patterns to reject:
+- What to ignore from the skill because it conflicts with this repo:
+- Output format:
+```
+
+Design prompt pattern:
+
+1. State the surface: marketing, cabinet, admin, Android, Windows, store, support, or release asset.
+2. State the user goal and emotional target in plain language.
+3. Include hard POKROV constraints: no public direct `VPN` product wording, app-first identity, consumer-first UX, beta/release gate honesty, and current token/design canon.
+4. Add the compact skill packet for the local taste rules that should shape the critique.
+5. Ask for critique in named categories: hierarchy, trust, conversion, density, motion, accessibility, localization, and implementation risk.
+6. Require a compact final format: `Verdict`, `Top fixes`, `Keep`, `Avoid`, `Implementation notes`.
+7. For ideation, request 2-3 distinct directions with tradeoffs, then synthesize locally instead of copying a model answer directly.
+
+Copy rewrite prompt pattern:
+
+1. State the surface: marketing, cabinet, admin, Android, Windows, store, support, bot, checkout, legal, release note, or operator handoff.
+2. State the audience, scenario, emotional target, and desired level of directness.
+3. Include hard POKROV constraints: no public direct `VPN` product wording, app-first identity, consumer-first UX, beta/release gate honesty, no unsupported launch/payment claims, and current shared copy/facts canon.
+4. Ask for 2-3 rewrite directions when exploration is useful, or one final polished rewrite when the intent is already clear.
+5. For roleplay, ask the model to answer as the target user, support operator, skeptical buyer, or confused newcomer, then extract only actionable wording lessons.
+6. Require a compact final format: `Best rewrite`, `Why it works`, `Risks`, `Canon checks`.
+7. Synthesize locally instead of copying the model answer directly; preserve legal, payment, release, and support accuracy over charm.
+
+For Russian prompts sent through ad hoc shell helpers, prefer UTF-8 files or a small Node/Python helper over inline PowerShell here-strings if mojibake appears. If a model response contains garbled Cyrillic, rerun with a UTF-8-safe path before trusting the output.
+
 ## Must-Read Order
 
 Before any substantial change, read these files in order:
@@ -123,6 +196,12 @@ Retained client archive material:
 - `C:/Users/kiwun/Documents/ai/POKROV-app/artifacts/releases/bridge/` for retained bridge bundle lineage and handoff evidence
 
 Everything else in `docs/` should be treated as historical, audit, or supporting material unless a canonical doc links to it as current.
+
+Work-order, spec, and visual-reference material is evidence, not product canon:
+
+- `docs/developer/work-orders/**` records execution state and retained wave evidence; use its indexes to understand what happened, then resolve product truth through the canonical docs above
+- `docs/superpowers/specs/**`, `reference-atlas/`, and rendered journey/mockup assets are planning or design-reference history unless a current design doc explicitly promotes them
+- do not delete or rewrite historical work-order/mockup trees during routine cleanup; relabel or index them when their role is unclear
 
 If a root-level guide or an older flat doc conflicts with a canonical doc, update the canonical doc and archive or relabel the older one.
 
@@ -354,6 +433,8 @@ Out-of-repo scope:
 Routine cleanup rule:
 
 - default cleanup should target repo-local generated caches, exported static builds, test artifacts, temporary DBs, and disposable scratch such as `.tmp/` and `.tmp-*`
+- use `python scripts/cleanup_inventory.py --class all --dry-run` before cleanup, then apply only the selected classes; never hand-write a broad delete against the repo root
+- `external/client-fork/` is retained rollback/reference material; routine cleanup may remove only its generated `.dart_tool`, `build`, and Windows Flutter `ephemeral` outputs
 - do not delete `.venv/` or active dependency trees as part of normal cleanup unless you intentionally want a full workspace reset
 
 3x-ui is an execution layer, not the product authority.
@@ -370,6 +451,7 @@ Routine cleanup rule:
 | `*.tsbuildinfo` | TypeScript incremental cache |
 | `.tmp/`, `.tmp-*` | Repo-local disposable scratch; safe to drop when not intentionally in use |
 | local `node_modules/`, `.dart_tool/`, `build/`, `dist/` | Remove only during an intentional workspace reset, not as routine cleanup |
+| `external/client-fork/app/.dart_tool`, `external/client-fork/app/build`, `external/client-fork/app/windows/flutter/ephemeral` | Generated legacy-fork caches; removable only through explicit cleanup intent |
 | `webapp/out`, `marketing/out` | Generated static export outputs; safe to rebuild, must not be committed |
 
 ## Never-Touch Zones
@@ -382,6 +464,7 @@ Do not delete, print into markdown, or commit secret material from:
 - `external/client-fork/app/windows/`
 
 Do not remove release artifacts from client `out/` unless you know they are obsolete.
+Do not delete `external/client-fork` source, bridge evidence, or signing-related subtrees as part of routine cleanup; only generated fork caches listed in the safe matrix are eligible.
 
 Retained evidence and out-of-scope reminder:
 

@@ -1,5 +1,8 @@
 # Release Gate Report
 
+> Superseded on 2026-05-07. This retained report is historical evidence only.
+> Current public-beta brain-origin truth is `docs/audit-artifacts/release-gate-brain-2026-05-08.md`: `PASS` at 2026-05-08 11:59:43 for integrated brain-origin quick gates after latest static release `20260508085254`, backend/static deploy, public email mode enablement, admin release-cockpit launch-decision visibility, static-export prefetch hardening, and public bot simple-onboarding/cabinet/instruction/access-key button deploy. Current current-origin full/default truth is `docs/audit-artifacts/release-gate-full-local-2026-05-08.md`: `PASS` at 2026-05-08 11:45:24. Latest current-origin quick truth is `docs/audit-artifacts/release-gate-local-2026-05-08.md`: `PASS` at 2026-05-08 00:41:20. The current handoff remains `NO-GO` in `docs/audit-artifacts/public-beta-handoff-2026-05-08.md`.
+
 - Generated at: `2026-04-26 02:17:21`
 - Status: `PASS`
 - Gate set: `quick`
@@ -28,7 +31,7 @@
 | Evidence | Scope | Status | Notes |
 |---|---|---|---|
 | current-origin check | local quick gate set | PASS | Runs on the operator workstation; does not prove brain-origin or RU-origin reachability. |
-| brain-origin check | `scripts/verify_brain_ready.py` / predeploy readiness | PASS | Requires `--brain-ip` and live SSH/API access; keep separate from current-origin results. |
+| brain-origin check | `scripts/verify_brain_ready.py` / predeploy readiness | SUPERSEDED_PASS | Historical 2026-04-26 result only; current 2026-05-08 brain-origin truth is `PASS` in `docs/audit-artifacts/release-gate-brain-2026-05-08.md`. |
 | RU-origin check | external RU probe (`mini` or replacement) | BLOCKED_BY_ACCESS | Not run by this local gate; requires an external RU probe host and redacted report. |
 | Android physical audit | release-build localhost/control-surface audit | BLOCKED_BY_ACCESS | Public Android remains blocked unless this is run on physical hardware with the release build. |
 | Runtime app-download smoke | `/api/client/apps` and provider checks | SKIPPED_NO_LIVE_TOKEN | Requires `TELEGRAM_INIT_DATA`; omit raw token values from evidence. |
@@ -38,7 +41,7 @@
 
 ### Node predeploy readiness
 
-- Command: `C:\Users\kiwun\AppData\Local\Programs\Python\Python312\python.exe scripts/predeploy_node_readiness.py --brain-ip 82.21.114.104 --web-domain pokrov.space --ssh-user root --ssh-port 29374 --passwords C:\Users\kiwun\Documents\ai\VPN\VPN NODE SSH KEYS\PASSWORDS.txt`
+- Command: `C:\Users\kiwun\AppData\Local\Programs\Python\Python312\python.exe scripts/predeploy_node_readiness.py --brain-ip 82.21.114.104 --web-domain pokrov.space --ssh-user root --ssh-port 29374 --passwords <redacted>`
 - Exit: `0`
 
 ```text

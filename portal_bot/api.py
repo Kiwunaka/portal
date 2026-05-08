@@ -33,8 +33,7 @@ import aiohttp
 from dotenv import load_dotenv
 from fastapi import FastAPI, Header, HTTPException, Query, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import HTMLResponse, PlainTextResponse
-from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse, HTMLResponse, PlainTextResponse
 from pydantic import BaseModel, Field
 from sqlalchemy import and_, or_, case, func
 from sqlalchemy.exc import IntegrityError
@@ -70,6 +69,7 @@ from models import (
     RewardClaim,
     StartLink,
     SupportTicket,
+    SupportTicketMessage,
     Template,
     User,
     UserKeyPolicy,
@@ -174,9 +174,9 @@ from web_auth_service import (
     build_telegram_oidc_authorize_url,
     create_web_session_token,
     exchange_telegram_oidc_code,
+    inspect_web_session_token,
     verify_telegram_login_payload,
     verify_telegram_oidc_state_token,
-    verify_web_session_token,
 )
 
 
@@ -292,6 +292,7 @@ PROFILE_UPDATE_INTERVAL_HOURS = max(1, env_int("PROFILE_UPDATE_INTERVAL_HOURS", 
 PAYMENT_CALLBACK_TOLERANT_MODE = env_bool("PAYMENT_CALLBACK_TOLERANT_MODE", default=False)
 SUBSCRIPTION_NUMERIC_FALLBACK_ENABLED = env_bool("SUBSCRIPTION_NUMERIC_FALLBACK_ENABLED", default=True)
 TELEGRAM_WEB_LOGIN_MAX_AGE_SECONDS = max(60, env_int("TELEGRAM_WEB_LOGIN_MAX_AGE_SECONDS", 86400))
+TELEGRAM_WEBAPP_INIT_MAX_AGE_SECONDS = max(60, env_int("TELEGRAM_WEBAPP_INIT_MAX_AGE_SECONDS", 86400))
 NODE_METRICS_CPU_ALERT_PERCENT = _env_float("NODE_METRICS_CPU_ALERT_PERCENT", 70.0)
 NODE_METRICS_MEMORY_ALERT_PERCENT = _env_float("NODE_METRICS_MEMORY_ALERT_PERCENT", 85.0)
 NODE_METRICS_DISK_ALERT_PERCENT = _env_float("NODE_METRICS_DISK_ALERT_PERCENT", 90.0)
@@ -381,6 +382,7 @@ GIFT_CARD_TYPES = {
     "premium": {"days": 90, "stars": 699, "name": "Premium"},
 }
 PAYMENT_PROVIDER_WHITELIST = {"cardlink", "freekassa", "lavatop", "pally", "platima"}
+PUBLIC_RUB_PROVIDER_WHITELIST = {"lavatop"}
 FK_NOTIFY_IP_ALLOWLIST = [
     x.strip()
     for x in (os.getenv("FK_NOTIFY_IP_ALLOWLIST") or "").split(",")
@@ -1024,6 +1026,10 @@ class AdminPaymentReconcileIn(BaseModel):
     status: str | None = Field(default=None, min_length=3, max_length=24)
 
 
+class AdminPaymentResendAccessKeyIn(BaseModel):
+    note: str = Field(min_length=8, max_length=1000)
+
+
 class AdminPlanCreateIn(BaseModel):
     code: str = Field(min_length=2, max_length=32)
     label: str = Field(min_length=2, max_length=120)
@@ -1422,7 +1428,6 @@ app.add_middleware(
     allow_headers=["*"],
 )
 SUPPORT_UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
-app.mount(SUPPORT_UPLOAD_URL_PREFIX, StaticFiles(directory=str(SUPPORT_UPLOAD_DIR)), name="support_uploads")
 
 
 def _verify_telegram_data(init_data: str) -> dict[str, Any] | None:
@@ -1443,7 +1448,16 @@ def _verify_telegram_data(init_data: str) -> dict[str, Any] | None:
         secret_key = hmac.new(b"WebAppData", bot_token.encode(), hashlib.sha256).digest()
         calculated_hash = hmac.new(secret_key, data_check_string.encode(), hashlib.sha256).hexdigest()
 
-        if calculated_hash != check_hash:
+        if not hmac.compare_digest(calculated_hash, str(check_hash)):
+            return None
+        try:
+            auth_date = int(parsed.get("auth_date") or 0)
+        except Exception:
+            return None
+        now = int(time.time())
+        if auth_date <= 0 or auth_date > now + 60:
+            return None
+        if now - auth_date > int(TELEGRAM_WEBAPP_INIT_MAX_AGE_SECONDS):
             return None
         return json.loads(parsed.get("user", "{}"))
     except Exception:
@@ -1633,6 +1647,14 @@ def _access_key_meta_from_card_type(*, s, card_type: str) -> dict[str, Any] | No
     }
 
 
+def _normalize_access_key_code(value: str) -> str:
+    code = str(value or "").strip().upper()
+    code = re.sub(r"[\u2013\u2014_]+", "-", code)
+    code = re.sub(r"\s+", "-", code)
+    code = re.sub(r"-+", "-", code)
+    return code.strip("-")
+
+
 def _access_key_status_payload(*, s, card: GiftCard) -> dict[str, Any]:
     meta = _access_key_meta_from_card_type(s=s, card_type=str(card.card_type or ""))
     return {
@@ -1647,8 +1669,6 @@ def _access_key_status_payload(*, s, card: GiftCard) -> dict[str, Any]:
         "days": int(meta.get("days") or 0) if meta else 0,
         "device_limit": int(meta.get("device_limit") or 0) if meta else 0,
         "node_policy": meta.get("node_policy") if meta else None,
-        "created_by": int(card.created_by or 0) if getattr(card, "created_by", None) is not None else None,
-        "redeemed_by": int(card.redeemed_by or 0) if getattr(card, "redeemed_by", None) is not None else None,
     }
 
 
@@ -1995,6 +2015,17 @@ def _price_with_pending_discount(*, amount_rub: int, pending_pct: int | None) ->
     return max(1, discounted), pct
 
 
+def _pricing_preview_discount_pct(promo_code: str) -> int:
+    target = str(promo_code or "").strip().upper()
+    if not target:
+        return 0
+    discounts = dict((_TARIFF_CATALOG.get("pricing_preview") or {}).get("discount_codes") or {})
+    try:
+        return max(0, min(95, int(discounts.get(target) or 0)))
+    except Exception:
+        return 0
+
+
 def _generate_gift_code_for_admin(s) -> str:
     alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
     for _ in range(30):
@@ -2139,8 +2170,37 @@ def _extract_web_session_token(request: Request | None) -> str:
     return str(request.headers.get("x-web-auth-token") or "").strip()
 
 
+def _auth_http_exception(*, detail: str, code: str, status_code: int = 401) -> HTTPException:
+    return HTTPException(status_code=status_code, detail=detail, headers={"X-POKROV-Auth-Error": code})
+
+
 def _optional_auth_user(x_telegram_init_data: str, request: Request | None = None) -> dict[str, Any] | None:
     init_data = (x_telegram_init_data or "").strip()
+    web_token = _extract_web_session_token(request)
+    if web_token:
+        payload, reason = inspect_web_session_token(web_token)
+        if payload:
+            return payload
+        if init_data:
+            user_data = _verify_telegram_data(init_data)
+            if user_data:
+                return {
+                    "id": int(user_data.get("id") or 0),
+                    "username": user_data.get("username"),
+                    "auth_type": "telegram",
+                    "auth_origin": "telegram",
+                    "email": None,
+                }
+        if reason == "expired":
+            raise _auth_http_exception(
+                detail="Сессия в браузере устарела. Обновите вход через Telegram или email, и кабинет откроется снова.",
+                code="web_session_expired",
+            )
+        raise _auth_http_exception(
+            detail="Не удалось подтвердить сессию в браузере. Повторите вход через Telegram или email.",
+            code="web_session_invalid",
+        )
+
     if init_data:
         user_data = _verify_telegram_data(init_data)
         if user_data:
@@ -2151,14 +2211,10 @@ def _optional_auth_user(x_telegram_init_data: str, request: Request | None = Non
                 "auth_origin": "telegram",
                 "email": None,
             }
-        raise HTTPException(status_code=401, detail="Invalid Telegram signature")
-
-    web_token = _extract_web_session_token(request)
-    if web_token:
-        payload = verify_web_session_token(web_token)
-        if payload:
-            return payload
-        raise HTTPException(status_code=401, detail="Invalid web session")
+        raise _auth_http_exception(
+            detail="Сессия Telegram устарела или не подтвердилась. Откройте вход заново, и мы вернем вас в кабинет.",
+            code="telegram_init_invalid",
+        )
 
     dev = _dev_auth_user(request)
     if dev:
@@ -2291,6 +2347,17 @@ def _email_identity_payload(identity: WebEmailIdentity | None) -> dict[str, Any]
         "verified": bool(getattr(identity, "is_verified", False)),
         "verified_at": _safe_iso(getattr(identity, "verified_at", None)),
     }
+
+
+def _require_email_public_ready() -> dict[str, Any]:
+    status = email_delivery_runtime_status()
+    if bool(status.get("enabled")):
+        return status
+    reasons = ", ".join(str(item) for item in (status.get("blocked_reasons") or []) if item) or "not_ready"
+    raise HTTPException(
+        status_code=503,
+        detail=f"Email-вход пока недоступен: доставка писем не готова ({reasons}).",
+    )
 
 
 def _ensure_user_row_for_login(*, tg_id: int, username: str | None = None) -> None:
@@ -2663,6 +2730,12 @@ def _public_checkout_url() -> str:
     return "https://pay.pokrov.space/checkout/"
 
 
+PUBLIC_CHECKOUT_BLOCKED_DETAIL = (
+    "Оплата пока закрыта: мы включим продление после финальной проверки Lava.top "
+    "и доставки ключей на email."
+)
+
+
 def _checkout_runtime_issues() -> list[tuple[str, str]]:
     issues: list[tuple[str, str]] = []
     if not RUB_CHECKOUT_ENABLED:
@@ -2681,6 +2754,16 @@ def _checkout_runtime_issues() -> list[tuple[str, str]]:
     enabled = enabled_rub_provider_codes()
     if not enabled:
         issues.append(("no_enabled_providers", "No RUB payment providers are configured"))
+    email_status = email_delivery_runtime_status()
+    if not bool(email_status.get("enabled")):
+        reasons = ", ".join(str(item) for item in (email_status.get("blocked_reasons") or []) if item) or "not_ready"
+        issues.append(
+            (
+                "email_delivery_not_ready",
+                f"Email delivery is not ready for paid access keys: {reasons}",
+            )
+        )
+    issues.extend(_paid_checkout_launch_evidence_issues())
     return issues
 
 
@@ -2688,19 +2771,80 @@ def _checkout_runtime_errors() -> list[str]:
     return [detail for _code, detail in _checkout_runtime_issues()]
 
 
+def _paid_checkout_launch_evidence_path() -> Path:
+    configured = (
+        os.getenv("PAID_CHECKOUT_LAUNCH_EVIDENCE_PATH")
+        or os.getenv("PAID_CHECKOUT_LAUNCH_EVIDENCE_FILE")
+        or ""
+    ).strip()
+    if configured:
+        candidate = Path(configured).expanduser()
+        if not candidate.is_absolute():
+            candidate = Path(__file__).resolve().parents[1] / candidate
+        return candidate
+    return Path(__file__).resolve().parents[1] / "docs" / "audit-artifacts" / "paid-checkout-launch-evidence-2026-05-07.json"
+
+
+def _paid_checkout_launch_evidence_issues() -> list[tuple[str, str]]:
+    if not env_bool("PAID_CHECKOUT_LAUNCH_EVIDENCE_REQUIRED", default=True):
+        return []
+
+    path = _paid_checkout_launch_evidence_path()
+    try:
+        payload = json.loads(path.read_text(encoding="utf-8"))
+    except FileNotFoundError:
+        return [
+            (
+                "paid_checkout_launch_evidence_missing",
+                "Paid checkout launch evidence is missing; keep RUB checkout unavailable until redacted evidence is attached",
+            )
+        ]
+    except Exception:
+        return [
+            (
+                "paid_checkout_launch_evidence_invalid",
+                "Paid checkout launch evidence is invalid; keep RUB checkout unavailable until redacted evidence is attached",
+            )
+        ]
+
+    safe = bool(payload.get("safe_to_enable_paid_checkout"))
+    ok = bool(payload.get("ok"))
+    if safe and ok:
+        return []
+
+    classification = str(payload.get("classification") or "not_ready").strip() or "not_ready"
+    pending_checks: list[str] = []
+    for item in payload.get("checks") or []:
+        if not isinstance(item, dict):
+            continue
+        status = str(item.get("status") or "").strip().upper()
+        if status in {"PASS", "OK", "GREEN"}:
+            continue
+        name = re.sub(r"[^a-zA-Z0-9_.-]+", "_", str(item.get("name") or "evidence")).strip("_")
+        if name:
+            pending_checks.append(name[:80])
+    suffix = f": {', '.join(pending_checks[:6])}" if pending_checks else ""
+    return [
+        (
+            "paid_checkout_launch_evidence_not_green",
+            f"Paid checkout launch evidence is not green ({classification}){suffix}",
+        )
+    ]
+
+
 def _public_checkout_provider_state() -> RubProvidersOut:
     issues = _checkout_runtime_issues()
     blocked = bool(issues)
-    rows = [] if blocked else [RubProviderChoiceOut(**row) for row in enabled_provider_catalog()]
+    rows = [] if blocked else [RubProviderChoiceOut(**row) for row in enabled_provider_catalog() if str(row.get("code") or "").strip().lower() in PUBLIC_RUB_PROVIDER_WHITELIST]
     if not rows and not blocked:
-        issues = [("no_enabled_providers", "No RUB payment providers are configured")]
+        issues = [("no_public_lavatop_provider", "Lava.top is not configured as the public RUB checkout provider")]
         blocked = True
     return RubProvidersOut(
         ok=not blocked,
         providers=rows,
         blocked=blocked,
         blocked_reasons=[code for code, _detail in issues],
-        blocked_reason_texts=[detail for _code, detail in issues],
+        blocked_reason_texts=[PUBLIC_CHECKOUT_BLOCKED_DETAIL] if issues else [],
         checkout_mode="account_session_first",
         telegram_fallback_available=True,
     )
@@ -2709,7 +2853,16 @@ def _public_checkout_provider_state() -> RubProvidersOut:
 def _ensure_checkout_runtime_ready() -> None:
     errors = _checkout_runtime_errors()
     if errors:
-        raise HTTPException(status_code=503, detail="; ".join(errors))
+        raise HTTPException(status_code=503, detail=PUBLIC_CHECKOUT_BLOCKED_DETAIL)
+
+
+def _ensure_checkout_provider_enabled(provider: str) -> None:
+    normalized = _normalize_provider(provider)
+    if normalized not in PUBLIC_RUB_PROVIDER_WHITELIST:
+        raise HTTPException(status_code=503, detail=f"{normalized or 'provider'} is not enabled for public beta RUB checkout")
+    enabled = set(enabled_rub_provider_codes())
+    if not normalized or normalized not in enabled:
+        raise HTTPException(status_code=503, detail=f"{normalized or 'provider'} is not enabled for RUB checkout")
 
 
 def _payment_callback_base_url() -> str:
@@ -3977,6 +4130,30 @@ def _store_support_upload(*, filename: str | None, content_type: str | None, raw
     return {"attachment": attachment, "attachment_payload": payload}
 
 
+def _support_upload_path(stored_name: str) -> Path:
+    name = Path(str(stored_name or "").strip()).name
+    if not name or name != str(stored_name or "").strip():
+        raise HTTPException(status_code=404, detail="Attachment not found")
+    if not re.fullmatch(r"[A-Za-z0-9._-]{12,160}", name):
+        raise HTTPException(status_code=404, detail="Attachment not found")
+    path = SUPPORT_UPLOAD_DIR / name
+    if not path.is_file():
+        raise HTTPException(status_code=404, detail="Attachment not found")
+    return path
+
+
+def _support_upload_is_linked_to_accessible_ticket(*, s, stored_name: str, actor_tg_id: int) -> bool:
+    media_file_id = f"support/{stored_name}"
+    query = (
+        s.query(SupportTicketMessage.id)
+        .join(SupportTicket, SupportTicket.id == SupportTicketMessage.ticket_id)
+        .filter(SupportTicketMessage.media_file_id == media_file_id)
+    )
+    if not _is_admin_tg(actor_tg_id):
+        query = query.filter(SupportTicket.user_tg_id == int(actor_tg_id))
+    return query.first() is not None
+
+
 def _json_obj(raw: str | None) -> dict[str, Any]:
     obj = _safe_json_loads(raw, {})
     return obj if isinstance(obj, dict) else {}
@@ -4747,11 +4924,26 @@ async def auth_telegram_web_login(payload: TelegramWebLoginIn, request: Request)
         max_age_seconds=TELEGRAM_WEB_LOGIN_MAX_AGE_SECONDS,
     )
     if not verified:
-        raise HTTPException(status_code=401, detail="Invalid Telegram login payload")
+        try:
+            auth_age = int(time.time()) - int(payload.auth_date or 0)
+        except Exception:
+            auth_age = 0
+        if auth_age > int(TELEGRAM_WEB_LOGIN_MAX_AGE_SECONDS):
+            raise _auth_http_exception(
+                detail="Сессия Telegram устарела. Нажмите вход через Telegram еще раз, и мы сразу вернем вас в кабинет.",
+                code="telegram_login_expired",
+            )
+        raise _auth_http_exception(
+            detail="Telegram не подтвердил вход. Повторите вход через кнопку Telegram.",
+            code="telegram_login_invalid",
+        )
 
     tg_id = int(verified.get("id") or 0)
     if tg_id <= 0:
-        raise HTTPException(status_code=401, detail="Invalid Telegram user")
+        raise _auth_http_exception(
+            detail="Telegram не подтвердил пользователя. Повторите вход через кнопку Telegram.",
+            code="telegram_login_invalid_user",
+        )
     username = (verified.get("username") or "").strip() or None
     _ensure_user_row_for_login(tg_id=tg_id, username=username)
     token = create_web_session_token(
@@ -4830,6 +5022,7 @@ async def auth_email_register(
     request: Request,
     x_telegram_init_data: str = Header(default=""),
 ) -> dict:
+    _require_email_public_ready()
     _enforce_beta_rate_limit("email_auth", request, identity=str(payload.email or "").strip().lower())
     auth_user = _optional_auth_user(x_telegram_init_data, request=request)
     linked_tg_id = int((auth_user or {}).get("id") or 0) or None
@@ -4875,6 +5068,7 @@ async def auth_email_register(
 
 @app.post("/api/auth/email/verify")
 async def auth_email_verify(payload: EmailVerifyIn, request: Request) -> dict:
+    _require_email_public_ready()
     _enforce_beta_rate_limit("email_auth", request)
     s = SessionLocal()
     try:
@@ -4917,6 +5111,7 @@ async def auth_email_verify(payload: EmailVerifyIn, request: Request) -> dict:
 
 @app.post("/api/auth/email/login")
 async def auth_email_login(payload: EmailLoginIn, request: Request) -> dict:
+    _require_email_public_ready()
     _enforce_beta_rate_limit("email_auth", request, identity=str(payload.email or "").strip().lower())
     s = SessionLocal()
     try:
@@ -4963,6 +5158,7 @@ async def auth_email_login(payload: EmailLoginIn, request: Request) -> dict:
 
 @app.post("/api/auth/email/recovery/start")
 async def auth_email_recovery_start(payload: EmailRecoveryStartIn, request: Request) -> dict:
+    _require_email_public_ready()
     _enforce_beta_rate_limit("email_auth", request, identity=str(payload.email or "").strip().lower())
     s = SessionLocal()
     try:
@@ -4998,6 +5194,7 @@ async def auth_email_recovery_start(payload: EmailRecoveryStartIn, request: Requ
 
 @app.post("/api/auth/email/recovery/finish")
 async def auth_email_recovery_finish(payload: EmailRecoveryFinishIn, request: Request) -> dict:
+    _require_email_public_ready()
     _enforce_beta_rate_limit("email_auth", request)
     s = SessionLocal()
     try:
@@ -5048,6 +5245,15 @@ async def auth_email_recovery_finish(payload: EmailRecoveryFinishIn, request: Re
 async def auth_session(request: Request, x_telegram_init_data: str = Header(default="")) -> dict:
     auth_user = _require_auth_user(x_telegram_init_data, request=request)
     tg_id = int(auth_user.get("id", 0))
+    init_data = (x_telegram_init_data or "").strip()
+    web_token = _extract_web_session_token(request)
+    should_refresh_web_session = False
+    if init_data and not web_token:
+        should_refresh_web_session = True
+    elif init_data and web_token:
+        web_payload, _web_reason = inspect_web_session_token(web_token)
+        should_refresh_web_session = not bool(web_payload)
+
     s = SessionLocal()
     try:
         user = s.query(User).filter(User.tg_id == tg_id).first()
@@ -5069,7 +5275,7 @@ async def auth_session(request: Request, x_telegram_init_data: str = Header(defa
     ) or (
         str(auth_user.get("username") or "").strip() if auth_type == "telegram" else ""
     )
-    return {
+    response_payload: dict[str, Any] = {
         "ok": True,
         "user": {
             "id": tg_id,
@@ -5096,6 +5302,17 @@ async def auth_session(request: Request, x_telegram_init_data: str = Header(defa
             },
         },
     }
+    if should_refresh_web_session and auth_type == "telegram":
+        refreshed_token = create_web_session_token(
+            tg_id=tg_id,
+            username=(str(auth_user.get("username") or "").strip() or None),
+            auth_type="telegram",
+            auth_origin="telegram",
+        )
+        if refreshed_token:
+            response_payload["session_token"] = refreshed_token
+            response_payload["expires_in"] = int(SESSION_TTL_SECONDS)
+    return response_payload
 
 
 @app.post("/api/client/session/start-trial")
@@ -5733,6 +5950,7 @@ async def _rub_create_order_internal(
         raise HTTPException(status_code=503, detail="No RUB payment providers are enabled")
     if provider not in PAYMENT_PROVIDER_WHITELIST:
         raise HTTPException(status_code=400, detail="Unsupported payment provider")
+    _ensure_checkout_provider_enabled(provider)
     if provider != "freekassa" and not provider_is_configured(provider):
         raise HTTPException(status_code=503, detail=f"{provider} is not configured")
     normalized_tg_id = int(tg_id or 0)
@@ -5769,6 +5987,10 @@ async def _rub_create_order_internal(
             working_amount, _ = _price_with_pending_discount(amount_rub=working_amount, pending_pct=pending_pct)
             if not effective_promo and pending_code:
                 effective_promo = pending_code[:32]
+        elif effective_promo:
+            catalog_discount_pct = _pricing_preview_discount_pct(effective_promo)
+            if catalog_discount_pct > 0:
+                working_amount, _ = _price_with_pending_discount(amount_rub=working_amount, pending_pct=catalog_discount_pct)
         final_amount = max(1, int(working_amount)) if base_amount > 0 else 0
         discount_applied = bool(base_amount > 0 and final_amount < base_amount)
         discount_pct = int(round((1.0 - (float(final_amount) / float(base_amount))) * 100)) if discount_applied else 0
@@ -6536,7 +6758,7 @@ async def admin_metrics_timeseries(
             s.query(func.date(ExternalOrder.paid_at).label("day"), func.sum(ExternalOrder.amount).label("value"))
             .filter(ExternalOrder.paid_at.isnot(None), ExternalOrder.paid_at >= from_dt, ExternalOrder.paid_at <= to_dt)
             .filter(func.lower(func.coalesce(ExternalOrder.status, "")) == "paid")
-            .filter(func.lower(func.coalesce(ExternalOrder.provider, "")) == "freekassa")
+            .filter(func.lower(func.coalesce(ExternalOrder.provider, "")).in_(["lavatop", "freekassa"]))
             .group_by(func.date(ExternalOrder.paid_at))
             .all()
         )
@@ -7370,7 +7592,7 @@ async def promo_redeem(payload: PromoRedeemIn, request: Request, x_telegram_init
 async def gift_redeem(payload: GiftRedeemIn, request: Request, x_telegram_init_data: str = Header(default="")) -> dict:
     auth_user = _require_auth_user(x_telegram_init_data, request=request)
     tg_id = int(auth_user.get("id", 0))
-    code = str(payload.code or "").strip().upper()
+    code = _normalize_access_key_code(payload.code)
     if not code:
         _track_bonus_event(tg_id=tg_id, event_name="gift_redeem_denied", meta={"reason": "invalid_code"})
     if code:
@@ -7404,7 +7626,7 @@ async def gift_redeem(payload: GiftRedeemIn, request: Request, x_telegram_init_d
                     raise HTTPException(status_code=403, detail="Gift campaign restrictions mismatch for this user")
         finally:
             s.close()
-    result = await redeem_gift_card_service(code=payload.code, recipient_tg_id=tg_id, require_tos=True)
+    result = await redeem_gift_card_service(code=code, recipient_tg_id=tg_id, require_tos=True)
     if result.get("ok"):
         card_type = str(result.get("card_type") or "").strip().upper()
         if card_type:
@@ -7443,14 +7665,26 @@ async def gift_redeem(payload: GiftRedeemIn, request: Request, x_telegram_init_d
 @app.get("/api/access-keys/status/{key}")
 async def access_key_status(key: str, request: Request) -> dict[str, Any]:
     _enforce_beta_rate_limit("access_key_status", request)
-    code = str(key or "").strip().upper()
+    code = _normalize_access_key_code(key)
     if not code:
         raise HTTPException(status_code=400, detail="Access key is required")
     s = SessionLocal()
     try:
         card = s.query(GiftCard).filter(func.upper(GiftCard.code) == code).first()
         if not card:
-            raise HTTPException(status_code=404, detail="Access key not found")
+            return {
+                "key": code,
+                "exists": False,
+                "redeemed": False,
+                "redeemed_at": None,
+                "issued_at": None,
+                "plan": None,
+                "kind": "unknown",
+                "legacy_type": None,
+                "days": 0,
+                "device_limit": 0,
+                "node_policy": None,
+            }
         payload = _access_key_status_payload(s=s, card=card)
         if payload.get("kind") == "unknown":
             raise HTTPException(status_code=400, detail="Access key type is not supported")
@@ -7468,7 +7702,7 @@ async def access_key_redeem(
     auth_user = _require_auth_user(x_telegram_init_data, request=request)
     tg_id = int(auth_user.get("id", 0))
     _enforce_beta_rate_limit("access_key_redeem", request, identity=f"tg:{tg_id}")
-    code = str(payload.key or "").strip().upper()
+    code = _normalize_access_key_code(payload.key)
     if not code:
         raise HTTPException(status_code=400, detail="Access key is required")
 
@@ -7647,6 +7881,21 @@ async def get_tickets(request: Request, x_telegram_init_data: str = Header(defau
         return {"tickets": data}
     finally:
         s.close()
+
+
+@app.get(f"{SUPPORT_UPLOAD_URL_PREFIX}" + "/{stored_name}")
+async def get_ticket_attachment_file(stored_name: str, request: Request, x_telegram_init_data: str = Header(default="")) -> FileResponse:
+    auth_user = _require_auth_user(x_telegram_init_data, request=request)
+    actor = int(auth_user.get("id", 0))
+    path = _support_upload_path(stored_name)
+    s = SessionLocal()
+    try:
+        if not _support_upload_is_linked_to_accessible_ticket(s=s, stored_name=path.name, actor_tg_id=actor):
+            raise HTTPException(status_code=403, detail="Attachment access denied")
+    finally:
+        s.close()
+    media_type = mimetypes.guess_type(path.name)[0] or "application/octet-stream"
+    return FileResponse(path, media_type=media_type, filename=path.name)
 
 
 @app.post("/api/tickets/uploads")
@@ -8096,6 +8345,38 @@ def _admin_payment_event_payload(event: ExternalPaymentEvent | None) -> dict[str
     }
 
 
+def _admin_payment_fulfillment_payload(order: ExternalOrder) -> dict[str, Any] | None:
+    meta = _external_order_meta(order)
+    fulfillment = dict(meta.get("fulfillment") or {})
+    if not fulfillment:
+        return None
+    email_delivery = dict(fulfillment.get("email_delivery") or {})
+    access_key = str(fulfillment.get("access_key") or "").strip().upper()
+    buyer_email = str(fulfillment.get("buyer_email") or meta.get("buyer_email") or "").strip()
+    delivery_status = str(email_delivery.get("status") or "").strip()
+    can_retry_email = bool(
+        str(fulfillment.get("mode") or "") == "access_key_email"
+        and str(order.status or "").strip().lower() == "paid"
+        and bool(buyer_email)
+    )
+    return {
+        "mode": str(fulfillment.get("mode") or "") or None,
+        "status": str(fulfillment.get("status") or "") or None,
+        "buyer_email": buyer_email or None,
+        "access_key_present": bool(access_key),
+        "access_key_preview": (f"...{access_key[-4:]}" if access_key else None),
+        "access_key_issued_at": str(fulfillment.get("access_key_issued_at") or "") or None,
+        "email_delivery": {
+            "status": delivery_status or None,
+            "mode": str(email_delivery.get("mode") or "") or None,
+            "http_status": email_delivery.get("http_status"),
+        }
+        if email_delivery
+        else None,
+        "can_retry_email": can_retry_email,
+    }
+
+
 def _admin_payment_order_payload(*, s, order: ExternalOrder) -> dict[str, Any]:
     events_q = s.query(ExternalPaymentEvent).filter(
         ExternalPaymentEvent.provider == str(order.provider or ""),
@@ -8128,6 +8409,7 @@ def _admin_payment_order_payload(*, s, order: ExternalOrder) -> dict[str, Any]:
         "promo_code": str(order.promo_code or "") or None,
         "created_at": _safe_iso(order.created_at),
         "paid_at": _safe_iso(order.paid_at),
+        "fulfillment": _admin_payment_fulfillment_payload(order),
         "event_count": int(event_count or 0),
         "last_event": _admin_payment_event_payload(last_event),
     }
@@ -8228,6 +8510,81 @@ async def admin_payment_order_reconcile(
         },
     )
     return {"ok": True, "order": order_payload}
+
+
+@app.post("/api/admin/payments/orders/{provider}/{order_id}/resend-access-key-email")
+async def admin_payment_order_resend_access_key_email(
+    provider: str,
+    order_id: str,
+    payload: AdminPaymentResendAccessKeyIn,
+    x_telegram_init_data: str = Header(default=""),
+) -> dict[str, Any]:
+    actor = int(_require_admin(x_telegram_init_data).get("id", 0))
+    provider_norm = _normalize_provider(provider)
+    order_norm = str(order_id or "").strip()
+    if not provider_norm or not order_norm:
+        raise HTTPException(status_code=400, detail="Provider and order_id are required")
+    note = str(payload.note or "").strip()
+
+    s = SessionLocal()
+    try:
+        order = (
+            s.query(ExternalOrder)
+            .filter(ExternalOrder.provider == provider_norm, ExternalOrder.order_id == order_norm)
+            .first()
+        )
+        if not order:
+            raise HTTPException(status_code=404, detail="Order not found")
+        if str(order.status or "").strip().lower() != "paid":
+            raise HTTPException(status_code=409, detail="Only paid orders can resend access-key email")
+    finally:
+        s.close()
+
+    issued, issue_reason, issue_payload = _issue_payment_access_key_for_order(
+        provider=provider_norm,
+        order_id=order_norm,
+        payload={},
+    )
+    if not issued:
+        raise HTTPException(status_code=409, detail=f"Access-key fulfillment is not ready: {issue_reason}")
+
+    delivery = await deliver_payment_access_key(
+        email=str(issue_payload.get("buyer_email") or ""),
+        access_key=str(issue_payload.get("access_key") or ""),
+        order_id=str(issue_payload.get("order_id") or order_norm),
+        plan_code=str(issue_payload.get("plan_code") or ""),
+        plan_label=str(issue_payload.get("plan_label") or issue_payload.get("plan_code") or ""),
+        days=int(issue_payload.get("days") or 0),
+    )
+    _record_access_key_delivery_result(provider=provider_norm, order_id=order_norm, delivery=delivery)
+
+    s = SessionLocal()
+    try:
+        order = (
+            s.query(ExternalOrder)
+            .filter(ExternalOrder.provider == provider_norm, ExternalOrder.order_id == order_norm)
+            .first()
+        )
+        order_payload = _admin_payment_order_payload(s=s, order=order) if order else {}
+    finally:
+        s.close()
+
+    delivery_status = str((delivery or {}).get("status") or "").strip()
+    _audit_admin(
+        actor_tg_id=actor,
+        action="admin_payment_resend_access_key_email",
+        target_tg_id=int(order_payload["tg_id"]) if order_payload.get("tg_id") is not None else None,
+        meta={
+            "provider": provider_norm,
+            "order_id": order_norm,
+            "issue_reason": issue_reason,
+            "delivery_status": delivery_status or "unknown",
+            "note": note,
+        },
+    )
+    if delivery_status != "sent":
+        raise HTTPException(status_code=502, detail=f"Email delivery failed: {delivery_status or 'unknown'}")
+    return {"ok": True, "order": order_payload, "delivery": {"status": delivery_status}}
 
 
 @app.get("/api/admin/users")
@@ -10598,6 +10955,20 @@ async def admin_tickets(x_telegram_init_data: str = Header(default=""), status: 
         s.close()
 
 
+@app.get("/api/admin/tickets/{ticket_id}")
+async def admin_ticket_detail(ticket_id: int, x_telegram_init_data: str = Header(default="")) -> dict:
+    _require_admin(x_telegram_init_data)
+    s = SessionLocal()
+    try:
+        ticket = get_ticket_by_id(s, ticket_id)
+        if not ticket:
+            raise HTTPException(status_code=404, detail="Ticket not found")
+        msgs = list_ticket_messages(s, ticket.id, limit=100)
+        return {"ticket": _ticket_row(ticket, msgs)}
+    finally:
+        s.close()
+
+
 @app.post("/api/admin/tickets/{ticket_id}/reply")
 async def admin_ticket_reply(ticket_id: int, payload: AdminTicketReplyIn, x_telegram_init_data: str = Header(default="")) -> dict:
     actor = int(_require_admin(x_telegram_init_data).get("id", 0))
@@ -11970,14 +12341,14 @@ async def subscription(token: str, request: Request, format: str = Query(default
             _singbox_free_allowlist_config(
                 user_uuid=user.uuid,
                 nodes=smart_nodes_for_user,
-                title="POKROV VPN (Free)",
+                title="POKROV (Free)",
                 transport_profile=smart_transport_profile,
             )
             if (user.sub_type or "").upper() == "FREE"
             else _singbox_multi_node_config(
                 user_uuid=user.uuid,
                 nodes=smart_nodes_for_user,
-                title="POKROV VPN",
+                title="POKROV",
                 transport_profile=smart_transport_profile,
             )
         )

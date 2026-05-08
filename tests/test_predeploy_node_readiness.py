@@ -194,6 +194,39 @@ class PredeployNodeReadinessTests(unittest.TestCase):
         self.assertEqual(inspected["port"], 443)
         self.assertEqual(inspected["protocol"], "vless")
 
+    def test_collect_drift_payload_classifies_node_ssh_failures(self) -> None:
+        row = self.module.NodeReadinessRow(
+            code="free",
+            host="nl-free.pokrov.space",
+            enabled=True,
+            accepting_new_clients=True,
+            is_draining=False,
+            is_healthy=True,
+            health_score=70.0,
+            last_health_at=None,
+            last_probe_at=None,
+            inbound_id=1,
+            vless_port=443,
+            reality_sni="www.apple.com",
+            reality_sid="abcd",
+            reality_pbk="pubkey",
+        )
+
+        with patch.object(self.module, "_inspect_runtime_inbound", side_effect=RuntimeError("SSH auth failed for node free: Error reading SSH protocol banner")):
+            payload = self.module._collect_drift_payload(
+                [row],
+                ssh_user="root",
+                ssh_port=29374,
+                passwords=Path("dummy"),
+            )
+
+        self.assertEqual(payload["summary"]["total"], 1)
+        self.assertEqual(payload["summary"]["blocked_by_access"], 1)
+        result = payload["results"][0]
+        self.assertEqual(result["status"], "blocked_by_access")
+        self.assertEqual(result["mismatches"], ["blocked_by_access"])
+        self.assertIn("SSH auth failed", result["access_error"])
+
 
 if __name__ == "__main__":
     unittest.main()

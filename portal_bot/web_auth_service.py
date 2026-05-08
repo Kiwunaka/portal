@@ -372,34 +372,41 @@ def create_web_session_token(
     return f"{body}.{sig}"
 
 
-def verify_web_session_token(token: str) -> dict[str, Any] | None:
+def inspect_web_session_token(token: str) -> tuple[dict[str, Any] | None, str | None]:
     raw = (token or "").strip()
     if "." not in raw:
-        return None
+        return None, "malformed"
     body, sig = raw.rsplit(".", 1)
     expected = _sign(body)
     if not expected or not hmac.compare_digest(expected, sig):
-        return None
+        return None, "bad_signature"
     try:
         payload = json.loads(_b64url_decode(body).decode("utf-8"))
     except Exception:
-        return None
+        return None, "malformed"
     if not isinstance(payload, dict):
-        return None
+        return None, "malformed"
     try:
         tg_id = int(payload.get("id") or 0)
         exp = int(payload.get("exp") or 0)
     except Exception:
-        return None
-    if tg_id <= 0 or exp <= int(time.time()):
-        return None
+        return None, "malformed"
+    if tg_id <= 0:
+        return None, "invalid_user"
+    if exp <= int(time.time()):
+        return None, "expired"
     return {
         "id": tg_id,
         "username": payload.get("username"),
         "auth_type": payload.get("auth_type"),
         "auth_origin": payload.get("auth_origin"),
         "email": payload.get("email"),
-    }
+    }, None
+
+
+def verify_web_session_token(token: str) -> dict[str, Any] | None:
+    payload, _reason = inspect_web_session_token(token)
+    return payload
 
 
 def verify_telegram_login_payload(*, payload: dict[str, Any], bot_token: str, max_age_seconds: int = 86400) -> dict[str, Any] | None:

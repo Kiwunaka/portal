@@ -1,0 +1,13 @@
+{
+  "ok": false,
+  "providers": [],
+  "blocked": true,
+  "blocked_reasons": [
+    "paid_checkout_launch_evidence_missing"
+  ],
+  "blocked_reason_texts": [
+    "Оплата пока закрыта: мы включим продление после финальной проверки Lava.top и доставки ключей на email."
+  ],
+  "checkout_mode": "account_session_first",
+  "telegram_fallback_available": true
+}

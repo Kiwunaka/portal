@@ -1,0 +1,13 @@
+{
+  "_note": "Staged /api/client/apps payload for URL-policy and reachability validation only. These GitHub Releases assets are published as a smoke-only prerelease while the public-beta handoff is NO-GO; runtime APP_* links are not synced.",
+  "android": {
+    "play_url": "",
+    "apk_url": "https://github.com/Kiwunaka/POKROV-app/releases/download/v0.2.0-beta.1/pokrov-android-universal.apk",
+    "mirror_url": ""
+  },
+  "windows": {
+    "exe_url": "https://github.com/Kiwunaka/POKROV-app/releases/download/v0.2.0-beta.1/pokrov-windows-setup-x64.exe",
+    "mirror_url": ""
+  },
+  "docs_url": "https://pokrov.space/install/"
+}

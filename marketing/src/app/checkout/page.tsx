@@ -7,15 +7,15 @@ import { CANONICAL_PLATFORM_BRAND, getCopyText } from "../../lib/pokrov";
 import CheckoutClient, { CheckoutLoadingFallback } from "./checkout-client";
 
 export const metadata = buildMarketingMetadata(
-  getCopyText("marketing.checkout.meta.title", "Оплата бета-доступа | POKROV"),
+  getCopyText("marketing.checkout.meta.title", "Статус продления | POKROV"),
   getCopyText(
     "marketing.checkout.meta.description",
-    "Страница оплаты объясняет продление бета-доступа, получение ключа доступа, ручную помощь при спорных платежах и следующий шаг без сырых технических ссылок.",
+    "Страница продления показывает статус платежного маршрута, ключ доступа, ручную помощь при спорных случаях и следующий шаг без сырых технических ссылок.",
   ),
   {
     path: "/checkout/",
     noIndex: false,
-    keywords: ["оплата pokrov", "продление pokrov", "личный маршрут оплаты", "checkout pokrov"],
+    keywords: ["статус продления pokrov", "продление pokrov", "ключ доступа pokrov", "кабинет pokrov"],
   },
 );
 
@@ -25,7 +25,7 @@ export default function CheckoutPage() {
       <JsonLd
         data={buildBreadcrumbJsonLd([
           { name: CANONICAL_PLATFORM_BRAND, path: "/" },
-          { name: getCopyText("marketing.checkout.breadcrumb", "Личный маршрут оплаты"), path: "/checkout/" },
+          { name: getCopyText("marketing.checkout.breadcrumb", "Статус продления"), path: "/checkout/" },
         ])}
       />
       <Suspense fallback={<CheckoutLoadingFallback />}>

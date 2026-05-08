@@ -1,0 +1,94 @@
+{
+  "ok": false,
+  "classification": "BLOCKED_BY_ACCESS",
+  "mode": "public_beta_external_access_preflight",
+  "safe_to_publish_public_beta": false,
+  "ready_to_run_access_gated_smokes": false,
+  "inputs": {
+    "handoff_path": "docs\\audit-artifacts\\public-beta-handoff-2026-05-07.md",
+    "staged_apps_json": "docs\\audit-artifacts\\staged-client-apps-2026-05-07.json",
+    "ru_origin_json": "docs\\audit-artifacts\\ru-origin-mini-2026-05-07.json",
+    "client_build_evidence": "docs\\audit-artifacts\\client-build-evidence-2026-05-07.md"
+  },
+  "checks": [
+    {
+      "name": "android_physical_audit_env",
+      "status": "BLOCKED_BY_ACCESS",
+      "missing": [
+        "ANDROID_AUDIT_SERIAL"
+      ],
+      "note": "Needed to fold the physical release-build localhost audit into the release gates.",
+      "source": "environment"
+    },
+    {
+      "name": "runtime_app_download_smoke_env",
+      "status": "BLOCKED_BY_ACCESS",
+      "missing": [
+        "TELEGRAM_INIT_DATA"
+      ],
+      "note": "Needed for live /api/client/apps smoke; raw initData must stay env-only.",
+      "source": "environment"
+    },
+    {
+      "name": "github_release_token_env",
+      "status": "BLOCKED_BY_ACCESS",
+      "missing": [
+        "GITHUB_TOKEN or GH_TOKEN"
+      ],
+      "note": "Needed only for guarded GitHub Release upload execution.",
+      "source": "environment"
+    },
+    {
+      "name": "email_live_probe_env",
+      "status": "BLOCKED_BY_ACCESS",
+      "missing": [
+        "EMAIL_PROBE_TO"
+      ],
+      "note": "Needed for live verify/reset/paid-access-key delivery probes.",
+      "source": "environment"
+    },
+    {
+      "name": "lavatop_live_probe_env",
+      "status": "BLOCKED_BY_ACCESS",
+      "missing": [
+        "LAVATOP_PROBE_EMAIL"
+      ],
+      "note": "Needed for live Lava.top invoice probe evidence.",
+      "source": "environment"
+    },
+    {
+      "name": "ru_origin_probe_evidence",
+      "status": "FAIL",
+      "missing": [
+        "RU-origin Telegram reachability PASS"
+      ],
+      "note": "RU_ORIGIN_TELEGRAM_DEGRADED",
+      "source": "docs\\audit-artifacts\\ru-origin-mini-2026-05-07.json"
+    },
+    {
+      "name": "windows_signing_or_unsigned_risk",
+      "status": "EXTERNAL_DEPENDENCY",
+      "missing": [
+        "trusted Windows signing evidence or WINDOWS_UNSIGNED_BETA_RISK_ACCEPTED"
+      ],
+      "note": "Current Windows EXE evidence is unsigned or does not prove a trusted signature.",
+      "source": "docs\\audit-artifacts\\client-build-evidence-2026-05-07.md"
+    },
+    {
+      "name": "staged_client_apps_payload",
+      "status": "PASS",
+      "missing": [],
+      "note": "Validates candidate /api/client/apps shape without probing URL reachability.",
+      "source": "docs\\audit-artifacts\\staged-client-apps-2026-05-07.json"
+    },
+    {
+      "name": "public_beta_handoff_policy",
+      "status": "BLOCKED_BY_POLICY",
+      "missing": [
+        "GO handoff or artifact-staging authorization markers"
+      ],
+      "note": "Current handoff does not authorize public publication or artifact staging.",
+      "source": "docs\\audit-artifacts\\public-beta-handoff-2026-05-07.md"
+    }
+  ]
+}

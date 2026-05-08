@@ -3,6 +3,8 @@
 import Image from "next/image";
 import { useEffect, useState } from "react";
 
+import { userFacingErrorMessage } from "@/lib/public-error-messages";
+
 type Props = {
   value: string;
   active?: boolean;
@@ -39,7 +41,7 @@ export default function SubscriptionQrCard({ value, active = true }: Props) {
       } catch (err) {
         if (!cancelled) {
           setSrc("");
-          setError(String((err as { message?: string })?.message || err || "Не удалось собрать QR-код для подключения."));
+          setError(userFacingErrorMessage(err, "Не удалось собрать QR-код для подключения."));
         }
       }
     };

@@ -4,6 +4,9 @@
 - Scope: `current-origin` plus `brain-origin`
 - Secrets, payment URLs, invoice IDs, access keys, and webhook keys are redacted.
 
+> Current 2026-05-07 release handoff still remains `NO-GO`.
+> This file proves partial Lava.top activation evidence only; it does not clear the required real paid callback, replay/idempotency from provider history, failed-payment/manual-review, reconciliation, or current email delivery access gates.
+
 ## Lava API
 
 - `current-origin`: live invoice probe returned `201`.

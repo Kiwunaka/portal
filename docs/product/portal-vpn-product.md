@@ -30,8 +30,8 @@ Primary user goal:
 
 Telegram is optional for first launch, free trial activation, and normal daily use.
 Telegram remains a secondary path for linking, bonus claim, recovery, support entrypoints, and bot-side purchase continuation.
-Browser continuation currently starts from app handoff and Telegram.
-Email browser continuation is planned `soon` and must stay explicitly labeled that way until sender readiness, delivery confirmation, and the public launch path are all green.
+Browser continuation currently starts from app handoff, Telegram, and status-gated email when `/api/auth/email/status` is green.
+Email browser continuation may be public only while the runtime status reports public mode, delivery webhook URL plus relay secret, and non-debug delivery. Fresh inbox delivery evidence is still required before final release claims or paid key-delivery claims.
 
 ## Wave 0 Global Rework Decision Freeze
 
@@ -62,7 +62,7 @@ Client-canon note:
 
 - primary UX: `consumer-first`
 - primary identity model: `app-first`
-- browser identity continuation: app handoff plus `Telegram` today, with additive `email` continuation marked `soon` until the public launch path is live
+- browser identity continuation: app handoff plus `Telegram`, with additive `email` continuation shown only when `/api/auth/email/status` is green
 - full public `v1` scope: `Android + Windows`
 - Apple scope in this wave: readiness, signing prep, and store prerequisites only
 - default runtime core: `sing-box`
@@ -81,8 +81,8 @@ Client-canon note:
 - release target remains `Android + Windows`
 - `Windows` stays in scope for the public `v1` ship when its normal gates are green
 - `Android` remains release-blocked until the repo/static gate pack is green and a real release-build audit proves that localhost listeners and local control surfaces are either disabled or safely authenticated
-- as of `2026-04-13`, `python scripts/release_orchestrator.py --gates-only` is green for the documented repo/static/client gate pack; see `docs/audit-artifacts/release_gate_report.md` for the latest local snapshot
-- that latest local green gate snapshot does not yet prove live deploy, live node enablement, or separate `current-origin`, `brain-origin`, and `RU-origin` checks
+- latest current-origin full/default gate evidence is `docs/audit-artifacts/release-gate-full-local-2026-05-08.md`, `PASS` at `2026-05-08 11:45:24`; retained generic reports such as `docs/audit-artifacts/release_gate_report.md` are historical pointers, not the current public-beta verdict
+- that latest local green gate snapshot does not yet prove Android physical audit, runtime app-download smoke with live Telegram init data, paid-checkout launch evidence, email public delivery proof, RU-origin Telegram readiness, GitHub Release publication, or Windows trusted signing
 - emulator or adb-only audit runs are valid preflight for adb wiring and timing, but final Android publication still requires `python scripts/android_localhost_audit.py` against a release-installed build on physical hardware before connect, after connect, and after disconnect
 - Android public promotion still requires production signing material; debug-keystore fallback is valid for local smoke only
 - do not describe Android app-isolation features such as split tunneling, Private Space, Knox, Shelter, or similar tooling as sufficient mitigations for an unauthenticated local control surface
@@ -155,7 +155,7 @@ First-run route-mode rule:
 Current public role:
 
 - `https://pokrov.space/` is the public entry homepage for new users and should converge most acquisition traffic into app-first trial, install, and first-connection guidance
-- `https://pokrov.space/checkout/` is the public pricing, paywall, and activation-key purchase continuation surface when the user has plan intent or returns after checking the product
+- `https://pokrov.space/checkout/` is the public pricing and payment-intent continuation surface, but paid checkout must remain unavailable or degraded until Lava.top invoice/webhook evidence and email access-key delivery evidence are green
 - `https://pokrov.space/install/` is the dedicated install-help surface used after purchase, after known-user continuation, or when a public download CTA cannot resolve directly to a real artifact
 - indexable landing pages can capture platform, use-case, or Telegram intent, but they must converge to the same product facts and the same app-first trial/install/first-connection CTA set
 - public legal pages also live on the marketing surface
@@ -169,14 +169,15 @@ Current cabinet role:
 
 - `https://app.pokrov.space/` continues an existing browser session or bot handoff
 - browser entry currently supports app handoff plus Telegram continuation into the same cabinet session family without replacing the app-first model
-- public-facing email browser continuation must stay marked `soon` until sender readiness, delivery confirmation, and the public launch path are all green
+- public-facing email browser continuation can be shown when sender readiness is green, but public release claims still need live inbox delivery confirmation
 - cabinet is continuation-first; it must not become a second landing page or re-pitch the public marketing story
-- public email signup, verification, and recovery must not be documented as a live default path before that `soon` status is lifted
-- email forms are gated by `/api/auth/email/status`; the default remains unavailable unless public enablement, delivery configuration, and non-debug runtime state are all green
+- public email signup, verification, and recovery are live only when `/api/auth/email/status` reports green public mode; delivery proof must still be evidenced before launch claims
+- email forms are gated by `/api/auth/email/status`; the default remains unavailable unless public enablement, delivery webhook URL plus relay secret, and non-debug runtime state are all green
 - current top-level cabinet IA is `Dashboard`, `Subscription`, `Devices`, `Statistics`, and `Support`
 - task routes currently include cabinet entry, hosted-checkout continuation, redeem, downloads, and support threads
 - `/pricing/` remains only as a compatibility continuation alias and must not become a second public pricing surface
 - `webapp` is also the primary admin operator surface
+- admin `/admin/promos` owns operator access-key issue/status, promo-slot management, and legacy gift-card creation/listing for compatibility cases; normal new commerce should still prefer plan-coded access keys
 - site, cabinet, and admin must keep obvious navigation back to each other so no surface becomes a dead end
 - consumer cabinet screens should show safe summaries such as `connect.pokrov.space` and route categories while keeping raw personal links, public IP, and node internals hidden on screen
 - consumer cabinet screens must not expose raw subscription edit, regenerate, or share actions in the first-layer UI
@@ -197,9 +198,10 @@ Telegram remains in the product for:
 Public funnel rule:
 
 - marketing introduces the product and captures public intent through trial, install, and first connection before payment pressure
-- `pokrov.space/checkout/` shows public pricing and sells activation keys through the hosted checkout flow when plan intent is explicit
+- `pokrov.space/checkout/` may show public pricing and plan intent, but paid checkout must remain unavailable or degraded until Lava.top evidence, webhook safety, reconciliation, and email access-key delivery are green
+- checkout discounts from the shared pricing preview must be honored by backend order creation, not only by browser-side totals
 - `app.pokrov.space` continues real account, renewal, redeem, support, and admin flows
-- cabinet checkout is continuation-only and creates an authenticated provider order that renews the current account; anonymous public checkout remains key-first by email
+- cabinet checkout is continuation-only and creates an authenticated provider order that renews the current account only when provider readiness is green; anonymous public checkout remains key-first by email only after delivery evidence is green
 - the default site, cabinet, and bot UX must not expose raw subscription links
 - Telegram bot purchase flow remains available, but it is not the default public story
 - `connect.pokrov.space` remains the delivery surface for the one public connection link and matching QR when explicit manual import is needed, not a fresh-entry marketing surface or first-layer consumer story
@@ -212,7 +214,7 @@ Public-facing copy across marketing and webapp should follow one simple style:
 - calm, direct, and premium without fake urgency, countdown theater, or exaggerated rescue language
 - `app-first` in onboarding language, with Telegram framed as optional continuation or fallback
 - marketing and cabinet copy must stay governed through `shared/copy.ts`, `copy/catalog.ru.json`, and `shared/design-tokens.json` so both surfaces tell the same product story
-- email continuation copy must stay labeled `soon` until the live delivery path is truly ready
+- email continuation copy must follow live status: show the email forms when `/api/auth/email/status` is green, and show a truthful unavailable/retry path when delivery is blocked
 - cabinet copy should focus on continuation, renewal, redeem, support, and recovery rather than acting like a second landing page
 - one product story across homepage, SEO landings, cabinet, and checkout, with trial, install, and first connection as the primary public CTA path
 - avoid direct-meaning `VPN` wording on public surfaces; `POKROV VPN` survives only as a legacy identifier where removal is not yet feasible

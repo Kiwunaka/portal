@@ -1,0 +1,38 @@
+{
+  "ok": true,
+  "classification": "PUBLISHED_PRERELEASE",
+  "mode": "github_release_artifact_staging",
+  "published_at_utc": "2026-05-08T12:56:00Z",
+  "repo": "Kiwunaka/POKROV-app",
+  "tag": "v0.2.0-beta.1",
+  "release_id": 319499731,
+  "release_url": "https://github.com/Kiwunaka/POKROV-app/releases/tag/v0.2.0-beta.1",
+  "draft": false,
+  "prerelease": true,
+  "publish_method": "gh_cli",
+  "authorization": "docs/audit-artifacts/public-beta-artifact-staging-authorization-2026-05-08.md",
+  "runtime_sync_authorized": false,
+  "announcement_authorized": false,
+  "assets": [
+    {
+      "name": "pokrov-android-universal.apk",
+      "url": "https://github.com/Kiwunaka/POKROV-app/releases/download/v0.2.0-beta.1/pokrov-android-universal.apk",
+      "size_bytes": 143259872,
+      "sha256": "1A369891641964A9A30A296E7D47111A07B6DDAAD5ABC293F7EF938A654DADB0",
+      "github_digest": "sha256:1a369891641964a9a30a296e7d47111a07b6ddaad5abc293f7ef938a654dadb0"
+    },
+    {
+      "name": "pokrov-windows-setup-x64.exe",
+      "url": "https://github.com/Kiwunaka/POKROV-app/releases/download/v0.2.0-beta.1/pokrov-windows-setup-x64.exe",
+      "size_bytes": 27455488,
+      "sha256": "E340F36EC10149649373E0E7816C81B8C6873E9B95C7A85DC0F6AD708DB2C70D",
+      "github_digest": "sha256:e340f36ec10149649373e0e7816c81b8c6873e9b95c7a85dc0f6ad708db2c70d"
+    }
+  ],
+  "expected_runtime_links": {
+    "APP_ANDROID_PLAY_URL": "",
+    "APP_ANDROID_APK_URL": "https://github.com/Kiwunaka/POKROV-app/releases/download/v0.2.0-beta.1/pokrov-android-universal.apk",
+    "APP_WINDOWS_EXE_URL": "https://github.com/Kiwunaka/POKROV-app/releases/download/v0.2.0-beta.1/pokrov-windows-setup-x64.exe",
+    "APP_DOCS_URL": "https://pokrov.space/install/"
+  }
+}

@@ -1,0 +1,50 @@
+{
+  "ok": false,
+  "classification": "BLOCKED_BY_ACCESS",
+  "safe_to_enable_paid_checkout": false,
+  "mode": "env_readiness",
+  "plan_code": "start_99",
+  "checks": [
+    {
+      "name": "lavatop_invoice_credentials",
+      "status": "BLOCKED_BY_ACCESS",
+      "missing": [
+        "LAVATOP_API_KEY",
+        "LAVATOP_OFFER_ID_START_99 or LAVATOP_OFFER_ID"
+      ],
+      "note": "Required before creating Lava.top invoices."
+    },
+    {
+      "name": "lavatop_webhook_auth",
+      "status": "BLOCKED_BY_ACCESS",
+      "missing": [
+        "LAVATOP_WEBHOOK_API_KEY or LAVATOP_WEBHOOK_BASIC_USERNAME+LAVATOP_WEBHOOK_BASIC_PASSWORD"
+      ],
+      "note": "Required before accepting paid callbacks."
+    },
+    {
+      "name": "lavatop_provider_acceptance",
+      "status": "EXTERNAL_DEPENDENCY",
+      "missing": [
+        "LAVATOP_PROVIDER_ACCEPTANCE_CONFIRMED=true"
+      ],
+      "note": "Operator/provider acceptance evidence is external to local code."
+    },
+    {
+      "name": "email_public_mode",
+      "status": "BLOCKED_BY_ACCESS",
+      "missing": [
+        "EMAIL_AUTH_PUBLIC_ENABLED=true"
+      ],
+      "note": "Public email auth must not launch in debug/disabled mode."
+    },
+    {
+      "name": "email_delivery_webhook",
+      "status": "BLOCKED_BY_ACCESS",
+      "missing": [
+        "EMAIL_DELIVERY_WEBHOOK_URL or EMAIL_AUTH_WEBHOOK_URL"
+      ],
+      "note": "Required before auth emails and paid access keys can be delivered."
+    }
+  ]
+}

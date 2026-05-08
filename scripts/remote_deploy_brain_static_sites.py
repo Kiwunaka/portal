@@ -109,6 +109,85 @@ def _deploy_static_bundle(
     _safe_print(f"[deploy] {label}: complete in {elapsed}s")
 
 
+def _release_payload_validation_checks(*, remote_webapp: str, remote_marketing: str) -> list[str]:
+    return [
+        f"test -f {shlex.quote(remote_webapp)}/index.html",
+        f"test -f {shlex.quote(remote_marketing)}/index.html",
+        f"test -f {shlex.quote(remote_marketing)}/checkout/index.html",
+        f"test ! -e {shlex.quote(remote_marketing)}/fk-verify.html",
+        f"test ! -e {shlex.quote(remote_marketing)}/fk-payment-theme.css",
+    ]
+
+
+def _local_static_output_validation_failures(*, local_webapp: Path, local_marketing: Path) -> list[str]:
+    failures: list[str] = []
+    for required in (
+        local_webapp / "index.html",
+        local_marketing / "index.html",
+        local_marketing / "checkout" / "index.html",
+    ):
+        if not required.is_file():
+            failures.append(f"missing local static file: {required}")
+    for forbidden in (
+        local_marketing / "fk-verify.html",
+        local_marketing / "fk-payment-theme.css",
+    ):
+        if forbidden.exists():
+            failures.append(f"forbidden legacy payment static file is present: {forbidden}")
+    return failures
+
+
+def _curl_head_command(url: str, *, host: str, bytes_count: int = 120) -> str:
+    return (
+        "curl -fsS --insecure "
+        f"--resolve {shlex.quote(f'{host}:443:127.0.0.1')} "
+        f"{shlex.quote(url)} | head -c {int(bytes_count)}"
+    )
+
+
+def _curl_expect_missing_command(url: str, *, host: str, label: str) -> str:
+    return (
+        "body_file=/tmp/portal_static_missing_check.$$; "
+        "cleanup() { rm -f \"$body_file\"; }; "
+        "trap cleanup EXIT; "
+        "code=$(curl -k -sS -o \"$body_file\" -w \"%{http_code}\" "
+        f"--resolve {shlex.quote(f'{host}:443:127.0.0.1')} {shlex.quote(url)} 2>/dev/null || true); "
+        "case \"$code\" in "
+        "404|410) "
+        f"echo {shlex.quote(label + ' absent status=')}\"$code\"; exit 0 ;; "
+        "000) "
+        f"echo {shlex.quote(label + ' probe_failed status=')}\"$code\"; exit 22 ;; "
+        "esac; "
+        "if grep -Eiq 'FreeKassa|freekassa|payment-page-global|fk-payment-theme' \"$body_file\"; then "
+        f"echo {shlex.quote(label + ' legacy_static_present status=')}\"$code marker=legacy_text\"; exit 23; "
+        "fi; "
+        "body_compact=$(tr -d '\\r\\n\\t ' < \"$body_file\"); "
+        "if printf '%s' \"$body_compact\" | grep -Eq '^[0-9a-fA-F]{32,128}$'; then "
+        f"echo {shlex.quote(label + ' legacy_static_present status=')}\"$code marker=hex_verify\"; exit 23; "
+        "fi; "
+        f"echo {shlex.quote(label + ' absent_or_fallback status=')}\"$code\"; exit 0"
+    )
+
+
+def _post_deploy_smoke_commands(*, web_domain: str, api_domain: str) -> list[str]:
+    return [
+        _curl_head_command(f"https://{api_domain}/api/health", host=api_domain, bytes_count=200),
+        _curl_head_command(f"https://{web_domain}/", host=web_domain, bytes_count=80),
+        _curl_head_command("https://app.pokrov.space/", host="app.pokrov.space", bytes_count=80),
+        _curl_expect_missing_command(
+            f"https://{web_domain}/fk-verify.html",
+            host=web_domain,
+            label="/fk-verify.html",
+        ),
+        _curl_expect_missing_command(
+            f"https://{web_domain}/fk-payment-theme.css",
+            host=web_domain,
+            label="/fk-payment-theme.css",
+        ),
+        _curl_head_command("https://pay.pokrov.space/checkout/", host="pay.pokrov.space", bytes_count=120),
+    ]
+
+
 def _run(ssh: paramiko.SSHClient, cmd: str, *, timeout: int = 300) -> tuple[int, str, str]:
     stdin, stdout, stderr = ssh.exec_command(cmd, timeout=timeout)
     code = stdout.channel.recv_exit_status()
@@ -158,6 +237,11 @@ def main() -> int:
     ap.add_argument("--ssh-user", default="root")
     ap.add_argument("--ssh-port", type=int, default=29374)
     ap.add_argument("--passwords", default=str(DEFAULT_PASSWORDS))
+    ap.add_argument(
+        "--plan-only",
+        action="store_true",
+        help="Validate and bundle local static outputs, print the remote plan, then exit before SSH/upload/symlink changes.",
+    )
     args = ap.parse_args()
 
     local_webapp = REPO_ROOT / "webapp" / "out"
@@ -172,6 +256,35 @@ def main() -> int:
         raise SystemExit("Missing --web-domain")
     if not api_domain:
         raise SystemExit("Missing --api-domain")
+    local_failures = _local_static_output_validation_failures(local_webapp=local_webapp, local_marketing=local_mkt)
+    if local_failures:
+        raise SystemExit("Local static output validation failed:\n" + "\n".join(f"- {failure}" for failure in local_failures))
+
+    release_id = _release_id()
+    remote_root = "/var/www/portal"
+    releases_root = f"{remote_root}/releases"
+    remote_release = f"{releases_root}/{release_id}"
+    remote_webapp = f"{remote_release}/webapp"
+    remote_marketing = f"{remote_release}/marketing"
+
+    if args.plan_only:
+        _safe_print(f"plan-only: release_id={release_id}")
+        _safe_print(f"plan-only: local webapp={local_webapp}")
+        _safe_print(f"plan-only: local marketing={local_mkt}")
+        _safe_print(f"plan-only: remote webapp={remote_webapp}")
+        _safe_print(f"plan-only: remote marketing={remote_marketing}")
+        with tempfile.TemporaryDirectory(prefix="pokrov-static-plan-") as temp_root:
+            temp_dir = Path(temp_root)
+            _build_static_bundle(local_webapp, temp_dir / f"webapp-{release_id}.tar.gz", label="webapp")
+            _build_static_bundle(local_mkt, temp_dir / f"marketing-{release_id}.tar.gz", label="marketing")
+        _safe_print("plan-only: release payload validation checks")
+        for check in _release_payload_validation_checks(remote_webapp=remote_webapp, remote_marketing=remote_marketing):
+            _safe_print(f"plan-only: {check}")
+        _safe_print("plan-only: post-deploy smoke checks")
+        for check in _post_deploy_smoke_commands(web_domain=web_domain, api_domain=api_domain):
+            _safe_print(f"plan-only: {check}")
+        _safe_print("plan-only: no SSH/upload/symlink/reload commands executed")
+        return 0
 
     ssh, auth_method = connect_node(
         code="brain",
@@ -182,12 +295,6 @@ def main() -> int:
     )
     try:
         _safe_print(f"brain auth: {auth_method}")
-        release_id = _release_id()
-        remote_root = "/var/www/portal"
-        releases_root = f"{remote_root}/releases"
-        remote_release = f"{releases_root}/{release_id}"
-        remote_webapp = f"{remote_release}/webapp"
-        remote_marketing = f"{remote_release}/marketing"
 
         # Upload into a versioned release directory first, then switch symlinks.
         _run(ssh, f"mkdir -p {remote_webapp} {remote_marketing}", timeout=60)
@@ -207,13 +314,7 @@ def main() -> int:
                 sftp.close()
 
         # Validate release payload before switching public paths.
-        checks = [
-            f"test -f {remote_webapp}/index.html",
-            f"test -f {remote_marketing}/index.html",
-            f"test -f {remote_marketing}/checkout/index.html",
-            f"test -f {remote_marketing}/fk-verify.html",
-        ]
-        for check in checks:
+        for check in _release_payload_validation_checks(remote_webapp=remote_webapp, remote_marketing=remote_marketing):
             code, _out, _err = _run(ssh, check, timeout=30)
             if code != 0:
                 raise SystemExit(f"Release payload validation failed: {check}")
@@ -245,17 +346,11 @@ find {releases_root} -mindepth 1 -maxdepth 1 -type d | sort | head -n -5 | xargs
         _run(ssh, "DEBIAN_FRONTEND=noninteractive apt-get install -y curl >/dev/null 2>&1 || true", timeout=600)
 
         # Quick smoke checks (through localhost resolve on standard HTTPS port).
-        chk = [
-            f"curl -fsS --insecure --resolve {api_domain}:443:127.0.0.1 https://{api_domain}/api/health | head -c 200 || true",
-            f"curl -fsS --insecure --resolve {web_domain}:443:127.0.0.1 https://{web_domain}/ | head -c 80 || true",
-            f"curl -fsS --insecure --resolve app.pokrov.space:443:127.0.0.1 https://app.pokrov.space/ | head -c 80 || true",
-            f"curl -fsS --insecure --resolve {web_domain}:443:127.0.0.1 https://{web_domain}/fk-verify.html | head -c 80 || true",
-            f"curl -fsS --insecure --resolve {web_domain}:443:127.0.0.1 https://{web_domain}/fk-payment-theme.css | head -c 120 || true",
-            "curl -fsS --insecure --resolve pay.pokrov.space:443:127.0.0.1 https://pay.pokrov.space/checkout/ | head -c 120 || true",
-        ]
-        for c in chk:
-            _, out, err = _run(ssh, c, timeout=30)
+        for c in _post_deploy_smoke_commands(web_domain=web_domain, api_domain=api_domain):
+            code, out, err = _run(ssh, c, timeout=30)
             _safe_print(out.strip() or err.strip())
+            if code != 0:
+                raise SystemExit(f"Post-deploy static smoke failed: {c}")
         return 0
     finally:
         ssh.close()

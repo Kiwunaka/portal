@@ -4,8 +4,15 @@ Status: in progress
 Started: 2026-04-26
 Platform branch: `codex/open-beta-v4`
 Client branch: `codex/open-beta-v4`
+Last indexed: 2026-05-07
 
 This folder tracks execution of `POKROV_open_beta_1_0_orchestrator_superplan_v4.md`.
+
+Reference boundary:
+
+- this folder is retained execution evidence for the Open Beta v4 preparation wave
+- canonical product, architecture, operations, design, and active client truth remain in the root canonical docs and `C:/Users/kiwun/Documents/ai/POKROV-app/docs/`
+- rendered route maps, visual audits, and mockup-like assets in this wave are reference evidence, not current UI authority by themselves
 
 ## Scope
 

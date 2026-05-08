@@ -1,0 +1,151 @@
+{
+  "ok": false,
+  "verdict": "NO_GO",
+  "classification": "BLOCKED_BY_POLICY",
+  "mode": "public_beta_launch_decision",
+  "safe_to_publish_public_beta": false,
+  "inputs": {
+    "handoff": "docs\\audit-artifacts\\public-beta-handoff-2026-05-08.md",
+    "completion_audit": "docs\\audit-artifacts\\public-beta-completion-audit-2026-05-08.md",
+    "external_preflight_json": "docs\\audit-artifacts\\public-beta-external-access-preflight-2026-05-08.json",
+    "full_gate": "docs\\audit-artifacts\\release-gate-full-local-2026-05-08.md",
+    "quick_gate": "docs\\audit-artifacts\\release-gate-local-2026-05-08.md",
+    "brain_gate": "docs\\audit-artifacts\\release-gate-brain-2026-05-08.md",
+    "paid_checkout_evidence": "docs\\audit-artifacts\\paid-checkout-launch-evidence-brain-2026-05-08.json",
+    "live_email_status": "docs\\audit-artifacts\\live-email-auth-status-brain-2026-05-08.json",
+    "live_payment_status": "docs\\audit-artifacts\\live-payment-provider-status-brain-2026-05-08.json",
+    "post_deploy_probe": "docs\\audit-artifacts\\public-beta-post-deploy-probe-2026-05-08.json",
+    "staged_reachability": "docs\\audit-artifacts\\staged-client-apps-reachability-2026-05-08.md",
+    "runtime_sync_guard": "docs\\audit-artifacts\\runtime-link-sync-guard-2026-05-08.md"
+  },
+  "checks": [
+    {
+      "name": "current_origin_full_gate",
+      "status": "PASS",
+      "missing": [],
+      "source": "docs\\audit-artifacts\\release-gate-full-local-2026-05-08.md",
+      "note": "Full/default current-origin gate must be green."
+    },
+    {
+      "name": "current_origin_quick_gate",
+      "status": "PASS",
+      "missing": [],
+      "source": "docs\\audit-artifacts\\release-gate-local-2026-05-08.md",
+      "note": "Latest quick current-origin gate must be green."
+    },
+    {
+      "name": "brain_origin_quick_gate",
+      "status": "PASS",
+      "missing": [],
+      "source": "docs\\audit-artifacts\\release-gate-brain-2026-05-08.md",
+      "note": "Brain-origin runtime/static and node readiness gates must be green."
+    },
+    {
+      "name": "public_beta_handoff_policy",
+      "status": "BLOCKED_BY_POLICY",
+      "missing": [
+        "GO for public beta publication without any NO-GO marker"
+      ],
+      "source": "docs\\audit-artifacts\\public-beta-handoff-2026-05-08.md",
+      "note": "Current handoff does not authorize public publication."
+    },
+    {
+      "name": "completion_audit_verdict",
+      "status": "BLOCKED_BY_POLICY",
+      "missing": [
+        "GOAL COMPLETE without NO-GO conclusion"
+      ],
+      "source": "docs\\audit-artifacts\\public-beta-completion-audit-2026-05-08.md",
+      "note": "Completion audit still says the goal is not complete."
+    },
+    {
+      "name": "external_access_preflight",
+      "status": "BLOCKED_BY_ACCESS",
+      "missing": [
+        "runtime APP_* sync approval",
+        "android release URL is missing",
+        "windows release URL is missing",
+        "docs_url is missing",
+        "EMAIL_PROBE_TO",
+        "LAVATOP_PROBE_EMAIL",
+        "GO handoff for public publication"
+      ],
+      "source": "docs\\audit-artifacts\\public-beta-external-access-preflight-2026-05-08.json",
+      "note": "External access preflight is not safe for public publication."
+    },
+    {
+      "name": "staged_client_apps_reachability",
+      "status": "PASS",
+      "missing": [],
+      "source": "docs\\audit-artifacts\\staged-client-apps-reachability-2026-05-08.md",
+      "note": "Staged APK/EXE/docs URLs are reachable."
+    },
+    {
+      "name": "runtime_link_sync_guard",
+      "status": "PASS",
+      "missing": [],
+      "source": "docs\\audit-artifacts\\runtime-link-sync-guard-2026-05-08.md",
+      "note": "Runtime APP_* sync is guarded: dry-run validates values and mutation is blocked without explicit operator evidence. This check does not authorize runtime APP_* sync."
+    },
+    {
+      "name": "paid_checkout_launch_evidence",
+      "status": "BLOCKED_BY_ACCESS",
+      "missing": [
+        "LAVATOP_PROVIDER_ACCEPTANCE_CONFIRMED=true",
+        "lavatop_live_invoice_creation evidence",
+        "lavatop_authenticated_success_webhook evidence",
+        "lavatop_webhook_replay_idempotency evidence",
+        "lavatop_failed_payment_no_fulfillment evidence",
+        "lavatop_manual_review_mismatch evidence",
+        "lavatop_reconciliation_procedure evidence",
+        "paid_access_key_email_delivery evidence"
+      ],
+      "source": "docs\\audit-artifacts\\paid-checkout-launch-evidence-brain-2026-05-08.json",
+      "note": "Paid checkout must remain unavailable until this evidence is green."
+    },
+    {
+      "name": "live_email_auth_status",
+      "status": "PASS",
+      "missing": [],
+      "source": "docs\\audit-artifacts\\live-email-auth-status-brain-2026-05-08.json",
+      "note": "Live email auth is public and delivery-ready."
+    },
+    {
+      "name": "live_payment_provider_status",
+      "status": "BLOCKED_BY_ACCESS",
+      "missing": [
+        "paid_checkout_launch_evidence_missing"
+      ],
+      "source": "docs\\audit-artifacts\\live-payment-provider-status-brain-2026-05-08.json",
+      "note": "Live paid checkout is not green."
+    },
+    {
+      "name": "post_deploy_payment_email_probe",
+      "status": "BLOCKED_BY_ACCESS",
+      "missing": [
+        "email live delivery proof",
+        "Lava.top live invoice proof"
+      ],
+      "source": "docs\\audit-artifacts\\public-beta-post-deploy-probe-2026-05-08.json",
+      "note": "Post-deploy payment/email probe is not fully green."
+    }
+  ],
+  "safe_public_claims": [
+    "POKROV готовит ограниченную бета-проверку для Android и Windows вне магазинов.",
+    "Статусы current-origin и brain-origin можно цитировать только вместе с точными датированными артефактами проверки.",
+    "Email-вход включен по конфигурации; живая доставка писем все еще требует проверки с EMAIL_PROBE_TO.",
+    "Android-аудит можно описывать только как операторски подтвержденный, пока нет полного подтверждения из репозитория.",
+    "GitHub Releases можно описывать только как предварительные артефакты для проверки, пока ссылки загрузки не авторизованы, не синхронизированы и не прошли живую контрольную проверку.",
+    "Оплата и ссылки загрузки остаются закрытыми, пока соответствующие проверки не станут зелеными.",
+    "Если внешняя проверка показывает SKIPPED_BY_OPERATOR по RU-origin, публично говорим, что RU-origin не проверялся для этой бета-волны."
+  ],
+  "unsafe_public_claims": [
+    "Публичная бета уже запущена.",
+    "GitHub Releases уже являются рабочим путем загрузки до синхронизации ссылок и живой контрольной проверки.",
+    "Оплата Lava.top уже работает публично.",
+    "Email-доставка уже доказана живой проверкой почтового ящика до появления подтверждения EMAIL_PROBE_TO.",
+    "Публичные загрузки Android/Windows уже доступны через ссылки загрузки.",
+    "Полный Android-аудит из репозитория зеленый, когда есть только OPERATOR_ATTESTED.",
+    "RU-origin доступность Telegram проверена, когда внешняя проверка говорит SKIPPED_BY_OPERATOR."
+  ]
+}

@@ -15,7 +15,7 @@ from pathlib import Path
 
 from aiogram import Bot, Dispatcher, F, Router
 from aiogram.filters import CommandStart
-from aiogram.types import CallbackQuery, FSInputFile, InlineKeyboardButton, InlineKeyboardMarkup, Message
+from aiogram.types import CallbackQuery, FSInputFile, InlineKeyboardMarkup, Message
 from dotenv import load_dotenv
 
 # Load env from repo-local file first to avoid cwd-dependent startup behavior.
@@ -24,6 +24,7 @@ load_dotenv()
 
 from copy_catalog import get_copy_text
 from db import SessionLocal, init_db
+from telegram_buttons import modern_inline_button as InlineKeyboardButton
 from tickets_repo import (
     STATUS_CLOSED,
     STATUS_IN_PROGRESS,

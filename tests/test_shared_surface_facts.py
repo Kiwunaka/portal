@@ -21,7 +21,7 @@ def test_shared_surface_fact_loaders_expose_canonical_product_and_url_truth():
     design = shared_surface_facts.get_design_tokens()
 
     assert product["brands"]["platform"] == "POKROV"
-    assert product["brands"]["client"] == "POKROV Network"
+    assert product["brands"]["client"] == "POKROV"
     assert product["trial"]["days"] == 5
     assert product["telegram_reward"]["days"] == 10
     assert product["platform_scope"]["public"] == ["android", "windows"]

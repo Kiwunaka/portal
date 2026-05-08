@@ -47,6 +47,15 @@ def _install_aiogram_stubs() -> None:
             self.kwargs = kwargs
 
     class DummyInlineKeyboardButton:
+        model_fields = {
+            "text": object(),
+            "callback_data": object(),
+            "url": object(),
+            "copy_text": object(),
+            "style": object(),
+            "icon_custom_emoji_id": object(),
+        }
+
         def __init__(self, *args, **kwargs):
             self.args = args
             self.kwargs = kwargs
@@ -88,6 +97,10 @@ class FeedbackBotModerationTests(unittest.TestCase):
         self._saved_env: dict[str, str | None] = {}
         for key in ("DATABASE_URL", "ADMIN_ID", "FEEDBACK_BOT_TOKEN", "FEEDBACK_USERNAME", "SUPPORT_USERNAME"):
             self._saved_env[key] = os.environ.get(key)
+        self._saved_modules = {
+            name: sys.modules.get(name)
+            for name in ("aiogram", "aiogram.filters", "aiogram.types")
+        }
 
         os.environ["DATABASE_URL"] = f"sqlite:///{db_uri_path}"
         os.environ["ADMIN_ID"] = "9999"
@@ -97,7 +110,7 @@ class FeedbackBotModerationTests(unittest.TestCase):
 
         _install_aiogram_stubs()
 
-        for module_name in ("feedbackbot", "db", "models", "migrations", "config", "copy_catalog"):
+        for module_name in ("feedbackbot", "telegram_buttons", "db", "models", "migrations", "config", "copy_catalog"):
             sys.modules.pop(module_name, None)
 
         importlib.import_module("config")
@@ -120,6 +133,11 @@ class FeedbackBotModerationTests(unittest.TestCase):
             Path(self.db_path).unlink(missing_ok=True)
         except Exception:
             pass
+        for name, module in self._saved_modules.items():
+            if module is None:
+                sys.modules.pop(name, None)
+            else:
+                sys.modules[name] = module
 
     def test_upsert_feedback_entry_reuses_pending_row(self) -> None:
         from db import SessionLocal
@@ -188,6 +206,25 @@ class FeedbackBotModerationTests(unittest.TestCase):
             self.assertIsNone(session.query(Review).filter_by(id=review.id).first())
         finally:
             session.close()
+
+    def test_feedback_menu_buttons_use_modern_telegram_fields(self) -> None:
+        markup = self.feedbackbot._menu_markup(is_admin=True)
+        rows = markup.kwargs["inline_keyboard"]
+
+        self.assertEqual(rows[0][0].kwargs["style"], "success")
+        self.assertEqual(rows[1][0].kwargs["style"], "primary")
+        self.assertEqual(rows[2][0].kwargs["style"], "primary")
+
+    def test_shared_telegram_button_helper_supports_copy_text(self) -> None:
+        telegram_buttons = importlib.import_module("telegram_buttons")
+
+        button = telegram_buttons.modern_inline_button(
+            text="Скопировать",
+            copy_text="https://connect.pokrov.space/sub/test",
+        )
+
+        self.assertEqual(button.kwargs["copy_text"], {"text": "https://connect.pokrov.space/sub/test"})
+        self.assertNotIn("callback_data", button.kwargs)
 
 
 if __name__ == "__main__":

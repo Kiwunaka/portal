@@ -1,0 +1,11 @@
+﻿{
+    "ok":  true,
+    "enabled":  false,
+    "public_enabled":  false,
+    "delivery_configured":  true,
+    "debug_echo":  false,
+    "mode":  "webhook",
+    "blocked_reasons":  [
+                            "public_email_disabled"
+                        ]
+}

@@ -3,6 +3,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import shutil
 import sys
 from dataclasses import asdict, dataclass
 from pathlib import Path, PurePosixPath
@@ -28,6 +29,7 @@ class DirRule:
     reason: str
     exact_paths: tuple[PurePosixPath, ...] = ()
     basenames: tuple[str, ...] = ()
+    basename_prefixes: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -65,11 +67,16 @@ DIR_RULES: tuple[DirRule, ...] = (
         cleanup_class=CLASS_SAFE,
         reason="repo-local disposable scratch",
         basenames=(".tmp",),
+        basename_prefixes=(".tmp-",),
     ),
     DirRule(
         cleanup_class=CLASS_SAFE,
         reason="generated static export output",
-        exact_paths=(PurePosixPath("webapp/out"), PurePosixPath("marketing/out")),
+        exact_paths=(
+            PurePosixPath("webapp/out"),
+            PurePosixPath("webapp/dist"),
+            PurePosixPath("marketing/out"),
+        ),
     ),
     DirRule(
         cleanup_class=CLASS_INTENTIONAL_RESET,
@@ -152,7 +159,15 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--dry-run",
         action="store_true",
-        help="Accepted for explicit dry-run semantics; this script never deletes anything.",
+        help="Print inventory only. This is the default unless --apply is passed.",
+    )
+    parser.add_argument(
+        "--apply",
+        action="store_true",
+        help=(
+            "Delete the selected cleanup candidates after validating every resolved "
+            "target stays inside the repository root and outside protected zones."
+        ),
     )
     parser.add_argument(
         "--format",
@@ -211,7 +226,11 @@ def _selected_classes(raw_classes: list[str] | None) -> tuple[str, ...]:
 
 def _match_dir(rel_path: PurePosixPath) -> CleanupMatch | None:
     for rule in DIR_RULES:
-        if rel_path in rule.exact_paths or rel_path.name in rule.basenames:
+        if (
+            rel_path in rule.exact_paths
+            or rel_path.name in rule.basenames
+            or any(rel_path.name.startswith(prefix) for prefix in rule.basename_prefixes)
+        ):
             return CleanupMatch(
                 cleanup_class=rule.cleanup_class,
                 kind="dir",
@@ -273,6 +292,42 @@ def _walk_inventory(repo_root: Path, selected_classes: Iterable[str]) -> list[Cl
                 matches.append(match)
 
     return matches
+
+
+def _ensure_safe_apply_target(repo_root: Path, match: CleanupMatch) -> Path:
+    rel_path = PurePosixPath(match.path.rstrip("/"))
+    if rel_path.is_absolute() or ".." in rel_path.parts:
+        raise RuntimeError(f"Refusing unsafe cleanup path: {match.path}")
+    if _is_protected(rel_path):
+        raise RuntimeError(f"Refusing protected cleanup path: {match.path}")
+
+    repo_resolved = repo_root.resolve()
+    target = (repo_resolved / Path(*rel_path.parts)).resolve(strict=False)
+    try:
+        common = os.path.commonpath([str(repo_resolved), str(target)])
+    except ValueError as exc:
+        raise RuntimeError(f"Refusing cleanup outside repository: {match.path}") from exc
+    if os.path.normcase(common) != os.path.normcase(str(repo_resolved)):
+        raise RuntimeError(f"Refusing cleanup outside repository: {match.path}")
+    return target
+
+
+def _apply_matches(repo_root: Path, matches: list[CleanupMatch]) -> list[str]:
+    deleted: list[str] = []
+    for match in matches:
+        target = _ensure_safe_apply_target(repo_root, match)
+        if not target.exists() and not target.is_symlink():
+            continue
+        if match.kind == "dir":
+            if _is_linkish(target):
+                raise RuntimeError(f"Refusing to recursively delete link-like directory: {match.path}")
+            shutil.rmtree(target)
+        elif match.kind == "file":
+            target.unlink()
+        else:
+            raise RuntimeError(f"Unknown cleanup item kind for {match.path}: {match.kind}")
+        deleted.append(match.path)
+    return deleted
 
 
 def _walk_app_next_alias(selected_classes: Iterable[str]) -> list[CleanupMatch]:
@@ -362,15 +417,40 @@ def _json_payload(repo_root: Path, selected_classes: tuple[str, ...], matches: l
     }
 
 
-def _render_text(repo_root: Path, selected_classes: tuple[str, ...], matches: list[CleanupMatch]) -> str:
+def _json_apply_payload(
+    repo_root: Path,
+    selected_classes: tuple[str, ...],
+    matches: list[CleanupMatch],
+    deleted: list[str],
+) -> dict:
+    payload = _json_payload(repo_root, selected_classes, matches)
+    payload["mode"] = "apply"
+    payload["inventory_only"] = False
+    payload["deleted_count"] = len(deleted)
+    payload["deleted"] = deleted
+    return payload
+
+
+def _render_text(
+    repo_root: Path,
+    selected_classes: tuple[str, ...],
+    matches: list[CleanupMatch],
+    *,
+    mode: str = "dry-run",
+) -> str:
     by_class = {cleanup_class: [] for cleanup_class in selected_classes}
     for match in matches:
         by_class.setdefault(match.cleanup_class, []).append(match)
 
+    mode_line = (
+        "Mode: apply (selected files/directories were validated before deletion)"
+        if mode == "apply"
+        else "Mode: dry-run (inventory only; no files are deleted)"
+    )
     lines = [
         "Cleanup inventory report",
         f"Root: {repo_root}",
-        "Mode: dry-run (inventory only; no files are deleted)",
+        mode_line,
         f"Selected classes: {', '.join(selected_classes)}",
         "Protected zones: "
         + ", ".join([path.as_posix() for path in PROTECTED_DIRS] + [path.as_posix() for path in PROTECTED_FILES]),
@@ -395,6 +475,9 @@ def _render_text(repo_root: Path, selected_classes: tuple[str, ...], matches: li
 
 def main() -> int:
     args = _parse_args()
+    if args.apply and args.dry_run:
+        raise SystemExit("--apply and --dry-run cannot be combined")
+
     repo_root = _repo_root_from_args(args.root)
     if not repo_root.exists():
         raise SystemExit(f"Repository root does not exist: {repo_root}")
@@ -404,7 +487,15 @@ def main() -> int:
     matches.extend(_walk_app_next_alias(selected_classes))
     matches.sort(key=lambda item: (item.cleanup_class, item.path))
 
-    if args.format == "json":
+    if args.apply:
+        deleted = _apply_matches(repo_root, matches)
+        if args.format == "json":
+            print(json.dumps(_json_apply_payload(repo_root, selected_classes, matches, deleted), indent=2))
+        else:
+            print(_render_text(repo_root, selected_classes, matches, mode="apply"))
+            print("")
+            print(f"Deleted {len(deleted)} item(s).")
+    elif args.format == "json":
         print(json.dumps(_json_payload(repo_root, selected_classes, matches), indent=2))
     else:
         print(_render_text(repo_root, selected_classes, matches))

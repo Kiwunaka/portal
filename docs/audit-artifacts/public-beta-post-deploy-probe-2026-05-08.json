@@ -1,0 +1,96 @@
+{
+  "ok": false,
+  "classification": "BLOCKED_BY_ACCESS",
+  "mode": "public_beta_post_deploy_probe",
+  "live": false,
+  "email_public_runtime_config_passed": true,
+  "email_live_delivery_probe_passed": false,
+  "lavatop_live_invoice_probe_passed": false,
+  "post_deploy_probe_modes": {
+    "email_public_runtime": "PASS",
+    "email_live_delivery": "BLOCKED_BY_ACCESS",
+    "lavatop_invoice": "BLOCKED_BY_ACCESS"
+  },
+  "safe_to_keep_email_public": true,
+  "safe_to_enable_paid_checkout": false,
+  "inputs": {
+    "api_base_url": "https://api.pokrov.space",
+    "plan_code": "start_99",
+    "readiness_json": "docs\\audit-artifacts\\payment-email-readiness-brain-2026-05-08.json",
+    "evidence_json": "",
+    "brain_live_probe_json": "docs\\audit-artifacts\\brain-post-deploy-live-probe-2026-05-08.json",
+    "env": {
+      "EMAIL_PROBE_TO": "missing",
+      "EMAIL_DELIVERY_WEBHOOK_URL": "missing",
+      "EMAIL_AUTH_WEBHOOK_URL": "missing",
+      "EMAIL_DELIVERY_WEBHOOK_SECRET": "missing",
+      "LAVATOP_PROBE_EMAIL": "missing",
+      "LAVATOP_API_KEY": "missing",
+      "LAVATOP_OFFER_ID": "missing",
+      "LAVATOP_OFFER_ID_START_99": "missing"
+    }
+  },
+  "checks": [
+    {
+      "name": "email_public_runtime_config",
+      "status": "PASS",
+      "missing": [],
+      "note": "Live deployed API email status; does not send email.",
+      "source": "https://api.pokrov.space/api/auth/email/status"
+    },
+    {
+      "name": "payment_provider_catalog",
+      "status": "BLOCKED_BY_ACCESS",
+      "missing": [
+        "enabled Lava.top provider catalog"
+      ],
+      "note": "paid checkout unavailable",
+      "source": "https://api.pokrov.space/api/payments/providers"
+    },
+    {
+      "source": "brain:portal-api",
+      "note": "Live email delivery proof requires a probe recipient and relay runtime env.",
+      "status": "BLOCKED_BY_ACCESS",
+      "name": "email_delivery_verify",
+      "missing": [
+        "email_probe_to"
+      ]
+    },
+    {
+      "source": "brain:portal-api",
+      "note": "Live email delivery proof requires a probe recipient and relay runtime env.",
+      "status": "BLOCKED_BY_ACCESS",
+      "name": "email_delivery_reset",
+      "missing": [
+        "email_probe_to"
+      ]
+    },
+    {
+      "source": "brain:portal-api",
+      "note": "Live email delivery proof requires a probe recipient and relay runtime env.",
+      "status": "BLOCKED_BY_ACCESS",
+      "name": "email_delivery_payment_access_key",
+      "missing": [
+        "email_probe_to"
+      ]
+    },
+    {
+      "source": "brain:portal-api",
+      "note": "Live Lava.top invoice proof requires a probe buyer and runtime credentials.",
+      "status": "BLOCKED_BY_ACCESS",
+      "name": "lavatop_live_invoice_creation",
+      "missing": [
+        "lavatop_probe_email"
+      ]
+    },
+    {
+      "name": "paid_checkout_launch_evidence",
+      "status": "BLOCKED_BY_ACCESS",
+      "missing": [
+        "--evidence-json"
+      ],
+      "note": "Attach the redacted live/sandbox Lava.top evidence JSON before enabling checkout.",
+      "source": "scripts/paid_checkout_launch_evidence_check.py"
+    }
+  ]
+}

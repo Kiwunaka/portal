@@ -9,35 +9,17 @@ from typing import Iterable
 
 TEXT_SUFFIXES = {".css", ".html", ".js", ".jsx", ".json", ".md", ".ts", ".tsx"}
 
+# UTF-8 Russian text decoded through a single-byte codepage often becomes a
+# compact run of Cyrillic capital Er/Es pairs, for example the common
+# escaped-codepoint form of "POKROV" after a bad decode.
 MOJIBAKE_MARKERS = (
-    "Р Сџ",
-    "Р Сњ",
-    "Р РЋ",
-    "Р С›",
-    "Р вЂ”",
-    "Р С™",
-    "Р Т‘",
-    "Р Вµ",
-    "Р С•",
-    "РЎРѓ",
-    "РЎвЂљ",
-    "РЎР‚",
-    "РЎвЂ№",
-    "РЎРЏ",
-    "РЎР‹",
-    "РЎвЂ°",
-    "РІР‚",
-    "Р’В·",
-    "вЂ",
-    "Гђ",
-    "Г‘",
-    "пїЅ",
+    "\u0420\u00a0\u0420\u040b\u0420\u00a0\u0421\u201c",
+    "\u0420\u040e\u0420\u0453",
 )
 
 MOJIBAKE_PATTERNS = (
-    # UTF-8 Russian decoded through a single-byte codepage often appears as
-    # long alternating Р*/С* fragments, for example "РџРѕРґ...".
-    re.compile(r"(?:Р.|С.|вЂ|В·){4,}"),
+    re.compile(r"(?:[\u0420\u0421][^\s]){4,}"),
+    re.compile(r"\ufffd"),
 )
 
 SKIP_PARTS = {
@@ -109,17 +91,20 @@ def scan_mojibake(paths: Iterable[Path]) -> list[TextIntegrityIssue]:
                     )
                     break
             else:
-                for pattern in MOJIBAKE_PATTERNS:
-                    if pattern.search(line):
-                        issues.append(
-                            TextIntegrityIssue(
-                                path=path,
-                                marker=pattern.pattern,
-                                line=line_number,
-                                snippet=line.strip()[:180],
-                            )
+                marker = None
+            if marker:
+                continue
+            for pattern in MOJIBAKE_PATTERNS:
+                if pattern.search(line):
+                    issues.append(
+                        TextIntegrityIssue(
+                            path=path,
+                            marker=pattern.pattern,
+                            line=line_number,
+                            snippet=line.strip()[:180],
                         )
-                        break
+                    )
+                    break
     return issues
 
 

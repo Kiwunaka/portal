@@ -19,6 +19,7 @@ import {
 } from "@/lib/access-policy";
 import { fetchPublicPlans, type PlanCatalogRow } from "@/lib/api";
 import { getTariffPlans, normalizePlanCode } from "@/lib/portal";
+import { userFacingErrorMessage } from "@/lib/public-error-messages";
 import { usePortalSession } from "@/lib/session";
 
 function fallbackPlans(): PlanCatalogRow[] {
@@ -82,7 +83,7 @@ export default function SubscriptionPage() {
       } catch (nextError) {
         if (!cancelled) {
           setPlans(fallbackPlans());
-          setError(String((nextError as { message?: string })?.message || nextError || ""));
+          setError(userFacingErrorMessage(nextError, "Не удалось обновить тарифы, показываем сохраненные варианты."));
         }
       }
     };
@@ -144,13 +145,13 @@ export default function SubscriptionPage() {
   const paymentCards = [
     {
       key: "checkout",
-      title: "Открыть оплату",
-      body: "Самый прямой путь, если нужно продлить срок без лишних переходов.",
-      badge: "Основной путь",
+      title: "Проверить статус продления",
+      body: "Покажем тарифы, текущую готовность оплаты и безопасный следующий шаг.",
+      badge: "Статус оплаты",
       tone: "neutral" as const,
       action: (
         <AppRouteLink href="/subscription/checkout/" className="text-sm font-semibold text-emerald-800 dark:text-emerald-300">
-          Открыть оплату
+          Проверить статус продления
         </AppRouteLink>
       ),
     },
@@ -220,7 +221,7 @@ export default function SubscriptionPage() {
       actions={
         <>
           <AppRouteLink href="/subscription/checkout/" className="btn-primary rounded-full px-5 py-3 text-sm font-semibold">
-            Открыть оплату
+            Проверить статус продления
           </AppRouteLink>
           <AppRouteLink href="/redeem/" className="outline-btn rounded-full px-5 py-3 text-sm font-semibold">
             У меня есть ключ
@@ -261,13 +262,13 @@ export default function SubscriptionPage() {
         title={dash?.is_active ? "Выберите удобный способ продлить" : "Сначала верните срок действия"}
         description={
           dash?.is_active
-            ? "Кабинет не пытается продавать лишнее. Показываем только рабочие варианты и самый прямой путь к оплате."
+            ? "Кабинет не пытается продавать лишнее. Показываем доступные варианты, честный статус продления и безопасный следующий шаг."
             : "Как только срок снова станет активным, устройства и история останутся на месте."
         }
         actions={
           <>
             <AppRouteLink href="/subscription/checkout/" className="btn-primary rounded-full px-5 py-3 text-sm font-semibold">
-              Открыть оплату
+              Проверить статус продления
             </AppRouteLink>
             <AppRouteLink href="/redeem/" className="outline-btn rounded-full px-5 py-3 text-sm font-semibold">
               Применить ключ
@@ -300,10 +301,10 @@ export default function SubscriptionPage() {
         <CabinetSection
           eyebrow="Варианты"
           title="Что можно выбрать"
-          description="Показываем только рабочие варианты продления, без маркетингового шума."
+          description="Показываем доступные варианты и честный статус продления, без маркетингового шума."
         >
           <CabinetCardGrid items={planCards} className="xl:grid-cols-2" />
-          {error ? <p className="mt-4 text-sm text-amber-700 dark:text-amber-200">Часть данных не обновилась автоматически: {error}</p> : null}
+          {error ? <p className="mt-4 text-sm text-amber-700 dark:text-amber-200">{error}</p> : null}
         </CabinetSection>
 
         <CabinetSection
@@ -334,7 +335,7 @@ export default function SubscriptionPage() {
               </button>
               {!manualAccessReady ? (
                 <AppRouteLink href="/subscription/checkout/" className="btn-primary rounded-full px-5 py-3 text-sm font-semibold">
-                  Открыть оплату
+                  Проверить статус продления
                 </AppRouteLink>
               ) : null}
             </div>

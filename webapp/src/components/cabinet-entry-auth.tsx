@@ -13,10 +13,26 @@ import {
   verifyEmailToken,
 } from "@/lib/api";
 import { getPortalPublicConfig } from "@/lib/portal";
+import { userFacingErrorMessage } from "@/lib/public-error-messages";
 import { usePortalSession } from "@/lib/session";
 import { useEffect, useState, type FormEvent } from "react";
 
 const config = getPortalPublicConfig(process.env as Record<string, string | undefined>);
+const isEmailPublicReady = (payload: Awaited<ReturnType<typeof getEmailAuthStatus>>): boolean =>
+  Boolean(
+    payload.enabled &&
+      payload.public_enabled &&
+      payload.delivery_configured &&
+      payload.delivery_secret_configured &&
+      !payload.debug_echo,
+  );
+
+const EMAIL_MODE_LABELS = {
+  login: "Войти",
+  register: "Создать аккаунт",
+  verify: "Подтвердить",
+  recover: "Восстановить доступ",
+} as const;
 
 export default function CabinetEntryAuth({ siteUrl }: { siteUrl: string }) {
   const { logoutWebSession, webLoginBusy, webLoginError } = usePortalSession();
@@ -28,14 +44,15 @@ export default function CabinetEntryAuth({ siteUrl }: { siteUrl: string }) {
   const [email, setEmail] = useState("");
   const [displayName, setDisplayName] = useState("");
   const [password, setPassword] = useState("");
-  const [token, setToken] = useState("");
+  const [verifyToken, setVerifyToken] = useState("");
+  const [recoveryToken, setRecoveryToken] = useState("");
   const [newPassword, setNewPassword] = useState("");
 
   useEffect(() => {
     let cancelled = false;
     void getEmailAuthStatus()
       .then((payload) => {
-        if (!cancelled) setEmailReady(Boolean(payload.enabled));
+        if (!cancelled) setEmailReady(isEmailPublicReady(payload));
       })
       .catch(() => {
         if (!cancelled) setEmailReady(false);
@@ -47,7 +64,7 @@ export default function CabinetEntryAuth({ siteUrl }: { siteUrl: string }) {
 
   const completeEmailLogin = (nextToken?: string | null): void => {
     if (!nextToken) {
-      setEmailError("Email session token is missing.");
+      setEmailError("Не получен токен email-сессии.");
       return;
     }
     setWebSessionToken(nextToken);
@@ -63,7 +80,7 @@ export default function CabinetEntryAuth({ siteUrl }: { siteUrl: string }) {
     try {
       await action();
     } catch (error) {
-      setEmailError(String((error as { message?: string })?.message || error || "Email action failed."));
+      setEmailError(userFacingErrorMessage(error, "Не удалось выполнить действие с email. Попробуйте позже или напишите в поддержку."));
     } finally {
       setEmailBusy(false);
     }
@@ -83,9 +100,11 @@ export default function CabinetEntryAuth({ siteUrl }: { siteUrl: string }) {
       const payload = await registerByEmail({ email, password, display_name: displayName || undefined });
       setEmailMessage(
         payload?.delivery?.status === "sent"
-          ? "Verification email sent."
-          : "Account created. Enter the verification token from the email.",
+          ? "Письмо для подтверждения отправлено."
+          : "Аккаунт создан. Введите код подтверждения из письма.",
       );
+      setVerifyToken("");
+      setRecoveryToken("");
       setEmailMode("verify");
     });
   };
@@ -93,6 +112,11 @@ export default function CabinetEntryAuth({ siteUrl }: { siteUrl: string }) {
   const submitVerify = async (event: FormEvent<HTMLFormElement>): Promise<void> => {
     event.preventDefault();
     await runEmailAction(async () => {
+      const token = String(verifyToken || "").trim();
+      if (!token) {
+        setEmailError("Введите код подтверждения из письма.");
+        return;
+      }
       const payload = await verifyEmailToken({ token });
       completeEmailLogin(payload.token);
     });
@@ -101,12 +125,18 @@ export default function CabinetEntryAuth({ siteUrl }: { siteUrl: string }) {
   const submitRecovery = async (event: FormEvent<HTMLFormElement>): Promise<void> => {
     event.preventDefault();
     await runEmailAction(async () => {
+      const token = String(recoveryToken || "").trim();
       if (!token) {
         await startEmailRecovery({ email });
-        setEmailMessage("Reset email sent. Enter the reset token and new password.");
+        setEmailMessage("Письмо для восстановления отправлено. Введите код и новый пароль.");
         return;
       }
-      const payload = await finishEmailRecovery({ token, password: newPassword || password });
+      const nextPassword = String(newPassword || "").trim();
+      if (!nextPassword) {
+        setEmailError("Введите новый пароль из письма восстановления.");
+        return;
+      }
+      const payload = await finishEmailRecovery({ token, password: nextPassword });
       completeEmailLogin(payload.token);
     });
   };
@@ -143,11 +173,11 @@ export default function CabinetEntryAuth({ siteUrl }: { siteUrl: string }) {
               Email
             </p>
             <h3 className="mt-2 text-xl font-semibold text-slate-950 dark:text-slate-50">
-              {emailReady ? "Email-вход" : "Готовим аккуратно"}
+              {emailReady ? "Email-вход" : "Проверяем доставку"}
             </h3>
           </div>
           <span className="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-semibold text-slate-600 dark:border-white/10 dark:bg-white/[0.05] dark:text-slate-300">
-            {emailReady ? "Готово" : "Скоро"}
+            {emailReady ? "Готово" : "Недоступно"}
           </span>
         </div>
 
@@ -162,6 +192,8 @@ export default function CabinetEntryAuth({ siteUrl }: { siteUrl: string }) {
                     setEmailMode(mode);
                     setEmailError("");
                     setEmailMessage("");
+                    if (mode === "verify") setRecoveryToken("");
+                    if (mode === "recover") setVerifyToken("");
                   }}
                   className={`rounded-full border px-3 py-2 text-xs font-semibold uppercase tracking-[0.12em] ${
                     emailMode === mode
@@ -169,7 +201,7 @@ export default function CabinetEntryAuth({ siteUrl }: { siteUrl: string }) {
                       : "border-slate-200 bg-white text-slate-600 dark:border-white/10 dark:bg-white/[0.04] dark:text-slate-300"
                   }`}
                 >
-                  {mode}
+                  {EMAIL_MODE_LABELS[mode]}
                 </button>
               ))}
             </div>
@@ -177,9 +209,9 @@ export default function CabinetEntryAuth({ siteUrl }: { siteUrl: string }) {
             {emailMode === "login" ? (
               <form className="space-y-3" onSubmit={submitLogin}>
                 <input className={inputClass} value={email} onChange={(event) => setEmail(event.target.value)} type="email" placeholder="email@example.com" required />
-                <input className={inputClass} value={password} onChange={(event) => setPassword(event.target.value)} type="password" placeholder="Password" required />
+                <input className={inputClass} value={password} onChange={(event) => setPassword(event.target.value)} type="password" placeholder="Пароль" required />
                 <button type="submit" disabled={emailBusy} className="btn-primary rounded-2xl px-5 py-3 text-sm font-semibold disabled:opacity-60">
-                  Sign in
+                  Войти
                 </button>
               </form>
             ) : null}
@@ -187,19 +219,19 @@ export default function CabinetEntryAuth({ siteUrl }: { siteUrl: string }) {
             {emailMode === "register" ? (
               <form className="space-y-3" onSubmit={submitRegister}>
                 <input className={inputClass} value={email} onChange={(event) => setEmail(event.target.value)} type="email" placeholder="email@example.com" required />
-                <input className={inputClass} value={displayName} onChange={(event) => setDisplayName(event.target.value)} placeholder="Name" />
-                <input className={inputClass} value={password} onChange={(event) => setPassword(event.target.value)} type="password" placeholder="Password" required />
+                <input className={inputClass} value={displayName} onChange={(event) => setDisplayName(event.target.value)} placeholder="Имя" />
+                <input className={inputClass} value={password} onChange={(event) => setPassword(event.target.value)} type="password" placeholder="Пароль" required />
                 <button type="submit" disabled={emailBusy} className="btn-primary rounded-2xl px-5 py-3 text-sm font-semibold disabled:opacity-60">
-                  Create account
+                  Создать аккаунт
                 </button>
               </form>
             ) : null}
 
             {emailMode === "verify" ? (
               <form className="space-y-3" onSubmit={submitVerify}>
-                <input className={inputClass} value={token} onChange={(event) => setToken(event.target.value)} placeholder="Verification token" required />
+                <input className={inputClass} value={verifyToken} onChange={(event) => setVerifyToken(event.target.value)} placeholder="Код подтверждения" required />
                 <button type="submit" disabled={emailBusy} className="btn-primary rounded-2xl px-5 py-3 text-sm font-semibold disabled:opacity-60">
-                  Verify
+                  Подтвердить
                 </button>
               </form>
             ) : null}
@@ -207,10 +239,10 @@ export default function CabinetEntryAuth({ siteUrl }: { siteUrl: string }) {
             {emailMode === "recover" ? (
               <form className="space-y-3" onSubmit={submitRecovery}>
                 <input className={inputClass} value={email} onChange={(event) => setEmail(event.target.value)} type="email" placeholder="email@example.com" required />
-                <input className={inputClass} value={token} onChange={(event) => setToken(event.target.value)} placeholder="Reset token" />
-                <input className={inputClass} value={newPassword} onChange={(event) => setNewPassword(event.target.value)} type="password" placeholder="New password" />
+                <input className={inputClass} value={recoveryToken} onChange={(event) => setRecoveryToken(event.target.value)} placeholder="Код восстановления" />
+                <input className={inputClass} value={newPassword} onChange={(event) => setNewPassword(event.target.value)} type="password" placeholder="Новый пароль" required={Boolean(recoveryToken)} />
                 <button type="submit" disabled={emailBusy} className="btn-primary rounded-2xl px-5 py-3 text-sm font-semibold disabled:opacity-60">
-                  {token ? "Reset and sign in" : "Send reset email"}
+                  {recoveryToken ? "Сбросить пароль и войти" : "Отправить письмо"}
                 </button>
               </form>
             ) : null}
@@ -220,7 +252,7 @@ export default function CabinetEntryAuth({ siteUrl }: { siteUrl: string }) {
           </div>
         ) : (
           <p className="mt-3 text-sm leading-6 text-slate-600 dark:text-slate-300">
-            Email-вход появится после готовности доставки писем. Сейчас для браузера используйте Telegram или напишите в поддержку, если доступ нужно восстановить вручную.
+            Email-вход скрыт, пока доставка писем на проде недоступна. Сейчас для браузера используйте Telegram или напишите в поддержку, если доступ нужно восстановить вручную.
           </p>
         )}
       </div>

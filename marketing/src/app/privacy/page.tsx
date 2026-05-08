@@ -87,10 +87,10 @@ export default function PrivacyPage() {
           <h2>Контакты</h2>
           <ul className="lp-legal-list lp-legal-list--contacts">
             <li>
-              Support: <a href={`mailto:${config.contactEmail}`}>{config.contactEmail}</a>
+              Поддержка: <a href={`mailto:${config.contactEmail}`}>{config.contactEmail}</a>
             </li>
             <li>
-              Enterprise: <a href={`mailto:${config.enterpriseEmail}`}>{config.enterpriseEmail}</a>
+              Партнерские запросы: <a href={`mailto:${config.enterpriseEmail}`}>{config.enterpriseEmail}</a>
             </li>
             <li>
               Telegram:{" "}

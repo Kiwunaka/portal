@@ -1,6 +1,6 @@
 # Release Links And Final Handoff
 
-Last updated: 2026-04-23
+Last updated: 2026-05-07
 
 ## Purpose
 
@@ -36,21 +36,42 @@ Treat the release as blocked if any of these are missing:
 
 You need final public URLs for:
 
-- `APP_ANDROID_PLAY_URL` or `APP_ANDROID_APK_URL` or `APP_ANDROID_MIRROR_URL`
+- `APP_ANDROID_APK_URL` or `APP_ANDROID_MIRROR_URL`
 - `APP_WINDOWS_EXE_URL` or `APP_WINDOWS_MIRROR_URL`
 - `APP_DOCS_URL`
 
 Minimum valid handoff input:
 
-- at least one Android URL
-- at least one Windows URL
-- docs or install URL
+- at least one Android `.apk` URL from GitHub Releases
+- at least one Windows `.exe` URL from GitHub Releases
+- `https://pokrov.space/install/` or a child install-docs URL
+
+Outside-store beta handoff rule:
+
+- keep `APP_ANDROID_PLAY_URL` empty until a separate store-publishing wave explicitly opens it
+- `remote_brain_apply_release_handoff.py` validates URL role before touching `brain`: APK/EXE artifacts must be `https://github.com/.../releases/download/...` links with matching file extensions, and docs must stay under `https://pokrov.space/install/`
 
 ## Step By Step
 
-1. Publish the final Android and Windows artifacts.
-2. Choose the versioned metadata home under `C:/Users/kiwun/Documents/ai/POKROV-app/artifacts/releases/...`.
-3. Generate `release-handoff.json`, then add any compatibility `release-links.env` and stamped manifest files in that versioned folder.
+1. Prepare and review the non-mutating GitHub Release plan:
+
+```powershell
+python scripts/prepare_github_release_plan.py --tag v0.2.0-beta.1 --title "POKROV 0.2.0-beta.1"
+```
+
+This prints staging commands, the prerelease `gh release create` command, SHA256 values, `gh` availability, and expected `APP_*` URLs without publishing or uploading anything. The staging commands rename raw build outputs to canonical GitHub asset filenames (`pokrov-android-universal.apk`, `pokrov-windows-setup-x64.exe`) before upload. If `tooling.gh.classification` is `BLOCKED_TOOL_MISSING`, install/authenticate GitHub CLI before the publish step.
+
+2. If `gh` is unavailable, prepare the repo-owned REST publisher in dry-run mode:
+
+```powershell
+python scripts/publish_github_release_assets.py --tag v0.2.0-beta.1 --title "POKROV 0.2.0-beta.1"
+```
+
+This prints the canonical upload names, SHA256 values, expected `APP_*` URLs, token presence, and execute requirements without creating a release or uploading assets. `--execute` requires a `GITHUB_TOKEN` or `GH_TOKEN`, or authenticated GitHub CLI, plus `--go-evidence-file` pointing to a handoff that contains `GO for public beta publication` and does not contain `NO-GO`, unless a separate artifact-staging authorization includes `ARTIFACT STAGING GO FOR RUNTIME SMOKE`, `NON-URL P0 GATES GREEN FOR ARTIFACT STAGING`, `ONLY REMAINING P0 GATE: RUNTIME APP-DOWNLOAD URL SMOKE`, and `NO RUNTIME SYNC OR ANNOUNCEMENT` without unresolved blocker markers.
+
+3. Upload Android and Windows artifacts only after the release handoff is `GO`, or under the narrower artifact-staging authorization described in the unblock packet. Artifact staging creates a public prerelease for smoke only: do not sync `APP_*`, rebuild static download surfaces, or announce the release until URL-only smoke has passed against the staged payload and runtime app-download smoke has passed after sync.
+4. Choose the versioned metadata home under `C:/Users/kiwun/Documents/ai/POKROV-app/artifacts/releases/...`.
+5. Generate `release-handoff.json`, then add any compatibility `release-links.env` and stamped manifest files in that versioned folder.
 
 Bridge-period example:
 
@@ -66,13 +87,25 @@ pwsh external/client-fork/scripts/release_handoff.ps1 `
   -ManifestDir "$releaseRoot/release-manifests"
 ```
 
-4. Verify the URLs from that same metadata file:
+6. Verify the URLs from that same metadata file:
 
 ```powershell
 python external/client-fork/scripts/check_release_urls.py --env-file "C:/Users/kiwun/Documents/ai/POKROV-app/artifacts/releases/bridge/<version>/release-links.env"
 ```
 
-5. Apply the `APP_*` values to `brain` from that same metadata file:
+7. Before applying `APP_*`, build a staged `/api/client/apps` shaped JSON with the exact candidate APK/EXE/docs URLs and run policy-only smoke. This validates shape and URL policy only; it does not prove the artifacts are reachable:
+
+```powershell
+python scripts/runtime_app_download_smoke.py --redact --apps-json docs/audit-artifacts/staged-client-apps-2026-05-07.json --require-release-handoff --policy-only
+```
+
+After artifact-staging is authorized and the GitHub APK/EXE URLs are reachable, repeat the same staged payload check without `--policy-only` before syncing runtime env:
+
+```powershell
+python scripts/runtime_app_download_smoke.py --redact --apps-json docs/audit-artifacts/staged-client-apps-2026-05-07.json --require-release-handoff
+```
+
+8. Apply the `APP_*` values to `brain` from that same metadata file:
 
 ```powershell
 python scripts/remote_brain_apply_release_handoff.py `
@@ -85,9 +118,9 @@ Compatibility note:
 - `remote_brain_apply_release_handoff.py` and `release_orchestrator.py` prefer the client-owned JSON handoff through `--metadata-file` / `--release-metadata-file`
 - `release-links.env` remains a compatibility fallback and URL-check input when needed
 
-6. If Android or Windows public URLs changed, rebuild and redeploy static `marketing` so `NEXT_PUBLIC_APP_*` matches the same release.
-7. Re-check the download surfaces that read runtime values.
-8. Only then write the final release handoff.
+9. If Android or Windows public URLs changed, rebuild and redeploy static `marketing` so `NEXT_PUBLIC_APP_*` matches the same release.
+10. Re-check the download surfaces that read runtime values.
+10. Only then write the final release handoff.
 
 ## Surface Notes
 

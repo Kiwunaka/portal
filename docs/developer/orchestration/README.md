@@ -1,6 +1,6 @@
 # POKROV Orchestration Docs
 
-Last updated: 2026-04-23
+Last updated: 2026-05-07
 
 ## Document Status
 
@@ -19,6 +19,12 @@ This standard exists to keep multi-step work reliable in a workspace that now ha
 - mandatory docs-update rules
 - release-sensitive manual checks
 - evidence requirements that outlive a single chat
+
+Historical boundary:
+
+- orchestration files define process, not product behavior
+- completed wave folders, old specs, rendered visual audits, and mockup/reference assets are retained evidence until a deliberate archival task compresses them
+- current product decisions must be copied back into canonical docs before they are treated as source of truth
 
 ## Directory Map
 

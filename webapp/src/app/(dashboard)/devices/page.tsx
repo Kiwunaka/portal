@@ -1,10 +1,11 @@
 "use client";
 
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import AppRouteLink from "@/components/app-route-link";
 import { CabinetCardGrid, CabinetHero, CabinetList, CabinetRoute, CabinetSection } from "@/components/cabinet/surface";
 import { getAccessState, getDeviceLimit, getTrafficLimitGb, isFreeMonthlyState, isPaidUnlimitedState, isTrialPremiumState } from "@/lib/access-policy";
+import { fetchClientRoutePolicy, type ClientRoutePolicyPayload } from "@/lib/api";
 import { usePortalSession } from "@/lib/session";
 
 function formatDate(value?: string | null): string {
@@ -31,8 +32,56 @@ function deviceTitle(name?: string | null, platform?: string | null): string {
   return cleanName || cleanPlatform || "Устройство";
 }
 
+function routePolicyMode(policy: ClientRoutePolicyPayload | null): string {
+  return String(policy?.route_mode || policy?.route_policy?.mode || "").trim().toLowerCase();
+}
+
+function routePolicySelectedApps(policy: ClientRoutePolicyPayload | null): string[] {
+  const source = policy?.selected_apps || policy?.route_policy?.selected_apps || [];
+  return Array.isArray(source) ? source.map((item) => String(item || "").trim()).filter(Boolean) : [];
+}
+
+function routePolicySummary(policy: ClientRoutePolicyPayload | null): { badge: string; title: string; body: string } {
+  const mode = routePolicyMode(policy);
+  const apps = routePolicySelectedApps(policy);
+  if (mode === "selected_apps") {
+    return {
+      badge: "Выбранные приложения",
+      title: "Режим маршрутизации: выбранные приложения",
+      body: `Выбрано ${formatCount(apps.length)} приложения. Меняется в приложении POKROV, потому что только оно видит локальный список программ и системные разрешения.`,
+    };
+  }
+  if (mode === "all_traffic") {
+    return {
+      badge: "Весь трафик",
+      title: "Режим маршрутизации: весь трафик устройства",
+      body: "Сейчас приложение ведет весь трафик устройства. Меняется в приложении POKROV, чтобы не расходиться с локальными системными разрешениями.",
+    };
+  }
+  return {
+    badge: "Меняется в приложении",
+    title: "Режим маршрутизации",
+    body: "Кабинет покажет текущий режим после синхронизации. Меняется в приложении POKROV, а здесь остается безопасная сводка без локальных настроек.",
+  };
+}
+
 export default function DevicesPage() {
   const { user, dash } = usePortalSession();
+  const [routePolicy, setRoutePolicy] = useState<ClientRoutePolicyPayload | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetchClientRoutePolicy()
+      .then((payload) => {
+        if (!cancelled) setRoutePolicy(payload);
+      })
+      .catch(() => {
+        if (!cancelled) setRoutePolicy(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const accessState = getAccessState(dash, user);
   const paidMode = isPaidUnlimitedState(accessState);
@@ -45,6 +94,7 @@ export default function DevicesPage() {
   const activeNodes = dash?.connection_snapshot?.active_nodes ?? 0;
   const knownNodes = dash?.connection_snapshot?.known_nodes ?? user?.nodes?.length ?? 0;
   const knownAppDevices = user?.sync?.device_count ?? user?.devices?.length ?? 0;
+  const routeSummary = routePolicySummary(routePolicy);
 
   const devices = useMemo(
     () =>
@@ -97,6 +147,18 @@ export default function DevicesPage() {
   ];
 
   const modeCards = [
+    {
+      key: "route-policy",
+      title: routeSummary.title,
+      body: routeSummary.body,
+      badge: routeSummary.badge,
+      tone: "info" as const,
+      action: (
+        <AppRouteLink href="/downloads/" className="text-sm font-semibold text-emerald-800 dark:text-emerald-300">
+          Открыть приложение
+        </AppRouteLink>
+      ),
+    },
     {
       key: "paid",
       title: paidMode ? "Сейчас полный режим" : "Полный режим дает больше запаса",

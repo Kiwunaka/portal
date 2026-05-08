@@ -1,10 +1,12 @@
-# Known Issues
+# Известные ограничения
 
-Last updated: 2026-04-26
+Обновлено: 2026-05-08
 
-- Android is not approved for broad public release.
-- Windows beta may be unsigned.
-- Direct downloads may be unavailable for accounts outside the approved beta.
-- Paid checkout may be unavailable while provider proof is pending.
-- RU-origin reachability must be checked separately.
-- Support is best-effort during beta.
+Статус: черновик для поддержки и запуска. Публично использовать только после финального разрешения.
+
+- Android не публикуется через магазины; физическая проверка текущего кандидата учитывается как operator-attested, без обещания широкой магазинной доступности.
+- Windows-сборка может показывать предупреждение неизвестного издателя, потому что доверенная подпись не входит в эту волну.
+- Прямые загрузки могут быть недоступны аккаунтам вне одобренной беты.
+- Оплата может быть закрыта, пока Lava.top, вебхуки, сверка и доставка ключей доступа не пройдут проверку.
+- Доступность из России проверяется отдельно через RU-origin.
+- Поддержка в бете отвечает по мере возможности, без обещания круглосуточной реакции.

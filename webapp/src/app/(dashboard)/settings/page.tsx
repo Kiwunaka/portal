@@ -6,6 +6,7 @@ import AppRouteLink from "@/components/app-route-link";
 import { CabinetCardGrid, CabinetHero, CabinetList, CabinetRoute, CabinetSection } from "@/components/cabinet/surface";
 import { getDeviceLimit, resolvePlanLabel, resolveTrafficStatusText } from "@/lib/access-policy";
 import { checkChannelSubscriberStatus, claimChannelBonus, getEmailAuthStatus } from "@/lib/api";
+import { userFacingErrorMessage } from "@/lib/public-error-messages";
 import { usePortalSession } from "@/lib/session";
 
 function formatDate(value?: string | null): string {
@@ -35,6 +36,15 @@ type BonusCheckState = {
   message: string;
 };
 
+const isEmailPublicReady = (payload: Awaited<ReturnType<typeof getEmailAuthStatus>>): boolean =>
+  Boolean(
+    payload.enabled &&
+      payload.public_enabled &&
+      payload.delivery_configured &&
+      payload.delivery_secret_configured &&
+      !payload.debug_echo,
+  );
+
 export default function SettingsPage() {
   const { user, dash } = usePortalSession();
   const [bonusCheck, setBonusCheck] = useState<BonusCheckState | null>(null);
@@ -58,7 +68,7 @@ export default function SettingsPage() {
     let cancelled = false;
     void getEmailAuthStatus()
       .then((payload) => {
-        if (!cancelled) setEmailReady(Boolean(payload.enabled));
+        if (!cancelled) setEmailReady(isEmailPublicReady(payload));
       })
       .catch(() => {
         if (!cancelled) setEmailReady(false);
@@ -88,13 +98,11 @@ export default function SettingsPage() {
         ? "Email уже привязан к аккаунту."
         : emailReady
           ? "Email-вход включен на экране входа."
-          : "Email-вход готовим отдельно. Пока не показываем недоделанный сценарий.",
-      badge: linkedEmail || (emailReady ? "Доступен" : "Скоро"),
+          : "Email-вход скрыт, пока доставка писем недоступна.",
+      badge: linkedEmail || (emailReady ? "Доступен" : "Недоступен"),
       tone: linkedEmail ? ("info" as const) : ("neutral" as const),
       action: emailReady ? (
-        <AppRouteLink href="/" className="text-sm font-semibold text-emerald-800 dark:text-emerald-300">
-          Email
-        </AppRouteLink>
+        <span className="text-sm font-semibold text-slate-500 dark:text-slate-400">На экране входа</span>
       ) : undefined,
     },
     {
@@ -181,7 +189,12 @@ export default function SettingsPage() {
             : "Подписка пока не подтверждена. Откройте канал и попробуйте еще раз.",
       });
     } catch (error) {
-      setBonusError(String((error as { message?: string })?.message || error || "Не удалось проверить подписку."));
+      setBonusError(
+        userFacingErrorMessage(
+          error,
+          "Не удалось проверить подписку. Откройте канал и попробуйте позже или напишите в поддержку.",
+        ),
+      );
     } finally {
       setBonusBusy("");
     }
@@ -196,7 +209,7 @@ export default function SettingsPage() {
       const days = Number(payload.premium_days || channelBonusDays || 10);
       setBonusMessage(payload.already_claimed ? "Бонус уже был добавлен раньше." : `Бонус +${days} дней добавлен.`);
     } catch (error) {
-      setBonusError(String((error as { message?: string })?.message || error || "Не удалось добавить бонус."));
+      setBonusError(userFacingErrorMessage(error, "Не удалось добавить бонус. Попробуйте позже или напишите в поддержку."));
     } finally {
       setBonusBusy("");
     }
@@ -263,14 +276,14 @@ export default function SettingsPage() {
           },
           {
             label: "Email",
-            value: linkedEmail || (emailReady ? "Доступен" : "Скоро"),
-            hint: linkedEmail ? "Связка уже есть." : emailReady ? "Email-вход включен на экране входа." : "Пока честно держим этот вход выключенным.",
+            value: linkedEmail || (emailReady ? "Доступен" : "Недоступен"),
+            hint: linkedEmail ? "Связка уже есть." : emailReady ? "Email-вход включен на экране входа." : "Пока доставка писем недоступна, этот вход скрыт.",
             tone: linkedEmail ? "info" : "neutral",
           },
           {
             label: "Если нужен следующий шаг",
-            value: dash?.is_active ? "Проверить устройства" : "Открыть оплату",
-            hint: dash?.is_active ? "Полезно перед переносом доступа." : "Самый прямой путь, если срок закончился.",
+            value: dash?.is_active ? "Проверить устройства" : "Проверить статус продления",
+            hint: dash?.is_active ? "Полезно перед переносом доступа." : "Покажем доступный следующий шаг, если срок закончился.",
             tone: "neutral",
           },
         ]}

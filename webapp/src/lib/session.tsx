@@ -20,6 +20,7 @@ import {
   describeTelegramOidcError,
   readTelegramOidcCallback,
 } from "@/lib/telegram-oidc";
+import { isTelegramAuthRefreshRequired, telegramAuthRefreshMessage } from "@/lib/telegram-login-refresh";
 import { getTgUser, type TgUser } from "@/lib/telegram";
 import { createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
 
@@ -50,6 +51,19 @@ function parseErrorMessage(error: unknown): string {
     return error;
   }
   return String((error as { message?: string })?.message || "Не удалось загрузить данные");
+}
+
+function isReauthMessage(message: string): boolean {
+  const lowered = message.toLowerCase();
+  return (
+    isTelegramAuthRefreshRequired(lowered) ||
+    lowered.includes("telegram auth required") ||
+    lowered.includes("invalid telegram signature") ||
+    lowered.includes("access denied") ||
+    lowered.includes("сессия") ||
+    lowered.includes("повторите вход") ||
+    lowered.includes("обновите вход")
+  );
 }
 
 type PortalSessionProviderProps = {
@@ -163,19 +177,14 @@ export function PortalSessionProvider({ children, mode = "dashboard" }: PortalSe
       lastGoodRef.current = { user: profile, dash: dashboard };
     } catch (error) {
       const message = parseErrorMessage(error);
-      const lowered = message.toLowerCase();
-      if (
-        !tgUser &&
-        (lowered.includes("telegram auth required") ||
-          lowered.includes("invalid telegram signature") ||
-          lowered.includes("access denied"))
-      ) {
+      if (isReauthMessage(message)) {
         clearWebSessionToken();
         setUser(null);
         setDash(null);
         lastGoodRef.current = null;
         setWebLoginRequired(true);
         setWebLoginBusy(false);
+        setWebLoginError(telegramAuthRefreshMessage(message));
         setError("");
       } else {
         setError(message);
@@ -192,13 +201,15 @@ export function PortalSessionProvider({ children, mode = "dashboard" }: PortalSe
 
   useEffect(() => {
     if (typeof window === "undefined") return;
-    const onAuthRequired = () => {
+    const onAuthRequired = (event: Event) => {
+      const detail = (event as CustomEvent<{ code?: string | null; message?: string | null }>).detail || {};
+      const message = String(detail.message || "").trim();
       clearWebSessionToken();
       setUser(null);
       setDash(null);
       lastGoodRef.current = null;
       setError("");
-      setWebLoginError("");
+      setWebLoginError(telegramAuthRefreshMessage(message || detail.code || ""));
       setWebLoginRequired(true);
       setLoading(false);
       setRefreshing(false);

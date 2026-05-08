@@ -73,10 +73,12 @@ def _collect_findings() -> list[Finding]:
     else:
         _add_fail(findings, marketing_landing, "Public cabinet CTA is not wired to webapp host")
 
-    if '"/checkout/?plan=${encodeURIComponent(planCode)}"' in landing_text or 'return `/checkout/?plan=${encodeURIComponent(planCode)}`;' in landing_text:
-        _add_pass(findings, marketing_landing, "Pricing CTA routes through public checkout gateway")
+    if "/checkout/?plan=" in landing_text or "href={buildCheckoutHref(plan.code)}" in landing_text:
+        _add_fail(findings, marketing_landing, "Pricing CTA still routes through public checkout while release is NO-GO")
+    elif "href={paidBetaHref}" in landing_text:
+        _add_pass(findings, marketing_landing, "Pricing CTA stays gated to install/status while release is NO-GO")
     else:
-        _add_fail(findings, marketing_landing, "Pricing CTA does not route through public checkout gateway")
+        _add_fail(findings, marketing_landing, "Pricing CTA is missing the gated install/status path")
 
     if "config.newsChannelUrl" in landing_text:
         _add_pass(findings, marketing_landing, "Marketing footer exposes canonical news channel")

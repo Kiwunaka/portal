@@ -15,12 +15,17 @@ if str(PORTAL_BOT_DIR) not in sys.path:
 REPO_ROOT = PORTAL_BOT_DIR.parent
 
 
-def _load_api(monkeypatch, tmp_path: Path):
+def _load_api(monkeypatch, tmp_path: Path, *, email_public_ready: bool = False, delivery_secret_ready: bool = True):
     db_path = tmp_path / "portal-email-auth.db"
     monkeypatch.setenv("DATABASE_URL", f"sqlite:///{db_path.as_posix()}")
     monkeypatch.setenv("BOT_TOKEN", "777000:test-bot-token")
     monkeypatch.setenv("WEBAPP_SESSION_SECRET", "portal-test-secret")
-    monkeypatch.setenv("EMAIL_AUTH_DEBUG_ECHO", "true")
+    monkeypatch.setenv("EMAIL_AUTH_DEBUG_ECHO", "false" if email_public_ready else "true")
+    monkeypatch.setenv("EMAIL_AUTH_PUBLIC_ENABLED", "true" if email_public_ready else "false")
+    if email_public_ready:
+        monkeypatch.setenv("EMAIL_DELIVERY_WEBHOOK_URL", "https://relay.pokrov.test/email/deliver")
+        if delivery_secret_ready:
+            monkeypatch.setenv("EMAIL_DELIVERY_WEBHOOK_SECRET", "relay-secret")
     monkeypatch.setenv("PUBLIC_API_BASE_URL", "https://api.pokrov.test")
     monkeypatch.setenv("PUBLIC_WEB_DOMAIN", "pokrov.test")
     monkeypatch.setenv("WEBAPP_URL", "https://app.pokrov.test/")
@@ -48,6 +53,17 @@ def _load_api(monkeypatch, tmp_path: Path):
         sys.modules.pop(name, None)
 
     return importlib.import_module("api")
+
+
+def _capture_auth_delivery(monkeypatch, api):
+    captured: dict[str, str] = {}
+
+    async def fake_deliver_auth_message(*, kind: str, email: str, token: str, linked_tg_id: int | None = None):
+        captured[str(kind)] = str(token)
+        return {"status": "sent", "kind": str(kind), "email": str(email), "mode": "test"}
+
+    monkeypatch.setattr(api, "deliver_auth_message", fake_deliver_auth_message)
+    return captured
 
 
 def test_owned_backend_files_do_not_use_datetime_utcnow():
@@ -83,7 +99,8 @@ def test_models_datetime_defaults_use_shared_utc_helper():
 
 
 def test_email_register_verify_login_and_session(monkeypatch, tmp_path):
-    api = _load_api(monkeypatch, tmp_path)
+    api = _load_api(monkeypatch, tmp_path, email_public_ready=True)
+    captured = _capture_auth_delivery(monkeypatch, api)
     client = TestClient(api.app)
 
     register = client.post(
@@ -99,7 +116,7 @@ def test_email_register_verify_login_and_session(monkeypatch, tmp_path):
     register_body = register.json()
     assert register_body["ok"] is True
     assert register_body["verification_required"] is True
-    verify_token = str(register_body["debug"]["verify_token"])
+    verify_token = str(captured["verify"])
     assert verify_token
 
     verify = client.post(
@@ -147,6 +164,83 @@ def test_email_status_stays_disabled_in_debug_mode(monkeypatch, tmp_path):
     assert body["ok"] is True
     assert body["enabled"] is False
     assert "debug_echo_enabled" in body["blocked_reasons"]
+
+
+def test_email_status_requires_webhook_secret_for_public_delivery(monkeypatch, tmp_path):
+    api = _load_api(monkeypatch, tmp_path, email_public_ready=True, delivery_secret_ready=False)
+    client = TestClient(api.app)
+
+    status = client.get("/api/auth/email/status")
+
+    assert status.status_code == 200, status.text
+    body = status.json()
+    assert body["enabled"] is False
+    assert body["public_enabled"] is True
+    assert body["delivery_configured"] is False
+    assert body["delivery_secret_configured"] is False
+    assert "delivery_webhook_secret_missing" in body["blocked_reasons"]
+
+
+def test_email_register_and_recovery_start_require_public_delivery(monkeypatch, tmp_path):
+    api = _load_api(monkeypatch, tmp_path)
+    client = TestClient(api.app)
+
+    register = client.post(
+        "/api/auth/email/register",
+        json={"email": "blocked@pokrov.test", "password": "StrongPass123!"},
+    )
+
+    assert register.status_code == 503, register.text
+    assert "Email-вход пока недоступен" in register.text
+
+    recovery = client.post(
+        "/api/auth/email/recovery/start",
+        json={"email": "blocked@pokrov.test"},
+    )
+
+    assert recovery.status_code == 503, recovery.text
+    assert "Email-вход пока недоступен" in recovery.text
+
+
+def test_email_verify_login_and_recovery_finish_require_public_delivery(monkeypatch, tmp_path):
+    api = _load_api(monkeypatch, tmp_path)
+    client = TestClient(api.app)
+
+    db = api.SessionLocal()
+    try:
+        _pending_identity, pending_verify_token = api.register_email_identity(
+            db,
+            email="pending@pokrov.test",
+            password="StrongPass123!",
+        )
+        _verified_identity, verified_token = api.register_email_identity(
+            db,
+            email="verified@pokrov.test",
+            password="StrongPass123!",
+        )
+        api.verify_email_identity(db, token=verified_token)
+        _identity_for_reset, reset_token = api.start_password_reset(db, email="verified@pokrov.test")
+        db.commit()
+    finally:
+        db.close()
+
+    verify = client.post("/api/auth/email/verify", json={"token": pending_verify_token})
+    assert verify.status_code == 503, verify.text
+    assert "Email-вход пока недоступен" in verify.text
+
+    login = client.post(
+        "/api/auth/email/login",
+        json={"email": "verified@pokrov.test", "password": "StrongPass123!"},
+    )
+    assert login.status_code == 503, login.text
+    assert "Email-вход пока недоступен" in login.text
+
+    recovery_finish = client.post(
+        "/api/auth/email/recovery/finish",
+        json={"token": reset_token, "password": "FreshPass456!"},
+    )
+    assert recovery_finish.status_code == 503, recovery_finish.text
+    assert "Email-вход пока недоступен" in recovery_finish.text
 
 
 def test_email_delivery_posts_secret_header(monkeypatch):
@@ -203,8 +297,25 @@ def test_email_delivery_posts_secret_header(monkeypatch):
     assert capture["headers"]["Authorization"] == "Bearer relay-secret"
 
 
+def test_email_relay_rejects_delivery_when_secret_is_not_configured(monkeypatch):
+    monkeypatch.delenv("EMAIL_DELIVERY_WEBHOOK_SECRET", raising=False)
+    sys.modules.pop("email_delivery_service", None)
+    sys.modules.pop("email_relay_app", None)
+    relay = importlib.import_module("email_relay_app")
+    client = TestClient(relay.app)
+
+    response = client.post(
+        "/email/deliver",
+        json={"kind": "verify", "email": "reader@pokrov.test", "token": "verify-token"},
+    )
+
+    assert response.status_code == 401, response.text
+    assert response.json()["detail"] == "Invalid relay secret"
+
+
 def test_email_register_can_link_to_existing_user(monkeypatch, tmp_path):
-    api = _load_api(monkeypatch, tmp_path)
+    api = _load_api(monkeypatch, tmp_path, email_public_ready=True)
+    captured = _capture_auth_delivery(monkeypatch, api)
     client = TestClient(api.app)
 
     db = api.SessionLocal()
@@ -237,7 +348,7 @@ def test_email_register_can_link_to_existing_user(monkeypatch, tmp_path):
     )
 
     assert register.status_code == 200, register.text
-    verify_token = str(register.json()["debug"]["verify_token"])
+    verify_token = str(captured["verify"])
 
     verify = client.post("/api/auth/email/verify", json={"token": verify_token})
     assert verify.status_code == 200, verify.text
@@ -257,7 +368,8 @@ def test_email_register_can_link_to_existing_user(monkeypatch, tmp_path):
 
 
 def test_email_recovery_resets_password(monkeypatch, tmp_path):
-    api = _load_api(monkeypatch, tmp_path)
+    api = _load_api(monkeypatch, tmp_path, email_public_ready=True)
+    captured = _capture_auth_delivery(monkeypatch, api)
     client = TestClient(api.app)
 
     register = client.post(
@@ -267,7 +379,7 @@ def test_email_recovery_resets_password(monkeypatch, tmp_path):
             "password": "StrongPass123!",
         },
     )
-    verify_token = str(register.json()["debug"]["verify_token"])
+    verify_token = str(captured["verify"])
     verify = client.post("/api/auth/email/verify", json={"token": verify_token})
     assert verify.status_code == 200, verify.text
 
@@ -277,7 +389,7 @@ def test_email_recovery_resets_password(monkeypatch, tmp_path):
     )
 
     assert recovery_start.status_code == 200, recovery_start.text
-    recovery_token = str(recovery_start.json()["debug"]["reset_token"])
+    recovery_token = str(captured["reset"])
     assert recovery_token
 
     recovery_finish = client.post(
@@ -302,14 +414,16 @@ def test_email_recovery_resets_password(monkeypatch, tmp_path):
 
 
 def test_email_register_rejects_duplicate_verified_identity(monkeypatch, tmp_path):
-    api = _load_api(monkeypatch, tmp_path)
+    api = _load_api(monkeypatch, tmp_path, email_public_ready=True)
+    captured = _capture_auth_delivery(monkeypatch, api)
     client = TestClient(api.app)
 
     first_register = client.post(
         "/api/auth/email/register",
         json={"email": "dupe@pokrov.test", "password": "StrongPass123!"},
     )
-    verify_token = str(first_register.json()["debug"]["verify_token"])
+    assert first_register.status_code == 200, first_register.text
+    verify_token = str(captured["verify"])
     verify = client.post("/api/auth/email/verify", json={"token": verify_token})
     assert verify.status_code == 200, verify.text
 

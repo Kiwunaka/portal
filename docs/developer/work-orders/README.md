@@ -1,10 +1,10 @@
 # POKROV Work Orders
 
-Last updated: 2026-04-23
+Last updated: 2026-05-07
 
 ## Document Status
 
-This directory is the living execution area for orchestration waves and work orders.
+This directory is the living execution area for active orchestration waves and the retained evidence archive for completed or superseded waves.
 
 ## Purpose
 
@@ -37,6 +37,8 @@ Inside each wave folder:
 - active client workflow truth lives in `C:/Users/kiwun/Documents/ai/POKROV-app/docs/`
 - use `docs/archive/client-lanes/*` only as historical bootstrap or rollback evidence when a wave needs that provenance
 - link to evidence under `docs/audit-artifacts/` rather than copying raw logs into the WO
+- rendered journeys, mockups, and visual audit outputs are retained evidence/reference; they are not current UI authority unless `DESIGN.md` or `docs/design/**` says so
+- old wave folders should be indexed or marked historical instead of deleted during routine cleanup
 
 ## Continuity Rule
 
