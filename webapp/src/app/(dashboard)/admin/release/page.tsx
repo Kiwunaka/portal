@@ -110,6 +110,31 @@ function isEmailPublicReady(email: EmailAuthStatusResult | null): boolean {
   );
 }
 
+async function copyTextToClipboard(text: string): Promise<void> {
+  if (navigator.clipboard?.writeText) {
+    try {
+      await navigator.clipboard.writeText(text);
+      return;
+    } catch {
+      // Fall back to the legacy selection path for hardened browser contexts.
+    }
+  }
+
+  const textarea = document.createElement("textarea");
+  textarea.value = text;
+  textarea.setAttribute("readonly", "true");
+  textarea.style.position = "fixed";
+  textarea.style.left = "-9999px";
+  document.body.appendChild(textarea);
+  textarea.select();
+  try {
+    const ok = document.execCommand("copy");
+    if (!ok) throw new Error("copy command failed");
+  } finally {
+    document.body.removeChild(textarea);
+  }
+}
+
 function buildRuntimeGates({
   apps,
   email,
@@ -266,6 +291,21 @@ function GateCard({ gate }: { gate: GateItem }) {
 }
 
 function OperatorActionCard({ action }: { action: OperatorAction }) {
+  const [copied, setCopied] = useState(false);
+  const [copyError, setCopyError] = useState("");
+
+  const copyCommand = async (): Promise<void> => {
+    setCopyError("");
+    try {
+      await copyTextToClipboard(action.command);
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 1800);
+    } catch {
+      setCopied(false);
+      setCopyError("Не удалось скопировать автоматически. Текст можно выделить вручную.");
+    }
+  };
+
   return (
     <article className={adminPanelClass(action.tone)}>
       <div className="flex items-start justify-between gap-3">
@@ -273,12 +313,23 @@ function OperatorActionCard({ action }: { action: OperatorAction }) {
           <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500">{action.title}</p>
           <h3 className="mt-2 text-base font-semibold text-slate-900">{action.status}</h3>
         </div>
-        <AdminBadge tone={action.tone}>{action.tone === "success" ? "готово" : "нужно"}</AdminBadge>
+        <div className="flex shrink-0 flex-col items-end gap-2">
+          <AdminBadge tone={action.tone}>{action.tone === "success" ? "готово" : "нужно"}</AdminBadge>
+          <button
+            type="button"
+            className={adminButtonClass("secondary", "xs")}
+            onClick={() => void copyCommand()}
+            aria-label={`Скопировать ${action.title}`}
+          >
+            {copied ? "Скопировано" : "Скопировать"}
+          </button>
+        </div>
       </div>
       <p className="mt-3 text-sm leading-6 text-slate-600">{action.detail}</p>
       <pre className="mt-3 overflow-x-auto rounded-[0.9rem] border border-slate-200/70 bg-slate-950 p-3 text-xs leading-5 text-slate-100">
         <code>{action.command}</code>
       </pre>
+      {copyError ? <p className="mt-2 text-xs text-rose-700">{copyError}</p> : null}
     </article>
   );
 }

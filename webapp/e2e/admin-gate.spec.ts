@@ -1198,6 +1198,11 @@ test.describe("Admin gate", () => {
     await expect(page.getByText("Runtime-ссылки активны", { exact: true })).toBeVisible();
     await expect(page.getByText("Runtime-ссылки не синкать")).not.toBeVisible();
     await expect(page.getByRole("heading", { name: "Что нужно от оператора" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Скопировать Runtime APP-ссылки" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Скопировать Email-доставка" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Скопировать Lava.top" })).toBeVisible();
+    await page.getByRole("button", { name: "Скопировать Runtime APP-ссылки" }).click();
+    await expect(page.getByRole("button", { name: "Скопировать Runtime APP-ссылки" })).toContainText("Скопировано");
     await expect(page.getByText("Runtime APP-ссылки").first()).toBeVisible();
     await expect(page.getByText("ДЕЙСТВИЙ НЕ НУЖНО: runtime-ссылки уже активны для текущего релиз-кандидата.")).toBeVisible();
     await expect(page.getByText("Email-доставка")).toBeVisible();

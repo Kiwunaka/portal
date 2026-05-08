@@ -33,6 +33,7 @@ The release is prepared as far as current access allows: GitHub prerelease APK/E
 - External access preflight now uses the latest post-handoff runtime smoke artifact `docs/audit-artifacts/runtime-app-download-smoke-brain-2026-05-08-post-handoff.json`.
 - External access preflight public-claim guardrails now emit Russian operator text.
 - Machine-readable launch decision now emits Russian safe/unsafe public claims.
+- Admin release cockpit now has copy buttons for the runtime-link GO text, email probe command, and Lava.top probe command.
 - Public beta post-deploy probe and launch decision JSON were refreshed after the latest deploy/probe checks.
 - GitHub Actions Guardrails are green on portal `master` at commit `62da31e`; this is CI-safe repo evidence, not public-release authorization.
 - Support/admin/redeem/promo/payment/email surfaces have the focused fixes and tests described in the current workspace diff.
@@ -72,6 +73,8 @@ The release is prepared as far as current access allows: GitHub prerelease APK/E
 - `npx.cmd playwright test cabinet-flow.spec.ts admin-gate.spec.ts --grep "narrow mobile viewport|admin pages clickable" --reporter=line` -> PASS, 2 tests, authenticated cabinet/admin mobile overflow coverage via mocked e2e.
 - `npx.cmd playwright test cabinet-flow.spec.ts --grep "access keys|promo codes" --reporter=line` -> PASS, 2 tests for cabinet gift/access-key and promo redemption.
 - `python -m pytest tests\test_bot_paywall.py -q -k "modern_button_fields or public_bot_cabinet or access_key_button or main_menu"` -> PASS, 18 tests for modern bot button fields and public bot menu/account surfaces.
+- Admin release cockpit operator command copy buttons: RED then GREEN `npx.cmd playwright test admin-gate.spec.ts --grep "release cockpit no-go" --reporter=line`; focused `npx.cmd playwright test admin-gate.spec.ts --grep "release cockpit" --reporter=line` -> PASS, 3 tests; `npm.cmd run build` in `webapp/` -> PASS.
+- `python scripts\remote_deploy_brain_static_sites.py --brain-ip 82.21.114.104 --ssh-user root --ssh-port 29374` -> PASS, static release id `20260508195049`; `python scripts\verify_brain_ready.py --brain-ip 82.21.114.104 --ssh-user root --ssh-port 29374` -> PASS; live browser check of `https://app.pokrov.space/admin/release/` had 0 console errors/warnings and no horizontal overflow on the unauthenticated entry.
 - Telegram fallback-admin bot labels were kept RU-facing while preserving callback payloads; `python -m pytest tests\test_bot_paywall.py -q` -> PASS, 83 tests; helpbot/feedbackbot/menu tests -> PASS, 15 tests.
 - `python scripts\remote_deploy_brain_portal_code.py --brain-ip 82.21.114.104 --restart portal-api,portal-bot,portal-helpbot,portal-feedbackbot` -> PASS; all requested services active.
 - `python scripts\brain_telegram_bot_menu_check.py --brain-ip 82.21.114.104 --ssh-user root --ssh-port 29374 --output docs\audit-artifacts\telegram-bot-command-menu-brain-2026-05-08.json` -> PASS.
@@ -93,7 +96,7 @@ The release is prepared as far as current access allows: GitHub prerelease APK/E
 - Email runtime status: PASS, public mode enabled, delivery URL and secret configured, debug echo off, no blocked reasons.
 - Payment provider status: `BLOCKED_BY_ACCESS`; `/api/payments/providers` returns `blocked=true`, no providers, reason `paid_checkout_launch_evidence_missing`.
 - GitHub release: published prerelease, not draft. APK and EXE assets are uploaded; release notes now explicitly say `NO-GO` and keep runtime links/payment/public announcement closed.
-- Static deploy: latest static release id `20260508190122`; `https://app.pokrov.space/` and `https://pokrov.space/install/` return `200`.
+- Static deploy: latest static release id `20260508195049`; `https://app.pokrov.space/admin/release/`, `https://app.pokrov.space/`, and `https://pokrov.space/checkout/` return `200`.
 
 ## Remaining Blockers
 
