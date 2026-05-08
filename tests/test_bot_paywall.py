@@ -851,6 +851,16 @@ class BotPaywallTests(unittest.TestCase):
         finally:
             session.close()
 
+    def test_admin_direct_trial_gift_uses_canonical_five_days(self) -> None:
+        import inspect
+
+        source = inspect.getsource(self.bot_module.admin_gift)
+
+        self.assertIn("`/gift [tg_id] trial` — Пробный (5 дней)", source)
+        self.assertIn('"trial": {"days": 5', source)
+        self.assertNotIn("Пробный (7 дней)", source)
+        self.assertNotIn('"trial": {"days": 7', source)
+
     def test_gift_card_menu_hides_stars_purchase_when_disabled(self) -> None:
         self.bot_module.BOT_STARS_PAYMENTS_ENABLED = False
         callback = _FakeCallback(1001, data="gift_cards")

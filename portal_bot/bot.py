@@ -11809,7 +11809,7 @@ async def admin_gift(message: Message, bot: Bot):
     if len(parts) < 3:
         await message.answer(
             "📦 *Формат команды /gift:*\n\n"
-            "`/gift [tg_id] trial` — Пробный (7 дней)\n"
+            "`/gift [tg_id] trial` — Пробный (5 дней)\n"
             "`/gift [tg_id] basic` — Стандарт (30 дней)\n"
             "`/gift [tg_id] pro` — Турбо (30 дней)\n"
             "`/gift [tg_id] vip` — VIP (365 дней)\n"
@@ -11835,7 +11835,7 @@ async def admin_gift(message: Message, bot: Bot):
 
     # Preset tariffs for gifts
     gift_presets = {
-        "trial": {"days": 7, "name": "🎁 Пробный"},
+        "trial": {"days": 5, "name": "🎁 Пробный"},
         "basic": {"days": 30, "name": "⚡ Стандарт"},
         "pro": {"days": 30, "name": "🚀 Турбо"},
         "vip": {"days": 365, "name": "👑 VIP"},
