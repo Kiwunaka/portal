@@ -243,7 +243,7 @@ function Hero({ links }: { links: HomeLinks }) {
               Статус беты
             </div>
             <h1 className={styles.heroTitle}>
-              POKROV
+              POKROV{" "}
               <br />
               готовит бету
             </h1>

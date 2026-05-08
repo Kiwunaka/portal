@@ -68,6 +68,13 @@ class UiVisualSmokeTests(unittest.TestCase):
         self.assertIn("POKROV cabinet", webapp_entry.must_contain)
         self.assertIn("pokrovBranding.entryEyebrow", webapp_entry.must_contain)
 
+    def test_marketing_home_hero_keeps_word_boundary_for_text_extractors(self) -> None:
+        repo_root = Path(__file__).resolve().parents[1]
+        text = (repo_root / "marketing" / "src" / "components" / "home" / "homepage.tsx").read_text(encoding="utf-8")
+
+        self.assertIn('POKROV{" "}', text)
+        self.assertNotIn("POKROV\n              <br />", text)
+
 
 if __name__ == "__main__":
     unittest.main()
