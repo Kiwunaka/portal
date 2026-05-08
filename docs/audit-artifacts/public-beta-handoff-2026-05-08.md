@@ -2,7 +2,7 @@
 
 Generated: 2026-05-08 21:22 MSK
 
-Refreshed: 2026-05-09 after portal commit `23e894e` and client commit `c5f40a6`.
+Refreshed: 2026-05-09 after portal commit `023849b` and client commit `c5f40a6`.
 
 ## Verdict
 
@@ -37,7 +37,7 @@ The release is prepared as far as current access allows: GitHub prerelease APK/E
 - Machine-readable launch decision now emits Russian safe/unsafe public claims.
 - Admin release cockpit now has copy buttons for the runtime-link GO text, email probe command, and Lava.top probe command.
 - Public beta post-deploy probe and launch decision JSON were refreshed after the latest deploy/probe checks.
-- GitHub Actions Guardrails are green on portal `master` at commit `23e894e`; this is CI-safe repo evidence, not public-release authorization.
+- GitHub Actions Guardrails are green on portal `master` at commit `023849b`; this is CI-safe repo evidence, not public-release authorization.
 - Support/admin/redeem/promo/payment/email surfaces have the focused fixes and tests described below; platform tracked files are clean on `master`.
 - Access-key and gift-card entry now tolerates common pasted separators (`U+2010..U+2014`, `U+2212`, underscores, and whitespace) across API, bot, cabinet redeem, admin promo lookup, and marketing checkout.
 - Telegram OIDC finish now classifies `expired/deprecated` provider responses as refreshable auth errors instead of raw provider failures.
@@ -91,7 +91,8 @@ The release is prepared as far as current access allows: GitHub prerelease APK/E
 - `python -m pytest tests\test_bot_paywall.py -q` -> PASS, 88 tests after bot checkout-gate and module-isolation updates.
 - `python -m pytest tests\test_lavatop_payment_providers.py tests\test_paid_checkout_launch_evidence_check.py tests\test_payment_email_readiness_smoke.py tests\test_api_payments_callbacks.py -q` -> PASS, 42 tests.
 - `python -m pytest portal_bot\tests\test_telegram_oidc_auth.py portal_bot\tests\test_email_auth.py tests\test_api_auth_and_tickets.py tests\test_api_payments_callbacks.py tests\test_admin_payments_api.py tests\test_bot_paywall.py tests\test_lavatop_payment_providers.py tests\test_payment_email_readiness_smoke.py tests\test_paid_checkout_launch_evidence_check.py tests\test_public_beta_external_access_preflight.py tests\test_public_beta_post_deploy_probe.py tests\test_public_beta_launch_decision.py -q` -> PASS, 257 tests; 11 existing deprecation warnings and a non-fatal Windows pytest temp cleanup warning.
-- GitHub Actions Guardrails run `25581649885` on portal commit `479dd1b` -> PASS; run `25581858872` on portal commit `23e894e` -> PASS.
+- GitHub Actions Guardrails run `25581649885` on portal commit `479dd1b` -> PASS; run `25581858872` on portal commit `23e894e` -> PASS; run `25583770912` on portal commit `023849b` -> PASS.
+- `python scripts\remote_deploy_brain_portal_code.py --brain-ip 82.21.114.104 --ssh-user root --ssh-port 29374 --restart portal-api,portal-bot` -> PASS after the bot RUB checkout gate; `python scripts\verify_brain_ready.py --brain-ip 82.21.114.104 --ssh-user root --ssh-port 29374` -> PASS; live `/api/payments/providers` remained `blocked=true` with reason `paid_checkout_launch_evidence_missing`.
 - `powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\validate-seed.ps1` in `C:/Users/kiwun/Documents/ai/POKROV-app` -> PASS after client posture metadata refresh; `python -m json.tool` on `config/release-handoff.seed.json` and `config/cutover-readiness.seed.json` -> PASS; `c5f40a6` pushed to `POKROV-app/main`.
 - Telegram fallback-admin bot labels were kept RU-facing while preserving callback payloads; `python -m pytest tests\test_bot_paywall.py -q` -> PASS, 83 tests; helpbot/feedbackbot/menu tests -> PASS, 15 tests.
 - `python scripts\remote_deploy_brain_portal_code.py --brain-ip 82.21.114.104 --restart portal-api,portal-bot,portal-helpbot,portal-feedbackbot` -> PASS; all requested services active.
@@ -109,8 +110,8 @@ The release is prepared as far as current access allows: GitHub prerelease APK/E
 ## Live Status
 
 - API health: PASS, `200`, status `ok`.
-- GitHub Actions Guardrails: PASS, latest portal run `25581858872`, commit `23e894e`.
-- Backend deploy: latest portal code deploy restarted `portal-api` after Telegram OIDC classification; previous access-key separator deploy restarted `portal-api` and `portal-bot`; all services are active in brain readiness.
+- GitHub Actions Guardrails: PASS, latest portal run `25583770912`, commit `023849b`.
+- Backend deploy: latest portal code deploy restarted `portal-api` and `portal-bot` after the bot RUB checkout gate; previous deploys restarted `portal-api` after Telegram OIDC classification and `portal-api,portal-bot` after access-key separator normalization; all services are active in brain readiness.
 - Email runtime status: PASS, public mode enabled, delivery URL and secret configured, debug echo off, no blocked reasons.
 - Payment provider status: `BLOCKED_BY_ACCESS`; `/api/payments/providers` returns `blocked=true`, no providers, reason `paid_checkout_launch_evidence_missing`; the Telegram bot also hides Lava.top RUB payment CTAs behind the same gate.
 - GitHub release: published prerelease, not draft. APK and EXE assets are uploaded; release notes now explicitly say `NO-GO` and keep runtime links/payment/public announcement closed.
