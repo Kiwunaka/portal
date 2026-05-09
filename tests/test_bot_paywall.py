@@ -437,6 +437,9 @@ class BotPaywallTests(unittest.TestCase):
         self.assertIn("https://app.pokrov.space/downloads/?platform=android", connect)
         self.assertIn("https://app.pokrov.space/downloads/?platform=windows", connect)
         self.assertIn("Apple пока в подготовке", connect)
+        self.assertIn("запасной ручной путь", connect.lower())
+        self.assertIn("кабинет", connect.lower())
+        self.assertNotIn("Нажмите *🔗 Ссылка для подключения* в боте", connect)
         self.assertNotIn("iPhone / iPad:", connect)
         self.assertNotIn("APP_ANDROID_APK_URL", connect)
         self.assertNotIn("github.com", connect)
@@ -1133,6 +1136,10 @@ class BotPaywallTests(unittest.TestCase):
         asyncio.run(self.bot_module.gift_redeem_prompt(gift))
         gift_back = gift.message.edit_kwargs[-1]["reply_markup"].inline_keyboard[-1][0]
         self.assertEqual(getattr(gift_back, "style", None), self.bot_module.BTN_STYLE_DANGER)
+        gift_text = gift.message.edits[-1]
+        self.assertIn("ключ доступа", gift_text.lower())
+        self.assertIn("подарочный код", gift_text.lower())
+        self.assertNotIn("*Активация подарка*", gift_text)
 
         prompt = _FakeCallback(1001, data="promo_activate_prompt")
         asyncio.run(self.bot_module.promo_activate_prompt(prompt))
@@ -1705,6 +1712,7 @@ class BotPaywallTests(unittest.TestCase):
         back_button = next(button for button in buttons if str(getattr(button, "callback_data", "") or "") == "menu_more")
 
         self.assertEqual(getattr(gift_button, "style", None), self.bot_module.BTN_STYLE_SUCCESS)
+        self.assertIn("ключ", str(getattr(gift_button, "text", "")).lower())
         self.assertEqual(getattr(cabinet_button, "style", None), self.bot_module.BTN_STYLE_PRIMARY)
         self.assertEqual(getattr(back_button, "style", None), self.bot_module.BTN_STYLE_DANGER)
 

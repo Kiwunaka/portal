@@ -3622,7 +3622,7 @@ def _build_direct_rub_payment_keyboard(*, tg_id: int, tariff_key: str, payment_u
 def _stars_payments_unavailable_keyboard() -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(
         inline_keyboard=[
-            [InlineKeyboardButton(text="🎁 Активировать подарок", callback_data="gift_redeem_prompt")],
+            [InlineKeyboardButton(text="🎁 Активировать ключ", callback_data="gift_redeem_prompt")],
             [InlineKeyboardButton(text="🌐 Открыть кабинет", web_app=WebAppInfo(url=WEBAPP_URL))],
             [InlineKeyboardButton(text="🆘 Поддержка", callback_data="support")],
             [InlineKeyboardButton(text="◀️ Назад", callback_data="menu_more")],
@@ -3664,7 +3664,7 @@ async def _show_stars_payments_unavailable(callback: CallbackQuery) -> None:
         "🎁 *Подарки и оплата*\n\n"
         "Покупка через Telegram Stars сейчас закрыта. Для публичной беты платная касса будет только через Lava.top, "
         "когда провайдер, вебхуки и доставка ключей на email пройдут проверку.\n\n"
-        "Уже полученный подарочный код можно активировать здесь или в кабинете.",
+        "Уже полученный ключ доступа или подарочный код можно активировать здесь или в кабинете.",
         reply_markup=_stars_payments_unavailable_keyboard(),
         parse_mode=ParseMode.MARKDOWN,
     )
@@ -4766,16 +4766,16 @@ async def instruction_platform(callback: CallbackQuery):
         "instr_android": (
             "🤖 *Android*\n\n"
             "1. Скачайте приложение POKROV для Android\n"
-            "2. Вернитесь сюда и откройте свою ссылку для подключения\n"
-            "3. Если удобнее, можно начать через кабинет",
+            "2. Откройте приложение и войдите или активируйте доступ через кабинет\n"
+            "3. Если приложение не подхватило доступ, используйте ручную ссылку как запасной путь",
             _webapp_downloads_url("android"),
             "📥 Скачать POKROV",
         ),
         "instr_win": (
             "💻 *Windows*\n\n"
             "1. Скачайте приложение POKROV для Windows\n"
-            "2. Вернитесь сюда и откройте свою ссылку для подключения\n"
-            "3. Если удобнее, завершите всё через кабинет",
+            "2. Откройте приложение и войдите или активируйте доступ через кабинет\n"
+            "3. Если приложение не подхватило доступ, используйте ручную ссылку как запасной путь",
             _webapp_downloads_url("windows"),
             "📥 Скачать POKROV",
         ),
@@ -4799,7 +4799,7 @@ async def instruction_platform(callback: CallbackQuery):
         ],
     ]
     if callback.data in {"instr_android", "instr_win"}:
-        rows.append([_btn_spec(text="🔗 Ссылка для подключения", callback_data="show_key", style=BTN_STYLE_PRIMARY)])
+        rows.append([_btn_spec(text="🧭 Ручная ссылка", callback_data="show_key", style=BTN_STYLE_PRIMARY)])
     else:
         rows.append([_btn_spec(text="🆘 Поддержка", callback_data="support", style=BTN_STYLE_PRIMARY)])
     rows.append([_btn_spec(text="◀️ Устройства", callback_data="instruction", style=BTN_STYLE_DANGER)])
@@ -4918,7 +4918,7 @@ async def menu_more(callback: CallbackQuery):
     rows.extend([
         [
             _btn_spec(
-                text="🎁 Активировать подарок",
+                text="🎁 Активировать ключ",
                 callback_data="gift_redeem_prompt",
                 style=BTN_STYLE_SUCCESS,
                 icon_custom_emoji_id=BTN_EMOJI_SUCCESS_ID or None,
@@ -4934,7 +4934,7 @@ async def menu_more(callback: CallbackQuery):
 
     await callback.message.edit_text(
         "📦 *Ещё*\n\n"
-        "Здесь собраны дополнительные действия: подарок, код или отзыв.\n\n"
+        "Здесь собраны дополнительные действия: ключ доступа, подарок, промокод или отзыв.\n\n"
         "Выберите, что хотите сделать дальше:",
         reply_markup=kb,
         parse_mode=ParseMode.MARKDOWN
@@ -4982,8 +4982,8 @@ async def gift_redeem_prompt(callback: CallbackQuery):
         ]
     )
     await callback.message.edit_text(
-        "🎁 *Активация подарка*\n\n"
-        "Отправьте код следующим сообщением.\n"
+        "🎁 *Активация ключа или подарка*\n\n"
+        "Отправьте ключ доступа или подарочный код следующим сообщением.\n"
         "_Если у вас старый код `SWAZ-...`, он тоже пока принимается._",
         reply_markup=kb,
         parse_mode=ParseMode.MARKDOWN,
@@ -5448,9 +5448,9 @@ FAQ_ANSWERS = {
         f"• Android: [POKROV]({_webapp_downloads_url('android')})\n"
         f"• Windows: [POKROV]({_webapp_downloads_url('windows')})\n\n"
         f"Apple пока в подготовке: [статус релиза]({IOS_APP_LINK})\n\n"
-        "2️⃣ Нажмите *🔗 Ссылка для подключения* в боте\n\n"
-        "3️⃣ Откройте ссылку в приложении POKROV\n\n"
-        "4️⃣ Нажмите «Подключить»\n\n"
+        "2️⃣ Откройте приложение POKROV и войдите или активируйте доступ через кабинет\n\n"
+        "3️⃣ Нажмите «Подключить» в приложении\n\n"
+        "Запасной ручной путь: если приложение не подхватило доступ, откройте ручную ссылку в боте или кабинете.\n\n"
         "Если что-то не открылось, следующий шаг — написать в поддержку."
     ),
     "notwork": (
@@ -5495,9 +5495,9 @@ def _support_faq_answer(faq_key: str) -> str:
             f"• Android: [POKROV]({_webapp_downloads_url('android')})\n"
             f"• Windows: [POKROV]({_webapp_downloads_url('windows')})\n\n"
             f"Apple пока в подготовке: [статус релиза]({IOS_APP_LINK})\n\n"
-            "2️⃣ Нажмите *🔗 Ссылка для подключения* в боте\n\n"
-            "3️⃣ Откройте ссылку в приложении POKROV\n\n"
-            "4️⃣ Нажмите «Подключить»\n\n"
+            "2️⃣ Откройте приложение POKROV и войдите или активируйте доступ через кабинет\n\n"
+            "3️⃣ Нажмите «Подключить» в приложении\n\n"
+            "Запасной ручной путь: если приложение не подхватило доступ, откройте ручную ссылку в боте или кабинете.\n\n"
             "Если что-то не открылось, следующий шаг — написать в поддержку."
         )
     return FAQ_ANSWERS.get(faq_key, "Ответ не найден")
@@ -5581,16 +5581,16 @@ async def buy_gift_card(callback: CallbackQuery, bot: Bot):
 
 @router.message(Command("redeem"))
 async def redeem_command(message: Message, bot: Bot):
-    """Redeem a gift card code"""
+    """Redeem an access key or gift card code."""
     pending_redeem_codes.discard(message.from_user.id)
     args = message.text.split(maxsplit=1)
 
     if len(args) < 2:
         await message.answer(
-            "📥 *Активация подарочной карты*\n\n"
+            "📥 *Активация ключа доступа или подарка*\n\n"
             "Использование: `/redeem POKROV-XXXX-XXXX`\n\n"
             "_Старые коды `SWAZ-...` тоже работают._\n\n"
-            "_Введи код карты, которую тебе подарили_",
+            "_Введите ключ из письма/кабинета или подарочный код_",
             parse_mode=ParseMode.MARKDOWN
         )
         return
@@ -5929,7 +5929,7 @@ async def handle_text_input(message: Message):
         pending_redeem_codes.discard(tg_id)
         code = (message.text or "").strip().upper()
         if not code:
-            await message.answer("❌ Код пустой. Нажми «🎁 Активировать подарок» и попробуй снова.")
+            await message.answer("❌ Код пустой. Нажмите «🎁 Активировать ключ» и попробуйте снова.")
             return
         if not check_tos_accepted(tg_id):
             await message.answer("⚠️ Сначала прими условия. Нажми /start и подтверди оферту.")
