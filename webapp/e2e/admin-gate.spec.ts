@@ -1155,7 +1155,7 @@ test.describe("Admin gate", () => {
     await expect(page.getByRole("heading", { name: "Старые подарочные карты" })).toBeVisible();
     await expect(page.locator("body")).toContainText("POKROV-GIFT-2030");
     await page.getByLabel("Тип подарочной карты").selectOption("premium");
-    await page.getByRole("button", { name: "Создать gift-карту" }).click();
+    await page.getByRole("button", { name: "Создать подарочную карту" }).click();
 
     await expect(page.locator("body")).toContainText("POKROV-PREMIUM-2030");
     await expect(page.locator("body")).toContainText("90 дн.");

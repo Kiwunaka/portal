@@ -470,7 +470,7 @@ export default function AdminPromosPage() {
           <div>
             <h2 className="font-display text-xl font-bold">Старые подарочные карты</h2>
             <p className="text-xs text-slate-500">
-              Совместимость для уже знакомого bot/API gift-flow. Основной новый путь остается через ключи доступа.
+              Совместимость для уже знакомого подарочного сценария bot/API. Основной новый путь остается через ключи доступа.
             </p>
           </div>
           <button
@@ -506,7 +506,7 @@ export default function AdminPromosPage() {
             disabled={giftCreating}
             className={`${adminButtonClass("primary")} self-end`}
           >
-            {giftCreating ? "Создаем..." : "Создать gift-карту"}
+            {giftCreating ? "Создаем..." : "Создать подарочную карту"}
           </button>
         </div>
 
@@ -539,7 +539,7 @@ export default function AdminPromosPage() {
           ) : (
             <div className="empty-state md:col-span-2 xl:col-span-3">
               <Gift size={24} />
-              <p className="text-xs">Подарочных карт пока нет. Создайте карту только если нужен legacy gift-flow.</p>
+              <p className="text-xs">Подарочных карт пока нет. Создайте карту только если нужен совместимый подарочный сценарий.</p>
             </div>
           )}
         </div>
