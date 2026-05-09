@@ -11,6 +11,7 @@
     "full_gate": "docs\\audit-artifacts\\release-gate-full-local-2026-05-08.md",
     "quick_gate": "docs\\audit-artifacts\\release-gate-local-2026-05-08.md",
     "brain_gate": "docs\\audit-artifacts\\release-gate-brain-2026-05-08.md",
+    "brain_static_verify": "docs\\audit-artifacts\\brain-origin-verify-2026-05-09.md",
     "paid_checkout_evidence": "docs\\audit-artifacts\\paid-checkout-launch-evidence-brain-2026-05-08.json",
     "live_email_status": "docs\\audit-artifacts\\live-email-auth-status-brain-2026-05-08.json",
     "live_payment_status": "docs\\audit-artifacts\\live-payment-provider-status-brain-2026-05-08.json",
@@ -39,6 +40,13 @@
       "missing": [],
       "source": "docs\\audit-artifacts\\release-gate-brain-2026-05-08.md",
       "note": "Brain-origin runtime/static and node readiness gates must be green."
+    },
+    {
+      "name": "brain_origin_static_deploy_verify",
+      "status": "PASS",
+      "missing": [],
+      "source": "docs\\audit-artifacts\\brain-origin-verify-2026-05-09.md",
+      "note": "Fresh brain-origin static deploy is green while runtime links, paid checkout, and public announcement remain blocked."
     },
     {
       "name": "public_beta_handoff_policy",

@@ -42,6 +42,28 @@ def _write_gate(path: Path, *, gate_set: str, brain: bool = False, status: str =
     return path
 
 
+def _write_brain_static_verify(path: Path, *, status: str = "PASS_STATIC_NO_GO") -> Path:
+    path.write_text(
+        "\n".join(
+            [
+                "# Brain-Origin Static Deploy Verify 2026-05-09",
+                "",
+                f"Status: `{status}`",
+                "",
+                "- No runtime `APP_*` sync was performed.",
+                "- Paid checkout remained closed.",
+                "- Telegram announcement was not posted.",
+                "- `https://app.pokrov.space/release-status.json`: `NO_GO`, `safe_to_publish_public_beta=false`",
+                "",
+                "Until that happens, public beta remains `NO_GO`.",
+            ]
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    return path
+
+
 def _write_json(path: Path, payload: dict) -> Path:
     path.write_text(json.dumps(payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     return path
@@ -157,6 +179,16 @@ class PublicBetaLaunchDecisionTests(unittest.TestCase):
         checks = {check["name"]: check for check in report["checks"]}
         self.assertEqual(checks["post_deploy_payment_email_probe"]["source"], str(expected))
 
+    def test_default_brain_static_verify_uses_current_20260509_artifact(self) -> None:
+        expected = Path("docs/audit-artifacts/brain-origin-verify-2026-05-09.md")
+
+        self.assertEqual(self.module.DEFAULT_BRAIN_STATIC_VERIFY, expected)
+        report = self.module.build_report()
+        checks = {check["name"]: check for check in report["checks"]}
+        self.assertEqual(checks["brain_origin_static_deploy_verify"]["source"], str(expected))
+        self.assertEqual(checks["brain_origin_static_deploy_verify"]["status"], "PASS")
+        self.assertIn("runtime links", checks["brain_origin_static_deploy_verify"]["note"])
+
     def test_current_artifacts_remain_no_go(self) -> None:
         report = self.module.build_report()
 
@@ -166,6 +198,7 @@ class PublicBetaLaunchDecisionTests(unittest.TestCase):
         checks = {check["name"]: check for check in report["checks"]}
         self.assertEqual(checks["runtime_link_sync_guard"]["status"], "PASS")
         self.assertIn("does not authorize runtime APP_* sync", checks["runtime_link_sync_guard"]["note"])
+        self.assertEqual(checks["brain_origin_static_deploy_verify"]["status"], "PASS")
         self.assertEqual(checks["public_beta_handoff_policy"]["status"], "BLOCKED_BY_POLICY")
         self.assertEqual(checks["completion_audit_verdict"]["status"], "BLOCKED_BY_POLICY")
         self.assertIn(checks["external_access_preflight"]["status"], {"BLOCKED_BY_ACCESS", "FAIL"})
@@ -217,6 +250,7 @@ class PublicBetaLaunchDecisionTests(unittest.TestCase):
                 full_gate=root / "full.md",
                 quick_gate=root / "quick.md",
                 brain_gate=root / "brain.md",
+                brain_static_verify=_write_brain_static_verify(root / "brain-static.md"),
                 paid_checkout_evidence=root / "paid.json",
                 live_email_status=root / "email.json",
                 live_payment_status=root / "payment.json",

@@ -25,6 +25,7 @@ DEFAULT_EXTERNAL_PREFLIGHT_JSON = Path("docs/audit-artifacts/public-beta-externa
 DEFAULT_FULL_GATE = Path("docs/audit-artifacts/release-gate-full-local-2026-05-08.md")
 DEFAULT_QUICK_GATE = Path("docs/audit-artifacts/release-gate-local-2026-05-08.md")
 DEFAULT_BRAIN_GATE = Path("docs/audit-artifacts/release-gate-brain-2026-05-08.md")
+DEFAULT_BRAIN_STATIC_VERIFY = Path("docs/audit-artifacts/brain-origin-verify-2026-05-09.md")
 DEFAULT_PAID_CHECKOUT_EVIDENCE = Path("docs/audit-artifacts/paid-checkout-launch-evidence-brain-2026-05-08.json")
 DEFAULT_LIVE_EMAIL_STATUS = Path("docs/audit-artifacts/live-email-auth-status-brain-2026-05-08.json")
 DEFAULT_LIVE_PAYMENT_STATUS = Path("docs/audit-artifacts/live-payment-provider-status-brain-2026-05-08.json")
@@ -130,7 +131,7 @@ def _check(
 
 
 def _extract_markdown_status(text: str) -> str:
-    match = re.search(r"(?m)^-\s+Status:\s+`([^`]+)`", text)
+    match = re.search(r"(?m)^(?:-\s+)?Status:\s+`([^`]+)`", text)
     return str(match.group(1)).strip().upper() if match else ""
 
 
@@ -152,6 +153,44 @@ def _markdown_gate_check(
     if missing:
         return _check(name, FAIL, source=path, missing=missing, note=note)
     return _check(name, PASS, source=path, note=note)
+
+
+def _brain_static_deploy_verify_check(path: Path) -> dict[str, Any]:
+    text = _load_text(path)
+    if not text:
+        return _check(
+            "brain_origin_static_deploy_verify",
+            BLOCKED_BY_ACCESS,
+            source=path,
+            missing=[str(path)],
+            note="Fresh brain-origin static deploy evidence is missing.",
+        )
+
+    required_phrases = [
+        "Status: `PASS_STATIC_NO_GO`",
+        "No runtime `APP_*` sync was performed.",
+        "Paid checkout remained closed.",
+        "Telegram announcement was not posted.",
+        "`NO_GO`, `safe_to_publish_public_beta=false`",
+        "Until that happens, public beta remains `NO_GO`.",
+    ]
+    missing = [phrase for phrase in required_phrases if phrase not in text]
+    if _extract_markdown_status(text) != "PASS_STATIC_NO_GO":
+        missing.append("Status: `PASS_STATIC_NO_GO`")
+    if missing:
+        return _check(
+            "brain_origin_static_deploy_verify",
+            FAIL,
+            source=path,
+            missing=missing,
+            note="Brain-origin static deploy evidence is not a clean static NO-GO verify.",
+        )
+    return _check(
+        "brain_origin_static_deploy_verify",
+        PASS,
+        source=path,
+        note="Fresh brain-origin static deploy is green while runtime links, paid checkout, and public announcement remain blocked.",
+    )
 
 
 def _handoff_policy_check(path: Path) -> dict[str, Any]:
@@ -491,6 +530,7 @@ def build_report(
     full_gate: Path = DEFAULT_FULL_GATE,
     quick_gate: Path = DEFAULT_QUICK_GATE,
     brain_gate: Path = DEFAULT_BRAIN_GATE,
+    brain_static_verify: Path = DEFAULT_BRAIN_STATIC_VERIFY,
     paid_checkout_evidence: Path = DEFAULT_PAID_CHECKOUT_EVIDENCE,
     live_email_status: Path = DEFAULT_LIVE_EMAIL_STATUS,
     live_payment_status: Path = DEFAULT_LIVE_PAYMENT_STATUS,
@@ -520,6 +560,7 @@ def build_report(
             ],
             note="Brain-origin runtime/static and node readiness gates must be green.",
         ),
+        _brain_static_deploy_verify_check(Path(brain_static_verify)),
         _handoff_policy_check(Path(handoff)),
         _completion_audit_check(Path(completion_audit)),
         _external_preflight_check(Path(external_preflight_json)),
@@ -545,6 +586,7 @@ def build_report(
             "full_gate": str(full_gate),
             "quick_gate": str(quick_gate),
             "brain_gate": str(brain_gate),
+            "brain_static_verify": str(brain_static_verify),
             "paid_checkout_evidence": str(paid_checkout_evidence),
             "live_email_status": str(live_email_status),
             "live_payment_status": str(live_payment_status),
@@ -584,6 +626,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--full-gate", default=str(DEFAULT_FULL_GATE))
     parser.add_argument("--quick-gate", default=str(DEFAULT_QUICK_GATE))
     parser.add_argument("--brain-gate", default=str(DEFAULT_BRAIN_GATE))
+    parser.add_argument("--brain-static-verify", default=str(DEFAULT_BRAIN_STATIC_VERIFY))
     parser.add_argument("--paid-checkout-evidence", default=str(DEFAULT_PAID_CHECKOUT_EVIDENCE))
     parser.add_argument("--live-email-status", default=str(DEFAULT_LIVE_EMAIL_STATUS))
     parser.add_argument("--live-payment-status", default=str(DEFAULT_LIVE_PAYMENT_STATUS))
@@ -600,6 +643,7 @@ def main(argv: list[str] | None = None) -> int:
         full_gate=Path(args.full_gate),
         quick_gate=Path(args.quick_gate),
         brain_gate=Path(args.brain_gate),
+        brain_static_verify=Path(args.brain_static_verify),
         paid_checkout_evidence=Path(args.paid_checkout_evidence),
         live_email_status=Path(args.live_email_status),
         live_payment_status=Path(args.live_payment_status),
