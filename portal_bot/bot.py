@@ -3671,11 +3671,31 @@ async def _show_stars_payments_unavailable(callback: CallbackQuery) -> None:
 
 
 def _dual_pay_text(*, show_trial: bool) -> str:
+    rub_providers = _enabled_bot_rub_providers()
     provider_names = ", ".join(
         str(row.get("label") or "").strip()
-        for row in _enabled_bot_rub_providers()
+        for row in rub_providers
         if str(row.get("label") or "").strip()
     )
+    if not provider_names:
+        blocked_line = (
+            "Оплата временно недоступна: Lava.top включится только после зеленой проверки платежей "
+            "и доставки ключей на email."
+        )
+        if show_trial:
+            return (
+                "🚀 *Как удобнее начать?*\n\n"
+                "Можно спокойно взять 5 дней бесплатно и проверить всё в деле.\n"
+                f"{blocked_line}\n\n"
+                "Пока можно посмотреть тарифы, проверить статус продления на сайте или написать в поддержку.\n\n"
+                "Выберите следующий шаг:"
+            )
+        return (
+            "💳 *Оплата в рублях*\n\n"
+            f"{blocked_line}\n\n"
+            "Пока можно посмотреть тарифы, проверить статус продления на сайте или написать в поддержку.\n\n"
+            "Выберите следующий шаг:"
+        )
     rub_hint = f"В рублях доступны: {provider_names}." if provider_names else "В рублях доступны карта и СБП."
     if show_trial:
         return (
@@ -3698,9 +3718,14 @@ def _dual_pay_keyboard(*, tg_id: int, show_trial: bool) -> InlineKeyboardMarkup:
     rows: list[list[InlineKeyboardButton]] = []
     if show_trial:
         rows.append([InlineKeyboardButton(text="🚀 Запустить тест на 5 дней", callback_data="buy_trial")])
+    charge_label = (
+        "💳 Посмотреть тарифы и оплату в ₽"
+        if _enabled_bot_rub_providers()
+        else "💳 Посмотреть тарифы"
+    )
     rows.extend(
         [
-            [InlineKeyboardButton(text="💳 Посмотреть тарифы и оплату в ₽", callback_data="charge")],
+            [InlineKeyboardButton(text=charge_label, callback_data="charge")],
         ]
     )
     rows.append([InlineKeyboardButton(text="◀️ Назад", callback_data="back")])

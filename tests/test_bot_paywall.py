@@ -1523,6 +1523,10 @@ class BotPaywallTests(unittest.TestCase):
         text = self.bot_module._dual_pay_text(show_trial=True)
         self.assertIn("5 дней", text)
         self.assertNotIn("3 дня", text)
+        self.assertIn("Оплата временно недоступна", text)
+        self.assertNotIn("карта и СБП", text)
+        self.assertNotIn("оплату в рублях", text)
+        self.assertNotIn("После оплаты всё включится автоматически", text)
 
     def test_dual_pay_keyboard_uses_modern_button_fields(self) -> None:
         self.bot_module.BTN_EMOJI_PRIMARY_ID = "5368324170671202286"
@@ -1533,6 +1537,8 @@ class BotPaywallTests(unittest.TestCase):
         trial_button = keyboard.inline_keyboard[0][0]
         charge_button = keyboard.inline_keyboard[1][0]
         back_button = keyboard.inline_keyboard[-1][0]
+        self.assertIn("Посмотреть тарифы", str(getattr(charge_button, "text", "")))
+        self.assertNotIn("оплату", str(getattr(charge_button, "text", "")).lower())
         self.assertEqual(getattr(trial_button, "style", None), self.bot_module.BTN_STYLE_SUCCESS)
         self.assertEqual(getattr(trial_button, "icon_custom_emoji_id", None), "5373141891321699086")
         self.assertEqual(getattr(charge_button, "style", None), self.bot_module.BTN_STYLE_PRIMARY)
