@@ -3704,7 +3704,7 @@ def _dual_pay_text(*, show_trial: bool) -> str:
             "Пока можно посмотреть тарифы, проверить статус продления на сайте или написать в поддержку.\n\n"
             "Выберите следующий шаг:"
         )
-    rub_hint = f"В рублях доступны: {provider_names}." if provider_names else "В рублях доступны карта и СБП."
+    rub_hint = f"В рублях доступны: {provider_names}."
     if show_trial:
         return (
             "🚀 *Как удобнее начать?*\n\n"
