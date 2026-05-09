@@ -1324,6 +1324,29 @@ test.describe("Admin gate", () => {
     await expect(page.getByText("public_email_disabled").first()).toBeVisible();
   });
 
+  test("shows readable blocked payment reason in release cockpit metric strip", async ({ page }) => {
+    await registerApiMocks(page, {
+      isAdmin: true,
+      paymentProviders: {
+        ...mockPaymentProviders(),
+        ok: false,
+        providers: [],
+        blocked: true,
+        blocked_reasons: ["paid_checkout_launch_evidence_missing"],
+        blocked_reason_texts: [
+          "Оплата пока закрыта: мы включим продление после финальной проверки Lava.top и доставки ключей на email.",
+        ],
+      },
+    });
+
+    await openRoute(page, "admin/release/");
+
+    await expect(
+      page.getByText("Оплата пока закрыта: мы включим продление после финальной проверки Lava.top и доставки ключей на email.").first(),
+    ).toBeVisible();
+    await expect(page.getByText("paid_checkout_launch_evidence_missing")).not.toBeVisible();
+  });
+
   test("keeps admin dashboard stable when summary omits optional blocks", async ({ page }) => {
     const pageErrors: string[] = [];
     page.on("pageerror", (error) => pageErrors.push(error.message));

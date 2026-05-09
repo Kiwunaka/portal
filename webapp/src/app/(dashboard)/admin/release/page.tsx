@@ -681,7 +681,9 @@ export default function AdminReleasePage() {
           {
             label: "Оплата",
             value: payments?.ok ? "каталог найден" : "закрыто",
-            hint: payments?.ok ? `провайдеры: ${(payments.providers || []).map((provider) => provider.code).join(", ")}; checkout закрыт до post-deploy подтверждений Lava.top.` : reasonList(payments?.blocked_reasons),
+            hint: payments?.ok
+              ? `провайдеры: ${(payments.providers || []).map((provider) => provider.code).join(", ")}; checkout закрыт до post-deploy подтверждений Lava.top.`
+              : reasonList(payments?.blocked_reason_texts || payments?.blocked_reasons),
             tone: payments?.ok ? "warning" : "warning",
           },
           {
