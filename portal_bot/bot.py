@@ -5912,7 +5912,7 @@ async def handle_text_input(message: Message):
                 try:
                     await message.bot.send_message(
                         ticket.user_tg_id,
-                        f"💬 Новый ответ оператора в обращениее #{ticket.id}.",
+                        f"💬 Новый ответ оператора в обращении #{ticket.id}.",
                         reply_markup=kb,
                     )
                 except Exception:
@@ -5922,7 +5922,7 @@ async def handle_text_input(message: Message):
                 try:
                     await message.bot.send_message(
                         ADMIN_ID,
-                        f"🆕 Новое сообщение в обращениее #{ticket.id} от `{ticket.user_tg_id}`",
+                        f"🆕 Новое сообщение в обращении #{ticket.id} от `{ticket.user_tg_id}`",
                         parse_mode=ParseMode.MARKDOWN,
                         reply_markup=kb,
                     )
@@ -7365,7 +7365,7 @@ async def ticket_new(callback: CallbackQuery):
         ticket = get_user_active_ticket(session, tg_id)
         if ticket:
             await callback.message.edit_text(
-                f"У тебя уже есть активный обращение #{ticket.id}.",
+                f"У тебя уже есть активное обращение #{ticket.id}.",
                 reply_markup=_keyboard_from_specs(
                     [
                         [
@@ -7403,7 +7403,7 @@ async def ticket_new(callback: CallbackQuery):
         pending_ticket_replies[tg_id] = ticket.id
 
         await callback.message.edit_text(
-            f"Обращение #{ticket.id} создан.\nОтправь одним сообщением описание проблемы.",
+            f"Обращение #{ticket.id} создано.\nОтправь одним сообщением описание проблемы.",
             reply_markup=_keyboard_from_specs(
                 [
                     [
@@ -7434,7 +7434,7 @@ async def ticket_new(callback: CallbackQuery):
         try:
             await callback.bot.send_message(
                 ADMIN_ID,
-                f"🆕 Новый обращение #{ticket.id} от пользователя `{tg_id}`",
+                f"🆕 Новое обращение #{ticket.id} от пользователя `{tg_id}`",
                 parse_mode=ParseMode.MARKDOWN,
                 reply_markup=kb,
             )
@@ -7455,7 +7455,7 @@ async def ticket_my(callback: CallbackQuery):
 
     if not tickets:
         await callback.message.edit_text(
-            "Обращениеов пока нет.",
+            "Обращений пока нет.",
             reply_markup=_keyboard_from_specs(
                 [
                     [
@@ -7588,7 +7588,7 @@ async def ticket_close(callback: CallbackQuery):
         # Notify opposite side.
         if callback.from_user.id == ADMIN_ID:
             try:
-                await callback.bot.send_message(ticket.user_tg_id, f"Обращение #{ticket.id} закрыт оператором.")
+                await callback.bot.send_message(ticket.user_tg_id, f"Обращение #{ticket.id} закрыто оператором.")
             except Exception:
                 pass
         else:
@@ -7624,7 +7624,7 @@ async def ticket_reopen(callback: CallbackQuery):
             try:
                 await callback.bot.send_message(
                     ADMIN_ID,
-                    f"Обращение #{ticket.id} переоткрыт пользователем `{ticket.user_tg_id}`.",
+                    f"Обращение #{ticket.id} переоткрыто пользователем `{ticket.user_tg_id}`.",
                     parse_mode=ParseMode.MARKDOWN,
                 )
             except Exception:
@@ -7672,7 +7672,7 @@ async def admin_tickets(callback: CallbackQuery):
 
     if not tickets:
         await callback.message.edit_text(
-            "В очереди нет активных обращениеов.",
+            "В очереди нет активных обращений.",
             reply_markup=InlineKeyboardMarkup(
                 inline_keyboard=[[InlineKeyboardButton(text="◀️ Назад", callback_data="admin")]]
             ),
@@ -7733,7 +7733,7 @@ async def show_admin_panel(callback: CallbackQuery):
             InlineKeyboardButton(text="🔗 Launch ссылки", callback_data="admin_start_links"),
         ],
         [
-            InlineKeyboardButton(text="🎫 Очередь обращениеов", callback_data="admin_tickets"),
+            InlineKeyboardButton(text="🎫 Очередь обращений", callback_data="admin_tickets"),
         ],
         [
             InlineKeyboardButton(text="Ноды", callback_data="admin_nodes"),
