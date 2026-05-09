@@ -267,7 +267,7 @@ class RemoteBrainApplyReleaseHandoffTests(unittest.TestCase):
                 self.module._release_handoff_evidence_failure(None),
             )
             self.assertIn(
-                "not a public-beta GO handoff",
+                "NO-GO",
                 self.module._release_handoff_evidence_failure(no_go),
             )
 
@@ -278,7 +278,42 @@ class RemoteBrainApplyReleaseHandoffTests(unittest.TestCase):
 
             self.assertEqual(self.module._release_handoff_evidence_failure(go), "")
 
+    def test_runtime_sync_evidence_rejects_public_go_with_mixed_case_no_go(self) -> None:
+        with tempfile.TemporaryDirectory() as td:
+            go = Path(td) / "handoff.md"
+            go.write_text(
+                "\n".join(
+                    [
+                        "GO for public beta publication",
+                        "No-Go for payment launch.",
+                    ]
+                )
+                + "\n",
+                encoding="utf-8",
+            )
+
+            self.assertIn("NO-GO", self.module._release_handoff_evidence_failure(go))
+
     def test_runtime_sync_evidence_accepts_narrow_sync_authorization(self) -> None:
+        with tempfile.TemporaryDirectory() as td:
+            evidence = Path(td) / "runtime-sync.md"
+            evidence.write_text(
+                "\n".join(
+                    [
+                        "RUNTIME LINK SYNC GO FOR APP-DOWNLOAD SMOKE",
+                        "OPERATOR_APPROVED_RUNTIME_LINK_SYNC=true",
+                        "STAGED GITHUB ASSET REACHABILITY GREEN",
+                        "NO PUBLIC ANNOUNCEMENT",
+                        "PAID CHECKOUT REMAINS CLOSED",
+                    ]
+                )
+                + "\n",
+                encoding="utf-8",
+            )
+
+            self.assertEqual(self.module._release_handoff_evidence_failure(evidence), "")
+
+    def test_runtime_sync_evidence_rejects_narrow_sync_with_no_go_marker(self) -> None:
         with tempfile.TemporaryDirectory() as td:
             evidence = Path(td) / "runtime-sync.md"
             evidence.write_text(
@@ -296,7 +331,33 @@ class RemoteBrainApplyReleaseHandoffTests(unittest.TestCase):
                 encoding="utf-8",
             )
 
-            self.assertEqual(self.module._release_handoff_evidence_failure(evidence), "")
+            self.assertIn("NO-GO", self.module._release_handoff_evidence_failure(evidence))
+
+    def test_runtime_sync_evidence_rejects_marker_examples_inside_fenced_block(self) -> None:
+        with tempfile.TemporaryDirectory() as td:
+            evidence = Path(td) / "runbook.md"
+            evidence.write_text(
+                "\n".join(
+                    [
+                        "Operator runbook example:",
+                        "",
+                        "```text",
+                        "RUNTIME LINK SYNC GO FOR APP-DOWNLOAD SMOKE",
+                        "OPERATOR_APPROVED_RUNTIME_LINK_SYNC=true",
+                        "STAGED GITHUB ASSET REACHABILITY GREEN",
+                        "NO PUBLIC ANNOUNCEMENT",
+                        "PAID CHECKOUT REMAINS CLOSED",
+                        "```",
+                    ]
+                )
+                + "\n",
+                encoding="utf-8",
+            )
+
+            self.assertIn(
+                "RUNTIME LINK SYNC GO FOR APP-DOWNLOAD SMOKE",
+                self.module._release_handoff_evidence_failure(evidence),
+            )
 
     def test_runtime_sync_evidence_rejects_artifact_staging_no_runtime_sync_marker(self) -> None:
         with tempfile.TemporaryDirectory() as td:

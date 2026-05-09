@@ -26,6 +26,7 @@ INSTALL_DOCS_HOST = "pokrov.space"
 INSTALL_DOCS_PATH = "/install/"
 GO_MARKER = "GO for public beta publication"
 NO_GO_MARKER = "NO-GO"
+NO_GO_BLOCKING_MARKERS = ("NO-GO", "NO_GO", "NO GO")
 RUNTIME_SYNC_MARKER = "RUNTIME LINK SYNC GO FOR APP-DOWNLOAD SMOKE"
 OPERATOR_APPROVED_RUNTIME_SYNC_MARKER = "OPERATOR_APPROVED_RUNTIME_LINK_SYNC=true"
 STAGED_REACHABILITY_MARKER = "STAGED GITHUB ASSET REACHABILITY GREEN"
@@ -38,6 +39,34 @@ BLOCKED_CLASSIFICATION_MARKERS = (
     "BLOCKED_BY_POLICY",
 )
 RUNTIME_SYNC_GUARD_TITLE_MARKER = "RUNTIME LINK SYNC GUARD EVIDENCE"
+
+
+def _outside_fenced_code_lines(text: str) -> list[str]:
+    lines: list[str] = []
+    in_fence = False
+    for raw_line in str(text or "").splitlines():
+        line = raw_line.strip()
+        if line.startswith("```"):
+            in_fence = not in_fence
+            continue
+        if not in_fence:
+            lines.append(raw_line)
+    return lines
+
+
+def _has_exact_unfenced_line(text: str, marker: str) -> bool:
+    for line in _outside_fenced_code_lines(text):
+        stripped = line.strip()
+        if stripped == marker or stripped == f"{marker}.":
+            return True
+    return False
+
+
+def _has_blocking_no_go_marker(upper_text: str) -> str:
+    for marker in NO_GO_BLOCKING_MARKERS:
+        if marker in upper_text:
+            return marker
+    return ""
 
 
 def _parse_passwords(path: Path) -> str:
@@ -235,6 +264,9 @@ def _release_handoff_evidence_failure(path: Path | None) -> str:
         return f"GO evidence file not found: {evidence_path}"
     text = evidence_path.read_text(encoding="utf-8", errors="replace")
     upper_text = text.upper()
+    no_go_marker = _has_blocking_no_go_marker(upper_text)
+    if no_go_marker:
+        return f"runtime sync evidence contains blocking marker `{no_go_marker}`"
     if NO_RUNTIME_SYNC_DECISION_MARKER in upper_text:
         return f"runtime sync evidence contains no-sync decision `{NO_RUNTIME_SYNC_DECISION_MARKER}`"
     for marker in BLOCKED_CLASSIFICATION_MARKERS:
@@ -242,17 +274,18 @@ def _release_handoff_evidence_failure(path: Path | None) -> str:
             return f"runtime sync evidence contains blocked classification `{marker}`"
     if RUNTIME_SYNC_GUARD_TITLE_MARKER in upper_text:
         return "runtime sync evidence is a guard artifact, not an authorization"
-    if GO_MARKER in text and NO_GO_MARKER not in text:
+    if _has_exact_unfenced_line(text, GO_MARKER):
         return ""
     if RUNTIME_SYNC_MARKER in text:
         required = [
+            RUNTIME_SYNC_MARKER,
             OPERATOR_APPROVED_RUNTIME_SYNC_MARKER,
             STAGED_REACHABILITY_MARKER,
             NO_PUBLIC_ANNOUNCEMENT_MARKER,
             PAID_CHECKOUT_CLOSED_MARKER,
         ]
         for marker in required:
-            if marker not in text:
+            if not _has_exact_unfenced_line(text, marker):
                 return f"runtime sync evidence must explicitly contain `{marker}`"
         if NO_RUNTIME_SYNC_MARKER in text:
             return f"runtime sync evidence still contains blocking marker `{NO_RUNTIME_SYNC_MARKER}`"
