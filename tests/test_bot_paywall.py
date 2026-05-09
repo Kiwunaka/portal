@@ -328,6 +328,8 @@ class BotPaywallTests(unittest.TestCase):
 
         commands = [getattr(command, "command", "") for command in fake.command_sets[-1]]
         self.assertEqual(commands, ["start", "cabinet", "support", "promo", "redeem"])
+        descriptions = {getattr(command, "command", ""): getattr(command, "description", "") for command in fake.command_sets[-1]}
+        self.assertEqual(descriptions["redeem"], "Активировать ключ доступа")
         self.assertTrue(fake.menu_buttons)
         menu_button = fake.menu_buttons[-1]
         self.assertEqual(getattr(menu_button, "text", ""), "Кабинет")

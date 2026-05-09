@@ -12160,7 +12160,7 @@ async def _configure_public_bot_menu(bot: Bot) -> None:
                 BotCommand(command="cabinet", description="Открыть кабинет"),
                 BotCommand(command="support", description="Написать в поддержку"),
                 BotCommand(command="promo", description="Активировать промокод"),
-                BotCommand(command="redeem", description="Активировать gift-код"),
+                BotCommand(command="redeem", description="Активировать ключ доступа"),
             ]
         )
     except Exception as e:

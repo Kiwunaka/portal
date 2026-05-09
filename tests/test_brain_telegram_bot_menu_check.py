@@ -174,7 +174,7 @@ def test_run_check_apply_uses_expected_commands_without_leaking_token() -> None:
         "Открыть кабинет",
         "Написать в поддержку",
         "Активировать промокод",
-        "Активировать gift-код",
+        "Активировать ключ доступа",
     ]
     set_menu_payload = calls[1][2]
     assert isinstance(set_menu_payload, dict)

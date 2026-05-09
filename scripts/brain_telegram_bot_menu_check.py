@@ -29,7 +29,7 @@ def expected_public_command_payload() -> list[dict[str, str]]:
         {"command": "cabinet", "description": "Открыть кабинет"},
         {"command": "support", "description": "Написать в поддержку"},
         {"command": "promo", "description": "Активировать промокод"},
-        {"command": "redeem", "description": "Активировать gift-код"},
+        {"command": "redeem", "description": "Активировать ключ доступа"},
     ]
 
 
