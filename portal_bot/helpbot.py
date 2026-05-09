@@ -16,7 +16,7 @@ from pathlib import Path
 
 from aiogram import Bot, Dispatcher, F, Router
 from aiogram.filters import CommandStart
-from aiogram.types import CallbackQuery, FSInputFile, InlineKeyboardMarkup, Message
+from aiogram.types import BotCommand, CallbackQuery, FSInputFile, InlineKeyboardMarkup, Message
 from dotenv import load_dotenv
 
 # Load env from repo-local file first to avoid cwd-dependent startup behavior.
@@ -693,8 +693,20 @@ async def main() -> None:
     dp = Dispatcher()
     dp.include_router(router)
     bot = Bot(token=HELP_BOT_TOKEN)
+    await _configure_support_bot_commands(bot)
     logger.info("Support helpbot starting...")
     await dp.start_polling(bot, allowed_updates=dp.resolve_used_update_types())
+
+
+async def _configure_support_bot_commands(bot: Bot) -> None:
+    try:
+        await bot.set_my_commands(
+            [
+                BotCommand(command="start", description="Открыть поддержку"),
+            ]
+        )
+    except Exception as e:
+        logger.warning("helpbot set_my_commands failed: %s", e)
 
 
 if __name__ == "__main__":

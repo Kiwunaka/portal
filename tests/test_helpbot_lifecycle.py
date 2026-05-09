@@ -20,10 +20,14 @@ class _FakeBot:
     def __init__(self):
         self.messages: list[dict] = []
         self.copies: list[dict] = []
+        self.command_sets: list[list[object]] = []
 
     async def send_message(self, chat_id, text, **kwargs):
         self.messages.append({"chat_id": int(chat_id), "text": str(text), **dict(kwargs)})
         return None
+
+    async def set_my_commands(self, commands):
+        self.command_sets.append(list(commands))
 
 
 class _FakeMessage:
@@ -265,3 +269,12 @@ class HelpbotLifecycleTests(unittest.TestCase):
         if self.telegram_buttons.SUPPORTS_BTN_ICON:
             self.assertEqual(getattr(menu_buttons["hb_ticket_new"], "icon_custom_emoji_id", None), "5373141891321699086")
             self.assertEqual(getattr(open_buttons["hb_ticket_close_42"], "icon_custom_emoji_id", None), "5368324170671202299")
+
+    def test_helpbot_configures_public_start_command(self) -> None:
+        bot = _FakeBot()
+
+        asyncio.run(self.helpbot._configure_support_bot_commands(bot))
+
+        self.assertTrue(bot.command_sets)
+        commands = {getattr(command, "command", ""): getattr(command, "description", "") for command in bot.command_sets[-1]}
+        self.assertEqual(commands, {"start": "Открыть поддержку"})

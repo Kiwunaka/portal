@@ -1,4 +1,5 @@
 import importlib
+import asyncio
 import os
 import sys
 import types
@@ -45,6 +46,15 @@ def _install_aiogram_stubs() -> None:
         def __init__(self, *args, **kwargs):
             self.args = args
             self.kwargs = kwargs
+            self.command_sets = []
+
+        async def set_my_commands(self, commands):
+            self.command_sets.append(list(commands))
+
+    class DummyBotCommand:
+        def __init__(self, command: str, description: str):
+            self.command = command
+            self.description = description
 
     class DummyInlineKeyboardButton:
         model_fields = {
@@ -76,6 +86,7 @@ def _install_aiogram_stubs() -> None:
 
     aiogram_types = types.ModuleType("aiogram.types")
     aiogram_types.CallbackQuery = type("CallbackQuery", (), {})
+    aiogram_types.BotCommand = DummyBotCommand
     aiogram_types.InlineKeyboardButton = DummyInlineKeyboardButton
     aiogram_types.InlineKeyboardMarkup = DummyInlineKeyboardMarkup
     aiogram_types.Message = type("Message", (), {})
@@ -240,6 +251,15 @@ class FeedbackBotModerationTests(unittest.TestCase):
 
         self.assertEqual(button.kwargs["copy_text"], {"text": "https://connect.pokrov.space/sub/test"})
         self.assertNotIn("callback_data", button.kwargs)
+
+    def test_feedbackbot_configures_public_start_command(self) -> None:
+        bot = self.feedbackbot.Bot(token="feedback_test_token")
+
+        asyncio.run(self.feedbackbot._configure_feedback_bot_commands(bot))
+
+        self.assertTrue(bot.command_sets)
+        commands = {command.command: command.description for command in bot.command_sets[-1]}
+        self.assertEqual(commands, {"start": "Оставить отзыв"})
 
 
 if __name__ == "__main__":
