@@ -413,12 +413,20 @@ def _infer_button_style(
 
 
 def _modern_inline_keyboard_button(*args: object, **kwargs: object):
+    explicit_style = kwargs.get("style")
+    if explicit_style is not None and not SUPPORTS_BTN_STYLE:
+        kwargs.pop("style", None)
+    if kwargs.get("icon_custom_emoji_id") is not None and not SUPPORTS_BTN_ICON:
+        kwargs.pop("icon_custom_emoji_id", None)
+    if kwargs.get("copy_text") is not None and not SUPPORTS_BTN_COPY_TEXT:
+        kwargs.pop("copy_text", None)
+
     text = kwargs.get("text")
     if text is None and args:
         text = args[0]
     style = kwargs.get("style")
     if style is None:
-        style = _infer_button_style(
+        style = explicit_style or _infer_button_style(
             text=text,
             callback_data=kwargs.get("callback_data"),
             url=kwargs.get("url"),

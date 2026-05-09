@@ -1937,6 +1937,28 @@ class BotPaywallTests(unittest.TestCase):
         self.assertEqual(getattr(open_link, "style", None), self.bot_module.BTN_STYLE_PRIMARY)
         self.assertEqual(getattr(open_link, "icon_custom_emoji_id", None), "5368324170671202286")
 
+    def test_direct_inline_keyboard_button_drops_explicit_unsupported_modern_fields(self) -> None:
+        captured: list[dict] = []
+
+        class _FakeInlineKeyboardButton:
+            def __init__(self, **kwargs):
+                captured.append(dict(kwargs))
+
+        with patch.object(self.bot_module, "_RAW_INLINE_KEYBOARD_BUTTON", _FakeInlineKeyboardButton), patch.object(
+            self.bot_module, "SUPPORTS_BTN_STYLE", False
+        ), patch.object(self.bot_module, "SUPPORTS_BTN_ICON", False), patch.object(
+            self.bot_module, "SUPPORTS_BTN_COPY_TEXT", False
+        ):
+            self.bot_module.InlineKeyboardButton(
+                text="Open",
+                callback_data="open",
+                style=self.bot_module.BTN_STYLE_SUCCESS,
+                icon_custom_emoji_id="5368324170671202286",
+                copy_text={"text": "secret"},
+            )
+
+        self.assertEqual(captured[-1], {"text": "Open", "callback_data": "open"})
+
     def test_env_example_documents_telegram_button_custom_emoji_ids(self) -> None:
         env_example = (Path(__file__).resolve().parents[1] / "portal_bot" / ".env.example").read_text(encoding="utf-8")
 
