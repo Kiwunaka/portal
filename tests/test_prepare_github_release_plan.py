@@ -139,6 +139,45 @@ class PrepareGithubReleasePlanTests(unittest.TestCase):
 
         self.assertEqual(["APP_DOCS_URL must stay under https://pokrov.space/install/"], failures)
 
+    def test_build_plan_rejects_handoff_sha_mismatch_for_same_tag(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_root:
+            root = Path(temp_root)
+            apk = root / "app-release.apk"
+            exe = root / "pokrov-windows-beta-x64-0.2.0-beta.1-setup.exe"
+            notes = root / "notes.md"
+            handoff = root / "release-handoff.json"
+            apk.write_bytes(b"apk")
+            exe.write_bytes(b"new-exe")
+            notes.write_text("release notes", encoding="utf-8")
+            handoff.write_text(
+                """{
+  "github_release": {"tag": "v0.2.0-beta.1"},
+  "downloads": {
+    "android": {"sha256": "%s"},
+    "windows": {"sha256": "0000000000000000000000000000000000000000000000000000000000000000"}
+  }
+}
+"""
+                % self.module._sha256(apk),
+                encoding="utf-8",
+            )
+
+            with self.assertRaises(SystemExit) as raised:
+                self.module._build_plan(
+                    repo="Kiwunaka/POKROV-app",
+                    tag="v0.2.0-beta.1",
+                    title="POKROV 0.2.0-beta.1",
+                    android_apk=apk,
+                    windows_exe=exe,
+                    notes_file=notes,
+                    docs_url="https://pokrov.space/install/",
+                    release_handoff=handoff,
+                )
+
+        message = str(raised.exception)
+        self.assertIn("Windows EXE SHA256 does not match release handoff", message)
+        self.assertIn("0000000000000000000000000000000000000000000000000000000000000000", message)
+
     def test_build_plan_reports_missing_github_cli_without_failing_plan(self) -> None:
         with tempfile.TemporaryDirectory() as temp_root:
             root = Path(temp_root)

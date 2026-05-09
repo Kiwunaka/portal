@@ -176,6 +176,43 @@ class PublishGithubReleaseAssetsTests(unittest.TestCase):
 
         self.assertIn("GitHub release auth", str(raised.exception))
 
+    def test_execute_rejects_handoff_sha_mismatch_before_uploading(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_root:
+            paths = _sample_inputs(Path(temp_root))
+            handoff = Path(temp_root) / "release-handoff.json"
+            paths["go"].write_text("GO for public beta publication.", encoding="utf-8")
+            handoff.write_text(
+                """{
+  "github_release": {"tag": "v0.2.0-beta.1"},
+  "downloads": {
+    "android": {"sha256": "%s"},
+    "windows": {"sha256": "0000000000000000000000000000000000000000000000000000000000000000"}
+  }
+}
+"""
+                % self.module._sha256(paths["apk"]),
+                encoding="utf-8",
+            )
+
+            with self.assertRaises(SystemExit) as raised:
+                self.module.build_publish_plan(
+                    repo="Kiwunaka/POKROV-app",
+                    tag="v0.2.0-beta.1",
+                    title="POKROV 0.2.0-beta.1",
+                    android_apk=paths["apk"],
+                    windows_exe=paths["exe"],
+                    notes_file=paths["notes"],
+                    docs_url="https://pokrov.space/install/",
+                    execute=True,
+                    go_evidence_file=paths["go"],
+                    env={"GITHUB_TOKEN": "secret-token"},
+                    release_handoff_file=handoff,
+                )
+
+        message = str(raised.exception)
+        self.assertIn("Windows EXE SHA256 does not match release handoff", message)
+        self.assertNotIn("secret-token", message)
+
     def test_execute_accepts_explicit_artifact_staging_authorization(self) -> None:
         with tempfile.TemporaryDirectory() as temp_root:
             paths = _sample_inputs(Path(temp_root))

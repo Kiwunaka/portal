@@ -29,6 +29,7 @@ DEFAULT_WINDOWS_EXE = (
 DEFAULT_NOTES_FILE = REPO_ROOT / "docs" / "launch" / "open-beta-release-notes.md"
 DEFAULT_DOCS_URL = "https://pokrov.space/install/"
 DEFAULT_REPO = "Kiwunaka/POKROV-app"
+DEFAULT_RELEASE_HANDOFF = CLIENT_ROOT / "artifacts" / "releases" / "release-handoff.json"
 CANONICAL_ANDROID_APK_NAME = "pokrov-android-universal.apk"
 CANONICAL_WINDOWS_EXE_NAME = "pokrov-windows-setup-x64.exe"
 GITHUB_API_BASE = "https://api.github.com"
@@ -64,6 +65,52 @@ def _artifact_failures(path: Path, *, label: str, suffix: str) -> list[str]:
         failures.append(f"{label} must have {suffix} extension: {artifact}")
     if not artifact.is_file():
         failures.append(f"{label} not found: {artifact}")
+    return failures
+
+
+def _normalize_sha256(value: object) -> str:
+    return re.sub(r"[^0-9A-Fa-f]", "", str(value or "")).upper()
+
+
+def _release_handoff_failures(
+    release_handoff_file: Path | None,
+    *,
+    tag: str,
+    android_apk: Path,
+    windows_exe: Path,
+) -> list[str]:
+    if release_handoff_file is None:
+        return []
+    path = Path(release_handoff_file)
+    if not path.is_file():
+        return []
+    try:
+        payload = json.loads(path.read_text(encoding="utf-8"))
+    except Exception as exc:
+        return [f"release handoff could not be parsed: {path}: {exc}"]
+
+    handoff_tag = str(((payload.get("github_release") or {}) if isinstance(payload, dict) else {}).get("tag") or "").strip()
+    if handoff_tag and handoff_tag != str(tag or "").strip():
+        return []
+
+    downloads = (payload.get("downloads") or {}) if isinstance(payload, dict) else {}
+    expected = {
+        "Android APK": _normalize_sha256((downloads.get("android") or {}).get("sha256") if isinstance(downloads, dict) else ""),
+        "Windows EXE": _normalize_sha256((downloads.get("windows") or {}).get("sha256") if isinstance(downloads, dict) else ""),
+    }
+    actual = {
+        "Android APK": (_sha256(Path(android_apk)), Path(android_apk)),
+        "Windows EXE": (_sha256(Path(windows_exe)), Path(windows_exe)),
+    }
+
+    failures: list[str] = []
+    for label, expected_sha in expected.items():
+        actual_sha, source = actual[label]
+        if expected_sha and expected_sha != actual_sha:
+            failures.append(
+                f"{label} SHA256 does not match release handoff for {tag}: "
+                f"expected {expected_sha} from {path}, got {actual_sha} from {source}"
+            )
     return failures
 
 
@@ -155,6 +202,7 @@ def build_publish_plan(
     go_evidence_file: Path | None,
     env: dict[str, str] | None = None,
     gh_authenticated: bool = False,
+    release_handoff_file: Path | None = None,
 ) -> dict[str, Any]:
     failures = _plan_failures(
         repo=repo,
@@ -164,6 +212,15 @@ def build_publish_plan(
         notes_file=Path(notes_file),
         docs_url=docs_url,
     )
+    if not failures:
+        failures.extend(
+            _release_handoff_failures(
+                release_handoff_file,
+                tag=tag,
+                android_apk=Path(android_apk),
+                windows_exe=Path(windows_exe),
+            )
+        )
     if failures:
         raise SystemExit("GitHub release publish validation failed:\n" + "\n".join(f"- {failure}" for failure in failures))
 
@@ -449,6 +506,16 @@ def main() -> int:
     parser.add_argument("--notes-file", default=str(DEFAULT_NOTES_FILE))
     parser.add_argument("--docs-url", default=DEFAULT_DOCS_URL)
     parser.add_argument("--go-evidence-file", default="", help="Required with --execute. Must be a GO handoff or explicit artifact-staging authorization.")
+    parser.add_argument(
+        "--release-handoff",
+        default=str(DEFAULT_RELEASE_HANDOFF),
+        help="Optional client release-handoff.json whose APK/EXE SHA256 values must match this publish plan when the tag matches.",
+    )
+    parser.add_argument(
+        "--skip-release-handoff-check",
+        action="store_true",
+        help="Skip SHA256 comparison against the client release handoff. Use only when preparing a brand-new tag before handoff metadata exists.",
+    )
     parser.add_argument("--execute", action="store_true", help="Actually create a GitHub prerelease and upload assets.")
     args = parser.parse_args()
 
@@ -463,6 +530,9 @@ def main() -> int:
         execute=args.execute,
         go_evidence_file=Path(args.go_evidence_file) if str(args.go_evidence_file or "").strip() else None,
         gh_authenticated=_gh_cli_authenticated(),
+        release_handoff_file=None
+        if args.skip_release_handoff_check
+        else (Path(args.release_handoff) if str(args.release_handoff or "").strip() else None),
     )
     if args.execute:
         result = publish_from_plan(plan, token=_token_from_env())
