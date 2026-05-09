@@ -2,7 +2,7 @@
 
 Generated: 2026-05-08 21:22 MSK
 
-Refreshed: 2026-05-09 after portal commit `023849b` and client commit `c5f40a6`.
+Refreshed: 2026-05-09 after portal commit `95ae548`, client commit `c5f40a6`, and static release `20260509001332`.
 
 ## Verdict
 
@@ -44,6 +44,7 @@ The release is prepared as far as current access allows: GitHub prerelease APK/E
 - Client cutover docs and seed metadata now reflect the accepted beta posture: Android `OPERATOR_ATTESTED`, Windows `UNSIGNED_BETA_RISK_ACCEPTED`, runtime sync still pending.
 - Bot RUB payment buttons now follow the same paid-checkout launch evidence/email delivery gate as the API provider catalog: Lava.top is not rendered as `pay_rub:lavatop` until the shared gate is green.
 - Bot paywall tests now reset DB/model-bound service modules between API and bot suites, preventing stale admin-test module state from breaking gift-card redemption coverage.
+- Admin release cockpit now separates local email runtime readiness from post-deploy inbox smoke, and explains that Lava.top live proof happens only after deploy with a probe buyer.
 
 ## Verification Snapshot
 
@@ -56,6 +57,9 @@ The release is prepared as far as current access allows: GitHub prerelease APK/E
 - `python scripts\brain_runtime_app_download_smoke.py --brain-ip 82.21.114.104 --ssh-user root --ssh-port 29374 --output docs\audit-artifacts\runtime-app-download-smoke-brain-2026-05-08-post-handoff.json` -> expected `BLOCKED_BY_ACCESS`; live `/api/client/apps` still lacks Android/Windows/docs URLs.
 - `python scripts\public_beta_post_deploy_probe.py --brain-live-probe-json docs\audit-artifacts\brain-post-deploy-live-probe-2026-05-08.json --output docs\audit-artifacts\public-beta-post-deploy-probe-2026-05-08.json` -> expected `BLOCKED_BY_ACCESS`; email runtime config is PASS, live delivery and Lava invoice probes need operator inputs.
 - `python scripts\public_beta_launch_decision.py --output docs\audit-artifacts\public-beta-launch-decision-2026-05-08.json` -> expected `NO_GO`.
+- `npm.cmd run build` in `webapp/` -> PASS; `npx playwright test e2e/admin-gate.spec.ts -g "release cockpit no-go"` -> PASS, 1 test after clarifying post-deploy Lava/email wording.
+- `python scripts\remote_deploy_brain_static_sites.py --brain-ip 82.21.114.104 --ssh-user root --ssh-port 29374` -> PASS, static release id `20260509001332`; remote `/var/www/portal/webapp` symlink points to that release and contains `Email runtime` plus `post-deploy inbox smoke`.
+- `python scripts\public_beta_launch_decision.py --output docs\audit-artifacts\public-beta-launch-decision-2026-05-09.json` -> expected `NO_GO`.
 - `python -m pytest tests\test_public_beta_launch_decision.py -q` -> PASS, 10 tests.
 - `python -m pytest tests\test_public_beta_external_access_preflight.py tests\test_public_beta_launch_decision.py -q` -> PASS, 29 tests.
 - `python -m pytest tests\test_public_beta_external_access_preflight.py -q` -> PASS, 21 tests.
@@ -111,12 +115,12 @@ The release is prepared as far as current access allows: GitHub prerelease APK/E
 ## Live Status
 
 - API health: PASS, `200`, status `ok`.
-- GitHub Actions Guardrails: PASS, latest portal run `25583770912`, commit `023849b`.
+- GitHub Actions Guardrails: PASS, latest portal run `25583770912`, commit `023849b`; later portal commit `95ae548` was covered by local build/focused release-cockpit e2e and static deploy smoke.
 - Backend deploy: latest portal code deploy restarted `portal-api` and `portal-bot` after the bot RUB checkout gate; previous deploys restarted `portal-api` after Telegram OIDC classification and `portal-api,portal-bot` after access-key separator normalization; all services are active in brain readiness.
 - Email runtime status: PASS, public mode enabled, delivery URL and secret configured, debug echo off, no blocked reasons.
 - Payment provider status: `BLOCKED_BY_ACCESS`; `/api/payments/providers` returns `blocked=true`, no providers, reason `paid_checkout_launch_evidence_missing`; the Telegram bot also hides Lava.top RUB payment CTAs behind the same gate.
 - GitHub release: published prerelease, not draft. APK and EXE assets are uploaded; release notes now explicitly say `NO-GO` and keep runtime links/payment/public announcement closed.
-- Static deploy: latest static release id `20260508220115`; `https://app.pokrov.space/admin/release/`, `https://app.pokrov.space/`, and `https://pokrov.space/checkout/` return `200`.
+- Static deploy: latest static release id `20260509001332`; `https://app.pokrov.space/admin/release/`, `https://app.pokrov.space/`, and `https://pokrov.space/checkout/` return `200`.
 
 ## Remaining Blockers
 

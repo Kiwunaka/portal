@@ -2,7 +2,7 @@
 
 Generated: 2026-05-08, refreshed after `docs/audit-artifacts/public-beta-handoff-2026-05-08.md`.
 
-Refreshed: 2026-05-09 after portal commit `023849b` and client commit `c5f40a6`.
+Refreshed: 2026-05-09 after portal commit `95ae548`, client commit `c5f40a6`, and static release `20260509001332`.
 
 ## Objective Restated
 
@@ -27,7 +27,7 @@ The workspace is prepared as far as current access allows, but final publication
 | Use local canon first | `AGENTS.md`, `DESIGN.md`, `shared/*`, canonical docs, active `POKROV-app/docs/*` | PASS | Public claims remain release-honest and RU-first. |
 | Use lane subagents where useful | Lane read-only audits returned backend/web/support/release findings | PASS | Remaining actionable findings were either already fixed in current code or not launch-blocking. |
 | External DeepSeek/Kimi design/copy critique where useful | Earlier handoff/audit record Kimi copy critique of launch/payment ambiguity | PASS | External output treated as draft only; local canon won. |
-| Site and install page deployed | `https://pokrov.space/`, `https://pokrov.space/install/`, static release `20260508220115` | PASS | Runtime app links still not live. |
+| Site and install page deployed | `https://pokrov.space/`, `https://pokrov.space/install/`, static release `20260509001332` | PASS | Runtime app links still not live. |
 | WebApp cabinet and admin deployed | `https://app.pokrov.space/`, `https://app.pokrov.space/admin/release/`, static smoke `200` | PASS | Admin auth screen rendered without Next overlay in unauthenticated browser check. |
 | Backend API live | `https://api.pokrov.space/api/health` returned `200` / `{"status":"ok"}` | PASS | Does not prove runtime app links or paid checkout. |
 | GitHub Releases APK/EXE distribution | `v0.2.0-beta.1` prerelease, APK SHA256 `1A369891641964A9A30A296E7D47111A07B6DDAAD5ABC293F7EF938A654DADB0`, EXE SHA256 `E340F36EC10149649373E0E7816C81B8C6873E9B95C7A85DC0F6AD708DB2C70D`, `POKROV-app/main` commit `c5f40a6` | STAGED_PASS | Published as prerelease staging, not final runtime download path; client docs/seeds now carry `OPERATOR_ATTESTED` Android and `UNSIGNED_BETA_RISK_ACCEPTED` Windows posture. |
@@ -43,20 +43,20 @@ The workspace is prepared as far as current access allows, but final publication
 | Telegram deprecated/expired login UX | `webapp/e2e/telegram-login-refresh.spec.ts`, `webapp/e2e/oidc-fallback.spec.ts`, `portal_bot/tests/test_telegram_oidc_auth.py`, backend/session refresh code | PASS | Focused Telegram e2e and backend OIDC tests passed; deprecated/expired OIDC provider responses are classified as refreshable auth errors. |
 | Telegram bot buttons follow current Bot API fields | `portal_bot/telegram_buttons.py`, bot runtime field detection, official Bot API 9.4 `KeyboardButton` / `InlineKeyboardButton` fields, and focused bot tests | PASS | Telegram supports `style` / `icon_custom_emoji_id`; local aiogram exposes `style`, `icon_custom_emoji_id`, and `copy_text`; arbitrary Material icon packs are not a Bot API feature. |
 | Support flow | API/ticket tests, cabinet/admin ticket pages, protected attachment handling, helpbot/main bot support entrypoints | LOCAL_PASS | Real user live ticket smoke not rerun. |
-| Admin release cockpit | `webapp/src/app/(dashboard)/admin/release/page.tsx`, focused release cockpit e2e, live static deploy `20260508220115` | PASS | Shows exact operator blockers, copy buttons for GO/probe commands, and no permanent static runtime blocker. |
+| Admin release cockpit | `webapp/src/app/(dashboard)/admin/release/page.tsx`, focused release cockpit e2e, live static deploy `20260509001332` | PASS | Shows exact operator blockers, copy buttons for GO/probe commands, and post-deploy Lava/email wording. |
 | Telegram launch copy prepared but not posted | `docs/launch/telegram-announcement.md` | PASS_DRAFT_ONLY | Copy says preparing limited beta; post only after final GO/runtime links. |
 | Backend/payment/email focused verification | Latest handoff lists email/payment/access-key pytest passes, including the 257-test payment/email/bot matrix after the bot checkout-gate fix | PASS | Pytest Windows atexit cleanup warning was non-fatal. |
-| Web admin/browser verification | `npm.cmd run test:e2e:admin -- --grep "release cockpit"` passed 3 tests | PASS | Full broad rerun was avoided to reduce churn. |
+| Web admin/browser verification | `npm.cmd run build`; `npx playwright test e2e/admin-gate.spec.ts -g "release cockpit no-go"` passed 1 test | PASS | Full broad rerun was avoided to reduce churn. |
 | Marketing/copy checks | `scripts/text_integrity.py docs/launch/telegram-announcement.md`; launch handoff text integrity | PASS | Public copy remains RU/release-honest. |
 | Client build/preflight evidence | `C:/Users/kiwun/Documents/ai/POKROV-app/artifacts/releases/release-handoff.json`, versioned handoff `0.2.0-beta.1+20260508`, versioned `README.md` / `SHA256SUMS.txt`, Windows packaging smoke with `-OfflinePubGet`, and GitHub release assets | STAGED_PASS | Physical Android audit is operator-attested; Windows unsigned risk accepted; client seed metadata was refreshed and validated. |
 | Visual QA | Live Chromium sweep `.tmp/live-visual-sweep-2026-05-08T19-40-19-624Z/summary.json`; focused WebApp mobile e2e | PASS_WITH_SCOPE_LIMITS | Fresh sweep covered marketing home desktop/mobile/dark, checkout mobile, WebApp entry desktop/mobile-dark/Telegram-like with no JS/page errors or horizontal overflow; authenticated cabinet/admin mobile viewport coverage remains mocked e2e, not live operator-session browsing. |
 | Current-origin and brain-origin gates | Launch decision reads current full/quick and brain quick gate artifacts | PASS_WITH_SCOPE_LIMITS | Green gates do not cover missing runtime links, Lava proof, or live inbox delivery. |
 | GitHub Actions repo guardrails | Guardrails run `25583770912` on portal commit `023849b` | PASS_WITH_SCOPE_LIMITS | CI guardrails are green on the forced Node 24 actions runtime, but skip operator-only client/browser gates as `SKIPPED_CI_UNAVAILABLE` and are not public-release authorization. |
-| Static/backend deploy | Static release `20260508220115`; backend deploy restarted `portal-api,portal-bot` after the bot RUB checkout gate; earlier deploys covered Telegram OIDC classification and access-key normalization | PASS | Runtime env link sync intentionally not applied. |
+| Static/backend deploy | Static release `20260509001332`; backend deploy restarted `portal-api,portal-bot` after the bot RUB checkout gate; earlier deploys covered Telegram OIDC classification and access-key normalization | PASS | Runtime env link sync intentionally not applied. |
 | RU-origin | `docs/audit-artifacts/ru-origin-skip-accepted-2026-05-08.md` | SKIPPED_BY_OPERATOR | Do not claim RU-origin Telegram readiness. |
 | Release handoff | `docs/audit-artifacts/public-beta-handoff-2026-05-08.md` | PASS_NO_GO | Final output exists but says `NO-GO`. |
 | External unblock packet | `docs/audit-artifacts/public-beta-unblock-packet-2026-05-08.md` | PASS | Current operator runbook points to 2026-05-08 handoff/completion audit and the post-handoff runtime smoke artifact. |
-| Machine-readable decision | `docs/audit-artifacts/public-beta-launch-decision-2026-05-08.json` | NO_GO_EXPECTED | Correctly prevents accidental public launch claims. |
+| Machine-readable decision | `docs/audit-artifacts/public-beta-launch-decision-2026-05-09.json` | NO_GO_EXPECTED | Correctly prevents accidental public launch claims. |
 
 ## Proxy Signal Limits
 
