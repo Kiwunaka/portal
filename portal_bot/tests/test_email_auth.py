@@ -313,6 +313,24 @@ def test_email_relay_rejects_delivery_when_secret_is_not_configured(monkeypatch)
     assert response.json()["detail"] == "Invalid relay secret"
 
 
+def test_email_relay_auth_links_use_public_verify_and_recover_routes(monkeypatch):
+    monkeypatch.setenv("WEBAPP_URL", "https://app.pokrov.test/")
+    sys.modules.pop("email_relay_app", None)
+    relay = importlib.import_module("email_relay_app")
+
+    _verify_subject, verify_body, verify_html = relay._message_for(
+        relay.EmailDeliveryIn(kind="verify", email="reader@pokrov.test", token="verify-token")
+    )
+    _reset_subject, reset_body, reset_html = relay._message_for(
+        relay.EmailDeliveryIn(kind="reset", email="reader@pokrov.test", token="reset-token")
+    )
+
+    assert "Подтвердить email: https://app.pokrov.test/verify?token=verify-token" in verify_body
+    assert "https://app.pokrov.test/verify?token=verify-token" in verify_html
+    assert "Восстановить доступ: https://app.pokrov.test/recover?token=reset-token" in reset_body
+    assert "https://app.pokrov.test/recover?token=reset-token" in reset_html
+
+
 def test_email_relay_paid_access_key_link_does_not_put_key_in_url(monkeypatch):
     monkeypatch.setenv("WEBAPP_URL", "https://app.pokrov.test/")
     sys.modules.pop("email_relay_app", None)
