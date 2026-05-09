@@ -1201,6 +1201,7 @@ test.describe("Admin gate", () => {
     await expect(page.getByRole("button", { name: "Скопировать Runtime APP-ссылки" })).toBeVisible();
     await expect(page.getByRole("button", { name: "Скопировать Email-доставка" })).toBeVisible();
     await expect(page.getByRole("button", { name: "Скопировать Lava.top" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Скопировать Telegram-кнопки" })).toBeVisible();
     await page.getByRole("button", { name: "Скопировать Runtime APP-ссылки" }).click();
     await expect(page.getByRole("button", { name: "Скопировать Runtime APP-ссылки" })).toContainText("Скопировано");
     await expect(page.getByText("Runtime APP-ссылки").first()).toBeVisible();
@@ -1210,6 +1211,9 @@ test.describe("Admin gate", () => {
     await expect(page.getByRole("article").filter({ hasText: "Email-доставка" }).getByText(/--email-probe-to <probe-email>/)).toBeVisible();
     await expect(page.getByText("Lava.top", { exact: true })).toBeVisible();
     await expect(page.getByRole("article").filter({ hasText: "Lava.top" }).getByText(/--lavatop-probe-email <buyer-email>/)).toBeVisible();
+    const telegramButtonCard = page.getByRole("article").filter({ hasText: "Telegram-кнопки" });
+    await expect(telegramButtonCard.getByText(/TG_BTN_EMOJI_PRIMARY_ID/)).toBeVisible();
+    await expect(telegramButtonCard).toContainText("Material icon packs");
     await expect(page.getByRole("heading", { name: "каталог найден; checkout закрыт" })).toBeVisible();
     await expect(page.getByText("Агрегированный гейт оплаты")).toBeVisible();
     await expect(page.getByText(/Последний retained paid-checkout evidence/)).toBeVisible();

@@ -84,6 +84,14 @@ const LAVATOP_PROBE_COMMAND = [
   "python scripts\\brain_payment_email_readiness.py --brain-ip 82.21.114.104 --ssh-user root --ssh-port 29374 --post-deploy-live --email-probe-to <probe-email> --lavatop-probe-email <buyer-email> --output docs\\audit-artifacts\\brain-post-deploy-live-probe-<YYYY-MM-DD>.json",
 ].join("\n");
 
+const TELEGRAM_BUTTON_EMOJI_TEXT = [
+  "TG_BTN_EMOJI_PRIMARY_ID=<telegram-custom-emoji-id>",
+  "TG_BTN_EMOJI_SUCCESS_ID=<telegram-custom-emoji-id>",
+  "TG_BTN_EMOJI_DANGER_ID=<telegram-custom-emoji-id>",
+  "Material icon packs are not a Telegram Bot API field; use Telegram custom emoji document IDs only.",
+  "After changing these env values: restart portal-bot, portal-helpbot, and portal-feedbackbot.",
+].join("\n");
+
 function firstUrl(...values: Array<string | null | undefined>): string {
   return values.map((value) => String(value || "").trim()).find(Boolean) || "";
 }
@@ -509,6 +517,15 @@ export default function AdminReleasePage() {
       command: LAVATOP_PROBE_COMMAND,
       tone: "danger",
     },
+    {
+      key: "telegram-buttons",
+      title: "Telegram-кнопки",
+      status: "опциональная полировка",
+      detail:
+        "Код уже использует текущие поля Telegram-кнопок: style, icon_custom_emoji_id и copy_text. Для кастом-иконок нужны Telegram custom emoji document IDs; arbitrary Material icon packs не являются полем Bot API и не должны блокировать запуск.",
+      command: TELEGRAM_BUTTON_EMOJI_TEXT,
+      tone: "neutral",
+    },
   ];
 
   if (loading) {
@@ -601,7 +618,7 @@ export default function AdminReleasePage() {
           title="Что нужно от оператора"
           description="Короткий список входов, без которых релизный экран честно остается NO-GO. Команды и маркеры не содержат секретов; email/probe-buyer адреса подставляются вручную после deploy."
         />
-        <div className="grid gap-3 xl:grid-cols-3">
+        <div className="grid gap-3 xl:grid-cols-4">
           {operatorActions.map((action) => (
             <OperatorActionCard key={action.key} action={action} />
           ))}
