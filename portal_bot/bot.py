@@ -3779,7 +3779,7 @@ def main_keyboard_specs(tg_id: int = 0) -> list[list[dict[str, str]]]:
             _btn_spec(text="📲 Как начать", callback_data="instruction"),
         ],
         [
-            _btn_spec(text="🔗 Ссылка для подключения", callback_data="show_key"),
+            _btn_spec(text="🧭 Ручная ссылка", callback_data="show_key"),
             _btn_spec(text="🆘 Нужна помощь", callback_data="support"),
         ],
         [
@@ -4681,7 +4681,7 @@ async def panic_execute(callback: CallbackQuery, bot: Bot):
     await callback.message.edit_text(
         "✅ *Ключи сброшены.*\n\n"
         "Старый доступ заблокирован. Новый ключ уже выпущен.\n"
-        "Откройте раздел «Ссылка для подключения», чтобы получить обновлённую ссылку.",
+        "Откройте «Ручная ссылка», если нужно восстановить доступ на устройстве вручную.",
         parse_mode=ParseMode.MARKDOWN,
         reply_markup=_panic_done_keyboard(),
     )
@@ -4712,7 +4712,7 @@ async def show_settings(callback: CallbackQuery):
     rows = [
         [
             _btn_spec(
-                text="🔗 Ссылка для подключения",
+                text="🧭 Ручная ссылка",
                 callback_data="show_key",
                 style=BTN_STYLE_PRIMARY,
                 icon_custom_emoji_id=BTN_EMOJI_PRIMARY_ID or None,
@@ -4745,7 +4745,7 @@ async def show_settings(callback: CallbackQuery):
     kb = _keyboard_from_specs(rows)
     await callback.message.edit_text(
         "⚙️ *Ещё*\n\n"
-        "Здесь собраны дополнительные действия: ссылка для подключения, инструкции, подарки и быстрый следующий шаг.\n\n"
+        "Здесь собраны дополнительные действия: ручная ссылка как запасной путь, инструкции, подарки и быстрый следующий шаг.\n\n"
         "Выберите следующий шаг:",
         reply_markup=kb,
         parse_mode=ParseMode.MARKDOWN,
@@ -5480,8 +5480,8 @@ FAQ_ANSWERS = {
     ),
     "device": (
         "📲 *Смена устройства*\n\n"
-        "Скачайте приложение на новое устройство и откройте ту же ссылку для подключения.\n\n"
-        "Путь: *🔗 Ссылка для подключения* → открыть в новом приложении.\n\n"
+        "Скачайте приложение на новое устройство и войдите через тот же аккаунт или кабинет.\n\n"
+        "Ручная ссылка — запасной путь, если приложение не подхватило доступ автоматически.\n\n"
         f"Лимит устройств зависит от плана: до *{PAID_LIMIT_IP}* в платных режимах."
     ),
 }
@@ -7036,7 +7036,7 @@ def _panic_done_keyboard() -> InlineKeyboardMarkup:
         [
             [
                 _btn_spec(
-                    text="🔗 Ссылка для подключения",
+                    text="🧭 Ручная ссылка",
                     callback_data="show_key",
                     style=BTN_STYLE_PRIMARY,
                     icon_custom_emoji_id=BTN_EMOJI_PRIMARY_ID or None,

@@ -1046,6 +1046,8 @@ class BotPaywallTests(unittest.TestCase):
 
         self.assertEqual(getattr(show_key, "style", None), self.bot_module.BTN_STYLE_PRIMARY)
         self.assertEqual(getattr(show_key, "icon_custom_emoji_id", None), "5368324170671202286")
+        self.assertIn("руч", str(getattr(show_key, "text", "")).lower())
+        self.assertNotIn("Ссылка для подключения", settings.message.edits[-1])
         self.assertEqual(getattr(mode_simple, "style", None), self.bot_module.BTN_STYLE_SUCCESS)
         self.assertEqual(getattr(settings_back, "style", None), self.bot_module.BTN_STYLE_DANGER)
 
@@ -1841,6 +1843,15 @@ class BotPaywallTests(unittest.TestCase):
         upper_labels = [label.upper() for label in labels]
         self.assertTrue(any("КАБИНЕТ" in label for label in upper_labels))
         self.assertFalse(any("ПОРТАЛ" in label for label in upper_labels))
+        self.assertTrue(any("РУЧ" in label.upper() for label in labels))
+        self.assertFalse(any("ССЫЛКА ДЛЯ ПОДКЛЮЧЕНИЯ" in label.upper() for label in labels))
+
+    def test_device_faq_keeps_raw_link_as_manual_fallback(self) -> None:
+        answer = self.bot_module._support_faq_answer("device")
+
+        self.assertIn("ручная ссылка", answer.lower())
+        self.assertIn("приложение", answer.lower())
+        self.assertNotIn("Ссылка для подключения", answer)
 
     def test_telegram_button_payload_keeps_current_style_and_icon_fields(self) -> None:
         rows = [[
@@ -2006,6 +2017,7 @@ class BotPaywallTests(unittest.TestCase):
             for button in row
         }
         self.assertEqual(getattr(panic_done["show_key"], "style", None), self.bot_module.BTN_STYLE_PRIMARY)
+        self.assertIn("руч", str(getattr(panic_done["show_key"], "text", "")).lower())
         self.assertEqual(getattr(panic_done["back"], "style", None), self.bot_module.BTN_STYLE_DANGER)
 
         single_back = self.bot_module._single_back_keyboard().inline_keyboard[0][0]
