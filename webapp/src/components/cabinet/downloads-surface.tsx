@@ -72,7 +72,7 @@ function buildCards(payload: ClientAppsPayload | null): DownloadCard[] {
       ? {
           key: "android-apk",
           title: "Android бета через APK",
-          body: "Внутренний бета-файл для тестеров. Не публикуем его как массовый путь до доверенной подписи и физической проверки сборки.",
+          body: "Внутренний бета-файл для тестеров. Не публикуем его как массовый путь до финального разрешения и контрольной проверки live-ссылки.",
           badge: "Внутренняя бета",
           tone: "warning",
           href: androidApk,
@@ -222,7 +222,7 @@ export function CabinetDownloadsSurface() {
         {
           label: "Android",
           value: hasAndroid ? "Ссылки готовы" : "Подтянем позже",
-          hint: "Android остается закрыт до доверенной подписи и физической проверки сборки.",
+          hint: "Android остается закрыт до runtime-синхронизации ссылки и финального разрешения на публикацию загрузок.",
           tone: hasAndroid ? "warning" : "neutral",
         },
         {

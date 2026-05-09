@@ -631,8 +631,10 @@ def test_public_release_copy_avoids_internal_operator_terms() -> None:
     assert 'url.hostname.toLowerCase() === "pokrov.space"' in admin_release
     assert 'firstUrl(apps?.android?.play_url)' in admin_release
     assert "!androidPlayUrl" in admin_release
-    assert "доверенной подписи" in public_copy
-    assert "физической проверки сборки" in downloads_surface
+    assert "доверенной подписи" not in public_copy
+    assert "физической проверки сборки" not in downloads_surface
+    assert "финальной проверки ссылок" in public_copy
+    assert "runtime-синхронизации ссылки" in downloads_surface
 
 
 def test_homepage_hash_navigation_targets_exist() -> None:

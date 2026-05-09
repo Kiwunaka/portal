@@ -170,7 +170,7 @@ export default function InstallPage() {
                 <p>
                   {getCopyText(
                     "marketing.install.android.desc",
-                    "Android APK доступен только как внутренняя бета для одобренных пользователей. Публичная публикация остаётся заблокированной до доверенной подписи и физического аудита.",
+                    "Android APK доступен только как внутренняя бета для одобренных пользователей. Публичная выдача включится только после финальной проверки ссылок.",
                   )}
                 </p>
                 <a href={androidHref} target="_blank" rel="noreferrer" className="lp-btn lp-btn--primary">
