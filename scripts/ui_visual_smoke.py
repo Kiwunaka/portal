@@ -134,7 +134,7 @@ def _default_checks() -> list[Check]:
         Check(
             name="webapp-local-qr",
             path=REPO_ROOT / "webapp" / "src" / "components" / "subscription-qr-card.tsx",
-            must_contain=('import("qrcode")', "QR-код ссылки подключения"),
+            must_contain=('import("qrcode")', "QR-код ручной ссылки"),
         ),
         Check(
             name="webapp-dashboard-app-first",
