@@ -420,53 +420,55 @@ export default function SubscriptionPage() {
         </CabinetSection>
       </div>
 
-      <CabinetSection
-        eyebrow="История"
-        title="История оплат"
-        description={
-          paymentOrders.length
-            ? "Показываем только ваши заказы из backend: сумму, статус и дату без служебных webhook-данных."
-            : "Платежная история появится здесь после первого созданного заказа."
-        }
-        actions={
-          <AppRouteLink href="/support/" className="outline-btn rounded-full px-4 py-2 text-xs font-semibold uppercase tracking-[0.12em]">
-            Поддержка
-          </AppRouteLink>
-        }
-        tone="info"
-      >
-        {paymentOrders.length ? (
-          <div className="overflow-hidden rounded-[1.3rem] border border-[color:var(--atlas-border)] bg-white/72 dark:bg-white/[0.04]">
-            <div className="grid grid-cols-[minmax(0,1fr)_auto] gap-3 border-b border-[color:var(--atlas-border)] px-4 py-3 text-xs font-semibold uppercase tracking-[0.12em] text-[var(--atlas-text-muted)]">
-              <span>Заказ</span>
-              <span>Статус</span>
-            </div>
-            {paymentOrders.map((order) => (
-              <div key={`${order.provider}-${order.order_id}`} className="grid gap-3 border-b border-[color:var(--atlas-border)] px-4 py-4 last:border-b-0 md:grid-cols-[minmax(0,1fr)_auto]">
-                <div className="min-w-0">
-                  <p className="truncate text-sm font-semibold text-[var(--atlas-text)]">
-                    {formatPaymentAmount(order)} · {order.plan_code || "тариф"}
-                  </p>
-                  <p className="mt-1 truncate text-xs text-[var(--atlas-text-soft)]">
-                    {order.provider} · {formatDate(order.paid_at || order.created_at)} · {order.order_id}
-                  </p>
-                </div>
-                <span className={`h-fit rounded-full px-3 py-1 text-xs font-semibold ${paymentStatusClass(order.status)}`}>
-                  {paymentStatusLabel(order.status)}
-                </span>
+      <div id="payment-history" className="scroll-mt-28">
+        <CabinetSection
+          eyebrow="История"
+          title="История оплат"
+          description={
+            paymentOrders.length
+              ? "Показываем только ваши заказы из backend: сумму, статус и дату без служебных webhook-данных."
+              : "Платежная история появится здесь после первого созданного заказа."
+          }
+          actions={
+            <AppRouteLink href="/support/" className="outline-btn rounded-full px-4 py-2 text-xs font-semibold uppercase tracking-[0.12em]">
+              Поддержка
+            </AppRouteLink>
+          }
+          tone="info"
+        >
+          {paymentOrders.length ? (
+            <div className="overflow-hidden rounded-[1.3rem] border border-[color:var(--atlas-border)] bg-white/72 dark:bg-white/[0.04]">
+              <div className="grid grid-cols-[minmax(0,1fr)_auto] gap-3 border-b border-[color:var(--atlas-border)] px-4 py-3 text-xs font-semibold uppercase tracking-[0.12em] text-[var(--atlas-text-muted)]">
+                <span>Заказ</span>
+                <span>Статус</span>
               </div>
-            ))}
-          </div>
-        ) : (
-          <div className="rounded-[1.3rem] border border-dashed border-sky-200/80 bg-white/72 px-4 py-4 text-sm leading-6 text-slate-600 dark:border-sky-400/20 dark:bg-white/[0.04] dark:text-slate-300">
-            <p className="font-semibold text-slate-950 dark:text-slate-50">Истории оплат пока нет.</p>
-            <p className="mt-2">
-              Мы не показываем декоративные строки и не придумываем квитанции. Если оплата уже была, а срок не обновился,
-              откройте поддержку: оператор проверит платеж по безопасным данным и продолжит тот же кейс.
-            </p>
-          </div>
-        )}
-      </CabinetSection>
+              {paymentOrders.map((order) => (
+                <div key={`${order.provider}-${order.order_id}`} className="grid gap-3 border-b border-[color:var(--atlas-border)] px-4 py-4 last:border-b-0 md:grid-cols-[minmax(0,1fr)_auto]">
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-semibold text-[var(--atlas-text)]">
+                      {formatPaymentAmount(order)} · {order.plan_code || "тариф"}
+                    </p>
+                    <p className="mt-1 truncate text-xs text-[var(--atlas-text-soft)]">
+                      {order.provider} · {formatDate(order.paid_at || order.created_at)} · {order.order_id}
+                    </p>
+                  </div>
+                  <span className={`h-fit rounded-full px-3 py-1 text-xs font-semibold ${paymentStatusClass(order.status)}`}>
+                    {paymentStatusLabel(order.status)}
+                  </span>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="rounded-[1.3rem] border border-dashed border-sky-200/80 bg-white/72 px-4 py-4 text-sm leading-6 text-slate-600 dark:border-sky-400/20 dark:bg-white/[0.04] dark:text-slate-300">
+              <p className="font-semibold text-slate-950 dark:text-slate-50">Истории оплат пока нет.</p>
+              <p className="mt-2">
+                Мы не показываем декоративные строки и не придумываем квитанции. Если оплата уже была, а срок не обновился,
+                откройте поддержку: оператор проверит платеж по безопасным данным и продолжит тот же кейс.
+              </p>
+            </div>
+          )}
+        </CabinetSection>
+      </div>
 
       <CabinetSection
         eyebrow="Коротко о режимах"

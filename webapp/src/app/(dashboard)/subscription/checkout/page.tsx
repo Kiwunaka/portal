@@ -331,6 +331,9 @@ export default function CheckoutPage() {
             <button type="button" onClick={startCheckout} disabled={!checkoutReady || checkoutBusy} className="btn-primary block rounded-2xl py-3 text-center text-sm font-semibold disabled:opacity-60">
               {checkoutPrimaryText}
             </button>
+            <AppRouteLink href="/subscription/#payment-history" className="outline-btn block rounded-2xl py-3 text-center text-sm font-semibold">
+              Проверить статус оплаты
+            </AppRouteLink>
             <AppRouteLink href="/redeem/" className="outline-btn block rounded-2xl py-3 text-center text-sm font-semibold">
               Применить уже полученный ключ
             </AppRouteLink>
