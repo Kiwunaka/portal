@@ -23,18 +23,35 @@ def _load_module(name: str):
     return module
 
 
-def _run_main(module, argv: list[str], env: dict[str, str]) -> tuple[int, str, str]:
+def _run_main(module, argv: list[str], env: dict[str, str], *, urlopen_side_effect=None) -> tuple[int, str, str]:
     stdout = io.StringIO()
     stderr = io.StringIO()
+    if urlopen_side_effect is None:
+        urlopen_side_effect = AssertionError("unexpected network request")
     with (
         patch.object(sys, "argv", argv),
         patch.dict(os.environ, env, clear=True),
-        patch.object(module.urllib.request, "urlopen", side_effect=AssertionError("unexpected network request")),
+        patch.object(module.urllib.request, "urlopen", side_effect=urlopen_side_effect),
         contextlib.redirect_stdout(stdout),
         contextlib.redirect_stderr(stderr),
     ):
         code = module.main()
     return code, stdout.getvalue(), stderr.getvalue()
+
+
+class _FakeResponse:
+    def __init__(self, *, status: int, body: bytes):
+        self.status = int(status)
+        self._body = bytes(body)
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc, tb) -> None:
+        return None
+
+    def read(self) -> bytes:
+        return self._body
 
 
 def test_email_delivery_probe_dry_run_is_non_mutating_and_redacted() -> None:
@@ -55,6 +72,34 @@ def test_email_delivery_probe_dry_run_is_non_mutating_and_redacted() -> None:
     assert report["dry_run"] is True
     assert report["url_configured"] is True
     assert report["payload"]["kind"] == "payment_access_key"
+    assert report["payload"]["access_key_present"] is True
+    assert "POKROV-PROBE-KEY1" not in stdout
+    assert "super-secret-email-relay-token" not in stdout
+
+
+def test_email_delivery_probe_live_redacts_response_body() -> None:
+    module = _load_module("email_delivery_probe")
+
+    code, stdout, stderr = _run_main(
+        module,
+        ["email_delivery_probe.py", "--kind", "payment_access_key", "--email", "operator@example.test", "--live"],
+        {
+            "EMAIL_DELIVERY_WEBHOOK_URL": "https://relay.pokrov.test/send",
+            "EMAIL_DELIVERY_WEBHOOK_SECRET": "super-secret-email-relay-token",
+        },
+        urlopen_side_effect=lambda *_args, **_kwargs: _FakeResponse(
+            status=200,
+            body=b'{"status":"sent","access_key":"POKROV-SECRET-KEY"}',
+        ),
+    )
+
+    report = json.loads(stdout)
+    assert code == 0
+    assert stderr == ""
+    assert report["status"] == 200
+    assert report["body_redacted"] is True
+    assert report["body_bytes"] > 0
+    assert "POKROV-SECRET-KEY" not in stdout
     assert "super-secret-email-relay-token" not in stdout
 
 
@@ -86,8 +131,36 @@ def test_lavatop_invoice_probe_dry_run_redacts_api_key_and_offer_id() -> None:
     assert stderr == ""
     assert report["dry_run"] is True
     assert report["api_key_configured"] is True
+    assert report["payload"]["email"] == "configured"
     assert report["payload"]["offerId"] == "configured"
     assert report["payload"]["amount"] == 99.0
+    assert "super-secret-lavatop-api-key" not in stdout
+    assert "super-secret-offer-id" not in stdout
+
+
+def test_lavatop_invoice_probe_live_redacts_invoice_body() -> None:
+    module = _load_module("lavatop_invoice_probe")
+
+    code, stdout, stderr = _run_main(
+        module,
+        ["lavatop_invoice_probe.py", "--plan-code", "start_99", "--email", "operator@example.test", "--live"],
+        {
+            "LAVATOP_API_KEY": "super-secret-lavatop-api-key",
+            "LAVATOP_OFFER_ID_START_99": "super-secret-offer-id",
+        },
+        urlopen_side_effect=lambda *_args, **_kwargs: _FakeResponse(
+            status=200,
+            body=b'{"invoiceUrl":"https://lava.top/pay/secret-invoice"}',
+        ),
+    )
+
+    report = json.loads(stdout)
+    assert code == 0
+    assert stderr == ""
+    assert report["status"] == 200
+    assert report["body_redacted"] is True
+    assert report["body_bytes"] > 0
+    assert "secret-invoice" not in stdout
     assert "super-secret-lavatop-api-key" not in stdout
     assert "super-secret-offer-id" not in stdout
 
