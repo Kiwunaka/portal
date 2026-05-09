@@ -57,7 +57,7 @@ export default function SubscriptionQrCard({ value, active = true }: Props) {
   }
 
   if (!active) {
-    return <p className="mt-3 text-sm text-slate-500">QR-код появится, когда ссылка подключения станет доступна.</p>;
+    return <p className="mt-3 text-sm text-slate-500">QR-код появится, когда ручная ссылка станет доступна.</p>;
   }
 
   if (error) {
@@ -71,7 +71,7 @@ export default function SubscriptionQrCard({ value, active = true }: Props) {
   return (
     <Image
       src={src}
-      alt="QR-код ссылки подключения"
+      alt="QR-код ручной ссылки"
       width={220}
       height={220}
       unoptimized
