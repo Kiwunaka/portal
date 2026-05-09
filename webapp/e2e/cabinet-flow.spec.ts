@@ -921,6 +921,8 @@ test.describe("Cabinet flow", () => {
     const payButton = page.locator("main button.btn-primary").first();
     await expect(page.getByRole("heading", { name: "Оплата временно недоступна" })).toBeVisible();
     await expect(payButton).toBeDisabled();
+    await expect(payButton).toHaveText("Оплата пока закрыта");
+    await expect(payButton).not.toHaveText("Проверить статус оплаты");
     await expect(page.locator("main")).toContainText("Оплата пока закрыта: мы включим продление после финальной проверки Lava.top и доставки ключей на email.");
     await expect(page.locator("main")).not.toContainText("Launch evidence is incomplete");
     await expect(page.locator("main")).not.toContainText("RUB checkout is disabled");

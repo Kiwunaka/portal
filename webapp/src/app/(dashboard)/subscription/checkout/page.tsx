@@ -142,7 +142,7 @@ export default function CheckoutPage() {
     ? checkoutBusy
       ? "Открываем оплату..."
       : "Перейти к оплате"
-    : "Проверить статус оплаты";
+    : "Оплата пока закрыта";
   const checkoutRouteTitle = checkoutReady ? "Продлить доступ" : "Оплата временно недоступна";
   const checkoutRouteDescription = checkoutReady
     ? "Выберите срок, проверьте сумму и перейдите на защищенную страницу оплаты. После оплаты ключ можно применить в приложении или в кабинете."
