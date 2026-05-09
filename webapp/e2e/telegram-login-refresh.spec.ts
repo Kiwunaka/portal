@@ -1,5 +1,6 @@
 import { expect, test } from "@playwright/test";
 
+import { finishTelegramOidcLogin } from "../src/lib/api";
 import {
   isTelegramAuthRefreshRequired,
   isTelegramWebLoginRefreshError,
@@ -69,4 +70,24 @@ test("maps raw Telegram deprecated errors to a human reauth CTA", () => {
   expect(telegramAuthRefreshMessage("Сессия Telegram устарела. Нажмите вход через Telegram еще раз.")).toBe(
     "Сессия Telegram устарела. Нажмите вход через Telegram еще раз.",
   );
+});
+
+test("keeps Telegram OIDC auth error codes from API headers for refresh handling", async () => {
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = (async () =>
+    new Response(JSON.stringify({ detail: "Invalid Telegram OAuth state" }), {
+      status: 401,
+      headers: {
+        "content-type": "application/json",
+        "x-pokrov-auth-error": "telegram_oidc_state_expired",
+      },
+    })) as typeof fetch;
+
+  try {
+    await expect(finishTelegramOidcLogin({ code: "old-code", state: "old-state" })).rejects.toThrow(
+      /telegram_oidc_state_expired/,
+    );
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
 });

@@ -1417,16 +1417,23 @@ function dispatchAuthRequired(detail?: { code?: string | null; message?: string 
 }
 
 async function readApiError(r: Response): Promise<string> {
+  const authErrorCode = String(r.headers.get("x-pokrov-auth-error") || "").trim();
+  const withAuthErrorCode = (message: string): string => {
+    const cleanMessage = String(message || "").trim();
+    if (!authErrorCode) return cleanMessage;
+    if (cleanMessage.toLowerCase().includes(authErrorCode.toLowerCase())) return cleanMessage;
+    return cleanMessage ? `${authErrorCode}: ${cleanMessage}` : authErrorCode;
+  };
   const text = (await r.text()).trim();
-  if (!text) return `API error: ${r.status}`;
+  if (!text) return withAuthErrorCode(`API error: ${r.status}`);
   if (classifyApiPayload({ bodyText: text, contentType: r.headers.get("content-type") || "" }) === "html") {
-    return "Received app shell instead of API response";
+    return withAuthErrorCode("Received app shell instead of API response");
   }
   try {
     const parsed = JSON.parse(text) as { detail?: string; message?: string };
-    return String(parsed?.detail || parsed?.message || text);
+    return withAuthErrorCode(String(parsed?.detail || parsed?.message || text));
   } catch {
-    return text;
+    return withAuthErrorCode(text);
   }
 }
 
