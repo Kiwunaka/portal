@@ -2,7 +2,7 @@
 
 Generated: 2026-05-08, refreshed after `docs/audit-artifacts/public-beta-handoff-2026-05-08.md`.
 
-Refreshed: 2026-05-09 after portal commit `95ae548`, client commit `c5f40a6`, and static release `20260509001332`.
+Refreshed: 2026-05-09 after portal commit `33c588e`, client commit `c5f40a6`, static release `20260509001332`, and Guardrails run `25585935078`.
 
 ## Objective Restated
 
@@ -51,7 +51,7 @@ The workspace is prepared as far as current access allows, but final publication
 | Client build/preflight evidence | `C:/Users/kiwun/Documents/ai/POKROV-app/artifacts/releases/release-handoff.json`, versioned handoff `0.2.0-beta.1+20260508`, versioned `README.md` / `SHA256SUMS.txt`, Windows packaging smoke with `-OfflinePubGet`, and GitHub release assets | STAGED_PASS | Physical Android audit is operator-attested; Windows unsigned risk accepted; client seed metadata was refreshed and validated. |
 | Visual QA | Live Chromium sweep `.tmp/live-visual-sweep-2026-05-08T19-40-19-624Z/summary.json`; focused WebApp mobile e2e | PASS_WITH_SCOPE_LIMITS | Fresh sweep covered marketing home desktop/mobile/dark, checkout mobile, WebApp entry desktop/mobile-dark/Telegram-like with no JS/page errors or horizontal overflow; authenticated cabinet/admin mobile viewport coverage remains mocked e2e, not live operator-session browsing. |
 | Current-origin and brain-origin gates | Launch decision reads current full/quick and brain quick gate artifacts | PASS_WITH_SCOPE_LIMITS | Green gates do not cover missing runtime links, Lava proof, or live inbox delivery. |
-| GitHub Actions repo guardrails | Guardrails run `25583770912` on portal commit `023849b` | PASS_WITH_SCOPE_LIMITS | CI guardrails are green on the forced Node 24 actions runtime, but skip operator-only client/browser gates as `SKIPPED_CI_UNAVAILABLE` and are not public-release authorization. |
+| GitHub Actions repo guardrails | Guardrails run `25585935078` on portal commit `33c588e` | PASS_WITH_SCOPE_LIMITS | CI guardrails are green on the forced Node 24 actions runtime, but skip operator-only client/browser gates as `SKIPPED_CI_UNAVAILABLE` and are not public-release authorization. |
 | Static/backend deploy | Static release `20260509001332`; backend deploy restarted `portal-api,portal-bot` after the bot RUB checkout gate; earlier deploys covered Telegram OIDC classification and access-key normalization | PASS | Runtime env link sync intentionally not applied. |
 | RU-origin | `docs/audit-artifacts/ru-origin-skip-accepted-2026-05-08.md` | SKIPPED_BY_OPERATOR | Do not claim RU-origin Telegram readiness. |
 | Release handoff | `docs/audit-artifacts/public-beta-handoff-2026-05-08.md` | PASS_NO_GO | Final output exists but says `NO-GO`. |
