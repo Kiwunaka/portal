@@ -216,7 +216,7 @@ class BotPaywallTests(unittest.TestCase):
         link = self.bot_module.build_subscription_link(1001)
         self.assertTrue(link.startswith("https://connect.pokrov.space/s8Kx2mP7qR4wT/token_1001_secure"))
 
-    def test_show_key_exposes_single_public_connection_link(self) -> None:
+    def test_show_key_frames_connection_link_as_manual_recovery_path(self) -> None:
         class _EditableMessage(_FakeMessage):
             async def edit_text(self, text, **kwargs):
                 self.edits.append(str(text))
@@ -256,13 +256,17 @@ class BotPaywallTests(unittest.TestCase):
 
         final_text = callback.message.edits[-1]
         self.assertIn("https://connect.pokrov.space/s8Kx2mP7qR4wT/token_1001_secure", final_text)
+        self.assertIn("ручной вариант", final_text.lower())
+        self.assertIn("запасной", final_text.lower())
         self.assertNotIn("?format=plain", final_text)
         self.assertNotIn("Обычная ссылка", final_text)
 
         reply_markup = callback.message.edit_kwargs[-1]["reply_markup"]
         labels = [button.text for row in reply_markup.inline_keyboard for button in row]
-        self.assertIn("📋 Скопировать ссылку", labels)
-        self.assertIn("📱 QR для подключения", labels)
+        self.assertIn("📲 Открыть кабинет", labels)
+        self.assertIn("🧭 Ручная ссылка", labels)
+        self.assertIn("📱 QR для ручного подключения", labels)
+        self.assertNotIn("📋 Скопировать ссылку", labels)
 
     def test_check_subscription_allows_when_channel_not_configured(self) -> None:
         self.bot_module.NEWS_CHANNEL_ID = ""

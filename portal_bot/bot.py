@@ -4519,8 +4519,9 @@ async def show_key(callback: CallbackQuery):
 
     kb = InlineKeyboardMarkup(
         inline_keyboard=[
-            [InlineKeyboardButton(text="📋 Скопировать ссылку", callback_data="copy_key")],
-            [InlineKeyboardButton(text="📱 QR для подключения", callback_data="show_qr")],
+            [InlineKeyboardButton(text="📲 Открыть кабинет", web_app=WebAppInfo(url=WEBAPP_URL))],
+            [InlineKeyboardButton(text="🧭 Ручная ссылка", callback_data="copy_key")],
+            [InlineKeyboardButton(text="📱 QR для ручного подключения", callback_data="show_qr")],
             [InlineKeyboardButton(text="👨‍👩‍👧‍👦 Поделиться доступом", callback_data="share_access")],
             [InlineKeyboardButton(text="🚨 Panic Mode", callback_data="panic_menu")],
             [InlineKeyboardButton(text="◀️ Назад", callback_data="back")],
@@ -4530,11 +4531,11 @@ async def show_key(callback: CallbackQuery):
     kb = _access_key_keyboard(kb, copy_text=sub_link)
 
     await msg.edit_text(
-        f"🔗 *Ссылка для подключения готова:*\n\n"
+        "🧭 *Ручной вариант подключения*\n\n"
+        "Основной путь — открыть кабинет или приложение POKROV: там доступ подхватывается спокойнее и без ручного копирования.\n\n"
+        "Эта личная ссылка — запасной вариант для восстановления или совместимых клиентов:\n\n"
         f"`{sub_link}`\n\n"
-        "Следующий шаг: откройте её в приложении POKROV.\n"
-        "Если удобнее, используйте QR ниже.\n\n"
-        "Если приложения ещё нет, сначала откройте раздел «Как начать».\n"
+        "Не пересылайте её другим людям. Если приложения ещё нет, сначала откройте раздел «Как начать».\n"
         f"{free_note}",
         reply_markup=kb,
         parse_mode=ParseMode.MARKDOWN
@@ -4545,7 +4546,7 @@ async def copy_key_callback(callback: CallbackQuery):
     tg_id = callback.from_user.id
     sub_link = build_subscription_link(tg_id)
     track_event(tg_id=tg_id, event_name="copied_key", source="bot")
-    await callback.answer(f"📋 Скопируйте ссылку:\n{sub_link}", show_alert=True)
+    await callback.answer(f"🧭 Ручная ссылка для восстановления:\n{sub_link}", show_alert=True)
 
 
 @router.callback_query(F.data == "show_qr")
@@ -4566,12 +4567,12 @@ async def show_qr_code(callback: CallbackQuery):
     await callback.message.answer_photo(
         photo=file,
         caption=(
-            "📱 *QR для подключения*\n\n"
-            "Следующий шаг: откройте приложение POKROV и отсканируйте код."
+            "📱 *QR для ручного подключения*\n\n"
+            "Это запасной способ для восстановления или совместимых клиентов. Основной путь — открыть доступ в приложении POKROV."
         ),
         parse_mode=ParseMode.MARKDOWN,
     )
-    await callback.answer("QR для подключения готов")
+    await callback.answer("QR для ручного подключения готов")
 
 
 @router.callback_query(F.data == "share_access")
@@ -6752,8 +6753,8 @@ def _access_key_keyboard(
     if legacy_keyboard is None:
         legacy_keyboard = InlineKeyboardMarkup(
             inline_keyboard=[
-                [InlineKeyboardButton(text="\U0001f4cb \u0421\u043a\u043e\u043f\u0438\u0440\u043e\u0432\u0430\u0442\u044c \u0441\u0441\u044b\u043b\u043a\u0443", callback_data="copy_key")],
-                [InlineKeyboardButton(text="\U0001f4f1 QR \u0434\u043b\u044f \u043f\u043e\u0434\u043a\u043b\u044e\u0447\u0435\u043d\u0438\u044f", callback_data="show_qr")],
+                [InlineKeyboardButton(text="🧭 Ручная ссылка", callback_data="copy_key")],
+                [InlineKeyboardButton(text="📱 QR для ручного подключения", callback_data="show_qr")],
                 [InlineKeyboardButton(text="\U0001f46a \u041f\u043e\u0434\u0435\u043b\u0438\u0442\u044c\u0441\u044f \u0434\u043e\u0441\u0442\u0443\u043f\u043e\u043c", callback_data="share_access")],
                 [InlineKeyboardButton(text="\U0001f6a8 Panic Mode", callback_data="panic_menu")],
                 [InlineKeyboardButton(text="\u25c0\ufe0f \u041d\u0430\u0437\u0430\u0434", callback_data="back")],
