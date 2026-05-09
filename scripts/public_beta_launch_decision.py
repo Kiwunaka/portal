@@ -21,7 +21,7 @@ GO = "GO"
 
 DEFAULT_HANDOFF = Path("docs/audit-artifacts/public-beta-handoff-2026-05-08.md")
 DEFAULT_COMPLETION_AUDIT = Path("docs/audit-artifacts/public-beta-completion-audit-2026-05-08.md")
-DEFAULT_EXTERNAL_PREFLIGHT_JSON = Path("docs/audit-artifacts/public-beta-external-access-preflight-2026-05-08.json")
+DEFAULT_EXTERNAL_PREFLIGHT_JSON = Path("docs/audit-artifacts/public-beta-external-access-preflight-2026-05-09.json")
 DEFAULT_FULL_GATE = Path("docs/audit-artifacts/release-gate-full-local-2026-05-08.md")
 DEFAULT_QUICK_GATE = Path("docs/audit-artifacts/release-gate-local-2026-05-08.md")
 DEFAULT_BRAIN_GATE = Path("docs/audit-artifacts/release-gate-brain-2026-05-08.md")

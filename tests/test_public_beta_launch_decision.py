@@ -137,6 +137,15 @@ class PublicBetaLaunchDecisionTests(unittest.TestCase):
     def setUpClass(cls) -> None:
         cls.module = _load_module()
 
+    def test_default_external_preflight_uses_current_20260509_artifact(self) -> None:
+        expected = Path("docs/audit-artifacts/public-beta-external-access-preflight-2026-05-09.json")
+
+        self.assertEqual(self.module.DEFAULT_EXTERNAL_PREFLIGHT_JSON, expected)
+        report = self.module.build_report()
+        checks = {check["name"]: check for check in report["checks"]}
+        self.assertEqual(checks["external_access_preflight"]["source"], str(expected))
+        self.assertNotIn("docs_url is missing", "\n".join(checks["external_access_preflight"]["missing"]))
+
     def test_current_artifacts_remain_no_go(self) -> None:
         report = self.module.build_report()
 
