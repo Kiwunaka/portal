@@ -192,7 +192,7 @@ function buildPlanCards(): PlanCard[] {
 export function buildMarketingMetadata(
   title = "POKROV | Спокойный доступ без лишнего шума",
   description =
-    "Скачайте приложение для Android или Windows, получите 5 дней бесплатного доступа и продолжайте тот же путь через кабинет.",
+    "Откройте статус установки для Android или Windows, начните с 5 дней бесплатного доступа, когда бета-файл доступен вашему аккаунту, и продолжайте тот же путь через кабинет.",
   options: MarketingMetadataOptions = {},
 ): Metadata {
   const canonical = buildMarketingUrl(options.path || "/");

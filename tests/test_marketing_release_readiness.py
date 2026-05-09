@@ -315,6 +315,23 @@ def test_marketing_public_ctas_do_not_use_connect_host() -> None:
     assert "href={paidBetaHref}" in marketing_landing
 
 
+def test_marketing_public_home_does_not_promise_direct_downloads_before_runtime_go() -> None:
+    public_home_copy = "\n".join(
+        [
+            _read("app", "layout.tsx"),
+            _read("components", "home", "homepage.tsx"),
+            _read("components", "marketing-landing.tsx"),
+            _read("lib", "marketing-site.ts"),
+        ]
+    )
+
+    assert "Скачайте приложение" not in public_home_copy
+    assert "Скачайте POKROV" not in public_home_copy
+    assert "Никакой регистрации — просто откройте и нажмите Подключить" not in public_home_copy
+    assert "Откройте статус установки" in public_home_copy
+    assert "если бета-файл доступен вашему аккаунту" in public_home_copy.lower()
+
+
 def test_marketing_metadata_declares_canonical_and_share_metadata() -> None:
     layout = _read("app", "layout.tsx")
     landing = _read("components", "marketing-landing.tsx")
