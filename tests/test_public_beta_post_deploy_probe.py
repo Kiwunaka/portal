@@ -37,9 +37,13 @@ def _runtime_payload(path: str) -> dict[str, object]:
         }
     if path == "/api/payments/providers":
         return {
-            "provider_count": 0,
+            "ok": False,
+            "blocked": True,
             "providers": [],
-            "blocked_reason": "paid_checkout_launch_evidence_missing",
+            "blocked_reasons": ["paid_checkout_launch_evidence_missing"],
+            "blocked_reason_texts": [
+                "Оплата пока закрыта: мы включим продление после финальной проверки Lava.top и доставки ключей на email."
+            ],
         }
     raise AssertionError(path)
 
@@ -71,6 +75,7 @@ def test_dry_run_reads_live_runtime_status_but_blocks_mutating_probes() -> None:
     assert report["safe_to_enable_paid_checkout"] is False
     assert checks["email_public_runtime_config"]["status"] == module.PASS
     assert checks["payment_provider_catalog"]["status"] == module.BLOCKED_BY_ACCESS
+    assert "Оплата пока закрыта" in checks["payment_provider_catalog"]["note"]
     assert checks["email_delivery_verify"]["status"] == module.BLOCKED_BY_ACCESS
     assert checks["lavatop_live_invoice_creation"]["status"] == module.BLOCKED_BY_ACCESS
     assert "super-secret-email-token" not in encoded
@@ -173,6 +178,37 @@ def test_payment_provider_catalog_accepts_live_api_provider_shape_without_enable
     checks = {check["name"]: check for check in report["checks"]}
     assert checks["payment_provider_catalog"]["status"] == module.PASS
     assert report["safe_to_enable_paid_checkout"] is True
+
+
+def test_payment_provider_catalog_uses_blocked_reason_lists_from_live_api() -> None:
+    module = _load_module()
+
+    report = module.build_report(
+        api_base_url="https://api.pokrov.space",
+        env={},
+        live=False,
+        runtime_fetcher=lambda path: {
+            "/api/auth/email/status": {
+                "enabled": True,
+                "public_enabled": True,
+                "delivery_url_configured": True,
+                "delivery_secret_configured": True,
+                "debug_echo": False,
+            },
+            "/api/payments/providers": {
+                "ok": False,
+                "blocked": True,
+                "providers": [],
+                "blocked_reasons": ["paid_checkout_launch_evidence_missing"],
+                "blocked_reason_texts": ["Оплата пока закрыта до финальной проверки Lava.top."],
+            },
+        }[path],
+        command_runner=lambda *_args, **_kwargs: (_ for _ in ()).throw(AssertionError("unexpected command")),
+    )
+
+    checks = {check["name"]: check for check in report["checks"]}
+    assert checks["payment_provider_catalog"]["status"] == module.BLOCKED_BY_ACCESS
+    assert checks["payment_provider_catalog"]["note"] == "Оплата пока закрыта до финальной проверки Lava.top."
 
 
 def test_brain_live_probe_report_can_prove_email_without_local_secrets() -> None:

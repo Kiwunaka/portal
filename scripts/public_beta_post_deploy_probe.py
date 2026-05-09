@@ -229,6 +229,27 @@ def _provider_enabled(provider: Mapping[str, Any], *, catalog_enabled: bool = Fa
     return bool(catalog_enabled)
 
 
+def _payment_provider_block_note(payload: Mapping[str, Any]) -> str:
+    texts = payload.get("blocked_reason_texts")
+    if isinstance(texts, list):
+        text_note = "; ".join(str(item).strip() for item in texts if str(item or "").strip())
+        if text_note:
+            return text_note
+
+    reasons = payload.get("blocked_reasons")
+    if isinstance(reasons, list):
+        reason_note = ", ".join(str(item).strip() for item in reasons if str(item or "").strip())
+        if reason_note:
+            return reason_note
+
+    for key in ("blocked_reason", "reason"):
+        value = str(payload.get(key) or "").strip()
+        if value:
+            return value
+
+    return "paid checkout unavailable"
+
+
 def _payment_provider_check(payload: Mapping[str, Any], *, source: str) -> dict[str, Any]:
     if payload.get("_probe_error"):
         return _check(
@@ -261,12 +282,11 @@ def _payment_provider_check(payload: Mapping[str, Any], *, source: str) -> dict[
             source=source,
         )
 
-    reason = str(payload.get("blocked_reason") or payload.get("reason") or "paid checkout unavailable").strip()
     return _check(
         "payment_provider_catalog",
         BLOCKED_BY_ACCESS,
         missing=["enabled Lava.top provider catalog"],
-        note=reason,
+        note=_payment_provider_block_note(payload),
         source=source,
     )
 
