@@ -184,7 +184,7 @@ function buildRuntimeGates({
       label: "Гейт оплаты Lava.top",
       value: lavaOnly ? "каталог найден; checkout закрыт" : payments?.blocked ? "закрыто" : "проверить",
       detail: lavaOnly
-        ? "Каталог оплаты показывает только Lava.top, но это не live payment proof. Checkout остается закрытым до invoice/webhook/replay/failure/manual-review/reconciliation и email-key evidence."
+        ? "Каталог оплаты показывает только Lava.top, но это не live payment proof. Боевой прогон возможен только после deploy и probe-buyer; checkout остается закрытым до invoice/webhook/replay/failure/manual-review/reconciliation и email-key evidence."
         : payments?.blocked
           ? reasonList(payments.blocked_reason_texts || payments.blocked_reasons)
           : "Каталог оплаты не доказывает готовность режима только Lava.top.",
@@ -195,7 +195,7 @@ function buildRuntimeGates({
       label: "Email-вход и доставка ключей",
       value: yesNo(emailReady),
       detail: emailReady
-        ? "Публичный email-режим включен, доставка настроена, debug echo выключен; боевую доставку писем все еще нужно подтвердить ниже."
+        ? "Runtime-конфиг email зеленый: public mode включен, доставка настроена, debug echo выключен. Боевой inbox smoke verify/reset/key delivery остается post-deploy проверкой."
         : `Email-гейт закрыт: ${reasonList(email?.blocked_reasons)}.`,
       tone: emailReady ? "success" : "warning",
     },
@@ -224,7 +224,7 @@ const EXTERNAL_GATES: GateItem[] = [
     key: "lavatop-live",
     label: "Боевые подтверждения Lava.top",
     value: "BLOCKED_BY_ACCESS",
-    detail: "Нужны создание счета, проверка вебхука, повторная доставка/идемпотентность, неуспешный платеж и сверка.",
+    detail: "Нужны post-deploy создание счета, проверка вебхука, повторная доставка/идемпотентность, неуспешный платеж и сверка.",
     tone: "danger",
   },
   {
@@ -248,7 +248,7 @@ const EXTERNAL_GATES: GateItem[] = [
     label: "Brain-local email/Lava.top probe",
     value: "BLOCKED_BY_ACCESS",
     detail:
-      "Последний retained brain-local probe дошел до brain и runtime env, но остановился без отправки писем и invoice: нужны безопасные email_probe_to и lavatop_probe_email. Секреты остаются на brain, наружу должен идти только redacted HTTP-status.",
+      "Последний retained brain-local probe дошел до brain и runtime env, но остановился без отправки писем и invoice: после deploy нужны безопасные email_probe_to и lavatop_probe_email. Секреты остаются на brain, наружу должен идти только redacted HTTP-status.",
     tone: "danger",
   },
   {
@@ -415,7 +415,7 @@ export default function AdminReleasePage() {
       title: "Email-доставка",
       status: emailPublicReady ? "нужен probe-ящик" : "сначала включить public email",
       detail:
-        "Нужен безопасный адрес, на который можно отправить verify/reset и письмо с тестовым ключом. Без inbox-подтверждения email остается внешним блокером.",
+        "После deploy нужен безопасный адрес, на который можно отправить verify/reset и письмо с тестовым ключом. Без inbox-подтверждения email остается внешним блокером.",
       command: EMAIL_PROBE_COMMAND,
       tone: emailPublicReady ? "warning" : "danger",
     },
@@ -424,7 +424,7 @@ export default function AdminReleasePage() {
       title: "Lava.top",
       status: "нужна живая проверка",
       detail:
-        "Оплата остается закрытой, пока не будет invoice creation, webhook auth, replay/idempotency, failed/manual-review, reconciliation и email key delivery evidence.",
+        "Оплата остается закрытой. После deploy нужен живой Lava.top-прогон: invoice creation, webhook auth, replay/idempotency, failed/manual-review, reconciliation и email key delivery evidence.",
       command: LAVATOP_PROBE_COMMAND,
       tone: "danger",
     },
@@ -496,7 +496,7 @@ export default function AdminReleasePage() {
           {
             label: "Оплата",
             value: payments?.ok ? "каталог найден" : "закрыто",
-            hint: payments?.ok ? `провайдеры: ${(payments.providers || []).map((provider) => provider.code).join(", ")}; checkout закрыт до боевых подтверждений Lava.top.` : reasonList(payments?.blocked_reasons),
+            hint: payments?.ok ? `провайдеры: ${(payments.providers || []).map((provider) => provider.code).join(", ")}; checkout закрыт до post-deploy подтверждений Lava.top.` : reasonList(payments?.blocked_reasons),
             tone: payments?.ok ? "warning" : "warning",
           },
           {
@@ -506,9 +506,9 @@ export default function AdminReleasePage() {
             tone: "success",
           },
           {
-            label: "Email",
+            label: "Email runtime",
             value: email?.enabled ? "локально проверено" : "закрыто",
-            hint: email?.enabled ? "режим включен; боевой гейт ниже остается закрыт до подтвержденной доставки писем." : reasonList(email?.blocked_reasons),
+            hint: email?.enabled ? "режим включен; боевой гейт ниже остается закрыт до post-deploy inbox smoke." : reasonList(email?.blocked_reasons),
             tone: email?.enabled ? "warning" : "warning",
           },
         ]}
@@ -518,7 +518,7 @@ export default function AdminReleasePage() {
         <AdminPanelHeader
           eyebrow="следующие действия"
           title="Что нужно от оператора"
-          description="Короткий список входов, без которых релизный экран честно остается NO-GO. Команды и маркеры не содержат секретов; адреса для probe нужно подставить вручную."
+          description="Короткий список входов, без которых релизный экран честно остается NO-GO. Команды и маркеры не содержат секретов; email/probe-buyer адреса подставляются вручную после deploy."
         />
         <div className="grid gap-3 xl:grid-cols-3">
           {operatorActions.map((action) => (
@@ -569,8 +569,8 @@ export default function AdminReleasePage() {
                 ? "GitHub Releases APK/EXE обнаружены в runtime /api/client/apps; публичный анонс все еще ждет подтвержденный runtime-sync GO и финальный GO."
                 : "GitHub prerelease assets подготовлены для проверки; runtime-ссылки пока не активны.",
               "Android-кандидат принят как операторски подтвержденный, Windows EXE остается неподписанной бета-сборкой.",
-              "Оплата остается закрытой до подтверждений Lava.top и доставки ключей по email.",
-              "Email-вход включается только при готовой доставке писем.",
+              "Оплата остается закрытой до post-deploy подтверждений Lava.top и доставки ключей по email.",
+              "Email-вход можно оставлять публичным только при подтвержденной доставке писем.",
             ].map((claim) => (
               <p key={claim} className={adminInsetPanelClass}>{claim}</p>
             ))}
