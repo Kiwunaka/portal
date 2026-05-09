@@ -7090,7 +7090,7 @@ async def cabinet_command(message: Message):
     _set_support_context(tg_id, enabled=False)
     await message.answer(
         "🌐 *Кабинет POKROV*\n\n"
-        "Здесь можно проверить доступ, активировать gift-код, открыть поддержку и перейти к управлению аккаунтом.\n"
+        "Здесь можно проверить доступ, активировать ключ доступа, открыть поддержку и перейти к управлению аккаунтом.\n"
         "Само подключение в один тап остаётся в приложении POKROV.",
         reply_markup=_cabinet_command_keyboard(),
         parse_mode=ParseMode.MARKDOWN,

@@ -346,6 +346,8 @@ class BotPaywallTests(unittest.TestCase):
         self.assertTrue(message.answers)
         text, kwargs = message.answers[-1]
         self.assertIn("POKROV", text)
+        self.assertIn("активировать ключ доступа", text)
+        self.assertNotIn("gift-код", text)
         buttons = [
             button
             for row in kwargs["reply_markup"].inline_keyboard
