@@ -1257,9 +1257,11 @@ class ApiPaymentCallbacksTests(unittest.TestCase):
         sent = self.telegram_messages[0]
         self.assertEqual(sent["chat_id"], 6666)
         self.assertIn("Оплата прошла", str(sent["text"]))
-        self.assertIn("Happ", str(sent["text"]))
-        self.assertIn("Hiddify", str(sent["text"]))
-        self.assertIn("connect.pokrov.space", str(sent["text"]))
+        self.assertIn("ручная ссылка", str(sent["text"]).lower())
+        self.assertIn("кабинет", str(sent["text"]).lower())
+        self.assertNotIn("Happ", str(sent["text"]))
+        self.assertNotIn("Hiddify", str(sent["text"]))
+        self.assertNotIn("connect.pokrov.space", str(sent["text"]))
         kwargs = sent["kwargs"]
         self.assertEqual(kwargs.get("parse_mode"), "Markdown")
         keyboard = kwargs.get("reply_markup")

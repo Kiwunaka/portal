@@ -6884,7 +6884,7 @@ def _paid_access_ready_keyboard() -> InlineKeyboardMarkup:
             ],
             [
                 _btn_spec(
-                    text="🔗 Ссылка и QR для подключения",
+                    text="🧭 Ручная ссылка и QR",
                     callback_data="show_key",
                     style=BTN_STYLE_SUCCESS,
                     icon_custom_emoji_id=BTN_EMOJI_SUCCESS_ID or None,
@@ -6937,7 +6937,7 @@ def _channel_bonus_activated_keyboard() -> InlineKeyboardMarkup:
         [
             [
                 _btn_spec(
-                    text="🔗 Ссылка для подключения",
+                    text="🧭 Ручная ссылка",
                     callback_data="show_key",
                     style=BTN_STYLE_SUCCESS,
                     icon_custom_emoji_id=BTN_EMOJI_SUCCESS_ID or None,
@@ -6983,7 +6983,7 @@ def _payment_success_fallback_keyboard() -> InlineKeyboardMarkup:
         [
             [
                 _btn_spec(
-                    text="🔗 Открыть ссылку для подключения",
+                    text="🧭 Ручная ссылка",
                     callback_data="show_key",
                     style=BTN_STYLE_SUCCESS,
                     icon_custom_emoji_id=BTN_EMOJI_SUCCESS_ID or None,
@@ -10904,19 +10904,13 @@ async def create_subscription(
             f"\n\n🆓 Бесплатный: до {FREE_TOTAL_GB} ГБ, до {FREE_LIMIT_IP} устройств (по IP), до {FREE_SPEED_MBIT} Мбит/с."
         )
 
-    # Build subscription link
-    sub_link = build_subscription_link(tg_id)
-
     kb = _paid_access_ready_keyboard()
 
     await message.answer(
         f"✅ *Доступ готов!*\n\n"
         f"📅 До: `{expiry}`\n\n"
-        f"🔗 *Ссылка для подключения:*\n"
-        f"`{sub_link}`\n\n"
         "Лучший путь: откройте POKROV и обновите доступ в кабинете.\n"
-        "Пока приложения в бете, мы не ограничиваем ручное подключение: "
-        f"если POKROV ещё не установлен, скопируйте ссылку и импортируйте её в Happ, Hiddify или другой совместимый клиент.{free_note}",
+        f"Ручная ссылка и QR остаются кнопкой ниже как запасной путь, если приложение не подхватило доступ.{free_note}",
         reply_markup=kb,
         parse_mode=ParseMode.MARKDOWN
     )
@@ -12044,16 +12038,14 @@ async def admin_gift(message: Message, bot: Bot):
     )
 
     try:
-        # Build subscription link for notification
-        sub_link = build_subscription_link(gift_tg_id)
         await bot.send_message(
             gift_tg_id,
             f"🎁 *Вам подарили доступ к POKROV!*\n\n"
             f"📦 Тариф: {name}\n"
             f"📅 Дней: {days}\n"
             f"📡 Режим: полный доступ\n\n"
-            f"🔗 *Ссылка для подключения:*\n`{sub_link}`\n\n"
-            f"Следующий шаг: откройте её в приложении POKROV.",
+            "Следующий шаг: откройте POKROV или кабинет и обновите доступ.\n"
+            "Ручная ссылка доступна в меню как запасной путь.",
             parse_mode=ParseMode.MARKDOWN
         )
     except:

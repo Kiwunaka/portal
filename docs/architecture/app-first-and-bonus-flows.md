@@ -252,7 +252,7 @@ Checkout rule:
 - checkout promo discounts shown from shared `pricing_preview.discount_codes` must also be applied server-side before provider order creation; UI-only discounts are not a valid launch state
 - `webapp` renewal is continuation-only and should defer to the same hosted access-key flow after payment evidence is green
 - Telegram bot billing remains valid as a secondary path; bot orders are Telegram-ticket-bound and do not collect buyer email
-- raw subscription links remain hidden from default public commerce and first-layer cabinet UI, but the authenticated cabinet and paid Telegram bot flow may show the single `connect.pokrov.space` link after fulfillment as an explicit beta-stage manual import fallback while still preferring the POKROV app and cabinet
+- raw subscription links remain hidden from default public commerce, first-layer cabinet UI, and paid Telegram notification text; authenticated cabinet surfaces and the Telegram manual-link button may show the single `connect.pokrov.space` link after fulfillment as an explicit beta-stage fallback while still preferring the POKROV app and cabinet
 - signed payment callbacks must not grant access unless the normalized local status is `paid`; failed, cancelled, refunded, chargeback, invalid-signature, and unknown/manual-review states are recorded for operator reconciliation instead of extending the account
 - paid public access-key email fulfillment is visible in the admin payment ledger as sanitized state, and email retry requires a paid order plus an operator audit note
 

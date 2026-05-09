@@ -268,6 +268,33 @@ class BotPaywallTests(unittest.TestCase):
         self.assertIn("📱 QR для ручного подключения", labels)
         self.assertNotIn("📋 Скопировать ссылку", labels)
 
+    def test_create_subscription_completion_hides_raw_link_by_default(self) -> None:
+        class _Panel:
+            async def get_existing_client(self, _tg_id):
+                return None
+
+            async def add_client(self, *_args, **_kwargs):
+                return True
+
+            async def update_client_traffic(self, *_args, **_kwargs):
+                return True
+
+        old_panel = self.bot_module.panel
+        self.bot_module.panel = _Panel()
+        try:
+            message = _FakeMessage(1001)
+            tariff = dict(self.bot_module.TARIFFS["trial"])
+            asyncio.run(self.bot_module.create_subscription(message, 1001, tariff, _FakeBot(status="member")))
+        finally:
+            self.bot_module.panel = old_panel
+
+        text = message.answers[-1][0]
+        self.assertIn("ручная ссылка", text.lower())
+        self.assertIn("кабинет", text.lower())
+        self.assertNotIn("connect.pokrov.space", text)
+        self.assertNotIn("Happ", text)
+        self.assertNotIn("Hiddify", text)
+
     def test_check_subscription_allows_when_channel_not_configured(self) -> None:
         self.bot_module.NEWS_CHANNEL_ID = ""
         fake = _FakeBot(status="left")

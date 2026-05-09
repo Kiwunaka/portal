@@ -42,7 +42,7 @@ Runtime provider rule:
 ## Fulfillment Model
 
 - authenticated cabinet and bot orders keep `tg_id` on `ExternalOrder`; a valid paid Lava.top webhook extends that account directly.
-- bot-side Lava.top orders are created with a signed checkout ticket and do not ask for buyer email; after the paid webhook, the bot sends the user an app/cabinet handoff plus the single `connect.pokrov.space` subscription link for beta-stage manual import.
+- bot-side Lava.top orders are created with a signed checkout ticket and do not ask for buyer email; after the paid webhook, the bot sends the user an app/cabinet handoff and keeps the single `connect.pokrov.space` subscription link plus QR behind an explicit manual-link button for beta-stage fallback import.
 - anonymous public checkout requires `buyer_email`; a valid paid Lava.top webhook creates one `GiftCard` access key and sends it through the email delivery relay.
 - paid webhook fulfillment is blocked into `manual_review` when provider auth is valid but the local order is unknown, amount is missing or mismatched, currency is missing or mismatched, or plan code conflicts.
 - duplicate webhook events are idempotent by provider, event type, and external contract id; they must not issue a second key or extend twice.

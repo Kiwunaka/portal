@@ -3849,7 +3849,7 @@ def _telegram_paid_access_keyboard() -> dict[str, Any]:
     rows: list[list[dict[str, Any]]] = [
         [{"text": "📲 Установить POKROV", "callback_data": "instruction"}],
         [{"text": "🌐 Открыть кабинет", "web_app": {"url": _public_webapp_url()}}],
-        [{"text": "🔗 Ссылка и QR для подключения", "callback_data": "show_key"}],
+        [{"text": "🧭 Ручная ссылка и QR", "callback_data": "show_key"}],
     ]
     if SUPPORT_USERNAME:
         rows.append([{"text": "💬 Поддержка", "url": f"https://t.me/{SUPPORT_USERNAME}?start=ticket_new"}])
@@ -3867,7 +3867,6 @@ async def _notify_telegram_paid_access_ready(*, tg_id: int, sync_ok: bool) -> bo
             s.commit()
             s.refresh(user)
         expiry = user.expiry_at.strftime("%d.%m.%Y") if user.expiry_at else "—"
-        sub_link = build_subscription_url(str(user.sub_token or ""))
     finally:
         s.close()
 
@@ -3876,10 +3875,7 @@ async def _notify_telegram_paid_access_ready(*, tg_id: int, sync_ok: bool) -> bo
             "✅ *Оплата прошла, доступ готов.*\n\n"
             f"📅 До: `{expiry}`\n\n"
             "Лучший путь: откройте POKROV и обновите доступ в кабинете.\n"
-            "Пока приложения в бете, мы не ограничиваем ручное подключение: "
-            "если POKROV ещё не установлен, скопируйте ссылку и импортируйте её в Happ, Hiddify или другой совместимый клиент.\n\n"
-            "🔗 *Ссылка для подключения:*\n"
-            f"`{sub_link}`"
+            "Ручная ссылка и QR остаются кнопкой ниже как запасной путь, если приложение не подхватило доступ."
         )
     else:
         text = (
@@ -3887,8 +3883,7 @@ async def _notify_telegram_paid_access_ready(*, tg_id: int, sync_ok: bool) -> bo
             f"📅 До: `{expiry}`\n\n"
             "Доступ записан в системе, но авто-синхронизация с узлами заняла больше обычного. "
             "Попробуйте открыть POKROV или кабинет через минуту; если подключение не заработает, напишите в поддержку.\n\n"
-            "🔗 *Ссылка для подключения:*\n"
-            f"`{sub_link}`"
+            "Ручная ссылка и QR остаются кнопкой ниже как запасной путь."
         )
     return await _telegram_send_message(
         int(tg_id),

@@ -31,7 +31,7 @@ Current fulfillment contract:
 
 - authenticated cabinet and bot payments extend the linked account after a valid paid callback; bot payments are ticket-bound to Telegram and do not require buyer email;
 - Telegram Stars purchase surfaces are off by default for public beta (`BOT_STARS_PAYMENTS_ENABLED=false`); Stars handlers are legacy compatibility only and must not be used as a public paid lane while Lava.top is the launch provider;
-- after a paid bot callback, the user receives a Telegram handoff that prefers the POKROV app/cabinet and also includes the single `connect.pokrov.space` subscription link for beta-stage manual import;
+- after a paid bot callback, the user receives a Telegram handoff that prefers the POKROV app/cabinet; the single `connect.pokrov.space` subscription link and QR remain behind an explicit manual-link button for beta-stage fallback import;
 - the authenticated cabinet may show the same `connect.pokrov.space` subscription link and QR after access is active, so beta users can connect manually while native apps are still gated;
 - anonymous public checkout requires buyer email and issues one access key through email delivery after a valid paid callback;
 - admin payment surfaces must show sanitized fulfillment/email-delivery state and may retry paid public access-key email delivery only with an operator audit note;
