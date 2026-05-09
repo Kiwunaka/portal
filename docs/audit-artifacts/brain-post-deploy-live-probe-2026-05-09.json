@@ -1,0 +1,52 @@
+{
+  "ok": false,
+  "classification": "BLOCKED_BY_ACCESS",
+  "mode": "brain_post_deploy_live_probe",
+  "live": true,
+  "source_unit": "portal-api",
+  "plan_code": "start_99",
+  "post_deploy_probe_mode": "blocked_missing_or_failed_probe_inputs",
+  "safe_to_keep_email_public": false,
+  "email_public_probe_can_be_evaluated_independently": true,
+  "lavatop_invoice_probe_passed": false,
+  "safe_to_enable_paid_checkout": false,
+  "note": "Lava.top invoice creation proof is only one part of paid-checkout launch evidence; webhook/replay/failure/reconciliation proof is still separate.",
+  "checks": [
+    {
+      "note": "Live email delivery proof requires a probe recipient and relay runtime env.",
+      "missing": [
+        "email_probe_to"
+      ],
+      "source": "brain:portal-api",
+      "status": "BLOCKED_BY_ACCESS",
+      "name": "email_delivery_verify"
+    },
+    {
+      "note": "Live email delivery proof requires a probe recipient and relay runtime env.",
+      "missing": [
+        "email_probe_to"
+      ],
+      "source": "brain:portal-api",
+      "status": "BLOCKED_BY_ACCESS",
+      "name": "email_delivery_reset"
+    },
+    {
+      "note": "Live email delivery proof requires a probe recipient and relay runtime env.",
+      "missing": [
+        "email_probe_to"
+      ],
+      "source": "brain:portal-api",
+      "status": "BLOCKED_BY_ACCESS",
+      "name": "email_delivery_payment_access_key"
+    },
+    {
+      "note": "Live Lava.top invoice proof requires a probe buyer and runtime credentials.",
+      "missing": [
+        "lavatop_probe_email"
+      ],
+      "source": "brain:portal-api",
+      "status": "BLOCKED_BY_ACCESS",
+      "name": "lavatop_live_invoice_creation"
+    }
+  ]
+}

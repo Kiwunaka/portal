@@ -28,7 +28,7 @@ DEFAULT_BRAIN_GATE = Path("docs/audit-artifacts/release-gate-brain-2026-05-08.md
 DEFAULT_PAID_CHECKOUT_EVIDENCE = Path("docs/audit-artifacts/paid-checkout-launch-evidence-brain-2026-05-08.json")
 DEFAULT_LIVE_EMAIL_STATUS = Path("docs/audit-artifacts/live-email-auth-status-brain-2026-05-08.json")
 DEFAULT_LIVE_PAYMENT_STATUS = Path("docs/audit-artifacts/live-payment-provider-status-brain-2026-05-08.json")
-DEFAULT_POST_DEPLOY_PROBE = Path("docs/audit-artifacts/public-beta-post-deploy-probe-2026-05-08.json")
+DEFAULT_POST_DEPLOY_PROBE = Path("docs/audit-artifacts/public-beta-post-deploy-probe-2026-05-09.json")
 DEFAULT_STAGED_REACHABILITY = Path("docs/audit-artifacts/staged-client-apps-reachability-2026-05-08.md")
 DEFAULT_RUNTIME_SYNC_GUARD = Path("docs/audit-artifacts/runtime-link-sync-guard-2026-05-08.md")
 

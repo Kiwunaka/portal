@@ -146,6 +146,14 @@ class PublicBetaLaunchDecisionTests(unittest.TestCase):
         self.assertEqual(checks["external_access_preflight"]["source"], str(expected))
         self.assertNotIn("docs_url is missing", "\n".join(checks["external_access_preflight"]["missing"]))
 
+    def test_default_post_deploy_probe_uses_current_20260509_artifact(self) -> None:
+        expected = Path("docs/audit-artifacts/public-beta-post-deploy-probe-2026-05-09.json")
+
+        self.assertEqual(self.module.DEFAULT_POST_DEPLOY_PROBE, expected)
+        report = self.module.build_report()
+        checks = {check["name"]: check for check in report["checks"]}
+        self.assertEqual(checks["post_deploy_payment_email_probe"]["source"], str(expected))
+
     def test_current_artifacts_remain_no_go(self) -> None:
         report = self.module.build_report()
 
