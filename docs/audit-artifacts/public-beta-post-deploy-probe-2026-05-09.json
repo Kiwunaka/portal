@@ -44,43 +44,43 @@
       "missing": [
         "enabled Lava.top provider catalog"
       ],
-      "note": "paid checkout unavailable",
+      "note": "Оплата пока закрыта: мы включим продление после финальной проверки Lava.top и доставки ключей на email.",
       "source": "https://api.pokrov.space/api/payments/providers"
     },
     {
-      "note": "Live email delivery proof requires a probe recipient and relay runtime env.",
       "status": "BLOCKED_BY_ACCESS",
+      "note": "Live email delivery proof requires a probe recipient and relay runtime env.",
+      "source": "brain:portal-api",
       "missing": [
         "email_probe_to"
       ],
-      "source": "brain:portal-api",
       "name": "email_delivery_verify"
     },
     {
-      "note": "Live email delivery proof requires a probe recipient and relay runtime env.",
       "status": "BLOCKED_BY_ACCESS",
+      "note": "Live email delivery proof requires a probe recipient and relay runtime env.",
+      "source": "brain:portal-api",
       "missing": [
         "email_probe_to"
       ],
-      "source": "brain:portal-api",
       "name": "email_delivery_reset"
     },
     {
-      "note": "Live email delivery proof requires a probe recipient and relay runtime env.",
       "status": "BLOCKED_BY_ACCESS",
+      "note": "Live email delivery proof requires a probe recipient and relay runtime env.",
+      "source": "brain:portal-api",
       "missing": [
         "email_probe_to"
       ],
-      "source": "brain:portal-api",
       "name": "email_delivery_payment_access_key"
     },
     {
-      "note": "Live Lava.top invoice proof requires a probe buyer and runtime credentials.",
       "status": "BLOCKED_BY_ACCESS",
+      "note": "Live Lava.top invoice proof requires a probe buyer and runtime credentials.",
+      "source": "brain:portal-api",
       "missing": [
         "lavatop_probe_email"
       ],
-      "source": "brain:portal-api",
       "name": "lavatop_live_invoice_creation"
     },
     {
