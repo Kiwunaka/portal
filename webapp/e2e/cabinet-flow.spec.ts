@@ -678,6 +678,32 @@ test.describe("Cabinet flow", () => {
     expect(requests.recoveryStart).toEqual([]);
   });
 
+  test("routes public email verification and recovery links into the auth entry", async ({ page }) => {
+    const requests = await registerEmailAuthMocks(page);
+
+    await page.goto("/verify?token=verify-route-token");
+
+    await expect(page).not.toHaveURL(/\/verify/, { timeout: 10000 });
+    const verifyInput = page.locator("form input").last();
+    await expect(verifyInput).toHaveValue("verify-route-token", { timeout: 10000 });
+    await expect(page).not.toHaveURL(/token=/);
+    await verifyInput.press("Enter");
+    await expect(page).toHaveURL(/\/dashboard\/?$/);
+    expect(requests.verify).toEqual([{ token: "verify-route-token" }]);
+
+    await page.goto("/recover?token=reset-route-token");
+
+    await expect(page).not.toHaveURL(/\/recover/, { timeout: 10000 });
+    const recoveryInputs = page.locator("form input");
+    await expect(recoveryInputs.nth(1)).toHaveValue("reset-route-token", { timeout: 10000 });
+    await expect(page).not.toHaveURL(/token=/);
+    await page.locator('input[autocomplete="new-password"]').fill("FreshPass456!");
+    await page.locator('input[autocomplete="new-password"]').press("Enter");
+    await expect(page).toHaveURL(/\/dashboard\/?$/);
+    expect(requests.recoveryFinish).toEqual([{ token: "reset-route-token", password: "FreshPass456!" }]);
+    expect(requests.recoveryStart).toEqual([]);
+  });
+
   test("reuses an existing web session and lands in the cabinet without showing auth entry again", async ({ page }) => {
     await page.goto("/");
 

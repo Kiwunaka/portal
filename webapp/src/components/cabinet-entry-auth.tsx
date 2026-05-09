@@ -33,6 +33,7 @@ const EMAIL_MODE_LABELS = {
   verify: "Подтвердить",
   recover: "Восстановить доступ",
 } as const;
+const EMAIL_MODES = new Set(Object.keys(EMAIL_MODE_LABELS));
 
 const PASSWORD_HINT = "Минимум 10 символов.";
 
@@ -70,14 +71,20 @@ export default function CabinetEntryAuth({ siteUrl }: { siteUrl: string }) {
     const url = new URL(window.location.href);
     const nextVerifyToken = String(url.searchParams.get("email_token") || url.searchParams.get("verify_token") || "").trim();
     const nextRecoveryToken = String(url.searchParams.get("email_reset_token") || url.searchParams.get("reset_token") || "").trim();
-    if (!nextVerifyToken && !nextRecoveryToken) return;
+    const nextEmailMode = String(url.searchParams.get("email_mode") || "").trim();
+    let shouldReplaceUrl = Boolean(nextVerifyToken || nextRecoveryToken);
+    if (!nextVerifyToken && !nextRecoveryToken && EMAIL_MODES.has(nextEmailMode)) {
+      setEmailMode(nextEmailMode as keyof typeof EMAIL_MODE_LABELS);
+      shouldReplaceUrl = true;
+    }
+    if (!shouldReplaceUrl) return;
 
     if (nextVerifyToken) {
       setVerifyToken(nextVerifyToken);
       setRecoveryToken("");
       setEmailMode("verify");
       setEmailMessage("Код подтверждения из письма уже подставлен. Осталось нажать «Подтвердить».");
-    } else {
+    } else if (nextRecoveryToken) {
       setRecoveryToken(nextRecoveryToken);
       setVerifyToken("");
       setEmailMode("recover");
@@ -85,7 +92,7 @@ export default function CabinetEntryAuth({ siteUrl }: { siteUrl: string }) {
     }
     setEmailError("");
 
-    for (const key of ["email_token", "verify_token", "email_reset_token", "reset_token"]) {
+    for (const key of ["email_token", "verify_token", "email_reset_token", "reset_token", "email_mode"]) {
       url.searchParams.delete(key);
     }
     window.history.replaceState({}, "", `${url.pathname}${url.search}${url.hash}` || "/");
