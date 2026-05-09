@@ -95,7 +95,16 @@ class FeedbackBotModerationTests(unittest.TestCase):
         self.db_path = str((repo_root / f"portal_feedback_test_{uuid.uuid4().hex}.db").resolve())
         db_uri_path = Path(self.db_path).as_posix()
         self._saved_env: dict[str, str | None] = {}
-        for key in ("DATABASE_URL", "ADMIN_ID", "FEEDBACK_BOT_TOKEN", "FEEDBACK_USERNAME", "SUPPORT_USERNAME"):
+        for key in (
+            "DATABASE_URL",
+            "ADMIN_ID",
+            "FEEDBACK_BOT_TOKEN",
+            "FEEDBACK_USERNAME",
+            "SUPPORT_USERNAME",
+            "TG_BTN_EMOJI_PRIMARY_ID",
+            "TG_BTN_EMOJI_SUCCESS_ID",
+            "TG_BTN_EMOJI_DANGER_ID",
+        ):
             self._saved_env[key] = os.environ.get(key)
         self._saved_modules = {
             name: sys.modules.get(name)
@@ -107,6 +116,9 @@ class FeedbackBotModerationTests(unittest.TestCase):
         os.environ["FEEDBACK_BOT_TOKEN"] = "feedback_test_token"
         os.environ["FEEDBACK_USERNAME"] = "pokrov_feedbackbot"
         os.environ["SUPPORT_USERNAME"] = "pokrov_supportbot"
+        os.environ["TG_BTN_EMOJI_PRIMARY_ID"] = "5368324170671202286"
+        os.environ["TG_BTN_EMOJI_SUCCESS_ID"] = "5373141891321699086"
+        os.environ["TG_BTN_EMOJI_DANGER_ID"] = "5368324170671202299"
 
         _install_aiogram_stubs()
 
@@ -214,6 +226,9 @@ class FeedbackBotModerationTests(unittest.TestCase):
         self.assertEqual(rows[0][0].kwargs["style"], "success")
         self.assertEqual(rows[1][0].kwargs["style"], "primary")
         self.assertEqual(rows[2][0].kwargs["style"], "primary")
+        self.assertEqual(rows[0][0].kwargs["icon_custom_emoji_id"], "5373141891321699086")
+        self.assertEqual(rows[1][0].kwargs["icon_custom_emoji_id"], "5368324170671202286")
+        self.assertEqual(rows[2][0].kwargs["icon_custom_emoji_id"], "5368324170671202286")
 
     def test_shared_telegram_button_helper_supports_copy_text(self) -> None:
         telegram_buttons = importlib.import_module("telegram_buttons")
