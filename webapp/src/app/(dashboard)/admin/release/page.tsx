@@ -222,6 +222,42 @@ function releaseArtifactDecisionGate(artifact: ReleaseStatusArtifact | null): Ga
   };
 }
 
+function toneForCheckStatus(status: string, fallback: GateTone): GateTone {
+  const value = status.toUpperCase();
+  if (value === "PASS" || value === "OK" || value === "SUCCESS") return "success";
+  if (value.includes("BLOCKED") || value.includes("NO_GO") || value.includes("FAIL")) return "danger";
+  if (value.includes("SKIPPED") || value.includes("ATTESTED") || value.includes("WARNING")) return "warning";
+  return fallback;
+}
+
+function artifactBackedGate(
+  artifact: ReleaseStatusArtifact | null,
+  fallback: GateItem,
+  ...checkNames: string[]
+): GateItem {
+  const check = artifactCheck(artifact, ...checkNames);
+  if (!check) return fallback;
+
+  const status = String(check.status || fallback.value).trim() || fallback.value;
+  const note = String(check.note || "").trim();
+  const source = String(check.source || "").trim();
+  const detail = [
+    fallback.detail,
+    note,
+    missingText(check.missing),
+    source ? `Источник: ${source}.` : "",
+  ]
+    .filter(Boolean)
+    .join(" ");
+
+  return {
+    ...fallback,
+    value: status,
+    detail,
+    tone: toneForCheckStatus(status, fallback.tone),
+  };
+}
+
 function buildRuntimeGates({
   apps,
   email,
@@ -364,8 +400,31 @@ const EXTERNAL_GATES: GateItem[] = [
 
 function buildExternalGates(artifact: ReleaseStatusArtifact | null): GateItem[] {
   const decisionGate = releaseArtifactDecisionGate(artifact);
-  if (!decisionGate) return EXTERNAL_GATES;
-  return EXTERNAL_GATES.map((gate) => (gate.key === "machine-launch-decision" ? decisionGate : gate));
+  const externalAccessGate = artifactCheck(artifact, "external_access_preflight")
+    ? artifactBackedGate(
+        artifact,
+        {
+          key: "external-access-preflight",
+          label: "External access preflight",
+          value: "BLOCKED_BY_ACCESS",
+          detail: "External access preflight is not safe for public publication.",
+          tone: "danger",
+        },
+        "external_access_preflight",
+      )
+    : null;
+
+  const gates = EXTERNAL_GATES.map((gate) => {
+    if (gate.key === "machine-launch-decision") return decisionGate || gate;
+    if (gate.key === "paid-checkout-launch-evidence") return artifactBackedGate(artifact, gate, "paid_checkout_launch_evidence");
+    if (gate.key === "brain-post-deploy-live-probe") return artifactBackedGate(artifact, gate, "post_deploy_payment_email_probe");
+    return gate;
+  });
+
+  if (!externalAccessGate) return gates;
+  const machineIndex = gates.findIndex((gate) => gate.key === "machine-launch-decision");
+  const insertAt = machineIndex >= 0 ? machineIndex + 1 : 0;
+  return [...gates.slice(0, insertAt), externalAccessGate, ...gates.slice(insertAt)];
 }
 
 function GateCard({ gate }: { gate: GateItem }) {

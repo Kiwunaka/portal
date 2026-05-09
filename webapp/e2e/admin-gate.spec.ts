@@ -1222,7 +1222,14 @@ test.describe("Admin gate", () => {
     await expect(page.getByText(/public-beta-launch-decision-2026-05-09\.json/)).toBeVisible();
     await expect(page.getByText(/safe_to_publish_public_beta=false/)).toBeVisible();
     await expect(page.getByText(/GO for public beta publication/)).toBeVisible();
+    await expect(page.getByText(/runtime APP_ANDROID_APK_URL is not synced/)).toBeVisible();
+    await expect(page.getByText(/runtime APP_WINDOWS_EXE_URL is not synced/)).toBeVisible();
+    await expect(page.getByText(/EMAIL_PROBE_TO/).first()).toBeVisible();
+    await expect(page.getByText(/LAVATOP_PROVIDER_ACCEPTANCE_CONFIRMED=true/)).toBeVisible();
+    await expect(page.getByText(/paid_access_key_email_delivery evidence/)).toBeVisible();
     await expect(page.getByText("Brain-local email/Lava.top probe")).toBeVisible();
+    await expect(page.getByText(/email live delivery proof/)).toBeVisible();
+    await expect(page.getByText(/Lava.top live invoice proof/)).toBeVisible();
     await expect(page.getByText(/Последний retained brain-local probe дошел/)).toBeVisible();
     await expect(page.getByText(/brain-post-deploy-live-probe-<YYYY-MM-DD>\.json/).first()).toBeVisible();
     await expect(page.getByText(/email_probe_to.*lavatop_probe_email/)).toBeVisible();
