@@ -14,7 +14,7 @@
     "paid_checkout_evidence": "docs\\audit-artifacts\\paid-checkout-launch-evidence-brain-2026-05-08.json",
     "live_email_status": "docs\\audit-artifacts\\live-email-auth-status-brain-2026-05-08.json",
     "live_payment_status": "docs\\audit-artifacts\\live-payment-provider-status-brain-2026-05-08.json",
-    "post_deploy_probe": "docs\\audit-artifacts\\public-beta-post-deploy-probe-2026-05-08.json",
+    "post_deploy_probe": "docs\\audit-artifacts\\public-beta-post-deploy-probe-2026-05-09.json",
     "staged_reachability": "docs\\audit-artifacts\\staged-client-apps-reachability-2026-05-08.md",
     "runtime_sync_guard": "docs\\audit-artifacts\\runtime-link-sync-guard-2026-05-08.md"
   },
@@ -125,7 +125,7 @@
         "email live delivery proof",
         "Lava.top live invoice proof"
       ],
-      "source": "docs\\audit-artifacts\\public-beta-post-deploy-probe-2026-05-08.json",
+      "source": "docs\\audit-artifacts\\public-beta-post-deploy-probe-2026-05-09.json",
       "note": "Post-deploy payment/email probe is not fully green."
     }
   ],
