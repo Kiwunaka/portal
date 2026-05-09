@@ -479,6 +479,34 @@ export default function AdminReleasePage() {
   const androidUrlReady = isGithubReleaseArtifactUrl(androidUrl, ".apk") && !androidPlayUrl;
   const windowsUrlReady = isGithubReleaseArtifactUrl(windowsUrl, ".exe");
   const emailPublicReady = isEmailPublicReady(email);
+  const artifactSafeClaims = Array.isArray(releaseStatus?.safe_public_claims)
+    ? releaseStatus.safe_public_claims.map((claim) => String(claim || "").trim()).filter(Boolean)
+    : [];
+  const artifactUnsafeClaims = Array.isArray(releaseStatus?.unsafe_public_claims)
+    ? releaseStatus.unsafe_public_claims.map((claim) => String(claim || "").trim()).filter(Boolean)
+    : [];
+  const safePublicClaims = artifactSafeClaims.length
+    ? artifactSafeClaims
+    : [
+        "POKROV готовит ограниченную Android и Windows бета вне магазинов.",
+        runtimeLinksDetected
+          ? "GitHub Releases APK/EXE обнаружены в runtime /api/client/apps; публичный анонс все еще ждет подтвержденный runtime-sync GO и финальный GO."
+          : "GitHub prerelease assets подготовлены для проверки; runtime-ссылки пока не активны.",
+        "Android-кандидат принят как операторски подтвержденный, Windows EXE остается неподписанной бета-сборкой.",
+        "Оплата остается закрытой до post-deploy подтверждений Lava.top и доставки ключей по email.",
+        "Email-вход можно оставлять публичным только при подтвержденной доставке писем.",
+      ];
+  const unsafePublicClaims = artifactUnsafeClaims.length
+    ? artifactUnsafeClaims
+    : [
+        "Публичная бета уже запущена.",
+        "Оплата Lava.top работает в бою.",
+        "Android raw repo validation green или магазинная публикация уже разрешена.",
+        "Windows подписан доверенным сертификатом.",
+        runtimeLinksDetected
+          ? "Runtime-ссылки обнаружены, значит можно отправлять публичный анонс без подтвержденного sync GO и финального GO."
+          : "GitHub Releases уже являются рабочим путем загрузки в приложении или кабинете.",
+      ];
   const operatorActions: OperatorAction[] = [
     runtimeLinksDetected
       ? {
@@ -661,15 +689,7 @@ export default function AdminReleasePage() {
             description="Только аккуратная подготовка беты, локальные инженерные сборки и закрытая оплата до подтверждений."
           />
           <div className="space-y-2">
-            {[
-              "POKROV готовит ограниченную Android и Windows бета вне магазинов.",
-              runtimeLinksDetected
-                ? "GitHub Releases APK/EXE обнаружены в runtime /api/client/apps; публичный анонс все еще ждет подтвержденный runtime-sync GO и финальный GO."
-                : "GitHub prerelease assets подготовлены для проверки; runtime-ссылки пока не активны.",
-              "Android-кандидат принят как операторски подтвержденный, Windows EXE остается неподписанной бета-сборкой.",
-              "Оплата остается закрытой до post-deploy подтверждений Lava.top и доставки ключей по email.",
-              "Email-вход можно оставлять публичным только при подтвержденной доставке писем.",
-            ].map((claim) => (
+            {safePublicClaims.map((claim) => (
               <p key={claim} className={adminInsetPanelClass}>{claim}</p>
             ))}
           </div>
@@ -682,15 +702,7 @@ export default function AdminReleasePage() {
             description="Эти формулировки запрещены до GO-handoff и зеленых P0-подтверждений."
           />
           <div className="space-y-2">
-            {[
-              "Публичная бета уже запущена.",
-              "Оплата Lava.top работает в бою.",
-              "Android raw repo validation green или магазинная публикация уже разрешена.",
-              "Windows подписан доверенным сертификатом.",
-              runtimeLinksDetected
-                ? "Runtime-ссылки обнаружены, значит можно отправлять публичный анонс без подтвержденного sync GO и финального GO."
-                : "GitHub Releases уже являются рабочим путем загрузки в приложении или кабинете.",
-            ].map((claim) => (
+            {unsafePublicClaims.map((claim) => (
               <p key={claim} className={adminInsetPanelClass}>{claim}</p>
             ))}
           </div>

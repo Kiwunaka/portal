@@ -1207,7 +1207,7 @@ test.describe("Admin gate", () => {
     await expect(page.getByText("Runtime APP-ссылки").first()).toBeVisible();
     await expect(page.getByText("RUNTIME LINK SYNC AUDIT BEFORE ANNOUNCEMENT")).toBeVisible();
     await expect(page.getByText(/ROLL BACK RUNTIME APP_\* LINKS/)).toBeVisible();
-    await expect(page.getByText("Email-доставка")).toBeVisible();
+    await expect(page.getByText("Email-доставка", { exact: true })).toBeVisible();
     await expect(page.getByRole("article").filter({ hasText: "Email-доставка" }).getByText(/--email-probe-to <probe-email>/)).toBeVisible();
     await expect(page.getByText("Lava.top", { exact: true })).toBeVisible();
     await expect(page.getByRole("article").filter({ hasText: "Lava.top" }).getByText(/--lavatop-probe-email <buyer-email>/)).toBeVisible();
@@ -1228,7 +1228,7 @@ test.describe("Admin gate", () => {
     await expect(page.getByText(/email_probe_to.*lavatop_probe_email/)).toBeVisible();
     await expect(page.getByText(/явного разрешения на runtime sync/).first()).toBeVisible();
     await expect(page.getByText(/runtime APP_\* links are still empty/)).not.toBeVisible();
-    await expect(page.getByText("GitHub Releases APK/EXE обнаружены в runtime /api/client/apps; публичный анонс все еще ждет подтвержденный runtime-sync GO и финальный GO.")).toBeVisible();
+    await expect(page.getByText("GitHub Releases можно описывать только как предварительные артефакты для проверки, пока ссылки загрузки не авторизованы, не синхронизированы и не прошли живую контрольную проверку.")).toBeVisible();
     await expect(page.getByText("Telegram Stars")).toBeVisible();
     await expect(page.getByText("выключено по политике")).toBeVisible();
     await expect(page.getByText("Физический аудит Android-сборки")).toBeVisible();
@@ -1237,9 +1237,11 @@ test.describe("Admin gate", () => {
     await expect(page.getByText("Доступность Telegram из RU-origin", { exact: true })).toBeVisible();
     await expect(page.getByRole("heading", { name: "SKIPPED_BY_OPERATOR" })).toBeVisible();
     await expect(page.getByText("RU-origin проверка пропущена оператором")).toBeVisible();
-    await expect(page.getByText("POKROV готовит ограниченную Android и Windows бета вне магазинов.")).toBeVisible();
-    await expect(page.getByText("GitHub Releases APK/EXE обнаружены в runtime /api/client/apps; публичный анонс все еще ждет подтвержденный runtime-sync GO и финальный GO.")).toBeVisible();
+    await expect(page.getByText("POKROV готовит ограниченную бета-проверку для Android и Windows вне магазинов.")).toBeVisible();
+    await expect(page.getByText("GitHub Releases можно описывать только как предварительные артефакты для проверки, пока ссылки загрузки не авторизованы, не синхронизированы и не прошли живую контрольную проверку.")).toBeVisible();
+    await expect(page.getByText("Если внешняя проверка показывает SKIPPED_BY_OPERATOR по RU-origin, публично говорим, что RU-origin не проверялся для этой бета-волны.")).toBeVisible();
     await expect(page.getByText("Публичная бета уже запущена.")).toBeVisible();
+    await expect(page.getByText("Email-доставка уже доказана живой проверкой почтового ящика до появления подтверждения EMAIL_PROBE_TO.")).toBeVisible();
   });
 
   test("uses static release-status artifact for retained launch decision details", async ({ page }) => {
