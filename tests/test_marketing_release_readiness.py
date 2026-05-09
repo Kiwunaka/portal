@@ -7,6 +7,7 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 MARKETING_ROOT = REPO_ROOT / "marketing" / "src"
 MARKETING_PUBLIC_ROOT = REPO_ROOT / "marketing" / "public"
 WEBAPP_ROOT = REPO_ROOT / "webapp" / "src"
+WEBAPP_PUBLIC_ROOT = REPO_ROOT / "webapp" / "public"
 DOCS_ROOT = REPO_ROOT / "docs"
 AUDIT_ROOT = DOCS_ROOT / "audit-artifacts"
 COPY_ROOT = REPO_ROOT / "copy"
@@ -28,8 +29,21 @@ def _read_audit(*parts: str) -> str:
     return (AUDIT_ROOT.joinpath(*parts)).read_text(encoding="utf-8")
 
 
+def _read_webapp_public_json(*parts: str) -> dict:
+    return json.loads((WEBAPP_PUBLIC_ROOT.joinpath(*parts)).read_text(encoding="utf-8"))
+
+
 def _read_copy_catalog() -> dict:
     return json.loads((COPY_ROOT / "catalog.ru.json").read_text(encoding="utf-8"))
+
+
+def test_release_status_static_claims_mirror_current_launch_decision() -> None:
+    launch_decision = json.loads(_read_audit("public-beta-launch-decision-2026-05-09.json"))
+    release_status = _read_webapp_public_json("release-status.json")
+
+    assert release_status["source_artifact"] == "public-beta-launch-decision-2026-05-09.json"
+    assert release_status["safe_public_claims"] == launch_decision["safe_public_claims"]
+    assert release_status["unsafe_public_claims"] == launch_decision["unsafe_public_claims"]
 
 
 def test_public_beta_docs_pin_current_brain_truth_and_unblock_packet() -> None:
