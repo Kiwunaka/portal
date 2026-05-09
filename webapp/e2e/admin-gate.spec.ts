@@ -1221,6 +1221,9 @@ test.describe("Admin gate", () => {
     await expect(page.getByText(/Статус из release-status\.json/)).toBeVisible();
     await expect(page.getByText(/public-beta-launch-decision-2026-05-09\.json/)).toBeVisible();
     await expect(page.getByText(/safe_to_publish_public_beta=false/)).toBeVisible();
+    await expect(page.getByText("Brain-origin static deploy", { exact: true })).toBeVisible();
+    await expect(page.getByText(/brain-origin-verify-2026-05-09\.md/)).toBeVisible();
+    await expect(page.getByText(/Fresh brain-origin static deploy is green while runtime links, paid checkout, and public announcement remain blocked/)).toBeVisible();
     await expect(page.getByText(/GO for public beta publication/)).toBeVisible();
     await expect(page.getByText(/runtime APP_ANDROID_APK_URL is not synced/)).toBeVisible();
     await expect(page.getByText(/runtime APP_WINDOWS_EXE_URL is not synced/)).toBeVisible();
@@ -1270,6 +1273,13 @@ test.describe("Admin gate", () => {
               missing: ["custom_live_probe"],
               note: "Decision artifact 2099 says custom probe missing.",
             },
+            {
+              name: "brain_origin_static_deploy_verify",
+              status: "PASS",
+              missing: [],
+              source: "docs/audit-artifacts/brain-origin-verify-2099-01-01.md",
+              note: "Static deploy 2099 is green while runtime links remain blocked.",
+            },
           ],
         }),
       }),
@@ -1280,6 +1290,8 @@ test.describe("Admin gate", () => {
     await expect(page.getByText("public-beta-launch-decision-2099-01-01.json")).toBeVisible();
     await expect(page.getByText(/custom_live_probe/)).toBeVisible();
     await expect(page.getByText(/Decision artifact 2099 says custom probe missing/)).toBeVisible();
+    await expect(page.getByText(/brain-origin-verify-2099-01-01\.md/)).toBeVisible();
+    await expect(page.getByText(/Static deploy 2099 is green while runtime links remain blocked/)).toBeVisible();
   });
 
   test("keeps release cockpit app gate blocked for Play or non-GitHub app links", async ({ page }) => {

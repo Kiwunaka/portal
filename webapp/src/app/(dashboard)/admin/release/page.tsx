@@ -400,6 +400,20 @@ const EXTERNAL_GATES: GateItem[] = [
 
 function buildExternalGates(artifact: ReleaseStatusArtifact | null): GateItem[] {
   const decisionGate = releaseArtifactDecisionGate(artifact);
+  const brainStaticGate = artifactCheck(artifact, "brain_origin_static_deploy_verify")
+    ? artifactBackedGate(
+        artifact,
+        {
+          key: "brain-origin-static-deploy",
+          label: "Brain-origin static deploy",
+          value: "PASS_STATIC_NO_GO",
+          detail:
+            "Static deploy evidence is useful context only: it does not authorize runtime APP_* link sync, paid checkout, public announcement, or public beta publication.",
+          tone: "success",
+        },
+        "brain_origin_static_deploy_verify",
+      )
+    : null;
   const externalAccessGate = artifactCheck(artifact, "external_access_preflight")
     ? artifactBackedGate(
         artifact,
@@ -421,10 +435,11 @@ function buildExternalGates(artifact: ReleaseStatusArtifact | null): GateItem[] 
     return gate;
   });
 
-  if (!externalAccessGate) return gates;
   const machineIndex = gates.findIndex((gate) => gate.key === "machine-launch-decision");
   const insertAt = machineIndex >= 0 ? machineIndex + 1 : 0;
-  return [...gates.slice(0, insertAt), externalAccessGate, ...gates.slice(insertAt)];
+  const dynamicGates = [brainStaticGate, externalAccessGate].filter((gate): gate is GateItem => Boolean(gate));
+  if (!dynamicGates.length) return gates;
+  return [...gates.slice(0, insertAt), ...dynamicGates, ...gates.slice(insertAt)];
 }
 
 function GateCard({ gate }: { gate: GateItem }) {
