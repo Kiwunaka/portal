@@ -42,6 +42,24 @@ type OperatorAction = {
   tone: GateTone;
 };
 
+type ReleaseStatusCheck = {
+  name?: string | null;
+  status?: string | null;
+  missing?: string[] | null;
+  note?: string | null;
+  source?: string | null;
+};
+
+type ReleaseStatusArtifact = {
+  source_artifact?: string | null;
+  verdict?: string | null;
+  classification?: string | null;
+  safe_to_publish_public_beta?: boolean | null;
+  checks?: ReleaseStatusCheck[] | null;
+  safe_public_claims?: string[] | null;
+  unsafe_public_claims?: string[] | null;
+};
+
 const RUNTIME_SYNC_GO_TEXT = [
   "RUNTIME LINK SYNC GO FOR APP-DOWNLOAD SMOKE",
   "OPERATOR_APPROVED_RUNTIME_LINK_SYNC=true",
@@ -141,6 +159,59 @@ async function copyTextToClipboard(text: string): Promise<void> {
   } finally {
     document.body.removeChild(textarea);
   }
+}
+
+async function fetchReleaseStatusArtifact(): Promise<ReleaseStatusArtifact | null> {
+  try {
+    const response = await fetch("/release-status.json", { cache: "no-store" });
+    if (!response.ok) return null;
+    const payload = (await response.json()) as ReleaseStatusArtifact;
+    if (!payload || typeof payload !== "object") return null;
+    return payload;
+  } catch {
+    return null;
+  }
+}
+
+function artifactCheck(artifact: ReleaseStatusArtifact | null, ...names: string[]): ReleaseStatusCheck | null {
+  const checks = Array.isArray(artifact?.checks) ? artifact?.checks || [] : [];
+  const wanted = new Set(names.map((name) => name.toLowerCase()));
+  return checks.find((check) => wanted.has(String(check?.name || "").toLowerCase())) || null;
+}
+
+function missingText(items?: string[] | null): string {
+  const rows = Array.isArray(items) ? items.map((item) => String(item || "").trim()).filter(Boolean) : [];
+  return rows.length ? ` Не хватает: ${rows.join(", ")}.` : "";
+}
+
+function releaseArtifactDecisionGate(artifact: ReleaseStatusArtifact | null): GateItem | null {
+  if (!artifact) return null;
+  const check = artifactCheck(
+    artifact,
+    "machine-launch-decision",
+    "public_beta_handoff_policy",
+    "completion_audit_verdict",
+  );
+  const value = String(artifact.verdict || check?.status || artifact.classification || "NO_GO").trim() || "NO_GO";
+  const source = String(artifact.source_artifact || "release-status.json").trim();
+  const classification = String(artifact.classification || check?.status || "unknown").trim();
+  const safe = artifact.safe_to_publish_public_beta === true;
+  const detail = [
+    `Статус из release-status.json: ${source}.`,
+    `safe_to_publish_public_beta=${safe ? "true" : "false"}, classification=${classification}.`,
+    String(check?.note || "").trim(),
+    missingText(check?.missing),
+  ]
+    .filter(Boolean)
+    .join(" ");
+
+  return {
+    key: "machine-launch-decision",
+    label: "Машинный launch decision",
+    value,
+    detail,
+    tone: safe ? "success" : "danger",
+  };
 }
 
 function buildRuntimeGates({
@@ -283,6 +354,12 @@ const EXTERNAL_GATES: GateItem[] = [
   },
 ];
 
+function buildExternalGates(artifact: ReleaseStatusArtifact | null): GateItem[] {
+  const decisionGate = releaseArtifactDecisionGate(artifact);
+  if (!decisionGate) return EXTERNAL_GATES;
+  return EXTERNAL_GATES.map((gate) => (gate.key === "machine-launch-decision" ? decisionGate : gate));
+}
+
 function GateCard({ gate }: { gate: GateItem }) {
   return (
     <article className={adminPanelClass(gate.tone)}>
@@ -347,6 +424,7 @@ export default function AdminReleasePage() {
   const [emailRaw, setEmail] = useState<EmailAuthStatusResult | null>(null);
   const [metrics, setMetrics] = useState<AdminMetricsStatus | null>(null);
   const [payments, setPayments] = useState<RubPaymentProvidersResult | null>(null);
+  const [releaseStatus, setReleaseStatus] = useState<ReleaseStatusArtifact | null>(null);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
 
@@ -354,16 +432,18 @@ export default function AdminReleasePage() {
     setLoading(true);
     setError("");
     try {
-      const [appsPayload, emailPayload, metricsPayload, paymentPayload] = await Promise.all([
+      const [appsPayload, emailPayload, metricsPayload, paymentPayload, releaseStatusPayload] = await Promise.all([
         fetchClientApps(),
         getEmailAuthStatus(),
         adminMetricsStatus(),
         getRubPaymentProviders(),
+        fetchReleaseStatusArtifact(),
       ]);
       setApps(appsPayload);
       setEmail(emailPayload);
       setMetrics(metricsPayload);
       setPayments(paymentPayload);
+      setReleaseStatus(releaseStatusPayload);
     } catch (nextError) {
       setError(userFacingErrorMessage(nextError, "Не удалось загрузить релизный экран."));
     } finally {
@@ -380,9 +460,10 @@ export default function AdminReleasePage() {
     return { ...emailRaw, enabled: false };
   }, [emailRaw]);
   const runtimeGates = useMemo(() => buildRuntimeGates({ apps, email, metrics, payments }), [apps, email, metrics, payments]);
+  const externalGates = useMemo(() => buildExternalGates(releaseStatus), [releaseStatus]);
   const runtimeBlocks = runtimeGates.filter((gate) => gate.tone !== "success").length;
   const runtimeLinksDetected = runtimeGates.find((gate) => gate.key === "apps")?.value.startsWith("ссылки обнаружены") || false;
-  const externalBlocks = EXTERNAL_GATES.filter((gate) => gate.tone === "danger").length;
+  const externalBlocks = externalGates.filter((gate) => gate.tone === "danger").length;
   const publicGo = runtimeBlocks === 0 && externalBlocks === 0;
   const androidUrl = firstUrl(apps?.android?.apk_url, apps?.android?.mirror_url);
   const androidPlayUrl = firstUrl(apps?.android?.play_url);
@@ -548,7 +629,7 @@ export default function AdminReleasePage() {
             description="Эти проверки не закрываются самим WebApp. Их нельзя заменить зеленым билдом или моками."
           />
           <div className="space-y-3">
-            {EXTERNAL_GATES.map((gate) => (
+            {externalGates.map((gate) => (
               <GateCard key={gate.key} gate={gate} />
             ))}
           </div>

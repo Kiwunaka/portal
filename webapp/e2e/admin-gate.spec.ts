@@ -1214,9 +1214,10 @@ test.describe("Admin gate", () => {
     await expect(page.getByText("Агрегированный гейт оплаты")).toBeVisible();
     await expect(page.getByText(/Последний retained paid-checkout evidence/)).toBeVisible();
     await expect(page.getByText("Машинный launch decision")).toBeVisible();
-    await expect(page.getByText(/Последний retained launch decision/)).toBeVisible();
+    await expect(page.getByText(/Статус из release-status\.json/)).toBeVisible();
+    await expect(page.getByText(/public-beta-launch-decision-2026-05-09\.json/)).toBeVisible();
     await expect(page.getByText(/safe_to_publish_public_beta=false/)).toBeVisible();
-    await expect(page.getByText(/post_deploy_payment_email_probe=BLOCKED_BY_ACCESS/)).toBeVisible();
+    await expect(page.getByText(/GO for public beta publication/)).toBeVisible();
     await expect(page.getByText("Brain-local email/Lava.top probe")).toBeVisible();
     await expect(page.getByText(/Последний retained brain-local probe дошел/)).toBeVisible();
     await expect(page.getByText(/brain-post-deploy-live-probe-<YYYY-MM-DD>\.json/).first()).toBeVisible();
@@ -1235,6 +1236,37 @@ test.describe("Admin gate", () => {
     await expect(page.getByText("POKROV готовит ограниченную Android и Windows бета вне магазинов.")).toBeVisible();
     await expect(page.getByText("GitHub Releases APK/EXE обнаружены в runtime /api/client/apps; публичный анонс все еще ждет подтвержденный runtime-sync GO и финальный GO.")).toBeVisible();
     await expect(page.getByText("Публичная бета уже запущена.")).toBeVisible();
+  });
+
+  test("uses static release-status artifact for retained launch decision details", async ({ page }) => {
+    await registerApiMocks(page, { isAdmin: true });
+    await page.route("**/release-status.json", (route) =>
+      route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          schema_version: 1,
+          source_artifact: "public-beta-launch-decision-2099-01-01.json",
+          verdict: "NO_GO",
+          classification: "BLOCKED_BY_ACCESS",
+          safe_to_publish_public_beta: false,
+          checks: [
+            {
+              name: "machine-launch-decision",
+              status: "BLOCKED_BY_ACCESS",
+              missing: ["custom_live_probe"],
+              note: "Decision artifact 2099 says custom probe missing.",
+            },
+          ],
+        }),
+      }),
+    );
+
+    await openRoute(page, "admin/release/");
+
+    await expect(page.getByText("public-beta-launch-decision-2099-01-01.json")).toBeVisible();
+    await expect(page.getByText(/custom_live_probe/)).toBeVisible();
+    await expect(page.getByText(/Decision artifact 2099 says custom probe missing/)).toBeVisible();
   });
 
   test("keeps release cockpit app gate blocked for Play or non-GitHub app links", async ({ page }) => {

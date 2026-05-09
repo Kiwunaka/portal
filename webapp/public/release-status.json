@@ -1,0 +1,67 @@
+{
+  "schema_version": 1,
+  "source_artifact": "public-beta-launch-decision-2026-05-09.json",
+  "verdict": "NO_GO",
+  "classification": "BLOCKED_BY_POLICY",
+  "safe_to_publish_public_beta": false,
+  "checks": [
+    {
+      "name": "public_beta_handoff_policy",
+      "status": "BLOCKED_BY_POLICY",
+      "missing": [
+        "GO for public beta publication without any NO-GO marker"
+      ],
+      "note": "Current handoff does not authorize public publication."
+    },
+    {
+      "name": "external_access_preflight",
+      "status": "BLOCKED_BY_ACCESS",
+      "missing": [
+        "runtime APP_* sync approval",
+        "android release URL is missing",
+        "windows release URL is missing",
+        "docs_url is missing",
+        "EMAIL_PROBE_TO",
+        "LAVATOP_PROBE_EMAIL",
+        "GO handoff for public publication"
+      ],
+      "note": "External access preflight is not safe for public publication."
+    },
+    {
+      "name": "paid_checkout_launch_evidence",
+      "status": "BLOCKED_BY_ACCESS",
+      "missing": [
+        "LAVATOP_PROVIDER_ACCEPTANCE_CONFIRMED=true",
+        "lavatop_live_invoice_creation evidence",
+        "lavatop_authenticated_success_webhook evidence",
+        "lavatop_webhook_replay_idempotency evidence",
+        "lavatop_failed_payment_no_fulfillment evidence",
+        "lavatop_manual_review_mismatch evidence",
+        "lavatop_reconciliation_procedure evidence",
+        "paid_access_key_email_delivery evidence"
+      ],
+      "note": "Paid checkout must remain unavailable until this evidence is green."
+    },
+    {
+      "name": "post_deploy_payment_email_probe",
+      "status": "BLOCKED_BY_ACCESS",
+      "missing": [
+        "email live delivery proof",
+        "Lava.top live invoice proof"
+      ],
+      "note": "Post-deploy payment/email probe is not fully green."
+    }
+  ],
+  "safe_public_claims": [
+    "POKROV готовит ограниченную бета-проверку для Android и Windows вне магазинов.",
+    "GitHub Releases можно описывать только как предварительные артефакты для проверки, пока ссылки загрузки не авторизованы, не синхронизированы и не прошли живую контрольную проверку.",
+    "Оплата и ссылки загрузки остаются закрытыми, пока соответствующие проверки не станут зелеными.",
+    "Email-вход включен по конфигурации; живая доставка писем все еще требует проверки с EMAIL_PROBE_TO."
+  ],
+  "unsafe_public_claims": [
+    "Публичная бета уже запущена.",
+    "GitHub Releases уже являются рабочим путем загрузки до синхронизации ссылок и живой контрольной проверки.",
+    "Оплата Lava.top уже работает публично.",
+    "Публичные загрузки Android/Windows уже доступны через ссылки загрузки."
+  ]
+}
