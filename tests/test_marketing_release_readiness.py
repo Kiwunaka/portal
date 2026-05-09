@@ -44,6 +44,8 @@ def test_release_status_static_claims_mirror_current_launch_decision() -> None:
     assert release_status["source_artifact"] == "public-beta-launch-decision-2026-05-09.json"
     assert release_status["safe_public_claims"] == launch_decision["safe_public_claims"]
     assert release_status["unsafe_public_claims"] == launch_decision["unsafe_public_claims"]
+    assert "docs_url is missing" not in json.dumps(launch_decision, ensure_ascii=False)
+    assert "docs_url is missing" not in json.dumps(release_status, ensure_ascii=False)
 
 
 def test_public_beta_docs_pin_current_brain_truth_and_unblock_packet() -> None:

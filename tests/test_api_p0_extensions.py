@@ -339,7 +339,7 @@ class ApiP0ExtensionsTests(unittest.TestCase):
         self.assertIn(body["status"], {"fresh", "stale"})
         self.assertIn("stale_after_seconds", body)
 
-    def test_client_apps_endpoint_returns_empty_defaults(self) -> None:
+    def test_client_apps_endpoint_returns_closed_downloads_with_install_docs_default(self) -> None:
         client = TestClient(self.api.app)
         hdrs = {"X-Telegram-Init-Data": self._init_data(1001, "alice")}
         r = client.get("/api/client/apps", headers=hdrs)
@@ -350,7 +350,7 @@ class ApiP0ExtensionsTests(unittest.TestCase):
         self.assertEqual(body["android"]["mirror_url"], "")
         self.assertEqual(body["windows"]["exe_url"], "")
         self.assertEqual(body["windows"]["mirror_url"], "")
-        self.assertEqual(body["docs_url"], "")
+        self.assertEqual(body["docs_url"], "https://pokrov.space/install/")
         self.assertRegex(body["updated_at"], r"^\d{4}-\d{2}-\d{2}T")
         self.assertTrue(body["updated_at"].endswith("Z"))
 

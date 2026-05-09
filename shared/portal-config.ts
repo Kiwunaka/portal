@@ -56,6 +56,7 @@ export const CANONICAL_MARKETING_SITE_URL = stripTrailingSlash(SURFACES.marketin
 export const CANONICAL_WEBAPP_URL = stripTrailingSlash(SURFACES.webapp);
 export const CANONICAL_CONNECT_URL = stripTrailingSlash(SURFACES.connect);
 export const CANONICAL_CHECKOUT_URL = stripTrailingSlash(SURFACES.checkout);
+export const CANONICAL_APP_DOCS_URL = `${CANONICAL_MARKETING_SITE_URL}/install/`;
 export const CANONICAL_PAY_ORIGIN = new URL(CANONICAL_CHECKOUT_URL).origin;
 export const CANONICAL_BOT_URL = TELEGRAM.bot;
 export const CANONICAL_SUPPORT_BOT_URL = TELEGRAM.support_bot;
@@ -143,6 +144,6 @@ export function getPortalPublicConfig(env: Record<string, string | undefined>): 
     androidMirrorUrl: trim(env.NEXT_PUBLIC_APP_ANDROID_MIRROR_URL),
     windowsExeUrl: trim(env.NEXT_PUBLIC_APP_WINDOWS_EXE_URL),
     windowsMirrorUrl: trim(env.NEXT_PUBLIC_APP_WINDOWS_MIRROR_URL),
-    docsUrl: trim(env.NEXT_PUBLIC_APP_DOCS_URL),
+    docsUrl: trim(env.NEXT_PUBLIC_APP_DOCS_URL, CANONICAL_APP_DOCS_URL),
   };
 }

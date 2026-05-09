@@ -20,7 +20,6 @@
         "runtime APP_* sync approval",
         "android release URL is missing",
         "windows release URL is missing",
-        "docs_url is missing",
         "EMAIL_PROBE_TO",
         "LAVATOP_PROBE_EMAIL",
         "GO handoff for public publication"

@@ -109,7 +109,7 @@ class Settings:
     APP_ANDROID_MIRROR_URL: str = os.getenv("APP_ANDROID_MIRROR_URL", "").strip()
     APP_WINDOWS_EXE_URL: str = os.getenv("APP_WINDOWS_EXE_URL", "").strip()
     APP_WINDOWS_MIRROR_URL: str = os.getenv("APP_WINDOWS_MIRROR_URL", "").strip()
-    APP_DOCS_URL: str = os.getenv("APP_DOCS_URL", "").strip()
+    APP_DOCS_URL: str = (os.getenv("APP_DOCS_URL") or "https://pokrov.space/install/").strip()
     WEBAPP_ENABLE_HAPTIC: bool = env_bool("WEBAPP_ENABLE_HAPTIC", default=True)
     WEBAPP_ENABLE_LOTTIE: bool = env_bool("WEBAPP_ENABLE_LOTTIE", default=True)
     WEBAPP_DEV_AUTH: bool = env_bool("WEBAPP_DEV_AUTH", default=False)

@@ -7,7 +7,7 @@
   "inputs": {
     "handoff": "docs\\audit-artifacts\\public-beta-handoff-2026-05-08.md",
     "completion_audit": "docs\\audit-artifacts\\public-beta-completion-audit-2026-05-08.md",
-    "external_preflight_json": "docs\\audit-artifacts\\public-beta-external-access-preflight-2026-05-08.json",
+    "external_preflight_json": "docs\\audit-artifacts\\public-beta-external-access-preflight-2026-05-09.json",
     "full_gate": "docs\\audit-artifacts\\release-gate-full-local-2026-05-08.md",
     "quick_gate": "docs\\audit-artifacts\\release-gate-local-2026-05-08.md",
     "brain_gate": "docs\\audit-artifacts\\release-gate-brain-2026-05-08.md",
@@ -65,12 +65,11 @@
         "runtime APP_* sync approval",
         "android release URL is missing",
         "windows release URL is missing",
-        "docs_url is missing",
         "EMAIL_PROBE_TO",
         "LAVATOP_PROBE_EMAIL",
         "GO handoff for public publication"
       ],
-      "source": "docs\\audit-artifacts\\public-beta-external-access-preflight-2026-05-08.json",
+      "source": "docs\\audit-artifacts\\public-beta-external-access-preflight-2026-05-09.json",
       "note": "External access preflight is not safe for public publication."
     },
     {
