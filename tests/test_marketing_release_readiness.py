@@ -59,6 +59,17 @@ def test_cabinet_downloads_use_runtime_app_links_not_static_fallback() -> None:
     assert 'const windowsExe = payload?.windows?.exe_url || "";' in downloads
 
 
+def test_public_install_page_does_not_use_static_app_artifact_flags() -> None:
+    install = _read("app", "install", "page.tsx")
+
+    assert "config.androidApkUrl" not in install
+    assert "config.androidMirrorUrl" not in install
+    assert "config.windowsExeUrl" not in install
+    assert "config.windowsMirrorUrl" not in install
+    assert "androidHasArtifact" not in install
+    assert "windowsHasArtifact" not in install
+
+
 def test_public_beta_docs_pin_current_brain_truth_and_unblock_packet() -> None:
     current_handoff_path = "docs/audit-artifacts/public-beta-handoff-2026-05-08.md"
     current_completion_audit_path = "docs/audit-artifacts/public-beta-completion-audit-2026-05-08.md"

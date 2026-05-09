@@ -40,8 +40,6 @@ export default function InstallPage() {
   const androidHref = buildCabinetDownloadsHref("android");
   const windowsHref = buildCabinetDownloadsHref("windows");
   const appleHref = buildHelpHref();
-  const androidHasArtifact = Boolean(String(config.androidApkUrl || "").trim());
-  const windowsHasArtifact = Boolean(String(config.windowsExeUrl || "").trim());
 
   return (
     <>
@@ -166,7 +164,7 @@ export default function InstallPage() {
               <article className="lp-platform-card lp-platform-card--featured">
                 <div className="lp-stage-label">
                   <span aria-hidden="true">●</span>
-                  {getCopyText("marketing.install.android.status", androidHasArtifact ? "Android beta в кабинете" : "Android beta не выдана")}
+                  {getCopyText("marketing.install.android.status", "Android beta в кабинете")}
                 </div>
                 <h3>{getCopyText("marketing.install.android.title", "Внутренний APK для Android")}</h3>
                 <p>
@@ -175,21 +173,15 @@ export default function InstallPage() {
                     "Android APK доступен только как внутренняя бета для одобренных пользователей. Публичная публикация остаётся заблокированной до доверенной подписи и физического аудита.",
                   )}
                 </p>
-                {androidHasArtifact ? (
-                  <a href={androidHref} target="_blank" rel="noreferrer" className="lp-btn lp-btn--primary">
-                    {getCopyText("marketing.download.android.cta", "Открыть кабинет")}
-                  </a>
-                ) : (
-                  <a href={helpHref} className="lp-btn lp-btn--primary">
-                    {getCopyText("marketing.install.help_cta", "Открыть инструкцию")}
-                  </a>
-                )}
+                <a href={androidHref} target="_blank" rel="noreferrer" className="lp-btn lp-btn--primary">
+                  {getCopyText("marketing.download.android.cta", "Открыть кабинет")}
+                </a>
               </article>
 
               <article className="lp-platform-card">
                 <div className="lp-stage-label">
                   <span aria-hidden="true">■</span>
-                  {getCopyText("marketing.install.windows.status", windowsHasArtifact ? "Windows beta в кабинете" : "Windows beta не выдана")}
+                  {getCopyText("marketing.install.windows.status", "Windows beta в кабинете")}
                 </div>
                 <h3>{getCopyText("marketing.install.windows.title", "Бета-сборка для Windows")}</h3>
                 <p>
@@ -198,15 +190,9 @@ export default function InstallPage() {
                     "Windows-сборка для беты может быть неподписанной. Перед установкой пользователь должен увидеть предупреждение о неизвестном издателе.",
                   )}
                 </p>
-                {windowsHasArtifact ? (
-                  <a href={windowsHref} target="_blank" rel="noreferrer" className="lp-btn lp-btn--primary">
-                    {getCopyText("marketing.download.windows.cta", "Открыть кабинет")}
-                  </a>
-                ) : (
-                  <a href={helpHref} className="lp-btn lp-btn--primary">
-                    {getCopyText("marketing.install.help_cta", "Открыть инструкцию")}
-                  </a>
-                )}
+                <a href={windowsHref} target="_blank" rel="noreferrer" className="lp-btn lp-btn--primary">
+                  {getCopyText("marketing.download.windows.cta", "Открыть кабинет")}
+                </a>
               </article>
 
               <article className="lp-platform-card">
