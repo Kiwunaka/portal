@@ -553,8 +553,11 @@ def main() -> int:
 
     release_metadata_file = str(args.release_metadata_file or "").strip()
     release_env_file = str(args.release_env_file or "").strip()
+    release_go_evidence_file = str(getattr(args, "release_go_evidence_file", "") or "").strip()
     if (release_metadata_file or release_env_file) and args.gates_only:
         raise SystemExit("--release-metadata-file and --release-env-file cannot be used with --gates-only")
+    if (release_metadata_file or release_env_file) and not args.dry_run and not release_go_evidence_file:
+        raise SystemExit("--release-go-evidence-file is required when syncing runtime APP_* values")
 
     python = sys.executable
     steps: list[tuple[str, list[str], Path]] = []

@@ -110,13 +110,15 @@ python scripts/runtime_app_download_smoke.py --redact --apps-json "C:/Users/kiwu
 ```powershell
 python scripts/remote_brain_apply_release_handoff.py `
   --brain-ip 82.21.114.104 `
-  --metadata-file "C:/Users/kiwun/Documents/ai/POKROV-app/artifacts/releases/release-handoff.json"
+  --metadata-file "C:/Users/kiwun/Documents/ai/POKROV-app/artifacts/releases/release-handoff.json" `
+  --go-evidence-file "docs/audit-artifacts/<runtime-sync-go-or-public-beta-go>.md"
 ```
 
 Compatibility note:
 
 - `remote_brain_apply_release_handoff.py` and `release_orchestrator.py` prefer the client-owned JSON handoff through `--metadata-file` / `--release-metadata-file`
 - `release-links.env` remains a compatibility fallback and URL-check input when needed
+- non-dry-run runtime sync requires either the final public-beta GO handoff or the narrow runtime-link sync authorization with the exact markers listed in `deployment-and-access.md`
 
 9. If Android or Windows public URLs changed, rebuild and redeploy static `marketing` so `NEXT_PUBLIC_APP_*` matches the same release.
 10. Re-check the download surfaces that read runtime values.
