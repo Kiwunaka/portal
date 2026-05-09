@@ -313,6 +313,33 @@ def test_email_relay_rejects_delivery_when_secret_is_not_configured(monkeypatch)
     assert response.json()["detail"] == "Invalid relay secret"
 
 
+def test_email_relay_paid_access_key_link_does_not_put_key_in_url(monkeypatch):
+    monkeypatch.setenv("WEBAPP_URL", "https://app.pokrov.test/")
+    sys.modules.pop("email_relay_app", None)
+    relay = importlib.import_module("email_relay_app")
+
+    access_key = "POKROV-PAID-1234"
+    subject, body, html_body = relay._message_for(
+        relay.EmailDeliveryIn(
+            kind="payment_access_key",
+            email="buyer@pokrov.test",
+            access_key=access_key,
+            order_id="lavatop_order_1",
+            plan_code="1_month",
+            plan_label="30 дней",
+            days=30,
+        )
+    )
+
+    action_line = next(line for line in body.splitlines() if line.startswith("Активировать ключ в кабинете:"))
+    action_url = action_line.split(":", 1)[1].strip()
+    assert subject == "Ключ доступа POKROV"
+    assert access_key in body
+    assert access_key in html_body
+    assert action_url == "https://app.pokrov.test/redeem/"
+    assert access_key not in action_url
+
+
 def test_email_register_can_link_to_existing_user(monkeypatch, tmp_path):
     api = _load_api(monkeypatch, tmp_path, email_public_ready=True)
     captured = _capture_auth_delivery(monkeypatch, api)
