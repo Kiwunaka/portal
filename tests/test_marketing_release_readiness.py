@@ -48,6 +48,17 @@ def test_release_status_static_claims_mirror_current_launch_decision() -> None:
     assert "docs_url is missing" not in json.dumps(release_status, ensure_ascii=False)
 
 
+def test_cabinet_downloads_use_runtime_app_links_not_static_fallback() -> None:
+    downloads = _read_webapp("components", "cabinet", "downloads-surface.tsx")
+
+    assert "payload?.android?.apk_url || config.androidApkUrl" not in downloads
+    assert "payload?.android?.mirror_url || config.androidMirrorUrl" not in downloads
+    assert "payload?.windows?.exe_url || config.windowsExeUrl" not in downloads
+    assert "payload?.windows?.mirror_url || config.windowsMirrorUrl" not in downloads
+    assert 'const androidApk = payload?.android?.apk_url || "";' in downloads
+    assert 'const windowsExe = payload?.windows?.exe_url || "";' in downloads
+
+
 def test_public_beta_docs_pin_current_brain_truth_and_unblock_packet() -> None:
     current_handoff_path = "docs/audit-artifacts/public-beta-handoff-2026-05-08.md"
     current_completion_audit_path = "docs/audit-artifacts/public-beta-completion-audit-2026-05-08.md"

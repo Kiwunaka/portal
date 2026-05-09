@@ -61,10 +61,10 @@ function externalAction(href: string, label: string): ReactNode {
 }
 
 function buildCards(payload: ClientAppsPayload | null): DownloadCard[] {
-  const androidApk = payload?.android?.apk_url || config.androidApkUrl;
-  const androidMirror = payload?.android?.mirror_url || config.androidMirrorUrl;
-  const windowsExe = payload?.windows?.exe_url || config.windowsExeUrl;
-  const windowsMirror = payload?.windows?.mirror_url || config.windowsMirrorUrl;
+  const androidApk = payload?.android?.apk_url || "";
+  const androidMirror = payload?.android?.mirror_url || "";
+  const windowsExe = payload?.windows?.exe_url || "";
+  const windowsMirror = payload?.windows?.mirror_url || "";
   const docsUrl = payload?.docs_url || config.docsUrl;
 
   return [
