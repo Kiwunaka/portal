@@ -220,7 +220,7 @@ export default function RedeemPage() {
       description="Если у вас уже есть ключ оплаты или подарка, примените его здесь к текущему профилю."
       actions={
         <>
-          <AppRouteLink href="/subscription/checkout/" className="outline-btn rounded-full px-5 py-3 text-sm font-semibold">
+          <AppRouteLink href="#redeem-key" className="outline-btn rounded-full px-5 py-3 text-sm font-semibold">
             Проверить статус ключа
           </AppRouteLink>
           <AppRouteLink href="/support/" className="outline-btn rounded-full px-5 py-3 text-sm font-semibold">
@@ -278,7 +278,7 @@ export default function RedeemPage() {
         ]}
       />
 
-      <div className="grid gap-6 xl:grid-cols-[1.04fr_0.96fr]">
+      <div id="redeem-key" className="scroll-mt-28 grid gap-6 xl:grid-cols-[1.04fr_0.96fr]">
         <CabinetSection
           eyebrow="Проверка"
           title="Проверить и применить"

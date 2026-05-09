@@ -1032,6 +1032,8 @@ test.describe("Cabinet flow", () => {
     await page.goto("/redeem/?key=pokrov%E2%80%91gift%E2%88%922026");
 
     await expect(page.getByRole("heading", { name: "Применить ключ" })).toBeVisible();
+    await expect(page.getByRole("link", { name: "Проверить статус ключа" })).toHaveAttribute("href", "#redeem-key");
+    await expect(page.locator("#redeem-key")).toBeVisible();
     await expect(page.locator("main")).toContainText("Ключ найден");
     await expect(page.locator("main")).not.toContainText("9999");
 
