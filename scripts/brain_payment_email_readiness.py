@@ -140,6 +140,10 @@ def env_present(env, name):
     return bool(str(env.get(name) or "").strip())
 
 
+def truthy(value):
+    return str(value or "").strip().lower() in {"1", "true", "yes", "on"}
+
+
 pid_raw = subprocess.run(
     ["systemctl", "show", unit, "-p", "MainPID", "--value"],
     check=False,
@@ -198,6 +202,21 @@ def post_json(url, payload, headers, timeout=25):
         return int(exc.code), "HTTPError"
     except Exception as exc:
         return None, type(exc).__name__
+
+
+def email_public_mode_check():
+    missing = []
+    if not truthy(env.get("EMAIL_AUTH_PUBLIC_ENABLED")):
+        missing.append("EMAIL_AUTH_PUBLIC_ENABLED=true")
+    if truthy(env.get("EMAIL_AUTH_DEBUG_ECHO")):
+        missing.append("EMAIL_AUTH_DEBUG_ECHO=false")
+    return check(
+        "email_public_mode",
+        PASS if not missing else BLOCKED_BY_ACCESS,
+        missing=missing,
+        note="Public email auth runtime mode can stay enabled when public mode is on and debug echo is off; live inbox proof is checked separately.",
+        source=f"brain:{{unit}}",
+    )
 
 
 def email_delivery_check(kind):
@@ -307,6 +326,7 @@ def lavatop_invoice_check():
 if not checks:
     checks.extend(
         [
+            email_public_mode_check(),
             email_delivery_check("verify"),
             email_delivery_check("reset"),
             email_delivery_check("payment_access_key"),
@@ -338,6 +358,14 @@ def _post_deploy_probe_mode(by_name: Mapping[str, Mapping[str, object]]) -> str:
     return "blocked_missing_or_failed_probe_inputs"
 
 
+def _post_deploy_email_public_safe(by_name: Mapping[str, Mapping[str, object]]) -> bool:
+    if "email_public_mode" in by_name:
+        return str(by_name.get("email_public_mode", {}).get("status") or "") == PASS
+    return all(
+        str(by_name.get(name, {}).get("status") or "") == PASS for name in {"email_delivery_verify", "email_delivery_reset"}
+    )
+
+
 def build_brain_post_deploy_report(
     *,
     remote_payload: Mapping[str, object],
@@ -366,9 +394,7 @@ def build_brain_post_deploy_report(
     statuses = [str(check.get("status") or "") for check in checks]
     classification = _classification(statuses)
     by_name = {str(check.get("name") or ""): check for check in checks}
-    safe_to_keep_email_public = all(
-        str(by_name.get(name, {}).get("status") or "") == PASS for name in {"email_delivery_verify", "email_delivery_reset"}
-    )
+    safe_to_keep_email_public = _post_deploy_email_public_safe(by_name)
     lavatop_invoice_probe_passed = str(by_name.get("lavatop_live_invoice_creation", {}).get("status") or "") == PASS
     return {
         "ok": classification == PASS,

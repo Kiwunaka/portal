@@ -201,6 +201,61 @@ def test_brain_post_deploy_email_probe_can_pass_while_lavatop_stays_blocked() ->
     assert report["safe_to_enable_paid_checkout"] is False
 
 
+def test_brain_post_deploy_can_keep_email_public_when_runtime_mode_is_green_and_inbox_probe_pending() -> None:
+    module = _load_module()
+
+    report = module.build_brain_post_deploy_report(
+        remote_payload={
+            "checks": [
+                {
+                    "name": "email_public_mode",
+                    "status": "PASS",
+                    "missing": [],
+                    "note": "public mode configured",
+                    "source": "brain",
+                },
+                {
+                    "name": "email_delivery_verify",
+                    "status": "BLOCKED_BY_ACCESS",
+                    "missing": ["email_probe_to"],
+                    "note": "probe recipient missing",
+                    "source": "brain",
+                },
+                {
+                    "name": "email_delivery_reset",
+                    "status": "BLOCKED_BY_ACCESS",
+                    "missing": ["email_probe_to"],
+                    "note": "probe recipient missing",
+                    "source": "brain",
+                },
+                {
+                    "name": "email_delivery_payment_access_key",
+                    "status": "BLOCKED_BY_ACCESS",
+                    "missing": ["email_probe_to"],
+                    "note": "probe recipient missing",
+                    "source": "brain",
+                },
+                {
+                    "name": "lavatop_live_invoice_creation",
+                    "status": "BLOCKED_BY_ACCESS",
+                    "missing": ["lavatop_probe_email"],
+                    "note": "probe buyer missing",
+                    "source": "brain",
+                },
+            ],
+        },
+        source_unit="portal-api",
+        plan_code="start_99",
+    )
+
+    assert report["ok"] is False
+    assert report["classification"] == "BLOCKED_BY_ACCESS"
+    assert report["post_deploy_probe_mode"] == "blocked_missing_or_failed_probe_inputs"
+    assert report["safe_to_keep_email_public"] is True
+    assert report["email_public_probe_can_be_evaluated_independently"] is True
+    assert report["safe_to_enable_paid_checkout"] is False
+
+
 def test_brain_post_deploy_script_requires_probe_recipients_without_embedding_secrets() -> None:
     module = _load_module()
 
