@@ -175,10 +175,10 @@ class PublicBetaExternalAccessPreflightTests(unittest.TestCase):
             "docs/audit-artifacts/public-beta-handoff-2026-05-08.md",
         )
 
-    def test_default_runtime_smoke_points_to_latest_post_handoff_probe(self) -> None:
+    def test_default_runtime_smoke_points_to_latest_docs_default_probe(self) -> None:
         self.assertEqual(
             Path(self.module.DEFAULT_RUNTIME_APP_DOWNLOAD_SMOKE).as_posix(),
-            "docs/audit-artifacts/runtime-app-download-smoke-brain-2026-05-08-post-handoff.json",
+            "docs/audit-artifacts/runtime-app-download-smoke-brain-2026-05-09-docs-default.json",
         )
 
     def test_default_staged_apps_points_to_client_release_handoff(self) -> None:
@@ -348,7 +348,15 @@ class PublicBetaExternalAccessPreflightTests(unittest.TestCase):
         checks = {check["name"]: check for check in report["checks"]}
         self.assertEqual(checks["runtime_app_download_smoke_env"]["status"], "BLOCKED_BY_ACCESS")
         self.assertIn("runtime APP_* sync approval", checks["runtime_app_download_smoke_env"]["missing"])
-        self.assertIn("android release URL is missing", checks["runtime_app_download_smoke_env"]["missing"])
+        self.assertIn(
+            "runtime APP_ANDROID_APK_URL is not synced",
+            checks["runtime_app_download_smoke_env"]["missing"],
+        )
+        self.assertIn(
+            "runtime APP_WINDOWS_EXE_URL is not synced",
+            checks["runtime_app_download_smoke_env"]["missing"],
+        )
+        self.assertNotIn("android release URL is missing", checks["runtime_app_download_smoke_env"]["missing"])
         self.assertNotIn("TELEGRAM_INIT_DATA", checks["runtime_app_download_smoke_env"]["missing"])
 
     def test_all_env_present_but_no_go_handoff_is_policy_blocked(self) -> None:

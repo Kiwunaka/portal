@@ -49,8 +49,8 @@
       "status": "BLOCKED_BY_ACCESS",
       "missing": [
         "runtime APP_* sync approval",
-        "android release URL is missing",
-        "windows release URL is missing"
+        "runtime APP_ANDROID_APK_URL is not synced",
+        "runtime APP_WINDOWS_EXE_URL is not synced"
       ],
       "note": "Brain-local signed initData reached /api/client/apps, but live runtime APP_* links are not synced yet.",
       "source": "docs\\audit-artifacts\\runtime-app-download-smoke-brain-2026-05-09-docs-default.json"

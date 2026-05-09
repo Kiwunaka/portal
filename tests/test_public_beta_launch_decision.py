@@ -145,6 +145,9 @@ class PublicBetaLaunchDecisionTests(unittest.TestCase):
         checks = {check["name"]: check for check in report["checks"]}
         self.assertEqual(checks["external_access_preflight"]["source"], str(expected))
         self.assertNotIn("docs_url is missing", "\n".join(checks["external_access_preflight"]["missing"]))
+        self.assertIn("runtime APP_ANDROID_APK_URL is not synced", checks["external_access_preflight"]["missing"])
+        self.assertIn("runtime APP_WINDOWS_EXE_URL is not synced", checks["external_access_preflight"]["missing"])
+        self.assertNotIn("android release URL is missing", checks["external_access_preflight"]["missing"])
 
     def test_default_post_deploy_probe_uses_current_20260509_artifact(self) -> None:
         expected = Path("docs/audit-artifacts/public-beta-post-deploy-probe-2026-05-09.json")

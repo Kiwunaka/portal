@@ -26,7 +26,7 @@ DEFAULT_RU_ORIGIN_SKIP_EVIDENCE = Path("docs/audit-artifacts/ru-origin-skip-acce
 DEFAULT_CLIENT_BUILD_EVIDENCE = Path("docs/audit-artifacts/client-build-evidence-2026-05-07.md")
 DEFAULT_ANDROID_AUDIT_VALIDATION = Path("docs/audit-artifacts/android-physical-audit-evidence-validation-2026-05-08.json")
 DEFAULT_ANDROID_OPERATOR_ATTESTATION = Path("docs/audit-artifacts/android-physical-audit-operator-note-2026-05-08.md")
-DEFAULT_RUNTIME_APP_DOWNLOAD_SMOKE = Path("docs/audit-artifacts/runtime-app-download-smoke-brain-2026-05-08-post-handoff.json")
+DEFAULT_RUNTIME_APP_DOWNLOAD_SMOKE = Path("docs/audit-artifacts/runtime-app-download-smoke-brain-2026-05-09-docs-default.json")
 DEFAULT_ARTIFACT_STAGING_AUTHORIZATION = Path(
     "docs/audit-artifacts/public-beta-artifact-staging-authorization-2026-05-08.md"
 )
@@ -40,6 +40,11 @@ RUNTIME_APP_DOWNLOAD_SMOKE_CHECKS = {
     "ru_origin_probe_evidence",
     "windows_signing_or_unsigned_risk",
     "staged_client_apps_payload",
+}
+RUNTIME_SYNC_MISSING_LABELS = {
+    "android release URL is missing": "runtime APP_ANDROID_APK_URL is not synced",
+    "windows release URL is missing": "runtime APP_WINDOWS_EXE_URL is not synced",
+    "docs_url is missing": "runtime APP_DOCS_URL is not synced",
 }
 
 
@@ -69,6 +74,11 @@ def _env_check(env: Mapping[str, str], name: str, *, check_name: str, note: str)
         note=note,
         source="environment",
     )
+
+
+def _runtime_sync_missing_label(value: object) -> str:
+    text = str(value or "").strip()
+    return RUNTIME_SYNC_MISSING_LABELS.get(text, text)
 
 
 def _runtime_app_download_smoke_check(env: Mapping[str, str], path: Path) -> dict[str, Any]:
@@ -106,10 +116,13 @@ def _runtime_app_download_smoke_check(env: Mapping[str, str], path: Path) -> dic
         missing.append("brain signed initData /api/client/apps smoke PASS")
     release_missing = release_handoff.get("missing")
     if isinstance(release_missing, list):
-        missing.extend(str(item) for item in release_missing if str(item).strip())
+        missing.extend(_runtime_sync_missing_label(item) for item in release_missing if str(item).strip())
     if (
         str(signed_auth.get("status") or "") == PASS
-        and any("release URL is missing" in item or item == "docs_url is missing" for item in missing)
+        and any(
+            item.startswith("runtime APP_") and item.endswith("is not synced")
+            for item in missing
+        )
     ):
         missing.insert(0, "runtime APP_* sync approval")
     if not missing:

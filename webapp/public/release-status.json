@@ -18,8 +18,8 @@
       "status": "BLOCKED_BY_ACCESS",
       "missing": [
         "runtime APP_* sync approval",
-        "android release URL is missing",
-        "windows release URL is missing",
+        "runtime APP_ANDROID_APK_URL is not synced",
+        "runtime APP_WINDOWS_EXE_URL is not synced",
         "EMAIL_PROBE_TO",
         "LAVATOP_PROBE_EMAIL",
         "GO handoff for public publication"
