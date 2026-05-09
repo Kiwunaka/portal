@@ -252,6 +252,7 @@ def test_telegram_announcement_draft_stays_release_honest_and_readable() -> None
     assert "не используйте зеркала" in lower_text
     assert "@pokrov_supportbot" in text
     assert "https://app.pokrov.space/" in text
+    assert "RU-origin в этой бета-волне не проверялся" in text
     assert "beta-" not in text
     assert "beta-сбор" not in text
     assert "релизный handoff" not in text
