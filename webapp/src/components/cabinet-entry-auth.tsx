@@ -268,7 +268,7 @@ export default function CabinetEntryAuth({ siteUrl }: { siteUrl: string }) {
 
             {emailMode === "recover" ? (
               <form className="space-y-3" onSubmit={submitRecovery}>
-                <input className={inputClass} value={email} onChange={(event) => setEmail(event.target.value)} type="email" autoComplete="email" placeholder="email@example.com" required />
+                <input className={inputClass} value={email} onChange={(event) => setEmail(event.target.value)} type="email" autoComplete="email" placeholder="email@example.com" required={!recoveryToken} />
                 <input className={inputClass} value={recoveryToken} onChange={(event) => setRecoveryToken(event.target.value)} placeholder="Код восстановления" />
                 <input className={inputClass} value={newPassword} onChange={(event) => setNewPassword(event.target.value)} type="password" autoComplete="new-password" placeholder="Новый пароль" minLength={10} required={Boolean(recoveryToken)} />
                 <p className="text-xs leading-5 text-slate-500 dark:text-slate-400">{PASSWORD_HINT}</p>

@@ -669,8 +669,8 @@ test.describe("Cabinet flow", () => {
     await expect(page.getByPlaceholder("Код восстановления")).toHaveValue("reset-from-link");
     await expect(page.locator("main")).toContainText("Код восстановления из письма уже подставлен.");
     await expect(page).not.toHaveURL(/email_reset_token=/);
+    await expect(page.getByPlaceholder("email@example.com")).not.toHaveAttribute("required", "");
 
-    await page.getByPlaceholder("email@example.com").fill("reader@pokrov.test");
     await page.getByPlaceholder("Новый пароль").fill("FreshPass456!");
     await page.getByRole("button", { name: "Сбросить пароль и войти" }).click();
     await expect(page).toHaveURL(/\/dashboard\/?$/);
