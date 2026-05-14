@@ -163,6 +163,9 @@ export type TicketInfo = {
 export type UserPayload = {
   tg_id: number;
   username?: string | null;
+  account_id?: string | null;
+  display_name?: string | null;
+  email?: string | null;
   subscription_url: string;
   is_active: boolean;
   is_admin: boolean;
@@ -1237,6 +1240,7 @@ export type AuthSessionPayload = {
     id: number;
     account_id?: string;
     username?: string | null;
+    display_name?: string | null;
     email?: string | null;
     device_name?: string | null;
     linked_telegram_id?: number | null;

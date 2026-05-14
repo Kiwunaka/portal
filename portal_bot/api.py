@@ -5163,6 +5163,7 @@ async def auth_session(request: Request, x_telegram_init_data: str = Header(defa
             "id": tg_id,
             "account_id": str(tg_id),
             "username": (auth_user.get("username") or (getattr(user, "username", None) if user else None)),
+            "display_name": (str(getattr(user, "display_name", "") or "").strip() if user else None) or None,
             "email": session_email or None,
             "device_name": device_name,
             "linked_telegram_id": _linked_telegram_id(user),
@@ -6923,11 +6924,15 @@ async def user_data(
             install_id=str(getattr(user, "app_install_id", "") or "").strip() or None,
             carrier=_request_carrier_header(x_portal_carrier),
         )
+        linked_identities = _linked_identities_payload(s=s, user=user, auth_user=auth_user)
+        linked_email_payload = linked_identities.get("email") if isinstance(linked_identities, dict) else None
 
         return {
             "tg_id": tg_id,
             "username": user.username or auth_user.get("username"),
             "account_id": str(tg_id),
+            "display_name": str(getattr(user, "display_name", "") or "").strip() or None,
+            "email": (linked_email_payload or {}).get("email") if isinstance(linked_email_payload, dict) else None,
             "device_name": _normalize_app_device_name(
                 getattr(user, "app_device_name", None) or getattr(user, "display_name", None),
             ),
@@ -6961,7 +6966,7 @@ async def user_data(
                 "username": str(getattr(user, "linked_telegram_username", "") or "").strip() or None,
             },
             "client_policy": client_policy,
-            "linked_identities": _linked_identities_payload(s=s, user=user, auth_user=auth_user),
+            "linked_identities": linked_identities,
             "free_caps": _free_caps_payload(user=user, access_policy=access_policy),
             "redeem_eligibility": _redeem_eligibility_payload(user=user, access_policy=access_policy),
             "promo_slots": _promo_slots_payload_for_surface(

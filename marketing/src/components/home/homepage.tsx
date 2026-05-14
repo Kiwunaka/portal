@@ -282,7 +282,7 @@ function Hero({ links }: { links: HomeLinks }) {
               </div>
               <div className={styles.laptopScreen}>
                 <div style={{ textAlign: "center", color: "#0d5c3b" }}>
-                  <UiIcon name="shield" size={52} />
+                  <img className={styles.heroScreenLogo} src="/pokrov-logo.svg" alt="" aria-hidden="true" />
                   <p style={{ margin: "8px 0 0", fontSize: 14, fontWeight: 700 }}>POKROV</p>
                   <p style={{ margin: 0, fontSize: 12, opacity: 0.6 }}>Подключено</p>
                 </div>

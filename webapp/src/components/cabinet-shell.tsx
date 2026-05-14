@@ -148,14 +148,53 @@ function formatExpiry(value?: string | null): string {
   return new Intl.DateTimeFormat("ru-RU", { day: "numeric", month: "long" }).format(parsed);
 }
 
-function profileLabel(username?: string | null, tgId?: number | null): string {
-  if (username) return `@${username}`;
+const SYNTHETIC_EMAIL_ACCOUNT_MIN = 8_000_000_000_000;
+const SYNTHETIC_EMAIL_ACCOUNT_MAX = 9_000_000_000_000;
+
+function isSyntheticEmailAccount(tgId?: number | null): boolean {
+  return typeof tgId === "number" && tgId >= SYNTHETIC_EMAIL_ACCOUNT_MIN && tgId < SYNTHETIC_EMAIL_ACCOUNT_MAX;
+}
+
+function cleanProfileText(value?: string | null): string {
+  return String(value || "").trim();
+}
+
+function profileLabel({
+  username,
+  displayName,
+  email,
+  tgId,
+}: {
+  username?: string | null;
+  displayName?: string | null;
+  email?: string | null;
+  tgId?: number | null;
+}): string {
+  const name = cleanProfileText(displayName);
+  if (name) return name;
+  const handle = cleanProfileText(username);
+  if (handle) return `@${handle}`;
+  const mail = cleanProfileText(email);
+  if (mail) return mail;
+  if (isSyntheticEmailAccount(tgId)) return "Email-аккаунт";
   if (tgId) return `ID ${tgId}`;
   return "Аккаунт POKROV";
 }
 
-function profileMark(username?: string | null, tgId?: number | null): string {
-  if (username) return username.slice(0, 1).toUpperCase();
+function profileMark({
+  username,
+  displayName,
+  email,
+  tgId,
+}: {
+  username?: string | null;
+  displayName?: string | null;
+  email?: string | null;
+  tgId?: number | null;
+}): string {
+  const source = cleanProfileText(displayName) || cleanProfileText(username) || cleanProfileText(email).split("@")[0];
+  if (source) return source.slice(0, 1).toUpperCase();
+  if (isSyntheticEmailAccount(tgId)) return "PK";
   if (tgId) return String(tgId).slice(-2);
   return "PK";
 }
@@ -365,7 +404,15 @@ export default function CabinetShell({ children }: { children: ReactNode }) {
   const allNavItems = isAdmin ? [...NAV_ITEMS, adminNavItem] : NAV_ITEMS;
   const meta = routeMetaFor(pathname);
   const activeNav = allNavItems.find((item) => item.match(pathname)) || allNavItems[0];
-  const accountLabel = profileLabel(user.username, user.tg_id);
+  const linkedEmail = user.email || user.linked_identities?.email?.email || null;
+  const profileArgs = {
+    username: user.username,
+    displayName: user.display_name,
+    email: linkedEmail,
+    tgId: user.tg_id,
+  };
+  const accountLabel = profileLabel(profileArgs);
+  const accountMark = profileMark(profileArgs);
   const planLabel = resolvePlanLabel(dash, user);
   const statusLabel = dash.is_active ? "Доступ активен" : "Нужно продление";
   const sidebarSummary = dash.is_active
@@ -433,7 +480,7 @@ export default function CabinetShell({ children }: { children: ReactNode }) {
 
           <div className="flex items-center gap-3 rounded-[1.25rem] border border-slate-200/80 bg-white/90 p-3 dark:border-white/10 dark:bg-white/[0.04]">
             <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-emerald-900 text-xs font-semibold uppercase text-white dark:bg-emerald-700">
-              {profileMark(user.username, user.tg_id)}
+              {accountMark}
             </span>
             <div className="min-w-0 flex-1">
               <p className="truncate text-sm font-semibold text-slate-950 dark:text-slate-50">{accountLabel}</p>
@@ -557,7 +604,7 @@ export default function CabinetShell({ children }: { children: ReactNode }) {
                 </button>
                 <AppRouteLink href="/settings/" className="inline-flex items-center gap-2 rounded-full border border-slate-200/80 bg-white px-1.5 py-1 text-sm shadow-sm dark:border-white/10 dark:bg-white/[0.04]">
                   <span className="grid h-8 w-8 place-items-center rounded-full bg-emerald-900 text-xs font-semibold uppercase text-white dark:bg-emerald-700">
-                    {profileMark(user.username, user.tg_id)}
+                    {accountMark}
                   </span>
                   <span className="hidden max-w-[140px] truncate pr-1.5 font-medium text-slate-900 dark:text-slate-100 sm:block">{accountLabel}</span>
                 </AppRouteLink>

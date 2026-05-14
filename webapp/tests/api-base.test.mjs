@@ -17,7 +17,7 @@ test("resolvePrimaryApiBase prefers canonical env api base over app origin", () 
   assert.equal(base, "https://api.pokrov.space");
 });
 
-test("resolveCandidateApiBases keeps canonical api first when session is missing", () => {
+test("resolveCandidateApiBases excludes production app shell origin when session is missing", () => {
   const bases = resolveCandidateApiBases({
     envBase: "",
     origin: "https://app.pokrov.space",
@@ -26,10 +26,10 @@ test("resolveCandidateApiBases keeps canonical api first when session is missing
     enableLegacyPortFallback: false,
   });
 
-  assert.deepEqual(bases, ["https://api.pokrov.space", "https://app.pokrov.space"]);
+  assert.deepEqual(bases, ["https://api.pokrov.space"]);
 });
 
-test("resolveCandidateApiBases keeps canonical api first when session exists", () => {
+test("resolveCandidateApiBases excludes production app shell origin when session exists", () => {
   const bases = resolveCandidateApiBases({
     envBase: "",
     origin: "https://app.pokrov.space",
@@ -38,7 +38,19 @@ test("resolveCandidateApiBases keeps canonical api first when session exists", (
     enableLegacyPortFallback: false,
   });
 
-  assert.deepEqual(bases, ["https://api.pokrov.space", "https://app.pokrov.space"]);
+  assert.deepEqual(bases, ["https://api.pokrov.space"]);
+});
+
+test("resolveCandidateApiBases keeps localhost app origin for local development", () => {
+  const bases = resolveCandidateApiBases({
+    envBase: "",
+    origin: "http://localhost:3000",
+    directApiBase: "https://api.pokrov.space",
+    hasSessionToken: true,
+    enableLegacyPortFallback: false,
+  });
+
+  assert.deepEqual(bases, ["https://api.pokrov.space", "http://localhost:3000"]);
 });
 
 test("classifyApiPayload rejects html masquerading as successful api response", () => {

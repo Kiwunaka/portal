@@ -2,6 +2,20 @@ function normalizeBase(value) {
   return String(value || "").trim().replace(/\/+$/, "");
 }
 
+function isLocalBase(value) {
+  try {
+    const url = new URL(value);
+    return (
+      url.hostname === "localhost" ||
+      url.hostname === "127.0.0.1" ||
+      url.hostname === "::1" ||
+      url.hostname.endsWith(".local")
+    );
+  } catch {
+    return false;
+  }
+}
+
 export function resolveCandidateApiBases({
   envBase = "",
   origin = "",
@@ -12,16 +26,28 @@ export function resolveCandidateApiBases({
   const seen = new Set();
   const bases = [];
 
+  const appOrigin = normalizeBase(origin);
+  const canonical = normalizeBase(directApiBase);
+  const shouldSkipAppShellBase = (value) => {
+    const normalized = normalizeBase(value);
+    return Boolean(
+      normalized &&
+        appOrigin &&
+        canonical &&
+        normalized === appOrigin &&
+        normalized !== canonical &&
+        !isLocalBase(normalized),
+    );
+  };
+
   const push = (value) => {
     const normalized = normalizeBase(value);
-    if (!normalized || seen.has(normalized)) return;
+    if (!normalized || seen.has(normalized) || shouldSkipAppShellBase(normalized)) return;
     seen.add(normalized);
     bases.push(normalized);
   };
 
   const configured = normalizeBase(envBase);
-  const canonical = normalizeBase(directApiBase);
-  const appOrigin = normalizeBase(origin);
 
   if (configured) push(configured);
   if (canonical) push(canonical);

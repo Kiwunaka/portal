@@ -82,7 +82,10 @@ def test_oidc_start_returns_authorize_url_with_signed_state(monkeypatch, tmp_pat
     assert query["scope"] == ["openid profile telegram:bot_access"]
     assert query["code_challenge_method"] == ["S256"]
 
-    verified = web_auth_service.verify_telegram_oidc_state_token(query["state"][0])
+    state = query["state"][0]
+    assert len(state) <= 240
+
+    verified = web_auth_service.verify_telegram_oidc_state_token(state)
     assert verified is not None
     assert verified["redirect_uri"] == "https://app.pokrov.test/"
     assert len(str(verified["code_verifier"])) >= 43

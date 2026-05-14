@@ -108,8 +108,8 @@ def _require_telegram_oidc_config() -> tuple[str, str, str]:
 
 
 def _pkce_verifier() -> str:
-    verifier = secrets.token_urlsafe(64).replace("-", "A").replace("_", "B")
-    return verifier[:96]
+    verifier = secrets.token_urlsafe(32).replace("-", "A").replace("_", "B")
+    return verifier if len(verifier) >= 43 else verifier.ljust(43, "x")
 
 
 def _pkce_challenge(verifier: str) -> str:
@@ -122,12 +122,10 @@ def create_telegram_oidc_state_token(*, redirect_uri: str, code_verifier: str | 
         verifier = verifier.ljust(43, "x")
     now = int(time.time())
     payload = {
-        "type": "telegram_oidc",
-        "csrf": secrets.token_urlsafe(18),
-        "code_verifier": verifier,
-        "redirect_uri": str(redirect_uri or "").strip(),
-        "iat": now,
-        "exp": now + TELEGRAM_OAUTH_STATE_TTL_SECONDS,
+        "t": "to",
+        "c": secrets.token_urlsafe(12),
+        "v": verifier,
+        "e": now + TELEGRAM_OAUTH_STATE_TTL_SECONDS,
     }
     body = _b64url(json.dumps(payload, separators=(",", ":"), ensure_ascii=True).encode("utf-8"))
     sig = _sign(body)
@@ -150,20 +148,26 @@ def verify_telegram_oidc_state_token(token: str) -> dict[str, Any] | None:
         return None
     if not isinstance(payload, dict):
         return None
-    if str(payload.get("type") or "") != "telegram_oidc":
+    token_type = str(payload.get("type") or payload.get("t") or "")
+    if token_type not in {"telegram_oidc", "to"}:
         return None
     try:
-        exp = int(payload.get("exp") or 0)
+        exp = int(payload.get("exp") or payload.get("e") or 0)
     except Exception:
         return None
-    redirect_uri = str(payload.get("redirect_uri") or "").strip()
-    verifier = str(payload.get("code_verifier") or "").strip()
+    redirect_uri = str(payload.get("redirect_uri") or payload.get("r") or "").strip()
+    if not redirect_uri:
+        try:
+            redirect_uri = _telegram_oidc_redirect_uri()
+        except RuntimeError:
+            return None
+    verifier = str(payload.get("code_verifier") or payload.get("v") or "").strip()
     if exp <= int(time.time()) or not redirect_uri or len(verifier) < 43:
         return None
     return {
         "redirect_uri": redirect_uri,
         "code_verifier": verifier,
-        "csrf": str(payload.get("csrf") or "").strip(),
+        "csrf": str(payload.get("csrf") or payload.get("c") or "").strip(),
     }
 
 
