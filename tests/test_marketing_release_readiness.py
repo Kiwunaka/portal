@@ -4,6 +4,7 @@ from pathlib import Path
 REPO_ROOT = Path(__file__).resolve().parents[1]
 MARKETING_ROOT = REPO_ROOT / "marketing" / "src"
 WEBAPP_ROOT = REPO_ROOT / "webapp" / "src"
+COPY_CATALOG = REPO_ROOT / "copy" / "catalog.ru.json"
 
 
 def _read(*parts: str) -> str:
@@ -12,6 +13,10 @@ def _read(*parts: str) -> str:
 
 def _read_webapp(*parts: str) -> str:
     return (WEBAPP_ROOT.joinpath(*parts)).read_text(encoding="utf-8")
+
+
+def _read_copy_catalog() -> str:
+    return COPY_CATALOG.read_text(encoding="utf-8")
 
 
 def test_marketing_has_real_seo_entrypoints() -> None:
@@ -86,6 +91,7 @@ def test_outside_store_beta_copy_avoids_store_distribution_claims() -> None:
     surfaces = [
         _read("components", "marketing-landing.tsx"),
         _read("app", "install", "page.tsx"),
+        _read_copy_catalog(),
         _read_webapp("app", "(dashboard)", "dashboard", "page.tsx"),
         _read_webapp("components", "cabinet", "downloads-surface.tsx"),
     ]
@@ -93,6 +99,7 @@ def test_outside_store_beta_copy_avoids_store_distribution_claims() -> None:
     combined = "\n".join(surfaces)
     assert "Google Play" not in combined
     assert "production signing" not in combined
+    assert "до signing" not in combined
     assert "физического аудита" not in combined
     assert "GitHub Releases" in combined
 

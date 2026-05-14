@@ -1104,7 +1104,7 @@
     },
     "marketing.install.android.title": {
       "surface": "marketing.install.android",
-      "ru": "Внутренний APK для Android",
+      "ru": "APK для Android",
       "variables": [],
       "tone": "calm",
       "allowed_public": true,
@@ -1113,7 +1113,7 @@
     },
     "marketing.install.android.desc": {
       "surface": "marketing.install.android",
-      "ru": "Android APK доступен только как внутренняя бета для одобренных пользователей. Публичная публикация остаётся заблокированной до signing и физического аудита.",
+      "ru": "Android APK для этой беты открывается через кабинет и GitHub Releases. Не используйте случайные зеркала и стор-ссылки.",
       "variables": [],
       "tone": "calm",
       "allowed_public": true,
@@ -1140,7 +1140,7 @@
     },
     "marketing.install.windows.desc": {
       "surface": "marketing.install.windows",
-      "ru": "Windows-сборка для беты может быть неподписанной. Перед установкой пользователь должен увидеть предупреждение о неизвестном издателе.",
+      "ru": "Windows-сборка для этой беты открывается через кабинет и GitHub Releases. Установщик может быть неподписанным, поэтому предупреждение о неизвестном издателе ожидаемо.",
       "variables": [],
       "tone": "calm",
       "allowed_public": true,
