@@ -9,13 +9,14 @@ from the main bot admin queue (shared DB tables).
 from __future__ import annotations
 
 import logging
+import json
 import os
 from datetime import datetime, timezone
 from pathlib import Path
 
 from aiogram import Bot, Dispatcher, F, Router
 from aiogram.filters import CommandStart
-from aiogram.types import CallbackQuery, FSInputFile, InlineKeyboardButton, InlineKeyboardMarkup, Message
+from aiogram.types import BotCommand, CallbackQuery, FSInputFile, InlineKeyboardButton, InlineKeyboardMarkup, Message
 from dotenv import load_dotenv
 
 # Load env from repo-local file first to avoid cwd-dependent startup behavior.
@@ -24,6 +25,7 @@ load_dotenv()
 
 from copy_catalog import get_copy_text
 from db import SessionLocal, init_db
+from telegram_buttons import modern_inline_button
 from tickets_repo import (
     STATUS_CLOSED,
     STATUS_IN_PROGRESS,
@@ -38,6 +40,10 @@ from tickets_repo import (
     list_user_tickets,
     set_ticket_status,
 )
+
+# Keep existing helpbot keyboard construction while routing every button through
+# the Bot API 9.4/9.5 style and custom-emoji helper.
+InlineKeyboardButton = modern_inline_button
 
 
 HELP_BOT_TOKEN = (os.getenv("HELP_BOT_TOKEN") or "").strip()
@@ -175,6 +181,59 @@ def _main_bot_hint() -> str:
     if not MAIN_BOT_USERNAME:
         return "Ответить можно из очереди обращений в основном боте."
     return f"Ответ из админки: https://t.me/{MAIN_BOT_USERNAME}"
+
+
+async def _configure_support_bot_commands(bot: Bot) -> None:
+    try:
+        await bot.set_my_commands([BotCommand(command="start", description="Открыть поддержку")])
+    except Exception as e:
+        logger.warning("helpbot command menu setup failed: %s", e)
+
+
+def _telegram_attachment_payload(message: Message) -> tuple[str | None, str | None, dict]:
+    photo = list(getattr(message, "photo", None) or [])
+    if photo:
+        item = photo[-1]
+        payload = {
+            "source": "telegram",
+            "kind": "photo",
+            "name": "Скриншот из Telegram",
+        }
+        for key in ("file_unique_id", "width", "height", "file_size"):
+            value = getattr(item, key, None)
+            if value is not None:
+                payload[key] = value
+        return "photo", getattr(item, "file_id", None), payload
+
+    document = getattr(message, "document", None)
+    if document is not None:
+        payload = {
+            "source": "telegram",
+            "kind": "file",
+            "name": getattr(document, "file_name", None) or "Файл из Telegram",
+            "content_type": getattr(document, "mime_type", None) or "application/octet-stream",
+        }
+        for key in ("file_unique_id", "file_size"):
+            value = getattr(document, key, None)
+            if value is not None:
+                payload[key] = value
+        return "file", getattr(document, "file_id", None), payload
+
+    video = getattr(message, "video", None)
+    if video is not None:
+        payload = {
+            "source": "telegram",
+            "kind": "video",
+            "name": getattr(video, "file_name", None) or "Видео из Telegram",
+            "content_type": getattr(video, "mime_type", None) or "video/mp4",
+        }
+        for key in ("file_unique_id", "width", "height", "duration", "file_size"):
+            value = getattr(video, key, None)
+            if value is not None:
+                payload[key] = value
+        return "video", getattr(video, "file_id", None), payload
+
+    return None, None, {}
 
 
 def _get_or_create_user_ticket(session, tg_id: int):
@@ -484,6 +543,91 @@ async def back_home(callback: CallbackQuery) -> None:
     )
 
 
+@router.message(F.photo)
+@router.message(F.document)
+@router.message(F.video)
+async def capture_ticket_attachment(message: Message) -> None:
+    tg_id = message.from_user.id
+    media_type, media_file_id, media_payload = _telegram_attachment_payload(message)
+    if not media_type or not media_file_id:
+        return
+
+    body = (getattr(message, "caption", None) or "").strip()
+    if not body:
+        body = str(media_payload.get("name") or "Вложение из Telegram").strip()
+
+    ticket_id = pending_ticket_replies.get(tg_id, 0)
+    session = SessionLocal()
+    try:
+        ticket = None
+        created = False
+        if ticket_id > 0:
+            ticket = get_ticket_by_id(session, ticket_id)
+        if not ticket and tg_id != ADMIN_ID:
+            ticket, created = _get_or_create_user_ticket(session, tg_id)
+            ticket_id = ticket.id
+        if not ticket and tg_id == ADMIN_ID:
+            await message.answer("Выберите обращение в очереди и нажмите «Ответить».", reply_markup=_main_menu(True))
+            return
+        if not ticket:
+            await message.answer("Обращение не найдено.", reply_markup=_main_menu(tg_id == ADMIN_ID))
+            return
+        if not can_access_ticket(ticket, tg_id, ADMIN_ID):
+            await message.answer("Нет доступа к обращению.", reply_markup=_main_menu(tg_id == ADMIN_ID))
+            return
+
+        role = "admin" if tg_id == ADMIN_ID else "user"
+        add_ticket_message(
+            session,
+            ticket_id=ticket.id,
+            sender_tg_id=tg_id,
+            sender_role=role,
+            body=body,
+            media_type=media_type,
+            media_file_id=str(media_file_id),
+            media_payload=json.dumps(media_payload, ensure_ascii=False, separators=(",", ":")),
+        )
+        if tg_id == ADMIN_ID:
+            set_ticket_status(session, ticket=ticket, status=STATUS_IN_PROGRESS, assigned_admin_tg_id=ADMIN_ID)
+            caption = f"💬 Новый ответ команды POKROV по обращению #{ticket.id}:\n{body}"
+            try:
+                await message.copy_to(ticket.user_tg_id, caption=caption)
+            except Exception as e:
+                logger.warning("helpbot attachment copy to user failed ticket=%s err=%s", ticket.id, e)
+                try:
+                    await message.bot.send_message(ticket.user_tg_id, caption)
+                except Exception as inner:
+                    logger.warning("helpbot attachment fallback to user failed ticket=%s err=%s", ticket.id, inner)
+        else:
+            set_ticket_status(session, ticket=ticket, status=STATUS_OPEN)
+            caption = f"🆕 Новое сообщение в обращении #{ticket.id} от пользователя {tg_id} (helpbot).\n{body}\n\n{_main_bot_hint()}"
+            if ADMIN_ID > 0:
+                try:
+                    await message.copy_to(ADMIN_ID, caption=caption)
+                except Exception as e:
+                    logger.warning("helpbot attachment copy to admin failed ticket=%s err=%s", ticket.id, e)
+                    await _notify_admin(message.bot, caption)
+            if created:
+                await _notify_admin(
+                    message.bot,
+                    f"🆕 Новое обращение #{ticket.id} от пользователя {tg_id} (helpbot).\n{_main_bot_hint()}",
+                )
+        session.commit()
+        pending_ticket_replies.pop(tg_id, None)
+    finally:
+        session.close()
+
+    await message.answer(
+        f"Вложение добавлено в обращение #{ticket_id}.",
+        reply_markup=InlineKeyboardMarkup(
+            inline_keyboard=[
+                [InlineKeyboardButton(text="🎫 Открыть обращение", callback_data=f"hb_ticket_view_{ticket_id}")],
+                [InlineKeyboardButton(text="🏠 В меню", callback_data="hb_back_home")],
+            ]
+        ),
+    )
+
+
 @router.message(F.text)
 async def capture_ticket_reply(message: Message) -> None:
     tg_id = message.from_user.id
@@ -555,6 +699,7 @@ async def main() -> None:
     dp = Dispatcher()
     dp.include_router(router)
     bot = Bot(token=HELP_BOT_TOKEN)
+    await _configure_support_bot_commands(bot)
     logger.info("Support helpbot starting...")
     await dp.start_polling(bot, allowed_updates=dp.resolve_used_update_types())
 
