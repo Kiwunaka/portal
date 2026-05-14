@@ -50,6 +50,7 @@ class ApiPaymentCallbacksTests(unittest.TestCase):
             "LAVATOP_API_KEY",
             "LAVATOP_OFFER_ID",
             "LAVATOP_WEBHOOK_API_KEY",
+            "LAVATOP_WEBHOOK_IP_ALLOWLIST",
             "RUB_CHECKOUT_ENABLED",
             "PAID_CHECKOUT_LAUNCH_APPROVED",
             "ADMIN_ID",
@@ -84,6 +85,7 @@ class ApiPaymentCallbacksTests(unittest.TestCase):
         os.environ["LAVATOP_API_KEY"] = "lavatop_api_key_test"
         os.environ["LAVATOP_OFFER_ID"] = "836b9fc5-7ae9-4a27-9642-592bc44072b7"
         os.environ["LAVATOP_WEBHOOK_API_KEY"] = "lavatop_webhook_key_test"
+        os.environ.pop("LAVATOP_WEBHOOK_IP_ALLOWLIST", None)
         os.environ["RUB_CHECKOUT_ENABLED"] = "true"
         os.environ["PAID_CHECKOUT_LAUNCH_APPROVED"] = "true"
         os.environ["ADMIN_ID"] = "9999"
@@ -1170,6 +1172,158 @@ class ApiPaymentCallbacksTests(unittest.TestCase):
         flat_buttons = [button for row in keyboard["inline_keyboard"] for button in row]
         self.assertTrue(any(button.get("callback_data") == "show_key" for button in flat_buttons))
         self.assertTrue(any(button.get("web_app") for button in flat_buttons))
+
+    def test_lavatop_callback_behind_local_proxy_uses_webhook_auth_after_allowlist_miss(self) -> None:
+        os.environ["LAVATOP_WEBHOOK_IP_ALLOWLIST"] = "158.160.60.174"
+        client = TestClient(self.api.app)
+
+        from db import SessionLocal
+        from models import ExternalOrder, User
+
+        s = SessionLocal()
+        try:
+            s.add(
+                User(
+                    tg_id=6688,
+                    username="lavatop_proxy_user",
+                    uuid=str(uuid.uuid4()),
+                    email="user_6688",
+                    sub_type="FREE",
+                    is_active=True,
+                    tos_accepted=True,
+                )
+            )
+            s.add(
+                ExternalOrder(
+                    order_id="lavatop_site_6688_proxy",
+                    provider="lavatop",
+                    tg_id=6688,
+                    plan_code="start_99",
+                    source="site",
+                    amount=99.0,
+                    currency="RUB",
+                    status="pending",
+                    created_at=self.api._utcnow(),
+                )
+            )
+            s.commit()
+        finally:
+            s.close()
+
+        payload = {
+            "eventType": "payment.success",
+            "contractId": "local-proxy-contract",
+            "amount": 99,
+            "currency": "RUB",
+            "status": "completed",
+            "clientUtm": {
+                "utm_content": "lavatop_site_6688_proxy",
+                "utm_medium": "site",
+                "utm_term": "start_99",
+            },
+            "tg_id": "6688",
+            "plan_code": "start_99",
+        }
+        response = client.post(
+            "/api/payments/result/lavatop",
+            json=payload,
+            headers={"X-Forwarded-For": "127.0.0.1", "X-Api-Key": "lavatop_webhook_key_test"},
+        )
+        self.assertEqual(response.status_code, 200, response.text)
+        self.assertTrue(response.json().get("activated"))
+
+        missing_key = client.post(
+            "/api/payments/result/lavatop",
+            json={**payload, "contractId": "local-proxy-contract-no-key"},
+            headers={"X-Forwarded-For": "127.0.0.1"},
+        )
+        self.assertEqual(missing_key.status_code, 400, missing_key.text)
+        self.assertIn("Invalid signature", missing_key.text)
+
+    def test_lavatop_callback_does_not_extend_account_twice_for_same_order(self) -> None:
+        from datetime import timedelta
+
+        client = TestClient(self.api.app)
+
+        from db import SessionLocal
+        from models import ExternalOrder, User
+
+        base_expiry = self.api._utcnow() + timedelta(days=10)
+        s = SessionLocal()
+        try:
+            s.add(
+                User(
+                    tg_id=6699,
+                    username="lavatop_idempotent_user",
+                    uuid=str(uuid.uuid4()),
+                    email="user_6699",
+                    sub_type="PAID",
+                    is_active=True,
+                    expiry_at=base_expiry,
+                    tos_accepted=True,
+                )
+            )
+            s.add(
+                ExternalOrder(
+                    order_id="lavatop_site_6699_idempotent",
+                    provider="lavatop",
+                    tg_id=6699,
+                    plan_code="start_99",
+                    source="site",
+                    amount=99.0,
+                    currency="RUB",
+                    status="pending",
+                    meta_json=json.dumps(
+                        {"fulfillment": {"mode": "account_extend", "status": "pending_payment"}},
+                        ensure_ascii=False,
+                        separators=(",", ":"),
+                    ),
+                    created_at=self.api._utcnow(),
+                )
+            )
+            s.commit()
+        finally:
+            s.close()
+
+        payload = {
+            "eventType": "payment.success",
+            "amount": 99,
+            "currency": "RUB",
+            "status": "completed",
+            "clientUtm": {
+                "utm_content": "lavatop_site_6699_idempotent",
+                "utm_medium": "site",
+                "utm_term": "start_99",
+            },
+            "tg_id": "6699",
+            "plan_code": "start_99",
+        }
+        first = client.post(
+            "/api/payments/result/lavatop",
+            json={**payload, "contractId": "idempotent-contract-1"},
+            headers={"X-Api-Key": "lavatop_webhook_key_test"},
+        )
+        second = client.post(
+            "/api/payments/result/lavatop",
+            json={**payload, "contractId": "idempotent-contract-2"},
+            headers={"X-Api-Key": "lavatop_webhook_key_test"},
+        )
+        self.assertEqual(first.status_code, 200, first.text)
+        self.assertEqual(second.status_code, 200, second.text)
+        self.assertTrue(first.json().get("activated"))
+        self.assertEqual(second.json().get("activation_reason"), "already_applied")
+
+        s = SessionLocal()
+        try:
+            user = s.query(User).filter(User.tg_id == 6699).first()
+            row = s.query(ExternalOrder).filter(ExternalOrder.order_id == "lavatop_site_6699_idempotent").first()
+            self.assertIsNotNone(user)
+            self.assertIsNotNone(row)
+            self.assertEqual(user.expiry_at, base_expiry + timedelta(days=30))
+            meta = json.loads(str(row.meta_json or "{}"))
+            self.assertEqual(meta["fulfillment"]["status"], "account_extended")
+        finally:
+            s.close()
 
     def test_lavatop_callback_issues_public_access_key_once_and_emails_it(self) -> None:
         client = TestClient(self.api.app)

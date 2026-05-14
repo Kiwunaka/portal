@@ -742,6 +742,13 @@ def _is_ip_allowed(ip: str, allowlist: list[str]) -> bool:
     return False
 
 
+def _is_loopback_ip(ip: str) -> bool:
+    try:
+        return bool(ipaddress.ip_address(str(ip or "").strip()).is_loopback)
+    except Exception:
+        return False
+
+
 class TicketMessageIn(BaseModel):
     body: str = Field(min_length=1, max_length=2000)
     media_type: str | None = Field(default=None, max_length=32)
@@ -2979,6 +2986,16 @@ def _verify_lavatop_callback_auth(request: Request) -> tuple[bool, str]:
     return False, "missing_lavatop_webhook_auth"
 
 
+def _lavatop_webhook_auth_configured() -> bool:
+    return bool(
+        (os.getenv("LAVATOP_WEBHOOK_API_KEY") or "").strip()
+        or (
+            (os.getenv("LAVATOP_WEBHOOK_BASIC_USERNAME") or "").strip()
+            and (os.getenv("LAVATOP_WEBHOOK_BASIC_PASSWORD") or "").strip()
+        )
+    )
+
+
 def _verify_callback_signature(*, provider: str, payload: dict[str, Any], raw: bytes, request: Request) -> tuple[bool, str]:
     p = _normalize_provider(provider)
     # Freekassa SCI notify signature:
@@ -3363,6 +3380,10 @@ def _apply_external_paid_order(*, provider: str, order_id: str, payload: dict[st
             tg_id = int(ext_order.tg_id)
         if tg_id is None:
             return False, "missing_tg_id"
+        ext_meta = _external_order_meta(ext_order) if ext_order else {}
+        fulfillment = dict(ext_meta.get("fulfillment") or {})
+        if str(fulfillment.get("status") or "").strip().lower() == "account_extended":
+            return True, "already_applied"
 
         plan_code = _payload_value(payload, "plan_code", "tariff", "plan", "us_plan_code") or _payload_nested_value(
             payload, "clientUtm", "utm_term"
@@ -3417,6 +3438,16 @@ def _apply_external_paid_order(*, provider: str, order_id: str, payload: dict[st
             ext_order.paid_at = ext_order.paid_at or now
             ext_order.tg_id = ext_order.tg_id or int(tg_id)
             ext_order.plan_code = plan_code
+            fulfillment.update(
+                {
+                    "mode": "account_extend",
+                    "status": "account_extended",
+                    "tg_id": int(tg_id),
+                    "activated_at": _safe_iso(now),
+                }
+            )
+            ext_meta["fulfillment"] = fulfillment
+            _set_external_order_meta(ext_order, ext_meta)
             ext_order_id = int(ext_order.id) if getattr(ext_order, "id", None) is not None else None
         else:
             ext_order_id = None
@@ -3591,8 +3622,14 @@ async def _handle_payment_callback(*, provider: str, event_type: str, request: R
         allowlist = [item.strip() for item in (os.getenv("LAVATOP_WEBHOOK_IP_ALLOWLIST") or "").split(",") if item.strip()]
         client_ip = _request_client_ip(request)
         if allowlist and not _is_ip_allowed(client_ip, allowlist):
-            logger.warning("lavatop callback blocked by ip allowlist: ip=%s", client_ip)
-            raise HTTPException(status_code=403, detail="Callback IP is not allowed")
+            if _is_loopback_ip(client_ip) and _lavatop_webhook_auth_configured():
+                logger.warning(
+                    "lavatop callback arrived through local reverse proxy; relying on webhook auth after allowlist miss: ip=%s",
+                    client_ip,
+                )
+            else:
+                logger.warning("lavatop callback blocked by ip allowlist: ip=%s", client_ip)
+                raise HTTPException(status_code=403, detail="Callback IP is not allowed")
     order_id, external_id = _callback_ids(p, payload, raw)
     signature_ok, signature_reason = _verify_callback_signature(provider=p, payload=payload, raw=raw, request=request)
     callback_status = _status_from_event(et, payload, signature_ok=signature_ok, provider=p)
