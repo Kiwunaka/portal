@@ -1,12 +1,12 @@
 # Platform Availability
 
-Last updated: 2026-04-26
+Last updated: 2026-05-14
 
 | Platform | Beta status | Public claim allowed |
 | --- | --- | --- |
-| Android | Gated/internal until signing and physical audit pass. | No broad public claim. |
-| Windows | Gated beta unless trusted signing and handoff are verified. | Limited beta claim only. |
+| Android | Outside-store beta through official cabinet/GitHub Releases after operator-approved handoff. | Limited beta claim only; no app-store claim. |
+| Windows | Outside-store beta through official cabinet/GitHub Releases; trusted signing is not required for this beta wave. | Limited beta claim only; warn about unknown-publisher prompts. |
 | iOS | Readiness track only. | No release claim. |
 | macOS | Readiness track only. | No release claim. |
 
-The marketing site and cabinet may explain Android and Windows beta availability only when they also show current limitations and support routing.
+The marketing site and cabinet may explain Android and Windows beta availability only when they also show current limitations, official-source guidance, and support routing. Runtime download links must not be publicly announced until explicit runtime-link sync approval and live verification are present.

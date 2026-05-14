@@ -80,11 +80,10 @@ Client-canon note:
 
 - release target remains `Android + Windows`
 - `Windows` stays in scope for the public `v1` ship when its normal gates are green
-- `Android` remains release-blocked until the repo/static gate pack is green and a real release-build audit proves that localhost listeners and local control surfaces are either disabled or safely authenticated
-- as of `2026-04-13`, `python scripts/release_orchestrator.py --gates-only` is green for the documented repo/static/client gate pack; see `docs/audit-artifacts/release_gate_report.md` for the latest local snapshot
-- that latest local green gate snapshot does not yet prove live deploy, live node enablement, or separate `current-origin`, `brain-origin`, and `RU-origin` checks
-- emulator or adb-only audit runs are valid preflight for adb wiring and timing, but final Android publication still requires `python scripts/android_localhost_audit.py` against a release-installed build on physical hardware before connect, after connect, and after disconnect
-- Android public beta promotion uses the approved APK/EXE outside-store handoff; store publishing and production signing remain separate later gates
+- `Android` public beta promotion uses the operator-approved physical-device audit plus the APK/EXE outside-store handoff; store publishing and production signing remain separate later gates
+- as of `2026-05-14`, Android/Windows public beta still requires explicit runtime-link sync approval, live `/api/client/apps` verification, and the final release handoff before announcement
+- repo/static/client green gates do not by themselves prove live deploy, live node enablement, or separate `current-origin`, `brain-origin`, and `RU-origin` checks
+- emulator or adb-only audit runs are valid preflight for adb wiring and timing, but the public beta handoff must retain physical release-build audit evidence for Android
 - do not describe Android app-isolation features such as split tunneling, Private Space, Knox, Shelter, or similar tooling as sufficient mitigations for an unauthenticated local control surface
 
 ## Russia-Aware Routing Direction

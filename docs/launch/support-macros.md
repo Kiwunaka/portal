@@ -1,6 +1,6 @@
 # Support Macros
 
-Last updated: 2026-04-26
+Last updated: 2026-05-14
 
 ## Download Not Visible
 
@@ -8,11 +8,11 @@ Your account may not have an approved beta file yet. Open the cabinet at https:/
 
 ## Android Beta Limitation
 
-Android is currently limited to approved beta users. Public Android release waits for signing and a physical release-build security audit.
+Android APK distribution for this beta is outside app stores and limited to the official cabinet or support-approved handoff. If the file is not visible in the cabinet, do not use mirrors; ask support to check beta access.
 
 ## Windows SmartScreen Warning
 
-The Windows beta may show a Microsoft Defender SmartScreen or unknown-publisher warning while trusted signing is incomplete. If you were not expecting a beta build, stop and ask support first.
+The Windows beta may show a Microsoft Defender SmartScreen or unknown-publisher warning. Trusted signing is not required for this beta wave, but users should install only the official cabinet/GitHub Releases file. If the source is unclear, stop and ask support first.
 
 ## Telegram Bonus Missing
 

@@ -1,6 +1,6 @@
 # POKROV Public Beta PRD
 
-Last updated: 2026-04-26
+Last updated: 2026-05-14
 
 ## Release Scope
 
@@ -16,8 +16,9 @@ Open Beta v4 is a preparation and gated-beta scope. It is not a `1.0.0` release 
 
 ## Public Limitations
 
-- Android public release is blocked until signing and a physical release-build localhost/control-surface audit pass.
-- Windows beta remains gated unless trusted signing and public handoff are verified.
+- Android/Windows beta distribution is outside app stores through official cabinet/GitHub Releases handoff.
+- Android public beta handoff must retain operator-approved physical release-build localhost/control-surface audit evidence.
+- Windows trusted signing is not required for this beta wave; unknown-publisher warnings must be disclosed.
 - Paid checkout stays disabled or degraded until Lava.top evidence is attached.
 - Direct public downloads stay hidden or support-routed until runtime handoff URLs are verified.
 - iOS and macOS are not launch platforms for this wave.
