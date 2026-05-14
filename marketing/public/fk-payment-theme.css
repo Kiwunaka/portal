@@ -1,0 +1,93 @@
+﻿/*
+  FreeKassa hosted checkout theme for POKROV.
+  URL: https://pokrov.space/fk-payment-theme.css
+*/
+
+:root {
+  --pokrov-bg: #f5f1e8;
+  --pokrov-bg-soft: #ebe2d2;
+  --pokrov-line: rgba(20, 54, 39, 0.14);
+  --pokrov-primary: #143627;
+  --pokrov-accent: #b38b57;
+  --pokrov-text: #1d2f26;
+  --pokrov-muted: #6f6b61;
+}
+
+.payment-page-global__wrap {
+  background:
+    radial-gradient(920px 480px at 6% -10%, rgba(20, 54, 39, 0.16), transparent 62%),
+    radial-gradient(700px 380px at 96% 8%, rgba(179, 139, 87, 0.14), transparent 60%),
+    linear-gradient(145deg, #fcfaf5 0%, var(--pokrov-bg) 45%, #efe6d6 100%) !important;
+  color: var(--pokrov-text) !important;
+  font-family: "Inter", "Segoe UI", sans-serif !important;
+}
+
+.payment-page__list-header {
+  color: var(--pokrov-text) !important;
+  font-weight: 700 !important;
+  letter-spacing: 0.06em !important;
+  text-transform: uppercase !important;
+}
+
+.payment-page__form,
+.payment-page__currency-list-desktop,
+.payment-page__currency-list-mobile {
+  background: linear-gradient(165deg, rgba(255, 255, 255, 0.88), rgba(255, 255, 255, 0.68)) !important;
+  border: 1px solid var(--pokrov-line) !important;
+  border-radius: 18px !important;
+  box-shadow: 0 24px 60px -34px rgba(20, 54, 39, 0.24) !important;
+  backdrop-filter: blur(12px) !important;
+}
+
+.payment-page__list-item .active,
+.payment-page__list-item.active {
+  border-radius: 12px !important;
+  border: 1px solid rgba(20, 54, 39, 0.38) !important;
+  box-shadow: 0 0 0 1px rgba(179, 139, 87, 0.2) inset !important;
+}
+
+.payment-page__list-sub-wrap:before {
+  border-right-color: var(--pokrov-primary) !important;
+}
+
+.payment-page__form-fields .text-field-wrap {
+  border-radius: 12px !important;
+  border: 1px solid var(--pokrov-line) !important;
+  background: rgba(255, 255, 255, 0.85) !important;
+}
+
+.payment-page__form-fields input,
+.payment-page__form-fields textarea {
+  color: var(--pokrov-text) !important;
+}
+
+.payment-page__form-fields input::placeholder,
+.payment-page__form-fields textarea::placeholder {
+  color: var(--pokrov-muted) !important;
+}
+
+.payment-page__submit button,
+.payment-page__submit .btn,
+button[type="submit"] {
+  background: linear-gradient(135deg, var(--pokrov-primary), #0c4a35) !important;
+  border: 1px solid transparent !important;
+  color: #ffffff !important;
+  border-radius: 12px !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.08em !important;
+  font-weight: 700 !important;
+  box-shadow: 0 14px 32px -20px rgba(20, 54, 39, 0.5) !important;
+}
+
+.payment-page__submit button:hover,
+.payment-page__submit .btn:hover,
+button[type="submit"]:hover {
+  filter: brightness(1.05) saturate(1.03) !important;
+}
+
+.payment-page__description,
+.payment-page__list-sub,
+.payment-page__list-caption,
+.payment-page__title-sub {
+  color: var(--pokrov-muted) !important;
+}
