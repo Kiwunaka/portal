@@ -16,9 +16,9 @@
   --lp-accent-soft: #d8c7a6;
   --lp-shadow: 0 34px 92px -52px rgba(17, 41, 33, 0.26);
   --lp-shadow-soft: 0 18px 46px -30px rgba(17, 41, 33, 0.16);
-  --font-display: "Cormorant Garamond", serif;
-  --font-body: "Manrope", sans-serif;
-  --font-mono: "IBM Plex Mono", monospace;
+  --font-display: Georgia, "Times New Roman", serif;
+  --font-body: "Inter", "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+  --font-mono: "JetBrains Mono", "SFMono-Regular", Consolas, "Liberation Mono", monospace;
   --lp-nav-offset: 110px;
 }
 
