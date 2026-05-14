@@ -27,20 +27,29 @@ EMAIL_DELIVERY_SECRET_HEADER = "X-Pokrov-Email-Secret"
 
 def email_delivery_runtime_status() -> dict[str, Any]:
     delivery_configured = bool(EMAIL_DELIVERY_WEBHOOK_URL)
+    delivery_secret_configured = bool(EMAIL_DELIVERY_WEBHOOK_SECRET)
     blocked_reasons: list[str] = []
     if not EMAIL_AUTH_PUBLIC_ENABLED:
         blocked_reasons.append("public_email_disabled")
     if not delivery_configured:
         blocked_reasons.append("delivery_webhook_missing")
+    if not delivery_secret_configured:
+        blocked_reasons.append("delivery_webhook_secret_missing")
     if EMAIL_AUTH_DEBUG_ECHO:
         blocked_reasons.append("debug_echo_enabled")
 
-    enabled = bool(EMAIL_AUTH_PUBLIC_ENABLED and delivery_configured and not EMAIL_AUTH_DEBUG_ECHO)
+    enabled = bool(
+        EMAIL_AUTH_PUBLIC_ENABLED
+        and delivery_configured
+        and delivery_secret_configured
+        and not EMAIL_AUTH_DEBUG_ECHO
+    )
     return {
         "ok": True,
         "enabled": enabled,
         "public_enabled": bool(EMAIL_AUTH_PUBLIC_ENABLED),
         "delivery_configured": delivery_configured,
+        "delivery_secret_configured": delivery_secret_configured,
         "debug_echo": bool(EMAIL_AUTH_DEBUG_ECHO),
         "mode": "webhook" if delivery_configured else "not_configured",
         "blocked_reasons": blocked_reasons,

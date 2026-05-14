@@ -15,7 +15,13 @@ if str(PORTAL_BOT_DIR) not in sys.path:
 REPO_ROOT = PORTAL_BOT_DIR.parent
 
 
-def _load_api(monkeypatch, tmp_path: Path, *, email_public_ready: bool = False):
+def _load_api(
+    monkeypatch,
+    tmp_path: Path,
+    *,
+    email_public_ready: bool = False,
+    email_delivery_secret_ready: bool = True,
+):
     db_path = tmp_path / "portal-email-auth.db"
     monkeypatch.setenv("DATABASE_URL", f"sqlite:///{db_path.as_posix()}")
     monkeypatch.setenv("BOT_TOKEN", "777000:test-bot-token")
@@ -24,7 +30,13 @@ def _load_api(monkeypatch, tmp_path: Path, *, email_public_ready: bool = False):
     monkeypatch.setenv("EMAIL_AUTH_PUBLIC_ENABLED", "true" if email_public_ready else "false")
     if email_public_ready:
         monkeypatch.setenv("EMAIL_DELIVERY_WEBHOOK_URL", "https://relay.pokrov.test/email/deliver")
-        monkeypatch.setenv("EMAIL_DELIVERY_WEBHOOK_SECRET", "relay-secret")
+        if email_delivery_secret_ready:
+            monkeypatch.setenv("EMAIL_DELIVERY_WEBHOOK_SECRET", "relay-secret")
+        else:
+            monkeypatch.delenv("EMAIL_DELIVERY_WEBHOOK_SECRET", raising=False)
+    else:
+        monkeypatch.delenv("EMAIL_DELIVERY_WEBHOOK_URL", raising=False)
+        monkeypatch.delenv("EMAIL_DELIVERY_WEBHOOK_SECRET", raising=False)
     monkeypatch.setenv("PUBLIC_API_BASE_URL", "https://api.pokrov.test")
     monkeypatch.setenv("PUBLIC_WEB_DOMAIN", "pokrov.test")
     monkeypatch.setenv("WEBAPP_URL", "https://app.pokrov.test/")
@@ -163,6 +175,22 @@ def test_email_status_stays_disabled_in_debug_mode(monkeypatch, tmp_path):
     assert body["ok"] is True
     assert body["enabled"] is False
     assert "debug_echo_enabled" in body["blocked_reasons"]
+
+
+def test_email_status_requires_delivery_secret(monkeypatch, tmp_path):
+    api = _load_api(monkeypatch, tmp_path, email_public_ready=True, email_delivery_secret_ready=False)
+    client = TestClient(api.app)
+
+    status = client.get("/api/auth/email/status")
+
+    assert status.status_code == 200, status.text
+    body = status.json()
+    assert body["ok"] is True
+    assert body["enabled"] is False
+    assert body["public_enabled"] is True
+    assert body["delivery_configured"] is True
+    assert body["delivery_secret_configured"] is False
+    assert "delivery_webhook_secret_missing" in body["blocked_reasons"]
 
 
 def test_email_register_and_recovery_start_require_public_delivery(monkeypatch, tmp_path):

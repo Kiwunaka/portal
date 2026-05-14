@@ -51,6 +51,7 @@ class ApiPaymentCallbacksTests(unittest.TestCase):
             "LAVATOP_OFFER_ID",
             "LAVATOP_WEBHOOK_API_KEY",
             "RUB_CHECKOUT_ENABLED",
+            "PAID_CHECKOUT_LAUNCH_APPROVED",
             "ADMIN_ID",
             "EMAIL_AUTH_PUBLIC_ENABLED",
             "EMAIL_AUTH_DEBUG_ECHO",
@@ -84,6 +85,7 @@ class ApiPaymentCallbacksTests(unittest.TestCase):
         os.environ["LAVATOP_OFFER_ID"] = "836b9fc5-7ae9-4a27-9642-592bc44072b7"
         os.environ["LAVATOP_WEBHOOK_API_KEY"] = "lavatop_webhook_key_test"
         os.environ["RUB_CHECKOUT_ENABLED"] = "true"
+        os.environ["PAID_CHECKOUT_LAUNCH_APPROVED"] = "true"
         os.environ["ADMIN_ID"] = "9999"
         os.environ["EMAIL_AUTH_PUBLIC_ENABLED"] = "true"
         os.environ["EMAIL_AUTH_DEBUG_ECHO"] = "false"
@@ -853,6 +855,28 @@ class ApiPaymentCallbacksTests(unittest.TestCase):
         self.assertEqual(body.get("providers"), [])
         self.assertIn("checkout_disabled", body.get("blocked_reasons", []))
         self.assertTrue(any("disabled" in text.lower() for text in body.get("blocked_reason_texts", [])))
+
+    def test_rub_provider_catalog_requires_paid_checkout_launch_approval(self) -> None:
+        client = TestClient(self.api.app)
+        old_approved = getattr(self.api, "PAID_CHECKOUT_LAUNCH_APPROVED", None)
+        try:
+            self.api.PAID_CHECKOUT_LAUNCH_APPROVED = False
+            response = client.get("/api/payments/providers")
+        finally:
+            if old_approved is None:
+                try:
+                    delattr(self.api, "PAID_CHECKOUT_LAUNCH_APPROVED")
+                except AttributeError:
+                    pass
+            else:
+                self.api.PAID_CHECKOUT_LAUNCH_APPROVED = old_approved
+
+        self.assertEqual(response.status_code, 200, response.text)
+        body = response.json()
+        self.assertFalse(body.get("ok"))
+        self.assertTrue(body.get("blocked"))
+        self.assertEqual(body.get("providers"), [])
+        self.assertIn("paid_checkout_launch_evidence_missing", body.get("blocked_reasons", []))
 
     def test_rub_checkout_blocks_when_email_delivery_is_not_ready(self) -> None:
         client = TestClient(self.api.app)

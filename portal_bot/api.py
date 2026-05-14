@@ -276,6 +276,7 @@ CHANNEL_SUBSCRIBER_CAMPAIGN_KEY = (
 MAX_BROADCAST_LIMIT = env_int("MAX_BROADCAST_LIMIT", 1000)
 PAY_CHECKOUT_URL = (os.getenv("PAY_CHECKOUT_URL") or "").strip()
 RUB_CHECKOUT_ENABLED = env_bool("RUB_CHECKOUT_ENABLED", default=False)
+PAID_CHECKOUT_LAUNCH_APPROVED = env_bool("PAID_CHECKOUT_LAUNCH_APPROVED", default=False)
 CHECKOUT_WIDGET_ENABLED = env_bool("CHECKOUT_WIDGET_ENABLED", default=False)
 CHANNEL_SPEED_BUMP_ENABLED = env_bool("CHANNEL_SPEED_BUMP_ENABLED", default=False)
 FREE_SPEED_BUMP_UNSUB_KBPS = max(1, env_int("FREE_SPEED_BUMP_UNSUB_KBPS", 1250))
@@ -2714,6 +2715,13 @@ def _checkout_runtime_issues() -> list[tuple[str, str]]:
     issues: list[tuple[str, str]] = []
     if not RUB_CHECKOUT_ENABLED:
         issues.append(("checkout_disabled", "RUB checkout is disabled"))
+    if not PAID_CHECKOUT_LAUNCH_APPROVED:
+        issues.append(
+            (
+                "paid_checkout_launch_evidence_missing",
+                "Paid checkout is closed until Lava.top and paid email delivery evidence are approved",
+            )
+        )
     if not _checkout_secret():
         issues.append(("missing_checkout_ticket_secret", "CHECKOUT_TICKET_SECRET is empty"))
     checkout_url = _public_checkout_url()
