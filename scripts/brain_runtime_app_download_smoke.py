@@ -224,6 +224,26 @@ def _classification(checks: list[Mapping[str, Any]]) -> str:
     return EXTERNAL_DEPENDENCY
 
 
+def _provider_policy_status(provider_payload: Mapping[str, Any]) -> tuple[str, list[str]]:
+    if bool(provider_payload.get("blocked")):
+        return PASS, []
+
+    provider_failures = _provider_readiness_failures(dict(provider_payload))
+    if provider_failures:
+        return FAIL, provider_failures
+
+    rows = provider_payload.get("providers", [])
+    enabled_rows = [
+        row
+        for row in rows
+        if isinstance(row, Mapping) and row.get("enabled", True) is not False and str(row.get("code") or "").strip()
+    ] if isinstance(rows, list) else []
+    enabled_codes = [str(row.get("code") or "").strip().lower() for row in enabled_rows]
+    if enabled_codes != ["lavatop"]:
+        return FAIL, ["green provider catalog must expose exactly one enabled Lava.top provider"]
+    return PASS, []
+
+
 def _sanitize_remote_checks(remote_payload: Mapping[str, Any]) -> list[dict[str, Any]]:
     sanitized: list[dict[str, Any]] = []
     for raw in remote_payload.get("checks", []) if isinstance(remote_payload.get("checks"), list) else []:
@@ -273,8 +293,7 @@ def build_report(
 
     if check_providers:
         if provider_payload:
-            provider_failures = _provider_readiness_failures(dict(provider_payload))
-            provider_status = PASS if not provider_failures else FAIL
+            provider_status, provider_failures = _provider_policy_status(provider_payload)
             checks.append(
                 _status(
                     "runtime_payment_provider_policy",

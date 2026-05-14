@@ -96,6 +96,22 @@ def test_build_report_rejects_non_lavatop_green_provider_catalog() -> None:
     assert "Lava.top" in checks["runtime_payment_provider_policy"]["missing"][0]
 
 
+def test_build_report_accepts_lavatop_only_green_provider_catalog() -> None:
+    module = _load_module()
+    payload = _base_remote_payload()
+    payload["payment_providers"] = {
+        "ok": True,
+        "blocked": False,
+        "providers": [{"code": "lavatop", "label": "Lava.top", "enabled": True}],
+    }
+
+    report = module.build_report(remote_payload=payload)
+
+    assert report["ok"] is True
+    checks = {check["name"]: check for check in report["checks"]}
+    assert checks["runtime_payment_provider_policy"]["status"] == "PASS"
+
+
 def test_report_does_not_serialize_token_or_init_data() -> None:
     module = _load_module()
 
