@@ -4,8 +4,7 @@ import argparse
 import json
 import os
 from pathlib import Path
-
-import paramiko
+from typing import Any
 
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
@@ -34,7 +33,15 @@ def _parse_passwords(path: Path) -> str:
     return ""
 
 
-def _run(ssh: paramiko.SSHClient, cmd: str, *, timeout: int = 120) -> tuple[int, str, str]:
+def _load_paramiko() -> Any:
+    try:
+        import paramiko
+    except ModuleNotFoundError as exc:
+        raise SystemExit("Missing optional dependency: paramiko. Install ops requirements before applying remote handoff.") from exc
+    return paramiko
+
+
+def _run(ssh: Any, cmd: str, *, timeout: int = 120) -> tuple[int, str, str]:
     stdin, stdout, stderr = ssh.exec_command(cmd, timeout=timeout)
     code = stdout.channel.recv_exit_status()
     out = stdout.read().decode(errors="replace")
@@ -190,6 +197,7 @@ def main() -> int:
     if not pw:
         raise SystemExit("Missing brain password.")
 
+    paramiko = _load_paramiko()
     ssh = paramiko.SSHClient()
     ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
     ssh.connect(
