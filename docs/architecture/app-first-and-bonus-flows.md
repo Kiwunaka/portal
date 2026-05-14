@@ -1,6 +1,6 @@
 # App-First And Bonus Flows
 
-Last updated: 2026-04-28
+Last updated: 2026-05-14
 
 ## Document Status
 
@@ -218,6 +218,8 @@ Contract rule:
 - HTML responses from `app.pokrov.space` must never be treated as valid API JSON
 - web login should continue the user into account or checkout, not into a dead-end landing
 - app handoff and Telegram are the active browser-continuation entry families today
+- expired or deprecated Telegram Login Widget, Telegram OIDC, WebApp `initData`, and browser-session tokens must clear the stale browser token and show a human repeat-login CTA instead of surfacing raw `telegram_*` / `web_session_*` errors
+- stale Telegram Login Widget payloads should be rejected client-side before the backend sees them; users should be guided through a fresh Telegram login attempt
 - additive email auth must stay marked `soon` until sender identity, delivery confirmation, and the public launch path are genuinely live
 - once launched, additive email auth must issue the same browser session family used by the cabinet, checkout, and support flows while exposing `auth_origin` and linked-identity summary for support/admin visibility
 - the additive email-auth rollout uses endpoint families under `/api/auth/email/*` for register, verify, login, recovery, and reset
