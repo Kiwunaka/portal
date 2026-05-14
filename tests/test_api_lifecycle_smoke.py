@@ -54,6 +54,7 @@ class ApiLifecycleSmokeTests(unittest.TestCase):
             "PUBLIC_CHANNEL",
             "SUPPORT_UPLOAD_DIR",
             "RUB_CHECKOUT_ENABLED",
+            "PAID_CHECKOUT_LAUNCH_APPROVED",
             "CHECKOUT_TICKET_SECRET",
             "CHECKOUT_TICKET_TTL_SECONDS",
             "FREEKASSA_SIGNING_SECRET",
@@ -77,6 +78,7 @@ class ApiLifecycleSmokeTests(unittest.TestCase):
         os.environ["PUBLIC_CHANNEL"] = "pokrov_vpn"
         os.environ["SUPPORT_UPLOAD_DIR"] = str((Path(self._tmp.name) / "support_uploads").resolve())
         os.environ["RUB_CHECKOUT_ENABLED"] = "true"
+        os.environ["PAID_CHECKOUT_LAUNCH_APPROVED"] = "true"
         os.environ["CHECKOUT_TICKET_SECRET"] = "checkout_secret_test_123"
         os.environ["CHECKOUT_TICKET_TTL_SECONDS"] = "900"
         os.environ["FREEKASSA_SIGNING_SECRET"] = "test_fk_secret"
