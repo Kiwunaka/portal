@@ -1,18 +1,23 @@
 "use client";
 
 import { motion } from "framer-motion";
-import type { ReactNode, ElementType } from "react";
+import type { ReactNode } from "react";
+
+const MOTION_COMPONENTS = {
+  div: motion.div,
+  section: motion.section,
+} as const;
 
 interface FadeUpProps {
   children: ReactNode;
   delay?: number;
   className?: string;
-  as?: ElementType;
+  as?: keyof typeof MOTION_COMPONENTS;
   id?: string;
 }
 
-export function FadeUp({ children, delay = 0, className, id, as: Component = "div" }: FadeUpProps) {
-  const MotionComponent = motion(Component as any);
+export function FadeUp({ children, delay = 0, className, id, as = "div" }: FadeUpProps) {
+  const MotionComponent = MOTION_COMPONENTS[as];
 
   return (
     <MotionComponent

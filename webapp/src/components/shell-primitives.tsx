@@ -1,7 +1,7 @@
 "use client";
 
 import type { AnchorHTMLAttributes, ButtonHTMLAttributes, HTMLAttributes, ReactNode } from "react";
-import { forwardRef } from "react";
+import { createElement, forwardRef } from "react";
 
 import { cn, FOCUS_RING } from "./utils";
 
@@ -13,8 +13,11 @@ export const Surface = forwardRef<HTMLElement, SurfaceProps>(function Surface(
   { as: Tag = "div", className, ...props },
   ref,
 ) {
-  const Component = Tag as any;
-  return <Component ref={ref} className={cn("glass-card", className)} {...props} />;
+  return createElement(Tag, {
+    ref,
+    className: cn("glass-card", className),
+    ...props,
+  });
 });
 
 type StatusTone = "success" | "warning" | "danger" | "info" | "neutral";

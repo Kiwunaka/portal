@@ -190,7 +190,7 @@ export default function DashboardPage() {
     }
 
     return items.slice(0, 3);
-  }, [activeConnections, dash?.expiry_at, dash?.is_active, healthyNodes, knownNodes, daysRemaining, nextResetAt, nodesError, softMode, trialMode]);
+  }, [activeConnections, dash?.is_active, healthyNodes, knownNodes, daysRemaining, nextResetAt, nodesError, softMode, trialMode]);
 
   /* ── Device items ── */
   const deviceItems = (user?.devices || []).slice(0, 3).map((device) => ({

@@ -5,7 +5,7 @@ import type { ReactNode } from "react";
 import AppRouteLink from "@/components/app-route-link";
 import CabinetEntryAuth from "@/components/cabinet-entry-auth";
 import RouteTransition from "@/components/route-transition";
-import { resolvePlanLabel, resolveTrafficStatusText } from "@/lib/access-policy";
+import { resolvePlanLabel } from "@/lib/access-policy";
 import { usePortalSession } from "@/lib/session";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
@@ -295,8 +295,11 @@ export default function CabinetShell({ children }: { children: ReactNode }) {
   }, [drawerOpen]);
 
   useEffect(() => {
-    setDrawerOpen(false);
-    setRouteActivity(false);
+    const frame = window.requestAnimationFrame(() => {
+      setDrawerOpen(false);
+      setRouteActivity(false);
+    });
+    return () => window.cancelAnimationFrame(frame);
   }, [pathname]);
 
   useEffect(() => {
@@ -364,7 +367,6 @@ export default function CabinetShell({ children }: { children: ReactNode }) {
   const activeNav = allNavItems.find((item) => item.match(pathname)) || allNavItems[0];
   const accountLabel = profileLabel(user.username, user.tg_id);
   const planLabel = resolvePlanLabel(dash, user);
-  const trafficLabel = resolveTrafficStatusText(dash, user);
   const statusLabel = dash.is_active ? "Доступ активен" : "Нужно продление";
   const sidebarSummary = dash.is_active
     ? `План ${planLabel.toLowerCase()} до ${formatExpiry(dash.expiry_at)}.`

@@ -88,7 +88,7 @@ function applyTheme(webApp: TelegramWebApp): void {
   if (theme.bg_color) webApp.setBackgroundColor?.(theme.bg_color);
 }
 
-function resolveBackFallback(pathname: string, query: URLSearchParams): string | null {
+function resolveBackFallback(pathname: string): string | null {
   if (pathname === "/" || pathname === "/dashboard") return null;
 
   if (pathname === "/pricing") {
@@ -239,7 +239,7 @@ export default function TelegramWebAppInit() {
     const backButton = webApp?.BackButton;
     if (!webApp || !backButton || !webApp.initData) return;
 
-    const fallback = resolveBackFallback(pathname, new URLSearchParams(window.location.search));
+    const fallback = resolveBackFallback(pathname);
     if (!fallback) {
       backButton.hide();
       return;
