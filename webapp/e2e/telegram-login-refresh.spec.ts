@@ -54,6 +54,7 @@ test("treats deprecated Telegram session API errors as reauth instead of a gener
   expect(isTelegramAuthRefreshRequired("telegram_login_deprecated")).toBe(true);
   expect(isTelegramAuthRefreshRequired("Telegram init data is deprecated")).toBe(true);
   expect(isTelegramAuthRefreshRequired("Telegram auth required: repeat login")).toBe(true);
+  expect(isTelegramAuthRefreshRequired("telegram_oidc_state_expired")).toBe(true);
   expect(isTelegramAuthRefreshRequired("Network timeout")).toBe(false);
 });
 
@@ -65,6 +66,9 @@ test("maps raw Telegram deprecated errors to a human reauth CTA", () => {
     "Вход устарел. Нажмите вход через Telegram еще раз, и мы вернем вас в кабинет.",
   );
   expect(telegramAuthRefreshMessage("web_session_expired")).toBe(
+    "Вход устарел. Нажмите вход через Telegram еще раз, и мы вернем вас в кабинет.",
+  );
+  expect(telegramAuthRefreshMessage("telegram_oidc_state_expired")).toBe(
     "Вход устарел. Нажмите вход через Telegram еще раз, и мы вернем вас в кабинет.",
   );
   expect(telegramAuthRefreshMessage("Сессия Telegram устарела. Нажмите вход через Telegram еще раз.")).toBe(

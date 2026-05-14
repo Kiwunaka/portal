@@ -49,6 +49,8 @@ export function isTelegramAuthRefreshRequired(error: unknown): boolean {
     message.includes("invalid telegram signature") ||
     message.includes("telegram_init_invalid") ||
     message.includes("telegram_login_invalid") ||
+    message.includes("telegram_oidc_state_expired") ||
+    message.includes("telegram_oidc_invalid") ||
     message.includes("web_session_expired") ||
     message.includes("web_session_invalid") ||
     message.includes("повторите вход") ||

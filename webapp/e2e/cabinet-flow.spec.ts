@@ -431,6 +431,23 @@ test.describe("Cabinet flow", () => {
     await expect(page.getByRole("button", { name: "Открыть Telegram для входа" })).toBeVisible();
   });
 
+  test("maps raw Telegram deprecated auth errors to a reauth CTA", async ({ page }) => {
+    await page.route("**/api/auth/session", async (route) =>
+      route.fulfill({
+        status: 401,
+        contentType: "application/json",
+        headers: { "x-pokrov-auth-error": "telegram_login_deprecated" },
+        body: JSON.stringify({ detail: "telegram_login_deprecated" }),
+      }),
+    );
+
+    await page.goto("/dashboard/");
+
+    await expect(page.locator("main")).toContainText("Вход устарел");
+    await expect(page.locator("main")).not.toContainText("telegram_login_deprecated");
+    await expect(page.getByRole("button", { name: "Открыть Telegram для входа" })).toBeVisible();
+  });
+
   test("keeps the dashboard on consumer-safe access actions", async ({ page }) => {
     await page.goto("/dashboard/");
 

@@ -20,6 +20,11 @@ import {
   describeTelegramOidcError,
   readTelegramOidcCallback,
 } from "@/lib/telegram-oidc";
+import {
+  isTelegramAuthRefreshRequired,
+  shouldRefreshTelegramWebLoginPayload,
+  telegramAuthRefreshMessage,
+} from "@/lib/telegram-login-refresh";
 import { getTgUser, type TgUser } from "@/lib/telegram";
 import { createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
 
@@ -53,6 +58,7 @@ function parseErrorMessage(error: unknown): string {
 }
 
 function isReauthMessage(message: string): boolean {
+  if (isTelegramAuthRefreshRequired(message)) return true;
   const lowered = message.toLowerCase();
   return (
     lowered.includes("telegram auth required") ||
@@ -107,7 +113,7 @@ export function PortalSessionProvider({ children, mode = "dashboard" }: PortalSe
       lastGoodRef.current = null;
       setError("");
       setWebLoginRequired(true);
-      setWebLoginError(parseErrorMessage(error));
+      setWebLoginError(telegramAuthRefreshMessage(error));
       return false;
     } finally {
       clearTelegramOidcCallback();
@@ -175,14 +181,14 @@ export function PortalSessionProvider({ children, mode = "dashboard" }: PortalSe
       lastGoodRef.current = { user: profile, dash: dashboard };
     } catch (error) {
       const message = parseErrorMessage(error);
-      if (!tgUser && isReauthMessage(message)) {
+      if (isReauthMessage(message)) {
         clearWebSessionToken();
         setUser(null);
         setDash(null);
         lastGoodRef.current = null;
         setWebLoginRequired(true);
         setWebLoginBusy(false);
-        setWebLoginError(message);
+        setWebLoginError(telegramAuthRefreshMessage(message));
         setError("");
       } else {
         setError(message);
@@ -207,7 +213,7 @@ export function PortalSessionProvider({ children, mode = "dashboard" }: PortalSe
       setDash(null);
       lastGoodRef.current = null;
       setError("");
-      setWebLoginError(message);
+      setWebLoginError(telegramAuthRefreshMessage(message || detail.code || "telegram_login_deprecated"));
       setWebLoginRequired(true);
       setLoading(false);
       setRefreshing(false);
@@ -220,6 +226,17 @@ export function PortalSessionProvider({ children, mode = "dashboard" }: PortalSe
     setWebLoginBusy(true);
     setWebLoginError("");
     try {
+      if (shouldRefreshTelegramWebLoginPayload(payload)) {
+        const message = telegramAuthRefreshMessage("telegram_login_deprecated");
+        clearWebSessionToken();
+        setUser(null);
+        setDash(null);
+        lastGoodRef.current = null;
+        setWebLoginRequired(true);
+        setError("");
+        setWebLoginError(message);
+        throw new Error(message);
+      }
       const auth = await authByTelegramWebLogin(payload);
       if (!auth?.token) throw new Error("Не получен web session token");
       setWebSessionToken(auth.token);
@@ -231,7 +248,18 @@ export function PortalSessionProvider({ children, mode = "dashboard" }: PortalSe
       }
       await refresh();
     } catch (error) {
-      setWebLoginError(parseErrorMessage(error));
+      const message = parseErrorMessage(error);
+      if (isReauthMessage(message)) {
+        clearWebSessionToken();
+        setUser(null);
+        setDash(null);
+        lastGoodRef.current = null;
+        setWebLoginRequired(true);
+        setError("");
+        setWebLoginError(telegramAuthRefreshMessage(message));
+      } else {
+        setWebLoginError(message);
+      }
       throw error;
     } finally {
       setWebLoginBusy(false);
@@ -252,7 +280,8 @@ export function PortalSessionProvider({ children, mode = "dashboard" }: PortalSe
         return;
       }
     } catch (error) {
-      setWebLoginError(parseErrorMessage(error));
+      const message = parseErrorMessage(error);
+      setWebLoginError(isReauthMessage(message) ? telegramAuthRefreshMessage(message) : message);
       setWebLoginBusy(false);
       throw error;
     }
