@@ -171,8 +171,8 @@ class PublicBetaLaunchDecisionTests(unittest.TestCase):
         self.assertIn("runtime APP_WINDOWS_EXE_URL is not synced", checks["external_access_preflight"]["missing"])
         self.assertNotIn("android release URL is missing", checks["external_access_preflight"]["missing"])
 
-    def test_default_post_deploy_probe_uses_current_20260509_artifact(self) -> None:
-        expected = Path("docs/audit-artifacts/public-beta-post-deploy-probe-2026-05-09.json")
+    def test_default_post_deploy_probe_uses_current_20260514_artifact(self) -> None:
+        expected = Path("docs/audit-artifacts/public-beta-post-deploy-probe-2026-05-14.json")
 
         self.assertEqual(self.module.DEFAULT_POST_DEPLOY_PROBE, expected)
         report = self.module.build_report()
