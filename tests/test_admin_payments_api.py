@@ -5,10 +5,8 @@ import json
 import os
 import sys
 import tempfile
-import time
 import unittest
 import uuid
-from unittest.mock import patch
 from pathlib import Path
 
 from fastapi.testclient import TestClient
@@ -59,7 +57,7 @@ class AdminPaymentsApiTests(unittest.TestCase):
     @staticmethod
     def _sign_telegram_init_data(*, bot_token: str, tg_id: int, username: str) -> str:
         params = {
-            "auth_date": str(int(time.time())),
+            "auth_date": "1700000000",
             "query_id": "AAEAAAE",
             "user": f'{{"id":{tg_id},"first_name":"Test","username":"{username}"}}',
         }
@@ -106,24 +104,7 @@ class AdminPaymentsApiTests(unittest.TestCase):
                     source="checkout",
                     campaign="beta",
                     promo_code="WELCOME20",
-                    meta_json=json.dumps(
-                        {
-                            "description": "POKROV start",
-                            "secret": "must-not-render",
-                            "fulfillment": {
-                                "mode": "access_key_email",
-                                "status": "email_delivery_error",
-                                "buyer_email": "buyer@pokrov.test",
-                                "access_key": "POKROV-SECRET-KEY",
-                                "email_delivery": {
-                                    "status": "delivery_error",
-                                    "mode": "webhook",
-                                    "http_status": 502,
-                                    "detail": "provider token leaked nowhere",
-                                },
-                            },
-                        }
-                    ),
+                    meta_json=json.dumps({"description": "POKROV start", "secret": "must-not-render"}),
                 )
             )
             session.add(
@@ -153,18 +134,9 @@ class AdminPaymentsApiTests(unittest.TestCase):
         self.assertEqual(row["event_count"], 1)
         self.assertEqual(row["last_event"]["event_type"], "result")
         self.assertFalse(bool(row["last_event"]["processed_ok"]))
-        self.assertEqual(row["fulfillment"]["mode"], "access_key_email")
-        self.assertEqual(row["fulfillment"]["status"], "email_delivery_error")
-        self.assertEqual(row["fulfillment"]["buyer_email"], "buyer@pokrov.test")
-        self.assertTrue(row["fulfillment"]["access_key_present"])
-        self.assertEqual(row["fulfillment"]["access_key_preview"], "...-KEY")
-        self.assertEqual(row["fulfillment"]["email_delivery"]["status"], "delivery_error")
-        self.assertEqual(row["fulfillment"]["email_delivery"]["http_status"], 502)
         self.assertNotIn("payload_json", row)
         self.assertNotIn("raw-provider-token", json.dumps(row))
         self.assertNotIn("must-not-render", json.dumps(row))
-        self.assertNotIn("POKROV-SECRET-KEY", json.dumps(row))
-        self.assertNotIn("provider token", json.dumps(row))
 
     def test_admin_payment_reconcile_requires_note_and_audits_status_change(self) -> None:
         from db import SessionLocal
@@ -218,116 +190,6 @@ class AdminPaymentsApiTests(unittest.TestCase):
             self.assertIn("Provider dashboard", meta["note"])
         finally:
             session.close()
-
-    def test_admin_can_resend_paid_public_access_key_email_with_audit_note(self) -> None:
-        from db import SessionLocal
-        from models import AdminAudit, ExternalOrder
-
-        session = SessionLocal()
-        try:
-            session.add(
-                ExternalOrder(
-                    order_id="lavatop-public-email-retry",
-                    provider="lavatop",
-                    tg_id=None,
-                    plan_code="start_99",
-                    amount=99,
-                    currency="RUB",
-                    status="paid",
-                    paid_at=self.api._utcnow(),
-                    source="site",
-                    meta_json=json.dumps(
-                        {
-                            "fulfillment": {
-                                "mode": "access_key_email",
-                                "status": "email_delivery_error",
-                                "buyer_email": "buyer@pokrov.test",
-                                "access_key": "POKROV-TEST-1234",
-                            }
-                        },
-                        ensure_ascii=False,
-                        separators=(",", ":"),
-                    ),
-                )
-            )
-            session.commit()
-        finally:
-            session.close()
-
-        deliveries: list[dict[str, object]] = []
-
-        async def _fake_deliver_payment_access_key(**kwargs):
-            deliveries.append(dict(kwargs))
-            return {"status": "sent", "kind": "payment_access_key", "email": kwargs["email"], "mode": "webhook"}
-
-        with patch.object(self.api, "deliver_payment_access_key", _fake_deliver_payment_access_key):
-            response = self.client.post(
-                "/api/admin/payments/orders/lavatop/lavatop-public-email-retry/resend-access-key-email",
-                headers=self._auth_headers(),
-                json={"note": "Customer reports missing email; resend from operator cockpit."},
-            )
-
-        self.assertEqual(response.status_code, 200, response.text)
-        self.assertEqual(response.json()["delivery"]["status"], "sent")
-        order = response.json()["order"]
-        self.assertEqual(order["fulfillment"]["status"], "email_sent")
-        self.assertEqual(order["fulfillment"]["email_delivery"]["status"], "sent")
-        self.assertEqual(order["fulfillment"]["access_key_preview"], "...1234")
-        self.assertEqual(len(deliveries), 1)
-        self.assertEqual(deliveries[0]["email"], "buyer@pokrov.test")
-        self.assertEqual(deliveries[0]["access_key"], "POKROV-TEST-1234")
-
-        session = SessionLocal()
-        try:
-            row = session.query(ExternalOrder).filter(ExternalOrder.order_id == "lavatop-public-email-retry").first()
-            self.assertIsNotNone(row)
-            meta = json.loads(str(row.meta_json or "{}"))
-            self.assertEqual(meta["fulfillment"]["email_delivery"]["status"], "sent")
-            audit = session.query(AdminAudit).filter(AdminAudit.action == "admin_payment_resend_access_key_email").first()
-            self.assertIsNotNone(audit)
-            audit_meta = json.loads(audit.meta or "{}")
-            self.assertEqual(audit_meta["provider"], "lavatop")
-            self.assertEqual(audit_meta["order_id"], "lavatop-public-email-retry")
-            self.assertEqual(audit_meta["delivery_status"], "sent")
-            self.assertIn("missing email", audit_meta["note"])
-        finally:
-            session.close()
-
-    def test_admin_resend_access_key_email_rejects_unpaid_order(self) -> None:
-        from db import SessionLocal
-        from models import ExternalOrder
-
-        session = SessionLocal()
-        try:
-            session.add(
-                ExternalOrder(
-                    order_id="lavatop-pending-email-retry",
-                    provider="lavatop",
-                    tg_id=None,
-                    plan_code="start_99",
-                    amount=99,
-                    currency="RUB",
-                    status="pending",
-                    source="site",
-                    meta_json=json.dumps(
-                        {"fulfillment": {"mode": "access_key_email", "buyer_email": "buyer@pokrov.test"}},
-                        ensure_ascii=False,
-                        separators=(",", ":"),
-                    ),
-                )
-            )
-            session.commit()
-        finally:
-            session.close()
-
-        response = self.client.post(
-            "/api/admin/payments/orders/lavatop/lavatop-pending-email-retry/resend-access-key-email",
-            headers=self._auth_headers(),
-            json={"note": "Do not send until provider marks the order paid."},
-        )
-
-        self.assertEqual(response.status_code, 409, response.text)
-        self.assertIn("Only paid orders", response.text)
 
 
 if __name__ == "__main__":

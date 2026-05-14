@@ -29,13 +29,6 @@ type TelegramBackButton = {
   offClick?: (handler: () => void) => void;
 };
 
-type TelegramSettingsButton = {
-  show: () => void;
-  hide: () => void;
-  onClick: (handler: () => void) => void;
-  offClick?: (handler: () => void) => void;
-};
-
 type TelegramWebApp = {
   initData?: string;
   platform?: string;
@@ -46,7 +39,6 @@ type TelegramWebApp = {
   safeAreaInset?: TelegramInsets;
   contentSafeAreaInset?: TelegramInsets;
   BackButton?: TelegramBackButton;
-  SettingsButton?: TelegramSettingsButton;
   ready: () => void;
   expand: () => void;
   disableVerticalSwipes?: () => void;
@@ -241,25 +233,6 @@ export default function TelegramWebAppInit() {
       }
     };
   }, []);
-
-  useEffect(() => {
-    const webApp = window.Telegram?.WebApp;
-    const settingsButton = webApp?.SettingsButton;
-    if (!webApp || !settingsButton || !webApp.initData) return;
-
-    const onSettings = (): void => {
-      webApp.HapticFeedback?.impactOccurred("light");
-      router.push("/settings/");
-    };
-
-    settingsButton.onClick(onSettings);
-    settingsButton.show();
-
-    return () => {
-      settingsButton.offClick?.(onSettings);
-      settingsButton.hide();
-    };
-  }, [router]);
 
   useEffect(() => {
     const webApp = window.Telegram?.WebApp;

@@ -88,7 +88,7 @@ const MOBILE_NAV_ITEMS: Array<{ href: string; icon: string; label: string; match
   { href: "/dashboard", icon: "shield", label: "Главная", match: (p) => p === "/dashboard" || (p.startsWith("/dashboard/") && !p.startsWith("/dashboard/downloads")) },
   { href: "/subscription", icon: "payments", label: "Тариф", match: (p) => p.startsWith("/subscription") || p.startsWith("/redeem") },
   { href: "/devices", icon: "devices", label: "Устройства", match: (p) => p.startsWith("/devices") },
-  { href: "/downloads", icon: "download", label: "Загрузки", match: (p) => p.startsWith("/downloads") || p.startsWith("/dashboard/downloads") },
+  { href: "/statistics", icon: "query_stats", label: "Статистика", match: (p) => p.startsWith("/statistics") },
   { href: "/support", icon: "support_agent", label: "Поддержка", match: (p) => p.startsWith("/support") },
 ];
 

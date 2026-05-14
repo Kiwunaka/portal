@@ -1,6 +1,6 @@
 # Deployment And Access
 
-Last updated: 2026-05-08
+Last updated: 2026-04-26
 
 ## Document Status
 
@@ -55,7 +55,7 @@ RF access rule:
 - RU ingress / RF reserve work is currently backlog-only
 - do not resume `mini` ingress experiments, do not provision `rf1`, and do not treat this contour as active work unless the product owner explicitly asks to return to it
 - owner-approved exception on `2026-04-24`: the live Telegram-only MTProto proxy runs on the dedicated free node (`151.245.217.23:9443`) through `portal-mtproto.service`; this is not a control-plane service and must not displace the free pool's existing `x-ui` listener on `tcp/443`
-- `mini` / `RFMINI` is the canonical RU-origin sandbox when SSH credentials are current; if access is blocked, label the release evidence as `RU-origin check: BLOCKED_BY_ACCESS` unless the operator explicitly accepts a beta-pass skip, in which case label it `RU-origin check: SKIPPED_BY_OPERATOR`. Do not claim RU-origin readiness from skip evidence.
+- `mini` / `RFMINI` is the canonical RU-origin sandbox when SSH credentials are current; if access is blocked, label the release evidence as `RU-origin check: BLOCKED_BY_ACCESS`
 - RU probe readiness itself is a tracked operational dependency for release confidence
 
 ## Operator Shell Policy
@@ -110,15 +110,7 @@ python scripts/remote_install_node_observer.py --brain-ip 82.21.114.104 --node-c
 ### Static sites deploy
 
 - [remote_deploy_brain_static_sites.py](C:/Users/kiwun/Documents/ai/VPN/scripts/remote_deploy_brain_static_sites.py)
-- static deploy packages `marketing/out` and `webapp/out` as local `tar.gz` bundles, uploads one archive per surface, extracts them into a versioned release directory, validates required files, validates that removed legacy payment static files such as `/fk-verify.html` and `/fk-payment-theme.css` are absent from the release payload, then atomically switches `/var/www/portal/{marketing,webapp}` symlinks
-- non-mutating readiness check:
-
-```powershell
-python scripts/remote_deploy_brain_static_sites.py --brain-ip 82.21.114.104 --plan-only
-```
-
-- `--plan-only` validates local `webapp/out/index.html`, `marketing/out/index.html`, `marketing/out/checkout/index.html`, confirms the removed legacy payment static files are absent locally, builds the same local bundles, prints the planned remote validation and post-deploy smoke commands, and exits before SSH/upload/symlink/reload work
-- post-deploy static smoke must also fail if the public HTTPS surface still serves legacy FreeKassa verification/theme content under the Lava.top-only policy; Caddy/Next homepage fallback on those old paths is classified as `absent_or_fallback` only when legacy content markers are missing
+- static deploy packages `marketing/out` and `webapp/out` as local `tar.gz` bundles, uploads one archive per surface, extracts them into a versioned release directory, validates required files, then atomically switches `/var/www/portal/{marketing,webapp}` symlinks
 
 ### Bot token / username switch
 
@@ -131,11 +123,9 @@ python scripts/remote_deploy_brain_static_sites.py --brain-ip 82.21.114.104 --pl
   - `python scripts/release_orchestrator.py --stage gates`
   - `python scripts/release_orchestrator.py --brain-ip 82.21.114.104 --stage backend`
   - `python scripts/release_orchestrator.py --brain-ip 82.21.114.104 --stage static`
-  - `python scripts/release_orchestrator.py --brain-ip 82.21.114.104 --stage static --static-plan-only`
   - `python scripts/release_orchestrator.py --brain-ip 82.21.114.104 --stage deploy`
   - `python scripts/release_orchestrator.py --brain-ip 82.21.114.104 --stage verify`
 - wrapper steps stream child output, print heartbeat lines during quiet long-running steps, and enforce per-step timeouts unless the matching `--*-timeout-sec 0` option is used
-- `--stage static --static-plan-only` runs the static deploy child script with `--plan-only`: it validates and bundles the current local static outputs and prints the planned remote checks, but exits before SSH/upload/symlink/reload work
 
 ### Release handoff sync
 
@@ -176,11 +166,7 @@ Use these when the release is blocked on one narrow operational step and the nex
 
 ### Lava.top Checkout Enablement
 
-The backend supports `lavatop` as the active RUB provider for public beta; public provider env must stay Lava-only (`RUB_PAYMENT_PROVIDER_ENABLED=lavatop`, `RUB_PAYMENT_PROVIDER_ORDER=lavatop`). `RUB_CHECKOUT_ENABLED=true` may be used to expose the checkout/status contour, but it must not be treated as authorization to sell: `PAID_CHECKOUT_LAUNCH_EVIDENCE_REQUIRED=true` keeps the public provider catalog empty and order creation unavailable until aggregate launch evidence is green. Telegram in-app invoice flows are not a public beta paid lane and must stay off with `BOT_STARS_PAYMENTS_ENABLED=false` unless a separate compatibility rollback is explicitly approved. Required Lava.top env is documented in [Lava.top Payment Operations](C:/Users/kiwun/Documents/ai/VPN/docs/operations/lavatop-payment-operations.md): `LAVATOP_API_KEY`, `LAVATOP_OFFER_ID` or per-plan `LAVATOP_OFFER_ID_<PLAN_CODE>`, and either `LAVATOP_WEBHOOK_API_KEY` or Basic webhook credentials. Anonymous public checkout also requires configured email delivery (`EMAIL_DELIVERY_WEBHOOK_URL` plus `EMAIL_DELIVERY_WEBHOOK_SECRET`, and relay SMTP/Resend env) before it can safely issue paid access keys.
-
-### Telegram Bot Button Theme
-
-The main, support, feedback, and legacy redirect bots use current Telegram Bot API button fields when the installed Telegram library exposes them: `style`, `icon_custom_emoji_id`, and `copy_text`. Configure optional custom emoji document IDs with `TG_BTN_EMOJI_PRIMARY_ID`, `TG_BTN_EMOJI_SUCCESS_ID`, and `TG_BTN_EMOJI_DANGER_ID`; leave them blank if the bot or Telegram account is not eligible for custom emoji. These values are Telegram custom emoji document IDs, not Material icon pack names or image assets, and missing IDs must not block the release because the buttons remain text-compatible.
+The backend supports `lavatop` as the active RUB provider for public beta; public provider env must stay Lava-only (`RUB_PAYMENT_PROVIDER_ENABLED=lavatop`, `RUB_PAYMENT_PROVIDER_ORDER=lavatop`) and must remain disabled until provider evidence is attached. Required env is documented in [Lava.top Payment Operations](C:/Users/kiwun/Documents/ai/VPN/docs/operations/lavatop-payment-operations.md): `LAVATOP_API_KEY`, `LAVATOP_OFFER_ID` or per-plan `LAVATOP_OFFER_ID_<PLAN_CODE>`, and either `LAVATOP_WEBHOOK_API_KEY` or Basic webhook credentials. Anonymous public checkout also requires configured email delivery (`EMAIL_DELIVERY_WEBHOOK_URL` plus relay secret/SMTP env) before it can safely issue paid access keys.
 
 ### External RU probe runner
 
@@ -404,7 +390,7 @@ Rollback is acceptable only when the handoff states:
 - database rollback position, restore source, or explicit no-migration/no-DB-change statement
 - verification commands to rerun after rollback from `current-origin`, `brain-origin`, and RU-origin where access allows
 
-If any live check is blocked by access, label it as `BLOCKED_BY_ACCESS` instead of implying a pass. If a check is intentionally skipped because it is outside the selected gate scope, label it as `NOT_REQUESTED` or `SKIPPED`. If the operator accepts a launch-scope skip, label it as `SKIPPED_BY_OPERATOR` and explain which public claims are forbidden by that skip.
+If any live check is blocked by access, label it as `BLOCKED_BY_ACCESS` instead of implying a pass. If a check is intentionally skipped because it is outside the selected gate scope, label it as `NOT_REQUESTED` or `SKIPPED` and explain why it is still required before public or paid-beta signoff.
 
 ## Current Deploy Contour
 
@@ -444,37 +430,28 @@ At minimum, verify:
 - API-only lifecycle smoke for bonuses, checkout order creation, callback success, and post-payment dashboard state
 - `portal-api`, `portal-bot`, and `portal-helpbot` service status
 - `portal-feedbackbot` service status
-- `verify_brain_ready.py` should fail the repo-side handoff if any required control-plane unit is inactive, if required listeners on `443` or `8444` are missing, if the built-in HTTP and subscription probes fail, or if legacy public payment static artifacts such as `/fk-verify.html` or `/fk-payment-theme.css` are still served under the Lava.top-only launch policy
+- `verify_brain_ready.py` should fail the repo-side handoff if any required control-plane unit is inactive, if required listeners on `443` or `8444` are missing, or if the built-in HTTP and subscription probes fail
 - marketing and checkout probes should use route/function markers such as `Android + Windows`, `app.pokrov.space`, `checkout-shell`, `ключ доступа`, and canonical URLs, not old hero copy that can change without a deploy failure
 - transport rollout verification on the canary node with `scripts/remote_apply_node_qdisc.py show`
 - transport front verification with `scripts/remote_transport_front_smoke.py`
 - `tc -s qdisc` on the shaped interface
 - `scripts/remote_node_qdisc_smoke.py` results for heavy-flow saturation and small-probe latency
 - when observer-lite is enabled on any node, `portal-node-observer.timer` freshness on that node plus `/api/admin/metrics/status` and `/api/admin/nodes/health` observer fields
-- `/admin/release/` in the WebApp admin surface shows runtime app links, Lava.top/email gates, metrics freshness, safe public claims, and external blockers; its app-link gate requires GitHub Releases `.apk`/`.exe`, install docs under `https://pokrov.space/install/`, and an empty Android Play URL. Use it as an operator cockpit, not as sole proof that runtime download links are live, provider evidence is done, or final GO is granted
 - after any REALITY target rotation, verify the node inbound `dest/serverNames`, the `brain` `nodes.reality_sni` row, and `python scripts/predeploy_node_readiness.py --brain-ip 82.21.114.104` in the same handoff
 
 Release gate rule:
 
 - full `release_gate_check.py` should stay green; by default that means the release `pytest` matrix, admin/auth regression, `client_security_smoke.py`, `python scripts/run_client_release_gate.py test --suite full`, `api_lifecycle_smoke.py`, link checks, marketing/webapp production builds, admin webapp smoke, browser E2E from `webapp/e2e/`, and `ui_visual_smoke.py`
-- default and quick `release_gate_check.py` must run `python scripts/run_client_release_gate.py preflight` before client smoke, tests, or artifact builds; a green client wrapper result without preflight is not enough for release trust
-- the release `pytest` matrix includes the smart-connect and network-rollout API contracts, so node pool boundaries, shortlist behavior, rollout overrides, and managed profile contracts stay in the same public-beta gate instead of a separate manual checklist
-- the release `pytest` matrix includes `tests/test_client_security_smoke.py`, `tests/test_smoke_client_apps.py`, `tests/test_brain_runtime_app_download_smoke.py`, `tests/test_freekassa_api_probe.py`, and `tests/test_freekassa_staging_smoke.py`, so public beta version honesty, runtime app-download URL/provider policy, brain-local signed initData smoke redaction, the legacy FreeKassa explicit-ack guard, FreeKassa `orders/create` refusal, and the staging public-create block guard are covered by the full matrix even when live `TELEGRAM_INIT_DATA` is unavailable
-- `python scripts/public_beta_launch_decision.py --output docs/audit-artifacts/public-beta-launch-decision-2026-05-08.json` is the machine-readable final GO/NO-GO aggregator for the current evidence set, including the post-deploy payment/email probe artifact; it can confirm a NO-GO from green local/brain gates plus blocked external evidence, but it must not be used to override any red P0 gate
-- admin webapp smoke and browser E2E include the release cockpit route; a green cockpit UI means the operator can see the no-go evidence, not that the blocked external gates are satisfied
-- the release gate report must classify what the run actually proved: `current-origin check`, `brain-origin check`, `RU-origin check`, Android physical audit, runtime app-download smoke, and client platform builds must show `PASS`, `FAIL`, `BLOCKED_BY_ACCESS`, `SKIPPED_BY_OPERATOR`, `SKIPPED`, or `NOT_REQUESTED` rather than relying on one global pass/fail line
+- the release gate report must classify what the run actually proved: `current-origin check`, `brain-origin check`, `RU-origin check`, Android physical audit, runtime app-download smoke, and client platform builds must show `PASS`, `FAIL`, `BLOCKED_BY_ACCESS`, `SKIPPED`, or `NOT_REQUESTED` rather than relying on one global pass/fail line
 - `python scripts/run_client_release_gate.py preflight` should be green before trusting any wrapper-driven client gate result; a missing or incomplete `POKROV-app` seed workspace is a release blocker even if other repo-local tests happen to pass
 - marketing release readiness also requires `python scripts/check-links.py` and `python scripts/ui_visual_smoke.py` to stay green after every CTA, legal, SEO, or branding change
-- `verify_brain_ready.py` should validate both the canonical connect host and the legacy API compatibility path before a release is considered healthy, while also proving removed legacy payment static files are absent from the deployed public surface
+- `verify_brain_ready.py` should validate both the canonical connect host and the legacy API compatibility path before a release is considered healthy
 - the default full backend deploy and verify contour should include `portal-feedbackbot`, not just `portal-api`, `portal-bot`, and `portal-helpbot`
 - `client_security_smoke.py` is the static repo-level gate for default local-surface settings, routing preset groundwork, and known localhost control paths; it does not replace the Android release-build port and reachability audit
 - set `ANDROID_AUDIT_SERIAL=<device-serial>` when running `release_gate_check.py` if you want the opt-in adb localhost audit folded into the same markdown report
-- if the physical audit already ran in another shell, set `ANDROID_AUDIT_EVIDENCE_JSON=<path-to-raw-android-localhost-audit-json>` and let `release_gate_check.py` run `scripts/validate_android_physical_audit_evidence.py`; the validation output defaults to `docs/audit-artifacts/android-physical-audit-evidence-validation-2026-05-08.json`
 - set `ANDROID_AUDIT_CONNECT_WAIT_SEC` and `ANDROID_AUDIT_DISCONNECT_WAIT_SEC` when the adb localhost audit needs non-default timing in the same report
 - set `ANDROID_AUDIT_PACKAGE=space.pokrov.pokrov_android_shell` for the active Android shell unless a release candidate deliberately changes the package id
-- when `TELEGRAM_INIT_DATA` is available, retain evidence through `python scripts/runtime_app_download_smoke.py --redact --check-providers --require-release-handoff`; when raw live init data is unavailable, use `python scripts/brain_runtime_app_download_smoke.py --brain-ip 82.21.114.104 --ssh-user root --ssh-port 29374 --source-unit portal-bot --tg-id 900000001 --output docs/audit-artifacts/runtime-app-download-smoke-brain-2026-05-08-post-handoff.json` and label the proof as synthetic signed initData generated on brain
-- after backend/static deploy, prefer `python scripts/brain_payment_email_readiness.py --brain-ip 82.21.114.104 --ssh-user root --ssh-port 29374 --post-deploy-live --email-probe-to <probe-address> --output docs/audit-artifacts/brain-post-deploy-live-probe-2026-05-08.json` for the email-only public-mode proof and add `--lavatop-probe-email <probe-address>` only when the Lava.top invoice probe is intentionally being checked; relay and Lava.top secrets stay on `brain`, and the resulting artifact must contain only redacted statuses and HTTP codes, not response bodies, invoice URLs, tokens, or webhook payloads
-- merge that redacted brain-local proof into the public-beta decision set with `python scripts/public_beta_post_deploy_probe.py --brain-live-probe-json docs/audit-artifacts/brain-post-deploy-live-probe-2026-05-08.json --output docs/audit-artifacts/public-beta-post-deploy-probe-2026-05-08.json`, then rerun `python scripts/public_beta_launch_decision.py --output docs/audit-artifacts/public-beta-launch-decision-2026-05-08.json`; `safe_to_keep_email_public=true` means the deployed email runtime is safe to keep public, while email proof still requires `email_live_delivery_probe_passed=true`; paid checkout remains blocked until Lava.top invoice/webhook/replay/failure/manual-review/reconciliation and paid access-key email proof are green
+- when `TELEGRAM_INIT_DATA` is available, retain evidence through `python scripts/runtime_app_download_smoke.py --redact --check-providers --require-release-handoff`
 - add `--client-platform-gates windows,android-apk,android-aab` or set `CLIENT_PLATFORM_GATES` when you want the same markdown report to include artifact-producing client builds
 - the latest documented `release_orchestrator.py --gates-only` success is a local-only proof and does not replace live deploy, live node enablement, or three-origin network evidence
 - Android public release must also include a release-build localhost-listener audit covering proxy, DNS, command-server, and admin/control surfaces before connect, after connect, and after disconnect; green repo/static gates are necessary but not sufficient
@@ -487,27 +464,23 @@ Current local gate entrypoints:
 ```powershell
 python scripts/release_gate_check.py
 python scripts/release_gate_check.py --client-platform-gates windows,android-apk,android-aab
-python scripts/public_beta_launch_decision.py --output docs/audit-artifacts/public-beta-launch-decision-2026-05-08.json
 python scripts/release_orchestrator.py --gates-only
 ```
 
 Notes:
 
 - `release_gate_check.py` is the canonical local report generator for the public-v1 gate set.
-- `release_gate_check.py --quick` swaps the default full client Flutter suite for `python scripts/run_client_release_gate.py test --suite portal` and includes the focused payment/marketing release-honesty pytest gate for Lava-only bot payment exposure, public checkout structured data, and homepage CTA honesty.
-- `release_gate_check.py --quick --ci-guardrails` is only for GitHub Actions repository guardrails; it skips operator-only client/browser gates as `SKIPPED_CI_UNAVAILABLE` and must not be cited as a release-go decision.
+- `release_gate_check.py --quick` swaps the default full client Flutter suite for `python scripts/run_client_release_gate.py test --suite portal`.
 - on Windows, `release_gate_check.py` injects a repo-local disposable `--basetemp` for its `python -m pytest ...` gates so a broken workstation-level `%TEMP%\\pytest-of-<user>\\pytest-current` symlink does not pollute the release handoff tail.
 - `release_orchestrator.py --gates-only` is the one-command wrapper for the same gate pack, but it intentionally exits before release handoff sync, backend deploy, static deploy, and post-deploy verify.
 - `release_orchestrator.py --stage backend|static|deploy|verify` is the preferred recovery path when a previous full run timed out after a known completed phase; `deploy` means backend plus static, with gates and verify skipped.
-- `release_orchestrator.py --stage static --static-plan-only` is the preferred non-mutating current-origin proof for static deploy readiness when public gates still block a real static deploy.
 - `release_orchestrator.py` streams child output and emits quiet-step heartbeats; tune `--gate-timeout-sec`, `--backend-timeout-sec`, `--static-timeout-sec`, `--verify-timeout-sec`, or `--step-timeout-sec` when a release lane is expected to exceed the default timeout.
-- latest documented `release_orchestrator.py --gates-only` success: `2026-04-13`, local-only; see `docs/audit-artifacts/release_gate_report.md` as retained historical evidence, not the current public-beta verdict.
-- latest public-beta gate evidence: `docs/audit-artifacts/release-gate-full-local-2026-05-08.md` passed current-origin full/default gates at `2026-05-08 11:45:24`, including the expanded release pytest matrix with `221 passed, 3 subtests passed`, live-probe dry-run/redaction coverage, RU/signing-aware external preflight tests, runtime provider-smoke policy, legacy FreeKassa explicit-ack guard, FreeKassa `orders/create` refusal, and the staging public-create block guard. Earlier full refresh attempts are retained at `docs/audit-artifacts/release-gate-full-local-refresh-attempt-2026-05-07.md` and `docs/audit-artifacts/release-gate-full-local-refresh-attempt-2026-05-08.md` as `TIMEOUT_NOT_PASS` history and must not replace that standard PASS report. `docs/audit-artifacts/release-gate-full-local-manual-refresh-2026-05-08.md` is a supplemental post-change current-origin component refresh that passed the same full/default components individually at `2026-05-08 10:52:15` before the standard full gate was refreshed. `docs/audit-artifacts/release-gate-local-2026-05-08.md` passed the latest current-origin quick gates at `2026-05-08 00:41:20`; `docs/audit-artifacts/release-gate-brain-2026-05-08.md` passed the latest integrated brain-origin quick gate at `2026-05-08 11:59:43`, including brain runtime/static verification after static release `20260508085254`, node predeploy readiness, admin payment fulfillment/resend, Lava.top revenue metrics, Telegram button field coverage, public bot simple-onboarding/cabinet/instruction/access-key button coverage, Telegram Login Widget stale-token refresh coverage, Telegram WebApp `initData` freshness hardening, email relay-secret hardening, status-gated public email UI, public-safe blocked checkout text, admin release-cockpit launch-decision visibility, static-export prefetch hardening, and RU-origin `SKIPPED_BY_OPERATOR` classification after refreshed backend/static deploy and portal-bot button redeploy. Later static deploys after homepage dead-checkout cleanup (`20260508131613`), admin release-cockpit truth/runtime-link blocker/operator-section refreshes (`20260508132759`, `20260508135743`, `20260508160515`, `20260508165715`), and the Telegram deprecated OAuth callback refresh fix (`20260508190122`) passed post-deploy smoke; `verify_brain_ready.py` also passed after `20260508190122`, but the integrated brain quick gate was not rerun after those small static cleanups. Current handoff remains `NO-GO` in `docs/audit-artifacts/public-beta-handoff-2026-05-08.md` because brain-local signed `/api/client/apps` smoke still shows empty live Android/Windows/docs URLs, paid-checkout launch evidence, live email inbox delivery proof, and final publication handoff are not green. GitHub prerelease assets are staged and URL-reachable for smoke, but runtime `APP_*` links are not synced or announced. Android physical audit is accepted as `OPERATOR_ATTESTED`, not raw repo validation. RU-origin readiness is `SKIPPED_BY_OPERATOR` for this beta pass, not verified; public copy must not claim it. Windows trusted signing is not required for this outside-store beta pass because the operator accepted unsigned beta risk on 2026-05-08; public copy must keep the unknown-publisher caveat.
+- latest verified local run: `python scripts/release_orchestrator.py --gates-only` exited `0` on `2026-04-13`; see `docs/audit-artifacts/release_gate_report.md` for the current local gate snapshot
 - pass `--brain-ip 82.21.114.104` to either command when you also want `predeploy_node_readiness.py` folded into the same run.
 - `--release-metadata-file` and `--release-env-file` cannot be combined with `--gates-only`; use the full `release_orchestrator.py` flow when you need runtime `APP_*` download URLs synced onto brain before deploy or verify.
 - the full `release_orchestrator.py` flow uses the same default backend restart set as `remote_deploy_brain_portal_code.py`, including `portal-feedbackbot`
 - `--brain-ip` is required for the full remote contour, including release handoff sync, backend deploy, post-deploy verify, observer-timer ensure, metrics-timer ensure, and qdisc rollout lanes
-- without `ANDROID_AUDIT_SERIAL` or a `PASS` validation report produced from `ANDROID_AUDIT_EVIDENCE_JSON`, a green gate report does not replace the required on-device Android localhost audit
+- without `ANDROID_AUDIT_SERIAL`, a green gate report does not replace the required on-device Android localhost audit
 - emulator-backed adb audits are preflight only and do not clear public Android release
 - when node reachability is part of a release handoff, report `current-origin`, `brain-origin`, and `RU-origin` results separately instead of collapsing them into one verdict
 
@@ -663,22 +636,12 @@ Then copy the resulting URLs into runtime env:
 - `APP_WINDOWS_MIRROR_URL`
 - `APP_DOCS_URL`
 
-For the outside-store public beta path, keep `APP_ANDROID_PLAY_URL` empty. The handoff sync accepts Android APK and Windows EXE values only when they are HTTPS GitHub Releases artifact links with matching `.apk` / `.exe` extensions, and accepts docs only under `https://pokrov.space/install/`.
-
 Preferred automation path:
 
 ```powershell
 python scripts/remote_brain_apply_release_handoff.py `
   --brain-ip 82.21.114.104 `
-  --metadata-file ..\POKROV-app\artifacts\releases\release-handoff.json `
-  --dry-run
-```
-
-```powershell
-python scripts/remote_brain_apply_release_handoff.py `
-  --brain-ip 82.21.114.104 `
-  --metadata-file ..\POKROV-app\artifacts\releases\release-handoff.json `
-  --go-evidence-file docs/audit-artifacts/public-beta-runtime-link-sync-authorization-2026-05-08.md
+  --env-file "C:/Users/kiwun/Documents/ai/POKROV-app/artifacts/releases/bridge/<version>/release-links.env"
 ```
 
 Or as part of the main rollout:
@@ -686,16 +649,14 @@ Or as part of the main rollout:
 ```powershell
 python scripts/release_orchestrator.py `
   --brain-ip 82.21.114.104 `
-  --release-metadata-file ..\POKROV-app\artifacts\releases\release-handoff.json `
-  --release-go-evidence-file docs/audit-artifacts/public-beta-runtime-link-sync-authorization-2026-05-08.md
+  --release-env-file "C:/Users/kiwun/Documents/ai/POKROV-app/artifacts/releases/bridge/<version>/release-links.env"
 ```
 
 Distribution rule until store URLs are live:
 
 - GitHub release artifacts are the canonical Android and Windows binary source
 - runtime app, bot, and authenticated WebApp download surfaces must read from the same release handoff URLs
-- the client-owned `C:/Users/kiwun/Documents/ai/POKROV-app/artifacts/releases/release-handoff.json` is the canonical metadata input for that sync when maintained; versioned handoff files live beside the retained release evidence
-- non-dry-run runtime sync requires either a public `GO for public beta publication` handoff or a narrow runtime-link sync authorization created after explicit operator approval and containing `RUNTIME LINK SYNC GO FOR APP-DOWNLOAD SMOKE`, `OPERATOR_APPROVED_RUNTIME_LINK_SYNC=true`, `STAGED GITHUB ASSET REACHABILITY GREEN`, `NO PUBLIC ANNOUNCEMENT`, and `PAID CHECKOUT REMAINS CLOSED`
+- the versioned `release-links.env` under `C:/Users/kiwun/Documents/ai/POKROV-app/artifacts/releases/...` is the canonical metadata input for that sync
 - `remote_brain_apply_release_handoff.py` does not rebuild static exports by itself
 - if public Android or Windows URLs changed, rebuild and redeploy static marketing outputs so `NEXT_PUBLIC_APP_*` stays aligned with the same release handoff values
 
@@ -750,8 +711,7 @@ Post-deploy checks should also confirm:
 - download links across app, bot, and authenticated WebApp point to the same current Android and Windows artifacts
 - marketing homepage download CTA point to the current built release URL or the install/docs fallback, never directly to `connect.pokrov.space`
 - public `Открыть кабинет` CTA on `pokrov.space` points to `https://app.pokrov.space/`
-- `scripts/brain_telegram_bot_menu_check.py --apply` preserves the app-first Telegram chat menu button as `web_app` for `https://app.pokrov.space/`, while `getMyCommands` still exposes `start`, `cabinet`, `support`, `promo`, and `redeem`
-- public pricing CTA must stay status-first while the handoff is NO-GO: start from install/status or cabinet, and use `https://pokrov.space/checkout/` only as a plan/status continuation that remains unavailable or degraded until Lava.top and email key-delivery evidence are green
+- public pricing CTA enter through `https://pokrov.space/checkout/` with plan context, then continue via personal cabinet or Telegram route
 - `robots.txt`, `sitemap.xml`, `manifest.webmanifest`, `favicon.ico`, and `apple-icon.png` return dedicated content instead of homepage HTML
 - public homepage and SEO landing pages emit canonical, Open Graph, Twitter, and JSON-LD metadata
 - node health findings are reported with explicit `current-origin`, `brain-origin`, and `RU-origin` check labels

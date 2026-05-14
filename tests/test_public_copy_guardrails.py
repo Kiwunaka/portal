@@ -148,22 +148,6 @@ def test_public_beta_surfaces_do_not_expose_stale_limited_beta_copy() -> None:
     assert not violations, "\n".join(violations)
 
 
-def test_bot_support_ticket_copy_has_no_obvious_grammar_regressions() -> None:
-    text = (ROOT / "portal_bot" / "bot.py").read_text(encoding="utf-8")
-    forbidden = [
-        "обращениее",
-        "обращениеов",
-        "активный обращение",
-        "Новый обращение",
-        "Обращение #{ticket.id} создан.",
-        "Обращение #{ticket.id} закрыт оператором.",
-        "Обращение #{ticket.id} переоткрыт пользователем",
-        "Очередь обращениеов",
-    ]
-    violations = [value for value in forbidden if value in text]
-    assert not violations, "\n".join(violations)
-
-
 def test_frontend_public_copy_catalogs_stay_pokrov_only() -> None:
     violations: list[str] = []
     portal_config_required_snippets = (

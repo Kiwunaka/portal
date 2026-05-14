@@ -3,13 +3,12 @@
 import AppRouteLink from "@/components/app-route-link";
 import { CabinetCardGrid, CabinetHero, CabinetRoute, CabinetSection } from "@/components/cabinet/surface";
 import { resolvePlanLabel } from "@/lib/access-policy";
-import { createRubCheckoutOrder, fetchPublicCatalog, getRubPaymentProviders, type RubPaymentProvidersResult } from "@/lib/api";
+import { createRubCheckoutOrder, fetchPublicCatalog, getRubPaymentProviders } from "@/lib/api";
 import {
   getPricingPreviewDiscountPercent,
   getTariffPlans,
   normalizePlanCode,
 } from "@/lib/portal";
-import { userFacingErrorMessage } from "@/lib/public-error-messages";
 import { usePortalSession } from "@/lib/session";
 import { useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
@@ -23,11 +22,6 @@ type DisplayPlan = {
   deviceLimit: number;
   note: string;
 };
-
-const CHECKOUT_BLOCKED_PUBLIC_TEXT =
-  "Оплата пока закрыта: мы включим продление после финальной проверки Lava.top и доставки ключей на email.";
-const CHECKOUT_START_PUBLIC_ERROR =
-  "Не удалось открыть оплату. Проверьте статус чуть позже или напишите в поддержку.";
 
 const SHARED_PLANS: DisplayPlan[] = getTariffPlans()
   .slice()
@@ -61,7 +55,6 @@ export default function CheckoutPage() {
   const [catalogError, setCatalogError] = useState("");
   const [selectedCode, setSelectedCode] = useState(() => normalizePlanCode(searchParams.get("plan"), "1_month"));
   const [providerCode, setProviderCode] = useState("");
-  const [providerState, setProviderState] = useState<RubPaymentProvidersResult | null>(null);
   const [checkoutBusy, setCheckoutBusy] = useState(false);
   const [checkoutError, setCheckoutError] = useState("");
 
@@ -96,7 +89,7 @@ export default function CheckoutPage() {
       } catch (nextError) {
         if (!cancelled) {
           setPlans(SHARED_PLANS);
-          setCatalogError(userFacingErrorMessage(nextError, "Показываем сохраненные варианты тарифов."));
+          setCatalogError(String((nextError as { message?: string })?.message || nextError || ""));
         }
       }
     };
@@ -113,13 +106,11 @@ export default function CheckoutPage() {
     void getRubPaymentProviders()
       .then((payload) => {
         if (!cancelled) {
-          setProviderState(payload);
-          setProviderCode(payload.ok && !payload.blocked ? String(payload.providers?.[0]?.code || "") : "");
+          setProviderCode(String(payload.providers?.[0]?.code || ""));
         }
       })
       .catch(() => {
         if (!cancelled) {
-          setProviderState(null);
           setProviderCode("");
         }
       });
@@ -136,36 +127,10 @@ export default function CheckoutPage() {
   const discountPercent = getPricingPreviewDiscountPercent(promoCode);
   const discountAmount = Math.round((Number(activePlan?.amountRub || 0) * discountPercent) / 100);
   const totalAmount = Math.max(0, Number(activePlan?.amountRub || 0) - discountAmount);
-  const checkoutReady = Boolean(providerCode && providerState?.ok && !providerState?.blocked);
-  const paymentBlockedText = CHECKOUT_BLOCKED_PUBLIC_TEXT;
-  const checkoutPrimaryText = checkoutReady
-    ? checkoutBusy
-      ? "Открываем оплату..."
-      : "Перейти к оплате"
-    : "Оплата пока закрыта";
-  const checkoutRouteTitle = checkoutReady ? "Продлить доступ" : "Оплата временно недоступна";
-  const checkoutRouteDescription = checkoutReady
-    ? "Выберите срок, проверьте сумму и перейдите на защищенную страницу оплаты. После оплаты ключ можно применить в приложении или в кабинете."
-    : "Платежный маршрут закрыт, пока Lava.top и email-доставка ключей не пройдут проверку. Можно проверить тариф, ключ или написать в поддержку.";
-  const checkoutHeroBadge = checkoutReady ? "Продолжение из кабинета" : "Ожидает проверки";
-  const checkoutHeroBadgeTone = checkoutReady ? "success" : "warning";
-  const checkoutHeroTitle = checkoutReady
-    ? "Покупка проходит на платежной странице POKROV"
-    : "Платежная касса закрыта до проверки запуска";
-  const checkoutHeroDescription = checkoutReady
-    ? "Кабинет помогает выбрать срок и возвращает вас к текущему профилю. Личные ссылки и ручные настройки здесь не показываются."
-    : "Кабинет показывает выбранный срок и статус оплаты, но не создает заказ, пока запуск Lava.top, webhook и доставка ключей не подтверждены.";
-  const checkoutAmountLabel = checkoutReady ? "К оплате" : "Сумма";
-  const checkoutAmountHint = checkoutReady
-    ? "Итог перед переходом на страницу оплаты."
-    : "Ориентир до включения платежного маршрута.";
-  const checkoutSummaryTitle = checkoutReady ? "Проверьте перед оплатой" : "Проверьте план и статус оплаты";
-  const checkoutSummaryDescription = checkoutReady
-    ? "Сумма и срок видны до перехода на платежную страницу."
-    : "Сумма и срок показаны для ориентира. Переход к оплате включится только после зеленой проверки запуска.";
+  const checkoutReady = Boolean(providerCode);
 
   const startCheckout = async (): Promise<void> => {
-    if (!activePlan?.code || !checkoutReady || !providerCode) return;
+    if (!activePlan?.code || !providerCode) return;
     setCheckoutBusy(true);
     setCheckoutError("");
     try {
@@ -178,11 +143,11 @@ export default function CheckoutPage() {
       });
       const paymentUrl = String(order.payment_url || "").trim();
       if (!paymentUrl) {
-        throw new Error(CHECKOUT_START_PUBLIC_ERROR);
+        throw new Error("Payment URL is missing.");
       }
       window.location.assign(paymentUrl);
-    } catch {
-      setCheckoutError(CHECKOUT_START_PUBLIC_ERROR);
+    } catch (error) {
+      setCheckoutError(String((error as { message?: string })?.message || error || "Checkout is not available."));
     } finally {
       setCheckoutBusy(false);
     }
@@ -211,12 +176,12 @@ export default function CheckoutPage() {
   return (
     <CabinetRoute
       eyebrow="Продление"
-      title={checkoutRouteTitle}
-      description={checkoutRouteDescription}
+      title="Продлить доступ"
+      description="Выберите срок, проверьте сумму и перейдите на защищенную страницу оплаты. После оплаты ключ можно применить в приложении или в кабинете."
       actions={
         <>
           <button type="button" onClick={startCheckout} disabled={!checkoutReady || checkoutBusy} className="btn-primary rounded-full px-5 py-3 text-sm font-semibold disabled:opacity-60">
-            {checkoutPrimaryText}
+            Перейти к оплате
           </button>
           <AppRouteLink href="/redeem/" className="outline-btn rounded-full px-5 py-3 text-sm font-semibold">
             У меня уже есть ключ
@@ -243,23 +208,23 @@ export default function CheckoutPage() {
           tone: discountPercent > 0 ? "success" : "neutral",
         },
         {
-          label: checkoutAmountLabel,
+          label: "К оплате",
           value: `${totalAmount} ₽`,
-          hint: checkoutAmountHint,
+          hint: "Итог перед переходом на страницу оплаты.",
           tone: "neutral",
         },
       ]}
     >
       <CabinetHero
         eyebrow="Без второй витрины"
-        badge={checkoutHeroBadge}
-        badgeTone={checkoutHeroBadgeTone}
-        title={checkoutHeroTitle}
-        description={checkoutHeroDescription}
+        badge="Продолжение из кабинета"
+        badgeTone="success"
+        title="Покупка проходит на платежной странице POKROV"
+        description="Кабинет помогает выбрать срок и возвращает вас к текущему профилю. Личные ссылки и ручные настройки здесь не показываются."
         actions={
           <>
             <button type="button" onClick={startCheckout} disabled={!checkoutReady || checkoutBusy} className="btn-primary rounded-full px-5 py-3 text-sm font-semibold disabled:opacity-60">
-              {checkoutPrimaryText}
+              Перейти к оплате
             </button>
             <AppRouteLink href="/subscription/" className="outline-btn rounded-full px-5 py-3 text-sm font-semibold">
               Назад к тарифам
@@ -297,15 +262,15 @@ export default function CheckoutPage() {
           <CabinetCardGrid items={selectedPlanCards} className="xl:grid-cols-2" />
           {catalogError ? (
             <p className="mt-4 text-sm text-amber-700 dark:text-amber-200">
-              Каталог не обновился автоматически. {catalogError}
+              Каталог не обновился автоматически, показываем сохраненные варианты: {catalogError}
             </p>
           ) : null}
         </CabinetSection>
 
         <CabinetSection
           eyebrow="Итог"
-          title={checkoutSummaryTitle}
-          description={checkoutSummaryDescription}
+          title="Проверьте перед оплатой"
+          description="Сумма и срок видны до перехода на платежную страницу."
         >
           <label className="block text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500 dark:text-slate-400">
             Промокод
@@ -324,25 +289,22 @@ export default function CheckoutPage() {
             <p>
               Скидка: <strong>{discountAmount > 0 ? `${discountAmount} ₽` : "нет"}</strong>
             </p>
-            <p className="mt-2 text-base font-semibold text-slate-950 dark:text-white">{checkoutAmountLabel}: {totalAmount} ₽</p>
+            <p className="mt-2 text-base font-semibold text-slate-950 dark:text-white">К оплате: {totalAmount} ₽</p>
           </div>
 
           <div className="mt-5 grid gap-3">
             <button type="button" onClick={startCheckout} disabled={!checkoutReady || checkoutBusy} className="btn-primary block rounded-2xl py-3 text-center text-sm font-semibold disabled:opacity-60">
-              {checkoutPrimaryText}
+              Перейти к оплате
             </button>
-            <AppRouteLink href="/subscription/#payment-history" className="outline-btn block rounded-2xl py-3 text-center text-sm font-semibold">
-              Проверить статус оплаты
-            </AppRouteLink>
             <AppRouteLink href="/redeem/" className="outline-btn block rounded-2xl py-3 text-center text-sm font-semibold">
-              Применить уже полученный ключ
+              Применить уже купленный ключ
             </AppRouteLink>
           </div>
 
           {checkoutError ? <p className="mt-4 text-sm text-rose-700 dark:text-rose-200">{checkoutError}</p> : null}
           {!checkoutReady ? (
             <p className="mt-4 text-sm text-amber-700 dark:text-amber-200">
-              {paymentBlockedText}
+              Платежный провайдер пока не включен. Продление останется недоступным, пока backend не вернет рабочий способ оплаты.
             </p>
           ) : null}
 

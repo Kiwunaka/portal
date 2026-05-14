@@ -45,7 +45,7 @@ def _default_checks() -> list[Check]:
                 "POKROV",
                 "config.webappUrl",
                 "config.newsChannelUrl",
-                "href={paidBetaHref}",
+                "/checkout/?plan=",
                 "Один спокойный путь",
                 "lp-hero-stage",
                 "lp-trust-grid",
@@ -55,7 +55,6 @@ def _default_checks() -> list[Check]:
             ),
             must_not_contain=(
                 "href={config.connectUrl}",
-                "/checkout/?plan=",
                 "POKROV Network",
                 "All except RU",
                 "premium trial",
@@ -134,7 +133,7 @@ def _default_checks() -> list[Check]:
         Check(
             name="webapp-local-qr",
             path=REPO_ROOT / "webapp" / "src" / "components" / "subscription-qr-card.tsx",
-            must_contain=('import("qrcode")', "QR-код ручной ссылки"),
+            must_contain=('import("qrcode")', "QR-код ссылки подключения"),
         ),
         Check(
             name="webapp-dashboard-app-first",

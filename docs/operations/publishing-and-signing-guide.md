@@ -1,6 +1,6 @@
 # Publishing And Signing Guide
 
-Last updated: 2026-05-07
+Last updated: 2026-04-23
 
 ## Document Status
 
@@ -49,22 +49,6 @@ Do not present Apple store publication as shipped or guaranteed in this release 
 Until store URLs are live, the canonical distribution source is:
 
 - GitHub Releases for Android and Windows binaries
-
-Non-mutating GitHub Release plan check:
-
-```powershell
-python scripts/prepare_github_release_plan.py --tag v0.2.0-beta.1 --title "POKROV 0.2.0-beta.1"
-```
-
-This helper validates the local Android `.apk`, Windows `.exe`, release notes file, beta tag, and install-docs URL, reports whether the GitHub CLI (`gh`) is available, then prints staging commands, a prerelease `gh release create` command, and the expected `APP_*` handoff URLs. It stages raw build outputs under canonical public filenames (`pokrov-android-universal.apk`, `pokrov-windows-setup-x64.exe`) so GitHub asset URLs match artifact canon. It does not call `gh`, publish a release, upload assets, copy files, or update runtime env. If `tooling.gh.classification` is `BLOCKED_TOOL_MISSING`, install/authenticate GitHub CLI before treating artifact publication as actionable.
-
-Dry-run REST publisher fallback:
-
-```powershell
-python scripts/publish_github_release_assets.py --tag v0.2.0-beta.1 --title "POKROV 0.2.0-beta.1"
-```
-
-This fallback also does nothing by default. It creates a public GitHub prerelease and uploads the canonical APK/EXE assets only with `--execute`, authenticated GitHub CLI or `GITHUB_TOKEN`/`GH_TOKEN`, and a `--go-evidence-file` that says `GO for public beta publication` without any `NO-GO` marker. A narrower smoke-only artifact-staging file must also include `ARTIFACT STAGING GO FOR RUNTIME SMOKE`, `NON-URL P0 GATES GREEN FOR ARTIFACT STAGING`, `ONLY REMAINING P0 GATE: RUNTIME APP-DOWNLOAD URL SMOKE`, and `NO RUNTIME SYNC OR ANNOUNCEMENT`, with no unresolved blocker markers. Use either path only after the same release handoff or separate staging authorization that authorizes `gh release create`.
 
 All public download surfaces must be wired from the same release handoff values:
 
@@ -147,7 +131,7 @@ Notes:
 - `release_gate_check.py` already includes `python scripts/run_client_release_gate.py test --suite full` by default.
 - `release_gate_check.py --quick` swaps that default client suite for `python scripts/run_client_release_gate.py test --suite portal`.
 - add `--client-platform-gates windows,android-apk,android-aab` or set `CLIENT_PLATFORM_GATES` when you want the gate report to include artifact-producing client builds.
-- once `CLIENT_PLATFORM_GATES` includes `android-apk` or `android-aab`, `release_gate_check.py` requires `ANDROID_AUDIT_SERIAL` to point to physical Android hardware, or `ANDROID_AUDIT_EVIDENCE_JSON` to point at raw physical audit JSON that validates to `PASS`; emulator serials stay useful only for adb rehearsal.
+- once `CLIENT_PLATFORM_GATES` includes `android-apk` or `android-aab`, `release_gate_check.py` requires `ANDROID_AUDIT_SERIAL` to point to physical Android hardware; emulator serials stay useful only for adb rehearsal.
 - the wrapper now targets `C:/Users/kiwun/Documents/ai/POKROV-app` by default and fails fast when that workspace is missing or incomplete.
 - `python scripts/run_client_release_gate.py test --suite full` delegates to `C:/Users/kiwun/Documents/ai/POKROV-app/scripts/run-tests.ps1`, while `--suite portal` bootstraps the workspace and runs the narrower Flutter lane in `packages/app_shell`, `apps/android_shell`, and `apps/windows_shell`.
 - `python scripts/run_client_release_gate.py build --target windows` delegates to `C:/Users/kiwun/Documents/ai/POKROV-app/scripts/build-windows-release.ps1 -SyncRuntime -SkipTests -SkipAnalyze` and verifies the unsigned setup EXE, portable ZIP, and manifest under `apps/windows_shell/build/release_bundle/`.
@@ -174,7 +158,7 @@ Notes:
 
 1. Build release artifacts in `C:/Users/kiwun/Documents/ai/POKROV-app`.
 2. Run `python scripts/release_gate_check.py` and keep the default gate pack green; add `--client-platform-gates windows,android-apk,android-aab` when you want the same report to include release-build artifacts.
-3. If you include Android build gates in that report, export `ANDROID_AUDIT_SERIAL=<physical-device-serial>` first so the same report includes the mandatory physical-device localhost audit, or export `ANDROID_AUDIT_EVIDENCE_JSON=<path-to-raw-android-localhost-audit-json>` when a completed physical audit is being imported and validated.
+3. If you include Android build gates in that report, export `ANDROID_AUDIT_SERIAL=<physical-device-serial>` first so the same report includes the mandatory physical-device localhost audit.
 4. Audit the release build for localhost listeners and local control surfaces before public publication.
 5. Sign the Android release with the production keystore; debug-keystore fallback is valid only for local smoke and never for public publication.
 6. Upload the `AAB` to Google Play when store publication is ready.
@@ -187,7 +171,7 @@ Artifact-location note:
 - the wrapper-based Android build commands verify those raw outputs directly
 - active client-lane artifact retention plus release metadata lives in `C:/Users/kiwun/Documents/ai/POKROV-app/artifacts/releases/pokrov-app/`
 - those raw outputs do not prove production readiness until the production key path is confirmed and the physical-device audit is complete
-- retain the formal Android localhost-audit evidence in `ops-local/android-localhost-audit*.json`, validate any imported physical evidence with `scripts/validate_android_physical_audit_evidence.py`, and keep curated validation evidence that must survive the handoff under `docs/audit-artifacts/`
+- retain the formal Android localhost-audit evidence in `ops-local/android-localhost-audit*.json`, and keep any curated release evidence that must survive the handoff under `docs/audit-artifacts/`
 - treat repo-local screenshots, UI XML dumps, logcat captures, and ad hoc runtime snapshots from one Android validation pass as disposable scratch unless they are intentionally promoted into `docs/audit-artifacts/`
 - machine-local Android tooling noise such as `C:\Windows\adb.exe`, `%TEMP%`, SDK install directories, and `~/.android` is outside repo cleanup scope and is not release evidence
 
@@ -374,7 +358,7 @@ Minimum publishing verification:
 - public routing and DNS verification covers `Full tunnel` and `All except RU`
 - `Blocked only` stays hidden or internal until geo assets and DNS behavior are ready for honest public verification
 - Android and Windows release verification should keep the wrapper-based client commands above green before signing or publication
-- `release_gate_check.py --client-platform-gates ...android-*...` is allowed to pass only when `ANDROID_AUDIT_SERIAL` points at physical hardware or `ANDROID_AUDIT_EVIDENCE_JSON` validates to a physical release-build audit `PASS`
+- `release_gate_check.py --client-platform-gates ...android-*...` is allowed to pass only when `ANDROID_AUDIT_SERIAL` points at physical hardware
 - as of `2026-04-13`, the documented repo/static/client gate pack is green in `docs/audit-artifacts/release_gate_report.md`, but that result alone does not authorize Android publication
 - an emulator audit may be used as rehearsal for adb flow and timing only; final Android publication still requires `python scripts/android_localhost_audit.py` on a release-installed build on physical hardware
 - the latest local green gate report does not replace live deploy, live node enablement, or separate `current-origin`, `brain-origin`, and `RU-origin` release evidence

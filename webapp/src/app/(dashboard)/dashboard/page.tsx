@@ -16,7 +16,6 @@ import {
   resolveTrafficStatusText,
 } from "@/lib/access-policy";
 import { fetchNodeStatus, type NodeStatus } from "@/lib/api";
-import { userFacingErrorMessage } from "@/lib/public-error-messages";
 import { usePortalSession } from "@/lib/session";
 
 function formatDate(value?: string | null): string {
@@ -118,7 +117,7 @@ export default function DashboardPage() {
         setNodesError("");
       } catch (error) {
         if (controller.signal.aborted || (error as { name?: string } | null)?.name === "AbortError") return;
-        setNodesError(userFacingErrorMessage(error, "Не удалось обновить статус точек, показываем последнюю сводку."));
+        setNodesError(String((error as { message?: string })?.message || error || ""));
       }
     };
     void load();
@@ -143,7 +142,7 @@ export default function DashboardPage() {
     if (!dash?.is_active) {
       items.push(
         <AlertBanner key="inactive" tone="danger" icon="error" title="Доступ закончился">
-          <AppRouteLink href="/subscription/checkout/" className="underline font-semibold">Проверьте статус продления</AppRouteLink>, чтобы вернуть полный режим доступа.
+          <AppRouteLink href="/subscription/checkout/" className="underline font-semibold">Продлите подписку</AppRouteLink>, чтобы вернуть защиту.
         </AlertBanner>
       );
     } else if (trialMode) {
@@ -155,7 +154,7 @@ export default function DashboardPage() {
     } else if (softMode) {
       items.push(
         <AlertBanner key="soft" tone="warning" icon="speed" title="Трафик закончился">
-          Скорость снижена. Полный доступ вернётся {nextResetAt ? formatDate(nextResetAt) : "скоро"}. <AppRouteLink href="/subscription/checkout/" className="underline font-semibold">Проверьте статус продления</AppRouteLink>.
+          Скорость снижена. Полный доступ вернётся {nextResetAt ? formatDate(nextResetAt) : "скоро"}. <AppRouteLink href="/subscription/checkout/" className="underline font-semibold">Продлите сейчас</AppRouteLink>.
         </AlertBanner>
       );
     }
@@ -219,11 +218,11 @@ export default function DashboardPage() {
   return (
     <CabinetRoute
       eyebrow="Главная"
-      title={dash?.is_active ? "Ваш трафик защищён" : "Проверьте статус доступа"}
+      title={dash?.is_active ? "Ваш трафик защищён" : "Продлите доступ"}
       description={
         dash?.is_active
           ? "Здесь всё, что нужно знать о вашей подписке: статус, трафик, устройства и быстрые действия."
-          : "Доступ закончился. Проверьте статус продления, чтобы вернуть полный режим доступа."
+          : "Доступ закончился. Продлите подписку, чтобы вернуть защиту."
       }
       actions={
         <>
@@ -231,7 +230,7 @@ export default function DashboardPage() {
             href={dash?.is_active ? "/subscription/" : "/subscription/checkout/"}
             className="btn-primary rounded-full px-5 py-3 text-sm font-semibold"
           >
-            Проверить статус продления
+            {dash?.is_active ? "Продлить подписку" : "Продлить доступ"}
           </AppRouteLink>
           <AppRouteLink href="/support/" className="outline-btn rounded-full px-5 py-3 text-sm font-semibold">
             Поддержка
@@ -315,7 +314,7 @@ export default function DashboardPage() {
                 <span className="material-symbols-rounded text-[28px] text-emerald-700 dark:text-emerald-400">android</span>
                 <div>
                   <p className="text-sm font-semibold text-slate-900 dark:text-slate-100">Android</p>
-                  <p className="text-xs text-slate-500">APK из кабинета</p>
+                  <p className="text-xs text-slate-500">APK и Google Play</p>
                 </div>
               </a>
               <a
@@ -348,7 +347,7 @@ export default function DashboardPage() {
         description="Самые частые действия всегда под рукой."
       >
         <div className="quick-action-grid">
-          <QuickAction icon="payments" label="Проверить статус продления" href="/subscription/checkout/" primary />
+          <QuickAction icon="payments" label="Продлить доступ" href="/subscription/checkout/" primary />
           <QuickAction icon="devices" label="Мои устройства" href="/devices/" />
           <QuickAction icon="download" label="Скачать приложение" href="https://pokrov.space/install/" />
           <QuickAction icon="support_agent" label="Написать в поддержку" href="/support/" />

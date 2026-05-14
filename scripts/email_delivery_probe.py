@@ -17,26 +17,6 @@ def _secret_headers() -> dict[str, str]:
     return headers
 
 
-def _redacted_payload(payload: dict[str, object]) -> dict[str, object]:
-    return {
-        "kind": str(payload.get("kind") or ""),
-        "email_present": bool(str(payload.get("email") or "").strip()),
-        "token_present": bool(str(payload.get("token") or "").strip()),
-        "access_key_present": bool(str(payload.get("access_key") or "").strip()),
-        "order_id_present": bool(str(payload.get("order_id") or "").strip()),
-        "plan_code": str(payload.get("plan_code") or ""),
-        "days": int(payload.get("days") or 0),
-    }
-
-
-def _redacted_response(status: int, body: bytes) -> dict[str, object]:
-    return {
-        "status": int(status),
-        "body_redacted": True,
-        "body_bytes": len(body or b""),
-    }
-
-
 def main() -> int:
     parser = argparse.ArgumentParser(description="Probe the POKROV email delivery webhook.")
     parser.add_argument("--url", default=os.getenv("EMAIL_DELIVERY_WEBHOOK_URL") or os.getenv("EMAIL_AUTH_WEBHOOK_URL") or "")
@@ -60,7 +40,7 @@ def main() -> int:
         )
 
     if not args.live:
-        print(json.dumps({"dry_run": True, "url_configured": bool(args.url), "payload": _redacted_payload(payload)}, ensure_ascii=False, indent=2))
+        print(json.dumps({"dry_run": True, "url_configured": bool(args.url), "payload": payload}, ensure_ascii=False, indent=2))
         return 0
     if not args.url:
         print("EMAIL_DELIVERY_WEBHOOK_URL is not configured", file=sys.stderr)
@@ -70,12 +50,12 @@ def main() -> int:
     request = urllib.request.Request(args.url, data=data, headers=_secret_headers(), method="POST")
     try:
         with urllib.request.urlopen(request, timeout=20) as response:
-            body = response.read()
-            print(json.dumps(_redacted_response(response.status, body), ensure_ascii=False, indent=2))
+            body = response.read().decode("utf-8", errors="replace")
+            print(json.dumps({"status": response.status, "body": body[:500]}, ensure_ascii=False, indent=2))
             return 0 if response.status < 400 else 1
     except urllib.error.HTTPError as exc:
-        body = exc.read()
-        print(json.dumps(_redacted_response(exc.code, body), ensure_ascii=False, indent=2), file=sys.stderr)
+        body = exc.read().decode("utf-8", errors="replace")
+        print(json.dumps({"status": exc.code, "body": body[:500]}, ensure_ascii=False, indent=2), file=sys.stderr)
         return 1
 
 

@@ -164,12 +164,11 @@ Current rules:
 - smart-connect shortlist selection stays inside those pool boundaries; premium profiles can expose up to `5` eligible non-free nodes, while free stays `NL-free` only
 - the client-side RTT upload contract is `POST /api/client/nodes/latency-samples`; it stores install-scoped diagnostic evidence and does not bypass `UserNode` pinning
 - the persisted split-tunnel contract is backend-owned through `route_mode`, `selected_apps`, `requires_elevated_privileges`, and mirrored `route_policy.*` fields; do not document it as client-only local state
-- additive browser email auth lives under `/api/auth/email/*`; public mode is allowed when `/api/auth/email/status` is green, but final release claims still need live inbox delivery proof
-- `/api/auth/email/status` is the frontend gate; it enables email forms only when `EMAIL_AUTH_PUBLIC_ENABLED=true`, delivery webhook URL and `EMAIL_DELIVERY_WEBHOOK_SECRET` are configured, and `EMAIL_AUTH_DEBUG_ECHO=false`
+- additive browser email auth lives under `/api/auth/email/*`, but public docs and entry copy must keep it marked `soon` until transactional sender identity, delivery confirmation, and the public launch path are live
+- `/api/auth/email/status` is the frontend gate; it enables email forms only when `EMAIL_AUTH_PUBLIC_ENABLED=true`, delivery is configured, and `EMAIL_AUTH_DEBUG_ECHO=false`
 - email delivery uses `portal_bot/email_delivery_service.py`; the repo-owned SMTP bridge is `portal_bot/email_relay_app.py`
-- payment smoke helpers: `scripts/payment_email_readiness_smoke.py`, `scripts/public_beta_post_deploy_probe.py`, `scripts/lavatop_invoice_probe.py`, `scripts/lavatop_webhook_replay_smoke.py`, and `scripts/email_delivery_probe.py`
-- after deploy, `scripts/brain_payment_email_readiness.py --post-deploy-live` is the preferred way to run email/Lava live probes with secrets kept on `brain`; pass its redacted artifact into `scripts/public_beta_post_deploy_probe.py --brain-live-probe-json <artifact>` so the launch decision can distinguish email-public proof from still-blocked paid checkout proof
-- before live inbox evidence is attached, web and cabinet should expose public email as enabled but still avoid claiming delivery proof
+- payment smoke helpers: `scripts/lavatop_invoice_probe.py`, `scripts/lavatop_webhook_replay_smoke.py`, and `scripts/email_delivery_probe.py`
+- before that launch, web and cabinet should expose a truthful unavailable or `soon` state instead of acting like verify or reset mail works
 - support is a real `/api/tickets*` contract, including `/api/tickets/uploads` for authenticated browser attachments; do not describe it as an imaginary live chat
 - transport rollout is additive: `legacy_reality_fallback` stays the baseline until the canary completes, while `grpc_443_primary` is the allowlisted app-first primary for rollout cohorts
 - `reserve_xhttp_cdn` is the dormant reserve transport profile; it stays disabled by default and is only for explicit allowlisted fallback
@@ -200,7 +199,6 @@ Full public-v1 release gate from a fresh shell:
 
 ```powershell
 python scripts/release_gate_check.py
-python scripts/public_beta_launch_decision.py --output docs/audit-artifacts/public-beta-launch-decision-2026-05-08.json
 python scripts/release_orchestrator.py --gates-only
 ```
 
@@ -208,27 +206,22 @@ Notes:
 
 - `release_gate_check.py` now runs the canonical public-v1 `pytest` matrix plus admin/auth regression, client security smoke, `python scripts/run_client_release_gate.py test --suite full`, lifecycle smoke, link checks, marketing/webapp production builds, admin webapp smoke, Playwright browser E2E, and UI visual smoke.
 - `release_gate_check.py --quick` swaps the default full client Flutter suite for `python scripts/run_client_release_gate.py test --suite portal`.
-- GitHub Actions uses `release_gate_check.py --quick --ci-guardrails`; this is a CI-safe repository guardrail subset and reports operator-only client/browser gates as `SKIPPED_CI_UNAVAILABLE`, not as public-beta release authorization.
-- GitHub Actions workflows set `FORCE_JAVASCRIPT_ACTIONS_TO_NODE24="true"` so repository guardrails run against the upcoming Node 24 actions runtime before GitHub's 2026 forced migration.
 - on Windows, `release_gate_check.py` injects a repo-local disposable `--basetemp` for every `python -m pytest ...` subprocess so release gates do not inherit a broken global `%TEMP%\\pytest-of-<user>\\pytest-current` cleanup tail from the workstation.
 - add `--client-platform-gates windows,android-apk,android-aab` or set `CLIENT_PLATFORM_GATES` when you want the same report to include artifact-producing client builds.
-- once `CLIENT_PLATFORM_GATES` includes `android-apk` or `android-aab`, `release_gate_check.py` requires `ANDROID_AUDIT_SERIAL` or `ANDROID_AUDIT_EVIDENCE_JSON`; emulator serials stay preflight-only and imported evidence must validate to a physical release-build audit `PASS`.
+- once `CLIENT_PLATFORM_GATES` includes `android-apk` or `android-aab`, `release_gate_check.py` requires `ANDROID_AUDIT_SERIAL` and treats emulator serials as preflight-only, not as a valid public-release audit.
 - set `ANDROID_AUDIT_PACKAGE` when the physical audit must target a non-default app id; the current default is `space.pokrov.pokrov_android_shell`.
 - when `TELEGRAM_INIT_DATA` is present, `release_gate_check.py` runs `scripts/runtime_app_download_smoke.py --redact` so retained command tails do not expose raw Telegram init data.
-- `scripts/public_beta_launch_decision.py` reads the current handoff, completion audit, local/brain gate reports, external-access preflight, paid-checkout evidence, and live email/payment status into one JSON verdict; it is a final decision aggregator, not a bypass for blocked gates.
 - `scripts/release_orchestrator.py --gates-only` is the one-command entrypoint when you want the documented gate flow without remote deploy, release handoff sync, or post-deploy verify steps.
 - the full `scripts/release_orchestrator.py` path can chain local gates, optional `APP_*` sync, backend deploy, static deploy, optional rollout helpers, and brain-local verify, but it still does not publish binaries or replace separate external-origin evidence
 - use `scripts/release_orchestrator.py --stage backend|static|deploy|verify` for partial recovery runs after a timed-out or already-completed phase; the wrapper streams child output, prints quiet-step heartbeats, and has per-step timeout knobs.
-- use `scripts/release_orchestrator.py --brain-ip 82.21.114.104 --stage static --static-plan-only` when you need to validate and bundle current `webapp/out` + `marketing/out` without SSH/upload/symlink/reload changes.
-- latest current-origin full/default gate evidence is `docs/audit-artifacts/release-gate-full-local-2026-05-08.md`, `PASS` at `2026-05-08 11:45:24`; the older `2026-04-13` `release_orchestrator.py --gates-only` result and generic retained reports are historical pointers, not the current public-beta verdict.
+- latest verified local run: `python scripts/release_orchestrator.py --gates-only` exited `0` on `2026-04-13`; see `docs/audit-artifacts/release_gate_report.md` for the current local gate snapshot.
 - Add `--brain-ip 82.21.114.104` when you also want the predeploy node-readiness gate included in the same report.
 - `--release-metadata-file` and `--release-env-file` cannot be combined with `--gates-only`; after client artifacts are published, use the full `release_orchestrator.py` flow to sync runtime download URLs before deploy or verify.
 - `scripts/client_security_smoke.py` is the repo-level static guardrail for the `POKROV-app` seed contract, Android host manifest, runtime-artifact pin, and Windows release-seed expectations; it does not replace the required Android release-build reachability audit.
 - set `ANDROID_AUDIT_SERIAL=<device-serial>` before `release_gate_check.py` when you want the opt-in adb runtime localhost audit folded into the same report
-- set `ANDROID_AUDIT_EVIDENCE_JSON=<path-to-raw-android-localhost-audit-json>` when the physical audit already ran elsewhere and should be validated instead of rerun; the validation report defaults to `docs/audit-artifacts/android-physical-audit-evidence-validation-2026-05-08.json`
 - set `ANDROID_AUDIT_PACKAGE=space.pokrov.pokrov_android_shell` explicitly in release handoffs when recording Android physical-audit evidence
 - set `ANDROID_AUDIT_CONNECT_WAIT_SEC` and `ANDROID_AUDIT_DISCONNECT_WAIT_SEC` when that adb localhost audit needs non-default timing
-- without `ANDROID_AUDIT_SERIAL` or a `PASS` validation report from `ANDROID_AUDIT_EVIDENCE_JSON`, a green repo/static gate run still does not authorize Android public publication
+- without `ANDROID_AUDIT_SERIAL`, a green repo/static gate run still does not authorize Android public publication
 - an emulator-backed `ANDROID_AUDIT_SERIAL` run is useful for adb preflight, but the final Android public-release gate still requires `python scripts/android_localhost_audit.py` on physical hardware
 
 Deploy backend:
@@ -254,7 +247,6 @@ npm.cmd run test:e2e:admin
 Notes:
 
 - `webapp` owns the primary admin surface.
-- `/admin/release/` is the read-only release cockpit for operator go/no-go review; it aggregates runtime app links, Lava.top/email gates, metrics freshness, safe public claims, and external blockers, but it must not be treated as a publisher or deploy tool.
 - Real browser checks live under `webapp/e2e/`.
 - `tests/test_admin_webapp_smoke.py` is a structure/build smoke, not a replacement for Playwright browser coverage.
 - `tests/test_frontend_text_integrity.py` runs the shared mojibake scanner over active frontend and copy sources.
@@ -265,7 +257,6 @@ Notes:
 - the release-style Playwright scripts still clear a stale port owner first and disable server reuse so local browser checks do not inherit a leftover export server or stale HMR session.
 - admin browser checks should include a narrow mobile or Telegram WebView-like viewport so tap targets, overflow, and modal actions stay usable inside the embedded webapp.
 - observer-lite admin checks should cover dashboard summary counts, users-table filter parity, detail diagnostics, and node collector health rendering.
-- release-cockpit checks should cover the no-go state, runtime gates, external evidence blockers, and mobile-safe admin navigation before a public beta handoff is trusted.
 - user-facing config delivery should expose the single public `ссылка подключения` via `connect.pokrov.space` only in explicit manual/recovery fallback; hidden `?format=plain` compatibility must stay out of normal copy and browser flows.
 
 Run inside `marketing/`:
@@ -321,7 +312,7 @@ Client release-gate note:
 - the Windows wrapper now delegates to `C:/Users/kiwun/Documents/ai/POKROV-app/scripts/build-windows-release.ps1 -SyncRuntime -SkipTests -SkipAnalyze` and expects the unsigned setup EXE, portable ZIP, and manifest under `C:/Users/kiwun/Documents/ai/POKROV-app/apps/windows_shell/build/release_bundle/`
 - retained bridge bundles live under `C:/Users/kiwun/Documents/ai/POKROV-app/artifacts/releases/bridge/`; they are archive evidence, not the active release lane
 - run `python scripts/android_localhost_audit.py --serial <device-serial> --connect-wait-sec 30 --disconnect-wait-sec 15` on a release-installed Android build for the manual-assisted localhost listener audit
-- if you fold Android build targets into `release_gate_check.py`, export `ANDROID_AUDIT_SERIAL=<physical-device-serial>` or `ANDROID_AUDIT_EVIDENCE_JSON=<path-to-raw-physical-audit-json>` first, or let the gate fail loudly instead of treating a repo/static-only run as release-ready
+- if you fold Android build targets into `release_gate_check.py`, export `ANDROID_AUDIT_SERIAL=<physical-device-serial>` first or let the gate fail loudly instead of treating a repo/static-only run as release-ready
 - public client verification for this wave must cover routing presets `Global` and `All except RU`, plus DNS split and leak checks on Android and Windows
 - `Blocked only` remains hidden or internal until geo assets, rules, and DNS behavior are ready for honest public verification
 - when node-reachability evidence is included in a client release handoff, label `current-origin`, `brain-origin`, and `RU-origin` checks separately

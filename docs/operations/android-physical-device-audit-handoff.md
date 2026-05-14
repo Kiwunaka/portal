@@ -67,17 +67,6 @@ ops-local/android-localhost-audit.json
 - Disposable repo-local scratch: screenshots, UI XML dumps, logcat captures, and ad hoc runtime snapshots created for one Android audit run stay disposable unless they are deliberately copied into `docs/audit-artifacts/`.
 - Outside repo cleanup scope: machine-local Android tooling noise such as `C:\Windows\adb.exe`, `%TEMP%`, SDK install directories, and `~/.android` is workstation state, not repo cleanup state.
 
-Imported evidence path:
-
-```powershell
-$env:ANDROID_AUDIT_EVIDENCE_JSON="<path-to-raw-android-localhost-audit-json>"
-python scripts/validate_android_physical_audit_evidence.py `
-  $env:ANDROID_AUDIT_EVIDENCE_JSON `
-  --output docs\audit-artifacts\android-physical-audit-evidence-validation-2026-05-08.json
-```
-
-Use this only for a raw JSON produced by `scripts/android_localhost_audit.py` on physical hardware. The validator rejects emulator serials, wrong package names, missing release package evidence, debuggable builds, missing connect/disconnect metadata, and non-empty `failures`.
-
 9. Если времени не хватило, перезапустите проверку с большими таймаутами и запишите, какие значения использовали.
 
 ## Как включить это в общий release gate
@@ -90,15 +79,6 @@ $env:ANDROID_AUDIT_PACKAGE="space.pokrov.pokrov_android_shell"
 $env:ANDROID_AUDIT_RELEASE_EVIDENCE="<artifact/version/checksum>"
 python scripts/release_gate_check.py --client-platform-gates windows,android-apk,android-aab
 ```
-
-If the audit already ran elsewhere, fold retained evidence into the same gate instead:
-
-```powershell
-$env:ANDROID_AUDIT_EVIDENCE_JSON="<path-to-raw-android-localhost-audit-json>"
-python scripts/release_gate_check.py --client-platform-gates windows,android-apk,android-aab
-```
-
-The release gate will run `validate_android_physical_audit_evidence.py` and fail unless the validation report is `PASS`.
 
 Но это всё равно должно быть именно реальное устройство, а не эмулятор.
 

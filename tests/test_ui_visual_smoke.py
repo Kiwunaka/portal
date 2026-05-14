@@ -33,7 +33,7 @@ class UiVisualSmokeTests(unittest.TestCase):
         self.assertTrue(str(hero_check.path).endswith("marketing\\src\\components\\marketing-landing.tsx"))
         self.assertIn("config.webappUrl", hero_check.must_contain)
         self.assertIn("config.newsChannelUrl", hero_check.must_contain)
-        self.assertIn("href={paidBetaHref}", hero_check.must_contain)
+        self.assertIn("/checkout/?plan=", hero_check.must_contain)
         self.assertIn("Один спокойный путь", hero_check.must_contain)
         self.assertIn("lp-hero-stage", hero_check.must_contain)
         self.assertIn("lp-trust-grid", hero_check.must_contain)
@@ -41,7 +41,6 @@ class UiVisualSmokeTests(unittest.TestCase):
         self.assertIn("lp-footer-cta", hero_check.must_contain)
         self.assertIn('<details className="lp-faq-item">', hero_check.must_contain)
         self.assertIn("href={config.connectUrl}", hero_check.must_not_contain)
-        self.assertIn("/checkout/?plan=", hero_check.must_not_contain)
         self.assertIn("managed premium", hero_check.must_not_contain)
 
         layout_check = checks["marketing-layout-seo"]
@@ -67,13 +66,6 @@ class UiVisualSmokeTests(unittest.TestCase):
         webapp_entry = checks["webapp-entry"]
         self.assertIn("POKROV cabinet", webapp_entry.must_contain)
         self.assertIn("pokrovBranding.entryEyebrow", webapp_entry.must_contain)
-
-    def test_marketing_home_hero_keeps_word_boundary_for_text_extractors(self) -> None:
-        repo_root = Path(__file__).resolve().parents[1]
-        text = (repo_root / "marketing" / "src" / "components" / "home" / "homepage.tsx").read_text(encoding="utf-8")
-
-        self.assertIn('POKROV{" "}', text)
-        self.assertNotIn("POKROV\n              <br />", text)
 
 
 if __name__ == "__main__":

@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 from __future__ import annotations
 
-import argparse
 import base64
 import hashlib
 import hmac
@@ -68,22 +67,6 @@ def http_text(url: str) -> tuple[int, str]:
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Legacy guard smoke for FreeKassa staging endpoints.")
-    parser.add_argument(
-        "--legacy-reconciliation",
-        action="store_true",
-        help="Required explicit acknowledgement: FreeKassa is legacy reconciliation tooling, not the public-beta checkout path.",
-    )
-    args = parser.parse_args()
-    if not args.legacy_reconciliation:
-        print(
-            "[FAIL] FreeKassa staging smoke is legacy reconciliation-only. "
-            "Use Lava.top probe tooling for public-beta paid checkout evidence, "
-            "or pass --legacy-reconciliation for an intentional legacy check.",
-            file=sys.stderr,
-        )
-        return 2
-
     api_base = require("SMOKE_API_BASE_URL").rstrip("/")
     checkout_secret = require("CHECKOUT_TICKET_SECRET")
     tg_id = int(require("SMOKE_TEST_TG_ID"))
@@ -108,13 +91,14 @@ def main() -> int:
         method="POST",
         payload={"plan_code": plan_code, "checkout_ticket": ticket, "currency": "RUB"},
     )
-    if status not in {403, 503}:
+    if status != 200:
+        print(body_text)
+        raise SystemExit(f"Order creation failed with HTTP {status}")
+    payment_url = str(order.get("payment_url") or "").strip()
+    order_id = str(order.get("order_id") or "").strip()
+    if not payment_url or not order_id:
         print(json.dumps(order, ensure_ascii=False, indent=2))
-        raise SystemExit(f"Legacy FreeKassa public create was not blocked; HTTP {status}")
-    detail = str(order.get("detail") or body_text or "")
-    if "public beta RUB checkout" not in detail and "RUB checkout" not in detail:
-        print(json.dumps(order, ensure_ascii=False, indent=2))
-        raise SystemExit("Legacy FreeKassa public create returned an unexpected block reason")
+        raise SystemExit("Order creation succeeded but payment_url or order_id is missing")
 
     success_status, _ = http_text(f"{api_base}/pay/success")
     fail_status, _ = http_text(f"{api_base}/pay/fail")
@@ -123,9 +107,10 @@ def main() -> int:
 
     print(json.dumps({
         "ok": True,
-        "legacy_public_create_blocked": True,
-        "blocked_status": status,
-        "blocked_reason": detail,
+        "order_id": order_id,
+        "payment_url": payment_url,
+        "amount_rub": order.get("amount_rub"),
+        "discount_pct": order.get("discount_pct"),
         "success_status": success_status,
         "fail_status": fail_status,
     }, ensure_ascii=False, indent=2))

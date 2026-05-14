@@ -35,7 +35,7 @@ export const ADMIN_USERS_STATUS_OPTIONS = [
   { value: "active", label: "Активные" },
   { value: "expired", label: "Истёкшие" },
   { value: "blocked", label: "Заблокированные" },
-  { value: "manual_test", label: "Ручные/тестовые" },
+  { value: "manual_test", label: "Manual/Test" },
 ];
 
 export const ADMIN_USERS_ORIGIN_OPTIONS = [
@@ -43,7 +43,7 @@ export const ADMIN_USERS_ORIGIN_OPTIONS = [
   { value: "telegram", label: "Telegram" },
   { value: "app", label: "Приложение" },
   { value: "hybrid", label: "Приложение + Telegram" },
-  { value: "manual_test", label: "Ручные/тестовые" },
+  { value: "manual_test", label: "Manual/Test" },
 ];
 
 export const ADMIN_USERS_OBSERVER_OPTIONS = [
@@ -76,7 +76,7 @@ export const ADMIN_USERS_BULK_SEGMENT_OPTIONS = [
   { value: "blocked", label: "Заблокированные" },
   { value: "paid", label: "Платные" },
   { value: "free", label: "Бесплатные" },
-  { value: "manual_test", label: "Ручные/тестовые" },
+  { value: "manual_test", label: "Manual/Test" },
 ] as const;
 
 export function createDefaultBulkActionState(): AdminUsersBulkActionState {

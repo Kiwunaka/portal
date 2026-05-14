@@ -181,6 +181,7 @@ test("root auth keeps email hidden when delivery proof is incomplete", async ({ 
 
   await page.goto("/");
 
+  await expect(page.getByRole("heading", { name: "Готовим аккуратно" })).toBeVisible();
   await expect(page.getByRole("button", { name: "Создать аккаунт" })).toHaveCount(0);
   await expect(page.getByPlaceholder("email@example.com")).toHaveCount(0);
   await expect(page.locator("main")).toContainText("используйте Telegram");

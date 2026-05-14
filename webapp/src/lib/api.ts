@@ -47,31 +47,6 @@ export type ClientAppsPayload = {
   updated_at: string;
 };
 
-export type ClientRoutePolicyPayload = {
-  ok?: boolean;
-  route_mode: "all_traffic" | "selected_apps" | string;
-  selected_apps: string[];
-  requires_elevated_privileges?: boolean | null;
-  route_policy?: {
-    mode?: "all_traffic" | "selected_apps" | string;
-    selected_apps?: string[] | null;
-    requires_elevated_privileges?: boolean | null;
-  } | null;
-};
-
-export type UserPaymentOrder = {
-  order_id: string;
-  provider: string;
-  plan_code?: string | null;
-  amount: number;
-  currency: string;
-  status: string;
-  source?: string | null;
-  created_at?: string | null;
-  paid_at?: string | null;
-  attention_required?: boolean;
-};
-
 export type DashboardSnapshot = {
   tg_id: number;
   sub_type: string;
@@ -131,7 +106,6 @@ export type DashboardSnapshot = {
     haptic: boolean;
     lottie: boolean;
   };
-  payment_orders?: UserPaymentOrder[];
   linked_identities?: LinkedIdentityPayload | null;
   free_caps?: {
     location_code?: string | null;
@@ -487,6 +461,8 @@ export type AccessKeyStatusPayload = {
   days: number;
   device_limit: number;
   node_policy?: string | null;
+  created_by?: number | null;
+  redeemed_by?: number | null;
 };
 
 export type AccessKeyRedeemPayload = {
@@ -696,23 +672,6 @@ export type AdminPaymentEvent = {
   created_at?: string | null;
 };
 
-export type AdminPaymentEmailDelivery = {
-  status?: string | null;
-  mode?: string | null;
-  http_status?: number | null;
-};
-
-export type AdminPaymentFulfillment = {
-  mode?: string | null;
-  status?: string | null;
-  buyer_email?: string | null;
-  access_key_present: boolean;
-  access_key_preview?: string | null;
-  access_key_issued_at?: string | null;
-  email_delivery?: AdminPaymentEmailDelivery | null;
-  can_retry_email: boolean;
-};
-
 export type AdminPaymentOrder = {
   id: number;
   order_id: string;
@@ -735,7 +694,6 @@ export type AdminPaymentOrder = {
   paid_at?: string | null;
   event_count: number;
   last_event?: AdminPaymentEvent | null;
-  fulfillment?: AdminPaymentFulfillment | null;
 };
 
 export type AdminPaymentOrdersResponse = {
@@ -1240,7 +1198,6 @@ export type EmailAuthStatusResult = {
   enabled: boolean;
   public_enabled?: boolean;
   delivery_configured?: boolean;
-  delivery_url_configured?: boolean;
   delivery_secret_configured?: boolean;
   debug_echo?: boolean;
   mode?: string;
@@ -1276,8 +1233,6 @@ export type TelegramOidcFinishPayload = {
 
 export type AuthSessionPayload = {
   ok: boolean;
-  session_token?: string | null;
-  expires_in?: number | null;
   user: {
     id: number;
     account_id?: string;
@@ -1417,23 +1372,16 @@ function dispatchAuthRequired(detail?: { code?: string | null; message?: string 
 }
 
 async function readApiError(r: Response): Promise<string> {
-  const authErrorCode = String(r.headers.get("x-pokrov-auth-error") || "").trim();
-  const withAuthErrorCode = (message: string): string => {
-    const cleanMessage = String(message || "").trim();
-    if (!authErrorCode) return cleanMessage;
-    if (cleanMessage.toLowerCase().includes(authErrorCode.toLowerCase())) return cleanMessage;
-    return cleanMessage ? `${authErrorCode}: ${cleanMessage}` : authErrorCode;
-  };
   const text = (await r.text()).trim();
-  if (!text) return withAuthErrorCode(`API error: ${r.status}`);
+  if (!text) return `API error: ${r.status}`;
   if (classifyApiPayload({ bodyText: text, contentType: r.headers.get("content-type") || "" }) === "html") {
-    return withAuthErrorCode("Received app shell instead of API response");
+    return "Received app shell instead of API response";
   }
   try {
     const parsed = JSON.parse(text) as { detail?: string; message?: string };
-    return withAuthErrorCode(String(parsed?.detail || parsed?.message || text));
+    return String(parsed?.detail || parsed?.message || text);
   } catch {
-    return withAuthErrorCode(text);
+    return text;
   }
 }
 
@@ -1682,52 +1630,6 @@ async function apiFetch<T>(path: string, init?: ApiRequestInit): Promise<T> {
   throw lastErr || new Error("API error");
 }
 
-async function apiFetchBlob(path: string, init?: ApiRequestInit): Promise<Blob> {
-  const normalizedPath = path.startsWith("/") ? path : `/${path}`;
-  const bases = candidateApiBases();
-  let lastErr: any = null;
-  const { timeoutMs = DEFAULT_API_TIMEOUT_MS, signal, ...requestInit } = init || {};
-  for (const base of bases) {
-    const managedSignal = createManagedRequestSignal(signal, timeoutMs);
-    try {
-      const headers = new Headers(requestInit.headers || {});
-      applyAuthHeaders(headers);
-      const r = await fetch(`${base}${normalizedPath}`, { ...requestInit, headers, signal: managedSignal.signal });
-      if (!r.ok) {
-        const text = await readApiError(r);
-        if (r.status === 401) {
-          clearWebSessionToken();
-          dispatchAuthRequired({
-            code: r.headers.get("x-pokrov-auth-error"),
-            message: text,
-          });
-        }
-        throw new Error(text || `API error: ${r.status}`);
-      }
-      return await r.blob();
-    } catch (e: any) {
-      lastErr = managedSignal.abortedByTimeout() ? createTimeoutError(timeoutMs) : e;
-      if (managedSignal.abortedByCaller()) {
-        throw createAbortError(signal?.reason);
-      }
-      const msg = String(lastErr?.message || lastErr);
-      if (
-        managedSignal.abortedByTimeout() ||
-        msg.includes("Failed to fetch") ||
-        msg.includes("NetworkError") ||
-        msg.includes("fetch") ||
-        msg.includes("Received app shell instead of API response")
-      ) {
-        continue;
-      }
-      break;
-    } finally {
-      managedSignal.cleanup();
-    }
-  }
-  throw lastErr || new Error("API error");
-}
-
 export function fetchUser(tgId: number): Promise<UserPayload> {
   return apiFetch<UserPayload>(`/api/user/${tgId}`);
 }
@@ -1778,10 +1680,6 @@ export async function fetchNodeStatus(init?: NodeStatusRequestInit): Promise<Nod
 
 export function fetchClientApps(): Promise<ClientAppsPayload> {
   return apiFetch<ClientAppsPayload>("/api/client/apps");
-}
-
-export function fetchClientRoutePolicy(): Promise<ClientRoutePolicyPayload> {
-  return apiFetch<ClientRoutePolicyPayload>("/api/client/route-policy");
 }
 
 export function runNodeDiagnostics(): Promise<{
@@ -1927,17 +1825,6 @@ export function fetchAuthSession(): Promise<AuthSessionPayload> {
 
   const request = apiFetch<AuthSessionPayload>("/api/auth/session")
     .then((payload) => {
-      const refreshedToken = String(payload?.session_token || "").trim();
-      if (refreshedToken) {
-        setWebSessionToken(refreshedToken);
-        const refreshedCacheKey = getAuthSessionCacheKey();
-        if (refreshedCacheKey) {
-          authSessionCacheKey = refreshedCacheKey;
-          authSessionCacheValue = payload;
-          authSessionCachePromise = null;
-        }
-        return payload;
-      }
       if (authSessionCacheKey === cacheKey) {
         authSessionCacheValue = payload;
         authSessionCachePromise = null;
@@ -2015,10 +1902,6 @@ export async function uploadTicketAttachment(file: File): Promise<TicketAttachme
     },
     body: file,
   });
-}
-
-export function fetchTicketAttachmentBlob(path: string): Promise<Blob> {
-  return apiFetchBlob(path);
 }
 
 export async function getTicket(ticketId: number): Promise<TicketInfo> {
@@ -2507,29 +2390,6 @@ function normalizeAdminPaymentEvent(payload: Partial<AdminPaymentEvent> | null |
   };
 }
 
-function normalizeAdminPaymentFulfillment(
-  payload: Partial<AdminPaymentFulfillment> | null | undefined,
-): AdminPaymentFulfillment | null {
-  if (!payload) return null;
-  const delivery = payload.email_delivery || null;
-  return {
-    mode: payload.mode ?? null,
-    status: payload.status ?? null,
-    buyer_email: payload.buyer_email ?? null,
-    access_key_present: Boolean(payload.access_key_present),
-    access_key_preview: payload.access_key_preview ?? null,
-    access_key_issued_at: payload.access_key_issued_at ?? null,
-    email_delivery: delivery
-      ? {
-          status: delivery.status ?? null,
-          mode: delivery.mode ?? null,
-          http_status: delivery.http_status == null ? null : Number(delivery.http_status),
-        }
-      : null,
-    can_retry_email: Boolean(payload.can_retry_email),
-  };
-}
-
 function normalizeAdminPaymentOrder(payload: Partial<AdminPaymentOrder> | null | undefined): AdminPaymentOrder {
   const data = payload || {};
   const user = data.user || null;
@@ -2557,7 +2417,6 @@ function normalizeAdminPaymentOrder(payload: Partial<AdminPaymentOrder> | null |
     paid_at: data.paid_at ?? null,
     event_count: Number(data.event_count || 0),
     last_event: normalizeAdminPaymentEvent(data.last_event),
-    fulfillment: normalizeAdminPaymentFulfillment(data.fulfillment),
   };
 }
 
@@ -2716,26 +2575,6 @@ export async function adminPaymentReconcile(payload: {
     },
   );
   return { ok: Boolean(data.ok), order: normalizeAdminPaymentOrder(data.order) };
-}
-
-export async function adminPaymentResendAccessKeyEmail(payload: {
-  provider: string;
-  order_id: string;
-  note: string;
-}): Promise<{ ok: boolean; order: AdminPaymentOrder; delivery: { status?: string | null } }> {
-  const data = await apiFetch<{ ok: boolean; order: Partial<AdminPaymentOrder>; delivery?: { status?: string | null } }>(
-    `/api/admin/payments/orders/${encodeURIComponent(payload.provider)}/${encodeURIComponent(payload.order_id)}/resend-access-key-email`,
-    {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ note: payload.note }),
-    },
-  );
-  return {
-    ok: Boolean(data.ok),
-    order: normalizeAdminPaymentOrder(data.order),
-    delivery: data.delivery || { status: null },
-  };
 }
 
 export async function adminUserKeyHistory(tgId: number, limit = 100): Promise<AdminUserKeyHistoryRow[]> {
@@ -3006,21 +2845,11 @@ export async function adminTickets(status = "", limit = 30): Promise<TicketInfo[
   return data.tickets || [];
 }
 
-export async function adminTicket(ticketId: number): Promise<TicketInfo> {
-  const data = await apiFetch<{ ticket: TicketInfo }>(`/api/admin/tickets/${ticketId}`);
-  return data.ticket;
-}
-
-export async function adminTicketReply(ticketId: number, body: string, attachment?: TicketAttachmentInput): Promise<TicketInfo> {
+export async function adminTicketReply(ticketId: number, body: string): Promise<TicketInfo> {
   const data = await apiFetch<{ ticket: TicketInfo }>(`/api/admin/tickets/${ticketId}/reply`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      body,
-      media_type: attachment?.media_type ?? null,
-      media_file_id: attachment?.media_file_id ?? null,
-      media_payload: attachment?.media_payload ?? null,
-    }),
+    body: JSON.stringify({ body }),
   });
   return data.ticket;
 }

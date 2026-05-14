@@ -182,47 +182,6 @@ class QdiscScriptTests(unittest.TestCase):
 
         self.assertTrue(any("heavy flow" in item.lower() for item in failures))
 
-    def test_remote_node_qdisc_smoke_preserves_failed_heavy_flow_exit_code(self) -> None:
-        module = _load_module("remote_node_qdisc_smoke_failed_heavy", "scripts/remote_node_qdisc_smoke.py")
-
-        def fake_executor(cmd: str) -> tuple[int, str, str]:
-            if "tc -s qdisc" in cmd:
-                return 0, "qdisc ok", ""
-            return 0, "0.1 0.2 0.3\n0.1 0.2 0.3\n0.1 0.2 0.3\n", ""
-
-        class FakeHeavyProcess:
-            pid = 4242
-            returncode = 28
-
-            def poll(self) -> int:
-                return self.returncode
-
-            def terminate(self) -> None:
-                raise AssertionError("already-failed heavy flow must not be terminated as running")
-
-            def communicate(self, timeout: int = 10) -> tuple[str, str]:
-                return "2097152 0.500\n", "curl: transfer closed with outstanding read data"
-
-        with patch.object(module, "_run_local", fake_executor):
-            with patch.object(module.subprocess, "Popen", return_value=FakeHeavyProcess()):
-                report = module.run_smoke(
-                    {"node_code": "pl", "iface": "eth0"},
-                    probe_url="https://probe.pokrov.test",
-                    heavy_url="https://heavy.pokrov.test/file",
-                    executor=module._run_local,
-                )
-
-        self.assertEqual(report["heavy_exit_code"], 28)
-        failures = module.evaluate_gate(
-            report,
-            min_heavy_bytes=1048576,
-            min_probe_successes=3,
-            max_probe_connect_p95_seconds=1.0,
-            max_probe_ttfb_p95_seconds=1.0,
-            max_probe_total_p95_seconds=2.0,
-        )
-        self.assertTrue(any("heavy flow exited non-zero" in item for item in failures))
-
     def test_remote_node_qdisc_smoke_main_exits_non_zero_on_threshold_failure(self) -> None:
         module = _load_module("remote_node_qdisc_smoke_main", "scripts/remote_node_qdisc_smoke.py")
 

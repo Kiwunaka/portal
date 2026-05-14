@@ -18,8 +18,8 @@ The rework canon now freezes the following target identity and access model for 
 - `app-next/` and `external/client-fork/app/` are retired bootstrap or rollback references only and must not override the active contract
 - one canonical `app-first` account links `install_id`, email, Telegram, devices, and activation keys
 - store-app entry remains the premium-trial path: the first valid device gets `5 days` of premium trial without mandatory registration, then downgrades to `free_monthly`
-- site email signup is a browser continuation lane shown only when `/api/auth/email/status` is green; it must not be described as the premium-trial path
-- browser continuation currently starts from app handoff, Telegram, or status-gated email, all landing in the same cabinet session family
+- site email signup remains a planned browser continuation lane marked `soon`; until launch it must not be described as a live public parity path or a premium-trial path
+- browser continuation currently starts from app handoff or Telegram; email joins that same cabinet session family only after the marked-`soon` launch goes live
 - Telegram is recovery, linking, restore-premium, bonus, community, support fallback, and bot-side fallback commerce, not the primary login or commerce wall
 - commerce becomes `buy key -> redeem key -> managed premium`, with raw subscription links hidden from default UX and exposed only for explicit recovery/manual flows
 - free-tier policy is fixed to `NL-free`, `5 GB / 30 days`, `50 Mbps per IP`, `1 device`, with monthly reset
@@ -169,8 +169,6 @@ Current live backend contract:
 - `GET /api/access-keys/status/{key}`
 - `POST /api/access-keys/redeem`
 - `POST /api/admin/access-keys/issue`
-- `GET /api/admin/gift-codes`
-- `POST /api/admin/gift-codes`
 - `GET /api/client/promo-slots`
 - `GET /api/admin/promo-slots`
 - `PUT /api/admin/promo-slots`
@@ -196,9 +194,6 @@ Unified access-contract note:
 
 - `GET /api/dashboard`, `GET /api/user/{tg_id}`, and `GET /api/client/profile/managed` now carry the same identity/access family additions: `linked_identities`, `free_caps`, `redeem_eligibility`, `promo_slots`, `hidden_transport_matrix`, and `location_matrix`
 - the access-key redeem path returns the same access-state family so app, cabinet, and admin can refresh off one canonical contract
-- cabinet `/redeem` keeps access-key redeem and promo-code redeem as separate controls; promo codes continue through `POST /api/promo/redeem`, while access keys continue through the access-key status/redeem contract
-- Telegram `/redeem` must accept both legacy gift-card codes and plan-coded access keys stored in `GiftCard.card_type`; the bot is a fallback surface, not a separate redemption authority
-- web admin `/admin/promos` is the operator surface for issuing plan-coded access keys, checking key status, managing promo slots, and creating legacy gift cards only when compatibility gift-flow is needed
 
 Beta rate-limit contract:
 
@@ -213,7 +208,7 @@ Web surfaces support app-first continuation through:
 
 - app or bot handoff into an existing cabinet session
 - Telegram widget or Telegram OIDC login in browser
-- additive email signup, verification, login, recovery, and reset as a status-gated browser lane rather than the app-first trial path
+- additive email signup, verification, login, recovery, and reset as a marked-`soon` browser lane rather than a live public default
 - dashboard and checkout continuation from an existing web session
 
 Contract rule:
@@ -223,14 +218,10 @@ Contract rule:
 - HTML responses from `app.pokrov.space` must never be treated as valid API JSON
 - web login should continue the user into account or checkout, not into a dead-end landing
 - app handoff and Telegram are the active browser-continuation entry families today
-- `GET /api/auth/session` must prefer a valid browser web-session token over stale Telegram headers, but fresh, signed Telegram `initData` may safely recover a missing, invalid, or expired browser session by returning a fresh `session_token` and `expires_in`; the WebApp stores that token silently
-- Telegram WebApp `initData` freshness is bounded by `TELEGRAM_WEBAPP_INIT_MAX_AGE_SECONDS`; stale signed `initData` must return a human `telegram_init_invalid` reauth state instead of refreshing the browser session forever
-- Telegram Login Widget payloads with stale `auth_date`, deprecated OAuth callback tokens, expired/deprecated backend responses, or equivalent widget-token freshness failures should fall forward to one fresh Telegram OIDC attempt instead of showing raw token language to the user
-- if neither the browser token nor Telegram `initData` is valid, the API returns a human reauth error code such as `web_session_expired` or `telegram_init_invalid` instead of exposing raw token/debug wording
-- additive email auth must stay hidden or unavailable unless public mode, delivery webhook URL, delivery relay secret, and non-debug runtime state are green
-- additive email auth must issue the same browser session family used by the cabinet, checkout, and support flows while exposing `auth_origin` and linked-identity summary for support/admin visibility
+- additive email auth must stay marked `soon` until sender identity, delivery confirmation, and the public launch path are genuinely live
+- once launched, additive email auth must issue the same browser session family used by the cabinet, checkout, and support flows while exposing `auth_origin` and linked-identity summary for support/admin visibility
 - the additive email-auth rollout uses endpoint families under `/api/auth/email/*` for register, verify, login, recovery, and reset
-- public email register, verify, and recovery should remain disabled or explicitly unavailable whenever transactional sender identity, delivery-confirmation visibility, webhook URL, or relay secret is missing
+- public email register, verify, and recovery should remain disabled or explicitly marked `soon` until transactional sender identity and delivery-confirmation/webhook visibility are live
 - browser entry screens in `webapp` are continuation-first and must not become a second landing-page pitch
 - new user-facing `subscription_url` values must point to `connect.pokrov.space`
 - legacy `api.pokrov.space/s8Kx2mP7qR4wT/...` remains compatibility-only for older imports and recovery cases
@@ -238,23 +229,20 @@ Contract rule:
 
 ## Checkout Continuation
 
-1. user opens public pricing, renewal continuation, or bot-side payment status
-2. hosted checkout checks Lava.top invoice/webhook readiness, reconciliation evidence, and email access-key delivery evidence before creating an order
-3. paid checkout must remain unavailable or degraded until that launch evidence is green
-4. after evidence is green, an access key is checked with `GET /api/access-keys/status/{key}` and then redeemed through `POST /api/access-keys/redeem`, or an authenticated renewal refreshes the current account directly
-5. the backend refreshes managed access on the same app-first account
-6. app and web surfaces reload their unified access contract from the same identity root
+1. user opens public pricing, renewal continuation, or bot-side purchase
+2. hosted checkout sells an activation key against the canonical catalog
+3. the key is checked with `GET /api/access-keys/status/{key}` and then redeemed through `POST /api/access-keys/redeem`
+4. the backend refreshes managed access on the same app-first account
+5. app and web surfaces reload their unified access contract from the same identity root
 
 Checkout rule:
 
-- public pricing starts from app-first marketing surfaces; `pokrov.space/checkout/` is a public plan/status continuation route, not the first-pressure onboarding step
+- public pricing starts from app-first marketing surfaces; `pokrov.space/checkout/` is the public plan and activation-key continuation route, not the first-pressure onboarding step
 - payment provider readiness is contractually separate from app-first access; public checkout must remain unavailable or degraded until `docs/product/payment-and-access-key-contract.md` and provider evidence are satisfied
-- checkout promo discounts shown from shared `pricing_preview.discount_codes` must also be applied server-side before provider order creation; UI-only discounts are not a valid launch state
-- `webapp` renewal is continuation-only and should defer to the same hosted access-key flow after payment evidence is green
+- `webapp` renewal is continuation-only and should defer to the same hosted activation-key flow
 - Telegram bot billing remains valid as a secondary path; bot orders are Telegram-ticket-bound and do not collect buyer email
-- raw subscription links remain hidden from default public commerce, first-layer cabinet UI, and paid Telegram notification text; authenticated cabinet surfaces and the Telegram manual-link button may show the single `connect.pokrov.space` link after fulfillment as an explicit beta-stage fallback while still preferring the POKROV app and cabinet
+- raw subscription links remain hidden from default public commerce and first-layer cabinet UI, but the authenticated cabinet and paid Telegram bot flow may show the single `connect.pokrov.space` link after fulfillment as an explicit beta-stage manual import fallback while still preferring the POKROV app and cabinet
 - signed payment callbacks must not grant access unless the normalized local status is `paid`; failed, cancelled, refunded, chargeback, invalid-signature, and unknown/manual-review states are recorded for operator reconciliation instead of extending the account
-- paid public access-key email fulfillment is visible in the admin payment ledger as sanitized state, and email retry requires a paid order plus an operator audit note
 
 ## Subscription Delivery Semantics
 

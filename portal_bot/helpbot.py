@@ -9,14 +9,13 @@ from the main bot admin queue (shared DB tables).
 from __future__ import annotations
 
 import logging
-import json
 import os
 from datetime import datetime, timezone
 from pathlib import Path
 
 from aiogram import Bot, Dispatcher, F, Router
 from aiogram.filters import CommandStart
-from aiogram.types import BotCommand, CallbackQuery, FSInputFile, InlineKeyboardMarkup, Message
+from aiogram.types import CallbackQuery, FSInputFile, InlineKeyboardButton, InlineKeyboardMarkup, Message
 from dotenv import load_dotenv
 
 # Load env from repo-local file first to avoid cwd-dependent startup behavior.
@@ -25,7 +24,6 @@ load_dotenv()
 
 from copy_catalog import get_copy_text
 from db import SessionLocal, init_db
-from telegram_buttons import modern_inline_button as InlineKeyboardButton
 from tickets_repo import (
     STATUS_CLOSED,
     STATUS_IN_PROGRESS,
@@ -90,20 +88,6 @@ def _ticket_message_preview(text: str, limit: int = 200) -> str:
     if not t:
         return "(без текста)"
     return t if len(t) <= limit else t[: max(0, limit - 1)] + "…"
-
-
-def _ticket_attachment_preview(msg) -> str:
-    if not getattr(msg, "media_file_id", None):
-        return ""
-    try:
-        payload = json.loads(str(getattr(msg, "media_payload", "") or "{}"))
-    except Exception:
-        payload = {}
-    name = str(payload.get("name") or "").strip()
-    if not name:
-        kind = str(getattr(msg, "media_type", "") or "").strip().lower()
-        name = "скриншот" if kind == "photo" else "вложение"
-    return f" · 📎 {name}"
 
 
 def _main_menu(is_admin: bool) -> InlineKeyboardMarkup:
@@ -193,105 +177,6 @@ def _main_bot_hint() -> str:
     return f"Ответ из админки: https://t.me/{MAIN_BOT_USERNAME}"
 
 
-def _json_attachment_payload(payload: dict) -> str:
-    return json.dumps(payload, ensure_ascii=False, separators=(",", ":"))
-
-
-def _telegram_attachment_from_message(message: Message) -> dict | None:
-    photos = list(getattr(message, "photo", None) or [])
-    if photos:
-        photo = photos[-1]
-        file_id = str(getattr(photo, "file_id", "") or "").strip()
-        if file_id:
-            payload = {
-                "source": "telegram",
-                "kind": "photo",
-                "name": "Скриншот из Telegram",
-                "content_type": "image/jpeg",
-                "size": int(getattr(photo, "file_size", 0) or 0),
-                "width": int(getattr(photo, "width", 0) or 0),
-                "height": int(getattr(photo, "height", 0) or 0),
-                "telegram_file_id": file_id,
-                "telegram_file_unique_id": str(getattr(photo, "file_unique_id", "") or "").strip(),
-            }
-            return {
-                "media_type": "photo",
-                "media_file_id": file_id,
-                "media_payload": _json_attachment_payload(payload),
-                "fallback_body": "приложил скриншот",
-            }
-
-    video = getattr(message, "video", None)
-    if video is not None:
-        file_id = str(getattr(video, "file_id", "") or "").strip()
-        if file_id:
-            name = str(getattr(video, "file_name", "") or "").strip() or "Видео из Telegram"
-            payload = {
-                "source": "telegram",
-                "kind": "video",
-                "name": name,
-                "content_type": str(getattr(video, "mime_type", "") or "video/mp4").strip(),
-                "size": int(getattr(video, "file_size", 0) or 0),
-                "duration": int(getattr(video, "duration", 0) or 0),
-                "width": int(getattr(video, "width", 0) or 0),
-                "height": int(getattr(video, "height", 0) or 0),
-                "telegram_file_id": file_id,
-                "telegram_file_unique_id": str(getattr(video, "file_unique_id", "") or "").strip(),
-            }
-            return {
-                "media_type": "video",
-                "media_file_id": file_id,
-                "media_payload": _json_attachment_payload(payload),
-                "fallback_body": "приложил видео",
-            }
-
-    document = getattr(message, "document", None)
-    if document is not None:
-        file_id = str(getattr(document, "file_id", "") or "").strip()
-        if file_id:
-            name = str(getattr(document, "file_name", "") or "").strip() or "Файл из Telegram"
-            payload = {
-                "source": "telegram",
-                "kind": "file",
-                "name": name,
-                "content_type": str(getattr(document, "mime_type", "") or "application/octet-stream").strip(),
-                "size": int(getattr(document, "file_size", 0) or 0),
-                "telegram_file_id": file_id,
-                "telegram_file_unique_id": str(getattr(document, "file_unique_id", "") or "").strip(),
-            }
-            return {
-                "media_type": "file",
-                "media_file_id": file_id,
-                "media_payload": _json_attachment_payload(payload),
-                "fallback_body": f"приложил файл {name}",
-            }
-
-    return None
-
-
-def _message_body(message: Message, *, role: str, attachment: dict | None = None) -> str:
-    text = (getattr(message, "text", None) or getattr(message, "caption", None) or "").strip()
-    if text:
-        return text
-    if attachment:
-        actor = "Оператор" if role == "admin" else "Пользователь"
-        return f"{actor} {attachment.get('fallback_body') or 'приложил файл'}."
-    return ""
-
-
-async def _copy_ticket_media_to_chat(message: Message, chat_id: int, *, caption: str | None = None) -> bool:
-    copy_to = getattr(message, "copy_to", None)
-    if not callable(copy_to):
-        return False
-    try:
-        kwargs = {"caption": caption} if caption else {}
-        await copy_to(chat_id=int(chat_id), **kwargs)
-        return True
-    except Exception as e:
-        logger.warning("helpbot media copy failed chat=%s err=%s", chat_id, e)
-        return False
-
-
 def _get_or_create_user_ticket(session, tg_id: int):
     ticket = get_user_active_ticket(session, tg_id)
     created = False
@@ -320,7 +205,7 @@ async def _render_ticket(callback: CallbackQuery, ticket_id: int) -> None:
         lines = []
         for msg in msgs:
             role = "Оператор" if (msg.sender_role or "").lower() == "admin" else "Пользователь"
-            lines.append(f"[{_now_str(msg.created_at)}] {role}: {_ticket_message_preview(msg.body)}{_ticket_attachment_preview(msg)}")
+            lines.append(f"[{_now_str(msg.created_at)}] {role}: {_ticket_message_preview(msg.body)}")
         history = "\n".join(lines) if lines else "Сообщений пока нет."
 
         text = (
@@ -362,7 +247,7 @@ async def start(message: Message) -> None:
                 f"🆕 Новое обращение #{ticket.id} от пользователя {tg_id} (helpbot).\n{_main_bot_hint()}",
             )
         await message.answer(
-            f"Обращение #{ticket.id} открыто.\nСледующий шаг: опишите вопрос одним сообщением или приложите скриншот/лог.",
+            f"Обращение #{ticket.id} открыто.\nСледующий шаг: опишите вопрос одним сообщением.",
             reply_markup=InlineKeyboardMarkup(
                 inline_keyboard=[
                     [InlineKeyboardButton(text="🎫 Открыть обращение", callback_data=f"hb_ticket_view_{ticket.id}")],
@@ -421,7 +306,7 @@ async def ticket_new(callback: CallbackQuery) -> None:
             )
         pending_ticket_replies[tg_id] = ticket.id
         await callback.message.edit_text(
-            f"Обращение #{ticket.id} открыто.\nСледующий шаг: одним сообщением опишите, что случилось, или приложите скриншот/лог.",
+            f"Обращение #{ticket.id} открыто.\nСледующий шаг: одним сообщением опишите, что случилось и на каком шаге возникла проблема.",
             reply_markup=InlineKeyboardMarkup(
                 inline_keyboard=[
                     [InlineKeyboardButton(text="🎫 Открыть обращение", callback_data=f"hb_ticket_view_{ticket.id}")],
@@ -499,7 +384,7 @@ async def ticket_reply(callback: CallbackQuery) -> None:
 
     pending_ticket_replies[callback.from_user.id] = ticket_id
     await callback.message.edit_text(
-        f"Ответ для обращения #{ticket_id}: отправьте текст, скриншот или файл, и мы сразу добавим его в диалог.",
+        f"Ответ для обращения #{ticket_id}: отправьте одно текстовое сообщение, и мы сразу добавим его в диалог.",
         reply_markup=InlineKeyboardMarkup(
             inline_keyboard=[[InlineKeyboardButton(text="◀️ Назад", callback_data=f"hb_ticket_view_{ticket_id}")]]
         ),
@@ -599,11 +484,10 @@ async def back_home(callback: CallbackQuery) -> None:
     )
 
 
-async def _capture_ticket_reply_message(message: Message, *, allow_attachment: bool = False) -> None:
+@router.message(F.text)
+async def capture_ticket_reply(message: Message) -> None:
     tg_id = message.from_user.id
-    attachment = _telegram_attachment_from_message(message) if allow_attachment else None
-    role = "admin" if tg_id == ADMIN_ID else "user"
-    text = _message_body(message, role=role, attachment=attachment)
+    text = (message.text or "").strip()
     if not text:
         return
     ticket_id = pending_ticket_replies.get(tg_id, 0)
@@ -626,38 +510,26 @@ async def _capture_ticket_reply_message(message: Message, *, allow_attachment: b
             await message.answer("Нет доступа к обращению.", reply_markup=_main_menu(tg_id == ADMIN_ID))
             return
 
+        role = "admin" if tg_id == ADMIN_ID else "user"
         add_ticket_message(
             session,
             ticket_id=ticket.id,
             sender_tg_id=tg_id,
             sender_role=role,
             body=text,
-            media_type=attachment.get("media_type") if attachment else None,
-            media_file_id=attachment.get("media_file_id") if attachment else None,
-            media_payload=attachment.get("media_payload") if attachment else None,
         )
         if tg_id == ADMIN_ID:
             set_ticket_status(session, ticket=ticket, status=STATUS_IN_PROGRESS, assigned_admin_tg_id=ADMIN_ID)
-            copied = False
-            if attachment:
-                copied = await _copy_ticket_media_to_chat(
-                    message,
-                    int(ticket.user_tg_id),
-                    caption=f"💬 Новый ответ команды POKROV по обращению #{ticket.id}:\n{text}",
-                )
-            if not copied:
-                try:
-                    await message.bot.send_message(ticket.user_tg_id, f"💬 Новый ответ команды POKROV по обращению #{ticket.id}:\n{text}")
-                except Exception as e:
-                    logger.warning("helpbot reply to user failed ticket=%s err=%s", ticket.id, e)
+            try:
+                await message.bot.send_message(ticket.user_tg_id, f"💬 Новый ответ команды POKROV по обращению #{ticket.id}:\n{text}")
+            except Exception as e:
+                logger.warning("helpbot reply to user failed ticket=%s err=%s", ticket.id, e)
         else:
             set_ticket_status(session, ticket=ticket, status=STATUS_OPEN)
             await _notify_admin(
                 message.bot,
                 f"🆕 Новое сообщение в обращении #{ticket.id} от пользователя {tg_id} (helpbot).\n{text}\n\n{_main_bot_hint()}",
             )
-            if attachment:
-                await _copy_ticket_media_to_chat(message, ADMIN_ID)
             if created:
                 await _notify_admin(
                     message.bot,
@@ -679,34 +551,12 @@ async def _capture_ticket_reply_message(message: Message, *, allow_attachment: b
     )
 
 
-@router.message(F.photo | F.document | F.video)
-async def capture_ticket_attachment(message: Message) -> None:
-    await _capture_ticket_reply_message(message, allow_attachment=True)
-
-
-@router.message(F.text)
-async def capture_ticket_reply(message: Message) -> None:
-    await _capture_ticket_reply_message(message)
-
-
 async def main() -> None:
     dp = Dispatcher()
     dp.include_router(router)
     bot = Bot(token=HELP_BOT_TOKEN)
-    await _configure_support_bot_commands(bot)
     logger.info("Support helpbot starting...")
     await dp.start_polling(bot, allowed_updates=dp.resolve_used_update_types())
-
-
-async def _configure_support_bot_commands(bot: Bot) -> None:
-    try:
-        await bot.set_my_commands(
-            [
-                BotCommand(command="start", description="Открыть поддержку"),
-            ]
-        )
-    except Exception as e:
-        logger.warning("helpbot set_my_commands failed: %s", e)
 
 
 if __name__ == "__main__":

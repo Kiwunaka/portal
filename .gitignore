@@ -77,6 +77,7 @@ external/client-fork/branding/assets/
 external/client-fork/branding/brand.env
 
 # Local design/reference sources (not part of production repo)
+.content-video-ad/
 external/client-fork/
 mockup/
 mockupv2/

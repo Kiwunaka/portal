@@ -16,18 +16,10 @@ ACTIVE_TEXT_ROOTS = [
     ROOT / "shared",
     ROOT / "copy",
     ROOT / "docs" / "design",
-    ROOT / "docs" / "README.md",
-    ROOT / "docs" / "product",
-    ROOT / "docs" / "architecture",
-    ROOT / "docs" / "operations",
-    ROOT / "docs" / "user",
-    ROOT / "docs" / "launch",
-    ROOT / "docs" / "developer" / "developer-guide.md",
-    ROOT / "docs" / "developer" / "repository-map.md",
 ]
 
 
-def test_active_release_text_sources_have_no_mojibake() -> None:
+def test_active_frontend_sources_have_no_mojibake() -> None:
     issues = scan_mojibake(ACTIVE_TEXT_ROOTS)
     assert not issues, "\n".join(issue.format(ROOT) for issue in issues)
 

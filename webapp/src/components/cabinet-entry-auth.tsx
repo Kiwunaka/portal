@@ -26,7 +26,6 @@ const EMAIL_MODE_LABELS = {
   recover: "Восстановить доступ",
 } as const;
 const EMAIL_MODES = new Set(Object.keys(EMAIL_MODE_LABELS));
-
 const PASSWORD_HINT = "Минимум 10 символов.";
 
 export default function CabinetEntryAuth({ siteUrl }: { siteUrl: string }) {
@@ -201,11 +200,11 @@ export default function CabinetEntryAuth({ siteUrl }: { siteUrl: string }) {
               Email
             </p>
             <h3 className="mt-2 text-xl font-semibold text-slate-950 dark:text-slate-50">
-              {emailReady ? "Email-вход" : "Проверяем доставку"}
+              {emailReady ? "Email-вход" : "Готовим аккуратно"}
             </h3>
           </div>
           <span className="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-semibold text-slate-600 dark:border-white/10 dark:bg-white/[0.05] dark:text-slate-300">
-            {emailReady ? "Готово" : "Недоступно"}
+            {emailReady ? "Готово" : "Скоро"}
           </span>
         </div>
 
@@ -282,7 +281,7 @@ export default function CabinetEntryAuth({ siteUrl }: { siteUrl: string }) {
           </div>
         ) : (
           <p className="mt-3 text-sm leading-6 text-slate-600 dark:text-slate-300">
-            Email-вход скрыт, пока доставка писем на проде недоступна. Сейчас для браузера используйте Telegram или напишите в поддержку, если доступ нужно восстановить вручную.
+            Email-вход появится после готовности доставки писем. Сейчас для браузера используйте Telegram или напишите в поддержку, если доступ нужно восстановить вручную.
           </p>
         )}
       </div>

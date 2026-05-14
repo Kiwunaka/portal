@@ -22,11 +22,11 @@ export function AdminUserKeyHistoryView({ rows, busy, onReload }: AdminUserKeyHi
     <div className={`${adminInsetPanelClass} mt-3 text-sm`}>
       <div className="mb-3 flex items-center justify-between gap-2">
         <div>
-          <p className="text-sm font-semibold text-slate-50">История ключей</p>
-          <p className="mt-1 text-xs leading-5 text-slate-400">Операции с ключами: сбросы, ротации и синхронизация по нодам.</p>
+          <p className="text-sm font-semibold text-slate-50">Key history</p>
+          <p className="mt-1 text-xs leading-5 text-slate-400">Low-level key operations, including resets, rotations, and resync actions across nodes.</p>
         </div>
         <button className={adminButtonClass("secondary", "xs")} type="button" onClick={onReload} disabled={busy}>
-          Обновить
+          Reload
         </button>
       </div>
 
@@ -35,11 +35,11 @@ export function AdminUserKeyHistoryView({ rows, busy, onReload }: AdminUserKeyHi
           <table className="min-w-full text-xs">
             <thead>
               <tr className="border-b border-[#22303c] bg-[#101821] text-left text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500">
-                <th className="px-3 py-3">Дата</th>
-                <th className="px-3 py-3">Действие</th>
-                <th className="px-3 py-3">Нода</th>
-                <th className="px-3 py-3">Оператор</th>
-                <th className="px-3 py-3">Метаданные</th>
+                <th className="px-3 py-3">Date</th>
+                <th className="px-3 py-3">Action</th>
+                <th className="px-3 py-3">Node</th>
+                <th className="px-3 py-3">Actor</th>
+                <th className="px-3 py-3">Metadata</th>
               </tr>
             </thead>
             <tbody>
@@ -56,7 +56,7 @@ export function AdminUserKeyHistoryView({ rows, busy, onReload }: AdminUserKeyHi
               ))}
             </tbody>
           </table>
-          {!rows.length ? <p className="px-3 py-4 text-xs text-slate-400">Истории ключей пока нет.</p> : null}
+          {!rows.length ? <p className="px-3 py-4 text-xs text-slate-400">No key history yet.</p> : null}
         </div>
       </div>
     </div>
@@ -68,11 +68,11 @@ export function AdminUserAuditView({ rows, busy, onReload }: AdminUserAuditViewP
     <div className={`${adminInsetPanelClass} mt-3 text-sm`}>
       <div className="mb-3 flex items-center justify-between gap-2">
         <div>
-          <p className="text-sm font-semibold text-slate-50">Админ-аудит</p>
-          <p className="mt-1 text-xs leading-5 text-slate-400">Операторские действия по выбранному аккаунту внутри админки.</p>
+          <p className="text-sm font-semibold text-slate-50">Admin audit</p>
+          <p className="mt-1 text-xs leading-5 text-slate-400">Higher-level operator actions taken against the selected account inside admin surfaces.</p>
         </div>
         <button className={adminButtonClass("secondary", "xs")} type="button" onClick={onReload} disabled={busy}>
-          Обновить
+          Reload
         </button>
       </div>
 
@@ -81,10 +81,10 @@ export function AdminUserAuditView({ rows, busy, onReload }: AdminUserAuditViewP
           <table className="min-w-full text-xs">
             <thead>
               <tr className="border-b border-[#22303c] bg-[#101821] text-left text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500">
-                <th className="px-3 py-3">Дата</th>
-                <th className="px-3 py-3">Оператор</th>
-                <th className="px-3 py-3">Действие</th>
-                <th className="px-3 py-3">Метаданные</th>
+                <th className="px-3 py-3">Date</th>
+                <th className="px-3 py-3">Actor</th>
+                <th className="px-3 py-3">Action</th>
+                <th className="px-3 py-3">Metadata</th>
               </tr>
             </thead>
             <tbody>
@@ -100,7 +100,7 @@ export function AdminUserAuditView({ rows, busy, onReload }: AdminUserAuditViewP
               ))}
             </tbody>
           </table>
-          {!rows.length ? <p className="px-3 py-4 text-xs text-slate-400">Записей аудита пока нет.</p> : null}
+          {!rows.length ? <p className="px-3 py-4 text-xs text-slate-400">No audit records yet.</p> : null}
         </div>
       </div>
     </div>

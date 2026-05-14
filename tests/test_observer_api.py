@@ -180,7 +180,7 @@ class ObserverApiTests(unittest.TestCase):
         return _sign_telegram_init_data(
             bot_token=self.bot_token,
             params={
-                "auth_date": str(int(time.time())),
+                "auth_date": "1700000000",
                 "query_id": "AAEAAAE",
                 "user": f'{{"id":{tg_id},"first_name":"Test","username":"{username}"}}',
             },

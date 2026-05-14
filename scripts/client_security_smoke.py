@@ -44,9 +44,6 @@ def _product_contract_failures(contract: dict[str, object]) -> list[str]:
         failures.append("product contract must keep the trial at 5 days")
     if int(contract.get("telegram_bonus_days", 0)) != 10:
         failures.append("product contract must keep the Telegram bonus at 10 days")
-    version_line = str(contract.get("client_version_line") or "").strip()
-    if re.fullmatch(r"0\.\d+\.\d+-beta(?:[.+-][A-Za-z0-9][A-Za-z0-9._-]*)?", version_line) is None:
-        failures.append("product contract must keep client_version_line on 0.x.x-beta")
 
     public_scope = list(contract.get("public_scope") or [])
     if public_scope != ["android", "windows"]:

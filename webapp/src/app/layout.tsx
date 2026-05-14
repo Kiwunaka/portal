@@ -1,5 +1,6 @@
 import type { CSSProperties } from "react";
 import type { Metadata, Viewport } from "next";
+import { JetBrains_Mono, Manrope } from "next/font/google";
 import Script from "next/script";
 
 import { CANONICAL_WEBAPP_URL, getDesignTokenCssVariables } from "@/lib/portal";
@@ -8,6 +9,10 @@ import { POKROV_LEGACY_THEME_STORAGE_KEYS, POKROV_THEME_STORAGE_KEY, pokrovBrand
 import QaOverlayHost from "./qa-overlay-host";
 import TelegramWebAppInit from "./telegram-webapp-init";
 import "./globals.css";
+
+const bodyFont = Manrope({ subsets: ["latin", "cyrillic"], variable: "--font-body" });
+const displayFont = Manrope({ subsets: ["latin", "cyrillic"], variable: "--font-display" });
+const mono = JetBrains_Mono({ subsets: ["latin", "cyrillic"], variable: "--font-mono" });
 
 export const metadata: Metadata = {
   metadataBase: new URL(CANONICAL_WEBAPP_URL),
@@ -37,7 +42,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="ru" className="scroll-smooth" suppressHydrationWarning>
       <body
-        className="relative min-h-screen overflow-x-hidden bg-[var(--bg)] font-body text-[var(--text)] antialiased selection:bg-emerald-700/12 selection:text-slate-950 dark:bg-[#111715] dark:text-[var(--text-dark)] dark:selection:bg-emerald-300/18 dark:selection:text-slate-50"
+        className={`${bodyFont.variable} ${displayFont.variable} ${mono.variable} relative min-h-screen overflow-x-hidden bg-[var(--bg)] font-body text-[var(--text)] antialiased selection:bg-emerald-700/12 selection:text-slate-950 dark:bg-[#111715] dark:text-[var(--text-dark)] dark:selection:bg-emerald-300/18 dark:selection:text-slate-50`}
         style={designTokenVars}
         suppressHydrationWarning
       >

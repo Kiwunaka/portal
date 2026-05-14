@@ -14,7 +14,7 @@
 | PASS | `marketing\public\apple-icon.png` | Marketing SEO route is present |
 | PASS | `marketing\src\components\marketing-landing.tsx` | Public marketing CTA no longer routes to connect host |
 | PASS | `marketing\src\components\marketing-landing.tsx` | Public cabinet CTA points to webapp host |
-| PASS | `marketing\src\components\marketing-landing.tsx` | Pricing CTA stays gated to install/status while release is NO-GO |
+| PASS | `marketing\src\components\marketing-landing.tsx` | Pricing CTA routes through public checkout gateway |
 | PASS | `marketing\src\components\marketing-landing.tsx` | Marketing footer exposes canonical news channel |
 | PASS | `marketing\src\app\layout.tsx` | Layout includes `metadataBase` metadata wiring |
 | PASS | `marketing\src\app\layout.tsx` | Layout includes `manifest` metadata wiring |

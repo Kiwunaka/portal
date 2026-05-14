@@ -3,20 +3,13 @@
 import AppRouteLink from "@/components/app-route-link";
 import { CabinetCardGrid, CabinetHero, CabinetList, CabinetRoute, CabinetSection } from "@/components/cabinet/surface";
 import { resolvePlanLabel } from "@/lib/access-policy";
-import { fetchAccessKeyStatus, redeemAccessKey, redeemPromo, type AccessKeyStatusPayload } from "@/lib/api";
-import { userFacingErrorMessage } from "@/lib/public-error-messages";
+import { fetchAccessKeyStatus, redeemAccessKey, type AccessKeyStatusPayload } from "@/lib/api";
 import { usePortalSession } from "@/lib/session";
 import { useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 
 function normalizeKey(value: string): string {
-  return String(value || "")
-    .trim()
-    .replace(/[\u2010\u2011\u2012\u2013\u2014\u2212_]+/g, "-")
-    .replace(/\s+/g, "-")
-    .replace(/-+/g, "-")
-    .replace(/^-+|-+$/g, "")
-    .toUpperCase();
+  return String(value || "").trim().toUpperCase();
 }
 
 function formatDate(value?: string | null): string {
@@ -36,10 +29,8 @@ export default function RedeemPage() {
   const { user, dash, refresh } = usePortalSession();
   const [keyInput, setKeyInput] = useState(() => normalizeKey(searchParams.get("key") || ""));
   const [status, setStatus] = useState<AccessKeyStatusPayload | null>(null);
-  const [promoInput, setPromoInput] = useState("");
   const [lookupBusy, setLookupBusy] = useState(false);
   const [redeemBusy, setRedeemBusy] = useState(false);
-  const [promoBusy, setPromoBusy] = useState(false);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
 
@@ -65,7 +56,7 @@ export default function RedeemPage() {
       }
       return nextStatus;
     } catch (nextError) {
-      setError(userFacingErrorMessage(nextError, "Не удалось проверить ключ."));
+      setError(String((nextError as { message?: string })?.message || nextError || "Не удалось проверить ключ."));
       return null;
     } finally {
       setLookupBusy(false);
@@ -73,8 +64,7 @@ export default function RedeemPage() {
   };
 
   const onRedeem = async (): Promise<void> => {
-    const currentKey = normalizeKey(keyInput);
-    const nextStatus = status?.key === currentKey ? status : await lookup(currentKey);
+    const nextStatus = status || (await lookup());
     if (!nextStatus) return;
     if (!nextStatus.exists) {
       setError("Такой ключ не найден.");
@@ -94,31 +84,9 @@ export default function RedeemPage() {
       await refresh();
       setMessage(`Ключ ${payload.key} применен. Профиль уже обновлен.`);
     } catch (nextError) {
-      setError(userFacingErrorMessage(nextError, "Не удалось применить ключ."));
+      setError(String((nextError as { message?: string })?.message || nextError || "Не удалось применить ключ."));
     } finally {
       setRedeemBusy(false);
-    }
-  };
-
-  const onRedeemPromo = async (): Promise<void> => {
-    const code = normalizeKey(promoInput);
-    if (!code) {
-      setError("Введите промокод, чтобы мы могли его применить.");
-      return;
-    }
-
-    setPromoBusy(true);
-    setError("");
-    setMessage("");
-    try {
-      const payload = await redeemPromo(code);
-      await refresh();
-      setPromoInput("");
-      setMessage(`Промокод ${String(payload?.code || code)} применен.`);
-    } catch (nextError) {
-      setError(userFacingErrorMessage(nextError, "Не удалось применить промокод."));
-    } finally {
-      setPromoBusy(false);
     }
   };
 
@@ -220,8 +188,8 @@ export default function RedeemPage() {
       description="Если у вас уже есть ключ оплаты или подарка, примените его здесь к текущему профилю."
       actions={
         <>
-          <AppRouteLink href="#redeem-key" className="outline-btn rounded-full px-5 py-3 text-sm font-semibold">
-            Проверить статус ключа
+          <AppRouteLink href="/subscription/checkout/" className="outline-btn rounded-full px-5 py-3 text-sm font-semibold">
+            Купить ключ
           </AppRouteLink>
           <AppRouteLink href="/support/" className="outline-btn rounded-full px-5 py-3 text-sm font-semibold">
             Поддержка
@@ -278,7 +246,7 @@ export default function RedeemPage() {
         ]}
       />
 
-      <div id="redeem-key" className="scroll-mt-28 grid gap-6 xl:grid-cols-[1.04fr_0.96fr]">
+      <div className="grid gap-6 xl:grid-cols-[1.04fr_0.96fr]">
         <CabinetSection
           eyebrow="Проверка"
           title="Проверить и применить"
@@ -290,12 +258,7 @@ export default function RedeemPage() {
           <div className="mt-2 flex flex-col gap-3 md:flex-row">
             <input
               value={keyInput}
-              onChange={(event) => {
-                setKeyInput(normalizeKey(event.target.value));
-                setStatus(null);
-                setMessage("");
-                setError("");
-              }}
+              onChange={(event) => setKeyInput(normalizeKey(event.target.value))}
               placeholder="Например: POKROV-XXXX-XXXX"
               className="w-full rounded-2xl border border-slate-200/80 bg-white px-4 py-3 text-sm outline-none transition focus:border-emerald-400 dark:border-white/10 dark:bg-white/[0.04]"
             />
@@ -337,37 +300,6 @@ export default function RedeemPage() {
           <CabinetCardGrid items={helpItems} className="xl:grid-cols-1" />
         </CabinetSection>
       </div>
-
-      <CabinetSection
-        eyebrow="Промокод"
-        title="Применить промокод"
-        description="Если у вас промокод на дни или скидку, примените его отдельно от ключа доступа."
-      >
-        <label htmlFor="promo-code" className="block text-xs font-semibold text-[var(--atlas-text-muted)]">
-          Промокод
-        </label>
-        <div className="mt-2 flex flex-col gap-3 md:flex-row">
-          <input
-            id="promo-code"
-            value={promoInput}
-            onChange={(event) => {
-              setPromoInput(normalizeKey(event.target.value));
-              setMessage("");
-              setError("");
-            }}
-            placeholder="Например: WELCOME14"
-            className="w-full rounded-2xl border border-slate-200/80 bg-white px-4 py-3 text-sm outline-none transition focus:border-emerald-400 dark:border-white/10 dark:bg-white/[0.04]"
-          />
-          <button
-            type="button"
-            disabled={promoBusy}
-            onClick={() => void onRedeemPromo()}
-            className="btn-primary rounded-2xl px-5 py-3 text-sm font-semibold disabled:opacity-60"
-          >
-            {promoBusy ? "Применяем..." : "Применить промокод"}
-          </button>
-        </div>
-      </CabinetSection>
 
       <CabinetSection
         eyebrow="Статус"

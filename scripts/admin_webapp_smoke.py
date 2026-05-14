@@ -16,7 +16,6 @@ API_CLIENT = WEBAPP_ROOT / "src" / "lib" / "api.ts"
 
 REQUIRED_ADMIN_ROUTES = [
     "dashboard/page.tsx",
-    "release/page.tsx",
     "users/page.tsx",
     "nodes/page.tsx",
     "tickets/page.tsx",
@@ -38,11 +37,7 @@ REQUIRED_API_EXPORTS = [
     "adminStartLinks",
     "adminWheelConfig",
     "adminMetricsTimeseries",
-    "adminMetricsStatus",
     "adminNodesTraffic",
-    "fetchClientApps",
-    "getEmailAuthStatus",
-    "getRubPaymentProviders",
 ]
 
 

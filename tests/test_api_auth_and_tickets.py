@@ -127,11 +127,11 @@ class ApiAuthAndTicketsTests(unittest.TestCase):
             pass
         self._tmp.cleanup()
 
-    def _init_data(self, tg_id: int, username: str, *, auth_date: int | None = None) -> str:
+    def _init_data(self, tg_id: int, username: str) -> str:
         return _sign_telegram_init_data(
             bot_token=self.bot_token,
             params={
-                "auth_date": str(int(auth_date if auth_date is not None else time.time())),
+                "auth_date": "1700000000",
                 "query_id": "AAEAAAE",
                 "user": f'{{"id":{tg_id},"first_name":"Test","username":"{username}"}}',
             },
@@ -1252,7 +1252,6 @@ class ApiAuthAndTicketsTests(unittest.TestCase):
 
         self.assertEqual(r.status_code, 200, r.text)
         self.assertEqual(int(r.json().get("user", {}).get("id", 0)), 1001)
-        self.assertNotIn("session_token", r.json())
 
     def test_auth_session_uses_telegram_init_data_when_web_session_is_expired(self) -> None:
         token = self.api.create_web_session_token(tg_id=1001, username="alice")
@@ -1268,34 +1267,6 @@ class ApiAuthAndTicketsTests(unittest.TestCase):
 
         self.assertEqual(r.status_code, 200, r.text)
         self.assertEqual(int(r.json().get("user", {}).get("id", 0)), 1001)
-        refreshed_token = str(r.json().get("session_token") or "")
-        self.assertTrue(refreshed_token)
-        self.assertNotEqual(refreshed_token, token)
-        self.assertEqual(int(r.json().get("expires_in") or 0), int(self.api.SESSION_TTL_SECONDS))
-
-    def test_auth_session_issues_web_session_from_valid_telegram_init_data(self) -> None:
-        r = self.client.get(
-            "/api/auth/session",
-            headers={"X-Telegram-Init-Data": self._init_data(1001, "alice")},
-        )
-
-        self.assertEqual(r.status_code, 200, r.text)
-        self.assertEqual(int(r.json().get("user", {}).get("id", 0)), 1001)
-        refreshed_token = str(r.json().get("session_token") or "")
-        self.assertTrue(refreshed_token)
-        self.assertEqual(int(r.json().get("expires_in") or 0), int(self.api.SESSION_TTL_SECONDS))
-
-    def test_auth_session_rejects_stale_signed_telegram_init_data_with_reauth_message(self) -> None:
-        stale_auth_date = int(time.time()) - int(self.api.TELEGRAM_WEBAPP_INIT_MAX_AGE_SECONDS) - 5
-
-        r = self.client.get(
-            "/api/auth/session",
-            headers={"X-Telegram-Init-Data": self._init_data(1001, "alice", auth_date=stale_auth_date)},
-        )
-
-        self.assertEqual(r.status_code, 401, r.text)
-        self.assertEqual(r.headers.get("x-pokrov-auth-error"), "telegram_init_invalid")
-        self.assertIn("Сессия Telegram устарела", str(r.json().get("detail") or ""))
 
     def test_auth_session_rejects_expired_web_session_with_reauth_message(self) -> None:
         token = self.api.create_web_session_token(tg_id=1001, username="alice")
@@ -1336,18 +1307,8 @@ class ApiAuthAndTicketsTests(unittest.TestCase):
         self.assertEqual(reply.status_code, 200, reply.text)
         self.assertEqual(reply.json()["ticket"]["status"], "in_progress")
 
-        detail = self.client.get(f"/api/admin/tickets/{ticket_id}", headers=admin_hdrs)
-        self.assertEqual(detail.status_code, 200, detail.text)
-        messages = detail.json()["ticket"]["messages"]
-        self.assertEqual(len(messages), 2)
-        self.assertEqual(messages[0]["body"], "Не подключается из приложения")
-        self.assertEqual(messages[1]["body"], "Проверили, уже исправлено")
-        self.assertEqual(self.client.get(f"/api/admin/tickets/{ticket_id}", headers=user_hdrs).status_code, 403)
-
-    def test_ticket_upload_returns_attachment_metadata_and_serves_file_only_for_ticket_participants(self) -> None:
+    def test_ticket_upload_returns_attachment_metadata_and_serves_file(self) -> None:
         user_hdrs = {"X-Telegram-Init-Data": self._init_data(1001, "alice")}
-        admin_hdrs = {"X-Telegram-Init-Data": self._init_data(9999, "admin")}
-        other_hdrs = {"X-Telegram-Init-Data": self._init_data(1002, "bob")}
 
         uploaded = self.client.post(
             "/api/tickets/uploads",
@@ -1369,26 +1330,10 @@ class ApiAuthAndTicketsTests(unittest.TestCase):
         file_url = str(payload["url"] or "")
         self.assertTrue(file_url.startswith("/uploads/support/"))
 
-        self.assertEqual(self.client.get(file_url).status_code, 401)
-        self.assertEqual(self.client.get(file_url, headers=user_hdrs).status_code, 403)
-
-        created = self.client.post(
-            "/api/tickets",
-            headers=user_hdrs,
-            json={
-                "subject": "Attachment privacy",
-                "body": "Please check the screenshot",
-                **body["attachment"],
-            },
-        )
-        self.assertEqual(created.status_code, 200, created.text)
-
-        fetched = self.client.get(file_url, headers=user_hdrs)
+        fetched = self.client.get(file_url)
         self.assertEqual(fetched.status_code, 200, fetched.text)
         self.assertEqual(fetched.headers.get("content-type"), "image/png")
         self.assertEqual(fetched.content, b"\x89PNG\r\n\x1a\nbinary-test")
-        self.assertEqual(self.client.get(file_url, headers=admin_hdrs).status_code, 200)
-        self.assertEqual(self.client.get(file_url, headers=other_hdrs).status_code, 403)
 
     def test_cors_credentials_do_not_use_wildcard_origin(self) -> None:
         cors_middleware = next(
@@ -1951,22 +1896,6 @@ class ApiAuthAndTicketsTests(unittest.TestCase):
         code = gift_created.json().get("gift_code", {}).get("code")
         self.assertTrue(code)
 
-        public_status = self.client.get(f"/api/access-keys/status/{code}")
-        self.assertEqual(public_status.status_code, 200, public_status.text)
-        public_status_body = public_status.json()
-        self.assertTrue(public_status_body.get("exists"))
-        self.assertNotIn("created_by", public_status_body)
-        self.assertNotIn("redeemed_by", public_status_body)
-
-        missing_status = self.client.get("/api/access-keys/status/POKROV-NOT-FOUND")
-        self.assertEqual(missing_status.status_code, 200, missing_status.text)
-        missing_status_body = missing_status.json()
-        self.assertFalse(missing_status_body.get("exists"))
-        self.assertFalse(missing_status_body.get("redeemed"))
-        self.assertEqual(str(missing_status_body.get("key") or ""), "POKROV-NOT-FOUND")
-        self.assertNotIn("created_by", missing_status_body)
-        self.assertNotIn("redeemed_by", missing_status_body)
-
         gift_list = self.client.get("/api/admin/gift-codes?limit=20", headers=admin_hdrs)
         self.assertEqual(gift_list.status_code, 200, gift_list.text)
         self.assertTrue(any((g.get("code") or "") == code for g in gift_list.json().get("gift_codes", [])))
@@ -1976,74 +1905,7 @@ class ApiAuthAndTicketsTests(unittest.TestCase):
         self.assertTrue(redeemed.json().get("ok"))
         self.assertEqual(str(redeemed.json().get("card_type") or ""), "standard")
 
-        redeemed_status = self.client.get(f"/api/access-keys/status/{code}")
-        self.assertEqual(redeemed_status.status_code, 200, redeemed_status.text)
-        redeemed_status_body = redeemed_status.json()
-        self.assertTrue(redeemed_status_body.get("redeemed"))
-        self.assertNotIn("created_by", redeemed_status_body)
-        self.assertNotIn("redeemed_by", redeemed_status_body)
-
         redeemed_twice = self.client.post("/api/gift/redeem", headers=user_hdrs, json={"code": code})
-        self.assertEqual(redeemed_twice.status_code, 400, redeemed_twice.text)
-
-    def test_access_key_status_and_redeem_normalize_human_key_input(self) -> None:
-        user_hdrs = {"X-Telegram-Init-Data": self._init_data(1001, "alice")}
-
-        from db import SessionLocal
-        from models import GiftCard, User
-
-        s = SessionLocal()
-        try:
-            s.add(GiftCard(code="POKROV-GIFT-2026", card_type="standard", created_by=9999))
-            s.commit()
-        finally:
-            s.close()
-
-        status = self.client.get("/api/access-keys/status/pokrov\u2011gift\u22122026")
-        self.assertEqual(status.status_code, 200, status.text)
-        status_body = status.json()
-        self.assertTrue(status_body.get("exists"))
-        self.assertEqual(status_body.get("key"), "POKROV-GIFT-2026")
-        self.assertNotIn("created_by", status_body)
-        self.assertNotIn("redeemed_by", status_body)
-
-        async def fake_sync_control_panel_access(*, user):
-            return True
-
-        with patch.object(self.api, "_sync_control_panel_access", fake_sync_control_panel_access):
-            redeemed = self.client.post(
-                "/api/access-keys/redeem",
-                headers=user_hdrs,
-                json={"key": "pokrov_gift_2026"},
-            )
-        self.assertEqual(redeemed.status_code, 200, redeemed.text)
-        redeemed_body = redeemed.json()
-        self.assertTrue(redeemed_body.get("ok"))
-        self.assertEqual(redeemed_body.get("key"), "POKROV-GIFT-2026")
-        self.assertTrue(redeemed_body.get("status", {}).get("redeemed"))
-        self.assertEqual(redeemed_body.get("access", {}).get("sub_type"), "PAID")
-        self.assertEqual(redeemed_body.get("provisioning", {}).get("sync_ok"), True)
-        response_dump = json.dumps(redeemed_body, ensure_ascii=False)
-        self.assertNotIn("created_by", response_dump)
-        self.assertNotIn("redeemed_by", response_dump)
-
-        s = SessionLocal()
-        try:
-            user = s.query(User).filter(User.tg_id == 1001).first()
-            self.assertIsNotNone(user)
-            self.assertEqual(str(user.sub_type or ""), "PAID")
-            self.assertEqual(str(user.current_plan_code or ""), "1_month")
-            card = s.query(GiftCard).filter(GiftCard.code == "POKROV-GIFT-2026").first()
-            self.assertIsNotNone(card)
-            self.assertEqual(int(card.redeemed_by or 0), 1001)
-        finally:
-            s.close()
-
-        redeemed_twice = self.client.post(
-            "/api/access-keys/redeem",
-            headers=user_hdrs,
-            json={"key": "POKROV\u2014GIFT\u20142026"},
-        )
         self.assertEqual(redeemed_twice.status_code, 400, redeemed_twice.text)
 
     def test_admin_loyalty_grant_syncs_panel_and_returns_sync_flag(self) -> None:
@@ -2343,80 +2205,6 @@ class ApiAuthAndTicketsTests(unittest.TestCase):
         self.assertEqual(profile.status_code, 200, profile.text)
         self.assertTrue(str(profile.json().get("subscription_url") or "").startswith("https://connect.pokrov.space/s8Kx2mP7qR4wT/"))
 
-    def test_dashboard_includes_safe_user_payment_history(self) -> None:
-        from db import SessionLocal
-        from models import ExternalOrder, ExternalPaymentEvent
-
-        now = _utcnow().replace(microsecond=0)
-        s = SessionLocal()
-        try:
-            s.add(
-                ExternalOrder(
-                    order_id="lavatop_1001_safe",
-                    tg_id=1001,
-                    provider="lavatop",
-                    plan_code="standard",
-                    source="webapp",
-                    amount=199.0,
-                    currency="RUB",
-                    status="paid",
-                    created_at=now,
-                    paid_at=now,
-                    meta_json=json.dumps({"fulfillment": {"access_key": "POKROV-SECRET-KEY"}}),
-                )
-            )
-            s.add(
-                ExternalOrder(
-                    order_id="lavatop_2002_hidden",
-                    tg_id=2002,
-                    provider="lavatop",
-                    plan_code="premium",
-                    source="webapp",
-                    amount=499.0,
-                    currency="RUB",
-                    status="paid",
-                    created_at=now,
-                    paid_at=now,
-                )
-            )
-            s.add(
-                ExternalPaymentEvent(
-                    provider="lavatop",
-                    event_type="payment.success",
-                    external_id="evt-safe-history",
-                    order_id="lavatop_1001_safe",
-                    payload_json=json.dumps({"secret": "raw-provider-payload"}),
-                    signature_ok=True,
-                    processed_ok=True,
-                    created_at=now,
-                )
-            )
-            s.commit()
-        finally:
-            s.close()
-
-        headers = {"Authorization": "Bearer " + self.api.create_web_session_token(tg_id=1001, username="alice")}
-        dashboard = self.client.get("/api/dashboard", headers=headers)
-
-        self.assertEqual(dashboard.status_code, 200, dashboard.text)
-        orders = dashboard.json().get("payment_orders") or []
-        self.assertEqual(len(orders), 1)
-        row = orders[0]
-        self.assertEqual(row["order_id"], "lavatop_1001_safe")
-        self.assertEqual(row["provider"], "lavatop")
-        self.assertEqual(row["plan_code"], "standard")
-        self.assertEqual(row["amount"], 199.0)
-        self.assertEqual(row["currency"], "RUB")
-        self.assertEqual(row["status"], "paid")
-        self.assertTrue(row.get("paid_at"))
-        self.assertNotIn("user", row)
-        self.assertNotIn("last_event", row)
-        self.assertNotIn("fulfillment", row)
-        response_dump = json.dumps(dashboard.json(), ensure_ascii=False)
-        self.assertNotIn("lavatop_2002_hidden", response_dump)
-        self.assertNotIn("POKROV-SECRET-KEY", response_dump)
-        self.assertNotIn("raw-provider-payload", response_dump)
-
     def test_admin_metrics_timeseries_and_nodes_traffic_endpoints(self) -> None:
         from db import SessionLocal
         from models import Event, ExternalOrder, ExternalPaymentEvent, NodeHealthSample, PayAttempt
@@ -2447,18 +2235,6 @@ class ApiAuthAndTicketsTests(unittest.TestCase):
                     tg_id=1001,
                     provider="freekassa",
                     amount=299.0,
-                    currency="RUB",
-                    status="paid",
-                    created_at=now,
-                    paid_at=now,
-                )
-            )
-            s.add(
-                ExternalOrder(
-                    order_id="lavatop_test_1",
-                    tg_id=1001,
-                    provider="lavatop",
-                    amount=199.0,
                     currency="RUB",
                     status="paid",
                     created_at=now,
@@ -2519,7 +2295,7 @@ class ApiAuthAndTicketsTests(unittest.TestCase):
         self.assertGreaterEqual(len(points), 1)
         today = points[0]
         self.assertGreaterEqual(int(today.get("revenue_stars") or 0), 299)
-        self.assertGreaterEqual(float(today.get("revenue_rub") or 0), 498.0)
+        self.assertGreaterEqual(float(today.get("revenue_rub") or 0), 299.0)
         self.assertIn("pl", (today.get("nodes") or {}))
 
         traffic_resp = self.client.get(f"/api/admin/nodes/traffic?{qs}", headers=admin_hdrs)

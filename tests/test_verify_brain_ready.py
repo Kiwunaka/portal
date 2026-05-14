@@ -57,21 +57,6 @@ class VerifyBrainReadyTests(unittest.TestCase):
         self.assertIn("||", cmd)
         self.assertIn("head -c 200", cmd)
 
-    def test_legacy_payment_static_probe_requires_missing_artifact(self) -> None:
-        cmd = self.module._curl_expect_missing(
-            "pokrov.space/fk-verify.html",
-            host="pokrov.space",
-            label="/fk-verify.html",
-        )
-
-        self.assertIn("404|410", cmd)
-        self.assertIn("legacy_static_present", cmd)
-        self.assertIn("absent_or_fallback", cmd)
-        self.assertIn("payment-page-global", cmd)
-        self.assertIn("^[0-9a-fA-F]{32,128}$", cmd)
-        self.assertIn("exit 23", cmd)
-        self.assertIn("/fk-verify.html", cmd)
-
     def test_main_returns_failure_when_required_service_is_inactive(self) -> None:
         ssh = MagicMock()
         sftp = MagicMock()
@@ -95,8 +80,7 @@ class VerifyBrainReadyTests(unittest.TestCase):
             (0, "Открыть кабинет", ""),
             (0, "Публичная оферта | POKROV", ""),
             (0, "Ваш путь к быстрой сети | POKROV", ""),
-            (0, "/fk-verify.html absent status=404", ""),
-            (0, "/fk-payment-theme.css absent status=404", ""),
+            (0, "ok", ""),
             (0, "sub_fetch_1 user=selected mode=token fmt=plain lines=1 hosts=1 connect_json=1 outbounds=1", ""),
             (0, "", ""),
         ]

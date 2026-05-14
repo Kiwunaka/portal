@@ -105,8 +105,8 @@ export default function SettingsPage() {
         ? "Email уже привязан к аккаунту."
         : emailReady
           ? "Можно подключить email к этому аккаунту без выхода из кабинета."
-          : "Email-вход скрыт, пока доставка писем недоступна.",
-      badge: linkedEmail || (emailReady ? "Можно подключить" : "Недоступен"),
+          : "Email-вход готовим отдельно. Пока не показываем недоделанный сценарий.",
+      badge: linkedEmail || (emailReady ? "Можно подключить" : "Скоро"),
       tone: linkedEmail ? ("info" as const) : ("neutral" as const),
       action: canLinkEmail ? (
         <a href="#email-link" className="text-sm font-semibold text-emerald-800 dark:text-emerald-300">
@@ -328,14 +328,14 @@ export default function SettingsPage() {
           },
           {
             label: "Email",
-            value: linkedEmail || (emailReady ? "Можно подключить" : "Недоступен"),
-            hint: linkedEmail ? "Связка уже есть." : emailReady ? "Подключается прямо в настройках." : "Пока доставка писем недоступна, этот вход скрыт.",
+            value: linkedEmail || (emailReady ? "Можно подключить" : "Скоро"),
+            hint: linkedEmail ? "Связка уже есть." : emailReady ? "Подключается прямо в настройках." : "Пока честно держим этот вход выключенным.",
             tone: linkedEmail ? "info" : "neutral",
           },
           {
             label: "Если нужен следующий шаг",
-            value: dash?.is_active ? "Проверить устройства" : "Проверить статус продления",
-            hint: dash?.is_active ? "Полезно перед переносом доступа." : "Покажем доступный следующий шаг, если срок закончился.",
+            value: dash?.is_active ? "Проверить устройства" : "Открыть оплату",
+            hint: dash?.is_active ? "Полезно перед переносом доступа." : "Самый прямой путь, если срок закончился.",
             tone: "neutral",
           },
         ]}

@@ -5,7 +5,6 @@ from __future__ import annotations
 
 import contextlib
 import io
-import re
 import sys
 from pathlib import Path
 
@@ -16,11 +15,6 @@ if str(SCRIPT_DIR) not in sys.path:
 
 from release_gate_check import _redact_text  # noqa: E402
 import smoke_client_apps  # noqa: E402
-
-_GITHUB_RELEASE_ASSET_SIGNED_URL_RE = re.compile(
-    r"(https://release-assets\.githubusercontent\.com/[^\s?`]+)\?([^\s`]+)",
-    re.IGNORECASE,
-)
 
 
 def _parse_wrapper_args(argv: list[str]) -> tuple[bool, list[str]]:
@@ -35,8 +29,7 @@ def _parse_wrapper_args(argv: list[str]) -> tuple[bool, list[str]]:
 
 
 def _redact_runtime_text(text: str) -> str:
-    redacted = _redact_text(text)
-    return _GITHUB_RELEASE_ASSET_SIGNED_URL_RE.sub(r"\1?<redacted-query>", redacted)
+    return _redact_text(text)
 
 
 def _run_smoke(argv: list[str]) -> int:

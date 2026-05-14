@@ -1,23 +1,23 @@
-# Макросы поддержки
+# Support Macros
 
-Обновлено: 2026-05-08
+Last updated: 2026-04-26
 
-## Загрузка не видна
+## Download Not Visible
 
-Возможно, для вашего аккаунта еще не открыт бета-файл. Откройте кабинет: https://app.pokrov.space/ и проверьте раздел загрузок. Если файла все еще нет, ответьте здесь, и мы проверим доступ к бете. Пожалуйста, не используйте неофициальные зеркала.
+Your account may not have an approved beta file yet. Open the cabinet at https://app.pokrov.space/ and check Downloads. If the file is still missing, reply here and we will check beta access. Please do not use unofficial mirrors.
 
-## Ограничение Android-беты
+## Android Beta Limitation
 
-Android сейчас доступен только одобренным участникам беты и не публикуется через магазины. Физическая проверка текущего кандидата учитывается как operator-attested; если у вас нет официальной ссылки в кабинете, напишите нам, и мы проверим доступ.
+Android is currently limited to approved beta users. Public Android release waits for signing and a physical release-build security audit.
 
-## Предупреждение Windows
+## Windows SmartScreen Warning
 
-Windows-сборка может показывать предупреждение Microsoft Defender SmartScreen или неизвестного издателя, потому что доверенная подпись не входит в эту волну. Если вы не ожидали бета-сборку, остановитесь и сначала напишите в поддержку.
+The Windows beta may show a Microsoft Defender SmartScreen or unknown-publisher warning while trusted signing is incomplete. If you were not expecting a beta build, stop and ask support first.
 
-## Не появился Telegram-бонус
+## Telegram Bonus Missing
 
-Проверьте, что Telegram связан с тем же аккаунтом POKROV, вы подписаны на `@pokrov_vpn`, а затем снова нажмите проверку бонуса в приложении или кабинете.
+Check that Telegram is linked to the same POKROV account, you are subscribed to `@pokrov_vpn`, and you tapped the bonus check action again in the app or cabinet.
 
-## Вопрос по оплате или ключу доступа
+## Payment Or Key Issue
 
-Пришлите время оплаты, выбранный срок, получили ли вы ключ доступа и где пытались его применить. Не отправляйте данные карты.
+Send payment time, selected plan, whether you received an activation key, and where you tried to redeem it. Do not send card details.

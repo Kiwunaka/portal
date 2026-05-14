@@ -1,6 +1,6 @@
 # POKROV WebApp
 
-Last updated: 2026-05-08
+Last updated: 2026-04-28
 
 ## Document Status
 
@@ -10,7 +10,7 @@ This file is the local authority for `webapp/` and the browser cabinet/admin sur
 
 `webapp/` is the continuation-first cabinet and admin surface for:
 
-- browser entry and web-login continuation from app handoff, Telegram, and status-gated public email
+- browser entry and web-login continuation from app handoff, Telegram, and email when the runtime email delivery gate is fully ready
 - personal cabinet flows with top-level IA `Dashboard`, `Subscription`, `Devices`, `Statistics`, and `Support`
 - task routes for downloads, redeem, and hosted-checkout continuation inside that same cabinet model
 - hosted key-first checkout continuation
@@ -40,7 +40,6 @@ Current operator routes:
 
 - `/admin/`
 - `/admin/dashboard/`
-- `/admin/release/`
 - `/admin/users/`
 - `/admin/network/`
 - `/admin/nodes/`
@@ -57,11 +56,9 @@ Keep the public/browser split explicit:
 - `marketing/` owns the homepage, public `/checkout/`, offer/privacy pages, and indexable SEO landing pages
 - `marketing/` keeps trial, install, and first connection as the primary public path; checkout stays an honest continuation after the user has checked the product or when plan context is explicit
 - `webapp/` starts when the user needs session continuation, cabinet actions, redeem, support, renewal, statistics, or admin tooling
-- browser entry should route known or newly verified users into the same cabinet session model whether they arrived from app handoff, Telegram, or the status-gated email lane
+- browser entry should route known or newly verified users into the same cabinet session model whether they arrived from app handoff, Telegram, or the public email lane when delivery is fully ready
 - public `Open cabinet` CTA should point to `https://app.pokrov.space/`
 - public pricing and acquisition belong to `marketing/`; cabinet checkout is continuation-only and should defer to the hosted key-first flow
-- `/admin/release/` is the read-only release cockpit for operator go/no-go review; it summarizes runtime app links, Lava.top/email gates, metrics freshness, safe public claims, and external evidence blockers, but it does not publish GitHub Releases, deploy, or post to Telegram
-- `/admin/payments/` shows sanitized order, callback, fulfillment, and email-delivery state; paid public access-key email resend is available only with an operator audit note
 
 ## Runtime Contract
 
@@ -81,7 +78,7 @@ Rules:
 - `?format=plain` remains hidden compatibility-only behavior and must stay out of normal cabinet UX
 - `connect.pokrov.space` is for config delivery, not for public acquisition or payment entry
 - cabinet checkout must not drift into a second public paywall or direct raw-link delivery story
-- public email continuation must render only when `/api/auth/email/status` reports public mode, delivery configured, delivery secret configured, and debug echo off; otherwise it stays unavailable with a truthful Telegram/support fallback
+- public email continuation must stay hidden/marked `soon` unless sender readiness, delivery confirmation, public mode, and debug-echo-off checks are live
 - marketing and cabinet copy should inherit governed text from `shared/copy.ts`, `copy/catalog.ru.json`, and `shared/design-tokens.json` instead of inventing separate public messaging
 
 ## Shell, Theme, And Loading
@@ -99,7 +96,6 @@ Primary public env keys:
 - `NEXT_PUBLIC_API_BASE_URL`
 - `NEXT_PUBLIC_TELEGRAM_BOT_URL`
 - `NEXT_PUBLIC_TELEGRAM_LOGIN_BOT`
-- `NEXT_PUBLIC_TELEGRAM_WEB_LOGIN_REFRESH_AGE_SECONDS`
 - `NEXT_PUBLIC_WEBAPP_URL`
 - `NEXT_PUBLIC_CONNECT_URL`
 - `NEXT_PUBLIC_CHECKOUT_PAGE_URL`
@@ -121,7 +117,6 @@ Current Next.js export expectations:
 - `basePath` is not used
 - `assetPrefix` is not used
 - generated static files are emitted to `webapp/out`
-- internal `AppRouteLink` disables Next route prefetch by default because the exported static cabinet can otherwise request missing RSC `.txt` prefetch payloads and create noisy browser 404s; pass `prefetch` explicitly only after verifying the export surface
 
 ## Auth Continuation
 
@@ -129,11 +124,8 @@ Current supported auth paths:
 
 - inside Telegram: authorization through `initData`
 - in browser: Telegram Login Widget -> `POST /api/auth/telegram/web-login`
-- in browser: additive email continuation uses `/api/auth/email/*` only while `/api/auth/email/status` is green; `/settings/` can link email to the current Telegram-backed account without leaving the cabinet
+- in browser: additive email continuation is available only when delivery readiness is live; settings can link email to the current Telegram-backed account without leaving the cabinet
 - from bot handoff: `web_session_token` should open the cabinet without manual token copy/paste
-- session refresh: `GET /api/auth/session` may return a fresh `session_token` when fresh, signed Telegram `initData` recovers a missing or expired browser session; `fetchAuthSession()` must store it silently before loading cabinet data
-- Telegram Login Widget freshness: stale widget `auth_date`, deprecated OAuth callback tokens, or backend expired/deprecated widget errors should immediately fall forward to one fresh Telegram OIDC attempt instead of leaving the user on a raw token error
-- reauth UX: a valid browser token wins over stale Telegram headers, but if every auth source is invalid the cabinet must clear the stale token and show a human Telegram/email reauth CTA
 
 ## Local Run
 

@@ -7,9 +7,6 @@ on:
       - main
       - master
 
-env:
-  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
-
 jobs:
   repo-guardrails:
     runs-on: ubuntu-latest
@@ -27,20 +24,17 @@ jobs:
         with:
           node-version: "22"
           cache: "npm"
-          cache-dependency-path: |
-            webapp/package-lock.json
-            marketing/package-lock.json
+          cache-dependency-path: webapp/package-lock.json
 
       - name: Install backend dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install -r requirements-ops.txt
           pip install -r portal_bot/requirements.txt
 
-      - name: Install frontend dependencies
+      - name: Install webapp dependencies
         run: |
-          npm ci --prefix marketing
-          npm ci --prefix webapp
+          cd webapp
+          npm ci
 
       - name: Validate script manifest references
         run: python scripts/check_script_manifest.py
@@ -51,5 +45,5 @@ jobs:
       - name: Validate shared-facts and release-handoff contracts
         run: python -m unittest tests.test_shared_surface_facts tests.test_remote_brain_apply_release_handoff tests.test_release_orchestrator tests.test_smoke_client_apps
 
-      - name: CI release guardrails
-        run: python scripts/release_gate_check.py --quick --ci-guardrails
+      - name: Quick release gate
+        run: python scripts/release_gate_check.py --quick

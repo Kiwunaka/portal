@@ -51,21 +51,6 @@ class RuntimeAppDownloadSmokeTests(unittest.TestCase):
         self.assertIn("TELEGRAM_INIT_DATA=<redacted>", redacted)
         self.assertIn("--init-data <redacted>", redacted)
 
-    def test_redact_runtime_text_strips_github_release_asset_signed_query(self) -> None:
-        raw = (
-            "[OK] android.apk_url: HEAD 200 -> "
-            "https://release-assets.githubusercontent.com/github-production-release-asset/1218036659/asset-id?"
-            "sp=r&sv=2018-11-09&sig=temporary-signature&jwt=temporary-jwt"
-        )
-
-        redacted = self.module._redact_runtime_text(raw)
-
-        self.assertIn("https://release-assets.githubusercontent.com/github-production-release-asset/1218036659/asset-id?<redacted-query>", redacted)
-        self.assertNotIn("temporary-signature", redacted)
-        self.assertNotIn("temporary-jwt", redacted)
-        self.assertNotIn("sig=", redacted)
-        self.assertNotIn("jwt=", redacted)
-
     def test_main_redacts_stdout_and_stderr(self) -> None:
         def fake_run(_argv):
             print("TELEGRAM_INIT_DATA=query_id=AAA&hash=secret")

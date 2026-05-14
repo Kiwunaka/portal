@@ -25,24 +25,6 @@ test("falls back to the canonical API when app origin returns HTML for OIDC star
   });
 
   await page.goto("/", { waitUntil: "domcontentloaded" });
-  await page.getByRole("button", { name: /открыть telegram/i }).click();
+  await page.getByRole("button", { name: /продолжить через telegram/i }).click();
   await page.waitForURL("https://example.com/auth?from=oidc-fallback");
-});
-
-test("restarts Telegram login once when the callback token is deprecated", async ({ page }) => {
-  await page.route("**/api/auth/telegram/oidc/start", async (route) => {
-    await route.fulfill({
-      status: 200,
-      contentType: "application/json",
-      body: JSON.stringify({
-        ok: true,
-        mode: "oidc",
-        auth_url: "https://example.com/auth?from=oidc-deprecated-retry",
-        redirect_uri: "https://app.pokrov.space/",
-      }),
-    });
-  });
-
-  await page.goto("/?error=deprecated_token", { waitUntil: "domcontentloaded" });
-  await page.waitForURL("https://example.com/auth?from=oidc-deprecated-retry");
 });

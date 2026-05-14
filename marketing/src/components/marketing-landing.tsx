@@ -127,6 +127,10 @@ function buildInstallHref(): string {
   return buildMarketingUrl(MARKETING_CANONICAL_PATHS.install);
 }
 
+function buildCheckoutHref(planCode: string): string {
+  return `/checkout/?plan=${encodeURIComponent(planCode)}`;
+}
+
 function buildPlatformLabel(): string {
   return CANONICAL_PUBLIC_PLATFORM_SCOPE.map((item) => {
     if (item === "android") return "Android";
@@ -152,7 +156,7 @@ function buildDownloadCards(): DownloadCard[] {
     {
       title: "Android",
       status: "Внутренняя бета",
-      desc: "Android доступен как внутренний APK для одобренных бета-пользователей. Публичная выдача включится только после финальной проверки ссылок.",
+      desc: "Android доступен как внутренний APK для одобренных бета-пользователей. Публичная публикация остается заблокированной до signing и физического аудита.",
       href: installHref,
       cta: "Открыть установку",
     },
@@ -192,7 +196,7 @@ function buildPlanCards(): PlanCard[] {
 export function buildMarketingMetadata(
   title = "POKROV | Спокойный доступ без лишнего шума",
   description =
-    "Откройте статус установки для Android или Windows, начните с 5 дней бесплатного доступа, когда бета-файл доступен вашему аккаунту, и продолжайте тот же путь через кабинет.",
+    "Скачайте приложение для Android или Windows, получите 5 дней бесплатного доступа и продолжайте тот же путь через кабинет.",
   options: MarketingMetadataOptions = {},
 ): Metadata {
   const canonical = buildMarketingUrl(options.path || "/");
@@ -377,7 +381,7 @@ export default function MarketingLanding({
   const downloadCards = buildDownloadCards();
   const relatedPages = RELATED_PAGES.filter((item) => item.href !== pagePath);
   const currentScenarios = scenarioCards?.length ? scenarioCards : DEFAULT_SCENARIOS;
-  const paidBetaHref = MARKETING_CANONICAL_PATHS.install;
+  const defaultCheckoutHref = buildCheckoutHref(plans[0]?.code || "1_month");
   const softwareApplicationJsonLd = buildSoftwareApplicationJsonLd({
     pagePath,
     reviews: buildReviewJsonLdInput(reviews),
@@ -452,7 +456,7 @@ export default function MarketingLanding({
               <Link href={MARKETING_CANONICAL_PATHS.install} className="lp-btn lp-btn--primary">
                 Установить приложение
               </Link>
-              <Link href={paidBetaHref} className="lp-btn lp-btn--ghost">
+              <Link href={defaultCheckoutHref} className="lp-btn lp-btn--ghost">
                 Выбрать срок
               </Link>
             </div>
@@ -575,7 +579,7 @@ export default function MarketingLanding({
             <span>Тарифы</span>
             <h2>Тарифы ведут к ключу доступа, а не к технической ссылке.</h2>
             <p>
-              Вы выбираете срок, смотрите честный статус кассы и погашаете ключ в приложении или кабинете, когда маршрут оплаты прошел проверку.
+              Вы выбираете срок, переходите к спокойной оплате и затем погашаете ключ в приложении или кабинете, когда касса доступна.
             </p>
           </div>
           <div className="lp-pricing-shell">
@@ -606,7 +610,7 @@ export default function MarketingLanding({
                     <li>{plan.duration}</li>
                     <li>{plan.devices}</li>
                   </ul>
-                  <Link href={paidBetaHref} className="lp-btn lp-btn--ghost">
+                  <Link href={buildCheckoutHref(plan.code)} className="lp-btn lp-btn--ghost">
                     Выбрать срок
                   </Link>
                 </article>
@@ -731,7 +735,7 @@ export default function MarketingLanding({
               <Link href={MARKETING_CANONICAL_PATHS.install} className="lp-btn lp-btn--primary">
                 Установить приложение
               </Link>
-              <Link href={paidBetaHref} className="lp-btn lp-btn--ghost">
+              <Link href={defaultCheckoutHref} className="lp-btn lp-btn--ghost">
                 Выбрать срок
               </Link>
               <a href={config.webappUrl} target="_blank" rel="noreferrer" className="lp-btn lp-btn--ghost">

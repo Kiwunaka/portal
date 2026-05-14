@@ -125,52 +125,6 @@ def test_oidc_finish_issues_web_session_token(monkeypatch, tmp_path):
     assert session_payload["user"]["username"] == "pokrov_user"
 
 
-def test_oidc_finish_maps_expired_id_token_to_refreshable_auth_error(monkeypatch, tmp_path):
-    api, web_auth_service = _load_api(monkeypatch, tmp_path)
-    client = TestClient(api.app)
-
-    state_token = web_auth_service.create_telegram_oidc_state_token(
-        redirect_uri="https://app.pokrov.test/",
-    )
-
-    async def fake_exchange_telegram_oidc_code(*, code: str, state_token: str):
-        raise ValueError("Telegram ID token has expired")
-
-    monkeypatch.setattr(api, "exchange_telegram_oidc_code", fake_exchange_telegram_oidc_code)
-
-    finish = client.post(
-        "/api/auth/telegram/oidc/finish",
-        json={"code": "oidc-code-123", "state": state_token},
-    )
-
-    assert finish.status_code == 401, finish.text
-    assert finish.headers.get("x-pokrov-auth-error") == "telegram_login_expired"
-    assert finish.json()["detail"] == "Telegram ID token has expired"
-
-
-def test_oidc_finish_maps_deprecated_token_exchange_to_refreshable_auth_error(monkeypatch, tmp_path):
-    api, web_auth_service = _load_api(monkeypatch, tmp_path)
-    client = TestClient(api.app)
-
-    state_token = web_auth_service.create_telegram_oidc_state_token(
-        redirect_uri="https://app.pokrov.test/",
-    )
-
-    async def fake_exchange_telegram_oidc_code(*, code: str, state_token: str):
-        raise RuntimeError('{"error":"invalid_grant","error_description":"deprecated token"}')
-
-    monkeypatch.setattr(api, "exchange_telegram_oidc_code", fake_exchange_telegram_oidc_code)
-
-    finish = client.post(
-        "/api/auth/telegram/oidc/finish",
-        json={"code": "oidc-code-123", "state": state_token},
-    )
-
-    assert finish.status_code == 401, finish.text
-    assert finish.headers.get("x-pokrov-auth-error") == "telegram_login_deprecated"
-    assert "deprecated token" in finish.json()["detail"]
-
-
 def test_validate_telegram_oidc_id_token_accepts_valid_signature(monkeypatch, tmp_path):
     _api, web_auth_service = _load_api(monkeypatch, tmp_path)
 

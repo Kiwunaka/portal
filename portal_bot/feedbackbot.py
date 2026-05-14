@@ -9,7 +9,7 @@ from pathlib import Path
 
 from aiogram import Bot, Dispatcher, F, Router
 from aiogram.filters import CommandStart
-from aiogram.types import BotCommand, CallbackQuery, InlineKeyboardMarkup, Message
+from aiogram.types import CallbackQuery, InlineKeyboardButton, InlineKeyboardMarkup, Message
 from dotenv import load_dotenv
 
 load_dotenv(dotenv_path=Path(__file__).resolve().with_name(".env"))
@@ -18,7 +18,6 @@ load_dotenv()
 from copy_catalog import get_copy_text
 from db import SessionLocal, init_db
 from models import FeedbackEntry, Review
-from telegram_buttons import modern_inline_button as InlineKeyboardButton
 
 
 FEEDBACK_BOT_TOKEN = (os.getenv("FEEDBACK_BOT_TOKEN") or "").strip()
@@ -399,20 +398,8 @@ async def main() -> None:
     dp = Dispatcher()
     dp.include_router(router)
     bot = Bot(token=FEEDBACK_BOT_TOKEN)
-    await _configure_feedback_bot_commands(bot)
     logger.info("Feedback bot starting...")
     await dp.start_polling(bot, allowed_updates=dp.resolve_used_update_types())
-
-
-async def _configure_feedback_bot_commands(bot: Bot) -> None:
-    try:
-        await bot.set_my_commands(
-            [
-                BotCommand(command="start", description="Оставить отзыв"),
-            ]
-        )
-    except Exception as e:
-        logger.warning("feedbackbot set_my_commands failed: %s", e)
 
 
 if __name__ == "__main__":

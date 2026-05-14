@@ -118,19 +118,10 @@ function fallbackPlans(): PlanOption[] {
     }));
 }
 
-function sameOriginApiFallback(): string {
-  const enabled =
-    String(process.env.NEXT_PUBLIC_ENABLE_SAME_ORIGIN_API_FALLBACK || "").toLowerCase() === "true";
-  if (!enabled || typeof window === "undefined") {
-    return "";
-  }
-  return window.location.origin.replace(/\/+$/, "");
-}
-
 function candidateApiBases(): string[] {
   const bases = [
     config.apiBaseUrl.replace(/\/+$/, ""),
-    sameOriginApiFallback(),
+    typeof window !== "undefined" ? window.location.origin.replace(/\/+$/, "") : "",
     "https://api.pokrov.space",
   ];
   return Array.from(new Set(bases.filter(Boolean)));
@@ -155,12 +146,12 @@ async function fetchAccessKeyStatus(key: string): Promise<AccessKeyStatusRespons
     try {
       const response = await fetch(`${base}/api/access-keys/status/${encodeURIComponent(key)}`, { cache: "no-store" });
       if (!response.ok) {
-        lastError = await readPublicCheckoutError(response, "Не удалось проверить ключ.");
+        lastError = await response.text() || `HTTP ${response.status}`;
         continue;
       }
       return (await response.json()) as AccessKeyStatusResponse;
     } catch (error) {
-      lastError = publicCheckoutExceptionMessage(error, lastError);
+      lastError = String((error as { message?: string })?.message || error || lastError);
     }
   }
   throw new Error(lastError);
@@ -177,47 +168,6 @@ async function fetchPaymentProviderState(): Promise<PaymentProviderState | null>
     }
   }
   return null;
-}
-
-function publicCheckoutErrorMessage(raw: string, fallback: string): string {
-  const text = String(raw || "").trim();
-  if (!text) return fallback;
-  let message = text;
-  try {
-    const parsed = JSON.parse(text) as { detail?: unknown; message?: unknown };
-    message = String(parsed?.detail || parsed?.message || "").trim();
-  } catch {
-    message = text;
-  }
-  if (!message || !/[А-Яа-яЁё]/.test(message)) return fallback;
-  if (/api error|http\s+\d+|traceback|stack|not configured|not enabled for public beta/i.test(message)) {
-    return fallback;
-  }
-  return message;
-}
-
-function publicCheckoutExceptionMessage(error: unknown, fallback: string): string {
-  const message =
-    error instanceof Error ? error.message : String((error as { message?: unknown })?.message || error || "");
-  return publicCheckoutErrorMessage(message, fallback);
-}
-
-function normalizeAccessKey(value: string): string {
-  return String(value || "")
-    .trim()
-    .replace(/[\u2010\u2011\u2012\u2013\u2014\u2212_]+/g, "-")
-    .replace(/\s+/g, "-")
-    .replace(/-+/g, "-")
-    .replace(/^-+|-+$/g, "")
-    .toUpperCase();
-}
-
-async function readPublicCheckoutError(response: Response, fallback: string): Promise<string> {
-  try {
-    return publicCheckoutErrorMessage(await response.text(), fallback);
-  } catch {
-    return fallback;
-  }
 }
 
 async function createPublicRubOrder(payload: {
@@ -243,12 +193,12 @@ async function createPublicRubOrder(payload: {
         }),
       });
       if (!response.ok) {
-        lastError = await readPublicCheckoutError(response, "Оплата пока недоступна. Попробуйте позже или напишите в поддержку.");
+        lastError = (await response.text()) || `HTTP ${response.status}`;
         continue;
       }
       return (await response.json()) as PublicRubOrderResponse;
     } catch (error) {
-      lastError = publicCheckoutExceptionMessage(error, lastError);
+      lastError = String((error as { message?: string })?.message || error || lastError);
     }
   }
   throw new Error(lastError);
@@ -309,10 +259,10 @@ export function CheckoutLoadingFallback() {
           <img src="/pokrov-logo.svg" alt="" aria-hidden="true" />
           <span>POKROV</span>
         </div>
-        <div className="checkout-kicker">Статус продления</div>
-        <div className="checkout-status-chip checkout-status-chip--fallback">Проверяем публичный каталог</div>
-        <h1 className="checkout-title">Проверяем доступный следующий шаг</h1>
-        <p className="checkout-sub">Подгружаем тарифы, условия доступа и честный статус платежного маршрута.</p>
+        <div className="checkout-kicker">Спокойная касса</div>
+        <div className="checkout-status-chip checkout-status-chip--fallback">Собираем публичный каталог</div>
+        <h1 className="checkout-title">Маршрут оплаты через ключ доступа</h1>
+        <p className="checkout-sub">Подгружаем тарифы, условия доступа и следующий шаг для покупки или погашения ключа.</p>
       </section>
       <section className="checkout-grid">
         <article className="glass-card">
@@ -333,7 +283,7 @@ export default function CheckoutClient() {
   const [plans, setPlans] = useState<PlanOption[]>(() => fallbackPlans());
   const [selectedPlan, setSelectedPlan] = useState(queryPlan);
   const [promoCode, setPromoCode] = useState((searchParams.get("promo") || "").trim().toUpperCase());
-  const [keyInput, setKeyInput] = useState(normalizeAccessKey(searchParams.get("key") || ""));
+  const [keyInput, setKeyInput] = useState((searchParams.get("key") || "").trim().toUpperCase());
   const [keyStatus, setKeyStatus] = useState<AccessKeyStatusResponse | null>(null);
   const [providerState, setProviderState] = useState<PaymentProviderState | null>(null);
   const [statusText, setStatusText] = useState("");
@@ -393,12 +343,9 @@ export default function CheckoutClient() {
       setKeyStatus(null);
       return;
     }
-    const normalized = normalizeAccessKey(keyInput);
+    const normalized = keyInput.trim().toUpperCase();
     if (normalized.length < 6) {
       return;
-    }
-    if (normalized !== keyInput) {
-      setKeyInput(normalized);
     }
     setKeyBusy(true);
     setStatusText("");
@@ -408,7 +355,7 @@ export default function CheckoutClient() {
       })
       .catch((error) => {
         setKeyStatus(null);
-        setStatusText(publicCheckoutExceptionMessage(error, "Не удалось проверить ключ."));
+        setStatusText(String((error as { message?: string })?.message || error || "Не удалось проверить ключ."));
       })
       .finally(() => {
         setKeyBusy(false);
@@ -453,7 +400,7 @@ export default function CheckoutClient() {
       }
       window.location.assign(paymentUrl);
     } catch (error) {
-      setStatusText(publicCheckoutExceptionMessage(error, "Не удалось создать платеж."));
+      setStatusText(String((error as { message?: string })?.message || error || "Не удалось создать платеж."));
     } finally {
       setCheckoutBusy(false);
     }
@@ -466,13 +413,13 @@ export default function CheckoutClient() {
           <img src="/pokrov-logo.svg" alt="" aria-hidden="true" />
           <span>POKROV</span>
         </div>
-        <div className="checkout-kicker">Бета-контур: проверить срок и следующий шаг после пробного подключения</div>
+        <div className="checkout-kicker">Бета-контур: после пробного подключения выбрать срок и продолжить доступ</div>
         <div className={`checkout-status-chip ${checkoutReady ? "checkout-status-chip--ready" : "checkout-status-chip--fallback"}`}>
-          {checkoutReady ? "Касса доступна" : "Оплата закрыта до проверки"}
+          {checkoutReady ? "Касса доступна" : "Оплата пока в ручной проверке"}
         </div>
-        <h1 className="checkout-title">Проверка продления без технических ссылок</h1>
+        <h1 className="checkout-title">Спокойная оплата без технических ссылок</h1>
         <p className="checkout-sub">
-          Эта страница помогает выбрать срок после личной проверки в приложении и увидеть, открыт ли платежный маршрут. Если касса временно недоступна, кабинет честно покажет причину, а поддержка подскажет безопасный следующий шаг.
+          Эта страница помогает выбрать срок после личной проверки в приложении. После оплаты ключ доступа погашается в приложении или кабинете, а если касса временно недоступна, поддержка подскажет ручной следующий шаг.
         </p>
       </section>
 
@@ -484,9 +431,9 @@ export default function CheckoutClient() {
             <p>Первый шаг остаётся за приложением: 5 дней теста и первое подключение помогают понять продукт до оплаты.</p>
           </article>
           <article className="lp-info-card">
-            <span className="lp-info-card__eyebrow">Потом проверить продление</span>
-            <h3>Платежный маршрут остается тихим и понятным</h3>
-            <p>Кабинет показывает срок, сумму и доступность кассы. Переход к оплате включается только после зеленой проверки.</p>
+            <span className="lp-info-card__eyebrow">Потом оплатить</span>
+            <h3>Касса остаётся тихой и понятной</h3>
+            <p>Оплата должна выдавать ключ доступа для беты и не уводить в сложные технические сценарии.</p>
           </article>
           <article className="lp-info-card">
             <span className="lp-info-card__eyebrow">Если нужна помощь</span>
@@ -552,7 +499,7 @@ export default function CheckoutClient() {
             <div className="checkout-actions">
               <input
                 value={keyInput}
-                onChange={(event) => setKeyInput(normalizeAccessKey(event.target.value))}
+                onChange={(event) => setKeyInput(event.target.value.toUpperCase().trim())}
                 placeholder="POKROV-XXXX-XXXX"
                 className="checkout-secondary"
               />
@@ -642,7 +589,7 @@ export default function CheckoutClient() {
           </Link>
 
           <p className="checkout-helper">
-            Email-вход в кабинете показывается по зеленому статусу доставки писем. Бесплатный период начинается из приложения на первом валидном устройстве, а ключ доступа можно погасить в приложении или кабинете.
+            Email-вход на сайте пока готовится. Бесплатный период начинается из приложения на первом валидном устройстве, а купленный ключ можно погасить в приложении или кабинете.
           </p>
 
           {statusText ? <p className="checkout-status">{statusText}</p> : null}

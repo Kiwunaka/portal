@@ -26,11 +26,7 @@ import qrcode
 from sqlalchemy.exc import IntegrityError
 from copy_catalog import get_copy_text
 from node_policy import canonical_free_node_code, free_pool_node_codes
-from payment_providers import (
-    enabled_provider_catalog,
-    normalize_provider as normalize_payment_provider,
-    paid_checkout_launch_evidence_issues,
-)
+from payment_providers import enabled_provider_catalog, normalize_provider as normalize_payment_provider
 from public_urls import build_subscription_url as build_public_subscription_url
 try:
     from aiogram import Bot, Dispatcher, F, Router, BaseMiddleware
@@ -39,7 +35,7 @@ try:
         Message, CallbackQuery, PreCheckoutQuery,
         InlineKeyboardMarkup, InlineKeyboardButton,
         WebAppInfo, LabeledPrice, ContentType, BufferedInputFile,
-        BotCommand, MenuButtonWebApp
+        BotCommand, MenuButtonCommands
     )
     from aiogram.enums import ParseMode
     AIROGRAM_AVAILABLE = True
@@ -156,7 +152,7 @@ except ModuleNotFoundError:
     class BotCommand(_BaseType):
         pass
 
-    class MenuButtonWebApp(_BaseType):
+    class MenuButtonCommands(_BaseType):
         pass
 
     class BufferedInputFile(_BaseType):
@@ -259,31 +255,6 @@ ANDROID_APP_LINK = _first_non_empty(APP_ANDROID_PLAY_URL, APP_ANDROID_APK_URL, A
 WINDOWS_APP_LINK = _first_non_empty(APP_WINDOWS_EXE_URL, APP_WINDOWS_MIRROR_URL, APP_DOCS_URL)
 MAC_APP_LINK = APP_DOCS_URL
 
-
-def _webapp_route_url(route: str = "") -> str:
-    raw_base = str(WEBAPP_URL or "").strip()
-    clean_route = str(route or "").strip().strip("/")
-    try:
-        parts = urlsplit(raw_base)
-        if parts.scheme and parts.netloc:
-            base_path = parts.path.rstrip("/")
-            next_path = f"{base_path}/{clean_route}/" if clean_route else f"{base_path}/"
-            return urlunsplit((parts.scheme, parts.netloc, next_path or "/", "", ""))
-    except Exception:
-        pass
-
-    base = raw_base.split("?", 1)[0].split("#", 1)[0].rstrip("/")
-    if not clean_route:
-        return f"{base}/" if base else "/"
-    return f"{base}/{clean_route}/"
-
-
-def _webapp_downloads_url(platform: str) -> str:
-    normalized = str(platform or "").strip().lower()
-    suffix = f"?platform={normalized}" if normalized else ""
-    return f"{_webapp_route_url('downloads')}{suffix}"
-
-
 # Protected users — NEVER modify, sync, or message these users
 PROTECTED_USERS = {
     5187992322,  # @Oksidraiv
@@ -310,7 +281,6 @@ _user_context_mode: dict[int, str] = {}  # tg_id -> "main" | "support"
 BTN_STYLE_PRIMARY = "primary"
 BTN_STYLE_SUCCESS = "success"
 BTN_STYLE_DANGER = "danger"
-BOT_PUBLIC_RUB_PROVIDER_CODE = "lavatop"
 BTN_EMOJI_PRIMARY_ID = (os.getenv("TG_BTN_EMOJI_PRIMARY_ID") or "").strip()
 BTN_EMOJI_SUCCESS_ID = (os.getenv("TG_BTN_EMOJI_SUCCESS_ID") or "").strip()
 BTN_EMOJI_DANGER_ID = (os.getenv("TG_BTN_EMOJI_DANGER_ID") or "").strip()
@@ -336,7 +306,6 @@ FRIEND_GIFT_CAMPAIGN_KEY = (
 )
 CHANNEL_PREMIUM_DAYS = max(1, int(os.getenv("CHANNEL_PREMIUM_DAYS", "10")))
 BOT_RUB_BUTTON_ENABLED = _env_bool("BOT_RUB_BUTTON_ENABLED", default=False)
-BOT_STARS_PAYMENTS_ENABLED = _env_bool("BOT_STARS_PAYMENTS_ENABLED", default=False)
 MAIN_CONNECT_CTA_LABELS = {
     "a": "✨ Подобрать доступ",
     "b": "✨ Подобрать доступ",
@@ -356,92 +325,6 @@ def _inline_button_supported_fields() -> set[str]:
 INLINE_BUTTON_FIELDS = _inline_button_supported_fields()
 SUPPORTS_BTN_STYLE = "style" in INLINE_BUTTON_FIELDS
 SUPPORTS_BTN_ICON = "icon_custom_emoji_id" in INLINE_BUTTON_FIELDS
-SUPPORTS_BTN_COPY_TEXT = "copy_text" in INLINE_BUTTON_FIELDS
-_RAW_INLINE_KEYBOARD_BUTTON = InlineKeyboardButton
-
-
-def _emoji_for_button_style(style: str | None) -> str | None:
-    if style == BTN_STYLE_SUCCESS:
-        return BTN_EMOJI_SUCCESS_ID or None
-    if style == BTN_STYLE_DANGER:
-        return BTN_EMOJI_DANGER_ID or None
-    if style == BTN_STYLE_PRIMARY:
-        return BTN_EMOJI_PRIMARY_ID or None
-    return None
-
-
-def _infer_button_style(
-    *,
-    text: object = "",
-    callback_data: object = None,
-    url: object = None,
-    web_app: object = None,
-) -> str | None:
-    del text
-    data = str(callback_data or "").strip().lower()
-    if (
-        "delete" in data
-        or "_del" in data
-        or "cancel" in data
-        or "back" in data
-        or "ban" in data
-        or "block" in data
-        or "panic" in data
-        or "refund" in data
-    ):
-        return BTN_STYLE_DANGER
-    if (
-        "new" in data
-        or "create" in data
-        or "reopen" in data
-        or "claim" in data
-        or "accept" in data
-        or "confirm" in data
-        or "send" in data
-        or "extend" in data
-        or "sync" in data
-        or "activate" in data
-        or "redeem" in data
-        or "feature" in data
-        or "publish" in data
-        or "close" in data
-    ):
-        return BTN_STYLE_SUCCESS
-    if data or url or web_app:
-        return BTN_STYLE_PRIMARY
-    return None
-
-
-def _modern_inline_keyboard_button(*args: object, **kwargs: object):
-    explicit_style = kwargs.get("style")
-    if explicit_style is not None and not SUPPORTS_BTN_STYLE:
-        kwargs.pop("style", None)
-    if kwargs.get("icon_custom_emoji_id") is not None and not SUPPORTS_BTN_ICON:
-        kwargs.pop("icon_custom_emoji_id", None)
-    if kwargs.get("copy_text") is not None and not SUPPORTS_BTN_COPY_TEXT:
-        kwargs.pop("copy_text", None)
-
-    text = kwargs.get("text")
-    if text is None and args:
-        text = args[0]
-    style = kwargs.get("style")
-    if style is None:
-        style = explicit_style or _infer_button_style(
-            text=text,
-            callback_data=kwargs.get("callback_data"),
-            url=kwargs.get("url"),
-            web_app=kwargs.get("web_app"),
-        )
-        if style and SUPPORTS_BTN_STYLE:
-            kwargs["style"] = style
-    if kwargs.get("icon_custom_emoji_id") is None:
-        icon = _emoji_for_button_style(str(style) if style else None)
-        if icon and SUPPORTS_BTN_ICON:
-            kwargs["icon_custom_emoji_id"] = icon
-    return _RAW_INLINE_KEYBOARD_BUTTON(*args, **kwargs)
-
-
-InlineKeyboardButton = _modern_inline_keyboard_button
 
 
 def _is_private_user_chat(chat_id: int, tg_id: int) -> bool:
@@ -574,7 +457,6 @@ def _btn_spec(
     callback_data: str | None = None,
     url: str | None = None,
     web_app_url: str | None = None,
-    copy_text: str | None = None,
     style: str | None = None,
     icon_custom_emoji_id: str | None = None,
 ) -> dict[str, str]:
@@ -585,8 +467,6 @@ def _btn_spec(
         spec["url"] = url
     if web_app_url:
         spec["web_app_url"] = web_app_url
-    if copy_text:
-        spec["copy_text"] = copy_text
     if style:
         spec["style"] = style
     if icon_custom_emoji_id:
@@ -602,8 +482,6 @@ def _button_from_spec(spec: dict[str, str]) -> InlineKeyboardButton:
         kwargs["url"] = spec["url"]
     if spec.get("web_app_url"):
         kwargs["web_app"] = WebAppInfo(url=spec["web_app_url"])
-    if spec.get("copy_text") and SUPPORTS_BTN_COPY_TEXT:
-        kwargs["copy_text"] = {"text": spec["copy_text"]}
     if spec.get("style") and SUPPORTS_BTN_STYLE:
         kwargs["style"] = spec["style"]
     if spec.get("icon_custom_emoji_id") and SUPPORTS_BTN_ICON:
@@ -614,29 +492,6 @@ def _button_from_spec(spec: dict[str, str]) -> InlineKeyboardButton:
 def _keyboard_from_specs(rows: list[list[dict[str, str]]]) -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(
         inline_keyboard=[[ _button_from_spec(spec) for spec in row ] for row in rows]
-    )
-
-
-def _spec_from_existing_button(
-    button: InlineKeyboardButton,
-    *,
-    style: str | None = None,
-    icon_custom_emoji_id: str | None = None,
-) -> dict[str, str]:
-    callback_data = getattr(button, "callback_data", None)
-    url = getattr(button, "url", None)
-    web_app = getattr(button, "web_app", None)
-    web_app_url = getattr(web_app, "url", None) if web_app is not None else None
-    copy_text = getattr(button, "copy_text", None)
-    copy_text_value = getattr(copy_text, "text", None) if copy_text is not None else None
-    return _btn_spec(
-        text=str(getattr(button, "text", "") or ""),
-        callback_data=str(callback_data) if callback_data else None,
-        url=str(url) if url else None,
-        web_app_url=str(web_app_url) if web_app_url else None,
-        copy_text=str(copy_text_value) if copy_text_value else None,
-        style=style,
-        icon_custom_emoji_id=icon_custom_emoji_id,
     )
 
 
@@ -652,8 +507,6 @@ def _keyboard_payload(rows: list[list[dict[str, str]]]) -> dict[str, object]:
                 b["url"] = spec["url"]
             if spec.get("web_app_url"):
                 b["web_app"] = {"url": spec["web_app_url"]}
-            if spec.get("copy_text"):
-                b["copy_text"] = {"text": spec["copy_text"]}
             if spec.get("style"):
                 b["style"] = spec["style"]
             if spec.get("icon_custom_emoji_id"):
@@ -669,8 +522,6 @@ def _needs_raw_markup(rows: list[list[dict[str, str]]]) -> bool:
             if spec.get("style") and not SUPPORTS_BTN_STYLE:
                 return True
             if spec.get("icon_custom_emoji_id") and not SUPPORTS_BTN_ICON:
-                return True
-            if spec.get("copy_text") and not SUPPORTS_BTN_COPY_TEXT:
                 return True
     return False
 
@@ -855,7 +706,6 @@ from free_cycle_service import mark_user_became_free
 from gift_cards_service import (
     create_gift_card as create_gift_card_service,
     get_gift_card as get_gift_card_service,
-    normalize_gift_code as normalize_gift_code_service,
     redeem_gift_card as redeem_gift_card_service,
 )
 from pay_attempts_service import (
@@ -988,7 +838,7 @@ ACHIEVEMENTS = {
     },
     "big_spender": {
         "name": "💎 Investor",
-        "desc": "Исторический вклад в инфраструктуру",
+        "desc": "Вклад в инфраструктуру (500+ Stars)",
         "days": 10,
         "icon": "💎"
     },
@@ -1213,10 +1063,10 @@ def create_user(tg_id: int, user_uuid: str, email: str, sub_type: str, days: int
         session.commit()
         session.close()
         return existing
-
+    
     # Generate unique subscription token for new user
     sub_token = generate_sub_token()
-
+    
     user = User(
         tg_id=tg_id,
         username=username,
@@ -1340,7 +1190,7 @@ async def award_referral_bonus(referrer_id: int, bonus_days: int = REFERRAL_BONU
             return False
 
         referrer.referral_count = (referrer.referral_count or 0) + 1
-
+        
         # Award Days
         expiry = _naive_utc(referrer.expiry_at)
         now = _utcnow()
@@ -1348,12 +1198,12 @@ async def award_referral_bonus(referrer_id: int, bonus_days: int = REFERRAL_BONU
             referrer.expiry_at = expiry + timedelta(days=bonus_days)
         else:
             referrer.expiry_at = now + timedelta(days=bonus_days)
-
+        
         referrer.is_active = True
-
+        
         session.commit()
         session.close()
-
+        
         # Ensure enabled in panel
         try:
             # We need to get UUID. extend_user isn't async/doesn't do panel.
@@ -1367,7 +1217,7 @@ async def award_referral_bonus(referrer_id: int, bonus_days: int = REFERRAL_BONU
                  await panel.enable_client(ref_user.uuid, True)
         except:
             pass
-
+            
         return True
     session.close()
     return False
@@ -1473,25 +1323,11 @@ def _tos_offer_text() -> str:
 
 def _tos_offer_keyboard(*, back_callback: str = "back") -> InlineKeyboardMarkup:
     offer_url = f"https://{PUBLIC_WEB_DOMAIN.strip().strip('/')}/offer"
-    return _keyboard_from_specs(
-        [
-            [
-                _btn_spec(
-                    text="📄 Читать полностью",
-                    url=offer_url,
-                    style=BTN_STYLE_PRIMARY,
-                    icon_custom_emoji_id=BTN_EMOJI_PRIMARY_ID or None,
-                )
-            ],
-            [
-                _btn_spec(
-                    text="✅ Принимаю условия",
-                    callback_data="accept_tos",
-                    style=BTN_STYLE_SUCCESS,
-                    icon_custom_emoji_id=BTN_EMOJI_SUCCESS_ID or None,
-                )
-            ],
-            [_btn_spec(text="◀️ Назад", callback_data=back_callback, style=BTN_STYLE_DANGER)],
+    return InlineKeyboardMarkup(
+        inline_keyboard=[
+            [InlineKeyboardButton(text="📄 Читать полностью", url=offer_url)],
+            [InlineKeyboardButton(text="✅ Принимаю условия", callback_data="accept_tos")],
+            [InlineKeyboardButton(text="◀️ Назад", callback_data=back_callback)],
         ]
     )
 
@@ -1988,32 +1824,12 @@ def _channel_bonus_eligible(*, tg_id: int, user: User | None) -> bool:
 
 def _channel_bonus_keyboard(next_action: str) -> InlineKeyboardMarkup:
     channel_name = _channel_name_for_url()
-    return _keyboard_from_specs(
-        [
-            [
-                _btn_spec(
-                    text="📢 Подписаться на канал",
-                    url=f"https://t.me/{channel_name}",
-                    style=BTN_STYLE_PRIMARY,
-                    icon_custom_emoji_id=BTN_EMOJI_PRIMARY_ID or None,
-                )
-            ],
-            [
-                _btn_spec(
-                    text=f"✅ Проверить и получить {CHANNEL_PREMIUM_DAYS} дней",
-                    callback_data=f"bonus_claim_{next_action}",
-                    style=BTN_STYLE_SUCCESS,
-                    icon_custom_emoji_id=BTN_EMOJI_SUCCESS_ID or None,
-                )
-            ],
-            [
-                _btn_spec(
-                    text="➡️ Продолжить без бонуса",
-                    callback_data=f"bonus_skip_{next_action}",
-                    style=BTN_STYLE_PRIMARY,
-                )
-            ],
-            [_btn_spec(text="◀️ Назад", callback_data="back", style=BTN_STYLE_DANGER)],
+    return InlineKeyboardMarkup(
+        inline_keyboard=[
+            [InlineKeyboardButton(text="📢 Подписаться на канал", url=f"https://t.me/{channel_name}")],
+            [InlineKeyboardButton(text=f"✅ Проверить и получить {CHANNEL_PREMIUM_DAYS} дней", callback_data=f"bonus_claim_{next_action}")],
+            [InlineKeyboardButton(text="➡️ Продолжить без бонуса", callback_data=f"bonus_skip_{next_action}")],
+            [InlineKeyboardButton(text="◀️ Назад", callback_data="back")],
         ]
     )
 
@@ -2238,7 +2054,7 @@ def can_spin_wheel(tg_id: int) -> tuple[bool, int]:
     session = Session()
     user = session.query(User).filter_by(tg_id=tg_id).first()
     session.close()
-
+    
     if not user:
         return False, 0
 
@@ -2246,16 +2062,16 @@ def can_spin_wheel(tg_id: int) -> tuple[bool, int]:
     # Wheel is available only for active paid subscriptions.
     if not _is_paid_active_user(user):
         return False, 0
-
+    
     last_spin = _naive_utc(user.last_wheel_spin)
     if not last_spin:
         return True, 0
-
+    
     next_spin = last_spin + timedelta(hours=_wheel_cooldown_hours())
-
+    
     if now >= next_spin:
         return True, 0
-
+    
     seconds_left = int((next_spin - now).total_seconds())
     return False, seconds_left
 
@@ -2333,13 +2149,13 @@ def get_streak_info(tg_id: int) -> dict:
     session = Session()
     user = session.query(User).filter_by(tg_id=tg_id).first()
     session.close()
-
+    
     if not user:
         # First milestone is always 3 months.
         return {"months": 0, "next_milestone": 3, "bonus_days_next": STREAK_REWARDS.get(3, 0), "last_check": None}
-
+    
     months = user.streak_months or 0
-
+    
     # Find next milestone
     next_milestone = None
     bonus_days_next = 0
@@ -2348,7 +2164,7 @@ def get_streak_info(tg_id: int) -> dict:
             next_milestone = m
             bonus_days_next = bonus_days
             break
-
+    
     return {
         "months": months,
         "next_milestone": next_milestone,
@@ -2363,14 +2179,14 @@ def update_streak(tg_id: int) -> tuple[int, int]:
     """
     session = Session()
     user = session.query(User).filter_by(tg_id=tg_id).first()
-
+    
     if not user:
         session.close()
         return (0, 0)
-
+    
     now = _utcnow()
     old_streak = user.streak_months or 0
-
+    
     # Check if streak should reset (subscription expired > 7 days ago)
     if user.expiry_at:
         days_expired = (now - user.expiry_at).days
@@ -2381,7 +2197,7 @@ def update_streak(tg_id: int) -> tuple[int, int]:
             session.commit()
             session.close()
             return (1, 0)
-
+    
     # Check if we should increment (at least 25 days since last check)
     if user.streak_last_check:
         days_since_check = (now - user.streak_last_check).days
@@ -2389,12 +2205,12 @@ def update_streak(tg_id: int) -> tuple[int, int]:
             # Too soon, don't increment
             session.close()
             return (old_streak, 0)
-
+    
     # Increment streak
     new_streak = old_streak + 1
     user.streak_months = new_streak
     user.streak_last_check = now
-
+    
     # Check for milestone bonus
     bonus_days = STREAK_REWARDS.get(new_streak, 0)
     if bonus_days > 0:
@@ -2402,10 +2218,10 @@ def update_streak(tg_id: int) -> tuple[int, int]:
             user.expiry_at += timedelta(days=bonus_days)
         else:
             user.expiry_at = now + timedelta(days=bonus_days)
-
+    
     session.commit()
     session.close()
-
+    
     return (new_streak, bonus_days)
 
 # ==========================================
@@ -2425,15 +2241,15 @@ def award_achievement(tg_id: int, achievement_id: str) -> int:
     """Award achievement to user if not already earned. Returns bonus days or 0."""
     if has_achievement(tg_id, achievement_id):
         return 0
-
+    
     ach = ACHIEVEMENTS.get(achievement_id)
     if not ach:
         return 0
-
+    
     session = Session()
     new_ach = Achievement(tg_id=tg_id, achievement_id=achievement_id)
     session.add(new_ach)
-
+    
     # Add bonus Days if any
     bonus_days = ach.get("days", 0)
     if bonus_days > 0:
@@ -2443,7 +2259,7 @@ def award_achievement(tg_id: int, achievement_id: str) -> int:
                 user.expiry_at += timedelta(days=bonus_days)
             else:
                 user.expiry_at = _utcnow() + timedelta(days=bonus_days)
-
+    
     session.commit()
     session.close()
     return bonus_days
@@ -2466,14 +2282,14 @@ async def check_achievements(tg_id: int, bot) -> list:
         return []
     if not _is_paid_active_user(user):
         return []
-
+    
     awarded = []
-
+    
     # first_sub: Has any subscription
     if user.is_active and not has_achievement(tg_id, "first_sub"):
         gb = award_achievement(tg_id, "first_sub")
         awarded.append("first_sub")
-
+    
     # week_active: 7+ days since creation
     if user.created_at:
         days_active = (_utcnow() - user.created_at).days
@@ -2485,7 +2301,7 @@ async def check_achievements(tg_id: int, bot) -> list:
                 except:
                     pass
             awarded.append("week_active")
-
+    
     # referral_1: Invited 1+ friends
     if (user.referral_count or 0) >= 1 and not has_achievement(tg_id, "referral_1"):
         gb = award_achievement(tg_id, "referral_1")
@@ -2495,7 +2311,7 @@ async def check_achievements(tg_id: int, bot) -> list:
             except:
                 pass
         awarded.append("referral_1")
-
+    
     # referral_5: Invited 5+ friends
     if (user.referral_count or 0) >= 5 and not has_achievement(tg_id, "referral_5"):
         gb = award_achievement(tg_id, "referral_5")
@@ -2505,12 +2321,12 @@ async def check_achievements(tg_id: int, bot) -> list:
             except:
                 pass
         awarded.append("referral_5")
-
+    
     # streak_3: 3+ months streak
     if (user.streak_months or 0) >= 3 and not has_achievement(tg_id, "streak_3"):
         award_achievement(tg_id, "streak_3")
         awarded.append("streak_3")
-
+    
     # big_spender: 500+ stars paid
     if (user.stars_paid or 0) >= 500 and not has_achievement(tg_id, "big_spender"):
         gb = award_achievement(tg_id, "big_spender")
@@ -2520,7 +2336,7 @@ async def check_achievements(tg_id: int, bot) -> list:
             except:
                 pass
         awarded.append("big_spender")
-
+    
     # loyal_year: 1 year since creation
     if user.created_at:
         days_active = (_utcnow() - user.created_at).days
@@ -2532,7 +2348,7 @@ async def check_achievements(tg_id: int, bot) -> list:
                 except:
                     pass
             awarded.append("loyal_year")
-
+    
     # Notify user about new achievements
     for ach_id in awarded:
         ach = ACHIEVEMENTS.get(ach_id)
@@ -2550,7 +2366,7 @@ async def check_achievements(tg_id: int, bot) -> list:
                 )
             except:
                 pass
-
+    
     return awarded
 
 # ==========================================
@@ -2567,7 +2383,7 @@ def get_gift_card(code: str) -> dict | None:
 
 async def redeem_gift_card(code: str, recipient_tg_id: int, bot) -> tuple[bool, str]:
     """Redeem a gift card. Returns (success, message)."""
-    norm_code = normalize_gift_code_service(str(code or ""))
+    norm_code = str(code or "").strip().upper()
     if not norm_code:
         _track_bonus_event(tg_id=int(recipient_tg_id), event_name="gift_redeem_denied", meta={"reason": "invalid_code"})
     if norm_code:
@@ -2645,7 +2461,7 @@ async def redeem_gift_card(code: str, recipient_tg_id: int, bot) -> tuple[bool, 
 def build_vless_link(client_uuid: str, email: str = "User") -> str:
     """Generate VLESS Reality link for client"""
     from urllib.parse import quote
-
+    
     # vless://uuid@host:port?params#name
     params = [
         f"type=tcp",
@@ -2657,7 +2473,7 @@ def build_vless_link(client_uuid: str, email: str = "User") -> str:
         f"spx=%2F",
         f"flow={VLESS_FLOW}"
     ]
-
+    
     link = f"vless://{client_uuid}@{HOST_DOMAIN}:{VLESS_PORT}?{'&'.join(params)}#{quote(email)}"
     return link
 
@@ -3110,7 +2926,7 @@ TEXTS = {
         "🛡 Статус: {status_icon} *{status_text}*\n"
         "📦 Режим: `{plan_label}`\n"
         "📅 До: `{expiry}`\n"
-        "{payment_line}\n"
+        "⭐ Оплачено: `{stars}` Stars\n"
         "➖➖➖➖➖➖➖➖➖➖"
     ),
     "no_subscription": (
@@ -3367,85 +3183,47 @@ def _build_tariff_payment_choice_text(*, tariff_key: str, tg_id: int) -> str:
         discount_line = "💡 Сработают скидки: " + ", ".join(discount_chunks) + ".\n\n"
 
     rub_price = int(pricing["base_price"])
-    rub_providers = _enabled_bot_rub_providers()
     provider_names = ", ".join(
         str(row.get("label") or "").strip()
-        for row in rub_providers
+        for row in _enabled_bot_rub_providers()
         if str(row.get("label") or "").strip()
     )
     provider_line = f"Оплата в ₽: *{provider_names}*\n" if provider_names else ""
-    if not rub_providers:
-        payment_line = (
-            "Оплата временно недоступна: Lava.top включится только после зеленой проверки платежей и доставки ключей.\n\n"
-            "Можно проверить статус продления на сайте или написать в поддержку. "
-            "Если ключ доступа уже есть, погасите его в приложении или кабинете."
-        )
-    else:
-        payment_line = (
-            "Откроем оплату в рублях без лишних шагов.\n\n"
-            f"{provider_line}"
-            "В боте email не нужен: оплата привяжется к вашему Telegram.\n"
-            "\n"
-            "Следующий шаг: выберите удобную кассу. "
-            "После оплаты доступ обновится автоматически."
-        )
     return (
         f"💳 *{tariff.get('name', 'Тариф')}*\n\n"
         f"Срок: *{int(tariff.get('days', 0))} дней*\n"
         f"Устройств: *до {PAID_LIMIT_IP}*\n"
         "Локации: *все доступные платные*\n\n"
         f"Цена в ₽: *{rub_price} ₽*\n"
+        "Откроем оплату в рублях без лишних шагов.\n\n"
         f"{discount_line}"
-        f"{payment_line}"
+        f"{provider_line}"
+        "В боте email не нужен: оплата привяжется к вашему Telegram.\n"
+        "\n"
+        "Следующий шаг: выберите удобную кассу. "
+        "После оплаты доступ обновится автоматически."
     )
 
 
-def _tariff_payment_choice_keyboard_specs(*, tg_id: int, tariff_key: str) -> list[list[dict[str, str]]]:
+def _build_tariff_payment_choice_keyboard(*, tg_id: int, tariff_key: str) -> InlineKeyboardMarkup:
     pricing = _tariff_pricing_for_user(tg_id, tariff_key)
-    rows: list[list[dict[str, str]]] = []
+    rows: list[list[InlineKeyboardButton]] = []
     rub_providers = _enabled_bot_rub_providers()
     if rub_providers:
         for provider in rub_providers:
             rows.append(
                 [
-                    _btn_spec(
+                    InlineKeyboardButton(
                         text=f"💳 {provider['label']} · {int(pricing['base_price'])} ₽",
                         callback_data=f"pay_rub:{provider['code']}:{tariff_key}",
-                        style=BTN_STYLE_PRIMARY,
-                        icon_custom_emoji_id=BTN_EMOJI_PRIMARY_ID or None,
                     )
                 ]
             )
-    else:
-        rows.append(
-            [
-                _btn_spec(
-                    text="🌐 Проверить статус продления",
-                    url=_bot_checkout_url(int(tg_id), plan_code=tariff_key),
-                    style=BTN_STYLE_PRIMARY,
-                    icon_custom_emoji_id=BTN_EMOJI_PRIMARY_ID or None,
-                )
-            ]
-        )
-        rows.append(
-            [
-                _btn_spec(
-                    text="🆘 Поддержка",
-                    callback_data="support",
-                    style=BTN_STYLE_PRIMARY,
-                    icon_custom_emoji_id=BTN_EMOJI_PRIMARY_ID or None,
-                )
-            ]
-        )
     if tariff_key not in {"6_months", "9_months", "12_months"}:
-        rows.append([_btn_spec(text="📚 Посмотреть долгие тарифы", callback_data="charge_long")])
-    rows.append([_btn_spec(text="◀️ К тарифам", callback_data="charge")])
-    rows.append([_btn_spec(text="🏠 Главное меню", callback_data="back")])
-    return rows
-
-
-def _build_tariff_payment_choice_keyboard(*, tg_id: int, tariff_key: str) -> InlineKeyboardMarkup:
-    return _keyboard_from_specs(_tariff_payment_choice_keyboard_specs(tg_id=tg_id, tariff_key=tariff_key))
+        rows.append([InlineKeyboardButton(text="📚 Посмотреть долгие тарифы", callback_data="charge_long")])
+    rows.append([InlineKeyboardButton(text="◀️ К тарифам", callback_data="charge")])
+    rows.append([InlineKeyboardButton(text="🏠 Главное меню", callback_data="back")])
+    return InlineKeyboardMarkup(inline_keyboard=rows)
 
 
 def _bot_api_base_candidates() -> list[str]:
@@ -3461,58 +3239,16 @@ def _bot_api_base_candidates() -> list[str]:
     return out
 
 
+async def _create_freekassa_payment_link_for_bot(*, tg_id: int, tariff_key: str) -> dict[str, object]:
+    return await _create_rub_payment_link_for_bot(provider="freekassa", tg_id=tg_id, tariff_key=tariff_key)
+
+
 def _enabled_bot_rub_providers() -> list[dict[str, Any]]:
-    if _bot_checkout_runtime_issues():
-        return []
     rows: list[dict[str, Any]] = []
     for row in enabled_provider_catalog():
-        code = normalize_payment_provider(str(row.get("code") or ""))
-        if code == BOT_PUBLIC_RUB_PROVIDER_CODE and bool(row.get("supports_bot")):
+        if bool(row.get("supports_bot")):
             rows.append(row)
     return rows
-
-
-def _safe_public_http_url(value: str | None) -> bool:
-    raw = str(value or "").strip()
-    if not raw:
-        return False
-    try:
-        parsed = urlsplit(raw)
-    except Exception:
-        return False
-    return parsed.scheme in {"http", "https"} and bool(parsed.netloc)
-
-
-def _bot_checkout_runtime_issues() -> list[tuple[str, str]]:
-    issues: list[tuple[str, str]] = []
-    if not _env_bool("RUB_CHECKOUT_ENABLED", default=False):
-        issues.append(("checkout_disabled", "RUB checkout is disabled"))
-    if not CHECKOUT_TICKET_SECRET:
-        issues.append(("missing_checkout_ticket_secret", "CHECKOUT_TICKET_SECRET is empty"))
-    if not str(PAY_CHECKOUT_URL or "").strip():
-        issues.append(("missing_checkout_url", "PAY_CHECKOUT_URL is not configured"))
-    if not _safe_public_http_url(PUBLIC_API_BASE_URL):
-        issues.append(("missing_public_api_base_url", "PUBLIC_API_BASE_URL is empty"))
-    if not enabled_provider_catalog():
-        issues.append(("no_enabled_providers", "No RUB payment providers are configured"))
-
-    try:
-        from email_delivery_service import email_delivery_runtime_status
-
-        email_status = email_delivery_runtime_status()
-        if not bool(email_status.get("enabled")):
-            reasons = ", ".join(str(item) for item in (email_status.get("blocked_reasons") or []) if item) or "not_ready"
-            issues.append(
-                (
-                    "email_delivery_not_ready",
-                    f"Email delivery is not ready for paid access keys: {reasons}",
-                )
-            )
-    except Exception as exc:
-        issues.append(("email_delivery_not_ready", f"Email delivery readiness check failed: {exc}"))
-
-    issues.extend(paid_checkout_launch_evidence_issues())
-    return issues
 
 
 def _rub_provider_by_code(provider_code: str) -> dict[str, Any] | None:
@@ -3539,9 +3275,6 @@ def _parse_pay_rub_callback(data: str) -> tuple[str, str]:
 
 
 def _bot_rub_order_payload(*, provider: str, tg_id: int, tariff_key: str) -> tuple[dict[str, object], str]:
-    provider_code = normalize_payment_provider(provider) or BOT_PUBLIC_RUB_PROVIDER_CODE
-    if provider_code != BOT_PUBLIC_RUB_PROVIDER_CODE:
-        raise RuntimeError("Рублевая оплата в боте сейчас доступна только через Lava.top.")
     ctx = checkout_context_by_user.get(int(tg_id), {}) if checkout_context_by_user else {}
     promo_code = str(ctx.get("promo_code") or "")
     campaign_key = str(ctx.get("campaign_key") or "")
@@ -3556,7 +3289,7 @@ def _bot_rub_order_payload(*, provider: str, tg_id: int, tariff_key: str) -> tup
         raise RuntimeError("Не удалось подготовить персональную ссылку оплаты.")
 
     payload = {
-        "provider": provider_code,
+        "provider": normalize_payment_provider(provider) or "freekassa",
         "plan_code": str(tariff_key or "").strip().lower(),
         "checkout_ticket": checkout_ticket,
         "currency": "RUB",
@@ -3592,7 +3325,7 @@ async def _create_rub_payment_link_for_bot(*, provider: str, tg_id: int, tariff_
     raise RuntimeError(last_error)
 
 
-def _direct_rub_payment_keyboard_specs(*, tg_id: int, tariff_key: str, payment_url: str, provider_label: str = "кассу") -> list[list[dict[str, str]]]:
+def _build_direct_rub_payment_keyboard(*, tg_id: int, tariff_key: str, payment_url: str, provider_label: str = "кассу") -> InlineKeyboardMarkup:
     pricing = _tariff_pricing_for_user(tg_id, tariff_key)
     ctx = checkout_context_by_user.get(int(tg_id), {}) if checkout_context_by_user else {}
     checkout_url = _bot_checkout_url(
@@ -3601,110 +3334,22 @@ def _direct_rub_payment_keyboard_specs(*, tg_id: int, tariff_key: str, payment_u
         promo_code=str(ctx.get("promo_code") or ""),
         campaign_key=str(ctx.get("campaign_key") or ""),
     )
-    return [
-        [
-            _btn_spec(
-                text=f"💳 Открыть оплату · {provider_label} · {int(pricing['base_price'])} ₽",
-                url=str(payment_url or "").strip(),
-                style=BTN_STYLE_PRIMARY,
-                icon_custom_emoji_id=BTN_EMOJI_PRIMARY_ID or None,
-            )
-        ],
-        [_btn_spec(text="🌐 Открыть через сайт, если окно не открылось", url=checkout_url)],
-        [_btn_spec(text="◀️ К тарифам", callback_data="charge")],
-        [_btn_spec(text="🏠 Главное меню", callback_data="back")],
+    rows = [
+        [InlineKeyboardButton(text=f"💳 Открыть оплату · {provider_label} · {int(pricing['base_price'])} ₽", url=str(payment_url or "").strip())],
+        [InlineKeyboardButton(text="🌐 Открыть через сайт, если окно не открылось", url=checkout_url)],
+        [InlineKeyboardButton(text="◀️ К тарифам", callback_data="charge")],
+        [InlineKeyboardButton(text="🏠 Главное меню", callback_data="back")],
     ]
-
-
-def _build_direct_rub_payment_keyboard(*, tg_id: int, tariff_key: str, payment_url: str, provider_label: str = "кассу") -> InlineKeyboardMarkup:
-    return _keyboard_from_specs(
-        _direct_rub_payment_keyboard_specs(
-            tg_id=tg_id,
-            tariff_key=tariff_key,
-            payment_url=payment_url,
-            provider_label=provider_label,
-        )
-    )
-
-
-def _stars_payments_unavailable_keyboard() -> InlineKeyboardMarkup:
-    return InlineKeyboardMarkup(
-        inline_keyboard=[
-            [InlineKeyboardButton(text="🎁 Активировать ключ", callback_data="gift_redeem_prompt")],
-            [InlineKeyboardButton(text="🌐 Открыть кабинет", web_app=WebAppInfo(url=WEBAPP_URL))],
-            [InlineKeyboardButton(text="🆘 Поддержка", callback_data="support")],
-            [InlineKeyboardButton(text="◀️ Назад", callback_data="menu_more")],
-        ]
-    )
-
-
-_legacy_stars_payments_unavailable_keyboard = _stars_payments_unavailable_keyboard
-
-
-def _stars_payments_unavailable_keyboard() -> InlineKeyboardMarkup:
-    legacy_rows = _legacy_stars_payments_unavailable_keyboard().inline_keyboard
-    style_by_callback = {
-        "gift_redeem_prompt": BTN_STYLE_SUCCESS,
-        "support": BTN_STYLE_PRIMARY,
-        "menu_more": BTN_STYLE_DANGER,
-    }
-    icon_by_callback = {
-        "gift_redeem_prompt": BTN_EMOJI_SUCCESS_ID or None,
-        "support": BTN_EMOJI_PRIMARY_ID or None,
-        "menu_more": BTN_EMOJI_DANGER_ID or None,
-    }
-    rows: list[list[dict[str, str]]] = []
-    for row in legacy_rows:
-        next_row: list[dict[str, str]] = []
-        for button in row:
-            callback_data = str(getattr(button, "callback_data", "") or "")
-            web_app = getattr(button, "web_app", None)
-            is_web_app = web_app is not None
-            style = BTN_STYLE_PRIMARY if is_web_app else style_by_callback.get(callback_data)
-            icon = (BTN_EMOJI_PRIMARY_ID or None) if is_web_app else icon_by_callback.get(callback_data)
-            next_row.append(_spec_from_existing_button(button, style=style, icon_custom_emoji_id=icon))
-        rows.append(next_row)
-    return _keyboard_from_specs(rows)
-
-
-async def _show_stars_payments_unavailable(callback: CallbackQuery) -> None:
-    await callback.message.edit_text(
-        "🎁 *Подарки и оплата*\n\n"
-        "Покупка через Telegram Stars сейчас закрыта. Для публичной беты платная касса будет только через Lava.top, "
-        "когда провайдер, вебхуки и доставка ключей на email пройдут проверку.\n\n"
-        "Уже полученный ключ доступа или подарочный код можно активировать здесь или в кабинете.",
-        reply_markup=_stars_payments_unavailable_keyboard(),
-        parse_mode=ParseMode.MARKDOWN,
-    )
+    return InlineKeyboardMarkup(inline_keyboard=rows)
 
 
 def _dual_pay_text(*, show_trial: bool) -> str:
-    rub_providers = _enabled_bot_rub_providers()
     provider_names = ", ".join(
         str(row.get("label") or "").strip()
-        for row in rub_providers
+        for row in _enabled_bot_rub_providers()
         if str(row.get("label") or "").strip()
     )
-    if not provider_names:
-        blocked_line = (
-            "Оплата временно недоступна: Lava.top включится только после зеленой проверки платежей "
-            "и доставки ключей на email."
-        )
-        if show_trial:
-            return (
-                "🚀 *Как удобнее начать?*\n\n"
-                "Можно спокойно взять 5 дней бесплатно и проверить всё в деле.\n"
-                f"{blocked_line}\n\n"
-                "Пока можно посмотреть тарифы, проверить статус продления на сайте или написать в поддержку.\n\n"
-                "Выберите следующий шаг:"
-            )
-        return (
-            "💳 *Оплата в рублях*\n\n"
-            f"{blocked_line}\n\n"
-            "Пока можно посмотреть тарифы, проверить статус продления на сайте или написать в поддержку.\n\n"
-            "Выберите следующий шаг:"
-        )
-    rub_hint = f"В рублях доступны: {provider_names}."
+    rub_hint = f"В рублях доступны: {provider_names}." if provider_names else "В рублях доступны карта и СБП."
     if show_trial:
         return (
             "🚀 *Как удобнее начать?*\n\n"
@@ -3726,50 +3371,13 @@ def _dual_pay_keyboard(*, tg_id: int, show_trial: bool) -> InlineKeyboardMarkup:
     rows: list[list[InlineKeyboardButton]] = []
     if show_trial:
         rows.append([InlineKeyboardButton(text="🚀 Запустить тест на 5 дней", callback_data="buy_trial")])
-    charge_label = (
-        "💳 Посмотреть тарифы и оплату в ₽"
-        if _enabled_bot_rub_providers()
-        else "💳 Посмотреть тарифы"
-    )
     rows.extend(
         [
-            [InlineKeyboardButton(text=charge_label, callback_data="charge")],
+            [InlineKeyboardButton(text="💳 Посмотреть тарифы и оплату в ₽", callback_data="charge")],
         ]
     )
     rows.append([InlineKeyboardButton(text="◀️ Назад", callback_data="back")])
     return InlineKeyboardMarkup(inline_keyboard=rows)
-
-
-_legacy_dual_pay_keyboard = _dual_pay_keyboard
-
-
-def _dual_pay_keyboard(*, tg_id: int, show_trial: bool) -> InlineKeyboardMarkup:
-    legacy_rows = _legacy_dual_pay_keyboard(tg_id=tg_id, show_trial=show_trial).inline_keyboard
-    style_by_callback = {
-        "buy_trial": BTN_STYLE_SUCCESS,
-        "charge": BTN_STYLE_PRIMARY,
-        "back": BTN_STYLE_DANGER,
-    }
-    icon_by_callback = {
-        "buy_trial": BTN_EMOJI_SUCCESS_ID or None,
-        "charge": BTN_EMOJI_PRIMARY_ID or None,
-        "back": BTN_EMOJI_DANGER_ID or None,
-    }
-    rows: list[list[dict[str, str]]] = []
-    for row in legacy_rows:
-        next_row: list[dict[str, str]] = []
-        for button in row:
-            callback_data = str(getattr(button, "callback_data", "") or "")
-            next_row.append(
-                _spec_from_existing_button(
-                    button,
-                    style=style_by_callback.get(callback_data),
-                    icon_custom_emoji_id=icon_by_callback.get(callback_data),
-                )
-            )
-        rows.append(next_row)
-    return _keyboard_from_specs(rows)
-
 
 def main_keyboard_specs(tg_id: int = 0) -> list[list[dict[str, str]]]:
     rows = [
@@ -3787,7 +3395,7 @@ def main_keyboard_specs(tg_id: int = 0) -> list[list[dict[str, str]]]:
             _btn_spec(text="📲 Как начать", callback_data="instruction"),
         ],
         [
-            _btn_spec(text="🧭 Ручная ссылка", callback_data="show_key"),
+            _btn_spec(text="🔗 Ссылка для подключения", callback_data="show_key"),
             _btn_spec(text="🆘 Нужна помощь", callback_data="support"),
         ],
         [
@@ -3804,44 +3412,25 @@ def main_keyboard(tg_id: int = 0) -> InlineKeyboardMarkup:
     """Main menu aligned to the single primary user path."""
     return _keyboard_from_specs(main_keyboard_specs(tg_id))
 
-
-def _start_mode_keyboard() -> InlineKeyboardMarkup:
-    return _keyboard_from_specs(
-        [
-            [
-                _btn_spec(
-                    text="✨ Помочь начать",
-                    callback_data="mode_simple",
-                    style=BTN_STYLE_SUCCESS,
-                    icon_custom_emoji_id=BTN_EMOJI_SUCCESS_ID or None,
-                )
-            ],
-            [_btn_spec(text="🔧 Открыть полное меню", callback_data="mode_pro", style=BTN_STYLE_PRIMARY)],
-        ]
-    )
-
-
 def tariff_keyboard(
     tg_id: int = 0,
     show_trial: bool = True,
     show_gb_only: bool = False,
     include_long_plans: bool = False,
 ) -> InlineKeyboardMarkup:
-    rows: list[list[dict[str, str]]] = []
+    buttons = []
 
     # Free is always visible. If user already has active paid access, pressing it shows an alert and does nothing.
     if show_trial:
-        rows.append(
+        buttons.append(
             [
-                _btn_spec(
+                InlineKeyboardButton(
                     text=f"🎁 5 дней бесплатно — {TRIAL_LIMIT_GB} ГБ, {FREE_LIMIT_IP} устройство",
                     callback_data="buy_trial",
-                    style=BTN_STYLE_SUCCESS,
-                    icon_custom_emoji_id=BTN_EMOJI_SUCCESS_ID or None,
                 )
             ]
         )
-
+    
     # Plans order:
     # - main screen: short horizons
     # - long screen: 6/9/12 months only
@@ -3857,7 +3446,7 @@ def tariff_keyboard(
             ("1_month", "📅 1 Месяц"),
             ("3_months", "📅 3 Месяца"),
         ]
-
+    
     for key, label in plans:
         tariff = TARIFFS.get(key)
         if not tariff: continue
@@ -3892,25 +3481,16 @@ def tariff_keyboard(
             marketing_badge=marketing_badge,
             savings_text=savings_text,
         )
-        rows.append(
-            [
-                _btn_spec(
-                    text=btn_text,
-                    callback_data=f"buy_{key}",
-                    style=BTN_STYLE_PRIMARY,
-                    icon_custom_emoji_id=BTN_EMOJI_PRIMARY_ID or None,
-                )
-            ]
-        )
-
+        buttons.append([InlineKeyboardButton(text=btn_text, callback_data=f"buy_{key}")])
+    
     if include_long_plans:
-        rows.append([_btn_spec(text="◀️ К основным тарифам", callback_data="charge", style=BTN_STYLE_PRIMARY)])
+        buttons.append([InlineKeyboardButton(text="◀️ К основным тарифам", callback_data="charge")])
     else:
-        rows.append([_btn_spec(text="📚 Долгие тарифы", callback_data="charge_long", style=BTN_STYLE_PRIMARY)])
+        buttons.append([InlineKeyboardButton(text="📚 Долгие тарифы", callback_data="charge_long")])
 
-    rows.append([_btn_spec(text="◀️ Назад", callback_data="back", style=BTN_STYLE_DANGER)])
-
-    return _keyboard_from_specs(rows)
+    buttons.append([InlineKeyboardButton(text="◀️ Назад", callback_data="back")])
+    
+    return InlineKeyboardMarkup(inline_keyboard=buttons)
 
 
 @router.message(CommandStart())
@@ -4037,7 +3617,11 @@ async def cmd_start(message: Message):
                 str(bind_status or ""),
                 "⚠️ Не удалось обработать ссылку привязки.\n\nСледующий шаг: откройте приложение POKROV и запросите новую ссылку.",
             ),
-            reply_markup=_channel_link_keyboard(),
+            reply_markup=InlineKeyboardMarkup(
+                inline_keyboard=[
+                    [InlineKeyboardButton(text="📢 Канал POKROV", url=f"https://t.me/{_channel_name_for_url()}")],
+                ]
+            ),
             parse_mode=ParseMode.MARKDOWN,
         )
         return
@@ -4053,7 +3637,12 @@ async def cmd_start(message: Message):
         login_url = _web_login_url_with_token(token)
         await message.answer(
             "✅ Вход подтверждён.\n\nСледующий шаг: откройте кабинет по кнопке ниже.",
-            reply_markup=_web_login_issued_keyboard(login_url),
+            reply_markup=InlineKeyboardMarkup(
+                inline_keyboard=[
+                    [InlineKeyboardButton(text="🌐 Открыть кабинет", url=login_url)],
+                    [InlineKeyboardButton(text="◀️ В меню", callback_data="back")],
+                ]
+            ),
         )
         track_event(
             tg_id=int(tg_id),
@@ -4188,7 +3777,10 @@ async def cmd_start(message: Message):
         "🔧 *Уже почти всё готово*\n"
         "Если вам сразу нужно полное меню и все действия."
     )
-    kb = _start_mode_keyboard()
+    kb = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="✨ Помочь начать", callback_data="mode_simple")],
+        [InlineKeyboardButton(text="🔧 Открыть полное меню", callback_data="mode_pro")],
+    ])
     sent = await message.answer(text, reply_markup=kb, parse_mode=ParseMode.MARKDOWN)
     last_bot_message[tg_id] = sent.message_id
 
@@ -4199,7 +3791,7 @@ async def back_to_main(callback: CallbackQuery):
     pending_promo_codes.discard(tg_id)
     pending_auto_promo_codes.pop(int(tg_id), None)
     pending_auto_friend_gift_referrals.pop(int(tg_id), None)
-
+    
     ok = await _edit_text_with_specs(
         bot=callback.message.bot,
         chat_id=callback.message.chat.id,
@@ -4220,7 +3812,7 @@ async def back_to_main(callback: CallbackQuery):
 async def show_tariffs(callback: CallbackQuery):
     tg_id = callback.from_user.id
     user = get_user(tg_id)
-
+    
     # Check if user has accepted TOS
     if not check_tos_accepted(tg_id):
         await callback.message.edit_text(
@@ -4230,7 +3822,7 @@ async def show_tariffs(callback: CallbackQuery):
         )
         await callback.answer()
         return
-
+    
     # Show Free only if user has no active paid access. It should not "downgrade" paid users.
     now = _utcnow()
     expiry = _naive_utc(user.expiry_at) if user else None
@@ -4285,7 +3877,7 @@ async def show_long_tariffs(callback: CallbackQuery):
 @router.callback_query(F.data == "accept_tos")
 async def accept_tos(callback: CallbackQuery):
     tg_id = callback.from_user.id
-
+    
     # Mark TOS as accepted
     set_tos_accepted(tg_id)
 
@@ -4322,7 +3914,7 @@ async def accept_tos(callback: CallbackQuery):
                 "⚠️ Подарочная ссылка недействительна.",
                 parse_mode=ParseMode.MARKDOWN,
             )
-
+    
     # Now show tariffs
     user = get_user(tg_id)
 
@@ -4342,7 +3934,7 @@ async def accept_tos(callback: CallbackQuery):
 async def show_status(callback: CallbackQuery):
     tg_id = callback.from_user.id
     user = get_user(tg_id)
-
+    
     if not user:
         ok = await _edit_text_with_specs(
             bot=callback.message.bot,
@@ -4360,19 +3952,14 @@ async def show_status(callback: CallbackQuery):
             )
         await callback.answer()
         return
-
+    
     expiry_dt = _naive_utc(user.expiry_at) if user else None
     if expiry_dt:
         expiry = expiry_dt.strftime("%d.%m.%Y")
     else:
         expiry = "—"
-
+    
     stars = user.stars_paid if user else 0
-    payment_line = (
-        f"⭐ Оплачено: `{stars}` Stars"
-        if BOT_STARS_PAYMENTS_ENABLED
-        else "💳 Оплата: `Lava.top-only beta`"
-    )
     is_active = bool(user and user.is_active and expiry_dt and expiry_dt > _utcnow())
     status_icon = "🟢" if is_active else "🔴"
     status_name = "АКТИВЕН" if is_active else "НЕАКТИВЕН"
@@ -4380,7 +3967,6 @@ async def show_status(callback: CallbackQuery):
         tg_id=tg_id,
         expiry=expiry,
         stars=stars,
-        payment_line=payment_line,
         status_icon=status_icon,
         status_text=status_name,
         plan_label=_plan_label_ru(user.sub_type if user else ""),
@@ -4402,7 +3988,7 @@ async def show_status(callback: CallbackQuery):
     panel_snapshot = await _panel_online_snapshot(tg_id)
     status_text += f"\n🌐 Онлайн: `{_panel_online_text(panel_snapshot)}`"
     status_text += f"\n🕓 Последний онлайн: `{_panel_last_online_text(panel_snapshot)}`"
-
+    
     ok = await _edit_text_with_specs(
         bot=callback.message.bot,
         chat_id=callback.message.chat.id,
@@ -4437,7 +4023,7 @@ async def show_key(callback: CallbackQuery):
             parse_mode=ParseMode.MARKDOWN,
         )
         return
-
+    
     if not user:
         rows = [
             [
@@ -4466,9 +4052,13 @@ async def show_key(callback: CallbackQuery):
             parse_mode=ParseMode.MARKDOWN,
         )
         if not ok:
+            kb = InlineKeyboardMarkup(inline_keyboard=[
+                [InlineKeyboardButton(text=_main_connect_cta_text(tg_id), callback_data="charge")],
+                [InlineKeyboardButton(text="◀️ Назад", callback_data="back")]
+            ])
             await callback.message.edit_text(
                 "⚠️ *Ссылки для подключения пока нет.*\n\nСначала запустите доступ, и я сразу подготовлю её.",
-                reply_markup=_no_access_fallback_keyboard(tg_id),
+                reply_markup=kb,
                 parse_mode=ParseMode.MARKDOWN
             )
         return
@@ -4524,26 +4114,23 @@ async def show_key(callback: CallbackQuery):
             f"• До {FREE_SPEED_MBIT} Мбит/с\n"
             f"• Полный доступ откроет {paid_count} стран: {paid_list}\n"
         )
-
+    
     kb = InlineKeyboardMarkup(
         inline_keyboard=[
-            [InlineKeyboardButton(text="📲 Открыть кабинет", web_app=WebAppInfo(url=WEBAPP_URL))],
-            [InlineKeyboardButton(text="🧭 Ручная ссылка", callback_data="copy_key")],
-            [InlineKeyboardButton(text="📱 QR для ручного подключения", callback_data="show_qr")],
+            [InlineKeyboardButton(text="📋 Скопировать ссылку", callback_data="copy_key")],
+            [InlineKeyboardButton(text="📱 QR для подключения", callback_data="show_qr")],
             [InlineKeyboardButton(text="👨‍👩‍👧‍👦 Поделиться доступом", callback_data="share_access")],
             [InlineKeyboardButton(text="🚨 Panic Mode", callback_data="panic_menu")],
             [InlineKeyboardButton(text="◀️ Назад", callback_data="back")],
         ]
     )
-
-    kb = _access_key_keyboard(kb, copy_text=sub_link)
-
+    
     await msg.edit_text(
-        "🧭 *Ручной вариант подключения*\n\n"
-        "Основной путь — открыть кабинет или приложение POKROV: там доступ подхватывается спокойнее и без ручного копирования.\n\n"
-        "Эта личная ссылка — запасной вариант для восстановления или совместимых клиентов:\n\n"
+        f"🔗 *Ссылка для подключения готова:*\n\n"
         f"`{sub_link}`\n\n"
-        "Не пересылайте её другим людям. Если приложения ещё нет, сначала откройте раздел «Как начать».\n"
+        "Следующий шаг: откройте её в приложении POKROV.\n"
+        "Если удобнее, используйте QR ниже.\n\n"
+        "Если приложения ещё нет, сначала откройте раздел «Как начать».\n"
         f"{free_note}",
         reply_markup=kb,
         parse_mode=ParseMode.MARKDOWN
@@ -4554,7 +4141,7 @@ async def copy_key_callback(callback: CallbackQuery):
     tg_id = callback.from_user.id
     sub_link = build_subscription_link(tg_id)
     track_event(tg_id=tg_id, event_name="copied_key", source="bot")
-    await callback.answer(f"🧭 Ручная ссылка для восстановления:\n{sub_link}", show_alert=True)
+    await callback.answer(f"📋 Скопируйте ссылку:\n{sub_link}", show_alert=True)
 
 
 @router.callback_query(F.data == "show_qr")
@@ -4575,12 +4162,12 @@ async def show_qr_code(callback: CallbackQuery):
     await callback.message.answer_photo(
         photo=file,
         caption=(
-            "📱 *QR для ручного подключения*\n\n"
-            "Это запасной способ для восстановления или совместимых клиентов. Основной путь — открыть доступ в приложении POKROV."
+            "📱 *QR для подключения*\n\n"
+            "Следующий шаг: откройте приложение POKROV и отсканируйте код."
         ),
         parse_mode=ParseMode.MARKDOWN,
     )
-    await callback.answer("QR для ручного подключения готов")
+    await callback.answer("QR для подключения готов")
 
 
 @router.callback_query(F.data == "share_access")
@@ -4639,7 +4226,11 @@ async def panic_menu(callback: CallbackQuery):
         parse_mode=ParseMode.MARKDOWN,
     )
     if not ok:
-        await callback.message.edit_text(text, reply_markup=_panic_confirm_keyboard(), parse_mode=ParseMode.MARKDOWN)
+        kb = InlineKeyboardMarkup(inline_keyboard=[
+            [InlineKeyboardButton(text="☢️ СЖЕЧЬ КЛЮЧИ (Сброс)", callback_data="panic_execute")],
+            [InlineKeyboardButton(text="🟢 Отмена", callback_data="show_key")],
+        ])
+        await callback.message.edit_text(text, reply_markup=kb, parse_mode=ParseMode.MARKDOWN)
     await callback.answer()
 
 
@@ -4689,9 +4280,12 @@ async def panic_execute(callback: CallbackQuery, bot: Bot):
     await callback.message.edit_text(
         "✅ *Ключи сброшены.*\n\n"
         "Старый доступ заблокирован. Новый ключ уже выпущен.\n"
-        "Откройте «Ручная ссылка», если нужно восстановить доступ на устройстве вручную.",
+        "Откройте раздел «Ссылка для подключения», чтобы получить обновлённую ссылку.",
         parse_mode=ParseMode.MARKDOWN,
-        reply_markup=_panic_done_keyboard(),
+        reply_markup=InlineKeyboardMarkup(inline_keyboard=[
+            [InlineKeyboardButton(text="🔗 Ссылка для подключения", callback_data="show_key")],
+            [InlineKeyboardButton(text="◀️ В меню", callback_data="back")],
+        ]),
     )
     await callback.answer("Новый ключ выпущен")
 
@@ -4699,14 +4293,25 @@ async def panic_execute(callback: CallbackQuery, bot: Bot):
 async def show_mtproto(callback: CallbackQuery):
     await callback.message.edit_text(
         "ℹ️ Этот раздел отключен.\n\nСледующий шаг: используйте «🌐 Открыть кабинет» для подключения.",
-        reply_markup=_single_back_keyboard(),
+        reply_markup=InlineKeyboardMarkup(inline_keyboard=[[InlineKeyboardButton(text="◀️ Назад", callback_data="back")]]),
         parse_mode=ParseMode.MARKDOWN,
     )
     await callback.answer()
 
 @router.callback_query(F.data == "instruction")
 async def show_instruction(callback: CallbackQuery):
-    kb = _instruction_device_keyboard()
+    kb = InlineKeyboardMarkup(inline_keyboard=[
+        [
+            InlineKeyboardButton(text="🍏 iOS (iPhone)", callback_data="instr_ios"),
+            InlineKeyboardButton(text="🤖 Android", callback_data="instr_android"),
+        ],
+        [
+            InlineKeyboardButton(text="💻 Windows", callback_data="instr_win"),
+            InlineKeyboardButton(text="🍎 macOS", callback_data="instr_mac"),
+        ],
+        [InlineKeyboardButton(text="🌐 Открыть кабинет", web_app=WebAppInfo(url=WEBAPP_URL))],
+        [InlineKeyboardButton(text="◀️ Назад", callback_data="back")],
+    ])
     await callback.message.edit_text(
         "📱 *С какого устройства начинаем?*\n\nВыберите его, и я покажу короткий путь без лишних деталей.",
         reply_markup=kb,
@@ -4717,43 +4322,17 @@ async def show_instruction(callback: CallbackQuery):
 
 @router.callback_query(F.data == "settings")
 async def show_settings(callback: CallbackQuery):
-    rows = [
-        [
-            _btn_spec(
-                text="🧭 Ручная ссылка",
-                callback_data="show_key",
-                style=BTN_STYLE_PRIMARY,
-                icon_custom_emoji_id=BTN_EMOJI_PRIMARY_ID or None,
-            )
-        ],
-        [_btn_spec(text="⚙️ Инструкции", callback_data="instruction", style=BTN_STYLE_PRIMARY)],
-        [_btn_spec(text="🎫 Подарки и промокоды", callback_data="menu_more", style=BTN_STYLE_PRIMARY)],
-    ]
-    if BOT_STARS_PAYMENTS_ENABLED:
-        rows.append(
-            [
-                _btn_spec(
-                    text=f"👨‍👩‍👧‍👦 Family +1 слот ({FAMILY_SLOT_STARS}⭐)",
-                    callback_data="buy_family_slot",
-                    style=BTN_STYLE_PRIMARY,
-                )
-            ]
-        )
-    rows.extend([
-        [
-            _btn_spec(
-                text="🆘 Помочь начать",
-                callback_data="mode_simple",
-                style=BTN_STYLE_SUCCESS,
-                icon_custom_emoji_id=BTN_EMOJI_SUCCESS_ID or None,
-            )
-        ],
-        [_btn_spec(text="◀️ Назад", callback_data="back", style=BTN_STYLE_DANGER)],
+    kb = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="🔗 Ссылка для подключения", callback_data="show_key")],
+        [InlineKeyboardButton(text="⚙️ Инструкции", callback_data="instruction")],
+        [InlineKeyboardButton(text="🎫 Подарки и промокоды", callback_data="menu_more")],
+        [InlineKeyboardButton(text=f"👨‍👩‍👧‍👦 Family +1 слот ({FAMILY_SLOT_STARS}⭐)", callback_data="buy_family_slot")],
+        [InlineKeyboardButton(text="🆘 Помочь начать", callback_data="mode_simple")],
+        [InlineKeyboardButton(text="◀️ Назад", callback_data="back")],
     ])
-    kb = _keyboard_from_specs(rows)
     await callback.message.edit_text(
         "⚙️ *Ещё*\n\n"
-        "Здесь собраны дополнительные действия: ручная ссылка как запасной путь, инструкции, подарки и быстрый следующий шаг.\n\n"
+        "Здесь собраны дополнительные действия: ссылка для подключения, подарки, семейные слоты и быстрый доступ к поддержке.\n\n"
         "Выберите следующий шаг:",
         reply_markup=kb,
         parse_mode=ParseMode.MARKDOWN,
@@ -4765,53 +4344,44 @@ async def show_settings(callback: CallbackQuery):
 async def instruction_platform(callback: CallbackQuery):
     mapping = {
         "instr_ios": (
-            "🍏 *Apple: статус подготовки*\n\n"
-            "iPhone и iPad пока не входят в текущую бета-волну POKROV.\n\n"
-            "Ничего скачивать с бота сейчас не нужно. Можно открыть статус и вернуться к Android или Windows, если хотите начать уже сегодня.",
+            "🍏 *iPhone / iPad*\n\n"
+            "1. Откройте страницу приложений\n"
+            "2. Установите подходящее приложение для iPhone\n"
+            "3. Вернитесь сюда и откройте свою ссылку для подключения",
             IOS_APP_LINK,
-            "Открыть статус Apple",
+            "📥 Открыть страницу для iPhone",
         ),
         "instr_android": (
             "🤖 *Android*\n\n"
             "1. Скачайте приложение POKROV для Android\n"
-            "2. Откройте приложение и войдите или активируйте доступ через кабинет\n"
-            "3. Если приложение не подхватило доступ, используйте ручную ссылку как запасной путь",
-            _webapp_downloads_url("android"),
+            "2. Вернитесь сюда и откройте свою ссылку для подключения\n"
+            "3. Если удобнее, можно начать через кабинет",
+            ANDROID_APP_LINK,
             "📥 Скачать POKROV",
         ),
         "instr_win": (
             "💻 *Windows*\n\n"
             "1. Скачайте приложение POKROV для Windows\n"
-            "2. Откройте приложение и войдите или активируйте доступ через кабинет\n"
-            "3. Если приложение не подхватило доступ, используйте ручную ссылку как запасной путь",
-            _webapp_downloads_url("windows"),
+            "2. Вернитесь сюда и откройте свою ссылку для подключения\n"
+            "3. Если удобнее, завершите всё через кабинет",
+            WINDOWS_APP_LINK,
             "📥 Скачать POKROV",
         ),
         "instr_mac": (
-            "🍎 *macOS: статус подготовки*\n\n"
-            "macOS пока не входит в текущую бета-волну POKROV.\n\n"
-            "Ничего скачивать с бота сейчас не нужно. Можно открыть статус и вернуться к Android или Windows, если хотите начать уже сегодня.",
+            "🍎 *macOS*\n\n"
+            "1. Откройте страницу приложений\n"
+            "2. Посмотрите актуальный статус macOS\n"
+            "3. Если подключаетесь уже сейчас, используйте свою ссылку в совместимом приложении",
             MAC_APP_LINK,
-            "Открыть статус Apple",
+            "📥 Открыть страницу для macOS",
         ),
     }
     text, url, btn = mapping.get(callback.data or "", mapping["instr_android"])
-    rows = [
-        [
-            _btn_spec(
-                text=btn,
-                url=url,
-                style=BTN_STYLE_PRIMARY,
-                icon_custom_emoji_id=BTN_EMOJI_PRIMARY_ID or None,
-            )
-        ],
-    ]
-    if callback.data in {"instr_android", "instr_win"}:
-        rows.append([_btn_spec(text="🧭 Ручная ссылка", callback_data="show_key", style=BTN_STYLE_PRIMARY)])
-    else:
-        rows.append([_btn_spec(text="🆘 Поддержка", callback_data="support", style=BTN_STYLE_PRIMARY)])
-    rows.append([_btn_spec(text="◀️ Устройства", callback_data="instruction", style=BTN_STYLE_DANGER)])
-    kb = _keyboard_from_specs(rows)
+    kb = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text=btn, url=url)],
+        [InlineKeyboardButton(text="🔗 Ссылка для подключения", callback_data="show_key")],
+        [InlineKeyboardButton(text="◀️ Устройства", callback_data="instruction")],
+    ])
     await callback.message.edit_text(text, parse_mode=ParseMode.MARKDOWN, reply_markup=kb)
     await callback.answer()
 
@@ -4825,27 +4395,11 @@ async def menu_bonuses(callback: CallbackQuery):
     tg_id = int(callback.from_user.id)
     user = get_user(tg_id)
     if not _is_paid_active_user(user):
-        kb = _keyboard_from_specs(
-            [
-                [
-                    _btn_spec(
-                        text=f"🎁 {CHANNEL_PREMIUM_DAYS} дней премиум за канал",
-                        callback_data="bonus_offer_main",
-                        style=BTN_STYLE_SUCCESS,
-                        icon_custom_emoji_id=BTN_EMOJI_SUCCESS_ID or None,
-                    )
-                ],
-                [
-                    _btn_spec(
-                        text=_main_connect_cta_text(tg_id),
-                        callback_data="charge",
-                        style=BTN_STYLE_PRIMARY,
-                        icon_custom_emoji_id=BTN_EMOJI_PRIMARY_ID or None,
-                    )
-                ],
-                [_btn_spec(text="◀️ Назад", callback_data="back", style=BTN_STYLE_DANGER)],
-            ]
-        )
+        kb = InlineKeyboardMarkup(inline_keyboard=[
+            [InlineKeyboardButton(text=f"🎁 {CHANNEL_PREMIUM_DAYS} дней премиум за канал", callback_data="bonus_offer_main")],
+            [InlineKeyboardButton(text=_main_connect_cta_text(tg_id), callback_data="charge")],
+            [InlineKeyboardButton(text="◀️ Назад", callback_data="back")],
+        ])
         await callback.message.edit_text(
             "🎁 *Бонусы*\n\n"
             "Можно взять бонус за канал или сразу перейти к выбору доступа.\n\n"
@@ -4856,47 +4410,18 @@ async def menu_bonuses(callback: CallbackQuery):
         await callback.answer()
         return
 
-    kb = _keyboard_from_specs(
+    kb = InlineKeyboardMarkup(inline_keyboard=[
         [
-            [
-                _btn_spec(
-                    text="🎁 Пригласить друга",
-                    callback_data="referral",
-                    style=BTN_STYLE_PRIMARY,
-                    icon_custom_emoji_id=BTN_EMOJI_PRIMARY_ID or None,
-                ),
-                _btn_spec(
-                    text="🏆 Ачивки",
-                    callback_data="achievements",
-                    style=BTN_STYLE_PRIMARY,
-                    icon_custom_emoji_id=BTN_EMOJI_PRIMARY_ID or None,
-                ),
-            ],
-            [
-                _btn_spec(
-                    text="🎰 Колесо Фортуны",
-                    callback_data="wheel",
-                    style=BTN_STYLE_SUCCESS,
-                    icon_custom_emoji_id=BTN_EMOJI_SUCCESS_ID or None,
-                ),
-                _btn_spec(
-                    text="🔥 Streak",
-                    callback_data="streak",
-                    style=BTN_STYLE_PRIMARY,
-                    icon_custom_emoji_id=BTN_EMOJI_PRIMARY_ID or None,
-                ),
-            ],
-            [
-                _btn_spec(
-                    text="◀️ Назад",
-                    callback_data="back",
-                    style=BTN_STYLE_DANGER,
-                    icon_custom_emoji_id=BTN_EMOJI_DANGER_ID or None,
-                )
-            ],
-        ]
-    )
-
+            InlineKeyboardButton(text="🎁 Пригласить друга", callback_data="referral"),
+            InlineKeyboardButton(text="🏆 Ачивки", callback_data="achievements")
+        ],
+        [
+            InlineKeyboardButton(text="🎰 Колесо Фортуны", callback_data="wheel"),
+            InlineKeyboardButton(text="🔥 Streak", callback_data="streak")
+        ],
+        [InlineKeyboardButton(text="◀️ Назад", callback_data="back")]
+    ])
+    
     await callback.message.edit_text(
         "🎁 *Бонусы*\n\n"
         "Здесь собраны бонусы и полезные плюсы: друзья, streak, рулетка и достижения.\n\n"
@@ -4910,39 +4435,24 @@ async def menu_bonuses(callback: CallbackQuery):
 async def menu_more(callback: CallbackQuery):
     """More menu: gift cards, promo, share"""
     feedback_url = f"https://t.me/{FEEDBACK_USERNAME}"
-    rows = [
-        [_btn_spec(text="🎫 Подарки и ключи", callback_data="gift_cards", style=BTN_STYLE_PRIMARY)],
-    ]
-    if BOT_STARS_PAYMENTS_ENABLED:
-        rows.append(
+    kb = InlineKeyboardMarkup(
+        inline_keyboard=[
+            [InlineKeyboardButton(text="🎫 Подарить", callback_data="gift_cards")],
+            [InlineKeyboardButton(text=f"👨‍👩‍👧‍👦 Family +1 слот ({FAMILY_SLOT_STARS}⭐)", callback_data="buy_family_slot")],
             [
-                _btn_spec(
-                    text=f"👨‍👩‍👧‍👦 Family +1 слот ({FAMILY_SLOT_STARS}⭐)",
-                    callback_data="buy_family_slot",
-                    style=BTN_STYLE_PRIMARY,
-                )
-            ]
-        )
-    rows.extend([
-        [
-            _btn_spec(
-                text="🎁 Активировать ключ",
-                callback_data="gift_redeem_prompt",
-                style=BTN_STYLE_SUCCESS,
-                icon_custom_emoji_id=BTN_EMOJI_SUCCESS_ID or None,
-            ),
-            _btn_spec(text="🎟️ Ввести промокод", callback_data="promo_activate_prompt", style=BTN_STYLE_PRIMARY),
-        ],
-        [_btn_spec(text="ℹ️ Помощь по промокоду", callback_data="promo_help", style=BTN_STYLE_PRIMARY)],
-        [_btn_spec(text="⭐ Оставить отзыв", callback_data="review_start", style=BTN_STYLE_PRIMARY)],
-        [_btn_spec(text="💌 Идеи и фидбэк", url=feedback_url, style=BTN_STYLE_PRIMARY)],
-        [_btn_spec(text="◀️ Назад", callback_data="back", style=BTN_STYLE_DANGER)],
-    ])
-    kb = _keyboard_from_specs(rows)
-
+                InlineKeyboardButton(text="🎁 Активировать подарок", callback_data="gift_redeem_prompt"),
+                InlineKeyboardButton(text="🎟️ Ввести промокод", callback_data="promo_activate_prompt"),
+            ],
+            [InlineKeyboardButton(text="ℹ️ Помощь по промокоду", callback_data="promo_help")],
+            [InlineKeyboardButton(text="⭐ Оставить отзыв", callback_data="review_start")],
+            [InlineKeyboardButton(text="💌 Идеи и фидбэк", url=feedback_url)],
+            [InlineKeyboardButton(text="◀️ Назад", callback_data="back")],
+        ]
+    )
+    
     await callback.message.edit_text(
         "📦 *Ещё*\n\n"
-        "Здесь собраны дополнительные действия: ключ доступа, подарок, промокод или отзыв.\n\n"
+        "Здесь собраны дополнительные действия: подарок, код или отзыв.\n\n"
         "Выберите, что хотите сделать дальше:",
         reply_markup=kb,
         parse_mode=ParseMode.MARKDOWN
@@ -4952,18 +4462,9 @@ async def menu_more(callback: CallbackQuery):
 @router.callback_query(F.data == "promo_help")
 async def promo_help(callback: CallbackQuery):
     """Show promo command help"""
-    kb = _keyboard_from_specs(
-        [
-            [
-                _btn_spec(
-                    text="◀️ Назад",
-                    callback_data="menu_more",
-                    style=BTN_STYLE_DANGER,
-                    icon_custom_emoji_id=BTN_EMOJI_DANGER_ID or None,
-                )
-            ]
-        ]
-    )
+    kb = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="◀️ Назад", callback_data="menu_more")]
+    ])
     await callback.message.edit_text(
         "🎟️ *Активация промокода*\n\n"
         "Следующий шаг: отправьте команду `/promo КОД`\n\n"
@@ -4977,21 +4478,12 @@ async def promo_help(callback: CallbackQuery):
 @router.callback_query(F.data == "gift_redeem_prompt")
 async def gift_redeem_prompt(callback: CallbackQuery):
     pending_redeem_codes.add(callback.from_user.id)
-    kb = _keyboard_from_specs(
-        [
-            [
-                _btn_spec(
-                    text="◀️ Назад",
-                    callback_data="menu_more",
-                    style=BTN_STYLE_DANGER,
-                    icon_custom_emoji_id=BTN_EMOJI_DANGER_ID or None,
-                )
-            ]
-        ]
-    )
+    kb = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="◀️ Назад", callback_data="menu_more")],
+    ])
     await callback.message.edit_text(
-        "🎁 *Активация ключа или подарка*\n\n"
-        "Отправьте ключ доступа или подарочный код следующим сообщением.\n"
+        "🎁 *Активация подарка*\n\n"
+        "Отправьте код следующим сообщением.\n"
         "_Если у вас старый код `SWAZ-...`, он тоже пока принимается._",
         reply_markup=kb,
         parse_mode=ParseMode.MARKDOWN,
@@ -5002,18 +4494,9 @@ async def gift_redeem_prompt(callback: CallbackQuery):
 @router.callback_query(F.data == "promo_activate_prompt")
 async def promo_activate_prompt(callback: CallbackQuery):
     pending_promo_codes.add(callback.from_user.id)
-    kb = _keyboard_from_specs(
-        [
-            [
-                _btn_spec(
-                    text="◀️ Назад",
-                    callback_data="menu_more",
-                    style=BTN_STYLE_DANGER,
-                    icon_custom_emoji_id=BTN_EMOJI_DANGER_ID or None,
-                )
-            ]
-        ]
-    )
+    kb = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="◀️ Назад", callback_data="menu_more")],
+    ])
     await callback.message.edit_text(
         "🎟️ *Активация промокода*\n\n"
         "Отправьте код следующим сообщением, без `/promo`.\n"
@@ -5028,35 +4511,26 @@ async def review_start(callback: CallbackQuery):
     """Start review flow from button"""
     tg_id = callback.from_user.id
     user = get_user(tg_id)
-
+    
     if not user or not user.is_active:
         await callback.answer("❌ Сначала включите доступ, потом можно оставить отзыв для сайта.", show_alert=True)
         return
-
+    
     if has_user_review(tg_id):
         await callback.answer("❌ Отзыв уже сохранён. Спасибо!", show_alert=True)
         return
-
-    kb = _keyboard_from_specs(
+    
+    kb = InlineKeyboardMarkup(inline_keyboard=[
         [
-            [
-                _btn_spec(text="⭐", callback_data="rate_1", style=BTN_STYLE_PRIMARY),
-                _btn_spec(text="⭐⭐", callback_data="rate_2", style=BTN_STYLE_PRIMARY),
-                _btn_spec(text="⭐⭐⭐", callback_data="rate_3", style=BTN_STYLE_PRIMARY),
-                _btn_spec(text="⭐⭐⭐⭐", callback_data="rate_4", style=BTN_STYLE_PRIMARY),
-                _btn_spec(text="⭐⭐⭐⭐⭐", callback_data="rate_5", style=BTN_STYLE_PRIMARY),
-            ],
-            [
-                _btn_spec(
-                    text="◀️ Назад",
-                    callback_data="menu_more",
-                    style=BTN_STYLE_DANGER,
-                    icon_custom_emoji_id=BTN_EMOJI_DANGER_ID or None,
-                )
-            ],
-        ]
-    )
-
+            InlineKeyboardButton(text="⭐", callback_data="rate_1"),
+            InlineKeyboardButton(text="⭐⭐", callback_data="rate_2"),
+            InlineKeyboardButton(text="⭐⭐⭐", callback_data="rate_3"),
+            InlineKeyboardButton(text="⭐⭐⭐⭐", callback_data="rate_4"),
+            InlineKeyboardButton(text="⭐⭐⭐⭐⭐", callback_data="rate_5"),
+        ],
+        [InlineKeyboardButton(text="◀️ Назад", callback_data="menu_more")]
+    ])
+    
     await callback.message.edit_text(
         "⭐ *Поделитесь впечатлением*\n\n"
         "Поставьте оценку от 1 до 5 звёзд. Затем при желании можно добавить короткий текст для сайта.",
@@ -5072,41 +4546,25 @@ async def show_referral(callback: CallbackQuery):
     if not _is_paid_active_user(user):
         await callback.answer("⚠️ Реферальные бонусы доступны только при активном платном доступе.", show_alert=True)
         return
-
+    
     # Get or create unique referral code
     stats = get_referral_stats(tg_id)
     ref_code = stats.get('code') or get_or_create_referral_code(tg_id)
-
+    
     if not ref_code:
         await callback.answer("⚠️ Сначала активируйте доступ", show_alert=True)
         return
-
+    
     # Generate referral link with SWAZ code
     invite_link = f"https://t.me/{BOT_USERNAME}?start={ref_code}"
     ref_count = stats['count']
     bonus_earned = stats['bonus_earned']
-
-    kb = _keyboard_from_specs(
-        [
-            [
-                _btn_spec(
-                    text="📤 Поделиться реферальной ссылкой",
-                    url=f"https://t.me/share/url?url={invite_link}&text=🛡 POKROV — приглашение в защищённую связь",
-                    style=BTN_STYLE_PRIMARY,
-                    icon_custom_emoji_id=BTN_EMOJI_PRIMARY_ID or None,
-                )
-            ],
-            [
-                _btn_spec(
-                    text="◀️ Назад",
-                    callback_data="back",
-                    style=BTN_STYLE_DANGER,
-                    icon_custom_emoji_id=BTN_EMOJI_DANGER_ID or None,
-                )
-            ],
-        ]
-    )
-
+    
+    kb = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="📤 Поделиться реферальной ссылкой", url=f"https://t.me/share/url?url={invite_link}&text=🛡 POKROV — приглашение в защищённую связь")],
+        [InlineKeyboardButton(text="◀️ Назад", callback_data="back")]
+    ])
+    
     await callback.message.edit_text(
         f"🎁 *Пригласите друга по своей ссылке*\n\n"
         "Друг получает понятный старт и быстрый путь к подключению.\n"
@@ -5129,58 +4587,37 @@ async def show_wheel(callback: CallbackQuery):
         return
 
     can_spin, seconds_left = can_spin_wheel(tg_id)
-
+    
     if not can_spin and seconds_left == 0:
         # User not active
         await callback.answer("⚠️ Активируй подписку, чтобы крутить рулетку!", show_alert=True)
         return
-
+    
     if can_spin:
         status_text = "✅ *Можно крутить!*"
         buttons = [
-            [
-                _btn_spec(
-                    text="🎰 КРУТИТЬ!",
-                    callback_data="wheel_spin",
-                    style=BTN_STYLE_SUCCESS,
-                    icon_custom_emoji_id=BTN_EMOJI_SUCCESS_ID or None,
-                )
-            ],
-            [
-                _btn_spec(
-                    text="◀️ Назад",
-                    callback_data="back",
-                    style=BTN_STYLE_DANGER,
-                    icon_custom_emoji_id=BTN_EMOJI_DANGER_ID or None,
-                )
-            ],
+            [InlineKeyboardButton(text="🎰 КРУТИТЬ!", callback_data="wheel_spin")],
+            [InlineKeyboardButton(text="◀️ Назад", callback_data="back")]
         ]
     else:
         # Calculate time left
         days = seconds_left // 86400
         hours = (seconds_left % 86400) // 3600
         mins = (seconds_left % 3600) // 60
-
+        
         if days > 0:
             time_str = f"{days}д {hours}ч"
         elif hours > 0:
             time_str = f"{hours}ч {mins}м"
         else:
             time_str = f"{mins} мин"
-
+        
         status_text = f"⏳ Следующий спин через: *{time_str}*"
         buttons = [
-            [
-                _btn_spec(
-                    text="◀️ Назад",
-                    callback_data="back",
-                    style=BTN_STYLE_DANGER,
-                    icon_custom_emoji_id=BTN_EMOJI_DANGER_ID or None,
-                )
-            ]
+            [InlineKeyboardButton(text="◀️ Назад", callback_data="back")]
         ]
-
-    kb = _keyboard_from_specs(buttons)
+    
+    kb = InlineKeyboardMarkup(inline_keyboard=buttons)
 
     # Display chances matching the actual wheel logic.
     session = Session()
@@ -5194,7 +4631,7 @@ async def show_wheel(callback: CallbackQuery):
         tag = " (ДЖЕКПОТ!)" if days == 30 else ""
         prize_lines.append(f"• {days} дней — {pct}%{tag}")
     prizes_text = "\n".join(prize_lines)
-
+    
     await callback.message.edit_text(
         f"🎰 *Колесо Фортуны!*\n\n"
         f"Крути раз в неделю и получай бонусные дни!\n\n"
@@ -5213,36 +4650,27 @@ async def do_wheel_spin(callback: CallbackQuery):
     if not _is_paid_active_user(user):
         await callback.answer("⚠️ Рулетка доступна только при активном платном доступе.", show_alert=True)
         return
-
+    
     # Show spinning animation
     await callback.message.edit_text(
         "🎰 *Крутим колесо...*\n\n"
         "🔄 ▓▓▓▓▓▓▓▓▓▓ 🔄",
         parse_mode=ParseMode.MARKDOWN
     )
-
+    
     # Small delay for effect
     import asyncio
     await asyncio.sleep(1.5)
-
+    
     # Spin!
     prize = spin_wheel(tg_id)
-
+    
     if prize is None:
         await callback.message.edit_text(
             "❌ Не удалось прокрутить. Попробуй позже!",
-            reply_markup=_keyboard_from_specs(
-                [
-                    [
-                        _btn_spec(
-                            text="◀️ Назад",
-                            callback_data="back",
-                            style=BTN_STYLE_DANGER,
-                            icon_custom_emoji_id=BTN_EMOJI_DANGER_ID or None,
-                        )
-                    ]
-                ]
-            )
+            reply_markup=InlineKeyboardMarkup(inline_keyboard=[
+                [InlineKeyboardButton(text="◀️ Назад", callback_data="back")]
+            ])
         )
         return
 
@@ -5284,20 +4712,11 @@ async def do_wheel_spin(callback: CallbackQuery):
             "sync_ok": bool(sync_ok),
         },
     )
-
-    kb = _keyboard_from_specs(
-        [
-            [
-                _btn_spec(
-                    text="◀️ В меню",
-                    callback_data="back",
-                    style=BTN_STYLE_DANGER,
-                    icon_custom_emoji_id=BTN_EMOJI_DANGER_ID or None,
-                )
-            ]
-        ]
-    )
-
+    
+    kb = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="◀️ В меню", callback_data="back")]
+    ])
+    
     await callback.message.edit_text(
         f"{emoji} *{title}*\n\n"
         f"Тебе выпало: *+{prize} Дней*!\n\n"
@@ -5316,13 +4735,13 @@ async def show_achievements(callback: CallbackQuery):
     if not _is_paid_active_user(user):
         await callback.answer("⚠️ Достижения доступны только при активном платном доступе.", show_alert=True)
         return
-
+    
     # Check for new achievements
     await check_achievements(tg_id, callback.bot)
-
+    
     # Get user's unlocked achievements
     unlocked = get_user_achievements(tg_id)
-
+    
     # Build achievements grid (all rewards are days).
     lines = []
     total_days = 0
@@ -5336,20 +4755,11 @@ async def show_achievements(callback: CallbackQuery):
 
         bonus = f" (+{bonus_days} дн.)" if bonus_days > 0 else ""
         lines.append(f"{status} {ach['icon']} *{ach['name']}*{bonus}\n   _{ach['desc']}_")
-
-    kb = _keyboard_from_specs(
-        [
-            [
-                _btn_spec(
-                    text="◀️ Назад",
-                    callback_data="back",
-                    style=BTN_STYLE_DANGER,
-                    icon_custom_emoji_id=BTN_EMOJI_DANGER_ID or None,
-                )
-            ]
-        ]
-    )
-
+    
+    kb = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="◀️ Назад", callback_data="back")]
+    ])
+    
     await callback.message.edit_text(
         f"🏆 *Твои достижения*\n\n"
         f"Открыто: *{len(unlocked)}/{len(ACHIEVEMENTS)}*\n"
@@ -5370,11 +4780,11 @@ async def show_streak(callback: CallbackQuery):
         return
 
     info = get_streak_info(tg_id)
-
+    
     months = info["months"]
     next_m = info["next_milestone"]
     bonus_days_next = info["bonus_days_next"]
-
+    
     # Build progress bar
     if next_m:
         progress = min(months / next_m, 1.0)
@@ -5384,26 +4794,17 @@ async def show_streak(callback: CallbackQuery):
     else:
         bar = "▓" * 10
         progress_text = f"🏆 *Все вехи пройдены!* [{bar}]"
-
+    
     # Milestone list
     milestones = "\n".join([
         f"{'✅' if months >= m else '⬜'} {m} мес = +{d} Дней"
         for m, d in sorted(STREAK_REWARDS.items())
     ])
-
-    kb = _keyboard_from_specs(
-        [
-            [
-                _btn_spec(
-                    text="◀️ Назад",
-                    callback_data="back",
-                    style=BTN_STYLE_DANGER,
-                    icon_custom_emoji_id=BTN_EMOJI_DANGER_ID or None,
-                )
-            ]
-        ]
-    )
-
+    
+    kb = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="◀️ Назад", callback_data="back")]
+    ])
+    
     await callback.message.edit_text(
         f"🔥 *Твой Streak: {months} мес*\n\n"
         f"Каждый месяц активной подписки увеличивает streak.\n"
@@ -5419,11 +4820,6 @@ async def show_streak(callback: CallbackQuery):
 
 @router.callback_query(F.data == "buy_family_slot")
 async def buy_family_slot(callback: CallbackQuery, bot: Bot):
-    if not BOT_STARS_PAYMENTS_ENABLED:
-        await _show_stars_payments_unavailable(callback)
-        await callback.answer("Оплата через Stars закрыта", show_alert=True)
-        return
-
     tg_id = callback.from_user.id
     current = active_family_slots(tg_id)
     if current >= FAMILY_SLOT_MAX:
@@ -5452,13 +4848,13 @@ async def buy_family_slot(callback: CallbackQuery, bot: Bot):
 FAQ_ANSWERS = {
     "connect": (
         "📱 *Как подключиться?*\n\n"
-        "1️⃣ Откройте загрузку текущей беты:\n"
-        f"• Android: [POKROV]({_webapp_downloads_url('android')})\n"
-        f"• Windows: [POKROV]({_webapp_downloads_url('windows')})\n\n"
-        f"Apple пока в подготовке: [статус релиза]({IOS_APP_LINK})\n\n"
-        "2️⃣ Откройте приложение POKROV и войдите или активируйте доступ через кабинет\n\n"
-        "3️⃣ Нажмите «Подключить» в приложении\n\n"
-        "Запасной ручной путь: если приложение не подхватило доступ, откройте ручную ссылку в боте или кабинете.\n\n"
+        "1️⃣ Скачайте приложение:\n"
+        f"• iPhone / iPad: [Инструкция и статус релиза]({IOS_APP_LINK})\n"
+        f"• Android: [POKROV]({ANDROID_APP_LINK})\n"
+        f"• Windows: [POKROV]({WINDOWS_APP_LINK})\n\n"
+        "2️⃣ Нажмите *🔗 Ссылка для подключения* в боте\n\n"
+        "3️⃣ Откройте ссылку в приложении POKROV\n\n"
+        "4️⃣ Нажмите «Подключить»\n\n"
         "Если что-то не открылось, следующий шаг — написать в поддержку."
     ),
     "notwork": (
@@ -5473,11 +4869,11 @@ FAQ_ANSWERS = {
     ),
     "renew": (
         "💳 *Как продлить доступ?*\n\n"
-        "Оплата временно недоступна: Lava.top включится только после финальной проверки платежей и доставки ключей на email.\n\n"
-        "Пока безопасные варианты такие:\n"
-        "1️⃣ Откройте *🌐 Проверить статус продления* в кабинете или боте\n"
-        "2️⃣ Если у вас уже есть ключ доступа, погасите его в кабинете или приложении\n"
-        "3️⃣ Если срок должен был обновиться, напишите в поддержку — оператор проверит платеж и продолжит тот же кейс."
+        f"1️⃣ Откройте бота @{BOT_USERNAME_MD}\n\n"
+        "2️⃣ Нажмите *✨ Подобрать доступ*\n\n"
+        "3️⃣ Выберите нужный план\n\n"
+        "4️⃣ Откройте оплату в ₽\n\n"
+        "После успешной оплаты доступ обновится автоматически."
     ),
     "referral": (
         "🎁 *Реферальная программа*\n\n"
@@ -5488,27 +4884,11 @@ FAQ_ANSWERS = {
     ),
     "device": (
         "📲 *Смена устройства*\n\n"
-        "Скачайте приложение на новое устройство и войдите через тот же аккаунт или кабинет.\n\n"
-        "Ручная ссылка — запасной путь, если приложение не подхватило доступ автоматически.\n\n"
+        "Скачайте приложение на новое устройство и откройте ту же ссылку для подключения.\n\n"
+        "Путь: *🔗 Ссылка для подключения* → открыть в новом приложении.\n\n"
         f"Лимит устройств зависит от плана: до *{PAID_LIMIT_IP}* в платных режимах."
     ),
 }
-
-
-def _support_faq_answer(faq_key: str) -> str:
-    if str(faq_key or "").strip() == "connect":
-        return (
-            "📱 *Как подключиться?*\n\n"
-            "1️⃣ Откройте загрузку текущей беты:\n"
-            f"• Android: [POKROV]({_webapp_downloads_url('android')})\n"
-            f"• Windows: [POKROV]({_webapp_downloads_url('windows')})\n\n"
-            f"Apple пока в подготовке: [статус релиза]({IOS_APP_LINK})\n\n"
-            "2️⃣ Откройте приложение POKROV и войдите или активируйте доступ через кабинет\n\n"
-            "3️⃣ Нажмите «Подключить» в приложении\n\n"
-            "Запасной ручной путь: если приложение не подхватило доступ, откройте ручную ссылку в боте или кабинете.\n\n"
-            "Если что-то не открылось, следующий шаг — написать в поддержку."
-        )
-    return FAQ_ANSWERS.get(faq_key, "Ответ не найден")
 
 # ==========================================
 #         GIFT CARDS HANDLERS
@@ -5517,37 +4897,14 @@ def _support_faq_answer(faq_key: str) -> str:
 @router.callback_query(F.data == "gift_cards")
 async def show_gift_cards(callback: CallbackQuery):
     """Show gift card purchase menu"""
-    if not BOT_STARS_PAYMENTS_ENABLED:
-        await _show_stars_payments_unavailable(callback)
-        await callback.answer()
-        return
-
-    buttons: list[list[dict[str, str]]] = []
+    buttons = []
     for key, card in GIFT_CARD_TYPES.items():
         text = f"{card['name']} — {card['days']} дн. — {card['stars']} ⭐"
-        buttons.append(
-            [
-                _btn_spec(
-                    text=text,
-                    callback_data=f"buy_giftcard_{key}",
-                    style=BTN_STYLE_PRIMARY,
-                    icon_custom_emoji_id=BTN_EMOJI_PRIMARY_ID or None,
-                )
-            ]
-        )
-
-    buttons.append(
-        [
-            _btn_spec(
-                text="◀️ Назад",
-                callback_data="back",
-                style=BTN_STYLE_DANGER,
-                icon_custom_emoji_id=BTN_EMOJI_DANGER_ID or None,
-            )
-        ]
-    )
-    kb = _keyboard_from_specs(buttons)
-
+        buttons.append([InlineKeyboardButton(text=text, callback_data=f"buy_giftcard_{key}")])
+    
+    buttons.append([InlineKeyboardButton(text="◀️ Назад", callback_data="back")])
+    kb = InlineKeyboardMarkup(inline_keyboard=buttons)
+    
     await callback.message.edit_text(
         "🎁 *Подарочные карты*\n\n"
         "Купи карту → получи код → отправь другу!\n"
@@ -5561,20 +4918,15 @@ async def show_gift_cards(callback: CallbackQuery):
 @router.callback_query(F.data.startswith("buy_giftcard_"))
 async def buy_gift_card(callback: CallbackQuery, bot: Bot):
     """Buy a gift card"""
-    if not BOT_STARS_PAYMENTS_ENABLED:
-        await _show_stars_payments_unavailable(callback)
-        await callback.answer("Оплата подарков пока закрыта", show_alert=True)
-        return
-
     card_type = callback.data.replace("buy_giftcard_", "")
     card_info = GIFT_CARD_TYPES.get(card_type)
-
+    
     if not card_info:
         await callback.answer("❌ Неизвестный тип карты", show_alert=True)
         return
-
+    
     tg_id = callback.from_user.id
-
+    
     # Create payment
     await bot.send_invoice(
         chat_id=tg_id,
@@ -5589,23 +4941,23 @@ async def buy_gift_card(callback: CallbackQuery, bot: Bot):
 
 @router.message(Command("redeem"))
 async def redeem_command(message: Message, bot: Bot):
-    """Redeem an access key or gift card code."""
+    """Redeem a gift card code"""
     pending_redeem_codes.discard(message.from_user.id)
     args = message.text.split(maxsplit=1)
-
+    
     if len(args) < 2:
         await message.answer(
-            "📥 *Активация ключа доступа или подарка*\n\n"
+            "📥 *Активация подарочной карты*\n\n"
             "Использование: `/redeem POKROV-XXXX-XXXX`\n\n"
             "_Старые коды `SWAZ-...` тоже работают._\n\n"
-            "_Введите ключ из письма/кабинета или подарочный код_",
+            "_Введи код карты, которую тебе подарили_",
             parse_mode=ParseMode.MARKDOWN
         )
         return
-
+    
     code = args[1].strip().upper()
     tg_id = message.from_user.id
-
+    
     # Check TOS first
     if not check_tos_accepted(tg_id):
         await message.answer(
@@ -5613,30 +4965,14 @@ async def redeem_command(message: Message, bot: Bot):
             "Нажми /start и прими оферту."
         )
         return
-
+    
     success, result_msg = await redeem_gift_card(code, tg_id, bot)
-
-    kb = _keyboard_from_specs(
-        [
-            [
-                _btn_spec(
-                    text="🌐 Открыть кабинет",
-                    web_app_url=WEBAPP_URL,
-                    style=BTN_STYLE_PRIMARY,
-                    icon_custom_emoji_id=BTN_EMOJI_PRIMARY_ID or None,
-                )
-            ],
-            [
-                _btn_spec(
-                    text="◀️ В меню",
-                    callback_data="back",
-                    style=BTN_STYLE_DANGER,
-                    icon_custom_emoji_id=BTN_EMOJI_DANGER_ID or None,
-                )
-            ],
-        ]
-    ) if success else None
-
+    
+    kb = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="🌐 Открыть кабинет", web_app=WebAppInfo(url=WEBAPP_URL))],
+        [InlineKeyboardButton(text="◀️ В меню", callback_data="back")]
+    ]) if success else None
+    
     await message.answer(result_msg, reply_markup=kb, parse_mode=ParseMode.MARKDOWN)
 
 # ==========================================
@@ -5678,7 +5014,7 @@ def create_review(tg_id: int, username: str, rating: int, text: str = None) -> b
     if existing:
         session.close()
         return False
-
+    
     review = Review(
         tg_id=tg_id,
         username=username,
@@ -5718,37 +5054,28 @@ checkout_context_by_user: dict[int, dict[str, str]] = {}
 async def review_command(message: Message):
     """Leave a review"""
     tg_id = message.from_user.id
-
+    
     # Check if can review (has active sub, used for 7+ days, no existing review)
     user = get_user(tg_id)
     if not user or not user.is_active:
         await message.answer("❌ Сначала включите доступ, потом можно оставить отзыв для сайта.")
         return
-
+    
     if has_user_review(tg_id):
         await message.answer("❌ Отзыв уже сохранён. Спасибо!")
         return
-
-    kb = _keyboard_from_specs(
+    
+    kb = InlineKeyboardMarkup(inline_keyboard=[
         [
-            [
-                _btn_spec(text="⭐", callback_data="rate_1", style=BTN_STYLE_PRIMARY),
-                _btn_spec(text="⭐⭐", callback_data="rate_2", style=BTN_STYLE_PRIMARY),
-                _btn_spec(text="⭐⭐⭐", callback_data="rate_3", style=BTN_STYLE_PRIMARY),
-                _btn_spec(text="⭐⭐⭐⭐", callback_data="rate_4", style=BTN_STYLE_PRIMARY),
-                _btn_spec(text="⭐⭐⭐⭐⭐", callback_data="rate_5", style=BTN_STYLE_PRIMARY),
-            ],
-            [
-                _btn_spec(
-                    text="◀️ Отмена",
-                    callback_data="back",
-                    style=BTN_STYLE_DANGER,
-                    icon_custom_emoji_id=BTN_EMOJI_DANGER_ID or None,
-                )
-            ],
-        ]
-    )
-
+            InlineKeyboardButton(text="⭐", callback_data="rate_1"),
+            InlineKeyboardButton(text="⭐⭐", callback_data="rate_2"),
+            InlineKeyboardButton(text="⭐⭐⭐", callback_data="rate_3"),
+            InlineKeyboardButton(text="⭐⭐⭐⭐", callback_data="rate_4"),
+            InlineKeyboardButton(text="⭐⭐⭐⭐⭐", callback_data="rate_5"),
+        ],
+        [InlineKeyboardButton(text="◀️ Отмена", callback_data="back")]
+    ])
+    
     await message.answer(
         "⭐ *Поделитесь впечатлением*\n\n"
         "Поставьте оценку от 1 до 5 звёзд. Затем при желании можно добавить короткий текст для сайта.",
@@ -5761,31 +5088,15 @@ async def rate_review(callback: CallbackQuery):
     """Handle rating selection"""
     tg_id = callback.from_user.id
     rating = int(callback.data.replace("rate_", ""))
-
+    
     # Save rating, ask for text
     pending_reviews[tg_id] = rating
-
-    kb = _keyboard_from_specs(
-        [
-            [
-                _btn_spec(
-                    text="⏭️ Пропустить",
-                    callback_data="review_skip_text",
-                    style=BTN_STYLE_PRIMARY,
-                    icon_custom_emoji_id=BTN_EMOJI_PRIMARY_ID or None,
-                )
-            ],
-            [
-                _btn_spec(
-                    text="◀️ Отмена",
-                    callback_data="back",
-                    style=BTN_STYLE_DANGER,
-                    icon_custom_emoji_id=BTN_EMOJI_DANGER_ID or None,
-                )
-            ],
-        ]
-    )
-
+    
+    kb = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="⏭️ Пропустить", callback_data="review_skip_text")],
+        [InlineKeyboardButton(text="◀️ Отмена", callback_data="back")]
+    ])
+    
     await callback.message.edit_text(
         f"Твоя оценка: {'⭐' * rating}\n\n"
         "Следующий шаг: напишите короткий отзыв (до 200 символов).\n\n"
@@ -5801,9 +5112,9 @@ async def skip_review_text(callback: CallbackQuery):
     tg_id = callback.from_user.id
     rating = pending_reviews.pop(tg_id, 5)
     username = callback.from_user.username
-
+    
     success = create_review(tg_id, username, rating)
-
+    
     if success:
         await callback.message.edit_text(
             f"✅ *Спасибо за отзыв!*\n\n"
@@ -5813,7 +5124,7 @@ async def skip_review_text(callback: CallbackQuery):
         )
     else:
         await callback.message.edit_text("❌ Отзыв уже сохранён.")
-
+    
     await callback.answer()
 
 @router.message()
@@ -5908,21 +5219,25 @@ async def handle_text_input(message: Message):
 
             # Notify opposite side.
             if tg_id == ADMIN_ID:
-                kb = _ticket_open_keyboard(ticket.id)
+                kb = InlineKeyboardMarkup(
+                    inline_keyboard=[[InlineKeyboardButton(text="🎫 Создать обращение", callback_data=f"ticket_view_{ticket.id}")]]
+                )
                 try:
                     await message.bot.send_message(
                         ticket.user_tg_id,
-                        f"💬 Новый ответ оператора в обращении #{ticket.id}.",
+                        f"💬 Новый ответ оператора в обращениее #{ticket.id}.",
                         reply_markup=kb,
                     )
                 except Exception:
                     pass
             else:
-                kb = _ticket_open_keyboard(ticket.id)
+                kb = InlineKeyboardMarkup(
+                    inline_keyboard=[[InlineKeyboardButton(text="🎫 Создать обращение", callback_data=f"ticket_view_{ticket.id}")]]
+                )
                 try:
                     await message.bot.send_message(
                         ADMIN_ID,
-                        f"🆕 Новое сообщение в обращении #{ticket.id} от `{ticket.user_tg_id}`",
+                        f"🆕 Новое сообщение в обращениее #{ticket.id} от `{ticket.user_tg_id}`",
                         parse_mode=ParseMode.MARKDOWN,
                         reply_markup=kb,
                     )
@@ -5937,51 +5252,19 @@ async def handle_text_input(message: Message):
         pending_redeem_codes.discard(tg_id)
         code = (message.text or "").strip().upper()
         if not code:
-            await message.answer("❌ Код пустой. Нажмите «🎁 Активировать ключ» и попробуйте снова.")
+            await message.answer("❌ Код пустой. Нажми «🎁 Активировать подарок» и попробуй снова.")
             return
         if not check_tos_accepted(tg_id):
             await message.answer("⚠️ Сначала прими условия. Нажми /start и подтверди оферту.")
             return
         success, result_msg = await redeem_gift_card(code, tg_id, message.bot)
-        kb = _keyboard_from_specs(
-            [
-                [
-                    _btn_spec(
-                        text="🌐 Открыть кабинет",
-                        web_app_url=WEBAPP_URL,
-                        style=BTN_STYLE_PRIMARY,
-                        icon_custom_emoji_id=BTN_EMOJI_PRIMARY_ID or None,
-                    )
-                ],
-                [
-                    _btn_spec(
-                        text="◀️ В меню",
-                        callback_data="back",
-                        style=BTN_STYLE_DANGER,
-                        icon_custom_emoji_id=BTN_EMOJI_DANGER_ID or None,
-                    )
-                ],
-            ]
-        ) if success else _keyboard_from_specs(
-            [
-                [
-                    _btn_spec(
-                        text="🔁 Ввести код снова",
-                        callback_data="gift_redeem_prompt",
-                        style=BTN_STYLE_SUCCESS,
-                        icon_custom_emoji_id=BTN_EMOJI_SUCCESS_ID or None,
-                    )
-                ],
-                [
-                    _btn_spec(
-                        text="◀️ В меню",
-                        callback_data="back",
-                        style=BTN_STYLE_DANGER,
-                        icon_custom_emoji_id=BTN_EMOJI_DANGER_ID or None,
-                    )
-                ],
-            ]
-        )
+        kb = InlineKeyboardMarkup(inline_keyboard=[
+            [InlineKeyboardButton(text="🌐 Открыть кабинет", web_app=WebAppInfo(url=WEBAPP_URL))],
+            [InlineKeyboardButton(text="◀️ В меню", callback_data="back")],
+        ]) if success else InlineKeyboardMarkup(inline_keyboard=[
+            [InlineKeyboardButton(text="🔁 Ввести код снова", callback_data="gift_redeem_prompt")],
+            [InlineKeyboardButton(text="◀️ В меню", callback_data="back")],
+        ])
         await message.answer(result_msg, reply_markup=kb, parse_mode=ParseMode.MARKDOWN)
         return
 
@@ -5992,39 +5275,23 @@ async def handle_text_input(message: Message):
             await message.answer("❌ Код пустой. Нажми «🎟️ Ввести промокод» и попробуй снова.")
             return
         ok, result = activate_promo_code_for_user(tg_id, code)
-        kb = _keyboard_from_specs(
-            [
-                [
-                    _btn_spec(
-                        text="🔁 Ввести другой код",
-                        callback_data="promo_activate_prompt",
-                        style=BTN_STYLE_PRIMARY,
-                        icon_custom_emoji_id=BTN_EMOJI_PRIMARY_ID or None,
-                    )
-                ],
-                [
-                    _btn_spec(
-                        text="◀️ В меню",
-                        callback_data="back",
-                        style=BTN_STYLE_DANGER,
-                        icon_custom_emoji_id=BTN_EMOJI_DANGER_ID or None,
-                    )
-                ],
-            ]
-        )
+        kb = InlineKeyboardMarkup(inline_keyboard=[
+            [InlineKeyboardButton(text="🔁 Ввести другой код", callback_data="promo_activate_prompt")],
+            [InlineKeyboardButton(text="◀️ В меню", callback_data="back")],
+        ])
         await message.answer(result, reply_markup=kb, parse_mode=ParseMode.MARKDOWN)
         return
-
+    
     # Check for admin pending actions first
     if tg_id == ADMIN_ID and tg_id in admin_pending_actions:
         action_info = admin_pending_actions.pop(tg_id)
         action = action_info["action"]
-
+        
         # Handle search_user action
         if action == "search_user":
             query = message.text.strip()
             session = Session()
-
+            
             if query.startswith("@"):
                 username = query.lstrip("@")
                 user = session.query(User).filter(User.username.ilike(username)).first()
@@ -6034,18 +5301,18 @@ async def handle_text_input(message: Message):
                     user = session.query(User).filter_by(tg_id=uid).first()
                 except ValueError:
                     user = session.query(User).filter(User.username.ilike(query)).first()
-
+            
             if not user:
                 session.close()
                 await message.answer(f"❌ Пользователь `{query}` не найден", parse_mode=ParseMode.MARKDOWN)
                 return
-
+            
             ach_count = session.query(Achievement).filter_by(tg_id=user.tg_id).count()
             session.close()
-
+            
             status = "✅ Активен" if user.is_active else "❌ Неактивен"
             expiry = user.expiry_at.strftime("%d.%m.%Y") if user.expiry_at else "—"
-
+            
             kb = InlineKeyboardMarkup(inline_keyboard=[
                 [
                     InlineKeyboardButton(text="👤 Открыть", callback_data=f"adm_user_{user.tg_id}"),
@@ -6053,7 +5320,7 @@ async def handle_text_input(message: Message):
                 ],
                 [InlineKeyboardButton(text="◀️ Админка", callback_data="admin")]
             ])
-
+            
             safe_username = (user.username or "—").replace("_", "\\_")
             await message.answer(
                 f"👤 `{user.tg_id}` @{safe_username}\n"
@@ -6064,15 +5331,15 @@ async def handle_text_input(message: Message):
                 parse_mode=ParseMode.MARKDOWN
             )
             return
-
+        
         # Handle custom_broadcast action with optional URL button
         if action == "custom_broadcast":
             raw_text = message.text.strip()
-
+            
             # Parse for URL button: text---ButtonText|URL
             msg_text = raw_text
             url_button = None
-
+            
             if "---" in raw_text:
                 parts = raw_text.split("---", 1)
                 msg_text = parts[0].strip()
@@ -6080,11 +5347,11 @@ async def handle_text_input(message: Message):
                 if "|" in button_part:
                     btn_text, btn_url = button_part.split("|", 1)
                     url_button = (btn_text.strip(), btn_url.strip())
-
+            
             session = Session()
             users = session.query(User).filter_by(is_active=True).all()
             session.close()
-
+            
             sent = 0
             for user in users:
                 if user.tg_id in PROTECTED_USERS or user.tg_id == ADMIN_ID:
@@ -6100,7 +5367,7 @@ async def handle_text_input(message: Message):
                     sent += 1
                 except:
                     pass
-
+            
             btn_info = f" с кнопкой" if url_button else ""
             await message.answer(f"✅ Сообщение{btn_info} отправлено {sent} юзерам")
             return
@@ -6380,7 +5647,7 @@ async def handle_text_input(message: Message):
                 return
 
             manual_user = create_manual_user_record(
-                display_name=name_raw or "Ручной клиент",
+                display_name=name_raw or "Manual Client",
                 days=days,
                 created_by_admin=ADMIN_ID,
             )
@@ -6413,7 +5680,7 @@ async def handle_text_input(message: Message):
             await message.answer_photo(
                 photo=photo,
                 caption=(
-                    "✅ *Ручной пользователь создан*\n\n"
+                    "✅ *Manual user создан*\n\n"
                     f"ID: `{manual_user.tg_id}`\n"
                     f"Name: `{(manual_user.display_name or manual_user.email)}`\n"
                     f"Sub: `{manual_user.sub_type}`\n"
@@ -6423,38 +5690,38 @@ async def handle_text_input(message: Message):
                 parse_mode=ParseMode.MARKDOWN,
                 reply_markup=InlineKeyboardMarkup(inline_keyboard=[
                     [InlineKeyboardButton(text="👤 Открыть карточку", callback_data=f"adm_user_{manual_user.tg_id}")],
-                    [InlineKeyboardButton(text="🧩 Меню ручных пользователей", callback_data="admin_manual_menu")],
+                    [InlineKeyboardButton(text="🧩 Manual меню", callback_data="admin_manual_menu")],
                 ]),
             )
             audit_admin(ADMIN_ID, "admin_manual_create", target_tg_id=manual_user.tg_id, meta=f"days={days}; ok={ok}; fail={fail}")
             return
-
+        
         target_id = action_info.get("target")
-
+        
         try:
             value = int(message.text.strip())
         except ValueError:
             await message.answer("❌ Введи число")
             return
-
+        
         if action == "addgb":
             await message.answer(
                 "ℹ️ Лимиты по трафику не используются.\n"
                 "Используй продление по дням или смену тарифа.",
                 parse_mode=ParseMode.MARKDOWN,
             )
-
+        
         elif action == "extend":
             extend_user(target_id, value, 0)
             await message.answer(f"✅ Подписка юзера `{target_id}` продлена на {value} дней", parse_mode=ParseMode.MARKDOWN)
-
+        
         elif action == "mass_addgb":
             await message.answer(
                 "ℹ️ Массовое управление трафиком отключено (используются тарифные политики).\n"
                 "Используй массовое продление по дням.",
                 parse_mode=ParseMode.MARKDOWN,
             )
-
+        
         elif action == "mass_extend":
             session = Session()
             now = _utcnow()
@@ -6477,17 +5744,17 @@ async def handle_text_input(message: Message):
                 parse_mode=ParseMode.MARKDOWN,
                 reply_markup=_bulk_confirm_kb(f"mass_extend_run_{value}"),
             )
-
+        
         return
-
+    
     # Handle review text
     if tg_id in pending_reviews:
         rating = pending_reviews.pop(tg_id)
         text = message.text[:200]
         username = message.from_user.username
-
+        
         success = create_review(tg_id, username, rating, text)
-
+        
         if success:
             await message.answer(
                 f"✅ *Спасибо за отзыв!*\n\n"
@@ -6507,18 +5774,7 @@ async def network_status(callback: CallbackQuery):
         await callback.message.edit_text(
             "📡 *Состояние узлов сети*\n\n"
             "Нет данных по узлам. Проверьте конфигурацию control-plane.",
-            reply_markup=_keyboard_from_specs(
-                [
-                    [
-                        _btn_spec(
-                            text="◀️ Назад",
-                            callback_data="back",
-                            style=BTN_STYLE_DANGER,
-                            icon_custom_emoji_id=BTN_EMOJI_DANGER_ID or None,
-                        )
-                    ]
-                ]
-            ),
+            reply_markup=InlineKeyboardMarkup(inline_keyboard=[[InlineKeyboardButton(text="◀️ Назад", callback_data="back")]]),
             parse_mode=ParseMode.MARKDOWN,
         )
         await callback.answer()
@@ -6545,26 +5801,10 @@ async def network_status(callback: CallbackQuery):
 
     await callback.message.edit_text(
         "\n".join(lines),
-        reply_markup=_keyboard_from_specs(
-            [
-                [
-                    _btn_spec(
-                        text="🔍 Проверить доступность",
-                        callback_data="network_status_scan",
-                        style=BTN_STYLE_PRIMARY,
-                        icon_custom_emoji_id=BTN_EMOJI_PRIMARY_ID or None,
-                    )
-                ],
-                [
-                    _btn_spec(
-                        text="◀️ Назад",
-                        callback_data="back",
-                        style=BTN_STYLE_DANGER,
-                        icon_custom_emoji_id=BTN_EMOJI_DANGER_ID or None,
-                    )
-                ],
-            ]
-        ),
+        reply_markup=InlineKeyboardMarkup(inline_keyboard=[
+            [InlineKeyboardButton(text="🔍 Проверить доступность", callback_data="network_status_scan")],
+            [InlineKeyboardButton(text="◀️ Назад", callback_data="back")],
+        ]),
         parse_mode=ParseMode.MARKDOWN,
     )
     await callback.answer()
@@ -6578,557 +5818,47 @@ async def network_status_scan(callback: CallbackQuery):
     await asyncio.sleep(0.6)
     await network_status(callback)
 
-def _support_menu_markup() -> InlineKeyboardMarkup:
-    support_new_url = f"https://t.me/{SUPPORT_USERNAME}?start=ticket_new"
-    support_my_url = f"https://t.me/{SUPPORT_USERNAME}?start=ticket_my"
-    feedback_url = f"https://t.me/{FEEDBACK_USERNAME}"
-    return InlineKeyboardMarkup(
-        inline_keyboard=[
-            [InlineKeyboardButton(text="❓ Как подключить?", callback_data="faq_connect")],
-            [InlineKeyboardButton(text="⚠️ Не работает", callback_data="faq_notwork")],
-            [InlineKeyboardButton(text="💳 Как продлить?", callback_data="faq_renew")],
-            [InlineKeyboardButton(text="🎁 Реферальная программа", callback_data="faq_referral")],
-            [InlineKeyboardButton(text="📲 Смена устройства", callback_data="faq_device")],
-            [InlineKeyboardButton(text="🔧 Диагностика", callback_data="support_diagnose")],
-            [InlineKeyboardButton(text="🎫 Создать обращение", url=support_new_url)],
-            [InlineKeyboardButton(text="📂 Мои обращения (helpbot)", url=support_my_url)],
-            [InlineKeyboardButton(text="💌 Идеи и фидбэк", url=feedback_url)],
-            [InlineKeyboardButton(text="◀️ Назад", callback_data="back")],
-        ]
-    )
-
-
-_legacy_support_menu_markup = _support_menu_markup
-
-
-def _support_menu_markup() -> InlineKeyboardMarkup:
-    legacy_rows = _legacy_support_menu_markup().inline_keyboard
-    style_by_callback = {
-        "faq_connect": BTN_STYLE_PRIMARY,
-        "faq_notwork": BTN_STYLE_DANGER,
-        "faq_renew": BTN_STYLE_PRIMARY,
-        "faq_referral": BTN_STYLE_PRIMARY,
-        "faq_device": BTN_STYLE_PRIMARY,
-        "support_diagnose": BTN_STYLE_SUCCESS,
-        "back": BTN_STYLE_DANGER,
-    }
-    icon_by_callback = {
-        "faq_connect": BTN_EMOJI_PRIMARY_ID or None,
-        "faq_notwork": BTN_EMOJI_DANGER_ID or None,
-        "faq_renew": BTN_EMOJI_PRIMARY_ID or None,
-        "faq_referral": BTN_EMOJI_PRIMARY_ID or None,
-        "faq_device": BTN_EMOJI_PRIMARY_ID or None,
-        "support_diagnose": BTN_EMOJI_SUCCESS_ID or None,
-        "back": BTN_EMOJI_DANGER_ID or None,
-    }
-    rows: list[list[dict[str, str]]] = []
-    for row in legacy_rows:
-        next_row: list[dict[str, str]] = []
-        for button in row:
-            callback_data = str(getattr(button, "callback_data", "") or "")
-            url = str(getattr(button, "url", "") or "")
-            is_ticket_url = "ticket_new" in url
-            is_my_tickets_url = "ticket_my" in url
-            is_feedback_url = bool(url) and not is_ticket_url and not is_my_tickets_url
-            style = style_by_callback.get(callback_data)
-            icon = icon_by_callback.get(callback_data)
-            if is_ticket_url:
-                style = BTN_STYLE_PRIMARY
-                icon = BTN_EMOJI_PRIMARY_ID or None
-            elif is_my_tickets_url:
-                style = BTN_STYLE_SUCCESS
-                icon = BTN_EMOJI_SUCCESS_ID or None
-            elif is_feedback_url:
-                style = BTN_STYLE_PRIMARY
-                icon = BTN_EMOJI_PRIMARY_ID or None
-            next_row.append(_spec_from_existing_button(button, style=style, icon_custom_emoji_id=icon))
-        rows.append(next_row)
-    return _keyboard_from_specs(rows)
-
-
-def _cabinet_command_keyboard() -> InlineKeyboardMarkup:
-    return _keyboard_from_specs(
-        [
-            [
-                _btn_spec(
-                    text="🌐 Открыть кабинет",
-                    web_app_url=WEBAPP_URL,
-                    style=BTN_STYLE_PRIMARY,
-                    icon_custom_emoji_id=BTN_EMOJI_PRIMARY_ID or None,
-                )
-            ],
-            [
-                _btn_spec(
-                    text="🎟️ Активировать ключ",
-                    web_app_url=_webapp_route_url("redeem"),
-                    style=BTN_STYLE_SUCCESS,
-                    icon_custom_emoji_id=BTN_EMOJI_SUCCESS_ID or None,
-                )
-            ],
-            [
-                _btn_spec(
-                    text="📅 Статус продления",
-                    web_app_url=_webapp_route_url("subscription"),
-                    style=BTN_STYLE_PRIMARY,
-                    icon_custom_emoji_id=BTN_EMOJI_PRIMARY_ID or None,
-                )
-            ],
-            [
-                _btn_spec(
-                    text="⚙️ Аккаунт и бонусы",
-                    web_app_url=_webapp_route_url("settings"),
-                    style=BTN_STYLE_PRIMARY,
-                    icon_custom_emoji_id=BTN_EMOJI_PRIMARY_ID or None,
-                )
-            ],
-            [
-                _btn_spec(
-                    text="📦 Загрузки",
-                    web_app_url=_webapp_route_url("downloads"),
-                    style=BTN_STYLE_PRIMARY,
-                    icon_custom_emoji_id=BTN_EMOJI_PRIMARY_ID or None,
-                )
-            ],
-            [
-                _btn_spec(
-                    text="🆘 Поддержка",
-                    callback_data="support",
-                    style=BTN_STYLE_PRIMARY,
-                    icon_custom_emoji_id=BTN_EMOJI_PRIMARY_ID or None,
-                )
-            ],
-            [
-                _btn_spec(
-                    text="🏠 Главное меню",
-                    callback_data="back",
-                    style=BTN_STYLE_DANGER,
-                    icon_custom_emoji_id=BTN_EMOJI_DANGER_ID or None,
-                )
-            ],
-        ]
-    )
-
-
-def _instruction_device_keyboard() -> InlineKeyboardMarkup:
-    return _keyboard_from_specs(
-        [
-            [
-                _btn_spec(
-                    text="🤖 Android",
-                    callback_data="instr_android",
-                    style=BTN_STYLE_PRIMARY,
-                    icon_custom_emoji_id=BTN_EMOJI_PRIMARY_ID or None,
-                ),
-                _btn_spec(
-                    text="💻 Windows",
-                    callback_data="instr_win",
-                    style=BTN_STYLE_PRIMARY,
-                    icon_custom_emoji_id=BTN_EMOJI_PRIMARY_ID or None,
-                ),
-            ],
-            [
-                _btn_spec(
-                    text="🍏 Apple: статус подготовки",
-                    callback_data="instr_ios",
-                    style=BTN_STYLE_PRIMARY,
-                    icon_custom_emoji_id=BTN_EMOJI_PRIMARY_ID or None,
-                ),
-            ],
-            [
-                _btn_spec(
-                    text="🌐 Открыть кабинет",
-                    web_app_url=WEBAPP_URL,
-                    style=BTN_STYLE_PRIMARY,
-                    icon_custom_emoji_id=BTN_EMOJI_PRIMARY_ID or None,
-                )
-            ],
-            [
-                _btn_spec(
-                    text="◀️ Назад",
-                    callback_data="back",
-                    style=BTN_STYLE_DANGER,
-                    icon_custom_emoji_id=BTN_EMOJI_DANGER_ID or None,
-                )
-            ],
-        ]
-    )
-
-def _access_key_keyboard(
-    legacy_keyboard: InlineKeyboardMarkup | None = None,
-    *,
-    copy_text: str | None = None,
-) -> InlineKeyboardMarkup:
-    if legacy_keyboard is None:
-        legacy_keyboard = InlineKeyboardMarkup(
-            inline_keyboard=[
-                [InlineKeyboardButton(text="🧭 Ручная ссылка", callback_data="copy_key")],
-                [InlineKeyboardButton(text="📱 QR для ручного подключения", callback_data="show_qr")],
-                [InlineKeyboardButton(text="\U0001f46a \u041f\u043e\u0434\u0435\u043b\u0438\u0442\u044c\u0441\u044f \u0434\u043e\u0441\u0442\u0443\u043f\u043e\u043c", callback_data="share_access")],
-                [InlineKeyboardButton(text="\U0001f6a8 Panic Mode", callback_data="panic_menu")],
-                [InlineKeyboardButton(text="\u25c0\ufe0f \u041d\u0430\u0437\u0430\u0434", callback_data="back")],
-            ]
-        )
-    style_by_callback = {
-        "copy_key": BTN_STYLE_PRIMARY,
-        "show_qr": BTN_STYLE_PRIMARY,
-        "share_access": BTN_STYLE_SUCCESS,
-        "panic_menu": BTN_STYLE_DANGER,
-        "back": BTN_STYLE_DANGER,
-    }
-    icon_by_callback = {
-        "copy_key": BTN_EMOJI_PRIMARY_ID or None,
-        "show_qr": BTN_EMOJI_PRIMARY_ID or None,
-        "share_access": BTN_EMOJI_SUCCESS_ID or None,
-        "panic_menu": BTN_EMOJI_DANGER_ID or None,
-        "back": BTN_EMOJI_DANGER_ID or None,
-    }
-    rows: list[list[dict[str, str]]] = []
-    for row in legacy_keyboard.inline_keyboard:
-        next_row: list[dict[str, str]] = []
-        for button in row:
-            callback_data = str(getattr(button, "callback_data", "") or "")
-            if callback_data == "copy_key" and copy_text:
-                next_row.append(
-                    _btn_spec(
-                        text=str(getattr(button, "text", "") or "📋 Скопировать ссылку"),
-                        copy_text=copy_text,
-                        style=style_by_callback.get(callback_data),
-                        icon_custom_emoji_id=icon_by_callback.get(callback_data),
-                    )
-                )
-            else:
-                next_row.append(
-                    _spec_from_existing_button(
-                        button,
-                        style=style_by_callback.get(callback_data),
-                        icon_custom_emoji_id=icon_by_callback.get(callback_data),
-                    )
-                )
-        rows.append(next_row)
-    return _keyboard_from_specs(rows)
-
-
-def _web_login_issued_keyboard(login_url: str) -> InlineKeyboardMarkup:
-    return _keyboard_from_specs(
-        [
-            [
-                _btn_spec(
-                    text="🌐 Открыть кабинет",
-                    url=login_url,
-                    style=BTN_STYLE_PRIMARY,
-                    icon_custom_emoji_id=BTN_EMOJI_PRIMARY_ID or None,
-                )
-            ],
-            [
-                _btn_spec(
-                    text="◀️ В меню",
-                    callback_data="back",
-                    style=BTN_STYLE_DANGER,
-                    icon_custom_emoji_id=BTN_EMOJI_DANGER_ID or None,
-                )
-            ],
-        ]
-    )
-
-
-def _stars_invoice_check_keyboard() -> InlineKeyboardMarkup:
-    return _keyboard_from_specs(
-        [
-            [
-                _btn_spec(
-                    text="✅ Проверить оплату",
-                    callback_data="status",
-                    style=BTN_STYLE_SUCCESS,
-                    icon_custom_emoji_id=BTN_EMOJI_SUCCESS_ID or None,
-                )
-            ],
-            [_btn_spec(text="◀️ К тарифам", callback_data="charge", style=BTN_STYLE_PRIMARY)],
-            [
-                _btn_spec(
-                    text="🏠 Главное меню",
-                    callback_data="back",
-                    style=BTN_STYLE_DANGER,
-                    icon_custom_emoji_id=BTN_EMOJI_DANGER_ID or None,
-                )
-            ],
-        ]
-    )
-
-
-def _fulfillment_support_keyboard() -> InlineKeyboardMarkup:
-    return _keyboard_from_specs(
-        [
-            [
-                _btn_spec(
-                    text="💬 Написать в поддержку",
-                    url=f"https://t.me/{SUPPORT_USERNAME}?start=ticket_new",
-                    style=BTN_STYLE_PRIMARY,
-                    icon_custom_emoji_id=BTN_EMOJI_PRIMARY_ID or None,
-                )
-            ],
-            [
-                _btn_spec(
-                    text="◀️ Назад",
-                    callback_data="back",
-                    style=BTN_STYLE_DANGER,
-                    icon_custom_emoji_id=BTN_EMOJI_DANGER_ID or None,
-                )
-            ],
-        ]
-    )
-
-
-def _paid_access_ready_keyboard() -> InlineKeyboardMarkup:
-    return _keyboard_from_specs(
-        [
-            [_btn_spec(text="📲 Установить POKROV", callback_data="instruction", style=BTN_STYLE_PRIMARY)],
-            [
-                _btn_spec(
-                    text="🌐 Открыть кабинет",
-                    web_app_url=WEBAPP_URL,
-                    style=BTN_STYLE_PRIMARY,
-                    icon_custom_emoji_id=BTN_EMOJI_PRIMARY_ID or None,
-                )
-            ],
-            [
-                _btn_spec(
-                    text="🧭 Ручная ссылка и QR",
-                    callback_data="show_key",
-                    style=BTN_STYLE_SUCCESS,
-                    icon_custom_emoji_id=BTN_EMOJI_SUCCESS_ID or None,
-                )
-            ],
-            [
-                _btn_spec(
-                    text="◀️ В меню",
-                    callback_data="back",
-                    style=BTN_STYLE_DANGER,
-                    icon_custom_emoji_id=BTN_EMOJI_DANGER_ID or None,
-                )
-            ],
-        ]
-    )
-
-
-def _single_back_keyboard(*, text: str = "◀️ Назад", callback_data: str = "back") -> InlineKeyboardMarkup:
-    return _keyboard_from_specs(
-        [
-            [
-                _btn_spec(
-                    text=text,
-                    callback_data=callback_data,
-                    style=BTN_STYLE_DANGER,
-                    icon_custom_emoji_id=BTN_EMOJI_DANGER_ID or None,
-                )
-            ]
-        ]
-    )
-
-
-def _channel_link_keyboard() -> InlineKeyboardMarkup:
-    return _keyboard_from_specs(
-        [
-            [
-                _btn_spec(
-                    text="📢 Канал POKROV",
-                    url=f"https://t.me/{_channel_name_for_url()}",
-                    style=BTN_STYLE_PRIMARY,
-                    icon_custom_emoji_id=BTN_EMOJI_PRIMARY_ID or None,
-                )
-            ]
-        ]
-    )
-
-
-def _channel_bonus_activated_keyboard() -> InlineKeyboardMarkup:
-    return _keyboard_from_specs(
-        [
-            [
-                _btn_spec(
-                    text="🧭 Ручная ссылка",
-                    callback_data="show_key",
-                    style=BTN_STYLE_SUCCESS,
-                    icon_custom_emoji_id=BTN_EMOJI_SUCCESS_ID or None,
-                )
-            ],
-            [
-                _btn_spec(
-                    text="🏠 Главное меню",
-                    callback_data="back",
-                    style=BTN_STYLE_DANGER,
-                    icon_custom_emoji_id=BTN_EMOJI_DANGER_ID or None,
-                )
-            ],
-        ]
-    )
-
-
-def _no_access_fallback_keyboard(tg_id: int) -> InlineKeyboardMarkup:
-    return _keyboard_from_specs(
-        [
-            [
-                _btn_spec(
-                    text=_main_connect_cta_text(tg_id),
-                    callback_data="charge",
-                    style=BTN_STYLE_PRIMARY,
-                    icon_custom_emoji_id=BTN_EMOJI_PRIMARY_ID or None,
-                )
-            ],
-            [
-                _btn_spec(
-                    text="◀️ Назад",
-                    callback_data="back",
-                    style=BTN_STYLE_DANGER,
-                    icon_custom_emoji_id=BTN_EMOJI_DANGER_ID or None,
-                )
-            ],
-        ]
-    )
-
-
-def _payment_success_fallback_keyboard() -> InlineKeyboardMarkup:
-    return _keyboard_from_specs(
-        [
-            [
-                _btn_spec(
-                    text="🧭 Ручная ссылка",
-                    callback_data="show_key",
-                    style=BTN_STYLE_SUCCESS,
-                    icon_custom_emoji_id=BTN_EMOJI_SUCCESS_ID or None,
-                )
-            ]
-        ]
-    )
-
-
-def _expired_access_recovery_keyboard() -> InlineKeyboardMarkup:
-    return _keyboard_from_specs(
-        [
-            [
-                _btn_spec(
-                    text="⚡ Вернуть полный доступ",
-                    callback_data="charge",
-                    style=BTN_STYLE_PRIMARY,
-                    icon_custom_emoji_id=BTN_EMOJI_PRIMARY_ID or None,
-                )
-            ]
-        ]
-    )
-
-
-def _panic_confirm_keyboard() -> InlineKeyboardMarkup:
-    return _keyboard_from_specs(
-        [
-            [
-                _btn_spec(
-                    text="☢️ СЖЕЧЬ КЛЮЧИ (Сброс)",
-                    callback_data="panic_execute",
-                    style=BTN_STYLE_DANGER,
-                    icon_custom_emoji_id=BTN_EMOJI_DANGER_ID or None,
-                )
-            ],
-            [
-                _btn_spec(
-                    text="🟢 Отмена",
-                    callback_data="show_key",
-                    style=BTN_STYLE_DANGER,
-                    icon_custom_emoji_id=BTN_EMOJI_DANGER_ID or None,
-                )
-            ],
-        ]
-    )
-
-
-def _panic_done_keyboard() -> InlineKeyboardMarkup:
-    return _keyboard_from_specs(
-        [
-            [
-                _btn_spec(
-                    text="🧭 Ручная ссылка",
-                    callback_data="show_key",
-                    style=BTN_STYLE_PRIMARY,
-                    icon_custom_emoji_id=BTN_EMOJI_PRIMARY_ID or None,
-                )
-            ],
-            [
-                _btn_spec(
-                    text="◀️ В меню",
-                    callback_data="back",
-                    style=BTN_STYLE_DANGER,
-                    icon_custom_emoji_id=BTN_EMOJI_DANGER_ID or None,
-                )
-            ],
-        ]
-    )
-
-
-def _support_menu_text() -> str:
-    return (
-        "🤖 *Поддержка POKROV*\n\n"
-        "Если нужен совет по подключению, оплате или устройству, helpbot примет обращение и доведёт его до ответа.\n"
-        "Для идеи или отзыва ниже есть отдельная кнопка.\n\n"
-        "Выберите следующий шаг:"
-    )
-
-
-@router.message(Command("support"))
-async def support_command(message: Message):
-    """Open support from the public command menu."""
-    tg_id = int(getattr(getattr(message, "from_user", None), "id", 0) or 0)
-    _set_support_context(tg_id, enabled=True)
-    await message.answer(
-        _support_menu_text(),
-        reply_markup=_support_menu_markup(),
-        parse_mode=ParseMode.MARKDOWN,
-    )
-
-
-@router.message(Command("cabinet"))
-async def cabinet_command(message: Message):
-    """Open the WebApp cabinet from the public command menu."""
-    tg_id = int(getattr(getattr(message, "from_user", None), "id", 0) or 0)
-    _set_support_context(tg_id, enabled=False)
-    await message.answer(
-        "🌐 *Кабинет POKROV*\n\n"
-        "Здесь можно проверить доступ, активировать ключ доступа, открыть поддержку и перейти к управлению аккаунтом.\n"
-        "Само подключение в один тап остаётся в приложении POKROV.",
-        reply_markup=_cabinet_command_keyboard(),
-        parse_mode=ParseMode.MARKDOWN,
-    )
-
-
 @router.callback_query(F.data == "support")
 async def show_support(callback: CallbackQuery):
     """Show support menu"""
     _set_support_context(callback.from_user.id, enabled=True)
+    support_new_url = f"https://t.me/{SUPPORT_USERNAME}?start=ticket_new"
+    support_my_url = f"https://t.me/{SUPPORT_USERNAME}?start=ticket_my"
+    feedback_url = f"https://t.me/{FEEDBACK_USERNAME}"
+    kb = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="❓ Как подключить?", callback_data="faq_connect")],
+        [InlineKeyboardButton(text="⚠️ Не работает", callback_data="faq_notwork")],
+        [InlineKeyboardButton(text="💳 Как продлить?", callback_data="faq_renew")],
+        [InlineKeyboardButton(text="🎁 Реферальная программа", callback_data="faq_referral")],
+        [InlineKeyboardButton(text="📲 Смена устройства", callback_data="faq_device")],
+        [InlineKeyboardButton(text="🔧 Диагностика", callback_data="support_diagnose")],
+        [InlineKeyboardButton(text="🎫 Создать обращение", url=support_new_url)],
+        [InlineKeyboardButton(text="📂 Мои обращения (helpbot)", url=support_my_url)],
+        [InlineKeyboardButton(text="💌 Идеи и фидбэк", url=feedback_url)],
+        [InlineKeyboardButton(text="◀️ Назад", callback_data="back")]
+    ])
+    
     await callback.message.edit_text(
-        _support_menu_text(),
-        reply_markup=_support_menu_markup(),
+        "🤖 *Поддержка POKROV*\n\n"
+        "Если нужен совет по подключению, оплате или устройству, helpbot примет обращение и доведёт его до ответа.\n"
+        "Для идеи или отзыва ниже есть отдельная кнопка.\n\n"
+        "Выберите следующий шаг:",
+        reply_markup=kb,
         parse_mode=ParseMode.MARKDOWN
     )
     await callback.answer()
-
 
 @router.callback_query(F.data.startswith("faq_"))
 async def show_faq_answer(callback: CallbackQuery):
     """Show FAQ answer"""
     faq_key = callback.data.replace("faq_", "")
-    answer = _support_faq_answer(faq_key)
-
-    kb = _keyboard_from_specs(
-        [
-            [_btn_spec(text="◀️ Назад к вопросам", callback_data="support", style=BTN_STYLE_DANGER)],
-            [
-                _btn_spec(
-                    text="💬 Написать в службу заботы",
-                    url=f"https://t.me/{SUPPORT_USERNAME}?start=ticket_new",
-                    style=BTN_STYLE_PRIMARY,
-                    icon_custom_emoji_id=BTN_EMOJI_PRIMARY_ID or None,
-                )
-            ],
-        ]
-    )
-
+    answer = FAQ_ANSWERS.get(faq_key, "Ответ не найден")
+    
+    kb = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="◀️ Назад к вопросам", callback_data="support")],
+        [InlineKeyboardButton(text="💬 Написать в службу заботы", url=f"https://t.me/{SUPPORT_USERNAME}?start=ticket_new")]
+    ])
+    
     await callback.message.edit_text(
         answer,
         reply_markup=kb,
@@ -7137,14 +5867,13 @@ async def show_faq_answer(callback: CallbackQuery):
     )
     await callback.answer()
 
-
 @router.callback_query(F.data == "support_diagnose")
 async def support_diagnose(callback: CallbackQuery):
     """Run diagnostics and show user status"""
     _set_support_context(callback.from_user.id, enabled=True)
     tg_id = callback.from_user.id
     user = get_user(tg_id)
-
+    
     if not user:
         status = "❌ Доступ не найден"
         details = "Запустите доступ через *✨ Подобрать доступ*"
@@ -7155,42 +5884,26 @@ async def support_diagnose(callback: CallbackQuery):
             status = f"✅ Активна (ещё {days_left} дн.)"
         else:
             status = "❌ Истекла"
-
+        
         # Details
         expiry = user.expiry_at.strftime("%d.%m.%Y") if user.expiry_at else "—"
         tariff = user.sub_type or "—"
-
+        
         details = (
             f"📦 Тариф: *{tariff}*\n"
             f"📅 До: *{expiry}*\n"
             f"📡 Режим: *{_plan_mode_label(tariff)}*"
         )
-
+    
     # Server check
     server_status = "✅ Онлайн"  # Simplified - we're running so server is up
-
-    kb = _keyboard_from_specs(
-        [
-            [
-                _btn_spec(
-                    text="🔗 Моя ссылка",
-                    callback_data="show_key",
-                    style=BTN_STYLE_PRIMARY,
-                    icon_custom_emoji_id=BTN_EMOJI_PRIMARY_ID or None,
-                )
-            ],
-            [_btn_spec(text="◀️ Назад к поддержке", callback_data="support", style=BTN_STYLE_DANGER)],
-            [
-                _btn_spec(
-                    text="💬 Написать в службу заботы",
-                    url=f"https://t.me/{SUPPORT_USERNAME}?start=ticket_new",
-                    style=BTN_STYLE_PRIMARY,
-                    icon_custom_emoji_id=BTN_EMOJI_PRIMARY_ID or None,
-                )
-            ],
-        ]
-    )
-
+    
+    kb = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="🔗 Моя ссылка", callback_data="show_key")],
+        [InlineKeyboardButton(text="◀️ Назад к поддержке", callback_data="support")],
+        [InlineKeyboardButton(text="💬 Написать в службу заботы", url=f"https://t.me/{SUPPORT_USERNAME}?start=ticket_new")]
+    ])
+    
     await callback.message.edit_text(
         f"🔧 *Диагностика*\n\n"
         f"*Ваш доступ:* {status}\n\n"
@@ -7219,99 +5932,21 @@ def _ticket_message_preview(text: str, limit: int = 220) -> str:
     return one_line
 
 
-def _ticket_open_keyboard(ticket_id: int) -> InlineKeyboardMarkup:
-    return _keyboard_from_specs(
-        [
-            [
-                _btn_spec(
-                    text="🎫 Открыть обращение",
-                    callback_data=f"ticket_view_{int(ticket_id)}",
-                    style=BTN_STYLE_PRIMARY,
-                    icon_custom_emoji_id=BTN_EMOJI_PRIMARY_ID or None,
-                )
-            ]
-        ]
-    )
-
-
 def _ticket_view_keyboard(ticket_id: int, status: str, *, is_admin: bool) -> InlineKeyboardMarkup:
-    rows: list[list[dict[str, str]]] = []
+    rows: list[list[InlineKeyboardButton]] = []
     if status != STATUS_CLOSED:
-        rows.append(
-            [
-                _btn_spec(
-                    text="✍️ Ответить",
-                    callback_data=f"ticket_reply_{ticket_id}",
-                    style=BTN_STYLE_PRIMARY,
-                    icon_custom_emoji_id=BTN_EMOJI_PRIMARY_ID or None,
-                )
-            ]
-        )
-        rows.append(
-            [
-                _btn_spec(
-                    text="✅ Закрыть",
-                    callback_data=f"ticket_close_{ticket_id}",
-                    style=BTN_STYLE_SUCCESS,
-                    icon_custom_emoji_id=BTN_EMOJI_SUCCESS_ID or None,
-                )
-            ]
-        )
+        rows.append([InlineKeyboardButton(text="✍️ Ответить", callback_data=f"ticket_reply_{ticket_id}")])
+        rows.append([InlineKeyboardButton(text="✅ Закрыть", callback_data=f"ticket_close_{ticket_id}")])
     else:
-        rows.append(
-            [
-                _btn_spec(
-                    text="♻️ Переоткрыть",
-                    callback_data=f"ticket_reopen_{ticket_id}",
-                    style=BTN_STYLE_SUCCESS,
-                    icon_custom_emoji_id=BTN_EMOJI_SUCCESS_ID or None,
-                )
-            ]
-        )
+        rows.append([InlineKeyboardButton(text="♻️ Переоткрыть", callback_data=f"ticket_reopen_{ticket_id}")])
 
     if is_admin:
-        rows.append(
-            [
-                _btn_spec(
-                    text="🧑‍💼 Взять в работу",
-                    callback_data=f"ticket_claim_{ticket_id}",
-                    style=BTN_STYLE_PRIMARY,
-                    icon_custom_emoji_id=BTN_EMOJI_PRIMARY_ID or None,
-                )
-            ]
-        )
-        rows.append(
-            [
-                _btn_spec(
-                    text="◀️ Назад",
-                    callback_data="admin_tickets",
-                    style=BTN_STYLE_DANGER,
-                    icon_custom_emoji_id=BTN_EMOJI_DANGER_ID or None,
-                )
-            ]
-        )
+        rows.append([InlineKeyboardButton(text="🧑‍💼 Взять в работу", callback_data=f"ticket_claim_{ticket_id}")])
+        rows.append([InlineKeyboardButton(text="◀️ Назад", callback_data="admin_tickets")])
     else:
-        rows.append(
-            [
-                _btn_spec(
-                    text="📂 Мои обращения",
-                    callback_data="ticket_my",
-                    style=BTN_STYLE_PRIMARY,
-                    icon_custom_emoji_id=BTN_EMOJI_PRIMARY_ID or None,
-                )
-            ]
-        )
-        rows.append(
-            [
-                _btn_spec(
-                    text="◀️ Назад",
-                    callback_data="support",
-                    style=BTN_STYLE_DANGER,
-                    icon_custom_emoji_id=BTN_EMOJI_DANGER_ID or None,
-                )
-            ]
-        )
-    return _keyboard_from_specs(rows)
+        rows.append([InlineKeyboardButton(text="📂 Мои обращения", callback_data="ticket_my")])
+        rows.append([InlineKeyboardButton(text="◀️ Назад", callback_data="support")])
+    return InlineKeyboardMarkup(inline_keyboard=rows)
 
 
 async def _render_ticket(callback: CallbackQuery, ticket_id: int) -> None:
@@ -7365,33 +6000,12 @@ async def ticket_new(callback: CallbackQuery):
         ticket = get_user_active_ticket(session, tg_id)
         if ticket:
             await callback.message.edit_text(
-                f"У тебя уже есть активное обращение #{ticket.id}.",
-                reply_markup=_keyboard_from_specs(
-                    [
-                        [
-                            _btn_spec(
-                                text="🎫 Создать обращение",
-                                callback_data=f"ticket_view_{ticket.id}",
-                                style=BTN_STYLE_PRIMARY,
-                                icon_custom_emoji_id=BTN_EMOJI_PRIMARY_ID or None,
-                            )
-                        ],
-                        [
-                            _btn_spec(
-                                text="📂 Мои обращения",
-                                callback_data="ticket_my",
-                                style=BTN_STYLE_PRIMARY,
-                                icon_custom_emoji_id=BTN_EMOJI_PRIMARY_ID or None,
-                            )
-                        ],
-                        [
-                            _btn_spec(
-                                text="◀️ Назад",
-                                callback_data="support",
-                                style=BTN_STYLE_DANGER,
-                                icon_custom_emoji_id=BTN_EMOJI_DANGER_ID or None,
-                            )
-                        ],
+                f"У тебя уже есть активный обращение #{ticket.id}.",
+                reply_markup=InlineKeyboardMarkup(
+                    inline_keyboard=[
+                        [InlineKeyboardButton(text="🎫 Создать обращение", callback_data=f"ticket_view_{ticket.id}")],
+                        [InlineKeyboardButton(text="📂 Мои обращения", callback_data="ticket_my")],
+                        [InlineKeyboardButton(text="◀️ Назад", callback_data="support")],
                     ]
                 ),
             )
@@ -7403,38 +6017,20 @@ async def ticket_new(callback: CallbackQuery):
         pending_ticket_replies[tg_id] = ticket.id
 
         await callback.message.edit_text(
-            f"Обращение #{ticket.id} создано.\nОтправь одним сообщением описание проблемы.",
-            reply_markup=_keyboard_from_specs(
-                [
-                    [
-                        _btn_spec(
-                            text="Отмена",
-                            callback_data="support",
-                            style=BTN_STYLE_DANGER,
-                            icon_custom_emoji_id=BTN_EMOJI_DANGER_ID or None,
-                        )
-                    ]
-                ]
+            f"Обращение #{ticket.id} создан.\nОтправь одним сообщением описание проблемы.",
+            reply_markup=InlineKeyboardMarkup(
+                inline_keyboard=[[InlineKeyboardButton(text="Отмена", callback_data="support")]]
             ),
         )
         await callback.answer()
 
-        kb = _keyboard_from_specs(
-            [
-                [
-                    _btn_spec(
-                        text="🎫 Создать обращение",
-                        callback_data=f"ticket_view_{ticket.id}",
-                        style=BTN_STYLE_PRIMARY,
-                        icon_custom_emoji_id=BTN_EMOJI_PRIMARY_ID or None,
-                    )
-                ]
-            ]
+        kb = InlineKeyboardMarkup(
+            inline_keyboard=[[InlineKeyboardButton(text="🎫 Создать обращение", callback_data=f"ticket_view_{ticket.id}")]]
         )
         try:
             await callback.bot.send_message(
                 ADMIN_ID,
-                f"🆕 Новое обращение #{ticket.id} от пользователя `{tg_id}`",
+                f"🆕 Новый обращение #{ticket.id} от пользователя `{tg_id}`",
                 parse_mode=ParseMode.MARKDOWN,
                 reply_markup=kb,
             )
@@ -7455,67 +6051,33 @@ async def ticket_my(callback: CallbackQuery):
 
     if not tickets:
         await callback.message.edit_text(
-            "Обращений пока нет.",
-            reply_markup=_keyboard_from_specs(
-                [
-                    [
-                        _btn_spec(
-                            text="🎫 Создать обращение",
-                            callback_data="ticket_new",
-                            style=BTN_STYLE_SUCCESS,
-                            icon_custom_emoji_id=BTN_EMOJI_SUCCESS_ID or None,
-                        )
-                    ],
-                    [
-                        _btn_spec(
-                            text="◀️ Назад",
-                            callback_data="support",
-                            style=BTN_STYLE_DANGER,
-                            icon_custom_emoji_id=BTN_EMOJI_DANGER_ID or None,
-                        )
-                    ],
+            "Обращениеов пока нет.",
+            reply_markup=InlineKeyboardMarkup(
+                inline_keyboard=[
+                    [InlineKeyboardButton(text="🎫 Создать обращение", callback_data="ticket_new")],
+                    [InlineKeyboardButton(text="◀️ Назад", callback_data="support")],
                 ]
             ),
         )
         await callback.answer()
         return
 
-    rows: list[list[dict[str, str]]] = []
+    rows: list[list[InlineKeyboardButton]] = []
     for ticket in tickets:
         rows.append(
             [
-                _btn_spec(
+                InlineKeyboardButton(
                     text=f"#{ticket.id} {_ticket_status_title(ticket.status)}",
                     callback_data=f"ticket_view_{ticket.id}",
-                    style=BTN_STYLE_PRIMARY,
-                    icon_custom_emoji_id=BTN_EMOJI_PRIMARY_ID or None,
                 )
             ]
         )
-    rows.append(
-        [
-            _btn_spec(
-                text="🎫 Создать обращение",
-                callback_data="ticket_new",
-                style=BTN_STYLE_SUCCESS,
-                icon_custom_emoji_id=BTN_EMOJI_SUCCESS_ID or None,
-            )
-        ]
-    )
-    rows.append(
-        [
-            _btn_spec(
-                text="◀️ Назад",
-                callback_data="support",
-                style=BTN_STYLE_DANGER,
-                icon_custom_emoji_id=BTN_EMOJI_DANGER_ID or None,
-            )
-        ]
-    )
+    rows.append([InlineKeyboardButton(text="🎫 Создать обращение", callback_data="ticket_new")])
+    rows.append([InlineKeyboardButton(text="◀️ Назад", callback_data="support")])
 
     await callback.message.edit_text(
         "Мои обращения:",
-        reply_markup=_keyboard_from_specs(rows),
+        reply_markup=InlineKeyboardMarkup(inline_keyboard=rows),
     )
     await callback.answer()
 
@@ -7554,17 +6116,8 @@ async def ticket_reply(callback: CallbackQuery):
     pending_ticket_replies[callback.from_user.id] = ticket_id
     await callback.message.edit_text(
         f"Ответ в обращение #{ticket_id}: отправь одно текстовое сообщение.",
-        reply_markup=_keyboard_from_specs(
-            [
-                [
-                    _btn_spec(
-                        text="◀️ Назад",
-                        callback_data=f"ticket_view_{ticket_id}",
-                        style=BTN_STYLE_DANGER,
-                        icon_custom_emoji_id=BTN_EMOJI_DANGER_ID or None,
-                    )
-                ]
-            ]
+        reply_markup=InlineKeyboardMarkup(
+            inline_keyboard=[[InlineKeyboardButton(text="◀️ Назад", callback_data=f"ticket_view_{ticket_id}")]]
         ),
     )
     await callback.answer()
@@ -7588,7 +6141,7 @@ async def ticket_close(callback: CallbackQuery):
         # Notify opposite side.
         if callback.from_user.id == ADMIN_ID:
             try:
-                await callback.bot.send_message(ticket.user_tg_id, f"Обращение #{ticket.id} закрыто оператором.")
+                await callback.bot.send_message(ticket.user_tg_id, f"Обращение #{ticket.id} закрыт оператором.")
             except Exception:
                 pass
         else:
@@ -7624,7 +6177,7 @@ async def ticket_reopen(callback: CallbackQuery):
             try:
                 await callback.bot.send_message(
                     ADMIN_ID,
-                    f"Обращение #{ticket.id} переоткрыто пользователем `{ticket.user_tg_id}`.",
+                    f"Обращение #{ticket.id} переоткрыт пользователем `{ticket.user_tg_id}`.",
                     parse_mode=ParseMode.MARKDOWN,
                 )
             except Exception:
@@ -7672,7 +6225,7 @@ async def admin_tickets(callback: CallbackQuery):
 
     if not tickets:
         await callback.message.edit_text(
-            "В очереди нет активных обращений.",
+            "В очереди нет активных обращениеов.",
             reply_markup=InlineKeyboardMarkup(
                 inline_keyboard=[[InlineKeyboardButton(text="◀️ Назад", callback_data="admin")]]
             ),
@@ -7704,9 +6257,9 @@ async def show_admin_panel(callback: CallbackQuery):
     if callback.from_user.id != ADMIN_ID:
         await callback.answer("⛔️ Доступ запрещён")
         return
-
+    
     stats = get_stats()
-
+    
     kb = InlineKeyboardMarkup(inline_keyboard=[
         [
             InlineKeyboardButton(text="🔍 Найти юзера", callback_data="admin_search_prompt"),
@@ -7733,18 +6286,18 @@ async def show_admin_panel(callback: CallbackQuery):
             InlineKeyboardButton(text="🔗 Launch ссылки", callback_data="admin_start_links"),
         ],
         [
-            InlineKeyboardButton(text="🎫 Очередь обращений", callback_data="admin_tickets"),
+            InlineKeyboardButton(text="🎫 Очередь обращениеов", callback_data="admin_tickets"),
         ],
         [
             InlineKeyboardButton(text="Ноды", callback_data="admin_nodes"),
-            InlineKeyboardButton(text="Синхронизировать free-пул", callback_data="admin_sync_free_pl"),
+            InlineKeyboardButton(text="Sync Free pool", callback_data="admin_sync_free_pl"),
         ],
         [
-            InlineKeyboardButton(text="🧩 Ручные пользователи", callback_data="admin_manual_menu"),
+            InlineKeyboardButton(text="🧩 Manual users", callback_data="admin_manual_menu"),
         ],
-        [InlineKeyboardButton(text="◀️ Назад", callback_data="back")],
+        [InlineKeyboardButton(text="Back", callback_data="back")],
     ])
-
+    
     await callback.message.edit_text(
         TEXTS["admin_stats"].format(
             total=stats["total"],
@@ -7762,12 +6315,12 @@ async def admin_manual_menu(callback: CallbackQuery):
         return
 
     kb = InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text="➕ Создать ручного пользователя", callback_data="admin_manual_create_prompt")],
-        [InlineKeyboardButton(text="📋 Список ручных пользователей", callback_data="admin_manual_list")],
+        [InlineKeyboardButton(text="➕ Создать manual user", callback_data="admin_manual_create_prompt")],
+        [InlineKeyboardButton(text="📋 Список manual users", callback_data="admin_manual_list")],
         [InlineKeyboardButton(text="◀️ Назад", callback_data="admin")],
     ])
     await callback.message.edit_text(
-        "🧩 *Ручные пользователи*\n\n"
+        "🧩 *Manual users*\n\n"
         "Создавайте пользователей без Telegram аккаунта.\n"
         "Они будут подключаться ко всем paid-нодам.",
         reply_markup=kb,
@@ -7782,9 +6335,9 @@ async def admin_manual_create_prompt(callback: CallbackQuery):
         return
     admin_pending_actions[ADMIN_ID] = {"action": "manual_create"}
     await callback.message.edit_text(
-        "➕ *Создание ручного пользователя*\n\n"
-        "Отправьте: `Имя|дни`\n"
-        "Пример: `Семейный роутер|30`",
+        "➕ *Создание manual user*\n\n"
+        "Отправьте: `DisplayName|days`\n"
+        "Пример: `Family Router|30`",
         parse_mode=ParseMode.MARKDOWN,
         reply_markup=InlineKeyboardMarkup(inline_keyboard=[
             [InlineKeyboardButton(text="◀️ Отмена", callback_data="admin_manual_menu")],
@@ -7800,7 +6353,7 @@ async def admin_manual_list(callback: CallbackQuery):
     rows = list_manual_users(limit=40)
     if not rows:
         await callback.message.edit_text(
-            "Ручные пользователи пока не созданы.",
+            "Manual users пока не созданы.",
             reply_markup=InlineKeyboardMarkup(inline_keyboard=[
                 [InlineKeyboardButton(text="◀️ Назад", callback_data="admin_manual_menu")],
             ]),
@@ -7817,7 +6370,7 @@ async def admin_manual_list(callback: CallbackQuery):
         ])
     buttons.append([InlineKeyboardButton(text="◀️ Назад", callback_data="admin_manual_menu")])
     await callback.message.edit_text(
-        "📋 *Ручные/тестовые пользователи*",
+        "📋 *Manual/Test users*",
         reply_markup=InlineKeyboardMarkup(inline_keyboard=buttons),
         parse_mode=ParseMode.MARKDOWN,
     )
@@ -7828,13 +6381,13 @@ async def admin_search_prompt(callback: CallbackQuery):
     """Prompt admin to search for user"""
     if callback.from_user.id != ADMIN_ID:
         return
-
+    
     admin_pending_actions[ADMIN_ID] = {"action": "search_user"}
-
+    
     kb = InlineKeyboardMarkup(inline_keyboard=[
         [InlineKeyboardButton(text="◀️ Отмена", callback_data="admin")]
     ])
-
+    
     await callback.message.edit_text(
         "🔍 *Поиск пользователя*\n\n"
         "Введи @username или tg\\_id:",
@@ -7847,11 +6400,11 @@ async def admin_search_prompt(callback: CallbackQuery):
 async def admin_promos_menu(callback: CallbackQuery):
     if callback.from_user.id != ADMIN_ID:
         return
-
+    
     session = Session()
     promos = session.query(PromoCode).order_by(PromoCode.created_at.desc()).limit(20).all()
     session.close()
-
+    
     if promos:
         lines = []
         for p in promos:
@@ -7861,7 +6414,7 @@ async def admin_promos_menu(callback: CallbackQuery):
         promo_text = "\n".join(lines)
     else:
         promo_text = "_Нет активных промокодов_"
-
+    
     kb_rows: list[list[InlineKeyboardButton]] = [
         [InlineKeyboardButton(text="➕ Создать промокод", callback_data="admin_promo_create")],
     ]
@@ -7870,7 +6423,7 @@ async def admin_promos_menu(callback: CallbackQuery):
             [InlineKeyboardButton(text=f"🗑 Удалить {p.code}", callback_data=f"admin_promo_delete_{p.code}")]
         )
     kb_rows.append([InlineKeyboardButton(text="◀️ Назад", callback_data="admin")])
-
+    
     await callback.message.edit_text(
         f"🎫 *Промокоды*\n\n{promo_text}",
         reply_markup=InlineKeyboardMarkup(inline_keyboard=kb_rows),
@@ -7924,19 +6477,19 @@ async def admin_reviews_menu(callback: CallbackQuery):
     """Show reviews moderation"""
     if callback.from_user.id != ADMIN_ID:
         return
-
+    
     session = Session()
     reviews = session.query(Review).order_by(Review.created_at.desc()).limit(5).all()
     total = session.query(Review).count()
     featured = session.query(Review).filter_by(is_featured=True).count()
     session.close()
-
+    
     kb = InlineKeyboardMarkup(inline_keyboard=[
         [InlineKeyboardButton(text="📝 Все отзывы", callback_data="admin_reviews_all")],
         [InlineKeyboardButton(text="⭐ Избранные", callback_data="admin_reviews_featured")],
         [InlineKeyboardButton(text="◀️ Назад", callback_data="admin")]
     ])
-
+    
     await callback.message.edit_text(
         f"⭐ *Отзывы*\n\n"
         f"Всего: {total}\n"
@@ -7952,11 +6505,11 @@ async def admin_health_check(callback: CallbackQuery, bot: Bot):
     """Quick health check from admin panel"""
     if callback.from_user.id != ADMIN_ID:
         return
-
+    
     import time
     start_time = time.time()
     status = ["✅ Бот: работает"]
-
+    
     try:
         session = Session()
         user_count = session.query(User).count()
@@ -7965,7 +6518,7 @@ async def admin_health_check(callback: CallbackQuery, bot: Bot):
         status.append(f"✅ БД: {user_count} юзеров ({active_count} активных)")
     except Exception as e:
         status.append(f"❌ БД: ошибка")
-
+    
     try:
         clients = await panel.get_clients_list()
         if clients is not None:
@@ -7974,16 +6527,16 @@ async def admin_health_check(callback: CallbackQuery, bot: Bot):
             status.append("⚠️ Панель: нет ответа")
     except:
         status.append("❌ Панель: ошибка")
-
+    
     elapsed = round((time.time() - start_time) * 1000)
-
+    
     kb = InlineKeyboardMarkup(inline_keyboard=[
         [InlineKeyboardButton(text="🔄 Обновить", callback_data="admin_health")],
         [InlineKeyboardButton(text="◀️ Назад", callback_data="admin")]
     ])
-
+    
     await callback.message.edit_text(
-        f"❤️ *Health Check*\n\n" +
+        f"❤️ *Health Check*\n\n" + 
         "\n".join(status) +
         f"\n\n⏱️ {elapsed}мс",
         reply_markup=kb,
@@ -7996,29 +6549,29 @@ async def admin_broadcast_menu(callback: CallbackQuery):
     """Broadcast menu with custom messages and templates"""
     if callback.from_user.id != ADMIN_ID:
         return
-
+    
     session = Session()
     active = session.query(User).filter_by(is_active=True).count()
     templates = session.query(Template).all()
     session.close()
-
+    
     template_btns = []
     if templates:
         for t in templates[:5]:  # Show max 5 templates
             template_btns.append([InlineKeyboardButton(
-                text=f"📝 {t.key}",
+                text=f"📝 {t.key}", 
                 callback_data=f"send_tpl_{t.key}"
             )])
-
+    
     kb = InlineKeyboardMarkup(inline_keyboard=[
         [InlineKeyboardButton(text="🧩 Конструктор рассылки", callback_data="admin_bcast_compose")],
         [InlineKeyboardButton(text="🔄 Обновить ссылки", callback_data="admin_broadcast_links")],
         *template_btns,
         [InlineKeyboardButton(text="◀️ Назад", callback_data="admin")]
     ])
-
+    
     tpl_hint = f"\n📝 Шаблонов: {len(templates)}" if templates else "\n_Нет шаблонов_"
-
+    
     await callback.message.edit_text(
         f"📢 *Рассылка*\n\n"
         f"Активных юзеров: {active}{tpl_hint}\n\n"
@@ -8079,9 +6632,9 @@ async def admin_sync_free_pl(callback: CallbackQuery):
     if callback.from_user.id != ADMIN_ID:
         return
 
-    await callback.answer("⏳ Синхронизирую free-пул...")
+    await callback.answer("⏳ Sync Free pool...")
     await callback.message.edit_text(
-        "🆓 *Синхронизация free-пула*\n\nЗапускаю. Это может занять 10–60 секунд.",
+        "🆓 *Sync Free pool*\n\nЗапускаю. Это может занять 10–60 секунд.",
         reply_markup=InlineKeyboardMarkup(inline_keyboard=[[InlineKeyboardButton(text="◀️ Назад", callback_data="admin")]]),
         parse_mode=ParseMode.MARKDOWN,
     )
@@ -8092,7 +6645,7 @@ async def admin_sync_free_pl(callback: CallbackQuery):
         free_codes = [((getattr(n, "code", "") or "").strip()) for n in nodes if "free" in (getattr(n, "code", "") or "").lower()]
         if not free_codes:
             await callback.message.edit_text(
-                "🆓 *Синхронизация free-пула*\n\n❌ Free-ноды не найдены в `nodes`.\nДобавь отдельную free-ноду (code с `free`).",
+                "🆓 *Sync Free pool*\n\n❌ Free-ноды не найдены в `nodes`.\nДобавь отдельную free-ноду (code с `free`).",
                 reply_markup=InlineKeyboardMarkup(inline_keyboard=[[InlineKeyboardButton(text="◀️ Назад", callback_data="admin")]]),
                 parse_mode=ParseMode.MARKDOWN,
             )
@@ -8144,7 +6697,7 @@ async def admin_sync_free_pl(callback: CallbackQuery):
     fail = len(pending)
 
     await callback.message.edit_text(
-        "🆓 *Синхронизация free-пула*\n\n"
+        "🆓 *Sync Free pool*\n\n"
         f"✅ OK: {ok}\n"
         f"❌ Fail: {fail}\n\n"
         "После этого Free-пользователи будут получать только выделенный free-pool после обновления подписки в приложении.",
@@ -8442,13 +6995,13 @@ async def admin_custom_msg_prompt(callback: CallbackQuery):
     """Prompt for custom message with optional URL button"""
     if callback.from_user.id != ADMIN_ID:
         return
-
+    
     admin_pending_actions[ADMIN_ID] = {"action": "custom_broadcast"}
-
+    
     kb = InlineKeyboardMarkup(inline_keyboard=[
         [InlineKeyboardButton(text="◀️ Отмена", callback_data="admin_broadcast_menu")]
     ])
-
+    
     await callback.message.edit_text(
         "✍️ *Кастомная рассылка*\n\n"
         "Введи текст сообщения.\n\n"
@@ -8466,14 +7019,14 @@ async def admin_broadcast_links(callback: CallbackQuery, bot: Bot):
     """Trigger link broadcast from button"""
     if callback.from_user.id != ADMIN_ID:
         return
-
+    
     await callback.answer("🔄 Рассылка ссылок запущена...")
-
+    
     # Call existing broadcast logic
     session = Session()
     users = session.query(User).filter_by(is_active=True).all()
     session.close()
-
+    
     sent = 0
     for user in users:
         if user.tg_id in PROTECTED_USERS or user.tg_id == ADMIN_ID:
@@ -8489,11 +7042,11 @@ async def admin_broadcast_links(callback: CallbackQuery, bot: Bot):
             sent += 1
         except:
             pass
-
+    
     kb = InlineKeyboardMarkup(inline_keyboard=[
         [InlineKeyboardButton(text="◀️ Назад", callback_data="admin_broadcast_menu")]
     ])
-
+    
     await callback.message.edit_text(
         f"✅ *Рассылка завершена*\n\n"
         f"Отправлено: {sent} сообщений",
@@ -8506,20 +7059,20 @@ async def send_template_to_all(callback: CallbackQuery, bot: Bot):
     """Send template to all users from button"""
     if callback.from_user.id != ADMIN_ID:
         return
-
+    
     key = callback.data.replace("send_tpl_", "")
-
+    
     session = Session()
     template = session.query(Template).filter_by(key=key).first()
     users = session.query(User).filter_by(is_active=True).all()
     session.close()
-
+    
     if not template:
         await callback.answer("❌ Шаблон не найден", show_alert=True)
         return
-
+    
     await callback.answer(f"📤 Отправка шаблона '{key}'...")
-
+    
     sent = 0
     for user in users:
         if user.tg_id in PROTECTED_USERS or user.tg_id == ADMIN_ID:
@@ -8529,11 +7082,11 @@ async def send_template_to_all(callback: CallbackQuery, bot: Bot):
             sent += 1
         except:
             pass
-
+    
     kb = InlineKeyboardMarkup(inline_keyboard=[
         [InlineKeyboardButton(text="◀️ Назад", callback_data="admin_broadcast_menu")]
     ])
-
+    
     await callback.message.edit_text(
         f"✅ *Шаблон '{key}' отправлен*\n\n"
         f"Получили: {sent} юзеров",
@@ -8564,11 +7117,11 @@ async def admin_wheel_settings(callback: CallbackQuery):
     kb = InlineKeyboardMarkup(
         inline_keyboard=[
             [
-                InlineKeyboardButton(text="Профиль: сбалансированный", callback_data="wheel_preset_balanced"),
-                InlineKeyboardButton(text="Профиль: спокойный", callback_data="wheel_preset_steady"),
+                InlineKeyboardButton(text="Preset: Balanced", callback_data="wheel_preset_balanced"),
+                InlineKeyboardButton(text="Preset: Steady", callback_data="wheel_preset_steady"),
             ],
             [
-                InlineKeyboardButton(text="Профиль: щедрый", callback_data="wheel_preset_generous"),
+                InlineKeyboardButton(text="Preset: Generous", callback_data="wheel_preset_generous"),
                 InlineKeyboardButton(text="✍️ Ручные веса", callback_data="wheel_weights"),
             ],
             [InlineKeyboardButton(text=f"⚙️ Кулдаун ({cooldown_days}д)", callback_data="wheel_cd")],
@@ -8578,7 +7131,7 @@ async def admin_wheel_settings(callback: CallbackQuery):
 
     await callback.message.edit_text(
         "🎰 <b>Настройки рулетки</b>\n\n"
-        + f"<b>Профиль:</b> {html.escape(preset)}\n\n"
+        + f"<b>Preset:</b> {html.escape(preset)}\n\n"
         "<b>Шансы выигрыша:</b>\n"
         + "\n".join(prizes_text)
         + "\n\n"
@@ -8826,7 +7379,7 @@ async def admin_mass_actions(callback: CallbackQuery):
     """Show grouped bulk actions menu with explicit target counts."""
     if callback.from_user.id != ADMIN_ID:
         return
-
+    
     session = Session()
     total = session.query(User).count()
     now = _utcnow()
@@ -8839,7 +7392,7 @@ async def admin_mass_actions(callback: CallbackQuery):
     )
     inactive = total - active
     plan_rows = session.query(User.sub_type, func.count(User.tg_id)).group_by(User.sub_type).all()
-
+    
     # Find users with expiring subscriptions (within 3 days)
     soon = now + timedelta(days=3)
     expiring = session.query(User).filter(
@@ -8853,7 +7406,7 @@ async def admin_mass_actions(callback: CallbackQuery):
     for st, cnt in sorted(plan_rows, key=lambda x: str(x[0] or "")):
         plan_lines.append(f"• `{(st or '—')}`: {cnt}")
     plans_txt = "\n".join(plan_lines) if plan_lines else "—"
-
+    
     kb = InlineKeyboardMarkup(inline_keyboard=[
         [
             InlineKeyboardButton(text="➕ Добавить дни активным", callback_data="mass_extend_active"),
@@ -8866,7 +7419,7 @@ async def admin_mass_actions(callback: CallbackQuery):
         [InlineKeyboardButton(text="🧹 Нормализовать сегменты", callback_data="mass_normalize_plans")],
         [InlineKeyboardButton(text="◀️ Назад", callback_data="admin")]
     ])
-
+    
     await callback.message.edit_text(
         f"📊 *Групповые действия*\n\n"
         f"Всего: {total}\n"
@@ -8892,13 +7445,13 @@ async def mass_extend_prompt(callback: CallbackQuery):
     """Prompt for mass extend"""
     if callback.from_user.id != ADMIN_ID:
         return
-
+    
     admin_pending_actions[ADMIN_ID] = {"action": "mass_extend"}
-
+    
     kb = InlineKeyboardMarkup(inline_keyboard=[
         [InlineKeyboardButton(text="◀️ Отмена", callback_data="admin_mass")]
     ])
-
+    
     await callback.message.edit_text(
         "📅 *Продлить всем активным*\n\n"
         "Введи количество дней:",
@@ -9255,9 +7808,9 @@ async def admin_sync_callback(callback: CallbackQuery, bot: Bot):
     """Trigger sync from button"""
     if callback.from_user.id != ADMIN_ID:
         return
-
+    
     await callback.answer("🔄 Синхронизация запущена...")
-
+    
     session = Session()
     try:
         tg_ids: set[int] = set()
@@ -9279,11 +7832,11 @@ async def admin_sync_callback(callback: CallbackQuery, bot: Bot):
                 updated += 1
         except Exception:
             pass
-
+    
     kb = InlineKeyboardMarkup(inline_keyboard=[
         [InlineKeyboardButton(text="◀️ Назад", callback_data="admin")]
     ])
-
+    
     await callback.message.edit_text(
         f"✅ *Синхронизация завершена*\n\n"
         f"Обновлено: {updated} username'ов",
@@ -9313,20 +7866,20 @@ async def show_admin_users(callback: CallbackQuery):
 
     segment_labels = {
         "all": "Все",
-        "active": "Активные",
-        "expired": "Истекшие",
-        "blocked": "Заблокированные",
-        "manual_test": "Ручные/тестовые",
+        "active": "Active",
+        "expired": "Expired",
+        "blocked": "Blocked",
+        "manual_test": "Manual/Test",
     }
     segment_buttons = [
         [
             InlineKeyboardButton(text="Все", callback_data="admin_users:0:all"),
-            InlineKeyboardButton(text="Активные", callback_data="admin_users:0:active"),
-            InlineKeyboardButton(text="Истекшие", callback_data="admin_users:0:expired"),
+            InlineKeyboardButton(text="Active", callback_data="admin_users:0:active"),
+            InlineKeyboardButton(text="Expired", callback_data="admin_users:0:expired"),
         ],
         [
-            InlineKeyboardButton(text="Заблокированные", callback_data="admin_users:0:blocked"),
-            InlineKeyboardButton(text="Ручные/тестовые", callback_data="admin_users:0:manual_test"),
+            InlineKeyboardButton(text="Blocked", callback_data="admin_users:0:blocked"),
+            InlineKeyboardButton(text="Manual/Test", callback_data="admin_users:0:manual_test"),
         ],
     ]
 
@@ -9364,7 +7917,7 @@ async def show_admin_users(callback: CallbackQuery):
         )
         await callback.message.edit_text(
             "👥 Пользователи\n\n"
-            "Telegram-админка работает как запасной операторский канал. "
+            "Telegram admin работает как safe fallback. "
             "Для выбранного статуса пользователей пока нет.",
             reply_markup=kb,
         )
@@ -9374,7 +7927,7 @@ async def show_admin_users(callback: CallbackQuery):
     header = (
         f"👥 <b>Пользователи</b> — {html.escape(segment_labels.get(segment, 'Все'))}\n"
         f"Всего: {total} | Стр. {page+1}/{pages}\n"
-        "Telegram-админка: запасной канал, удаление только для ручных/тестовых аккаунтов.\n\n"
+        "Telegram admin: safe fallback, destructive cleanup только для manual/test.\n\n"
     )
 
     lines: list[str] = []
@@ -9525,7 +8078,7 @@ async def admin_view_user(callback: CallbackQuery):
     if callback.from_user.id != ADMIN_ID:
         await callback.answer("⛔️ Доступ запрещён")
         return
-
+    
     tg_id = int(callback.data.replace("adm_user_", ""))
     await render_admin_user_view(callback, tg_id)
 
@@ -9533,17 +8086,17 @@ async def admin_view_user(callback: CallbackQuery):
 async def admin_add_days(callback: CallbackQuery):
     if callback.from_user.id != ADMIN_ID:
         return
-
+    
     parts = callback.data.split("_")
     tg_id = int(parts[3])
     days = int(parts[4])
-
+    
     extend_user(tg_id, days, 0)
     if days >= 0:
         await callback.answer(f"✅ Добавлено {days} дней!")
     else:
         await callback.answer(f"✅ Списано {abs(days)} дней.")
-
+    
     # Refresh user view - re-render directly
     await render_admin_user_view(callback, tg_id)
 
@@ -9551,11 +8104,11 @@ async def admin_add_days(callback: CallbackQuery):
 async def admin_add_gb(callback: CallbackQuery):
     if callback.from_user.id != ADMIN_ID:
         return
-
+    
     parts = callback.data.split("_")
     tg_id = int(parts[3])
     gb = int(parts[4])
-
+    
     user = get_user(tg_id)
     if not user:
         await callback.answer("❌ Пользователь не найден")
@@ -9564,7 +8117,7 @@ async def admin_add_gb(callback: CallbackQuery):
     # Keep handler for backward compatibility; policy is managed by plan/env.
     await panel.update_client_traffic(tg_id, 0)
     await callback.answer("ℹ️ Управление трафиком через эту кнопку отключено.", show_alert=True)
-
+    
     # Refresh user view - re-render directly
     await render_admin_user_view(callback, tg_id)
 
@@ -9572,11 +8125,11 @@ async def admin_add_gb(callback: CallbackQuery):
 async def admin_sub_gb(callback: CallbackQuery):
     if callback.from_user.id != ADMIN_ID:
         return
-
+    
     parts = callback.data.split("_")
     tg_id = int(parts[3])
     gb = int(parts[4])
-
+    
     user = get_user(tg_id)
     if not user:
         await callback.answer("❌ Пользователь не найден")
@@ -9584,7 +8137,7 @@ async def admin_sub_gb(callback: CallbackQuery):
 
     await panel.subtract_client_traffic(tg_id, 0)
     await callback.answer("ℹ️ Управление трафиком через эту кнопку отключено.", show_alert=True)
-
+    
     # Refresh user view
     await render_admin_user_view(callback, tg_id)
 
@@ -9592,14 +8145,14 @@ async def admin_sub_gb(callback: CallbackQuery):
 async def admin_toggle_user(callback: CallbackQuery):
     if callback.from_user.id != ADMIN_ID:
         return
-
+    
     tg_id = int(callback.data.replace("adm_toggle_", ""))
     user = get_user(tg_id)
-
+    
     if not user:
         await callback.answer("❌ Пользователь не найден")
         return
-
+    
     # Toggle status
     new_status = not user.is_active
     session = Session()
@@ -9608,14 +8161,14 @@ async def admin_toggle_user(callback: CallbackQuery):
         db_user.is_active = new_status
         session.commit()
     session.close()
-
+    
     # Toggle in panel
     await panel.enable_client(user.uuid, new_status)
     audit_admin(callback.from_user.id, "toggle_user", tg_id, meta=f"new_status={int(new_status)}")
-
+    
     status_text = "активирован" if new_status else "отключен"
     await callback.answer(f"✅ Пользователь {status_text}!")
-
+    
     # Refresh user view - re-render directly
     await render_admin_user_view(callback, tg_id)
 
@@ -9750,131 +8303,6 @@ async def mode_pro_start(callback: CallbackQuery):
     await callback.answer("Открываю полное меню", show_alert=False)
 
 
-def _mode_simple_device_keyboard() -> InlineKeyboardMarkup:
-    return _keyboard_from_specs(
-        [
-            [
-                _btn_spec(
-                    text="🤖 Android",
-                    callback_data="simple_android",
-                    style=BTN_STYLE_PRIMARY,
-                    icon_custom_emoji_id=BTN_EMOJI_PRIMARY_ID or None,
-                )
-            ],
-            [
-                _btn_spec(
-                    text="💻 Компьютер",
-                    callback_data="simple_pc",
-                    style=BTN_STYLE_PRIMARY,
-                    icon_custom_emoji_id=BTN_EMOJI_PRIMARY_ID or None,
-                )
-            ],
-            [
-                _btn_spec(
-                    text="🍏 Apple: статус подготовки",
-                    callback_data="simple_ios",
-                    style=BTN_STYLE_PRIMARY,
-                    icon_custom_emoji_id=BTN_EMOJI_PRIMARY_ID or None,
-                )
-            ],
-            [
-                _btn_spec(
-                    text="◀️ Назад",
-                    callback_data="back",
-                    style=BTN_STYLE_DANGER,
-                    icon_custom_emoji_id=BTN_EMOJI_DANGER_ID or None,
-                )
-            ],
-        ]
-    )
-
-
-def _mode_simple_install_keyboard(*, app_name: str, app_link: str) -> InlineKeyboardMarkup:
-    return _keyboard_from_specs(
-        [
-            [
-                _btn_spec(
-                    text=f"📥 Скачать {app_name}",
-                    url=str(app_link or "").strip(),
-                    style=BTN_STYLE_PRIMARY,
-                    icon_custom_emoji_id=BTN_EMOJI_PRIMARY_ID or None,
-                )
-            ],
-            [
-                _btn_spec(
-                    text="✅ Приложение уже стоит",
-                    callback_data="simple_step3",
-                    style=BTN_STYLE_SUCCESS,
-                    icon_custom_emoji_id=BTN_EMOJI_SUCCESS_ID or None,
-                )
-            ],
-            [
-                _btn_spec(
-                    text="◀️ Назад",
-                    callback_data="mode_simple",
-                    style=BTN_STYLE_DANGER,
-                    icon_custom_emoji_id=BTN_EMOJI_DANGER_ID or None,
-                )
-            ],
-        ]
-    )
-
-
-def _mode_simple_plan_keyboard(*, starter_price: int, recommended_price: int) -> InlineKeyboardMarkup:
-    return _keyboard_from_specs(
-        [
-            [
-                _btn_spec(
-                    text="🎁 Начать с 5 дней бесплатно",
-                    callback_data="trial_direct",
-                    style=BTN_STYLE_SUCCESS,
-                    icon_custom_emoji_id=BTN_EMOJI_SUCCESS_ID or None,
-                )
-            ],
-            [
-                _btn_spec(
-                    text=f"⚡ Рекомендуем: 6 месяцев за {recommended_price} ₽",
-                    callback_data="buy_6_months",
-                    style=BTN_STYLE_PRIMARY,
-                    icon_custom_emoji_id=BTN_EMOJI_PRIMARY_ID or None,
-                )
-            ],
-            [
-                _btn_spec(
-                    text=f"📅 Начать с 1 месяца за {starter_price} ₽",
-                    callback_data="buy_1_month",
-                    style=BTN_STYLE_PRIMARY,
-                    icon_custom_emoji_id=BTN_EMOJI_PRIMARY_ID or None,
-                )
-            ],
-            [
-                _btn_spec(
-                    text="💳 Посмотреть все планы",
-                    callback_data="charge",
-                    style=BTN_STYLE_PRIMARY,
-                    icon_custom_emoji_id=BTN_EMOJI_PRIMARY_ID or None,
-                )
-            ],
-            [
-                _btn_spec(
-                    text=f"🎁 Забрать ещё {CHANNEL_PREMIUM_DAYS} дней за канал",
-                    callback_data="bonus_offer_trial",
-                    style=BTN_STYLE_SUCCESS,
-                    icon_custom_emoji_id=BTN_EMOJI_SUCCESS_ID or None,
-                )
-            ],
-            [
-                _btn_spec(
-                    text="◀️ Назад",
-                    callback_data="mode_simple",
-                    style=BTN_STYLE_DANGER,
-                    icon_custom_emoji_id=BTN_EMOJI_DANGER_ID or None,
-                )
-            ],
-        ]
-    )
-
-
 @router.callback_query(F.data == "mode_simple")
 async def mode_simple_start(callback: CallbackQuery):
     text = (
@@ -9883,7 +8311,12 @@ async def mode_simple_start(callback: CallbackQuery):
         "Сначала выберите устройство, а дальше я проведу по шагам.\n\n"
         "👇 *С какого устройства начнём?*"
     )
-    kb = _mode_simple_device_keyboard()
+    kb = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="🍏 iPhone / iPad", callback_data="simple_ios")],
+        [InlineKeyboardButton(text="🤖 Android", callback_data="simple_android")],
+        [InlineKeyboardButton(text="💻 Компьютер", callback_data="simple_pc")],
+        [InlineKeyboardButton(text="◀️ Назад", callback_data="back")],
+    ])
     await callback.message.edit_text(text, reply_markup=kb, parse_mode=ParseMode.MARKDOWN)
     await callback.answer()
 
@@ -9892,40 +8325,14 @@ async def mode_simple_start(callback: CallbackQuery):
 async def mode_simple_step2(callback: CallbackQuery):
     mode = callback.data or ""
     if mode == "simple_ios":
-        text = (
-            "🍏 *Apple пока в подготовке*\n\n"
-            "Текущая бета POKROV рассчитана на Android и Windows.\n"
-            "Для iPhone, iPad и macOS мы показываем только статус, без обещания готовой установки."
-        )
-        kb = _keyboard_from_specs(
-            [
-                [
-                    _btn_spec(
-                        text="Открыть статус Apple",
-                        url=IOS_APP_LINK,
-                        style=BTN_STYLE_PRIMARY,
-                        icon_custom_emoji_id=BTN_EMOJI_PRIMARY_ID or None,
-                    )
-                ],
-                [
-                    _btn_spec(
-                        text="◀️ Назад",
-                        callback_data="mode_simple",
-                        style=BTN_STYLE_DANGER,
-                        icon_custom_emoji_id=BTN_EMOJI_DANGER_ID or None,
-                    )
-                ],
-            ]
-        )
-        await callback.message.edit_text(text, reply_markup=kb, parse_mode=ParseMode.MARKDOWN)
-        await callback.answer()
-        return
+        app_name = "совместимый клиент для iPhone"
+        app_link = IOS_APP_LINK
     elif mode == "simple_android":
         app_name = "POKROV"
-        app_link = _webapp_downloads_url("android")
+        app_link = ANDROID_APP_LINK
     else:
         app_name = "POKROV"
-        app_link = _webapp_downloads_url("windows")
+        app_link = WINDOWS_APP_LINK
 
     text = (
         f"1️⃣ *Шаг 1: Поставьте приложение*\n\n"
@@ -9933,7 +8340,21 @@ async def mode_simple_step2(callback: CallbackQuery):
         "Установите приложение и вернитесь сюда.\n\n"
         "👇 Нажмите, чтобы скачать."
     )
-    kb = _mode_simple_install_keyboard(app_name=app_name, app_link=app_link)
+    kb = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text=f"📥 Скачать {app_name}", url=app_link)],
+        [_button_from_spec(_btn_spec(
+            text="✅ Приложение уже стоит",
+            callback_data="simple_step3",
+            style=BTN_STYLE_SUCCESS,
+            icon_custom_emoji_id=BTN_EMOJI_SUCCESS_ID or None,
+        ))],
+        [_button_from_spec(_btn_spec(
+            text="◀️ Назад",
+            callback_data="mode_simple",
+            style=BTN_STYLE_DANGER,
+            icon_custom_emoji_id=BTN_EMOJI_DANGER_ID or None,
+        ))],
+    ])
     await callback.message.edit_text(text, reply_markup=kb, parse_mode=ParseMode.MARKDOWN)
     await callback.answer()
 
@@ -9957,7 +8378,14 @@ async def _render_mode_simple_step3(callback: CallbackQuery) -> None:
         "Если полный доступ нужен сразу, сейчас самый спокойный баланс цены и срока у плана на 6 месяцев.\n\n"
         "👇 Выберите следующий шаг."
     )
-    kb = _mode_simple_plan_keyboard(starter_price=starter_price, recommended_price=recommended_price)
+    kb = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="🎁 Начать с 5 дней бесплатно", callback_data="trial_direct")],
+        [InlineKeyboardButton(text=f"⚡ Рекомендуем: 6 месяцев за {recommended_price} ₽", callback_data="buy_6_months")],
+        [InlineKeyboardButton(text=f"📅 Начать с 1 месяца за {starter_price} ₽", callback_data="buy_1_month")],
+        [InlineKeyboardButton(text="💳 Посмотреть все планы", callback_data="charge")],
+        [InlineKeyboardButton(text=f"🎁 Забрать ещё {CHANNEL_PREMIUM_DAYS} дней за канал", callback_data="bonus_offer_trial")],
+        [InlineKeyboardButton(text="◀️ Назад", callback_data="mode_simple")],
+    ])
     await callback.message.edit_text(text, reply_markup=kb, parse_mode=ParseMode.MARKDOWN)
     await callback.answer()
 
@@ -10047,7 +8475,12 @@ async def channel_bonus_claim(callback: CallbackQuery, bot: Bot):
 
     activated, reason = await _activate_channel_bonus(message=callback.message, bot=bot, tg_id=tg_id)
     if activated:
-        kb = _channel_bonus_activated_keyboard()
+        kb = InlineKeyboardMarkup(
+            inline_keyboard=[
+                [InlineKeyboardButton(text="🔗 Ссылка для подключения", callback_data="show_key")],
+                [InlineKeyboardButton(text="🏠 Главное меню", callback_data="back")],
+            ]
+        )
         await callback.message.edit_text(
             f"✅ *Бонус включён*\n\nПолный доступ добавлен на *{CHANNEL_PREMIUM_DAYS} дней*.\n\nСледующий шаг — открыть ссылку для подключения.",
             reply_markup=kb,
@@ -10094,10 +8527,10 @@ async def trial_direct(callback: CallbackQuery, bot: Bot):
 async def render_admin_user_view(callback: CallbackQuery, tg_id: int):
     """Render admin user detail view - reusable helper"""
     user = get_user(tg_id)
-
+    
     if not user:
         return
-
+    
     uname = f"@{user.username}" if user.username else "—"
     now = _utcnow()
     expiry = _naive_utc(user.expiry_at)
@@ -10138,7 +8571,7 @@ async def render_admin_user_view(callback: CallbackQuery, tg_id: int):
         f"⭐ Stars: <b>{int(user.stars_paid or 0)}</b>"
         f"{free_usage_line}"
     )
-
+    
     kb = InlineKeyboardMarkup(inline_keyboard=[
         [
             InlineKeyboardButton(text="➕ 7 дней", callback_data=f"adm_add_days_{tg_id}_7"),
@@ -10168,16 +8601,16 @@ async def render_admin_user_view(callback: CallbackQuery, tg_id: int):
         ),
         [InlineKeyboardButton(text="◀️ К списку", callback_data="admin_manual_list" if is_manual else "admin_users")]
     ])
-
+    
     await callback.message.edit_text(text, reply_markup=kb, parse_mode=ParseMode.HTML)
 
 @router.callback_query(F.data.startswith("adm_tariff_"))
 async def admin_tariff_menu(callback: CallbackQuery):
     if callback.from_user.id != ADMIN_ID:
         return
-
+    
     tg_id = int(callback.data.replace("adm_tariff_", ""))
-
+    
     p1 = int(TARIFFS["1_month"]["stars"])
     p3 = int(TARIFFS["3_months"]["stars"])
     p6 = int(TARIFFS["6_months"]["stars"])
@@ -10192,7 +8625,7 @@ async def admin_tariff_menu(callback: CallbackQuery):
         [InlineKeyboardButton(text=f"📅 12 Месяцев ({p12} ⭐)", callback_data=f"adm_set_{tg_id}_12_months")],
         [InlineKeyboardButton(text="◀️ Назад", callback_data=f"adm_user_{tg_id}")]
     ])
-
+    
     await callback.message.edit_text(
         f"🎫 *Выберите тариф для пользователя* `{tg_id}`:",
         reply_markup=kb,
@@ -10204,7 +8637,7 @@ async def admin_tariff_menu(callback: CallbackQuery):
 async def admin_gift_menu(callback: CallbackQuery):
     if callback.from_user.id != ADMIN_ID:
         return
-
+    
     mini_price = int(GIFT_CARD_TYPES["mini"]["stars"])
     standard_price = int(GIFT_CARD_TYPES["standard"]["stars"])
     premium_price = int(GIFT_CARD_TYPES["premium"]["stars"])
@@ -10214,7 +8647,7 @@ async def admin_gift_menu(callback: CallbackQuery):
         [InlineKeyboardButton(text=f"🎫 Создать Premium (90д / {premium_price}⭐)", callback_data="admin_giftcode_premium")],
         [InlineKeyboardButton(text="◀️ Назад", callback_data="admin")]
     ])
-
+    
     await callback.message.edit_text(
         "🎁 *Подарки для пользователей*\n\n"
         "Основной поток: *gift-коды* (удобно и безопасно).\n"
@@ -10258,14 +8691,14 @@ async def admin_giftcode_create_from_menu(callback: CallbackQuery):
 async def admin_set_tariff(callback: CallbackQuery, bot: Bot):
     if callback.from_user.id != ADMIN_ID:
         return
-
+    
     parts = callback.data.split("_")
     tg_id = int(parts[2])
     # Handle keys with underscores like 1_month (parts[3] + parts[4]?)
     # callback data: adm_set_{tg_id}_{key}
     # split("_"): ["adm", "set", "123", "1", "month"] -> len 5
     # trial -> len 4
-
+    
     if len(parts) >= 5:
         tariff_key = f"{parts[3]}_{parts[4]}"
     else:
@@ -10276,11 +8709,11 @@ async def admin_set_tariff(callback: CallbackQuery, bot: Bot):
     if tariff_key in TARIFFS:
         t = TARIFFS[tariff_key]
         preset = {"days": t["days"], "gb": t["gb"], "name": t["name"]}
-
+    
     if not preset:
         await callback.answer("❌ Тариф не найден")
         return
-
+    
     user = get_user(tg_id)
     if user:
         target_sub = _normalize_sub_type(t.get("sub_type") or tariff_key)
@@ -10290,7 +8723,7 @@ async def admin_set_tariff(callback: CallbackQuery, bot: Bot):
         else:
             # Default behavior: extend from current expiry.
             extend_user(tg_id, preset["days"], 0)
-
+        
         # Update plan in DB (keep internal sub_type consistent with TARIFFS, so wheel/logic works).
         session = Session()
         db_user = session.query(User).filter_by(tg_id=tg_id).first()
@@ -10301,15 +8734,15 @@ async def admin_set_tariff(callback: CallbackQuery, bot: Bot):
                 mark_user_became_free(db_user)
             session.commit()
         session.close()
-
+        
         # SET traffic on panel (not add) - this resets used to 0 and sets new limit
         await panel.set_tariff_traffic(tg_id, preset["gb"])
-
+        
         await callback.answer(f"✅ Установлен тариф: {preset['name']}")
     else:
         await callback.answer("❌ Пользователь не найден")
         return
-
+    
     # Refresh user view
     await render_admin_user_view(callback, tg_id)
 
@@ -10317,13 +8750,13 @@ async def admin_set_tariff(callback: CallbackQuery, bot: Bot):
 async def admin_reset_traffic(callback: CallbackQuery):
     if callback.from_user.id != ADMIN_ID:
         return
-
+    
     tg_id = int(callback.data.replace("adm_reset_", ""))
-
+    
     # Legacy: traffic limits are not used anymore (kept to avoid breaking older callback links).
     await panel.reset_client_traffic(tg_id)
     await callback.answer("ℹ️ Лимиты по трафику отключены.", show_alert=True)
-
+    
     # Refresh user view
     await render_admin_user_view(callback, tg_id)
 
@@ -10362,7 +8795,7 @@ async def admin_delete_user(callback: CallbackQuery):
 
     audit_admin(callback.from_user.id, "admin_safe_delete_test_user", tg_id)
 
-    await callback.answer(f"✅ Ручной/тестовый пользователь {tg_id} удалён!")
+    await callback.answer(f"✅ Manual/test пользователь {tg_id} удалён!")
 
     callback_copy = callback
     callback_copy._data = "admin_users:0:all"
@@ -10375,14 +8808,14 @@ async def process_buy(callback: CallbackQuery, bot: Bot):
     raw_key = callback.data.replace("buy_", "")
     tariff_key = normalize_tariff_key(raw_key)
     tariff = TARIFFS.get(tariff_key)
-
+    
     if not tariff:
         await callback.answer("❌ Тариф не найден")
         return
-
+    
     tg_id = callback.from_user.id
     user = get_user(tg_id)
-
+    
     if tariff_key == "trial":
         if _channel_bonus_eligible(tg_id=tg_id, user=user):
             await _show_channel_bonus_offer(callback, next_action="trial")
@@ -10401,11 +8834,6 @@ async def process_buy(callback: CallbackQuery, bot: Bot):
 
 @router.callback_query(F.data.startswith("pay_stars_"))
 async def process_buy_stars(callback: CallbackQuery, bot: Bot):
-    if not BOT_STARS_PAYMENTS_ENABLED:
-        await _show_stars_payments_unavailable(callback)
-        await callback.answer("Оплата через Stars закрыта", show_alert=True)
-        return
-
     raw_key = callback.data.replace("pay_stars_", "")
     tariff_key = normalize_tariff_key(raw_key)
     tariff = TARIFFS.get(tariff_key)
@@ -10472,7 +8900,13 @@ async def process_buy_stars(callback: CallbackQuery, bot: Bot):
     await callback.message.answer(
         "💳 Счёт готов. После оплаты я автоматически включу доступ.\n\n"
         "Если окно закрылось, нажмите «Проверить оплату».",
-        reply_markup=_stars_invoice_check_keyboard(),
+        reply_markup=InlineKeyboardMarkup(
+            inline_keyboard=[
+                [InlineKeyboardButton(text="✅ Проверить оплату", callback_data="status")],
+                [InlineKeyboardButton(text="◀️ К тарифам", callback_data="charge")],
+                [InlineKeyboardButton(text="🏠 Главное меню", callback_data="back")],
+            ]
+        ),
     )
 
 
@@ -10544,13 +8978,6 @@ async def process_buy_rub(callback: CallbackQuery, bot: Bot):
 
 @router.pre_checkout_query()
 async def pre_checkout_handler(pre_checkout: PreCheckoutQuery, bot: Bot):
-    if not BOT_STARS_PAYMENTS_ENABLED:
-        await bot.answer_pre_checkout_query(
-            pre_checkout.id,
-            ok=False,
-            error_message="Оплата через Telegram Stars сейчас закрыта. Откройте кабинет или поддержку.",
-        )
-        return
     await bot.answer_pre_checkout_query(pre_checkout.id, ok=True)
 
 @router.message(F.content_type == ContentType.SUCCESSFUL_PAYMENT)
@@ -10579,7 +9006,7 @@ async def payment_success(message: Message, bot: Bot):
             logger.warning("payment_success giftcard parse error payload=%s", payload)
             await message.answer("❌ Ошибка обработки оплаты. Напиши в службу заботы.")
             return
-
+        
         code = create_gift_card(buyer_tg_id, card_type)
         if code:
             card_info = GIFT_CARD_TYPES.get(card_type, {})
@@ -10629,7 +9056,7 @@ async def payment_success(message: Message, bot: Bot):
             meta={"plan_code": "family_slot", "amount_stars": int(payment.total_amount), "family_slots": int(total)},
         )
         return
-
+    
     # Handle regular tariff purchase
     if payload.startswith("portal_"):
         portal_raw = payload[len("portal_"):]
@@ -10653,7 +9080,7 @@ async def payment_success(message: Message, bot: Bot):
             return
 
         tariff = TARIFFS.get(tariff_key)
-
+        
         if tariff:
             attempt = get_attempt_by_payload(invoice_payload=payload)
             if attempt and str(getattr(attempt, "status", "") or "").strip().lower() == "paid":
@@ -10713,7 +9140,9 @@ async def payment_success(message: Message, bot: Bot):
                 parse_mode=ParseMode.MARKDOWN,
             )
             if not ok:
-                kb = _payment_success_fallback_keyboard()
+                kb = InlineKeyboardMarkup(
+                    inline_keyboard=[[InlineKeyboardButton(text="🔗 Открыть ссылку для подключения", callback_data="show_key")]]
+                )
                 await message.answer(receipt_text, reply_markup=kb, parse_mode=ParseMode.MARKDOWN)
         else:
             logger.warning("payment_success unknown tariff_key=%s payload=%s", tariff_key, payload)
@@ -10790,10 +9219,10 @@ async def create_subscription(
     """Create or extend subscription"""
     user = get_user(tg_id)
     panel_client = await panel.get_existing_client(tg_id)
-
+    
     # Check if this is a PAID purchase (for referral bonus)
     is_paid_purchase = tariff["stars"] > 0
-
+    
     if panel_client:
         # User exists in panel - update DB and add traffic
         client_uuid = panel_client.get("id")
@@ -10818,28 +9247,31 @@ async def create_subscription(
                 session.commit()
             session.close()
         else:
-            create_user(tg_id, panel_client.get("id"), panel_client.get("email"),
+            create_user(tg_id, panel_client.get("id"), panel_client.get("email"), 
                        tariff.get("sub_type") or tariff["subId"], tariff["days"], tariff["gb"], tariff["stars"])
-
+        
         # Add traffic to existing client
         await panel.update_client_traffic(tg_id, tariff["gb"])
     else:
         # Create new in panel
         user_uuid = str(uuid.uuid4())
         email = f"User_{tg_id}"
-
+        
         # Generate sub_token BEFORE creating in panel
         sub_token = generate_sub_token()
-
+        
         # 3x-ui "subId" in this project is the per-user subscription token, not the tariff.
         # The 3rd argument here is our internal plan marker to decide which nodes to provision.
         success = await panel.add_client(user_uuid, email, tariff.get("sub_type") or tariff["subId"], tariff["gb"], tg_id, sub_token)
-
+        
         if not success:
-            kb = _fulfillment_support_keyboard()
+            kb = InlineKeyboardMarkup(inline_keyboard=[
+                [InlineKeyboardButton(text="💬 Написать в поддержку", url=f"https://t.me/{SUPPORT_USERNAME}?start=ticket_new")],
+                [InlineKeyboardButton(text="◀️ Назад", callback_data="back")]
+            ])
             await message.answer("❌ Не получилось включить доступ.\n\nНажмите кнопку ниже, и поддержка подскажет следующий шаг.", reply_markup=kb)
             return
-
+        
         # Create user in DB with the generated sub_token
         new_user = create_user(tg_id, user_uuid, email, tariff.get("sub_type") or tariff["subId"], tariff["days"], tariff["gb"], tariff["stars"])
         # Update sub_token (create_user generates its own, but we need the one sent to panel)
@@ -10849,18 +9281,18 @@ async def create_subscription(
             db_user.sub_token = sub_token
             session.commit()
         session.close()
-
+    
     # Keep legacy trial flag only for actual TRIAL plans (not used by default).
     sub_type = (tariff.get("sub_type") or "").upper()
     if tariff["stars"] == 0 and sub_type.startswith("TRIAL"):
         mark_trial_used(tg_id)
-
+    
     # 🎁 Award referral bonus days for every paid purchase
     if is_paid_purchase:
         # Mark that user has used their 20% discount
         mark_first_purchase_done(tg_id)
         clear_pending_discount(tg_id)
-
+        
         user = get_user(tg_id)
         if user and user.referrer_id:
             try:
@@ -10887,7 +9319,7 @@ async def create_subscription(
                         pass  # Referrer may have blocked bot
             except Exception as e:
                 print(f"Referral bonus error: {e}")
-
+    
     # 🔥 Update streak and bonus only for paid purchases.
     if is_paid_purchase:
         new_streak, streak_bonus = update_streak(tg_id)
@@ -10902,7 +9334,7 @@ async def create_subscription(
                 )
             except:
                 pass
-
+    
     user = get_user(tg_id)
     expiry = user.expiry_at.strftime("%d.%m.%Y") if user and user.expiry_at else "—"
     is_free = _is_freemium_sub_type(user.sub_type if user else "")
@@ -10911,14 +9343,25 @@ async def create_subscription(
         free_note = (
             f"\n\n🆓 Бесплатный: до {FREE_TOTAL_GB} ГБ, до {FREE_LIMIT_IP} устройств (по IP), до {FREE_SPEED_MBIT} Мбит/с."
         )
-
-    kb = _paid_access_ready_keyboard()
+    
+    # Build subscription link
+    sub_link = build_subscription_link(tg_id)
+    
+    kb = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="📲 Установить POKROV", callback_data="instruction")],
+        [InlineKeyboardButton(text="🌐 Открыть кабинет", web_app=WebAppInfo(url=WEBAPP_URL))],
+        [InlineKeyboardButton(text="🔗 Ссылка и QR для подключения", callback_data="show_key")],
+        [InlineKeyboardButton(text="◀️ В меню", callback_data="back")]
+    ])
 
     await message.answer(
         f"✅ *Доступ готов!*\n\n"
         f"📅 До: `{expiry}`\n\n"
+        f"🔗 *Ссылка для подключения:*\n"
+        f"`{sub_link}`\n\n"
         "Лучший путь: откройте POKROV и обновите доступ в кабинете.\n"
-        f"Ручная ссылка и QR остаются кнопкой ниже как запасной путь, если приложение не подхватило доступ.{free_note}",
+        "Пока приложения в бете, мы не ограничиваем ручное подключение: "
+        f"если POKROV ещё не установлен, скопируйте ссылку и импортируйте её в Happ, Hiddify или другой совместимый клиент.{free_note}",
         reply_markup=kb,
         parse_mode=ParseMode.MARKDOWN
     )
@@ -10931,15 +9374,15 @@ async def create_subscription(
 async def admin_stats(message: Message):
     if message.from_user.id != ADMIN_ID:
         return
-
+    
     # 🧹 Delete command message
     try:
         await message.delete()
     except:
         pass
-
+    
     stats = get_stats()
-
+    
     await message.answer(
         TEXTS["admin_stats"].format(
             total=stats["total"],
@@ -10954,7 +9397,7 @@ async def admin_user_search(message: Message):
     """Search user by @username or tg_id: /user @name or /user 123456"""
     if message.from_user.id != ADMIN_ID:
         return
-
+    
     args = message.text.split(maxsplit=1)
     if len(args) < 2:
         await message.answer(
@@ -10965,10 +9408,10 @@ async def admin_user_search(message: Message):
             parse_mode=ParseMode.MARKDOWN
         )
         return
-
+    
     query = args[1].strip()
     session = Session()
-
+    
     if query.startswith("@"):
         # Search by username
         username = query.lstrip("@")
@@ -10980,24 +9423,24 @@ async def admin_user_search(message: Message):
             user = session.query(User).filter_by(tg_id=tg_id).first()
         except ValueError:
             user = session.query(User).filter(User.username.ilike(query)).first()
-
+    
     if not user:
         session.close()
         await message.answer(f"❌ Пользователь `{query}` не найден", parse_mode=ParseMode.MARKDOWN)
         return
-
+    
     # Get achievements count
     ach_count = session.query(Achievement).filter_by(tg_id=user.tg_id).count()
-
+    
     session.close()
-
+    
 
 
     # Format user info
     status = "✅ Активен" if user.is_active else "❌ Неактивен"
     expiry = user.expiry_at.strftime("%d.%m.%Y") if user.expiry_at else "—"
     created = user.created_at.strftime("%d.%m.%Y") if user.created_at else "—"
-
+    
     safe_username = (user.username or '—').replace('_', '\\_')
     text = (
         f"👤 *Пользователь*\n\n"
@@ -11013,7 +9456,7 @@ async def admin_user_search(message: Message):
         f"👥 Рефералы: `{user.referral_count or 0}`\n\n"
         f"📆 Создан: `{created}`"
     )
-
+    
     kb = InlineKeyboardMarkup(inline_keyboard=[
         [
             InlineKeyboardButton(text="👤 Открыть", callback_data=f"adm_user_{user.tg_id}"),
@@ -11022,10 +9465,10 @@ async def admin_user_search(message: Message):
         [
             InlineKeyboardButton(text="📅 Продлить", callback_data=f"admin_extend_{user.tg_id}")
         ],
-        [InlineKeyboardButton(text="🚫 Заблокировать" if user.is_active else "✅ Разблокировать",
+        [InlineKeyboardButton(text="🚫 Заблокировать" if user.is_active else "✅ Разблокировать", 
                               callback_data=f"admin_ban_{user.tg_id}")]
     ])
-
+    
     await message.answer(text, reply_markup=kb, parse_mode=ParseMode.MARKDOWN)
 
 # Admin action states
@@ -11039,34 +9482,34 @@ async def admin_view_logs(callback: CallbackQuery):
     if callback.from_user.id != ADMIN_ID:
         await callback.answer("⛔️ Доступ запрещён")
         return
-
+    
     tg_id = int(callback.data.replace("admin_logs_", ""))
     session = Session()
-
+    
     user = session.query(User).filter_by(tg_id=tg_id).first()
     if not user:
         session.close()
         await callback.answer("Юзер не найден")
         return
-
+    
     # Get achievements
     achievements = session.query(Achievement).filter_by(tg_id=tg_id).all()
-    ach_text = "\n".join([f"  • {ACHIEVEMENTS.get(a.achievement_id, {}).get('name', a.achievement_id)}"
+    ach_text = "\n".join([f"  • {ACHIEVEMENTS.get(a.achievement_id, {}).get('name', a.achievement_id)}" 
                           for a in achievements[:5]]) or "  Нет"
-
+    
     # Get gift cards redeemed/created
     cards_created = session.query(GiftCard).filter_by(created_by=tg_id).count()
     cards_redeemed = session.query(GiftCard).filter_by(redeemed_by=tg_id).count()
-
+    
     # Get reviews
     review = session.query(Review).filter_by(tg_id=tg_id).first()
     review_text = f"  {'⭐' * review.rating} {review.text[:50] if review.text else ''}" if review else "  Нет"
-
+    
     session.close()
-
+    
     # Wheel info
     wheel_text = user.last_wheel_spin.strftime("%d.%m.%Y %H:%M") if user.last_wheel_spin else "Никогда"
-
+    
     text = (
         f"📋 *Логи пользователя* `{tg_id}`\n\n"
         f"*Последняя активность:*\n"
@@ -11078,11 +9521,11 @@ async def admin_view_logs(callback: CallbackQuery):
         f"  Активировано: {cards_redeemed}\n\n"
         f"*Отзыв:*\n{review_text}"
     )
-
+    
     kb = InlineKeyboardMarkup(inline_keyboard=[
         [InlineKeyboardButton(text="◀️ Назад к профилю", callback_data=f"admin_profile_{tg_id}")]
     ])
-
+    
     await callback.message.edit_text(text, reply_markup=kb, parse_mode=ParseMode.MARKDOWN)
     await callback.answer()
 
@@ -11091,24 +9534,24 @@ async def admin_back_to_profile(callback: CallbackQuery):
     """Return to user profile from logs"""
     if callback.from_user.id != ADMIN_ID:
         return
-
+    
     tg_id = int(callback.data.replace("admin_profile_", ""))
     # Reuse search logic
     from aiogram.types import Message as FakeMessage
-
+    
     session = Session()
     user = session.query(User).filter_by(tg_id=tg_id).first()
     ach_count = session.query(Achievement).filter_by(tg_id=tg_id).count() if user else 0
     session.close()
-
+    
     if not user:
         await callback.answer("Юзер не найден")
         return
-
+    
     status = "✅ Активен" if user.is_active else "❌ Неактивен"
     expiry = user.expiry_at.strftime("%d.%m.%Y") if user.expiry_at else "—"
     created = user.created_at.strftime("%d.%m.%Y") if user.created_at else "—"
-
+    
     safe_username = (user.username or '—').replace('_', '\\_')
     text = (
         f"👤 *Пользователь*\n\n"
@@ -11123,7 +9566,7 @@ async def admin_back_to_profile(callback: CallbackQuery):
         f"👥 Рефералы: `{user.referral_count or 0}`\n\n"
         f"📆 Создан: `{created}`"
     )
-
+    
     kb = InlineKeyboardMarkup(inline_keyboard=[
         [
             InlineKeyboardButton(text="👤 Открыть", callback_data=f"adm_user_{user.tg_id}"),
@@ -11132,10 +9575,10 @@ async def admin_back_to_profile(callback: CallbackQuery):
         [
             InlineKeyboardButton(text="📅 Продлить", callback_data=f"admin_extend_{user.tg_id}")
         ],
-        [InlineKeyboardButton(text="🚫 Заблокировать" if user.is_active else "✅ Разблокировать",
+        [InlineKeyboardButton(text="🚫 Заблокировать" if user.is_active else "✅ Разблокировать", 
                               callback_data=f"admin_ban_{user.tg_id}")]
     ])
-
+    
     await callback.message.edit_text(text, reply_markup=kb, parse_mode=ParseMode.MARKDOWN)
     await callback.answer()
 
@@ -11147,10 +9590,10 @@ async def admin_extend_prompt(callback: CallbackQuery):
     """Prompt to extend subscription"""
     if callback.from_user.id != ADMIN_ID:
         return
-
+    
     tg_id = int(callback.data.replace("admin_extend_", ""))
     admin_pending_actions[callback.from_user.id] = {"action": "extend", "target": tg_id}
-
+    
     await callback.message.edit_text(
         f"📅 *Продлить подписку*\n\n"
         f"Юзер: `{tg_id}`\n\n"
@@ -11164,17 +9607,17 @@ async def admin_toggle_ban(callback: CallbackQuery):
     """Ban/unban user"""
     if callback.from_user.id != ADMIN_ID:
         return
-
+    
     tg_id = int(callback.data.replace("admin_ban_", ""))
     session = Session()
     user = session.query(User).filter_by(tg_id=tg_id).first()
-
+    
     if user:
         user.is_active = not user.is_active
         new_status = "заблокирован" if not user.is_active else "разблокирован"
         session.commit()
         await callback.answer(f"✅ Юзер {new_status}")
-
+    
     session.close()
     # Return to profile
     await admin_back_to_profile(callback)
@@ -11194,9 +9637,9 @@ async def template_command(message: Message, bot: Bot):
     """
     if message.from_user.id != ADMIN_ID:
         return
-
+    
     args = message.text.split(maxsplit=3)
-
+    
     if len(args) < 2:
         await message.answer(
             "📝 *Шаблоны сообщений*\n\n"
@@ -11208,13 +9651,13 @@ async def template_command(message: Message, bot: Bot):
             parse_mode=ParseMode.MARKDOWN
         )
         return
-
+    
     subcmd = args[1].lower()
-
+    
     if subcmd == "add" and len(args) >= 4:
         key = args[2].lower()
         text = args[3]
-
+        
         session = Session()
         existing = session.query(Template).filter_by(key=key).first()
         if existing:
@@ -11225,33 +9668,33 @@ async def template_command(message: Message, bot: Bot):
             action = "создан"
         session.commit()
         session.close()
-
+        
         await message.answer(f"✅ Шаблон `{key}` {action}", parse_mode=ParseMode.MARKDOWN)
-
+    
     elif subcmd == "list":
         session = Session()
         templates = session.query(Template).all()
         session.close()
-
+        
         if not templates:
             await message.answer("📝 _Нет шаблонов_", parse_mode=ParseMode.MARKDOWN)
             return
-
+        
         lines = [f"`{t.key}` — {t.text[:50]}..." if len(t.text) > 50 else f"`{t.key}` — {t.text}" for t in templates]
         await message.answer("📝 *Шаблоны:*\n\n" + "\n".join(lines), parse_mode=ParseMode.MARKDOWN)
-
+    
     elif subcmd == "send" and len(args) >= 3:
         key = args[2].lower()
         target_user = args[3] if len(args) >= 4 else None
-
+        
         session = Session()
         template = session.query(Template).filter_by(key=key).first()
-
+        
         if not template:
             session.close()
             await message.answer(f"❌ Шаблон `{key}` не найден", parse_mode=ParseMode.MARKDOWN)
             return
-
+        
         if target_user:
             # Send to specific user
             username = target_user.lstrip("@")
@@ -11263,11 +9706,11 @@ async def template_command(message: Message, bot: Bot):
                 except:
                     pass
             session.close()
-
+            
             if not user:
                 await message.answer(f"❌ Юзер `{target_user}` не найден", parse_mode=ParseMode.MARKDOWN)
                 return
-
+            
             try:
                 await bot.send_message(user.tg_id, template.text, parse_mode=ParseMode.MARKDOWN)
                 await message.answer(f"✅ Шаблон `{key}` отправлен @{user.username or user.tg_id}", parse_mode=ParseMode.MARKDOWN)
@@ -11277,7 +9720,7 @@ async def template_command(message: Message, bot: Bot):
             # Send to all
             users = session.query(User).filter_by(is_active=True).all()
             session.close()
-
+            
             sent = 0
             for user in users:
                 if user.tg_id in PROTECTED_USERS or user.tg_id == ADMIN_ID:
@@ -11287,12 +9730,12 @@ async def template_command(message: Message, bot: Bot):
                     sent += 1
                 except:
                     pass
-
+            
             await message.answer(f"✅ Шаблон `{key}` отправлен {sent} юзерам", parse_mode=ParseMode.MARKDOWN)
-
+    
     elif subcmd == "delete" and len(args) >= 3:
         key = args[2].lower()
-
+        
         session = Session()
         template = session.query(Template).filter_by(key=key).first()
         if template:
@@ -11302,7 +9745,7 @@ async def template_command(message: Message, bot: Bot):
         else:
             await message.answer(f"❌ Шаблон `{key}` не найден", parse_mode=ParseMode.MARKDOWN)
         session.close()
-
+    
     else:
         await message.answer("❌ Неверный формат команды")
 
@@ -11445,7 +9888,7 @@ def _admin_user_status_label(status: str) -> str:
     if status == "blocked":
         return "⛔ Заблокирован"
     if status == "manual_test":
-        return "🧪 Ручной/тестовый"
+        return "🧪 Manual/Test"
     return "⌛ Истёк"
 
 
@@ -11473,11 +9916,11 @@ async def promo_command(message: Message, bot: Bot):
     tg_id = message.from_user.id
     pending_promo_codes.discard(tg_id)
     args = message.text.split()
-
+    
     # Admin commands
     if tg_id == ADMIN_ID and len(args) >= 2:
         subcmd = args[1].lower()
-
+        
         if subcmd == "create" and len(args) >= 5:
             # /promo create NEWYEAR discount 20 100
             # /promo create BONUS10 gb 10 50
@@ -11489,23 +9932,23 @@ async def promo_command(message: Message, bot: Bot):
             except:
                 await message.answer("❌ Неверный формат. Пример:\n`/promo create NEWYEAR discount 20 100`", parse_mode=ParseMode.MARKDOWN)
                 return
-
+            
             if promo_type not in ["discount", "days"]:
                 await message.answer("❌ Тип: `discount` или `days`", parse_mode=ParseMode.MARKDOWN)
                 return
-
+            
             session = Session()
             existing = session.query(PromoCode).filter_by(code=code).first()
             if existing:
                 session.close()
                 await message.answer(f"❌ Код `{code}` уже существует", parse_mode=ParseMode.MARKDOWN)
                 return
-
+            
             promo = PromoCode(code=code, promo_type=promo_type, value=value, uses_left=uses)
             session.add(promo)
             session.commit()
             session.close()
-
+            
             type_text = f"{value}%" if promo_type == "discount" else f"+{value} Дней"
             uses_text = "∞" if uses == -1 else str(uses)
             await message.answer(
@@ -11516,28 +9959,28 @@ async def promo_command(message: Message, bot: Bot):
                 parse_mode=ParseMode.MARKDOWN
             )
             return
-
+        
         elif subcmd == "list":
             session = Session()
             promos = session.query(PromoCode).filter(PromoCode.uses_left != 0).all()
             session.close()
-
+            
             if not promos:
                 await message.answer("📭 Нет активных промокодов")
                 return
-
+            
             lines = []
             for p in promos:
                 type_text = f"{p.value}%" if p.promo_type == "discount" else f"+{p.value} Дн."
                 uses_text = "∞" if p.uses_left == -1 else str(p.uses_left)
                 lines.append(f"`{p.code}` — {type_text}, осталось: {uses_text}")
-
+            
             await message.answer(
                 "🎫 *Активные промокоды:*\n\n" + "\n".join(lines),
                 parse_mode=ParseMode.MARKDOWN
             )
             return
-
+        
         elif subcmd == "delete" and len(args) >= 3:
             code = args[2].upper()
             session = Session()
@@ -11550,7 +9993,7 @@ async def promo_command(message: Message, bot: Bot):
                 await message.answer(f"❌ Промокод `{code}` не найден", parse_mode=ParseMode.MARKDOWN)
             session.close()
             return
-
+    
     # User activation: /promo CODE
     if len(args) >= 2:
         code = args[1].upper()
@@ -11573,15 +10016,15 @@ async def health_check(message: Message, bot: Bot):
     """Check system health"""
     if message.from_user.id != ADMIN_ID:
         return
-
+    
     import time
     start_time = time.time()
-
+    
     status = []
-
+    
     # Bot status (always OK if we're running)
     status.append("✅ Бот: работает")
-
+    
     # Database check
     try:
         session = Session()
@@ -11591,7 +10034,7 @@ async def health_check(message: Message, bot: Bot):
         status.append(f"✅ БД: {user_count} юзеров ({active_count} активных)")
     except Exception as e:
         status.append(f"❌ БД: {str(e)[:50]}")
-
+    
     # Panel check
     try:
         clients = await panel.get_clients_list()
@@ -11601,7 +10044,7 @@ async def health_check(message: Message, bot: Bot):
             status.append("⚠️ Панель: нет ответа")
     except Exception as e:
         status.append(f"❌ Панель: {str(e)[:50]}")
-
+    
     # API check (self-ping)
     try:
         import aiohttp
@@ -11613,11 +10056,11 @@ async def health_check(message: Message, bot: Bot):
                     status.append(f"⚠️ WebApp: код {r.status}")
     except Exception as e:
         status.append(f"❌ WebApp: {str(e)[:30]}")
-
+    
     elapsed = round((time.time() - start_time) * 1000)
-
+    
     await message.answer(
-        f"❤️ *Health Check*\n\n" +
+        f"❤️ *Health Check*\n\n" + 
         "\n".join(status) +
         f"\n\n⏱️ Проверка: {elapsed}мс",
         parse_mode=ParseMode.MARKDOWN
@@ -11632,10 +10075,10 @@ async def reviews_moderation(message: Message):
     """List reviews for moderation: /reviews [featured|all]"""
     if message.from_user.id != ADMIN_ID:
         return
-
+    
     args = message.text.split()
     show_featured = len(args) > 1 and args[1].lower() == "featured"
-
+    
     session = Session()
     if show_featured:
         reviews = session.query(Review).filter_by(is_featured=True).order_by(Review.created_at.desc()).limit(10).all()
@@ -11643,13 +10086,13 @@ async def reviews_moderation(message: Message):
     else:
         reviews = session.query(Review).order_by(Review.created_at.desc()).limit(10).all()
         title = "📝 Последние отзывы"
-
+    
     session.close()
-
+    
     if not reviews:
         await message.answer("📭 Отзывов пока нет")
         return
-
+    
     for r in reviews:
         featured = "⭐" if r.is_featured else ""
         masked = _mask_review_username(r.username)
@@ -11657,7 +10100,7 @@ async def reviews_moderation(message: Message):
         text = r.text[:100] if r.text else "—"
         kb = InlineKeyboardMarkup(inline_keyboard=[
             [
-                InlineKeyboardButton(text="⭐ На главную" if not r.is_featured else "❌ Снять с главной",
+                InlineKeyboardButton(text="⭐ На главную" if not r.is_featured else "❌ Снять с главной", 
                                      callback_data=f"review_toggle_{r.id}"),
                 InlineKeyboardButton(text="🗑️ Удалить", callback_data=f"review_delete_{r.id}")
             ]
@@ -11675,7 +10118,7 @@ async def toggle_review_featured(callback: CallbackQuery):
     """Toggle featured status"""
     if callback.from_user.id != ADMIN_ID:
         return
-
+    
     review_id = int(callback.data.replace("review_toggle_", ""))
     session = Session()
     review = session.query(Review).filter_by(id=review_id).first()
@@ -11704,7 +10147,7 @@ async def delete_review(callback: CallbackQuery):
     """Delete review"""
     if callback.from_user.id != ADMIN_ID:
         return
-
+    
     review_id = int(callback.data.replace("review_delete_", ""))
     session = Session()
     review = session.query(Review).filter_by(id=review_id).first()
@@ -11733,15 +10176,15 @@ async def sync_usernames(message: Message, bot: Bot):
     """Sync usernames from Telegram API for all users and update panel comments"""
     if message.from_user.id != ADMIN_ID:
         return
-
+    
     # 🧹 Delete command message
     try:
         await message.delete()
     except:
         pass
-
+    
     await message.answer("🔄 Синхронизирую никнеймы и обновляю панель...")
-
+    
     session = Session()
     try:
         tg_ids: set[int] = set()
@@ -11758,7 +10201,7 @@ async def sync_usernames(message: Message, bot: Bot):
     updated = 0
     panel_updated = 0
     errors = 0
-
+    
     for tg_id in sorted(tg_ids):
         try:
             chat = await bot.get_chat(tg_id)
@@ -11769,7 +10212,7 @@ async def sync_usernames(message: Message, bot: Bot):
                 panel_updated += 1
         except Exception:
             errors += 1
-
+    
     await message.answer(
         f"✅ Синхронизация завершена!\n\n"
         f"📊 Обновлено в БД: {updated}\n"
@@ -11787,28 +10230,28 @@ async def admin_broadcast(message: Message, bot: Bot):
     """Send new subscription links to all active users"""
     if message.from_user.id != ADMIN_ID:
         return
-
+    
     try:
         await message.delete()
     except:
         pass
-
+    
     session = Session()
     users = session.query(User).filter(User.is_active == True).all()
     session.close()
-
+    
     sent = 0
     failed = 0
     skipped = 0
-
+    
     status_msg = await message.answer(f"📤 Отправляю рассылку...\n👥 Всего: {len(users)}")
-
+    
     for user in users:
         # Skip excluded users and admin
         if user.tg_id in BROADCAST_EXCLUDE or user.tg_id == ADMIN_ID:
             skipped += 1
             continue
-
+        
         try:
             sub_link = build_subscription_link(user.tg_id)
             await bot.send_message(
@@ -11825,7 +10268,7 @@ async def admin_broadcast(message: Message, bot: Bot):
             await asyncio.sleep(0.1)  # Rate limit
         except Exception as e:
             failed += 1
-
+    
     await status_msg.edit_text(
         f"✅ *Рассылка завершена!*\n\n"
         f"📨 Отправлено: {sent}\n"
@@ -11904,18 +10347,18 @@ async def admin_giftcode(message: Message):
 async def admin_gift(message: Message, bot: Bot):
     if message.from_user.id != ADMIN_ID:
         return
-
+    
     # 🧹 Delete command message
     try:
         await message.delete()
     except:
         pass
-
+    
     parts = message.text.split()
     if len(parts) < 3:
         await message.answer(
             "📦 *Формат команды /gift:*\n\n"
-            "`/gift [tg_id] trial` — Пробный (5 дней)\n"
+            "`/gift [tg_id] trial` — Пробный (7 дней)\n"
             "`/gift [tg_id] basic` — Стандарт (30 дней)\n"
             "`/gift [tg_id] pro` — Турбо (30 дней)\n"
             "`/gift [tg_id] vip` — VIP (365 дней)\n"
@@ -11926,7 +10369,7 @@ async def admin_gift(message: Message, bot: Bot):
             parse_mode=ParseMode.MARKDOWN
         )
         return
-
+    
     try:
         gift_tg_id = int(parts[1])
     except ValueError:
@@ -11938,15 +10381,15 @@ async def admin_gift(message: Message, bot: Bot):
             "Сначала пусть нажмёт /start и подтвердит условия, затем выдавайте подарок."
         )
         return
-
+    
     # Preset tariffs for gifts
     gift_presets = {
-        "trial": {"days": 5, "name": "🎁 Пробный"},
+        "trial": {"days": 7, "name": "🎁 Пробный"},
         "basic": {"days": 30, "name": "⚡ Стандарт"},
         "pro": {"days": 30, "name": "🚀 Турбо"},
         "vip": {"days": 365, "name": "👑 VIP"},
     }
-
+    
     # Check if preset or custom
     preset_key = parts[2].lower()
     if preset_key in gift_presets:
@@ -11961,9 +10404,9 @@ async def admin_gift(message: Message, bot: Bot):
         except ValueError:
             await message.answer("❌ Неверные параметры")
             return
-
+    
     panel_client = await panel.get_existing_client(gift_tg_id)
-
+    
     user = get_user(gift_tg_id)
     if user:
         # EXISTING USER - extend
@@ -11982,14 +10425,14 @@ async def admin_gift(message: Message, bot: Bot):
         sub_token = generate_sub_token()
         user_uuid = str(uuid.uuid4())
         email = f"User_{gift_tg_id}"
-
+        
         if not panel_client:
             # Pass sub_token to add_client so panel uses secure subscription ID
             await panel.add_client(user_uuid, email, "PAID", 0, gift_tg_id, sub_token)
         else:
             user_uuid = panel_client.get("id")
             email = panel_client.get("email")
-
+        
         # Create user in DB with generated sub_token
         session = Session()
         new_user = User(
@@ -12006,7 +10449,7 @@ async def admin_gift(message: Message, bot: Bot):
         session.add(new_user)
         session.commit()
         session.close()
-
+    
     # 🎁 Referral bonus (gift counts as purchase)
     mark_first_purchase_done(gift_tg_id)
     user = get_user(gift_tg_id)
@@ -12028,7 +10471,7 @@ async def admin_gift(message: Message, bot: Bot):
                     pass
         except Exception as e:
             print(f"Referral bonus error: {e}")
-
+    
     await message.answer(
         f"✅ Подарок отправлен!\n\n👤 ID: `{gift_tg_id}`\n📦 Тариф: {name}\n📅 Дней: {days}",
         parse_mode=ParseMode.MARKDOWN,
@@ -12044,16 +10487,18 @@ async def admin_gift(message: Message, bot: Bot):
             separators=(",", ":"),
         ),
     )
-
+    
     try:
+        # Build subscription link for notification
+        sub_link = build_subscription_link(gift_tg_id)
         await bot.send_message(
             gift_tg_id,
             f"🎁 *Вам подарили доступ к POKROV!*\n\n"
             f"📦 Тариф: {name}\n"
             f"📅 Дней: {days}\n"
             f"📡 Режим: полный доступ\n\n"
-            "Следующий шаг: откройте POKROV или кабинет и обновите доступ.\n"
-            "Ручная ссылка доступна в меню как запасной путь.",
+            f"🔗 *Ссылка для подключения:*\n`{sub_link}`\n\n"
+            f"Следующий шаг: откройте её в приложении POKROV.",
             parse_mode=ParseMode.MARKDOWN
         )
     except:
@@ -12123,7 +10568,7 @@ async def monitor_expiry(bot: Bot) -> None:
                                 pass
 
                             if user.tg_id > 0 and user.tg_id not in PROTECTED_USERS:
-                                kb = _expired_access_recovery_keyboard()
+                                kb = InlineKeyboardMarkup(inline_keyboard=[[InlineKeyboardButton(text="⚡ Вернуть полный доступ", callback_data="charge")]])
                                 try:
                                     await bot.send_message(
                                         chat_id=user.tg_id,
@@ -12157,19 +10602,15 @@ async def _configure_public_bot_menu(bot: Bot) -> None:
         await bot.set_my_commands(
             [
                 BotCommand(command="start", description="Открыть главное меню"),
-                BotCommand(command="cabinet", description="Открыть кабинет"),
-                BotCommand(command="support", description="Написать в поддержку"),
                 BotCommand(command="promo", description="Активировать промокод"),
-                BotCommand(command="redeem", description="Активировать ключ доступа"),
+                BotCommand(command="redeem", description="Активировать gift-код"),
             ]
         )
     except Exception as e:
         logger.warning("set_my_commands failed: %s", e)
 
     try:
-        await bot.set_chat_menu_button(
-            menu_button=MenuButtonWebApp(text="Кабинет", web_app=WebAppInfo(url=WEBAPP_URL))
-        )
+        await bot.set_chat_menu_button(menu_button=MenuButtonCommands())
     except Exception as e:
         logger.warning("set_chat_menu_button failed: %s", e)
 
@@ -12193,12 +10634,12 @@ async def main():
     except Exception:
         pass
     dp.include_router(router)
-
+    
     logger.info("🌐 POKROV Bot v2 starting...")
-
+    
     await panel.login()
     await _configure_public_bot_menu(bot)
-
+    
     # Start background expiry monitor (no traffic limits).
     asyncio.create_task(monitor_expiry(bot))
     logger.info("⏳ Expiry monitor started")
@@ -12210,7 +10651,7 @@ async def main():
             logger.info("🧰 Embedded worker started")
         except Exception as e:
             logger.error("Failed to start embedded worker: %s", e)
-
+    
     try:
         await dp.start_polling(bot)
     finally:
@@ -12219,3 +10660,6 @@ async def main():
 
 if __name__ == "__main__":
     asyncio.run(main())
+
+
+

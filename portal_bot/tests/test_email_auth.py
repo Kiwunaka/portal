@@ -15,7 +15,7 @@ if str(PORTAL_BOT_DIR) not in sys.path:
 REPO_ROOT = PORTAL_BOT_DIR.parent
 
 
-def _load_api(monkeypatch, tmp_path: Path, *, email_public_ready: bool = False, delivery_secret_ready: bool = True):
+def _load_api(monkeypatch, tmp_path: Path, *, email_public_ready: bool = False):
     db_path = tmp_path / "portal-email-auth.db"
     monkeypatch.setenv("DATABASE_URL", f"sqlite:///{db_path.as_posix()}")
     monkeypatch.setenv("BOT_TOKEN", "777000:test-bot-token")
@@ -24,8 +24,7 @@ def _load_api(monkeypatch, tmp_path: Path, *, email_public_ready: bool = False, 
     monkeypatch.setenv("EMAIL_AUTH_PUBLIC_ENABLED", "true" if email_public_ready else "false")
     if email_public_ready:
         monkeypatch.setenv("EMAIL_DELIVERY_WEBHOOK_URL", "https://relay.pokrov.test/email/deliver")
-        if delivery_secret_ready:
-            monkeypatch.setenv("EMAIL_DELIVERY_WEBHOOK_SECRET", "relay-secret")
+        monkeypatch.setenv("EMAIL_DELIVERY_WEBHOOK_SECRET", "relay-secret")
     monkeypatch.setenv("PUBLIC_API_BASE_URL", "https://api.pokrov.test")
     monkeypatch.setenv("PUBLIC_WEB_DOMAIN", "pokrov.test")
     monkeypatch.setenv("WEBAPP_URL", "https://app.pokrov.test/")
@@ -166,21 +165,6 @@ def test_email_status_stays_disabled_in_debug_mode(monkeypatch, tmp_path):
     assert "debug_echo_enabled" in body["blocked_reasons"]
 
 
-def test_email_status_requires_webhook_secret_for_public_delivery(monkeypatch, tmp_path):
-    api = _load_api(monkeypatch, tmp_path, email_public_ready=True, delivery_secret_ready=False)
-    client = TestClient(api.app)
-
-    status = client.get("/api/auth/email/status")
-
-    assert status.status_code == 200, status.text
-    body = status.json()
-    assert body["enabled"] is False
-    assert body["public_enabled"] is True
-    assert body["delivery_configured"] is False
-    assert body["delivery_secret_configured"] is False
-    assert "delivery_webhook_secret_missing" in body["blocked_reasons"]
-
-
 def test_email_register_and_recovery_start_require_public_delivery(monkeypatch, tmp_path):
     api = _load_api(monkeypatch, tmp_path)
     client = TestClient(api.app)
@@ -200,47 +184,6 @@ def test_email_register_and_recovery_start_require_public_delivery(monkeypatch, 
 
     assert recovery.status_code == 503, recovery.text
     assert "Email-вход пока недоступен" in recovery.text
-
-
-def test_email_verify_login_and_recovery_finish_require_public_delivery(monkeypatch, tmp_path):
-    api = _load_api(monkeypatch, tmp_path)
-    client = TestClient(api.app)
-
-    db = api.SessionLocal()
-    try:
-        _pending_identity, pending_verify_token = api.register_email_identity(
-            db,
-            email="pending@pokrov.test",
-            password="StrongPass123!",
-        )
-        _verified_identity, verified_token = api.register_email_identity(
-            db,
-            email="verified@pokrov.test",
-            password="StrongPass123!",
-        )
-        api.verify_email_identity(db, token=verified_token)
-        _identity_for_reset, reset_token = api.start_password_reset(db, email="verified@pokrov.test")
-        db.commit()
-    finally:
-        db.close()
-
-    verify = client.post("/api/auth/email/verify", json={"token": pending_verify_token})
-    assert verify.status_code == 503, verify.text
-    assert "Email-вход пока недоступен" in verify.text
-
-    login = client.post(
-        "/api/auth/email/login",
-        json={"email": "verified@pokrov.test", "password": "StrongPass123!"},
-    )
-    assert login.status_code == 503, login.text
-    assert "Email-вход пока недоступен" in login.text
-
-    recovery_finish = client.post(
-        "/api/auth/email/recovery/finish",
-        json={"token": reset_token, "password": "FreshPass456!"},
-    )
-    assert recovery_finish.status_code == 503, recovery_finish.text
-    assert "Email-вход пока недоступен" in recovery_finish.text
 
 
 def test_email_delivery_posts_secret_header(monkeypatch):
@@ -295,67 +238,6 @@ def test_email_delivery_posts_secret_header(monkeypatch):
     assert capture["json"]["token"] == "verify-token"
     assert capture["headers"]["X-Pokrov-Email-Secret"] == "relay-secret"
     assert capture["headers"]["Authorization"] == "Bearer relay-secret"
-
-
-def test_email_relay_rejects_delivery_when_secret_is_not_configured(monkeypatch):
-    monkeypatch.delenv("EMAIL_DELIVERY_WEBHOOK_SECRET", raising=False)
-    sys.modules.pop("email_delivery_service", None)
-    sys.modules.pop("email_relay_app", None)
-    relay = importlib.import_module("email_relay_app")
-    client = TestClient(relay.app)
-
-    response = client.post(
-        "/email/deliver",
-        json={"kind": "verify", "email": "reader@pokrov.test", "token": "verify-token"},
-    )
-
-    assert response.status_code == 401, response.text
-    assert response.json()["detail"] == "Invalid relay secret"
-
-
-def test_email_relay_auth_links_use_public_verify_and_recover_routes(monkeypatch):
-    monkeypatch.setenv("WEBAPP_URL", "https://app.pokrov.test/")
-    sys.modules.pop("email_relay_app", None)
-    relay = importlib.import_module("email_relay_app")
-
-    _verify_subject, verify_body, verify_html = relay._message_for(
-        relay.EmailDeliveryIn(kind="verify", email="reader@pokrov.test", token="verify-token")
-    )
-    _reset_subject, reset_body, reset_html = relay._message_for(
-        relay.EmailDeliveryIn(kind="reset", email="reader@pokrov.test", token="reset-token")
-    )
-
-    assert "Подтвердить email: https://app.pokrov.test/verify?token=verify-token" in verify_body
-    assert "https://app.pokrov.test/verify?token=verify-token" in verify_html
-    assert "Восстановить доступ: https://app.pokrov.test/recover?token=reset-token" in reset_body
-    assert "https://app.pokrov.test/recover?token=reset-token" in reset_html
-
-
-def test_email_relay_paid_access_key_link_does_not_put_key_in_url(monkeypatch):
-    monkeypatch.setenv("WEBAPP_URL", "https://app.pokrov.test/")
-    sys.modules.pop("email_relay_app", None)
-    relay = importlib.import_module("email_relay_app")
-
-    access_key = "POKROV-PAID-1234"
-    subject, body, html_body = relay._message_for(
-        relay.EmailDeliveryIn(
-            kind="payment_access_key",
-            email="buyer@pokrov.test",
-            access_key=access_key,
-            order_id="lavatop_order_1",
-            plan_code="1_month",
-            plan_label="30 дней",
-            days=30,
-        )
-    )
-
-    action_line = next(line for line in body.splitlines() if line.startswith("Активировать ключ в кабинете:"))
-    action_url = action_line.split(":", 1)[1].strip()
-    assert subject == "Ключ доступа POKROV"
-    assert access_key in body
-    assert access_key in html_body
-    assert action_url == "https://app.pokrov.test/redeem/"
-    assert access_key not in action_url
 
 
 def test_email_register_can_link_to_existing_user(monkeypatch, tmp_path):

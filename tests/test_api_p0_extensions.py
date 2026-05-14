@@ -2,7 +2,6 @@ import importlib
 import os
 import sys
 import tempfile
-import time
 import unittest
 import uuid
 from datetime import datetime, timedelta
@@ -173,7 +172,7 @@ class ApiP0ExtensionsTests(unittest.TestCase):
         return _sign_telegram_init_data(
             bot_token=self.bot_token,
             params={
-                "auth_date": str(int(time.time())),
+                "auth_date": "1700000000",
                 "query_id": "AAEAAAE",
                 "user": f'{{"id":{tg_id},"first_name":"Test","username":"{username}"}}',
             },
@@ -339,7 +338,7 @@ class ApiP0ExtensionsTests(unittest.TestCase):
         self.assertIn(body["status"], {"fresh", "stale"})
         self.assertIn("stale_after_seconds", body)
 
-    def test_client_apps_endpoint_returns_closed_downloads_with_install_docs_default(self) -> None:
+    def test_client_apps_endpoint_returns_empty_defaults(self) -> None:
         client = TestClient(self.api.app)
         hdrs = {"X-Telegram-Init-Data": self._init_data(1001, "alice")}
         r = client.get("/api/client/apps", headers=hdrs)
@@ -350,7 +349,7 @@ class ApiP0ExtensionsTests(unittest.TestCase):
         self.assertEqual(body["android"]["mirror_url"], "")
         self.assertEqual(body["windows"]["exe_url"], "")
         self.assertEqual(body["windows"]["mirror_url"], "")
-        self.assertEqual(body["docs_url"], "https://pokrov.space/install/")
+        self.assertEqual(body["docs_url"], "")
         self.assertRegex(body["updated_at"], r"^\d{4}-\d{2}-\d{2}T")
         self.assertTrue(body["updated_at"].endswith("Z"))
 

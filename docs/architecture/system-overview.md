@@ -31,7 +31,7 @@ The new target architecture for the global rework freezes these boundaries befor
 - public acquisition, pricing, and paywall move entirely onto `marketing/`, with trial, install, and first connection as the primary public CTA path and checkout as explicit continuation, while `webapp/` becomes session-aware continuation, redeem, support, renewal continuation, and admin only
 - public browser copy and visual governance are centralized through `shared/copy.ts`, `copy/catalog.ru.json`, and `shared/design-tokens.json`, with locked host and product facts inherited from the shared fact files
 - user-facing cabinet IA is `Dashboard / Subscription / Devices / Statistics / Support`, with `downloads`, `redeem`, and hosted-checkout continuation treated as task routes rather than parallel acquisition surfaces
-- commerce moves to a gated hosted-checkout/access-key lane instead of raw subscription-link-first UX; payment actions stay unavailable or degraded until provider, webhook, reconciliation, and delivery evidence is green
+- commerce moves to hosted checkout plus activation-key issuance and redemption instead of raw subscription-link-first UX
 - remote promo content is limited to approved first-party promo slots; third-party ad SDKs remain out of scope
 - the public location story collapses to one logical location per user, while the transport matrix stays hidden behind rollout, diagnostics, and admin controls
 
@@ -114,7 +114,7 @@ Current public-surface split:
 - current canonical indexable entry routes are `/mobile/`, `/tiktok/`, `/youtube/`, `/devices/`, and `/telegram/`, with permanent redirects from the earlier legacy SEO slugs
 - public marketing CTA priority is app-first trial, install, and first connection; checkout, install help, and cabinet-open flows remain explicit exits for known intent
 - `webapp/` owns browser entry, dashboard, subscription, devices, statistics, support, task routes such as downloads, redeem, and hosted-checkout continuation, compatibility redirects for older cabinet routes, and the primary admin operator surface
-- `webapp/` browser entry is a continuation router for app handoff, Telegram login, and status-gated email auth; email forms render only when `/api/auth/email/status` reports public mode, delivery configured, and debug echo off
+- `webapp/` browser entry is a continuation router for app handoff and Telegram login today; public email continuation stays marked `soon` until the delivery and launch path are genuinely live
 - `/pricing/` in `webapp/` is compatibility-only continuation that now redirects to `/subscription/` and must not drift back into a public acquisition surface
 - `connect.pokrov.space` stays outside the marketing/cabinet storytelling layer and remains the config-delivery host for the one public connection link plus QR; it serves the rollout-selected app-managed profile, with `legacy_reality_fallback` as the baseline until canary cohorts flip to `grpc_443_primary`
 
@@ -215,20 +215,17 @@ Route-mode continuation note:
 ### Web Identity And Session Continuation Flow
 
 1. user opens marketing or cabinet in the browser
-2. browser continues from an app handoff, Telegram OIDC, or email auth when `/api/auth/email/status` is green; fresh, signed Telegram `initData` may also silently refresh a missing or expired browser web-session token by returning a fresh `session_token`
-3. stale Telegram Login Widget payloads should fall forward to Telegram OIDC so expired/deprecated widget tokens become a fresh login path, not raw token-facing copy
-4. backend issues a browser session with `auth_origin` and linked-identity summary
-5. cabinet, support, renewal, and checkout continue from that same session
+2. browser continues from an app handoff or Telegram OIDC; public email continuation remains a marked-`soon` lane until launch
+3. backend issues a browser session with `auth_origin` and linked-identity summary
+4. cabinet, support, renewal, and checkout continue from that same session
 
 Architecture rule:
 
-- additive email auth is a status-gated continuation lane, not a separate account track
-- app handoff and Telegram remain the most resilient browser-continuation entry families
-- email must land in the same cabinet session and linked-identity model rather than becoming a separate account track
-- Telegram WebApp `initData` validation must use constant-time hash comparison and `TELEGRAM_WEBAPP_INIT_MAX_AGE_SECONDS` freshness before it can recover a browser session
-- public email auth depends on external transactional mail delivery, verified sender identity, `EMAIL_DELIVERY_WEBHOOK_URL`, `EMAIL_DELIVERY_WEBHOOK_SECRET`, and `EMAIL_AUTH_DEBUG_ECHO=false`
-- when the email status is not green, browser email entry must stay in a truthful unavailable or retry state instead of promising working verify or reset mail
-- browser auth errors must distinguish human reauth states from raw token failures: expired browser sessions and stale Telegram login payloads should produce clear reauth copy or Telegram OIDC refresh, while a valid browser token keeps working even if a stale Telegram header is present
+- additive email auth remains a planned continuation lane and must stay marked `soon` until sender identity, delivery confirmation, and the public launch path are genuinely live
+- app handoff and Telegram are the active browser-continuation entry families today
+- once launched, email must land in the same cabinet session and linked-identity model rather than becoming a separate account track
+- public email auth depends on external transactional mail delivery and verified sender identity
+- before that launch, browser email entry must stay in a truthful unavailable or `soon` state instead of promising working verify or reset mail
 - cabinet entry copy should continue the shared product story rather than re-pitching the product like another landing page
 - cabinet and admin shells must keep explicit navigation back to the marketing site and standard cabinet entry
 
@@ -244,11 +241,10 @@ Architecture rule:
 
 ### Checkout Continuation Flow
 
-1. user opens public pricing, payment status, or renewal continuation from marketing, `webapp`, or bot
-2. hosted checkout first checks Lava.top provider readiness, webhook safety, reconciliation evidence, and email access-key delivery evidence
-3. paid checkout must remain unavailable or degraded until that launch evidence is green
-4. after evidence is green, authenticated cabinet checkout may create a provider order for the current account, and anonymous public checkout may deliver an access key by email
-5. user redeems that key in the app or `webapp`, or an authenticated renewal refreshes the canonical app-first account directly
+1. user opens public pricing or renewal continuation from marketing, webapp, or bot
+2. hosted checkout sells an activation key against the canonical catalog
+3. user redeems that key in the app or `webapp`
+4. managed premium is refreshed on the canonical app-first account
 
 Architecture rule:
 
@@ -257,14 +253,13 @@ Architecture rule:
 - bot purchase flow remains valid, but it does not replace app-first public onboarding
 - raw subscription links stay manual-recovery-only and must not reappear as the default commerce story
 - payment callbacks normalize signed provider events into local statuses before fulfillment; only `paid` result events can extend access, while `failed`, `cancelled`, `refunded`, `chargeback`, `pending_verification`, and `manual_review` remain admin-visible reconciliation records without automatic access extension
-- admin payment records expose sanitized fulfillment/email delivery state for operator review; access-key email retry is a separate audited admin action and must not expose the raw key in the UI
 
 ### Public Web Journey
 
 1. user lands on `https://pokrov.space/` or an indexable marketing landing page
-2. marketing CTA defaults to app-first trial, install, and first connection; checkout status, install help, and cabinet entry stay explicit intent-driven exits
-3. public checkout may show plan intent and availability status, but paid checkout must remain unavailable or degraded until Lava.top launch evidence and email delivery evidence are green
-4. a known browser session, app/bot handoff, Telegram login, or status-gated email login continues in `https://app.pokrov.space/`
+2. marketing CTA defaults into `pokrov.space/checkout/`, while install help and cabinet entry stay secondary intent-driven exits
+3. public checkout sells an activation key and sends the user toward redeem or install continuation
+4. a known browser session or app/bot handoff continues in `https://app.pokrov.space/`; public email continuation joins that path only after the marked-`soon` launch goes live
 5. `webapp` renders the relevant cabinet flow such as dashboard, subscription, redeem, downloads, devices, or support
 6. successful redeem or renewal returns the user to the active cabinet journey
 
@@ -345,7 +340,7 @@ Role split:
 
 - `pokrov.space` is the canonical public hostname family
 - `connect.pokrov.space` is the canonical config/connect host
-- `pay.pokrov.space/checkout/` is the canonical hosted checkout/status entry and must stay gated by payment-launch evidence
+- `pay.pokrov.space/checkout/` is the canonical hosted checkout entry
 - `kiwunaka.space` is a migration compatibility layer for older subscriptions and must not be treated as a fresh-entry surface
 - browser flows must prefer `api.pokrov.space` for API traffic and never rely on HTML returned from `app.pokrov.space` as if it were API JSON
 
@@ -353,7 +348,7 @@ Copy/config rule:
 
 - new public and cabinet copy plus CTA text must stay centralized through `shared/copy.ts` and `copy/catalog.ru.json`; `webapp` should continue that shared story instead of inventing its own marketing voice
 - locked cross-surface facts such as trial length, Telegram reward, canonical hosts, and design direction must stay centralized through `shared/product-facts.json`, `shared/public-urls.json`, and `shared/design-tokens.json`
-- app-first marketing CTA priority, status-gated email wording, and cabinet IA labels must resolve from those shared governance sources instead of drifting per surface
+- app-first marketing CTA priority, marked-`soon` email wording, and cabinet IA labels must resolve from those shared governance sources instead of drifting per surface
 - public-facing marketing and cabinet language should stay calm and human-readable instead of surfacing transport acronyms, raw profile terms, or operator-facing implementation jargon
 - bot, site, app, and checkout links should resolve from shared host config rather than hard-coded per surface
 
@@ -460,8 +455,6 @@ Major currently live public and app-first routes in `portal_bot/api.py` include:
 - `GET /api/payments/providers`
 - `POST /api/payments/orders/create`
 - `POST /api/payments/orders/create-public`
-- `GET /api/admin/payments/orders`
-- `POST /api/admin/payments/orders/{provider}/{order_id}/resend-access-key-email`
 - `GET /api/dashboard`
 - `GET /api/client/apps`
 - `GET /api/nodes/status`

@@ -216,7 +216,7 @@ def _step_timeout_sec(args: argparse.Namespace, step_name: str) -> int | None:
         value = getattr(args, "gate_timeout_sec", None)
     elif name == "backend deploy":
         value = getattr(args, "backend_timeout_sec", None)
-    elif name in {"static deploy", "static deploy plan"}:
+    elif name == "static deploy":
         value = getattr(args, "static_timeout_sec", None)
     elif name == "post-deploy verify":
         value = getattr(args, "verify_timeout_sec", None)
@@ -253,7 +253,6 @@ def _build_steps(args: argparse.Namespace, *, python: str) -> list[tuple[str, li
 
     release_metadata_file = str(getattr(args, "release_metadata_file", "") or "").strip()
     release_env_file = str(getattr(args, "release_env_file", "") or "").strip()
-    release_go_evidence_file = str(getattr(args, "release_go_evidence_file", "") or "").strip()
     if release_metadata_file or release_env_file:
         handoff_cmd = [
             python,
@@ -265,8 +264,6 @@ def _build_steps(args: argparse.Namespace, *, python: str) -> list[tuple[str, li
             handoff_cmd.extend(["--metadata-file", release_metadata_file])
         if release_env_file:
             handoff_cmd.extend(["--env-file", release_env_file])
-        if release_go_evidence_file:
-            handoff_cmd.extend(["--go-evidence-file", release_go_evidence_file])
         handoff_cmd.extend(
             [
                 "--ssh-user",
@@ -344,29 +341,25 @@ def _build_steps(args: argparse.Namespace, *, python: str) -> list[tuple[str, li
         )
 
     if not args.skip_static:
-        static_plan_only = bool(getattr(args, "static_plan_only", False))
-        static_cmd = [
-            python,
-            "scripts/remote_deploy_brain_static_sites.py",
-            "--brain-ip",
-            args.brain_ip,
-            "--ssh-user",
-            args.ssh_user,
-            "--ssh-port",
-            str(args.ssh_port),
-            "--passwords",
-            args.passwords,
-            "--web-domain",
-            args.web_domain,
-            "--api-domain",
-            args.api_domain,
-        ]
-        if static_plan_only:
-            static_cmd.append("--plan-only")
         steps.append(
             (
-                "static deploy plan" if static_plan_only else "static deploy",
-                static_cmd,
+                "static deploy",
+                [
+                    python,
+                    "scripts/remote_deploy_brain_static_sites.py",
+                    "--brain-ip",
+                    args.brain_ip,
+                    "--ssh-user",
+                    args.ssh_user,
+                    "--ssh-port",
+                    str(args.ssh_port),
+                    "--passwords",
+                    args.passwords,
+                    "--web-domain",
+                    args.web_domain,
+                    "--api-domain",
+                    args.api_domain,
+                ],
                 REPO_ROOT,
             )
         )
@@ -501,17 +494,7 @@ def main() -> int:
         default="",
         help="Legacy release-links.env path to sync APP_* download URLs onto brain before deploy/verify.",
     )
-    parser.add_argument(
-        "--release-go-evidence-file",
-        default="",
-        help="Evidence file required by runtime APP_* sync unless the child command is run in dry-run mode.",
-    )
     parser.add_argument("--dry-run", action="store_true", help="Print planned commands without executing them")
-    parser.add_argument(
-        "--static-plan-only",
-        action="store_true",
-        help="Run the static deploy child script in --plan-only mode so bundles and checks are validated without SSH/upload/symlink/reload changes.",
-    )
     parser.add_argument("--step-timeout-sec", type=int, default=3600, help="Default timeout for uncategorized steps; 0 disables it")
     parser.add_argument("--gate-timeout-sec", type=int, default=7200, help="Timeout for release gates; 0 disables it")
     parser.add_argument("--backend-timeout-sec", type=int, default=2400, help="Timeout for backend deploy; 0 disables it")
@@ -553,11 +536,8 @@ def main() -> int:
 
     release_metadata_file = str(args.release_metadata_file or "").strip()
     release_env_file = str(args.release_env_file or "").strip()
-    release_go_evidence_file = str(getattr(args, "release_go_evidence_file", "") or "").strip()
     if (release_metadata_file or release_env_file) and args.gates_only:
         raise SystemExit("--release-metadata-file and --release-env-file cannot be used with --gates-only")
-    if (release_metadata_file or release_env_file) and not args.dry_run and not release_go_evidence_file:
-        raise SystemExit("--release-go-evidence-file is required when syncing runtime APP_* values")
 
     python = sys.executable
     steps: list[tuple[str, list[str], Path]] = []

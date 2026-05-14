@@ -24,6 +24,7 @@ type PlanCard = {
 };
 
 type HomeLinks = {
+  checkoutHref: string;
   installHref: string;
   cabinetHref: string;
   supportHref: string;
@@ -41,7 +42,7 @@ const HOW_IT_WORKS = [
   {
     step: "1",
     title: "Установите приложение",
-    text: "Откройте статус установки для Android или Windows. Если бета-файл уже доступен вашему аккаунту, кабинет покажет следующий шаг.",
+    text: "Скачайте POKROV на Android или Windows. Никакой регистрации — просто откройте и нажмите Подключить.",
   },
   {
     step: "2",
@@ -79,10 +80,14 @@ const SURFACE_PANELS = [
     eyebrow: "Поддержка",
     title: "Если что-то не так — мы рядом",
     text: "Напишите в поддержку прямо из приложения или кабинета. Один тикет, полная история, не нужно объяснять всё заново.",
-    bullets: ["Ответ по мере возможности", "Видна история обращений", "Telegram-канал с обновлениями"],
+    bullets: ["Без декоративного SLA", "Видна история обращений", "Telegram-канал с обновлениями"],
     tone: "support" as const,
   },
 ];
+
+function buildCheckoutHref(planCode: string): string {
+  return `${MARKETING_CANONICAL_PATHS.checkout}?plan=${encodeURIComponent(planCode)}`;
+}
 
 function buildPlanCards(): PlanCard[] {
   return getTariffPlans()
@@ -104,8 +109,9 @@ function buildPlanCards(): PlanCard[] {
     }));
 }
 
-function buildLinks(): HomeLinks {
+function buildLinks(defaultPlanCode: string): HomeLinks {
   return {
+    checkoutHref: buildCheckoutHref(defaultPlanCode),
     installHref: MARKETING_CANONICAL_PATHS.install,
     cabinetHref: config.webappUrl,
     supportHref: config.contactFormUrl || config.supportTelegramUrl || config.helpbotUrl,
@@ -240,24 +246,24 @@ function Hero({ links }: { links: HomeLinks }) {
           <div className={styles.heroCopy}>
             <div className={styles.eyebrow}>
               <UiIcon name="verified_user" size={18} />
-              Статус беты
+              Премиум-доступ
             </div>
             <h1 className={styles.heroTitle}>
-              POKROV{" "}
+              Интернет
               <br />
-              готовит бету
+              без границ
             </h1>
             <p className={styles.heroSubtitle}>
-              Android и Windows готовятся к ограниченной бете вне магазинов. Откройте статус установки, проверьте доступность и запросите помощь, если вам нужен ранний вход.
+              Спокойный защищенный маршрут для Android и Windows. 5 дней бесплатно, без привязки карты и без технической рутины на старте.
             </p>
             <div className={styles.heroActions}>
               <Link href={links.installHref} className={`${styles.btnPrimary} ${styles.btnPill}`}>
                 <UiIcon name="shield_lock" size={22} />
-                Открыть статус установки
+                Попробовать бесплатно
               </Link>
-              <a href={links.supportHref} className={`${styles.btnSecondary} ${styles.btnPill}`}>
+              <a href="#how-it-works" className={`${styles.btnSecondary} ${styles.btnPill}`}>
                 <UiIcon name="play_circle" size={20} />
-                Запросить доступ
+                Как это работает
               </a>
             </div>
             <ul className={styles.heroNotes}>
@@ -305,7 +311,7 @@ function ProofStrip() {
   ];
 
   return (
-    <FadeUp delay={0.2} as="section" className={styles.container} id="proof">
+    <FadeUp delay={0.2} as="section" className={styles.container}>
       <div className={styles.proofStrip}>
         {items.map((item) => (
           <div key={item.value} className={styles.proofCard}>
@@ -523,11 +529,11 @@ function Pricing({ links }: { links: HomeLinks }) {
                     ))}
                   </ul>
                   <Link
-                    href={links.installHref}
+                    href={buildCheckoutHref(plan.code)}
                     className={isFeatured ? styles.btnPrimary : styles.btnSecondary}
                     style={{ marginTop: "auto", borderRadius: "var(--radius-pill)" }}
                   >
-                    {isFeatured ? "Проверить доступ" : "Статус беты"}
+                    {isFeatured ? "Выбрать этот" : "Выбрать"}
                   </Link>
                 </article>
               );
@@ -547,17 +553,17 @@ function FinalCta({ links }: { links: HomeLinks }) {
           <span className={styles.eyebrow} style={{ borderColor: "rgba(255,255,255,0.2)", background: "rgba(255,255,255,0.08)", color: "#fff" }}>
             готовы начать?
           </span>
-          <h2>Откройте статус установки и доступа</h2>
+          <h2>Попробуйте 5 дней бесплатно</h2>
           <p>
-            Сейчас это кандидат на ограниченную бету: проверьте статус установки, откройте кабинет или напишите в поддержку перед ранним входом.
+            Никаких обязательств. Просто установите приложение, нажмите Подключить и убедитесь сами, что интернет может быть безопасным и свободным.
           </p>
         </div>
         <div className={styles.finalActions}>
           <Link href={links.installHref} className={`${styles.btnPrimary} ${styles.btnPill}`}>
-            Открыть статус установки
+            Установить приложение
           </Link>
-          <Link href={links.installHref} className={styles.btnOutline}>
-            Статус доступа
+          <Link href={links.checkoutHref} className={styles.btnOutline}>
+            Выбрать тариф
           </Link>
           <a href={links.cabinetHref} className={styles.btnOutline}>
             Кабинет
@@ -574,7 +580,9 @@ function FinalCta({ links }: { links: HomeLinks }) {
 /* ── Main Page ── */
 
 export default function MarketingHomePage() {
-  const links = buildLinks();
+  const planCards = buildPlanCards();
+  const defaultPlanCode = planCards[1]?.code || planCards[0]?.code || "1_month";
+  const links = buildLinks(defaultPlanCode);
 
   return (
     <>

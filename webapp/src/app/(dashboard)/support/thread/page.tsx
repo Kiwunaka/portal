@@ -2,8 +2,7 @@
 
 import AppRouteLink from "@/components/app-route-link";
 import { CabinetHero, CabinetRoute, CabinetSection } from "@/components/cabinet/surface";
-import { addTicketMessage, fetchTicketAttachmentBlob, getTicket, uploadTicketAttachment, type TicketAttachmentInput, type TicketInfo, type TicketMessage } from "@/lib/api";
-import { userFacingErrorMessage } from "@/lib/public-error-messages";
+import { addTicketMessage, getTicket, resolveApiUrl, uploadTicketAttachment, type TicketAttachmentInput, type TicketInfo, type TicketMessage } from "@/lib/api";
 import { useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
@@ -44,7 +43,7 @@ function ticketAttachment(message: TicketMessage): ParsedAttachment | null {
       const kind = String(message.media_type || "").toLowerCase();
       return {
         kind: kind === "video" ? "video" : kind === "image" ? "image" : "file",
-        url: rawUrl,
+        url: resolveApiUrl(rawUrl),
         name: String(payload?.name || "Вложение"),
         contentType: String(payload?.content_type || ""),
         size: Number(payload?.size || 0),
@@ -64,79 +63,6 @@ function ticketAttachment(message: TicketMessage): ParsedAttachment | null {
   } catch {
     return null;
   }
-}
-
-const MAX_TICKET_ATTACHMENT_BYTES = 20 * 1024 * 1024;
-
-function TicketAttachmentView({ attachment }: { attachment: ParsedAttachment }) {
-  const [objectUrl, setObjectUrl] = useState("");
-  const [loading, setLoading] = useState(attachment.url.startsWith("/uploads/support/"));
-  const [error, setError] = useState("");
-  const isProtected = attachment.url.startsWith("/uploads/support/");
-
-  useEffect(() => {
-    if (!isProtected) {
-      setObjectUrl("");
-      setLoading(false);
-      setError("");
-      return;
-    }
-    let active = true;
-    let createdUrl = "";
-    setObjectUrl("");
-    setLoading(true);
-    setError("");
-    fetchTicketAttachmentBlob(attachment.url)
-      .then((blob) => {
-        if (!active) return;
-        createdUrl = URL.createObjectURL(blob);
-        setObjectUrl(createdUrl);
-      })
-      .catch(() => {
-        if (active) setError("Не удалось открыть вложение");
-      })
-      .finally(() => {
-        if (active) setLoading(false);
-      });
-    return () => {
-      active = false;
-      if (createdUrl) URL.revokeObjectURL(createdUrl);
-    };
-  }, [attachment.url, isProtected]);
-
-  if (loading) {
-    return <div className="mt-3 rounded-2xl border border-[color:var(--atlas-border)] bg-[var(--atlas-glass)] px-3 py-2 text-xs text-[var(--atlas-text-muted)]">Загружаем вложение...</div>;
-  }
-  if (error) {
-    return <div className="mt-3 rounded-2xl border border-[color:var(--atlas-border)] bg-[var(--atlas-status-danger-bg)] px-3 py-2 text-xs text-[var(--atlas-status-danger-text)]">{error}</div>;
-  }
-
-  const displayUrl = isProtected ? objectUrl : attachment.url;
-  if (!displayUrl) return null;
-
-  if (attachment.kind === "image") {
-    return (
-      <a href={displayUrl} target="_blank" rel="noreferrer" className="mt-3 block overflow-hidden rounded-2xl border border-[color:var(--atlas-border)]">
-        <img src={displayUrl} alt={attachment.name || "Вложение"} className="max-h-72 w-full object-cover" />
-      </a>
-    );
-  }
-  if (attachment.kind === "video") {
-    return <video src={displayUrl} controls className="mt-3 max-h-72 w-full rounded-2xl border border-[color:var(--atlas-border)] bg-slate-950/60" />;
-  }
-
-  return (
-    <a
-      href={displayUrl}
-      target={isProtected ? undefined : "_blank"}
-      rel={isProtected ? undefined : "noreferrer"}
-      download={isProtected ? attachment.name || "attachment" : undefined}
-      className="mt-3 flex items-center justify-between gap-3 rounded-2xl border border-[color:var(--atlas-border)] bg-[var(--atlas-glass)] px-3 py-2 text-xs"
-    >
-      <span className="truncate">{attachment.name || "Вложение"}</span>
-      <span className="shrink-0 text-[var(--atlas-text-muted)]">{attachment.size ? formatFileSize(attachment.size) : "Открыть"}</span>
-    </a>
-  );
 }
 
 export default function SupportTicketThreadPage() {
@@ -166,7 +92,7 @@ export default function SupportTicketThreadPage() {
       setTicket(data);
       setError("");
     } catch (error) {
-      setError(userFacingErrorMessage(error, "Не удалось открыть обращение. Вернитесь в поддержку или откройте Telegram."));
+      setError(String((error as { message?: string })?.message || error));
     } finally {
       setLoading(false);
     }
@@ -182,10 +108,6 @@ export default function SupportTicketThreadPage() {
 
   const onSendReply = async (): Promise<void> => {
     if (!ticket || !message.trim() || !canReply) return;
-    if (attachmentFile && attachmentFile.size > MAX_TICKET_ATTACHMENT_BYTES) {
-      setReplyError("Файл больше 20 МБ. Уменьшите вложение или отправьте его в Telegram-поддержку.");
-      return;
-    }
     setBusy(true);
     setReplyError("");
     try {
@@ -199,7 +121,7 @@ export default function SupportTicketThreadPage() {
       setMessage("");
       setAttachmentFile(null);
     } catch (error) {
-      setReplyError(userFacingErrorMessage(error, "Не удалось отправить ответ. Попробуйте еще раз или откройте Telegram-поддержку."));
+      setReplyError(String((error as { message?: string })?.message || error));
     } finally {
       setBusy(false);
     }
@@ -314,7 +236,25 @@ export default function SupportTicketThreadPage() {
                     <div className={`max-w-[86%] rounded-2xl border border-[color:var(--atlas-border)] px-4 py-3 text-sm leading-6 ${isAdmin ? "bg-[var(--atlas-surface)]" : "bg-[var(--atlas-status-info-bg)]"}`}>
                       <p className="text-xs font-semibold text-[var(--atlas-text-muted)]">{isAdmin ? "Оператор" : "Вы"}</p>
                       <p className="mt-1 whitespace-pre-line">{msg.body}</p>
-                      {attachment ? <TicketAttachmentView attachment={attachment} /> : null}
+                      {attachment?.kind === "image" ? (
+                        <a href={attachment.url} target="_blank" rel="noreferrer" className="mt-3 block overflow-hidden rounded-2xl border border-[color:var(--atlas-border)]">
+                          <img src={attachment.url} alt={attachment.name || "Вложение"} className="max-h-72 w-full object-cover" />
+                        </a>
+                      ) : null}
+                      {attachment?.kind === "video" ? (
+                        <video src={attachment.url} controls className="mt-3 max-h-72 w-full rounded-2xl border border-[color:var(--atlas-border)] bg-slate-950/60" />
+                      ) : null}
+                      {attachment && attachment.kind !== "image" && attachment.kind !== "video" ? (
+                        <a
+                          href={attachment.url}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="mt-3 flex items-center justify-between gap-3 rounded-2xl border border-[color:var(--atlas-border)] bg-[var(--atlas-glass)] px-3 py-2 text-xs"
+                        >
+                          <span className="truncate">{attachment.name || "Вложение"}</span>
+                          <span className="shrink-0 text-[var(--atlas-text-muted)]">{attachment.size ? formatFileSize(attachment.size) : "Открыть"}</span>
+                        </a>
+                      ) : null}
                       <p className="mt-2 text-xs text-[var(--atlas-text-muted)]">{fmtDate(msg.created_at)}</p>
                     </div>
                   </div>

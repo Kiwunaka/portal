@@ -1,29 +1,15 @@
-# Заметки к открытой бете
+# Open Beta Release Notes
 
-Обновлено: 2026-05-08
+Last updated: 2026-04-26
 
-Статус: черновик, не утвержден для широкого публичного объявления.
+Status: draft, not approved for broad public announcement.
 
-POKROV готовит ограниченную бета-проверку для Android и Windows. Основной фокус этой волны: аккуратный старт через приложение, понятный кабинет, поддержка, безопасные релизные проверки и честные ограничения.
+POKROV Open Beta v4 focuses on Android and Windows readiness, app-first onboarding, cabinet support, and safer release gates.
 
-## Что можно говорить после GO
+Known limits:
 
-- Android и Windows готовятся как бета вне магазинов.
-- Первый путь начинается в приложении и продолжается в кабинете.
-- Пробный доступ длится 5 дней.
-- Бонус за официальный Telegram-канал добавляет +10 дней.
-- Оплата остается закрытой, пока Lava.top, вебхуки, сверка и доставка ключей доступа не пройдут финальную проверку.
-
-## Ограничения
-
-- Android не публикуется в магазинах; физическая проверка текущего кандидата учитывается как operator-attested, без утверждения о raw repo validation.
-- Windows-сборка может показывать предупреждение неизвестного издателя: доверенная подпись не входит в эту волну.
-- Прямые ссылки на загрузку могут быть видны только одобренным участникам беты.
-- iOS и macOS не входят в эту волну.
-
-## Что нельзя говорить
-
-- Нельзя писать, что публичная бета уже запущена, пока финальный пакет говорит `NO-GO`.
-- Нельзя обещать оплату, если платежные проверки еще не зеленые.
-- Нельзя обещать публикацию в магазинах.
-- Нельзя называть Windows-сборку доверенно подписанной в этой волне.
+- Android public release remains blocked until signing and physical audit pass.
+- Windows may remain gated while signing and public handoff are incomplete.
+- Paid checkout may be unavailable while provider proof is pending.
+- Downloads may be visible only to approved beta users.
+- iOS and macOS are not release platforms for this wave.

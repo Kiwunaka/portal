@@ -1,7 +1,4 @@
-# Release Gate Report
-
-> Superseded on 2026-05-08. This retained report is historical evidence only.
-> Current public-beta gate truth is `docs/audit-artifacts/release-gate-full-local-2026-05-08.md` (`PASS` at 2026-05-08 11:45:24 for current-origin full/default gates), `docs/audit-artifacts/release-gate-local-2026-05-08.md` (`PASS` at 2026-05-08 00:41:20 for current-origin quick gates), and `docs/audit-artifacts/release-gate-brain-2026-05-08.md` (`PASS` at 2026-05-08 11:59:43 for integrated brain-origin quick gates after latest static release `20260508085254`, backend/static deploy, public email mode enablement, admin release-cockpit launch-decision visibility, static-export prefetch hardening, and public bot simple-onboarding/cabinet/instruction/access-key button deploy). The current handoff remains `NO-GO` in `docs/audit-artifacts/public-beta-handoff-2026-05-08.md`.
+﻿# Release Gate Report
 
 - Generated at: `2026-05-05 02:36:13`
 - Status: `PASS`

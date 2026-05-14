@@ -97,10 +97,10 @@ export default function OfferPage() {
           <h2>Контакты</h2>
           <ul className="lp-legal-list lp-legal-list--contacts">
             <li>
-              Поддержка: <a href={`mailto:${config.contactEmail}`}>{config.contactEmail}</a>
+              Support: <a href={`mailto:${config.contactEmail}`}>{config.contactEmail}</a>
             </li>
             <li>
-              Партнерские запросы: <a href={`mailto:${config.enterpriseEmail}`}>{config.enterpriseEmail}</a>
+              Enterprise: <a href={`mailto:${config.enterpriseEmail}`}>{config.enterpriseEmail}</a>
             </li>
             <li>
               Telegram:{" "}

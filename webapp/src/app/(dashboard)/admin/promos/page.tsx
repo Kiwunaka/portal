@@ -3,19 +3,16 @@
 import { adminButtonClass, adminPanelClass } from "@/components/admin/admin-shell";
 import {
   adminAccessKeysIssue,
-  adminGiftCodeCreate,
-  adminGiftCodes,
   adminPromoSlots,
   adminPromoSlotsUpdate,
   fetchAccessKeyStatus,
-  type AdminGiftCodeRow,
   type AccessKeyStatusPayload,
   type PromoSlotAssignmentPayload,
   type PromoSlotCatalogContent,
   type PromoSlotCatalogSlot,
 } from "@/lib/api";
 import { getAccessMatrix, getPromoSlotsCatalog, getTariffPlans } from "@/lib/portal";
-import { Check, Copy, Gift, KeyRound, LayoutTemplate, RefreshCw, Save, Search, ShieldCheck } from "lucide-react";
+import { Check, Copy, KeyRound, LayoutTemplate, RefreshCw, Save, Search, ShieldCheck } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { fmtRuDate } from "../nav";
 
@@ -46,20 +43,9 @@ const SHARED_PLANS = getTariffPlans()
     deviceLimit: Number(plan.device_limit || 1),
     note: plan.cabinet_note || plan.marketing_note || plan.label,
   }));
-const LEGACY_GIFT_TYPES: Array<{ value: "mini" | "standard" | "premium"; label: string }> = [
-  { value: "mini", label: "Mini - 7 дн." },
-  { value: "standard", label: "Standard - 30 дн." },
-  { value: "premium", label: "Premium - 90 дн." },
-];
 
 function normalizeKey(value: string): string {
-  return String(value || "")
-    .trim()
-    .replace(/[\u2010\u2011\u2012\u2013\u2014\u2212_]+/g, "-")
-    .replace(/\s+/g, "-")
-    .replace(/-+/g, "-")
-    .replace(/^-+|-+$/g, "")
-    .toUpperCase();
+  return String(value || "").trim().toUpperCase();
 }
 
 function createAssignmentState(
@@ -95,11 +81,7 @@ function formatContexts(values: string[]): string {
 }
 
 function formatPlanMeta(days: number, deviceLimit: number): string {
-  return `${days} дн. • до ${deviceLimit} устройств`;
-}
-
-function formatGiftType(value: string): string {
-  return LEGACY_GIFT_TYPES.find((item) => item.value === value)?.label || value;
+  return `${days} days • up to ${deviceLimit} devices`;
 }
 
 function StatusBanner({ tone, text }: { tone: "success" | "error"; text: string }) {
@@ -119,8 +101,6 @@ function StatusBanner({ tone, text }: { tone: "success" | "error"; text: string 
 export default function AdminPromosPage() {
   const [selectedPlan, setSelectedPlan] = useState(SHARED_PLANS[0]?.code || "1_month");
   const [quantity, setQuantity] = useState("5");
-  const [giftType, setGiftType] = useState<"mini" | "standard" | "premium">("standard");
-  const [giftCodes, setGiftCodes] = useState<AdminGiftCodeRow[]>([]);
   const [issuedKeys, setIssuedKeys] = useState<
     Array<{
       key: string;
@@ -141,8 +121,6 @@ export default function AdminPromosPage() {
   const [fallbackBehavior, setFallbackBehavior] = useState(PROMO_CATALOG.fallback_behavior);
   const [loading, setLoading] = useState(false);
   const [issuing, setIssuing] = useState(false);
-  const [giftLoading, setGiftLoading] = useState(false);
-  const [giftCreating, setGiftCreating] = useState(false);
   const [lookupBusy, setLookupBusy] = useState(false);
   const [saving, setSaving] = useState(false);
   const [statusText, setStatusText] = useState("");
@@ -170,32 +148,19 @@ export default function AdminPromosPage() {
       setRemoteMode(String(remote.mode || remoteCatalog?.mode || PROMO_CATALOG.mode));
       setRemoteAvailable(Boolean(remote.remote_available));
       setFallbackBehavior(String(remote.fallback_behavior || remoteCatalog?.fallback_behavior || PROMO_CATALOG.fallback_behavior));
-      setStatusText("Конфиг промо-слотов загружен с сервера.");
+      setStatusText("Promo-slot config загружен из backend.");
     } catch (nextError) {
       setSlotCatalog(DEFAULT_PROMO_SLOTS);
       setContentCatalog(DEFAULT_PROMO_CONTENT);
       setAssignments(createAssignmentState([], DEFAULT_PROMO_SLOTS, DEFAULT_PROMO_CONTENT));
-      setError(String((nextError as { message?: string })?.message || nextError || "Не удалось загрузить промо-слоты."));
+      setError(String((nextError as { message?: string })?.message || nextError || "Не удалось загрузить promo slots."));
     } finally {
       setLoading(false);
     }
   };
 
-  const loadGiftCodes = async (): Promise<void> => {
-    setGiftLoading(true);
-    setError("");
-    try {
-      setGiftCodes(await adminGiftCodes(50));
-    } catch (nextError) {
-      setError(String((nextError as { message?: string })?.message || nextError || "Не удалось загрузить подарочные карты."));
-    } finally {
-      setGiftLoading(false);
-    }
-  };
-
   useEffect(() => {
     void loadPromoSlots();
-    void loadGiftCodes();
   }, []);
 
   const issueKeys = async (): Promise<void> => {
@@ -215,7 +180,7 @@ export default function AdminPromosPage() {
           issuedAt: item.issued_at,
         })),
       );
-      setStatusText(`Выпущено ${payload.issued?.length || 0} ключей доступа для плана ${payload.plan?.label || selectedPlan}.`);
+      setStatusText(`Выпущено ${payload.issued?.length || 0} access keys для плана ${payload.plan?.label || selectedPlan}.`);
     } catch (nextError) {
       setError(String((nextError as { message?: string })?.message || nextError || "Не удалось выпустить ключи."));
     } finally {
@@ -223,36 +188,10 @@ export default function AdminPromosPage() {
     }
   };
 
-  const createLegacyGiftCard = async (): Promise<void> => {
-    setGiftCreating(true);
-    setError("");
-    setStatusText("");
-    try {
-      const payload = await adminGiftCodeCreate(giftType);
-      const created = payload.gift_code;
-      const row: AdminGiftCodeRow = {
-        code: created.code,
-        card_type: created.card_type,
-        days: created.days,
-        stars: created.stars,
-        created_by: 0,
-        created_at: new Date().toISOString(),
-        redeemed_by: null,
-        redeemed_at: null,
-      };
-      setGiftCodes((current) => [row, ...current.filter((item) => item.code !== row.code)]);
-      setStatusText(`Подарочная карта ${row.code} создана.`);
-    } catch (nextError) {
-      setError(String((nextError as { message?: string })?.message || nextError || "Не удалось создать подарочную карту."));
-    } finally {
-      setGiftCreating(false);
-    }
-  };
-
   const lookupAccessKey = async (): Promise<void> => {
     const key = normalizeKey(lookupKey);
     if (!key) {
-      setError("Введите ключ доступа для проверки.");
+      setError("Введите access key для проверки.");
       return;
     }
     setLookupBusy(true);
@@ -279,9 +218,9 @@ export default function AdminPromosPage() {
       setRemoteMode(String(payload.promo_slots.mode || remoteMode));
       setRemoteAvailable(Boolean(payload.promo_slots.remote_available));
       setFallbackBehavior(String(payload.promo_slots.fallback_behavior || fallbackBehavior));
-      setStatusText("Конфиг промо-слотов сохранён.");
+      setStatusText("Promo-slot config сохранён.");
     } catch (nextError) {
-      setError(String((nextError as { message?: string })?.message || nextError || "Не удалось сохранить промо-слоты."));
+      setError(String((nextError as { message?: string })?.message || nextError || "Не удалось сохранить promo slots."));
     } finally {
       setSaving(false);
     }
@@ -306,11 +245,11 @@ export default function AdminPromosPage() {
   return (
     <section className="space-y-5">
       <article className={adminPanelClass("neutral")}>
-        <h2 className="font-display text-xl font-bold">Ключи доступа и промо-слоты</h2>
+        <h2 className="font-display text-xl font-bold">Access keys и promo slots</h2>
         <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">
-          Эта панель больше не живёт в старой логике подарков и промокодов. Здесь оператор выпускает ключи доступа,
-          проверяет кейсы восстановления, держит единый каталог тарифов перед глазами и управляет только собственными
-          промо-слотами из утверждённого списка.
+          Эта панель больше не живёт в legacy gift/promo логике. Здесь оператор выпускает activation keys,
+          проверяет recovery-кейсы, держит единый tariff catalog перед глазами и управляет только first-party
+          promo slots из approved whitelist.
         </p>
       </article>
 
@@ -319,31 +258,31 @@ export default function AdminPromosPage() {
 
       <div className="grid gap-5 md:grid-cols-3">
         <article className={adminPanelClass("neutral")}>
-          <p className="text-[11px] uppercase tracking-[0.16em] text-slate-500">публичный контур</p>
+          <p className="text-[11px] uppercase tracking-[0.16em] text-slate-500">public scope</p>
           <h3 className="mt-2 font-display text-2xl font-semibold">Android + Windows</h3>
           <p className="mt-3 text-sm leading-6 text-slate-600 dark:text-slate-300">
-            Публичное обещание этой волны держим только на этих платформах. Apple-сборки остаются
-            инженерным контуром и не входят в релизную приёмку.
+            Публичный promise этой волны держим только на этих платформах. Apple host shells остаются
+            engineering lane, но не входят в release acceptance.
           </p>
         </article>
 
         <article className={adminPanelClass("neutral")}>
-          <p className="text-[11px] uppercase tracking-[0.16em] text-slate-500">бесплатная база</p>
+          <p className="text-[11px] uppercase tracking-[0.16em] text-slate-500">free baseline</p>
           <h3 className="mt-2 font-display text-2xl font-semibold">
             {ACCESS_MATRIX.free_tier.location_code} • {ACCESS_MATRIX.free_tier.traffic_limit_gb} GB
           </h3>
           <p className="mt-3 text-sm leading-6 text-slate-600 dark:text-slate-300">
-            Ежемесячный сброс, {ACCESS_MATRIX.free_tier.speed_limit_mbps} Мбит/с на IP, до{" "}
-            {ACCESS_MATRIX.free_tier.device_limit} устройства. После пробного периода сюда уходит базовое понижение.
+            Monthly reset, {ACCESS_MATRIX.free_tier.speed_limit_mbps} Mbps per IP, до{" "}
+            {ACCESS_MATRIX.free_tier.device_limit} устройства. После trial сюда падает default downgrade.
           </p>
         </article>
 
         <article className={adminPanelClass("neutral")}>
-          <p className="text-[11px] uppercase tracking-[0.16em] text-slate-500">скрытый порядок транспорта</p>
+          <p className="text-[11px] uppercase tracking-[0.16em] text-slate-500">hidden transport order</p>
           <h3 className="mt-2 font-display text-2xl font-semibold">VLESS → VMess → Trojan → XHTTP</h3>
           <p className="mt-3 text-sm leading-6 text-slate-600 dark:text-slate-300">
             Операторская видимость сохраняется, но массовый UI видит одну логическую локацию. XHTTP допускается
-            только при готовой CDN/static-предпосылке.
+            только при готовом CDN/static prerequisite.
           </p>
         </article>
       </div>
@@ -354,11 +293,11 @@ export default function AdminPromosPage() {
             <div className="stat-icon stat-icon-emerald">
               <KeyRound size={20} />
             </div>
-            <h2 className="font-display text-xl font-bold">Выпуск ключей доступа</h2>
+            <h2 className="font-display text-xl font-bold">Issue access keys</h2>
           </div>
           <p className="mb-4 text-sm text-slate-600 dark:text-slate-300">
-            Маршрут с ключами начинается здесь: оператор выпускает ключи по каноническим кодам тарифов, а не через
-            старые типы подарочных кодов.
+            Key-first commerce начинается здесь: оператор выпускает ключи по canonical plan codes, а не через
+            legacy gift-code типы.
           </p>
 
           <div className="grid gap-3 md:grid-cols-[1fr,120px,auto]">
@@ -387,7 +326,7 @@ export default function AdminPromosPage() {
               disabled={issuing}
                     className={adminButtonClass("primary")}
             >
-              {issuing ? "Выпускаем..." : "Выпустить"}
+              {issuing ? "Выпускаем..." : "Issue"}
             </button>
           </div>
 
@@ -407,14 +346,14 @@ export default function AdminPromosPage() {
                     className={adminButtonClass("secondary", "xs")}
                   >
                     <Copy size={14} />
-                    Скопировать
+                    Copy
                   </button>
                 </div>
               ))
             ) : (
               <div className="empty-state">
                 <KeyRound size={24} />
-                <p className="text-xs">Новые ключи доступа появятся здесь после выпуска.</p>
+                <p className="text-xs">Новые access keys появятся здесь после выпуска.</p>
               </div>
             )}
           </div>
@@ -425,10 +364,10 @@ export default function AdminPromosPage() {
             <div className="stat-icon stat-icon-blue">
               <Search size={20} />
             </div>
-            <h2 className="font-display text-xl font-bold">Проверка восстановления</h2>
+            <h2 className="font-display text-xl font-bold">Recovery lookup</h2>
           </div>
           <p className="mb-4 text-sm text-slate-600 dark:text-slate-300">
-            Для ручных кейсов восстановления оператор может проверить статус конкретного ключа без показа сырой ссылки подключения.
+            Для ручных recovery-кейсов оператор может проверить конкретный key status без показа raw subscription link.
           </p>
 
           <div className="flex flex-col gap-3 sm:flex-row">
@@ -444,7 +383,7 @@ export default function AdminPromosPage() {
               disabled={lookupBusy}
                     className={adminButtonClass("secondary")}
             >
-              {lookupBusy ? "Проверяем..." : "Проверить"}
+              {lookupBusy ? "Проверяем..." : "Lookup"}
             </button>
           </div>
 
@@ -465,99 +404,16 @@ export default function AdminPromosPage() {
       <article className={adminPanelClass("neutral")}>
         <div className="mb-4 flex items-center gap-3">
           <div className="stat-icon stat-icon-amber">
-            <Gift size={20} />
-          </div>
-          <div>
-            <h2 className="font-display text-xl font-bold">Старые подарочные карты</h2>
-            <p className="text-xs text-slate-500">
-              Совместимость для уже знакомого подарочного сценария bot/API. Основной новый путь остается через ключи доступа.
-            </p>
-          </div>
-          <button
-            type="button"
-            onClick={() => void loadGiftCodes()}
-            disabled={giftLoading}
-            className={`${adminButtonClass("secondary", "xs")} ml-auto`}
-          >
-            <RefreshCw size={14} />
-            {giftLoading ? "Обновляем..." : "Обновить"}
-          </button>
-        </div>
-
-        <div className="grid gap-3 md:grid-cols-[1fr,auto]">
-          <label className="text-sm">
-            <span className="mb-1 block text-xs uppercase tracking-[0.12em] text-slate-500">Тип подарочной карты</span>
-            <select
-              aria-label="Тип подарочной карты"
-              value={giftType}
-              onChange={(event) => setGiftType(event.target.value as "mini" | "standard" | "premium")}
-              className="w-full rounded-xl border border-white/45 bg-white/65 px-3 py-3 text-sm outline-none dark:border-white/10 dark:bg-white/5"
-            >
-              {LEGACY_GIFT_TYPES.map((item) => (
-                <option key={item.value} value={item.value}>
-                  {item.label}
-                </option>
-              ))}
-            </select>
-          </label>
-          <button
-            type="button"
-            onClick={() => void createLegacyGiftCard()}
-            disabled={giftCreating}
-            className={`${adminButtonClass("primary")} self-end`}
-          >
-            {giftCreating ? "Создаем..." : "Создать подарочную карту"}
-          </button>
-        </div>
-
-        <div className="mt-5 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-          {giftCodes.length ? (
-            giftCodes.map((item) => (
-              <div key={item.code} className="stat-card p-4">
-                <div className="mb-3 flex items-center justify-between gap-2">
-                  <span className="badge badge-violet font-mono">{item.code}</span>
-                  <span className={item.redeemed_by ? "badge badge-warning" : "badge badge-success"}>
-                    {item.redeemed_by ? "использована" : "готова"}
-                  </span>
-                </div>
-                <p className="text-sm font-semibold">{formatGiftType(item.card_type)}</p>
-                <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">
-                  {item.days} дн. · {item.stars} Stars
-                </p>
-                <p className="mt-1 text-xs text-slate-500">Создана: {fmtRuDate(item.created_at)}</p>
-                {item.redeemed_at ? <p className="mt-1 text-xs text-slate-500">Погашена: {fmtRuDate(item.redeemed_at)}</p> : null}
-                <button
-                  type="button"
-                  onClick={() => void copyText(item.code)}
-                  className={`${adminButtonClass("secondary", "xs")} mt-3`}
-                >
-                  <Copy size={14} />
-                  Скопировать
-                </button>
-              </div>
-            ))
-          ) : (
-            <div className="empty-state md:col-span-2 xl:col-span-3">
-              <Gift size={24} />
-              <p className="text-xs">Подарочных карт пока нет. Создайте карту только если нужен совместимый подарочный сценарий.</p>
-            </div>
-          )}
-        </div>
-      </article>
-
-      <article className={adminPanelClass("neutral")}>
-        <div className="mb-4 flex items-center gap-3">
-          <div className="stat-icon stat-icon-amber">
             <ShieldCheck size={20} />
           </div>
-          <h2 className="font-display text-xl font-bold">Каталог тарифов</h2>
+          <h2 className="font-display text-xl font-bold">Tariff catalog</h2>
         </div>
         <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
           {SHARED_PLANS.map((plan) => (
             <div key={plan.code} className="stat-card p-4">
               <div className="mb-3 flex items-center justify-between gap-2">
                 <span className="badge badge-violet font-mono">{plan.code}</span>
-                <span className="badge badge-success">{plan.badge || "активен"}</span>
+                <span className="badge badge-success">{plan.badge || "active"}</span>
               </div>
               <p className="text-lg font-bold">{plan.label}</p>
               <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">{plan.amountRub} ₽</p>
@@ -574,9 +430,9 @@ export default function AdminPromosPage() {
             <LayoutTemplate size={20} />
           </div>
           <div>
-            <h2 className="font-display text-xl font-bold">Расписание промо-слотов</h2>
+            <h2 className="font-display text-xl font-bold">Promo slot scheduling</h2>
             <p className="text-xs text-slate-500">
-              версия {remoteVersion} • режим {remoteMode} • источник {remoteAvailable ? "доступен" : "резерв"}
+              version {remoteVersion} • mode {remoteMode} • remote {remoteAvailable ? "available" : "fallback"}
             </p>
           </div>
           <div className="ml-auto flex gap-2">
@@ -587,7 +443,7 @@ export default function AdminPromosPage() {
                     className={adminButtonClass("secondary", "xs")}
             >
               <RefreshCw size={14} />
-              Обновить
+              Refresh
             </button>
             <button
               type="button"
@@ -596,14 +452,14 @@ export default function AdminPromosPage() {
                     className={adminButtonClass("primary", "xs")}
             >
               <Save size={14} />
-              {saving ? "Сохраняем..." : "Сохранить"}
+              {saving ? "Saving..." : "Save"}
             </button>
           </div>
         </div>
 
         <p className="mb-4 text-sm text-slate-600 dark:text-slate-300">
-          Разрешены только слоты из утверждённого списка и собственный промо-контент. Если удалённый конфиг недоступен,
-          поверхность переходит в <strong>{fallbackBehavior}</strong>.
+          Разрешены только whitelist slots и first-party promo content. Если remote config недоступен, surface
+          падает в <strong>{fallbackBehavior}</strong>.
         </p>
 
         <div className="space-y-4">
@@ -621,7 +477,7 @@ export default function AdminPromosPage() {
 
                 <div className="grid gap-3 lg:grid-cols-[1fr,1fr,120px]">
                   <label className="text-sm">
-                    <span className="mb-1 block text-xs uppercase tracking-[0.12em] text-slate-500">контент</span>
+                    <span className="mb-1 block text-xs uppercase tracking-[0.12em] text-slate-500">content</span>
                     <select
                       value={assignment.content_id}
                       onChange={(event) => updateAssignment(assignment.slot_id, { content_id: event.target.value })}
@@ -639,7 +495,7 @@ export default function AdminPromosPage() {
                   </label>
 
                   <label className="text-sm">
-                    <span className="mb-1 block text-xs uppercase tracking-[0.12em] text-slate-500">контексты</span>
+                    <span className="mb-1 block text-xs uppercase tracking-[0.12em] text-slate-500">contexts</span>
                     <input
                       value={(assignment.contexts || []).join(", ")}
                       onChange={(event) =>
@@ -655,7 +511,7 @@ export default function AdminPromosPage() {
                   </label>
 
                   <label className="text-sm">
-                    <span className="mb-1 block text-xs uppercase tracking-[0.12em] text-slate-500">порядок</span>
+                    <span className="mb-1 block text-xs uppercase tracking-[0.12em] text-slate-500">sort</span>
                     <input
                       value={assignment.sort_order}
                       onChange={(event) => updateAssignment(assignment.slot_id, { sort_order: Math.max(0, Number(event.target.value || 0)) })}
@@ -668,7 +524,7 @@ export default function AdminPromosPage() {
 
                 <div className="grid gap-3 lg:grid-cols-2">
                   <label className="text-sm">
-                    <span className="mb-1 block text-xs uppercase tracking-[0.12em] text-slate-500">замена заголовка</span>
+                    <span className="mb-1 block text-xs uppercase tracking-[0.12em] text-slate-500">title override</span>
                     <input
                       value={assignment.title || ""}
                       onChange={(event) => updateAssignment(assignment.slot_id, { title: event.target.value })}
@@ -677,7 +533,7 @@ export default function AdminPromosPage() {
                   </label>
 
                   <label className="text-sm">
-                    <span className="mb-1 block text-xs uppercase tracking-[0.12em] text-slate-500">замена текста</span>
+                    <span className="mb-1 block text-xs uppercase tracking-[0.12em] text-slate-500">body override</span>
                     <input
                       value={assignment.body || ""}
                       onChange={(event) => updateAssignment(assignment.slot_id, { body: event.target.value })}
@@ -686,7 +542,7 @@ export default function AdminPromosPage() {
                   </label>
 
                   <label className="text-sm">
-                    <span className="mb-1 block text-xs uppercase tracking-[0.12em] text-slate-500">текст кнопки</span>
+                    <span className="mb-1 block text-xs uppercase tracking-[0.12em] text-slate-500">cta label</span>
                     <input
                       value={assignment.cta_label || ""}
                       onChange={(event) => updateAssignment(assignment.slot_id, { cta_label: event.target.value })}
@@ -695,7 +551,7 @@ export default function AdminPromosPage() {
                   </label>
 
                   <label className="text-sm">
-                    <span className="mb-1 block text-xs uppercase tracking-[0.12em] text-slate-500">ссылка кнопки</span>
+                    <span className="mb-1 block text-xs uppercase tracking-[0.12em] text-slate-500">cta href</span>
                     <input
                       value={assignment.cta_href || ""}
                       onChange={(event) => updateAssignment(assignment.slot_id, { cta_href: event.target.value })}
@@ -710,7 +566,7 @@ export default function AdminPromosPage() {
                     checked={assignment.enabled}
                     onChange={(event) => updateAssignment(assignment.slot_id, { enabled: event.target.checked })}
                   />
-                  Слот включён
+                  Slot enabled
                 </label>
               </div>
             );

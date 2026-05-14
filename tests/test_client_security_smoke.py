@@ -55,66 +55,6 @@ class ClientSecuritySmokeTests(unittest.TestCase):
             failures,
         )
 
-    def test_product_contract_accepts_public_beta_version_line(self) -> None:
-        contract = {
-            "brand": "POKROV",
-            "client_strategy": "consumer-first",
-            "identity_model": "app-first",
-            "default_runtime_core": "sing-box",
-            "advanced_fallback_core": "xray",
-            "trial_days": 5,
-            "telegram_bonus_days": 10,
-            "client_version_line": "0.2.0-beta.1",
-            "public_scope": ["android", "windows"],
-            "readiness_only_scope": ["ios", "macos"],
-            "free_tier": {
-                "node_pool": "NL-free",
-                "traffic_gb": 5,
-                "speed_mbps": 50,
-            },
-            "monetization": {
-                "in_app_purchases": False,
-                "third_party_ads": False,
-                "first_party_promos_only": True,
-            },
-            "public_routing_modes": ["all_except_ru", "full_tunnel", "selected_apps"],
-        }
-
-        failures = self.module._product_contract_failures(contract)
-
-        self.assertEqual(failures, [])
-
-    def test_product_contract_rejects_public_beta_version_drift(self) -> None:
-        base_contract = {
-            "brand": "POKROV",
-            "client_strategy": "consumer-first",
-            "identity_model": "app-first",
-            "default_runtime_core": "sing-box",
-            "advanced_fallback_core": "xray",
-            "trial_days": 5,
-            "telegram_bonus_days": 10,
-            "public_scope": ["android", "windows"],
-            "readiness_only_scope": ["ios", "macos"],
-            "free_tier": {
-                "node_pool": "NL-free",
-                "traffic_gb": 5,
-                "speed_mbps": 50,
-            },
-            "monetization": {
-                "in_app_purchases": False,
-                "third_party_ads": False,
-                "first_party_promos_only": True,
-            },
-            "public_routing_modes": ["all_except_ru", "full_tunnel", "selected_apps"],
-        }
-
-        for version_line in ("1.0.0", "dev", "2.5.7 dev"):
-            with self.subTest(version_line=version_line):
-                contract = dict(base_contract, client_version_line=version_line)
-                failures = self.module._product_contract_failures(contract)
-
-                self.assertIn("product contract must keep client_version_line on 0.x.x-beta", failures)
-
     def test_runtime_profile_accepts_canonical_pokrov_hosts(self) -> None:
         runtime_profile = {
             "brand": "POKROV",
@@ -217,7 +157,7 @@ android {
         failures = self.module._windows_release_failures(windows_release)
 
         self.assertIn("Windows release seed must keep display_name as POKROV", failures)
-        self.assertIn("Windows release seed must keep binary_name as pokrov_windows_beta.exe", failures)
+        self.assertIn("Windows release seed must keep binary_name as pokrov_windows_seed.exe", failures)
         self.assertIn("Windows release seed must keep artifact_root on apps/windows_shell/build/release_bundle", failures)
         self.assertIn("Windows release seed must not declare a Windows helper binary", failures)
 

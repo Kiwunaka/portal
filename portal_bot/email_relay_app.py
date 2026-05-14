@@ -64,7 +64,7 @@ def _configured() -> bool:
 
 def _secret_ok(header_secret: str, authorization: str) -> bool:
     if not RELAY_SECRET:
-        return False
+        return True
     if header_secret and hmac.compare_digest(header_secret, RELAY_SECRET):
         return True
     prefix = "bearer "
@@ -76,13 +76,6 @@ def _secret_ok(header_secret: str, authorization: str) -> bool:
 
 def _public_url(path: str, token: str) -> str:
     base = PUBLIC_APP_URL.rstrip("/") or "https://app.pokrov.space"
-    route_by_token = {
-        "email_token": "verify",
-        "email_reset_token": "recover",
-    }
-    route = route_by_token.get(str(path or "").strip(), "")
-    if route:
-        return f"{base}/{route}?token={quote(token)}"
     return f"{base}/?{path}={quote(token)}"
 
 
@@ -183,7 +176,7 @@ def _message_for(payload: EmailDeliveryIn) -> tuple[str, str, str]:
         body = (
             "Подтвердите email для входа в POKROV.\n\n"
             f"Код подтверждения:\n{token}\n\n"
-            f"Подтвердить email: {action_url}\n\n"
+            f"Открыть кабинет: {action_url}\n\n"
             "Если вы не запрашивали это письмо, просто проигнорируйте его.\n"
         )
         return (
@@ -194,7 +187,7 @@ def _message_for(payload: EmailDeliveryIn) -> tuple[str, str, str]:
                 intro="Введите этот код в окне входа или откройте кабинет по кнопке ниже.",
                 code_label="Код подтверждения",
                 code=token,
-                action_label="Подтвердить email",
+                action_label="Открыть кабинет",
                 action_url=action_url,
             ),
         )
@@ -205,7 +198,7 @@ def _message_for(payload: EmailDeliveryIn) -> tuple[str, str, str]:
         body = (
             "Вы запросили сброс пароля для POKROV.\n\n"
             f"Код сброса:\n{token}\n\n"
-            f"Восстановить доступ: {action_url}\n\n"
+            f"Открыть кабинет: {action_url}\n\n"
             "Если вы не запрашивали сброс, просто проигнорируйте это письмо.\n"
         )
         return (
@@ -216,7 +209,7 @@ def _message_for(payload: EmailDeliveryIn) -> tuple[str, str, str]:
                 intro="Введите этот код в окне восстановления доступа или откройте кабинет по кнопке ниже.",
                 code_label="Код сброса",
                 code=token,
-                action_label="Восстановить доступ",
+                action_label="Открыть кабинет",
                 action_url=action_url,
             ),
         )

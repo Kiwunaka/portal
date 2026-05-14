@@ -1,15 +1,15 @@
-# Мониторинг после запуска
+# Post-Release Monitoring
 
-Обновлено: 2026-05-07
+Last updated: 2026-04-26
 
-Если ограниченная бета будет объявлена позже, отдельно следите за этими сигналами:
+If a gated beta is announced later, monitor:
 
-- создание app-first сессий и выдача 5-дневного пробного доступа;
-- проверки и выдачи Telegram-бонуса +10 дней;
-- доступность `/api/client/apps` и ссылок на загрузку;
-- состояние заказов, вебхуков и повторных платежных событий;
-- объем обращений в поддержку и работу защищенных вложений;
-- свежесть метрик нод и предупреждения по каждой ноде;
-- доступность с текущего рабочего места, с `brain` и с RU-origin отдельно.
+- app-first session creation and 5-day trial issuance;
+- Telegram +10-day reward claims;
+- `/api/client/apps` download availability;
+- provider order and callback states;
+- support ticket volume and attachment handling;
+- node freshness and per-node alerts;
+- current-origin, brain-origin, and RU-origin reachability separately.
 
-Не повышайте статус до широкого публичного релиза только на основании проверки с текущего рабочего места.
+Do not upgrade to broad public release based on current-origin checks alone.

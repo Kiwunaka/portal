@@ -2,7 +2,6 @@
 
 export type AdminNavCategoryId =
   | "diagnostics"
-  | "release"
   | "people"
   | "access"
   | "payments"
@@ -34,13 +33,6 @@ export const ADMIN_NAV_CATEGORIES: AdminNavCategory[] = [
     icon: "monitoring",
     description: "Общая картина по сервису, метрикам и очередям.",
     primaryHint: "Начинайте отсюда, когда нужно быстро понять, где нужен разбор.",
-  },
-  {
-    id: "release",
-    label: "Релиз",
-    icon: "rocket_launch",
-    description: "Публичная бета, ссылки на сборки, платежные и внешние блокеры.",
-    primaryHint: "Проверяйте этот экран перед публикацией ссылок, деплоем и анонсом.",
   },
   {
     id: "people",
@@ -96,14 +88,6 @@ export const ADMIN_NAV_ITEMS: AdminNavItem[] = [
     match: (path) => path === "/admin" || path.startsWith("/admin/dashboard"),
   },
   {
-    href: "/admin/release",
-    label: "Релиз",
-    icon: "rocket_launch",
-    summary: "Решение по бета-ссылкам, оплате, email, метрикам и внешним подтверждениям.",
-    categoryId: "release",
-    match: (path) => path.startsWith("/admin/release"),
-  },
-  {
     href: "/admin/users",
     label: "Пользователи",
     icon: "manage_accounts",
@@ -137,9 +121,9 @@ export const ADMIN_NAV_ITEMS: AdminNavItem[] = [
   },
   {
     href: "/admin/payments",
-    label: "Платежный журнал",
+    label: "Payment ledger",
     icon: "receipt_long",
-    summary: "Заказы, callback-и провайдера, ручная проверка и заметки по сверке.",
+    summary: "Orders, provider callbacks, manual-review states, and reconciliation notes.",
     categoryId: "payments",
     match: (path) => path.startsWith("/admin/payments"),
   },

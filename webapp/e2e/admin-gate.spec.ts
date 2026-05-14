@@ -23,27 +23,18 @@ type AdminUserRowMock = {
 type MockOptions = {
   isAdmin: boolean;
   adminSummary?: unknown;
-  clientApps?: unknown;
-  emailAuthStatus?: unknown;
   userRows?: AdminUserRowMock[];
-  paymentProviders?: unknown;
   paymentOrders?: PaymentOrderMock[];
   metricsStatus?: unknown;
   nodeHealth?: unknown;
   networkRolloutConfig?: unknown;
   tickets?: TicketMock[];
-  ticketDetails?: Record<number, TicketMock>;
-  ticketUploadAuthHeaders?: string[];
-  giftCodes?: GiftCodeMock[];
 };
 
 type TicketMessageMock = {
   id: number;
   sender_role: "user" | "admin";
   body: string;
-  media_type?: string | null;
-  media_file_id?: string | null;
-  media_payload?: string | null;
   created_at?: string | null;
 };
 
@@ -80,33 +71,6 @@ type PaymentOrderMock = {
     processed_ok: boolean;
     created_at?: string | null;
   } | null;
-  fulfillment?: PaymentFulfillmentMock | null;
-};
-
-type PaymentFulfillmentMock = {
-  mode?: string | null;
-  status?: string | null;
-  buyer_email?: string | null;
-  access_key_present?: boolean;
-  access_key_preview?: string | null;
-  access_key_issued_at?: string | null;
-  email_delivery?: {
-    status?: string | null;
-    mode?: string | null;
-    http_status?: number | null;
-  } | null;
-  can_retry_email?: boolean;
-};
-
-type GiftCodeMock = {
-  code: string;
-  card_type: string;
-  days: number;
-  stars: number;
-  created_by: number;
-  created_at?: string | null;
-  redeemed_by?: number | null;
-  redeemed_at?: string | null;
 };
 
 function mockSessionUser(isAdmin: boolean) {
@@ -492,58 +456,6 @@ function mockMetricsStatus() {
   };
 }
 
-function mockClientApps() {
-  return {
-    android: {
-      play_url: "",
-      apk_url: "https://github.com/Kiwunaka/POKROV-app/releases/download/v0.2.0-beta.1/pokrov-android-universal.apk",
-      mirror_url: "",
-    },
-    windows: {
-      exe_url: "https://github.com/Kiwunaka/POKROV-app/releases/download/v0.2.0-beta.1/pokrov-windows-setup-x64.exe",
-      mirror_url: "",
-    },
-    docs_url: "https://pokrov.space/install/",
-    updated_at: "2030-01-01T00:00:00Z",
-  };
-}
-
-function mockEmailAuthStatus() {
-  return {
-    ok: true,
-    enabled: true,
-    public_enabled: true,
-    delivery_configured: true,
-    delivery_url_configured: true,
-    delivery_secret_configured: true,
-    debug_echo: false,
-    mode: "relay",
-    blocked_reasons: [],
-  };
-}
-
-function mockPaymentProviders() {
-  return {
-    ok: true,
-    providers: [
-      {
-        code: "lavatop",
-        label: "Lava.top",
-        accent: "#13a56b",
-        checkout_hint: "Lava.top checkout",
-        supports_bot: true,
-        supports_webapp: true,
-        supports_public: true,
-      },
-    ],
-    blocked: false,
-    blocked_reasons: [],
-    blocked_reason_texts: [],
-    checkout_mode: "account_session_first",
-    telegram_fallback_available: true,
-  };
-}
-
 function mockNodeHealth() {
   return {
     nodes: [
@@ -786,17 +698,12 @@ async function registerApiMocks(page: Page, opts: MockOptions): Promise<void> {
   const user = mockSessionUser(opts.isAdmin);
   const dashboard = mockDashboard();
   const adminSummary = opts.adminSummary ?? mockAdminSummary();
-  const clientApps = opts.clientApps ?? mockClientApps();
-  const emailAuthStatus = opts.emailAuthStatus ?? mockEmailAuthStatus();
-  const paymentProviders = opts.paymentProviders ?? mockPaymentProviders();
   const metricsStatus = opts.metricsStatus ?? mockMetricsStatus();
   const nodeHealth = opts.nodeHealth ?? mockNodeHealth();
   let networkRolloutConfig = cloneJson(opts.networkRolloutConfig ?? mockNetworkRolloutConfig());
   let userRows = [...(opts.userRows || mockAdminUsers().users)];
   let tickets = [...(opts.tickets || [makeTicket()])];
-  let ticketDetails = { ...(opts.ticketDetails || {}) };
   let paymentOrders = [...(opts.paymentOrders || [makePaymentOrder()])];
-  let giftCodes = [...(opts.giftCodes || [])];
 
   await page.route("**/api/**", async (route) => {
     const request = route.request();
@@ -811,34 +718,6 @@ async function registerApiMocks(page: Page, opts: MockOptions): Promise<void> {
 
     if (path === "/api/dashboard") return json(dashboard);
     if (path.startsWith("/api/user/")) return json(user);
-    if (path === "/api/client/apps") return json(clientApps);
-    if (path === "/api/tickets/uploads" && request.method() === "POST") {
-      const filename = request.headers()["x-upload-filename"] || "admin-reply.png";
-      const contentType = request.headers()["content-type"] || "image/png";
-      const size = Number((request.postDataBuffer() || Buffer.alloc(0)).length || 18);
-      opts.ticketUploadAuthHeaders?.push(request.headers().authorization || "");
-      return json({
-        ok: true,
-        attachment: {
-          media_type: "image",
-          media_file_id: "support/admin-reply.png",
-          media_payload: JSON.stringify({
-            url: "/uploads/support/admin-reply.png",
-            name: filename,
-            content_type: contentType,
-            size,
-          }),
-        },
-        attachment_payload: {
-          url: "/uploads/support/admin-reply.png",
-          name: filename,
-          content_type: contentType,
-          size,
-        },
-      });
-    }
-    if (path === "/api/auth/email/status") return json(emailAuthStatus);
-    if (path === "/api/payments/providers") return json(paymentProviders);
 
     if (path === "/api/admin/summary") return json(adminSummary);
     if (path === "/api/admin/metrics/status") return json(metricsStatus);
@@ -911,33 +790,6 @@ async function registerApiMocks(page: Page, opts: MockOptions): Promise<void> {
       paymentOrders = paymentOrders.map((order) => (order.provider === provider && order.order_id === orderId ? updated : order));
       return json({ ok: true, order: updated });
     }
-    if (path.startsWith("/api/admin/payments/orders/") && path.endsWith("/resend-access-key-email") && request.method() === "POST") {
-      const match = path.match(/^\/api\/admin\/payments\/orders\/([^/]+)\/([^/]+)\/resend-access-key-email$/);
-      const provider = decodeURIComponent(String(match?.[1] || ""));
-      const orderId = decodeURIComponent(String(match?.[2] || ""));
-      const payload = JSON.parse(request.postData() || "{}");
-      const note = String(payload.note || "").trim();
-      if (note.length < 8) return json({ detail: "note must be at least 8 characters" }, 422);
-      const row = paymentOrders.find((order) => order.provider === provider && order.order_id === orderId);
-      if (!row) return json({ detail: "Order not found" }, 404);
-      if (row.status !== "paid") return json({ detail: "Only paid orders can resend access-key email" }, 409);
-      const fulfillment = {
-        ...(row.fulfillment || {}),
-        mode: "access_key_email",
-        status: "email_sent",
-        access_key_present: row.fulfillment?.access_key_present ?? true,
-        access_key_preview: row.fulfillment?.access_key_preview || "...1234",
-        email_delivery: {
-          status: "sent",
-          mode: "webhook",
-          http_status: 202,
-        },
-        can_retry_email: true,
-      };
-      const updated = { ...row, fulfillment };
-      paymentOrders = paymentOrders.map((order) => (order.provider === provider && order.order_id === orderId ? updated : order));
-      return json({ ok: true, order: updated, delivery: { status: "sent" } });
-    }
     if (path === "/api/admin/tickets") {
       const statusFilter = String(url.searchParams.get("status") || "").trim();
       return json({ tickets: statusFilter ? tickets.filter((ticket) => ticket.status === statusFilter) : tickets });
@@ -953,7 +805,7 @@ async function registerApiMocks(page: Page, opts: MockOptions): Promise<void> {
       }
 
       if (!action && request.method() === "GET") {
-        return json({ ticket: ticketDetails[ticketId] || row });
+        return json({ ticket: row });
       }
 
       if (action === "reply" && request.method() === "POST") {
@@ -963,9 +815,6 @@ async function registerApiMocks(page: Page, opts: MockOptions): Promise<void> {
           id: row.messages.length + 1,
           sender_role: "admin",
           body,
-          media_type: payload.media_type ?? null,
-          media_file_id: payload.media_file_id ?? null,
-          media_payload: payload.media_payload ?? null,
           created_at: "2030-01-01T00:05:00",
         };
         const updated: TicketMock = {
@@ -975,7 +824,6 @@ async function registerApiMocks(page: Page, opts: MockOptions): Promise<void> {
           messages: [...row.messages, nextMessage],
         };
         tickets = tickets.map((ticket) => (ticket.id === ticketId ? updated : ticket));
-        ticketDetails = { ...ticketDetails, [ticketId]: updated };
         return json({ ticket: updated });
       }
 
@@ -989,65 +837,13 @@ async function registerApiMocks(page: Page, opts: MockOptions): Promise<void> {
           updated_at: "2030-01-01T00:03:00",
         };
         tickets = tickets.map((ticket) => (ticket.id === ticketId ? updated : ticket));
-        ticketDetails = { ...ticketDetails, [ticketId]: { ...(ticketDetails[ticketId] || row), ...updated } };
         return json({ ticket: updated });
       }
 
       return json({ ticket: row });
     }
     if (path === "/api/admin/promos") return json({ promos: [] });
-    if (path === "/api/admin/promo-slots") {
-      const payload = {
-        promo_slots: {
-          version: "e2e",
-          mode: "whitelist_slots",
-          remote_available: true,
-          fallback_behavior: "contextual_only_when_remote_unavailable",
-          assignments: [],
-          catalog: {
-            version: "e2e",
-            mode: "whitelist_slots",
-            fallback_behavior: "contextual_only_when_remote_unavailable",
-            slots: [
-              {
-                id: "webapp.subscription.contextual",
-                surface: "webapp",
-                contexts: ["free_monthly"],
-                allowed_content_ids: ["redeem_activation_key"],
-              },
-            ],
-            content_catalog: [
-              {
-                id: "redeem_activation_key",
-                kind: "access_key",
-                goal: "redeem_activation_key",
-                default_enabled: true,
-              },
-            ],
-          },
-        },
-      };
-      return json(payload);
-    }
-    if (path === "/api/admin/gift-codes") {
-      if (request.method() === "POST") {
-        const payload = JSON.parse(request.postData() || "{}");
-        const cardType = String(payload.card_type || "standard");
-        const next: GiftCodeMock = {
-          code: `POKROV-${cardType.toUpperCase()}-2030`,
-          card_type: cardType,
-          days: cardType === "premium" ? 90 : cardType === "mini" ? 7 : 30,
-          stars: cardType === "premium" ? 699 : cardType === "mini" ? 59 : 249,
-          created_by: 1001,
-          created_at: "2030-01-02T00:00:00",
-          redeemed_by: null,
-          redeemed_at: null,
-        };
-        giftCodes = [next, ...giftCodes];
-        return json({ ok: true, gift_code: next });
-      }
-      return json({ gift_codes: giftCodes });
-    }
+    if (path === "/api/admin/gift-codes") return json({ gift_codes: [] });
     if (path === "/api/admin/plans") return json({ plans: [] });
     if (path === "/api/admin/live-updates") return json({ updates: [] });
     if (path === "/api/admin/start-links") return json({ start_links: [] });
@@ -1090,7 +886,6 @@ async function openRoute(page: Page, href: string): Promise<void> {
 async function waitForPortalShell(page: Page): Promise<void> {
   const loadingHeadings = [
     page.getByRole("heading", { name: "Подтягиваем данные кабинета" }),
-    page.getByRole("heading", { name: "Открываем кабинет" }),
     page.getByRole("heading", { name: "Открываем POKROV Admin..." }),
   ];
 
@@ -1113,7 +908,6 @@ test.describe("Admin gate", () => {
 
     const sections = [
       "admin/dashboard/",
-      "admin/release/",
       "admin/users/",
       "admin/network/",
       "admin/nodes/",
@@ -1131,34 +925,6 @@ test.describe("Admin gate", () => {
       await expect(page.getByRole("navigation", { name: "Admin sections" })).toBeVisible();
       await expect(page.locator("h1, h2").first()).toBeVisible();
     }
-  });
-
-  test("lets admin operate legacy gift cards from promos", async ({ page }) => {
-    await registerApiMocks(page, {
-      isAdmin: true,
-      giftCodes: [
-        {
-          code: "POKROV-GIFT-2030",
-          card_type: "standard",
-          days: 30,
-          stars: 249,
-          created_by: 9999,
-          created_at: "2030-01-01T00:00:00",
-          redeemed_by: null,
-          redeemed_at: null,
-        },
-      ],
-    });
-
-    await openRoute(page, "admin/promos/");
-
-    await expect(page.getByRole("heading", { name: "Старые подарочные карты" })).toBeVisible();
-    await expect(page.locator("body")).toContainText("POKROV-GIFT-2030");
-    await page.getByLabel("Тип подарочной карты").selectOption("premium");
-    await page.getByRole("button", { name: "Создать подарочную карту" }).click();
-
-    await expect(page.locator("body")).toContainText("POKROV-PREMIUM-2030");
-    await expect(page.locator("body")).toContainText("90 дн.");
   });
 
   test("keeps an explicit path back to the cabinet from admin", async ({ page }) => {
@@ -1182,181 +948,9 @@ test.describe("Admin gate", () => {
       page.getByText("Веб-админка — основной операторский интерфейс. Telegram используйте только для быстрых fallback-действий.").first(),
     ).toBeVisible();
 
-    for (const category of ["Диагностика", "Релиз", "Пользователи", "Доступ", "Оплата", "Сеть", "Сообщения", "Обращения"]) {
+    for (const category of ["Диагностика", "Пользователи", "Доступ", "Оплата", "Сеть", "Сообщения", "Обращения"]) {
       await expect(page.getByRole("heading", { name: category, level: 2 }).first()).toBeVisible();
     }
-  });
-
-  test("shows release cockpit no-go state with runtime gates and external blockers", async ({ page }) => {
-    await registerApiMocks(page, { isAdmin: true });
-
-    await openRoute(page, "admin/release/");
-
-    await expect(page.getByRole("heading", { name: "Публичная бета: NO-GO" })).toBeVisible();
-    await expect(page.getByText("локальные блокеры: 2")).toBeVisible();
-    await expect(page.getByText(/внешние блокеры:/)).toBeVisible();
-    await expect(page.getByText("Runtime-ссылки требуют GO-аудит", { exact: true })).toBeVisible();
-    await expect(page.getByText("Runtime-ссылки не синкать")).not.toBeVisible();
-    await expect(page.getByRole("heading", { name: "Что нужно от оператора" })).toBeVisible();
-    await expect(page.getByRole("button", { name: "Скопировать Runtime APP-ссылки" })).toBeVisible();
-    await expect(page.getByRole("button", { name: "Скопировать Email-доставка" })).toBeVisible();
-    await expect(page.getByRole("button", { name: "Скопировать Lava.top" })).toBeVisible();
-    await expect(page.getByRole("button", { name: "Скопировать Telegram-кнопки" })).toBeVisible();
-    await page.getByRole("button", { name: "Скопировать Runtime APP-ссылки" }).click();
-    await expect(page.getByRole("button", { name: "Скопировать Runtime APP-ссылки" })).toContainText("Скопировано");
-    await expect(page.getByText("Runtime APP-ссылки").first()).toBeVisible();
-    await expect(page.getByText("RUNTIME LINK SYNC AUDIT BEFORE ANNOUNCEMENT")).toBeVisible();
-    await expect(page.getByText(/ROLL BACK RUNTIME APP_\* LINKS/)).toBeVisible();
-    await expect(page.getByText("Email-доставка", { exact: true })).toBeVisible();
-    await expect(page.getByRole("article").filter({ hasText: "Email-доставка" }).getByText(/--email-probe-to <probe-email>/)).toBeVisible();
-    await expect(page.getByText("Lava.top", { exact: true })).toBeVisible();
-    await expect(page.getByRole("article").filter({ hasText: "Lava.top" }).getByText(/--lavatop-probe-email <buyer-email>/)).toBeVisible();
-    const telegramButtonCard = page.getByRole("article").filter({ hasText: "Telegram-кнопки" });
-    await expect(telegramButtonCard.getByText(/TG_BTN_EMOJI_PRIMARY_ID/)).toBeVisible();
-    await expect(telegramButtonCard).toContainText("Material icon packs");
-    await expect(page.getByRole("heading", { name: "каталог найден; checkout закрыт" })).toBeVisible();
-    await expect(page.getByText("Агрегированный гейт оплаты")).toBeVisible();
-    await expect(page.getByText(/Последний retained paid-checkout evidence/)).toBeVisible();
-    await expect(page.getByText("Машинный launch decision")).toBeVisible();
-    await expect(page.getByText(/Статус из release-status\.json/)).toBeVisible();
-    await expect(page.getByText(/public-beta-launch-decision-2026-05-09\.json/)).toBeVisible();
-    await expect(page.getByText(/safe_to_publish_public_beta=false/)).toBeVisible();
-    await expect(page.getByText("Brain-origin static deploy", { exact: true })).toBeVisible();
-    await expect(page.getByText(/brain-origin-verify-2026-05-09\.md/)).toBeVisible();
-    await expect(page.getByText(/Fresh brain-origin static deploy is green while runtime links, paid checkout, and public announcement remain blocked/)).toBeVisible();
-    await expect(page.getByText(/GO for public beta publication/)).toBeVisible();
-    await expect(page.getByText(/runtime APP_ANDROID_APK_URL is not synced/)).toBeVisible();
-    await expect(page.getByText(/runtime APP_WINDOWS_EXE_URL is not synced/)).toBeVisible();
-    await expect(page.getByText(/EMAIL_PROBE_TO/).first()).toBeVisible();
-    await expect(page.getByText(/LAVATOP_PROVIDER_ACCEPTANCE_CONFIRMED=true/)).toBeVisible();
-    await expect(page.getByText(/paid_access_key_email_delivery evidence/)).toBeVisible();
-    await expect(page.getByText("Brain-local email/Lava.top probe")).toBeVisible();
-    await expect(page.getByText(/email live delivery proof/)).toBeVisible();
-    await expect(page.getByText(/Lava.top live invoice proof/)).toBeVisible();
-    await expect(page.getByText(/Последний retained brain-local probe дошел/)).toBeVisible();
-    await expect(page.getByText(/brain-post-deploy-live-probe-<YYYY-MM-DD>\.json/).first()).toBeVisible();
-    await expect(page.getByText(/email_probe_to.*lavatop_probe_email/)).toBeVisible();
-    await expect(page.getByText(/явного разрешения на runtime sync/).first()).toBeVisible();
-    await expect(page.getByText(/runtime APP_\* links are still empty/)).not.toBeVisible();
-    await expect(page.getByText("GitHub Releases можно описывать только как предварительные артефакты для проверки, пока ссылки загрузки не авторизованы, не синхронизированы и не прошли живую контрольную проверку.")).toBeVisible();
-    await expect(page.getByText("Telegram Stars")).toBeVisible();
-    await expect(page.getByText("выключено по политике")).toBeVisible();
-    await expect(page.getByText("Физический аудит Android-сборки")).toBeVisible();
-    await expect(page.getByRole("heading", { name: "OPERATOR_ATTESTED" })).toBeVisible();
-    await expect(page.getByRole("heading", { name: "PUBLISHED_PRERELEASE_STAGING" })).toBeVisible();
-    await expect(page.getByText("Доступность Telegram из RU-origin", { exact: true })).toBeVisible();
-    await expect(page.getByRole("heading", { name: "SKIPPED_BY_OPERATOR" })).toBeVisible();
-    await expect(page.getByText("RU-origin проверка пропущена оператором")).toBeVisible();
-    await expect(page.getByText("POKROV готовит ограниченную бета-проверку для Android и Windows вне магазинов.")).toBeVisible();
-    await expect(page.getByText("GitHub Releases можно описывать только как предварительные артефакты для проверки, пока ссылки загрузки не авторизованы, не синхронизированы и не прошли живую контрольную проверку.")).toBeVisible();
-    await expect(page.getByText("Если внешняя проверка показывает SKIPPED_BY_OPERATOR по RU-origin, публично говорим, что RU-origin не проверялся для этой бета-волны.")).toBeVisible();
-    await expect(page.getByText("Публичная бета уже запущена.")).toBeVisible();
-    await expect(page.getByText("Email-доставка уже доказана живой проверкой почтового ящика до появления подтверждения EMAIL_PROBE_TO.")).toBeVisible();
-  });
-
-  test("uses static release-status artifact for retained launch decision details", async ({ page }) => {
-    await registerApiMocks(page, { isAdmin: true });
-    await page.route("**/release-status.json", (route) =>
-      route.fulfill({
-        status: 200,
-        contentType: "application/json",
-        body: JSON.stringify({
-          schema_version: 1,
-          source_artifact: "public-beta-launch-decision-2099-01-01.json",
-          verdict: "NO_GO",
-          classification: "BLOCKED_BY_ACCESS",
-          safe_to_publish_public_beta: false,
-          checks: [
-            {
-              name: "machine-launch-decision",
-              status: "BLOCKED_BY_ACCESS",
-              missing: ["custom_live_probe"],
-              note: "Decision artifact 2099 says custom probe missing.",
-            },
-            {
-              name: "brain_origin_static_deploy_verify",
-              status: "PASS",
-              missing: [],
-              source: "docs/audit-artifacts/brain-origin-verify-2099-01-01.md",
-              note: "Static deploy 2099 is green while runtime links remain blocked.",
-            },
-          ],
-        }),
-      }),
-    );
-
-    await openRoute(page, "admin/release/");
-
-    await expect(page.getByText("public-beta-launch-decision-2099-01-01.json")).toBeVisible();
-    await expect(page.getByText(/custom_live_probe/)).toBeVisible();
-    await expect(page.getByText(/Decision artifact 2099 says custom probe missing/)).toBeVisible();
-    await expect(page.getByText(/brain-origin-verify-2099-01-01\.md/)).toBeVisible();
-    await expect(page.getByText(/Static deploy 2099 is green while runtime links remain blocked/)).toBeVisible();
-  });
-
-  test("keeps release cockpit app gate blocked for Play or non-GitHub app links", async ({ page }) => {
-    await registerApiMocks(page, {
-      isAdmin: true,
-      clientApps: {
-        ...mockClientApps(),
-        android: {
-          play_url: "https://play.google.com/store/apps/details?id=space.pokrov",
-          apk_url: "https://downloads.example.com/pokrov.apk",
-          mirror_url: "",
-        },
-        windows: {
-          exe_url: "https://connect.pokrov.space/pokrov.exe",
-          mirror_url: "",
-        },
-        docs_url: "https://pokrov.space/download/",
-      },
-    });
-
-    await openRoute(page, "admin/release/");
-
-    await expect(page.getByText("локальные блокеры: 2")).toBeVisible();
-    await expect(page.getByText("RUNTIME LINK SYNC GO FOR APP-DOWNLOAD SMOKE")).toBeVisible();
-    await expect(page.getByText(/Нужны GitHub Releases APK\/EXE/)).toBeVisible();
-    await expect(page.getByText("Android Play URL должен оставаться пустым для беты вне магазинов.")).toBeVisible();
-    await expect(page.getByText("Windows ссылка должна быть GitHub Releases .exe.")).toBeVisible();
-  });
-
-  test("keeps release cockpit email gate blocked when public email mode is disabled", async ({ page }) => {
-    await registerApiMocks(page, {
-      isAdmin: true,
-      emailAuthStatus: {
-        ...mockEmailAuthStatus(),
-        public_enabled: false,
-        blocked_reasons: ["public_email_disabled"],
-      },
-    });
-
-    await openRoute(page, "admin/release/");
-
-    await expect(page.getByText("public_email_disabled").first()).toBeVisible();
-  });
-
-  test("shows readable blocked payment reason in release cockpit metric strip", async ({ page }) => {
-    await registerApiMocks(page, {
-      isAdmin: true,
-      paymentProviders: {
-        ...mockPaymentProviders(),
-        ok: false,
-        providers: [],
-        blocked: true,
-        blocked_reasons: ["paid_checkout_launch_evidence_missing"],
-        blocked_reason_texts: [
-          "Оплата пока закрыта: мы включим продление после финальной проверки Lava.top и доставки ключей на email.",
-        ],
-      },
-    });
-
-    await openRoute(page, "admin/release/");
-
-    await expect(
-      page.getByText("Оплата пока закрыта: мы включим продление после финальной проверки Lava.top и доставки ключей на email.").first(),
-    ).toBeVisible();
-    await expect(page.getByText("paid_checkout_launch_evidence_missing")).not.toBeVisible();
   });
 
   test("keeps admin dashboard stable when summary omits optional blocks", async ({ page }) => {
@@ -1544,7 +1138,7 @@ test.describe("Admin gate", () => {
     });
 
     await openRoute(page, "admin/users/");
-    await expect(page.getByText("Подтягиваем данные кабинета")).not.toBeVisible();
+    await expect(page.getByText("РџРѕРґС‚СЏРіРёРІР°РµРј РґР°РЅРЅС‹Рµ РєР°Р±РёРЅРµС‚Р°")).not.toBeVisible();
     await expect(page.locator("tbody tr").first()).toContainText("QA Admin");
     await page.locator("tbody tr").first().click();
     await expect(page.getByText("Observer-lite")).toBeVisible();
@@ -1841,137 +1435,6 @@ test.describe("Admin gate", () => {
     await expect(statusButton).toBeVisible();
   });
 
-  test("loads the full admin ticket thread after selecting from the queue", async ({ page }) => {
-    await registerApiMocks(page, {
-      isAdmin: true,
-      tickets: [
-        makeTicket({
-          id: 9,
-          subject: "Плавающая ошибка подключения",
-          last_message_preview: "Последнее короткое уточнение.",
-          messages: [
-            makeTicketMessage({
-              id: 2,
-              body: "Последнее короткое уточнение.",
-            }),
-          ],
-        }),
-      ],
-      ticketDetails: {
-        9: makeTicket({
-          id: 9,
-          subject: "Плавающая ошибка подключения",
-          messages: [
-            makeTicketMessage({
-              id: 1,
-              body: "Первое сообщение с важным контекстом.",
-            }),
-            makeTicketMessage({
-              id: 2,
-              body: "Последнее короткое уточнение.",
-            }),
-          ],
-        }),
-      },
-    });
-
-    await openRoute(page, "admin/tickets/");
-
-    await expect(page.getByText("Первое сообщение с важным контекстом.")).toBeVisible();
-    await expect(page.getByText("Последнее короткое уточнение.").last()).toBeVisible();
-  });
-
-  test("lets admin open protected support attachments from ticket messages", async ({ page }) => {
-    const attachmentRequests: string[] = [];
-    await page.route("**/uploads/support/admin-screen.png", async (route) => {
-      attachmentRequests.push(route.request().headers().authorization || "");
-      return route.fulfill({
-        status: 200,
-        contentType: "image/png",
-        body: Buffer.from("admin-protected-image"),
-      });
-    });
-
-    await registerApiMocks(page, {
-      isAdmin: true,
-      tickets: [
-        makeTicket({
-          id: 8,
-          subject: "Нужен скриншот ошибки",
-          messages: [
-            makeTicketMessage({
-              id: 1,
-              sender_role: "user",
-              body: "Прикладываю экран с ошибкой.",
-              media_type: "image",
-              media_file_id: "support/admin-screen.png",
-              media_payload: JSON.stringify({
-                url: "/uploads/support/admin-screen.png",
-                name: "admin-screen.png",
-                content_type: "image/png",
-                size: 21,
-              }),
-            }),
-          ],
-        }),
-      ],
-    });
-
-    await openRoute(page, "admin/tickets/");
-
-    await expect(page.locator("img[alt='admin-screen.png']")).toBeVisible();
-    await expect.poll(async () => attachmentRequests.length).toBeGreaterThan(0);
-    expect(attachmentRequests[0]).toBe("Bearer e2e_mock_token");
-    await expect(page.locator("img[src*='/uploads/support/']")).toHaveCount(0);
-    await expect(page.locator("img[src^='blob:']")).toHaveCount(1);
-  });
-
-  test("lets admin attach a file when replying to a support ticket", async ({ page }) => {
-    const ticketUploadAuthHeaders: string[] = [];
-    const attachmentFetchAuthHeaders: string[] = [];
-    await page.route("**/uploads/support/admin-reply.png", async (route) => {
-      attachmentFetchAuthHeaders.push(route.request().headers().authorization || "");
-      return route.fulfill({
-        status: 200,
-        contentType: "image/png",
-        body: Buffer.from("admin-reply-image"),
-      });
-    });
-
-    await registerApiMocks(page, {
-      isAdmin: true,
-      ticketUploadAuthHeaders,
-      tickets: [
-        makeTicket({
-          id: 10,
-          subject: "Нужен файл от поддержки",
-          messages: [
-            makeTicketMessage({
-              id: 1,
-              body: "Пришлите, пожалуйста, пример.",
-            }),
-          ],
-        }),
-      ],
-    });
-
-    await openRoute(page, "admin/tickets/");
-
-    await page.getByPlaceholder("Напишите ответ пользователю простыми словами").fill("Прикладываю пример для проверки.");
-    await page.getByLabel("Добавить вложение к ответу").setInputFiles({
-      name: "admin-reply.png",
-      mimeType: "image/png",
-      buffer: Buffer.from("admin-reply-image"),
-    });
-    await page.getByRole("button", { name: "Отправить" }).click();
-
-    await expect(page.locator(".chat-bubble-admin").getByText("Прикладываю пример для проверки.")).toBeVisible();
-    await expect(page.locator("img[alt='admin-reply.png']")).toBeVisible();
-    expect(ticketUploadAuthHeaders[0]).toBe("Bearer e2e_mock_token");
-    await expect.poll(async () => attachmentFetchAuthHeaders.length).toBeGreaterThan(0);
-    expect(attachmentFetchAuthHeaders[0]).toBe("Bearer e2e_mock_token");
-  });
-
   test("shows payment ledger and requires an audit note for manual reconciliation", async ({ page }) => {
     await registerApiMocks(page, {
       isAdmin: true,
@@ -1991,64 +1454,19 @@ test.describe("Admin gate", () => {
     });
 
     await openRoute(page, "admin/payments/");
-    await expect(page.getByRole("heading", { name: "Платежный журнал" }).first()).toBeVisible();
+    await expect(page.getByRole("heading", { name: /Payment ledger/i }).first()).toBeVisible();
     const reviewOrderRow = page.getByRole("row").filter({ hasText: "order-review-2403" });
     await expect(reviewOrderRow).toBeVisible();
-    await expect(reviewOrderRow.getByText("ручная проверка")).toBeVisible();
+    await expect(reviewOrderRow.getByText("manual_review")).toBeVisible();
     await expect(reviewOrderRow.getByText("tx-review-2403")).toBeVisible();
     await expect(page.getByText(/raw-provider-token/i)).not.toBeVisible();
 
-    await page.getByRole("button", { name: "Сверить" }).first().click();
-    await page.getByRole("button", { name: "Сохранить сверку" }).click();
-    await expect(page.getByText("Для ручной сверки нужна аудиторская заметка.")).toBeVisible();
+    await page.getByRole("button", { name: /Reconcile/i }).first().click();
+    await page.getByRole("button", { name: /Save reconciliation/i }).click();
+    await expect(page.getByText(/Audit note is required/i)).toBeVisible();
 
-    await page.getByPlaceholder(/Что видно в кабинете провайдера/).fill("Provider dashboard confirms paid result; no automatic access change.");
-    await page.getByRole("button", { name: "Сохранить сверку" }).click();
-    await expect(page.getByText("Заметка сверки сохранена. Доступ автоматически не менялся.")).toBeVisible();
-  });
-
-  test("shows access-key email fulfillment and resends with an audit note", async ({ page }) => {
-    await registerApiMocks(page, {
-      isAdmin: true,
-      paymentOrders: [
-        makePaymentOrder({
-          order_id: "lava-paid-key-2403",
-          provider: "lavatop",
-          status: "paid",
-          paid_at: "2030-01-01T00:04:00",
-          fulfillment: {
-            mode: "access_key_email",
-            status: "email_delivery_error",
-            buyer_email: "buyer@pokrov.test",
-            access_key_present: true,
-            access_key_preview: "...1234",
-            email_delivery: {
-              status: "delivery_error",
-              mode: "webhook",
-              http_status: 502,
-            },
-            can_retry_email: true,
-          },
-        }),
-      ],
-    });
-
-    await openRoute(page, "admin/payments/");
-    const paidOrderRow = page.getByRole("row").filter({ hasText: "lava-paid-key-2403" });
-    await expect(paidOrderRow).toBeVisible();
-    await expect(paidOrderRow.getByText("email_delivery_error")).toBeVisible();
-    await expect(paidOrderRow.getByText("buyer@pokrov.test")).toBeVisible();
-    await expect(paidOrderRow.getByText("...1234")).toBeVisible();
-    await expect(page.getByText(/POKROV-TEST/i)).not.toBeVisible();
-
-    await paidOrderRow.getByRole("button", { name: "Отправить email снова" }).click();
-    await page.getByRole("button", { name: "Отправить ключ на email" }).click();
-    await expect(page.getByText("Аудиторская заметка должна быть не короче 8 символов.")).toBeVisible();
-
-    await page.getByPlaceholder(/Почему повторная отправка безопасна/).fill("Support ticket confirms missing email after paid Lava.top order.");
-    await page.getByRole("button", { name: "Отправить ключ на email" }).click();
-    await expect(page.getByText("Повторная отправка ключа на email записана: sent.")).toBeVisible();
-    await expect(paidOrderRow.getByText("email_sent")).toBeVisible();
-    await expect(paidOrderRow.getByText("sent через webhook")).toBeVisible();
+    await page.getByPlaceholder(/Provider dashboard/i).fill("Provider dashboard confirms paid result; no automatic access change.");
+    await page.getByRole("button", { name: /Save reconciliation/i }).click();
+    await expect(page.getByText(/Reconciliation note saved/i)).toBeVisible();
   });
 });

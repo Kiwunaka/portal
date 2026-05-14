@@ -14,14 +14,6 @@ def _offer_id(plan_code: str) -> str:
     return (os.getenv(f"LAVATOP_OFFER_ID_{suffix}") or os.getenv("LAVATOP_OFFER_ID") or "").strip()
 
 
-def _redacted_response(status: int, body: bytes) -> dict[str, object]:
-    return {
-        "status": int(status),
-        "body_redacted": True,
-        "body_bytes": len(body or b""),
-    }
-
-
 def main() -> int:
     parser = argparse.ArgumentParser(description="Create or dry-run a Lava.top invoice request.")
     parser.add_argument("--plan-code", default="start_99")
@@ -52,7 +44,6 @@ def main() -> int:
 
     if not args.live:
         safe_payload = dict(payload)
-        safe_payload["email"] = "configured" if str(args.email or "").strip() else "missing"
         safe_payload["offerId"] = "configured" if offer_id else "missing"
         print(json.dumps({"dry_run": True, "api_key_configured": bool(api_key), "payload": safe_payload}, ensure_ascii=False, indent=2))
         return 0
@@ -68,12 +59,12 @@ def main() -> int:
     )
     try:
         with urllib.request.urlopen(request, timeout=30) as response:
-            body = response.read()
-            print(json.dumps(_redacted_response(response.status, body), ensure_ascii=False, indent=2))
+            body = response.read().decode("utf-8", errors="replace")
+            print(json.dumps({"status": response.status, "body": body[:800]}, ensure_ascii=False, indent=2))
             return 0 if response.status < 400 else 1
     except urllib.error.HTTPError as exc:
-        body = exc.read()
-        print(json.dumps(_redacted_response(exc.code, body), ensure_ascii=False, indent=2), file=sys.stderr)
+        body = exc.read().decode("utf-8", errors="replace")
+        print(json.dumps({"status": exc.code, "body": body[:800]}, ensure_ascii=False, indent=2), file=sys.stderr)
         return 1
 
 
