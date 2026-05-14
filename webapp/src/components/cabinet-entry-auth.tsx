@@ -12,21 +12,13 @@ import {
   startEmailRecovery,
   verifyEmailToken,
 } from "@/lib/api";
+import { isEmailAuthPublicReady } from "@/lib/email-auth-readiness";
 import { getPortalPublicConfig } from "@/lib/portal";
 import { userFacingErrorMessage } from "@/lib/public-error-messages";
 import { usePortalSession } from "@/lib/session";
 import { useEffect, useState, type FormEvent } from "react";
 
 const config = getPortalPublicConfig(process.env as Record<string, string | undefined>);
-const isEmailPublicReady = (payload: Awaited<ReturnType<typeof getEmailAuthStatus>>): boolean =>
-  Boolean(
-    payload.enabled &&
-      payload.public_enabled &&
-      payload.delivery_configured &&
-      payload.delivery_secret_configured &&
-      !payload.debug_echo,
-  );
-
 const EMAIL_MODE_LABELS = {
   login: "Войти",
   register: "Создать аккаунт",
@@ -55,7 +47,7 @@ export default function CabinetEntryAuth({ siteUrl }: { siteUrl: string }) {
     let cancelled = false;
     void getEmailAuthStatus()
       .then((payload) => {
-        if (!cancelled) setEmailReady(isEmailPublicReady(payload));
+        if (!cancelled) setEmailReady(isEmailAuthPublicReady(payload));
       })
       .catch(() => {
         if (!cancelled) setEmailReady(false);

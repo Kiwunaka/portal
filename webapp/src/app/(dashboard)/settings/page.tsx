@@ -1,11 +1,19 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type FormEvent } from "react";
 
 import AppRouteLink from "@/components/app-route-link";
 import { CabinetCardGrid, CabinetHero, CabinetList, CabinetRoute, CabinetSection } from "@/components/cabinet/surface";
 import { getDeviceLimit, resolvePlanLabel, resolveTrafficStatusText } from "@/lib/access-policy";
-import { checkChannelSubscriberStatus, claimChannelBonus, getEmailAuthStatus } from "@/lib/api";
+import {
+  checkChannelSubscriberStatus,
+  claimChannelBonus,
+  getEmailAuthStatus,
+  registerByEmail,
+  setWebSessionToken,
+  verifyEmailToken,
+} from "@/lib/api";
+import { isEmailAuthPublicReady } from "@/lib/email-auth-readiness";
 import { userFacingErrorMessage } from "@/lib/public-error-messages";
 import { usePortalSession } from "@/lib/session";
 
@@ -36,22 +44,20 @@ type BonusCheckState = {
   message: string;
 };
 
-const isEmailPublicReady = (payload: Awaited<ReturnType<typeof getEmailAuthStatus>>): boolean =>
-  Boolean(
-    payload.enabled &&
-      payload.public_enabled &&
-      payload.delivery_configured &&
-      payload.delivery_secret_configured &&
-      !payload.debug_echo,
-  );
-
 export default function SettingsPage() {
-  const { user, dash } = usePortalSession();
+  const { user, dash, refresh } = usePortalSession();
   const [bonusCheck, setBonusCheck] = useState<BonusCheckState | null>(null);
   const [bonusMessage, setBonusMessage] = useState("");
   const [bonusError, setBonusError] = useState("");
   const [bonusBusy, setBonusBusy] = useState<"check" | "claim" | "">("");
   const [emailReady, setEmailReady] = useState(false);
+  const [emailLinkEmail, setEmailLinkEmail] = useState("");
+  const [emailLinkName, setEmailLinkName] = useState("");
+  const [emailLinkPassword, setEmailLinkPassword] = useState("");
+  const [emailLinkToken, setEmailLinkToken] = useState("");
+  const [emailLinkBusy, setEmailLinkBusy] = useState<"request" | "verify" | "">("");
+  const [emailLinkMessage, setEmailLinkMessage] = useState("");
+  const [emailLinkError, setEmailLinkError] = useState("");
 
   const linked = user?.linked_identities || dash?.linked_identities || null;
   const telegramName = linked?.telegram?.username ? `@${linked.telegram.username}` : profileLabel(user?.username, user?.tg_id);
@@ -63,12 +69,13 @@ export default function SettingsPage() {
   const channelBonusClaimedAt = user?.bonuses?.channel_bonus?.claimed_at || null;
   const channelBonusReady = Boolean(user?.bonuses?.channel_bonus?.can_claim);
   const canClaimBonus = !channelBonusClaimedAt && (channelBonusReady || Boolean(bonusCheck?.subscriber && !bonusCheck.alreadyClaimed));
+  const canLinkEmail = Boolean(emailReady && !linkedEmail);
 
   useEffect(() => {
     let cancelled = false;
     void getEmailAuthStatus()
       .then((payload) => {
-        if (!cancelled) setEmailReady(isEmailPublicReady(payload));
+        if (!cancelled) setEmailReady(isEmailAuthPublicReady(payload));
       })
       .catch(() => {
         if (!cancelled) setEmailReady(false);
@@ -97,12 +104,16 @@ export default function SettingsPage() {
       body: linkedEmail
         ? "Email уже привязан к аккаунту."
         : emailReady
-          ? "Email-вход включен на экране входа."
+          ? "Можно подключить email к этому аккаунту без выхода из кабинета."
           : "Email-вход скрыт, пока доставка писем недоступна.",
-      badge: linkedEmail || (emailReady ? "Доступен" : "Недоступен"),
+      badge: linkedEmail || (emailReady ? "Можно подключить" : "Недоступен"),
       tone: linkedEmail ? ("info" as const) : ("neutral" as const),
-      action: emailReady ? (
-        <span className="text-sm font-semibold text-slate-500 dark:text-slate-400">На экране входа</span>
+      action: canLinkEmail ? (
+        <a href="#email-link" className="text-sm font-semibold text-emerald-800 dark:text-emerald-300">
+          Подключить
+        </a>
+      ) : emailReady ? (
+        <span className="text-sm font-semibold text-slate-500 dark:text-slate-400">Готово</span>
       ) : undefined,
     },
     {
@@ -215,6 +226,47 @@ export default function SettingsPage() {
     }
   };
 
+  const onEmailLinkRequest = async (event: FormEvent<HTMLFormElement>): Promise<void> => {
+    event.preventDefault();
+    setEmailLinkBusy("request");
+    setEmailLinkError("");
+    setEmailLinkMessage("");
+    try {
+      await registerByEmail({
+        email: emailLinkEmail.trim(),
+        password: emailLinkPassword,
+        display_name: emailLinkName.trim() || undefined,
+      });
+      setEmailLinkMessage("Письмо отправлено. Введите код подтверждения из письма.");
+    } catch (error) {
+      setEmailLinkError(
+        userFacingErrorMessage(error, "Не удалось отправить письмо. Проверьте email и попробуйте еще раз."),
+      );
+    } finally {
+      setEmailLinkBusy("");
+    }
+  };
+
+  const onEmailLinkVerify = async (event: FormEvent<HTMLFormElement>): Promise<void> => {
+    event.preventDefault();
+    setEmailLinkBusy("verify");
+    setEmailLinkError("");
+    setEmailLinkMessage("");
+    try {
+      const payload = await verifyEmailToken({ token: emailLinkToken.trim() });
+      if (payload?.token) {
+        setWebSessionToken(payload.token);
+      }
+      setEmailLinkMessage("Email подтвержден. Обновляем данные аккаунта.");
+      await refresh();
+      setEmailLinkMessage("Email подтвержден и привязан к текущему аккаунту.");
+    } catch (error) {
+      setEmailLinkError(userFacingErrorMessage(error, "Не удалось подтвердить email. Проверьте код и попробуйте еще раз."));
+    } finally {
+      setEmailLinkBusy("");
+    }
+  };
+
   return (
     <CabinetRoute
       eyebrow="Настройки"
@@ -276,8 +328,8 @@ export default function SettingsPage() {
           },
           {
             label: "Email",
-            value: linkedEmail || (emailReady ? "Доступен" : "Недоступен"),
-            hint: linkedEmail ? "Связка уже есть." : emailReady ? "Email-вход включен на экране входа." : "Пока доставка писем недоступна, этот вход скрыт.",
+            value: linkedEmail || (emailReady ? "Можно подключить" : "Недоступен"),
+            hint: linkedEmail ? "Связка уже есть." : emailReady ? "Подключается прямо в настройках." : "Пока доставка писем недоступна, этот вход скрыт.",
             tone: linkedEmail ? "info" : "neutral",
           },
           {
@@ -306,6 +358,80 @@ export default function SettingsPage() {
           <CabinetCardGrid items={quickActions} className="xl:grid-cols-1" />
         </CabinetSection>
       </div>
+
+      {emailLinkMessage && !canLinkEmail ? (
+        <div className="rounded-[1.3rem] border border-emerald-200/70 bg-emerald-50/85 px-5 py-4 text-sm font-semibold text-emerald-800 dark:border-emerald-400/25 dark:bg-emerald-400/10 dark:text-emerald-100">
+          {emailLinkMessage}
+        </div>
+      ) : null}
+
+      {canLinkEmail ? (
+        <div id="email-link" className="scroll-mt-24">
+          <CabinetSection
+            eyebrow="Email"
+            title="Подключить email к текущему аккаунту"
+            description="Останетесь в этом же профиле: отправим письмо, вы введете код, и email станет дополнительным способом входа."
+          >
+            <div className="grid gap-5 lg:grid-cols-[1fr_0.9fr]">
+              <form className="space-y-3" onSubmit={onEmailLinkRequest}>
+                <input
+                  className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none transition focus:border-emerald-400 dark:border-white/10 dark:bg-white/[0.04]"
+                  value={emailLinkEmail}
+                  onChange={(event) => setEmailLinkEmail(event.target.value)}
+                  type="email"
+                  placeholder="name@example.com"
+                  autoComplete="email"
+                  required
+                />
+                <input
+                  className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none transition focus:border-emerald-400 dark:border-white/10 dark:bg-white/[0.04]"
+                  value={emailLinkName}
+                  onChange={(event) => setEmailLinkName(event.target.value)}
+                  placeholder="Как обращаться"
+                  autoComplete="name"
+                />
+                <input
+                  className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none transition focus:border-emerald-400 dark:border-white/10 dark:bg-white/[0.04]"
+                  value={emailLinkPassword}
+                  onChange={(event) => setEmailLinkPassword(event.target.value)}
+                  type="password"
+                  placeholder="Минимум 10 символов"
+                  autoComplete="new-password"
+                  minLength={10}
+                  required
+                />
+                <button
+                  type="submit"
+                  disabled={emailLinkBusy !== ""}
+                  className="btn-primary rounded-2xl px-5 py-3 text-sm font-semibold disabled:opacity-60"
+                >
+                  {emailLinkBusy === "request" ? "Отправляем..." : "Отправить письмо"}
+                </button>
+              </form>
+
+              <form className="space-y-3" onSubmit={onEmailLinkVerify}>
+                <input
+                  className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none transition focus:border-emerald-400 dark:border-white/10 dark:bg-white/[0.04]"
+                  value={emailLinkToken}
+                  onChange={(event) => setEmailLinkToken(event.target.value)}
+                  placeholder="Код подтверждения"
+                  autoComplete="one-time-code"
+                  required
+                />
+                <button
+                  type="submit"
+                  disabled={emailLinkBusy !== ""}
+                  className="outline-btn rounded-2xl px-5 py-3 text-sm font-semibold disabled:opacity-60"
+                >
+                  {emailLinkBusy === "verify" ? "Проверяем..." : "Подтвердить email"}
+                </button>
+                {emailLinkMessage ? <p className="text-sm leading-6 text-emerald-700 dark:text-emerald-200">{emailLinkMessage}</p> : null}
+                {emailLinkError ? <p className="text-sm leading-6 text-rose-700 dark:text-rose-200">{emailLinkError}</p> : null}
+              </form>
+            </div>
+          </CabinetSection>
+        </div>
+      ) : null}
 
       <CabinetSection
         eyebrow="Telegram-бонус"

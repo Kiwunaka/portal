@@ -81,7 +81,7 @@ Rules:
 - `?format=plain` remains hidden compatibility-only behavior and must stay out of normal cabinet UX
 - `connect.pokrov.space` is for config delivery, not for public acquisition or payment entry
 - cabinet checkout must not drift into a second public paywall or direct raw-link delivery story
-- public email continuation must render only when `/api/auth/email/status` reports public mode, delivery configured, and debug echo off; otherwise it stays unavailable with a truthful Telegram/support fallback
+- public email continuation must render only when `/api/auth/email/status` reports public mode, delivery configured, delivery secret configured, and debug echo off; otherwise it stays unavailable with a truthful Telegram/support fallback
 - marketing and cabinet copy should inherit governed text from `shared/copy.ts`, `copy/catalog.ru.json`, and `shared/design-tokens.json` instead of inventing separate public messaging
 
 ## Shell, Theme, And Loading
@@ -129,7 +129,7 @@ Current supported auth paths:
 
 - inside Telegram: authorization through `initData`
 - in browser: Telegram Login Widget -> `POST /api/auth/telegram/web-login`
-- in browser: additive email continuation uses `/api/auth/email/*` only while `/api/auth/email/status` is green
+- in browser: additive email continuation uses `/api/auth/email/*` only while `/api/auth/email/status` is green; `/settings/` can link email to the current Telegram-backed account without leaving the cabinet
 - from bot handoff: `web_session_token` should open the cabinet without manual token copy/paste
 - session refresh: `GET /api/auth/session` may return a fresh `session_token` when fresh, signed Telegram `initData` recovers a missing or expired browser session; `fetchAuthSession()` must store it silently before loading cabinet data
 - Telegram Login Widget freshness: stale widget `auth_date`, deprecated OAuth callback tokens, or backend expired/deprecated widget errors should immediately fall forward to one fresh Telegram OIDC attempt instead of leaving the user on a raw token error
