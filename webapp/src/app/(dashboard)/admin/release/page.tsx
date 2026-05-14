@@ -297,11 +297,11 @@ function buildRuntimeGates({
     {
       key: "payments",
       label: "Гейт оплаты Lava.top",
-      value: lavaOnly ? "каталог найден; checkout закрыт" : payments?.blocked ? "закрыто" : "проверить",
-      detail: lavaOnly
-        ? "Каталог оплаты показывает только Lava.top, но это не live payment proof. Боевой прогон возможен только после deploy и probe-buyer; checkout остается закрытым до invoice/webhook/replay/failure/manual-review/reconciliation и email-key evidence."
-        : payments?.blocked
-          ? reasonList(payments.blocked_reason_texts || payments.blocked_reasons)
+      value: payments?.blocked ? "закрыто" : lavaOnly ? "каталог открыт" : "проверить",
+      detail: payments?.blocked
+        ? reasonList(payments.blocked_reason_texts || payments.blocked_reasons)
+        : lavaOnly
+          ? "Live-каталог оплаты открыт и показывает только Lava.top. Это разрешает операторскую проверку checkout, но финальный публичный claim все еще требует invoice/webhook/replay/failure/manual-review/reconciliation и email-key evidence."
           : "Каталог оплаты не доказывает готовность режима только Lava.top.",
       tone: lavaOnly ? "warning" : payments?.blocked ? "warning" : "danger",
     },
@@ -567,7 +567,7 @@ export default function AdminReleasePage() {
           ? "GitHub Releases APK/EXE обнаружены в runtime /api/client/apps; публичный анонс все еще ждет подтвержденный runtime-sync GO и финальный GO."
           : "GitHub prerelease assets подготовлены для проверки; runtime-ссылки пока не активны.",
         "Android-кандидат принят как операторски подтвержденный, Windows EXE остается неподписанной бета-сборкой.",
-        "Оплата остается закрытой до post-deploy подтверждений Lava.top и доставки ключей по email.",
+        "Оплата включена для операторской проверки Lava.top; публичный claim ждет post-deploy подтверждений и доставки ключей по email.",
         "Email-вход можно оставлять публичным только при подтвержденной доставке писем.",
       ];
   const unsafePublicClaims = artifactUnsafeClaims.length
@@ -615,7 +615,7 @@ export default function AdminReleasePage() {
       title: "Lava.top",
       status: "нужна живая проверка",
       detail:
-        "Оплата остается закрытой. После deploy нужен живой Lava.top-прогон: invoice creation, webhook auth, replay/idempotency, failed/manual-review, reconciliation и email key delivery evidence.",
+        "Checkout открыт для проверки. Нужен живой Lava.top-прогон: invoice creation, webhook auth, replay/idempotency, failed/manual-review, reconciliation и email key delivery evidence.",
       command: LAVATOP_PROBE_COMMAND,
       tone: "danger",
     },
