@@ -47,14 +47,28 @@ def _install_aiogram_stubs() -> None:
             self.kwargs = kwargs
 
     class DummyInlineKeyboardButton:
+        model_fields = {
+            "text": object(),
+            "callback_data": object(),
+            "url": object(),
+            "web_app": object(),
+            "style": object(),
+            "icon_custom_emoji_id": object(),
+            "copy_text": object(),
+        }
+
         def __init__(self, *args, **kwargs):
             self.args = args
             self.kwargs = kwargs
+            for key, value in kwargs.items():
+                setattr(self, key, value)
 
     class DummyInlineKeyboardMarkup:
         def __init__(self, *args, **kwargs):
             self.args = args
             self.kwargs = kwargs
+            for key, value in kwargs.items():
+                setattr(self, key, value)
 
     aiogram = types.ModuleType("aiogram")
     aiogram.Bot = DummyBot
@@ -86,7 +100,16 @@ class FeedbackBotModerationTests(unittest.TestCase):
         self.db_path = str((repo_root / f"portal_feedback_test_{uuid.uuid4().hex}.db").resolve())
         db_uri_path = Path(self.db_path).as_posix()
         self._saved_env: dict[str, str | None] = {}
-        for key in ("DATABASE_URL", "ADMIN_ID", "FEEDBACK_BOT_TOKEN", "FEEDBACK_USERNAME", "SUPPORT_USERNAME"):
+        for key in (
+            "DATABASE_URL",
+            "ADMIN_ID",
+            "FEEDBACK_BOT_TOKEN",
+            "FEEDBACK_USERNAME",
+            "SUPPORT_USERNAME",
+            "TG_BTN_EMOJI_PRIMARY_ID",
+            "TG_BTN_EMOJI_SUCCESS_ID",
+            "TG_BTN_EMOJI_DANGER_ID",
+        ):
             self._saved_env[key] = os.environ.get(key)
 
         os.environ["DATABASE_URL"] = f"sqlite:///{db_uri_path}"
@@ -94,10 +117,13 @@ class FeedbackBotModerationTests(unittest.TestCase):
         os.environ["FEEDBACK_BOT_TOKEN"] = "feedback_test_token"
         os.environ["FEEDBACK_USERNAME"] = "pokrov_feedbackbot"
         os.environ["SUPPORT_USERNAME"] = "pokrov_supportbot"
+        os.environ["TG_BTN_EMOJI_PRIMARY_ID"] = "5368324170671202286"
+        os.environ["TG_BTN_EMOJI_SUCCESS_ID"] = "5373141891321699086"
+        os.environ["TG_BTN_EMOJI_DANGER_ID"] = "5368324170671202299"
 
         _install_aiogram_stubs()
 
-        for module_name in ("feedbackbot", "db", "models", "migrations", "config", "copy_catalog"):
+        for module_name in ("feedbackbot", "db", "models", "migrations", "config", "copy_catalog", "telegram_buttons"):
             sys.modules.pop(module_name, None)
 
         importlib.import_module("config")
@@ -120,6 +146,8 @@ class FeedbackBotModerationTests(unittest.TestCase):
             Path(self.db_path).unlink(missing_ok=True)
         except Exception:
             pass
+        for module_name in ("feedbackbot", "telegram_buttons", "aiogram", "aiogram.filters", "aiogram.types"):
+            sys.modules.pop(module_name, None)
 
     def test_upsert_feedback_entry_reuses_pending_row(self) -> None:
         from db import SessionLocal
@@ -143,6 +171,31 @@ class FeedbackBotModerationTests(unittest.TestCase):
             self.assertEqual(second.status, "new")
         finally:
             session.close()
+
+    def test_feedbackbot_keyboards_use_modern_button_fields_when_supported(self) -> None:
+        telegram_buttons = importlib.import_module("telegram_buttons")
+        if not telegram_buttons.SUPPORTS_BTN_STYLE:
+            self.skipTest("aiogram InlineKeyboardButton has no style field")
+
+        menu_buttons = {
+            str(getattr(button, "callback_data", "") or ""): button
+            for row in self.feedbackbot._menu_markup(is_admin=True).inline_keyboard
+            for button in row
+        }
+        self.assertEqual(getattr(menu_buttons["fb_new"], "style", None), telegram_buttons.BTN_STYLE_SUCCESS)
+        self.assertEqual(getattr(menu_buttons["fb_admin_queue"], "style", None), telegram_buttons.BTN_STYLE_PRIMARY)
+        if telegram_buttons.SUPPORTS_BTN_ICON:
+            self.assertEqual(getattr(menu_buttons["fb_new"], "icon_custom_emoji_id", None), "5373141891321699086")
+
+        entry_buttons = {
+            str(getattr(button, "callback_data", "") or ""): button
+            for row in self.feedbackbot._entry_keyboard(42).inline_keyboard
+            for button in row
+        }
+        self.assertEqual(getattr(entry_buttons["fb_feature_42"], "style", None), telegram_buttons.BTN_STYLE_SUCCESS)
+        self.assertEqual(getattr(entry_buttons["fb_delete_42"], "style", None), telegram_buttons.BTN_STYLE_DANGER)
+        if telegram_buttons.SUPPORTS_BTN_ICON:
+            self.assertEqual(getattr(entry_buttons["fb_delete_42"], "icon_custom_emoji_id", None), "5368324170671202299")
 
     def test_publish_feedback_entry_is_idempotent_and_links_review(self) -> None:
         from db import SessionLocal

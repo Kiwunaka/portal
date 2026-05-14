@@ -18,6 +18,10 @@ load_dotenv()
 from copy_catalog import get_copy_text
 from db import SessionLocal, init_db
 from models import FeedbackEntry, Review
+from telegram_buttons import modern_inline_button
+
+
+InlineKeyboardButton = modern_inline_button
 
 
 FEEDBACK_BOT_TOKEN = (os.getenv("FEEDBACK_BOT_TOKEN") or "").strip()
