@@ -168,11 +168,11 @@ export default function InstallPage() {
                   <span aria-hidden="true">●</span>
                   {getCopyText("marketing.install.android.status", androidHasArtifact ? "Android beta в кабинете" : "Android beta не выдана")}
                 </div>
-                <h3>{getCopyText("marketing.install.android.title", "Внутренний APK для Android")}</h3>
+                <h3>{getCopyText("marketing.install.android.title", "APK для Android")}</h3>
                 <p>
                   {getCopyText(
                     "marketing.install.android.desc",
-                    "Android APK доступен только как внутренняя бета для одобренных пользователей. Публичная публикация остаётся заблокированной до signing и физического аудита.",
+                    "Android APK для этой беты открывается через кабинет и GitHub Releases. Не используйте случайные зеркала и стор-ссылки.",
                   )}
                 </p>
                 {androidHasArtifact ? (

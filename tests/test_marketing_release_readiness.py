@@ -82,6 +82,21 @@ def test_cabinet_dashboard_download_ctas_point_to_install_route() -> None:
     assert "https://pokrov.space/install/" in dashboard
 
 
+def test_outside_store_beta_copy_avoids_store_distribution_claims() -> None:
+    surfaces = [
+        _read("components", "marketing-landing.tsx"),
+        _read("app", "install", "page.tsx"),
+        _read_webapp("app", "(dashboard)", "dashboard", "page.tsx"),
+        _read_webapp("components", "cabinet", "downloads-surface.tsx"),
+    ]
+
+    combined = "\n".join(surfaces)
+    assert "Google Play" not in combined
+    assert "production signing" not in combined
+    assert "физического аудита" not in combined
+    assert "GitHub Releases" in combined
+
+
 def test_email_auth_enabled_ui_stays_ru_only() -> None:
     entry = _read_webapp("components", "cabinet-entry-auth.tsx")
 

@@ -41,8 +41,8 @@ const HERO_FACTS = [
 const HOW_IT_WORKS = [
   {
     step: "1",
-    title: "Установите приложение",
-    text: "Скачайте POKROV на Android или Windows. Никакой регистрации — просто откройте и нажмите Подключить.",
+    title: "Откройте маршрут установки",
+    text: "Проверьте бета-доступ для Android или Windows. Если файл доступен вашему аккаунту, кабинет покажет правильную ссылку.",
   },
   {
     step: "2",
@@ -555,12 +555,12 @@ function FinalCta({ links }: { links: HomeLinks }) {
           </span>
           <h2>Попробуйте 5 дней бесплатно</h2>
           <p>
-            Никаких обязательств. Просто установите приложение, нажмите Подключить и убедитесь сами, что интернет может быть безопасным и свободным.
+            Никаких обязательств. Откройте маршрут установки, войдите в тот же аккаунт и проверьте, доступна ли бета для вашего устройства.
           </p>
         </div>
         <div className={styles.finalActions}>
           <Link href={links.installHref} className={`${styles.btnPrimary} ${styles.btnPill}`}>
-            Установить приложение
+            Проверить бета-доступ
           </Link>
           <Link href={links.checkoutHref} className={styles.btnOutline}>
             Выбрать тариф

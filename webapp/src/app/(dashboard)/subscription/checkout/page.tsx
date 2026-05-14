@@ -3,7 +3,7 @@
 import AppRouteLink from "@/components/app-route-link";
 import { CabinetCardGrid, CabinetHero, CabinetRoute, CabinetSection } from "@/components/cabinet/surface";
 import { resolvePlanLabel } from "@/lib/access-policy";
-import { createRubCheckoutOrder, fetchPublicCatalog, getRubPaymentProviders } from "@/lib/api";
+import { createRubCheckoutOrder, fetchPublicCatalog, getRubPaymentProviders, type RubPaymentProvidersResult } from "@/lib/api";
 import {
   getPricingPreviewDiscountPercent,
   getTariffPlans,
@@ -55,6 +55,7 @@ export default function CheckoutPage() {
   const [catalogError, setCatalogError] = useState("");
   const [selectedCode, setSelectedCode] = useState(() => normalizePlanCode(searchParams.get("plan"), "1_month"));
   const [providerCode, setProviderCode] = useState("");
+  const [providerState, setProviderState] = useState<RubPaymentProvidersResult | null>(null);
   const [checkoutBusy, setCheckoutBusy] = useState(false);
   const [checkoutError, setCheckoutError] = useState("");
 
@@ -106,11 +107,13 @@ export default function CheckoutPage() {
     void getRubPaymentProviders()
       .then((payload) => {
         if (!cancelled) {
-          setProviderCode(String(payload.providers?.[0]?.code || ""));
+          setProviderState(payload);
+          setProviderCode(payload.ok && !payload.blocked ? String(payload.providers?.[0]?.code || "") : "");
         }
       })
       .catch(() => {
         if (!cancelled) {
+          setProviderState(null);
           setProviderCode("");
         }
       });
@@ -127,7 +130,10 @@ export default function CheckoutPage() {
   const discountPercent = getPricingPreviewDiscountPercent(promoCode);
   const discountAmount = Math.round((Number(activePlan?.amountRub || 0) * discountPercent) / 100);
   const totalAmount = Math.max(0, Number(activePlan?.amountRub || 0) - discountAmount);
-  const checkoutReady = Boolean(providerCode);
+  const providerReasons = providerState?.blocked_reason_texts?.length
+    ? providerState.blocked_reason_texts
+    : providerState?.blocked_reasons || [];
+  const checkoutReady = Boolean(providerState?.ok && !providerState?.blocked && providerCode);
 
   const startCheckout = async (): Promise<void> => {
     if (!activePlan?.code || !providerCode) return;
@@ -304,7 +310,9 @@ export default function CheckoutPage() {
           {checkoutError ? <p className="mt-4 text-sm text-rose-700 dark:text-rose-200">{checkoutError}</p> : null}
           {!checkoutReady ? (
             <p className="mt-4 text-sm text-amber-700 dark:text-amber-200">
-              Платежный провайдер пока не включен. Продление останется недоступным, пока backend не вернет рабочий способ оплаты.
+              {providerReasons.length
+                ? `Оплата пока закрыта: ${providerReasons.join("; ")}.`
+                : "Платежный провайдер пока не включен. Продление останется недоступным, пока backend не вернет рабочий способ оплаты."}
             </p>
           ) : null}
 

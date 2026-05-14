@@ -35,31 +35,19 @@ function externalAction(href: string, label: string): ReactNode {
 }
 
 function buildCards(payload: ClientAppsPayload | null): DownloadCard[] {
-  const androidPlay = payload?.android?.play_url || config.androidPlayUrl;
-  const androidApk = payload?.android?.apk_url || config.androidApkUrl;
-  const androidMirror = payload?.android?.mirror_url || config.androidMirrorUrl;
-  const windowsExe = payload?.windows?.exe_url || config.windowsExeUrl;
-  const windowsMirror = payload?.windows?.mirror_url || config.windowsMirrorUrl;
+  const androidApk = payload?.android?.apk_url || "";
+  const androidMirror = payload?.android?.mirror_url || "";
+  const windowsExe = payload?.windows?.exe_url || "";
+  const windowsMirror = payload?.windows?.mirror_url || "";
   const docsUrl = payload?.docs_url || config.docsUrl;
 
   return [
-    androidPlay
-      ? {
-          key: "android-play",
-          title: "Android бета через Google Play",
-          body: "Показываем только если ссылка реально пришла от backend. Публичный Android-релиз закрыт до production signing и физического аудита release-сборки.",
-          badge: "Android бета",
-          tone: "warning",
-          href: androidPlay,
-          action: externalAction(androidPlay, "Открыть"),
-        }
-      : null,
     androidApk
       ? {
           key: "android-apk",
-          title: "Android бета через APK",
-          body: "Внутренний beta-файл для тестеров. Не публикуем его как массовый путь до production signing и физического аудита release-сборки.",
-          badge: "Внутренняя бета",
+          title: "Android APK через GitHub Releases",
+          body: "Бета APK для Android. Ставьте только из этой ссылки в кабинете или из ссылки, которую дала поддержка.",
+          badge: "APK beta",
           tone: "warning",
           href: androidApk,
           action: externalAction(androidApk, "Скачать"),
@@ -69,7 +57,7 @@ function buildCards(payload: ClientAppsPayload | null): DownloadCard[] {
       ? {
           key: "android-mirror",
           title: "Резервная ссылка для Android",
-          body: "Резерв той же beta-сборки. Если обычная ссылка не открывается, лучше написать в поддержку, а не искать обходной путь.",
+          body: "Резерв той же APK-сборки. Если обычная ссылка не открывается, лучше написать в поддержку, а не искать обходной путь.",
           badge: "Резерв beta",
           tone: "warning",
           href: androidMirror,
@@ -79,7 +67,7 @@ function buildCards(payload: ClientAppsPayload | null): DownloadCard[] {
     windowsExe
       ? {
           key: "windows-exe",
-          title: "Windows бета",
+          title: "Windows EXE через GitHub Releases",
           body: "Бета-сборка для Windows. Установщик может быть неподписанный, поэтому SmartScreen или системное предупреждение ожидаемы.",
           badge: "Бета-сборка",
           tone: "warning",
@@ -195,7 +183,7 @@ export function CabinetDownloadsSurface() {
         {
           label: "Android",
           value: hasAndroid ? "Ссылки готовы" : "Подтянем позже",
-          hint: "Android остается закрыт до production signing и физического release-build audit.",
+          hint: "Для этой беты используем APK из GitHub Releases, без стор-публикации.",
           tone: hasAndroid ? "warning" : "neutral",
         },
         {
@@ -243,7 +231,7 @@ export function CabinetDownloadsSurface() {
         details={[
           {
             label: "Лучший путь",
-            value: hasAndroid ? "Android через Play" : hasWindows ? "Установщик Windows" : "Поддержка",
+            value: hasAndroid ? "Android APK" : hasWindows ? "Установщик Windows" : "Поддержка",
             hint: "Берите обычный путь первым. Запасные ссылки нужны редко.",
             tone: "neutral",
           },

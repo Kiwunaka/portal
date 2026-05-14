@@ -7,6 +7,7 @@ from typing import Any
 
 import db
 from models import GiftCard, User
+from shared_surface_facts import get_tariff_catalog
 
 
 GIFT_CARD_TYPES: dict[str, dict[str, Any]] = {
@@ -14,6 +15,41 @@ GIFT_CARD_TYPES: dict[str, dict[str, Any]] = {
     "standard": {"days": 30, "stars": 249, "name": "Standard"},
     "premium": {"days": 90, "stars": 699, "name": "Premium"},
 }
+
+
+def _plan_card_types() -> dict[str, dict[str, Any]]:
+    try:
+        catalog = get_tariff_catalog()
+    except Exception:
+        return {}
+    rows: dict[str, dict[str, Any]] = {}
+    for plan in list((catalog or {}).get("plans") or []):
+        if not isinstance(plan, dict):
+            continue
+        code = str(plan.get("code") or "").strip().lower()
+        days = int(plan.get("duration_days") or plan.get("days") or 0)
+        if not code or days <= 0:
+            continue
+        rows[code] = {
+            "days": days,
+            "stars": int(plan.get("amount_stars") or 0),
+            "name": str(plan.get("label") or code),
+            "plan_code": code,
+        }
+    return rows
+
+
+def _card_type_info(card_type: str) -> dict[str, Any] | None:
+    normalized = str(card_type or "").strip().lower()
+    if not normalized:
+        return None
+    legacy = GIFT_CARD_TYPES.get(normalized)
+    if legacy:
+        return {**legacy, "legacy_type": normalized}
+    plan = _plan_card_types().get(normalized)
+    if plan:
+        return {**plan, "plan_code": normalized}
+    return None
 
 
 def _session():
@@ -73,7 +109,7 @@ def get_gift_card(code: str) -> dict[str, Any] | None:
         row = s.query(GiftCard).filter(GiftCard.code == norm).first()
         if not row:
             return None
-        meta = GIFT_CARD_TYPES.get((row.card_type or "").lower(), {})
+        meta = _card_type_info(str(row.card_type or "")) or {}
         return {
             "code": str(row.code),
             "type": str(row.card_type or ""),
@@ -103,7 +139,7 @@ async def redeem_gift_card(*, code: str, recipient_tg_id: int, require_tos: bool
         if int(card.created_by or 0) == int(recipient_tg_id):
             return {"ok": False, "error": "self_redeem", "message": "Нельзя активировать собственный код"}
 
-        card_info = GIFT_CARD_TYPES.get((card.card_type or "").lower())
+        card_info = _card_type_info(str(card.card_type or ""))
         if not card_info:
             return {"ok": False, "error": "unknown_type", "message": "Тип кода не поддерживается"}
 
@@ -142,6 +178,8 @@ async def redeem_gift_card(*, code: str, recipient_tg_id: int, require_tos: bool
         user.expiry_at = current_expiry + timedelta(days=days)
         user.sub_type = "PAID"
         user.is_active = True
+        if str(card_info.get("plan_code") or "").strip():
+            user.current_plan_code = str(card_info.get("plan_code") or "").strip().lower()
         if not user.sub_token:
             user.sub_token = _generate_sub_token()
 
@@ -199,7 +237,7 @@ async def redeem_gift_card(*, code: str, recipient_tg_id: int, require_tos: bool
     return {
         "ok": True,
         "code": norm,
-        "days": int(GIFT_CARD_TYPES.get(redeemed_card_type.lower(), {}).get("days") or 0),
+        "days": int((_card_type_info(redeemed_card_type) or {}).get("days") or 0),
         "card_type": redeemed_card_type,
         "expiry_at": expiry_at_iso,
         "sync_ok": bool(sync_ok),

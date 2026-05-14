@@ -584,6 +584,33 @@ class BotPaywallTests(unittest.TestCase):
         self.assertEqual(str(tracked[0]["meta"].get("card_type") or "").lower(), "standard")
         self.assertEqual(str(tracked[1]["meta"].get("reason") or ""), "already_redeemed")
 
+    def test_redeem_gift_card_accepts_plan_access_key(self) -> None:
+        self.bot_module.ensure_pending_user(1001, username="alice")
+        self.bot_module.set_tos_accepted(1001)
+        code = "POKROV-PLAN-KEY1"
+
+        session = self.bot_module.Session()
+        try:
+            session.add(self.bot_module.GiftCard(code=code, card_type="start_99", created_by=2002))
+            session.commit()
+        finally:
+            session.close()
+
+        ok, result = asyncio.run(self.bot_module.redeem_gift_card(code, 1001, _FakeBot(status="member")))
+        self.assertTrue(ok, result)
+        self.assertIn("дней", result)
+
+        session = self.bot_module.Session()
+        try:
+            user = session.query(self.bot_module.User).filter_by(tg_id=1001).first()
+            card = session.query(self.bot_module.GiftCard).filter_by(code=code).first()
+            self.assertIsNotNone(user)
+            self.assertIsNotNone(card)
+            self.assertEqual(str(user.current_plan_code or ""), "start_99")
+            self.assertEqual(int(card.redeemed_by or 0), 1001)
+        finally:
+            session.close()
+
     def test_bot_checkout_url_includes_tracking_context(self) -> None:
         self.bot_module.PAY_CHECKOUT_URL = "https://portal-privacy.online/checkout?from=bot"
         url = self.bot_module._bot_checkout_url(
@@ -599,13 +626,14 @@ class BotPaywallTests(unittest.TestCase):
         self.assertIn("campaign=launch_week_1", url)
         self.assertIn("checkout_ticket=", url)
 
-    def test_tariff_payment_choice_text_separates_tariff_and_payment_method(self) -> None:
+    def test_tariff_payment_choice_text_stays_rub_only_and_closed_without_launch_gate(self) -> None:
         self.bot_module.ensure_pending_user(1001, username="alice")
         text = self.bot_module._build_tariff_payment_choice_text(tariff_key="1_month", tg_id=1001)
         self.assertIn("Цена в ₽: *249 ₽*", text)
         self.assertNotIn("Stars", text)
         self.assertNotIn("⭐", text)
-        self.assertIn("Откроем оплату в рублях", text)
+        self.assertIn("Оплата пока закрыта", text)
+        self.assertNotIn("выберите удобную кассу", text.lower())
 
     def test_tariff_payment_choice_keyboard_keeps_plan_in_checkout_url(self) -> None:
         self.bot_module.PAY_CHECKOUT_URL = "https://portal-privacy.online/checkout?from=bot"
@@ -615,6 +643,8 @@ class BotPaywallTests(unittest.TestCase):
         }
         old_catalog = self.bot_module.enabled_provider_catalog
         try:
+            self.bot_module.RUB_CHECKOUT_ENABLED = True
+            self.bot_module.PAID_CHECKOUT_LAUNCH_APPROVED = True
             self.bot_module.enabled_provider_catalog = lambda: [
                 {"code": "cardlink", "label": "Cardlink", "supports_bot": True},
             ]
@@ -680,6 +710,8 @@ class BotPaywallTests(unittest.TestCase):
 
         old_create = self.bot_module._create_rub_payment_link_for_bot
         try:
+            self.bot_module.RUB_CHECKOUT_ENABLED = True
+            self.bot_module.PAID_CHECKOUT_LAUNCH_APPROVED = True
             self.bot_module.enabled_provider_catalog = lambda: [
                 {"code": "cardlink", "label": "Cardlink", "supports_bot": True},
             ]
@@ -698,6 +730,8 @@ class BotPaywallTests(unittest.TestCase):
     def test_tariff_payment_choice_keyboard_lists_enabled_rub_providers(self) -> None:
         old_catalog = self.bot_module.enabled_provider_catalog
         try:
+            self.bot_module.RUB_CHECKOUT_ENABLED = True
+            self.bot_module.PAID_CHECKOUT_LAUNCH_APPROVED = True
             self.bot_module.enabled_provider_catalog = lambda: [
                 {"code": "cardlink", "label": "Cardlink", "supports_bot": True},
                 {"code": "pally", "label": "Paypalich", "supports_bot": True},
@@ -753,6 +787,35 @@ class BotPaywallTests(unittest.TestCase):
         upper_labels = [label.upper() for label in labels]
         self.assertTrue(any("КАБИНЕТ" in label for label in upper_labels))
         self.assertFalse(any("ПОРТАЛ" in label for label in upper_labels))
+
+    def test_configure_public_bot_menu_matches_live_checker_payload(self) -> None:
+        class _MenuBot:
+            def __init__(self) -> None:
+                self.commands = []
+                self.menu_button = None
+
+            async def set_my_commands(self, commands):
+                self.commands = list(commands)
+
+            async def set_chat_menu_button(self, *, menu_button):
+                self.menu_button = menu_button
+
+        fake = _MenuBot()
+        asyncio.run(self.bot_module._configure_public_bot_menu(fake))
+
+        command_payload = [(item.command, item.description) for item in fake.commands]
+        self.assertEqual(
+            command_payload,
+            [
+                ("start", "Открыть главное меню"),
+                ("cabinet", "Открыть кабинет"),
+                ("support", "Написать в поддержку"),
+                ("promo", "Активировать промокод"),
+                ("redeem", "Активировать ключ доступа"),
+            ],
+        )
+        self.assertEqual(getattr(fake.menu_button, "text", ""), "POKROV")
+        self.assertEqual(getattr(getattr(fake.menu_button, "web_app", None), "url", ""), "https://app.pokrov.space/")
 
     def test_activate_promo_code_rejects_expired_promo(self) -> None:
         self.bot_module.ensure_pending_user(1001, username="alice")

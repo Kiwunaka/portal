@@ -243,12 +243,12 @@ async function registerCabinetMocks(page: Page): Promise<void> {
     if (path === "/api/client/apps") {
       return json({
         android: {
-          play_url: "https://play.google.com/store/apps/details?id=space.pokrov.vpn",
-          apk_url: "https://downloads.pokrov.space/pokrov-vpn-android.apk",
+          play_url: "",
+          apk_url: "https://github.com/Kiwunaka/POKROV-app/releases/download/v0.2.0-beta.1/pokrov-android-universal.apk",
           mirror_url: "https://mirror.pokrov.space/pokrov-vpn-android.apk",
         },
         windows: {
-          exe_url: "https://downloads.pokrov.space/pokrov-vpn-windows.exe",
+          exe_url: "https://github.com/Kiwunaka/POKROV-app/releases/download/v0.2.0-beta.1/pokrov-windows-setup-x64.exe",
           mirror_url: "https://mirror.pokrov.space/pokrov-vpn-windows.exe",
         },
         docs_url: "https://pokrov.space/news/",
@@ -477,7 +477,7 @@ test.describe("Cabinet flow", () => {
     await page.locator("aside nav a[href='/downloads/']").click();
     await expect(page).toHaveURL(/\/downloads\/?$/);
     await expect(page.locator("main h1")).toBeVisible();
-    await expect(page.locator("main")).toContainText("Google Play");
+    await expect(page.locator("main")).toContainText("GitHub Releases");
 
     const markerPersisted = await page.evaluate(
       () => Boolean((window as Window & { __routeMarker?: string }).__routeMarker),
@@ -566,9 +566,25 @@ test.describe("Cabinet flow", () => {
     await expect(page.getByRole("heading", { name: "История оплат" })).toBeVisible();
     await expect(page.locator("main")).toContainText("История оплат пока не подключена");
 
+    await page.route("**/api/payments/providers", async (route) =>
+      route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          ok: false,
+          providers: [],
+          blocked: true,
+          blocked_reasons: ["paid_checkout_launch_evidence_missing"],
+          blocked_reason_texts: ["Lava.top ещё ждёт финальную проверку."],
+        }),
+      }),
+    );
+
     await page.goto("/subscription/checkout/?plan=1_month&promo=POKROV10");
     await expect(page.getByRole("heading", { name: "Продлить доступ" })).toBeVisible();
     await expect(page.locator("main")).toContainText("Перейти к оплате");
+    await expect(page.getByRole("button", { name: "Перейти к оплате" }).first()).toBeDisabled();
+    await expect(page.locator("main")).toContainText("Lava.top ещё ждёт финальную проверку.");
     await expect(page.locator("main")).not.toContainText("Hosted checkout");
     await expect(page.locator("main")).not.toContainText("activation key");
     await expect(page.locator("main")).not.toContainText("Free fallback");
@@ -584,11 +600,11 @@ test.describe("Cabinet flow", () => {
     await expect(page).toHaveURL(/\/downloads\/?$/);
     await expect(page.locator("main h1")).toBeVisible();
     await expect(page.locator("main")).toContainText("Бета-доступ");
-    await expect(page.locator("main")).toContainText("Google Play");
-    await expect(page.locator("main a[href*='play.google.com']").first()).toBeVisible();
+    await expect(page.locator("main")).toContainText("Android APK через GitHub Releases");
+    await expect(page.locator("main a[href*='github.com'][href$='pokrov-android-universal.apk']").first()).toBeVisible();
     await expect(page.locator("main")).toContainText("Windows");
     await expect(page.locator("main")).toContainText("неподписанный");
-    await expect(page.locator("main a[href*='windows.exe']").first()).toBeVisible();
+    await expect(page.locator("main a[href*='github.com'][href$='pokrov-windows-setup-x64.exe']").first()).toBeVisible();
 
     await page.goto("/support/");
     await expect(page.getByRole("heading", { name: "Один кейс на весь вопрос" })).toBeVisible();

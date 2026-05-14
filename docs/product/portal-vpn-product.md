@@ -84,7 +84,7 @@ Client-canon note:
 - as of `2026-04-13`, `python scripts/release_orchestrator.py --gates-only` is green for the documented repo/static/client gate pack; see `docs/audit-artifacts/release_gate_report.md` for the latest local snapshot
 - that latest local green gate snapshot does not yet prove live deploy, live node enablement, or separate `current-origin`, `brain-origin`, and `RU-origin` checks
 - emulator or adb-only audit runs are valid preflight for adb wiring and timing, but final Android publication still requires `python scripts/android_localhost_audit.py` against a release-installed build on physical hardware before connect, after connect, and after disconnect
-- Android public promotion still requires production signing material; debug-keystore fallback is valid for local smoke only
+- Android public beta promotion uses the approved APK/EXE outside-store handoff; store publishing and production signing remain separate later gates
 - do not describe Android app-isolation features such as split tunneling, Private Space, Knox, Shelter, or similar tooling as sufficient mitigations for an unauthenticated local control surface
 
 ## Russia-Aware Routing Direction

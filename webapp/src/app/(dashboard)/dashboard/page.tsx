@@ -314,7 +314,7 @@ export default function DashboardPage() {
                 <span className="material-symbols-rounded text-[28px] text-emerald-700 dark:text-emerald-400">android</span>
                 <div>
                   <p className="text-sm font-semibold text-slate-900 dark:text-slate-100">Android</p>
-                  <p className="text-xs text-slate-500">APK и Google Play</p>
+                  <p className="text-xs text-slate-500">APK через GitHub Releases</p>
                 </div>
               </a>
               <a

@@ -3801,7 +3801,7 @@ def _telegram_paid_access_keyboard() -> dict[str, Any]:
     rows: list[list[dict[str, Any]]] = [
         [{"text": "📲 Установить POKROV", "callback_data": "instruction"}],
         [{"text": "🌐 Открыть кабинет", "web_app": {"url": _public_webapp_url()}}],
-        [{"text": "🔗 Ссылка и QR для подключения", "callback_data": "show_key"}],
+        [{"text": "🔗 Ручная ссылка / QR", "callback_data": "show_key"}],
     ]
     if SUPPORT_USERNAME:
         rows.append([{"text": "💬 Поддержка", "url": f"https://t.me/{SUPPORT_USERNAME}?start=ticket_new"}])
@@ -3829,8 +3829,8 @@ async def _notify_telegram_paid_access_ready(*, tg_id: int, sync_ok: bool) -> bo
             f"📅 До: `{expiry}`\n\n"
             "Лучший путь: откройте POKROV и обновите доступ в кабинете.\n"
             "Пока приложения в бете, мы не ограничиваем ручное подключение: "
-            "если POKROV ещё не установлен, скопируйте ссылку и импортируйте её в Happ, Hiddify или другой совместимый клиент.\n\n"
-            "🔗 *Ссылка для подключения:*\n"
+            "если POKROV ещё не установлен, скопируйте ссылку и используйте её только в доверенном совместимом клиенте.\n\n"
+            "🔗 *Запасная ручная ссылка:*\n"
             f"`{sub_link}`"
         )
     else:
@@ -3839,7 +3839,7 @@ async def _notify_telegram_paid_access_ready(*, tg_id: int, sync_ok: bool) -> bo
             f"📅 До: `{expiry}`\n\n"
             "Доступ записан в системе, но авто-синхронизация с узлами заняла больше обычного. "
             "Попробуйте открыть POKROV или кабинет через минуту; если подключение не заработает, напишите в поддержку.\n\n"
-            "🔗 *Ссылка для подключения:*\n"
+            "🔗 *Запасная ручная ссылка:*\n"
             f"`{sub_link}`"
         )
     return await _telegram_send_message(
@@ -7181,7 +7181,8 @@ async def client_apps(request: Request, x_telegram_init_data: str = Header(defau
     _require_auth_user(x_telegram_init_data, request=request)
     return ClientAppsResponse(
         android=ClientAndroidApps(
-            play_url=_safe_public_url(Settings.APP_ANDROID_PLAY_URL),
+            # Public beta distribution is outside app stores; keep the compatibility field empty.
+            play_url="",
             apk_url=_safe_public_url(Settings.APP_ANDROID_APK_URL),
             mirror_url=_safe_public_url(Settings.APP_ANDROID_MIRROR_URL),
         ),

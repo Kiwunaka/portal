@@ -353,7 +353,7 @@ class ApiP0ExtensionsTests(unittest.TestCase):
         self.assertRegex(body["updated_at"], r"^\d{4}-\d{2}-\d{2}T")
         self.assertTrue(body["updated_at"].endswith("Z"))
 
-    def test_client_apps_endpoint_returns_configured_urls(self) -> None:
+    def test_client_apps_endpoint_returns_outside_store_configured_urls(self) -> None:
         self.api.Settings.APP_ANDROID_PLAY_URL = "https://play.google.com/store/apps/details?id=space.pokrov.vpn"
         self.api.Settings.APP_ANDROID_APK_URL = "https://github.com/example/pokrov-vpn/releases/latest/download/pokrov-vpn-android.apk"
         self.api.Settings.APP_ANDROID_MIRROR_URL = "https://downloads.example.com/mobile/pokrov-vpn-android.apk"
@@ -366,7 +366,7 @@ class ApiP0ExtensionsTests(unittest.TestCase):
         r = client.get("/api/client/apps", headers=hdrs)
         self.assertEqual(r.status_code, 200, r.text)
         body = r.json()
-        self.assertEqual(body["android"]["play_url"], self.api.Settings.APP_ANDROID_PLAY_URL)
+        self.assertEqual(body["android"]["play_url"], "")
         self.assertEqual(body["android"]["apk_url"], self.api.Settings.APP_ANDROID_APK_URL)
         self.assertEqual(body["android"]["mirror_url"], self.api.Settings.APP_ANDROID_MIRROR_URL)
         self.assertEqual(body["windows"]["exe_url"], self.api.Settings.APP_WINDOWS_EXE_URL)
