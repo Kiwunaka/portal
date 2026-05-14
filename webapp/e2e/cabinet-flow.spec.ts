@@ -4,6 +4,8 @@ type TicketMessageMock = {
   id: number;
   sender_role: "user" | "admin";
   body: string;
+  media_type?: string | null;
+  media_payload?: string | null;
   created_at?: string | null;
 };
 
@@ -162,6 +164,19 @@ function mockTickets(): TicketMock[] {
           sender_role: "user",
           body: "Помогите проверить импорт конфигурации.",
           created_at: "2030-01-01T00:00:00",
+        },
+        {
+          id: 2,
+          sender_role: "admin",
+          body: "Прикрепили короткий файл диагностики без личных ключей.",
+          media_type: "file",
+          media_payload: JSON.stringify({
+            url: "/uploads/support/diagnostic.txt",
+            name: "diagnostic.txt",
+            size: 2048,
+            content_type: "text/plain",
+          }),
+          created_at: "2030-01-01T00:03:00",
         },
       ],
     },
@@ -571,6 +586,19 @@ test.describe("Cabinet flow", () => {
     await page.getByRole("button", { name: "Создать кейс" }).click();
     await expect(page.locator("main")).toContainText("Открыт · #");
     await expect(page.locator("main")).toContainText("Нужна помощь с импортом");
+  });
+
+  test("renders support thread attachments without exposing private access data", async ({ page }) => {
+    await page.goto("/support/thread/?id=11");
+
+    await expect(page).toHaveURL(/\/support\/thread\/\?id=11$/);
+    await expect(page.locator("main")).toContainText("diagnostic.txt");
+    const attachment = page.locator('main a[href*="/uploads/support/diagnostic.txt"]').first();
+    await expect(attachment).toBeVisible();
+    await expect(attachment).toContainText("diagnostic.txt");
+    await expect(attachment).toContainText("2.0 КБ");
+    await expect(page.locator("main")).not.toContainText("mock_token");
+    await expect(page.locator("main")).not.toContainText("subscription_url");
   });
 
   test("stays inside a narrow mobile viewport for core cabinet pages", async ({ page }) => {

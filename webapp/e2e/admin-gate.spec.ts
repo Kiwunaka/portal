@@ -704,6 +704,46 @@ async function registerApiMocks(page: Page, opts: MockOptions): Promise<void> {
   let userRows = [...(opts.userRows || mockAdminUsers().users)];
   let tickets = [...(opts.tickets || [makeTicket()])];
   let paymentOrders = [...(opts.paymentOrders || [makePaymentOrder()])];
+  let promoSlotAssignments = [
+    {
+      slot_id: "marketing.checkout.contextual",
+      content_id: "beta_checkout_honest",
+      enabled: true,
+      title: "",
+      body: "",
+      cta_label: "",
+      cta_href: "",
+      contexts: ["checkout"],
+      sort_order: 1,
+    },
+  ];
+
+  await page.route("**/release-status.json", async (route) =>
+    route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        source_artifact: "e2e-release-status.json",
+        verdict: "NO_GO",
+        classification: "BLOCKED_BY_ACCESS",
+        safe_to_publish_public_beta: false,
+        checks: [
+          {
+            name: "brain_origin_static_deploy_verify",
+            status: "PASS_STATIC_NO_GO",
+            note: "Static deploy evidence only; runtime sync and paid checkout remain closed.",
+          },
+          {
+            name: "paid_checkout_launch_evidence",
+            status: "BLOCKED_BY_ACCESS",
+            missing: ["lavatop_invoice", "webhook_replay", "email_key_delivery"],
+          },
+        ],
+        safe_public_claims: ["POKROV is preparing a limited Android and Windows beta."],
+        unsafe_public_claims: ["Public beta is live.", "Lava.top payments are live."],
+      }),
+    }),
+  );
 
   await page.route("**/api/**", async (route) => {
     const request = route.request();
@@ -718,6 +758,49 @@ async function registerApiMocks(page: Page, opts: MockOptions): Promise<void> {
 
     if (path === "/api/dashboard") return json(dashboard);
     if (path.startsWith("/api/user/")) return json(user);
+    if (path === "/api/client/apps") {
+      return json({
+        android: {
+          play_url: "",
+          apk_url: "https://github.com/kiwun/pokrov/releases/download/v0.2.0-beta.1/POKROV-Android.apk",
+          mirror_url: "",
+        },
+        windows: {
+          exe_url: "https://github.com/kiwun/pokrov/releases/download/v0.2.0-beta.1/POKROV-Windows.exe",
+          mirror_url: "",
+        },
+        docs_url: "https://pokrov.space/install/",
+        updated_at: "2030-01-01T00:00:00",
+      });
+    }
+    if (path === "/api/auth/email/status") {
+      return json({
+        ok: true,
+        enabled: true,
+        public_enabled: true,
+        delivery_configured: true,
+        delivery_secret_configured: true,
+        debug_echo: false,
+        mode: "public",
+        blocked_reasons: [],
+      });
+    }
+    if (path === "/api/payments/providers") {
+      return json({
+        ok: true,
+        blocked: true,
+        blocked_reasons: ["post_deploy_payment_evidence_missing"],
+        blocked_reason_texts: ["post-deploy Lava.top evidence is missing"],
+        providers: [
+          {
+            code: "lavatop",
+            label: "Lava.top",
+            enabled: true,
+            currency: "RUB",
+          },
+        ],
+      });
+    }
 
     if (path === "/api/admin/summary") return json(adminSummary);
     if (path === "/api/admin/metrics/status") return json(metricsStatus);
@@ -842,6 +925,100 @@ async function registerApiMocks(page: Page, opts: MockOptions): Promise<void> {
 
       return json({ ticket: row });
     }
+    if (path === "/api/admin/access-keys/issue" && request.method() === "POST") {
+      const payload = JSON.parse(request.postData() || "{}");
+      const quantity = Math.max(1, Math.min(50, Number(payload.quantity || 1)));
+      const plan = {
+        code: String(payload.plan_code || "1_month"),
+        label: "1 month",
+        amount_rub: 249,
+        amount_stars: 249,
+        days: 30,
+        duration_days: 30,
+        device_limit: 5,
+        node_policy: "paid_pool",
+        is_active: true,
+      };
+      return json({
+        ok: true,
+        plan,
+        issued: Array.from({ length: quantity }, (_, index) => ({
+          key: `POKROV-TEST-${String(index + 1).padStart(4, "0")}`,
+          plan,
+          issued_at: "2030-01-01T00:00:00",
+        })),
+      });
+    }
+    if (path.startsWith("/api/access-keys/status/")) {
+      const key = decodeURIComponent(path.split("/").pop() || "");
+      return json({
+        key,
+        exists: key === "POKROV-TEST-0001",
+        redeemed: false,
+        issued_at: "2030-01-01T00:00:00",
+        redeemed_at: null,
+        plan: {
+          code: "1_month",
+          label: "1 month",
+          amount_rub: 249,
+          days: 30,
+          duration_days: 30,
+          device_limit: 5,
+          node_policy: "paid_pool",
+          is_active: true,
+        },
+        kind: "access_key",
+        days: 30,
+        device_limit: 5,
+        node_policy: "paid_pool",
+      });
+    }
+    if (path === "/api/admin/promo-slots") {
+      if (request.method() === "PUT") {
+        const payload = JSON.parse(request.postData() || "{}");
+        promoSlotAssignments = Array.isArray(payload.assignments) ? payload.assignments : promoSlotAssignments;
+        return json({
+          ok: true,
+          promo_slots: {
+            version: "e2e-promo-slots",
+            mode: "first_party",
+            remote_available: true,
+            fallback_behavior: "hide",
+            assignments: promoSlotAssignments,
+          },
+        });
+      }
+      return json({
+        promo_slots: {
+          version: "e2e-promo-slots",
+          mode: "first_party",
+          remote_available: true,
+          fallback_behavior: "hide",
+          assignments: promoSlotAssignments,
+          catalog: {
+            version: "e2e-promo-slots",
+            mode: "first_party",
+            fallback_behavior: "hide",
+            slots: [
+              {
+                id: "marketing.checkout.contextual",
+                surface: "marketing.checkout",
+                contexts: ["checkout"],
+                allowed_content_ids: ["beta_checkout_honest"],
+              },
+            ],
+            content_catalog: [
+              {
+                id: "beta_checkout_honest",
+                kind: "payment_status",
+                goal: "Keep checkout honest while Lava.top evidence is pending",
+                default_enabled: true,
+              },
+            ],
+          },
+        },
+      });
+    }
     if (path === "/api/admin/promos") return json({ promos: [] });
     if (path === "/api/admin/gift-codes") return json({ gift_codes: [] });
     if (path === "/api/admin/plans") return json({ plans: [] });
@@ -908,6 +1085,7 @@ test.describe("Admin gate", () => {
 
     const sections = [
       "admin/dashboard/",
+      "admin/release/",
       "admin/users/",
       "admin/network/",
       "admin/nodes/",
@@ -925,6 +1103,39 @@ test.describe("Admin gate", () => {
       await expect(page.getByRole("navigation", { name: "Admin sections" })).toBeVisible();
       await expect(page.locator("h1, h2").first()).toBeVisible();
     }
+  });
+
+  test("shows the release cockpit as a guarded NO-GO surface", async ({ page }) => {
+    await registerApiMocks(page, { isAdmin: true });
+
+    await openRoute(page, "admin/release/");
+
+    await expect(page).toHaveURL(/\/admin\/release\/?$/);
+    await expect(page.getByRole("navigation", { name: "Admin sections" }).getByRole("link", { name: /Релиз|GO\/NO-GO/ })).toBeVisible();
+    await expect(page.locator("body")).toContainText("NO-GO");
+    await expect(page.locator("body")).toContainText("GitHub Releases");
+    await expect(page.locator("body")).toContainText("Lava.top");
+    await expect(page.locator("body")).toContainText("RUNTIME LINK SYNC AUDIT BEFORE ANNOUNCEMENT");
+    await expect(page.locator("body")).toContainText("CONFIRM_NO_PUBLIC_ANNOUNCEMENT_YET");
+    await expect(page.locator("body")).toContainText("Public beta is live.");
+  });
+
+  test("lets admin issue access keys, look them up, and save promo slots", async ({ page }) => {
+    await registerApiMocks(page, { isAdmin: true });
+
+    await openRoute(page, "admin/promos/");
+
+    await expect(page.getByRole("heading", { name: "Issue access keys" })).toBeVisible();
+    await page.locator('input[type="number"]').first().fill("1");
+    await page.getByRole("button", { name: "Issue" }).click();
+    await expect(page.locator("body")).toContainText("POKROV-TEST-0001");
+
+    await page.getByPlaceholder("POKROV-XXXX-XXXX").fill("POKROV-TEST-0001");
+    await page.getByRole("button", { name: "Lookup" }).click();
+    await expect(page.locator("body")).toContainText("1 month");
+
+    await page.getByRole("button", { name: /^Save$/ }).click();
+    await expect(page.locator("body")).toContainText("Promo-slot config");
   });
 
   test("keeps an explicit path back to the cabinet from admin", async ({ page }) => {

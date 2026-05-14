@@ -88,6 +88,14 @@ export const ADMIN_NAV_ITEMS: AdminNavItem[] = [
     match: (path) => path === "/admin" || path.startsWith("/admin/dashboard"),
   },
   {
+    href: "/admin/release",
+    label: "Релиз",
+    icon: "rocket_launch",
+    summary: "GO/NO-GO, runtime-ссылки, оплата, email и внешние блокеры запуска.",
+    categoryId: "diagnostics",
+    match: (path) => path.startsWith("/admin/release"),
+  },
+  {
     href: "/admin/users",
     label: "Пользователи",
     icon: "manage_accounts",
