@@ -169,6 +169,7 @@ except ModuleNotFoundError:
         HTML = "HTML"
 
     F = _FilterExpr()
+_RAW_INLINE_KEYBOARD_BUTTON = InlineKeyboardButton
 from dotenv import load_dotenv
 from sqlalchemy import create_engine, Column, Integer, String, Boolean, DateTime, BigInteger, func
 from sqlalchemy.orm import sessionmaker, declarative_base
@@ -181,6 +182,29 @@ import html
 # ==========================================
 load_dotenv(dotenv_path=Path(__file__).resolve().with_name(".env"))
 load_dotenv()
+
+try:
+    from telegram_buttons import (
+        BTN_EMOJI_DANGER_ID,
+        BTN_EMOJI_PRIMARY_ID,
+        BTN_EMOJI_SUCCESS_ID,
+        BTN_STYLE_DANGER,
+        BTN_STYLE_PRIMARY,
+        BTN_STYLE_SUCCESS,
+        modern_inline_button,
+    )
+except ModuleNotFoundError:
+    modern_inline_button = None
+    BTN_STYLE_PRIMARY = "primary"
+    BTN_STYLE_SUCCESS = "success"
+    BTN_STYLE_DANGER = "danger"
+    BTN_EMOJI_PRIMARY_ID = (os.getenv("TG_BTN_EMOJI_PRIMARY_ID") or "").strip()
+    BTN_EMOJI_SUCCESS_ID = (os.getenv("TG_BTN_EMOJI_SUCCESS_ID") or "").strip()
+    BTN_EMOJI_DANGER_ID = (os.getenv("TG_BTN_EMOJI_DANGER_ID") or "").strip()
+else:
+    # Route regular main-bot buttons through the shared Bot API 9.4/9.5
+    # style/custom-emoji helper, while keeping the raw class for capability probes.
+    InlineKeyboardButton = modern_inline_button
 
 BOT_TOKEN = os.getenv("BOT_TOKEN")
 ADMIN_ID = int(os.getenv("ADMIN_ID", "0"))
@@ -280,14 +304,6 @@ AUTO_DELETE_SECONDS = max(0, int(os.getenv("BOT_AUTO_DELETE_SECONDS", "86400")))
 _auto_delete_scheduled: set[tuple[int, int]] = set()
 _user_context_mode: dict[int, str] = {}  # tg_id -> "main" | "support"
 
-BTN_STYLE_PRIMARY = "primary"
-BTN_STYLE_SUCCESS = "success"
-BTN_STYLE_DANGER = "danger"
-BTN_EMOJI_PRIMARY_ID = (os.getenv("TG_BTN_EMOJI_PRIMARY_ID") or "").strip()
-BTN_EMOJI_SUCCESS_ID = (os.getenv("TG_BTN_EMOJI_SUCCESS_ID") or "").strip()
-BTN_EMOJI_DANGER_ID = (os.getenv("TG_BTN_EMOJI_DANGER_ID") or "").strip()
-
-
 def _env_bool(name: str, default: bool = False) -> bool:
     raw = os.getenv(name)
     if raw is None:
@@ -318,10 +334,10 @@ MAIN_CONNECT_CTA_LABELS = {
 
 
 def _inline_button_supported_fields() -> set[str]:
-    fields = getattr(InlineKeyboardButton, "model_fields", None)
+    fields = getattr(_RAW_INLINE_KEYBOARD_BUTTON, "model_fields", None)
     if isinstance(fields, dict):
         return set(fields.keys())
-    fields = getattr(InlineKeyboardButton, "__fields__", None)
+    fields = getattr(_RAW_INLINE_KEYBOARD_BUTTON, "__fields__", None)
     if isinstance(fields, dict):
         return set(fields.keys())
     return {"text", "callback_data", "url", "web_app"}

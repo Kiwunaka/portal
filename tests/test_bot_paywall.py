@@ -756,6 +756,20 @@ class BotPaywallTests(unittest.TestCase):
         self.assertFalse(any("Stars" in text for text in labels))
         self.assertFalse(any("points" in text.lower() for text in labels))
 
+    def test_main_bot_regular_keyboards_use_modern_button_fields_when_supported(self) -> None:
+        if not self.bot_module.SUPPORTS_BTN_STYLE:
+            self.skipTest("aiogram InlineKeyboardButton has no style field")
+
+        keyboard = self.bot_module.tariff_keyboard(tg_id=1001, show_trial=True, include_long_plans=False)
+        buttons = {
+            str(getattr(button, "callback_data", "") or ""): button
+            for row in keyboard.inline_keyboard
+            for button in row
+        }
+
+        self.assertEqual(getattr(buttons["charge_long"], "style", None), self.bot_module.BTN_STYLE_PRIMARY)
+        self.assertEqual(getattr(buttons["back"], "style", None), self.bot_module.BTN_STYLE_DANGER)
+
     def test_twelve_month_tariff_savings_is_45_percent(self) -> None:
         self.assertEqual(self.bot_module._tariff_savings_pct("12_months"), 45)
 
