@@ -306,6 +306,29 @@ RestartSec=3
 WantedBy=multi-user.target
 """
 
+        portal_api_healthcheck_service = """[Unit]
+Description=Portal API localhost healthcheck
+After=network.target portal-api.service
+Wants=portal-api.service
+
+[Service]
+Type=oneshot
+ExecStart=/bin/bash -lc 'curl -fsS --max-time 5 http://127.0.0.1:8080/api/health >/dev/null || systemctl restart portal-api'
+"""
+
+        portal_api_healthcheck_timer = """[Unit]
+Description=Run Portal API localhost healthcheck
+
+[Timer]
+OnBootSec=2min
+OnUnitActiveSec=1min
+AccuracySec=15s
+Unit=portal-api-healthcheck.service
+
+[Install]
+WantedBy=timers.target
+"""
+
         portal_bot_service = """[Unit]
 Description=Portal Bot (Telegram)
 After=network.target
@@ -372,6 +395,8 @@ WantedBy=multi-user.target
         sftp = brain.open_sftp()
         try:
             _sftp_put_text(sftp, "/etc/systemd/system/portal-api.service", portal_api_service)
+            _sftp_put_text(sftp, "/etc/systemd/system/portal-api-healthcheck.service", portal_api_healthcheck_service)
+            _sftp_put_text(sftp, "/etc/systemd/system/portal-api-healthcheck.timer", portal_api_healthcheck_timer)
             _sftp_put_text(sftp, "/etc/systemd/system/portal-bot.service", portal_bot_service)
             _sftp_put_text(sftp, "/etc/caddy/Caddyfile", caddyfile)
         finally:
@@ -379,6 +404,7 @@ WantedBy=multi-user.target
 
         _run(brain, "systemctl daemon-reload", timeout=60)
         _run(brain, "systemctl enable portal-api", timeout=60)
+        _run(brain, "systemctl enable --now portal-api-healthcheck.timer", timeout=60)
         _run(brain, "systemctl restart portal-api", timeout=120)
         _run(brain, "systemctl restart caddy", timeout=120)
 
