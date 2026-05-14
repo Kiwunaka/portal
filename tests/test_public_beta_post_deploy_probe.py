@@ -211,6 +211,39 @@ def test_payment_provider_catalog_uses_blocked_reason_lists_from_live_api() -> N
     assert checks["payment_provider_catalog"]["note"] == "Оплата пока закрыта до финальной проверки Lava.top."
 
 
+def test_email_runtime_accepts_deployed_delivery_configured_field() -> None:
+    module = _load_module()
+
+    report = module.build_report(
+        api_base_url="https://api.pokrov.space",
+        env={},
+        live=False,
+        runtime_fetcher=lambda path: {
+            "/api/auth/email/status": {
+                "ok": True,
+                "enabled": True,
+                "public_enabled": True,
+                "delivery_configured": True,
+                "delivery_secret_configured": True,
+                "debug_echo": False,
+                "blocked_reasons": [],
+            },
+            "/api/payments/providers": {
+                "ok": False,
+                "blocked": True,
+                "providers": [],
+                "blocked_reasons": ["paid_checkout_launch_evidence_missing"],
+            },
+        }[path],
+        command_runner=lambda *_args, **_kwargs: (_ for _ in ()).throw(AssertionError("unexpected command")),
+    )
+
+    checks = {check["name"]: check for check in report["checks"]}
+    assert checks["email_public_runtime_config"]["status"] == module.PASS
+    assert checks["email_public_runtime_config"]["missing"] == []
+    assert report["email_public_runtime_config_passed"] is True
+
+
 def test_brain_live_probe_report_can_prove_email_without_local_secrets() -> None:
     module = _load_module()
 

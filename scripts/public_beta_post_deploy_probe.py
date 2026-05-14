@@ -197,7 +197,10 @@ def _email_runtime_check(payload: Mapping[str, Any], *, source: str) -> dict[str
         missing.append("email auth enabled")
     if not _truthy(payload.get("public_enabled")):
         missing.append("public email auth enabled")
-    if not _truthy(payload.get("delivery_url_configured")):
+    delivery_configured = _truthy(payload.get("delivery_configured")) or _truthy(
+        payload.get("delivery_url_configured")
+    )
+    if not delivery_configured:
         missing.append("delivery webhook URL configured")
     if not _truthy(payload.get("delivery_secret_configured")):
         missing.append("delivery relay secret configured")
