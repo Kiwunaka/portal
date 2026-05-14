@@ -76,8 +76,10 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements-ops.txt
           pip install -r portal_bot/requirements.txt
+          pip install pytest httpx
           cd webapp
           npm ci
+          npx playwright install --with-deps chromium
 
       - name: Run orchestrator
         shell: bash
