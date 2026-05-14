@@ -6,10 +6,11 @@ const port = Number(process.env.E2E_PORT || 3100);
 const reuseExistingServer = process.env.PLAYWRIGHT_FRESH_SERVER === "1" ? false : !process.env.CI;
 const artifactsRoot = path.join(os.tmpdir(), "pokrov-playwright", "webapp");
 const serverMode = process.env.PLAYWRIGHT_SERVER_MODE === "start" ? "start" : "dev";
+const npmCommand = process.platform === "win32" ? "npm.cmd" : "npm";
 const serverCommand =
   serverMode === "start"
     ? `python scripts/serve_export.py --port ${port} --directory out`
-    : `npm.cmd run dev -- --port ${port}`;
+    : `${npmCommand} run dev -- --port ${port}`;
 
 export default defineConfig({
   testDir: "./e2e",

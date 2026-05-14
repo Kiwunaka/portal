@@ -67,6 +67,19 @@ _SECRET_ASSIGNMENT_RE = re.compile(
 )
 _BEARER_RE = re.compile(r"(?i)\bBearer\s+([A-Za-z0-9._~+/=-]+)")
 DEFAULT_ANDROID_AUDIT_PACKAGE = "space.pokrov.pokrov_android_shell"
+CLIENT_ROOT = Path(os.getenv("POKROV_APP_ROOT", str(REPO_ROOT.parent / "POKROV-app")))
+CLIENT_ROOT_REQUIRED_PATHS = (
+    CLIENT_ROOT / "config" / "product-contract.seed.json",
+    CLIENT_ROOT / "config" / "runtime-profile.seed.json",
+    CLIENT_ROOT / "config" / "runtime-artifacts.seed.json",
+    CLIENT_ROOT / "apps" / "android_shell",
+    CLIENT_ROOT / "apps" / "windows_shell",
+)
+CLIENT_ROOT_GATE_NAMES = {
+    "Client security smoke",
+    "Client Flutter tests",
+    "Client portal Flutter tests",
+}
 
 
 def _redact_text(text: str) -> str:
@@ -102,7 +115,7 @@ def _prepare_frontend_build_copy(cwd: Path) -> Path:
         shutil.copytree(copy_src, copy_dst, dirs_exist_ok=True)
     source_node_modules = cwd / "node_modules"
     target_node_modules = target / "node_modules"
-    if cwd.name.lower() == "webapp":
+    if cwd.name.lower() == "webapp" or not source_node_modules.exists():
         proc = subprocess.run(
             [_npm_exec(), "ci", "--no-audit", "--no-fund"],
             cwd=str(target),
@@ -129,6 +142,45 @@ def _prepare_frontend_build_copy(cwd: Path) -> Path:
     else:
         target_node_modules.symlink_to(source_node_modules, target_is_directory=True)
     return target
+
+
+def _missing_client_root_issue() -> str | None:
+    missing = [path for path in CLIENT_ROOT_REQUIRED_PATHS if not path.exists()]
+    if not missing:
+        return None
+    rendered = ", ".join(str(path) for path in missing[:3])
+    if len(missing) > 3:
+        rendered = f"{rendered} (+{len(missing) - 3} more)"
+    return f"POKROV-app workspace is unavailable for this gate run: missing {rendered}"
+
+
+def _client_workspace_skipped_gate(issue: str) -> tuple[str, list[str], Path]:
+    return (
+        "Client workspace preflight (skipped)",
+        [
+            sys.executable,
+            "-c",
+            f"print({issue!r}); print('BLOCKED_BY_ACCESS: client gates skipped for this CI guardrail run')",
+        ],
+        REPO_ROOT,
+    )
+
+
+def _filter_client_gates_when_missing(
+    gates: list[tuple[str, list[str], Path]],
+    *,
+    allow_missing_client_root: bool,
+    client_platform_gates: list[str],
+) -> list[tuple[str, list[str], Path]]:
+    issue = _missing_client_root_issue()
+    if issue is None:
+        return gates
+    if not allow_missing_client_root or client_platform_gates:
+        return gates
+    return [
+        *(gate for gate in gates if gate[0] not in CLIENT_ROOT_GATE_NAMES),
+        _client_workspace_skipped_gate(issue),
+    ]
 
 
 def _is_pytest_command(command: list[str]) -> bool:
@@ -531,6 +583,11 @@ def main() -> int:
         default="",
         help="Optional comma-separated client build gates: windows,android-apk,android-aab",
     )
+    parser.add_argument(
+        "--allow-missing-client-root",
+        action="store_true",
+        help="Skip sibling POKROV-app checks when that private workspace is unavailable in CI.",
+    )
     args = parser.parse_args()
 
     try:
@@ -575,6 +632,15 @@ def main() -> int:
 
     if android_localhost_audit_gate is not None:
         gates.append(android_localhost_audit_gate)
+
+    allow_missing_client_root = bool(args.allow_missing_client_root) or str(
+        os.getenv("ALLOW_MISSING_CLIENT_ROOT", "")
+    ).strip().lower() in {"1", "true", "yes"}
+    gates = _filter_client_gates_when_missing(
+        gates,
+        allow_missing_client_root=allow_missing_client_root,
+        client_platform_gates=client_platform_gates,
+    )
 
     results: list[GateResult] = []
     for name, cmd, cwd in gates:

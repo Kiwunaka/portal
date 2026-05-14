@@ -1,5 +1,6 @@
 import importlib.util
 import sys
+import tempfile
 import unittest
 from pathlib import Path
 from unittest.mock import patch
@@ -140,6 +141,43 @@ class ReleaseGateCheckTests(unittest.TestCase):
         self.assertIn("--redact", cmd)
         self.assertNotIn("scripts/smoke_client_apps.py", cmd)
         self.assertEqual(cwd, self.module.REPO_ROOT)
+
+    def test_missing_client_root_can_be_skipped_for_ci_guardrails(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            missing = Path(tmp) / "POKROV-app" / "config" / "product-contract.seed.json"
+            with patch.object(self.module, "CLIENT_ROOT_REQUIRED_PATHS", (missing,)):
+                gates = [
+                    self.module._client_security_smoke_gate(),
+                    self.module._client_flutter_test_gate(suite="portal"),
+                    ("Public link checks", [sys.executable, "scripts/check-links.py"], self.module.REPO_ROOT),
+                ]
+
+                filtered = self.module._filter_client_gates_when_missing(
+                    gates,
+                    allow_missing_client_root=True,
+                    client_platform_gates=[],
+                )
+
+        names = [name for name, _cmd, _cwd in filtered]
+        self.assertNotIn("Client security smoke", names)
+        self.assertNotIn("Client portal Flutter tests", names)
+        self.assertIn("Public link checks", names)
+        self.assertIn("Client workspace preflight (skipped)", names)
+
+    def test_missing_client_root_stays_strict_for_platform_builds(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            missing = Path(tmp) / "POKROV-app" / "config" / "product-contract.seed.json"
+            with patch.object(self.module, "CLIENT_ROOT_REQUIRED_PATHS", (missing,)):
+                gates = [self.module._client_security_smoke_gate()]
+
+                filtered = self.module._filter_client_gates_when_missing(
+                    gates,
+                    allow_missing_client_root=True,
+                    client_platform_gates=["windows"],
+                )
+
+        names = [name for name, _cmd, _cwd in filtered]
+        self.assertEqual(names, ["Client security smoke"])
 
     def test_redact_text_covers_telegram_init_data_and_query_fields(self) -> None:
         raw = (

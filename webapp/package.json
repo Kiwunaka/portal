@@ -7,10 +7,10 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "test:e2e": "powershell -NoProfile -ExecutionPolicy Bypass -Command \"$port=3102; Get-NetTCPConnection -LocalPort $port -ErrorAction SilentlyContinue | Select-Object -ExpandProperty OwningProcess -Unique | ForEach-Object { Stop-Process -Id $_ -Force -ErrorAction SilentlyContinue }; exit 0\" && npm.cmd run build && set E2E_PORT=3102&& set PLAYWRIGHT_FRESH_SERVER=1&& set PLAYWRIGHT_SERVER_MODE=start&& playwright test e2e/admin-gate.spec.ts e2e/cabinet-flow.spec.ts",
-    "test:e2e:admin": "powershell -NoProfile -ExecutionPolicy Bypass -Command \"$port=3101; Get-NetTCPConnection -LocalPort $port -ErrorAction SilentlyContinue | Select-Object -ExpandProperty OwningProcess -Unique | ForEach-Object { Stop-Process -Id $_ -Force -ErrorAction SilentlyContinue }; exit 0\" && npm.cmd run build && set E2E_PORT=3101&& set PLAYWRIGHT_FRESH_SERVER=1&& set PLAYWRIGHT_SERVER_MODE=start&& playwright test e2e/admin-gate.spec.ts",
-    "test:e2e:cabinet": "powershell -NoProfile -ExecutionPolicy Bypass -Command \"$port=3103; Get-NetTCPConnection -LocalPort $port -ErrorAction SilentlyContinue | Select-Object -ExpandProperty OwningProcess -Unique | ForEach-Object { Stop-Process -Id $_ -Force -ErrorAction SilentlyContinue }; exit 0\" && npm.cmd run build && set E2E_PORT=3103&& set PLAYWRIGHT_FRESH_SERVER=1&& set PLAYWRIGHT_SERVER_MODE=start&& playwright test e2e/cabinet-flow.spec.ts",
-    "test:e2e:admin:headed": "powershell -NoProfile -ExecutionPolicy Bypass -Command \"$port=3101; Get-NetTCPConnection -LocalPort $port -ErrorAction SilentlyContinue | Select-Object -ExpandProperty OwningProcess -Unique | ForEach-Object { Stop-Process -Id $_ -Force -ErrorAction SilentlyContinue }; exit 0\" && npm.cmd run build && set E2E_PORT=3101&& set PLAYWRIGHT_FRESH_SERVER=1&& set PLAYWRIGHT_SERVER_MODE=start&& playwright test e2e/admin-gate.spec.ts --headed",
+    "test:e2e": "node ./scripts/run-e2e.mjs full",
+    "test:e2e:admin": "node ./scripts/run-e2e.mjs admin",
+    "test:e2e:cabinet": "node ./scripts/run-e2e.mjs cabinet",
+    "test:e2e:admin:headed": "node ./scripts/run-e2e.mjs admin --headed",
     "e2e:install": "playwright install chromium"
   },
   "dependencies": {

@@ -97,8 +97,8 @@ def test_client_lane_docs_point_to_pokrov_app_as_development_truth() -> None:
     assert "`app-next/` inside the platform repo is now transition/reference material rather than the canonical git lane" in repo_readme
     assert "`app-next/docs/` in the platform repo now remains transition/reference material instead of the canonical client-doc lane" in app_readme
     assert "public cutover approval: `not allowed`" in app_cutover
-    assert "public Android release approval: `blocked`" in app_cutover
-    assert "public Windows release approval: `blocked`" in app_cutover
+    assert "public Android release approval: `staged outside-store beta only`" in app_cutover
+    assert "public Windows release approval: `staged outside-store unsigned beta only`" in app_cutover
     assert "long-term repo truth: `yes`" in app_cutover
     assert "bootstrap source removed from active policy and active docs on `2026-04-23`" in app_next_summary
     assert "active client canon moved to `C:/Users/kiwun/Documents/ai/POKROV-app`" in bridge_summary
@@ -114,7 +114,7 @@ def test_root_release_orchestration_uses_wrappers_and_bridge_archive_mirror() ->
     assert '[sys.executable, "scripts/run_client_release_gate.py", "test", "--suite", suite],' in release_gate_text
     assert '[sys.executable, "scripts/run_client_release_gate.py", "build", "--target", target],' in release_gate_text
     assert "external/client-fork/app" not in release_gate_text
-    assert 'DEFAULT_CLIENT_ROOT = Path("C:/Users/kiwun/Documents/ai/POKROV-app")' in client_gate_text
+    assert 'DEFAULT_CLIENT_ROOT = REPO_ROOT.parent / "POKROV-app"' in client_gate_text
     assert 'CLIENT_ROOT = Path(os.getenv("POKROV_APP_ROOT", str(DEFAULT_CLIENT_ROOT)))' in client_gate_text
     assert "Run POKROV-app release gates from the platform repo." in client_gate_text
     assert "status.android_shell_root" in client_gate_text

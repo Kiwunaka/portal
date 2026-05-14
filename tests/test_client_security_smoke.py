@@ -157,7 +157,7 @@ android {
         failures = self.module._windows_release_failures(windows_release)
 
         self.assertIn("Windows release seed must keep display_name as POKROV", failures)
-        self.assertIn("Windows release seed must keep binary_name as pokrov_windows_seed.exe", failures)
+        self.assertIn("Windows release seed must keep binary_name as pokrov_windows_beta.exe", failures)
         self.assertIn("Windows release seed must keep artifact_root on apps/windows_shell/build/release_bundle", failures)
         self.assertIn("Windows release seed must not declare a Windows helper binary", failures)
 

@@ -8,7 +8,7 @@ from pathlib import Path
 
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
-DEFAULT_CLIENT_ROOT = Path("C:/Users/kiwun/Documents/ai/POKROV-app")
+DEFAULT_CLIENT_ROOT = REPO_ROOT.parent / "POKROV-app"
 CLIENT_ROOT = Path(os.getenv("POKROV_APP_ROOT", str(DEFAULT_CLIENT_ROOT)))
 
 PRODUCT_CONTRACT_PATH = CLIENT_ROOT / "config" / "product-contract.seed.json"
