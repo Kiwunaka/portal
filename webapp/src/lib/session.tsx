@@ -86,6 +86,7 @@ export function PortalSessionProvider({ children, mode = "dashboard" }: PortalSe
   const [user, setUser] = useState<UserPayload | null>(null);
   const [dash, setDash] = useState<DashboardSnapshot | null>(null);
   const lastGoodRef = useRef<{ user: UserPayload; dash: DashboardSnapshot } | null>(null);
+  const lastFocusRefreshAtRef = useRef(0);
 
   const consumeTelegramOidcRedirect = useCallback(async (): Promise<boolean> => {
     const callback = readTelegramOidcCallback();
@@ -200,8 +201,28 @@ export function PortalSessionProvider({ children, mode = "dashboard" }: PortalSe
   }, [consumeTelegramOidcRedirect, mode, tgUser]);
 
   useEffect(() => {
+    lastFocusRefreshAtRef.current = Date.now();
     void refresh();
   }, [refresh]);
+
+  useEffect(() => {
+    if (typeof window === "undefined" || mode === "entry") return;
+    const refreshAfterFocus = () => {
+      if (typeof document !== "undefined" && document.visibilityState && document.visibilityState !== "visible") return;
+      const now = Date.now();
+      if (now - lastFocusRefreshAtRef.current < 8000) return;
+      lastFocusRefreshAtRef.current = now;
+      void refresh();
+    };
+    window.addEventListener("focus", refreshAfterFocus);
+    window.addEventListener("pageshow", refreshAfterFocus);
+    document.addEventListener("visibilitychange", refreshAfterFocus);
+    return () => {
+      window.removeEventListener("focus", refreshAfterFocus);
+      window.removeEventListener("pageshow", refreshAfterFocus);
+      document.removeEventListener("visibilitychange", refreshAfterFocus);
+    };
+  }, [mode, refresh]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
