@@ -457,7 +457,7 @@ function Features() {
 
 function Pricing({ links }: { links: HomeLinks }) {
   const planCards = buildPlanCards();
-  const defaultPlanCode = planCards[1]?.code || planCards[0]?.code || "1_month";
+  const defaultPlanCode = planCards.find((plan) => plan.code === "start_99")?.code || planCards[0]?.code || "start_99";
   const featuredCode = planCards[1]?.code || defaultPlanCode;
 
   const freeFeatures = [
@@ -581,7 +581,7 @@ function FinalCta({ links }: { links: HomeLinks }) {
 
 export default function MarketingHomePage() {
   const planCards = buildPlanCards();
-  const defaultPlanCode = planCards[1]?.code || planCards[0]?.code || "1_month";
+  const defaultPlanCode = planCards.find((plan) => plan.code === "start_99")?.code || planCards[0]?.code || "start_99";
   const links = buildLinks(defaultPlanCode);
 
   return (

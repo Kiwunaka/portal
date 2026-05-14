@@ -23,9 +23,16 @@ type DisplayPlan = {
   note: string;
 };
 
+const CHECKOUT_READY_PLAN_CODES = new Set(["start_99"]);
+
 const SHARED_PLANS: DisplayPlan[] = getTariffPlans()
   .slice()
-  .filter((plan) => Boolean(plan.is_active) && Number(plan.amount_rub || 0) > 0)
+  .filter(
+    (plan) =>
+      Boolean(plan.is_active) &&
+      Number(plan.amount_rub || 0) > 0 &&
+      CHECKOUT_READY_PLAN_CODES.has(String(plan.code || "").trim().toLowerCase()),
+  )
   .sort((left, right) => Number(left.sort_order || 0) - Number(right.sort_order || 0))
   .map((plan) => ({
     code: plan.code,
@@ -53,14 +60,14 @@ export default function CheckoutPage() {
   const [plans, setPlans] = useState<DisplayPlan[]>(SHARED_PLANS);
   const [promoInput, setPromoInput] = useState(() => normalizePromo(searchParams.get("promo") || ""));
   const [catalogError, setCatalogError] = useState("");
-  const [selectedCode, setSelectedCode] = useState(() => normalizePlanCode(searchParams.get("plan"), "1_month"));
+  const [selectedCode, setSelectedCode] = useState(() => normalizePlanCode(searchParams.get("plan"), "start_99"));
   const [providerCode, setProviderCode] = useState("");
   const [providerState, setProviderState] = useState<RubPaymentProvidersResult | null>(null);
   const [checkoutBusy, setCheckoutBusy] = useState(false);
   const [checkoutError, setCheckoutError] = useState("");
 
   useEffect(() => {
-    setSelectedCode(normalizePlanCode(searchParams.get("plan"), "1_month"));
+    setSelectedCode(normalizePlanCode(searchParams.get("plan"), "start_99"));
     setPromoInput(normalizePromo(searchParams.get("promo") || ""));
   }, [searchParams]);
 
@@ -71,7 +78,12 @@ export default function CheckoutPage() {
       try {
         const payload = await fetchPublicCatalog();
         const nextPlans = (payload.plans || [])
-          .filter((plan) => Boolean(plan.is_active) && Number(plan.amount_rub || 0) > 0)
+          .filter(
+            (plan) =>
+              Boolean(plan.is_active) &&
+              Number(plan.amount_rub || 0) > 0 &&
+              CHECKOUT_READY_PLAN_CODES.has(String(plan.code || "").trim().toLowerCase()),
+          )
           .sort((left, right) => Number(left.sort_order || 0) - Number(right.sort_order || 0))
           .map((plan) => ({
             code: plan.code,

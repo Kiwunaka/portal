@@ -381,7 +381,7 @@ export default function MarketingLanding({
   const downloadCards = buildDownloadCards();
   const relatedPages = RELATED_PAGES.filter((item) => item.href !== pagePath);
   const currentScenarios = scenarioCards?.length ? scenarioCards : DEFAULT_SCENARIOS;
-  const defaultCheckoutHref = buildCheckoutHref(plans[0]?.code || "1_month");
+  const defaultCheckoutHref = buildCheckoutHref(plans.find((plan) => plan.code === "start_99")?.code || plans[0]?.code || "start_99");
   const softwareApplicationJsonLd = buildSoftwareApplicationJsonLd({
     pagePath,
     reviews: buildReviewJsonLdInput(reviews),

@@ -623,7 +623,7 @@ export default function CabinetShell({ children }: { children: ReactNode }) {
 
       {drawerOpen ? mobileMenu : null}
 
-      {!isAdminRoute ? (
+      {!isAdminRoute && !drawerOpen ? (
         <nav
           className="mobile-nav-root xl:hidden"
           aria-label="Навигация кабинета"

@@ -31,9 +31,18 @@ function resolveTelegramBotName(raw: string): string {
   return value.replace(/^@+/, "").split(/[/?#]/)[0].toLowerCase();
 }
 
+function legacyTelegramWidgetEnabled(): boolean {
+  return (
+    String(process.env.NEXT_PUBLIC_ENABLE_LEGACY_TELEGRAM_WIDGET || process.env.VITE_ENABLE_LEGACY_TELEGRAM_WIDGET || "")
+      .trim()
+      .toLowerCase() === "true"
+  );
+}
+
 export default function TelegramLoginWidget() {
   const hostRef = useRef<HTMLDivElement | null>(null);
   const authDoneRef = useRef(false);
+  const legacyWidget = legacyTelegramWidgetEnabled();
   const botSource = String(
     process.env.NEXT_PUBLIC_TELEGRAM_BOT_URL || process.env.VITE_TELEGRAM_BOT_URL || "https://t.me/pokrov_vpnbot",
   ).trim();
@@ -47,6 +56,11 @@ export default function TelegramLoginWidget() {
     const host = hostRef.current;
     if (!host) return;
     host.innerHTML = "";
+    if (!legacyWidget) {
+      setWidgetHint("");
+      delete window.onTelegramAuth;
+      return;
+    }
     const isLocalHost = ["localhost", "127.0.0.1", "::1"].includes(window.location.hostname);
     if (isLocalHost) {
       queueMicrotask(() => {
@@ -93,7 +107,7 @@ export default function TelegramLoginWidget() {
       host.innerHTML = "";
       delete window.onTelegramAuth;
     };
-  }, [botName, loginByWidget]);
+  }, [botName, legacyWidget, loginByWidget]);
 
   return (
     <div className="space-y-2">
@@ -108,8 +122,8 @@ export default function TelegramLoginWidget() {
       <p className="text-xs leading-5 text-slate-500 dark:text-slate-400">
         Telegram подтвердит вход и вернет вас обратно в кабинет без лишних экранов.
       </p>
-      <div ref={hostRef} className="min-h-[56px]" id="tg-login-widget" />
-      {widgetHint ? <p className="text-xs leading-5 text-amber-600 dark:text-amber-300">{widgetHint}</p> : null}
+      <div ref={hostRef} className={legacyWidget ? "min-h-[56px]" : "hidden"} id="tg-login-widget" />
+      {legacyWidget && widgetHint ? <p className="text-xs leading-5 text-amber-600 dark:text-amber-300">{widgetHint}</p> : null}
     </div>
   );
 }

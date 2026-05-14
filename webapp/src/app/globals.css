@@ -1338,6 +1338,12 @@ body {
   color: #fff;
 }
 
+@media (min-width: 1280px) {
+  .mobile-nav-root {
+    display: none;
+  }
+}
+
 /* Responsive */
 @media (max-width: 768px) {
   .bento-grid {

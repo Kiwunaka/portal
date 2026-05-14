@@ -101,10 +101,11 @@ type PublicRubOrderResponse = {
 
 const config = getPokrovPublicConfig(process.env as Record<string, string | undefined>);
 const promoCatalog = getPromoSlotsCatalog();
+const CHECKOUT_READY_PLAN_CODES = new Set(["start_99"]);
 
 function fallbackPlans(): PlanOption[] {
   return getTariffPlans()
-    .filter((plan) => Boolean(plan.is_active))
+    .filter((plan) => Boolean(plan.is_active) && CHECKOUT_READY_PLAN_CODES.has(String(plan.code || "").trim().toLowerCase()))
     .slice()
     .sort((left, right) => Number(left.sort_order || 0) - Number(right.sort_order || 0))
     .map((plan) => ({
@@ -278,7 +279,7 @@ export function CheckoutLoadingFallback() {
 
 export default function CheckoutClient() {
   const searchParams = useSearchParams();
-  const queryPlan = normalizePlanCode(searchParams.get("plan"), "1_month");
+  const queryPlan = normalizePlanCode(searchParams.get("plan"), "start_99");
   const [catalog, setCatalog] = useState<PublicCatalogResponse | null>(null);
   const [plans, setPlans] = useState<PlanOption[]>(() => fallbackPlans());
   const [selectedPlan, setSelectedPlan] = useState(queryPlan);
@@ -300,7 +301,7 @@ export default function CheckoutClient() {
         return;
       }
       const nextPlans = (nextCatalog.plans || [])
-        .filter((plan) => plan?.is_active !== false && Boolean(plan?.code))
+        .filter((plan) => plan?.is_active !== false && Boolean(plan?.code) && CHECKOUT_READY_PLAN_CODES.has(String(plan.code || "").trim().toLowerCase()))
         .map((plan) => ({
           code: String(plan.code || "").trim().toLowerCase(),
           label: String(plan.label || plan.code || "").trim(),

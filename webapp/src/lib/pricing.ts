@@ -57,7 +57,7 @@ export function promoDiscountPercent(raw: string): number {
 }
 
 export function getPricingPlan(raw: string | null | undefined): PricingPlan {
-  const code = normalizePlanCode(raw, "1_month");
+  const code = normalizePlanCode(raw, "start_99");
   return PRICING_PLANS.find((plan) => plan.code === code) || toPricingPlan(code);
 }
 
