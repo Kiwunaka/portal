@@ -1633,6 +1633,17 @@ def _access_key_meta_from_card_type(*, s, card_type: str) -> dict[str, Any] | No
     }
 
 
+def _access_key_safe_meta(code: str) -> dict[str, Any]:
+    normalized = str(code or "").strip().upper()
+    if not normalized:
+        return {}
+    return {
+        "code_preview": f"...{normalized[-4:]}",
+        "code_fp": hashlib.sha256(normalized.encode("utf-8")).hexdigest()[:16],
+        "code_len": len(normalized),
+    }
+
+
 def _access_key_status_payload(*, s, card: GiftCard) -> dict[str, Any]:
     meta = _access_key_meta_from_card_type(s=s, card_type=str(card.card_type or ""))
     return {
@@ -7469,7 +7480,7 @@ async def gift_redeem(payload: GiftRedeemIn, request: Request, x_telegram_init_d
                     _track_bonus_event(
                         tg_id=tg_id,
                         event_name="gift_redeem_denied",
-                        meta={"code": code, "card_type": card_type, "reason": "campaign_restriction_mismatch"},
+                        meta={**_access_key_safe_meta(code), "card_type": card_type, "reason": "campaign_restriction_mismatch"},
                     )
                     raise HTTPException(status_code=403, detail="Gift campaign restrictions mismatch for this user")
         finally:
@@ -7493,13 +7504,18 @@ async def gift_redeem(payload: GiftRedeemIn, request: Request, x_telegram_init_d
             tg_id=tg_id,
             event_name="gift_redeemed",
             source="webapp",
-            meta={"code": code, "card_type": result.get("card_type"), "days": result.get("days"), "sync_ok": result.get("sync_ok")},
+            meta={
+                **_access_key_safe_meta(code),
+                "card_type": result.get("card_type"),
+                "days": result.get("days"),
+                "sync_ok": result.get("sync_ok"),
+            },
         )
         return result
 
     error = str(result.get("error") or "redeem_failed")
     message = str(result.get("message") or "Не удалось активировать код")
-    _track_bonus_event(tg_id=tg_id, event_name="gift_redeem_denied", meta={"code": code, "reason": error})
+    _track_bonus_event(tg_id=tg_id, event_name="gift_redeem_denied", meta={**_access_key_safe_meta(code), "reason": error})
     status_map = {
         "invalid_code": 400,
         "not_found": 404,
@@ -7601,7 +7617,13 @@ async def access_key_redeem(
         raise
     except Exception:
         s.rollback()
-        logger.exception("access key redeem failed key=%s tg_id=%s", code, int(tg_id))
+        safe_code = _access_key_safe_meta(code)
+        logger.exception(
+            "access key redeem failed key_fp=%s key_preview=%s tg_id=%s",
+            safe_code.get("code_fp"),
+            safe_code.get("code_preview"),
+            int(tg_id),
+        )
         raise HTTPException(status_code=500, detail="Failed to redeem access key")
     finally:
         s.close()
@@ -7612,7 +7634,11 @@ async def access_key_redeem(
             tg_id=int(tg_id),
             event_name="access_key_redeemed",
             source="webapp",
-            meta={"code": code, "plan_code": key_status.get("plan", {}).get("code"), "sync_ok": bool(sync_ok)},
+            meta={
+                **_access_key_safe_meta(code),
+                "plan_code": key_status.get("plan", {}).get("code"),
+                "sync_ok": bool(sync_ok),
+            },
         )
     except Exception:
         logger.exception("failed to track access_key_redeemed tg_id=%s", int(tg_id))

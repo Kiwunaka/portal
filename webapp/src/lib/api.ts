@@ -1372,16 +1372,18 @@ function dispatchAuthRequired(detail?: { code?: string | null; message?: string 
 }
 
 async function readApiError(r: Response): Promise<string> {
+  const authError = (r.headers.get("x-pokrov-auth-error") || "").trim();
   const text = (await r.text()).trim();
-  if (!text) return `API error: ${r.status}`;
+  if (!text) return authError || `API error: ${r.status}`;
   if (classifyApiPayload({ bodyText: text, contentType: r.headers.get("content-type") || "" }) === "html") {
     return "Received app shell instead of API response";
   }
   try {
     const parsed = JSON.parse(text) as { detail?: string; message?: string };
-    return String(parsed?.detail || parsed?.message || text);
+    const message = String(parsed?.detail || parsed?.message || text);
+    return authError ? `${authError}: ${message}` : message;
   } catch {
-    return text;
+    return authError ? `${authError}: ${text}` : text;
   }
 }
 

@@ -1,4 +1,5 @@
 import importlib
+import hashlib
 import json
 import os
 import sys
@@ -1968,8 +1969,48 @@ class ApiAuthAndTicketsTests(unittest.TestCase):
 
         denied = self._event_rows("gift_redeem_denied")
         self.assertEqual(len(denied), 1)
-        self.assertEqual(str(denied[0]["meta"].get("code") or ""), code)
+        redeemed = self._event_rows("gift_redeemed")
+        self.assertEqual(len(redeemed), 1)
+        for row in [redeemed[0], denied[0]]:
+            meta_dump = json.dumps(row["meta"], ensure_ascii=False)
+            self.assertNotIn("code", row["meta"])
+            self.assertNotIn(code, meta_dump)
+            self.assertEqual(str(row["meta"].get("code_preview") or ""), f"...{code[-4:]}")
+            self.assertEqual(
+                str(row["meta"].get("code_fp") or ""),
+                hashlib.sha256(code.encode("utf-8")).hexdigest()[:16],
+            )
         self.assertEqual(str(denied[0]["meta"].get("reason") or ""), "already_redeemed")
+
+    def test_access_key_redeem_tracks_redacted_key_metadata(self) -> None:
+        user_hdrs = {"X-Telegram-Init-Data": self._init_data(1001, "alice")}
+        code = "POKROV-ACCESS-2026"
+
+        from db import SessionLocal
+        from models import GiftCard
+
+        s = SessionLocal()
+        try:
+            s.add(GiftCard(code=code, card_type="standard", created_by=9999))
+            s.commit()
+        finally:
+            s.close()
+
+        async def fake_sync_control_panel_access(*, user):
+            return True
+
+        with patch.object(self.api, "_sync_control_panel_access", fake_sync_control_panel_access):
+            response = self.client.post("/api/access-keys/redeem", headers=user_hdrs, json={"key": code})
+
+        self.assertEqual(response.status_code, 200, response.text)
+        events = self._event_rows("access_key_redeemed")
+        self.assertEqual(len(events), 1)
+        meta = events[0]["meta"]
+        meta_dump = json.dumps(meta, ensure_ascii=False)
+        self.assertNotIn("code", meta)
+        self.assertNotIn(code, meta_dump)
+        self.assertEqual(meta.get("code_preview"), "...2026")
+        self.assertEqual(meta.get("code_fp"), hashlib.sha256(code.encode("utf-8")).hexdigest()[:16])
 
     def test_promo_redeem_supports_unlimited_uses_flag(self) -> None:
         admin_hdrs = {"X-Telegram-Init-Data": self._init_data(9999, "admin")}
