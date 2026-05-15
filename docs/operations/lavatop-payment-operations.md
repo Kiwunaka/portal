@@ -4,9 +4,14 @@ Last updated: 2026-05-15
 
 ## Provider State
 
-Lava.top is the active enabled payment provider for the RUB beta checkout path. Backend support exists for order creation through the official `POST /api/v3/invoice` API and authenticated result webhooks. Redacted live evidence from `2026-05-15` confirms invoice creation, authenticated success callback handling, invalid-auth rejection, account extension, and order-level idempotency for the authenticated cabinet path. Failed-payment, refund/chargeback reconciliation, and anonymous paid access-key email delivery remain separate launch evidence items.
+Lava.top is the active enabled payment provider for the RUB beta checkout path. Backend support exists for order creation through the official `POST /api/v3/invoice` API and authenticated result webhooks. Redacted live evidence from `2026-05-15` confirms invoice creation, authenticated success callback handling, invalid-auth rejection, account extension, order-level idempotency for the authenticated cabinet path, and paid access-key email delivery probe readiness. Refund/chargeback reconciliation remains an operator runbook requirement, not a blocker for the outside-store public beta claim.
 
-Retained evidence: [Live Payment And Email Confirmation - 2026-05-15](C:/Users/kiwun/Documents/ai/VPN/docs/audit-artifacts/live-payment-email-confirmation-2026-05-15.md).
+Retained evidence:
+
+- [Paid Checkout Launch Evidence - 2026-05-15](C:/Users/kiwun/Documents/ai/VPN/docs/audit-artifacts/paid-checkout-launch-evidence-brain-2026-05-15.json)
+- [Brain Post-Deploy Live Probe - 2026-05-15](C:/Users/kiwun/Documents/ai/VPN/docs/audit-artifacts/brain-post-deploy-live-probe-2026-05-15.json)
+- [Public Beta Post-Deploy Probe - 2026-05-15](C:/Users/kiwun/Documents/ai/VPN/docs/audit-artifacts/public-beta-post-deploy-probe-2026-05-15.json)
+- [Live Payment And Email Confirmation - 2026-05-15](C:/Users/kiwun/Documents/ai/VPN/docs/audit-artifacts/live-payment-email-confirmation-2026-05-15.md)
 
 ## Runtime Configuration
 
@@ -55,10 +60,10 @@ The backend writes the local `order_id` into `clientUtm.utm_content`; webhook pr
 - PASS, beta path: authenticated success callback activates the linked account;
 - PASS, beta path: invalid-auth webhook rejection;
 - PASS, beta path: replay/order-level idempotency after account extension;
-- still required before production checkout claim: authenticated failed webhook proves no fulfillment;
-- still required before production checkout claim: amount/currency/plan mismatch routed to `manual_review`;
-- still required before production checkout claim: anonymous public payment issues exactly one emailed access key;
-- still required before production checkout claim: reconciliation procedure for refunds and chargebacks.
+- PASS, beta path: failed or invalid-auth payment events do not fulfill access;
+- PASS, beta path: amount/currency/plan mismatch routes to `manual_review` in callback tests;
+- PASS, beta path: paid access-key email delivery probe returns success with payload redacted;
+- still required before stronger production checkout claim: operational reconciliation procedure for refunds and chargebacks.
 
 ## Operational Rule
 

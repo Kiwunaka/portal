@@ -1,0 +1,27 @@
+﻿{
+    "ok":  true,
+    "providers":  [
+                      {
+                          "code":  "lavatop",
+                          "label":  "Lava.top",
+                          "accent":  "Cards and SBP",
+                          "checkout_hint":  "Primary Open Beta checkout candidate; requires authenticated webhooks.",
+                          "supports_bot":  true,
+                          "supports_webapp":  true,
+                          "supports_public":  true
+                      }
+                  ],
+    "blocked":  false,
+    "blocked_reasons":  [
+
+                        ],
+    "blocked_reason_texts":  [
+
+                             ],
+    "checkout_mode":  "account_session_first",
+    "telegram_fallback_available":  true,
+    "provider_codes":  [
+                           "lavatop"
+                       ],
+    "provider_count":  1
+}

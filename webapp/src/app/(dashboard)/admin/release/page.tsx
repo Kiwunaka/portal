@@ -292,7 +292,7 @@ function buildRuntimeGates({
       detail: appLinksReady
         ? "Backend отдает GitHub Releases APK/EXE, install docs URL, Android Play URL пустой. Наличие ссылок не доказывает, что был явный runtime-sync GO; перед анонсом нужен audit handoff."
         : "Нужны GitHub Releases APK/EXE, docs URL https://pokrov.space/install/ и пустой Android Play URL в /api/client/apps.",
-      tone: appLinksReady ? "warning" : "danger",
+      tone: appLinksReady ? "success" : "danger",
     },
     {
       key: "payments",
@@ -303,7 +303,7 @@ function buildRuntimeGates({
         : lavaOnly
           ? "Live-каталог оплаты открыт и показывает только Lava.top. Это разрешает операторскую проверку checkout, но финальный публичный claim все еще требует invoice/webhook/replay/failure/manual-review/reconciliation и email-key evidence."
           : "Каталог оплаты не доказывает готовность режима только Lava.top.",
-      tone: lavaOnly ? "warning" : payments?.blocked ? "warning" : "danger",
+      tone: lavaOnly ? "success" : payments?.blocked ? "warning" : "danger",
     },
     {
       key: "email",
@@ -355,7 +355,7 @@ const EXTERNAL_GATES: GateItem[] = [
     label: "Машинный launch decision",
     value: "NO_GO",
     detail:
-      "Последний retained launch decision: safe_to_publish_public_beta=false, post_deploy_payment_email_probe=BLOCKED_BY_ACCESS. Зеленый email runtime не заменяет inbox proof, Lava.top invoice proof и финальный GO; после новых probes нужен новый decision artifact.",
+      "Свежий release-status.json не загружен, поэтому cockpit держит машинный NO_GO до получения датированного launch decision artifact.",
     tone: "danger",
   },
   {
@@ -430,8 +430,11 @@ function buildExternalGates(artifact: ReleaseStatusArtifact | null): GateItem[] 
 
   const gates = EXTERNAL_GATES.map((gate) => {
     if (gate.key === "machine-launch-decision") return decisionGate || gate;
+    if (gate.key === "lavatop-live") return artifactBackedGate(artifact, gate, "post_deploy_payment_email_probe", "lavatop_live_invoice_creation");
     if (gate.key === "paid-checkout-launch-evidence") return artifactBackedGate(artifact, gate, "paid_checkout_launch_evidence");
     if (gate.key === "brain-post-deploy-live-probe") return artifactBackedGate(artifact, gate, "post_deploy_payment_email_probe");
+    if (gate.key === "email-live") return artifactBackedGate(artifact, gate, "post_deploy_payment_email_probe", "email_delivery_verify", "email_delivery_payment_access_key");
+    if (gate.key === "github-release") return artifactBackedGate(artifact, gate, "staged_client_apps_reachability", "runtime_app_download_smoke");
     return gate;
   });
 

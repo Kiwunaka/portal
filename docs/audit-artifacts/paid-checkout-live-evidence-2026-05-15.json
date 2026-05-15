@@ -1,0 +1,58 @@
+{
+  "ok": true,
+  "classification": "PASS",
+  "mode": "paid_checkout_live_and_sandbox_evidence",
+  "plan_code": "start_99",
+  "redaction": "No raw payment ids, Telegram ids, user ids, mailbox addresses, callback payloads, subscription URLs, or secret values are stored here.",
+  "checks": [
+    {
+      "name": "lavatop_live_invoice_creation",
+      "status": "PASS",
+      "missing": [],
+      "source": "docs/audit-artifacts/brain-post-deploy-live-probe-2026-05-15.json",
+      "note": "Brain-local live Lava.top invoice probe returned HTTP 201 with response body redacted."
+    },
+    {
+      "name": "lavatop_authenticated_success_webhook",
+      "status": "PASS",
+      "missing": [],
+      "source": "docs/audit-artifacts/live-payment-email-confirmation-2026-05-15.md",
+      "note": "A real paid hosted-checkout order was credited through the normal authenticated Lava.top result handler."
+    },
+    {
+      "name": "lavatop_webhook_replay_idempotency",
+      "status": "PASS",
+      "missing": [],
+      "source": "python -m pytest tests\\test_api_payments_callbacks.py tests\\test_lavatop_payment_providers.py -q",
+      "note": "Fresh 2026-05-15 test run passed; Lava.top order-level idempotency prevents a second extension after account fulfillment."
+    },
+    {
+      "name": "lavatop_failed_payment_no_fulfillment",
+      "status": "PASS",
+      "missing": [],
+      "source": "python -m pytest tests\\test_api_payments_callbacks.py tests\\test_lavatop_payment_providers.py -q",
+      "note": "Fresh 2026-05-15 test run passed; failed and cancelled callbacks record non-paid status and do not activate access."
+    },
+    {
+      "name": "lavatop_manual_review_mismatch",
+      "status": "PASS",
+      "missing": [],
+      "source": "python -m pytest tests\\test_api_payments_callbacks.py tests\\test_lavatop_payment_providers.py -q",
+      "note": "Fresh 2026-05-15 test run passed; amount mismatch routes to manual_review with no account extension and no access key issuance."
+    },
+    {
+      "name": "lavatop_reconciliation_procedure",
+      "status": "PASS",
+      "missing": [],
+      "source": "docs/operations/payment-reconciliation.md",
+      "note": "The retained reconciliation runbook defines provider-state matching, manual-review handling, and non-fulfillment for failed/refunded/chargeback/ambiguous states."
+    },
+    {
+      "name": "paid_access_key_email_delivery",
+      "status": "PASS",
+      "missing": [],
+      "source": "docs/audit-artifacts/brain-post-deploy-live-probe-2026-05-15.json; python -m pytest tests\\test_api_payments_callbacks.py tests\\test_lavatop_payment_providers.py -q",
+      "note": "Brain-local payment access-key email probe returned HTTP 200, and fresh backend tests prove public paid callback issues one access key and sends it once."
+    }
+  ]
+}

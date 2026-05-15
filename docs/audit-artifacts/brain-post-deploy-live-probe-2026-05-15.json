@@ -1,0 +1,55 @@
+{
+  "ok": true,
+  "classification": "PASS",
+  "mode": "brain_post_deploy_live_probe",
+  "live": true,
+  "source_unit": "portal-api",
+  "plan_code": "start_99",
+  "post_deploy_probe_mode": "email_and_lavatop_probe_passed",
+  "safe_to_keep_email_public": true,
+  "email_public_probe_can_be_evaluated_independently": true,
+  "lavatop_invoice_probe_passed": true,
+  "safe_to_enable_paid_checkout": false,
+  "note": "Lava.top invoice creation proof is only one part of paid-checkout launch evidence; webhook/replay/failure/reconciliation proof is still separate.",
+  "checks": [
+    {
+      "name": "email_public_mode",
+      "status": "PASS",
+      "missing": [],
+      "note": "Public email auth runtime mode can stay enabled when public mode is on and debug echo is off; live inbox proof is checked separately.",
+      "source": "brain:portal-api"
+    },
+    {
+      "name": "email_delivery_verify",
+      "status": "PASS",
+      "missing": [],
+      "note": "Live email delivery probe returned a redacted HTTP status only.",
+      "source": "brain:portal-api",
+      "http_status": 200
+    },
+    {
+      "name": "email_delivery_reset",
+      "status": "PASS",
+      "missing": [],
+      "note": "Live email delivery probe returned a redacted HTTP status only.",
+      "source": "brain:portal-api",
+      "http_status": 200
+    },
+    {
+      "name": "email_delivery_payment_access_key",
+      "status": "PASS",
+      "missing": [],
+      "note": "Live email delivery probe returned a redacted HTTP status only.",
+      "source": "brain:portal-api",
+      "http_status": 200
+    },
+    {
+      "name": "lavatop_live_invoice_creation",
+      "status": "PASS",
+      "missing": [],
+      "note": "Live Lava.top invoice probe returned a redacted HTTP status only.",
+      "source": "brain:portal-api",
+      "http_status": 201
+    }
+  ]
+}

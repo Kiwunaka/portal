@@ -122,3 +122,5 @@ def test_report_does_not_serialize_token_or_init_data() -> None:
     assert "TELEGRAM_INIT_DATA" not in serialized
     assert "hash=" not in serialized
     assert "secret" not in serialized.lower()
+    assert '"tg_id"' not in serialized
+    assert '"synthetic_tg_id": "redacted"' in serialized

@@ -4,7 +4,13 @@ Last updated: 2026-05-15
 
 ## 2026-05-15 Live Beta Status
 
-Email auth is confirmed live for the beta continuation path when `/api/auth/email/status` reports public delivery readiness. The `2026-05-15` live check confirmed public email registration, verify-code delivery to a real mailbox, and login continuation. Keep reset/recovery and paid access-key delivery in the release checklist until each has its own current live evidence.
+Email auth is confirmed live for the public beta path when `/api/auth/email/status` reports public delivery readiness. The `2026-05-15` live checks confirmed public email registration, verify-code delivery to a real mailbox, login continuation, reset/recovery relay delivery, and paid access-key delivery probe success with the target email, token, and key redacted from committed evidence.
+
+Current retained evidence:
+
+- `docs/audit-artifacts/live-email-auth-status-brain-2026-05-15.json`
+- `docs/audit-artifacts/brain-post-deploy-live-probe-2026-05-15.json`
+- `docs/audit-artifacts/public-beta-post-deploy-probe-2026-05-15.json`
 
 ## Зачем нужен этот файл
 

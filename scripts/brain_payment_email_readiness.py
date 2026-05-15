@@ -22,11 +22,16 @@ BLOCKED_BY_ACCESS = "BLOCKED_BY_ACCESS"
 EXTERNAL_DEPENDENCY = "EXTERNAL_DEPENDENCY"
 
 _SECRET_OR_VALUE_NAMES = {
+    "LAVATOP_API_BASE_URL",
     "EMAIL_AUTH_WEBHOOK_URL",
     "EMAIL_DELIVERY_WEBHOOK_URL",
     "EMAIL_DELIVERY_WEBHOOK_SECRET",
     "LAVATOP_API_KEY",
     "LAVATOP_OFFER_ID",
+    "LAVATOP_PAYMENT_METHOD",
+    "LAVATOP_PAYMENT_PROVIDER",
+    "LAVATOP_PERIODICITY",
+    "LAVATOP_BUYER_LANGUAGE",
     "LAVATOP_WEBHOOK_API_KEY",
     "LAVATOP_WEBHOOK_BASIC_USERNAME",
     "LAVATOP_WEBHOOK_BASIC_PASSWORD",
@@ -40,6 +45,7 @@ _POST_DEPLOY_EMAIL_CHECKS = {
 _BOOLEAN_NAMES = {
     "EMAIL_AUTH_DEBUG_ECHO",
     "EMAIL_AUTH_PUBLIC_ENABLED",
+    "LAVATOP_DYNAMIC_AMOUNT_ENABLED",
     "LAVATOP_PROVIDER_ACCEPTANCE_CONFIRMED",
 }
 
@@ -306,6 +312,17 @@ def lavatop_invoice_check():
             "utm_content": order_id,
         }},
     }}
+    payment_provider = str(env.get("LAVATOP_PAYMENT_PROVIDER") or "").strip().upper()
+    payment_method = str(env.get("LAVATOP_PAYMENT_METHOD") or "").strip().upper()
+    periodicity = str(env.get("LAVATOP_PERIODICITY") or "").strip().upper()
+    if payment_provider:
+        payload["paymentProvider"] = payment_provider
+    if payment_method:
+        payload["paymentMethod"] = payment_method
+    if periodicity:
+        payload["periodicity"] = periodicity
+    if truthy(env.get("LAVATOP_DYNAMIC_AMOUNT_ENABLED")):
+        payload["amount"] = 99.0
     status, error = post_json(
         f"{{base_url}}/api/v3/invoice",
         payload,

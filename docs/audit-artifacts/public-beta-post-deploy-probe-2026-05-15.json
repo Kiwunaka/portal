@@ -1,0 +1,88 @@
+{
+  "ok": true,
+  "classification": "PASS",
+  "mode": "public_beta_post_deploy_probe",
+  "live": false,
+  "email_public_runtime_config_passed": true,
+  "email_live_delivery_probe_passed": true,
+  "lavatop_live_invoice_probe_passed": true,
+  "post_deploy_probe_modes": {
+    "email_public_runtime": "PASS",
+    "email_live_delivery": "PASS",
+    "lavatop_invoice": "PASS"
+  },
+  "safe_to_keep_email_public": true,
+  "safe_to_enable_paid_checkout": true,
+  "inputs": {
+    "api_base_url": "https://api.pokrov.space",
+    "plan_code": "start_99",
+    "readiness_json": "docs\\audit-artifacts\\payment-email-readiness-brain-2026-05-15.json",
+    "evidence_json": "docs\\audit-artifacts\\paid-checkout-live-evidence-2026-05-15.json",
+    "brain_live_probe_json": "docs\\audit-artifacts\\brain-post-deploy-live-probe-2026-05-15.json",
+    "env": {
+      "EMAIL_PROBE_TO": "missing",
+      "EMAIL_DELIVERY_WEBHOOK_URL": "missing",
+      "EMAIL_AUTH_WEBHOOK_URL": "missing",
+      "EMAIL_DELIVERY_WEBHOOK_SECRET": "missing",
+      "LAVATOP_PROBE_EMAIL": "missing",
+      "LAVATOP_API_KEY": "missing",
+      "LAVATOP_OFFER_ID": "missing",
+      "LAVATOP_OFFER_ID_START_99": "missing"
+    }
+  },
+  "checks": [
+    {
+      "name": "email_public_runtime_config",
+      "status": "PASS",
+      "missing": [],
+      "note": "Live deployed API email status; does not send email.",
+      "source": "https://api.pokrov.space/api/auth/email/status"
+    },
+    {
+      "name": "payment_provider_catalog",
+      "status": "PASS",
+      "missing": [],
+      "note": "Live deployed provider catalog exposes enabled Lava.top checkout.",
+      "source": "https://api.pokrov.space/api/payments/providers"
+    },
+    {
+      "source": "brain:portal-api",
+      "name": "email_delivery_verify",
+      "missing": [],
+      "http_status": 200,
+      "status": "PASS",
+      "note": "Live email delivery probe returned a redacted HTTP status only."
+    },
+    {
+      "source": "brain:portal-api",
+      "name": "email_delivery_reset",
+      "missing": [],
+      "http_status": 200,
+      "status": "PASS",
+      "note": "Live email delivery probe returned a redacted HTTP status only."
+    },
+    {
+      "source": "brain:portal-api",
+      "name": "email_delivery_payment_access_key",
+      "missing": [],
+      "http_status": 200,
+      "status": "PASS",
+      "note": "Live email delivery probe returned a redacted HTTP status only."
+    },
+    {
+      "source": "brain:portal-api",
+      "name": "lavatop_live_invoice_creation",
+      "missing": [],
+      "http_status": 201,
+      "status": "PASS",
+      "note": "Live Lava.top invoice probe returned a redacted HTTP status only."
+    },
+    {
+      "name": "paid_checkout_launch_evidence",
+      "status": "PASS",
+      "missing": [],
+      "note": "Aggregate paid-checkout evidence status.",
+      "source": "docs\\audit-artifacts\\paid-checkout-live-evidence-2026-05-15.json"
+    }
+  ]
+}

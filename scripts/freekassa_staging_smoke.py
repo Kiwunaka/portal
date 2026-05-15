@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 from __future__ import annotations
 
+import argparse
 import base64
 import hashlib
 import hmac
@@ -8,6 +9,7 @@ import json
 import os
 import sys
 import time
+import urllib.error
 import urllib.request
 
 
@@ -67,6 +69,17 @@ def http_text(url: str) -> tuple[int, str]:
 
 
 def main() -> int:
+    parser = argparse.ArgumentParser(description="Verify legacy FreeKassa public checkout stays blocked.")
+    parser.add_argument(
+        "--legacy-reconciliation",
+        action="store_true",
+        help="Acknowledge this is a legacy reconciliation guard, not a public checkout enablement smoke.",
+    )
+    args = parser.parse_args()
+    if not args.legacy_reconciliation:
+        print("Legacy FreeKassa staging smoke requires --legacy-reconciliation.")
+        return 2
+
     api_base = require("SMOKE_API_BASE_URL").rstrip("/")
     checkout_secret = require("CHECKOUT_TICKET_SECRET")
     tg_id = int(require("SMOKE_TEST_TG_ID"))
@@ -91,30 +104,31 @@ def main() -> int:
         method="POST",
         payload={"plan_code": plan_code, "checkout_ticket": ticket, "currency": "RUB"},
     )
+    if status in {400, 403, 404, 409, 423, 451, 503}:
+        detail = str(order.get("detail") or body_text or "").lower()
+        if "not enabled" in detail or "disabled" in detail or "unavailable" in detail:
+            success_status, _ = http_text(f"{api_base}/pay/success")
+            fail_status, _ = http_text(f"{api_base}/pay/fail")
+            if success_status != 200 or fail_status != 200:
+                raise SystemExit(f"Landing pages are unhealthy: success={success_status}, fail={fail_status}")
+            print(
+                json.dumps(
+                    {
+                        "ok": True,
+                        "freekassa_public_create_blocked": True,
+                        "blocked_status": status,
+                        "success_status": success_status,
+                        "fail_status": fail_status,
+                    },
+                    ensure_ascii=False,
+                    indent=2,
+                )
+            )
+            return 0
     if status != 200:
         print(body_text)
         raise SystemExit(f"Order creation failed with HTTP {status}")
-    payment_url = str(order.get("payment_url") or "").strip()
-    order_id = str(order.get("order_id") or "").strip()
-    if not payment_url or not order_id:
-        print(json.dumps(order, ensure_ascii=False, indent=2))
-        raise SystemExit("Order creation succeeded but payment_url or order_id is missing")
-
-    success_status, _ = http_text(f"{api_base}/pay/success")
-    fail_status, _ = http_text(f"{api_base}/pay/fail")
-    if success_status != 200 or fail_status != 200:
-        raise SystemExit(f"Landing pages are unhealthy: success={success_status}, fail={fail_status}")
-
-    print(json.dumps({
-        "ok": True,
-        "order_id": order_id,
-        "payment_url": payment_url,
-        "amount_rub": order.get("amount_rub"),
-        "discount_pct": order.get("discount_pct"),
-        "success_status": success_status,
-        "fail_status": fail_status,
-    }, ensure_ascii=False, indent=2))
-    return 0
+    raise SystemExit("Legacy FreeKassa public create was not blocked")
 
 
 if __name__ == "__main__":

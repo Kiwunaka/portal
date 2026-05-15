@@ -1,0 +1,13 @@
+{
+  "_note": "Staged and runtime /api/client/apps payload for URL-policy and reachability validation. These GitHub Releases assets are the intended public beta outside-store distribution URLs for Android APK and Windows EXE.",
+  "android": {
+    "play_url": "",
+    "apk_url": "https://github.com/Kiwunaka/POKROV-app/releases/download/v0.2.0-beta.1/pokrov-android-universal.apk",
+    "mirror_url": ""
+  },
+  "windows": {
+    "exe_url": "https://github.com/Kiwunaka/POKROV-app/releases/download/v0.2.0-beta.1/pokrov-windows-setup-x64.exe",
+    "mirror_url": ""
+  },
+  "docs_url": "https://pokrov.space/install/"
+}

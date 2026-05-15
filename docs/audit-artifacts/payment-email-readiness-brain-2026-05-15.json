@@ -1,0 +1,46 @@
+{
+  "ok": true,
+  "classification": "PASS",
+  "safe_to_enable_paid_checkout": true,
+  "mode": "brain_proc_env_readiness_with_live_provider_acceptance",
+  "plan_code": "start_99",
+  "source_unit": "portal-api",
+  "pid_present": true,
+  "checks": [
+    {
+      "name": "lavatop_invoice_credentials",
+      "status": "PASS",
+      "missing": [],
+      "source": "docs/audit-artifacts/brain-post-deploy-live-probe-2026-05-15.json",
+      "note": "Brain-local live invoice probe used production Lava.top runtime credentials and returned HTTP 201 with response body redacted."
+    },
+    {
+      "name": "lavatop_webhook_auth",
+      "status": "PASS",
+      "missing": [],
+      "source": "docs/audit-artifacts/live-payment-email-confirmation-2026-05-15.md; tests/test_api_payments_callbacks.py",
+      "note": "Live authenticated callback activated access; invalid/missing auth rejection and loopback-proxy auth behavior are covered by backend payment callback tests."
+    },
+    {
+      "name": "lavatop_provider_acceptance",
+      "status": "PASS",
+      "missing": [],
+      "source": "docs/audit-artifacts/live-payment-email-confirmation-2026-05-15.md",
+      "note": "Operator completed a real Lava.top hosted checkout for the beta offer on 2026-05-15; payment was accepted and credited."
+    },
+    {
+      "name": "email_public_mode",
+      "status": "PASS",
+      "missing": [],
+      "source": "docs/audit-artifacts/live-email-auth-status-brain-2026-05-15.json",
+      "note": "Public email auth is enabled, delivery is configured, and debug echo is disabled."
+    },
+    {
+      "name": "email_delivery_webhook",
+      "status": "PASS",
+      "missing": [],
+      "source": "docs/audit-artifacts/brain-post-deploy-live-probe-2026-05-15.json",
+      "note": "Brain-local verify, reset, and payment access-key email probes returned HTTP 200 with bodies redacted."
+    }
+  ]
+}

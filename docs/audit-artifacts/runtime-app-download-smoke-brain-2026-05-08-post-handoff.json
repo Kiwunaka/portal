@@ -5,7 +5,7 @@
   "signed_init_data_origin": "brain_runtime_bot_token",
   "source_unit": "portal-bot",
   "api_base_url": "https://api.pokrov.space",
-  "tg_id": 900000001,
+  "synthetic_tg_id": "redacted",
   "runtime_app_download_smoke_passed": false,
   "note": "This proves backend auth and runtime link policy using synthetic signed initData generated on brain; it is not proof that a real user opened Telegram WebApp.",
   "client_apps": {

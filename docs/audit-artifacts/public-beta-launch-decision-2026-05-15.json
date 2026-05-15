@@ -1,6 +1,4 @@
 {
-  "schema_version": 1,
-  "generated_at": "2026-05-15T01:35:00+03:00",
   "ok": true,
   "verdict": "GO",
   "classification": "PASS_WITH_ACCEPTED_SKIPS",

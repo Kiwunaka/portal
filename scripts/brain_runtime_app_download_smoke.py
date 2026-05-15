@@ -326,7 +326,7 @@ def build_report(
         "signed_init_data_origin": str(remote_payload.get("signed_init_data_origin") or "brain_runtime_bot_token"),
         "source_unit": str(remote_payload.get("unit") or ""),
         "api_base_url": str(remote_payload.get("api_base_url") or ""),
-        "tg_id": int(remote_payload.get("tg_id") or 0),
+        "synthetic_tg_id": "redacted",
         "runtime_app_download_smoke_passed": bool(runtime_app_download_smoke_passed),
         "note": "This proves backend auth and runtime link policy using synthetic signed initData generated on brain; it is not proof that a real user opened Telegram WebApp.",
         "client_apps": dict(client_apps or {}),
@@ -362,7 +362,7 @@ def _fetch_remote_payload(*, brain_ip: str, ssh_user: str, ssh_port: int, passwo
         return {
             "unit": source_unit,
             "api_base_url": api_base_url,
-            "tg_id": int(tg_id),
+            "synthetic_tg_id": "redacted",
             "checks": [
                 _status(
                     "brain_runtime_app_smoke_remote_command",

@@ -1,0 +1,103 @@
+{
+  "ok": true,
+  "classification": "PASS",
+  "safe_to_enable_paid_checkout": true,
+  "mode": "paid_checkout_launch_evidence",
+  "inputs": {
+    "readiness_json": "docs\\audit-artifacts\\payment-email-readiness-brain-2026-05-15.json",
+    "evidence_json": "docs\\audit-artifacts\\paid-checkout-live-evidence-2026-05-15.json"
+  },
+  "checks": [
+    {
+      "name": "payment_email_readiness",
+      "status": "PASS",
+      "missing": [],
+      "source": "docs\\audit-artifacts\\payment-email-readiness-brain-2026-05-15.json",
+      "note": "Aggregate classification from payment_email_readiness_smoke.py."
+    },
+    {
+      "name": "lavatop_invoice_credentials",
+      "status": "PASS",
+      "missing": [],
+      "source": "docs\\audit-artifacts\\payment-email-readiness-brain-2026-05-15.json",
+      "note": ""
+    },
+    {
+      "name": "lavatop_webhook_auth",
+      "status": "PASS",
+      "missing": [],
+      "source": "docs\\audit-artifacts\\payment-email-readiness-brain-2026-05-15.json",
+      "note": ""
+    },
+    {
+      "name": "lavatop_provider_acceptance",
+      "status": "PASS",
+      "missing": [],
+      "source": "docs\\audit-artifacts\\payment-email-readiness-brain-2026-05-15.json",
+      "note": ""
+    },
+    {
+      "name": "email_public_mode",
+      "status": "PASS",
+      "missing": [],
+      "source": "docs\\audit-artifacts\\payment-email-readiness-brain-2026-05-15.json",
+      "note": ""
+    },
+    {
+      "name": "email_delivery_webhook",
+      "status": "PASS",
+      "missing": [],
+      "source": "docs\\audit-artifacts\\payment-email-readiness-brain-2026-05-15.json",
+      "note": ""
+    },
+    {
+      "name": "lavatop_live_invoice_creation",
+      "status": "PASS",
+      "missing": [],
+      "source": "docs\\audit-artifacts\\paid-checkout-live-evidence-2026-05-15.json",
+      "note": ""
+    },
+    {
+      "name": "lavatop_authenticated_success_webhook",
+      "status": "PASS",
+      "missing": [],
+      "source": "docs\\audit-artifacts\\paid-checkout-live-evidence-2026-05-15.json",
+      "note": ""
+    },
+    {
+      "name": "lavatop_webhook_replay_idempotency",
+      "status": "PASS",
+      "missing": [],
+      "source": "docs\\audit-artifacts\\paid-checkout-live-evidence-2026-05-15.json",
+      "note": ""
+    },
+    {
+      "name": "lavatop_failed_payment_no_fulfillment",
+      "status": "PASS",
+      "missing": [],
+      "source": "docs\\audit-artifacts\\paid-checkout-live-evidence-2026-05-15.json",
+      "note": ""
+    },
+    {
+      "name": "lavatop_manual_review_mismatch",
+      "status": "PASS",
+      "missing": [],
+      "source": "docs\\audit-artifacts\\paid-checkout-live-evidence-2026-05-15.json",
+      "note": ""
+    },
+    {
+      "name": "lavatop_reconciliation_procedure",
+      "status": "PASS",
+      "missing": [],
+      "source": "docs\\audit-artifacts\\paid-checkout-live-evidence-2026-05-15.json",
+      "note": ""
+    },
+    {
+      "name": "paid_access_key_email_delivery",
+      "status": "PASS",
+      "missing": [],
+      "source": "docs\\audit-artifacts\\paid-checkout-live-evidence-2026-05-15.json",
+      "note": ""
+    }
+  ]
+}

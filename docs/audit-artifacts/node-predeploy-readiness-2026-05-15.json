@@ -1,0 +1,339 @@
+{
+  "checked_at": "2026-05-15T01:16:53.222440+00:00",
+  "rows": [
+    {
+      "code": "free",
+      "host": "free.kiwunaka.space",
+      "enabled": true,
+      "accepting_new_clients": true,
+      "is_draining": false,
+      "is_healthy": true,
+      "health_score": 73.489,
+      "last_health_at": "2026-05-15 01:14:59.099488+00:00",
+      "last_probe_at": "2026-05-15 01:14:59.262103+00:00",
+      "last_probe_stage": "reality_target",
+      "last_probe_error_kind": "",
+      "last_probe_error_message": "",
+      "observer_push_configured": false,
+      "observer_last_push_at": null,
+      "observer_unmatched_count": 0,
+      "observer_parse_error_count": 0,
+      "inbound_id": 1,
+      "vless_port": 443,
+      "reality_sni": "www.ziggo.nl",
+      "reality_sid": "cf439d7c722691f6",
+      "reality_pbk": "KamUEP9EG5r6ox7b6cQXAx7f_-vlZTjsFYB0Wdv3pi4"
+    },
+    {
+      "code": "it",
+      "host": "it.kiwunaka.space",
+      "enabled": true,
+      "accepting_new_clients": true,
+      "is_draining": false,
+      "is_healthy": true,
+      "health_score": 73.936,
+      "last_health_at": "2026-05-15 01:15:00.020106+00:00",
+      "last_probe_at": "2026-05-15 01:15:00.237410+00:00",
+      "last_probe_stage": "reality_target",
+      "last_probe_error_kind": "",
+      "last_probe_error_message": "",
+      "observer_push_configured": false,
+      "observer_last_push_at": null,
+      "observer_unmatched_count": 0,
+      "observer_parse_error_count": 0,
+      "inbound_id": 1,
+      "vless_port": 443,
+      "reality_sni": "www.tim.it",
+      "reality_sid": "afc9734908a5e244",
+      "reality_pbk": "s0kxPPb-NBAgk8oJjvhI7g_ZK4ln2acJlaM16ec6CCw"
+    },
+    {
+      "code": "nl",
+      "host": "nl.kiwunaka.space",
+      "enabled": true,
+      "accepting_new_clients": true,
+      "is_draining": false,
+      "is_healthy": true,
+      "health_score": 76.995,
+      "last_health_at": "2026-05-15 01:15:00.573991+00:00",
+      "last_probe_at": "2026-05-15 01:15:00.686836+00:00",
+      "last_probe_stage": "reality_target",
+      "last_probe_error_kind": "",
+      "last_probe_error_message": "",
+      "observer_push_configured": false,
+      "observer_last_push_at": null,
+      "observer_unmatched_count": 0,
+      "observer_parse_error_count": 0,
+      "inbound_id": 1,
+      "vless_port": 443,
+      "reality_sni": "www.kpn.com",
+      "reality_sid": "f78206d7dd33127b",
+      "reality_pbk": "CM58wtx7q7Wgf4MMyWaxRcrRkqnNiaJZWAe8x5Z3ZEY"
+    },
+    {
+      "code": "pl",
+      "host": "pl.kiwunaka.space",
+      "enabled": true,
+      "accepting_new_clients": true,
+      "is_draining": false,
+      "is_healthy": true,
+      "health_score": 74.522,
+      "last_health_at": "2026-05-15 01:15:00.958064+00:00",
+      "last_probe_at": "2026-05-15 01:15:01.187389+00:00",
+      "last_probe_stage": "reality_target",
+      "last_probe_error_kind": "",
+      "last_probe_error_message": "",
+      "observer_push_configured": true,
+      "observer_last_push_at": "2026-05-15 01:14:31+00:00",
+      "observer_unmatched_count": 0,
+      "observer_parse_error_count": 0,
+      "inbound_id": 1,
+      "vless_port": 443,
+      "reality_sni": "www.onet.pl",
+      "reality_sid": "23329b5a0d8638d1",
+      "reality_pbk": "SQ1ewwm_EJPuwOHSBeBNldttvT-GGCcHoYw2D7nqC2A"
+    },
+    {
+      "code": "us",
+      "host": "us.kiwunaka.space",
+      "enabled": true,
+      "accepting_new_clients": true,
+      "is_draining": false,
+      "is_healthy": true,
+      "health_score": 70.008,
+      "last_health_at": "2026-05-15 01:15:01.593340+00:00",
+      "last_probe_at": "2026-05-15 01:15:02.075214+00:00",
+      "last_probe_stage": "reality_target",
+      "last_probe_error_kind": "",
+      "last_probe_error_message": "",
+      "observer_push_configured": false,
+      "observer_last_push_at": null,
+      "observer_unmatched_count": 0,
+      "observer_parse_error_count": 0,
+      "inbound_id": 1,
+      "vless_port": 443,
+      "reality_sni": "www.apple.com",
+      "reality_sid": "b01f494c25b94fac",
+      "reality_pbk": "pXSSjLZpV4kFpa2fHQoUIifq0lov63-KuXQEA2lGHFE"
+    }
+  ],
+  "dns_report": {
+    "domain": "pokrov.space",
+    "hosts": [
+      {
+        "code": "pl",
+        "host": "pl.pokrov.space",
+        "expected_ipv4": null,
+        "a_records": [
+          "82.40.38.84"
+        ],
+        "aaaa_records": [],
+        "warnings": []
+      },
+      {
+        "code": "it",
+        "host": "it.pokrov.space",
+        "expected_ipv4": null,
+        "a_records": [
+          "151.241.215.84"
+        ],
+        "aaaa_records": [],
+        "warnings": []
+      },
+      {
+        "code": "us",
+        "host": "us.pokrov.space",
+        "expected_ipv4": null,
+        "a_records": [
+          "82.21.92.181"
+        ],
+        "aaaa_records": [],
+        "warnings": []
+      },
+      {
+        "code": "nl",
+        "host": "nl.pokrov.space",
+        "expected_ipv4": null,
+        "a_records": [
+          "82.24.195.93"
+        ],
+        "aaaa_records": [],
+        "warnings": []
+      },
+      {
+        "code": "free",
+        "host": "free.pokrov.space",
+        "expected_ipv4": null,
+        "a_records": [
+          "151.245.217.23"
+        ],
+        "aaaa_records": [],
+        "warnings": []
+      }
+    ],
+    "warnings": []
+  },
+  "drift_payload": {
+    "summary": {
+      "total": 5,
+      "ok": 5,
+      "drift": 0
+    },
+    "results": [
+      {
+        "node_code": "free",
+        "node_host": "free.kiwunaka.space",
+        "status": "ok",
+        "mismatches": [],
+        "checks": {
+          "inbound_present": true,
+          "enabled_match": true,
+          "port_match": true,
+          "protocol_match": true,
+          "network_match": true,
+          "security_match": true,
+          "sni_match": true,
+          "sid_match": true,
+          "pbk_match": true
+        }
+      },
+      {
+        "node_code": "it",
+        "node_host": "it.kiwunaka.space",
+        "status": "ok",
+        "mismatches": [],
+        "checks": {
+          "inbound_present": true,
+          "enabled_match": true,
+          "port_match": true,
+          "protocol_match": true,
+          "network_match": true,
+          "security_match": true,
+          "sni_match": true,
+          "sid_match": true,
+          "pbk_match": true
+        }
+      },
+      {
+        "node_code": "nl",
+        "node_host": "nl.kiwunaka.space",
+        "status": "ok",
+        "mismatches": [],
+        "checks": {
+          "inbound_present": true,
+          "enabled_match": true,
+          "port_match": true,
+          "protocol_match": true,
+          "network_match": true,
+          "security_match": true,
+          "sni_match": true,
+          "sid_match": true,
+          "pbk_match": true
+        }
+      },
+      {
+        "node_code": "pl",
+        "node_host": "pl.kiwunaka.space",
+        "status": "ok",
+        "mismatches": [],
+        "checks": {
+          "inbound_present": true,
+          "enabled_match": true,
+          "port_match": true,
+          "protocol_match": true,
+          "network_match": true,
+          "security_match": true,
+          "sni_match": true,
+          "sid_match": true,
+          "pbk_match": true
+        }
+      },
+      {
+        "node_code": "us",
+        "node_host": "us.kiwunaka.space",
+        "status": "ok",
+        "mismatches": [],
+        "checks": {
+          "inbound_present": true,
+          "enabled_match": true,
+          "port_match": true,
+          "protocol_match": true,
+          "network_match": true,
+          "security_match": true,
+          "sni_match": true,
+          "sid_match": true,
+          "pbk_match": true
+        }
+      }
+    ]
+  },
+  "probe_results": [
+    {
+      "code": "free",
+      "host": "free.kiwunaka.space",
+      "dns_ok": true,
+      "tcp_ok": true,
+      "tls_ok": true,
+      "target_tls_ok": true,
+      "dns_records": [
+        "151.245.217.23"
+      ],
+      "error_kind": "",
+      "error_message": ""
+    },
+    {
+      "code": "it",
+      "host": "it.kiwunaka.space",
+      "dns_ok": true,
+      "tcp_ok": true,
+      "tls_ok": true,
+      "target_tls_ok": true,
+      "dns_records": [
+        "151.241.215.84"
+      ],
+      "error_kind": "",
+      "error_message": ""
+    },
+    {
+      "code": "nl",
+      "host": "nl.kiwunaka.space",
+      "dns_ok": true,
+      "tcp_ok": true,
+      "tls_ok": true,
+      "target_tls_ok": true,
+      "dns_records": [
+        "82.24.195.93"
+      ],
+      "error_kind": "",
+      "error_message": ""
+    },
+    {
+      "code": "pl",
+      "host": "pl.kiwunaka.space",
+      "dns_ok": true,
+      "tcp_ok": true,
+      "tls_ok": true,
+      "target_tls_ok": true,
+      "dns_records": [
+        "82.40.38.84"
+      ],
+      "error_kind": "",
+      "error_message": ""
+    },
+    {
+      "code": "us",
+      "host": "us.kiwunaka.space",
+      "dns_ok": true,
+      "tcp_ok": true,
+      "tls_ok": true,
+      "target_tls_ok": true,
+      "dns_records": [
+        "82.21.92.181"
+      ],
+      "error_kind": "",
+      "error_message": ""
+    }
+  ],
+  "failures": [],
+  "ok": true
+}
