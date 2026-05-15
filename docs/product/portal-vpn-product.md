@@ -1,6 +1,6 @@
 # POKROV Product Overview
 
-Last updated: 2026-04-28
+Last updated: 2026-05-15
 
 ## Document Status
 
@@ -30,8 +30,8 @@ Primary user goal:
 
 Telegram is optional for first launch, free trial activation, and normal daily use.
 Telegram remains a secondary path for linking, bonus claim, recovery, support entrypoints, and bot-side purchase continuation.
-Browser continuation currently starts from app handoff and Telegram.
-Email browser continuation is planned `soon` and must stay explicitly labeled that way until sender readiness, delivery confirmation, and the public launch path are all green.
+Browser continuation currently starts from app handoff, Telegram, and email when delivery readiness is green.
+Email browser continuation is live as an additive account-continuation lane, not as a replacement for the app-first trial path.
 
 ## Wave 0 Global Rework Decision Freeze
 
@@ -62,7 +62,7 @@ Client-canon note:
 
 - primary UX: `consumer-first`
 - primary identity model: `app-first`
-- browser identity continuation: app handoff plus `Telegram` today, with additive `email` continuation marked `soon` until the public launch path is live
+- browser identity continuation: app handoff, `Telegram`, and additive `email` continuation when delivery readiness is green
 - full public `v1` scope: `Android + Windows`
 - Apple scope in this wave: readiness, signing prep, and store prerequisites only
 - default runtime core: `sing-box`
@@ -167,11 +167,11 @@ Current public role:
 Current cabinet role:
 
 - `https://app.pokrov.space/` continues an existing browser session or bot handoff
-- browser entry currently supports app handoff plus Telegram continuation into the same cabinet session family without replacing the app-first model
-- public-facing email browser continuation must stay marked `soon` until sender readiness, delivery confirmation, and the public launch path are all green
+- browser entry currently supports app handoff, Telegram, and email continuation into the same cabinet session family without replacing the app-first model
+- public-facing email browser continuation can be shown as live only while sender readiness, delivery confirmation, and public runtime readiness stay green
 - cabinet is continuation-first; it must not become a second landing page or re-pitch the public marketing story
-- public email signup, verification, and recovery must not be documented as a live default path before that `soon` status is lifted
-- email forms are gated by `/api/auth/email/status`; the default remains unavailable unless public enablement, delivery configuration, and non-debug runtime state are all green
+- public email signup, verification, and recovery are live continuation paths when email readiness is green, but they must not be described as a premium-trial replacement for the app
+- email forms are gated by `/api/auth/email/status`; the default degrades to unavailable unless public enablement, delivery configuration, and non-debug runtime state are all green
 - current top-level cabinet IA is `Dashboard`, `Subscription`, `Devices`, `Statistics`, and `Support`
 - task routes currently include cabinet entry, hosted-checkout continuation, redeem, downloads, and support threads
 - `/pricing/` remains only as a compatibility continuation alias and must not become a second public pricing surface
@@ -211,7 +211,7 @@ Public-facing copy across marketing and webapp should follow one simple style:
 - calm, direct, and premium without fake urgency, countdown theater, or exaggerated rescue language
 - `app-first` in onboarding language, with Telegram framed as optional continuation or fallback
 - marketing and cabinet copy must stay governed through `shared/copy.ts`, `copy/catalog.ru.json`, and `shared/design-tokens.json` so both surfaces tell the same product story
-- email continuation copy must stay labeled `soon` until the live delivery path is truly ready
+- email continuation copy may be live when the delivery path is ready, and must degrade honestly if delivery readiness fails
 - cabinet copy should focus on continuation, renewal, redeem, support, and recovery rather than acting like a second landing page
 - one product story across homepage, SEO landings, cabinet, and checkout, with trial, install, and first connection as the primary public CTA path
 - avoid direct-meaning `VPN` wording on public surfaces; `POKROV VPN` survives only as a legacy identifier where removal is not yet feasible

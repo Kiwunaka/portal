@@ -1,6 +1,10 @@
 # Передача для настройки email-доставки через webhook
 
-Last updated: 2026-05-07
+Last updated: 2026-05-15
+
+## 2026-05-15 Live Beta Status
+
+Email auth is confirmed live for the beta continuation path when `/api/auth/email/status` reports public delivery readiness. The `2026-05-15` live check confirmed public email registration, verify-code delivery to a real mailbox, and login continuation. Keep reset/recovery and paid access-key delivery in the release checklist until each has its own current live evidence.
 
 ## Зачем нужен этот файл
 

@@ -1,6 +1,6 @@
 # POKROV System Overview
 
-Last updated: 2026-04-28
+Last updated: 2026-05-15
 
 ## Document Status
 
@@ -114,7 +114,7 @@ Current public-surface split:
 - current canonical indexable entry routes are `/mobile/`, `/tiktok/`, `/youtube/`, `/devices/`, and `/telegram/`, with permanent redirects from the earlier legacy SEO slugs
 - public marketing CTA priority is app-first trial, install, and first connection; checkout, install help, and cabinet-open flows remain explicit exits for known intent
 - `webapp/` owns browser entry, dashboard, subscription, devices, statistics, support, task routes such as downloads, redeem, and hosted-checkout continuation, compatibility redirects for older cabinet routes, and the primary admin operator surface
-- `webapp/` browser entry is a continuation router for app handoff and Telegram login today; public email continuation stays marked `soon` until the delivery and launch path are genuinely live
+- `webapp/` browser entry is a continuation router for app handoff, Telegram login, and email login when delivery readiness is green
 - `/pricing/` in `webapp/` is compatibility-only continuation that now redirects to `/subscription/` and must not drift back into a public acquisition surface
 - `connect.pokrov.space` stays outside the marketing/cabinet storytelling layer and remains the config-delivery host for the one public connection link plus QR; it serves the rollout-selected app-managed profile, with `legacy_reality_fallback` as the baseline until canary cohorts flip to `grpc_443_primary`
 
@@ -215,17 +215,17 @@ Route-mode continuation note:
 ### Web Identity And Session Continuation Flow
 
 1. user opens marketing or cabinet in the browser
-2. browser continues from an app handoff or Telegram OIDC; public email continuation remains a marked-`soon` lane until launch
+2. browser continues from an app handoff, Telegram OIDC, or email auth when delivery readiness is green
 3. backend issues a browser session with `auth_origin` and linked-identity summary
 4. cabinet, support, renewal, and checkout continue from that same session
 
 Architecture rule:
 
-- additive email auth remains a planned continuation lane and must stay marked `soon` until sender identity, delivery confirmation, and the public launch path are genuinely live
-- app handoff and Telegram are the active browser-continuation entry families today
-- once launched, email must land in the same cabinet session and linked-identity model rather than becoming a separate account track
+- additive email auth is a live continuation lane only while sender identity, delivery configuration, and delivery confirmation are green
+- app handoff, Telegram, and email are the active browser-continuation entry families today when their readiness checks are green
+- email must land in the same cabinet session and linked-identity model rather than becoming a separate account track
 - public email auth depends on external transactional mail delivery and verified sender identity
-- before that launch, browser email entry must stay in a truthful unavailable or `soon` state instead of promising working verify or reset mail
+- if readiness fails, browser email entry must return to a truthful unavailable state instead of promising working verify or reset mail
 - cabinet entry copy should continue the shared product story rather than re-pitching the product like another landing page
 - cabinet and admin shells must keep explicit navigation back to the marketing site and standard cabinet entry
 
@@ -259,7 +259,7 @@ Architecture rule:
 1. user lands on `https://pokrov.space/` or an indexable marketing landing page
 2. marketing CTA defaults into `pokrov.space/checkout/`, while install help and cabinet entry stay secondary intent-driven exits
 3. public checkout sells an activation key and sends the user toward redeem or install continuation
-4. a known browser session or app/bot handoff continues in `https://app.pokrov.space/`; public email continuation joins that path only after the marked-`soon` launch goes live
+4. a known browser session, email auth, or app/bot handoff continues in `https://app.pokrov.space/`
 5. `webapp` renders the relevant cabinet flow such as dashboard, subscription, redeem, downloads, devices, or support
 6. successful redeem or renewal returns the user to the active cabinet journey
 
@@ -348,7 +348,7 @@ Copy/config rule:
 
 - new public and cabinet copy plus CTA text must stay centralized through `shared/copy.ts` and `copy/catalog.ru.json`; `webapp` should continue that shared story instead of inventing its own marketing voice
 - locked cross-surface facts such as trial length, Telegram reward, canonical hosts, and design direction must stay centralized through `shared/product-facts.json`, `shared/public-urls.json`, and `shared/design-tokens.json`
-- app-first marketing CTA priority, marked-`soon` email wording, and cabinet IA labels must resolve from those shared governance sources instead of drifting per surface
+- app-first marketing CTA priority, live/degraded email wording, and cabinet IA labels must resolve from those shared governance sources instead of drifting per surface
 - public-facing marketing and cabinet language should stay calm and human-readable instead of surfacing transport acronyms, raw profile terms, or operator-facing implementation jargon
 - bot, site, app, and checkout links should resolve from shared host config rather than hard-coded per surface
 

@@ -1,6 +1,6 @@
 # Deployment And Access
 
-Last updated: 2026-04-26
+Last updated: 2026-05-15
 
 ## Document Status
 
@@ -166,7 +166,9 @@ Use these when the release is blocked on one narrow operational step and the nex
 
 ### Lava.top Checkout Enablement
 
-The backend supports `lavatop` as the active RUB provider for public beta; public provider env must stay Lava-only (`RUB_PAYMENT_PROVIDER_ENABLED=lavatop`, `RUB_PAYMENT_PROVIDER_ORDER=lavatop`) and must remain disabled until provider evidence is attached. Required env is documented in [Lava.top Payment Operations](C:/Users/kiwun/Documents/ai/VPN/docs/operations/lavatop-payment-operations.md): `LAVATOP_API_KEY`, `LAVATOP_OFFER_ID` or per-plan `LAVATOP_OFFER_ID_<PLAN_CODE>`, and either `LAVATOP_WEBHOOK_API_KEY` or Basic webhook credentials. Anonymous public checkout also requires configured email delivery (`EMAIL_DELIVERY_WEBHOOK_URL` plus relay secret/SMTP env) before it can safely issue paid access keys.
+The backend supports `lavatop` as the active RUB provider for public beta; public provider env must stay Lava-only (`RUB_PAYMENT_PROVIDER_ENABLED=lavatop`, `RUB_PAYMENT_PROVIDER_ORDER=lavatop`). As of `2026-05-15`, the authenticated cabinet beta path has redacted live evidence for invoice creation, authenticated success callback handling, invalid-auth rejection, account extension, and fulfillment idempotency. Required env is documented in [Lava.top Payment Operations](C:/Users/kiwun/Documents/ai/VPN/docs/operations/lavatop-payment-operations.md): `LAVATOP_API_KEY`, `LAVATOP_OFFER_ID` or per-plan `LAVATOP_OFFER_ID_<PLAN_CODE>`, and either `LAVATOP_WEBHOOK_API_KEY` or Basic webhook credentials. Anonymous public checkout also requires configured email delivery (`EMAIL_DELIVERY_WEBHOOK_URL` plus relay secret/SMTP env) before it can safely issue paid access keys.
+
+Retained evidence: [Live Payment And Email Confirmation - 2026-05-15](C:/Users/kiwun/Documents/ai/VPN/docs/audit-artifacts/live-payment-email-confirmation-2026-05-15.md). Failed-payment no-fulfillment, refund/chargeback reconciliation, and anonymous paid access-key email delivery remain separate evidence items before a production-ready payment claim.
 
 ### External RU probe runner
 
@@ -340,7 +342,7 @@ Still required before public promotion or node enablement:
 - confirmation that the final signed Android artifacts are actually production-ready
 - physical-device `python scripts/android_localhost_audit.py` on the release-installed Android build
 - live Windows and Android scenario evidence on real devices and in a real network after the current UI pass
-- live transactional sender readiness for public email registration or recovery mail, including real mailbox or provider credentials and webhook configuration
+- live transactional sender readiness for public email registration or recovery mail must stay green; as of `2026-05-15`, a real verify-email delivery and public email registration flow were confirmed for beta, but reset and paid-key delivery should still be checked before broad launch language
 - final release handoff with published URLs, runtime sync, and redeployed static download surfaces
 
 Release handoff shortcuts:

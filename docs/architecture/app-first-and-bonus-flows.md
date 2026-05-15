@@ -1,6 +1,6 @@
 # App-First And Bonus Flows
 
-Last updated: 2026-05-14
+Last updated: 2026-05-15
 
 ## Document Status
 
@@ -18,8 +18,8 @@ The rework canon now freezes the following target identity and access model for 
 - `app-next/` and `external/client-fork/app/` are retired bootstrap or rollback references only and must not override the active contract
 - one canonical `app-first` account links `install_id`, email, Telegram, devices, and activation keys
 - store-app entry remains the premium-trial path: the first valid device gets `5 days` of premium trial without mandatory registration, then downgrades to `free_monthly`
-- site email signup remains a planned browser continuation lane marked `soon`; until launch it must not be described as a live public parity path or a premium-trial path
-- browser continuation currently starts from app handoff or Telegram; email joins that same cabinet session family only after the marked-`soon` launch goes live
+- site email signup is a live additive browser continuation lane when `/api/auth/email/status` reports public delivery readiness; it must not be described as a premium-trial replacement for the app-first path
+- browser continuation can start from app handoff, Telegram, or email; all three land in the same cabinet session family instead of creating competing account tracks
 - Telegram is recovery, linking, restore-premium, bonus, community, support fallback, and bot-side fallback commerce, not the primary login or commerce wall
 - commerce becomes `buy key -> redeem key -> managed premium`, with raw subscription links hidden from default UX and exposed only for explicit recovery/manual flows
 - free-tier policy is fixed to `NL-free`, `5 GB / 30 days`, `50 Mbps per IP`, `1 device`, with monthly reset
@@ -208,7 +208,7 @@ Web surfaces support app-first continuation through:
 
 - app or bot handoff into an existing cabinet session
 - Telegram widget or Telegram OIDC login in browser
-- additive email signup, verification, login, recovery, and reset as a marked-`soon` browser lane rather than a live public default
+- additive email signup, verification, login, recovery, and reset as a live browser continuation lane when delivery readiness is green
 - dashboard and checkout continuation from an existing web session
 
 Contract rule:
@@ -217,13 +217,13 @@ Contract rule:
 - canonical public config host is `https://connect.pokrov.space/`
 - HTML responses from `app.pokrov.space` must never be treated as valid API JSON
 - web login should continue the user into account or checkout, not into a dead-end landing
-- app handoff and Telegram are the active browser-continuation entry families today
+- app handoff, Telegram, and email are the active browser-continuation entry families today
 - expired or deprecated Telegram Login Widget, Telegram OIDC, WebApp `initData`, and browser-session tokens must clear the stale browser token and show a human repeat-login CTA instead of surfacing raw `telegram_*` / `web_session_*` errors
 - stale Telegram Login Widget payloads should be rejected client-side before the backend sees them; users should be guided through a fresh Telegram login attempt
-- additive email auth must stay marked `soon` until sender identity, delivery confirmation, and the public launch path are genuinely live
-- once launched, additive email auth must issue the same browser session family used by the cabinet, checkout, and support flows while exposing `auth_origin` and linked-identity summary for support/admin visibility
+- additive email auth is live only when sender identity, delivery configuration, and delivery confirmation are green; if readiness fails, the UI must degrade back to unavailable instead of promising working verify or reset mail
+- additive email auth must issue the same browser session family used by the cabinet, checkout, and support flows while exposing `auth_origin` and linked-identity summary for support/admin visibility
 - the additive email-auth rollout uses endpoint families under `/api/auth/email/*` for register, verify, login, recovery, and reset
-- public email register, verify, and recovery should remain disabled or explicitly marked `soon` until transactional sender identity and delivery-confirmation/webhook visibility are live
+- public email register, verify, and recovery can be shown as live only while transactional sender identity and delivery-confirmation/webhook visibility are live
 - browser entry screens in `webapp` are continuation-first and must not become a second landing-page pitch
 - new user-facing `subscription_url` values must point to `connect.pokrov.space`
 - legacy `api.pokrov.space/s8Kx2mP7qR4wT/...` remains compatibility-only for older imports and recovery cases
@@ -240,7 +240,7 @@ Contract rule:
 Checkout rule:
 
 - public pricing starts from app-first marketing surfaces; `pokrov.space/checkout/` is the public plan and activation-key continuation route, not the first-pressure onboarding step
-- payment provider readiness is contractually separate from app-first access; public checkout must remain unavailable or degraded until `docs/product/payment-and-access-key-contract.md` and provider evidence are satisfied
+- payment provider readiness is contractually separate from app-first access; public checkout must remain unavailable or degraded for any route not covered by `docs/product/payment-and-access-key-contract.md` and current provider evidence
 - `webapp` renewal is continuation-only and should defer to the same hosted activation-key flow
 - Telegram bot billing remains valid as a secondary path; bot orders are Telegram-ticket-bound and do not collect buyer email
 - raw subscription links remain hidden from default public commerce and first-layer cabinet UI, but the authenticated cabinet and paid Telegram bot flow may show the single `connect.pokrov.space` link after fulfillment as an explicit beta-stage manual import fallback while still preferring the POKROV app and cabinet

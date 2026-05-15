@@ -1,10 +1,10 @@
 # Payment And Access-Key Contract
 
-Last updated: 2026-05-07
+Last updated: 2026-05-15
 
 ## Current Rule
 
-Paid checkout must not be presented as production-ready until provider evidence proves order creation, callback authentication, replay safety, failed-payment behavior, and reconciliation.
+Paid checkout can be presented as live only for the evidence-backed Lava.top beta path. It must not be presented as production-ready until provider evidence also proves failed-payment behavior, reconciliation, and paid access-key email delivery.
 
 ## Target Contract
 
@@ -20,9 +20,9 @@ Paid checkout must not be presented as production-ready until provider evidence 
 
 ## Open Beta v4 Position
 
-Lava.top is the active provider candidate. The code path now supports Lava.top invoice creation and authenticated webhooks, but the provider remains blocked for public use until redacted live or sandbox proof is attached under the release work-order evidence folder.
+Lava.top is the active enabled RUB provider for the beta checkout path. Redacted live evidence from `2026-05-15` confirms invoice creation, authenticated success callback handling, invalid-auth rejection, order-level idempotency after fulfillment, and account extension for the authenticated cabinet path. Retained evidence: [Live Payment And Email Confirmation - 2026-05-15](C:/Users/kiwun/Documents/ai/VPN/docs/audit-artifacts/live-payment-email-confirmation-2026-05-15.md).
 
-Public checkout must keep paid purchase CTAs disabled or degraded when Lava.top credentials, per-plan offers, webhook auth, replay evidence, reconciliation evidence, or email access-key delivery are incomplete. The active public provider configuration is Lava.top-only.
+Public checkout must keep paid purchase CTAs disabled or degraded for any provider, plan, or route where Lava.top credentials, per-plan offers, webhook auth, replay/idempotency evidence, or email delivery readiness are incomplete. The active public provider configuration remains Lava.top-only. Broad production checkout is still blocked until failed-payment, refund/chargeback reconciliation, and anonymous paid access-key email-delivery evidence are attached.
 
 Current fulfillment contract:
 
