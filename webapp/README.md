@@ -126,6 +126,7 @@ Current supported auth paths:
 - in browser: Telegram Login Widget -> `POST /api/auth/telegram/web-login`
 - expired or deprecated Telegram widget/OIDC/session tokens must clear the stale web token and return the user to the cabinet entry with a human repeat-login CTA
 - in browser: additive email continuation is available only when delivery readiness is live; settings can link email to the current Telegram-backed account without leaving the cabinet
+- in settings: email-backed sessions can start Telegram linking through `/api/client/telegram/link`, then finish the link in the bot using the returned start code
 - from bot handoff: `web_session_token` should open the cabinet without manual token copy/paste
 
 ## Local Run

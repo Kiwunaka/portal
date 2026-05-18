@@ -11,6 +11,8 @@ import {
   getEmailAuthStatus,
   registerByEmail,
   setWebSessionToken,
+  startTelegramLink,
+  type TelegramLinkStartResult,
   verifyEmailToken,
 } from "@/lib/api";
 import { isEmailAuthPublicReady } from "@/lib/email-auth-readiness";
@@ -58,10 +60,19 @@ export default function SettingsPage() {
   const [emailLinkBusy, setEmailLinkBusy] = useState<"request" | "verify" | "">("");
   const [emailLinkMessage, setEmailLinkMessage] = useState("");
   const [emailLinkError, setEmailLinkError] = useState("");
+  const [telegramLinkBusy, setTelegramLinkBusy] = useState(false);
+  const [telegramLinkPayload, setTelegramLinkPayload] = useState<TelegramLinkStartResult | null>(null);
+  const [telegramLinkError, setTelegramLinkError] = useState("");
 
   const linked = user?.linked_identities || dash?.linked_identities || null;
-  const telegramName = linked?.telegram?.username ? `@${linked.telegram.username}` : profileLabel(user?.username, user?.tg_id);
   const linkedEmail = linked?.email?.email || "";
+  const linkedTelegram = linked?.telegram || null;
+  const hasLinkedTelegram = Boolean(linkedTelegram?.id || linkedTelegram?.username || (!linkedEmail && (user?.username || user?.tg_id)));
+  const telegramName = hasLinkedTelegram
+    ? linkedTelegram?.username
+      ? `@${linkedTelegram.username}`
+      : profileLabel(user?.username, user?.tg_id)
+    : "Не подключен";
   const deviceLimit = getDeviceLimit(dash, user);
   const channelLink = user?.channel?.link || "";
   const supportLink = user?.support?.link || "/support/";
@@ -85,17 +96,47 @@ export default function SettingsPage() {
     };
   }, []);
 
+  async function onTelegramLink(): Promise<void> {
+    setTelegramLinkBusy(true);
+    setTelegramLinkError("");
+    setTelegramLinkPayload(null);
+    try {
+      const payload = await startTelegramLink();
+      setTelegramLinkPayload(payload);
+      if (payload.linked) {
+        await refresh();
+      }
+    } catch (error) {
+      setTelegramLinkError(
+        userFacingErrorMessage(error, "Не удалось подготовить привязку Telegram. Попробуйте еще раз или откройте поддержку."),
+      );
+    } finally {
+      setTelegramLinkBusy(false);
+    }
+  }
+
   const linkedItems = [
     {
       key: "telegram",
       title: "Telegram",
-      body: "Используется для входа в браузере, бонуса и восстановления доступа через поддержку.",
+      body: hasLinkedTelegram
+        ? "Используется для входа в браузере, бонуса и восстановления доступа через поддержку."
+        : "Если вы вошли через email, Telegram можно подключить через бота без потери текущего профиля.",
       badge: telegramName,
-      tone: "success" as const,
-      action: (
+      tone: hasLinkedTelegram ? ("success" as const) : ("warning" as const),
+      action: hasLinkedTelegram ? (
         <AppRouteLink href={supportLink} className="text-sm font-semibold text-emerald-800 dark:text-emerald-300">
           Поддержка
         </AppRouteLink>
+      ) : (
+        <button
+          type="button"
+          onClick={() => void onTelegramLink()}
+          disabled={telegramLinkBusy}
+          className="text-sm font-semibold text-emerald-800 disabled:opacity-60 dark:text-emerald-300"
+        >
+          {telegramLinkBusy ? "Готовим..." : "Подключить"}
+        </button>
       ),
     },
     {
@@ -243,6 +284,7 @@ export default function SettingsPage() {
         userFacingErrorMessage(error, "Не удалось отправить письмо. Проверьте email и попробуйте еще раз."),
       );
     } finally {
+      setEmailLinkPassword("");
       setEmailLinkBusy("");
     }
   };
@@ -259,6 +301,7 @@ export default function SettingsPage() {
       }
       setEmailLinkMessage("Email подтвержден. Обновляем данные аккаунта.");
       await refresh();
+      setEmailLinkPassword("");
       setEmailLinkMessage("Email подтвержден и привязан к текущему аккаунту.");
     } catch (error) {
       setEmailLinkError(userFacingErrorMessage(error, "Не удалось подтвердить email. Проверьте код и попробуйте еще раз."));
@@ -274,6 +317,21 @@ export default function SettingsPage() {
       description="Аккаунт, связанные каналы и понятные действия без личных ссылок, технических адресов и ручных профилей."
       actions={
         <>
+          {canLinkEmail ? (
+            <a href="#email-link" className="btn-primary rounded-full px-5 py-3 text-sm font-semibold">
+              Подключить email
+            </a>
+          ) : null}
+          {!hasLinkedTelegram ? (
+            <button
+              type="button"
+              onClick={() => void onTelegramLink()}
+              disabled={telegramLinkBusy}
+              className="btn-primary rounded-full px-5 py-3 text-sm font-semibold disabled:opacity-60"
+            >
+              {telegramLinkBusy ? "Готовим Telegram..." : "Подключить Telegram"}
+            </button>
+          ) : null}
           <AppRouteLink href="/subscription/" className="btn-primary rounded-full px-5 py-3 text-sm font-semibold">
             Тарифы и оплата
           </AppRouteLink>
@@ -323,8 +381,8 @@ export default function SettingsPage() {
           {
             label: "Telegram",
             value: telegramName,
-            hint: "Основной рабочий канал входа в браузере.",
-            tone: "success",
+            hint: hasLinkedTelegram ? "Основной рабочий канал входа в браузере." : "Можно подключить через бота без смены текущего профиля.",
+            tone: hasLinkedTelegram ? "success" : "warning",
           },
           {
             label: "Email",
@@ -358,6 +416,28 @@ export default function SettingsPage() {
           <CabinetCardGrid items={quickActions} className="xl:grid-cols-1" />
         </CabinetSection>
       </div>
+
+      {telegramLinkPayload || telegramLinkError ? (
+        <div className="rounded-[1.3rem] border border-emerald-200/70 bg-emerald-50/85 px-5 py-4 text-sm leading-6 text-emerald-900 dark:border-emerald-400/25 dark:bg-emerald-400/10 dark:text-emerald-100">
+          {telegramLinkError ? (
+            <p className="font-semibold text-rose-700 dark:text-rose-200">{telegramLinkError}</p>
+          ) : telegramLinkPayload?.linked ? (
+            <p className="font-semibold">Telegram уже подключен к этому профилю.</p>
+          ) : (
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <p className="font-semibold">Откройте бота и завершите привязку Telegram к текущему профилю.</p>
+              <AppRouteLink
+                href={telegramLinkPayload?.bot_url || supportLink}
+                target="_blank"
+                hardNavigate={false}
+                className="outline-btn rounded-full px-4 py-2 text-sm font-semibold"
+              >
+                Открыть бота
+              </AppRouteLink>
+            </div>
+          )}
+        </div>
+      ) : null}
 
       {emailLinkMessage && !canLinkEmail ? (
         <div className="rounded-[1.3rem] border border-emerald-200/70 bg-emerald-50/85 px-5 py-4 text-sm font-semibold text-emerald-800 dark:border-emerald-400/25 dark:bg-emerald-400/10 dark:text-emerald-100">

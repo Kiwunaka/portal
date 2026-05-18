@@ -1,6 +1,7 @@
 "use client";
 
 import Link, { type LinkProps } from "next/link";
+import { useRouter } from "next/navigation";
 import { forwardRef, type AnchorHTMLAttributes, type MouseEvent } from "react";
 
 import { cn, FOCUS_RING } from "./utils";
@@ -28,13 +29,24 @@ function normalizeAppPath(pathname: string): string {
   return pathname.replace(/\/+$/, "");
 }
 
-function dispatchRouteActivity(href: string): void {
-  if (typeof window === "undefined") return;
+function resolveInternalNavigationPath(href: string): string | null {
+  if (typeof window === "undefined") return null;
   try {
     const targetUrl = new URL(href, window.location.href);
     const currentPath = `${normalizeAppPath(window.location.pathname)}${window.location.search}${window.location.hash}`;
     const targetPath = `${normalizeAppPath(targetUrl.pathname)}${targetUrl.search}${targetUrl.hash}`;
-    if (targetUrl.origin === window.location.origin && targetPath !== currentPath) {
+    if (targetUrl.origin !== window.location.origin || targetPath === currentPath) return null;
+    return targetPath || "/";
+  } catch {
+    return null;
+  }
+}
+
+function dispatchRouteActivity(href: string): void {
+  if (typeof window === "undefined") return;
+  try {
+    const targetUrl = new URL(href, window.location.href);
+    if (resolveInternalNavigationPath(href)) {
       window.dispatchEvent(new CustomEvent("pokrov-route-activity", { detail: { href: targetUrl.href } }));
     }
   } catch {
@@ -47,6 +59,7 @@ const AppRouteLink = forwardRef<HTMLAnchorElement, AppRouteLinkProps>(function A
   ref,
 ) {
   const nextRel = target === "_blank" ? [rel, "noopener noreferrer"].filter(Boolean).join(" ") : rel;
+  const router = useRouter();
 
   return (
     <Link
@@ -61,9 +74,15 @@ const AppRouteLink = forwardRef<HTMLAnchorElement, AppRouteLinkProps>(function A
         if (event.defaultPrevented) {
           return;
         }
-        if (!hardNavigate || target === "_blank" || !shouldUseBrowserNavigation(event)) {
-          if (!hardNavigate && target !== "_blank" && shouldUseBrowserNavigation(event)) {
+        if (target === "_blank" || !shouldUseBrowserNavigation(event)) {
+          return;
+        }
+        if (!hardNavigate) {
+          const targetPath = resolveInternalNavigationPath(event.currentTarget.href);
+          if (targetPath) {
+            event.preventDefault();
             dispatchRouteActivity(event.currentTarget.href);
+            router.push(targetPath);
           }
           return;
         }

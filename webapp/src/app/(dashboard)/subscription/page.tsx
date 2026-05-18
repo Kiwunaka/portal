@@ -102,6 +102,7 @@ export default function SubscriptionPage() {
   const deviceLimit = getDeviceLimit(dash, user);
   const freeLimitGb = getTrafficLimitGb(dash, user);
   const currentPlanCode = normalizePlanCode(dash?.current_plan_code || dash?.sub_type || "");
+  const currentPaidPlanCode = paidMode ? currentPlanCode : "";
   const subscriptionUrl = String(user?.subscription_url || dash?.subscription_url || "").trim();
   const manualAccessReady = Boolean(subscriptionUrl && (dash?.is_active || user?.is_active));
 
@@ -120,7 +121,7 @@ export default function SubscriptionPage() {
 
   const planCards = plans.slice(0, 4).map((plan) => {
     const normalizedCode = normalizePlanCode(plan.code);
-    const isCurrent = Boolean(currentPlanCode) && normalizedCode === currentPlanCode;
+    const isCurrent = Boolean(currentPaidPlanCode) && normalizedCode === currentPaidPlanCode;
 
     return {
       key: plan.code,
@@ -254,6 +255,15 @@ export default function SubscriptionPage() {
         },
       ]}
     >
+      <CabinetSection
+        eyebrow="Варианты"
+        title="Что можно выбрать"
+        description="Рабочие варианты продления видны сразу, без прокрутки и без лишней витрины."
+      >
+        <CabinetCardGrid items={planCards} className="xl:grid-cols-4" />
+        {error ? <p className="mt-4 text-sm text-amber-700 dark:text-amber-200">Часть данных не обновилась автоматически: {error}</p> : null}
+      </CabinetSection>
+
       <CabinetHero
         eyebrow="Сейчас по профилю"
         badge={dash?.is_active ? "Можно продлить спокойно" : "Нужен следующий шаг"}
@@ -297,15 +307,6 @@ export default function SubscriptionPage() {
       />
 
       <div className="grid gap-6 xl:grid-cols-[1.08fr_0.92fr]">
-        <CabinetSection
-          eyebrow="Варианты"
-          title="Что можно выбрать"
-          description="Показываем только рабочие варианты продления, без маркетингового шума."
-        >
-          <CabinetCardGrid items={planCards} className="xl:grid-cols-2" />
-          {error ? <p className="mt-4 text-sm text-amber-700 dark:text-amber-200">Часть данных не обновилась автоматически: {error}</p> : null}
-        </CabinetSection>
-
         <CabinetSection
           eyebrow="Восстановление"
           title="Ручное подключение только как запасной путь"

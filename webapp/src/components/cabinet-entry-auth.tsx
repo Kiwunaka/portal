@@ -89,11 +89,17 @@ export default function CabinetEntryAuth({ siteUrl }: { siteUrl: string }) {
     window.history.replaceState({}, "", `${url.pathname}${url.search}${url.hash}` || "/");
   }, []);
 
+  const clearSensitiveInputs = (): void => {
+    setPassword("");
+    setNewPassword("");
+  };
+
   const completeEmailLogin = (nextToken?: string | null): void => {
     if (!nextToken) {
       setEmailError("Не получен токен email-сессии.");
       return;
     }
+    clearSensitiveInputs();
     setWebSessionToken(nextToken);
     if (typeof window !== "undefined") {
       window.location.replace("/");
@@ -119,6 +125,7 @@ export default function CabinetEntryAuth({ siteUrl }: { siteUrl: string }) {
       const payload = await loginByEmail({ email, password });
       completeEmailLogin(payload.token);
     });
+    clearSensitiveInputs();
   };
 
   const submitRegister = async (event: FormEvent<HTMLFormElement>): Promise<void> => {
@@ -134,6 +141,7 @@ export default function CabinetEntryAuth({ siteUrl }: { siteUrl: string }) {
       setRecoveryToken("");
       setEmailMode("verify");
     });
+    clearSensitiveInputs();
   };
 
   const submitVerify = async (event: FormEvent<HTMLFormElement>): Promise<void> => {
@@ -166,6 +174,7 @@ export default function CabinetEntryAuth({ siteUrl }: { siteUrl: string }) {
       const payload = await finishEmailRecovery({ token, password: nextPassword });
       completeEmailLogin(payload.token);
     });
+    clearSensitiveInputs();
   };
 
   const inputClass =
@@ -219,6 +228,7 @@ export default function CabinetEntryAuth({ siteUrl }: { siteUrl: string }) {
                     setEmailMode(mode);
                     setEmailError("");
                     setEmailMessage("");
+                    clearSensitiveInputs();
                     if (mode === "verify") setRecoveryToken("");
                     if (mode === "recover") setVerifyToken("");
                   }}

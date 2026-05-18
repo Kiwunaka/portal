@@ -1234,6 +1234,16 @@ export type TelegramOidcFinishPayload = {
   state: string;
 };
 
+export type TelegramLinkStartResult = {
+  ok: boolean;
+  linked: boolean;
+  linked_telegram_id?: number | null;
+  linked_telegram_username?: string | null;
+  start_code?: string | null;
+  bot_url: string;
+  channel_url?: string | null;
+};
+
 export type AuthSessionPayload = {
   ok: boolean;
   user: {
@@ -1994,6 +2004,10 @@ export function checkChannelSubscriberStatus(): Promise<{
   campaign_marked?: boolean;
 }> {
   return apiFetch("/api/channel/subscriber/check", { method: "POST" });
+}
+
+export function startTelegramLink(): Promise<TelegramLinkStartResult> {
+  return apiFetch<TelegramLinkStartResult>("/api/client/telegram/link", { method: "POST" });
 }
 
 export function confirmConnect(): Promise<{ ok: boolean; event_id?: number | null }> {

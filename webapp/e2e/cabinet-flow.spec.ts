@@ -408,7 +408,7 @@ test.describe("Cabinet flow", () => {
     await page.goto("/");
 
     await expect(page).toHaveURL(/\/dashboard\/?$/);
-    await expect(page.getByRole("heading", { name: "Ваш трафик защищён" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Ваш доступ под контролем" })).toBeVisible();
     await expect(page.getByRole("heading", { name: "Telegram подтверждает кабинет" })).toHaveCount(0);
     await expect(page.getByRole("heading", { name: "Готовим аккуратно" })).toHaveCount(0);
   });
@@ -451,11 +451,11 @@ test.describe("Cabinet flow", () => {
   test("keeps the dashboard on consumer-safe access actions", async ({ page }) => {
     await page.goto("/dashboard/");
 
-    await expect(page.getByRole("heading", { name: "Ваш трафик защищён" })).toBeVisible();
-    await expect(page.locator("main")).toContainText("Приложение");
-    await expect(page.getByRole("heading", { name: "Что нужно сделать?" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Ваш доступ под контролем" })).toBeVisible();
+    await expect(page.locator("main")).toContainText("приложение POKROV");
+    await expect(page.getByRole("heading", { name: "Что делать дальше" })).toBeVisible();
     await expect(page.getByRole("link", { name: "Скачать приложение" }).first()).toBeVisible();
-    await expect(page.getByRole("link", { name: "Поддержка", exact: true }).first()).toBeVisible();
+    await expect(page.getByRole("link", { name: "Написать в поддержку" }).first()).toBeVisible();
     await expect(page.locator("main")).not.toContainText("QR");
     await expect(page.locator("main")).not.toContainText("?format=plain");
     await expect(page.locator("main")).not.toContainText("mock_token");
@@ -512,6 +512,69 @@ test.describe("Cabinet flow", () => {
     await expect(manualConnection.getByRole("button", { name: "Скопировать ссылку" })).toBeVisible();
     await expect(manualConnection.getByRole("link", { name: "Открыть ссылку" })).toBeVisible();
     await expect(page.locator("main")).not.toContainText("?format=plain");
+  });
+
+  test("keeps paid plan cards selectable for a free monthly account", async ({ page }) => {
+    const freeUser = {
+      ...mockSessionUser(),
+      sub_type: "FREE_MONTHLY",
+      segment: "FREE",
+      access_state: "free_monthly",
+      current_plan_code: "1_month",
+      is_active: true,
+      limits: { device_limit: 1, total_gb: 5, speed_mbps: 50 },
+      traffic: { used_gb: 0.4, used_bytes: 0, total_gb: 5, remaining_gb: 4.6, source: "free_policy" },
+      traffic_policy: {
+        kind: "monthly_limit",
+        label: "5 ГБ на 30 дней",
+        limit_gb: 5,
+        remaining_gb: 4.6,
+        next_reset_at: "2030-02-01T00:00:00",
+        soft_mode_active: false,
+      },
+      traffic_limit_gb: 5,
+      traffic_remaining_gb: 4.6,
+      next_reset_at: "2030-02-01T00:00:00",
+      device_limit: 1,
+    };
+    const freeDashboard = {
+      ...mockDashboard(),
+      sub_type: "FREE_MONTHLY",
+      segment: "FREE",
+      access_state: "free_monthly",
+      current_plan_code: "1_month",
+      is_active: true,
+      total_gb: 5,
+      remaining_gb: 4.6,
+      device_limit: 1,
+      speed_limit_mbps: 50,
+      traffic_policy: {
+        kind: "monthly_limit",
+        label: "5 ГБ на 30 дней",
+        limit_gb: 5,
+        remaining_gb: 4.6,
+        next_reset_at: "2030-02-01T00:00:00",
+        soft_mode_active: false,
+      },
+      traffic_limit_gb: 5,
+      traffic_remaining_gb: 4.6,
+      next_reset_at: "2030-02-01T00:00:00",
+    };
+
+    await page.route("**/api/dashboard", (route) =>
+      route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(freeDashboard) }),
+    );
+    await page.route("**/api/user/1001", (route) =>
+      route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(freeUser) }),
+    );
+    await page.setViewportSize({ width: 1440, height: 900 });
+
+    await page.goto("/subscription/");
+
+    const firstPaidPlanAction = page.locator("main a[href='/subscription/checkout/?plan=1_month']");
+    await expect(firstPaidPlanAction).toBeVisible();
+    const box = await firstPaidPlanAction.boundingBox();
+    expect(box?.y ?? 9999).toBeLessThan(900);
   });
 
   test("renders runtime connections on devices and keeps statistics as its own safe-summary page", async ({ page }) => {

@@ -143,6 +143,7 @@ test("settings links email to the current Telegram account", async ({ page }) =>
   await page.getByRole("button", { name: "Отправить письмо" }).click();
 
   await expect(page.locator("main")).toContainText("Письмо отправлено");
+  await expect(page.locator("#email-link input[type='password']")).toHaveValue("");
   await page.getByPlaceholder("Код подтверждения").fill("verify-settings-token");
   await page.getByRole("button", { name: "Подтвердить email" }).click();
 
@@ -156,6 +157,101 @@ test("settings links email to the current Telegram account", async ({ page }) =>
   ]);
   expect(requests.verify).toEqual([{ token: "verify-settings-token" }]);
   expect(requests.authHeaders).toEqual(["Bearer e2e_mock_token", "Bearer e2e_mock_token"]);
+});
+
+test("root auth clears the password field after an email login attempt", async ({ page }) => {
+  await page.addInitScript(() => {
+    window.localStorage.removeItem("portal_web_session_token");
+  });
+  await page.route("**/api/**", async (route) => {
+    const path = new URL(route.request().url()).pathname;
+    if (path === "/api/auth/email/status") {
+      return json(route, {
+        ok: true,
+        enabled: true,
+        public_enabled: true,
+        delivery_configured: true,
+        delivery_secret_configured: true,
+        debug_echo: false,
+        mode: "public",
+        blocked_reasons: [],
+      });
+    }
+    if (path === "/api/auth/email/login") {
+      return json(route, { detail: "Invalid credentials" }, 401);
+    }
+    return json(route, { detail: `Unhandled ${path}` }, 404);
+  });
+
+  await page.goto("/?clear_web_session=1");
+
+  const passwordInput = page.locator("input[type='password'][autocomplete='current-password']");
+  await page.getByPlaceholder("email@example.com").fill("reader@pokrov.test");
+  await passwordInput.fill("StrongPass123!");
+  await page.locator("form").filter({ has: passwordInput }).locator("button[type='submit']").click();
+
+  await expect(passwordInput).toHaveValue("");
+});
+
+test("settings starts Telegram linking for an email-only account", async ({ page }) => {
+  const linked_identities = {
+    telegram: null,
+    email: { email: "reader@pokrov.test", verified: true, linked_tg_id: null },
+  };
+  await page.addInitScript(() => {
+    window.localStorage.setItem("portal_web_session_token", "email_only_token");
+  });
+  await page.route("**/api/**", async (route) => {
+    const request = route.request();
+    const path = new URL(request.url()).pathname;
+
+    if (path === "/api/auth/session") {
+      return json(route, {
+        ok: true,
+        user: { id: 1001, username: null, email: "reader@pokrov.test", linked_identities },
+      });
+    }
+    if (path === "/api/dashboard") {
+      return json(route, { ...dashboardPayload(true), linked_identities });
+    }
+    if (path === "/api/user/1001") {
+      return json(route, { ...userPayload(true), username: null, linked_identities });
+    }
+    if (path === "/api/auth/email/status") {
+      return json(route, {
+        ok: true,
+        enabled: true,
+        public_enabled: true,
+        delivery_configured: true,
+        delivery_secret_configured: true,
+        debug_echo: false,
+        mode: "public",
+        blocked_reasons: [],
+      });
+    }
+    if (path === "/api/client/telegram/link") {
+      return json(route, {
+        ok: true,
+        linked: false,
+        linked_telegram_id: null,
+        linked_telegram_username: null,
+        start_code: "tg_link_mock",
+        bot_url: "https://t.me/pokrov_vpnbot?start=tg_link_mock",
+        channel_url: "https://t.me/pokrov_vpn",
+      });
+    }
+    if (path === "/api/channel/subscriber/check") {
+      return json(route, { ok: true, subscriber: false, already_claimed: false, bonus_days: 10 });
+    }
+
+    return json(route, { detail: `Unhandled ${path}` }, 404);
+  });
+
+  await page.goto("/settings/");
+  await page.getByRole("button", { name: "Подключить Telegram" }).click();
+
+  await expect(page.locator("main")).toContainText("Откройте бота");
+  await expect(page.locator("main a[href='https://t.me/pokrov_vpnbot?start=tg_link_mock']")).toBeVisible();
 });
 
 test("root auth keeps email hidden when delivery proof is incomplete", async ({ page }) => {
