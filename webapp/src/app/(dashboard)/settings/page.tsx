@@ -37,6 +37,11 @@ function profileLabel(username?: string | null, tgId?: number | null): string {
   return "Аккаунт POKROV";
 }
 
+function isSyntheticEmailAccountId(value?: number | string | null): boolean {
+  const id = Number(value || 0);
+  return Number.isFinite(id) && id >= 8_000_000_000_000 && id < 9_000_000_000_000;
+}
+
 type BonusCheckState = {
   checked: boolean;
   subscriber: boolean;
@@ -67,10 +72,17 @@ export default function SettingsPage() {
   const linked = user?.linked_identities || dash?.linked_identities || null;
   const linkedEmail = linked?.email?.email || "";
   const linkedTelegram = linked?.telegram || null;
-  const hasLinkedTelegram = Boolean(linkedTelegram?.id || linkedTelegram?.username || (!linkedEmail && (user?.username || user?.tg_id)));
+  const linkedTelegramId = Number(linkedTelegram?.id || 0);
+  const linkedTelegramUsername = String(linkedTelegram?.username || "").trim();
+  const hasLinkedTelegram = Boolean(
+    linkedTelegramUsername ||
+      (linkedTelegramId && !isSyntheticEmailAccountId(linkedTelegramId)) ||
+      (!linkedEmail && (user?.username || (user?.tg_id && !isSyntheticEmailAccountId(user.tg_id)))),
+  );
+  const profileName = user?.username ? profileLabel(user.username, user?.tg_id) : linkedEmail || profileLabel(user?.username, user?.tg_id);
   const telegramName = hasLinkedTelegram
-    ? linkedTelegram?.username
-      ? `@${linkedTelegram.username}`
+    ? linkedTelegramUsername
+      ? `@${linkedTelegramUsername}`
       : profileLabel(user?.username, user?.tg_id)
     : "Не подключен";
   const deviceLimit = getDeviceLimit(dash, user);
@@ -343,7 +355,7 @@ export default function SettingsPage() {
       metrics={[
         {
           label: "Профиль",
-          value: profileLabel(user?.username, user?.tg_id),
+          value: profileName,
           hint: "Это тот же аккаунт, который используют ваши устройства.",
           tone: "neutral",
         },
@@ -371,7 +383,7 @@ export default function SettingsPage() {
         eyebrow="Главное по аккаунту"
         badge={dash?.is_active ? "Профиль в порядке" : "Профилю нужен следующий шаг"}
         badgeTone={dash?.is_active ? "success" : "warning"}
-        title={profileLabel(user?.username, user?.tg_id)}
+        title={profileName}
         description={
           dash?.is_active
             ? "Здесь удобно проверить связки, забрать Telegram-бонус и быстро перейти к нужному разделу."

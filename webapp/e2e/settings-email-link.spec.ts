@@ -195,7 +195,7 @@ test("root auth clears the password field after an email login attempt", async (
 
 test("settings starts Telegram linking for an email-only account", async ({ page }) => {
   const linked_identities = {
-    telegram: null,
+    telegram: { id: 8000000000000, username: null },
     email: { email: "reader@pokrov.test", verified: true, linked_tg_id: null },
   };
   await page.addInitScript(() => {
