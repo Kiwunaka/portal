@@ -1,6 +1,6 @@
 # Repository Map
 
-Last updated: 2026-05-07
+Last updated: 2026-05-16
 
 ## Document Status
 
@@ -22,7 +22,7 @@ Legacy filename note:
 | `infra/` | runtime units and infra assets | `infra/portal-node-metrics.service`, `infra/portal-node-metrics.timer`, `infra/portal-node-observer.service`, `infra/portal-node-observer.timer` |
 | `scripts/` | deploy, smoke, node, release, audit, migration scripts | this file and `docs/operations/deployment-and-access.md` |
 | `docs/operations/publishing-and-signing-guide.md` | canonical store, certificate, and release artifact guidance | this file and the operations guide itself |
-| `docs/developer/orchestration/` | canonical orchestration standard, role contracts, and reusable templates | `docs/developer/orchestration/orchestration-standard.md` |
+| `docs/developer/orchestration/` | canonical orchestration standard, WO authoring rules, flow-state rules, role contracts, and reusable templates | `docs/developer/orchestration/orchestration-standard.md`, `docs/developer/orchestration/wo-authoring-guide.md`, `docs/developer/orchestration/flow-state.md` |
 | `docs/developer/work-orders/` | living wave and work-order execution artifacts | `docs/developer/work-orders/README.md` |
 | `docs/superpowers/specs/` | retained implementation specs and planning packets | historical/reference only unless copied into a current WO or canonical doc |
 | `reference-atlas/` | retained local design reference atlas | design-reference history only; not a production surface |
@@ -48,7 +48,7 @@ Legacy filename note:
 | Monitoring and visibility | [docs/operations/monitoring-and-visibility.md](C:/Users/kiwun/Documents/ai/VPN/docs/operations/monitoring-and-visibility.md) |
 | Publishing and signing | [docs/operations/publishing-and-signing-guide.md](C:/Users/kiwun/Documents/ai/VPN/docs/operations/publishing-and-signing-guide.md) |
 | Developer workflow | [docs/developer/developer-guide.md](C:/Users/kiwun/Documents/ai/VPN/docs/developer/developer-guide.md) |
-| Orchestrated work-order process | [docs/developer/orchestration/orchestration-standard.md](C:/Users/kiwun/Documents/ai/VPN/docs/developer/orchestration/orchestration-standard.md) |
+| Orchestrated work-order process | [docs/developer/orchestration/orchestration-standard.md](C:/Users/kiwun/Documents/ai/VPN/docs/developer/orchestration/orchestration-standard.md), [docs/developer/orchestration/wo-authoring-guide.md](C:/Users/kiwun/Documents/ai/VPN/docs/developer/orchestration/wo-authoring-guide.md), and [docs/developer/orchestration/flow-state.md](C:/Users/kiwun/Documents/ai/VPN/docs/developer/orchestration/flow-state.md) |
 | User journey | [docs/user/portal-vpn-user-guide-ru.md](C:/Users/kiwun/Documents/ai/VPN/docs/user/portal-vpn-user-guide-ru.md) |
 | Design system | [DESIGN.md](C:/Users/kiwun/Documents/ai/VPN/DESIGN.md), [docs/design/design-system-sync.md](C:/Users/kiwun/Documents/ai/VPN/docs/design/design-system-sync.md), and [docs/design/atlas-glass/](C:/Users/kiwun/Documents/ai/VPN/docs/design/atlas-glass/) |
 | Open Beta v4 release scope | [docs/product/public-beta-prd.md](C:/Users/kiwun/Documents/ai/VPN/docs/product/public-beta-prd.md) and [docs/operations/public-beta-release-runbook.md](C:/Users/kiwun/Documents/ai/VPN/docs/operations/public-beta-release-runbook.md) |

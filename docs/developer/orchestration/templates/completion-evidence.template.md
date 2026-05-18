@@ -21,10 +21,24 @@ Prepared by: `<orchestrator>`
 - automated checks:
 - manual checks:
 - evidence artifacts:
+- MREP:
+- evidence source tiers:
+- validation attribution:
+- risk proof closure:
+- mechanism adequacy:
+- durable memory updated:
 
 ## What remains / risk
 
 - item
+
+## FLOW_STATE Closure
+
+- final state: `complete | partial | blocked`
+- open findings: `none | accepted-risk | blocked`
+- repeated issue classes: `<none or summary>`
+- final next action: `close | follow-up-wo | pause-for-human`
+- problem-class analysis required: `yes | no`
 
 ## Deploy Status
 

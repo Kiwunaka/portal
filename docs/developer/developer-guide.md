@@ -1,6 +1,6 @@
 # Developer Guide
 
-Last updated: 2026-05-07
+Last updated: 2026-05-16
 
 ## Document Status
 
@@ -139,6 +139,8 @@ Use the orchestration standard when work should survive chat boundaries, needs e
 Canonical paths:
 
 - [docs/developer/orchestration/orchestration-standard.md](C:/Users/kiwun/Documents/ai/VPN/docs/developer/orchestration/orchestration-standard.md)
+- [docs/developer/orchestration/wo-authoring-guide.md](C:/Users/kiwun/Documents/ai/VPN/docs/developer/orchestration/wo-authoring-guide.md)
+- [docs/developer/orchestration/flow-state.md](C:/Users/kiwun/Documents/ai/VPN/docs/developer/orchestration/flow-state.md)
 - [docs/developer/orchestration/roles/](C:/Users/kiwun/Documents/ai/VPN/docs/developer/orchestration/roles)
 - [docs/developer/orchestration/templates/](C:/Users/kiwun/Documents/ai/VPN/docs/developer/orchestration/templates)
 - [docs/developer/work-orders/README.md](C:/Users/kiwun/Documents/ai/VPN/docs/developer/work-orders/README.md)
@@ -151,8 +153,12 @@ Current rules:
 - `POKROV-app/main` remains the canonical truth label for the new client development lane
 - any retained bridge evidence must be called out explicitly as archive evidence rather than as a live repo lane
 - mixed WOs must preserve separate git evidence for the platform lane and the new client lane when each is touched
+- medium/high-risk WOs must define reviewability, validation attribution, MREP, risk proof, and mechanism adequacy or record why each is not applicable
 - the executor does not self-close the WO
-- reviewers should run with fresh context
+- same reviewers may recheck only their owned findings after a fix pass
+- fresh-context final review is separate from owned-finding recheck and is required for non-trivial, risk-sensitive, mixed-lane, release-sensitive, or multi-cycle WOs
+- `FLOW_STATE` tracks issue classes, fix-cycle counts, next action, and stop rules once a WO enters review or fix-cycle
+- if the same issue class appears for the third time without a mechanism-changing fix, pause ordinary same-executor routing and perform problem-class analysis before continuing
 - a green automated check does not close a WO when manual checks, deploy steps, Android localhost audit, or origin evidence still remain open
 - live execution artifacts belong under `docs/developer/work-orders/`; reusable templates belong under `docs/developer/orchestration/templates/`
 

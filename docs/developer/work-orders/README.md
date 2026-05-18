@@ -1,6 +1,6 @@
 # POKROV Work Orders
 
-Last updated: 2026-05-07
+Last updated: 2026-05-16
 
 ## Document Status
 
@@ -47,7 +47,10 @@ A new orchestrator should be able to resume from the wave folder alone:
 - understand the queue from `INDEX.md`
 - understand each WO from its contract and evidence
 - see what was verified
+- see which evidence source tiers were used and which checks were owned by the WO
+- see the MREP, proof boundaries, and review focus for medium/high-risk WOs
 - see what is still partial or blocked
+- see the compact `FLOW_STATE` for review loops, repeated issue classes, and next action
 
 If a wave touches the platform lane, the active `POKROV-app` lane, and/or the bridge release lane, keep that evidence separated inside the relevant `WO` files instead of collapsing them into one generic client result.
 

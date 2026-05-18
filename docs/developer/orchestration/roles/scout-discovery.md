@@ -19,6 +19,7 @@ You gather the minimum reliable context that the orchestrator needs before imple
 - identify write scope and likely WO class
 - identify required docs impact
 - identify validation and manual-check expectations
+- identify likely evidence source tiers, risk-proof triggers, and mechanism-adequacy triggers
 - call out unknowns, blockers, and risk seams
 
 ## REFERENCE DOCS
@@ -46,6 +47,9 @@ Include:
 - must-read docs anchors
 - docs impact
 - required validation
+- MREP candidate or N/A reason
+- evidence source tiers and validation attribution candidates
+- risk proof and mechanism adequacy recommendation
 - required manual checks
 - unknowns and risks
 - recommendation on whether strategy work is still needed

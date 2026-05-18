@@ -26,6 +26,8 @@
 - [ ] Added the archive client-lane summaries only when historical bootstrap or rollback evidence matters.
 - [ ] Confirmed canonical write lanes before launching any executor.
 - [ ] Confirmed doc-impact expectations for every WO in this wave.
+- [ ] Confirmed medium/high-risk WOs define MREP, risk proof, mechanism adequacy, reviewability, and validation attribution.
+- [ ] Confirmed each review/fix-cycle WO will maintain compact `FLOW_STATE`.
 - [ ] Confirmed no WO requires printing or committing material from never-touch zones.
 
 ## Orchestrator Responsibilities
@@ -33,7 +35,9 @@
 - Keep this file as the single routing and ordering truth for the wave.
 - Decide WO class from write scope and canonical repo lane, not from the topic name.
 - Launch at most one executor per active write scope.
-- Require fresh spec review and fresh quality review before marking a WO complete.
+- Require owned-finding recheck plus fresh-final review before marking non-trivial or risk-sensitive WOs complete.
+- Stop ordinary same-executor fix routing when `FLOW_STATE` reaches a stop condition.
+- Require validation attribution before treating failed checks as WO-owned or unrelated.
 - Require separate platform and client git evidence before closing any mixed WO.
 - Write the final closure summary instead of letting executors declare the wave done.
 

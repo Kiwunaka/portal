@@ -1,6 +1,6 @@
 # POKROV Documentation Index
 
-Last updated: 2026-05-07
+Last updated: 2026-05-16
 
 This directory is split into two classes of material:
 
@@ -107,6 +107,7 @@ Current-vs-history boundary:
 - [DESIGN.md](C:/Users/kiwun/Documents/ai/VPN/DESIGN.md)
 - [docs/design/design-system-sync.md](C:/Users/kiwun/Documents/ai/VPN/docs/design/design-system-sync.md)
 - [docs/design/generated-assets-policy.md](C:/Users/kiwun/Documents/ai/VPN/docs/design/generated-assets-policy.md)
+- [docs/design/pokrov-design-cards-2026-05-18.md](C:/Users/kiwun/Documents/ai/VPN/docs/design/pokrov-design-cards-2026-05-18.md)
 
 ### Launch
 
@@ -122,6 +123,8 @@ Current-vs-history boundary:
 - [docs/developer/repository-map.md](C:/Users/kiwun/Documents/ai/VPN/docs/developer/repository-map.md)
 - [docs/developer/orchestration/README.md](C:/Users/kiwun/Documents/ai/VPN/docs/developer/orchestration/README.md)
 - [docs/developer/orchestration/orchestration-standard.md](C:/Users/kiwun/Documents/ai/VPN/docs/developer/orchestration/orchestration-standard.md)
+- [docs/developer/orchestration/wo-authoring-guide.md](C:/Users/kiwun/Documents/ai/VPN/docs/developer/orchestration/wo-authoring-guide.md)
+- [docs/developer/orchestration/flow-state.md](C:/Users/kiwun/Documents/ai/VPN/docs/developer/orchestration/flow-state.md)
 - [docs/developer/work-orders/README.md](C:/Users/kiwun/Documents/ai/VPN/docs/developer/work-orders/README.md)
 - [docs/developer/work-orders/2026-04-open-beta-v4/INDEX.md](C:/Users/kiwun/Documents/ai/VPN/docs/developer/work-orders/2026-04-open-beta-v4/INDEX.md)
 - [docs/developer/work-orders/2026-04-open-beta-v4/13-launch-decision.md](C:/Users/kiwun/Documents/ai/VPN/docs/developer/work-orders/2026-04-open-beta-v4/13-launch-decision.md)

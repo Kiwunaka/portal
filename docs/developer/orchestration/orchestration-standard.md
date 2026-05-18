@@ -1,6 +1,6 @@
 # POKROV Orchestration Standard
 
-Last updated: 2026-04-23
+Last updated: 2026-05-16
 
 ## Document Status
 
@@ -16,7 +16,9 @@ The goal is reliable execution with:
 
 - one work-order contract per unit of work
 - one orchestrator that owns routing and status
-- fresh-context review after implementation
+- explicit reviewability, validation attribution, and proof boundaries before execution
+- owned-finding rechecks plus fresh-context final review after implementation
+- compact `FLOW_STATE` for fix-cycle and handoff decisions
 - durable evidence for validation, manual checks, and git state
 
 ## When To Use
@@ -112,6 +114,61 @@ Fields that must stay provisional until discovery, review, or real execution evi
 - Android localhost audit results
 - `current-origin`, `brain-origin`, and `RU-origin` evidence
 
+## WO Authoring And Proof Fields
+
+Use [wo-authoring-guide.md](C:/Users/kiwun/Documents/ai/VPN/docs/developer/orchestration/wo-authoring-guide.md) when drafting or reviewing a work-order contract.
+
+Ceremony rule:
+
+- compact WOs are allowed for low-risk, singleton, docs-only, mechanical, or narrow localized work when local correctness cannot differ from final system correctness
+- full WOs are required for medium/high-risk work, batch execution, shared contracts, generated artifacts, validation harnesses, runtime behavior, persistence, security, data integrity, API/UI hierarchy, release evidence, or origin-specific proof
+- compact WOs may omit detailed proof blocks only when they explicitly record low-risk reason, validation scope, MREP status or N/A, hard no-touch scope, and acceptance criteria
+
+Full WOs must define or explicitly mark N/A for:
+
+- `Minimal E2E Path (MREP)` with an evidence source tier
+- `Risk Proof Plan`
+- `Mechanism Adequacy`
+- `Reviewability`
+- `Validation Attribution`
+
+Goal/oracle rule:
+
+- a WO goal is not strong enough for execution unless it names or points to the verification oracle that decides correctness
+- if no trustworthy oracle exists yet, route the work as discovery, strategy, partial, or blocked
+- a Markdown plan is not an oracle by itself
+
+Durable memory rule:
+
+- scope changes, steering updates, review findings, validation attribution, and blocker decisions that must survive compaction must be written back into the WO, wave index, or completion evidence
+- if steering changes scope, repo lane, docs impact, release risk, manual checks, or acceptance, reclassify the WO before continuing
+
+Inspection surface rule:
+
+- visual, generated, interactive, or operational results need an inspectable surface such as browser target, static HTML, screenshot/report, generated manifest, release report, admin page, device smoke, or runtime artifact
+- the WO should say where reviewers inspect the result and which evidence tier that inspection represents
+
+Evidence source tiers:
+
+- `static_review`
+- `synthetic_test`
+- `tracked_fixture`
+- `generated_artifact`
+- `api_e2e`
+- `ui_behavior`
+- `runtime_smoke`
+- `full_validation_epoch`
+- `manual`
+- `n/a`
+
+Risk proof is required when local correctness can differ from final system correctness. Examples include release gates, generated artifacts, validation harnesses, shared contracts, runtime/persistence behavior, security/data integrity, UI hierarchy, provider/manual/device proof, and `current-origin` / `brain-origin` / `RU-origin` evidence.
+
+Mechanism adequacy is required when a weak proof could falsely satisfy a strong acceptance criterion. Guard, validator, analyzer, static-policy, generated-artifact, and semantic acceptance WOs must say whether acceptance is `semantic`, `textual`, `mechanical`, `artifact-shape`, `runtime-behavior`, or `hybrid`, and whether regex/text-only proof is allowed.
+
+Reviewability tells reviewers where to focus: expected diff shape, risk lenses, proof boundaries, tricky invariants, mandatory inspection targets, and pre-existing debt that should not be confused with WO failure.
+
+Validation attribution says which checks belong to the WO, which evidence tiers are required, which failures are likely attributable to the WO, and which failures are wave-level or integration-level.
+
 ## Core Artifacts
 
 - `Wave`
@@ -120,12 +177,16 @@ Fields that must stay provisional until discovery, review, or real execution evi
   the living control sheet for the wave
 - `WO`
   one work-order file for one bounded execution target
+- WO authoring guide
+  proof-field and evidence-tier rules for writing reviewable WOs
 - discovery memo
   read-only context gathering for a WO
 - implementation strategy
   WO-ready execution approach before coding
 - review verdict
   the reviewer output for spec, quality, or release validation
+- `FLOW_STATE`
+  compact state inside a `WO` that records issue classes, fix-cycle counts, next action, and stop conditions
 - completion evidence
   the closure record for what changed, how it was verified, and what remains blocked
 
@@ -161,8 +222,14 @@ Fields that must stay provisional until discovery, review, or real execution evi
 - retired `app-next` material is bootstrap provenance only; it is never a canonical completion target.
 - Production truth stays in Postgres plus the locked shared facts under `shared/`.
 - A green automated check does not close a WO if manual checks, release blockers, or missing docs updates remain open.
+- A weak proof mechanism does not close a strong acceptance criterion unless the WO narrows that criterion and records residual risk.
+- Validation evidence must identify source tier and attribution to this WO versus wave-level or unrelated failure.
+- Medium/high-risk WOs must include reviewability, validation attribution, MREP, risk proof, and mechanism adequacy, or explicitly record N/A reasons.
 - The executor never self-closes the WO.
-- Reviewers run with fresh context and report findings back through the orchestrator.
+- Reviewers report findings back through the orchestrator and classify each finding with a stable issue class.
+- The same reviewer may recheck only their owned findings after a fix pass.
+- Fresh-context final review is separate from owned-finding recheck for non-trivial or risk-sensitive WOs.
+- `FLOW_STATE` must be updated when a WO enters review, fix-cycle, redesign-required, blocked, partial, or complete states.
 - If behavior changes, the required canonical docs must be updated in the same task.
 - Never treat local temp DBs, generated caches, archived notes, or local artifact folders as product truth.
 
@@ -286,7 +353,45 @@ Fix-cycle rule:
 
 - findings should be transferred back to the executor `1:1`
 - the same executor may be resumed for fixes
-- reviewers should stay fresh for each verdict pass
+- the same reviewer who filed a finding should recheck only that owned finding after the executor responds
+- an owned-finding recheck should not broaden into a new full review unless the fix created visible new risk in the same touched area
+- a fresh-context final reviewer should run after owned findings are closed when the WO is non-trivial, risk-sensitive, release-sensitive, mixed-lane, or had more than one fix cycle
+- reviewer findings must include an `issue_class` so repeated adjacent failures can be detected
+- the orchestrator must update `FLOW_STATE` after every review and fix-cycle pass
+
+## Flow State And Loop Control
+
+Use [flow-state.md](C:/Users/kiwun/Documents/ai/VPN/docs/developer/orchestration/flow-state.md) as the compact process-state standard.
+
+`FLOW_STATE` is not a history log. It records only what is needed to decide whether the next step is another ordinary fix, an owned-finding recheck, a fresh-final review, a redesign pause, or human escalation.
+
+Required flow-state duties:
+
+- create or update `FLOW_STATE` when a `WO` first enters review
+- classify each reviewer finding by stable issue class
+- increment ordinary fix-cycle counts when findings are routed back to the same executor
+- record whether a fix changed the mechanism that caused the finding
+- preserve open findings and next action across context compaction or role handoff
+- stop ordinary fix routing when a stop rule fires
+
+Stop ordinary same-executor fix routing when any of these are true:
+
+- `ordinary_fix_cycles >= 3` and unresolved findings remain
+- the same `issue_class` appears for the third time with `mechanism_changed=false`
+- a fix changes write scope, repo lane, docs impact, release risk, or manual-check requirements
+- validation fails for the same reason after two focused fix attempts
+- source-of-truth conflict, missing access, missing device evidence, deploy blocker, or origin-evidence blocker prevents a trustworthy close
+
+When a stop rule fires, set the WO to `fix-cycle` or `blocked` as appropriate, set `FLOW_STATE.next_action` to `problem-class-analysis` or `pause-for-human`, and record a short problem-class analysis before any further executor pass.
+
+Problem-class analysis must identify:
+
+- repeated issue class
+- affected surfaces
+- why local fixes are not closing the class
+- mechanism that should close the class
+- changed acceptance criteria or validation hook
+- whether the WO should be split, rescoped, or escalated
 
 ## Evidence Policy
 
@@ -301,7 +406,7 @@ Every WO must retain enough evidence to answer:
 Minimum evidence areas:
 
 - code anchors and docs anchors that were read
-- automated checks with exact commands and outcomes
+- automated checks with exact commands, outcomes, evidence source tiers, and WO attribution
 - manual checks with environment or origin labels
 - artifact paths under `docs/audit-artifacts/` when relevant
 - worktree and branch used for execution when relevant
@@ -311,6 +416,8 @@ Minimum evidence areas:
 Evidence handling rule:
 
 - keep execution evidence tied to the lane that actually changed
+- distinguish checks owned by the WO from wave-level, integration-level, pre-existing, or unrelated failures
+- do not treat one green narrow example as proof of a broader semantic invariant unless the mechanism adequacy section explains why it reaches the authoritative boundary
 - do not treat a machine-local alias branch name as sufficient git evidence without stating which canonical lane it promotes into
 - for mixed WOs, preserve separate evidence for platform promotion, new-client promotion, and bridge-lane promotion when each lane changed
 - store durable release or audit artifacts under canonical evidence locations, not inside throwaway worktree-only paths
@@ -320,11 +427,16 @@ Evidence handling rule:
 A WO is `complete` only when all of these are true:
 
 - implementation matches the WO goal and acceptance criteria
+- MREP is satisfied, or explicitly marked not applicable with a reason
+- required risk proof and mechanism adequacy are satisfied, or residual risk is explicitly accepted by the orchestrator
+- validation attribution is recorded so owned failures are not hidden behind wave-level noise
 - required canonical docs are updated or explicitly confirmed unchanged
 - required automated checks passed, or failures are resolved
 - required manual checks are complete, or the WO is explicitly not gated by them
 - git evidence is recorded for every affected canonical repo lane and identifies the intended promotion path
 - no unresolved reviewer findings remain
+- `FLOW_STATE.next_action` is not `problem-class-analysis` or `pause-for-human`
+- repeated issue classes have either a mechanism-changing fix, a split/rescope decision, or an explicit accepted-risk note
 
 A WO stays `partial` or `blocked` when:
 

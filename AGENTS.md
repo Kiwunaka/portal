@@ -1,6 +1,6 @@
 # Repository Agents
 
-Last updated: 2026-05-07
+Last updated: 2026-05-16
 
 This file is the working contract for any agent or developer operating inside `C:\Users\kiwun\Documents\ai\VPN`.
 
@@ -200,6 +200,7 @@ Everything else in `docs/` should be treated as historical, audit, or supporting
 Work-order, spec, and visual-reference material is evidence, not product canon:
 
 - `docs/developer/work-orders/**` records execution state and retained wave evidence; use its indexes to understand what happened, then resolve product truth through the canonical docs above
+- orchestration process truth lives in `docs/developer/orchestration/orchestration-standard.md`, `docs/developer/orchestration/wo-authoring-guide.md`, and `docs/developer/orchestration/flow-state.md`; use `FLOW_STATE` for review loops, repeated issue classes, and stop decisions
 - `docs/superpowers/specs/**`, `reference-atlas/`, and rendered journey/mockup assets are planning or design-reference history unless a current design doc explicitly promotes them
 - do not delete or rewrite historical work-order/mockup trees during routine cleanup; relabel or index them when their role is unclear
 

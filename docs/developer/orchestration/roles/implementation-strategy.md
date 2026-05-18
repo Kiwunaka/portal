@@ -33,6 +33,9 @@ It should define:
 - exact write scope
 - docs impact
 - acceptance criteria
+- MREP, risk proof plan, and mechanism adequacy expectations
+- reviewability guidance for reviewers
+- validation attribution, including WO-owned checks versus wave-level checks
 - validation plan
 - manual-check expectations
 - likely fix-cycle risks
@@ -42,6 +45,7 @@ It should define:
 - keep the strategy tied to current repo truth
 - make branch and repo-lane expectations explicit
 - keep validation subsystem-aware
+- match proof mechanisms to the acceptance boundary
 - treat manual release gates as first-class constraints
 - do not widen scope without saying so
 - do not convert unknowns into assumptions silently

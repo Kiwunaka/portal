@@ -24,6 +24,7 @@
 | Spec reviewer | `<name or blank>` |
 | Quality reviewer | `<name or blank>` |
 | Release validator | `<name or blank>` |
+| Flow state | `not_started | active | redesign-required | blocked | complete` |
 | Created | `<timestamp>` |
 | Last updated | `<timestamp>` |
 
@@ -167,6 +168,59 @@ Describe the intended implementation shape before work starts. Keep this section
 - [ ] `<validation outcome>`
 - [ ] `<git-evidence outcome>`
 
+## Minimal E2E Path (MREP)
+
+- Entry point: `<smallest realistic route, command, screen, API flow, or artifact path that proves the result>`
+- Expected: `<observable result>`
+- Success oracle: `<test suite, runtime state, artifact inspection, manual gate, release report, or N/A>`
+- Validation: `<how the path is checked>`
+- Evidence source tier: `static_review | synthetic_test | tracked_fixture | generated_artifact | api_e2e | ui_behavior | runtime_smoke | full_validation_epoch | manual | n/a`
+- Review surface: `<browser target, report, screenshot, manifest, device/runtime output, or N/A>`
+- Durable memory target: `<WO section, INDEX, completion evidence, artifact path, or N/A>`
+- Notes: `<limitations, setup, or N/A reason>`
+
+## Risk Proof Plan
+
+- Required: `no | yes`
+- If no: `<short reason>`
+- If yes:
+  - Risk reason: `exactness | truncation | provenance | validation-truth | materialized-state | ui-hierarchy | data-integrity | generated-artifact | validation-harness | runtime | persistence | shared-contract | security | release-evidence | origin-evidence | payment-access | n/a`
+  - Authoritative boundary: `<final object, state, API, UI, persistence layer, deployed runtime, device, provider, or evidence source that decides correctness>`
+  - Closure cases:
+    - `<case/class that must be true>`
+  - Negative controls:
+    - `<case that must stay false, rejected, blocked, hidden, or out of scope>`
+  - Evidence source tiers required:
+    - `static_review | synthetic_test | tracked_fixture | generated_artifact | api_e2e | ui_behavior | runtime_smoke | full_validation_epoch | manual | n/a`
+  - Full validation owner: `orchestrator | delegated-executor | release-validator | external-operator | n/a`
+
+## Mechanism Adequacy
+
+- Required: `no | yes`
+- If no: `<short reason>`
+- If yes:
+  - Acceptance kind: `semantic | textual | mechanical | artifact-shape | runtime-behavior | hybrid`
+  - Proposed proof mechanism: `<test, harness, fixture, review method, smoke, runtime check, or manual gate>`
+  - Why this mechanism reaches the authoritative boundary: `<why this proves the class, not only one example>`
+  - Known blind spots: `<what remains unproven or intentionally scoped out>`
+  - Regex/text-only proof allowed: `yes | no + reason`
+
+## Reviewability
+
+- Expected diff shape: `<files/areas likely to change and what kind of change reviewers should expect>`
+- Risk lenses: `<security, release, docs, copy, runtime, payment, UI, data, or other lenses>`
+- Proof boundaries: `<what evidence is enough, and what evidence is not enough>`
+- Known tricky invariants: `<rules that are easy to break while implementing>`
+- Reviewer must inspect: `<specific files, symbols, screens, artifacts, or evidence>`
+- Pre-existing issues that should be follow-up debt unless they block acceptance: `<known debt or n/a>`
+
+## Validation Attribution
+
+- Checks owned by this WO: `<commands, manual checks, artifacts, or N/A>`
+- Evidence source tiers required: `static_review | synthetic_test | tracked_fixture | generated_artifact | api_e2e | ui_behavior | runtime_smoke | full_validation_epoch | manual | n/a`
+- Failures likely attributable to this WO: `<failure classes that should block this WO>`
+- Failures that are wave-level/integration: `<failure classes to report separately instead of hiding or misattributing>`
+
 ## Validation
 
 Delete unused subsections instead of leaving a wall of `N/A`.
@@ -178,11 +232,11 @@ Delete unused subsections instead of leaving a wall of `N/A`.
 
 ### Common Validation Record
 
-| Check type | Command or evidence | Exit code | Result | Scope | Notes |
-| --- | --- | --- | --- | --- | --- |
-| `focused automated check` | `<exact command>` | `<0 / non-zero / n/a>` | `pass | fail | partial | blocked` | `<touched area>` | `<notes>` |
-| `artifact` | `<path to markdown/json/png artifact>` | `n/a` | `pass | fail | partial | blocked` | `<touched area>` | `<notes>` |
-| `manual check` | `<manual step name>` | `n/a` | `pass | fail | partial | blocked` | `<environment>` | `<notes>` |
+| Check type | Evidence source tier | Command or evidence | Exit code | Result | Attribution | Scope | Notes |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| `focused automated check` | `synthetic_test` | `<exact command>` | `<0 / non-zero / n/a>` | `pass | fail | partial | blocked` | `owned-by-this-WO | wave-level | pre-existing | unrelated | unknown` | `<touched area>` | `<notes>` |
+| `artifact` | `generated_artifact` | `<path to markdown/json/png artifact>` | `n/a` | `pass | fail | partial | blocked` | `owned-by-this-WO | wave-level | pre-existing | unrelated | unknown` | `<touched area>` | `<notes>` |
+| `manual check` | `manual` | `<manual step name>` | `n/a` | `pass | fail | partial | blocked` | `owned-by-this-WO | wave-level | pre-existing | unrelated | unknown` | `<environment>` | `<notes>` |
 
 ### Backend Validation
 
@@ -276,6 +330,13 @@ Use this table for checks that depend on operator judgment, runtime state, devic
 - Completion state: `not ready | partial | complete | blocked`
 - Closure summary: `<one short paragraph explaining what is now true>`
 
+### Proof Closure
+
+- MREP result: `<pass | partial | blocked | n/a>`
+- Risk proof plan status: `<satisfied | accepted-risk | blocked | n/a>`
+- Mechanism adequacy status: `<adequate | narrowed-scope | accepted-risk | blocked | n/a>`
+- Validation attribution summary: `<owned checks passed/failed, wave-level failures, pre-existing failures>`
+
 ### Done Definition For This WO
 
 - `<what must be true to call the WO complete>`
@@ -302,33 +363,65 @@ Record the exact repo lanes touched by this WO. For mixed WOs, fill both lanes a
 | `client-dev` | `POKROV-app/main` | `<branch>` | `<sha(s)>` | `yes | no` | `<url or blank>` | `<notes>` |
 | `client-bridge` | `<bridge main if used>` | `<branch>` | `<sha(s)>` | `yes | no` | `<url or blank>` | `<notes>` |
 
+## FLOW_STATE
+
+Keep this block compact. It is process state, not a narrative history.
+
+Update it when the WO enters review, fix-cycle, redesign-required, blocked, partial, or complete states.
+
+```json
+{
+  "version": 1,
+  "wo_id": "WO-<NNN>",
+  "state": "draft",
+  "ordinary_fix_cycles": 0,
+  "same_class_without_mechanism_change": {},
+  "findings": [],
+  "next_action": "continue",
+  "stop_reason": null
+}
+```
+
+### Problem-Class Analysis
+
+Required only when `FLOW_STATE.next_action` becomes `problem-class-analysis`.
+
+- Repeated issue class: `<class>`
+- Affected surfaces: `<paths or subsystems>`
+- Why local fixes are not closing the class: `<short explanation>`
+- Mechanism that should close the class: `<test, validator, abstraction, docs rule, workflow change, or rescope>`
+- Acceptance criteria change: `<new or revised criterion>`
+- Orchestrator decision: `continue-with-mechanism-change | split-wo | rescope | accept-risk | escalate-to-user`
+
 ## Reviewer Findings
 
 ### Spec Reviewer
 
-| Cycle | Reviewer | Verdict | Findings summary | Re-review needed | Timestamp |
-| --- | --- | --- | --- | --- | --- |
-| `1` | `<name>` | `pass | fail | partial` | `<summary>` | `yes | no` | `<timestamp>` |
+| Cycle | Reviewer | Verdict | Issue class | Findings summary | Re-review mode | Timestamp |
+| --- | --- | --- | --- | --- | --- | --- |
+| `1` | `<name>` | `pass | fail | partial` | `<class or none>` | `<summary>` | `owned-finding-recheck | fresh-final-review | none` | `<timestamp>` |
 
 ### Quality Reviewer
 
-| Cycle | Reviewer | Verdict | Findings summary | Re-review needed | Timestamp |
-| --- | --- | --- | --- | --- | --- |
-| `1` | `<name>` | `pass | fail | partial` | `<summary>` | `yes | no` | `<timestamp>` |
+| Cycle | Reviewer | Verdict | Issue class | Findings summary | Re-review mode | Timestamp |
+| --- | --- | --- | --- | --- | --- | --- |
+| `1` | `<name>` | `pass | fail | partial` | `<class or none>` | `<summary>` | `owned-finding-recheck | fresh-final-review | none` | `<timestamp>` |
 
 ### Release Validator
 
-| Cycle | Reviewer | Verdict | Findings summary | Re-review needed | Timestamp |
-| --- | --- | --- | --- | --- | --- |
-| `1` | `<name>` | `pass | fail | partial | not needed` | `<summary>` | `yes | no` | `<timestamp>` |
+| Cycle | Reviewer | Verdict | Issue class | Findings summary | Re-review mode | Timestamp |
+| --- | --- | --- | --- | --- | --- | --- |
+| `1` | `<name>` | `pass | fail | partial | not needed` | `<class or none>` | `<summary>` | `owned-finding-recheck | fresh-final-review | none` | `<timestamp>` |
 
 ## Fix-Cycle Log
 
 Use this section for 1:1 reviewer-to-executor loops. Do not paraphrase away the actual issue.
 
-| Cycle | Triggered by | Findings to address | Executor response | Re-review result | Timestamp |
-| --- | --- | --- | --- | --- | --- |
-| `1` | `spec-review | quality-review | release-validator` | `<paste the actual findings or a tight quote>` | `<what changed>` | `<pass | fail | pending>` | `<timestamp>` |
+If the same issue class appears for the third time without `mechanism_changed=yes`, stop ordinary fix routing and fill `Problem-Class Analysis`.
+
+| Cycle | Triggered by | Issue class | Findings to address | Executor response | Mechanism changed | Re-review result | Timestamp |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| `1` | `spec-review | quality-review | release-validator` | `<class>` | `<paste the actual findings or a tight quote>` | `<what changed>` | `yes | no` | `<pass | fail | pending>` | `<timestamp>` |
 
 ## Open Risks
 

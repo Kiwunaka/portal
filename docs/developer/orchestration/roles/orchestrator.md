@@ -16,6 +16,8 @@ Read these before substantial orchestration work:
 8. `docs/developer/developer-guide.md`
 9. `docs/developer/repository-map.md`
 10. `docs/developer/orchestration/orchestration-standard.md`
+11. `docs/developer/orchestration/wo-authoring-guide.md`
+12. `docs/developer/orchestration/flow-state.md`
 
 Add `POKROV-app` docs when the WO touches active client development. Add the archive summaries under `docs/archive/client-lanes/` only when historical bootstrap or rollback evidence matters.
 
@@ -36,8 +38,10 @@ Your job is to:
 - classify the WO
 - decide which role runs next
 - keep the WO contract honest
+- keep reviewability, validation attribution, and proof boundaries explicit
 - keep current repo rules in force
 - prevent false completion
+- maintain compact `FLOW_STATE` for review, fix-cycle, and handoff decisions
 
 ## NON-NEGOTIABLES
 
@@ -49,9 +53,16 @@ Your job is to:
 - Root docs always land on `portal/master`.
 - New client docs land on `POKROV-app/docs/*` once bootstrapped; short archive summaries live under `docs/archive/client-lanes/*`.
 - Manual or release blockers keep the WO open even when automated checks are green.
+- Weak proof mechanisms do not close broad semantic acceptance criteria unless the WO narrows scope and records residual risk.
+- Validation evidence must be attributed to this WO, wave-level/integration work, pre-existing debt, or unrelated known failure.
+- Steering that changes scope, risk, validation, manual checks, repo lane, or acceptance must be written into the WO before the next execution pass.
+- Every execution WO needs a real success oracle, not just a plan to implement.
 - The executor does not self-close the WO.
-- Reviewers must be fresh-context roles.
+- Reviewers must classify findings with stable issue classes.
+- The same reviewer may recheck only their owned findings after a fix pass.
+- Fresh-context final review is separate from owned-finding recheck.
 - Findings go back to the executor `1:1` through you.
+- Stop ordinary same-executor fix routing when `FLOW_STATE` reaches a stop condition.
 - If behavior changed, required canonical docs must move in the same task.
 - Never treat generated caches, temp DBs, archived notes, or local artifacts as product truth.
 
@@ -103,6 +114,7 @@ You may autofill:
 - likely code and docs anchors
 - likely docs impact
 - validation seeds
+- MREP, risk proof, mechanism adequacy, reviewability, and validation-attribution seeds
 
 You must not autofill as final truth:
 
@@ -145,6 +157,10 @@ Loop rule:
 - if spec review fails, return the findings to the executor
 - if spec review passes and quality review fails, return the findings to the executor
 - if release evidence is still incomplete, keep the WO `partial` or `blocked`
+- after a fix pass, ask the same reviewer to recheck only their owned findings
+- run a fresh-final review after owned findings are closed for non-trivial, risk-sensitive, mixed-lane, release-sensitive, or multi-cycle WOs
+- update `FLOW_STATE` after every review and fix-cycle pass
+- if the same issue class appears for the third time without a mechanism change, pause ordinary fixes and record a problem-class analysis
 
 ## COMPLETION POLICY
 
@@ -153,9 +169,11 @@ Treat a WO as complete only when:
 - the implementation matches the goal and non-goals
 - required docs are updated or explicitly unchanged
 - required automated checks passed
+- MREP, risk proof plan, mechanism adequacy, and validation attribution are satisfied or explicitly marked N/A/accepted risk
 - required manual checks are recorded
 - git evidence exists for every affected canonical repo
 - reviewer findings are resolved
+- `FLOW_STATE.next_action` is not `problem-class-analysis` or `pause-for-human`
 
 Mixed-WO rule:
 

@@ -11,9 +11,16 @@ Date: `YYYY-MM-DD`
 
 ## Focused Checks
 
-| Check | Command or method | Result | Evidence | Notes |
-| --- | --- | --- | --- | --- |
-| `<name>` | `<command>` | `pass` | `<path>` | `-` |
+| Check | Evidence source tier | Command or method | Result | Attribution | Evidence | Notes |
+| --- | --- | --- | --- | --- | --- | --- |
+| `<name>` | `static_review | synthetic_test | tracked_fixture | generated_artifact | api_e2e | ui_behavior | runtime_smoke | full_validation_epoch | manual | n/a` | `<command>` | `pass` | `owned-by-this-WO | wave-level | pre-existing | unrelated | unknown` | `<path>` | `-` |
+
+## Proof Boundary
+
+- MREP:
+- risk proof plan:
+- mechanism adequacy:
+- validation attribution:
 
 ## Evidence Artifacts
 
