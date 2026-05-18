@@ -218,22 +218,22 @@ export default function DashboardPage() {
   return (
     <CabinetRoute
       eyebrow="Главная"
-      title={dash?.is_active ? "Ваш трафик защищён" : "Продлите доступ"}
+      title={dash?.is_active ? "Ваш доступ под контролем" : "Продлите доступ"}
       description={
         dash?.is_active
-          ? "Здесь всё, что нужно знать о вашей подписке: статус, трафик, устройства и быстрые действия."
+          ? "Статус, устройства, загрузки и поддержка в одном месте. Для подключения откройте приложение POKROV."
           : "Доступ закончился. Продлите подписку, чтобы вернуть защиту."
       }
       actions={
         <>
           <AppRouteLink
-            href={dash?.is_active ? "/subscription/" : "/subscription/checkout/"}
+            href={dash?.is_active ? "/downloads/" : "/subscription/checkout/"}
             className="btn-primary rounded-full px-5 py-3 text-sm font-semibold"
           >
-            {dash?.is_active ? "Продлить подписку" : "Продлить доступ"}
+            {dash?.is_active ? "Открыть приложение" : "Продлить доступ"}
           </AppRouteLink>
-          <AppRouteLink href="/support/" className="outline-btn rounded-full px-5 py-3 text-sm font-semibold">
-            Поддержка
+          <AppRouteLink href={dash?.is_active ? "/subscription/" : "/support/"} className="outline-btn rounded-full px-5 py-3 text-sm font-semibold">
+            {dash?.is_active ? "Продлить доступ" : "Поддержка"}
           </AppRouteLink>
         </>
       }
@@ -273,9 +273,9 @@ export default function DashboardPage() {
 
       {/* ── App Download Block ── */}
       <CabinetSection
-        eyebrow="Приложение"
-        title="POKROV на ваших устройствах"
-        description="Установите приложение, чтобы подключаться в один клик. Кабинет помогает скачать приложение и продолжить доступ без ручных ссылок."
+        eyebrow="Следующий шаг"
+        title="Откройте приложение и нажмите Connect"
+        description="Кабинет не заменяет приложение: он помогает скачать beta-сборку, проверить устройства, продлить доступ и открыть поддержку без ручных ссылок."
       >
         <div className="grid gap-6 lg:grid-cols-[0.82fr_1.18fr] items-start">
           <div className="rounded-[1.5rem] border border-emerald-200/60 bg-emerald-50/60 p-5 dark:border-emerald-800/40 dark:bg-emerald-950/20">
@@ -343,13 +343,13 @@ export default function DashboardPage() {
       {/* ── Quick Actions ── */}
       <CabinetSection
         eyebrow="Быстрые действия"
-        title="Что нужно сделать?"
-        description="Самые частые действия всегда под рукой."
+        title="Что делать дальше"
+        description="Сначала приложение, затем продление и поддержка, если они понадобятся."
       >
         <div className="quick-action-grid">
-          <QuickAction icon="payments" label="Продлить доступ" href="/subscription/checkout/" primary />
+          <QuickAction icon="download" label="Скачать приложение" href="https://pokrov.space/install/" primary />
+          <QuickAction icon="payments" label="Продлить доступ" href="/subscription/checkout/" />
           <QuickAction icon="devices" label="Мои устройства" href="/devices/" />
-          <QuickAction icon="download" label="Скачать приложение" href="https://pokrov.space/install/" />
           <QuickAction icon="support_agent" label="Написать в поддержку" href="/support/" />
         </div>
       </CabinetSection>

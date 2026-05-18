@@ -31,28 +31,21 @@ type HomeLinks = {
   channelHref: string;
 };
 
-const HERO_FACTS = [
-  { value: "5 дней", label: "бесплатно, без карты, с полным доступом" },
-  { value: "Android + Windows", label: "приложения для ваших устройств" },
-  { value: "До 5 устройств", label: "один доступ на всю семью" },
-  { value: "Без лишней рутины", label: "приложение, кабинет и поддержка в одном пути" },
-];
-
 const HOW_IT_WORKS = [
   {
     step: "1",
-    title: "Откройте маршрут установки",
-    text: "Проверьте бета-доступ для Android или Windows. Если файл доступен вашему аккаунту, кабинет покажет правильную ссылку.",
+    title: "Установите приложение",
+    text: "Android APK и Windows EXE доступны как beta-сборки. Публичный релиз и store-доступ не обещаем до закрытия release gate.",
   },
   {
     step: "2",
-    title: "Попробуйте 5 дней бесплатно",
-    text: "Доступ ко всем доступным серверам на время пробы. Достаточно, чтобы понять, подходит ли вам сервис.",
+    title: "Попробуйте 5 дней",
+    text: "Старт без карты и без ручной настройки. POKROV сам готовит managed-подключение в приложении.",
   },
   {
     step: "3",
-    title: "Пользуйтесь интернетом",
-    text: "Безопасное соединение из любой точки мира. Смотрите, работайте, общайтесь — всё работает как обычно, только защищённее.",
+    title: "Нажмите подключение",
+    text: "Основной путь живет в приложении: один понятный экран, режим маршрута и поддержка рядом в профиле.",
   },
   {
     step: "4",
@@ -246,33 +239,26 @@ function Hero({ links }: { links: HomeLinks }) {
           <div className={styles.heroCopy}>
             <div className={styles.eyebrow}>
               <UiIcon name="verified_user" size={18} />
-              Премиум-доступ
+              Старт в приложении
             </div>
             <h1 className={styles.heroTitle}>
-              Интернет
+              POKROV для
               <br />
-              без границ
+              спокойного маршрута
             </h1>
             <p className={styles.heroSubtitle}>
-              Спокойный защищенный маршрут для Android и Windows. 5 дней бесплатно, без привязки карты и без технической рутины на старте.
+              Пять дней в приложении без карты и без ручных настроек. Кабинет помогает продлить доступ, привязать Telegram и проверить устройства.
             </p>
             <div className={styles.heroActions}>
               <Link href={links.installHref} className={`${styles.btnPrimary} ${styles.btnPill}`}>
                 <UiIcon name="shield_lock" size={22} />
-                Попробовать бесплатно
+                Попробовать 5 дней
               </Link>
               <a href="#how-it-works" className={`${styles.btnSecondary} ${styles.btnPill}`}>
                 <UiIcon name="play_circle" size={20} />
-                Как это работает
+                Как начать
               </a>
             </div>
-            <ul className={styles.heroNotes}>
-              {HERO_FACTS.map((f) => (
-                <li key={f.value}>
-                  <strong>{f.value}</strong> — {f.label}
-                </li>
-              ))}
-            </ul>
           </div>
 
           <div className={styles.heroVisual}>
@@ -303,15 +289,15 @@ function Hero({ links }: { links: HomeLinks }) {
 
 function ProofStrip() {
   const items = [
-    { icon: "event_available", value: "5 дней", label: "бесплатного доступа без карты" },
-    { icon: "phone_android", value: buildPlatformLabel(), label: "приложения для ваших устройств" },
+    { icon: "event_available", value: "5 дней", label: "пробного доступа без карты" },
+    { icon: "phone_android", value: buildPlatformLabel(), label: "beta-сборки для ваших устройств" },
     { icon: "devices", value: "До 5", label: "устройств одновременно" },
     { icon: "security", value: "Старт в приложении", label: "кабинет остается рядом" },
     { icon: "route", value: buildRouteLabel(), label: "публичный режим маршрута по умолчанию" },
   ];
 
   return (
-    <FadeUp delay={0.2} as="section" className={styles.container}>
+    <FadeUp delay={0.2} as="section" className={styles.container} id="proof">
       <div className={styles.proofStrip}>
         {items.map((item) => (
           <div key={item.value} className={styles.proofCard}>
@@ -327,7 +313,7 @@ function ProofStrip() {
       </div>
       <div className={styles.proofFooter}>
         <UiIcon name="lock" size={16} />
-        Ваши данные под защитой. Конфиденциально. С понятными условиями. Всегда на вашей стороне.
+        Публичный релиз не обещаем: beta-ограничения показываем рядом с действиями.
       </div>
     </FadeUp>
   );
@@ -338,9 +324,9 @@ function HowItWorks() {
     <FadeUp delay={0.3} as="section" className={styles.container}>
       <div className={styles.section} id="how-it-works">
         <div className={styles.sectionHead}>
-          <span className={styles.eyebrow}>как это работает</span>
-          <h2>Четыре шага до безопасного интернета</h2>
-          <p>Никаких сложных настроек и технических терминов. Откройте — подключите — пользуйтесь.</p>
+          <span className={styles.eyebrow}>как начать</span>
+          <h2>Четыре шага до спокойного маршрута</h2>
+          <p>Без ручных ссылок и технических терминов. Установите приложение, нажмите подключение, а кабинет оставьте для продления и поддержки.</p>
         </div>
         <div className={styles.stepsGrid}>
           {HOW_IT_WORKS.map((item) => (
@@ -553,17 +539,17 @@ function FinalCta({ links }: { links: HomeLinks }) {
           <span className={styles.eyebrow} style={{ borderColor: "rgba(255,255,255,0.2)", background: "rgba(255,255,255,0.08)", color: "#fff" }}>
             готовы начать?
           </span>
-          <h2>Попробуйте 5 дней бесплатно</h2>
+          <h2>Попробуйте POKROV в приложении</h2>
           <p>
-            Никаких обязательств. Откройте маршрут установки, войдите в тот же аккаунт и проверьте, доступна ли бета для вашего устройства.
+            Никаких обязательств и ручных настроек. Android и Windows остаются beta-сборками, а кабинет продолжает доступ после первого запуска.
           </p>
         </div>
         <div className={styles.finalActions}>
           <Link href={links.installHref} className={`${styles.btnPrimary} ${styles.btnPill}`}>
-            Проверить бета-доступ
+            Попробовать 5 дней
           </Link>
           <Link href={links.checkoutHref} className={styles.btnOutline}>
-            Выбрать тариф
+            Продлить позже
           </Link>
           <a href={links.cabinetHref} className={styles.btnOutline}>
             Кабинет
@@ -601,7 +587,7 @@ export default function MarketingHomePage() {
           <nav className={styles.nav} aria-label="Навигация по главной">
             <a href="#proof">Преимущества</a>
             <a href="#how-it-works">Как работает</a>
-            <a href="#pricing">Тарифы</a>
+            <a href="#pricing">Планы</a>
             <a href="#final-cta">Начать</a>
           </nav>
 
@@ -610,7 +596,7 @@ export default function MarketingHomePage() {
               Кабинет
             </a>
             <Link href={links.installHref} className={`${styles.btnPrimary} ${styles.btnPill}`}>
-              Установить
+              Попробовать 5 дней
             </Link>
           </div>
         </header>
